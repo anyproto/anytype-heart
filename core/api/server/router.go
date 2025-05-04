@@ -1,11 +1,10 @@
 package server
 
 import (
+	"net/http"
 	"os"
 
 	"github.com/gin-gonic/gin"
-	swaggerFiles "github.com/swaggo/files"
-	ginSwagger "github.com/swaggo/gin-swagger"
 
 	"github.com/anyproto/anytype-heart/core/api/core"
 	_ "github.com/anyproto/anytype-heart/core/api/docs"
@@ -44,7 +43,10 @@ func (s *Server) NewRouter(mw apicore.ClientCommands) *gin.Engine {
 	})
 
 	// Swagger route
-	router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
+	router.GET("/swagger/*any", func(c *gin.Context) {
+		target := "https://developers.anytype.io/docs/reference"
+		c.Redirect(http.StatusMovedPermanently, target)
+	})
 
 	// Auth routes (no authentication required)
 	authGroup := router.Group("/v1/auth")
