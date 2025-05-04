@@ -68,7 +68,7 @@ func TestSearchService_GlobalSearch(t *testing.T) {
 						{
 							RelationKey: bundle.RelationKeyResolvedLayout.String(),
 							Condition:   model.BlockContentDataviewFilter_In,
-							Value: pbtypes.IntList([]int{
+							Value: pbtypes.IntList(
 								int(model.ObjectType_basic),
 								int(model.ObjectType_profile),
 								int(model.ObjectType_todo),
@@ -77,7 +77,7 @@ func TestSearchService_GlobalSearch(t *testing.T) {
 								int(model.ObjectType_set),
 								int(model.ObjectType_collection),
 								int(model.ObjectType_participant),
-							}...),
+							),
 						},
 						{
 							RelationKey: bundle.RelationKeyIsHidden.String(),
@@ -249,7 +249,7 @@ func TestSearchService_GlobalSearch(t *testing.T) {
 			},
 			Keys: []string{
 				bundle.RelationKeyId.String(),
-				bundle.RelationKeyRelationKey.String(),
+				bundle.RelationKeyUniqueKey.String(),
 				bundle.RelationKeyName.String(),
 				bundle.RelationKeyRelationOptionColor.String(),
 			},
@@ -259,7 +259,7 @@ func TestSearchService_GlobalSearch(t *testing.T) {
 				{
 					Fields: map[string]*types.Value{
 						bundle.RelationKeyId.String():                  pbtypes.String(mockedTagId1),
-						bundle.RelationKeyRelationKey.String():         pbtypes.String(bundle.RelationKeyTag.String()),
+						bundle.RelationKeyUniqueKey.String():           pbtypes.String(bundle.RelationKeyTag.String()),
 						bundle.RelationKeyName.String():                pbtypes.String(mockedTagValue1),
 						bundle.RelationKeyRelationOptionColor.String(): pbtypes.String(mockedTagColor1),
 					},
@@ -267,7 +267,7 @@ func TestSearchService_GlobalSearch(t *testing.T) {
 				{
 					Fields: map[string]*types.Value{
 						bundle.RelationKeyId.String():                  pbtypes.String(mockedTagId2),
-						bundle.RelationKeyRelationKey.String():         pbtypes.String(bundle.RelationKeyTag.String()),
+						bundle.RelationKeyUniqueKey.String():           pbtypes.String(bundle.RelationKeyTag.String()),
 						bundle.RelationKeyName.String():                pbtypes.String(mockedTagValue2),
 						bundle.RelationKeyRelationOptionColor.String(): pbtypes.String(mockedTagColor2),
 					},
@@ -286,26 +286,41 @@ func TestSearchService_GlobalSearch(t *testing.T) {
 		require.Equal(t, mockedTypeId, objects[0].Type.Id)
 		require.Equal(t, mockedSpaceId, objects[0].SpaceId)
 		require.Equal(t, apimodel.ObjectLayoutBasic, objects[0].Layout)
-		require.Equal(t, apimodel.Icon{Format: "emoji", Emoji: apimodel.StringPtr(mockedObjectIcon)}, objects[0].Icon)
+		require.Equal(t, apimodel.Icon{
+			WrappedIcon: apimodel.EmojiIcon{
+				Format: apimodel.IconFormatEmoji,
+				Emoji:  mockedObjectIcon,
+			},
+		}, objects[0].Icon)
 
-		// check details
-		for _, property := range objects[0].Properties {
-			if property.Id == "created_date" {
-				require.Equal(t, "1970-01-11T06:54:48Z", *property.Date)
-			} else if property.Id == "last_modified_date" {
-				require.Equal(t, "1970-01-12T13:46:39Z", *property.Date)
-			} else if property.Id == "created_by" {
-				require.Equal(t, []string{mockedParticipantId}, property.Objects)
-			} else if property.Id == "last_modified_by" {
-				require.Equal(t, []string{mockedParticipantId}, property.Objects)
+		for _, propResp := range objects[0].Properties {
+			switch v := propResp.WrappedPropertyWithValue.(type) {
+			case apimodel.DatePropertyValue:
+				switch v.Key {
+				case "created_date":
+					require.Equal(t, "1970-01-11T06:54:48Z", v.Date)
+				case "last_modified_date":
+					require.Equal(t, "1970-01-12T13:46:39Z", v.Date)
+				}
+			case apimodel.ObjectsPropertyValue:
+				switch v.Key {
+				case "created_by":
+					require.Equal(t, []string{mockedParticipantId}, v.Objects)
+				case "last_modified_by":
+					require.Equal(t, []string{mockedParticipantId}, v.Objects)
+				}
+			case apimodel.MultiSelectPropertyValue:
+				continue
+			default:
+				t.Errorf("unexpected property type: %T", v)
 			}
 		}
 
 		// check tags
 		tags := []apimodel.Tag{}
-		for _, detail := range objects[0].Properties {
-			for _, tag := range detail.MultiSelect {
-				tags = append(tags, tag)
+		for _, propResp := range objects[0].Properties {
+			if v, ok := propResp.WrappedPropertyWithValue.(apimodel.MultiSelectPropertyValue); ok {
+				tags = append(tags, v.MultiSelect...)
 			}
 		}
 		require.Len(t, tags, 2)
@@ -375,7 +390,7 @@ func TestSearchService_Search(t *testing.T) {
 						{
 							RelationKey: bundle.RelationKeyResolvedLayout.String(),
 							Condition:   model.BlockContentDataviewFilter_In,
-							Value: pbtypes.IntList([]int{
+							Value: pbtypes.IntList(
 								int(model.ObjectType_basic),
 								int(model.ObjectType_profile),
 								int(model.ObjectType_todo),
@@ -384,7 +399,7 @@ func TestSearchService_Search(t *testing.T) {
 								int(model.ObjectType_set),
 								int(model.ObjectType_collection),
 								int(model.ObjectType_participant),
-							}...),
+							),
 						},
 						{
 							RelationKey: bundle.RelationKeyIsHidden.String(),
@@ -547,7 +562,7 @@ func TestSearchService_Search(t *testing.T) {
 			},
 			Keys: []string{
 				bundle.RelationKeyId.String(),
-				bundle.RelationKeyRelationKey.String(),
+				bundle.RelationKeyUniqueKey.String(),
 				bundle.RelationKeyName.String(),
 				bundle.RelationKeyRelationOptionColor.String(),
 			},

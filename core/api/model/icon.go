@@ -115,11 +115,13 @@ func (i Icon) MarshalJSON() ([]byte, error) {
 }
 
 func (i *Icon) UnmarshalJSON(data []byte) error {
-	var iconBase IconBase
-	if err := json.Unmarshal(data, &iconBase); err != nil {
+	var raw struct {
+		Format IconFormat `json:"format"`
+	}
+	if err := json.Unmarshal(data, &raw); err != nil {
 		return err
 	}
-	switch iconBase.Format {
+	switch raw.Format {
 	case IconFormatEmoji:
 		var emojiIcon EmojiIcon
 		if err := json.Unmarshal(data, &emojiIcon); err != nil {
@@ -139,34 +141,31 @@ func (i *Icon) UnmarshalJSON(data []byte) error {
 		}
 		i.WrappedIcon = namedIcon
 	default:
-		return util.ErrBadInput(fmt.Sprintf("invalid icon format: %q", iconBase.Format))
+		return util.ErrBadInput(fmt.Sprintf("invalid icon format: %q", raw.Format))
 	}
 	return nil
 }
 
 type WrappedIcon interface{ isIcon() }
-type IconBase struct {
-	Format IconFormat `json:"format" example:"emoji" enums:"emoji,file,icon"` // The format of the icon
-}
 
 type EmojiIcon struct {
-	IconBase
-	Emoji string `json:"emoji" example:"📄"` // The emoji of the icon
+	Format IconFormat `json:"format" enums:"emoji"` // The format of the icon
+	Emoji  string     `json:"emoji" example:"📄"`    // The emoji of the icon
 }
 
 func (EmojiIcon) isIcon() {}
 
 type FileIcon struct {
-	IconBase
-	File string `json:"file" example:"bafybeieptz5hvcy6txplcvphjbbh5yjc2zqhmihs3owkh5oab4ezauzqay"` // The file of the icon
+	Format IconFormat `json:"format" enums:"file"`                                                        // The format of the icon
+	File   string     `json:"file" example:"bafybeieptz5hvcy6txplcvphjbbh5yjc2zqhmihs3owkh5oab4ezauzqay"` // The file of the icon
 }
 
 func (FileIcon) isIcon() {}
 
 type NamedIcon struct {
-	IconBase
-	Name  string `json:"name" example:"document"`                                                                        // The name of the icon
-	Color *Color `json:"color,omitempty" example:"yellow" enums:"grey,yellow,orange,red,pink,purple,blue,ice,teal,lime"` // The color of the icon
+	Format IconFormat `json:"format" enums:"icon"`                                                                            // The format of the icon
+	Name   string     `json:"name" example:"document"`                                                                        // The name of the icon
+	Color  *Color     `json:"color,omitempty" example:"yellow" enums:"grey,yellow,orange,red,pink,purple,blue,ice,teal,lime"` // The color of the icon
 }
 
 func (NamedIcon) isIcon() {}
@@ -189,23 +188,23 @@ func IsEmoji(s string) bool {
 func GetIcon(gatewayUrl string, iconEmoji string, iconImage string, iconName string, iconOption float64) Icon {
 	if iconName != "" {
 		return Icon{NamedIcon{
-			IconBase: IconBase{Format: IconFormatIcon},
-			Name:     iconName,
-			Color:    ColorPtr(iconOptionToColor[iconOption]),
+			Format: IconFormatIcon,
+			Name:   iconName,
+			Color:  ColorPtr(iconOptionToColor[iconOption]),
 		}}
 	}
 	if iconEmoji != "" {
 		return Icon{EmojiIcon{
-			IconBase: IconBase{Format: IconFormatEmoji},
-			Emoji:    iconEmoji,
+			Format: IconFormatEmoji,
+			Emoji:  iconEmoji,
 		}}
 	}
 	if iconImage != "" {
 		return Icon{FileIcon{
-			IconBase: IconBase{Format: IconFormatFile},
-			File:     fmt.Sprintf("%s/image/%s", gatewayUrl, iconImage),
+			Format: IconFormatFile,
+			File:   fmt.Sprintf("%s/image/%s", gatewayUrl, iconImage),
 		}}
 	}
 
-	return Icon{NamedIcon{IconBase: IconBase{Format: ""}}}
+	return Icon{NamedIcon{Format: ""}}
 }

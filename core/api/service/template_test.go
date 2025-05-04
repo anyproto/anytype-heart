@@ -63,7 +63,12 @@ func TestObjectService_ListTemplates(t *testing.T) {
 		require.Len(t, templates, 1)
 		require.Equal(t, "template-1", templates[0].Id)
 		require.Equal(t, "Template Name", templates[0].Name)
-		require.Equal(t, apimodel.Icon{Format: "emoji", Emoji: apimodel.StringPtr("📝")}, templates[0].Icon)
+		require.Equal(t, apimodel.Icon{
+			WrappedIcon: apimodel.EmojiIcon{
+				Format: apimodel.IconFormatEmoji,
+				Emoji:  "📝",
+			},
+		}, templates[0].Icon)
 		require.Equal(t, 1, total)
 		require.False(t, hasMore)
 	})
@@ -129,7 +134,12 @@ func TestObjectService_GetTemplate(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, mockedTemplateId, template.Id)
 		require.Equal(t, mockedTemplateName, template.Name)
-		require.Equal(t, apimodel.Icon{Format: "emoji", Emoji: apimodel.StringPtr(mockedTemplateIcon)}, template.Icon)
+		require.Equal(t, apimodel.Icon{
+			WrappedIcon: apimodel.EmojiIcon{
+				Format: apimodel.IconFormatEmoji,
+				Emoji:  mockedTemplateIcon,
+			},
+		}, template.Icon)
 	})
 
 	t.Run("template not found", func(t *testing.T) {

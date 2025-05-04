@@ -71,7 +71,12 @@ func TestObjectService_ListTypes(t *testing.T) {
 		require.Equal(t, "type-1", types[0].Id)
 		require.Equal(t, "Type One", types[0].Name)
 		require.Equal(t, "type_one_key", types[0].Key)
-		require.Equal(t, apimodel.Icon{Format: "emoji", Emoji: apimodel.StringPtr("🗂️")}, types[0].Icon)
+		require.Equal(t, apimodel.Icon{
+			WrappedIcon: apimodel.EmojiIcon{
+				Format: apimodel.IconFormatEmoji,
+				Emoji:  "🗂️",
+			},
+		}, types[0].Icon)
 		require.Equal(t, 1, total)
 		require.False(t, hasMore)
 	})
@@ -186,7 +191,12 @@ func TestObjectService_GetType(t *testing.T) {
 		require.Equal(t, mockedTypeId, objType.Id)
 		require.Equal(t, mockedTypeName, objType.Name)
 		require.Equal(t, mockedTypeKey, objType.Key)
-		require.Equal(t, apimodel.Icon{Format: "emoji", Emoji: apimodel.StringPtr(mockedTypeIcon)}, objType.Icon)
+		require.Equal(t, apimodel.Icon{
+			WrappedIcon: apimodel.EmojiIcon{
+				Format: apimodel.IconFormatEmoji,
+				Emoji:  mockedTypeIcon,
+			},
+		}, objType.Icon)
 		require.Equal(t, apimodel.ObjectLayoutBasic, objType.Layout)
 	})
 

@@ -38,7 +38,7 @@ func (s *Service) ListObjects(ctx context.Context, spaceId string, offset int, l
 			{
 				RelationKey: bundle.RelationKeyResolvedLayout.String(),
 				Condition:   model.BlockContentDataviewFilter_In,
-				Value: pbtypes.IntList([]int{
+				Value: pbtypes.IntList(
 					int(model.ObjectType_basic),
 					int(model.ObjectType_profile),
 					int(model.ObjectType_todo),
@@ -47,7 +47,7 @@ func (s *Service) ListObjects(ctx context.Context, spaceId string, offset int, l
 					int(model.ObjectType_set),
 					int(model.ObjectType_collection),
 					int(model.ObjectType_participant),
-				}...),
+				),
 			},
 			{
 				RelationKey: "type.uniqueKey",

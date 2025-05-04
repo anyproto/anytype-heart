@@ -63,6 +63,7 @@ type PropertyLink struct {
 	Name   string         `json:"name" binding:"required" example:"Last modified date"`                                                          // The name of the property
 	Format PropertyFormat `json:"format" binding:"required" enums:"text,number,select,multi_select,date,files,checkbox,url,email,phone,objects"` // The format of the property
 }
+
 type PropertyWithValue struct {
 	WrappedPropertyWithValue `swaggerignore:"true"`
 }

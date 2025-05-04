@@ -2,7 +2,6 @@ package service
 
 import (
 	"context"
-	"regexp"
 	"testing"
 
 	"github.com/gogo/protobuf/types"
@@ -130,14 +129,24 @@ func TestSpaceService_ListMembers(t *testing.T) {
 
 		require.Equal(t, "member-1", members[0].Id)
 		require.Equal(t, "Jane Doe", members[0].Name)
-		require.Regexpf(t, regexp.MustCompile(gatewayUrl+`/image/`+iconImage), *members[0].Icon.File, "Icon URL does not match")
+		require.Equal(t, apimodel.Icon{
+			WrappedIcon: apimodel.FileIcon{
+				Format: apimodel.IconFormatFile,
+				File:   gatewayUrl + "/image/" + iconImage,
+			},
+		}, members[0].Icon)
 		require.Equal(t, "jane.any", members[0].GlobalName)
 		require.Equal(t, "joining", members[0].Status)
 		require.Equal(t, "no_permissions", members[0].Role)
 
 		require.Equal(t, "member-2", members[1].Id)
 		require.Equal(t, "John Doe", members[1].Name)
-		require.Equal(t, apimodel.Icon{Format: "emoji", Emoji: apimodel.StringPtr("👤")}, members[1].Icon)
+		require.Equal(t, apimodel.Icon{
+			WrappedIcon: apimodel.EmojiIcon{
+				Format: apimodel.IconFormatEmoji,
+				Emoji:  "👤",
+			},
+		}, members[1].Icon)
 		require.Equal(t, "john.any", members[1].GlobalName)
 		require.Equal(t, "active", members[1].Status)
 		require.Equal(t, "owner", members[1].Role)
@@ -222,7 +231,12 @@ func TestSpaceService_GetMember(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, "member-id", member.Id)
 		require.Equal(t, "John Doe", member.Name)
-		require.Regexpf(t, regexp.MustCompile(gatewayUrl+`/image/icon.png`), *member.Icon.File, "Icon URL does not match")
+		require.Equal(t, apimodel.Icon{
+			WrappedIcon: apimodel.FileIcon{
+				Format: apimodel.IconFormatFile,
+				File:   gatewayUrl + "/image/icon.png",
+			},
+		}, member.Icon)
 		require.Equal(t, "member-id", member.Identity)
 		require.Equal(t, "john.any", member.GlobalName)
 		require.Equal(t, "active", member.Status)
@@ -361,7 +375,12 @@ func TestSpaceService_GetMember(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, participantId, member.Id)
 		require.Equal(t, "Alice", member.Name)
-		require.Regexpf(t, regexp.MustCompile(gatewayUrl+`/image/participant.png`), *member.Icon.File, "Icon URL does not match")
+		require.Equal(t, apimodel.Icon{
+			WrappedIcon: apimodel.FileIcon{
+				Format: apimodel.IconFormatFile,
+				File:   gatewayUrl + "/image/participant.png",
+			},
+		}, member.Icon)
 		require.Equal(t, "alice-identity", member.Identity)
 		require.Equal(t, "alice.any", member.GlobalName)
 		require.Equal(t, "active", member.Status)

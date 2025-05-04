@@ -28,7 +28,7 @@ func TestObjectService_ListObjects(t *testing.T) {
 				{
 					RelationKey: bundle.RelationKeyResolvedLayout.String(),
 					Condition:   model.BlockContentDataviewFilter_In,
-					Value: pbtypes.IntList([]int{
+					Value: pbtypes.IntList(
 						int(model.ObjectType_basic),
 						int(model.ObjectType_profile),
 						int(model.ObjectType_todo),
@@ -37,7 +37,7 @@ func TestObjectService_ListObjects(t *testing.T) {
 						int(model.ObjectType_set),
 						int(model.ObjectType_collection),
 						int(model.ObjectType_participant),
-					}...),
+					),
 				},
 				{
 					RelationKey: "type.uniqueKey",
@@ -202,7 +202,7 @@ func TestObjectService_ListObjects(t *testing.T) {
 			},
 			Keys: []string{
 				bundle.RelationKeyId.String(),
-				bundle.RelationKeyRelationKey.String(),
+				bundle.RelationKeyUniqueKey.String(),
 				bundle.RelationKeyName.String(),
 				bundle.RelationKeyRelationOptionColor.String(),
 			},
@@ -220,28 +220,45 @@ func TestObjectService_ListObjects(t *testing.T) {
 		require.Equal(t, mockedTypeId, objects[0].Type.Id)
 		require.Equal(t, mockedTypeName, objects[0].Type.Name)
 		require.Equal(t, mockedTypeKey, objects[0].Type.Key)
-		require.Equal(t, apimodel.Icon{Format: "emoji", Emoji: apimodel.StringPtr(mockedTypeIcon)}, objects[0].Type.Icon)
+		require.Equal(t, apimodel.Icon{
+			WrappedIcon: apimodel.EmojiIcon{
+				Format: apimodel.IconFormatEmoji,
+				Emoji:  mockedTypeIcon,
+			},
+		}, objects[0].Type.Icon)
+
 		require.Equal(t, mockedObjectId, objects[0].Id)
 		require.Equal(t, mockedObjectName, objects[0].Name)
 		require.Equal(t, mockedObjectSnippet, objects[0].Snippet)
-		require.Equal(t, apimodel.Icon{Format: "emoji", Emoji: apimodel.StringPtr(mockedObjectIcon)}, objects[0].Icon)
+		require.Equal(t, apimodel.Icon{
+			WrappedIcon: apimodel.EmojiIcon{
+				Format: apimodel.IconFormatEmoji,
+				Emoji:  mockedObjectIcon,
+			},
+		}, objects[0].Icon)
+
 		require.Equal(t, 4, len(objects[0].Properties))
 
-		for _, property := range objects[0].Properties {
-			if property.Key == "created_date" {
-				require.Equal(t, "1970-01-11T06:54:48Z", *property.Date)
-			} else if property.Key == "creator" {
-				require.Equal(t, []string{mockedParticipantId}, property.Objects)
-			} else if property.Key == "last_modified_date" {
-				require.Equal(t, "1970-01-12T13:46:39Z", *property.Date)
-			} else if property.Key == "last_modified_by" {
-				require.Equal(t, []string{mockedParticipantId}, property.Objects)
-			} else if property.Key == "last_opened_date" {
-				require.Equal(t, "1970-01-01T00:00:00Z", *property.Date)
-			} else if property.Key == "tag" {
-				require.Empty(t, property.MultiSelect)
-			} else {
-				t.Errorf("unexpected property key: %s", property.Key)
+		for _, propResp := range objects[0].Properties {
+			switch v := propResp.WrappedPropertyWithValue.(type) {
+			case apimodel.DatePropertyValue:
+				switch v.Key {
+				case "created_date":
+					require.Equal(t, "1970-01-11T06:54:48Z", v.Date)
+				case "last_modified_date":
+					require.Equal(t, "1970-01-12T13:46:39Z", v.Date)
+				case "last_opened_date":
+					require.Equal(t, "1970-01-01T00:00:00Z", v.Date)
+				}
+			case apimodel.ObjectsPropertyValue:
+				switch v.Key {
+				case "created_by":
+					require.Equal(t, []string{mockedParticipantId}, v.Objects)
+				case "last_modified_by":
+					require.Equal(t, []string{mockedParticipantId}, v.Objects)
+				}
+			default:
+				t.Errorf("unexpected property type: %T", v)
 			}
 		}
 
@@ -261,7 +278,7 @@ func TestObjectService_ListObjects(t *testing.T) {
 				{
 					RelationKey: bundle.RelationKeyResolvedLayout.String(),
 					Condition:   model.BlockContentDataviewFilter_In,
-					Value: pbtypes.IntList([]int{
+					Value: pbtypes.IntList(
 						int(model.ObjectType_basic),
 						int(model.ObjectType_profile),
 						int(model.ObjectType_todo),
@@ -270,7 +287,7 @@ func TestObjectService_ListObjects(t *testing.T) {
 						int(model.ObjectType_set),
 						int(model.ObjectType_collection),
 						int(model.ObjectType_participant),
-					}...),
+					),
 				},
 				{
 					RelationKey: "type.uniqueKey",
@@ -481,7 +498,7 @@ func TestObjectService_GetObject(t *testing.T) {
 			},
 			Keys: []string{
 				bundle.RelationKeyId.String(),
-				bundle.RelationKeyRelationKey.String(),
+				bundle.RelationKeyUniqueKey.String(),
 				bundle.RelationKeyName.String(),
 				bundle.RelationKeyRelationOptionColor.String(),
 			},
@@ -499,28 +516,45 @@ func TestObjectService_GetObject(t *testing.T) {
 		require.Equal(t, mockedTypeId, object.Type.Id)
 		require.Equal(t, mockedTypeName, object.Type.Name)
 		require.Equal(t, mockedTypeKey, object.Type.Key)
-		require.Equal(t, apimodel.Icon{Format: "emoji", Emoji: apimodel.StringPtr(mockedTypeIcon)}, object.Type.Icon)
+		require.Equal(t, apimodel.Icon{
+			WrappedIcon: apimodel.EmojiIcon{
+				Format: apimodel.IconFormatEmoji,
+				Emoji:  mockedTypeIcon,
+			},
+		}, object.Type.Icon)
+
 		require.Equal(t, mockedObjectId, object.Id)
 		require.Equal(t, mockedObjectName, object.Name)
 		require.Equal(t, mockedObjectSnippet, object.Snippet)
-		require.Equal(t, apimodel.Icon{Format: "emoji", Emoji: apimodel.StringPtr(mockedObjectIcon)}, object.Icon)
+		require.Equal(t, apimodel.Icon{
+			WrappedIcon: apimodel.EmojiIcon{
+				Format: apimodel.IconFormatEmoji,
+				Emoji:  mockedObjectIcon,
+			},
+		}, object.Icon)
+
 		require.Equal(t, 3, len(object.Properties))
 
-		for _, property := range object.Properties {
-			if property.Key == "created_date" {
-				require.Equal(t, "1970-01-11T06:54:48Z", *property.Date)
-			} else if property.Key == "created_by" {
-				require.Empty(t, property.Objects)
-			} else if property.Key == "last_modified_date" {
-				require.Equal(t, "1970-01-12T13:46:39Z", *property.Date)
-			} else if property.Key == "last_modified_by" {
-				require.Empty(t, property.Objects)
-			} else if property.Key == "last_opened_date" {
-				require.Equal(t, "1970-01-01T00:00:00Z", *property.Date)
-			} else if property.Key == "tag" {
-				require.Empty(t, property.MultiSelect)
-			} else {
-				t.Errorf("unexpected property id: %s", property.Key)
+		for _, propResp := range object.Properties {
+			switch v := propResp.WrappedPropertyWithValue.(type) {
+			case apimodel.DatePropertyValue:
+				switch v.Key {
+				case "created_date":
+					require.Equal(t, "1970-01-11T06:54:48Z", v.Date)
+				case "last_modified_date":
+					require.Equal(t, "1970-01-12T13:46:39Z", v.Date)
+				case "last_opened_date":
+					require.Equal(t, "1970-01-01T00:00:00Z", v.Date)
+				}
+			case apimodel.ObjectsPropertyValue:
+				switch v.Key {
+				case "created_by":
+					require.Equal(t, []string{mockedParticipantId}, v.Objects)
+				case "last_modified_by":
+					require.Equal(t, []string{mockedParticipantId}, v.Objects)
+				}
+			default:
+				t.Errorf("unexpected property type: %T", v)
 			}
 		}
 	})
@@ -621,7 +655,7 @@ func TestObjectService_CreateObject(t *testing.T) {
 		// when
 		object, err := fx.service.CreateObject(ctx, mockedSpaceId, apimodel.CreateObjectRequest{
 			Name:       mockedObjectName,
-			Icon:       apimodel.Icon{Format: apimodel.IconFormatEmoji, Emoji: apimodel.StringPtr(mockedObjectIcon)},
+			Icon:       apimodel.Icon{WrappedIcon: apimodel.EmojiIcon{Format: apimodel.IconFormatEmoji, Emoji: mockedObjectIcon}},
 			TemplateId: mockedTemplateId,
 			TypeKey:    mockedTypeKey,
 		})
@@ -631,7 +665,7 @@ func TestObjectService_CreateObject(t *testing.T) {
 		require.Equal(t, "object", object.Object)
 		require.Equal(t, mockedNewObjectId, object.Id)
 		require.Equal(t, mockedObjectName, object.Name)
-		require.Equal(t, apimodel.Icon{Format: "emoji", Emoji: apimodel.StringPtr(mockedObjectIcon)}, object.Icon)
+		require.Equal(t, apimodel.Icon{WrappedIcon: apimodel.EmojiIcon{Format: apimodel.IconFormatEmoji, Emoji: mockedObjectIcon}}, object.Icon)
 		require.Equal(t, mockedSpaceId, object.SpaceId)
 	})
 
