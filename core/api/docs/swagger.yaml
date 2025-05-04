@@ -55,8 +55,7 @@ components:
         format:
           $ref: '#/components/schemas/apimodel.PropertyFormat'
         key:
-          description: The key of the property
-          example: last_modified_date
+          example: done
           type: string
       type: object
     apimodel.CheckboxPropertyValue:
@@ -73,11 +72,11 @@ components:
           type: string
         key:
           description: The key of the property
-          example: last_modified_date
+          example: done
           type: string
         name:
           description: The name of the property
-          example: Last modified date
+          example: Done
           type: string
         object:
           description: The data model of the object
@@ -209,7 +208,6 @@ components:
         format:
           $ref: '#/components/schemas/apimodel.PropertyFormat'
         key:
-          description: The key of the property
           example: last_modified_date
           type: string
       type: object
@@ -255,8 +253,7 @@ components:
         format:
           $ref: '#/components/schemas/apimodel.PropertyFormat'
         key:
-          description: The key of the property
-          example: last_modified_date
+          example: email
           type: string
       type: object
     apimodel.EmailPropertyValue:
@@ -273,11 +270,11 @@ components:
           type: string
         key:
           description: The key of the property
-          example: last_modified_date
+          example: email
           type: string
         name:
           description: The name of the property
-          example: Last modified date
+          example: Email
           type: string
         object:
           description: The data model of the object
@@ -350,8 +347,7 @@ components:
         format:
           $ref: '#/components/schemas/apimodel.PropertyFormat'
         key:
-          description: The key of the property
-          example: last_modified_date
+          example: files
           type: string
       type: object
     apimodel.FilesPropertyValue:
@@ -372,11 +368,11 @@ components:
           type: string
         key:
           description: The key of the property
-          example: last_modified_date
+          example: files
           type: string
         name:
           description: The name of the property
-          example: Last modified date
+          example: Files
           type: string
         object:
           description: The data model of the object
@@ -497,8 +493,7 @@ components:
         format:
           $ref: '#/components/schemas/apimodel.PropertyFormat'
         key:
-          description: The key of the property
-          example: last_modified_date
+          example: tag
           type: string
         multi_select:
           description: The selected tag values of the property
@@ -517,7 +512,7 @@ components:
           type: string
         key:
           description: The key of the property
-          example: last_modified_date
+          example: tag
           type: string
         multi_select:
           description: The selected tag values of the property
@@ -527,7 +522,7 @@ components:
           uniqueItems: false
         name:
           description: The name of the property
-          example: Last modified date
+          example: Tag
           type: string
         object:
           description: The data model of the object
@@ -550,8 +545,7 @@ components:
         format:
           $ref: '#/components/schemas/apimodel.PropertyFormat'
         key:
-          description: The key of the property
-          example: last_modified_date
+          example: height
           type: string
         number:
           description: The number value of the property
@@ -568,11 +562,11 @@ components:
           type: string
         key:
           description: The key of the property
-          example: last_modified_date
+          example: height
           type: string
         name:
           description: The name of the property
-          example: Last modified date
+          example: Height
           type: string
         number:
           description: The number value of the property
@@ -713,8 +707,7 @@ components:
         format:
           $ref: '#/components/schemas/apimodel.PropertyFormat'
         key:
-          description: The key of the property
-          example: last_modified_date
+          example: creator
           type: string
         objects:
           description: The object values of the property
@@ -735,11 +728,11 @@ components:
           type: string
         key:
           description: The key of the property
-          example: last_modified_date
+          example: creator
           type: string
         name:
           description: The name of the property
-          example: Last modified date
+          example: Created by
           type: string
         object:
           description: The data model of the object
@@ -759,8 +752,7 @@ components:
         format:
           $ref: '#/components/schemas/apimodel.PropertyFormat'
         key:
-          description: The key of the property
-          example: last_modified_date
+          example: phone
           type: string
         phone:
           description: The phone value of the property
@@ -777,11 +769,11 @@ components:
           type: string
         key:
           description: The key of the property
-          example: last_modified_date
+          example: phone
           type: string
         name:
           description: The name of the property
-          example: Last modified date
+          example: Phone
           type: string
         object:
           description: The data model of the object
@@ -915,8 +907,7 @@ components:
         format:
           $ref: '#/components/schemas/apimodel.PropertyFormat'
         key:
-          description: The key of the property
-          example: last_modified_date
+          example: status
           type: string
         select:
           description: The selected tag value of the property
@@ -932,11 +923,11 @@ components:
           type: string
         key:
           description: The key of the property
-          example: last_modified_date
+          example: status
           type: string
         name:
           description: The name of the property
-          example: Last modified date
+          example: Status
           type: string
         object:
           description: The data model of the object
@@ -1111,8 +1102,7 @@ components:
         format:
           $ref: '#/components/schemas/apimodel.PropertyFormat'
         key:
-          description: The key of the property
-          example: last_modified_date
+          example: description
           type: string
         text:
           description: The text value of the property
@@ -1129,11 +1119,11 @@ components:
           type: string
         key:
           description: The key of the property
-          example: last_modified_date
+          example: description
           type: string
         name:
           description: The name of the property
-          example: Last modified date
+          example: Description
           type: string
         object:
           description: The data model of the object
@@ -1220,8 +1210,7 @@ components:
         format:
           $ref: '#/components/schemas/apimodel.PropertyFormat'
         key:
-          description: The key of the property
-          example: last_modified_date
+          example: source
           type: string
         url:
           description: The URL value of the property
@@ -1238,11 +1227,11 @@ components:
           type: string
         key:
           description: The key of the property
-          example: last_modified_date
+          example: source
           type: string
         name:
           description: The name of the property
-          example: Last modified date
+          example: Source
           type: string
         object:
           description: The data model of the object
