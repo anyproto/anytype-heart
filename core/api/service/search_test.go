@@ -41,9 +41,9 @@ func TestSearchService_GlobalSearch(t *testing.T) {
 					Value:       pbtypes.Int64(int64(model.ObjectType_spaceView)),
 				},
 				{
-					RelationKey: bundle.RelationKeySpaceLocalStatus.String(),
-					Condition:   model.BlockContentDataviewFilter_Equal,
-					Value:       pbtypes.Int64(int64(model.SpaceStatus_Ok)),
+					RelationKey: bundle.RelationKeySpaceAccountStatus.String(),
+					Condition:   model.BlockContentDataviewFilter_In,
+					Value:       pbtypes.IntList(int(model.SpaceStatus_Unknown), int(model.SpaceStatus_SpaceActive)),
 				},
 			},
 			Keys: []string{bundle.RelationKeyTargetSpaceId.String()},
