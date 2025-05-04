@@ -34,8 +34,13 @@ func TestSpaceService_ListSpaces(t *testing.T) {
 				},
 				{
 					RelationKey: bundle.RelationKeySpaceLocalStatus.String(),
-					Condition:   model.BlockContentDataviewFilter_Equal,
-					Value:       pbtypes.Int64(int64(model.SpaceStatus_Ok)),
+					Condition:   model.BlockContentDataviewFilter_In,
+					Value:       pbtypes.IntList(int(model.SpaceStatus_Unknown), int(model.SpaceStatus_Ok)),
+				},
+				{
+					RelationKey: bundle.RelationKeySpaceRemoteStatus.String(),
+					Condition:   model.BlockContentDataviewFilter_NotIn,
+					Value:       pbtypes.IntList(int(model.SpaceStatus_RemoteDeleted), int(model.SpaceStatus_SpaceDeleted)),
 				},
 			},
 			Sorts: []*model.BlockContentDataviewSort{
@@ -214,8 +219,13 @@ func TestSpaceService_GetSpace(t *testing.T) {
 				},
 				{
 					RelationKey: bundle.RelationKeySpaceLocalStatus.String(),
-					Condition:   model.BlockContentDataviewFilter_Equal,
-					Value:       pbtypes.Int64(int64(model.SpaceStatus_Ok)),
+					Condition:   model.BlockContentDataviewFilter_In,
+					Value:       pbtypes.IntList(int(model.SpaceStatus_Unknown), int(model.SpaceStatus_Ok)),
+				},
+				{
+					RelationKey: bundle.RelationKeySpaceRemoteStatus.String(),
+					Condition:   model.BlockContentDataviewFilter_NotIn,
+					Value:       pbtypes.IntList(int(model.SpaceStatus_RemoteDeleted), int(model.SpaceStatus_SpaceDeleted)),
 				},
 			},
 			Keys: []string{
@@ -289,8 +299,13 @@ func TestSpaceService_GetSpace(t *testing.T) {
 				},
 				{
 					RelationKey: bundle.RelationKeySpaceLocalStatus.String(),
-					Condition:   model.BlockContentDataviewFilter_Equal,
-					Value:       pbtypes.Int64(int64(model.SpaceStatus_Ok)),
+					Condition:   model.BlockContentDataviewFilter_In,
+					Value:       pbtypes.IntList(int(model.SpaceStatus_Unknown), int(model.SpaceStatus_Ok)),
+				},
+				{
+					RelationKey: bundle.RelationKeySpaceRemoteStatus.String(),
+					Condition:   model.BlockContentDataviewFilter_NotIn,
+					Value:       pbtypes.IntList(int(model.SpaceStatus_RemoteDeleted), int(model.SpaceStatus_SpaceDeleted)),
 				},
 			},
 			Keys: []string{bundle.RelationKeyTargetSpaceId.String()},
@@ -321,8 +336,13 @@ func TestSpaceService_GetSpace(t *testing.T) {
 				},
 				{
 					RelationKey: bundle.RelationKeySpaceLocalStatus.String(),
-					Condition:   model.BlockContentDataviewFilter_Equal,
-					Value:       pbtypes.Int64(int64(model.SpaceStatus_Ok)),
+					Condition:   model.BlockContentDataviewFilter_In,
+					Value:       pbtypes.IntList(int(model.SpaceStatus_Unknown), int(model.SpaceStatus_Ok)),
+				},
+				{
+					RelationKey: bundle.RelationKeySpaceRemoteStatus.String(),
+					Condition:   model.BlockContentDataviewFilter_NotIn,
+					Value:       pbtypes.IntList(int(model.SpaceStatus_RemoteDeleted), int(model.SpaceStatus_SpaceDeleted)),
 				},
 			},
 			Keys: []string{bundle.RelationKeyTargetSpaceId.String()},
