@@ -48,7 +48,11 @@ func (s *pushNotificationServiceDummy) SubscribeToTopics(ctx context.Context, sp
 
 }
 
-func (s pushNotificationServiceDummy) BroadcastKeyUpdate(spaceId string, aclState *list.AclState) error {
+func (s *pushNotificationServiceDummy) CreateSpace(ctx context.Context, spaceId string) (err error) {
+	return nil
+}
+
+func (s *pushNotificationServiceDummy) BroadcastKeyUpdate(spaceId string, aclState *list.AclState) error {
 	return nil
 }
 

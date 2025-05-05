@@ -16,10 +16,8 @@ import (
 	"github.com/anyproto/any-sync/nodeconf"
 	"github.com/anyproto/any-sync/util/crypto"
 	"github.com/ipfs/go-cid"
-	"go.uber.org/zap"
 
 	"github.com/anyproto/anytype-heart/core/anytype/account"
-	"github.com/anyproto/anytype-heart/core/block/chats/chatpush"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/inviteservice"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
@@ -38,11 +36,6 @@ var sleepTime = time.Millisecond * 500
 
 type NodeConfGetter interface {
 	GetNodeConf() (conf nodeconf.Configuration)
-}
-
-type pushService interface {
-	CreateSpace(ctx context.Context, spaceId string) (err error)
-	SubscribeToTopics(ctx context.Context, spaceId string, topic []string)
 }
 
 type AccountPermissions struct {
@@ -89,7 +82,6 @@ type aclService struct {
 	accountService   account.Service
 	coordClient      coordinatorclient.CoordinatorClient
 	identityRepo     identityRepoClient
-	pushService      pushService
 }
 
 func (a *aclService) Init(ap *app.App) (err error) {
@@ -100,7 +92,6 @@ func (a *aclService) Init(ap *app.App) (err error) {
 	a.inviteService = app.MustComponent[inviteservice.InviteService](ap)
 	a.coordClient = app.MustComponent[coordinatorclient.CoordinatorClient](ap)
 	a.identityRepo = app.MustComponent[identityRepoClient](ap)
-	a.pushService = app.MustComponent[pushService](ap)
 	return nil
 }
 
@@ -119,17 +110,7 @@ func (a *aclService) MakeShareable(ctx context.Context, spaceId string) error {
 	if err != nil {
 		return convertedOrInternalError("set local info", err)
 	}
-	a.subscribeToPushNotifications(err, spaceId)
 	return nil
-}
-
-func (a *aclService) subscribeToPushNotifications(err error, spaceId string) {
-	err = a.pushService.CreateSpace(context.Background(), spaceId)
-	if err != nil {
-		log.Error("create space for push message", zap.Error(err))
-	} else {
-		a.pushService.SubscribeToTopics(context.Background(), spaceId, []string{chatpush.ChatsTopicName})
-	}
 }
 
 func (a *aclService) pushGuest(ctx context.Context, privKey crypto.PrivKey) (metadata []byte, err error) {

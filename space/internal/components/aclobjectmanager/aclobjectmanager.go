@@ -42,6 +42,7 @@ func New(ownerMetadata []byte, guestKey crypto.PrivKey) AclObjectManager {
 }
 
 type pushNotificationService interface {
+	CreateSpace(ctx context.Context, spaceId string) (err error)
 	SubscribeToTopics(ctx context.Context, spaceId string, topics []string)
 	BroadcastKeyUpdate(spaceId string, aclState *list.AclState) error
 }
@@ -175,14 +176,6 @@ func (a *aclObjectManager) process() {
 		log.Error("error processing acl", zap.Error(err))
 		return
 	}
-	a.subscribeToPushNotifications(acl)
-}
-
-func (a *aclObjectManager) subscribeToPushNotifications(acl syncacl.SyncAcl) {
-	aclState := acl.AclState()
-	if !aclState.Permissions(aclState.AccountKey().GetPublic()).IsOwner() {
-		a.pushNotificationService.SubscribeToTopics(a.ctx, a.sp.Id(), []string{chatpush.ChatsTopicName})
-	}
 }
 
 func (a *aclObjectManager) processAcl() (err error) {
@@ -269,6 +262,36 @@ func (a *aclObjectManager) processAcl() (err error) {
 	err = a.pushNotificationService.BroadcastKeyUpdate(common.Id(), aclState)
 	if err != nil {
 		return fmt.Errorf("broadcast key update: %w", err)
+	}
+
+	err = a.subscribeToPushNotifications(acl)
+	if err != nil {
+		log.Error("subscribe to push notifications", zap.Error(err))
+	}
+
+	return nil
+}
+
+func (a *aclObjectManager) subscribeToPushNotifications(acl syncacl.SyncAcl) error {
+	aclState := acl.AclState()
+	currentIdentity := aclState.AccountKey().GetPublic()
+
+	var needToSubscribe bool
+	if aclState.Permissions(currentIdentity).IsOwner() {
+		// Only if user shared this space
+		if len(aclState.Invites()) > 0 {
+			err := a.pushNotificationService.CreateSpace(a.ctx, a.sp.Id())
+			if err != nil {
+				return fmt.Errorf("create space: %w", err)
+			}
+			needToSubscribe = true
+		}
+	} else {
+		needToSubscribe = true
+	}
+
+	if needToSubscribe {
+		a.pushNotificationService.SubscribeToTopics(a.ctx, a.sp.Id(), []string{chatpush.ChatsTopicName})
 	}
 	return nil
 }

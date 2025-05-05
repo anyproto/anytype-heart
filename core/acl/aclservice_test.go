@@ -63,24 +63,6 @@ func (c *mockConfig) GetNodeConf() (conf nodeconf.Configuration) {
 	return c.Config
 }
 
-type pushServiceDummy struct {
-}
-
-func (p *pushServiceDummy) Init(a *app.App) (err error) {
-	return nil
-}
-
-func (p *pushServiceDummy) Name() (name string) {
-	return "pushServiceDummy"
-}
-
-func (p *pushServiceDummy) CreateSpace(ctx context.Context, spaceId string) (err error) {
-	return nil
-}
-
-func (p *pushServiceDummy) SubscribeToTopics(ctx context.Context, spaceId string, topic []string) {
-}
-
 type fixture struct {
 	*aclService
 	a                     *app.App
@@ -124,8 +106,7 @@ func newFixture(t *testing.T) *fixture {
 		Register(testutil.PrepareMock(ctx, fx.a, fx.mockInviteService)).
 		Register(testutil.PrepareMock(ctx, fx.a, fx.mockCoordinatorClient)).
 		Register(fx.mockConfig).
-		Register(fx.aclService).
-		Register(&pushServiceDummy{})
+		Register(fx.aclService)
 	require.NoError(t, fx.a.Start(ctx))
 	return fx
 }
