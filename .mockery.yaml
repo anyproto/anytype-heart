@@ -248,3 +248,6 @@ packages:
   github.com/anyproto/anytype-heart/core/subscription/crossspacesub:
     interfaces:
       Service:
+  github.com/anyproto/anytype-heart/core/block/editor/chatobject:
+    interfaces:
+      StoreObject:

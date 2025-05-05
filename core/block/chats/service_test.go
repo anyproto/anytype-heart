@@ -2,12 +2,19 @@ package chats
 
 import (
 	"context"
+	"sync"
 	"testing"
 
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/anytype-heart/core/block/cache/mock_cache"
+	"github.com/anyproto/anytype-heart/core/block/editor/chatobject"
+	"github.com/anyproto/anytype-heart/core/block/editor/chatobject/mock_chatobject"
+	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/subscription"
 	"github.com/anyproto/anytype-heart/core/subscription/crossspacesub/mock_crossspacesub"
+	"github.com/anyproto/anytype-heart/pb"
+	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/tests/testutil"
 	"github.com/stretchr/testify/assert"
@@ -18,9 +25,11 @@ import (
 const techSpaceId = "techSpaceId"
 
 type fixture struct {
-	Service
+	*service
 
-	objectStore *objectstore.StoreFixture
+	objectGetter         *mock_cache.MockObjectGetterComponent
+	app                  *app.App
+	crossSpaceSubService *mock_crossspacesub.MockService
 }
 
 type pushServiceDummy struct {
@@ -53,11 +62,11 @@ func newFixture(t *testing.T) *fixture {
 	objectStore := objectstore.NewStoreFixture(t)
 	objectGetter := mock_cache.NewMockObjectGetterComponent(t)
 	crossSpaceSubService := mock_crossspacesub.NewMockService(t)
-	crossSpaceSubService.EXPECT().Subscribe(mock.Anything).Return(&subscription.SubscribeResponse{}, nil).Maybe()
 
 	fx := &fixture{
-		Service:     New(),
-		objectStore: objectStore,
+		service:              New().(*service),
+		crossSpaceSubService: crossSpaceSubService,
+		objectGetter:         objectGetter,
 	}
 
 	ctx := context.Background()
@@ -69,21 +78,108 @@ func newFixture(t *testing.T) *fixture {
 	a.Register(&accountServiceDummy{})
 	a.Register(fx)
 
-	err := a.Start(ctx)
-	require.NoError(t, err)
+	fx.app = a
 
 	return fx
 }
 
-func TestSubscribeToMessagePreviews(t *testing.T) {
-	fx := newFixture(t)
-	ctx := context.Background()
+func (fx *fixture) start(t *testing.T) {
+	err := fx.app.Start(context.Background())
+	require.NoError(t, err)
+}
 
-	// TODO Add initial chats
-	// TODO Add chats via subscription
+type chatObjectWrapper struct {
+	smartblock.SmartBlock
+	chatobject.StoreObject
+}
+
+func (fx *fixture) expectSubscribe(t *testing.T, chatObjectId string, wg *sync.WaitGroup) {
+	wg.Add(1)
+	fx.objectGetter.EXPECT().GetObject(mock.Anything, chatObjectId).RunAndReturn(func(ctx context.Context, id string) (smartblock.SmartBlock, error) {
+		sb := mock_chatobject.NewMockStoreObject(t)
+
+		sb.EXPECT().Lock().Return()
+		sb.EXPECT().Unlock().Return()
+		sb.EXPECT().SubscribeLastMessages(mock.Anything, mock.Anything).RunAndReturn(func(context.Context, chatobject.SubscribeLastMessagesRequest) (*chatobject.SubscribeLastMessagesResponse, error) {
+			defer wg.Done()
+			return &chatobject.SubscribeLastMessagesResponse{}, nil
+		})
+
+		return sb, nil
+	})
+
+}
+
+func TestSubscribeToMessagePreviews(t *testing.T) {
 	// TODO Delete chats via subscription
 	// TODO Subscribe multiple times and make sure that Subscribe is called again and again
-	resp, err := fx.SubscribeToMessagePreviews(ctx, "previewSub1")
-	require.NoError(t, err)
-	assert.NotNil(t, resp)
+
+	t.Run("subscribe on all existing chats", func(t *testing.T) {
+		fx := newFixture(t)
+		ctx := context.Background()
+
+		fx.crossSpaceSubService.EXPECT().Subscribe(mock.Anything).Return(&subscription.SubscribeResponse{
+			Records: []*domain.Details{
+				domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+					bundle.RelationKeyId:      domain.String("chat1"),
+					bundle.RelationKeySpaceId: domain.String("space1"),
+				}),
+				domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+					bundle.RelationKeyId:      domain.String("chat2"),
+					bundle.RelationKeySpaceId: domain.String("space2"),
+				}),
+			},
+		}, nil).Maybe()
+
+		wg := &sync.WaitGroup{}
+		fx.expectSubscribe(t, "chat1", wg)
+		fx.expectSubscribe(t, "chat2", wg)
+
+		fx.start(t)
+
+		resp, err := fx.SubscribeToMessagePreviews(ctx, "previewSub1")
+		require.NoError(t, err)
+		assert.NotNil(t, resp)
+
+		wg.Wait()
+	})
+
+	t.Run("chats are added via subscription", func(t *testing.T) {
+		fx := newFixture(t)
+		ctx := context.Background()
+
+		fx.crossSpaceSubService.EXPECT().Subscribe(mock.Anything).Return(&subscription.SubscribeResponse{
+			Records: []*domain.Details{},
+		}, nil).Maybe()
+
+		wg := &sync.WaitGroup{}
+		fx.expectSubscribe(t, "chat1", wg)
+		fx.expectSubscribe(t, "chat2", wg)
+
+		fx.start(t)
+
+		fx.chatObjectsSubQueue.Add(ctx, &pb.EventMessage{
+			SpaceId: "space1",
+			Value: &pb.EventMessageValueOfSubscriptionAdd{
+				SubscriptionAdd: &pb.EventObjectSubscriptionAdd{
+					Id: "chat1",
+				},
+			},
+		})
+		fx.chatObjectsSubQueue.Add(ctx, &pb.EventMessage{
+			SpaceId: "space2",
+			Value: &pb.EventMessageValueOfSubscriptionAdd{
+				SubscriptionAdd: &pb.EventObjectSubscriptionAdd{
+					Id: "chat2",
+				},
+			},
+		})
+
+		resp, err := fx.SubscribeToMessagePreviews(ctx, "previewSub1")
+		require.NoError(t, err)
+		assert.NotNil(t, resp)
+
+		wg.Wait()
+	})
+
 }

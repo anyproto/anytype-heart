@@ -134,6 +134,7 @@ func (s *service) SubscribeToMessagePreviews(ctx context.Context, subId string) 
 	result := &SubscribeToMessagePreviewsResponse{
 		Previews: make([]*ChatPreview, 0, len(s.allChatObjectIds)),
 	}
+
 	for chatObjectId := range s.allChatObjectIds {
 		chatAddResp, err := s.onChatAdded(chatObjectId, subId, false)
 		if err != nil {
