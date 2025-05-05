@@ -286,10 +286,12 @@ func (s *service) makeTopics(spaceKey crypto.PrivKey, topics []string) ([]*pusha
 }
 
 func (s *service) run() {
-	err := s.loadSubscriptions(s.ctx)
-	if err != nil {
-		log.Error("failed to load subscriptions", zap.Error(err))
-	}
+	// comment out to avoid triggering old subs
+	//
+	// err := s.loadSubscriptions(s.ctx)
+	// if err != nil {
+	// 	log.Error("failed to load subscriptions", zap.Error(err))
+	// }
 
 	for {
 		requests, err := s.requestsQueue.Wait(s.ctx)
