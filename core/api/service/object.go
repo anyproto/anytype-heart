@@ -218,22 +218,19 @@ func (s *Service) CreateObject(ctx context.Context, spaceId string, request apim
 
 // UpdateObject updates an existing object in a specific space.
 func (s *Service) UpdateObject(ctx context.Context, spaceId string, objectId string, request apimodel.UpdateObjectRequest) (apimodel.ObjectWithBlocks, error) {
+	_, err := s.GetObject(ctx, spaceId, objectId)
+	if err != nil {
+		return apimodel.ObjectWithBlocks{}, err
+	}
+
 	details, err := s.buildUpdatedObjectDetails(ctx, spaceId, request)
 	if err != nil {
 		return apimodel.ObjectWithBlocks{}, err
 	}
 
-	detailList := make([]*model.Detail, 0, len(details.Fields))
-	for k, v := range details.Fields {
-		detailList = append(detailList, &model.Detail{
-			Key:   k,
-			Value: v,
-		})
-	}
-
 	resp := s.mw.ObjectSetDetails(ctx, &pb.RpcObjectSetDetailsRequest{
 		ContextId: objectId,
-		Details:   detailList,
+		Details:   structToDetails(details),
 	})
 
 	if resp.Error != nil && resp.Error.Code != pb.RpcObjectSetDetailsResponseError_NULL {
@@ -288,7 +285,7 @@ func (s *Service) buildObjectDetails(ctx context.Context, spaceId string, reques
 	return &types.Struct{Fields: fields}, nil
 }
 
-// buildUpdatedObjectDetails extracts the details structure from the UpdateObjectRequest.
+// buildUpdatedObjectDetails build a partial details struct for UpdateObjectRequest.
 func (s *Service) buildUpdatedObjectDetails(ctx context.Context, spaceId string, request apimodel.UpdateObjectRequest) (*types.Struct, error) {
 	fields := make(map[string]*types.Value)
 	if request.Name != nil {
