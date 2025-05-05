@@ -112,7 +112,7 @@ jobs:
             *.log
       - name: Report Status when failure
         if: always()
-        uses: ravsamhq/notify-slack-action@2
+        uses: ravsamhq/notify-slack-action@2.0.0
         with:
           status: ${{ job.status }}
           notify_when: "failure"
