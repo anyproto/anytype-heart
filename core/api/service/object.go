@@ -335,10 +335,11 @@ func (s *Service) processIconFields(ctx context.Context, spaceId string, icon ap
 		}
 		iconFields[bundle.RelationKeyIconEmoji.String()] = pbtypes.String(e.Emoji)
 	case apimodel.FileIcon:
-		if !s.isValidFileReference(ctx, spaceId, s.sanitizedString(e.File)) {
+		fileId := s.sanitizedString(e.File)
+		if !s.isValidFileReference(spaceId, fileId) {
 			return nil, util.ErrBadInput("icon file is not valid")
 		}
-		iconFields[bundle.RelationKeyIconImage.String()] = pbtypes.String(e.File)
+		iconFields[bundle.RelationKeyIconImage.String()] = pbtypes.String(fileId)
 	}
 	return iconFields, nil
 }

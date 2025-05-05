@@ -5,6 +5,7 @@ import (
 	"errors"
 
 	"github.com/anyproto/anytype-heart/core/api/core"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -12,8 +13,10 @@ import (
 )
 
 var (
-	ErrFailedSearchType     = errors.New("failed to search for type")
-	ErrorResolveToUniqueKey = errors.New("failed to resolve to unique key")
+	ErrFailedSearchType            = errors.New("failed to search for type")
+	ErrFailedResolveToUniqueKey    = errors.New("failed to resolve to unique key")
+	ErrFailedGetLayoutById         = errors.New("failed to get layout by id")
+	ErrFailedGetLayoutByIdNotFound = errors.New("failed to get layout by id, not found")
 )
 
 // ResolveUniqueKeyToTypeId resolves the unique key to the type's ID
@@ -36,7 +39,7 @@ func ResolveUniqueKeyToTypeId(mw apicore.ClientCommands, spaceId string, uniqueK
 		}
 
 		if len(resp.Records) == 0 {
-			return "", ErrorResolveToUniqueKey
+			return "", ErrFailedSearchType
 		}
 	}
 
@@ -51,9 +54,38 @@ func ResolveIdtoUniqueKeyAndRelationKey(mw apicore.ClientCommands, spaceId strin
 	})
 
 	if resp.Error != nil && resp.Error.Code != pb.RpcObjectShowResponseError_NULL {
-		return "", "", ErrorResolveToUniqueKey
+		return "", "", ErrFailedResolveToUniqueKey
 	}
 
 	return resp.ObjectView.Details[0].Details.Fields[bundle.RelationKeyUniqueKey.String()].GetStringValue(),
 		resp.ObjectView.Details[0].Details.Fields[bundle.RelationKeyRelationKey.String()].GetStringValue(), nil
+}
+
+// GetByID checks the existence of an object by its ID and returns its layout
+func GetByID(mw apicore.ClientCommands, spaceId string, objectId string) (layout model.ObjectTypeLayout, relatioKey domain.RelationKey, err error) {
+	resp := mw.ObjectSearch(context.Background(), &pb.RpcObjectSearchRequest{
+		SpaceId: spaceId,
+		Filters: []*model.BlockContentDataviewFilter{
+			{
+				RelationKey: bundle.RelationKeyId.String(),
+				Condition:   model.BlockContentDataviewFilter_Equal,
+				Value:       pbtypes.String(objectId),
+			},
+		},
+		Keys: []string{
+			bundle.RelationKeyId.String(),
+			bundle.RelationKeyResolvedLayout.String(),
+			bundle.RelationKeyRelationKey.String(),
+		},
+	})
+
+	if resp.Error != nil && resp.Error.Code != pb.RpcObjectSearchResponseError_NULL {
+		return model.ObjectType_basic, "", ErrFailedGetLayoutById
+	}
+
+	if len(resp.Records) == 0 {
+		return model.ObjectType_basic, "", ErrFailedGetLayoutByIdNotFound
+	}
+
+	return model.ObjectTypeLayout(resp.Records[0].Fields[bundle.RelationKeyResolvedLayout.String()].GetNumberValue()), domain.RelationKey(resp.Records[0].Fields[bundle.RelationKeyRelationKey.String()].GetStringValue()), nil
 }

@@ -379,7 +379,7 @@ func (s *Service) sanitizeAndValidatePropertyValue(ctx context.Context, spaceId 
 		if !ok {
 			return nil, util.ErrBadInput("property '" + key + "' must be a string (tag id)")
 		}
-		if !s.isValidSelectOption(ctx, spaceId, property, id) {
+		if !s.isValidSelectOption(spaceId, property, id) {
 			return nil, util.ErrBadInput("invalid select option for '" + key + "': " + id)
 		}
 		return id, nil
@@ -395,7 +395,7 @@ func (s *Service) sanitizeAndValidatePropertyValue(ctx context.Context, spaceId 
 				return nil, util.ErrBadInput("property '" + key + "' must be an array of strings (tag ids)")
 			}
 			id = s.sanitizedString(id)
-			if !s.isValidSelectOption(ctx, spaceId, property, id) {
+			if !s.isValidSelectOption(spaceId, property, id) {
 				return nil, util.ErrBadInput("invalid multi_select option for '" + key + "': " + id)
 			}
 			validIds = append(validIds, id)
@@ -430,8 +430,10 @@ func (s *Service) sanitizeAndValidatePropertyValue(ctx context.Context, spaceId 
 				return nil, util.ErrBadInput("property '" + key + "' must be an array of strings (object/file ids)")
 			}
 			id = s.sanitizedString(id)
-			if !s.isValidObjectReference(ctx, spaceId, id) {
-				return nil, util.ErrBadInput("invalid " + string(format) + " id for '" + key + "': " + id)
+			if format == apimodel.PropertyFormatFiles && !s.isValidFileReference(spaceId, id) {
+				return nil, util.ErrBadInput("invalid file reference for '" + key + "': " + id)
+			} else if format == apimodel.PropertyFormatObjects && !s.isValidObjectReference(spaceId, id) {
+				return nil, util.ErrBadInput("invalid object reference for '" + key + "': " + id)
 			}
 			validIds = append(validIds, id)
 		}
@@ -442,28 +444,31 @@ func (s *Service) sanitizeAndValidatePropertyValue(ctx context.Context, spaceId 
 }
 
 // isValidSelectOption checks if the option id is valid for the given property.
-func (s *Service) isValidSelectOption(ctx context.Context, spaceId string, property apimodel.Property, optionId string) bool {
-	// TODO: refine logic
-	tags, _, _, err := s.ListTags(ctx, spaceId, property.Id, 0, 1000)
+func (s *Service) isValidSelectOption(spaceId string, property apimodel.Property, tagId string) bool {
+	layout, rk, err := util.GetByID(s.mw, spaceId, tagId)
 	if err != nil {
 		return false
 	}
-	for _, tag := range tags {
-		if tag.Id == optionId {
-			return true
-		}
+
+	return layout == model.ObjectType_relationOption && rk == domain.RelationKey(util.FromPropertyApiKey(property.Key))
+}
+
+func (s *Service) isValidObjectReference(spaceId string, objectId string) bool {
+	layout, _, err := util.GetByID(s.mw, spaceId, objectId)
+	if err != nil {
+		return false
 	}
-	return false
+
+	return layout == model.ObjectType_basic || layout == model.ObjectType_profile || layout == model.ObjectType_todo || layout == model.ObjectType_note || layout == model.ObjectType_bookmark || layout == model.ObjectType_set || layout == model.ObjectType_collection || layout == model.ObjectType_participant
 }
 
-func (s *Service) isValidObjectReference(ctx context.Context, spaceId string, objectId string) bool {
-	// TODO: implement proper validation
-	return true
-}
+func (s *Service) isValidFileReference(spaceId string, fileId string) bool {
+	layout, _, err := util.GetByID(s.mw, spaceId, fileId)
+	if err != nil {
+		return false
+	}
 
-func (s *Service) isValidFileReference(ctx context.Context, spaceId string, fileId string) bool {
-	// TODO: implement proper validation
-	return true
+	return layout == model.ObjectType_file || layout == model.ObjectType_image || layout == model.ObjectType_video || layout == model.ObjectType_audio || layout == model.ObjectType_pdf
 }
 
 // getRecommendedPropertiesFromLists combines featured and regular properties into a list of Properties.
