@@ -428,10 +428,7 @@ components:
     apimodel.IconFormat:
       description: The format of the icon
       enum:
-      - emoji
-      - file
       - icon
-      example: emoji
       type: string
       x-enum-varnames:
       - IconFormatEmoji

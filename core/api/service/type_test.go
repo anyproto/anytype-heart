@@ -184,20 +184,20 @@ func TestObjectService_GetType(t *testing.T) {
 		}, nil).Once()
 
 		// when
-		objType, err := fx.service.GetType(ctx, mockedSpaceId, mockedTypeId)
+		ot, err := fx.service.GetType(ctx, mockedSpaceId, mockedTypeId)
 
 		// then
 		require.NoError(t, err)
-		require.Equal(t, mockedTypeId, objType.Id)
-		require.Equal(t, mockedTypeName, objType.Name)
-		require.Equal(t, mockedTypeKey, objType.Key)
+		require.Equal(t, mockedTypeId, ot.Id)
+		require.Equal(t, mockedTypeName, ot.Name)
+		require.Equal(t, mockedTypeKey, ot.Key)
 		require.Equal(t, apimodel.Icon{
 			WrappedIcon: apimodel.EmojiIcon{
 				Format: apimodel.IconFormatEmoji,
 				Emoji:  mockedTypeIcon,
 			},
-		}, objType.Icon)
-		require.Equal(t, apimodel.ObjectLayoutBasic, objType.Layout)
+		}, ot.Icon)
+		require.Equal(t, apimodel.ObjectLayoutBasic, ot.Layout)
 	})
 
 	t.Run("type not found", func(t *testing.T) {
@@ -213,10 +213,10 @@ func TestObjectService_GetType(t *testing.T) {
 		}).Once()
 
 		// when
-		objType, err := fx.service.GetType(ctx, mockedSpaceId, mockedTypeId)
+		ot, err := fx.service.GetType(ctx, mockedSpaceId, mockedTypeId)
 
 		// then
 		require.ErrorIs(t, err, ErrTypeNotFound)
-		require.Empty(t, objType)
+		require.Empty(t, ot)
 	})
 }

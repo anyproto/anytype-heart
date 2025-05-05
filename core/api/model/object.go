@@ -44,9 +44,9 @@ type CreateObjectRequest struct {
 }
 
 type UpdateObjectRequest struct {
-	Name       *string                 `json:"name,omitempty" example:"My object"`                                                                                                                                                                                                                                                       // The name of the object
-	Icon       Icon                    `json:"icon" oneOf:"EmojiIcon,FileIcon,NamedIcon"`                                                                                                                                                                                                                                                // The icon to set for the object
-	Properties []PropertyLinkWithValue `json:"properties" oneOf:"TextPropertyLinkValue,NumberPropertyLinkValue,SelectPropertyLinkValue,MultiSelectPropertyLinkValue,DatePropertyLinkValue,FilesPropertyLinkValue,CheckboxPropertyLinkValue,URLPropertyLinkValue,EmailPropertyLinkValue,PhonePropertyLinkValue,ObjectsPropertyLinkValue"` // The properties to set for the object
+	Name       *string                  `json:"name,omitempty" example:"My object"`                                                                                                                                                                                                                                                                 // The name of the object
+	Icon       *Icon                    `json:"icon,omitempty" oneOf:"EmojiIcon,FileIcon,NamedIcon"`                                                                                                                                                                                                                                                // The icon to set for the object
+	Properties *[]PropertyLinkWithValue `json:"properties,omitempty" oneOf:"TextPropertyLinkValue,NumberPropertyLinkValue,SelectPropertyLinkValue,MultiSelectPropertyLinkValue,DatePropertyLinkValue,FilesPropertyLinkValue,CheckboxPropertyLinkValue,URLPropertyLinkValue,EmailPropertyLinkValue,PhonePropertyLinkValue,ObjectsPropertyLinkValue"` // The properties to set for the object
 }
 
 type ObjectResponse struct {

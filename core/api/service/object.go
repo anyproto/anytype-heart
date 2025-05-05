@@ -295,20 +295,24 @@ func (s *Service) buildUpdatedObjectDetails(ctx context.Context, spaceId string,
 		fields[bundle.RelationKeyName.String()] = pbtypes.String(s.sanitizedString(*request.Name))
 	}
 
-	iconFields, err := s.processIconFields(ctx, spaceId, request.Icon)
-	if err != nil {
-		return nil, err
-	}
-	for k, v := range iconFields {
-		fields[k] = v
+	if request.Icon != nil {
+		iconFields, err := s.processIconFields(ctx, spaceId, *request.Icon)
+		if err != nil {
+			return nil, err
+		}
+		for k, v := range iconFields {
+			fields[k] = v
+		}
 	}
 
-	propFields, err := s.processProperties(ctx, spaceId, request.Properties)
-	if err != nil {
-		return nil, err
-	}
-	for k, v := range propFields {
-		fields[k] = v
+	if request.Properties != nil {
+		propFields, err := s.processProperties(ctx, spaceId, *request.Properties)
+		if err != nil {
+			return nil, err
+		}
+		for k, v := range propFields {
+			fields[k] = v
+		}
 	}
 
 	return &types.Struct{Fields: fields}, nil
@@ -444,4 +448,15 @@ func (s *Service) isMissingObject(val interface{}) bool {
 		}
 	}
 	return false
+}
+
+func structToDetails(details *types.Struct) []*model.Detail {
+	detailList := make([]*model.Detail, 0, len(details.Fields))
+	for k, v := range details.Fields {
+		detailList = append(detailList, &model.Detail{
+			Key:   k,
+			Value: v,
+		})
+	}
+	return detailList
 }
