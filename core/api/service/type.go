@@ -6,7 +6,7 @@ import (
 
 	"github.com/gogo/protobuf/types"
 
-	"github.com/anyproto/anytype-heart/core/api/model"
+	apimodel "github.com/anyproto/anytype-heart/core/api/model"
 	"github.com/anyproto/anytype-heart/core/api/pagination"
 	"github.com/anyproto/anytype-heart/core/api/util"
 	"github.com/anyproto/anytype-heart/core/domain"
@@ -273,23 +273,10 @@ func (s *Service) buildTypeDetails(ctx context.Context, spaceId string, request 
 		return nil, err
 	}
 
-	var relationIds []string
-	for _, propLink := range request.Properties {
-		rk := util.FromPropertyApiKey(propLink.Key)
-		if propDef, exists := propertyMap[rk]; exists {
-			relationIds = append(relationIds, propDef.Id)
-		} else {
-			newProp, err2 := s.CreateProperty(ctx, spaceId, apimodel.CreatePropertyRequest{
-				Name:   propLink.Name,
-				Format: propLink.Format,
-			})
-			if err2 != nil {
-				return nil, err2
-			}
-			relationIds = append(relationIds, newProp.Id)
-		}
+	relationIds, err := s.buildRelationIds(ctx, spaceId, request.Properties)
+	if err != nil {
+		return nil, err
 	}
-
 	fields[bundle.RelationKeyRecommendedRelations.String()] = pbtypes.StringList(relationIds)
 
 	featuredKeys := []domain.RelationKey{
@@ -343,29 +330,38 @@ func (s *Service) buildUpdatedTypeDetails(ctx context.Context, spaceId string, r
 		}
 	}
 	if request.Properties != nil {
-		propertyMap, err := s.GetPropertyMapFromStore(spaceId)
+		relationIds, err := s.buildRelationIds(ctx, spaceId, *request.Properties)
 		if err != nil {
 			return nil, err
-		}
-		var relationIds []string
-		for _, propLink := range *request.Properties {
-			rk := util.FromPropertyApiKey(propLink.Key)
-			if propDef, exists := propertyMap[rk]; exists {
-				relationIds = append(relationIds, propDef.Id)
-			} else {
-				newProp, err2 := s.CreateProperty(ctx, spaceId, apimodel.CreatePropertyRequest{
-					Name:   propLink.Name,
-					Format: propLink.Format,
-				})
-				if err2 != nil {
-					return nil, err2
-				}
-				relationIds = append(relationIds, newProp.Id)
-			}
 		}
 		fields[bundle.RelationKeyRecommendedRelations.String()] = pbtypes.StringList(relationIds)
 	}
 	return &types.Struct{Fields: fields}, nil
+}
+
+// buildRelationIds constructs relation IDs for property links, creating new properties if necessary.
+func (s *Service) buildRelationIds(ctx context.Context, spaceId string, props []apimodel.PropertyLink) ([]string, error) {
+	propertyMap, err := s.GetPropertyMapFromStore(spaceId)
+	if err != nil {
+		return nil, err
+	}
+	relationIds := make([]string, 0, len(props))
+	for _, propLink := range props {
+		rk := util.FromPropertyApiKey(propLink.Key)
+		if propDef, exists := propertyMap[rk]; exists {
+			relationIds = append(relationIds, propDef.Id)
+			continue
+		}
+		newProp, err2 := s.CreateProperty(ctx, spaceId, apimodel.CreatePropertyRequest{
+			Name:   propLink.Name,
+			Format: propLink.Format,
+		})
+		if err2 != nil {
+			return nil, err2
+		}
+		relationIds = append(relationIds, newProp.Id)
+	}
+	return relationIds, nil
 }
 
 func (s *Service) objectLayoutToObjectTypeLayout(objectLayout apimodel.ObjectLayout) model.ObjectTypeLayout {

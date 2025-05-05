@@ -10,7 +10,7 @@ import (
 	"github.com/didip/tollbooth/v8/limiter"
 	"github.com/gin-gonic/gin"
 
-	"github.com/anyproto/anytype-heart/core/api/core"
+	apicore "github.com/anyproto/anytype-heart/core/api/core"
 	"github.com/anyproto/anytype-heart/core/api/util"
 	"github.com/anyproto/anytype-heart/pb"
 )

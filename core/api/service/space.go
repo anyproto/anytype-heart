@@ -8,7 +8,7 @@ import (
 
 	"github.com/gogo/protobuf/types"
 
-	"github.com/anyproto/anytype-heart/core/api/model"
+	apimodel "github.com/anyproto/anytype-heart/core/api/model"
 	"github.com/anyproto/anytype-heart/core/api/pagination"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
@@ -177,7 +177,7 @@ func (s *Service) UpdateSpace(ctx context.Context, spaceId string, request apimo
 		fields[bundle.RelationKeyDescription.String()] = pbtypes.String(s.sanitizedString(*request.Description))
 	}
 
-	if fields != nil {
+	if len(fields) > 0 {
 		resp := s.mw.WorkspaceSetInfo(ctx, &pb.RpcWorkspaceSetInfoRequest{
 			SpaceId: spaceId,
 			Details: &types.Struct{Fields: fields},
