@@ -134,8 +134,26 @@ func (s *Service) CreateType(ctx context.Context, spaceId string, request apimod
 
 // UpdateType updates an existing type in a specific space.
 func (s *Service) UpdateType(ctx context.Context, spaceId string, typeId string, request apimodel.UpdateTypeRequest) (apimodel.Type, error) {
-	// TODO
-	return apimodel.Type{}, nil
+	_, err := s.GetType(ctx, spaceId, typeId)
+	if err != nil {
+		return apimodel.Type{}, err
+	}
+
+	details, err := s.buildUpdatedTypeDetails(ctx, spaceId, request)
+	if err != nil {
+		return apimodel.Type{}, err
+	}
+
+	resp := s.mw.ObjectSetDetails(ctx, &pb.RpcObjectSetDetailsRequest{
+		ContextId: typeId,
+		Details:   structToDetails(details),
+	})
+
+	if resp.Error != nil && resp.Error.Code != pb.RpcObjectSetDetailsResponseError_NULL {
+		return apimodel.Type{}, ErrFailedUpdateType
+	}
+
+	return s.GetType(ctx, spaceId, typeId)
 }
 
 // DeleteType deletes a type by its ID in a specific space.
@@ -300,6 +318,53 @@ func (s *Service) buildTypeDetails(ctx context.Context, spaceId string, request 
 	}
 	fields[bundle.RelationKeyRecommendedHiddenRelations.String()] = pbtypes.StringList(hiddenIds)
 
+	return &types.Struct{Fields: fields}, nil
+}
+
+// buildUpdatedTypeDetails builds a partial details struct for UpdateTypeRequest.
+func (s *Service) buildUpdatedTypeDetails(ctx context.Context, spaceId string, request apimodel.UpdateTypeRequest) (*types.Struct, error) {
+	fields := make(map[string]*types.Value)
+	if request.Name != nil {
+		fields[bundle.RelationKeyName.String()] = pbtypes.String(s.sanitizedString(*request.Name))
+	}
+	if request.PluralName != nil {
+		fields[bundle.RelationKeyPluralName.String()] = pbtypes.String(s.sanitizedString(*request.PluralName))
+	}
+	if request.Layout != nil {
+		fields[bundle.RelationKeyRecommendedLayout.String()] = pbtypes.Int64(int64(s.typeLayoutToObjectTypeLayout(*request.Layout)))
+	}
+	if request.Icon != nil {
+		iconFields, err := s.processIconFields(ctx, spaceId, *request.Icon)
+		if err != nil {
+			return nil, err
+		}
+		for k, v := range iconFields {
+			fields[k] = v
+		}
+	}
+	if request.Properties != nil {
+		propertyMap, err := s.GetPropertyMapFromStore(spaceId)
+		if err != nil {
+			return nil, err
+		}
+		var relationIds []string
+		for _, propLink := range *request.Properties {
+			rk := util.FromPropertyApiKey(propLink.Key)
+			if propDef, exists := propertyMap[rk]; exists {
+				relationIds = append(relationIds, propDef.Id)
+			} else {
+				newProp, err2 := s.CreateProperty(ctx, spaceId, apimodel.CreatePropertyRequest{
+					Name:   propLink.Name,
+					Format: propLink.Format,
+				})
+				if err2 != nil {
+					return nil, err2
+				}
+				relationIds = append(relationIds, newProp.Id)
+			}
+		}
+		fields[bundle.RelationKeyRecommendedRelations.String()] = pbtypes.StringList(relationIds)
+	}
 	return &types.Struct{Fields: fields}, nil
 }
 
