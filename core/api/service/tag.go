@@ -38,8 +38,8 @@ func (s *Service) ListTags(ctx context.Context, spaceId string, propertyId strin
 		Filters: []*model.BlockContentDataviewFilter{
 			{
 				RelationKey: bundle.RelationKeyResolvedLayout.String(),
-				Condition:   model.BlockContentDataviewFilter_Equal,
-				Value:       pbtypes.Int64(int64(model.ObjectType_relationOption)),
+				Condition:   model.BlockContentDataviewFilter_In,
+				Value:       pbtypes.IntList(util.LayoutsToIntArgs(util.TagLayouts)...),
 			},
 			{
 				RelationKey: bundle.RelationKeyRelationKey.String(),

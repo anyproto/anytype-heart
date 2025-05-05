@@ -450,7 +450,7 @@ func (s *Service) isValidSelectOption(spaceId string, property apimodel.Property
 		return false
 	}
 
-	return layout == model.ObjectType_relationOption && rk == domain.RelationKey(util.FromPropertyApiKey(property.Key))
+	return util.IsTagLayout(layout) && rk == domain.RelationKey(util.FromPropertyApiKey(property.Key))
 }
 
 func (s *Service) isValidObjectReference(spaceId string, objectId string) bool {
@@ -459,7 +459,7 @@ func (s *Service) isValidObjectReference(spaceId string, objectId string) bool {
 		return false
 	}
 
-	return layout == model.ObjectType_basic || layout == model.ObjectType_profile || layout == model.ObjectType_todo || layout == model.ObjectType_note || layout == model.ObjectType_bookmark || layout == model.ObjectType_set || layout == model.ObjectType_collection || layout == model.ObjectType_participant
+	return util.IsObjectLayout(layout)
 }
 
 func (s *Service) isValidFileReference(spaceId string, fileId string) bool {
@@ -468,7 +468,7 @@ func (s *Service) isValidFileReference(spaceId string, fileId string) bool {
 		return false
 	}
 
-	return layout == model.ObjectType_file || layout == model.ObjectType_image || layout == model.ObjectType_video || layout == model.ObjectType_audio || layout == model.ObjectType_pdf
+	return util.IsFileLayout(layout)
 }
 
 // getRecommendedPropertiesFromLists combines featured and regular properties into a list of Properties.

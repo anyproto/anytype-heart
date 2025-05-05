@@ -169,16 +169,7 @@ func (s *Service) prepareBaseFilters() []*model.BlockContentDataviewFilter {
 		{
 			RelationKey: bundle.RelationKeyResolvedLayout.String(),
 			Condition:   model.BlockContentDataviewFilter_In,
-			Value: pbtypes.IntList(
-				int(model.ObjectType_basic),
-				int(model.ObjectType_profile),
-				int(model.ObjectType_todo),
-				int(model.ObjectType_note),
-				int(model.ObjectType_bookmark),
-				int(model.ObjectType_set),
-				int(model.ObjectType_collection),
-				int(model.ObjectType_participant),
-			),
+			Value:       pbtypes.IntList(util.LayoutsToIntArgs(util.ObjectLayouts)...),
 		},
 		{
 			RelationKey: bundle.RelationKeyIsHidden.String(),

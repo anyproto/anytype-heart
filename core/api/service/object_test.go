@@ -9,6 +9,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/anyproto/anytype-heart/core/api/model"
+	"github.com/anyproto/anytype-heart/core/api/util"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -28,16 +29,7 @@ func TestObjectService_ListObjects(t *testing.T) {
 				{
 					RelationKey: bundle.RelationKeyResolvedLayout.String(),
 					Condition:   model.BlockContentDataviewFilter_In,
-					Value: pbtypes.IntList(
-						int(model.ObjectType_basic),
-						int(model.ObjectType_profile),
-						int(model.ObjectType_todo),
-						int(model.ObjectType_note),
-						int(model.ObjectType_bookmark),
-						int(model.ObjectType_set),
-						int(model.ObjectType_collection),
-						int(model.ObjectType_participant),
-					),
+					Value:       pbtypes.IntList(util.LayoutsToIntArgs(util.ObjectLayouts)...),
 				},
 				{
 					RelationKey: "type.uniqueKey",
@@ -278,16 +270,7 @@ func TestObjectService_ListObjects(t *testing.T) {
 				{
 					RelationKey: bundle.RelationKeyResolvedLayout.String(),
 					Condition:   model.BlockContentDataviewFilter_In,
-					Value: pbtypes.IntList(
-						int(model.ObjectType_basic),
-						int(model.ObjectType_profile),
-						int(model.ObjectType_todo),
-						int(model.ObjectType_note),
-						int(model.ObjectType_bookmark),
-						int(model.ObjectType_set),
-						int(model.ObjectType_collection),
-						int(model.ObjectType_participant),
-					),
+					Value:       pbtypes.IntList(util.LayoutsToIntArgs(util.ObjectLayouts)...),
 				},
 				{
 					RelationKey: "type.uniqueKey",
