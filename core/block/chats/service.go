@@ -135,7 +135,7 @@ func (s *service) SubscribeToMessagePreviews(ctx context.Context, subId string) 
 		Previews: make([]*ChatPreview, 0, len(s.allChatObjectIds)),
 	}
 
-	for chatObjectId := range s.allChatObjectIds {
+	for chatObjectId, spaceId := range s.allChatObjectIds {
 		chatAddResp, err := s.onChatAdded(chatObjectId, subId, false)
 		if err != nil {
 			log.Error("init lastMessage subscription", zap.Error(err))
@@ -150,6 +150,7 @@ func (s *service) SubscribeToMessagePreviews(ctx context.Context, subId string) 
 			dependencies = chatAddResp.Dependencies[message.Id]
 		}
 		result.Previews = append(result.Previews, &ChatPreview{
+			SpaceId:      spaceId,
 			ChatObjectId: chatObjectId,
 			State:        chatAddResp.ChatState,
 			Message:      message,
