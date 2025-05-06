@@ -89,7 +89,7 @@ func (s *Service) ListTemplates(ctx context.Context, spaceId string, typeId stri
 }
 
 // GetTemplate returns a single template by its ID in a specific space.
-func (s *Service) GetTemplate(ctx context.Context, spaceId string, _ string, templateId string) (apimodel.ObjectWithBlocks, error) {
+func (s *Service) GetTemplate(ctx context.Context, spaceId string, _ string, templateId string) (apimodel.ObjectWithBody, error) {
 	resp := s.mw.ObjectShow(ctx, &pb.RpcObjectShowRequest{
 		SpaceId:  spaceId,
 		ObjectId: templateId,
@@ -97,30 +97,35 @@ func (s *Service) GetTemplate(ctx context.Context, spaceId string, _ string, tem
 
 	if resp.Error != nil {
 		if resp.Error.Code == pb.RpcObjectShowResponseError_NOT_FOUND {
-			return apimodel.ObjectWithBlocks{}, ErrTemplateNotFound
+			return apimodel.ObjectWithBody{}, ErrTemplateNotFound
 		}
 
 		if resp.Error.Code == pb.RpcObjectShowResponseError_OBJECT_DELETED {
-			return apimodel.ObjectWithBlocks{}, ErrTemplateDeleted
+			return apimodel.ObjectWithBody{}, ErrTemplateDeleted
 		}
 
 		if resp.Error != nil && resp.Error.Code != pb.RpcObjectShowResponseError_NULL {
-			return apimodel.ObjectWithBlocks{}, ErrFailedRetrieveTemplate
+			return apimodel.ObjectWithBody{}, ErrFailedRetrieveTemplate
 		}
 	}
 
 	propertyMap, err := s.GetPropertyMapFromStore(spaceId)
 	if err != nil {
-		return apimodel.ObjectWithBlocks{}, err
+		return apimodel.ObjectWithBody{}, err
 	}
 	typeMap, err := s.GetTypeMapFromStore(spaceId, propertyMap)
 	if err != nil {
-		return apimodel.ObjectWithBlocks{}, err
+		return apimodel.ObjectWithBody{}, err
 	}
 	tagMap, err := s.GetTagMapFromStore(spaceId)
 	if err != nil {
-		return apimodel.ObjectWithBlocks{}, err
+		return apimodel.ObjectWithBody{}, err
 	}
 
-	return s.GetObjectWithBlocksFromStruct(resp.ObjectView.Details[0].Details, resp.ObjectView.Blocks, propertyMap, typeMap, tagMap), nil
+	markdown, err := s.getMarkdownExport(ctx, spaceId, templateId)
+	if err != nil {
+		return apimodel.ObjectWithBody{}, err
+	}
+
+	return s.GetObjectWithBlocksFromStruct(resp.ObjectView.Details[0].Details, markdown, propertyMap, typeMap, tagMap), nil
 }

@@ -20,6 +20,7 @@ var (
 	ErrObjectNotFound            = errors.New("object not found")
 	ErrObjectDeleted             = errors.New("object deleted")
 	ErrFailedRetrieveObject      = errors.New("failed to retrieve object")
+	ErrFailedExportMarkdown      = errors.New("failed to export markdown")
 	ErrFailedRetrieveObjects     = errors.New("failed to retrieve list of objects")
 	ErrFailedRetrievePropertyMap = errors.New("failed to retrieve property  map")
 	ErrFailedCreateObject        = errors.New("failed to create object")
@@ -90,7 +91,7 @@ func (s *Service) ListObjects(ctx context.Context, spaceId string, offset int, l
 }
 
 // GetObject retrieves a single object by its ID in a specific space.
-func (s *Service) GetObject(ctx context.Context, spaceId string, objectId string) (apimodel.ObjectWithBlocks, error) {
+func (s *Service) GetObject(ctx context.Context, spaceId string, objectId string) (apimodel.ObjectWithBody, error) {
 	resp := s.mw.ObjectShow(ctx, &pb.RpcObjectShowRequest{
 		SpaceId:  spaceId,
 		ObjectId: objectId,
@@ -98,40 +99,45 @@ func (s *Service) GetObject(ctx context.Context, spaceId string, objectId string
 
 	if resp.Error != nil {
 		if resp.Error.Code == pb.RpcObjectShowResponseError_NOT_FOUND {
-			return apimodel.ObjectWithBlocks{}, ErrObjectNotFound
+			return apimodel.ObjectWithBody{}, ErrObjectNotFound
 		}
 
 		if resp.Error.Code == pb.RpcObjectShowResponseError_OBJECT_DELETED {
-			return apimodel.ObjectWithBlocks{}, ErrObjectDeleted
+			return apimodel.ObjectWithBody{}, ErrObjectDeleted
 		}
 
 		if resp.Error != nil && resp.Error.Code != pb.RpcObjectShowResponseError_NULL {
-			return apimodel.ObjectWithBlocks{}, ErrFailedRetrieveObject
+			return apimodel.ObjectWithBody{}, ErrFailedRetrieveObject
 		}
 	}
 
 	propertyMap, err := s.GetPropertyMapFromStore(spaceId)
 	if err != nil {
-		return apimodel.ObjectWithBlocks{}, err
+		return apimodel.ObjectWithBody{}, err
 	}
 	typeMap, err := s.GetTypeMapFromStore(spaceId, propertyMap)
 	if err != nil {
-		return apimodel.ObjectWithBlocks{}, err
+		return apimodel.ObjectWithBody{}, err
 	}
 	tagMap, err := s.GetTagMapFromStore(spaceId)
 	if err != nil {
-		return apimodel.ObjectWithBlocks{}, err
+		return apimodel.ObjectWithBody{}, err
 	}
 
-	return s.GetObjectWithBlocksFromStruct(resp.ObjectView.Details[0].Details, resp.ObjectView.Blocks, propertyMap, typeMap, tagMap), nil
+	markdown, err := s.getMarkdownExport(ctx, spaceId, objectId)
+	if err != nil {
+		return apimodel.ObjectWithBody{}, err
+	}
+
+	return s.GetObjectWithBlocksFromStruct(resp.ObjectView.Details[0].Details, markdown, propertyMap, typeMap, tagMap), nil
 }
 
 // CreateObject creates a new object in a specific space.
-func (s *Service) CreateObject(ctx context.Context, spaceId string, request apimodel.CreateObjectRequest) (apimodel.ObjectWithBlocks, error) {
+func (s *Service) CreateObject(ctx context.Context, spaceId string, request apimodel.CreateObjectRequest) (apimodel.ObjectWithBody, error) {
 	request.TypeKey = util.FromTypeApiKey(request.TypeKey)
 	details, err := s.buildObjectDetails(ctx, spaceId, request)
 	if err != nil {
-		return apimodel.ObjectWithBlocks{}, err
+		return apimodel.ObjectWithBody{}, err
 	}
 
 	var objectId string
@@ -143,7 +149,7 @@ func (s *Service) CreateObject(ctx context.Context, spaceId string, request apim
 		})
 
 		if resp.Error != nil && resp.Error.Code != pb.RpcObjectCreateBookmarkResponseError_NULL {
-			return apimodel.ObjectWithBlocks{}, ErrFailedCreateBookmark
+			return apimodel.ObjectWithBody{}, ErrFailedCreateBookmark
 		}
 		objectId = resp.ObjectId
 	} else {
@@ -155,7 +161,7 @@ func (s *Service) CreateObject(ctx context.Context, spaceId string, request apim
 		})
 
 		if resp.Error != nil && resp.Error.Code != pb.RpcObjectCreateResponseError_NULL {
-			return apimodel.ObjectWithBlocks{}, ErrFailedCreateObject
+			return apimodel.ObjectWithBody{}, ErrFailedCreateObject
 		}
 		objectId = resp.ObjectId
 	}
@@ -218,15 +224,15 @@ func (s *Service) CreateObject(ctx context.Context, spaceId string, request apim
 }
 
 // UpdateObject updates an existing object in a specific space.
-func (s *Service) UpdateObject(ctx context.Context, spaceId string, objectId string, request apimodel.UpdateObjectRequest) (apimodel.ObjectWithBlocks, error) {
+func (s *Service) UpdateObject(ctx context.Context, spaceId string, objectId string, request apimodel.UpdateObjectRequest) (apimodel.ObjectWithBody, error) {
 	_, err := s.GetObject(ctx, spaceId, objectId)
 	if err != nil {
-		return apimodel.ObjectWithBlocks{}, err
+		return apimodel.ObjectWithBody{}, err
 	}
 
 	details, err := s.buildUpdatedObjectDetails(ctx, spaceId, request)
 	if err != nil {
-		return apimodel.ObjectWithBlocks{}, err
+		return apimodel.ObjectWithBody{}, err
 	}
 
 	resp := s.mw.ObjectSetDetails(ctx, &pb.RpcObjectSetDetailsRequest{
@@ -235,17 +241,17 @@ func (s *Service) UpdateObject(ctx context.Context, spaceId string, objectId str
 	})
 
 	if resp.Error != nil && resp.Error.Code != pb.RpcObjectSetDetailsResponseError_NULL {
-		return apimodel.ObjectWithBlocks{}, ErrFailedUpdateObject
+		return apimodel.ObjectWithBody{}, ErrFailedUpdateObject
 	}
 
 	return s.GetObject(ctx, spaceId, objectId)
 }
 
 // DeleteObject deletes an existing object in a specific space.
-func (s *Service) DeleteObject(ctx context.Context, spaceId string, objectId string) (apimodel.ObjectWithBlocks, error) {
+func (s *Service) DeleteObject(ctx context.Context, spaceId string, objectId string) (apimodel.ObjectWithBody, error) {
 	object, err := s.GetObject(ctx, spaceId, objectId)
 	if err != nil {
-		return apimodel.ObjectWithBlocks{}, err
+		return apimodel.ObjectWithBody{}, err
 	}
 
 	resp := s.mw.ObjectSetIsArchived(ctx, &pb.RpcObjectSetIsArchivedRequest{
@@ -254,7 +260,7 @@ func (s *Service) DeleteObject(ctx context.Context, spaceId string, objectId str
 	})
 
 	if resp.Error != nil && resp.Error.Code != pb.RpcObjectSetIsArchivedResponseError_NULL {
-		return apimodel.ObjectWithBlocks{}, ErrFailedDeleteObject
+		return apimodel.ObjectWithBody{}, ErrFailedDeleteObject
 	}
 
 	return object, nil
@@ -337,62 +343,63 @@ func (s *Service) processIconFields(ctx context.Context, spaceId string, icon ap
 	return iconFields, nil
 }
 
+// ! Deprecated method, until json blocks properly implemented
 // getBlocksFromDetails returns the list of blocks from the ObjectShowResponse.
-func (s *Service) getBlocksFromDetails(blocks []*model.Block) []apimodel.Block {
-	b := make([]apimodel.Block, 0, len(blocks))
-
-	for _, block := range blocks {
-		var text *apimodel.Text
-		var file *apimodel.File
-		var property *apimodel.Property
-
-		switch content := block.Content.(type) {
-		case *model.BlockContentOfText:
-			text = &apimodel.Text{
-				Object:  "text",
-				Text:    content.Text.Text,
-				Style:   model.BlockContentTextStyle_name[int32(content.Text.Style)],
-				Checked: content.Text.Checked,
-				Color:   content.Text.Color,
-				Icon:    apimodel.GetIcon(s.gatewayUrl, content.Text.IconEmoji, content.Text.IconImage, "", 0),
-			}
-		case *model.BlockContentOfFile:
-			file = &apimodel.File{
-				Object:         "file",
-				Hash:           content.File.Hash,
-				Name:           content.File.Name,
-				Type:           model.BlockContentFileType_name[int32(content.File.Type)],
-				Mime:           content.File.Mime,
-				Size:           content.File.Size(),
-				AddedAt:        int(content.File.AddedAt),
-				TargetObjectId: content.File.TargetObjectId,
-				State:          model.BlockContentFileState_name[int32(content.File.State)],
-				Style:          model.BlockContentFileStyle_name[int32(content.File.Style)],
-			}
-		case *model.BlockContentOfRelation:
-			property = &apimodel.Property{
-				// TODO: is it sufficient to return the key only?
-				Object: "property",
-				Key:    content.Relation.Key,
-			}
-		}
-		// TODO: other content types?
-
-		b = append(b, apimodel.Block{
-			Object:          "block",
-			Id:              block.Id,
-			ChildrenIds:     block.ChildrenIds,
-			BackgroundColor: block.BackgroundColor,
-			Align:           model.BlockAlign_name[int32(block.Align)],
-			VerticalAlign:   model.BlockVerticalAlign_name[int32(block.VerticalAlign)],
-			Text:            text,
-			File:            file,
-			Property:        property,
-		})
-	}
-
-	return b
-}
+// func (s *Service) getBlocksFromDetails(blocks []*model.Block) []apimodel.Block {
+// 	b := make([]apimodel.Block, 0, len(blocks))
+//
+// 	for _, block := range blocks {
+// 		var text *apimodel.Text
+// 		var file *apimodel.File
+// 		var property *apimodel.Property
+//
+// 		switch content := block.Content.(type) {
+// 		case *model.BlockContentOfText:
+// 			text = &apimodel.Text{
+// 				Object:  "text",
+// 				Text:    content.Text.Text,
+// 				Style:   model.BlockContentTextStyle_name[int32(content.Text.Style)],
+// 				Checked: content.Text.Checked,
+// 				Color:   content.Text.Color,
+// 				Icon:    apimodel.GetIcon(s.gatewayUrl, content.Text.IconEmoji, content.Text.IconImage, "", 0),
+// 			}
+// 		case *model.BlockContentOfFile:
+// 			file = &apimodel.File{
+// 				Object:         "file",
+// 				Hash:           content.File.Hash,
+// 				Name:           content.File.Name,
+// 				Type:           model.BlockContentFileType_name[int32(content.File.Type)],
+// 				Mime:           content.File.Mime,
+// 				Size:           content.File.Size(),
+// 				AddedAt:        int(content.File.AddedAt),
+// 				TargetObjectId: content.File.TargetObjectId,
+// 				State:          model.BlockContentFileState_name[int32(content.File.State)],
+// 				Style:          model.BlockContentFileStyle_name[int32(content.File.Style)],
+// 			}
+// 		case *model.BlockContentOfRelation:
+// 			property = &apimodel.Property{
+// 				// TODO: is it sufficient to return the key only?
+// 				Object: "property",
+// 				Key:    content.Relation.Key,
+// 			}
+// 		}
+// 		// TODO: other content types?
+//
+// 		b = append(b, apimodel.Block{
+// 			Object:          "block",
+// 			Id:              block.Id,
+// 			ChildrenIds:     block.ChildrenIds,
+// 			BackgroundColor: block.BackgroundColor,
+// 			Align:           model.BlockAlign_name[int32(block.Align)],
+// 			VerticalAlign:   model.BlockVerticalAlign_name[int32(block.VerticalAlign)],
+// 			Text:            text,
+// 			File:            file,
+// 			Property:        property,
+// 		})
+// 	}
+//
+// 	return b
+// }
 
 // GetObjectFromStruct creates an Object without blocks from the details.
 func (s *Service) GetObjectFromStruct(details *types.Struct, propertyMap map[string]apimodel.Property, typeMap map[string]apimodel.Type, tagMap map[string]apimodel.Tag) apimodel.Object {
@@ -410,9 +417,9 @@ func (s *Service) GetObjectFromStruct(details *types.Struct, propertyMap map[str
 	}
 }
 
-// GetObjectWithBlocksFromStruct creates an ObjectWithBlocks from the details.
-func (s *Service) GetObjectWithBlocksFromStruct(details *types.Struct, blocks []*model.Block, propertyMap map[string]apimodel.Property, typeMap map[string]apimodel.Type, tagMap map[string]apimodel.Tag) apimodel.ObjectWithBlocks {
-	return apimodel.ObjectWithBlocks{
+// GetObjectWithBlocksFromStruct creates an ObjectWithBody from the details.
+func (s *Service) GetObjectWithBlocksFromStruct(details *types.Struct, markdown string, propertyMap map[string]apimodel.Property, typeMap map[string]apimodel.Type, tagMap map[string]apimodel.Tag) apimodel.ObjectWithBody {
+	return apimodel.ObjectWithBody{
 		Object:     "object",
 		Id:         details.Fields[bundle.RelationKeyId.String()].GetStringValue(),
 		Name:       details.Fields[bundle.RelationKeyName.String()].GetStringValue(),
@@ -423,7 +430,7 @@ func (s *Service) GetObjectWithBlocksFromStruct(details *types.Struct, blocks []
 		Layout:     s.otLayoutToObjectLayout(model.ObjectTypeLayout(details.Fields[bundle.RelationKeyResolvedLayout.String()].GetNumberValue())),
 		Type:       s.getTypeFromMap(details, typeMap),
 		Properties: s.getPropertiesFromStruct(details, propertyMap, tagMap),
-		Blocks:     s.getBlocksFromDetails(blocks),
+		Markdown:   &markdown,
 	}
 }
 
@@ -448,6 +455,16 @@ func (s *Service) isMissingObject(val interface{}) bool {
 	return false
 }
 
+// getMarkdownExport retrieves the Markdown export of an object.
+func (s *Service) getMarkdownExport(ctx context.Context, spaceId string, objectId string) (string, error) {
+	md, err := s.exportService.ExportSingleInMemory(ctx, spaceId, objectId, model.Export_Markdown)
+	if err != nil {
+		return "", ErrFailedExportMarkdown
+	}
+	return md, nil
+}
+
+// structToDetails converts a Struct to a list of Details.
 func structToDetails(details *types.Struct) []*model.Detail {
 	detailList := make([]*model.Detail, 0, len(details.Fields))
 	for k, v := range details.Fields {

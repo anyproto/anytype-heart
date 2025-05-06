@@ -81,7 +81,6 @@ func (s *Server) NewRouter(mw apicore.ClientCommands) *gin.Engine {
 		// Object
 		v1.GET("/spaces/:space_id/objects", handler.ListObjectsHandler(s.service))
 		v1.GET("/spaces/:space_id/objects/:object_id", handler.GetObjectHandler(s.service))
-		v1.GET("/spaces/:space_id/objects/:object_id/:format", handler.ExportObjectHandler(s.service))
 		v1.POST("/spaces/:space_id/objects", s.rateLimit(maxWriteRequestsPerSecond), handler.CreateObjectHandler(s.service))
 		v1.PATCH("/spaces/:space_id/objects/:object_id", s.rateLimit(maxWriteRequestsPerSecond), handler.UpdateObjectHandler(s.service))
 		v1.DELETE("/spaces/:space_id/objects/:object_id", s.rateLimit(maxWriteRequestsPerSecond), handler.DeleteObjectHandler(s.service))

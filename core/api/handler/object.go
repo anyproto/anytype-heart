@@ -60,6 +60,7 @@ func ListObjectsHandler(s *service.Service) gin.HandlerFunc {
 //	@Param			Anytype-Version	header		string					true	"The version of the API to use"	default(2025-04-22)
 //	@Param			space_id		path		string					true	"The ID of the space in which the object exists"
 //	@Param			object_id		path		string					true	"The ID of the object to retrieve"
+//	@Param			format			query		apimodel.BodyFormat		false	"The format to return the object body in" default("md")
 //	@Success		200				{object}	apimodel.ObjectResponse	"The retrieved object"
 //	@Failure		401				{object}	util.UnauthorizedError	"Unauthorized"
 //	@Failure		404				{object}	util.NotFoundError		"Resource not found"
@@ -71,54 +72,14 @@ func GetObjectHandler(s *service.Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		spaceId := c.Param("space_id")
 		objectId := c.Param("object_id")
+		// format := c.Query("format") // TODO: implement multiple formats
 
 		object, err := s.GetObject(c.Request.Context(), spaceId, objectId)
 		code := util.MapErrorCode(err,
 			util.ErrToCode(service.ErrObjectNotFound, http.StatusNotFound),
 			util.ErrToCode(service.ErrObjectDeleted, http.StatusGone),
 			util.ErrToCode(service.ErrFailedRetrieveObject, http.StatusInternalServerError),
-		)
-
-		if code != http.StatusOK {
-			apiErr := util.CodeToAPIError(code, err.Error())
-			c.JSON(code, apiErr)
-			return
-		}
-
-		c.JSON(http.StatusOK, apimodel.ObjectResponse{Object: object})
-	}
-}
-
-// DeleteObjectHandler deletes an object in a space
-//
-//	@Summary		Delete object
-//	@Description	This endpoint “deletes” an object by marking it as archived. The deletion process is performed safely and is subject to rate limiting. It returns the object’s details after it has been archived. Proper error handling is in place for situations such as when the object isn’t found or the deletion cannot be performed because of permission issues.
-//	@Id				deleteObject
-//	@Tags			Objects
-//	@Produce		json
-//	@Param			Anytype-Version	header		string					true	"The version of the API to use"	default(2025-04-22)
-//	@Param			space_id		path		string					true	"The ID of the space in which the object exists"
-//	@Param			object_id		path		string					true	"The ID of the object to delete"
-//	@Success		200				{object}	apimodel.ObjectResponse	"The deleted object"
-//	@Failure		401				{object}	util.UnauthorizedError	"Unauthorized"
-//	@Failure		403				{object}	util.ForbiddenError		"Forbidden"
-//	@Failure		404				{object}	util.NotFoundError		"Resource not found"
-//	@Failure		410				{object}	util.GoneError			"Resource deleted"
-//	@Failure		429				{object}	util.RateLimitError		"Rate limit exceeded"
-//	@Failure		500				{object}	util.ServerError		"Internal server error"
-//	@Security		bearerauth
-//	@Router			/spaces/{space_id}/objects/{object_id} [delete]
-func DeleteObjectHandler(s *service.Service) gin.HandlerFunc {
-	return func(c *gin.Context) {
-		spaceId := c.Param("space_id")
-		objectId := c.Param("object_id")
-
-		object, err := s.DeleteObject(c.Request.Context(), spaceId, objectId)
-		code := util.MapErrorCode(err,
-			util.ErrToCode(service.ErrObjectNotFound, http.StatusNotFound),
-			util.ErrToCode(service.ErrObjectDeleted, http.StatusGone),
-			util.ErrToCode(service.ErrFailedDeleteObject, http.StatusForbidden),
-			util.ErrToCode(service.ErrFailedRetrieveObject, http.StatusInternalServerError),
+			util.ErrToCode(service.ErrFailedExportMarkdown, http.StatusInternalServerError),
 		)
 
 		if code != http.StatusOK {
@@ -234,32 +195,37 @@ func UpdateObjectHandler(s *service.Service) gin.HandlerFunc {
 	}
 }
 
-// ExportObjectHandler exports an object in specified format
+// DeleteObjectHandler deletes an object in a space
 //
-//	@Summary		Export object
-//	@Description	This endpoint exports a single object from the specified space into a desired format. The export format is provided as a path parameter (currently supporting “markdown” only). The endpoint calls the export service which converts the object’s content into the requested format. It is useful for sharing, or displaying the markdown representation of the objecte externally.
-//	@Id				exportObject
+//	@Summary		Delete object
+//	@Description	This endpoint “deletes” an object by marking it as archived. The deletion process is performed safely and is subject to rate limiting. It returns the object’s details after it has been archived. Proper error handling is in place for situations such as when the object isn’t found or the deletion cannot be performed because of permission issues.
+//	@Id				deleteObject
 //	@Tags			Objects
 //	@Produce		json
-//	@Param			Anytype-Version	header		string							true	"The version of the API to use"	default(2025-04-22)
-//	@Param			space_id		path		string							true	"The ID of the space in which the object exists"
-//	@Param			object_id		path		string							true	"The ID of the object to export"
-//	@Param			format			path		string							true	"The format to export the object to"	default(markdown)	enum(markdown)
-//	@Success		200				{object}	apimodel.ObjectExportResponse	"The exported object in the specified format"
-//	@Failure		400				{object}	util.ValidationError			"Bad request"
-//	@Failure		401				{object}	util.UnauthorizedError			"Unauthorized"
-//	@Failure		500				{object}	util.ServerError				"Internal server error"
+//	@Param			Anytype-Version	header		string					true	"The version of the API to use"	default(2025-04-22)
+//	@Param			space_id		path		string					true	"The ID of the space in which the object exists"
+//	@Param			object_id		path		string					true	"The ID of the object to delete"
+//	@Success		200				{object}	apimodel.ObjectResponse	"The deleted object"
+//	@Failure		401				{object}	util.UnauthorizedError	"Unauthorized"
+//	@Failure		403				{object}	util.ForbiddenError		"Forbidden"
+//	@Failure		404				{object}	util.NotFoundError		"Resource not found"
+//	@Failure		410				{object}	util.GoneError			"Resource deleted"
+//	@Failure		429				{object}	util.RateLimitError		"Rate limit exceeded"
+//	@Failure		500				{object}	util.ServerError		"Internal server error"
 //	@Security		bearerauth
-//	@Router			/spaces/{space_id}/objects/{object_id}/{format} [get]
-func ExportObjectHandler(s *service.Service) gin.HandlerFunc {
+//	@Router			/spaces/{space_id}/objects/{object_id} [delete]
+func DeleteObjectHandler(s *service.Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		spaceId := c.Param("space_id")
 		objectId := c.Param("object_id")
-		format := c.Param("format")
 
-		markdown, err := s.GetObjectExport(c.Request.Context(), spaceId, objectId, format)
+		object, err := s.DeleteObject(c.Request.Context(), spaceId, objectId)
 		code := util.MapErrorCode(err,
-			util.ErrToCode(service.ErrInvalidExportFormat, http.StatusInternalServerError))
+			util.ErrToCode(service.ErrObjectNotFound, http.StatusNotFound),
+			util.ErrToCode(service.ErrObjectDeleted, http.StatusGone),
+			util.ErrToCode(service.ErrFailedDeleteObject, http.StatusForbidden),
+			util.ErrToCode(service.ErrFailedRetrieveObject, http.StatusInternalServerError),
+		)
 
 		if code != http.StatusOK {
 			apiErr := util.CodeToAPIError(code, err.Error())
@@ -267,6 +233,6 @@ func ExportObjectHandler(s *service.Service) gin.HandlerFunc {
 			return
 		}
 
-		c.JSON(http.StatusOK, apimodel.ObjectExportResponse{Markdown: markdown})
+		c.JSON(http.StatusOK, apimodel.ObjectResponse{Object: object})
 	}
 }

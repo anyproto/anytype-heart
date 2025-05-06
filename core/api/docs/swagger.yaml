@@ -1,51 +1,5 @@
 components:
   schemas:
-    apimodel.Block:
-      properties:
-        align:
-          description: The alignment of the block
-          enum:
-          - AlignLeft
-          - AlignCenter
-          - AlignRight
-          - AlignJustify
-          example: AlignLeft
-          type: string
-        background_color:
-          description: The background color of the block
-          example: red
-          type: string
-        children_ids:
-          description: The ids of the block's children
-          example:
-          - '[''6797ce8ecda913cde14b02dc'']'
-          items:
-            type: string
-          type: array
-          uniqueItems: false
-        file:
-          $ref: '#/components/schemas/apimodel.File'
-        id:
-          description: The id of the block
-          example: 64394517de52ad5acb89c66c
-          type: string
-        object:
-          description: The data model of the object
-          example: block
-          type: string
-        property:
-          $ref: '#/components/schemas/apimodel.Property'
-        text:
-          $ref: '#/components/schemas/apimodel.Text'
-        vertical_align:
-          description: The vertical alignment of the block
-          enum:
-          - VerticalAlignTop
-          - VerticalAlignMiddle
-          - VerticalAlignBottom
-          example: VerticalAlignTop
-          type: string
-      type: object
     apimodel.CheckboxPropertyLinkValue:
       properties:
         checkbox:
@@ -289,41 +243,6 @@ components:
           type: string
         format:
           $ref: '#/components/schemas/apimodel.IconFormat'
-      type: object
-    apimodel.File:
-      description: The file of the block, if applicable
-      properties:
-        added_at:
-          description: The added at of the file
-          type: integer
-        hash:
-          description: The hash of the file
-          type: string
-        mime:
-          description: The mime of the file
-          type: string
-        name:
-          description: The name of the file
-          type: string
-        object:
-          description: The data model of the object
-          example: file
-          type: string
-        size:
-          description: The size of the file
-          type: integer
-        state:
-          description: The state of the file
-          type: string
-        style:
-          description: The style of the file
-          type: string
-        target_object_id:
-          description: The target object id of the file
-          type: string
-        type:
-          description: The type of the file
-          type: string
       type: object
     apimodel.FileIcon:
       properties:
@@ -614,14 +533,6 @@ components:
         type:
           $ref: '#/components/schemas/apimodel.Type'
       type: object
-    apimodel.ObjectExportResponse:
-      properties:
-        markdown:
-          example: |-
-            # This is the title
-            ...
-          type: string
-      type: object
     apimodel.ObjectLayout:
       description: The layout of the object
       example: basic
@@ -638,22 +549,15 @@ components:
     apimodel.ObjectResponse:
       properties:
         object:
-          $ref: '#/components/schemas/apimodel.ObjectWithBlocks'
+          $ref: '#/components/schemas/apimodel.ObjectWithBody'
       type: object
-    apimodel.ObjectWithBlocks:
+    apimodel.ObjectWithBody:
       description: The object
       properties:
         archived:
           description: Whether the object is archived
           example: false
           type: boolean
-        blocks:
-          description: The blocks of the object. Omitted in endpoints for searching
-            or listing objects, only included when getting single object.
-          items:
-            $ref: '#/components/schemas/apimodel.Block'
-          type: array
-          uniqueItems: false
         icon:
           $ref: '#/components/schemas/apimodel.Icon'
         id:
@@ -673,6 +577,12 @@ components:
           - ObjectLayoutSet
           - ObjectLayoutCollection
           - ObjectLayoutParticipant
+        markdown:
+          description: The markdown body of the object
+          example: |-
+            # This is the title
+            ...
+          type: string
         name:
           description: The name of the object
           example: My object
@@ -782,7 +692,7 @@ components:
           type: string
       type: object
     apimodel.Property:
-      description: The property block, if applicable
+      description: The property
       properties:
         format:
           $ref: '#/components/schemas/apimodel.PropertyFormat'
@@ -1051,48 +961,7 @@ components:
     apimodel.TemplateResponse:
       properties:
         template:
-          $ref: '#/components/schemas/apimodel.ObjectWithBlocks'
-      type: object
-    apimodel.Text:
-      description: The text of the block, if applicable
-      properties:
-        checked:
-          description: Whether the text is checked
-          example: true
-          type: boolean
-        color:
-          description: The color of the text
-          example: red
-          type: string
-        icon:
-          $ref: '#/components/schemas/apimodel.Icon'
-        object:
-          description: The data model of the object
-          example: text
-          type: string
-        style:
-          description: The style of the text
-          enum:
-          - Paragraph
-          - Header1
-          - Header2
-          - Header3
-          - Header4
-          - Quote
-          - Code
-          - Title
-          - Checkbox
-          - Marked
-          - Numbered
-          - Toggle
-          - Description
-          - Callout
-          example: Paragraph
-          type: string
-        text:
-          description: The text
-          example: Some text...
-          type: string
+          $ref: '#/components/schemas/apimodel.ObjectWithBody'
       type: object
     apimodel.TextPropertyLinkValue:
       properties:
@@ -2632,6 +2501,14 @@ paths:
         required: true
         schema:
           type: string
+      - description: The format to return the object body in
+        in: query
+        name: format
+        schema:
+          default: '"md"'
+          enum:
+          - md
+          type: string
       responses:
         "200":
           content:
@@ -2747,71 +2624,6 @@ paths:
       security:
       - bearerauth: []
       summary: Update object
-      tags:
-      - Objects
-  /spaces/{space_id}/objects/{object_id}/{format}:
-    get:
-      description: This endpoint exports a single object from the specified space
-        into a desired format. The export format is provided as a path parameter (currently
-        supporting “markdown” only). The endpoint calls the export service which converts
-        the object’s content into the requested format. It is useful for sharing,
-        or displaying the markdown representation of the objecte externally.
-      operationId: exportObject
-      parameters:
-      - description: The version of the API to use
-        in: header
-        name: Anytype-Version
-        required: true
-        schema:
-          default: "2025-04-22"
-          type: string
-      - description: The ID of the space in which the object exists
-        in: path
-        name: space_id
-        required: true
-        schema:
-          type: string
-      - description: The ID of the object to export
-        in: path
-        name: object_id
-        required: true
-        schema:
-          type: string
-      - description: The format to export the object to
-        in: path
-        name: format
-        required: true
-        schema:
-          default: markdown
-          type: string
-      responses:
-        "200":
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/apimodel.ObjectExportResponse'
-          description: The exported object in the specified format
-        "400":
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/util.ValidationError'
-          description: Bad request
-        "401":
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/util.UnauthorizedError'
-          description: Unauthorized
-        "500":
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/util.ServerError'
-          description: Internal server error
-      security:
-      - bearerauth: []
-      summary: Export object
       tags:
       - Objects
   /spaces/{space_id}/properties:

@@ -34,6 +34,13 @@ func (ol *ObjectLayout) UnmarshalJSON(data []byte) error {
 	}
 }
 
+type BodyFormat string
+
+const (
+	BodyFormatMarkdown BodyFormat = "md"
+	// BodyFormatJSON     BodyFormat = "json" // TODO: implement multiple formats
+)
+
 type CreateObjectRequest struct {
 	Name       string                  `json:"name" example:"My object"`                                                                                                                                                                                                                                                                 // The name of the object
 	Icon       Icon                    `json:"icon" oneOf:"EmojiIcon,FileIcon,NamedIcon"`                                                                                                                                                                                                                                                // The icon of the object
@@ -50,7 +57,7 @@ type UpdateObjectRequest struct {
 }
 
 type ObjectResponse struct {
-	Object ObjectWithBlocks `json:"object"` // The object
+	Object ObjectWithBody `json:"object"` // The object
 }
 
 type Object struct {
@@ -66,7 +73,7 @@ type Object struct {
 	Properties []PropertyWithValue `json:"properties" oneOf:"TextPropertyValue,NumberPropertyValue,SelectPropertyValue,MultiSelectPropertyValue,DatePropertyValue,FilesPropertyValue,CheckboxPropertyValue,URLPropertyValue,EmailPropertyValue,PhonePropertyValue,ObjectsPropertyValue"` // The properties of the object
 }
 
-type ObjectWithBlocks struct {
+type ObjectWithBody struct {
 	Object     string              `json:"object" example:"object"`                                                                                                                                                                                                                      // The data model of the object
 	Id         string              `json:"id" example:"bafyreie6n5l5nkbjal37su54cha4coy7qzuhrnajluzv5qd5jvtsrxkequ"`                                                                                                                                                                     // The id of the object
 	Name       string              `json:"name" example:"My object"`                                                                                                                                                                                                                     // The name of the object
@@ -77,43 +84,40 @@ type ObjectWithBlocks struct {
 	Layout     ObjectLayout        `json:"layout" example:"basic"`                                                                                                                                                                                                                       // The layout of the object
 	Type       Type                `json:"type"`                                                                                                                                                                                                                                         // The type of the object
 	Properties []PropertyWithValue `json:"properties" oneOf:"TextPropertyValue,NumberPropertyValue,SelectPropertyValue,MultiSelectPropertyValue,DatePropertyValue,FilesPropertyValue,CheckboxPropertyValue,URLPropertyValue,EmailPropertyValue,PhonePropertyValue,ObjectsPropertyValue"` // The properties of the object
-	Blocks     []Block             `json:"blocks"`                                                                                                                                                                                                                                       // The blocks of the object. Omitted in endpoints for searching or listing objects, only included when getting single object.
+	Markdown   *string             `json:"markdown,omitempty" example:"# This is the title\n..."`                                                                                                                                                                                        // The markdown body of the object
 }
 
-type Block struct {
-	Object          string    `json:"object" example:"block"`                                                                                     // The data model of the object
-	Id              string    `json:"id" example:"64394517de52ad5acb89c66c"`                                                                      // The id of the block
-	ChildrenIds     []string  `json:"children_ids" example:"['6797ce8ecda913cde14b02dc']"`                                                        // The ids of the block's children
-	BackgroundColor string    `json:"background_color" example:"red"`                                                                             // The background color of the block
-	Align           string    `json:"align" enums:"AlignLeft,AlignCenter,AlignRight,AlignJustify" example:"AlignLeft"`                            // The alignment of the block
-	VerticalAlign   string    `json:"vertical_align" enums:"VerticalAlignTop,VerticalAlignMiddle,VerticalAlignBottom" example:"VerticalAlignTop"` // The vertical alignment of the block
-	Text            *Text     `json:"text,omitempty"`                                                                                             // The text of the block, if applicable
-	File            *File     `json:"file,omitempty"`                                                                                             // The file of the block, if applicable
-	Property        *Property `json:"property,omitempty"`                                                                                         // The property block, if applicable
-}
-
-type Text struct {
-	Object  string `json:"object" example:"text"`                                                                                                                            // The data model of the object
-	Text    string `json:"text" example:"Some text..."`                                                                                                                      // The text
-	Style   string `json:"style" enums:"Paragraph,Header1,Header2,Header3,Header4,Quote,Code,Title,Checkbox,Marked,Numbered,Toggle,Description,Callout" example:"Paragraph"` // The style of the text
-	Checked bool   `json:"checked" example:"true"`                                                                                                                           // Whether the text is checked
-	Color   string `json:"color" example:"red"`                                                                                                                              // The color of the text
-	Icon    Icon   `json:"icon" `                                                                                                                                            // The icon of the text
-}
-
-type File struct {
-	Object         string `json:"object" example:"file"` // The data model of the object
-	Hash           string `json:"hash"`                  // The hash of the file
-	Name           string `json:"name"`                  // The name of the file
-	Type           string `json:"type"`                  // The type of the file
-	Mime           string `json:"mime"`                  // The mime of the file
-	Size           int    `json:"size"`                  // The size of the file
-	AddedAt        int    `json:"added_at"`              // The added at of the file
-	TargetObjectId string `json:"target_object_id"`      // The target object id of the file
-	State          string `json:"state"`                 // The state of the file
-	Style          string `json:"style"`                 // The style of the file
-}
-
-type ObjectExportResponse struct {
-	Markdown string `json:"markdown" example:"# This is the title\n..."`
-}
+// ! Deprecated schemas, until json blocks properly implemented
+// type Block struct {
+// 	Object          string    `json:"object" example:"block"`                                                                                     // The data model of the object
+// 	Id              string    `json:"id" example:"64394517de52ad5acb89c66c"`                                                                      // The id of the block
+// 	ChildrenIds     []string  `json:"children_ids" example:"['6797ce8ecda913cde14b02dc']"`                                                        // The ids of the block's children
+// 	BackgroundColor string    `json:"background_color" example:"red"`                                                                             // The background color of the block
+// 	Align           string    `json:"align" enums:"AlignLeft,AlignCenter,AlignRight,AlignJustify" example:"AlignLeft"`                            // The alignment of the block
+// 	VerticalAlign   string    `json:"vertical_align" enums:"VerticalAlignTop,VerticalAlignMiddle,VerticalAlignBottom" example:"VerticalAlignTop"` // The vertical alignment of the block
+// 	Text            *Text     `json:"text,omitempty"`                                                                                             // The text of the block, if applicable
+// 	File            *File     `json:"file,omitempty"`                                                                                             // The file of the block, if applicable
+// 	Property        *Property `json:"property,omitempty"`                                                                                         // The property block, if applicable
+// }
+//
+// type Text struct {
+// 	Object  string `json:"object" example:"text"`                                                                                                                            // The data model of the object
+// 	Text    string `json:"text" example:"Some text..."`                                                                                                                      // The text
+// 	Style   string `json:"style" enums:"Paragraph,Header1,Header2,Header3,Header4,Quote,Code,Title,Checkbox,Marked,Numbered,Toggle,Description,Callout" example:"Paragraph"` // The style of the text
+// 	Checked bool   `json:"checked" example:"true"`                                                                                                                           // Whether the text is checked
+// 	Color   string `json:"color" example:"red"`                                                                                                                              // The color of the text
+// 	Icon    Icon   `json:"icon" `                                                                                                                                            // The icon of the text
+// }
+//
+// type File struct {
+// 	Object         string `json:"object" example:"file"` // The data model of the object
+// 	Hash           string `json:"hash"`                  // The hash of the file
+// 	Name           string `json:"name"`                  // The name of the file
+// 	Type           string `json:"type"`                  // The type of the file
+// 	Mime           string `json:"mime"`                  // The mime of the file
+// 	Size           int    `json:"size"`                  // The size of the file
+// 	AddedAt        int    `json:"added_at"`              // The added at of the file
+// 	TargetObjectId string `json:"target_object_id"`      // The target object id of the file
+// 	State          string `json:"state"`                 // The state of the file
+// 	Style          string `json:"style"`                 // The style of the file
+// }

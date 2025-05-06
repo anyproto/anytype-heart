@@ -82,6 +82,7 @@ func GetTemplateHandler(s *service.Service) gin.HandlerFunc {
 			util.ErrToCode(service.ErrTemplateNotFound, http.StatusNotFound),
 			util.ErrToCode(service.ErrTemplateDeleted, http.StatusGone),
 			util.ErrToCode(service.ErrFailedRetrieveTemplate, http.StatusInternalServerError),
+			util.ErrToCode(service.ErrFailedExportMarkdown, http.StatusInternalServerError),
 		)
 
 		if code != http.StatusOK {
