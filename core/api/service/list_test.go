@@ -351,16 +351,42 @@ func TestListService_GetObjectsInList(t *testing.T) {
 				},
 			}, nil).Once()
 
+		// Mock util.GetAllRelationKeys
+		fx.mwMock.
+			On("ObjectSearch", mock.Anything, &pb.RpcObjectSearchRequest{
+				SpaceId: mockedSpaceId,
+				Filters: []*model.BlockContentDataviewFilter{
+					{
+						RelationKey: bundle.RelationKeyResolvedLayout.String(),
+						Condition:   model.BlockContentDataviewFilter_Equal,
+						Value:       pbtypes.Int64(int64(model.ObjectType_relation)),
+					},
+				},
+				Keys: []string{bundle.RelationKeyRelationKey.String()},
+			}).
+			Return(&pb.RpcObjectSearchResponse{
+				Error: &pb.RpcObjectSearchResponseError{Code: pb.RpcObjectSearchResponseError_NULL},
+				Records: []*types.Struct{
+					{
+						Fields: map[string]*types.Value{
+							bundle.RelationKeyRelationKey.String(): pbtypes.String(bundle.RelationKeyRelationKey.String()),
+						},
+					},
+				},
+			}, nil).Once()
+
 		// Expect the ObjectSearchSubscribe call to return one record.
 		fx.mwMock.
 			On("ObjectSearchSubscribe", mock.Anything, &pb.RpcObjectSearchSubscribeRequest{
-				SpaceId: mockedSpaceId,
-				SubId:   subId,
-				Limit:   int64(limit),
-				Offset:  int64(offset),
-				Sorts:   sorts,
-				Filters: filters,
-				Source:  []string{mockedUniqueKey},
+				SpaceId:      mockedSpaceId,
+				SubId:        subId,
+				Limit:        int64(limit),
+				Offset:       int64(offset),
+				Sorts:        sorts,
+				Filters:      filters,
+				Source:       []string{mockedUniqueKey},
+				Keys:         []string{bundle.RelationKeyRelationKey.String()},
+				CollectionId: "",
 			}).
 			Return(&pb.RpcObjectSearchSubscribeResponse{
 				Error:    &pb.RpcObjectSearchSubscribeResponseError{Code: pb.RpcObjectSearchSubscribeResponseError_NULL},
@@ -374,6 +400,13 @@ func TestListService_GetObjectsInList(t *testing.T) {
 					},
 				},
 			}, nil).Once()
+
+		// Mock unsubscribe after subscription
+		fx.mwMock.
+			On("ObjectSearchUnsubscribe", mock.Anything, &pb.RpcObjectSearchUnsubscribeRequest{
+				SubIds: []string{subId},
+			}).
+			Return(&pb.RpcObjectSearchUnsubscribeResponse{}, nil).Once()
 
 		// Mock GetPropertyMapsFromStore
 		fx.mwMock.
@@ -454,6 +487,34 @@ func TestListService_GetObjectsInList(t *testing.T) {
 						},
 					},
 				},
+			}, nil).Once()
+
+		// Mock GetTagMapFromStore
+		fx.mwMock.
+			On("ObjectSearch", mock.Anything, &pb.RpcObjectSearchRequest{
+				SpaceId: mockedSpaceId,
+				Filters: []*model.BlockContentDataviewFilter{
+					{
+						RelationKey: bundle.RelationKeyResolvedLayout.String(),
+						Condition:   model.BlockContentDataviewFilter_Equal,
+						Value:       pbtypes.Int64(int64(model.ObjectType_relationOption)),
+					},
+					{
+						RelationKey: bundle.RelationKeyIsHidden.String(),
+						Condition:   model.BlockContentDataviewFilter_NotEqual,
+						Value:       pbtypes.Bool(true),
+					},
+				},
+				Keys: []string{
+					bundle.RelationKeyId.String(),
+					bundle.RelationKeyUniqueKey.String(),
+					bundle.RelationKeyName.String(),
+					bundle.RelationKeyRelationOptionColor.String(),
+				},
+			}).
+			Return(&pb.RpcObjectSearchResponse{
+				Error:   &pb.RpcObjectSearchResponseError{Code: pb.RpcObjectSearchResponseError_NULL},
+				Records: []*types.Struct{},
 			}, nil).Once()
 
 		// when
@@ -536,6 +597,30 @@ func TestListService_GetObjectsInList(t *testing.T) {
 			}).
 			Return(resp, nil).Once()
 
+		// Mock util.GetAllRelationKeys
+		fx.mwMock.
+			On("ObjectSearch", mock.Anything, &pb.RpcObjectSearchRequest{
+				SpaceId: mockedSpaceId,
+				Filters: []*model.BlockContentDataviewFilter{
+					{
+						RelationKey: bundle.RelationKeyResolvedLayout.String(),
+						Condition:   model.BlockContentDataviewFilter_Equal,
+						Value:       pbtypes.Int64(int64(model.ObjectType_relation)),
+					},
+				},
+				Keys: []string{bundle.RelationKeyRelationKey.String()},
+			}).
+			Return(&pb.RpcObjectSearchResponse{
+				Error: &pb.RpcObjectSearchResponseError{Code: pb.RpcObjectSearchResponseError_NULL},
+				Records: []*types.Struct{
+					{
+						Fields: map[string]*types.Value{
+							bundle.RelationKeyRelationKey.String(): pbtypes.String(bundle.RelationKeyRelationKey.String()),
+						},
+					},
+				},
+			}, nil).Once()
+
 		// Since viewId is empty, sorts and filters should be nil.
 		fx.mwMock.
 			On("ObjectSearchSubscribe", mock.Anything, &pb.RpcObjectSearchSubscribeRequest{
@@ -545,6 +630,7 @@ func TestListService_GetObjectsInList(t *testing.T) {
 				Offset:       int64(offset),
 				Sorts:        nil,
 				Filters:      nil,
+				Keys:         []string{bundle.RelationKeyRelationKey.String()},
 				CollectionId: mockedListId,
 			}).
 			Return(&pb.RpcObjectSearchSubscribeResponse{
@@ -559,6 +645,13 @@ func TestListService_GetObjectsInList(t *testing.T) {
 					},
 				},
 			}, nil).Once()
+
+		// Mock unsubscribe after subscription
+		fx.mwMock.
+			On("ObjectSearchUnsubscribe", mock.Anything, &pb.RpcObjectSearchUnsubscribeRequest{
+				SubIds: []string{subId},
+			}).
+			Return(&pb.RpcObjectSearchUnsubscribeResponse{}, nil).Once()
 
 		// Mock GetPropertyMapsFromStore
 		fx.mwMock.
@@ -639,6 +732,34 @@ func TestListService_GetObjectsInList(t *testing.T) {
 						},
 					},
 				},
+			}, nil).Once()
+
+		// Mock GetTagMapFromStore
+		fx.mwMock.
+			On("ObjectSearch", mock.Anything, &pb.RpcObjectSearchRequest{
+				SpaceId: mockedSpaceId,
+				Filters: []*model.BlockContentDataviewFilter{
+					{
+						RelationKey: bundle.RelationKeyResolvedLayout.String(),
+						Condition:   model.BlockContentDataviewFilter_Equal,
+						Value:       pbtypes.Int64(int64(model.ObjectType_relationOption)),
+					},
+					{
+						RelationKey: bundle.RelationKeyIsHidden.String(),
+						Condition:   model.BlockContentDataviewFilter_NotEqual,
+						Value:       pbtypes.Bool(true),
+					},
+				},
+				Keys: []string{
+					bundle.RelationKeyId.String(),
+					bundle.RelationKeyUniqueKey.String(),
+					bundle.RelationKeyName.String(),
+					bundle.RelationKeyRelationOptionColor.String(),
+				},
+			}).
+			Return(&pb.RpcObjectSearchResponse{
+				Error:   &pb.RpcObjectSearchResponseError{Code: pb.RpcObjectSearchResponseError_NULL},
+				Records: []*types.Struct{},
 			}, nil).Once()
 
 		// when
@@ -826,6 +947,30 @@ func TestListService_GetObjectsInList(t *testing.T) {
 				},
 			}, nil).Once()
 
+		// Mock util.GetAllRelationKeys
+		fx.mwMock.
+			On("ObjectSearch", mock.Anything, &pb.RpcObjectSearchRequest{
+				SpaceId: mockedSpaceId,
+				Filters: []*model.BlockContentDataviewFilter{
+					{
+						RelationKey: bundle.RelationKeyResolvedLayout.String(),
+						Condition:   model.BlockContentDataviewFilter_Equal,
+						Value:       pbtypes.Int64(int64(model.ObjectType_relation)),
+					},
+				},
+				Keys: []string{bundle.RelationKeyRelationKey.String()},
+			}).
+			Return(&pb.RpcObjectSearchResponse{
+				Error: &pb.RpcObjectSearchResponseError{Code: pb.RpcObjectSearchResponseError_NULL},
+				Records: []*types.Struct{
+					{
+						Fields: map[string]*types.Value{
+							bundle.RelationKeyRelationKey.String(): pbtypes.String(bundle.RelationKeyRelationKey.String()),
+						},
+					},
+				},
+			}, nil).Once()
+
 		// Simulate an error from ObjectSearchSubscribe.
 		fx.mwMock.
 			On("ObjectSearchSubscribe", mock.Anything, &pb.RpcObjectSearchSubscribeRequest{
@@ -835,11 +980,19 @@ func TestListService_GetObjectsInList(t *testing.T) {
 				Offset:       int64(offset),
 				Sorts:        sorts,
 				Filters:      filters,
+				Keys:         []string{bundle.RelationKeyRelationKey.String()},
 				CollectionId: mockedListId,
 			}).
 			Return(&pb.RpcObjectSearchSubscribeResponse{
 				Error: &pb.RpcObjectSearchSubscribeResponseError{Code: pb.RpcObjectSearchSubscribeResponseError_UNKNOWN_ERROR},
 			}, nil).Once()
+
+		// Mock unsubscribe after subscription
+		fx.mwMock.
+			On("ObjectSearchUnsubscribe", mock.Anything, &pb.RpcObjectSearchUnsubscribeRequest{
+				SubIds: []string{subId},
+			}).
+			Return(&pb.RpcObjectSearchUnsubscribeResponse{}, nil).Once()
 
 		// when
 		_, _, _, err := fx.service.GetObjectsInList(ctx, mockedSpaceId, mockedListId, mockedViewId, offset, limit)
@@ -901,6 +1054,30 @@ func TestListService_GetObjectsInList(t *testing.T) {
 				},
 			}, nil).Once()
 
+		// Mock util.GetAllRelationKeys
+		fx.mwMock.
+			On("ObjectSearch", mock.Anything, &pb.RpcObjectSearchRequest{
+				SpaceId: mockedSpaceId,
+				Filters: []*model.BlockContentDataviewFilter{
+					{
+						RelationKey: bundle.RelationKeyResolvedLayout.String(),
+						Condition:   model.BlockContentDataviewFilter_Equal,
+						Value:       pbtypes.Int64(int64(model.ObjectType_relation)),
+					},
+				},
+				Keys: []string{bundle.RelationKeyRelationKey.String()},
+			}).
+			Return(&pb.RpcObjectSearchResponse{
+				Error: &pb.RpcObjectSearchResponseError{Code: pb.RpcObjectSearchResponseError_NULL},
+				Records: []*types.Struct{
+					{
+						Fields: map[string]*types.Value{
+							bundle.RelationKeyRelationKey.String(): pbtypes.String(bundle.RelationKeyRelationKey.String()),
+						},
+					},
+				},
+			}, nil).Once()
+
 		fx.mwMock.
 			On("ObjectSearchSubscribe", mock.Anything, &pb.RpcObjectSearchSubscribeRequest{
 				SpaceId:      mockedSpaceId,
@@ -909,6 +1086,7 @@ func TestListService_GetObjectsInList(t *testing.T) {
 				Offset:       int64(offset),
 				Sorts:        sorts,
 				Filters:      filters,
+				Keys:         []string{bundle.RelationKeyRelationKey.String()},
 				CollectionId: mockedListId,
 			}).
 			Return(&pb.RpcObjectSearchSubscribeResponse{
@@ -922,6 +1100,13 @@ func TestListService_GetObjectsInList(t *testing.T) {
 					},
 				},
 			}, nil).Once()
+
+		// Mock unsubscribe after subscription
+		fx.mwMock.
+			On("ObjectSearchUnsubscribe", mock.Anything, &pb.RpcObjectSearchUnsubscribeRequest{
+				SubIds: []string{subId},
+			}).
+			Return(&pb.RpcObjectSearchUnsubscribeResponse{}, nil).Once()
 
 		// Mock GetPropertyMapsFromStore to return an error.
 		fx.mwMock.
