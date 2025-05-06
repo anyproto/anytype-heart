@@ -500,6 +500,11 @@ func TestObjectService_GetObject(t *testing.T) {
 			Records: []*types.Struct{},
 		}, nil).Once()
 
+		// Mock ExportMarkdown
+		fx.exportService.
+			On("ExportSingleInMemory", mock.Anything, mockedSpaceId, mockedObjectId, model.Export_Markdown).
+			Return("dummy markdown", nil).Once()
+
 		// when
 		object, err := fx.service.GetObject(ctx, mockedSpaceId, mockedObjectId)
 
@@ -644,6 +649,11 @@ func TestObjectService_CreateObject(t *testing.T) {
 			Records: []*types.Struct{},
 			Error:   &pb.RpcObjectSearchResponseError{Code: pb.RpcObjectSearchResponseError_NULL},
 		}).Times(3)
+
+		// Mock ExportMarkdown
+		fx.exportService.
+			On("ExportSingleInMemory", mock.Anything, mockedSpaceId, mockedNewObjectId, model.Export_Markdown).
+			Return("dummy markdown", nil).Once()
 
 		// when
 		object, err := fx.service.CreateObject(ctx, mockedSpaceId, apimodel.CreateObjectRequest{

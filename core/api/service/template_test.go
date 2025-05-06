@@ -127,6 +127,11 @@ func TestObjectService_GetTemplate(t *testing.T) {
 			Error:   &pb.RpcObjectSearchResponseError{Code: pb.RpcObjectSearchResponseError_NULL},
 		}).Times(3)
 
+		// Mock ExportMarkdown
+		fx.exportService.
+			On("ExportSingleInMemory", mock.Anything, mockedSpaceId, mockedTemplateId, model.Export_Markdown).
+			Return("dummy markdown", nil).Once()
+
 		// when
 		template, err := fx.service.GetTemplate(ctx, mockedSpaceId, mockedTypeId, mockedTemplateId)
 
