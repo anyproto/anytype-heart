@@ -47,7 +47,7 @@ type StoreObject interface {
 	EditMessage(ctx context.Context, messageId string, newMessage *Message) error
 	ToggleMessageReaction(ctx context.Context, messageId string, emoji string) error
 	DeleteMessage(ctx context.Context, messageId string) error
-	SubscribeLastMessages(ctx context.Context, subId string, limit int, asyncInit bool) (*SubscribeLastMessagesResponse, error)
+	SubscribeLastMessages(ctx context.Context, req SubscribeLastMessagesRequest) (*SubscribeLastMessagesResponse, error)
 	MarkReadMessages(ctx context.Context, afterOrderId string, beforeOrderId string, lastStateId string, counterType CounterType) error
 	MarkMessagesAsUnread(ctx context.Context, afterOrderId string, counterType CounterType) error
 	Unsubscribe(subId string) error
@@ -343,26 +343,36 @@ func (s *storeObject) ToggleMessageReaction(ctx context.Context, messageId strin
 	return nil
 }
 
+type SubscribeLastMessagesRequest struct {
+	SubId string
+	Limit int
+	// If AsyncInit is true, initial messages will be broadcast via events
+	AsyncInit        bool
+	WithDependencies bool
+}
+
 type SubscribeLastMessagesResponse struct {
 	Messages  []*Message
 	ChatState *model.ChatState
+	// Dependencies per message id
+	Dependencies map[string][]*domain.Details
 }
 
-func (s *storeObject) SubscribeLastMessages(ctx context.Context, subId string, limit int, asyncInit bool) (*SubscribeLastMessagesResponse, error) {
+func (s *storeObject) SubscribeLastMessages(ctx context.Context, req SubscribeLastMessagesRequest) (*SubscribeLastMessagesResponse, error) {
 	txn, err := s.repository.readTx(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("init read transaction: %w", err)
 	}
 	defer txn.Commit()
 
-	messages, err := s.repository.getLastMessages(txn.Context(), uint(limit))
+	messages, err := s.repository.getLastMessages(txn.Context(), uint(req.Limit))
 	if err != nil {
 		return nil, fmt.Errorf("query messages: %w", err)
 	}
 
-	s.subscription.subscribe(subId)
+	s.subscription.subscribe(req.SubId, req.WithDependencies)
 
-	if asyncInit {
+	if req.AsyncInit {
 		var previousOrderId string
 		if len(messages) > 0 {
 			previousOrderId, err = s.repository.getPrevOrderId(txn.Context(), messages[0].OrderId)
@@ -380,9 +390,17 @@ func (s *storeObject) SubscribeLastMessages(ctx context.Context, subId string, l
 		s.subscription.flush()
 		return nil, nil
 	} else {
+		depsPerMessage := map[string][]*domain.Details{}
+		if req.WithDependencies {
+			for _, message := range messages {
+				deps := s.subscription.collectMessageDependencies(message)
+				depsPerMessage[message.Id] = deps
+			}
+		}
 		return &SubscribeLastMessagesResponse{
-			Messages:  messages,
-			ChatState: s.subscription.getChatState(),
+			Messages:     messages,
+			ChatState:    s.subscription.getChatState(),
+			Dependencies: depsPerMessage,
 		}, nil
 	}
 }
