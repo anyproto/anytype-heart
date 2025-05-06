@@ -169,7 +169,7 @@ func (s *Service) DeleteType(ctx context.Context, spaceId string, typeId string)
 	})
 
 	if resp.Error != nil && resp.Error.Code != pb.RpcObjectSetIsArchivedResponseError_NULL {
-		return apimodel.Type{}, ErrFailedDeleteObject
+		return apimodel.Type{}, ErrFailedDeleteType
 	}
 
 	return t, nil
