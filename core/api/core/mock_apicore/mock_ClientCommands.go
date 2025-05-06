@@ -757,6 +757,55 @@ func (_c *MockClientCommands_ObjectSearchSubscribe_Call) RunAndReturn(run func(c
 	return _c
 }
 
+// ObjectSearchUnsubscribe provides a mock function with given fields: _a0, _a1
+func (_m *MockClientCommands) ObjectSearchUnsubscribe(_a0 context.Context, _a1 *pb.RpcObjectSearchUnsubscribeRequest) *pb.RpcObjectSearchUnsubscribeResponse {
+	ret := _m.Called(_a0, _a1)
+
+	if len(ret) == 0 {
+		panic("no return value specified for ObjectSearchUnsubscribe")
+	}
+
+	var r0 *pb.RpcObjectSearchUnsubscribeResponse
+	if rf, ok := ret.Get(0).(func(context.Context, *pb.RpcObjectSearchUnsubscribeRequest) *pb.RpcObjectSearchUnsubscribeResponse); ok {
+		r0 = rf(_a0, _a1)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*pb.RpcObjectSearchUnsubscribeResponse)
+		}
+	}
+
+	return r0
+}
+
+// MockClientCommands_ObjectSearchUnsubscribe_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ObjectSearchUnsubscribe'
+type MockClientCommands_ObjectSearchUnsubscribe_Call struct {
+	*mock.Call
+}
+
+// ObjectSearchUnsubscribe is a helper method to define mock.On call
+//   - _a0 context.Context
+//   - _a1 *pb.RpcObjectSearchUnsubscribeRequest
+func (_e *MockClientCommands_Expecter) ObjectSearchUnsubscribe(_a0 interface{}, _a1 interface{}) *MockClientCommands_ObjectSearchUnsubscribe_Call {
+	return &MockClientCommands_ObjectSearchUnsubscribe_Call{Call: _e.mock.On("ObjectSearchUnsubscribe", _a0, _a1)}
+}
+
+func (_c *MockClientCommands_ObjectSearchUnsubscribe_Call) Run(run func(_a0 context.Context, _a1 *pb.RpcObjectSearchUnsubscribeRequest)) *MockClientCommands_ObjectSearchUnsubscribe_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(*pb.RpcObjectSearchUnsubscribeRequest))
+	})
+	return _c
+}
+
+func (_c *MockClientCommands_ObjectSearchUnsubscribe_Call) Return(_a0 *pb.RpcObjectSearchUnsubscribeResponse) *MockClientCommands_ObjectSearchUnsubscribe_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockClientCommands_ObjectSearchUnsubscribe_Call) RunAndReturn(run func(context.Context, *pb.RpcObjectSearchUnsubscribeRequest) *pb.RpcObjectSearchUnsubscribeResponse) *MockClientCommands_ObjectSearchUnsubscribe_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // ObjectSetDetails provides a mock function with given fields: _a0, _a1
 func (_m *MockClientCommands) ObjectSetDetails(_a0 context.Context, _a1 *pb.RpcObjectSetDetailsRequest) *pb.RpcObjectSetDetailsResponse {
 	ret := _m.Called(_a0, _a1)

@@ -19,6 +19,8 @@ var (
 	ErrFailedResolveToUniqueKey = errors.New("failed to resolve to unique key")
 	ErrFailedGetById            = errors.New("failed to get object by id")
 	ErrFailedGetByIdNotFound    = errors.New("failed to find object by id")
+	ErrFailedGetRelationKeys    = errors.New("failed to get relation keys")
+	ErrRelationKeysNotFound     = errors.New("failed to find relation keys")
 )
 
 // ResolveUniqueKeyToTypeId resolves the unique key to the type's ID
@@ -86,4 +88,34 @@ func GetFieldsByID(mw apicore.ClientCommands, spaceId string, objectId string, k
 	}
 
 	return resp.Records[0].Fields, nil
+}
+
+// GetAllRelationKeys retrieves all relation keys within a space, including hidden ones.
+func GetAllRelationKeys(mw apicore.ClientCommands, spaceId string) ([]string, error) {
+	resp := mw.ObjectSearch(context.Background(), &pb.RpcObjectSearchRequest{
+		SpaceId: spaceId,
+		Filters: []*model.BlockContentDataviewFilter{
+			{
+				RelationKey: bundle.RelationKeyResolvedLayout.String(),
+				Condition:   model.BlockContentDataviewFilter_Equal,
+				Value:       pbtypes.Int64(int64(model.ObjectType_relation)),
+			},
+		},
+		Keys: []string{bundle.RelationKeyRelationKey.String()},
+	})
+
+	if resp.Error != nil && resp.Error.Code != pb.RpcObjectSearchResponseError_NULL {
+		return nil, ErrFailedGetRelationKeys
+	}
+
+	if len(resp.Records) == 0 {
+		return nil, ErrRelationKeysNotFound
+	}
+
+	relationKeys := make([]string, len(resp.Records))
+	for i, record := range resp.Records {
+		relationKeys[i] = record.Fields[bundle.RelationKeyRelationKey.String()].GetStringValue()
+	}
+
+	return relationKeys, nil
 }

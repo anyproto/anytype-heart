@@ -169,30 +169,25 @@ func (s *Service) GetObjectsInList(ctx context.Context, spaceId string, listId s
 		return nil, 0, false, ErrUnsupportedListType
 	}
 
-	// TODO: use subscription Service with internal: 'true' to not send events to clients
+	allRelationKeys, err := util.GetAllRelationKeys(s.mw, spaceId)
+	if err != nil {
+		return nil, 0, false, err
+	}
+
 	searchResp := s.mw.ObjectSearchSubscribe(ctx, &pb.RpcObjectSearchSubscribeRequest{
-		SpaceId: spaceId,
-		SubId:   subId,
-		Limit:   int64(limit),  // nolint: gosec
-		Offset:  int64(offset), // nolint: gosec
-		// TODO: can't explicitly name all keys, find alternative solution
-		Keys: []string{
-			bundle.RelationKeyId.String(),
-			bundle.RelationKeyName.String(),
-			bundle.RelationKeyIconEmoji.String(),
-			bundle.RelationKeyIconImage.String(),
-			bundle.RelationKeyIconName.String(),
-			bundle.RelationKeyIconOption.String(),
-			bundle.RelationKeyIsArchived.String(),
-			bundle.RelationKeySpaceId.String(),
-			bundle.RelationKeySnippet.String(),
-			bundle.RelationKeyResolvedLayout.String(),
-			bundle.RelationKeyType.String(),
-		},
+		SpaceId:      spaceId,
+		SubId:        subId,
+		Limit:        int64(limit),  // nolint: gosec
+		Offset:       int64(offset), // nolint: gosec
+		Keys:         allRelationKeys,
 		Sorts:        sorts,
 		Filters:      filters,
 		Source:       source,
 		CollectionId: collectionId,
+	})
+
+	s.mw.ObjectSearchUnsubscribe(ctx, &pb.RpcObjectSearchUnsubscribeRequest{
+		SubIds: []string{subId},
 	})
 
 	if searchResp.Error != nil && searchResp.Error.Code != pb.RpcObjectSearchSubscribeResponseError_NULL {
