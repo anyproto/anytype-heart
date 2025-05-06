@@ -480,13 +480,19 @@ func (s *Service) getRecommendedPropertiesFromLists(featured, regular *types.Lis
 			continue
 		}
 		for _, v := range lst.Values {
-			key := v.GetStringValue()
-			if key == "" {
+			id := v.GetStringValue()
+			if id == "" {
 				continue
 			}
-			if p, ok := propertyMap[key]; ok {
-				props = append(props, p)
+			p, ok := propertyMap[id]
+			if !ok {
+				continue
 			}
+			rk := util.FromPropertyApiKey(p.Key)
+			if _, excluded := excludedSystemProperties[rk]; excluded {
+				continue
+			}
+			props = append(props, p)
 		}
 	}
 	return props
