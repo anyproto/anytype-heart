@@ -202,6 +202,11 @@ func (s *Service) GetTagMapFromStore(spaceId string) (map[string]apimodel.Tag, e
 				Condition:   model.BlockContentDataviewFilter_Equal,
 				Value:       pbtypes.Int64(int64(model.ObjectType_relationOption)),
 			},
+			{
+				RelationKey: bundle.RelationKeyIsHidden.String(),
+				Condition:   model.BlockContentDataviewFilter_NotEqual,
+				Value:       pbtypes.Bool(true),
+			},
 		},
 		Keys: []string{
 			bundle.RelationKeyId.String(),

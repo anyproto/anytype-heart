@@ -191,6 +191,11 @@ func TestObjectService_ListObjects(t *testing.T) {
 					Condition:   model.BlockContentDataviewFilter_Equal,
 					Value:       pbtypes.Int64(int64(model.ObjectType_relationOption)),
 				},
+				{
+					RelationKey: bundle.RelationKeyIsHidden.String(),
+					Condition:   model.BlockContentDataviewFilter_NotEqual,
+					Value:       pbtypes.Bool(true),
+				},
 			},
 			Keys: []string{
 				bundle.RelationKeyId.String(),
@@ -477,6 +482,11 @@ func TestObjectService_GetObject(t *testing.T) {
 					RelationKey: bundle.RelationKeyResolvedLayout.String(),
 					Condition:   model.BlockContentDataviewFilter_Equal,
 					Value:       pbtypes.Int64(int64(model.ObjectType_relationOption)),
+				},
+				{
+					RelationKey: bundle.RelationKeyIsHidden.String(),
+					Condition:   model.BlockContentDataviewFilter_NotEqual,
+					Value:       pbtypes.Bool(true),
 				},
 			},
 			Keys: []string{
