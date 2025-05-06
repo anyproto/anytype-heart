@@ -173,6 +173,9 @@ func (d *InMemoryWriter) Path() string {
 func (d *InMemoryWriter) WriteFile(filename string, r io.Reader, lastModifiedDate int64) (err error) {
 	d.m.Lock()
 	defer d.m.Unlock()
+	if filepath.Ext(filename) != ".md" && filepath.Ext(filename) != ".json" && filepath.Ext(filename) != ".pb" {
+		return fmt.Errorf("unsupported file type: %s", filename)
+	}
 	if d.data == nil {
 		d.data = make(map[string][]byte)
 	}
