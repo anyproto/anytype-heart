@@ -14,7 +14,7 @@ import (
 // ListPropertiesHandler retrieves a list of properties in a space
 //
 //	@Summary		List properties
-//	@Description	Retrieves a paginated list of properties available within a specific space. Each property record includes its unique identifier, name and format. This information is essential for clients to understand the available properties for filtering or creating objects.
+//	@Description	⚠ Warning: Properties are experimental and may change in the next update. ⚠ Retrieves a paginated list of properties available within a specific space. Each property record includes its unique identifier, name and format. This information is essential for clients to understand the available properties for filtering or creating objects.
 //	@Id				listProperties
 //	@Tags			Properties
 //	@Produce		json
@@ -51,7 +51,7 @@ func ListPropertiesHandler(s *service.Service) gin.HandlerFunc {
 // GetPropertyHandler retrieves a property in a space
 //
 //	@Summary		Get property
-//	@Description	Fetches detailed information about one specific property by its ID. This includes the property’s unique identifier, name and format. This detailed view assists clients in showing property options to users and in guiding the user interface (such as displaying appropriate input fields or selection options).
+//	@Description	⚠ Warning: Properties are experimental and may change in the next update. ⚠ Fetches detailed information about one specific property by its ID. This includes the property’s unique identifier, name and format. This detailed view assists clients in showing property options to users and in guiding the user interface (such as displaying appropriate input fields or selection options).
 //	@Id				getProperty
 //	@Tags			Properties
 //	@Produce		json
@@ -90,7 +90,7 @@ func GetPropertyHandler(s *service.Service) gin.HandlerFunc {
 // CreatePropertyHandler creates a new property in a space
 //
 //	@Summary		Create property
-//	@Description	Creates a new property in the specified space using a JSON payload. The creation process is subject to rate limiting. The payload must include property details such as the name and format. The endpoint then returns the full property data, ready for further interactions.
+//	@Description	⚠ Warning: Properties are experimental and may change in the next update. ⚠ Creates a new property in the specified space using a JSON payload. The creation process is subject to rate limiting. The payload must include property details such as the name and format. The endpoint then returns the full property data, ready for further interactions.
 //	@Id				createProperty
 //	@Tags			Properties
 //	@Accept			json
@@ -136,7 +136,7 @@ func CreatePropertyHandler(s *service.Service) gin.HandlerFunc {
 // UpdatePropertyHandler updates a property in a space
 //
 //	@Summary		Update property
-//	@Description	This endpoint updates an existing property in the specified space using a JSON payload. The update process is subject to rate limiting. The payload must include the name to be updated. The endpoint then returns the full property data, ready for further interactions.
+//	@Description	⚠ Warning: Properties are experimental and may change in the next update. ⚠ This endpoint updates an existing property in the specified space using a JSON payload. The update process is subject to rate limiting. The payload must include the name to be updated. The endpoint then returns the full property data, ready for further interactions.
 //	@Id				updateProperty
 //	@Tags			Properties
 //	@Accept			json
@@ -190,7 +190,7 @@ func UpdatePropertyHandler(s *service.Service) gin.HandlerFunc {
 // DeletePropertyHandler deletes a property in a space
 //
 //	@Summary		Delete property
-//	@Description	This endpoint “deletes” a property by marking it as archived. The deletion process is performed safely and is subject to rate limiting. It returns the property’s details after it has been archived. Proper error handling is in place for situations such as when the property isn’t found or the deletion cannot be performed because of permission issues.
+//	@Description	⚠ Warning: Properties are experimental and may change in the next update. ⚠ This endpoint “deletes” a property by marking it as archived. The deletion process is performed safely and is subject to rate limiting. It returns the property’s details after it has been archived. Proper error handling is in place for situations such as when the property isn’t found or the deletion cannot be performed because of permission issues.
 //	@Id				deleteProperty
 //	@Tags			Properties
 //	@Produce		json

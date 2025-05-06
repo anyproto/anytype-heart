@@ -39,7 +39,7 @@ type CreateTypeRequest struct {
 	PluralName string         `json:"plural_name" example:"Pages"`               // The plural name of the type
 	Icon       Icon           `json:"icon" oneOf:"EmojiIcon,FileIcon,NamedIcon"` // The icon of the type
 	Layout     TypeLayout     `json:"layout" binding:"required" example:"basic"` // The layout of the type
-	Properties []PropertyLink `json:"properties"`                                // The properties linked to the type
+	Properties []PropertyLink `json:"properties"`                                // ⚠ Warning: Properties are experimental and may change in the next update. ⚠ The properties linked to the type
 }
 
 type UpdateTypeRequest struct {
@@ -47,7 +47,7 @@ type UpdateTypeRequest struct {
 	PluralName *string         `json:"plural_name,omitempty" example:"Pages"`               // The plural name to set for the type
 	Icon       *Icon           `json:"icon,omitempty" oneOf:"EmojiIcon,FileIcon,NamedIcon"` // The icon to set for the type
 	Layout     *TypeLayout     `json:"layout,omitempty" example:"basic"`                    // The layout to set for the type
-	Properties *[]PropertyLink `json:"properties,omitempty"`                                // The properties to set for the type
+	Properties *[]PropertyLink `json:"properties,omitempty"`                                // ⚠ Warning: Properties are experimental and may change in the next update. ⚠ The properties to set for the type
 }
 
 type Type struct {
