@@ -1,6 +1,198 @@
 components:
   schemas:
-    auth.DisplayCodeResponse:
+    apimodel.CheckboxPropertyLinkValue:
+      properties:
+        checkbox:
+          description: The checkbox value of the property
+          example: true
+          type: boolean
+        format:
+          $ref: '#/components/schemas/apimodel.PropertyFormat'
+        key:
+          example: done
+          type: string
+      type: object
+    apimodel.CheckboxPropertyValue:
+      properties:
+        checkbox:
+          description: The checkbox value of the property
+          example: true
+          type: boolean
+        format:
+          $ref: '#/components/schemas/apimodel.PropertyFormat'
+        id:
+          description: The id of the property
+          example: bafyreids36kpw5ppuwm3ce2p4ezb3ab7cihhkq6yfbwzwpp4mln7rcgw7a
+          type: string
+        key:
+          description: The key of the property
+          example: done
+          type: string
+        name:
+          description: The name of the property
+          example: Done
+          type: string
+        object:
+          description: The data model of the object
+          example: property
+          type: string
+      type: object
+    apimodel.Color:
+      description: The color of the icon
+      enum:
+      - grey
+      - yellow
+      - orange
+      - red
+      - pink
+      - purple
+      - blue
+      - ice
+      - teal
+      - lime
+      example: yellow
+      type: string
+      x-enum-varnames:
+      - ColorGrey
+      - ColorYellow
+      - ColorOrange
+      - ColorRed
+      - ColorPink
+      - ColorPurple
+      - ColorBlue
+      - ColorIce
+      - ColorTeal
+      - ColorLime
+    apimodel.CreateObjectRequest:
+      properties:
+        body:
+          description: The body of the object
+          example: This is the body of the object. Markdown syntax is supported here.
+          type: string
+        icon:
+          $ref: '#/components/schemas/apimodel.Icon'
+        name:
+          description: The name of the object
+          example: My object
+          type: string
+        properties:
+          description: '⚠ Warning: Properties are experimental and may change in the
+            next update. ⚠ The properties to set on the object'
+          items:
+            $ref: '#/components/schemas/apimodel.PropertyLinkWithValue'
+          type: array
+          uniqueItems: false
+        template_id:
+          description: The id of the template to use
+          example: bafyreictrp3obmnf6dwejy5o4p7bderaaia4bdg2psxbfzf44yya5uutge
+          type: string
+        type_key:
+          description: The key of the type of object to create
+          example: page
+          type: string
+      required:
+      - type_key
+      type: object
+    apimodel.CreatePropertyRequest:
+      properties:
+        format:
+          $ref: '#/components/schemas/apimodel.PropertyFormat'
+        name:
+          description: The name of the property
+          example: Last modified date
+          type: string
+      required:
+      - format
+      - name
+      type: object
+    apimodel.CreateSpaceRequest:
+      properties:
+        description:
+          description: The description of the space
+          example: The local-first wiki
+          type: string
+        name:
+          description: The name of the space
+          example: New Space
+          type: string
+      required:
+      - name
+      type: object
+    apimodel.CreateTagRequest:
+      properties:
+        color:
+          $ref: '#/components/schemas/apimodel.Color'
+        name:
+          description: The name of the tag
+          example: In progress
+          type: string
+      required:
+      - color
+      - name
+      type: object
+    apimodel.CreateTypeRequest:
+      properties:
+        icon:
+          $ref: '#/components/schemas/apimodel.Icon'
+        layout:
+          $ref: '#/components/schemas/apimodel.TypeLayout'
+        name:
+          description: The name of the type
+          example: Page
+          type: string
+        plural_name:
+          description: The plural name of the type
+          example: Pages
+          type: string
+        properties:
+          description: '⚠ Warning: Properties are experimental and may change in the
+            next update. ⚠ The properties linked to the type'
+          items:
+            $ref: '#/components/schemas/apimodel.PropertyLink'
+          type: array
+          uniqueItems: false
+      required:
+      - layout
+      - name
+      type: object
+    apimodel.DatePropertyLinkValue:
+      properties:
+        date:
+          description: The date value of the property
+          example: "2025-02-14T12:34:56Z"
+          type: string
+        format:
+          $ref: '#/components/schemas/apimodel.PropertyFormat'
+        key:
+          example: last_modified_date
+          type: string
+      type: object
+    apimodel.DatePropertyValue:
+      properties:
+        date:
+          description: The date value of the property
+          example: "2025-02-14T12:34:56Z"
+          type: string
+        format:
+          $ref: '#/components/schemas/apimodel.PropertyFormat'
+        id:
+          description: The id of the property
+          example: bafyreids36kpw5ppuwm3ce2p4ezb3ab7cihhkq6yfbwzwpp4mln7rcgw7a
+          type: string
+        key:
+          description: The key of the property
+          example: last_modified_date
+          type: string
+        name:
+          description: The name of the property
+          example: Last modified date
+          type: string
+        object:
+          description: The data model of the object
+          example: property
+          type: string
+      type: object
+    apimodel.DisplayCodeResponse:
       properties:
         challenge_id:
           description: The challenge id associated with the displayed code and needed
@@ -8,35 +200,132 @@ components:
           example: 67647f5ecda913e9a2e11b26
           type: string
       type: object
-    auth.TokenResponse:
+    apimodel.EmailPropertyLinkValue:
       properties:
-        app_key:
-          description: The permanent app key
-          example: zhSG/zQRmgADyilWPtgdnfo1qD60oK02/SVgi1GaFt6=
+        email:
+          description: The email value of the property
+          example: example@example.com
           type: string
-        session_token:
-          description: The ephemeral session token
-          example: eyJhbGciOeJIRzI1NiIsInR5cCI6IkpXVCJ1.eyJzZWVkIjaiY0dmVndlUnAifQ.Y1EZecYnwmvMkrXKOa2XJnAbaRt34urBabe06tmDQII
+        format:
+          $ref: '#/components/schemas/apimodel.PropertyFormat'
+        key:
+          example: email
           type: string
       type: object
-    export.ObjectExportResponse:
+    apimodel.EmailPropertyValue:
       properties:
-        markdown:
-          example: |-
-            # This is the title
-            ...
+        email:
+          description: The email value of the property
+          example: example@example.com
+          type: string
+        format:
+          $ref: '#/components/schemas/apimodel.PropertyFormat'
+        id:
+          description: The id of the property
+          example: bafyreids36kpw5ppuwm3ce2p4ezb3ab7cihhkq6yfbwzwpp4mln7rcgw7a
+          type: string
+        key:
+          description: The key of the property
+          example: email
+          type: string
+        name:
+          description: The name of the property
+          example: Email
+          type: string
+        object:
+          description: The data model of the object
+          example: property
           type: string
       type: object
-    list.Filter:
+    apimodel.EmojiIcon:
+      properties:
+        emoji:
+          description: The emoji of the icon
+          example: "\U0001F4C4"
+          type: string
+        format:
+          $ref: '#/components/schemas/apimodel.IconFormat'
+      type: object
+    apimodel.FileIcon:
+      properties:
+        file:
+          description: The file of the icon
+          example: bafybeieptz5hvcy6txplcvphjbbh5yjc2zqhmihs3owkh5oab4ezauzqay
+          type: string
+        format:
+          $ref: '#/components/schemas/apimodel.IconFormat'
+      type: object
+    apimodel.FilesPropertyLinkValue:
+      properties:
+        files:
+          description: The file values of the property
+          example:
+          - '[''fileId'']'
+          items:
+            type: string
+          type: array
+          uniqueItems: false
+        format:
+          $ref: '#/components/schemas/apimodel.PropertyFormat'
+        key:
+          example: files
+          type: string
+      type: object
+    apimodel.FilesPropertyValue:
+      properties:
+        files:
+          description: The file values of the property
+          example:
+          - '[''fileId'']'
+          items:
+            type: string
+          type: array
+          uniqueItems: false
+        format:
+          $ref: '#/components/schemas/apimodel.PropertyFormat'
+        id:
+          description: The id of the property
+          example: bafyreids36kpw5ppuwm3ce2p4ezb3ab7cihhkq6yfbwzwpp4mln7rcgw7a
+          type: string
+        key:
+          description: The key of the property
+          example: files
+          type: string
+        name:
+          description: The name of the property
+          example: Files
+          type: string
+        object:
+          description: The data model of the object
+          example: property
+          type: string
+      type: object
+    apimodel.Filter:
       properties:
         condition:
           description: The filter condition
+          enum:
+          - equal
+          - not_equal
+          - greater
+          - less
+          - greater_or_equal
+          - less_or_equal
+          - like
+          - not_like
+          - in
+          - not_in
+          - empty
+          - not_empty
+          - all_in
+          - not_all_in
+          - exact_in
+          - not_exact_in
+          - exists
           example: contains
           type: string
         format:
-          description: The format of the property used for filtering
-          example: text
-          type: string
+          $ref: '#/components/schemas/apimodel.PropertyFormat'
         id:
           description: The id of the filter
           example: 67bf3f21cda9134102e2422c
@@ -50,558 +339,23 @@ components:
           example: Some value...
           type: string
       type: object
-    list.Sort:
-      properties:
-        format:
-          description: The format of the property used for sorting
-          example: text
-          type: string
-        id:
-          description: The id of the sort
-          example: 67bf3f21cda9134102e2422c
-          type: string
-        property_key:
-          description: The property key used for sorting
-          example: name
-          type: string
-        sort_type:
-          description: The sort direction
-          example: asc
-          type: string
+    apimodel.Icon:
+      description: The icon of the object
+      oneOf:
+      - $ref: '#/components/schemas/apimodel.EmojiIcon'
+      - $ref: '#/components/schemas/apimodel.FileIcon'
+      - $ref: '#/components/schemas/apimodel.NamedIcon'
       type: object
-    list.View:
-      properties:
-        filters:
-          description: The list of filters
-          items:
-            $ref: '#/components/schemas/list.Filter'
-          type: array
-          uniqueItems: false
-        id:
-          description: The id of the view
-          example: 67bf3f21cda9134102e2422c
-          type: string
-        layout:
-          description: The layout of the view
-          enum:
-          - grid
-          - table
-          example: grid
-          type: string
-        name:
-          description: The name of the view
-          example: All
-          type: string
-        sorts:
-          description: The list of sorts
-          items:
-            $ref: '#/components/schemas/list.Sort'
-          type: array
-          uniqueItems: false
-      type: object
-    object.Block:
-      properties:
-        align:
-          description: The alignment of the block
-          enum:
-          - AlignLeft
-          - AlignCenter
-          - AlignRight
-          - AlignJustify
-          example: AlignLeft
-          type: string
-        background_color:
-          description: The background color of the block
-          example: red
-          type: string
-        children_ids:
-          description: The ids of the block's children
-          example:
-          - '[''6797ce8ecda913cde14b02dc'']'
-          items:
-            type: string
-          type: array
-          uniqueItems: false
-        file:
-          $ref: '#/components/schemas/object.File'
-        id:
-          description: The id of the block
-          example: 64394517de52ad5acb89c66c
-          type: string
-        property:
-          $ref: '#/components/schemas/object.Property'
-        text:
-          $ref: '#/components/schemas/object.Text'
-        vertical_align:
-          description: The vertical alignment of the block
-          enum:
-          - VerticalAlignTop
-          - VerticalAlignMiddle
-          - VerticalAlignBottom
-          example: VerticalAlignTop
-          type: string
-      type: object
-    object.CreateObjectRequest:
-      properties:
-        body:
-          description: The body of the object
-          example: This is the body of the object. Markdown syntax is supported here.
-          type: string
-        description:
-          description: The description of the object
-          example: This is a description of the object.
-          type: string
-        icon:
-          $ref: '#/components/schemas/util.Icon'
-        name:
-          description: The name of the object
-          example: My object
-          type: string
-        source:
-          description: The source url, only applicable for bookmarks
-          example: https://bookmark-source.com
-          type: string
-        template_id:
-          description: The id of the template to use
-          example: bafyreictrp3obmnf6dwejy5o4p7bderaaia4bdg2psxbfzf44yya5uutge
-          type: string
-        type_key:
-          description: The key of the type of object to create
-          example: ot-page
-          type: string
-      type: object
-    object.File:
-      description: The file of the block, if applicable
-      properties:
-        added_at:
-          description: The added at of the file
-          type: integer
-        hash:
-          description: The hash of the file
-          type: string
-        mime:
-          description: The mime of the file
-          type: string
-        name:
-          description: The name of the file
-          type: string
-        size:
-          description: The size of the file
-          type: integer
-        state:
-          description: The state of the file
-          type: string
-        style:
-          description: The style of the file
-          type: string
-        target_object_id:
-          description: The target object id of the file
-          type: string
-        type:
-          description: The type of the file
-          type: string
-      type: object
-    object.Object:
-      description: The object
-      properties:
-        archived:
-          description: Whether the object is archived
-          example: false
-          type: boolean
-        blocks:
-          description: The blocks of the object
-          items:
-            $ref: '#/components/schemas/object.Block'
-          type: array
-          uniqueItems: false
-        icon:
-          $ref: '#/components/schemas/util.Icon'
-        id:
-          description: The id of the object
-          example: bafyreie6n5l5nkbjal37su54cha4coy7qzuhrnajluzv5qd5jvtsrxkequ
-          type: string
-        layout:
-          description: The layout of the object
-          example: basic
-          type: string
-        name:
-          description: The name of the object
-          example: My object
-          type: string
-        object:
-          description: The data model of the object
-          example: object
-          type: string
-        properties:
-          description: The properties of the object
-          items:
-            $ref: '#/components/schemas/object.Property'
-          type: array
-          uniqueItems: false
-        snippet:
-          description: The snippet of the object, especially important for notes as
-            they don't have a name
-          example: The beginning of the object body...
-          type: string
-        space_id:
-          description: The id of the space the object is in
-          example: bafyreigyfkt6rbv24sbv5aq2hko3bhmv5xxlf22b4bypdu6j7hnphm3psq.23me69r569oi1
-          type: string
-        type:
-          $ref: '#/components/schemas/object.Type'
-      type: object
-    object.ObjectResponse:
-      properties:
-        object:
-          $ref: '#/components/schemas/object.Object'
-      type: object
-    object.Property:
-      description: The property block, if applicable
-      properties:
-        checkbox:
-          description: The checkbox value, if applicable
-          example: true
-          type: boolean
-        date:
-          description: The date value, if applicable
-          example: "2025-02-14T12:34:56Z"
-          type: string
-        email:
-          description: The email value, if applicable
-          example: example@example.com
-          type: string
-        file:
-          description: The file references, if applicable
-          example:
-          - '[''fileId'']'
-          items:
-            type: string
-          type: array
-          uniqueItems: false
-        format:
-          description: The format of the property
-          enum:
-          - text
-          - number
-          - select
-          - multi_select
-          - date
-          - file
-          - checkbox
-          - url
-          - email
-          - phone
-          - object
-          example: date
-          type: string
-        id:
-          description: The id of the property
-          example: last_modified_date
-          type: string
-        multi_select:
-          description: The multi-select values, if applicable
-          items:
-            $ref: '#/components/schemas/object.Tag'
-          type: array
-          uniqueItems: false
-        name:
-          description: The name of the property
-          example: Last modified date
-          type: string
-        number:
-          description: The number value, if applicable
-          example: 42
-          type: number
-        object:
-          description: The object references, if applicable
-          example:
-          - '[''objectId'']'
-          items:
-            type: string
-          type: array
-          uniqueItems: false
-        phone:
-          description: The phone number value, if applicable
-          example: "+1234567890"
-          type: string
-        select:
-          $ref: '#/components/schemas/object.Tag'
-        text:
-          description: The text value, if applicable
-          example: Some text...
-          type: string
-        url:
-          description: The url value, if applicable
-          example: https://example.com
-          type: string
-      type: object
-    object.Tag:
-      description: The select value, if applicable
-      properties:
-        color:
-          description: The color of the tag
-          example: yellow
-          type: string
-        id:
-          description: The id of the tag
-          example: bafyreiaixlnaefu3ci22zdenjhsdlyaeeoyjrsid5qhfeejzlccijbj7sq
-          type: string
-        name:
-          description: The name of the tag
-          example: in-progress
-          type: string
-      type: object
-    object.Template:
-      description: The template
-      properties:
-        archived:
-          description: Whether the template is archived
-          example: false
-          type: boolean
-        icon:
-          $ref: '#/components/schemas/util.Icon'
-        id:
-          description: The id of the template
-          example: bafyreictrp3obmnf6dwejy5o4p7bderaaia4bdg2psxbfzf44yya5uutge
-          type: string
-        name:
-          description: The name of the template
-          example: My template
-          type: string
-        object:
-          description: The data model of the object
-          example: template
-          type: string
-      type: object
-    object.TemplateResponse:
-      properties:
-        template:
-          $ref: '#/components/schemas/object.Template'
-      type: object
-    object.Text:
-      description: The text of the block, if applicable
-      properties:
-        checked:
-          description: Whether the text is checked
-          example: true
-          type: boolean
-        color:
-          description: The color of the text
-          example: red
-          type: string
-        icon:
-          $ref: '#/components/schemas/util.Icon'
-        style:
-          description: The style of the text
-          enum:
-          - Paragraph
-          - Header1
-          - Header2
-          - Header3
-          - Header4
-          - Quote
-          - Code
-          - Title
-          - Checkbox
-          - Marked
-          - Numbered
-          - Toggle
-          - Description
-          - Callout
-          example: Paragraph
-          type: string
-        text:
-          description: The text
-          example: Some text...
-          type: string
-      type: object
-    object.Type:
-      description: The type of the object
-      properties:
-        archived:
-          description: Whether the type is archived
-          example: false
-          type: boolean
-        icon:
-          $ref: '#/components/schemas/util.Icon'
-        id:
-          description: The id of the type (which is unique across spaces)
-          example: bafyreigyb6l5szohs32ts26ku2j42yd65e6hqy2u3gtzgdwqv6hzftsetu
-          type: string
-        key:
-          description: The key of the type (can be the same across spaces for known
-            types)
-          example: ot-page
-          type: string
-        name:
-          description: The name of the type
-          example: Page
-          type: string
-        object:
-          description: The data model of the object
-          example: type
-          type: string
-        recommended_layout:
-          description: The recommended layout of the type
-          example: todo
-          type: string
-      type: object
-    object.TypeResponse:
-      properties:
-        type:
-          $ref: '#/components/schemas/object.Type'
-      type: object
-    pagination.PaginatedResponse-list_View:
-      properties:
-        data:
-          description: The list of items in the current result set
-          items:
-            $ref: '#/components/schemas/list.View'
-          type: array
-          uniqueItems: false
-        pagination:
-          $ref: '#/components/schemas/pagination.PaginationMeta'
-      type: object
-    pagination.PaginatedResponse-object_Object:
-      properties:
-        data:
-          description: The list of items in the current result set
-          items:
-            $ref: '#/components/schemas/object.Object'
-          type: array
-          uniqueItems: false
-        pagination:
-          $ref: '#/components/schemas/pagination.PaginationMeta'
-      type: object
-    pagination.PaginatedResponse-object_Template:
-      properties:
-        data:
-          description: The list of items in the current result set
-          items:
-            $ref: '#/components/schemas/object.Template'
-          type: array
-          uniqueItems: false
-        pagination:
-          $ref: '#/components/schemas/pagination.PaginationMeta'
-      type: object
-    pagination.PaginatedResponse-object_Type:
-      properties:
-        data:
-          description: The list of items in the current result set
-          items:
-            $ref: '#/components/schemas/object.Type'
-          type: array
-          uniqueItems: false
-        pagination:
-          $ref: '#/components/schemas/pagination.PaginationMeta'
-      type: object
-    pagination.PaginatedResponse-space_Member:
-      properties:
-        data:
-          description: The list of items in the current result set
-          items:
-            $ref: '#/components/schemas/space.Member'
-          type: array
-          uniqueItems: false
-        pagination:
-          $ref: '#/components/schemas/pagination.PaginationMeta'
-      type: object
-    pagination.PaginatedResponse-space_Space:
-      properties:
-        data:
-          description: The list of items in the current result set
-          items:
-            $ref: '#/components/schemas/space.Space'
-          type: array
-          uniqueItems: false
-        pagination:
-          $ref: '#/components/schemas/pagination.PaginationMeta'
-      type: object
-    pagination.PaginationMeta:
-      description: The pagination metadata for the response
-      properties:
-        has_more:
-          description: Indicates if there are more items available beyond the current
-            result set
-          example: true
-          type: boolean
-        limit:
-          description: The maximum number of items returned in the result set
-          example: 100
-          type: integer
-        offset:
-          description: The number of items skipped before starting to collect the
-            result set
-          example: 0
-          type: integer
-        total:
-          description: The total number of items available for the endpoint
-          example: 1024
-          type: integer
-      type: object
-    search.SearchRequest:
-      properties:
-        query:
-          description: The search term to look for in object names and snippets
-          example: test
-          type: string
-        sort:
-          $ref: '#/components/schemas/search.SortOptions'
-        types:
-          description: The types of objects to search for, specified by key or ID
-          example:
-          - ot-page
-          - ot-678043f0cda9133be777049f
-          - bafyreightzrdts2ymxyaeyzspwdfo2juspyam76ewq6qq7ixnw3523gs7q
-          items:
-            type: string
-          type: array
-          uniqueItems: false
-      type: object
-    search.SortDirection:
-      default: desc
-      description: The direction to sort the search results
+    apimodel.IconFormat:
+      description: The format of the icon
       enum:
-      - asc
-      - desc
+      - icon
       type: string
       x-enum-varnames:
-      - Asc
-      - Desc
-    search.SortOptions:
-      description: The sorting criteria and direction for the search results
-      properties:
-        direction:
-          $ref: '#/components/schemas/search.SortDirection'
-        property:
-          $ref: '#/components/schemas/search.SortProperty'
-      type: object
-    search.SortProperty:
-      default: last_modified_date
-      description: The property to sort the search results by
-      enum:
-      - created_date
-      - last_modified_date
-      - last_opened_date
-      - name
-      type: string
-      x-enum-varnames:
-      - CreatedDate
-      - LastModifiedDate
-      - LastOpenedDate
-      - Name
-    space.CreateSpaceRequest:
-      properties:
-        description:
-          description: The description of the space
-          example: The local-first wiki
-          type: string
-        name:
-          description: The name of the space
-          example: New Space
-          type: string
-      type: object
-    space.Member:
+      - IconFormatEmoji
+      - IconFormatFile
+      - IconFormatIcon
+    apimodel.Member:
       description: The member
       properties:
         global_name:
@@ -609,7 +363,7 @@ components:
           example: john.any
           type: string
         icon:
-          $ref: '#/components/schemas/util.Icon'
+          $ref: '#/components/schemas/apimodel.Icon'
         id:
           description: The profile object id of the member
           example: _participant_bafyreigyfkt6rbv24sbv5aq2hko1bhmv5xxlf22b4bypdu6j7hnphm3psq_23me69r569oi1_AAjEaEwPF4nkEh9AWkqEnzcQ8HziBB4ETjiTpvRCQvWnSMDZ
@@ -647,12 +401,504 @@ components:
           example: active
           type: string
       type: object
-    space.MemberResponse:
+    apimodel.MemberResponse:
       properties:
         member:
-          $ref: '#/components/schemas/space.Member'
+          $ref: '#/components/schemas/apimodel.Member'
       type: object
-    space.Space:
+    apimodel.MultiSelectPropertyLinkValue:
+      properties:
+        format:
+          $ref: '#/components/schemas/apimodel.PropertyFormat'
+        key:
+          example: tag
+          type: string
+        multi_select:
+          description: The selected tag values of the property
+          items:
+            type: string
+          type: array
+          uniqueItems: false
+      type: object
+    apimodel.MultiSelectPropertyValue:
+      properties:
+        format:
+          $ref: '#/components/schemas/apimodel.PropertyFormat'
+        id:
+          description: The id of the property
+          example: bafyreids36kpw5ppuwm3ce2p4ezb3ab7cihhkq6yfbwzwpp4mln7rcgw7a
+          type: string
+        key:
+          description: The key of the property
+          example: tag
+          type: string
+        multi_select:
+          description: The selected tag values of the property
+          items:
+            $ref: '#/components/schemas/apimodel.Tag'
+          type: array
+          uniqueItems: false
+        name:
+          description: The name of the property
+          example: Tag
+          type: string
+        object:
+          description: The data model of the object
+          example: property
+          type: string
+      type: object
+    apimodel.NamedIcon:
+      properties:
+        color:
+          $ref: '#/components/schemas/apimodel.Color'
+        format:
+          $ref: '#/components/schemas/apimodel.IconFormat'
+        name:
+          description: The name of the icon
+          example: document
+          type: string
+      type: object
+    apimodel.NumberPropertyLinkValue:
+      properties:
+        format:
+          $ref: '#/components/schemas/apimodel.PropertyFormat'
+        key:
+          example: height
+          type: string
+        number:
+          description: The number value of the property
+          example: 42
+          type: number
+      type: object
+    apimodel.NumberPropertyValue:
+      properties:
+        format:
+          $ref: '#/components/schemas/apimodel.PropertyFormat'
+        id:
+          description: The id of the property
+          example: bafyreids36kpw5ppuwm3ce2p4ezb3ab7cihhkq6yfbwzwpp4mln7rcgw7a
+          type: string
+        key:
+          description: The key of the property
+          example: height
+          type: string
+        name:
+          description: The name of the property
+          example: Height
+          type: string
+        number:
+          description: The number value of the property
+          example: 42
+          type: number
+        object:
+          description: The data model of the object
+          example: property
+          type: string
+      type: object
+    apimodel.Object:
+      properties:
+        archived:
+          description: Whether the object is archived
+          example: false
+          type: boolean
+        icon:
+          $ref: '#/components/schemas/apimodel.Icon'
+        id:
+          description: The id of the object
+          example: bafyreie6n5l5nkbjal37su54cha4coy7qzuhrnajluzv5qd5jvtsrxkequ
+          type: string
+        layout:
+          $ref: '#/components/schemas/apimodel.ObjectLayout'
+        name:
+          description: The name of the object
+          example: My object
+          type: string
+        object:
+          description: The data model of the object
+          example: object
+          type: string
+        properties:
+          description: The properties of the object
+          items:
+            $ref: '#/components/schemas/apimodel.PropertyWithValue'
+          type: array
+          uniqueItems: false
+        snippet:
+          description: The snippet of the object, especially important for notes as
+            they don't have a name
+          example: The beginning of the object body...
+          type: string
+        space_id:
+          description: The id of the space the object is in
+          example: bafyreigyfkt6rbv24sbv5aq2hko3bhmv5xxlf22b4bypdu6j7hnphm3psq.23me69r569oi1
+          type: string
+        type:
+          $ref: '#/components/schemas/apimodel.Type'
+      type: object
+    apimodel.ObjectLayout:
+      description: The layout of the object
+      example: basic
+      type: string
+      x-enum-varnames:
+      - ObjectLayoutBasic
+      - ObjectLayoutProfile
+      - ObjectLayoutAction
+      - ObjectLayoutNote
+      - ObjectLayoutBookmark
+      - ObjectLayoutSet
+      - ObjectLayoutCollection
+      - ObjectLayoutParticipant
+    apimodel.ObjectResponse:
+      properties:
+        object:
+          $ref: '#/components/schemas/apimodel.ObjectWithBody'
+      type: object
+    apimodel.ObjectWithBody:
+      description: The object
+      properties:
+        archived:
+          description: Whether the object is archived
+          example: false
+          type: boolean
+        icon:
+          $ref: '#/components/schemas/apimodel.Icon'
+        id:
+          description: The id of the object
+          example: bafyreie6n5l5nkbjal37su54cha4coy7qzuhrnajluzv5qd5jvtsrxkequ
+          type: string
+        layout:
+          description: The layout of the object
+          example: basic
+          type: string
+          x-enum-varnames:
+          - ObjectLayoutBasic
+          - ObjectLayoutProfile
+          - ObjectLayoutAction
+          - ObjectLayoutNote
+          - ObjectLayoutBookmark
+          - ObjectLayoutSet
+          - ObjectLayoutCollection
+          - ObjectLayoutParticipant
+        markdown:
+          description: The markdown body of the object
+          example: |-
+            # This is the title
+            ...
+          type: string
+        name:
+          description: The name of the object
+          example: My object
+          type: string
+        object:
+          description: The data model of the object
+          example: object
+          type: string
+        properties:
+          description: The properties of the object
+          items:
+            $ref: '#/components/schemas/apimodel.PropertyWithValue'
+          type: array
+          uniqueItems: false
+        snippet:
+          description: The snippet of the object, especially important for notes as
+            they don't have a name
+          example: The beginning of the object body...
+          type: string
+        space_id:
+          description: The id of the space the object is in
+          example: bafyreigyfkt6rbv24sbv5aq2hko3bhmv5xxlf22b4bypdu6j7hnphm3psq.23me69r569oi1
+          type: string
+        type:
+          $ref: '#/components/schemas/apimodel.Type'
+      type: object
+    apimodel.ObjectsPropertyLinkValue:
+      properties:
+        format:
+          $ref: '#/components/schemas/apimodel.PropertyFormat'
+        key:
+          example: creator
+          type: string
+        objects:
+          description: The object values of the property
+          example:
+          - '[''objectId'']'
+          items:
+            type: string
+          type: array
+          uniqueItems: false
+      type: object
+    apimodel.ObjectsPropertyValue:
+      properties:
+        format:
+          $ref: '#/components/schemas/apimodel.PropertyFormat'
+        id:
+          description: The id of the property
+          example: bafyreids36kpw5ppuwm3ce2p4ezb3ab7cihhkq6yfbwzwpp4mln7rcgw7a
+          type: string
+        key:
+          description: The key of the property
+          example: creator
+          type: string
+        name:
+          description: The name of the property
+          example: Created by
+          type: string
+        object:
+          description: The data model of the object
+          example: property
+          type: string
+        objects:
+          description: The object values of the property
+          example:
+          - '[''objectId'']'
+          items:
+            type: string
+          type: array
+          uniqueItems: false
+      type: object
+    apimodel.PhonePropertyLinkValue:
+      properties:
+        format:
+          $ref: '#/components/schemas/apimodel.PropertyFormat'
+        key:
+          example: phone
+          type: string
+        phone:
+          description: The phone value of the property
+          example: "+1234567890"
+          type: string
+      type: object
+    apimodel.PhonePropertyValue:
+      properties:
+        format:
+          $ref: '#/components/schemas/apimodel.PropertyFormat'
+        id:
+          description: The id of the property
+          example: bafyreids36kpw5ppuwm3ce2p4ezb3ab7cihhkq6yfbwzwpp4mln7rcgw7a
+          type: string
+        key:
+          description: The key of the property
+          example: phone
+          type: string
+        name:
+          description: The name of the property
+          example: Phone
+          type: string
+        object:
+          description: The data model of the object
+          example: property
+          type: string
+        phone:
+          description: The phone value of the property
+          example: "+1234567890"
+          type: string
+      type: object
+    apimodel.Property:
+      description: The property
+      properties:
+        format:
+          $ref: '#/components/schemas/apimodel.PropertyFormat'
+        id:
+          description: The id of the property
+          example: bafyreids36kpw5ppuwm3ce2p4ezb3ab7cihhkq6yfbwzwpp4mln7rcgw7a
+          type: string
+        key:
+          description: The key of the property
+          example: last_modified_date
+          type: string
+        name:
+          description: The name of the property
+          example: Last modified date
+          type: string
+        object:
+          description: The data model of the object
+          example: property
+          type: string
+      type: object
+    apimodel.PropertyFormat:
+      description: The format of the property used for filtering
+      enum:
+      - text
+      - number
+      - select
+      - multi_select
+      - date
+      - files
+      - checkbox
+      - url
+      - email
+      - phone
+      - objects
+      type: string
+      x-enum-varnames:
+      - PropertyFormatText
+      - PropertyFormatNumber
+      - PropertyFormatSelect
+      - PropertyFormatMultiSelect
+      - PropertyFormatDate
+      - PropertyFormatFiles
+      - PropertyFormatCheckbox
+      - PropertyFormatUrl
+      - PropertyFormatEmail
+      - PropertyFormatPhone
+      - PropertyFormatObjects
+    apimodel.PropertyLink:
+      properties:
+        format:
+          $ref: '#/components/schemas/apimodel.PropertyFormat'
+        key:
+          description: The key of the property
+          example: last_modified_date
+          type: string
+        name:
+          description: The name of the property
+          example: Last modified date
+          type: string
+      required:
+      - format
+      - key
+      - name
+      type: object
+    apimodel.PropertyLinkWithValue:
+      oneOf:
+      - $ref: '#/components/schemas/apimodel.TextPropertyLinkValue'
+      - $ref: '#/components/schemas/apimodel.NumberPropertyLinkValue'
+      - $ref: '#/components/schemas/apimodel.SelectPropertyLinkValue'
+      - $ref: '#/components/schemas/apimodel.MultiSelectPropertyLinkValue'
+      - $ref: '#/components/schemas/apimodel.DatePropertyLinkValue'
+      - $ref: '#/components/schemas/apimodel.FilesPropertyLinkValue'
+      - $ref: '#/components/schemas/apimodel.CheckboxPropertyLinkValue'
+      - $ref: '#/components/schemas/apimodel.URLPropertyLinkValue'
+      - $ref: '#/components/schemas/apimodel.EmailPropertyLinkValue'
+      - $ref: '#/components/schemas/apimodel.PhonePropertyLinkValue'
+      - $ref: '#/components/schemas/apimodel.ObjectsPropertyLinkValue'
+      type: object
+    apimodel.PropertyResponse:
+      properties:
+        property:
+          $ref: '#/components/schemas/apimodel.Property'
+      type: object
+    apimodel.PropertyWithValue:
+      oneOf:
+      - $ref: '#/components/schemas/apimodel.TextPropertyValue'
+      - $ref: '#/components/schemas/apimodel.NumberPropertyValue'
+      - $ref: '#/components/schemas/apimodel.SelectPropertyValue'
+      - $ref: '#/components/schemas/apimodel.MultiSelectPropertyValue'
+      - $ref: '#/components/schemas/apimodel.DatePropertyValue'
+      - $ref: '#/components/schemas/apimodel.FilesPropertyValue'
+      - $ref: '#/components/schemas/apimodel.CheckboxPropertyValue'
+      - $ref: '#/components/schemas/apimodel.URLPropertyValue'
+      - $ref: '#/components/schemas/apimodel.EmailPropertyValue'
+      - $ref: '#/components/schemas/apimodel.PhonePropertyValue'
+      - $ref: '#/components/schemas/apimodel.ObjectsPropertyValue'
+      type: object
+    apimodel.SearchRequest:
+      properties:
+        query:
+          description: The search term to look for in object names and snippets
+          example: test
+          type: string
+        sort:
+          $ref: '#/components/schemas/apimodel.SortOptions'
+        types:
+          description: The types of objects to search for, specified by key or ID
+          example:
+          - page
+          - 678043f0cda9133be777049f
+          - bafyreightzrdts2ymxyaeyzspwdfo2juspyam76ewq6qq7ixnw3523gs7q
+          items:
+            type: string
+          type: array
+          uniqueItems: false
+      type: object
+    apimodel.SelectPropertyLinkValue:
+      properties:
+        format:
+          $ref: '#/components/schemas/apimodel.PropertyFormat'
+        key:
+          example: status
+          type: string
+        select:
+          description: The selected tag value of the property
+          type: string
+      type: object
+    apimodel.SelectPropertyValue:
+      properties:
+        format:
+          $ref: '#/components/schemas/apimodel.PropertyFormat'
+        id:
+          description: The id of the property
+          example: bafyreids36kpw5ppuwm3ce2p4ezb3ab7cihhkq6yfbwzwpp4mln7rcgw7a
+          type: string
+        key:
+          description: The key of the property
+          example: status
+          type: string
+        name:
+          description: The name of the property
+          example: Status
+          type: string
+        object:
+          description: The data model of the object
+          example: property
+          type: string
+        select:
+          $ref: '#/components/schemas/apimodel.Tag'
+      type: object
+    apimodel.Sort:
+      properties:
+        format:
+          $ref: '#/components/schemas/apimodel.PropertyFormat'
+        id:
+          description: The id of the sort
+          example: 67bf3f21cda9134102e2422c
+          type: string
+        property_key:
+          description: The property key used for sorting
+          example: name
+          type: string
+        sort_type:
+          description: The sort direction
+          enum:
+          - asc
+          - desc
+          - custom
+          example: asc
+          type: string
+      type: object
+    apimodel.SortDirection:
+      default: desc
+      description: The direction to sort the search results
+      enum:
+      - asc
+      - desc
+      type: string
+      x-enum-varnames:
+      - Asc
+      - Desc
+    apimodel.SortOptions:
+      description: The sorting criteria and direction for the search results
+      properties:
+        direction:
+          $ref: '#/components/schemas/apimodel.SortDirection'
+        property_key:
+          $ref: '#/components/schemas/apimodel.SortProperty'
+      type: object
+    apimodel.SortProperty:
+      default: last_modified_date
+      description: The property to sort the search results by
+      enum:
+      - created_date
+      - last_modified_date
+      - last_opened_date
+      - name
+      type: string
+      x-enum-varnames:
+      - CreatedDate
+      - LastModifiedDate
+      - LastOpenedDate
+      - Name
+    apimodel.Space:
       description: The space
       properties:
         description:
@@ -664,7 +910,7 @@ components:
           example: http://127.0.0.1:31006
           type: string
         icon:
-          $ref: '#/components/schemas/util.Icon'
+          $ref: '#/components/schemas/apimodel.Icon'
         id:
           description: The id of the space
           example: bafyreigyfkt6rbv24sbv5aq2hko3bhmv5xxlf22b4bypdu6j7hnphm3psq.23me69r569oi1
@@ -682,107 +928,495 @@ components:
           example: space
           type: string
       type: object
-    space.SpaceResponse:
+    apimodel.SpaceResponse:
       properties:
         space:
-          $ref: '#/components/schemas/space.Space'
+          $ref: '#/components/schemas/apimodel.Space'
+      type: object
+    apimodel.Tag:
+      description: The selected tag value of the property
+      properties:
+        color:
+          $ref: '#/components/schemas/apimodel.Color'
+        id:
+          description: The id of the tag
+          example: bafyreiaixlnaefu3ci22zdenjhsdlyaeeoyjrsid5qhfeejzlccijbj7sq
+          type: string
+        key:
+          description: The key of the tag
+          example: 67b0d3e3cda913b84c1299b1
+          type: string
+        name:
+          description: The name of the tag
+          example: in-progress
+          type: string
+        object:
+          description: The data model of the object
+          example: tag
+          type: string
+      type: object
+    apimodel.TagResponse:
+      properties:
+        tag:
+          $ref: '#/components/schemas/apimodel.Tag'
+      type: object
+    apimodel.TemplateResponse:
+      properties:
+        template:
+          $ref: '#/components/schemas/apimodel.ObjectWithBody'
+      type: object
+    apimodel.TextPropertyLinkValue:
+      properties:
+        format:
+          $ref: '#/components/schemas/apimodel.PropertyFormat'
+        key:
+          example: description
+          type: string
+        text:
+          description: The text value of the property
+          example: Some text...
+          type: string
+      type: object
+    apimodel.TextPropertyValue:
+      properties:
+        format:
+          $ref: '#/components/schemas/apimodel.PropertyFormat'
+        id:
+          description: The id of the property
+          example: bafyreids36kpw5ppuwm3ce2p4ezb3ab7cihhkq6yfbwzwpp4mln7rcgw7a
+          type: string
+        key:
+          description: The key of the property
+          example: description
+          type: string
+        name:
+          description: The name of the property
+          example: Description
+          type: string
+        object:
+          description: The data model of the object
+          example: property
+          type: string
+        text:
+          description: The text value of the property
+          example: Some text...
+          type: string
+      type: object
+    apimodel.TokenResponse:
+      properties:
+        app_key:
+          description: The app key used to authenticate requests
+          example: zhSG/zQRmgADyilWPtgdnfo1qD60oK02/SVgi1GaFt6=
+          type: string
+      type: object
+    apimodel.Type:
+      description: The type of the object
+      properties:
+        archived:
+          description: Whether the type is archived
+          example: false
+          type: boolean
+        icon:
+          $ref: '#/components/schemas/apimodel.Icon'
+        id:
+          description: The id of the type (which is unique across spaces)
+          example: bafyreigyb6l5szohs32ts26ku2j42yd65e6hqy2u3gtzgdwqv6hzftsetu
+          type: string
+        key:
+          description: The key of the type (can be the same across spaces for known
+            types)
+          example: page
+          type: string
+        layout:
+          description: The layout of the object
+          example: basic
+          type: string
+          x-enum-varnames:
+          - ObjectLayoutBasic
+          - ObjectLayoutProfile
+          - ObjectLayoutAction
+          - ObjectLayoutNote
+          - ObjectLayoutBookmark
+          - ObjectLayoutSet
+          - ObjectLayoutCollection
+          - ObjectLayoutParticipant
+        name:
+          description: The name of the type
+          example: Page
+          type: string
+        object:
+          description: The data model of the object
+          example: type
+          type: string
+        plural_name:
+          description: The plural name of the type
+          example: Pages
+          type: string
+        properties:
+          description: The properties linked to the type
+          items:
+            $ref: '#/components/schemas/apimodel.Property'
+          type: array
+          uniqueItems: false
+      type: object
+    apimodel.TypeLayout:
+      description: The layout of the type
+      example: basic
+      type: string
+      x-enum-varnames:
+      - TypeLayoutBasic
+      - TypeLayoutProfile
+      - TypeLayoutAction
+      - TypeLayoutNote
+    apimodel.TypeResponse:
+      properties:
+        type:
+          $ref: '#/components/schemas/apimodel.Type'
+      type: object
+    apimodel.URLPropertyLinkValue:
+      properties:
+        format:
+          $ref: '#/components/schemas/apimodel.PropertyFormat'
+        key:
+          example: source
+          type: string
+        url:
+          description: The URL value of the property
+          example: https://example.com
+          type: string
+      type: object
+    apimodel.URLPropertyValue:
+      properties:
+        format:
+          $ref: '#/components/schemas/apimodel.PropertyFormat'
+        id:
+          description: The id of the property
+          example: bafyreids36kpw5ppuwm3ce2p4ezb3ab7cihhkq6yfbwzwpp4mln7rcgw7a
+          type: string
+        key:
+          description: The key of the property
+          example: source
+          type: string
+        name:
+          description: The name of the property
+          example: Source
+          type: string
+        object:
+          description: The data model of the object
+          example: property
+          type: string
+        url:
+          description: The URL value of the property
+          example: https://example.com
+          type: string
+      type: object
+    apimodel.UpdateObjectRequest:
+      properties:
+        icon:
+          $ref: '#/components/schemas/apimodel.Icon'
+        name:
+          description: The name of the object
+          example: My object
+          type: string
+        properties:
+          description: '⚠ Warning: Properties are experimental and may change in the
+            next update. ⚠ The properties to set for the object'
+          items:
+            $ref: '#/components/schemas/apimodel.PropertyLinkWithValue'
+          type: array
+          uniqueItems: false
+      type: object
+    apimodel.UpdatePropertyRequest:
+      properties:
+        name:
+          description: The name to set for the property
+          example: Last modified date
+          type: string
+      required:
+      - name
+      type: object
+    apimodel.UpdateSpaceRequest:
+      properties:
+        description:
+          description: The description of the space
+          example: The local-first wiki
+          type: string
+        name:
+          description: The name of the space
+          example: New Space
+          type: string
+      type: object
+    apimodel.UpdateTagRequest:
+      properties:
+        color:
+          $ref: '#/components/schemas/apimodel.Color'
+        name:
+          description: The name to set for the tag
+          example: In progress
+          type: string
+      type: object
+    apimodel.UpdateTypeRequest:
+      properties:
+        icon:
+          $ref: '#/components/schemas/apimodel.Icon'
+        layout:
+          description: The layout of the type
+          example: basic
+          type: string
+          x-enum-varnames:
+          - TypeLayoutBasic
+          - TypeLayoutProfile
+          - TypeLayoutAction
+          - TypeLayoutNote
+        name:
+          description: The name to set for the type
+          example: Page
+          type: string
+        plural_name:
+          description: The plural name to set for the type
+          example: Pages
+          type: string
+        properties:
+          description: '⚠ Warning: Properties are experimental and may change in the
+            next update. ⚠ The properties to set for the type'
+          items:
+            $ref: '#/components/schemas/apimodel.PropertyLink'
+          type: array
+          uniqueItems: false
+      type: object
+    apimodel.View:
+      properties:
+        filters:
+          description: The list of filters
+          items:
+            $ref: '#/components/schemas/apimodel.Filter'
+          type: array
+          uniqueItems: false
+        id:
+          description: The id of the view
+          example: 67bf3f21cda9134102e2422c
+          type: string
+        layout:
+          description: The layout of the view
+          enum:
+          - grid
+          - table
+          example: grid
+          type: string
+        name:
+          description: The name of the view
+          example: All
+          type: string
+        sorts:
+          description: The list of sorts
+          items:
+            $ref: '#/components/schemas/apimodel.Sort'
+          type: array
+          uniqueItems: false
+      type: object
+    pagination.PaginatedResponse-apimodel_Member:
+      properties:
+        data:
+          description: The list of items in the current result set
+          items:
+            $ref: '#/components/schemas/apimodel.Member'
+          type: array
+          uniqueItems: false
+        pagination:
+          $ref: '#/components/schemas/pagination.PaginationMeta'
+      type: object
+    pagination.PaginatedResponse-apimodel_Object:
+      properties:
+        data:
+          description: The list of items in the current result set
+          items:
+            $ref: '#/components/schemas/apimodel.Object'
+          type: array
+          uniqueItems: false
+        pagination:
+          $ref: '#/components/schemas/pagination.PaginationMeta'
+      type: object
+    pagination.PaginatedResponse-apimodel_Property:
+      properties:
+        data:
+          description: The list of items in the current result set
+          items:
+            $ref: '#/components/schemas/apimodel.Property'
+          type: array
+          uniqueItems: false
+        pagination:
+          $ref: '#/components/schemas/pagination.PaginationMeta'
+      type: object
+    pagination.PaginatedResponse-apimodel_Space:
+      properties:
+        data:
+          description: The list of items in the current result set
+          items:
+            $ref: '#/components/schemas/apimodel.Space'
+          type: array
+          uniqueItems: false
+        pagination:
+          $ref: '#/components/schemas/pagination.PaginationMeta'
+      type: object
+    pagination.PaginatedResponse-apimodel_Tag:
+      properties:
+        data:
+          description: The list of items in the current result set
+          items:
+            $ref: '#/components/schemas/apimodel.Tag'
+          type: array
+          uniqueItems: false
+        pagination:
+          $ref: '#/components/schemas/pagination.PaginationMeta'
+      type: object
+    pagination.PaginatedResponse-apimodel_Type:
+      properties:
+        data:
+          description: The list of items in the current result set
+          items:
+            $ref: '#/components/schemas/apimodel.Type'
+          type: array
+          uniqueItems: false
+        pagination:
+          $ref: '#/components/schemas/pagination.PaginationMeta'
+      type: object
+    pagination.PaginatedResponse-apimodel_View:
+      properties:
+        data:
+          description: The list of items in the current result set
+          items:
+            $ref: '#/components/schemas/apimodel.View'
+          type: array
+          uniqueItems: false
+        pagination:
+          $ref: '#/components/schemas/pagination.PaginationMeta'
+      type: object
+    pagination.PaginationMeta:
+      description: The pagination metadata for the response
+      properties:
+        has_more:
+          description: Indicates if there are more items available beyond the current
+            result set
+          example: true
+          type: boolean
+        limit:
+          description: The maximum number of items returned in the result set
+          example: 100
+          type: integer
+        offset:
+          description: The number of items skipped before starting to collect the
+            result set
+          example: 0
+          type: integer
+        total:
+          description: The total number of items available for the endpoint
+          example: 1000
+          type: integer
       type: object
     util.ForbiddenError:
       properties:
-        error:
-          properties:
-            message:
-              example: Forbidden
-              type: string
-          type: object
+        code:
+          example: forbidden
+          type: string
+        message:
+          example: Forbidden
+          type: string
+        object:
+          example: error
+          type: string
+        status:
+          example: 403
+          type: integer
       type: object
     util.GoneError:
       properties:
-        error:
-          properties:
-            message:
-              example: Resource is gone
-              type: string
-          type: object
+        code:
+          example: resource_gone
+          type: string
+        message:
+          example: Resource is gone
+          type: string
+        object:
+          example: error
+          type: string
+        status:
+          example: 410
+          type: integer
       type: object
-    util.Icon:
-      description: The icon of the object
-      properties:
-        color:
-          description: The color of the icon
-          example: red
-          type: string
-        emoji:
-          description: The emoji of the icon
-          example: "\U0001F4C4"
-          type: string
-        file:
-          description: The file of the icon
-          example: http://127.0.0.1:31006/image/bafybeieptz5hvcy6txplcvphjbbh5yjc2zqhmihs3owkh5oab4ezauzqay
-          type: string
-        format:
-          $ref: '#/components/schemas/util.IconFormat'
-        name:
-          description: The name of the icon
-          example: document
-          type: string
-      type: object
-    util.IconFormat:
-      description: The type of the icon
-      enum:
-      - emoji
-      - file
-      - icon
-      example: emoji
-      type: string
-      x-enum-varnames:
-      - IconFormatEmoji
-      - IconFormatFile
-      - IconFormatIcon
     util.NotFoundError:
       properties:
-        error:
-          properties:
-            message:
-              example: Resource not found
-              type: string
-          type: object
+        code:
+          example: object_not_found
+          type: string
+        message:
+          example: Resource not found
+          type: string
+        object:
+          example: error
+          type: string
+        status:
+          example: 404
+          type: integer
       type: object
     util.RateLimitError:
       properties:
-        error:
-          properties:
-            message:
-              example: Rate limit exceeded
-              type: string
-          type: object
+        code:
+          example: rate_limit_exceeded
+          type: string
+        message:
+          example: Rate limit exceeded
+          type: string
+        object:
+          example: error
+          type: string
+        status:
+          example: 429
+          type: integer
       type: object
     util.ServerError:
       properties:
-        error:
-          properties:
-            message:
-              example: Internal server error
-              type: string
-          type: object
+        code:
+          example: internal_server_error
+          type: string
+        message:
+          example: Internal server error
+          type: string
+        object:
+          example: error
+          type: string
+        status:
+          example: 500
+          type: integer
       type: object
     util.UnauthorizedError:
       properties:
-        error:
-          properties:
-            message:
-              example: Unauthorized
-              type: string
-          type: object
+        code:
+          example: unauthorized
+          type: string
+        message:
+          example: Unauthorized
+          type: string
+        object:
+          example: error
+          type: string
+        status:
+          example: 401
+          type: integer
       type: object
     util.ValidationError:
       properties:
-        error:
-          properties:
-            message:
-              example: Bad request
-              type: string
-          type: object
+        code:
+          example: bad_request
+          type: string
+        message:
+          example: Bad request
+          type: string
+        object:
+          example: error
+          type: string
+        status:
+          example: 400
+          type: integer
       type: object
   securitySchemes:
     bearerauth:
@@ -797,27 +1431,35 @@ info:
     email: support@anytype.io
     name: Anytype Support
     url: https://anytype.io/contact
-  description: This API allows interaction with Anytype resources such as spaces,
-    objects and types.
+  description: This API empowers seamless interaction with Anytype's resources—spaces,
+    objects, properties, types, templates, and beyond.
   license:
     name: Any Source Available License 1.0
     url: https://github.com/anyproto/anytype-api/blob/main/LICENSE.md
   termsOfService: https://anytype.io/terms_of_use
   title: Anytype API
-  version: "2025-03-17"
+  version: "2025-04-22"
 openapi: 3.1.0
 paths:
   /auth/display_code:
     post:
-      description: This endpoint initiates a secure authentication flow by generating
-        a new challenge. Clients must supply the name of the application (via a query
-        parameter) that is requesting authentication. On success, the service returns
-        a unique challenge ID. This challenge ID must then be used with the token
-        endpoint (see below) to solve the challenge and retrieve an authentication
-        token. In essence, this endpoint “boots up” the login process and is the first
-        step in a multi-phase authentication sequence.
+      description: Generates a one-time authentication challenge for granting API
+        access to the user's vault. Upon providing a valid `app_name`, the server
+        issues a unique `challenge_id` and displays a short code within the Anytype
+        Desktop On success, the service returns a unique challenge ID. This challenge
+        ID must then be used with the token endpoint (see below) to solve the challenge
+        and retrieve an authentication token. This mechanism ensures that only trusted
+        applications and authorized users gain access.
+      operationId: createAuthChallenge
       parameters:
-      - description: App name requesting the challenge
+      - description: The version of the API to use
+        in: header
+        name: Anytype-Version
+        required: true
+        schema:
+          default: "2025-04-22"
+          type: string
+      - description: The name of the app requesting API access
         in: query
         name: app_name
         required: true
@@ -833,8 +1475,8 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/auth.DisplayCodeResponse'
-          description: Challenge ID
+                $ref: '#/components/schemas/apimodel.DisplayCodeResponse'
+          description: The challenge ID associated with the started challenge
         "400":
           content:
             application/json:
@@ -849,18 +1491,26 @@ paths:
           description: Internal server error
       summary: Start new challenge
       tags:
-      - auth
+      - Auth
   /auth/token:
     post:
       description: After receiving a challenge ID from the display_code endpoint,
         the client calls this endpoint to provide the corresponding 4-digit code (also
         via a query parameter) along with the challenge ID. The endpoint verifies
-        that the challenge solution is correct and, if it is, returns an ephemeral
-        session token together with a permanent app key. These tokens are then used
-        in subsequent API requests to authorize access. This endpoint is central to
-        ensuring that only properly authenticated sessions can access further resources.
+        that the challenge solution is correct and, if it is, returns a permanent
+        app key. This endpoint is central to the authentication process, as it validates
+        the user's identity and issues a token that can be used for further interactions
+        with the API.
+      operationId: solveAuthChallenge
       parameters:
-      - description: Challenge ID
+      - description: The version of the API to use
+        in: header
+        name: Anytype-Version
+        required: true
+        schema:
+          default: "2025-04-22"
+          type: string
+      - description: The ID of the challenge to solve
         in: query
         name: challenge_id
         required: true
@@ -882,8 +1532,9 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/auth.TokenResponse'
-          description: Authentication token
+                $ref: '#/components/schemas/apimodel.TokenResponse'
+          description: The app key that can be used in the Authorization header for
+            subsequent requests
         "400":
           content:
             application/json:
@@ -896,20 +1547,26 @@ paths:
               schema:
                 $ref: '#/components/schemas/util.ServerError'
           description: Internal server error
-      summary: Retrieve token
+      summary: Solve challenge
       tags:
-      - auth
+      - Auth
   /search:
     post:
-      description: This endpoint executes a global search over every space the user
-        has access to. It accepts pagination parameters (offset and limit) and a JSON
-        body containing search criteria. The criteria include a search query string,
-        an optional list of object types, and sort options (e.g. ascending/descending
-        by creation, modification, or last opened dates). Internally, the endpoint
-        aggregates results from each space, merges and sorts them (after last modified
-        date by default), and returns a unified, paginated list of objects that match
-        the search parameters.
+      description: 'Executes a global search over every space accessible by the authenticated
+        user. The request body must specify the `query` text, optional filters on
+        object types (e.g., "page", "task"), and sort directives (default: descending
+        by last updated timestamp). Pagination is controlled via `offset` and `limit`
+        query parameters to facilitate lazy loading in client UIs. The response returns
+        a unified list of matched objects with their metadata and properties.'
+      operationId: searchGlobal
       parameters:
+      - description: The version of the API to use
+        in: header
+        name: Anytype-Version
+        required: true
+        schema:
+          default: "2025-04-22"
+          type: string
       - description: The number of items to skip before starting to collect the result
           set
         in: query
@@ -928,16 +1585,16 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/search.SearchRequest'
-        description: Search parameters
+              $ref: '#/components/schemas/apimodel.SearchRequest'
+        description: The search parameters used to filter and sort the results
         required: true
       responses:
         "200":
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/pagination.PaginatedResponse-object_Object'
-          description: List of objects
+                $ref: '#/components/schemas/pagination.PaginatedResponse-apimodel_Object'
+          description: The list of objects matching the search criteria
         "401":
           content:
             application/json:
@@ -954,14 +1611,22 @@ paths:
       - bearerauth: []
       summary: Search objects across all spaces
       tags:
-      - search
+      - Search
   /spaces:
     get:
       description: Retrieves a paginated list of all spaces that are accessible by
         the authenticated user. Each space record contains detailed information such
         as the space ID, name, icon (derived either from an emoji or image URL), and
         additional metadata. This endpoint is key to displaying a user’s workspaces.
+      operationId: listSpaces
       parameters:
+      - description: The version of the API to use
+        in: header
+        name: Anytype-Version
+        required: true
+        schema:
+          default: "2025-04-22"
+          type: string
       - description: The number of items to skip before starting to collect the result
           set
         in: query
@@ -981,8 +1646,8 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/pagination.PaginatedResponse-space_Space'
-          description: List of spaces
+                $ref: '#/components/schemas/pagination.PaginatedResponse-apimodel_Space'
+          description: The list of spaces accessible by the authenticated user
         "401":
           content:
             application/json:
@@ -999,28 +1664,37 @@ paths:
       - bearerauth: []
       summary: List spaces
       tags:
-      - spaces
+      - Spaces
     post:
-      description: Creates a new workspace (or space) based on a supplied name in
+      description: Creates a new space based on a supplied name and description in
         the JSON request body. The endpoint is subject to rate limiting and automatically
         applies default configurations such as generating a random icon and initializing
         the workspace with default settings (for example, a default dashboard or home
         page). On success, the new space’s full metadata is returned, enabling the
-        client to immediately switch context to the new space.
+        client to immediately switch context to the new internal.
+      operationId: createSpace
+      parameters:
+      - description: The version of the API to use
+        in: header
+        name: Anytype-Version
+        required: true
+        schema:
+          default: "2025-04-22"
+          type: string
       requestBody:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/space.CreateSpaceRequest'
-        description: Space to create
+              $ref: '#/components/schemas/apimodel.CreateSpaceRequest'
+        description: The space to create
         required: true
       responses:
         "200":
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/space.SpaceResponse'
-          description: Space created successfully
+                $ref: '#/components/schemas/apimodel.SpaceResponse'
+          description: The created space
         "400":
           content:
             application/json:
@@ -1033,7 +1707,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/util.UnauthorizedError'
           description: Unauthorized
-        "423":
+        "429":
           content:
             application/json:
               schema:
@@ -1049,15 +1723,23 @@ paths:
       - bearerauth: []
       summary: Create space
       tags:
-      - spaces
+      - Spaces
   /spaces/{space_id}:
     get:
       description: Fetches full details about a single space identified by its space
         ID. The response includes metadata such as the space name, icon, and various
         workspace IDs (home, archive, profile, etc.). This detailed view supports
         use cases such as displaying space-specific settings.
+      operationId: getSpace
       parameters:
-      - description: Space ID
+      - description: The version of the API to use
+        in: header
+        name: Anytype-Version
+        required: true
+        schema:
+          default: "2025-04-22"
+          type: string
+      - description: The ID of the space to retrieve
         in: path
         name: space_id
         required: true
@@ -1068,8 +1750,8 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/space.SpaceResponse'
-          description: Space
+                $ref: '#/components/schemas/apimodel.SpaceResponse'
+          description: The space details
         "401":
           content:
             application/json:
@@ -1092,7 +1774,82 @@ paths:
       - bearerauth: []
       summary: Get space
       tags:
-      - spaces
+      - Spaces
+    patch:
+      description: Updates the name or description of an existing space. The request
+        body should contain the new name and/or description in JSON format. This endpoint
+        is useful for renaming or rebranding a workspace without needing to recreate
+        it. The updated space’s metadata is returned in the response.
+      operationId: updateSpace
+      parameters:
+      - description: The version of the API to use
+        in: header
+        name: Anytype-Version
+        required: true
+        schema:
+          default: "2025-04-22"
+          type: string
+      - description: The ID of the space to update
+        in: path
+        name: space_id
+        required: true
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/apimodel.UpdateSpaceRequest'
+        description: The space details to update
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/apimodel.SpaceResponse'
+          description: The updated space
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/util.ValidationError'
+          description: Bad request
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/util.UnauthorizedError'
+          description: Unauthorized
+        "403":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/util.ForbiddenError'
+          description: Forbidden
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/util.NotFoundError'
+          description: Space not found
+        "429":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/util.RateLimitError'
+          description: Rate limit exceeded
+        "500":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/util.ServerError'
+          description: Internal server error
+      security:
+      - bearerauth: []
+      summary: Update space
+      tags:
+      - Spaces
   /spaces/{space_id}/lists/{list_id}/{view_id}/objects:
     get:
       description: Returns a paginated list of objects associated with a specific
@@ -1101,20 +1858,28 @@ paths:
         no view ID is specified, all list objects are returned without filtering and
         sorting. This endpoint helps clients to manage grouped objects (for example,
         tasks within a list) by returning information for each item of the list.
+      operationId: getListObjects
       parameters:
-      - description: Space ID
+      - description: The version of the API to use
+        in: header
+        name: Anytype-Version
+        required: true
+        schema:
+          default: "2025-04-22"
+          type: string
+      - description: The ID of the space to which the list belongs
         in: path
         name: space_id
         required: true
         schema:
           type: string
-      - description: List ID
+      - description: The ID of the list to retrieve objects for
         in: path
         name: list_id
         required: true
         schema:
           type: string
-      - description: View ID
+      - description: The ID of the view to retrieve objects for
         in: path
         name: view_id
         required: true
@@ -1137,8 +1902,8 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/pagination.PaginatedResponse-object_Object'
-          description: List of objects
+                $ref: '#/components/schemas/pagination.PaginatedResponse-apimodel_Object'
+          description: The list of objects associated with the specified list
         "401":
           content:
             application/json:
@@ -1161,21 +1926,31 @@ paths:
       - bearerauth: []
       summary: Get objects in list
       tags:
-      - lists
+      - Lists
   /spaces/{space_id}/lists/{list_id}/objects:
     post:
-      description: Enables clients to add one or more objects to a specific list (collection
-        only) by submitting a JSON array of object IDs. Upon success, the endpoint
-        returns a confirmation message. This endpoint is vital for building user interfaces
-        that allow drag‑and‑drop or multi‑select additions to collections.
+      description: Adds one or more objects to a specific list (collection only) by
+        submitting a JSON array of object IDs. Upon success, the endpoint returns
+        a confirmation message. This endpoint is vital for building user interfaces
+        that allow drag‑and‑drop or multi‑select additions to collections, enabling
+        users to dynamically manage their collections without needing to modify the
+        underlying object data.
+      operationId: addListObjects
       parameters:
-      - description: Space ID
+      - description: The version of the API to use
+        in: header
+        name: Anytype-Version
+        required: true
+        schema:
+          default: "2025-04-22"
+          type: string
+      - description: The ID of the space to which the list belongs
         in: path
         name: space_id
         required: true
         schema:
           type: string
-      - description: List ID
+      - description: The ID of the list to which objects will be added
         in: path
         name: list_id
         required: true
@@ -1188,7 +1963,7 @@ paths:
               items:
                 type: string
               type: array
-        description: List of object IDs
+        description: The list of object IDs to add to the list
         required: true
       responses:
         "200":
@@ -1215,6 +1990,12 @@ paths:
               schema:
                 $ref: '#/components/schemas/util.NotFoundError'
           description: Not found
+        "429":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/util.RateLimitError'
+          description: Rate limit exceeded
         "500":
           content:
             application/json:
@@ -1225,28 +2006,35 @@ paths:
       - bearerauth: []
       summary: Add objects to list
       tags:
-      - lists
+      - Lists
   /spaces/{space_id}/lists/{list_id}/objects/{object_id}:
     delete:
       description: Removes a given object from the specified list (collection only)
         in a space. The endpoint takes the space, list, and object identifiers as
-        path parameters. It's subject to rate limiting and returns a success message
-        on completion. It is used for dynamically managing collections without affecting
-        the underlying object data.
+        path parameters and is subject to rate limiting. It is used for dynamically
+        managing collections without affecting the underlying object data.
+      operationId: removeListObject
       parameters:
-      - description: Space ID
+      - description: The version of the API to use
+        in: header
+        name: Anytype-Version
+        required: true
+        schema:
+          default: "2025-04-22"
+          type: string
+      - description: The ID of the space to which the list belongs
         in: path
         name: space_id
         required: true
         schema:
           type: string
-      - description: List ID
+      - description: The ID of the list from which the object will be removed
         in: path
         name: list_id
         required: true
         schema:
           type: string
-      - description: Object ID
+      - description: The ID of the object to remove from the list
         in: path
         name: object_id
         required: true
@@ -1277,6 +2065,12 @@ paths:
               schema:
                 $ref: '#/components/schemas/util.NotFoundError'
           description: Not found
+        "429":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/util.RateLimitError'
+          description: Rate limit exceeded
         "500":
           content:
             application/json:
@@ -1287,23 +2081,31 @@ paths:
       - bearerauth: []
       summary: Remove object from list
       tags:
-      - lists
+      - Lists
   /spaces/{space_id}/lists/{list_id}/views:
     get:
       description: Returns a paginated list of views defined for a specific list (query
-        or collection) within a space. Each view includes configuration details such
-        as layout, applied filters, and sorting options, enabling clients to render
-        the list according to user preferences and context. This endpoint supports
-        pagination parameters to control the number of views returned and the starting
-        point of the result set.
+        or collection) within a space. Each view includes details such as layout,
+        applied filters, and sorting options, enabling clients to render the list
+        according to user preferences and context. This endpoint is essential for
+        applications that need to display lists in various formats (e.g., grid, table)
+        or with different sorting/filtering criteria.
+      operationId: getListViews
       parameters:
-      - description: Space ID
+      - description: The version of the API to use
+        in: header
+        name: Anytype-Version
+        required: true
+        schema:
+          default: "2025-04-22"
+          type: string
+      - description: The ID of the space to which the list belongs
         in: path
         name: space_id
         required: true
         schema:
           type: string
-      - description: List ID
+      - description: The ID of the list to retrieve views for
         in: path
         name: list_id
         required: true
@@ -1326,8 +2128,8 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/pagination.PaginatedResponse-list_View'
-          description: List of views
+                $ref: '#/components/schemas/pagination.PaginatedResponse-apimodel_View'
+          description: The list of views associated with the specified list
         "401":
           content:
             application/json:
@@ -1350,7 +2152,7 @@ paths:
       - bearerauth: []
       summary: Get list views
       tags:
-      - lists
+      - Lists
   /spaces/{space_id}/members:
     get:
       description: Returns a paginated list of members belonging to the specified
@@ -1359,8 +2161,16 @@ paths:
         (e.g. joining, active) and role (e.g. Viewer, Editor, Owner). This endpoint
         supports collaborative features by allowing clients to show who is in a space
         and manage access rights.
+      operationId: listMembers
       parameters:
-      - description: Space ID
+      - description: The version of the API to use
+        in: header
+        name: Anytype-Version
+        required: true
+        schema:
+          default: "2025-04-22"
+          type: string
+      - description: The ID of the space to list members for
         in: path
         name: space_id
         required: true
@@ -1385,8 +2195,8 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/pagination.PaginatedResponse-space_Member'
-          description: List of members
+                $ref: '#/components/schemas/pagination.PaginatedResponse-apimodel_Member'
+          description: The list of members in the space
         "401":
           content:
             application/json:
@@ -1403,7 +2213,7 @@ paths:
       - bearerauth: []
       summary: List members
       tags:
-      - members
+      - Members
   /spaces/{space_id}/members/{member_id}:
     get:
       description: Fetches detailed information about a single member within a space.
@@ -1412,8 +2222,16 @@ paths:
         the member's ID (starting  with `_participant`) or the member's identity.
         This is useful for user profile pages, permission management, and displaying
         member-specific information in collaborative environments.
+      operationId: getMember
       parameters:
-      - description: Space ID
+      - description: The version of the API to use
+        in: header
+        name: Anytype-Version
+        required: true
+        schema:
+          default: "2025-04-22"
+          type: string
+      - description: The ID of the space to get the member from
         in: path
         name: space_id
         required: true
@@ -1430,8 +2248,8 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/space.MemberResponse'
-          description: Member
+                $ref: '#/components/schemas/apimodel.MemberResponse'
+          description: The member details
         "401":
           content:
             application/json:
@@ -1454,7 +2272,7 @@ paths:
       - bearerauth: []
       summary: Get member
       tags:
-      - members
+      - Members
   /spaces/{space_id}/objects:
     get:
       description: Retrieves a paginated list of objects in the given space. The endpoint
@@ -1463,8 +2281,16 @@ paths:
         of the content (if applicable), layout, space ID, blocks and details. It is
         intended for building views where users can see all objects in a space at
         a glance.
+      operationId: listObjects
       parameters:
-      - description: Space ID
+      - description: The version of the API to use
+        in: header
+        name: Anytype-Version
+        required: true
+        schema:
+          default: "2025-04-22"
+          type: string
+      - description: The ID of the space in which to list objects
         in: path
         name: space_id
         required: true
@@ -1489,8 +2315,8 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/pagination.PaginatedResponse-object_Object'
-          description: List of objects
+                $ref: '#/components/schemas/pagination.PaginatedResponse-apimodel_Object'
+          description: The list of objects in the specified space
         "401":
           content:
             application/json:
@@ -1507,7 +2333,7 @@ paths:
       - bearerauth: []
       summary: List objects
       tags:
-      - objects
+      - Objects
     post:
       description: Creates a new object in the specified space using a JSON payload.
         The creation process is subject to rate limiting. The payload must include
@@ -1517,8 +2343,16 @@ paths:
         of object to create). Post-creation, additional operations (like setting featured
         properties or fetching bookmark metadata) may occur. The endpoint then returns
         the full object data, ready for further interactions.
+      operationId: createObject
       parameters:
-      - description: Space ID
+      - description: The version of the API to use
+        in: header
+        name: Anytype-Version
+        required: true
+        schema:
+          default: "2025-04-22"
+          type: string
+      - description: The ID of the space in which to create the object
         in: path
         name: space_id
         required: true
@@ -1528,15 +2362,15 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/object.CreateObjectRequest'
-        description: Object to create
+              $ref: '#/components/schemas/apimodel.CreateObjectRequest'
+        description: The object to create
         required: true
       responses:
         "200":
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/object.ObjectResponse'
+                $ref: '#/components/schemas/apimodel.ObjectResponse'
           description: The created object
         "400":
           content:
@@ -1550,7 +2384,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/util.UnauthorizedError'
           description: Unauthorized
-        "423":
+        "429":
           content:
             application/json:
               schema:
@@ -1566,7 +2400,7 @@ paths:
       - bearerauth: []
       summary: Create object
       tags:
-      - objects
+      - Objects
   /spaces/{space_id}/objects/{object_id}:
     delete:
       description: This endpoint “deletes” an object by marking it as archived. The
@@ -1574,14 +2408,22 @@ paths:
         the object’s details after it has been archived. Proper error handling is
         in place for situations such as when the object isn’t found or the deletion
         cannot be performed because of permission issues.
+      operationId: deleteObject
       parameters:
-      - description: Space ID
+      - description: The version of the API to use
+        in: header
+        name: Anytype-Version
+        required: true
+        schema:
+          default: "2025-04-22"
+          type: string
+      - description: The ID of the space in which the object exists
         in: path
         name: space_id
         required: true
         schema:
           type: string
-      - description: Object ID
+      - description: The ID of the object to delete
         in: path
         name: object_id
         required: true
@@ -1592,7 +2434,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/object.ObjectResponse'
+                $ref: '#/components/schemas/apimodel.ObjectResponse'
           description: The deleted object
         "401":
           content:
@@ -1612,7 +2454,13 @@ paths:
               schema:
                 $ref: '#/components/schemas/util.NotFoundError'
           description: Resource not found
-        "423":
+        "410":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/util.GoneError'
+          description: Resource deleted
+        "429":
           content:
             application/json:
               schema:
@@ -1628,7 +2476,7 @@ paths:
       - bearerauth: []
       summary: Delete object
       tags:
-      - objects
+      - Objects
     get:
       description: Fetches the full details of a single object identified by the object
         ID within the specified space. The response includes not only basic metadata
@@ -1636,26 +2484,42 @@ paths:
         text, files, properties and dataviews) and extra details (such as timestamps
         and linked member information). This endpoint is essential when a client needs
         to render or edit the full object view.
+      operationId: getObject
       parameters:
-      - description: Space ID
+      - description: The version of the API to use
+        in: header
+        name: Anytype-Version
+        required: true
+        schema:
+          default: "2025-04-22"
+          type: string
+      - description: The ID of the space in which the object exists
         in: path
         name: space_id
         required: true
         schema:
           type: string
-      - description: Object ID
+      - description: The ID of the object to retrieve
         in: path
         name: object_id
         required: true
         schema:
+          type: string
+      - description: The format to return the object body in
+        in: query
+        name: format
+        schema:
+          default: '"md"'
+          enum:
+          - md
           type: string
       responses:
         "200":
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/object.ObjectResponse'
-          description: The requested object
+                $ref: '#/components/schemas/apimodel.ObjectResponse'
+          description: The retrieved object
         "401":
           content:
             application/json:
@@ -1684,53 +2548,131 @@ paths:
       - bearerauth: []
       summary: Get object
       tags:
-      - objects
-  /spaces/{space_id}/objects/{object_id}/{format}:
-    get:
-      description: This endpoint exports a single object from the specified space
-        into a desired format. The export format is provided as a path parameter (currently
-        supporting “markdown” only). The endpoint calls the export service which converts
-        the object’s content into the requested format. It is useful for sharing,
-        or displaying the markdown representation of the objecte externally.
+      - Objects
+    patch:
+      description: This endpoint updates an existing object in the specified space
+        using a JSON payload. The update process is subject to rate limiting. The
+        payload must include the details to be updated. The endpoint then returns
+        the full object data, ready for further interactions.
+      operationId: updateObject
       parameters:
-      - description: Space ID
+      - description: The version of the API to use
+        in: header
+        name: Anytype-Version
+        required: true
+        schema:
+          default: "2025-04-22"
+          type: string
+      - description: The ID of the space in which the object exists
         in: path
         name: space_id
         required: true
         schema:
           type: string
-      - description: Object ID
+      - description: The ID of the object to update
         in: path
         name: object_id
         required: true
         schema:
           type: string
-      - description: Export format
-        in: path
-        name: format
-        required: true
-        schema:
-          enum:
-          - markdown
-          type: string
       requestBody:
         content:
           application/json:
             schema:
-              type: object
+              $ref: '#/components/schemas/apimodel.UpdateObjectRequest'
+        description: The details of the object to update
+        required: true
       responses:
         "200":
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/export.ObjectExportResponse'
-          description: Object exported successfully
+                $ref: '#/components/schemas/apimodel.ObjectResponse'
+          description: The updated object
         "400":
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/util.ValidationError'
           description: Bad request
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/util.UnauthorizedError'
+          description: Unauthorized
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/util.NotFoundError'
+          description: Resource not found
+        "410":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/util.GoneError'
+          description: Resource deleted
+        "429":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/util.RateLimitError'
+          description: Rate limit exceeded
+        "500":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/util.ServerError'
+          description: Internal server error
+      security:
+      - bearerauth: []
+      summary: Update object
+      tags:
+      - Objects
+  /spaces/{space_id}/properties:
+    get:
+      description: '⚠ Warning: Properties are experimental and may change in the next
+        update. ⚠ Retrieves a paginated list of properties available within a specific
+        space. Each property record includes its unique identifier, name and format.
+        This information is essential for clients to understand the available properties
+        for filtering or creating objects.'
+      operationId: listProperties
+      parameters:
+      - description: The version of the API to use
+        in: header
+        name: Anytype-Version
+        required: true
+        schema:
+          default: "2025-04-22"
+          type: string
+      - description: The ID of the space to list properties for
+        in: path
+        name: space_id
+        required: true
+        schema:
+          type: string
+      - description: The number of items to skip before starting to collect the result
+          set
+        in: query
+        name: offset
+        schema:
+          default: 0
+          type: integer
+      - description: The number of items to return
+        in: query
+        name: limit
+        schema:
+          default: 100
+          maximum: 1000
+          type: integer
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/pagination.PaginatedResponse-apimodel_Property'
+          description: The list of properties in the specified space
         "401":
           content:
             application/json:
@@ -1745,19 +2687,694 @@ paths:
           description: Internal server error
       security:
       - bearerauth: []
-      summary: Export object
+      summary: List properties
       tags:
-      - export
+      - Properties
+    post:
+      description: '⚠ Warning: Properties are experimental and may change in the next
+        update. ⚠ Creates a new property in the specified space using a JSON payload.
+        The creation process is subject to rate limiting. The payload must include
+        property details such as the name and format. The endpoint then returns the
+        full property data, ready for further interactions.'
+      operationId: createProperty
+      parameters:
+      - description: The version of the API to use
+        in: header
+        name: Anytype-Version
+        required: true
+        schema:
+          default: "2025-04-22"
+          type: string
+      - description: The ID of the space to create the property in
+        in: path
+        name: space_id
+        required: true
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/apimodel.CreatePropertyRequest'
+        description: The property to create
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/apimodel.PropertyResponse'
+          description: The created property
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/util.ValidationError'
+          description: Bad request
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/util.UnauthorizedError'
+          description: Unauthorized
+        "429":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/util.RateLimitError'
+          description: Rate limit exceeded
+        "500":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/util.ServerError'
+          description: Internal server error
+      security:
+      - bearerauth: []
+      summary: Create property
+      tags:
+      - Properties
+  /spaces/{space_id}/properties/{property_id}:
+    delete:
+      description: '⚠ Warning: Properties are experimental and may change in the next
+        update. ⚠ This endpoint “deletes” a property by marking it as archived. The
+        deletion process is performed safely and is subject to rate limiting. It returns
+        the property’s details after it has been archived. Proper error handling is
+        in place for situations such as when the property isn’t found or the deletion
+        cannot be performed because of permission issues.'
+      operationId: deleteProperty
+      parameters:
+      - description: The version of the API to use
+        in: header
+        name: Anytype-Version
+        required: true
+        schema:
+          default: "2025-04-22"
+          type: string
+      - description: The ID of the space to which the property belongs
+        in: path
+        name: space_id
+        required: true
+        schema:
+          type: string
+      - description: The ID of the property to delete
+        in: path
+        name: property_id
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/apimodel.PropertyResponse'
+          description: The deleted property
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/util.UnauthorizedError'
+          description: Unauthorized
+        "403":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/util.ForbiddenError'
+          description: Forbidden
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/util.NotFoundError'
+          description: Resource not found
+        "410":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/util.GoneError'
+          description: Resource deleted
+        "429":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/util.RateLimitError'
+          description: Rate limit exceeded
+        "500":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/util.ServerError'
+          description: Internal server error
+      security:
+      - bearerauth: []
+      summary: Delete property
+      tags:
+      - Properties
+    get:
+      description: '⚠ Warning: Properties are experimental and may change in the next
+        update. ⚠ Fetches detailed information about one specific property by its
+        ID. This includes the property’s unique identifier, name and format. This
+        detailed view assists clients in showing property options to users and in
+        guiding the user interface (such as displaying appropriate input fields or
+        selection options).'
+      operationId: getProperty
+      parameters:
+      - description: The version of the API to use
+        in: header
+        name: Anytype-Version
+        required: true
+        schema:
+          default: "2025-04-22"
+          type: string
+      - description: The ID of the space to which the property belongs
+        in: path
+        name: space_id
+        required: true
+        schema:
+          type: string
+      - description: The ID of the property to retrieve
+        in: path
+        name: property_id
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/apimodel.PropertyResponse'
+          description: The requested property
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/util.UnauthorizedError'
+          description: Unauthorized
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/util.NotFoundError'
+          description: Resource not found
+        "410":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/util.GoneError'
+          description: Resource deleted
+        "500":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/util.ServerError'
+          description: Internal server error
+      security:
+      - bearerauth: []
+      summary: Get property
+      tags:
+      - Properties
+    patch:
+      description: '⚠ Warning: Properties are experimental and may change in the next
+        update. ⚠ This endpoint updates an existing property in the specified space
+        using a JSON payload. The update process is subject to rate limiting. The
+        payload must include the name to be updated. The endpoint then returns the
+        full property data, ready for further interactions.'
+      operationId: updateProperty
+      parameters:
+      - description: The version of the API to use
+        in: header
+        name: Anytype-Version
+        required: true
+        schema:
+          default: "2025-04-22"
+          type: string
+      - description: The ID of the space to which the property belongs
+        in: path
+        name: space_id
+        required: true
+        schema:
+          type: string
+      - description: The ID of the property to update
+        in: path
+        name: property_id
+        required: true
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/apimodel.UpdatePropertyRequest'
+        description: The property to update
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/apimodel.PropertyResponse'
+          description: The updated property
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/util.ValidationError'
+          description: Bad request
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/util.UnauthorizedError'
+          description: Unauthorized
+        "403":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/util.ForbiddenError'
+          description: Forbidden
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/util.NotFoundError'
+          description: Resource not found
+        "410":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/util.GoneError'
+          description: Resource deleted
+        "429":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/util.RateLimitError'
+          description: Rate limit exceeded
+        "500":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/util.ServerError'
+          description: Internal server error
+      security:
+      - bearerauth: []
+      summary: Update property
+      tags:
+      - Properties
+  /spaces/{space_id}/properties/{property_id}/tags:
+    get:
+      description: This endpoint retrieves a paginated list of tags available for
+        a specific property within a space. Each tag record includes its unique identifier,
+        name, and color. This information is essential for clients to display select
+        or multi-select options to users when they are creating or editing objects.
+        The endpoint also supports pagination through offset and limit parameters.
+      operationId: listTags
+      parameters:
+      - description: The version of the API to use
+        in: header
+        name: Anytype-Version
+        required: true
+        schema:
+          default: "2025-04-22"
+          type: string
+      - description: The ID of the space to list tags for
+        in: path
+        name: space_id
+        required: true
+        schema:
+          type: string
+      - description: The ID of the property to list tags for
+        in: path
+        name: property_id
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/pagination.PaginatedResponse-apimodel_Tag'
+          description: The list of tags
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/util.UnauthorizedError'
+          description: Unauthorized
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/util.NotFoundError'
+          description: Property not found
+        "500":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/util.ServerError'
+          description: Internal server error
+      security:
+      - bearerauth: []
+      summary: List tags
+      tags:
+      - Tags
+    post:
+      description: This endpoint creates a new tag for a given property id in a space.
+        The creation process is subject to rate limiting. The tag is identified by
+        its unique identifier within the specified space. The request must include
+        the tag's name and color. The response includes the tag's details such as
+        its ID, name, and color. This is useful for clients when users want to add
+        new tag options to a property.
+      operationId: createTag
+      parameters:
+      - description: The version of the API to use
+        in: header
+        name: Anytype-Version
+        required: true
+        schema:
+          default: "2025-04-22"
+          type: string
+      - description: The ID of the space to create the tag in
+        in: path
+        name: space_id
+        required: true
+        schema:
+          type: string
+      - description: The ID of the property to create the tag for
+        in: path
+        name: property_id
+        required: true
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/apimodel.CreateTagRequest'
+        description: The tag to create
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/apimodel.TagResponse'
+          description: The created tag
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/util.ValidationError'
+          description: Bad request
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/util.UnauthorizedError'
+          description: Unauthorized
+        "429":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/util.RateLimitError'
+          description: Rate limit exceeded
+        "500":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/util.ServerError'
+          description: Internal server error
+      security:
+      - bearerauth: []
+      summary: Create tag
+      tags:
+      - Tags
+  /spaces/{space_id}/properties/{property_id}/tags/{tag_id}:
+    delete:
+      description: This endpoint “deletes” a tag by marking it as archived. The deletion
+        process is performed safely and is subject to rate limiting. It returns the
+        tag’s details after it has been archived. Proper error handling is in place
+        for situations such as when the tag isn’t found or the deletion cannot be
+        performed because of permission issues.
+      operationId: deleteTag
+      parameters:
+      - description: The version of the API to use
+        in: header
+        name: Anytype-Version
+        required: true
+        schema:
+          default: "2025-04-22"
+          type: string
+      - description: The ID of the space to delete the tag from
+        in: path
+        name: space_id
+        required: true
+        schema:
+          type: string
+      - description: The ID of the property to delete the tag for
+        in: path
+        name: property_id
+        required: true
+        schema:
+          type: string
+      - description: The ID of the tag to delete
+        in: path
+        name: tag_id
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/apimodel.TagResponse'
+          description: The deleted tag
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/util.UnauthorizedError'
+          description: Unauthorized
+        "403":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/util.ForbiddenError'
+          description: Forbidden
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/util.NotFoundError'
+          description: Resource not found
+        "410":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/util.GoneError'
+          description: Resource deleted
+        "429":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/util.RateLimitError'
+          description: Rate limit exceeded
+        "500":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/util.ServerError'
+          description: Internal server error
+      security:
+      - bearerauth: []
+      summary: Delete tag
+      tags:
+      - Tags
+    get:
+      description: This endpoint retrieves a tag for a given property id. The tag
+        is identified by its unique identifier within the specified space. The response
+        includes the tag's details such as its ID, name, and color. This is useful
+        for clients to display or when editing a specific tag option.
+      operationId: getTag
+      parameters:
+      - description: The version of the API to use
+        in: header
+        name: Anytype-Version
+        required: true
+        schema:
+          default: "2025-04-22"
+          type: string
+      - description: The ID of the space to retrieve the tag from
+        in: path
+        name: space_id
+        required: true
+        schema:
+          type: string
+      - description: The ID of the property to retrieve the tag for
+        in: path
+        name: property_id
+        required: true
+        schema:
+          type: string
+      - description: The ID of the tag to retrieve
+        in: path
+        name: tag_id
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/apimodel.TagResponse'
+          description: The retrieved tag
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/util.UnauthorizedError'
+          description: Unauthorized
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/util.NotFoundError'
+          description: Resource not found
+        "410":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/util.GoneError'
+          description: Resource deleted
+        "500":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/util.ServerError'
+          description: Internal server error
+      security:
+      - bearerauth: []
+      summary: Get tag
+      tags:
+      - Tags
+    patch:
+      description: This endpoint updates a tag for a given property id in a space.
+        The update process is subject to rate limiting. The tag is identified by its
+        unique identifier within the specified space. The request must include the
+        tag's name and color. The response includes the tag's details such as its
+        ID, name, and color. This is useful for clients when users want to edit existing
+        tags for a property.
+      operationId: updateTag
+      parameters:
+      - description: The version of the API to use
+        in: header
+        name: Anytype-Version
+        required: true
+        schema:
+          default: "2025-04-22"
+          type: string
+      - description: The ID of the space to update the tag in
+        in: path
+        name: space_id
+        required: true
+        schema:
+          type: string
+      - description: The ID of the property to update the tag for
+        in: path
+        name: property_id
+        required: true
+        schema:
+          type: string
+      - description: The ID of the tag to update
+        in: path
+        name: tag_id
+        required: true
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/apimodel.UpdateTagRequest'
+        description: The tag to update
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/apimodel.TagResponse'
+          description: The updated tag
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/util.ValidationError'
+          description: Bad request
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/util.UnauthorizedError'
+          description: Unauthorized
+        "403":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/util.ForbiddenError'
+          description: Forbidden
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/util.NotFoundError'
+          description: Resource not found
+        "410":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/util.GoneError'
+          description: Resource deleted
+        "429":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/util.RateLimitError'
+          description: Rate limit exceeded
+        "500":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/util.ServerError'
+          description: Internal server error
+      security:
+      - bearerauth: []
+      summary: Update tag
+      tags:
+      - Tags
   /spaces/{space_id}/search:
     post:
-      description: This endpoint performs a focused search within a single space (specified
-        by the space_id path parameter). Like the global search, it accepts pagination
-        parameters and a JSON payload containing the search query, object types, and
-        sorting preferences. The search is limited to the provided space and returns
-        a list of objects that match the query. This allows clients to implement space‑specific
+      description: Performs a focused search within a single space (specified by the
+        space_id path parameter). Like the global search, it accepts pagination parameters
+        and a JSON payload containing the search query, object types, and sorting
+        preferences. The search is limited to the provided space and returns a list
+        of objects that match the query. This allows clients to implement space‑specific
         filtering without having to process extraneous results.
+      operationId: searchSpace
       parameters:
-      - description: Space ID
+      - description: The version of the API to use
+        in: header
+        name: Anytype-Version
+        required: true
+        schema:
+          default: "2025-04-22"
+          type: string
+      - description: The ID of the space to search in
         in: path
         name: space_id
         required: true
@@ -1781,16 +3398,16 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/search.SearchRequest'
-        description: Search parameters
+              $ref: '#/components/schemas/apimodel.SearchRequest'
+        description: The search parameters used to filter and sort the results
         required: true
       responses:
         "200":
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/pagination.PaginatedResponse-object_Object'
-          description: List of objects
+                $ref: '#/components/schemas/pagination.PaginatedResponse-apimodel_Object'
+          description: The list of objects matching the search criteria
         "401":
           content:
             application/json:
@@ -1807,18 +3424,26 @@ paths:
       - bearerauth: []
       summary: Search objects within a space
       tags:
-      - search
+      - Search
   /spaces/{space_id}/types:
     get:
       description: This endpoint retrieves a paginated list of object types (e.g.
         'Page', 'Note', 'Task') available within the specified space. Each type’s
-        record includes its unique identifier, type key, display name, icon, and a
-        recommended layout. While a type's id is truly unique, a type's key can be
-        the same across spaces for known types, e.g. 'ot-page' for 'Page'. Clients
-        use this information when offering choices for object creation or for filtering
-        objects by type through search.
+        record includes its unique identifier, type key, display name, icon, and layout.
+        While a type's id is truly unique, a type's key can be the same across spaces
+        for known types, e.g. 'page' for 'Page'. Clients use this information when
+        offering choices for object creation or for filtering objects by type through
+        search.
+      operationId: listTypes
       parameters:
-      - description: Space ID
+      - description: The version of the API to use
+        in: header
+        name: Anytype-Version
+        required: true
+        schema:
+          default: "2025-04-22"
+          type: string
+      - description: The ID of the space to retrieve types from
         in: path
         name: space_id
         required: true
@@ -1843,8 +3468,8 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/pagination.PaginatedResponse-object_Type'
-          description: List of types
+                $ref: '#/components/schemas/pagination.PaginatedResponse-apimodel_Type'
+          description: The list of types
         "401":
           content:
             application/json:
@@ -1861,22 +3486,93 @@ paths:
       - bearerauth: []
       summary: List types
       tags:
-      - types
-  /spaces/{space_id}/types/{type_id}:
-    get:
-      description: Fetches detailed information about one specific object type by
-        its ID. This includes the type’s unique key, name, icon, and recommended layout.
-        This detailed view assists clients in understanding the expected structure
-        and style for objects of that type and in guiding the user interface (such
-        as displaying appropriate icons or layout hints).
+      - Types
+    post:
+      description: Creates a new object type in the specified space using a JSON payload.
+        The creation process is subject to rate limiting. The payload must include
+        type details such as the name, icon, and layout. The endpoint then returns
+        the full type data, ready to be used for creating objects.
+      operationId: createType
       parameters:
-      - description: Space ID
+      - description: The version of the API to use
+        in: header
+        name: Anytype-Version
+        required: true
+        schema:
+          default: "2025-04-22"
+          type: string
+      - description: The ID of the space in which to create the type
         in: path
         name: space_id
         required: true
         schema:
           type: string
-      - description: Type ID
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/apimodel.CreateTypeRequest'
+        description: The type to create
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/apimodel.TypeResponse'
+          description: The created type
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/util.ValidationError'
+          description: Bad request
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/util.UnauthorizedError'
+          description: Unauthorized
+        "429":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/util.RateLimitError'
+          description: Rate limit exceeded
+        "500":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/util.ServerError'
+          description: Internal server error
+      security:
+      - bearerauth: []
+      summary: Create type
+      tags:
+      - Types
+  /spaces/{space_id}/types/{type_id}:
+    delete:
+      description: This endpoint “deletes” an object type by marking it as archived.
+        The deletion process is performed safely and is subject to rate limiting.
+        It returns the type’s details after it has been archived. Proper error handling
+        is in place for situations such as when the type isn’t found or the deletion
+        cannot be performed because of permission issues.
+      operationId: deleteType
+      parameters:
+      - description: The version of the API to use
+        in: header
+        name: Anytype-Version
+        required: true
+        schema:
+          default: "2025-04-22"
+          type: string
+      - description: The ID of the space from which to delete the type
+        in: path
+        name: space_id
+        required: true
+        schema:
+          type: string
+      - description: The ID of the type to delete
         in: path
         name: type_id
         required: true
@@ -1887,7 +3583,82 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/object.TypeResponse'
+                $ref: '#/components/schemas/apimodel.TypeResponse'
+          description: The deleted type
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/util.UnauthorizedError'
+          description: Unauthorized
+        "403":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/util.ForbiddenError'
+          description: Forbidden
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/util.NotFoundError'
+          description: Resource not found
+        "410":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/util.GoneError'
+          description: Resource deleted
+        "429":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/util.RateLimitError'
+          description: Rate limit exceeded
+        "500":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/util.ServerError'
+          description: Internal server error
+      security:
+      - bearerauth: []
+      summary: Delete type
+      tags:
+      - Types
+    get:
+      description: Fetches detailed information about one specific object type by
+        its ID. This includes the type’s unique key, name, icon, and layout. This
+        detailed view assists clients in understanding the expected structure and
+        style for objects of that type and in guiding the user interface (such as
+        displaying appropriate icons or layout hints).
+      operationId: getType
+      parameters:
+      - description: The version of the API to use
+        in: header
+        name: Anytype-Version
+        required: true
+        schema:
+          default: "2025-04-22"
+          type: string
+      - description: The ID of the space from which to retrieve the type
+        in: path
+        name: space_id
+        required: true
+        schema:
+          type: string
+      - description: The ID of the type to retrieve
+        in: path
+        name: type_id
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/apimodel.TypeResponse'
           description: The requested type
         "401":
           content:
@@ -1917,7 +3688,88 @@ paths:
       - bearerauth: []
       summary: Get type
       tags:
-      - types
+      - Types
+    patch:
+      description: This endpoint updates an existing object type in the specified
+        space using a JSON payload. The update process is subject to rate limiting.
+        The payload must include the name and properties to be updated. The endpoint
+        then returns the full type data, ready for further interactions.
+      operationId: updateType
+      parameters:
+      - description: The version of the API to use
+        in: header
+        name: Anytype-Version
+        required: true
+        schema:
+          default: "2025-04-22"
+          type: string
+      - description: The ID of the space in which the type exists
+        in: path
+        name: space_id
+        required: true
+        schema:
+          type: string
+      - description: The ID of the type to update
+        in: path
+        name: type_id
+        required: true
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/apimodel.UpdateTypeRequest'
+        description: The type details to update
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/apimodel.TypeResponse'
+          description: The updated type
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/util.ValidationError'
+          description: Bad request
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/util.UnauthorizedError'
+          description: Unauthorized
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/util.NotFoundError'
+          description: Resource not found
+        "410":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/util.GoneError'
+          description: Resource deleted
+        "429":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/util.RateLimitError'
+          description: Rate limit exceeded
+        "500":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/util.ServerError'
+          description: Internal server error
+      security:
+      - bearerauth: []
+      summary: Update type
+      tags:
+      - Types
   /spaces/{space_id}/types/{type_id}/templates:
     get:
       description: This endpoint returns a paginated list of templates that are associated
@@ -1925,14 +3777,22 @@ paths:
         structures for creating new objects. Each template record contains its identifier,
         name, and icon, so that clients can offer users a selection of templates when
         creating objects.
+      operationId: listTemplates
       parameters:
-      - description: Space ID
+      - description: The version of the API to use
+        in: header
+        name: Anytype-Version
+        required: true
+        schema:
+          default: "2025-04-22"
+          type: string
+      - description: The ID of the space to which the type belongs
         in: path
         name: space_id
         required: true
         schema:
           type: string
-      - description: Type ID
+      - description: The ID of the object type to retrieve templates for
         in: path
         name: type_id
         required: true
@@ -1957,7 +3817,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/pagination.PaginatedResponse-object_Template'
+                $ref: '#/components/schemas/pagination.PaginatedResponse-apimodel_Object'
           description: List of templates
         "401":
           content:
@@ -1975,27 +3835,35 @@ paths:
       - bearerauth: []
       summary: List templates
       tags:
-      - templates
+      - Templates
   /spaces/{space_id}/types/{type_id}/templates/{template_id}:
     get:
       description: Fetches full details for one template associated with a particular
         object type in a space. The response provides the template’s identifier, name,
         icon, and any other relevant metadata. This endpoint is useful when a client
         needs to preview or apply a template to prefill object creation fields.
+      operationId: getTemplate
       parameters:
-      - description: Space ID
+      - description: The version of the API to use
+        in: header
+        name: Anytype-Version
+        required: true
+        schema:
+          default: "2025-04-22"
+          type: string
+      - description: The ID of the space to which the template belongs
         in: path
         name: space_id
         required: true
         schema:
           type: string
-      - description: Type ID
+      - description: The ID of the object type to which the template belongs
         in: path
         name: type_id
         required: true
         schema:
           type: string
-      - description: Template ID
+      - description: The ID of the template to retrieve
         in: path
         name: template_id
         required: true
@@ -2006,7 +3874,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/object.TemplateResponse'
+                $ref: '#/components/schemas/apimodel.TemplateResponse'
           description: The requested template
         "401":
           content:
@@ -2036,6 +3904,6 @@ paths:
       - bearerauth: []
       summary: Get template
       tags:
-      - templates
+      - Templates
 servers:
 - url: http://localhost:31009/v1
