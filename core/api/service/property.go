@@ -583,10 +583,6 @@ func (s *Service) getPropertiesFromStruct(details *types.Struct, propertyMap map
 		format := prop.Format
 		convertedVal := s.convertPropertyValue(key, value, format, details, tagMap)
 
-		if s.isMissingObject(convertedVal) {
-			continue
-		}
-
 		id := prop.Id
 		name := prop.Name
 		properties = append(properties, s.buildPropertyWithValue(id, key, name, format, convertedVal))
@@ -606,6 +602,9 @@ func (s *Service) convertPropertyValue(key string, value *types.Value, format ap
 		}
 		return kind.NumberValue
 	case *types.Value_StringValue:
+		if kind.StringValue == "_missing_object" {
+			return nil
+		}
 		if format == apimodel.PropertyFormatSelect {
 			tags := s.getTagsFromStruct([]string{kind.StringValue}, tagMap)
 			if len(tags) > 0 {

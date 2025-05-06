@@ -434,27 +434,6 @@ func (s *Service) GetObjectWithBlocksFromStruct(details *types.Struct, markdown 
 	}
 }
 
-// isMissingObject returns true if val indicates a "_missing_object" placeholder.
-func (s *Service) isMissingObject(val interface{}) bool {
-	switch v := val.(type) {
-	case string:
-		return v == "_missing_object"
-	case []interface{}:
-		if len(v) == 1 {
-			if str, ok := v[0].(string); ok {
-				return str == "_missing_object"
-			}
-		}
-	case apimodel.Tag:
-		return v.Id == "_missing_object"
-	case []apimodel.Tag:
-		if len(v) == 1 && v[0].Id == "_missing_object" {
-			return true
-		}
-	}
-	return false
-}
-
 // getMarkdownExport retrieves the Markdown export of an object.
 func (s *Service) getMarkdownExport(ctx context.Context, spaceId string, objectId string) (string, error) {
 	md, err := s.exportService.ExportSingleInMemory(ctx, spaceId, objectId, model.Export_Markdown)
