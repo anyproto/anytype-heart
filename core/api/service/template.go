@@ -122,7 +122,7 @@ func (s *Service) GetTemplate(ctx context.Context, spaceId string, _ string, tem
 		return apimodel.ObjectWithBody{}, err
 	}
 
-	markdown, err := s.getMarkdownExport(ctx, spaceId, templateId)
+	markdown, err := s.getMarkdownExport(ctx, spaceId, templateId, model.ObjectTypeLayout(resp.ObjectView.Details[0].Details.Fields[bundle.RelationKeyResolvedLayout.String()].GetNumberValue()))
 	if err != nil {
 		return apimodel.ObjectWithBody{}, err
 	}

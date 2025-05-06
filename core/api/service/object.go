@@ -124,7 +124,7 @@ func (s *Service) GetObject(ctx context.Context, spaceId string, objectId string
 		return apimodel.ObjectWithBody{}, err
 	}
 
-	markdown, err := s.getMarkdownExport(ctx, spaceId, objectId)
+	markdown, err := s.getMarkdownExport(ctx, spaceId, objectId, model.ObjectTypeLayout(resp.ObjectView.Details[0].Details.Fields[bundle.RelationKeyResolvedLayout.String()].GetNumberValue()))
 	if err != nil {
 		return apimodel.ObjectWithBody{}, err
 	}
@@ -435,12 +435,15 @@ func (s *Service) GetObjectWithBlocksFromStruct(details *types.Struct, markdown 
 }
 
 // getMarkdownExport retrieves the Markdown export of an object.
-func (s *Service) getMarkdownExport(ctx context.Context, spaceId string, objectId string) (string, error) {
-	md, err := s.exportService.ExportSingleInMemory(ctx, spaceId, objectId, model.Export_Markdown)
-	if err != nil {
-		return "", ErrFailedExportMarkdown
+func (s *Service) getMarkdownExport(ctx context.Context, spaceId string, objectId string, layout model.ObjectTypeLayout) (string, error) {
+	if util.IsObjectLayout(layout) {
+		md, err := s.exportService.ExportSingleInMemory(ctx, spaceId, objectId, model.Export_Markdown)
+		if err != nil {
+			return "", ErrFailedExportMarkdown
+		}
+		return md, nil
 	}
-	return md, nil
+	return "", nil
 }
 
 // structToDetails converts a Struct to a list of Details.
