@@ -320,6 +320,7 @@ func (s *Service) buildUpdatedTypeDetails(ctx context.Context, spaceId string, t
 	if request.Layout != nil {
 		fields[bundle.RelationKeyRecommendedLayout.String()] = pbtypes.Int64(int64(s.typeLayoutToObjectTypeLayout(*request.Layout)))
 	}
+
 	if request.Icon != nil {
 		iconFields, err := s.processIconFields(ctx, spaceId, *request.Icon)
 		if err != nil {
@@ -329,47 +330,50 @@ func (s *Service) buildUpdatedTypeDetails(ctx context.Context, spaceId string, t
 			fields[k] = v
 		}
 	}
-	if request.Properties != nil {
-		propertyMap, err := s.GetPropertyMapFromStore(spaceId)
-		if err != nil {
-			return nil, err
-		}
 
-		currentFields, err := util.GetFieldsByID(s.mw, spaceId, typeId, []string{bundle.RelationKeyRecommendedFeaturedRelations.String()})
-		if err != nil {
-			return nil, err
-		}
-
-		relationIds, err := s.buildRelationIds(ctx, spaceId, *request.Properties, propertyMap)
-		if err != nil {
-			return nil, err
-		}
-
-		var featuredIds []string
-		if fv, exists := currentFields[bundle.RelationKeyRecommendedFeaturedRelations.String()]; exists {
-			for _, v := range fv.GetListValue().Values {
-				if id := v.GetStringValue(); id != "" {
-					featuredIds = append(featuredIds, id)
-				}
-			}
-		}
-		// Filter out IDs already featured
-		var filteredRelationIds []string
-		for _, id := range relationIds {
-			skip := false
-			for _, fid := range featuredIds {
-				if id == fid {
-					skip = true
-					break
-				}
-			}
-			if !skip {
-				filteredRelationIds = append(filteredRelationIds, id)
-			}
-		}
-
-		fields[bundle.RelationKeyRecommendedRelations.String()] = pbtypes.StringList(filteredRelationIds)
+	if request.Properties == nil {
+		return &types.Struct{Fields: fields}, nil
 	}
+
+	propertyMap, err := s.GetPropertyMapFromStore(spaceId)
+	if err != nil {
+		return nil, err
+	}
+
+	currentFields, err := util.GetFieldsByID(s.mw, spaceId, typeId, []string{bundle.RelationKeyRecommendedFeaturedRelations.String()})
+	if err != nil {
+		return nil, err
+	}
+
+	relationIds, err := s.buildRelationIds(ctx, spaceId, *request.Properties, propertyMap)
+	if err != nil {
+		return nil, err
+	}
+
+	var featuredIds []string
+	if fv, exists := currentFields[bundle.RelationKeyRecommendedFeaturedRelations.String()]; exists {
+		for _, v := range fv.GetListValue().Values {
+			if id := v.GetStringValue(); id != "" {
+				featuredIds = append(featuredIds, id)
+			}
+		}
+	}
+	// Filter out IDs already featured
+	var filteredRelationIds []string
+	for _, id := range relationIds {
+		skip := false
+		for _, fid := range featuredIds {
+			if id == fid {
+				skip = true
+				break
+			}
+		}
+		if !skip {
+			filteredRelationIds = append(filteredRelationIds, id)
+		}
+	}
+	fields[bundle.RelationKeyRecommendedRelations.String()] = pbtypes.StringList(filteredRelationIds)
+
 	return &types.Struct{Fields: fields}, nil
 }
 
