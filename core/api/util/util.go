@@ -4,20 +4,21 @@ import (
 	"context"
 	"errors"
 
+	"github.com/gogo/protobuf/types"
+
 	"github.com/anyproto/anytype-heart/pb"
 
 	apicore "github.com/anyproto/anytype-heart/core/api/core"
-	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 var (
-	ErrFailedSearchType            = errors.New("failed to search for type")
-	ErrFailedResolveToUniqueKey    = errors.New("failed to resolve to unique key")
-	ErrFailedGetLayoutById         = errors.New("failed to get layout by id")
-	ErrFailedGetLayoutByIdNotFound = errors.New("failed to get layout by id, not found")
+	ErrFailedSearchType         = errors.New("failed to search for type")
+	ErrFailedResolveToUniqueKey = errors.New("failed to resolve to unique key")
+	ErrFailedGetById            = errors.New("failed to get object by id")
+	ErrFailedGetByIdNotFound    = errors.New("failed to find object by id")
 )
 
 // ResolveUniqueKeyToTypeId resolves the unique key to the type's ID
@@ -62,8 +63,8 @@ func ResolveIdtoUniqueKeyAndRelationKey(mw apicore.ClientCommands, spaceId strin
 		resp.ObjectView.Details[0].Details.Fields[bundle.RelationKeyRelationKey.String()].GetStringValue(), nil
 }
 
-// GetByID checks the existence of an object by its ID and returns its layout
-func GetByID(mw apicore.ClientCommands, spaceId string, objectId string) (layout model.ObjectTypeLayout, relatioKey domain.RelationKey, err error) {
+// GetFieldsByID retrieves the specified fields of an object by its ID.
+func GetFieldsByID(mw apicore.ClientCommands, spaceId string, objectId string, keys []string) (map[string]*types.Value, error) {
 	resp := mw.ObjectSearch(context.Background(), &pb.RpcObjectSearchRequest{
 		SpaceId: spaceId,
 		Filters: []*model.BlockContentDataviewFilter{
@@ -73,20 +74,16 @@ func GetByID(mw apicore.ClientCommands, spaceId string, objectId string) (layout
 				Value:       pbtypes.String(objectId),
 			},
 		},
-		Keys: []string{
-			bundle.RelationKeyId.String(),
-			bundle.RelationKeyResolvedLayout.String(),
-			bundle.RelationKeyRelationKey.String(),
-		},
+		Keys: keys,
 	})
 
 	if resp.Error != nil && resp.Error.Code != pb.RpcObjectSearchResponseError_NULL {
-		return model.ObjectType_basic, "", ErrFailedGetLayoutById
+		return nil, ErrFailedGetById
 	}
 
 	if len(resp.Records) == 0 {
-		return model.ObjectType_basic, "", ErrFailedGetLayoutByIdNotFound
+		return nil, ErrFailedGetByIdNotFound
 	}
 
-	return model.ObjectTypeLayout(resp.Records[0].Fields[bundle.RelationKeyResolvedLayout.String()].GetNumberValue()), domain.RelationKey(resp.Records[0].Fields[bundle.RelationKeyRelationKey.String()].GetStringValue()), nil
+	return resp.Records[0].Fields, nil
 }

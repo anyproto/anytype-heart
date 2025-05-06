@@ -139,7 +139,7 @@ func (s *Service) UpdateType(ctx context.Context, spaceId string, typeId string,
 		return apimodel.Type{}, err
 	}
 
-	details, err := s.buildUpdatedTypeDetails(ctx, spaceId, request)
+	details, err := s.buildUpdatedTypeDetails(ctx, spaceId, typeId, request)
 	if err != nil {
 		return apimodel.Type{}, err
 	}
@@ -273,7 +273,7 @@ func (s *Service) buildTypeDetails(ctx context.Context, spaceId string, request 
 		return nil, err
 	}
 
-	relationIds, err := s.buildRelationIds(ctx, spaceId, request.Properties)
+	relationIds, err := s.buildRelationIds(ctx, spaceId, request.Properties, propertyMap)
 	if err != nil {
 		return nil, err
 	}
@@ -309,7 +309,7 @@ func (s *Service) buildTypeDetails(ctx context.Context, spaceId string, request 
 }
 
 // buildUpdatedTypeDetails builds a partial details struct for UpdateTypeRequest.
-func (s *Service) buildUpdatedTypeDetails(ctx context.Context, spaceId string, request apimodel.UpdateTypeRequest) (*types.Struct, error) {
+func (s *Service) buildUpdatedTypeDetails(ctx context.Context, spaceId string, typeId string, request apimodel.UpdateTypeRequest) (*types.Struct, error) {
 	fields := make(map[string]*types.Value)
 	if request.Name != nil {
 		fields[bundle.RelationKeyName.String()] = pbtypes.String(s.sanitizedString(*request.Name))
@@ -330,21 +330,51 @@ func (s *Service) buildUpdatedTypeDetails(ctx context.Context, spaceId string, r
 		}
 	}
 	if request.Properties != nil {
-		relationIds, err := s.buildRelationIds(ctx, spaceId, *request.Properties)
+		propertyMap, err := s.GetPropertyMapFromStore(spaceId)
 		if err != nil {
 			return nil, err
 		}
-		fields[bundle.RelationKeyRecommendedRelations.String()] = pbtypes.StringList(relationIds)
+
+		currentFields, err := util.GetFieldsByID(s.mw, spaceId, typeId, []string{bundle.RelationKeyRecommendedFeaturedRelations.String()})
+		if err != nil {
+			return nil, err
+		}
+
+		relationIds, err := s.buildRelationIds(ctx, spaceId, *request.Properties, propertyMap)
+		if err != nil {
+			return nil, err
+		}
+
+		var featuredIds []string
+		if fv, exists := currentFields[bundle.RelationKeyRecommendedFeaturedRelations.String()]; exists {
+			for _, v := range fv.GetListValue().Values {
+				if id := v.GetStringValue(); id != "" {
+					featuredIds = append(featuredIds, id)
+				}
+			}
+		}
+		// Filter out IDs already featured
+		var filteredRelationIds []string
+		for _, id := range relationIds {
+			skip := false
+			for _, fid := range featuredIds {
+				if id == fid {
+					skip = true
+					break
+				}
+			}
+			if !skip {
+				filteredRelationIds = append(filteredRelationIds, id)
+			}
+		}
+
+		fields[bundle.RelationKeyRecommendedRelations.String()] = pbtypes.StringList(filteredRelationIds)
 	}
 	return &types.Struct{Fields: fields}, nil
 }
 
 // buildRelationIds constructs relation IDs for property links, creating new properties if necessary.
-func (s *Service) buildRelationIds(ctx context.Context, spaceId string, props []apimodel.PropertyLink) ([]string, error) {
-	propertyMap, err := s.GetPropertyMapFromStore(spaceId)
-	if err != nil {
-		return nil, err
-	}
+func (s *Service) buildRelationIds(ctx context.Context, spaceId string, props []apimodel.PropertyLink, propertyMap map[string]apimodel.Property) ([]string, error) {
 	relationIds := make([]string, 0, len(props))
 	for _, propLink := range props {
 		rk := util.FromPropertyApiKey(propLink.Key)

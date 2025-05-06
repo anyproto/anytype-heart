@@ -445,29 +445,30 @@ func (s *Service) sanitizeAndValidatePropertyValue(ctx context.Context, spaceId 
 
 // isValidSelectOption checks if the option id is valid for the given property.
 func (s *Service) isValidSelectOption(spaceId string, property apimodel.Property, tagId string) bool {
-	layout, rk, err := util.GetByID(s.mw, spaceId, tagId)
+	fields, err := util.GetFieldsByID(s.mw, spaceId, tagId, []string{bundle.RelationKeyResolvedLayout.String(), bundle.RelationKeyRelationKey.String()})
 	if err != nil {
 		return false
 	}
-
+	layout := model.ObjectTypeLayout(fields[bundle.RelationKeyResolvedLayout.String()].GetNumberValue())
+	rk := domain.RelationKey(fields[bundle.RelationKeyRelationKey.String()].GetStringValue())
 	return util.IsTagLayout(layout) && rk == domain.RelationKey(util.FromPropertyApiKey(property.Key))
 }
 
 func (s *Service) isValidObjectReference(spaceId string, objectId string) bool {
-	layout, _, err := util.GetByID(s.mw, spaceId, objectId)
+	fields, err := util.GetFieldsByID(s.mw, spaceId, objectId, []string{bundle.RelationKeyResolvedLayout.String()})
 	if err != nil {
 		return false
 	}
-
+	layout := model.ObjectTypeLayout(fields[bundle.RelationKeyResolvedLayout.String()].GetNumberValue())
 	return util.IsObjectLayout(layout)
 }
 
 func (s *Service) isValidFileReference(spaceId string, fileId string) bool {
-	layout, _, err := util.GetByID(s.mw, spaceId, fileId)
+	fields, err := util.GetFieldsByID(s.mw, spaceId, fileId, []string{bundle.RelationKeyResolvedLayout.String()})
 	if err != nil {
 		return false
 	}
-
+	layout := model.ObjectTypeLayout(fields[bundle.RelationKeyResolvedLayout.String()].GetNumberValue())
 	return util.IsFileLayout(layout)
 }
 
@@ -605,7 +606,6 @@ func (s *Service) convertPropertyValue(key string, value *types.Value, format ap
 		}
 		return kind.NumberValue
 	case *types.Value_StringValue:
-		// TODO: investigate how this is possible? select option not list and not returned in further details
 		if format == apimodel.PropertyFormatSelect {
 			tags := s.getTagsFromStruct([]string{kind.StringValue}, tagMap)
 			if len(tags) > 0 {
