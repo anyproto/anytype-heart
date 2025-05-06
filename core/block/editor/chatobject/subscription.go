@@ -3,6 +3,7 @@ package chatobject
 import (
 	"context"
 	"slices"
+	"sort"
 	"time"
 
 	"github.com/hashicorp/golang-lru/v2/expirable"
@@ -14,10 +15,7 @@ import (
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/spaceindex"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	"github.com/anyproto/anytype-heart/util/slice"
 )
-
-const LastMessageSubscriptionId = "lastMessage"
 
 type subscriptionManager struct {
 	componentCtx context.Context
@@ -31,7 +29,7 @@ type subscriptionManager struct {
 	eventsBuffer   []*pb.EventMessage
 
 	identityCache *expirable.LRU[string, *domain.Details]
-	ids           []string
+	subscriptions map[string]*subscription
 
 	chatState        *model.ChatState
 	needReloadState  bool
@@ -41,6 +39,11 @@ type subscriptionManager struct {
 	spaceIndex  spaceindex.Store
 	eventSender event.Sender
 	repository  *repository
+}
+
+type subscription struct {
+	id               string
+	withDependencies bool
 }
 
 func (s *storeObject) newSubscriptionManager(fullId domain.FullID, myIdentity string, myParticipantId string) *subscriptionManager {
@@ -54,13 +57,17 @@ func (s *storeObject) newSubscriptionManager(fullId domain.FullID, myIdentity st
 		myParticipantId: myParticipantId,
 		identityCache:   expirable.NewLRU[string, *domain.Details](50, nil, time.Minute),
 		repository:      s.repository,
+		subscriptions:   map[string]*subscription{},
 	}
 }
 
 // subscribe subscribes to messages. It returns true if there was no subscriptionManager with provided id
-func (s *subscriptionManager) subscribe(subId string) bool {
-	if !slices.Contains(s.ids, subId) {
-		s.ids = append(s.ids, subId)
+func (s *subscriptionManager) subscribe(subId string, withDependencies bool) bool {
+	if _, ok := s.subscriptions[subId]; !ok {
+		s.subscriptions[subId] = &subscription{
+			id:               subId,
+			withDependencies: withDependencies,
+		}
 		s.chatStateUpdated = false
 		return true
 	}
@@ -68,15 +75,29 @@ func (s *subscriptionManager) subscribe(subId string) bool {
 }
 
 func (s *subscriptionManager) unsubscribe(subId string) {
-	s.ids = slice.Remove(s.ids, subId)
+	delete(s.subscriptions, subId)
 }
 
 func (s *subscriptionManager) isActive() bool {
-	return len(s.ids) > 0
+	return len(s.subscriptions) > 0
 }
 
 func (s *subscriptionManager) withDeps() bool {
-	return slices.Equal(s.ids, []string{LastMessageSubscriptionId})
+	for _, sub := range s.subscriptions {
+		if sub.withDependencies {
+			return true
+		}
+	}
+	return false
+}
+
+func (s *subscriptionManager) listSubIds() []string {
+	subIds := make([]string, 0, len(s.subscriptions))
+	for id := range s.subscriptions {
+		subIds = append(subIds, id)
+	}
+	sort.Strings(subIds)
+	return subIds
 }
 
 // setSessionContext sets the session context for the current operation
@@ -127,7 +148,7 @@ func (s *subscriptionManager) flush() {
 	if s.chatStateUpdated {
 		events = append(events, event.NewMessage(s.spaceId, &pb.EventMessageValueOfChatStateUpdate{ChatStateUpdate: &pb.EventChatUpdateState{
 			State:  s.getChatState(),
-			SubIds: slices.Clone(s.ids),
+			SubIds: s.listSubIds(),
 		}}))
 		s.chatStateUpdated = false
 	}
@@ -168,24 +189,13 @@ func (s *subscriptionManager) add(prevOrderId string, message *Message) {
 		Message:      message.ChatMessage,
 		OrderId:      message.OrderId,
 		AfterOrderId: prevOrderId,
-		SubIds:       slices.Clone(s.ids),
+		SubIds:       s.listSubIds(),
 	}
 
 	if s.withDeps() {
-		identityDetails, err := s.getIdentityDetails(message.Creator)
-		if err != nil {
-			log.Error("get identity details", zap.Error(err))
-		} else if identityDetails.Len() > 0 {
-			ev.Dependencies = append(ev.Dependencies, identityDetails.ToProto())
-		}
-
-		for _, attachment := range message.Attachments {
-			attachmentDetails, err := s.spaceIndex.GetDetails(attachment.Target)
-			if err != nil {
-				log.Error("get attachment details", zap.Error(err))
-			} else if attachmentDetails.Len() > 0 {
-				ev.Dependencies = append(ev.Dependencies, attachmentDetails.ToProto())
-			}
+		deps := s.collectMessageDependencies(message)
+		for _, dep := range deps {
+			ev.Dependencies = append(ev.Dependencies, dep.ToProto())
 		}
 	}
 	s.eventsBuffer = append(s.eventsBuffer, event.NewMessage(s.spaceId, &pb.EventMessageValueOfChatAdd{
@@ -193,10 +203,31 @@ func (s *subscriptionManager) add(prevOrderId string, message *Message) {
 	}))
 }
 
+func (s *subscriptionManager) collectMessageDependencies(message *Message) []*domain.Details {
+	var result []*domain.Details
+
+	identityDetails, err := s.getIdentityDetails(message.Creator)
+	if err != nil {
+		log.Error("get identity details", zap.Error(err))
+	} else if identityDetails.Len() > 0 {
+		result = append(result, identityDetails)
+	}
+
+	for _, attachment := range message.Attachments {
+		attachmentDetails, err := s.spaceIndex.GetDetails(attachment.Target)
+		if err != nil {
+			log.Error("get attachment details", zap.Error(err))
+		} else if attachmentDetails.Len() > 0 {
+			result = append(result, attachmentDetails)
+		}
+	}
+	return result
+}
+
 func (s *subscriptionManager) delete(messageId string) {
 	ev := &pb.EventChatDelete{
 		Id:     messageId,
-		SubIds: slices.Clone(s.ids),
+		SubIds: s.listSubIds(),
 	}
 	s.eventsBuffer = append(s.eventsBuffer, event.NewMessage(s.spaceId, &pb.EventMessageValueOfChatDelete{
 		ChatDelete: ev,
@@ -213,7 +244,7 @@ func (s *subscriptionManager) updateFull(message *Message) {
 	ev := &pb.EventChatUpdate{
 		Id:      message.Id,
 		Message: message.ChatMessage,
-		SubIds:  slices.Clone(s.ids),
+		SubIds:  s.listSubIds(),
 	}
 	s.eventsBuffer = append(s.eventsBuffer, event.NewMessage(s.spaceId, &pb.EventMessageValueOfChatUpdate{
 		ChatUpdate: ev,
@@ -227,7 +258,7 @@ func (s *subscriptionManager) updateReactions(message *Message) {
 	ev := &pb.EventChatUpdateReactions{
 		Id:        message.Id,
 		Reactions: message.Reactions,
-		SubIds:    slices.Clone(s.ids),
+		SubIds:    s.listSubIds(),
 	}
 	s.eventsBuffer = append(s.eventsBuffer, event.NewMessage(s.spaceId, &pb.EventMessageValueOfChatUpdateReactions{
 		ChatUpdateReactions: ev,
@@ -253,7 +284,7 @@ func (s *subscriptionManager) updateMessageRead(ids []string, read bool) {
 		ChatUpdateMessageReadStatus: &pb.EventChatUpdateMessageReadStatus{
 			Ids:    ids,
 			IsRead: read,
-			SubIds: slices.Clone(s.ids),
+			SubIds: s.listSubIds(),
 		},
 	}))
 }
@@ -275,7 +306,7 @@ func (s *subscriptionManager) updateMentionRead(ids []string, read bool) {
 		ChatUpdateMentionReadStatus: &pb.EventChatUpdateMentionReadStatus{
 			Ids:    ids,
 			IsRead: read,
-			SubIds: slices.Clone(s.ids),
+			SubIds: s.listSubIds(),
 		},
 	}))
 }
