@@ -237,7 +237,7 @@ packages:
   github.com/anyproto/anytype-heart/core/identity:
     interfaces:
       Service:
-  github.com/anyproto/anytype-heart/core/api/apicore:
+  github.com/anyproto/anytype-heart/core/api/core:
     interfaces:
       AccountService:
       ExportService:

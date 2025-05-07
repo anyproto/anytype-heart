@@ -80,6 +80,12 @@ github.com/andybalholm/cascadia v1.3.3 h1:AG2YHrzJIm4BZ19iwJ/DAua6Btl3IwJX+VI4kk
 github.com/andybalholm/cascadia v1.3.3/go.mod h1:xNd9bqTn98Ln4DwST8/nG+H0yuB8Hmgu1YHNnWw0GeA=
 github.com/anyproto/any-store v0.1.13 h1:1wmm0qQIRShaycBLKwcgkQbRKy3WrNPAShTE5fwzfCY=
 github.com/anyproto/any-store v0.1.13/go.mod h1:2M0Xf4rmijoKGd+nqqeKG8I1yIokCLEIxrAXEoHjXn4=
+github.com/anyproto/any-sync v0.6.15 h1:fxZHjiMcZJzJqzBprBNTYmm0MV8Y7NgIGPfLxlsgnWk=
+github.com/anyproto/any-sync v0.6.15/go.mod h1:TSKgCoTV40Bt8AfCh3RxPUUAfYGrhc8Mzh8/AiVlvX4=
+github.com/anyproto/any-sync v0.7.2 h1:S1UPzW0iYTLwsMAZ3rN/EJwthTGuadsvXdnGYNiC6cA=
+github.com/anyproto/any-sync v0.7.2/go.mod h1:TSKgCoTV40Bt8AfCh3RxPUUAfYGrhc8Mzh8/AiVlvX4=
+github.com/anyproto/any-sync v0.7.4 h1:pEkPn1fxJGvSGlsnAOy0lWVaqRgymyddmNy7T9toUQk=
+github.com/anyproto/any-sync v0.7.4/go.mod h1:TSKgCoTV40Bt8AfCh3RxPUUAfYGrhc8Mzh8/AiVlvX4=
 github.com/anyproto/any-sync v0.7.5 h1:VHayuacVpa2eRu5ubxCwrL3l0f/OSN7p45L8TxnaJEw=
 github.com/anyproto/any-sync v0.7.5/go.mod h1:02tMeQ6s/tneWLhoyzvy/ocGswICtvI48kdwTU8hQf8=
 github.com/anyproto/anytype-publish-server/publishclient v0.0.0-20250131145601-de288583ff2a h1:ZZM+0OUCQMWSLSflpkf0ZMVo3V76qEDDIXPpQOClNs0=

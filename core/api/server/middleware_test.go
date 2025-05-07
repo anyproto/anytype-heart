@@ -2,7 +2,6 @@ package server
 
 import (
 	"encoding/json"
-	"errors"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -13,7 +12,6 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/api/util"
 	"github.com/anyproto/anytype-heart/pb"
-	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
 func TestEnsureMetadataHeader(t *testing.T) {
@@ -28,7 +26,7 @@ func TestEnsureMetadataHeader(t *testing.T) {
 		middleware(c)
 
 		// then
-		require.Equal(t, "2025-03-17", w.Header().Get("Anytype-Version"))
+		require.Equal(t, ApiVersion, w.Header().Get("Anytype-Version"))
 	})
 }
 
@@ -137,45 +135,6 @@ func TestEnsureAuthenticated(t *testing.T) {
 		expectedJSON, err := json.Marshal(util.CodeToAPIError(http.StatusUnauthorized, ErrInvalidToken.Error()))
 		require.NoError(t, err)
 		require.JSONEq(t, string(expectedJSON), w.Body.String())
-	})
-}
-
-func TestEnsureAccountInfo(t *testing.T) {
-	t.Run("successful account info", func(t *testing.T) {
-		// given
-		fx := newFixture(t)
-		expectedInfo := &model.AccountInfo{
-			GatewayUrl: "http://localhost:31006",
-		}
-		fx.accountService.On("GetInfo", mock.Anything).Return(expectedInfo, nil).Once()
-
-		// when
-		middleware := fx.ensureAccountInfo(&fx.accountService)
-		w := httptest.NewRecorder()
-		c, _ := gin.CreateTestContext(w)
-
-		// when
-		middleware(c)
-
-		// then
-		require.Equal(t, expectedInfo, fx.objectService.AccountInfo)
-		require.Equal(t, expectedInfo, fx.spaceService.AccountInfo)
-		require.Equal(t, expectedInfo, fx.searchService.AccountInfo)
-	})
-
-	t.Run("error retrieving account info", func(t *testing.T) {
-		// given
-		fx := newFixture(t)
-		expectedErr := errors.New("failed to get info")
-		fx.accountService.On("GetInfo", mock.Anything).Return(nil, expectedErr).Once()
-
-		middleware := fx.ensureAccountInfo(&fx.accountService)
-		w := httptest.NewRecorder()
-		c, _ := gin.CreateTestContext(w)
-		middleware(c)
-
-		// then
-		require.Equal(t, http.StatusInternalServerError, w.Code)
 	})
 }
 
