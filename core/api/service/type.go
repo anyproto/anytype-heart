@@ -398,29 +398,6 @@ func (s *Service) buildRelationIds(ctx context.Context, spaceId string, props []
 	return relationIds, nil
 }
 
-func (s *Service) objectLayoutToObjectTypeLayout(objectLayout apimodel.ObjectLayout) model.ObjectTypeLayout {
-	switch objectLayout {
-	case apimodel.ObjectLayoutBasic:
-		return model.ObjectType_basic
-	case apimodel.ObjectLayoutProfile:
-		return model.ObjectType_profile
-	case apimodel.ObjectLayoutAction:
-		return model.ObjectType_todo
-	case apimodel.ObjectLayoutNote:
-		return model.ObjectType_note
-	case apimodel.ObjectLayoutBookmark:
-		return model.ObjectType_bookmark
-	case apimodel.ObjectLayoutSet:
-		return model.ObjectType_set
-	case apimodel.ObjectLayoutCollection:
-		return model.ObjectType_collection
-	case apimodel.ObjectLayoutParticipant:
-		return model.ObjectType_participant
-	default:
-		return model.ObjectType_basic
-	}
-}
-
 func (s *Service) otLayoutToObjectLayout(objectTypeLayout model.ObjectTypeLayout) apimodel.ObjectLayout {
 	switch objectTypeLayout {
 	case model.ObjectType_basic:
@@ -456,20 +433,5 @@ func (s *Service) typeLayoutToObjectTypeLayout(typeLayout apimodel.TypeLayout) m
 		return model.ObjectType_note
 	default:
 		return model.ObjectType_basic
-	}
-}
-
-func (s *Service) otLayoutToTypeLayout(objectTypeLayout model.ObjectTypeLayout) apimodel.TypeLayout {
-	switch objectTypeLayout {
-	case model.ObjectType_basic:
-		return apimodel.TypeLayoutBasic
-	case model.ObjectType_profile:
-		return apimodel.TypeLayoutProfile
-	case model.ObjectType_todo:
-		return apimodel.TypeLayoutAction
-	case model.ObjectType_note:
-		return apimodel.TypeLayoutNote
-	default:
-		return apimodel.TypeLayoutBasic
 	}
 }
