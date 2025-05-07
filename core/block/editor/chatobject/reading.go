@@ -29,7 +29,7 @@ type readHandler interface {
 }
 
 type readMessagesHandler struct {
-	subscription *subscription
+	subscription *subscriptionManager
 }
 
 func (h *readMessagesHandler) getUnreadFilter() query.Filter {
@@ -79,7 +79,7 @@ func (h *readMessagesHandler) readModifier(value bool) query.Modifier {
 }
 
 type readMentionsHandler struct {
-	subscription *subscription
+	subscription *subscriptionManager
 }
 
 func (h *readMentionsHandler) getUnreadFilter() query.Filter {
@@ -131,7 +131,7 @@ func (h *readMentionsHandler) readModifier(value bool) query.Modifier {
 	})
 }
 
-func newReadHandler(counterType CounterType, subscription *subscription) readHandler {
+func newReadHandler(counterType CounterType, subscription *subscriptionManager) readHandler {
 	switch counterType {
 	case CounterTypeMessage:
 		return &readMessagesHandler{subscription: subscription}

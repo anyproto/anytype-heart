@@ -1,4 +1,4 @@
-package source
+package sourceimpl
 
 import (
 	"fmt"
@@ -7,6 +7,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
+	"github.com/anyproto/anytype-heart/core/block/source"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -51,30 +52,30 @@ func Test_snapshotChance2(t *testing.T) {
 
 func TestSource_CheckChangeSize(t *testing.T) {
 	t.Run("big change", func(t *testing.T) {
-		//given
+		// given
 		c := &pb.Change{Content: []*pb.ChangeContent{{&pb.ChangeContentValueOfRelationAdd{RelationAdd: &pb.ChangeRelationAdd{
 			RelationLinks: []*model.RelationLink{{Key: bundle.RelationKeyName.String()}}},
 		}}}}
 		data, _ := c.Marshal()
 
-		//when
+		// when
 		err := checkChangeSize(data, len(data)-1)
 
-		//then
-		assert.ErrorIs(t, err, ErrBigChangeSize)
+		// then
+		assert.ErrorIs(t, err, source.ErrBigChangeSize)
 	})
 
 	t.Run("small change", func(t *testing.T) {
-		//given
+		// given
 		c := &pb.Change{Content: []*pb.ChangeContent{{&pb.ChangeContentValueOfRelationAdd{RelationAdd: &pb.ChangeRelationAdd{
 			RelationLinks: []*model.RelationLink{{Key: bundle.RelationKeyId.String()}}},
 		}}}}
 		data, _ := c.Marshal()
 
-		//when
+		// when
 		err := checkChangeSize(data, len(data)+1)
 
-		//then
+		// then
 		assert.NoError(t, err)
 	})
 }

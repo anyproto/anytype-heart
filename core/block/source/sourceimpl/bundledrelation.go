@@ -1,4 +1,4 @@
-package source
+package sourceimpl
 
 import (
 	"context"
@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
+	"github.com/anyproto/anytype-heart/core/block/source"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/relationutils"
 	"github.com/anyproto/anytype-heart/pb"
@@ -15,7 +16,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-func NewBundledRelation(id string) (s Source) {
+func NewBundledRelation(id string) (s source.Source) {
 	return &bundledRelation{
 		id:     id,
 		relKey: domain.RelationKey(strings.TrimPrefix(id, addr.BundledRelationURLPrefix)),
@@ -64,7 +65,7 @@ func (v *bundledRelation) getDetails(id string) (p *domain.Details, err error) {
 	return details, nil
 }
 
-func (v *bundledRelation) ReadDoc(_ context.Context, _ ChangeReceiver, empty bool) (doc state.Doc, err error) {
+func (v *bundledRelation) ReadDoc(_ context.Context, _ source.ChangeReceiver, empty bool) (doc state.Doc, err error) {
 	// we use STRelation instead of BundledRelation for a reason we want to have the same prefix
 	// ideally the whole logic should be done on the level of spaceService to return the virtual space for marketplace
 	uk, err := domain.NewUniqueKey(smartblock.SmartBlockTypeRelation, v.relKey.String())
@@ -86,12 +87,12 @@ func (v *bundledRelation) ReadDoc(_ context.Context, _ ChangeReceiver, empty boo
 	return s, nil
 }
 
-func (v *bundledRelation) PushChange(params PushChangeParams) (id string, err error) {
+func (v *bundledRelation) PushChange(params source.PushChangeParams) (id string, err error) {
 	if params.State.ChangeId() == "" {
 		// allow the first changes created by Init
 		return "virtual", nil
 	}
-	return "", ErrReadOnly
+	return "", source.ErrReadOnly
 }
 
 func (v *bundledRelation) ListIds() ([]string, error) {

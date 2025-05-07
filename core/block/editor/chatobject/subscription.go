@@ -3,6 +3,7 @@ package chatobject
 import (
 	"context"
 	"slices"
+	"sort"
 	"time"
 
 	"github.com/hashicorp/golang-lru/v2/expirable"
@@ -14,12 +15,9 @@ import (
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/spaceindex"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	"github.com/anyproto/anytype-heart/util/slice"
 )
 
-const LastMessageSubscriptionId = "lastMessage"
-
-type subscription struct {
+type subscriptionManager struct {
 	componentCtx context.Context
 
 	spaceId         string
@@ -31,7 +29,7 @@ type subscription struct {
 	eventsBuffer   []*pb.EventMessage
 
 	identityCache *expirable.LRU[string, *domain.Details]
-	ids           []string
+	subscriptions map[string]*subscription
 
 	chatState        *model.ChatState
 	needReloadState  bool
@@ -43,8 +41,13 @@ type subscription struct {
 	repository  *repository
 }
 
-func (s *storeObject) newSubscription(fullId domain.FullID, myIdentity string, myParticipantId string) *subscription {
-	return &subscription{
+type subscription struct {
+	id               string
+	withDependencies bool
+}
+
+func (s *storeObject) newSubscriptionManager(fullId domain.FullID, myIdentity string, myParticipantId string) *subscriptionManager {
+	return &subscriptionManager{
 		componentCtx:    s.componentCtx,
 		spaceId:         fullId.SpaceID,
 		chatId:          fullId.ObjectID,
@@ -54,37 +57,55 @@ func (s *storeObject) newSubscription(fullId domain.FullID, myIdentity string, m
 		myParticipantId: myParticipantId,
 		identityCache:   expirable.NewLRU[string, *domain.Details](50, nil, time.Minute),
 		repository:      s.repository,
+		subscriptions:   map[string]*subscription{},
 	}
 }
 
-// subscribe subscribes to messages. It returns true if there was no subscription with provided id
-func (s *subscription) subscribe(subId string) bool {
-	if !slices.Contains(s.ids, subId) {
-		s.ids = append(s.ids, subId)
+// subscribe subscribes to messages. It returns true if there was no subscriptionManager with provided id
+func (s *subscriptionManager) subscribe(subId string, withDependencies bool) bool {
+	if _, ok := s.subscriptions[subId]; !ok {
+		s.subscriptions[subId] = &subscription{
+			id:               subId,
+			withDependencies: withDependencies,
+		}
 		s.chatStateUpdated = false
 		return true
 	}
 	return false
 }
 
-func (s *subscription) unsubscribe(subId string) {
-	s.ids = slice.Remove(s.ids, subId)
+func (s *subscriptionManager) unsubscribe(subId string) {
+	delete(s.subscriptions, subId)
 }
 
-func (s *subscription) isActive() bool {
-	return len(s.ids) > 0
+func (s *subscriptionManager) isActive() bool {
+	return len(s.subscriptions) > 0
 }
 
-func (s *subscription) withDeps() bool {
-	return slices.Equal(s.ids, []string{LastMessageSubscriptionId})
+func (s *subscriptionManager) withDeps() bool {
+	for _, sub := range s.subscriptions {
+		if sub.withDependencies {
+			return true
+		}
+	}
+	return false
+}
+
+func (s *subscriptionManager) listSubIds() []string {
+	subIds := make([]string, 0, len(s.subscriptions))
+	for id := range s.subscriptions {
+		subIds = append(subIds, id)
+	}
+	sort.Strings(subIds)
+	return subIds
 }
 
 // setSessionContext sets the session context for the current operation
-func (s *subscription) setSessionContext(ctx session.Context) {
+func (s *subscriptionManager) setSessionContext(ctx session.Context) {
 	s.sessionContext = ctx
 }
 
-func (s *subscription) loadChatState(ctx context.Context) error {
+func (s *subscriptionManager) loadChatState(ctx context.Context) error {
 	state, err := s.repository.loadChatState(ctx)
 	if err != nil {
 		return err
@@ -93,17 +114,17 @@ func (s *subscription) loadChatState(ctx context.Context) error {
 	return nil
 }
 
-func (s *subscription) getChatState() *model.ChatState {
+func (s *subscriptionManager) getChatState() *model.ChatState {
 	return copyChatState(s.chatState)
 }
 
-func (s *subscription) updateChatState(updater func(*model.ChatState) *model.ChatState) {
+func (s *subscriptionManager) updateChatState(updater func(*model.ChatState) *model.ChatState) {
 	s.chatState = updater(s.chatState)
 	s.chatStateUpdated = true
 }
 
 // flush is called after commiting changes
-func (s *subscription) flush() {
+func (s *subscriptionManager) flush() {
 	if !s.canSend() {
 		return
 	}
@@ -127,7 +148,7 @@ func (s *subscription) flush() {
 	if s.chatStateUpdated {
 		events = append(events, event.NewMessage(s.spaceId, &pb.EventMessageValueOfChatStateUpdate{ChatStateUpdate: &pb.EventChatUpdateState{
 			State:  s.getChatState(),
-			SubIds: slices.Clone(s.ids),
+			SubIds: s.listSubIds(),
 		}}))
 		s.chatStateUpdated = false
 	}
@@ -136,7 +157,6 @@ func (s *subscription) flush() {
 		ContextId: s.chatId,
 		Messages:  events,
 	}
-
 	if s.sessionContext != nil {
 		s.sessionContext.SetMessages(s.chatId, events)
 		s.eventSender.BroadcastToOtherSessions(s.sessionContext.ID(), ev)
@@ -146,7 +166,7 @@ func (s *subscription) flush() {
 	}
 }
 
-func (s *subscription) getIdentityDetails(identity string) (*domain.Details, error) {
+func (s *subscriptionManager) getIdentityDetails(identity string) (*domain.Details, error) {
 	cached, ok := s.identityCache.Get(identity)
 	if ok {
 		return cached, nil
@@ -159,7 +179,7 @@ func (s *subscription) getIdentityDetails(identity string) (*domain.Details, err
 	return details, nil
 }
 
-func (s *subscription) add(prevOrderId string, message *Message) {
+func (s *subscriptionManager) add(prevOrderId string, message *Message) {
 	if !s.canSend() {
 		return
 	}
@@ -169,24 +189,13 @@ func (s *subscription) add(prevOrderId string, message *Message) {
 		Message:      message.ChatMessage,
 		OrderId:      message.OrderId,
 		AfterOrderId: prevOrderId,
-		SubIds:       slices.Clone(s.ids),
+		SubIds:       s.listSubIds(),
 	}
 
 	if s.withDeps() {
-		identityDetails, err := s.getIdentityDetails(message.Creator)
-		if err != nil {
-			log.Error("get identity details", zap.Error(err))
-		} else if identityDetails.Len() > 0 {
-			ev.Dependencies = append(ev.Dependencies, identityDetails.ToProto())
-		}
-
-		for _, attachment := range message.Attachments {
-			attachmentDetails, err := s.spaceIndex.GetDetails(attachment.Target)
-			if err != nil {
-				log.Error("get attachment details", zap.Error(err))
-			} else if attachmentDetails.Len() > 0 {
-				ev.Dependencies = append(ev.Dependencies, attachmentDetails.ToProto())
-			}
+		deps := s.collectMessageDependencies(message)
+		for _, dep := range deps {
+			ev.Dependencies = append(ev.Dependencies, dep.ToProto())
 		}
 	}
 	s.eventsBuffer = append(s.eventsBuffer, event.NewMessage(s.spaceId, &pb.EventMessageValueOfChatAdd{
@@ -194,10 +203,31 @@ func (s *subscription) add(prevOrderId string, message *Message) {
 	}))
 }
 
-func (s *subscription) delete(messageId string) {
+func (s *subscriptionManager) collectMessageDependencies(message *Message) []*domain.Details {
+	var result []*domain.Details
+
+	identityDetails, err := s.getIdentityDetails(message.Creator)
+	if err != nil {
+		log.Error("get identity details", zap.Error(err))
+	} else if identityDetails.Len() > 0 {
+		result = append(result, identityDetails)
+	}
+
+	for _, attachment := range message.Attachments {
+		attachmentDetails, err := s.spaceIndex.GetDetails(attachment.Target)
+		if err != nil {
+			log.Error("get attachment details", zap.Error(err))
+		} else if attachmentDetails.Len() > 0 {
+			result = append(result, attachmentDetails)
+		}
+	}
+	return result
+}
+
+func (s *subscriptionManager) delete(messageId string) {
 	ev := &pb.EventChatDelete{
 		Id:     messageId,
-		SubIds: slices.Clone(s.ids),
+		SubIds: s.listSubIds(),
 	}
 	s.eventsBuffer = append(s.eventsBuffer, event.NewMessage(s.spaceId, &pb.EventMessageValueOfChatDelete{
 		ChatDelete: ev,
@@ -207,28 +237,28 @@ func (s *subscription) delete(messageId string) {
 	s.needReloadState = true
 }
 
-func (s *subscription) updateFull(message *Message) {
+func (s *subscriptionManager) updateFull(message *Message) {
 	if !s.canSend() {
 		return
 	}
 	ev := &pb.EventChatUpdate{
 		Id:      message.Id,
 		Message: message.ChatMessage,
-		SubIds:  slices.Clone(s.ids),
+		SubIds:  s.listSubIds(),
 	}
 	s.eventsBuffer = append(s.eventsBuffer, event.NewMessage(s.spaceId, &pb.EventMessageValueOfChatUpdate{
 		ChatUpdate: ev,
 	}))
 }
 
-func (s *subscription) updateReactions(message *Message) {
+func (s *subscriptionManager) updateReactions(message *Message) {
 	if !s.canSend() {
 		return
 	}
 	ev := &pb.EventChatUpdateReactions{
 		Id:        message.Id,
 		Reactions: message.Reactions,
-		SubIds:    slices.Clone(s.ids),
+		SubIds:    s.listSubIds(),
 	}
 	s.eventsBuffer = append(s.eventsBuffer, event.NewMessage(s.spaceId, &pb.EventMessageValueOfChatUpdateReactions{
 		ChatUpdateReactions: ev,
@@ -237,7 +267,7 @@ func (s *subscription) updateReactions(message *Message) {
 
 // updateMessageRead updates the read status of the messages with the given ids
 // read ids should ONLY contain ids if they were actually modified in the DB
-func (s *subscription) updateMessageRead(ids []string, read bool) {
+func (s *subscriptionManager) updateMessageRead(ids []string, read bool) {
 	s.updateChatState(func(state *model.ChatState) *model.ChatState {
 		if read {
 			state.Messages.Counter -= int32(len(ids))
@@ -254,12 +284,12 @@ func (s *subscription) updateMessageRead(ids []string, read bool) {
 		ChatUpdateMessageReadStatus: &pb.EventChatUpdateMessageReadStatus{
 			Ids:    ids,
 			IsRead: read,
-			SubIds: slices.Clone(s.ids),
+			SubIds: s.listSubIds(),
 		},
 	}))
 }
 
-func (s *subscription) updateMentionRead(ids []string, read bool) {
+func (s *subscriptionManager) updateMentionRead(ids []string, read bool) {
 	s.updateChatState(func(state *model.ChatState) *model.ChatState {
 		if read {
 			state.Mentions.Counter -= int32(len(ids))
@@ -276,12 +306,12 @@ func (s *subscription) updateMentionRead(ids []string, read bool) {
 		ChatUpdateMentionReadStatus: &pb.EventChatUpdateMentionReadStatus{
 			Ids:    ids,
 			IsRead: read,
-			SubIds: slices.Clone(s.ids),
+			SubIds: s.listSubIds(),
 		},
 	}))
 }
 
-func (s *subscription) canSend() bool {
+func (s *subscriptionManager) canSend() bool {
 	if s.sessionContext != nil {
 		return true
 	}

@@ -1,4 +1,4 @@
-package source
+package sourceimpl
 
 import (
 	"context"
@@ -8,27 +8,26 @@ import (
 
 	"github.com/anyproto/any-sync/accountservice"
 	"github.com/anyproto/any-sync/app"
-	"github.com/anyproto/any-sync/commonspace/object/acl/list"
-	"github.com/anyproto/any-sync/commonspace/object/tree/objecttree"
-	"github.com/anyproto/any-sync/commonspace/object/tree/synctree/updatelistener"
-	"github.com/anyproto/any-sync/commonspace/objecttreebuilder"
 	"github.com/anyproto/any-sync/commonspace/spacestorage"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/object/idderiver"
+	"github.com/anyproto/anytype-heart/core/block/source"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/files"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
+	"github.com/anyproto/anytype-heart/space"
+	"github.com/anyproto/anytype-heart/space/clientspace/keyvalueservice"
 	"github.com/anyproto/anytype-heart/space/spacecore/storage"
 	"github.com/anyproto/anytype-heart/space/spacecore/typeprovider"
 )
 
 const CName = "source"
 
-func New() Service {
+func New() source.Service {
 	return &service{}
 }
 
@@ -38,24 +37,8 @@ type accountService interface {
 	PersonalSpaceID() string
 }
 
-type Space interface {
-	Id() string
-	TreeBuilder() objecttreebuilder.TreeBuilder
-	GetRelationIdByKey(ctx context.Context, key domain.RelationKey) (id string, err error)
-	GetTypeIdByKey(ctx context.Context, key domain.TypeKey) (id string, err error)
-	DeriveObjectID(ctx context.Context, uniqueKey domain.UniqueKey) (id string, err error)
-	StoredIds() []string
-	IsPersonal() bool
-}
-
-type Service interface {
-	NewSource(ctx context.Context, space Space, id string, buildOptions BuildOptions) (source Source, err error)
-	RegisterStaticSource(s Source) error
-	NewStaticSource(params StaticSourceParams) SourceWithType
-
-	DetailsFromIdBasedSource(id domain.FullID) (*domain.Details, error)
-	IDsListerBySmartblockType(space Space, blockType smartblock.SmartBlockType) (IDsLister, error)
-	app.Component
+type TechSpace interface {
+	KeyValueService() keyvalueservice.Service
 }
 
 type service struct {
@@ -67,13 +50,14 @@ type service struct {
 	objectStore        objectstore.ObjectStore
 	fileObjectMigrator fileObjectMigrator
 	idDeriver          idderiver.Deriver
+	spaceService       space.Service
 
 	mu        sync.Mutex
-	staticIds map[string]Source
+	staticIds map[string]source.Source
 }
 
 func (s *service) Init(a *app.App) (err error) {
-	s.staticIds = make(map[string]Source)
+	s.staticIds = make(map[string]source.Source)
 
 	s.sbtProvider = a.MustComponent(typeprovider.CName).(typeprovider.SmartBlockTypeProvider)
 	s.accountService = app.MustComponent[accountService](a)
@@ -81,6 +65,7 @@ func (s *service) Init(a *app.App) (err error) {
 	s.storageService = a.MustComponent(spacestorage.CName).(storage.ClientStorage)
 	s.objectStore = app.MustComponent[objectstore.ObjectStore](a)
 	s.idDeriver = app.MustComponent[idderiver.Deriver](a)
+	s.spaceService = app.MustComponent[space.Service](a)
 
 	s.fileService = app.MustComponent[files.Service](a)
 	s.fileObjectMigrator = app.MustComponent[fileObjectMigrator](a)
@@ -91,33 +76,7 @@ func (s *service) Name() (name string) {
 	return CName
 }
 
-type BuildOptions struct {
-	DisableRemoteLoad bool
-	Listener          updatelistener.UpdateListener
-}
-
-func (b *BuildOptions) BuildTreeOpts() objecttreebuilder.BuildTreeOpts {
-	return objecttreebuilder.BuildTreeOpts{
-		Listener: b.Listener,
-		TreeBuilder: func(treeStorage objecttree.Storage, aclList list.AclList) (objecttree.ObjectTree, error) {
-			ot, err := objecttree.BuildKeyFilterableObjectTree(treeStorage, aclList)
-			if err != nil {
-				return nil, err
-			}
-			sbt, _, err := typeprovider.GetTypeAndKeyFromRoot(ot.Header())
-			if err != nil {
-				return nil, err
-			}
-			if sbt == smartblock.SmartBlockTypeChatDerivedObject || sbt == smartblock.SmartBlockTypeAccountObject {
-				ot.SetFlusher(objecttree.MarkNewChangeFlusher())
-			}
-			return ot, nil
-		},
-		TreeValidator: objecttree.ValidateFilterRawTree,
-	}
-}
-
-func (s *service) NewSource(ctx context.Context, space Space, id string, buildOptions BuildOptions) (Source, error) {
+func (s *service) NewSource(ctx context.Context, space source.Space, id string, buildOptions source.BuildOptions) (source.Source, error) {
 	src, err := s.newSource(ctx, space, id, buildOptions)
 	if err != nil {
 		return nil, err
@@ -129,7 +88,7 @@ func (s *service) NewSource(ctx context.Context, space Space, id string, buildOp
 	return src, nil
 }
 
-func (s *service) newSource(ctx context.Context, space Space, id string, buildOptions BuildOptions) (Source, error) {
+func (s *service) newSource(ctx context.Context, space source.Space, id string, buildOptions source.BuildOptions) (source.Source, error) {
 	if id == addr.AnytypeProfileId {
 		return NewAnytypeProfile(id), nil
 	}
@@ -166,7 +125,7 @@ func (s *service) newSource(ctx context.Context, space Space, id string, buildOp
 			participantState := state.NewDoc(id, nil).(*state.State)
 			// Set object type here in order to derive value of Type relation in smartblock.Init
 			participantState.SetObjectTypeKey(bundle.TypeKeyParticipant)
-			params := StaticSourceParams{
+			params := source.StaticSourceParams{
 				Id: domain.FullID{
 					ObjectID: id,
 					SpaceID:  spaceId,
@@ -189,7 +148,7 @@ func (s *service) newSource(ctx context.Context, space Space, id string, buildOp
 	return s.newTreeSource(ctx, space, id, buildOptions.BuildTreeOpts())
 }
 
-func (s *service) IDsListerBySmartblockType(space Space, blockType smartblock.SmartBlockType) (IDsLister, error) {
+func (s *service) IDsListerBySmartblockType(space source.Space, blockType smartblock.SmartBlockType) (source.IDsLister, error) {
 	switch blockType {
 	case smartblock.SmartBlockTypeAnytypeProfile:
 		return &anytypeProfile{}, nil
@@ -200,7 +159,7 @@ func (s *service) IDsListerBySmartblockType(space Space, blockType smartblock.Sm
 	case smartblock.SmartBlockTypeBundledRelation:
 		return &bundledRelation{}, nil
 	case smartblock.SmartBlockTypeBundledTemplate:
-		params := StaticSourceParams{
+		params := source.StaticSourceParams{
 			SbType:    smartblock.SmartBlockTypeBundledTemplate,
 			CreatorId: addr.AnytypeProfileId,
 		}
@@ -209,7 +168,7 @@ func (s *service) IDsListerBySmartblockType(space Space, blockType smartblock.Sm
 		if err := blockType.Valid(); err != nil {
 			return nil, err
 		}
-		return &source{
+		return &treeSource{
 			space:          space,
 			spaceID:        space.Id(),
 			smartblockType: blockType,
@@ -241,7 +200,7 @@ func (s *service) DetailsFromIdBasedSource(id domain.FullID) (*domain.Details, e
 	return nil, fmt.Errorf("date source miss the details")
 }
 
-func (s *service) RegisterStaticSource(src Source) error {
+func (s *service) RegisterStaticSource(src source.Source) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.staticIds[src.Id()] = src

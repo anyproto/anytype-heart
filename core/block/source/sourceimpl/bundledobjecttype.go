@@ -1,10 +1,11 @@
-package source
+package sourceimpl
 
 import (
 	"context"
 	"strings"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
+	"github.com/anyproto/anytype-heart/core/block/source"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/relationutils"
 	"github.com/anyproto/anytype-heart/pb"
@@ -14,7 +15,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-func NewBundledObjectType(id string) (s Source) {
+func NewBundledObjectType(id string) (s source.Source) {
 	return &bundledObjectType{
 		id:            id,
 		objectTypeKey: domain.TypeKey(strings.TrimPrefix(id, addr.BundledObjectTypeURLPrefix)),
@@ -62,7 +63,7 @@ func getDetailsForBundledObjectType(id string) (extraRels []*model.RelationLink,
 	return extraRels, (&relationutils.ObjectType{ot}).BundledTypeDetails(), nil
 }
 
-func (v *bundledObjectType) ReadDoc(ctx context.Context, receiver ChangeReceiver, empty bool) (doc state.Doc, err error) {
+func (v *bundledObjectType) ReadDoc(ctx context.Context, receiver source.ChangeReceiver, empty bool) (doc state.Doc, err error) {
 	// we use STType instead of BundledObjectType for a reason we want to have the same prefix
 	// ideally the whole logic should be done on the level of spaceService to return the virtual space for marketplace
 	uk, err := domain.NewUniqueKey(smartblock.SmartBlockTypeObjectType, v.objectTypeKey.String())
@@ -85,7 +86,7 @@ func (v *bundledObjectType) ReadDoc(ctx context.Context, receiver ChangeReceiver
 	return s, nil
 }
 
-func (v *bundledObjectType) PushChange(params PushChangeParams) (id string, err error) {
+func (v *bundledObjectType) PushChange(params source.PushChangeParams) (id string, err error) {
 	return "", nil
 }
 

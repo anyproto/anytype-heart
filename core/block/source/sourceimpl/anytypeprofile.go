@@ -1,9 +1,10 @@
-package source
+package sourceimpl
 
 import (
 	"context"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
+	"github.com/anyproto/anytype-heart/core/block/source"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
@@ -13,7 +14,7 @@ import (
 )
 
 // TODO Is it used?
-func NewAnytypeProfile(id string) (s Source) {
+func NewAnytypeProfile(id string) (s source.Source) {
 	return &anytypeProfile{
 		id: id,
 	}
@@ -57,7 +58,7 @@ func (v *anytypeProfile) getDetails() (p *domain.Details) {
 	return det
 }
 
-func (v *anytypeProfile) ReadDoc(ctx context.Context, receiver ChangeReceiver, empty bool) (doc state.Doc, err error) {
+func (v *anytypeProfile) ReadDoc(ctx context.Context, receiver source.ChangeReceiver, empty bool) (doc state.Doc, err error) {
 	s := state.NewDoc(v.id, nil).(*state.State)
 
 	d := v.getDetails()
@@ -81,7 +82,7 @@ func (s *anytypeProfile) GetFileKeysSnapshot() []*pb.ChangeFileKeys {
 	return nil
 }
 
-func (s *anytypeProfile) PushChange(params PushChangeParams) (id string, err error) {
+func (s *anytypeProfile) PushChange(params source.PushChangeParams) (id string, err error) {
 	return
 }
 

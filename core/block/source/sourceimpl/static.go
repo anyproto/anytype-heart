@@ -1,22 +1,16 @@
-package source
+package sourceimpl
 
 import (
 	"context"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
+	"github.com/anyproto/anytype-heart/core/block/source"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 )
 
-type StaticSourceParams struct {
-	Id        domain.FullID
-	SbType    smartblock.SmartBlockType
-	State     *state.State
-	CreatorId string
-}
-
-func (s *service) NewStaticSource(params StaticSourceParams) SourceWithType {
+func (s *service) NewStaticSource(params source.StaticSourceParams) source.SourceWithType {
 	return &static{
 		id:        params.Id,
 		sbType:    params.SbType,
@@ -50,11 +44,11 @@ func (s *static) ReadOnly() bool {
 	return true
 }
 
-func (s *static) ReadDoc(ctx context.Context, receiver ChangeReceiver, empty bool) (doc state.Doc, err error) {
+func (s *static) ReadDoc(ctx context.Context, receiver source.ChangeReceiver, empty bool) (doc state.Doc, err error) {
 	return s.doc, nil
 }
 
-func (s *static) PushChange(params PushChangeParams) (id string, err error) {
+func (s *static) PushChange(params source.PushChangeParams) (id string, err error) {
 	return
 }
 
