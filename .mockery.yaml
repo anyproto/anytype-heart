@@ -19,8 +19,10 @@ packages:
   github.com/anyproto/anytype-heart/core/block/cache:
     interfaces:
       ObjectGetter:
+      ObjectWaitGetter:
       CachedObjectGetter:
       ObjectGetterComponent:
+      ObjectWaitGetterComponent:
   github.com/anyproto/anytype-heart/pkg/lib/core:
     interfaces:
       Service:
