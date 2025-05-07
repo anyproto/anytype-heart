@@ -657,6 +657,7 @@ func (s *Service) convertPropertyValue(key string, value *types.Value, format ap
 }
 
 // buildPropertyWithValue creates a Property based on the format and converted value.
+// nolint:funlen
 func (s *Service) buildPropertyWithValue(id string, key string, name string, format apimodel.PropertyFormat, val interface{}) apimodel.PropertyWithValue {
 	base := apimodel.PropertyBase{
 		Object: "property",
