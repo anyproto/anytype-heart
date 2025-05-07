@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"sync"
+	"time"
 
 	"github.com/anyproto/any-sync/app"
 
@@ -450,5 +451,7 @@ func (s *service) UnreadMessages(ctx context.Context, chatObjectId string, after
 }
 
 func (s *service) chatObjectDo(ctx context.Context, chatObjectId string, proc func(sb chatobject.StoreObject) error) error {
-	return cache.DoWait(s.objectGetter, ctx, chatObjectId, proc)
+	waitCtx, cancel := context.WithTimeout(ctx, 30*time.Second)
+	defer cancel()
+	return cache.DoWait(s.objectGetter, waitCtx, chatObjectId, proc)
 }
