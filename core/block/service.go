@@ -160,6 +160,14 @@ func (s *Service) GetObject(ctx context.Context, objectID string) (sb smartblock
 	return s.GetObjectByFullID(ctx, domain.FullID{SpaceID: spaceID, ObjectID: objectID})
 }
 
+func (s *Service) WaitAndGetObject(ctx context.Context, objectID string) (sb smartblock.SmartBlock, err error) {
+	spaceID, err := s.resolver.ResolveSpaceID(objectID)
+	if err != nil {
+		return nil, err
+	}
+	return s.WaitAndGetObjectByFullID(ctx, domain.FullID{SpaceID: spaceID, ObjectID: objectID})
+}
+
 func (s *Service) TryRemoveFromCache(ctx context.Context, objectId string) (res bool, err error) {
 	spaceId, err := s.resolver.ResolveSpaceID(objectId)
 	if err != nil {
@@ -183,6 +191,14 @@ func (s *Service) GetObjectByFullID(ctx context.Context, id domain.FullID) (sb s
 	spc, err := s.spaceService.Get(ctx, id.SpaceID)
 	if err != nil {
 		return nil, fmt.Errorf("get space: %w", err)
+	}
+	return spc.GetObject(ctx, id.ObjectID)
+}
+
+func (s *Service) WaitAndGetObjectByFullID(ctx context.Context, id domain.FullID) (sb smartblock.SmartBlock, err error) {
+	spc, err := s.spaceService.Wait(ctx, id.SpaceID)
+	if err != nil {
+		return nil, fmt.Errorf("wait space: %w", err)
 	}
 	return spc.GetObject(ctx, id.ObjectID)
 }

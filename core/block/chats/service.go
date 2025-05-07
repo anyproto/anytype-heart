@@ -6,8 +6,10 @@ import (
 	"errors"
 	"fmt"
 	"sync"
+	"time"
 
 	"github.com/anyproto/any-sync/app"
+
 	"github.com/cheggaaa/mb/v3"
 	"go.uber.org/zap"
 
@@ -59,7 +61,7 @@ type accountService interface {
 }
 
 type service struct {
-	objectGetter         cache.ObjectGetter
+	objectGetter         cache.ObjectWaitGetter
 	crossSpaceSubService crossspacesub.Service
 	pushService          pushService
 	accountService       accountService
@@ -91,13 +93,12 @@ func (s *service) Name() string {
 }
 
 func (s *service) Init(a *app.App) error {
-	s.objectGetter = app.MustComponent[cache.ObjectGetter](a)
 	s.crossSpaceSubService = app.MustComponent[crossspacesub.Service](a)
 	s.componentCtx, s.componentCtxCancel = context.WithCancel(context.Background())
 	s.pushService = app.MustComponent[pushService](a)
 	s.accountService = app.MustComponent[accountService](a)
 	s.objectStore = app.MustComponent[objectstore.ObjectStore](a)
-
+	s.objectGetter = app.MustComponent[cache.ObjectWaitGetter](a)
 	return nil
 }
 
@@ -261,7 +262,7 @@ func (s *service) monitorMessagePreviews() {
 
 func (s *service) onChatAdded(chatObjectId string, subId string, asyncInit bool) (*chatobject.SubscribeLastMessagesResponse, error) {
 	var resp *chatobject.SubscribeLastMessagesResponse
-	err := cache.Do(s.objectGetter, chatObjectId, func(sb chatobject.StoreObject) error {
+	err := s.chatObjectDo(s.componentCtx, chatObjectId, func(sb chatobject.StoreObject) error {
 		var err error
 		resp, err = sb.SubscribeLastMessages(s.componentCtx, chatobject.SubscribeLastMessagesRequest{
 			SubId:            subId,
@@ -303,7 +304,7 @@ func (s *service) Close(ctx context.Context) error {
 
 func (s *service) AddMessage(ctx context.Context, sessionCtx session.Context, chatObjectId string, message *chatobject.Message) (string, error) {
 	var messageId, spaceId string
-	err := cache.Do(s.objectGetter, chatObjectId, func(sb chatobject.StoreObject) error {
+	err := s.chatObjectDo(ctx, chatObjectId, func(sb chatobject.StoreObject) error {
 		var err error
 		messageId, err = sb.AddMessage(ctx, sessionCtx, message)
 		spaceId = sb.SpaceID()
@@ -362,26 +363,26 @@ func (s *service) sendPushNotification(spaceId, chatObjectId string, messageId s
 }
 
 func (s *service) EditMessage(ctx context.Context, chatObjectId string, messageId string, newMessage *chatobject.Message) error {
-	return cache.Do(s.objectGetter, chatObjectId, func(sb chatobject.StoreObject) error {
+	return s.chatObjectDo(ctx, chatObjectId, func(sb chatobject.StoreObject) error {
 		return sb.EditMessage(ctx, messageId, newMessage)
 	})
 }
 
 func (s *service) ToggleMessageReaction(ctx context.Context, chatObjectId string, messageId string, emoji string) error {
-	return cache.Do(s.objectGetter, chatObjectId, func(sb chatobject.StoreObject) error {
+	return s.chatObjectDo(ctx, chatObjectId, func(sb chatobject.StoreObject) error {
 		return sb.ToggleMessageReaction(ctx, messageId, emoji)
 	})
 }
 
 func (s *service) DeleteMessage(ctx context.Context, chatObjectId string, messageId string) error {
-	return cache.Do(s.objectGetter, chatObjectId, func(sb chatobject.StoreObject) error {
+	return s.chatObjectDo(ctx, chatObjectId, func(sb chatobject.StoreObject) error {
 		return sb.DeleteMessage(ctx, messageId)
 	})
 }
 
 func (s *service) GetMessages(ctx context.Context, chatObjectId string, req chatobject.GetMessagesRequest) (*chatobject.GetMessagesResponse, error) {
 	var resp *chatobject.GetMessagesResponse
-	err := cache.Do(s.objectGetter, chatObjectId, func(sb chatobject.StoreObject) error {
+	err := s.chatObjectDo(ctx, chatObjectId, func(sb chatobject.StoreObject) error {
 		var err error
 		resp, err = sb.GetMessages(ctx, req)
 		if err != nil {
@@ -394,7 +395,7 @@ func (s *service) GetMessages(ctx context.Context, chatObjectId string, req chat
 
 func (s *service) GetMessagesByIds(ctx context.Context, chatObjectId string, messageIds []string) ([]*chatobject.Message, error) {
 	var res []*chatobject.Message
-	err := cache.Do(s.objectGetter, chatObjectId, func(sb chatobject.StoreObject) error {
+	err := s.chatObjectDo(ctx, chatObjectId, func(sb chatobject.StoreObject) error {
 		msg, err := sb.GetMessagesByIds(ctx, messageIds)
 		if err != nil {
 			return err
@@ -407,7 +408,7 @@ func (s *service) GetMessagesByIds(ctx context.Context, chatObjectId string, mes
 
 func (s *service) SubscribeLastMessages(ctx context.Context, chatObjectId string, limit int, subId string) (*chatobject.SubscribeLastMessagesResponse, error) {
 	var resp *chatobject.SubscribeLastMessagesResponse
-	err := cache.Do(s.objectGetter, chatObjectId, func(sb chatobject.StoreObject) error {
+	err := s.chatObjectDo(ctx, chatObjectId, func(sb chatobject.StoreObject) error {
 		var err error
 		resp, err = sb.SubscribeLastMessages(ctx, chatobject.SubscribeLastMessagesRequest{
 			SubId:            subId,
@@ -424,7 +425,7 @@ func (s *service) SubscribeLastMessages(ctx context.Context, chatObjectId string
 }
 
 func (s *service) Unsubscribe(chatObjectId string, subId string) error {
-	return cache.Do(s.objectGetter, chatObjectId, func(sb chatobject.StoreObject) error {
+	return s.chatObjectDo(s.componentCtx, chatObjectId, func(sb chatobject.StoreObject) error {
 		return sb.Unsubscribe(subId)
 	})
 }
@@ -438,13 +439,19 @@ type ReadMessagesRequest struct {
 }
 
 func (s *service) ReadMessages(ctx context.Context, req ReadMessagesRequest) error {
-	return cache.Do(s.objectGetter, req.ChatObjectId, func(sb chatobject.StoreObject) error {
+	return s.chatObjectDo(ctx, req.ChatObjectId, func(sb chatobject.StoreObject) error {
 		return sb.MarkReadMessages(ctx, req.AfterOrderId, req.BeforeOrderId, req.LastStateId, req.CounterType)
 	})
 }
 
 func (s *service) UnreadMessages(ctx context.Context, chatObjectId string, afterOrderId string, counterType chatobject.CounterType) error {
-	return cache.Do(s.objectGetter, chatObjectId, func(sb chatobject.StoreObject) error {
+	return s.chatObjectDo(ctx, chatObjectId, func(sb chatobject.StoreObject) error {
 		return sb.MarkMessagesAsUnread(ctx, afterOrderId, counterType)
 	})
+}
+
+func (s *service) chatObjectDo(ctx context.Context, chatObjectId string, proc func(sb chatobject.StoreObject) error) error {
+	waitCtx, cancel := context.WithTimeout(ctx, 30*time.Second)
+	defer cancel()
+	return cache.DoWait(s.objectGetter, waitCtx, chatObjectId, proc)
 }
