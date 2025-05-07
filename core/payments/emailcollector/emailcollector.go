@@ -8,18 +8,17 @@ import (
 
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/app/logger"
+	ppclient "github.com/anyproto/any-sync/paymentservice/paymentserviceclient"
+	proto "github.com/anyproto/any-sync/paymentservice/paymentserviceproto"
+	"github.com/anyproto/any-sync/util/periodicsync"
+	"github.com/dgraph-io/badger/v4"
 	"go.uber.org/zap"
 
-	"github.com/anyproto/any-sync/util/periodicsync"
 	"github.com/anyproto/anytype-heart/core/anytype/config"
 	"github.com/anyproto/anytype-heart/core/wallet"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/datastore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
-	"github.com/dgraph-io/badger/v4"
-
-	ppclient "github.com/anyproto/any-sync/paymentservice/paymentserviceclient"
-	proto "github.com/anyproto/any-sync/paymentservice/paymentserviceproto"
 )
 
 const CName = "emailcollector"
@@ -120,8 +119,6 @@ func (e *emailcollector) SetRequest(req *pb.RpcMembershipGetVerificationEmailReq
 	}
 
 	return nil
-	// try to send it right now
-	//return e.periodicUpdateEmail(context.Background())
 }
 
 func (e *emailcollector) periodicUpdateEmail(ctx context.Context) error {

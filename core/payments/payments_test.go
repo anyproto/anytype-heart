@@ -1026,7 +1026,7 @@ func TestGetVerificationEmail(t *testing.T) {
 				Email:                   "some@mail.com",
 				SubscribeToNewsletter:   true,
 				InsiderTipsAndTutorials: false,
-				IsOnboardingList:        false,
+				IsOnboardingList:        true,
 			},
 		).Return(errors.New("bad error")).Once()
 
@@ -1035,7 +1035,7 @@ func TestGetVerificationEmail(t *testing.T) {
 		req.Email = "some@mail.com"
 		req.SubscribeToNewsletter = true
 		req.InsiderTipsAndTutorials = false
-		req.IsOnboardingList = false
+		req.IsOnboardingList = true
 
 		// Call the function being tested
 		_, err := fx.GetVerificationEmail(ctx, req)
@@ -1051,7 +1051,7 @@ func TestGetVerificationEmail(t *testing.T) {
 				Email:                   "some@mail.com",
 				SubscribeToNewsletter:   true,
 				InsiderTipsAndTutorials: false,
-				IsOnboardingList:        false,
+				IsOnboardingList:        true,
 			},
 		).Return(nil).Once()
 
@@ -1059,6 +1059,7 @@ func TestGetVerificationEmail(t *testing.T) {
 		req := &pb.RpcMembershipGetVerificationEmailRequest{}
 		req.Email = "some@mail.com"
 		req.SubscribeToNewsletter = true
+		req.IsOnboardingList = true
 
 		// Call the function being tested
 		resp, err := fx.GetVerificationEmail(ctx, req)
