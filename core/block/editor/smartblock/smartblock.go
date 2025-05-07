@@ -64,6 +64,7 @@ const (
 	KeepInternalFlags
 	IgnoreNoPermissions
 	NotPushChanges // Used only for read-only actions like InitObject or OpenObject
+	AllowApplyWithEmptyTree
 )
 
 type Hook int
@@ -632,15 +633,16 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 		return domain.ErrObjectIsDeleted
 	}
 	var (
-		sendEvent           = true
-		addHistory          = true
-		doSnapshot          = false
-		checkRestrictions   = true
-		hooks               = true
-		skipIfNoChanges     = false
-		keepInternalFlags   = false
-		ignoreNoPermissions = false
-		notPushChanges      = false
+		sendEvent               = true
+		addHistory              = true
+		doSnapshot              = false
+		checkRestrictions       = true
+		hooks                   = true
+		skipIfNoChanges         = false
+		keepInternalFlags       = false
+		ignoreNoPermissions     = false
+		notPushChanges          = false
+		allowApplyWithEmptyTree = false
 	)
 	for _, f := range flags {
 		switch f {
@@ -662,7 +664,14 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 			ignoreNoPermissions = true
 		case NotPushChanges:
 			notPushChanges = true
+		case AllowApplyWithEmptyTree:
+			allowApplyWithEmptyTree = true
 		}
+	}
+	if sb.ObjectTree != nil && len(sb.ObjectTree.Heads()) == 1 && sb.ObjectTree.Heads()[0] == sb.ObjectTree.Id() && !allowApplyWithEmptyTree {
+		// protection for applying migrations on empty tree
+		log.With("sbType", sb.Type().String(), "objectId", sb.Id()).Warnf("apply on empty tree discarded")
+		return fmt.Errorf("apply on empty tree disallowed")
 	}
 
 	// Inject derived details to make sure we have consistent state.

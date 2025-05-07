@@ -150,8 +150,12 @@ func (f *ObjectFactory) InitObject(space smartblock.Space, id string, initCtx *s
 		return nil, fmt.Errorf("init smartblock: %w", err)
 	}
 
+	applyFlags := []smartblock.ApplyFlag{smartblock.NoHistory, smartblock.NoEvent, smartblock.NoRestrictions, smartblock.SkipIfNoChanges, smartblock.KeepInternalFlags, smartblock.IgnoreNoPermissions}
+	if initCtx.IsNewObject {
+		applyFlags = append(applyFlags, smartblock.AllowApplyWithEmptyTree)
+	}
 	migration.RunMigrations(sb, initCtx)
-	return sb, sb.Apply(initCtx.State, smartblock.NoHistory, smartblock.NoEvent, smartblock.NoRestrictions, smartblock.SkipIfNoChanges, smartblock.KeepInternalFlags, smartblock.IgnoreNoPermissions)
+	return sb, sb.Apply(initCtx.State, applyFlags...)
 }
 
 func (f *ObjectFactory) produceSmartblock(space smartblock.Space) (smartblock.SmartBlock, spaceindex.Store) {
