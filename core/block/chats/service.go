@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"sync"
+	"time"
 
 	"github.com/anyproto/any-sync/app"
 	"github.com/cheggaaa/mb/v3"
@@ -14,6 +15,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/cache"
 	"github.com/anyproto/anytype-heart/core/block/chats/chatpush"
 	"github.com/anyproto/anytype-heart/core/block/editor/chatobject"
+	"github.com/anyproto/anytype-heart/core/block/object/idresolver"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/session"
 	subscriptionservice "github.com/anyproto/anytype-heart/core/subscription"
@@ -24,6 +26,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+	"github.com/anyproto/anytype-heart/space"
 )
 
 const CName = "core.block.chats"
@@ -60,6 +63,8 @@ type accountService interface {
 
 type service struct {
 	objectGetter         cache.ObjectGetter
+	spaceIdResolver      idresolver.Resolver
+	spaceService         space.Service
 	crossSpaceSubService crossspacesub.Service
 	pushService          pushService
 	accountService       accountService
@@ -97,6 +102,8 @@ func (s *service) Init(a *app.App) error {
 	s.pushService = app.MustComponent[pushService](a)
 	s.accountService = app.MustComponent[accountService](a)
 	s.objectStore = app.MustComponent[objectstore.ObjectStore](a)
+	s.spaceService = app.MustComponent[space.Service](a)
+	s.spaceIdResolver = app.MustComponent[idresolver.Resolver](a)
 
 	return nil
 }
@@ -261,7 +268,7 @@ func (s *service) monitorMessagePreviews() {
 
 func (s *service) onChatAdded(chatObjectId string, subId string, asyncInit bool) (*chatobject.SubscribeLastMessagesResponse, error) {
 	var resp *chatobject.SubscribeLastMessagesResponse
-	err := cache.Do(s.objectGetter, chatObjectId, func(sb chatobject.StoreObject) error {
+	err := s.chatObjectDo(context.Background(), chatObjectId, func(sb chatobject.StoreObject) error {
 		var err error
 		resp, err = sb.SubscribeLastMessages(s.componentCtx, chatobject.SubscribeLastMessagesRequest{
 			SubId:            subId,
@@ -447,4 +454,33 @@ func (s *service) UnreadMessages(ctx context.Context, chatObjectId string, after
 	return cache.Do(s.objectGetter, chatObjectId, func(sb chatobject.StoreObject) error {
 		return sb.MarkMessagesAsUnread(ctx, afterOrderId, counterType)
 	})
+}
+
+func (s *service) chatObjectDo(ctx context.Context, chatObjectId string, proc func(sb chatobject.StoreObject) error) error {
+	spaceId, err := s.spaceIdResolver.ResolveSpaceID(chatObjectId)
+	if err != nil {
+		return fmt.Errorf("resolve space id: %w", err)
+	}
+	waitCtx, cancel := context.WithTimeout(ctx, 30*time.Second)
+	defer cancel()
+
+	spc, err := s.spaceService.Wait(waitCtx, spaceId)
+	if err != nil {
+		return fmt.Errorf("wait space: %w", err)
+	}
+
+	obj, err := spc.GetObject(ctx, chatObjectId)
+	if err != nil {
+		return fmt.Errorf("get object: %w", err)
+	}
+
+	storeObj, ok := obj.(chatobject.StoreObject)
+	if !ok {
+		return fmt.Errorf("not a store object")
+	}
+
+	storeObj.Lock()
+	defer storeObj.Unlock()
+
+	return proc(storeObj)
 }
