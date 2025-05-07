@@ -959,6 +959,7 @@ func (s *service) getAllTiers(ctx context.Context, req *pb.RpcMembershipGetTiers
 			IosManageUrl:     tier.IosManageUrl,
 			AndroidProductId: tier.AndroidProductId,
 			AndroidManageUrl: tier.AndroidManageUrl,
+			Offer:            tier.Offer,
 		}
 
 		// copy all features

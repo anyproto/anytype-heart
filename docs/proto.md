@@ -31414,6 +31414,7 @@ Used to decode block meta only, without the content itself
 | iosManageUrl | [string](#string) |  |  |
 | androidProductId | [string](#string) |  | Android platform-specific data: |
 | androidManageUrl | [string](#string) |  |  |
+| offer | [string](#string) |  | &#34;limited offer&#34; or somehing like that |
 
 
 
