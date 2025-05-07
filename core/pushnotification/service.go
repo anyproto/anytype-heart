@@ -64,14 +64,19 @@ type service struct {
 type spaceKeyType string
 
 func (s *service) SubscribeToTopics(ctx context.Context, spaceId string, topics []string) {
+	if !s.started {
+		return
+	}
 	err := s.requestsQueue.Add(ctx, requestSubscribe{spaceId: spaceId, topics: topics})
 	if err != nil {
 		log.Error("add topic", zap.Error(err))
 	}
-	return
 }
 
 func (s *service) Run(ctx context.Context) (err error) {
+	// TODO Temporarliy disabled
+	return nil
+
 	if s.cfg.IsLocalOnlyMode() {
 		return nil
 	}
