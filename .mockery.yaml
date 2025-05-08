@@ -169,6 +169,9 @@ packages:
   github.com/anyproto/anytype-heart/core/payments/cache:
     interfaces:
       CacheService:
+  github.com/anyproto/anytype-heart/core/payments/emailcollector:
+    interfaces:
+      EmailCollector:
   github.com/anyproto/anytype-heart/core/block:
     interfaces:
       ObjectGetter:
