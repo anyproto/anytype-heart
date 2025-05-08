@@ -52,6 +52,7 @@ type ApplyFlag int
 var (
 	ErrSimpleBlockNotFound                         = errors.New("simple block not found")
 	ErrCantInitExistingSmartblockWithNonEmptyState = errors.New("can't init existing smartblock with non-empty state")
+	ErrApplyOnEmptyTreeDisallowed                  = errors.New("apply on empty tree disallowed")
 )
 
 const (
@@ -671,7 +672,7 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 	if sb.ObjectTree != nil && len(sb.ObjectTree.Heads()) == 1 && sb.ObjectTree.Heads()[0] == sb.ObjectTree.Id() && !allowApplyWithEmptyTree {
 		// protection for applying migrations on empty tree
 		log.With("sbType", sb.Type().String(), "objectId", sb.Id()).Warnf("apply on empty tree discarded")
-		return fmt.Errorf("apply on empty tree disallowed")
+		return ErrApplyOnEmptyTreeDisallowed
 	}
 
 	// Inject derived details to make sure we have consistent state.
