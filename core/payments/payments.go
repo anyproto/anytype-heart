@@ -702,12 +702,11 @@ func (s *service) GetVerificationEmail(ctx context.Context, req *pb.RpcMembershi
 		}
 
 		// default OK response
-		var out pb.RpcMembershipGetVerificationEmailResponse
-		out.Error = &pb.RpcMembershipGetVerificationEmailResponseError{
-			Code: pb.RpcMembershipGetVerificationEmailResponseError_NULL,
-		}
-
-		return &out, nil
+		return &pb.RpcMembershipGetVerificationEmailResponse{
+			Error: &pb.RpcMembershipGetVerificationEmailResponseError{
+				Code: pb.RpcMembershipGetVerificationEmailResponseError_NULL,
+			},
+		}, nil
 	}
 
 	// send request to PP node directly
