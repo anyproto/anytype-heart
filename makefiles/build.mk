@@ -25,6 +25,9 @@ build-js-addon:
 	@npm install -C ./clientlibrary/jsaddon
 	@rm clientlibrary/jsaddon/lib.a clientlibrary/jsaddon/lib.h clientlibrary/jsaddon/bridge.h
 
+build-c-lib-test:
+	@echo 'Building C-lib test...'
+	@GO111MODULE=on CGO_ENABLED=1 GOOS=darwin GOARCH=arm64 go build -tags=cshared -buildmode=c-archive -o deps/libs/macos/librpc.a -v ./clientlibrary/bridge
 
 build-server: setup-network-config check-tantivy-version
 	@echo 'Building anytype-heart server...'
