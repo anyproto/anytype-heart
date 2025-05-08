@@ -529,10 +529,7 @@ func cleanUpChange(objectId string, change *objecttree.Change, model *pb.Change)
 	// emptying the object name
 	// GO-5592
 	if len(change.PreviousIds) == 1 &&
-		change.PreviousIds[0] == objectId &&
-		model.Version == 0 &&
-		model.Snapshot != nil &&
-		len(model.Snapshot.Data.ObjectTypes) == 0 {
+		change.PreviousIds[0] == objectId {
 		for i, c := range model.Content {
 			switch tt := c.Value.(type) {
 			case *pb.ChangeContentValueOfDetailsSet:
