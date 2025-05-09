@@ -669,7 +669,12 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 			allowApplyWithEmptyTree = true
 		}
 	}
-	if sb.ObjectTree != nil && len(sb.ObjectTree.Heads()) == 1 && sb.ObjectTree.Heads()[0] == sb.ObjectTree.Id() && !allowApplyWithEmptyTree {
+	if sb.ObjectTree != nil &&
+		len(sb.ObjectTree.Heads()) == 1 &&
+		sb.ObjectTree.Heads()[0] == sb.ObjectTree.Id() &&
+		!allowApplyWithEmptyTree &&
+		sb.Type() != smartblock.SmartBlockTypeChatDerivedObject &&
+		sb.Type() != smartblock.SmartBlockTypeAccountObject {
 		// protection for applying migrations on empty tree
 		log.With("sbType", sb.Type().String(), "objectId", sb.Id()).Warnf("apply on empty tree discarded")
 		return ErrApplyOnEmptyTreeDisallowed
