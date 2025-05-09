@@ -250,6 +250,7 @@ require (
 	github.com/remyoudompheng/bigfft v0.0.0-20230129092748-24d4a6f8daec // indirect
 	github.com/rs/cors v1.11.0 // indirect
 	github.com/rs/zerolog v1.29.0 // indirect
+	github.com/sashabaranov/go-openai v1.38.2 // indirect
 	github.com/shoenig/go-m1cpu v0.1.6 // indirect
 	github.com/spaolacci/murmur3 v1.1.0 // indirect
 	github.com/spf13/afero v1.10.0 // indirect
@@ -297,6 +298,7 @@ require (
 	modernc.org/memory v1.9.1 // indirect
 	modernc.org/sqlite v1.37.0 // indirect
 	nhooyr.io/websocket v1.8.7 // indirect
+	resty.dev/v3 v3.0.0-beta.2 // indirect
 )
 
 replace github.com/dgraph-io/badger/v4 => github.com/anyproto/badger/v4 v4.2.1-0.20240110160636-80743fa3d580
