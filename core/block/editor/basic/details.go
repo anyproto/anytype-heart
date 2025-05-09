@@ -373,6 +373,9 @@ func (bs *basic) getLayoutForType(objectTypeKey domain.TypeKey) (model.ObjectTyp
 
 func (bs *basic) SetLayoutInState(s *state.State, toLayout model.ObjectTypeLayout, ignoreRestriction bool) (err error) {
 	fromLayout, _ := s.Layout()
+	if fromLayout == toLayout {
+		return nil
+	}
 
 	if !ignoreRestriction {
 		if err = bs.Restrictions().Object.Check(model.Restrictions_LayoutChange); errors.Is(err, restriction.ErrRestricted) {

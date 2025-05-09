@@ -72,11 +72,15 @@ var (
 	}
 
 	objectRestrictionsByLayout = map[model.ObjectTypeLayout]ObjectRestrictions{
-		model.ObjectType_basic:      {},
-		model.ObjectType_profile:    {},
-		model.ObjectType_todo:       {},
-		model.ObjectType_set:        objRestrictEdit,
-		model.ObjectType_collection: objRestrictEdit,
+		model.ObjectType_basic:   {},
+		model.ObjectType_profile: {},
+		model.ObjectType_todo:    {},
+		model.ObjectType_set:     objRestrictEdit,
+		model.ObjectType_collection: {
+			model.Restrictions_Blocks,
+			model.Restrictions_LayoutChange,
+			model.Restrictions_Publish,
+		},
 		model.ObjectType_objectType: objRestrictEditAndTemplate,
 		model.ObjectType_relation:   objRestrictEditAndTemplate,
 		model.ObjectType_file:       objRestrictEditAndDuplicate,
