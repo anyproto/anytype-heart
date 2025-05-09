@@ -152,7 +152,7 @@ func (s *Service) GetObjectsInList(ctx context.Context, spaceId string, listId s
 	var collectionId string
 	var source []string
 	switch model.ObjectTypeLayout(typeDetail.Fields[bundle.RelationKeyRecommendedLayout.String()].GetNumberValue()) {
-	case model.ObjectType_set:
+	case model.ObjectType_set, model.ObjectType_objectType:
 		// for queries, we search within the space for objects of the setOf type
 		setOfValues := resp.ObjectView.Details[0].Details.Fields[bundle.RelationKeySetOf.String()].GetListValue().Values
 		for _, value := range setOfValues {
