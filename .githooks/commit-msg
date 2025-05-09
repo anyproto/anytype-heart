@@ -18,9 +18,9 @@ fi
 # Extract issue id from branch name
 ISSUE_ID=$(echo "$BRANCH_NAME" | grep -o -E "$REGEX_ISSUE_ID" | head -1 | awk '{print toupper($0)}')
 
-#if [[ "$ISSUE_ID" != "GO-"* ]]; then
-#  echo "Commit message validation failed: branch name should contain issue name!"; exit 1
-#fi
+if [[ "$ISSUE_ID" != "GO-"* ]]; then
+  echo "Commit message validation failed: branch name should contain issue name!"; exit 1
+fi
 
 if [[ "$COMMIT_TEXT" != "GO-"* ]]; then
   echo "$ISSUE_ID" "$COMMIT_TEXT" > "$COMMIT_MSG_FILE"
