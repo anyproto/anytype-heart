@@ -120,8 +120,8 @@ func (e *emailcollector) periodicUpdateEmail(ctx context.Context) error {
 
 	req, err := e.get()
 	if err != nil {
-		log.Error("emailcollector: failed to get email", zap.Error(err))
-		return err
+		// skip it if we have no email to send
+		return nil
 	}
 
 	// 1 - check if we have something to send
