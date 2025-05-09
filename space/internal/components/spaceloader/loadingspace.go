@@ -126,7 +126,7 @@ func (ls *loadingSpace) load(ctx context.Context) (notRetryable bool) {
 			// todo: remove after https://github.com/anyproto/any-sync/pull/448 got integrated
 			return ls.disableRemoteLoad
 		}
-		log.WarnCtx(ctx, "space load: error", zap.String("spaceId", ls.ID), zap.Error(err), zap.Bool("notRetryable", ls.disableRemoteLoad))
+		log.WarnCtx(ctx, "space load: error", zap.String("spaceId", ls.ID), zap.Error(err), zap.Bool("notRetryable", true))
 	} else {
 		if ls.latestAclHeadId != "" && !ls.disableRemoteLoad {
 			acl := sp.CommonSpace().Acl()
