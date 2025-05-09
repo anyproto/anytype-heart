@@ -17,7 +17,7 @@ import (
 //	@Id				getListViews
 //	@Tags			Lists
 //	@Produce		json
-//	@Param			Anytype-Version	header		string										true	"The version of the API to use"	default(2025-04-22)
+//	@Param			Anytype-Version	header		string										true	"The version of the API to use"	default(2025-05-20)
 //	@Param			space_id		path		string										true	"The ID of the space to which the list belongs"
 //	@Param			list_id			path		string										true	"The ID of the list to retrieve views for"
 //	@Param			offset			query		int											false	"The number of items to skip before starting to collect the result set"	default(0)
@@ -58,7 +58,7 @@ func GetListViewsHandler(s *service.Service) gin.HandlerFunc {
 //	@Id				getListObjects
 //	@Tags			Lists
 //	@Produce		json
-//	@Param			Anytype-Version	header		string											true	"The version of the API to use"	default(2025-04-22)
+//	@Param			Anytype-Version	header		string											true	"The version of the API to use"	default(2025-05-20)
 //	@Param			space_id		path		string											true	"The ID of the space to which the list belongs"
 //	@Param			list_id			path		string											true	"The ID of the list to retrieve objects for"
 //	@Param			view_id			path		string											true	"The ID of the view to retrieve objects for"
@@ -106,7 +106,7 @@ func GetObjectsInListHandler(s *service.Service) gin.HandlerFunc {
 //	@Tags			Lists
 //	@Accept			json
 //	@Produce		json
-//	@Param			Anytype-Version	header		string					true	"The version of the API to use"	default(2025-04-22)
+//	@Param			Anytype-Version	header		string					true	"The version of the API to use"	default(2025-05-20)
 //	@Param			space_id		path		string					true	"The ID of the space to which the list belongs"
 //	@Param			list_id			path		string					true	"The ID of the list to which objects will be added"
 //	@Param			objects			body		[]string				true	"The list of object IDs to add to the list"
@@ -152,7 +152,7 @@ func AddObjectsToListHandler(s *service.Service) gin.HandlerFunc {
 //	@Id				removeListObject
 //	@Tags			Lists
 //	@Produce		json
-//	@Param			Anytype-Version	header		string					true	"The version of the API to use"	default(2025-04-22)
+//	@Param			Anytype-Version	header		string					true	"The version of the API to use"	default(2025-05-20)
 //	@Param			space_id		path		string					true	"The ID of the space to which the list belongs"
 //	@Param			list_id			path		string					true	"The ID of the list from which the object will be removed"
 //	@Param			object_id		path		string					true	"The ID of the object to remove from the list"

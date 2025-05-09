@@ -18,7 +18,7 @@ import (
 //	@Id				listTags
 //	@Tags			Tags
 //	@Produce		json
-//	@Param			Anytype-Version	header		string										true	"The version of the API to use"	default(2025-04-22)
+//	@Param			Anytype-Version	header		string										true	"The version of the API to use"	default(2025-05-20)
 //	@Param			space_id		path		string										true	"The ID of the space to list tags for"
 //	@Param			property_id		path		string										true	"The ID of the property to list tags for"
 //	@Success		200				{object}	pagination.PaginatedResponse[apimodel.Tag]	"The list of tags"
@@ -57,7 +57,7 @@ func ListTagsHandler(s *service.Service) gin.HandlerFunc {
 //	@Id				getTag
 //	@Tags			Tags
 //	@Produce		json
-//	@Param			Anytype-Version	header		string					true	"The version of the API to use"	default(2025-04-22)
+//	@Param			Anytype-Version	header		string					true	"The version of the API to use"	default(2025-05-20)
 //	@Param			space_id		path		string					true	"The ID of the space to retrieve the tag from"
 //	@Param			property_id		path		string					true	"The ID of the property to retrieve the tag for"
 //	@Param			tag_id			path		string					true	"The ID of the tag to retrieve"
@@ -99,7 +99,7 @@ func GetTagHandler(s *service.Service) gin.HandlerFunc {
 //	@Tags			Tags
 //	@Accept			json
 //	@Produce		json
-//	@Param			Anytype-Version	header		string						true	"The version of the API to use"	default(2025-04-22)
+//	@Param			Anytype-Version	header		string						true	"The version of the API to use"	default(2025-05-20)
 //	@Param			space_id		path		string						true	"The ID of the space to create the tag in"
 //	@Param			property_id		path		string						true	"The ID of the property to create the tag for"
 //	@Param			tag				body		apimodel.CreateTagRequest	true	"The tag to create"
@@ -147,7 +147,7 @@ func CreateTagHandler(s *service.Service) gin.HandlerFunc {
 //	@Tags			Tags
 //	@Accept			json
 //	@Produce		json
-//	@Param			Anytype-Version	header		string						true	"The version of the API to use"	default(2025-04-22)
+//	@Param			Anytype-Version	header		string						true	"The version of the API to use"	default(2025-05-20)
 //	@Param			space_id		path		string						true	"The ID of the space to update the tag in"
 //	@Param			property_id		path		string						true	"The ID of the property to update the tag for"
 //	@Param			tag_id			path		string						true	"The ID of the tag to update"
@@ -201,7 +201,7 @@ func UpdateTagHandler(s *service.Service) gin.HandlerFunc {
 //	@Id				deleteTag
 //	@Tags			Tags
 //	@Produce		json
-//	@Param			Anytype-Version	header		string					true	"The version of the API to use"	default(2025-04-22)
+//	@Param			Anytype-Version	header		string					true	"The version of the API to use"	default(2025-05-20)
 //	@Param			space_id		path		string					true	"The ID of the space to delete the tag from"
 //	@Param			property_id		path		string					true	"The ID of the property to delete the tag for"
 //	@Param			tag_id			path		string					true	"The ID of the tag to delete"

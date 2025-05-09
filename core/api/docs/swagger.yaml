@@ -1438,7 +1438,7 @@ info:
     url: https://github.com/anyproto/anytype-api/blob/main/LICENSE.md
   termsOfService: https://anytype.io/terms_of_use
   title: Anytype API
-  version: "2025-04-22"
+  version: "2025-05-20"
 openapi: 3.1.0
 paths:
   /auth/display_code:
@@ -1457,7 +1457,7 @@ paths:
         name: Anytype-Version
         required: true
         schema:
-          default: "2025-04-22"
+          default: "2025-05-20"
           type: string
       - description: The name of the app requesting API access
         in: query
@@ -1508,7 +1508,7 @@ paths:
         name: Anytype-Version
         required: true
         schema:
-          default: "2025-04-22"
+          default: "2025-05-20"
           type: string
       - description: The ID of the challenge to solve
         in: query
@@ -1565,7 +1565,7 @@ paths:
         name: Anytype-Version
         required: true
         schema:
-          default: "2025-04-22"
+          default: "2025-05-20"
           type: string
       - description: The number of items to skip before starting to collect the result
           set
@@ -1625,7 +1625,7 @@ paths:
         name: Anytype-Version
         required: true
         schema:
-          default: "2025-04-22"
+          default: "2025-05-20"
           type: string
       - description: The number of items to skip before starting to collect the result
           set
@@ -1679,7 +1679,7 @@ paths:
         name: Anytype-Version
         required: true
         schema:
-          default: "2025-04-22"
+          default: "2025-05-20"
           type: string
       requestBody:
         content:
@@ -1737,7 +1737,7 @@ paths:
         name: Anytype-Version
         required: true
         schema:
-          default: "2025-04-22"
+          default: "2025-05-20"
           type: string
       - description: The ID of the space to retrieve
         in: path
@@ -1787,7 +1787,7 @@ paths:
         name: Anytype-Version
         required: true
         schema:
-          default: "2025-04-22"
+          default: "2025-05-20"
           type: string
       - description: The ID of the space to update
         in: path
@@ -1865,7 +1865,7 @@ paths:
         name: Anytype-Version
         required: true
         schema:
-          default: "2025-04-22"
+          default: "2025-05-20"
           type: string
       - description: The ID of the space to which the list belongs
         in: path
@@ -1943,7 +1943,7 @@ paths:
         name: Anytype-Version
         required: true
         schema:
-          default: "2025-04-22"
+          default: "2025-05-20"
           type: string
       - description: The ID of the space to which the list belongs
         in: path
@@ -2020,7 +2020,7 @@ paths:
         name: Anytype-Version
         required: true
         schema:
-          default: "2025-04-22"
+          default: "2025-05-20"
           type: string
       - description: The ID of the space to which the list belongs
         in: path
@@ -2091,7 +2091,7 @@ paths:
         name: Anytype-Version
         required: true
         schema:
-          default: "2025-04-22"
+          default: "2025-05-20"
           type: string
       - description: The ID of the space to which the list belongs
         in: path
@@ -2168,7 +2168,7 @@ paths:
         name: Anytype-Version
         required: true
         schema:
-          default: "2025-04-22"
+          default: "2025-05-20"
           type: string
       - description: The ID of the space to list members for
         in: path
@@ -2229,7 +2229,7 @@ paths:
         name: Anytype-Version
         required: true
         schema:
-          default: "2025-04-22"
+          default: "2025-05-20"
           type: string
       - description: The ID of the space to get the member from
         in: path
@@ -2288,7 +2288,7 @@ paths:
         name: Anytype-Version
         required: true
         schema:
-          default: "2025-04-22"
+          default: "2025-05-20"
           type: string
       - description: The ID of the space in which to list objects
         in: path
@@ -2350,7 +2350,7 @@ paths:
         name: Anytype-Version
         required: true
         schema:
-          default: "2025-04-22"
+          default: "2025-05-20"
           type: string
       - description: The ID of the space in which to create the object
         in: path
@@ -2415,7 +2415,7 @@ paths:
         name: Anytype-Version
         required: true
         schema:
-          default: "2025-04-22"
+          default: "2025-05-20"
           type: string
       - description: The ID of the space in which the object exists
         in: path
@@ -2491,7 +2491,7 @@ paths:
         name: Anytype-Version
         required: true
         schema:
-          default: "2025-04-22"
+          default: "2025-05-20"
           type: string
       - description: The ID of the space in which the object exists
         in: path
@@ -2561,7 +2561,7 @@ paths:
         name: Anytype-Version
         required: true
         schema:
-          default: "2025-04-22"
+          default: "2025-05-20"
           type: string
       - description: The ID of the space in which the object exists
         in: path
@@ -2644,7 +2644,7 @@ paths:
         name: Anytype-Version
         required: true
         schema:
-          default: "2025-04-22"
+          default: "2025-05-20"
           type: string
       - description: The ID of the space to list properties for
         in: path
@@ -2703,7 +2703,7 @@ paths:
         name: Anytype-Version
         required: true
         schema:
-          default: "2025-04-22"
+          default: "2025-05-20"
           type: string
       - description: The ID of the space to create the property in
         in: path
@@ -2769,7 +2769,7 @@ paths:
         name: Anytype-Version
         required: true
         schema:
-          default: "2025-04-22"
+          default: "2025-05-20"
           type: string
       - description: The ID of the space to which the property belongs
         in: path
@@ -2845,7 +2845,7 @@ paths:
         name: Anytype-Version
         required: true
         schema:
-          default: "2025-04-22"
+          default: "2025-05-20"
           type: string
       - description: The ID of the space to which the property belongs
         in: path
@@ -2908,7 +2908,7 @@ paths:
         name: Anytype-Version
         required: true
         schema:
-          default: "2025-04-22"
+          default: "2025-05-20"
           type: string
       - description: The ID of the space to which the property belongs
         in: path
@@ -2997,7 +2997,7 @@ paths:
         name: Anytype-Version
         required: true
         schema:
-          default: "2025-04-22"
+          default: "2025-05-20"
           type: string
       - description: The ID of the space to list tags for
         in: path
@@ -3055,7 +3055,7 @@ paths:
         name: Anytype-Version
         required: true
         schema:
-          default: "2025-04-22"
+          default: "2025-05-20"
           type: string
       - description: The ID of the space to create the tag in
         in: path
@@ -3126,7 +3126,7 @@ paths:
         name: Anytype-Version
         required: true
         schema:
-          default: "2025-04-22"
+          default: "2025-05-20"
           type: string
       - description: The ID of the space to delete the tag from
         in: path
@@ -3206,7 +3206,7 @@ paths:
         name: Anytype-Version
         required: true
         schema:
-          default: "2025-04-22"
+          default: "2025-05-20"
           type: string
       - description: The ID of the space to retrieve the tag from
         in: path
@@ -3276,7 +3276,7 @@ paths:
         name: Anytype-Version
         required: true
         schema:
-          default: "2025-04-22"
+          default: "2025-05-20"
           type: string
       - description: The ID of the space to update the tag in
         in: path
@@ -3372,7 +3372,7 @@ paths:
         name: Anytype-Version
         required: true
         schema:
-          default: "2025-04-22"
+          default: "2025-05-20"
           type: string
       - description: The ID of the space to search in
         in: path
@@ -3441,7 +3441,7 @@ paths:
         name: Anytype-Version
         required: true
         schema:
-          default: "2025-04-22"
+          default: "2025-05-20"
           type: string
       - description: The ID of the space to retrieve types from
         in: path
@@ -3499,7 +3499,7 @@ paths:
         name: Anytype-Version
         required: true
         schema:
-          default: "2025-04-22"
+          default: "2025-05-20"
           type: string
       - description: The ID of the space in which to create the type
         in: path
@@ -3564,7 +3564,7 @@ paths:
         name: Anytype-Version
         required: true
         schema:
-          default: "2025-04-22"
+          default: "2025-05-20"
           type: string
       - description: The ID of the space from which to delete the type
         in: path
@@ -3639,7 +3639,7 @@ paths:
         name: Anytype-Version
         required: true
         schema:
-          default: "2025-04-22"
+          default: "2025-05-20"
           type: string
       - description: The ID of the space from which to retrieve the type
         in: path
@@ -3701,7 +3701,7 @@ paths:
         name: Anytype-Version
         required: true
         schema:
-          default: "2025-04-22"
+          default: "2025-05-20"
           type: string
       - description: The ID of the space in which the type exists
         in: path
@@ -3784,7 +3784,7 @@ paths:
         name: Anytype-Version
         required: true
         schema:
-          default: "2025-04-22"
+          default: "2025-05-20"
           type: string
       - description: The ID of the space to which the type belongs
         in: path
@@ -3849,7 +3849,7 @@ paths:
         name: Anytype-Version
         required: true
         schema:
-          default: "2025-04-22"
+          default: "2025-05-20"
           type: string
       - description: The ID of the space to which the template belongs
         in: path
