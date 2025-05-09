@@ -578,6 +578,25 @@ func (s *source) Close() (err error) {
 	return s.ObjectTree.Close()
 }
 
+func cleanUpChange(objectId string, change *objecttree.Change, model *pb.Change) {
+	// cover the case of conflicting root snapshots
+	// emptying the object name
+	// GO-5592
+	if len(change.PreviousIds) == 1 &&
+		change.PreviousIds[0] == objectId {
+		for i, c := range model.Content {
+			switch tt := c.Value.(type) {
+			case *pb.ChangeContentValueOfDetailsSet:
+				if tt.DetailsSet.Key == bundle.RelationKeyName.String() &&
+					tt.DetailsSet.Value.GetStringValue() == "" {
+					model.Content = append(model.Content[:i], model.Content[i+1:]...)
+					return
+				}
+			}
+		}
+	}
+}
+
 func BuildState(spaceId string, initState *state.State, ot objecttree.ReadableObjectTree, applyState bool) (st *state.State, appliedContent []*pb.ChangeContent, changesAppliedSinceSnapshot int, err error) {
 	var (
 		startId    string
@@ -631,6 +650,8 @@ func BuildState(spaceId string, initState *state.State, ot objecttree.ReadableOb
 			} else {
 				changesAppliedSinceSnapshot++
 			}
+
+			cleanUpChange(ot.Id(), change, model)
 			appliedContent = append(appliedContent, model.Content...)
 			st.SetChangeId(change.Id)
 			st.ApplyChangeIgnoreErr(model.Content...)
@@ -638,6 +659,7 @@ func BuildState(spaceId string, initState *state.State, ot objecttree.ReadableOb
 
 			return true
 		})
+
 	if err != nil {
 		return
 	}
