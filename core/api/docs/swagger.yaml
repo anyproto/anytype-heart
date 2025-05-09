@@ -1850,83 +1850,6 @@ paths:
       summary: Update space
       tags:
       - Spaces
-  /spaces/{space_id}/lists/{list_id}/{view_id}/objects:
-    get:
-      description: Returns a paginated list of objects associated with a specific
-        list (query or collection) within a space. When a view ID is provided, the
-        objects are filtered and sorted according to the view's configuration. If
-        no view ID is specified, all list objects are returned without filtering and
-        sorting. This endpoint helps clients to manage grouped objects (for example,
-        tasks within a list) by returning information for each item of the list.
-      operationId: getListObjects
-      parameters:
-      - description: The version of the API to use
-        in: header
-        name: Anytype-Version
-        required: true
-        schema:
-          default: "2025-04-22"
-          type: string
-      - description: The ID of the space to which the list belongs
-        in: path
-        name: space_id
-        required: true
-        schema:
-          type: string
-      - description: The ID of the list to retrieve objects for
-        in: path
-        name: list_id
-        required: true
-        schema:
-          type: string
-      - description: The ID of the view to retrieve objects for
-        in: path
-        name: view_id
-        required: true
-        schema:
-          type: string
-      - description: The number of items to skip before starting to collect the result
-          set
-        in: query
-        name: offset
-        schema:
-          default: 0
-          type: integer
-      - description: The number of items to return
-        in: query
-        name: limit
-        schema:
-          type: integer
-      responses:
-        "200":
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/pagination.PaginatedResponse-apimodel_Object'
-          description: The list of objects associated with the specified list
-        "401":
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/util.UnauthorizedError'
-          description: Unauthorized
-        "404":
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/util.NotFoundError'
-          description: Not found
-        "500":
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/util.ServerError'
-          description: Internal server error
-      security:
-      - bearerauth: []
-      summary: Get objects in list
-      tags:
-      - Lists
   /spaces/{space_id}/lists/{list_id}/objects:
     post:
       description: Adds one or more objects to a specific list (collection only) by
@@ -2151,6 +2074,83 @@ paths:
       security:
       - bearerauth: []
       summary: Get list views
+      tags:
+      - Lists
+  /spaces/{space_id}/lists/{list_id}/views/{view_id}/objects:
+    get:
+      description: Returns a paginated list of objects associated with a specific
+        list (query or collection) within a space. When a view ID is provided, the
+        objects are filtered and sorted according to the view's configuration. If
+        no view ID is specified, all list objects are returned without filtering and
+        sorting. This endpoint helps clients to manage grouped objects (for example,
+        tasks within a list) by returning information for each item of the list.
+      operationId: getListObjects
+      parameters:
+      - description: The version of the API to use
+        in: header
+        name: Anytype-Version
+        required: true
+        schema:
+          default: "2025-04-22"
+          type: string
+      - description: The ID of the space to which the list belongs
+        in: path
+        name: space_id
+        required: true
+        schema:
+          type: string
+      - description: The ID of the list to retrieve objects for
+        in: path
+        name: list_id
+        required: true
+        schema:
+          type: string
+      - description: The ID of the view to retrieve objects for
+        in: path
+        name: view_id
+        required: true
+        schema:
+          type: string
+      - description: The number of items to skip before starting to collect the result
+          set
+        in: query
+        name: offset
+        schema:
+          default: 0
+          type: integer
+      - description: The number of items to return
+        in: query
+        name: limit
+        schema:
+          type: integer
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/pagination.PaginatedResponse-apimodel_Object'
+          description: The list of objects associated with the specified list
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/util.UnauthorizedError'
+          description: Unauthorized
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/util.NotFoundError'
+          description: Not found
+        "500":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/util.ServerError'
+          description: Internal server error
+      security:
+      - bearerauth: []
+      summary: Get objects in list
       tags:
       - Lists
   /spaces/{space_id}/members:

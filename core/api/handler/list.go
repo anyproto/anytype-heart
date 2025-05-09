@@ -69,7 +69,7 @@ func GetListViewsHandler(s *service.Service) gin.HandlerFunc {
 //	@Failure		404				{object}	util.NotFoundError								"Not found"
 //	@Failure		500				{object}	util.ServerError								"Internal server error"
 //	@Security		bearerauth
-//	@Router			/spaces/{space_id}/lists/{list_id}/{view_id}/objects [get]
+//	@Router			/spaces/{space_id}/lists/{list_id}/views/{view_id}/objects [get]
 func GetObjectsInListHandler(s *service.Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		spaceId := c.Param("space_id")

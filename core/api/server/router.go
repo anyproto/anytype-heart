@@ -68,7 +68,7 @@ func (s *Server) NewRouter(mw apicore.ClientCommands) *gin.Engine {
 
 		// List
 		v1.GET("/spaces/:space_id/lists/:list_id/views", handler.GetListViewsHandler(s.service))
-		v1.GET("/spaces/:space_id/lists/:list_id/:view_id/objects", handler.GetObjectsInListHandler(s.service))
+		v1.GET("/spaces/:space_id/lists/:list_id/views/:view_id/objects", handler.GetObjectsInListHandler(s.service))
 		v1.POST("/spaces/:space_id/lists/:list_id/objects", s.rateLimit(maxWriteRequestsPerSecond), handler.AddObjectsToListHandler(s.service))
 		v1.DELETE("/spaces/:space_id/lists/:list_id/objects/:object_id", s.rateLimit(maxWriteRequestsPerSecond), handler.RemoveObjectFromListHandler(s.service))
 
