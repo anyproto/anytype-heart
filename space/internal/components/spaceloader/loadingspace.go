@@ -107,14 +107,12 @@ func (ls *loadingSpace) load(ctx context.Context) (notRetryable bool) {
 	if err == nil {
 		err = sp.WaitMandatoryObjects(ctx)
 		if err != nil {
-			log.WarnCtx(ctx, "space load: mandatory objects error", zap.String("spaceId", ls.ID), zap.Error(err), zap.Bool("disableRemoteLoad", ls.disableRemoteLoad))
 			notRetryable = errors.Is(err, objecttree.ErrHasInvalidChanges)
+			log.WarnCtx(ctx, "space load: mandatory objects error", zap.String("spaceId", ls.ID), zap.Error(err), zap.Bool("disableRemoteLoad", ls.disableRemoteLoad), zap.Bool("notRetryable", notRetryable))
 			return ls.disableRemoteLoad || notRetryable
 		}
 	}
 	if err != nil {
-		log.WarnCtx(ctx, "space load: error", zap.String("spaceId", ls.ID), zap.Error(err), zap.Bool("disableRemoteLoad", ls.disableRemoteLoad))
-
 		if sp != nil {
 			closeErr := sp.Close(ctx)
 			if closeErr != nil {
@@ -122,6 +120,13 @@ func (ls *loadingSpace) load(ctx context.Context) (notRetryable bool) {
 			}
 		}
 		ls.setLoadErr(err)
+		if errors.Is(err, context.Canceled) {
+			log.WarnCtx(ctx, "space load: error: context bug", zap.String("spaceId", ls.ID), zap.Error(err), zap.Bool("disableRemoteLoad", ls.disableRemoteLoad))
+			// hotfix for drpc bug
+			// todo: remove after https://github.com/anyproto/any-sync/pull/448 got integrated
+			return false
+		}
+		log.WarnCtx(ctx, "space load: error", zap.String("spaceId", ls.ID), zap.Error(err), zap.Bool("disableRemoteLoad", ls.disableRemoteLoad))
 	} else {
 		if ls.latestAclHeadId != "" && !ls.disableRemoteLoad {
 			acl := sp.CommonSpace().Acl()
