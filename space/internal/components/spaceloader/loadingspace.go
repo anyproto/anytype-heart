@@ -101,14 +101,14 @@ func (ls *loadingSpace) loadRetry(ctx context.Context) {
 func (ls *loadingSpace) load(ctx context.Context) (notRetryable bool) {
 	sp, err := ls.spaceServiceProvider.open(ctx)
 	if errors.Is(err, spacesyncproto.ErrSpaceMissing) {
-		log.WarnCtx(ctx, "space load: space is missing", zap.String("spaceId", ls.ID), zap.Bool("disableRemoteLoad", ls.disableRemoteLoad), zap.Error(err))
+		log.WarnCtx(ctx, "space load: space is missing", zap.String("spaceId", ls.ID), zap.Bool("notRetryable", ls.disableRemoteLoad), zap.Error(err))
 		return ls.disableRemoteLoad
 	}
 	if err == nil {
 		err = sp.WaitMandatoryObjects(ctx)
 		if err != nil {
 			notRetryable = errors.Is(err, objecttree.ErrHasInvalidChanges)
-			log.WarnCtx(ctx, "space load: mandatory objects error", zap.String("spaceId", ls.ID), zap.Error(err), zap.Bool("disableRemoteLoad", ls.disableRemoteLoad), zap.Bool("notRetryable", notRetryable))
+			log.WarnCtx(ctx, "space load: mandatory objects error", zap.String("spaceId", ls.ID), zap.Error(err), zap.Bool("notRetryable", ls.disableRemoteLoad || notRetryable))
 			return ls.disableRemoteLoad || notRetryable
 		}
 	}
@@ -121,12 +121,12 @@ func (ls *loadingSpace) load(ctx context.Context) (notRetryable bool) {
 		}
 		ls.setLoadErr(err)
 		if errors.Is(err, context.Canceled) {
-			log.WarnCtx(ctx, "space load: error: context bug", zap.String("spaceId", ls.ID), zap.Error(err), zap.Bool("disableRemoteLoad", ls.disableRemoteLoad))
+			log.WarnCtx(ctx, "space load: error: context bug", zap.String("spaceId", ls.ID), zap.Error(err), zap.Bool("notRetryable", ls.disableRemoteLoad))
 			// hotfix for drpc bug
 			// todo: remove after https://github.com/anyproto/any-sync/pull/448 got integrated
-			return false
+			return ls.disableRemoteLoad
 		}
-		log.WarnCtx(ctx, "space load: error", zap.String("spaceId", ls.ID), zap.Error(err), zap.Bool("disableRemoteLoad", ls.disableRemoteLoad))
+		log.WarnCtx(ctx, "space load: error", zap.String("spaceId", ls.ID), zap.Error(err), zap.Bool("notRetryable", ls.disableRemoteLoad))
 	} else {
 		if ls.latestAclHeadId != "" && !ls.disableRemoteLoad {
 			acl := sp.CommonSpace().Acl()
