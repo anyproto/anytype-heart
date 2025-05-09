@@ -7,9 +7,7 @@ import (
 	"time"
 
 	"github.com/anyproto/any-sync/app/logger"
-	"github.com/anyproto/any-sync/commonspace/object/acl/list"
 	"github.com/anyproto/any-sync/commonspace/object/tree/objecttree"
-	"github.com/anyproto/any-sync/commonspace/object/tree/treechangeproto"
 	"github.com/anyproto/any-sync/commonspace/spacesyncproto"
 	"go.uber.org/zap"
 
@@ -52,6 +50,9 @@ func (s *spaceLoader) newLoadingSpace(ctx context.Context, stopIfMandatoryFail, 
 		latestAclHeadId:      aclHeadId,
 		spaceServiceProvider: s,
 		loadCh:               make(chan struct{}),
+	}
+	if s.status != nil {
+		ls.ID = s.status.SpaceId()
 	}
 	go ls.loadRetry(ctx)
 	return ls
@@ -97,19 +98,18 @@ func (ls *loadingSpace) loadRetry(ctx context.Context) {
 	}
 }
 
-func (ls *loadingSpace) load(ctx context.Context) (ok bool) {
+func (ls *loadingSpace) load(ctx context.Context) (notRetryable bool) {
 	sp, err := ls.spaceServiceProvider.open(ctx)
 	if errors.Is(err, spacesyncproto.ErrSpaceMissing) {
+		log.WarnCtx(ctx, "space load: space is missing", zap.String("spaceId", ls.ID), zap.Bool("notRetryable", ls.disableRemoteLoad), zap.Error(err))
 		return ls.disableRemoteLoad
 	}
 	if err == nil {
 		err = sp.WaitMandatoryObjects(ctx)
-		if errors.Is(err, treechangeproto.ErrGetTree) || errors.Is(err, objecttree.ErrHasInvalidChanges) || errors.Is(err, list.ErrNoReadKey) {
-			if ls.stopIfMandatoryFail {
-				ls.setLoadErr(err)
-				return true
-			}
-			return ls.disableRemoteLoad
+		if err != nil {
+			notRetryable = errors.Is(err, objecttree.ErrHasInvalidChanges)
+			log.WarnCtx(ctx, "space load: mandatory objects error", zap.String("spaceId", ls.ID), zap.Error(err), zap.Bool("notRetryable", ls.disableRemoteLoad || notRetryable))
+			return ls.disableRemoteLoad || notRetryable
 		}
 	}
 	if err != nil {
@@ -120,6 +120,13 @@ func (ls *loadingSpace) load(ctx context.Context) (ok bool) {
 			}
 		}
 		ls.setLoadErr(err)
+		if errors.Is(err, context.Canceled) {
+			log.WarnCtx(ctx, "space load: error: context bug", zap.String("spaceId", ls.ID), zap.Error(err), zap.Bool("notRetryable", ls.disableRemoteLoad))
+			// hotfix for drpc bug
+			// todo: remove after https://github.com/anyproto/any-sync/pull/448 got integrated
+			return ls.disableRemoteLoad
+		}
+		log.WarnCtx(ctx, "space load: error", zap.String("spaceId", ls.ID), zap.Error(err), zap.Bool("notRetryable", true))
 	} else {
 		if ls.latestAclHeadId != "" && !ls.disableRemoteLoad {
 			acl := sp.CommonSpace().Acl()
@@ -127,6 +134,7 @@ func (ls *loadingSpace) load(ctx context.Context) (ok bool) {
 			defer acl.RUnlock()
 			_, err := acl.Get(ls.latestAclHeadId)
 			if err != nil {
+				log.WarnCtx(ctx, "space load: acl head not found", zap.String("spaceId", ls.ID), zap.String("aclHeadId", ls.latestAclHeadId), zap.Error(err), zap.Bool("notRetryable", false))
 				return false
 			}
 		}
