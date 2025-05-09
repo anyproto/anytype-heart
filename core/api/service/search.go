@@ -121,7 +121,7 @@ func (s *Service) Search(ctx context.Context, spaceId string, request apimodel.S
 	paginatedRecords, hasMore := pagination.Paginate(resp.Records, offset, limit)
 
 	// pre-fetch properties and types to fill the objects
-	propertyMap, err := s.GetPropertyMapFromStore(spaceId)
+	propertyMap, err := s.GetPropertyMapFromStore(spaceId, true)
 	if err != nil {
 		return nil, 0, false, err
 	}

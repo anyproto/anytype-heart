@@ -267,7 +267,7 @@ func (s *Service) processProperties(ctx context.Context, spaceId string, entries
 	if len(entries) == 0 {
 		return fields, nil
 	}
-	propertyMap, err := s.GetPropertyMapFromStore(spaceId)
+	propertyMap, err := s.GetPropertyMapFromStore(spaceId, false)
 	if err != nil {
 		return nil, err
 	}
@@ -346,7 +346,7 @@ func (s *Service) processProperties(ctx context.Context, spaceId string, entries
 		}
 		prop, ok := propertyMap[rk]
 		if !ok {
-			return nil, errors.New("unknown property '" + key + "'")
+			return nil, util.ErrBadInput(fmt.Sprintf("unknown property key: %q", rk))
 		}
 
 		sanitized, err := s.sanitizeAndValidatePropertyValue(ctx, spaceId, key, prop.Format, raw, prop)
@@ -504,7 +504,7 @@ func (s *Service) GetPropertyMapsFromStore(spaceIds []string) (map[string]map[st
 	spacesToProperties := make(map[string]map[string]apimodel.Property, len(spaceIds))
 
 	for _, spaceId := range spaceIds {
-		propertyMap, err := s.GetPropertyMapFromStore(spaceId)
+		propertyMap, err := s.GetPropertyMapFromStore(spaceId, true)
 		if err != nil {
 			return nil, err
 		}
@@ -515,8 +515,8 @@ func (s *Service) GetPropertyMapsFromStore(spaceIds []string) (map[string]map[st
 }
 
 // GetPropertyMapFromStore retrieves all properties for a specific space
-// Property entries are also keyed by property id. Required for filling types with properties, as recommended properties are referenced by id and not key.
-func (s *Service) GetPropertyMapFromStore(spaceId string) (map[string]apimodel.Property, error) {
+// Property entries can also be keyed by property id. Required for filling types with properties, as recommended properties are referenced by id and not key.
+func (s *Service) GetPropertyMapFromStore(spaceId string, keyByPropertyId bool) (map[string]apimodel.Property, error) {
 	resp := s.mw.ObjectSearch(context.Background(), &pb.RpcObjectSearchRequest{
 		SpaceId: spaceId,
 		Filters: []*model.BlockContentDataviewFilter{
@@ -547,7 +547,9 @@ func (s *Service) GetPropertyMapFromStore(spaceId string) (map[string]apimodel.P
 	for _, record := range resp.Records {
 		rk, p := s.mapPropertyFromRecord(record)
 		propertyMap[rk] = p
-		propertyMap[p.Id] = p // add property under id as key to map as well
+		if keyByPropertyId {
+			propertyMap[p.Id] = p // add property under id as key to map as well
+		}
 	}
 
 	return propertyMap, nil

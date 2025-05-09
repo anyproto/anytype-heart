@@ -197,7 +197,7 @@ func (s *Service) GetObjectsInList(ctx context.Context, spaceId string, listId s
 	total := int(searchResp.Counters.Total)
 	hasMore := searchResp.Counters.Total > int64(offset+limit)
 
-	propertyMap, err := s.GetPropertyMapFromStore(spaceId)
+	propertyMap, err := s.GetPropertyMapFromStore(spaceId, true)
 	if err != nil {
 		return nil, 0, false, err
 	}

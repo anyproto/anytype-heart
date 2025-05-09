@@ -72,7 +72,7 @@ func (s *Service) ListTypes(ctx context.Context, spaceId string, offset int, lim
 	paginatedTypes, hasMore := pagination.Paginate(resp.Records, offset, limit)
 	types = make([]apimodel.Type, 0, len(paginatedTypes))
 
-	propertyMap, err := s.GetPropertyMapFromStore(spaceId)
+	propertyMap, err := s.GetPropertyMapFromStore(spaceId, true)
 	if err != nil {
 		return nil, 0, false, err
 	}
@@ -105,7 +105,7 @@ func (s *Service) GetType(ctx context.Context, spaceId string, typeId string) (a
 	}
 
 	// pre-fetch properties to fill the type
-	propertyMap, err := s.GetPropertyMapFromStore(spaceId)
+	propertyMap, err := s.GetPropertyMapFromStore(spaceId, true)
 	if err != nil {
 		return apimodel.Type{}, err
 	}
@@ -268,7 +268,7 @@ func (s *Service) buildTypeDetails(ctx context.Context, spaceId string, request 
 		fields[k] = v
 	}
 
-	propertyMap, err := s.GetPropertyMapFromStore(spaceId)
+	propertyMap, err := s.GetPropertyMapFromStore(spaceId, true)
 	if err != nil {
 		return nil, err
 	}
@@ -335,7 +335,7 @@ func (s *Service) buildUpdatedTypeDetails(ctx context.Context, spaceId string, t
 		return &types.Struct{Fields: fields}, nil
 	}
 
-	propertyMap, err := s.GetPropertyMapFromStore(spaceId)
+	propertyMap, err := s.GetPropertyMapFromStore(spaceId, true)
 	if err != nil {
 		return nil, err
 	}
