@@ -68,7 +68,7 @@ func (s *Service) ListTemplates(ctx context.Context, spaceId string, typeId stri
 	paginatedTemplates, hasMore := pagination.Paginate(templateObjectsResp.Records, offset, limit)
 	templates = make([]apimodel.Object, 0, len(paginatedTemplates))
 
-	propertyMap, err := s.GetPropertyMapFromStore(spaceId)
+	propertyMap, err := s.GetPropertyMapFromStore(spaceId, true)
 	if err != nil {
 		return nil, 0, false, err
 	}
@@ -109,7 +109,7 @@ func (s *Service) GetTemplate(ctx context.Context, spaceId string, _ string, tem
 		}
 	}
 
-	propertyMap, err := s.GetPropertyMapFromStore(spaceId)
+	propertyMap, err := s.GetPropertyMapFromStore(spaceId, true)
 	if err != nil {
 		return apimodel.ObjectWithBody{}, err
 	}

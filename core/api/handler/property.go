@@ -18,7 +18,7 @@ import (
 //	@Id				listProperties
 //	@Tags			Properties
 //	@Produce		json
-//	@Param			Anytype-Version	header		string											true	"The version of the API to use"	default(2025-04-22)
+//	@Param			Anytype-Version	header		string											true	"The version of the API to use"	default(2025-05-20)
 //	@Param			space_id		path		string											true	"The ID of the space to list properties for"
 //	@Param			offset			query		int												false	"The number of items to skip before starting to collect the result set"	default(0)
 //	@Param			limit			query		int												false	"The number of items to return"											default(100)	maximum(1000)
@@ -55,7 +55,7 @@ func ListPropertiesHandler(s *service.Service) gin.HandlerFunc {
 //	@Id				getProperty
 //	@Tags			Properties
 //	@Produce		json
-//	@Param			Anytype-Version	header		string						true	"The version of the API to use"	default(2025-04-22)
+//	@Param			Anytype-Version	header		string						true	"The version of the API to use"	default(2025-05-20)
 //	@Param			space_id		path		string						true	"The ID of the space to which the property belongs"
 //	@Param			property_id		path		string						true	"The ID of the property to retrieve"
 //	@Success		200				{object}	apimodel.PropertyResponse	"The requested property"
@@ -95,7 +95,7 @@ func GetPropertyHandler(s *service.Service) gin.HandlerFunc {
 //	@Tags			Properties
 //	@Accept			json
 //	@Produce		json
-//	@Param			Anytype-Version	header		string							true	"The version of the API to use"	default(2025-04-22)
+//	@Param			Anytype-Version	header		string							true	"The version of the API to use"	default(2025-05-20)
 //	@Param			space_id		path		string							true	"The ID of the space to create the property in"
 //	@Param			property		body		apimodel.CreatePropertyRequest	true	"The property to create"
 //	@Success		200				{object}	apimodel.PropertyResponse		"The created property"
@@ -141,7 +141,7 @@ func CreatePropertyHandler(s *service.Service) gin.HandlerFunc {
 //	@Tags			Properties
 //	@Accept			json
 //	@Produce		json
-//	@Param			Anytype-Version	header		string							true	"The version of the API to use"	default(2025-04-22)
+//	@Param			Anytype-Version	header		string							true	"The version of the API to use"	default(2025-05-20)
 //	@Param			space_id		path		string							true	"The ID of the space to which the property belongs"
 //	@Param			property_id		path		string							true	"The ID of the property to update"
 //	@Param			property		body		apimodel.UpdatePropertyRequest	true	"The property to update"
@@ -194,7 +194,7 @@ func UpdatePropertyHandler(s *service.Service) gin.HandlerFunc {
 //	@Id				deleteProperty
 //	@Tags			Properties
 //	@Produce		json
-//	@Param			Anytype-Version	header		string						true	"The version of the API to use"	default(2025-04-22)
+//	@Param			Anytype-Version	header		string						true	"The version of the API to use"	default(2025-05-20)
 //	@Param			space_id		path		string						true	"The ID of the space to which the property belongs"
 //	@Param			property_id		path		string						true	"The ID of the property to delete"
 //	@Success		200				{object}	apimodel.PropertyResponse	"The deleted property"

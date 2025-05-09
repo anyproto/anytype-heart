@@ -18,7 +18,7 @@ import (
 //	@Tags			Auth
 //	@Accept			json
 //	@Produce		json
-//	@Param			Anytype-Version	header		string							true	"The version of the API to use"	default(2025-04-22)
+//	@Param			Anytype-Version	header		string							true	"The version of the API to use"	default(2025-05-20)
 //	@Param			app_name		query		string							true	"The name of the app requesting API access"
 //	@Success		200				{object}	apimodel.DisplayCodeResponse	"The challenge ID associated with the started challenge"
 //	@Failure		400				{object}	util.ValidationError			"Invalid input"
@@ -51,7 +51,7 @@ func DisplayCodeHandler(s *service.Service) gin.HandlerFunc {
 //	@Tags			Auth
 //	@Accept			json
 //	@Produce		json
-//	@Param			Anytype-Version	header		string					true	"The version of the API to use"	default(2025-04-22)
+//	@Param			Anytype-Version	header		string					true	"The version of the API to use"	default(2025-05-20)
 //	@Param			challenge_id	query		string					true	"The ID of the challenge to solve"
 //	@Param			code			query		string					true	"4-digit code retrieved from Anytype Desktop app"
 //	@Success		200				{object}	apimodel.TokenResponse	"The app key that can be used in the Authorization header for subsequent requests"

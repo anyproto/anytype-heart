@@ -71,7 +71,7 @@ func (s *Service) ListObjects(ctx context.Context, spaceId string, offset int, l
 	objects = make([]apimodel.Object, 0, len(paginatedObjects))
 
 	// pre-fetch properties, types and tags to fill the objects
-	propertyMap, err := s.GetPropertyMapFromStore(spaceId)
+	propertyMap, err := s.GetPropertyMapFromStore(spaceId, true)
 	if err != nil {
 		return nil, 0, false, err
 	}
@@ -111,7 +111,7 @@ func (s *Service) GetObject(ctx context.Context, spaceId string, objectId string
 		}
 	}
 
-	propertyMap, err := s.GetPropertyMapFromStore(spaceId)
+	propertyMap, err := s.GetPropertyMapFromStore(spaceId, true)
 	if err != nil {
 		return apimodel.ObjectWithBody{}, err
 	}

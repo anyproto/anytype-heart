@@ -18,7 +18,7 @@ import (
 //	@Id				listTemplates
 //	@Tags			Templates
 //	@Produce		json
-//	@Param			Anytype-Version	header		string											true	"The version of the API to use"	default(2025-04-22)
+//	@Param			Anytype-Version	header		string											true	"The version of the API to use"	default(2025-05-20)
 //	@Param			space_id		path		string											true	"The ID of the space to which the type belongs"
 //	@Param			type_id			path		string											true	"The ID of the object type to retrieve templates for"
 //	@Param			offset			query		int												false	"The number of items to skip before starting to collect the result set"	default(0)
@@ -60,7 +60,7 @@ func ListTemplatesHandler(s *service.Service) gin.HandlerFunc {
 //	@Id				getTemplate
 //	@Tags			Templates
 //	@Produce		json
-//	@Param			Anytype-Version	header		string						true	"The version of the API to use"	default(2025-04-22)
+//	@Param			Anytype-Version	header		string						true	"The version of the API to use"	default(2025-05-20)
 //	@Param			space_id		path		string						true	"The ID of the space to which the template belongs"
 //	@Param			type_id			path		string						true	"The ID of the object type to which the template belongs"
 //	@Param			template_id		path		string						true	"The ID of the template to retrieve"
