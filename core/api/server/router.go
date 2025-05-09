@@ -18,7 +18,8 @@ const (
 	defaultPageSize           = 100
 	minPageSize               = 1
 	maxPageSize               = 1000
-	maxWriteRequestsPerSecond = 1
+	maxWriteRequestsPerSecond = 1  // allow sustained 1 request per second
+	maxBurstRequests          = 60 // allow all requests in the first second
 )
 
 // NewRouter builds and returns a *gin.Engine with all routes configured.
@@ -62,35 +63,35 @@ func (s *Server) NewRouter(mw apicore.ClientCommands) *gin.Engine {
 	{
 		// Block
 		// TODO: implement create, update and delete block endpoints
-		// v1.POST("/spaces/:space_id/objects/:object_id/blocks", s.rateLimit(maxWriteRequestsPerSecond), object.CreateBlockHandler(s.service))
-		// v1.PATCH("/spaces/:space_id/objects/:object_id/blocks/:block_id", s.rateLimit(maxWriteRequestsPerSecond), object.UpdateBlockHandler(s.service))
-		// v1.DELETE("/spaces/:space_id/objects/:object_id/blocks/:block_id", s.rateLimit(maxWriteRequestsPerSecond), object.DeleteBlockHandler(s.service))
+		// v1.POST("/spaces/:space_id/objects/:object_id/blocks", s.rateLimit(maxWriteRequestsPerSecond, maxBurstRequests), object.CreateBlockHandler(s.service))
+		// v1.PATCH("/spaces/:space_id/objects/:object_id/blocks/:block_id", s.rateLimit(maxWriteRequestsPerSecond, maxBurstRequests), object.UpdateBlockHandler(s.service))
+		// v1.DELETE("/spaces/:space_id/objects/:object_id/blocks/:block_id", s.rateLimit(maxWriteRequestsPerSecond, maxBurstRequests), object.DeleteBlockHandler(s.service))
 
 		// List
 		v1.GET("/spaces/:space_id/lists/:list_id/views", handler.GetListViewsHandler(s.service))
 		v1.GET("/spaces/:space_id/lists/:list_id/views/:view_id/objects", handler.GetObjectsInListHandler(s.service))
-		v1.POST("/spaces/:space_id/lists/:list_id/objects", s.rateLimit(maxWriteRequestsPerSecond), handler.AddObjectsToListHandler(s.service))
-		v1.DELETE("/spaces/:space_id/lists/:list_id/objects/:object_id", s.rateLimit(maxWriteRequestsPerSecond), handler.RemoveObjectFromListHandler(s.service))
+		v1.POST("/spaces/:space_id/lists/:list_id/objects", s.rateLimit(maxWriteRequestsPerSecond, maxBurstRequests), handler.AddObjectsToListHandler(s.service))
+		v1.DELETE("/spaces/:space_id/lists/:list_id/objects/:object_id", s.rateLimit(maxWriteRequestsPerSecond, maxBurstRequests), handler.RemoveObjectFromListHandler(s.service))
 
 		// Member
 		v1.GET("/spaces/:space_id/members", handler.ListMembersHandler(s.service))
 		v1.GET("/spaces/:space_id/members/:member_id", handler.GetMemberHandler(s.service))
 		// TODO: renable when granular permissions are implementeds
-		// v1.PATCH("/spaces/:space_id/members/:member_id", s.rateLimit(maxWriteRequestsPerSecond), space.UpdateMemberHandler(s.service))
+		// v1.PATCH("/spaces/:space_id/members/:member_id", s.rateLimit(maxWriteRequestsPerSecond, maxBurstRequests), space.UpdateMemberHandler(s.service))
 
 		// Object
 		v1.GET("/spaces/:space_id/objects", handler.ListObjectsHandler(s.service))
 		v1.GET("/spaces/:space_id/objects/:object_id", handler.GetObjectHandler(s.service))
-		v1.POST("/spaces/:space_id/objects", s.rateLimit(maxWriteRequestsPerSecond), handler.CreateObjectHandler(s.service))
-		v1.PATCH("/spaces/:space_id/objects/:object_id", s.rateLimit(maxWriteRequestsPerSecond), handler.UpdateObjectHandler(s.service))
-		v1.DELETE("/spaces/:space_id/objects/:object_id", s.rateLimit(maxWriteRequestsPerSecond), handler.DeleteObjectHandler(s.service))
+		v1.POST("/spaces/:space_id/objects", s.rateLimit(maxWriteRequestsPerSecond, maxBurstRequests), handler.CreateObjectHandler(s.service))
+		v1.PATCH("/spaces/:space_id/objects/:object_id", s.rateLimit(maxWriteRequestsPerSecond, maxBurstRequests), handler.UpdateObjectHandler(s.service))
+		v1.DELETE("/spaces/:space_id/objects/:object_id", s.rateLimit(maxWriteRequestsPerSecond, maxBurstRequests), handler.DeleteObjectHandler(s.service))
 
 		// Property
 		v1.GET("/spaces/:space_id/properties", handler.ListPropertiesHandler(s.service))
 		v1.GET("/spaces/:space_id/properties/:property_id", handler.GetPropertyHandler(s.service))
-		v1.POST("/spaces/:space_id/properties", s.rateLimit(maxWriteRequestsPerSecond), handler.CreatePropertyHandler(s.service))
-		v1.PATCH("/spaces/:space_id/properties/:property_id", s.rateLimit(maxWriteRequestsPerSecond), handler.UpdatePropertyHandler(s.service))
-		v1.DELETE("/spaces/:space_id/properties/:property_id", s.rateLimit(maxWriteRequestsPerSecond), handler.DeletePropertyHandler(s.service))
+		v1.POST("/spaces/:space_id/properties", s.rateLimit(maxWriteRequestsPerSecond, maxBurstRequests), handler.CreatePropertyHandler(s.service))
+		v1.PATCH("/spaces/:space_id/properties/:property_id", s.rateLimit(maxWriteRequestsPerSecond, maxBurstRequests), handler.UpdatePropertyHandler(s.service))
+		v1.DELETE("/spaces/:space_id/properties/:property_id", s.rateLimit(maxWriteRequestsPerSecond, maxBurstRequests), handler.DeletePropertyHandler(s.service))
 
 		// Search
 		v1.POST("/search", handler.GlobalSearchHandler(s.service))
@@ -99,15 +100,15 @@ func (s *Server) NewRouter(mw apicore.ClientCommands) *gin.Engine {
 		// Space
 		v1.GET("/spaces", handler.ListSpacesHandler(s.service))
 		v1.GET("/spaces/:space_id", handler.GetSpaceHandler(s.service))
-		v1.POST("/spaces", s.rateLimit(maxWriteRequestsPerSecond), handler.CreateSpaceHandler(s.service))
-		v1.PATCH("/spaces/:space_id", s.rateLimit(maxWriteRequestsPerSecond), handler.UpdateSpaceHandler(s.service))
+		v1.POST("/spaces", s.rateLimit(maxWriteRequestsPerSecond, maxBurstRequests), handler.CreateSpaceHandler(s.service))
+		v1.PATCH("/spaces/:space_id", s.rateLimit(maxWriteRequestsPerSecond, maxBurstRequests), handler.UpdateSpaceHandler(s.service))
 
 		// Tag
 		v1.GET("/spaces/:space_id/properties/:property_id/tags", handler.ListTagsHandler(s.service))
 		v1.GET("/spaces/:space_id/properties/:property_id/tags/:tag_id", handler.GetTagHandler(s.service))
-		v1.POST("/spaces/:space_id/properties/:property_id/tags", s.rateLimit(maxWriteRequestsPerSecond), handler.CreateTagHandler(s.service))
-		v1.PATCH("/spaces/:space_id/properties/:property_id/tags/:tag_id", s.rateLimit(maxWriteRequestsPerSecond), handler.UpdateTagHandler(s.service))
-		v1.DELETE("/spaces/:space_id/properties/:property_id/tags/:tag_id", s.rateLimit(maxWriteRequestsPerSecond), handler.DeleteTagHandler(s.service))
+		v1.POST("/spaces/:space_id/properties/:property_id/tags", s.rateLimit(maxWriteRequestsPerSecond, maxBurstRequests), handler.CreateTagHandler(s.service))
+		v1.PATCH("/spaces/:space_id/properties/:property_id/tags/:tag_id", s.rateLimit(maxWriteRequestsPerSecond, maxBurstRequests), handler.UpdateTagHandler(s.service))
+		v1.DELETE("/spaces/:space_id/properties/:property_id/tags/:tag_id", s.rateLimit(maxWriteRequestsPerSecond, maxBurstRequests), handler.DeleteTagHandler(s.service))
 
 		// Template
 		v1.GET("/spaces/:space_id/types/:type_id/templates", handler.ListTemplatesHandler(s.service))
@@ -116,9 +117,9 @@ func (s *Server) NewRouter(mw apicore.ClientCommands) *gin.Engine {
 		// Type
 		v1.GET("/spaces/:space_id/types", handler.ListTypesHandler(s.service))
 		v1.GET("/spaces/:space_id/types/:type_id", handler.GetTypeHandler(s.service))
-		v1.POST("/spaces/:space_id/types", s.rateLimit(maxWriteRequestsPerSecond), handler.CreateTypeHandler(s.service))
-		v1.PATCH("/spaces/:space_id/types/:type_id", s.rateLimit(maxWriteRequestsPerSecond), handler.UpdateTypeHandler(s.service))
-		v1.DELETE("/spaces/:space_id/types/:type_id", s.rateLimit(maxWriteRequestsPerSecond), handler.DeleteTypeHandler(s.service))
+		v1.POST("/spaces/:space_id/types", s.rateLimit(maxWriteRequestsPerSecond, maxBurstRequests), handler.CreateTypeHandler(s.service))
+		v1.PATCH("/spaces/:space_id/types/:type_id", s.rateLimit(maxWriteRequestsPerSecond, maxBurstRequests), handler.UpdateTypeHandler(s.service))
+		v1.DELETE("/spaces/:space_id/types/:type_id", s.rateLimit(maxWriteRequestsPerSecond, maxBurstRequests), handler.DeleteTypeHandler(s.service))
 	}
 
 	return router

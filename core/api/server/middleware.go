@@ -23,9 +23,10 @@ var (
 	ErrInvalidToken               = errors.New("invalid token")
 )
 
-// rateLimit is a middleware that limits the number of requests per second.
-func (s *Server) rateLimit(max float64) gin.HandlerFunc {
-	lmt := tollbooth.NewLimiter(max, nil)
+// rateLimit is a middleware that applies a token-bucket rate limiter with rate and burst.
+func (s *Server) rateLimit(rate float64, burst int) gin.HandlerFunc {
+	lmt := tollbooth.NewLimiter(rate, nil)
+	lmt.SetBurst(burst)
 	lmt.SetIPLookup(limiter.IPLookup{
 		Name:           "RemoteAddr",
 		IndexFromRight: 0,
