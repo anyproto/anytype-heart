@@ -96,19 +96,20 @@ func (ls *loadingSpace) loadRetry(ctx context.Context) {
 	}
 }
 
-func (ls *loadingSpace) load(ctx context.Context) (ok bool) {
+func (ls *loadingSpace) load(ctx context.Context) (notRetryable bool) {
 	sp, err := ls.spaceServiceProvider.open(ctx)
 	if errors.Is(err, spacesyncproto.ErrSpaceMissing) {
 		return ls.disableRemoteLoad
 	}
 	if err == nil {
 		err = sp.WaitMandatoryObjects(ctx)
-		if errors.Is(err, treechangeproto.ErrGetTree) || errors.Is(err, objecttree.ErrHasInvalidChanges) {
+		if err != nil {
+			notRetryable = errors.Is(err, treechangeproto.ErrGetTree) || errors.Is(err, objecttree.ErrHasInvalidChanges)
 			if ls.stopIfMandatoryFail {
 				ls.setLoadErr(err)
 				return true
 			}
-			return ls.disableRemoteLoad
+			return ls.disableRemoteLoad || notRetryable
 		}
 	}
 	if err != nil {
