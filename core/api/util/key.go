@@ -24,8 +24,8 @@ const (
 )
 
 var (
-	hex24Pattern = regexp.MustCompile("^[a-f\\d]{24}$")
-	digitPattern = regexp.MustCompile("\\d")
+	hex24Pattern = regexp.MustCompile(`^[a-f\d]{24}$`)
+	digitPattern = regexp.MustCompile(`\d`)
 )
 
 func ToPropertyApiKey(internalKey string) string {
