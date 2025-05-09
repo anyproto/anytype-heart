@@ -32,6 +32,7 @@ var limitedScopeMethods = map[string]struct{}{
 	"ObjectSearchSubscribe":      {},
 	"ObjectCreateRelationOption": {},
 	"BlockLinkCreateWithObject":  {},
+	"ObjectCollectionAdd":        {},
 	// need to replace with other method to get info
 }
 
