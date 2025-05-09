@@ -1,6 +1,7 @@
 package util
 
 import (
+	"regexp"
 	"strings"
 
 	"github.com/iancoleman/strcase"
@@ -20,6 +21,11 @@ const (
 	internalRelationPrefix       = "rel-"
 	internalObjectTypePrefix     = "ot-"
 	internalRelationOptionPrefix = "opt-"
+)
+
+var (
+	hex24Pattern = regexp.MustCompile("^[a-f\\d]{24}$")
+	digitPattern = regexp.MustCompile("\\d")
 )
 
 func ToPropertyApiKey(internalKey string) string {
@@ -46,20 +52,17 @@ func FromTagApiKey(apiKey string) string {
 	return fromApiKey(tagPrefix, internalRelationOptionPrefix, apiKey)
 }
 
-// IsCustomPropertyKey returns true if key is exactly 24 letters and contains at least a digit.
+// IsCustomKey returns true if key is exactly 24 letters and contains at least a digit.
 // Non-custom properties never contain a digit.
-func IsCustomPropertyKey(key string) bool {
-	if len(key) != 24 && !strings.ContainsAny(key, "0123456789") {
-		return false
-	}
-	return true
+func IsCustomKey(key string) bool {
+	return len(key) == 24 && hex24Pattern.MatchString(key) && digitPattern.MatchString(key)
 }
 
 // toApiKey converts an internal key into API format by stripping any existing internal prefixes and adding the API prefix.
 func toApiKey(prefix, internalPrefix, internalKey string) string {
 	var k string
 	internalKey = strings.TrimPrefix(internalKey, internalPrefix)
-	if IsCustomPropertyKey(internalKey) {
+	if IsCustomKey(internalKey) {
 		k = internalKey
 	} else {
 		k = strcase.ToSnake(internalKey)
@@ -70,7 +73,7 @@ func toApiKey(prefix, internalPrefix, internalKey string) string {
 // fromApiKey converts an API key back into internal format by stripping the API prefix and re-adding the internal prefix.
 func fromApiKey(prefix, internalPrefix, apiKey string) string {
 	k := strings.TrimPrefix(apiKey, prefix)
-	if IsCustomPropertyKey(k) {
+	if IsCustomKey(k) {
 		return internalPrefix + k
 	}
 	return internalPrefix + strcase.ToLowerCamel(k)
