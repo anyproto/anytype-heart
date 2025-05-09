@@ -51,6 +51,9 @@ func (s *spaceLoader) newLoadingSpace(ctx context.Context, stopIfMandatoryFail, 
 		spaceServiceProvider: s,
 		loadCh:               make(chan struct{}),
 	}
+	if s.status != nil {
+		ls.ID = s.status.SpaceId()
+	}
 	go ls.loadRetry(ctx)
 	return ls
 }
@@ -98,20 +101,20 @@ func (ls *loadingSpace) loadRetry(ctx context.Context) {
 func (ls *loadingSpace) load(ctx context.Context) (notRetryable bool) {
 	sp, err := ls.spaceServiceProvider.open(ctx)
 	if errors.Is(err, spacesyncproto.ErrSpaceMissing) {
+		log.WarnCtx(ctx, "space load: space is missing", zap.String("spaceId", ls.ID), zap.Bool("disableRemoteLoad", ls.disableRemoteLoad), zap.Error(err))
 		return ls.disableRemoteLoad
 	}
 	if err == nil {
 		err = sp.WaitMandatoryObjects(ctx)
 		if err != nil {
+			log.WarnCtx(ctx, "space load: mandatory objects error", zap.String("spaceId", ls.ID), zap.Error(err), zap.Bool("disableRemoteLoad", ls.disableRemoteLoad))
 			notRetryable = errors.Is(err, objecttree.ErrHasInvalidChanges)
-			if ls.stopIfMandatoryFail {
-				ls.setLoadErr(err)
-				return true
-			}
 			return ls.disableRemoteLoad || notRetryable
 		}
 	}
 	if err != nil {
+		log.WarnCtx(ctx, "space load: error", zap.String("spaceId", ls.ID), zap.Error(err), zap.Bool("disableRemoteLoad", ls.disableRemoteLoad))
+
 		if sp != nil {
 			closeErr := sp.Close(ctx)
 			if closeErr != nil {
@@ -126,6 +129,7 @@ func (ls *loadingSpace) load(ctx context.Context) (notRetryable bool) {
 			defer acl.RUnlock()
 			_, err := acl.Get(ls.latestAclHeadId)
 			if err != nil {
+				log.WarnCtx(ctx, "space load: acl head not found", zap.String("spaceId", ls.ID), zap.String("aclHeadId", ls.latestAclHeadId), zap.Error(err))
 				return false
 			}
 		}
