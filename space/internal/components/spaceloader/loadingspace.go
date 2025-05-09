@@ -134,7 +134,7 @@ func (ls *loadingSpace) load(ctx context.Context) (notRetryable bool) {
 			defer acl.RUnlock()
 			_, err := acl.Get(ls.latestAclHeadId)
 			if err != nil {
-				log.WarnCtx(ctx, "space load: acl head not found", zap.String("spaceId", ls.ID), zap.String("aclHeadId", ls.latestAclHeadId), zap.Error(err))
+				log.WarnCtx(ctx, "space load: acl head not found", zap.String("spaceId", ls.ID), zap.String("aclHeadId", ls.latestAclHeadId), zap.Error(err), zap.Bool("notRetryable", false))
 				return false
 			}
 		}
