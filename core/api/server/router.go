@@ -49,6 +49,16 @@ func (s *Server) NewRouter(mw apicore.ClientCommands) *gin.Engine {
 		c.Redirect(http.StatusMovedPermanently, target)
 	})
 
+	// OpenAPI spec route
+	router.GET("/openapi.yaml", func(c *gin.Context) {
+		data, err := os.ReadFile("./core/api/docs/swagger.yaml")
+		if err != nil {
+			c.String(http.StatusInternalServerError, "Failed to read OpenAPI spec")
+			return
+		}
+		c.Data(http.StatusOK, "application/x-yaml", data)
+	})
+
 	// Auth routes (no authentication required)
 	authGroup := router.Group("/v1/auth")
 	{
