@@ -2,6 +2,7 @@ CUSTOM_NETWORK_FILE ?= ./core/anytype/config/nodes/custom.yml
 CLIENT_DESKTOP_PATH ?= ../anytype-ts
 CLIENT_ANDROID_PATH ?= ../anytype-kotlin
 CLIENT_IOS_PATH ?= ../anytype-swift
+CLIENT_CLI_PATH ?= ../anytype-cli
 TANTIVY_GO_PATH ?= ../tantivy-go
 BUILD_FLAGS ?=
 TANTIVY_VERSION := $(shell cat go.mod | grep github.com/anyproto/tantivy-go | cut -d' ' -f2)
