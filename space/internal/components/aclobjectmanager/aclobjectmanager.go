@@ -11,10 +11,12 @@ import (
 	"github.com/anyproto/any-sync/app/debugstat"
 	"github.com/anyproto/any-sync/app/logger"
 	"github.com/anyproto/any-sync/commonspace/object/acl/list"
+	"github.com/anyproto/any-sync/commonspace/object/acl/syncacl"
 	"github.com/anyproto/any-sync/util/crypto"
 	"github.com/samber/lo"
 	"go.uber.org/zap"
 
+	"github.com/anyproto/anytype-heart/core/block/chats/chatpush"
 	"github.com/anyproto/anytype-heart/space/clientspace"
 	"github.com/anyproto/anytype-heart/space/internal/components/aclnotifications"
 	"github.com/anyproto/anytype-heart/space/internal/components/invitemigrator"
@@ -39,22 +41,29 @@ func New(ownerMetadata []byte, guestKey crypto.PrivKey) AclObjectManager {
 	}
 }
 
+type pushNotificationService interface {
+	CreateSpace(ctx context.Context, spaceId string) (err error)
+	SubscribeToTopics(ctx context.Context, spaceId string, topics []string)
+	BroadcastKeyUpdate(spaceId string, aclState *list.AclState) error
+}
+
 type aclObjectManager struct {
-	ctx                 context.Context
-	cancel              context.CancelFunc
-	wait                chan struct{}
-	waitLoad            chan struct{}
-	sp                  clientspace.Space
-	loadErr             error
-	spaceLoader         spaceloader.SpaceLoader
-	status              spacestatus.SpaceStatus
-	statService         debugstat.StatService
-	started             bool
-	notificationService aclnotifications.AclNotification
-	spaceLoaderListener SpaceLoaderListener
-	participantWatcher  participantwatcher.ParticipantWatcher
-	inviteMigrator      invitemigrator.InviteMigrator
-	accountService      accountservice.Service
+	ctx                     context.Context
+	cancel                  context.CancelFunc
+	wait                    chan struct{}
+	waitLoad                chan struct{}
+	sp                      clientspace.Space
+	loadErr                 error
+	spaceLoader             spaceloader.SpaceLoader
+	status                  spacestatus.SpaceStatus
+	statService             debugstat.StatService
+	started                 bool
+	notificationService     aclnotifications.AclNotification
+	spaceLoaderListener     SpaceLoaderListener
+	participantWatcher      participantwatcher.ParticipantWatcher
+	inviteMigrator          invitemigrator.InviteMigrator
+	accountService          accountservice.Service
+	pushNotificationService pushNotificationService
 
 	ownerMetadata []byte
 	lastIndexed   string
@@ -109,6 +118,7 @@ func (a *aclObjectManager) Init(ap *app.App) (err error) {
 	a.statService.AddProvider(a)
 	a.waitLoad = make(chan struct{})
 	a.wait = make(chan struct{})
+	a.pushNotificationService = app.MustComponent[pushNotificationService](ap)
 	return nil
 }
 
@@ -164,6 +174,7 @@ func (a *aclObjectManager) process() {
 	err = a.processAcl()
 	if err != nil {
 		log.Error("error processing acl", zap.Error(err))
+		return
 	}
 }
 
@@ -247,7 +258,42 @@ func (a *aclObjectManager) processAcl() (err error) {
 	a.mx.Lock()
 	defer a.mx.Unlock()
 	a.lastIndexed = acl.Head().Id
-	return
+
+	err = a.pushNotificationService.BroadcastKeyUpdate(common.Id(), aclState)
+	if err != nil {
+		return fmt.Errorf("broadcast key update: %w", err)
+	}
+
+	err = a.subscribeToPushNotifications(acl)
+	if err != nil {
+		log.Error("subscribe to push notifications", zap.Error(err))
+	}
+
+	return nil
+}
+
+func (a *aclObjectManager) subscribeToPushNotifications(acl syncacl.SyncAcl) error {
+	aclState := acl.AclState()
+	currentIdentity := aclState.AccountKey().GetPublic()
+
+	var needToSubscribe bool
+	if aclState.Permissions(currentIdentity).IsOwner() {
+		// Only if user shared this space
+		if len(aclState.Invites()) > 0 {
+			err := a.pushNotificationService.CreateSpace(a.ctx, a.sp.Id())
+			if err != nil {
+				return fmt.Errorf("create space: %w", err)
+			}
+			needToSubscribe = true
+		}
+	} else {
+		needToSubscribe = true
+	}
+
+	if needToSubscribe {
+		a.pushNotificationService.SubscribeToTopics(a.ctx, a.sp.Id(), []string{chatpush.ChatsTopicName})
+	}
+	return nil
 }
 
 func (a *aclObjectManager) processStates(states []list.AccountState, upToDate bool, myIdentity crypto.PubKey) (err error) {

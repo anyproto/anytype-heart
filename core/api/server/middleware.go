@@ -3,7 +3,6 @@ package server
 import (
 	"context"
 	"errors"
-	"fmt"
 	"net/http"
 	"strings"
 
@@ -11,10 +10,12 @@ import (
 	"github.com/didip/tollbooth/v8/limiter"
 	"github.com/gin-gonic/gin"
 
-	"github.com/anyproto/anytype-heart/core/api/apicore"
+	apicore "github.com/anyproto/anytype-heart/core/api/core"
 	"github.com/anyproto/anytype-heart/core/api/util"
 	"github.com/anyproto/anytype-heart/pb"
 )
+
+const ApiVersion = "2025-04-22"
 
 var (
 	ErrMissingAuthorizationHeader = errors.New("missing authorization header")
@@ -84,28 +85,10 @@ func (s *Server) ensureAuthenticated(mw apicore.ClientCommands) gin.HandlerFunc 
 	}
 }
 
-// ensureAccountInfo is a middleware that ensures the account info is available in the services.
-func (s *Server) ensureAccountInfo(accountService apicore.AccountService) gin.HandlerFunc {
-	return func(c *gin.Context) {
-		accInfo, err := accountService.GetInfo(context.Background())
-		if err != nil {
-			apiErr := util.CodeToAPIError(http.StatusInternalServerError, fmt.Sprintf("failed to get account info: %v", err))
-			c.AbortWithStatusJSON(http.StatusInternalServerError, apiErr)
-			return
-		}
-
-		s.objectService.AccountInfo = accInfo
-		s.spaceService.AccountInfo = accInfo
-		s.searchService.AccountInfo = accInfo
-
-		c.Next()
-	}
-}
-
 // ensureMetadataHeader is a middleware that ensures the metadata header is set.
 func (s *Server) ensureMetadataHeader() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		c.Writer.Header().Set("Anytype-Version", "2025-03-17")
+		c.Writer.Header().Set("Anytype-Version", ApiVersion)
 		c.Next()
 	}
 }

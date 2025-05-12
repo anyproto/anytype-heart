@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"slices"
 
 	"github.com/cheggaaa/mb/v3"
 	"go.uber.org/zap"
@@ -14,9 +15,10 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	"github.com/anyproto/anytype-heart/space/spaceinfo"
 	"github.com/anyproto/anytype-heart/util/slice"
 )
+
+var deleteSpaceAccountStatuses = []model.SpaceStatus{model.SpaceStatus_SpaceDeleted, model.SpaceStatus_SpaceRemoving}
 
 func (s *service) runSpaceViewSub() error {
 	resp, err := s.subscriptionService.Search(subscriptionservice.SubscribeRequest{
@@ -31,7 +33,7 @@ func (s *service) runSpaceViewSub() error {
 			{
 				RelationKey: bundle.RelationKeySpaceAccountStatus,
 				Condition:   model.BlockContentDataviewFilter_NotIn,
-				Value:       domain.Int64List([]model.AccountStatusType{model.Account_Deleted}),
+				Value:       domain.Int64List(deleteSpaceAccountStatuses),
 			},
 		},
 		Internal: true,
@@ -55,16 +57,7 @@ func (s *service) runSpaceViewSub() error {
 }
 
 func spaceIsAvailable(spaceViewDetails *domain.Details) bool {
-	switch spaceViewDetails.GetInt64(bundle.RelationKeySpaceLocalStatus) {
-	case int64(spaceinfo.LocalStatusUnknown), int64(spaceinfo.LocalStatusOk):
-		return true
-	default:
-		return false
-	}
-}
-
-func spaceIsDeleted(spaceViewDetails *domain.Details) bool {
-	return spaceViewDetails.GetInt64(bundle.RelationKeySpaceLocalStatus) == int64(spaceinfo.LocalStatusMissing)
+	return !slices.Contains(deleteSpaceAccountStatuses, model.SpaceStatus(spaceViewDetails.GetInt64(bundle.RelationKeySpaceLocalStatus)))
 }
 
 func (s *service) monitorSpaceViewSub(queue *mb.MB[*pb.EventMessage]) {
@@ -92,14 +85,14 @@ func (s *service) monitorSpaceViewSub(queue *mb.MB[*pb.EventMessage]) {
 	}
 }
 
-func (s *service) onSpaceViewSet(msg *pb.EventObjectDetailsSet) {
+func (s *service) onSpaceViewSet(techSpaceId string, msg *pb.EventObjectDetailsSet) {
 	details := domain.NewDetailsFromProto(msg.Details)
 	s.spaceViewDetails[details.GetString(bundle.RelationKeyId)] = details
 
 	s.handleSpaceViewDetails(details)
 }
 
-func (s *service) onSpaceViewAmend(msg *pb.EventObjectDetailsAmend) {
+func (s *service) onSpaceViewAmend(techSpaceId string, msg *pb.EventObjectDetailsAmend) {
 	details, ok := s.spaceViewDetails[msg.Id]
 	if !ok {
 		log.Error("amend space view: details not found", zap.String("id", msg.Id))
@@ -112,17 +105,17 @@ func (s *service) onSpaceViewAmend(msg *pb.EventObjectDetailsAmend) {
 	s.handleSpaceViewDetails(details)
 }
 
-func (s *service) onSpaceViewRemove(msg *pb.EventObjectSubscriptionRemove) {
+func (s *service) onSpaceViewRemove(techSpaceId string, msg *pb.EventObjectSubscriptionRemove) {
 	s.removeSpaceView(msg.Id)
 }
 
 func (s *service) handleSpaceViewDetails(details *domain.Details) {
 	id := details.GetString(bundle.RelationKeyId)
 
-	if spaceIsDeleted(details) {
-		s.removeSpaceView(id)
-	} else if spaceIsAvailable(details) {
+	if spaceIsAvailable(details) {
 		s.addSpaceView(details)
+	} else {
+		s.removeSpaceView(id)
 	}
 }
 

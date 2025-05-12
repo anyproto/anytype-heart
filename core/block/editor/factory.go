@@ -1,6 +1,7 @@
 package editor
 
 import (
+	"errors"
 	"fmt"
 
 	"github.com/anyproto/any-sync/app"
@@ -147,8 +148,17 @@ func (f *ObjectFactory) InitObject(space smartblock.Space, id string, initCtx *s
 		return nil, fmt.Errorf("init smartblock: %w", err)
 	}
 
+	applyFlags := []smartblock.ApplyFlag{smartblock.NoHistory, smartblock.NoEvent, smartblock.NoRestrictions, smartblock.SkipIfNoChanges, smartblock.KeepInternalFlags, smartblock.IgnoreNoPermissions}
+	if initCtx.IsNewObject {
+		applyFlags = append(applyFlags, smartblock.AllowApplyWithEmptyTree)
+	}
 	migration.RunMigrations(sb, initCtx)
-	return sb, sb.Apply(initCtx.State, smartblock.NoHistory, smartblock.NoEvent, smartblock.NoRestrictions, smartblock.SkipIfNoChanges, smartblock.KeepInternalFlags, smartblock.IgnoreNoPermissions)
+	err = sb.Apply(initCtx.State, applyFlags...)
+	if errors.Is(err, smartblock.ErrApplyOnEmptyTreeDisallowed) {
+		// in this case we still want the smartblock to bootstrap to receive the rest of the tree
+		err = nil
+	}
+	return sb, err
 }
 
 func (f *ObjectFactory) produceSmartblock(space smartblock.Space) (smartblock.SmartBlock, spaceindex.Store) {

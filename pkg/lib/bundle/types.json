@@ -214,7 +214,7 @@
     ],
     "iconColor": 9,
     "iconName": "extension-puzzle",
-    "hidden": false,
+    "hidden": true,
     "layout": "objectType",
     "relations": [
       "recommendedRelations",

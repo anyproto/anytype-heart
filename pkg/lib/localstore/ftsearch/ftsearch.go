@@ -195,6 +195,9 @@ func (f *ftSearch) Run(context.Context) error {
 		tantivy.IndexRecordOptionWithFreqsAndPositions,
 		tokenizerId,
 	)
+	if err != nil {
+		return fmt.Errorf("add id field: %w", err)
+	}
 
 	err = builder.AddTextField(
 		fieldIdRaw, // 1
@@ -204,6 +207,9 @@ func (f *ftSearch) Run(context.Context) error {
 		tantivy.IndexRecordOptionBasic,
 		tantivy.TokenizerRaw,
 	)
+	if err != nil {
+		return fmt.Errorf("add id raw field: %w", err)
+	}
 
 	err = builder.AddTextField(
 		fieldSpace, // 2
@@ -213,6 +219,9 @@ func (f *ftSearch) Run(context.Context) error {
 		tantivy.IndexRecordOptionBasic,
 		tantivy.TokenizerRaw,
 	)
+	if err != nil {
+		return fmt.Errorf("add space id field: %w", err)
+	}
 
 	err = builder.AddTextField(
 		fieldTitle, // 3
@@ -222,6 +231,9 @@ func (f *ftSearch) Run(context.Context) error {
 		tantivy.IndexRecordOptionWithFreqsAndPositions,
 		tantivy.TokenizerSimple,
 	)
+	if err != nil {
+		return fmt.Errorf("add title field: %w", err)
+	}
 
 	err = builder.AddTextField(
 		fieldTitleZh, // 4
@@ -231,6 +243,9 @@ func (f *ftSearch) Run(context.Context) error {
 		tantivy.IndexRecordOptionWithFreqsAndPositions,
 		tantivy.TokenizerJieba,
 	)
+	if err != nil {
+		return fmt.Errorf("add Chinese title field: %w", err)
+	}
 
 	err = builder.AddTextField(
 		fieldText, // 5
@@ -240,6 +255,9 @@ func (f *ftSearch) Run(context.Context) error {
 		tantivy.IndexRecordOptionWithFreqsAndPositions,
 		tantivy.TokenizerSimple,
 	)
+	if err != nil {
+		return fmt.Errorf("add text field: %w", err)
+	}
 
 	err = builder.AddTextField(
 		fieldTextZh, // 6
@@ -249,6 +267,9 @@ func (f *ftSearch) Run(context.Context) error {
 		tantivy.IndexRecordOptionWithFreqsAndPositions,
 		tantivy.TokenizerJieba,
 	)
+	if err != nil {
+		return fmt.Errorf("add Chinese text field: %w", err)
+	}
 
 	schema, err := builder.BuildSchema()
 	if err != nil {

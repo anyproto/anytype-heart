@@ -52,6 +52,7 @@ type ApplyFlag int
 var (
 	ErrSimpleBlockNotFound                         = errors.New("simple block not found")
 	ErrCantInitExistingSmartblockWithNonEmptyState = errors.New("can't init existing smartblock with non-empty state")
+	ErrApplyOnEmptyTreeDisallowed                  = errors.New("apply on empty tree disallowed")
 )
 
 const (
@@ -64,6 +65,7 @@ const (
 	KeepInternalFlags
 	IgnoreNoPermissions
 	NotPushChanges // Used only for read-only actions like InitObject or OpenObject
+	AllowApplyWithEmptyTree
 )
 
 type Hook int
@@ -358,9 +360,6 @@ func (sb *smartBlock) Init(ctx *InitContext) (err error) {
 		}
 	}
 	ctx.State.AddBundledRelationLinks(relKeys...)
-	if ctx.IsNewObject && ctx.State != nil {
-		source.NewSubObjectsAndProfileLinksMigration(sb.Type(), sb.space, sb.currentParticipantId, sb.spaceIndex).Migrate(ctx.State)
-	}
 
 	if err = sb.injectLocalDetails(ctx.State); err != nil {
 		return
@@ -631,15 +630,16 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 		return domain.ErrObjectIsDeleted
 	}
 	var (
-		sendEvent           = true
-		addHistory          = true
-		doSnapshot          = false
-		checkRestrictions   = true
-		hooks               = true
-		skipIfNoChanges     = false
-		keepInternalFlags   = false
-		ignoreNoPermissions = false
-		notPushChanges      = false
+		sendEvent               = true
+		addHistory              = true
+		doSnapshot              = false
+		checkRestrictions       = true
+		hooks                   = true
+		skipIfNoChanges         = false
+		keepInternalFlags       = false
+		ignoreNoPermissions     = false
+		notPushChanges          = false
+		allowApplyWithEmptyTree = false
 	)
 	for _, f := range flags {
 		switch f {
@@ -661,7 +661,19 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 			ignoreNoPermissions = true
 		case NotPushChanges:
 			notPushChanges = true
+		case AllowApplyWithEmptyTree:
+			allowApplyWithEmptyTree = true
 		}
+	}
+	if sb.ObjectTree != nil &&
+		len(sb.ObjectTree.Heads()) == 1 &&
+		sb.ObjectTree.Heads()[0] == sb.ObjectTree.Id() &&
+		!allowApplyWithEmptyTree &&
+		sb.Type() != smartblock.SmartBlockTypeChatDerivedObject &&
+		sb.Type() != smartblock.SmartBlockTypeAccountObject {
+		// protection for applying migrations on empty tree
+		log.With("sbType", sb.Type().String(), "objectId", sb.Id()).Warnf("apply on empty tree discarded")
+		return ErrApplyOnEmptyTreeDisallowed
 	}
 
 	// Inject derived details to make sure we have consistent state.
@@ -836,7 +848,6 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 }
 
 func (sb *smartBlock) ResetToVersion(s *state.State) (err error) {
-	source.NewSubObjectsAndProfileLinksMigration(sb.Type(), sb.space, sb.currentParticipantId, sb.spaceIndex).Migrate(s)
 	s.SetParent(sb.Doc.(*state.State))
 	sb.storeFileKeys(s)
 	sb.injectLocalDetails(s)
@@ -968,9 +979,13 @@ func (sb *smartBlock) StateAppend(f func(d state.Doc) (s *state.State, changes [
 		sb.CheckSubscriptions()
 	}
 	sb.runIndexer(s)
+	var parentDetails *domain.Details
+	if s.ParentState() != nil {
+		parentDetails = s.ParentState().Details()
+	}
 	if err = sb.execHooks(HookAfterApply, ApplyInfo{
 		State:         s,
-		ParentDetails: s.ParentState().Details(),
+		ParentDetails: parentDetails,
 		Events:        msgs,
 		Changes:       changes,
 	}); err != nil {
