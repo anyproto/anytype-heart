@@ -16,7 +16,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock/smarttest"
 	"github.com/anyproto/anytype-heart/core/block/object/idresolver/mock_idresolver"
 	"github.com/anyproto/anytype-heart/core/block/restriction"
-	"github.com/anyproto/anytype-heart/core/block/restriction/mock_restriction"
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pb"
@@ -38,7 +37,6 @@ type fixture struct {
 	resolver     *mock_idresolver.MockResolver
 	spaceService *mock_space.MockService
 	store        *objectstore.StoreFixture
-	restriction  *mock_restriction.MockService
 	space        *mock_clientspace.MockSpace
 }
 
@@ -47,7 +45,6 @@ func newFixture(t *testing.T) *fixture {
 	resolver := mock_idresolver.NewMockResolver(t)
 	spaceService := mock_space.NewMockService(t)
 	store := objectstore.NewStoreFixture(t)
-	restriction := mock_restriction.NewMockService(t)
 
 	spc := mock_clientspace.NewMockSpace(t)
 	resolver.EXPECT().ResolveSpaceID(mock.Anything).Return(spaceId, nil).Maybe()
@@ -58,7 +55,6 @@ func newFixture(t *testing.T) *fixture {
 		resolver:     resolver,
 		spaceService: spaceService,
 		store:        store,
-		restriction:  restriction,
 	}
 
 	return &fixture{
@@ -67,7 +63,6 @@ func newFixture(t *testing.T) *fixture {
 		resolver,
 		spaceService,
 		store,
-		restriction,
 		spc,
 	}
 }
@@ -472,7 +467,6 @@ func TestService_SetIsArchived(t *testing.T) {
 			}
 			return smarttest.New(objectId), nil
 		})
-		fx.restriction.EXPECT().CheckRestrictions(mock.Anything, mock.Anything).Return(nil)
 
 		// when
 		err := fx.SetIsArchived("obj1", true)
@@ -493,9 +487,10 @@ func TestService_SetIsArchived(t *testing.T) {
 			if objectId == binId {
 				return editor.NewArchive(sb, fx.store.SpaceIndex(spaceId)), nil
 			}
-			return smarttest.New(objectId), nil
+			obj := smarttest.New(objectId)
+			obj.SetType(coresb.SmartBlockTypeProfilePage)
+			return obj, nil
 		})
-		fx.restriction.EXPECT().CheckRestrictions(mock.Anything, mock.Anything).Return(restriction.ErrRestricted)
 
 		// when
 		err := fx.SetIsArchived("obj1", true)
@@ -529,7 +524,6 @@ func TestService_SetListIsArchived(t *testing.T) {
 			}
 			return smarttest.New(objectId), nil
 		})
-		fx.restriction.EXPECT().CheckRestrictions(mock.Anything, mock.Anything).Return(nil)
 
 		// when
 		err := fx.SetListIsArchived([]string{"obj1", "obj2", "obj3"}, true)
@@ -582,7 +576,6 @@ func TestService_SetListIsArchived(t *testing.T) {
 			}
 			return smarttest.New(objectId), nil
 		})
-		fx.restriction.EXPECT().CheckRestrictions(mock.Anything, mock.Anything).Return(nil)
 
 		// when
 		err := fx.SetListIsArchived([]string{"obj1", "obj2", "obj3"}, true)

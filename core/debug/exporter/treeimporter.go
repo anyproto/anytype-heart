@@ -7,7 +7,7 @@ import (
 	"github.com/anyproto/any-sync/commonspace/object/tree/objecttree"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
-	"github.com/anyproto/anytype-heart/core/block/source"
+	"github.com/anyproto/anytype-heart/core/block/source/sourceimpl"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
@@ -65,7 +65,7 @@ func (t *treeImporter) State() (*state.State, error) {
 		err error
 	)
 
-	st, _, _, err = source.BuildState("", nil, t.objectTree, true)
+	st, _, _, err = sourceimpl.BuildState("", nil, t.objectTree, true)
 	if err != nil {
 		return nil, err
 	}
@@ -81,7 +81,7 @@ func (t *treeImporter) Json() (treeJson TreeJson, err error) {
 		Id: t.objectTree.Id(),
 	}
 	i := 0
-	err = t.objectTree.IterateRoot(source.UnmarshalChange, func(change *objecttree.Change) bool {
+	err = t.objectTree.IterateRoot(sourceimpl.UnmarshalChange, func(change *objecttree.Change) bool {
 		defer func() { i++ }()
 		if change.Id == t.objectTree.Id() {
 			return true
@@ -104,7 +104,7 @@ func (t *treeImporter) ChangeAt(idx int) (idCh IdChange, err error) {
 		return
 	}
 	i := 0
-	err = t.objectTree.IterateRoot(source.UnmarshalChange, func(change *objecttree.Change) bool {
+	err = t.objectTree.IterateRoot(sourceimpl.UnmarshalChange, func(change *objecttree.Change) bool {
 		defer func() { i++ }()
 		if change.Id == t.objectTree.Id() {
 			return true

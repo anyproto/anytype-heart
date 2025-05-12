@@ -1,6 +1,7 @@
 package editor
 
 import (
+	"errors"
 	"fmt"
 
 	"github.com/anyproto/any-sync/app"
@@ -18,7 +19,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/migration"
 	"github.com/anyproto/anytype-heart/core/block/object/idresolver"
 	"github.com/anyproto/anytype-heart/core/block/process"
-	"github.com/anyproto/anytype-heart/core/block/restriction"
 	"github.com/anyproto/anytype-heart/core/block/source"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/event"
@@ -63,7 +63,6 @@ type ObjectFactory struct {
 	config              *config.Config
 	picker              cache.ObjectGetter
 	eventSender         event.Sender
-	restrictionService  restriction.Service
 	indexer             smartblock.Indexer
 	spaceService        spaceService
 	accountService      accountService
@@ -100,7 +99,6 @@ func (f *ObjectFactory) Init(a *app.App) (err error) {
 	f.layoutConverter = app.MustComponent[converter.LayoutConverter](a)
 	f.fileBlockService = app.MustComponent[file.BlockService](a)
 	f.fileObjectService = app.MustComponent[fileobject.Service](a)
-	f.restrictionService = app.MustComponent[restriction.Service](a)
 	f.fileUploaderService = app.MustComponent[fileuploader.Service](a)
 	f.objectDeleter = app.MustComponent[ObjectDeleter](a)
 	f.fileReconciler = app.MustComponent[reconciler.Reconciler](a)
@@ -150,8 +148,17 @@ func (f *ObjectFactory) InitObject(space smartblock.Space, id string, initCtx *s
 		return nil, fmt.Errorf("init smartblock: %w", err)
 	}
 
+	applyFlags := []smartblock.ApplyFlag{smartblock.NoHistory, smartblock.NoEvent, smartblock.NoRestrictions, smartblock.SkipIfNoChanges, smartblock.KeepInternalFlags, smartblock.IgnoreNoPermissions}
+	if initCtx.IsNewObject {
+		applyFlags = append(applyFlags, smartblock.AllowApplyWithEmptyTree)
+	}
 	migration.RunMigrations(sb, initCtx)
-	return sb, sb.Apply(initCtx.State, smartblock.NoHistory, smartblock.NoEvent, smartblock.NoRestrictions, smartblock.SkipIfNoChanges, smartblock.KeepInternalFlags, smartblock.IgnoreNoPermissions)
+	err = sb.Apply(initCtx.State, applyFlags...)
+	if errors.Is(err, smartblock.ErrApplyOnEmptyTreeDisallowed) {
+		// in this case we still want the smartblock to bootstrap to receive the rest of the tree
+		err = nil
+	}
+	return sb, err
 }
 
 func (f *ObjectFactory) produceSmartblock(space smartblock.Space) (smartblock.SmartBlock, spaceindex.Store) {
@@ -160,7 +167,6 @@ func (f *ObjectFactory) produceSmartblock(space smartblock.Space) (smartblock.Sm
 		space,
 		f.accountService.MyParticipantId(space.Id()),
 		f.fileStore,
-		f.restrictionService,
 		store,
 		f.objectStore,
 		f.indexer,

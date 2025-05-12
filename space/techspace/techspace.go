@@ -10,6 +10,7 @@ import (
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/app/logger"
 	"github.com/anyproto/any-sync/commonspace"
+	"github.com/anyproto/any-sync/commonspace/object/keyvalue/keyvaluestorage"
 	"github.com/anyproto/any-sync/commonspace/object/tree/treestorage"
 	"github.com/anyproto/any-sync/net/peer"
 	"go.uber.org/zap"
@@ -385,6 +386,10 @@ func (s *techSpace) getViewIdLocked(ctx context.Context, spaceId string) (viewId
 	}
 	s.viewIds[spaceId] = viewId
 	return
+}
+
+func (s *techSpace) KeyValueStore() keyvaluestorage.Storage {
+	return s.techCore.KeyValue().DefaultStore()
 }
 
 func (s *techSpace) Close(ctx context.Context) (err error) {

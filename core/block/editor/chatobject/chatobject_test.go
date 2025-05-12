@@ -326,7 +326,7 @@ func TestEditMessage(t *testing.T) {
 		require.NoError(t, err)
 		require.Len(t, messagesResp.Messages, 1)
 
-		want := inputMessage
+		want := givenComplexMessage()
 		want.Id = messageId
 		want.Creator = testCreator
 
