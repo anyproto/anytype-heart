@@ -54,7 +54,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/object/objectgraph"
 	"github.com/anyproto/anytype-heart/core/block/object/treemanager"
 	"github.com/anyproto/anytype-heart/core/block/process"
-	"github.com/anyproto/anytype-heart/core/block/restriction"
 	"github.com/anyproto/anytype-heart/core/block/source/sourceimpl"
 	"github.com/anyproto/anytype-heart/core/block/template/templateimpl"
 	"github.com/anyproto/anytype-heart/core/configfetcher"
@@ -299,7 +298,6 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(export.New()).
 		Register(linkpreview.New()).
 		Register(unsplash.New()).
-		Register(restriction.New()).
 		Register(debug.New()).
 		Register(syncsubscriptions.New()).
 		Register(builtinobjects.New()).
