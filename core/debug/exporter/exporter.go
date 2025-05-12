@@ -8,6 +8,7 @@ import (
 	"github.com/anyproto/any-sync/commonspace/headsync/headstorage"
 	"github.com/anyproto/any-sync/commonspace/object/accountdata"
 	"github.com/anyproto/any-sync/commonspace/object/acl/list"
+	"github.com/anyproto/any-sync/commonspace/object/acl/recordverifier"
 	"github.com/anyproto/any-sync/commonspace/object/tree/objecttree"
 	"github.com/anyproto/any-sync/commonspace/object/tree/treechangeproto"
 	"github.com/anyproto/any-sync/util/crypto"
@@ -34,7 +35,7 @@ func prepareExport(ctx context.Context, readable objecttree.ReadableObjectTree, 
 	if err != nil {
 		return nil, err
 	}
-	newAcl, err := list.BuildAclListWithIdentity(keys, listStorage, list.NoOpAcceptorVerifier{})
+	newAcl, err := list.BuildAclListWithIdentity(keys, listStorage, recordverifier.NewValidateFull())
 	if err != nil {
 		return nil, err
 	}

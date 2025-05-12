@@ -10,6 +10,7 @@ import (
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/commonspace/acl/aclclient"
 	"github.com/anyproto/any-sync/commonspace/object/acl/list"
+	"github.com/anyproto/any-sync/commonspace/object/acl/recordverifier"
 	"github.com/anyproto/any-sync/coordinator/coordinatorclient"
 	"github.com/anyproto/any-sync/coordinator/coordinatorproto"
 	"github.com/anyproto/any-sync/identityrepo/identityrepoproto"
@@ -472,12 +473,12 @@ func (a *aclService) ViewInvite(ctx context.Context, inviteCid cid.Cid, inviteFi
 	if err != nil {
 		return domain.InviteView{}, convertedOrAclRequestError(err)
 	}
-	lst, err := list.BuildAclListWithIdentity(a.accountService.Keys(), store, list.NoOpAcceptorVerifier{})
+	lst, err := list.BuildAclListWithIdentity(a.accountService.Keys(), store, recordverifier.NewValidateFull())
 	if err != nil {
 		return domain.InviteView{}, convertedOrAclRequestError(err)
 	}
 	for _, inv := range lst.AclState().Invites() {
-		if inviteKey.GetPublic().Equals(inv) {
+		if inviteKey.GetPublic().Equals(inv.Key) {
 			return res, nil
 		}
 	}
