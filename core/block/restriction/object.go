@@ -41,7 +41,7 @@ var (
 		model.ObjectType_note:       {},
 		model.ObjectType_bookmark:   {},
 		model.ObjectType_set:        objRestrictEdit,
-		model.ObjectType_collection: objRestrictEdit,
+		model.ObjectType_collection: objRestrictEdit.Copy().Remove(model.Restrictions_TypeChange),
 		model.ObjectType_relationOptionsList: {
 			model.Restrictions_Template: {},
 		},
