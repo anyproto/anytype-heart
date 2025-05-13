@@ -399,47 +399,75 @@ func (a *aclService) Join(ctx context.Context, spaceId, networkId string, invite
 	if err != nil {
 		return convertedOrInternalError("get invite payload", err)
 	}
-	if invitePayload.InviteType == model.InvitePayload_JoinAsGuest {
+	switch invitePayload.InviteType {
+	case model.InvitePayload_JoinAsGuest:
 		guestKey, err := crypto.UnmarshalEd25519PrivateKeyProto(invitePayload.GuestKey)
 		if err != nil {
 			return convertedOrInternalError("unmarshal invite key", err)
 		}
 		return a.joinAsGuest(ctx, invitePayload.SpaceId, guestKey)
-	}
-	inviteKey, err := crypto.UnmarshalEd25519PrivateKeyProto(invitePayload.AclKey)
-	if err != nil {
-		return convertedOrInternalError("unmarshal invite key", err)
-	}
-	aclHeadId, err := a.joiningClient.RequestJoin(ctx, spaceId, list.RequestJoinPayload{
-		InviteKey: inviteKey,
-		Metadata:  a.spaceService.AccountMetadataPayload(),
-	})
-	if err != nil {
-		if errors.Is(err, coordinatorproto.ErrSpaceIsDeleted) {
-			return space.ErrSpaceDeleted
+	case model.InvitePayload_JoinAsMember:
+		inviteKey, err := crypto.UnmarshalEd25519PrivateKeyProto(invitePayload.AclKey)
+		if err != nil {
+			return convertedOrInternalError("unmarshal invite key", err)
 		}
-		if errors.Is(err, list.ErrInsufficientPermissions) {
-			err = a.joiningClient.CancelRemoveSelf(ctx, spaceId)
-			if err != nil {
-				return convertedOrAclRequestError(err)
+		aclHeadId, err := a.joiningClient.RequestJoin(ctx, spaceId, list.RequestJoinPayload{
+			InviteKey: inviteKey,
+			Metadata:  a.spaceService.AccountMetadataPayload(),
+		})
+		if err != nil {
+			if errors.Is(err, coordinatorproto.ErrSpaceIsDeleted) {
+				return space.ErrSpaceDeleted
 			}
-			err = a.spaceService.CancelLeave(ctx, spaceId)
-			if err != nil {
-				return convertedOrInternalError("cancel leave", err)
+			if errors.Is(err, list.ErrInsufficientPermissions) {
+				err = a.joiningClient.CancelRemoveSelf(ctx, spaceId)
+				if err != nil {
+					return convertedOrAclRequestError(err)
+				}
+				err = a.spaceService.CancelLeave(ctx, spaceId)
+				if err != nil {
+					return convertedOrInternalError("cancel leave", err)
+				}
 			}
+			return convertedOrAclRequestError(err)
 		}
-		return convertedOrAclRequestError(err)
-	}
-	err = a.spaceService.Join(ctx, spaceId, aclHeadId)
-	if err != nil {
-		return convertedOrInternalError("join space", err)
-	}
-	err = a.spaceService.TechSpace().SpaceViewSetData(ctx, spaceId,
-		domain.NewDetails().
-			SetString(bundle.RelationKeyName, invitePayload.SpaceName).
-			SetString(bundle.RelationKeyIconImage, invitePayload.SpaceIconCid))
-	if err != nil {
-		return convertedOrInternalError("set space data", err)
+		err = a.spaceService.Join(ctx, spaceId, aclHeadId)
+		if err != nil {
+			return convertedOrInternalError("join space", err)
+		}
+		err = a.spaceService.TechSpace().SpaceViewSetData(ctx, spaceId,
+			domain.NewDetails().
+				SetString(bundle.RelationKeyName, invitePayload.SpaceName).
+				SetString(bundle.RelationKeyIconImage, invitePayload.SpaceIconCid))
+		if err != nil {
+			return convertedOrInternalError("set space data", err)
+		}
+	case model.InvitePayload_JoinAsMemberWithoutApprove:
+		inviteKey, err := crypto.UnmarshalEd25519PrivateKeyProto(invitePayload.AclKey)
+		if err != nil {
+			return convertedOrInternalError("unmarshal invite key", err)
+		}
+		aclHeadId, err := a.joiningClient.InviteJoin(ctx, spaceId, list.InviteJoinPayload{
+			InviteKey: inviteKey,
+			Metadata:  a.spaceService.AccountMetadataPayload(),
+		})
+		if err != nil {
+			if errors.Is(err, coordinatorproto.ErrSpaceIsDeleted) {
+				return space.ErrSpaceDeleted
+			}
+			return convertedOrAclRequestError(err)
+		}
+		err = a.spaceService.InviteJoin(ctx, spaceId, aclHeadId)
+		if err != nil {
+			return convertedOrInternalError("join space", err)
+		}
+		err = a.spaceService.TechSpace().SpaceViewSetData(ctx, spaceId,
+			domain.NewDetails().
+				SetString(bundle.RelationKeyName, invitePayload.SpaceName).
+				SetString(bundle.RelationKeyIconImage, invitePayload.SpaceIconCid))
+		if err != nil {
+			return convertedOrInternalError("set space data", err)
+		}
 	}
 	return nil
 }
@@ -473,7 +501,7 @@ func (a *aclService) ViewInvite(ctx context.Context, inviteCid cid.Cid, inviteFi
 	if err != nil {
 		return domain.InviteView{}, convertedOrAclRequestError(err)
 	}
-	lst, err := list.BuildAclListWithIdentity(a.accountService.Keys(), store, recordverifier.NewValidateFull())
+	lst, err := list.BuildAclListWithIdentity(a.accountService.Keys(), store, recordverifier.New())
 	if err != nil {
 		return domain.InviteView{}, convertedOrAclRequestError(err)
 	}

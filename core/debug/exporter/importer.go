@@ -10,7 +10,6 @@ import (
 	"github.com/anyproto/any-sync/commonspace/headsync/headstorage"
 	"github.com/anyproto/any-sync/commonspace/object/accountdata"
 	"github.com/anyproto/any-sync/commonspace/object/acl/list"
-	"github.com/anyproto/any-sync/commonspace/object/acl/recordverifier"
 	"github.com/anyproto/any-sync/commonspace/object/tree/objecttree"
 
 	"github.com/anyproto/anytype-heart/util/ziputil"
@@ -81,7 +80,7 @@ func ImportStorage(ctx context.Context, path string) (res ImportResult, err erro
 	if err != nil {
 		return
 	}
-	acl, err := list.BuildAclListWithIdentity(randomKeys, listStorage, recordverifier.NewValidateFull())
+	acl, err := list.BuildAclListWithIdentity(randomKeys, listStorage, recordVerifier{})
 	if err != nil {
 		return
 	}

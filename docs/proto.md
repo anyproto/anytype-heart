@@ -32686,6 +32686,7 @@ Look https://github.com/golang/protobuf/issues/1135 for more information.
 | ---- | ------ | ----------- |
 | JoinAsMember | 0 | aclKey contains the key to sign the ACL record |
 | JoinAsGuest | 1 | guestKey contains the privateKey of the guest user |
+| JoinAsMemberWithoutApprove | 2 | aclKey contains the key to sign the ACL record and decrypt the read key |
 
 
 
