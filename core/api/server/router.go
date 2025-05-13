@@ -50,7 +50,7 @@ func (s *Server) NewRouter(mw apicore.ClientCommands) *gin.Engine {
 	})
 
 	router.GET("/openapi.yaml", func(c *gin.Context) {
-		data, err := os.ReadFile("./core/api/docs/swagger.yaml")
+		data, err := os.ReadFile("./core/api/docs/openapi.yaml")
 		if err != nil {
 			c.String(http.StatusInternalServerError, "Failed to read OpenAPI spec")
 			return
