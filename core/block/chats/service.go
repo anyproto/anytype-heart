@@ -17,6 +17,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/chats/chatmodel"
 	"github.com/anyproto/anytype-heart/core/block/chats/chatpush"
 	"github.com/anyproto/anytype-heart/core/block/chats/chatrepository"
+	"github.com/anyproto/anytype-heart/core/block/chats/chatsubscription"
 	"github.com/anyproto/anytype-heart/core/block/editor/chatobject"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/session"
@@ -41,7 +42,7 @@ type Service interface {
 	DeleteMessage(ctx context.Context, chatObjectId string, messageId string) error
 	GetMessages(ctx context.Context, chatObjectId string, req chatrepository.GetMessagesRequest) (*chatobject.GetMessagesResponse, error)
 	GetMessagesByIds(ctx context.Context, chatObjectId string, messageIds []string) ([]*chatmodel.Message, error)
-	SubscribeLastMessages(ctx context.Context, chatObjectId string, limit int, subId string) (*chatobject.SubscribeLastMessagesResponse, error)
+	SubscribeLastMessages(ctx context.Context, chatObjectId string, limit int, subId string) (*chatsubscription.SubscribeLastMessagesResponse, error)
 	ReadMessages(ctx context.Context, req ReadMessagesRequest) error
 	UnreadMessages(ctx context.Context, chatObjectId string, afterOrderId string, counterType chatmodel.CounterType) error
 	Unsubscribe(chatObjectId string, subId string) error
@@ -63,11 +64,12 @@ type accountService interface {
 }
 
 type service struct {
-	objectGetter         cache.ObjectWaitGetter
-	crossSpaceSubService crossspacesub.Service
-	pushService          pushService
-	accountService       accountService
-	objectStore          objectstore.ObjectStore
+	objectGetter            cache.ObjectWaitGetter
+	crossSpaceSubService    crossspacesub.Service
+	pushService             pushService
+	accountService          accountService
+	objectStore             objectstore.ObjectStore
+	chatSubscriptionService chatsubscription.Service
 
 	componentCtx       context.Context
 	componentCtxCancel context.CancelFunc
@@ -101,6 +103,7 @@ func (s *service) Init(a *app.App) error {
 	s.accountService = app.MustComponent[accountService](a)
 	s.objectStore = app.MustComponent[objectstore.ObjectStore](a)
 	s.objectGetter = app.MustComponent[cache.ObjectWaitGetter](a)
+	s.chatSubscriptionService = app.MustComponent[chatsubscription.Service](a)
 	return nil
 }
 
@@ -262,22 +265,14 @@ func (s *service) monitorMessagePreviews() {
 	}
 }
 
-func (s *service) onChatAdded(chatObjectId string, subId string, asyncInit bool) (*chatobject.SubscribeLastMessagesResponse, error) {
-	var resp *chatobject.SubscribeLastMessagesResponse
-	err := s.chatObjectDo(s.componentCtx, chatObjectId, func(sb chatobject.StoreObject) error {
-		var err error
-		resp, err = sb.SubscribeLastMessages(s.componentCtx, chatobject.SubscribeLastMessagesRequest{
-			SubId:            subId,
-			Limit:            1,
-			AsyncInit:        asyncInit,
-			WithDependencies: true,
-		})
-		if err != nil {
-			return err
-		}
-		return nil
+func (s *service) onChatAdded(chatObjectId string, subId string, asyncInit bool) (*chatsubscription.SubscribeLastMessagesResponse, error) {
+	return s.chatSubscriptionService.SubscribeLastMessages(s.componentCtx, chatsubscription.SubscribeLastMessagesRequest{
+		ChatObjectId:     chatObjectId,
+		SubId:            subId,
+		Limit:            1,
+		AsyncInit:        asyncInit,
+		WithDependencies: true,
 	})
-	return resp, err
 }
 
 func (s *service) onChatRemoved(chatObjectId string, subId string) error {
@@ -408,28 +403,18 @@ func (s *service) GetMessagesByIds(ctx context.Context, chatObjectId string, mes
 	return res, err
 }
 
-func (s *service) SubscribeLastMessages(ctx context.Context, chatObjectId string, limit int, subId string) (*chatobject.SubscribeLastMessagesResponse, error) {
-	var resp *chatobject.SubscribeLastMessagesResponse
-	err := s.chatObjectDo(ctx, chatObjectId, func(sb chatobject.StoreObject) error {
-		var err error
-		resp, err = sb.SubscribeLastMessages(ctx, chatobject.SubscribeLastMessagesRequest{
-			SubId:            subId,
-			Limit:            limit,
-			AsyncInit:        false,
-			WithDependencies: false,
-		})
-		if err != nil {
-			return err
-		}
-		return nil
+func (s *service) SubscribeLastMessages(ctx context.Context, chatObjectId string, limit int, subId string) (*chatsubscription.SubscribeLastMessagesResponse, error) {
+	return s.chatSubscriptionService.SubscribeLastMessages(s.componentCtx, chatsubscription.SubscribeLastMessagesRequest{
+		ChatObjectId:     chatObjectId,
+		SubId:            subId,
+		Limit:            limit,
+		AsyncInit:        false,
+		WithDependencies: false,
 	})
-	return resp, err
 }
 
 func (s *service) Unsubscribe(chatObjectId string, subId string) error {
-	return s.chatObjectDo(s.componentCtx, chatObjectId, func(sb chatobject.StoreObject) error {
-		return sb.Unsubscribe(subId)
-	})
+	return s.chatSubscriptionService.Unsubscribe(chatObjectId, subId)
 }
 
 type ReadMessagesRequest struct {

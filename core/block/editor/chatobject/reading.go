@@ -57,8 +57,10 @@ func (s *storeObject) MarkMessagesAsUnread(ctx context.Context, afterOrderId str
 		return fmt.Errorf("get last added date: %w", err)
 	}
 
-	s.subscription.unreadMessages(newOldestOrderId, lastAdded, idsModified, counterType)
-	s.subscription.flush()
+	s.subscription.Lock()
+	defer s.subscription.Unlock()
+	s.subscription.UnreadMessages(newOldestOrderId, lastAdded, idsModified, counterType)
+	s.subscription.Flush()
 
 	seenHeads, err := s.seenHeadsCollector.collectSeenHeads(ctx, afterOrderId)
 	if err != nil {
@@ -107,8 +109,10 @@ func (s *storeObject) markReadMessages(changeIds []string, counterType chatmodel
 			return fmt.Errorf("commit: %w", err)
 		}
 
-		s.subscription.readMessages(newOldestOrderId, idsModified, counterType)
-		s.subscription.flush()
+		s.subscription.Lock()
+		defer s.subscription.Unlock()
+		s.subscription.ReadMessages(newOldestOrderId, idsModified, counterType)
+		s.subscription.Flush()
 	}
 	return nil
 }

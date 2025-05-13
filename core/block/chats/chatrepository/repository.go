@@ -67,7 +67,6 @@ func New() Service {
 }
 
 func (s *service) Run(ctx context.Context) error {
-	s.componentCtx, s.componentCtxCancel = context.WithCancel(ctx)
 	return nil
 }
 
@@ -79,6 +78,8 @@ func (s *service) Close(ctx context.Context) error {
 }
 
 func (s *service) Init(a *app.App) (err error) {
+	s.componentCtx, s.componentCtxCancel = context.WithCancel(context.Background())
+
 	s.objectStore = app.MustComponent[objectstore.ObjectStore](a)
 	s.spaceIdResolver = app.MustComponent[idresolver.Resolver](a)
 	return nil

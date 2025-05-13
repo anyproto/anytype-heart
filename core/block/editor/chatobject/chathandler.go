@@ -13,6 +13,7 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/block/chats/chatmodel"
 	"github.com/anyproto/anytype-heart/core/block/chats/chatrepository"
+	"github.com/anyproto/anytype-heart/core/block/chats/chatsubscription"
 	"github.com/anyproto/anytype-heart/core/block/editor/storestate"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -20,7 +21,7 @@ import (
 
 type ChatHandler struct {
 	repository      chatrepository.Repository
-	subscription    *subscriptionManager
+	subscription    chatsubscription.Manager
 	currentIdentity string
 	myParticipantId string
 	// forceNotRead forces handler to mark all messages as not read. It's useful for unit testing
@@ -79,7 +80,9 @@ func (d *ChatHandler) BeforeCreate(ctx context.Context, ch storestate.ChangeOp) 
 		return fmt.Errorf("get prev order id: %w", err)
 	}
 
-	d.subscription.updateChatState(func(state *model.ChatState) *model.ChatState {
+	d.subscription.Lock()
+	defer d.subscription.Unlock()
+	d.subscription.UpdateChatState(func(state *model.ChatState) *model.ChatState {
 		if !msg.Read {
 			if msg.OrderId < state.Messages.OldestOrderId || state.Messages.OldestOrderId == "" {
 				state.Messages.OldestOrderId = msg.OrderId
@@ -100,7 +103,7 @@ func (d *ChatHandler) BeforeCreate(ctx context.Context, ch storestate.ChangeOp) 
 		return state
 	})
 
-	d.subscription.add(prevOrderId, msg)
+	d.subscription.Add(prevOrderId, msg)
 
 	msg.MarshalAnyenc(ch.Value, ch.Arena)
 
@@ -132,7 +135,9 @@ func (d *ChatHandler) BeforeDelete(ctx context.Context, ch storestate.ChangeOp) 
 		return storestate.DeleteModeDelete, errors.New("can't delete not own message")
 	}
 
-	d.subscription.delete(messageId)
+	d.subscription.Lock()
+	defer d.subscription.Unlock()
+	d.subscription.Delete(messageId)
 
 	return storestate.DeleteModeDelete, nil
 }
@@ -156,6 +161,9 @@ func (d *ChatHandler) UpgradeKeyModifier(ch storestate.ChangeOp, key *pb.KeyModi
 				return nil, false, fmt.Errorf("unmarshal message: %w", err)
 			}
 
+			d.subscription.Lock()
+			defer d.subscription.Unlock()
+
 			switch path {
 			case chatmodel.ReactionsKey:
 				// Do not parse json, just trim "
@@ -165,7 +173,7 @@ func (d *ChatHandler) UpgradeKeyModifier(ch storestate.ChangeOp, key *pb.KeyModi
 				}
 				// TODO Count validation
 
-				d.subscription.updateReactions(msg)
+				d.subscription.UpdateReactions(msg)
 			case chatmodel.ContentKey:
 				creator := msg.Creator
 				if creator != ch.Change.Creator {
@@ -173,7 +181,7 @@ func (d *ChatHandler) UpgradeKeyModifier(ch storestate.ChangeOp, key *pb.KeyModi
 				}
 				msg.ModifiedAt = ch.Change.Timestamp
 				msg.MarshalAnyenc(result, a)
-				d.subscription.updateFull(msg)
+				d.subscription.UpdateFull(msg)
 			default:
 				return nil, false, fmt.Errorf("invalid key path %s", key.KeyPath)
 			}

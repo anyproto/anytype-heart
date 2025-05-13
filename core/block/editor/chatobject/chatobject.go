@@ -14,6 +14,7 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/block/chats/chatmodel"
 	"github.com/anyproto/anytype-heart/core/block/chats/chatrepository"
+	"github.com/anyproto/anytype-heart/core/block/chats/chatsubscription"
 	"github.com/anyproto/anytype-heart/core/block/editor/anystoredebug"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/storestate"
@@ -48,10 +49,8 @@ type StoreObject interface {
 	EditMessage(ctx context.Context, messageId string, newMessage *chatmodel.Message) error
 	ToggleMessageReaction(ctx context.Context, messageId string, emoji string) error
 	DeleteMessage(ctx context.Context, messageId string) error
-	SubscribeLastMessages(ctx context.Context, req SubscribeLastMessagesRequest) (*SubscribeLastMessagesResponse, error)
 	MarkReadMessages(ctx context.Context, afterOrderId string, beforeOrderId string, lastStateId string, counterType chatmodel.CounterType) error
 	MarkMessagesAsUnread(ctx context.Context, afterOrderId string, counterType chatmodel.CounterType) error
-	Unsubscribe(subId string) error
 }
 
 type AccountService interface {
@@ -67,36 +66,38 @@ type storeObject struct {
 	smartblock.SmartBlock
 	locker smartblock.Locker
 
-	seenHeadsCollector seenHeadsCollector
-	accountService     AccountService
-	storeSource        source.Store
-	repositoryService  chatrepository.Service
-	store              *storestate.StoreState
-	eventSender        event.Sender
-	subscription       *subscriptionManager
-	crdtDb             anystore.DB
-	spaceIndex         spaceindex.Store
-	chatHandler        *ChatHandler
-	repository         chatrepository.Repository
+	seenHeadsCollector      seenHeadsCollector
+	accountService          AccountService
+	storeSource             source.Store
+	repositoryService       chatrepository.Service
+	store                   *storestate.StoreState
+	eventSender             event.Sender
+	chatSubscriptionService chatsubscription.Service
+	subscription            chatsubscription.Manager
+	crdtDb                  anystore.DB
+	spaceIndex              spaceindex.Store
+	chatHandler             *ChatHandler
+	repository              chatrepository.Repository
 
 	arenaPool          *anyenc.ArenaPool
 	componentCtx       context.Context
 	componentCtxCancel context.CancelFunc
 }
 
-func New(sb smartblock.SmartBlock, accountService AccountService, eventSender event.Sender, crdtDb anystore.DB, repositoryService chatrepository.Service, spaceIndex spaceindex.Store) StoreObject {
+func New(sb smartblock.SmartBlock, accountService AccountService, eventSender event.Sender, crdtDb anystore.DB, repositoryService chatrepository.Service, spaceIndex spaceindex.Store, chatSubscriptionService chatsubscription.Service) StoreObject {
 	ctx, cancel := context.WithCancel(context.Background())
 	return &storeObject{
-		SmartBlock:         sb,
-		locker:             sb.(smartblock.Locker),
-		accountService:     accountService,
-		arenaPool:          &anyenc.ArenaPool{},
-		eventSender:        eventSender,
-		crdtDb:             crdtDb,
-		repositoryService:  repositoryService,
-		componentCtx:       ctx,
-		componentCtxCancel: cancel,
-		spaceIndex:         spaceIndex,
+		SmartBlock:              sb,
+		locker:                  sb.(smartblock.Locker),
+		accountService:          accountService,
+		arenaPool:               &anyenc.ArenaPool{},
+		eventSender:             eventSender,
+		crdtDb:                  crdtDb,
+		repositoryService:       repositoryService,
+		componentCtx:            ctx,
+		componentCtxCancel:      cancel,
+		spaceIndex:              spaceIndex,
+		chatSubscriptionService: chatSubscriptionService,
 	}
 }
 
@@ -114,11 +115,6 @@ func (s *storeObject) Init(ctx *smartblock.InitContext) error {
 
 	// Use Object and Space IDs from source, because object is not initialized yet
 	myParticipantId := domain.NewParticipantId(ctx.Source.SpaceID(), s.accountService.AccountID())
-	s.subscription = s.newSubscriptionManager(
-		domain.FullID{ObjectID: ctx.Source.Id(), SpaceID: ctx.Source.SpaceID()},
-		s.accountService.AccountID(),
-		myParticipantId,
-	)
 
 	// Diff managers should be added before SmartBlock.Init, because they have to be initialized in source.ReadStoreDoc
 	storeSource.RegisterDiffManager(diffManagerMessages, func(removed []string) {
@@ -140,6 +136,11 @@ func (s *storeObject) Init(ctx *smartblock.InitContext) error {
 	}
 	s.storeSource = storeSource
 
+	s.subscription, err = s.chatSubscriptionService.GetManager(storeSource.Id())
+	if err != nil {
+		return fmt.Errorf("get subscription manager: %w", err)
+	}
+
 	s.chatHandler = &ChatHandler{
 		repository:      s.repository,
 		subscription:    s.subscription,
@@ -152,11 +153,6 @@ func (s *storeObject) Init(ctx *smartblock.InitContext) error {
 		return fmt.Errorf("create state store: %w", err)
 	}
 	s.store = stateStore
-
-	err = s.subscription.loadChatState(s.componentCtx)
-	if err != nil {
-		return fmt.Errorf("init chat state: %w", err)
-	}
 
 	err = storeSource.ReadStoreDoc(ctx.Ctx, stateStore, s.onUpdate)
 	if err != nil {
@@ -171,7 +167,9 @@ func (s *storeObject) Init(ctx *smartblock.InitContext) error {
 }
 
 func (s *storeObject) onUpdate() {
-	s.subscription.flush()
+	s.subscription.Lock()
+	defer s.subscription.Unlock()
+	s.subscription.Flush()
 }
 
 func (s *storeObject) GetMessageById(ctx context.Context, id string) (*chatmodel.Message, error) {
@@ -201,7 +199,7 @@ func (s *storeObject) GetMessages(ctx context.Context, req chatrepository.GetMes
 	}
 	return &GetMessagesResponse{
 		Messages:  msgs,
-		ChatState: s.subscription.getChatState(),
+		ChatState: s.subscription.GetChatState(),
 	}, nil
 }
 
@@ -225,7 +223,7 @@ func (s *storeObject) AddMessage(ctx context.Context, sessionCtx session.Context
 		return "", fmt.Errorf("create chat: %w", err)
 	}
 
-	s.subscription.setSessionContext(sessionCtx)
+	s.subscription.SetSessionContext(sessionCtx)
 	messageId, err := s.storeSource.PushStoreChange(ctx, source.PushStoreChangeParams{
 		Changes: builder.ChangeSet,
 		State:   s.store,
@@ -324,78 +322,13 @@ func (s *storeObject) ToggleMessageReaction(ctx context.Context, messageId strin
 	return nil
 }
 
-type SubscribeLastMessagesRequest struct {
-	SubId string
-	Limit int
-	// If AsyncInit is true, initial messages will be broadcast via events
-	AsyncInit        bool
-	WithDependencies bool
-}
-
-type SubscribeLastMessagesResponse struct {
-	Messages  []*chatmodel.Message
-	ChatState *model.ChatState
-	// Dependencies per message id
-	Dependencies map[string][]*domain.Details
-}
-
-func (s *storeObject) SubscribeLastMessages(ctx context.Context, req SubscribeLastMessagesRequest) (*SubscribeLastMessagesResponse, error) {
-	txn, err := s.repository.ReadTx(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("init read transaction: %w", err)
-	}
-	defer txn.Commit()
-
-	messages, err := s.repository.GetLastMessages(txn.Context(), uint(req.Limit))
-	if err != nil {
-		return nil, fmt.Errorf("query messages: %w", err)
-	}
-
-	s.subscription.subscribe(req.SubId, req.WithDependencies)
-
-	if req.AsyncInit {
-		var previousOrderId string
-		if len(messages) > 0 {
-			previousOrderId, err = s.repository.GetPrevOrderId(txn.Context(), messages[0].OrderId)
-			if err != nil {
-				return nil, fmt.Errorf("get previous order id: %w", err)
-			}
-		}
-		for _, message := range messages {
-			s.subscription.add(previousOrderId, message)
-			previousOrderId = message.OrderId
-		}
-
-		// Force chatState to be sent
-		s.subscription.chatStateUpdated = true
-		s.subscription.flush()
-		return nil, nil
-	} else {
-		depsPerMessage := map[string][]*domain.Details{}
-		if req.WithDependencies {
-			for _, message := range messages {
-				deps := s.subscription.collectMessageDependencies(message)
-				depsPerMessage[message.Id] = deps
-			}
-		}
-		return &SubscribeLastMessagesResponse{
-			Messages:     messages,
-			ChatState:    s.subscription.getChatState(),
-			Dependencies: depsPerMessage,
-		}, nil
-	}
-}
-
-func (s *storeObject) Unsubscribe(subId string) error {
-	s.subscription.unsubscribe(subId)
-	return nil
-}
-
 func (s *storeObject) TryClose(objectTTL time.Duration) (res bool, err error) {
 	if !s.locker.TryLock() {
 		return false, nil
 	}
-	isActive := s.subscription.isActive()
+	s.subscription.Lock()
+	defer s.subscription.Unlock()
+	isActive := s.subscription.IsActive()
 	s.Unlock()
 
 	if isActive {
