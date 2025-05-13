@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	anystore "github.com/anyproto/any-store"
+	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/commonspace/headsync/headstorage"
 	"github.com/anyproto/any-sync/commonspace/object/accountdata"
 	"github.com/anyproto/any-sync/commonspace/object/acl/list"
