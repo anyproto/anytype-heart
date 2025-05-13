@@ -2,7 +2,6 @@ package chatobject
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"time"
 
@@ -85,7 +84,7 @@ type storeObject struct {
 	componentCtxCancel context.CancelFunc
 }
 
-func New(sb smartblock.SmartBlock, accountService AccountService, eventSender event.Sender, crdtDb anystore.DB, spaceIndex spaceindex.Store) StoreObject {
+func New(sb smartblock.SmartBlock, accountService AccountService, eventSender event.Sender, crdtDb anystore.DB, repositoryService chatrepository.Service, spaceIndex spaceindex.Store) StoreObject {
 	ctx, cancel := context.WithCancel(context.Background())
 	return &storeObject{
 		SmartBlock:         sb,
@@ -94,6 +93,7 @@ func New(sb smartblock.SmartBlock, accountService AccountService, eventSender ev
 		arenaPool:          &anyenc.ArenaPool{},
 		eventSender:        eventSender,
 		crdtDb:             crdtDb,
+		repositoryService:  repositoryService,
 		componentCtx:       ctx,
 		componentCtxCancel: cancel,
 		spaceIndex:         spaceIndex,
@@ -106,19 +106,8 @@ func (s *storeObject) Init(ctx *smartblock.InitContext) error {
 		return fmt.Errorf("source is not a store")
 	}
 
-	collectionName := storeSource.Id() + CollectionName
-	collection, err := s.crdtDb.OpenCollection(ctx.Ctx, collectionName)
-	if errors.Is(err, anystore.ErrCollectionNotFound) {
-		collection, err = s.crdtDb.CreateCollection(ctx.Ctx, collectionName)
-		if err != nil {
-			return fmt.Errorf("create collection: %w", err)
-		}
-	}
-	if err != nil {
-		return fmt.Errorf("get collection: %w", err)
-	}
-
-	s.repository, err = s.repositoryService.RepositoryForCollection(collection)
+	var err error
+	s.repository, err = s.repositoryService.Repository(storeSource.Id())
 	if err != nil {
 		return fmt.Errorf("get repository: %w", err)
 	}

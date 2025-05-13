@@ -10,6 +10,7 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/anytype/config"
 	"github.com/anyproto/anytype-heart/core/block/cache"
+	"github.com/anyproto/anytype-heart/core/block/chats/chatrepository"
 	"github.com/anyproto/anytype-heart/core/block/editor/accountobject"
 	"github.com/anyproto/anytype-heart/core/block/editor/bookmark"
 	"github.com/anyproto/anytype-heart/core/block/editor/chatobject"
@@ -52,27 +53,28 @@ type deviceService interface {
 }
 
 type ObjectFactory struct {
-	bookmarkService     bookmark.BookmarkService
-	fileBlockService    file.BlockService
-	layoutConverter     converter.LayoutConverter
-	objectStore         objectstore.ObjectStore
-	sourceService       source.Service
-	tempDirProvider     core.TempDirProvider
-	fileStore           filestore.FileStore
-	fileService         files.Service
-	config              *config.Config
-	picker              cache.ObjectGetter
-	eventSender         event.Sender
-	indexer             smartblock.Indexer
-	spaceService        spaceService
-	accountService      accountService
-	fileObjectService   fileobject.Service
-	processService      process.Service
-	fileUploaderService fileuploader.Service
-	fileReconciler      reconciler.Reconciler
-	objectDeleter       ObjectDeleter
-	deviceService       deviceService
-	spaceIdResolver     idresolver.Resolver
+	bookmarkService       bookmark.BookmarkService
+	fileBlockService      file.BlockService
+	layoutConverter       converter.LayoutConverter
+	objectStore           objectstore.ObjectStore
+	sourceService         source.Service
+	tempDirProvider       core.TempDirProvider
+	fileStore             filestore.FileStore
+	fileService           files.Service
+	config                *config.Config
+	picker                cache.ObjectGetter
+	eventSender           event.Sender
+	indexer               smartblock.Indexer
+	spaceService          spaceService
+	accountService        accountService
+	fileObjectService     fileobject.Service
+	processService        process.Service
+	fileUploaderService   fileuploader.Service
+	fileReconciler        reconciler.Reconciler
+	objectDeleter         ObjectDeleter
+	deviceService         deviceService
+	spaceIdResolver       idresolver.Resolver
+	chatRepositoryService chatrepository.Service
 }
 
 func NewObjectFactory() *ObjectFactory {
@@ -104,6 +106,7 @@ func (f *ObjectFactory) Init(a *app.App) (err error) {
 	f.fileReconciler = app.MustComponent[reconciler.Reconciler](a)
 	f.deviceService = app.MustComponent[deviceService](a)
 	f.spaceIdResolver = app.MustComponent[idresolver.Resolver](a)
+	f.chatRepositoryService = app.MustComponent[chatrepository.Service](a)
 	return nil
 }
 
@@ -217,7 +220,7 @@ func (f *ObjectFactory) New(space smartblock.Space, sbType coresb.SmartBlockType
 	case coresb.SmartBlockTypeDevicesObject:
 		return NewDevicesObject(sb, f.deviceService), nil
 	case coresb.SmartBlockTypeChatDerivedObject:
-		return chatobject.New(sb, f.accountService, f.eventSender, f.objectStore.GetCrdtDb(space.Id()), spaceIndex), nil
+		return chatobject.New(sb, f.accountService, f.eventSender, f.objectStore.GetCrdtDb(space.Id()), f.chatRepositoryService, spaceIndex), nil
 	case coresb.SmartBlockTypeAccountObject:
 		return accountobject.New(sb, f.accountService.Keys(), spaceIndex, f.layoutConverter, f.fileObjectService, f.objectStore.GetCrdtDb(space.Id()), f.config), nil
 	default:

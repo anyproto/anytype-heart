@@ -14,6 +14,7 @@ import (
 	"go.uber.org/zap"
 
 	"github.com/anyproto/anytype-heart/core/block/chats/chatmodel"
+	"github.com/anyproto/anytype-heart/core/block/object/idresolver"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -43,7 +44,7 @@ const (
 )
 
 type Service interface {
-	app.Component
+	app.ComponentRunnable
 
 	Repository(chatObjectId string) (Repository, error)
 	// RepositoryForCollection is useful when you already have the chat object collection
@@ -51,8 +52,12 @@ type Service interface {
 }
 
 type service struct {
-	objectStore objectstore.ObjectStore
-	arenaPool   *anyenc.ArenaPool
+	componentCtx       context.Context
+	componentCtxCancel context.CancelFunc
+
+	objectStore     objectstore.ObjectStore
+	spaceIdResolver idresolver.Resolver
+	arenaPool       *anyenc.ArenaPool
 }
 
 func New() Service {
@@ -61,9 +66,51 @@ func New() Service {
 	}
 }
 
+func (s *service) Run(ctx context.Context) error {
+	s.componentCtx, s.componentCtxCancel = context.WithCancel(ctx)
+	return nil
+}
+
+func (s *service) Close(ctx context.Context) error {
+	if s.componentCtxCancel != nil {
+		s.componentCtxCancel()
+	}
+	return nil
+}
+
+func (s *service) Init(a *app.App) (err error) {
+	s.objectStore = app.MustComponent[objectstore.ObjectStore](a)
+	s.spaceIdResolver = app.MustComponent[idresolver.Resolver](a)
+	return nil
+}
+
+func (s *service) Name() (name string) {
+	return CName
+}
+
 func (s *service) Repository(chatObjectId string) (Repository, error) {
-	// TODO implement me
-	panic("implement me")
+	spaceId, err := s.spaceIdResolver.ResolveSpaceID(chatObjectId)
+	if err != nil {
+		return nil, fmt.Errorf("resolve space id: %w", err)
+	}
+
+	crdtDb := s.objectStore.GetCrdtDb(spaceId)
+	collectionName := chatObjectId + "chats"
+	collection, err := crdtDb.OpenCollection(s.componentCtx, collectionName)
+	if errors.Is(err, anystore.ErrCollectionNotFound) {
+		collection, err = crdtDb.CreateCollection(s.componentCtx, collectionName)
+		if err != nil {
+			return nil, fmt.Errorf("create collection: %w", err)
+		}
+	}
+	if err != nil {
+		return nil, fmt.Errorf("get collection: %w", err)
+	}
+
+	return &repository{
+		collection: collection,
+		arenaPool:  s.arenaPool,
+	}, nil
 }
 
 func (s *service) RepositoryForCollection(col anystore.Collection) (Repository, error) {
@@ -71,15 +118,6 @@ func (s *service) RepositoryForCollection(col anystore.Collection) (Repository, 
 		collection: col,
 		arenaPool:  s.arenaPool,
 	}, nil
-}
-
-func (s *service) Init(a *app.App) (err error) {
-	s.objectStore = app.MustComponent[objectstore.ObjectStore](a)
-	return nil
-}
-
-func (s *service) Name() (name string) {
-	return CName
 }
 
 type Repository interface {
