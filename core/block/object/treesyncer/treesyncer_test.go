@@ -50,6 +50,11 @@ func newFixture(t *testing.T, spaceId string) *fixture {
 	spaceStorage.EXPECT().StateStorage().AnyTimes().Return(stateStorage)
 	stateStorage.EXPECT().SettingsId().AnyTimes().Return("settingsId")
 
+	missingMock.EXPECT().Lock().AnyTimes()
+	missingMock.EXPECT().Unlock().AnyTimes()
+	existingMock.EXPECT().Lock().AnyTimes()
+	existingMock.EXPECT().Unlock().AnyTimes()
+
 	a := new(app.App)
 	a.Register(testutil.PrepareMock(context.Background(), a, treeManager)).
 		Register(testutil.PrepareMock(context.Background(), a, spaceStorage)).

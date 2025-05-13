@@ -18,6 +18,7 @@ import (
 
 	mock_ppclient "github.com/anyproto/any-sync/paymentservice/paymentserviceclient/mock"
 	psp "github.com/anyproto/any-sync/paymentservice/paymentserviceproto"
+	mock_emailcollector "github.com/anyproto/anytype-heart/core/payments/emailcollector/mock_emailcollector"
 
 	"github.com/anyproto/anytype-heart/core/anytype/config"
 	"github.com/anyproto/anytype-heart/core/event/mock_event"
@@ -64,6 +65,7 @@ type fixture struct {
 	multiplayerLimitsUpdater *mock_deletioncontroller.MockDeletionController
 	fileLimitsUpdater        *mock_filesync.MockFileSync
 	ns                       *mock_nameservice.MockService
+	emailCollector           *mock_emailcollector.MockEmailCollector
 
 	*service
 }
@@ -82,6 +84,7 @@ func newFixture(t *testing.T) *fixture {
 	fx.multiplayerLimitsUpdater = mock_deletioncontroller.NewMockDeletionController(t)
 	fx.fileLimitsUpdater = mock_filesync.NewMockFileSync(t)
 	fx.ns = mock_nameservice.NewMockService(t)
+	fx.emailCollector = mock_emailcollector.NewMockEmailCollector(t)
 
 	// init w mock
 	SignKey := "psqF8Rj52Ci6gsUl5ttwBVhINTP8Yowc2hea73MeFm4Ek9AxedYSB4+r7DYCclDL4WmLggj2caNapFUmsMtn5Q=="
@@ -109,6 +112,7 @@ func newFixture(t *testing.T) *fixture {
 		Register(testutil.PrepareMock(ctx, fx.a, fx.cache)).
 		Register(testutil.PrepareMock(ctx, fx.a, fx.ppclient)).
 		Register(testutil.PrepareMock(ctx, fx.a, fx.wallet)).
+		Register(testutil.PrepareMock(ctx, fx.a, fx.emailCollector)).
 		Register(testutil.PrepareMock(ctx, fx.a, fx.eventSender)).
 		Register(fx.identitiesUpdater).
 		Register(testutil.PrepareMock(ctx, fx.a, fx.multiplayerLimitsUpdater)).
@@ -1013,20 +1017,25 @@ func TestGetPortalURL(t *testing.T) {
 }
 
 func TestGetVerificationEmail(t *testing.T) {
-	t.Run("fail if GetVerificationEmail method fails", func(t *testing.T) {
+	t.Run("fail if SetRequest method fails", func(t *testing.T) {
 		fx := newFixture(t)
 		defer fx.finish(t)
 
-		fx.ppclient.EXPECT().GetVerificationEmail(gomock.Any(), gomock.Any()).DoAndReturn(func(ctx interface{}, in interface{}) (*psp.GetVerificationEmailResponse, error) {
-			return nil, errors.New("bad error")
-		}).MinTimes(1)
+		fx.emailCollector.EXPECT().SetRequest(
+			&pb.RpcMembershipGetVerificationEmailRequest{
+				Email:                   "some@mail.com",
+				SubscribeToNewsletter:   true,
+				InsiderTipsAndTutorials: false,
+				IsOnboardingList:        true,
+			},
+		).Return(errors.New("bad error")).Once()
 
 		// Create a test request
 		req := &pb.RpcMembershipGetVerificationEmailRequest{}
 		req.Email = "some@mail.com"
 		req.SubscribeToNewsletter = true
 		req.InsiderTipsAndTutorials = false
-		req.IsOnboardingList = false
+		req.IsOnboardingList = true
 
 		// Call the function being tested
 		_, err := fx.GetVerificationEmail(ctx, req)
@@ -1037,14 +1046,20 @@ func TestGetVerificationEmail(t *testing.T) {
 		fx := newFixture(t)
 		defer fx.finish(t)
 
-		fx.ppclient.EXPECT().GetVerificationEmail(gomock.Any(), gomock.Any()).DoAndReturn(func(ctx interface{}, in interface{}) (*psp.GetVerificationEmailResponse, error) {
-			return &psp.GetVerificationEmailResponse{}, nil
-		}).MinTimes(1)
+		fx.emailCollector.EXPECT().SetRequest(
+			&pb.RpcMembershipGetVerificationEmailRequest{
+				Email:                   "some@mail.com",
+				SubscribeToNewsletter:   true,
+				InsiderTipsAndTutorials: false,
+				IsOnboardingList:        true,
+			},
+		).Return(nil).Once()
 
 		// Create a test request
 		req := &pb.RpcMembershipGetVerificationEmailRequest{}
 		req.Email = "some@mail.com"
 		req.SubscribeToNewsletter = true
+		req.IsOnboardingList = true
 
 		// Call the function being tested
 		resp, err := fx.GetVerificationEmail(ctx, req)

@@ -12,7 +12,7 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/anytype/account"
 	"github.com/anyproto/anytype-heart/core/anytype/config"
-	"github.com/anyproto/anytype-heart/core/api/apicore"
+	apicore "github.com/anyproto/anytype-heart/core/api/core"
 	"github.com/anyproto/anytype-heart/core/api/server"
 	"github.com/anyproto/anytype-heart/core/block/export"
 )
@@ -52,8 +52,8 @@ func (s *apiService) Name() (name string) {
 // Init initializes the API service.
 //
 //	@title							Anytype API
-//	@version						2025-03-17
-//	@description					This API allows interaction with Anytype resources such as spaces, objects and types.
+//	@version						2025-04-22
+//	@description					This API empowers seamless interaction with Anytype's resources—spaces, objects, properties, types, templates, and beyond.
 //	@termsOfService					https://anytype.io/terms_of_use
 //	@contact.name					Anytype Support
 //	@contact.url					https://anytype.io/contact
