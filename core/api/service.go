@@ -59,7 +59,6 @@ func (s *apiService) Name() (name string) {
 //	@license.name					Any Source Available License 1.0
 //	@license.url					https://github.com/anyproto/anytype-api/blob/main/LICENSE.md
 //	@host							http://localhost:31009
-//	@BasePath						/v1
 //	@securitydefinitions.bearerauth	BearerAuth
 //	@externalDocs.description		OpenAPI
 //	@externalDocs.url				https://swagger.io/resources/open-api/

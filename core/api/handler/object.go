@@ -26,7 +26,7 @@ import (
 //	@Failure		401				{object}	util.UnauthorizedError							"Unauthorized"
 //	@Failure		500				{object}	util.ServerError								"Internal server error"
 //	@Security		bearerauth
-//	@Router			/spaces/{space_id}/objects [get]
+//	@Router			/v1/spaces/{space_id}/objects [get]
 func ListObjectsHandler(s *service.Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		spaceId := c.Param("space_id")
@@ -67,7 +67,7 @@ func ListObjectsHandler(s *service.Service) gin.HandlerFunc {
 //	@Failure		410				{object}	util.GoneError			"Resource deleted"
 //	@Failure		500				{object}	util.ServerError		"Internal server error"
 //	@Security		bearerauth
-//	@Router			/spaces/{space_id}/objects/{object_id} [get]
+//	@Router			/v1/spaces/{space_id}/objects/{object_id} [get]
 func GetObjectHandler(s *service.Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		spaceId := c.Param("space_id")
@@ -109,7 +109,7 @@ func GetObjectHandler(s *service.Service) gin.HandlerFunc {
 //	@Failure		429				{object}	util.RateLimitError				"Rate limit exceeded"
 //	@Failure		500				{object}	util.ServerError				"Internal server error"
 //	@Security		bearerauth
-//	@Router			/spaces/{space_id}/objects [post]
+//	@Router			/v1/spaces/{space_id}/objects [post]
 func CreateObjectHandler(s *service.Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		spaceId := c.Param("space_id")
@@ -163,7 +163,7 @@ func CreateObjectHandler(s *service.Service) gin.HandlerFunc {
 //	@Failure		429				{object}	util.RateLimitError				"Rate limit exceeded"
 //	@Failure		500				{object}	util.ServerError				"Internal server error"
 //	@Security		bearerauth
-//	@Router			/spaces/{space_id}/objects/{object_id} [patch]
+//	@Router			/v1/spaces/{space_id}/objects/{object_id} [patch]
 func UpdateObjectHandler(s *service.Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		spaceId := c.Param("space_id")
@@ -213,7 +213,7 @@ func UpdateObjectHandler(s *service.Service) gin.HandlerFunc {
 //	@Failure		429				{object}	util.RateLimitError		"Rate limit exceeded"
 //	@Failure		500				{object}	util.ServerError		"Internal server error"
 //	@Security		bearerauth
-//	@Router			/spaces/{space_id}/objects/{object_id} [delete]
+//	@Router			/v1/spaces/{space_id}/objects/{object_id} [delete]
 func DeleteObjectHandler(s *service.Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		spaceId := c.Param("space_id")

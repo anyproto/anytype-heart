@@ -25,7 +25,7 @@ import (
 //	@Failure		401				{object}	util.UnauthorizedError							"Unauthorized"
 //	@Failure		500				{object}	util.ServerError								"Internal server error"
 //	@Security		bearerauth
-//	@Router			/spaces [get]
+//	@Router			/v1/spaces [get]
 func ListSpacesHandler(s *service.Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		offset := c.GetInt("offset")
@@ -62,7 +62,7 @@ func ListSpacesHandler(s *service.Service) gin.HandlerFunc {
 //	@Failure		404				{object}	util.NotFoundError		"Space not found"
 //	@Failure		500				{object}	util.ServerError		"Internal server error"
 //	@Security		bearerauth
-//	@Router			/spaces/{space_id} [get]
+//	@Router			/v1/spaces/{space_id} [get]
 func GetSpaceHandler(s *service.Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		spaceId := c.Param("space_id")
@@ -100,7 +100,7 @@ func GetSpaceHandler(s *service.Service) gin.HandlerFunc {
 //	@Failure		429				{object}	util.RateLimitError			"Rate limit exceeded"
 //	@Failure		500				{object}	util.ServerError			"Internal server error"
 //	@Security		bearerauth
-//	@Router			/spaces [post]
+//	@Router			/v1/spaces [post]
 func CreateSpaceHandler(s *service.Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var req apimodel.CreateSpaceRequest
@@ -147,7 +147,7 @@ func CreateSpaceHandler(s *service.Service) gin.HandlerFunc {
 //	@Failure		429				{object}	util.RateLimitError			"Rate limit exceeded"
 //	@Failure		500				{object}	util.ServerError			"Internal server error"
 //	@Security		bearerauth
-//	@Router			/spaces/{space_id} [patch]
+//	@Router			/v1/spaces/{space_id} [patch]
 func UpdateSpaceHandler(s *service.Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		spaceId := c.Param("space_id")

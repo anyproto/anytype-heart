@@ -26,7 +26,7 @@ import (
 //	@Failure		404				{object}	util.NotFoundError							"Property not found"
 //	@Failure		500				{object}	util.ServerError							"Internal server error"
 //	@Security		bearerauth
-//	@Router			/spaces/{space_id}/properties/{property_id}/tags [get]
+//	@Router			/v1/spaces/{space_id}/properties/{property_id}/tags [get]
 func ListTagsHandler(s *service.Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		spaceId := c.Param("space_id")
@@ -67,7 +67,7 @@ func ListTagsHandler(s *service.Service) gin.HandlerFunc {
 //	@Failure		410				{object}	util.GoneError			"Resource deleted"
 //	@Failure		500				{object}	util.ServerError		"Internal server error"
 //	@Security		bearerauth
-//	@Router			/spaces/{space_id}/properties/{property_id}/tags/{tag_id} [get]
+//	@Router			/v1/spaces/{space_id}/properties/{property_id}/tags/{tag_id} [get]
 func GetTagHandler(s *service.Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		spaceId := c.Param("space_id")
@@ -109,7 +109,7 @@ func GetTagHandler(s *service.Service) gin.HandlerFunc {
 //	@Failure		429				{object}	util.RateLimitError			"Rate limit exceeded"
 //	@Failure		500				{object}	util.ServerError			"Internal server error"
 //	@Security		bearerauth
-//	@Router			/spaces/{space_id}/properties/{property_id}/tags [post]
+//	@Router			/v1/spaces/{space_id}/properties/{property_id}/tags [post]
 func CreateTagHandler(s *service.Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		spaceId := c.Param("space_id")
@@ -161,7 +161,7 @@ func CreateTagHandler(s *service.Service) gin.HandlerFunc {
 //	@Failure		429				{object}	util.RateLimitError			"Rate limit exceeded"
 //	@Failure		500				{object}	util.ServerError			"Internal server error"
 //	@Security		bearerauth
-//	@Router			/spaces/{space_id}/properties/{property_id}/tags/{tag_id} [patch]
+//	@Router			/v1/spaces/{space_id}/properties/{property_id}/tags/{tag_id} [patch]
 func UpdateTagHandler(s *service.Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		spaceId := c.Param("space_id")
@@ -213,7 +213,7 @@ func UpdateTagHandler(s *service.Service) gin.HandlerFunc {
 //	@Failure		429				{object}	util.RateLimitError		"Rate limit exceeded"
 //	@Failure		500				{object}	util.ServerError		"Internal server error"
 //	@Security		bearerauth
-//	@Router			/spaces/{space_id}/properties/{property_id}/tags/{tag_id} [delete]
+//	@Router			/v1/spaces/{space_id}/properties/{property_id}/tags/{tag_id} [delete]
 func DeleteTagHandler(s *service.Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		spaceId := c.Param("space_id")

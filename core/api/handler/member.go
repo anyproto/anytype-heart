@@ -26,7 +26,7 @@ import (
 //	@Failure		401				{object}	util.UnauthorizedError							"Unauthorized"
 //	@Failure		500				{object}	util.ServerError								"Internal server error"
 //	@Security		bearerauth
-//	@Router			/spaces/{space_id}/members [get]
+//	@Router			/v1/spaces/{space_id}/members [get]
 func ListMembersHandler(s *service.Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		spaceId := c.Param("space_id")
@@ -63,7 +63,7 @@ func ListMembersHandler(s *service.Service) gin.HandlerFunc {
 //	@Failure		404				{object}	util.NotFoundError		"Member not found"
 //	@Failure		500				{object}	util.ServerError		"Internal server error"
 //	@Security		bearerauth
-//	@Router			/spaces/{space_id}/members/{member_id} [get]
+//	@Router			/v1/spaces/{space_id}/members/{member_id} [get]
 func GetMemberHandler(s *service.Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		spaceId := c.Param("space_id")
@@ -105,7 +105,7 @@ func GetMemberHandler(s *service.Service) gin.HandlerFunc {
 //	@Failure		429				{object}	util.RateLimitError				"Rate limit exceeded"
 //	@Failure		500				{object}	util.ServerError				"Internal server error"
 //	@Security		bearerauth
-//	@Router			/spaces/{space_id}/members/{member_id} [patch]
+//	@Router			/v1/spaces/{space_id}/members/{member_id} [patch]
 func UpdateMemberHandler(s *SpaceService) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		spaceId := c.Param("space_id")

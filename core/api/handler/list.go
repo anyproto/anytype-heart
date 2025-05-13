@@ -27,7 +27,7 @@ import (
 //	@Failure		404				{object}	util.NotFoundError							"Not found"
 //	@Failure		500				{object}	util.ServerError							"Internal server error"
 //	@Security		bearerauth
-//	@Router			/spaces/{space_id}/lists/{list_id}/views [get]
+//	@Router			/v1/spaces/{space_id}/lists/{list_id}/views [get]
 func GetListViewsHandler(s *service.Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		spaceId := c.Param("space_id")
@@ -69,7 +69,7 @@ func GetListViewsHandler(s *service.Service) gin.HandlerFunc {
 //	@Failure		404				{object}	util.NotFoundError								"Not found"
 //	@Failure		500				{object}	util.ServerError								"Internal server error"
 //	@Security		bearerauth
-//	@Router			/spaces/{space_id}/lists/{list_id}/views/{view_id}/objects [get]
+//	@Router			/v1/spaces/{space_id}/lists/{list_id}/views/{view_id}/objects [get]
 func GetObjectsInListHandler(s *service.Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		spaceId := c.Param("space_id")
@@ -117,7 +117,7 @@ func GetObjectsInListHandler(s *service.Service) gin.HandlerFunc {
 //	@Failure		429				{object}	util.RateLimitError		"Rate limit exceeded"
 //	@Failure		500				{object}	util.ServerError		"Internal server error"
 //	@Security		bearerauth
-//	@Router			/spaces/{space_id}/lists/{list_id}/objects [post]
+//	@Router			/v1/spaces/{space_id}/lists/{list_id}/objects [post]
 func AddObjectsToListHandler(s *service.Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		spaceId := c.Param("space_id")
@@ -163,7 +163,7 @@ func AddObjectsToListHandler(s *service.Service) gin.HandlerFunc {
 //	@Failure		429				{object}	util.RateLimitError		"Rate limit exceeded"
 //	@Failure		500				{object}	util.ServerError		"Internal server error"
 //	@Security		bearerauth
-//	@Router			/spaces/{space_id}/lists/{list_id}/objects/{object_id} [delete]
+//	@Router			/v1/spaces/{space_id}/lists/{list_id}/objects/{object_id} [delete]
 func RemoveObjectFromListHandler(s *service.Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		spaceId := c.Param("space_id")

@@ -27,7 +27,7 @@ import (
 //	@Failure		401				{object}	util.UnauthorizedError							"Unauthorized"
 //	@Failure		500				{object}	util.ServerError								"Internal server error"
 //	@Security		bearerauth
-//	@Router			/spaces/{space_id}/types/{type_id}/templates [get]
+//	@Router			/v1/spaces/{space_id}/types/{type_id}/templates [get]
 func ListTemplatesHandler(s *service.Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		spaceId := c.Param("space_id")
@@ -70,7 +70,7 @@ func ListTemplatesHandler(s *service.Service) gin.HandlerFunc {
 //	@Failure		410				{object}	util.GoneError				"Resource deleted"
 //	@Failure		500				{object}	util.ServerError			"Internal server error"
 //	@Security		bearerauth
-//	@Router			/spaces/{space_id}/types/{type_id}/templates/{template_id} [get]
+//	@Router			/v1/spaces/{space_id}/types/{type_id}/templates/{template_id} [get]
 func GetTemplateHandler(s *service.Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		spaceId := c.Param("space_id")

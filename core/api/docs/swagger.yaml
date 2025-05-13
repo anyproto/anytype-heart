@@ -1444,7 +1444,7 @@ info:
   version: "2025-05-20"
 openapi: 3.1.0
 paths:
-  /auth/display_code:
+  /v1/auth/display_code:
     post:
       description: Generates a one-time authentication challenge for granting API
         access to the user's vault. Upon providing a valid `app_name`, the server
@@ -1495,7 +1495,7 @@ paths:
       summary: Start new challenge
       tags:
       - Auth
-  /auth/token:
+  /v1/auth/token:
     post:
       description: After receiving a challenge ID from the display_code endpoint,
         the client calls this endpoint to provide the corresponding 4-digit code (also
@@ -1553,7 +1553,7 @@ paths:
       summary: Solve challenge
       tags:
       - Auth
-  /search:
+  /v1/search:
     post:
       description: 'Executes a global search over every space accessible by the authenticated
         user. The request body must specify the `query` text, optional filters on
@@ -1615,7 +1615,7 @@ paths:
       summary: Search objects across all spaces
       tags:
       - Search
-  /spaces:
+  /v1/spaces:
     get:
       description: Retrieves a paginated list of all spaces that are accessible by
         the authenticated user. Each space record contains detailed information such
@@ -1727,7 +1727,7 @@ paths:
       summary: Create space
       tags:
       - Spaces
-  /spaces/{space_id}:
+  /v1/spaces/{space_id}:
     get:
       description: Fetches full details about a single space identified by its space
         ID. The response includes metadata such as the space name, icon, and various
@@ -1853,7 +1853,7 @@ paths:
       summary: Update space
       tags:
       - Spaces
-  /spaces/{space_id}/lists/{list_id}/objects:
+  /v1/spaces/{space_id}/lists/{list_id}/objects:
     post:
       description: Adds one or more objects to a specific list (collection only) by
         submitting a JSON array of object IDs. Upon success, the endpoint returns
@@ -1933,7 +1933,7 @@ paths:
       summary: Add objects to list
       tags:
       - Lists
-  /spaces/{space_id}/lists/{list_id}/objects/{object_id}:
+  /v1/spaces/{space_id}/lists/{list_id}/objects/{object_id}:
     delete:
       description: Removes a given object from the specified list (collection only)
         in a space. The endpoint takes the space, list, and object identifiers as
@@ -2008,7 +2008,7 @@ paths:
       summary: Remove object from list
       tags:
       - Lists
-  /spaces/{space_id}/lists/{list_id}/views:
+  /v1/spaces/{space_id}/lists/{list_id}/views:
     get:
       description: Returns a paginated list of views defined for a specific list (query
         or collection) within a space. Each view includes details such as layout,
@@ -2079,7 +2079,7 @@ paths:
       summary: Get list views
       tags:
       - Lists
-  /spaces/{space_id}/lists/{list_id}/views/{view_id}/objects:
+  /v1/spaces/{space_id}/lists/{list_id}/views/{view_id}/objects:
     get:
       description: Returns a paginated list of objects associated with a specific
         list (query or collection) within a space. When a view ID is provided, the
@@ -2156,7 +2156,7 @@ paths:
       summary: Get objects in list
       tags:
       - Lists
-  /spaces/{space_id}/members:
+  /v1/spaces/{space_id}/members:
     get:
       description: Returns a paginated list of members belonging to the specified
         space. Each member record includes the member’s profile ID, name, icon (which
@@ -2217,7 +2217,7 @@ paths:
       summary: List members
       tags:
       - Members
-  /spaces/{space_id}/members/{member_id}:
+  /v1/spaces/{space_id}/members/{member_id}:
     get:
       description: Fetches detailed information about a single member within a space.
         The endpoint returns the member’s identifier, name, icon, identity, global
@@ -2276,7 +2276,7 @@ paths:
       summary: Get member
       tags:
       - Members
-  /spaces/{space_id}/objects:
+  /v1/spaces/{space_id}/objects:
     get:
       description: Retrieves a paginated list of objects in the given space. The endpoint
         takes query parameters for pagination (offset and limit) and returns detailed
@@ -2404,7 +2404,7 @@ paths:
       summary: Create object
       tags:
       - Objects
-  /spaces/{space_id}/objects/{object_id}:
+  /v1/spaces/{space_id}/objects/{object_id}:
     delete:
       description: This endpoint “deletes” an object by marking it as archived. The
         deletion process is performed safely and is subject to rate limiting. It returns
@@ -2633,7 +2633,7 @@ paths:
       summary: Update object
       tags:
       - Objects
-  /spaces/{space_id}/properties:
+  /v1/spaces/{space_id}/properties:
     get:
       description: '⚠ Warning: Properties are experimental and may change in the next
         update. ⚠ Retrieves a paginated list of properties available within a specific
@@ -2757,7 +2757,7 @@ paths:
       summary: Create property
       tags:
       - Properties
-  /spaces/{space_id}/properties/{property_id}:
+  /v1/spaces/{space_id}/properties/{property_id}:
     delete:
       description: '⚠ Warning: Properties are experimental and may change in the next
         update. ⚠ This endpoint “deletes” a property by marking it as archived. The
@@ -2986,7 +2986,7 @@ paths:
       summary: Update property
       tags:
       - Properties
-  /spaces/{space_id}/properties/{property_id}/tags:
+  /v1/spaces/{space_id}/properties/{property_id}/tags:
     get:
       description: This endpoint retrieves a paginated list of tags available for
         a specific property within a space. Each tag record includes its unique identifier,
@@ -3115,7 +3115,7 @@ paths:
       summary: Create tag
       tags:
       - Tags
-  /spaces/{space_id}/properties/{property_id}/tags/{tag_id}:
+  /v1/spaces/{space_id}/properties/{property_id}/tags/{tag_id}:
     delete:
       description: This endpoint “deletes” a tag by marking it as archived. The deletion
         process is performed safely and is subject to rate limiting. It returns the
@@ -3360,7 +3360,7 @@ paths:
       summary: Update tag
       tags:
       - Tags
-  /spaces/{space_id}/search:
+  /v1/spaces/{space_id}/search:
     post:
       description: Performs a focused search within a single space (specified by the
         space_id path parameter). Like the global search, it accepts pagination parameters
@@ -3428,7 +3428,7 @@ paths:
       summary: Search objects within a space
       tags:
       - Search
-  /spaces/{space_id}/types:
+  /v1/spaces/{space_id}/types:
     get:
       description: This endpoint retrieves a paginated list of object types (e.g.
         'Page', 'Note', 'Task') available within the specified space. Each type’s
@@ -3553,7 +3553,7 @@ paths:
       summary: Create type
       tags:
       - Types
-  /spaces/{space_id}/types/{type_id}:
+  /v1/spaces/{space_id}/types/{type_id}:
     delete:
       description: This endpoint “deletes” an object type by marking it as archived.
         The deletion process is performed safely and is subject to rate limiting.
@@ -3773,7 +3773,7 @@ paths:
       summary: Update type
       tags:
       - Types
-  /spaces/{space_id}/types/{type_id}/templates:
+  /v1/spaces/{space_id}/types/{type_id}/templates:
     get:
       description: This endpoint returns a paginated list of templates that are associated
         with a specific object type within a space. Templates provide pre‑configured
@@ -3839,7 +3839,7 @@ paths:
       summary: List templates
       tags:
       - Templates
-  /spaces/{space_id}/types/{type_id}/templates/{template_id}:
+  /v1/spaces/{space_id}/types/{type_id}/templates/{template_id}:
     get:
       description: Fetches full details for one template associated with a particular
         object type in a space. The response provides the template’s identifier, name,
@@ -3909,4 +3909,4 @@ paths:
       tags:
       - Templates
 servers:
-- url: http://localhost:31009/v1
+- url: http://localhost:31009

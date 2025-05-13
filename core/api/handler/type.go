@@ -26,7 +26,7 @@ import (
 //	@Failure		401				{object}	util.UnauthorizedError						"Unauthorized"
 //	@Failure		500				{object}	util.ServerError							"Internal server error"
 //	@Security		bearerauth
-//	@Router			/spaces/{space_id}/types [get]
+//	@Router			/v1/spaces/{space_id}/types [get]
 func ListTypesHandler(s *service.Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		spaceId := c.Param("space_id")
@@ -64,7 +64,7 @@ func ListTypesHandler(s *service.Service) gin.HandlerFunc {
 //	@Failure		410				{object}	util.GoneError			"Resource deleted"
 //	@Failure		500				{object}	util.ServerError		"Internal server error"
 //	@Security		bearerauth
-//	@Router			/spaces/{space_id}/types/{type_id} [get]
+//	@Router			/v1/spaces/{space_id}/types/{type_id} [get]
 func GetTypeHandler(s *service.Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		spaceId := c.Param("space_id")
@@ -104,7 +104,7 @@ func GetTypeHandler(s *service.Service) gin.HandlerFunc {
 //	@Failure		429				{object}	util.RateLimitError			"Rate limit exceeded"
 //	@Failure		500				{object}	util.ServerError			"Internal server error"
 //	@Security		bearerauth
-//	@Router			/spaces/{space_id}/types [post]
+//	@Router			/v1/spaces/{space_id}/types [post]
 func CreateTypeHandler(s *service.Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		spaceId := c.Param("space_id")
@@ -153,7 +153,7 @@ func CreateTypeHandler(s *service.Service) gin.HandlerFunc {
 //	@Failure		429				{object}	util.RateLimitError			"Rate limit exceeded"
 //	@Failure		500				{object}	util.ServerError			"Internal server error"
 //	@Security		bearerauth
-//	@Router			/spaces/{space_id}/types/{type_id} [patch]
+//	@Router			/v1/spaces/{space_id}/types/{type_id} [patch]
 func UpdateTypeHandler(s *service.Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		spaceId := c.Param("space_id")
@@ -203,7 +203,7 @@ func UpdateTypeHandler(s *service.Service) gin.HandlerFunc {
 //	@Failure		429				{object}	util.RateLimitError		"Rate limit exceeded"
 //	@Failure		500				{object}	util.ServerError		"Internal server error"
 //	@Security		bearerauth
-//	@Router			/spaces/{space_id}/types/{type_id} [delete]
+//	@Router			/v1/spaces/{space_id}/types/{type_id} [delete]
 func DeleteTypeHandler(s *service.Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		spaceId := c.Param("space_id")

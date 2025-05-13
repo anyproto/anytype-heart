@@ -23,7 +23,7 @@ import (
 //	@Success		200				{object}	apimodel.DisplayCodeResponse	"The challenge ID associated with the started challenge"
 //	@Failure		400				{object}	util.ValidationError			"Invalid input"
 //	@Failure		500				{object}	util.ServerError				"Internal server error"
-//	@Router			/auth/display_code [post]
+//	@Router			/v1/auth/display_code [post]
 func DisplayCodeHandler(s *service.Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		appName := c.Query("app_name")
@@ -57,7 +57,7 @@ func DisplayCodeHandler(s *service.Service) gin.HandlerFunc {
 //	@Success		200				{object}	apimodel.TokenResponse	"The app key that can be used in the Authorization header for subsequent requests"
 //	@Failure		400				{object}	util.ValidationError	"Invalid input"
 //	@Failure		500				{object}	util.ServerError		"Internal server error"
-//	@Router			/auth/token [post]
+//	@Router			/v1/auth/token [post]
 func TokenHandler(s *service.Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		challengeId := c.Query("challenge_id")

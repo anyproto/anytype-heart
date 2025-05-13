@@ -26,7 +26,7 @@ import (
 //	@Failure		401				{object}	util.UnauthorizedError							"Unauthorized"
 //	@Failure		500				{object}	util.ServerError								"Internal server error"
 //	@Security		bearerauth
-//	@Router			/spaces/{space_id}/properties [get]
+//	@Router			/v1/spaces/{space_id}/properties [get]
 func ListPropertiesHandler(s *service.Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		spaceId := c.Param("space_id")
@@ -64,7 +64,7 @@ func ListPropertiesHandler(s *service.Service) gin.HandlerFunc {
 //	@Failure		410				{object}	util.GoneError				"Resource deleted"
 //	@Failure		500				{object}	util.ServerError			"Internal server error"
 //	@Security		bearerauth
-//	@Router			/spaces/{space_id}/properties/{property_id} [get]
+//	@Router			/v1/spaces/{space_id}/properties/{property_id} [get]
 func GetPropertyHandler(s *service.Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		spaceId := c.Param("space_id")
@@ -104,7 +104,7 @@ func GetPropertyHandler(s *service.Service) gin.HandlerFunc {
 //	@Failure		429				{object}	util.RateLimitError				"Rate limit exceeded"
 //	@Failure		500				{object}	util.ServerError				"Internal server error"
 //	@Security		bearerauth
-//	@Router			/spaces/{space_id}/properties [post]
+//	@Router			/v1/spaces/{space_id}/properties [post]
 func CreatePropertyHandler(s *service.Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		spaceId := c.Param("space_id")
@@ -154,7 +154,7 @@ func CreatePropertyHandler(s *service.Service) gin.HandlerFunc {
 //	@Failure		429				{object}	util.RateLimitError				"Rate limit exceeded"
 //	@Failure		500				{object}	util.ServerError				"Internal server error"
 //	@Security		bearerauth
-//	@Router			/spaces/{space_id}/properties/{property_id} [patch]
+//	@Router			/v1/spaces/{space_id}/properties/{property_id} [patch]
 func UpdatePropertyHandler(s *service.Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		spaceId := c.Param("space_id")
@@ -205,7 +205,7 @@ func UpdatePropertyHandler(s *service.Service) gin.HandlerFunc {
 //	@Failure		429				{object}	util.RateLimitError			"Rate limit exceeded"
 //	@Failure		500				{object}	util.ServerError			"Internal server error"
 //	@Security		bearerauth
-//	@Router			/spaces/{space_id}/properties/{property_id} [delete]
+//	@Router			/v1/spaces/{space_id}/properties/{property_id} [delete]
 func DeletePropertyHandler(s *service.Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		spaceId := c.Param("space_id")
