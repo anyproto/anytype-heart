@@ -15,7 +15,7 @@ import (
 //
 //	@Summary		List types
 //	@Description	This endpoint retrieves a paginated list of object types (e.g. 'Page', 'Note', 'Task') available within the specified space. Each type’s record includes its unique identifier, type key, display name, icon, and layout. While a type's id is truly unique, a type's key can be the same across spaces for known types, e.g. 'page' for 'Page'. Clients use this information when offering choices for object creation or for filtering objects by type through search.
-//	@Id				listTypes
+//	@Id				list_types
 //	@Tags			Types
 //	@Produce		json
 //	@Param			Anytype-Version	header		string										true	"The version of the API to use"	default(2025-05-20)
@@ -52,7 +52,7 @@ func ListTypesHandler(s *service.Service) gin.HandlerFunc {
 //
 //	@Summary		Get type
 //	@Description	Fetches detailed information about one specific object type by its ID. This includes the type’s unique key, name, icon, and layout. This detailed view assists clients in understanding the expected structure and style for objects of that type and in guiding the user interface (such as displaying appropriate icons or layout hints).
-//	@Id				getType
+//	@Id				get_type
 //	@Tags			Types
 //	@Produce		json
 //	@Param			Anytype-Version	header		string					true	"The version of the API to use"	default(2025-05-20)
@@ -91,7 +91,7 @@ func GetTypeHandler(s *service.Service) gin.HandlerFunc {
 //
 //	@Summary		Create type
 //	@Description	Creates a new object type in the specified space using a JSON payload. The creation process is subject to rate limiting. The payload must include type details such as the name, icon, and layout. The endpoint then returns the full type data, ready to be used for creating objects.
-//	@Id				createType
+//	@Id				create_type
 //	@Tags			Types
 //	@Accept			json
 //	@Produce		json
@@ -137,7 +137,7 @@ func CreateTypeHandler(s *service.Service) gin.HandlerFunc {
 //
 //	@Summary		Update type
 //	@Description	This endpoint updates an existing object type in the specified space using a JSON payload. The update process is subject to rate limiting. The payload must include the name and properties to be updated. The endpoint then returns the full type data, ready for further interactions.
-//	@Id				updateType
+//	@Id				update_type
 //	@Tags			Types
 //	@Accept			json
 //	@Produce		json
@@ -189,7 +189,7 @@ func UpdateTypeHandler(s *service.Service) gin.HandlerFunc {
 //
 //	@Summary		Delete type
 //	@Description	This endpoint “deletes” an object type by marking it as archived. The deletion process is performed safely and is subject to rate limiting. It returns the type’s details after it has been archived. Proper error handling is in place for situations such as when the type isn’t found or the deletion cannot be performed because of permission issues.
-//	@Id				deleteType
+//	@Id				delete_type
 //	@Tags			Types
 //	@Produce		json
 //	@Param			Anytype-Version	header		string					true	"The version of the API to use"	default(2025-05-20)

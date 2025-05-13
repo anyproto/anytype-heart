@@ -15,7 +15,7 @@ import (
 //
 //	@Summary		List spaces
 //	@Description	Retrieves a paginated list of all spaces that are accessible by the authenticated user. Each space record contains detailed information such as the space ID, name, icon (derived either from an emoji or image URL), and additional metadata. This endpoint is key to displaying a user’s workspaces.
-//	@Id				listSpaces
+//	@Id				list_spaces
 //	@Tags			Spaces
 //	@Produce		json
 //	@Param			Anytype-Version	header		string											true	"The version of the API to use"											default(2025-05-20)
@@ -52,7 +52,7 @@ func ListSpacesHandler(s *service.Service) gin.HandlerFunc {
 //
 //	@Summary		Get space
 //	@Description	Fetches full details about a single space identified by its space ID. The response includes metadata such as the space name, icon, and various workspace IDs (home, archive, profile, etc.). This detailed view supports use cases such as displaying space-specific settings.
-//	@Id				getSpace
+//	@Id				get_space
 //	@Tags			Spaces
 //	@Produce		json
 //	@Param			Anytype-Version	header		string					true	"The version of the API to use"	default(2025-05-20)
@@ -88,7 +88,7 @@ func GetSpaceHandler(s *service.Service) gin.HandlerFunc {
 //
 //	@Summary		Create space
 //	@Description	Creates a new space based on a supplied name and description in the JSON request body. The endpoint is subject to rate limiting and automatically applies default configurations such as generating a random icon and initializing the workspace with default settings (for example, a default dashboard or home page). On success, the new space’s full metadata is returned, enabling the client to immediately switch context to the new internal.
-//	@Id				createSpace
+//	@Id				create_space
 //	@Tags			Spaces
 //	@Accept			json
 //	@Produce		json
@@ -132,7 +132,7 @@ func CreateSpaceHandler(s *service.Service) gin.HandlerFunc {
 //
 //	@Summary		Update space
 //	@Description	Updates the name or description of an existing space. The request body should contain the new name and/or description in JSON format. This endpoint is useful for renaming or rebranding a workspace without needing to recreate it. The updated space’s metadata is returned in the response.
-//	@Id				updateSpace
+//	@Id				update_space
 //	@Tags			Spaces
 //	@Accept			json
 //	@Produce		json

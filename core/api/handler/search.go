@@ -15,7 +15,7 @@ import (
 //
 //	@Summary		Search objects across all spaces
 //	@Description	Executes a global search over every space accessible by the authenticated user. The request body must specify the `query` text, optional filters on object types (e.g., "page", "task"), and sort directives (default: descending by last updated timestamp). Pagination is controlled via `offset` and `limit` query parameters to facilitate lazy loading in client UIs. The response returns a unified list of matched objects with their metadata and properties.
-//	@Id				searchGlobal
+//	@Id				search_global
 //	@Tags			Search
 //	@Accept			json
 //	@Produce		json
@@ -59,7 +59,7 @@ func GlobalSearchHandler(s *service.Service) gin.HandlerFunc {
 //
 //	@Summary		Search objects within a space
 //	@Description	Performs a focused search within a single space (specified by the space_id path parameter). Like the global search, it accepts pagination parameters and a JSON payload containing the search query, object types, and sorting preferences. The search is limited to the provided space and returns a list of objects that match the query. This allows clients to implement space‑specific filtering without having to process extraneous results.
-//	@Id				searchSpace
+//	@Id				search_space
 //	@Tags			Search
 //	@Accept			json
 //	@Produce		json

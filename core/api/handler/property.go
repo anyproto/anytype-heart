@@ -15,7 +15,7 @@ import (
 //
 //	@Summary		List properties
 //	@Description	⚠ Warning: Properties are experimental and may change in the next update. ⚠ Retrieves a paginated list of properties available within a specific space. Each property record includes its unique identifier, name and format. This information is essential for clients to understand the available properties for filtering or creating objects.
-//	@Id				listProperties
+//	@Id				list_properties
 //	@Tags			Properties
 //	@Produce		json
 //	@Param			Anytype-Version	header		string											true	"The version of the API to use"	default(2025-05-20)
@@ -52,7 +52,7 @@ func ListPropertiesHandler(s *service.Service) gin.HandlerFunc {
 //
 //	@Summary		Get property
 //	@Description	⚠ Warning: Properties are experimental and may change in the next update. ⚠ Fetches detailed information about one specific property by its ID. This includes the property’s unique identifier, name and format. This detailed view assists clients in showing property options to users and in guiding the user interface (such as displaying appropriate input fields or selection options).
-//	@Id				getProperty
+//	@Id				get_property
 //	@Tags			Properties
 //	@Produce		json
 //	@Param			Anytype-Version	header		string						true	"The version of the API to use"	default(2025-05-20)
@@ -91,7 +91,7 @@ func GetPropertyHandler(s *service.Service) gin.HandlerFunc {
 //
 //	@Summary		Create property
 //	@Description	⚠ Warning: Properties are experimental and may change in the next update. ⚠ Creates a new property in the specified space using a JSON payload. The creation process is subject to rate limiting. The payload must include property details such as the name and format. The endpoint then returns the full property data, ready for further interactions.
-//	@Id				createProperty
+//	@Id				create_property
 //	@Tags			Properties
 //	@Accept			json
 //	@Produce		json
@@ -137,7 +137,7 @@ func CreatePropertyHandler(s *service.Service) gin.HandlerFunc {
 //
 //	@Summary		Update property
 //	@Description	⚠ Warning: Properties are experimental and may change in the next update. ⚠ This endpoint updates an existing property in the specified space using a JSON payload. The update process is subject to rate limiting. The payload must include the name to be updated. The endpoint then returns the full property data, ready for further interactions.
-//	@Id				updateProperty
+//	@Id				update_property
 //	@Tags			Properties
 //	@Accept			json
 //	@Produce		json
@@ -191,7 +191,7 @@ func UpdatePropertyHandler(s *service.Service) gin.HandlerFunc {
 //
 //	@Summary		Delete property
 //	@Description	⚠ Warning: Properties are experimental and may change in the next update. ⚠ This endpoint “deletes” a property by marking it as archived. The deletion process is performed safely and is subject to rate limiting. It returns the property’s details after it has been archived. Proper error handling is in place for situations such as when the property isn’t found or the deletion cannot be performed because of permission issues.
-//	@Id				deleteProperty
+//	@Id				delete_property
 //	@Tags			Properties
 //	@Produce		json
 //	@Param			Anytype-Version	header		string						true	"The version of the API to use"	default(2025-05-20)

@@ -14,7 +14,7 @@ import (
 //
 //	@Summary		Get list views
 //	@Description	Returns a paginated list of views defined for a specific list (query or collection) within a space. Each view includes details such as layout, applied filters, and sorting options, enabling clients to render the list according to user preferences and context. This endpoint is essential for applications that need to display lists in various formats (e.g., grid, table) or with different sorting/filtering criteria.
-//	@Id				getListViews
+//	@Id				get_list_views
 //	@Tags			Lists
 //	@Produce		json
 //	@Param			Anytype-Version	header		string										true	"The version of the API to use"	default(2025-05-20)
@@ -55,7 +55,7 @@ func GetListViewsHandler(s *service.Service) gin.HandlerFunc {
 //
 //	@Summary		Get objects in list
 //	@Description	Returns a paginated list of objects associated with a specific list (query or collection) within a space. When a view ID is provided, the objects are filtered and sorted according to the view's configuration. If no view ID is specified, all list objects are returned without filtering and sorting. This endpoint helps clients to manage grouped objects (for example, tasks within a list) by returning information for each item of the list.
-//	@Id				getListObjects
+//	@Id				get_list_objects
 //	@Tags			Lists
 //	@Produce		json
 //	@Param			Anytype-Version	header		string											true	"The version of the API to use"	default(2025-05-20)
@@ -102,7 +102,7 @@ func GetObjectsInListHandler(s *service.Service) gin.HandlerFunc {
 //
 //	@Summary		Add objects to list
 //	@Description	Adds one or more objects to a specific list (collection only) by submitting a JSON array of object IDs. Upon success, the endpoint returns a confirmation message. This endpoint is vital for building user interfaces that allow drag‑and‑drop or multi‑select additions to collections, enabling users to dynamically manage their collections without needing to modify the underlying object data.
-//	@Id				addListObjects
+//	@Id				add_list_objects
 //	@Tags			Lists
 //	@Accept			json
 //	@Produce		json
@@ -149,7 +149,7 @@ func AddObjectsToListHandler(s *service.Service) gin.HandlerFunc {
 //
 //	@Summary		Remove object from list
 //	@Description	Removes a given object from the specified list (collection only) in a space. The endpoint takes the space, list, and object identifiers as path parameters and is subject to rate limiting. It is used for dynamically managing collections without affecting the underlying object data.
-//	@Id				removeListObject
+//	@Id				remove_list_object
 //	@Tags			Lists
 //	@Produce		json
 //	@Param			Anytype-Version	header		string					true	"The version of the API to use"	default(2025-05-20)

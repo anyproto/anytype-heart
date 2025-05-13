@@ -15,7 +15,7 @@ import (
 //
 //	@Summary		List objects
 //	@Description	Retrieves a paginated list of objects in the given space. The endpoint takes query parameters for pagination (offset and limit) and returns detailed data about each object including its ID, name, icon, type information, a snippet of the content (if applicable), layout, space ID, blocks and details. It is intended for building views where users can see all objects in a space at a glance.
-//	@Id				listObjects
+//	@Id				list_objects
 //	@Tags			Objects
 //	@Produce		json
 //	@Param			Anytype-Version	header		string											true	"The version of the API to use"	default(2025-05-20)
@@ -54,7 +54,7 @@ func ListObjectsHandler(s *service.Service) gin.HandlerFunc {
 //
 //	@Summary		Get object
 //	@Description	Fetches the full details of a single object identified by the object ID within the specified space. The response includes not only basic metadata (ID, name, icon, type) but also the complete set of blocks (which may include text, files, properties and dataviews) and extra details (such as timestamps and linked member information). This endpoint is essential when a client needs to render or edit the full object view.
-//	@Id				getObject
+//	@Id				get_object
 //	@Tags			Objects
 //	@Produce		json
 //	@Param			Anytype-Version	header		string					true	"The version of the API to use"	default(2025-05-20)
@@ -96,7 +96,7 @@ func GetObjectHandler(s *service.Service) gin.HandlerFunc {
 //
 //	@Summary		Create object
 //	@Description	Creates a new object in the specified space using a JSON payload. The creation process is subject to rate limiting. The payload must include key details such as the object name, icon, description, body content (which may support Markdown), source URL (required for bookmark objects), template identifier, and the type_key (which is the non-unique identifier of the type of object to create). Post-creation, additional operations (like setting featured properties or fetching bookmark metadata) may occur. The endpoint then returns the full object data, ready for further interactions.
-//	@Id				createObject
+//	@Id				create_object
 //	@Tags			Objects
 //	@Accept			json
 //	@Produce		json
@@ -147,7 +147,7 @@ func CreateObjectHandler(s *service.Service) gin.HandlerFunc {
 //
 //	@Summary		Update object
 //	@Description	This endpoint updates an existing object in the specified space using a JSON payload. The update process is subject to rate limiting. The payload must include the details to be updated. The endpoint then returns the full object data, ready for further interactions.
-//	@Id				updateObject
+//	@Id				update_object
 //	@Tags			Objects
 //	@Accept			json
 //	@Produce		json
@@ -199,7 +199,7 @@ func UpdateObjectHandler(s *service.Service) gin.HandlerFunc {
 //
 //	@Summary		Delete object
 //	@Description	This endpoint “deletes” an object by marking it as archived. The deletion process is performed safely and is subject to rate limiting. It returns the object’s details after it has been archived. Proper error handling is in place for situations such as when the object isn’t found or the deletion cannot be performed because of permission issues.
-//	@Id				deleteObject
+//	@Id				delete_object
 //	@Tags			Objects
 //	@Produce		json
 //	@Param			Anytype-Version	header		string					true	"The version of the API to use"	default(2025-05-20)

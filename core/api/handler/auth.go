@@ -14,7 +14,7 @@ import (
 //
 //	@Summary		Start new challenge
 //	@Description	Generates a one-time authentication challenge for granting API access to the user's vault. Upon providing a valid `app_name`, the server issues a unique `challenge_id` and displays a short code within the Anytype Desktop On success, the service returns a unique challenge ID. This challenge ID must then be used with the token endpoint (see below) to solve the challenge and retrieve an authentication token. This mechanism ensures that only trusted applications and authorized users gain access.
-//	@ID				createAuthChallenge
+//	@ID				create_auth_challenge
 //	@Tags			Auth
 //	@Accept			json
 //	@Produce		json
@@ -47,7 +47,7 @@ func DisplayCodeHandler(s *service.Service) gin.HandlerFunc {
 //
 //	@Summary		Solve challenge
 //	@Description	After receiving a challenge ID from the display_code endpoint, the client calls this endpoint to provide the corresponding 4-digit code (also via a query parameter) along with the challenge ID. The endpoint verifies that the challenge solution is correct and, if it is, returns a permanent app key. This endpoint is central to the authentication process, as it validates the user's identity and issues a token that can be used for further interactions with the API.
-//	@ID				solveAuthChallenge
+//	@ID				solve_auth_challenge
 //	@Tags			Auth
 //	@Accept			json
 //	@Produce		json

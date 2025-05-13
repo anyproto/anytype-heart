@@ -15,7 +15,7 @@ import (
 //
 //	@Summary		List members
 //	@Description	Returns a paginated list of members belonging to the specified space. Each member record includes the member’s profile ID, name, icon (which may be derived from an emoji or image), network identity, global name, status (e.g. joining, active) and role (e.g. Viewer, Editor, Owner). This endpoint supports collaborative features by allowing clients to show who is in a space and manage access rights.
-//	@Id				listMembers
+//	@Id				list_members
 //	@Tags			Members
 //	@Produce		json
 //	@Param			Anytype-Version	header		string											true	"The version of the API to use"	default(2025-05-20)
@@ -52,7 +52,7 @@ func ListMembersHandler(s *service.Service) gin.HandlerFunc {
 //
 //	@Summary		Get member
 //	@Description	Fetches detailed information about a single member within a space. The endpoint returns the member’s identifier, name, icon, identity, global name, status and role. The member_id path parameter can be provided as either the member's ID (starting  with `_participant`) or the member's identity. This is useful for user profile pages, permission management, and displaying member-specific information in collaborative environments.
-//	@Id				getMember
+//	@Id				get_member
 //	@Tags			Members
 //	@Produce		json
 //	@Param			Anytype-Version	header		string					true	"The version of the API to use"	default(2025-05-20)
@@ -90,7 +90,7 @@ func GetMemberHandler(s *service.Service) gin.HandlerFunc {
 //
 //	@Summary		Update member
 //	@Description	Modifies a member's status and role in a space. Use this endpoint to approve a joining member by setting the status to `active` and specifying a role (`reader` or `writer`), reject a joining member by setting the status to `declined`, remove a member by setting the status to `removed`, or update an active member's role. This endpoint enables fine-grained control over member access and permissions.
-//	@Id				updateMember
+//	@Id				update_member
 //	@Tags			Members
 //	@Accept			json
 //	@Produce		json

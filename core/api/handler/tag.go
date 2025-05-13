@@ -15,7 +15,7 @@ import (
 //
 //	@Summary		List tags
 //	@Description	This endpoint retrieves a paginated list of tags available for a specific property within a space. Each tag record includes its unique identifier, name, and color. This information is essential for clients to display select or multi-select options to users when they are creating or editing objects. The endpoint also supports pagination through offset and limit parameters.
-//	@Id				listTags
+//	@Id				list_tags
 //	@Tags			Tags
 //	@Produce		json
 //	@Param			Anytype-Version	header		string										true	"The version of the API to use"	default(2025-05-20)
@@ -54,7 +54,7 @@ func ListTagsHandler(s *service.Service) gin.HandlerFunc {
 //
 //	@Summary		Get tag
 //	@Description	This endpoint retrieves a tag for a given property id. The tag is identified by its unique identifier within the specified space. The response includes the tag's details such as its ID, name, and color. This is useful for clients to display or when editing a specific tag option.
-//	@Id				getTag
+//	@Id				get_tag
 //	@Tags			Tags
 //	@Produce		json
 //	@Param			Anytype-Version	header		string					true	"The version of the API to use"	default(2025-05-20)
@@ -95,7 +95,7 @@ func GetTagHandler(s *service.Service) gin.HandlerFunc {
 //
 //	@Summary		Create tag
 //	@Description	This endpoint creates a new tag for a given property id in a space. The creation process is subject to rate limiting. The tag is identified by its unique identifier within the specified space. The request must include the tag's name and color. The response includes the tag's details such as its ID, name, and color. This is useful for clients when users want to add new tag options to a property.
-//	@Id				createTag
+//	@Id				create_tag
 //	@Tags			Tags
 //	@Accept			json
 //	@Produce		json
@@ -143,7 +143,7 @@ func CreateTagHandler(s *service.Service) gin.HandlerFunc {
 //
 //	@Summary		Update tag
 //	@Description	This endpoint updates a tag for a given property id in a space. The update process is subject to rate limiting. The tag is identified by its unique identifier within the specified space. The request must include the tag's name and color. The response includes the tag's details such as its ID, name, and color. This is useful for clients when users want to edit existing tags for a property.
-//	@Id				updateTag
+//	@Id				update_tag
 //	@Tags			Tags
 //	@Accept			json
 //	@Produce		json
@@ -198,7 +198,7 @@ func UpdateTagHandler(s *service.Service) gin.HandlerFunc {
 //
 //	@Summary		Delete tag
 //	@Description	This endpoint “deletes” a tag by marking it as archived. The deletion process is performed safely and is subject to rate limiting. It returns the tag’s details after it has been archived. Proper error handling is in place for situations such as when the tag isn’t found or the deletion cannot be performed because of permission issues.
-//	@Id				deleteTag
+//	@Id				delete_tag
 //	@Tags			Tags
 //	@Produce		json
 //	@Param			Anytype-Version	header		string					true	"The version of the API to use"	default(2025-05-20)
