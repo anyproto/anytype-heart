@@ -11,10 +11,6 @@ type AccountService interface {
 	GetInfo(ctx context.Context) (*model.AccountInfo, error)
 }
 
-type ExportService interface {
-	ExportSingleInMemory(ctx context.Context, spaceId string, objectId string, format model.ExportFormat) (res string, err error)
-}
-
 type ClientCommands interface {
 	// Wallet
 	AccountLocalLinkNewChallenge(context.Context, *pb.RpcAccountLocalLinkNewChallengeRequest) *pb.RpcAccountLocalLinkNewChallengeResponse
@@ -39,7 +35,7 @@ type ClientCommands interface {
 	ObjectSearchUnsubscribe(context.Context, *pb.RpcObjectSearchUnsubscribeRequest) *pb.RpcObjectSearchUnsubscribeResponse
 	ObjectSetDetails(context.Context, *pb.RpcObjectSetDetailsRequest) *pb.RpcObjectSetDetailsResponse
 	ObjectSetIsArchived(context.Context, *pb.RpcObjectSetIsArchivedRequest) *pb.RpcObjectSetIsArchivedResponse
-	ObjectListExport(context.Context, *pb.RpcObjectListExportRequest) *pb.RpcObjectListExportResponse
+	ObjectExport(context.Context, *pb.RpcObjectExportRequest) *pb.RpcObjectExportResponse
 
 	// Type
 	ObjectCreateObjectType(context.Context, *pb.RpcObjectCreateObjectTypeRequest) *pb.RpcObjectCreateObjectTypeResponse

@@ -501,9 +501,14 @@ func TestObjectService_GetObject(t *testing.T) {
 		}, nil).Once()
 
 		// Mock ExportMarkdown
-		fx.exportService.
-			On("ExportSingleInMemory", mock.Anything, mockedSpaceId, mockedObjectId, model.Export_Markdown).
-			Return("dummy markdown", nil).Once()
+		fx.mwMock.On("ObjectExport", mock.Anything, &pb.RpcObjectExportRequest{
+			SpaceId:  mockedSpaceId,
+			ObjectId: mockedObjectId,
+			Format:   model.Export_Markdown,
+		}).Return(&pb.RpcObjectExportResponse{
+			Result: "dummy markdown",
+			Error:  &pb.RpcObjectExportResponseError{Code: pb.RpcObjectExportResponseError_NULL},
+		}, nil).Once()
 
 		// when
 		object, err := fx.service.GetObject(ctx, mockedSpaceId, mockedObjectId)
@@ -651,9 +656,14 @@ func TestObjectService_CreateObject(t *testing.T) {
 		}).Times(3)
 
 		// Mock ExportMarkdown
-		fx.exportService.
-			On("ExportSingleInMemory", mock.Anything, mockedSpaceId, mockedNewObjectId, model.Export_Markdown).
-			Return("dummy markdown", nil).Once()
+		fx.mwMock.On("ObjectExport", mock.Anything, &pb.RpcObjectExportRequest{
+			SpaceId:  mockedSpaceId,
+			ObjectId: mockedNewObjectId,
+			Format:   model.Export_Markdown,
+		}).Return(&pb.RpcObjectExportResponse{
+			Result: "dummy markdown",
+			Error:  &pb.RpcObjectExportResponseError{Code: pb.RpcObjectExportResponseError_NULL},
+		}, nil).Once()
 
 		// when
 		object, err := fx.service.CreateObject(ctx, mockedSpaceId, apimodel.CreateObjectRequest{

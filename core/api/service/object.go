@@ -437,11 +437,17 @@ func (s *Service) GetObjectWithBlocksFromStruct(details *types.Struct, markdown 
 // getMarkdownExport retrieves the Markdown export of an object.
 func (s *Service) getMarkdownExport(ctx context.Context, spaceId string, objectId string, layout model.ObjectTypeLayout) (string, error) {
 	if util.IsObjectLayout(layout) {
-		md, err := s.exportService.ExportSingleInMemory(ctx, spaceId, objectId, model.Export_Markdown)
-		if err != nil {
+		resp := s.mw.ObjectExport(ctx, &pb.RpcObjectExportRequest{
+			SpaceId:  spaceId,
+			ObjectId: objectId,
+			Format:   model.Export_Markdown,
+		})
+
+		if resp.Error != nil && resp.Error.Code != pb.RpcObjectExportResponseError_NULL {
 			return "", ErrFailedExportMarkdown
 		}
-		return md, nil
+
+		return resp.Result, nil
 	}
 	return "", nil
 }

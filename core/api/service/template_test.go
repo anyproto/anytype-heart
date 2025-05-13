@@ -128,9 +128,14 @@ func TestObjectService_GetTemplate(t *testing.T) {
 		}).Times(3)
 
 		// Mock ExportMarkdown
-		fx.exportService.
-			On("ExportSingleInMemory", mock.Anything, mockedSpaceId, mockedTemplateId, model.Export_Markdown).
-			Return("dummy markdown", nil).Once()
+		fx.mwMock.On("ObjectExport", mock.Anything, &pb.RpcObjectExportRequest{
+			SpaceId:  mockedSpaceId,
+			ObjectId: mockedTemplateId,
+			Format:   model.Export_Markdown,
+		}).Return(&pb.RpcObjectExportResponse{
+			Result: "dummy markdown",
+			Error:  &pb.RpcObjectExportResponseError{Code: pb.RpcObjectExportResponseError_NULL},
+		}, nil).Once()
 
 		// when
 		template, err := fx.service.GetTemplate(ctx, mockedSpaceId, mockedTypeId, mockedTemplateId)

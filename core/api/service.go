@@ -14,7 +14,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/anytype/config"
 	apicore "github.com/anyproto/anytype-heart/core/api/core"
 	"github.com/anyproto/anytype-heart/core/api/server"
-	"github.com/anyproto/anytype-heart/core/block/export"
 )
 
 const (
@@ -36,7 +35,6 @@ type apiService struct {
 	httpSrv        *http.Server
 	mw             apicore.ClientCommands
 	accountService apicore.AccountService
-	exportService  apicore.ExportService
 	listenAddr     string
 	lock           sync.Mutex
 }
@@ -68,7 +66,6 @@ func (s *apiService) Name() (name string) {
 func (s *apiService) Init(a *app.App) (err error) {
 	s.listenAddr = a.MustComponent(config.CName).(*config.Config).JsonApiListenAddr
 	s.accountService = a.MustComponent(account.CName).(account.Service)
-	s.exportService = a.MustComponent(export.CName).(apicore.ExportService)
 	return nil
 }
 
@@ -89,7 +86,7 @@ func (s *apiService) runServer() {
 		return
 	}
 
-	s.srv = server.NewServer(s.mw, s.accountService, s.exportService)
+	s.srv = server.NewServer(s.mw, s.accountService)
 	s.httpSrv = &http.Server{
 		Addr:              s.listenAddr,
 		Handler:           s.srv.Engine(),
