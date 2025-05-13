@@ -41,6 +41,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/bookmark"
 	decorator "github.com/anyproto/anytype-heart/core/block/bookmark/bookmarkimporter"
 	"github.com/anyproto/anytype-heart/core/block/chats"
+	"github.com/anyproto/anytype-heart/core/block/chats/chatrepository"
 	"github.com/anyproto/anytype-heart/core/block/collection"
 	"github.com/anyproto/anytype-heart/core/block/dataviewservice"
 	"github.com/anyproto/anytype-heart/core/block/detailservice"
@@ -264,6 +265,7 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(files.New()).
 		Register(fileoffloader.New()).
 		Register(fileacl.New()).
+		Register(chatrepository.New()).
 		Register(chats.New()).
 		Register(sourceimpl.New()).
 		Register(spacefactory.New()).

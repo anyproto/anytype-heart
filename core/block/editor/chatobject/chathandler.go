@@ -11,13 +11,15 @@ import (
 	"github.com/anyproto/any-store/query"
 	"github.com/globalsign/mgo/bson"
 
+	"github.com/anyproto/anytype-heart/core/block/chats/chatmodel"
+	"github.com/anyproto/anytype-heart/core/block/chats/chatrepository"
 	"github.com/anyproto/anytype-heart/core/block/editor/storestate"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
 type ChatHandler struct {
-	repository      *repository
+	repository      chatrepository.Repository
 	subscription    *subscriptionManager
 	currentIdentity string
 	myParticipantId string
@@ -44,7 +46,7 @@ func (d *ChatHandler) Init(ctx context.Context, s *storestate.StoreState) (err e
 }
 
 func (d *ChatHandler) BeforeCreate(ctx context.Context, ch storestate.ChangeOp) error {
-	msg, err := unmarshalMessage(ch.Value)
+	msg, err := chatmodel.UnmarshalMessage(ch.Value)
 	if err != nil {
 		return fmt.Errorf("unmarshal message: %w", err)
 	}
@@ -72,7 +74,7 @@ func (d *ChatHandler) BeforeCreate(ctx context.Context, ch storestate.ChangeOp) 
 	msg.CurrentUserMentioned = isMentioned
 	msg.OrderId = ch.Change.Order
 
-	prevOrderId, err := d.repository.getPrevOrderId(ctx, ch.Change.Order)
+	prevOrderId, err := d.repository.GetPrevOrderId(ctx, ch.Change.Order)
 	if err != nil {
 		return fmt.Errorf("get prev order id: %w", err)
 	}
@@ -122,7 +124,7 @@ func (d *ChatHandler) BeforeDelete(ctx context.Context, ch storestate.ChangeOp) 
 		return storestate.DeleteModeDelete, fmt.Errorf("get message: %w", err)
 	}
 
-	message, err := unmarshalMessage(doc.Value())
+	message, err := chatmodel.UnmarshalMessage(doc.Value())
 	if err != nil {
 		return storestate.DeleteModeDelete, fmt.Errorf("unmarshal message: %w", err)
 	}
@@ -149,13 +151,13 @@ func (d *ChatHandler) UpgradeKeyModifier(ch storestate.ChangeOp, key *pb.KeyModi
 		}
 
 		if modified {
-			msg, err := unmarshalMessage(result)
+			msg, err := chatmodel.UnmarshalMessage(result)
 			if err != nil {
 				return nil, false, fmt.Errorf("unmarshal message: %w", err)
 			}
 
 			switch path {
-			case reactionsKey:
+			case chatmodel.ReactionsKey:
 				// Do not parse json, just trim "
 				identity := strings.Trim(key.ModifyValue, `"`)
 				if identity != ch.Change.Creator {
@@ -164,7 +166,7 @@ func (d *ChatHandler) UpgradeKeyModifier(ch storestate.ChangeOp, key *pb.KeyModi
 				// TODO Count validation
 
 				d.subscription.updateReactions(msg)
-			case contentKey:
+			case chatmodel.ContentKey:
 				creator := msg.Creator
 				if creator != ch.Change.Creator {
 					return v, false, errors.Join(storestate.ErrValidation, fmt.Errorf("can't modify someone else's message"))

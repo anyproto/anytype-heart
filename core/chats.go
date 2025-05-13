@@ -8,7 +8,8 @@ import (
 	"github.com/gogo/protobuf/types"
 
 	"github.com/anyproto/anytype-heart/core/block/chats"
-	"github.com/anyproto/anytype-heart/core/block/editor/chatobject"
+	"github.com/anyproto/anytype-heart/core/block/chats/chatmodel"
+	"github.com/anyproto/anytype-heart/core/block/chats/chatrepository"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
@@ -17,7 +18,7 @@ func (mw *Middleware) ChatAddMessage(cctx context.Context, req *pb.RpcChatAddMes
 	ctx := mw.newContext(cctx)
 	chatService := mustService[chats.Service](mw)
 
-	messageId, err := chatService.AddMessage(cctx, ctx, req.ChatObjectId, &chatobject.Message{ChatMessage: req.Message})
+	messageId, err := chatService.AddMessage(cctx, ctx, req.ChatObjectId, &chatmodel.Message{ChatMessage: req.Message})
 	if err != nil {
 		code := mapErrorCode[pb.RpcChatAddMessageResponseErrorCode](err)
 		return &pb.RpcChatAddMessageResponse{
@@ -36,7 +37,7 @@ func (mw *Middleware) ChatAddMessage(cctx context.Context, req *pb.RpcChatAddMes
 func (mw *Middleware) ChatEditMessageContent(cctx context.Context, req *pb.RpcChatEditMessageContentRequest) *pb.RpcChatEditMessageContentResponse {
 	chatService := mustService[chats.Service](mw)
 
-	err := chatService.EditMessage(cctx, req.ChatObjectId, req.MessageId, &chatobject.Message{ChatMessage: req.EditedMessage})
+	err := chatService.EditMessage(cctx, req.ChatObjectId, req.MessageId, &chatmodel.Message{ChatMessage: req.EditedMessage})
 	if err != nil {
 		code := mapErrorCode[pb.RpcChatEditMessageContentResponseErrorCode](err)
 		return &pb.RpcChatEditMessageContentResponse{
@@ -84,7 +85,7 @@ func (mw *Middleware) ChatDeleteMessage(cctx context.Context, req *pb.RpcChatDel
 func (mw *Middleware) ChatGetMessages(cctx context.Context, req *pb.RpcChatGetMessagesRequest) *pb.RpcChatGetMessagesResponse {
 	chatService := mustService[chats.Service](mw)
 
-	resp, err := chatService.GetMessages(cctx, req.ChatObjectId, chatobject.GetMessagesRequest{
+	resp, err := chatService.GetMessages(cctx, req.ChatObjectId, chatrepository.GetMessagesRequest{
 		AfterOrderId:    req.AfterOrderId,
 		BeforeOrderId:   req.BeforeOrderId,
 		Limit:           int(req.Limit),
@@ -226,7 +227,7 @@ func (mw *Middleware) ChatReadMessages(cctx context.Context, request *pb.RpcChat
 		AfterOrderId:  request.AfterOrderId,
 		BeforeOrderId: request.BeforeOrderId,
 		LastStateId:   request.LastStateId,
-		CounterType:   chatobject.CounterType(request.Type),
+		CounterType:   chatmodel.CounterType(request.Type),
 	})
 	if err != nil {
 		code := mapErrorCode(err,
@@ -244,7 +245,7 @@ func (mw *Middleware) ChatReadMessages(cctx context.Context, request *pb.RpcChat
 
 func (mw *Middleware) ChatUnreadMessages(cctx context.Context, request *pb.RpcChatUnreadRequest) *pb.RpcChatUnreadResponse {
 	chatService := mustService[chats.Service](mw)
-	err := chatService.UnreadMessages(cctx, request.ChatObjectId, request.AfterOrderId, chatobject.CounterType(request.Type))
+	err := chatService.UnreadMessages(cctx, request.ChatObjectId, request.AfterOrderId, chatmodel.CounterType(request.Type))
 	if err != nil {
 		code := mapErrorCode[pb.RpcChatUnreadResponseErrorCode](err)
 		return &pb.RpcChatUnreadResponse{
@@ -257,7 +258,7 @@ func (mw *Middleware) ChatUnreadMessages(cctx context.Context, request *pb.RpcCh
 	return &pb.RpcChatUnreadResponse{}
 }
 
-func messagesToProto(msgs []*chatobject.Message) []*model.ChatMessage {
+func messagesToProto(msgs []*chatmodel.Message) []*model.ChatMessage {
 	res := make([]*model.ChatMessage, 0, len(msgs))
 	for _, msg := range msgs {
 		res = append(res, msg.ChatMessage)

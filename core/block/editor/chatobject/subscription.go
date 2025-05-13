@@ -9,6 +9,8 @@ import (
 	"github.com/hashicorp/golang-lru/v2/expirable"
 	"go.uber.org/zap"
 
+	"github.com/anyproto/anytype-heart/core/block/chats/chatmodel"
+	"github.com/anyproto/anytype-heart/core/block/chats/chatrepository"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/core/session"
@@ -38,7 +40,7 @@ type subscriptionManager struct {
 	// Deps
 	spaceIndex  spaceindex.Store
 	eventSender event.Sender
-	repository  *repository
+	repository  chatrepository.Repository
 }
 
 type subscription struct {
@@ -106,7 +108,7 @@ func (s *subscriptionManager) setSessionContext(ctx session.Context) {
 }
 
 func (s *subscriptionManager) loadChatState(ctx context.Context) error {
-	state, err := s.repository.loadChatState(ctx)
+	state, err := s.repository.LoadChatState(ctx)
 	if err != nil {
 		return err
 	}
@@ -132,7 +134,7 @@ func (s *subscriptionManager) flush() {
 	// Reload ChatState after commit
 	if s.needReloadState {
 		s.updateChatState(func(state *model.ChatState) *model.ChatState {
-			newState, err := s.repository.loadChatState(s.componentCtx)
+			newState, err := s.repository.LoadChatState(s.componentCtx)
 			if err != nil {
 				log.Error("failed to reload chat state", zap.Error(err))
 				return state
@@ -179,7 +181,7 @@ func (s *subscriptionManager) getIdentityDetails(identity string) (*domain.Detai
 	return details, nil
 }
 
-func (s *subscriptionManager) add(prevOrderId string, message *Message) {
+func (s *subscriptionManager) add(prevOrderId string, message *chatmodel.Message) {
 	if !s.canSend() {
 		return
 	}
@@ -203,7 +205,7 @@ func (s *subscriptionManager) add(prevOrderId string, message *Message) {
 	}))
 }
 
-func (s *subscriptionManager) collectMessageDependencies(message *Message) []*domain.Details {
+func (s *subscriptionManager) collectMessageDependencies(message *chatmodel.Message) []*domain.Details {
 	var result []*domain.Details
 
 	identityDetails, err := s.getIdentityDetails(message.Creator)
@@ -237,7 +239,7 @@ func (s *subscriptionManager) delete(messageId string) {
 	s.needReloadState = true
 }
 
-func (s *subscriptionManager) updateFull(message *Message) {
+func (s *subscriptionManager) updateFull(message *chatmodel.Message) {
 	if !s.canSend() {
 		return
 	}
@@ -251,7 +253,7 @@ func (s *subscriptionManager) updateFull(message *Message) {
 	}))
 }
 
-func (s *subscriptionManager) updateReactions(message *Message) {
+func (s *subscriptionManager) updateReactions(message *chatmodel.Message) {
 	if !s.canSend() {
 		return
 	}
@@ -319,6 +321,40 @@ func (s *subscriptionManager) canSend() bool {
 		return false
 	}
 	return true
+}
+
+func (s *subscriptionManager) readMessages(newOldestOrderId string, idsModified []string, counterType chatmodel.CounterType) {
+	if counterType == chatmodel.CounterTypeMessage {
+		s.updateChatState(func(state *model.ChatState) *model.ChatState {
+			state.Messages.OldestOrderId = newOldestOrderId
+			return state
+		})
+		s.updateMessageRead(idsModified, true)
+	} else {
+		s.updateChatState(func(state *model.ChatState) *model.ChatState {
+			state.Mentions.OldestOrderId = newOldestOrderId
+			return state
+		})
+		s.updateMentionRead(idsModified, true)
+	}
+}
+
+func (s *subscriptionManager) unreadMessages(newOldestOrderId string, lastStateId string, msgIds []string, counterType chatmodel.CounterType) {
+	if counterType == chatmodel.CounterTypeMessage {
+		s.updateChatState(func(state *model.ChatState) *model.ChatState {
+			state.Messages.OldestOrderId = newOldestOrderId
+			state.LastStateId = lastStateId
+			return state
+		})
+		s.updateMessageRead(msgIds, false)
+	} else {
+		s.updateChatState(func(state *model.ChatState) *model.ChatState {
+			state.Mentions.OldestOrderId = newOldestOrderId
+			state.LastStateId = lastStateId
+			return state
+		})
+		s.updateMentionRead(msgIds, false)
+	}
 }
 
 func copyChatState(state *model.ChatState) *model.ChatState {

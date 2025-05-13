@@ -1,4 +1,4 @@
-package chatobject
+package chatrepository
 
 import (
 	"context"
@@ -10,25 +10,108 @@ import (
 	anystore "github.com/anyproto/any-store"
 	"github.com/anyproto/any-store/anyenc"
 	"github.com/anyproto/any-store/query"
+	"github.com/anyproto/any-sync/app"
 	"go.uber.org/zap"
 
+	"github.com/anyproto/anytype-heart/core/block/chats/chatmodel"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
+	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
+
+const CName = "chatrepository"
+
+var log = logging.Logger(CName).Desugar()
+
+const (
+	descOrder   = "-_o.id"
+	ascOrder    = "_o.id"
+	descStateId = "-stateId"
+)
+
+const (
+	creatorKey     = "creator"
+	createdAtKey   = "createdAt"
+	modifiedAtKey  = "modifiedAt"
+	reactionsKey   = "reactions"
+	contentKey     = "content"
+	readKey        = "read"
+	mentionReadKey = "mentionRead"
+	hasMentionKey  = "hasMention"
+	stateIdKey     = "stateId"
+	orderKey       = "_o"
+)
+
+type Service interface {
+	app.Component
+
+	Repository(chatObjectId string) (Repository, error)
+	// RepositoryForCollection is useful when you already have the chat object collection
+	RepositoryForCollection(col anystore.Collection) (Repository, error)
+}
+
+type service struct {
+	objectStore objectstore.ObjectStore
+	arenaPool   *anyenc.ArenaPool
+}
+
+func New() Service {
+	return &service{
+		arenaPool: &anyenc.ArenaPool{},
+	}
+}
+
+func (s *service) Repository(chatObjectId string) (Repository, error) {
+	// TODO implement me
+	panic("implement me")
+}
+
+func (s *service) RepositoryForCollection(col anystore.Collection) (Repository, error) {
+	return &repository{
+		collection: col,
+		arenaPool:  s.arenaPool,
+	}, nil
+}
+
+func (s *service) Init(a *app.App) (err error) {
+	s.objectStore = app.MustComponent[objectstore.ObjectStore](a)
+	return nil
+}
+
+func (s *service) Name() (name string) {
+	return CName
+}
+
+type Repository interface {
+	WriteTx(ctx context.Context) (anystore.WriteTx, error)
+	ReadTx(ctx context.Context) (anystore.ReadTx, error)
+	GetLastStateId(ctx context.Context) (string, error)
+	GetPrevOrderId(ctx context.Context, orderId string) (string, error)
+	LoadChatState(ctx context.Context) (*model.ChatState, error)
+	GetOldestOrderId(ctx context.Context, counterType chatmodel.CounterType) (string, error)
+	GetReadMessagesAfter(ctx context.Context, afterOrderId string, counterType chatmodel.CounterType) ([]string, error)
+	GetUnreadMessageIdsInRange(ctx context.Context, afterOrderId, beforeOrderId string, lastStateId string, counterType chatmodel.CounterType) ([]string, error)
+	SetReadFlag(ctx context.Context, chatObjectId string, msgIds []string, counterType chatmodel.CounterType, value bool) []string
+	GetMessages(ctx context.Context, req GetMessagesRequest) ([]*chatmodel.Message, error)
+	HasMyReaction(ctx context.Context, myIdentity string, messageId string, emoji string) (bool, error)
+	GetMessagesByIds(ctx context.Context, messageIds []string) ([]*chatmodel.Message, error)
+	GetLastMessages(ctx context.Context, limit uint) ([]*chatmodel.Message, error)
+}
 
 type repository struct {
 	collection anystore.Collection
 	arenaPool  *anyenc.ArenaPool
 }
 
-func (s *repository) writeTx(ctx context.Context) (anystore.WriteTx, error) {
+func (s *repository) WriteTx(ctx context.Context) (anystore.WriteTx, error) {
 	return s.collection.WriteTx(ctx)
 }
 
-func (s *repository) readTx(ctx context.Context) (anystore.ReadTx, error) {
+func (s *repository) ReadTx(ctx context.Context) (anystore.ReadTx, error) {
 	return s.collection.ReadTx(ctx)
 }
 
-func (s *repository) getLastStateId(ctx context.Context) (string, error) {
+func (s *repository) GetLastStateId(ctx context.Context) (string, error) {
 	lastAddedDate := s.collection.Find(nil).Sort(descStateId).Limit(1)
 	iter, err := lastAddedDate.Iter(ctx)
 	if err != nil {
@@ -41,7 +124,7 @@ func (s *repository) getLastStateId(ctx context.Context) (string, error) {
 		if err != nil {
 			return "", fmt.Errorf("get doc: %w", err)
 		}
-		msg, err := unmarshalMessage(doc.Value())
+		msg, err := chatmodel.UnmarshalMessage(doc.Value())
 		if err != nil {
 			return "", fmt.Errorf("unmarshal message: %w", err)
 		}
@@ -50,7 +133,7 @@ func (s *repository) getLastStateId(ctx context.Context) (string, error) {
 	return "", nil
 }
 
-func (s *repository) getPrevOrderId(ctx context.Context, orderId string) (string, error) {
+func (s *repository) GetPrevOrderId(ctx context.Context, orderId string) (string, error) {
 	iter, err := s.collection.Find(query.Key{Path: []string{orderKey, "id"}, Filter: query.NewComp(query.CompOpLt, orderId)}).
 		Sort(descOrder).
 		Limit(1).
@@ -73,23 +156,23 @@ func (s *repository) getPrevOrderId(ctx context.Context, orderId string) (string
 }
 
 // initialChatState returns the initial chat state for the chat object from the DB
-func (s *repository) loadChatState(ctx context.Context) (*model.ChatState, error) {
-	txn, err := s.readTx(ctx)
+func (s *repository) LoadChatState(ctx context.Context) (*model.ChatState, error) {
+	txn, err := s.ReadTx(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("start read tx: %w", err)
 	}
 	defer txn.Commit()
 
-	messagesState, err := s.loadChatStateByType(txn.Context(), CounterTypeMessage)
+	messagesState, err := s.loadChatStateByType(txn.Context(), chatmodel.CounterTypeMessage)
 	if err != nil {
 		return nil, fmt.Errorf("get messages state: %w", err)
 	}
-	mentionsState, err := s.loadChatStateByType(txn.Context(), CounterTypeMention)
+	mentionsState, err := s.loadChatStateByType(txn.Context(), chatmodel.CounterTypeMention)
 	if err != nil {
 		return nil, fmt.Errorf("get mentions state: %w", err)
 	}
 
-	lastStateId, err := s.getLastStateId(txn.Context())
+	lastStateId, err := s.GetLastStateId(txn.Context())
 	if err != nil {
 		return nil, fmt.Errorf("get last added date: %w", err)
 	}
@@ -101,15 +184,15 @@ func (s *repository) loadChatState(ctx context.Context) (*model.ChatState, error
 	}, nil
 }
 
-func (s *repository) loadChatStateByType(ctx context.Context, counterType CounterType) (*model.ChatStateUnreadState, error) {
-	opts := newReadHandler(counterType, nil)
+func (s *repository) loadChatStateByType(ctx context.Context, counterType chatmodel.CounterType) (*model.ChatStateUnreadState, error) {
+	handler := newReadHandler(counterType)
 
-	oldestOrderId, err := s.getOldestOrderId(ctx, opts)
+	oldestOrderId, err := s.GetOldestOrderId(ctx, counterType)
 	if err != nil {
 		return nil, fmt.Errorf("get oldest order id: %w", err)
 	}
 
-	count, err := s.countUnreadMessages(ctx, opts)
+	count, err := s.countUnreadMessages(ctx, handler)
 	if err != nil {
 		return nil, fmt.Errorf("update messages: %w", err)
 	}
@@ -120,7 +203,8 @@ func (s *repository) loadChatStateByType(ctx context.Context, counterType Counte
 	}, nil
 }
 
-func (s *repository) getOldestOrderId(ctx context.Context, handler readHandler) (string, error) {
+func (s *repository) GetOldestOrderId(ctx context.Context, counterType chatmodel.CounterType) (string, error) {
+	handler := newReadHandler(counterType)
 	unreadQuery := s.collection.Find(handler.getUnreadFilter()).Sort(ascOrder)
 
 	iter, err := unreadQuery.Limit(1).Iter(ctx)
@@ -148,7 +232,9 @@ func (s *repository) countUnreadMessages(ctx context.Context, handler readHandle
 	return unreadQuery.Count(ctx)
 }
 
-func (s *repository) getReadMessagesAfter(ctx context.Context, afterOrderId string, handler readHandler) ([]string, error) {
+func (s *repository) GetReadMessagesAfter(ctx context.Context, afterOrderId string, counterType chatmodel.CounterType) ([]string, error) {
+	handler := newReadHandler(counterType)
+
 	filter := query.And{
 		query.Key{Path: []string{orderKey, "id"}, Filter: query.NewComp(query.CompOpGte, afterOrderId)},
 		query.Key{Path: []string{handler.getReadKey()}, Filter: query.NewComp(query.CompOpEq, true)},
@@ -174,7 +260,9 @@ func (s *repository) getReadMessagesAfter(ctx context.Context, afterOrderId stri
 	return msgIds, iter.Err()
 }
 
-func (s *repository) getUnreadMessageIdsInRange(ctx context.Context, afterOrderId, beforeOrderId string, lastStateId string, handler readHandler) ([]string, error) {
+func (s *repository) GetUnreadMessageIdsInRange(ctx context.Context, afterOrderId, beforeOrderId string, lastStateId string, counterType chatmodel.CounterType) ([]string, error) {
+	handler := newReadHandler(counterType)
+
 	qry := query.And{
 		query.Key{Path: []string{orderKey, "id"}, Filter: query.NewComp(query.CompOpGte, afterOrderId)},
 		query.Key{Path: []string{orderKey, "id"}, Filter: query.NewComp(query.CompOpLte, beforeOrderId)},
@@ -201,7 +289,9 @@ func (s *repository) getUnreadMessageIdsInRange(ctx context.Context, afterOrderI
 	return msgIds, iter.Err()
 }
 
-func (r *repository) setReadFlag(ctx context.Context, chatObjectId string, msgIds []string, handler readHandler, value bool) []string {
+func (r *repository) SetReadFlag(ctx context.Context, chatObjectId string, msgIds []string, counterType chatmodel.CounterType, value bool) []string {
+	handler := newReadHandler(counterType)
+
 	var idsModified []string
 	for _, id := range msgIds {
 		if id == chatObjectId {
@@ -224,7 +314,14 @@ func (r *repository) setReadFlag(ctx context.Context, chatObjectId string, msgId
 	return idsModified
 }
 
-func (s *repository) getMessages(ctx context.Context, req GetMessagesRequest) ([]*Message, error) {
+type GetMessagesRequest struct {
+	AfterOrderId    string
+	BeforeOrderId   string
+	Limit           int
+	IncludeBoundary bool
+}
+
+func (s *repository) GetMessages(ctx context.Context, req GetMessagesRequest) ([]*chatmodel.Message, error) {
 	var qry anystore.Query
 	if req.AfterOrderId != "" {
 		operator := query.CompOpGt
@@ -249,7 +346,7 @@ func (s *repository) getMessages(ctx context.Context, req GetMessagesRequest) ([
 	return msgs, nil
 }
 
-func (s *repository) queryMessages(ctx context.Context, query anystore.Query) ([]*Message, error) {
+func (s *repository) queryMessages(ctx context.Context, query anystore.Query) ([]*chatmodel.Message, error) {
 	arena := s.arenaPool.Get()
 	defer func() {
 		arena.Reset()
@@ -262,14 +359,14 @@ func (s *repository) queryMessages(ctx context.Context, query anystore.Query) ([
 	}
 	defer iter.Close()
 
-	var res []*Message
+	var res []*chatmodel.Message
 	for iter.Next() {
 		doc, err := iter.Doc()
 		if err != nil {
 			return nil, fmt.Errorf("get doc: %w", err)
 		}
 
-		msg, err := unmarshalMessage(doc.Value())
+		msg, err := chatmodel.UnmarshalMessage(doc.Value())
 		if err != nil {
 			return nil, fmt.Errorf("unmarshal message: %w", err)
 		}
@@ -282,13 +379,13 @@ func (s *repository) queryMessages(ctx context.Context, query anystore.Query) ([
 	return res, nil
 }
 
-func (s *repository) hasMyReaction(ctx context.Context, myIdentity string, messageId string, emoji string) (bool, error) {
+func (s *repository) HasMyReaction(ctx context.Context, myIdentity string, messageId string, emoji string) (bool, error) {
 	doc, err := s.collection.FindId(ctx, messageId)
 	if err != nil {
 		return false, fmt.Errorf("find message: %w", err)
 	}
 
-	msg, err := unmarshalMessage(doc.Value())
+	msg, err := chatmodel.UnmarshalMessage(doc.Value())
 	if err != nil {
 		return false, fmt.Errorf("unmarshal message: %w", err)
 	}
@@ -300,14 +397,14 @@ func (s *repository) hasMyReaction(ctx context.Context, myIdentity string, messa
 	return false, nil
 }
 
-func (s *repository) getMessagesByIds(ctx context.Context, messageIds []string) ([]*Message, error) {
-	txn, err := s.readTx(ctx)
+func (s *repository) GetMessagesByIds(ctx context.Context, messageIds []string) ([]*chatmodel.Message, error) {
+	txn, err := s.ReadTx(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("start read tx: %w", err)
 	}
 	defer txn.Commit()
 
-	messages := make([]*Message, 0, len(messageIds))
+	messages := make([]*chatmodel.Message, 0, len(messageIds))
 	for _, messageId := range messageIds {
 		obj, err := s.collection.FindId(txn.Context(), messageId)
 		if errors.Is(err, anystore.ErrDocNotFound) {
@@ -316,7 +413,7 @@ func (s *repository) getMessagesByIds(ctx context.Context, messageIds []string) 
 		if err != nil {
 			return nil, errors.Join(txn.Commit(), fmt.Errorf("find id: %w", err))
 		}
-		msg, err := unmarshalMessage(obj.Value())
+		msg, err := chatmodel.UnmarshalMessage(obj.Value())
 		if err != nil {
 			return nil, errors.Join(txn.Commit(), fmt.Errorf("unmarshal message: %w", err))
 		}
@@ -325,7 +422,7 @@ func (s *repository) getMessagesByIds(ctx context.Context, messageIds []string) 
 	return messages, nil
 }
 
-func (s *repository) getLastMessages(ctx context.Context, limit uint) ([]*Message, error) {
+func (s *repository) GetLastMessages(ctx context.Context, limit uint) ([]*chatmodel.Message, error) {
 	qry := s.collection.Find(nil).Sort(descOrder).Limit(limit)
 	return s.queryMessages(ctx, qry)
 }

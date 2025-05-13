@@ -13,6 +13,8 @@ import (
 	"go.uber.org/zap"
 	"golang.org/x/exp/slices"
 
+	"github.com/anyproto/anytype-heart/core/block/chats/chatmodel"
+	"github.com/anyproto/anytype-heart/core/block/chats/chatrepository"
 	"github.com/anyproto/anytype-heart/core/block/editor/anystoredebug"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/storestate"
@@ -41,23 +43,16 @@ type StoreObject interface {
 	smartblock.SmartBlock
 	anystoredebug.AnystoreDebug
 
-	AddMessage(ctx context.Context, sessionCtx session.Context, message *Message) (string, error)
-	GetMessages(ctx context.Context, req GetMessagesRequest) (*GetMessagesResponse, error)
-	GetMessagesByIds(ctx context.Context, messageIds []string) ([]*Message, error)
-	EditMessage(ctx context.Context, messageId string, newMessage *Message) error
+	AddMessage(ctx context.Context, sessionCtx session.Context, message *chatmodel.Message) (string, error)
+	GetMessages(ctx context.Context, req chatrepository.GetMessagesRequest) (*GetMessagesResponse, error)
+	GetMessagesByIds(ctx context.Context, messageIds []string) ([]*chatmodel.Message, error)
+	EditMessage(ctx context.Context, messageId string, newMessage *chatmodel.Message) error
 	ToggleMessageReaction(ctx context.Context, messageId string, emoji string) error
 	DeleteMessage(ctx context.Context, messageId string) error
 	SubscribeLastMessages(ctx context.Context, req SubscribeLastMessagesRequest) (*SubscribeLastMessagesResponse, error)
-	MarkReadMessages(ctx context.Context, afterOrderId string, beforeOrderId string, lastStateId string, counterType CounterType) error
-	MarkMessagesAsUnread(ctx context.Context, afterOrderId string, counterType CounterType) error
+	MarkReadMessages(ctx context.Context, afterOrderId string, beforeOrderId string, lastStateId string, counterType chatmodel.CounterType) error
+	MarkMessagesAsUnread(ctx context.Context, afterOrderId string, counterType chatmodel.CounterType) error
 	Unsubscribe(subId string) error
-}
-
-type GetMessagesRequest struct {
-	AfterOrderId    string
-	BeforeOrderId   string
-	Limit           int
-	IncludeBoundary bool
 }
 
 type AccountService interface {
@@ -76,13 +71,14 @@ type storeObject struct {
 	seenHeadsCollector seenHeadsCollector
 	accountService     AccountService
 	storeSource        source.Store
+	repositoryService  chatrepository.Service
 	store              *storestate.StoreState
 	eventSender        event.Sender
 	subscription       *subscriptionManager
 	crdtDb             anystore.DB
 	spaceIndex         spaceindex.Store
 	chatHandler        *ChatHandler
-	repository         *repository
+	repository         chatrepository.Repository
 
 	arenaPool          *anyenc.ArenaPool
 	componentCtx       context.Context
@@ -122,10 +118,11 @@ func (s *storeObject) Init(ctx *smartblock.InitContext) error {
 		return fmt.Errorf("get collection: %w", err)
 	}
 
-	s.repository = &repository{
-		collection: collection,
-		arenaPool:  s.arenaPool,
+	s.repository, err = s.repositoryService.RepositoryForCollection(collection)
+	if err != nil {
+		return fmt.Errorf("get repository: %w", err)
 	}
+
 	// Use Object and Space IDs from source, because object is not initialized yet
 	myParticipantId := domain.NewParticipantId(ctx.Source.SpaceID(), s.accountService.AccountID())
 	s.subscription = s.newSubscriptionManager(
@@ -134,18 +131,15 @@ func (s *storeObject) Init(ctx *smartblock.InitContext) error {
 		myParticipantId,
 	)
 
-	messagesOpts := newReadHandler(CounterTypeMessage, s.subscription)
-	mentionsOpts := newReadHandler(CounterTypeMention, s.subscription)
-
 	// Diff managers should be added before SmartBlock.Init, because they have to be initialized in source.ReadStoreDoc
 	storeSource.RegisterDiffManager(diffManagerMessages, func(removed []string) {
-		markErr := s.markReadMessages(removed, messagesOpts)
+		markErr := s.markReadMessages(removed, chatmodel.CounterTypeMessage)
 		if markErr != nil {
 			log.Error("mark read messages", zap.Error(markErr))
 		}
 	})
 	storeSource.RegisterDiffManager(diffManagerMentions, func(removed []string) {
-		markErr := s.markReadMessages(removed, mentionsOpts)
+		markErr := s.markReadMessages(removed, chatmodel.CounterTypeMention)
 		if markErr != nil {
 			log.Error("mark read mentions", zap.Error(markErr))
 		}
@@ -191,7 +185,7 @@ func (s *storeObject) onUpdate() {
 	s.subscription.flush()
 }
 
-func (s *storeObject) GetMessageById(ctx context.Context, id string) (*Message, error) {
+func (s *storeObject) GetMessageById(ctx context.Context, id string) (*chatmodel.Message, error) {
 	messages, err := s.GetMessagesByIds(ctx, []string{id})
 	if err != nil {
 		return nil, err
@@ -202,17 +196,17 @@ func (s *storeObject) GetMessageById(ctx context.Context, id string) (*Message, 
 	return messages[0], nil
 }
 
-func (s *storeObject) GetMessagesByIds(ctx context.Context, messageIds []string) ([]*Message, error) {
-	return s.repository.getMessagesByIds(ctx, messageIds)
+func (s *storeObject) GetMessagesByIds(ctx context.Context, messageIds []string) ([]*chatmodel.Message, error) {
+	return s.repository.GetMessagesByIds(ctx, messageIds)
 }
 
 type GetMessagesResponse struct {
-	Messages  []*Message
+	Messages  []*chatmodel.Message
 	ChatState *model.ChatState
 }
 
-func (s *storeObject) GetMessages(ctx context.Context, req GetMessagesRequest) (*GetMessagesResponse, error) {
-	msgs, err := s.repository.getMessages(ctx, req)
+func (s *storeObject) GetMessages(ctx context.Context, req chatrepository.GetMessagesRequest) (*GetMessagesResponse, error) {
+	msgs, err := s.repository.GetMessages(ctx, req)
 	if err != nil {
 		return nil, err
 	}
@@ -222,7 +216,7 @@ func (s *storeObject) GetMessages(ctx context.Context, req GetMessagesRequest) (
 	}, nil
 }
 
-func (s *storeObject) AddMessage(ctx context.Context, sessionCtx session.Context, message *Message) (string, error) {
+func (s *storeObject) AddMessage(ctx context.Context, sessionCtx session.Context, message *chatmodel.Message) (string, error) {
 	arena := s.arenaPool.Get()
 	defer func() {
 		arena.Reset()
@@ -253,10 +247,8 @@ func (s *storeObject) AddMessage(ctx context.Context, sessionCtx session.Context
 	}
 
 	if !s.chatHandler.forceNotRead {
-		for _, counterType := range []CounterType{CounterTypeMessage, CounterTypeMention} {
-			handler := newReadHandler(counterType, s.subscription)
-
-			err = s.storeSource.MarkSeenHeads(ctx, handler.getDiffManagerName(), []string{messageId})
+		for _, counterType := range []chatmodel.CounterType{chatmodel.CounterTypeMessage, chatmodel.CounterTypeMention} {
+			err = s.storeSource.MarkSeenHeads(ctx, counterType.DiffManagerName(), []string{messageId})
 			if err != nil {
 				return "", fmt.Errorf("mark read: %w", err)
 			}
@@ -280,7 +272,7 @@ func (s *storeObject) DeleteMessage(ctx context.Context, messageId string) error
 	return nil
 }
 
-func (s *storeObject) EditMessage(ctx context.Context, messageId string, newMessage *Message) error {
+func (s *storeObject) EditMessage(ctx context.Context, messageId string, newMessage *chatmodel.Message) error {
 	arena := s.arenaPool.Get()
 	defer func() {
 		arena.Reset()
@@ -291,7 +283,7 @@ func (s *storeObject) EditMessage(ctx context.Context, messageId string, newMess
 	newMessage.MarshalAnyenc(obj, arena)
 
 	builder := storestate.Builder{}
-	err := builder.Modify(CollectionName, messageId, []string{contentKey}, pb.ModifyOp_Set, obj.Get(contentKey))
+	err := builder.Modify(CollectionName, messageId, []string{chatmodel.ContentKey}, pb.ModifyOp_Set, obj.Get(chatmodel.ContentKey))
 	if err != nil {
 		return fmt.Errorf("modify content: %w", err)
 	}
@@ -313,7 +305,7 @@ func (s *storeObject) ToggleMessageReaction(ctx context.Context, messageId strin
 		s.arenaPool.Put(arena)
 	}()
 
-	hasReaction, err := s.repository.hasMyReaction(ctx, s.accountService.AccountID(), messageId, emoji)
+	hasReaction, err := s.repository.HasMyReaction(ctx, s.accountService.AccountID(), messageId, emoji)
 	if err != nil {
 		return fmt.Errorf("check reaction: %w", err)
 	}
@@ -321,12 +313,12 @@ func (s *storeObject) ToggleMessageReaction(ctx context.Context, messageId strin
 	builder := storestate.Builder{}
 
 	if hasReaction {
-		err = builder.Modify(CollectionName, messageId, []string{reactionsKey, emoji}, pb.ModifyOp_Pull, arena.NewString(s.accountService.AccountID()))
+		err = builder.Modify(CollectionName, messageId, []string{chatmodel.ReactionsKey, emoji}, pb.ModifyOp_Pull, arena.NewString(s.accountService.AccountID()))
 		if err != nil {
 			return fmt.Errorf("modify content: %w", err)
 		}
 	} else {
-		err = builder.Modify(CollectionName, messageId, []string{reactionsKey, emoji}, pb.ModifyOp_AddToSet, arena.NewString(s.accountService.AccountID()))
+		err = builder.Modify(CollectionName, messageId, []string{chatmodel.ReactionsKey, emoji}, pb.ModifyOp_AddToSet, arena.NewString(s.accountService.AccountID()))
 		if err != nil {
 			return fmt.Errorf("modify content: %w", err)
 		}
@@ -352,20 +344,20 @@ type SubscribeLastMessagesRequest struct {
 }
 
 type SubscribeLastMessagesResponse struct {
-	Messages  []*Message
+	Messages  []*chatmodel.Message
 	ChatState *model.ChatState
 	// Dependencies per message id
 	Dependencies map[string][]*domain.Details
 }
 
 func (s *storeObject) SubscribeLastMessages(ctx context.Context, req SubscribeLastMessagesRequest) (*SubscribeLastMessagesResponse, error) {
-	txn, err := s.repository.readTx(ctx)
+	txn, err := s.repository.ReadTx(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("init read transaction: %w", err)
 	}
 	defer txn.Commit()
 
-	messages, err := s.repository.getLastMessages(txn.Context(), uint(req.Limit))
+	messages, err := s.repository.GetLastMessages(txn.Context(), uint(req.Limit))
 	if err != nil {
 		return nil, fmt.Errorf("query messages: %w", err)
 	}
@@ -375,7 +367,7 @@ func (s *storeObject) SubscribeLastMessages(ctx context.Context, req SubscribeLa
 	if req.AsyncInit {
 		var previousOrderId string
 		if len(messages) > 0 {
-			previousOrderId, err = s.repository.getPrevOrderId(txn.Context(), messages[0].OrderId)
+			previousOrderId, err = s.repository.GetPrevOrderId(txn.Context(), messages[0].OrderId)
 			if err != nil {
 				return nil, fmt.Errorf("get previous order id: %w", err)
 			}
