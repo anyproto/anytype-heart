@@ -137,32 +137,43 @@ func (s *service) SubscribeToMessagePreviews(ctx context.Context, subId string) 
 
 	s.subscriptionIds[subId] = struct{}{}
 
+	lock := &sync.Mutex{}
 	result := &SubscribeToMessagePreviewsResponse{
 		Previews: make([]*ChatPreview, 0, len(s.allChatObjectIds)),
 	}
-
+	var wg sync.WaitGroup
 	for chatObjectId, spaceId := range s.allChatObjectIds {
-		chatAddResp, err := s.onChatAdded(chatObjectId, subId, false)
-		if err != nil {
-			log.Error("init lastMessage subscription", zap.Error(err))
-			continue
-		}
-		var (
-			message      *chatmodel.Message
-			dependencies []*domain.Details
-		)
-		if len(chatAddResp.Messages) > 0 {
-			message = chatAddResp.Messages[0]
-			dependencies = chatAddResp.Dependencies[message.Id]
-		}
-		result.Previews = append(result.Previews, &ChatPreview{
-			SpaceId:      spaceId,
-			ChatObjectId: chatObjectId,
-			State:        chatAddResp.ChatState,
-			Message:      message,
-			Dependencies: dependencies,
-		})
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+
+			chatAddResp, err := s.onChatAdded(chatObjectId, subId, false)
+			if err != nil {
+				log.Error("init lastMessage subscription", zap.Error(err))
+				return
+			}
+			var (
+				message      *chatmodel.Message
+				dependencies []*domain.Details
+			)
+			if len(chatAddResp.Messages) > 0 {
+				message = chatAddResp.Messages[0]
+				dependencies = chatAddResp.Dependencies[message.Id]
+			}
+
+			lock.Lock()
+			defer lock.Unlock()
+			result.Previews = append(result.Previews, &ChatPreview{
+				SpaceId:      spaceId,
+				ChatObjectId: chatObjectId,
+				State:        chatAddResp.ChatState,
+				Message:      message,
+				Dependencies: dependencies,
+			})
+		}()
 	}
+	wg.Wait()
+
 	return result, nil
 }
 

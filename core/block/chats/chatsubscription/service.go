@@ -75,7 +75,7 @@ func New() Service {
 
 func (s *service) Init(a *app.App) (err error) {
 	s.componentCtx, s.componentCtxCancel = context.WithCancel(context.Background())
-	
+
 	s.spaceIdResolver = app.MustComponent[idresolver.Resolver](a)
 	s.objectStore = app.MustComponent[objectstore.ObjectStore](a)
 	s.eventSender = app.MustComponent[event.Sender](a)
@@ -106,16 +106,30 @@ func (s *service) GetManager(chatObjectId string) (Manager, error) {
 
 func (s *service) getManager(chatObjectId string) (*subscriptionManager, error) {
 	s.lock.Lock()
-	defer s.lock.Unlock()
-
 	mngr, ok := s.managers[chatObjectId]
 	if ok {
+		s.lock.Unlock()
 		return mngr, nil
 	}
 
+	mngr = &subscriptionManager{}
+	mngr.Lock()
+	defer mngr.Unlock()
+	s.managers[chatObjectId] = mngr
+	s.lock.Unlock()
+
+	err := s.initManager(chatObjectId, mngr)
+	if err != nil {
+		return nil, fmt.Errorf("init manager: %w", err)
+	}
+
+	return mngr, nil
+}
+
+func (s *service) initManager(chatObjectId string, mngr *subscriptionManager) error {
 	spaceId, err := s.spaceIdResolver.ResolveSpaceID(chatObjectId)
 	if err != nil {
-		return nil, fmt.Errorf("resolve space id: %w", err)
+		return fmt.Errorf("resolve space id: %w", err)
 	}
 
 	currentIdentity := s.accountService.AccountID()
@@ -123,28 +137,27 @@ func (s *service) getManager(chatObjectId string) (*subscriptionManager, error) 
 
 	repository, err := s.repositoryService.Repository(chatObjectId)
 	if err != nil {
-		return nil, fmt.Errorf("get repository: %w", err)
+		return fmt.Errorf("get repository: %w", err)
 	}
-	mngr = &subscriptionManager{
-		componentCtx:    s.componentCtx,
-		spaceId:         spaceId,
-		chatId:          chatObjectId,
-		myIdentity:      currentIdentity,
-		myParticipantId: currentParticipantId,
-		identityCache:   s.identityCache,
-		subscriptions:   make(map[string]*subscription),
-		spaceIndex:      s.objectStore.SpaceIndex(spaceId),
-		eventSender:     s.eventSender,
-		repository:      repository,
-	}
+	mngr.componentCtx = s.componentCtx
+	mngr.spaceId = spaceId
+	mngr.chatId = chatObjectId
+	mngr.myIdentity = currentIdentity
+	mngr.myParticipantId = currentParticipantId
+	mngr.identityCache = s.identityCache
+	mngr.subscriptions = make(map[string]*subscription)
+	mngr.spaceIndex = s.objectStore.SpaceIndex(spaceId)
+	mngr.eventSender = s.eventSender
+	mngr.repository = repository
+
+	s.managers[chatObjectId] = mngr
 
 	err = mngr.loadChatState(s.componentCtx)
 	if err != nil {
-		return nil, fmt.Errorf("init chat state: %w", err)
+		return fmt.Errorf("init chat state: %w", err)
 	}
 
-	s.managers[chatObjectId] = mngr
-	return mngr, nil
+	return nil
 }
 
 type SubscribeLastMessagesRequest struct {
