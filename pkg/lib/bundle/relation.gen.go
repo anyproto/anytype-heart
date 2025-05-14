@@ -9,7 +9,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-const RelationChecksum = "62a158a458a241cdf5b502bad800a109a8917ab9026826dd1274262c46b1f839"
+const RelationChecksum = "6286826590e76144044044c6c286464d4dfc60319d695eaee9f9c94ed92ab239"
 const (
 	RelationKeyTag                          domain.RelationKey = "tag"
 	RelationKeyCamera                       domain.RelationKey = "camera"
@@ -160,6 +160,7 @@ const (
 	RelationKeyAutoWidgetTargets            domain.RelationKey = "autoWidgetTargets"
 	RelationKeyAutoWidgetDisabled           domain.RelationKey = "autoWidgetDisabled"
 	RelationKeyPluralName                   domain.RelationKey = "pluralName"
+	RelationKeyHeaderRelationsView          domain.RelationKey = "headerRelationsView"
 )
 
 var (
@@ -756,6 +757,20 @@ var (
 			MaxCount:         1,
 			Name:             "Has a chat",
 			ReadOnly:         true,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
+		RelationKeyHeaderRelationsView: {
+
+			DataSource:       model.Relation_details,
+			Description:      "View mode of header relations. Line or column",
+			Format:           model.RelationFormat_number,
+			Hidden:           true,
+			Id:               "_brheaderRelationsView",
+			Key:              "headerRelationsView",
+			MaxCount:         1,
+			Name:             "Header relations view",
+			ReadOnly:         false,
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
 		},

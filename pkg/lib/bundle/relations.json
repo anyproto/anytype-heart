@@ -1535,5 +1535,15 @@
     "name": "Plural name",
     "readonly": false,
     "source": "details"
+  },
+  {
+    "description": "View mode of header relations. Line or column",
+    "format": "number",
+    "hidden": true,
+    "key": "headerRelationsView",
+    "maxCount": 1,
+    "name": "Header relations view",
+    "readonly": false,
+    "source": "details"
   }
 ]
