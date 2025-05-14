@@ -95,17 +95,21 @@ func (w *Workspaces) CreationStateMigration(ctx *smartblock.InitContext) migrati
 	}
 }
 
-func (w *Workspaces) SetInviteFileInfo(fileCid string, fileKey string) (err error) {
+func (w *Workspaces) SetInviteFileInfo(info domain.InviteInfo) (err error) {
 	st := w.NewState()
-	st.SetDetailAndBundledRelation(bundle.RelationKeySpaceInviteFileCid, domain.String(fileCid))
-	st.SetDetailAndBundledRelation(bundle.RelationKeySpaceInviteFileKey, domain.String(fileKey))
+	st.SetDetailAndBundledRelation(bundle.RelationKeySpaceInvitePermissions, domain.Int64(domain.ConvertAclPermissions(info.Permissions)))
+	st.SetDetailAndBundledRelation(bundle.RelationKeySpaceInviteType, domain.Int64(info.InviteType))
+	st.SetDetailAndBundledRelation(bundle.RelationKeySpaceInviteFileCid, domain.String(info.InviteFileCid))
+	st.SetDetailAndBundledRelation(bundle.RelationKeySpaceInviteFileKey, domain.String(info.InviteFileKey))
 	return w.Apply(st)
 }
 
-func (w *Workspaces) GetExistingInviteInfo() (fileCid string, fileKey string) {
+func (w *Workspaces) GetExistingInviteInfo() (inviteInfo domain.InviteInfo) {
 	details := w.CombinedDetails()
-	fileCid = details.GetString(bundle.RelationKeySpaceInviteFileCid)
-	fileKey = details.GetString(bundle.RelationKeySpaceInviteFileKey)
+	inviteInfo.InviteType = domain.InviteType(details.GetInt64(bundle.RelationKeySpaceInviteType))
+	inviteInfo.Permissions = domain.ConvertParticipantPermissions(model.ParticipantPermissions(details.GetInt64(bundle.RelationKeySpaceInviteType)))
+	inviteInfo.InviteFileCid = details.GetString(bundle.RelationKeySpaceInviteFileCid)
+	inviteInfo.InviteFileKey = details.GetString(bundle.RelationKeySpaceInviteFileKey)
 	return
 }
 

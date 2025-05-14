@@ -6,6 +6,7 @@ import (
 
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/app/logger"
+	"github.com/anyproto/any-sync/commonspace/object/acl/list"
 	"github.com/anyproto/any-sync/util/crypto"
 	"github.com/gogo/protobuf/proto"
 	"github.com/ipfs/go-cid"
@@ -32,7 +33,7 @@ type InviteService interface {
 	GetPayload(ctx context.Context, inviteCid cid.Cid, inviteFileKey crypto.SymKey) (*model.InvitePayload, error)
 	View(ctx context.Context, inviteCid cid.Cid, inviteFileKey crypto.SymKey) (domain.InviteView, error)
 	RemoveExisting(ctx context.Context, spaceId string) error
-	Generate(ctx context.Context, spaceId string, inviteKey crypto.PrivKey, sendInvite func() error) (domain.InviteInfo, error)
+	Generate(ctx context.Context, params GenerateInviteParams, sendInvite func() error) (domain.InviteInfo, error)
 	GetCurrent(ctx context.Context, spaceId string) (domain.InviteInfo, error)
 	GetExistingGuestUserInvite(ctx context.Context, spaceId string) (domain.InviteInfo, error)
 	GenerateGuestUserInvite(ctx context.Context, spaceId string, guestKey crypto.PrivKey) (domain.InviteInfo, error)
@@ -41,6 +42,13 @@ type InviteService interface {
 var _ InviteService = (*inviteService)(nil)
 
 var ErrInvalidSpaceType = fmt.Errorf("invalid space type")
+
+type GenerateInviteParams struct {
+	SpaceId     string
+	Key         crypto.PrivKey
+	InviteType  domain.InviteType
+	Permissions list.AclPermissions
+}
 
 type inviteService struct {
 	inviteStore    invitestore.Service
@@ -89,60 +97,34 @@ func (i *inviteService) View(ctx context.Context, inviteCid cid.Cid, inviteFileK
 }
 
 func (i *inviteService) GetCurrent(ctx context.Context, spaceId string) (info domain.InviteInfo, err error) {
-	var (
-		fileCid, fileKey string
-	)
-	// this is for migration purposes
-	err = i.spaceService.TechSpace().DoSpaceView(ctx, spaceId, func(obj techspace.SpaceView) error {
-		fileCid, fileKey = obj.GetExistingInviteInfo()
-		if fileCid != "" {
-			info.InviteFileCid = fileCid
-			info.InviteFileKey = fileKey
-		} else {
-			return nil
-		}
-		_, err := obj.RemoveExistingInviteInfo()
-		if err != nil {
-			log.Warn("remove existing invite info", zap.Error(err))
-		}
-		return nil
-	})
-	if err != nil {
-		return domain.InviteInfo{}, getInviteError("get existing invite info from space view", err)
-	}
 	err = i.doInviteObject(ctx, spaceId, func(obj domain.InviteObject) error {
-		if info.InviteFileCid != "" {
-			return obj.SetInviteFileInfo(info.InviteFileCid, info.InviteFileKey)
-		}
-		fileCid, fileKey = obj.GetExistingInviteInfo()
+		info = obj.GetExistingInviteInfo()
 		return nil
 	})
 	if err != nil {
 		err = getInviteError("get existing invite info", err)
 		return
 	}
-	if fileCid == "" {
+	if info.InviteFileCid == "" {
 		err = ErrInviteNotExists
 		return
 	}
-	info.InviteFileCid = fileCid
-	info.InviteFileKey = fileKey
 	return
 }
 
 func (i *inviteService) RemoveExisting(ctx context.Context, spaceId string) (err error) {
-	var fileCid string
+	var info domain.InviteInfo
 	err = i.doInviteObject(ctx, spaceId, func(obj domain.InviteObject) error {
-		fileCid, err = obj.RemoveExistingInviteInfo()
+		info, err = obj.RemoveExistingInviteInfo()
 		return err
 	})
 	if err != nil {
 		return removeInviteError("remove existing invite info", err)
 	}
-	if len(fileCid) == 0 {
+	if len(info.InviteFileCid) == 0 {
 		return nil
 	}
-	invCid, err := cid.Decode(fileCid)
+	invCid, err := cid.Decode(info.InviteFileCid)
 	if err != nil {
 		return removeInviteError("decode invite cid", err)
 	}
@@ -171,25 +153,22 @@ func (i *inviteService) GenerateGuestUserInvite(ctx context.Context, spaceId str
 	return i.generateGuestInvite(ctx, spaceId, guestUserKey)
 }
 
-func (i *inviteService) Generate(ctx context.Context, spaceId string, aclKey crypto.PrivKey, sendInvite func() error) (result domain.InviteInfo, err error) {
+func (i *inviteService) Generate(ctx context.Context, params GenerateInviteParams, sendInvite func() error) (result domain.InviteInfo, err error) {
+	spaceId := params.SpaceId
 	if spaceId == i.accountService.PersonalSpaceID() {
 		return domain.InviteInfo{}, ErrPersonalSpace
 	}
-	var fileCid, fileKey string
 	err = i.doInviteObject(ctx, spaceId, func(obj domain.InviteObject) error {
-		fileCid, fileKey = obj.GetExistingInviteInfo()
+		result = obj.GetExistingInviteInfo()
 		return nil
 	})
 	if err != nil {
 		return domain.InviteInfo{}, generateInviteError("get existing invite info", err)
 	}
-	if fileCid != "" {
-		return domain.InviteInfo{
-			InviteFileCid: fileCid,
-			InviteFileKey: fileKey,
-		}, nil
+	if result.InviteFileCid != "" && result.InviteType == params.InviteType {
+		return result, nil
 	}
-	invite, err := i.buildInvite(ctx, spaceId, aclKey, nil)
+	invite, err := i.buildInvite(ctx, spaceId, params.Key, nil)
 	if err != nil {
 		return domain.InviteInfo{}, generateInviteError("build invite", err)
 	}
@@ -208,8 +187,14 @@ func (i *inviteService) Generate(ctx context.Context, spaceId string, aclKey cry
 		removeInviteFile()
 		return domain.InviteInfo{}, generateInviteError("encode invite file key", err)
 	}
+	inviteInfo := domain.InviteInfo{
+		InviteFileCid: inviteFileCid.String(),
+		InviteFileKey: inviteFileKeyRaw,
+		InviteType:    params.InviteType,
+		Permissions:   params.Permissions,
+	}
 	err = i.doInviteObject(ctx, spaceId, func(obj domain.InviteObject) error {
-		return obj.SetInviteFileInfo(inviteFileCid.String(), inviteFileKeyRaw)
+		return obj.SetInviteFileInfo(inviteInfo)
 	})
 	if err != nil {
 		removeInviteFile()
@@ -223,10 +208,7 @@ func (i *inviteService) Generate(ctx context.Context, spaceId string, aclKey cry
 		}
 		return domain.InviteInfo{}, generateInviteError("send invite", err)
 	}
-	return domain.InviteInfo{
-		InviteFileCid: inviteFileCid.String(),
-		InviteFileKey: inviteFileKeyRaw,
-	}, err
+	return inviteInfo, err
 }
 
 func (i *inviteService) generateGuestInvite(ctx context.Context, spaceId string, guestUserKey crypto.PrivKey) (result domain.InviteInfo, err error) {
@@ -252,6 +234,11 @@ func (i *inviteService) generateGuestInvite(ctx context.Context, spaceId string,
 		removeInviteFile()
 		return domain.InviteInfo{}, generateInviteError("encode invite file key", err)
 	}
+	inviteInfo := domain.InviteInfo{
+		InviteFileCid: inviteFileCid.String(),
+		InviteFileKey: inviteFileKeyRaw,
+		InviteType:    domain.InviteTypeGuest,
+	}
 	err = i.doInviteObject(ctx, spaceId, func(obj domain.InviteObject) error {
 		return obj.SetGuestInviteFileInfo(inviteFileCid.String(), inviteFileKeyRaw)
 	})
@@ -260,10 +247,7 @@ func (i *inviteService) generateGuestInvite(ctx context.Context, spaceId string,
 		return domain.InviteInfo{}, generateInviteError("set invite file info", err)
 	}
 
-	return domain.InviteInfo{
-		InviteFileCid: inviteFileCid.String(),
-		InviteFileKey: inviteFileKeyRaw,
-	}, err
+	return inviteInfo, err
 }
 
 func (i *inviteService) GetPayload(ctx context.Context, inviteCid cid.Cid, inviteFileKey crypto.SymKey) (md *model.InvitePayload, err error) {
@@ -391,6 +375,7 @@ func (i *inviteService) GetExistingGuestUserInvite(ctx context.Context, spaceId 
 		return domain.InviteInfo{
 			InviteFileCid: fileCid,
 			InviteFileKey: fileKey,
+			InviteType:    domain.InviteTypeGuest,
 		}, nil
 	}
 	return domain.InviteInfo{}, ErrInviteNotExists

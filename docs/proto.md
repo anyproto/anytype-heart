@@ -1641,7 +1641,6 @@
     - [Rpc.Relation.ListWithValue.Response.Error.Code](#anytype-Rpc-Relation-ListWithValue-Response-Error-Code)
     - [Rpc.Relation.Options.Response.Error.Code](#anytype-Rpc-Relation-Options-Response-Error-Code)
     - [Rpc.Space.Delete.Response.Error.Code](#anytype-Rpc-Space-Delete-Response-Error-Code)
-    - [Rpc.Space.InviteGenerate.Request.InviteType](#anytype-Rpc-Space-InviteGenerate-Request-InviteType)
     - [Rpc.Space.InviteGenerate.Response.Error.Code](#anytype-Rpc-Space-InviteGenerate-Response-Error-Code)
     - [Rpc.Space.InviteGetCurrent.Response.Error.Code](#anytype-Rpc-Space-InviteGetCurrent-Response-Error-Code)
     - [Rpc.Space.InviteGetGuest.Response.Error.Code](#anytype-Rpc-Space-InviteGetGuest-Response-Error-Code)
@@ -2061,6 +2060,7 @@
     - [Import.Type](#anytype-model-Import-Type)
     - [InternalFlag.Value](#anytype-model-InternalFlag-Value)
     - [InvitePayload.InviteType](#anytype-model-InvitePayload-InviteType)
+    - [InviteType](#anytype-model-InviteType)
     - [LinkPreview.Type](#anytype-model-LinkPreview-Type)
     - [Membership.EmailVerificationStatus](#anytype-model-Membership-EmailVerificationStatus)
     - [Membership.PaymentMethod](#anytype-model-Membership-PaymentMethod)
@@ -19864,7 +19864,8 @@ Available undo/redo operations
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | spaceId | [string](#string) |  |  |
-| inviteType | [Rpc.Space.InviteGenerate.Request.InviteType](#anytype-Rpc-Space-InviteGenerate-Request-InviteType) |  |  |
+| inviteType | [model.InviteType](#anytype-model-InviteType) |  |  |
+| permissions | [model.ParticipantPermissions](#anytype-model-ParticipantPermissions) |  |  |
 
 
 
@@ -25982,18 +25983,6 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | REQUEST_FAILED | 103 |  |
 | LIMIT_REACHED | 104 |  |
 | NOT_SHAREABLE | 105 |  |
-
-
-
-<a name="anytype-Rpc-Space-InviteGenerate-Request-InviteType"></a>
-
-### Rpc.Space.InviteGenerate.Request.InviteType
-
-
-| Name | Number | Description |
-| ---- | ------ | ----------- |
-| Member | 0 |  |
-| Guest | 1 |  |
 
 
 
@@ -32687,6 +32676,19 @@ Look https://github.com/golang/protobuf/issues/1135 for more information.
 | JoinAsMember | 0 | aclKey contains the key to sign the ACL record |
 | JoinAsGuest | 1 | guestKey contains the privateKey of the guest user |
 | JoinAsMemberWithoutApprove | 2 | aclKey contains the key to sign the ACL record and decrypt the read key |
+
+
+
+<a name="anytype-model-InviteType"></a>
+
+### InviteType
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| Member | 0 | aclKey contains the key to sign the ACL record |
+| Guest | 1 | guestKey contains the privateKey of the guest user |
+| WithoutApprove | 2 | aclKey contains the key to sign the ACL record, but no approval needed |
 
 
 

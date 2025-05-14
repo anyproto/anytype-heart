@@ -151,11 +151,8 @@ message Rpc {
         message InviteGenerate {
             message Request {
                 string spaceId = 1;
-                InviteType inviteType = 2;
-                enum InviteType {
-                    Member = 0;
-                    Guest = 1;
-                }
+                model.InviteType inviteType = 2;
+                model.ParticipantPermissions permissions = 3;
             }
 
             message Response {

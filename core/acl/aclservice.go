@@ -46,7 +46,7 @@ type AccountPermissions struct {
 
 type AclService interface {
 	app.Component
-	GenerateInvite(ctx context.Context, spaceId string) (domain.InviteInfo, error)
+	GenerateInvite(ctx context.Context, spaceId string, inviteType model.InviteType, permissions model.ParticipantPermissions) (domain.InviteInfo, error)
 	RevokeInvite(ctx context.Context, spaceId string) error
 	GetCurrentInvite(ctx context.Context, spaceId string) (domain.InviteInfo, error)
 	GetGuestUserInvite(ctx context.Context, spaceId string) (domain.InviteInfo, error)
@@ -562,26 +562,40 @@ func (a *aclService) GetCurrentInvite(ctx context.Context, spaceId string) (doma
 	return a.inviteService.GetCurrent(ctx, spaceId)
 }
 
-func (a *aclService) GenerateInvite(ctx context.Context, spaceId string) (result domain.InviteInfo, err error) {
+func (a *aclService) GenerateInvite(ctx context.Context, spaceId string, invType model.InviteType, permissions model.ParticipantPermissions) (result domain.InviteInfo, err error) {
 	if spaceId == a.accountService.PersonalSpaceID() {
 		err = ErrPersonalSpace
 		return
 	}
+	var (
+		inviteExists = false
+		inviteType   = domain.InviteType(invType)
+	)
 	current, err := a.inviteService.GetCurrent(ctx, spaceId)
 	if err == nil {
-		return current, nil
+		inviteExists = true
+		if current.InviteType == inviteType {
+			return current, nil
+		}
 	}
 	acceptSpace, err := a.spaceService.Get(ctx, spaceId)
 	if err != nil {
 		return
 	}
 	aclClient := acceptSpace.CommonSpace().AclClient()
-	res, err := aclClient.GenerateInvite()
+	aclPermissions := domain.ConvertParticipantPermissions(permissions)
+	res, err := aclClient.GenerateInvite(inviteExists, inviteType == domain.InviteTypeDefault, aclPermissions)
 	if err != nil {
 		err = convertedOrInternalError("couldn't generate acl invite", err)
 		return
 	}
-	return a.inviteService.Generate(ctx, spaceId, res.InviteKey, func() error {
+	params := inviteservice.GenerateInviteParams{
+		SpaceId:     spaceId,
+		Key:         res.InviteKey,
+		InviteType:  inviteType,
+		Permissions: aclPermissions,
+	}
+	return a.inviteService.Generate(ctx, params, func() error {
 		err := aclClient.AddRecord(ctx, res.InviteRec)
 		if err != nil {
 			return convertedOrAclRequestError(err)

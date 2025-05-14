@@ -63,7 +63,7 @@ func (mw *Middleware) SpaceMakeShareable(cctx context.Context, req *pb.RpcSpaceM
 
 func (mw *Middleware) SpaceInviteGenerate(cctx context.Context, req *pb.RpcSpaceInviteGenerateRequest) *pb.RpcSpaceInviteGenerateResponse {
 	aclService := mustService[acl.AclService](mw)
-	inviteInfo, err := aclService.GenerateInvite(cctx, req.SpaceId)
+	inviteInfo, err := aclService.GenerateInvite(cctx, req.SpaceId, req.InviteType, req.Permissions)
 	if err != nil {
 		code := mapErrorCode(err,
 			errToCode(space.ErrSpaceDeleted, pb.RpcSpaceInviteGenerateResponseError_SPACE_IS_DELETED),
