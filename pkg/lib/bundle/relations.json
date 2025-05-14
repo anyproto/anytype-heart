@@ -1537,12 +1537,12 @@
     "source": "details"
   },
   {
-    "description": "View mode of header relations. Line or column",
+    "description": "Layout of header relations. Line or column",
     "format": "number",
     "hidden": true,
-    "key": "headerRelationsView",
+    "key": "headerRelationsLayout",
     "maxCount": 1,
-    "name": "Header relations view",
+    "name": "Header relations layout",
     "readonly": false,
     "source": "details"
   }
