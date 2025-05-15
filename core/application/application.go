@@ -71,11 +71,7 @@ func (s *Service) stop() error {
 	defer task.End()
 
 	if s != nil && s.app != nil {
-		s.app.IterateComponents(func(c app.Component) {
-			if c, ok := c.(app.ComponentStatable); ok {
-				c.StateChange(int(domain.CompStateAppClosingInitiated))
-			}
-		})
+		s.app.SetDeviceState(int(domain.CompStateAppClosingInitiated))
 		err := s.app.Close(ctx)
 		if err != nil {
 			log.Warnf("error while stop anytype: %v", err)
