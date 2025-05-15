@@ -365,7 +365,7 @@ func TestService_ViewInvite(t *testing.T) {
 			InviteRevokes: invRecIds,
 		})
 		require.NoError(t, err)
-		err = aclList.AddRawRecord(list.WrapAclRecord(removeInv))
+		err = aclList.AddRawRecord(list.WrapAclRecord(removeInv.Rec))
 		require.NoError(t, err)
 		recs, err := aclList.RecordsAfter(ctx, "")
 		require.NoError(t, err)

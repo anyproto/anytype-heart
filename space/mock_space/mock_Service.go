@@ -632,6 +632,54 @@ func (_c *MockService_Init_Call) RunAndReturn(run func(*app.App) error) *MockSer
 	return _c
 }
 
+// InviteJoin provides a mock function with given fields: ctx, id, aclHeadId
+func (_m *MockService) InviteJoin(ctx context.Context, id string, aclHeadId string) error {
+	ret := _m.Called(ctx, id, aclHeadId)
+
+	if len(ret) == 0 {
+		panic("no return value specified for InviteJoin")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, string, string) error); ok {
+		r0 = rf(ctx, id, aclHeadId)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// MockService_InviteJoin_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'InviteJoin'
+type MockService_InviteJoin_Call struct {
+	*mock.Call
+}
+
+// InviteJoin is a helper method to define mock.On call
+//   - ctx context.Context
+//   - id string
+//   - aclHeadId string
+func (_e *MockService_Expecter) InviteJoin(ctx interface{}, id interface{}, aclHeadId interface{}) *MockService_InviteJoin_Call {
+	return &MockService_InviteJoin_Call{Call: _e.mock.On("InviteJoin", ctx, id, aclHeadId)}
+}
+
+func (_c *MockService_InviteJoin_Call) Run(run func(ctx context.Context, id string, aclHeadId string)) *MockService_InviteJoin_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(string), args[2].(string))
+	})
+	return _c
+}
+
+func (_c *MockService_InviteJoin_Call) Return(_a0 error) *MockService_InviteJoin_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockService_InviteJoin_Call) RunAndReturn(run func(context.Context, string, string) error) *MockService_InviteJoin_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // Join provides a mock function with given fields: ctx, id, aclHeadId
 func (_m *MockService) Join(ctx context.Context, id string, aclHeadId string) error {
 	ret := _m.Called(ctx, id, aclHeadId)

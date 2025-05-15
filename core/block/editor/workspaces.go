@@ -1,6 +1,8 @@
 package editor
 
 import (
+	"github.com/anyproto/any-sync/commonspace/object/acl/list"
+
 	"github.com/anyproto/anytype-heart/core/anytype/config"
 	"github.com/anyproto/anytype-heart/core/block/editor/basic"
 	"github.com/anyproto/anytype-heart/core/block/editor/dataview"
@@ -110,6 +112,9 @@ func (w *Workspaces) GetExistingInviteInfo() (inviteInfo domain.InviteInfo) {
 	inviteInfo.Permissions = domain.ConvertParticipantPermissions(model.ParticipantPermissions(details.GetInt64(bundle.RelationKeySpaceInvitePermissions)))
 	inviteInfo.InviteFileCid = details.GetString(bundle.RelationKeySpaceInviteFileCid)
 	inviteInfo.InviteFileKey = details.GetString(bundle.RelationKeySpaceInviteFileKey)
+	if inviteInfo.InviteType == domain.InviteTypeDefault {
+		inviteInfo.Permissions = list.AclPermissionsNone
+	}
 	return
 }
 
