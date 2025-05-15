@@ -8,6 +8,7 @@ import (
 
 	"github.com/anyproto/any-sync/app"
 
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
@@ -70,6 +71,11 @@ func (s *Service) stop() error {
 	defer task.End()
 
 	if s != nil && s.app != nil {
+		s.app.IterateComponents(func(c app.Component) {
+			if c, ok := c.(app.ComponentStatable); ok {
+				c.StateChange(int(domain.CompStateAppClosingInitiated))
+			}
+		})
 		err := s.app.Close(ctx)
 		if err != nil {
 			log.Warnf("error while stop anytype: %v", err)
