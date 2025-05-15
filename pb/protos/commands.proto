@@ -326,7 +326,8 @@ message Rpc {
                 string spaceName = 3;
                 string spaceIconCid = 4;
                 string creatorName = 5;
-                bool   isGuestUserInvite = 6;
+                bool   isGuestUserInvite = 6; // deprecated, use inviteType
+                model.InviteType inviteType = 7;
 
                 message Error {
                     Code code = 1;

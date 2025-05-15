@@ -14,6 +14,7 @@ type InviteView struct {
 	CreatorName  string
 	AclKey       []byte
 	GuestKey     []byte
+	InviteType   InviteType
 }
 
 func (i InviteView) IsGuestUserInvite() bool {

@@ -192,6 +192,7 @@ func (mw *Middleware) SpaceInviteView(cctx context.Context, req *pb.RpcSpaceInvi
 		SpaceName:         inviteView.SpaceName,
 		SpaceIconCid:      inviteView.SpaceIconCid,
 		IsGuestUserInvite: inviteView.IsGuestUserInvite(),
+		InviteType:        model.InviteType(inviteView.InviteType),
 	}
 }
 

@@ -402,13 +402,13 @@ func (a *aclService) Join(ctx context.Context, spaceId, networkId string, invite
 		return convertedOrInternalError("get invite payload", err)
 	}
 	switch invitePayload.InviteType {
-	case model.InvitePayload_JoinAsGuest:
+	case model.InviteType_Guest:
 		guestKey, err := crypto.UnmarshalEd25519PrivateKeyProto(invitePayload.GuestKey)
 		if err != nil {
 			return convertedOrInternalError("unmarshal invite key", err)
 		}
 		return a.joinAsGuest(ctx, invitePayload.SpaceId, guestKey)
-	case model.InvitePayload_JoinAsMember:
+	case model.InviteType_Member:
 		inviteKey, err := crypto.UnmarshalEd25519PrivateKeyProto(invitePayload.AclKey)
 		if err != nil {
 			return convertedOrInternalError("unmarshal invite key", err)
@@ -444,7 +444,7 @@ func (a *aclService) Join(ctx context.Context, spaceId, networkId string, invite
 		if err != nil {
 			return convertedOrInternalError("set space data", err)
 		}
-	case model.InvitePayload_JoinAsMemberWithoutApprove:
+	case model.InviteType_WithoutApprove:
 		inviteKey, err := crypto.UnmarshalEd25519PrivateKeyProto(invitePayload.AclKey)
 		if err != nil {
 			return convertedOrInternalError("unmarshal invite key", err)

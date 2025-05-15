@@ -94,6 +94,7 @@ func (i *inviteService) View(ctx context.Context, inviteCid cid.Cid, inviteFileK
 		CreatorName:  invitePayload.CreatorName,
 		AclKey:       invitePayload.AclKey,
 		GuestKey:     invitePayload.GuestKey,
+		InviteType:   domain.InviteType(invitePayload.InviteType),
 	}, nil
 }
 
@@ -177,7 +178,7 @@ func (i *inviteService) Generate(ctx context.Context, params GenerateInviteParam
 	if result.InviteFileCid != "" && result.InviteType == params.InviteType {
 		return result, nil
 	}
-	invite, err := i.buildInvite(ctx, spaceId, params.Key, nil)
+	invite, err := i.buildInvite(ctx, params)
 	if err != nil {
 		return domain.InviteInfo{}, generateInviteError("build invite", err)
 	}
@@ -224,7 +225,11 @@ func (i *inviteService) generateGuestInvite(ctx context.Context, spaceId string,
 	if spaceId == i.accountService.PersonalSpaceID() {
 		return domain.InviteInfo{}, ErrPersonalSpace
 	}
-	invite, err := i.buildInvite(ctx, spaceId, nil, guestUserKey)
+	invite, err := i.buildInvite(ctx, GenerateInviteParams{
+		SpaceId:    spaceId,
+		Key:        guestUserKey,
+		InviteType: domain.InviteTypeGuest,
+	})
 	if err != nil {
 		return domain.InviteInfo{}, generateInviteError("build invite", err)
 	}
@@ -287,13 +292,11 @@ func (i *inviteService) GetPayload(ctx context.Context, inviteCid cid.Cid, invit
 	return &invitePayload, nil
 }
 
-// buildInvite creates invite payload and signs it
-// you should provide either aclKey or guestUserKey
-func (i *inviteService) buildInvite(ctx context.Context, spaceId string, aclKey, guestUserKey crypto.PrivKey) (*model.Invite, error) {
-	if aclKey != nil && guestUserKey != nil {
+func (i *inviteService) buildInvite(ctx context.Context, params GenerateInviteParams) (*model.Invite, error) {
+	if params.Key == nil {
 		return nil, fmt.Errorf("you should provide either acl key or guest user key")
 	}
-	invitePayload, err := i.buildInvitePayload(ctx, spaceId, aclKey, guestUserKey)
+	invitePayload, err := i.buildInvitePayload(ctx, params)
 	if err != nil {
 		return nil, fmt.Errorf("build invite payload: %w", err)
 	}
@@ -311,36 +314,35 @@ func (i *inviteService) buildInvite(ctx context.Context, spaceId string, aclKey,
 	}, nil
 }
 
-func (i *inviteService) buildInvitePayload(ctx context.Context, spaceId string, aclKey crypto.PrivKey, guestKey crypto.PrivKey) (*model.InvitePayload, error) {
+func (i *inviteService) buildInvitePayload(ctx context.Context, params GenerateInviteParams) (*model.InvitePayload, error) {
 	profile, err := i.accountService.ProfileInfo()
 	if err != nil {
 		return nil, fmt.Errorf("get profile info: %w", err)
 	}
 
 	invitePayload := &model.InvitePayload{
-		SpaceId:         spaceId,
+		SpaceId:         params.SpaceId,
 		CreatorIdentity: i.accountService.AccountID(),
 		CreatorName:     profile.Name,
 	}
-	if aclKey != nil {
-		rawAclKey, err := aclKey.Marshall()
-		if err != nil {
-			return nil, fmt.Errorf("marshal invite priv key: %w", err)
-		}
-		invitePayload.AclKey = rawAclKey
-	} else if guestKey != nil {
-		rawGuestKey, err := guestKey.Marshall()
-		if err != nil {
-			return nil, fmt.Errorf("marshal invite priv key: %w", err)
-		}
-		invitePayload.GuestKey = rawGuestKey
-		invitePayload.InviteType = model.InvitePayload_JoinAsGuest
-	} else {
-		return nil, fmt.Errorf("acl key or guest key should be provided")
+	rawKey, err := params.Key.Marshall()
+	if err != nil {
+		return nil, fmt.Errorf("marshal invite priv key: %w", err)
+	}
+	switch params.InviteType {
+	case domain.InviteTypeGuest:
+		invitePayload.GuestKey = rawKey
+		invitePayload.InviteType = model.InviteType_Guest
+	case domain.InviteTypeAnyone:
+		invitePayload.AclKey = rawKey
+		invitePayload.InviteType = model.InviteType_WithoutApprove
+	case domain.InviteTypeDefault:
+		invitePayload.AclKey = rawKey
+		invitePayload.InviteType = model.InviteType_Member
 	}
 
 	var description spaceinfo.SpaceDescription
-	err = i.spaceService.TechSpace().DoSpaceView(ctx, spaceId, func(spaceView techspace.SpaceView) error {
+	err = i.spaceService.TechSpace().DoSpaceView(ctx, params.SpaceId, func(spaceView techspace.SpaceView) error {
 		description = spaceView.GetSpaceDescription()
 		return nil
 	})

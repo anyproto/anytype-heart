@@ -2064,7 +2064,6 @@
     - [Import.ErrorCode](#anytype-model-Import-ErrorCode)
     - [Import.Type](#anytype-model-Import-Type)
     - [InternalFlag.Value](#anytype-model-InternalFlag-Value)
-    - [InvitePayload.InviteType](#anytype-model-InvitePayload-InviteType)
     - [InviteType](#anytype-model-InviteType)
     - [LinkPreview.Type](#anytype-model-LinkPreview-Type)
     - [Membership.EmailVerificationStatus](#anytype-model-Membership-EmailVerificationStatus)
@@ -20183,7 +20182,8 @@ Available undo/redo operations
 | spaceName | [string](#string) |  |  |
 | spaceIconCid | [string](#string) |  |  |
 | creatorName | [string](#string) |  |  |
-| isGuestUserInvite | [bool](#bool) |  |  |
+| isGuestUserInvite | [bool](#bool) |  | deprecated, use inviteType |
+| inviteType | [model.InviteType](#anytype-model-InviteType) |  |  |
 
 
 
@@ -31367,7 +31367,7 @@ Used to decode block meta only, without the content itself
 | spaceName | [string](#string) |  |  |
 | spaceIconCid | [string](#string) |  |  |
 | spaceIconEncryptionKeys | [FileEncryptionKey](#anytype-model-FileEncryptionKey) | repeated |  |
-| inviteType | [InvitePayload.InviteType](#anytype-model-InvitePayload-InviteType) |  |  |
+| inviteType | [InviteType](#anytype-model-InviteType) |  |  |
 | guestKey | [bytes](#bytes) |  |  |
 
 
@@ -32747,19 +32747,6 @@ Look https://github.com/golang/protobuf/issues/1135 for more information.
 | editorSelectType | 1 |  |
 | editorSelectTemplate | 2 |  |
 | collectionDontIndexLinks | 3 |  |
-
-
-
-<a name="anytype-model-InvitePayload-InviteType"></a>
-
-### InvitePayload.InviteType
-
-
-| Name | Number | Description |
-| ---- | ------ | ----------- |
-| JoinAsMember | 0 | aclKey contains the key to sign the ACL record |
-| JoinAsGuest | 1 | guestKey contains the privateKey of the guest user |
-| JoinAsMemberWithoutApprove | 2 | aclKey contains the key to sign the ACL record and decrypt the read key |
 
 
 
