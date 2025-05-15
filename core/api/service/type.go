@@ -72,13 +72,14 @@ func (s *Service) ListTypes(ctx context.Context, spaceId string, offset int, lim
 	paginatedTypes, hasMore := pagination.Paginate(resp.Records, offset, limit)
 	types = make([]apimodel.Type, 0, len(paginatedTypes))
 
-	propertyMap, err := s.GetPropertyMapFromStore(spaceId, true)
+	propertyMap, err := s.getPropertyMapFromStore(spaceId, true)
 	if err != nil {
 		return nil, 0, false, err
 	}
 
 	for _, record := range paginatedTypes {
-		types = append(types, s.getTypeFromStruct(record, propertyMap))
+		_, t := s.getTypeFromStruct(record, propertyMap)
+		types = append(types, t)
 	}
 	return types, total, hasMore, nil
 }
@@ -105,12 +106,13 @@ func (s *Service) GetType(ctx context.Context, spaceId string, typeId string) (a
 	}
 
 	// pre-fetch properties to fill the type
-	propertyMap, err := s.GetPropertyMapFromStore(spaceId, true)
+	propertyMap, err := s.getPropertyMapFromStore(spaceId, true)
 	if err != nil {
 		return apimodel.Type{}, err
 	}
 
-	return s.getTypeFromStruct(resp.ObjectView.Details[0].Details, propertyMap), nil
+	_, t := s.getTypeFromStruct(resp.ObjectView.Details[0].Details, propertyMap)
+	return t, nil
 }
 
 // CreateType creates a new type in a specific space.
@@ -175,12 +177,13 @@ func (s *Service) DeleteType(ctx context.Context, spaceId string, typeId string)
 	return t, nil
 }
 
-// GetTypeMapsFromStore retrieves all types from all spaces.
-func (s *Service) GetTypeMapsFromStore(spaceIds []string, propertyMap map[string]map[string]apimodel.Property) (map[string]map[string]apimodel.Type, error) {
+// getTypeMapsFromStore retrieves all types from all spaces.
+// Type entries can also be keyed by uniqueKey. Required for resolving type keys to IDs for search filters.
+func (s *Service) getTypeMapsFromStore(spaceIds []string, propertyMap map[string]map[string]apimodel.Property, keyByUniqueKey bool) (map[string]map[string]apimodel.Type, error) {
 	spacesToTypes := make(map[string]map[string]apimodel.Type, len(spaceIds))
 
 	for _, spaceId := range spaceIds {
-		typeMap, err := s.GetTypeMapFromStore(spaceId, propertyMap[spaceId])
+		typeMap, err := s.getTypeMapFromStore(spaceId, propertyMap[spaceId], keyByUniqueKey)
 		if err != nil {
 			return nil, err
 		}
@@ -190,8 +193,9 @@ func (s *Service) GetTypeMapsFromStore(spaceIds []string, propertyMap map[string
 	return spacesToTypes, nil
 }
 
-// GetTypeMapFromStore retrieves all types for a specific space.
-func (s *Service) GetTypeMapFromStore(spaceId string, propertyMap map[string]apimodel.Property) (map[string]apimodel.Type, error) {
+// getTypeMapFromStore retrieves all types for a specific space.
+// Type entries can also be keyed by uniqueKey. Required for resolving type keys to IDs for search filters.
+func (s *Service) getTypeMapFromStore(spaceId string, propertyMap map[string]apimodel.Property, keyByUniqueKey bool) (map[string]apimodel.Type, error) {
 	resp := s.mw.ObjectSearch(context.Background(), &pb.RpcObjectSearchRequest{
 		SpaceId: spaceId,
 		Filters: []*model.BlockContentDataviewFilter{
@@ -226,15 +230,19 @@ func (s *Service) GetTypeMapFromStore(spaceId string, propertyMap map[string]api
 
 	typeMap := make(map[string]apimodel.Type, len(resp.Records))
 	for _, record := range resp.Records {
-		t := s.getTypeFromStruct(record, propertyMap)
+		uk, t := s.getTypeFromStruct(record, propertyMap)
 		typeMap[t.Id] = t
+		if keyByUniqueKey {
+			typeMap[uk] = t
+		}
 	}
 	return typeMap, nil
 }
 
-// getTypeFromStruct builds an apimodel.Type from the provided fields map and propertyMap.
-func (s *Service) getTypeFromStruct(details *types.Struct, propertyMap map[string]apimodel.Property) apimodel.Type {
-	return apimodel.Type{
+// getTypeFromStruct maps a type's details into an apimodel.Type and returns its unique key.
+func (s *Service) getTypeFromStruct(details *types.Struct, propertyMap map[string]apimodel.Property) (string, apimodel.Type) {
+	uk := details.Fields[bundle.RelationKeyUniqueKey.String()].GetStringValue()
+	return uk, apimodel.Type{
 		Object:     "type",
 		Id:         details.Fields[bundle.RelationKeyId.String()].GetStringValue(),
 		Key:        util.ToTypeApiKey(details.Fields[bundle.RelationKeyUniqueKey.String()].GetStringValue()),
@@ -268,7 +276,7 @@ func (s *Service) buildTypeDetails(ctx context.Context, spaceId string, request 
 		fields[k] = v
 	}
 
-	propertyMap, err := s.GetPropertyMapFromStore(spaceId, true)
+	propertyMap, err := s.getPropertyMapFromStore(spaceId, true)
 	if err != nil {
 		return nil, err
 	}
@@ -335,7 +343,7 @@ func (s *Service) buildUpdatedTypeDetails(ctx context.Context, spaceId string, t
 		return &types.Struct{Fields: fields}, nil
 	}
 
-	propertyMap, err := s.GetPropertyMapFromStore(spaceId, true)
+	propertyMap, err := s.getPropertyMapFromStore(spaceId, true)
 	if err != nil {
 		return nil, err
 	}

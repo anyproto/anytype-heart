@@ -192,7 +192,7 @@ func TestSearchService_GlobalSearch(t *testing.T) {
 			},
 		}, nil).Once()
 
-		// Mock GetTypeMapsFromStore
+		// Mock getTypeMapsFromStore
 		fx.mwMock.On("ObjectSearch", mock.Anything, &pb.RpcObjectSearchRequest{
 			SpaceId: mockedSpaceId,
 			Filters: []*model.BlockContentDataviewFilter{
@@ -229,7 +229,7 @@ func TestSearchService_GlobalSearch(t *testing.T) {
 			},
 		}, nil).Once()
 
-		// Mock GetTagMapFromStore
+		// Mock getTagMapFromStore
 		fx.mwMock.On("ObjectSearch", mock.Anything, &pb.RpcObjectSearchRequest{
 			SpaceId: mockedSpaceId,
 			Filters: []*model.BlockContentDataviewFilter{
@@ -501,7 +501,7 @@ func TestSearchService_Search(t *testing.T) {
 			},
 		}, nil).Once()
 
-		// Mock GetTypeMapFromStore
+		// Mock getTypeMapFromStore
 		fx.mwMock.On("ObjectSearch", mock.Anything, &pb.RpcObjectSearchRequest{
 			SpaceId: mockedSpaceId,
 			Filters: []*model.BlockContentDataviewFilter{
@@ -538,7 +538,7 @@ func TestSearchService_Search(t *testing.T) {
 			},
 		}, nil).Once()
 
-		// Mock GetTagMapFromStore
+		// Mock getTagMapFromStore
 		fx.mwMock.On("ObjectSearch", mock.Anything, &pb.RpcObjectSearchRequest{
 			SpaceId: mockedSpaceId,
 			Filters: []*model.BlockContentDataviewFilter{

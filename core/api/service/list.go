@@ -197,21 +197,21 @@ func (s *Service) GetObjectsInList(ctx context.Context, spaceId string, listId s
 	total := int(searchResp.Counters.Total)
 	hasMore := searchResp.Counters.Total > int64(offset+limit)
 
-	propertyMap, err := s.GetPropertyMapFromStore(spaceId, true)
+	propertyMap, err := s.getPropertyMapFromStore(spaceId, true)
 	if err != nil {
 		return nil, 0, false, err
 	}
-	typeMap, err := s.GetTypeMapFromStore(spaceId, propertyMap)
+	typeMap, err := s.getTypeMapFromStore(spaceId, propertyMap, false)
 	if err != nil {
 		return nil, 0, false, err
 	}
-	tagMap, err := s.GetTagMapFromStore(spaceId)
+	tagMap, err := s.getTagMapFromStore(spaceId)
 	if err != nil {
 		return nil, 0, false, err
 	}
 	objects := make([]apimodel.Object, 0, len(searchResp.Records))
 	for _, record := range searchResp.Records {
-		objects = append(objects, s.GetObjectFromStruct(record, propertyMap, typeMap, tagMap))
+		objects = append(objects, s.getObjectFromStruct(record, propertyMap, typeMap, tagMap))
 	}
 
 	return objects, total, hasMore, nil

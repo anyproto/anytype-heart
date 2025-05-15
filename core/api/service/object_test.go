@@ -71,7 +71,7 @@ func TestObjectService_ListObjects(t *testing.T) {
 			Error: &pb.RpcObjectSearchResponseError{Code: pb.RpcObjectSearchResponseError_NULL},
 		}).Once()
 
-		// Mock GetPropertyMapFromStore
+		// Mock getPropertyMapFromStore
 		fx.mwMock.On("ObjectSearch", mock.Anything, &pb.RpcObjectSearchRequest{
 			SpaceId: mockedSpaceId,
 			Filters: []*model.BlockContentDataviewFilter{
@@ -138,7 +138,7 @@ func TestObjectService_ListObjects(t *testing.T) {
 			},
 		}, nil).Once()
 
-		// Mock GetTypeMapFromStore
+		// Mock getTypeMapFromStore
 		fx.mwMock.On("ObjectSearch", mock.Anything, &pb.RpcObjectSearchRequest{
 			SpaceId: mockedSpaceId,
 			Filters: []*model.BlockContentDataviewFilter{
@@ -182,7 +182,7 @@ func TestObjectService_ListObjects(t *testing.T) {
 			},
 		}, nil).Once()
 
-		// Mock GetTagMapFromStore
+		// Mock getTagMapFromStore
 		fx.mwMock.On("ObjectSearch", mock.Anything, &pb.RpcObjectSearchRequest{
 			SpaceId: mockedSpaceId,
 			Filters: []*model.BlockContentDataviewFilter{
@@ -300,7 +300,7 @@ func TestObjectService_ListObjects(t *testing.T) {
 			Error:   &pb.RpcObjectSearchResponseError{Code: pb.RpcObjectSearchResponseError_NULL},
 		}).Once()
 
-		// Mock GetPropertyMapFromStore, GetTypeMapFromStore and GetTagMapFromStore
+		// Mock getPropertyMapFromStore, getTypeMapFromStore and getTagMapFromStore
 		fx.mwMock.On("ObjectSearch", mock.Anything, mock.Anything).Return(&pb.RpcObjectSearchResponse{
 			Records: []*types.Struct{},
 			Error:   &pb.RpcObjectSearchResponseError{Code: pb.RpcObjectSearchResponseError_NULL},
@@ -430,7 +430,7 @@ func TestObjectService_GetObject(t *testing.T) {
 			},
 		}, nil).Once()
 
-		// Mock GetTypeMapFromStore
+		// Mock getTypeMapFromStore
 		fx.mwMock.On("ObjectSearch", mock.Anything, &pb.RpcObjectSearchRequest{
 			SpaceId: mockedSpaceId,
 			Filters: []*model.BlockContentDataviewFilter{
@@ -474,7 +474,7 @@ func TestObjectService_GetObject(t *testing.T) {
 			},
 		}, nil).Once()
 
-		// Mock GetTagMapFromStore
+		// Mock getTagMapFromStore
 		fx.mwMock.On("ObjectSearch", mock.Anything, &pb.RpcObjectSearchRequest{
 			SpaceId: mockedSpaceId,
 			Filters: []*model.BlockContentDataviewFilter{
@@ -649,7 +649,7 @@ func TestObjectService_CreateObject(t *testing.T) {
 			Error: &pb.RpcObjectShowResponseError{Code: pb.RpcObjectShowResponseError_NULL},
 		}).Once()
 
-		// Mock GetPropertyMapFromStore, GetTypeMapFromStore and GetTagMapFromStore
+		// Mock getPropertyMapFromStore, getTypeMapFromStore and getTagMapFromStore
 		fx.mwMock.On("ObjectSearch", mock.Anything, mock.Anything).Return(&pb.RpcObjectSearchResponse{
 			Records: []*types.Struct{},
 			Error:   &pb.RpcObjectSearchResponseError{Code: pb.RpcObjectSearchResponseError_NULL},

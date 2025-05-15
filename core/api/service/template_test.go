@@ -49,7 +49,7 @@ func TestObjectService_ListTemplates(t *testing.T) {
 			Error: &pb.RpcObjectSearchResponseError{Code: pb.RpcObjectSearchResponseError_NULL},
 		}).Once()
 
-		// Mock GetPropertyMapFromStore, GetTypeMapFromStore and GetTagMapFromStore
+		// Mock getPropertyMapFromStore, getTypeMapFromStore and getTagMapFromStore
 		fx.mwMock.On("ObjectSearch", mock.Anything, mock.Anything).Return(&pb.RpcObjectSearchResponse{
 			Records: []*types.Struct{},
 			Error:   &pb.RpcObjectSearchResponseError{Code: pb.RpcObjectSearchResponseError_NULL},
@@ -121,7 +121,7 @@ func TestObjectService_GetTemplate(t *testing.T) {
 			},
 		}).Once()
 
-		// Mock GetPropertyMapFromStore, GetTypeMapFromStore and GetTagMapFromStore
+		// Mock getPropertyMapFromStore, getTypeMapFromStore and getTagMapFromStore
 		fx.mwMock.On("ObjectSearch", mock.Anything, mock.Anything).Return(&pb.RpcObjectSearchResponse{
 			Records: []*types.Struct{},
 			Error:   &pb.RpcObjectSearchResponseError{Code: pb.RpcObjectSearchResponseError_NULL},

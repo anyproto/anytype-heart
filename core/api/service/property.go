@@ -140,7 +140,7 @@ func (s *Service) ListProperties(ctx context.Context, spaceId string, offset int
 
 	filteredRecords := make([]*types.Struct, 0, len(resp.Records))
 	for _, record := range resp.Records {
-		rk, _ := s.mapPropertyFromRecord(record)
+		rk, _ := s.getPropertyFromStruct(record)
 		if _, isExcluded := excludedSystemProperties[rk]; isExcluded {
 			continue
 		}
@@ -152,7 +152,7 @@ func (s *Service) ListProperties(ctx context.Context, spaceId string, offset int
 	properties = make([]apimodel.Property, 0, len(paginatedProperties))
 
 	for _, record := range paginatedProperties {
-		_, property := s.mapPropertyFromRecord(record)
+		_, property := s.getPropertyFromStruct(record)
 		properties = append(properties, property)
 	}
 
@@ -180,7 +180,7 @@ func (s *Service) GetProperty(ctx context.Context, spaceId string, propertyId st
 		}
 	}
 
-	rk, property := s.mapPropertyFromRecord(resp.ObjectView.Details[0].Details)
+	rk, property := s.getPropertyFromStruct(resp.ObjectView.Details[0].Details)
 	if _, isExcluded := excludedSystemProperties[rk]; isExcluded {
 		return apimodel.Property{}, ErrPropertyNotFound
 	}
@@ -267,7 +267,7 @@ func (s *Service) processProperties(ctx context.Context, spaceId string, entries
 	if len(entries) == 0 {
 		return fields, nil
 	}
-	propertyMap, err := s.GetPropertyMapFromStore(spaceId, false)
+	propertyMap, err := s.getPropertyMapFromStore(spaceId, false)
 	if err != nil {
 		return nil, err
 	}
@@ -500,11 +500,12 @@ func (s *Service) getRecommendedPropertiesFromLists(featured, regular *types.Lis
 }
 
 // GetPropertyMapsFromStore retrieves all properties for all spaces.
-func (s *Service) GetPropertyMapsFromStore(spaceIds []string) (map[string]map[string]apimodel.Property, error) {
+// Property entries can also be keyed by property id. Required for filling types with properties, as recommended properties are referenced by id and not key.
+func (s *Service) GetPropertyMapsFromStore(spaceIds []string, keyByPropertyId bool) (map[string]map[string]apimodel.Property, error) {
 	spacesToProperties := make(map[string]map[string]apimodel.Property, len(spaceIds))
 
 	for _, spaceId := range spaceIds {
-		propertyMap, err := s.GetPropertyMapFromStore(spaceId, true)
+		propertyMap, err := s.getPropertyMapFromStore(spaceId, keyByPropertyId)
 		if err != nil {
 			return nil, err
 		}
@@ -514,9 +515,9 @@ func (s *Service) GetPropertyMapsFromStore(spaceIds []string) (map[string]map[st
 	return spacesToProperties, nil
 }
 
-// GetPropertyMapFromStore retrieves all properties for a specific space
+// getPropertyMapFromStore retrieves all properties for a specific space
 // Property entries can also be keyed by property id. Required for filling types with properties, as recommended properties are referenced by id and not key.
-func (s *Service) GetPropertyMapFromStore(spaceId string, keyByPropertyId bool) (map[string]apimodel.Property, error) {
+func (s *Service) getPropertyMapFromStore(spaceId string, keyByPropertyId bool) (map[string]apimodel.Property, error) {
 	resp := s.mw.ObjectSearch(context.Background(), &pb.RpcObjectSearchRequest{
 		SpaceId: spaceId,
 		Filters: []*model.BlockContentDataviewFilter{
@@ -545,7 +546,7 @@ func (s *Service) GetPropertyMapFromStore(spaceId string, keyByPropertyId bool) 
 
 	propertyMap := make(map[string]apimodel.Property, len(resp.Records))
 	for _, record := range resp.Records {
-		rk, p := s.mapPropertyFromRecord(record)
+		rk, p := s.getPropertyFromStruct(record)
 		propertyMap[rk] = p
 		if keyByPropertyId {
 			propertyMap[p.Id] = p // add property under id as key to map as well
@@ -555,15 +556,15 @@ func (s *Service) GetPropertyMapFromStore(spaceId string, keyByPropertyId bool) 
 	return propertyMap, nil
 }
 
-// mapPropertyFromRecord maps a single property record into a Property and returns its trimmed relation key.
-func (s *Service) mapPropertyFromRecord(record *types.Struct) (string, apimodel.Property) {
-	rk := record.Fields[bundle.RelationKeyRelationKey.String()].GetStringValue()
+// getPropertyFromStruct maps a property's details into an apimodel.Property and returns its relation key.
+func (s *Service) getPropertyFromStruct(details *types.Struct) (string, apimodel.Property) {
+	rk := details.Fields[bundle.RelationKeyRelationKey.String()].GetStringValue()
 	return rk, apimodel.Property{
 		Object: "property",
-		Id:     record.Fields[bundle.RelationKeyId.String()].GetStringValue(),
+		Id:     details.Fields[bundle.RelationKeyId.String()].GetStringValue(),
 		Key:    util.ToPropertyApiKey(rk),
-		Name:   record.Fields[bundle.RelationKeyName.String()].GetStringValue(),
-		Format: RelationFormatToPropertyFormat[model.RelationFormat(record.Fields[bundle.RelationKeyRelationFormat.String()].GetNumberValue())],
+		Name:   details.Fields[bundle.RelationKeyName.String()].GetStringValue(),
+		Format: RelationFormatToPropertyFormat[model.RelationFormat(details.Fields[bundle.RelationKeyRelationFormat.String()].GetNumberValue())],
 	}
 }
 

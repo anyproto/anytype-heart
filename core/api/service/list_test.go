@@ -443,7 +443,7 @@ func TestListService_GetObjectsInList(t *testing.T) {
 				},
 			}, nil).Once()
 
-		// Mock GetTypeMapFromStore
+		// Mock getTypeMapFromStore
 		fx.mwMock.
 			On("ObjectSearch", mock.Anything, &pb.RpcObjectSearchRequest{
 				SpaceId: mockedSpaceId,
@@ -489,7 +489,7 @@ func TestListService_GetObjectsInList(t *testing.T) {
 				},
 			}, nil).Once()
 
-		// Mock GetTagMapFromStore
+		// Mock getTagMapFromStore
 		fx.mwMock.
 			On("ObjectSearch", mock.Anything, &pb.RpcObjectSearchRequest{
 				SpaceId: mockedSpaceId,
@@ -688,7 +688,7 @@ func TestListService_GetObjectsInList(t *testing.T) {
 				},
 			}, nil).Once()
 
-		// Mock GetTypeMapFromStore
+		// Mock getTypeMapFromStore
 		fx.mwMock.
 			On("ObjectSearch", mock.Anything, &pb.RpcObjectSearchRequest{
 				SpaceId: mockedSpaceId,
@@ -734,7 +734,7 @@ func TestListService_GetObjectsInList(t *testing.T) {
 				},
 			}, nil).Once()
 
-		// Mock GetTagMapFromStore
+		// Mock getTagMapFromStore
 		fx.mwMock.
 			On("ObjectSearch", mock.Anything, &pb.RpcObjectSearchRequest{
 				SpaceId: mockedSpaceId,
