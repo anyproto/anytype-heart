@@ -71,6 +71,7 @@ func (s *Service) stop() error {
 	defer task.End()
 
 	if s != nil && s.app != nil {
+		log.Warnf("stopping app")
 		s.app.SetDeviceState(int(domain.CompStateAppClosingInitiated))
 		err := s.app.Close(ctx)
 		if err != nil {
