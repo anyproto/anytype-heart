@@ -1211,10 +1211,6 @@
             "$ref": "#/components/schemas/apimodel.SortProperty"
           }
         },
-        "required": [
-          "direction",
-          "property_key"
-        ],
         "type": "object"
       },
       "apimodel.SortProperty": {

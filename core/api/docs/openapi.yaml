@@ -883,9 +883,6 @@ components:
           $ref: '#/components/schemas/apimodel.SortDirection'
         property_key:
           $ref: '#/components/schemas/apimodel.SortProperty'
-      required:
-      - direction
-      - property_key
       type: object
     apimodel.SortProperty:
       default: last_modified_date
