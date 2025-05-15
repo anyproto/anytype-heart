@@ -107,7 +107,7 @@ func (w *Workspaces) SetInviteFileInfo(info domain.InviteInfo) (err error) {
 func (w *Workspaces) GetExistingInviteInfo() (inviteInfo domain.InviteInfo) {
 	details := w.CombinedDetails()
 	inviteInfo.InviteType = domain.InviteType(details.GetInt64(bundle.RelationKeySpaceInviteType))
-	inviteInfo.Permissions = domain.ConvertParticipantPermissions(model.ParticipantPermissions(details.GetInt64(bundle.RelationKeySpaceInviteType)))
+	inviteInfo.Permissions = domain.ConvertParticipantPermissions(model.ParticipantPermissions(details.GetInt64(bundle.RelationKeySpaceInvitePermissions)))
 	inviteInfo.InviteFileCid = details.GetString(bundle.RelationKeySpaceInviteFileCid)
 	inviteInfo.InviteFileKey = details.GetString(bundle.RelationKeySpaceInviteFileKey)
 	return
