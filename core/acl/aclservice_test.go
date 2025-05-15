@@ -13,6 +13,7 @@ import (
 	"github.com/anyproto/any-sync/commonspace/object/accountdata"
 	"github.com/anyproto/any-sync/commonspace/object/acl/list"
 	"github.com/anyproto/any-sync/commonspace/object/acl/list/mock_list"
+	"github.com/anyproto/any-sync/commonspace/object/acl/recordverifier"
 	"github.com/anyproto/any-sync/commonspace/object/acl/syncacl/headupdater"
 	"github.com/anyproto/any-sync/commonspace/spacesyncproto"
 	"github.com/anyproto/any-sync/commonspace/sync/syncdeps"
@@ -108,6 +109,7 @@ func newFixture(t *testing.T) *fixture {
 		Register(fx.mockConfig).
 		Register(fx.aclService)
 	require.NoError(t, fx.a.Start(ctx))
+	fx.aclService.recordVerifier = recordverifier.NewValidateFull()
 	return fx
 }
 
@@ -465,6 +467,35 @@ func TestService_Join(t *testing.T) {
 		}).Return("", list.ErrInsufficientPermissions)
 		fx.mockJoiningClient.EXPECT().CancelRemoveSelf(ctx, "spaceId").Return(nil)
 		fx.mockSpaceService.EXPECT().CancelLeave(ctx, "spaceId").Return(nil)
+		err = fx.Join(ctx, "spaceId", "", realCid, key)
+		require.NoError(t, err)
+	})
+	t.Run("join success without approve", func(t *testing.T) {
+		fx := newFixture(t)
+		defer fx.finish(t)
+		cidString, err := cidutil.NewCidFromBytes([]byte("spaceId"))
+		require.NoError(t, err)
+		realCid, err := cid.Decode(cidString)
+		require.NoError(t, err)
+		key, err := crypto.NewRandomAES()
+		require.NoError(t, err)
+		inviteKey, _, err := crypto.GenerateRandomEd25519KeyPair()
+		require.NoError(t, err)
+		protoKey, err := inviteKey.Marshall()
+		require.NoError(t, err)
+		fx.mockInviteService.EXPECT().GetPayload(ctx, realCid, key).Return(&model.InvitePayload{
+			AclKey:     protoKey,
+			InviteType: model.InviteType_WithoutApprove,
+		}, nil)
+		metadataPayload := []byte("metadata")
+		fx.mockSpaceService.EXPECT().AccountMetadataPayload().Return(metadataPayload)
+		fx.mockJoiningClient.EXPECT().InviteJoin(ctx, "spaceId", list.InviteJoinPayload{
+			InviteKey: inviteKey,
+			Metadata:  metadataPayload,
+		}).Return("aclHeadId", nil)
+		fx.mockSpaceService.EXPECT().InviteJoin(ctx, "spaceId", "aclHeadId").Return(nil)
+		fx.mockSpaceService.EXPECT().TechSpace().Return(&clientspace.TechSpace{TechSpace: fx.mockTechSpace})
+		fx.mockTechSpace.EXPECT().SpaceViewSetData(ctx, "spaceId", mock.Anything).Return(nil)
 		err = fx.Join(ctx, "spaceId", "", realCid, key)
 		require.NoError(t, err)
 	})

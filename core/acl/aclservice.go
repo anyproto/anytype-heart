@@ -85,6 +85,7 @@ type aclService struct {
 	accountService   account.Service
 	coordClient      coordinatorclient.CoordinatorClient
 	identityRepo     identityRepoClient
+	recordVerifier   recordverifier.AcceptorVerifier
 }
 
 func (a *aclService) Init(ap *app.App) (err error) {
@@ -95,6 +96,7 @@ func (a *aclService) Init(ap *app.App) (err error) {
 	a.inviteService = app.MustComponent[inviteservice.InviteService](ap)
 	a.coordClient = app.MustComponent[coordinatorclient.CoordinatorClient](ap)
 	a.identityRepo = app.MustComponent[identityRepoClient](ap)
+	a.recordVerifier = recordverifier.New()
 	return nil
 }
 
@@ -503,7 +505,7 @@ func (a *aclService) ViewInvite(ctx context.Context, inviteCid cid.Cid, inviteFi
 	if err != nil {
 		return domain.InviteView{}, convertedOrAclRequestError(err)
 	}
-	lst, err := list.BuildAclListWithIdentity(a.accountService.Keys(), store, recordverifier.New())
+	lst, err := list.BuildAclListWithIdentity(a.accountService.Keys(), store, a.recordVerifier)
 	if err != nil {
 		return domain.InviteView{}, convertedOrAclRequestError(err)
 	}
