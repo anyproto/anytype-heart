@@ -587,7 +587,9 @@ func (s *Service) getPropertiesFromStruct(details *types.Struct, propertyMap map
 
 		id := prop.Id
 		name := prop.Name
-		properties = append(properties, s.buildPropertyWithValue(id, key, name, format, convertedVal))
+		if pwv := s.buildPropertyWithValue(id, key, name, format, convertedVal); pwv != nil {
+			properties = append(properties, *pwv)
+		}
 	}
 
 	return properties
@@ -660,7 +662,7 @@ func (s *Service) convertPropertyValue(key string, value *types.Value, format ap
 
 // buildPropertyWithValue creates a Property based on the format and converted value.
 // nolint:funlen
-func (s *Service) buildPropertyWithValue(id string, key string, name string, format apimodel.PropertyFormat, val interface{}) apimodel.PropertyWithValue {
+func (s *Service) buildPropertyWithValue(id string, key string, name string, format apimodel.PropertyFormat, val interface{}) *apimodel.PropertyWithValue {
 	base := apimodel.PropertyBase{
 		Object: "property",
 		Id:     id,
@@ -669,7 +671,7 @@ func (s *Service) buildPropertyWithValue(id string, key string, name string, for
 	switch format {
 	case apimodel.PropertyFormatText:
 		if str, ok := val.(string); ok {
-			return apimodel.PropertyWithValue{WrappedPropertyWithValue: apimodel.TextPropertyValue{
+			return &apimodel.PropertyWithValue{WrappedPropertyWithValue: apimodel.TextPropertyValue{
 				PropertyBase: base,
 				Key:          key,
 				Name:         name,
@@ -679,7 +681,7 @@ func (s *Service) buildPropertyWithValue(id string, key string, name string, for
 		}
 	case apimodel.PropertyFormatNumber:
 		if num, ok := val.(float64); ok {
-			return apimodel.PropertyWithValue{WrappedPropertyWithValue: apimodel.NumberPropertyValue{
+			return &apimodel.PropertyWithValue{WrappedPropertyWithValue: apimodel.NumberPropertyValue{
 				PropertyBase: base,
 				Key:          key,
 				Name:         name,
@@ -689,7 +691,7 @@ func (s *Service) buildPropertyWithValue(id string, key string, name string, for
 		}
 	case apimodel.PropertyFormatSelect:
 		if sel, ok := val.(apimodel.Tag); ok {
-			return apimodel.PropertyWithValue{WrappedPropertyWithValue: apimodel.SelectPropertyValue{
+			return &apimodel.PropertyWithValue{WrappedPropertyWithValue: apimodel.SelectPropertyValue{
 				PropertyBase: base,
 				Key:          key,
 				Name:         name,
@@ -699,7 +701,7 @@ func (s *Service) buildPropertyWithValue(id string, key string, name string, for
 		}
 	case apimodel.PropertyFormatMultiSelect:
 		if ms, ok := val.([]apimodel.Tag); ok {
-			return apimodel.PropertyWithValue{WrappedPropertyWithValue: apimodel.MultiSelectPropertyValue{
+			return &apimodel.PropertyWithValue{WrappedPropertyWithValue: apimodel.MultiSelectPropertyValue{
 				PropertyBase: base,
 				Key:          key,
 				Name:         name,
@@ -709,7 +711,7 @@ func (s *Service) buildPropertyWithValue(id string, key string, name string, for
 		}
 	case apimodel.PropertyFormatDate:
 		if dateStr, ok := val.(string); ok {
-			return apimodel.PropertyWithValue{WrappedPropertyWithValue: apimodel.DatePropertyValue{
+			return &apimodel.PropertyWithValue{WrappedPropertyWithValue: apimodel.DatePropertyValue{
 				PropertyBase: base,
 				Key:          key,
 				Name:         name,
@@ -725,7 +727,7 @@ func (s *Service) buildPropertyWithValue(id string, key string, name string, for
 					files = append(files, str)
 				}
 			}
-			return apimodel.PropertyWithValue{WrappedPropertyWithValue: apimodel.FilesPropertyValue{
+			return &apimodel.PropertyWithValue{WrappedPropertyWithValue: apimodel.FilesPropertyValue{
 				PropertyBase: base,
 				Key:          key,
 				Name:         name,
@@ -735,7 +737,7 @@ func (s *Service) buildPropertyWithValue(id string, key string, name string, for
 		}
 	case apimodel.PropertyFormatCheckbox:
 		if cb, ok := val.(bool); ok {
-			return apimodel.PropertyWithValue{WrappedPropertyWithValue: apimodel.CheckboxPropertyValue{
+			return &apimodel.PropertyWithValue{WrappedPropertyWithValue: apimodel.CheckboxPropertyValue{
 				PropertyBase: base,
 				Key:          key,
 				Name:         name,
@@ -745,7 +747,7 @@ func (s *Service) buildPropertyWithValue(id string, key string, name string, for
 		}
 	case apimodel.PropertyFormatUrl:
 		if urlStr, ok := val.(string); ok {
-			return apimodel.PropertyWithValue{WrappedPropertyWithValue: apimodel.URLPropertyValue{
+			return &apimodel.PropertyWithValue{WrappedPropertyWithValue: apimodel.URLPropertyValue{
 				PropertyBase: base,
 				Key:          key,
 				Name:         name,
@@ -755,7 +757,7 @@ func (s *Service) buildPropertyWithValue(id string, key string, name string, for
 		}
 	case apimodel.PropertyFormatEmail:
 		if email, ok := val.(string); ok {
-			return apimodel.PropertyWithValue{WrappedPropertyWithValue: apimodel.EmailPropertyValue{
+			return &apimodel.PropertyWithValue{WrappedPropertyWithValue: apimodel.EmailPropertyValue{
 				PropertyBase: base,
 				Key:          key,
 				Name:         name,
@@ -765,7 +767,7 @@ func (s *Service) buildPropertyWithValue(id string, key string, name string, for
 		}
 	case apimodel.PropertyFormatPhone:
 		if phone, ok := val.(string); ok {
-			return apimodel.PropertyWithValue{WrappedPropertyWithValue: apimodel.PhonePropertyValue{
+			return &apimodel.PropertyWithValue{WrappedPropertyWithValue: apimodel.PhonePropertyValue{
 				PropertyBase: base,
 				Key:          key,
 				Name:         name,
@@ -785,7 +787,7 @@ func (s *Service) buildPropertyWithValue(id string, key string, name string, for
 				}
 			}
 		}
-		return apimodel.PropertyWithValue{WrappedPropertyWithValue: apimodel.ObjectsPropertyValue{
+		return &apimodel.PropertyWithValue{WrappedPropertyWithValue: apimodel.ObjectsPropertyValue{
 			PropertyBase: base,
 			Key:          key,
 			Name:         name,
@@ -794,20 +796,5 @@ func (s *Service) buildPropertyWithValue(id string, key string, name string, for
 		}}
 	}
 
-	if str, ok := val.(string); ok {
-		return apimodel.PropertyWithValue{WrappedPropertyWithValue: apimodel.TextPropertyValue{
-			PropertyBase: base,
-			Key:          key,
-			Name:         name,
-			Format:       format,
-			Text:         str,
-		}}
-	}
-	return apimodel.PropertyWithValue{WrappedPropertyWithValue: apimodel.TextPropertyValue{
-		PropertyBase: base,
-		Key:          key,
-		Name:         name,
-		Format:       format,
-		Text:         fmt.Sprintf("%v", val),
-	}}
+	return nil
 }
