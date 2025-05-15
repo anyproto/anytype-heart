@@ -661,7 +661,6 @@ func (s *Service) convertPropertyValue(key string, value *types.Value, format ap
 }
 
 // buildPropertyWithValue creates a Property based on the format and converted value.
-// nolint:funlen
 func (s *Service) buildPropertyWithValue(id string, key string, name string, format apimodel.PropertyFormat, val interface{}) *apimodel.PropertyWithValue {
 	base := apimodel.PropertyBase{
 		Object: "property",
@@ -672,51 +671,36 @@ func (s *Service) buildPropertyWithValue(id string, key string, name string, for
 	case apimodel.PropertyFormatText:
 		if str, ok := val.(string); ok {
 			return &apimodel.PropertyWithValue{WrappedPropertyWithValue: apimodel.TextPropertyValue{
-				PropertyBase: base,
-				Key:          key,
-				Name:         name,
-				Format:       format,
-				Text:         str,
+				PropertyBase: base, Key: key, Name: name, Format: format,
+				Text: str,
 			}}
 		}
 	case apimodel.PropertyFormatNumber:
 		if num, ok := val.(float64); ok {
 			return &apimodel.PropertyWithValue{WrappedPropertyWithValue: apimodel.NumberPropertyValue{
-				PropertyBase: base,
-				Key:          key,
-				Name:         name,
-				Format:       format,
-				Number:       num,
+				PropertyBase: base, Key: key, Name: name, Format: format,
+				Number: num,
 			}}
 		}
 	case apimodel.PropertyFormatSelect:
 		if sel, ok := val.(apimodel.Tag); ok {
 			return &apimodel.PropertyWithValue{WrappedPropertyWithValue: apimodel.SelectPropertyValue{
-				PropertyBase: base,
-				Key:          key,
-				Name:         name,
-				Format:       format,
-				Select:       &sel,
+				PropertyBase: base, Key: key, Name: name, Format: format,
+				Select: &sel,
 			}}
 		}
 	case apimodel.PropertyFormatMultiSelect:
 		if ms, ok := val.([]apimodel.Tag); ok {
 			return &apimodel.PropertyWithValue{WrappedPropertyWithValue: apimodel.MultiSelectPropertyValue{
-				PropertyBase: base,
-				Key:          key,
-				Name:         name,
-				Format:       format,
-				MultiSelect:  ms,
+				PropertyBase: base, Key: key, Name: name, Format: format,
+				MultiSelect: ms,
 			}}
 		}
 	case apimodel.PropertyFormatDate:
 		if dateStr, ok := val.(string); ok {
 			return &apimodel.PropertyWithValue{WrappedPropertyWithValue: apimodel.DatePropertyValue{
-				PropertyBase: base,
-				Key:          key,
-				Name:         name,
-				Format:       format,
-				Date:         dateStr,
+				PropertyBase: base, Key: key, Name: name, Format: format,
+				Date: dateStr,
 			}}
 		}
 	case apimodel.PropertyFormatFiles:
@@ -728,51 +712,36 @@ func (s *Service) buildPropertyWithValue(id string, key string, name string, for
 				}
 			}
 			return &apimodel.PropertyWithValue{WrappedPropertyWithValue: apimodel.FilesPropertyValue{
-				PropertyBase: base,
-				Key:          key,
-				Name:         name,
-				Format:       format,
-				Files:        files,
+				PropertyBase: base, Key: key, Name: name, Format: format,
+				Files: files,
 			}}
 		}
 	case apimodel.PropertyFormatCheckbox:
 		if cb, ok := val.(bool); ok {
 			return &apimodel.PropertyWithValue{WrappedPropertyWithValue: apimodel.CheckboxPropertyValue{
-				PropertyBase: base,
-				Key:          key,
-				Name:         name,
-				Format:       format,
-				Checkbox:     cb,
+				PropertyBase: base, Key: key, Name: name, Format: format,
+				Checkbox: cb,
 			}}
 		}
 	case apimodel.PropertyFormatUrl:
 		if urlStr, ok := val.(string); ok {
 			return &apimodel.PropertyWithValue{WrappedPropertyWithValue: apimodel.URLPropertyValue{
-				PropertyBase: base,
-				Key:          key,
-				Name:         name,
-				Format:       format,
-				Url:          urlStr,
+				PropertyBase: base, Key: key, Name: name, Format: format,
+				Url: urlStr,
 			}}
 		}
 	case apimodel.PropertyFormatEmail:
 		if email, ok := val.(string); ok {
 			return &apimodel.PropertyWithValue{WrappedPropertyWithValue: apimodel.EmailPropertyValue{
-				PropertyBase: base,
-				Key:          key,
-				Name:         name,
-				Format:       format,
-				Email:        email,
+				PropertyBase: base, Key: key, Name: name, Format: format,
+				Email: email,
 			}}
 		}
 	case apimodel.PropertyFormatPhone:
 		if phone, ok := val.(string); ok {
 			return &apimodel.PropertyWithValue{WrappedPropertyWithValue: apimodel.PhonePropertyValue{
-				PropertyBase: base,
-				Key:          key,
-				Name:         name,
-				Format:       format,
-				Phone:        phone,
+				PropertyBase: base, Key: key, Name: name, Format: format,
+				Phone: phone,
 			}}
 		}
 	case apimodel.PropertyFormatObjects:
