@@ -1098,11 +1098,11 @@
             "$ref": "#/components/schemas/apimodel.SortOptions"
           },
           "types": {
-            "description": "The types of objects to search for, specified by key or ID",
+            "description": "The types of objects to search for, specified by their key",
             "example": [
               "page",
-              "678043f0cda9133be777049f",
-              "bafyreightzrdts2ymxyaeyzspwdfo2juspyam76ewq6qq7ixnw3523gs7q"
+              "task",
+              "bookmark"
             ],
             "items": {
               "type": "string"
@@ -1952,7 +1952,7 @@
       "name": "Anytype Support",
       "url": "https://anytype.io/contact"
     },
-    "description": "This API empowers seamless interaction with Anytype's resources—spaces, objects, properties, types, templates, and beyond.",
+    "description": "This API enables seamless interaction with Anytype's resources - spaces, objects, properties, types, templates, and beyond.",
     "license": {
       "name": "Any Source Available License 1.0",
       "url": "https://github.com/anyproto/anytype-api/blob/main/LICENSE.md"
@@ -1968,7 +1968,7 @@
   "paths": {
     "/v1/auth/display_code": {
       "post": {
-        "description": "Generates a one-time authentication challenge for granting API access to the user's vault. Upon providing a valid `app_name`, the server issues a unique `challenge_id` and displays a short code within the Anytype Desktop On success, the service returns a unique challenge ID. This challenge ID must then be used with the token endpoint (see below) to solve the challenge and retrieve an authentication token. This mechanism ensures that only trusted applications and authorized users gain access.",
+        "description": "Generates a one-time authentication challenge for granting API access to the user's vault. Upon providing a valid `app_name`, the server issues a unique `challenge_id` and displays a short code within the Anytype Desktop. The `challenge_id` must then be used with the token endpoint (see below) to solve the challenge and retrieve an authentication token. This mechanism ensures that only trusted applications and authorized users gain access.",
         "operationId": "create_auth_challenge",
         "parameters": [
           {
@@ -2032,7 +2032,7 @@
             "description": "Internal server error"
           }
         },
-        "summary": "Start new challenge",
+        "summary": "Start challenge",
         "tags": [
           "Auth"
         ]
@@ -2040,7 +2040,7 @@
     },
     "/v1/auth/token": {
       "post": {
-        "description": "After receiving a challenge ID from the display_code endpoint, the client calls this endpoint to provide the corresponding 4-digit code (also via a query parameter) along with the challenge ID. The endpoint verifies that the challenge solution is correct and, if it is, returns a permanent app key. This endpoint is central to the authentication process, as it validates the user's identity and issues a token that can be used for further interactions with the API.",
+        "description": "After receiving a `challenge_id` from the `display_code` endpoint, the client calls this endpoint to provide the corresponding 4-digit code along with the challenge ID. The endpoint verifies that the challenge solution is correct and, if it is, returns a permanent `app_key. This endpoint is central to the authentication process, as it validates the user's identity and issues a token that can be used for further interactions with the API.",
         "operationId": "solve_auth_challenge",
         "parameters": [
           {
@@ -2121,7 +2121,7 @@
     },
     "/v1/search": {
       "post": {
-        "description": "Executes a global search over every space accessible by the authenticated user. The request body must specify the `query` text, optional filters on object types (e.g., \"page\", \"task\"), and sort directives (default: descending by last updated timestamp). Pagination is controlled via `offset` and `limit` query parameters to facilitate lazy loading in client UIs. The response returns a unified list of matched objects with their metadata and properties.",
+        "description": "Executes a global search over all spaces accessible to the authenticated user. The request body must specify the `query` text (currently matching only name and snippet of an object), optional filters on types (e.g., \"page\", \"task\"), and sort directives (default: descending by last modified date). Pagination is controlled via `offset` and `limit` query parameters to facilitate lazy loading in client UIs. The response returns a unified list of matched objects with their metadata and properties.",
         "operationId": "search_global",
         "parameters": [
           {
@@ -4833,7 +4833,7 @@
     },
     "/v1/spaces/{space_id}/search": {
       "post": {
-        "description": "Performs a focused search within a single space (specified by the space_id path parameter). Like the global search, it accepts pagination parameters and a JSON payload containing the search query, object types, and sorting preferences. The search is limited to the provided space and returns a list of objects that match the query. This allows clients to implement space‑specific filtering without having to process extraneous results.",
+        "description": "Performs a search within a single space (specified by the `space_id` path parameter). Like the global search, it accepts pagination parameters and a JSON payload containing the search `query`, `types`, and sorting preferences. The search is limited to the provided space and returns a list of objects that match the query. This allows clients to implement space‑specific filtering without having to process extraneous results.",
         "operationId": "search_space",
         "parameters": [
           {

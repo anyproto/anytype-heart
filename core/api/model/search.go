@@ -52,9 +52,9 @@ func (sp *SortProperty) UnmarshalJSON(data []byte) error {
 }
 
 type SearchRequest struct {
-	Query string      `json:"query" example:"test"`                                                                                      // The search term to look for in object names and snippets
-	Types []string    `json:"types" example:"page,678043f0cda9133be777049f,bafyreightzrdts2ymxyaeyzspwdfo2juspyam76ewq6qq7ixnw3523gs7q"` // The types of objects to search for, specified by key or ID
-	Sort  SortOptions `json:"sort"`                                                                                                      // The sorting criteria and direction for the search results
+	Query string      `json:"query" example:"test"`               // The search term to look for in object names and snippets
+	Types []string    `json:"types" example:"page,task,bookmark"` // The types of objects to search for, specified by their key
+	Sort  SortOptions `json:"sort"`                               // The sorting criteria and direction for the search results
 }
 
 type SortOptions struct {

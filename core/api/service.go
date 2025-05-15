@@ -51,7 +51,7 @@ func (s *apiService) Name() (name string) {
 //
 //	@title							Anytype API
 //	@version						2025-05-20
-//	@description					This API empowers seamless interaction with Anytype's resources—spaces, objects, properties, types, templates, and beyond.
+//	@description					This API enables seamless interaction with Anytype's resources - spaces, objects, properties, types, templates, and beyond.
 //	@termsOfService					https://anytype.io/terms_of_use
 //	@contact.name					Anytype Support
 //	@contact.url					https://anytype.io/contact
