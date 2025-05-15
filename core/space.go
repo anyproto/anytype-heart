@@ -86,6 +86,26 @@ func (mw *Middleware) SpaceInviteGenerate(cctx context.Context, req *pb.RpcSpace
 	}
 }
 
+func (mw *Middleware) SpaceInviteChange(cctx context.Context, req *pb.RpcSpaceInviteChangeRequest) *pb.RpcSpaceInviteChangeResponse {
+	aclService := mustService[acl.AclService](mw)
+	err := aclService.ChangeInvite(cctx, req.SpaceId, req.Permissions)
+	if err != nil {
+		code := mapErrorCode(err,
+			errToCode(space.ErrSpaceDeleted, pb.RpcSpaceInviteChangeResponseError_SPACE_IS_DELETED),
+			errToCode(space.ErrSpaceNotExists, pb.RpcSpaceInviteChangeResponseError_NO_SUCH_SPACE),
+			errToCode(acl.ErrPersonalSpace, pb.RpcSpaceInviteChangeResponseError_BAD_INPUT),
+			errToCode(acl.ErrAclRequestFailed, pb.RpcSpaceInviteChangeResponseError_REQUEST_FAILED),
+		)
+		return &pb.RpcSpaceInviteChangeResponse{
+			Error: &pb.RpcSpaceInviteChangeResponseError{
+				Code:        code,
+				Description: getErrorDescription(err),
+			},
+		}
+	}
+	return &pb.RpcSpaceInviteChangeResponse{}
+}
+
 func (mw *Middleware) SpaceInviteGetCurrent(cctx context.Context, req *pb.RpcSpaceInviteGetCurrentRequest) *pb.RpcSpaceInviteGetCurrentResponse {
 	aclService := mustService[acl.AclService](mw)
 	inviteInfo, err := aclService.GetCurrentInvite(cctx, req.SpaceId)

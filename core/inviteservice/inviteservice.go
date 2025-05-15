@@ -34,6 +34,7 @@ type InviteService interface {
 	View(ctx context.Context, inviteCid cid.Cid, inviteFileKey crypto.SymKey) (domain.InviteView, error)
 	RemoveExisting(ctx context.Context, spaceId string) error
 	Generate(ctx context.Context, params GenerateInviteParams, sendInvite func() error) (domain.InviteInfo, error)
+	Change(ctx context.Context, spaceId string, permissions list.AclPermissions) error
 	GetCurrent(ctx context.Context, spaceId string) (domain.InviteInfo, error)
 	GetExistingGuestUserInvite(ctx context.Context, spaceId string) (domain.InviteInfo, error)
 	GenerateGuestUserInvite(ctx context.Context, spaceId string, guestKey crypto.PrivKey) (domain.InviteInfo, error)
@@ -94,6 +95,14 @@ func (i *inviteService) View(ctx context.Context, inviteCid cid.Cid, inviteFileK
 		AclKey:       invitePayload.AclKey,
 		GuestKey:     invitePayload.GuestKey,
 	}, nil
+}
+
+func (i *inviteService) Change(ctx context.Context, spaceId string, permissions list.AclPermissions) error {
+	return i.doInviteObject(ctx, spaceId, func(obj domain.InviteObject) error {
+		info := obj.GetExistingInviteInfo()
+		info.Permissions = permissions
+		return obj.SetInviteFileInfo(info)
+	})
 }
 
 func (i *inviteService) GetCurrent(ctx context.Context, spaceId string) (info domain.InviteInfo, err error) {

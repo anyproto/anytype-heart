@@ -113,12 +113,15 @@ func (w *Workspaces) GetExistingInviteInfo() (inviteInfo domain.InviteInfo) {
 	return
 }
 
-func (w *Workspaces) RemoveExistingInviteInfo() (fileCid string, err error) {
-	details := w.Details()
-	fileCid = details.GetString(bundle.RelationKeySpaceInviteFileCid)
+func (w *Workspaces) RemoveExistingInviteInfo() (info domain.InviteInfo, err error) {
+	info = w.GetExistingInviteInfo()
 	newState := w.NewState()
-	newState.RemoveDetail(bundle.RelationKeySpaceInviteFileCid, bundle.RelationKeySpaceInviteFileKey)
-	return fileCid, w.Apply(newState)
+	newState.RemoveDetail(
+		bundle.RelationKeySpaceInviteFileCid,
+		bundle.RelationKeySpaceInviteFileKey,
+		bundle.RelationKeySpaceInvitePermissions,
+		bundle.RelationKeySpaceInviteType)
+	return info, w.Apply(newState)
 }
 
 func (w *Workspaces) SetGuestInviteFileInfo(fileCid string, fileKey string) (err error) {

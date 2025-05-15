@@ -9,6 +9,7 @@ import (
 
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/commonspace/acl/aclclient"
+	"github.com/anyproto/any-sync/commonspace/object/acl/aclrecordproto"
 	"github.com/anyproto/any-sync/commonspace/object/acl/list"
 	"github.com/anyproto/any-sync/commonspace/object/acl/recordverifier"
 	"github.com/anyproto/any-sync/coordinator/coordinatorclient"
@@ -47,6 +48,7 @@ type AccountPermissions struct {
 type AclService interface {
 	app.Component
 	GenerateInvite(ctx context.Context, spaceId string, inviteType model.InviteType, permissions model.ParticipantPermissions) (domain.InviteInfo, error)
+	ChangeInvite(ctx context.Context, spaceId string, permissions model.ParticipantPermissions) error
 	RevokeInvite(ctx context.Context, spaceId string) error
 	GetCurrentInvite(ctx context.Context, spaceId string) (domain.InviteInfo, error)
 	GetGuestUserInvite(ctx context.Context, spaceId string) (domain.InviteInfo, error)
@@ -560,6 +562,48 @@ func (a *aclService) Accept(ctx context.Context, spaceId string, identity crypto
 
 func (a *aclService) GetCurrentInvite(ctx context.Context, spaceId string) (domain.InviteInfo, error) {
 	return a.inviteService.GetCurrent(ctx, spaceId)
+}
+
+func (a *aclService) ChangeInvite(ctx context.Context, spaceId string, permissions model.ParticipantPermissions) (err error) {
+	if spaceId == a.accountService.PersonalSpaceID() {
+		err = ErrPersonalSpace
+		return
+	}
+	current, err := a.inviteService.GetCurrent(ctx, spaceId)
+	if err == nil {
+		if current.InviteType != domain.InviteTypeAnyone {
+			return inviteservice.ErrInviteNotExists
+		}
+	}
+	acceptSpace, err := a.spaceService.Get(ctx, spaceId)
+	if err != nil {
+		return convertedOrSpaceErr(err)
+	}
+	aclClient := acceptSpace.CommonSpace().AclClient()
+	acl := acceptSpace.CommonSpace().Acl()
+	acl.RLock()
+	invites := acl.AclState().Invites(aclrecordproto.AclInviteType_AnyoneCanJoin)
+	if len(invites) == 0 {
+		acl.RUnlock()
+		return inviteservice.ErrInviteNotExists
+	}
+	acl.RUnlock()
+	var (
+		invite            = invites[0]
+		invitePermissions = domain.ConvertParticipantPermissions(permissions)
+	)
+	if invite.Permissions == invitePermissions {
+		return ErrIncorrectPermissions
+	}
+	err = aclClient.ChangeInvite(ctx, invites[0].Id, invitePermissions)
+	if err != nil {
+		return convertedOrAclRequestError(err)
+	}
+	err = a.inviteService.Change(ctx, spaceId, invitePermissions)
+	if err != nil {
+		return convertedOrInternalError("change invite", err)
+	}
+	return nil
 }
 
 func (a *aclService) GenerateInvite(ctx context.Context, spaceId string, invType model.InviteType, permissions model.ParticipantPermissions) (result domain.InviteInfo, err error) {

@@ -1201,6 +1201,10 @@
     - [Rpc.Space.Delete.Request](#anytype-Rpc-Space-Delete-Request)
     - [Rpc.Space.Delete.Response](#anytype-Rpc-Space-Delete-Response)
     - [Rpc.Space.Delete.Response.Error](#anytype-Rpc-Space-Delete-Response-Error)
+    - [Rpc.Space.InviteChange](#anytype-Rpc-Space-InviteChange)
+    - [Rpc.Space.InviteChange.Request](#anytype-Rpc-Space-InviteChange-Request)
+    - [Rpc.Space.InviteChange.Response](#anytype-Rpc-Space-InviteChange-Response)
+    - [Rpc.Space.InviteChange.Response.Error](#anytype-Rpc-Space-InviteChange-Response-Error)
     - [Rpc.Space.InviteGenerate](#anytype-Rpc-Space-InviteGenerate)
     - [Rpc.Space.InviteGenerate.Request](#anytype-Rpc-Space-InviteGenerate-Request)
     - [Rpc.Space.InviteGenerate.Response](#anytype-Rpc-Space-InviteGenerate-Response)
@@ -1641,6 +1645,7 @@
     - [Rpc.Relation.ListWithValue.Response.Error.Code](#anytype-Rpc-Relation-ListWithValue-Response-Error-Code)
     - [Rpc.Relation.Options.Response.Error.Code](#anytype-Rpc-Relation-Options-Response-Error-Code)
     - [Rpc.Space.Delete.Response.Error.Code](#anytype-Rpc-Space-Delete-Response-Error-Code)
+    - [Rpc.Space.InviteChange.Response.Error.Code](#anytype-Rpc-Space-InviteChange-Response-Error-Code)
     - [Rpc.Space.InviteGenerate.Response.Error.Code](#anytype-Rpc-Space-InviteGenerate-Response-Error-Code)
     - [Rpc.Space.InviteGetCurrent.Response.Error.Code](#anytype-Rpc-Space-InviteGetCurrent-Response-Error-Code)
     - [Rpc.Space.InviteGetGuest.Response.Error.Code](#anytype-Rpc-Space-InviteGetGuest-Response-Error-Code)
@@ -2145,6 +2150,7 @@
 | AccountChangeNetworkConfigAndRestart | [Rpc.Account.ChangeNetworkConfigAndRestart.Request](#anytype-Rpc-Account-ChangeNetworkConfigAndRestart-Request) | [Rpc.Account.ChangeNetworkConfigAndRestart.Response](#anytype-Rpc-Account-ChangeNetworkConfigAndRestart-Response) |  |
 | SpaceDelete | [Rpc.Space.Delete.Request](#anytype-Rpc-Space-Delete-Request) | [Rpc.Space.Delete.Response](#anytype-Rpc-Space-Delete-Response) | Space *** |
 | SpaceInviteGenerate | [Rpc.Space.InviteGenerate.Request](#anytype-Rpc-Space-InviteGenerate-Request) | [Rpc.Space.InviteGenerate.Response](#anytype-Rpc-Space-InviteGenerate-Response) |  |
+| SpaceInviteChange | [Rpc.Space.InviteChange.Request](#anytype-Rpc-Space-InviteChange-Request) | [Rpc.Space.InviteChange.Response](#anytype-Rpc-Space-InviteChange-Response) |  |
 | SpaceInviteGetCurrent | [Rpc.Space.InviteGetCurrent.Request](#anytype-Rpc-Space-InviteGetCurrent-Request) | [Rpc.Space.InviteGetCurrent.Response](#anytype-Rpc-Space-InviteGetCurrent-Response) |  |
 | SpaceInviteGetGuest | [Rpc.Space.InviteGetGuest.Request](#anytype-Rpc-Space-InviteGetGuest-Request) | [Rpc.Space.InviteGetGuest.Response](#anytype-Rpc-Space-InviteGetGuest-Response) |  |
 | SpaceInviteRevoke | [Rpc.Space.InviteRevoke.Request](#anytype-Rpc-Space-InviteRevoke-Request) | [Rpc.Space.InviteRevoke.Response](#anytype-Rpc-Space-InviteRevoke-Response) |  |
@@ -19845,6 +19851,63 @@ Available undo/redo operations
 
 
 
+<a name="anytype-Rpc-Space-InviteChange"></a>
+
+### Rpc.Space.InviteChange
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Space-InviteChange-Request"></a>
+
+### Rpc.Space.InviteChange.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| spaceId | [string](#string) |  |  |
+| permissions | [model.ParticipantPermissions](#anytype-model-ParticipantPermissions) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Space-InviteChange-Response"></a>
+
+### Rpc.Space.InviteChange.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Space.InviteChange.Response.Error](#anytype-Rpc-Space-InviteChange-Response-Error) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Space-InviteChange-Response-Error"></a>
+
+### Rpc.Space.InviteChange.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Space.InviteChange.Response.Error.Code](#anytype-Rpc-Space-InviteChange-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
 <a name="anytype-Rpc-Space-InviteGenerate"></a>
 
 ### Rpc.Space.InviteGenerate
@@ -25983,6 +26046,23 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | REQUEST_FAILED | 103 |  |
 | LIMIT_REACHED | 104 |  |
 | NOT_SHAREABLE | 105 |  |
+
+
+
+<a name="anytype-Rpc-Space-InviteChange-Response-Error-Code"></a>
+
+### Rpc.Space.InviteChange.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
+| NO_SUCH_SPACE | 101 |  |
+| SPACE_IS_DELETED | 102 |  |
+| REQUEST_FAILED | 103 |  |
+| INCORRECT_PERMISSIONS | 105 |  |
 
 
 
