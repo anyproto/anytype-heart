@@ -11,6 +11,7 @@ import (
 	"github.com/anyproto/any-sync/commonspace/acl/aclclient/mock_aclclient"
 	"github.com/anyproto/any-sync/commonspace/mock_commonspace"
 	"github.com/anyproto/any-sync/commonspace/object/accountdata"
+	"github.com/anyproto/any-sync/commonspace/object/acl/aclrecordproto"
 	"github.com/anyproto/any-sync/commonspace/object/acl/list"
 	"github.com/anyproto/any-sync/commonspace/object/acl/list/mock_list"
 	"github.com/anyproto/any-sync/commonspace/object/acl/recordverifier"
@@ -386,6 +387,57 @@ func TestService_ViewInvite(t *testing.T) {
 		}, nil)
 		fx.mockJoiningClient.EXPECT().AclGetRecords(ctx, "spaceId", "").Return(recs, nil)
 		_, err = fx.ViewInvite(ctx, realCid, symKey)
+		require.Equal(t, inviteservice.ErrInviteNotExists, err)
+	})
+}
+
+func TestService_ChangeInvite(t *testing.T) {
+	t.Run("change invite", func(t *testing.T) {
+		fx := newFixture(t)
+		defer fx.finish(t)
+		spaceId := "spaceId"
+		fx.mockAccountService.EXPECT().PersonalSpaceID().Return("personal")
+		mockSpace := mock_clientspace.NewMockSpace(t)
+		mockCommonSpace := mock_commonspace.NewMockSpace(fx.ctrl)
+		fx.mockInviteService.EXPECT().GetCurrent(ctx, spaceId).Return(domain.InviteInfo{
+			InviteType:    domain.InviteTypeAnyone,
+			InviteFileCid: "testCid",
+		}, nil)
+		fx.mockSpaceService.EXPECT().Get(ctx, spaceId).Return(mockSpace, nil)
+		mockSpace.EXPECT().CommonSpace().Return(mockCommonSpace)
+		exec := list.NewAclExecutor(spaceId)
+		type cmdErr struct {
+			cmd string
+			err error
+		}
+		cmds := []cmdErr{
+			{"a.init::a", nil},
+			{"a.invite_anyone::invId,r", nil},
+		}
+		for _, cmd := range cmds {
+			err := exec.Execute(cmd.cmd)
+			require.Equal(t, cmd.err, err, cmd)
+		}
+		acl := mockSyncAcl{exec.ActualAccounts()["a"].Acl}
+		invId := acl.AclState().Invites(aclrecordproto.AclInviteType_AnyoneCanJoin)[0].Id
+		mockCommonSpace.EXPECT().Acl().Return(acl)
+		aclClient := mock_aclclient.NewMockAclSpaceClient(fx.ctrl)
+		mockCommonSpace.EXPECT().AclClient().Return(aclClient)
+		aclClient.EXPECT().ChangeInvite(ctx, invId, list.AclPermissionsWriter).Return(nil)
+		fx.mockInviteService.EXPECT().Change(ctx, spaceId, list.AclPermissionsWriter).Return(nil)
+		err := fx.ChangeInvite(ctx, spaceId, model.ParticipantPermissions_Writer)
+		require.NoError(t, err)
+	})
+	t.Run("different invite type", func(t *testing.T) {
+		fx := newFixture(t)
+		defer fx.finish(t)
+		spaceId := "spaceId"
+		fx.mockAccountService.EXPECT().PersonalSpaceID().Return("personal")
+		fx.mockInviteService.EXPECT().GetCurrent(ctx, spaceId).Return(domain.InviteInfo{
+			InviteType:    domain.InviteTypeDefault,
+			InviteFileCid: "testCid",
+		}, nil)
+		err := fx.ChangeInvite(ctx, spaceId, model.ParticipantPermissions_Writer)
 		require.Equal(t, inviteservice.ErrInviteNotExists, err)
 	})
 }
