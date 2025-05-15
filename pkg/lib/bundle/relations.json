@@ -1535,5 +1535,15 @@
     "name": "Plural name",
     "readonly": false,
     "source": "details"
+  },
+  {
+    "description": "Should time be shown for relation values with date format",
+    "format": "checkbox",
+    "hidden": true,
+    "key": "includeTime",
+    "maxCount": 0,
+    "name": "IncludeTime",
+    "readonly": false,
+    "source": "local"
   }
 ]
