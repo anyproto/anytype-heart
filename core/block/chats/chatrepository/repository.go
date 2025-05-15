@@ -95,7 +95,9 @@ func (s *service) Repository(chatObjectId string) (Repository, error) {
 		return nil, fmt.Errorf("resolve space id: %w", err)
 	}
 
-	crdtDb := s.objectStore.GetCrdtDb(spaceId)
+	crdtDbGetter := s.objectStore.GetCrdtDb(spaceId)
+	crdtDb := crdtDbGetter.Wait()
+
 	collectionName := chatObjectId + "chats"
 	collection, err := crdtDb.OpenCollection(s.componentCtx, collectionName)
 	if errors.Is(err, anystore.ErrCollectionNotFound) {
