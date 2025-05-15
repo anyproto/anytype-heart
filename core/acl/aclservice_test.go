@@ -18,6 +18,7 @@ import (
 	"github.com/anyproto/any-sync/commonspace/spacesyncproto"
 	"github.com/anyproto/any-sync/commonspace/sync/syncdeps"
 	"github.com/anyproto/any-sync/commonspace/syncstatus"
+	"github.com/anyproto/any-sync/consensus/consensusproto"
 	"github.com/anyproto/any-sync/coordinator/coordinatorclient/mock_coordinatorclient"
 	"github.com/anyproto/any-sync/coordinator/coordinatorproto"
 	"github.com/anyproto/any-sync/net/peer"
@@ -386,6 +387,141 @@ func TestService_ViewInvite(t *testing.T) {
 		fx.mockJoiningClient.EXPECT().AclGetRecords(ctx, "spaceId", "").Return(recs, nil)
 		_, err = fx.ViewInvite(ctx, realCid, symKey)
 		require.Equal(t, inviteservice.ErrInviteNotExists, err)
+	})
+}
+
+func TestService_GenerateInvite(t *testing.T) {
+	t.Run("new default invite", func(t *testing.T) {
+		fx := newFixture(t)
+		defer fx.finish(t)
+		spaceId := "spaceId"
+		keys, err := accountdata.NewRandom()
+		require.NoError(t, err)
+		fx.mockAccountService.EXPECT().PersonalSpaceID().Return("personal")
+		fx.mockInviteService.EXPECT().GetCurrent(ctx, spaceId).Return(domain.InviteInfo{}, inviteservice.ErrInviteNotExists)
+		mockSpace := mock_clientspace.NewMockSpace(t)
+		mockCommonSpace := mock_commonspace.NewMockSpace(fx.ctrl)
+		mockAclClient := mock_aclclient.NewMockAclSpaceClient(fx.ctrl)
+		mockSpace.EXPECT().CommonSpace().Return(mockCommonSpace)
+		mockCommonSpace.EXPECT().AclClient().Return(mockAclClient)
+		fx.mockSpaceService.EXPECT().Get(ctx, spaceId).Return(mockSpace, nil)
+		rec := &consensusproto.RawRecord{
+			Payload: []byte("test"),
+		}
+		mockAclClient.EXPECT().GenerateInvite(false, true, list.AclPermissionsReader).
+			Return(list.InviteResult{
+				InviteRec: rec,
+				InviteKey: keys.SignKey,
+			}, nil)
+		params := inviteservice.GenerateInviteParams{
+			SpaceId:     spaceId,
+			InviteType:  domain.InviteTypeDefault,
+			Key:         keys.SignKey,
+			Permissions: list.AclPermissionsReader,
+		}
+		mockAclClient.EXPECT().AddRecord(ctx, rec).Return(nil)
+		fx.mockInviteService.EXPECT().Generate(ctx, params, mock.Anything).
+			RunAndReturn(func(ctx2 context.Context, params inviteservice.GenerateInviteParams, f func() error) (domain.InviteInfo, error) {
+				return domain.InviteInfo{
+					InviteFileCid: "testCid",
+				}, f()
+			})
+		info, err := fx.GenerateInvite(ctx, spaceId, model.InviteType_Member, model.ParticipantPermissions_Reader)
+		require.NoError(t, err)
+		require.Equal(t, "testCid", info.InviteFileCid)
+	})
+	t.Run("new anyone can join invite", func(t *testing.T) {
+		fx := newFixture(t)
+		defer fx.finish(t)
+		spaceId := "spaceId"
+		keys, err := accountdata.NewRandom()
+		require.NoError(t, err)
+		fx.mockAccountService.EXPECT().PersonalSpaceID().Return("personal")
+		fx.mockInviteService.EXPECT().GetCurrent(ctx, spaceId).Return(domain.InviteInfo{}, inviteservice.ErrInviteNotExists)
+		mockSpace := mock_clientspace.NewMockSpace(t)
+		mockCommonSpace := mock_commonspace.NewMockSpace(fx.ctrl)
+		mockAclClient := mock_aclclient.NewMockAclSpaceClient(fx.ctrl)
+		mockSpace.EXPECT().CommonSpace().Return(mockCommonSpace)
+		mockCommonSpace.EXPECT().AclClient().Return(mockAclClient)
+		fx.mockSpaceService.EXPECT().Get(ctx, spaceId).Return(mockSpace, nil)
+		rec := &consensusproto.RawRecord{
+			Payload: []byte("test"),
+		}
+		mockAclClient.EXPECT().GenerateInvite(false, false, list.AclPermissionsReader).
+			Return(list.InviteResult{
+				InviteRec: rec,
+				InviteKey: keys.SignKey,
+			}, nil)
+		params := inviteservice.GenerateInviteParams{
+			SpaceId:     spaceId,
+			InviteType:  domain.InviteTypeAnyone,
+			Key:         keys.SignKey,
+			Permissions: list.AclPermissionsReader,
+		}
+		mockAclClient.EXPECT().AddRecord(ctx, rec).Return(nil)
+		fx.mockInviteService.EXPECT().Generate(ctx, params, mock.Anything).
+			RunAndReturn(func(ctx2 context.Context, params inviteservice.GenerateInviteParams, f func() error) (domain.InviteInfo, error) {
+				return domain.InviteInfo{
+					InviteFileCid: "testCid",
+				}, f()
+			})
+		info, err := fx.GenerateInvite(ctx, spaceId, model.InviteType_WithoutApprove, model.ParticipantPermissions_Reader)
+		require.NoError(t, err)
+		require.Equal(t, "testCid", info.InviteFileCid)
+	})
+	t.Run("anyone can join invite after default invite", func(t *testing.T) {
+		fx := newFixture(t)
+		defer fx.finish(t)
+		spaceId := "spaceId"
+		keys, err := accountdata.NewRandom()
+		require.NoError(t, err)
+		fx.mockAccountService.EXPECT().PersonalSpaceID().Return("personal")
+		fx.mockInviteService.EXPECT().GetCurrent(ctx, spaceId).Return(domain.InviteInfo{
+			InviteType: domain.InviteTypeDefault,
+		}, nil)
+		mockSpace := mock_clientspace.NewMockSpace(t)
+		mockCommonSpace := mock_commonspace.NewMockSpace(fx.ctrl)
+		mockAclClient := mock_aclclient.NewMockAclSpaceClient(fx.ctrl)
+		mockSpace.EXPECT().CommonSpace().Return(mockCommonSpace)
+		mockCommonSpace.EXPECT().AclClient().Return(mockAclClient)
+		fx.mockSpaceService.EXPECT().Get(ctx, spaceId).Return(mockSpace, nil)
+		rec := &consensusproto.RawRecord{
+			Payload: []byte("test"),
+		}
+		mockAclClient.EXPECT().GenerateInvite(true, false, list.AclPermissionsReader).
+			Return(list.InviteResult{
+				InviteRec: rec,
+				InviteKey: keys.SignKey,
+			}, nil)
+		params := inviteservice.GenerateInviteParams{
+			SpaceId:     spaceId,
+			InviteType:  domain.InviteTypeAnyone,
+			Key:         keys.SignKey,
+			Permissions: list.AclPermissionsReader,
+		}
+		mockAclClient.EXPECT().AddRecord(ctx, rec).Return(nil)
+		fx.mockInviteService.EXPECT().Generate(ctx, params, mock.Anything).
+			RunAndReturn(func(ctx2 context.Context, params inviteservice.GenerateInviteParams, f func() error) (domain.InviteInfo, error) {
+				return domain.InviteInfo{
+					InviteFileCid: "testCid",
+				}, f()
+			})
+		info, err := fx.GenerateInvite(ctx, spaceId, model.InviteType_WithoutApprove, model.ParticipantPermissions_Reader)
+		require.NoError(t, err)
+		require.Equal(t, "testCid", info.InviteFileCid)
+	})
+	t.Run("invite already exists", func(t *testing.T) {
+		fx := newFixture(t)
+		defer fx.finish(t)
+		spaceId := "spaceId"
+		fx.mockAccountService.EXPECT().PersonalSpaceID().Return("personal")
+		fx.mockInviteService.EXPECT().GetCurrent(ctx, spaceId).Return(domain.InviteInfo{
+			InviteType:    domain.InviteTypeAnyone,
+			InviteFileCid: "testCid",
+		}, nil)
+		info, err := fx.GenerateInvite(ctx, spaceId, model.InviteType_WithoutApprove, model.ParticipantPermissions_Reader)
+		require.NoError(t, err)
+		require.Equal(t, "testCid", info.InviteFileCid)
 	})
 }
 
