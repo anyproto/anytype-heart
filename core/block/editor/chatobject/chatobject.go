@@ -148,7 +148,7 @@ func (s *storeObject) Init(ctx *smartblock.InitContext) error {
 		myParticipantId: myParticipantId,
 	}
 
-	stateStore, err := storestate.New(ctx.Ctx, s.Id(), s.crdtDb, s.chatHandler)
+	stateStore, err := storestate.New(ctx.Ctx, s.Id(), s.repository.GetDb(), s.chatHandler)
 	if err != nil {
 		return fmt.Errorf("create state store: %w", err)
 	}

@@ -47,8 +47,6 @@ type Service interface {
 	app.ComponentRunnable
 
 	Repository(chatObjectId string) (Repository, error)
-	// RepositoryForCollection is useful when you already have the chat object collection
-	RepositoryForCollection(col anystore.Collection) (Repository, error)
 }
 
 type service struct {
@@ -111,19 +109,14 @@ func (s *service) Repository(chatObjectId string) (Repository, error) {
 	}
 
 	return &repository{
+		db:         crdtDb,
 		collection: collection,
 		arenaPool:  s.arenaPool,
 	}, nil
 }
 
-func (s *service) RepositoryForCollection(col anystore.Collection) (Repository, error) {
-	return &repository{
-		collection: col,
-		arenaPool:  s.arenaPool,
-	}, nil
-}
-
 type Repository interface {
+	GetDb() anystore.DB
 	WriteTx(ctx context.Context) (anystore.WriteTx, error)
 	ReadTx(ctx context.Context) (anystore.ReadTx, error)
 	GetLastStateId(ctx context.Context) (string, error)
@@ -140,8 +133,13 @@ type Repository interface {
 }
 
 type repository struct {
+	db         anystore.DB
 	collection anystore.Collection
 	arenaPool  *anyenc.ArenaPool
+}
+
+func (s *repository) GetDb() anystore.DB {
+	return s.db
 }
 
 func (s *repository) WriteTx(ctx context.Context) (anystore.WriteTx, error) {

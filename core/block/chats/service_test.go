@@ -13,6 +13,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/anyproto/anytype-heart/core/block/cache/mock_cache"
+	"github.com/anyproto/anytype-heart/core/block/chats/chatmodel"
 	"github.com/anyproto/anytype-heart/core/block/editor/chatobject"
 	"github.com/anyproto/anytype-heart/core/block/editor/chatobject/mock_chatobject"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
@@ -141,8 +142,8 @@ type chatObjectWrapper struct {
 	chatobject.StoreObject
 }
 
-func givenLastMessages() []*chatobject.Message {
-	return []*chatobject.Message{
+func givenLastMessages() []*chatmodel.Message {
+	return []*chatmodel.Message{
 		{
 			ChatMessage: &model.ChatMessage{
 				Id: "messageId1",

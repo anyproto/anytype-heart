@@ -177,6 +177,10 @@ type SubscribeLastMessagesResponse struct {
 }
 
 func (s *service) SubscribeLastMessages(ctx context.Context, req SubscribeLastMessagesRequest) (*SubscribeLastMessagesResponse, error) {
+	if req.ChatObjectId == "" {
+		return nil, fmt.Errorf("empty chat object id")
+	}
+
 	mngr, err := s.getManager(req.ChatObjectId)
 	if err != nil {
 		return nil, fmt.Errorf("get manager: %w", err)
