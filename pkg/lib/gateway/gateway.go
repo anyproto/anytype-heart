@@ -21,7 +21,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/files"
 	"github.com/anyproto/anytype-heart/core/files/fileobject"
-	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/util/constant"
 	"github.com/anyproto/anytype-heart/util/svg"
@@ -130,10 +129,10 @@ func (g *gateway) Addr() string {
 }
 
 func (g *gateway) StateChange(state int) {
-	switch pb.RpcAppSetDeviceStateRequestDeviceState(state) {
-	case pb.RpcAppSetDeviceStateRequest_FOREGROUND:
+	switch domain.CompState(state) {
+	case domain.CompStateAppWentForeground:
 		g.startServer()
-	case pb.RpcAppSetDeviceStateRequest_BACKGROUND:
+	case domain.CompStateAppWentBackground, domain.CompStateAppClosingInitiated:
 		if err := g.stopServer(); err != nil {
 			log.Errorf("err gateway close: %+v", err)
 		}
