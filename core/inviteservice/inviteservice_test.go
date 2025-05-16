@@ -15,6 +15,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 
+	"github.com/anyproto/anytype-heart/core/anytype/account"
 	"github.com/anyproto/anytype-heart/core/anytype/account/mock_account"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock/smarttest"
@@ -24,10 +25,14 @@ import (
 	"github.com/anyproto/anytype-heart/core/invitestore/mock_invitestore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/pkg/lib/threads"
+	"github.com/anyproto/anytype-heart/space/clientspace"
 	"github.com/anyproto/anytype-heart/space/clientspace/mock_clientspace"
 	"github.com/anyproto/anytype-heart/space/mock_space"
+	"github.com/anyproto/anytype-heart/space/spaceinfo"
+	"github.com/anyproto/anytype-heart/space/techspace"
 	"github.com/anyproto/anytype-heart/space/techspace/mock_techspace"
 	"github.com/anyproto/anytype-heart/tests/testutil"
+	"github.com/anyproto/anytype-heart/util/encode"
 )
 
 type mockInviteObject struct {
@@ -90,6 +95,190 @@ func TestInviteService_RemoveExisting(t *testing.T) {
 		fx.mockInviteStore.EXPECT().RemoveInvite(ctx, invCid).Return(nil)
 		err = fx.RemoveExisting(ctx, "spaceId")
 		require.NoError(t, err)
+	})
+}
+
+func TestInviteService_Generate(t *testing.T) {
+	t.Run("generate invite anyone, no existing info", func(t *testing.T) {
+		fx := newFixture(t)
+		defer fx.ctrl.Finish()
+		fx.expectInviteObject()
+		fx.mockInviteObject.EXPECT().GetExistingInviteInfo().Return(domain.InviteInfo{})
+		acc, err := accountdata.NewRandom()
+		require.NoError(t, err)
+		fx.mockAccountService.EXPECT().AccountID().Return(acc.SignKey.GetPublic().Account())
+		profile := account.Profile{
+			Id:        "profileId",
+			AccountId: acc.SignKey.GetPublic().Account(),
+			Name:      "Misha",
+		}
+		spaceDescription := spaceinfo.SpaceDescription{
+			Name:      "space",
+			IconImage: "icon",
+		}
+		fx.mockAccountService.EXPECT().PersonalSpaceID().Return("personal")
+		fx.mockSpaceView.EXPECT().GetSpaceDescription().Return(spaceDescription)
+		fx.mockFileAcl.EXPECT().GetInfoForFileSharing(spaceDescription.IconImage).Return("iconCid", nil, nil)
+		fx.mockSpaceService.EXPECT().TechSpace().Return(&clientspace.TechSpace{TechSpace: fx.mockTechSpace})
+		fx.mockTechSpace.EXPECT().DoSpaceView(ctx, "spaceId", mock.Anything).RunAndReturn(
+			func(ctx context.Context, spaceId string, f func(view techspace.SpaceView) error) error {
+				return f(fx.mockSpaceView)
+			})
+		fx.mockAccountService.EXPECT().ProfileInfo().Return(profile, nil)
+		fx.mockAccountService.EXPECT().SignData(mock.Anything).Return([]byte("signature"), nil)
+		inviteCid, err := newCidFromBytes([]byte("fileCid"))
+		require.NoError(t, err)
+		inviteKey := crypto.NewAES()
+		fx.mockInviteStore.EXPECT().StoreInvite(ctx, mock.Anything).Return(inviteCid, inviteKey, nil)
+		inviteFileKeyRaw, err := encode.EncodeKeyToBase58(inviteKey)
+		require.NoError(t, err)
+		inviteInfo := domain.InviteInfo{
+			InviteFileCid: inviteCid.String(),
+			InviteFileKey: inviteFileKeyRaw,
+			InviteType:    domain.InviteTypeAnyone,
+			Permissions:   list.AclPermissionsReader,
+		}
+		fx.mockInviteObject.EXPECT().SetInviteFileInfo(inviteInfo).Return(nil)
+		info, err := fx.inviteService.Generate(ctx, GenerateInviteParams{
+			SpaceId:     "spaceId",
+			Key:         acc.PeerKey,
+			InviteType:  domain.InviteTypeAnyone,
+			Permissions: list.AclPermissionsReader,
+		}, func() error {
+			return nil
+		})
+		require.NoError(t, err)
+		require.Equal(t, inviteInfo, info)
+	})
+	t.Run("generate invite anyone, invite exists of different type", func(t *testing.T) {
+		fx := newFixture(t)
+		defer fx.ctrl.Finish()
+		fx.expectInviteObject()
+		returnedInfo := domain.InviteInfo{
+			InviteFileCid: "fileCid",
+			InviteFileKey: "fileKey",
+			InviteType:    domain.InviteTypeDefault,
+			Permissions:   list.AclPermissionsReader,
+		}
+		fx.mockInviteObject.EXPECT().GetExistingInviteInfo().Return(returnedInfo)
+		acc, err := accountdata.NewRandom()
+		require.NoError(t, err)
+		fx.mockAccountService.EXPECT().AccountID().Return(acc.SignKey.GetPublic().Account())
+		profile := account.Profile{
+			Id:        "profileId",
+			AccountId: acc.SignKey.GetPublic().Account(),
+			Name:      "Misha",
+		}
+		spaceDescription := spaceinfo.SpaceDescription{
+			Name:      "space",
+			IconImage: "icon",
+		}
+		fx.mockAccountService.EXPECT().PersonalSpaceID().Return("personal")
+		fx.mockSpaceView.EXPECT().GetSpaceDescription().Return(spaceDescription)
+		fx.mockFileAcl.EXPECT().GetInfoForFileSharing(spaceDescription.IconImage).Return("iconCid", nil, nil)
+		fx.mockSpaceService.EXPECT().TechSpace().Return(&clientspace.TechSpace{TechSpace: fx.mockTechSpace})
+		fx.mockTechSpace.EXPECT().DoSpaceView(ctx, "spaceId", mock.Anything).RunAndReturn(
+			func(ctx context.Context, spaceId string, f func(view techspace.SpaceView) error) error {
+				return f(fx.mockSpaceView)
+			})
+		fx.mockAccountService.EXPECT().ProfileInfo().Return(profile, nil)
+		fx.mockAccountService.EXPECT().SignData(mock.Anything).Return([]byte("signature"), nil)
+		inviteCid, err := newCidFromBytes([]byte("fileCid"))
+		require.NoError(t, err)
+		inviteKey := crypto.NewAES()
+		fx.mockInviteStore.EXPECT().StoreInvite(ctx, mock.Anything).Return(inviteCid, inviteKey, nil)
+		inviteFileKeyRaw, err := encode.EncodeKeyToBase58(inviteKey)
+		require.NoError(t, err)
+		inviteInfo := domain.InviteInfo{
+			InviteFileCid: inviteCid.String(),
+			InviteFileKey: inviteFileKeyRaw,
+			InviteType:    domain.InviteTypeAnyone,
+			Permissions:   list.AclPermissionsReader,
+		}
+		fx.mockInviteObject.EXPECT().SetInviteFileInfo(inviteInfo).Return(nil)
+		info, err := fx.inviteService.Generate(ctx, GenerateInviteParams{
+			SpaceId:     "spaceId",
+			Key:         acc.PeerKey,
+			InviteType:  domain.InviteTypeAnyone,
+			Permissions: list.AclPermissionsReader,
+		}, func() error {
+			return nil
+		})
+		require.NoError(t, err)
+		require.Equal(t, inviteInfo, info)
+	})
+	t.Run("generate invite request join, no existing info", func(t *testing.T) {
+		fx := newFixture(t)
+		defer fx.ctrl.Finish()
+		fx.expectInviteObject()
+		fx.mockInviteObject.EXPECT().GetExistingInviteInfo().Return(domain.InviteInfo{})
+		acc, err := accountdata.NewRandom()
+		require.NoError(t, err)
+		fx.mockAccountService.EXPECT().AccountID().Return(acc.SignKey.GetPublic().Account())
+		profile := account.Profile{
+			Id:        "profileId",
+			AccountId: acc.SignKey.GetPublic().Account(),
+			Name:      "Misha",
+		}
+		spaceDescription := spaceinfo.SpaceDescription{
+			Name:      "space",
+			IconImage: "icon",
+		}
+		fx.mockAccountService.EXPECT().PersonalSpaceID().Return("personal")
+		fx.mockSpaceView.EXPECT().GetSpaceDescription().Return(spaceDescription)
+		fx.mockFileAcl.EXPECT().GetInfoForFileSharing(spaceDescription.IconImage).Return("iconCid", nil, nil)
+		fx.mockSpaceService.EXPECT().TechSpace().Return(&clientspace.TechSpace{TechSpace: fx.mockTechSpace})
+		fx.mockTechSpace.EXPECT().DoSpaceView(ctx, "spaceId", mock.Anything).RunAndReturn(
+			func(ctx context.Context, spaceId string, f func(view techspace.SpaceView) error) error {
+				return f(fx.mockSpaceView)
+			})
+		fx.mockAccountService.EXPECT().ProfileInfo().Return(profile, nil)
+		fx.mockAccountService.EXPECT().SignData(mock.Anything).Return([]byte("signature"), nil)
+		inviteCid, err := newCidFromBytes([]byte("fileCid"))
+		require.NoError(t, err)
+		inviteKey := crypto.NewAES()
+		fx.mockInviteStore.EXPECT().StoreInvite(ctx, mock.Anything).Return(inviteCid, inviteKey, nil)
+		inviteFileKeyRaw, err := encode.EncodeKeyToBase58(inviteKey)
+		require.NoError(t, err)
+		inviteInfo := domain.InviteInfo{
+			InviteFileCid: inviteCid.String(),
+			InviteFileKey: inviteFileKeyRaw,
+			InviteType:    domain.InviteTypeDefault,
+			Permissions:   list.AclPermissionsReader,
+		}
+		fx.mockInviteObject.EXPECT().SetInviteFileInfo(inviteInfo).Return(nil)
+		info, err := fx.inviteService.Generate(ctx, GenerateInviteParams{
+			SpaceId:     "spaceId",
+			Key:         acc.PeerKey,
+			InviteType:  domain.InviteTypeDefault,
+			Permissions: list.AclPermissionsReader,
+		}, func() error {
+			return nil
+		})
+		require.NoError(t, err)
+		require.Equal(t, inviteInfo, info)
+	})
+	t.Run("generate invite anyone, invite exists", func(t *testing.T) {
+		fx := newFixture(t)
+		defer fx.ctrl.Finish()
+		fx.expectInviteObject()
+		returnedInfo := domain.InviteInfo{
+			InviteFileCid: "fileCid",
+			InviteFileKey: "fileKey",
+			InviteType:    domain.InviteTypeAnyone,
+			Permissions:   list.AclPermissionsWriter,
+		}
+		fx.mockAccountService.EXPECT().PersonalSpaceID().Return("personal")
+		fx.mockInviteObject.EXPECT().GetExistingInviteInfo().Return(returnedInfo)
+		info, err := fx.inviteService.Generate(ctx, GenerateInviteParams{
+			SpaceId:     "spaceId",
+			InviteType:  domain.InviteTypeAnyone,
+			Permissions: list.AclPermissionsReader,
+		}, func() error {
+			return nil
+		})
+		require.NoError(t, err)
+		require.Equal(t, returnedInfo, info)
 	})
 }
 
