@@ -64,7 +64,7 @@ func GlobalSearchHandler(s *service.Service) gin.HandlerFunc {
 //	@Accept			json
 //	@Produce		json
 //	@Param			Anytype-Version	header		string											true	"The version of the API to use"	default(2025-05-20)
-//	@Param			space_id		path		string											true	"The ID of the space to search in"
+//	@Param			space_id		path		string											true	"The ID of the space to search in; retrieve from ListSpaces endpoint"
 //	@Param			offset			query		int												false	"The number of items to skip before starting to collect the result set"	default(0)
 //	@Param			limit			query		int												false	"The number of items to return"											default(100)	maximum(1000)
 //	@Param			request			body		apimodel.SearchRequest							true	"The search parameters used to filter and sort the results"

@@ -384,7 +384,7 @@
           "files": {
             "description": "The file values of the property",
             "example": [
-              "['fileId']"
+              "['file_id']"
             ],
             "items": {
               "type": "string"
@@ -483,6 +483,8 @@
       "apimodel.IconFormat": {
         "description": "The format of the icon",
         "enum": [
+          "emoji",
+          "file",
           "icon"
         ],
         "type": "string",
@@ -837,7 +839,7 @@
           "objects": {
             "description": "The object values of the property",
             "example": [
-              "['objectId']"
+              "['object_id']"
             ],
             "items": {
               "type": "string"
@@ -876,7 +878,7 @@
           "objects": {
             "description": "The object values of the property",
             "example": [
-              "['objectId']"
+              "['object_id']"
             ],
             "items": {
               "type": "string"
@@ -2719,7 +2721,7 @@
             }
           },
           {
-            "description": "The ID of the space to which the list belongs",
+            "description": "The ID of the space to which the list belongs; retrieve from ListSpaces endpoint",
             "in": "path",
             "name": "space_id",
             "required": true,
@@ -4860,7 +4862,7 @@
             }
           },
           {
-            "description": "The ID of the space to search in",
+            "description": "The ID of the space to search in; retrieve from ListSpaces endpoint",
             "in": "path",
             "name": "space_id",
             "required": true,

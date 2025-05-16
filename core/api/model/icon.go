@@ -162,8 +162,9 @@ type FileIcon struct {
 
 func (FileIcon) isIcon() {}
 
+// TODO: the enum gen for IconFormat through swaggo is bugged; only the last enum (before: "icon") is used
 type NamedIcon struct {
-	Format IconFormat `json:"format" enums:"icon"`                                                                            // The format of the icon
+	Format IconFormat `json:"format" enums:"emoji,file,icon"`                                                                 // The format of the icon
 	Name   string     `json:"name" example:"document"`                                                                        // The name of the icon
 	Color  *Color     `json:"color,omitempty" example:"yellow" enums:"grey,yellow,orange,red,pink,purple,blue,ice,teal,lime"` // The color of the icon
 }

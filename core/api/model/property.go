@@ -212,10 +212,10 @@ func (DatePropertyValue) isPropertyWithValue() {}
 
 type FilesPropertyValue struct {
 	PropertyBase
-	Key    string         `json:"key" example:"files"`        // The key of the property
-	Name   string         `json:"name" example:"Files"`       // The name of the property
-	Format PropertyFormat `json:"format" enums:"files"`       // The format of the property
-	Files  []string       `json:"files" example:"['fileId']"` // The file values of the property
+	Key    string         `json:"key" example:"files"`         // The key of the property
+	Name   string         `json:"name" example:"Files"`        // The name of the property
+	Format PropertyFormat `json:"format" enums:"files"`        // The format of the property
+	Files  []string       `json:"files" example:"['file_id']"` // The file values of the property
 }
 
 func (FilesPropertyValue) isPropertyWithValue() {}
@@ -262,10 +262,10 @@ func (PhonePropertyValue) isPropertyWithValue() {}
 
 type ObjectsPropertyValue struct {
 	PropertyBase
-	Key     string         `json:"key" example:"creator"`          // The key of the property
-	Name    string         `json:"name" example:"Created by"`      // The name of the property
-	Format  PropertyFormat `json:"format" enums:"objects"`         // The format of the property
-	Objects []string       `json:"objects" example:"['objectId']"` // The object values of the property
+	Key     string         `json:"key" example:"creator"`           // The key of the property
+	Name    string         `json:"name" example:"Created by"`       // The name of the property
+	Format  PropertyFormat `json:"format" enums:"objects"`          // The format of the property
+	Objects []string       `json:"objects" example:"['object_id']"` // The object values of the property
 }
 
 func (ObjectsPropertyValue) isPropertyWithValue() {}
@@ -445,7 +445,7 @@ func (PhonePropertyLinkValue) isPropertyLinkWithValue() {}
 type ObjectsPropertyLinkValue struct {
 	Key     string         `json:"key" example:"creator"`
 	Format  PropertyFormat `json:"format" enums:"objects"`
-	Objects []string       `json:"objects" example:"['objectId']"` // The object values of the property
+	Objects []string       `json:"objects" example:"['object_id']"` // The object values of the property
 }
 
 func (ObjectsPropertyLinkValue) isPropertyLinkWithValue() {}

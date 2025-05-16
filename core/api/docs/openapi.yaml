@@ -287,7 +287,7 @@ components:
         files:
           description: The file values of the property
           example:
-          - '[''fileId'']'
+          - '[''file_id'']'
           items:
             type: string
           type: array
@@ -360,6 +360,8 @@ components:
     apimodel.IconFormat:
       description: The format of the icon
       enum:
+      - emoji
+      - file
       - icon
       type: string
       x-enum-varnames:
@@ -632,7 +634,7 @@ components:
         objects:
           description: The object values of the property
           example:
-          - '[''objectId'']'
+          - '[''object_id'']'
           items:
             type: string
           type: array
@@ -661,7 +663,7 @@ components:
         objects:
           description: The object values of the property
           example:
-          - '[''objectId'']'
+          - '[''object_id'']'
           items:
             type: string
           type: array
@@ -1953,7 +1955,8 @@ paths:
         schema:
           default: "2025-05-20"
           type: string
-      - description: The ID of the space to which the list belongs
+      - description: The ID of the space to which the list belongs; retrieve from
+          ListSpaces endpoint
         in: path
         name: space_id
         required: true
@@ -3382,7 +3385,7 @@ paths:
         schema:
           default: "2025-05-20"
           type: string
-      - description: The ID of the space to search in
+      - description: The ID of the space to search in; retrieve from ListSpaces endpoint
         in: path
         name: space_id
         required: true
