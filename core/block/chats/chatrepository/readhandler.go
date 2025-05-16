@@ -18,7 +18,7 @@ type readMessagesHandler struct{}
 
 func (h readMessagesHandler) getUnreadFilter() query.Filter {
 	return query.Not{
-		Filter: query.Key{Path: []string{readKey}, Filter: query.NewComp(query.CompOpEq, true)},
+		Filter: query.Key{Path: []string{chatmodel.ReadKey}, Filter: query.NewComp(query.CompOpEq, true)},
 	}
 }
 
@@ -27,7 +27,7 @@ func (h readMessagesHandler) getMessagesFilter() query.Filter {
 }
 
 func (h readMessagesHandler) getReadKey() string {
-	return readKey
+	return chatmodel.ReadKey
 }
 
 func (h readMessagesHandler) readModifier(value bool) query.Modifier {
@@ -46,22 +46,22 @@ type readMentionsHandler struct {
 
 func (h readMentionsHandler) getUnreadFilter() query.Filter {
 	return query.And{
-		query.Key{Path: []string{hasMentionKey}, Filter: query.NewComp(query.CompOpEq, true)},
-		query.Key{Path: []string{mentionReadKey}, Filter: query.NewComp(query.CompOpEq, false)},
+		query.Key{Path: []string{chatmodel.HasMentionKey}, Filter: query.NewComp(query.CompOpEq, true)},
+		query.Key{Path: []string{chatmodel.MentionReadKey}, Filter: query.NewComp(query.CompOpEq, false)},
 	}
 }
 
 func (h readMentionsHandler) getMessagesFilter() query.Filter {
-	return query.Key{Path: []string{hasMentionKey}, Filter: query.NewComp(query.CompOpEq, true)}
+	return query.Key{Path: []string{chatmodel.HasMentionKey}, Filter: query.NewComp(query.CompOpEq, true)}
 }
 
 func (h readMentionsHandler) getReadKey() string {
-	return mentionReadKey
+	return chatmodel.MentionReadKey
 }
 
 func (h readMentionsHandler) readModifier(value bool) query.Modifier {
 	return query.ModifyFunc(func(a *anyenc.Arena, v *anyenc.Value) (result *anyenc.Value, modified bool, err error) {
-		if v.GetBool(hasMentionKey) {
+		if v.GetBool(chatmodel.HasMentionKey) {
 			oldValue := v.GetBool(h.getReadKey())
 			if oldValue != value {
 				v.Set(h.getReadKey(), arenaNewBool(a, value))

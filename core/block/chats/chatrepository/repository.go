@@ -30,19 +30,6 @@ const (
 	descStateId = "-stateId"
 )
 
-const (
-	creatorKey     = "creator"
-	createdAtKey   = "createdAt"
-	modifiedAtKey  = "modifiedAt"
-	reactionsKey   = "reactions"
-	contentKey     = "content"
-	readKey        = "read"
-	mentionReadKey = "mentionRead"
-	hasMentionKey  = "hasMention"
-	stateIdKey     = "stateId"
-	orderKey       = "_o"
-)
-
 type Service interface {
 	app.ComponentRunnable
 
@@ -171,7 +158,7 @@ func (s *repository) GetLastStateId(ctx context.Context) (string, error) {
 }
 
 func (s *repository) GetPrevOrderId(ctx context.Context, orderId string) (string, error) {
-	iter, err := s.collection.Find(query.Key{Path: []string{orderKey, "id"}, Filter: query.NewComp(query.CompOpLt, orderId)}).
+	iter, err := s.collection.Find(query.Key{Path: []string{chatmodel.OrderKey, "id"}, Filter: query.NewComp(query.CompOpLt, orderId)}).
 		Sort(descOrder).
 		Limit(1).
 		Iter(ctx)
@@ -185,7 +172,7 @@ func (s *repository) GetPrevOrderId(ctx context.Context, orderId string) (string
 		if err != nil {
 			return "", fmt.Errorf("read doc: %w", err)
 		}
-		prevOrderId := doc.Value().GetString(orderKey, "id")
+		prevOrderId := doc.Value().GetString(chatmodel.OrderKey, "id")
 		return prevOrderId, nil
 	}
 
@@ -255,7 +242,7 @@ func (s *repository) GetOldestOrderId(ctx context.Context, counterType chatmodel
 		if err != nil {
 			return "", fmt.Errorf("get doc: %w", err)
 		}
-		orders := doc.Value().GetObject(orderKey)
+		orders := doc.Value().GetObject(chatmodel.OrderKey)
 		if orders != nil {
 			return orders.Get("id").GetString(), nil
 		}
@@ -273,7 +260,7 @@ func (s *repository) GetReadMessagesAfter(ctx context.Context, afterOrderId stri
 	handler := newReadHandler(counterType)
 
 	filter := query.And{
-		query.Key{Path: []string{orderKey, "id"}, Filter: query.NewComp(query.CompOpGte, afterOrderId)},
+		query.Key{Path: []string{chatmodel.OrderKey, "id"}, Filter: query.NewComp(query.CompOpGte, afterOrderId)},
 		query.Key{Path: []string{handler.getReadKey()}, Filter: query.NewComp(query.CompOpEq, true)},
 	}
 	if handler.getMessagesFilter() != nil {
@@ -301,11 +288,11 @@ func (s *repository) GetUnreadMessageIdsInRange(ctx context.Context, afterOrderI
 	handler := newReadHandler(counterType)
 
 	qry := query.And{
-		query.Key{Path: []string{orderKey, "id"}, Filter: query.NewComp(query.CompOpGte, afterOrderId)},
-		query.Key{Path: []string{orderKey, "id"}, Filter: query.NewComp(query.CompOpLte, beforeOrderId)},
+		query.Key{Path: []string{chatmodel.OrderKey, "id"}, Filter: query.NewComp(query.CompOpGte, afterOrderId)},
+		query.Key{Path: []string{chatmodel.OrderKey, "id"}, Filter: query.NewComp(query.CompOpLte, beforeOrderId)},
 		query.Or{
-			query.Not{query.Key{Path: []string{stateIdKey}, Filter: query.Exists{}}},
-			query.Key{Path: []string{stateIdKey}, Filter: query.NewComp(query.CompOpLte, lastStateId)},
+			query.Not{query.Key{Path: []string{chatmodel.StateIdKey}, Filter: query.Exists{}}},
+			query.Key{Path: []string{chatmodel.StateIdKey}, Filter: query.NewComp(query.CompOpLte, lastStateId)},
 		},
 		handler.getUnreadFilter(),
 	}
@@ -365,13 +352,13 @@ func (s *repository) GetMessages(ctx context.Context, req GetMessagesRequest) ([
 		if req.IncludeBoundary {
 			operator = query.CompOpGte
 		}
-		qry = s.collection.Find(query.Key{Path: []string{orderKey, "id"}, Filter: query.NewComp(operator, req.AfterOrderId)}).Sort(ascOrder).Limit(uint(req.Limit))
+		qry = s.collection.Find(query.Key{Path: []string{chatmodel.OrderKey, "id"}, Filter: query.NewComp(operator, req.AfterOrderId)}).Sort(ascOrder).Limit(uint(req.Limit))
 	} else if req.BeforeOrderId != "" {
 		operator := query.CompOpLt
 		if req.IncludeBoundary {
 			operator = query.CompOpLte
 		}
-		qry = s.collection.Find(query.Key{Path: []string{orderKey, "id"}, Filter: query.NewComp(operator, req.BeforeOrderId)}).Sort(descOrder).Limit(uint(req.Limit))
+		qry = s.collection.Find(query.Key{Path: []string{chatmodel.OrderKey, "id"}, Filter: query.NewComp(operator, req.BeforeOrderId)}).Sort(descOrder).Limit(uint(req.Limit))
 	} else {
 		qry = s.collection.Find(nil).Sort(descOrder).Limit(uint(req.Limit))
 	}
