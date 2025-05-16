@@ -10,7 +10,6 @@ import (
 	"fmt"
 	"net"
 	"net/http"
-	// nolint: gosec
 	_ "net/http/pprof"
 	"os"
 	"os/signal"
@@ -108,7 +107,7 @@ func main() {
 		streamInterceptors []grpc.StreamServerInterceptor
 	)
 
-	if metrics.Enabled {
+	if metrics.GrpcEnabled {
 		unaryInterceptors = append(unaryInterceptors, grpc_prometheus.UnaryServerInterceptor)
 	}
 	unaryInterceptors = append(unaryInterceptors, metrics.UnaryTraceInterceptor)
@@ -187,7 +186,7 @@ func main() {
 	)
 
 	service.RegisterClientCommandsServer(server, mw)
-	if metrics.Enabled {
+	if metrics.GrpcEnabled {
 		grpc_prometheus.EnableHandlingTimeHistogram()
 		// grpc_prometheus.Register(server)
 	}

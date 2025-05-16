@@ -157,6 +157,7 @@ func (i *indexer) runFullTextIndexer(ctx context.Context) error {
 		if err != nil {
 			return nil, fmt.Errorf("finish batch failed: %w", err)
 		}
+		metrics.ObjectFTDocUpdatedCounter.Add(float64(len(succeedIds)))
 
 		return succeedIds, nil
 	})

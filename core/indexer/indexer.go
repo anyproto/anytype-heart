@@ -14,6 +14,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/source"
 	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/metrics"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/filestore"
@@ -170,5 +171,8 @@ func (i *indexer) Index(info smartblock.DocInfo, options ...smartblock.IndexOpti
 	}
 	i.lock.Unlock()
 
+	defer func() {
+		metrics.ObjectStoreUpdatedCounter.Inc()
+	}()
 	return spaceInd.Index(info, options...)
 }
