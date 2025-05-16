@@ -14,9 +14,8 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/block/cache/mock_cache"
 	"github.com/anyproto/anytype-heart/core/block/chats/chatmodel"
-	"github.com/anyproto/anytype-heart/core/block/editor/chatobject"
-	"github.com/anyproto/anytype-heart/core/block/editor/chatobject/mock_chatobject"
-	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
+	"github.com/anyproto/anytype-heart/core/block/chats/chatsubscription"
+	"github.com/anyproto/anytype-heart/core/block/chats/chatsubscription/mock_chatsubscription"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/subscription"
 	"github.com/anyproto/anytype-heart/core/subscription/crossspacesub/mock_crossspacesub"
@@ -71,6 +70,7 @@ type fixture struct {
 	*service
 
 	objectGetter         *mock_cache.MockObjectWaitGetterComponent
+	subscriptionService  *mock_chatsubscription.MockService
 	app                  *app.App
 	crossSpaceSubService *mock_crossspacesub.MockService
 
@@ -110,10 +110,12 @@ func newFixture(t *testing.T) *fixture {
 	objectStore := objectstore.NewStoreFixture(t)
 	objectGetter := mock_cache.NewMockObjectWaitGetterComponent(t)
 	crossSpaceSubService := mock_crossspacesub.NewMockService(t)
+	subscriptionService := mock_chatsubscription.NewMockService(t)
 
 	fx := &fixture{
 		service:              New().(*service),
 		crossSpaceSubService: crossSpaceSubService,
+		subscriptionService:  subscriptionService,
 		objectGetter:         objectGetter,
 		actions:              map[string][]recordedAction{},
 	}
@@ -123,23 +125,20 @@ func newFixture(t *testing.T) *fixture {
 	a.Register(objectStore)
 	a.Register(testutil.PrepareMock(ctx, a, objectGetter))
 	a.Register(testutil.PrepareMock(ctx, a, crossSpaceSubService))
+	a.Register(testutil.PrepareMock(ctx, a, subscriptionService))
 	a.Register(&pushServiceDummy{})
 	a.Register(&accountServiceDummy{})
 	a.Register(fx)
 
 	fx.app = a
 
+	fx.expectSubscribe(t)
 	return fx
 }
 
 func (fx *fixture) start(t *testing.T) {
 	err := fx.app.Start(context.Background())
 	require.NoError(t, err)
-}
-
-type chatObjectWrapper struct {
-	smartblock.SmartBlock
-	chatobject.StoreObject
 }
 
 func givenLastMessages() []*chatmodel.Message {
@@ -173,34 +172,26 @@ func givenDependencies() map[string][]*domain.Details {
 	}
 }
 
-func (fx *fixture) expectChatObject(t *testing.T, chatObjectId string) {
-	fx.objectGetter.EXPECT().WaitAndGetObject(mock.Anything, chatObjectId).RunAndReturn(func(ctx context.Context, id string) (smartblock.SmartBlock, error) {
-		sb := mock_chatobject.NewMockStoreObject(t)
+func (fx *fixture) expectSubscribe(t *testing.T) {
+	fx.subscriptionService.EXPECT().SubscribeLastMessages(mock.Anything, mock.Anything).RunAndReturn(func(ctx context.Context, req chatsubscription.SubscribeLastMessagesRequest) (*chatsubscription.SubscribeLastMessagesResponse, error) {
+		fx.recordAction(req.ChatObjectId, recordedAction{
+			actionType: actionTypeSubscribe,
+			subId:      req.SubId,
+		})
+		return &chatsubscription.SubscribeLastMessagesResponse{
+			Messages:     givenLastMessages(),
+			ChatState:    givenLastState(),
+			Dependencies: givenDependencies(),
+		}, nil
+	}).Maybe()
 
-		sb.EXPECT().Lock().Return().Maybe()
-		sb.EXPECT().Unlock().Return().Maybe()
-		sb.EXPECT().SubscribeLastMessages(mock.Anything, mock.Anything).RunAndReturn(func(ctx context.Context, req chatobject.SubscribeLastMessagesRequest) (*chatobject.SubscribeLastMessagesResponse, error) {
-			fx.recordAction(chatObjectId, recordedAction{
-				actionType: actionTypeSubscribe,
-				subId:      req.SubId,
-			})
-			return &chatobject.SubscribeLastMessagesResponse{
-				Messages:     givenLastMessages(),
-				ChatState:    givenLastState(),
-				Dependencies: givenDependencies(),
-			}, nil
-		}).Maybe()
-
-		sb.EXPECT().Unsubscribe(mock.Anything).RunAndReturn(func(subId string) error {
-			fx.recordAction(chatObjectId, recordedAction{
-				actionType: actionTypeUnsubscribe,
-				subId:      subId,
-			})
-			return nil
-		}).Maybe()
-
-		return sb, nil
-	})
+	fx.subscriptionService.EXPECT().Unsubscribe(mock.Anything, mock.Anything).RunAndReturn(func(chatObjectId string, subId string) error {
+		fx.recordAction(chatObjectId, recordedAction{
+			actionType: actionTypeUnsubscribe,
+			subId:      subId,
+		})
+		return nil
+	}).Maybe()
 }
 
 func TestSubscribeToMessagePreviews(t *testing.T) {
@@ -220,9 +211,6 @@ func TestSubscribeToMessagePreviews(t *testing.T) {
 				}),
 			},
 		}, nil).Maybe()
-
-		fx.expectChatObject(t, "chat1")
-		fx.expectChatObject(t, "chat2")
 
 		fx.start(t)
 
@@ -270,9 +258,6 @@ func TestSubscribeToMessagePreviews(t *testing.T) {
 		fx.crossSpaceSubService.EXPECT().Subscribe(mock.Anything).Return(&subscription.SubscribeResponse{
 			Records: []*domain.Details{},
 		}, nil).Maybe()
-
-		fx.expectChatObject(t, "chat1")
-		fx.expectChatObject(t, "chat2")
 
 		fx.start(t)
 
@@ -330,9 +315,6 @@ func TestSubscribeToMessagePreviews(t *testing.T) {
 			},
 		}, nil).Maybe()
 
-		fx.expectChatObject(t, "chat1")
-		fx.expectChatObject(t, "chat2")
-
 		fx.start(t)
 
 		fx.chatObjectsSubQueue.Add(ctx, &pb.EventMessage{
@@ -384,9 +366,6 @@ func TestSubscribeToMessagePreviews(t *testing.T) {
 				}),
 			},
 		}, nil).Maybe()
-
-		fx.expectChatObject(t, "chat1")
-		fx.expectChatObject(t, "chat2")
 
 		fx.start(t)
 
