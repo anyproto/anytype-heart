@@ -66,8 +66,8 @@ func collectInfoFromDetails(s *pb.SnapshotWithType, info *useCaseInfo) {
 
 func printCustomObjectsUsageInfo(info *useCaseInfo) {
 	fmt.Println("\n- Custom Types and Relations usage:")
-	fmt.Println("Is used\t\tName\t\t\t\t\tId")
-	for name, cInfo := range info.customTypesAndRelations {
-		fmt.Printf("%v -\t\t%s -\t\t%s\n", cInfo.isUsed, name, cInfo.id)
+	fmt.Println("Is used\t\tKey\t\t\t\tName\t\t\t\tId")
+	for key, cInfo := range info.customTypesAndRelations {
+		fmt.Printf("%v\t\t%24s%24s\t\t%s\n", cInfo.isUsed, key, cInfo.name, cInfo.id)
 	}
 }

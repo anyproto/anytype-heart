@@ -307,3 +307,16 @@ func MergeUniqBy[T comparable](s1, s2 []T, equal func(v1, v2 T) bool) (result []
 
 	return result
 }
+
+// DeleteOrApplyFunc deletes elements that satisfy del predicate, otherwise apply func
+func DeleteOrApplyFunc[S ~[]E, E any](s S, del func(E) bool, apply func(E) E) S {
+	i := 0
+	for j := 0; j < len(s); j++ {
+		if v := s[j]; !del(v) {
+			s[i] = apply(v)
+			i++
+		}
+	}
+	clear(s[i:])
+	return s[:i]
+}

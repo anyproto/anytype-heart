@@ -21,14 +21,16 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
+	"github.com/anyproto/anytype-heart/util/slice"
 )
 
-type validator func(snapshot *pb.SnapshotWithType, info *useCaseInfo) error
+type (
+	validator func(snapshot *pb.SnapshotWithType, info *useCaseInfo, fixConfig FixConfig) error
 
-type keyWithIndex struct {
-	key   string
-	index int
-}
+	relationWithFormat interface {
+		GetFormat() model.RelationFormat
+	}
+)
 
 var validators = []validator{
 	validateRelationBlocks,
@@ -39,16 +41,19 @@ var validators = []validator{
 	validateRelationOption,
 }
 
-func validateRelationBlocks(s *pb.SnapshotWithType, info *useCaseInfo) (err error) {
+func validateRelationBlocks(s *pb.SnapshotWithType, info *useCaseInfo, fixConfig FixConfig) (err error) {
 	id := pbtypes.GetString(s.Snapshot.Data.Details, bundle.RelationKeyId.String())
-	var relKeys []string
+	blockIdsByKey := make(map[string][]string)
 	for _, b := range s.Snapshot.Data.Blocks {
 		if rel := simple.New(b).Model().GetRelation(); rel != nil {
-			relKeys = append(relKeys, rel.Key)
+			blockIds := blockIdsByKey[rel.Key]
+			blockIds = append(blockIds, b.Id)
+			blockIdsByKey[rel.Key] = blockIds
 		}
 	}
+	var blocksToDelete []string
 	relLinks := pbtypes.RelationLinks(s.Snapshot.Data.GetRelationLinks())
-	for _, rk := range relKeys {
+	for rk, ids := range blockIdsByKey {
 		if !relLinks.Has(rk) {
 			if rel, errFound := bundle.GetRelation(domain.RelationKey(rk)); errFound == nil {
 				s.Snapshot.Data.RelationLinks = append(s.Snapshot.Data.RelationLinks, &model.RelationLink{
@@ -64,15 +69,22 @@ func validateRelationBlocks(s *pb.SnapshotWithType, info *useCaseInfo) (err erro
 				})
 				continue
 			}
-			err = multierror.Append(err, fmt.Errorf("relation '%v' exists in relation block but not in relation links of object %s", rk, id))
+
+			if fixConfig.DeleteInvalidRelationBlocks {
+				blocksToDelete = append(blocksToDelete, ids...)
+			} else {
+				err = multierror.Append(err, fmt.Errorf("relation '%v' exists in relation block but not in relation links of object %s", rk, id))
+			}
 		}
 	}
+	removeBlocks(s, blocksToDelete)
 	return err
 }
 
-func validateDetails(s *pb.SnapshotWithType, info *useCaseInfo) (err error) {
+func validateDetails(s *pb.SnapshotWithType, info *useCaseInfo, fixConfig FixConfig) (err error) {
 	id := pbtypes.GetString(s.Snapshot.Data.Details, bundle.RelationKeyId.String())
 
+	var relationsToDelete []string
 	for k, v := range s.Snapshot.Data.Details.Fields {
 		if isLinkRelation(k) {
 			continue
@@ -86,7 +98,11 @@ func validateDetails(s *pb.SnapshotWithType, info *useCaseInfo) (err error) {
 			var found bool
 			rel, found = info.customTypesAndRelations[k]
 			if !found {
-				err = multierror.Append(err, fmt.Errorf("relation '%s' exists in details of object '%s', but not in the archive", k, id))
+				if fixConfig.DeleteInvalidDetails {
+					relationsToDelete = append(relationsToDelete, k)
+				} else {
+					err = multierror.Append(err, fmt.Errorf("relation '%s' exists in details of object '%s', but not in the archive", k, id))
+				}
 				continue
 			}
 		}
@@ -132,7 +148,9 @@ func validateDetails(s *pb.SnapshotWithType, info *useCaseInfo) (err error) {
 					isUpdateNeeded = true
 					continue
 				}
-				err = multierror.Append(err, fmt.Errorf("failed to find target id for detail '%s: %s' of object %s", k, val, id))
+				if !fixConfig.DeleteInvalidDetailValues {
+					err = multierror.Append(err, fmt.Errorf("failed to find target id for detail '%s: %s' of object %s", k, val, id))
+				}
 			} else {
 				newValues = append(newValues, val)
 			}
@@ -142,15 +160,23 @@ func validateDetails(s *pb.SnapshotWithType, info *useCaseInfo) (err error) {
 			s.Snapshot.Data.Details.Fields[k] = pbtypes.StringList(newValues)
 		}
 	}
+
+	for _, key := range relationsToDelete {
+		delete(s.Snapshot.Data.Details.Fields, key)
+	}
+
 	return err
 }
 
-func validateObjectTypes(s *pb.SnapshotWithType, info *useCaseInfo) (err error) {
+func validateObjectTypes(s *pb.SnapshotWithType, info *useCaseInfo, fixConfig FixConfig) (err error) {
 	id := pbtypes.GetString(s.Snapshot.Data.Details, bundle.RelationKeyId.String())
 	for _, ot := range s.Snapshot.Data.ObjectTypes {
 		typeId := strings.TrimPrefix(ot, addr.ObjectTypeKeyToIdPrefix)
 		if !bundle.HasObjectTypeByKey(domain.TypeKey(typeId)) {
 			if _, found := info.customTypesAndRelations[typeId]; !found {
+				if fixConfig.SkipInvalidTypes {
+					return errSkipObject
+				}
 				err = multierror.Append(err, fmt.Errorf("object '%s' contains unknown object type: %s", id, ot))
 			}
 		}
@@ -158,7 +184,7 @@ func validateObjectTypes(s *pb.SnapshotWithType, info *useCaseInfo) (err error) 
 	return err
 }
 
-func validateBlockLinks(s *pb.SnapshotWithType, info *useCaseInfo) (err error) {
+func validateBlockLinks(s *pb.SnapshotWithType, info *useCaseInfo, _ FixConfig) (err error) {
 	var (
 		id                       = pbtypes.GetString(s.Snapshot.Data.Details, bundle.RelationKeyId.String())
 		widgetLinkBlocksToDelete []string
@@ -218,7 +244,7 @@ func validateBlockLinks(s *pb.SnapshotWithType, info *useCaseInfo) (err error) {
 	return err
 }
 
-func validateDeleted(s *pb.SnapshotWithType, _ *useCaseInfo) error {
+func validateDeleted(s *pb.SnapshotWithType, _ *useCaseInfo, _ FixConfig) error {
 	id := pbtypes.GetString(s.Snapshot.Data.Details, bundle.RelationKeyId.String())
 
 	if pbtypes.GetBool(s.Snapshot.Data.Details, bundle.RelationKeyIsArchived.String()) {
@@ -239,7 +265,7 @@ func validateDeleted(s *pb.SnapshotWithType, _ *useCaseInfo) error {
 	return nil
 }
 
-func validateRelationOption(s *pb.SnapshotWithType, info *useCaseInfo) error {
+func validateRelationOption(s *pb.SnapshotWithType, info *useCaseInfo, _ FixConfig) error {
 	if s.SbType != model.SmartBlockType_STRelationOption {
 		return nil
 	}
@@ -255,24 +281,6 @@ func validateRelationOption(s *pb.SnapshotWithType, info *useCaseInfo) error {
 		return errSkipObject
 	}
 	return nil
-}
-
-func getRelationLinkByKey(links []*model.RelationLink, key string) *model.RelationLink {
-	for _, l := range links {
-		if l.Key == key {
-			return l
-		}
-	}
-	return nil
-}
-
-func snapshotHasKeyForHash(s *pb.SnapshotWithType, hash string) bool {
-	for _, k := range s.Snapshot.FileKeys {
-		if k.Hash == hash && len(k.Keys) > 0 {
-			return true
-		}
-	}
-	return false
 }
 
 // these relations will be overwritten on import
@@ -362,4 +370,19 @@ func removeWidgetBlocks(s *pb.SnapshotWithType, rootId string, linkBlockIds []st
 	})
 
 	return nil
+}
+
+func removeBlocks(s *pb.SnapshotWithType, blockIds []string) {
+	if len(blockIds) == 0 {
+		return
+	}
+
+	s.Snapshot.Data.Blocks = slice.DeleteOrApplyFunc(s.Snapshot.Data.Blocks, func(b *model.Block) bool {
+		return slices.Contains(blockIds, b.Id)
+	}, func(block *model.Block) *model.Block {
+		block.ChildrenIds = slices.DeleteFunc(block.ChildrenIds, func(id string) bool {
+			return slices.Contains(blockIds, id)
+		})
+		return block
+	})
 }
