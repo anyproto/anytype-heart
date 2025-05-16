@@ -16,7 +16,7 @@ require (
 	github.com/anyproto/go-slip10 v1.0.0
 	github.com/anyproto/lexid v0.0.4
 	github.com/anyproto/protobuf v1.3.3-0.20240814124528-72b8c7e0e0f5
-	github.com/anyproto/tantivy-go v1.0.1
+	github.com/anyproto/tantivy-go v1.0.2
 	github.com/araddon/dateparse v0.0.0-20210429162001-6b43995a97de
 	github.com/avast/retry-go/v4 v4.6.1
 	github.com/chai2010/webp v1.1.2-0.20240612091223-aa1b379218b7
