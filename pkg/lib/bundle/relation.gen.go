@@ -9,7 +9,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-const RelationChecksum = "62a158a458a241cdf5b502bad800a109a8917ab9026826dd1274262c46b1f839"
+const RelationChecksum = "6dc34f0f81133bac9628b57a814f1fdb90e4f52336a331b69e0ece56ddbf881a"
 const (
 	RelationKeyTag                          domain.RelationKey = "tag"
 	RelationKeyCamera                       domain.RelationKey = "camera"
@@ -160,6 +160,7 @@ const (
 	RelationKeyAutoWidgetTargets            domain.RelationKey = "autoWidgetTargets"
 	RelationKeyAutoWidgetDisabled           domain.RelationKey = "autoWidgetDisabled"
 	RelationKeyPluralName                   domain.RelationKey = "pluralName"
+	RelationKeyApiId                        domain.RelationKey = "apiId"
 )
 
 var (
@@ -186,6 +187,20 @@ var (
 			Key:              "aperture",
 			MaxCount:         1,
 			Name:             "Camera aperture",
+			ReadOnly:         false,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
+		RelationKeyApiId: {
+
+			DataSource:       model.Relation_details,
+			Description:      "Identifier to use in intergrations with Anytype API",
+			Format:           model.RelationFormat_longtext,
+			Hidden:           true,
+			Id:               "_brapiId",
+			Key:              "apiId",
+			MaxCount:         1,
+			Name:             "API ID",
 			ReadOnly:         false,
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,

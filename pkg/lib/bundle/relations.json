@@ -1535,5 +1535,15 @@
     "name": "Plural name",
     "readonly": false,
     "source": "details"
+  },
+  {
+    "description": "Identifier to use in intergrations with Anytype API",
+    "format": "longtext",
+    "hidden": true,
+    "key": "apiId",
+    "maxCount": 1,
+    "name": "API ID",
+    "readonly": false,
+    "source": "details"
   }
 ]
