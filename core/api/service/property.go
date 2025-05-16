@@ -193,6 +193,7 @@ func (s *Service) CreateProperty(ctx context.Context, spaceId string, request ap
 		Fields: map[string]*types.Value{
 			bundle.RelationKeyName.String():           pbtypes.String(request.Name),
 			bundle.RelationKeyRelationFormat.String(): pbtypes.Int64(int64(PropertyFormatToRelationFormat[request.Format])),
+			bundle.RelationKeyOrigin.String():         pbtypes.Int64(int64(model.ObjectOrigin_api)),
 		},
 	}
 

@@ -262,11 +262,12 @@ func (s *Service) getTypeFromMap(details *types.Struct, typeMap map[string]apimo
 
 // buildTypeDetails builds the type details from the CreateTypeRequest.
 func (s *Service) buildTypeDetails(ctx context.Context, spaceId string, request apimodel.CreateTypeRequest) (*types.Struct, error) {
-	fields := make(map[string]*types.Value)
-
-	fields[bundle.RelationKeyName.String()] = pbtypes.String(s.sanitizedString(request.Name))
-	fields[bundle.RelationKeyPluralName.String()] = pbtypes.String(s.sanitizedString(request.PluralName))
-	fields[bundle.RelationKeyRecommendedLayout.String()] = pbtypes.Int64(int64(s.typeLayoutToObjectTypeLayout(request.Layout)))
+	fields := map[string]*types.Value{
+		bundle.RelationKeyName.String():              pbtypes.String(s.sanitizedString(request.Name)),
+		bundle.RelationKeyPluralName.String():        pbtypes.String(s.sanitizedString(request.PluralName)),
+		bundle.RelationKeyRecommendedLayout.String(): pbtypes.Int64(int64(s.typeLayoutToObjectTypeLayout(request.Layout))),
+		bundle.RelationKeyOrigin.String():            pbtypes.Int64(int64(model.ObjectOrigin_api)),
+	}
 
 	iconFields, err := s.processIconFields(ctx, spaceId, request.Icon)
 	if err != nil {

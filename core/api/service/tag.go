@@ -110,6 +110,7 @@ func (s *Service) CreateTag(ctx context.Context, spaceId string, propertyId stri
 			bundle.RelationKeyRelationKey.String():         pbtypes.String(rk),
 			bundle.RelationKeyName.String():                pbtypes.String(s.sanitizedString(request.Name)),
 			bundle.RelationKeyRelationOptionColor.String(): pbtypes.String(apimodel.ColorToColorOption[request.Color]),
+			bundle.RelationKeyOrigin.String():              pbtypes.Int64(int64(model.ObjectOrigin_api)),
 		},
 	}
 
