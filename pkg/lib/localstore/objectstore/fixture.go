@@ -107,6 +107,7 @@ func NewStoreFixture(t testing.TB) *StoreFixture {
 		spaceIndexes:        map[string]spaceindex.Store{},
 		techSpaceIdProvider: &stubTechSpaceIdProvider{},
 		subManager:          &spaceindex.SubscriptionManager{},
+		crdtDbs:             map[string]*AnystoreGetter{},
 	}
 
 	t.Cleanup(func() {

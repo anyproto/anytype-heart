@@ -1,4 +1,4 @@
-package chatobject
+package chatmodel
 
 import (
 	"context"
@@ -9,17 +9,40 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
+type CounterType int
+
 const (
-	creatorKey     = "creator"
-	createdAtKey   = "createdAt"
-	modifiedAtKey  = "modifiedAt"
-	reactionsKey   = "reactions"
-	contentKey     = "content"
-	readKey        = "read"
-	mentionReadKey = "mentionRead"
-	hasMentionKey  = "hasMention"
-	stateIdKey     = "stateId"
-	orderKey       = "_o"
+	CounterTypeMessage = CounterType(iota)
+	CounterTypeMention
+)
+
+const (
+	DiffManagerMessages = "messages"
+	DiffManagerMentions = "mentions"
+)
+
+func (t CounterType) DiffManagerName() string {
+	switch t {
+	case CounterTypeMessage:
+		return DiffManagerMessages
+	case CounterTypeMention:
+		return DiffManagerMentions
+	default:
+		return "unknown"
+	}
+}
+
+const (
+	CreatorKey     = "creator"
+	CreatedAtKey   = "createdAt"
+	ModifiedAtKey  = "modifiedAt"
+	ReactionsKey   = "reactions"
+	ContentKey     = "content"
+	ReadKey        = "read"
+	MentionReadKey = "mentionRead"
+	HasMentionKey  = "hasMention"
+	StateIdKey     = "stateId"
+	OrderKey       = "_o"
 )
 
 type Message struct {
@@ -29,7 +52,11 @@ type Message struct {
 	CurrentUserMentioned bool
 }
 
-func (m *Message) IsCurrentUserMentioned(ctx context.Context, myParticipantId string, myIdentity string, repo *repository) (bool, error) {
+type MessagesGetter interface {
+	GetMessagesByIds(ctx context.Context, messageIds []string) ([]*Message, error)
+}
+
+func (m *Message) IsCurrentUserMentioned(ctx context.Context, myParticipantId string, myIdentity string, repo MessagesGetter) (bool, error) {
 	for _, mark := range m.Message.Marks {
 		if mark.Type == model.BlockContentTextMark_Mention && mark.Param == myParticipantId {
 			return true, nil
@@ -37,7 +64,7 @@ func (m *Message) IsCurrentUserMentioned(ctx context.Context, myParticipantId st
 	}
 
 	if m.ReplyToMessageId != "" {
-		msgs, err := repo.getMessagesByIds(ctx, []string{m.ReplyToMessageId})
+		msgs, err := repo.GetMessagesByIds(ctx, []string{m.ReplyToMessageId})
 		if err != nil {
 			return false, fmt.Errorf("get messages by id: %w", err)
 		}
@@ -52,7 +79,7 @@ func (m *Message) IsCurrentUserMentioned(ctx context.Context, myParticipantId st
 	return false, nil
 }
 
-func unmarshalMessage(val *anyenc.Value) (*Message, error) {
+func UnmarshalMessage(val *anyenc.Value) (*Message, error) {
 	return newMessageWrapper(val).toModel()
 }
 
@@ -137,16 +164,16 @@ func (m *Message) MarshalAnyenc(marshalTo *anyenc.Value, arena *anyenc.Arena) {
 	}
 
 	marshalTo.Set("id", arena.NewString(m.Id))
-	marshalTo.Set(creatorKey, arena.NewString(m.Creator))
-	marshalTo.Set(createdAtKey, arena.NewNumberInt(int(m.CreatedAt)))
-	marshalTo.Set(modifiedAtKey, arena.NewNumberInt(int(m.ModifiedAt)))
+	marshalTo.Set(CreatorKey, arena.NewString(m.Creator))
+	marshalTo.Set(CreatedAtKey, arena.NewNumberInt(int(m.CreatedAt)))
+	marshalTo.Set(ModifiedAtKey, arena.NewNumberInt(int(m.ModifiedAt)))
 	marshalTo.Set("replyToMessageId", arena.NewString(m.ReplyToMessageId))
-	marshalTo.Set(contentKey, content)
-	marshalTo.Set(readKey, arenaNewBool(arena, m.Read))
-	marshalTo.Set(mentionReadKey, arenaNewBool(arena, m.MentionRead))
-	marshalTo.Set(hasMentionKey, arenaNewBool(arena, m.CurrentUserMentioned))
-	marshalTo.Set(stateIdKey, arena.NewString(m.StateId))
-	marshalTo.Set(reactionsKey, reactions)
+	marshalTo.Set(ContentKey, content)
+	marshalTo.Set(ReadKey, arenaNewBool(arena, m.Read))
+	marshalTo.Set(MentionReadKey, arenaNewBool(arena, m.MentionRead))
+	marshalTo.Set(HasMentionKey, arenaNewBool(arena, m.CurrentUserMentioned))
+	marshalTo.Set(StateIdKey, arena.NewString(m.StateId))
+	marshalTo.Set(ReactionsKey, reactions)
 }
 
 func arenaNewBool(a *anyenc.Arena, value bool) *anyenc.Value {
@@ -161,24 +188,24 @@ func (m *messageUnmarshaller) toModel() (*Message, error) {
 	return &Message{
 		ChatMessage: &model.ChatMessage{
 			Id:               string(m.val.GetStringBytes("id")),
-			Creator:          string(m.val.GetStringBytes(creatorKey)),
-			CreatedAt:        int64(m.val.GetInt(createdAtKey)),
-			ModifiedAt:       int64(m.val.GetInt(modifiedAtKey)),
-			StateId:          m.val.GetString(stateIdKey),
+			Creator:          string(m.val.GetStringBytes(CreatorKey)),
+			CreatedAt:        int64(m.val.GetInt(CreatedAtKey)),
+			ModifiedAt:       int64(m.val.GetInt(ModifiedAtKey)),
+			StateId:          m.val.GetString(StateIdKey),
 			OrderId:          string(m.val.GetStringBytes("_o", "id")),
 			ReplyToMessageId: string(m.val.GetStringBytes("replyToMessageId")),
 			Message:          m.contentToModel(),
-			Read:             m.val.GetBool(readKey),
-			MentionRead:      m.val.GetBool(mentionReadKey),
+			Read:             m.val.GetBool(ReadKey),
+			MentionRead:      m.val.GetBool(MentionReadKey),
 			Attachments:      m.attachmentsToModel(),
 			Reactions:        m.reactionsToModel(),
 		},
-		CurrentUserMentioned: m.val.GetBool(hasMentionKey),
+		CurrentUserMentioned: m.val.GetBool(HasMentionKey),
 	}, nil
 }
 
 func (m *messageUnmarshaller) contentToModel() *model.ChatMessageMessageContent {
-	inMarks := m.val.GetArray(contentKey, "message", "marks")
+	inMarks := m.val.GetArray(ContentKey, "message", "marks")
 	marks := make([]*model.BlockContentTextMark, 0, len(inMarks))
 	for _, inMark := range inMarks {
 		mark := &model.BlockContentTextMark{
@@ -192,14 +219,14 @@ func (m *messageUnmarshaller) contentToModel() *model.ChatMessageMessageContent 
 		marks = append(marks, mark)
 	}
 	return &model.ChatMessageMessageContent{
-		Text:  string(m.val.GetStringBytes(contentKey, "message", "text")),
+		Text:  string(m.val.GetStringBytes(ContentKey, "message", "text")),
 		Style: model.BlockContentTextStyle(m.val.GetInt("content", "message", "style")),
 		Marks: marks,
 	}
 }
 
 func (m *messageUnmarshaller) attachmentsToModel() []*model.ChatMessageAttachment {
-	inAttachments := m.val.GetObject(contentKey, "attachments")
+	inAttachments := m.val.GetObject(ContentKey, "attachments")
 	var attachments []*model.ChatMessageAttachment
 	if inAttachments != nil {
 		attachments = make([]*model.ChatMessageAttachment, 0, inAttachments.Len())
@@ -214,7 +241,7 @@ func (m *messageUnmarshaller) attachmentsToModel() []*model.ChatMessageAttachmen
 }
 
 func (m *messageUnmarshaller) reactionsToModel() *model.ChatMessageReactions {
-	inReactions := m.val.GetObject(reactionsKey)
+	inReactions := m.val.GetObject(ReactionsKey)
 	reactions := &model.ChatMessageReactions{
 		Reactions: map[string]*model.ChatMessageReactionsIdentityList{},
 	}
