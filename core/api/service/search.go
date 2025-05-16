@@ -22,7 +22,7 @@ var (
 
 // GlobalSearch retrieves a paginated list of objects from all spaces that match the search parameters.
 func (s *Service) GlobalSearch(ctx context.Context, request apimodel.SearchRequest, offset int, limit int) (objects []apimodel.Object, total int, hasMore bool, err error) {
-	spaceIds, err := s.GetAllSpaceIds()
+	spaceIds, err := s.GetAllSpaceIds(ctx)
 	if err != nil {
 		return nil, 0, false, err
 	}
@@ -32,15 +32,15 @@ func (s *Service) GlobalSearch(ctx context.Context, request apimodel.SearchReque
 	sorts, criterionToSortAfter := s.prepareSorts(request.Sort)
 
 	// pre-fetch properties, types and tags to fill the objects
-	propertyMaps, err := s.GetPropertyMapsFromStore(spaceIds, true)
+	propertyMaps, err := s.GetPropertyMapsFromStore(ctx, spaceIds, true)
 	if err != nil {
 		return nil, 0, false, err
 	}
-	typeMaps, err := s.getTypeMapsFromStore(spaceIds, propertyMaps, true)
+	typeMaps, err := s.getTypeMapsFromStore(ctx, spaceIds, propertyMaps, true)
 	if err != nil {
 		return nil, 0, false, err
 	}
-	tagMap, err := s.getTagMapsFromStore(spaceIds)
+	tagMap, err := s.getTagMapsFromStore(ctx, spaceIds)
 	if err != nil {
 		return nil, 0, false, err
 	}
@@ -109,15 +109,15 @@ func (s *Service) Search(ctx context.Context, spaceId string, request apimodel.S
 	queryFilters := s.prepareQueryFilter(request.Query)
 
 	// pre-fetch properties and types to fill the objects
-	propertyMap, err := s.getPropertyMapFromStore(spaceId, true)
+	propertyMap, err := s.getPropertyMapFromStore(ctx, spaceId, true)
 	if err != nil {
 		return nil, 0, false, err
 	}
-	typeMap, err := s.getTypeMapFromStore(spaceId, propertyMap, true)
+	typeMap, err := s.getTypeMapFromStore(ctx, spaceId, propertyMap, true)
 	if err != nil {
 		return nil, 0, false, err
 	}
-	tagMap, err := s.getTagMapFromStore(spaceId)
+	tagMap, err := s.getTagMapFromStore(ctx, spaceId)
 	if err != nil {
 		return nil, 0, false, err
 	}

@@ -106,7 +106,7 @@ var RelationFormatToPropertyFormat = map[model.RelationFormat]apimodel.PropertyF
 
 // ListProperties returns a list of properties for a specific space.
 func (s *Service) ListProperties(ctx context.Context, spaceId string, offset int, limit int) (properties []apimodel.Property, total int, hasMore bool, err error) {
-	resp := s.mw.ObjectSearch(context.Background(), &pb.RpcObjectSearchRequest{
+	resp := s.mw.ObjectSearch(ctx, &pb.RpcObjectSearchRequest{
 		SpaceId: spaceId,
 		Filters: []*model.BlockContentDataviewFilter{
 			{
@@ -161,7 +161,7 @@ func (s *Service) ListProperties(ctx context.Context, spaceId string, offset int
 
 // GetProperty retrieves a single property by its ID in a specific space.
 func (s *Service) GetProperty(ctx context.Context, spaceId string, propertyId string) (apimodel.Property, error) {
-	resp := s.mw.ObjectShow(context.Background(), &pb.RpcObjectShowRequest{
+	resp := s.mw.ObjectShow(ctx, &pb.RpcObjectShowRequest{
 		SpaceId:  spaceId,
 		ObjectId: propertyId,
 	})
@@ -268,7 +268,7 @@ func (s *Service) processProperties(ctx context.Context, spaceId string, entries
 	if len(entries) == 0 {
 		return fields, nil
 	}
-	propertyMap, err := s.getPropertyMapFromStore(spaceId, false)
+	propertyMap, err := s.getPropertyMapFromStore(ctx, spaceId, false)
 	if err != nil {
 		return nil, err
 	}
@@ -502,11 +502,11 @@ func (s *Service) getRecommendedPropertiesFromLists(featured, regular *types.Lis
 
 // GetPropertyMapsFromStore retrieves all properties for all spaces.
 // Property entries can also be keyed by property id. Required for filling types with properties, as recommended properties are referenced by id and not key.
-func (s *Service) GetPropertyMapsFromStore(spaceIds []string, keyByPropertyId bool) (map[string]map[string]apimodel.Property, error) {
+func (s *Service) GetPropertyMapsFromStore(ctx context.Context, spaceIds []string, keyByPropertyId bool) (map[string]map[string]apimodel.Property, error) {
 	spacesToProperties := make(map[string]map[string]apimodel.Property, len(spaceIds))
 
 	for _, spaceId := range spaceIds {
-		propertyMap, err := s.getPropertyMapFromStore(spaceId, keyByPropertyId)
+		propertyMap, err := s.getPropertyMapFromStore(ctx, spaceId, keyByPropertyId)
 		if err != nil {
 			return nil, err
 		}
@@ -518,8 +518,8 @@ func (s *Service) GetPropertyMapsFromStore(spaceIds []string, keyByPropertyId bo
 
 // getPropertyMapFromStore retrieves all properties for a specific space
 // Property entries can also be keyed by property id. Required for filling types with properties, as recommended properties are referenced by id and not key.
-func (s *Service) getPropertyMapFromStore(spaceId string, keyByPropertyId bool) (map[string]apimodel.Property, error) {
-	resp := s.mw.ObjectSearch(context.Background(), &pb.RpcObjectSearchRequest{
+func (s *Service) getPropertyMapFromStore(ctx context.Context, spaceId string, keyByPropertyId bool) (map[string]apimodel.Property, error) {
+	resp := s.mw.ObjectSearch(ctx, &pb.RpcObjectSearchRequest{
 		SpaceId: spaceId,
 		Filters: []*model.BlockContentDataviewFilter{
 			{

@@ -181,10 +181,10 @@ func (s *Service) DeleteTag(ctx context.Context, spaceId string, propertyId stri
 }
 
 // getTagMapsFromStore retrieves all tags for all spaces.
-func (s *Service) getTagMapsFromStore(spaceIds []string) (map[string]map[string]apimodel.Tag, error) {
+func (s *Service) getTagMapsFromStore(ctx context.Context, spaceIds []string) (map[string]map[string]apimodel.Tag, error) {
 	spacesToTags := make(map[string]map[string]apimodel.Tag)
 	for _, spaceId := range spaceIds {
-		tagMap, err := s.getTagMapFromStore(spaceId)
+		tagMap, err := s.getTagMapFromStore(ctx, spaceId)
 		if err != nil {
 			return nil, err
 		}
@@ -194,8 +194,8 @@ func (s *Service) getTagMapsFromStore(spaceIds []string) (map[string]map[string]
 }
 
 // getTagMapFromStore retrieves all tags for a specific space.
-func (s *Service) getTagMapFromStore(spaceId string) (map[string]apimodel.Tag, error) {
-	resp := s.mw.ObjectSearch(context.Background(), &pb.RpcObjectSearchRequest{
+func (s *Service) getTagMapFromStore(ctx context.Context, spaceId string) (map[string]apimodel.Tag, error) {
+	resp := s.mw.ObjectSearch(ctx, &pb.RpcObjectSearchRequest{
 		SpaceId: spaceId,
 		Filters: []*model.BlockContentDataviewFilter{
 			{

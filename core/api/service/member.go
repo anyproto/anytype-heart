@@ -107,7 +107,7 @@ func (s *Service) GetMember(ctx context.Context, spaceId string, memberId string
 		relationKey = bundle.RelationKeyIdentity
 	}
 
-	resp := s.mw.ObjectSearch(context.Background(), &pb.RpcObjectSearchRequest{
+	resp := s.mw.ObjectSearch(ctx, &pb.RpcObjectSearchRequest{
 		SpaceId: spaceId,
 		Filters: []*model.BlockContentDataviewFilter{
 			{
