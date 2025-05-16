@@ -8,13 +8,14 @@ require (
 	github.com/VividCortex/ewma v1.2.0
 	github.com/adrium/goheif v0.0.0-20230113233934-ca402e77a786
 	github.com/anyproto/any-store v0.1.13
-	github.com/anyproto/any-sync v0.7.5
+	github.com/anyproto/any-sync v0.7.6-0.20250516100200-cbc700144557
 	github.com/anyproto/anytype-publish-server/publishclient v0.0.0-20250131145601-de288583ff2a
 	github.com/anyproto/anytype-push-server/pushclient v0.0.0-20250402124745-6451298047f7
 	github.com/anyproto/go-chash v0.1.0
 	github.com/anyproto/go-naturaldate/v2 v2.0.2-0.20230524105841-9829cfd13438
 	github.com/anyproto/go-slip10 v1.0.0
 	github.com/anyproto/lexid v0.0.4
+	github.com/anyproto/prommy v0.0.0-20250516090245-345cc0ca2b45
 	github.com/anyproto/protobuf v1.3.3-0.20240814124528-72b8c7e0e0f5
 	github.com/anyproto/tantivy-go v1.0.2
 	github.com/araddon/dateparse v0.0.0-20210429162001-6b43995a97de
@@ -191,6 +192,7 @@ require (
 	github.com/google/pprof v0.0.0-20250317173921-a4b03ec1a45e // indirect
 	github.com/gopherjs/gopherjs v0.0.0-20190430165422-3e4dfb77656c // indirect
 	github.com/gorilla/css v1.0.1 // indirect
+	github.com/gorilla/websocket v1.5.3 // indirect
 	github.com/gosimple/unidecode v1.0.1 // indirect
 	github.com/hashicorp/errwrap v1.1.0 // indirect
 	github.com/hashicorp/hcl v1.0.0 // indirect
@@ -295,6 +297,8 @@ require (
 	modernc.org/sqlite v1.37.0 // indirect
 	nhooyr.io/websocket v1.8.7 // indirect
 )
+
+replace github.com/anyproto/prommy => ../prommy
 
 replace github.com/dgraph-io/badger/v4 => github.com/anyproto/badger/v4 v4.2.1-0.20240110160636-80743fa3d580
 

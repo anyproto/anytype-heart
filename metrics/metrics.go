@@ -1,15 +1,16 @@
 package metrics
 
 import (
-	"net/http"
+	"net"
 	"os"
 	"sync"
 	"time"
 
+	"github.com/anyproto/prommy"
 	"github.com/google/uuid"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
-	"github.com/prometheus/client_golang/prometheus/promhttp"
+	"modernc.org/libc"
 
 	"github.com/anyproto/anytype-heart/core/anytype/config/loadenv"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
@@ -19,6 +20,7 @@ var log = logging.Logger("anytype-telemetry")
 
 var (
 	DefaultInHouseKey string
+	serverAddr        string
 )
 
 func GenerateAnalyticsId() string {
@@ -26,116 +28,141 @@ func GenerateAnalyticsId() string {
 }
 
 var (
-	Enabled bool
-	once    sync.Once
+	GrpcEnabled bool
+	once        sync.Once
 
-	ObjectFTUpdatedCounter = promauto.NewCounter(prometheus.CounterOpts{
+	ObjectFTDocUpdatedCounter = promauto.NewCounter(prometheus.CounterOpts{
 		Namespace: "anytype",
-		Subsystem: "mw",
-		Name:      "fulltext_index_updated",
-		Help:      "Fulltext updated for an object",
+		Subsystem: "object",
+		Name:      "fulltext_docs_updated",
+		Help:      "Fulltext docs(blocks and properties) updated for an object. Update skipped if doc is not changed",
 	})
-	ObjectDetailsUpdatedCounter = promauto.NewCounter(prometheus.CounterOpts{
+
+	ObjectStoreUpdatedCounter = promauto.NewCounter(prometheus.CounterOpts{
 		Namespace: "anytype",
-		Subsystem: "mw",
-		Name:      "details_index_updated",
-		Help:      "Details updated for an object",
+		Subsystem: "object",
+		Name:      "store_updated",
+		Help:      "Store updated for an object",
 	})
-	ObjectDetailsHeadsNotChangedCounter = promauto.NewCounter(prometheus.CounterOpts{
+	ObjectChangeCreatedCounter = promauto.NewCounter(prometheus.CounterOpts{
 		Namespace: "anytype",
-		Subsystem: "mw",
-		Name:      "details_index_heads_not_changed",
-		Help:      "Details head not changed optimization",
+		Subsystem: "object",
+		Name:      "change_created",
+		Help:      "Store updated for an object",
 	})
+	ObjectChangeStateAppendedCounter = promauto.NewCounter(prometheus.CounterOpts{
+		Namespace: "anytype",
+		Subsystem: "object",
+		Name:      "change_state_appended",
+		Help:      "State appended for an object",
+	})
+	ObjectChangeStateRebuildCounter = promauto.NewCounter(prometheus.CounterOpts{
+		Namespace: "anytype",
+		Subsystem: "object",
+		Name:      "change_state_rebuild",
+		Help:      "State rebuild for an object",
+	})
+
+	ObjectCacheHitCounter = promauto.NewCounter(prometheus.CounterOpts{
+		Namespace: "anytype",
+		Subsystem: "object",
+		Name:      "cache_hit",
+		Help:      "Cache hit count",
+	})
+	ObjectCacheMissCounter = promauto.NewCounter(prometheus.CounterOpts{
+		Namespace: "anytype",
+		Subsystem: "object",
+		Name:      "cache_miss",
+		Help:      "Cache miss count",
+	})
+	ObjectCacheGCCount = promauto.NewCounter(prometheus.CounterOpts{
+		Namespace: "anytype",
+		Subsystem: "object",
+		Name:      "cache_gc",
+		Help:      "Cache garbage collected count",
+	})
+	// anytype_object_cache_size is registered in objectCache pkg due to circular import
+
+	allocatorMMapCounter = prometheus.NewDesc(
+		"libc_allocator_mmap",
+		"Number of current mmap allocations",
+		nil, nil)
+	allocatorBytesCounter = prometheus.NewDesc(
+		"libc_allocator_bytes",
+		"Number of current bytes allocated",
+		nil, nil)
+	allocatorAllocsCounter = prometheus.NewDesc(
+		"libc_allocator_allocs",
+		"Number of current allocations",
+		nil, nil)
 )
 
-func registerPrometheusExpvars() {
-	expvarCollector := prometheus.NewExpvarCollector(map[string]*prometheus.Desc{
-		"badger_blocked_puts_total": prometheus.NewDesc(
-			"badger_blocked_puts_total",
-			"badger_blocked_puts_total",
-			nil, nil,
-		),
-		"badger_lsm_size_bytes": prometheus.NewDesc(
-			"badger_lsm_size_bytes",
-			"badger_lsm_size_bytes",
-			[]string{"dir"}, nil,
-		),
-		"badger_vlog_size_bytes": prometheus.NewDesc(
-			"badger_vlog_size_bytes",
-			"badger_vlog_size_bytes",
-			[]string{"dir"}, nil,
-		),
-		"badger_pending_writes_total": prometheus.NewDesc(
-			"badger_pending_writes_total",
-			"badger_pending_writes_total",
-			[]string{"dir"}, nil,
-		),
-		"badger_disk_reads_total": prometheus.NewDesc(
-			"badger_disk_reads_total",
-			"badger_disk_reads_total",
-			nil, nil,
-		),
-		"badger_disk_writes_total": prometheus.NewDesc(
-			"badger_disk_writes_total",
-			"badger_disk_writes_total",
-			nil, nil,
-		),
-		"badger_read_bytes": prometheus.NewDesc(
-			"badger_read_bytes",
-			"badger_read_bytes",
-			nil, nil,
-		),
-		"badger_written_bytes": prometheus.NewDesc(
-			"badger_written_bytes",
-			"badger_written_bytes",
-			nil, nil,
-		),
-		"badger_lsm_level_gets_total": prometheus.NewDesc(
-			"badger_lsm_level_gets_total",
-			"badger_lsm_level_gets_total",
-			[]string{"level"}, nil,
-		),
-		"badger_lsm_bloom_hits_total": prometheus.NewDesc(
-			"badger_lsm_bloom_hits_total",
-			"badger_lsm_bloom_hits_total",
-			[]string{"level"}, nil,
-		),
-		"badger_gets_total": prometheus.NewDesc(
-			"badger_gets_total",
-			"badger_gets_total",
-			nil, nil,
-		),
-		"badger_puts_total": prometheus.NewDesc(
-			"badger_puts_total",
-			"badger_puts_total",
-			nil, nil,
-		),
-		"badger_memtable_gets_total": prometheus.NewDesc(
-			"badger_memtable_gets_total",
-			"badger_memtable_gets_total",
-			nil, nil,
-		),
-	})
-
-	prometheus.MustRegister(expvarCollector)
+func addrToHttp(addr string) string {
+	addr, port, err := net.SplitHostPort(addr)
+	if err != nil {
+		return ""
+	}
+	if addr == "" {
+		addr = "localhost"
+	}
+	return "http://" + addr + ":" + port
 }
 
-func runPrometheusHttp(addr string) {
-	once.Do(func() {
-		registerPrometheusExpvars()
-		// Create a HTTP server for prometheus.
-		httpServer := &http.Server{Handler: promhttp.HandlerFor(prometheus.DefaultGatherer, promhttp.HandlerOpts{}), Addr: addr}
-		Enabled = true
+// must be called only once
+func registerCustomMetrics() {
+	// throttle libc.MemStat() call to avoid locks
+	var lastMemstat libc.MemAllocatorStat
+	var lastMemstatTime time.Time
+	var lastMemstatMutex sync.Mutex
+	prometheus.MustRegister(prometheus.CollectorFunc(func(ch chan<- prometheus.Metric) {
+		lastMemstatMutex.Lock()
+		defer lastMemstatMutex.Unlock()
+		if time.Since(lastMemstatTime) > time.Second*5 {
+			lastMemstat = libc.MemStat()
+			lastMemstatTime = time.Now()
+		}
+		ch <- prometheus.MustNewConstMetric(allocatorMMapCounter, prometheus.GaugeValue, float64(lastMemstat.Mmaps))
+		ch <- prometheus.MustNewConstMetric(allocatorBytesCounter, prometheus.GaugeValue, float64(lastMemstat.Bytes))
+		ch <- prometheus.MustNewConstMetric(allocatorAllocsCounter, prometheus.GaugeValue, float64(lastMemstat.Allocs))
+	}))
+}
 
-		// Start your http server for prometheus.
+func Start(addr string) string {
+	once.Do(func() {
+		if os.Getenv("ANYTYPE_PROM_GRPC") == "1" {
+			GrpcEnabled = true
+		}
+		serverAddr = addr
+		registerCustomMetrics()
 		go func() {
-			if err := httpServer.ListenAndServe(); err != nil {
-				Enabled = false
-				log.Errorf("Unable to start a prometheus http server.")
+			err := prommy.Serve(addr, prommy.WithDashboardJSON(`[
+		[
+            {"name": "anytype_object_change_created", "short": "CHANGES"},
+			{"name": "anytype_object_change_state_appended", "short": "APPEND"},
+			{"name": "anytype_object_change_state_rebuild", "short": "REBUILD"}
+        ],        
+		[
+			{"name": "anytype_object_store_updated", "short": "STORE"},
+			{"name": "anytype_object_fulltext_docs_updated", "short": "FT DOCS"},
+			{"name": "anytype_object_cache_size", "short": "OBJ CACHE"}
+		],
+		[
+            {"name": "go_memstats_heap_alloc_bytes", "short": "HEAP"}, 
+            {"name": "go_goroutines", "short": "GOROUTINES"},
+			{"name": "go_memstats_alloc_bytes", "short": "ALLOC"}
+        ],
+		[ 
+            {"name": "go_memstats_sys_bytes", "short": "SYS"},
+			{"name": "libc_allocator_bytes", "short": "LIBC"}
+		]
+    ]`))
+			if err != nil {
+				log.Errorf("failed to start metrics server: %v", err)
 			}
 		}()
 	})
+
+	return addrToHttp(serverAddr)
 }
 
 func MetricTimeBuckets(scale []time.Duration) []float64 {
@@ -152,6 +179,6 @@ func init() {
 	}
 
 	if addr := os.Getenv("ANYTYPE_PROM"); addr != "" {
-		runPrometheusHttp(addr)
+		_ = Start(addr)
 	}
 }
