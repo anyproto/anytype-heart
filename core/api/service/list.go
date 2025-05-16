@@ -218,10 +218,10 @@ func (s *Service) GetObjectsInList(ctx context.Context, spaceId string, listId s
 }
 
 // AddObjectsToList adds objects to a list
-func (s *Service) AddObjectsToList(ctx context.Context, spaceId string, listId string, objectIds []string) error {
+func (s *Service) AddObjectsToList(ctx context.Context, _ string, listId string, request apimodel.AddObjectsToListRequest) error {
 	resp := s.mw.ObjectCollectionAdd(ctx, &pb.RpcObjectCollectionAddRequest{
 		ContextId: listId,
-		ObjectIds: objectIds,
+		ObjectIds: request.Objects,
 	})
 
 	if resp.Error != nil && resp.Error.Code != pb.RpcObjectCollectionAddResponseError_NULL {

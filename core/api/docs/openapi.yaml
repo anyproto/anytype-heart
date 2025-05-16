@@ -1,5 +1,16 @@
 components:
   schemas:
+    apimodel.AddObjectsToListRequest:
+      properties:
+        objects:
+          description: The list of object IDs to add to the list
+          example:
+          - '["bafyreie6n5l5nkbjal37su54cha4coy7qzuhrnajluzv5qd5jvtsrxkequ"]'
+          items:
+            type: string
+          type: array
+          uniqueItems: false
+      type: object
     apimodel.CheckboxPropertyLinkValue:
       properties:
         checkbox:
@@ -1882,9 +1893,7 @@ paths:
         content:
           application/json:
             schema:
-              items:
-                type: string
-              type: array
+              $ref: '#/components/schemas/apimodel.AddObjectsToListRequest'
         description: The list of object IDs to add to the list
         required: true
       responses:

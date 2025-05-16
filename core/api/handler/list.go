@@ -5,6 +5,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 
+	apimodel "github.com/anyproto/anytype-heart/core/api/model"
 	"github.com/anyproto/anytype-heart/core/api/pagination"
 	"github.com/anyproto/anytype-heart/core/api/service"
 	"github.com/anyproto/anytype-heart/core/api/util"
@@ -106,16 +107,16 @@ func GetObjectsInListHandler(s *service.Service) gin.HandlerFunc {
 //	@Tags			Lists
 //	@Accept			json
 //	@Produce		json
-//	@Param			Anytype-Version	header		string					true	"The version of the API to use"	default(2025-05-20)
-//	@Param			space_id		path		string					true	"The ID of the space to which the list belongs"
-//	@Param			list_id			path		string					true	"The ID of the list to which objects will be added"
-//	@Param			objects			body		[]string				true	"The list of object IDs to add to the list"
-//	@Success		200				{object}	string					"Objects added successfully"
-//	@Failure		400				{object}	util.ValidationError	"Bad request"
-//	@Failure		401				{object}	util.UnauthorizedError	"Unauthorized"
-//	@Failure		404				{object}	util.NotFoundError		"Not found"
-//	@Failure		429				{object}	util.RateLimitError		"Rate limit exceeded"
-//	@Failure		500				{object}	util.ServerError		"Internal server error"
+//	@Param			Anytype-Version	header		string								true	"The version of the API to use"	default(2025-05-20)
+//	@Param			space_id		path		string								true	"The ID of the space to which the list belongs"
+//	@Param			list_id			path		string								true	"The ID of the list to which objects will be added"
+//	@Param			objects			body		apimodel.AddObjectsToListRequest	true	"The list of object IDs to add to the list"
+//	@Success		200				{object}	string								"Objects added successfully"
+//	@Failure		400				{object}	util.ValidationError				"Bad request"
+//	@Failure		401				{object}	util.UnauthorizedError				"Unauthorized"
+//	@Failure		404				{object}	util.NotFoundError					"Not found"
+//	@Failure		429				{object}	util.RateLimitError					"Rate limit exceeded"
+//	@Failure		500				{object}	util.ServerError					"Internal server error"
 //	@Security		bearerauth
 //	@Router			/v1/spaces/{space_id}/lists/{list_id}/objects [post]
 func AddObjectsToListHandler(s *service.Service) gin.HandlerFunc {
@@ -123,14 +124,14 @@ func AddObjectsToListHandler(s *service.Service) gin.HandlerFunc {
 		spaceId := c.Param("space_id")
 		listId := c.Param("list_id")
 
-		objects := []string{}
-		if err := c.ShouldBindJSON(&objects); err != nil {
+		request := apimodel.AddObjectsToListRequest{}
+		if err := c.ShouldBindJSON(&request); err != nil {
 			apiErr := util.CodeToAPIError(http.StatusBadRequest, err.Error())
 			c.JSON(http.StatusBadRequest, apiErr)
 			return
 		}
 
-		err := s.AddObjectsToList(c, spaceId, listId, objects)
+		err := s.AddObjectsToList(c, spaceId, listId, request)
 		code := util.MapErrorCode(err,
 			util.ErrToCode(service.ErrFailedAddObjectsToList, http.StatusInternalServerError),
 		)
@@ -153,7 +154,7 @@ func AddObjectsToListHandler(s *service.Service) gin.HandlerFunc {
 //	@Tags			Lists
 //	@Produce		json
 //	@Param			Anytype-Version	header		string					true	"The version of the API to use"	default(2025-05-20)
-//	@Param			space_id		path		string					true	"The ID of the space to which the list belongs"
+//	@Param			space_id		path		string					true	"The ID of the space to which the list belongs; retrieve from ListSpaces endpoint"
 //	@Param			list_id			path		string					true	"The ID of the list from which the object will be removed"
 //	@Param			object_id		path		string					true	"The ID of the object to remove from the list"
 //	@Success		200				{object}	string					"Objects removed successfully"
