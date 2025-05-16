@@ -150,8 +150,6 @@ func (s *service) initManager(chatObjectId string, mngr *subscriptionManager) er
 	mngr.eventSender = s.eventSender
 	mngr.repository = repository
 
-	s.managers[chatObjectId] = mngr
-
 	err = mngr.loadChatState(s.componentCtx)
 	if err != nil {
 		return fmt.Errorf("init chat state: %w", err)
