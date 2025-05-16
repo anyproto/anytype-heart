@@ -94,7 +94,10 @@ func (s *service) Repository(chatObjectId string) (Repository, error) {
 	}
 
 	crdtDbGetter := s.objectStore.GetCrdtDb(spaceId)
-	crdtDb := crdtDbGetter.Wait()
+	crdtDb, err := crdtDbGetter.Wait()
+	if err != nil {
+		return nil, fmt.Errorf("get crdt db: %w", err)
+	}
 
 	collectionName := chatObjectId + "chats"
 	collection, err := crdtDb.OpenCollection(s.componentCtx, collectionName)
@@ -116,7 +119,6 @@ func (s *service) Repository(chatObjectId string) (Repository, error) {
 }
 
 type Repository interface {
-	GetDb() anystore.DB
 	WriteTx(ctx context.Context) (anystore.WriteTx, error)
 	ReadTx(ctx context.Context) (anystore.ReadTx, error)
 	GetLastStateId(ctx context.Context) (string, error)
@@ -136,10 +138,6 @@ type repository struct {
 	db         anystore.DB
 	collection anystore.Collection
 	arenaPool  *anyenc.ArenaPool
-}
-
-func (s *repository) GetDb() anystore.DB {
-	return s.db
 }
 
 func (s *repository) WriteTx(ctx context.Context) (anystore.WriteTx, error) {

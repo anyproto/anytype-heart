@@ -96,8 +96,10 @@ func newFixture(t *testing.T) *fixture {
 
 	err := a.Start(ctx)
 	require.NoError(t, err)
+	db, err := objectStore.GetCrdtDb(testSpaceId).Wait()
+	require.NoError(t, err)
 
-	object := New(sb, accountService, eventSender, objectStore.GetCrdtDb(testSpaceId).Wait(), repo, spaceIndex, subscriptions)
+	object := New(sb, accountService, eventSender, db, repo, spaceIndex, subscriptions)
 	rawObject := object.(*storeObject)
 
 	fx := &fixture{

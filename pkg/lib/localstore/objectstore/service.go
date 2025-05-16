@@ -408,18 +408,18 @@ func (g *AnystoreGetter) Get() anystore.DB {
 	return g.db
 }
 
-func (g *AnystoreGetter) Wait() anystore.DB {
+func (g *AnystoreGetter) Wait() (anystore.DB, error) {
 	g.lock.Lock()
 	defer g.lock.Unlock()
 
 	if g.db != nil {
-		return g.db
+		return g.db, nil
 	}
 
 	dir := filepath.Join(g.objectStorePath, g.spaceId)
 	err := ensureDirExists(dir)
 	if err != nil {
-		return nil
+		return nil, fmt.Errorf("ensure dir exists: %w", err)
 	}
 	path := filepath.Join(dir, "crdt.db")
 	db, err := anystore.Open(g.ctx, path, g.config)
@@ -428,11 +428,11 @@ func (g *AnystoreGetter) Wait() anystore.DB {
 		db, err = anystore.Open(g.ctx, path, g.config)
 	}
 	if err != nil {
-		return nil
+		return nil, fmt.Errorf("open: %w", err)
 	}
 	g.db = db
 
-	return db
+	return db, nil
 }
 
 func (s *dsObjectStore) GetCrdtDb(spaceId string) *AnystoreGetter {
@@ -440,14 +440,17 @@ func (s *dsObjectStore) GetCrdtDb(spaceId string) *AnystoreGetter {
 	defer s.crtdStoreLock.Unlock()
 
 	db, ok := s.crdtDbs[spaceId]
-	if !ok {
-		db = &AnystoreGetter{
-			spaceId:         spaceId,
-			ctx:             s.componentCtx,
-			config:          s.getAnyStoreConfig(),
-			objectStorePath: s.objectStorePath,
-		}
+	if ok {
+		return db
 	}
+
+	db = &AnystoreGetter{
+		spaceId:         spaceId,
+		ctx:             s.componentCtx,
+		config:          s.getAnyStoreConfig(),
+		objectStorePath: s.objectStorePath,
+	}
+	s.crdtDbs[spaceId] = db
 	return db
 }
 

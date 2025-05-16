@@ -223,9 +223,17 @@ func (f *ObjectFactory) New(space smartblock.Space, sbType coresb.SmartBlockType
 	case coresb.SmartBlockTypeDevicesObject:
 		return NewDevicesObject(sb, f.deviceService), nil
 	case coresb.SmartBlockTypeChatDerivedObject:
-		return chatobject.New(sb, f.accountService, f.eventSender, f.objectStore.GetCrdtDb(space.Id()).Wait(), f.chatRepositoryService, spaceIndex, f.chatSubscriptionService), nil
+		crdtDb, err := f.objectStore.GetCrdtDb(space.Id()).Wait()
+		if err != nil {
+			return nil, fmt.Errorf("get crdt db: %w", err)
+		}
+		return chatobject.New(sb, f.accountService, f.eventSender, crdtDb, f.chatRepositoryService, spaceIndex, f.chatSubscriptionService), nil
 	case coresb.SmartBlockTypeAccountObject:
-		return accountobject.New(sb, f.accountService.Keys(), spaceIndex, f.layoutConverter, f.fileObjectService, f.objectStore.GetCrdtDb(space.Id()).Wait(), f.config), nil
+		crdtDb, err := f.objectStore.GetCrdtDb(space.Id()).Wait()
+		if err != nil {
+			return nil, fmt.Errorf("get crdt db: %w", err)
+		}
+		return accountobject.New(sb, f.accountService.Keys(), spaceIndex, f.layoutConverter, f.fileObjectService, crdtDb, f.config), nil
 	default:
 		return nil, fmt.Errorf("unexpected smartblock type: %v", sbType)
 	}
