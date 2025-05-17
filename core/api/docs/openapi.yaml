@@ -17,8 +17,6 @@ components:
           description: The checkbox value of the property
           example: true
           type: boolean
-        format:
-          $ref: '#/components/schemas/apimodel.PropertyFormat'
         key:
           example: done
           type: string
@@ -172,8 +170,6 @@ components:
           description: The date value of the property
           example: "2025-02-14T12:34:56Z"
           type: string
-        format:
-          $ref: '#/components/schemas/apimodel.PropertyFormat'
         key:
           example: last_modified_date
           type: string
@@ -217,8 +213,6 @@ components:
           description: The email value of the property
           example: example@example.com
           type: string
-        format:
-          $ref: '#/components/schemas/apimodel.PropertyFormat'
         key:
           example: email
           type: string
@@ -269,15 +263,13 @@ components:
     apimodel.FilesPropertyLinkValue:
       properties:
         files:
-          description: The file values of the property
+          description: The file id of the property
           example:
-          - '[''fileId'']'
+          - '[''file_id'']'
           items:
             type: string
           type: array
           uniqueItems: false
-        format:
-          $ref: '#/components/schemas/apimodel.PropertyFormat'
         key:
           example: files
           type: string
@@ -421,13 +413,13 @@ components:
       type: object
     apimodel.MultiSelectPropertyLinkValue:
       properties:
-        format:
-          $ref: '#/components/schemas/apimodel.PropertyFormat'
         key:
           example: tag
           type: string
         multi_select:
-          description: The selected tag values of the property
+          description: The selected tag ids of the property
+          example:
+          - '[''tag_id'']'
           items:
             type: string
           type: array
@@ -473,8 +465,6 @@ components:
       type: object
     apimodel.NumberPropertyLinkValue:
       properties:
-        format:
-          $ref: '#/components/schemas/apimodel.PropertyFormat'
         key:
           example: height
           type: string
@@ -626,8 +616,6 @@ components:
       type: object
     apimodel.ObjectsPropertyLinkValue:
       properties:
-        format:
-          $ref: '#/components/schemas/apimodel.PropertyFormat'
         key:
           example: creator
           type: string
@@ -671,8 +659,6 @@ components:
       type: object
     apimodel.PhonePropertyLinkValue:
       properties:
-        format:
-          $ref: '#/components/schemas/apimodel.PropertyFormat'
         key:
           example: phone
           type: string
@@ -826,13 +812,12 @@ components:
       type: object
     apimodel.SelectPropertyLinkValue:
       properties:
-        format:
-          $ref: '#/components/schemas/apimodel.PropertyFormat'
         key:
           example: status
           type: string
         select:
-          description: The selected tag value of the property
+          description: The selected tag id of the property
+          example: tag_id
           type: string
       type: object
     apimodel.SelectPropertyValue:
@@ -980,8 +965,6 @@ components:
       type: object
     apimodel.TextPropertyLinkValue:
       properties:
-        format:
-          $ref: '#/components/schemas/apimodel.PropertyFormat'
         key:
           example: description
           type: string
@@ -1088,8 +1071,6 @@ components:
       type: object
     apimodel.URLPropertyLinkValue:
       properties:
-        format:
-          $ref: '#/components/schemas/apimodel.PropertyFormat'
         key:
           example: source
           type: string
