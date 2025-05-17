@@ -1397,7 +1397,17 @@
           },
           "layout": {
             "description": "The layout of the object",
-            "example": "basic",
+            "enum": [
+              "basic",
+              "profile",
+              "action",
+              "note",
+              "bookmark",
+              "set",
+              "set",
+              "collection",
+              "participant"
+            ],
             "type": "string",
             "x-enum-varnames": [
               "ObjectLayoutBasic",
@@ -1438,7 +1448,12 @@
       },
       "apimodel.TypeLayout": {
         "description": "The layout of the type",
-        "example": "basic",
+        "enum": [
+          "basic",
+          "profile",
+          "action",
+          "note"
+        ],
         "type": "string",
         "x-enum-varnames": [
           "TypeLayoutBasic",
@@ -1570,15 +1585,7 @@
             "$ref": "#/components/schemas/apimodel.Icon"
           },
           "layout": {
-            "description": "The layout of the type",
-            "example": "basic",
-            "type": "string",
-            "x-enum-varnames": [
-              "TypeLayoutBasic",
-              "TypeLayoutProfile",
-              "TypeLayoutAction",
-              "TypeLayoutNote"
-            ]
+            "$ref": "#/components/schemas/apimodel.TypeLayout"
           },
           "name": {
             "description": "The name to set for the type",
@@ -2600,7 +2607,7 @@
               }
             }
           },
-          "description": "The list of object IDs to add to the list; must be retrieved from SearchSpace or GlobalSearch endpoint or obtained from response context",
+          "description": "The list of object IDs to add to the list; must be retrieved from SearchSpace or GlobalSearch endpoints or obtained from response context",
           "required": true
         },
         "responses": {
@@ -2710,7 +2717,7 @@
             }
           },
           {
-            "description": "The ID of the object to remove from the list; must be retrieved from SearchSpace or GlobalSearch endpoint or obtained from response context",
+            "description": "The ID of the object to remove from the list; must be retrieved from SearchSpace or GlobalSearch endpoints or obtained from response context",
             "in": "path",
             "name": "object_id",
             "required": true,
