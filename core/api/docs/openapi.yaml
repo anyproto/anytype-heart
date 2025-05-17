@@ -263,7 +263,7 @@ components:
     apimodel.FilesPropertyLinkValue:
       properties:
         files:
-          description: The file id of the property
+          description: The file ids of the property
           example:
           - '[''file_id'']'
           items:
@@ -620,7 +620,7 @@ components:
           example: creator
           type: string
         objects:
-          description: The object values of the property
+          description: The object ids of the property
           example:
           - '[''object_id'']'
           items:

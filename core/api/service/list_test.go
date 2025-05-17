@@ -409,7 +409,7 @@ func TestListService_GetObjectsInList(t *testing.T) {
 			}).
 			Return(&pb.RpcObjectSearchUnsubscribeResponse{}, nil).Once()
 
-		// Mock GetPropertyMapsFromStore
+		// Mock getPropertyMapsFromStore
 		fx.mwMock.
 			On("ObjectSearch", mock.Anything, &pb.RpcObjectSearchRequest{
 				SpaceId: mockedSpaceId,
@@ -654,7 +654,7 @@ func TestListService_GetObjectsInList(t *testing.T) {
 			}).
 			Return(&pb.RpcObjectSearchUnsubscribeResponse{}, nil).Once()
 
-		// Mock GetPropertyMapsFromStore
+		// Mock getPropertyMapsFromStore
 		fx.mwMock.
 			On("ObjectSearch", mock.Anything, &pb.RpcObjectSearchRequest{
 				SpaceId: mockedSpaceId,
@@ -1109,7 +1109,7 @@ func TestListService_GetObjectsInList(t *testing.T) {
 			}).
 			Return(&pb.RpcObjectSearchUnsubscribeResponse{}, nil).Once()
 
-		// Mock GetPropertyMapsFromStore to return an error.
+		// Mock getPropertyMapsFromStore to return an error.
 		fx.mwMock.
 			On("ObjectSearch", mock.Anything, &pb.RpcObjectSearchRequest{
 				SpaceId: mockedSpaceId,

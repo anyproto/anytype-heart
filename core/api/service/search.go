@@ -32,7 +32,7 @@ func (s *Service) GlobalSearch(ctx context.Context, request apimodel.SearchReque
 	sorts, criterionToSortAfter := s.prepareSorts(request.Sort)
 
 	// pre-fetch properties, types and tags to fill the objects
-	propertyMaps, err := s.GetPropertyMapsFromStore(ctx, spaceIds, true)
+	propertyMaps, err := s.getPropertyMapsFromStore(ctx, spaceIds, true)
 	if err != nil {
 		return nil, 0, false, err
 	}

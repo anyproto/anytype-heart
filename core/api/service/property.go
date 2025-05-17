@@ -500,9 +500,9 @@ func (s *Service) getRecommendedPropertiesFromLists(featured, regular *types.Lis
 	return props
 }
 
-// GetPropertyMapsFromStore retrieves all properties for all spaces.
+// getPropertyMapsFromStore retrieves all properties for all spaces.
 // Property entries can also be keyed by property id. Required for filling types with properties, as recommended properties are referenced by id and not key.
-func (s *Service) GetPropertyMapsFromStore(ctx context.Context, spaceIds []string, keyByPropertyId bool) (map[string]map[string]apimodel.Property, error) {
+func (s *Service) getPropertyMapsFromStore(ctx context.Context, spaceIds []string, keyByPropertyId bool) (map[string]map[string]apimodel.Property, error) {
 	spacesToProperties := make(map[string]map[string]apimodel.Property, len(spaceIds))
 
 	for _, spaceId := range spaceIds {

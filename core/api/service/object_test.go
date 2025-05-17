@@ -363,7 +363,7 @@ func TestObjectService_GetObject(t *testing.T) {
 				},
 			}, nil).Once()
 
-		// Mock GetPropertyMapsFromStore
+		// Mock getPropertyMapsFromStore
 		fx.mwMock.On("ObjectSearch", mock.Anything, &pb.RpcObjectSearchRequest{
 			SpaceId: mockedSpaceId,
 			Filters: []*model.BlockContentDataviewFilter{
