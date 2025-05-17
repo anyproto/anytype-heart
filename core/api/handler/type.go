@@ -19,7 +19,7 @@ import (
 //	@Tags			Types
 //	@Produce		json
 //	@Param			Anytype-Version	header		string										true	"The version of the API to use"	default(2025-05-20)
-//	@Param			space_id		path		string										true	"The ID of the space to retrieve types from"
+//	@Param			space_id		path		string										true	"The ID of the space to retrieve types from; must be retrieved from ListSpaces endpoint"
 //	@Param			offset			query		int											false	"The number of items to skip before starting to collect the result set"	default(0)
 //	@Param			limit			query		int											false	"The number of items to return"											default(100)	maximum(1000)
 //	@Success		200				{object}	pagination.PaginatedResponse[apimodel.Type]	"The list of types"
@@ -56,7 +56,7 @@ func ListTypesHandler(s *service.Service) gin.HandlerFunc {
 //	@Tags			Types
 //	@Produce		json
 //	@Param			Anytype-Version	header		string					true	"The version of the API to use"	default(2025-05-20)
-//	@Param			space_id		path		string					true	"The ID of the space from which to retrieve the type"
+//	@Param			space_id		path		string					true	"The ID of the space from which to retrieve the type; must be retrieved from ListSpaces endpoint"
 //	@Param			type_id			path		string					true	"The ID of the type to retrieve"
 //	@Success		200				{object}	apimodel.TypeResponse	"The requested type"
 //	@Failure		401				{object}	util.UnauthorizedError	"Unauthorized"
@@ -96,7 +96,7 @@ func GetTypeHandler(s *service.Service) gin.HandlerFunc {
 //	@Accept			json
 //	@Produce		json
 //	@Param			Anytype-Version	header		string						true	"The version of the API to use"	default(2025-05-20)
-//	@Param			space_id		path		string						true	"The ID of the space in which to create the type"
+//	@Param			space_id		path		string						true	"The ID of the space in which to create the type; must be retrieved from ListSpaces endpoint"
 //	@Param			type			body		apimodel.CreateTypeRequest	true	"The type to create"
 //	@Success		200				{object}	apimodel.TypeResponse		"The created type"
 //	@Failure		400				{object}	util.ValidationError		"Bad request"
@@ -142,7 +142,7 @@ func CreateTypeHandler(s *service.Service) gin.HandlerFunc {
 //	@Accept			json
 //	@Produce		json
 //	@Param			Anytype-Version	header		string						true	"The version of the API to use"	default(2025-05-20)
-//	@Param			space_id		path		string						true	"The ID of the space in which the type exists"
+//	@Param			space_id		path		string						true	"The ID of the space in which the type exists; must be retrieved from ListSpaces endpoint"
 //	@Param			type_id			path		string						true	"The ID of the type to update"
 //	@Param			type			body		apimodel.UpdateTypeRequest	true	"The type details to update"
 //	@Success		200				{object}	apimodel.TypeResponse		"The updated type"
@@ -193,7 +193,7 @@ func UpdateTypeHandler(s *service.Service) gin.HandlerFunc {
 //	@Tags			Types
 //	@Produce		json
 //	@Param			Anytype-Version	header		string					true	"The version of the API to use"	default(2025-05-20)
-//	@Param			space_id		path		string					true	"The ID of the space from which to delete the type"
+//	@Param			space_id		path		string					true	"The ID of the space from which to delete the type; must be retrieved from ListSpaces endpoint"
 //	@Param			type_id			path		string					true	"The ID of the type to delete"
 //	@Success		200				{object}	apimodel.TypeResponse	"The deleted type"
 //	@Failure		401				{object}	util.UnauthorizedError	"Unauthorized"

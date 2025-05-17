@@ -56,7 +56,7 @@ func ListSpacesHandler(s *service.Service) gin.HandlerFunc {
 //	@Tags			Spaces
 //	@Produce		json
 //	@Param			Anytype-Version	header		string					true	"The version of the API to use"	default(2025-05-20)
-//	@Param			space_id		path		string					true	"The ID of the space to retrieve"
+//	@Param			space_id		path		string					true	"The ID of the space to retrieve; must be retrieved from ListSpaces endpoint"
 //	@Success		200				{object}	apimodel.SpaceResponse	"The space details"
 //	@Failure		401				{object}	util.UnauthorizedError	"Unauthorized"
 //	@Failure		404				{object}	util.NotFoundError		"Space not found"
@@ -137,7 +137,7 @@ func CreateSpaceHandler(s *service.Service) gin.HandlerFunc {
 //	@Accept			json
 //	@Produce		json
 //	@Param			Anytype-Version	header		string						true	"The version of the API to use"	default(2025-05-20)
-//	@Param			space_id		path		string						true	"The ID of the space to update"
+//	@Param			space_id		path		string						true	"The ID of the space to update; must be retrieved from ListSpaces endpoint"
 //	@Param			name			body		apimodel.UpdateSpaceRequest	true	"The space details to update"
 //	@Success		200				{object}	apimodel.SpaceResponse		"The updated space"
 //	@Failure		400				{object}	util.ValidationError		"Bad request"

@@ -19,7 +19,7 @@ import (
 //	@Tags			Properties
 //	@Produce		json
 //	@Param			Anytype-Version	header		string											true	"The version of the API to use"	default(2025-05-20)
-//	@Param			space_id		path		string											true	"The ID of the space to list properties for"
+//	@Param			space_id		path		string											true	"The ID of the space to list properties for; must be retrieved from ListSpaces endpoint"
 //	@Param			offset			query		int												false	"The number of items to skip before starting to collect the result set"	default(0)
 //	@Param			limit			query		int												false	"The number of items to return"											default(100)	maximum(1000)
 //	@Success		200				{object}	pagination.PaginatedResponse[apimodel.Property]	"The list of properties in the specified space"
@@ -56,7 +56,7 @@ func ListPropertiesHandler(s *service.Service) gin.HandlerFunc {
 //	@Tags			Properties
 //	@Produce		json
 //	@Param			Anytype-Version	header		string						true	"The version of the API to use"	default(2025-05-20)
-//	@Param			space_id		path		string						true	"The ID of the space to which the property belongs"
+//	@Param			space_id		path		string						true	"The ID of the space to which the property belongs; must be retrieved from ListSpaces endpoint"
 //	@Param			property_id		path		string						true	"The ID of the property to retrieve"
 //	@Success		200				{object}	apimodel.PropertyResponse	"The requested property"
 //	@Failure		401				{object}	util.UnauthorizedError		"Unauthorized"
@@ -96,7 +96,7 @@ func GetPropertyHandler(s *service.Service) gin.HandlerFunc {
 //	@Accept			json
 //	@Produce		json
 //	@Param			Anytype-Version	header		string							true	"The version of the API to use"	default(2025-05-20)
-//	@Param			space_id		path		string							true	"The ID of the space to create the property in"
+//	@Param			space_id		path		string							true	"The ID of the space to create the property in; must be retrieved from ListSpaces endpoint"
 //	@Param			property		body		apimodel.CreatePropertyRequest	true	"The property to create"
 //	@Success		200				{object}	apimodel.PropertyResponse		"The created property"
 //	@Failure		400				{object}	util.ValidationError			"Bad request"
@@ -142,7 +142,7 @@ func CreatePropertyHandler(s *service.Service) gin.HandlerFunc {
 //	@Accept			json
 //	@Produce		json
 //	@Param			Anytype-Version	header		string							true	"The version of the API to use"	default(2025-05-20)
-//	@Param			space_id		path		string							true	"The ID of the space to which the property belongs"
+//	@Param			space_id		path		string							true	"The ID of the space to which the property belongs; must be retrieved from ListSpaces endpoint"
 //	@Param			property_id		path		string							true	"The ID of the property to update"
 //	@Param			property		body		apimodel.UpdatePropertyRequest	true	"The property to update"
 //	@Success		200				{object}	apimodel.PropertyResponse		"The updated property"
@@ -195,7 +195,7 @@ func UpdatePropertyHandler(s *service.Service) gin.HandlerFunc {
 //	@Tags			Properties
 //	@Produce		json
 //	@Param			Anytype-Version	header		string						true	"The version of the API to use"	default(2025-05-20)
-//	@Param			space_id		path		string						true	"The ID of the space to which the property belongs"
+//	@Param			space_id		path		string						true	"The ID of the space to which the property belongs; must be retrieved from ListSpaces endpoint"
 //	@Param			property_id		path		string						true	"The ID of the property to delete"
 //	@Success		200				{object}	apimodel.PropertyResponse	"The deleted property"
 //	@Failure		401				{object}	util.UnauthorizedError		"Unauthorized"

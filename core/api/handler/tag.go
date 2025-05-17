@@ -19,7 +19,7 @@ import (
 //	@Tags			Tags
 //	@Produce		json
 //	@Param			Anytype-Version	header		string										true	"The version of the API to use"	default(2025-05-20)
-//	@Param			space_id		path		string										true	"The ID of the space to list tags for"
+//	@Param			space_id		path		string										true	"The ID of the space to list tags for; must be retrieved from ListSpaces endpoint"
 //	@Param			property_id		path		string										true	"The ID of the property to list tags for"
 //	@Success		200				{object}	pagination.PaginatedResponse[apimodel.Tag]	"The list of tags"
 //	@Failure		401				{object}	util.UnauthorizedError						"Unauthorized"
@@ -58,7 +58,7 @@ func ListTagsHandler(s *service.Service) gin.HandlerFunc {
 //	@Tags			Tags
 //	@Produce		json
 //	@Param			Anytype-Version	header		string					true	"The version of the API to use"	default(2025-05-20)
-//	@Param			space_id		path		string					true	"The ID of the space to retrieve the tag from"
+//	@Param			space_id		path		string					true	"The ID of the space to retrieve the tag from; must be retrieved from ListSpaces endpoint"
 //	@Param			property_id		path		string					true	"The ID of the property to retrieve the tag for"
 //	@Param			tag_id			path		string					true	"The ID of the tag to retrieve"
 //	@Success		200				{object}	apimodel.TagResponse	"The retrieved tag"
@@ -100,7 +100,7 @@ func GetTagHandler(s *service.Service) gin.HandlerFunc {
 //	@Accept			json
 //	@Produce		json
 //	@Param			Anytype-Version	header		string						true	"The version of the API to use"	default(2025-05-20)
-//	@Param			space_id		path		string						true	"The ID of the space to create the tag in"
+//	@Param			space_id		path		string						true	"The ID of the space to create the tag in; must be retrieved from ListSpaces endpoint"
 //	@Param			property_id		path		string						true	"The ID of the property to create the tag for"
 //	@Param			tag				body		apimodel.CreateTagRequest	true	"The tag to create"
 //	@Success		200				{object}	apimodel.TagResponse		"The created tag"
@@ -148,7 +148,7 @@ func CreateTagHandler(s *service.Service) gin.HandlerFunc {
 //	@Accept			json
 //	@Produce		json
 //	@Param			Anytype-Version	header		string						true	"The version of the API to use"	default(2025-05-20)
-//	@Param			space_id		path		string						true	"The ID of the space to update the tag in"
+//	@Param			space_id		path		string						true	"The ID of the space to update the tag in; must be retrieved from ListSpaces endpoint"
 //	@Param			property_id		path		string						true	"The ID of the property to update the tag for"
 //	@Param			tag_id			path		string						true	"The ID of the tag to update"
 //	@Param			tag				body		apimodel.UpdateTagRequest	true	"The tag to update"
@@ -202,7 +202,7 @@ func UpdateTagHandler(s *service.Service) gin.HandlerFunc {
 //	@Tags			Tags
 //	@Produce		json
 //	@Param			Anytype-Version	header		string					true	"The version of the API to use"	default(2025-05-20)
-//	@Param			space_id		path		string					true	"The ID of the space to delete the tag from"
+//	@Param			space_id		path		string					true	"The ID of the space to delete the tag from; must be retrieved from ListSpaces endpoint"
 //	@Param			property_id		path		string					true	"The ID of the property to delete the tag for"
 //	@Param			tag_id			path		string					true	"The ID of the tag to delete"
 //	@Success		200				{object}	apimodel.TagResponse	"The deleted tag"

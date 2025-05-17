@@ -19,7 +19,7 @@ import (
 //	@Tags			Objects
 //	@Produce		json
 //	@Param			Anytype-Version	header		string											true	"The version of the API to use"	default(2025-05-20)
-//	@Param			space_id		path		string											true	"The ID of the space in which to list objects"
+//	@Param			space_id		path		string											true	"The ID of the space in which to list objects; must be retrieved from ListSpaces endpoint"
 //	@Param			offset			query		int												false	"The number of items to skip before starting to collect the result set"	default(0)
 //	@Param			limit			query		int												false	"The number of items to return"											default(100)	maximum(1000)
 //	@Success		200				{object}	pagination.PaginatedResponse[apimodel.Object]	"The list of objects in the specified space"
@@ -58,7 +58,7 @@ func ListObjectsHandler(s *service.Service) gin.HandlerFunc {
 //	@Tags			Objects
 //	@Produce		json
 //	@Param			Anytype-Version	header		string					true	"The version of the API to use"	default(2025-05-20)
-//	@Param			space_id		path		string					true	"The ID of the space in which the object exists"
+//	@Param			space_id		path		string					true	"The ID of the space in which the object exists; must be retrieved from ListSpaces endpoint"
 //	@Param			object_id		path		string					true	"The ID of the object to retrieve"
 //	@Param			format			query		apimodel.BodyFormat		false	"The format to return the object body in" default("md")
 //	@Success		200				{object}	apimodel.ObjectResponse	"The retrieved object"
@@ -101,7 +101,7 @@ func GetObjectHandler(s *service.Service) gin.HandlerFunc {
 //	@Accept			json
 //	@Produce		json
 //	@Param			Anytype-Version	header		string							true	"The version of the API to use"	default(2025-05-20)
-//	@Param			space_id		path		string							true	"The ID of the space in which to create the object"
+//	@Param			space_id		path		string							true	"The ID of the space in which to create the object; must be retrieved from ListSpaces endpoint"
 //	@Param			object			body		apimodel.CreateObjectRequest	true	"The object to create"
 //	@Success		200				{object}	apimodel.ObjectResponse			"The created object"
 //	@Failure		400				{object}	util.ValidationError			"Bad request"
@@ -152,7 +152,7 @@ func CreateObjectHandler(s *service.Service) gin.HandlerFunc {
 //	@Accept			json
 //	@Produce		json
 //	@Param			Anytype-Version	header		string							true	"The version of the API to use"	default(2025-05-20)
-//	@Param			space_id		path		string							true	"The ID of the space in which the object exists"
+//	@Param			space_id		path		string							true	"The ID of the space in which the object exists; must be retrieved from ListSpaces endpoint"
 //	@Param			object_id		path		string							true	"The ID of the object to update"
 //	@Param			object			body		apimodel.UpdateObjectRequest	true	"The details of the object to update"
 //	@Success		200				{object}	apimodel.ObjectResponse			"The updated object"
@@ -203,7 +203,7 @@ func UpdateObjectHandler(s *service.Service) gin.HandlerFunc {
 //	@Tags			Objects
 //	@Produce		json
 //	@Param			Anytype-Version	header		string					true	"The version of the API to use"	default(2025-05-20)
-//	@Param			space_id		path		string					true	"The ID of the space in which the object exists"
+//	@Param			space_id		path		string					true	"The ID of the space in which the object exists; must be retrieved from ListSpaces endpoint"
 //	@Param			object_id		path		string					true	"The ID of the object to delete"
 //	@Success		200				{object}	apimodel.ObjectResponse	"The deleted object"
 //	@Failure		401				{object}	util.UnauthorizedError	"Unauthorized"

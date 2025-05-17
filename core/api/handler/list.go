@@ -19,7 +19,7 @@ import (
 //	@Tags			Lists
 //	@Produce		json
 //	@Param			Anytype-Version	header		string										true	"The version of the API to use"	default(2025-05-20)
-//	@Param			space_id		path		string										true	"The ID of the space to which the list belongs"
+//	@Param			space_id		path		string										true	"The ID of the space to which the list belongs; must be retrieved from ListSpaces endpoint"
 //	@Param			list_id			path		string										true	"The ID of the list to retrieve views for"
 //	@Param			offset			query		int											false	"The number of items to skip before starting to collect the result set"	default(0)
 //	@Param			limit			query		int											false	"The number of items to return"
@@ -60,7 +60,7 @@ func GetListViewsHandler(s *service.Service) gin.HandlerFunc {
 //	@Tags			Lists
 //	@Produce		json
 //	@Param			Anytype-Version	header		string											true	"The version of the API to use"	default(2025-05-20)
-//	@Param			space_id		path		string											true	"The ID of the space to which the list belongs"
+//	@Param			space_id		path		string											true	"The ID of the space to which the list belongs; must be retrieved from ListSpaces endpoint"
 //	@Param			list_id			path		string											true	"The ID of the list to retrieve objects for"
 //	@Param			view_id			path		string											true	"The ID of the view to retrieve objects for"
 //	@Param			offset			query		int												false	"The number of items to skip before starting to collect the result set"	default(0)
@@ -108,7 +108,7 @@ func GetObjectsInListHandler(s *service.Service) gin.HandlerFunc {
 //	@Accept			json
 //	@Produce		json
 //	@Param			Anytype-Version	header		string								true	"The version of the API to use"	default(2025-05-20)
-//	@Param			space_id		path		string								true	"The ID of the space to which the list belongs"
+//	@Param			space_id		path		string								true	"The ID of the space to which the list belongs; must be retrieved from ListSpaces endpoint"
 //	@Param			list_id			path		string								true	"The ID of the list to which objects will be added"
 //	@Param			objects			body		apimodel.AddObjectsToListRequest	true	"The list of object IDs to add to the list"
 //	@Success		200				{object}	string								"Objects added successfully"
@@ -154,7 +154,7 @@ func AddObjectsToListHandler(s *service.Service) gin.HandlerFunc {
 //	@Tags			Lists
 //	@Produce		json
 //	@Param			Anytype-Version	header		string					true	"The version of the API to use"	default(2025-05-20)
-//	@Param			space_id		path		string					true	"The ID of the space to which the list belongs; retrieve from ListSpaces endpoint"
+//	@Param			space_id		path		string					true	"The ID of the space to which the list belongs; must be retrieved from ListSpaces endpoint"
 //	@Param			list_id			path		string					true	"The ID of the list from which the object will be removed"
 //	@Param			object_id		path		string					true	"The ID of the object to remove from the list"
 //	@Success		200				{object}	string					"Objects removed successfully"

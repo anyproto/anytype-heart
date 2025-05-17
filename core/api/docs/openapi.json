@@ -2379,7 +2379,7 @@
             }
           },
           {
-            "description": "The ID of the space to retrieve",
+            "description": "The ID of the space to retrieve; must be retrieved from ListSpaces endpoint",
             "in": "path",
             "name": "space_id",
             "required": true,
@@ -2455,7 +2455,7 @@
             }
           },
           {
-            "description": "The ID of the space to update",
+            "description": "The ID of the space to update; must be retrieved from ListSpaces endpoint",
             "in": "path",
             "name": "space_id",
             "required": true,
@@ -2574,7 +2574,7 @@
             }
           },
           {
-            "description": "The ID of the space to which the list belongs",
+            "description": "The ID of the space to which the list belongs; must be retrieved from ListSpaces endpoint",
             "in": "path",
             "name": "space_id",
             "required": true,
@@ -2692,7 +2692,7 @@
             }
           },
           {
-            "description": "The ID of the space to which the list belongs; retrieve from ListSpaces endpoint",
+            "description": "The ID of the space to which the list belongs; must be retrieved from ListSpaces endpoint",
             "in": "path",
             "name": "space_id",
             "required": true,
@@ -2808,7 +2808,7 @@
             }
           },
           {
-            "description": "The ID of the space to which the list belongs",
+            "description": "The ID of the space to which the list belongs; must be retrieved from ListSpaces endpoint",
             "in": "path",
             "name": "space_id",
             "required": true,
@@ -2912,7 +2912,7 @@
             }
           },
           {
-            "description": "The ID of the space to which the list belongs",
+            "description": "The ID of the space to which the list belongs; must be retrieved from ListSpaces endpoint",
             "in": "path",
             "name": "space_id",
             "required": true,
@@ -3025,7 +3025,7 @@
             }
           },
           {
-            "description": "The ID of the space to list members for",
+            "description": "The ID of the space to list members for; must be retrieved from ListSpaces endpoint",
             "in": "path",
             "name": "space_id",
             "required": true,
@@ -3112,7 +3112,7 @@
             }
           },
           {
-            "description": "The ID of the space to get the member from",
+            "description": "The ID of the space to get the member from; must be retrieved from ListSpaces endpoint",
             "in": "path",
             "name": "space_id",
             "required": true,
@@ -3199,7 +3199,7 @@
             }
           },
           {
-            "description": "The ID of the space in which to list objects",
+            "description": "The ID of the space in which to list objects; must be retrieved from ListSpaces endpoint",
             "in": "path",
             "name": "space_id",
             "required": true,
@@ -3284,7 +3284,7 @@
             }
           },
           {
-            "description": "The ID of the space in which to create the object",
+            "description": "The ID of the space in which to create the object; must be retrieved from ListSpaces endpoint",
             "in": "path",
             "name": "space_id",
             "required": true,
@@ -3383,7 +3383,7 @@
             }
           },
           {
-            "description": "The ID of the space in which the object exists",
+            "description": "The ID of the space in which the object exists; must be retrieved from ListSpaces endpoint",
             "in": "path",
             "name": "space_id",
             "required": true,
@@ -3498,7 +3498,7 @@
             }
           },
           {
-            "description": "The ID of the space in which the object exists",
+            "description": "The ID of the space in which the object exists; must be retrieved from ListSpaces endpoint",
             "in": "path",
             "name": "space_id",
             "required": true,
@@ -3605,7 +3605,7 @@
             }
           },
           {
-            "description": "The ID of the space in which the object exists",
+            "description": "The ID of the space in which the object exists; must be retrieved from ListSpaces endpoint",
             "in": "path",
             "name": "space_id",
             "required": true,
@@ -3733,7 +3733,7 @@
             }
           },
           {
-            "description": "The ID of the space to list properties for",
+            "description": "The ID of the space to list properties for; must be retrieved from ListSpaces endpoint",
             "in": "path",
             "name": "space_id",
             "required": true,
@@ -3818,7 +3818,7 @@
             }
           },
           {
-            "description": "The ID of the space to create the property in",
+            "description": "The ID of the space to create the property in; must be retrieved from ListSpaces endpoint",
             "in": "path",
             "name": "space_id",
             "required": true,
@@ -3917,7 +3917,7 @@
             }
           },
           {
-            "description": "The ID of the space to which the property belongs",
+            "description": "The ID of the space to which the property belongs; must be retrieved from ListSpaces endpoint",
             "in": "path",
             "name": "space_id",
             "required": true,
@@ -4032,7 +4032,7 @@
             }
           },
           {
-            "description": "The ID of the space to which the property belongs",
+            "description": "The ID of the space to which the property belongs; must be retrieved from ListSpaces endpoint",
             "in": "path",
             "name": "space_id",
             "required": true,
@@ -4127,7 +4127,7 @@
             }
           },
           {
-            "description": "The ID of the space to which the property belongs",
+            "description": "The ID of the space to which the property belongs; must be retrieved from ListSpaces endpoint",
             "in": "path",
             "name": "space_id",
             "required": true,
@@ -4265,7 +4265,7 @@
             }
           },
           {
-            "description": "The ID of the space to list tags for",
+            "description": "The ID of the space to list tags for; must be retrieved from ListSpaces endpoint",
             "in": "path",
             "name": "space_id",
             "required": true,
@@ -4350,7 +4350,7 @@
             }
           },
           {
-            "description": "The ID of the space to create the tag in",
+            "description": "The ID of the space to create the tag in; must be retrieved from ListSpaces endpoint",
             "in": "path",
             "name": "space_id",
             "required": true,
@@ -4458,7 +4458,7 @@
             }
           },
           {
-            "description": "The ID of the space to delete the tag from",
+            "description": "The ID of the space to delete the tag from; must be retrieved from ListSpaces endpoint",
             "in": "path",
             "name": "space_id",
             "required": true,
@@ -4582,7 +4582,7 @@
             }
           },
           {
-            "description": "The ID of the space to retrieve the tag from",
+            "description": "The ID of the space to retrieve the tag from; must be retrieved from ListSpaces endpoint",
             "in": "path",
             "name": "space_id",
             "required": true,
@@ -4686,7 +4686,7 @@
             }
           },
           {
-            "description": "The ID of the space to update the tag in",
+            "description": "The ID of the space to update the tag in; must be retrieved from ListSpaces endpoint",
             "in": "path",
             "name": "space_id",
             "required": true,
@@ -4833,7 +4833,7 @@
             }
           },
           {
-            "description": "The ID of the space to search in; retrieve from ListSpaces endpoint",
+            "description": "The ID of the space to search in; must be retrieved from ListSpaces endpoint",
             "in": "path",
             "name": "space_id",
             "required": true,
@@ -4931,7 +4931,7 @@
             }
           },
           {
-            "description": "The ID of the space to retrieve types from",
+            "description": "The ID of the space to retrieve types from; must be retrieved from ListSpaces endpoint",
             "in": "path",
             "name": "space_id",
             "required": true,
@@ -5016,7 +5016,7 @@
             }
           },
           {
-            "description": "The ID of the space in which to create the type",
+            "description": "The ID of the space in which to create the type; must be retrieved from ListSpaces endpoint",
             "in": "path",
             "name": "space_id",
             "required": true,
@@ -5115,7 +5115,7 @@
             }
           },
           {
-            "description": "The ID of the space from which to delete the type",
+            "description": "The ID of the space from which to delete the type; must be retrieved from ListSpaces endpoint",
             "in": "path",
             "name": "space_id",
             "required": true,
@@ -5230,7 +5230,7 @@
             }
           },
           {
-            "description": "The ID of the space from which to retrieve the type",
+            "description": "The ID of the space from which to retrieve the type; must be retrieved from ListSpaces endpoint",
             "in": "path",
             "name": "space_id",
             "required": true,
@@ -5325,7 +5325,7 @@
             }
           },
           {
-            "description": "The ID of the space in which the type exists",
+            "description": "The ID of the space in which the type exists; must be retrieved from ListSpaces endpoint",
             "in": "path",
             "name": "space_id",
             "required": true,
@@ -5453,7 +5453,7 @@
             }
           },
           {
-            "description": "The ID of the space to which the type belongs",
+            "description": "The ID of the space to which the type belongs; must be retrieved from ListSpaces endpoint",
             "in": "path",
             "name": "space_id",
             "required": true,
@@ -5549,7 +5549,7 @@
             }
           },
           {
-            "description": "The ID of the space to which the template belongs",
+            "description": "The ID of the space to which the template belongs; must be retrieved from ListSpaces endpoint",
             "in": "path",
             "name": "space_id",
             "required": true,
