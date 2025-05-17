@@ -20,7 +20,7 @@ import (
 //	@Produce		json
 //	@Param			Anytype-Version	header		string										true	"The version of the API to use"	default(2025-05-20)
 //	@Param			space_id		path		string										true	"The ID of the space to which the list belongs; must be retrieved from ListSpaces endpoint"
-//	@Param			list_id			path		string										true	"The ID of the list to retrieve views for"
+//	@Param			list_id			path		string										true	"The ID of the list to retrieve views for; must be retrieved from SearchSpace endpoint with types=['collection', 'set']"
 //	@Param			offset			query		int											false	"The number of items to skip before starting to collect the result set"	default(0)
 //	@Param			limit			query		int											false	"The number of items to return"
 //	@Success		200				{object}	pagination.PaginatedResponse[apimodel.View]	"The list of views associated with the specified list"
@@ -61,8 +61,8 @@ func GetListViewsHandler(s *service.Service) gin.HandlerFunc {
 //	@Produce		json
 //	@Param			Anytype-Version	header		string											true	"The version of the API to use"	default(2025-05-20)
 //	@Param			space_id		path		string											true	"The ID of the space to which the list belongs; must be retrieved from ListSpaces endpoint"
-//	@Param			list_id			path		string											true	"The ID of the list to retrieve objects for"
-//	@Param			view_id			path		string											true	"The ID of the view to retrieve objects for"
+//	@Param			list_id			path		string											true	"The ID of the list to retrieve objects for; must be retrieved from SearchSpace endpoint with types=['collection', 'set']"
+//	@Param			view_id			path		string											true	"The ID of the view to retrieve objects for; must be retrieved from ListViews endpoint or omited if you want to get all objects in the list"
 //	@Param			offset			query		int												false	"The number of items to skip before starting to collect the result set"	default(0)
 //	@Param			limit			query		int												false	"The number of items to return"
 //	@Success		200				{object}	pagination.PaginatedResponse[apimodel.Object]	"The list of objects associated with the specified list"
@@ -109,8 +109,8 @@ func GetObjectsInListHandler(s *service.Service) gin.HandlerFunc {
 //	@Produce		json
 //	@Param			Anytype-Version	header		string								true	"The version of the API to use"	default(2025-05-20)
 //	@Param			space_id		path		string								true	"The ID of the space to which the list belongs; must be retrieved from ListSpaces endpoint"
-//	@Param			list_id			path		string								true	"The ID of the list to which objects will be added"
-//	@Param			objects			body		apimodel.AddObjectsToListRequest	true	"The list of object IDs to add to the list"
+//	@Param			list_id			path		string								true	"The ID of the list to which objects will be added; must be retrieved from SearchSpace endpoint with types=['collection', 'set']"
+//	@Param			objects			body		apimodel.AddObjectsToListRequest	true	"The list of object IDs to add to the list; must be retrieved from SearchSpace or GlobalSearch endpoints or obtained from response context"
 //	@Success		200				{object}	string								"Objects added successfully"
 //	@Failure		400				{object}	util.ValidationError				"Bad request"
 //	@Failure		401				{object}	util.UnauthorizedError				"Unauthorized"
@@ -155,8 +155,8 @@ func AddObjectsToListHandler(s *service.Service) gin.HandlerFunc {
 //	@Produce		json
 //	@Param			Anytype-Version	header		string					true	"The version of the API to use"	default(2025-05-20)
 //	@Param			space_id		path		string					true	"The ID of the space to which the list belongs; must be retrieved from ListSpaces endpoint"
-//	@Param			list_id			path		string					true	"The ID of the list from which the object will be removed"
-//	@Param			object_id		path		string					true	"The ID of the object to remove from the list"
+//	@Param			list_id			path		string					true	"The ID of the list from which the object will be removed; must be retrieved from SearchSpace endpoint with types=['collection', 'set']"
+//	@Param			object_id		path		string					true	"The ID of the object to remove from the list; must be retrieved from SearchSpace or GlobalSearch endpoints or obtained from response context"
 //	@Success		200				{object}	string					"Objects removed successfully"
 //	@Failure		400				{object}	util.ValidationError	"Bad request"
 //	@Failure		401				{object}	util.UnauthorizedError	"Unauthorized"

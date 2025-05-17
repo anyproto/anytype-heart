@@ -57,7 +57,7 @@ func ListMembersHandler(s *service.Service) gin.HandlerFunc {
 //	@Produce		json
 //	@Param			Anytype-Version	header		string					true	"The version of the API to use"	default(2025-05-20)
 //	@Param			space_id		path		string					true	"The ID of the space to get the member from; must be retrieved from ListSpaces endpoint"
-//	@Param			member_id		path		string					true	"Member ID or Identity"
+//	@Param			member_id		path		string					true	"Member ID or Identity; must be retrieved from ListMembers endpoint or obtained from response context"
 //	@Success		200				{object}	apimodel.MemberResponse	"The member details"
 //	@Failure		401				{object}	util.UnauthorizedError	"Unauthorized"
 //	@Failure		404				{object}	util.NotFoundError		"Member not found"
@@ -96,7 +96,7 @@ func GetMemberHandler(s *service.Service) gin.HandlerFunc {
 //	@Produce		json
 //	@Param			Anytype-Version	header		string							true	"The version of the API to use"	default(2025-05-20)
 //	@Param			space_id		path		string							true	"The ID of the space to update the member in; must be retrieved from ListSpaces endpoint"
-//	@Param			member_id		path		string							true	"The ID of the member to update"
+//	@Param			member_id		path		string							true	"The ID or Identity of the member to update; must be retrieved from ListMembers endpoint or obtained from response context"
 //	@Param			body			body		apimodel.UpdateMemberRequest	true	"The request body containing the member's new status and role"
 //	@Success		200				{object}	apimodel.MemberResponse			"Member updated successfully"
 //	@Failure		400				{object}	util.ValidationError			"Bad request"

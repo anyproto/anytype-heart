@@ -42,7 +42,7 @@ func (s *Service) ListTemplates(ctx context.Context, spaceId string, typeId stri
 		return nil, 0, false, ErrTemplateTypeNotFound
 	}
 
-	// Then, search all objects of the template type and filter by the target object type
+	// Then, search all objects of the template type and filter by the target type
 	templateTypeId := templateTypeIdResp.Records[0].Fields[bundle.RelationKeyId.String()].GetStringValue()
 	templateObjectsResp := s.mw.ObjectSearch(ctx, &pb.RpcObjectSearchRequest{
 		SpaceId: spaceId,

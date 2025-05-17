@@ -374,14 +374,14 @@ func (NumberPropertyLinkValue) isPropertyLinkWithValue() {}
 
 type SelectPropertyLinkValue struct {
 	Key    string  `json:"key" example:"status"`
-	Select *string `json:"select,omitempty" example:"tag_id"` // The selected tag id of the property
+	Select *string `json:"select,omitempty" example:"tag_id"` // The selected tag id of the property; see ListTags endpoint for valid values
 }
 
 func (SelectPropertyLinkValue) isPropertyLinkWithValue() {}
 
 type MultiSelectPropertyLinkValue struct {
 	Key         string   `json:"key" example:"tag"`
-	MultiSelect []string `json:"multi_select,omitempty" example:"['tag_id']"` // The selected tag ids of the property
+	MultiSelect []string `json:"multi_select,omitempty" example:"['tag_id']"` // The selected tag ids of the property; see ListTags endpoint for valid values
 }
 
 func (MultiSelectPropertyLinkValue) isPropertyLinkWithValue() {}

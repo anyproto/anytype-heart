@@ -47,7 +47,7 @@ func (s *Service) GlobalSearch(ctx context.Context, request apimodel.SearchReque
 
 	var combinedRecords []*types.Struct
 	for _, spaceId := range spaceIds {
-		// Resolve template type and object type IDs per spaceId, as they are unique per spaceId
+		// Resolve template and type IDs per spaceId, as they are unique per spaceId
 		templateFilter := s.prepareTemplateFilter()
 		typeFilters := s.prepareTypeFilters(request.Types, typeMaps[spaceId])
 		if len(request.Types) > 0 && len(typeFilters) == 0 {

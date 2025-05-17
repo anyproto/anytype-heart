@@ -59,7 +59,7 @@ func ListObjectsHandler(s *service.Service) gin.HandlerFunc {
 //	@Produce		json
 //	@Param			Anytype-Version	header		string					true	"The version of the API to use"	default(2025-05-20)
 //	@Param			space_id		path		string					true	"The ID of the space in which the object exists; must be retrieved from ListSpaces endpoint"
-//	@Param			object_id		path		string					true	"The ID of the object to retrieve"
+//	@Param			object_id		path		string					true	"The ID of the object to retrieve; must be retrieved from ListObjects, SearchSpace or GlobalSearch endpoints or obtained from response context"
 //	@Param			format			query		apimodel.BodyFormat		false	"The format to return the object body in" default("md")
 //	@Success		200				{object}	apimodel.ObjectResponse	"The retrieved object"
 //	@Failure		401				{object}	util.UnauthorizedError	"Unauthorized"
@@ -153,7 +153,7 @@ func CreateObjectHandler(s *service.Service) gin.HandlerFunc {
 //	@Produce		json
 //	@Param			Anytype-Version	header		string							true	"The version of the API to use"	default(2025-05-20)
 //	@Param			space_id		path		string							true	"The ID of the space in which the object exists; must be retrieved from ListSpaces endpoint"
-//	@Param			object_id		path		string							true	"The ID of the object to update"
+//	@Param			object_id		path		string							true	"The ID of the object to update; must be retrieved from ListObjects, SearchSpace or GlobalSearch endpoints or obtained from response context"
 //	@Param			object			body		apimodel.UpdateObjectRequest	true	"The details of the object to update"
 //	@Success		200				{object}	apimodel.ObjectResponse			"The updated object"
 //	@Failure		400				{object}	util.ValidationError			"Bad request"
@@ -204,7 +204,7 @@ func UpdateObjectHandler(s *service.Service) gin.HandlerFunc {
 //	@Produce		json
 //	@Param			Anytype-Version	header		string					true	"The version of the API to use"	default(2025-05-20)
 //	@Param			space_id		path		string					true	"The ID of the space in which the object exists; must be retrieved from ListSpaces endpoint"
-//	@Param			object_id		path		string					true	"The ID of the object to delete"
+//	@Param			object_id		path		string					true	"The ID of the object to delete; must be retrieved from ListObjects, SearchSpace or GlobalSearch endpoints or obtained from response context"
 //	@Success		200				{object}	apimodel.ObjectResponse	"The deleted object"
 //	@Failure		401				{object}	util.UnauthorizedError	"Unauthorized"
 //	@Failure		403				{object}	util.ForbiddenError		"Forbidden"

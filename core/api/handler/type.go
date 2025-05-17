@@ -14,7 +14,7 @@ import (
 // ListTypesHandler retrieves a list of types in a space
 //
 //	@Summary		List types
-//	@Description	This endpoint retrieves a paginated list of object types (e.g. 'Page', 'Note', 'Task') available within the specified space. Each type’s record includes its unique identifier, type key, display name, icon, and layout. While a type's id is truly unique, a type's key can be the same across spaces for known types, e.g. 'page' for 'Page'. Clients use this information when offering choices for object creation or for filtering objects by type through search.
+//	@Description	This endpoint retrieves a paginated list of types (e.g. 'Page', 'Note', 'Task') available within the specified space. Each type’s record includes its unique identifier, type key, display name, icon, and layout. While a type's id is truly unique, a type's key can be the same across spaces for known types, e.g. 'page' for 'Page'. Clients use this information when offering choices for object creation or for filtering objects by type through search.
 //	@Id				list_types
 //	@Tags			Types
 //	@Produce		json
@@ -51,13 +51,13 @@ func ListTypesHandler(s *service.Service) gin.HandlerFunc {
 // GetTypeHandler retrieves a type in a space
 //
 //	@Summary		Get type
-//	@Description	Fetches detailed information about one specific object type by its ID. This includes the type’s unique key, name, icon, and layout. This detailed view assists clients in understanding the expected structure and style for objects of that type and in guiding the user interface (such as displaying appropriate icons or layout hints).
+//	@Description	Fetches detailed information about one specific type by its ID. This includes the type’s unique key, name, icon, and layout. This detailed view assists clients in understanding the expected structure and style for objects of that type and in guiding the user interface (such as displaying appropriate icons or layout hints).
 //	@Id				get_type
 //	@Tags			Types
 //	@Produce		json
 //	@Param			Anytype-Version	header		string					true	"The version of the API to use"	default(2025-05-20)
 //	@Param			space_id		path		string					true	"The ID of the space from which to retrieve the type; must be retrieved from ListSpaces endpoint"
-//	@Param			type_id			path		string					true	"The ID of the type to retrieve"
+//	@Param			type_id			path		string					true	"The ID of the type to retrieve; must be retrieved from ListTypes endpoint or obtained from response context"
 //	@Success		200				{object}	apimodel.TypeResponse	"The requested type"
 //	@Failure		401				{object}	util.UnauthorizedError	"Unauthorized"
 //	@Failure		404				{object}	util.NotFoundError		"Resource not found"
@@ -90,7 +90,7 @@ func GetTypeHandler(s *service.Service) gin.HandlerFunc {
 // CreateTypeHandler creates a new type in a space
 //
 //	@Summary		Create type
-//	@Description	Creates a new object type in the specified space using a JSON payload. The creation process is subject to rate limiting. The payload must include type details such as the name, icon, and layout. The endpoint then returns the full type data, ready to be used for creating objects.
+//	@Description	Creates a new type in the specified space using a JSON payload. The creation process is subject to rate limiting. The payload must include type details such as the name, icon, and layout. The endpoint then returns the full type data, ready to be used for creating objects.
 //	@Id				create_type
 //	@Tags			Types
 //	@Accept			json
@@ -136,14 +136,14 @@ func CreateTypeHandler(s *service.Service) gin.HandlerFunc {
 // UpdateTypeHandler updates a type in a space
 //
 //	@Summary		Update type
-//	@Description	This endpoint updates an existing object type in the specified space using a JSON payload. The update process is subject to rate limiting. The payload must include the name and properties to be updated. The endpoint then returns the full type data, ready for further interactions.
+//	@Description	This endpoint updates an existing type in the specified space using a JSON payload. The update process is subject to rate limiting. The payload must include the name and properties to be updated. The endpoint then returns the full type data, ready for further interactions.
 //	@Id				update_type
 //	@Tags			Types
 //	@Accept			json
 //	@Produce		json
 //	@Param			Anytype-Version	header		string						true	"The version of the API to use"	default(2025-05-20)
 //	@Param			space_id		path		string						true	"The ID of the space in which the type exists; must be retrieved from ListSpaces endpoint"
-//	@Param			type_id			path		string						true	"The ID of the type to update"
+//	@Param			type_id			path		string						true	"The ID of the type to update; must be retrieved from ListTypes endpoint or obtained from response context"
 //	@Param			type			body		apimodel.UpdateTypeRequest	true	"The type details to update"
 //	@Success		200				{object}	apimodel.TypeResponse		"The updated type"
 //	@Failure		400				{object}	util.ValidationError		"Bad request"
@@ -188,13 +188,13 @@ func UpdateTypeHandler(s *service.Service) gin.HandlerFunc {
 // DeleteTypeHandler deletes a type in a space
 //
 //	@Summary		Delete type
-//	@Description	This endpoint “deletes” an object type by marking it as archived. The deletion process is performed safely and is subject to rate limiting. It returns the type’s details after it has been archived. Proper error handling is in place for situations such as when the type isn’t found or the deletion cannot be performed because of permission issues.
+//	@Description	This endpoint “deletes” an type by marking it as archived. The deletion process is performed safely and is subject to rate limiting. It returns the type’s details after it has been archived. Proper error handling is in place for situations such as when the type isn’t found or the deletion cannot be performed because of permission issues.
 //	@Id				delete_type
 //	@Tags			Types
 //	@Produce		json
 //	@Param			Anytype-Version	header		string					true	"The version of the API to use"	default(2025-05-20)
 //	@Param			space_id		path		string					true	"The ID of the space from which to delete the type; must be retrieved from ListSpaces endpoint"
-//	@Param			type_id			path		string					true	"The ID of the type to delete"
+//	@Param			type_id			path		string					true	"The ID of the type to delete; must be retrieved from ListTypes endpoint or obtained from response context"
 //	@Success		200				{object}	apimodel.TypeResponse	"The deleted type"
 //	@Failure		401				{object}	util.UnauthorizedError	"Unauthorized"
 //	@Failure		403				{object}	util.ForbiddenError		"Forbidden"

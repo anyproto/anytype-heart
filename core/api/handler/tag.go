@@ -20,7 +20,7 @@ import (
 //	@Produce		json
 //	@Param			Anytype-Version	header		string										true	"The version of the API to use"	default(2025-05-20)
 //	@Param			space_id		path		string										true	"The ID of the space to list tags for; must be retrieved from ListSpaces endpoint"
-//	@Param			property_id		path		string										true	"The ID of the property to list tags for"
+//	@Param			property_id		path		string										true	"The ID of the property to list tags for; must be retrieved from ListProperties endpoint or obtained from response context"
 //	@Success		200				{object}	pagination.PaginatedResponse[apimodel.Tag]	"The list of tags"
 //	@Failure		401				{object}	util.UnauthorizedError						"Unauthorized"
 //	@Failure		404				{object}	util.NotFoundError							"Property not found"
@@ -59,8 +59,8 @@ func ListTagsHandler(s *service.Service) gin.HandlerFunc {
 //	@Produce		json
 //	@Param			Anytype-Version	header		string					true	"The version of the API to use"	default(2025-05-20)
 //	@Param			space_id		path		string					true	"The ID of the space to retrieve the tag from; must be retrieved from ListSpaces endpoint"
-//	@Param			property_id		path		string					true	"The ID of the property to retrieve the tag for"
-//	@Param			tag_id			path		string					true	"The ID of the tag to retrieve"
+//	@Param			property_id		path		string					true	"The ID of the property to retrieve the tag for; must be retrieved from ListProperties endpoint or obtained from response context"
+//	@Param			tag_id			path		string					true	"The ID of the tag to retrieve; must be retrieved from ListTags endpoint or obtained from response context"
 //	@Success		200				{object}	apimodel.TagResponse	"The retrieved tag"
 //	@Failure		401				{object}	util.UnauthorizedError	"Unauthorized"
 //	@Failure		404				{object}	util.NotFoundError		"Resource not found"
@@ -101,7 +101,7 @@ func GetTagHandler(s *service.Service) gin.HandlerFunc {
 //	@Produce		json
 //	@Param			Anytype-Version	header		string						true	"The version of the API to use"	default(2025-05-20)
 //	@Param			space_id		path		string						true	"The ID of the space to create the tag in; must be retrieved from ListSpaces endpoint"
-//	@Param			property_id		path		string						true	"The ID of the property to create the tag for"
+//	@Param			property_id		path		string						true	"The ID of the property to create the tag for; must be retrieved from ListProperties endpoint or obtained from response context"
 //	@Param			tag				body		apimodel.CreateTagRequest	true	"The tag to create"
 //	@Success		200				{object}	apimodel.TagResponse		"The created tag"
 //	@Failure		400				{object}	util.ValidationError		"Bad request"
@@ -149,8 +149,8 @@ func CreateTagHandler(s *service.Service) gin.HandlerFunc {
 //	@Produce		json
 //	@Param			Anytype-Version	header		string						true	"The version of the API to use"	default(2025-05-20)
 //	@Param			space_id		path		string						true	"The ID of the space to update the tag in; must be retrieved from ListSpaces endpoint"
-//	@Param			property_id		path		string						true	"The ID of the property to update the tag for"
-//	@Param			tag_id			path		string						true	"The ID of the tag to update"
+//	@Param			property_id		path		string						true	"The ID of the property to update the tag for; must be retrieved from ListProperties endpoint or obtained from response context"
+//	@Param			tag_id			path		string						true	"The ID of the tag to update; must be retrieved from ListTags endpoint or obtained from response context"
 //	@Param			tag				body		apimodel.UpdateTagRequest	true	"The tag to update"
 //	@Success		200				{object}	apimodel.TagResponse		"The updated tag"
 //	@Failure		400				{object}	util.ValidationError		"Bad request"
@@ -203,8 +203,8 @@ func UpdateTagHandler(s *service.Service) gin.HandlerFunc {
 //	@Produce		json
 //	@Param			Anytype-Version	header		string					true	"The version of the API to use"	default(2025-05-20)
 //	@Param			space_id		path		string					true	"The ID of the space to delete the tag from; must be retrieved from ListSpaces endpoint"
-//	@Param			property_id		path		string					true	"The ID of the property to delete the tag for"
-//	@Param			tag_id			path		string					true	"The ID of the tag to delete"
+//	@Param			property_id		path		string					true	"The ID of the property to delete the tag for; must be retrieved from ListProperties endpoint or obtained from response context"
+//	@Param			tag_id			path		string					true	"The ID of the tag to delete; must be retrieved from ListTags endpoint or obtained from response context"
 //	@Success		200				{object}	apimodel.TagResponse	"The deleted tag"
 //	@Failure		401				{object}	util.UnauthorizedError	"Unauthorized"
 //	@Failure		403				{object}	util.ForbiddenError		"Forbidden"
