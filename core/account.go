@@ -9,7 +9,9 @@ import (
 	"github.com/anyproto/anytype-heart/core/anytype/config"
 	"github.com/anyproto/anytype-heart/core/application"
 	"github.com/anyproto/anytype-heart/core/session"
+	walletComp "github.com/anyproto/anytype-heart/core/wallet"
 	"github.com/anyproto/anytype-heart/pb"
+	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space/spacecore/storage/migrator"
 )
 
@@ -282,6 +284,60 @@ func (mw *Middleware) AccountLocalLinkSolveChallenge(_ context.Context, req *pb.
 	}
 }
 
+func (mw *Middleware) AccountLocalLinkCreateApp(_ context.Context, req *pb.RpcAccountLocalLinkCreateAppRequest) *pb.RpcAccountLocalLinkCreateAppResponse {
+	appKey, err := mw.applicationService.LinkLocalCreateApp(req)
+	code := mapErrorCode(err,
+		errToCode(application.ErrApplicationIsNotRunning, pb.RpcAccountLocalLinkCreateAppResponseError_ACCOUNT_IS_NOT_RUNNING),
+	)
+	return &pb.RpcAccountLocalLinkCreateAppResponse{
+		AppKey: appKey,
+		Error: &pb.RpcAccountLocalLinkCreateAppResponseError{
+			Code:        code,
+			Description: getErrorDescription(err),
+		},
+	}
+}
+
+func (mw *Middleware) AccountLocalLinkListApps(_ context.Context, req *pb.RpcAccountLocalLinkListAppsRequest) *pb.RpcAccountLocalLinkListAppsResponse {
+	apps, err := mw.applicationService.LinkLocalListApps()
+	code := mapErrorCode(err,
+		errToCode(application.ErrApplicationIsNotRunning, pb.RpcAccountLocalLinkListAppsResponseError_ACCOUNT_IS_NOT_RUNNING),
+	)
+	appsList := make([]*model.AccountAuthAppInfo, len(apps))
+	for i, app := range apps {
+		if app.AppName == "" {
+			app.AppName = app.AppHash
+		}
+		appsList[i] = &model.AccountAuthAppInfo{
+			AppHash:   app.AppHash,
+			AppName:   app.AppName,
+			CreatedAt: app.CreatedAt,
+			ExpireAt:  app.ExpireAt,
+			Scope:     model.AccountAuthLocalApiScope(app.Scope),
+		}
+	}
+	return &pb.RpcAccountLocalLinkListAppsResponse{
+		App: appsList,
+		Error: &pb.RpcAccountLocalLinkListAppsResponseError{
+			Code:        code,
+			Description: getErrorDescription(err),
+		},
+	}
+}
+
+func (mw *Middleware) AccountLocalLinkRevokeApp(_ context.Context, req *pb.RpcAccountLocalLinkRevokeAppRequest) *pb.RpcAccountLocalLinkRevokeAppResponse {
+	err := mw.applicationService.LinkLocalRevokeApp(req)
+	code := mapErrorCode(err,
+		errToCode(walletComp.ErrAppLinkNotFound, pb.RpcAccountLocalLinkRevokeAppResponseError_NOT_FOUND),
+		errToCode(application.ErrApplicationIsNotRunning, pb.RpcAccountLocalLinkRevokeAppResponseError_ACCOUNT_IS_NOT_RUNNING),
+	)
+	return &pb.RpcAccountLocalLinkRevokeAppResponse{
+		Error: &pb.RpcAccountLocalLinkRevokeAppResponseError{
+			Code:        code,
+			Description: getErrorDescription(err),
+		},
+	}
+}
 func getClientInfo(ctx context.Context) pb.EventAccountLinkChallengeClientInfo {
 	p, ok := peer.FromContext(ctx)
 	if !ok {

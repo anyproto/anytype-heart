@@ -17,6 +17,10 @@ service ClientCommands {
     rpc WalletConvert (anytype.Rpc.Wallet.Convert.Request) returns (anytype.Rpc.Wallet.Convert.Response);
     rpc AccountLocalLinkNewChallenge (anytype.Rpc.Account.LocalLink.NewChallenge.Request) returns (anytype.Rpc.Account.LocalLink.NewChallenge.Response);
     rpc AccountLocalLinkSolveChallenge (anytype.Rpc.Account.LocalLink.SolveChallenge.Request) returns (anytype.Rpc.Account.LocalLink.SolveChallenge.Response);
+    rpc AccountLocalLinkCreateApp (anytype.Rpc.Account.LocalLink.CreateApp.Request) returns (anytype.Rpc.Account.LocalLink.CreateApp.Response);
+    rpc AccountLocalLinkListApps (anytype.Rpc.Account.LocalLink.ListApps.Request) returns (anytype.Rpc.Account.LocalLink.ListApps.Response);
+    rpc AccountLocalLinkRevokeApp (anytype.Rpc.Account.LocalLink.RevokeApp.Request) returns (anytype.Rpc.Account.LocalLink.RevokeApp.Response);
+
     rpc WalletCreateSession (anytype.Rpc.Wallet.CreateSession.Request) returns (anytype.Rpc.Wallet.CreateSession.Response);
     rpc WalletCloseSession (anytype.Rpc.Wallet.CloseSession.Request) returns (anytype.Rpc.Wallet.CloseSession.Response);
     // Workspace

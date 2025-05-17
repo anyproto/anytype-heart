@@ -175,8 +175,10 @@ type Wallet interface {
 	GetAccountEthPrivkey() EthPrivateKey
 	GetAccountEthAddress() EthAddress
 
-	ReadAppLink(appKey string) (*AppLinkPayload, error)
-	PersistAppLink(payload *AppLinkPayload) (appKey string, err error)
+	ReadAppLink(appKey string) (*AppLinkInfo, error)
+	PersistAppLink(payload *AppLinkInfo) (appKey string, err error)
+	ListAppLinks() ([]*AppLinkInfo, error)
+	RevokeAppLink(appHash string) error
 
 	accountservice.Service
 	app.Component

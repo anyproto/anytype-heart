@@ -95,9 +95,8 @@ func (s *Service) LinkLocalSolveChallenge(req *pb.RpcAccountLocalLinkSolveChalle
 		return "", "", err
 	}
 	wallet := s.app.Component(walletComp.CName).(walletComp.Wallet)
-	appKey, err = wallet.PersistAppLink(&walletComp.AppLinkPayload{
+	appKey, err = wallet.PersistAppLink(&walletComp.AppLinkInfo{
 		AppName:   clientInfo.ProcessName,
-		AppPath:   clientInfo.ProcessPath,
 		CreatedAt: time.Now().Unix(),
 		Scope:     int(scope),
 	})
@@ -108,4 +107,38 @@ func (s *Service) LinkLocalSolveChallenge(req *pb.RpcAccountLocalLinkSolveChalle
 		},
 	}))
 	return
+}
+
+func (s *Service) LinkLocalCreateApp(req *pb.RpcAccountLocalLinkCreateAppRequest) (appKey string, err error) {
+	if s.app == nil {
+		return "", ErrApplicationIsNotRunning
+	}
+
+	wallet := s.app.Component(walletComp.CName).(walletComp.Wallet)
+	appKey, err = wallet.PersistAppLink(&walletComp.AppLinkInfo{
+		AppName:   req.App.AppName,
+		CreatedAt: time.Now().Unix(),
+		Scope:     int(req.App.Scope),
+	})
+
+	return
+}
+
+func (s *Service) LinkLocalListApps() ([]*walletComp.AppLinkInfo, error) {
+	if s.app == nil {
+		return nil, ErrApplicationIsNotRunning
+	}
+
+	wallet := s.app.Component(walletComp.CName).(walletComp.Wallet)
+	return wallet.ListAppLinks()
+}
+
+func (s *Service) LinkLocalRevokeApp(req *pb.RpcAccountLocalLinkRevokeAppRequest) error {
+	if s.app == nil {
+		return ErrApplicationIsNotRunning
+	}
+
+	wallet := s.app.Component(walletComp.CName).(walletComp.Wallet)
+	return wallet.RevokeAppLink(req.AppHash)
+
 }
