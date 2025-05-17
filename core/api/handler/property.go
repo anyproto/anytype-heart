@@ -57,7 +57,7 @@ func ListPropertiesHandler(s *service.Service) gin.HandlerFunc {
 //	@Produce		json
 //	@Param			Anytype-Version	header		string						true	"The version of the API to use"	default(2025-05-20)
 //	@Param			space_id		path		string						true	"The ID of the space to which the property belongs; must be retrieved from ListSpaces endpoint"
-//	@Param			property_id		path		string						true	"The ID of the property to retrieve"
+//	@Param			property_id		path		string						true	"The ID of the property to retrieve; must be retrieved from ListProperties endpoint or obtained from response context"
 //	@Success		200				{object}	apimodel.PropertyResponse	"The requested property"
 //	@Failure		401				{object}	util.UnauthorizedError		"Unauthorized"
 //	@Failure		404				{object}	util.NotFoundError			"Resource not found"
@@ -143,7 +143,7 @@ func CreatePropertyHandler(s *service.Service) gin.HandlerFunc {
 //	@Produce		json
 //	@Param			Anytype-Version	header		string							true	"The version of the API to use"	default(2025-05-20)
 //	@Param			space_id		path		string							true	"The ID of the space to which the property belongs; must be retrieved from ListSpaces endpoint"
-//	@Param			property_id		path		string							true	"The ID of the property to update"
+//	@Param			property_id		path		string							true	"The ID of the property to update; must be retrieved from ListProperties endpoint or obtained from response context"
 //	@Param			property		body		apimodel.UpdatePropertyRequest	true	"The property to update"
 //	@Success		200				{object}	apimodel.PropertyResponse		"The updated property"
 //	@Failure		400				{object}	util.ValidationError			"Bad request"
@@ -196,7 +196,7 @@ func UpdatePropertyHandler(s *service.Service) gin.HandlerFunc {
 //	@Produce		json
 //	@Param			Anytype-Version	header		string						true	"The version of the API to use"	default(2025-05-20)
 //	@Param			space_id		path		string						true	"The ID of the space to which the property belongs; must be retrieved from ListSpaces endpoint"
-//	@Param			property_id		path		string						true	"The ID of the property to delete"
+//	@Param			property_id		path		string						true	"The ID of the property to delete; must be retrieved from ListProperties endpoint or obtained from response context"
 //	@Success		200				{object}	apimodel.PropertyResponse	"The deleted property"
 //	@Failure		401				{object}	util.UnauthorizedError		"Unauthorized"
 //	@Failure		403				{object}	util.ForbiddenError			"Forbidden"

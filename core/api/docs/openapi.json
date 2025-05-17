@@ -2590,7 +2590,7 @@
             }
           },
           {
-            "description": "The ID of the list to which objects will be added; must be retrieved from SearchSpace endpoint with types=['collection', 'set']",
+            "description": "The ID of the list to which objects will be added; must be retrieved from SearchSpace endpoint with types: ['collection', 'set']",
             "in": "path",
             "name": "list_id",
             "required": true,
@@ -2708,7 +2708,7 @@
             }
           },
           {
-            "description": "The ID of the list from which the object will be removed; must be retrieved from SearchSpace endpoint with types=['collection', 'set']",
+            "description": "The ID of the list from which the object will be removed; must be retrieved from SearchSpace endpoint with types: ['collection', 'set']",
             "in": "path",
             "name": "list_id",
             "required": true,
@@ -2824,7 +2824,7 @@
             }
           },
           {
-            "description": "The ID of the list to retrieve views for; must be retrieved from SearchSpace endpoint with types=['collection', 'set']",
+            "description": "The ID of the list to retrieve views for; must be retrieved from SearchSpace endpoint with types: ['collection', 'set']",
             "in": "path",
             "name": "list_id",
             "required": true,
@@ -2928,7 +2928,7 @@
             }
           },
           {
-            "description": "The ID of the list to retrieve objects for; must be retrieved from SearchSpace endpoint with types=['collection', 'set']",
+            "description": "The ID of the list to retrieve objects for; must be retrieved from SearchSpace endpoint with types: ['collection', 'set']",
             "in": "path",
             "name": "list_id",
             "required": true,
@@ -3933,7 +3933,7 @@
             }
           },
           {
-            "description": "The ID of the property to delete",
+            "description": "The ID of the property to delete; must be retrieved from ListProperties endpoint or obtained from response context",
             "in": "path",
             "name": "property_id",
             "required": true,
@@ -4048,7 +4048,7 @@
             }
           },
           {
-            "description": "The ID of the property to retrieve",
+            "description": "The ID of the property to retrieve; must be retrieved from ListProperties endpoint or obtained from response context",
             "in": "path",
             "name": "property_id",
             "required": true,
@@ -4143,7 +4143,7 @@
             }
           },
           {
-            "description": "The ID of the property to update",
+            "description": "The ID of the property to update; must be retrieved from ListProperties endpoint or obtained from response context",
             "in": "path",
             "name": "property_id",
             "required": true,
