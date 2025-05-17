@@ -141,7 +141,7 @@ func TestEnsureAuthenticated(t *testing.T) {
 func TestRateLimit(t *testing.T) {
 	fx := newFixture(t)
 	router := gin.New()
-	router.GET("/", fx.rateLimit(1), func(c *gin.Context) {
+	router.GET("/", fx.rateLimit(1, 1), func(c *gin.Context) {
 		c.String(http.StatusOK, "OK")
 	})
 
@@ -169,5 +169,33 @@ func TestRateLimit(t *testing.T) {
 
 		// then
 		require.Equal(t, http.StatusTooManyRequests, w.Code)
+	})
+
+	t.Run("burst of size 2 allows two requests", func(t *testing.T) {
+		burstRouter := gin.New()
+		burstRouter.GET("/", fx.rateLimit(1, 2), func(c *gin.Context) {
+			c.String(http.StatusOK, "OK")
+		})
+
+		// first request (within burst)
+		w1 := httptest.NewRecorder()
+		req1 := httptest.NewRequest("GET", "/", nil)
+		req1.RemoteAddr = "1.2.3.4:5678"
+		burstRouter.ServeHTTP(w1, req1)
+		require.Equal(t, http.StatusOK, w1.Code)
+
+		// second request (within burst)
+		w2 := httptest.NewRecorder()
+		req2 := httptest.NewRequest("GET", "/", nil)
+		req2.RemoteAddr = "1.2.3.4:5678"
+		burstRouter.ServeHTTP(w2, req2)
+		require.Equal(t, http.StatusOK, w2.Code)
+
+		// third request should be rate-limited
+		w3 := httptest.NewRecorder()
+		req3 := httptest.NewRequest("GET", "/", nil)
+		req3.RemoteAddr = "1.2.3.4:5678"
+		burstRouter.ServeHTTP(w3, req3)
+		require.Equal(t, http.StatusTooManyRequests, w3.Code)
 	})
 }

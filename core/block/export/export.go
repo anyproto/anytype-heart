@@ -273,7 +273,9 @@ func (e *exportContext) exportObject(ctx context.Context, objectId string) (stri
 	if err != nil {
 		return "", err
 	}
+
 	// do not allow file export for in-memory writer
+	// nolint: gosec
 	switch model.ObjectTypeLayout(details.GetInt64(bundle.RelationKeyLayout)) {
 	case model.ObjectType_file, model.ObjectType_image, model.ObjectType_video, model.ObjectType_audio, model.ObjectType_pdf:
 		return "", fmt.Errorf("file export is not allowed for in-memory writer")

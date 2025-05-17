@@ -561,51 +561,51 @@ func (_c *MockClientCommands_ObjectCreateRelationOption_Call) RunAndReturn(run f
 	return _c
 }
 
-// ObjectListExport provides a mock function with given fields: _a0, _a1
-func (_m *MockClientCommands) ObjectListExport(_a0 context.Context, _a1 *pb.RpcObjectListExportRequest) *pb.RpcObjectListExportResponse {
+// ObjectExport provides a mock function with given fields: _a0, _a1
+func (_m *MockClientCommands) ObjectExport(_a0 context.Context, _a1 *pb.RpcObjectExportRequest) *pb.RpcObjectExportResponse {
 	ret := _m.Called(_a0, _a1)
 
 	if len(ret) == 0 {
-		panic("no return value specified for ObjectListExport")
+		panic("no return value specified for ObjectExport")
 	}
 
-	var r0 *pb.RpcObjectListExportResponse
-	if rf, ok := ret.Get(0).(func(context.Context, *pb.RpcObjectListExportRequest) *pb.RpcObjectListExportResponse); ok {
+	var r0 *pb.RpcObjectExportResponse
+	if rf, ok := ret.Get(0).(func(context.Context, *pb.RpcObjectExportRequest) *pb.RpcObjectExportResponse); ok {
 		r0 = rf(_a0, _a1)
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(*pb.RpcObjectListExportResponse)
+			r0 = ret.Get(0).(*pb.RpcObjectExportResponse)
 		}
 	}
 
 	return r0
 }
 
-// MockClientCommands_ObjectListExport_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ObjectListExport'
-type MockClientCommands_ObjectListExport_Call struct {
+// MockClientCommands_ObjectExport_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ObjectExport'
+type MockClientCommands_ObjectExport_Call struct {
 	*mock.Call
 }
 
-// ObjectListExport is a helper method to define mock.On call
+// ObjectExport is a helper method to define mock.On call
 //   - _a0 context.Context
-//   - _a1 *pb.RpcObjectListExportRequest
-func (_e *MockClientCommands_Expecter) ObjectListExport(_a0 interface{}, _a1 interface{}) *MockClientCommands_ObjectListExport_Call {
-	return &MockClientCommands_ObjectListExport_Call{Call: _e.mock.On("ObjectListExport", _a0, _a1)}
+//   - _a1 *pb.RpcObjectExportRequest
+func (_e *MockClientCommands_Expecter) ObjectExport(_a0 interface{}, _a1 interface{}) *MockClientCommands_ObjectExport_Call {
+	return &MockClientCommands_ObjectExport_Call{Call: _e.mock.On("ObjectExport", _a0, _a1)}
 }
 
-func (_c *MockClientCommands_ObjectListExport_Call) Run(run func(_a0 context.Context, _a1 *pb.RpcObjectListExportRequest)) *MockClientCommands_ObjectListExport_Call {
+func (_c *MockClientCommands_ObjectExport_Call) Run(run func(_a0 context.Context, _a1 *pb.RpcObjectExportRequest)) *MockClientCommands_ObjectExport_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(*pb.RpcObjectListExportRequest))
+		run(args[0].(context.Context), args[1].(*pb.RpcObjectExportRequest))
 	})
 	return _c
 }
 
-func (_c *MockClientCommands_ObjectListExport_Call) Return(_a0 *pb.RpcObjectListExportResponse) *MockClientCommands_ObjectListExport_Call {
+func (_c *MockClientCommands_ObjectExport_Call) Return(_a0 *pb.RpcObjectExportResponse) *MockClientCommands_ObjectExport_Call {
 	_c.Call.Return(_a0)
 	return _c
 }
 
-func (_c *MockClientCommands_ObjectListExport_Call) RunAndReturn(run func(context.Context, *pb.RpcObjectListExportRequest) *pb.RpcObjectListExportResponse) *MockClientCommands_ObjectListExport_Call {
+func (_c *MockClientCommands_ObjectExport_Call) RunAndReturn(run func(context.Context, *pb.RpcObjectExportRequest) *pb.RpcObjectExportResponse) *MockClientCommands_ObjectExport_Call {
 	_c.Call.Return(run)
 	return _c
 }

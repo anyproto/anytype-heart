@@ -23,33 +23,6 @@ var (
 	ErrRelationKeysNotFound     = errors.New("failed to find relation keys")
 )
 
-// ResolveUniqueKeyToTypeId resolves the unique key to the type's ID
-func ResolveUniqueKeyToTypeId(mw apicore.ClientCommands, spaceId string, uniqueKey string) (typeId string, err error) {
-	resp := mw.ObjectSearch(context.Background(), &pb.RpcObjectSearchRequest{
-		SpaceId: spaceId,
-		Filters: []*model.BlockContentDataviewFilter{
-			{
-				RelationKey: bundle.RelationKeyUniqueKey.String(),
-				Condition:   model.BlockContentDataviewFilter_Equal,
-				Value:       pbtypes.String(uniqueKey),
-			},
-		},
-		Keys: []string{bundle.RelationKeyId.String()},
-	})
-
-	if resp.Error != nil {
-		if resp.Error != nil && resp.Error.Code != pb.RpcObjectSearchResponseError_NULL {
-			return "", ErrFailedSearchType
-		}
-
-		if len(resp.Records) == 0 {
-			return "", ErrFailedSearchType
-		}
-	}
-
-	return resp.Records[0].Fields[bundle.RelationKeyId.String()].GetStringValue(), nil
-}
-
 // ResolveIdtoUniqueKeyAndRelationKey resolves the type's ID to the unique key
 func ResolveIdtoUniqueKeyAndRelationKey(mw apicore.ClientCommands, spaceId string, objectId string) (uk string, rk string, err error) {
 	resp := mw.ObjectShow(context.Background(), &pb.RpcObjectShowRequest{

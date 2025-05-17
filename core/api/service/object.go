@@ -71,21 +71,21 @@ func (s *Service) ListObjects(ctx context.Context, spaceId string, offset int, l
 	objects = make([]apimodel.Object, 0, len(paginatedObjects))
 
 	// pre-fetch properties, types and tags to fill the objects
-	propertyMap, err := s.GetPropertyMapFromStore(spaceId)
+	propertyMap, err := s.getPropertyMapFromStore(ctx, spaceId, true)
 	if err != nil {
 		return nil, 0, false, err
 	}
-	typeMap, err := s.GetTypeMapFromStore(spaceId, propertyMap)
+	typeMap, err := s.getTypeMapFromStore(ctx, spaceId, propertyMap, false)
 	if err != nil {
 		return nil, 0, false, err
 	}
-	tagMap, err := s.GetTagMapFromStore(spaceId)
+	tagMap, err := s.getTagMapFromStore(ctx, spaceId)
 	if err != nil {
 		return nil, 0, false, err
 	}
 
 	for _, record := range paginatedObjects {
-		objects = append(objects, s.GetObjectFromStruct(record, propertyMap, typeMap, tagMap))
+		objects = append(objects, s.getObjectFromStruct(record, propertyMap, typeMap, tagMap))
 	}
 	return objects, total, hasMore, nil
 }
@@ -111,15 +111,15 @@ func (s *Service) GetObject(ctx context.Context, spaceId string, objectId string
 		}
 	}
 
-	propertyMap, err := s.GetPropertyMapFromStore(spaceId)
+	propertyMap, err := s.getPropertyMapFromStore(ctx, spaceId, true)
 	if err != nil {
 		return apimodel.ObjectWithBody{}, err
 	}
-	typeMap, err := s.GetTypeMapFromStore(spaceId, propertyMap)
+	typeMap, err := s.getTypeMapFromStore(ctx, spaceId, propertyMap, false)
 	if err != nil {
 		return apimodel.ObjectWithBody{}, err
 	}
-	tagMap, err := s.GetTagMapFromStore(spaceId)
+	tagMap, err := s.getTagMapFromStore(ctx, spaceId)
 	if err != nil {
 		return apimodel.ObjectWithBody{}, err
 	}
@@ -129,7 +129,7 @@ func (s *Service) GetObject(ctx context.Context, spaceId string, objectId string
 		return apimodel.ObjectWithBody{}, err
 	}
 
-	return s.GetObjectWithBlocksFromStruct(resp.ObjectView.Details[0].Details, markdown, propertyMap, typeMap, tagMap), nil
+	return s.getObjectWithBlocksFromStruct(resp.ObjectView.Details[0].Details, markdown, propertyMap, typeMap, tagMap), nil
 }
 
 // CreateObject creates a new object in a specific space.
@@ -401,8 +401,8 @@ func (s *Service) processIconFields(ctx context.Context, spaceId string, icon ap
 // 	return b
 // }
 
-// GetObjectFromStruct creates an Object without blocks from the details.
-func (s *Service) GetObjectFromStruct(details *types.Struct, propertyMap map[string]apimodel.Property, typeMap map[string]apimodel.Type, tagMap map[string]apimodel.Tag) apimodel.Object {
+// getObjectFromStruct creates an Object without blocks from the details.
+func (s *Service) getObjectFromStruct(details *types.Struct, propertyMap map[string]apimodel.Property, typeMap map[string]apimodel.Type, tagMap map[string]apimodel.Tag) apimodel.Object {
 	return apimodel.Object{
 		Object:     "object",
 		Id:         details.Fields[bundle.RelationKeyId.String()].GetStringValue(),
@@ -417,8 +417,8 @@ func (s *Service) GetObjectFromStruct(details *types.Struct, propertyMap map[str
 	}
 }
 
-// GetObjectWithBlocksFromStruct creates an ObjectWithBody from the details.
-func (s *Service) GetObjectWithBlocksFromStruct(details *types.Struct, markdown string, propertyMap map[string]apimodel.Property, typeMap map[string]apimodel.Type, tagMap map[string]apimodel.Tag) apimodel.ObjectWithBody {
+// getObjectWithBlocksFromStruct creates an ObjectWithBody from the details.
+func (s *Service) getObjectWithBlocksFromStruct(details *types.Struct, markdown string, propertyMap map[string]apimodel.Property, typeMap map[string]apimodel.Type, tagMap map[string]apimodel.Tag) apimodel.ObjectWithBody {
 	return apimodel.ObjectWithBody{
 		Object:     "object",
 		Id:         details.Fields[bundle.RelationKeyId.String()].GetStringValue(),
@@ -437,11 +437,17 @@ func (s *Service) GetObjectWithBlocksFromStruct(details *types.Struct, markdown 
 // getMarkdownExport retrieves the Markdown export of an object.
 func (s *Service) getMarkdownExport(ctx context.Context, spaceId string, objectId string, layout model.ObjectTypeLayout) (string, error) {
 	if util.IsObjectLayout(layout) {
-		md, err := s.exportService.ExportSingleInMemory(ctx, spaceId, objectId, model.Export_Markdown)
-		if err != nil {
+		resp := s.mw.ObjectExport(ctx, &pb.RpcObjectExportRequest{
+			SpaceId:  spaceId,
+			ObjectId: objectId,
+			Format:   model.Export_Markdown,
+		})
+
+		if resp.Error != nil && resp.Error.Code != pb.RpcObjectExportResponseError_NULL {
 			return "", ErrFailedExportMarkdown
 		}
-		return md, nil
+
+		return resp.Result, nil
 	}
 	return "", nil
 }

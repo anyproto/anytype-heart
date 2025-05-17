@@ -68,7 +68,7 @@ func (s *Service) ListTags(ctx context.Context, spaceId string, propertyId strin
 	tags = make([]apimodel.Tag, 0, len(paginatedTags))
 
 	for _, record := range resp.Records {
-		tags = append(tags, s.mapTagFromRecord(record))
+		tags = append(tags, s.getTagFromStruct(record))
 	}
 
 	return tags, total, hasMore, nil
@@ -95,7 +95,7 @@ func (s *Service) GetTag(ctx context.Context, spaceId string, propertyId string,
 		}
 	}
 
-	return s.mapTagFromRecord(resp.ObjectView.Details[0].Details), nil
+	return s.getTagFromStruct(resp.ObjectView.Details[0].Details), nil
 }
 
 // CreateTag creates a new tag option for a given property ID in a space.
@@ -110,6 +110,7 @@ func (s *Service) CreateTag(ctx context.Context, spaceId string, propertyId stri
 			bundle.RelationKeyRelationKey.String():         pbtypes.String(rk),
 			bundle.RelationKeyName.String():                pbtypes.String(s.sanitizedString(request.Name)),
 			bundle.RelationKeyRelationOptionColor.String(): pbtypes.String(apimodel.ColorToColorOption[request.Color]),
+			bundle.RelationKeyOrigin.String():              pbtypes.Int64(int64(model.ObjectOrigin_api)),
 		},
 	}
 
@@ -179,11 +180,11 @@ func (s *Service) DeleteTag(ctx context.Context, spaceId string, propertyId stri
 	return tag, nil
 }
 
-// GetTagMapsFromStore retrieves all tags for all spaces.
-func (s *Service) GetTagMapsFromStore(spaceIds []string) (map[string]map[string]apimodel.Tag, error) {
+// getTagMapsFromStore retrieves all tags for all spaces.
+func (s *Service) getTagMapsFromStore(ctx context.Context, spaceIds []string) (map[string]map[string]apimodel.Tag, error) {
 	spacesToTags := make(map[string]map[string]apimodel.Tag)
 	for _, spaceId := range spaceIds {
-		tagMap, err := s.GetTagMapFromStore(spaceId)
+		tagMap, err := s.getTagMapFromStore(ctx, spaceId)
 		if err != nil {
 			return nil, err
 		}
@@ -192,9 +193,9 @@ func (s *Service) GetTagMapsFromStore(spaceIds []string) (map[string]map[string]
 	return spacesToTags, nil
 }
 
-// GetTagMapFromStore retrieves all tags for a specific space.
-func (s *Service) GetTagMapFromStore(spaceId string) (map[string]apimodel.Tag, error) {
-	resp := s.mw.ObjectSearch(context.Background(), &pb.RpcObjectSearchRequest{
+// getTagMapFromStore retrieves all tags for a specific space.
+func (s *Service) getTagMapFromStore(ctx context.Context, spaceId string) (map[string]apimodel.Tag, error) {
+	resp := s.mw.ObjectSearch(ctx, &pb.RpcObjectSearchRequest{
 		SpaceId: spaceId,
 		Filters: []*model.BlockContentDataviewFilter{
 			{
@@ -222,20 +223,21 @@ func (s *Service) GetTagMapFromStore(spaceId string) (map[string]apimodel.Tag, e
 
 	tags := make(map[string]apimodel.Tag)
 	for _, record := range resp.Records {
-		tag := s.mapTagFromRecord(record)
+		tag := s.getTagFromStruct(record)
 		tags[tag.Id] = tag
 	}
 
 	return tags, nil
 }
 
-func (s *Service) mapTagFromRecord(record *types.Struct) apimodel.Tag {
+// getTagFromStruct converts a tag's details from a struct to an apimodel.Tag.
+func (s *Service) getTagFromStruct(details *types.Struct) apimodel.Tag {
 	return apimodel.Tag{
 		Object: "tag",
-		Id:     record.Fields[bundle.RelationKeyId.String()].GetStringValue(),
-		Key:    util.ToTagApiKey(record.Fields[bundle.RelationKeyUniqueKey.String()].GetStringValue()),
-		Name:   record.Fields[bundle.RelationKeyName.String()].GetStringValue(),
-		Color:  apimodel.ColorOptionToColor[record.Fields[bundle.RelationKeyRelationOptionColor.String()].GetStringValue()],
+		Id:     details.Fields[bundle.RelationKeyId.String()].GetStringValue(),
+		Key:    util.ToTagApiKey(details.Fields[bundle.RelationKeyUniqueKey.String()].GetStringValue()),
+		Name:   details.Fields[bundle.RelationKeyName.String()].GetStringValue(),
+		Color:  apimodel.ColorOptionToColor[details.Fields[bundle.RelationKeyRelationOptionColor.String()].GetStringValue()],
 	}
 }
 

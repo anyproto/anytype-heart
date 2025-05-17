@@ -106,7 +106,7 @@ var RelationFormatToPropertyFormat = map[model.RelationFormat]apimodel.PropertyF
 
 // ListProperties returns a list of properties for a specific space.
 func (s *Service) ListProperties(ctx context.Context, spaceId string, offset int, limit int) (properties []apimodel.Property, total int, hasMore bool, err error) {
-	resp := s.mw.ObjectSearch(context.Background(), &pb.RpcObjectSearchRequest{
+	resp := s.mw.ObjectSearch(ctx, &pb.RpcObjectSearchRequest{
 		SpaceId: spaceId,
 		Filters: []*model.BlockContentDataviewFilter{
 			{
@@ -140,7 +140,7 @@ func (s *Service) ListProperties(ctx context.Context, spaceId string, offset int
 
 	filteredRecords := make([]*types.Struct, 0, len(resp.Records))
 	for _, record := range resp.Records {
-		rk, _ := s.mapPropertyFromRecord(record)
+		rk, _ := s.getPropertyFromStruct(record)
 		if _, isExcluded := excludedSystemProperties[rk]; isExcluded {
 			continue
 		}
@@ -152,7 +152,7 @@ func (s *Service) ListProperties(ctx context.Context, spaceId string, offset int
 	properties = make([]apimodel.Property, 0, len(paginatedProperties))
 
 	for _, record := range paginatedProperties {
-		_, property := s.mapPropertyFromRecord(record)
+		_, property := s.getPropertyFromStruct(record)
 		properties = append(properties, property)
 	}
 
@@ -161,7 +161,7 @@ func (s *Service) ListProperties(ctx context.Context, spaceId string, offset int
 
 // GetProperty retrieves a single property by its ID in a specific space.
 func (s *Service) GetProperty(ctx context.Context, spaceId string, propertyId string) (apimodel.Property, error) {
-	resp := s.mw.ObjectShow(context.Background(), &pb.RpcObjectShowRequest{
+	resp := s.mw.ObjectShow(ctx, &pb.RpcObjectShowRequest{
 		SpaceId:  spaceId,
 		ObjectId: propertyId,
 	})
@@ -180,7 +180,7 @@ func (s *Service) GetProperty(ctx context.Context, spaceId string, propertyId st
 		}
 	}
 
-	rk, property := s.mapPropertyFromRecord(resp.ObjectView.Details[0].Details)
+	rk, property := s.getPropertyFromStruct(resp.ObjectView.Details[0].Details)
 	if _, isExcluded := excludedSystemProperties[rk]; isExcluded {
 		return apimodel.Property{}, ErrPropertyNotFound
 	}
@@ -193,6 +193,7 @@ func (s *Service) CreateProperty(ctx context.Context, spaceId string, request ap
 		Fields: map[string]*types.Value{
 			bundle.RelationKeyName.String():           pbtypes.String(request.Name),
 			bundle.RelationKeyRelationFormat.String(): pbtypes.Int64(int64(PropertyFormatToRelationFormat[request.Format])),
+			bundle.RelationKeyOrigin.String():         pbtypes.Int64(int64(model.ObjectOrigin_api)),
 		},
 	}
 
@@ -267,7 +268,7 @@ func (s *Service) processProperties(ctx context.Context, spaceId string, entries
 	if len(entries) == 0 {
 		return fields, nil
 	}
-	propertyMap, err := s.GetPropertyMapFromStore(spaceId)
+	propertyMap, err := s.getPropertyMapFromStore(ctx, spaceId, false)
 	if err != nil {
 		return nil, err
 	}
@@ -346,7 +347,7 @@ func (s *Service) processProperties(ctx context.Context, spaceId string, entries
 		}
 		prop, ok := propertyMap[rk]
 		if !ok {
-			return nil, errors.New("unknown property '" + key + "'")
+			return nil, util.ErrBadInput(fmt.Sprintf("unknown property key: %q", rk))
 		}
 
 		sanitized, err := s.sanitizeAndValidatePropertyValue(ctx, spaceId, key, prop.Format, raw, prop)
@@ -499,12 +500,13 @@ func (s *Service) getRecommendedPropertiesFromLists(featured, regular *types.Lis
 	return props
 }
 
-// GetPropertyMapsFromStore retrieves all properties for all spaces.
-func (s *Service) GetPropertyMapsFromStore(spaceIds []string) (map[string]map[string]apimodel.Property, error) {
+// getPropertyMapsFromStore retrieves all properties for all spaces.
+// Property entries can also be keyed by property id. Required for filling types with properties, as recommended properties are referenced by id and not key.
+func (s *Service) getPropertyMapsFromStore(ctx context.Context, spaceIds []string, keyByPropertyId bool) (map[string]map[string]apimodel.Property, error) {
 	spacesToProperties := make(map[string]map[string]apimodel.Property, len(spaceIds))
 
 	for _, spaceId := range spaceIds {
-		propertyMap, err := s.GetPropertyMapFromStore(spaceId)
+		propertyMap, err := s.getPropertyMapFromStore(ctx, spaceId, keyByPropertyId)
 		if err != nil {
 			return nil, err
 		}
@@ -514,10 +516,10 @@ func (s *Service) GetPropertyMapsFromStore(spaceIds []string) (map[string]map[st
 	return spacesToProperties, nil
 }
 
-// GetPropertyMapFromStore retrieves all properties for a specific space
-// Property entries are also keyed by property id. Required for filling types with properties, as recommended properties are referenced by id and not key.
-func (s *Service) GetPropertyMapFromStore(spaceId string) (map[string]apimodel.Property, error) {
-	resp := s.mw.ObjectSearch(context.Background(), &pb.RpcObjectSearchRequest{
+// getPropertyMapFromStore retrieves all properties for a specific space
+// Property entries can also be keyed by property id. Required for filling types with properties, as recommended properties are referenced by id and not key.
+func (s *Service) getPropertyMapFromStore(ctx context.Context, spaceId string, keyByPropertyId bool) (map[string]apimodel.Property, error) {
+	resp := s.mw.ObjectSearch(ctx, &pb.RpcObjectSearchRequest{
 		SpaceId: spaceId,
 		Filters: []*model.BlockContentDataviewFilter{
 			{
@@ -545,23 +547,25 @@ func (s *Service) GetPropertyMapFromStore(spaceId string) (map[string]apimodel.P
 
 	propertyMap := make(map[string]apimodel.Property, len(resp.Records))
 	for _, record := range resp.Records {
-		rk, p := s.mapPropertyFromRecord(record)
+		rk, p := s.getPropertyFromStruct(record)
 		propertyMap[rk] = p
-		propertyMap[p.Id] = p // add property under id as key to map as well
+		if keyByPropertyId {
+			propertyMap[p.Id] = p // add property under id as key to map as well
+		}
 	}
 
 	return propertyMap, nil
 }
 
-// mapPropertyFromRecord maps a single property record into a Property and returns its trimmed relation key.
-func (s *Service) mapPropertyFromRecord(record *types.Struct) (string, apimodel.Property) {
-	rk := record.Fields[bundle.RelationKeyRelationKey.String()].GetStringValue()
+// getPropertyFromStruct maps a property's details into an apimodel.Property and returns its relation key.
+func (s *Service) getPropertyFromStruct(details *types.Struct) (string, apimodel.Property) {
+	rk := details.Fields[bundle.RelationKeyRelationKey.String()].GetStringValue()
 	return rk, apimodel.Property{
 		Object: "property",
-		Id:     record.Fields[bundle.RelationKeyId.String()].GetStringValue(),
+		Id:     details.Fields[bundle.RelationKeyId.String()].GetStringValue(),
 		Key:    util.ToPropertyApiKey(rk),
-		Name:   record.Fields[bundle.RelationKeyName.String()].GetStringValue(),
-		Format: RelationFormatToPropertyFormat[model.RelationFormat(record.Fields[bundle.RelationKeyRelationFormat.String()].GetNumberValue())],
+		Name:   details.Fields[bundle.RelationKeyName.String()].GetStringValue(),
+		Format: RelationFormatToPropertyFormat[model.RelationFormat(details.Fields[bundle.RelationKeyRelationFormat.String()].GetNumberValue())],
 	}
 }
 
@@ -585,7 +589,9 @@ func (s *Service) getPropertiesFromStruct(details *types.Struct, propertyMap map
 
 		id := prop.Id
 		name := prop.Name
-		properties = append(properties, s.buildPropertyWithValue(id, key, name, format, convertedVal))
+		if pwv := s.buildPropertyWithValue(id, key, name, format, convertedVal); pwv != nil {
+			properties = append(properties, *pwv)
+		}
 	}
 
 	return properties
@@ -657,7 +663,7 @@ func (s *Service) convertPropertyValue(key string, value *types.Value, format ap
 }
 
 // buildPropertyWithValue creates a Property based on the format and converted value.
-func (s *Service) buildPropertyWithValue(id string, key string, name string, format apimodel.PropertyFormat, val interface{}) apimodel.PropertyWithValue {
+func (s *Service) buildPropertyWithValue(id string, key string, name string, format apimodel.PropertyFormat, val interface{}) *apimodel.PropertyWithValue {
 	base := apimodel.PropertyBase{
 		Object: "property",
 		Id:     id,
@@ -666,52 +672,37 @@ func (s *Service) buildPropertyWithValue(id string, key string, name string, for
 	switch format {
 	case apimodel.PropertyFormatText:
 		if str, ok := val.(string); ok {
-			return apimodel.PropertyWithValue{WrappedPropertyWithValue: apimodel.TextPropertyValue{
-				PropertyBase: base,
-				Key:          key,
-				Name:         name,
-				Format:       format,
-				Text:         str,
+			return &apimodel.PropertyWithValue{WrappedPropertyWithValue: apimodel.TextPropertyValue{
+				PropertyBase: base, Key: key, Name: name, Format: format,
+				Text: str,
 			}}
 		}
 	case apimodel.PropertyFormatNumber:
 		if num, ok := val.(float64); ok {
-			return apimodel.PropertyWithValue{WrappedPropertyWithValue: apimodel.NumberPropertyValue{
-				PropertyBase: base,
-				Key:          key,
-				Name:         name,
-				Format:       format,
-				Number:       num,
+			return &apimodel.PropertyWithValue{WrappedPropertyWithValue: apimodel.NumberPropertyValue{
+				PropertyBase: base, Key: key, Name: name, Format: format,
+				Number: num,
 			}}
 		}
 	case apimodel.PropertyFormatSelect:
 		if sel, ok := val.(apimodel.Tag); ok {
-			return apimodel.PropertyWithValue{WrappedPropertyWithValue: apimodel.SelectPropertyValue{
-				PropertyBase: base,
-				Key:          key,
-				Name:         name,
-				Format:       format,
-				Select:       &sel,
+			return &apimodel.PropertyWithValue{WrappedPropertyWithValue: apimodel.SelectPropertyValue{
+				PropertyBase: base, Key: key, Name: name, Format: format,
+				Select: &sel,
 			}}
 		}
 	case apimodel.PropertyFormatMultiSelect:
 		if ms, ok := val.([]apimodel.Tag); ok {
-			return apimodel.PropertyWithValue{WrappedPropertyWithValue: apimodel.MultiSelectPropertyValue{
-				PropertyBase: base,
-				Key:          key,
-				Name:         name,
-				Format:       format,
-				MultiSelect:  ms,
+			return &apimodel.PropertyWithValue{WrappedPropertyWithValue: apimodel.MultiSelectPropertyValue{
+				PropertyBase: base, Key: key, Name: name, Format: format,
+				MultiSelect: ms,
 			}}
 		}
 	case apimodel.PropertyFormatDate:
 		if dateStr, ok := val.(string); ok {
-			return apimodel.PropertyWithValue{WrappedPropertyWithValue: apimodel.DatePropertyValue{
-				PropertyBase: base,
-				Key:          key,
-				Name:         name,
-				Format:       format,
-				Date:         dateStr,
+			return &apimodel.PropertyWithValue{WrappedPropertyWithValue: apimodel.DatePropertyValue{
+				PropertyBase: base, Key: key, Name: name, Format: format,
+				Date: dateStr,
 			}}
 		}
 	case apimodel.PropertyFormatFiles:
@@ -722,52 +713,37 @@ func (s *Service) buildPropertyWithValue(id string, key string, name string, for
 					files = append(files, str)
 				}
 			}
-			return apimodel.PropertyWithValue{WrappedPropertyWithValue: apimodel.FilesPropertyValue{
-				PropertyBase: base,
-				Key:          key,
-				Name:         name,
-				Format:       format,
-				Files:        files,
+			return &apimodel.PropertyWithValue{WrappedPropertyWithValue: apimodel.FilesPropertyValue{
+				PropertyBase: base, Key: key, Name: name, Format: format,
+				Files: files,
 			}}
 		}
 	case apimodel.PropertyFormatCheckbox:
 		if cb, ok := val.(bool); ok {
-			return apimodel.PropertyWithValue{WrappedPropertyWithValue: apimodel.CheckboxPropertyValue{
-				PropertyBase: base,
-				Key:          key,
-				Name:         name,
-				Format:       format,
-				Checkbox:     cb,
+			return &apimodel.PropertyWithValue{WrappedPropertyWithValue: apimodel.CheckboxPropertyValue{
+				PropertyBase: base, Key: key, Name: name, Format: format,
+				Checkbox: cb,
 			}}
 		}
 	case apimodel.PropertyFormatUrl:
 		if urlStr, ok := val.(string); ok {
-			return apimodel.PropertyWithValue{WrappedPropertyWithValue: apimodel.URLPropertyValue{
-				PropertyBase: base,
-				Key:          key,
-				Name:         name,
-				Format:       format,
-				Url:          urlStr,
+			return &apimodel.PropertyWithValue{WrappedPropertyWithValue: apimodel.URLPropertyValue{
+				PropertyBase: base, Key: key, Name: name, Format: format,
+				Url: urlStr,
 			}}
 		}
 	case apimodel.PropertyFormatEmail:
 		if email, ok := val.(string); ok {
-			return apimodel.PropertyWithValue{WrappedPropertyWithValue: apimodel.EmailPropertyValue{
-				PropertyBase: base,
-				Key:          key,
-				Name:         name,
-				Format:       format,
-				Email:        email,
+			return &apimodel.PropertyWithValue{WrappedPropertyWithValue: apimodel.EmailPropertyValue{
+				PropertyBase: base, Key: key, Name: name, Format: format,
+				Email: email,
 			}}
 		}
 	case apimodel.PropertyFormatPhone:
 		if phone, ok := val.(string); ok {
-			return apimodel.PropertyWithValue{WrappedPropertyWithValue: apimodel.PhonePropertyValue{
-				PropertyBase: base,
-				Key:          key,
-				Name:         name,
-				Format:       format,
-				Phone:        phone,
+			return &apimodel.PropertyWithValue{WrappedPropertyWithValue: apimodel.PhonePropertyValue{
+				PropertyBase: base, Key: key, Name: name, Format: format,
+				Phone: phone,
 			}}
 		}
 	case apimodel.PropertyFormatObjects:
@@ -782,7 +758,7 @@ func (s *Service) buildPropertyWithValue(id string, key string, name string, for
 				}
 			}
 		}
-		return apimodel.PropertyWithValue{WrappedPropertyWithValue: apimodel.ObjectsPropertyValue{
+		return &apimodel.PropertyWithValue{WrappedPropertyWithValue: apimodel.ObjectsPropertyValue{
 			PropertyBase: base,
 			Key:          key,
 			Name:         name,
@@ -791,20 +767,5 @@ func (s *Service) buildPropertyWithValue(id string, key string, name string, for
 		}}
 	}
 
-	if str, ok := val.(string); ok {
-		return apimodel.PropertyWithValue{WrappedPropertyWithValue: apimodel.TextPropertyValue{
-			PropertyBase: base,
-			Key:          key,
-			Name:         name,
-			Format:       format,
-			Text:         str,
-		}}
-	}
-	return apimodel.PropertyWithValue{WrappedPropertyWithValue: apimodel.TextPropertyValue{
-		PropertyBase: base,
-		Key:          key,
-		Name:         name,
-		Format:       format,
-		Text:         fmt.Sprintf("%v", val),
-	}}
+	return nil
 }

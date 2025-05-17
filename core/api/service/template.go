@@ -42,7 +42,7 @@ func (s *Service) ListTemplates(ctx context.Context, spaceId string, typeId stri
 		return nil, 0, false, ErrTemplateTypeNotFound
 	}
 
-	// Then, search all objects of the template type and filter by the target object type
+	// Then, search all objects of the template type and filter by the target type
 	templateTypeId := templateTypeIdResp.Records[0].Fields[bundle.RelationKeyId.String()].GetStringValue()
 	templateObjectsResp := s.mw.ObjectSearch(ctx, &pb.RpcObjectSearchRequest{
 		SpaceId: spaceId,
@@ -68,21 +68,21 @@ func (s *Service) ListTemplates(ctx context.Context, spaceId string, typeId stri
 	paginatedTemplates, hasMore := pagination.Paginate(templateObjectsResp.Records, offset, limit)
 	templates = make([]apimodel.Object, 0, len(paginatedTemplates))
 
-	propertyMap, err := s.GetPropertyMapFromStore(spaceId)
+	propertyMap, err := s.getPropertyMapFromStore(ctx, spaceId, true)
 	if err != nil {
 		return nil, 0, false, err
 	}
-	typeMap, err := s.GetTypeMapFromStore(spaceId, propertyMap)
+	typeMap, err := s.getTypeMapFromStore(ctx, spaceId, propertyMap, false)
 	if err != nil {
 		return nil, 0, false, err
 	}
-	tagMap, err := s.GetTagMapFromStore(spaceId)
+	tagMap, err := s.getTagMapFromStore(ctx, spaceId)
 	if err != nil {
 		return nil, 0, false, err
 	}
 
 	for _, record := range paginatedTemplates {
-		templates = append(templates, s.GetObjectFromStruct(record, propertyMap, typeMap, tagMap))
+		templates = append(templates, s.getObjectFromStruct(record, propertyMap, typeMap, tagMap))
 	}
 
 	return templates, total, hasMore, nil
@@ -109,15 +109,15 @@ func (s *Service) GetTemplate(ctx context.Context, spaceId string, _ string, tem
 		}
 	}
 
-	propertyMap, err := s.GetPropertyMapFromStore(spaceId)
+	propertyMap, err := s.getPropertyMapFromStore(ctx, spaceId, true)
 	if err != nil {
 		return apimodel.ObjectWithBody{}, err
 	}
-	typeMap, err := s.GetTypeMapFromStore(spaceId, propertyMap)
+	typeMap, err := s.getTypeMapFromStore(ctx, spaceId, propertyMap, false)
 	if err != nil {
 		return apimodel.ObjectWithBody{}, err
 	}
-	tagMap, err := s.GetTagMapFromStore(spaceId)
+	tagMap, err := s.getTagMapFromStore(ctx, spaceId)
 	if err != nil {
 		return apimodel.ObjectWithBody{}, err
 	}
@@ -127,5 +127,5 @@ func (s *Service) GetTemplate(ctx context.Context, spaceId string, _ string, tem
 		return apimodel.ObjectWithBody{}, err
 	}
 
-	return s.GetObjectWithBlocksFromStruct(resp.ObjectView.Details[0].Details, markdown, propertyMap, typeMap, tagMap), nil
+	return s.getObjectWithBlocksFromStruct(resp.ObjectView.Details[0].Details, markdown, propertyMap, typeMap, tagMap), nil
 }

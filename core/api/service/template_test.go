@@ -49,7 +49,7 @@ func TestObjectService_ListTemplates(t *testing.T) {
 			Error: &pb.RpcObjectSearchResponseError{Code: pb.RpcObjectSearchResponseError_NULL},
 		}).Once()
 
-		// Mock GetPropertyMapFromStore, GetTypeMapFromStore and GetTagMapFromStore
+		// Mock getPropertyMapFromStore, getTypeMapFromStore and getTagMapFromStore
 		fx.mwMock.On("ObjectSearch", mock.Anything, mock.Anything).Return(&pb.RpcObjectSearchResponse{
 			Records: []*types.Struct{},
 			Error:   &pb.RpcObjectSearchResponseError{Code: pb.RpcObjectSearchResponseError_NULL},
@@ -121,16 +121,21 @@ func TestObjectService_GetTemplate(t *testing.T) {
 			},
 		}).Once()
 
-		// Mock GetPropertyMapFromStore, GetTypeMapFromStore and GetTagMapFromStore
+		// Mock getPropertyMapFromStore, getTypeMapFromStore and getTagMapFromStore
 		fx.mwMock.On("ObjectSearch", mock.Anything, mock.Anything).Return(&pb.RpcObjectSearchResponse{
 			Records: []*types.Struct{},
 			Error:   &pb.RpcObjectSearchResponseError{Code: pb.RpcObjectSearchResponseError_NULL},
 		}).Times(3)
 
 		// Mock ExportMarkdown
-		fx.exportService.
-			On("ExportSingleInMemory", mock.Anything, mockedSpaceId, mockedTemplateId, model.Export_Markdown).
-			Return("dummy markdown", nil).Once()
+		fx.mwMock.On("ObjectExport", mock.Anything, &pb.RpcObjectExportRequest{
+			SpaceId:  mockedSpaceId,
+			ObjectId: mockedTemplateId,
+			Format:   model.Export_Markdown,
+		}).Return(&pb.RpcObjectExportResponse{
+			Result: "dummy markdown",
+			Error:  &pb.RpcObjectExportResponseError{Code: pb.RpcObjectExportResponseError_NULL},
+		}, nil).Once()
 
 		// when
 		template, err := fx.service.GetTemplate(ctx, mockedSpaceId, mockedTypeId, mockedTemplateId)
