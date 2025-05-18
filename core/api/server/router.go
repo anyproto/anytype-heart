@@ -68,10 +68,15 @@ func (s *Server) NewRouter(mw apicore.ClientCommands) *gin.Engine {
 	})
 
 	// Auth routes (no authentication required)
-	authGroup := router.Group("/v1/auth")
+	authGroup := router.Group("/v1")
 	{
-		authGroup.POST("/display_code", handler.DisplayCodeHandler(s.service))
-		authGroup.POST("/token", handler.TokenHandler(s.service))
+		// TO BE DEPRECATED
+		authGroup.POST("/auth/display_code", handler.DisplayCodeHandler(s.service))
+		// TO BE DEPRECATED
+		authGroup.POST("/auth/token", handler.TokenHandler(s.service))
+
+		authGroup.POST("/auth/challenges", handler.CreateChallengeHandler(s.service))
+		authGroup.POST("/auth/api_keys", handler.CreateApiKeyHandler(s.service))
 	}
 
 	// API routes

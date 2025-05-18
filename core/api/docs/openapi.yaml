@@ -72,6 +72,21 @@ components:
       - ColorIce
       - ColorTeal
       - ColorLime
+    apimodel.CreateApiKeyResponse:
+      properties:
+        api_key:
+          description: The api key used to authenticate requests
+          example: zhSG/zQRmgADyilWPtgdnfo1qD60oK02/SVgi1GaFt6=
+          type: string
+      type: object
+    apimodel.CreateChallengeResponse:
+      properties:
+        challenge_id:
+          description: The challenge id associated with the displayed code and needed
+            to solve the challenge for api_key
+          example: 67647f5ecda913e9a2e11b26
+          type: string
+      type: object
     apimodel.CreateObjectRequest:
       properties:
         body:
@@ -198,14 +213,6 @@ components:
         object:
           description: The data model of the object
           example: property
-          type: string
-      type: object
-    apimodel.DisplayCodeResponse:
-      properties:
-        challenge_id:
-          description: The challenge id associated with the displayed code and needed
-            to solve the challenge for token
-          example: 67647f5ecda913e9a2e11b26
           type: string
       type: object
     apimodel.EmailPropertyLinkValue:
@@ -1003,13 +1010,6 @@ components:
           example: Some text...
           type: string
       type: object
-    apimodel.TokenResponse:
-      properties:
-        app_key:
-          description: The app key used to authenticate requests
-          example: zhSG/zQRmgADyilWPtgdnfo1qD60oK02/SVgi1GaFt6=
-          type: string
-      type: object
     apimodel.Type:
       description: The type of the object
       properties:
@@ -1447,14 +1447,72 @@ info:
   version: "2025-05-20"
 openapi: 3.1.0
 paths:
-  /v1/auth/display_code:
+  /v1/auth/api_keys:
+    post:
+      description: After receiving a `challenge_id` from the `/v1/auth/challenges`
+        endpoint, the client calls this endpoint to provide the corresponding 4-digit
+        code along with the challenge ID. The endpoint verifies that the challenge
+        solution is correct and, if it is, returns an `api_key`. This endpoint is
+        central to the authentication process, as it validates the user's identity
+        and issues a key that can be used for further interactions with the API.
+      operationId: solve_auth_challenge
+      parameters:
+      - description: The version of the API to use
+        in: header
+        name: Anytype-Version
+        required: true
+        schema:
+          default: "2025-05-20"
+          type: string
+      - description: The ID of the challenge to solve
+        in: query
+        name: challenge_id
+        required: true
+        schema:
+          type: string
+      - description: The 4-digit code retrieved from Anytype Desktop app
+        in: query
+        name: code
+        required: true
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        "201":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/apimodel.CreateApiKeyResponse'
+          description: The API key that can be used in the Authorization header for
+            subsequent requests
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/util.ValidationError'
+          description: Invalid input
+        "500":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/util.ServerError'
+          description: Internal server error
+      summary: Solve challenge
+      tags:
+      - Auth
+  /v1/auth/challenges:
     post:
       description: Generates a one-time authentication challenge for granting API
         access to the user's vault. Upon providing a valid `app_name`, the server
-        issues a unique `challenge_id` and displays a short code within the Anytype
-        Desktop. The `challenge_id` must then be used with the token endpoint (see
-        below) to solve the challenge and retrieve an authentication token. This mechanism
-        ensures that only trusted applications and authorized users gain access.
+        issues a unique `challenge_id` and displays a 4-digit code within the Anytype
+        Desktop. The `challenge_id` must then be used with the `/v1/auth/api_keys`
+        endpoint to solve the challenge and retrieve an authentication token. This
+        mechanism ensures that only trusted applications and authorized users gain
+        access.
       operationId: create_auth_challenge
       parameters:
       - description: The version of the API to use
@@ -1476,11 +1534,11 @@ paths:
             schema:
               type: object
       responses:
-        "200":
+        "201":
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/apimodel.DisplayCodeResponse'
+                $ref: '#/components/schemas/apimodel.CreateChallengeResponse'
           description: The challenge ID associated with the started challenge
         "400":
           content:
@@ -1494,64 +1552,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/util.ServerError'
           description: Internal server error
-      summary: Start challenge
-      tags:
-      - Auth
-  /v1/auth/token:
-    post:
-      description: After receiving a `challenge_id` from the `display_code` endpoint,
-        the client calls this endpoint to provide the corresponding 4-digit code along
-        with the challenge ID. The endpoint verifies that the challenge solution is
-        correct and, if it is, returns a permanent `app_key. This endpoint is central
-        to the authentication process, as it validates the user's identity and issues
-        a token that can be used for further interactions with the API.
-      operationId: solve_auth_challenge
-      parameters:
-      - description: The version of the API to use
-        in: header
-        name: Anytype-Version
-        required: true
-        schema:
-          default: "2025-05-20"
-          type: string
-      - description: The ID of the challenge to solve
-        in: query
-        name: challenge_id
-        required: true
-        schema:
-          type: string
-      - description: 4-digit code retrieved from Anytype Desktop app
-        in: query
-        name: code
-        required: true
-        schema:
-          type: string
-      requestBody:
-        content:
-          application/json:
-            schema:
-              type: object
-      responses:
-        "200":
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/apimodel.TokenResponse'
-          description: The app key that can be used in the Authorization header for
-            subsequent requests
-        "400":
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/util.ValidationError'
-          description: Invalid input
-        "500":
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/util.ServerError'
-          description: Internal server error
-      summary: Solve challenge
+      summary: Create Challenge
       tags:
       - Auth
   /v1/search:
