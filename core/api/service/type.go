@@ -179,8 +179,8 @@ func (s *Service) DeleteType(ctx context.Context, spaceId string, typeId string)
 
 // getTypeMapsFromStore retrieves all types from all spaces.
 // Type entries can also be keyed by uniqueKey. Required for resolving type keys to IDs for search filters.
-func (s *Service) getTypeMapsFromStore(ctx context.Context, spaceIds []string, propertyMap map[string]map[string]apimodel.Property, keyByUniqueKey bool) (map[string]map[string]apimodel.Type, error) {
-	spacesToTypes := make(map[string]map[string]apimodel.Type, len(spaceIds))
+func (s *Service) getTypeMapsFromStore(ctx context.Context, spaceIds []string, propertyMap map[string]map[string]*apimodel.Property, keyByUniqueKey bool) (map[string]map[string]*apimodel.Type, error) {
+	spacesToTypes := make(map[string]map[string]*apimodel.Type, len(spaceIds))
 
 	for _, spaceId := range spaceIds {
 		typeMap, err := s.getTypeMapFromStore(ctx, spaceId, propertyMap[spaceId], keyByUniqueKey)
@@ -195,7 +195,7 @@ func (s *Service) getTypeMapsFromStore(ctx context.Context, spaceIds []string, p
 
 // getTypeMapFromStore retrieves all types for a specific space.
 // Type entries can also be keyed by uniqueKey. Required for resolving type keys to IDs for search filters.
-func (s *Service) getTypeMapFromStore(ctx context.Context, spaceId string, propertyMap map[string]apimodel.Property, keyByUniqueKey bool) (map[string]apimodel.Type, error) {
+func (s *Service) getTypeMapFromStore(ctx context.Context, spaceId string, propertyMap map[string]*apimodel.Property, keyByUniqueKey bool) (map[string]*apimodel.Type, error) {
 	resp := s.mw.ObjectSearch(ctx, &pb.RpcObjectSearchRequest{
 		SpaceId: spaceId,
 		Filters: []*model.BlockContentDataviewFilter{
@@ -228,19 +228,20 @@ func (s *Service) getTypeMapFromStore(ctx context.Context, spaceId string, prope
 		return nil, ErrFailedRetrieveTypes
 	}
 
-	typeMap := make(map[string]apimodel.Type, len(resp.Records))
+	typeMap := make(map[string]*apimodel.Type, len(resp.Records))
 	for _, record := range resp.Records {
 		uk, t := s.getTypeFromStruct(record, propertyMap)
-		typeMap[t.Id] = t
+		ot := t
+		typeMap[t.Id] = &ot
 		if keyByUniqueKey {
-			typeMap[uk] = t
+			typeMap[uk] = &ot
 		}
 	}
 	return typeMap, nil
 }
 
 // getTypeFromStruct maps a type's details into an apimodel.Type and returns its unique key.
-func (s *Service) getTypeFromStruct(details *types.Struct, propertyMap map[string]apimodel.Property) (string, apimodel.Type) {
+func (s *Service) getTypeFromStruct(details *types.Struct, propertyMap map[string]*apimodel.Property) (string, apimodel.Type) {
 	uk := details.Fields[bundle.RelationKeyUniqueKey.String()].GetStringValue()
 	return uk, apimodel.Type{
 		Object:     "type",
@@ -256,8 +257,11 @@ func (s *Service) getTypeFromStruct(details *types.Struct, propertyMap map[strin
 }
 
 // getTypeFromMap retrieves the type from the details.
-func (s *Service) getTypeFromMap(details *types.Struct, typeMap map[string]apimodel.Type) apimodel.Type {
-	return typeMap[details.Fields[bundle.RelationKeyType.String()].GetStringValue()]
+func (s *Service) getTypeFromMap(details *types.Struct, typeMap map[string]*apimodel.Type) apimodel.Type {
+	if t, ok := typeMap[details.Fields[bundle.RelationKeyType.String()].GetStringValue()]; ok {
+		return *t
+	}
+	return apimodel.Type{}
 }
 
 // buildTypeDetails builds the type details from the CreateTypeRequest.
@@ -269,7 +273,7 @@ func (s *Service) buildTypeDetails(ctx context.Context, spaceId string, request 
 		bundle.RelationKeyOrigin.String():            pbtypes.Int64(int64(model.ObjectOrigin_api)),
 	}
 
-	iconFields, err := s.processIconFields(ctx, spaceId, request.Icon)
+	iconFields, err := s.processIconFields(spaceId, request.Icon)
 	if err != nil {
 		return nil, err
 	}
@@ -331,7 +335,7 @@ func (s *Service) buildUpdatedTypeDetails(ctx context.Context, spaceId string, t
 	}
 
 	if request.Icon != nil {
-		iconFields, err := s.processIconFields(ctx, spaceId, *request.Icon)
+		iconFields, err := s.processIconFields(spaceId, *request.Icon)
 		if err != nil {
 			return nil, err
 		}
@@ -387,7 +391,7 @@ func (s *Service) buildUpdatedTypeDetails(ctx context.Context, spaceId string, t
 }
 
 // buildRelationIds constructs relation IDs for property links, creating new properties if necessary.
-func (s *Service) buildRelationIds(ctx context.Context, spaceId string, props []apimodel.PropertyLink, propertyMap map[string]apimodel.Property) ([]string, error) {
+func (s *Service) buildRelationIds(ctx context.Context, spaceId string, props []apimodel.PropertyLink, propertyMap map[string]*apimodel.Property) ([]string, error) {
 	relationIds := make([]string, 0, len(props))
 	for _, propLink := range props {
 		rk := util.FromPropertyApiKey(propLink.Key)

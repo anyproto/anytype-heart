@@ -273,7 +273,7 @@ func (s *Service) buildObjectDetails(ctx context.Context, spaceId string, reques
 		bundle.RelationKeyOrigin.String(): pbtypes.Int64(int64(model.ObjectOrigin_api)),
 	}
 
-	iconFields, err := s.processIconFields(ctx, spaceId, request.Icon)
+	iconFields, err := s.processIconFields(spaceId, request.Icon)
 	if err != nil {
 		return nil, err
 	}
@@ -300,7 +300,7 @@ func (s *Service) buildUpdatedObjectDetails(ctx context.Context, spaceId string,
 	}
 
 	if request.Icon != nil {
-		iconFields, err := s.processIconFields(ctx, spaceId, *request.Icon)
+		iconFields, err := s.processIconFields(spaceId, *request.Icon)
 		if err != nil {
 			return nil, err
 		}
@@ -323,7 +323,7 @@ func (s *Service) buildUpdatedObjectDetails(ctx context.Context, spaceId string,
 }
 
 // processIconFields returns the detail fields corresponding to the given icon.
-func (s *Service) processIconFields(ctx context.Context, spaceId string, icon apimodel.Icon) (map[string]*types.Value, error) {
+func (s *Service) processIconFields(spaceId string, icon apimodel.Icon) (map[string]*types.Value, error) {
 	iconFields := make(map[string]*types.Value)
 	switch e := icon.WrappedIcon.(type) {
 	case apimodel.NamedIcon:
@@ -402,7 +402,7 @@ func (s *Service) processIconFields(ctx context.Context, spaceId string, icon ap
 // }
 
 // getObjectFromStruct creates an Object without blocks from the details.
-func (s *Service) getObjectFromStruct(details *types.Struct, propertyMap map[string]apimodel.Property, typeMap map[string]apimodel.Type, tagMap map[string]apimodel.Tag) apimodel.Object {
+func (s *Service) getObjectFromStruct(details *types.Struct, propertyMap map[string]*apimodel.Property, typeMap map[string]*apimodel.Type, tagMap map[string]apimodel.Tag) apimodel.Object {
 	return apimodel.Object{
 		Object:     "object",
 		Id:         details.Fields[bundle.RelationKeyId.String()].GetStringValue(),
@@ -418,7 +418,7 @@ func (s *Service) getObjectFromStruct(details *types.Struct, propertyMap map[str
 }
 
 // getObjectWithBlocksFromStruct creates an ObjectWithBody from the details.
-func (s *Service) getObjectWithBlocksFromStruct(details *types.Struct, markdown string, propertyMap map[string]apimodel.Property, typeMap map[string]apimodel.Type, tagMap map[string]apimodel.Tag) apimodel.ObjectWithBody {
+func (s *Service) getObjectWithBlocksFromStruct(details *types.Struct, markdown string, propertyMap map[string]*apimodel.Property, typeMap map[string]*apimodel.Type, tagMap map[string]apimodel.Tag) apimodel.ObjectWithBody {
 	return apimodel.ObjectWithBody{
 		Object:     "object",
 		Id:         details.Fields[bundle.RelationKeyId.String()].GetStringValue(),

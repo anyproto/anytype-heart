@@ -225,7 +225,7 @@ func (s *Service) prepareQueryFilter(searchQuery string) []*model.BlockContentDa
 }
 
 // prepareTypeFilters combines type filters with an OR condition.
-func (s *Service) prepareTypeFilters(types []string, typeMap map[string]apimodel.Type) []*model.BlockContentDataviewFilter {
+func (s *Service) prepareTypeFilters(types []string, typeMap map[string]*apimodel.Type) []*model.BlockContentDataviewFilter {
 	if len(types) == 0 {
 		return nil
 	}

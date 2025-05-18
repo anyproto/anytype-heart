@@ -350,7 +350,7 @@ func (s *Service) processProperties(ctx context.Context, spaceId string, entries
 			return nil, util.ErrBadInput(fmt.Sprintf("unknown property key: %q", rk))
 		}
 
-		sanitized, err := s.sanitizeAndValidatePropertyValue(ctx, spaceId, key, prop.Format, raw, prop)
+		sanitized, err := s.sanitizeAndValidatePropertyValue(spaceId, key, prop.Format, raw, prop)
 		if err != nil {
 			return nil, err
 		}
@@ -360,7 +360,7 @@ func (s *Service) processProperties(ctx context.Context, spaceId string, entries
 }
 
 // sanitizeAndValidatePropertyValue checks the value for a property according to its format and ensures referenced IDs exist and are valid.
-func (s *Service) sanitizeAndValidatePropertyValue(ctx context.Context, spaceId string, key string, format apimodel.PropertyFormat, value interface{}, property apimodel.Property) (interface{}, error) {
+func (s *Service) sanitizeAndValidatePropertyValue(spaceId string, key string, format apimodel.PropertyFormat, value interface{}, property *apimodel.Property) (interface{}, error) {
 	switch format {
 	case apimodel.PropertyFormatText, apimodel.PropertyFormatUrl, apimodel.PropertyFormatEmail, apimodel.PropertyFormatPhone:
 		str, ok := value.(string)
@@ -445,7 +445,7 @@ func (s *Service) sanitizeAndValidatePropertyValue(ctx context.Context, spaceId 
 }
 
 // isValidSelectOption checks if the option id is valid for the given property.
-func (s *Service) isValidSelectOption(spaceId string, property apimodel.Property, tagId string) bool {
+func (s *Service) isValidSelectOption(spaceId string, property *apimodel.Property, tagId string) bool {
 	fields, err := util.GetFieldsByID(s.mw, spaceId, tagId, []string{bundle.RelationKeyResolvedLayout.String(), bundle.RelationKeyRelationKey.String()})
 	if err != nil {
 		return false
@@ -474,7 +474,7 @@ func (s *Service) isValidFileReference(spaceId string, fileId string) bool {
 }
 
 // getRecommendedPropertiesFromLists combines featured and regular properties into a list of Properties.
-func (s *Service) getRecommendedPropertiesFromLists(featured, regular *types.ListValue, propertyMap map[string]apimodel.Property) []apimodel.Property {
+func (s *Service) getRecommendedPropertiesFromLists(featured, regular *types.ListValue, propertyMap map[string]*apimodel.Property) []apimodel.Property {
 	var props []apimodel.Property
 	lists := []*types.ListValue{featured, regular}
 	for _, lst := range lists {
@@ -494,7 +494,7 @@ func (s *Service) getRecommendedPropertiesFromLists(featured, regular *types.Lis
 			if _, excluded := excludedSystemProperties[rk]; excluded {
 				continue
 			}
-			props = append(props, p)
+			props = append(props, *p)
 		}
 	}
 	return props
@@ -502,8 +502,8 @@ func (s *Service) getRecommendedPropertiesFromLists(featured, regular *types.Lis
 
 // getPropertyMapsFromStore retrieves all properties for all spaces.
 // Property entries can also be keyed by property id. Required for filling types with properties, as recommended properties are referenced by id and not key.
-func (s *Service) getPropertyMapsFromStore(ctx context.Context, spaceIds []string, keyByPropertyId bool) (map[string]map[string]apimodel.Property, error) {
-	spacesToProperties := make(map[string]map[string]apimodel.Property, len(spaceIds))
+func (s *Service) getPropertyMapsFromStore(ctx context.Context, spaceIds []string, keyByPropertyId bool) (map[string]map[string]*apimodel.Property, error) {
+	spacesToProperties := make(map[string]map[string]*apimodel.Property, len(spaceIds))
 
 	for _, spaceId := range spaceIds {
 		propertyMap, err := s.getPropertyMapFromStore(ctx, spaceId, keyByPropertyId)
@@ -518,7 +518,7 @@ func (s *Service) getPropertyMapsFromStore(ctx context.Context, spaceIds []strin
 
 // getPropertyMapFromStore retrieves all properties for a specific space
 // Property entries can also be keyed by property id. Required for filling types with properties, as recommended properties are referenced by id and not key.
-func (s *Service) getPropertyMapFromStore(ctx context.Context, spaceId string, keyByPropertyId bool) (map[string]apimodel.Property, error) {
+func (s *Service) getPropertyMapFromStore(ctx context.Context, spaceId string, keyByPropertyId bool) (map[string]*apimodel.Property, error) {
 	resp := s.mw.ObjectSearch(ctx, &pb.RpcObjectSearchRequest{
 		SpaceId: spaceId,
 		Filters: []*model.BlockContentDataviewFilter{
@@ -545,12 +545,13 @@ func (s *Service) getPropertyMapFromStore(ctx context.Context, spaceId string, k
 		return nil, ErrFailedRetrievePropertyMap
 	}
 
-	propertyMap := make(map[string]apimodel.Property, len(resp.Records))
+	propertyMap := make(map[string]*apimodel.Property, len(resp.Records))
 	for _, record := range resp.Records {
 		rk, p := s.getPropertyFromStruct(record)
-		propertyMap[rk] = p
+		prop := p
+		propertyMap[rk] = &prop
 		if keyByPropertyId {
-			propertyMap[p.Id] = p // add property under id as key to map as well
+			propertyMap[p.Id] = &prop // add property under id as key to map as well
 		}
 	}
 
@@ -570,7 +571,7 @@ func (s *Service) getPropertyFromStruct(details *types.Struct) (string, apimodel
 }
 
 // getPropertiesFromStruct retrieves the properties from the details.
-func (s *Service) getPropertiesFromStruct(details *types.Struct, propertyMap map[string]apimodel.Property, tagMap map[string]apimodel.Tag) []apimodel.PropertyWithValue {
+func (s *Service) getPropertiesFromStruct(details *types.Struct, propertyMap map[string]*apimodel.Property, tagMap map[string]apimodel.Tag) []apimodel.PropertyWithValue {
 	properties := make([]apimodel.PropertyWithValue, 0)
 	for rk, value := range details.GetFields() {
 		if _, isExcluded := excludedSystemProperties[rk]; isExcluded {
