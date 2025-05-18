@@ -176,7 +176,7 @@ func IsEmoji(s string) bool {
 		return false
 	}
 	for _, r := range s {
-		if unicode.Is(unicode.Cf, r) || unicode.Is(unicode.So, r) || unicode.Is(unicode.Sk, r) {
+		if unicode.Is(unicode.Cf, r) || unicode.Is(unicode.Mn, r) || unicode.Is(unicode.So, r) || unicode.Is(unicode.Sk, r) {
 			continue
 		} else {
 			return false
