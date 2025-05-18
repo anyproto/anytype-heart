@@ -2937,7 +2937,7 @@
             }
           },
           {
-            "description": "The ID of the view to retrieve objects for; must be retrieved from ListViews endpoint or omited if you want to get all objects in the list",
+            "description": "The ID of the view to retrieve objects for; must be retrieved from ListViews endpoint or omitted if you want to get all objects in the list",
             "in": "path",
             "name": "view_id",
             "required": true,
