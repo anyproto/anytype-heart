@@ -5,6 +5,12 @@ build-lib:
 	@$(eval FLAGS += $$(shell govvv -flags -pkg github.com/anyproto/anytype-heart/util/vcs))
 	@GO111MODULE=on go build -v -o dist/lib.a -tags nogrpcserver -ldflags "$(FLAGS)" -buildmode=c-archive -v ./clientlibrary/clib
 
+build-bridge:
+	@echo 'Building bridge...'
+	@cd clientlibrary/bridge && go run generate.go
+	@$(eval FLAGS += $$(shell govvv -flags -pkg github.com/anyproto/anytype-heart/util/vcs))
+	@GO111MODULE=on go build -v -o dist/bridge/rpclib.a -tags=nogrpcserver,cshared -ldflags "$(FLAGS)" -buildmode=c-archive -v ./clientlibrary/bridge
+
 build-js-addon:
 	@echo 'Building JS-addon...'
 	@cp dist/lib.a clientlibrary/jsaddon/lib.a
