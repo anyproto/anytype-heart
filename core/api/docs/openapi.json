@@ -1965,7 +1965,7 @@
     "/v1/auth/api_keys": {
       "post": {
         "description": "After receiving a `challenge_id` from the `/v1/auth/challenges` endpoint, the client calls this endpoint to provide the corresponding 4-digit code along with the challenge ID. The endpoint verifies that the challenge solution is correct and, if it is, returns an `api_key`. This endpoint is central to the authentication process, as it validates the user's identity and issues a key that can be used for further interactions with the API.",
-        "operationId": "solve_auth_challenge",
+        "operationId": "create_api_key",
         "parameters": [
           {
             "description": "The version of the API to use",
@@ -2024,7 +2024,7 @@
                 }
               }
             },
-            "description": "Invalid input"
+            "description": "Bad request"
           },
           "500": {
             "content": {
@@ -2037,7 +2037,7 @@
             "description": "Internal server error"
           }
         },
-        "summary": "Solve challenge",
+        "summary": "Create API Key",
         "tags": [
           "Auth"
         ]
@@ -2096,7 +2096,7 @@
                 }
               }
             },
-            "description": "Invalid input"
+            "description": "Bad request"
           },
           "500": {
             "content": {

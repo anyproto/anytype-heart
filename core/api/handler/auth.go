@@ -23,7 +23,7 @@ TO BE DEPRECATED
 // 	@Param			Anytype-Version	header		string							true	"The version of the API to use"	default(2025-05-20)
 // 	@Param			app_name		query		string							true	"The name of the app requesting API access"
 // 	@Success		200				{object}	apimodel.DisplayCodeResponse	"The challenge ID associated with the started challenge"
-// 	@Failure		400				{object}	util.ValidationError			"Invalid input"
+// 	@Failure		400				{object}	util.ValidationError			"Bad request"
 // 	@Failure		500				{object}	util.ServerError				"Internal server error"
 // 	@Router			/v1/auth/display_code [post]
 */
@@ -60,7 +60,7 @@ TO BE DEPRECATED
 //	@Param			challenge_id	query		string					true	"The ID of the challenge to solve"
 //	@Param			code			query		string					true	"4-digit code retrieved from Anytype Desktop app"
 //	@Success		200				{object}	apimodel.TokenResponse	"The app key that can be used in the Authorization header for subsequent requests"
-//	@Failure		400				{object}	util.ValidationError	"Invalid input"
+//	@Failure		400				{object}	util.ValidationError	"Bad request"
 //	@Failure		500				{object}	util.ServerError		"Internal server error"
 //	@Router			/v1/auth/token [post]
 */
@@ -96,7 +96,7 @@ func TokenHandler(s *service.Service) gin.HandlerFunc {
 //	@Param			Anytype-Version	header		string								true	"The version of the API to use"	default(2025-05-20)
 //	@Param			app_name		query		string								true	"The name of the app requesting API access"
 //	@Success		201				{object}	apimodel.CreateChallengeResponse	"The challenge ID associated with the started challenge"
-//	@Failure		400				{object}	util.ValidationError				"Invalid input"
+//	@Failure		400				{object}	util.ValidationError				"Bad request"
 //	@Failure		500				{object}	util.ServerError					"Internal server error"
 //	@Router			/v1/auth/challenges [post]
 func CreateChallengeHandler(s *service.Service) gin.HandlerFunc {
@@ -125,9 +125,9 @@ func CreateChallengeHandler(s *service.Service) gin.HandlerFunc {
 
 // CreateApiKeyHandler creates a new api key using a code and challenge ID
 //
-//	@Summary		Solve challenge
+//	@Summary		Create API Key
 //	@Description	After receiving a `challenge_id` from the `/v1/auth/challenges` endpoint, the client calls this endpoint to provide the corresponding 4-digit code along with the challenge ID. The endpoint verifies that the challenge solution is correct and, if it is, returns an `api_key`. This endpoint is central to the authentication process, as it validates the user's identity and issues a key that can be used for further interactions with the API.
-//	@ID				solve_auth_challenge
+//	@ID				create_api_key
 //	@Tags			Auth
 //	@Accept			json
 //	@Produce		json
@@ -135,7 +135,7 @@ func CreateChallengeHandler(s *service.Service) gin.HandlerFunc {
 //	@Param			challenge_id	query		string							true	"The ID of the challenge to solve"
 //	@Param			code			query		string							true	"The 4-digit code retrieved from Anytype Desktop app"
 //	@Success		201				{object}	apimodel.CreateApiKeyResponse	"The API key that can be used in the Authorization header for subsequent requests"
-//	@Failure		400				{object}	util.ValidationError			"Invalid input"
+//	@Failure		400				{object}	util.ValidationError			"Bad request"
 //	@Failure		500				{object}	util.ServerError				"Internal server error"
 //	@Router			/v1/auth/api_keys [post]
 func CreateApiKeyHandler(s *service.Service) gin.HandlerFunc {
