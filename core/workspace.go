@@ -68,7 +68,7 @@ func (mw *Middleware) WorkspaceOpen(cctx context.Context, req *pb.RpcWorkspaceOp
 	defer cancel()
 	info, err := mustService[account.Service](mw).GetSpaceInfo(ctx, req.SpaceId)
 	if err != nil {
-		if errors.Is(context.DeadlineExceeded, err) {
+		if errors.Is(err, context.DeadlineExceeded) {
 			return response(nil, pb.RpcWorkspaceOpenResponseError_FAILED_TO_LOAD, errors.New("space is not ready: check your internet connection and try again later"))
 		}
 		return response(info, pb.RpcWorkspaceOpenResponseError_UNKNOWN_ERROR, err)

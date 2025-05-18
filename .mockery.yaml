@@ -19,8 +19,10 @@ packages:
   github.com/anyproto/anytype-heart/core/block/cache:
     interfaces:
       ObjectGetter:
+      ObjectWaitGetter:
       CachedObjectGetter:
       ObjectGetterComponent:
+      ObjectWaitGetterComponent:
   github.com/anyproto/anytype-heart/pkg/lib/core:
     interfaces:
       Service:
@@ -49,9 +51,6 @@ packages:
   github.com/anyproto/anytype-heart/core/block/import/web/parsers:
     interfaces:
       Parser:
-  github.com/anyproto/anytype-heart/core/block/restriction:
-    interfaces:
-      Service:
   github.com/anyproto/anytype-heart/core/filestorage/filesync:
     interfaces:
       FileSync:
@@ -167,6 +166,9 @@ packages:
   github.com/anyproto/anytype-heart/core/payments/cache:
     interfaces:
       CacheService:
+  github.com/anyproto/anytype-heart/core/payments/emailcollector:
+    interfaces:
+      EmailCollector:
   github.com/anyproto/anytype-heart/core/block:
     interfaces:
       ObjectGetter:

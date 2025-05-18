@@ -80,12 +80,6 @@ github.com/andybalholm/cascadia v1.3.3 h1:AG2YHrzJIm4BZ19iwJ/DAua6Btl3IwJX+VI4kk
 github.com/andybalholm/cascadia v1.3.3/go.mod h1:xNd9bqTn98Ln4DwST8/nG+H0yuB8Hmgu1YHNnWw0GeA=
 github.com/anyproto/any-store v0.1.13 h1:1wmm0qQIRShaycBLKwcgkQbRKy3WrNPAShTE5fwzfCY=
 github.com/anyproto/any-store v0.1.13/go.mod h1:2M0Xf4rmijoKGd+nqqeKG8I1yIokCLEIxrAXEoHjXn4=
-github.com/anyproto/any-sync v0.6.15 h1:fxZHjiMcZJzJqzBprBNTYmm0MV8Y7NgIGPfLxlsgnWk=
-github.com/anyproto/any-sync v0.6.15/go.mod h1:TSKgCoTV40Bt8AfCh3RxPUUAfYGrhc8Mzh8/AiVlvX4=
-github.com/anyproto/any-sync v0.7.2 h1:S1UPzW0iYTLwsMAZ3rN/EJwthTGuadsvXdnGYNiC6cA=
-github.com/anyproto/any-sync v0.7.2/go.mod h1:TSKgCoTV40Bt8AfCh3RxPUUAfYGrhc8Mzh8/AiVlvX4=
-github.com/anyproto/any-sync v0.7.4 h1:pEkPn1fxJGvSGlsnAOy0lWVaqRgymyddmNy7T9toUQk=
-github.com/anyproto/any-sync v0.7.4/go.mod h1:TSKgCoTV40Bt8AfCh3RxPUUAfYGrhc8Mzh8/AiVlvX4=
 github.com/anyproto/any-sync v0.7.5 h1:VHayuacVpa2eRu5ubxCwrL3l0f/OSN7p45L8TxnaJEw=
 github.com/anyproto/any-sync v0.7.5/go.mod h1:02tMeQ6s/tneWLhoyzvy/ocGswICtvI48kdwTU8hQf8=
 github.com/anyproto/anytype-publish-server/publishclient v0.0.0-20250131145601-de288583ff2a h1:ZZM+0OUCQMWSLSflpkf0ZMVo3V76qEDDIXPpQOClNs0=
@@ -118,8 +112,8 @@ github.com/anyproto/protobuf v1.3.3-0.20240814124528-72b8c7e0e0f5 h1:aY7tBzQ+z8H
 github.com/anyproto/protobuf v1.3.3-0.20240814124528-72b8c7e0e0f5/go.mod h1:5+PHE01DgsDPkralb8MYmGg2sPQahsqEJ9ue7ciDHKg=
 github.com/anyproto/ristretto v0.1.2-0.20240221153107-2b23839cc50c h1:GicoaTUyB2mtCIl3YMrO0OzysqRT5GA4vuvDsqEkhSM=
 github.com/anyproto/ristretto v0.1.2-0.20240221153107-2b23839cc50c/go.mod h1:S1GPSBCYCIhmVNfcth17y2zZtQT6wzkzgwUve0VDWWA=
-github.com/anyproto/tantivy-go v1.0.1 h1:Uc9WqwGEDsVUEwRgSg4nmhoW20GjMUBKRz5FYw4r+ns=
-github.com/anyproto/tantivy-go v1.0.1/go.mod h1:LtipOpRjGtcYMGcop6gQN7rVl1Pc6BlIs9BTMqeWMsk=
+github.com/anyproto/tantivy-go v1.0.2 h1:PVr4Tt4QH0JAZDs2Z9T4KJfLL+0mgXizj2Y5LSvEQdU=
+github.com/anyproto/tantivy-go v1.0.2/go.mod h1:LtipOpRjGtcYMGcop6gQN7rVl1Pc6BlIs9BTMqeWMsk=
 github.com/anyproto/zeroconf/v2 v2.2.1-0.20240228113933-f90a5cc4439d h1:5bj7nX/AS8sxGpTIrapE7PC4oPlhkHMwMqXlJbUHBlg=
 github.com/anyproto/zeroconf/v2 v2.2.1-0.20240228113933-f90a5cc4439d/go.mod h1:fuJqLnUwZTshS3U/bMRJ3+ow/v9oid1n0DmyYyNO1Xs=
 github.com/apache/thrift v0.12.0/go.mod h1:cp2SuWMxlEZw2r+iP2GNCdIi4C1qmUzdZFSVb+bacwQ=
@@ -318,8 +312,6 @@ github.com/gammazero/chanqueue v1.1.0/go.mod h1:fMwpwEiuUgpab0sH4VHiVcEoji1pSi+E
 github.com/gammazero/deque v1.0.0 h1:LTmimT8H7bXkkCy6gZX7zNLtkbz4NdS2z8LZuor3j34=
 github.com/gammazero/deque v1.0.0/go.mod h1:iflpYvtGfM3U8S8j+sZEKIak3SAKYpA5/SQewgfXDKo=
 github.com/ghodss/yaml v1.0.0/go.mod h1:4dBDuWmgqj2HViK6kFavaiC9ZROes6MMH2rRYeMEF04=
-github.com/gin-contrib/gzip v0.0.6 h1:NjcunTcGAj5CO1gn4N8jHOSIeRFHIbn51z6K+xaN4d4=
-github.com/gin-contrib/gzip v0.0.6/go.mod h1:QOJlmV2xmayAjkNS2Y8NQsMneuRShOU/kjovCXNuzzk=
 github.com/gin-contrib/sse v0.1.0 h1:Y/yl/+YNO8GZSjAhjMsSuLt29uWRFHdHYUb5lYOV9qE=
 github.com/gin-contrib/sse v0.1.0/go.mod h1:RHrZQHXnP2xjPF+u1gW/2HnVO7nvIa9PG3Gm+fLHvGI=
 github.com/gin-gonic/gin v1.6.3/go.mod h1:75u5sXoLsGZoRN5Sgbi1eraJ4GU3++wFwWzhwvtwp4M=
@@ -1058,12 +1050,6 @@ github.com/subosito/gotenv v1.4.2 h1:X1TuBLAMDFbaTAChgCBLu3DU3UPyELpnF2jjJ2cz/S8
 github.com/subosito/gotenv v1.4.2/go.mod h1:ayKnFf/c6rvx/2iiLrJUk1e6plDbT3edrFNGqEflhK0=
 github.com/sv-tools/openapi v0.2.1 h1:ES1tMQMJFGibWndMagvdoo34T1Vllxr1Nlm5wz6b1aA=
 github.com/sv-tools/openapi v0.2.1/go.mod h1:k5VuZamTw1HuiS9p2Wl5YIDWzYnHG6/FgPOSFXLAhGg=
-github.com/swaggo/files v1.0.1 h1:J1bVJ4XHZNq0I46UU90611i9/YzdrF7x92oX1ig5IdE=
-github.com/swaggo/files v1.0.1/go.mod h1:0qXmMNH6sXNf+73t65aKeB+ApmgxdnkQzVTAj2uaMUg=
-github.com/swaggo/gin-swagger v1.6.0 h1:y8sxvQ3E20/RCyrXeFfg60r6H0Z+SwpTjMYsMm+zy8M=
-github.com/swaggo/gin-swagger v1.6.0/go.mod h1:BG00cCEy294xtVpyIAHG6+e2Qzj/xKlRdOqDkvq0uzo=
-github.com/swaggo/swag v1.16.4 h1:clWJtd9LStiG3VeijiCfOVODP6VpHtKdQy9ELFG3s1A=
-github.com/swaggo/swag v1.16.4/go.mod h1:VBsHJRsDvfYvqoiMKnsdwhNV9LEMHgEDZcyVYX0sxPg=
 github.com/swaggo/swag/v2 v2.0.0-rc4 h1:SZ8cK68gcV6cslwrJMIOqPkJELRwq4gmjvk77MrvHvY=
 github.com/swaggo/swag/v2 v2.0.0-rc4/go.mod h1:Ow7Y8gF16BTCDn8YxZbyKn8FkMLRUHekv1kROJZpbvE=
 github.com/syndtr/goleveldb v1.0.1-0.20210819022825-2ae1ddf74ef7/go.mod h1:q4W45IWZaF22tdD+VEXcAWRA037jwmWEB5VWYORlTpc=

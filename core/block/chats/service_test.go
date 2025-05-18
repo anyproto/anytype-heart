@@ -8,6 +8,10 @@ import (
 	"time"
 
 	"github.com/anyproto/any-sync/app"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/require"
+
 	"github.com/anyproto/anytype-heart/core/block/cache/mock_cache"
 	"github.com/anyproto/anytype-heart/core/block/editor/chatobject"
 	"github.com/anyproto/anytype-heart/core/block/editor/chatobject/mock_chatobject"
@@ -20,9 +24,6 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/tests/testutil"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/mock"
-	"github.com/stretchr/testify/require"
 )
 
 const techSpaceId = "techSpaceId"
@@ -68,7 +69,7 @@ type recordedAction struct {
 type fixture struct {
 	*service
 
-	objectGetter         *mock_cache.MockObjectGetterComponent
+	objectGetter         *mock_cache.MockObjectWaitGetterComponent
 	app                  *app.App
 	crossSpaceSubService *mock_crossspacesub.MockService
 
@@ -106,7 +107,7 @@ func (fx *fixture) waitForActions(t *testing.T, want map[string][]recordedAction
 
 func newFixture(t *testing.T) *fixture {
 	objectStore := objectstore.NewStoreFixture(t)
-	objectGetter := mock_cache.NewMockObjectGetterComponent(t)
+	objectGetter := mock_cache.NewMockObjectWaitGetterComponent(t)
 	crossSpaceSubService := mock_crossspacesub.NewMockService(t)
 
 	fx := &fixture{
@@ -172,7 +173,7 @@ func givenDependencies() map[string][]*domain.Details {
 }
 
 func (fx *fixture) expectChatObject(t *testing.T, chatObjectId string) {
-	fx.objectGetter.EXPECT().GetObject(mock.Anything, chatObjectId).RunAndReturn(func(ctx context.Context, id string) (smartblock.SmartBlock, error) {
+	fx.objectGetter.EXPECT().WaitAndGetObject(mock.Anything, chatObjectId).RunAndReturn(func(ctx context.Context, id string) (smartblock.SmartBlock, error) {
 		sb := mock_chatobject.NewMockStoreObject(t)
 
 		sb.EXPECT().Lock().Return().Maybe()
