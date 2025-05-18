@@ -12,91 +12,10 @@ import (
 	"github.com/anyproto/anytype-heart/clientlibrary/service"
 )
 
-//export SpaceInviteView
-func SpaceInviteView(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
+//export SpaceParticipantRemove
+func SpaceParticipantRemove(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
 	req := C.GoBytes(unsafe.Pointer(in), inLen)
-	resp := service.SpaceInviteView(req)
-	
-	*outLen = C.int(len(resp))
-	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
-}
-
-//export PublishingGetStatus
-func PublishingGetStatus(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
-	req := C.GoBytes(unsafe.Pointer(in), inLen)
-	resp := service.PublishingGetStatus(req)
-	
-	*outLen = C.int(len(resp))
-	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
-}
-
-//export ObjectImport
-func ObjectImport(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
-	req := C.GoBytes(unsafe.Pointer(in), inLen)
-	resp := service.ObjectImport(req)
-	
-	*outLen = C.int(len(resp))
-	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
-}
-
-//export ObjectChatAdd
-func ObjectChatAdd(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
-	req := C.GoBytes(unsafe.Pointer(in), inLen)
-	resp := service.ObjectChatAdd(req)
-	
-	*outLen = C.int(len(resp))
-	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
-}
-
-//export ObjectListModifyDetailValues
-func ObjectListModifyDetailValues(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
-	req := C.GoBytes(unsafe.Pointer(in), inLen)
-	resp := service.ObjectListModifyDetailValues(req)
-	
-	*outLen = C.int(len(resp))
-	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
-}
-
-//export BlockSetCarriage
-func BlockSetCarriage(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
-	req := C.GoBytes(unsafe.Pointer(in), inLen)
-	resp := service.BlockSetCarriage(req)
-	
-	*outLen = C.int(len(resp))
-	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
-}
-
-//export BlockDataviewFilterReplace
-func BlockDataviewFilterReplace(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
-	req := C.GoBytes(unsafe.Pointer(in), inLen)
-	resp := service.BlockDataviewFilterReplace(req)
-	
-	*outLen = C.int(len(resp))
-	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
-}
-
-//export WorkspaceGetCurrent
-func WorkspaceGetCurrent(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
-	req := C.GoBytes(unsafe.Pointer(in), inLen)
-	resp := service.WorkspaceGetCurrent(req)
-	
-	*outLen = C.int(len(resp))
-	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
-}
-
-//export AccountRevertDeletion
-func AccountRevertDeletion(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
-	req := C.GoBytes(unsafe.Pointer(in), inLen)
-	resp := service.AccountRevertDeletion(req)
-	
-	*outLen = C.int(len(resp))
-	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
-}
-
-//export SpaceInviteGetGuest
-func SpaceInviteGetGuest(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
-	req := C.GoBytes(unsafe.Pointer(in), inLen)
-	resp := service.SpaceInviteGetGuest(req)
+	resp := service.SpaceParticipantRemove(req)
 	
 	*outLen = C.int(len(resp))
 	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
@@ -111,730 +30,10 @@ func ObjectTypeRecommendedRelationsSet(in *C.uchar, inLen C.int, outLen *C.int) 
 	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
 }
 
-//export BlockFileCreateAndUpload
-func BlockFileCreateAndUpload(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
+//export BlockVideoSetName
+func BlockVideoSetName(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
 	req := C.GoBytes(unsafe.Pointer(in), inLen)
-	resp := service.BlockFileCreateAndUpload(req)
-	
-	*outLen = C.int(len(resp))
-	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
-}
-
-//export BlockLinkListSetAppearance
-func BlockLinkListSetAppearance(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
-	req := C.GoBytes(unsafe.Pointer(in), inLen)
-	resp := service.BlockLinkListSetAppearance(req)
-	
-	*outLen = C.int(len(resp))
-	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
-}
-
-//export MembershipGetStatus
-func MembershipGetStatus(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
-	req := C.GoBytes(unsafe.Pointer(in), inLen)
-	resp := service.MembershipGetStatus(req)
-	
-	*outLen = C.int(len(resp))
-	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
-}
-
-//export ObjectListSetObjectType
-func ObjectListSetObjectType(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
-	req := C.GoBytes(unsafe.Pointer(in), inLen)
-	resp := service.ObjectListSetObjectType(req)
-	
-	*outLen = C.int(len(resp))
-	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
-}
-
-//export AccountLocalLinkSolveChallenge
-func AccountLocalLinkSolveChallenge(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
-	req := C.GoBytes(unsafe.Pointer(in), inLen)
-	resp := service.AccountLocalLinkSolveChallenge(req)
-	
-	*outLen = C.int(len(resp))
-	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
-}
-
-//export AccountStop
-func AccountStop(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
-	req := C.GoBytes(unsafe.Pointer(in), inLen)
-	resp := service.AccountStop(req)
-	
-	*outLen = C.int(len(resp))
-	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
-}
-
-//export PublishingResolveUri
-func PublishingResolveUri(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
-	req := C.GoBytes(unsafe.Pointer(in), inLen)
-	resp := service.PublishingResolveUri(req)
-	
-	*outLen = C.int(len(resp))
-	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
-}
-
-//export ObjectShareByLink
-func ObjectShareByLink(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
-	req := C.GoBytes(unsafe.Pointer(in), inLen)
-	resp := service.ObjectShareByLink(req)
-	
-	*outLen = C.int(len(resp))
-	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
-}
-
-//export BlockWidgetSetTargetId
-func BlockWidgetSetTargetId(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
-	req := C.GoBytes(unsafe.Pointer(in), inLen)
-	resp := service.BlockWidgetSetTargetId(req)
-	
-	*outLen = C.int(len(resp))
-	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
-}
-
-//export MembershipGetPortalLinkUrl
-func MembershipGetPortalLinkUrl(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
-	req := C.GoBytes(unsafe.Pointer(in), inLen)
-	resp := service.MembershipGetPortalLinkUrl(req)
-	
-	*outLen = C.int(len(resp))
-	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
-}
-
-//export DeviceList
-func DeviceList(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
-	req := C.GoBytes(unsafe.Pointer(in), inLen)
-	resp := service.DeviceList(req)
-	
-	*outLen = C.int(len(resp))
-	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
-}
-
-//export TemplateClone
-func TemplateClone(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
-	req := C.GoBytes(unsafe.Pointer(in), inLen)
-	resp := service.TemplateClone(req)
-	
-	*outLen = C.int(len(resp))
-	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
-}
-
-//export DebugExportLocalstore
-func DebugExportLocalstore(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
-	req := C.GoBytes(unsafe.Pointer(in), inLen)
-	resp := service.DebugExportLocalstore(req)
-	
-	*outLen = C.int(len(resp))
-	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
-}
-
-//export SpaceParticipantPermissionsChange
-func SpaceParticipantPermissionsChange(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
-	req := C.GoBytes(unsafe.Pointer(in), inLen)
-	resp := service.SpaceParticipantPermissionsChange(req)
-	
-	*outLen = C.int(len(resp))
-	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
-}
-
-//export ObjectCreate
-func ObjectCreate(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
-	req := C.GoBytes(unsafe.Pointer(in), inLen)
-	resp := service.ObjectCreate(req)
-	
-	*outLen = C.int(len(resp))
-	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
-}
-
-//export ObjectCrossSpaceSearchSubscribe
-func ObjectCrossSpaceSearchSubscribe(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
-	req := C.GoBytes(unsafe.Pointer(in), inLen)
-	resp := service.ObjectCrossSpaceSearchSubscribe(req)
-	
-	*outLen = C.int(len(resp))
-	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
-}
-
-//export ObjectRedo
-func ObjectRedo(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
-	req := C.GoBytes(unsafe.Pointer(in), inLen)
-	resp := service.ObjectRedo(req)
-	
-	*outLen = C.int(len(resp))
-	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
-}
-
-//export BlockReplace
-func BlockReplace(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
-	req := C.GoBytes(unsafe.Pointer(in), inLen)
-	resp := service.BlockReplace(req)
-	
-	*outLen = C.int(len(resp))
-	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
-}
-
-//export PublishingCreate
-func PublishingCreate(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
-	req := C.GoBytes(unsafe.Pointer(in), inLen)
-	resp := service.PublishingCreate(req)
-	
-	*outLen = C.int(len(resp))
-	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
-}
-
-//export ObjectCrossSpaceSearchUnsubscribe
-func ObjectCrossSpaceSearchUnsubscribe(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
-	req := C.GoBytes(unsafe.Pointer(in), inLen)
-	resp := service.ObjectCrossSpaceSearchUnsubscribe(req)
-	
-	*outLen = C.int(len(resp))
-	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
-}
-
-//export NavigationListObjects
-func NavigationListObjects(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
-	req := C.GoBytes(unsafe.Pointer(in), inLen)
-	resp := service.NavigationListObjects(req)
-	
-	*outLen = C.int(len(resp))
-	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
-}
-
-//export ChatUnsubscribeFromMessagePreviews
-func ChatUnsubscribeFromMessagePreviews(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
-	req := C.GoBytes(unsafe.Pointer(in), inLen)
-	resp := service.ChatUnsubscribeFromMessagePreviews(req)
-	
-	*outLen = C.int(len(resp))
-	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
-}
-
-//export AccountChangeNetworkConfigAndRestart
-func AccountChangeNetworkConfigAndRestart(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
-	req := C.GoBytes(unsafe.Pointer(in), inLen)
-	resp := service.AccountChangeNetworkConfigAndRestart(req)
-	
-	*outLen = C.int(len(resp))
-	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
-}
-
-//export BlockPaste
-func BlockPaste(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
-	req := C.GoBytes(unsafe.Pointer(in), inLen)
-	resp := service.BlockPaste(req)
-	
-	*outLen = C.int(len(resp))
-	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
-}
-
-//export BlockListSetAlign
-func BlockListSetAlign(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
-	req := C.GoBytes(unsafe.Pointer(in), inLen)
-	resp := service.BlockListSetAlign(req)
-	
-	*outLen = C.int(len(resp))
-	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
-}
-
-//export BlockDataviewObjectOrderMove
-func BlockDataviewObjectOrderMove(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
-	req := C.GoBytes(unsafe.Pointer(in), inLen)
-	resp := service.BlockDataviewObjectOrderMove(req)
-	
-	*outLen = C.int(len(resp))
-	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
-}
-
-//export BlockTextSetChecked
-func BlockTextSetChecked(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
-	req := C.GoBytes(unsafe.Pointer(in), inLen)
-	resp := service.BlockTextSetChecked(req)
-	
-	*outLen = C.int(len(resp))
-	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
-}
-
-//export MembershipFinalize
-func MembershipFinalize(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
-	req := C.GoBytes(unsafe.Pointer(in), inLen)
-	resp := service.MembershipFinalize(req)
-	
-	*outLen = C.int(len(resp))
-	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
-}
-
-//export ObjectCollectionRemove
-func ObjectCollectionRemove(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
-	req := C.GoBytes(unsafe.Pointer(in), inLen)
-	resp := service.ObjectCollectionRemove(req)
-	
-	*outLen = C.int(len(resp))
-	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
-}
-
-//export ObjectTypeResolveLayoutConflicts
-func ObjectTypeResolveLayoutConflicts(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
-	req := C.GoBytes(unsafe.Pointer(in), inLen)
-	resp := service.ObjectTypeResolveLayoutConflicts(req)
-	
-	*outLen = C.int(len(resp))
-	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
-}
-
-//export BlockSetFields
-func BlockSetFields(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
-	req := C.GoBytes(unsafe.Pointer(in), inLen)
-	resp := service.BlockSetFields(req)
-	
-	*outLen = C.int(len(resp))
-	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
-}
-
-//export BlockDataviewViewCreate
-func BlockDataviewViewCreate(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
-	req := C.GoBytes(unsafe.Pointer(in), inLen)
-	resp := service.BlockDataviewViewCreate(req)
-	
-	*outLen = C.int(len(resp))
-	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
-}
-
-//export BlockDataviewRelationDelete
-func BlockDataviewRelationDelete(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
-	req := C.GoBytes(unsafe.Pointer(in), inLen)
-	resp := service.BlockDataviewRelationDelete(req)
-	
-	*outLen = C.int(len(resp))
-	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
-}
-
-//export BlockDataviewSortRemove
-func BlockDataviewSortRemove(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
-	req := C.GoBytes(unsafe.Pointer(in), inLen)
-	resp := service.BlockDataviewSortRemove(req)
-	
-	*outLen = C.int(len(resp))
-	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
-}
-
-//export UnsplashSearch
-func UnsplashSearch(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
-	req := C.GoBytes(unsafe.Pointer(in), inLen)
-	resp := service.UnsplashSearch(req)
-	
-	*outLen = C.int(len(resp))
-	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
-}
-
-//export BlockImageSetName
-func BlockImageSetName(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
-	req := C.GoBytes(unsafe.Pointer(in), inLen)
-	resp := service.BlockImageSetName(req)
-	
-	*outLen = C.int(len(resp))
-	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
-}
-
-//export BlockWidgetSetLayout
-func BlockWidgetSetLayout(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
-	req := C.GoBytes(unsafe.Pointer(in), inLen)
-	resp := service.BlockWidgetSetLayout(req)
-	
-	*outLen = C.int(len(resp))
-	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
-}
-
-//export BlockCopy
-func BlockCopy(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
-	req := C.GoBytes(unsafe.Pointer(in), inLen)
-	resp := service.BlockCopy(req)
-	
-	*outLen = C.int(len(resp))
-	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
-}
-
-//export BlockDataviewGroupOrderUpdate
-func BlockDataviewGroupOrderUpdate(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
-	req := C.GoBytes(unsafe.Pointer(in), inLen)
-	resp := service.BlockDataviewGroupOrderUpdate(req)
-	
-	*outLen = C.int(len(resp))
-	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
-}
-
-//export BlockDataviewCreateFromExistingObject
-func BlockDataviewCreateFromExistingObject(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
-	req := C.GoBytes(unsafe.Pointer(in), inLen)
-	resp := service.BlockDataviewCreateFromExistingObject(req)
-	
-	*outLen = C.int(len(resp))
-	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
-}
-
-//export BlockDataviewViewRelationAdd
-func BlockDataviewViewRelationAdd(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
-	req := C.GoBytes(unsafe.Pointer(in), inLen)
-	resp := service.BlockDataviewViewRelationAdd(req)
-	
-	*outLen = C.int(len(resp))
-	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
-}
-
-//export LogSend
-func LogSend(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
-	req := C.GoBytes(unsafe.Pointer(in), inLen)
-	resp := service.LogSend(req)
-	
-	*outLen = C.int(len(resp))
-	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
-}
-
-//export AIObjectCreateFromUrl
-func AIObjectCreateFromUrl(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
-	req := C.GoBytes(unsafe.Pointer(in), inLen)
-	resp := service.AIObjectCreateFromUrl(req)
-	
-	*outLen = C.int(len(resp))
-	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
-}
-
-//export AccountMove
-func AccountMove(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
-	req := C.GoBytes(unsafe.Pointer(in), inLen)
-	resp := service.AccountMove(req)
-	
-	*outLen = C.int(len(resp))
-	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
-}
-
-//export ObjectSetIsArchived
-func ObjectSetIsArchived(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
-	req := C.GoBytes(unsafe.Pointer(in), inLen)
-	resp := service.ObjectSetIsArchived(req)
-	
-	*outLen = C.int(len(resp))
-	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
-}
-
-//export GalleryDownloadManifest
-func GalleryDownloadManifest(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
-	req := C.GoBytes(unsafe.Pointer(in), inLen)
-	resp := service.GalleryDownloadManifest(req)
-	
-	*outLen = C.int(len(resp))
-	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
-}
-
-//export ObjectCreateSet
-func ObjectCreateSet(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
-	req := C.GoBytes(unsafe.Pointer(in), inLen)
-	resp := service.ObjectCreateSet(req)
-	
-	*outLen = C.int(len(resp))
-	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
-}
-
-//export BlockListConvertToObjects
-func BlockListConvertToObjects(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
-	req := C.GoBytes(unsafe.Pointer(in), inLen)
-	resp := service.BlockListConvertToObjects(req)
-	
-	*outLen = C.int(len(resp))
-	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
-}
-
-//export DebugSubscriptions
-func DebugSubscriptions(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
-	req := C.GoBytes(unsafe.Pointer(in), inLen)
-	resp := service.DebugSubscriptions(req)
-	
-	*outLen = C.int(len(resp))
-	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
-}
-
-//export DebugExportLog
-func DebugExportLog(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
-	req := C.GoBytes(unsafe.Pointer(in), inLen)
-	resp := service.DebugExportLog(req)
-	
-	*outLen = C.int(len(resp))
-	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
-}
-
-//export ObjectImportExperience
-func ObjectImportExperience(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
-	req := C.GoBytes(unsafe.Pointer(in), inLen)
-	resp := service.ObjectImportExperience(req)
-	
-	*outLen = C.int(len(resp))
-	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
-}
-
-//export ObjectSearchSubscribe
-func ObjectSearchSubscribe(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
-	req := C.GoBytes(unsafe.Pointer(in), inLen)
-	resp := service.ObjectSearchSubscribe(req)
-	
-	*outLen = C.int(len(resp))
-	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
-}
-
-//export ObjectListDuplicate
-func ObjectListDuplicate(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
-	req := C.GoBytes(unsafe.Pointer(in), inLen)
-	resp := service.ObjectListDuplicate(req)
-	
-	*outLen = C.int(len(resp))
-	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
-}
-
-//export ObjectExport
-func ObjectExport(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
-	req := C.GoBytes(unsafe.Pointer(in), inLen)
-	resp := service.ObjectExport(req)
-	
-	*outLen = C.int(len(resp))
-	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
-}
-
-//export BlockSplit
-func BlockSplit(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
-	req := C.GoBytes(unsafe.Pointer(in), inLen)
-	resp := service.BlockSplit(req)
-	
-	*outLen = C.int(len(resp))
-	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
-}
-
-//export BlockBookmarkCreateAndFetch
-func BlockBookmarkCreateAndFetch(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
-	req := C.GoBytes(unsafe.Pointer(in), inLen)
-	resp := service.BlockBookmarkCreateAndFetch(req)
-	
-	*outLen = C.int(len(resp))
-	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
-}
-
-//export ChatUnreadMessages
-func ChatUnreadMessages(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
-	req := C.GoBytes(unsafe.Pointer(in), inLen)
-	resp := service.ChatUnreadMessages(req)
-	
-	*outLen = C.int(len(resp))
-	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
-}
-
-//export ObjectRelationDelete
-func ObjectRelationDelete(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
-	req := C.GoBytes(unsafe.Pointer(in), inLen)
-	resp := service.ObjectRelationDelete(req)
-	
-	*outLen = C.int(len(resp))
-	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
-}
-
-//export BlockListSetFields
-func BlockListSetFields(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
-	req := C.GoBytes(unsafe.Pointer(in), inLen)
-	resp := service.BlockListSetFields(req)
-	
-	*outLen = C.int(len(resp))
-	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
-}
-
-//export BlockDataviewFilterRemove
-func BlockDataviewFilterRemove(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
-	req := C.GoBytes(unsafe.Pointer(in), inLen)
-	resp := service.BlockDataviewFilterRemove(req)
-	
-	*outLen = C.int(len(resp))
-	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
-}
-
-//export BlockTableCreate
-func BlockTableCreate(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
-	req := C.GoBytes(unsafe.Pointer(in), inLen)
-	resp := service.BlockTableCreate(req)
-	
-	*outLen = C.int(len(resp))
-	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
-}
-
-//export BlockTableRowListClean
-func BlockTableRowListClean(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
-	req := C.GoBytes(unsafe.Pointer(in), inLen)
-	resp := service.BlockTableRowListClean(req)
-	
-	*outLen = C.int(len(resp))
-	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
-}
-
-//export BlockBookmarkFetch
-func BlockBookmarkFetch(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
-	req := C.GoBytes(unsafe.Pointer(in), inLen)
-	resp := service.BlockBookmarkFetch(req)
-	
-	*outLen = C.int(len(resp))
-	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
-}
-
-//export ChatGetMessagesByIds
-func ChatGetMessagesByIds(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
-	req := C.GoBytes(unsafe.Pointer(in), inLen)
-	resp := service.ChatGetMessagesByIds(req)
-	
-	*outLen = C.int(len(resp))
-	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
-}
-
-//export WorkspaceGetAll
-func WorkspaceGetAll(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
-	req := C.GoBytes(unsafe.Pointer(in), inLen)
-	resp := service.WorkspaceGetAll(req)
-	
-	*outLen = C.int(len(resp))
-	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
-}
-
-//export AccountDelete
-func AccountDelete(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
-	req := C.GoBytes(unsafe.Pointer(in), inLen)
-	resp := service.AccountDelete(req)
-	
-	*outLen = C.int(len(resp))
-	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
-}
-
-//export AccountEnableLocalNetworkSync
-func AccountEnableLocalNetworkSync(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
-	req := C.GoBytes(unsafe.Pointer(in), inLen)
-	resp := service.AccountEnableLocalNetworkSync(req)
-	
-	*outLen = C.int(len(resp))
-	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
-}
-
-//export NavigationGetObjectInfoWithLinks
-func NavigationGetObjectInfoWithLinks(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
-	req := C.GoBytes(unsafe.Pointer(in), inLen)
-	resp := service.NavigationGetObjectInfoWithLinks(req)
-	
-	*outLen = C.int(len(resp))
-	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
-}
-
-//export BlockListTurnInto
-func BlockListTurnInto(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
-	req := C.GoBytes(unsafe.Pointer(in), inLen)
-	resp := service.BlockListTurnInto(req)
-	
-	*outLen = C.int(len(resp))
-	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
-}
-
-//export MembershipVerifyAppStoreReceipt
-func MembershipVerifyAppStoreReceipt(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
-	req := C.GoBytes(unsafe.Pointer(in), inLen)
-	resp := service.MembershipVerifyAppStoreReceipt(req)
-	
-	*outLen = C.int(len(resp))
-	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
-}
-
-//export WalletCreateSession
-func WalletCreateSession(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
-	req := C.GoBytes(unsafe.Pointer(in), inLen)
-	resp := service.WalletCreateSession(req)
-	
-	*outLen = C.int(len(resp))
-	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
-}
-
-//export AccountRecover
-func AccountRecover(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
-	req := C.GoBytes(unsafe.Pointer(in), inLen)
-	resp := service.AccountRecover(req)
-	
-	*outLen = C.int(len(resp))
-	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
-}
-
-//export ObjectSetLayout
-func ObjectSetLayout(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
-	req := C.GoBytes(unsafe.Pointer(in), inLen)
-	resp := service.ObjectSetLayout(req)
-	
-	*outLen = C.int(len(resp))
-	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
-}
-
-//export ObjectRelationAdd
-func ObjectRelationAdd(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
-	req := C.GoBytes(unsafe.Pointer(in), inLen)
-	resp := service.ObjectRelationAdd(req)
-	
-	*outLen = C.int(len(resp))
-	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
-}
-
-//export FileUpload
-func FileUpload(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
-	req := C.GoBytes(unsafe.Pointer(in), inLen)
-	resp := service.FileUpload(req)
-	
-	*outLen = C.int(len(resp))
-	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
-}
-
-//export BlockListDuplicate
-func BlockListDuplicate(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
-	req := C.GoBytes(unsafe.Pointer(in), inLen)
-	resp := service.BlockListDuplicate(req)
-	
-	*outLen = C.int(len(resp))
-	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
-}
-
-//export NotificationTest
-func NotificationTest(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
-	req := C.GoBytes(unsafe.Pointer(in), inLen)
-	resp := service.NotificationTest(req)
-	
-	*outLen = C.int(len(resp))
-	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
-}
-
-//export MembershipGetTiers
-func MembershipGetTiers(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
-	req := C.GoBytes(unsafe.Pointer(in), inLen)
-	resp := service.MembershipGetTiers(req)
-	
-	*outLen = C.int(len(resp))
-	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
-}
-
-//export SpaceInviteGenerate
-func SpaceInviteGenerate(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
-	req := C.GoBytes(unsafe.Pointer(in), inLen)
-	resp := service.SpaceInviteGenerate(req)
-	
-	*outLen = C.int(len(resp))
-	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
-}
-
-//export ObjectDuplicate
-func ObjectDuplicate(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
-	req := C.GoBytes(unsafe.Pointer(in), inLen)
-	resp := service.ObjectDuplicate(req)
-	
-	*outLen = C.int(len(resp))
-	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
-}
-
-//export HistoryDiffVersions
-func HistoryDiffVersions(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
-	req := C.GoBytes(unsafe.Pointer(in), inLen)
-	resp := service.HistoryDiffVersions(req)
+	resp := service.BlockVideoSetName(req)
 	
 	*outLen = C.int(len(resp))
 	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
@@ -849,856 +48,10 @@ func BlockDataviewViewRelationRemove(in *C.uchar, inLen C.int, outLen *C.int) *C
 	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
 }
 
-//export BlockDataviewViewRelationReplace
-func BlockDataviewViewRelationReplace(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
+//export DeviceSetName
+func DeviceSetName(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
 	req := C.GoBytes(unsafe.Pointer(in), inLen)
-	resp := service.BlockDataviewViewRelationReplace(req)
-	
-	*outLen = C.int(len(resp))
-	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
-}
-
-//export MembershipRegisterPaymentRequest
-func MembershipRegisterPaymentRequest(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
-	req := C.GoBytes(unsafe.Pointer(in), inLen)
-	resp := service.MembershipRegisterPaymentRequest(req)
-	
-	*outLen = C.int(len(resp))
-	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
-}
-
-//export ChatUnsubscribe
-func ChatUnsubscribe(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
-	req := C.GoBytes(unsafe.Pointer(in), inLen)
-	resp := service.ChatUnsubscribe(req)
-	
-	*outLen = C.int(len(resp))
-	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
-}
-
-//export ChatSubscribeToMessagePreviews
-func ChatSubscribeToMessagePreviews(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
-	req := C.GoBytes(unsafe.Pointer(in), inLen)
-	resp := service.ChatSubscribeToMessagePreviews(req)
-	
-	*outLen = C.int(len(resp))
-	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
-}
-
-//export ObjectRelationListAvailable
-func ObjectRelationListAvailable(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
-	req := C.GoBytes(unsafe.Pointer(in), inLen)
-	resp := service.ObjectRelationListAvailable(req)
-	
-	*outLen = C.int(len(resp))
-	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
-}
-
-//export BlockTextListClearContent
-func BlockTextListClearContent(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
-	req := C.GoBytes(unsafe.Pointer(in), inLen)
-	resp := service.BlockTextListClearContent(req)
-	
-	*outLen = C.int(len(resp))
-	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
-}
-
-//export WorkspaceCreate
-func WorkspaceCreate(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
-	req := C.GoBytes(unsafe.Pointer(in), inLen)
-	resp := service.WorkspaceCreate(req)
-	
-	*outLen = C.int(len(resp))
-	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
-}
-
-//export AccountSelect
-func AccountSelect(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
-	req := C.GoBytes(unsafe.Pointer(in), inLen)
-	resp := service.AccountSelect(req)
-	
-	*outLen = C.int(len(resp))
-	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
-}
-
-//export AccountConfigUpdate
-func AccountConfigUpdate(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
-	req := C.GoBytes(unsafe.Pointer(in), inLen)
-	resp := service.AccountConfigUpdate(req)
-	
-	*outLen = C.int(len(resp))
-	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
-}
-
-//export BlockExport
-func BlockExport(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
-	req := C.GoBytes(unsafe.Pointer(in), inLen)
-	resp := service.BlockExport(req)
-	
-	*outLen = C.int(len(resp))
-	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
-}
-
-//export BlockTextListSetStyle
-func BlockTextListSetStyle(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
-	req := C.GoBytes(unsafe.Pointer(in), inLen)
-	resp := service.BlockTextListSetStyle(req)
-	
-	*outLen = C.int(len(resp))
-	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
-}
-
-//export BlockDataviewObjectOrderUpdate
-func BlockDataviewObjectOrderUpdate(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
-	req := C.GoBytes(unsafe.Pointer(in), inLen)
-	resp := service.BlockDataviewObjectOrderUpdate(req)
-	
-	*outLen = C.int(len(resp))
-	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
-}
-
-//export BlockRelationAdd
-func BlockRelationAdd(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
-	req := C.GoBytes(unsafe.Pointer(in), inLen)
-	resp := service.BlockRelationAdd(req)
-	
-	*outLen = C.int(len(resp))
-	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
-}
-
-//export ObjectListExport
-func ObjectListExport(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
-	req := C.GoBytes(unsafe.Pointer(in), inLen)
-	resp := service.ObjectListExport(req)
-	
-	*outLen = C.int(len(resp))
-	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
-}
-
-//export ObjectDateByTimestamp
-func ObjectDateByTimestamp(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
-	req := C.GoBytes(unsafe.Pointer(in), inLen)
-	resp := service.ObjectDateByTimestamp(req)
-	
-	*outLen = C.int(len(resp))
-	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
-}
-
-//export ObjectCreateObjectType
-func ObjectCreateObjectType(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
-	req := C.GoBytes(unsafe.Pointer(in), inLen)
-	resp := service.ObjectCreateObjectType(req)
-	
-	*outLen = C.int(len(resp))
-	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
-}
-
-//export ObjectTypeListConflictingRelations
-func ObjectTypeListConflictingRelations(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
-	req := C.GoBytes(unsafe.Pointer(in), inLen)
-	resp := service.ObjectTypeListConflictingRelations(req)
-	
-	*outLen = C.int(len(resp))
-	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
-}
-
-//export BlockCreateWidget
-func BlockCreateWidget(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
-	req := C.GoBytes(unsafe.Pointer(in), inLen)
-	resp := service.BlockCreateWidget(req)
-	
-	*outLen = C.int(len(resp))
-	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
-}
-
-//export AccountMigrate
-func AccountMigrate(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
-	req := C.GoBytes(unsafe.Pointer(in), inLen)
-	resp := service.AccountMigrate(req)
-	
-	*outLen = C.int(len(resp))
-	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
-}
-
-//export ObjectCreateFromUrl
-func ObjectCreateFromUrl(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
-	req := C.GoBytes(unsafe.Pointer(in), inLen)
-	resp := service.ObjectCreateFromUrl(req)
-	
-	*outLen = C.int(len(resp))
-	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
-}
-
-//export HistorySetVersion
-func HistorySetVersion(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
-	req := C.GoBytes(unsafe.Pointer(in), inLen)
-	resp := service.HistorySetVersion(req)
-	
-	*outLen = C.int(len(resp))
-	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
-}
-
-//export BlockListMoveToNewObject
-func BlockListMoveToNewObject(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
-	req := C.GoBytes(unsafe.Pointer(in), inLen)
-	resp := service.BlockListMoveToNewObject(req)
-	
-	*outLen = C.int(len(resp))
-	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
-}
-
-//export BlockFileListSetStyle
-func BlockFileListSetStyle(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
-	req := C.GoBytes(unsafe.Pointer(in), inLen)
-	resp := service.BlockFileListSetStyle(req)
-	
-	*outLen = C.int(len(resp))
-	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
-}
-
-//export DebugStat
-func DebugStat(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
-	req := C.GoBytes(unsafe.Pointer(in), inLen)
-	resp := service.DebugStat(req)
-	
-	*outLen = C.int(len(resp))
-	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
-}
-
-//export MembershipGetVerificationEmailStatus
-func MembershipGetVerificationEmailStatus(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
-	req := C.GoBytes(unsafe.Pointer(in), inLen)
-	resp := service.MembershipGetVerificationEmailStatus(req)
-	
-	*outLen = C.int(len(resp))
-	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
-}
-
-//export MembershipGetVerificationEmail
-func MembershipGetVerificationEmail(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
-	req := C.GoBytes(unsafe.Pointer(in), inLen)
-	resp := service.MembershipGetVerificationEmail(req)
-	
-	*outLen = C.int(len(resp))
-	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
-}
-
-//export ObjectSearchUnsubscribe
-func ObjectSearchUnsubscribe(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
-	req := C.GoBytes(unsafe.Pointer(in), inLen)
-	resp := service.ObjectSearchUnsubscribe(req)
-	
-	*outLen = C.int(len(resp))
-	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
-}
-
-//export ObjectCreateRelationOption
-func ObjectCreateRelationOption(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
-	req := C.GoBytes(unsafe.Pointer(in), inLen)
-	resp := service.ObjectCreateRelationOption(req)
-	
-	*outLen = C.int(len(resp))
-	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
-}
-
-//export FileDownload
-func FileDownload(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
-	req := C.GoBytes(unsafe.Pointer(in), inLen)
-	resp := service.FileDownload(req)
-	
-	*outLen = C.int(len(resp))
-	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
-}
-
-//export WorkspaceOpen
-func WorkspaceOpen(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
-	req := C.GoBytes(unsafe.Pointer(in), inLen)
-	resp := service.WorkspaceOpen(req)
-	
-	*outLen = C.int(len(resp))
-	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
-}
-
-//export SpaceInviteRevoke
-func SpaceInviteRevoke(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
-	req := C.GoBytes(unsafe.Pointer(in), inLen)
-	resp := service.SpaceInviteRevoke(req)
-	
-	*outLen = C.int(len(resp))
-	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
-}
-
-//export ObjectToSet
-func ObjectToSet(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
-	req := C.GoBytes(unsafe.Pointer(in), inLen)
-	resp := service.ObjectToSet(req)
-	
-	*outLen = C.int(len(resp))
-	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
-}
-
-//export TemplateCreateFromObject
-func TemplateCreateFromObject(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
-	req := C.GoBytes(unsafe.Pointer(in), inLen)
-	resp := service.TemplateCreateFromObject(req)
-	
-	*outLen = C.int(len(resp))
-	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
-}
-
-//export BlockDataviewFilterAdd
-func BlockDataviewFilterAdd(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
-	req := C.GoBytes(unsafe.Pointer(in), inLen)
-	resp := service.BlockDataviewFilterAdd(req)
-	
-	*outLen = C.int(len(resp))
-	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
-}
-
-//export SpaceInviteGetCurrent
-func SpaceInviteGetCurrent(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
-	req := C.GoBytes(unsafe.Pointer(in), inLen)
-	resp := service.SpaceInviteGetCurrent(req)
-	
-	*outLen = C.int(len(resp))
-	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
-}
-
-//export ObjectWorkspaceSetDashboard
-func ObjectWorkspaceSetDashboard(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
-	req := C.GoBytes(unsafe.Pointer(in), inLen)
-	resp := service.ObjectWorkspaceSetDashboard(req)
-	
-	*outLen = C.int(len(resp))
-	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
-}
-
-//export ObjectToBookmark
-func ObjectToBookmark(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
-	req := C.GoBytes(unsafe.Pointer(in), inLen)
-	resp := service.ObjectToBookmark(req)
-	
-	*outLen = C.int(len(resp))
-	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
-}
-
-//export TemplateExportAll
-func TemplateExportAll(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
-	req := C.GoBytes(unsafe.Pointer(in), inLen)
-	resp := service.TemplateExportAll(req)
-	
-	*outLen = C.int(len(resp))
-	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
-}
-
-//export BlockDataviewFilterSort
-func BlockDataviewFilterSort(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
-	req := C.GoBytes(unsafe.Pointer(in), inLen)
-	resp := service.BlockDataviewFilterSort(req)
-	
-	*outLen = C.int(len(resp))
-	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
-}
-
-//export BlockTableSort
-func BlockTableSort(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
-	req := C.GoBytes(unsafe.Pointer(in), inLen)
-	resp := service.BlockTableSort(req)
-	
-	*outLen = C.int(len(resp))
-	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
-}
-
-//export DebugNetCheck
-func DebugNetCheck(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
-	req := C.GoBytes(unsafe.Pointer(in), inLen)
-	resp := service.DebugNetCheck(req)
-	
-	*outLen = C.int(len(resp))
-	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
-}
-
-//export BlockDataviewViewDelete
-func BlockDataviewViewDelete(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
-	req := C.GoBytes(unsafe.Pointer(in), inLen)
-	resp := service.BlockDataviewViewDelete(req)
-	
-	*outLen = C.int(len(resp))
-	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
-}
-
-//export BlockDataviewViewRelationSort
-func BlockDataviewViewRelationSort(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
-	req := C.GoBytes(unsafe.Pointer(in), inLen)
-	resp := service.BlockDataviewViewRelationSort(req)
-	
-	*outLen = C.int(len(resp))
-	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
-}
-
-//export ChatAddMessage
-func ChatAddMessage(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
-	req := C.GoBytes(unsafe.Pointer(in), inLen)
-	resp := service.ChatAddMessage(req)
-	
-	*outLen = C.int(len(resp))
-	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
-}
-
-//export ChatGetMessages
-func ChatGetMessages(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
-	req := C.GoBytes(unsafe.Pointer(in), inLen)
-	resp := service.ChatGetMessages(req)
-	
-	*outLen = C.int(len(resp))
-	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
-}
-
-//export ObjectSetIsFavorite
-func ObjectSetIsFavorite(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
-	req := C.GoBytes(unsafe.Pointer(in), inLen)
-	resp := service.ObjectSetIsFavorite(req)
-	
-	*outLen = C.int(len(resp))
-	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
-}
-
-//export BlockTextSetStyle
-func BlockTextSetStyle(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
-	req := C.GoBytes(unsafe.Pointer(in), inLen)
-	resp := service.BlockTextSetStyle(req)
-	
-	*outLen = C.int(len(resp))
-	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
-}
-
-//export BlockFileSetName
-func BlockFileSetName(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
-	req := C.GoBytes(unsafe.Pointer(in), inLen)
-	resp := service.BlockFileSetName(req)
-	
-	*outLen = C.int(len(resp))
-	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
-}
-
-//export BlockDataviewRelationAdd
-func BlockDataviewRelationAdd(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
-	req := C.GoBytes(unsafe.Pointer(in), inLen)
-	resp := service.BlockDataviewRelationAdd(req)
-	
-	*outLen = C.int(len(resp))
-	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
-}
-
-//export AccountLocalLinkNewChallenge
-func AccountLocalLinkNewChallenge(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
-	req := C.GoBytes(unsafe.Pointer(in), inLen)
-	resp := service.AccountLocalLinkNewChallenge(req)
-	
-	*outLen = C.int(len(resp))
-	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
-}
-
-//export ObjectImportList
-func ObjectImportList(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
-	req := C.GoBytes(unsafe.Pointer(in), inLen)
-	resp := service.ObjectImportList(req)
-	
-	*outLen = C.int(len(resp))
-	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
-}
-
-//export BlockDivListSetStyle
-func BlockDivListSetStyle(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
-	req := C.GoBytes(unsafe.Pointer(in), inLen)
-	resp := service.BlockDivListSetStyle(req)
-	
-	*outLen = C.int(len(resp))
-	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
-}
-
-//export ObjectOpen
-func ObjectOpen(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
-	req := C.GoBytes(unsafe.Pointer(in), inLen)
-	resp := service.ObjectOpen(req)
-	
-	*outLen = C.int(len(resp))
-	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
-}
-
-//export ObjectImportNotionValidateToken
-func ObjectImportNotionValidateToken(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
-	req := C.GoBytes(unsafe.Pointer(in), inLen)
-	resp := service.ObjectImportNotionValidateToken(req)
-	
-	*outLen = C.int(len(resp))
-	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
-}
-
-//export BlockTableColumnMove
-func BlockTableColumnMove(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
-	req := C.GoBytes(unsafe.Pointer(in), inLen)
-	resp := service.BlockTableColumnMove(req)
-	
-	*outLen = C.int(len(resp))
-	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
-}
-
-//export BlockTableColumnListFill
-func BlockTableColumnListFill(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
-	req := C.GoBytes(unsafe.Pointer(in), inLen)
-	resp := service.BlockTableColumnListFill(req)
-	
-	*outLen = C.int(len(resp))
-	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
-}
-
-//export ObjectCreateBookmark
-func ObjectCreateBookmark(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
-	req := C.GoBytes(unsafe.Pointer(in), inLen)
-	resp := service.ObjectCreateBookmark(req)
-	
-	*outLen = C.int(len(resp))
-	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
-}
-
-//export ObjectSetSource
-func ObjectSetSource(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
-	req := C.GoBytes(unsafe.Pointer(in), inLen)
-	resp := service.ObjectSetSource(req)
-	
-	*outLen = C.int(len(resp))
-	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
-}
-
-//export ObjectApplyTemplate
-func ObjectApplyTemplate(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
-	req := C.GoBytes(unsafe.Pointer(in), inLen)
-	resp := service.ObjectApplyTemplate(req)
-	
-	*outLen = C.int(len(resp))
-	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
-}
-
-//export BlockDataviewSortSort
-func BlockDataviewSortSort(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
-	req := C.GoBytes(unsafe.Pointer(in), inLen)
-	resp := service.BlockDataviewSortSort(req)
-	
-	*outLen = C.int(len(resp))
-	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
-}
-
-//export MembershipVerifyEmailCode
-func MembershipVerifyEmailCode(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
-	req := C.GoBytes(unsafe.Pointer(in), inLen)
-	resp := service.MembershipVerifyEmailCode(req)
-	
-	*outLen = C.int(len(resp))
-	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
-}
-
-//export ChatReadMessages
-func ChatReadMessages(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
-	req := C.GoBytes(unsafe.Pointer(in), inLen)
-	resp := service.ChatReadMessages(req)
-	
-	*outLen = C.int(len(resp))
-	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
-}
-
-//export ObjectSetDetails
-func ObjectSetDetails(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
-	req := C.GoBytes(unsafe.Pointer(in), inLen)
-	resp := service.ObjectSetDetails(req)
-	
-	*outLen = C.int(len(resp))
-	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
-}
-
-//export FileSpaceOffload
-func FileSpaceOffload(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
-	req := C.GoBytes(unsafe.Pointer(in), inLen)
-	resp := service.FileSpaceOffload(req)
-	
-	*outLen = C.int(len(resp))
-	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
-}
-
-//export BlockTextSetIcon
-func BlockTextSetIcon(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
-	req := C.GoBytes(unsafe.Pointer(in), inLen)
-	resp := service.BlockTextSetIcon(req)
-	
-	*outLen = C.int(len(resp))
-	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
-}
-
-//export BlockFileSetTargetObjectId
-func BlockFileSetTargetObjectId(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
-	req := C.GoBytes(unsafe.Pointer(in), inLen)
-	resp := service.BlockFileSetTargetObjectId(req)
-	
-	*outLen = C.int(len(resp))
-	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
-}
-
-//export ProcessCancel
-func ProcessCancel(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
-	req := C.GoBytes(unsafe.Pointer(in), inLen)
-	resp := service.ProcessCancel(req)
-	
-	*outLen = C.int(len(resp))
-	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
-}
-
-//export MembershipIsNameValid
-func MembershipIsNameValid(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
-	req := C.GoBytes(unsafe.Pointer(in), inLen)
-	resp := service.MembershipIsNameValid(req)
-	
-	*outLen = C.int(len(resp))
-	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
-}
-
-//export SpaceRequestApprove
-func SpaceRequestApprove(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
-	req := C.GoBytes(unsafe.Pointer(in), inLen)
-	resp := service.SpaceRequestApprove(req)
-	
-	*outLen = C.int(len(resp))
-	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
-}
-
-//export ObjectSetInternalFlags
-func ObjectSetInternalFlags(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
-	req := C.GoBytes(unsafe.Pointer(in), inLen)
-	resp := service.ObjectSetInternalFlags(req)
-	
-	*outLen = C.int(len(resp))
-	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
-}
-
-//export ObjectListSetIsArchived
-func ObjectListSetIsArchived(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
-	req := C.GoBytes(unsafe.Pointer(in), inLen)
-	resp := service.ObjectListSetIsArchived(req)
-	
-	*outLen = C.int(len(resp))
-	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
-}
-
-//export ObjectCollectionAdd
-func ObjectCollectionAdd(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
-	req := C.GoBytes(unsafe.Pointer(in), inLen)
-	resp := service.ObjectCollectionAdd(req)
-	
-	*outLen = C.int(len(resp))
-	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
-}
-
-//export ObjectTypeRelationAdd
-func ObjectTypeRelationAdd(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
-	req := C.GoBytes(unsafe.Pointer(in), inLen)
-	resp := service.ObjectTypeRelationAdd(req)
-	
-	*outLen = C.int(len(resp))
-	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
-}
-
-//export HistoryGetVersions
-func HistoryGetVersions(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
-	req := C.GoBytes(unsafe.Pointer(in), inLen)
-	resp := service.HistoryGetVersions(req)
-	
-	*outLen = C.int(len(resp))
-	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
-}
-
-//export WalletCloseSession
-func WalletCloseSession(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
-	req := C.GoBytes(unsafe.Pointer(in), inLen)
-	resp := service.WalletCloseSession(req)
-	
-	*outLen = C.int(len(resp))
-	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
-}
-
-//export SpaceDelete
-func SpaceDelete(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
-	req := C.GoBytes(unsafe.Pointer(in), inLen)
-	resp := service.SpaceDelete(req)
-	
-	*outLen = C.int(len(resp))
-	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
-}
-
-//export ObjectShow
-func ObjectShow(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
-	req := C.GoBytes(unsafe.Pointer(in), inLen)
-	resp := service.ObjectShow(req)
-	
-	*outLen = C.int(len(resp))
-	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
-}
-
-//export BlockMerge
-func BlockMerge(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
-	req := C.GoBytes(unsafe.Pointer(in), inLen)
-	resp := service.BlockMerge(req)
-	
-	*outLen = C.int(len(resp))
-	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
-}
-
-//export BlockTextSetColor
-func BlockTextSetColor(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
-	req := C.GoBytes(unsafe.Pointer(in), inLen)
-	resp := service.BlockTextSetColor(req)
-	
-	*outLen = C.int(len(resp))
-	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
-}
-
-//export BlockTextListClearStyle
-func BlockTextListClearStyle(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
-	req := C.GoBytes(unsafe.Pointer(in), inLen)
-	resp := service.BlockTextListClearStyle(req)
-	
-	*outLen = C.int(len(resp))
-	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
-}
-
-//export DebugTree
-func DebugTree(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
-	req := C.GoBytes(unsafe.Pointer(in), inLen)
-	resp := service.DebugTree(req)
-	
-	*outLen = C.int(len(resp))
-	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
-}
-
-//export DebugAccountSelectTrace
-func DebugAccountSelectTrace(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
-	req := C.GoBytes(unsafe.Pointer(in), inLen)
-	resp := service.DebugAccountSelectTrace(req)
-	
-	*outLen = C.int(len(resp))
-	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
-}
-
-//export BroadcastPayloadEvent
-func BroadcastPayloadEvent(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
-	req := C.GoBytes(unsafe.Pointer(in), inLen)
-	resp := service.BroadcastPayloadEvent(req)
-	
-	*outLen = C.int(len(resp))
-	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
-}
-
-//export AIWritingTools
-func AIWritingTools(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
-	req := C.GoBytes(unsafe.Pointer(in), inLen)
-	resp := service.AIWritingTools(req)
-	
-	*outLen = C.int(len(resp))
-	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
-}
-
-//export SpaceSetOrder
-func SpaceSetOrder(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
-	req := C.GoBytes(unsafe.Pointer(in), inLen)
-	resp := service.SpaceSetOrder(req)
-	
-	*outLen = C.int(len(resp))
-	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
-}
-
-//export SpaceUnsetOrder
-func SpaceUnsetOrder(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
-	req := C.GoBytes(unsafe.Pointer(in), inLen)
-	resp := service.SpaceUnsetOrder(req)
-	
-	*outLen = C.int(len(resp))
-	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
-}
-
-//export ObjectRelationAddFeatured
-func ObjectRelationAddFeatured(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
-	req := C.GoBytes(unsafe.Pointer(in), inLen)
-	resp := service.ObjectRelationAddFeatured(req)
-	
-	*outLen = C.int(len(resp))
-	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
-}
-
-//export BlockCreate
-func BlockCreate(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
-	req := C.GoBytes(unsafe.Pointer(in), inLen)
-	resp := service.BlockCreate(req)
-	
-	*outLen = C.int(len(resp))
-	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
-}
-
-//export BlockTableRowCreate
-func BlockTableRowCreate(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
-	req := C.GoBytes(unsafe.Pointer(in), inLen)
-	resp := service.BlockTableRowCreate(req)
-	
-	*outLen = C.int(len(resp))
-	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
-}
-
-//export DebugPing
-func DebugPing(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
-	req := C.GoBytes(unsafe.Pointer(in), inLen)
-	resp := service.DebugPing(req)
-	
-	*outLen = C.int(len(resp))
-	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
-}
-
-//export WorkspaceObjectAdd
-func WorkspaceObjectAdd(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
-	req := C.GoBytes(unsafe.Pointer(in), inLen)
-	resp := service.WorkspaceObjectAdd(req)
-	
-	*outLen = C.int(len(resp))
-	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
-}
-
-//export ObjectCollectionSort
-func ObjectCollectionSort(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
-	req := C.GoBytes(unsafe.Pointer(in), inLen)
-	resp := service.ObjectCollectionSort(req)
-	
-	*outLen = C.int(len(resp))
-	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
-}
-
-//export BlockLatexSetText
-func BlockLatexSetText(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
-	req := C.GoBytes(unsafe.Pointer(in), inLen)
-	resp := service.BlockLatexSetText(req)
-	
-	*outLen = C.int(len(resp))
-	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
-}
-
-//export WalletRecover
-func WalletRecover(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
-	req := C.GoBytes(unsafe.Pointer(in), inLen)
-	resp := service.WalletRecover(req)
-	
-	*outLen = C.int(len(resp))
-	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
-}
-
-//export ObjectGroupsSubscribe
-func ObjectGroupsSubscribe(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
-	req := C.GoBytes(unsafe.Pointer(in), inLen)
-	resp := service.ObjectGroupsSubscribe(req)
+	resp := service.DeviceSetName(req)
 	
 	*outLen = C.int(len(resp))
 	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
@@ -1713,667 +66,10 @@ func BlockListSetVerticalAlign(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar
 	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
 }
 
-//export BlockTextListSetMark
-func BlockTextListSetMark(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
+//export ChatGetMessages
+func ChatGetMessages(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
 	req := C.GoBytes(unsafe.Pointer(in), inLen)
-	resp := service.BlockTextListSetMark(req)
-	
-	*outLen = C.int(len(resp))
-	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
-}
-
-//export WorkspaceObjectListRemove
-func WorkspaceObjectListRemove(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
-	req := C.GoBytes(unsafe.Pointer(in), inLen)
-	resp := service.WorkspaceObjectListRemove(req)
-	
-	*outLen = C.int(len(resp))
-	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
-}
-
-//export WorkspaceExport
-func WorkspaceExport(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
-	req := C.GoBytes(unsafe.Pointer(in), inLen)
-	resp := service.WorkspaceExport(req)
-	
-	*outLen = C.int(len(resp))
-	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
-}
-
-//export ObjectCreateRelation
-func ObjectCreateRelation(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
-	req := C.GoBytes(unsafe.Pointer(in), inLen)
-	resp := service.ObjectCreateRelation(req)
-	
-	*outLen = C.int(len(resp))
-	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
-}
-
-//export FileReconcile
-func FileReconcile(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
-	req := C.GoBytes(unsafe.Pointer(in), inLen)
-	resp := service.FileReconcile(req)
-	
-	*outLen = C.int(len(resp))
-	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
-}
-
-//export GalleryDownloadIndex
-func GalleryDownloadIndex(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
-	req := C.GoBytes(unsafe.Pointer(in), inLen)
-	resp := service.GalleryDownloadIndex(req)
-	
-	*outLen = C.int(len(resp))
-	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
-}
-
-//export BlockDataviewRelationSet
-func BlockDataviewRelationSet(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
-	req := C.GoBytes(unsafe.Pointer(in), inLen)
-	resp := service.BlockDataviewRelationSet(req)
-	
-	*outLen = C.int(len(resp))
-	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
-}
-
-//export ChatDeleteMessage
-func ChatDeleteMessage(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
-	req := C.GoBytes(unsafe.Pointer(in), inLen)
-	resp := service.ChatDeleteMessage(req)
-	
-	*outLen = C.int(len(resp))
-	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
-}
-
-//export AIAutofill
-func AIAutofill(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
-	req := C.GoBytes(unsafe.Pointer(in), inLen)
-	resp := service.AIAutofill(req)
-	
-	*outLen = C.int(len(resp))
-	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
-}
-
-//export SpaceMakeShareable
-func SpaceMakeShareable(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
-	req := C.GoBytes(unsafe.Pointer(in), inLen)
-	resp := service.SpaceMakeShareable(req)
-	
-	*outLen = C.int(len(resp))
-	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
-}
-
-//export RelationListRemoveOption
-func RelationListRemoveOption(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
-	req := C.GoBytes(unsafe.Pointer(in), inLen)
-	resp := service.RelationListRemoveOption(req)
-	
-	*outLen = C.int(len(resp))
-	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
-}
-
-//export ProcessSubscribe
-func ProcessSubscribe(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
-	req := C.GoBytes(unsafe.Pointer(in), inLen)
-	resp := service.ProcessSubscribe(req)
-	
-	*outLen = C.int(len(resp))
-	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
-}
-
-//export SpaceStopSharing
-func SpaceStopSharing(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
-	req := C.GoBytes(unsafe.Pointer(in), inLen)
-	resp := service.SpaceStopSharing(req)
-	
-	*outLen = C.int(len(resp))
-	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
-}
-
-//export ObjectTypeRecommendedFeaturedRelationsSet
-func ObjectTypeRecommendedFeaturedRelationsSet(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
-	req := C.GoBytes(unsafe.Pointer(in), inLen)
-	resp := service.ObjectTypeRecommendedFeaturedRelationsSet(req)
-	
-	*outLen = C.int(len(resp))
-	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
-}
-
-//export BlockDataviewViewSetPosition
-func BlockDataviewViewSetPosition(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
-	req := C.GoBytes(unsafe.Pointer(in), inLen)
-	resp := service.BlockDataviewViewSetPosition(req)
-	
-	*outLen = C.int(len(resp))
-	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
-}
-
-//export BlockDataviewSetSource
-func BlockDataviewSetSource(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
-	req := C.GoBytes(unsafe.Pointer(in), inLen)
-	resp := service.BlockDataviewSetSource(req)
-	
-	*outLen = C.int(len(resp))
-	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
-}
-
-//export BlockWidgetSetLimit
-func BlockWidgetSetLimit(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
-	req := C.GoBytes(unsafe.Pointer(in), inLen)
-	resp := service.BlockWidgetSetLimit(req)
-	
-	*outLen = C.int(len(resp))
-	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
-}
-
-//export DebugStackGoroutines
-func DebugStackGoroutines(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
-	req := C.GoBytes(unsafe.Pointer(in), inLen)
-	resp := service.DebugStackGoroutines(req)
-	
-	*outLen = C.int(len(resp))
-	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
-}
-
-//export NameServiceUserAccountGet
-func NameServiceUserAccountGet(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
-	req := C.GoBytes(unsafe.Pointer(in), inLen)
-	resp := service.NameServiceUserAccountGet(req)
-	
-	*outLen = C.int(len(resp))
-	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
-}
-
-//export ChatSubscribeLastMessages
-func ChatSubscribeLastMessages(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
-	req := C.GoBytes(unsafe.Pointer(in), inLen)
-	resp := service.ChatSubscribeLastMessages(req)
-	
-	*outLen = C.int(len(resp))
-	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
-}
-
-//export AccountRecoverFromLegacyExport
-func AccountRecoverFromLegacyExport(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
-	req := C.GoBytes(unsafe.Pointer(in), inLen)
-	resp := service.AccountRecoverFromLegacyExport(req)
-	
-	*outLen = C.int(len(resp))
-	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
-}
-
-//export SpaceLeaveApprove
-func SpaceLeaveApprove(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
-	req := C.GoBytes(unsafe.Pointer(in), inLen)
-	resp := service.SpaceLeaveApprove(req)
-	
-	*outLen = C.int(len(resp))
-	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
-}
-
-//export RelationOptions
-func RelationOptions(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
-	req := C.GoBytes(unsafe.Pointer(in), inLen)
-	resp := service.RelationOptions(req)
-	
-	*outLen = C.int(len(resp))
-	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
-}
-
-//export AIListSummary
-func AIListSummary(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
-	req := C.GoBytes(unsafe.Pointer(in), inLen)
-	resp := service.AIListSummary(req)
-	
-	*outLen = C.int(len(resp))
-	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
-}
-
-//export SpaceJoin
-func SpaceJoin(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
-	req := C.GoBytes(unsafe.Pointer(in), inLen)
-	resp := service.SpaceJoin(req)
-	
-	*outLen = C.int(len(resp))
-	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
-}
-
-//export PublishingList
-func PublishingList(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
-	req := C.GoBytes(unsafe.Pointer(in), inLen)
-	resp := service.PublishingList(req)
-	
-	*outLen = C.int(len(resp))
-	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
-}
-
-//export RelationListWithValue
-func RelationListWithValue(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
-	req := C.GoBytes(unsafe.Pointer(in), inLen)
-	resp := service.RelationListWithValue(req)
-	
-	*outLen = C.int(len(resp))
-	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
-}
-
-//export ChatToggleMessageReaction
-func ChatToggleMessageReaction(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
-	req := C.GoBytes(unsafe.Pointer(in), inLen)
-	resp := service.ChatToggleMessageReaction(req)
-	
-	*outLen = C.int(len(resp))
-	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
-}
-
-//export WalletConvert
-func WalletConvert(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
-	req := C.GoBytes(unsafe.Pointer(in), inLen)
-	resp := service.WalletConvert(req)
-	
-	*outLen = C.int(len(resp))
-	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
-}
-
-//export PublishingRemove
-func PublishingRemove(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
-	req := C.GoBytes(unsafe.Pointer(in), inLen)
-	resp := service.PublishingRemove(req)
-	
-	*outLen = C.int(len(resp))
-	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
-}
-
-//export BlockDataviewSortAdd
-func BlockDataviewSortAdd(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
-	req := C.GoBytes(unsafe.Pointer(in), inLen)
-	resp := service.BlockDataviewSortAdd(req)
-	
-	*outLen = C.int(len(resp))
-	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
-}
-
-//export BlockTableColumnCreate
-func BlockTableColumnCreate(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
-	req := C.GoBytes(unsafe.Pointer(in), inLen)
-	resp := service.BlockTableColumnCreate(req)
-	
-	*outLen = C.int(len(resp))
-	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
-}
-
-//export BlockTableRowListFill
-func BlockTableRowListFill(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
-	req := C.GoBytes(unsafe.Pointer(in), inLen)
-	resp := service.BlockTableRowListFill(req)
-	
-	*outLen = C.int(len(resp))
-	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
-}
-
-//export NotificationReply
-func NotificationReply(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
-	req := C.GoBytes(unsafe.Pointer(in), inLen)
-	resp := service.NotificationReply(req)
-	
-	*outLen = C.int(len(resp))
-	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
-}
-
-//export ObjectToCollection
-func ObjectToCollection(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
-	req := C.GoBytes(unsafe.Pointer(in), inLen)
-	resp := service.ObjectToCollection(req)
-	
-	*outLen = C.int(len(resp))
-	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
-}
-
-//export BlockTableColumnDuplicate
-func BlockTableColumnDuplicate(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
-	req := C.GoBytes(unsafe.Pointer(in), inLen)
-	resp := service.BlockTableColumnDuplicate(req)
-	
-	*outLen = C.int(len(resp))
-	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
-}
-
-//export NameServiceResolveName
-func NameServiceResolveName(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
-	req := C.GoBytes(unsafe.Pointer(in), inLen)
-	resp := service.NameServiceResolveName(req)
-	
-	*outLen = C.int(len(resp))
-	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
-}
-
-//export SpaceParticipantRemove
-func SpaceParticipantRemove(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
-	req := C.GoBytes(unsafe.Pointer(in), inLen)
-	resp := service.SpaceParticipantRemove(req)
-	
-	*outLen = C.int(len(resp))
-	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
-}
-
-//export ObjectImportUseCase
-func ObjectImportUseCase(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
-	req := C.GoBytes(unsafe.Pointer(in), inLen)
-	resp := service.ObjectImportUseCase(req)
-	
-	*outLen = C.int(len(resp))
-	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
-}
-
-//export FileListOffload
-func FileListOffload(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
-	req := C.GoBytes(unsafe.Pointer(in), inLen)
-	resp := service.FileListOffload(req)
-	
-	*outLen = C.int(len(resp))
-	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
-}
-
-//export LinkPreview
-func LinkPreview(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
-	req := C.GoBytes(unsafe.Pointer(in), inLen)
-	resp := service.LinkPreview(req)
-	
-	*outLen = C.int(len(resp))
-	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
-}
-
-//export AppSetDeviceState
-func AppSetDeviceState(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
-	req := C.GoBytes(unsafe.Pointer(in), inLen)
-	resp := service.AppSetDeviceState(req)
-	
-	*outLen = C.int(len(resp))
-	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
-}
-
-//export WalletCreate
-func WalletCreate(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
-	req := C.GoBytes(unsafe.Pointer(in), inLen)
-	resp := service.WalletCreate(req)
-	
-	*outLen = C.int(len(resp))
-	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
-}
-
-//export ObjectSearch
-func ObjectSearch(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
-	req := C.GoBytes(unsafe.Pointer(in), inLen)
-	resp := service.ObjectSearch(req)
-	
-	*outLen = C.int(len(resp))
-	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
-}
-
-//export ObjectSubscribeIds
-func ObjectSubscribeIds(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
-	req := C.GoBytes(unsafe.Pointer(in), inLen)
-	resp := service.ObjectSubscribeIds(req)
-	
-	*outLen = C.int(len(resp))
-	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
-}
-
-//export BlockCut
-func BlockCut(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
-	req := C.GoBytes(unsafe.Pointer(in), inLen)
-	resp := service.BlockCut(req)
-	
-	*outLen = C.int(len(resp))
-	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
-}
-
-//export NameServiceResolveAnyId
-func NameServiceResolveAnyId(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
-	req := C.GoBytes(unsafe.Pointer(in), inLen)
-	resp := service.NameServiceResolveAnyId(req)
-	
-	*outLen = C.int(len(resp))
-	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
-}
-
-//export ObjectListSetDetails
-func ObjectListSetDetails(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
-	req := C.GoBytes(unsafe.Pointer(in), inLen)
-	resp := service.ObjectListSetDetails(req)
-	
-	*outLen = C.int(len(resp))
-	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
-}
-
-//export BlockVideoSetName
-func BlockVideoSetName(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
-	req := C.GoBytes(unsafe.Pointer(in), inLen)
-	resp := service.BlockVideoSetName(req)
-	
-	*outLen = C.int(len(resp))
-	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
-}
-
-//export BlockDataviewSortReplace
-func BlockDataviewSortReplace(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
-	req := C.GoBytes(unsafe.Pointer(in), inLen)
-	resp := service.BlockDataviewSortReplace(req)
-	
-	*outLen = C.int(len(resp))
-	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
-}
-
-//export SpaceRequestDecline
-func SpaceRequestDecline(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
-	req := C.GoBytes(unsafe.Pointer(in), inLen)
-	resp := service.SpaceRequestDecline(req)
-	
-	*outLen = C.int(len(resp))
-	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
-}
-
-//export ObjectClose
-func ObjectClose(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
-	req := C.GoBytes(unsafe.Pointer(in), inLen)
-	resp := service.ObjectClose(req)
-	
-	*outLen = C.int(len(resp))
-	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
-}
-
-//export ObjectListSetIsFavorite
-func ObjectListSetIsFavorite(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
-	req := C.GoBytes(unsafe.Pointer(in), inLen)
-	resp := service.ObjectListSetIsFavorite(req)
-	
-	*outLen = C.int(len(resp))
-	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
-}
-
-//export ObjectUndo
-func ObjectUndo(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
-	req := C.GoBytes(unsafe.Pointer(in), inLen)
-	resp := service.ObjectUndo(req)
-	
-	*outLen = C.int(len(resp))
-	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
-}
-
-//export FileSpaceUsage
-func FileSpaceUsage(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
-	req := C.GoBytes(unsafe.Pointer(in), inLen)
-	resp := service.FileSpaceUsage(req)
-	
-	*outLen = C.int(len(resp))
-	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
-}
-
-//export BlockTextSetText
-func BlockTextSetText(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
-	req := C.GoBytes(unsafe.Pointer(in), inLen)
-	resp := service.BlockTextSetText(req)
-	
-	*outLen = C.int(len(resp))
-	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
-}
-
-//export DebugTreeHeads
-func DebugTreeHeads(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
-	req := C.GoBytes(unsafe.Pointer(in), inLen)
-	resp := service.DebugTreeHeads(req)
-	
-	*outLen = C.int(len(resp))
-	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
-}
-
-//export ChatEditMessageContent
-func ChatEditMessageContent(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
-	req := C.GoBytes(unsafe.Pointer(in), inLen)
-	resp := service.ChatEditMessageContent(req)
-	
-	*outLen = C.int(len(resp))
-	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
-}
-
-//export AppGetVersion
-func AppGetVersion(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
-	req := C.GoBytes(unsafe.Pointer(in), inLen)
-	resp := service.AppGetVersion(req)
-	
-	*outLen = C.int(len(resp))
-	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
-}
-
-//export ObjectSearchWithMeta
-func ObjectSearchWithMeta(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
-	req := C.GoBytes(unsafe.Pointer(in), inLen)
-	resp := service.ObjectSearchWithMeta(req)
-	
-	*outLen = C.int(len(resp))
-	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
-}
-
-//export ObjectTypeRelationRemove
-func ObjectTypeRelationRemove(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
-	req := C.GoBytes(unsafe.Pointer(in), inLen)
-	resp := service.ObjectTypeRelationRemove(req)
-	
-	*outLen = C.int(len(resp))
-	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
-}
-
-//export FileNodeUsage
-func FileNodeUsage(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
-	req := C.GoBytes(unsafe.Pointer(in), inLen)
-	resp := service.FileNodeUsage(req)
-	
-	*outLen = C.int(len(resp))
-	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
-}
-
-//export BlockUpload
-func BlockUpload(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
-	req := C.GoBytes(unsafe.Pointer(in), inLen)
-	resp := service.BlockUpload(req)
-	
-	*outLen = C.int(len(resp))
-	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
-}
-
-//export BlockTableColumnDelete
-func BlockTableColumnDelete(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
-	req := C.GoBytes(unsafe.Pointer(in), inLen)
-	resp := service.BlockTableColumnDelete(req)
-	
-	*outLen = C.int(len(resp))
-	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
-}
-
-//export AccountMigrateCancel
-func AccountMigrateCancel(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
-	req := C.GoBytes(unsafe.Pointer(in), inLen)
-	resp := service.AccountMigrateCancel(req)
-	
-	*outLen = C.int(len(resp))
-	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
-}
-
-//export AccountChangeJsonApiAddr
-func AccountChangeJsonApiAddr(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
-	req := C.GoBytes(unsafe.Pointer(in), inLen)
-	resp := service.AccountChangeJsonApiAddr(req)
-	
-	*outLen = C.int(len(resp))
-	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
-}
-
-//export SpaceJoinCancel
-func SpaceJoinCancel(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
-	req := C.GoBytes(unsafe.Pointer(in), inLen)
-	resp := service.SpaceJoinCancel(req)
-	
-	*outLen = C.int(len(resp))
-	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
-}
-
-//export BlockTextListSetColor
-func BlockTextListSetColor(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
-	req := C.GoBytes(unsafe.Pointer(in), inLen)
-	resp := service.BlockTextListSetColor(req)
-	
-	*outLen = C.int(len(resp))
-	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
-}
-
-//export BlockDataviewViewUpdate
-func BlockDataviewViewUpdate(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
-	req := C.GoBytes(unsafe.Pointer(in), inLen)
-	resp := service.BlockDataviewViewUpdate(req)
-	
-	*outLen = C.int(len(resp))
-	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
-}
-
-//export BlockTableRowSetHeader
-func BlockTableRowSetHeader(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
-	req := C.GoBytes(unsafe.Pointer(in), inLen)
-	resp := service.BlockTableRowSetHeader(req)
-	
-	*outLen = C.int(len(resp))
-	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
-}
-
-//export BlockLinkCreateWithObject
-func BlockLinkCreateWithObject(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
-	req := C.GoBytes(unsafe.Pointer(in), inLen)
-	resp := service.BlockLinkCreateWithObject(req)
-	
-	*outLen = C.int(len(resp))
-	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
-}
-
-//export UnsplashDownload
-func UnsplashDownload(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
-	req := C.GoBytes(unsafe.Pointer(in), inLen)
-	resp := service.UnsplashDownload(req)
-	
-	*outLen = C.int(len(resp))
-	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
-}
-
-//export BlockTableRowDelete
-func BlockTableRowDelete(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
-	req := C.GoBytes(unsafe.Pointer(in), inLen)
-	resp := service.BlockTableRowDelete(req)
-	
-	*outLen = C.int(len(resp))
-	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
-}
-
-//export DeviceSetName
-func DeviceSetName(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
-	req := C.GoBytes(unsafe.Pointer(in), inLen)
-	resp := service.DeviceSetName(req)
+	resp := service.ChatGetMessages(req)
 	
 	*outLen = C.int(len(resp))
 	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
@@ -2388,64 +84,172 @@ func WorkspaceSelect(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
 	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
 }
 
-//export AccountCreate
-func AccountCreate(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
+//export ObjectListDuplicate
+func ObjectListDuplicate(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
 	req := C.GoBytes(unsafe.Pointer(in), inLen)
-	resp := service.AccountCreate(req)
+	resp := service.ObjectListDuplicate(req)
 	
 	*outLen = C.int(len(resp))
 	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
 }
 
-//export ObjectGraph
-func ObjectGraph(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
+//export BlockListTurnInto
+func BlockListTurnInto(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
 	req := C.GoBytes(unsafe.Pointer(in), inLen)
-	resp := service.ObjectGraph(req)
+	resp := service.BlockListTurnInto(req)
 	
 	*outLen = C.int(len(resp))
 	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
 }
 
-//export BlockPreview
-func BlockPreview(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
+//export BlockTextListSetMark
+func BlockTextListSetMark(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
 	req := C.GoBytes(unsafe.Pointer(in), inLen)
-	resp := service.BlockPreview(req)
+	resp := service.BlockTextListSetMark(req)
 	
 	*outLen = C.int(len(resp))
 	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
 }
 
-//export BlockDataviewViewSetActive
-func BlockDataviewViewSetActive(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
+//export BlockDataviewViewRelationSort
+func BlockDataviewViewRelationSort(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
 	req := C.GoBytes(unsafe.Pointer(in), inLen)
-	resp := service.BlockDataviewViewSetActive(req)
+	resp := service.BlockDataviewViewRelationSort(req)
 	
 	*outLen = C.int(len(resp))
 	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
 }
 
-//export BlockTableRowDuplicate
-func BlockTableRowDuplicate(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
+//export MembershipGetVerificationEmailStatus
+func MembershipGetVerificationEmailStatus(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
 	req := C.GoBytes(unsafe.Pointer(in), inLen)
-	resp := service.BlockTableRowDuplicate(req)
+	resp := service.MembershipGetVerificationEmailStatus(req)
 	
 	*outLen = C.int(len(resp))
 	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
 }
 
-//export DebugAnystoreObjectChanges
-func DebugAnystoreObjectChanges(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
+//export SpaceInviteGenerate
+func SpaceInviteGenerate(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
 	req := C.GoBytes(unsafe.Pointer(in), inLen)
-	resp := service.DebugAnystoreObjectChanges(req)
+	resp := service.SpaceInviteGenerate(req)
 	
 	*outLen = C.int(len(resp))
 	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
 }
 
-//export WorkspaceObjectListAdd
-func WorkspaceObjectListAdd(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
+//export BlockWidgetSetLayout
+func BlockWidgetSetLayout(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
 	req := C.GoBytes(unsafe.Pointer(in), inLen)
-	resp := service.WorkspaceObjectListAdd(req)
+	resp := service.BlockWidgetSetLayout(req)
+	
+	*outLen = C.int(len(resp))
+	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
+}
+
+//export ProcessSubscribe
+func ProcessSubscribe(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
+	req := C.GoBytes(unsafe.Pointer(in), inLen)
+	resp := service.ProcessSubscribe(req)
+	
+	*outLen = C.int(len(resp))
+	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
+}
+
+//export ObjectGroupsSubscribe
+func ObjectGroupsSubscribe(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
+	req := C.GoBytes(unsafe.Pointer(in), inLen)
+	resp := service.ObjectGroupsSubscribe(req)
+	
+	*outLen = C.int(len(resp))
+	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
+}
+
+//export ObjectCollectionAdd
+func ObjectCollectionAdd(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
+	req := C.GoBytes(unsafe.Pointer(in), inLen)
+	resp := service.ObjectCollectionAdd(req)
+	
+	*outLen = C.int(len(resp))
+	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
+}
+
+//export BlockRelationAdd
+func BlockRelationAdd(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
+	req := C.GoBytes(unsafe.Pointer(in), inLen)
+	resp := service.BlockRelationAdd(req)
+	
+	*outLen = C.int(len(resp))
+	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
+}
+
+//export ObjectCollectionRemove
+func ObjectCollectionRemove(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
+	req := C.GoBytes(unsafe.Pointer(in), inLen)
+	resp := service.ObjectCollectionRemove(req)
+	
+	*outLen = C.int(len(resp))
+	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
+}
+
+//export FileDrop
+func FileDrop(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
+	req := C.GoBytes(unsafe.Pointer(in), inLen)
+	resp := service.FileDrop(req)
+	
+	*outLen = C.int(len(resp))
+	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
+}
+
+//export BlockListDuplicate
+func BlockListDuplicate(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
+	req := C.GoBytes(unsafe.Pointer(in), inLen)
+	resp := service.BlockListDuplicate(req)
+	
+	*outLen = C.int(len(resp))
+	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
+}
+
+//export DebugAccountSelectTrace
+func DebugAccountSelectTrace(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
+	req := C.GoBytes(unsafe.Pointer(in), inLen)
+	resp := service.DebugAccountSelectTrace(req)
+	
+	*outLen = C.int(len(resp))
+	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
+}
+
+//export AccountMigrateCancel
+func AccountMigrateCancel(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
+	req := C.GoBytes(unsafe.Pointer(in), inLen)
+	resp := service.AccountMigrateCancel(req)
+	
+	*outLen = C.int(len(resp))
+	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
+}
+
+//export ObjectListSetDetails
+func ObjectListSetDetails(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
+	req := C.GoBytes(unsafe.Pointer(in), inLen)
+	resp := service.ObjectListSetDetails(req)
+	
+	*outLen = C.int(len(resp))
+	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
+}
+
+//export BlockFileSetName
+func BlockFileSetName(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
+	req := C.GoBytes(unsafe.Pointer(in), inLen)
+	resp := service.BlockFileSetName(req)
+	
+	*outLen = C.int(len(resp))
+	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
+}
+
+//export BlockDataviewSortSort
+func BlockDataviewSortSort(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
+	req := C.GoBytes(unsafe.Pointer(in), inLen)
+	resp := service.BlockDataviewSortSort(req)
 	
 	*outLen = C.int(len(resp))
 	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
@@ -2469,82 +273,127 @@ func DebugSpaceSummary(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
 	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
 }
 
-//export NotificationList
-func NotificationList(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
+//export DebugTree
+func DebugTree(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
 	req := C.GoBytes(unsafe.Pointer(in), inLen)
-	resp := service.NotificationList(req)
+	resp := service.DebugTree(req)
 	
 	*outLen = C.int(len(resp))
 	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
 }
 
-//export ObjectRelationRemoveFeatured
-func ObjectRelationRemoveFeatured(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
+//export DebugSubscriptions
+func DebugSubscriptions(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
 	req := C.GoBytes(unsafe.Pointer(in), inLen)
-	resp := service.ObjectRelationRemoveFeatured(req)
+	resp := service.DebugSubscriptions(req)
 	
 	*outLen = C.int(len(resp))
 	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
 }
 
-//export ObjectListDelete
-func ObjectListDelete(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
+//export AppGetVersion
+func AppGetVersion(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
 	req := C.GoBytes(unsafe.Pointer(in), inLen)
-	resp := service.ObjectListDelete(req)
+	resp := service.AppGetVersion(req)
 	
 	*outLen = C.int(len(resp))
 	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
 }
 
-//export ObjectBookmarkFetch
-func ObjectBookmarkFetch(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
+//export AppSetDeviceState
+func AppSetDeviceState(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
 	req := C.GoBytes(unsafe.Pointer(in), inLen)
-	resp := service.ObjectBookmarkFetch(req)
+	resp := service.AppSetDeviceState(req)
 	
 	*outLen = C.int(len(resp))
 	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
 }
 
-//export FileDrop
-func FileDrop(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
+//export ObjectRelationDelete
+func ObjectRelationDelete(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
 	req := C.GoBytes(unsafe.Pointer(in), inLen)
-	resp := service.FileDrop(req)
+	resp := service.ObjectRelationDelete(req)
 	
 	*outLen = C.int(len(resp))
 	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
 }
 
-//export BlockWidgetSetViewId
-func BlockWidgetSetViewId(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
+//export ObjectTypeRecommendedFeaturedRelationsSet
+func ObjectTypeRecommendedFeaturedRelationsSet(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
 	req := C.GoBytes(unsafe.Pointer(in), inLen)
-	resp := service.BlockWidgetSetViewId(req)
+	resp := service.ObjectTypeRecommendedFeaturedRelationsSet(req)
 	
 	*outLen = C.int(len(resp))
 	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
 }
 
-//export DebugOpenedObjects
-func DebugOpenedObjects(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
+//export BlockListConvertToObjects
+func BlockListConvertToObjects(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
 	req := C.GoBytes(unsafe.Pointer(in), inLen)
-	resp := service.DebugOpenedObjects(req)
+	resp := service.BlockListConvertToObjects(req)
 	
 	*outLen = C.int(len(resp))
 	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
 }
 
-//export DebugRunProfiler
-func DebugRunProfiler(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
+//export BlockDataviewFilterReplace
+func BlockDataviewFilterReplace(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
 	req := C.GoBytes(unsafe.Pointer(in), inLen)
-	resp := service.DebugRunProfiler(req)
+	resp := service.BlockDataviewFilterReplace(req)
 	
 	*outLen = C.int(len(resp))
 	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
 }
 
-//export DeviceNetworkStateSet
-func DeviceNetworkStateSet(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
+//export SpaceRequestDecline
+func SpaceRequestDecline(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
 	req := C.GoBytes(unsafe.Pointer(in), inLen)
-	resp := service.DeviceNetworkStateSet(req)
+	resp := service.SpaceRequestDecline(req)
+	
+	*outLen = C.int(len(resp))
+	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
+}
+
+//export ObjectRelationListAvailable
+func ObjectRelationListAvailable(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
+	req := C.GoBytes(unsafe.Pointer(in), inLen)
+	resp := service.ObjectRelationListAvailable(req)
+	
+	*outLen = C.int(len(resp))
+	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
+}
+
+//export MembershipFinalize
+func MembershipFinalize(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
+	req := C.GoBytes(unsafe.Pointer(in), inLen)
+	resp := service.MembershipFinalize(req)
+	
+	*outLen = C.int(len(resp))
+	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
+}
+
+//export AccountLocalLinkNewChallenge
+func AccountLocalLinkNewChallenge(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
+	req := C.GoBytes(unsafe.Pointer(in), inLen)
+	resp := service.AccountLocalLinkNewChallenge(req)
+	
+	*outLen = C.int(len(resp))
+	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
+}
+
+//export ChatUnreadMessages
+func ChatUnreadMessages(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
+	req := C.GoBytes(unsafe.Pointer(in), inLen)
+	resp := service.ChatUnreadMessages(req)
+	
+	*outLen = C.int(len(resp))
+	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
+}
+
+//export ObjectChatAdd
+func ObjectChatAdd(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
+	req := C.GoBytes(unsafe.Pointer(in), inLen)
+	resp := service.ObjectChatAdd(req)
 	
 	*outLen = C.int(len(resp))
 	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
@@ -2559,6 +408,105 @@ func AppShutdown(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
 	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
 }
 
+//export BlockListSetFields
+func BlockListSetFields(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
+	req := C.GoBytes(unsafe.Pointer(in), inLen)
+	resp := service.BlockListSetFields(req)
+	
+	*outLen = C.int(len(resp))
+	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
+}
+
+//export BlockBookmarkFetch
+func BlockBookmarkFetch(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
+	req := C.GoBytes(unsafe.Pointer(in), inLen)
+	resp := service.BlockBookmarkFetch(req)
+	
+	*outLen = C.int(len(resp))
+	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
+}
+
+//export ObjectCreateBookmark
+func ObjectCreateBookmark(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
+	req := C.GoBytes(unsafe.Pointer(in), inLen)
+	resp := service.ObjectCreateBookmark(req)
+	
+	*outLen = C.int(len(resp))
+	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
+}
+
+//export ChatUnsubscribeFromMessagePreviews
+func ChatUnsubscribeFromMessagePreviews(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
+	req := C.GoBytes(unsafe.Pointer(in), inLen)
+	resp := service.ChatUnsubscribeFromMessagePreviews(req)
+	
+	*outLen = C.int(len(resp))
+	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
+}
+
+//export ObjectSearchUnsubscribe
+func ObjectSearchUnsubscribe(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
+	req := C.GoBytes(unsafe.Pointer(in), inLen)
+	resp := service.ObjectSearchUnsubscribe(req)
+	
+	*outLen = C.int(len(resp))
+	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
+}
+
+//export ObjectImportUseCase
+func ObjectImportUseCase(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
+	req := C.GoBytes(unsafe.Pointer(in), inLen)
+	resp := service.ObjectImportUseCase(req)
+	
+	*outLen = C.int(len(resp))
+	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
+}
+
+//export AccountLocalLinkSolveChallenge
+func AccountLocalLinkSolveChallenge(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
+	req := C.GoBytes(unsafe.Pointer(in), inLen)
+	resp := service.AccountLocalLinkSolveChallenge(req)
+	
+	*outLen = C.int(len(resp))
+	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
+}
+
+//export SpaceJoin
+func SpaceJoin(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
+	req := C.GoBytes(unsafe.Pointer(in), inLen)
+	resp := service.SpaceJoin(req)
+	
+	*outLen = C.int(len(resp))
+	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
+}
+
+//export SpaceRequestApprove
+func SpaceRequestApprove(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
+	req := C.GoBytes(unsafe.Pointer(in), inLen)
+	resp := service.SpaceRequestApprove(req)
+	
+	*outLen = C.int(len(resp))
+	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
+}
+
+//export SpaceParticipantPermissionsChange
+func SpaceParticipantPermissionsChange(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
+	req := C.GoBytes(unsafe.Pointer(in), inLen)
+	resp := service.SpaceParticipantPermissionsChange(req)
+	
+	*outLen = C.int(len(resp))
+	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
+}
+
+//export SpaceUnsetOrder
+func SpaceUnsetOrder(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
+	req := C.GoBytes(unsafe.Pointer(in), inLen)
+	resp := service.SpaceUnsetOrder(req)
+	
+	*outLen = C.int(len(resp))
+	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
+}
+
 //export HistoryShowVersion
 func HistoryShowVersion(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
 	req := C.GoBytes(unsafe.Pointer(in), inLen)
@@ -2568,28 +516,1297 @@ func HistoryShowVersion(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
 	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
 }
 
-//export BlockListMoveToExistingObject
-func BlockListMoveToExistingObject(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
+//export HistorySetVersion
+func HistorySetVersion(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
 	req := C.GoBytes(unsafe.Pointer(in), inLen)
-	resp := service.BlockListMoveToExistingObject(req)
+	resp := service.HistorySetVersion(req)
 	
 	*outLen = C.int(len(resp))
 	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
 }
 
-//export BlockListSetBackgroundColor
-func BlockListSetBackgroundColor(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
+//export BlockLatexSetText
+func BlockLatexSetText(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
 	req := C.GoBytes(unsafe.Pointer(in), inLen)
-	resp := service.BlockListSetBackgroundColor(req)
+	resp := service.BlockLatexSetText(req)
 	
 	*outLen = C.int(len(resp))
 	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
 }
 
-//export ProcessUnsubscribe
-func ProcessUnsubscribe(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
+//export DebugExportLog
+func DebugExportLog(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
 	req := C.GoBytes(unsafe.Pointer(in), inLen)
-	resp := service.ProcessUnsubscribe(req)
+	resp := service.DebugExportLog(req)
+	
+	*outLen = C.int(len(resp))
+	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
+}
+
+//export ChatDeleteMessage
+func ChatDeleteMessage(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
+	req := C.GoBytes(unsafe.Pointer(in), inLen)
+	resp := service.ChatDeleteMessage(req)
+	
+	*outLen = C.int(len(resp))
+	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
+}
+
+//export ObjectCrossSpaceSearchSubscribe
+func ObjectCrossSpaceSearchSubscribe(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
+	req := C.GoBytes(unsafe.Pointer(in), inLen)
+	resp := service.ObjectCrossSpaceSearchSubscribe(req)
+	
+	*outLen = C.int(len(resp))
+	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
+}
+
+//export BlockTextSetChecked
+func BlockTextSetChecked(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
+	req := C.GoBytes(unsafe.Pointer(in), inLen)
+	resp := service.BlockTextSetChecked(req)
+	
+	*outLen = C.int(len(resp))
+	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
+}
+
+//export BlockDivListSetStyle
+func BlockDivListSetStyle(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
+	req := C.GoBytes(unsafe.Pointer(in), inLen)
+	resp := service.BlockDivListSetStyle(req)
+	
+	*outLen = C.int(len(resp))
+	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
+}
+
+//export ChatSubscribeLastMessages
+func ChatSubscribeLastMessages(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
+	req := C.GoBytes(unsafe.Pointer(in), inLen)
+	resp := service.ChatSubscribeLastMessages(req)
+	
+	*outLen = C.int(len(resp))
+	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
+}
+
+//export BlockTableRowListClean
+func BlockTableRowListClean(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
+	req := C.GoBytes(unsafe.Pointer(in), inLen)
+	resp := service.BlockTableRowListClean(req)
+	
+	*outLen = C.int(len(resp))
+	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
+}
+
+//export BlockLinkListSetAppearance
+func BlockLinkListSetAppearance(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
+	req := C.GoBytes(unsafe.Pointer(in), inLen)
+	resp := service.BlockLinkListSetAppearance(req)
+	
+	*outLen = C.int(len(resp))
+	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
+}
+
+//export ObjectSetSource
+func ObjectSetSource(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
+	req := C.GoBytes(unsafe.Pointer(in), inLen)
+	resp := service.ObjectSetSource(req)
+	
+	*outLen = C.int(len(resp))
+	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
+}
+
+//export ObjectCreateObjectType
+func ObjectCreateObjectType(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
+	req := C.GoBytes(unsafe.Pointer(in), inLen)
+	resp := service.ObjectCreateObjectType(req)
+	
+	*outLen = C.int(len(resp))
+	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
+}
+
+//export UnsplashDownload
+func UnsplashDownload(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
+	req := C.GoBytes(unsafe.Pointer(in), inLen)
+	resp := service.UnsplashDownload(req)
+	
+	*outLen = C.int(len(resp))
+	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
+}
+
+//export BlockDataviewGroupOrderUpdate
+func BlockDataviewGroupOrderUpdate(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
+	req := C.GoBytes(unsafe.Pointer(in), inLen)
+	resp := service.BlockDataviewGroupOrderUpdate(req)
+	
+	*outLen = C.int(len(resp))
+	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
+}
+
+//export BlockDataviewSortAdd
+func BlockDataviewSortAdd(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
+	req := C.GoBytes(unsafe.Pointer(in), inLen)
+	resp := service.BlockDataviewSortAdd(req)
+	
+	*outLen = C.int(len(resp))
+	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
+}
+
+//export BlockTableRowListFill
+func BlockTableRowListFill(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
+	req := C.GoBytes(unsafe.Pointer(in), inLen)
+	resp := service.BlockTableRowListFill(req)
+	
+	*outLen = C.int(len(resp))
+	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
+}
+
+//export BlockDataviewViewSetActive
+func BlockDataviewViewSetActive(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
+	req := C.GoBytes(unsafe.Pointer(in), inLen)
+	resp := service.BlockDataviewViewSetActive(req)
+	
+	*outLen = C.int(len(resp))
+	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
+}
+
+//export WalletCreateSession
+func WalletCreateSession(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
+	req := C.GoBytes(unsafe.Pointer(in), inLen)
+	resp := service.WalletCreateSession(req)
+	
+	*outLen = C.int(len(resp))
+	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
+}
+
+//export ObjectSearch
+func ObjectSearch(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
+	req := C.GoBytes(unsafe.Pointer(in), inLen)
+	resp := service.ObjectSearch(req)
+	
+	*outLen = C.int(len(resp))
+	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
+}
+
+//export ObjectShareByLink
+func ObjectShareByLink(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
+	req := C.GoBytes(unsafe.Pointer(in), inLen)
+	resp := service.ObjectShareByLink(req)
+	
+	*outLen = C.int(len(resp))
+	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
+}
+
+//export ObjectRelationRemoveFeatured
+func ObjectRelationRemoveFeatured(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
+	req := C.GoBytes(unsafe.Pointer(in), inLen)
+	resp := service.ObjectRelationRemoveFeatured(req)
+	
+	*outLen = C.int(len(resp))
+	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
+}
+
+//export ObjectTypeResolveLayoutConflicts
+func ObjectTypeResolveLayoutConflicts(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
+	req := C.GoBytes(unsafe.Pointer(in), inLen)
+	resp := service.ObjectTypeResolveLayoutConflicts(req)
+	
+	*outLen = C.int(len(resp))
+	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
+}
+
+//export TemplateCreateFromObject
+func TemplateCreateFromObject(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
+	req := C.GoBytes(unsafe.Pointer(in), inLen)
+	resp := service.TemplateCreateFromObject(req)
+	
+	*outLen = C.int(len(resp))
+	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
+}
+
+//export ObjectListModifyDetailValues
+func ObjectListModifyDetailValues(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
+	req := C.GoBytes(unsafe.Pointer(in), inLen)
+	resp := service.ObjectListModifyDetailValues(req)
+	
+	*outLen = C.int(len(resp))
+	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
+}
+
+//export UnsplashSearch
+func UnsplashSearch(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
+	req := C.GoBytes(unsafe.Pointer(in), inLen)
+	resp := service.UnsplashSearch(req)
+	
+	*outLen = C.int(len(resp))
+	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
+}
+
+//export BlockPaste
+func BlockPaste(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
+	req := C.GoBytes(unsafe.Pointer(in), inLen)
+	resp := service.BlockPaste(req)
+	
+	*outLen = C.int(len(resp))
+	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
+}
+
+//export BlockDataviewRelationSet
+func BlockDataviewRelationSet(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
+	req := C.GoBytes(unsafe.Pointer(in), inLen)
+	resp := service.BlockDataviewRelationSet(req)
+	
+	*outLen = C.int(len(resp))
+	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
+}
+
+//export BlockTableColumnDuplicate
+func BlockTableColumnDuplicate(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
+	req := C.GoBytes(unsafe.Pointer(in), inLen)
+	resp := service.BlockTableColumnDuplicate(req)
+	
+	*outLen = C.int(len(resp))
+	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
+}
+
+//export MembershipVerifyEmailCode
+func MembershipVerifyEmailCode(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
+	req := C.GoBytes(unsafe.Pointer(in), inLen)
+	resp := service.MembershipVerifyEmailCode(req)
+	
+	*outLen = C.int(len(resp))
+	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
+}
+
+//export BlockRelationSetKey
+func BlockRelationSetKey(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
+	req := C.GoBytes(unsafe.Pointer(in), inLen)
+	resp := service.BlockRelationSetKey(req)
+	
+	*outLen = C.int(len(resp))
+	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
+}
+
+//export DebugNetCheck
+func DebugNetCheck(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
+	req := C.GoBytes(unsafe.Pointer(in), inLen)
+	resp := service.DebugNetCheck(req)
+	
+	*outLen = C.int(len(resp))
+	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
+}
+
+//export AccountRecover
+func AccountRecover(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
+	req := C.GoBytes(unsafe.Pointer(in), inLen)
+	resp := service.AccountRecover(req)
+	
+	*outLen = C.int(len(resp))
+	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
+}
+
+//export AccountDelete
+func AccountDelete(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
+	req := C.GoBytes(unsafe.Pointer(in), inLen)
+	resp := service.AccountDelete(req)
+	
+	*outLen = C.int(len(resp))
+	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
+}
+
+//export ObjectGraph
+func ObjectGraph(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
+	req := C.GoBytes(unsafe.Pointer(in), inLen)
+	resp := service.ObjectGraph(req)
+	
+	*outLen = C.int(len(resp))
+	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
+}
+
+//export ObjectSetIsFavorite
+func ObjectSetIsFavorite(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
+	req := C.GoBytes(unsafe.Pointer(in), inLen)
+	resp := service.ObjectSetIsFavorite(req)
+	
+	*outLen = C.int(len(resp))
+	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
+}
+
+//export ObjectListSetIsArchived
+func ObjectListSetIsArchived(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
+	req := C.GoBytes(unsafe.Pointer(in), inLen)
+	resp := service.ObjectListSetIsArchived(req)
+	
+	*outLen = C.int(len(resp))
+	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
+}
+
+//export BlockExport
+func BlockExport(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
+	req := C.GoBytes(unsafe.Pointer(in), inLen)
+	resp := service.BlockExport(req)
+	
+	*outLen = C.int(len(resp))
+	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
+}
+
+//export MembershipGetTiers
+func MembershipGetTiers(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
+	req := C.GoBytes(unsafe.Pointer(in), inLen)
+	resp := service.MembershipGetTiers(req)
+	
+	*outLen = C.int(len(resp))
+	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
+}
+
+//export NameServiceResolveAnyId
+func NameServiceResolveAnyId(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
+	req := C.GoBytes(unsafe.Pointer(in), inLen)
+	resp := service.NameServiceResolveAnyId(req)
+	
+	*outLen = C.int(len(resp))
+	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
+}
+
+//export NavigationListObjects
+func NavigationListObjects(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
+	req := C.GoBytes(unsafe.Pointer(in), inLen)
+	resp := service.NavigationListObjects(req)
+	
+	*outLen = C.int(len(resp))
+	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
+}
+
+//export BlockFileListSetStyle
+func BlockFileListSetStyle(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
+	req := C.GoBytes(unsafe.Pointer(in), inLen)
+	resp := service.BlockFileListSetStyle(req)
+	
+	*outLen = C.int(len(resp))
+	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
+}
+
+//export AIListSummary
+func AIListSummary(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
+	req := C.GoBytes(unsafe.Pointer(in), inLen)
+	resp := service.AIListSummary(req)
+	
+	*outLen = C.int(len(resp))
+	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
+}
+
+//export ChatUnsubscribe
+func ChatUnsubscribe(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
+	req := C.GoBytes(unsafe.Pointer(in), inLen)
+	resp := service.ChatUnsubscribe(req)
+	
+	*outLen = C.int(len(resp))
+	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
+}
+
+//export ChatReadMessages
+func ChatReadMessages(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
+	req := C.GoBytes(unsafe.Pointer(in), inLen)
+	resp := service.ChatReadMessages(req)
+	
+	*outLen = C.int(len(resp))
+	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
+}
+
+//export FileUpload
+func FileUpload(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
+	req := C.GoBytes(unsafe.Pointer(in), inLen)
+	resp := service.FileUpload(req)
+	
+	*outLen = C.int(len(resp))
+	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
+}
+
+//export FileSpaceUsage
+func FileSpaceUsage(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
+	req := C.GoBytes(unsafe.Pointer(in), inLen)
+	resp := service.FileSpaceUsage(req)
+	
+	*outLen = C.int(len(resp))
+	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
+}
+
+//export GalleryDownloadIndex
+func GalleryDownloadIndex(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
+	req := C.GoBytes(unsafe.Pointer(in), inLen)
+	resp := service.GalleryDownloadIndex(req)
+	
+	*outLen = C.int(len(resp))
+	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
+}
+
+//export BlockTableRowCreate
+func BlockTableRowCreate(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
+	req := C.GoBytes(unsafe.Pointer(in), inLen)
+	resp := service.BlockTableRowCreate(req)
+	
+	*outLen = C.int(len(resp))
+	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
+}
+
+//export DebugStackGoroutines
+func DebugStackGoroutines(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
+	req := C.GoBytes(unsafe.Pointer(in), inLen)
+	resp := service.DebugStackGoroutines(req)
+	
+	*outLen = C.int(len(resp))
+	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
+}
+
+//export WalletConvert
+func WalletConvert(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
+	req := C.GoBytes(unsafe.Pointer(in), inLen)
+	resp := service.WalletConvert(req)
+	
+	*outLen = C.int(len(resp))
+	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
+}
+
+//export SpaceInviteGetCurrent
+func SpaceInviteGetCurrent(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
+	req := C.GoBytes(unsafe.Pointer(in), inLen)
+	resp := service.SpaceInviteGetCurrent(req)
+	
+	*outLen = C.int(len(resp))
+	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
+}
+
+//export ObjectImportNotionValidateToken
+func ObjectImportNotionValidateToken(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
+	req := C.GoBytes(unsafe.Pointer(in), inLen)
+	resp := service.ObjectImportNotionValidateToken(req)
+	
+	*outLen = C.int(len(resp))
+	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
+}
+
+//export BlockTableColumnDelete
+func BlockTableColumnDelete(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
+	req := C.GoBytes(unsafe.Pointer(in), inLen)
+	resp := service.BlockTableColumnDelete(req)
+	
+	*outLen = C.int(len(resp))
+	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
+}
+
+//export BlockWidgetSetLimit
+func BlockWidgetSetLimit(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
+	req := C.GoBytes(unsafe.Pointer(in), inLen)
+	resp := service.BlockWidgetSetLimit(req)
+	
+	*outLen = C.int(len(resp))
+	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
+}
+
+//export SpaceSetOrder
+func SpaceSetOrder(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
+	req := C.GoBytes(unsafe.Pointer(in), inLen)
+	resp := service.SpaceSetOrder(req)
+	
+	*outLen = C.int(len(resp))
+	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
+}
+
+//export AccountCreate
+func AccountCreate(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
+	req := C.GoBytes(unsafe.Pointer(in), inLen)
+	resp := service.AccountCreate(req)
+	
+	*outLen = C.int(len(resp))
+	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
+}
+
+//export BlockTableSort
+func BlockTableSort(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
+	req := C.GoBytes(unsafe.Pointer(in), inLen)
+	resp := service.BlockTableSort(req)
+	
+	*outLen = C.int(len(resp))
+	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
+}
+
+//export BlockWidgetSetViewId
+func BlockWidgetSetViewId(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
+	req := C.GoBytes(unsafe.Pointer(in), inLen)
+	resp := service.BlockWidgetSetViewId(req)
+	
+	*outLen = C.int(len(resp))
+	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
+}
+
+//export MembershipRegisterPaymentRequest
+func MembershipRegisterPaymentRequest(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
+	req := C.GoBytes(unsafe.Pointer(in), inLen)
+	resp := service.MembershipRegisterPaymentRequest(req)
+	
+	*outLen = C.int(len(resp))
+	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
+}
+
+//export MembershipGetVerificationEmail
+func MembershipGetVerificationEmail(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
+	req := C.GoBytes(unsafe.Pointer(in), inLen)
+	resp := service.MembershipGetVerificationEmail(req)
+	
+	*outLen = C.int(len(resp))
+	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
+}
+
+//export WorkspaceObjectListAdd
+func WorkspaceObjectListAdd(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
+	req := C.GoBytes(unsafe.Pointer(in), inLen)
+	resp := service.WorkspaceObjectListAdd(req)
+	
+	*outLen = C.int(len(resp))
+	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
+}
+
+//export ObjectListSetObjectType
+func ObjectListSetObjectType(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
+	req := C.GoBytes(unsafe.Pointer(in), inLen)
+	resp := service.ObjectListSetObjectType(req)
+	
+	*outLen = C.int(len(resp))
+	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
+}
+
+//export BlockTableRowDelete
+func BlockTableRowDelete(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
+	req := C.GoBytes(unsafe.Pointer(in), inLen)
+	resp := service.BlockTableRowDelete(req)
+	
+	*outLen = C.int(len(resp))
+	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
+}
+
+//export ChatAddMessage
+func ChatAddMessage(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
+	req := C.GoBytes(unsafe.Pointer(in), inLen)
+	resp := service.ChatAddMessage(req)
+	
+	*outLen = C.int(len(resp))
+	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
+}
+
+//export PublishingList
+func PublishingList(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
+	req := C.GoBytes(unsafe.Pointer(in), inLen)
+	resp := service.PublishingList(req)
+	
+	*outLen = C.int(len(resp))
+	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
+}
+
+//export ObjectImportList
+func ObjectImportList(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
+	req := C.GoBytes(unsafe.Pointer(in), inLen)
+	resp := service.ObjectImportList(req)
+	
+	*outLen = C.int(len(resp))
+	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
+}
+
+//export FileSpaceOffload
+func FileSpaceOffload(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
+	req := C.GoBytes(unsafe.Pointer(in), inLen)
+	resp := service.FileSpaceOffload(req)
+	
+	*outLen = C.int(len(resp))
+	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
+}
+
+//export AIAutofill
+func AIAutofill(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
+	req := C.GoBytes(unsafe.Pointer(in), inLen)
+	resp := service.AIAutofill(req)
+	
+	*outLen = C.int(len(resp))
+	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
+}
+
+//export ObjectExport
+func ObjectExport(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
+	req := C.GoBytes(unsafe.Pointer(in), inLen)
+	resp := service.ObjectExport(req)
+	
+	*outLen = C.int(len(resp))
+	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
+}
+
+//export BlockTableRowSetHeader
+func BlockTableRowSetHeader(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
+	req := C.GoBytes(unsafe.Pointer(in), inLen)
+	resp := service.BlockTableRowSetHeader(req)
+	
+	*outLen = C.int(len(resp))
+	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
+}
+
+//export DebugPing
+func DebugPing(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
+	req := C.GoBytes(unsafe.Pointer(in), inLen)
+	resp := service.DebugPing(req)
+	
+	*outLen = C.int(len(resp))
+	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
+}
+
+//export NameServiceResolveName
+func NameServiceResolveName(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
+	req := C.GoBytes(unsafe.Pointer(in), inLen)
+	resp := service.NameServiceResolveName(req)
+	
+	*outLen = C.int(len(resp))
+	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
+}
+
+//export HistoryDiffVersions
+func HistoryDiffVersions(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
+	req := C.GoBytes(unsafe.Pointer(in), inLen)
+	resp := service.HistoryDiffVersions(req)
+	
+	*outLen = C.int(len(resp))
+	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
+}
+
+//export BlockUpload
+func BlockUpload(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
+	req := C.GoBytes(unsafe.Pointer(in), inLen)
+	resp := service.BlockUpload(req)
+	
+	*outLen = C.int(len(resp))
+	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
+}
+
+//export SpaceJoinCancel
+func SpaceJoinCancel(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
+	req := C.GoBytes(unsafe.Pointer(in), inLen)
+	resp := service.SpaceJoinCancel(req)
+	
+	*outLen = C.int(len(resp))
+	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
+}
+
+//export ObjectClose
+func ObjectClose(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
+	req := C.GoBytes(unsafe.Pointer(in), inLen)
+	resp := service.ObjectClose(req)
+	
+	*outLen = C.int(len(resp))
+	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
+}
+
+//export ObjectSetLayout
+func ObjectSetLayout(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
+	req := C.GoBytes(unsafe.Pointer(in), inLen)
+	resp := service.ObjectSetLayout(req)
+	
+	*outLen = C.int(len(resp))
+	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
+}
+
+//export ObjectToBookmark
+func ObjectToBookmark(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
+	req := C.GoBytes(unsafe.Pointer(in), inLen)
+	resp := service.ObjectToBookmark(req)
+	
+	*outLen = C.int(len(resp))
+	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
+}
+
+//export ObjectCreateRelationOption
+func ObjectCreateRelationOption(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
+	req := C.GoBytes(unsafe.Pointer(in), inLen)
+	resp := service.ObjectCreateRelationOption(req)
+	
+	*outLen = C.int(len(resp))
+	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
+}
+
+//export BlockCreate
+func BlockCreate(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
+	req := C.GoBytes(unsafe.Pointer(in), inLen)
+	resp := service.BlockCreate(req)
+	
+	*outLen = C.int(len(resp))
+	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
+}
+
+//export DeviceList
+func DeviceList(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
+	req := C.GoBytes(unsafe.Pointer(in), inLen)
+	resp := service.DeviceList(req)
+	
+	*outLen = C.int(len(resp))
+	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
+}
+
+//export ObjectSearchSubscribe
+func ObjectSearchSubscribe(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
+	req := C.GoBytes(unsafe.Pointer(in), inLen)
+	resp := service.ObjectSearchSubscribe(req)
+	
+	*outLen = C.int(len(resp))
+	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
+}
+
+//export ObjectTypeRelationAdd
+func ObjectTypeRelationAdd(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
+	req := C.GoBytes(unsafe.Pointer(in), inLen)
+	resp := service.ObjectTypeRelationAdd(req)
+	
+	*outLen = C.int(len(resp))
+	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
+}
+
+//export BlockTextListClearContent
+func BlockTextListClearContent(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
+	req := C.GoBytes(unsafe.Pointer(in), inLen)
+	resp := service.BlockTextListClearContent(req)
+	
+	*outLen = C.int(len(resp))
+	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
+}
+
+//export BlockLinkCreateWithObject
+func BlockLinkCreateWithObject(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
+	req := C.GoBytes(unsafe.Pointer(in), inLen)
+	resp := service.BlockLinkCreateWithObject(req)
+	
+	*outLen = C.int(len(resp))
+	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
+}
+
+//export BlockBookmarkCreateAndFetch
+func BlockBookmarkCreateAndFetch(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
+	req := C.GoBytes(unsafe.Pointer(in), inLen)
+	resp := service.BlockBookmarkCreateAndFetch(req)
+	
+	*outLen = C.int(len(resp))
+	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
+}
+
+//export NotificationList
+func NotificationList(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
+	req := C.GoBytes(unsafe.Pointer(in), inLen)
+	resp := service.NotificationList(req)
+	
+	*outLen = C.int(len(resp))
+	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
+}
+
+//export AccountMigrate
+func AccountMigrate(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
+	req := C.GoBytes(unsafe.Pointer(in), inLen)
+	resp := service.AccountMigrate(req)
+	
+	*outLen = C.int(len(resp))
+	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
+}
+
+//export PublishingGetStatus
+func PublishingGetStatus(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
+	req := C.GoBytes(unsafe.Pointer(in), inLen)
+	resp := service.PublishingGetStatus(req)
+	
+	*outLen = C.int(len(resp))
+	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
+}
+
+//export ObjectSubscribeIds
+func ObjectSubscribeIds(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
+	req := C.GoBytes(unsafe.Pointer(in), inLen)
+	resp := service.ObjectSubscribeIds(req)
+	
+	*outLen = C.int(len(resp))
+	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
+}
+
+//export BlockDataviewRelationDelete
+func BlockDataviewRelationDelete(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
+	req := C.GoBytes(unsafe.Pointer(in), inLen)
+	resp := service.BlockDataviewRelationDelete(req)
+	
+	*outLen = C.int(len(resp))
+	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
+}
+
+//export WalletRecover
+func WalletRecover(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
+	req := C.GoBytes(unsafe.Pointer(in), inLen)
+	resp := service.WalletRecover(req)
+	
+	*outLen = C.int(len(resp))
+	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
+}
+
+//export BlockTextListClearStyle
+func BlockTextListClearStyle(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
+	req := C.GoBytes(unsafe.Pointer(in), inLen)
+	resp := service.BlockTextListClearStyle(req)
+	
+	*outLen = C.int(len(resp))
+	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
+}
+
+//export BlockDataviewCreateFromExistingObject
+func BlockDataviewCreateFromExistingObject(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
+	req := C.GoBytes(unsafe.Pointer(in), inLen)
+	resp := service.BlockDataviewCreateFromExistingObject(req)
+	
+	*outLen = C.int(len(resp))
+	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
+}
+
+//export AccountRevertDeletion
+func AccountRevertDeletion(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
+	req := C.GoBytes(unsafe.Pointer(in), inLen)
+	resp := service.AccountRevertDeletion(req)
+	
+	*outLen = C.int(len(resp))
+	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
+}
+
+//export ObjectListExport
+func ObjectListExport(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
+	req := C.GoBytes(unsafe.Pointer(in), inLen)
+	resp := service.ObjectListExport(req)
+	
+	*outLen = C.int(len(resp))
+	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
+}
+
+//export ObjectCollectionSort
+func ObjectCollectionSort(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
+	req := C.GoBytes(unsafe.Pointer(in), inLen)
+	resp := service.ObjectCollectionSort(req)
+	
+	*outLen = C.int(len(resp))
+	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
+}
+
+//export DebugAnystoreObjectChanges
+func DebugAnystoreObjectChanges(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
+	req := C.GoBytes(unsafe.Pointer(in), inLen)
+	resp := service.DebugAnystoreObjectChanges(req)
+	
+	*outLen = C.int(len(resp))
+	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
+}
+
+//export ObjectSearchWithMeta
+func ObjectSearchWithMeta(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
+	req := C.GoBytes(unsafe.Pointer(in), inLen)
+	resp := service.ObjectSearchWithMeta(req)
+	
+	*outLen = C.int(len(resp))
+	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
+}
+
+//export ObjectImportExperience
+func ObjectImportExperience(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
+	req := C.GoBytes(unsafe.Pointer(in), inLen)
+	resp := service.ObjectImportExperience(req)
+	
+	*outLen = C.int(len(resp))
+	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
+}
+
+//export ObjectTypeListConflictingRelations
+func ObjectTypeListConflictingRelations(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
+	req := C.GoBytes(unsafe.Pointer(in), inLen)
+	resp := service.ObjectTypeListConflictingRelations(req)
+	
+	*outLen = C.int(len(resp))
+	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
+}
+
+//export BlockCreateWidget
+func BlockCreateWidget(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
+	req := C.GoBytes(unsafe.Pointer(in), inLen)
+	resp := service.BlockCreateWidget(req)
+	
+	*outLen = C.int(len(resp))
+	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
+}
+
+//export AccountConfigUpdate
+func AccountConfigUpdate(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
+	req := C.GoBytes(unsafe.Pointer(in), inLen)
+	resp := service.AccountConfigUpdate(req)
+	
+	*outLen = C.int(len(resp))
+	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
+}
+
+//export NavigationGetObjectInfoWithLinks
+func NavigationGetObjectInfoWithLinks(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
+	req := C.GoBytes(unsafe.Pointer(in), inLen)
+	resp := service.NavigationGetObjectInfoWithLinks(req)
+	
+	*outLen = C.int(len(resp))
+	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
+}
+
+//export BlockSetCarriage
+func BlockSetCarriage(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
+	req := C.GoBytes(unsafe.Pointer(in), inLen)
+	resp := service.BlockSetCarriage(req)
+	
+	*outLen = C.int(len(resp))
+	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
+}
+
+//export NotificationReply
+func NotificationReply(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
+	req := C.GoBytes(unsafe.Pointer(in), inLen)
+	resp := service.NotificationReply(req)
+	
+	*outLen = C.int(len(resp))
+	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
+}
+
+//export ObjectTypeRelationRemove
+func ObjectTypeRelationRemove(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
+	req := C.GoBytes(unsafe.Pointer(in), inLen)
+	resp := service.ObjectTypeRelationRemove(req)
+	
+	*outLen = C.int(len(resp))
+	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
+}
+
+//export BlockDataviewViewRelationReplace
+func BlockDataviewViewRelationReplace(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
+	req := C.GoBytes(unsafe.Pointer(in), inLen)
+	resp := service.BlockDataviewViewRelationReplace(req)
+	
+	*outLen = C.int(len(resp))
+	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
+}
+
+//export ChatToggleMessageReaction
+func ChatToggleMessageReaction(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
+	req := C.GoBytes(unsafe.Pointer(in), inLen)
+	resp := service.ChatToggleMessageReaction(req)
+	
+	*outLen = C.int(len(resp))
+	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
+}
+
+//export ObjectCreate
+func ObjectCreate(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
+	req := C.GoBytes(unsafe.Pointer(in), inLen)
+	resp := service.ObjectCreate(req)
+	
+	*outLen = C.int(len(resp))
+	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
+}
+
+//export ObjectCreateFromUrl
+func ObjectCreateFromUrl(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
+	req := C.GoBytes(unsafe.Pointer(in), inLen)
+	resp := service.ObjectCreateFromUrl(req)
+	
+	*outLen = C.int(len(resp))
+	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
+}
+
+//export BlockReplace
+func BlockReplace(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
+	req := C.GoBytes(unsafe.Pointer(in), inLen)
+	resp := service.BlockReplace(req)
+	
+	*outLen = C.int(len(resp))
+	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
+}
+
+//export BlockTextListSetColor
+func BlockTextListSetColor(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
+	req := C.GoBytes(unsafe.Pointer(in), inLen)
+	resp := service.BlockTextListSetColor(req)
+	
+	*outLen = C.int(len(resp))
+	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
+}
+
+//export FileDownload
+func FileDownload(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
+	req := C.GoBytes(unsafe.Pointer(in), inLen)
+	resp := service.FileDownload(req)
+	
+	*outLen = C.int(len(resp))
+	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
+}
+
+//export BlockFileCreateAndUpload
+func BlockFileCreateAndUpload(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
+	req := C.GoBytes(unsafe.Pointer(in), inLen)
+	resp := service.BlockFileCreateAndUpload(req)
+	
+	*outLen = C.int(len(resp))
+	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
+}
+
+//export BlockWidgetSetTargetId
+func BlockWidgetSetTargetId(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
+	req := C.GoBytes(unsafe.Pointer(in), inLen)
+	resp := service.BlockWidgetSetTargetId(req)
+	
+	*outLen = C.int(len(resp))
+	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
+}
+
+//export MembershipGetPortalLinkUrl
+func MembershipGetPortalLinkUrl(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
+	req := C.GoBytes(unsafe.Pointer(in), inLen)
+	resp := service.MembershipGetPortalLinkUrl(req)
+	
+	*outLen = C.int(len(resp))
+	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
+}
+
+//export WorkspaceObjectAdd
+func WorkspaceObjectAdd(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
+	req := C.GoBytes(unsafe.Pointer(in), inLen)
+	resp := service.WorkspaceObjectAdd(req)
+	
+	*outLen = C.int(len(resp))
+	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
+}
+
+//export ObjectListSetIsFavorite
+func ObjectListSetIsFavorite(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
+	req := C.GoBytes(unsafe.Pointer(in), inLen)
+	resp := service.ObjectListSetIsFavorite(req)
+	
+	*outLen = C.int(len(resp))
+	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
+}
+
+//export WorkspaceExport
+func WorkspaceExport(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
+	req := C.GoBytes(unsafe.Pointer(in), inLen)
+	resp := service.WorkspaceExport(req)
+	
+	*outLen = C.int(len(resp))
+	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
+}
+
+//export AccountStop
+func AccountStop(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
+	req := C.GoBytes(unsafe.Pointer(in), inLen)
+	resp := service.AccountStop(req)
+	
+	*outLen = C.int(len(resp))
+	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
+}
+
+//export AccountRecoverFromLegacyExport
+func AccountRecoverFromLegacyExport(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
+	req := C.GoBytes(unsafe.Pointer(in), inLen)
+	resp := service.AccountRecoverFromLegacyExport(req)
+	
+	*outLen = C.int(len(resp))
+	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
+}
+
+//export ObjectRelationAdd
+func ObjectRelationAdd(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
+	req := C.GoBytes(unsafe.Pointer(in), inLen)
+	resp := service.ObjectRelationAdd(req)
+	
+	*outLen = C.int(len(resp))
+	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
+}
+
+//export DebugRunProfiler
+func DebugRunProfiler(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
+	req := C.GoBytes(unsafe.Pointer(in), inLen)
+	resp := service.DebugRunProfiler(req)
+	
+	*outLen = C.int(len(resp))
+	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
+}
+
+//export AIWritingTools
+func AIWritingTools(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
+	req := C.GoBytes(unsafe.Pointer(in), inLen)
+	resp := service.AIWritingTools(req)
+	
+	*outLen = C.int(len(resp))
+	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
+}
+
+//export BlockDataviewRelationAdd
+func BlockDataviewRelationAdd(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
+	req := C.GoBytes(unsafe.Pointer(in), inLen)
+	resp := service.BlockDataviewRelationAdd(req)
+	
+	*outLen = C.int(len(resp))
+	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
+}
+
+//export BlockDataviewSortRemove
+func BlockDataviewSortRemove(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
+	req := C.GoBytes(unsafe.Pointer(in), inLen)
+	resp := service.BlockDataviewSortRemove(req)
+	
+	*outLen = C.int(len(resp))
+	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
+}
+
+//export WorkspaceObjectListRemove
+func WorkspaceObjectListRemove(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
+	req := C.GoBytes(unsafe.Pointer(in), inLen)
+	resp := service.WorkspaceObjectListRemove(req)
+	
+	*outLen = C.int(len(resp))
+	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
+}
+
+//export SpaceMakeShareable
+func SpaceMakeShareable(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
+	req := C.GoBytes(unsafe.Pointer(in), inLen)
+	resp := service.SpaceMakeShareable(req)
+	
+	*outLen = C.int(len(resp))
+	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
+}
+
+//export ObjectOpen
+func ObjectOpen(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
+	req := C.GoBytes(unsafe.Pointer(in), inLen)
+	resp := service.ObjectOpen(req)
+	
+	*outLen = C.int(len(resp))
+	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
+}
+
+//export ObjectBookmarkFetch
+func ObjectBookmarkFetch(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
+	req := C.GoBytes(unsafe.Pointer(in), inLen)
+	resp := service.ObjectBookmarkFetch(req)
+	
+	*outLen = C.int(len(resp))
+	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
+}
+
+//export BlockListMoveToNewObject
+func BlockListMoveToNewObject(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
+	req := C.GoBytes(unsafe.Pointer(in), inLen)
+	resp := service.BlockListMoveToNewObject(req)
+	
+	*outLen = C.int(len(resp))
+	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
+}
+
+//export BlockDataviewSetSource
+func BlockDataviewSetSource(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
+	req := C.GoBytes(unsafe.Pointer(in), inLen)
+	resp := service.BlockDataviewSetSource(req)
+	
+	*outLen = C.int(len(resp))
+	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
+}
+
+//export DeviceNetworkStateSet
+func DeviceNetworkStateSet(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
+	req := C.GoBytes(unsafe.Pointer(in), inLen)
+	resp := service.DeviceNetworkStateSet(req)
+	
+	*outLen = C.int(len(resp))
+	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
+}
+
+//export WorkspaceOpen
+func WorkspaceOpen(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
+	req := C.GoBytes(unsafe.Pointer(in), inLen)
+	resp := service.WorkspaceOpen(req)
+	
+	*outLen = C.int(len(resp))
+	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
+}
+
+//export ObjectCrossSpaceSearchUnsubscribe
+func ObjectCrossSpaceSearchUnsubscribe(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
+	req := C.GoBytes(unsafe.Pointer(in), inLen)
+	resp := service.ObjectCrossSpaceSearchUnsubscribe(req)
+	
+	*outLen = C.int(len(resp))
+	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
+}
+
+//export BlockCopy
+func BlockCopy(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
+	req := C.GoBytes(unsafe.Pointer(in), inLen)
+	resp := service.BlockCopy(req)
+	
+	*outLen = C.int(len(resp))
+	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
+}
+
+//export LogSend
+func LogSend(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
+	req := C.GoBytes(unsafe.Pointer(in), inLen)
+	resp := service.LogSend(req)
+	
+	*outLen = C.int(len(resp))
+	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
+}
+
+//export DebugStat
+func DebugStat(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
+	req := C.GoBytes(unsafe.Pointer(in), inLen)
+	resp := service.DebugStat(req)
+	
+	*outLen = C.int(len(resp))
+	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
+}
+
+//export SpaceInviteView
+func SpaceInviteView(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
+	req := C.GoBytes(unsafe.Pointer(in), inLen)
+	resp := service.SpaceInviteView(req)
+	
+	*outLen = C.int(len(resp))
+	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
+}
+
+//export ObjectApplyTemplate
+func ObjectApplyTemplate(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
+	req := C.GoBytes(unsafe.Pointer(in), inLen)
+	resp := service.ObjectApplyTemplate(req)
+	
+	*outLen = C.int(len(resp))
+	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
+}
+
+//export BlockTableColumnListFill
+func BlockTableColumnListFill(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
+	req := C.GoBytes(unsafe.Pointer(in), inLen)
+	resp := service.BlockTableColumnListFill(req)
+	
+	*outLen = C.int(len(resp))
+	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
+}
+
+//export NameServiceUserAccountGet
+func NameServiceUserAccountGet(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
+	req := C.GoBytes(unsafe.Pointer(in), inLen)
+	resp := service.NameServiceUserAccountGet(req)
+	
+	*outLen = C.int(len(resp))
+	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
+}
+
+//export BlockDataviewObjectOrderUpdate
+func BlockDataviewObjectOrderUpdate(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
+	req := C.GoBytes(unsafe.Pointer(in), inLen)
+	resp := service.BlockDataviewObjectOrderUpdate(req)
 	
 	*outLen = C.int(len(resp))
 	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
@@ -2604,10 +1821,226 @@ func InitialSetParameters(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
 	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
 }
 
-//export PushNotificationRegisterToken
-func PushNotificationRegisterToken(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
+//export BlockCut
+func BlockCut(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
 	req := C.GoBytes(unsafe.Pointer(in), inLen)
-	resp := service.PushNotificationRegisterToken(req)
+	resp := service.BlockCut(req)
+	
+	*outLen = C.int(len(resp))
+	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
+}
+
+//export BlockDataviewFilterAdd
+func BlockDataviewFilterAdd(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
+	req := C.GoBytes(unsafe.Pointer(in), inLen)
+	resp := service.BlockDataviewFilterAdd(req)
+	
+	*outLen = C.int(len(resp))
+	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
+}
+
+//export BlockDataviewFilterRemove
+func BlockDataviewFilterRemove(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
+	req := C.GoBytes(unsafe.Pointer(in), inLen)
+	resp := service.BlockDataviewFilterRemove(req)
+	
+	*outLen = C.int(len(resp))
+	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
+}
+
+//export BlockTableColumnMove
+func BlockTableColumnMove(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
+	req := C.GoBytes(unsafe.Pointer(in), inLen)
+	resp := service.BlockTableColumnMove(req)
+	
+	*outLen = C.int(len(resp))
+	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
+}
+
+//export WalletCloseSession
+func WalletCloseSession(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
+	req := C.GoBytes(unsafe.Pointer(in), inLen)
+	resp := service.WalletCloseSession(req)
+	
+	*outLen = C.int(len(resp))
+	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
+}
+
+//export PublishingRemove
+func PublishingRemove(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
+	req := C.GoBytes(unsafe.Pointer(in), inLen)
+	resp := service.PublishingRemove(req)
+	
+	*outLen = C.int(len(resp))
+	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
+}
+
+//export RelationListWithValue
+func RelationListWithValue(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
+	req := C.GoBytes(unsafe.Pointer(in), inLen)
+	resp := service.RelationListWithValue(req)
+	
+	*outLen = C.int(len(resp))
+	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
+}
+
+//export FileNodeUsage
+func FileNodeUsage(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
+	req := C.GoBytes(unsafe.Pointer(in), inLen)
+	resp := service.FileNodeUsage(req)
+	
+	*outLen = C.int(len(resp))
+	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
+}
+
+//export BlockTextSetStyle
+func BlockTextSetStyle(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
+	req := C.GoBytes(unsafe.Pointer(in), inLen)
+	resp := service.BlockTextSetStyle(req)
+	
+	*outLen = C.int(len(resp))
+	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
+}
+
+//export BroadcastPayloadEvent
+func BroadcastPayloadEvent(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
+	req := C.GoBytes(unsafe.Pointer(in), inLen)
+	resp := service.BroadcastPayloadEvent(req)
+	
+	*outLen = C.int(len(resp))
+	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
+}
+
+//export ProcessCancel
+func ProcessCancel(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
+	req := C.GoBytes(unsafe.Pointer(in), inLen)
+	resp := service.ProcessCancel(req)
+	
+	*outLen = C.int(len(resp))
+	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
+}
+
+//export MembershipGetStatus
+func MembershipGetStatus(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
+	req := C.GoBytes(unsafe.Pointer(in), inLen)
+	resp := service.MembershipGetStatus(req)
+	
+	*outLen = C.int(len(resp))
+	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
+}
+
+//export AccountEnableLocalNetworkSync
+func AccountEnableLocalNetworkSync(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
+	req := C.GoBytes(unsafe.Pointer(in), inLen)
+	resp := service.AccountEnableLocalNetworkSync(req)
+	
+	*outLen = C.int(len(resp))
+	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
+}
+
+//export ObjectDuplicate
+func ObjectDuplicate(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
+	req := C.GoBytes(unsafe.Pointer(in), inLen)
+	resp := service.ObjectDuplicate(req)
+	
+	*outLen = C.int(len(resp))
+	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
+}
+
+//export RelationOptions
+func RelationOptions(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
+	req := C.GoBytes(unsafe.Pointer(in), inLen)
+	resp := service.RelationOptions(req)
+	
+	*outLen = C.int(len(resp))
+	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
+}
+
+//export BlockDataviewViewUpdate
+func BlockDataviewViewUpdate(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
+	req := C.GoBytes(unsafe.Pointer(in), inLen)
+	resp := service.BlockDataviewViewUpdate(req)
+	
+	*outLen = C.int(len(resp))
+	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
+}
+
+//export BlockDataviewViewSetPosition
+func BlockDataviewViewSetPosition(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
+	req := C.GoBytes(unsafe.Pointer(in), inLen)
+	resp := service.BlockDataviewViewSetPosition(req)
+	
+	*outLen = C.int(len(resp))
+	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
+}
+
+//export BlockTableCreate
+func BlockTableCreate(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
+	req := C.GoBytes(unsafe.Pointer(in), inLen)
+	resp := service.BlockTableCreate(req)
+	
+	*outLen = C.int(len(resp))
+	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
+}
+
+//export AccountChangeNetworkConfigAndRestart
+func AccountChangeNetworkConfigAndRestart(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
+	req := C.GoBytes(unsafe.Pointer(in), inLen)
+	resp := service.AccountChangeNetworkConfigAndRestart(req)
+	
+	*outLen = C.int(len(resp))
+	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
+}
+
+//export DebugTreeHeads
+func DebugTreeHeads(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
+	req := C.GoBytes(unsafe.Pointer(in), inLen)
+	resp := service.DebugTreeHeads(req)
+	
+	*outLen = C.int(len(resp))
+	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
+}
+
+//export ObjectSetDetails
+func ObjectSetDetails(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
+	req := C.GoBytes(unsafe.Pointer(in), inLen)
+	resp := service.ObjectSetDetails(req)
+	
+	*outLen = C.int(len(resp))
+	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
+}
+
+//export ObjectCreateRelation
+func ObjectCreateRelation(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
+	req := C.GoBytes(unsafe.Pointer(in), inLen)
+	resp := service.ObjectCreateRelation(req)
+	
+	*outLen = C.int(len(resp))
+	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
+}
+
+//export BlockMerge
+func BlockMerge(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
+	req := C.GoBytes(unsafe.Pointer(in), inLen)
+	resp := service.BlockMerge(req)
+	
+	*outLen = C.int(len(resp))
+	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
+}
+
+//export BlockTableColumnCreate
+func BlockTableColumnCreate(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
+	req := C.GoBytes(unsafe.Pointer(in), inLen)
+	resp := service.BlockTableColumnCreate(req)
+	
+	*outLen = C.int(len(resp))
+	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
+}
+
+//export WorkspaceCreate
+func WorkspaceCreate(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
+	req := C.GoBytes(unsafe.Pointer(in), inLen)
+	resp := service.WorkspaceCreate(req)
 	
 	*outLen = C.int(len(resp))
 	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
@@ -2622,10 +2055,217 @@ func WorkspaceSetInfo(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
 	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
 }
 
-//export ObjectSetObjectType
-func ObjectSetObjectType(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
+//export TemplateClone
+func TemplateClone(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
 	req := C.GoBytes(unsafe.Pointer(in), inLen)
-	resp := service.ObjectSetObjectType(req)
+	resp := service.TemplateClone(req)
+	
+	*outLen = C.int(len(resp))
+	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
+}
+
+//export BlockListSetAlign
+func BlockListSetAlign(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
+	req := C.GoBytes(unsafe.Pointer(in), inLen)
+	resp := service.BlockListSetAlign(req)
+	
+	*outLen = C.int(len(resp))
+	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
+}
+
+//export BlockFileSetTargetObjectId
+func BlockFileSetTargetObjectId(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
+	req := C.GoBytes(unsafe.Pointer(in), inLen)
+	resp := service.BlockFileSetTargetObjectId(req)
+	
+	*outLen = C.int(len(resp))
+	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
+}
+
+//export AccountChangeJsonApiAddr
+func AccountChangeJsonApiAddr(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
+	req := C.GoBytes(unsafe.Pointer(in), inLen)
+	resp := service.AccountChangeJsonApiAddr(req)
+	
+	*outLen = C.int(len(resp))
+	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
+}
+
+//export SpaceInviteGetGuest
+func SpaceInviteGetGuest(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
+	req := C.GoBytes(unsafe.Pointer(in), inLen)
+	resp := service.SpaceInviteGetGuest(req)
+	
+	*outLen = C.int(len(resp))
+	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
+}
+
+//export PublishingCreate
+func PublishingCreate(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
+	req := C.GoBytes(unsafe.Pointer(in), inLen)
+	resp := service.PublishingCreate(req)
+	
+	*outLen = C.int(len(resp))
+	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
+}
+
+//export ObjectCreateSet
+func ObjectCreateSet(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
+	req := C.GoBytes(unsafe.Pointer(in), inLen)
+	resp := service.ObjectCreateSet(req)
+	
+	*outLen = C.int(len(resp))
+	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
+}
+
+//export RelationListRemoveOption
+func RelationListRemoveOption(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
+	req := C.GoBytes(unsafe.Pointer(in), inLen)
+	resp := service.RelationListRemoveOption(req)
+	
+	*outLen = C.int(len(resp))
+	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
+}
+
+//export BlockListSetBackgroundColor
+func BlockListSetBackgroundColor(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
+	req := C.GoBytes(unsafe.Pointer(in), inLen)
+	resp := service.BlockListSetBackgroundColor(req)
+	
+	*outLen = C.int(len(resp))
+	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
+}
+
+//export BlockDataviewViewCreate
+func BlockDataviewViewCreate(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
+	req := C.GoBytes(unsafe.Pointer(in), inLen)
+	resp := service.BlockDataviewViewCreate(req)
+	
+	*outLen = C.int(len(resp))
+	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
+}
+
+//export NotificationTest
+func NotificationTest(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
+	req := C.GoBytes(unsafe.Pointer(in), inLen)
+	resp := service.NotificationTest(req)
+	
+	*outLen = C.int(len(resp))
+	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
+}
+
+//export ChatEditMessageContent
+func ChatEditMessageContent(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
+	req := C.GoBytes(unsafe.Pointer(in), inLen)
+	resp := service.ChatEditMessageContent(req)
+	
+	*outLen = C.int(len(resp))
+	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
+}
+
+//export FileReconcile
+func FileReconcile(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
+	req := C.GoBytes(unsafe.Pointer(in), inLen)
+	resp := service.FileReconcile(req)
+	
+	*outLen = C.int(len(resp))
+	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
+}
+
+//export BlockTextSetText
+func BlockTextSetText(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
+	req := C.GoBytes(unsafe.Pointer(in), inLen)
+	resp := service.BlockTextSetText(req)
+	
+	*outLen = C.int(len(resp))
+	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
+}
+
+//export BlockTextListSetStyle
+func BlockTextListSetStyle(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
+	req := C.GoBytes(unsafe.Pointer(in), inLen)
+	resp := service.BlockTextListSetStyle(req)
+	
+	*outLen = C.int(len(resp))
+	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
+}
+
+//export BlockDataviewViewRelationAdd
+func BlockDataviewViewRelationAdd(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
+	req := C.GoBytes(unsafe.Pointer(in), inLen)
+	resp := service.BlockDataviewViewRelationAdd(req)
+	
+	*outLen = C.int(len(resp))
+	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
+}
+
+//export WorkspaceGetCurrent
+func WorkspaceGetCurrent(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
+	req := C.GoBytes(unsafe.Pointer(in), inLen)
+	resp := service.WorkspaceGetCurrent(req)
+	
+	*outLen = C.int(len(resp))
+	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
+}
+
+//export BlockPreview
+func BlockPreview(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
+	req := C.GoBytes(unsafe.Pointer(in), inLen)
+	resp := service.BlockPreview(req)
+	
+	*outLen = C.int(len(resp))
+	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
+}
+
+//export ProcessUnsubscribe
+func ProcessUnsubscribe(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
+	req := C.GoBytes(unsafe.Pointer(in), inLen)
+	resp := service.ProcessUnsubscribe(req)
+	
+	*outLen = C.int(len(resp))
+	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
+}
+
+//export ChatSubscribeToMessagePreviews
+func ChatSubscribeToMessagePreviews(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
+	req := C.GoBytes(unsafe.Pointer(in), inLen)
+	resp := service.ChatSubscribeToMessagePreviews(req)
+	
+	*outLen = C.int(len(resp))
+	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
+}
+
+//export SpaceInviteRevoke
+func SpaceInviteRevoke(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
+	req := C.GoBytes(unsafe.Pointer(in), inLen)
+	resp := service.SpaceInviteRevoke(req)
+	
+	*outLen = C.int(len(resp))
+	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
+}
+
+//export HistoryGetVersions
+func HistoryGetVersions(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
+	req := C.GoBytes(unsafe.Pointer(in), inLen)
+	resp := service.HistoryGetVersions(req)
+	
+	*outLen = C.int(len(resp))
+	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
+}
+
+//export FileListOffload
+func FileListOffload(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
+	req := C.GoBytes(unsafe.Pointer(in), inLen)
+	resp := service.FileListOffload(req)
+	
+	*outLen = C.int(len(resp))
+	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
+}
+
+//export BlockSplit
+func BlockSplit(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
+	req := C.GoBytes(unsafe.Pointer(in), inLen)
+	resp := service.BlockSplit(req)
 	
 	*outLen = C.int(len(resp))
 	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
@@ -2640,10 +2280,370 @@ func BlockListDelete(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
 	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
 }
 
-//export BlockRelationSetKey
-func BlockRelationSetKey(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
+//export MembershipIsNameValid
+func MembershipIsNameValid(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
 	req := C.GoBytes(unsafe.Pointer(in), inLen)
-	resp := service.BlockRelationSetKey(req)
+	resp := service.MembershipIsNameValid(req)
+	
+	*outLen = C.int(len(resp))
+	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
+}
+
+//export ObjectWorkspaceSetDashboard
+func ObjectWorkspaceSetDashboard(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
+	req := C.GoBytes(unsafe.Pointer(in), inLen)
+	resp := service.ObjectWorkspaceSetDashboard(req)
+	
+	*outLen = C.int(len(resp))
+	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
+}
+
+//export ObjectToSet
+func ObjectToSet(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
+	req := C.GoBytes(unsafe.Pointer(in), inLen)
+	resp := service.ObjectToSet(req)
+	
+	*outLen = C.int(len(resp))
+	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
+}
+
+//export ObjectRedo
+func ObjectRedo(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
+	req := C.GoBytes(unsafe.Pointer(in), inLen)
+	resp := service.ObjectRedo(req)
+	
+	*outLen = C.int(len(resp))
+	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
+}
+
+//export BlockDataviewObjectOrderMove
+func BlockDataviewObjectOrderMove(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
+	req := C.GoBytes(unsafe.Pointer(in), inLen)
+	resp := service.BlockDataviewObjectOrderMove(req)
+	
+	*outLen = C.int(len(resp))
+	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
+}
+
+//export BlockDataviewSortReplace
+func BlockDataviewSortReplace(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
+	req := C.GoBytes(unsafe.Pointer(in), inLen)
+	resp := service.BlockDataviewSortReplace(req)
+	
+	*outLen = C.int(len(resp))
+	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
+}
+
+//export AIObjectCreateFromUrl
+func AIObjectCreateFromUrl(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
+	req := C.GoBytes(unsafe.Pointer(in), inLen)
+	resp := service.AIObjectCreateFromUrl(req)
+	
+	*outLen = C.int(len(resp))
+	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
+}
+
+//export ObjectSetObjectType
+func ObjectSetObjectType(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
+	req := C.GoBytes(unsafe.Pointer(in), inLen)
+	resp := service.ObjectSetObjectType(req)
+	
+	*outLen = C.int(len(resp))
+	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
+}
+
+//export ObjectImport
+func ObjectImport(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
+	req := C.GoBytes(unsafe.Pointer(in), inLen)
+	resp := service.ObjectImport(req)
+	
+	*outLen = C.int(len(resp))
+	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
+}
+
+//export GalleryDownloadManifest
+func GalleryDownloadManifest(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
+	req := C.GoBytes(unsafe.Pointer(in), inLen)
+	resp := service.GalleryDownloadManifest(req)
+	
+	*outLen = C.int(len(resp))
+	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
+}
+
+//export BlockSetFields
+func BlockSetFields(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
+	req := C.GoBytes(unsafe.Pointer(in), inLen)
+	resp := service.BlockSetFields(req)
+	
+	*outLen = C.int(len(resp))
+	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
+}
+
+//export ObjectListDelete
+func ObjectListDelete(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
+	req := C.GoBytes(unsafe.Pointer(in), inLen)
+	resp := service.ObjectListDelete(req)
+	
+	*outLen = C.int(len(resp))
+	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
+}
+
+//export ObjectUndo
+func ObjectUndo(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
+	req := C.GoBytes(unsafe.Pointer(in), inLen)
+	resp := service.ObjectUndo(req)
+	
+	*outLen = C.int(len(resp))
+	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
+}
+
+//export BlockDataviewViewDelete
+func BlockDataviewViewDelete(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
+	req := C.GoBytes(unsafe.Pointer(in), inLen)
+	resp := service.BlockDataviewViewDelete(req)
+	
+	*outLen = C.int(len(resp))
+	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
+}
+
+//export MembershipVerifyAppStoreReceipt
+func MembershipVerifyAppStoreReceipt(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
+	req := C.GoBytes(unsafe.Pointer(in), inLen)
+	resp := service.MembershipVerifyAppStoreReceipt(req)
+	
+	*outLen = C.int(len(resp))
+	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
+}
+
+//export DebugOpenedObjects
+func DebugOpenedObjects(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
+	req := C.GoBytes(unsafe.Pointer(in), inLen)
+	resp := service.DebugOpenedObjects(req)
+	
+	*outLen = C.int(len(resp))
+	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
+}
+
+//export ChatGetMessagesByIds
+func ChatGetMessagesByIds(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
+	req := C.GoBytes(unsafe.Pointer(in), inLen)
+	resp := service.ChatGetMessagesByIds(req)
+	
+	*outLen = C.int(len(resp))
+	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
+}
+
+//export WorkspaceGetAll
+func WorkspaceGetAll(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
+	req := C.GoBytes(unsafe.Pointer(in), inLen)
+	resp := service.WorkspaceGetAll(req)
+	
+	*outLen = C.int(len(resp))
+	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
+}
+
+//export PublishingResolveUri
+func PublishingResolveUri(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
+	req := C.GoBytes(unsafe.Pointer(in), inLen)
+	resp := service.PublishingResolveUri(req)
+	
+	*outLen = C.int(len(resp))
+	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
+}
+
+//export ObjectSetIsArchived
+func ObjectSetIsArchived(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
+	req := C.GoBytes(unsafe.Pointer(in), inLen)
+	resp := service.ObjectSetIsArchived(req)
+	
+	*outLen = C.int(len(resp))
+	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
+}
+
+//export ObjectToCollection
+func ObjectToCollection(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
+	req := C.GoBytes(unsafe.Pointer(in), inLen)
+	resp := service.ObjectToCollection(req)
+	
+	*outLen = C.int(len(resp))
+	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
+}
+
+//export TemplateExportAll
+func TemplateExportAll(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
+	req := C.GoBytes(unsafe.Pointer(in), inLen)
+	resp := service.TemplateExportAll(req)
+	
+	*outLen = C.int(len(resp))
+	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
+}
+
+//export DebugExportLocalstore
+func DebugExportLocalstore(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
+	req := C.GoBytes(unsafe.Pointer(in), inLen)
+	resp := service.DebugExportLocalstore(req)
+	
+	*outLen = C.int(len(resp))
+	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
+}
+
+//export BlockTextSetIcon
+func BlockTextSetIcon(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
+	req := C.GoBytes(unsafe.Pointer(in), inLen)
+	resp := service.BlockTextSetIcon(req)
+	
+	*outLen = C.int(len(resp))
+	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
+}
+
+//export WalletCreate
+func WalletCreate(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
+	req := C.GoBytes(unsafe.Pointer(in), inLen)
+	resp := service.WalletCreate(req)
+	
+	*outLen = C.int(len(resp))
+	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
+}
+
+//export SpaceDelete
+func SpaceDelete(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
+	req := C.GoBytes(unsafe.Pointer(in), inLen)
+	resp := service.SpaceDelete(req)
+	
+	*outLen = C.int(len(resp))
+	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
+}
+
+//export SpaceStopSharing
+func SpaceStopSharing(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
+	req := C.GoBytes(unsafe.Pointer(in), inLen)
+	resp := service.SpaceStopSharing(req)
+	
+	*outLen = C.int(len(resp))
+	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
+}
+
+//export ObjectShow
+func ObjectShow(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
+	req := C.GoBytes(unsafe.Pointer(in), inLen)
+	resp := service.ObjectShow(req)
+	
+	*outLen = C.int(len(resp))
+	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
+}
+
+//export ObjectDateByTimestamp
+func ObjectDateByTimestamp(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
+	req := C.GoBytes(unsafe.Pointer(in), inLen)
+	resp := service.ObjectDateByTimestamp(req)
+	
+	*outLen = C.int(len(resp))
+	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
+}
+
+//export BlockListMoveToExistingObject
+func BlockListMoveToExistingObject(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
+	req := C.GoBytes(unsafe.Pointer(in), inLen)
+	resp := service.BlockListMoveToExistingObject(req)
+	
+	*outLen = C.int(len(resp))
+	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
+}
+
+//export ObjectRelationAddFeatured
+func ObjectRelationAddFeatured(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
+	req := C.GoBytes(unsafe.Pointer(in), inLen)
+	resp := service.ObjectRelationAddFeatured(req)
+	
+	*outLen = C.int(len(resp))
+	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
+}
+
+//export BlockDataviewFilterSort
+func BlockDataviewFilterSort(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
+	req := C.GoBytes(unsafe.Pointer(in), inLen)
+	resp := service.BlockDataviewFilterSort(req)
+	
+	*outLen = C.int(len(resp))
+	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
+}
+
+//export BlockTableRowDuplicate
+func BlockTableRowDuplicate(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
+	req := C.GoBytes(unsafe.Pointer(in), inLen)
+	resp := service.BlockTableRowDuplicate(req)
+	
+	*outLen = C.int(len(resp))
+	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
+}
+
+//export SpaceLeaveApprove
+func SpaceLeaveApprove(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
+	req := C.GoBytes(unsafe.Pointer(in), inLen)
+	resp := service.SpaceLeaveApprove(req)
+	
+	*outLen = C.int(len(resp))
+	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
+}
+
+//export LinkPreview
+func LinkPreview(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
+	req := C.GoBytes(unsafe.Pointer(in), inLen)
+	resp := service.LinkPreview(req)
+	
+	*outLen = C.int(len(resp))
+	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
+}
+
+//export BlockTextSetColor
+func BlockTextSetColor(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
+	req := C.GoBytes(unsafe.Pointer(in), inLen)
+	resp := service.BlockTextSetColor(req)
+	
+	*outLen = C.int(len(resp))
+	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
+}
+
+//export AccountSelect
+func AccountSelect(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
+	req := C.GoBytes(unsafe.Pointer(in), inLen)
+	resp := service.AccountSelect(req)
+	
+	*outLen = C.int(len(resp))
+	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
+}
+
+//export AccountMove
+func AccountMove(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
+	req := C.GoBytes(unsafe.Pointer(in), inLen)
+	resp := service.AccountMove(req)
+	
+	*outLen = C.int(len(resp))
+	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
+}
+
+//export ObjectSetInternalFlags
+func ObjectSetInternalFlags(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
+	req := C.GoBytes(unsafe.Pointer(in), inLen)
+	resp := service.ObjectSetInternalFlags(req)
+	
+	*outLen = C.int(len(resp))
+	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
+}
+
+//export BlockImageSetName
+func BlockImageSetName(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
+	req := C.GoBytes(unsafe.Pointer(in), inLen)
+	resp := service.BlockImageSetName(req)
+	
+	*outLen = C.int(len(resp))
+	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
+}
+
+//export PushNotificationRegisterToken
+func PushNotificationRegisterToken(in *C.uchar, inLen C.int, outLen *C.int) *C.uchar {
+	req := C.GoBytes(unsafe.Pointer(in), inLen)
+	resp := service.PushNotificationRegisterToken(req)
 	
 	*outLen = C.int(len(resp))
 	return (*C.uchar)(C.CBytes(resp)) // malloc-ed with C.malloc
