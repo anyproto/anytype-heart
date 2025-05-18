@@ -129,6 +129,7 @@ func (s *Service) ListProperties(ctx context.Context, spaceId string, offset int
 		Keys: []string{
 			bundle.RelationKeyId.String(),
 			bundle.RelationKeyRelationKey.String(),
+			bundle.RelationKeyApiId.String(),
 			bundle.RelationKeyName.String(),
 			bundle.RelationKeyRelationFormat.String(),
 		},
@@ -191,10 +192,17 @@ func (s *Service) GetProperty(ctx context.Context, spaceId string, propertyId st
 func (s *Service) CreateProperty(ctx context.Context, spaceId string, request apimodel.CreatePropertyRequest) (apimodel.Property, error) {
 	details := &types.Struct{
 		Fields: map[string]*types.Value{
-			bundle.RelationKeyName.String():           pbtypes.String(request.Name),
+			bundle.RelationKeyName.String():           pbtypes.String(s.sanitizedString(request.Name)),
 			bundle.RelationKeyRelationFormat.String(): pbtypes.Int64(int64(PropertyFormatToRelationFormat[request.Format])),
 			bundle.RelationKeyOrigin.String():         pbtypes.Int64(int64(model.ObjectOrigin_api)),
 		},
+	}
+
+	if request.Key != nil {
+		details.Fields[bundle.RelationKeyApiId.String()] = pbtypes.String(s.sanitizedString(*request.Key))
+	} else {
+		// TODO: transliterate instead
+		details.Fields[bundle.RelationKeyApiId.String()] = pbtypes.String(strings.ReplaceAll(request.Name, " ", "_"))
 	}
 
 	resp := s.mw.ObjectCreateRelation(ctx, &pb.RpcObjectCreateRelationRequest{
@@ -220,17 +228,25 @@ func (s *Service) UpdateProperty(ctx context.Context, spaceId string, propertyId
 		return apimodel.Property{}, ErrPropertyCannotBeUpdated
 	}
 
+	var detailsToUpdate []*model.Detail
 	if request.Name != nil {
-		detail := model.Detail{
+		detailsToUpdate = append(detailsToUpdate, &model.Detail{
 			Key:   bundle.RelationKeyName.String(),
 			Value: pbtypes.String(s.sanitizedString(*request.Name)),
-		}
+		})
+	}
+	if request.Key != nil {
+		detailsToUpdate = append(detailsToUpdate, &model.Detail{
+			Key:   bundle.RelationKeyApiId.String(),
+			Value: pbtypes.String(s.sanitizedString(*request.Key)),
+		})
+	}
 
+	if len(detailsToUpdate) > 0 {
 		resp := s.mw.ObjectSetDetails(ctx, &pb.RpcObjectSetDetailsRequest{
 			ContextId: propertyId,
-			Details:   []*model.Detail{&detail},
+			Details:   detailsToUpdate,
 		})
-
 		if resp.Error != nil && resp.Error.Code != pb.RpcObjectSetDetailsResponseError_NULL {
 			return apimodel.Property{}, ErrFailedUpdateProperty
 		}
@@ -536,6 +552,7 @@ func (s *Service) getPropertyMapFromStore(ctx context.Context, spaceId string, k
 		Keys: []string{
 			bundle.RelationKeyId.String(),
 			bundle.RelationKeyRelationKey.String(),
+			bundle.RelationKeyApiId.String(),
 			bundle.RelationKeyName.String(),
 			bundle.RelationKeyRelationFormat.String(),
 		},
@@ -561,10 +578,19 @@ func (s *Service) getPropertyMapFromStore(ctx context.Context, spaceId string, k
 // getPropertyFromStruct maps a property's details into an apimodel.Property and returns its relation key.
 func (s *Service) getPropertyFromStruct(details *types.Struct) (string, apimodel.Property) {
 	rk := details.Fields[bundle.RelationKeyRelationKey.String()].GetStringValue()
+
+	// apiId as key takes precedence over relation key
+	key := util.ToPropertyApiKey(rk)
+	if apiIDField, exists := details.Fields[bundle.RelationKeyApiId.String()]; exists {
+		if apiID := apiIDField.GetStringValue(); apiID != "" {
+			key = apiID
+		}
+	}
+
 	return rk, apimodel.Property{
 		Object: "property",
 		Id:     details.Fields[bundle.RelationKeyId.String()].GetStringValue(),
-		Key:    util.ToPropertyApiKey(rk),
+		Key:    key,
 		Name:   details.Fields[bundle.RelationKeyName.String()].GetStringValue(),
 		Format: RelationFormatToPropertyFormat[model.RelationFormat(details.Fields[bundle.RelationKeyRelationFormat.String()].GetNumberValue())],
 	}

@@ -147,6 +147,7 @@ func TestSearchService_GlobalSearch(t *testing.T) {
 			Keys: []string{
 				bundle.RelationKeyId.String(),
 				bundle.RelationKeyRelationKey.String(),
+				bundle.RelationKeyApiId.String(),
 				bundle.RelationKeyName.String(),
 				bundle.RelationKeyRelationFormat.String(),
 			},
@@ -456,6 +457,7 @@ func TestSearchService_Search(t *testing.T) {
 			Keys: []string{
 				bundle.RelationKeyId.String(),
 				bundle.RelationKeyRelationKey.String(),
+				bundle.RelationKeyApiId.String(),
 				bundle.RelationKeyName.String(),
 				bundle.RelationKeyRelationFormat.String(),
 			},
