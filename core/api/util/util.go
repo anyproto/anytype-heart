@@ -15,7 +15,6 @@ import (
 )
 
 var (
-	ErrFailedSearchType         = errors.New("failed to search for type")
 	ErrFailedResolveToUniqueKey = errors.New("failed to resolve to unique key")
 	ErrFailedGetById            = errors.New("failed to get object by id")
 	ErrFailedGetByIdNotFound    = errors.New("failed to find object by id")

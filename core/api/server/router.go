@@ -49,7 +49,7 @@ func (s *Server) NewRouter(mw apicore.ClientCommands) *gin.Engine {
 		c.Redirect(http.StatusMovedPermanently, target)
 	})
 
-	router.GET("/openapi.yaml", func(c *gin.Context) {
+	router.GET("/docs/openapi.yaml", func(c *gin.Context) {
 		data, err := os.ReadFile("./core/api/docs/openapi.yaml")
 		if err != nil {
 			c.String(http.StatusInternalServerError, "Failed to read OpenAPI spec")
@@ -58,7 +58,7 @@ func (s *Server) NewRouter(mw apicore.ClientCommands) *gin.Engine {
 		c.Data(http.StatusOK, "application/x-yaml", data)
 	})
 
-	router.GET("/openapi.json", func(c *gin.Context) {
+	router.GET("/docs/openapi.json", func(c *gin.Context) {
 		data, err := os.ReadFile("./core/api/docs/openapi.json")
 		if err != nil {
 			c.String(http.StatusInternalServerError, "Failed to read OpenAPI spec")
