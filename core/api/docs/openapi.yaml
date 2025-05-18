@@ -1695,7 +1695,7 @@ paths:
         description: The space to create
         required: true
       responses:
-        "200":
+        "201":
           content:
             application/json:
               schema:
@@ -2389,7 +2389,7 @@ paths:
         description: The object to create
         required: true
       responses:
-        "200":
+        "201":
           content:
             application/json:
               schema:
@@ -2750,7 +2750,7 @@ paths:
         description: The property to create
         required: true
       responses:
-        "200":
+        "201":
           content:
             application/json:
               schema:
@@ -3118,7 +3118,7 @@ paths:
         description: The tag to create
         required: true
       responses:
-        "200":
+        "201":
           content:
             application/json:
               schema:
@@ -3567,7 +3567,7 @@ paths:
         description: The type to create
         required: true
       responses:
-        "200":
+        "201":
           content:
             application/json:
               schema:

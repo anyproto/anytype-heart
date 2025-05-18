@@ -98,7 +98,7 @@ func GetTypeHandler(s *service.Service) gin.HandlerFunc {
 //	@Param			Anytype-Version	header		string						true	"The version of the API to use"	default(2025-05-20)
 //	@Param			space_id		path		string						true	"The ID of the space in which to create the type; must be retrieved from ListSpaces endpoint"
 //	@Param			type			body		apimodel.CreateTypeRequest	true	"The type to create"
-//	@Success		200				{object}	apimodel.TypeResponse		"The created type"
+//	@Success		201				{object}	apimodel.TypeResponse		"The created type"
 //	@Failure		400				{object}	util.ValidationError		"Bad request"
 //	@Failure		401				{object}	util.UnauthorizedError		"Unauthorized"
 //	@Failure		429				{object}	util.RateLimitError			"Rate limit exceeded"
@@ -129,7 +129,7 @@ func CreateTypeHandler(s *service.Service) gin.HandlerFunc {
 			return
 		}
 
-		c.JSON(http.StatusOK, apimodel.TypeResponse{Type: object})
+		c.JSON(http.StatusCreated, apimodel.TypeResponse{Type: object})
 	}
 }
 

@@ -103,7 +103,7 @@ func GetTagHandler(s *service.Service) gin.HandlerFunc {
 //	@Param			space_id		path		string						true	"The ID of the space to create the tag in; must be retrieved from ListSpaces endpoint"
 //	@Param			property_id		path		string						true	"The ID of the property to create the tag for; must be retrieved from ListProperties endpoint or obtained from response context"
 //	@Param			tag				body		apimodel.CreateTagRequest	true	"The tag to create"
-//	@Success		200				{object}	apimodel.TagResponse		"The created tag"
+//	@Success		201				{object}	apimodel.TagResponse		"The created tag"
 //	@Failure		400				{object}	util.ValidationError		"Bad request"
 //	@Failure		401				{object}	util.UnauthorizedError		"Unauthorized"
 //	@Failure		429				{object}	util.RateLimitError			"Rate limit exceeded"
@@ -135,7 +135,7 @@ func CreateTagHandler(s *service.Service) gin.HandlerFunc {
 			return
 		}
 
-		c.JSON(http.StatusOK, apimodel.TagResponse{Tag: option})
+		c.JSON(http.StatusCreated, apimodel.TagResponse{Tag: option})
 	}
 }
 

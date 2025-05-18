@@ -98,7 +98,7 @@ func GetPropertyHandler(s *service.Service) gin.HandlerFunc {
 //	@Param			Anytype-Version	header		string							true	"The version of the API to use"	default(2025-05-20)
 //	@Param			space_id		path		string							true	"The ID of the space to create the property in; must be retrieved from ListSpaces endpoint"
 //	@Param			property		body		apimodel.CreatePropertyRequest	true	"The property to create"
-//	@Success		200				{object}	apimodel.PropertyResponse		"The created property"
+//	@Success		201				{object}	apimodel.PropertyResponse		"The created property"
 //	@Failure		400				{object}	util.ValidationError			"Bad request"
 //	@Failure		401				{object}	util.UnauthorizedError			"Unauthorized"
 //	@Failure		429				{object}	util.RateLimitError				"Rate limit exceeded"
@@ -129,7 +129,7 @@ func CreatePropertyHandler(s *service.Service) gin.HandlerFunc {
 			return
 		}
 
-		c.JSON(http.StatusOK, apimodel.PropertyResponse{Property: property})
+		c.JSON(http.StatusCreated, apimodel.PropertyResponse{Property: property})
 	}
 }
 
