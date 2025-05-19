@@ -19,7 +19,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/chats/chatpush"
 	"github.com/anyproto/anytype-heart/space/clientspace"
 	"github.com/anyproto/anytype-heart/space/internal/components/aclnotifications"
-	"github.com/anyproto/anytype-heart/space/internal/components/invitemigrator"
 	"github.com/anyproto/anytype-heart/space/internal/components/participantwatcher"
 	"github.com/anyproto/anytype-heart/space/internal/components/spaceloader"
 	"github.com/anyproto/anytype-heart/space/internal/components/spacestatus"
@@ -61,7 +60,6 @@ type aclObjectManager struct {
 	notificationService     aclnotifications.AclNotification
 	spaceLoaderListener     SpaceLoaderListener
 	participantWatcher      participantwatcher.ParticipantWatcher
-	inviteMigrator          invitemigrator.InviteMigrator
 	accountService          accountservice.Service
 	pushNotificationService pushNotificationService
 
@@ -114,7 +112,6 @@ func (a *aclObjectManager) Init(ap *app.App) (err error) {
 	if a.statService == nil {
 		a.statService = debugstat.NewNoOp()
 	}
-	a.inviteMigrator = app.MustComponent[invitemigrator.InviteMigrator](ap)
 	a.statService.AddProvider(a)
 	a.waitLoad = make(chan struct{})
 	a.wait = make(chan struct{})
@@ -157,11 +154,7 @@ func (a *aclObjectManager) process() {
 		return
 	}
 	a.spaceLoaderListener.OnSpaceLoad(a.sp.Id())
-	err := a.inviteMigrator.MigrateExistingInvites(a.sp)
-	if err != nil {
-		log.Warn("migrate existing invites", zap.Error(err))
-	}
-	err = a.participantWatcher.UpdateAccountParticipantFromProfile(a.ctx, a.sp)
+	err := a.participantWatcher.UpdateAccountParticipantFromProfile(a.ctx, a.sp)
 	if err != nil {
 		log.Error("init my identity", zap.Error(err))
 	}
