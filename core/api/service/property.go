@@ -221,7 +221,8 @@ func (s *Service) UpdateProperty(ctx context.Context, spaceId string, propertyId
 		return apimodel.Property{}, err
 	}
 
-	if bundle.HasRelation(domain.RelationKey(prop.RelationKey)) {
+	rel, err := bundle.PickRelation(domain.RelationKey(prop.RelationKey))
+	if err != nil && rel.ReadOnly {
 		return apimodel.Property{}, ErrPropertyCannotBeUpdated
 	}
 
