@@ -291,7 +291,7 @@ func (s *Service) buildTypeDetails(ctx context.Context, spaceId string, request 
 		fields[bundle.RelationKeyApiObjectKey.String()] = pbtypes.String(s.sanitizedString(request.Key))
 	}
 
-	iconFields, err := s.processIconFields(spaceId, request.Icon)
+	iconFields, err := s.processIconFields(spaceId, request.Icon, true)
 	if err != nil {
 		return nil, err
 	}
@@ -356,7 +356,7 @@ func (s *Service) buildUpdatedTypeDetails(ctx context.Context, spaceId string, t
 	}
 
 	if request.Icon != nil {
-		iconFields, err := s.processIconFields(spaceId, *request.Icon)
+		iconFields, err := s.processIconFields(spaceId, *request.Icon, true)
 		if err != nil {
 			return nil, err
 		}

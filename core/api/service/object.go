@@ -282,7 +282,7 @@ func (s *Service) buildObjectDetails(ctx context.Context, spaceId string, reques
 		bundle.RelationKeyOrigin.String(): pbtypes.Int64(int64(model.ObjectOrigin_api)),
 	}
 
-	iconFields, err := s.processIconFields(spaceId, request.Icon)
+	iconFields, err := s.processIconFields(spaceId, request.Icon, false)
 	if err != nil {
 		return nil, err
 	}
@@ -309,7 +309,7 @@ func (s *Service) buildUpdatedObjectDetails(ctx context.Context, spaceId string,
 	}
 
 	if request.Icon != nil {
-		iconFields, err := s.processIconFields(spaceId, *request.Icon)
+		iconFields, err := s.processIconFields(spaceId, *request.Icon, false)
 		if err != nil {
 			return nil, err
 		}
@@ -332,11 +332,16 @@ func (s *Service) buildUpdatedObjectDetails(ctx context.Context, spaceId string,
 }
 
 // processIconFields returns the detail fields corresponding to the given icon.
-func (s *Service) processIconFields(spaceId string, icon apimodel.Icon) (map[string]*types.Value, error) {
+func (s *Service) processIconFields(spaceId string, icon apimodel.Icon, isType bool) (map[string]*types.Value, error) {
 	iconFields := make(map[string]*types.Value)
 	switch e := icon.WrappedIcon.(type) {
 	case apimodel.NamedIcon:
-		return nil, util.ErrBadInput("icon name and color are not supported for object")
+		if isType {
+			iconFields[bundle.RelationKeyIconName.String()] = pbtypes.String(string(e.Name))
+			iconFields[bundle.RelationKeyIconOption.String()] = pbtypes.Int64(apimodel.ColorToIconOption[e.Color])
+		} else {
+			return nil, util.ErrBadInput("icon name and color are not supported for object")
+		}
 	case apimodel.EmojiIcon:
 		if len(e.Emoji) > 0 && !IsEmoji(e.Emoji) {
 			return nil, util.ErrBadInput("icon emoji is not valid")

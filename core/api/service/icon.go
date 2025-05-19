@@ -26,8 +26,8 @@ func GetIcon(gatewayUrl string, iconEmoji string, iconImage string, iconName str
 	if iconName != "" {
 		return apimodel.Icon{WrappedIcon: apimodel.NamedIcon{
 			Format: apimodel.IconFormatIcon,
-			Name:   iconName,
-			Color:  apimodel.ColorPtr(apimodel.IconOptionToColor[iconOption]),
+			Name:   apimodel.IconName(iconName),
+			Color:  apimodel.IconOptionToColor[iconOption],
 		}}
 	}
 	if iconEmoji != "" {
