@@ -1187,6 +1187,16 @@
     "source": "details"
   },
   {
+    "description": "Encoded encryption key of invite file for current space. It stored in SpaceView",
+    "format": "number",
+    "hidden": true,
+    "key": "spaceInviteType",
+    "maxCount": 1,
+    "name": "Invite type of space",
+    "readonly": true,
+    "source": "details"
+  },
+  {
     "description": "CID of invite file for  for guest user in the current space. It's stored in SpaceView",
     "format": "shorttext",
     "hidden": true,
@@ -1223,6 +1233,16 @@
     "key": "participantPermissions",
     "maxCount": 1,
     "name": "Participant permissions",
+    "readonly": true,
+    "source": "details"
+  },
+  {
+    "description": "Invite permissions. Possible values: models.ParticipantPermissions",
+    "format": "number",
+    "hidden": true,
+    "key": "spaceInvitePermissions",
+    "maxCount": 1,
+    "name": "Invite permissions",
     "readonly": true,
     "source": "details"
   },
@@ -1537,12 +1557,22 @@
     "source": "details"
   },
   {
+    "description": "Layout of header relations. Line or column",
+    "format": "number",
+    "hidden": true,
+    "key": "headerRelationsLayout",
+    "maxCount": 1,
+    "name": "Header relations layout",
+    "readonly": false,
+    "source": "details"
+  },
+  {
     "description": "Identifier to use in intergrations with Anytype API",
     "format": "longtext",
     "hidden": true,
-    "key": "apiId",
+    "key": "apiObjectKey",
     "maxCount": 1,
-    "name": "API ID",
+    "name": "API Object Key",
     "readonly": false,
     "source": "details"
   }

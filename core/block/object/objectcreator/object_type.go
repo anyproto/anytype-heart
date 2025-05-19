@@ -3,7 +3,6 @@ package objectcreator
 import (
 	"context"
 	"fmt"
-	"strings"
 	"time"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
@@ -21,11 +20,17 @@ func (s *service) createObjectType(ctx context.Context, space clientspace.Space,
 		return "", nil, fmt.Errorf("create object type: no data")
 	}
 
-	uniqueKey, err := getUniqueKeyOrGenerate(coresb.SmartBlockTypeObjectType, details)
+	uniqueKey, wasGenerated, err := getUniqueKeyOrGenerate(coresb.SmartBlockTypeObjectType, details)
 	if err != nil {
 		return "", nil, fmt.Errorf("getUniqueKeyOrGenerate: %w", err)
 	}
 	object := details.Copy()
+
+	var objectKey string
+	if !wasGenerated {
+		objectKey = uniqueKey.InternalKey()
+	}
+	injectApiObjectKey(object, objectKey)
 
 	if !object.Has(bundle.RelationKeyRecommendedLayout) {
 		object.SetInt64(bundle.RelationKeyRecommendedLayout, int64(model.ObjectType_basic))
@@ -47,10 +52,6 @@ func (s *service) createObjectType(ctx context.Context, space clientspace.Space,
 
 	object.SetString(bundle.RelationKeyId, id)
 	object.SetInt64(bundle.RelationKeyLayout, int64(model.ObjectType_objectType))
-
-	if strings.TrimSpace(object.GetString(bundle.RelationKeyApiId)) == "" {
-		object.SetString(bundle.RelationKeyApiId, transliterate(object.GetString(bundle.RelationKeyName)))
-	}
 
 	createState := state.NewDocWithUniqueKey("", nil, uniqueKey).(*state.State)
 	createState.SetDetails(object)
