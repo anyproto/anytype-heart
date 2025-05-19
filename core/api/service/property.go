@@ -222,7 +222,7 @@ func (s *Service) UpdateProperty(ctx context.Context, spaceId string, propertyId
 	}
 
 	rel, err := bundle.PickRelation(domain.RelationKey(prop.RelationKey))
-	if err != nil && rel.ReadOnly {
+	if err == nil && rel.ReadOnly {
 		return apimodel.Property{}, ErrPropertyCannotBeUpdated
 	}
 
