@@ -9,6 +9,8 @@ import (
 	"time"
 
 	"github.com/gogo/protobuf/types"
+	"github.com/iancoleman/strcase"
+	"github.com/mozillazg/go-unidecode"
 
 	apimodel "github.com/anyproto/anytype-heart/core/api/model"
 	"github.com/anyproto/anytype-heart/core/api/pagination"
@@ -141,7 +143,7 @@ func (s *Service) ListProperties(ctx context.Context, spaceId string, offset int
 
 	filteredRecords := make([]*types.Struct, 0, len(resp.Records))
 	for _, record := range resp.Records {
-		rk, _ := s.getPropertyFromStruct(record)
+		rk, _, _ := s.getPropertyFromStruct(record)
 		if _, isExcluded := excludedSystemProperties[rk]; isExcluded {
 			continue
 		}
@@ -153,7 +155,7 @@ func (s *Service) ListProperties(ctx context.Context, spaceId string, offset int
 	properties = make([]apimodel.Property, 0, len(paginatedProperties))
 
 	for _, record := range paginatedProperties {
-		_, property := s.getPropertyFromStruct(record)
+		_, _, property := s.getPropertyFromStruct(record)
 		properties = append(properties, property)
 	}
 
@@ -181,7 +183,7 @@ func (s *Service) GetProperty(ctx context.Context, spaceId string, propertyId st
 		}
 	}
 
-	rk, property := s.getPropertyFromStruct(resp.ObjectView.Details[0].Details)
+	rk, _, property := s.getPropertyFromStruct(resp.ObjectView.Details[0].Details)
 	if _, isExcluded := excludedSystemProperties[rk]; isExcluded {
 		return apimodel.Property{}, ErrPropertyNotFound
 	}
@@ -198,11 +200,10 @@ func (s *Service) CreateProperty(ctx context.Context, spaceId string, request ap
 		},
 	}
 
-	if request.Key != nil {
-		details.Fields[bundle.RelationKeyApiId.String()] = pbtypes.String(s.sanitizedString(*request.Key))
+	if request.Key != "" {
+		details.Fields[bundle.RelationKeyApiId.String()] = pbtypes.String(s.sanitizedString(request.Key))
 	} else {
-		// TODO: transliterate instead
-		details.Fields[bundle.RelationKeyApiId.String()] = pbtypes.String(strings.ReplaceAll(request.Name, " ", "_"))
+		details.Fields[bundle.RelationKeyApiId.String()] = pbtypes.String(transliterate(request.Name))
 	}
 
 	resp := s.mw.ObjectCreateRelation(ctx, &pb.RpcObjectCreateRelationRequest{
@@ -564,9 +565,10 @@ func (s *Service) getPropertyMapFromStore(ctx context.Context, spaceId string, k
 
 	propertyMap := make(map[string]*apimodel.Property, len(resp.Records))
 	for _, record := range resp.Records {
-		rk, p := s.getPropertyFromStruct(record)
+		rk, apiId, p := s.getPropertyFromStruct(record)
 		prop := p
 		propertyMap[rk] = &prop
+		propertyMap[apiId] = &prop // TODO: add under api key as well, double check
 		if keyByPropertyId {
 			propertyMap[p.Id] = &prop // add property under id as key to map as well
 		}
@@ -576,18 +578,19 @@ func (s *Service) getPropertyMapFromStore(ctx context.Context, spaceId string, k
 }
 
 // getPropertyFromStruct maps a property's details into an apimodel.Property and returns its relation key.
-func (s *Service) getPropertyFromStruct(details *types.Struct) (string, apimodel.Property) {
+func (s *Service) getPropertyFromStruct(details *types.Struct) (string, string, apimodel.Property) {
 	rk := details.Fields[bundle.RelationKeyRelationKey.String()].GetStringValue()
+	key := util.ToPropertyApiKey(rk)
 
 	// apiId as key takes precedence over relation key
-	key := util.ToPropertyApiKey(rk)
+	var apiId string
 	if apiIDField, exists := details.Fields[bundle.RelationKeyApiId.String()]; exists {
-		if apiID := apiIDField.GetStringValue(); apiID != "" {
-			key = apiID
+		if apiId = apiIDField.GetStringValue(); apiId != "" {
+			key = apiId
 		}
 	}
 
-	return rk, apimodel.Property{
+	return rk, apiId, apimodel.Property{
 		Object: "property",
 		Id:     details.Fields[bundle.RelationKeyId.String()].GetStringValue(),
 		Key:    key,
@@ -795,4 +798,10 @@ func (s *Service) buildPropertyWithValue(id string, key string, name string, for
 	}
 
 	return nil
+}
+
+func transliterate(str string) string {
+	trimmed := strings.TrimSpace(str)
+	ascii := unidecode.Unidecode(trimmed)
+	return strcase.ToSnake(ascii)
 }

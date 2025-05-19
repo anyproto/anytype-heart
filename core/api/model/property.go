@@ -44,7 +44,7 @@ type PropertyResponse struct {
 type CreatePropertyRequest struct {
 	Name   string         `json:"name" binding:"required" example:"Last modified date"`                                                          // The name of the property
 	Format PropertyFormat `json:"format" binding:"required" enums:"text,number,select,multi_select,date,files,checkbox,url,email,phone,objects"` // The format of the property
-	Key    *string        `json:"key,omitempty" example:"some_user_defined_property_key"`                                                        // The key of the property
+	Key    string         `json:"key" example:"some_user_defined_property_key"`                                                                  // The key of the property
 }
 
 type UpdatePropertyRequest struct {
