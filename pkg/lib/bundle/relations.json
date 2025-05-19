@@ -1555,5 +1555,15 @@
     "name": "Plural name",
     "readonly": false,
     "source": "details"
+  },
+  {
+    "description": "Layout of header relations. Line or column",
+    "format": "number",
+    "hidden": true,
+    "key": "headerRelationsLayout",
+    "maxCount": 1,
+    "name": "Header relations layout",
+    "readonly": false,
+    "source": "details"
   }
 ]
