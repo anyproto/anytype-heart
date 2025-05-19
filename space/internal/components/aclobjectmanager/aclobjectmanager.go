@@ -259,6 +259,11 @@ func (a *aclObjectManager) processAcl() (err error) {
 	defer a.mx.Unlock()
 	a.lastIndexed = acl.Head().Id
 
+	if aclState.Permissions(aclState.Identity()).NoPermissions() {
+		// no need to push notifications or subscribe on them if space is removing
+		return nil
+	}
+
 	err = a.pushNotificationService.BroadcastKeyUpdate(common.Id(), aclState)
 	if err != nil {
 		return fmt.Errorf("broadcast key update: %w", err)
