@@ -101,14 +101,33 @@ func (ls *loadingSpace) loadRetry(ctx context.Context) {
 	}
 }
 
+func (ls *loadingSpace) logErrors(ctx context.Context, err error, mandatoryObjects bool, notRetryable bool) {
+	log := log.With(zap.String("spaceId", ls.ID), zap.Error(err), zap.Bool("notRetryable", notRetryable))
+	if mandatoryObjects {
+		log.WarnCtx(ctx, "space load: mandatory objects error")
+		if errors.Is(err, context.Canceled) {
+			log.WarnCtx(ctx, "space load: error: context bug")
+		}
+	} else {
+		log.WarnCtx(ctx, "space load: build space error")
+	}
+}
+
+func (ls *loadingSpace) isNotRetryable(err error) bool {
+	return errors.Is(err, objecttree.ErrHasInvalidChanges) || ls.disableRemoteLoad
+}
+
 func (ls *loadingSpace) load(ctx context.Context) (ok bool, err error) {
 	sp, err := ls.spaceServiceProvider.open(ctx)
 	if err != nil {
-		return ls.disableRemoteLoad, err
+		notRetryable := ls.isNotRetryable(err)
+		ls.logErrors(ctx, err, false, notRetryable)
+		return notRetryable, err
 	}
 	err = sp.WaitMandatoryObjects(ctx)
 	if err != nil {
-		notRetryable := errors.Is(err, objecttree.ErrHasInvalidChanges) || ls.disableRemoteLoad
+		notRetryable := ls.isNotRetryable(err)
+		ls.logErrors(ctx, err, true, notRetryable)
 		return notRetryable, err
 	}
 	if ls.latestAclHeadId != "" && !ls.disableRemoteLoad {
