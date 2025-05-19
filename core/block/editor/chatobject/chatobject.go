@@ -20,10 +20,8 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/storestate"
 	"github.com/anyproto/anytype-heart/core/block/source"
 	"github.com/anyproto/anytype-heart/core/domain"
-	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pb"
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/spaceindex"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
@@ -71,11 +69,9 @@ type storeObject struct {
 	storeSource             source.Store
 	repositoryService       chatrepository.Service
 	store                   *storestate.StoreState
-	eventSender             event.Sender
 	chatSubscriptionService chatsubscription.Service
 	subscription            chatsubscription.Manager
 	crdtDb                  anystore.DB
-	spaceIndex              spaceindex.Store
 	chatHandler             *ChatHandler
 	repository              chatrepository.Repository
 
@@ -84,19 +80,17 @@ type storeObject struct {
 	componentCtxCancel context.CancelFunc
 }
 
-func New(sb smartblock.SmartBlock, accountService AccountService, eventSender event.Sender, crdtDb anystore.DB, repositoryService chatrepository.Service, spaceIndex spaceindex.Store, chatSubscriptionService chatsubscription.Service) StoreObject {
+func New(sb smartblock.SmartBlock, accountService AccountService, crdtDb anystore.DB, repositoryService chatrepository.Service, chatSubscriptionService chatsubscription.Service) StoreObject {
 	ctx, cancel := context.WithCancel(context.Background())
 	return &storeObject{
 		SmartBlock:              sb,
 		locker:                  sb.(smartblock.Locker),
 		accountService:          accountService,
 		arenaPool:               &anyenc.ArenaPool{},
-		eventSender:             eventSender,
 		crdtDb:                  crdtDb,
 		repositoryService:       repositoryService,
 		componentCtx:            ctx,
 		componentCtxCancel:      cancel,
-		spaceIndex:              spaceIndex,
 		chatSubscriptionService: chatSubscriptionService,
 	}
 }

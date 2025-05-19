@@ -120,7 +120,7 @@ func (s *subscriptionManager) UpdateChatState(updater func(*model.ChatState) *mo
 	s.chatStateUpdated = true
 }
 
-// Flush is called after commiting changes
+// Flush is called after committing changes
 func (s *subscriptionManager) Flush() {
 	if !s.canSend() {
 		return

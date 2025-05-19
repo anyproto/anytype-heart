@@ -99,7 +99,6 @@ func (s *service) Repository(chatObjectId string) (Repository, error) {
 	}
 
 	return &repository{
-		db:         crdtDb,
 		collection: collection,
 		arenaPool:  s.arenaPool,
 	}, nil
@@ -122,7 +121,6 @@ type Repository interface {
 }
 
 type repository struct {
-	db         anystore.DB
 	collection anystore.Collection
 	arenaPool  *anyenc.ArenaPool
 }

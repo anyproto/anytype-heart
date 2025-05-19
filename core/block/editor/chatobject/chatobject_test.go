@@ -26,6 +26,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/spaceindex"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/tests/testutil"
 )
@@ -61,6 +62,7 @@ type fixture struct {
 	sourceCreator      string
 	eventSender        *mock_event.MockSender
 	events             []*pb.EventMessage
+	spaceIndex         spaceindex.Store
 
 	generateOrderIdFunc func(tx *storestate.StoreStateTx) string
 }
@@ -99,7 +101,7 @@ func newFixture(t *testing.T) *fixture {
 	db, err := objectStore.GetCrdtDb(testSpaceId).Wait()
 	require.NoError(t, err)
 
-	object := New(sb, accountService, eventSender, db, repo, spaceIndex, subscriptions)
+	object := New(sb, accountService, db, repo, subscriptions)
 	rawObject := object.(*storeObject)
 
 	fx := &fixture{
@@ -107,6 +109,7 @@ func newFixture(t *testing.T) *fixture {
 		accountServiceStub: accountService,
 		sourceCreator:      testCreator,
 		eventSender:        eventSender,
+		spaceIndex:         spaceIndex,
 	}
 	eventSender.EXPECT().Broadcast(mock.Anything).Run(func(event *pb.Event) {
 		for _, msg := range event.Messages {
