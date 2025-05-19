@@ -83,8 +83,9 @@ func (mw *Middleware) SpaceInviteGenerate(cctx context.Context, req *pb.RpcSpace
 	return &pb.RpcSpaceInviteGenerateResponse{
 		InviteCid:     inviteInfo.InviteFileCid,
 		InviteFileKey: inviteInfo.InviteFileKey,
-		InviteType:    model.InviteType(inviteInfo.InviteType),
-		Permissions:   domain.ConvertAclPermissions(inviteInfo.Permissions),
+		// nolint: gosec
+		InviteType:  model.InviteType(inviteInfo.InviteType),
+		Permissions: domain.ConvertAclPermissions(inviteInfo.Permissions),
 	}
 }
 
@@ -126,8 +127,9 @@ func (mw *Middleware) SpaceInviteGetCurrent(cctx context.Context, req *pb.RpcSpa
 	return &pb.RpcSpaceInviteGetCurrentResponse{
 		InviteCid:     inviteInfo.InviteFileCid,
 		InviteFileKey: inviteInfo.InviteFileKey,
-		InviteType:    model.InviteType(inviteInfo.InviteType),
-		Permissions:   domain.ConvertAclPermissions(inviteInfo.Permissions),
+		// nolint: gosec
+		InviteType:  model.InviteType(inviteInfo.InviteType),
+		Permissions: domain.ConvertAclPermissions(inviteInfo.Permissions),
 	}
 }
 
@@ -192,7 +194,8 @@ func (mw *Middleware) SpaceInviteView(cctx context.Context, req *pb.RpcSpaceInvi
 		SpaceName:         inviteView.SpaceName,
 		SpaceIconCid:      inviteView.SpaceIconCid,
 		IsGuestUserInvite: inviteView.IsGuestUserInvite(),
-		InviteType:        model.InviteType(inviteView.InviteType),
+		// nolint: gosec
+		InviteType: model.InviteType(inviteView.InviteType),
 	}
 }
 

@@ -80,6 +80,8 @@ github.com/andybalholm/cascadia v1.3.3 h1:AG2YHrzJIm4BZ19iwJ/DAua6Btl3IwJX+VI4kk
 github.com/andybalholm/cascadia v1.3.3/go.mod h1:xNd9bqTn98Ln4DwST8/nG+H0yuB8Hmgu1YHNnWw0GeA=
 github.com/anyproto/any-store v0.2.0 h1:M8Eb0dxuEk62lIGZ3k1nADlaPQzmo6ilWLCCcY9WX10=
 github.com/anyproto/any-store v0.2.0/go.mod h1:N59OGYe/uXRNpr6ytfbBpbC+1viDgSbsVNXevOMxJAM=
+github.com/anyproto/any-store v0.2.1 h1:U5UpUNk2U7pjJFgvw+f0f54pJW94YK4Qyd97eRoWSvc=
+github.com/anyproto/any-store v0.2.1/go.mod h1:tfmQEKqqtT+zzkTWANTHxWxB1E3OHcn9RHxhdBZ/KSk=
 github.com/anyproto/any-sync v0.8.0 h1:pSoaQjeu5H6K8aMWBheXhUR+6eNCi9KDHSD6L6Yt29Y=
 github.com/anyproto/any-sync v0.8.0/go.mod h1:G6i3PT6pN6lcC5rim5Ed7ppUPuQgU5PyHgiqskrggL0=
 github.com/anyproto/anytype-publish-server/publishclient v0.0.0-20250131145601-de288583ff2a h1:ZZM+0OUCQMWSLSflpkf0ZMVo3V76qEDDIXPpQOClNs0=
@@ -1689,6 +1691,8 @@ modernc.org/gc/v2 v2.6.5 h1:nyqdV8q46KvTpZlsw66kWqwXRHdjIlJOhG6kxiV/9xI=
 modernc.org/gc/v2 v2.6.5/go.mod h1:YgIahr1ypgfe7chRuJi2gD7DBQiKSLMPgBQe9oIiito=
 modernc.org/libc v1.65.0 h1:e183gLDnAp9VJh6gWKdTy0CThL9Pt7MfcR/0bgb7Y1Y=
 modernc.org/libc v1.65.0/go.mod h1:7m9VzGq7APssBTydds2zBcxGREwvIGpuUBaKTXdm2Qs=
+modernc.org/libc v1.65.6 h1:OhJUhmuJ6MVZdqL5qmnd0/my46DKGFhSX4WOR7ijfyE=
+modernc.org/libc v1.65.6/go.mod h1:MOiGAM9lrMBT9L8xT1nO41qYl5eg9gCp9/kWhz5L7WA=
 modernc.org/mathutil v1.7.1 h1:GCZVGXdaN8gTqB1Mf/usp1Y/hSqgI2vAGGP4jZMCxOU=
 modernc.org/mathutil v1.7.1/go.mod h1:4p5IwJITfppl0G4sUEDtCr4DthTaT47/N3aT6MhfgJg=
 modernc.org/memory v1.10.0 h1:fzumd51yQ1DxcOxSO+S6X7+QTuVU+n8/Aj7swYjFfC4=

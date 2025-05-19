@@ -419,6 +419,7 @@ func (a *aclService) Join(ctx context.Context, spaceId, networkId string, invite
 			InviteKey: inviteKey,
 			Metadata:  a.spaceService.AccountMetadataPayload(),
 		})
+		// nolint: nestif
 		if err != nil {
 			if errors.Is(err, coordinatorproto.ErrSpaceIsDeleted) {
 				return space.ErrSpaceDeleted
