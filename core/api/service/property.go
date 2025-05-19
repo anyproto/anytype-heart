@@ -129,7 +129,7 @@ func (s *Service) ListProperties(ctx context.Context, spaceId string, offset int
 		Keys: []string{
 			bundle.RelationKeyId.String(),
 			bundle.RelationKeyRelationKey.String(),
-			bundle.RelationKeyApiId.String(),
+			bundle.RelationKeyApiObjectKey.String(),
 			bundle.RelationKeyName.String(),
 			bundle.RelationKeyRelationFormat.String(),
 		},
@@ -199,7 +199,7 @@ func (s *Service) CreateProperty(ctx context.Context, spaceId string, request ap
 	}
 
 	if request.Key != "" {
-		details.Fields[bundle.RelationKeyApiId.String()] = pbtypes.String(s.sanitizedString(request.Key))
+		details.Fields[bundle.RelationKeyApiObjectKey.String()] = pbtypes.String(s.sanitizedString(request.Key))
 	}
 
 	resp := s.mw.ObjectCreateRelation(ctx, &pb.RpcObjectCreateRelationRequest{
@@ -235,7 +235,7 @@ func (s *Service) UpdateProperty(ctx context.Context, spaceId string, propertyId
 	}
 	if request.Key != nil {
 		detailsToUpdate = append(detailsToUpdate, &model.Detail{
-			Key:   bundle.RelationKeyApiId.String(),
+			Key:   bundle.RelationKeyApiObjectKey.String(),
 			Value: pbtypes.String(s.sanitizedString(*request.Key)),
 		})
 	}
@@ -549,7 +549,7 @@ func (s *Service) getPropertyMapFromStore(ctx context.Context, spaceId string, k
 		Keys: []string{
 			bundle.RelationKeyId.String(),
 			bundle.RelationKeyRelationKey.String(),
-			bundle.RelationKeyApiId.String(),
+			bundle.RelationKeyApiObjectKey.String(),
 			bundle.RelationKeyName.String(),
 			bundle.RelationKeyRelationFormat.String(),
 		},
@@ -580,7 +580,7 @@ func (s *Service) getPropertyFromStruct(details *types.Struct) (string, string, 
 	key := util.ToPropertyApiKey(rk)
 
 	// apiId as key takes precedence over relation key
-	if apiIDField, exists := details.Fields[bundle.RelationKeyApiId.String()]; exists {
+	if apiIDField, exists := details.Fields[bundle.RelationKeyApiObjectKey.String()]; exists {
 		if apiId := apiIDField.GetStringValue(); apiId != "" {
 			key = apiId
 		}

@@ -147,7 +147,7 @@ func TestSearchService_GlobalSearch(t *testing.T) {
 			Keys: []string{
 				bundle.RelationKeyId.String(),
 				bundle.RelationKeyRelationKey.String(),
-				bundle.RelationKeyApiId.String(),
+				bundle.RelationKeyApiObjectKey.String(),
 				bundle.RelationKeyName.String(),
 				bundle.RelationKeyRelationFormat.String(),
 			},
@@ -209,7 +209,7 @@ func TestSearchService_GlobalSearch(t *testing.T) {
 			Keys: []string{
 				bundle.RelationKeyId.String(),
 				bundle.RelationKeyUniqueKey.String(),
-				bundle.RelationKeyApiId.String(),
+				bundle.RelationKeyApiObjectKey.String(),
 				bundle.RelationKeyName.String(),
 				bundle.RelationKeyPluralName.String(),
 				bundle.RelationKeyIconEmoji.String(),
@@ -458,7 +458,7 @@ func TestSearchService_Search(t *testing.T) {
 			Keys: []string{
 				bundle.RelationKeyId.String(),
 				bundle.RelationKeyRelationKey.String(),
-				bundle.RelationKeyApiId.String(),
+				bundle.RelationKeyApiObjectKey.String(),
 				bundle.RelationKeyName.String(),
 				bundle.RelationKeyRelationFormat.String(),
 			},
@@ -520,7 +520,7 @@ func TestSearchService_Search(t *testing.T) {
 			Keys: []string{
 				bundle.RelationKeyId.String(),
 				bundle.RelationKeyUniqueKey.String(),
-				bundle.RelationKeyApiId.String(),
+				bundle.RelationKeyApiObjectKey.String(),
 				bundle.RelationKeyName.String(),
 				bundle.RelationKeyPluralName.String(),
 				bundle.RelationKeyIconEmoji.String(),

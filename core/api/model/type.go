@@ -62,6 +62,6 @@ type Type struct {
 	Archived   bool         `json:"archived" example:"false"`                                                         // Whether the type is archived
 	Layout     ObjectLayout `json:"layout" enums:"basic,profile,action,note,bookmark,set,set,collection,participant"` // The layout of the type
 	Properties []Property   `json:"properties"`                                                                       // The properties linked to the type
-	// Uk is internal-only to simplify FromTypeApiKey lookup on entry, won't be serialized to type responses
+	// Uk is internal-only to simplify lookup on entry, won't be serialized to type responses
 	UniqueKey string `json:"-" swaggerignore:"true"`
 }

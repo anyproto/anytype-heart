@@ -89,7 +89,7 @@ func TestObjectService_ListObjects(t *testing.T) {
 			Keys: []string{
 				bundle.RelationKeyId.String(),
 				bundle.RelationKeyRelationKey.String(),
-				bundle.RelationKeyApiId.String(),
+				bundle.RelationKeyApiObjectKey.String(),
 				bundle.RelationKeyName.String(),
 				bundle.RelationKeyRelationFormat.String(),
 			},
@@ -155,7 +155,7 @@ func TestObjectService_ListObjects(t *testing.T) {
 			Keys: []string{
 				bundle.RelationKeyId.String(),
 				bundle.RelationKeyUniqueKey.String(),
-				bundle.RelationKeyApiId.String(),
+				bundle.RelationKeyApiObjectKey.String(),
 				bundle.RelationKeyName.String(),
 				bundle.RelationKeyPluralName.String(),
 				bundle.RelationKeyIconEmoji.String(),
@@ -383,7 +383,7 @@ func TestObjectService_GetObject(t *testing.T) {
 			Keys: []string{
 				bundle.RelationKeyId.String(),
 				bundle.RelationKeyRelationKey.String(),
-				bundle.RelationKeyApiId.String(),
+				bundle.RelationKeyApiObjectKey.String(),
 				bundle.RelationKeyName.String(),
 				bundle.RelationKeyRelationFormat.String(),
 			},
@@ -449,7 +449,7 @@ func TestObjectService_GetObject(t *testing.T) {
 			Keys: []string{
 				bundle.RelationKeyId.String(),
 				bundle.RelationKeyUniqueKey.String(),
-				bundle.RelationKeyApiId.String(),
+				bundle.RelationKeyApiObjectKey.String(),
 				bundle.RelationKeyName.String(),
 				bundle.RelationKeyPluralName.String(),
 				bundle.RelationKeyIconEmoji.String(),

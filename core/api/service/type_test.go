@@ -54,7 +54,7 @@ func TestObjectService_ListTypes(t *testing.T) {
 			Keys: []string{
 				bundle.RelationKeyId.String(),
 				bundle.RelationKeyRelationKey.String(),
-				bundle.RelationKeyApiId.String(),
+				bundle.RelationKeyApiObjectKey.String(),
 				bundle.RelationKeyName.String(),
 				bundle.RelationKeyRelationFormat.String(),
 			},
@@ -111,7 +111,7 @@ func TestObjectService_ListTypes(t *testing.T) {
 			Keys: []string{
 				bundle.RelationKeyId.String(),
 				bundle.RelationKeyRelationKey.String(),
-				bundle.RelationKeyApiId.String(),
+				bundle.RelationKeyApiObjectKey.String(),
 				bundle.RelationKeyName.String(),
 				bundle.RelationKeyRelationFormat.String(),
 			},
@@ -177,7 +177,7 @@ func TestObjectService_GetType(t *testing.T) {
 			Keys: []string{
 				bundle.RelationKeyId.String(),
 				bundle.RelationKeyRelationKey.String(),
-				bundle.RelationKeyApiId.String(),
+				bundle.RelationKeyApiObjectKey.String(),
 				bundle.RelationKeyName.String(),
 				bundle.RelationKeyRelationFormat.String(),
 			},

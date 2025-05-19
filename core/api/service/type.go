@@ -53,7 +53,7 @@ func (s *Service) ListTypes(ctx context.Context, spaceId string, offset int, lim
 		Keys: []string{
 			bundle.RelationKeyId.String(),
 			bundle.RelationKeyUniqueKey.String(),
-			bundle.RelationKeyApiId.String(),
+			bundle.RelationKeyApiObjectKey.String(),
 			bundle.RelationKeyName.String(),
 			bundle.RelationKeyIconEmoji.String(),
 			bundle.RelationKeyIconName.String(),
@@ -213,7 +213,7 @@ func (s *Service) getTypeMapFromStore(ctx context.Context, spaceId string, prope
 		Keys: []string{
 			bundle.RelationKeyId.String(),
 			bundle.RelationKeyUniqueKey.String(),
-			bundle.RelationKeyApiId.String(),
+			bundle.RelationKeyApiObjectKey.String(),
 			bundle.RelationKeyName.String(),
 			bundle.RelationKeyPluralName.String(),
 			bundle.RelationKeyIconEmoji.String(),
@@ -250,7 +250,7 @@ func (s *Service) getTypeFromStruct(details *types.Struct, propertyMap map[strin
 	key := util.ToTypeApiKey(uk)
 
 	// apiId as key takes precedence over unique key
-	if apiIDField, exists := details.Fields[bundle.RelationKeyApiId.String()]; exists {
+	if apiIDField, exists := details.Fields[bundle.RelationKeyApiObjectKey.String()]; exists {
 		if apiId := apiIDField.GetStringValue(); apiId != "" {
 			key = apiId
 		}
@@ -288,7 +288,7 @@ func (s *Service) buildTypeDetails(ctx context.Context, spaceId string, request 
 	}
 
 	if request.Key != "" {
-		fields[bundle.RelationKeyApiId.String()] = pbtypes.String(s.sanitizedString(request.Key))
+		fields[bundle.RelationKeyApiObjectKey.String()] = pbtypes.String(s.sanitizedString(request.Key))
 	}
 
 	iconFields, err := s.processIconFields(spaceId, request.Icon)
@@ -352,7 +352,7 @@ func (s *Service) buildUpdatedTypeDetails(ctx context.Context, spaceId string, t
 		fields[bundle.RelationKeyRecommendedLayout.String()] = pbtypes.Int64(int64(s.typeLayoutToObjectTypeLayout(*request.Layout)))
 	}
 	if request.Key != nil {
-		fields[bundle.RelationKeyApiId.String()] = pbtypes.String(s.sanitizedString(*request.Key))
+		fields[bundle.RelationKeyApiObjectKey.String()] = pbtypes.String(s.sanitizedString(*request.Key))
 	}
 
 	if request.Icon != nil {

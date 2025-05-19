@@ -58,7 +58,7 @@ type Property struct {
 	Key    string         `json:"key" example:"last_modified_date"`                                                           // The key of the property
 	Name   string         `json:"name" example:"Last modified date"`                                                          // The name of the property
 	Format PropertyFormat `json:"format" enums:"text,number,select,multi_select,date,files,checkbox,url,email,phone,objects"` // The format of the property
-	// Rk is internal-only to simplify FromPropertyApiKey lookup on entry, won't be serialized to property responses
+	// Rk is internal-only to simplify lookup on entry, won't be serialized to property responses
 	RelationKey string `json:"-" swaggerignore:"true"`
 }
 
