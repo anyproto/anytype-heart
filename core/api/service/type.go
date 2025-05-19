@@ -394,7 +394,7 @@ func (s *Service) buildUpdatedTypeDetails(ctx context.Context, spaceId string, t
 func (s *Service) buildRelationIds(ctx context.Context, spaceId string, props []apimodel.PropertyLink, propertyMap map[string]*apimodel.Property) ([]string, error) {
 	relationIds := make([]string, 0, len(props))
 	for _, propLink := range props {
-		rk := util.FromPropertyApiKey(propLink.Key)
+		rk := s.ResolvePropertyApiKey(propertyMap, propLink.Key)
 		if propDef, exists := propertyMap[rk]; exists {
 			relationIds = append(relationIds, propDef.Id)
 			continue

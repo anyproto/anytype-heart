@@ -225,7 +225,7 @@ func (s *Service) UpdateProperty(ctx context.Context, spaceId string, propertyId
 		return apimodel.Property{}, err
 	}
 
-	if bundle.HasRelation(domain.RelationKey(util.FromPropertyApiKey(prop.Key))) {
+	if bundle.HasRelation(domain.RelationKey(prop.RelationKey)) {
 		return apimodel.Property{}, ErrPropertyCannotBeUpdated
 	}
 
@@ -300,14 +300,14 @@ func (s *Service) processProperties(ctx context.Context, spaceId string, entries
 		case apimodel.NumberPropertyLinkValue:
 			key = e.Key
 			if e.Number == nil {
-				fields[util.FromPropertyApiKey(key)] = pbtypes.ToValue(nil)
+				fields[s.ResolvePropertyApiKey(propertyMap, key)] = pbtypes.ToValue(nil)
 				continue
 			}
 			raw = *e.Number
 		case apimodel.SelectPropertyLinkValue:
 			key = e.Key
 			if e.Select == nil {
-				fields[util.FromPropertyApiKey(key)] = pbtypes.ToValue(nil)
+				fields[s.ResolvePropertyApiKey(propertyMap, key)] = pbtypes.ToValue(nil)
 				continue
 			}
 			raw = *e.Select
@@ -321,7 +321,7 @@ func (s *Service) processProperties(ctx context.Context, spaceId string, entries
 		case apimodel.DatePropertyLinkValue:
 			key = e.Key
 			if e.Date == nil {
-				fields[util.FromPropertyApiKey(key)] = pbtypes.ToValue(nil)
+				fields[s.ResolvePropertyApiKey(propertyMap, key)] = pbtypes.ToValue(nil)
 				continue
 			}
 			raw = *e.Date
@@ -355,7 +355,7 @@ func (s *Service) processProperties(ctx context.Context, spaceId string, entries
 			return nil, util.ErrBadInput("unsupported property link value type " + fmt.Sprintf("%T", e))
 		}
 
-		rk := util.FromPropertyApiKey(key)
+		rk := s.ResolvePropertyApiKey(propertyMap, key)
 		if _, excluded := excludedSystemProperties[rk]; excluded {
 			continue
 		}
@@ -367,7 +367,7 @@ func (s *Service) processProperties(ctx context.Context, spaceId string, entries
 			return nil, util.ErrBadInput(fmt.Sprintf("unknown property key: %q", rk))
 		}
 
-		sanitized, err := s.sanitizeAndValidatePropertyValue(spaceId, key, prop.Format, raw, prop)
+		sanitized, err := s.sanitizeAndValidatePropertyValue(spaceId, key, prop.Format, raw, prop, propertyMap)
 		if err != nil {
 			return nil, err
 		}
@@ -377,7 +377,7 @@ func (s *Service) processProperties(ctx context.Context, spaceId string, entries
 }
 
 // sanitizeAndValidatePropertyValue checks the value for a property according to its format and ensures referenced IDs exist and are valid.
-func (s *Service) sanitizeAndValidatePropertyValue(spaceId string, key string, format apimodel.PropertyFormat, value interface{}, property *apimodel.Property) (interface{}, error) {
+func (s *Service) sanitizeAndValidatePropertyValue(spaceId string, key string, format apimodel.PropertyFormat, value interface{}, property *apimodel.Property, propertyMap map[string]*apimodel.Property) (interface{}, error) {
 	switch format {
 	case apimodel.PropertyFormatText, apimodel.PropertyFormatUrl, apimodel.PropertyFormatEmail, apimodel.PropertyFormatPhone:
 		str, ok := value.(string)
@@ -397,7 +397,7 @@ func (s *Service) sanitizeAndValidatePropertyValue(spaceId string, key string, f
 		if !ok {
 			return nil, util.ErrBadInput("property '" + key + "' must be a string (tag id)")
 		}
-		if !s.isValidSelectOption(spaceId, property, id) {
+		if !s.isValidSelectOption(spaceId, property, id, propertyMap) {
 			return nil, util.ErrBadInput("invalid select option for '" + key + "': " + id)
 		}
 		return id, nil
@@ -413,7 +413,7 @@ func (s *Service) sanitizeAndValidatePropertyValue(spaceId string, key string, f
 				return nil, util.ErrBadInput("property '" + key + "' must be an array of strings (tag ids)")
 			}
 			id = s.sanitizedString(id)
-			if !s.isValidSelectOption(spaceId, property, id) {
+			if !s.isValidSelectOption(spaceId, property, id, propertyMap) {
 				return nil, util.ErrBadInput("invalid multi_select option for '" + key + "': " + id)
 			}
 			validIds = append(validIds, id)
@@ -462,14 +462,14 @@ func (s *Service) sanitizeAndValidatePropertyValue(spaceId string, key string, f
 }
 
 // isValidSelectOption checks if the option id is valid for the given property.
-func (s *Service) isValidSelectOption(spaceId string, property *apimodel.Property, tagId string) bool {
+func (s *Service) isValidSelectOption(spaceId string, property *apimodel.Property, tagId string, propertyMap map[string]*apimodel.Property) bool {
 	fields, err := util.GetFieldsByID(s.mw, spaceId, tagId, []string{bundle.RelationKeyResolvedLayout.String(), bundle.RelationKeyRelationKey.String()})
 	if err != nil {
 		return false
 	}
 	layout := model.ObjectTypeLayout(fields[bundle.RelationKeyResolvedLayout.String()].GetNumberValue())
-	rk := domain.RelationKey(fields[bundle.RelationKeyRelationKey.String()].GetStringValue())
-	return util.IsTagLayout(layout) && rk == domain.RelationKey(util.FromPropertyApiKey(property.Key))
+	rk := fields[bundle.RelationKeyRelationKey.String()].GetStringValue()
+	return util.IsTagLayout(layout) && rk == s.ResolvePropertyApiKey(propertyMap, property.Key)
 }
 
 func (s *Service) isValidObjectReference(spaceId string, objectId string) bool {
@@ -507,8 +507,7 @@ func (s *Service) getRecommendedPropertiesFromLists(featured, regular *types.Lis
 			if !ok {
 				continue
 			}
-			rk := util.FromPropertyApiKey(p.Key)
-			if _, excluded := excludedSystemProperties[rk]; excluded {
+			if _, excluded := excludedSystemProperties[p.RelationKey]; excluded {
 				continue
 			}
 			props = append(props, *p)
@@ -799,6 +798,17 @@ func (s *Service) buildPropertyWithValue(id string, key string, name string, for
 	}
 
 	return nil
+}
+
+// ResolvePropertyApiKey returns the internal relationKey for a clientKey by looking it up in the propertyMap
+// TODO: If not found, this detail shouldn't be set by clients, and strict validation errors
+func (s *Service) ResolvePropertyApiKey(propertyMap map[string]*apimodel.Property, clientKey string) string {
+	if p, ok := propertyMap[clientKey]; ok {
+		return string(p.RelationKey)
+	}
+	return ""
+	// TODO: enable later for strict validation
+	// return "", false
 }
 
 func transliterate(str string) string {
