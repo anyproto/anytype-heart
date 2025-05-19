@@ -9,8 +9,6 @@ import (
 	"time"
 
 	"github.com/gogo/protobuf/types"
-	"github.com/iancoleman/strcase"
-	"github.com/mozillazg/go-unidecode"
 
 	apimodel "github.com/anyproto/anytype-heart/core/api/model"
 	"github.com/anyproto/anytype-heart/core/api/pagination"
@@ -202,8 +200,6 @@ func (s *Service) CreateProperty(ctx context.Context, spaceId string, request ap
 
 	if request.Key != "" {
 		details.Fields[bundle.RelationKeyApiId.String()] = pbtypes.String(s.sanitizedString(request.Key))
-	} else {
-		details.Fields[bundle.RelationKeyApiId.String()] = pbtypes.String(transliterate(request.Name))
 	}
 
 	resp := s.mw.ObjectCreateRelation(ctx, &pb.RpcObjectCreateRelationRequest{
@@ -809,10 +805,4 @@ func (s *Service) ResolvePropertyApiKey(propertyMap map[string]*apimodel.Propert
 	return ""
 	// TODO: enable later for strict validation
 	// return "", false
-}
-
-func transliterate(str string) string {
-	trimmed := strings.TrimSpace(str)
-	ascii := unidecode.Unidecode(trimmed)
-	return strcase.ToSnake(ascii)
 }
