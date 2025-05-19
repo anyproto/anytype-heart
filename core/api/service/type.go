@@ -232,31 +232,31 @@ func (s *Service) getTypeMapFromStore(ctx context.Context, spaceId string, prope
 
 	typeMap := make(map[string]*apimodel.Type, len(resp.Records))
 	for _, record := range resp.Records {
-		uk, apiId, t := s.getTypeFromStruct(record, propertyMap)
+		uk, key, t := s.getTypeFromStruct(record, propertyMap)
 		ot := t
 		typeMap[t.Id] = &ot
 		if keyByUniqueKey {
-			typeMap[apiId] = &ot
+			typeMap[key] = &ot
 			typeMap[uk] = &ot
 		}
 	}
 	return typeMap, nil
 }
 
-// getTypeFromStruct maps a type's details into an apimodel.Type and returns its unique key.
+// getTypeFromStruct maps a type's details into an apimodel.Type.
+// `uk` is what we use internally, `key` is the key being referenced in the API.
 func (s *Service) getTypeFromStruct(details *types.Struct, propertyMap map[string]*apimodel.Property) (string, string, apimodel.Type) {
 	uk := details.Fields[bundle.RelationKeyUniqueKey.String()].GetStringValue()
 	key := util.ToTypeApiKey(uk)
 
 	// apiId as key takes precedence over unique key
-	var apiId string
 	if apiIDField, exists := details.Fields[bundle.RelationKeyApiId.String()]; exists {
-		if apiId = apiIDField.GetStringValue(); apiId != "" {
+		if apiId := apiIDField.GetStringValue(); apiId != "" {
 			key = apiId
 		}
 	}
 
-	return uk, apiId, apimodel.Type{
+	return uk, key, apimodel.Type{
 		Object:     "type",
 		Id:         details.Fields[bundle.RelationKeyId.String()].GetStringValue(),
 		Key:        key,

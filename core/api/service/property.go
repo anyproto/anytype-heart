@@ -560,10 +560,10 @@ func (s *Service) getPropertyMapFromStore(ctx context.Context, spaceId string, k
 
 	propertyMap := make(map[string]*apimodel.Property, len(resp.Records))
 	for _, record := range resp.Records {
-		rk, apiId, p := s.getPropertyFromStruct(record)
+		rk, key, p := s.getPropertyFromStruct(record)
 		prop := p
 		propertyMap[rk] = &prop
-		propertyMap[apiId] = &prop // TODO: add under api key as well, double check
+		propertyMap[key] = &prop // TODO: add under api key as well, double check
 		if keyByPropertyId {
 			propertyMap[p.Id] = &prop // add property under id as key to map as well
 		}
@@ -572,20 +572,20 @@ func (s *Service) getPropertyMapFromStore(ctx context.Context, spaceId string, k
 	return propertyMap, nil
 }
 
-// getPropertyFromStruct maps a property's details into an apimodel.Property and returns its relation key.
+// getPropertyFromStruct maps a property's details into an apimodel.Property.
+// `rk` is what we use internally, `key` is the key being referenced in the API.
 func (s *Service) getPropertyFromStruct(details *types.Struct) (string, string, apimodel.Property) {
 	rk := details.Fields[bundle.RelationKeyRelationKey.String()].GetStringValue()
 	key := util.ToPropertyApiKey(rk)
 
 	// apiId as key takes precedence over relation key
-	var apiId string
 	if apiIDField, exists := details.Fields[bundle.RelationKeyApiId.String()]; exists {
-		if apiId = apiIDField.GetStringValue(); apiId != "" {
+		if apiId := apiIDField.GetStringValue(); apiId != "" {
 			key = apiId
 		}
 	}
 
-	return rk, apiId, apimodel.Property{
+	return rk, key, apimodel.Property{
 		Object:      "property",
 		Id:          details.Fields[bundle.RelationKeyId.String()].GetStringValue(),
 		Key:         key,
