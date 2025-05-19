@@ -3,13 +3,16 @@ package backlinks
 import (
 	"context"
 	"errors"
+	"fmt"
 	"sync"
 	"time"
 
 	"github.com/anyproto/any-sync/app"
+	"github.com/anyproto/any-sync/app/logger"
 	"github.com/anyproto/any-sync/app/ocache"
 	"github.com/cheggaaa/mb/v3"
 	"github.com/samber/lo"
+	"go.uber.org/zap"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
@@ -20,7 +23,6 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/spaceindex"
-	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/threads"
 	"github.com/anyproto/anytype-heart/space"
 	"github.com/anyproto/anytype-heart/util/dateutil"
@@ -31,9 +33,10 @@ const (
 	CName = "backlinks-update-watcher"
 
 	defaultAggregationInterval = time.Second * 5
+	maxRetries                 = 10
 )
 
-var log = logging.Logger(CName)
+var log = logger.NewNamed(CName)
 
 type backlinksUpdater interface {
 	SubscribeLinksUpdate(callback func(info spaceindex.LinksUpdateInfo))
@@ -42,6 +45,7 @@ type backlinksUpdater interface {
 type backLinksUpdate struct {
 	added   []string
 	removed []string
+	retries uint8
 }
 
 type UpdateWatcher interface {
@@ -88,7 +92,7 @@ func (w *watcher) Close(context.Context) error {
 		w.cancelCtx()
 	}
 	if err := w.infoBatch.Close(); err != nil {
-		log.Errorf("failed to close message batch: %v", err)
+		log.Error("failed to close message batch", zap.Error(err))
 	}
 	return nil
 }
@@ -97,7 +101,7 @@ func (w *watcher) Run(ctx context.Context) error {
 	w.ctx, w.cancelCtx = context.WithCancel(context.Background())
 	w.updater.SubscribeLinksUpdate(func(info spaceindex.LinksUpdateInfo) {
 		if err := w.infoBatch.Add(w.ctx, info); err != nil {
-			log.With("objectId", info.LinksFromId).Errorf("failed to add backlinks update info to message batch: %v", err)
+			log.Error("failed to add backlinks update info to message batch", zap.String("objectId", info.LinksFromId), zap.Error(err))
 		}
 	})
 
@@ -190,11 +194,22 @@ func (w *watcher) backlinksUpdateHandler() {
 }
 
 func (w *watcher) updateAccumulatedBacklinks() {
-	log.Debugf("updating backlinks for %d objects", len(w.accumulatedBacklinks))
+	log.Debug("updating backlinks", zap.Int64("objects number", int64(len(w.accumulatedBacklinks))))
+	updatesOnRetry := make(map[string]*backLinksUpdate)
 	for id, updates := range w.accumulatedBacklinks {
-		w.updateBackLinksInObject(id, updates)
+		err := w.updateBackLinksInObject(id, updates)
+		if err == nil {
+			continue
+		}
+		if updates.retries < maxRetries {
+			updates.retries++
+			updatesOnRetry[id] = updates
+			log.Debug("failed to update backlinks", zap.String("objectId", id), zap.Error(err))
+			continue
+		}
+		log.Error("failed to update backlinks", zap.String("objectId", id), zap.Error(err))
 	}
-	w.accumulatedBacklinks = make(map[string]*backLinksUpdate)
+	w.accumulatedBacklinks = updatesOnRetry
 }
 
 func shouldIndexBacklinks(ids threads.DerivedSmartblockIds, id string) bool {
@@ -209,16 +224,17 @@ func shouldIndexBacklinks(ids threads.DerivedSmartblockIds, id string) bool {
 	}
 }
 
-func (w *watcher) updateBackLinksInObject(id string, backlinksUpdate *backLinksUpdate) {
+func (w *watcher) updateBackLinksInObject(id string, backlinksUpdate *backLinksUpdate) (err error) {
 	spaceId, err := w.resolver.ResolveSpaceID(id)
 	if err != nil {
-		log.With("objectId", id).Errorf("failed to resolve space id for object: %v", err)
-		return
+		if _, parseErr := dateutil.BuildDateObjectFromId(id); parseErr == nil {
+			return nil
+		}
+		return fmt.Errorf("failed to resolve space id: %v", err)
 	}
 	spc, err := w.spaceService.Get(w.ctx, spaceId)
 	if err != nil {
-		log.With("objectId", id, "spaceId", spaceId).Errorf("failed to get space: %v", err)
-		return
+		return fmt.Errorf("failed to get space: %v", err)
 	}
 	spaceDerivedIds := spc.DerivedIDs()
 
@@ -261,7 +277,7 @@ func (w *watcher) updateBackLinksInObject(id string, backlinksUpdate *backLinksU
 	}
 
 	if !errors.Is(err, ocache.ErrExists) {
-		log.With("objectId", id).Errorf("failed to update backlinks for not cached object: %v", err)
+		log.Warn("failed to update backlinks for not cached object", zap.String("objectId", id), zap.Error(err))
 	}
 	if err = spc.Do(id, func(b smartblock.SmartBlock) error {
 		if cr, ok := b.(source.ChangeReceiver); ok {
@@ -272,9 +288,9 @@ func (w *watcher) updateBackLinksInObject(id string, backlinksUpdate *backLinksU
 		// do no do apply, stateAppend send the event and run the index
 		return nil
 	}); err != nil {
-		log.With("objectId", id).Errorf("failed to update backlinks: %v", err)
+		return fmt.Errorf("failed to update backlinks: %v", err)
 	}
-
+	return nil
 }
 
 func hasSelfLinks(info spaceindex.LinksUpdateInfo) bool {
