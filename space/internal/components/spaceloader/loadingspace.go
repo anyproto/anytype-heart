@@ -108,6 +108,7 @@ func (ls *loadingSpace) load(ctx context.Context) (notRetryable bool) {
 		err = sp.WaitMandatoryObjects(ctx)
 		if err != nil {
 			notRetryable = errors.Is(err, objecttree.ErrHasInvalidChanges)
+			ls.setLoadErr(err)
 			log.WarnCtx(ctx, "space load: mandatory objects error", zap.String("spaceId", ls.ID), zap.Error(err), zap.Bool("notRetryable", ls.disableRemoteLoad || notRetryable))
 			return ls.disableRemoteLoad || notRetryable
 		}
