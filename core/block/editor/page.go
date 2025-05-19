@@ -42,13 +42,19 @@ var typeAndRelationRequiredRelations = []domain.RelationKey{
 	bundle.RelationKeyLastUsedDate,
 	bundle.RelationKeyRevision,
 	bundle.RelationKeyIsHidden,
+	bundle.RelationKeyApiId,
 }
 
 var relationRequiredRelations = append(typeAndRelationRequiredRelations,
 	bundle.RelationKeyRelationFormat,
 	bundle.RelationKeyRelationFormatObjectTypes,
 	bundle.RelationKeyRelationKey,
+	bundle.RelationKeyApiId,
 )
+
+var relationOptionRequiredRelations = []domain.RelationKey{
+	bundle.RelationKeyApiId,
+}
 
 type Page struct {
 	smartblock.SmartBlock
@@ -136,6 +142,8 @@ func appendRequiredInternalRelations(ctx *smartblock.InitContext) {
 		ctx.RequiredInternalRelationKeys = append(ctx.RequiredInternalRelationKeys, typeRequiredRelations...)
 	case bundle.TypeKeyRelation:
 		ctx.RequiredInternalRelationKeys = append(ctx.RequiredInternalRelationKeys, relationRequiredRelations...)
+	case bundle.TypeKeyRelationOption:
+		ctx.RequiredInternalRelationKeys = append(ctx.RequiredInternalRelationKeys, relationOptionRequiredRelations...)
 	}
 }
 

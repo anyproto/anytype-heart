@@ -3,6 +3,7 @@ package objectcreator
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
@@ -46,6 +47,10 @@ func (s *service) createObjectType(ctx context.Context, space clientspace.Space,
 
 	object.SetString(bundle.RelationKeyId, id)
 	object.SetInt64(bundle.RelationKeyLayout, int64(model.ObjectType_objectType))
+
+	if strings.TrimSpace(object.GetString(bundle.RelationKeyApiId)) == "" {
+		object.SetString(bundle.RelationKeyApiId, transliterate(object.GetString(bundle.RelationKeyName)))
+	}
 
 	createState := state.NewDocWithUniqueKey("", nil, uniqueKey).(*state.State)
 	createState.SetDetails(object)
