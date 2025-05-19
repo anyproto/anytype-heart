@@ -18,7 +18,6 @@ import (
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/space"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 	"github.com/anyproto/anytype-heart/util/slice"
 )
 
@@ -111,7 +110,7 @@ func (s *service) ModifyDetailsList(req *pb.RpcObjectListModifyDetailValuesReque
 	for _, objectId := range req.ObjectIds {
 		err := s.ModifyDetails(nil, objectId, func(current *domain.Details) (*domain.Details, error) {
 			for _, op := range req.Operations {
-				if !pbtypes.IsNullValue(op.Set) {
+				if op.Set != nil {
 					// Set operation has higher priority than Add and Remove, because it modifies full value
 					current.Set(domain.RelationKey(op.RelationKey), domain.ValueFromProto(op.Set))
 					continue
