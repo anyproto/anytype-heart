@@ -120,9 +120,6 @@ packages:
   github.com/anyproto/anytype-heart/space/internal/components/participantwatcher:
     interfaces:
       ParticipantWatcher:
-  github.com/anyproto/anytype-heart/space/internal/components/invitemigrator:
-    interfaces:
-      InviteMigrator:
   github.com/anyproto/anytype-heart/space/internal/components/aclnotifications:
     interfaces:
       AclNotification:
@@ -253,3 +250,6 @@ packages:
   github.com/anyproto/anytype-heart/core/block/editor/chatobject:
     interfaces:
       StoreObject:
+  github.com/anyproto/anytype-heart/core/block/chats/chatsubscription:
+    interfaces:
+      Service:

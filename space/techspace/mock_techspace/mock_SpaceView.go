@@ -22,61 +22,6 @@ func (_m *MockSpaceView) EXPECT() *MockSpaceView_Expecter {
 	return &MockSpaceView_Expecter{mock: &_m.Mock}
 }
 
-// GetExistingInviteInfo provides a mock function with given fields:
-func (_m *MockSpaceView) GetExistingInviteInfo() (string, string) {
-	ret := _m.Called()
-
-	if len(ret) == 0 {
-		panic("no return value specified for GetExistingInviteInfo")
-	}
-
-	var r0 string
-	var r1 string
-	if rf, ok := ret.Get(0).(func() (string, string)); ok {
-		return rf()
-	}
-	if rf, ok := ret.Get(0).(func() string); ok {
-		r0 = rf()
-	} else {
-		r0 = ret.Get(0).(string)
-	}
-
-	if rf, ok := ret.Get(1).(func() string); ok {
-		r1 = rf()
-	} else {
-		r1 = ret.Get(1).(string)
-	}
-
-	return r0, r1
-}
-
-// MockSpaceView_GetExistingInviteInfo_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetExistingInviteInfo'
-type MockSpaceView_GetExistingInviteInfo_Call struct {
-	*mock.Call
-}
-
-// GetExistingInviteInfo is a helper method to define mock.On call
-func (_e *MockSpaceView_Expecter) GetExistingInviteInfo() *MockSpaceView_GetExistingInviteInfo_Call {
-	return &MockSpaceView_GetExistingInviteInfo_Call{Call: _e.mock.On("GetExistingInviteInfo")}
-}
-
-func (_c *MockSpaceView_GetExistingInviteInfo_Call) Run(run func()) *MockSpaceView_GetExistingInviteInfo_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		run()
-	})
-	return _c
-}
-
-func (_c *MockSpaceView_GetExistingInviteInfo_Call) Return(fileCid string, fileKey string) *MockSpaceView_GetExistingInviteInfo_Call {
-	_c.Call.Return(fileCid, fileKey)
-	return _c
-}
-
-func (_c *MockSpaceView_GetExistingInviteInfo_Call) RunAndReturn(run func() (string, string)) *MockSpaceView_GetExistingInviteInfo_Call {
-	_c.Call.Return(run)
-	return _c
-}
-
 // GetLocalInfo provides a mock function with given fields:
 func (_m *MockSpaceView) GetLocalInfo() spaceinfo.SpaceLocalInfo {
 	ret := _m.Called()
@@ -289,61 +234,6 @@ func (_c *MockSpaceView_Lock_Call) RunAndReturn(run func()) *MockSpaceView_Lock_
 	return _c
 }
 
-// RemoveExistingInviteInfo provides a mock function with given fields:
-func (_m *MockSpaceView) RemoveExistingInviteInfo() (string, error) {
-	ret := _m.Called()
-
-	if len(ret) == 0 {
-		panic("no return value specified for RemoveExistingInviteInfo")
-	}
-
-	var r0 string
-	var r1 error
-	if rf, ok := ret.Get(0).(func() (string, error)); ok {
-		return rf()
-	}
-	if rf, ok := ret.Get(0).(func() string); ok {
-		r0 = rf()
-	} else {
-		r0 = ret.Get(0).(string)
-	}
-
-	if rf, ok := ret.Get(1).(func() error); ok {
-		r1 = rf()
-	} else {
-		r1 = ret.Error(1)
-	}
-
-	return r0, r1
-}
-
-// MockSpaceView_RemoveExistingInviteInfo_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'RemoveExistingInviteInfo'
-type MockSpaceView_RemoveExistingInviteInfo_Call struct {
-	*mock.Call
-}
-
-// RemoveExistingInviteInfo is a helper method to define mock.On call
-func (_e *MockSpaceView_Expecter) RemoveExistingInviteInfo() *MockSpaceView_RemoveExistingInviteInfo_Call {
-	return &MockSpaceView_RemoveExistingInviteInfo_Call{Call: _e.mock.On("RemoveExistingInviteInfo")}
-}
-
-func (_c *MockSpaceView_RemoveExistingInviteInfo_Call) Run(run func()) *MockSpaceView_RemoveExistingInviteInfo_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		run()
-	})
-	return _c
-}
-
-func (_c *MockSpaceView_RemoveExistingInviteInfo_Call) Return(fileCid string, err error) *MockSpaceView_RemoveExistingInviteInfo_Call {
-	_c.Call.Return(fileCid, err)
-	return _c
-}
-
-func (_c *MockSpaceView_RemoveExistingInviteInfo_Call) RunAndReturn(run func() (string, error)) *MockSpaceView_RemoveExistingInviteInfo_Call {
-	_c.Call.Return(run)
-	return _c
-}
-
 // SetAccessType provides a mock function with given fields: acc
 func (_m *MockSpaceView) SetAccessType(acc spaceinfo.AccessType) error {
 	ret := _m.Called(acc)
@@ -432,53 +322,6 @@ func (_c *MockSpaceView_SetAclIsEmpty_Call) Return(err error) *MockSpaceView_Set
 }
 
 func (_c *MockSpaceView_SetAclIsEmpty_Call) RunAndReturn(run func(bool) error) *MockSpaceView_SetAclIsEmpty_Call {
-	_c.Call.Return(run)
-	return _c
-}
-
-// SetInviteFileInfo provides a mock function with given fields: fileCid, fileKey
-func (_m *MockSpaceView) SetInviteFileInfo(fileCid string, fileKey string) error {
-	ret := _m.Called(fileCid, fileKey)
-
-	if len(ret) == 0 {
-		panic("no return value specified for SetInviteFileInfo")
-	}
-
-	var r0 error
-	if rf, ok := ret.Get(0).(func(string, string) error); ok {
-		r0 = rf(fileCid, fileKey)
-	} else {
-		r0 = ret.Error(0)
-	}
-
-	return r0
-}
-
-// MockSpaceView_SetInviteFileInfo_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'SetInviteFileInfo'
-type MockSpaceView_SetInviteFileInfo_Call struct {
-	*mock.Call
-}
-
-// SetInviteFileInfo is a helper method to define mock.On call
-//   - fileCid string
-//   - fileKey string
-func (_e *MockSpaceView_Expecter) SetInviteFileInfo(fileCid interface{}, fileKey interface{}) *MockSpaceView_SetInviteFileInfo_Call {
-	return &MockSpaceView_SetInviteFileInfo_Call{Call: _e.mock.On("SetInviteFileInfo", fileCid, fileKey)}
-}
-
-func (_c *MockSpaceView_SetInviteFileInfo_Call) Run(run func(fileCid string, fileKey string)) *MockSpaceView_SetInviteFileInfo_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(string), args[1].(string))
-	})
-	return _c
-}
-
-func (_c *MockSpaceView_SetInviteFileInfo_Call) Return(err error) *MockSpaceView_SetInviteFileInfo_Call {
-	_c.Call.Return(err)
-	return _c
-}
-
-func (_c *MockSpaceView_SetInviteFileInfo_Call) RunAndReturn(run func(string, string) error) *MockSpaceView_SetInviteFileInfo_Call {
 	_c.Call.Return(run)
 	return _c
 }

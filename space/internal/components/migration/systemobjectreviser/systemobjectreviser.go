@@ -42,6 +42,7 @@ var (
 	}
 
 	customObjectFilterKeys = []domain.RelationKey{
+		bundle.RelationKeyRevision,
 		bundle.RelationKeyIconOption,
 		bundle.RelationKeyIconName,
 		bundle.RelationKeyPluralName,
