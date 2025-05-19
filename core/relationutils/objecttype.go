@@ -56,6 +56,5 @@ func (ot *ObjectType) BundledTypeDetails() *domain.Details {
 	det.SetInt64(bundle.RelationKeyIconOption, ot.IconColor)
 	det.SetString(bundle.RelationKeyIconName, ot.IconName)
 	det.SetString(bundle.RelationKeyPluralName, ot.PluralName)
-	det.SetInt64(bundle.RelationKeyHeaderRelationsLayout, ot.HeaderRelationsLayout)
 	return det
 }

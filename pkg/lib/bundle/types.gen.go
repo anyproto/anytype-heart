@@ -9,7 +9,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-const TypeChecksum = "ae558de440451cdcc08064675c1a69f63c5568de8f6331d04efa55a4f4919014"
+const TypeChecksum = "880c466315e22d0b573f6542b4ca1dcc4e2cb3395de3bad901f87460ff914191"
 const (
 	TypePrefix = "_ot"
 )
@@ -50,7 +50,6 @@ var (
 		TypeKeyAudio: {
 
 			Description:            "",
-			HeaderRelationsLayout:  1,
 			IconColor:              5,
 			IconName:               "musical-notes",
 			Layout:                 model.ObjectType_file,
@@ -59,7 +58,7 @@ var (
 			Readonly:               true,
 			RelationLinks:          []*model.RelationLink{MustGetRelationLink(RelationKeyAddedDate), MustGetRelationLink(RelationKeyOrigin), MustGetRelationLink(RelationKeyFileExt), MustGetRelationLink(RelationKeySizeInBytes), MustGetRelationLink(RelationKeyFileMimeType), MustGetRelationLink(RelationKeyArtist), MustGetRelationLink(RelationKeyAudioAlbum), MustGetRelationLink(RelationKeyAudioGenre), MustGetRelationLink(RelationKeyReleasedYear), MustGetRelationLink(RelationKeyAudioAlbumTrackNumber), MustGetRelationLink(RelationKeyAudioLyrics)},
 			RestrictObjectCreation: true,
-			Revision:               6,
+			Revision:               5,
 			Types:                  []model.SmartBlockType{model.SmartBlockType_File},
 			Url:                    TypePrefix + "audio",
 		},
@@ -192,7 +191,6 @@ var (
 		TypeKeyFile: {
 
 			Description:            "",
-			HeaderRelationsLayout:  1,
 			IconColor:              7,
 			IconName:               "attach",
 			Layout:                 model.ObjectType_file,
@@ -201,7 +199,7 @@ var (
 			Readonly:               true,
 			RelationLinks:          []*model.RelationLink{MustGetRelationLink(RelationKeyAddedDate), MustGetRelationLink(RelationKeyOrigin), MustGetRelationLink(RelationKeyFileExt), MustGetRelationLink(RelationKeySizeInBytes), MustGetRelationLink(RelationKeyFileMimeType)},
 			RestrictObjectCreation: true,
-			Revision:               6,
+			Revision:               5,
 			Types:                  []model.SmartBlockType{model.SmartBlockType_File},
 			Url:                    TypePrefix + "file",
 		},
@@ -222,7 +220,6 @@ var (
 		TypeKeyImage: {
 
 			Description:            "",
-			HeaderRelationsLayout:  1,
 			IconColor:              10,
 			IconName:               "image",
 			Layout:                 model.ObjectType_image,
@@ -231,7 +228,7 @@ var (
 			Readonly:               true,
 			RelationLinks:          []*model.RelationLink{MustGetRelationLink(RelationKeyAddedDate), MustGetRelationLink(RelationKeyOrigin), MustGetRelationLink(RelationKeyFileExt), MustGetRelationLink(RelationKeySizeInBytes), MustGetRelationLink(RelationKeyHeightInPixels), MustGetRelationLink(RelationKeyWidthInPixels), MustGetRelationLink(RelationKeyFileMimeType), MustGetRelationLink(RelationKeyCamera), MustGetRelationLink(RelationKeyCameraIso), MustGetRelationLink(RelationKeyAperture), MustGetRelationLink(RelationKeyExposure), MustGetRelationLink(RelationKeyFocalRatio)},
 			RestrictObjectCreation: true,
-			Revision:               6,
+			Revision:               5,
 			Types:                  []model.SmartBlockType{model.SmartBlockType_File},
 			Url:                    TypePrefix + "image",
 		},
@@ -453,7 +450,6 @@ var (
 		TypeKeyVideo: {
 
 			Description:            "",
-			HeaderRelationsLayout:  1,
 			IconColor:              6,
 			IconName:               "videocam",
 			Layout:                 model.ObjectType_file,
@@ -462,7 +458,7 @@ var (
 			Readonly:               true,
 			RelationLinks:          []*model.RelationLink{MustGetRelationLink(RelationKeyAddedDate), MustGetRelationLink(RelationKeyOrigin), MustGetRelationLink(RelationKeyFileExt), MustGetRelationLink(RelationKeySizeInBytes), MustGetRelationLink(RelationKeyHeightInPixels), MustGetRelationLink(RelationKeyWidthInPixels), MustGetRelationLink(RelationKeyFileMimeType), MustGetRelationLink(RelationKeyCamera), MustGetRelationLink(RelationKeyCameraIso), MustGetRelationLink(RelationKeyAperture), MustGetRelationLink(RelationKeyExposure)},
 			RestrictObjectCreation: true,
-			Revision:               6,
+			Revision:               5,
 			Types:                  []model.SmartBlockType{model.SmartBlockType_File},
 			Url:                    TypePrefix + "video",
 		},
