@@ -774,6 +774,7 @@ message ObjectType {
     int64 iconColor = 15; // color of object type icon
     string iconName = 16; // name of object type icon
     string pluralName = 17; // name of objectType in plural form (can be localized for bundled types)
+    int64 headerRelationsLayout = 18; // header relations layout type. line = 0, column = 1
 
     enum Layout {
         basic = 0;

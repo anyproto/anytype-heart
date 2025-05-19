@@ -65,6 +65,7 @@ type ObjectType struct {
 	IconColor              int      `json:"iconColor"`
 	IconName               string   `json:"iconName"`
 	PluralName             string   `json:"pluralName"`
+	HeaderRelationsLayout  int      `json:"headerRelationsLayout"`
 }
 
 type Layout struct {
@@ -318,6 +319,10 @@ func generateTypes() error {
 
 			if ot.PluralName != "" {
 				dictS[Id("PluralName")] = Lit(ot.PluralName)
+			}
+
+			if ot.HeaderRelationsLayout != 0 {
+				dictS[Id("HeaderRelationsLayout")] = Lit(ot.HeaderRelationsLayout)
 			}
 
 			dict[Id(typeConst(ot.ID))] = Block(dictS)

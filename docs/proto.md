@@ -31715,6 +31715,7 @@ Used to decode block meta only, without the content itself
 | iconColor | [int64](#int64) |  | color of object type icon |
 | iconName | [string](#string) |  | name of object type icon |
 | pluralName | [string](#string) |  | name of objectType in plural form (can be localized for bundled types) |
+| headerRelationsLayout | [int64](#int64) |  | header relations layout type. line = 0, column = 1 |
 
 
 

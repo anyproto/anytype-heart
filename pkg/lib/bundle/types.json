@@ -172,7 +172,8 @@
       "exposure"
     ],
     "restrictObjectCreation": true,
-    "revision": 5
+    "revision": 6,
+    "headerRelationsLayout": 1
   },
   {
     "id": "dashboard",
@@ -392,7 +393,8 @@
       "focalRatio"
     ],
     "restrictObjectCreation": true,
-    "revision": 5
+    "revision": 6,
+    "headerRelationsLayout": 1
   },
   {
     "id": "profile",
@@ -436,7 +438,8 @@
       "audioLyrics"
     ],
     "restrictObjectCreation": true,
-    "revision": 5
+    "revision": 6,
+    "headerRelationsLayout": 1
   },
   {
     "id": "goal",
@@ -476,7 +479,8 @@
       "fileMimeType"
     ],
     "restrictObjectCreation": true,
-    "revision": 5
+    "revision": 6,
+    "headerRelationsLayout": 1
   },
   {
     "id": "project",
