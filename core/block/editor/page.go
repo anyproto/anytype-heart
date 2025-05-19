@@ -49,7 +49,6 @@ var relationRequiredRelations = append(typeAndRelationRequiredRelations,
 	bundle.RelationKeyRelationFormat,
 	bundle.RelationKeyRelationFormatObjectTypes,
 	bundle.RelationKeyRelationKey,
-	bundle.RelationKeyApiId,
 )
 
 var relationOptionRequiredRelations = []domain.RelationKey{
