@@ -200,6 +200,8 @@ func (sb *smartBlock) injectDerivedDetails(s *state.State, spaceID string, sbt s
 	sb.injectLinksDetails(s)
 	sb.injectMentions(s)
 	sb.updateBackLinks(s)
+
+	sb.deriveIncludeTime(s)
 }
 
 func (sb *smartBlock) deriveChatId(s *state.State) error {
@@ -217,6 +219,21 @@ func (sb *smartBlock) deriveChatId(s *state.State) error {
 		s.SetDetailAndBundledRelation(bundle.RelationKeyChatId, domain.String(chatId))
 	}
 	return nil
+}
+
+func (sb *smartBlock) deriveIncludeTime(s *state.State) {
+	if sb.Type() != smartblock.SmartBlockTypeRelation {
+		return
+	}
+	if s.Details().GetInt64(bundle.RelationKeyRelationFormat) != int64(model.RelationFormat_date) {
+		return
+	}
+	if s.LocalDetails().Has(bundle.RelationKeyIncludeTime) {
+		return
+	}
+	if bundle.IsSystemRelation(domain.RelationKey(s.Details().GetString(bundle.RelationKeyRelationKey))) {
+		s.SetDetailAndBundledRelation(bundle.RelationKeyIncludeTime, domain.Bool(true))
+	}
 }
 
 // resolveLayout adds resolvedLayout to local details of object. Priority:
