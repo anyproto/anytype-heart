@@ -1,8 +1,6 @@
 package pushnotification
 
 import (
-	"fmt"
-
 	"github.com/anyproto/any-sync/util/crypto"
 
 	"github.com/anyproto/anytype-heart/util/privkey"
@@ -22,9 +20,6 @@ func deriveSpaceKey(firstMetadataKey crypto.PrivKey) (crypto.PrivKey, error) {
 }
 
 func deriveSymmetricKey(readKey crypto.SymKey) (crypto.SymKey, error) {
-	if readKey == nil {
-		return nil, fmt.Errorf("readKey is nil")
-	}
 	raw, err := readKey.Raw()
 	if err != nil {
 		return nil, err
