@@ -27,7 +27,6 @@ const (
 
 var ErrAppLinkNotFound = fmt.Errorf("app link file not found in the account directory")
 
-// AppLinkInfo is what your main app cares about after decryption.
 type AppLinkInfo struct {
 	AppHash   string `json:"-"` // filled at read time
 	AppName   string `json:"app_name"`
@@ -40,12 +39,10 @@ func (r *wallet) ReadAppLink(appKey string) (*AppLinkInfo, error) {
 	if r.repoPath == "" {
 		return nil, fmt.Errorf("repo path is not set")
 	}
-
 	if r.accountKey == nil {
 		return nil, fmt.Errorf("account is not set")
 	}
 
-	// readAppLinkFile verifies the signature of the payload to make sure it was not tampered and the account id matches
 	return load(filepath.Join(r.repoPath, appLinkKeysDirectory), appKey, r.accountKey)
 }
 
@@ -53,12 +50,11 @@ func (r *wallet) PersistAppLink(payload *AppLinkInfo) (appKey string, err error)
 	return generate(filepath.Join(r.repoPath, appLinkKeysDirectory), r.accountKey, payload)
 }
 
-// ListAppLinks returns a list of all app links for this wallet.
+// ListAppLinks returns a list of all app links for this repo directory
 func (r *wallet) ListAppLinks() ([]*AppLinkInfo, error) {
 	if r.repoPath == "" {
 		return nil, fmt.Errorf("repo path is not set")
 	}
-
 	if r.accountKey == nil {
 		return nil, fmt.Errorf("account is not set")
 	}
@@ -75,8 +71,6 @@ func (r *wallet) RevokeAppLink(appHash string) error {
 	return revoke(filepath.Join(r.repoPath, appLinkKeysDirectory), appHash)
 }
 
-// Generate writes a v1 file and returns the base-64 appKey the
-// third-party app must keep.
 func generate(dir string, accountPriv crypto.PrivKey, info *AppLinkInfo) (appKey string, _ error) {
 	if err := os.MkdirAll(dir, 0o700); err != nil && !os.IsExist(err) {
 		return "", err
@@ -100,8 +94,7 @@ func generate(dir string, accountPriv crypto.PrivKey, info *AppLinkInfo) (appKey
 	return appKey, json.NewEncoder(fp).Encode(&file)
 }
 
-// Load finds <sha256(appKey)>.json, auto-detects the version,
-// verifies & decrypts, and returns the info.
+// load and verify the app link file
 func load(dir, appKey string, accountPriv crypto.PrivKey) (*AppLinkInfo, error) {
 	key, err := base64.StdEncoding.DecodeString(appKey)
 	if err != nil {
@@ -146,9 +139,9 @@ func load(dir, appKey string, accountPriv crypto.PrivKey) (*AppLinkInfo, error) 
 	}
 }
 
-// List reads all app link files in the given directory and returns basic info without decrypting payloads.
+// List reads all app link files in the directory
 // For v0 files, only the AppHash field will be populated.
-// For v1 files, it will attempt to decrypt and populate all fields if the account private key is provided.
+// For v1 files, it will include the whole AppLinkInfo
 func list(dir string, accountPriv crypto.PrivKey) ([]*AppLinkInfo, error) {
 	// Ensure directory exists
 	if _, err := os.Stat(dir); os.IsNotExist(err) {
@@ -220,8 +213,6 @@ func revoke(dir, appHash string) error {
 	return os.Remove(filePath)
 }
 
-// ──────────────────────────── v0 legacy support ────────────────────────────
-
 type fileV0 struct {
 	Payload   []byte `json:"payload"`   // AES-GCM(appKey, AppLinkInfo)
 	Signature []byte `json:"signature"` // Ed25519(accountPriv, payload)
@@ -252,11 +243,7 @@ func verifyAndOpenV0(appKey []byte, accountPriv crypto.PrivKey, f *fileV0) (*App
 	return &info, nil
 }
 
-// ──────────────────────────────── v1 files ─────────────────────────────────
-
 // fileV1 is the JSON-encoded on-disk structure introduced in format-version 1.
-// All three data fields (`Info`, `Auth`, `Signature`) are verified during
-// `Load`, so any bit-flip or tampering is detected before the payload is used.
 type fileV1 struct {
 	// Version is the *file-format* version tag and **must be 1** for this layout.
 	// (Future formats should bump this value and add a new struct.)
@@ -319,7 +306,7 @@ func verifyAndOpenV1(appKey []byte, accountPriv crypto.PrivKey, f *fileV1) (*App
 	if !hmac.Equal(want, f.Auth) {
 		return nil, errors.New("v1 HMAC mismatch")
 	}
-	// 3. decrypt Info via sealed-box
+	// 3. decrypt Info with X25519
 	plain, err := accountPriv.Decrypt(f.Info)
 	if err != nil {
 		return nil, err
@@ -330,8 +317,6 @@ func verifyAndOpenV1(appKey []byte, accountPriv crypto.PrivKey, f *fileV1) (*App
 	}
 	return &info, nil
 }
-
-// ───────────────────────── crypto helpers ──────────────────────────────────
 
 // hmacAuth = HMAC-SHA-256(appKey, ver||info)
 func hmacAuth(appKey []byte, ver int, info []byte) []byte {
