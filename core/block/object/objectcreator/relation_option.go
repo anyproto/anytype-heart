@@ -39,8 +39,8 @@ func (s *service) createRelationOption(ctx context.Context, space clientspace.Sp
 	object.SetString(bundle.RelationKeyUniqueKey, uniqueKey.Marshal())
 	object.SetInt64(bundle.RelationKeyLayout, int64(model.ObjectType_relationOption))
 
-	if strings.TrimSpace(object.GetString(bundle.RelationKeyApiId)) == "" {
-		object.SetString(bundle.RelationKeyApiId, transliterate(object.GetString(bundle.RelationKeyName)))
+	if strings.TrimSpace(object.GetString(bundle.RelationKeyApiObjectKey)) == "" {
+		object.SetString(bundle.RelationKeyApiObjectKey, transliterate(object.GetString(bundle.RelationKeyName)))
 	}
 
 	createState := state.NewDocWithUniqueKey("", nil, uniqueKey).(*state.State)

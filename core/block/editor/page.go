@@ -42,7 +42,7 @@ var typeAndRelationRequiredRelations = []domain.RelationKey{
 	bundle.RelationKeyLastUsedDate,
 	bundle.RelationKeyRevision,
 	bundle.RelationKeyIsHidden,
-	bundle.RelationKeyApiId,
+	bundle.RelationKeyApiObjectKey,
 }
 
 var relationRequiredRelations = append(typeAndRelationRequiredRelations,
@@ -52,7 +52,7 @@ var relationRequiredRelations = append(typeAndRelationRequiredRelations,
 )
 
 var relationOptionRequiredRelations = []domain.RelationKey{
-	bundle.RelationKeyApiId,
+	bundle.RelationKeyApiObjectKey,
 }
 
 type Page struct {

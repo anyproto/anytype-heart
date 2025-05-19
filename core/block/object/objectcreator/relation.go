@@ -53,8 +53,8 @@ func (s *service) createRelation(ctx context.Context, space clientspace.Space, d
 	object.SetString(bundle.RelationKeyId, id)
 	object.SetString(bundle.RelationKeyRelationKey, string(key))
 
-	if strings.TrimSpace(object.GetString(bundle.RelationKeyApiId)) == "" {
-		object.SetString(bundle.RelationKeyApiId, transliterate(object.GetString(bundle.RelationKeyName)))
+	if strings.TrimSpace(object.GetString(bundle.RelationKeyApiObjectKey)) == "" {
+		object.SetString(bundle.RelationKeyApiObjectKey, transliterate(object.GetString(bundle.RelationKeyName)))
 	}
 
 	if details.GetInt64(bundle.RelationKeyRelationFormat) == int64(model.RelationFormat_status) {

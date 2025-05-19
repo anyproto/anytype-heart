@@ -1540,9 +1540,9 @@
     "description": "Identifier to use in intergrations with Anytype API",
     "format": "longtext",
     "hidden": true,
-    "key": "apiId",
+    "key": "apiObjectKey",
     "maxCount": 1,
-    "name": "API ID",
+    "name": "API Object Key",
     "readonly": false,
     "source": "details"
   }
