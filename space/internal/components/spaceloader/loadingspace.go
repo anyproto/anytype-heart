@@ -76,8 +76,8 @@ func (ls *loadingSpace) loadRetry(ctx context.Context) {
 		}
 		close(ls.loadCh)
 	}()
-	shouldRetry, err := ls.load(ctx)
-	if !shouldRetry {
+	shouldReturn, err := ls.load(ctx)
+	if shouldReturn {
 		ls.setLoadErr(err)
 		return
 	}
@@ -88,8 +88,8 @@ func (ls *loadingSpace) loadRetry(ctx context.Context) {
 			ls.setLoadErr(ctx.Err())
 			return
 		case <-time.After(timeout):
-			shouldRetry, err := ls.load(ctx)
-			if !shouldRetry {
+			shouldReturn, err := ls.load(ctx)
+			if shouldReturn {
 				ls.setLoadErr(err)
 				return
 			}
