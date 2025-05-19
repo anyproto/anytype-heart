@@ -8,8 +8,8 @@ import (
 )
 
 // Internal 						-> API
-// "rel-dueDate"             		-> "due_date"
-// "rel-67b0d3e3cda913b84c1299b1" 	-> "67b0d3e3cda913b84c1299b1"
+// "dueDate"             		    -> "due_date"
+// "67b0d3e3cda913b84c1299b1" 	    -> "67b0d3e3cda913b84c1299b1"
 // "ot-page"                 		-> "page"
 // "ot-67b0d3e3cda913b84c1299b1"   	-> "67b0d3e3cda913b84c1299b1"
 // "opt-67b0d3e3cda913b84c1299b1"  	-> "67b0d3e3cda913b84c1299b1"
@@ -18,7 +18,7 @@ const (
 	propPrefix                   = ""
 	typePrefix                   = ""
 	tagPrefix                    = ""
-	internalRelationPrefix       = "rel-"
+	internalRelationPrefix       = "" // interally, we're using rk instead of uk when working with relations from api, where no "rel-" prefix exists
 	internalObjectTypePrefix     = "ot-"
 	internalRelationOptionPrefix = "opt-"
 )
@@ -33,7 +33,7 @@ func ToPropertyApiKey(internalKey string) string {
 }
 
 func FromPropertyApiKey(apiKey string) string {
-	return fromApiKey(propPrefix, "", apiKey) // interally, we don't prefix relation keys
+	return fromApiKey(propPrefix, internalRelationPrefix, apiKey)
 }
 
 func ToTypeApiKey(internalKey string) string {

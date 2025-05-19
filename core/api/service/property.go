@@ -591,11 +591,12 @@ func (s *Service) getPropertyFromStruct(details *types.Struct) (string, string, 
 	}
 
 	return rk, apiId, apimodel.Property{
-		Object: "property",
-		Id:     details.Fields[bundle.RelationKeyId.String()].GetStringValue(),
-		Key:    key,
-		Name:   details.Fields[bundle.RelationKeyName.String()].GetStringValue(),
-		Format: RelationFormatToPropertyFormat[model.RelationFormat(details.Fields[bundle.RelationKeyRelationFormat.String()].GetNumberValue())],
+		Object:      "property",
+		Id:          details.Fields[bundle.RelationKeyId.String()].GetStringValue(),
+		Key:         key,
+		Name:        details.Fields[bundle.RelationKeyName.String()].GetStringValue(),
+		Format:      RelationFormatToPropertyFormat[model.RelationFormat(details.Fields[bundle.RelationKeyRelationFormat.String()].GetNumberValue())],
+		RelationKey: rk, // internal-only for simplified lookup
 	}
 }
 

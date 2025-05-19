@@ -122,6 +122,10 @@ components:
       properties:
         format:
           $ref: '#/components/schemas/apimodel.PropertyFormat'
+        key:
+          description: The key of the property
+          example: some_user_defined_property_key
+          type: string
         name:
           description: The name of the property
           example: Last modified date
@@ -1141,6 +1145,10 @@ components:
       type: object
     apimodel.UpdatePropertyRequest:
       properties:
+        key:
+          description: The key to set for the property
+          example: some_user_defined_property_key
+          type: string
         name:
           description: The name to set for the property
           example: Last modified date
