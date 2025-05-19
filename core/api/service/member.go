@@ -80,7 +80,7 @@ func (s *Service) ListMembers(ctx context.Context, spaceId string, offset int, l
 	members = make([]apimodel.Member, 0, len(paginatedMembers))
 
 	for _, record := range paginatedMembers {
-		icon := apimodel.GetIcon(s.gatewayUrl, record.Fields[bundle.RelationKeyIconEmoji.String()].GetStringValue(), record.Fields[bundle.RelationKeyIconImage.String()].GetStringValue(), "", 0)
+		icon := GetIcon(s.gatewayUrl, record.Fields[bundle.RelationKeyIconEmoji.String()].GetStringValue(), record.Fields[bundle.RelationKeyIconImage.String()].GetStringValue(), "", 0)
 
 		member := apimodel.Member{
 			Object:     "member",
@@ -127,7 +127,7 @@ func (s *Service) GetMember(ctx context.Context, spaceId string, memberId string
 		return apimodel.Member{}, ErrMemberNotFound
 	}
 
-	icon := apimodel.GetIcon(s.gatewayUrl, "", resp.Records[0].Fields[bundle.RelationKeyIconImage.String()].GetStringValue(), "", 0)
+	icon := GetIcon(s.gatewayUrl, "", resp.Records[0].Fields[bundle.RelationKeyIconImage.String()].GetStringValue(), "", 0)
 
 	return apimodel.Member{
 		Object:     "member",

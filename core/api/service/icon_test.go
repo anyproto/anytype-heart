@@ -1,4 +1,4 @@
-package apimodel
+package service
 
 import (
 	"testing"

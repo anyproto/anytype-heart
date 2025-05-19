@@ -3,7 +3,6 @@ package apimodel
 import (
 	"encoding/json"
 	"fmt"
-	"unicode"
 
 	"github.com/anyproto/anytype-heart/core/api/util"
 )
@@ -59,7 +58,7 @@ func (c *Color) UnmarshalJSON(data []byte) error {
 	}
 }
 
-var iconOptionToColor = map[float64]Color{
+var IconOptionToColor = map[float64]Color{
 	1:  ColorGrey,
 	2:  ColorYellow,
 	3:  ColorOrange,
@@ -170,42 +169,3 @@ type NamedIcon struct {
 }
 
 func (NamedIcon) isIcon() {}
-
-func IsEmoji(s string) bool {
-	if s == "" {
-		return false
-	}
-	for _, r := range s {
-		if unicode.Is(unicode.Cf, r) || unicode.Is(unicode.Mn, r) || unicode.Is(unicode.So, r) || unicode.Is(unicode.Sk, r) {
-			continue
-		} else {
-			return false
-		}
-	}
-	return true
-}
-
-// GetIcon returns the appropriate Icon implementation.
-func GetIcon(gatewayUrl string, iconEmoji string, iconImage string, iconName string, iconOption float64) Icon {
-	if iconName != "" {
-		return Icon{NamedIcon{
-			Format: IconFormatIcon,
-			Name:   iconName,
-			Color:  ColorPtr(iconOptionToColor[iconOption]),
-		}}
-	}
-	if iconEmoji != "" {
-		return Icon{EmojiIcon{
-			Format: IconFormatEmoji,
-			Emoji:  iconEmoji,
-		}}
-	}
-	if iconImage != "" {
-		return Icon{FileIcon{
-			Format: IconFormatFile,
-			File:   fmt.Sprintf("%s/image/%s", gatewayUrl, iconImage),
-		}}
-	}
-
-	return Icon{NamedIcon{Format: ""}}
-}
