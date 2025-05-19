@@ -232,12 +232,12 @@ func (s *Service) prepareTypeFilters(types []string, typeMap map[string]*apimode
 
 	// Prepare nested filters for each type
 	nestedFilters := make([]*model.BlockContentDataviewFilter, 0, len(types))
-	for _, ot := range types {
-		if ot == "" {
+	for _, key := range types {
+		if key == "" {
 			continue
 		}
 
-		uk := util.FromTypeApiKey(ot)
+		uk := s.ResolveTypeApiKey(typeMap, key)
 		typeDef, ok := typeMap[uk]
 		if !ok {
 			continue

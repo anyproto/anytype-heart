@@ -53,6 +53,7 @@ func (s *Service) ListTypes(ctx context.Context, spaceId string, offset int, lim
 		Keys: []string{
 			bundle.RelationKeyId.String(),
 			bundle.RelationKeyUniqueKey.String(),
+			bundle.RelationKeyApiId.String(),
 			bundle.RelationKeyName.String(),
 			bundle.RelationKeyIconEmoji.String(),
 			bundle.RelationKeyIconName.String(),
@@ -78,7 +79,7 @@ func (s *Service) ListTypes(ctx context.Context, spaceId string, offset int, lim
 	}
 
 	for _, record := range paginatedTypes {
-		_, t := s.getTypeFromStruct(record, propertyMap)
+		_, _, t := s.getTypeFromStruct(record, propertyMap)
 		types = append(types, t)
 	}
 	return types, total, hasMore, nil
@@ -111,7 +112,7 @@ func (s *Service) GetType(ctx context.Context, spaceId string, typeId string) (a
 		return apimodel.Type{}, err
 	}
 
-	_, t := s.getTypeFromStruct(resp.ObjectView.Details[0].Details, propertyMap)
+	_, _, t := s.getTypeFromStruct(resp.ObjectView.Details[0].Details, propertyMap)
 	return t, nil
 }
 
@@ -212,6 +213,7 @@ func (s *Service) getTypeMapFromStore(ctx context.Context, spaceId string, prope
 		Keys: []string{
 			bundle.RelationKeyId.String(),
 			bundle.RelationKeyUniqueKey.String(),
+			bundle.RelationKeyApiId.String(),
 			bundle.RelationKeyName.String(),
 			bundle.RelationKeyPluralName.String(),
 			bundle.RelationKeyIconEmoji.String(),
@@ -230,10 +232,11 @@ func (s *Service) getTypeMapFromStore(ctx context.Context, spaceId string, prope
 
 	typeMap := make(map[string]*apimodel.Type, len(resp.Records))
 	for _, record := range resp.Records {
-		uk, t := s.getTypeFromStruct(record, propertyMap)
+		uk, apiId, t := s.getTypeFromStruct(record, propertyMap)
 		ot := t
 		typeMap[t.Id] = &ot
 		if keyByUniqueKey {
+			typeMap[apiId] = &ot
 			typeMap[uk] = &ot
 		}
 	}
@@ -241,18 +244,29 @@ func (s *Service) getTypeMapFromStore(ctx context.Context, spaceId string, prope
 }
 
 // getTypeFromStruct maps a type's details into an apimodel.Type and returns its unique key.
-func (s *Service) getTypeFromStruct(details *types.Struct, propertyMap map[string]*apimodel.Property) (string, apimodel.Type) {
+func (s *Service) getTypeFromStruct(details *types.Struct, propertyMap map[string]*apimodel.Property) (string, string, apimodel.Type) {
 	uk := details.Fields[bundle.RelationKeyUniqueKey.String()].GetStringValue()
-	return uk, apimodel.Type{
+	key := util.ToTypeApiKey(uk)
+
+	// apiId as key takes precedence over unique key
+	var apiId string
+	if apiIDField, exists := details.Fields[bundle.RelationKeyApiId.String()]; exists {
+		if apiId = apiIDField.GetStringValue(); apiId != "" {
+			key = apiId
+		}
+	}
+
+	return uk, apiId, apimodel.Type{
 		Object:     "type",
 		Id:         details.Fields[bundle.RelationKeyId.String()].GetStringValue(),
-		Key:        util.ToTypeApiKey(details.Fields[bundle.RelationKeyUniqueKey.String()].GetStringValue()),
+		Key:        key,
 		Name:       details.Fields[bundle.RelationKeyName.String()].GetStringValue(),
 		PluralName: details.Fields[bundle.RelationKeyPluralName.String()].GetStringValue(),
 		Icon:       GetIcon(s.gatewayUrl, details.Fields[bundle.RelationKeyIconEmoji.String()].GetStringValue(), "", details.Fields[bundle.RelationKeyIconName.String()].GetStringValue(), details.Fields[bundle.RelationKeyIconOption.String()].GetNumberValue()),
 		Archived:   details.Fields[bundle.RelationKeyIsArchived.String()].GetBoolValue(),
 		Layout:     s.otLayoutToObjectLayout(model.ObjectTypeLayout(details.Fields[bundle.RelationKeyRecommendedLayout.String()].GetNumberValue())),
 		Properties: s.getRecommendedPropertiesFromLists(details.Fields[bundle.RelationKeyRecommendedFeaturedRelations.String()].GetListValue(), details.Fields[bundle.RelationKeyRecommendedRelations.String()].GetListValue(), propertyMap),
+		UniqueKey:  uk,
 	}
 }
 
@@ -271,6 +285,10 @@ func (s *Service) buildTypeDetails(ctx context.Context, spaceId string, request 
 		bundle.RelationKeyPluralName.String():        pbtypes.String(s.sanitizedString(request.PluralName)),
 		bundle.RelationKeyRecommendedLayout.String(): pbtypes.Int64(int64(s.typeLayoutToObjectTypeLayout(request.Layout))),
 		bundle.RelationKeyOrigin.String():            pbtypes.Int64(int64(model.ObjectOrigin_api)),
+	}
+
+	if request.Key != "" {
+		fields[bundle.RelationKeyApiId.String()] = pbtypes.String(s.sanitizedString(request.Key))
 	}
 
 	iconFields, err := s.processIconFields(spaceId, request.Icon)
@@ -332,6 +350,9 @@ func (s *Service) buildUpdatedTypeDetails(ctx context.Context, spaceId string, t
 	}
 	if request.Layout != nil {
 		fields[bundle.RelationKeyRecommendedLayout.String()] = pbtypes.Int64(int64(s.typeLayoutToObjectTypeLayout(*request.Layout)))
+	}
+	if request.Key != nil {
+		fields[bundle.RelationKeyApiId.String()] = pbtypes.String(s.sanitizedString(*request.Key))
 	}
 
 	if request.Icon != nil {
@@ -409,6 +430,17 @@ func (s *Service) buildRelationIds(ctx context.Context, spaceId string, props []
 		relationIds = append(relationIds, newProp.Id)
 	}
 	return relationIds, nil
+}
+
+// ResolveTypeApiKey returns the internal uniqueKey for a clientKey by looking it up in the typeMap
+// TODO: If not found, this detail shouldn't be set by clients, and strict validation errors
+func (s *Service) ResolveTypeApiKey(typeMap map[string]*apimodel.Type, clientKey string) string {
+	if p, ok := typeMap[clientKey]; ok {
+		return p.UniqueKey
+	}
+	return ""
+	// TODO: enable later for strict validation
+	// return "", false
 }
 
 func (s *Service) otLayoutToObjectLayout(objectTypeLayout model.ObjectTypeLayout) apimodel.ObjectLayout {

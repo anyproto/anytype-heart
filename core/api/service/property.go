@@ -800,7 +800,7 @@ func (s *Service) buildPropertyWithValue(id string, key string, name string, for
 // TODO: If not found, this detail shouldn't be set by clients, and strict validation errors
 func (s *Service) ResolvePropertyApiKey(propertyMap map[string]*apimodel.Property, clientKey string) string {
 	if p, ok := propertyMap[clientKey]; ok {
-		return string(p.RelationKey)
+		return p.RelationKey
 	}
 	return ""
 	// TODO: enable later for strict validation

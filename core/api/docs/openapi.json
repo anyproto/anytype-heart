@@ -214,6 +214,11 @@
           "icon": {
             "$ref": "#/components/schemas/apimodel.Icon"
           },
+          "key": {
+            "description": "The key of the type",
+            "example": "some_user_defined_type_key",
+            "type": "string"
+          },
           "layout": {
             "$ref": "#/components/schemas/apimodel.TypeLayout"
           },
@@ -238,7 +243,8 @@
         },
         "required": [
           "layout",
-          "name"
+          "name",
+          "plural_name"
         ],
         "type": "object"
       },
@@ -1593,6 +1599,11 @@
         "properties": {
           "icon": {
             "$ref": "#/components/schemas/apimodel.Icon"
+          },
+          "key": {
+            "description": "The key to set for the type",
+            "example": "some_user_defined_type_key",
+            "type": "string"
           },
           "layout": {
             "$ref": "#/components/schemas/apimodel.TypeLayout"

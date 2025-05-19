@@ -32,25 +32,25 @@ func ToPropertyApiKey(internalKey string) string {
 	return toApiKey(propPrefix, internalRelationPrefix, internalKey)
 }
 
-func FromPropertyApiKey(apiKey string) string {
-	return fromApiKey(propPrefix, internalRelationPrefix, apiKey)
-}
+// func FromPropertyApiKey(apiKey string) string {
+// 	return fromApiKey(propPrefix, internalRelationPrefix, apiKey)
+// }
 
 func ToTypeApiKey(internalKey string) string {
 	return toApiKey(typePrefix, internalObjectTypePrefix, internalKey)
 }
 
-func FromTypeApiKey(apiKey string) string {
-	return fromApiKey(typePrefix, internalObjectTypePrefix, apiKey)
-}
+// func FromTypeApiKey(apiKey string) string {
+// 	return fromApiKey(typePrefix, internalObjectTypePrefix, apiKey)
+// }
 
 func ToTagApiKey(internalKey string) string {
 	return toApiKey(tagPrefix, internalRelationOptionPrefix, internalKey)
 }
 
-func FromTagApiKey(apiKey string) string {
-	return fromApiKey(tagPrefix, internalRelationOptionPrefix, apiKey)
-}
+// func FromTagApiKey(apiKey string) string {
+// 	return fromApiKey(tagPrefix, internalRelationOptionPrefix, apiKey)
+// }
 
 // IsCustomKey returns true if key is exactly 24 letters and contains at least a digit.
 // Non-custom properties never contain a digit.

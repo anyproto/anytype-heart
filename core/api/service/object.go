@@ -134,11 +134,20 @@ func (s *Service) GetObject(ctx context.Context, spaceId string, objectId string
 
 // CreateObject creates a new object in a specific space.
 func (s *Service) CreateObject(ctx context.Context, spaceId string, request apimodel.CreateObjectRequest) (apimodel.ObjectWithBody, error) {
-	request.TypeKey = util.FromTypeApiKey(request.TypeKey)
 	details, err := s.buildObjectDetails(ctx, spaceId, request)
 	if err != nil {
 		return apimodel.ObjectWithBody{}, err
 	}
+
+	propertyMap, err := s.getPropertyMapFromStore(ctx, spaceId, true)
+	if err != nil {
+		return apimodel.ObjectWithBody{}, err
+	}
+	typeMap, err := s.getTypeMapFromStore(ctx, spaceId, propertyMap, true)
+	if err != nil {
+		return apimodel.ObjectWithBody{}, err
+	}
+	request.TypeKey = s.ResolveTypeApiKey(typeMap, request.TypeKey)
 
 	var objectId string
 	if request.TypeKey == "ot-bookmark" {

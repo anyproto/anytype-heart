@@ -462,6 +462,7 @@ func TestListService_GetObjectsInList(t *testing.T) {
 				Keys: []string{
 					bundle.RelationKeyId.String(),
 					bundle.RelationKeyUniqueKey.String(),
+					bundle.RelationKeyApiId.String(),
 					bundle.RelationKeyName.String(),
 					bundle.RelationKeyPluralName.String(),
 					bundle.RelationKeyIconEmoji.String(),
@@ -708,6 +709,7 @@ func TestListService_GetObjectsInList(t *testing.T) {
 				Keys: []string{
 					bundle.RelationKeyId.String(),
 					bundle.RelationKeyUniqueKey.String(),
+					bundle.RelationKeyApiId.String(),
 					bundle.RelationKeyName.String(),
 					bundle.RelationKeyPluralName.String(),
 					bundle.RelationKeyIconEmoji.String(),

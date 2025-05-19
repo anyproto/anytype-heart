@@ -163,6 +163,10 @@ components:
       properties:
         icon:
           $ref: '#/components/schemas/apimodel.Icon'
+        key:
+          description: The key of the type
+          example: some_user_defined_type_key
+          type: string
         layout:
           $ref: '#/components/schemas/apimodel.TypeLayout'
         name:
@@ -183,6 +187,7 @@ components:
       required:
       - layout
       - name
+      - plural_name
       type: object
     apimodel.DatePropertyLinkValue:
       properties:
@@ -1180,6 +1185,10 @@ components:
       properties:
         icon:
           $ref: '#/components/schemas/apimodel.Icon'
+        key:
+          description: The key to set for the type
+          example: some_user_defined_type_key
+          type: string
         layout:
           $ref: '#/components/schemas/apimodel.TypeLayout'
         name:
