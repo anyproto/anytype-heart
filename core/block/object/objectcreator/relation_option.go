@@ -3,6 +3,7 @@ package objectcreator
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/globalsign/mgo/bson"
@@ -37,6 +38,10 @@ func (s *service) createRelationOption(ctx context.Context, space clientspace.Sp
 	object = details.Copy()
 	object.SetString(bundle.RelationKeyUniqueKey, uniqueKey.Marshal())
 	object.SetInt64(bundle.RelationKeyLayout, int64(model.ObjectType_relationOption))
+
+	if strings.TrimSpace(object.GetString(bundle.RelationKeyApiId)) == "" {
+		object.SetString(bundle.RelationKeyApiId, transliterate(object.GetString(bundle.RelationKeyName)))
+	}
 
 	createState := state.NewDocWithUniqueKey("", nil, uniqueKey).(*state.State)
 	createState.SetDetails(object)

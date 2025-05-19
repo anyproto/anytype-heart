@@ -3,6 +3,7 @@ package objectcreator
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/globalsign/mgo/bson"
@@ -32,6 +33,7 @@ func (s *service) createRelation(ctx context.Context, space clientspace.Space, d
 	if details.GetString(bundle.RelationKeyName) == "" {
 		return "", nil, fmt.Errorf("missing relation name")
 	}
+
 	if !details.Has(bundle.RelationKeyCreatedDate) {
 		details.SetInt64(bundle.RelationKeyCreatedDate, time.Now().Unix())
 	}
@@ -50,6 +52,11 @@ func (s *service) createRelation(ctx context.Context, space clientspace.Space, d
 	object.SetString(bundle.RelationKeyUniqueKey, uniqueKey.Marshal())
 	object.SetString(bundle.RelationKeyId, id)
 	object.SetString(bundle.RelationKeyRelationKey, string(key))
+
+	if strings.TrimSpace(object.GetString(bundle.RelationKeyApiId)) == "" {
+		object.SetString(bundle.RelationKeyApiId, transliterate(object.GetString(bundle.RelationKeyName)))
+	}
+
 	if details.GetInt64(bundle.RelationKeyRelationFormat) == int64(model.RelationFormat_status) {
 		object.SetInt64(bundle.RelationKeyRelationMaxCount, 1)
 	}
