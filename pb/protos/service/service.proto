@@ -55,6 +55,7 @@ service ClientCommands {
     // ***
     rpc SpaceDelete (anytype.Rpc.Space.Delete.Request) returns (anytype.Rpc.Space.Delete.Response);
     rpc SpaceInviteGenerate (anytype.Rpc.Space.InviteGenerate.Request) returns (anytype.Rpc.Space.InviteGenerate.Response);
+    rpc SpaceInviteChange (anytype.Rpc.Space.InviteChange.Request) returns (anytype.Rpc.Space.InviteChange.Response);
     rpc SpaceInviteGetCurrent (anytype.Rpc.Space.InviteGetCurrent.Request) returns (anytype.Rpc.Space.InviteGetCurrent.Response);
     rpc SpaceInviteGetGuest (anytype.Rpc.Space.InviteGetGuest.Request) returns (anytype.Rpc.Space.InviteGetGuest.Response);
     rpc SpaceInviteRevoke(anytype.Rpc.Space.InviteRevoke.Request) returns (anytype.Rpc.Space.InviteRevoke.Response);

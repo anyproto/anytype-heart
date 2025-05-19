@@ -32,6 +32,7 @@ type SpaceFactory interface {
 	NewShareableSpace(ctx context.Context, id string, info spaceinfo.SpacePersistentInfo) (spacecontroller.SpaceController, error)
 	CreateStreamableSpace(ctx context.Context, privKey crypto.PrivKey, id string, metadata []byte) (spacecontroller.SpaceController, error)
 	NewStreamableSpace(ctx context.Context, id string, info spaceinfo.SpacePersistentInfo, metadata []byte) (spacecontroller.SpaceController, error)
+	CreateActiveSpace(ctx context.Context, id, aclHeadId string) (sp spacecontroller.SpaceController, err error)
 	CreateMarketplaceSpace(ctx context.Context) (sp spacecontroller.SpaceController, err error)
 	CreateAndSetTechSpace(ctx context.Context) (*clientspace.TechSpace, error)
 	LoadAndSetTechSpace(ctx context.Context) (*clientspace.TechSpace, error)
@@ -195,6 +196,26 @@ func (s *spaceFactory) CreateInvitingSpace(ctx context.Context, id, aclHeadId st
 	}
 	info := spaceinfo.NewSpacePersistentInfo(id)
 	info.SetAclHeadId(aclHeadId).SetAccountStatus(spaceinfo.AccountStatusJoining)
+	if !exists {
+		if err := s.techSpace.SpaceViewCreate(ctx, id, true, info); err != nil {
+			return nil, err
+		}
+	}
+	ctrl, err := shareablespace.NewSpaceController(id, info, s.app)
+	if err != nil {
+		return nil, err
+	}
+	err = ctrl.Start(ctx)
+	return ctrl, err
+}
+
+func (s *spaceFactory) CreateActiveSpace(ctx context.Context, id, aclHeadId string) (sp spacecontroller.SpaceController, err error) {
+	exists, err := s.techSpace.SpaceViewExists(ctx, id)
+	if err != nil {
+		return
+	}
+	info := spaceinfo.NewSpacePersistentInfo(id)
+	info.SetAclHeadId(aclHeadId).SetAccountStatus(spaceinfo.AccountStatusActive)
 	if !exists {
 		if err := s.techSpace.SpaceViewCreate(ctx, id, true, info); err != nil {
 			return nil, err
