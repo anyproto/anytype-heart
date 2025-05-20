@@ -32,11 +32,14 @@ func (s *Service) CreateSession(req *pb.RpcWalletCreateSessionRequest) (token st
 			return "", "", err
 		}
 		log.Infof("appLink auth %s", appLink.AppName)
-
 		token, err := s.sessions.StartSession(s.sessionSigningKey, model.AccountAuthLocalApiScope(appLink.Scope)) // nolint:gosec
 		if err != nil {
 			return "", "", err
 		}
+		s.lock.Lock()
+		defer s.lock.Unlock()
+		s.sessionsByAppHash[appLink.AppHash] = token
+
 		return token, w.Account().SignKey.GetPublic().Account(), nil
 	}
 
@@ -138,6 +141,16 @@ func (s *Service) LinkLocalRevokeApp(req *pb.RpcAccountLocalLinkRevokeAppRequest
 		return ErrApplicationIsNotRunning
 	}
 
+	s.lock.Lock()
+	defer s.lock.Unlock()
+
+	if token, ok := s.sessionsByAppHash[req.AppHash]; ok {
+		delete(s.sessionsByAppHash, req.AppHash)
+		err := s.sessions.CloseSession(token)
+		if err != nil {
+			log.Errorf("error while closing session: %v", err)
+		}
+	}
 	wallet := s.app.Component(walletComp.CName).(walletComp.Wallet)
 	return wallet.RevokeAppLink(req.AppHash)
 
