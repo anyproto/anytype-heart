@@ -11,6 +11,10 @@ type AccountService interface {
 	GetInfo(ctx context.Context) (*model.AccountInfo, error)
 }
 
+type EventService interface {
+	Broadcast(event *pb.Event)
+}
+
 type ClientCommands interface {
 	// Wallet
 	AccountLocalLinkNewChallenge(context.Context, *pb.RpcAccountLocalLinkNewChallengeRequest) *pb.RpcAccountLocalLinkNewChallengeResponse

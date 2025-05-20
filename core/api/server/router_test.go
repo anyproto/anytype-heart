@@ -16,7 +16,7 @@ func TestRouter_Unauthenticated(t *testing.T) {
 	t.Run("GET /v1/spaces without auth returns 401", func(t *testing.T) {
 		// given
 		fx := newFixture(t)
-		engine := fx.NewRouter(fx.mwMock)
+		engine := fx.NewRouter(fx.mwMock, &fx.eventService)
 		w := httptest.NewRecorder()
 		req := httptest.NewRequest("GET", "/v1/spaces", nil)
 
@@ -32,7 +32,7 @@ func TestRouter_AuthRoute(t *testing.T) {
 	t.Run("POST /v1/auth/token is accessible without auth", func(t *testing.T) {
 		// given
 		fx := newFixture(t)
-		engine := fx.NewRouter(fx.mwMock)
+		engine := fx.NewRouter(fx.mwMock, &fx.eventService)
 		w := httptest.NewRecorder()
 		req := httptest.NewRequest("POST", "/v1/auth/token", nil)
 
@@ -48,13 +48,14 @@ func TestRouter_MetadataHeader(t *testing.T) {
 	t.Run("Response includes Anytype-Version header", func(t *testing.T) {
 		// given
 		fx := newFixture(t)
-		engine := fx.NewRouter(fx.mwMock)
-		fx.KeyToToken = map[string]string{"validKey": "dummyToken"}
+		engine := fx.NewRouter(fx.mwMock, &fx.eventService)
+		fx.KeyToToken = map[string]ApiSessionEntry{"validKey": {Token: "dummyToken", AppName: "dummyApp"}}
 		fx.mwMock.On("ObjectSearch", mock.Anything, mock.Anything).
 			Return(&pb.RpcObjectSearchResponse{
 				Records: []*types.Struct{},
 				Error:   &pb.RpcObjectSearchResponseError{Code: pb.RpcObjectSearchResponseError_NULL},
 			}, nil).Once()
+		fx.eventService.On("Broadcast", mock.Anything).Return(nil).Maybe()
 
 		w := httptest.NewRecorder()
 		req := httptest.NewRequest("GET", "/v1/spaces", nil)

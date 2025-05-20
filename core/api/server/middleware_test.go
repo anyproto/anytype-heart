@@ -34,7 +34,7 @@ func TestEnsureAuthenticated(t *testing.T) {
 	t.Run("missing auth header", func(t *testing.T) {
 		// given
 		fx := newFixture(t)
-		fx.KeyToToken = make(map[string]string)
+		fx.KeyToToken = make(map[string]ApiSessionEntry)
 		middleware := fx.ensureAuthenticated(fx.mwMock)
 		w := httptest.NewRecorder()
 		c, _ := gin.CreateTestContext(w)
@@ -54,7 +54,7 @@ func TestEnsureAuthenticated(t *testing.T) {
 	t.Run("invalid auth header format", func(t *testing.T) {
 		// given
 		fx := newFixture(t)
-		fx.KeyToToken = make(map[string]string)
+		fx.KeyToToken = make(map[string]ApiSessionEntry)
 		middleware := fx.ensureAuthenticated(fx.mwMock)
 		w := httptest.NewRecorder()
 		c, _ := gin.CreateTestContext(w)
@@ -75,7 +75,7 @@ func TestEnsureAuthenticated(t *testing.T) {
 	t.Run("valid token creation", func(t *testing.T) {
 		// given
 		fx := newFixture(t)
-		fx.KeyToToken = make(map[string]string)
+		fx.KeyToToken = make(map[string]ApiSessionEntry)
 		tokenExpected := "valid-token"
 
 		fx.mwMock.
@@ -108,7 +108,7 @@ func TestEnsureAuthenticated(t *testing.T) {
 	t.Run("invalid token", func(t *testing.T) {
 		// given
 		fx := newFixture(t)
-		fx.KeyToToken = make(map[string]string)
+		fx.KeyToToken = make(map[string]ApiSessionEntry)
 		middleware := fx.ensureAuthenticated(fx.mwMock)
 		w := httptest.NewRecorder()
 		c, _ := gin.CreateTestContext(w)

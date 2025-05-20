@@ -10,25 +10,31 @@ import (
 	"github.com/anyproto/anytype-heart/core/api/service"
 )
 
+type ApiSessionEntry struct {
+	Token   string `json:"token"`
+	AppName string `json:"appName"`
+}
+
 // Server wraps the HTTP server and service logic.
 type Server struct {
 	engine  *gin.Engine
 	service *service.Service
 
 	mu         sync.Mutex
-	KeyToToken map[string]string // appKey -> token
+	KeyToToken map[string]ApiSessionEntry // appKey -> token
 }
 
+
 // NewServer constructs a new Server with the default config and sets up the routes.
-func NewServer(mw apicore.ClientCommands, accountService apicore.AccountService) *Server {
+func NewServer(mw apicore.ClientCommands, accountService apicore.AccountService, eventService apicore.EventService) *Server {
 	gatewayUrl, techSpaceId, err := getAccountInfo(accountService)
 	if err != nil {
 		panic(err)
 	}
 
 	s := &Server{service: service.NewService(mw, gatewayUrl, techSpaceId)}
-	s.engine = s.NewRouter(mw)
-	s.KeyToToken = make(map[string]string)
+	s.engine = s.NewRouter(mw, eventService)
+	s.KeyToToken = make(map[string]ApiSessionEntry)
 
 	return s
 }
