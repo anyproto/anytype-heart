@@ -10,7 +10,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/session"
 	walletComp "github.com/anyproto/anytype-heart/core/wallet"
 	"github.com/anyproto/anytype-heart/pb"
-	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space/spacecore/storage/migrator"
 	"github.com/anyproto/anytype-heart/util/grpcprocess"
 )
@@ -302,22 +301,9 @@ func (mw *Middleware) AccountLocalLinkListApps(_ context.Context, req *pb.RpcAcc
 	code := mapErrorCode(err,
 		errToCode(application.ErrApplicationIsNotRunning, pb.RpcAccountLocalLinkListAppsResponseError_ACCOUNT_IS_NOT_RUNNING),
 	)
-	appsList := make([]*model.AccountAuthAppInfo, len(apps))
-	for i, app := range apps {
-		if app.AppName == "" {
-			app.AppName = app.AppHash
-		}
-		appsList[i] = &model.AccountAuthAppInfo{
-			AppHash:   app.AppHash,
-			AppName:   app.AppName,
-			AppKey:    app.AppKey,
-			CreatedAt: app.CreatedAt,
-			ExpireAt:  app.ExpireAt,
-			Scope:     model.AccountAuthLocalApiScope(app.Scope),
-		}
-	}
+
 	return &pb.RpcAccountLocalLinkListAppsResponse{
-		App: appsList,
+		App: apps,
 		Error: &pb.RpcAccountLocalLinkListAppsResponseError{
 			Code:        code,
 			Description: getErrorDescription(err),

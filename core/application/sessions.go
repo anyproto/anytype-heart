@@ -127,13 +127,36 @@ func (s *Service) LinkLocalCreateApp(req *pb.RpcAccountLocalLinkCreateAppRequest
 	return
 }
 
-func (s *Service) LinkLocalListApps() ([]*walletComp.AppLinkInfo, error) {
+func (s *Service) LinkLocalListApps() ([]*model.AccountAuthAppInfo, error) {
 	if s.app == nil {
 		return nil, ErrApplicationIsNotRunning
 	}
 
 	wallet := s.app.Component(walletComp.CName).(walletComp.Wallet)
-	return wallet.ListAppLinks()
+	links, err := wallet.ListAppLinks()
+	if err != nil {
+		return nil, err
+	}
+	appsList := make([]*model.AccountAuthAppInfo, len(links))
+	s.lock.RLock()
+	defer s.lock.RUnlock()
+
+	for i, app := range links {
+		if app.AppName == "" {
+			app.AppName = app.AppHash
+		}
+		_, isActive := s.sessionsByAppHash[app.AppHash]
+		appsList[i] = &model.AccountAuthAppInfo{
+			AppHash:   app.AppHash,
+			AppName:   app.AppName,
+			AppKey:    app.AppKey,
+			CreatedAt: app.CreatedAt,
+			ExpireAt:  app.ExpireAt,
+			Scope:     model.AccountAuthLocalApiScope(app.Scope),
+			IsActive:  isActive,
+		}
+	}
+	return appsList, nil
 }
 
 func (s *Service) LinkLocalRevokeApp(req *pb.RpcAccountLocalLinkRevokeAppRequest) error {
@@ -141,17 +164,22 @@ func (s *Service) LinkLocalRevokeApp(req *pb.RpcAccountLocalLinkRevokeAppRequest
 		return ErrApplicationIsNotRunning
 	}
 
+	wallet := s.app.Component(walletComp.CName).(walletComp.Wallet)
+	err := wallet.RevokeAppLink(req.AppHash)
+	if err != nil {
+		return err
+	}
+
 	s.lock.Lock()
 	defer s.lock.Unlock()
-
 	if token, ok := s.sessionsByAppHash[req.AppHash]; ok {
 		delete(s.sessionsByAppHash, req.AppHash)
-		err := s.sessions.CloseSession(token)
-		if err != nil {
+		closeErr := s.sessions.CloseSession(token)
+		if closeErr != nil {
 			log.Errorf("error while closing session: %v", err)
 		}
 	}
-	wallet := s.app.Component(walletComp.CName).(walletComp.Wallet)
-	return wallet.RevokeAppLink(req.AppHash)
+
+	return err
 
 }
