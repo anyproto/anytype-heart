@@ -23,8 +23,8 @@ var (
 	ErrInvalidToken               = errors.New("invalid token")
 )
 
-// rateLimit is a middleware that applies a token-bucket rate limiter with rate and burst.
-func (s *Server) rateLimit(rate float64, burst int) gin.HandlerFunc {
+// newWriteRateLimitMiddleware creates a shared write-rate limiter middleware.
+func newWriteRateLimitMiddleware(rate float64, burst int, isRateLimitDisabled bool) gin.HandlerFunc {
 	lmt := tollbooth.NewLimiter(rate, nil)
 	lmt.SetBurst(burst)
 	lmt.SetIPLookup(limiter.IPLookup{
@@ -33,8 +33,11 @@ func (s *Server) rateLimit(rate float64, burst int) gin.HandlerFunc {
 	})
 
 	return func(c *gin.Context) {
-		httpError := tollbooth.LimitByRequest(lmt, c.Writer, c.Request)
-		if httpError != nil {
+		if isRateLimitDisabled {
+			c.Next()
+			return
+		}
+		if httpError := tollbooth.LimitByRequest(lmt, c.Writer, c.Request); httpError != nil {
 			apiErr := util.CodeToAPIError(httpError.StatusCode, httpError.Message)
 			c.AbortWithStatusJSON(httpError.StatusCode, apiErr)
 			return
