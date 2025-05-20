@@ -139,9 +139,8 @@ func TestEnsureAuthenticated(t *testing.T) {
 }
 
 func TestRateLimit(t *testing.T) {
-	fx := newFixture(t)
 	router := gin.New()
-	router.GET("/", fx.rateLimit(1, 1), func(c *gin.Context) {
+	router.GET("/", ensureRateLimit(1, 1, false), func(c *gin.Context) {
 		c.String(http.StatusOK, "OK")
 	})
 
@@ -173,7 +172,7 @@ func TestRateLimit(t *testing.T) {
 
 	t.Run("burst of size 2 allows two requests", func(t *testing.T) {
 		burstRouter := gin.New()
-		burstRouter.GET("/", fx.rateLimit(1, 2), func(c *gin.Context) {
+		burstRouter.GET("/", ensureRateLimit(1, 2, false), func(c *gin.Context) {
 			c.String(http.StatusOK, "OK")
 		})
 
@@ -197,5 +196,24 @@ func TestRateLimit(t *testing.T) {
 		req3.RemoteAddr = "1.2.3.4:5678"
 		burstRouter.ServeHTTP(w3, req3)
 		require.Equal(t, http.StatusTooManyRequests, w3.Code)
+	})
+
+	t.Run("disabled rate limit allows all requests", func(t *testing.T) {
+		// given
+		disabledRouter := gin.New()
+		disabledRouter.GET("/", ensureRateLimit(1, 1, true), func(c *gin.Context) {
+			c.String(http.StatusOK, "OK")
+		})
+
+		// when
+		for i := 0; i < 5; i++ {
+			w := httptest.NewRecorder()
+			req := httptest.NewRequest("GET", "/", nil)
+			req.RemoteAddr = "1.2.3.4:5678"
+			disabledRouter.ServeHTTP(w, req)
+
+			// then
+			require.Equal(t, http.StatusOK, w.Code)
+		}
 	})
 }

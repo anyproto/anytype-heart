@@ -249,7 +249,8 @@ func (mw *Middleware) AccountChangeJsonApiAddr(ctx context.Context, req *pb.RpcA
 
 func (mw *Middleware) AccountLocalLinkNewChallenge(ctx context.Context, request *pb.RpcAccountLocalLinkNewChallengeRequest) *pb.RpcAccountLocalLinkNewChallengeResponse {
 	info := getClientInfo(ctx)
-	challengeId, err := mw.applicationService.LinkLocalStartNewChallenge(request.Scope, &info, request.AppName)
+	info.Name = request.AppName
+	challengeId, err := mw.applicationService.LinkLocalStartNewChallenge(request.Scope, &info)
 	code := mapErrorCode(err,
 		errToCode(session.ErrTooManyChallengeRequests, pb.RpcAccountLocalLinkNewChallengeResponseError_TOO_MANY_REQUESTS),
 		errToCode(application.ErrApplicationIsNotRunning, pb.RpcAccountLocalLinkNewChallengeResponseError_ACCOUNT_IS_NOT_RUNNING),

@@ -27,7 +27,7 @@ var (
 	currentChallengesRequests   = atomic.NewInt32(0)
 )
 
-func (s *service) StartNewChallenge(scope model.AccountAuthLocalApiScope, info *pb.EventAccountLinkChallengeClientInfo, appName string) (challengeId string, challengeValue string, err error) {
+func (s *service) StartNewChallenge(scope model.AccountAuthLocalApiScope, info *pb.EventAccountLinkChallengeClientInfo) (challengeId string, challengeValue string, err error) {
 	if currentChallengesRequests.Load() >= maxChallengesRequests {
 		// todo: add limits per process?
 		return "", "", ErrTooManyChallengeRequests
@@ -50,7 +50,6 @@ func (s *service) StartNewChallenge(scope model.AccountAuthLocalApiScope, info *
 		value:      value,
 		clientInfo: info,
 		scope:      scope,
-		appName:    appName,
 	}
 
 	currentChallengesRequests.Inc()
@@ -93,5 +92,4 @@ type challenge struct {
 	value      string
 	clientInfo *pb.EventAccountLinkChallengeClientInfo
 	scope      model.AccountAuthLocalApiScope
-	appName    string
 }

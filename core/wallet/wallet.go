@@ -16,6 +16,7 @@ import (
 
 	"github.com/anyproto/anytype-heart/metrics"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
+	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
 const (
@@ -176,7 +177,7 @@ type Wallet interface {
 	GetAccountEthAddress() EthAddress
 
 	ReadAppLink(appKey string) (*AppLinkInfo, error)
-	PersistAppLink(payload *AppLinkInfo) (appKey string, err error)
+	PersistAppLink(name string, scope model.AccountAuthLocalApiScope) (appInfo *AppLinkInfo, err error)
 	ListAppLinks() ([]*AppLinkInfo, error)
 	RevokeAppLink(appHash string) error
 
