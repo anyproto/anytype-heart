@@ -12,8 +12,6 @@ import (
 	"google.golang.org/grpc/peer"
 )
 
-// ---------------- Public API ---------------- //
-
 // ProcessInfo holds details about the client process.
 type ProcessInfo struct {
 	PID  int32
