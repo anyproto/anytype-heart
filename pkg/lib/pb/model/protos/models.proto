@@ -679,12 +679,12 @@ message Account {
     message Auth {
         message AppInfo {
             string appHash = 1;
-            string appName = 2; // just for info, not secure to rely on
-            string appPath = 3; // for now, it is not verified
-            int64 createdAt = 4;
-            int64 expireAt = 5;
-            LocalApiScope scope = 6;
-            bool isActive = 7;
+            string appName = 2; // either from process or specified manually when creating
+            string appKey = 4;
+            int64 createdAt = 5;
+            int64 expireAt = 6;
+            LocalApiScope scope = 7;
+            bool isActive = 8;
         }
         enum LocalApiScope {
             Limited = 0; // Used in WebClipper; AccountSelect(to be deprecated), ObjectSearch, ObjectShow, ObjectCreate, ObjectCreateFromURL, BlockPreview, BlockPaste, BroadcastPayloadEvent
