@@ -18,6 +18,7 @@ import (
 
 	"github.com/anyproto/anytype-heart/pkg/lib/crypto/symmetric"
 	"github.com/anyproto/anytype-heart/pkg/lib/crypto/symmetric/gcm"
+	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
 // make a reproducible test AppLinkInfo
@@ -38,7 +39,6 @@ func equalInfos(a, b *AppLinkInfo) bool {
 	// we ignore AppHash because it is filled only on read
 	return a.AppName == b.AppName &&
 		a.CreatedAt == b.CreatedAt &&
-		a.ExpireAt == b.ExpireAt &&
 		a.Scope == b.Scope
 }
 
@@ -53,12 +53,11 @@ func TestGenerateLoad_RoundTrip_V1(t *testing.T) {
 	// payload for v1
 	want := testInfo()
 
-	// ───────────────────────── v1 round-trip ─────────────
-	appKeyV1, err := generate(dir, pk, want)
+	info, err := generate(dir, pk, want.AppName, model.AccountAuthLocalApiScope(want.Scope))
 	if err != nil {
 		t.Fatalf("Generate(v1): %v", err)
 	}
-	gotV1, err := load(dir, appKeyV1, pk)
+	gotV1, err := load(dir, info.AppKey, pk)
 	if err != nil {
 		t.Fatalf("Load(v1): %v", err)
 	}
@@ -112,7 +111,7 @@ func TestNoDuplicateKeys_V0_V1(t *testing.T) {
 	want := testInfo()
 
 	// Generate keys for both v0 and v1
-	appKeyV1, err := generate(dir, pk, want)
+	appKeyV1, err := generate(dir, pk, want.AppName, model.AccountAuthLocalApiScope(want.Scope))
 	require.NoError(t, err)
 
 	appKeyV0, err := writeAppLinkFileV0(pk, dir, want)
@@ -143,7 +142,7 @@ func TestList(t *testing.T) {
 		ExpireAt:  time.Now().Unix() + 3600,
 		Scope:     1,
 	}
-	appKey1, err := generate(dir, pk, info1)
+	info, err := generate(dir, pk, info1.AppName, model.AccountAuthLocalApiScope(info1.Scope))
 	require.NoError(t, err)
 
 	// Create v0 entry
@@ -176,7 +175,7 @@ func TestList(t *testing.T) {
 	require.NotEmpty(t, app1Entry.AppHash, "v1 entry should have AppHash")
 
 	// Also verify we can load this entry explicitly with the key
-	loaded, err := load(dir, appKey1, pk)
+	loaded, err := load(dir, info.AppKey, pk)
 	require.NoError(t, err)
 	require.Equal(t, info1.AppName, loaded.AppName)
 
@@ -232,7 +231,7 @@ func TestRevoke(t *testing.T) {
 	}
 
 	// Generate the app link file
-	_, err = generate(dir, pk, info)
+	_, err = generate(dir, pk, info.AppName, model.AccountAuthLocalApiScope(info.Scope))
 	require.NoError(t, err)
 
 	// List entries to get the app hash

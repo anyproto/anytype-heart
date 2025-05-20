@@ -13,6 +13,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/anyproto/any-sync/util/crypto"
 
@@ -83,17 +84,19 @@ func generate(dir string, accountPriv crypto.PrivKey, appName string, scope mode
 	}
 	appKey := base64.StdEncoding.EncodeToString(key.Bytes())
 	info = &AppLinkInfo{
-		AppHash: fmt.Sprintf("%x", sha256.Sum256(key.Bytes())),
-		AppKey:  appKey,
-		AppName: appName,
-		Scope:   int(scope),
+		AppHash:   fmt.Sprintf("%x", sha256.Sum256(key.Bytes())),
+		AppKey:    appKey,
+		AppName:   appName,
+		CreatedAt: time.Now().Unix(),
+		Scope:     int(scope),
 	}
+	fmt.Println("app link info", info)
 	file, err := buildV1(key.Bytes(), accountPriv, info)
 	if err != nil {
 		return nil, err
 	}
-	name := fmt.Sprintf("%x.json", info.AppHash)
-	fp, err := os.OpenFile(filepath.Join(dir, name), os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0o600)
+	name := fmt.Sprintf("%s.json", info.AppHash)
+	fp, err := os.OpenFile(filepath.Join(dir, name), os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0600)
 	if err != nil {
 		return nil, err
 	}
