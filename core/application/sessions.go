@@ -67,12 +67,12 @@ func (s *Service) ValidateSessionToken(token string) (model.AccountAuthLocalApiS
 	return s.sessions.ValidateToken(s.sessionSigningKey, token)
 }
 
-func (s *Service) LinkLocalStartNewChallenge(scope model.AccountAuthLocalApiScope, clientInfo *pb.EventAccountLinkChallengeClientInfo) (id string, err error) {
+func (s *Service) LinkLocalStartNewChallenge(scope model.AccountAuthLocalApiScope, clientInfo *pb.EventAccountLinkChallengeClientInfo, name string) (id string, err error) {
 	if s.app == nil {
 		return "", ErrApplicationIsNotRunning
 	}
 
-	id, value, err := s.sessions.StartNewChallenge(scope, clientInfo)
+	id, value, err := s.sessions.StartNewChallenge(scope, clientInfo, name)
 	if err != nil {
 		return "", err
 	}

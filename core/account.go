@@ -4,7 +4,6 @@ import (
 	"context"
 
 	"github.com/anyproto/any-sync/net"
-	"google.golang.org/grpc/peer"
 
 	"github.com/anyproto/anytype-heart/core/anytype/config"
 	"github.com/anyproto/anytype-heart/core/application"
@@ -13,6 +12,7 @@ import (
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space/spacecore/storage/migrator"
+	"github.com/anyproto/anytype-heart/util/grpcprocess"
 )
 
 func (mw *Middleware) AccountCreate(cctx context.Context, req *pb.RpcAccountCreateRequest) *pb.RpcAccountCreateResponse {
@@ -250,8 +250,7 @@ func (mw *Middleware) AccountChangeJsonApiAddr(ctx context.Context, req *pb.RpcA
 
 func (mw *Middleware) AccountLocalLinkNewChallenge(ctx context.Context, request *pb.RpcAccountLocalLinkNewChallengeRequest) *pb.RpcAccountLocalLinkNewChallengeResponse {
 	info := getClientInfo(ctx)
-
-	challengeId, err := mw.applicationService.LinkLocalStartNewChallenge(request.Scope, &info)
+	challengeId, err := mw.applicationService.LinkLocalStartNewChallenge(request.Scope, &info, request.AppName)
 	code := mapErrorCode(err,
 		errToCode(session.ErrTooManyChallengeRequests, pb.RpcAccountLocalLinkNewChallengeResponseError_TOO_MANY_REQUESTS),
 		errToCode(application.ErrApplicationIsNotRunning, pb.RpcAccountLocalLinkNewChallengeResponseError_ACCOUNT_IS_NOT_RUNNING),
@@ -311,6 +310,7 @@ func (mw *Middleware) AccountLocalLinkListApps(_ context.Context, req *pb.RpcAcc
 		appsList[i] = &model.AccountAuthAppInfo{
 			AppHash:   app.AppHash,
 			AppName:   app.AppName,
+			AppKey:    app.AppKey,
 			CreatedAt: app.CreatedAt,
 			ExpireAt:  app.ExpireAt,
 			Scope:     model.AccountAuthLocalApiScope(app.Scope),
@@ -338,16 +338,14 @@ func (mw *Middleware) AccountLocalLinkRevokeApp(_ context.Context, req *pb.RpcAc
 		},
 	}
 }
+
 func getClientInfo(ctx context.Context) pb.EventAccountLinkChallengeClientInfo {
-	p, ok := peer.FromContext(ctx)
+	info, ok := grpcprocess.FromContext(ctx)
 	if !ok {
 		return pb.EventAccountLinkChallengeClientInfo{}
 	}
-
-	// todo: get process info
 	return pb.EventAccountLinkChallengeClientInfo{
-		ProcessName:       p.Addr.String(),
-		ProcessPath:       "",
-		SignatureVerified: false,
+		ProcessName: info.Name,
+		ProcessPath: info.Path,
 	}
 }

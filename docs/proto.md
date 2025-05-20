@@ -30556,8 +30556,8 @@ Contains basic information about a user account
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | appHash | [string](#string) |  |  |
-| appName | [string](#string) |  | just for info, not secure to rely on |
-| appPath | [string](#string) |  | for now, it is not verified |
+| appName | [string](#string) |  | either from process or specified manually when creating |
+| appKey | [string](#string) |  |  |
 | createdAt | [int64](#int64) |  |  |
 | expireAt | [int64](#int64) |  |  |
 | scope | [Account.Auth.LocalApiScope](#anytype-model-Account-Auth-LocalApiScope) |  |  |
