@@ -14,7 +14,7 @@ import (
 // injectApiObjectKey sets a value for ApiObjectKey relation in priority:
 // - User-provided ApiObjectKey
 // - Key from relationKey/uniqueKey
-// - Transliterated Name realtion
+// - Transliterated Name relation
 func injectApiObjectKey(object *domain.Details, key string) {
 	if strings.TrimSpace(object.GetString(bundle.RelationKeyApiObjectKey)) == "" {
 		if key == "" {
