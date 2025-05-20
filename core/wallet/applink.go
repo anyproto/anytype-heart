@@ -90,7 +90,6 @@ func generate(dir string, accountPriv crypto.PrivKey, appName string, scope mode
 		CreatedAt: time.Now().Unix(),
 		Scope:     int(scope),
 	}
-	fmt.Println("app link info", info)
 	file, err := buildV1(key.Bytes(), accountPriv, info)
 	if err != nil {
 		return nil, err
