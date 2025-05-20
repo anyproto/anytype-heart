@@ -97,10 +97,22 @@
     - [Rpc.Account.GetConfig.Get](#anytype-Rpc-Account-GetConfig-Get)
     - [Rpc.Account.GetConfig.Get.Request](#anytype-Rpc-Account-GetConfig-Get-Request)
     - [Rpc.Account.LocalLink](#anytype-Rpc-Account-LocalLink)
+    - [Rpc.Account.LocalLink.CreateApp](#anytype-Rpc-Account-LocalLink-CreateApp)
+    - [Rpc.Account.LocalLink.CreateApp.Request](#anytype-Rpc-Account-LocalLink-CreateApp-Request)
+    - [Rpc.Account.LocalLink.CreateApp.Response](#anytype-Rpc-Account-LocalLink-CreateApp-Response)
+    - [Rpc.Account.LocalLink.CreateApp.Response.Error](#anytype-Rpc-Account-LocalLink-CreateApp-Response-Error)
+    - [Rpc.Account.LocalLink.ListApps](#anytype-Rpc-Account-LocalLink-ListApps)
+    - [Rpc.Account.LocalLink.ListApps.Request](#anytype-Rpc-Account-LocalLink-ListApps-Request)
+    - [Rpc.Account.LocalLink.ListApps.Response](#anytype-Rpc-Account-LocalLink-ListApps-Response)
+    - [Rpc.Account.LocalLink.ListApps.Response.Error](#anytype-Rpc-Account-LocalLink-ListApps-Response-Error)
     - [Rpc.Account.LocalLink.NewChallenge](#anytype-Rpc-Account-LocalLink-NewChallenge)
     - [Rpc.Account.LocalLink.NewChallenge.Request](#anytype-Rpc-Account-LocalLink-NewChallenge-Request)
     - [Rpc.Account.LocalLink.NewChallenge.Response](#anytype-Rpc-Account-LocalLink-NewChallenge-Response)
     - [Rpc.Account.LocalLink.NewChallenge.Response.Error](#anytype-Rpc-Account-LocalLink-NewChallenge-Response-Error)
+    - [Rpc.Account.LocalLink.RevokeApp](#anytype-Rpc-Account-LocalLink-RevokeApp)
+    - [Rpc.Account.LocalLink.RevokeApp.Request](#anytype-Rpc-Account-LocalLink-RevokeApp-Request)
+    - [Rpc.Account.LocalLink.RevokeApp.Response](#anytype-Rpc-Account-LocalLink-RevokeApp-Response)
+    - [Rpc.Account.LocalLink.RevokeApp.Response.Error](#anytype-Rpc-Account-LocalLink-RevokeApp-Response-Error)
     - [Rpc.Account.LocalLink.SolveChallenge](#anytype-Rpc-Account-LocalLink-SolveChallenge)
     - [Rpc.Account.LocalLink.SolveChallenge.Request](#anytype-Rpc-Account-LocalLink-SolveChallenge-Request)
     - [Rpc.Account.LocalLink.SolveChallenge.Response](#anytype-Rpc-Account-LocalLink-SolveChallenge-Response)
@@ -1372,7 +1384,10 @@
     - [Rpc.Account.Create.Response.Error.Code](#anytype-Rpc-Account-Create-Response-Error-Code)
     - [Rpc.Account.Delete.Response.Error.Code](#anytype-Rpc-Account-Delete-Response-Error-Code)
     - [Rpc.Account.EnableLocalNetworkSync.Response.Error.Code](#anytype-Rpc-Account-EnableLocalNetworkSync-Response-Error-Code)
+    - [Rpc.Account.LocalLink.CreateApp.Response.Error.Code](#anytype-Rpc-Account-LocalLink-CreateApp-Response-Error-Code)
+    - [Rpc.Account.LocalLink.ListApps.Response.Error.Code](#anytype-Rpc-Account-LocalLink-ListApps-Response-Error-Code)
     - [Rpc.Account.LocalLink.NewChallenge.Response.Error.Code](#anytype-Rpc-Account-LocalLink-NewChallenge-Response-Error-Code)
+    - [Rpc.Account.LocalLink.RevokeApp.Response.Error.Code](#anytype-Rpc-Account-LocalLink-RevokeApp-Response-Error-Code)
     - [Rpc.Account.LocalLink.SolveChallenge.Response.Error.Code](#anytype-Rpc-Account-LocalLink-SolveChallenge-Response-Error-Code)
     - [Rpc.Account.Migrate.Response.Error.Code](#anytype-Rpc-Account-Migrate-Response-Error-Code)
     - [Rpc.Account.MigrateCancel.Response.Error.Code](#anytype-Rpc-Account-MigrateCancel-Response-Error-Code)
@@ -1927,6 +1942,7 @@
 - [pkg/lib/pb/model/protos/models.proto](#pkg_lib_pb_model_protos_models-proto)
     - [Account](#anytype-model-Account)
     - [Account.Auth](#anytype-model-Account-Auth)
+    - [Account.Auth.AppInfo](#anytype-model-Account-Auth-AppInfo)
     - [Account.Config](#anytype-model-Account-Config)
     - [Account.Info](#anytype-model-Account-Info)
     - [Account.Status](#anytype-model-Account-Status)
@@ -2121,6 +2137,9 @@
 | WalletConvert | [Rpc.Wallet.Convert.Request](#anytype-Rpc-Wallet-Convert-Request) | [Rpc.Wallet.Convert.Response](#anytype-Rpc-Wallet-Convert-Response) |  |
 | AccountLocalLinkNewChallenge | [Rpc.Account.LocalLink.NewChallenge.Request](#anytype-Rpc-Account-LocalLink-NewChallenge-Request) | [Rpc.Account.LocalLink.NewChallenge.Response](#anytype-Rpc-Account-LocalLink-NewChallenge-Response) |  |
 | AccountLocalLinkSolveChallenge | [Rpc.Account.LocalLink.SolveChallenge.Request](#anytype-Rpc-Account-LocalLink-SolveChallenge-Request) | [Rpc.Account.LocalLink.SolveChallenge.Response](#anytype-Rpc-Account-LocalLink-SolveChallenge-Response) |  |
+| AccountLocalLinkCreateApp | [Rpc.Account.LocalLink.CreateApp.Request](#anytype-Rpc-Account-LocalLink-CreateApp-Request) | [Rpc.Account.LocalLink.CreateApp.Response](#anytype-Rpc-Account-LocalLink-CreateApp-Response) |  |
+| AccountLocalLinkListApps | [Rpc.Account.LocalLink.ListApps.Request](#anytype-Rpc-Account-LocalLink-ListApps-Request) | [Rpc.Account.LocalLink.ListApps.Response](#anytype-Rpc-Account-LocalLink-ListApps-Response) |  |
+| AccountLocalLinkRevokeApp | [Rpc.Account.LocalLink.RevokeApp.Request](#anytype-Rpc-Account-LocalLink-RevokeApp-Request) | [Rpc.Account.LocalLink.RevokeApp.Response](#anytype-Rpc-Account-LocalLink-RevokeApp-Response) |  |
 | WalletCreateSession | [Rpc.Wallet.CreateSession.Request](#anytype-Rpc-Wallet-CreateSession-Request) | [Rpc.Wallet.CreateSession.Response](#anytype-Rpc-Wallet-CreateSession-Response) |  |
 | WalletCloseSession | [Rpc.Wallet.CloseSession.Request](#anytype-Rpc-Wallet-CloseSession-Request) | [Rpc.Wallet.CloseSession.Response](#anytype-Rpc-Wallet-CloseSession-Response) |  |
 | WorkspaceCreate | [Rpc.Workspace.Create.Request](#anytype-Rpc-Workspace-Create-Request) | [Rpc.Workspace.Create.Response](#anytype-Rpc-Workspace-Create-Response) | Workspace *** |
@@ -3749,6 +3768,115 @@ TODO: Remove this request if we do not need it, GO-1926
 
 
 
+<a name="anytype-Rpc-Account-LocalLink-CreateApp"></a>
+
+### Rpc.Account.LocalLink.CreateApp
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Account-LocalLink-CreateApp-Request"></a>
+
+### Rpc.Account.LocalLink.CreateApp.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| app | [model.Account.Auth.AppInfo](#anytype-model-Account-Auth-AppInfo) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Account-LocalLink-CreateApp-Response"></a>
+
+### Rpc.Account.LocalLink.CreateApp.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Account.LocalLink.CreateApp.Response.Error](#anytype-Rpc-Account-LocalLink-CreateApp-Response-Error) |  |  |
+| appKey | [string](#string) |  | persistent key, that can be used to restore session via CreateSession or for JSON API |
+
+
+
+
+
+
+<a name="anytype-Rpc-Account-LocalLink-CreateApp-Response-Error"></a>
+
+### Rpc.Account.LocalLink.CreateApp.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Account.LocalLink.CreateApp.Response.Error.Code](#anytype-Rpc-Account-LocalLink-CreateApp-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Account-LocalLink-ListApps"></a>
+
+### Rpc.Account.LocalLink.ListApps
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Account-LocalLink-ListApps-Request"></a>
+
+### Rpc.Account.LocalLink.ListApps.Request
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Account-LocalLink-ListApps-Response"></a>
+
+### Rpc.Account.LocalLink.ListApps.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Account.LocalLink.ListApps.Response.Error](#anytype-Rpc-Account-LocalLink-ListApps-Response-Error) |  |  |
+| app | [model.Account.Auth.AppInfo](#anytype-model-Account-Auth-AppInfo) | repeated |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Account-LocalLink-ListApps-Response-Error"></a>
+
+### Rpc.Account.LocalLink.ListApps.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Account.LocalLink.ListApps.Response.Error.Code](#anytype-Rpc-Account-LocalLink-ListApps-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
 <a name="anytype-Rpc-Account-LocalLink-NewChallenge"></a>
 
 ### Rpc.Account.LocalLink.NewChallenge
@@ -3800,6 +3928,62 @@ TODO: Remove this request if we do not need it, GO-1926
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | code | [Rpc.Account.LocalLink.NewChallenge.Response.Error.Code](#anytype-Rpc-Account-LocalLink-NewChallenge-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Account-LocalLink-RevokeApp"></a>
+
+### Rpc.Account.LocalLink.RevokeApp
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Account-LocalLink-RevokeApp-Request"></a>
+
+### Rpc.Account.LocalLink.RevokeApp.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| appHash | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Account-LocalLink-RevokeApp-Response"></a>
+
+### Rpc.Account.LocalLink.RevokeApp.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Account.LocalLink.RevokeApp.Response.Error](#anytype-Rpc-Account-LocalLink-RevokeApp-Response-Error) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Account-LocalLink-RevokeApp-Response-Error"></a>
+
+### Rpc.Account.LocalLink.RevokeApp.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Account.LocalLink.RevokeApp.Response.Error.Code](#anytype-Rpc-Account-LocalLink-RevokeApp-Response-Error-Code) |  |  |
 | description | [string](#string) |  |  |
 
 
@@ -22341,6 +22525,34 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 
 
 
+<a name="anytype-Rpc-Account-LocalLink-CreateApp-Response-Error-Code"></a>
+
+### Rpc.Account.LocalLink.CreateApp.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
+| ACCOUNT_IS_NOT_RUNNING | 101 |  |
+
+
+
+<a name="anytype-Rpc-Account-LocalLink-ListApps-Response-Error-Code"></a>
+
+### Rpc.Account.LocalLink.ListApps.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
+| ACCOUNT_IS_NOT_RUNNING | 101 |  |
+
+
+
 <a name="anytype-Rpc-Account-LocalLink-NewChallenge-Response-Error-Code"></a>
 
 ### Rpc.Account.LocalLink.NewChallenge.Response.Error.Code
@@ -22353,6 +22565,21 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | BAD_INPUT | 2 |  |
 | ACCOUNT_IS_NOT_RUNNING | 101 |  |
 | TOO_MANY_REQUESTS | 102 | protection from overuse |
+
+
+
+<a name="anytype-Rpc-Account-LocalLink-RevokeApp-Response-Error-Code"></a>
+
+### Rpc.Account.LocalLink.RevokeApp.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
+| NOT_FOUND | 3 |  |
+| ACCOUNT_IS_NOT_RUNNING | 101 |  |
 
 
 
@@ -30387,6 +30614,27 @@ Contains basic information about a user account
 
 ### Account.Auth
 
+
+
+
+
+
+
+<a name="anytype-model-Account-Auth-AppInfo"></a>
+
+### Account.Auth.AppInfo
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| appHash | [string](#string) |  |  |
+| appName | [string](#string) |  | either from process or specified manually when creating |
+| appKey | [string](#string) |  |  |
+| createdAt | [int64](#int64) |  |  |
+| expireAt | [int64](#int64) |  |  |
+| scope | [Account.Auth.LocalApiScope](#anytype-model-Account-Auth-LocalApiScope) |  |  |
+| isActive | [bool](#bool) |  |  |
 
 
 
