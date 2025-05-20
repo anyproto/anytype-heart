@@ -43,5 +43,5 @@ func GetIcon(gatewayUrl string, iconEmoji string, iconImage string, iconName str
 		}}
 	}
 
-	return apimodel.Icon{apimodel.NamedIcon{Format: ""}}
+	return apimodel.Icon{}
 }
