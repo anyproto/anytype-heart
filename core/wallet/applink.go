@@ -13,11 +13,13 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/anyproto/any-sync/util/crypto"
 
 	"github.com/anyproto/anytype-heart/pkg/lib/crypto/symmetric"
 	"github.com/anyproto/anytype-heart/pkg/lib/crypto/symmetric/gcm"
+	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
 const (
@@ -47,8 +49,8 @@ func (r *wallet) ReadAppLink(appKey string) (*AppLinkInfo, error) {
 	return load(filepath.Join(r.repoPath, appLinkKeysDirectory), appKey, r.accountKey)
 }
 
-func (r *wallet) PersistAppLink(payload *AppLinkInfo) (appKey string, err error) {
-	return generate(filepath.Join(r.repoPath, appLinkKeysDirectory), r.accountKey, payload)
+func (r *wallet) PersistAppLink(name string, scope model.AccountAuthLocalApiScope) (app *AppLinkInfo, err error) {
+	return generate(filepath.Join(r.repoPath, appLinkKeysDirectory), r.accountKey, name, scope)
 }
 
 // ListAppLinks returns a list of all app links for this repo directory
@@ -72,27 +74,33 @@ func (r *wallet) RevokeAppLink(appHash string) error {
 	return revoke(filepath.Join(r.repoPath, appLinkKeysDirectory), appHash)
 }
 
-func generate(dir string, accountPriv crypto.PrivKey, info *AppLinkInfo) (appKey string, _ error) {
+func generate(dir string, accountPriv crypto.PrivKey, appName string, scope model.AccountAuthLocalApiScope) (info *AppLinkInfo, _ error) {
 	if err := os.MkdirAll(dir, 0o700); err != nil && !os.IsExist(err) {
-		return "", err
+		return nil, err
 	}
 	key, err := crypto.NewRandomAES()
 	if err != nil {
-		return "", err
+		return nil, err
 	}
-	appKey = base64.StdEncoding.EncodeToString(key.Bytes())
-	info.AppKey = appKey
+	appKey := base64.StdEncoding.EncodeToString(key.Bytes())
+	info = &AppLinkInfo{
+		AppHash:   fmt.Sprintf("%x", sha256.Sum256(key.Bytes())),
+		AppKey:    appKey,
+		AppName:   appName,
+		CreatedAt: time.Now().Unix(),
+		Scope:     int(scope),
+	}
 	file, err := buildV1(key.Bytes(), accountPriv, info)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
-	name := fmt.Sprintf("%x.json", sha256.Sum256(key.Bytes()))
-	fp, err := os.OpenFile(filepath.Join(dir, name), os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0o600)
+	name := fmt.Sprintf("%s.json", info.AppHash)
+	fp, err := os.OpenFile(filepath.Join(dir, name), os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0600)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 	defer fp.Close()
-	return appKey, json.NewEncoder(fp).Encode(&file)
+	return info, json.NewEncoder(fp).Encode(&file)
 }
 
 // load and verify the app link file
