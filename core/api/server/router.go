@@ -45,7 +45,7 @@ func (s *Server) NewRouter(mw apicore.ClientCommands) *gin.Engine {
 
 	// Shared ratelimiter with option to disable it through env var
 	isRateLimitDisabled := os.Getenv("ANYTYPE_API_DISABLE_RATE_LIMIT") == "1"
-	writeRateLimitMW := newWriteRateLimitMiddleware(maxWriteRequestsPerSecond, maxBurstRequests, isRateLimitDisabled)
+	writeRateLimitMW := ensureRateLimit(maxWriteRequestsPerSecond, maxBurstRequests, isRateLimitDisabled)
 
 	// Swagger route
 	router.GET("/swagger/*any", func(c *gin.Context) {

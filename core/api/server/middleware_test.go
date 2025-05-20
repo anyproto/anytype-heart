@@ -140,7 +140,7 @@ func TestEnsureAuthenticated(t *testing.T) {
 
 func TestRateLimit(t *testing.T) {
 	router := gin.New()
-	router.GET("/", newWriteRateLimitMiddleware(1, 1, false), func(c *gin.Context) {
+	router.GET("/", ensureRateLimit(1, 1, false), func(c *gin.Context) {
 		c.String(http.StatusOK, "OK")
 	})
 
@@ -172,7 +172,7 @@ func TestRateLimit(t *testing.T) {
 
 	t.Run("burst of size 2 allows two requests", func(t *testing.T) {
 		burstRouter := gin.New()
-		burstRouter.GET("/", newWriteRateLimitMiddleware(1, 2, false), func(c *gin.Context) {
+		burstRouter.GET("/", ensureRateLimit(1, 2, false), func(c *gin.Context) {
 			c.String(http.StatusOK, "OK")
 		})
 
@@ -201,7 +201,7 @@ func TestRateLimit(t *testing.T) {
 	t.Run("disabled rate limit allows all requests", func(t *testing.T) {
 		// given
 		disabledRouter := gin.New()
-		disabledRouter.GET("/", newWriteRateLimitMiddleware(1, 1, true), func(c *gin.Context) {
+		disabledRouter.GET("/", ensureRateLimit(1, 1, true), func(c *gin.Context) {
 			c.String(http.StatusOK, "OK")
 		})
 

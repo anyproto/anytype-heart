@@ -23,8 +23,8 @@ var (
 	ErrInvalidToken               = errors.New("invalid token")
 )
 
-// newWriteRateLimitMiddleware creates a shared write-rate limiter middleware.
-func newWriteRateLimitMiddleware(rate float64, burst int, isRateLimitDisabled bool) gin.HandlerFunc {
+// ensureRateLimit creates a shared write-rate limiter middleware.
+func ensureRateLimit(rate float64, burst int, isRateLimitDisabled bool) gin.HandlerFunc {
 	lmt := tollbooth.NewLimiter(rate, nil)
 	lmt.SetBurst(burst)
 	lmt.SetIPLookup(limiter.IPLookup{
