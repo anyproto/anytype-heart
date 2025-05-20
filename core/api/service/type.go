@@ -137,12 +137,12 @@ func (s *Service) CreateType(ctx context.Context, spaceId string, request apimod
 
 // UpdateType updates an existing type in a specific space.
 func (s *Service) UpdateType(ctx context.Context, spaceId string, typeId string, request apimodel.UpdateTypeRequest) (apimodel.Type, error) {
-	_, err := s.GetType(ctx, spaceId, typeId)
+	t, err := s.GetType(ctx, spaceId, typeId)
 	if err != nil {
 		return apimodel.Type{}, err
 	}
 
-	details, err := s.buildUpdatedTypeDetails(ctx, spaceId, typeId, request)
+	details, err := s.buildUpdatedTypeDetails(ctx, spaceId, t, request)
 	if err != nil {
 		return apimodel.Type{}, err
 	}
@@ -340,7 +340,7 @@ func (s *Service) buildTypeDetails(ctx context.Context, spaceId string, request 
 }
 
 // buildUpdatedTypeDetails builds a partial details struct for UpdateTypeRequest.
-func (s *Service) buildUpdatedTypeDetails(ctx context.Context, spaceId string, typeId string, request apimodel.UpdateTypeRequest) (*types.Struct, error) {
+func (s *Service) buildUpdatedTypeDetails(ctx context.Context, spaceId string, t apimodel.Type, request apimodel.UpdateTypeRequest) (*types.Struct, error) {
 	fields := make(map[string]*types.Value)
 	if request.Name != nil {
 		fields[bundle.RelationKeyName.String()] = pbtypes.String(s.sanitizedString(*request.Name))
@@ -352,6 +352,9 @@ func (s *Service) buildUpdatedTypeDetails(ctx context.Context, spaceId string, t
 		fields[bundle.RelationKeyRecommendedLayout.String()] = pbtypes.Int64(int64(s.typeLayoutToObjectTypeLayout(*request.Layout)))
 	}
 	if request.Key != nil {
+		if bundle.HasObjectTypeByKey(domain.TypeKey(util.ToTypeApiKey(t.UniqueKey))) {
+			return nil, util.ErrBadInput("type key of bundled types cannot be changed")
+		}
 		fields[bundle.RelationKeyApiObjectKey.String()] = pbtypes.String(s.sanitizedString(*request.Key))
 	}
 
@@ -374,7 +377,7 @@ func (s *Service) buildUpdatedTypeDetails(ctx context.Context, spaceId string, t
 		return nil, err
 	}
 
-	currentFields, err := util.GetFieldsByID(s.mw, spaceId, typeId, []string{bundle.RelationKeyRecommendedFeaturedRelations.String()})
+	currentFields, err := util.GetFieldsByID(s.mw, spaceId, t.Id, []string{bundle.RelationKeyRecommendedFeaturedRelations.String()})
 	if err != nil {
 		return nil, err
 	}

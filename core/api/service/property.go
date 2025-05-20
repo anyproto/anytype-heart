@@ -234,6 +234,9 @@ func (s *Service) UpdateProperty(ctx context.Context, spaceId string, propertyId
 		})
 	}
 	if request.Key != nil {
+		if bundle.HasRelation(domain.RelationKey(prop.RelationKey)) {
+			return apimodel.Property{}, util.ErrBadInput("property key of bundled properties cannot be changed")
+		}
 		detailsToUpdate = append(detailsToUpdate, &model.Detail{
 			Key:   bundle.RelationKeyApiObjectKey.String(),
 			Value: pbtypes.String(s.sanitizedString(*request.Key)),
