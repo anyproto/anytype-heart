@@ -71,21 +71,21 @@ func (s *Service) ListObjects(ctx context.Context, spaceId string, offset int, l
 	objects = make([]apimodel.Object, 0, len(paginatedObjects))
 
 	// pre-fetch properties, types and tags to fill the objects
-	propertyMap, err := s.GetPropertyMapFromStore(spaceId)
+	propertyMap, err := s.getPropertyMapFromStore(ctx, spaceId, true)
 	if err != nil {
 		return nil, 0, false, err
 	}
-	typeMap, err := s.GetTypeMapFromStore(spaceId, propertyMap)
+	typeMap, err := s.getTypeMapFromStore(ctx, spaceId, propertyMap, false)
 	if err != nil {
 		return nil, 0, false, err
 	}
-	tagMap, err := s.GetTagMapFromStore(spaceId)
+	tagMap, err := s.getTagMapFromStore(ctx, spaceId)
 	if err != nil {
 		return nil, 0, false, err
 	}
 
 	for _, record := range paginatedObjects {
-		objects = append(objects, s.GetObjectFromStruct(record, propertyMap, typeMap, tagMap))
+		objects = append(objects, s.getObjectFromStruct(record, propertyMap, typeMap, tagMap))
 	}
 	return objects, total, hasMore, nil
 }
@@ -111,15 +111,15 @@ func (s *Service) GetObject(ctx context.Context, spaceId string, objectId string
 		}
 	}
 
-	propertyMap, err := s.GetPropertyMapFromStore(spaceId)
+	propertyMap, err := s.getPropertyMapFromStore(ctx, spaceId, true)
 	if err != nil {
 		return apimodel.ObjectWithBody{}, err
 	}
-	typeMap, err := s.GetTypeMapFromStore(spaceId, propertyMap)
+	typeMap, err := s.getTypeMapFromStore(ctx, spaceId, propertyMap, false)
 	if err != nil {
 		return apimodel.ObjectWithBody{}, err
 	}
-	tagMap, err := s.GetTagMapFromStore(spaceId)
+	tagMap, err := s.getTagMapFromStore(ctx, spaceId)
 	if err != nil {
 		return apimodel.ObjectWithBody{}, err
 	}
@@ -129,16 +129,25 @@ func (s *Service) GetObject(ctx context.Context, spaceId string, objectId string
 		return apimodel.ObjectWithBody{}, err
 	}
 
-	return s.GetObjectWithBlocksFromStruct(resp.ObjectView.Details[0].Details, markdown, propertyMap, typeMap, tagMap), nil
+	return s.getObjectWithBlocksFromStruct(resp.ObjectView.Details[0].Details, markdown, propertyMap, typeMap, tagMap), nil
 }
 
 // CreateObject creates a new object in a specific space.
 func (s *Service) CreateObject(ctx context.Context, spaceId string, request apimodel.CreateObjectRequest) (apimodel.ObjectWithBody, error) {
-	request.TypeKey = util.FromTypeApiKey(request.TypeKey)
 	details, err := s.buildObjectDetails(ctx, spaceId, request)
 	if err != nil {
 		return apimodel.ObjectWithBody{}, err
 	}
+
+	propertyMap, err := s.getPropertyMapFromStore(ctx, spaceId, true)
+	if err != nil {
+		return apimodel.ObjectWithBody{}, err
+	}
+	typeMap, err := s.getTypeMapFromStore(ctx, spaceId, propertyMap, true)
+	if err != nil {
+		return apimodel.ObjectWithBody{}, err
+	}
+	request.TypeKey = s.ResolveTypeApiKey(typeMap, request.TypeKey)
 
 	var objectId string
 	if request.TypeKey == "ot-bookmark" {
@@ -273,7 +282,7 @@ func (s *Service) buildObjectDetails(ctx context.Context, spaceId string, reques
 		bundle.RelationKeyOrigin.String(): pbtypes.Int64(int64(model.ObjectOrigin_api)),
 	}
 
-	iconFields, err := s.processIconFields(ctx, spaceId, request.Icon)
+	iconFields, err := s.processIconFields(spaceId, request.Icon, false)
 	if err != nil {
 		return nil, err
 	}
@@ -300,7 +309,7 @@ func (s *Service) buildUpdatedObjectDetails(ctx context.Context, spaceId string,
 	}
 
 	if request.Icon != nil {
-		iconFields, err := s.processIconFields(ctx, spaceId, *request.Icon)
+		iconFields, err := s.processIconFields(spaceId, *request.Icon, false)
 		if err != nil {
 			return nil, err
 		}
@@ -323,13 +332,18 @@ func (s *Service) buildUpdatedObjectDetails(ctx context.Context, spaceId string,
 }
 
 // processIconFields returns the detail fields corresponding to the given icon.
-func (s *Service) processIconFields(ctx context.Context, spaceId string, icon apimodel.Icon) (map[string]*types.Value, error) {
+func (s *Service) processIconFields(spaceId string, icon apimodel.Icon, isType bool) (map[string]*types.Value, error) {
 	iconFields := make(map[string]*types.Value)
 	switch e := icon.WrappedIcon.(type) {
 	case apimodel.NamedIcon:
-		return nil, util.ErrBadInput("icon name and color are not supported for object")
+		if isType {
+			iconFields[bundle.RelationKeyIconName.String()] = pbtypes.String(string(e.Name))
+			iconFields[bundle.RelationKeyIconOption.String()] = pbtypes.Int64(apimodel.ColorToIconOption[e.Color])
+		} else {
+			return nil, util.ErrBadInput("icon name and color are not supported for object")
+		}
 	case apimodel.EmojiIcon:
-		if len(e.Emoji) > 0 && !apimodel.IsEmoji(e.Emoji) {
+		if len(e.Emoji) > 0 && !IsEmoji(e.Emoji) {
 			return nil, util.ErrBadInput("icon emoji is not valid")
 		}
 		iconFields[bundle.RelationKeyIconEmoji.String()] = pbtypes.String(e.Emoji)
@@ -361,7 +375,7 @@ func (s *Service) processIconFields(ctx context.Context, spaceId string, icon ap
 // 				Style:   model.BlockContentTextStyle_name[int32(content.Text.Style)],
 // 				Checked: content.Text.Checked,
 // 				Color:   content.Text.Color,
-// 				Icon:    apimodel.GetIcon(s.gatewayUrl, content.Text.IconEmoji, content.Text.IconImage, "", 0),
+// 				Icon:    GetIcon(s.gatewayUrl, content.Text.IconEmoji, content.Text.IconImage, "", 0),
 // 			}
 // 		case *model.BlockContentOfFile:
 // 			file = &apimodel.File{
@@ -401,13 +415,13 @@ func (s *Service) processIconFields(ctx context.Context, spaceId string, icon ap
 // 	return b
 // }
 
-// GetObjectFromStruct creates an Object without blocks from the details.
-func (s *Service) GetObjectFromStruct(details *types.Struct, propertyMap map[string]apimodel.Property, typeMap map[string]apimodel.Type, tagMap map[string]apimodel.Tag) apimodel.Object {
+// getObjectFromStruct creates an Object without blocks from the details.
+func (s *Service) getObjectFromStruct(details *types.Struct, propertyMap map[string]*apimodel.Property, typeMap map[string]*apimodel.Type, tagMap map[string]apimodel.Tag) apimodel.Object {
 	return apimodel.Object{
 		Object:     "object",
 		Id:         details.Fields[bundle.RelationKeyId.String()].GetStringValue(),
 		Name:       details.Fields[bundle.RelationKeyName.String()].GetStringValue(),
-		Icon:       apimodel.GetIcon(s.gatewayUrl, details.GetFields()[bundle.RelationKeyIconEmoji.String()].GetStringValue(), details.GetFields()[bundle.RelationKeyIconImage.String()].GetStringValue(), details.GetFields()[bundle.RelationKeyIconName.String()].GetStringValue(), details.GetFields()[bundle.RelationKeyIconOption.String()].GetNumberValue()),
+		Icon:       GetIcon(s.gatewayUrl, details.GetFields()[bundle.RelationKeyIconEmoji.String()].GetStringValue(), details.GetFields()[bundle.RelationKeyIconImage.String()].GetStringValue(), details.GetFields()[bundle.RelationKeyIconName.String()].GetStringValue(), details.GetFields()[bundle.RelationKeyIconOption.String()].GetNumberValue()),
 		Archived:   details.Fields[bundle.RelationKeyIsArchived.String()].GetBoolValue(),
 		SpaceId:    details.Fields[bundle.RelationKeySpaceId.String()].GetStringValue(),
 		Snippet:    details.Fields[bundle.RelationKeySnippet.String()].GetStringValue(),
@@ -417,13 +431,13 @@ func (s *Service) GetObjectFromStruct(details *types.Struct, propertyMap map[str
 	}
 }
 
-// GetObjectWithBlocksFromStruct creates an ObjectWithBody from the details.
-func (s *Service) GetObjectWithBlocksFromStruct(details *types.Struct, markdown string, propertyMap map[string]apimodel.Property, typeMap map[string]apimodel.Type, tagMap map[string]apimodel.Tag) apimodel.ObjectWithBody {
+// getObjectWithBlocksFromStruct creates an ObjectWithBody from the details.
+func (s *Service) getObjectWithBlocksFromStruct(details *types.Struct, markdown string, propertyMap map[string]*apimodel.Property, typeMap map[string]*apimodel.Type, tagMap map[string]apimodel.Tag) apimodel.ObjectWithBody {
 	return apimodel.ObjectWithBody{
 		Object:     "object",
 		Id:         details.Fields[bundle.RelationKeyId.String()].GetStringValue(),
 		Name:       details.Fields[bundle.RelationKeyName.String()].GetStringValue(),
-		Icon:       apimodel.GetIcon(s.gatewayUrl, details.Fields[bundle.RelationKeyIconEmoji.String()].GetStringValue(), details.Fields[bundle.RelationKeyIconImage.String()].GetStringValue(), details.Fields[bundle.RelationKeyIconName.String()].GetStringValue(), details.Fields[bundle.RelationKeyIconOption.String()].GetNumberValue()),
+		Icon:       GetIcon(s.gatewayUrl, details.Fields[bundle.RelationKeyIconEmoji.String()].GetStringValue(), details.Fields[bundle.RelationKeyIconImage.String()].GetStringValue(), details.Fields[bundle.RelationKeyIconName.String()].GetStringValue(), details.Fields[bundle.RelationKeyIconOption.String()].GetNumberValue()),
 		Archived:   details.Fields[bundle.RelationKeyIsArchived.String()].GetBoolValue(),
 		SpaceId:    details.Fields[bundle.RelationKeySpaceId.String()].GetStringValue(),
 		Snippet:    details.Fields[bundle.RelationKeySnippet.String()].GetStringValue(),
@@ -437,11 +451,17 @@ func (s *Service) GetObjectWithBlocksFromStruct(details *types.Struct, markdown 
 // getMarkdownExport retrieves the Markdown export of an object.
 func (s *Service) getMarkdownExport(ctx context.Context, spaceId string, objectId string, layout model.ObjectTypeLayout) (string, error) {
 	if util.IsObjectLayout(layout) {
-		md, err := s.exportService.ExportSingleInMemory(ctx, spaceId, objectId, model.Export_Markdown)
-		if err != nil {
+		resp := s.mw.ObjectExport(ctx, &pb.RpcObjectExportRequest{
+			SpaceId:  spaceId,
+			ObjectId: objectId,
+			Format:   model.Export_Markdown,
+		})
+
+		if resp.Error != nil && resp.Error.Code != pb.RpcObjectExportResponseError_NULL {
 			return "", ErrFailedExportMarkdown
 		}
-		return md, nil
+
+		return resp.Result, nil
 	}
 	return "", nil
 }

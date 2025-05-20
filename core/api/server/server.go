@@ -19,14 +19,14 @@ type Server struct {
 	KeyToToken map[string]string // appKey -> token
 }
 
-// NewServer constructs a new Server with default config and sets up the routes.
-func NewServer(mw apicore.ClientCommands, accountService apicore.AccountService, exportService apicore.ExportService) *Server {
+// NewServer constructs a new Server with the default config and sets up the routes.
+func NewServer(mw apicore.ClientCommands, accountService apicore.AccountService) *Server {
 	gatewayUrl, techSpaceId, err := getAccountInfo(accountService)
 	if err != nil {
 		panic(err)
 	}
 
-	s := &Server{service: service.NewService(mw, exportService, gatewayUrl, techSpaceId)}
+	s := &Server{service: service.NewService(mw, gatewayUrl, techSpaceId)}
 	s.engine = s.NewRouter(mw)
 	s.KeyToToken = make(map[string]string)
 

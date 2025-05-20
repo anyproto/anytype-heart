@@ -73,7 +73,7 @@ func (s *Service) ListSpaces(ctx context.Context, offset int, limit int) (spaces
 	spaces = make([]apimodel.Space, 0, len(paginatedRecords))
 
 	for _, record := range paginatedRecords {
-		workspace, err := s.getSpaceInfo(record.Fields[bundle.RelationKeyTargetSpaceId.String()].GetStringValue())
+		workspace, err := s.getSpaceInfo(ctx, record.Fields[bundle.RelationKeyTargetSpaceId.String()].GetStringValue())
 		if err != nil {
 			return nil, 0, false, err
 		}
@@ -117,7 +117,7 @@ func (s *Service) GetSpace(ctx context.Context, spaceId string) (apimodel.Space,
 		return apimodel.Space{}, ErrWorkspaceNotFound
 	}
 
-	return s.getSpaceInfo(spaceId)
+	return s.getSpaceInfo(ctx, spaceId)
 }
 
 // CreateSpace creates a new space with the given name and returns the space info.
@@ -158,7 +158,7 @@ func (s *Service) CreateSpace(ctx context.Context, request apimodel.CreateSpaceR
 		}
 	}
 
-	return s.getSpaceInfo(resp.SpaceId)
+	return s.getSpaceInfo(ctx, resp.SpaceId)
 }
 
 // UpdateSpace updates the space with the given ID using the provided request.
@@ -188,7 +188,7 @@ func (s *Service) UpdateSpace(ctx context.Context, spaceId string, request apimo
 		}
 	}
 
-	space, err := s.getSpaceInfo(spaceId)
+	space, err := s.getSpaceInfo(ctx, spaceId)
 	if err != nil {
 		return apimodel.Space{}, err
 	}
@@ -197,8 +197,8 @@ func (s *Service) UpdateSpace(ctx context.Context, spaceId string, request apimo
 }
 
 // getSpaceInfo returns the workspace info for the space with the given ID.
-func (s *Service) getSpaceInfo(spaceId string) (space apimodel.Space, err error) {
-	workspaceResponse := s.mw.WorkspaceOpen(context.Background(), &pb.RpcWorkspaceOpenRequest{
+func (s *Service) getSpaceInfo(ctx context.Context, spaceId string) (space apimodel.Space, err error) {
+	workspaceResponse := s.mw.WorkspaceOpen(ctx, &pb.RpcWorkspaceOpenRequest{
 		SpaceId: spaceId,
 	})
 
@@ -206,7 +206,7 @@ func (s *Service) getSpaceInfo(spaceId string) (space apimodel.Space, err error)
 		return apimodel.Space{}, ErrFailedOpenWorkspace
 	}
 
-	spaceResp := s.mw.ObjectShow(context.Background(), &pb.RpcObjectShowRequest{
+	spaceResp := s.mw.ObjectShow(ctx, &pb.RpcObjectShowRequest{
 		SpaceId:  spaceId,
 		ObjectId: workspaceResponse.Info.WorkspaceObjectId,
 	})
@@ -216,7 +216,7 @@ func (s *Service) getSpaceInfo(spaceId string) (space apimodel.Space, err error)
 	}
 
 	name := spaceResp.ObjectView.Details[0].Details.Fields[bundle.RelationKeyName.String()].GetStringValue()
-	icon := apimodel.GetIcon(s.gatewayUrl, spaceResp.ObjectView.Details[0].Details.Fields[bundle.RelationKeyIconEmoji.String()].GetStringValue(), spaceResp.ObjectView.Details[0].Details.Fields[bundle.RelationKeyIconImage.String()].GetStringValue(), "", 0)
+	icon := GetIcon(s.gatewayUrl, spaceResp.ObjectView.Details[0].Details.Fields[bundle.RelationKeyIconEmoji.String()].GetStringValue(), spaceResp.ObjectView.Details[0].Details.Fields[bundle.RelationKeyIconImage.String()].GetStringValue(), "", 0)
 	description := spaceResp.ObjectView.Details[0].Details.Fields[bundle.RelationKeyDescription.String()].GetStringValue()
 
 	return apimodel.Space{
@@ -231,8 +231,8 @@ func (s *Service) getSpaceInfo(spaceId string) (space apimodel.Space, err error)
 }
 
 // GetAllSpaceIds effectively retrieves all space IDs from the tech space.
-func (s *Service) GetAllSpaceIds() ([]string, error) {
-	resp := s.mw.ObjectSearch(context.Background(), &pb.RpcObjectSearchRequest{
+func (s *Service) GetAllSpaceIds(ctx context.Context) ([]string, error) {
+	resp := s.mw.ObjectSearch(ctx, &pb.RpcObjectSearchRequest{
 		SpaceId: s.techSpaceId,
 		Filters: []*model.BlockContentDataviewFilter{
 			{

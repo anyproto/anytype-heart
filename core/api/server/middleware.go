@@ -15,7 +15,7 @@ import (
 	"github.com/anyproto/anytype-heart/pb"
 )
 
-const ApiVersion = "2025-04-22"
+const ApiVersion = "2025-05-20"
 
 var (
 	ErrMissingAuthorizationHeader = errors.New("missing authorization header")
@@ -23,17 +23,21 @@ var (
 	ErrInvalidToken               = errors.New("invalid token")
 )
 
-// rateLimit is a middleware that limits the number of requests per second.
-func (s *Server) rateLimit(max float64) gin.HandlerFunc {
-	lmt := tollbooth.NewLimiter(max, nil)
+// ensureRateLimit creates a shared write-rate limiter middleware.
+func ensureRateLimit(rate float64, burst int, isRateLimitDisabled bool) gin.HandlerFunc {
+	lmt := tollbooth.NewLimiter(rate, nil)
+	lmt.SetBurst(burst)
 	lmt.SetIPLookup(limiter.IPLookup{
 		Name:           "RemoteAddr",
 		IndexFromRight: 0,
 	})
 
 	return func(c *gin.Context) {
-		httpError := tollbooth.LimitByRequest(lmt, c.Writer, c.Request)
-		if httpError != nil {
+		if isRateLimitDisabled {
+			c.Next()
+			return
+		}
+		if httpError := tollbooth.LimitByRequest(lmt, c.Writer, c.Request); httpError != nil {
 			apiErr := util.CodeToAPIError(httpError.StatusCode, httpError.Message)
 			c.AbortWithStatusJSON(httpError.StatusCode, apiErr)
 			return
