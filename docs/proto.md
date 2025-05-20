@@ -26959,6 +26959,7 @@ Event – type of message, that could be sent from a middleware to the correspon
 | ----- | ---- | ----- | ----------- |
 | processName | [string](#string) |  |  |
 | processPath | [string](#string) |  |  |
+| name | [string](#string) |  |  |
 | signatureVerified | [bool](#bool) |  |  |
 
 

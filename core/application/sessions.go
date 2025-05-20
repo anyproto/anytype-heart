@@ -3,7 +3,6 @@ package application
 import (
 	"errors"
 	"fmt"
-	"time"
 
 	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/core/session"
@@ -70,12 +69,12 @@ func (s *Service) ValidateSessionToken(token string) (model.AccountAuthLocalApiS
 	return s.sessions.ValidateToken(s.sessionSigningKey, token)
 }
 
-func (s *Service) LinkLocalStartNewChallenge(scope model.AccountAuthLocalApiScope, clientInfo *pb.EventAccountLinkChallengeClientInfo, name string) (id string, err error) {
+func (s *Service) LinkLocalStartNewChallenge(scope model.AccountAuthLocalApiScope, clientInfo *pb.EventAccountLinkChallengeClientInfo) (id string, err error) {
 	if s.app == nil {
 		return "", ErrApplicationIsNotRunning
 	}
 
-	id, value, err := s.sessions.StartNewChallenge(scope, clientInfo, name)
+	id, value, err := s.sessions.StartNewChallenge(scope, clientInfo)
 	if err != nil {
 		return "", err
 	}
@@ -97,13 +96,21 @@ func (s *Service) LinkLocalSolveChallenge(req *pb.RpcAccountLocalLinkSolveChalle
 	if err != nil {
 		return "", "", err
 	}
-	wallet := s.app.Component(walletComp.CName).(walletComp.Wallet)
-	appKey, err = wallet.PersistAppLink(&walletComp.AppLinkInfo{
-		AppName:   clientInfo.ProcessName,
-		CreatedAt: time.Now().Unix(),
-		Scope:     int(scope),
-	})
 
+	wallet := s.app.Component(walletComp.CName).(walletComp.Wallet)
+	name := clientInfo.Name
+	if name == "" {
+		name = clientInfo.ProcessName
+	}
+	appInfo, err := wallet.PersistAppLink(name, scope)
+	if err != nil {
+		return token, appKey, err
+	}
+
+	s.lock.Lock()
+	s.sessionsByAppHash[appInfo.AppHash] = token
+	s.lock.Unlock()
+	appKey = appInfo.AppKey
 	s.eventSender.Broadcast(event.NewEventSingleMessage("", &pb.EventMessageValueOfAccountLinkChallengeHide{
 		AccountLinkChallengeHide: &pb.EventAccountLinkChallengeHide{
 			Challenge: req.Answer,
@@ -118,13 +125,8 @@ func (s *Service) LinkLocalCreateApp(req *pb.RpcAccountLocalLinkCreateAppRequest
 	}
 
 	wallet := s.app.Component(walletComp.CName).(walletComp.Wallet)
-	appKey, err = wallet.PersistAppLink(&walletComp.AppLinkInfo{
-		AppName:   req.App.AppName,
-		CreatedAt: time.Now().Unix(),
-		Scope:     int(req.App.Scope),
-	})
-
-	return
+	appInfo, err := wallet.PersistAppLink(req.App.AppName, req.App.Scope)
+	return appInfo.AppKey, err
 }
 
 func (s *Service) LinkLocalListApps() ([]*model.AccountAuthAppInfo, error) {
