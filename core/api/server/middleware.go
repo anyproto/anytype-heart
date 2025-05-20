@@ -97,11 +97,8 @@ func (s *Server) ensureAnalyticsEvent(code string, eventService apicore.EventSer
 	return func(c *gin.Context) {
 		c.Next()
 
-		if c.Writer.Status() != http.StatusOK {
-			return
-		}
-
-		payload := util.NewAnalyticsEventForApi(c.Request.Context(), code)
+		status := c.Writer.Status()
+		payload := util.NewAnalyticsEventForApi(c.Request.Context(), code, status)
 		eventService.Broadcast(event.NewEventSingleMessage("", &pb.EventMessageValueOfPayloadBroadcast{
 			PayloadBroadcast: &pb.EventPayloadBroadcast{
 				Payload: payload,
