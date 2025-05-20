@@ -25,6 +25,7 @@ type Service struct {
 
 	// memoized private key derived from mnemonic, used for signing session tokens
 	sessionSigningKey []byte
+	sessionsByAppHash map[string]string
 
 	rootPath                string
 	fulltextPrimaryLanguage string
@@ -40,8 +41,9 @@ type Service struct {
 
 func New() *Service {
 	s := &Service{
-		sessions:      session.New(),
-		traceRecorder: &traceRecorder{},
+		sessions:          session.New(),
+		traceRecorder:     &traceRecorder{},
+		sessionsByAppHash: make(map[string]string),
 	}
 	m := newMigrationManager(s)
 	s.migrationManager = m

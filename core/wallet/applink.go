@@ -29,6 +29,7 @@ var ErrAppLinkNotFound = fmt.Errorf("app link file not found in the account dire
 
 type AppLinkInfo struct {
 	AppHash   string `json:"-"` // filled at read time
+	AppKey    string `json:"app_key"`
 	AppName   string `json:"app_name"`
 	CreatedAt int64  `json:"created_at"`
 	ExpireAt  int64  `json:"expire_at"`
@@ -80,7 +81,7 @@ func generate(dir string, accountPriv crypto.PrivKey, info *AppLinkInfo) (appKey
 		return "", err
 	}
 	appKey = base64.StdEncoding.EncodeToString(key.Bytes())
-
+	info.AppKey = appKey
 	file, err := buildV1(key.Bytes(), accountPriv, info)
 	if err != nil {
 		return "", err
@@ -274,6 +275,7 @@ func buildV1(appKey []byte, accountPriv crypto.PrivKey, info *AppLinkInfo) (file
 	if err != nil {
 		return fileV1{}, err
 	}
+
 	// 1. encrypt Info with X25519 sealed-box
 	sealed, err := accountPriv.GetPublic().Encrypt(msg)
 	if err != nil {
