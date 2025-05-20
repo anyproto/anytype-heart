@@ -25,7 +25,6 @@ import (
 	"github.com/anyproto/anytype-heart/space/clientspace/mock_clientspace"
 	"github.com/anyproto/anytype-heart/space/internal/components/aclnotifications/mock_aclnotifications"
 	"github.com/anyproto/anytype-heart/space/internal/components/dependencies/mock_dependencies"
-	"github.com/anyproto/anytype-heart/space/internal/components/invitemigrator/mock_invitemigrator"
 	"github.com/anyproto/anytype-heart/space/internal/components/participantwatcher/mock_participantwatcher"
 	"github.com/anyproto/anytype-heart/space/internal/components/spaceloader/mock_spaceloader"
 	"github.com/anyproto/anytype-heart/space/internal/components/spacestatus/mock_spacestatus"
@@ -70,7 +69,6 @@ func TestAclObjectManager(t *testing.T) {
 		fx := newFixture(t)
 		defer fx.finish(t)
 		fx.mockLoader.EXPECT().WaitLoad(mock.Anything).Return(fx.mockSpace, nil)
-		fx.mockInviteMigrator.EXPECT().MigrateExistingInvites(fx.mockSpace).Return(nil)
 		fx.mockParticipantWatcher.EXPECT().UpdateAccountParticipantFromProfile(mock.Anything, fx.mockSpace).Return(nil)
 		fx.mockSpace.EXPECT().CommonSpace().Return(fx.mockCommonSpace)
 		fx.mockSpace.EXPECT().Id().Return("spaceId")
@@ -111,7 +109,6 @@ func TestAclObjectManager(t *testing.T) {
 		fx := newFixture(t)
 		defer fx.finish(t)
 		fx.mockLoader.EXPECT().WaitLoad(mock.Anything).Return(fx.mockSpace, nil)
-		fx.mockInviteMigrator.EXPECT().MigrateExistingInvites(fx.mockSpace).Return(nil)
 		fx.mockParticipantWatcher.EXPECT().UpdateAccountParticipantFromProfile(mock.Anything, fx.mockSpace).Return(nil)
 		fx.mockSpace.EXPECT().CommonSpace().Return(fx.mockCommonSpace)
 		fx.mockSpace.EXPECT().Id().Return("spaceId")
@@ -158,7 +155,6 @@ func TestAclObjectManager(t *testing.T) {
 		fx := newFixture(t)
 		defer fx.finish(t)
 		fx.mockLoader.EXPECT().WaitLoad(mock.Anything).Return(fx.mockSpace, nil)
-		fx.mockInviteMigrator.EXPECT().MigrateExistingInvites(fx.mockSpace).Return(nil)
 		fx.mockStatus.EXPECT().SetOwner(a.ActualAccounts()["a"].Acl.AclState().Identity().Account(), mock.Anything).Return(nil)
 		fx.mockParticipantWatcher.EXPECT().UpdateAccountParticipantFromProfile(mock.Anything, fx.mockSpace).Return(nil)
 		fx.mockSpace.EXPECT().CommonSpace().Return(fx.mockCommonSpace)
@@ -198,7 +194,6 @@ type fixture struct {
 	mockCommonSpace        *mock_commonspace.MockSpace
 	mockParticipantWatcher *mock_participantwatcher.MockParticipantWatcher
 	mockAclNotification    *mock_aclnotifications.MockAclNotification
-	mockInviteMigrator     *mock_invitemigrator.MockInviteMigrator
 	mockAccountService     *mock_accountservice.MockService
 	spaceLoaderListener    *testSpaceLoaderListener
 }
@@ -216,12 +211,10 @@ func newFixture(t *testing.T) *fixture {
 		mockCommonSpace:        mock_commonspace.NewMockSpace(ctrl),
 		mockParticipantWatcher: mock_participantwatcher.NewMockParticipantWatcher(t),
 		mockAclNotification:    mock_aclnotifications.NewMockAclNotification(t),
-		mockInviteMigrator:     mock_invitemigrator.NewMockInviteMigrator(t),
 		mockAccountService:     mock_accountservice.NewMockService(ctrl),
 		spaceLoaderListener:    &testSpaceLoaderListener{},
 	}
 	fx.a.Register(testutil.PrepareMock(ctx, fx.a, fx.mockStatus)).
-		Register(testutil.PrepareMock(ctx, fx.a, fx.mockInviteMigrator)).
 		Register(testutil.PrepareMock(ctx, fx.a, fx.mockIndexer)).
 		Register(testutil.PrepareMock(ctx, fx.a, fx.mockLoader)).
 		Register(testutil.PrepareMock(ctx, fx.a, fx.mockParticipantWatcher)).

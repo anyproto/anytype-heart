@@ -8,7 +8,6 @@ import (
 
 	"github.com/anyproto/any-sync/app/logger"
 	"github.com/anyproto/any-sync/commonspace/object/tree/objecttree"
-	"github.com/anyproto/any-sync/commonspace/spacesyncproto"
 	"go.uber.org/zap"
 
 	"github.com/anyproto/anytype-heart/space/clientspace"
@@ -73,11 +72,13 @@ func (ls *loadingSpace) setLoadErr(err error) {
 func (ls *loadingSpace) loadRetry(ctx context.Context) {
 	defer func() {
 		if err := ls.spaceServiceProvider.onLoad(ls.space, ls.getLoadErr()); err != nil {
-			log.WarnCtx(ctx, "space onLoad error", zap.Error(err))
+			log.WarnCtx(ctx, "space onLoad error", zap.Error(err), zap.Error(ls.getLoadErr()))
 		}
 		close(ls.loadCh)
 	}()
-	if ls.load(ctx) {
+	shouldReturn, err := ls.load(ctx)
+	if shouldReturn {
+		ls.setLoadErr(err)
 		return
 	}
 	timeout := 1 * time.Second
@@ -87,7 +88,9 @@ func (ls *loadingSpace) loadRetry(ctx context.Context) {
 			ls.setLoadErr(ctx.Err())
 			return
 		case <-time.After(timeout):
-			if ls.load(ctx) {
+			shouldReturn, err := ls.load(ctx)
+			if shouldReturn {
+				ls.setLoadErr(err)
 				return
 			}
 		}
@@ -98,47 +101,44 @@ func (ls *loadingSpace) loadRetry(ctx context.Context) {
 	}
 }
 
-func (ls *loadingSpace) load(ctx context.Context) (notRetryable bool) {
-	sp, err := ls.spaceServiceProvider.open(ctx)
-	if errors.Is(err, spacesyncproto.ErrSpaceMissing) {
-		log.WarnCtx(ctx, "space load: space is missing", zap.String("spaceId", ls.ID), zap.Bool("notRetryable", ls.disableRemoteLoad), zap.Error(err))
-		return ls.disableRemoteLoad
-	}
-	if err == nil {
-		err = sp.WaitMandatoryObjects(ctx)
-		if err != nil {
-			notRetryable = errors.Is(err, objecttree.ErrHasInvalidChanges)
-			log.WarnCtx(ctx, "space load: mandatory objects error", zap.String("spaceId", ls.ID), zap.Error(err), zap.Bool("notRetryable", ls.disableRemoteLoad || notRetryable))
-			return ls.disableRemoteLoad || notRetryable
-		}
-	}
-	if err != nil {
-		if sp != nil {
-			closeErr := sp.Close(ctx)
-			if closeErr != nil {
-				log.WarnCtx(ctx, "space close error", zap.Error(closeErr))
-			}
-		}
-		ls.setLoadErr(err)
+func (ls *loadingSpace) logErrors(ctx context.Context, err error, mandatoryObjects bool, notRetryable bool) {
+	log := log.With(zap.String("spaceId", ls.ID), zap.Error(err), zap.Bool("notRetryable", notRetryable))
+	if mandatoryObjects {
+		log.WarnCtx(ctx, "space load: mandatory objects error")
 		if errors.Is(err, context.Canceled) {
-			log.WarnCtx(ctx, "space load: error: context bug", zap.String("spaceId", ls.ID), zap.Error(err), zap.Bool("notRetryable", ls.disableRemoteLoad))
-			// hotfix for drpc bug
-			// todo: remove after https://github.com/anyproto/any-sync/pull/448 got integrated
-			return ls.disableRemoteLoad
+			log.WarnCtx(ctx, "space load: error: context bug")
 		}
-		log.WarnCtx(ctx, "space load: error", zap.String("spaceId", ls.ID), zap.Error(err), zap.Bool("notRetryable", true))
 	} else {
-		if ls.latestAclHeadId != "" && !ls.disableRemoteLoad {
-			acl := sp.CommonSpace().Acl()
-			acl.RLock()
-			defer acl.RUnlock()
-			_, err := acl.Get(ls.latestAclHeadId)
-			if err != nil {
-				log.WarnCtx(ctx, "space load: acl head not found", zap.String("spaceId", ls.ID), zap.String("aclHeadId", ls.latestAclHeadId), zap.Error(err), zap.Bool("notRetryable", false))
-				return false
-			}
-		}
-		ls.space = sp
+		log.WarnCtx(ctx, "space load: build space error")
 	}
-	return true
+}
+
+func (ls *loadingSpace) isNotRetryable(err error) bool {
+	return errors.Is(err, objecttree.ErrHasInvalidChanges) || ls.disableRemoteLoad
+}
+
+func (ls *loadingSpace) load(ctx context.Context) (ok bool, err error) {
+	sp, err := ls.spaceServiceProvider.open(ctx)
+	if err != nil {
+		notRetryable := ls.isNotRetryable(err)
+		ls.logErrors(ctx, err, false, notRetryable)
+		return notRetryable, err
+	}
+	err = sp.WaitMandatoryObjects(ctx)
+	if err != nil {
+		notRetryable := ls.isNotRetryable(err)
+		ls.logErrors(ctx, err, true, notRetryable)
+		return notRetryable, err
+	}
+	if ls.latestAclHeadId != "" && !ls.disableRemoteLoad {
+		acl := sp.CommonSpace().Acl()
+		acl.RLock()
+		defer acl.RUnlock()
+		_, err := acl.Get(ls.latestAclHeadId)
+		if err != nil {
+			return false, err
+		}
+	}
+	ls.space = sp
+	return true, nil
 }
