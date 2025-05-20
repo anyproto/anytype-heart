@@ -14,9 +14,12 @@ import (
 	"github.com/anyproto/anytype-heart/core/api/util"
 	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/pb"
+	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 )
 
 const ApiVersion = "2025-05-20"
+
+var log = logging.Logger("api-server")
 
 var (
 	ErrMissingAuthorizationHeader = errors.New("missing authorization header")
@@ -101,7 +104,12 @@ func (s *Server) ensureAnalyticsEvent(code string, eventService apicore.EventSer
 		c.Next()
 
 		status := c.Writer.Status()
-		payload := util.NewAnalyticsEventForApi(c.Request.Context(), code, status)
+		payload, err := util.NewAnalyticsEventForApi(c.Request.Context(), code, status)
+		if err != nil {
+			log.Errorf("failed to create api analytics event: %v", err)
+			return
+		}
+
 		eventService.Broadcast(event.NewEventSingleMessage("", &pb.EventMessageValueOfPayloadBroadcast{
 			PayloadBroadcast: &pb.EventPayloadBroadcast{
 				Payload: payload,

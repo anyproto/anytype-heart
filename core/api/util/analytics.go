@@ -3,7 +3,7 @@ package util
 import (
 	"context"
 	"encoding/json"
-	"log"
+	"fmt"
 )
 
 type AnalyticsBroadcastEvent struct {
@@ -17,13 +17,12 @@ type AnalyticsBroadcastEvent struct {
 }
 
 // ToJSON returns the event as a JSON string
-func (e *AnalyticsBroadcastEvent) ToJSON() string {
+func (e *AnalyticsBroadcastEvent) ToJSON() (string, error) {
 	eventJSON, err := json.Marshal(e)
 	if err != nil {
-		log.Println("Error marshaling event:", err)
-		return "{}"
+		return "", fmt.Errorf("error marshalling analytics event: %w", err)
 	}
-	return string(eventJSON)
+	return string(eventJSON), nil
 }
 
 // NewAnalyticsEvent creates a new analytics event with the given code, route and apiAppName
@@ -44,7 +43,7 @@ func NewAnalyticsEvent(code, route, apiAppName string, status int) *AnalyticsBro
 }
 
 // NewAnalyticsEventForApi creates a new analytics event for api with the app name from the context
-func NewAnalyticsEventForApi(ctx context.Context, code string, status int) string {
+func NewAnalyticsEventForApi(ctx context.Context, code string, status int) (string, error) {
 	// TODO: enable when apiAppName is available in context
 	// apiAppName := ctx.Value("apiAppName").(string)
 	apiAppName := "api-app"
