@@ -8,6 +8,7 @@ import (
 	"github.com/anyproto/any-sync/app"
 	"github.com/globalsign/mgo/bson"
 
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/event"
 	subscriptionservice "github.com/anyproto/anytype-heart/core/subscription"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
@@ -36,8 +37,10 @@ type service struct {
 	componentCtx       context.Context
 	componentCtxCancel context.CancelFunc
 
-	lock               sync.Mutex
-	spaceViewsSubId    string
+	lock             sync.Mutex
+	spaceViewsSubId  string
+	spaceViewDetails map[string]*domain.Details
+	// spaceViewId => targetSpaceId
 	spaceViewTargetIds map[string]string
 	spaceIds           []string
 	subscriptions      map[string]*crossSpaceSubscription
@@ -54,6 +57,7 @@ func (s *service) Init(a *app.App) error {
 	s.eventSender = app.MustComponent[event.Sender](a)
 	s.subscriptions = map[string]*crossSpaceSubscription{}
 	s.spaceViewTargetIds = map[string]string{}
+	s.spaceViewDetails = map[string]*domain.Details{}
 
 	return nil
 }

@@ -2,7 +2,6 @@ package server
 
 import (
 	"encoding/json"
-	"errors"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -13,7 +12,6 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/api/util"
 	"github.com/anyproto/anytype-heart/pb"
-	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
 func TestEnsureMetadataHeader(t *testing.T) {
@@ -28,7 +26,7 @@ func TestEnsureMetadataHeader(t *testing.T) {
 		middleware(c)
 
 		// then
-		require.Equal(t, "2025-03-17", w.Header().Get("Anytype-Version"))
+		require.Equal(t, ApiVersion, w.Header().Get("Anytype-Version"))
 	})
 }
 
@@ -140,49 +138,10 @@ func TestEnsureAuthenticated(t *testing.T) {
 	})
 }
 
-func TestEnsureAccountInfo(t *testing.T) {
-	t.Run("successful account info", func(t *testing.T) {
-		// given
-		fx := newFixture(t)
-		expectedInfo := &model.AccountInfo{
-			GatewayUrl: "http://localhost:31006",
-		}
-		fx.accountService.On("GetInfo", mock.Anything).Return(expectedInfo, nil).Once()
-
-		// when
-		middleware := fx.ensureAccountInfo(&fx.accountService)
-		w := httptest.NewRecorder()
-		c, _ := gin.CreateTestContext(w)
-
-		// when
-		middleware(c)
-
-		// then
-		require.Equal(t, expectedInfo, fx.objectService.AccountInfo)
-		require.Equal(t, expectedInfo, fx.spaceService.AccountInfo)
-		require.Equal(t, expectedInfo, fx.searchService.AccountInfo)
-	})
-
-	t.Run("error retrieving account info", func(t *testing.T) {
-		// given
-		fx := newFixture(t)
-		expectedErr := errors.New("failed to get info")
-		fx.accountService.On("GetInfo", mock.Anything).Return(nil, expectedErr).Once()
-
-		middleware := fx.ensureAccountInfo(&fx.accountService)
-		w := httptest.NewRecorder()
-		c, _ := gin.CreateTestContext(w)
-		middleware(c)
-
-		// then
-		require.Equal(t, http.StatusInternalServerError, w.Code)
-	})
-}
-
 func TestRateLimit(t *testing.T) {
 	fx := newFixture(t)
 	router := gin.New()
-	router.GET("/", fx.rateLimit(1), func(c *gin.Context) {
+	router.GET("/", fx.rateLimit(1, 1), func(c *gin.Context) {
 		c.String(http.StatusOK, "OK")
 	})
 
@@ -210,5 +169,33 @@ func TestRateLimit(t *testing.T) {
 
 		// then
 		require.Equal(t, http.StatusTooManyRequests, w.Code)
+	})
+
+	t.Run("burst of size 2 allows two requests", func(t *testing.T) {
+		burstRouter := gin.New()
+		burstRouter.GET("/", fx.rateLimit(1, 2), func(c *gin.Context) {
+			c.String(http.StatusOK, "OK")
+		})
+
+		// first request (within burst)
+		w1 := httptest.NewRecorder()
+		req1 := httptest.NewRequest("GET", "/", nil)
+		req1.RemoteAddr = "1.2.3.4:5678"
+		burstRouter.ServeHTTP(w1, req1)
+		require.Equal(t, http.StatusOK, w1.Code)
+
+		// second request (within burst)
+		w2 := httptest.NewRecorder()
+		req2 := httptest.NewRequest("GET", "/", nil)
+		req2.RemoteAddr = "1.2.3.4:5678"
+		burstRouter.ServeHTTP(w2, req2)
+		require.Equal(t, http.StatusOK, w2.Code)
+
+		// third request should be rate-limited
+		w3 := httptest.NewRecorder()
+		req3 := httptest.NewRequest("GET", "/", nil)
+		req3.RemoteAddr = "1.2.3.4:5678"
+		burstRouter.ServeHTTP(w3, req3)
+		require.Equal(t, http.StatusTooManyRequests, w3.Code)
 	})
 }

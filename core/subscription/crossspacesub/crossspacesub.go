@@ -96,32 +96,32 @@ func (s *crossSpaceSubscription) patchEvent(msg *pb.EventMessage) {
 	msg.SpaceId = ""
 
 	matcher := subscriptionservice.EventMatcher{
-		OnAdd: func(add *pb.EventObjectSubscriptionAdd) {
+		OnAdd: func(spaceId string, add *pb.EventObjectSubscriptionAdd) {
 			add.SubId = s.subId
 			add.AfterId = ""
 		},
-		OnRemove: func(remove *pb.EventObjectSubscriptionRemove) {
+		OnRemove: func(spaceId string, remove *pb.EventObjectSubscriptionRemove) {
 			remove.SubId = s.subId
 		},
-		OnPosition: func(position *pb.EventObjectSubscriptionPosition) {
+		OnPosition: func(spaceId string, position *pb.EventObjectSubscriptionPosition) {
 			position.SubId = s.subId
 			position.AfterId = ""
 		},
-		OnSet: func(set *pb.EventObjectDetailsSet) {
+		OnSet: func(spaceId string, set *pb.EventObjectDetailsSet) {
 			set.SubIds = []string{s.subId}
 		},
-		OnUnset: func(unset *pb.EventObjectDetailsUnset) {
+		OnUnset: func(spaceId string, unset *pb.EventObjectDetailsUnset) {
 			unset.SubIds = []string{s.subId}
 		},
-		OnAmend: func(amend *pb.EventObjectDetailsAmend) {
+		OnAmend: func(spaceId string, amend *pb.EventObjectDetailsAmend) {
 			amend.SubIds = []string{s.subId}
 		},
-		OnCounters: func(counters *pb.EventObjectSubscriptionCounters) {
+		OnCounters: func(spaceId string, counters *pb.EventObjectSubscriptionCounters) {
 			total := s.updateTotalCount(counters.SubId, counters.Total)
 			counters.Total = total
 			counters.SubId = s.subId
 		},
-		OnGroups: func(groups *pb.EventObjectSubscriptionGroups) {
+		OnGroups: func(spaceId string, groups *pb.EventObjectSubscriptionGroups) {
 			groups.SubId = s.subId
 		},
 	}

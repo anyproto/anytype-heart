@@ -228,8 +228,12 @@ func (t *treeSyncer) requestTree(p peer.Peer, id string) {
 	} else {
 		log.Debug("loaded missing tree")
 	}
+	tr.Lock()
 	if objecttree.IsEmptyDerivedTree(tr) {
+		tr.Unlock()
 		t.pingTree(p, tr)
+	} else {
+		tr.Unlock()
 	}
 }
 

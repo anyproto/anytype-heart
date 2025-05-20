@@ -551,7 +551,7 @@ func StructEqualKeys(st1, st2 *types.Struct) bool {
 }
 
 func Sprint(p proto.Message) string {
-	m := jsonpb.Marshaler{Indent: " "}
+	m := jsonpb.Marshaler{Indent: " ", EmitDefaults: true}
 	result, _ := m.MarshalToString(p)
 	return result
 }

@@ -1,6 +1,8 @@
 package editor
 
 import (
+	"github.com/anyproto/any-sync/commonspace/object/acl/list"
+
 	"github.com/anyproto/anytype-heart/core/anytype/config"
 	"github.com/anyproto/anytype-heart/core/block/editor/basic"
 	"github.com/anyproto/anytype-heart/core/block/editor/dataview"
@@ -82,7 +84,6 @@ func (w *Workspaces) initTemplate(ctx *smartblock.InitContext) {
 		template.WithDetail(bundle.RelationKeyIsHidden, domain.Bool(true)),
 		template.WithLayout(model.ObjectType_space),
 		template.WithForcedObjectTypes([]domain.TypeKey{bundle.TypeKeySpace}),
-		template.WithForcedDetail(bundle.RelationKeyFeaturedRelations, domain.StringList([]string{bundle.RelationKeyType.String(), bundle.RelationKeyCreator.String()})),
 	)
 }
 
@@ -96,26 +97,37 @@ func (w *Workspaces) CreationStateMigration(ctx *smartblock.InitContext) migrati
 	}
 }
 
-func (w *Workspaces) SetInviteFileInfo(fileCid string, fileKey string) (err error) {
+func (w *Workspaces) SetInviteFileInfo(info domain.InviteInfo) (err error) {
 	st := w.NewState()
-	st.SetDetailAndBundledRelation(bundle.RelationKeySpaceInviteFileCid, domain.String(fileCid))
-	st.SetDetailAndBundledRelation(bundle.RelationKeySpaceInviteFileKey, domain.String(fileKey))
+	st.SetDetailAndBundledRelation(bundle.RelationKeySpaceInvitePermissions, domain.Int64(domain.ConvertAclPermissions(info.Permissions)))
+	st.SetDetailAndBundledRelation(bundle.RelationKeySpaceInviteType, domain.Int64(info.InviteType))
+	st.SetDetailAndBundledRelation(bundle.RelationKeySpaceInviteFileCid, domain.String(info.InviteFileCid))
+	st.SetDetailAndBundledRelation(bundle.RelationKeySpaceInviteFileKey, domain.String(info.InviteFileKey))
 	return w.Apply(st)
 }
 
-func (w *Workspaces) GetExistingInviteInfo() (fileCid string, fileKey string) {
+func (w *Workspaces) GetExistingInviteInfo() (inviteInfo domain.InviteInfo) {
 	details := w.CombinedDetails()
-	fileCid = details.GetString(bundle.RelationKeySpaceInviteFileCid)
-	fileKey = details.GetString(bundle.RelationKeySpaceInviteFileKey)
+	inviteInfo.InviteType = domain.InviteType(details.GetInt64(bundle.RelationKeySpaceInviteType))
+	// nolint: gosec
+	inviteInfo.Permissions = domain.ConvertParticipantPermissions(model.ParticipantPermissions(details.GetInt64(bundle.RelationKeySpaceInvitePermissions)))
+	inviteInfo.InviteFileCid = details.GetString(bundle.RelationKeySpaceInviteFileCid)
+	inviteInfo.InviteFileKey = details.GetString(bundle.RelationKeySpaceInviteFileKey)
+	if inviteInfo.InviteType == domain.InviteTypeDefault {
+		inviteInfo.Permissions = list.AclPermissionsNone
+	}
 	return
 }
 
-func (w *Workspaces) RemoveExistingInviteInfo() (fileCid string, err error) {
-	details := w.Details()
-	fileCid = details.GetString(bundle.RelationKeySpaceInviteFileCid)
+func (w *Workspaces) RemoveExistingInviteInfo() (info domain.InviteInfo, err error) {
+	info = w.GetExistingInviteInfo()
 	newState := w.NewState()
-	newState.RemoveDetail(bundle.RelationKeySpaceInviteFileCid, bundle.RelationKeySpaceInviteFileKey)
-	return fileCid, w.Apply(newState)
+	newState.RemoveDetail(
+		bundle.RelationKeySpaceInviteFileCid,
+		bundle.RelationKeySpaceInviteFileKey,
+		bundle.RelationKeySpaceInvitePermissions,
+		bundle.RelationKeySpaceInviteType)
+	return info, w.Apply(newState)
 }
 
 func (w *Workspaces) SetGuestInviteFileInfo(fileCid string, fileKey string) (err error) {

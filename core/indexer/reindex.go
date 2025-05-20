@@ -27,7 +27,7 @@ import (
 
 const (
 	// ForceObjectsReindexCounter reindex thread-based objects
-	ForceObjectsReindexCounter int32 = 17
+	ForceObjectsReindexCounter int32 = 19
 
 	// ForceFilesReindexCounter reindex file objects
 	ForceFilesReindexCounter int32 = 12 //
@@ -242,14 +242,21 @@ func (i *indexer) reindexChats(ctx context.Context, space clientspace.Space) err
 	if len(ids) == 0 {
 		return nil
 	}
-	db := i.store.GetCrdtDb(space.Id())
+	db, err := i.store.GetCrdtDb(space.Id()).Wait()
+	if err != nil {
+		return fmt.Errorf("get crdt db: %w", err)
+	}
 
 	txn, err := db.WriteTx(ctx)
 	if err != nil {
 		return fmt.Errorf("write tx: %w", err)
 	}
-	defer txn.Rollback()
-
+	var commited bool
+	defer func() {
+		if !commited {
+			txn.Rollback()
+		}
+	}()
 	for _, id := range ids {
 		col, err := db.OpenCollection(txn.Context(), id+chatobject.CollectionName)
 		if errors.Is(err, anystore.ErrCollectionNotFound) {
@@ -276,6 +283,7 @@ func (i *indexer) reindexChats(ctx context.Context, space clientspace.Space) err
 		}
 	}
 
+	commited = true
 	err = txn.Commit()
 	if err != nil {
 		return fmt.Errorf("commit: %w", err)

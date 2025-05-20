@@ -169,16 +169,16 @@ func (a *accountObject) Init(ctx *smartblock.InitContext) error {
 			return fmt.Errorf("insert account document: %w", err)
 		}
 	}
-	st := a.NewState()
-	err = a.update(a.ctx, st)
+
+	err = a.update(a.ctx, ctx.State)
 	if err != nil {
 		return fmt.Errorf("update state: %w", err)
 	}
-	err = a.initState(st)
+	err = a.initState(ctx.State)
 	if err != nil {
 		return fmt.Errorf("init state: %w", err)
 	}
-	return a.SmartBlock.Apply(st, smartblock.NotPushChanges, smartblock.NoHistory, smartblock.SkipIfNoChanges)
+	return a.SmartBlock.Apply(ctx.State, smartblock.NotPushChanges, smartblock.NoHistory, smartblock.SkipIfNoChanges)
 }
 
 func (a *accountObject) genInitialDoc() (builder *storestate.Builder, err error) {
