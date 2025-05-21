@@ -1,3 +1,5 @@
+//go:build !gomobile
+
 package grpcprocess
 
 import (
