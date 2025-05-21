@@ -217,7 +217,14 @@ func (s *storeObject) AddMessage(ctx context.Context, sessionCtx session.Context
 		return "", fmt.Errorf("create chat: %w", err)
 	}
 
+	s.subscription.Lock()
 	s.subscription.SetSessionContext(sessionCtx)
+	s.subscription.Unlock()
+	defer func() {
+		s.subscription.Lock()
+		s.subscription.SetSessionContext(nil)
+		s.subscription.Unlock()
+	}()
 	messageId, err := s.storeSource.PushStoreChange(ctx, source.PushStoreChangeParams{
 		Changes: builder.ChangeSet,
 		State:   s.store,
