@@ -239,7 +239,7 @@ packages:
   github.com/anyproto/anytype-heart/core/api/core:
     interfaces:
       AccountService:
-      ExportService:
+      EventService:
       ClientCommands:
   github.com/anyproto/anytype-heart/core/block/template:
     interfaces:

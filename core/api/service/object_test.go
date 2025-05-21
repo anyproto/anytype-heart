@@ -71,7 +71,7 @@ func TestObjectService_ListObjects(t *testing.T) {
 			Error: &pb.RpcObjectSearchResponseError{Code: pb.RpcObjectSearchResponseError_NULL},
 		}).Once()
 
-		// Mock GetPropertyMapFromStore
+		// Mock getPropertyMapFromStore
 		fx.mwMock.On("ObjectSearch", mock.Anything, &pb.RpcObjectSearchRequest{
 			SpaceId: mockedSpaceId,
 			Filters: []*model.BlockContentDataviewFilter{
@@ -89,6 +89,7 @@ func TestObjectService_ListObjects(t *testing.T) {
 			Keys: []string{
 				bundle.RelationKeyId.String(),
 				bundle.RelationKeyRelationKey.String(),
+				bundle.RelationKeyApiObjectKey.String(),
 				bundle.RelationKeyName.String(),
 				bundle.RelationKeyRelationFormat.String(),
 			},
@@ -138,7 +139,7 @@ func TestObjectService_ListObjects(t *testing.T) {
 			},
 		}, nil).Once()
 
-		// Mock GetTypeMapFromStore
+		// Mock getTypeMapFromStore
 		fx.mwMock.On("ObjectSearch", mock.Anything, &pb.RpcObjectSearchRequest{
 			SpaceId: mockedSpaceId,
 			Filters: []*model.BlockContentDataviewFilter{
@@ -154,6 +155,7 @@ func TestObjectService_ListObjects(t *testing.T) {
 			Keys: []string{
 				bundle.RelationKeyId.String(),
 				bundle.RelationKeyUniqueKey.String(),
+				bundle.RelationKeyApiObjectKey.String(),
 				bundle.RelationKeyName.String(),
 				bundle.RelationKeyPluralName.String(),
 				bundle.RelationKeyIconEmoji.String(),
@@ -182,7 +184,7 @@ func TestObjectService_ListObjects(t *testing.T) {
 			},
 		}, nil).Once()
 
-		// Mock GetTagMapFromStore
+		// Mock getTagMapFromStore
 		fx.mwMock.On("ObjectSearch", mock.Anything, &pb.RpcObjectSearchRequest{
 			SpaceId: mockedSpaceId,
 			Filters: []*model.BlockContentDataviewFilter{
@@ -300,7 +302,7 @@ func TestObjectService_ListObjects(t *testing.T) {
 			Error:   &pb.RpcObjectSearchResponseError{Code: pb.RpcObjectSearchResponseError_NULL},
 		}).Once()
 
-		// Mock GetPropertyMapFromStore, GetTypeMapFromStore and GetTagMapFromStore
+		// Mock getPropertyMapFromStore, getTypeMapFromStore and getTagMapFromStore
 		fx.mwMock.On("ObjectSearch", mock.Anything, mock.Anything).Return(&pb.RpcObjectSearchResponse{
 			Records: []*types.Struct{},
 			Error:   &pb.RpcObjectSearchResponseError{Code: pb.RpcObjectSearchResponseError_NULL},
@@ -363,7 +365,7 @@ func TestObjectService_GetObject(t *testing.T) {
 				},
 			}, nil).Once()
 
-		// Mock GetPropertyMapsFromStore
+		// Mock getPropertyMapsFromStore
 		fx.mwMock.On("ObjectSearch", mock.Anything, &pb.RpcObjectSearchRequest{
 			SpaceId: mockedSpaceId,
 			Filters: []*model.BlockContentDataviewFilter{
@@ -381,6 +383,7 @@ func TestObjectService_GetObject(t *testing.T) {
 			Keys: []string{
 				bundle.RelationKeyId.String(),
 				bundle.RelationKeyRelationKey.String(),
+				bundle.RelationKeyApiObjectKey.String(),
 				bundle.RelationKeyName.String(),
 				bundle.RelationKeyRelationFormat.String(),
 			},
@@ -430,7 +433,7 @@ func TestObjectService_GetObject(t *testing.T) {
 			},
 		}, nil).Once()
 
-		// Mock GetTypeMapFromStore
+		// Mock getTypeMapFromStore
 		fx.mwMock.On("ObjectSearch", mock.Anything, &pb.RpcObjectSearchRequest{
 			SpaceId: mockedSpaceId,
 			Filters: []*model.BlockContentDataviewFilter{
@@ -446,6 +449,7 @@ func TestObjectService_GetObject(t *testing.T) {
 			Keys: []string{
 				bundle.RelationKeyId.String(),
 				bundle.RelationKeyUniqueKey.String(),
+				bundle.RelationKeyApiObjectKey.String(),
 				bundle.RelationKeyName.String(),
 				bundle.RelationKeyPluralName.String(),
 				bundle.RelationKeyIconEmoji.String(),
@@ -474,7 +478,7 @@ func TestObjectService_GetObject(t *testing.T) {
 			},
 		}, nil).Once()
 
-		// Mock GetTagMapFromStore
+		// Mock getTagMapFromStore
 		fx.mwMock.On("ObjectSearch", mock.Anything, &pb.RpcObjectSearchRequest{
 			SpaceId: mockedSpaceId,
 			Filters: []*model.BlockContentDataviewFilter{
@@ -501,9 +505,14 @@ func TestObjectService_GetObject(t *testing.T) {
 		}, nil).Once()
 
 		// Mock ExportMarkdown
-		fx.exportService.
-			On("ExportSingleInMemory", mock.Anything, mockedSpaceId, mockedObjectId, model.Export_Markdown).
-			Return("dummy markdown", nil).Once()
+		fx.mwMock.On("ObjectExport", mock.Anything, &pb.RpcObjectExportRequest{
+			SpaceId:  mockedSpaceId,
+			ObjectId: mockedObjectId,
+			Format:   model.Export_Markdown,
+		}).Return(&pb.RpcObjectExportResponse{
+			Result: "dummy markdown",
+			Error:  &pb.RpcObjectExportResponseError{Code: pb.RpcObjectExportResponseError_NULL},
+		}, nil).Once()
 
 		// when
 		object, err := fx.service.GetObject(ctx, mockedSpaceId, mockedObjectId)
@@ -644,16 +653,59 @@ func TestObjectService_CreateObject(t *testing.T) {
 			Error: &pb.RpcObjectShowResponseError{Code: pb.RpcObjectShowResponseError_NULL},
 		}).Once()
 
-		// Mock GetPropertyMapFromStore, GetTypeMapFromStore and GetTagMapFromStore
+		// Mock getTypeMapFromStore to properly resolve typeKey for creation
+		fx.mwMock.On("ObjectSearch", mock.Anything, &pb.RpcObjectSearchRequest{
+			SpaceId: mockedSpaceId,
+			Filters: []*model.BlockContentDataviewFilter{
+				{
+					RelationKey: bundle.RelationKeyResolvedLayout.String(),
+					Condition:   model.BlockContentDataviewFilter_Equal,
+					Value:       pbtypes.Int64(int64(model.ObjectType_objectType)),
+				},
+				{
+					RelationKey: bundle.RelationKeyIsDeleted.String(),
+				},
+			},
+			Keys: []string{
+				bundle.RelationKeyId.String(),
+				bundle.RelationKeyUniqueKey.String(),
+				bundle.RelationKeyApiObjectKey.String(),
+				bundle.RelationKeyName.String(),
+				bundle.RelationKeyPluralName.String(),
+				bundle.RelationKeyIconEmoji.String(),
+				bundle.RelationKeyIconName.String(),
+				bundle.RelationKeyIconOption.String(),
+				bundle.RelationKeyRecommendedLayout.String(),
+				bundle.RelationKeyIsArchived.String(),
+				bundle.RelationKeyRecommendedFeaturedRelations.String(),
+				bundle.RelationKeyRecommendedRelations.String(),
+			},
+		}).Return(&pb.RpcObjectSearchResponse{
+			Records: []*types.Struct{
+				{
+					Fields: map[string]*types.Value{
+						bundle.RelationKeyUniqueKey.String(): pbtypes.String("ot-" + mockedTypeKey),
+					},
+				},
+			},
+			Error: &pb.RpcObjectSearchResponseError{Code: pb.RpcObjectSearchResponseError_NULL},
+		}).Times(1)
+
+		// Mock getPropertyMapFromStore, getTypeMapFromStore and getTagMapFromStore
 		fx.mwMock.On("ObjectSearch", mock.Anything, mock.Anything).Return(&pb.RpcObjectSearchResponse{
 			Records: []*types.Struct{},
 			Error:   &pb.RpcObjectSearchResponseError{Code: pb.RpcObjectSearchResponseError_NULL},
-		}).Times(3)
+		}).Times(4)
 
 		// Mock ExportMarkdown
-		fx.exportService.
-			On("ExportSingleInMemory", mock.Anything, mockedSpaceId, mockedNewObjectId, model.Export_Markdown).
-			Return("dummy markdown", nil).Once()
+		fx.mwMock.On("ObjectExport", mock.Anything, &pb.RpcObjectExportRequest{
+			SpaceId:  mockedSpaceId,
+			ObjectId: mockedNewObjectId,
+			Format:   model.Export_Markdown,
+		}).Return(&pb.RpcObjectExportResponse{
+			Result: "dummy markdown",
+			Error:  &pb.RpcObjectExportResponseError{Code: pb.RpcObjectExportResponseError_NULL},
+		}, nil).Once()
 
 		// when
 		object, err := fx.service.CreateObject(ctx, mockedSpaceId, apimodel.CreateObjectRequest{
@@ -676,6 +728,12 @@ func TestObjectService_CreateObject(t *testing.T) {
 		// given
 		ctx := context.Background()
 		fx := newFixture(t)
+
+		// Mock getPropertyMapFromStore, getTypeMapFromStore
+		fx.mwMock.On("ObjectSearch", mock.Anything, mock.Anything).Return(&pb.RpcObjectSearchResponse{
+			Records: []*types.Struct{},
+			Error:   &pb.RpcObjectSearchResponseError{Code: pb.RpcObjectSearchResponseError_NULL},
+		}).Times(2)
 
 		fx.mwMock.On("ObjectCreate", mock.Anything, mock.Anything).
 			Return(&pb.RpcObjectCreateResponse{

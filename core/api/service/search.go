@@ -22,7 +22,7 @@ var (
 
 // GlobalSearch retrieves a paginated list of objects from all spaces that match the search parameters.
 func (s *Service) GlobalSearch(ctx context.Context, request apimodel.SearchRequest, offset int, limit int) (objects []apimodel.Object, total int, hasMore bool, err error) {
-	spaceIds, err := s.GetAllSpaceIds()
+	spaceIds, err := s.GetAllSpaceIds(ctx)
 	if err != nil {
 		return nil, 0, false, err
 	}
@@ -31,11 +31,29 @@ func (s *Service) GlobalSearch(ctx context.Context, request apimodel.SearchReque
 	queryFilters := s.prepareQueryFilter(request.Query)
 	sorts, criterionToSortAfter := s.prepareSorts(request.Sort)
 
+	// pre-fetch properties, types and tags to fill the objects
+	propertyMaps, err := s.getPropertyMapsFromStore(ctx, spaceIds, true)
+	if err != nil {
+		return nil, 0, false, err
+	}
+	typeMaps, err := s.getTypeMapsFromStore(ctx, spaceIds, propertyMaps, true)
+	if err != nil {
+		return nil, 0, false, err
+	}
+	tagMap, err := s.getTagMapsFromStore(ctx, spaceIds)
+	if err != nil {
+		return nil, 0, false, err
+	}
+
 	var combinedRecords []*types.Struct
 	for _, spaceId := range spaceIds {
-		// Resolve template type and object type IDs per spaceId, as they are unique per spaceId
+		// Resolve template and type IDs per spaceId, as they are unique per spaceId
 		templateFilter := s.prepareTemplateFilter()
-		typeFilters := s.prepareObjectTypeFilters(spaceId, request.Types)
+		typeFilters := s.prepareTypeFilters(request.Types, typeMaps[spaceId])
+		if len(request.Types) > 0 && len(typeFilters) == 0 {
+			// Skip spaces that don’t have any of the requested types
+			continue
+		}
 		filters := s.combineFilters(model.BlockContentDataviewFilter_And, baseFilters, templateFilter, queryFilters, typeFilters)
 
 		objResp := s.mw.ObjectSearch(ctx, &pb.RpcObjectSearchRequest{
@@ -76,23 +94,9 @@ func (s *Service) GlobalSearch(ctx context.Context, request apimodel.SearchReque
 	total = len(combinedRecords)
 	paginatedRecords, hasMore := pagination.Paginate(combinedRecords, offset, limit)
 
-	// pre-fetch properties, types and tags to fill the objects
-	propertyMaps, err := s.GetPropertyMapsFromStore(spaceIds)
-	if err != nil {
-		return nil, 0, false, err
-	}
-	typeMaps, err := s.GetTypeMapsFromStore(spaceIds, propertyMaps)
-	if err != nil {
-		return nil, 0, false, err
-	}
-	tagMap, err := s.GetTagMapsFromStore(spaceIds)
-	if err != nil {
-		return nil, 0, false, err
-	}
-
 	results := make([]apimodel.Object, 0, len(paginatedRecords))
 	for _, record := range paginatedRecords {
-		results = append(results, s.GetObjectFromStruct(record, propertyMaps[record.Fields[bundle.RelationKeySpaceId.String()].GetStringValue()], typeMaps[record.Fields[bundle.RelationKeySpaceId.String()].GetStringValue()], tagMap[record.Fields[bundle.RelationKeySpaceId.String()].GetStringValue()]))
+		results = append(results, s.getObjectFromStruct(record, propertyMaps[record.Fields[bundle.RelationKeySpaceId.String()].GetStringValue()], typeMaps[record.Fields[bundle.RelationKeySpaceId.String()].GetStringValue()], tagMap[record.Fields[bundle.RelationKeySpaceId.String()].GetStringValue()]))
 	}
 
 	return results, total, hasMore, nil
@@ -103,7 +107,26 @@ func (s *Service) Search(ctx context.Context, spaceId string, request apimodel.S
 	baseFilters := s.prepareBaseFilters()
 	templateFilter := s.prepareTemplateFilter()
 	queryFilters := s.prepareQueryFilter(request.Query)
-	typeFilters := s.prepareObjectTypeFilters(spaceId, request.Types)
+
+	// pre-fetch properties and types to fill the objects
+	propertyMap, err := s.getPropertyMapFromStore(ctx, spaceId, true)
+	if err != nil {
+		return nil, 0, false, err
+	}
+	typeMap, err := s.getTypeMapFromStore(ctx, spaceId, propertyMap, true)
+	if err != nil {
+		return nil, 0, false, err
+	}
+	tagMap, err := s.getTagMapFromStore(ctx, spaceId)
+	if err != nil {
+		return nil, 0, false, err
+	}
+
+	typeFilters := s.prepareTypeFilters(request.Types, typeMap)
+	if len(request.Types) > 0 && len(typeFilters) == 0 {
+		// No matching types in this space; return empty result
+		return nil, 0, false, nil
+	}
 	filters := s.combineFilters(model.BlockContentDataviewFilter_And, baseFilters, templateFilter, queryFilters, typeFilters)
 	sorts, _ := s.prepareSorts(request.Sort)
 
@@ -120,23 +143,9 @@ func (s *Service) Search(ctx context.Context, spaceId string, request apimodel.S
 	total = len(resp.Records)
 	paginatedRecords, hasMore := pagination.Paginate(resp.Records, offset, limit)
 
-	// pre-fetch properties and types to fill the objects
-	propertyMap, err := s.GetPropertyMapFromStore(spaceId)
-	if err != nil {
-		return nil, 0, false, err
-	}
-	typeMap, err := s.GetTypeMapFromStore(spaceId, propertyMap)
-	if err != nil {
-		return nil, 0, false, err
-	}
-	tagMap, err := s.GetTagMapFromStore(spaceId)
-	if err != nil {
-		return nil, 0, false, err
-	}
-
 	results := make([]apimodel.Object, 0, len(paginatedRecords))
 	for _, record := range paginatedRecords {
-		results = append(results, s.GetObjectFromStruct(record, propertyMap, typeMap, tagMap))
+		results = append(results, s.getObjectFromStruct(record, propertyMap, typeMap, tagMap))
 	}
 
 	return results, total, hasMore, nil
@@ -215,26 +224,29 @@ func (s *Service) prepareQueryFilter(searchQuery string) []*model.BlockContentDa
 	}
 }
 
-// prepareObjectTypeFilters combines object type filters with an OR condition.
-func (s *Service) prepareObjectTypeFilters(spaceId string, objectTypes []string) []*model.BlockContentDataviewFilter {
-	if len(objectTypes) == 0 || objectTypes[0] == "" {
+// prepareTypeFilters combines type filters with an OR condition.
+func (s *Service) prepareTypeFilters(types []string, typeMap map[string]*apimodel.Type) []*model.BlockContentDataviewFilter {
+	if len(types) == 0 {
 		return nil
 	}
 
-	// Prepare nested filters for each object type
-	nestedFilters := make([]*model.BlockContentDataviewFilter, 0, len(objectTypes))
-	for _, objectType := range objectTypes {
-		ukOrId := util.FromTypeApiKey(objectType)
-		typeId, err := util.ResolveUniqueKeyToTypeId(s.mw, spaceId, ukOrId)
-		if err != nil {
-			// client passed type id instead of type key
-			typeId = objectType
+	// Prepare nested filters for each type
+	nestedFilters := make([]*model.BlockContentDataviewFilter, 0, len(types))
+	for _, key := range types {
+		if key == "" {
+			continue
+		}
+
+		uk := s.ResolveTypeApiKey(typeMap, key)
+		typeDef, ok := typeMap[uk]
+		if !ok {
+			continue
 		}
 
 		nestedFilters = append(nestedFilters, &model.BlockContentDataviewFilter{
 			RelationKey: bundle.RelationKeyType.String(),
 			Condition:   model.BlockContentDataviewFilter_Equal,
-			Value:       pbtypes.String(typeId),
+			Value:       pbtypes.String(typeDef.Id),
 		})
 	}
 

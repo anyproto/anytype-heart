@@ -1565,5 +1565,15 @@
     "name": "Header relations layout",
     "readonly": false,
     "source": "details"
+  },
+  {
+    "description": "Identifier to use in intergrations with Anytype API",
+    "format": "longtext",
+    "hidden": true,
+    "key": "apiObjectKey",
+    "maxCount": 1,
+    "name": "API Object Key",
+    "readonly": false,
+    "source": "details"
   }
 ]

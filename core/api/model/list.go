@@ -1,5 +1,9 @@
 package apimodel
 
+type AddObjectsToListRequest struct {
+	Objects []string `json:"objects" example:"[\"bafyreie6n5l5nkbjal37su54cha4coy7qzuhrnajluzv5qd5jvtsrxkequ\"]"` // The list of object IDs to add to the list
+}
+
 type View struct {
 	Id      string   `json:"id" example:"67bf3f21cda9134102e2422c"`    // The id of the view
 	Name    string   `json:"name" example:"All"`                       // The name of the view
