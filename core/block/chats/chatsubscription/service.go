@@ -18,6 +18,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+	"github.com/anyproto/anytype-heart/util/futures"
 )
 
 const CName = "chatsubscription"
@@ -64,12 +65,12 @@ type service struct {
 
 	identityCache *expirable.LRU[string, *domain.Details]
 	lock          sync.Mutex
-	managers      map[string]*subscriptionManager
+	managers      map[string]*futures.Future[*subscriptionManager]
 }
 
 func New() Service {
 	return &service{
-		managers: make(map[string]*subscriptionManager),
+		managers: make(map[string]*futures.Future[*subscriptionManager]),
 	}
 }
 
@@ -104,7 +105,9 @@ func (s *service) GetManager(chatObjectId string) (Manager, error) {
 	return s.getManager(chatObjectId)
 }
 
-func (s *service) getManager(chatObjectId string) (*subscriptionManager, error) {
+// getManagerFuture returns a future that should be resolved by the first who called this method.
+// The idea behind using futures here is to initialize a manager once without blocking the whole service.
+func (s *service) getManagerFuture(chatObjectId string) (*futures.Future[*subscriptionManager], error) {
 	s.lock.Lock()
 	mngr, ok := s.managers[chatObjectId]
 	if ok {
@@ -112,9 +115,7 @@ func (s *service) getManager(chatObjectId string) (*subscriptionManager, error) 
 		return mngr, nil
 	}
 
-	mngr = &subscriptionManager{}
-	mngr.Lock()
-	defer mngr.Unlock()
+	mngr = futures.New[*subscriptionManager]()
 	s.managers[chatObjectId] = mngr
 	s.lock.Unlock()
 
@@ -126,7 +127,15 @@ func (s *service) getManager(chatObjectId string) (*subscriptionManager, error) 
 	return mngr, nil
 }
 
-func (s *service) initManager(chatObjectId string, mngr *subscriptionManager) error {
+func (s *service) getManager(chatObjectId string) (*subscriptionManager, error) {
+	fut, err := s.getManagerFuture(chatObjectId)
+	if err != nil {
+		return nil, fmt.Errorf("get future: %w", err)
+	}
+	return fut.Wait()
+}
+
+func (s *service) initManager(chatObjectId string, mngrFut *futures.Future[*subscriptionManager]) error {
 	spaceId, err := s.spaceIdResolver.ResolveSpaceID(chatObjectId)
 	if err != nil {
 		return fmt.Errorf("resolve space id: %w", err)
@@ -139,21 +148,26 @@ func (s *service) initManager(chatObjectId string, mngr *subscriptionManager) er
 	if err != nil {
 		return fmt.Errorf("get repository: %w", err)
 	}
-	mngr.componentCtx = s.componentCtx
-	mngr.spaceId = spaceId
-	mngr.chatId = chatObjectId
-	mngr.myIdentity = currentIdentity
-	mngr.myParticipantId = currentParticipantId
-	mngr.identityCache = s.identityCache
-	mngr.subscriptions = make(map[string]*subscription)
-	mngr.spaceIndex = s.objectStore.SpaceIndex(spaceId)
-	mngr.eventSender = s.eventSender
-	mngr.repository = repository
+	mngr := &subscriptionManager{
+		componentCtx:    s.componentCtx,
+		spaceId:         spaceId,
+		chatId:          chatObjectId,
+		myIdentity:      currentIdentity,
+		myParticipantId: currentParticipantId,
+		identityCache:   s.identityCache,
+		subscriptions:   make(map[string]*subscription),
+		spaceIndex:      s.objectStore.SpaceIndex(spaceId),
+		eventSender:     s.eventSender,
+		repository:      repository,
+	}
 
 	err = mngr.loadChatState(s.componentCtx)
 	if err != nil {
-		return fmt.Errorf("init chat state: %w", err)
+		err = fmt.Errorf("init chat state: %w", err)
+		mngrFut.ResolveErr(err)
+		return err
 	}
+	mngrFut.ResolveValue(mngr)
 
 	return nil
 }
@@ -183,6 +197,7 @@ func (s *service) SubscribeLastMessages(ctx context.Context, req SubscribeLastMe
 	if err != nil {
 		return nil, fmt.Errorf("get manager: %w", err)
 	}
+
 	mngr.Lock()
 	defer mngr.Unlock()
 
