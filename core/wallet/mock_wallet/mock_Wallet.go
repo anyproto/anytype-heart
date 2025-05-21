@@ -10,6 +10,8 @@ import (
 
 	mock "github.com/stretchr/testify/mock"
 
+	model "github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+
 	wallet "github.com/anyproto/anytype-heart/core/wallet"
 )
 
@@ -548,27 +550,29 @@ func (_c *MockWallet_Name_Call) RunAndReturn(run func() string) *MockWallet_Name
 	return _c
 }
 
-// PersistAppLink provides a mock function with given fields: payload
-func (_m *MockWallet) PersistAppLink(payload *wallet.AppLinkInfo) (string, error) {
-	ret := _m.Called(payload)
+// PersistAppLink provides a mock function with given fields: name, scope
+func (_m *MockWallet) PersistAppLink(name string, scope model.AccountAuthLocalApiScope) (*wallet.AppLinkInfo, error) {
+	ret := _m.Called(name, scope)
 
 	if len(ret) == 0 {
 		panic("no return value specified for PersistAppLink")
 	}
 
-	var r0 string
+	var r0 *wallet.AppLinkInfo
 	var r1 error
-	if rf, ok := ret.Get(0).(func(*wallet.AppLinkInfo) (string, error)); ok {
-		return rf(payload)
+	if rf, ok := ret.Get(0).(func(string, model.AccountAuthLocalApiScope) (*wallet.AppLinkInfo, error)); ok {
+		return rf(name, scope)
 	}
-	if rf, ok := ret.Get(0).(func(*wallet.AppLinkInfo) string); ok {
-		r0 = rf(payload)
+	if rf, ok := ret.Get(0).(func(string, model.AccountAuthLocalApiScope) *wallet.AppLinkInfo); ok {
+		r0 = rf(name, scope)
 	} else {
-		r0 = ret.Get(0).(string)
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*wallet.AppLinkInfo)
+		}
 	}
 
-	if rf, ok := ret.Get(1).(func(*wallet.AppLinkInfo) error); ok {
-		r1 = rf(payload)
+	if rf, ok := ret.Get(1).(func(string, model.AccountAuthLocalApiScope) error); ok {
+		r1 = rf(name, scope)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -582,24 +586,25 @@ type MockWallet_PersistAppLink_Call struct {
 }
 
 // PersistAppLink is a helper method to define mock.On call
-//   - payload *wallet.AppLinkInfo
-func (_e *MockWallet_Expecter) PersistAppLink(payload interface{}) *MockWallet_PersistAppLink_Call {
-	return &MockWallet_PersistAppLink_Call{Call: _e.mock.On("PersistAppLink", payload)}
+//   - name string
+//   - scope model.AccountAuthLocalApiScope
+func (_e *MockWallet_Expecter) PersistAppLink(name interface{}, scope interface{}) *MockWallet_PersistAppLink_Call {
+	return &MockWallet_PersistAppLink_Call{Call: _e.mock.On("PersistAppLink", name, scope)}
 }
 
-func (_c *MockWallet_PersistAppLink_Call) Run(run func(payload *wallet.AppLinkInfo)) *MockWallet_PersistAppLink_Call {
+func (_c *MockWallet_PersistAppLink_Call) Run(run func(name string, scope model.AccountAuthLocalApiScope)) *MockWallet_PersistAppLink_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(*wallet.AppLinkInfo))
+		run(args[0].(string), args[1].(model.AccountAuthLocalApiScope))
 	})
 	return _c
 }
 
-func (_c *MockWallet_PersistAppLink_Call) Return(appKey string, err error) *MockWallet_PersistAppLink_Call {
-	_c.Call.Return(appKey, err)
+func (_c *MockWallet_PersistAppLink_Call) Return(appInfo *wallet.AppLinkInfo, err error) *MockWallet_PersistAppLink_Call {
+	_c.Call.Return(appInfo, err)
 	return _c
 }
 
-func (_c *MockWallet_PersistAppLink_Call) RunAndReturn(run func(*wallet.AppLinkInfo) (string, error)) *MockWallet_PersistAppLink_Call {
+func (_c *MockWallet_PersistAppLink_Call) RunAndReturn(run func(string, model.AccountAuthLocalApiScope) (*wallet.AppLinkInfo, error)) *MockWallet_PersistAppLink_Call {
 	_c.Call.Return(run)
 	return _c
 }
