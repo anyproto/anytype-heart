@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/gogo/protobuf/types"
+	"github.com/iancoleman/strcase"
 
 	apimodel "github.com/anyproto/anytype-heart/core/api/model"
 	"github.com/anyproto/anytype-heart/core/api/pagination"
@@ -199,7 +200,7 @@ func (s *Service) CreateProperty(ctx context.Context, spaceId string, request ap
 	}
 
 	if request.Key != "" {
-		details.Fields[bundle.RelationKeyApiObjectKey.String()] = pbtypes.String(s.sanitizedString(request.Key))
+		details.Fields[bundle.RelationKeyApiObjectKey.String()] = pbtypes.String(strcase.ToSnake(s.sanitizedString(request.Key)))
 	}
 
 	resp := s.mw.ObjectCreateRelation(ctx, &pb.RpcObjectCreateRelationRequest{
@@ -239,7 +240,7 @@ func (s *Service) UpdateProperty(ctx context.Context, spaceId string, propertyId
 		}
 		detailsToUpdate = append(detailsToUpdate, &model.Detail{
 			Key:   bundle.RelationKeyApiObjectKey.String(),
-			Value: pbtypes.String(s.sanitizedString(*request.Key)),
+			Value: pbtypes.String(strcase.ToSnake(s.sanitizedString(*request.Key))),
 		})
 	}
 

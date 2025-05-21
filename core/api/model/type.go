@@ -35,7 +35,7 @@ type TypeResponse struct {
 }
 
 type CreateTypeRequest struct {
-	Key        string         `json:"key" example:"some_user_defined_type_key"`                    // The key of the type
+	Key        string         `json:"key" example:"some_user_defined_type_key"`                    // The key of the type; should always be snake_case, otherwise it will be converted to snake_case
 	Name       string         `json:"name" binding:"required" example:"Page"`                      // The name of the type
 	PluralName string         `json:"plural_name" binding:"required" example:"Pages"`              // The plural name of the type
 	Icon       Icon           `json:"icon" oneOf:"EmojiIcon,FileIcon,NamedIcon"`                   // The icon of the type
@@ -44,7 +44,7 @@ type CreateTypeRequest struct {
 }
 
 type UpdateTypeRequest struct {
-	Key        *string         `json:"key,omitempty" example:"some_user_defined_type_key"`  // The key to set for the type
+	Key        *string         `json:"key,omitempty" example:"some_user_defined_type_key"`  // The key to set for the type; should always be snake_case, otherwise it will be converted to snake_case
 	Name       *string         `json:"name,omitempty" example:"Page"`                       // The name to set for the type
 	PluralName *string         `json:"plural_name,omitempty" example:"Pages"`               // The plural name to set for the type
 	Icon       *Icon           `json:"icon,omitempty" oneOf:"EmojiIcon,FileIcon,NamedIcon"` // The icon to set for the type

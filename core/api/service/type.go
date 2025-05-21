@@ -5,6 +5,7 @@ import (
 	"errors"
 
 	"github.com/gogo/protobuf/types"
+	"github.com/iancoleman/strcase"
 
 	apimodel "github.com/anyproto/anytype-heart/core/api/model"
 	"github.com/anyproto/anytype-heart/core/api/pagination"
@@ -288,7 +289,7 @@ func (s *Service) buildTypeDetails(ctx context.Context, spaceId string, request 
 	}
 
 	if request.Key != "" {
-		fields[bundle.RelationKeyApiObjectKey.String()] = pbtypes.String(s.sanitizedString(request.Key))
+		fields[bundle.RelationKeyApiObjectKey.String()] = pbtypes.String(strcase.ToSnake(s.sanitizedString(request.Key)))
 	}
 
 	iconFields, err := s.processIconFields(spaceId, request.Icon, true)
@@ -355,7 +356,7 @@ func (s *Service) buildUpdatedTypeDetails(ctx context.Context, spaceId string, t
 		if bundle.HasObjectTypeByKey(domain.TypeKey(util.ToTypeApiKey(t.UniqueKey))) {
 			return nil, util.ErrBadInput("type key of bundled types cannot be changed")
 		}
-		fields[bundle.RelationKeyApiObjectKey.String()] = pbtypes.String(s.sanitizedString(*request.Key))
+		fields[bundle.RelationKeyApiObjectKey.String()] = pbtypes.String(strcase.ToSnake(s.sanitizedString(*request.Key)))
 	}
 
 	if request.Icon != nil {
