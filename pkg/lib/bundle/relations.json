@@ -1535,5 +1535,15 @@
     "name": "Plural name",
     "readonly": false,
     "source": "details"
+  },
+  {
+    "description": "Push notification topics list",
+    "format": "longtext",
+    "hidden": true,
+    "key": "pushNotificationTopics",
+    "maxCount": 0,
+    "name": "Push topics",
+    "readonly": false,
+    "source": "details"
   }
 ]

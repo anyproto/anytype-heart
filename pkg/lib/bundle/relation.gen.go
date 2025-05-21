@@ -9,7 +9,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-const RelationChecksum = "62a158a458a241cdf5b502bad800a109a8917ab9026826dd1274262c46b1f839"
+const RelationChecksum = "e16eef9b0b93650a74d81e077d09dc95e36a3038621ca921cd3830ed837930ec"
 const (
 	RelationKeyTag                          domain.RelationKey = "tag"
 	RelationKeyCamera                       domain.RelationKey = "camera"
@@ -160,6 +160,7 @@ const (
 	RelationKeyAutoWidgetTargets            domain.RelationKey = "autoWidgetTargets"
 	RelationKeyAutoWidgetDisabled           domain.RelationKey = "autoWidgetDisabled"
 	RelationKeyPluralName                   domain.RelationKey = "pluralName"
+	RelationKeyPushNotificationTopics       domain.RelationKey = "pushNotificationTopics"
 )
 
 var (
@@ -1403,6 +1404,19 @@ var (
 			Key:              "progress",
 			MaxCount:         1,
 			Name:             "Progress",
+			ReadOnly:         false,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
+		RelationKeyPushNotificationTopics: {
+
+			DataSource:       model.Relation_details,
+			Description:      "Push notification topics list",
+			Format:           model.RelationFormat_longtext,
+			Hidden:           true,
+			Id:               "_brpushNotificationTopics",
+			Key:              "pushNotificationTopics",
+			Name:             "Push topics",
 			ReadOnly:         false,
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,

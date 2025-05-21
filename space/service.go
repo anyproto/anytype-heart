@@ -59,7 +59,7 @@ func New() Service {
 
 type Service interface {
 	Create(ctx context.Context) (space clientspace.Space, err error)
-
+	AllSpaceIds() (ids []string)
 	Join(ctx context.Context, id, aclHeadId string) error
 	CancelLeave(ctx context.Context, id string) (err error)
 	Get(ctx context.Context, id string) (space clientspace.Space, err error)
@@ -71,7 +71,7 @@ type Service interface {
 	FirstCreatedSpaceId() string
 	TechSpace() *clientspace.TechSpace
 	GetPersonalSpace(ctx context.Context) (space clientspace.Space, err error)
-	GetTechSpace(ctx context.Context) (space clientspace.Space, err error)
+	GetTechSpace(ctx context.Context) (space *clientspace.TechSpace, err error)
 	SpaceViewId(spaceId string) (spaceViewId string, err error)
 	AccountMetadataSymKey() crypto.SymKey
 	AccountMetadataPayload() []byte
@@ -338,8 +338,17 @@ func (s *service) GetPersonalSpace(ctx context.Context) (sp clientspace.Space, e
 	return s.Get(ctx, s.personalSpaceId)
 }
 
-func (s *service) GetTechSpace(ctx context.Context) (sp clientspace.Space, err error) {
-	return s.Get(ctx, s.techSpaceId)
+func (s *service) GetTechSpace(ctx context.Context) (sp *clientspace.TechSpace, err error) {
+	ts, err := s.Get(ctx, s.techSpaceId)
+	if err != nil {
+		return
+	}
+	var ok bool
+	if sp, ok = ts.(*clientspace.TechSpace); ok {
+		return sp, nil
+	} else {
+		return nil, fmt.Errorf("unknown tech space type: %T", ts)
+	}
 }
 
 func (s *service) IsPersonal(id string) bool {
