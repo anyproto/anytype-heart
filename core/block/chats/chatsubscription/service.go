@@ -107,38 +107,31 @@ func (s *service) GetManager(chatObjectId string) (Manager, error) {
 
 // getManagerFuture returns a future that should be resolved by the first who called this method.
 // The idea behind using futures here is to initialize a manager once without blocking the whole service.
-func (s *service) getManagerFuture(chatObjectId string) (*futures.Future[*subscriptionManager], error) {
+func (s *service) getManagerFuture(chatObjectId string) *futures.Future[*subscriptionManager] {
 	s.lock.Lock()
 	mngr, ok := s.managers[chatObjectId]
 	if ok {
 		s.lock.Unlock()
-		return mngr, nil
+		return mngr
 	}
 
 	mngr = futures.New[*subscriptionManager]()
 	s.managers[chatObjectId] = mngr
 	s.lock.Unlock()
 
-	err := s.initManager(chatObjectId, mngr)
-	if err != nil {
-		return nil, fmt.Errorf("init manager: %w", err)
-	}
+	mngr.Resolve(s.initManager(chatObjectId))
 
-	return mngr, nil
+	return mngr
 }
 
 func (s *service) getManager(chatObjectId string) (*subscriptionManager, error) {
-	fut, err := s.getManagerFuture(chatObjectId)
-	if err != nil {
-		return nil, fmt.Errorf("get future: %w", err)
-	}
-	return fut.Wait()
+	return s.getManagerFuture(chatObjectId).Wait()
 }
 
-func (s *service) initManager(chatObjectId string, mngrFut *futures.Future[*subscriptionManager]) error {
+func (s *service) initManager(chatObjectId string) (*subscriptionManager, error) {
 	spaceId, err := s.spaceIdResolver.ResolveSpaceID(chatObjectId)
 	if err != nil {
-		return fmt.Errorf("resolve space id: %w", err)
+		return nil, fmt.Errorf("resolve space id: %w", err)
 	}
 
 	currentIdentity := s.accountService.AccountID()
@@ -146,7 +139,7 @@ func (s *service) initManager(chatObjectId string, mngrFut *futures.Future[*subs
 
 	repository, err := s.repositoryService.Repository(chatObjectId)
 	if err != nil {
-		return fmt.Errorf("get repository: %w", err)
+		return nil, fmt.Errorf("get repository: %w", err)
 	}
 	mngr := &subscriptionManager{
 		componentCtx:    s.componentCtx,
@@ -164,12 +157,9 @@ func (s *service) initManager(chatObjectId string, mngrFut *futures.Future[*subs
 	err = mngr.loadChatState(s.componentCtx)
 	if err != nil {
 		err = fmt.Errorf("init chat state: %w", err)
-		mngrFut.ResolveErr(err)
-		return err
+		return nil, err
 	}
-	mngrFut.ResolveValue(mngr)
-
-	return nil
+	return mngr, nil
 }
 
 type SubscribeLastMessagesRequest struct {
