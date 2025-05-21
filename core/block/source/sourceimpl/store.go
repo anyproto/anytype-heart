@@ -196,9 +196,10 @@ func (s *store) ReadStoreDoc(ctx context.Context, storeState *storestate.StoreSt
 		allIsNew = true
 	}
 	applier := &storeApply{
-		tx:       tx,
-		allIsNew: allIsNew,
-		ot:       s.ObjectTree,
+		currentIdentity: s.accountKeysService.Account().SignKey.GetPublic(),
+		tx:              tx,
+		allIsNew:        allIsNew,
+		ot:              s.ObjectTree,
 	}
 	if err = applier.Apply(); err != nil {
 		return errors.Join(tx.Rollback(), err)
@@ -290,6 +291,7 @@ func (s *store) update(ctx context.Context, tree objecttree.ObjectTree) error {
 		return err
 	}
 	applier := &storeApply{
+		currentIdentity:      s.accountKeysService.Account().SignKey.GetPublic(),
 		tx:                   tx,
 		ot:                   tree,
 		needFetchPrevOrderId: true,
