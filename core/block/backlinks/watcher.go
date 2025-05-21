@@ -230,11 +230,11 @@ func (w *watcher) updateBackLinksInObject(id string, backlinksUpdate *backLinksU
 		if _, parseErr := dateutil.BuildDateObjectFromId(id); parseErr == nil {
 			return nil
 		}
-		return fmt.Errorf("failed to resolve space id: %v", err)
+		return fmt.Errorf("failed to resolve space id: %w", err)
 	}
 	spc, err := w.spaceService.Get(w.ctx, spaceId)
 	if err != nil {
-		return fmt.Errorf("failed to get space: %v", err)
+		return fmt.Errorf("failed to get space: %w", err)
 	}
 	spaceDerivedIds := spc.DerivedIDs()
 
@@ -288,9 +288,9 @@ func (w *watcher) updateBackLinksInObject(id string, backlinksUpdate *backLinksU
 		// do no do apply, stateAppend send the event and run the index
 		return nil
 	}); err != nil {
-		return fmt.Errorf("failed to update backlinks: %v", err)
+		return fmt.Errorf("failed to update backlinks: %w", err)
 	}
-	return nil
+	return
 }
 
 func hasSelfLinks(info spaceindex.LinksUpdateInfo) bool {
