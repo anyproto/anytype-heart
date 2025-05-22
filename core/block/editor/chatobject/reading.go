@@ -170,7 +170,7 @@ func (h *readStoreTreeHook) AfterDiffManagersInit(ctx context.Context) error {
 	if err != nil {
 		return fmt.Errorf("mark read messages: %w", err)
 	}
-	h.source.MarkSeenHeads(ctx, diffManagerMentions, h.headsBeforeJoin)
+	err = h.source.MarkSeenHeads(ctx, diffManagerMentions, h.headsBeforeJoin)
 	if err != nil {
 		return fmt.Errorf("mark read mentions: %w", err)
 	}
