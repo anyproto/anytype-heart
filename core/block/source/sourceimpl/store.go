@@ -128,6 +128,7 @@ func (s *store) InitDiffManager(ctx context.Context, name string, seenHeads []st
 	if err != nil {
 		return fmt.Errorf("init diff manager: %w", err)
 	}
+	manager.diffManager.Init()
 
 	err = s.getTechSpace().KeyValueService().SubscribeForKey(s.seenHeadsKey(name), name, func(key string, val keyvalueservice.Value) {
 		s.ObjectTree.Lock()
@@ -182,8 +183,8 @@ func (s *store) PushChange(params source.PushChangeParams) (id string, err error
 	return "", nil
 }
 
-func (s *store) ReadStoreDoc(ctx context.Context, storeState *storestate.StoreState, onUpdateHook func()) (err error) {
-	s.onUpdateHook = onUpdateHook
+func (s *store) ReadStoreDoc(ctx context.Context, storeState *storestate.StoreState, params source.ReadStoreDocParams) (err error) {
+	s.onUpdateHook = params.OnUpdateHook
 	s.store = storeState
 
 	tx, err := s.store.NewTx(ctx)
@@ -200,6 +201,7 @@ func (s *store) ReadStoreDoc(ctx context.Context, storeState *storestate.StoreSt
 		tx:              tx,
 		allIsNew:        allIsNew,
 		ot:              s.ObjectTree,
+		hook:            params.ReadStoreTreeHook,
 	}
 	if err = applier.Apply(); err != nil {
 		return errors.Join(tx.Rollback(), err)
@@ -212,6 +214,13 @@ func (s *store) ReadStoreDoc(ctx context.Context, storeState *storestate.StoreSt
 	err = s.initDiffManagers(ctx)
 	if err != nil {
 		return fmt.Errorf("init diff managers: %w", err)
+	}
+
+	if params.ReadStoreTreeHook != nil {
+		err = params.ReadStoreTreeHook.AfterDiffManagersInit(ctx)
+		if err != nil {
+			return fmt.Errorf("after diff managers init hook: %w", err)
+		}
 	}
 	return nil
 }

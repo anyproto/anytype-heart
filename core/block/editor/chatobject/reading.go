@@ -4,7 +4,12 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/anyproto/any-sync/commonspace/object/tree/objecttree"
+	"github.com/anyproto/any-sync/util/crypto"
+	"github.com/anyproto/any-sync/util/slice"
 	"github.com/anyproto/anytype-heart/core/block/chats/chatmodel"
+	"github.com/anyproto/anytype-heart/core/block/source"
+	"golang.org/x/exp/slices"
 )
 
 func (s *storeObject) MarkReadMessages(ctx context.Context, afterOrderId, beforeOrderId string, lastStateId string, counterType chatmodel.CounterType) error {
@@ -113,6 +118,61 @@ func (s *storeObject) markReadMessages(changeIds []string, counterType chatmodel
 		defer s.subscription.Unlock()
 		s.subscription.ReadMessages(newOldestOrderId, idsModified, counterType)
 		s.subscription.Flush()
+	}
+	return nil
+}
+
+type readStoreTreeHook struct {
+	joinedAclRecordId string
+	headsBeforeJoin   []string
+	currentIdentity   crypto.PubKey
+	source            source.Store
+}
+
+func (h *readStoreTreeHook) BeforeIteration(ot objecttree.ObjectTree) {
+	h.joinedAclRecordId = ot.AclList().Head().Id
+	for _, accState := range ot.AclList().AclState().CurrentAccounts() {
+		if !accState.PubKey.Equals(h.currentIdentity) {
+			continue
+		}
+		noPermissionsIdx := -1
+		for i := len(accState.PermissionChanges) - 1; i >= 0; i-- {
+			permChange := accState.PermissionChanges[i]
+			if permChange.Permission.NoPermissions() {
+				noPermissionsIdx = i
+				break
+			}
+		}
+
+		if noPermissionsIdx == -1 || noPermissionsIdx == len(accState.PermissionChanges)-1 {
+			break
+		}
+
+		// Get a permission change when user was joined space successfully
+		permChange := accState.PermissionChanges[noPermissionsIdx+1]
+		h.joinedAclRecordId = permChange.RecordId
+	}
+}
+
+func (h *readStoreTreeHook) OnIteration(ot objecttree.ObjectTree, change *objecttree.Change) {
+	if ok, _ := ot.AclList().IsAfter(h.joinedAclRecordId, change.AclHeadId); ok {
+		h.headsBeforeJoin = slice.DiscardFromSlice(h.headsBeforeJoin, func(s string) bool {
+			return slices.Contains(change.PreviousIds, s)
+		})
+		if !slices.Contains(h.headsBeforeJoin, change.Id) {
+			h.headsBeforeJoin = append(h.headsBeforeJoin, change.Id)
+		}
+	}
+}
+
+func (h *readStoreTreeHook) AfterDiffManagersInit(ctx context.Context) error {
+	err := h.source.MarkSeenHeads(ctx, diffManagerMessages, h.headsBeforeJoin)
+	if err != nil {
+		return fmt.Errorf("mark read messages: %w", err)
+	}
+	h.source.MarkSeenHeads(ctx, diffManagerMentions, h.headsBeforeJoin)
+	if err != nil {
+		return fmt.Errorf("mark read mentions: %w", err)
 	}
 	return nil
 }

@@ -7,6 +7,7 @@ import (
 
 	anystore "github.com/anyproto/any-store"
 	"github.com/anyproto/any-store/anyenc"
+	"github.com/anyproto/any-sync/commonspace/object/accountdata"
 	"github.com/anyproto/any-sync/commonspace/object/tree/objecttree"
 	"github.com/anyproto/any-sync/util/slice"
 	"go.uber.org/zap"
@@ -53,6 +54,7 @@ type StoreObject interface {
 
 type AccountService interface {
 	AccountID() string
+	Keys() *accountdata.AccountKeys
 }
 
 type seenHeadsCollector interface {
@@ -148,7 +150,13 @@ func (s *storeObject) Init(ctx *smartblock.InitContext) error {
 	}
 	s.store = stateStore
 
-	err = storeSource.ReadStoreDoc(ctx.Ctx, stateStore, s.onUpdate)
+	err = storeSource.ReadStoreDoc(ctx.Ctx, stateStore, source.ReadStoreDocParams{
+		OnUpdateHook: s.onUpdate,
+		ReadStoreTreeHook: &readStoreTreeHook{
+			currentIdentity: s.accountService.Keys().SignKey.GetPublic(),
+			source:          s.storeSource,
+		},
+	})
 	if err != nil {
 		return fmt.Errorf("read store doc: %w", err)
 	}
