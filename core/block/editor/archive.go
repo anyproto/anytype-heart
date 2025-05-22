@@ -14,7 +14,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/widget"
 	"github.com/anyproto/anytype-heart/core/block/migration"
 	"github.com/anyproto/anytype-heart/core/domain"
-	"github.com/anyproto/anytype-heart/core/relationutils"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/spaceindex"
@@ -74,10 +73,6 @@ func (p *Archive) StateMigrations() migration.Migrations {
 		Version: 2,
 		Proc:    template.WithForcedDetail(bundle.RelationKeyIsHidden, domain.Bool(true)),
 	}})
-}
-
-func (p *Archive) Relations(_ *state.State) relationutils.Relations {
-	return nil
 }
 
 // autoInstallBinWidget installs bin widget for the existing users if it was not added/removed before and the user has archived objects

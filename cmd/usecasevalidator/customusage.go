@@ -15,19 +15,8 @@ import (
 )
 
 func collectCustomObjectsUsageInfo(s *pb.SnapshotWithType, info *useCaseInfo) {
-	collectInfoFromRelationLinks(s, info)
 	collectInfoFromObjectTypes(s, info)
 	collectInfoFromDetails(s, info)
-}
-
-func collectInfoFromRelationLinks(s *pb.SnapshotWithType, info *useCaseInfo) {
-	for _, rel := range s.Snapshot.Data.RelationLinks {
-		if v, found := info.customTypesAndRelations[rel.Key]; found {
-			v.isUsed = true
-			info.customTypesAndRelations[rel.Key] = v
-			continue
-		}
-	}
 }
 
 func collectInfoFromObjectTypes(s *pb.SnapshotWithType, info *useCaseInfo) {
@@ -54,9 +43,9 @@ func collectInfoFromDetails(s *pb.SnapshotWithType, info *useCaseInfo) {
 			values := pbtypes.GetStringListValue(v)
 			for _, val := range values {
 				if key, found := info.relations[val]; found {
-					if cr, foundToo := info.customTypesAndRelations[string(key)]; foundToo {
+					if cr, foundToo := info.customTypesAndRelations[key.String()]; foundToo {
 						cr.isUsed = true
-						info.customTypesAndRelations[string(key)] = cr
+						info.customTypesAndRelations[key.String()] = cr
 					}
 				}
 			}
