@@ -78,13 +78,14 @@ type ValidationConfig struct {
 }
 
 type FixConfig struct {
-	HomeObjectId                string `yaml:"home_object_id"`
-	SkipInvalidObjects          bool   `yaml:"skip_invalid_objects"`
-	DeleteInvalidDetails        bool   `yaml:"delete_invalid_details"`
-	DeleteInvalidDetailValues   bool   `yaml:"delete_invalid_detail_values"`
-	DeleteInvalidRelationBlocks bool   `yaml:"delete_invalid_relation_blocks"`
-	SkipInvalidTypes            bool   `yaml:"skip_invalid_types"`
-	RulesPath                   string `yaml:"rules_path"`
+	HomeObjectId                 string `yaml:"home_object_id"`
+	SkipInvalidObjects           bool   `yaml:"skip_invalid_objects"`
+	DeleteInvalidDetails         bool   `yaml:"delete_invalid_details"`
+	DeleteInvalidDetailValues    bool   `yaml:"delete_invalid_detail_values"`
+	DeleteInvalidRelationBlocks  bool   `yaml:"delete_invalid_relation_blocks"`
+	DeleteInvalidCollectionItems bool   `yaml:"delete_invalid_collection_items"`
+	SkipInvalidTypes             bool   `yaml:"skip_invalid_types"`
+	RulesPath                    string `yaml:"rules_path"`
 }
 
 func (i customInfo) GetFormat() model.RelationFormat {
@@ -277,9 +278,10 @@ func collectUseCaseInfo(files []*zip.File, fileName string) (info *useCaseInfo, 
 
 		id := pbtypes.GetString(snapshot.Snapshot.Data.Details, bundle.RelationKeyId.String())
 		name := pbtypes.GetString(snapshot.Snapshot.Data.Details, bundle.RelationKeyName.String())
+		tk := strings.TrimPrefix(snapshot.Snapshot.Data.ObjectTypes[0], addr.ObjectTypeKeyToIdPrefix)
 
 		info.objects[id] = objectInfo{
-			Type:   pbtypes.GetString(snapshot.Snapshot.Data.Details, bundle.RelationKeyType.String()),
+			Type:   tk,
 			Name:   name,
 			SbType: smartblock.SmartBlockType(snapshot.SbType),
 		}
@@ -582,11 +584,7 @@ func listObjects(info *useCaseInfo) {
 		}, obj.SbType) {
 			continue
 		}
-		key, found := info.types[obj.Type]
-		if !found {
-			fmt.Printf("type '%s' is not found in the archive\n", obj.Type)
-		}
-		fmt.Printf("%s:\t%24s - %24s - %s\n", id[len(id)-4:], obj.SbType.String(), key, obj.Name)
+		fmt.Printf("%s:\t%24s - %24s - %s\n", id[len(id)-4:], obj.SbType.String(), obj.Type, obj.Name)
 	}
 
 	fmt.Println("\n- Types:")

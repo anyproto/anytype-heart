@@ -9,6 +9,7 @@ import (
 
 	"github.com/hashicorp/go-multierror"
 
+	"github.com/anyproto/anytype-heart/core/block/editor/template"
 	"github.com/anyproto/anytype-heart/core/block/editor/widget"
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/block/simple/bookmark"
@@ -39,6 +40,7 @@ var validators = []validator{
 	validateBlockLinks,
 	validateDeleted,
 	validateRelationOption,
+	validateCollection,
 }
 
 func validateRelationBlocks(s *pb.SnapshotWithType, info *useCaseInfo, fixConfig FixConfig) (err error) {
@@ -281,6 +283,31 @@ func validateRelationOption(s *pb.SnapshotWithType, info *useCaseInfo, _ FixConf
 		return errSkipObject
 	}
 	return nil
+}
+
+func validateCollection(s *pb.SnapshotWithType, info *useCaseInfo, fix FixConfig) (err error) {
+	if s.Snapshot.Data.Collections == nil {
+		return nil
+	}
+
+	id := pbtypes.GetString(s.Snapshot.Data.Details, bundle.RelationKeyId.String())
+	collection := pbtypes.GetStringList(s.Snapshot.Data.Collections, template.CollectionStoreKey)
+	newCollection := make([]string, 0, len(collection))
+
+	for _, item := range collection {
+		if _, found := info.objects[item]; found {
+			newCollection = append(newCollection, item)
+			continue
+		}
+		if !fix.DeleteInvalidCollectionItems {
+			err = multierror.Append(err, fmt.Errorf("object '%s' is included in store slice of collection '%s', but not in the archive", item, id))
+		}
+	}
+	if len(newCollection) > 0 && fix.DeleteInvalidCollectionItems {
+		s.Snapshot.Data.Collections.Fields[template.CollectionStoreKey] = pbtypes.StringList(newCollection)
+	}
+
+	return
 }
 
 // these relations will be overwritten on import
