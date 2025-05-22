@@ -18,7 +18,7 @@ const (
 	propPrefix                   = ""
 	typePrefix                   = ""
 	tagPrefix                    = ""
-	internalRelationPrefix       = "" // interally, we're using rk instead of uk when working with relations from api, where no "rel-" prefix exists
+	internalRelationPrefix       = "" // internally, we're using rk instead of uk when working with relations from api, where no "rel-" prefix exists
 	internalObjectTypePrefix     = "ot-"
 	internalRelationOptionPrefix = "opt-"
 )
@@ -32,28 +32,15 @@ func ToPropertyApiKey(internalKey string) string {
 	return toApiKey(propPrefix, internalRelationPrefix, internalKey)
 }
 
-// func FromPropertyApiKey(apiKey string) string {
-// 	return fromApiKey(propPrefix, internalRelationPrefix, apiKey)
-// }
-
 func ToTypeApiKey(internalKey string) string {
 	return toApiKey(typePrefix, internalObjectTypePrefix, internalKey)
 }
-
-// func FromTypeApiKey(apiKey string) string {
-// 	return fromApiKey(typePrefix, internalObjectTypePrefix, apiKey)
-// }
 
 func ToTagApiKey(internalKey string) string {
 	return toApiKey(tagPrefix, internalRelationOptionPrefix, internalKey)
 }
 
-// func FromTagApiKey(apiKey string) string {
-// 	return fromApiKey(tagPrefix, internalRelationOptionPrefix, apiKey)
-// }
-
 // IsCustomKey returns true if key is exactly 24 letters and contains at least a digit.
-// Non-custom properties never contain a digit.
 func IsCustomKey(key string) bool {
 	return len(key) == 24 && hex24Pattern.MatchString(key) && digitPattern.MatchString(key)
 }
@@ -68,13 +55,4 @@ func toApiKey(prefix, internalPrefix, internalKey string) string {
 		k = strcase.ToSnake(internalKey)
 	}
 	return prefix + k
-}
-
-// fromApiKey converts an API key back into internal format by stripping the API prefix and re-adding the internal prefix.
-func fromApiKey(prefix, internalPrefix, apiKey string) string {
-	k := strings.TrimPrefix(apiKey, prefix)
-	if IsCustomKey(k) {
-		return internalPrefix + k
-	}
-	return internalPrefix + strcase.ToLowerCamel(k)
 }

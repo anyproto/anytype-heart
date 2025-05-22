@@ -319,18 +319,16 @@ func (s *service) AddMessage(ctx context.Context, sessionCtx session.Context, ch
 		return err
 	})
 	if err == nil {
-		go func() {
-			err := s.sendPushNotification(spaceId, chatObjectId, messageId, message.Message.Text)
-			if err != nil {
-				log.Error("sendPushNotification: ", zap.Error(err))
-			}
-		}()
+		pushErr := s.sendPushNotification(spaceId, chatObjectId, messageId, message.Message.Text, len(message.Attachments) != 0)
+		if pushErr != nil {
+			log.Error("sendPushNotification: ", zap.Error(pushErr))
+		}
 
 	}
 	return messageId, err
 }
 
-func (s *service) sendPushNotification(spaceId, chatObjectId string, messageId string, messageText string) (err error) {
+func (s *service) sendPushNotification(spaceId, chatObjectId, messageId, messageText string, hasAttachments bool) (err error) {
 	accountId := s.accountService.AccountID()
 	spaceName := s.objectStore.GetSpaceName(spaceId)
 	details, err := s.objectStore.SpaceIndex(spaceId).GetDetails(domain.NewParticipantId(spaceId, accountId))
@@ -346,11 +344,12 @@ func (s *service) sendPushNotification(spaceId, chatObjectId string, messageId s
 		SenderId: accountId,
 		Type:     chatpush.ChatMessage,
 		NewMessagePayload: &chatpush.NewMessagePayload{
-			ChatId:     chatObjectId,
-			MsgId:      messageId,
-			SpaceName:  spaceName,
-			SenderName: senderName,
-			Text:       messageText,
+			ChatId:         chatObjectId,
+			MsgId:          messageId,
+			SpaceName:      spaceName,
+			SenderName:     senderName,
+			Text:           messageText,
+			HasAttachments: hasAttachments,
 		},
 	}
 

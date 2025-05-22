@@ -3,8 +3,10 @@ package service
 import (
 	"context"
 	"errors"
+	"fmt"
 
 	"github.com/gogo/protobuf/types"
+	"github.com/iancoleman/strcase"
 
 	apimodel "github.com/anyproto/anytype-heart/core/api/model"
 	"github.com/anyproto/anytype-heart/core/api/pagination"
@@ -118,6 +120,21 @@ func (s *Service) GetType(ctx context.Context, spaceId string, typeId string) (a
 
 // CreateType creates a new type in a specific space.
 func (s *Service) CreateType(ctx context.Context, spaceId string, request apimodel.CreateTypeRequest) (apimodel.Type, error) {
+	if request.Key != "" {
+		newKey := strcase.ToSnake(s.sanitizedString(request.Key))
+		propertyMap, err := s.getPropertyMapFromStore(ctx, spaceId, true)
+		if err != nil {
+			return apimodel.Type{}, err
+		}
+		typeMap, err := s.getTypeMapFromStore(ctx, spaceId, propertyMap, true)
+		if err != nil {
+			return apimodel.Type{}, err
+		}
+		if _, exists := typeMap[newKey]; exists {
+			return apimodel.Type{}, util.ErrBadInput(fmt.Sprintf("type key %q already exists", newKey))
+		}
+	}
+
 	details, err := s.buildTypeDetails(ctx, spaceId, request)
 	if err != nil {
 		return apimodel.Type{}, err
@@ -266,7 +283,7 @@ func (s *Service) getTypeFromStruct(details *types.Struct, propertyMap map[strin
 		Archived:   details.Fields[bundle.RelationKeyIsArchived.String()].GetBoolValue(),
 		Layout:     s.otLayoutToObjectLayout(model.ObjectTypeLayout(details.Fields[bundle.RelationKeyRecommendedLayout.String()].GetNumberValue())),
 		Properties: s.getRecommendedPropertiesFromLists(details.Fields[bundle.RelationKeyRecommendedFeaturedRelations.String()].GetListValue(), details.Fields[bundle.RelationKeyRecommendedRelations.String()].GetListValue(), propertyMap),
-		UniqueKey:  uk,
+		UniqueKey:  uk, // internal only for simplified lookup
 	}
 }
 
@@ -288,7 +305,7 @@ func (s *Service) buildTypeDetails(ctx context.Context, spaceId string, request 
 	}
 
 	if request.Key != "" {
-		fields[bundle.RelationKeyApiObjectKey.String()] = pbtypes.String(s.sanitizedString(request.Key))
+		fields[bundle.RelationKeyApiObjectKey.String()] = pbtypes.String(strcase.ToSnake(s.sanitizedString(request.Key)))
 	}
 
 	iconFields, err := s.processIconFields(spaceId, request.Icon, true)
@@ -352,10 +369,22 @@ func (s *Service) buildUpdatedTypeDetails(ctx context.Context, spaceId string, t
 		fields[bundle.RelationKeyRecommendedLayout.String()] = pbtypes.Int64(int64(s.typeLayoutToObjectTypeLayout(*request.Layout)))
 	}
 	if request.Key != nil {
+		newKey := strcase.ToSnake(s.sanitizedString(*request.Key))
+		propertyMap, err := s.getPropertyMapFromStore(ctx, spaceId, true)
+		if err != nil {
+			return nil, err
+		}
+		typeMap, err := s.getTypeMapFromStore(ctx, spaceId, propertyMap, true)
+		if err != nil {
+			return nil, err
+		}
+		if existing, exists := typeMap[newKey]; exists && existing.Id != t.Id {
+			return nil, util.ErrBadInput(fmt.Sprintf("type key %q already exists", newKey))
+		}
 		if bundle.HasObjectTypeByKey(domain.TypeKey(util.ToTypeApiKey(t.UniqueKey))) {
 			return nil, util.ErrBadInput("type key of bundled types cannot be changed")
 		}
-		fields[bundle.RelationKeyApiObjectKey.String()] = pbtypes.String(s.sanitizedString(*request.Key))
+		fields[bundle.RelationKeyApiObjectKey.String()] = pbtypes.String(newKey)
 	}
 
 	if request.Icon != nil {

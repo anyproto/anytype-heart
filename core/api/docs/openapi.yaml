@@ -123,7 +123,8 @@ components:
         format:
           $ref: '#/components/schemas/apimodel.PropertyFormat'
         key:
-          description: The key of the property
+          description: The key of the property; should always be snake_case, otherwise
+            it will be converted to snake_case
           example: some_user_defined_property_key
           type: string
         name:
@@ -164,7 +165,8 @@ components:
         icon:
           $ref: '#/components/schemas/apimodel.Icon'
         key:
-          description: The key of the type
+          description: The key of the type; should always be snake_case, otherwise
+            it will be converted to snake_case
           example: some_user_defined_type_key
           type: string
         layout:
@@ -377,6 +379,401 @@ components:
       - IconFormatEmoji
       - IconFormatFile
       - IconFormatIcon
+    apimodel.IconName:
+      description: The name of the icon
+      example: document
+      type: string
+      x-enum-varnames:
+      - IconNameAccessibility
+      - IconNameAddCircle
+      - IconNameAirplane
+      - IconNameAlarm
+      - IconNameAlbums
+      - IconNameAlertCircle
+      - IconNameAmericanFootball
+      - IconNameAnalytics
+      - IconNameAperture
+      - IconNameApps
+      - IconNameArchive
+      - IconNameArrowBackCircle
+      - IconNameArrowDownCircle
+      - IconNameArrowForwardCircle
+      - IconNameArrowRedoCircle
+      - IconNameArrowRedo
+      - IconNameArrowUndoCircle
+      - IconNameArrowUndo
+      - IconNameArrowUpCircle
+      - IconNameAtCircle
+      - IconNameAttach
+      - IconNameBackspace
+      - IconNameBagAdd
+      - IconNameBagCheck
+      - IconNameBagHandle
+      - IconNameBagRemove
+      - IconNameBag
+      - IconNameBalloon
+      - IconNameBan
+      - IconNameBandage
+      - IconNameBarChart
+      - IconNameBarbell
+      - IconNameBarcode
+      - IconNameBaseball
+      - IconNameBasket
+      - IconNameBasketball
+      - IconNameBatteryCharging
+      - IconNameBatteryDead
+      - IconNameBatteryFull
+      - IconNameBatteryHalf
+      - IconNameBeaker
+      - IconNameBed
+      - IconNameBeer
+      - IconNameBicycle
+      - IconNameBinoculars
+      - IconNameBluetooth
+      - IconNameBoat
+      - IconNameBody
+      - IconNameBonfire
+      - IconNameBook
+      - IconNameBookmark
+      - IconNameBookmarks
+      - IconNameBowlingBall
+      - IconNameBriefcase
+      - IconNameBrowsers
+      - IconNameBrush
+      - IconNameBug
+      - IconNameBuild
+      - IconNameBulb
+      - IconNameBus
+      - IconNameBusiness
+      - IconNameCafe
+      - IconNameCalculator
+      - IconNameCalendarClear
+      - IconNameCalendarNumber
+      - IconNameCalendar
+      - IconNameCall
+      - IconNameCameraReverse
+      - IconNameCamera
+      - IconNameCarSport
+      - IconNameCar
+      - IconNameCard
+      - IconNameCaretBackCircle
+      - IconNameCaretBack
+      - IconNameCaretDownCircle
+      - IconNameCaretDown
+      - IconNameCaretForwardCircle
+      - IconNameCaretForward
+      - IconNameCaretUpCircle
+      - IconNameCaretUp
+      - IconNameCart
+      - IconNameCash
+      - IconNameCellular
+      - IconNameChatboxEllipses
+      - IconNameChatbox
+      - IconNameChatbubbleEllipses
+      - IconNameChatbubble
+      - IconNameChatbubbles
+      - IconNameCheckbox
+      - IconNameCheckmarkCircle
+      - IconNameCheckmarkDoneCircle
+      - IconNameChevronBackCircle
+      - IconNameChevronDownCircle
+      - IconNameChevronForwardCircle
+      - IconNameChevronUpCircle
+      - IconNameClipboard
+      - IconNameCloseCircle
+      - IconNameCloudCircle
+      - IconNameCloudDone
+      - IconNameCloudDownload
+      - IconNameCloudOffline
+      - IconNameCloudUpload
+      - IconNameCloud
+      - IconNameCloudyNight
+      - IconNameCloudy
+      - IconNameCodeSlash
+      - IconNameCode
+      - IconNameCog
+      - IconNameColorFill
+      - IconNameColorFilter
+      - IconNameColorPalette
+      - IconNameColorWand
+      - IconNameCompass
+      - IconNameConstruct
+      - IconNameContact
+      - IconNameContract
+      - IconNameContrast
+      - IconNameCopy
+      - IconNameCreate
+      - IconNameCrop
+      - IconNameCube
+      - IconNameCut
+      - IconNameDesktop
+      - IconNameDiamond
+      - IconNameDice
+      - IconNameDisc
+      - IconNameDocumentAttach
+      - IconNameDocumentLock
+      - IconNameDocumentText
+      - IconNameDocument
+      - IconNameDocuments
+      - IconNameDownload
+      - IconNameDuplicate
+      - IconNameEar
+      - IconNameEarth
+      - IconNameEasel
+      - IconNameEgg
+      - IconNameEllipse
+      - IconNameEllipsisHorizontalCircle
+      - IconNameEllipsisVerticalCircle
+      - IconNameEnter
+      - IconNameExit
+      - IconNameExpand
+      - IconNameExtensionPuzzle
+      - IconNameEyeOff
+      - IconNameEye
+      - IconNameEyedrop
+      - IconNameFastFood
+      - IconNameFemale
+      - IconNameFileTrayFull
+      - IconNameFileTrayStacked
+      - IconNameFileTray
+      - IconNameFilm
+      - IconNameFilterCircle
+      - IconNameFingerPrint
+      - IconNameFish
+      - IconNameFitness
+      - IconNameFlag
+      - IconNameFlame
+      - IconNameFlashOff
+      - IconNameFlash
+      - IconNameFlashlight
+      - IconNameFlask
+      - IconNameFlower
+      - IconNameFolderOpen
+      - IconNameFolder
+      - IconNameFootball
+      - IconNameFootsteps
+      - IconNameFunnel
+      - IconNameGameController
+      - IconNameGift
+      - IconNameGitBranch
+      - IconNameGitCommit
+      - IconNameGitCompare
+      - IconNameGitMerge
+      - IconNameGitNetwork
+      - IconNameGitPullRequest
+      - IconNameGlasses
+      - IconNameGlobe
+      - IconNameGolf
+      - IconNameGrid
+      - IconNameHammer
+      - IconNameHandLeft
+      - IconNameHandRight
+      - IconNameHappy
+      - IconNameHardwareChip
+      - IconNameHeadset
+      - IconNameHeartCircle
+      - IconNameHeartDislikeCircle
+      - IconNameHeartDislike
+      - IconNameHeartHalf
+      - IconNameHeart
+      - IconNameHelpBuoy
+      - IconNameHelpCircle
+      - IconNameHome
+      - IconNameHourglass
+      - IconNameIceCream
+      - IconNameIdCard
+      - IconNameImage
+      - IconNameImages
+      - IconNameInfinite
+      - IconNameInformationCircle
+      - IconNameInvertMode
+      - IconNameJournal
+      - IconNameKey
+      - IconNameKeypad
+      - IconNameLanguage
+      - IconNameLaptop
+      - IconNameLayers
+      - IconNameLeaf
+      - IconNameLibrary
+      - IconNameLink
+      - IconNameListCircle
+      - IconNameList
+      - IconNameLocate
+      - IconNameLocation
+      - IconNameLockClosed
+      - IconNameLockOpen
+      - IconNameLogIn
+      - IconNameLogOut
+      - IconNameLogoAlipay
+      - IconNameLogoAmazon
+      - IconNameLogoAmplify
+      - IconNameLogoAndroid
+      - IconNameMagnet
+      - IconNameMailOpen
+      - IconNameMailUnread
+      - IconNameMail
+      - IconNameMaleFemale
+      - IconNameMale
+      - IconNameMan
+      - IconNameMap
+      - IconNameMedal
+      - IconNameMedical
+      - IconNameMedkit
+      - IconNameMegaphone
+      - IconNameMenu
+      - IconNameMicCircle
+      - IconNameMicOffCircle
+      - IconNameMicOff
+      - IconNameMic
+      - IconNameMoon
+      - IconNameMove
+      - IconNameMusicalNote
+      - IconNameMusicalNotes
+      - IconNameNavigateCircle
+      - IconNameNavigate
+      - IconNameNewspaper
+      - IconNameNotificationsCircle
+      - IconNameNotificationsOffCircle
+      - IconNameNotificationsOff
+      - IconNameNotifications
+      - IconNameNuclear
+      - IconNameNutrition
+      - IconNameOptions
+      - IconNamePaperPlane
+      - IconNamePartlySunny
+      - IconNamePauseCircle
+      - IconNamePause
+      - IconNamePaw
+      - IconNamePencil
+      - IconNamePeopleCircle
+      - IconNamePeople
+      - IconNamePersonAdd
+      - IconNamePersonCircle
+      - IconNamePersonRemove
+      - IconNamePerson
+      - IconNamePhoneLandscape
+      - IconNamePhonePortrait
+      - IconNamePieChart
+      - IconNamePin
+      - IconNamePint
+      - IconNamePizza
+      - IconNamePlanet
+      - IconNamePlayBackCircle
+      - IconNamePlayBack
+      - IconNamePlayCircle
+      - IconNamePlayForwardCircle
+      - IconNamePlayForward
+      - IconNamePlaySkipBackCircle
+      - IconNamePlaySkipBack
+      - IconNamePlaySkipForwardCircle
+      - IconNamePlaySkipForward
+      - IconNamePlay
+      - IconNamePodium
+      - IconNamePower
+      - IconNamePricetag
+      - IconNamePricetags
+      - IconNamePrint
+      - IconNamePrism
+      - IconNamePulse
+      - IconNamePush
+      - IconNameQrCode
+      - IconNameRadioButtonOff
+      - IconNameRadioButtonOn
+      - IconNameRadio
+      - IconNameRainy
+      - IconNameReader
+      - IconNameReceipt
+      - IconNameRecording
+      - IconNameRefreshCircle
+      - IconNameRefresh
+      - IconNameReloadCircle
+      - IconNameReload
+      - IconNameRemoveCircle
+      - IconNameRepeat
+      - IconNameResize
+      - IconNameRestaurant
+      - IconNameRibbon
+      - IconNameRocket
+      - IconNameRose
+      - IconNameSad
+      - IconNameSave
+      - IconNameScale
+      - IconNameScanCircle
+      - IconNameScan
+      - IconNameSchool
+      - IconNameSearchCircle
+      - IconNameSearch
+      - IconNameSend
+      - IconNameServer
+      - IconNameSettings
+      - IconNameShapes
+      - IconNameShareSocial
+      - IconNameShare
+      - IconNameShieldCheckmark
+      - IconNameShieldHalf
+      - IconNameShield
+      - IconNameShirt
+      - IconNameShuffle
+      - IconNameSkull
+      - IconNameSnow
+      - IconNameSparkles
+      - IconNameSpeedometer
+      - IconNameSquare
+      - IconNameStarHalf
+      - IconNameStar
+      - IconNameStatsChart
+      - IconNameStopCircle
+      - IconNameStop
+      - IconNameStopwatch
+      - IconNameStorefront
+      - IconNameSubway
+      - IconNameSunny
+      - IconNameSwapHorizontal
+      - IconNameSwapVertical
+      - IconNameSyncCircle
+      - IconNameSync
+      - IconNameTabletLandscape
+      - IconNameTabletPortrait
+      - IconNameTelescope
+      - IconNameTennisball
+      - IconNameTerminal
+      - IconNameText
+      - IconNameThermometer
+      - IconNameThumbsDown
+      - IconNameThumbsUp
+      - IconNameThunderstorm
+      - IconNameTicket
+      - IconNameTime
+      - IconNameTimer
+      - IconNameToday
+      - IconNameToggle
+      - IconNameTrailSign
+      - IconNameTrain
+      - IconNameTransgender
+      - IconNameTrashBin
+      - IconNameTrash
+      - IconNameTrendingDown
+      - IconNameTrendingUp
+      - IconNameTriangle
+      - IconNameTrophy
+      - IconNameTv
+      - IconNameUmbrella
+      - IconNameUnlink
+      - IconNameVideocamOff
+      - IconNameVideocam
+      - IconNameVolumeHigh
+      - IconNameVolumeLow
+      - IconNameVolumeMedium
+      - IconNameVolumeMute
+      - IconNameVolumeOff
+      - IconNameWalk
+      - IconNameWallet
+      - IconNameWarning
+      - IconNameWatch
+      - IconNameWater
+      - IconNameWifi
+      - IconNameWine
+      - IconNameWoman
     apimodel.Member:
       description: The member
       properties:
@@ -477,9 +874,7 @@ components:
         format:
           $ref: '#/components/schemas/apimodel.IconFormat'
         name:
-          description: The name of the icon
-          example: document
-          type: string
+          $ref: '#/components/schemas/apimodel.IconName'
       type: object
     apimodel.NumberPropertyLinkValue:
       properties:
@@ -1151,7 +1546,8 @@ components:
     apimodel.UpdatePropertyRequest:
       properties:
         key:
-          description: The key to set for the property
+          description: The key to set for the property; ; should always be snake_case,
+            otherwise it will be converted to snake_case
           example: some_user_defined_property_key
           type: string
         name:
@@ -1186,7 +1582,8 @@ components:
         icon:
           $ref: '#/components/schemas/apimodel.Icon'
         key:
-          description: The key to set for the type
+          description: The key to set for the type; should always be snake_case, otherwise
+            it will be converted to snake_case
           example: some_user_defined_type_key
           type: string
         layout:
