@@ -155,7 +155,7 @@ func (s *subscriptionManager) Flush() {
 		Messages:  events,
 	}
 	if s.sessionContext != nil {
-		s.sessionContext.SetMessages(s.chatId, events)
+		s.sessionContext.SetMessages(s.chatId, append(s.sessionContext.GetMessages(), events...))
 		s.eventSender.BroadcastToOtherSessions(s.sessionContext.ID(), ev)
 	} else if s.IsActive() {
 		s.eventSender.Broadcast(ev)
