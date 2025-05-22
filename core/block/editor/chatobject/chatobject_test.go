@@ -7,6 +7,8 @@ import (
 	"testing"
 
 	"github.com/anyproto/any-sync/app"
+	"github.com/anyproto/any-sync/commonspace/object/accountdata"
+	"github.com/anyproto/any-sync/util/crypto"
 	"github.com/globalsign/mgo/bson"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -37,15 +39,26 @@ const (
 
 type accountServiceStub struct {
 	accountId string
+	signKey   crypto.PrivKey
 }
 
 func (a *accountServiceStub) AccountID() string {
 	return a.accountId
 }
 
+func (a *accountServiceStub) Keys() *accountdata.AccountKeys {
+	return &accountdata.AccountKeys{
+		SignKey: a.signKey,
+	}
+}
+
 func (a *accountServiceStub) Name() string { return "accountServiceStub" }
 
-func (a *accountServiceStub) Init(ap *app.App) error { return nil }
+func (a *accountServiceStub) Init(ap *app.App) error {
+	signKey, _, _ := crypto.GenerateRandomEd25519KeyPair()
+	a.signKey = signKey
+	return nil
+}
 
 type stubSeenHeadsCollector struct {
 	heads []string
