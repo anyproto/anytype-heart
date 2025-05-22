@@ -6,7 +6,6 @@ import (
 
 	"github.com/anyproto/any-sync/commonspace/object/tree/objecttree"
 	"github.com/anyproto/any-sync/commonspace/object/tree/treechangeproto"
-	"github.com/anyproto/any-sync/util/crypto"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/storestate"
 	"github.com/anyproto/anytype-heart/core/block/source"
@@ -14,10 +13,9 @@ import (
 )
 
 type storeApply struct {
-	tx              *storestate.StoreStateTx
-	ot              objecttree.ObjectTree
-	allIsNew        bool
-	currentIdentity crypto.PubKey
+	tx       *storestate.StoreStateTx
+	ot       objecttree.ObjectTree
+	allIsNew bool
 
 	needFetchPrevOrderId bool
 	hook                 source.ReadStoreTreeHook
