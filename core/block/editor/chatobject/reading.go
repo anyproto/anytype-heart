@@ -135,22 +135,20 @@ func (h *readStoreTreeHook) BeforeIteration(ot objecttree.ObjectTree) {
 		if !accState.PubKey.Equals(h.currentIdentity) {
 			continue
 		}
-		noPermissionsIdx := -1
+		// Find the first record in which the user has got permissions since the last join
+		// Example:
+		// We have acl: [ 1:noPermissions, 2:reader, 3:noPermission, 4:reader, 5:writer ]
+		// Record with id=4 is one that we need
 		for i := len(accState.PermissionChanges) - 1; i >= 0; i-- {
 			permChange := accState.PermissionChanges[i]
+
 			if permChange.Permission.NoPermissions() {
-				noPermissionsIdx = i
 				break
+			} else {
+				h.joinedAclRecordId = permChange.RecordId
 			}
 		}
-
-		if noPermissionsIdx == -1 || noPermissionsIdx == len(accState.PermissionChanges)-1 {
-			break
-		}
-
-		// Get a permission change when user was joined space successfully
-		permChange := accState.PermissionChanges[noPermissionsIdx+1]
-		h.joinedAclRecordId = permChange.RecordId
+		break
 	}
 }
 
