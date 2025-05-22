@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/gogo/protobuf/types"
+	"github.com/iancoleman/strcase"
 
 	apimodel "github.com/anyproto/anytype-heart/core/api/model"
 	"github.com/anyproto/anytype-heart/core/api/pagination"
@@ -199,7 +200,15 @@ func (s *Service) CreateProperty(ctx context.Context, spaceId string, request ap
 	}
 
 	if request.Key != "" {
-		details.Fields[bundle.RelationKeyApiObjectKey.String()] = pbtypes.String(s.sanitizedString(request.Key))
+		apiKey := strcase.ToSnake(s.sanitizedString(request.Key))
+		propMap, err := s.getPropertyMapFromStore(ctx, spaceId, false)
+		if err != nil {
+			return apimodel.Property{}, err
+		}
+		if _, exists := propMap[apiKey]; exists {
+			return apimodel.Property{}, util.ErrBadInput(fmt.Sprintf("property key %q already exists", apiKey))
+		}
+		details.Fields[bundle.RelationKeyApiObjectKey.String()] = pbtypes.String(apiKey)
 	}
 
 	resp := s.mw.ObjectCreateRelation(ctx, &pb.RpcObjectCreateRelationRequest{
@@ -234,12 +243,20 @@ func (s *Service) UpdateProperty(ctx context.Context, spaceId string, propertyId
 		})
 	}
 	if request.Key != nil {
+		newKey := strcase.ToSnake(s.sanitizedString(*request.Key))
+		propMap, err := s.getPropertyMapFromStore(ctx, spaceId, false)
+		if err != nil {
+			return apimodel.Property{}, err
+		}
+		if existing, exists := propMap[newKey]; exists && existing.Id != propertyId {
+			return apimodel.Property{}, util.ErrBadInput(fmt.Sprintf("property key %q already exists", newKey))
+		}
 		if bundle.HasRelation(domain.RelationKey(prop.RelationKey)) {
 			return apimodel.Property{}, util.ErrBadInput("property key of bundled properties cannot be changed")
 		}
 		detailsToUpdate = append(detailsToUpdate, &model.Detail{
 			Key:   bundle.RelationKeyApiObjectKey.String(),
-			Value: pbtypes.String(s.sanitizedString(*request.Key)),
+			Value: pbtypes.String(newKey),
 		})
 	}
 
