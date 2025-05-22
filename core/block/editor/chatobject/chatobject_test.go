@@ -4,26 +4,33 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"path/filepath"
 	"testing"
 
-	anystore "github.com/anyproto/any-store"
+	"github.com/anyproto/any-sync/app"
+	"github.com/anyproto/any-sync/commonspace/object/accountdata"
+	"github.com/anyproto/any-sync/util/crypto"
 	"github.com/globalsign/mgo/bson"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
+	"github.com/anyproto/anytype-heart/core/block/chats/chatmodel"
+	"github.com/anyproto/anytype-heart/core/block/chats/chatrepository"
+	"github.com/anyproto/anytype-heart/core/block/chats/chatsubscription"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock/smarttest"
 	"github.com/anyproto/anytype-heart/core/block/editor/storestate"
+	"github.com/anyproto/anytype-heart/core/block/object/idresolver/mock_idresolver"
 	"github.com/anyproto/anytype-heart/core/block/source"
 	"github.com/anyproto/anytype-heart/core/block/source/mock_source"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/event/mock_event"
 	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pb"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/spaceindex"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+	"github.com/anyproto/anytype-heart/tests/testutil"
 )
 
 const (
@@ -32,10 +39,25 @@ const (
 
 type accountServiceStub struct {
 	accountId string
+	signKey   crypto.PrivKey
 }
 
 func (a *accountServiceStub) AccountID() string {
 	return a.accountId
+}
+
+func (a *accountServiceStub) Keys() *accountdata.AccountKeys {
+	return &accountdata.AccountKeys{
+		SignKey: a.signKey,
+	}
+}
+
+func (a *accountServiceStub) Name() string { return "accountServiceStub" }
+
+func (a *accountServiceStub) Init(ap *app.App) error {
+	signKey, _, _ := crypto.GenerateRandomEd25519KeyPair()
+	a.signKey = signKey
+	return nil
 }
 
 type stubSeenHeadsCollector struct {
@@ -53,6 +75,7 @@ type fixture struct {
 	sourceCreator      string
 	eventSender        *mock_event.MockSender
 	events             []*pb.EventMessage
+	spaceIndex         spaceindex.Store
 
 	generateOrderIdFunc func(tx *storestate.StoreStateTx) string
 }
@@ -61,12 +84,11 @@ const testCreator = "accountId1"
 
 func newFixture(t *testing.T) *fixture {
 	ctx := context.Background()
-	db, err := anystore.Open(ctx, filepath.Join(t.TempDir(), "crdt.db"), nil)
-	require.NoError(t, err)
-	t.Cleanup(func() {
-		err := db.Close()
-		require.NoError(t, err)
-	})
+
+	a := &app.App{}
+
+	idResolver := mock_idresolver.NewMockResolver(t)
+	idResolver.EXPECT().ResolveSpaceID(mock.Anything).Return(testSpaceId, nil).Maybe()
 
 	accountService := &accountServiceStub{accountId: testCreator}
 
@@ -74,9 +96,25 @@ func newFixture(t *testing.T) *fixture {
 
 	sb := smarttest.New("chatId1")
 
-	spaceIndex := spaceindex.NewStoreFixture(t)
+	objectStore := objectstore.NewStoreFixture(t)
+	spaceIndex := objectStore.SpaceIndex(testSpaceId)
 
-	object := New(sb, accountService, eventSender, db, spaceIndex)
+	repo := chatrepository.New()
+	subscriptions := chatsubscription.New()
+
+	a.Register(accountService)
+	a.Register(testutil.PrepareMock(ctx, a, eventSender))
+	a.Register(testutil.PrepareMock(ctx, a, idResolver))
+	a.Register(objectStore)
+	a.Register(repo)
+	a.Register(subscriptions)
+
+	err := a.Start(ctx)
+	require.NoError(t, err)
+	db, err := objectStore.GetCrdtDb(testSpaceId).Wait()
+	require.NoError(t, err)
+
+	object := New(sb, accountService, db, repo, subscriptions)
 	rawObject := object.(*storeObject)
 
 	fx := &fixture{
@@ -84,6 +122,7 @@ func newFixture(t *testing.T) *fixture {
 		accountServiceStub: accountService,
 		sourceCreator:      testCreator,
 		eventSender:        eventSender,
+		spaceIndex:         spaceIndex,
 	}
 	eventSender.EXPECT().Broadcast(mock.Anything).Run(func(event *pb.Event) {
 		for _, msg := range event.Messages {
@@ -107,7 +146,7 @@ func newFixture(t *testing.T) *fixture {
 
 	// Imitate diff manager
 	source.EXPECT().MarkSeenHeads(mock.Anything, mock.Anything, mock.Anything).RunAndReturn(func(ctx context.Context, name string, seenHeads []string) error {
-		allMessagesResp, err := fx.GetMessages(ctx, GetMessagesRequest{
+		allMessagesResp, err := fx.GetMessages(ctx, chatrepository.GetMessagesRequest{
 			AfterOrderId:    "",
 			IncludeBoundary: true,
 		})
@@ -158,7 +197,7 @@ func TestAddMessage(t *testing.T) {
 		assert.NotEmpty(t, messageId)
 		assert.NotEmpty(t, sessionCtx.GetMessages())
 
-		messagesResp, err := fx.GetMessages(ctx, GetMessagesRequest{})
+		messagesResp, err := fx.GetMessages(ctx, chatrepository.GetMessagesRequest{})
 		require.NoError(t, err)
 		require.Len(t, messagesResp.Messages, 1)
 
@@ -186,7 +225,7 @@ func TestAddMessage(t *testing.T) {
 		assert.NotEmpty(t, messageId)
 		assert.NotEmpty(t, sessionCtx.GetMessages())
 
-		messagesResp, err := fx.GetMessages(ctx, GetMessagesRequest{})
+		messagesResp, err := fx.GetMessages(ctx, chatrepository.GetMessagesRequest{})
 		require.NoError(t, err)
 		require.Len(t, messagesResp.Messages, 1)
 		assert.Equal(t, messagesResp.ChatState.LastStateId, messagesResp.Messages[0].StateId)
@@ -214,7 +253,7 @@ func TestGetMessages(t *testing.T) {
 		assert.NotEmpty(t, messageId)
 	}
 
-	messagesResp, err := fx.GetMessages(ctx, GetMessagesRequest{Limit: 5})
+	messagesResp, err := fx.GetMessages(ctx, chatrepository.GetMessagesRequest{Limit: 5})
 	require.NoError(t, err)
 
 	lastMessage := messagesResp.Messages[4]
@@ -227,7 +266,7 @@ func TestGetMessages(t *testing.T) {
 
 	t.Run("with requested BeforeOrderId", func(t *testing.T) {
 		lastOrderId := messagesResp.Messages[0].OrderId // text 6
-		gotMessages, err := fx.GetMessages(ctx, GetMessagesRequest{BeforeOrderId: lastOrderId, Limit: 5})
+		gotMessages, err := fx.GetMessages(ctx, chatrepository.GetMessagesRequest{BeforeOrderId: lastOrderId, Limit: 5})
 		require.NoError(t, err)
 		wantTexts = []string{"text 1", "text 2", "text 3", "text 4", "text 5"}
 		for i, msg := range gotMessages.Messages {
@@ -237,7 +276,7 @@ func TestGetMessages(t *testing.T) {
 
 	t.Run("with requested AfterOrderId", func(t *testing.T) {
 		lastOrderId := messagesResp.Messages[0].OrderId // text 6
-		gotMessages, err := fx.GetMessages(ctx, GetMessagesRequest{AfterOrderId: lastOrderId, Limit: 2})
+		gotMessages, err := fx.GetMessages(ctx, chatrepository.GetMessagesRequest{AfterOrderId: lastOrderId, Limit: 2})
 		require.NoError(t, err)
 		wantTexts = []string{"text 7", "text 8"}
 		for i, msg := range gotMessages.Messages {
@@ -287,7 +326,7 @@ func TestEditMessage(t *testing.T) {
 		err = fx.EditMessage(ctx, messageId, editedMessage)
 		require.NoError(t, err)
 
-		messagesResp, err := fx.GetMessages(ctx, GetMessagesRequest{})
+		messagesResp, err := fx.GetMessages(ctx, chatrepository.GetMessagesRequest{})
 		require.NoError(t, err)
 		require.Len(t, messagesResp.Messages, 1)
 
@@ -322,11 +361,11 @@ func TestEditMessage(t *testing.T) {
 		require.Error(t, err)
 
 		// Check that nothing is changed
-		messagesResp, err := fx.GetMessages(ctx, GetMessagesRequest{})
+		messagesResp, err := fx.GetMessages(ctx, chatrepository.GetMessagesRequest{})
 		require.NoError(t, err)
 		require.Len(t, messagesResp.Messages, 1)
 
-		want := inputMessage
+		want := givenComplexMessage()
 		want.Id = messageId
 		want.Creator = testCreator
 
@@ -378,7 +417,7 @@ func TestToggleReaction(t *testing.T) {
 		require.NoError(t, err)
 	})
 
-	messagesResp, err := fx.GetMessages(ctx, GetMessagesRequest{})
+	messagesResp, err := fx.GetMessages(ctx, chatrepository.GetMessagesRequest{})
 	require.NoError(t, err)
 	require.Len(t, messagesResp.Messages, 1)
 
@@ -398,7 +437,7 @@ func TestToggleReaction(t *testing.T) {
 }
 
 func (fx *fixture) assertReadStatus(t *testing.T, ctx context.Context, afterOrderId string, beforeOrderId string, isRead bool, isMentionRead bool) *GetMessagesResponse {
-	messageResp, err := fx.GetMessages(ctx, GetMessagesRequest{
+	messageResp, err := fx.GetMessages(ctx, chatrepository.GetMessagesRequest{
 		AfterOrderId:    afterOrderId,
 		BeforeOrderId:   beforeOrderId,
 		IncludeBoundary: true,
@@ -445,8 +484,8 @@ func (fx *fixture) applyToStore(ctx context.Context, params source.PushStoreChan
 	return changeId, nil
 }
 
-func givenSimpleMessage(text string) *Message {
-	return &Message{
+func givenSimpleMessage(text string) *chatmodel.Message {
+	return &chatmodel.Message{
 		ChatMessage: &model.ChatMessage{
 			Id:          "",
 			OrderId:     "",
@@ -461,8 +500,8 @@ func givenSimpleMessage(text string) *Message {
 	}
 }
 
-func givenMessageWithMention(text string) *Message {
-	return &Message{
+func givenMessageWithMention(text string) *chatmodel.Message {
+	return &chatmodel.Message{
 		ChatMessage: &model.ChatMessage{
 			Id:          "",
 			OrderId:     "",
@@ -484,8 +523,8 @@ func givenMessageWithMention(text string) *Message {
 	}
 }
 
-func givenComplexMessage() *Message {
-	return &Message{
+func givenComplexMessage() *chatmodel.Message {
+	return &chatmodel.Message{
 		ChatMessage: &model.ChatMessage{
 			Id:               "",
 			OrderId:          "",
@@ -538,7 +577,7 @@ func givenComplexMessage() *Message {
 	}
 }
 
-func assertMessagesEqual(t *testing.T, want, got *Message) {
+func assertMessagesEqual(t *testing.T, want, got *chatmodel.Message) {
 	// Cleanup order id
 	assert.NotEmpty(t, got.OrderId)
 	got.OrderId = ""

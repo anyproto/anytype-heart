@@ -41,6 +41,8 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/bookmark"
 	decorator "github.com/anyproto/anytype-heart/core/block/bookmark/bookmarkimporter"
 	"github.com/anyproto/anytype-heart/core/block/chats"
+	"github.com/anyproto/anytype-heart/core/block/chats/chatrepository"
+	"github.com/anyproto/anytype-heart/core/block/chats/chatsubscription"
 	"github.com/anyproto/anytype-heart/core/block/collection"
 	"github.com/anyproto/anytype-heart/core/block/dataviewservice"
 	"github.com/anyproto/anytype-heart/core/block/detailservice"
@@ -54,8 +56,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/object/objectgraph"
 	"github.com/anyproto/anytype-heart/core/block/object/treemanager"
 	"github.com/anyproto/anytype-heart/core/block/process"
-	"github.com/anyproto/anytype-heart/core/block/restriction"
-	"github.com/anyproto/anytype-heart/core/block/source"
+	"github.com/anyproto/anytype-heart/core/block/source/sourceimpl"
 	"github.com/anyproto/anytype-heart/core/block/template/templateimpl"
 	"github.com/anyproto/anytype-heart/core/configfetcher"
 	"github.com/anyproto/anytype-heart/core/debug"
@@ -80,8 +81,11 @@ import (
 	"github.com/anyproto/anytype-heart/core/notifications"
 	"github.com/anyproto/anytype-heart/core/payments"
 	paymentscache "github.com/anyproto/anytype-heart/core/payments/cache"
+	"github.com/anyproto/anytype-heart/core/payments/emailcollector"
 	"github.com/anyproto/anytype-heart/core/peerstatus"
 	"github.com/anyproto/anytype-heart/core/publish"
+	"github.com/anyproto/anytype-heart/core/pushnotification"
+	"github.com/anyproto/anytype-heart/core/pushnotification/pushclient"
 	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/core/spaceview"
 	"github.com/anyproto/anytype-heart/core/subscription"
@@ -262,8 +266,10 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(files.New()).
 		Register(fileoffloader.New()).
 		Register(fileacl.New()).
+		Register(chatrepository.New()).
+		Register(chatsubscription.New()).
 		Register(chats.New()).
-		Register(source.New()).
+		Register(sourceimpl.New()).
 		Register(spacefactory.New()).
 		Register(space.New()).
 		Register(idderiverimpl.New()).
@@ -296,7 +302,6 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(export.New()).
 		Register(linkpreview.New()).
 		Register(unsplash.New()).
-		Register(restriction.New()).
 		Register(debug.New()).
 		Register(syncsubscriptions.New()).
 		Register(builtinobjects.New()).
@@ -318,9 +323,12 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(nameserviceclient.New()).
 		Register(payments.New()).
 		Register(paymentscache.New()).
+		Register(emailcollector.New()).
 		Register(peerstatus.New()).
 		Register(spaceview.New()).
-		Register(api.New())
+		Register(api.New()).
+		Register(pushclient.New()).
+		Register(pushnotification.New())
 }
 
 func MiddlewareVersion() string {

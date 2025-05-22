@@ -319,6 +319,7 @@ func (bs *basic) SetObjectTypesInState(s *state.State, objectTypeKeys []domain.T
 
 	s.SetObjectTypeKeys(objectTypeKeys)
 	removeInternalFlags(s)
+	s.Details().Delete(bundle.RelationKeyLayout)
 
 	toLayout, err := bs.getLayoutForType(objectTypeKeys[0])
 	if err != nil {
@@ -342,6 +343,9 @@ func (bs *basic) getLayoutForType(objectTypeKey domain.TypeKey) (model.ObjectTyp
 
 func (bs *basic) SetLayoutInState(s *state.State, toLayout model.ObjectTypeLayout, ignoreRestriction bool) (err error) {
 	fromLayout, _ := s.Layout()
+	if fromLayout == toLayout {
+		return nil
+	}
 
 	if !ignoreRestriction {
 		if err = bs.Restrictions().Object.Check(model.Restrictions_LayoutChange); errors.Is(err, restriction.ErrRestricted) {

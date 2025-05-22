@@ -46,10 +46,10 @@ func (i *indexer) ForceFTIndex() {
 
 // ftLoop runs full-text indexer
 // MUST NOT be called more than once
-func (i *indexer) ftLoopRoutine() {
+func (i *indexer) ftLoopRoutine(ctx context.Context) {
 	tickerDuration := ftIndexInterval
 	ticker := time.NewTicker(tickerDuration)
-	ctx := i.runCtx
+
 	prevError := i.runFullTextIndexer(ctx)
 	defer close(i.ftQueueFinished)
 	var lastForceIndex time.Time

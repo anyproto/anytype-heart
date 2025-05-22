@@ -27,7 +27,7 @@ import (
 
 const (
 	// ForceObjectsReindexCounter reindex thread-based objects
-	ForceObjectsReindexCounter int32 = 18
+	ForceObjectsReindexCounter int32 = 19
 
 	// ForceFilesReindexCounter reindex file objects
 	ForceFilesReindexCounter int32 = 12 //
@@ -51,7 +51,7 @@ const (
 	ForceReindexDeletedObjectsCounter int32 = 1
 
 	ForceReindexParticipantsCounter int32 = 1
-	ForceReindexChatsCounter        int32 = 1
+	ForceReindexChatsCounter        int32 = 2
 )
 
 type allDeletedIdsProvider interface {
@@ -242,7 +242,10 @@ func (i *indexer) reindexChats(ctx context.Context, space clientspace.Space) err
 	if len(ids) == 0 {
 		return nil
 	}
-	db := i.store.GetCrdtDb(space.Id())
+	db, err := i.store.GetCrdtDb(space.Id()).Wait()
+	if err != nil {
+		return fmt.Errorf("get crdt db: %w", err)
+	}
 
 	txn, err := db.WriteTx(ctx)
 	if err != nil {

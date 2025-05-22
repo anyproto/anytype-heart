@@ -12,9 +12,9 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/anytype/account"
 	"github.com/anyproto/anytype-heart/core/anytype/config"
-	"github.com/anyproto/anytype-heart/core/api/apicore"
+	apicore "github.com/anyproto/anytype-heart/core/api/core"
 	"github.com/anyproto/anytype-heart/core/api/server"
-	"github.com/anyproto/anytype-heart/core/block/export"
+	"github.com/anyproto/anytype-heart/core/event"
 )
 
 const (
@@ -36,7 +36,7 @@ type apiService struct {
 	httpSrv        *http.Server
 	mw             apicore.ClientCommands
 	accountService apicore.AccountService
-	exportService  apicore.ExportService
+	eventService   apicore.EventService
 	listenAddr     string
 	lock           sync.Mutex
 }
@@ -52,8 +52,8 @@ func (s *apiService) Name() (name string) {
 // Init initializes the API service.
 //
 //	@title							Anytype API
-//	@version						2025-03-17
-//	@description					This API allows interaction with Anytype resources such as spaces, objects and types.
+//	@version						2025-05-20
+//	@description					This API enables seamless interaction with Anytype's resources - spaces, objects, properties, types, templates, and beyond.
 //	@termsOfService					https://anytype.io/terms_of_use
 //	@contact.name					Anytype Support
 //	@contact.url					https://anytype.io/contact
@@ -61,14 +61,13 @@ func (s *apiService) Name() (name string) {
 //	@license.name					Any Source Available License 1.0
 //	@license.url					https://github.com/anyproto/anytype-api/blob/main/LICENSE.md
 //	@host							http://localhost:31009
-//	@BasePath						/v1
 //	@securitydefinitions.bearerauth	BearerAuth
 //	@externalDocs.description		OpenAPI
 //	@externalDocs.url				https://swagger.io/resources/open-api/
 func (s *apiService) Init(a *app.App) (err error) {
 	s.listenAddr = a.MustComponent(config.CName).(*config.Config).JsonApiListenAddr
 	s.accountService = a.MustComponent(account.CName).(account.Service)
-	s.exportService = a.MustComponent(export.CName).(apicore.ExportService)
+	s.eventService = a.MustComponent(event.CName).(apicore.EventService)
 	return nil
 }
 
@@ -89,7 +88,8 @@ func (s *apiService) runServer() {
 		return
 	}
 
-	s.srv = server.NewServer(s.mw, s.accountService, s.exportService)
+	s.srv = server.NewServer(s.mw, s.accountService, s.eventService)
+
 	s.httpSrv = &http.Server{
 		Addr:              s.listenAddr,
 		Handler:           s.srv.Engine(),

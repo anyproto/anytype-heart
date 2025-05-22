@@ -32,8 +32,6 @@ var spaceViewRequiredRelations = []domain.RelationKey{
 	bundle.RelationKeySpaceLocalStatus,
 	bundle.RelationKeySpaceRemoteStatus,
 	bundle.RelationKeyTargetSpaceId,
-	bundle.RelationKeySpaceInviteFileCid,
-	bundle.RelationKeySpaceInviteFileKey,
 	bundle.RelationKeyIsAclShared,
 	bundle.RelationKeySharedSpacesLimit,
 	bundle.RelationKeySpaceAccountStatus,
@@ -121,28 +119,6 @@ func (s *SpaceView) initTemplate(st *state.State) {
 	)
 }
 
-func (s *SpaceView) GetExistingInviteInfo() (fileCid string, fileKey string) {
-	details := s.CombinedDetails()
-	fileCid = details.GetString(bundle.RelationKeySpaceInviteFileCid)
-	fileKey = details.GetString(bundle.RelationKeySpaceInviteFileKey)
-	return
-}
-
-func (s *SpaceView) RemoveExistingInviteInfo() (fileCid string, err error) {
-	details := s.Details()
-	fileCid = details.GetString(bundle.RelationKeySpaceInviteFileCid)
-	newState := s.NewState()
-	newState.RemoveDetail(bundle.RelationKeySpaceInviteFileCid, bundle.RelationKeySpaceInviteFileKey)
-	return fileCid, s.Apply(newState)
-}
-
-func (s *SpaceView) GetGuestUserInviteInfo() (fileCid string, fileKey string) {
-	details := s.CombinedDetails()
-	fileCid = details.GetString(bundle.RelationKeySpaceInviteGuestFileCid)
-	fileKey = details.GetString(bundle.RelationKeySpaceInviteGuestFileKey)
-	return
-}
-
 func (s *SpaceView) TryClose(objectTTL time.Duration) (res bool, err error) {
 	return false, nil
 }
@@ -208,13 +184,6 @@ func (s *SpaceView) SetSharedSpacesLimit(limit int) (err error) {
 
 func (s *SpaceView) GetSharedSpacesLimit() (limit int) {
 	return int(s.CombinedDetails().GetInt64(bundle.RelationKeySharedSpacesLimit))
-}
-
-func (s *SpaceView) SetInviteFileInfo(fileCid string, fileKey string) (err error) {
-	st := s.NewState()
-	st.SetDetail(bundle.RelationKeySpaceInviteFileCid, domain.String(fileCid))
-	st.SetDetail(bundle.RelationKeySpaceInviteFileKey, domain.String(fileKey))
-	return s.Apply(st)
 }
 
 func (s *SpaceView) afterApply(info smartblock.ApplyInfo) (err error) {
