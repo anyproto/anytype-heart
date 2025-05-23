@@ -18,8 +18,7 @@ import (
 func TestEnsureMetadataHeader(t *testing.T) {
 	t.Run("sets correct header", func(t *testing.T) {
 		// given
-		fx := newFixture(t)
-		middleware := fx.ensureMetadataHeader()
+		middleware := ensureMetadataHeader()
 		w := httptest.NewRecorder()
 		c, _ := gin.CreateTestContext(w)
 
@@ -145,10 +144,9 @@ func TestEnsureAnalyticsEvent(t *testing.T) {
 		fx := newFixture(t)
 		code := "test-code"
 		fx.eventMock.On("Broadcast", mock.AnythingOfType("*pb.Event")).Return()
-		srv := &Server{}
-		mw := srv.ensureAnalyticsEvent(code, fx.eventMock)
+		middleware := ensureAnalyticsEvent(code, fx.eventMock)
 		router := gin.New()
-		router.Use(mw)
+		router.Use(middleware)
 		router.GET("/test", func(c *gin.Context) {
 			c.String(http.StatusAccepted, "OK")
 		})
