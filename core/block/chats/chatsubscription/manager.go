@@ -158,25 +158,7 @@ func (s *subscriptionManager) Flush() {
 	// Corner case when we are subscribed only for the last message
 	// The idea is to prevent sending a lot of events to message preview subscription on cold recovery or reindex.
 	if len(subIdsAllMessages) == 0 && len(subIdsOnlyLastMessage) > 0 {
-		state := newMessagesState()
-		for _, ev := range events {
-			state.applyEvent(ev)
-		}
-		lastMessage, ok := state.getLastMessage()
-		if ok {
-			addEvent := state.addEvents[lastMessage.Id]
-			addEvent.SubIds = subIdsOnlyLastMessage
-			if s.withDeps() {
-				s.enrichWithDependencies(addEvent)
-			}
-
-			// Just rewrite all events and leave only last message. This message already has all updates applied to it
-			events = []*pb.EventMessage{
-				event.NewMessage(s.spaceId, &pb.EventMessageValueOfChatAdd{
-					ChatAdd: addEvent,
-				}),
-			}
-		}
+		events = s.getEventsOnlyForLastMessage(events, subIdsOnlyLastMessage)
 	} else {
 		for _, ev := range events {
 			if ev := ev.GetChatAdd(); ev != nil {
@@ -206,6 +188,29 @@ func (s *subscriptionManager) Flush() {
 	} else if s.IsActive() {
 		s.eventSender.Broadcast(ev)
 	}
+}
+
+func (s *subscriptionManager) getEventsOnlyForLastMessage(events []*pb.EventMessage, subIdsOnlyLastMessage []string) []*pb.EventMessage {
+	state := newMessagesState()
+	for _, ev := range events {
+		state.applyEvent(ev)
+	}
+	lastMessage, ok := state.getLastMessage()
+	if ok {
+		addEvent := state.addEvents[lastMessage.Id]
+		addEvent.SubIds = subIdsOnlyLastMessage
+		if s.withDeps() {
+			s.enrichWithDependencies(addEvent)
+		}
+
+		// Just rewrite all events and leave only last message. This message already has all updates applied to it
+		events = []*pb.EventMessage{
+			event.NewMessage(s.spaceId, &pb.EventMessageValueOfChatAdd{
+				ChatAdd: addEvent,
+			}),
+		}
+	}
+	return events
 }
 
 func (s *subscriptionManager) enrichWithDependencies(ev *pb.EventChatAdd) {
