@@ -51,7 +51,7 @@ const (
 	ForceReindexDeletedObjectsCounter int32 = 1
 
 	ForceReindexParticipantsCounter int32 = 1
-	ForceReindexChatsCounter        int32 = 2
+	ForceReindexChatsCounter        int32 = 3
 )
 
 type allDeletedIdsProvider interface {
@@ -288,6 +288,8 @@ func (i *indexer) reindexChats(ctx context.Context, space clientspace.Space) err
 	if err != nil {
 		return fmt.Errorf("commit: %w", err)
 	}
+
+	i.reindexIdsIgnoreErr(ctx, space, ids...)
 
 	return nil
 }

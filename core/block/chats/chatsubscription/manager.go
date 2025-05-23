@@ -48,6 +48,8 @@ type subscriptionManager struct {
 type subscription struct {
 	id               string
 	withDependencies bool
+
+	onlyLastMessage bool
 }
 
 func (s *subscriptionManager) Lock() {
@@ -59,11 +61,12 @@ func (s *subscriptionManager) Unlock() {
 }
 
 // subscribe subscribes to messages. It returns true if there was no subscriptionManager with provided id
-func (s *subscriptionManager) subscribe(subId string, withDependencies bool) bool {
+func (s *subscriptionManager) subscribe(subId string, withDependencies bool, onlyLastMessage bool) bool {
 	if _, ok := s.subscriptions[subId]; !ok {
 		s.subscriptions[subId] = &subscription{
 			id:               subId,
 			withDependencies: withDependencies,
+			onlyLastMessage:  onlyLastMessage,
 		}
 		s.chatStateUpdated = false
 		return true
@@ -142,6 +145,47 @@ func (s *subscriptionManager) Flush() {
 	events := slices.Clone(s.eventsBuffer)
 	s.eventsBuffer = s.eventsBuffer[:0]
 
+	var subIdsOnlyLastMessage []string
+	subIdsAllMessages := make([]string, 0, len(s.subscriptions))
+	for _, sub := range s.subscriptions {
+		if sub.onlyLastMessage {
+			subIdsOnlyLastMessage = append(subIdsOnlyLastMessage, sub.id)
+		} else {
+			subIdsAllMessages = append(subIdsAllMessages, sub.id)
+		}
+	}
+
+	if len(subIdsAllMessages) == 0 && len(subIdsOnlyLastMessage) > 0 {
+		state := newMessagesState()
+		for _, ev := range events {
+			state.applyEvent(ev)
+		}
+		lastMessage, ok := state.getLastMessage()
+		if ok {
+			addEvent := state.addEvents[lastMessage.Id]
+			addEvent.SubIds = subIdsOnlyLastMessage
+			if s.withDeps() {
+				s.enrichWithDependencies(addEvent)
+			}
+
+			// Just rewrite all events and leave only last message. This message already has all updates applied to it
+			events = []*pb.EventMessage{
+				event.NewMessage(s.spaceId, &pb.EventMessageValueOfChatAdd{
+					ChatAdd: addEvent,
+				}),
+			}
+		}
+	} else {
+		for _, ev := range events {
+			if ev := ev.GetChatAdd(); ev != nil {
+				ev.SubIds = subIdsAllMessages
+				if s.withDeps() {
+					s.enrichWithDependencies(ev)
+				}
+			}
+		}
+	}
+
 	if s.chatStateUpdated {
 		events = append(events, event.NewMessage(s.spaceId, &pb.EventMessageValueOfChatStateUpdate{ChatStateUpdate: &pb.EventChatUpdateState{
 			State:  s.GetChatState(),
@@ -159,6 +203,13 @@ func (s *subscriptionManager) Flush() {
 		s.eventSender.BroadcastToOtherSessions(s.sessionContext.ID(), ev)
 	} else if s.IsActive() {
 		s.eventSender.Broadcast(ev)
+	}
+}
+
+func (s *subscriptionManager) enrichWithDependencies(ev *pb.EventChatAdd) {
+	deps := s.collectMessageDependencies(ev.Message)
+	for _, dep := range deps {
+		ev.Dependencies = append(ev.Dependencies, dep.ToProto())
 	}
 }
 
@@ -185,21 +236,13 @@ func (s *subscriptionManager) Add(prevOrderId string, message *chatmodel.Message
 		Message:      message.ChatMessage,
 		OrderId:      message.OrderId,
 		AfterOrderId: prevOrderId,
-		SubIds:       s.listSubIds(),
-	}
-
-	if s.withDeps() {
-		deps := s.collectMessageDependencies(message)
-		for _, dep := range deps {
-			ev.Dependencies = append(ev.Dependencies, dep.ToProto())
-		}
 	}
 	s.eventsBuffer = append(s.eventsBuffer, event.NewMessage(s.spaceId, &pb.EventMessageValueOfChatAdd{
 		ChatAdd: ev,
 	}))
 }
 
-func (s *subscriptionManager) collectMessageDependencies(message *chatmodel.Message) []*domain.Details {
+func (s *subscriptionManager) collectMessageDependencies(message *model.ChatMessage) []*domain.Details {
 	var result []*domain.Details
 
 	identityDetails, err := s.getIdentityDetails(message.Creator)

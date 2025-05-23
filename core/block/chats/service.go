@@ -283,6 +283,7 @@ func (s *service) onChatAdded(chatObjectId string, subId string, asyncInit bool)
 		Limit:            1,
 		AsyncInit:        asyncInit,
 		WithDependencies: true,
+		OnlyLastMessage:  true,
 	})
 }
 

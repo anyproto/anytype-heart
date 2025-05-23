@@ -169,6 +169,7 @@ type SubscribeLastMessagesRequest struct {
 	// If AsyncInit is true, initial messages will be broadcast via events
 	AsyncInit        bool
 	WithDependencies bool
+	OnlyLastMessage  bool
 }
 
 type SubscribeLastMessagesResponse struct {
@@ -202,7 +203,7 @@ func (s *service) SubscribeLastMessages(ctx context.Context, req SubscribeLastMe
 		return nil, fmt.Errorf("query messages: %w", err)
 	}
 
-	mngr.subscribe(req.SubId, req.WithDependencies)
+	mngr.subscribe(req.SubId, req.WithDependencies, req.OnlyLastMessage)
 
 	if req.AsyncInit {
 		var previousOrderId string
@@ -225,7 +226,7 @@ func (s *service) SubscribeLastMessages(ctx context.Context, req SubscribeLastMe
 		depsPerMessage := map[string][]*domain.Details{}
 		if req.WithDependencies {
 			for _, message := range messages {
-				deps := mngr.collectMessageDependencies(message)
+				deps := mngr.collectMessageDependencies(message.ChatMessage)
 				depsPerMessage[message.Id] = deps
 			}
 		}
