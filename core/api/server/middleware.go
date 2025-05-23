@@ -27,25 +27,10 @@ var (
 	ErrInvalidToken               = errors.New("invalid token")
 )
 
-// ensureRateLimit creates a shared write-rate limiter middleware.
-func ensureRateLimit(rate float64, burst int, isRateLimitDisabled bool) gin.HandlerFunc {
-	lmt := tollbooth.NewLimiter(rate, nil)
-	lmt.SetBurst(burst)
-	lmt.SetIPLookup(limiter.IPLookup{
-		Name:           "RemoteAddr",
-		IndexFromRight: 0,
-	})
-
+// ensureMetadataHeader is a middleware that ensures the metadata header is set.
+func (s *Server) ensureMetadataHeader() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		if isRateLimitDisabled {
-			c.Next()
-			return
-		}
-		if httpError := tollbooth.LimitByRequest(lmt, c.Writer, c.Request); httpError != nil {
-			apiErr := util.CodeToAPIError(httpError.StatusCode, httpError.Message)
-			c.AbortWithStatusJSON(httpError.StatusCode, apiErr)
-			return
-		}
+		c.Writer.Header().Set("Anytype-Version", ApiVersion)
 		c.Next()
 	}
 }
@@ -118,10 +103,25 @@ func (s *Server) ensureAnalyticsEvent(code string, eventService apicore.EventSer
 	}
 }
 
-// ensureMetadataHeader is a middleware that ensures the metadata header is set.
-func (s *Server) ensureMetadataHeader() gin.HandlerFunc {
+// ensureRateLimit creates shared write-rate limiter middleware.
+func ensureRateLimit(rate float64, burst int, isRateLimitDisabled bool) gin.HandlerFunc {
+	lmt := tollbooth.NewLimiter(rate, nil)
+	lmt.SetBurst(burst)
+	lmt.SetIPLookup(limiter.IPLookup{
+		Name:           "RemoteAddr",
+		IndexFromRight: 0,
+	})
+
 	return func(c *gin.Context) {
-		c.Writer.Header().Set("Anytype-Version", ApiVersion)
+		if isRateLimitDisabled {
+			c.Next()
+			return
+		}
+		if httpError := tollbooth.LimitByRequest(lmt, c.Writer, c.Request); httpError != nil {
+			apiErr := util.CodeToAPIError(httpError.StatusCode, httpError.Message)
+			c.AbortWithStatusJSON(httpError.StatusCode, apiErr)
+			return
+		}
 		c.Next()
 	}
 }

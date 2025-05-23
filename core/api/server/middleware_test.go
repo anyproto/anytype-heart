@@ -1,6 +1,7 @@
 package server
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -138,6 +139,41 @@ func TestEnsureAuthenticated(t *testing.T) {
 	})
 }
 
+func TestEnsureAnalyticsEvent(t *testing.T) {
+	t.Run("broadcasts analytics event after successful request", func(t *testing.T) {
+		// given
+		fx := newFixture(t)
+		code := "test-code"
+		fx.eventMock.On("Broadcast", mock.AnythingOfType("*pb.Event")).Return()
+		srv := &Server{}
+		mw := srv.ensureAnalyticsEvent(code, fx.eventMock)
+		router := gin.New()
+		router.Use(mw)
+		router.GET("/test", func(c *gin.Context) {
+			c.String(http.StatusAccepted, "OK")
+		})
+
+		// when
+		w := httptest.NewRecorder()
+		req := httptest.NewRequest("GET", "/test", nil)
+		router.ServeHTTP(w, req)
+
+		// then
+		require.Equal(t, http.StatusAccepted, w.Code)
+		fx.eventMock.AssertCalled(t, "Broadcast", mock.AnythingOfType("*pb.Event"))
+
+		expectedPayload, err := util.NewAnalyticsEventForApi(context.Background(), code, http.StatusAccepted)
+		require.NoError(t, err)
+		msgArg := fx.eventMock.Calls[0].Arguments.Get(0).(*pb.Event)
+		require.Len(t, msgArg.Messages, 1)
+
+		wrapper := msgArg.Messages[0].GetPayloadBroadcast()
+		require.NotNil(t, wrapper)
+		require.Equal(t, expectedPayload, wrapper.Payload)
+
+	})
+}
+
 func TestRateLimit(t *testing.T) {
 	router := gin.New()
 	router.GET("/", ensureRateLimit(1, 1, false), func(c *gin.Context) {
@@ -190,7 +226,7 @@ func TestRateLimit(t *testing.T) {
 		burstRouter.ServeHTTP(w2, req2)
 		require.Equal(t, http.StatusOK, w2.Code)
 
-		// third request should be rate-limited
+		// the third request should be rate-limited
 		w3 := httptest.NewRecorder()
 		req3 := httptest.NewRequest("GET", "/", nil)
 		req3.RemoteAddr = "1.2.3.4:5678"

@@ -18,23 +18,26 @@ const (
 
 type fixture struct {
 	*Server
-	eventService   mock_apicore.MockEventService
-	mwMock         *mock_apicore.MockClientCommands
+	mwMock      *mock_apicore.MockClientCommands
+	accountMock *mock_apicore.MockAccountService
+	eventMock   *mock_apicore.MockEventService
 }
 
 func newFixture(t *testing.T) *fixture {
 	mwMock := mock_apicore.NewMockClientCommands(t)
-	accountService := mock_apicore.NewMockAccountService(t)
-	eventService := mock_apicore.NewMockEventService(t)
-	accountService.On("GetInfo", mock.Anything).Return(&model.AccountInfo{
+	accountMock := mock_apicore.NewMockAccountService(t)
+	eventMock := mock_apicore.NewMockEventService(t)
+	accountMock.On("GetInfo", mock.Anything).Return(&model.AccountInfo{
 		GatewayUrl:  mockedGatewayUrl,
 		TechSpaceId: mockedTechSpaceId,
 	}, nil).Once()
-	server := NewServer(mwMock, accountService, eventService)
+	server := NewServer(mwMock, accountMock, eventMock)
 
 	return &fixture{
-		Server: server,
-		mwMock: mwMock,
+		Server:      server,
+		mwMock:      mwMock,
+		accountMock: accountMock,
+		eventMock:   eventMock,
 	}
 }
 
