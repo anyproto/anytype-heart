@@ -33,8 +33,8 @@ var (
 )
 
 // ListSpaces returns a paginated list of spaces for the account.
-func (s *Service) ListSpaces(ctx context.Context, filters []Filter, offset int, limit int) (spaces []apimodel.Space, total int, hasMore bool, err error) {
-	baseFilters := []*model.BlockContentDataviewFilter{
+func (s *Service) ListSpaces(ctx context.Context, additionalFilters []*model.BlockContentDataviewFilter, offset int, limit int) (spaces []apimodel.Space, total int, hasMore bool, err error) {
+	filters := append([]*model.BlockContentDataviewFilter{
 		{
 			RelationKey: bundle.RelationKeyResolvedLayout.String(),
 			Condition:   model.BlockContentDataviewFilter_Equal,
@@ -50,17 +50,11 @@ func (s *Service) ListSpaces(ctx context.Context, filters []Filter, offset int, 
 			Condition:   model.BlockContentDataviewFilter_In,
 			Value:       pbtypes.IntList(int(model.SpaceStatus_Unknown), int(model.SpaceStatus_SpaceActive)),
 		},
-	}
-	for _, f := range filters {
-		baseFilters = append(baseFilters, &model.BlockContentDataviewFilter{
-			RelationKey: f.RelationKey,
-			Condition:   f.Condition,
-			Value:       f.Value,
-		})
-	}
+	}, additionalFilters...)
+
 	resp := s.mw.ObjectSearch(ctx, &pb.RpcObjectSearchRequest{
 		SpaceId: s.techSpaceId,
-		Filters: baseFilters,
+		Filters: filters,
 		Sorts: []*model.BlockContentDataviewSort{
 			{
 				RelationKey:    bundle.RelationKeySpaceOrder.String(),

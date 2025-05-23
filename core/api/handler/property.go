@@ -9,9 +9,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/api/pagination"
 	"github.com/anyproto/anytype-heart/core/api/service"
 	"github.com/anyproto/anytype-heart/core/api/util"
-	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 // ListPropertiesHandler retrieves a list of properties in a space
@@ -36,15 +34,8 @@ func ListPropertiesHandler(s *service.Service) gin.HandlerFunc {
 		offset := c.GetInt("offset")
 		limit := c.GetInt("limit")
 
-		nameParam := c.Query("name")
-		var filters []service.Filter
-		if nameParam != "" {
-			filters = append(filters, service.Filter{
-				RelationKey: bundle.RelationKeyName.String(),
-				Condition:   model.BlockContentDataviewFilter_Like,
-				Value:       pbtypes.String(nameParam),
-			})
-		}
+		filtersAny, _ := c.Get("filters")
+		filters := filtersAny.([]*model.BlockContentDataviewFilter)
 
 		properties, total, hasMore, err := s.ListProperties(c.Request.Context(), spaceId, filters, offset, limit)
 		code := util.MapErrorCode(err,

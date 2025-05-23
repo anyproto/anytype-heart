@@ -31,8 +31,8 @@ var (
 )
 
 // ListTypes returns a paginated list of types in a specific space.
-func (s *Service) ListTypes(ctx context.Context, spaceId string, filters []Filter, offset int, limit int) (types []apimodel.Type, total int, hasMore bool, err error) {
-	baseFilters := []*model.BlockContentDataviewFilter{
+func (s *Service) ListTypes(ctx context.Context, spaceId string, additionalFilters []*model.BlockContentDataviewFilter, offset int, limit int) (types []apimodel.Type, total int, hasMore bool, err error) {
+	filters := append([]*model.BlockContentDataviewFilter{
 		{
 			RelationKey: bundle.RelationKeyResolvedLayout.String(),
 			Condition:   model.BlockContentDataviewFilter_Equal,
@@ -43,17 +43,11 @@ func (s *Service) ListTypes(ctx context.Context, spaceId string, filters []Filte
 			Condition:   model.BlockContentDataviewFilter_NotEqual,
 			Value:       pbtypes.Bool(true),
 		},
-	}
-	for _, f := range filters {
-		baseFilters = append(baseFilters, &model.BlockContentDataviewFilter{
-			RelationKey: f.RelationKey,
-			Condition:   f.Condition,
-			Value:       f.Value,
-		})
-	}
+	}, additionalFilters...)
+
 	resp := s.mw.ObjectSearch(ctx, &pb.RpcObjectSearchRequest{
 		SpaceId: spaceId,
-		Filters: baseFilters,
+		Filters: filters,
 		Sorts: []*model.BlockContentDataviewSort{
 			{
 				RelationKey: bundle.RelationKeyName.String(),

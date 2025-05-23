@@ -16,8 +16,8 @@ import (
 )
 
 // ListMembers returns a paginated list of members in the space with the given ID.
-func (s *Service) ListMembers(ctx context.Context, spaceId string, filters []Filter, offset int, limit int) (members []apimodel.Member, total int, hasMore bool, err error) {
-	baseFilters := []*model.BlockContentDataviewFilter{
+func (s *Service) ListMembers(ctx context.Context, spaceId string, additionalFilters []*model.BlockContentDataviewFilter, offset int, limit int) (members []apimodel.Member, total int, hasMore bool, err error) {
+	filters := append([]*model.BlockContentDataviewFilter{
 		{
 			RelationKey: bundle.RelationKeyResolvedLayout.String(),
 			Condition:   model.BlockContentDataviewFilter_Equal,
@@ -28,17 +28,11 @@ func (s *Service) ListMembers(ctx context.Context, spaceId string, filters []Fil
 			Condition:   model.BlockContentDataviewFilter_Equal,
 			Value:       pbtypes.Int64(int64(model.ParticipantStatus_Active)),
 		},
-	}
-	for _, f := range filters {
-		baseFilters = append(baseFilters, &model.BlockContentDataviewFilter{
-			RelationKey: f.RelationKey,
-			Condition:   f.Condition,
-			Value:       f.Value,
-		})
-	}
+	}, additionalFilters...)
+
 	activeResp := s.mw.ObjectSearch(ctx, &pb.RpcObjectSearchRequest{
 		SpaceId: spaceId,
-		Filters: baseFilters,
+		Filters: filters,
 		Sorts: []*model.BlockContentDataviewSort{
 			{
 				RelationKey: bundle.RelationKeyName.String(),
