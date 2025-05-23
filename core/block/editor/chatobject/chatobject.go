@@ -165,6 +165,19 @@ func (s *storeObject) Init(ctx *smartblock.InitContext) error {
 
 	s.seenHeadsCollector = newTreeSeenHeadsCollector(s.Tree())
 
+	// Push empty change to force chat object to be pushed to any-sync nodes
+	// Without that there can be situation when joined users can't use the chat, because it exists only in owner's local data
+	if ctx.IsNewObject {
+		_, err := s.storeSource.PushStoreChange(ctx.Ctx, source.PushStoreChangeParams{
+			Changes: nil,
+			State:   s.store,
+			Time:    time.Now(),
+		})
+		if err != nil {
+			return fmt.Errorf("push initial change: %w", err)
+		}
+	}
+
 	return nil
 }
 
