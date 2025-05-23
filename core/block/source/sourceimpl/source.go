@@ -569,7 +569,9 @@ func BuildState(spaceId string, initState *state.State, ot objecttree.ReadableOb
 			lastChange = change
 			// that means that we are starting from tree root
 			if change.Id == ot.Id() {
-				if uniqueKeyInternalKey != "" {
+				if st != nil {
+					st = st.NewState()
+				} else if uniqueKeyInternalKey != "" {
 					st = newState(st, state.NewDocWithInternalKey(ot.Id(), nil, uniqueKeyInternalKey).(*state.State))
 				} else {
 					st = newState(st, state.NewDoc(ot.Id(), nil).(*state.State))
