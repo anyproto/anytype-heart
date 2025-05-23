@@ -27,26 +27,34 @@ var (
 )
 
 // ListTags returns all tags for a given property id in a space.
-func (s *Service) ListTags(ctx context.Context, spaceId string, propertyId string, offset int, limit int) (tags []apimodel.Tag, total int, hasMore bool, err error) {
+func (s *Service) ListTags(ctx context.Context, spaceId string, propertyId string, filters []Filter, offset int, limit int) (tags []apimodel.Tag, total int, hasMore bool, err error) {
 	_, rk, err := util.ResolveIdtoUniqueKeyAndRelationKey(s.mw, spaceId, propertyId)
 	if err != nil {
 		return nil, 0, false, ErrInvalidPropertyId
 	}
 
+	baseFilters := []*model.BlockContentDataviewFilter{
+		{
+			RelationKey: bundle.RelationKeyResolvedLayout.String(),
+			Condition:   model.BlockContentDataviewFilter_In,
+			Value:       pbtypes.IntList(util.LayoutsToIntArgs(util.TagLayouts)...),
+		},
+		{
+			RelationKey: bundle.RelationKeyRelationKey.String(),
+			Condition:   model.BlockContentDataviewFilter_Equal,
+			Value:       pbtypes.String(rk),
+		},
+	}
+	for _, f := range filters {
+		baseFilters = append(baseFilters, &model.BlockContentDataviewFilter{
+			RelationKey: f.RelationKey,
+			Condition:   f.Condition,
+			Value:       f.Value,
+		})
+	}
 	resp := s.mw.ObjectSearch(ctx, &pb.RpcObjectSearchRequest{
 		SpaceId: spaceId,
-		Filters: []*model.BlockContentDataviewFilter{
-			{
-				RelationKey: bundle.RelationKeyResolvedLayout.String(),
-				Condition:   model.BlockContentDataviewFilter_In,
-				Value:       pbtypes.IntList(util.LayoutsToIntArgs(util.TagLayouts)...),
-			},
-			{
-				RelationKey: bundle.RelationKeyRelationKey.String(),
-				Condition:   model.BlockContentDataviewFilter_Equal,
-				Value:       pbtypes.String(rk),
-			},
-		},
+		Filters: baseFilters,
 		Keys: []string{
 			bundle.RelationKeyId.String(),
 			bundle.RelationKeyUniqueKey.String(),

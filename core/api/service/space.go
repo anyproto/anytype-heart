@@ -33,26 +33,34 @@ var (
 )
 
 // ListSpaces returns a paginated list of spaces for the account.
-func (s *Service) ListSpaces(ctx context.Context, offset int, limit int) (spaces []apimodel.Space, total int, hasMore bool, err error) {
+func (s *Service) ListSpaces(ctx context.Context, filters []Filter, offset int, limit int) (spaces []apimodel.Space, total int, hasMore bool, err error) {
+	baseFilters := []*model.BlockContentDataviewFilter{
+		{
+			RelationKey: bundle.RelationKeyResolvedLayout.String(),
+			Condition:   model.BlockContentDataviewFilter_Equal,
+			Value:       pbtypes.Int64(int64(model.ObjectType_spaceView)),
+		},
+		{
+			RelationKey: bundle.RelationKeySpaceLocalStatus.String(),
+			Condition:   model.BlockContentDataviewFilter_In,
+			Value:       pbtypes.IntList(int(model.SpaceStatus_Unknown), int(model.SpaceStatus_Ok)),
+		},
+		{
+			RelationKey: bundle.RelationKeySpaceAccountStatus.String(),
+			Condition:   model.BlockContentDataviewFilter_In,
+			Value:       pbtypes.IntList(int(model.SpaceStatus_Unknown), int(model.SpaceStatus_SpaceActive)),
+		},
+	}
+	for _, f := range filters {
+		baseFilters = append(baseFilters, &model.BlockContentDataviewFilter{
+			RelationKey: f.RelationKey,
+			Condition:   f.Condition,
+			Value:       f.Value,
+		})
+	}
 	resp := s.mw.ObjectSearch(ctx, &pb.RpcObjectSearchRequest{
 		SpaceId: s.techSpaceId,
-		Filters: []*model.BlockContentDataviewFilter{
-			{
-				RelationKey: bundle.RelationKeyResolvedLayout.String(),
-				Condition:   model.BlockContentDataviewFilter_Equal,
-				Value:       pbtypes.Int64(int64(model.ObjectType_spaceView)),
-			},
-			{
-				RelationKey: bundle.RelationKeySpaceLocalStatus.String(),
-				Condition:   model.BlockContentDataviewFilter_In,
-				Value:       pbtypes.IntList(int(model.SpaceStatus_Unknown), int(model.SpaceStatus_Ok)),
-			},
-			{
-				RelationKey: bundle.RelationKeySpaceAccountStatus.String(),
-				Condition:   model.BlockContentDataviewFilter_In,
-				Value:       pbtypes.IntList(int(model.SpaceStatus_Unknown), int(model.SpaceStatus_SpaceActive)),
-			},
-		},
+		Filters: baseFilters,
 		Sorts: []*model.BlockContentDataviewSort{
 			{
 				RelationKey:    bundle.RelationKeySpaceOrder.String(),

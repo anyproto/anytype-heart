@@ -56,7 +56,7 @@ func TestObjectService_ListTemplates(t *testing.T) {
 		}).Times(3)
 
 		// when
-		templates, total, hasMore, err := fx.service.ListTemplates(ctx, mockedSpaceId, "target-type-id", offset, limit)
+		templates, total, hasMore, err := fx.service.ListTemplates(ctx, mockedSpaceId, "target-type-id", nil, offset, limit)
 
 		// then
 		require.NoError(t, err)
@@ -85,7 +85,7 @@ func TestObjectService_ListTemplates(t *testing.T) {
 			}).Once()
 
 		// when
-		templates, total, hasMore, err := fx.service.ListTemplates(ctx, mockedSpaceId, "missing-type-id", offset, limit)
+		templates, total, hasMore, err := fx.service.ListTemplates(ctx, mockedSpaceId, "missing-type-id", nil, offset, limit)
 
 		// then
 		require.ErrorIs(t, err, ErrTemplateTypeNotFound)

@@ -9,6 +9,9 @@ import (
 	"github.com/anyproto/anytype-heart/core/api/pagination"
 	"github.com/anyproto/anytype-heart/core/api/service"
 	"github.com/anyproto/anytype-heart/core/api/util"
+	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
+	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 // GetListViewsHandler
@@ -79,7 +82,17 @@ func GetObjectsInListHandler(s *service.Service) gin.HandlerFunc {
 		offset := c.GetInt("offset")
 		limit := c.GetInt("limit")
 
-		objects, total, hasMore, err := s.GetObjectsInList(c, spaceId, listId, viewId, offset, limit)
+		nameParam := c.Query("name")
+		var filters []service.Filter
+		if nameParam != "" {
+			filters = append(filters, service.Filter{
+				RelationKey: bundle.RelationKeyName.String(),
+				Condition:   model.BlockContentDataviewFilter_Like,
+				Value:       pbtypes.String(nameParam),
+			})
+		}
+
+		objects, total, hasMore, err := s.GetObjectsInList(c, spaceId, listId, viewId, filters, offset, limit)
 		code := util.MapErrorCode(err,
 			util.ErrToCode(service.ErrFailedGetList, http.StatusNotFound),
 			util.ErrToCode(service.ErrFailedGetListDataview, http.StatusInternalServerError),

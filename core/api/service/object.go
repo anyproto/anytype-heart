@@ -33,26 +33,34 @@ var (
 )
 
 // ListObjects retrieves a paginated list of objects in a specific space.
-func (s *Service) ListObjects(ctx context.Context, spaceId string, offset int, limit int) (objects []apimodel.Object, total int, hasMore bool, err error) {
+func (s *Service) ListObjects(ctx context.Context, spaceId string, filters []Filter, offset int, limit int) (objects []apimodel.Object, total int, hasMore bool, err error) {
+	baseFilters := []*model.BlockContentDataviewFilter{
+		{
+			RelationKey: bundle.RelationKeyResolvedLayout.String(),
+			Condition:   model.BlockContentDataviewFilter_In,
+			Value:       pbtypes.IntList(util.LayoutsToIntArgs(util.ObjectLayouts)...),
+		},
+		{
+			RelationKey: "type.uniqueKey",
+			Condition:   model.BlockContentDataviewFilter_NotEqual,
+			Value:       pbtypes.String("ot-template"),
+		},
+		{
+			RelationKey: bundle.RelationKeyIsHidden.String(),
+			Condition:   model.BlockContentDataviewFilter_NotEqual,
+			Value:       pbtypes.Bool(true),
+		},
+	}
+	for _, f := range filters {
+		baseFilters = append(baseFilters, &model.BlockContentDataviewFilter{
+			RelationKey: f.RelationKey,
+			Condition:   f.Condition,
+			Value:       f.Value,
+		})
+	}
 	resp := s.mw.ObjectSearch(ctx, &pb.RpcObjectSearchRequest{
 		SpaceId: spaceId,
-		Filters: []*model.BlockContentDataviewFilter{
-			{
-				RelationKey: bundle.RelationKeyResolvedLayout.String(),
-				Condition:   model.BlockContentDataviewFilter_In,
-				Value:       pbtypes.IntList(util.LayoutsToIntArgs(util.ObjectLayouts)...),
-			},
-			{
-				RelationKey: "type.uniqueKey",
-				Condition:   model.BlockContentDataviewFilter_NotEqual,
-				Value:       pbtypes.String("ot-template"),
-			},
-			{
-				RelationKey: bundle.RelationKeyIsHidden.String(),
-				Condition:   model.BlockContentDataviewFilter_NotEqual,
-				Value:       pbtypes.Bool(true),
-			},
-		},
+		Filters: baseFilters,
 		Sorts: []*model.BlockContentDataviewSort{{
 			RelationKey:    bundle.RelationKeyLastModifiedDate.String(),
 			Type:           model.BlockContentDataviewSort_Desc,
