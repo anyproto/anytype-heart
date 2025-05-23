@@ -155,6 +155,8 @@ func (s *subscriptionManager) Flush() {
 		}
 	}
 
+	// Corner case when we are subscribed only for the last message
+	// The idea is to prevent sending a lot of events to message preview subscription on cold recovery or reindex.
 	if len(subIdsAllMessages) == 0 && len(subIdsOnlyLastMessage) > 0 {
 		state := newMessagesState()
 		for _, ev := range events {
