@@ -121,7 +121,7 @@ func TestSpaceService_ListMembers(t *testing.T) {
 			}).Once()
 
 		// when
-		members, total, hasMore, err := fx.service.ListMembers(nil, "space-id", offset, limit)
+		members, total, hasMore, err := fx.service.ListMembers(nil, "space-id", nil, offset, limit)
 
 		// then
 		require.NoError(t, err)
@@ -172,7 +172,7 @@ func TestSpaceService_ListMembers(t *testing.T) {
 			}).Once()
 
 		// when
-		members, total, hasMore, err := fx.service.ListMembers(nil, "space-id", offset, limit)
+		members, total, hasMore, err := fx.service.ListMembers(nil, "space-id", nil, offset, limit)
 
 		// then
 		require.NoError(t, err)

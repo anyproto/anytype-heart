@@ -95,7 +95,7 @@ func (s *Service) GetListViews(ctx context.Context, spaceId string, listId strin
 }
 
 // GetObjectsInList retrieves objects in a list
-func (s *Service) GetObjectsInList(ctx context.Context, spaceId string, listId string, viewId string, offset, limit int) ([]apimodel.Object, int, bool, error) {
+func (s *Service) GetObjectsInList(ctx context.Context, spaceId string, listId string, viewId string, additionalFilters []*model.BlockContentDataviewFilter, offset, limit int) ([]apimodel.Object, int, bool, error) {
 	resp := s.mw.ObjectShow(ctx, &pb.RpcObjectShowRequest{
 		SpaceId:  spaceId,
 		ObjectId: listId,
@@ -140,6 +140,8 @@ func (s *Service) GetObjectsInList(ctx context.Context, spaceId string, listId s
 	default:
 		return nil, 0, false, ErrFailedGetListDataview
 	}
+
+	filters = append(filters, additionalFilters...)
 
 	var typeDetail *types.Struct
 	for _, detail := range resp.ObjectView.Details {

@@ -14,7 +14,10 @@ import (
 	"github.com/anyproto/anytype-heart/core/api/util"
 	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/pb"
+	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
+	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 const ApiVersion = "2025-05-20"
@@ -27,25 +30,10 @@ var (
 	ErrInvalidToken               = errors.New("invalid token")
 )
 
-// ensureRateLimit creates a shared write-rate limiter middleware.
-func ensureRateLimit(rate float64, burst int, isRateLimitDisabled bool) gin.HandlerFunc {
-	lmt := tollbooth.NewLimiter(rate, nil)
-	lmt.SetBurst(burst)
-	lmt.SetIPLookup(limiter.IPLookup{
-		Name:           "RemoteAddr",
-		IndexFromRight: 0,
-	})
-
+// ensureMetadataHeader is a middleware that ensures the metadata header is set.
+func ensureMetadataHeader() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		if isRateLimitDisabled {
-			c.Next()
-			return
-		}
-		if httpError := tollbooth.LimitByRequest(lmt, c.Writer, c.Request); httpError != nil {
-			apiErr := util.CodeToAPIError(httpError.StatusCode, httpError.Message)
-			c.AbortWithStatusJSON(httpError.StatusCode, apiErr)
-			return
-		}
+		c.Writer.Header().Set("Anytype-Version", ApiVersion)
 		c.Next()
 	}
 }
@@ -99,7 +87,7 @@ func (s *Server) ensureAuthenticated(mw apicore.ClientCommands) gin.HandlerFunc 
 }
 
 // ensureAnalyticsEvent is a middleware that ensures broadcasting an analytics event after a successful request.
-func (s *Server) ensureAnalyticsEvent(code string, eventService apicore.EventService) gin.HandlerFunc {
+func ensureAnalyticsEvent(code string, eventService apicore.EventService) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		c.Next()
 
@@ -118,10 +106,51 @@ func (s *Server) ensureAnalyticsEvent(code string, eventService apicore.EventSer
 	}
 }
 
-// ensureMetadataHeader is a middleware that ensures the metadata header is set.
-func (s *Server) ensureMetadataHeader() gin.HandlerFunc {
+// ensureRateLimit creates shared write-rate limiter middleware.
+func ensureRateLimit(rate float64, burst int, isRateLimitDisabled bool) gin.HandlerFunc {
+	lmt := tollbooth.NewLimiter(rate, nil)
+	lmt.SetBurst(burst)
+	lmt.SetIPLookup(limiter.IPLookup{
+		Name:           "RemoteAddr",
+		IndexFromRight: 0,
+	})
+
 	return func(c *gin.Context) {
-		c.Writer.Header().Set("Anytype-Version", ApiVersion)
+		if isRateLimitDisabled {
+			c.Next()
+			return
+		}
+		if httpError := tollbooth.LimitByRequest(lmt, c.Writer, c.Request); httpError != nil {
+			apiErr := util.CodeToAPIError(httpError.StatusCode, httpError.Message)
+			c.AbortWithStatusJSON(httpError.StatusCode, apiErr)
+			return
+		}
+		c.Next()
+	}
+}
+
+// ensureFilters is a middleware that ensures the filters are set in the context.
+func ensureFilters() gin.HandlerFunc {
+	filterDefs := []struct {
+		Param       string
+		RelationKey string
+		Condition   model.BlockContentDataviewFilterCondition
+	}{
+		{bundle.RelationKeyName.String(), bundle.RelationKeyName.String(), model.BlockContentDataviewFilter_Like},
+	}
+
+	return func(c *gin.Context) {
+		var filters []*model.BlockContentDataviewFilter
+		for _, def := range filterDefs {
+			if v := c.Query(def.Param); v != "" {
+				filters = append(filters, &model.BlockContentDataviewFilter{
+					RelationKey: def.RelationKey,
+					Condition:   def.Condition,
+					Value:       pbtypes.String(v),
+				})
+			}
+		}
+		c.Set("filters", filters)
 		c.Next()
 	}
 }
