@@ -95,7 +95,7 @@ func (s *apiService) runServer() {
 		return
 	}
 
-	s.srv = server.NewServer(s.mw, s.accountService, s.eventService, openapiJSON, openapiYAML)
+	s.srv = server.NewServer(s.mw, s.accountService, s.eventService, openapiYAML, openapiJSON)
 
 	s.httpSrv = &http.Server{
 		Addr:              s.listenAddr,
