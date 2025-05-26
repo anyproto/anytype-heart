@@ -195,7 +195,7 @@ func (s *subscriptionManager) getEventsOnlyForLastMessage(events []*pb.EventMess
 	for _, ev := range events {
 		state.applyEvent(ev)
 	}
-	lastMessage, ok := state.getLastMessage()
+	lastMessage, ok := state.getLastAddedMessage()
 	if ok {
 		addEvent := state.addEvents[lastMessage.Id]
 		addEvent.SubIds = subIdsOnlyLastMessage

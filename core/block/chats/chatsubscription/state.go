@@ -18,14 +18,20 @@ func newMessagesState() *messagesState {
 	}
 }
 
-func (s *messagesState) getLastMessage() (*model.ChatMessage, bool) {
+func (s *messagesState) getLastAddedMessage() (*model.ChatMessage, bool) {
 	var lastMessage *model.ChatMessage
 	for _, m := range s.messages {
 		if lastMessage == nil || lastMessage.OrderId < m.OrderId {
 			lastMessage = m
 		}
 	}
-	return lastMessage, lastMessage != nil
+
+	if lastMessage == nil {
+		return nil, false
+	}
+
+	_, ok := s.addEvents[lastMessage.Id]
+	return lastMessage, ok
 }
 
 func (s *messagesState) applyEvent(ev *pb.EventMessage) {
