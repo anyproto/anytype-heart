@@ -23,7 +23,7 @@ const (
 
 // NewRouter builds and returns a *gin.Engine with all routes configured.
 
-func (s *Server) NewRouter(mw apicore.ClientCommands, eventService apicore.EventService) *gin.Engine {
+func (s *Server) NewRouter(mw apicore.ClientCommands, eventService apicore.EventService, openapiYAML []byte, openapiJSON []byte) *gin.Engine {
 	isDebug := os.Getenv("ANYTYPE_API_DEBUG") == "1"
 	if !isDebug {
 		gin.SetMode(gin.ReleaseMode)
@@ -55,21 +55,11 @@ func (s *Server) NewRouter(mw apicore.ClientCommands, eventService apicore.Event
 	})
 
 	router.GET("/docs/openapi.yaml", func(c *gin.Context) {
-		data, err := os.ReadFile("./core/api/docs/openapi.yaml")
-		if err != nil {
-			c.String(http.StatusInternalServerError, "Failed to read OpenAPI spec")
-			return
-		}
-		c.Data(http.StatusOK, "application/x-yaml", data)
+		c.Data(http.StatusOK, "application/x-yaml", openapiYAML)
 	})
 
 	router.GET("/docs/openapi.json", func(c *gin.Context) {
-		data, err := os.ReadFile("./core/api/docs/openapi.json")
-		if err != nil {
-			c.String(http.StatusInternalServerError, "Failed to read OpenAPI spec")
-			return
-		}
-		c.Data(http.StatusOK, "application/json", data)
+		c.Data(http.StatusOK, "application/json", openapiJSON)
 	})
 
 	// Auth routes (no authentication required)
