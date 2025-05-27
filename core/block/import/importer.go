@@ -201,7 +201,7 @@ func (i *Import) addRootCollectionWidget(res *ImportResponse, req *ImportRequest
 					TargetBlockId: res.RootCollectionId,
 				}},
 			},
-		})
+		}, true)
 		if err != nil {
 			log.Errorf("failed to create widget from root collection, error: %s", err.Error())
 		}

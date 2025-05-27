@@ -1,6 +1,7 @@
 package editor
 
 import (
+	"errors"
 	"fmt"
 
 	"github.com/anyproto/any-sync/app"
@@ -10,6 +11,8 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/anytype/config"
 	"github.com/anyproto/anytype-heart/core/block/cache"
+	"github.com/anyproto/anytype-heart/core/block/chats/chatrepository"
+	"github.com/anyproto/anytype-heart/core/block/chats/chatsubscription"
 	"github.com/anyproto/anytype-heart/core/block/editor/accountobject"
 	"github.com/anyproto/anytype-heart/core/block/editor/bookmark"
 	"github.com/anyproto/anytype-heart/core/block/editor/chatobject"
@@ -19,7 +22,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/migration"
 	"github.com/anyproto/anytype-heart/core/block/object/idresolver"
 	"github.com/anyproto/anytype-heart/core/block/process"
-	"github.com/anyproto/anytype-heart/core/block/restriction"
 	"github.com/anyproto/anytype-heart/core/block/source"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/event"
@@ -53,29 +55,30 @@ type deviceService interface {
 }
 
 type ObjectFactory struct {
-	bookmarkService     bookmark.BookmarkService
-	fileBlockService    file.BlockService
-	layoutConverter     converter.LayoutConverter
-	objectStore         objectstore.ObjectStore
-	sourceService       source.Service
-	tempDirProvider     core.TempDirProvider
-	fileService         files.Service
-	config              *config.Config
-	picker              cache.ObjectGetter
-	eventSender         event.Sender
-	restrictionService  restriction.Service
-	indexer             smartblock.Indexer
-	spaceService        spaceService
-	accountService      accountService
-	fileObjectService   fileobject.Service
-	processService      process.Service
-	fileUploaderService fileuploader.Service
-	fileReconciler      reconciler.Reconciler
-	objectDeleter       ObjectDeleter
-	deviceService       deviceService
-	spaceIdResolver     idresolver.Resolver
-	commonFile          fileservice.FileService
-	dbProvider          anystoreprovider.Provider
+	bookmarkService         bookmark.BookmarkService
+	fileBlockService        file.BlockService
+	layoutConverter         converter.LayoutConverter
+	objectStore             objectstore.ObjectStore
+	sourceService           source.Service
+	tempDirProvider         core.TempDirProvider
+	fileService             files.Service
+	config                  *config.Config
+	picker                  cache.ObjectGetter
+	eventSender             event.Sender
+	indexer                 smartblock.Indexer
+	spaceService            spaceService
+	accountService          accountService
+	fileObjectService       fileobject.Service
+	processService          process.Service
+	fileUploaderService     fileuploader.Service
+	fileReconciler          reconciler.Reconciler
+	objectDeleter           ObjectDeleter
+	deviceService           deviceService
+	spaceIdResolver         idresolver.Resolver
+	commonFile              fileservice.FileService
+	dbProvider              anystoreprovider.Provider
+	chatRepositoryService   chatrepository.Service
+	chatSubscriptionService chatsubscription.Service
 }
 
 func NewObjectFactory() *ObjectFactory {
@@ -101,7 +104,6 @@ func (f *ObjectFactory) Init(a *app.App) (err error) {
 	f.layoutConverter = app.MustComponent[converter.LayoutConverter](a)
 	f.fileBlockService = app.MustComponent[file.BlockService](a)
 	f.fileObjectService = app.MustComponent[fileobject.Service](a)
-	f.restrictionService = app.MustComponent[restriction.Service](a)
 	f.fileUploaderService = app.MustComponent[fileuploader.Service](a)
 	f.objectDeleter = app.MustComponent[ObjectDeleter](a)
 	f.fileReconciler = app.MustComponent[reconciler.Reconciler](a)
@@ -109,6 +111,8 @@ func (f *ObjectFactory) Init(a *app.App) (err error) {
 	f.spaceIdResolver = app.MustComponent[idresolver.Resolver](a)
 	f.commonFile = app.MustComponent[fileservice.FileService](a)
 	f.dbProvider = app.MustComponent[anystoreprovider.Provider](a)
+	f.chatRepositoryService = app.MustComponent[chatrepository.Service](a)
+	f.chatSubscriptionService = app.MustComponent[chatsubscription.Service](a)
 	return nil
 }
 
@@ -153,8 +157,17 @@ func (f *ObjectFactory) InitObject(space smartblock.Space, id string, initCtx *s
 		return nil, fmt.Errorf("init smartblock: %w", err)
 	}
 
+	applyFlags := []smartblock.ApplyFlag{smartblock.NoHistory, smartblock.NoEvent, smartblock.NoRestrictions, smartblock.SkipIfNoChanges, smartblock.KeepInternalFlags, smartblock.IgnoreNoPermissions}
+	if initCtx.IsNewObject {
+		applyFlags = append(applyFlags, smartblock.AllowApplyWithEmptyTree)
+	}
 	migration.RunMigrations(sb, initCtx)
-	return sb, sb.Apply(initCtx.State, smartblock.NoHistory, smartblock.NoEvent, smartblock.NoRestrictions, smartblock.SkipIfNoChanges, smartblock.KeepInternalFlags, smartblock.IgnoreNoPermissions)
+	err = sb.Apply(initCtx.State, applyFlags...)
+	if errors.Is(err, smartblock.ErrApplyOnEmptyTreeDisallowed) {
+		// in this case we still want the smartblock to bootstrap to receive the rest of the tree
+		err = nil
+	}
+	return sb, err
 }
 
 func (f *ObjectFactory) produceSmartblock(space smartblock.Space) (smartblock.SmartBlock, spaceindex.Store) {
@@ -162,7 +175,6 @@ func (f *ObjectFactory) produceSmartblock(space smartblock.Space) (smartblock.Sm
 	return smartblock.New(
 		space,
 		f.accountService.MyParticipantId(space.Id()),
-		f.restrictionService,
 		store,
 		f.objectStore,
 		f.indexer,
@@ -213,13 +225,13 @@ func (f *ObjectFactory) New(space smartblock.Space, sbType coresb.SmartBlockType
 	case coresb.SmartBlockTypeDevicesObject:
 		return NewDevicesObject(sb, f.deviceService), nil
 	case coresb.SmartBlockTypeChatDerivedObject:
-		db, err := f.dbProvider.GetCrdtDb(space.Id())
+		crdtDb, err := f.dbProvider.GetCrdtDb(space.Id()).Wait()
 		if err != nil {
 			return nil, fmt.Errorf("get crdt db: %w", err)
 		}
-		return chatobject.New(sb, f.accountService, f.eventSender, db, spaceIndex), nil
+		return chatobject.New(sb, f.accountService, crdtDb, f.chatRepositoryService, f.chatSubscriptionService), nil
 	case coresb.SmartBlockTypeAccountObject:
-		db, err := f.dbProvider.GetCrdtDb(space.Id())
+		db, err := f.dbProvider.GetCrdtDb(space.Id()).Wait()
 		if err != nil {
 			return nil, fmt.Errorf("get crdt db: %w", err)
 		}

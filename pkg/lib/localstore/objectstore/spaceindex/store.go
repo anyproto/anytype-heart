@@ -161,7 +161,7 @@ func (s *dsObjectStore) Init() error {
 		return nil
 	}
 
-	db, err := s.dbProvider.GetCrdtDb(s.spaceId)
+	db, err := s.dbProvider.GetSpaceIndexDb(s.spaceId)
 	if err != nil {
 		return fmt.Errorf("get crdt db: %w", err)
 	}

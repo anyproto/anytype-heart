@@ -10,6 +10,7 @@ import (
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/app/logger"
 	"github.com/anyproto/any-sync/commonspace"
+	"github.com/anyproto/any-sync/commonspace/object/keyvalue/keyvaluestorage"
 	"github.com/anyproto/any-sync/commonspace/object/tree/treestorage"
 	"github.com/anyproto/any-sync/net/peer"
 	"go.uber.org/zap"
@@ -74,14 +75,11 @@ type SpaceView interface {
 	GetLocalInfo() spaceinfo.SpaceLocalInfo
 	SetSpaceData(details *domain.Details) error
 	SetSpaceLocalInfo(info spaceinfo.SpaceLocalInfo) error
-	SetInviteFileInfo(fileCid string, fileKey string) (err error)
 	SetAccessType(acc spaceinfo.AccessType) error
 	SetAclIsEmpty(isEmpty bool) (err error)
 	SetOwner(ownerId string, createdDate int64) (err error)
 	SetSpacePersistentInfo(info spaceinfo.SpacePersistentInfo) error
-	RemoveExistingInviteInfo() (fileCid string, err error)
 	GetSpaceDescription() (data spaceinfo.SpaceDescription)
-	GetExistingInviteInfo() (fileCid string, fileKey string)
 	SetSharedSpacesLimit(limits int) (err error)
 	GetSharedSpacesLimit() (limits int)
 }
@@ -385,6 +383,10 @@ func (s *techSpace) getViewIdLocked(ctx context.Context, spaceId string) (viewId
 	}
 	s.viewIds[spaceId] = viewId
 	return
+}
+
+func (s *techSpace) KeyValueStore() keyvaluestorage.Storage {
+	return s.techCore.KeyValue().DefaultStore()
 }
 
 func (s *techSpace) Close(ctx context.Context) (err error) {

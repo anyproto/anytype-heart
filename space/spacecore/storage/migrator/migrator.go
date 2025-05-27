@@ -7,15 +7,19 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"syscall"
 
 	anystore "github.com/anyproto/any-store"
 	"github.com/anyproto/any-sync/app"
+	"github.com/anyproto/any-sync/commonspace/spacestorage"
 	"github.com/anyproto/any-sync/commonspace/spacestorage/migration"
+	"go.uber.org/zap"
 
 	"github.com/anyproto/anytype-heart/core/block/process"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/anystorehelper"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/spaceresolverstore"
+	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/space/spacecore/oldstorage"
 	"github.com/anyproto/anytype-heart/space/spacecore/storage"
 	"github.com/anyproto/anytype-heart/space/spacecore/storage/migratorfinisher"
@@ -27,12 +31,14 @@ type NotEnoughFreeSpaceError struct {
 	Required uint64
 }
 
-func (e NotEnoughFreeSpaceError) Error() string {
+func (e *NotEnoughFreeSpaceError) Error() string {
 	if e.Required == 0 {
 		return fmt.Sprintf("not enough free space: %d", e.Free)
 	}
 	return fmt.Sprintf("Not enough free space: %d, required: %d", e.Free, e.Required)
 }
+
+var log = logging.Logger(CName)
 
 const CName = "client.storage.migration"
 
@@ -74,6 +80,29 @@ func (m *migrator) Name() (name string) {
 	return CName
 }
 
+func isDiskFull(err error) bool {
+	if err == nil {
+		return false
+	}
+	// From sqlite
+	if strings.Contains(err.Error(), "disk is full") {
+		return true
+	}
+
+	// For unix systems
+	if errors.Is(err, syscall.ENOSPC) {
+		return true
+	}
+	// For windows
+	var syscallErrno syscall.Errno
+	if errors.As(err, &syscallErrno) {
+		// See https://pkg.go.dev/golang.org/x/sys/windows
+		// ERROR_DISK_FULL syscall.Errno = 112
+		return syscallErrno == 112
+	}
+	return false
+}
+
 func (m *migrator) Run(ctx context.Context) (err error) {
 	oldSize, err := m.oldStorage.EstimateSize()
 	if err != nil {
@@ -85,7 +114,7 @@ func (m *migrator) Run(ctx context.Context) (err error) {
 	}
 	requiredDiskSpace := oldSize * 15 / 10
 	if requiredDiskSpace > free {
-		return NotEnoughFreeSpaceError{
+		return &NotEnoughFreeSpaceError{
 			Free:     free,
 			Required: requiredDiskSpace,
 		}
@@ -93,12 +122,29 @@ func (m *migrator) Run(ctx context.Context) (err error) {
 
 	err = m.run(ctx)
 	if err != nil {
-		if strings.Contains(err.Error(), "disk is full") {
-			return NotEnoughFreeSpaceError{
-				Free: free,
+		if isDiskFull(err) {
+			return &NotEnoughFreeSpaceError{
+				Free:     free,
+				Required: requiredDiskSpace,
 			}
 		}
 		return err
+	}
+	return nil
+}
+
+func (m *migrator) closeNewStorage(ctx context.Context, newStorage spacestorage.SpaceStorage) (err error) {
+	if newStorage == nil {
+		return nil
+	}
+	store := newStorage.AnyStore()
+	err = m.newStorage.Close(ctx)
+	if err != nil {
+		return fmt.Errorf("close new storage: %w", err)
+	}
+	err = store.Close()
+	if err != nil {
+		return fmt.Errorf("close new storage any store: %w", err)
 	}
 	return nil
 }
@@ -113,7 +159,13 @@ func (m *migrator) run(ctx context.Context) (err error) {
 	defer func() {
 		progress.Finish(err)
 	}()
-	migrator := migration.NewSpaceMigrator(m.oldStorage, m.newStorage, 40, m.path)
+	migrator := migration.NewSpaceMigrator(m.oldStorage, m.newStorage, 40, m.path, func(newStorage spacestorage.SpaceStorage, id, rootPath string) error {
+		err := m.closeNewStorage(ctx, newStorage)
+		if err != nil {
+			log.Error("failed to close new storage", zap.String("spaceId", id), zap.Error(err))
+		}
+		return os.RemoveAll(filepath.Join(rootPath, id))
+	})
 	allIds, err := m.oldStorage.AllSpaceIds()
 	if err != nil {
 		return err

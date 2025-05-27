@@ -3,6 +3,7 @@ package editor
 import (
 	"testing"
 
+	"github.com/anyproto/any-sync/commonspace/object/acl/list"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 
@@ -11,23 +12,29 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock/smarttest"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/migration"
+	"github.com/anyproto/anytype-heart/core/domain"
 )
 
 func TestWorkspaces_FileInfo(t *testing.T) {
 	t.Run("file info add remove", func(t *testing.T) {
 		fx := newWorkspacesFixture(t)
 		defer fx.finish()
-		err := fx.SetInviteFileInfo("fileId", "fileKey")
+		info := domain.InviteInfo{
+			InviteFileCid: "fileId",
+			InviteFileKey: "fileKey",
+			InviteType:    domain.InviteTypeAnyone,
+			Permissions:   list.AclPermissionsWriter,
+		}
+		err := fx.SetInviteFileInfo(info)
 		require.NoError(t, err)
-		fileId, fileKey := fx.GetExistingInviteInfo()
-		require.Equal(t, "fileId", fileId)
-		require.Equal(t, "fileKey", fileKey)
-		fileId, err = fx.RemoveExistingInviteInfo()
+		returnedInfo := fx.GetExistingInviteInfo()
+		require.Equal(t, info, returnedInfo)
+		returnedInfo, err = fx.RemoveExistingInviteInfo()
 		require.NoError(t, err)
-		require.Equal(t, "fileId", fileId)
-		fileId, err = fx.RemoveExistingInviteInfo()
+		require.Equal(t, info, returnedInfo)
+		returnedInfo, err = fx.RemoveExistingInviteInfo()
 		require.NoError(t, err)
-		require.Empty(t, fileId)
+		require.Empty(t, returnedInfo)
 	})
 	t.Run("file info empty", func(t *testing.T) {
 		fx := newWorkspacesFixture(t)

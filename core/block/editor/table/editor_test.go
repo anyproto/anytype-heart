@@ -56,7 +56,7 @@ func TestEditor_TableCreate(t *testing.T) {
 		// given
 		sb := smarttest.New("root")
 		sb.AddBlock(simple.New(&model.Block{Id: "root"}))
-		sb.TestRestrictions = restriction.Restrictions{Object: restriction.ObjectRestrictions{model.Restrictions_Blocks}}
+		sb.TestRestrictions = restriction.Restrictions{Object: restriction.ObjectRestrictions{model.Restrictions_Blocks: {}}}
 		e := NewEditor(sb)
 
 		s := sb.NewState()
