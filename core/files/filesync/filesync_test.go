@@ -19,16 +19,15 @@ import (
 	"github.com/anyproto/anytype-heart/core/event/mock_event"
 	"github.com/anyproto/anytype-heart/core/files/filestorage"
 	"github.com/anyproto/anytype-heart/core/files/filestorage/rpcstore"
-	wallet2 "github.com/anyproto/anytype-heart/core/wallet"
 	"github.com/anyproto/anytype-heart/core/wallet/mock_wallet"
 	"github.com/anyproto/anytype-heart/pb"
-	"github.com/anyproto/anytype-heart/pkg/lib/datastore"
+	"github.com/anyproto/anytype-heart/pkg/lib/datastore/anystoreprovider"
 	"github.com/anyproto/anytype-heart/tests/testutil"
 )
 
 var ctx = context.Background()
 
-func newFixture(t *testing.T, limit int) *fixture {
+func newFixtureNotStarted(t *testing.T, limit int) *fixture {
 	fx := &fixture{
 		fileSync:    New().(*fileSync),
 		fileService: fileservice.New(),
@@ -37,8 +36,6 @@ func newFixture(t *testing.T, limit int) *fixture {
 	}
 
 	sender := mock_event.NewMockSender(t)
-	sender.EXPECT().Name().Return("event")
-	sender.EXPECT().Init(mock.Anything).Return(nil)
 	sender.EXPECT().Broadcast(mock.Anything).Run(func(e *pb.Event) {
 		fx.eventsLock.Lock()
 		defer fx.eventsLock.Unlock()
@@ -49,23 +46,27 @@ func newFixture(t *testing.T, limit int) *fixture {
 	localFileStorage := filestorage.NewInMemory()
 	fx.localFileStorage = localFileStorage
 
-	dataStoreProvider, err := datastore.NewInMemory()
-	require.NoError(t, err)
 	ctrl := gomock.NewController(t)
 	wallet := mock_wallet.NewMockWallet(t)
-	wallet.EXPECT().Name().Return(wallet2.CName)
-	wallet.EXPECT().RepoPath().Return("repo/path")
+	wallet.EXPECT().RepoPath().Return(t.TempDir()).Maybe()
+
+	dbProvider, err := anystoreprovider.NewInPath(t.TempDir())
+	require.NoError(t, err)
 
 	fx.a.Register(fx.fileService).
 		Register(localFileStorage).
-		Register(dataStoreProvider).
+		Register(dbProvider).
 		Register(rpcstore.NewInMemoryService(fx.rpcStore)).
 		Register(fx.fileSync).
-		Register(sender).
+		Register(testutil.PrepareMock(ctx, fx.a, sender)).
 		Register(testutil.PrepareMock(ctx, fx.a, mock_accountservice.NewMockService(ctrl))).
 		Register(testutil.PrepareMock(ctx, fx.a, wallet)).
 		Register(&config.Config{DisableFileConfig: true, NetworkMode: pb.RpcAccount_DefaultConfig, PeferYamuxTransport: true})
+	return fx
+}
 
+func newFixture(t *testing.T, limit int) *fixture {
+	fx := newFixtureNotStarted(t, limit)
 	require.NoError(t, fx.a.Start(ctx))
 	return fx
 }
