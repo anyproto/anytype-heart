@@ -101,11 +101,6 @@ func (h *history) Show(id domain.FullID, versionID string) (bs *model.ObjectView
 		log.With("error", err).Errorf("failed to collect details of dependent objects")
 	}
 
-	relations, err := h.objectStore.SpaceIndex(id.SpaceID).FetchRelationByLinks(s.PickRelationLinks())
-	if err != nil {
-		return nil, nil, fmt.Errorf("fetch relations by links: %w", err)
-	}
-
 	blocksParticipants, err := h.GetBlocksParticipants(id, versionID, s.Blocks())
 	if err != nil {
 		return nil, nil, fmt.Errorf("get blocks modifiers: %w", err)
@@ -116,7 +111,6 @@ func (h *history) Show(id domain.FullID, versionID string) (bs *model.ObjectView
 		Type:              model.SmartBlockType(sbType),
 		Blocks:            s.Blocks(),
 		Details:           details,
-		RelationLinks:     relations.RelationLinks(),
 		BlockParticipants: blocksParticipants,
 	}, ver, nil
 }
@@ -254,11 +248,10 @@ func (h *history) DiffVersions(req *pb.RpcHistoryDiffVersionsRequest) ([]*pb.Eve
 	}
 
 	objectView := &model.ObjectView{
-		RootId:        id.ObjectID,
-		Type:          model.SmartBlockType(sbType),
-		Blocks:        currState.Blocks(),
-		Details:       details,
-		RelationLinks: currState.GetRelationLinks(),
+		RootId:  id.ObjectID,
+		Type:    model.SmartBlockType(sbType), // nolint:gosec
+		Blocks:  currState.Blocks(),
+		Details: details,
 	}
 	return historyEvents, objectView, nil
 }
@@ -270,7 +263,7 @@ func (h *history) buildDetails(s *state.State, spc clientspace.Space) (details [
 		Details: rootDetails.ToProto(),
 	}}
 
-	dependentObjectIds := objectlink.DependentObjectIDsPerSpace(spc.Id(), s, spc, h.resolver, objectlink.Flags{
+	dependentObjectIds := objectlink.DependentObjectIDsPerSpace(spc.Id(), s, spc, h.resolver, h.objectStore.SpaceIndex(spc.Id()), objectlink.Flags{
 		Blocks:    true,
 		Details:   true,
 		Relations: false,
@@ -577,17 +570,17 @@ func (h *history) buildState(id domain.FullID, versionId string) (
 }
 
 func (h *history) injectLocalDetails(s *state.State, id domain.FullID, space clientspace.Space) error {
-	s.SetDetailAndBundledRelation(bundle.RelationKeyId, domain.String(id.ObjectID))
-	s.SetDetailAndBundledRelation(bundle.RelationKeySpaceId, domain.String(id.SpaceID))
+	s.SetDetail(bundle.RelationKeyId, domain.String(id.ObjectID))
+	s.SetDetail(bundle.RelationKeySpaceId, domain.String(id.SpaceID))
 	typeId, err := space.GetTypeIdByKey(context.Background(), s.ObjectTypeKey())
 	if err != nil {
 		return fmt.Errorf("get type id by key: %w", err)
 	}
-	s.SetDetailAndBundledRelation(bundle.RelationKeyType, domain.String(typeId))
+	s.SetDetail(bundle.RelationKeyType, domain.String(typeId))
 
 	rawValue := s.Details().Get(bundle.RelationKeyLayout)
 	if rawValue.Ok() {
-		s.SetDetailAndBundledRelation(bundle.RelationKeyResolvedLayout, rawValue)
+		s.SetDetail(bundle.RelationKeyResolvedLayout, rawValue)
 		return nil
 	}
 
@@ -597,7 +590,7 @@ func (h *history) injectLocalDetails(s *state.State, id domain.FullID, space cli
 			return nil
 		}
 		log.Errorf("failed to find id of object type. Falling back to basic layout")
-		s.SetDetailAndBundledRelation(bundle.RelationKeyResolvedLayout, domain.Int64(int64(model.ObjectType_basic)))
+		s.SetDetail(bundle.RelationKeyResolvedLayout, domain.Int64(int64(model.ObjectType_basic)))
 		return nil
 	}
 
@@ -608,17 +601,17 @@ func (h *history) injectLocalDetails(s *state.State, id domain.FullID, space cli
 	records, err := h.objectStore.SpaceIndex(id.SpaceID).QueryByIds([]string{typeObjectId})
 	if err != nil || len(records) != 1 {
 		log.Errorf("failed to query object %s: %v. Fallback to basic layout", typeObjectId, err)
-		s.SetDetailAndBundledRelation(bundle.RelationKeyResolvedLayout, domain.Int64(int64(model.ObjectType_basic)))
+		s.SetDetail(bundle.RelationKeyResolvedLayout, domain.Int64(int64(model.ObjectType_basic)))
 		return nil
 	}
 	rawValue = records[0].Details.Get(bundle.RelationKeyRecommendedLayout)
 
 	if !rawValue.Ok() {
 		log.Errorf("failed to get recommended layout from details of type. Fallback to basic layout")
-		s.SetDetailAndBundledRelation(bundle.RelationKeyResolvedLayout, domain.Int64(int64(model.ObjectType_basic)))
+		s.SetDetail(bundle.RelationKeyResolvedLayout, domain.Int64(int64(model.ObjectType_basic)))
 		return nil
 	}
 
-	s.SetDetailAndBundledRelation(bundle.RelationKeyResolvedLayout, rawValue)
+	s.SetDetail(bundle.RelationKeyResolvedLayout, rawValue)
 	return nil
 }

@@ -34,7 +34,7 @@ import (
 	"github.com/anyproto/anytype-heart/tests/testutil"
 )
 
-type IndexerFixture struct {
+type indexerFixture struct {
 	*indexer
 	pickerFx              *mock_cache.MockCachedObjectGetter
 	storageServiceFx      *mock_storage.MockClientStorage
@@ -43,7 +43,7 @@ type IndexerFixture struct {
 	techSpaceIdProviderFx *mock_spacesyncstatus.MockSpaceIdGetter
 }
 
-func NewIndexerFixture(t *testing.T) *IndexerFixture {
+func newIndexerFixture(t *testing.T) *indexerFixture {
 
 	walletService := mock_wallet.NewMockWallet(t)
 	walletService.EXPECT().Name().Return(wallet.CName)
@@ -65,7 +65,7 @@ func NewIndexerFixture(t *testing.T) *IndexerFixture {
 
 	indxr := &indexer{}
 
-	indexerFx := &IndexerFixture{
+	indexerFx := &indexerFixture{
 		indexer:     indxr,
 		objectStore: objectStore,
 		sourceFx:    sourceService,
@@ -98,7 +98,7 @@ func NewIndexerFixture(t *testing.T) *IndexerFixture {
 }
 
 func TestPrepareSearchDocument_Success(t *testing.T) {
-	indexerFx := NewIndexerFixture(t)
+	indexerFx := newIndexerFixture(t)
 	smartTest := smarttest.New("objectId1")
 	smartTest.SetSpaceId("spaceId1")
 	smartTest.Doc = testutil.BuildStateFromAST(blockbuilder.Root(
@@ -120,7 +120,7 @@ func TestPrepareSearchDocument_Success(t *testing.T) {
 }
 
 func TestPrepareSearchDocument_Empty_NotIndexing(t *testing.T) {
-	indexerFx := NewIndexerFixture(t)
+	indexerFx := newIndexerFixture(t)
 	smartTest := smarttest.New("objectId1")
 	smartTest.SetSpaceId("spaceId1")
 	smartTest.Doc = testutil.BuildStateFromAST(blockbuilder.Root(
@@ -139,7 +139,7 @@ func TestPrepareSearchDocument_Empty_NotIndexing(t *testing.T) {
 }
 
 func TestPrepareSearchDocument_NoIndexableType(t *testing.T) {
-	indexerFx := NewIndexerFixture(t)
+	indexerFx := newIndexerFixture(t)
 	smartTest := smarttest.New("objectId1")
 
 	smartTest.Doc = testutil.BuildStateFromAST(blockbuilder.Root(
@@ -159,7 +159,7 @@ func TestPrepareSearchDocument_NoIndexableType(t *testing.T) {
 }
 
 func TestPrepareSearchDocument_NoTextBlock(t *testing.T) {
-	indexerFx := NewIndexerFixture(t)
+	indexerFx := newIndexerFixture(t)
 	smartTest := smarttest.New("objectId1")
 	// Setting no text block
 	smartTest.Doc = testutil.BuildStateFromAST(blockbuilder.Root(
@@ -173,12 +173,8 @@ func TestPrepareSearchDocument_NoTextBlock(t *testing.T) {
 }
 
 func TestPrepareSearchDocument_RelationShortText_Success(t *testing.T) {
-	indexerFx := NewIndexerFixture(t)
+	indexerFx := newIndexerFixture(t)
 	smartTest := smarttest.New("objectId1")
-	smartTest.Doc.(*state.State).AddRelationLinks(&model.RelationLink{
-		Key:    bundle.RelationKeyName.String(),
-		Format: model.RelationFormat_shorttext,
-	})
 	smartTest.Doc.(*state.State).SetDetails(domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
 		bundle.RelationKeyName: domain.String("Title Text"),
 	}))
@@ -193,12 +189,8 @@ func TestPrepareSearchDocument_RelationShortText_Success(t *testing.T) {
 }
 
 func TestPrepareSearchDocument_System_Plural_Success(t *testing.T) {
-	indexerFx := NewIndexerFixture(t)
+	indexerFx := newIndexerFixture(t)
 	smartTest := smarttest.New("objectId1")
-	smartTest.Doc.(*state.State).AddRelationLinks(&model.RelationLink{
-		Key:    bundle.RelationKeyPluralName.String(),
-		Format: model.RelationFormat_shorttext,
-	})
 	smartTest.Doc.(*state.State).SetDetails(domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
 		bundle.RelationKeyPluralName: domain.String("Plural title Text"),
 	}))
@@ -217,15 +209,12 @@ func TestPrepareSearchDocument_System_Plural_Success(t *testing.T) {
 }
 
 func TestPrepareSearchDocument_RelationLongText_Success(t *testing.T) {
-	indexerFx := NewIndexerFixture(t)
+	indexerFx := newIndexerFixture(t)
 	smartTest := smarttest.New("objectId1")
-	smartTest.Doc.(*state.State).AddRelationLinks(&model.RelationLink{
-		Key:    bundle.RelationKeyName.String(),
-		Format: model.RelationFormat_longtext,
-	})
 	smartTest.Doc.(*state.State).SetDetails(domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
 		bundle.RelationKeyName: domain.String("Title Text"),
 	}))
+	smartTest.SetSpaceId("spaceId1")
 	indexerFx.pickerFx.EXPECT().GetObject(mock.Anything, mock.Anything).Return(smartTest, nil)
 
 	docs, err := indexerFx.prepareSearchDocument(context.Background(), "objectId1")
@@ -237,12 +226,8 @@ func TestPrepareSearchDocument_RelationLongText_Success(t *testing.T) {
 }
 
 func TestPrepareSearchDocument_RelationText_EmptyValue(t *testing.T) {
-	indexerFx := NewIndexerFixture(t)
+	indexerFx := newIndexerFixture(t)
 	smartTest := smarttest.New("objectId1")
-	smartTest.Doc.(*state.State).AddRelationLinks(&model.RelationLink{
-		Key:    bundle.RelationKeyName.String(),
-		Format: model.RelationFormat_shorttext,
-	})
 	// Empty value for relation key
 	smartTest.Doc.(*state.State).SetDetails(domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
 		bundle.RelationKeyName: domain.String(""),
@@ -255,16 +240,20 @@ func TestPrepareSearchDocument_RelationText_EmptyValue(t *testing.T) {
 }
 
 func TestPrepareSearchDocument_RelationText_WrongFormat(t *testing.T) {
-	indexerFx := NewIndexerFixture(t)
+	indexerFx := newIndexerFixture(t)
 	smartTest := smarttest.New("objectId1")
+	smartTest.SetSpaceId("spaceId1")
 	// Relation with wrong format
-	smartTest.Doc.(*state.State).AddRelationLinks(&model.RelationLink{
-		Key:    bundle.RelationKeyName.String(),
-		Format: model.RelationFormat_email, // Wrong format
-	})
+	key := domain.RelationKey("customTag")
 	smartTest.Doc.(*state.State).SetDetails(domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
-		bundle.RelationKeyName: domain.String("Title Text"),
+		key: domain.String("Title Text"),
 	}))
+	indexerFx.objectStore.AddObjects(t, "spaceId1", []objectstore.TestObject{{
+		bundle.RelationKeyId:             domain.String(key.URL()),
+		bundle.RelationKeyUniqueKey:      domain.String(key.URL()),
+		bundle.RelationKeyRelationKey:    domain.String(key.String()),
+		bundle.RelationKeyRelationFormat: domain.Int64(model.RelationFormat_tag),
+	}})
 	indexerFx.pickerFx.EXPECT().GetObject(mock.Anything, mock.Anything).Return(smartTest, nil)
 
 	docs, err := indexerFx.prepareSearchDocument(context.Background(), "objectId1")
@@ -273,7 +262,7 @@ func TestPrepareSearchDocument_RelationText_WrongFormat(t *testing.T) {
 }
 
 func TestPrepareSearchDocument_BlockText_LessThanMaxSize(t *testing.T) {
-	indexerFx := NewIndexerFixture(t)
+	indexerFx := newIndexerFixture(t)
 	smartTest := smarttest.New("objectId1")
 	smartTest.Doc = testutil.BuildStateFromAST(blockbuilder.Root(
 		blockbuilder.ID("root"),
@@ -293,7 +282,7 @@ func TestPrepareSearchDocument_BlockText_LessThanMaxSize(t *testing.T) {
 }
 
 func TestPrepareSearchDocument_BlockText_EqualToMaxSize(t *testing.T) {
-	indexerFx := NewIndexerFixture(t)
+	indexerFx := newIndexerFixture(t)
 	smartTest := smarttest.New("objectId1")
 	maxSize := ftBlockMaxSize
 	textContent := strings.Repeat("a", maxSize) // Text content equal to max size
@@ -315,7 +304,7 @@ func TestPrepareSearchDocument_BlockText_EqualToMaxSize(t *testing.T) {
 }
 
 func TestPrepareSearchDocument_BlockText_GreaterThanMaxSize(t *testing.T) {
-	indexerFx := NewIndexerFixture(t)
+	indexerFx := newIndexerFixture(t)
 	smartTest := smarttest.New("objectId1")
 	maxSize := ftBlockMaxSize
 	textContent := strings.Repeat("a", maxSize+1) // Text content greater than max size
@@ -337,7 +326,7 @@ func TestPrepareSearchDocument_BlockText_GreaterThanMaxSize(t *testing.T) {
 }
 
 func TestRunFullTextIndexer(t *testing.T) {
-	indexerFx := NewIndexerFixture(t)
+	indexerFx := newIndexerFixture(t)
 	for i := range 10 {
 		smartTest := smarttest.New("objectId" + strconv.Itoa(i))
 		smartTest.Doc = testutil.BuildStateFromAST(blockbuilder.Root(
@@ -387,7 +376,7 @@ func TestRunFullTextIndexer(t *testing.T) {
 }
 
 func TestPrepareSearchDocument_Reindex_Removed(t *testing.T) {
-	indexerFx := NewIndexerFixture(t)
+	indexerFx := newIndexerFixture(t)
 	indexerFx.ftsearch.Index(ftsearch.SearchDoc{Id: "objectId1/r/blockId1", SpaceId: "spaceId1"})
 	indexerFx.ftsearch.Index(ftsearch.SearchDoc{Id: "objectId1/r/blockId2", SpaceId: "spaceId1"})
 
