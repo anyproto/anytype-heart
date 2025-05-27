@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"slices"
 
 	"github.com/cheggaaa/mb/v3"
 	"go.uber.org/zap"
@@ -14,14 +15,15 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 	"github.com/anyproto/anytype-heart/util/slice"
 )
+
+var deleteSpaceAccountStatuses = []model.SpaceStatus{model.SpaceStatus_SpaceDeleted, model.SpaceStatus_SpaceRemoving}
 
 func (s *service) runSpaceViewSub() error {
 	resp, err := s.subscriptionService.Search(subscriptionservice.SubscribeRequest{
 		SpaceId: s.spaceService.TechSpaceId(),
-		Keys:    []string{bundle.RelationKeyId.String(), bundle.RelationKeyTargetSpaceId.String()},
+		Keys:    []string{bundle.RelationKeyId.String(), bundle.RelationKeyTargetSpaceId.String(), bundle.RelationKeySpaceLocalStatus.String()},
 		Filters: []database.FilterRequest{
 			{
 				RelationKey: bundle.RelationKeyResolvedLayout,
@@ -31,12 +33,7 @@ func (s *service) runSpaceViewSub() error {
 			{
 				RelationKey: bundle.RelationKeySpaceAccountStatus,
 				Condition:   model.BlockContentDataviewFilter_NotIn,
-				Value:       domain.Int64List([]model.AccountStatusType{model.Account_Deleted}),
-			},
-			{
-				RelationKey: bundle.RelationKeySpaceLocalStatus,
-				Condition:   model.BlockContentDataviewFilter_In,
-				Value:       domain.Int64List([]model.SpaceStatus{model.SpaceStatus_Ok, model.SpaceStatus_Unknown}),
+				Value:       domain.Int64List(deleteSpaceAccountStatuses),
 			},
 		},
 		Internal: true,
@@ -50,10 +47,8 @@ func (s *service) runSpaceViewSub() error {
 	s.spaceViewsSubId = resp.SubId
 	s.spaceViewTargetIds = make(map[string]string, len(resp.Records))
 	for _, r := range resp.Records {
-		id := r.GetString(bundle.RelationKeyId)
-		targetId := r.GetString(bundle.RelationKeyTargetSpaceId)
-		s.spaceViewTargetIds[id] = targetId
-		s.spaceIds = append(s.spaceIds, targetId)
+		s.spaceViewDetails[r.GetString(bundle.RelationKeyId)] = r
+		s.handleSpaceViewDetails(r)
 	}
 
 	go s.monitorSpaceViewSub(resp.Output)
@@ -61,9 +56,14 @@ func (s *service) runSpaceViewSub() error {
 	return nil
 }
 
+func spaceIsAvailable(spaceViewDetails *domain.Details) bool {
+	return !slices.Contains(deleteSpaceAccountStatuses, model.SpaceStatus(spaceViewDetails.GetInt64(bundle.RelationKeySpaceLocalStatus)))
+}
+
 func (s *service) monitorSpaceViewSub(queue *mb.MB[*pb.EventMessage]) {
 	matcher := subscriptionservice.EventMatcher{
 		OnSet:    s.onSpaceViewSet,
+		OnAmend:  s.onSpaceViewAmend,
 		OnRemove: s.onSpaceViewRemove,
 	}
 
@@ -85,11 +85,46 @@ func (s *service) monitorSpaceViewSub(queue *mb.MB[*pb.EventMessage]) {
 	}
 }
 
-func (s *service) onSpaceViewSet(msg *pb.EventObjectDetailsSet) {
-	id := pbtypes.GetString(msg.Details, bundle.RelationKeyId.String())
-	targetId := pbtypes.GetString(msg.Details, bundle.RelationKeyTargetSpaceId.String())
+func (s *service) onSpaceViewSet(techSpaceId string, msg *pb.EventObjectDetailsSet) {
+	details := domain.NewDetailsFromProto(msg.Details)
+	s.spaceViewDetails[details.GetString(bundle.RelationKeyId)] = details
+
+	s.handleSpaceViewDetails(details)
+}
+
+func (s *service) onSpaceViewAmend(techSpaceId string, msg *pb.EventObjectDetailsAmend) {
+	details, ok := s.spaceViewDetails[msg.Id]
+	if !ok {
+		log.Error("amend space view: details not found", zap.String("id", msg.Id))
+		return
+	}
+	for _, kv := range msg.Details {
+		details.SetProtoValue(domain.RelationKey(kv.Key), kv.Value)
+	}
+
+	s.handleSpaceViewDetails(details)
+}
+
+func (s *service) onSpaceViewRemove(techSpaceId string, msg *pb.EventObjectSubscriptionRemove) {
+	s.removeSpaceView(msg.Id)
+}
+
+func (s *service) handleSpaceViewDetails(details *domain.Details) {
+	id := details.GetString(bundle.RelationKeyId)
+
+	if spaceIsAvailable(details) {
+		s.addSpaceView(details)
+	} else {
+		s.removeSpaceView(id)
+	}
+}
+
+func (s *service) addSpaceView(details *domain.Details) {
+	id := details.GetString(bundle.RelationKeyId)
 
 	if _, ok := s.spaceViewTargetIds[id]; !ok {
+		targetId := details.GetString(bundle.RelationKeyTargetSpaceId)
+
 		s.spaceViewTargetIds[id] = targetId
 		s.spaceIds = append(s.spaceIds, targetId)
 
@@ -102,13 +137,13 @@ func (s *service) onSpaceViewSet(msg *pb.EventObjectDetailsSet) {
 	}
 }
 
-func (s *service) onSpaceViewRemove(msg *pb.EventObjectSubscriptionRemove) {
-	targetId, ok := s.spaceViewTargetIds[msg.Id]
+func (s *service) removeSpaceView(spaceViewId string) {
+	targetId, ok := s.spaceViewTargetIds[spaceViewId]
 	if ok {
 		for _, sub := range s.subscriptions {
 			sub.RemoveSpace(targetId)
 		}
 		s.spaceIds = slice.RemoveMut(s.spaceIds, targetId)
-		delete(s.spaceViewTargetIds, msg.Id)
+		delete(s.spaceViewTargetIds, spaceViewId)
 	}
 }

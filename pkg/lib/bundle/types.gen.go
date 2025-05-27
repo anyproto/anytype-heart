@@ -9,7 +9,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-const TypeChecksum = "2036a5654c912ee27758ac5c32356c3e1446905db136e7486740858f3ff7e623"
+const TypeChecksum = "880c466315e22d0b573f6542b4ca1dcc4e2cb3395de3bad901f87460ff914191"
 const (
 	TypePrefix = "_ot"
 )
@@ -212,7 +212,7 @@ var (
 			Name:          "Goal",
 			PluralName:    "Goals",
 			Readonly:      true,
-			RelationLinks: []*model.RelationLink{MustGetRelationLink(RelationKeyTag), MustGetRelationLink(RelationKeyDueDate), MustGetRelationLink(RelationKeyProgress), MustGetRelationLink(RelationKeyStatus), MustGetRelationLink(RelationKeyTasks)},
+			RelationLinks: []*model.RelationLink{MustGetRelationLink(RelationKeyTag), MustGetRelationLink(RelationKeyDueDate), MustGetRelationLink(RelationKeyProgress), MustGetRelationLink(RelationKeyStatus)},
 			Revision:      3,
 			Types:         []model.SmartBlockType{model.SmartBlockType_Page},
 			Url:           TypePrefix + "goal",
@@ -263,6 +263,7 @@ var (
 		TypeKeyObjectType: {
 
 			Description:   "",
+			Hidden:        true,
 			IconColor:     9,
 			IconName:      "extension-puzzle",
 			Layout:        model.ObjectType_objectType,
@@ -327,7 +328,7 @@ var (
 			Name:          "Project",
 			PluralName:    "Projects",
 			Readonly:      true,
-			RelationLinks: []*model.RelationLink{MustGetRelationLink(RelationKeyTag), MustGetRelationLink(RelationKeyTasks)},
+			RelationLinks: []*model.RelationLink{MustGetRelationLink(RelationKeyTag)},
 			Revision:      3,
 			Types:         []model.SmartBlockType{model.SmartBlockType_Page},
 			Url:           TypePrefix + "project",

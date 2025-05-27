@@ -42,6 +42,7 @@ var (
 	}
 
 	customObjectFilterKeys = []domain.RelationKey{
+		bundle.RelationKeyRevision,
 		bundle.RelationKeyIconOption,
 		bundle.RelationKeyIconName,
 		bundle.RelationKeyPluralName,
@@ -119,16 +120,16 @@ func reviseObject(ctx context.Context, log logger.CtxLogger, space dependencies.
 	}
 	details := buildDiffDetails(bundleObject, localObject, isSystem)
 
+	recRelsDetails, err := checkRecommendedRelations(ctx, space, bundleObject, localObject, uk)
+	if err != nil {
+		log.Error("failed to check recommended relations", zap.Error(err))
+	}
+
+	for _, recRelsDetail := range recRelsDetails {
+		details.Set(recRelsDetail.Key, recRelsDetail.Value)
+	}
+
 	if isSystem {
-		recRelsDetails, err := checkRecommendedRelations(ctx, space, bundleObject, localObject, uk)
-		if err != nil {
-			log.Error("failed to check recommended relations", zap.Error(err))
-		}
-
-		for _, recRelsDetail := range recRelsDetails {
-			details.Set(recRelsDetail.Key, recRelsDetail.Value)
-		}
-
 		relFormatOTDetail, err := checkRelationFormatObjectTypes(ctx, space, bundleObject, localObject)
 		if err != nil {
 			log.Error("failed to check relation format object types", zap.Error(err))
@@ -258,17 +259,24 @@ func checkRecommendedRelations(
 		return nil, err
 	}
 
+	var allNewIds []string
 	for _, key := range []domain.RelationKey{
-		bundle.RelationKeyRecommendedRelations,
 		bundle.RelationKeyRecommendedFeaturedRelations,
 		bundle.RelationKeyRecommendedFileRelations,
 		bundle.RelationKeyRecommendedHiddenRelations,
+		bundle.RelationKeyRecommendedRelations,
 	} {
 		localIds := current.GetStringList(key)
 		newIds := details.GetStringList(key)
+		allNewIds = append(allNewIds, newIds...)
 
 		removed, added := slice.DifferenceRemovedAdded(localIds, newIds)
 		if len(added) != 0 || len(removed) != 0 {
+			if key == bundle.RelationKeyRecommendedRelations {
+				// we should not miss relations that were set to recommended by user
+				removedFromAll, _ := slice.DifferenceRemovedAdded(removed, allNewIds)
+				newIds = append(newIds, removedFromAll...)
+			}
 			newValues = append(newValues, &domain.Detail{
 				Key:   key,
 				Value: domain.StringList(newIds),

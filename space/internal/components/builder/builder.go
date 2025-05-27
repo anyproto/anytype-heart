@@ -93,15 +93,16 @@ func (b *spaceBuilder) BuildSpace(ctx context.Context, disableRemoteLoad bool) (
 		coreSpace.TreeSyncer().StopSync()
 	}
 	deps := clientspace.SpaceDeps{
-		Indexer:         b.indexer,
-		Installer:       b.installer,
-		CommonSpace:     coreSpace,
-		ObjectFactory:   b.objectFactory,
-		AccountService:  b.accountService,
-		PersonalSpaceId: b.personalSpaceId,
-		StorageService:  b.storageService,
-		SpaceCore:       b.spaceCore,
-		LoadCtx:         b.ctx,
+		Indexer:          b.indexer,
+		Installer:        b.installer,
+		CommonSpace:      coreSpace,
+		ObjectFactory:    b.objectFactory,
+		AccountService:   b.accountService,
+		PersonalSpaceId:  b.personalSpaceId,
+		StorageService:   b.storageService,
+		SpaceCore:        b.spaceCore,
+		LoadCtx:          b.ctx,
+		KeyValueObserver: coreSpace.KeyValueObserver(),
 	}
 	space, err := clientspace.BuildSpace(ctx, deps)
 	if err != nil {

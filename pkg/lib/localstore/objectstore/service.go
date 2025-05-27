@@ -54,7 +54,7 @@ type ObjectStore interface {
 
 	IterateSpaceIndex(func(store spaceindex.Store) error) error
 	SpaceIndex(spaceId string) spaceindex.Store
-	GetCrdtDb(spaceId string) anystore.DB
+	GetCrdtDb(spaceId string) *AnystoreGetter
 
 	SpaceNameGetter
 	spaceresolverstore.Store
@@ -123,7 +123,7 @@ type dsObjectStore struct {
 	spaceStoreDirsCheck sync.Once
 
 	crtdStoreLock sync.Mutex
-	crdtDbs       map[string]anystore.DB
+	crdtDbs       map[string]*AnystoreGetter
 
 	componentCtx       context.Context
 	componentCtxCancel context.CancelFunc
@@ -164,7 +164,7 @@ func New() ObjectStore {
 		componentCtxCancel: cancel,
 		subManager:         &spaceindex.SubscriptionManager{},
 		spaceIndexes:       map[string]spaceindex.Store{},
-		crdtDbs:            map[string]anystore.DB{},
+		crdtDbs:            map[string]*AnystoreGetter{},
 	}
 }
 
@@ -331,15 +331,17 @@ func (s *dsObjectStore) Close(_ context.Context) (err error) {
 
 	s.crtdStoreLock.Lock()
 	closeChan = make(chan error, len(s.crdtDbs))
-	for spaceId, store := range s.crdtDbs {
+	for spaceId, storeGetter := range s.crdtDbs {
 		go func(spaceId string, store anystore.DB) {
-			closeChan <- store.Close()
-		}(spaceId, store)
+			if store != nil {
+				closeChan <- store.Close()
+			}
+		}(spaceId, storeGetter.Get())
 	}
 	for i := 0; i < len(s.crdtDbs); i++ {
 		err = errors.Join(err, <-closeChan)
 	}
-	s.crdtDbs = map[string]anystore.DB{}
+	s.crdtDbs = map[string]*AnystoreGetter{}
 	s.crtdStoreLock.Unlock()
 
 	return err
@@ -392,28 +394,66 @@ func (s *dsObjectStore) getAnyStoreConfig() *anystore.Config {
 	}
 }
 
-func (s *dsObjectStore) GetCrdtDb(spaceId string) anystore.DB {
+type AnystoreGetter struct {
+	ctx             context.Context
+	config          *anystore.Config
+	objectStorePath string
+	spaceId         string
+
+	lock sync.Mutex
+	db   anystore.DB
+}
+
+func (g *AnystoreGetter) Get() anystore.DB {
+	g.lock.Lock()
+	defer g.lock.Unlock()
+
+	return g.db
+}
+
+func (g *AnystoreGetter) Wait() (anystore.DB, error) {
+	g.lock.Lock()
+	defer g.lock.Unlock()
+
+	if g.db != nil {
+		return g.db, nil
+	}
+
+	dir := filepath.Join(g.objectStorePath, g.spaceId)
+	err := ensureDirExists(dir)
+	if err != nil {
+		return nil, fmt.Errorf("ensure dir exists: %w", err)
+	}
+	path := filepath.Join(dir, "crdt.db")
+	db, err := anystore.Open(g.ctx, path, g.config)
+	if errors.Is(err, anystore.ErrIncompatibleVersion) {
+		_ = os.RemoveAll(path)
+		db, err = anystore.Open(g.ctx, path, g.config)
+	}
+	if err != nil {
+		return nil, fmt.Errorf("open: %w", err)
+	}
+	g.db = db
+
+	return db, nil
+}
+
+func (s *dsObjectStore) GetCrdtDb(spaceId string) *AnystoreGetter {
 	s.crtdStoreLock.Lock()
 	defer s.crtdStoreLock.Unlock()
 
 	db, ok := s.crdtDbs[spaceId]
-	if !ok {
-		dir := filepath.Join(s.objectStorePath, spaceId)
-		err := ensureDirExists(dir)
-		if err != nil {
-			return nil
-		}
-		path := filepath.Join(dir, "crdt.db")
-		db, err = anystore.Open(s.componentCtx, path, s.getAnyStoreConfig())
-		if errors.Is(err, anystore.ErrIncompatibleVersion) {
-			_ = os.RemoveAll(path)
-			db, err = anystore.Open(s.componentCtx, path, s.getAnyStoreConfig())
-		}
-		if err != nil {
-			return nil
-		}
-		s.crdtDbs[spaceId] = db
+	if ok {
+		return db
 	}
+
+	db = &AnystoreGetter{
+		spaceId:         spaceId,
+		ctx:             s.componentCtx,
+		config:          s.getAnyStoreConfig(),
+		objectStorePath: s.objectStorePath,
+	}
+	s.crdtDbs[spaceId] = db
 	return db
 }
 
@@ -480,23 +520,32 @@ func (s *dsObjectStore) EnqueueAllForFulltextIndexing(ctx context.Context) error
 		s.arenaPool.Put(arena)
 	}()
 
+	const maxErrorsToLog = 5
+	var loggedErrors int
+
 	err = collectCrossSpaceWithoutTech(s, func(store spaceindex.Store) error {
-		err = store.IterateAll(func(doc *anyenc.Value) error {
+		err := store.IterateAll(func(doc *anyenc.Value) error {
 			id := doc.GetString(idKey)
 			spaceId := doc.GetString(spaceIdKey)
+
+			arena.Reset()
 			obj := arena.NewObject()
 			obj.Set(idKey, arena.NewString(id))
 			obj.Set(spaceIdKey, arena.NewString(spaceId))
-			err = s.fulltextQueue.UpsertOne(txn.Context(), obj)
+			err := s.fulltextQueue.UpsertOne(txn.Context(), obj)
 			if err != nil {
-				return err
+				if loggedErrors < maxErrorsToLog {
+					log.With("error", err).Warnf("EnqueueAllForFulltextIndexing: upsert")
+					loggedErrors++
+				}
+				return nil
 			}
-			arena.Reset()
 			return nil
 		})
 		return err
 	})
 	if err != nil {
+		_ = txn.Rollback()
 		return err
 	}
 	return txn.Commit()

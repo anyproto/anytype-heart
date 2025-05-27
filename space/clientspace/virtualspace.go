@@ -9,6 +9,7 @@ import (
 	"github.com/anyproto/any-sync/commonspace/acl/aclclient"
 	"github.com/anyproto/any-sync/commonspace/headsync"
 	"github.com/anyproto/any-sync/commonspace/object/acl/syncacl"
+	"github.com/anyproto/any-sync/commonspace/object/keyvalue/kvinterfaces"
 	"github.com/anyproto/any-sync/commonspace/object/treesyncer"
 	"github.com/anyproto/any-sync/commonspace/objecttreebuilder"
 	"github.com/anyproto/any-sync/commonspace/spacestorage"
@@ -151,4 +152,8 @@ func (c *virtualCommonSpace) Close() error {
 
 func (c *virtualCommonSpace) IsReadOnly() bool {
 	return false
+}
+
+func (c *virtualCommonSpace) KeyValue() kvinterfaces.KeyValueService {
+	return nil
 }
