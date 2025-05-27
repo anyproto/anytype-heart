@@ -28,6 +28,7 @@ import (
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/spaceindex"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -157,7 +158,8 @@ func (s *service) newTreeSource(ctx context.Context, space source.Space, id stri
 		accountKeysService: s.accountKeysService,
 		sbtProvider:        s.sbtProvider,
 		fileService:        s.fileService,
-		objectStore:        s.objectStore.SpaceIndex(space.Id()),
+		objectStore:        s.objectStore,
+		spaceIndex:         s.objectStore.SpaceIndex(space.Id()),
 		fileObjectMigrator: s.fileObjectMigrator,
 	}
 	if sbt == smartblock.SmartBlockTypeChatDerivedObject || sbt == smartblock.SmartBlockTypeAccountObject {
@@ -188,7 +190,8 @@ type treeSource struct {
 	accountService     accountService
 	accountKeysService accountservice.Service
 	sbtProvider        typeprovider.SmartBlockTypeProvider
-	objectStore        spaceindex.Store
+	objectStore        objectstore.ObjectStore
+	spaceIndex         spaceindex.Store
 	fileObjectMigrator fileObjectMigrator
 }
 
@@ -491,16 +494,18 @@ func (s *treeSource) getFileHashesForSnapshot(changeHashes []string) []*pb.Chang
 func (s *treeSource) getFileKeysByHashes(hashes []string) []*pb.ChangeFileKeys {
 	fileKeys := make([]*pb.ChangeFileKeys, 0, len(hashes))
 	for _, h := range hashes {
-		fk, err := s.fileService.FileGetKeys(domain.FileId(h))
+		fileId := domain.FileId(h)
+		keys, err := s.objectStore.GetFileKeys(fileId)
 		if err != nil {
 			// New file
 			log.Debugf("can't get file key for hash: %v: %v", h, err)
 			continue
 		}
+
 		// Migrated file
 		fileKeys = append(fileKeys, &pb.ChangeFileKeys{
-			Hash: fk.FileId.String(),
-			Keys: fk.EncryptionKeys,
+			Hash: fileId.String(),
+			Keys: keys,
 		})
 	}
 	return fileKeys

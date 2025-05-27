@@ -12,10 +12,8 @@ import (
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
-	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/files"
 	"github.com/anyproto/anytype-heart/core/files/mock_files"
-	"github.com/anyproto/anytype-heart/pkg/lib/pb/storage"
 )
 
 func TestGetImage_SVG(t *testing.T) {
@@ -25,25 +23,18 @@ func TestGetImage_SVG(t *testing.T) {
 
 		const imageData = "image data"
 		const fileObjectId = "fileObjectId"
-		fullFileId := domain.FullFileId{
-			SpaceId: "space1",
-			FileId:  "fileId1",
-		}
-
-		fx.fileObjectService.EXPECT().GetFileIdFromObjectWaitLoad(mock.Anything, fileObjectId).Return(fullFileId, nil)
 
 		file := mock_files.NewMockFile(t)
 		file.EXPECT().Reader(mock.Anything).Return(strings.NewReader(imageData), nil)
-		info := &storage.FileInfo{Name: "image.svg"}
-		file.EXPECT().Info().Return(info)
+		file.EXPECT().Name().Return("image.svg")
 		file.EXPECT().Meta().Return(&files.FileMeta{
-			Name:  info.Name,
-			Media: info.Media,
+			Name: "image.svg",
 		})
 
 		image := mock_files.NewMockImage(t)
 		image.EXPECT().GetOriginalFile().Return(file, nil)
-		fx.fileService.EXPECT().ImageByHash(mock.Anything, fullFileId).Return(image, nil)
+
+		fx.fileObjectService.EXPECT().GetImageData(mock.Anything, mock.Anything).Return(image, nil)
 
 		path := "http://" + fx.Addr() + "/image/" + fileObjectId
 
@@ -55,7 +46,7 @@ func TestGetImage_SVG(t *testing.T) {
 		defer resp.Body.Close()
 
 		assert.Equal(t, http.StatusOK, resp.StatusCode)
-		assert.Equal(t, "image/svg+xml", info.Media)
+		assert.Equal(t, "image/svg+xml", resp.Header.Get("Content-Type"))
 		assert.Equal(t, "inline; filename=\"image.svg\"", resp.Header.Get("Content-Disposition"))
 
 		data, err := io.ReadAll(resp.Body)

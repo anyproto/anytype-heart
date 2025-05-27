@@ -9,7 +9,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-const RelationChecksum = "cdc6fa237642478b9015b70d8664f9a5b18b652060461798b019d2401958a61d"
+const RelationChecksum = "ff5396cc7dfda279a379adac429207aad46252f18113c5499020bbcb94223cb6"
 const (
 	RelationKeyTag                          domain.RelationKey = "tag"
 	RelationKeyCamera                       domain.RelationKey = "camera"
@@ -152,6 +152,14 @@ const (
 	RelationKeyTimestamp                    domain.RelationKey = "timestamp"
 	RelationKeyLayoutWidth                  domain.RelationKey = "layoutWidth"
 	RelationKeyResolvedLayout               domain.RelationKey = "resolvedLayout"
+	RelationKeyFileVariantIds               domain.RelationKey = "fileVariantIds"
+	RelationKeyFileVariantPaths             domain.RelationKey = "fileVariantPaths"
+	RelationKeyFileVariantKeys              domain.RelationKey = "fileVariantKeys"
+	RelationKeyFileVariantWidths            domain.RelationKey = "fileVariantWidths"
+	RelationKeyFileVariantChecksums         domain.RelationKey = "fileVariantChecksums"
+	RelationKeyFileVariantMills             domain.RelationKey = "fileVariantMills"
+	RelationKeyFileVariantOptions           domain.RelationKey = "fileVariantOptions"
+	RelationKeyFileSourceChecksum           domain.RelationKey = "fileSourceChecksum"
 	RelationKeySpaceOrder                   domain.RelationKey = "spaceOrder"
 	RelationKeyIconName                     domain.RelationKey = "iconName"
 	RelationKeyRecommendedFeaturedRelations domain.RelationKey = "recommendedFeaturedRelations"
@@ -695,6 +703,20 @@ var (
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
 		},
+		RelationKeyFileSourceChecksum: {
+
+			DataSource:       model.Relation_details,
+			Description:      "",
+			Format:           model.RelationFormat_shorttext,
+			Hidden:           true,
+			Id:               "_brfileSourceChecksum",
+			Key:              "fileSourceChecksum",
+			MaxCount:         1,
+			Name:             "Underlying file id",
+			ReadOnly:         true,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
 		RelationKeyFileSyncStatus: {
 
 			DataSource:       model.Relation_derived,
@@ -705,6 +727,97 @@ var (
 			Key:              "fileSyncStatus",
 			MaxCount:         1,
 			Name:             "File sync status",
+			ReadOnly:         true,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
+		RelationKeyFileVariantChecksums: {
+
+			DataSource:       model.Relation_details,
+			Description:      "",
+			Format:           model.RelationFormat_shorttext,
+			Hidden:           true,
+			Id:               "_brfileVariantChecksums",
+			Key:              "fileVariantChecksums",
+			Name:             "Underlying file id",
+			ReadOnly:         true,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
+		RelationKeyFileVariantIds: {
+
+			DataSource:       model.Relation_details,
+			Description:      "",
+			Format:           model.RelationFormat_shorttext,
+			Hidden:           true,
+			Id:               "_brfileVariantIds",
+			Key:              "fileVariantIds",
+			Name:             "Underlying file id",
+			ReadOnly:         true,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
+		RelationKeyFileVariantKeys: {
+
+			DataSource:       model.Relation_details,
+			Description:      "",
+			Format:           model.RelationFormat_shorttext,
+			Hidden:           true,
+			Id:               "_brfileVariantKeys",
+			Key:              "fileVariantKeys",
+			Name:             "Underlying file id",
+			ReadOnly:         true,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
+		RelationKeyFileVariantMills: {
+
+			DataSource:       model.Relation_details,
+			Description:      "",
+			Format:           model.RelationFormat_shorttext,
+			Hidden:           true,
+			Id:               "_brfileVariantMills",
+			Key:              "fileVariantMills",
+			Name:             "Underlying file id",
+			ReadOnly:         true,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
+		RelationKeyFileVariantOptions: {
+
+			DataSource:       model.Relation_details,
+			Description:      "",
+			Format:           model.RelationFormat_shorttext,
+			Hidden:           true,
+			Id:               "_brfileVariantOptions",
+			Key:              "fileVariantOptions",
+			Name:             "Underlying file id",
+			ReadOnly:         true,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
+		RelationKeyFileVariantPaths: {
+
+			DataSource:       model.Relation_details,
+			Description:      "",
+			Format:           model.RelationFormat_shorttext,
+			Hidden:           true,
+			Id:               "_brfileVariantPaths",
+			Key:              "fileVariantPaths",
+			Name:             "Underlying file id",
+			ReadOnly:         true,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
+		RelationKeyFileVariantWidths: {
+
+			DataSource:       model.Relation_details,
+			Description:      "",
+			Format:           model.RelationFormat_number,
+			Hidden:           true,
+			Id:               "_brfileVariantWidths",
+			Key:              "fileVariantWidths",
+			Name:             "Underlying file id",
 			ReadOnly:         true,
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
