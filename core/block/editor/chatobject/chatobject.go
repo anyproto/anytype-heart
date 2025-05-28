@@ -48,7 +48,7 @@ type StoreObject interface {
 	EditMessage(ctx context.Context, messageId string, newMessage *chatmodel.Message) error
 	ToggleMessageReaction(ctx context.Context, messageId string, emoji string) error
 	DeleteMessage(ctx context.Context, messageId string) error
-	MarkReadMessages(ctx context.Context, afterOrderId string, beforeOrderId string, lastStateId string, counterType chatmodel.CounterType) error
+	MarkReadMessages(ctx context.Context, req ReadMessagesRequest) error
 	MarkMessagesAsUnread(ctx context.Context, afterOrderId string, counterType chatmodel.CounterType) error
 }
 

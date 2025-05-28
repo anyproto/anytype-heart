@@ -50,6 +50,8 @@ type Service interface {
 	SubscribeToMessagePreviews(ctx context.Context, subId string) (*SubscribeToMessagePreviewsResponse, error)
 	UnsubscribeFromMessagePreviews(subId string) error
 
+	ReadAll(ctx context.Context) error
+
 	app.ComponentRunnable
 }
 
@@ -438,7 +440,12 @@ type ReadMessagesRequest struct {
 
 func (s *service) ReadMessages(ctx context.Context, req ReadMessagesRequest) error {
 	return s.chatObjectDo(ctx, req.ChatObjectId, func(sb chatobject.StoreObject) error {
-		return sb.MarkReadMessages(ctx, req.AfterOrderId, req.BeforeOrderId, req.LastStateId, req.CounterType)
+		return sb.MarkReadMessages(ctx, chatobject.ReadMessagesRequest{
+			AfterOrderId:  req.AfterOrderId,
+			BeforeOrderId: req.BeforeOrderId,
+			LastStateId:   req.LastStateId,
+			CounterType:   req.CounterType,
+		})
 	})
 }
 
@@ -452,4 +459,38 @@ func (s *service) chatObjectDo(ctx context.Context, chatObjectId string, proc fu
 	waitCtx, cancel := context.WithTimeout(ctx, 30*time.Second)
 	defer cancel()
 	return cache.DoWait(s.objectGetter, waitCtx, chatObjectId, proc)
+}
+
+func (s *service) ReadAll(ctx context.Context) error {
+	s.lock.Lock()
+	chatIds := make([]string, 0, len(s.allChatObjectIds))
+	for id := range s.allChatObjectIds {
+		chatIds = append(chatIds, id)
+	}
+	s.lock.Unlock()
+
+	for _, chatId := range chatIds {
+		err := s.chatObjectDo(ctx, chatId, func(sb chatobject.StoreObject) error {
+			err := sb.MarkReadMessages(ctx, chatobject.ReadMessagesRequest{
+				All:         true,
+				CounterType: chatmodel.CounterTypeMessage,
+			})
+			if err != nil {
+				return fmt.Errorf("messages: %w", err)
+			}
+			err = sb.MarkReadMessages(ctx, chatobject.ReadMessagesRequest{
+				All:         true,
+				CounterType: chatmodel.CounterTypeMention,
+			})
+			if err != nil {
+				return fmt.Errorf("mentions: %w", err)
+			}
+			return nil
+		})
+		if err != nil {
+			return fmt.Errorf("read: %w", err)
+		}
+	}
+
+	return nil
 }
