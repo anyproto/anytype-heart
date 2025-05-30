@@ -265,3 +265,19 @@ func messagesToProto(msgs []*chatmodel.Message) []*model.ChatMessage {
 	}
 	return res
 }
+
+func (mw *Middleware) ChatReadAll(cctx context.Context, req *pb.RpcChatReadAllRequest) *pb.RpcChatReadAllResponse {
+	chatService := mustService[chats.Service](mw)
+
+	err := chatService.ReadAll(cctx)
+	if err != nil {
+		code := mapErrorCode[pb.RpcChatReadAllResponseErrorCode](err)
+		return &pb.RpcChatReadAllResponse{
+			Error: &pb.RpcChatReadAllResponseError{
+				Code:        code,
+				Description: getErrorDescription(err),
+			},
+		}
+	}
+	return &pb.RpcChatReadAllResponse{}
+}

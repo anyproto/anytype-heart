@@ -281,7 +281,12 @@ func TestSubscriptionMessageCounters(t *testing.T) {
 
 	fx.events = nil
 
-	err = fx.MarkReadMessages(ctx, "", firstMessage.OrderId, secondMessage.StateId, chatmodel.CounterTypeMessage)
+	err = fx.MarkReadMessages(ctx, ReadMessagesRequest{
+		AfterOrderId:  "",
+		BeforeOrderId: firstMessage.OrderId,
+		LastStateId:   secondMessage.StateId,
+		CounterType:   chatmodel.CounterTypeMessage,
+	})
 	require.NoError(t, err)
 
 	wantEvents = []*pb.EventMessage{
@@ -426,7 +431,12 @@ func TestSubscriptionMentionCounters(t *testing.T) {
 
 	fx.events = nil
 
-	err = fx.MarkReadMessages(ctx, "", firstMessage.OrderId, secondMessage.StateId, chatmodel.CounterTypeMention)
+	err = fx.MarkReadMessages(ctx, ReadMessagesRequest{
+		AfterOrderId:  "",
+		BeforeOrderId: firstMessage.OrderId,
+		LastStateId:   secondMessage.StateId,
+		CounterType:   chatmodel.CounterTypeMention,
+	})
 	require.NoError(t, err)
 
 	wantEvents = []*pb.EventMessage{
