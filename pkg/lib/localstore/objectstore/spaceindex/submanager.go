@@ -2,6 +2,8 @@ package spaceindex
 
 import (
 	"sync"
+
+	"github.com/anyproto/anytype-heart/core/domain"
 )
 
 type SubscriptionManager struct {
@@ -15,7 +17,7 @@ func (s *SubscriptionManager) SubscribeLinksUpdate(callback func(info LinksUpdat
 	s.lock.Unlock()
 }
 
-func (s *SubscriptionManager) updateObjectLinks(fromId string, added []string, removed []string) {
+func (s *SubscriptionManager) updateObjectLinks(fromId domain.FullID, added []string, removed []string) {
 	s.lock.RLock()
 	defer s.lock.RUnlock()
 	if s.onLinksUpdateCallback != nil && len(added)+len(removed) > 0 {
