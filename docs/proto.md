@@ -27306,6 +27306,7 @@ sent when the view have been changed or added
 | cardSize | [model.Block.Content.Dataview.View.Size](#anytype-model-Block-Content-Dataview-View-Size) |  | Gallery card size |
 | coverFit | [bool](#bool) |  | Image fits container |
 | groupRelationKey | [string](#string) |  | Group view by this relationKey |
+| endRelationKey | [string](#string) |  |  |
 | groupBackgroundColors | [bool](#bool) |  | Enable backgrounds in groups |
 | pageLimit | [int32](#int32) |  | Limit of objects shown in widget |
 | defaultTemplateId | [string](#string) |  | Id of template object set default for the view |
@@ -31009,6 +31010,7 @@ Bookmark is to keep a web-link and to preview a content.
 | pageLimit | [int32](#int32) |  | Limit of objects shown in widget |
 | defaultTemplateId | [string](#string) |  | Default template that is chosen for new object created within the view |
 | defaultObjectTypeId | [string](#string) |  | Default object type that is chosen for new object created within the view |
+| endRelationKey | [string](#string) |  | Group view by this relationKey |
 
 
 
