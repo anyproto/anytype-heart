@@ -126,14 +126,14 @@ func (e *existingObject) getExistingRelationOption(snapshot *common.Snapshot, sp
 }
 
 func (e *existingObject) getExistingRelation(snapshot *common.Snapshot, spaceID string) string {
-	name := snapshot.Snapshot.Data.Details.GetString(bundle.RelationKeyName)
+	key := snapshot.Snapshot.Data.Details.GetString(bundle.RelationKeyRelationKey)
 	format := snapshot.Snapshot.Data.Details.GetFloat64(bundle.RelationKeyRelationFormat)
 	ids, _, err := e.objectStore.SpaceIndex(spaceID).QueryObjectIds(database.Query{
 		Filters: []database.FilterRequest{
 			{
 				Condition:   model.BlockContentDataviewFilter_Equal,
-				RelationKey: bundle.RelationKeyName,
-				Value:       domain.String(name),
+				RelationKey: bundle.RelationKeyRelationKey,
+				Value:       domain.String(key),
 			},
 			{
 				Condition:   model.BlockContentDataviewFilter_Equal,
