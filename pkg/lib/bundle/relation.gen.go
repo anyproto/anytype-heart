@@ -9,7 +9,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-const RelationChecksum = "d48a3d0b09921529f922f42d214a6b5c00b5ce939bb5056b4aa80b9a1e4cd0e0"
+const RelationChecksum = "5dcb32d8a24ade95642a2e7258eb1bc12645f31f875d8eb7dcdfdf01e4062dc4"
 const (
 	RelationKeyTag                          domain.RelationKey = "tag"
 	RelationKeyCamera                       domain.RelationKey = "camera"
@@ -126,10 +126,12 @@ const (
 	RelationKeySpaceAccountStatus           domain.RelationKey = "spaceAccountStatus"
 	RelationKeySpaceInviteFileCid           domain.RelationKey = "spaceInviteFileCid"
 	RelationKeySpaceInviteFileKey           domain.RelationKey = "spaceInviteFileKey"
+	RelationKeySpaceInviteType              domain.RelationKey = "spaceInviteType"
 	RelationKeySpaceInviteGuestFileCid      domain.RelationKey = "spaceInviteGuestFileCid"
 	RelationKeySpaceInviteGuestFileKey      domain.RelationKey = "spaceInviteGuestFileKey"
 	RelationKeyGuestKey                     domain.RelationKey = "guestKey"
 	RelationKeyParticipantPermissions       domain.RelationKey = "participantPermissions"
+	RelationKeySpaceInvitePermissions       domain.RelationKey = "spaceInvitePermissions"
 	RelationKeyIdentity                     domain.RelationKey = "identity"
 	RelationKeyParticipantStatus            domain.RelationKey = "participantStatus"
 	RelationKeyIdentityProfileLink          domain.RelationKey = "identityProfileLink"
@@ -160,6 +162,8 @@ const (
 	RelationKeyAutoWidgetTargets            domain.RelationKey = "autoWidgetTargets"
 	RelationKeyAutoWidgetDisabled           domain.RelationKey = "autoWidgetDisabled"
 	RelationKeyPluralName                   domain.RelationKey = "pluralName"
+	RelationKeyHeaderRelationsLayout        domain.RelationKey = "headerRelationsLayout"
+	RelationKeyApiObjectKey                 domain.RelationKey = "apiObjectKey"
 	RelationKeyIncludeTime                  domain.RelationKey = "includeTime"
 )
 
@@ -189,6 +193,20 @@ var (
 			Key:              "aperture",
 			MaxCount:         1,
 			Name:             "Camera aperture",
+			ReadOnly:         false,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
+		RelationKeyApiObjectKey: {
+
+			DataSource:       model.Relation_details,
+			Description:      "Identifier to use in intergrations with Anytype API",
+			Format:           model.RelationFormat_longtext,
+			Hidden:           true,
+			Id:               "_brapiObjectKey",
+			Key:              "apiObjectKey",
+			MaxCount:         1,
+			Name:             "API Object Key",
 			ReadOnly:         false,
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
@@ -763,6 +781,20 @@ var (
 			MaxCount:         1,
 			Name:             "Has a chat",
 			ReadOnly:         true,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
+		RelationKeyHeaderRelationsLayout: {
+
+			DataSource:       model.Relation_details,
+			Description:      "Layout of header relations. Line or column",
+			Format:           model.RelationFormat_number,
+			Hidden:           true,
+			Id:               "_brheaderRelationsLayout",
+			Key:              "headerRelationsLayout",
+			MaxCount:         1,
+			Name:             "Header relations layout",
+			ReadOnly:         false,
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
 		},
@@ -1901,6 +1933,34 @@ var (
 			Key:              "spaceInviteGuestFileKey",
 			MaxCount:         1,
 			Name:             "Guest user invite file key",
+			ReadOnly:         true,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
+		RelationKeySpaceInvitePermissions: {
+
+			DataSource:       model.Relation_details,
+			Description:      "Invite permissions. Possible values: models.ParticipantPermissions",
+			Format:           model.RelationFormat_number,
+			Hidden:           true,
+			Id:               "_brspaceInvitePermissions",
+			Key:              "spaceInvitePermissions",
+			MaxCount:         1,
+			Name:             "Invite permissions",
+			ReadOnly:         true,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
+		RelationKeySpaceInviteType: {
+
+			DataSource:       model.Relation_details,
+			Description:      "Encoded encryption key of invite file for current space. It stored in SpaceView",
+			Format:           model.RelationFormat_number,
+			Hidden:           true,
+			Id:               "_brspaceInviteType",
+			Key:              "spaceInviteType",
+			MaxCount:         1,
+			Name:             "Invite type of space",
 			ReadOnly:         true,
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,

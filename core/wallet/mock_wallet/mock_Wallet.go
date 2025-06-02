@@ -10,6 +10,8 @@ import (
 
 	mock "github.com/stretchr/testify/mock"
 
+	model "github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+
 	wallet "github.com/anyproto/anytype-heart/core/wallet"
 )
 
@@ -446,6 +448,63 @@ func (_c *MockWallet_Init_Call) RunAndReturn(run func(*app.App) error) *MockWall
 	return _c
 }
 
+// ListAppLinks provides a mock function with given fields:
+func (_m *MockWallet) ListAppLinks() ([]*wallet.AppLinkInfo, error) {
+	ret := _m.Called()
+
+	if len(ret) == 0 {
+		panic("no return value specified for ListAppLinks")
+	}
+
+	var r0 []*wallet.AppLinkInfo
+	var r1 error
+	if rf, ok := ret.Get(0).(func() ([]*wallet.AppLinkInfo, error)); ok {
+		return rf()
+	}
+	if rf, ok := ret.Get(0).(func() []*wallet.AppLinkInfo); ok {
+		r0 = rf()
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]*wallet.AppLinkInfo)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func() error); ok {
+		r1 = rf()
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockWallet_ListAppLinks_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ListAppLinks'
+type MockWallet_ListAppLinks_Call struct {
+	*mock.Call
+}
+
+// ListAppLinks is a helper method to define mock.On call
+func (_e *MockWallet_Expecter) ListAppLinks() *MockWallet_ListAppLinks_Call {
+	return &MockWallet_ListAppLinks_Call{Call: _e.mock.On("ListAppLinks")}
+}
+
+func (_c *MockWallet_ListAppLinks_Call) Run(run func()) *MockWallet_ListAppLinks_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *MockWallet_ListAppLinks_Call) Return(_a0 []*wallet.AppLinkInfo, _a1 error) *MockWallet_ListAppLinks_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockWallet_ListAppLinks_Call) RunAndReturn(run func() ([]*wallet.AppLinkInfo, error)) *MockWallet_ListAppLinks_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // Name provides a mock function with given fields:
 func (_m *MockWallet) Name() string {
 	ret := _m.Called()
@@ -491,27 +550,29 @@ func (_c *MockWallet_Name_Call) RunAndReturn(run func() string) *MockWallet_Name
 	return _c
 }
 
-// PersistAppLink provides a mock function with given fields: payload
-func (_m *MockWallet) PersistAppLink(payload *wallet.AppLinkPayload) (string, error) {
-	ret := _m.Called(payload)
+// PersistAppLink provides a mock function with given fields: name, scope
+func (_m *MockWallet) PersistAppLink(name string, scope model.AccountAuthLocalApiScope) (*wallet.AppLinkInfo, error) {
+	ret := _m.Called(name, scope)
 
 	if len(ret) == 0 {
 		panic("no return value specified for PersistAppLink")
 	}
 
-	var r0 string
+	var r0 *wallet.AppLinkInfo
 	var r1 error
-	if rf, ok := ret.Get(0).(func(*wallet.AppLinkPayload) (string, error)); ok {
-		return rf(payload)
+	if rf, ok := ret.Get(0).(func(string, model.AccountAuthLocalApiScope) (*wallet.AppLinkInfo, error)); ok {
+		return rf(name, scope)
 	}
-	if rf, ok := ret.Get(0).(func(*wallet.AppLinkPayload) string); ok {
-		r0 = rf(payload)
+	if rf, ok := ret.Get(0).(func(string, model.AccountAuthLocalApiScope) *wallet.AppLinkInfo); ok {
+		r0 = rf(name, scope)
 	} else {
-		r0 = ret.Get(0).(string)
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*wallet.AppLinkInfo)
+		}
 	}
 
-	if rf, ok := ret.Get(1).(func(*wallet.AppLinkPayload) error); ok {
-		r1 = rf(payload)
+	if rf, ok := ret.Get(1).(func(string, model.AccountAuthLocalApiScope) error); ok {
+		r1 = rf(name, scope)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -525,46 +586,47 @@ type MockWallet_PersistAppLink_Call struct {
 }
 
 // PersistAppLink is a helper method to define mock.On call
-//   - payload *wallet.AppLinkPayload
-func (_e *MockWallet_Expecter) PersistAppLink(payload interface{}) *MockWallet_PersistAppLink_Call {
-	return &MockWallet_PersistAppLink_Call{Call: _e.mock.On("PersistAppLink", payload)}
+//   - name string
+//   - scope model.AccountAuthLocalApiScope
+func (_e *MockWallet_Expecter) PersistAppLink(name interface{}, scope interface{}) *MockWallet_PersistAppLink_Call {
+	return &MockWallet_PersistAppLink_Call{Call: _e.mock.On("PersistAppLink", name, scope)}
 }
 
-func (_c *MockWallet_PersistAppLink_Call) Run(run func(payload *wallet.AppLinkPayload)) *MockWallet_PersistAppLink_Call {
+func (_c *MockWallet_PersistAppLink_Call) Run(run func(name string, scope model.AccountAuthLocalApiScope)) *MockWallet_PersistAppLink_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(*wallet.AppLinkPayload))
+		run(args[0].(string), args[1].(model.AccountAuthLocalApiScope))
 	})
 	return _c
 }
 
-func (_c *MockWallet_PersistAppLink_Call) Return(appKey string, err error) *MockWallet_PersistAppLink_Call {
-	_c.Call.Return(appKey, err)
+func (_c *MockWallet_PersistAppLink_Call) Return(appInfo *wallet.AppLinkInfo, err error) *MockWallet_PersistAppLink_Call {
+	_c.Call.Return(appInfo, err)
 	return _c
 }
 
-func (_c *MockWallet_PersistAppLink_Call) RunAndReturn(run func(*wallet.AppLinkPayload) (string, error)) *MockWallet_PersistAppLink_Call {
+func (_c *MockWallet_PersistAppLink_Call) RunAndReturn(run func(string, model.AccountAuthLocalApiScope) (*wallet.AppLinkInfo, error)) *MockWallet_PersistAppLink_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
 // ReadAppLink provides a mock function with given fields: appKey
-func (_m *MockWallet) ReadAppLink(appKey string) (*wallet.AppLinkPayload, error) {
+func (_m *MockWallet) ReadAppLink(appKey string) (*wallet.AppLinkInfo, error) {
 	ret := _m.Called(appKey)
 
 	if len(ret) == 0 {
 		panic("no return value specified for ReadAppLink")
 	}
 
-	var r0 *wallet.AppLinkPayload
+	var r0 *wallet.AppLinkInfo
 	var r1 error
-	if rf, ok := ret.Get(0).(func(string) (*wallet.AppLinkPayload, error)); ok {
+	if rf, ok := ret.Get(0).(func(string) (*wallet.AppLinkInfo, error)); ok {
 		return rf(appKey)
 	}
-	if rf, ok := ret.Get(0).(func(string) *wallet.AppLinkPayload); ok {
+	if rf, ok := ret.Get(0).(func(string) *wallet.AppLinkInfo); ok {
 		r0 = rf(appKey)
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(*wallet.AppLinkPayload)
+			r0 = ret.Get(0).(*wallet.AppLinkInfo)
 		}
 	}
 
@@ -595,12 +657,12 @@ func (_c *MockWallet_ReadAppLink_Call) Run(run func(appKey string)) *MockWallet_
 	return _c
 }
 
-func (_c *MockWallet_ReadAppLink_Call) Return(_a0 *wallet.AppLinkPayload, _a1 error) *MockWallet_ReadAppLink_Call {
+func (_c *MockWallet_ReadAppLink_Call) Return(_a0 *wallet.AppLinkInfo, _a1 error) *MockWallet_ReadAppLink_Call {
 	_c.Call.Return(_a0, _a1)
 	return _c
 }
 
-func (_c *MockWallet_ReadAppLink_Call) RunAndReturn(run func(string) (*wallet.AppLinkPayload, error)) *MockWallet_ReadAppLink_Call {
+func (_c *MockWallet_ReadAppLink_Call) RunAndReturn(run func(string) (*wallet.AppLinkInfo, error)) *MockWallet_ReadAppLink_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -646,6 +708,52 @@ func (_c *MockWallet_RepoPath_Call) Return(_a0 string) *MockWallet_RepoPath_Call
 }
 
 func (_c *MockWallet_RepoPath_Call) RunAndReturn(run func() string) *MockWallet_RepoPath_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// RevokeAppLink provides a mock function with given fields: appHash
+func (_m *MockWallet) RevokeAppLink(appHash string) error {
+	ret := _m.Called(appHash)
+
+	if len(ret) == 0 {
+		panic("no return value specified for RevokeAppLink")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(string) error); ok {
+		r0 = rf(appHash)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// MockWallet_RevokeAppLink_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'RevokeAppLink'
+type MockWallet_RevokeAppLink_Call struct {
+	*mock.Call
+}
+
+// RevokeAppLink is a helper method to define mock.On call
+//   - appHash string
+func (_e *MockWallet_Expecter) RevokeAppLink(appHash interface{}) *MockWallet_RevokeAppLink_Call {
+	return &MockWallet_RevokeAppLink_Call{Call: _e.mock.On("RevokeAppLink", appHash)}
+}
+
+func (_c *MockWallet_RevokeAppLink_Call) Run(run func(appHash string)) *MockWallet_RevokeAppLink_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(string))
+	})
+	return _c
+}
+
+func (_c *MockWallet_RevokeAppLink_Call) Return(_a0 error) *MockWallet_RevokeAppLink_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockWallet_RevokeAppLink_Call) RunAndReturn(run func(string) error) *MockWallet_RevokeAppLink_Call {
 	_c.Call.Return(run)
 	return _c
 }
