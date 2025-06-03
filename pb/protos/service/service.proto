@@ -71,6 +71,7 @@ service ClientCommands {
     rpc SpaceRequestDecline (anytype.Rpc.Space.RequestDecline.Request) returns (anytype.Rpc.Space.RequestDecline.Response);
     rpc SpaceLeaveApprove (anytype.Rpc.Space.LeaveApprove.Request) returns (anytype.Rpc.Space.LeaveApprove.Response);
     rpc SpaceMakeShareable (anytype.Rpc.Space.MakeShareable.Request) returns (anytype.Rpc.Space.MakeShareable.Response);
+    rpc SpaceInitChat (anytype.Rpc.Space.InitChat.Request) returns (anytype.Rpc.Space.InitChat.Response);
     rpc SpaceParticipantRemove (anytype.Rpc.Space.ParticipantRemove.Request) returns (anytype.Rpc.Space.ParticipantRemove.Response);
     rpc SpaceParticipantPermissionsChange (anytype.Rpc.Space.ParticipantPermissionsChange.Request) returns (anytype.Rpc.Space.ParticipantPermissionsChange.Response);
     rpc SpaceSetOrder (anytype.Rpc.Space.SetOrder.Request) returns (anytype.Rpc.Space.SetOrder.Response);

@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"slices"
 	"sync"
 	"time"
 
@@ -23,6 +24,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/layout"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
+	"github.com/anyproto/anytype-heart/core/block/editor/widget"
 	"github.com/anyproto/anytype-heart/core/block/history"
 	"github.com/anyproto/anytype-heart/core/block/object/idresolver"
 	"github.com/anyproto/anytype-heart/core/block/object/objectcreator"
@@ -45,6 +47,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space"
+	"github.com/anyproto/anytype-heart/space/clientspace"
 	"github.com/anyproto/anytype-heart/util/internalflag"
 	"github.com/anyproto/anytype-heart/util/mutex"
 	"github.com/anyproto/anytype-heart/util/uri"
@@ -338,6 +341,34 @@ func (s *Service) SpaceInstallBundledObjects(
 	return s.objectCreator.InstallBundledObjects(ctx, spc, sourceObjectIds, false)
 }
 
+// autoInstallSpaceChatWidget automatically installs the chat widget in the space if it is not already installed.
+func (s *Service) autoInstallSpaceChatWidget(ctx context.Context, spc clientspace.Space) error {
+	widgetObjectId := spc.DerivedIDs().Widgets
+	widgetDetails, err := s.objectStore.SpaceIndex(spc.Id()).GetDetails(widgetObjectId)
+	if err != nil {
+		return err
+	}
+	keys := widgetDetails.Get(bundle.RelationKeyAutoWidgetTargets).StringList()
+	if slices.Contains(keys, widget.DefaultWidgetChat) {
+		return nil
+	}
+	err = spc.Do(widgetObjectId, func(sb smartblock.SmartBlock) error {
+		st := sb.NewState()
+		if w, ok := sb.(widget.Widget); ok {
+			// We rely on AddAutoWidget to check if the widget was already installed/removed before
+			err = w.AddAutoWidget(st, widget.DefaultWidgetChat, widget.DefaultWidgetChat, "", model.BlockContentWidget_Link, "")
+			if err != nil {
+				return err
+			}
+		}
+		return sb.Apply(st)
+	})
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
 func (s *Service) SpaceInitChat(ctx context.Context, spaceId string) error {
 	spc, err := s.spaceService.Get(ctx, spaceId)
 	if err != nil {
@@ -383,7 +414,7 @@ func (s *Service) SpaceInitChat(ctx context.Context, spaceId string) error {
 		return fmt.Errorf("apply chatId to workspace: %w", err)
 	}
 
-	return nil
+	return s.autoInstallSpaceChatWidget(ctx, spc)
 }
 
 func (s *Service) SelectWorkspace(req *pb.RpcWorkspaceSelectRequest) error {
