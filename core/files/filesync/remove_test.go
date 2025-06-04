@@ -17,24 +17,21 @@ import (
 	"github.com/anyproto/anytype-heart/core/anytype/config"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/event/mock_event"
-	"github.com/anyproto/anytype-heart/core/filestorage"
-	"github.com/anyproto/anytype-heart/core/filestorage/rpcstore/mock_rpcstore"
+	"github.com/anyproto/anytype-heart/core/files/filestorage"
+	mock_rpcstore2 "github.com/anyproto/anytype-heart/core/files/filestorage/rpcstore/mock_rpcstore"
 	wallet2 "github.com/anyproto/anytype-heart/core/wallet"
 	"github.com/anyproto/anytype-heart/core/wallet/mock_wallet"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/datastore"
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore/filestore"
 	"github.com/anyproto/anytype-heart/tests/testutil"
 )
 
 func TestCancelDeletion(t *testing.T) {
-	fileStore := filestore.New()
-
 	sender := mock_event.NewMockSender(t)
 	sender.EXPECT().Broadcast(mock.Anything).Return().Maybe()
 
-	rpcStore := mock_rpcstore.NewMockRpcStore(t)
-	rpcStoreService := mock_rpcstore.NewMockService(t)
+	rpcStore := mock_rpcstore2.NewMockRpcStore(t)
+	rpcStoreService := mock_rpcstore2.NewMockService(t)
 	rpcStoreService.EXPECT().NewStore().Return(rpcStore)
 	rpcStore.EXPECT().AccountInfo(mock.Anything).Return(&fileproto.AccountInfoResponse{}, nil).Maybe()
 
@@ -50,7 +47,6 @@ func TestCancelDeletion(t *testing.T) {
 
 	a := new(app.App)
 	a.Register(dataStoreProvider)
-	a.Register(fileStore)
 	a.Register(localFileStorage)
 	a.Register(fileService)
 	a.Register(testutil.PrepareMock(ctx, a, rpcStoreService))
