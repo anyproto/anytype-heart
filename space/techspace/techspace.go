@@ -75,14 +75,11 @@ type SpaceView interface {
 	GetLocalInfo() spaceinfo.SpaceLocalInfo
 	SetSpaceData(details *domain.Details) error
 	SetSpaceLocalInfo(info spaceinfo.SpaceLocalInfo) error
-	SetInviteFileInfo(fileCid string, fileKey string) (err error)
 	SetAccessType(acc spaceinfo.AccessType) error
 	SetAclIsEmpty(isEmpty bool) (err error)
 	SetOwner(ownerId string, createdDate int64) (err error)
 	SetSpacePersistentInfo(info spaceinfo.SpacePersistentInfo) error
-	RemoveExistingInviteInfo() (fileCid string, err error)
 	GetSpaceDescription() (data spaceinfo.SpaceDescription)
-	GetExistingInviteInfo() (fileCid string, fileKey string)
 	SetSharedSpacesLimit(limits int) (err error)
 	GetSharedSpacesLimit() (limits int)
 }

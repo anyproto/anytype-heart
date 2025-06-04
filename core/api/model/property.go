@@ -42,11 +42,13 @@ type PropertyResponse struct {
 }
 
 type CreatePropertyRequest struct {
+	Key    string         `json:"key" example:"some_user_defined_property_key"`                                                                  // The key of the property; should always be snake_case, otherwise it will be converted to snake_case
 	Name   string         `json:"name" binding:"required" example:"Last modified date"`                                                          // The name of the property
 	Format PropertyFormat `json:"format" binding:"required" enums:"text,number,select,multi_select,date,files,checkbox,url,email,phone,objects"` // The format of the property
 }
 
 type UpdatePropertyRequest struct {
+	Key  *string `json:"key,omitempty" example:"some_user_defined_property_key"`         // The key to set for the property; ; should always be snake_case, otherwise it will be converted to snake_case
 	Name *string `json:"name,omitempty" binding:"required" example:"Last modified date"` // The name to set for the property
 }
 
@@ -56,6 +58,8 @@ type Property struct {
 	Key    string         `json:"key" example:"last_modified_date"`                                                           // The key of the property
 	Name   string         `json:"name" example:"Last modified date"`                                                          // The name of the property
 	Format PropertyFormat `json:"format" enums:"text,number,select,multi_select,date,files,checkbox,url,email,phone,objects"` // The format of the property
+	// Rk is internal-only to simplify lookup on entry, won't be serialized to property responses
+	RelationKey string `json:"-" swaggerignore:"true"`
 }
 
 type PropertyLink struct {
@@ -212,10 +216,10 @@ func (DatePropertyValue) isPropertyWithValue() {}
 
 type FilesPropertyValue struct {
 	PropertyBase
-	Key    string         `json:"key" example:"files"`        // The key of the property
-	Name   string         `json:"name" example:"Files"`       // The name of the property
-	Format PropertyFormat `json:"format" enums:"files"`       // The format of the property
-	Files  []string       `json:"files" example:"['fileId']"` // The file values of the property
+	Key    string         `json:"key" example:"files"`         // The key of the property
+	Name   string         `json:"name" example:"Files"`        // The name of the property
+	Format PropertyFormat `json:"format" enums:"files"`        // The format of the property
+	Files  []string       `json:"files" example:"['file_id']"` // The file values of the property
 }
 
 func (FilesPropertyValue) isPropertyWithValue() {}
@@ -262,10 +266,10 @@ func (PhonePropertyValue) isPropertyWithValue() {}
 
 type ObjectsPropertyValue struct {
 	PropertyBase
-	Key     string         `json:"key" example:"creator"`          // The key of the property
-	Name    string         `json:"name" example:"Created by"`      // The name of the property
-	Format  PropertyFormat `json:"format" enums:"objects"`         // The format of the property
-	Objects []string       `json:"objects" example:"['objectId']"` // The object values of the property
+	Key     string         `json:"key" example:"creator"`           // The key of the property
+	Name    string         `json:"name" example:"Created by"`       // The name of the property
+	Format  PropertyFormat `json:"format" enums:"objects"`          // The format of the property
+	Objects []string       `json:"objects" example:"['object_id']"` // The object values of the property
 }
 
 func (ObjectsPropertyValue) isPropertyWithValue() {}
@@ -279,173 +283,158 @@ func (p PropertyLinkWithValue) MarshalJSON() ([]byte, error) {
 }
 
 func (p *PropertyLinkWithValue) UnmarshalJSON(data []byte) error {
-	var raw struct {
-		Format PropertyFormat `json:"format"`
-	}
-	if err := json.Unmarshal(data, &raw); err != nil {
+	var aux map[string]json.RawMessage
+	if err := json.Unmarshal(data, &aux); err != nil {
 		return err
 	}
-
-	switch raw.Format {
-	case PropertyFormatText:
+	switch {
+	case aux["text"] != nil:
 		var v TextPropertyLinkValue
 		if err := json.Unmarshal(data, &v); err != nil {
 			return err
 		}
 		p.WrappedPropertyLinkWithValue = v
-	case PropertyFormatNumber:
+	case aux["number"] != nil:
 		var v NumberPropertyLinkValue
 		if err := json.Unmarshal(data, &v); err != nil {
 			return err
 		}
 		p.WrappedPropertyLinkWithValue = v
-	case PropertyFormatSelect:
+	case aux["select"] != nil:
 		var v SelectPropertyLinkValue
 		if err := json.Unmarshal(data, &v); err != nil {
 			return err
 		}
 		p.WrappedPropertyLinkWithValue = v
-	case PropertyFormatMultiSelect:
+	case aux["multi_select"] != nil:
 		var v MultiSelectPropertyLinkValue
 		if err := json.Unmarshal(data, &v); err != nil {
 			return err
 		}
 		p.WrappedPropertyLinkWithValue = v
-	case PropertyFormatDate:
+	case aux["date"] != nil:
 		var v DatePropertyLinkValue
 		if err := json.Unmarshal(data, &v); err != nil {
 			return err
 		}
 		p.WrappedPropertyLinkWithValue = v
-	case PropertyFormatFiles:
+	case aux["files"] != nil:
 		var v FilesPropertyLinkValue
 		if err := json.Unmarshal(data, &v); err != nil {
 			return err
 		}
 		p.WrappedPropertyLinkWithValue = v
-	case PropertyFormatCheckbox:
+	case aux["checkbox"] != nil:
 		var v CheckboxPropertyLinkValue
 		if err := json.Unmarshal(data, &v); err != nil {
 			return err
 		}
 		p.WrappedPropertyLinkWithValue = v
-	case PropertyFormatUrl:
+	case aux["url"] != nil:
 		var v URLPropertyLinkValue
 		if err := json.Unmarshal(data, &v); err != nil {
 			return err
 		}
 		p.WrappedPropertyLinkWithValue = v
-	case PropertyFormatEmail:
+	case aux["email"] != nil:
 		var v EmailPropertyLinkValue
 		if err := json.Unmarshal(data, &v); err != nil {
 			return err
 		}
 		p.WrappedPropertyLinkWithValue = v
-	case PropertyFormatPhone:
+	case aux["phone"] != nil:
 		var v PhonePropertyLinkValue
 		if err := json.Unmarshal(data, &v); err != nil {
 			return err
 		}
 		p.WrappedPropertyLinkWithValue = v
-	case PropertyFormatObjects:
+	case aux["objects"] != nil:
 		var v ObjectsPropertyLinkValue
 		if err := json.Unmarshal(data, &v); err != nil {
 			return err
 		}
 		p.WrappedPropertyLinkWithValue = v
 	default:
-		return util.ErrBadInput(fmt.Sprintf("invalid property link value format: %q", raw.Format))
+		return util.ErrBadInput("could not determine property link value type")
 	}
-
 	return nil
 }
 
 type WrappedPropertyLinkWithValue interface{ isPropertyLinkWithValue() }
 
 type TextPropertyLinkValue struct {
-	Key    string         `json:"key" example:"description"`
-	Format PropertyFormat `json:"format" enums:"text"`
-	Text   string         `json:"text" example:"Some text..."` // The text value of the property
+	Key  string `json:"key" example:"description"`
+	Text string `json:"text" example:"Some text..."` // The text value of the property
 }
 
 func (TextPropertyLinkValue) isPropertyLinkWithValue() {}
 
 type NumberPropertyLinkValue struct {
-	Key    string         `json:"key" example:"height"`
-	Format PropertyFormat `json:"format" enums:"number"`
-	Number *float64       `json:"number" example:"42"` // The number value of the property
+	Key    string   `json:"key" example:"height"`
+	Number *float64 `json:"number" example:"42"` // The number value of the property
 }
 
 func (NumberPropertyLinkValue) isPropertyLinkWithValue() {}
 
 type SelectPropertyLinkValue struct {
-	Key    string         `json:"key" example:"status"`
-	Format PropertyFormat `json:"format" enums:"select"`
-	Select *string        `json:"select,omitempty"` // The selected tag value of the property
+	Key    string  `json:"key" example:"status"`
+	Select *string `json:"select,omitempty" example:"tag_id"` // The selected tag id of the property; see ListTags endpoint for valid values
 }
 
 func (SelectPropertyLinkValue) isPropertyLinkWithValue() {}
 
 type MultiSelectPropertyLinkValue struct {
-	Key         string         `json:"key" example:"tag"`
-	Format      PropertyFormat `json:"format" enums:"multi_select"`
-	MultiSelect []string       `json:"multi_select,omitempty"` // The selected tag values of the property
+	Key         string   `json:"key" example:"tag"`
+	MultiSelect []string `json:"multi_select,omitempty" example:"['tag_id']"` // The selected tag ids of the property; see ListTags endpoint for valid values
 }
 
 func (MultiSelectPropertyLinkValue) isPropertyLinkWithValue() {}
 
 type DatePropertyLinkValue struct {
-	Key    string         `json:"key" example:"last_modified_date"`
-	Format PropertyFormat `json:"format" enums:"date"`
-	Date   *string        `json:"date" example:"2025-02-14T12:34:56Z"` // The date value of the property
+	Key  string  `json:"key" example:"last_modified_date"`
+	Date *string `json:"date" example:"2025-02-14T12:34:56Z"` // The date value of the property
 }
 
 func (DatePropertyLinkValue) isPropertyLinkWithValue() {}
 
 type FilesPropertyLinkValue struct {
-	Key    string         `json:"key" example:"files"`
-	Format PropertyFormat `json:"format" enums:"files"`
-	Files  []string       `json:"files" example:"['fileId']"` // The file values of the property
+	Key   string   `json:"key" example:"files"`
+	Files []string `json:"files" example:"['file_id']"` // The file ids of the property
 }
 
 func (FilesPropertyLinkValue) isPropertyLinkWithValue() {}
 
 type CheckboxPropertyLinkValue struct {
-	Key      string         `json:"key" example:"done"`
-	Format   PropertyFormat `json:"format" enums:"checkbox"`
-	Checkbox bool           `json:"checkbox" example:"true"` // The checkbox value of the property
+	Key      string `json:"key" example:"done"`
+	Checkbox bool   `json:"checkbox" example:"true"` // The checkbox value of the property
 }
 
 func (CheckboxPropertyLinkValue) isPropertyLinkWithValue() {}
 
 type URLPropertyLinkValue struct {
-	Key    string         `json:"key" example:"source"`
-	Format PropertyFormat `json:"format" enums:"url"`
-	Url    string         `json:"url" example:"https://example.com"` // The URL value of the property
+	Key string `json:"key" example:"source"`
+	Url string `json:"url" example:"https://example.com"` // The URL value of the property
 }
 
 func (URLPropertyLinkValue) isPropertyLinkWithValue() {}
 
 type EmailPropertyLinkValue struct {
-	Key    string         `json:"key" example:"email"`
-	Format PropertyFormat `json:"format" enums:"email"`
-	Email  string         `json:"email" example:"example@example.com"` // The email value of the property
+	Key   string `json:"key" example:"email"`
+	Email string `json:"email" example:"example@example.com"` // The email value of the property
 }
 
 func (EmailPropertyLinkValue) isPropertyLinkWithValue() {}
 
 type PhonePropertyLinkValue struct {
-	Key    string         `json:"key" example:"phone"`
-	Format PropertyFormat `json:"format" enums:"phone"`
-	Phone  string         `json:"phone" example:"+1234567890"` // The phone value of the property
+	Key   string `json:"key" example:"phone"`
+	Phone string `json:"phone" example:"+1234567890"` // The phone value of the property
 }
 
 func (PhonePropertyLinkValue) isPropertyLinkWithValue() {}
 
 type ObjectsPropertyLinkValue struct {
-	Key     string         `json:"key" example:"creator"`
-	Format  PropertyFormat `json:"format" enums:"objects"`
-	Objects []string       `json:"objects" example:"['objectId']"` // The object values of the property
+	Key     string   `json:"key" example:"creator"`
+	Objects []string `json:"objects" example:"['object_id']"` // The object ids of the property
 }
 
 func (ObjectsPropertyLinkValue) isPropertyLinkWithValue() {}

@@ -15,18 +15,18 @@ import (
 //
 //	@Summary		List members
 //	@Description	Returns a paginated list of members belonging to the specified space. Each member record includes the member’s profile ID, name, icon (which may be derived from an emoji or image), network identity, global name, status (e.g. joining, active) and role (e.g. Viewer, Editor, Owner). This endpoint supports collaborative features by allowing clients to show who is in a space and manage access rights.
-//	@Id				listMembers
+//	@Id				list_members
 //	@Tags			Members
 //	@Produce		json
-//	@Param			Anytype-Version	header		string											true	"The version of the API to use"	default(2025-04-22)
-//	@Param			space_id		path		string											true	"The ID of the space to list members for"
+//	@Param			Anytype-Version	header		string											true	"The version of the API to use"	default(2025-05-20)
+//	@Param			space_id		path		string											true	"The ID of the space to list members for; must be retrieved from ListSpaces endpoint"
 //	@Param			offset			query		int												false	"The number of items to skip before starting to collect the result set"	default(0)
 //	@Param			limit			query		int												false	"The number of items to return"											default(100)	maximum(1000)
 //	@Success		200				{object}	pagination.PaginatedResponse[apimodel.Member]	"The list of members in the space"
 //	@Failure		401				{object}	util.UnauthorizedError							"Unauthorized"
 //	@Failure		500				{object}	util.ServerError								"Internal server error"
 //	@Security		bearerauth
-//	@Router			/spaces/{space_id}/members [get]
+//	@Router			/v1/spaces/{space_id}/members [get]
 func ListMembersHandler(s *service.Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		spaceId := c.Param("space_id")
@@ -52,18 +52,18 @@ func ListMembersHandler(s *service.Service) gin.HandlerFunc {
 //
 //	@Summary		Get member
 //	@Description	Fetches detailed information about a single member within a space. The endpoint returns the member’s identifier, name, icon, identity, global name, status and role. The member_id path parameter can be provided as either the member's ID (starting  with `_participant`) or the member's identity. This is useful for user profile pages, permission management, and displaying member-specific information in collaborative environments.
-//	@Id				getMember
+//	@Id				get_member
 //	@Tags			Members
 //	@Produce		json
-//	@Param			Anytype-Version	header		string					true	"The version of the API to use"	default(2025-04-22)
-//	@Param			space_id		path		string					true	"The ID of the space to get the member from"
-//	@Param			member_id		path		string					true	"Member ID or Identity"
+//	@Param			Anytype-Version	header		string					true	"The version of the API to use"	default(2025-05-20)
+//	@Param			space_id		path		string					true	"The ID of the space to get the member from; must be retrieved from ListSpaces endpoint"
+//	@Param			member_id		path		string					true	"Member ID or Identity; must be retrieved from ListMembers endpoint or obtained from response context"
 //	@Success		200				{object}	apimodel.MemberResponse	"The member details"
 //	@Failure		401				{object}	util.UnauthorizedError	"Unauthorized"
 //	@Failure		404				{object}	util.NotFoundError		"Member not found"
 //	@Failure		500				{object}	util.ServerError		"Internal server error"
 //	@Security		bearerauth
-//	@Router			/spaces/{space_id}/members/{member_id} [get]
+//	@Router			/v1/spaces/{space_id}/members/{member_id} [get]
 func GetMemberHandler(s *service.Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		spaceId := c.Param("space_id")
@@ -90,13 +90,13 @@ func GetMemberHandler(s *service.Service) gin.HandlerFunc {
 //
 //	@Summary		Update member
 //	@Description	Modifies a member's status and role in a space. Use this endpoint to approve a joining member by setting the status to `active` and specifying a role (`reader` or `writer`), reject a joining member by setting the status to `declined`, remove a member by setting the status to `removed`, or update an active member's role. This endpoint enables fine-grained control over member access and permissions.
-//	@Id				updateMember
+//	@Id				update_member
 //	@Tags			Members
 //	@Accept			json
 //	@Produce		json
-//	@Param			Anytype-Version	header		string							true	"The version of the API to use"	default(2025-04-22)
-//	@Param			space_id		path		string							true	"The ID of the space to update the member in"
-//	@Param			member_id		path		string							true	"The ID of the member to update"
+//	@Param			Anytype-Version	header		string							true	"The version of the API to use"	default(2025-05-20)
+//	@Param			space_id		path		string							true	"The ID of the space to update the member in; must be retrieved from ListSpaces endpoint"
+//	@Param			member_id		path		string							true	"The ID or Identity of the member to update; must be retrieved from ListMembers endpoint or obtained from response context"
 //	@Param			body			body		apimodel.UpdateMemberRequest	true	"The request body containing the member's new status and role"
 //	@Success		200				{object}	apimodel.MemberResponse			"Member updated successfully"
 //	@Failure		400				{object}	util.ValidationError			"Bad request"
@@ -105,7 +105,7 @@ func GetMemberHandler(s *service.Service) gin.HandlerFunc {
 //	@Failure		429				{object}	util.RateLimitError				"Rate limit exceeded"
 //	@Failure		500				{object}	util.ServerError				"Internal server error"
 //	@Security		bearerauth
-//	@Router			/spaces/{space_id}/members/{member_id} [patch]
+//	@Router			/v1/spaces/{space_id}/members/{member_id} [patch]
 func UpdateMemberHandler(s *SpaceService) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		spaceId := c.Param("space_id")

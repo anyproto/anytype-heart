@@ -63,7 +63,7 @@ func (mw *Middleware) SpaceMakeShareable(cctx context.Context, req *pb.RpcSpaceM
 
 func (mw *Middleware) SpaceInviteGenerate(cctx context.Context, req *pb.RpcSpaceInviteGenerateRequest) *pb.RpcSpaceInviteGenerateResponse {
 	aclService := mustService[acl.AclService](mw)
-	inviteInfo, err := aclService.GenerateInvite(cctx, req.SpaceId)
+	inviteInfo, err := aclService.GenerateInvite(cctx, req.SpaceId, req.InviteType, req.Permissions)
 	if err != nil {
 		code := mapErrorCode(err,
 			errToCode(space.ErrSpaceDeleted, pb.RpcSpaceInviteGenerateResponseError_SPACE_IS_DELETED),
@@ -83,7 +83,30 @@ func (mw *Middleware) SpaceInviteGenerate(cctx context.Context, req *pb.RpcSpace
 	return &pb.RpcSpaceInviteGenerateResponse{
 		InviteCid:     inviteInfo.InviteFileCid,
 		InviteFileKey: inviteInfo.InviteFileKey,
+		// nolint: gosec
+		InviteType:  model.InviteType(inviteInfo.InviteType),
+		Permissions: domain.ConvertAclPermissions(inviteInfo.Permissions),
 	}
+}
+
+func (mw *Middleware) SpaceInviteChange(cctx context.Context, req *pb.RpcSpaceInviteChangeRequest) *pb.RpcSpaceInviteChangeResponse {
+	aclService := mustService[acl.AclService](mw)
+	err := aclService.ChangeInvite(cctx, req.SpaceId, req.Permissions)
+	if err != nil {
+		code := mapErrorCode(err,
+			errToCode(space.ErrSpaceDeleted, pb.RpcSpaceInviteChangeResponseError_SPACE_IS_DELETED),
+			errToCode(space.ErrSpaceNotExists, pb.RpcSpaceInviteChangeResponseError_NO_SUCH_SPACE),
+			errToCode(acl.ErrPersonalSpace, pb.RpcSpaceInviteChangeResponseError_BAD_INPUT),
+			errToCode(acl.ErrAclRequestFailed, pb.RpcSpaceInviteChangeResponseError_REQUEST_FAILED),
+		)
+		return &pb.RpcSpaceInviteChangeResponse{
+			Error: &pb.RpcSpaceInviteChangeResponseError{
+				Code:        code,
+				Description: getErrorDescription(err),
+			},
+		}
+	}
+	return &pb.RpcSpaceInviteChangeResponse{}
 }
 
 func (mw *Middleware) SpaceInviteGetCurrent(cctx context.Context, req *pb.RpcSpaceInviteGetCurrentRequest) *pb.RpcSpaceInviteGetCurrentResponse {
@@ -104,6 +127,9 @@ func (mw *Middleware) SpaceInviteGetCurrent(cctx context.Context, req *pb.RpcSpa
 	return &pb.RpcSpaceInviteGetCurrentResponse{
 		InviteCid:     inviteInfo.InviteFileCid,
 		InviteFileKey: inviteInfo.InviteFileKey,
+		// nolint: gosec
+		InviteType:  model.InviteType(inviteInfo.InviteType),
+		Permissions: domain.ConvertAclPermissions(inviteInfo.Permissions),
 	}
 }
 
@@ -168,6 +194,8 @@ func (mw *Middleware) SpaceInviteView(cctx context.Context, req *pb.RpcSpaceInvi
 		SpaceName:         inviteView.SpaceName,
 		SpaceIconCid:      inviteView.SpaceIconCid,
 		IsGuestUserInvite: inviteView.IsGuestUserInvite(),
+		// nolint: gosec
+		InviteType: model.InviteType(inviteView.InviteType),
 	}
 }
 

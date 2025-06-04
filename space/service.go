@@ -61,6 +61,7 @@ type Service interface {
 	Create(ctx context.Context) (space clientspace.Space, err error)
 	AllSpaceIds() (ids []string)
 	Join(ctx context.Context, id, aclHeadId string) error
+	InviteJoin(ctx context.Context, id, aclHeadId string) error
 	CancelLeave(ctx context.Context, id string) (err error)
 	Get(ctx context.Context, id string) (space clientspace.Space, err error)
 	Wait(ctx context.Context, spaceId string) (sp clientspace.Space, err error)
