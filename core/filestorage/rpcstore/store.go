@@ -226,15 +226,16 @@ func writeOperation[T any](backgroundCtx context.Context, ctx context.Context, s
 	ready := make(chan result, 1)
 	ctx = context.WithValue(ctx, operationNameKey, operationName)
 	var res T
+	var defaultRes T
 	if err := s.cm.WriteOp(ctx, ready, func(c *client) error {
 		var opErr error
 		res, opErr = fn(c)
 		return opErr
 	}, cid.Cid{}); err != nil {
-		return res, err
+		return defaultRes, err
 	}
 	if err := waitResult(backgroundCtx, ctx, ready); err != nil {
-		return res, err
+		return defaultRes, err
 	}
 	return res, nil
 }
