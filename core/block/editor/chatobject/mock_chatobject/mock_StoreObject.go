@@ -1619,17 +1619,17 @@ func (_c *MockStoreObject_MarkMessagesAsUnread_Call) RunAndReturn(run func(conte
 	return _c
 }
 
-// MarkReadMessages provides a mock function with given fields: ctx, afterOrderId, beforeOrderId, lastStateId, counterType
-func (_m *MockStoreObject) MarkReadMessages(ctx context.Context, afterOrderId string, beforeOrderId string, lastStateId string, counterType chatmodel.CounterType) error {
-	ret := _m.Called(ctx, afterOrderId, beforeOrderId, lastStateId, counterType)
+// MarkReadMessages provides a mock function with given fields: ctx, req
+func (_m *MockStoreObject) MarkReadMessages(ctx context.Context, req chatobject.ReadMessagesRequest) error {
+	ret := _m.Called(ctx, req)
 
 	if len(ret) == 0 {
 		panic("no return value specified for MarkReadMessages")
 	}
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(context.Context, string, string, string, chatmodel.CounterType) error); ok {
-		r0 = rf(ctx, afterOrderId, beforeOrderId, lastStateId, counterType)
+	if rf, ok := ret.Get(0).(func(context.Context, chatobject.ReadMessagesRequest) error); ok {
+		r0 = rf(ctx, req)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -1644,17 +1644,14 @@ type MockStoreObject_MarkReadMessages_Call struct {
 
 // MarkReadMessages is a helper method to define mock.On call
 //   - ctx context.Context
-//   - afterOrderId string
-//   - beforeOrderId string
-//   - lastStateId string
-//   - counterType chatmodel.CounterType
-func (_e *MockStoreObject_Expecter) MarkReadMessages(ctx interface{}, afterOrderId interface{}, beforeOrderId interface{}, lastStateId interface{}, counterType interface{}) *MockStoreObject_MarkReadMessages_Call {
-	return &MockStoreObject_MarkReadMessages_Call{Call: _e.mock.On("MarkReadMessages", ctx, afterOrderId, beforeOrderId, lastStateId, counterType)}
+//   - req chatobject.ReadMessagesRequest
+func (_e *MockStoreObject_Expecter) MarkReadMessages(ctx interface{}, req interface{}) *MockStoreObject_MarkReadMessages_Call {
+	return &MockStoreObject_MarkReadMessages_Call{Call: _e.mock.On("MarkReadMessages", ctx, req)}
 }
 
-func (_c *MockStoreObject_MarkReadMessages_Call) Run(run func(ctx context.Context, afterOrderId string, beforeOrderId string, lastStateId string, counterType chatmodel.CounterType)) *MockStoreObject_MarkReadMessages_Call {
+func (_c *MockStoreObject_MarkReadMessages_Call) Run(run func(ctx context.Context, req chatobject.ReadMessagesRequest)) *MockStoreObject_MarkReadMessages_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(string), args[2].(string), args[3].(string), args[4].(chatmodel.CounterType))
+		run(args[0].(context.Context), args[1].(chatobject.ReadMessagesRequest))
 	})
 	return _c
 }
@@ -1664,7 +1661,7 @@ func (_c *MockStoreObject_MarkReadMessages_Call) Return(_a0 error) *MockStoreObj
 	return _c
 }
 
-func (_c *MockStoreObject_MarkReadMessages_Call) RunAndReturn(run func(context.Context, string, string, string, chatmodel.CounterType) error) *MockStoreObject_MarkReadMessages_Call {
+func (_c *MockStoreObject_MarkReadMessages_Call) RunAndReturn(run func(context.Context, chatobject.ReadMessagesRequest) error) *MockStoreObject_MarkReadMessages_Call {
 	_c.Call.Return(run)
 	return _c
 }

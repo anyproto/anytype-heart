@@ -36,6 +36,7 @@ type Manager interface {
 	UpdateChatState(updater func(*model.ChatState) *model.ChatState)
 	Add(prevOrderId string, message *chatmodel.Message)
 	Delete(messageId string)
+	ForceSendingChatState()
 	Flush()
 	ReadMessages(newOldestOrderId string, idsModified []string, counterType chatmodel.CounterType)
 	UnreadMessages(newOldestOrderId string, lastStateId string, msgIds []string, counterType chatmodel.CounterType)
@@ -163,18 +164,17 @@ func (s *service) initManager(chatObjectId string) (*subscriptionManager, error)
 }
 
 type SubscribeLastMessagesRequest struct {
-	ChatObjectId string
-	SubId        string
-	Limit        int
-	// If AsyncInit is true, initial messages will be broadcast via events
-	AsyncInit        bool
+	ChatObjectId     string
+	SubId            string
+	Limit            int
 	WithDependencies bool
 	OnlyLastMessage  bool
 }
 
 type SubscribeLastMessagesResponse struct {
-	Messages  []*chatmodel.Message
-	ChatState *model.ChatState
+	PreviousOrderId string
+	Messages        []*chatmodel.Message
+	ChatState       *model.ChatState
 	// Dependencies per message id
 	Dependencies map[string][]*domain.Details
 }
@@ -205,37 +205,27 @@ func (s *service) SubscribeLastMessages(ctx context.Context, req SubscribeLastMe
 
 	mngr.subscribe(req.SubId, req.WithDependencies, req.OnlyLastMessage)
 
-	if req.AsyncInit {
-		var previousOrderId string
-		if len(messages) > 0 {
-			previousOrderId, err = mngr.repository.GetPrevOrderId(txn.Context(), messages[0].OrderId)
-			if err != nil {
-				return nil, fmt.Errorf("get previous order id: %w", err)
-			}
-		}
+	depsPerMessage := map[string][]*domain.Details{}
+	if req.WithDependencies {
 		for _, message := range messages {
-			mngr.Add(previousOrderId, message)
-			previousOrderId = message.OrderId
+			deps := mngr.collectMessageDependencies(message.ChatMessage)
+			depsPerMessage[message.Id] = deps
 		}
-
-		// Force chatState to be sent
-		mngr.chatStateUpdated = true
-		mngr.Flush()
-		return nil, nil
-	} else {
-		depsPerMessage := map[string][]*domain.Details{}
-		if req.WithDependencies {
-			for _, message := range messages {
-				deps := mngr.collectMessageDependencies(message.ChatMessage)
-				depsPerMessage[message.Id] = deps
-			}
-		}
-		return &SubscribeLastMessagesResponse{
-			Messages:     messages,
-			ChatState:    mngr.GetChatState(),
-			Dependencies: depsPerMessage,
-		}, nil
 	}
+
+	var previousOrderId string
+	if len(messages) > 0 {
+		previousOrderId, err = mngr.repository.GetPrevOrderId(txn.Context(), messages[0].OrderId)
+		if err != nil {
+			return nil, fmt.Errorf("get previous order id: %w", err)
+		}
+	}
+	return &SubscribeLastMessagesResponse{
+		Messages:        messages,
+		ChatState:       mngr.GetChatState(),
+		Dependencies:    depsPerMessage,
+		PreviousOrderId: previousOrderId,
+	}, nil
 }
 
 func (s *service) Unsubscribe(chatObjectId string, subId string) error {

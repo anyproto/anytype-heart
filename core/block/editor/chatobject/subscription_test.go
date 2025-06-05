@@ -30,7 +30,7 @@ func TestSubscription(t *testing.T) {
 	}
 
 	resp, err := fx.chatSubscriptionService.SubscribeLastMessages(ctx, chatsubscription.SubscribeLastMessagesRequest{
-		ChatObjectId: fx.Id(), SubId: "subId", Limit: 5, AsyncInit: false,
+		ChatObjectId: fx.Id(), SubId: "subId", Limit: 5,
 	})
 	require.NoError(t, err)
 	wantTexts := []string{"text 6", "text 7", "text 8", "text 9", "text 10"}
@@ -186,7 +186,7 @@ func TestSubscriptionMessageCounters(t *testing.T) {
 	fx.chatHandler.forceNotRead = true
 
 	subscribeResp, err := fx.chatSubscriptionService.SubscribeLastMessages(ctx, chatsubscription.SubscribeLastMessagesRequest{
-		ChatObjectId: fx.Id(), SubId: "subId", Limit: 10, AsyncInit: false,
+		ChatObjectId: fx.Id(), SubId: "subId", Limit: 10,
 	})
 	require.NoError(t, err)
 
@@ -330,7 +330,6 @@ func TestSubscriptionMentionCounters(t *testing.T) {
 		ChatObjectId: fx.Id(),
 		SubId:        "subId",
 		Limit:        10,
-		AsyncInit:    false,
 	})
 	require.NoError(t, err)
 
@@ -482,7 +481,6 @@ func TestSubscriptionWithDeps(t *testing.T) {
 		ChatObjectId:     fx.Id(),
 		SubId:            "subId",
 		Limit:            10,
-		AsyncInit:        false,
 		WithDependencies: true,
 	})
 	require.NoError(t, err)
