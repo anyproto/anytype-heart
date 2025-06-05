@@ -70,9 +70,9 @@ func (_c *MockService_Close_Call) RunAndReturn(run func(context.Context) error) 
 	return _c
 }
 
-// GetManager provides a mock function with given fields: chatObjectId
-func (_m *MockService) GetManager(chatObjectId string) (chatsubscription.Manager, error) {
-	ret := _m.Called(chatObjectId)
+// GetManager provides a mock function with given fields: spaceId, chatObjectId
+func (_m *MockService) GetManager(spaceId string, chatObjectId string) (chatsubscription.Manager, error) {
+	ret := _m.Called(spaceId, chatObjectId)
 
 	if len(ret) == 0 {
 		panic("no return value specified for GetManager")
@@ -80,19 +80,19 @@ func (_m *MockService) GetManager(chatObjectId string) (chatsubscription.Manager
 
 	var r0 chatsubscription.Manager
 	var r1 error
-	if rf, ok := ret.Get(0).(func(string) (chatsubscription.Manager, error)); ok {
-		return rf(chatObjectId)
+	if rf, ok := ret.Get(0).(func(string, string) (chatsubscription.Manager, error)); ok {
+		return rf(spaceId, chatObjectId)
 	}
-	if rf, ok := ret.Get(0).(func(string) chatsubscription.Manager); ok {
-		r0 = rf(chatObjectId)
+	if rf, ok := ret.Get(0).(func(string, string) chatsubscription.Manager); ok {
+		r0 = rf(spaceId, chatObjectId)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(chatsubscription.Manager)
 		}
 	}
 
-	if rf, ok := ret.Get(1).(func(string) error); ok {
-		r1 = rf(chatObjectId)
+	if rf, ok := ret.Get(1).(func(string, string) error); ok {
+		r1 = rf(spaceId, chatObjectId)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -106,14 +106,15 @@ type MockService_GetManager_Call struct {
 }
 
 // GetManager is a helper method to define mock.On call
+//   - spaceId string
 //   - chatObjectId string
-func (_e *MockService_Expecter) GetManager(chatObjectId interface{}) *MockService_GetManager_Call {
-	return &MockService_GetManager_Call{Call: _e.mock.On("GetManager", chatObjectId)}
+func (_e *MockService_Expecter) GetManager(spaceId interface{}, chatObjectId interface{}) *MockService_GetManager_Call {
+	return &MockService_GetManager_Call{Call: _e.mock.On("GetManager", spaceId, chatObjectId)}
 }
 
-func (_c *MockService_GetManager_Call) Run(run func(chatObjectId string)) *MockService_GetManager_Call {
+func (_c *MockService_GetManager_Call) Run(run func(spaceId string, chatObjectId string)) *MockService_GetManager_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(string))
+		run(args[0].(string), args[1].(string))
 	})
 	return _c
 }
@@ -123,7 +124,7 @@ func (_c *MockService_GetManager_Call) Return(_a0 chatsubscription.Manager, _a1 
 	return _c
 }
 
-func (_c *MockService_GetManager_Call) RunAndReturn(run func(string) (chatsubscription.Manager, error)) *MockService_GetManager_Call {
+func (_c *MockService_GetManager_Call) RunAndReturn(run func(string, string) (chatsubscription.Manager, error)) *MockService_GetManager_Call {
 	_c.Call.Return(run)
 	return _c
 }

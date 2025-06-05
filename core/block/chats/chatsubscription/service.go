@@ -44,7 +44,7 @@ type Manager interface {
 
 type Service interface {
 	app.ComponentRunnable
-	GetManager(chatObjectId string) (Manager, error)
+	GetManager(spaceId string, chatObjectId string) (Manager, error)
 
 	SubscribeLastMessages(ctx context.Context, req SubscribeLastMessagesRequest) (*SubscribeLastMessagesResponse, error)
 	Unsubscribe(chatObjectId string, subId string) error
@@ -102,13 +102,13 @@ func (s *service) Close(ctx context.Context) (err error) {
 	return nil
 }
 
-func (s *service) GetManager(chatObjectId string) (Manager, error) {
-	return s.getManager(chatObjectId)
+func (s *service) GetManager(spaceId string, chatObjectId string) (Manager, error) {
+	return s.getManager(spaceId, chatObjectId)
 }
 
 // getManagerFuture returns a future that should be resolved by the first who called this method.
 // The idea behind using futures here is to initialize a manager once without blocking the whole service.
-func (s *service) getManagerFuture(chatObjectId string) *futures.Future[*subscriptionManager] {
+func (s *service) getManagerFuture(spaceId string, chatObjectId string) *futures.Future[*subscriptionManager] {
 	s.lock.Lock()
 	mngr, ok := s.managers[chatObjectId]
 	if ok {
@@ -120,21 +120,16 @@ func (s *service) getManagerFuture(chatObjectId string) *futures.Future[*subscri
 	s.managers[chatObjectId] = mngr
 	s.lock.Unlock()
 
-	mngr.Resolve(s.initManager(chatObjectId))
+	mngr.Resolve(s.initManager(spaceId, chatObjectId))
 
 	return mngr
 }
 
-func (s *service) getManager(chatObjectId string) (*subscriptionManager, error) {
-	return s.getManagerFuture(chatObjectId).Wait()
+func (s *service) getManager(spaceId string, chatObjectId string) (*subscriptionManager, error) {
+	return s.getManagerFuture(spaceId, chatObjectId).Wait()
 }
 
-func (s *service) initManager(chatObjectId string) (*subscriptionManager, error) {
-	spaceId, err := s.spaceIdResolver.ResolveSpaceID(chatObjectId)
-	if err != nil {
-		return nil, fmt.Errorf("resolve space id: %w", err)
-	}
-
+func (s *service) initManager(spaceId string, chatObjectId string) (*subscriptionManager, error) {
 	currentIdentity := s.accountService.AccountID()
 	currentParticipantId := domain.NewParticipantId(spaceId, currentIdentity)
 
@@ -184,7 +179,12 @@ func (s *service) SubscribeLastMessages(ctx context.Context, req SubscribeLastMe
 		return nil, fmt.Errorf("empty chat object id")
 	}
 
-	mngr, err := s.getManager(req.ChatObjectId)
+	spaceId, err := s.spaceIdResolver.ResolveSpaceID(req.ChatObjectId)
+	if err != nil {
+		return nil, fmt.Errorf("resolve space id: %w", err)
+	}
+
+	mngr, err := s.getManager(spaceId, req.ChatObjectId)
 	if err != nil {
 		return nil, fmt.Errorf("get manager: %w", err)
 	}
@@ -229,7 +229,12 @@ func (s *service) SubscribeLastMessages(ctx context.Context, req SubscribeLastMe
 }
 
 func (s *service) Unsubscribe(chatObjectId string, subId string) error {
-	mngr, err := s.getManager(chatObjectId)
+	spaceId, err := s.spaceIdResolver.ResolveSpaceID(chatObjectId)
+	if err != nil {
+		return fmt.Errorf("resolve space id: %w", err)
+	}
+
+	mngr, err := s.getManager(spaceId, chatObjectId)
 	if err != nil {
 		return fmt.Errorf("get manager: %w", err)
 	}
