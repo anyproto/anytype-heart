@@ -19,6 +19,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/chats/chatrepository"
 	"github.com/anyproto/anytype-heart/core/block/chats/chatsubscription"
 	"github.com/anyproto/anytype-heart/core/block/editor/chatobject"
+	"github.com/anyproto/anytype-heart/core/block/object/idresolver"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/session"
 	subscriptionservice "github.com/anyproto/anytype-heart/core/subscription"
@@ -66,6 +67,7 @@ type accountService interface {
 }
 
 type service struct {
+	spaceIdResolver         idresolver.Resolver
 	objectGetter            cache.ObjectWaitGetter
 	crossSpaceSubService    crossspacesub.Service
 	pushService             pushService
@@ -106,6 +108,7 @@ func (s *service) Init(a *app.App) error {
 	s.objectStore = app.MustComponent[objectstore.ObjectStore](a)
 	s.objectGetter = app.MustComponent[cache.ObjectWaitGetter](a)
 	s.chatSubscriptionService = app.MustComponent[chatsubscription.Service](a)
+	s.spaceIdResolver = app.MustComponent[idresolver.Resolver](a)
 	return nil
 }
 
@@ -300,7 +303,12 @@ func (s *service) onChatAddedAsync(chatObjectId string, subId string) error {
 		return fmt.Errorf("subscribe: %w", err)
 	}
 
-	mngr, err := s.chatSubscriptionService.GetManager(chatObjectId)
+	spaceId, err := s.spaceIdResolver.ResolveSpaceID(chatObjectId)
+	if err != nil {
+		return fmt.Errorf("resolve space id: %w", err)
+	}
+
+	mngr, err := s.chatSubscriptionService.GetManager(spaceId, chatObjectId)
 	if err != nil {
 		return fmt.Errorf("get manager: %w", err)
 	}

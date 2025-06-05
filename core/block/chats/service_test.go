@@ -16,6 +16,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/chats/chatmodel"
 	"github.com/anyproto/anytype-heart/core/block/chats/chatsubscription"
 	"github.com/anyproto/anytype-heart/core/block/chats/chatsubscription/mock_chatsubscription"
+	"github.com/anyproto/anytype-heart/core/block/object/idresolver/mock_idresolver"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/subscription"
 	"github.com/anyproto/anytype-heart/core/subscription/crossspacesub/mock_crossspacesub"
@@ -111,6 +112,8 @@ func newFixture(t *testing.T) *fixture {
 	objectGetter := mock_cache.NewMockObjectWaitGetterComponent(t)
 	crossSpaceSubService := mock_crossspacesub.NewMockService(t)
 	subscriptionService := mock_chatsubscription.NewMockService(t)
+	idResolver := mock_idresolver.NewMockResolver(t)
+	idResolver.EXPECT().ResolveSpaceID(mock.Anything).Return("", nil).Maybe()
 
 	fx := &fixture{
 		service:              New().(*service),
@@ -126,6 +129,7 @@ func newFixture(t *testing.T) *fixture {
 	a.Register(testutil.PrepareMock(ctx, a, objectGetter))
 	a.Register(testutil.PrepareMock(ctx, a, crossSpaceSubService))
 	a.Register(testutil.PrepareMock(ctx, a, subscriptionService))
+	a.Register(testutil.PrepareMock(ctx, a, idResolver))
 	a.Register(&pushServiceDummy{})
 	a.Register(&accountServiceDummy{})
 	a.Register(fx)
@@ -203,7 +207,7 @@ func (fx *fixture) assertSendEvents(t *testing.T, chatIds []string) {
 	manager.EXPECT().Unlock().Return()
 
 	for _, chatId := range chatIds {
-		fx.subscriptionService.EXPECT().GetManager(chatId).Return(manager, nil)
+		fx.subscriptionService.EXPECT().GetManager(mock.Anything, chatId).Return(manager, nil)
 	}
 }
 
