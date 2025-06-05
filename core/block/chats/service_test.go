@@ -194,6 +194,19 @@ func (fx *fixture) expectSubscribe(t *testing.T) {
 	}).Maybe()
 }
 
+func (fx *fixture) assertSendEvents(t *testing.T, chatIds []string) {
+	manager := mock_chatsubscription.NewMockManager(t)
+	manager.EXPECT().Lock().Return()
+	manager.EXPECT().Add(mock.Anything, mock.Anything).Return().Maybe()
+	manager.EXPECT().ForceSendingChatState().Return()
+	manager.EXPECT().Flush().Return()
+	manager.EXPECT().Unlock().Return()
+
+	for _, chatId := range chatIds {
+		fx.subscriptionService.EXPECT().GetManager(chatId).Return(manager, nil)
+	}
+}
+
 func TestSubscribeToMessagePreviews(t *testing.T) {
 	t.Run("subscribe to all existing chats", func(t *testing.T) {
 		fx := newFixture(t)
@@ -258,6 +271,8 @@ func TestSubscribeToMessagePreviews(t *testing.T) {
 		fx.crossSpaceSubService.EXPECT().Subscribe(mock.Anything).Return(&subscription.SubscribeResponse{
 			Records: []*domain.Details{},
 		}, nil).Maybe()
+
+		fx.assertSendEvents(t, []string{"chat1", "chat2"})
 
 		fx.start(t)
 
