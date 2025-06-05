@@ -76,27 +76,6 @@ func (mw *Middleware) SpaceMakeShareable(cctx context.Context, req *pb.RpcSpaceM
 	return &pb.RpcSpaceMakeShareableResponse{&pb.RpcSpaceMakeShareableResponseError{}}
 }
 
-func (mw *Middleware) SpaceInitChat(cctx context.Context, req *pb.RpcSpaceInitChatRequest) *pb.RpcSpaceInitChatResponse {
-	err := mw.doBlockService(func(bs *block.Service) (err error) {
-		err = bs.SpaceInitChat(cctx, req.SpaceId)
-		return err
-	})
-	if err != nil {
-		code := mapErrorCode(err,
-			errToCode(space.ErrSpaceDeleted, pb.RpcSpaceInitChatResponseError_SPACE_IS_DELETED),
-			errToCode(space.ErrSpaceNotExists, pb.RpcSpaceInitChatResponseError_NO_SUCH_SPACE),
-		)
-		return &pb.RpcSpaceInitChatResponse{
-			Error: &pb.RpcSpaceInitChatResponseError{
-				Code:        code,
-				Description: getErrorDescription(err),
-			},
-		}
-	}
-
-	return &pb.RpcSpaceInitChatResponse{&pb.RpcSpaceInitChatResponseError{}}
-}
-
 func (mw *Middleware) SpaceInviteGenerate(cctx context.Context, req *pb.RpcSpaceInviteGenerateRequest) *pb.RpcSpaceInviteGenerateResponse {
 	aclService := mustService[acl.AclService](mw)
 	inviteInfo, err := aclService.GenerateInvite(cctx, req.SpaceId, req.InviteType, req.Permissions)

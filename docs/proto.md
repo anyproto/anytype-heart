@@ -1217,10 +1217,6 @@
     - [Rpc.Space.Delete.Request](#anytype-Rpc-Space-Delete-Request)
     - [Rpc.Space.Delete.Response](#anytype-Rpc-Space-Delete-Response)
     - [Rpc.Space.Delete.Response.Error](#anytype-Rpc-Space-Delete-Response-Error)
-    - [Rpc.Space.InitChat](#anytype-Rpc-Space-InitChat)
-    - [Rpc.Space.InitChat.Request](#anytype-Rpc-Space-InitChat-Request)
-    - [Rpc.Space.InitChat.Response](#anytype-Rpc-Space-InitChat-Response)
-    - [Rpc.Space.InitChat.Response.Error](#anytype-Rpc-Space-InitChat-Response-Error)
     - [Rpc.Space.InviteChange](#anytype-Rpc-Space-InviteChange)
     - [Rpc.Space.InviteChange.Request](#anytype-Rpc-Space-InviteChange-Request)
     - [Rpc.Space.InviteChange.Response](#anytype-Rpc-Space-InviteChange-Response)
@@ -1669,7 +1665,6 @@
     - [Rpc.Relation.ListWithValue.Response.Error.Code](#anytype-Rpc-Relation-ListWithValue-Response-Error-Code)
     - [Rpc.Relation.Options.Response.Error.Code](#anytype-Rpc-Relation-Options-Response-Error-Code)
     - [Rpc.Space.Delete.Response.Error.Code](#anytype-Rpc-Space-Delete-Response-Error-Code)
-    - [Rpc.Space.InitChat.Response.Error.Code](#anytype-Rpc-Space-InitChat-Response-Error-Code)
     - [Rpc.Space.InviteChange.Response.Error.Code](#anytype-Rpc-Space-InviteChange-Response-Error-Code)
     - [Rpc.Space.InviteGenerate.Response.Error.Code](#anytype-Rpc-Space-InviteGenerate-Response-Error-Code)
     - [Rpc.Space.InviteGetCurrent.Response.Error.Code](#anytype-Rpc-Space-InviteGetCurrent-Response-Error-Code)
@@ -2190,7 +2185,6 @@
 | SpaceRequestDecline | [Rpc.Space.RequestDecline.Request](#anytype-Rpc-Space-RequestDecline-Request) | [Rpc.Space.RequestDecline.Response](#anytype-Rpc-Space-RequestDecline-Response) |  |
 | SpaceLeaveApprove | [Rpc.Space.LeaveApprove.Request](#anytype-Rpc-Space-LeaveApprove-Request) | [Rpc.Space.LeaveApprove.Response](#anytype-Rpc-Space-LeaveApprove-Response) |  |
 | SpaceMakeShareable | [Rpc.Space.MakeShareable.Request](#anytype-Rpc-Space-MakeShareable-Request) | [Rpc.Space.MakeShareable.Response](#anytype-Rpc-Space-MakeShareable-Response) |  |
-| SpaceInitChat | [Rpc.Space.InitChat.Request](#anytype-Rpc-Space-InitChat-Request) | [Rpc.Space.InitChat.Response](#anytype-Rpc-Space-InitChat-Response) |  |
 | SpaceParticipantRemove | [Rpc.Space.ParticipantRemove.Request](#anytype-Rpc-Space-ParticipantRemove-Request) | [Rpc.Space.ParticipantRemove.Response](#anytype-Rpc-Space-ParticipantRemove-Response) |  |
 | SpaceParticipantPermissionsChange | [Rpc.Space.ParticipantPermissionsChange.Request](#anytype-Rpc-Space-ParticipantPermissionsChange-Request) | [Rpc.Space.ParticipantPermissionsChange.Response](#anytype-Rpc-Space-ParticipantPermissionsChange-Response) |  |
 | SpaceSetOrder | [Rpc.Space.SetOrder.Request](#anytype-Rpc-Space-SetOrder-Request) | [Rpc.Space.SetOrder.Response](#anytype-Rpc-Space-SetOrder-Response) |  |
@@ -20097,62 +20091,6 @@ Available undo/redo operations
 
 
 
-<a name="anytype-Rpc-Space-InitChat"></a>
-
-### Rpc.Space.InitChat
-
-
-
-
-
-
-
-<a name="anytype-Rpc-Space-InitChat-Request"></a>
-
-### Rpc.Space.InitChat.Request
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| spaceId | [string](#string) |  |  |
-
-
-
-
-
-
-<a name="anytype-Rpc-Space-InitChat-Response"></a>
-
-### Rpc.Space.InitChat.Response
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| error | [Rpc.Space.InitChat.Response.Error](#anytype-Rpc-Space-InitChat-Response-Error) |  |  |
-
-
-
-
-
-
-<a name="anytype-Rpc-Space-InitChat-Response-Error"></a>
-
-### Rpc.Space.InitChat.Response.Error
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| code | [Rpc.Space.InitChat.Response.Error.Code](#anytype-Rpc-Space-InitChat-Response-Error-Code) |  |  |
-| description | [string](#string) |  |  |
-
-
-
-
-
-
 <a name="anytype-Rpc-Space-InviteChange"></a>
 
 ### Rpc.Space.InviteChange
@@ -21794,7 +21732,7 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | ----- | ---- | ----- | ----------- |
 | details | [google.protobuf.Struct](#google-protobuf-Struct) |  | object details |
 | useCase | [Rpc.Object.ImportUseCase.Request.UseCase](#anytype-Rpc-Object-ImportUseCase-Request-UseCase) |  | use case |
-| withChat | [bool](#bool) |  | create space-level chat; temporary solution, should be removed after chats released for all users |
+| withChat | [bool](#bool) |  | deprecated |
 
 
 
@@ -26409,21 +26347,6 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | REQUEST_FAILED | 103 |  |
 | LIMIT_REACHED | 104 |  |
 | NOT_SHAREABLE | 105 |  |
-
-
-
-<a name="anytype-Rpc-Space-InitChat-Response-Error-Code"></a>
-
-### Rpc.Space.InitChat.Response.Error.Code
-
-
-| Name | Number | Description |
-| ---- | ------ | ----------- |
-| NULL | 0 |  |
-| UNKNOWN_ERROR | 1 |  |
-| BAD_INPUT | 2 |  |
-| NO_SUCH_SPACE | 101 |  |
-| SPACE_IS_DELETED | 102 |  |
 
 
 
