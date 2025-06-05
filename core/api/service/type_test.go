@@ -36,7 +36,7 @@ func TestObjectService_ListTypes(t *testing.T) {
 				Error: &pb.RpcObjectSearchResponseError{Code: pb.RpcObjectSearchResponseError_NULL},
 			}).Once()
 
-		// Mock GetPropertyMapFromStore
+		// Mock getPropertyMapFromStore
 		fx.mwMock.On("ObjectSearch", mock.Anything, &pb.RpcObjectSearchRequest{
 			SpaceId: mockedSpaceId,
 			Filters: []*model.BlockContentDataviewFilter{
@@ -54,6 +54,7 @@ func TestObjectService_ListTypes(t *testing.T) {
 			Keys: []string{
 				bundle.RelationKeyId.String(),
 				bundle.RelationKeyRelationKey.String(),
+				bundle.RelationKeyApiObjectKey.String(),
 				bundle.RelationKeyName.String(),
 				bundle.RelationKeyRelationFormat.String(),
 			},
@@ -92,7 +93,7 @@ func TestObjectService_ListTypes(t *testing.T) {
 				Error:   &pb.RpcObjectSearchResponseError{Code: pb.RpcObjectSearchResponseError_NULL},
 			}).Once()
 
-		// Mock GetPropertyMapFromStore
+		// Mock getPropertyMapFromStore
 		fx.mwMock.On("ObjectSearch", mock.Anything, &pb.RpcObjectSearchRequest{
 			SpaceId: "empty-space",
 			Filters: []*model.BlockContentDataviewFilter{
@@ -110,6 +111,7 @@ func TestObjectService_ListTypes(t *testing.T) {
 			Keys: []string{
 				bundle.RelationKeyId.String(),
 				bundle.RelationKeyRelationKey.String(),
+				bundle.RelationKeyApiObjectKey.String(),
 				bundle.RelationKeyName.String(),
 				bundle.RelationKeyRelationFormat.String(),
 			},
@@ -157,7 +159,7 @@ func TestObjectService_GetType(t *testing.T) {
 			},
 		}).Once()
 
-		// Mock GetPropertyMapFromStore
+		// Mock getPropertyMapFromStore
 		fx.mwMock.On("ObjectSearch", mock.Anything, &pb.RpcObjectSearchRequest{
 			SpaceId: mockedSpaceId,
 			Filters: []*model.BlockContentDataviewFilter{
@@ -175,6 +177,7 @@ func TestObjectService_GetType(t *testing.T) {
 			Keys: []string{
 				bundle.RelationKeyId.String(),
 				bundle.RelationKeyRelationKey.String(),
+				bundle.RelationKeyApiObjectKey.String(),
 				bundle.RelationKeyName.String(),
 				bundle.RelationKeyRelationFormat.String(),
 			},

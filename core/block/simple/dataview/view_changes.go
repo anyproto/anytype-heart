@@ -16,6 +16,7 @@ func diffViewFields(a, b *model.BlockContentDataviewView) *pb.EventBlockDataview
 		a.CardSize == b.CardSize &&
 		a.CoverFit == b.CoverFit &&
 		a.GroupRelationKey == b.GroupRelationKey &&
+		a.EndRelationKey == b.EndRelationKey &&
 		a.GroupBackgroundColors == b.GroupBackgroundColors &&
 		a.PageLimit == b.PageLimit &&
 		a.DefaultTemplateId == b.DefaultTemplateId &&
@@ -36,6 +37,7 @@ func diffViewFields(a, b *model.BlockContentDataviewView) *pb.EventBlockDataview
 		PageLimit:             b.PageLimit,
 		DefaultTemplateId:     b.DefaultTemplateId,
 		DefaultObjectTypeId:   b.DefaultObjectTypeId,
+		EndRelationKey:        b.EndRelationKey,
 	}
 }
 
@@ -237,6 +239,7 @@ func (l *Dataview) ApplyViewUpdate(upd *pb.EventBlockDataviewViewUpdate) {
 		view.PageLimit = f.PageLimit
 		view.DefaultTemplateId = f.DefaultTemplateId
 		view.DefaultObjectTypeId = f.DefaultObjectTypeId
+		view.EndRelationKey = f.EndRelationKey
 	}
 
 	{

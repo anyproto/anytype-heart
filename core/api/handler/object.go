@@ -15,18 +15,18 @@ import (
 //
 //	@Summary		List objects
 //	@Description	Retrieves a paginated list of objects in the given space. The endpoint takes query parameters for pagination (offset and limit) and returns detailed data about each object including its ID, name, icon, type information, a snippet of the content (if applicable), layout, space ID, blocks and details. It is intended for building views where users can see all objects in a space at a glance.
-//	@Id				listObjects
+//	@Id				list_objects
 //	@Tags			Objects
 //	@Produce		json
-//	@Param			Anytype-Version	header		string											true	"The version of the API to use"	default(2025-04-22)
-//	@Param			space_id		path		string											true	"The ID of the space in which to list objects"
+//	@Param			Anytype-Version	header		string											true	"The version of the API to use"	default(2025-05-20)
+//	@Param			space_id		path		string											true	"The ID of the space in which to list objects; must be retrieved from ListSpaces endpoint"
 //	@Param			offset			query		int												false	"The number of items to skip before starting to collect the result set"	default(0)
 //	@Param			limit			query		int												false	"The number of items to return"											default(100)	maximum(1000)
 //	@Success		200				{object}	pagination.PaginatedResponse[apimodel.Object]	"The list of objects in the specified space"
 //	@Failure		401				{object}	util.UnauthorizedError							"Unauthorized"
 //	@Failure		500				{object}	util.ServerError								"Internal server error"
 //	@Security		bearerauth
-//	@Router			/spaces/{space_id}/objects [get]
+//	@Router			/v1/spaces/{space_id}/objects [get]
 func ListObjectsHandler(s *service.Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		spaceId := c.Param("space_id")
@@ -54,12 +54,12 @@ func ListObjectsHandler(s *service.Service) gin.HandlerFunc {
 //
 //	@Summary		Get object
 //	@Description	Fetches the full details of a single object identified by the object ID within the specified space. The response includes not only basic metadata (ID, name, icon, type) but also the complete set of blocks (which may include text, files, properties and dataviews) and extra details (such as timestamps and linked member information). This endpoint is essential when a client needs to render or edit the full object view.
-//	@Id				getObject
+//	@Id				get_object
 //	@Tags			Objects
 //	@Produce		json
-//	@Param			Anytype-Version	header		string					true	"The version of the API to use"	default(2025-04-22)
-//	@Param			space_id		path		string					true	"The ID of the space in which the object exists"
-//	@Param			object_id		path		string					true	"The ID of the object to retrieve"
+//	@Param			Anytype-Version	header		string					true	"The version of the API to use"	default(2025-05-20)
+//	@Param			space_id		path		string					true	"The ID of the space in which the object exists; must be retrieved from ListSpaces endpoint"
+//	@Param			object_id		path		string					true	"The ID of the object to retrieve; must be retrieved from ListObjects, SearchSpace or GlobalSearch endpoints or obtained from response context"
 //	@Param			format			query		apimodel.BodyFormat		false	"The format to return the object body in" default("md")
 //	@Success		200				{object}	apimodel.ObjectResponse	"The retrieved object"
 //	@Failure		401				{object}	util.UnauthorizedError	"Unauthorized"
@@ -67,7 +67,7 @@ func ListObjectsHandler(s *service.Service) gin.HandlerFunc {
 //	@Failure		410				{object}	util.GoneError			"Resource deleted"
 //	@Failure		500				{object}	util.ServerError		"Internal server error"
 //	@Security		bearerauth
-//	@Router			/spaces/{space_id}/objects/{object_id} [get]
+//	@Router			/v1/spaces/{space_id}/objects/{object_id} [get]
 func GetObjectHandler(s *service.Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		spaceId := c.Param("space_id")
@@ -96,20 +96,20 @@ func GetObjectHandler(s *service.Service) gin.HandlerFunc {
 //
 //	@Summary		Create object
 //	@Description	Creates a new object in the specified space using a JSON payload. The creation process is subject to rate limiting. The payload must include key details such as the object name, icon, description, body content (which may support Markdown), source URL (required for bookmark objects), template identifier, and the type_key (which is the non-unique identifier of the type of object to create). Post-creation, additional operations (like setting featured properties or fetching bookmark metadata) may occur. The endpoint then returns the full object data, ready for further interactions.
-//	@Id				createObject
+//	@Id				create_object
 //	@Tags			Objects
 //	@Accept			json
 //	@Produce		json
-//	@Param			Anytype-Version	header		string							true	"The version of the API to use"	default(2025-04-22)
-//	@Param			space_id		path		string							true	"The ID of the space in which to create the object"
+//	@Param			Anytype-Version	header		string							true	"The version of the API to use"	default(2025-05-20)
+//	@Param			space_id		path		string							true	"The ID of the space in which to create the object; must be retrieved from ListSpaces endpoint"
 //	@Param			object			body		apimodel.CreateObjectRequest	true	"The object to create"
-//	@Success		200				{object}	apimodel.ObjectResponse			"The created object"
+//	@Success		201				{object}	apimodel.ObjectResponse			"The created object"
 //	@Failure		400				{object}	util.ValidationError			"Bad request"
 //	@Failure		401				{object}	util.UnauthorizedError			"Unauthorized"
 //	@Failure		429				{object}	util.RateLimitError				"Rate limit exceeded"
 //	@Failure		500				{object}	util.ServerError				"Internal server error"
 //	@Security		bearerauth
-//	@Router			/spaces/{space_id}/objects [post]
+//	@Router			/v1/spaces/{space_id}/objects [post]
 func CreateObjectHandler(s *service.Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		spaceId := c.Param("space_id")
@@ -139,7 +139,7 @@ func CreateObjectHandler(s *service.Service) gin.HandlerFunc {
 			return
 		}
 
-		c.JSON(http.StatusOK, apimodel.ObjectResponse{Object: object})
+		c.JSON(http.StatusCreated, apimodel.ObjectResponse{Object: object})
 	}
 }
 
@@ -147,13 +147,13 @@ func CreateObjectHandler(s *service.Service) gin.HandlerFunc {
 //
 //	@Summary		Update object
 //	@Description	This endpoint updates an existing object in the specified space using a JSON payload. The update process is subject to rate limiting. The payload must include the details to be updated. The endpoint then returns the full object data, ready for further interactions.
-//	@Id				updateObject
+//	@Id				update_object
 //	@Tags			Objects
 //	@Accept			json
 //	@Produce		json
-//	@Param			Anytype-Version	header		string							true	"The version of the API to use"	default(2025-04-22)
-//	@Param			space_id		path		string							true	"The ID of the space in which the object exists"
-//	@Param			object_id		path		string							true	"The ID of the object to update"
+//	@Param			Anytype-Version	header		string							true	"The version of the API to use"	default(2025-05-20)
+//	@Param			space_id		path		string							true	"The ID of the space in which the object exists; must be retrieved from ListSpaces endpoint"
+//	@Param			object_id		path		string							true	"The ID of the object to update; must be retrieved from ListObjects, SearchSpace or GlobalSearch endpoints or obtained from response context"
 //	@Param			object			body		apimodel.UpdateObjectRequest	true	"The details of the object to update"
 //	@Success		200				{object}	apimodel.ObjectResponse			"The updated object"
 //	@Failure		400				{object}	util.ValidationError			"Bad request"
@@ -163,7 +163,7 @@ func CreateObjectHandler(s *service.Service) gin.HandlerFunc {
 //	@Failure		429				{object}	util.RateLimitError				"Rate limit exceeded"
 //	@Failure		500				{object}	util.ServerError				"Internal server error"
 //	@Security		bearerauth
-//	@Router			/spaces/{space_id}/objects/{object_id} [patch]
+//	@Router			/v1/spaces/{space_id}/objects/{object_id} [patch]
 func UpdateObjectHandler(s *service.Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		spaceId := c.Param("space_id")
@@ -199,12 +199,12 @@ func UpdateObjectHandler(s *service.Service) gin.HandlerFunc {
 //
 //	@Summary		Delete object
 //	@Description	This endpoint “deletes” an object by marking it as archived. The deletion process is performed safely and is subject to rate limiting. It returns the object’s details after it has been archived. Proper error handling is in place for situations such as when the object isn’t found or the deletion cannot be performed because of permission issues.
-//	@Id				deleteObject
+//	@Id				delete_object
 //	@Tags			Objects
 //	@Produce		json
-//	@Param			Anytype-Version	header		string					true	"The version of the API to use"	default(2025-04-22)
-//	@Param			space_id		path		string					true	"The ID of the space in which the object exists"
-//	@Param			object_id		path		string					true	"The ID of the object to delete"
+//	@Param			Anytype-Version	header		string					true	"The version of the API to use"	default(2025-05-20)
+//	@Param			space_id		path		string					true	"The ID of the space in which the object exists; must be retrieved from ListSpaces endpoint"
+//	@Param			object_id		path		string					true	"The ID of the object to delete; must be retrieved from ListObjects, SearchSpace or GlobalSearch endpoints or obtained from response context"
 //	@Success		200				{object}	apimodel.ObjectResponse	"The deleted object"
 //	@Failure		401				{object}	util.UnauthorizedError	"Unauthorized"
 //	@Failure		403				{object}	util.ForbiddenError		"Forbidden"
@@ -213,7 +213,7 @@ func UpdateObjectHandler(s *service.Service) gin.HandlerFunc {
 //	@Failure		429				{object}	util.RateLimitError		"Rate limit exceeded"
 //	@Failure		500				{object}	util.ServerError		"Internal server error"
 //	@Security		bearerauth
-//	@Router			/spaces/{space_id}/objects/{object_id} [delete]
+//	@Router			/v1/spaces/{space_id}/objects/{object_id} [delete]
 func DeleteObjectHandler(s *service.Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		spaceId := c.Param("space_id")

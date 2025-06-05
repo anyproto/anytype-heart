@@ -8,6 +8,7 @@ import (
 	"github.com/anyproto/any-sync/commonspace/object/tree/treechangeproto"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/storestate"
+	"github.com/anyproto/anytype-heart/core/block/source"
 	"github.com/anyproto/anytype-heart/pb"
 )
 
@@ -17,15 +18,24 @@ type storeApply struct {
 	allIsNew bool
 
 	needFetchPrevOrderId bool
+	hook                 source.ReadStoreTreeHook
 }
 
 func (a *storeApply) Apply() error {
 	var lastErr error
 
+	if a.hook != nil {
+		a.hook.BeforeIteration(a.ot)
+	}
+
 	err := a.ot.IterateRoot(UnmarshalStoreChange, func(change *objecttree.Change) bool {
 		// not a new change - remember and continue
 		if !a.allIsNew && !change.IsNew {
 			return true
+		}
+
+		if a.hook != nil {
+			a.hook.OnIteration(a.ot, change)
 		}
 
 		lastErr = a.applyChange(change)

@@ -7,6 +7,7 @@ import (
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
+	"github.com/anyproto/anytype-heart/core/api/util"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
@@ -34,7 +35,7 @@ func TestAuthService_GenerateNewChallenge(t *testing.T) {
 			}).Once()
 
 		// when
-		challengeId, err := fx.service.NewChallenge(ctx, mockedAppName)
+		challengeId, err := fx.service.CreateChallenge(ctx, mockedAppName)
 
 		// then
 		require.NoError(t, err)
@@ -47,7 +48,7 @@ func TestAuthService_GenerateNewChallenge(t *testing.T) {
 		fx := newFixture(t)
 
 		// when
-		challengeId, err := fx.service.NewChallenge(ctx, "")
+		challengeId, err := fx.service.CreateChallenge(ctx, "")
 
 		// then
 		require.Error(t, err)
@@ -69,11 +70,11 @@ func TestAuthService_GenerateNewChallenge(t *testing.T) {
 			}).Once()
 
 		// when
-		challengeId, err := fx.service.NewChallenge(ctx, mockedAppName)
+		challengeId, err := fx.service.CreateChallenge(ctx, mockedAppName)
 
 		// then
 		require.Error(t, err)
-		require.Equal(t, ErrFailedGenerateChallenge, err)
+		require.Equal(t, ErrFailedCreateNewChallenge, err)
 		require.Empty(t, challengeId)
 	})
 }
@@ -112,7 +113,7 @@ func TestAuthService_SolveChallengeForToken(t *testing.T) {
 
 		// then
 		require.Error(t, err)
-		require.Equal(t, ErrInvalidInput, err)
+		require.ErrorIs(t, err, util.ErrBad)
 		require.Empty(t, appKey)
 	})
 

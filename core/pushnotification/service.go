@@ -7,6 +7,7 @@ import (
 	"encoding/hex"
 	"fmt"
 	"sync"
+	"time"
 
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/commonspace/object/acl/list"
@@ -31,6 +32,13 @@ var log = logging.Logger(CName).Desugar()
 type requestSubscribe struct {
 	spaceId string
 	topics  []string
+}
+
+type PushMessage struct {
+	SpaceId  string
+	Topics   []string
+	Payload  []byte
+	Deadline time.Time
 }
 
 type Service interface {
@@ -59,6 +67,8 @@ type service struct {
 	ctx                context.Context
 	cancel             context.CancelFunc
 	requestsQueue      *mb.MB[requestSubscribe]
+	notifyQueue        *mb.MB[PushMessage]
+	createSpaceQueue   *mb.MB[string]
 }
 
 type spaceKeyType string
@@ -74,15 +84,14 @@ func (s *service) SubscribeToTopics(ctx context.Context, spaceId string, topics 
 }
 
 func (s *service) Run(ctx context.Context) (err error) {
-	// TODO Temporarliy disabled
-	return nil
-
 	if s.cfg.IsLocalOnlyMode() {
 		return nil
 	}
 	s.started = true
 	s.ctx, s.cancel = context.WithCancel(context.Background())
 	go s.run()
+	go s.notifyLoop()
+	go s.createSpaceLoop()
 	return nil
 }
 
@@ -93,6 +102,8 @@ func (s *service) Close(ctx context.Context) (err error) {
 	if s.cancel != nil {
 		s.cancel()
 	}
+	_ = s.createSpaceQueue.Close()
+	_ = s.notifyQueue.Close()
 	return s.requestsQueue.Close()
 }
 
@@ -103,6 +114,8 @@ func (s *service) Init(a *app.App) (err error) {
 	s.requestsQueue = mb.New[requestSubscribe](0)
 	s.spaceService = app.MustComponent[space.Service](a)
 	s.eventSender = app.MustComponent[event.Sender](a)
+	s.notifyQueue = mb.New[PushMessage](0)
+	s.createSpaceQueue = mb.New[string](0)
 	return
 }
 
@@ -148,6 +161,10 @@ func (s *service) CreateSpace(ctx context.Context, spaceId string) (err error) {
 	if !s.started {
 		return nil
 	}
+	return s.createSpaceQueue.Add(ctx, spaceId)
+}
+
+func (s *service) createSpace(ctx context.Context, spaceId string) (err error) {
 	keys, err := s.getSpaceKeys(spaceId)
 	if err != nil {
 		return fmt.Errorf("get space keys: %w", err)
@@ -175,36 +192,12 @@ type spaceKeys struct {
 }
 
 func (s *service) Notify(ctx context.Context, spaceId string, topic []string, payload []byte) (err error) {
-	if !s.started {
-		return nil
-	}
-
-	keys, err := s.getSpaceKeys(spaceId)
-	if err != nil {
-		return fmt.Errorf("get space keys: %w", err)
-	}
-	topics, err := s.makeTopics(keys.signKey, topic)
-	if err != nil {
-		return err
-	}
-	encryptedJson, err := keys.encryptionKey.Encrypt(payload)
-	if err != nil {
-		return err
-	}
-	signature, err := s.wallet.GetAccountPrivkey().Sign(encryptedJson)
-	if err != nil {
-		return err
-	}
-	p := &pushapi.Message{
-		KeyId:     keys.encryptionKeyId,
-		Payload:   encryptedJson,
-		Signature: signature,
-	}
-	err = s.pushClient.Notify(ctx, &pushapi.NotifyRequest{
-		Topics:  &pushapi.Topics{Topics: topics},
-		Message: p,
+	return s.notifyQueue.Add(ctx, PushMessage{
+		SpaceId:  spaceId,
+		Topics:   topic,
+		Payload:  payload,
+		Deadline: time.Now().Add(time.Minute * 2),
 	})
-	return err
 }
 
 func (s *service) loadSubscriptions(ctx context.Context) (err error) {
@@ -309,6 +302,7 @@ func (s *service) run() {
 			keys, err := s.getSpaceKeys(req.spaceId)
 			if err != nil {
 				log.Error("failed to get space keys", zap.Error(err))
+				continue
 			}
 
 			for _, topic := range req.topics {
@@ -328,6 +322,72 @@ func (s *service) run() {
 		err = s.subscribeAll(s.ctx)
 		if err != nil {
 			log.Error("failed to subscribe to topic", zap.Error(err))
+		}
+	}
+}
+
+func (s *service) notifyLoop() {
+	for {
+		msg, err := s.notifyQueue.WaitOne(s.ctx)
+		if err != nil {
+			return
+		}
+		if msg.Deadline.Before(time.Now()) {
+			continue
+		}
+		if err = s.sendNotification(msg); err != nil {
+			log.Error("failed to send notification", zap.Error(err))
+		}
+	}
+}
+
+func (s *service) sendNotification(msg PushMessage) (err error) {
+	keys, err := s.getSpaceKeys(msg.SpaceId)
+	if err != nil {
+		return fmt.Errorf("get space keys: %w", err)
+	}
+	topics, err := s.makeTopics(keys.signKey, msg.Topics)
+	if err != nil {
+		return err
+	}
+	encryptedJson, err := keys.encryptionKey.Encrypt(msg.Payload)
+	if err != nil {
+		return err
+	}
+	signature, err := s.wallet.GetAccountPrivkey().Sign(encryptedJson)
+	if err != nil {
+		return err
+	}
+	p := &pushapi.Message{
+		KeyId:     keys.encryptionKeyId,
+		Payload:   encryptedJson,
+		Signature: signature,
+	}
+	err = s.pushClient.Notify(s.ctx, &pushapi.NotifyRequest{
+		Topics:  &pushapi.Topics{Topics: topics},
+		Message: p,
+	})
+	return err
+}
+
+func (s *service) createSpaceLoop() {
+	for {
+		spaceId, err := s.createSpaceQueue.WaitOne(s.ctx)
+		if err != nil {
+			return
+		}
+		for {
+			if err = s.createSpace(s.ctx, spaceId); err != nil {
+				log.Warn("failed to create space", zap.Error(err))
+				select {
+				case <-time.After(time.Minute):
+					continue
+				case <-s.ctx.Done():
+					return
+				}
+			} else {
+				break
+			}
 		}
 	}
 }
