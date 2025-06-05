@@ -383,18 +383,6 @@ func (s *Service) SpaceInitChat(ctx context.Context, spaceId string) error {
 		return nil
 	}
 
-	var spaceInfo spaceinfo.SpaceLocalInfo
-	err = s.spaceService.TechSpace().DoSpaceView(ctx, spaceId, func(spaceView techspace.SpaceView) error {
-		spaceInfo = spaceView.GetLocalInfo()
-		return nil
-	})
-	if err != nil {
-		return fmt.Errorf("get space info: %w", err)
-	}
-	if spaceInfo.GetShareableStatus() != spaceinfo.ShareableStatusShareable {
-		return nil
-	}
-
 	workspaceId := spc.DerivedIDs().Workspace
 	chatUk, err := domain.NewUniqueKey(coresb.SmartBlockTypeChatDerivedObject, workspaceId)
 	if err != nil {
@@ -406,14 +394,30 @@ func (s *Service) SpaceInitChat(ctx context.Context, spaceId string) error {
 		return err
 	}
 
+	// cheap check if chat already exists
 	if spaceChatExists, err := spc.Storage().HasTree(ctx, chatId); err != nil {
 		return err
-	} else if !spaceChatExists {
-		_, err = s.objectCreator.AddChatDerivedObject(ctx, spc, workspaceId)
-		if err != nil {
-			if !errors.Is(err, treestorage.ErrTreeExists) {
-				return fmt.Errorf("add chat derived object: %w", err)
-			}
+	} else if spaceChatExists {
+		return nil
+	}
+
+	var spaceInfo spaceinfo.SpaceLocalInfo
+	err = s.spaceService.TechSpace().DoSpaceView(ctx, spaceId, func(spaceView techspace.SpaceView) error {
+		spaceInfo = spaceView.GetLocalInfo()
+		return nil
+	})
+	if err != nil {
+		return fmt.Errorf("get space info: %w", err)
+	}
+	if spaceInfo.GetShareableStatus() != spaceinfo.ShareableStatusShareable {
+		// we do not create chat in non-shareable spaces
+		return nil
+	}
+
+	_, err = s.objectCreator.AddChatDerivedObject(ctx, spc, workspaceId)
+	if err != nil {
+		if !errors.Is(err, treestorage.ErrTreeExists) {
+			return fmt.Errorf("add chat derived object: %w", err)
 		}
 	}
 
