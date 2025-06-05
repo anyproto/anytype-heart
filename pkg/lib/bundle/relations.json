@@ -48,9 +48,7 @@
     "maxCount": 1,
     "name": "Date to delete",
     "readonly": true,
-    "source": "account",
-    "includeTime": true,
-    "revision": 1
+    "source": "account"
   },
   {
     "description": "Prioritized target types for the relation's value",
@@ -468,9 +466,7 @@
     "maxCount": 1,
     "name": "Due date",
     "readonly": false,
-    "source": "details",
-    "includeTime": true,
-    "revision": 1
+    "source": "details"
   },
   {
     "description": "1 emoji(can contains multiple UTF symbols) used as an icon",
@@ -1441,9 +1437,7 @@
     "maxCount": 1,
     "name": "Timestamp",
     "readonly": true,
-    "source": "derived",
-    "includeTime": true,
-    "revision": 1
+    "source": "derived"
   },
   {
     "description": "Width of object's layout",

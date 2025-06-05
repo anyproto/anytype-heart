@@ -9,7 +9,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-const RelationChecksum = "5dcb32d8a24ade95642a2e7258eb1bc12645f31f875d8eb7dcdfdf01e4062dc4"
+const RelationChecksum = "bc68fd4137f2a048395db63eb5039fc4a5d8599ebe10669812809fa1793fa864"
 const (
 	RelationKeyTag                          domain.RelationKey = "tag"
 	RelationKeyCamera                       domain.RelationKey = "camera"
@@ -585,13 +585,11 @@ var (
 			Description:      "",
 			Format:           model.RelationFormat_date,
 			Id:               "_brdueDate",
-			IncludeTime:      true,
 			Key:              "dueDate",
 			MaxCount:         1,
 			Name:             "Due date",
 			ReadOnly:         false,
 			ReadOnlyRelation: true,
-			Revision:         1,
 			Scope:            model.Relation_type,
 		},
 		RelationKeyEmail: {
@@ -2193,13 +2191,11 @@ var (
 			Format:           model.RelationFormat_date,
 			Hidden:           true,
 			Id:               "_brtimestamp",
-			IncludeTime:      true,
 			Key:              "timestamp",
 			MaxCount:         1,
 			Name:             "Timestamp",
 			ReadOnly:         true,
 			ReadOnlyRelation: true,
-			Revision:         1,
 			Scope:            model.Relation_type,
 		},
 		RelationKeyToBeDeletedDate: {
@@ -2209,13 +2205,11 @@ var (
 			Format:           model.RelationFormat_date,
 			Hidden:           true,
 			Id:               "_brtoBeDeletedDate",
-			IncludeTime:      true,
 			Key:              "toBeDeletedDate",
 			MaxCount:         1,
 			Name:             "Date to delete",
 			ReadOnly:         true,
 			ReadOnlyRelation: true,
-			Revision:         1,
 			Scope:            model.Relation_type,
 		},
 		RelationKeyType: {
