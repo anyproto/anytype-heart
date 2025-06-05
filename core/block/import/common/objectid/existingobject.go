@@ -126,29 +126,44 @@ func (e *existingObject) getExistingRelationOption(snapshot *common.Snapshot, sp
 }
 
 func (e *existingObject) getExistingRelation(snapshot *common.Snapshot, spaceID string) string {
-	key := snapshot.Snapshot.Data.Details.GetString(bundle.RelationKeyRelationKey)
-	format := snapshot.Snapshot.Data.Details.GetFloat64(bundle.RelationKeyRelationFormat)
-	ids, _, err := e.objectStore.SpaceIndex(spaceID).QueryObjectIds(database.Query{
-		Filters: []database.FilterRequest{
-			{
-				Condition:   model.BlockContentDataviewFilter_Equal,
-				RelationKey: bundle.RelationKeyRelationKey,
-				Value:       domain.String(key),
-			},
-			{
-				Condition:   model.BlockContentDataviewFilter_Equal,
-				RelationKey: bundle.RelationKeyRelationFormat,
-				Value:       domain.Float64(format),
-			},
-			{
-				Condition:   model.BlockContentDataviewFilter_Equal,
-				RelationKey: bundle.RelationKeyResolvedLayout,
-				Value:       domain.Int64(model.ObjectType_relation),
-			},
+	keyFilter := database.FilterRequest{
+		Condition:   model.BlockContentDataviewFilter_Equal,
+		RelationKey: bundle.RelationKeyRelationKey,
+		Value:       snapshot.Snapshot.Data.Details.Get(bundle.RelationKeyRelationKey),
+	}
+
+	nameFilter := database.FilterRequest{
+		Condition:   model.BlockContentDataviewFilter_Equal,
+		RelationKey: bundle.RelationKeyName,
+		Value:       snapshot.Snapshot.Data.Details.Get(bundle.RelationKeyName),
+	}
+
+	relationsFilters := []database.FilterRequest{
+		{
+			Condition:   model.BlockContentDataviewFilter_Equal,
+			RelationKey: bundle.RelationKeyRelationFormat,
+			Value:       snapshot.Snapshot.Data.Details.Get(bundle.RelationKeyRelationFormat),
 		},
-	})
+		{
+			Condition:   model.BlockContentDataviewFilter_Equal,
+			RelationKey: bundle.RelationKeyResolvedLayout,
+			Value:       domain.Int64(model.ObjectType_relation),
+		},
+	}
+
+	index := e.objectStore.SpaceIndex(spaceID)
+
+	// first query relation by relationKey to filter out renamed library objects
+	ids, _, err := index.QueryObjectIds(database.Query{Filters: append(relationsFilters, keyFilter)})
 	if err == nil && len(ids) > 0 {
 		return ids[0]
 	}
+
+	// second query relation by name to filter out similar relations from CSV/Notion import
+	ids, _, err = index.QueryObjectIds(database.Query{Filters: append(relationsFilters, nameFilter)})
+	if err == nil && len(ids) > 0 {
+		return ids[0]
+	}
+
 	return ""
 }
