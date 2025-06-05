@@ -1591,7 +1591,7 @@
     "description": "Should time be shown for relation values with date format",
     "format": "checkbox",
     "hidden": true,
-    "key": "includeTime",
+    "key": "relationFormatIncludeTime",
     "maxCount": 0,
     "name": "IncludeTime",
     "readonly": true,

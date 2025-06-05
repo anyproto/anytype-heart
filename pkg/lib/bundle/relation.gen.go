@@ -9,7 +9,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-const RelationChecksum = "bc68fd4137f2a048395db63eb5039fc4a5d8599ebe10669812809fa1793fa864"
+const RelationChecksum = "b196956336cb7348a79d913d5e8e0a3f542424d3b175070725b90444114eaf0f"
 const (
 	RelationKeyTag                          domain.RelationKey = "tag"
 	RelationKeyCamera                       domain.RelationKey = "camera"
@@ -164,7 +164,7 @@ const (
 	RelationKeyPluralName                   domain.RelationKey = "pluralName"
 	RelationKeyHeaderRelationsLayout        domain.RelationKey = "headerRelationsLayout"
 	RelationKeyApiObjectKey                 domain.RelationKey = "apiObjectKey"
-	RelationKeyIncludeTime                  domain.RelationKey = "includeTime"
+	RelationKeyRelationFormatIncludeTime    domain.RelationKey = "relationFormatIncludeTime"
 )
 
 var (
@@ -935,19 +935,6 @@ var (
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
 		},
-		RelationKeyIncludeTime: {
-
-			DataSource:       model.Relation_details,
-			Description:      "Should time be shown for relation values with date format",
-			Format:           model.RelationFormat_checkbox,
-			Hidden:           true,
-			Id:               "_brincludeTime",
-			Key:              "includeTime",
-			Name:             "IncludeTime",
-			ReadOnly:         true,
-			ReadOnlyRelation: true,
-			Scope:            model.Relation_type,
-		},
 		RelationKeyIngredients: {
 
 			DataSource:       model.Relation_details,
@@ -1571,6 +1558,19 @@ var (
 			Key:              "relationFormat",
 			MaxCount:         1,
 			Name:             "Format",
+			ReadOnly:         true,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
+		RelationKeyRelationFormatIncludeTime: {
+
+			DataSource:       model.Relation_details,
+			Description:      "Should time be shown for relation values with date format",
+			Format:           model.RelationFormat_checkbox,
+			Hidden:           true,
+			Id:               "_brrelationFormatIncludeTime",
+			Key:              "relationFormatIncludeTime",
+			Name:             "IncludeTime",
 			ReadOnly:         true,
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
