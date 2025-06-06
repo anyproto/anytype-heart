@@ -2,7 +2,6 @@ package device
 
 import (
 	"context"
-	"fmt"
 	"os"
 	"testing"
 
@@ -220,9 +219,7 @@ func TestService_loadDevices(t *testing.T) {
 
 		deviceObject := &editor.Page{SmartBlock: smarttest.New(deviceObjectId)}
 		mockCache := mock_objectcache.NewMockCache(t)
-		mockCache.EXPECT().GetObject(mock.Anything, deviceObjectId).Return(nil, fmt.Errorf("error"))
 		mockCache.EXPECT().DeriveTreeObject(mock.Anything, mock.Anything).Return(deviceObject, nil)
-		mockCache.EXPECT().DeriveObjectID(mock.Anything, mock.Anything).Return(deviceObjectId, nil)
 		virtualSpace.Cache = mockCache
 
 		// when
@@ -240,6 +237,7 @@ func TestService_loadDevices(t *testing.T) {
 
 		deviceObject := &editor.Page{SmartBlock: smarttest.New(deviceObjectId)}
 		mockCache := mock_objectcache.NewMockCache(t)
+		mockCache.EXPECT().DeriveTreeObject(mock.Anything, mock.Anything).Return(nil, treestorage.ErrTreeExists)
 		mockCache.EXPECT().DeriveObjectID(mock.Anything, mock.Anything).Return(deviceObjectId, nil)
 		mockCache.EXPECT().GetObject(mock.Anything, deviceObjectId).Return(deviceObject, nil)
 		virtualSpace.Cache = mockCache
@@ -259,6 +257,7 @@ func TestService_loadDevices(t *testing.T) {
 
 		deviceObject := &editor.Page{SmartBlock: smarttest.New(deviceObjectId)}
 		mockCache := mock_objectcache.NewMockCache(t)
+		mockCache.EXPECT().DeriveTreeObject(mock.Anything, mock.Anything).Return(nil, treestorage.ErrTreeExists)
 		mockCache.EXPECT().DeriveObjectID(mock.Anything, mock.Anything).Return(deviceObjectId, nil)
 		mockCache.EXPECT().GetObject(mock.Anything, deviceObjectId).Return(deviceObject, nil)
 		virtualSpace.Cache = mockCache
