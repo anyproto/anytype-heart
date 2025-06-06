@@ -138,7 +138,7 @@ func (d *devices) getDeviceObject(ctx context.Context) (object smartblock.SmartB
 	d.deviceObjectId = id
 	object, err = techSpace.GetObject(ctx, d.deviceObjectId)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get device object: %v", err)
+		return nil, fmt.Errorf("failed to get device object: %w", err)
 	}
 	return
 }
