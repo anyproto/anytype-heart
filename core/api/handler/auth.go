@@ -94,7 +94,7 @@ func TokenHandler(s *service.Service) gin.HandlerFunc {
 //	@Accept			json
 //	@Produce		json
 //	@Param			Anytype-Version	header		string								true	"The version of the API to use"	default(2025-05-20)
-//	@Param			app_name		query		string								true	"The name of the app requesting API access"
+//	@Param			request			body		apimodel.CreateChallengeRequest		true	"The request body containing the app name"
 //	@Success		201				{object}	apimodel.CreateChallengeResponse	"The challenge ID associated with the started challenge"
 //	@Failure		400				{object}	util.ValidationError				"Bad request"
 //	@Failure		500				{object}	util.ServerError					"Internal server error"
@@ -132,8 +132,7 @@ func CreateChallengeHandler(s *service.Service) gin.HandlerFunc {
 //	@Accept			json
 //	@Produce		json
 //	@Param			Anytype-Version	header		string							true	"The version of the API to use"	default(2025-05-20)
-//	@Param			challenge_id	query		string							true	"The ID of the challenge to solve"
-//	@Param			code			query		string							true	"The 4-digit code retrieved from Anytype Desktop app"
+//	@Param			request			body		apimodel.CreateApiKeyRequest	true	"The request body containing the challenge ID and code"
 //	@Success		201				{object}	apimodel.CreateApiKeyResponse	"The API key that can be used in the Authorization header for subsequent requests"
 //	@Failure		400				{object}	util.ValidationError			"Bad request"
 //	@Failure		500				{object}	util.ServerError				"Internal server error"
