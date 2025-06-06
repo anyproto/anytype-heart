@@ -564,7 +564,8 @@ func (h *history) buildState(id domain.FullID, versionId string) (
 	}
 
 	st.BlocksInit(st)
-	if ch, e := tree.GetChange(versionId); e == nil {
+	heads := tree.Heads()
+	if ch, e := tree.GetChange(heads[len(heads)-1]); e == nil {
 		participantId := domain.NewParticipantId(id.SpaceID, ch.Identity.Account())
 		ver = &pb.RpcHistoryVersion{
 			Id:          ch.Id,
