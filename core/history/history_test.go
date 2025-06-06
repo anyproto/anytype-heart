@@ -1134,14 +1134,13 @@ func TestHistory_Show(t *testing.T) {
 			Model:    &pb.Change{},
 		}
 
-		heads := []string{"id", "id1"}
 		changesMap := map[string][]*objecttree.Change{
-			"id1 id": {root, ch1},
-			"id id1": {root, ch},
+			"id id1": {root, ch1},
+			"id1 id": {root, ch},
 			objectId: {root, ch, ch1},
 		}
 
-		h := newFixtureShow(t, changesMap, heads, objectId, spaceID)
+		h := newFixtureShow(t, changesMap, objectId, spaceID)
 
 		// when
 		fullId := domain.FullID{ObjectID: objectId, SpaceID: spaceID}
@@ -1214,7 +1213,7 @@ func newFixtureDiffVersions(t *testing.T,
 	}
 }
 
-func newFixtureShow(t *testing.T, changes map[string][]*objecttree.Change, heads []string, objectId, spaceID string) *historyFixture {
+func newFixtureShow(t *testing.T, changes map[string][]*objecttree.Change, objectId, spaceID string) *historyFixture {
 	spaceService := mock_space.NewMockService(t)
 	space := mock_clientspace.NewMockSpace(t)
 	ctrl := gomock.NewController(t)
@@ -1232,7 +1231,7 @@ func newFixtureShow(t *testing.T, changes map[string][]*objecttree.Change, heads
 			return &historyStub{
 				objectId: objectId,
 				changes:  chs,
-				heads:    heads,
+				heads:    opts.Heads,
 			}, nil
 		}).AnyTimes()
 		space.EXPECT().TreeBuilder().Return(treeBuilder)
