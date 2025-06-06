@@ -302,6 +302,7 @@ func (s *service) run() {
 			keys, err := s.getSpaceKeys(req.spaceId)
 			if err != nil {
 				log.Error("failed to get space keys", zap.Error(err))
+				continue
 			}
 
 			for _, topic := range req.topics {

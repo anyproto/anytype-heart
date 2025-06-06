@@ -27,7 +27,12 @@ func TestReadMessages(t *testing.T) {
 	// All messages forced as not read
 	messagesResp := fx.assertReadStatus(t, ctx, "", "", false, false)
 
-	err := fx.MarkReadMessages(ctx, "", messagesResp.Messages[2].OrderId, messagesResp.ChatState.LastStateId, chatmodel.CounterTypeMessage)
+	err := fx.MarkReadMessages(ctx, ReadMessagesRequest{
+		AfterOrderId:  "",
+		BeforeOrderId: messagesResp.Messages[2].OrderId,
+		LastStateId:   messagesResp.ChatState.LastStateId,
+		CounterType:   chatmodel.CounterTypeMessage,
+	})
 	require.NoError(t, err)
 
 	fx.assertReadStatus(t, ctx, "", messagesResp.Messages[2].OrderId, true, false)
@@ -58,8 +63,12 @@ func TestReadMessagesLoadedInBackground(t *testing.T) {
 	secondMessage, err := fx.GetMessageById(ctx, secondMessageId)
 	require.NoError(t, err)
 
-	err = fx.MarkReadMessages(ctx, "", firstMessage.OrderId, firstMessage.StateId, chatmodel.CounterTypeMessage)
-	require.NoError(t, err)
+	err = fx.MarkReadMessages(ctx, ReadMessagesRequest{
+		AfterOrderId:  "",
+		BeforeOrderId: firstMessage.OrderId,
+		LastStateId:   firstMessage.StateId,
+		CounterType:   chatmodel.CounterTypeMessage,
+	})
 
 	gotResponse, err := fx.GetMessages(ctx, chatrepository.GetMessagesRequest{})
 	require.NoError(t, err)
@@ -97,7 +106,12 @@ func TestReadMentions(t *testing.T) {
 		// All messages forced as not read
 		messagesResp := fx.assertReadStatus(t, ctx, "", "", false, false)
 
-		err := fx.MarkReadMessages(ctx, "", messagesResp.Messages[2].OrderId, messagesResp.ChatState.LastStateId, chatmodel.CounterTypeMention)
+		err := fx.MarkReadMessages(ctx, ReadMessagesRequest{
+			AfterOrderId:  "",
+			BeforeOrderId: messagesResp.Messages[2].OrderId,
+			LastStateId:   messagesResp.ChatState.LastStateId,
+			CounterType:   chatmodel.CounterTypeMention,
+		})
 		require.NoError(t, err)
 
 		fx.assertReadStatus(t, ctx, "", messagesResp.Messages[2].OrderId, false, true)
@@ -124,7 +138,12 @@ func TestReadMentions(t *testing.T) {
 		// All messages forced as not read
 		messagesResp := fx.assertReadStatus(t, ctx, "", "", false, false)
 
-		err = fx.MarkReadMessages(ctx, "", secondMessage.OrderId, messagesResp.ChatState.LastStateId, chatmodel.CounterTypeMention)
+		err = fx.MarkReadMessages(ctx, ReadMessagesRequest{
+			AfterOrderId:  "",
+			BeforeOrderId: secondMessage.OrderId,
+			LastStateId:   messagesResp.ChatState.LastStateId,
+			CounterType:   chatmodel.CounterTypeMention,
+		})
 		require.NoError(t, err)
 
 		fx.assertReadStatus(t, ctx, secondMessage.OrderId, secondMessage.OrderId, false, true)

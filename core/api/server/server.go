@@ -24,16 +24,15 @@ type Server struct {
 	KeyToToken map[string]ApiSessionEntry // appKey -> token
 }
 
-
 // NewServer constructs a new Server with the default config and sets up the routes.
-func NewServer(mw apicore.ClientCommands, accountService apicore.AccountService, eventService apicore.EventService) *Server {
+func NewServer(mw apicore.ClientCommands, accountService apicore.AccountService, eventService apicore.EventService, openapiYAML []byte, openapiJSON []byte) *Server {
 	gatewayUrl, techSpaceId, err := getAccountInfo(accountService)
 	if err != nil {
 		panic(err)
 	}
 
 	s := &Server{service: service.NewService(mw, gatewayUrl, techSpaceId)}
-	s.engine = s.NewRouter(mw, eventService)
+	s.engine = s.NewRouter(mw, eventService, openapiYAML, openapiJSON)
 	s.KeyToToken = make(map[string]ApiSessionEntry)
 
 	return s

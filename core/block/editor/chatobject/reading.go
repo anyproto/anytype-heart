@@ -12,19 +12,41 @@ import (
 	"golang.org/x/exp/slices"
 )
 
-func (s *storeObject) MarkReadMessages(ctx context.Context, afterOrderId, beforeOrderId string, lastStateId string, counterType chatmodel.CounterType) error {
+type ReadMessagesRequest struct {
+	AfterOrderId  string
+	BeforeOrderId string
+	LastStateId   string
+
+	CounterType chatmodel.CounterType
+
+	// All forces to read all messages
+	All bool
+}
+
+func (s *storeObject) MarkReadMessages(ctx context.Context, req ReadMessagesRequest) error {
 	// 1. select all messages with orderId < beforeOrderId and addedTime < lastDbState
 	// 2. use the last(by orderId) message id as lastHead
 	// 3. update the MarkSeenHeads
 	// 2. mark messages as read in the DB
 
-	msgs, err := s.repository.GetUnreadMessageIdsInRange(ctx, afterOrderId, beforeOrderId, lastStateId, counterType)
-	if err != nil {
-		return fmt.Errorf("get message: %w", err)
+	var msgs []string
+
+	if req.All {
+		var err error
+		msgs, err = s.repository.GetAllUnreadMessages(ctx, req.CounterType)
+		if err != nil {
+			return fmt.Errorf("get all messages: %w", err)
+		}
+	} else {
+		var err error
+		msgs, err = s.repository.GetUnreadMessageIdsInRange(ctx, req.AfterOrderId, req.BeforeOrderId, req.LastStateId, req.CounterType)
+		if err != nil {
+			return fmt.Errorf("get messages: %w", err)
+		}
 	}
 
 	// mark the whole tree as seen from the current message
-	return s.storeSource.MarkSeenHeads(ctx, counterType.DiffManagerName(), msgs)
+	return s.storeSource.MarkSeenHeads(ctx, req.CounterType.DiffManagerName(), msgs)
 }
 
 func (s *storeObject) MarkMessagesAsUnread(ctx context.Context, afterOrderId string, counterType chatmodel.CounterType) error {
