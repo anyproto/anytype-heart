@@ -9,7 +9,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-const RelationChecksum = "cdc6fa237642478b9015b70d8664f9a5b18b652060461798b019d2401958a61d"
+const RelationChecksum = "b196956336cb7348a79d913d5e8e0a3f542424d3b175070725b90444114eaf0f"
 const (
 	RelationKeyTag                          domain.RelationKey = "tag"
 	RelationKeyCamera                       domain.RelationKey = "camera"
@@ -164,6 +164,7 @@ const (
 	RelationKeyPluralName                   domain.RelationKey = "pluralName"
 	RelationKeyHeaderRelationsLayout        domain.RelationKey = "headerRelationsLayout"
 	RelationKeyApiObjectKey                 domain.RelationKey = "apiObjectKey"
+	RelationKeyRelationFormatIncludeTime    domain.RelationKey = "relationFormatIncludeTime"
 )
 
 var (
@@ -174,11 +175,13 @@ var (
 			Description:      "Date when the file were added into the anytype",
 			Format:           model.RelationFormat_date,
 			Id:               "_braddedDate",
+			IncludeTime:      true,
 			Key:              "addedDate",
 			MaxCount:         1,
 			Name:             "Added date",
 			ReadOnly:         true,
 			ReadOnlyRelation: true,
+			Revision:         1,
 			Scope:            model.Relation_type,
 		},
 		RelationKeyAperture: {
@@ -483,11 +486,13 @@ var (
 			Description:      "Date when the object was initially created",
 			Format:           model.RelationFormat_date,
 			Id:               "_brcreatedDate",
+			IncludeTime:      true,
 			Key:              "createdDate",
 			MaxCount:         1,
 			Name:             "Creation date",
 			ReadOnly:         true,
 			ReadOnlyRelation: true,
+			Revision:         1,
 			Scope:            model.Relation_type,
 		},
 		RelationKeyCreator: {
@@ -1117,11 +1122,13 @@ var (
 			Description:      "Date when the object was modified last time",
 			Format:           model.RelationFormat_date,
 			Id:               "_brlastModifiedDate",
+			IncludeTime:      true,
 			Key:              "lastModifiedDate",
 			MaxCount:         1,
 			Name:             "Last modified date",
 			ReadOnly:         true,
 			ReadOnlyRelation: true,
+			Revision:         1,
 			Scope:            model.Relation_type,
 		},
 		RelationKeyLastOpenedDate: {
@@ -1130,11 +1137,13 @@ var (
 			Description:      "Date when the object was modified last opened",
 			Format:           model.RelationFormat_date,
 			Id:               "_brlastOpenedDate",
+			IncludeTime:      true,
 			Key:              "lastOpenedDate",
 			MaxCount:         1,
 			Name:             "Last opened date",
 			ReadOnly:         true,
 			ReadOnlyRelation: true,
+			Revision:         1,
 			Scope:            model.Relation_type,
 		},
 		RelationKeyLastUsedDate: {
@@ -1144,12 +1153,13 @@ var (
 			Format:           model.RelationFormat_date,
 			Hidden:           true,
 			Id:               "_brlastUsedDate",
+			IncludeTime:      true,
 			Key:              "lastUsedDate",
 			MaxCount:         1,
 			Name:             "Last used date",
 			ReadOnly:         true,
 			ReadOnlyRelation: true,
-			Revision:         1,
+			Revision:         2,
 			Scope:            model.Relation_type,
 		},
 		RelationKeyLatestAclHeadId: {
@@ -1548,6 +1558,19 @@ var (
 			Key:              "relationFormat",
 			MaxCount:         1,
 			Name:             "Format",
+			ReadOnly:         true,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
+		RelationKeyRelationFormatIncludeTime: {
+
+			DataSource:       model.Relation_details,
+			Description:      "Should time be shown for relation values with date format",
+			Format:           model.RelationFormat_checkbox,
+			Hidden:           true,
+			Id:               "_brrelationFormatIncludeTime",
+			Key:              "relationFormatIncludeTime",
+			Name:             "IncludeTime",
 			ReadOnly:         true,
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
@@ -2043,11 +2066,13 @@ var (
 			Format:           model.RelationFormat_date,
 			Hidden:           true,
 			Id:               "_brsyncDate",
+			IncludeTime:      true,
 			Key:              "syncDate",
 			MaxCount:         1,
 			Name:             "Sync date",
 			ReadOnly:         true,
 			ReadOnlyRelation: true,
+			Revision:         1,
 			Scope:            model.Relation_type,
 		},
 		RelationKeySyncError: {
