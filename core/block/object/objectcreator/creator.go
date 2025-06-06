@@ -116,7 +116,7 @@ func (s *service) createObjectInSpace(
 	}
 	details = internalflag.PutToDetails(details, req.InternalFlags)
 
-	if t, _ := bundle.GetType(req.ObjectTypeKey); t != nil && t.RestrictObjectCreation && req.ObjectTypeKey != bundle.TypeKeyTemplate {
+	if t, e := bundle.GetType(req.ObjectTypeKey); e == nil && t.RestrictObjectCreation && req.ObjectTypeKey != bundle.TypeKeyTemplate {
 		return "", nil, errors.Wrap(restriction.ErrRestricted, "creation of this object type is restricted")
 	}
 
