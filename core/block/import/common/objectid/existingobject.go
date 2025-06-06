@@ -126,44 +126,32 @@ func (e *existingObject) getExistingRelationOption(snapshot *common.Snapshot, sp
 }
 
 func (e *existingObject) getExistingRelation(snapshot *common.Snapshot, spaceID string) string {
-	keyFilter := database.FilterRequest{
-		Condition:   model.BlockContentDataviewFilter_Equal,
-		RelationKey: bundle.RelationKeyRelationKey,
-		Value:       snapshot.Snapshot.Data.Details.Get(bundle.RelationKeyRelationKey),
-	}
-
-	nameFilter := database.FilterRequest{
-		Condition:   model.BlockContentDataviewFilter_Equal,
-		RelationKey: bundle.RelationKeyName,
-		Value:       snapshot.Snapshot.Data.Details.Get(bundle.RelationKeyName),
-	}
-
-	relationsFilters := []database.FilterRequest{
-		{
-			Condition:   model.BlockContentDataviewFilter_Equal,
-			RelationKey: bundle.RelationKeyRelationFormat,
-			Value:       snapshot.Snapshot.Data.Details.Get(bundle.RelationKeyRelationFormat),
+	records, err := e.objectStore.SpaceIndex(spaceID).QueryRaw(&database.Filters{FilterObj: database.FiltersAnd{
+		database.FilterEq{
+			Key:   bundle.RelationKeyRelationFormat,
+			Cond:  model.BlockContentDataviewFilter_Equal,
+			Value: snapshot.Snapshot.Data.Details.Get(bundle.RelationKeyRelationFormat),
 		},
-		{
-			Condition:   model.BlockContentDataviewFilter_Equal,
-			RelationKey: bundle.RelationKeyResolvedLayout,
-			Value:       domain.Int64(model.ObjectType_relation),
+		database.FilterEq{
+			Key:   bundle.RelationKeyResolvedLayout,
+			Cond:  model.BlockContentDataviewFilter_Equal,
+			Value: domain.Int64(model.ObjectType_relation),
 		},
+		database.FiltersOr{
+			database.FilterEq{
+				Key:   bundle.RelationKeyName,
+				Cond:  model.BlockContentDataviewFilter_Equal,
+				Value: snapshot.Snapshot.Data.Details.Get(bundle.RelationKeyName),
+			},
+			database.FilterEq{
+				Key:   bundle.RelationKeyRelationKey,
+				Cond:  model.BlockContentDataviewFilter_Equal,
+				Value: snapshot.Snapshot.Data.Details.Get(bundle.RelationKeyRelationKey),
+			},
+		},
+	}}, 1, 0)
+	if err == nil && len(records) > 0 {
+		return records[0].Details.GetString(bundle.RelationKeyId)
 	}
-
-	index := e.objectStore.SpaceIndex(spaceID)
-
-	// first query relation by relationKey to filter out renamed library objects
-	ids, _, err := index.QueryObjectIds(database.Query{Filters: append(relationsFilters, keyFilter)})
-	if err == nil && len(ids) > 0 {
-		return ids[0]
-	}
-
-	// second query relation by name to filter out similar relations from CSV/Notion import
-	ids, _, err = index.QueryObjectIds(database.Query{Filters: append(relationsFilters, nameFilter)})
-	if err == nil && len(ids) > 0 {
-		return ids[0]
-	}
-
 	return ""
 }
