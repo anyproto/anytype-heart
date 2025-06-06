@@ -74,44 +74,13 @@ func (d *devices) Run(ctx context.Context) error {
 
 func (d *devices) loadDevices(ctx context.Context) {
 	defer close(d.finishLoad)
-	uk, err := domain.NewUniqueKey(sb.SmartBlockTypeDevicesObject, "")
+
+	deviceObject, err := d.getDeviceObject(ctx)
 	if err != nil {
-		log.Errorf("failed to get devices object unique key: %v", err)
+		log.Errorf("failed to get device object: %v", err)
 		return
 	}
 
-	techSpace, err := d.spaceService.GetTechSpace(ctx)
-	if err != nil {
-		return
-	}
-	objectId, err := techSpace.DeriveObjectID(ctx, uk)
-	if err != nil {
-		log.Errorf("failed to derive device object id: %v", err)
-		return
-	}
-	d.deviceObjectId = objectId
-	ctx = context.WithValue(ctx, peermanager.ContextPeerFindDeadlineKey, time.Now().Add(30*time.Second))
-	ctx = peer.CtxWithPeerId(ctx, peer.CtxResponsiblePeers)
-	deviceObject, err := techSpace.GetObject(ctx, objectId)
-	if err != nil {
-		deviceObject, err = techSpace.DeriveTreeObject(ctx, objectcache.TreeDerivationParams{
-			Key: uk,
-			InitFunc: func(id string) *smartblock.InitContext {
-				return &smartblock.InitContext{
-					Ctx:     ctx,
-					SpaceID: techSpace.Id(),
-					State:   state.NewDoc(id, nil).(*state.State),
-				}
-			},
-		})
-		if err != nil && !errors.Is(err, treestorage.ErrTreeExists) {
-			log.Errorf("failed to derive device object: %v", err)
-			return
-		}
-		if err == nil {
-			d.deviceObjectId = deviceObject.Id()
-		}
-	}
 	hostname, err := os.Hostname()
 	if err != nil {
 		log.Errorf("failed to get hostname: %v", err)
@@ -130,6 +99,48 @@ func (d *devices) loadDevices(ctx context.Context) {
 		log.Errorf("failed to apply device state: %v", err)
 	}
 	deviceObject.Unlock()
+}
+
+func (d *devices) getDeviceObject(ctx context.Context) (object smartblock.SmartBlock, err error) {
+	uk, err := domain.NewUniqueKey(sb.SmartBlockTypeDevicesObject, "")
+	if err != nil {
+		return nil, fmt.Errorf("failed to get devices object unique key: %w", err)
+	}
+	techSpace, err := d.spaceService.GetTechSpace(ctx)
+	if err != nil {
+		return
+	}
+	ctx = context.WithValue(ctx, peermanager.ContextPeerFindDeadlineKey, time.Now().Add(30*time.Second))
+	ctx = peer.CtxWithPeerId(ctx, peer.CtxResponsiblePeers)
+
+	object, err = techSpace.DeriveTreeObject(ctx, objectcache.TreeDerivationParams{
+		Key: uk,
+		InitFunc: func(id string) *smartblock.InitContext {
+			return &smartblock.InitContext{
+				Ctx:     ctx,
+				SpaceID: techSpace.Id(),
+				State:   state.NewDoc(id, nil).(*state.State),
+			}
+		},
+	})
+	if err == nil {
+		d.deviceObjectId = object.Id()
+		return
+	}
+	if !errors.Is(err, treestorage.ErrTreeExists) {
+		return nil, fmt.Errorf("failed to derive device object: %w", err)
+	}
+
+	id, err := techSpace.DeriveObjectID(ctx, uk)
+	if err != nil {
+		return nil, fmt.Errorf("failed to derive device object id: %w", err)
+	}
+	d.deviceObjectId = id
+	object, err = techSpace.GetObject(ctx, d.deviceObjectId)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get device object: %v", err)
+	}
+	return
 }
 
 func (d *devices) Close(ctx context.Context) error {
