@@ -363,7 +363,7 @@ func (f *ftSearch) Index(doc SearchDoc) error {
 	if f.appClosingInitiated.Load() {
 		return ErrAppClosingInitiated
 	}
-	metrics.ObjectFTUpdatedCounter.Inc()
+	metrics.ObjectFTDocUpdatedCounter.Inc()
 	tantivyDoc, err := f.convertDoc(doc)
 	if err != nil {
 		return err
@@ -398,7 +398,7 @@ func (f *ftSearch) BatchIndex(ctx context.Context, docs []SearchDoc, deletedDocs
 	if len(docs) == 0 {
 		return nil
 	}
-	metrics.ObjectFTUpdatedCounter.Add(float64(len(docs)))
+	metrics.ObjectFTDocUpdatedCounter.Add(float64(len(docs)))
 	start := time.Now()
 	defer func() {
 		spentMs := time.Since(start).Milliseconds()
