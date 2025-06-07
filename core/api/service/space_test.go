@@ -129,7 +129,7 @@ func TestSpaceService_ListSpaces(t *testing.T) {
 		}, nil).Once()
 
 		// when
-		spaces, total, hasMore, err := fx.service.ListSpaces(nil, offset, limit)
+		spaces, total, hasMore, err := fx.service.ListSpaces(nil, nil, offset, limit)
 
 		// then
 		require.NoError(t, err)
@@ -168,7 +168,7 @@ func TestSpaceService_ListSpaces(t *testing.T) {
 			}).Once()
 
 		// when
-		spaces, total, hasMore, err := fx.service.ListSpaces(nil, offset, limit)
+		spaces, total, hasMore, err := fx.service.ListSpaces(nil, nil, offset, limit)
 
 		// then
 		require.NoError(t, err)
@@ -199,7 +199,7 @@ func TestSpaceService_ListSpaces(t *testing.T) {
 			}, nil).Once()
 
 		// when
-		spaces, total, hasMore, err := fx.service.ListSpaces(nil, offset, limit)
+		spaces, total, hasMore, err := fx.service.ListSpaces(nil, nil, offset, limit)
 
 		// then
 		require.ErrorIs(t, err, ErrFailedOpenWorkspace)

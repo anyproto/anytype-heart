@@ -9,6 +9,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/api/pagination"
 	"github.com/anyproto/anytype-heart/core/api/service"
 	"github.com/anyproto/anytype-heart/core/api/util"
+	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
 // ListTemplatesHandler retrieves a list of templates for a type in a space
@@ -35,7 +36,10 @@ func ListTemplatesHandler(s *service.Service) gin.HandlerFunc {
 		offset := c.GetInt("offset")
 		limit := c.GetInt("limit")
 
-		templates, total, hasMore, err := s.ListTemplates(c.Request.Context(), spaceId, typeId, offset, limit)
+		filtersAny, _ := c.Get("filters")
+		filters := filtersAny.([]*model.BlockContentDataviewFilter)
+
+		templates, total, hasMore, err := s.ListTemplates(c.Request.Context(), spaceId, typeId, filters, offset, limit)
 		code := util.MapErrorCode(err,
 			util.ErrToCode(service.ErrFailedRetrieveTemplateType, http.StatusInternalServerError),
 			util.ErrToCode(service.ErrTemplateTypeNotFound, http.StatusInternalServerError),
