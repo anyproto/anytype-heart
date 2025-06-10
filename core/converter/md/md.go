@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+	"time"
 
 	"github.com/JohannesKaufmann/html-to-markdown/escape"
 
@@ -28,8 +29,8 @@ type FileNamer interface {
 	Get(path, hash, title, ext string) (name string)
 }
 
-func NewMDConverter(s *state.State, fn FileNamer) converter.Converter {
-	return &MD{s: s, fn: fn}
+func NewMDConverter(s *state.State, fn FileNamer, includeRelations bool) converter.Converter {
+	return &MD{s: s, fn: fn, includeRelations: includeRelations, knownDocs: make(map[string]*domain.Details)}
 }
 
 type MD struct {
@@ -40,8 +41,9 @@ type MD struct {
 
 	knownDocs map[string]*domain.Details
 
-	mw *marksWriter
-	fn FileNamer
+	includeRelations bool
+	mw               *marksWriter
+	fn               FileNamer
 }
 
 func (h *MD) Convert(sbType model.SmartBlockType) (result []byte) {
@@ -51,17 +53,105 @@ func (h *MD) Convert(sbType model.SmartBlockType) (result []byte) {
 	if len(h.s.Pick(h.s.RootId()).Model().ChildrenIds) == 0 {
 		return
 	}
+	switch sbType {
+	case model.SmartBlockType_STType, model.SmartBlockType_STRelation, model.SmartBlockType_STRelationOption:
+		return nil
+	}
 	buf := bytes.NewBuffer(nil)
 	in := new(renderState)
+	h.renderProperties(buf)
 	h.renderChildren(buf, in, h.s.Pick(h.s.RootId()).Model())
 	result = buf.Bytes()
 	buf.Reset()
 	return
 }
 
+func (h *MD) renderProperties(buf writer) {
+	if !h.includeRelations {
+		return
+	}
+	// get type
+	var propertiesIds []string
+	if d, exists := h.knownDocs[h.s.LocalDetails().GetString(bundle.RelationKeyType)]; exists {
+		propertiesIds = append(d.GetStringList(bundle.RelationKeyRecommendedFeaturedRelations), d.GetStringList(bundle.RelationKeyRecommendedRelations)...)
+	}
+	fmt.Println("propertiesIds", propertiesIds)
+	if len(propertiesIds) > 0 {
+		fmt.Fprintf(buf, "---\n")
+	}
+	for _, id := range propertiesIds {
+		var (
+			name        string
+			key         string
+			format      model.RelationFormat
+			includeTime bool
+		)
+
+		if d, ok := h.knownDocs[id]; ok {
+			if d.GetBool(bundle.RelationKeyIsHidden) {
+				continue
+			}
+			name = d.GetString(bundle.RelationKeyName)
+			key = d.GetString(bundle.RelationKeyRelationKey)
+			format = model.RelationFormat(d.GetInt64(bundle.RelationKeyRelationFormat))
+			includeTime = d.GetBool(bundle.RelationKeyRelationFormatIncludeTime)
+		} else {
+			continue
+		} // Resolve relation metadata, skipping hidden ones.
+
+		v := h.s.CombinedDetails().Get(domain.RelationKey(key))
+		switch format {
+		case model.RelationFormat_object,
+			model.RelationFormat_tag,
+			model.RelationFormat_status:
+			ids := v.StringList()
+			if len(ids) == 0 {
+				continue
+			}
+			// Each target rendered as list item.
+			_, _ = fmt.Fprintf(buf, "  %s:\n", name)
+			for _, id := range ids {
+				if d, ok := h.knownDocs[id]; ok {
+					label := d.Get(bundle.RelationKeyName).String()
+					_, _ = fmt.Fprintf(buf, "    - %s\n", label)
+				}
+			}
+
+		case model.RelationFormat_date:
+
+			if ts := v.Int64(); ts > 0 {
+				var timeString string
+				if includeTime {
+					timeString = time.Unix(ts, 0).Format(time.RFC3339)
+				} else {
+					timeString = time.Unix(ts, 0).Format("2006-01-02")
+				}
+				_, _ = fmt.Fprintf(buf, "  %s: %s\n", name, timeString)
+			}
+
+		case model.RelationFormat_number:
+			_, _ = fmt.Fprintf(buf, "  %s: %v\n", name, v.Float64())
+
+		case model.RelationFormat_checkbox:
+			// Represent checkboxes as plain booleans.
+			_, _ = fmt.Fprintf(buf, "  %s: %t\n", name, v.Bool())
+
+		default:
+			if s := v.String(); s != "" {
+				_, _ = fmt.Fprintf(buf, "  %s: %s\n", name, s)
+			}
+		}
+	}
+	if len(propertiesIds) > 0 {
+		fmt.Fprintf(buf, "---\n\n")
+	}
+}
+
 func (h *MD) Export() (result string) {
 	buf := bytes.NewBuffer(nil)
 	in := new(renderState)
+	h.renderProperties(buf)
+
 	h.renderChildren(buf, in, h.s.Pick(h.s.RootId()).Model())
 	return buf.String()
 }

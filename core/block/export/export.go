@@ -524,6 +524,10 @@ func (e *exportContext) processNotProtobuf() error {
 		}
 		ids = append(ids, fileObjectsIds...)
 	}
+	err := e.addDerivedObjects()
+	if err != nil {
+		return err
+	}
 	if e.includeNested {
 		for _, id := range ids {
 			e.addNestedObject(id, map[string]*Doc{})
@@ -1153,7 +1157,7 @@ func (e *exportContext) writeDoc(ctx context.Context, wr writer, docId string, d
 		var conv converter.Converter
 		switch e.format {
 		case model.Export_Markdown:
-			conv = md.NewMDConverter(st, wr.Namer())
+			conv = md.NewMDConverter(st, wr.Namer(), true)
 		case model.Export_Protobuf:
 			conv = pbc.NewConverter(st, e.isJson)
 		case model.Export_JSON:
@@ -1161,6 +1165,9 @@ func (e *exportContext) writeDoc(ctx context.Context, wr writer, docId string, d
 		}
 		conv.SetKnownDocs(details)
 		result := conv.Convert(b.Type().ToProto())
+		if result == nil {
+			return nil
+		}
 		var filename string
 		if e.format == model.Export_Markdown {
 			filename = makeMarkdownName(st, wr, docId, conv.Ext(), e.spaceId)
