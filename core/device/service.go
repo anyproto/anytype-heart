@@ -113,6 +113,17 @@ func (d *devices) getDeviceObject(ctx context.Context) (object smartblock.SmartB
 	ctx = context.WithValue(ctx, peermanager.ContextPeerFindDeadlineKey, time.Now().Add(30*time.Second))
 	ctx = peer.CtxWithPeerId(ctx, peer.CtxResponsiblePeers)
 
+	id, err := techSpace.DeriveObjectID(ctx, uk)
+	if err != nil {
+		return nil, fmt.Errorf("failed to derive device object id: %w", err)
+	}
+	d.deviceObjectId = id
+	object, err = techSpace.GetObject(ctx, d.deviceObjectId)
+	if err == nil {
+		return
+	}
+
+	// failed to get device object, let's derive it
 	object, err = techSpace.DeriveTreeObject(ctx, objectcache.TreeDerivationParams{
 		Key: uk,
 		InitFunc: func(id string) *smartblock.InitContext {
@@ -131,11 +142,7 @@ func (d *devices) getDeviceObject(ctx context.Context) (object smartblock.SmartB
 		return nil, fmt.Errorf("failed to derive device object: %w", err)
 	}
 
-	id, err := techSpace.DeriveObjectID(ctx, uk)
-	if err != nil {
-		return nil, fmt.Errorf("failed to derive device object id: %w", err)
-	}
-	d.deviceObjectId = id
+	// derivation failed with ErrTreeExists, second attempt to get device object
 	object, err = techSpace.GetObject(ctx, d.deviceObjectId)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get device object: %w", err)

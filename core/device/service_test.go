@@ -2,6 +2,7 @@ package device
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"testing"
 
@@ -219,7 +220,9 @@ func TestService_loadDevices(t *testing.T) {
 
 		deviceObject := &editor.Page{SmartBlock: smarttest.New(deviceObjectId)}
 		mockCache := mock_objectcache.NewMockCache(t)
+		mockCache.EXPECT().GetObject(mock.Anything, deviceObjectId).Return(nil, fmt.Errorf("error"))
 		mockCache.EXPECT().DeriveTreeObject(mock.Anything, mock.Anything).Return(deviceObject, nil)
+		mockCache.EXPECT().DeriveObjectID(mock.Anything, mock.Anything).Return(deviceObjectId, nil)
 		virtualSpace.Cache = mockCache
 
 		// when
@@ -237,9 +240,35 @@ func TestService_loadDevices(t *testing.T) {
 
 		deviceObject := &editor.Page{SmartBlock: smarttest.New(deviceObjectId)}
 		mockCache := mock_objectcache.NewMockCache(t)
-		mockCache.EXPECT().DeriveTreeObject(mock.Anything, mock.Anything).Return(nil, treestorage.ErrTreeExists)
 		mockCache.EXPECT().DeriveObjectID(mock.Anything, mock.Anything).Return(deviceObjectId, nil)
 		mockCache.EXPECT().GetObject(mock.Anything, deviceObjectId).Return(deviceObject, nil)
+		virtualSpace.Cache = mockCache
+
+		// when
+		devicesService.loadDevices(ctx)
+
+		// then
+		assert.NotNil(t, deviceObject.NewState().GetDevice(devicesService.wallet.GetDevicePrivkey().GetPublic().PeerId()))
+	})
+
+	t.Run("loadDevices, device object exists, but loading is long", func(t *testing.T) {
+		// given
+		devicesService := newFixture(t, deviceObjectId)
+		virtualSpace := clientspace.NewVirtualSpace(techSpaceId, clientspace.VirtualSpaceDeps{})
+		devicesService.mockSpaceService.EXPECT().GetTechSpace(ctx).Return(virtualSpace, nil)
+
+		deviceObject := &editor.Page{SmartBlock: smarttest.New(deviceObjectId)}
+		var visited bool
+		mockCache := mock_objectcache.NewMockCache(t)
+		mockCache.EXPECT().GetObject(mock.Anything, deviceObjectId).RunAndReturn(func(context.Context, string) (smartblock.SmartBlock, error) {
+			if visited {
+				return deviceObject, nil
+			}
+			visited = true
+			return nil, fmt.Errorf("failed to load object")
+		}).Maybe()
+		mockCache.EXPECT().DeriveTreeObject(mock.Anything, mock.Anything).Return(nil, treestorage.ErrTreeExists)
+		mockCache.EXPECT().DeriveObjectID(mock.Anything, mock.Anything).Return(deviceObjectId, nil)
 		virtualSpace.Cache = mockCache
 
 		// when
@@ -257,7 +286,6 @@ func TestService_loadDevices(t *testing.T) {
 
 		deviceObject := &editor.Page{SmartBlock: smarttest.New(deviceObjectId)}
 		mockCache := mock_objectcache.NewMockCache(t)
-		mockCache.EXPECT().DeriveTreeObject(mock.Anything, mock.Anything).Return(nil, treestorage.ErrTreeExists)
 		mockCache.EXPECT().DeriveObjectID(mock.Anything, mock.Anything).Return(deviceObjectId, nil)
 		mockCache.EXPECT().GetObject(mock.Anything, deviceObjectId).Return(deviceObject, nil)
 		virtualSpace.Cache = mockCache
