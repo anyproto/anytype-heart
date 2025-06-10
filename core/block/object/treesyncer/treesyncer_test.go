@@ -12,6 +12,7 @@ import (
 	"github.com/anyproto/any-sync/commonspace/object/tree/objecttree"
 	"github.com/anyproto/any-sync/commonspace/object/tree/synctree/mock_synctree"
 	"github.com/anyproto/any-sync/commonspace/object/treemanager/mock_treemanager"
+	"github.com/anyproto/any-sync/commonspace/peermanager/mock_peermanager"
 	"github.com/anyproto/any-sync/commonspace/spacestorage/mock_spacestorage"
 	"github.com/anyproto/any-sync/net/peer"
 	"github.com/anyproto/any-sync/net/rpc/rpctest"
@@ -39,6 +40,7 @@ type fixture struct {
 func newFixture(t *testing.T, spaceId string) *fixture {
 	ctrl := gomock.NewController(t)
 	treeManager := mock_treemanager.NewMockTreeManager(ctrl)
+	peerManager := mock_peermanager.NewMockPeerManager(ctrl)
 	missingMock := mock_synctree.NewMockSyncTree(ctrl)
 	existingMock := mock_synctree.NewMockSyncTree(ctrl)
 	nodeConf := mock_nodeconf.NewMockService(ctrl)
@@ -60,6 +62,7 @@ func newFixture(t *testing.T, spaceId string) *fixture {
 		Register(testutil.PrepareMock(context.Background(), a, spaceStorage)).
 		Register(testutil.PrepareMock(context.Background(), a, syncStatus)).
 		Register(testutil.PrepareMock(context.Background(), a, nodeConf)).
+		Register(testutil.PrepareMock(context.Background(), a, peerManager)).
 		Register(testutil.PrepareMock(context.Background(), a, syncDetailsUpdater))
 	syncer := NewTreeSyncer(spaceId)
 	err := syncer.Init(a)
