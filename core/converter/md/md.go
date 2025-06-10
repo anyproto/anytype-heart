@@ -6,6 +6,7 @@ import (
 	"html"
 	"io"
 	"path/filepath"
+	"slices"
 	"sort"
 	"strings"
 	"time"
@@ -70,12 +71,22 @@ func (h *MD) renderProperties(buf writer) {
 	if !h.includeRelations {
 		return
 	}
-	// get type
 	var propertiesIds []string
+
+	// get type property id, because it can be omitted from recommended relations of the type
+	for id, d := range h.knownDocs {
+		if d.GetString(bundle.RelationKeyRelationKey) == bundle.RelationKeyType.String() &&
+			d.GetInt64(bundle.RelationKeyLayout) == int64(model.ObjectType_relation) {
+			propertiesIds = append(propertiesIds, id)
+			break
+		}
+	}
+
 	if d, exists := h.knownDocs[h.s.LocalDetails().GetString(bundle.RelationKeyType)]; exists {
 		propertiesIds = append(d.GetStringList(bundle.RelationKeyRecommendedFeaturedRelations), d.GetStringList(bundle.RelationKeyRecommendedRelations)...)
 	}
-	fmt.Println("propertiesIds", propertiesIds)
+
+	propertiesIds = slices.Compact(propertiesIds)
 	if len(propertiesIds) > 0 {
 		fmt.Fprintf(buf, "---\n")
 	}
