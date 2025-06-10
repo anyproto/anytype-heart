@@ -28,6 +28,7 @@ import (
 type fixture struct {
 	*treeSyncer
 
+	peerManagerMock    *mock_peermanager.MockPeerManager
 	missingMock        *mock_synctree.MockSyncTree
 	existingMock       *mock_synctree.MockSyncTree
 	treeManager        *mock_treemanager.MockTreeManager
@@ -77,6 +78,7 @@ func newFixture(t *testing.T, spaceId string) *fixture {
 		syncStatus:         syncStatus,
 		syncDetailsUpdater: syncDetailsUpdater,
 		stateStorage:       stateStorage,
+		peerManagerMock:    peerManager,
 	}
 }
 
@@ -274,4 +276,18 @@ func TestTreeSyncer(t *testing.T) {
 		mutex.Unlock()
 	})
 
+	t.Run("refresh tree", func(t *testing.T) {
+		pr := rpctest.MockPeer{}
+		ch := make(chan struct{})
+		fx := newFixture(t, spaceId)
+		fx.peerManagerMock.EXPECT().GetResponsiblePeers(gomock.Any()).Return([]peer.Peer{pr}, nil)
+		fx.treeManager.EXPECT().GetTree(gomock.Any(), spaceId, existingId).Return(fx.existingMock, nil)
+		fx.existingMock.EXPECT().SyncWithPeer(gomock.Any(), pr).DoAndReturn(func(ctx context.Context, peer peer.Peer) error {
+			close(ch)
+			return nil
+		})
+		fx.StartSync()
+		require.NoError(t, fx.RefreshTree(existingId))
+		<-ch
+	})
 }
