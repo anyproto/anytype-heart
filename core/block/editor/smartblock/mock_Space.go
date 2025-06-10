@@ -473,6 +473,52 @@ func (_c *MockSpace_StoredIds_Call) RunAndReturn(run func() []string) *MockSpace
 	return _c
 }
 
+// SyncObject provides a mock function with given fields: object
+func (_m *MockSpace) SyncObject(object SmartBlock) error {
+	ret := _m.Called(object)
+
+	if len(ret) == 0 {
+		panic("no return value specified for SyncObject")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(SmartBlock) error); ok {
+		r0 = rf(object)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// MockSpace_SyncObject_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'SyncObject'
+type MockSpace_SyncObject_Call struct {
+	*mock.Call
+}
+
+// SyncObject is a helper method to define mock.On call
+//   - object SmartBlock
+func (_e *MockSpace_Expecter) SyncObject(object interface{}) *MockSpace_SyncObject_Call {
+	return &MockSpace_SyncObject_Call{Call: _e.mock.On("SyncObject", object)}
+}
+
+func (_c *MockSpace_SyncObject_Call) Run(run func(object SmartBlock)) *MockSpace_SyncObject_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(SmartBlock))
+	})
+	return _c
+}
+
+func (_c *MockSpace_SyncObject_Call) Return(err error) *MockSpace_SyncObject_Call {
+	_c.Call.Return(err)
+	return _c
+}
+
+func (_c *MockSpace_SyncObject_Call) RunAndReturn(run func(SmartBlock) error) *MockSpace_SyncObject_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // TreeBuilder provides a mock function with given fields:
 func (_m *MockSpace) TreeBuilder() objecttreebuilder.TreeBuilder {
 	ret := _m.Called()
