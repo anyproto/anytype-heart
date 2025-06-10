@@ -5,38 +5,39 @@ import (
 	"sync"
 )
 
-type RefreshableComponent[T any] struct {
-	action    func(ctx context.Context) T
-	mu        sync.RWMutex
-	onRefresh func(T)
-	running   bool
-	ctx       context.Context
-	cancel    context.CancelFunc
-	wg        sync.WaitGroup
-	closed    bool
+type refresher[T any] struct {
+	action      func(ctx context.Context) T
+	mu          sync.RWMutex
+	onRefreshes []func(T)
+	running     bool
+	ctx         context.Context
+	cancel      context.CancelFunc
+	wg          sync.WaitGroup
+	closed      bool
 }
 
-func NewRefreshableComponent[T any](action func(ctx context.Context) T) *RefreshableComponent[T] {
+func newRefresher[T any](action func(ctx context.Context) T) *refresher[T] {
 	ctx, cancel := context.WithCancel(context.Background())
-	return &RefreshableComponent[T]{
+	return &refresher[T]{
 		action: action,
 		ctx:    ctx,
 		cancel: cancel,
 	}
 }
 
-func (c *RefreshableComponent[T]) Refresh(onRefresh func(T)) {
+func (c *refresher[T]) doAfter(onRefresh func(T)) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	if c.closed {
 		return
 	}
-	c.onRefresh = onRefresh
+	c.onRefreshes = append(c.onRefreshes, onRefresh)
 	if c.running {
 		return
 	}
 	c.running = true
 	c.wg.Add(1)
+
 	go func() {
 		defer c.wg.Done()
 		defer func() {
@@ -44,18 +45,25 @@ func (c *RefreshableComponent[T]) Refresh(onRefresh func(T)) {
 			c.running = false
 			c.mu.Unlock()
 		}()
+
 		result := c.action(c.ctx)
-		c.mu.RLock()
-		callback := c.onRefresh
+
+		c.mu.Lock()
+		callbacks := make([]func(T), len(c.onRefreshes))
+		copy(callbacks, c.onRefreshes)
+		c.onRefreshes = nil
 		closed := c.closed
-		c.mu.RUnlock()
-		if !closed && callback != nil {
-			callback(result)
+		c.mu.Unlock()
+
+		if !closed {
+			for _, callback := range callbacks {
+				callback(result)
+			}
 		}
 	}()
 }
 
-func (c *RefreshableComponent[T]) Close() {
+func (c *refresher[T]) Close() {
 	c.mu.Lock()
 	if c.closed {
 		c.mu.Unlock()
@@ -67,7 +75,7 @@ func (c *RefreshableComponent[T]) Close() {
 	c.wg.Wait()
 }
 
-func (c *RefreshableComponent[T]) IsRunning() bool {
+func (c *refresher[T]) IsRunning() bool {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
 	return c.running

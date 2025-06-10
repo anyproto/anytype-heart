@@ -82,7 +82,7 @@ type treeSyncer struct {
 	treeManager        treemanager.TreeManager
 	isRunning          bool
 	isSyncing          bool
-	refreshable        *RefreshableComponent[[]peer.Peer]
+	refreshable        *refresher[[]peer.Peer]
 	nodeConf           nodeconf.NodeConf
 	peerManager        peermanager.PeerManager
 	syncedTreeRemover  SyncedTreeRemover
@@ -108,7 +108,7 @@ func (t *treeSyncer) Init(a *app.App) (err error) {
 	t.spaceSettingsId = spaceStorage.StateStorage().SettingsId()
 	t.treeManager = app.MustComponent[treemanager.TreeManager](a)
 	t.peerManager = app.MustComponent[peermanager.PeerManager](a)
-	t.refreshable = NewRefreshableComponent(func(ctx context.Context) []peer.Peer {
+	t.refreshable = newRefresher(func(ctx context.Context) []peer.Peer {
 		peers, err := t.peerManager.GetResponsiblePeers(ctx)
 		if err != nil {
 			log.Error("failed to get responsible peers", zap.Error(err))
@@ -237,7 +237,7 @@ func (t *treeSyncer) RefreshTree(id string) (err error) {
 	if !t.IsRunning() {
 		return nil
 	}
-	t.refreshable.Refresh(func(peers []peer.Peer) {
+	t.refreshable.doAfter(func(peers []peer.Peer) {
 		if len(peers) == 0 {
 			log.Warn("no responsible peers found for tree refresh", zap.String("treeId", id), zap.String("spaceId", t.spaceId))
 			return
