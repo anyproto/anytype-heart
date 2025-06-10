@@ -215,6 +215,9 @@ func (s *Service) OpenBlock(sctx session.Context, id domain.FullID, includeRelat
 		if err = ob.Apply(st, smartblock.NoHistory, smartblock.NoEvent, smartblock.SkipIfNoChanges, smartblock.KeepInternalFlags, smartblock.IgnoreNoPermissions); err != nil {
 			log.Errorf("failed to update lastOpenedDate: %s", err)
 		}
+		if err = ob.Space().SyncObject(ob); err != nil {
+			log.Errorf("failed to sync object %s: %s", id.ObjectID, err)
+		}
 		if obj, err = ob.Show(); err != nil {
 			return fmt.Errorf("show: %w", err)
 		}
@@ -226,7 +229,6 @@ func (s *Service) OpenBlock(sctx session.Context, id domain.FullID, includeRelat
 		if v, ok := ob.(withVirtualBlocks); ok {
 			v.InjectVirtualBlocks(id.ObjectID, obj)
 		}
-
 		return nil
 	})
 	if err != nil {

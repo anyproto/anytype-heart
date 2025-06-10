@@ -12,6 +12,7 @@ import (
 	"github.com/anyproto/any-sync/commonspace/object/tree/synctree"
 	"github.com/anyproto/any-sync/commonspace/object/treemanager"
 	"github.com/anyproto/any-sync/commonspace/object/treesyncer"
+	"github.com/anyproto/any-sync/commonspace/peermanager"
 	"github.com/anyproto/any-sync/commonspace/spacestorage"
 	"github.com/anyproto/any-sync/net/peer"
 	"github.com/anyproto/any-sync/net/streampool"
@@ -81,7 +82,9 @@ type treeSyncer struct {
 	treeManager        treemanager.TreeManager
 	isRunning          bool
 	isSyncing          bool
+	refreshable        *RefreshableComponent[[]peer.Peer]
 	nodeConf           nodeconf.NodeConf
+	peerManager        peermanager.PeerManager
 	syncedTreeRemover  SyncedTreeRemover
 	syncDetailsUpdater SyncDetailsUpdater
 }
@@ -104,6 +107,15 @@ func (t *treeSyncer) Init(a *app.App) (err error) {
 	spaceStorage := app.MustComponent[spacestorage.SpaceStorage](a)
 	t.spaceSettingsId = spaceStorage.StateStorage().SettingsId()
 	t.treeManager = app.MustComponent[treemanager.TreeManager](a)
+	t.peerManager = app.MustComponent[peermanager.PeerManager](a)
+	t.refreshable = NewRefreshableComponent(func(ctx context.Context) []peer.Peer {
+		peers, err := t.peerManager.GetResponsiblePeers(ctx)
+		if err != nil {
+			log.Error("failed to get responsible peers", zap.Error(err))
+			return nil
+		}
+		return peers
+	})
 	t.nodeConf = app.MustComponent[nodeconf.NodeConf](a)
 	t.syncedTreeRemover = app.MustComponent[SyncedTreeRemover](a)
 	t.syncDetailsUpdater = app.MustComponent[SyncDetailsUpdater](a)
@@ -213,6 +225,42 @@ func (t *treeSyncer) sendSyncEvents(existing, missing []string, nodePeer bool) {
 
 func (t *treeSyncer) sendDetailsUpdates(existing, missing []string) {
 	t.syncDetailsUpdater.UpdateSpaceDetails(existing, missing, t.spaceId)
+}
+
+func (t *treeSyncer) IsRunning() bool {
+	t.Lock()
+	defer t.Unlock()
+	return t.isRunning
+}
+
+func (t *treeSyncer) RefreshTree(id string) (err error) {
+	if !t.IsRunning() {
+		return nil
+	}
+	t.refreshable.Refresh(func(peers []peer.Peer) {
+		if len(peers) == 0 {
+			log.Warn("no responsible peers found for tree refresh", zap.String("treeId", id), zap.String("spaceId", t.spaceId))
+			return
+		}
+		p := peers[0]
+		t.Lock()
+		headExec, exists := t.headPools[p.Id()]
+		if !exists {
+			headExec = newExecutor(1, 0)
+			if t.isRunning {
+				headExec.run()
+			}
+			t.headPools[p.Id()] = headExec
+		}
+		t.Unlock()
+		err = headExec.tryAdd(id, func() {
+			t.updateTree(p, id)
+		})
+		if err != nil {
+			log.Error("failed to add to head queue", zap.Error(err))
+		}
+	})
+	return nil
 }
 
 func (t *treeSyncer) requestTree(p peer.Peer, id string) {
