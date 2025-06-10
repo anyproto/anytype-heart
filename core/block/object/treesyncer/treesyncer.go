@@ -133,6 +133,9 @@ func (t *treeSyncer) Run(ctx context.Context) (err error) {
 func (t *treeSyncer) Close(ctx context.Context) (err error) {
 	t.Lock()
 	defer t.Unlock()
+	if t.refreshable != nil {
+		t.refreshable.Close()
+	}
 	t.cancel()
 	t.isRunning = false
 	for _, pool := range t.headPools {
