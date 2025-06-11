@@ -629,11 +629,6 @@ func (sb *smartBlock) EnabledRelationAsDependentObjects() {
 }
 
 func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
-	if sb.Type() == smartblock.SmartBlockTypeWorkspace {
-		if s.Details().Has(bundle.RelationKeyName) && s.Details().GetString(bundle.RelationKeyName) == "" {
-			fmt.Println()
-		}
-	}
 	if sb.IsDeleted() {
 		return domain.ErrObjectIsDeleted
 	}
