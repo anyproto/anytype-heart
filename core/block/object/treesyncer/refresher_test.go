@@ -86,38 +86,53 @@ func TestDoAfterMultipleCallbacks(t *testing.T) {
 	require.Equal(t, "test", result2, "expected result2 'test'")
 }
 
-func TestDoAfterBatching(t *testing.T) {
+func TestDoAfterIsRunning(t *testing.T) {
+	// this test checks that multiple calls to doAfter while the action is running
+	// do not cause some of the callbacks to be skipped
 	var actionCallCount int32
 	callbackCount := int32(0)
+	isStarted := atomic.Bool{}
+
+	callbackStarted := make(chan struct{})
 
 	actionStarted := make(chan struct{})
 	actionCanComplete := make(chan struct{})
 
 	action := func(ctx context.Context) int {
 		atomic.AddInt32(&actionCallCount, 1)
-		close(actionStarted)
-		<-actionCanComplete
+		if isStarted.Load() {
+			close(actionStarted)
+			<-actionCanComplete
+		}
 		return 42
 	}
 
 	callback := func(result int) {
 		atomic.AddInt32(&callbackCount, 1)
+		if isStarted.Load() {
+			return
+		}
+		isStarted.Store(true)
+		close(callbackStarted)
 	}
 
 	r := newRefresher(action)
 	defer r.Close()
 
 	r.doAfter(callback)
+	// first action is completed
+	<-callbackStarted
+
+	r.doAfter(callback)
+	// second action is started but not completed yet
 	<-actionStarted
-
 	r.doAfter(callback)
-	r.doAfter(callback)
-
 	close(actionCanComplete)
 
+	// wait until all callbacks are called
 	r.wg.Wait()
 
-	require.Equal(t, int32(1), atomic.LoadInt32(&actionCallCount), "action should have been called exactly once")
+	require.Equal(t, int32(2), atomic.LoadInt32(&actionCallCount), "action should have been called twice")
 	require.Equal(t, int32(3), atomic.LoadInt32(&callbackCount), "expected 3 callbacks")
 }
 
