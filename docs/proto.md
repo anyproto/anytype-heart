@@ -1265,6 +1265,10 @@
     - [Rpc.Space.ParticipantRemove.Request](#anytype-Rpc-Space-ParticipantRemove-Request)
     - [Rpc.Space.ParticipantRemove.Response](#anytype-Rpc-Space-ParticipantRemove-Response)
     - [Rpc.Space.ParticipantRemove.Response.Error](#anytype-Rpc-Space-ParticipantRemove-Response-Error)
+    - [Rpc.Space.PushNotificationsSet](#anytype-Rpc-Space-PushNotificationsSet)
+    - [Rpc.Space.PushNotificationsSet.Request](#anytype-Rpc-Space-PushNotificationsSet-Request)
+    - [Rpc.Space.PushNotificationsSet.Response](#anytype-Rpc-Space-PushNotificationsSet-Response)
+    - [Rpc.Space.PushNotificationsSet.Response.Error](#anytype-Rpc-Space-PushNotificationsSet-Response-Error)
     - [Rpc.Space.RequestApprove](#anytype-Rpc-Space-RequestApprove)
     - [Rpc.Space.RequestApprove.Request](#anytype-Rpc-Space-RequestApprove-Request)
     - [Rpc.Space.RequestApprove.Response](#anytype-Rpc-Space-RequestApprove-Response)
@@ -1677,6 +1681,7 @@
     - [Rpc.Space.MakeShareable.Response.Error.Code](#anytype-Rpc-Space-MakeShareable-Response-Error-Code)
     - [Rpc.Space.ParticipantPermissionsChange.Response.Error.Code](#anytype-Rpc-Space-ParticipantPermissionsChange-Response-Error-Code)
     - [Rpc.Space.ParticipantRemove.Response.Error.Code](#anytype-Rpc-Space-ParticipantRemove-Response-Error-Code)
+    - [Rpc.Space.PushNotificationsSet.Response.Error.Code](#anytype-Rpc-Space-PushNotificationsSet-Response-Error-Code)
     - [Rpc.Space.RequestApprove.Response.Error.Code](#anytype-Rpc-Space-RequestApprove-Response-Error-Code)
     - [Rpc.Space.RequestDecline.Response.Error.Code](#anytype-Rpc-Space-RequestDecline-Response-Error-Code)
     - [Rpc.Space.SetOrder.Response.Error.Code](#anytype-Rpc-Space-SetOrder-Response-Error-Code)
@@ -20790,6 +20795,63 @@ Available undo/redo operations
 
 
 
+<a name="anytype-Rpc-Space-PushNotificationsSet"></a>
+
+### Rpc.Space.PushNotificationsSet
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Space-PushNotificationsSet-Request"></a>
+
+### Rpc.Space.PushNotificationsSet.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| spaceViewId | [string](#string) |  |  |
+| topics | [model.PushNotificationTopics](#anytype-model-PushNotificationTopics) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Space-PushNotificationsSet-Response"></a>
+
+### Rpc.Space.PushNotificationsSet.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Space.PushNotificationsSet.Response.Error](#anytype-Rpc-Space-PushNotificationsSet-Response-Error) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Space-PushNotificationsSet-Response-Error"></a>
+
+### Rpc.Space.PushNotificationsSet.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Space.PushNotificationsSet.Response.Error.Code](#anytype-Rpc-Space-PushNotificationsSet-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
 <a name="anytype-Rpc-Space-RequestApprove"></a>
 
 ### Rpc.Space.RequestApprove
@@ -26560,6 +26622,19 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | REQUEST_FAILED | 104 |  |
 | LIMIT_REACHED | 105 |  |
 | NOT_SHAREABLE | 106 |  |
+
+
+
+<a name="anytype-Rpc-Space-PushNotificationsSet-Response-Error-Code"></a>
+
+### Rpc.Space.PushNotificationsSet.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
 
 
 
