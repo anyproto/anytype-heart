@@ -226,6 +226,7 @@ func (g *gateway) fileHandler(w http.ResponseWriter, r *http.Request) {
 	meta := file.Meta()
 	w.Header().Set("Content-Type", meta.Media)
 	w.Header().Set("Content-Disposition", fmt.Sprintf("inline; filename=\"%s\"", meta.Name))
+	w.Header().Set("Cache-Control", "max-age=31536000")
 
 	// todo: inside textile it still requires the file to be fully downloaded and decrypted(consuming 2xSize in ram) to provide the ReadSeeker interface
 	// 	need to find a way to use ReadSeeker all the way from downloading files from IPFS to writing the decrypted chunk to the HTTP
@@ -284,6 +285,7 @@ func (g *gateway) imageHandler(w http.ResponseWriter, r *http.Request) {
 	meta := file.Meta()
 	w.Header().Set("Content-Type", meta.Media)
 	w.Header().Set("Content-Disposition", fmt.Sprintf("inline; filename=\"%s\"", meta.Name))
+	w.Header().Set("Cache-Control", "max-age=31536000")
 
 	// todo: inside textile it still requires the file to be fully downloaded and decrypted(consuming 2xSize in ram) to provide the ReadSeeker interface
 	// 	need to find a way to use ReadSeeker all the way from downloading files from IPFS to writing the decrypted chunk to the HTTP
