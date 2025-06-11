@@ -8,6 +8,18 @@ import (
 	"github.com/anyproto/anytype-heart/util/privkey"
 )
 
+type spaceKeys struct {
+	spaceKey        []byte
+	spaceKeyString  string
+	spaceKeyPrivate crypto.PrivKey
+
+	// id of the current encryption key
+	encryptionKeyId string
+	encryptionKey   crypto.SymKey
+
+	isOwnerAndShared bool
+}
+
 const (
 	spaceKeyPath = "m/99999'/1'"
 	spacePath    = "m/SLIP-0021/anytype/space/key"

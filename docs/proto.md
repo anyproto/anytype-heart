@@ -2099,6 +2099,7 @@
     - [ObjectType.Layout](#anytype-model-ObjectType-Layout)
     - [ParticipantPermissions](#anytype-model-ParticipantPermissions)
     - [ParticipantStatus](#anytype-model-ParticipantStatus)
+    - [PushNotificationTopics](#anytype-model-PushNotificationTopics)
     - [Relation.DataSource](#anytype-model-Relation-DataSource)
     - [Relation.Scope](#anytype-model-Relation-Scope)
     - [RelationFormat](#anytype-model-RelationFormat)
@@ -33286,6 +33287,19 @@ Look https://github.com/golang/protobuf/issues/1135 for more information.
 | Declined | 3 |  |
 | Removing | 4 |  |
 | Canceled | 5 |  |
+
+
+
+<a name="anytype-model-PushNotificationTopics"></a>
+
+### PushNotificationTopics
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| All | 0 |  |
+| Mute | 1 |  |
+| Mention | 2 |  |
 
 
 

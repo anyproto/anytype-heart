@@ -1577,11 +1577,11 @@
     "source": "details"
   },
   {
-    "description": "Push notification topics list",
-    "format": "longtext",
+    "description": "Push notification topics (see model.PushNotificationTopics)",
+    "format": "number",
     "hidden": true,
     "key": "pushNotificationTopics",
-    "maxCount": 0,
+    "maxCount": 1,
     "name": "Push topics",
     "readonly": false,
     "source": "details"

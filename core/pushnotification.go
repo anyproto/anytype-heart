@@ -15,10 +15,7 @@ func (mw *Middleware) PushNotificationRegisterToken(cctx context.Context, req *p
 		}
 		return m
 	}
-	err := mustService[pushnotification.Service](mw).RegisterToken(cctx, req)
+	mustService[pushnotification.Service](mw).RegisterToken(req)
 
-	if err != nil {
-		return response(pb.RpcPushNotificationRegisterTokenResponseError_UNKNOWN_ERROR, err)
-	}
 	return response(pb.RpcPushNotificationRegisterTokenResponseError_NULL, nil)
 }

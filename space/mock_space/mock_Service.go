@@ -168,6 +168,53 @@ func (_c *MockService_AddStreamable_Call) RunAndReturn(run func(context.Context,
 	return _c
 }
 
+// AllSpaceIds provides a mock function with given fields:
+func (_m *MockService) AllSpaceIds() []string {
+	ret := _m.Called()
+
+	if len(ret) == 0 {
+		panic("no return value specified for AllSpaceIds")
+	}
+
+	var r0 []string
+	if rf, ok := ret.Get(0).(func() []string); ok {
+		r0 = rf()
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]string)
+		}
+	}
+
+	return r0
+}
+
+// MockService_AllSpaceIds_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'AllSpaceIds'
+type MockService_AllSpaceIds_Call struct {
+	*mock.Call
+}
+
+// AllSpaceIds is a helper method to define mock.On call
+func (_e *MockService_Expecter) AllSpaceIds() *MockService_AllSpaceIds_Call {
+	return &MockService_AllSpaceIds_Call{Call: _e.mock.On("AllSpaceIds")}
+}
+
+func (_c *MockService_AllSpaceIds_Call) Run(run func()) *MockService_AllSpaceIds_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *MockService_AllSpaceIds_Call) Return(ids []string) *MockService_AllSpaceIds_Call {
+	_c.Call.Return(ids)
+	return _c
+}
+
+func (_c *MockService_AllSpaceIds_Call) RunAndReturn(run func() []string) *MockService_AllSpaceIds_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // CancelLeave provides a mock function with given fields: ctx, id
 func (_m *MockService) CancelLeave(ctx context.Context, id string) error {
 	ret := _m.Called(ctx, id)

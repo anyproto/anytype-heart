@@ -1454,3 +1454,10 @@ message ChatMessage {
         }
     }
 }
+
+
+enum PushNotificationTopics {
+    All = 0;
+    Mute = 1;
+    Mention = 2;
+}

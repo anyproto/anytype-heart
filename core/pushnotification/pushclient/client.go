@@ -72,6 +72,26 @@ func (c *client) SubscribeAll(ctx context.Context, req *pushapi.SubscribeAllRequ
 	})
 }
 
+func (c *client) Subscribe(ctx context.Context, req *pushapi.SubscribeRequest) error {
+	return c.doClient(ctx, func(c pushapi.DRPCPushClient) error {
+		_, err := c.Subscribe(ctx, req)
+		if err != nil {
+			return fmt.Errorf("subscribe: %w", err)
+		}
+		return nil
+	})
+}
+
+func (c *client) Unsubscribe(ctx context.Context, req *pushapi.UnsubscribeRequest) error {
+	return c.doClient(ctx, func(c pushapi.DRPCPushClient) error {
+		_, err := c.Unsubscribe(ctx, req)
+		if err != nil {
+			return fmt.Errorf("unsubscribe: %w", err)
+		}
+		return nil
+	})
+}
+
 func (c *client) CreateSpace(ctx context.Context, req *pushapi.CreateSpaceRequest) error {
 	return c.doClient(ctx, func(c pushapi.DRPCPushClient) error {
 		_, err := c.CreateSpace(ctx, req)
