@@ -1721,7 +1721,9 @@ message Rpc {
                     enum Code {
                         NULL = 0;
                         UNKNOWN_ERROR = 1;
-                        OBJECT_DELETED = 2;
+                        BAD_INPUT = 2;
+
+                        OBJECT_DELETED = 4;
                     }
                 }
             }
