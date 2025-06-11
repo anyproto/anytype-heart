@@ -693,6 +693,7 @@ message Rpc {
                 oneof auth {
                     string mnemonic = 1; // cold auth
                     string appKey = 2; // persistent app key, that can be used to restore session
+                    string token = 3; // token from the previous session
                 }
             }
 

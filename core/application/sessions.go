@@ -15,6 +15,7 @@ func (s *Service) CreateSession(req *pb.RpcWalletCreateSessionRequest) (token st
 	// test if mnemonic is correct
 	mnemonic := req.GetMnemonic()
 	appKey := req.GetAppKey()
+	providedToken := req.GetToken()
 
 	if appKey != "" {
 		app := s.GetApp()
@@ -42,6 +43,14 @@ func (s *Service) CreateSession(req *pb.RpcWalletCreateSessionRequest) (token st
 		return token, w.Account().SignKey.GetPublic().Account(), nil
 	}
 
+	if providedToken != "" {
+		scope, err := s.sessions.ValidateToken(s.sessionSigningKey, token)
+		if err != nil {
+			return "", "", err
+		}
+		token, err = s.sessions.StartSession(s.sessionSigningKey, scope) // nolint:gosec
+		return token, "", err
+	}
 	if s.mnemonic == "" {
 		// todo: rewrite this after appKey auth is implemented
 		// we can derive and check the account in this case
