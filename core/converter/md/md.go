@@ -115,9 +115,22 @@ func (h *MD) renderProperties(buf writer) {
 		case model.RelationFormat_object,
 			model.RelationFormat_tag,
 			model.RelationFormat_status:
-			ids := v.StringList()
+
+			var ids []string
+			if v.String() != "" {
+				ids = append(ids, v.String())
+			} else {
+				ids = v.StringList()
+			}
 			if len(ids) == 0 {
 				continue
+			}
+
+			if len(ids) == 1 {
+				if d, ok := h.knownDocs[ids[0]]; ok {
+					_, _ = fmt.Fprintf(buf, "  %s: %s\n", name, d.Get(bundle.RelationKeyName).String())
+					continue
+				}
 			}
 			// Each target rendered as list item.
 			_, _ = fmt.Fprintf(buf, "  %s:\n", name)
