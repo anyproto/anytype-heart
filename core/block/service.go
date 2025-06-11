@@ -200,6 +200,16 @@ func (s *Service) WaitAndGetObjectByFullID(ctx context.Context, id domain.FullID
 	return spc.GetObject(ctx, id.ObjectID)
 }
 
+func (s *Service) ObjectRefresh(id domain.FullID) (err error) {
+	id = s.resolveFullId(id)
+	return s.DoFullId(id, func(ob smartblock.SmartBlock) error {
+		if err = ob.Space().SyncObject(ob); err != nil {
+			log.Debug("failed to sync object", zap.String("objectId", id.ObjectID), zap.Error(err))
+		}
+		return nil
+	})
+}
+
 func (s *Service) OpenBlock(sctx session.Context, id domain.FullID, includeRelationsAsDependentObjects bool) (obj *model.ObjectView, err error) {
 	id = s.resolveFullId(id)
 	err = s.DoFullId(id, func(ob smartblock.SmartBlock) error {

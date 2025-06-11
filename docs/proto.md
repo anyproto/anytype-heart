@@ -25763,6 +25763,7 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | ---- | ------ | ----------- |
 | NULL | 0 |  |
 | UNKNOWN_ERROR | 1 |  |
+| OBJECT_DELETED | 2 |  |
 
 
 
