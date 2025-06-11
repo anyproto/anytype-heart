@@ -40,19 +40,13 @@ func (c *refresher[T]) doAfter(onRefresh func(T)) {
 
 	go func() {
 		defer c.wg.Done()
-		defer func() {
-			c.mu.Lock()
-			c.running = false
-			c.mu.Unlock()
-		}()
-
 		result := c.action(c.ctx)
-
 		c.mu.Lock()
 		callbacks := make([]func(T), len(c.onRefreshes))
 		copy(callbacks, c.onRefreshes)
 		c.onRefreshes = nil
 		closed := c.closed
+		c.running = false
 		c.mu.Unlock()
 
 		if !closed {
