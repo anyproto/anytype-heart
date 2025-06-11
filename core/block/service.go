@@ -216,7 +216,7 @@ func (s *Service) OpenBlock(sctx session.Context, id domain.FullID, includeRelat
 			log.Errorf("failed to update lastOpenedDate: %s", err)
 		}
 		if err = ob.Space().SyncObject(ob); err != nil {
-			log.Errorf("failed to sync object %s: %s", id.ObjectID, err)
+			log.Debug("failed to sync object", zap.String("objectId", id.ObjectID), zap.Error(err))
 		}
 		if obj, err = ob.Show(); err != nil {
 			return fmt.Errorf("show: %w", err)
