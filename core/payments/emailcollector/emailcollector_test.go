@@ -1,6 +1,7 @@
 package emailcollector
 
 import (
+	"sync/atomic"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -188,10 +189,10 @@ func TestEmailCollector(t *testing.T) {
 
 	t.Run("should handle concurrent requests", func(t *testing.T) {
 		// Given
-		var callCount int
+		var callCount atomic.Uint32
 		collector := &mockEmailCollector{
 			onSetRequest: func(req *pb.RpcMembershipGetVerificationEmailRequest) error {
-				callCount++
+				callCount.Add(1)
 				assert.Equal(t, "test@example.com", req.Email)
 				return nil
 			},
@@ -214,6 +215,6 @@ func TestEmailCollector(t *testing.T) {
 		for i := 0; i < 10; i++ {
 			<-done
 		}
-		assert.Equal(t, 10, callCount)
+		assert.Equal(t, uint32(10), callCount.Load())
 	})
 }

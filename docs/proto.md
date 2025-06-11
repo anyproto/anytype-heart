@@ -31070,9 +31070,11 @@ Bookmark is to keep a web-link and to preview a content.
 | key | [string](#string) |  |  |
 | isVisible | [bool](#bool) |  |  |
 | width | [int32](#int32) |  | the displayed column % calculated based on other visible relations |
-| dateIncludeTime | [bool](#bool) |  |  |
-| timeFormat | [Block.Content.Dataview.Relation.TimeFormat](#anytype-model-Block-Content-Dataview-Relation-TimeFormat) |  |  |
-| dateFormat | [Block.Content.Dataview.Relation.DateFormat](#anytype-model-Block-Content-Dataview-Relation-DateFormat) |  |  |
+| dateIncludeTime | [bool](#bool) |  | bool isReadOnly = 4; // deprecated
+
+deprecated |
+| timeFormat | [Block.Content.Dataview.Relation.TimeFormat](#anytype-model-Block-Content-Dataview-Relation-TimeFormat) |  | deprecated |
+| dateFormat | [Block.Content.Dataview.Relation.DateFormat](#anytype-model-Block-Content-Dataview-Relation-DateFormat) |  | deprecated |
 | formula | [Block.Content.Dataview.Relation.FormulaType](#anytype-model-Block-Content-Dataview-Relation-FormulaType) |  |  |
 | align | [Block.Align](#anytype-model-Block-Align) |  |  |
 
@@ -32341,6 +32343,7 @@ default dictionary with unique values to choose for select/multiSelect format |
 deprecated, to be removed |
 | creator | [string](#string) |  | creator profile id |
 | revision | [int64](#int64) |  | revision of system relation. Used to check if we should change relation content or not |
+| includeTime | [bool](#bool) |  | indicates whether value of relation with date format should be processed with seconds precision |
 
 
 

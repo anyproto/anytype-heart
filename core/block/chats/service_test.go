@@ -16,6 +16,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/chats/chatmodel"
 	"github.com/anyproto/anytype-heart/core/block/chats/chatsubscription"
 	"github.com/anyproto/anytype-heart/core/block/chats/chatsubscription/mock_chatsubscription"
+	"github.com/anyproto/anytype-heart/core/block/object/idresolver/mock_idresolver"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/subscription"
 	"github.com/anyproto/anytype-heart/core/subscription/crossspacesub/mock_crossspacesub"
@@ -111,6 +112,8 @@ func newFixture(t *testing.T) *fixture {
 	objectGetter := mock_cache.NewMockObjectWaitGetterComponent(t)
 	crossSpaceSubService := mock_crossspacesub.NewMockService(t)
 	subscriptionService := mock_chatsubscription.NewMockService(t)
+	idResolver := mock_idresolver.NewMockResolver(t)
+	idResolver.EXPECT().ResolveSpaceID(mock.Anything).Return("", nil).Maybe()
 
 	fx := &fixture{
 		service:              New().(*service),
@@ -126,6 +129,7 @@ func newFixture(t *testing.T) *fixture {
 	a.Register(testutil.PrepareMock(ctx, a, objectGetter))
 	a.Register(testutil.PrepareMock(ctx, a, crossSpaceSubService))
 	a.Register(testutil.PrepareMock(ctx, a, subscriptionService))
+	a.Register(testutil.PrepareMock(ctx, a, idResolver))
 	a.Register(&pushServiceDummy{})
 	a.Register(&accountServiceDummy{})
 	a.Register(fx)
@@ -194,6 +198,19 @@ func (fx *fixture) expectSubscribe(t *testing.T) {
 	}).Maybe()
 }
 
+func (fx *fixture) assertSendEvents(t *testing.T, chatIds []string) {
+	manager := mock_chatsubscription.NewMockManager(t)
+	manager.EXPECT().Lock().Return()
+	manager.EXPECT().Add(mock.Anything, mock.Anything).Return().Maybe()
+	manager.EXPECT().ForceSendingChatState().Return()
+	manager.EXPECT().Flush().Return()
+	manager.EXPECT().Unlock().Return()
+
+	for _, chatId := range chatIds {
+		fx.subscriptionService.EXPECT().GetManager(mock.Anything, chatId).Return(manager, nil)
+	}
+}
+
 func TestSubscribeToMessagePreviews(t *testing.T) {
 	t.Run("subscribe to all existing chats", func(t *testing.T) {
 		fx := newFixture(t)
@@ -258,6 +275,8 @@ func TestSubscribeToMessagePreviews(t *testing.T) {
 		fx.crossSpaceSubService.EXPECT().Subscribe(mock.Anything).Return(&subscription.SubscribeResponse{
 			Records: []*domain.Details{},
 		}, nil).Maybe()
+
+		fx.assertSendEvents(t, []string{"chat1", "chat2"})
 
 		fx.start(t)
 

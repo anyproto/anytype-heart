@@ -132,7 +132,7 @@ func (s *storeObject) Init(ctx *smartblock.InitContext) error {
 	}
 	s.storeSource = storeSource
 
-	s.subscription, err = s.chatSubscriptionService.GetManager(storeSource.Id())
+	s.subscription, err = s.chatSubscriptionService.GetManager(storeSource.SpaceID(), storeSource.Id())
 	if err != nil {
 		return fmt.Errorf("get subscription manager: %w", err)
 	}

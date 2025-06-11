@@ -381,14 +381,6 @@ func (oc *ObjectCreator) resetState(newID string, st *state.State) *domain.Detai
 		if err != nil {
 			log.With(zap.String("object id", newID)).Errorf("failed to set state %s: %s", newID, err)
 		}
-		commonOperations, ok := b.(basic.CommonOperations)
-		if !ok {
-			return nil
-		}
-		err = commonOperations.FeaturedRelationAdd(nil, bundle.RelationKeyType.String())
-		if err != nil {
-			log.With(zap.String("object id", newID)).Errorf("failed to set featuredRelations %s: %s", newID, err)
-		}
 		respDetails = b.CombinedDetails()
 		return nil
 	})
