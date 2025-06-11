@@ -44,7 +44,7 @@ func (s *Service) CreateSession(req *pb.RpcWalletCreateSessionRequest) (token st
 	}
 
 	if providedToken != "" {
-		scope, err := s.sessions.ValidateToken(s.sessionSigningKey, token)
+		scope, err := s.sessions.ValidateToken(s.sessionSigningKey, providedToken)
 		if err != nil {
 			return "", "", err
 		}
