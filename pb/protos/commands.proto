@@ -2228,6 +2228,7 @@ message Rpc {
                 string spaceId = 5;
                 string collectionId = 6;
                 repeated string setSource = 7;
+                bool includeTypeEdges = 8;
             }
 
             message Edge {
