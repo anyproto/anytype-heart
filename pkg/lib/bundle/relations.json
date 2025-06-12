@@ -1588,16 +1588,6 @@
     "source": "details"
   },
   {
-    "description": "Push notification topics (see model.PushNotificationTopics)",
-    "format": "number",
-    "hidden": true,
-    "key": "pushNotificationTopics",
-    "maxCount": 1,
-    "name": "Push topics",
-    "readonly": false,
-    "source": "details"
-  },
-  {
     "description": "Should time be shown for relation values with date format",
     "format": "checkbox",
     "hidden": true,
@@ -1606,5 +1596,35 @@
     "name": "IncludeTime",
     "readonly": true,
     "source": "details"
+  },
+  {
+    "description": "Push notification topics (see model.PushNotificationTopics)",
+    "format": "number",
+    "hidden": true,
+    "key": "spacePushNotificationsTopics",
+    "maxCount": 1,
+    "name": "Push topics",
+    "readonly": false,
+    "source": "details"
+  },
+  {
+    "description": "Push notifications space key (base64)",
+    "format": "longtext",
+    "hidden": true,
+    "key": "spacePushNotificationsKey",
+    "maxCount": 1,
+    "name": "Push notifications space key",
+    "readonly": true,
+    "source": "details"
+  },
+  {
+    "description": "Push notifications encryption key (base64)",
+    "format": "longtext",
+    "hidden": true,
+    "key": "spacePushNotificationsEncryptionKey",
+    "maxCount": 1,
+    "name": "Push notifications encryption key",
+    "readonly": true,
+    "source": "local"
   }
 ]

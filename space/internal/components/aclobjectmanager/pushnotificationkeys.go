@@ -1,4 +1,4 @@
-package pushnotification
+package aclobjectmanager
 
 import (
 	"errors"
@@ -8,24 +8,12 @@ import (
 	"github.com/anyproto/anytype-heart/util/privkey"
 )
 
-type spaceKeys struct {
-	spaceKey        []byte
-	spaceKeyString  string
-	spaceKeyPrivate crypto.PrivKey
-
-	// id of the current encryption key
-	encryptionKeyId string
-	encryptionKey   crypto.SymKey
-
-	isOwnerAndShared bool
-}
-
 const (
 	spaceKeyPath = "m/99999'/1'"
 	spacePath    = "m/SLIP-0021/anytype/space/key"
 )
 
-func deriveSpaceKey(firstMetadataKey crypto.PrivKey) (crypto.PrivKey, error) {
+func pushDeriveSpaceKey(firstMetadataKey crypto.PrivKey) (crypto.PrivKey, error) {
 	key, err := privkey.DeriveFromPrivKey(spaceKeyPath, firstMetadataKey)
 	if err != nil {
 		return nil, err
@@ -33,7 +21,7 @@ func deriveSpaceKey(firstMetadataKey crypto.PrivKey) (crypto.PrivKey, error) {
 	return key, nil
 }
 
-func deriveSymmetricKey(readKey crypto.SymKey) (crypto.SymKey, error) {
+func pushDeriveSymmetricKey(readKey crypto.SymKey) (crypto.SymKey, error) {
 	if readKey == nil {
 		return nil, errors.New("readKey is nil")
 	}

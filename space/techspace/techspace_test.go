@@ -12,6 +12,7 @@ import (
 	"github.com/anyproto/any-sync/commonspace/object/tree/treestorage"
 	"github.com/anyproto/any-sync/commonspace/object/treesyncer/mock_treesyncer"
 	"github.com/anyproto/any-sync/net/peer"
+	"github.com/anyproto/any-sync/util/crypto"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -74,7 +75,7 @@ func (s *spaceViewStub) SetInviteFileInfo(fileCid string, fileKey string) (err e
 	return
 }
 
-func (s *spaceViewStub) SetAclIsEmpty(isEmpty bool) (err error) {
+func (s *spaceViewStub) SetAclInfo(empty bool, pushKey crypto.PrivKey, pushEncKey crypto.SymKey) (err error) {
 	return
 }
 

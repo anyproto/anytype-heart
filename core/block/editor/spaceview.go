@@ -1,10 +1,12 @@
 package editor
 
 import (
+	"encoding/base64"
 	"errors"
 	"fmt"
 	"time"
 
+	"github.com/anyproto/any-sync/util/crypto"
 	"github.com/anyproto/lexid"
 	"github.com/gogo/protobuf/proto"
 	"golang.org/x/exp/slices"
@@ -139,9 +141,28 @@ func (s *SpaceView) SetOwner(ownerId string, createdDate int64) (err error) {
 	return s.Apply(st)
 }
 
-func (s *SpaceView) SetAclIsEmpty(isEmpty bool) (err error) {
+func (s *SpaceView) SetAclInfo(isAclEmpty bool, pushKey crypto.PrivKey, pushEncKey crypto.SymKey) error {
 	st := s.NewState()
-	st.SetDetailAndBundledRelation(bundle.RelationKeyIsAclShared, domain.Bool(!isEmpty))
+	st.SetDetailAndBundledRelation(bundle.RelationKeyIsAclShared, domain.Bool(!isAclEmpty))
+
+	if pushKey != nil {
+		pushKeyBinary, err := pushKey.Marshall()
+		if err != nil {
+			return err
+		}
+		pushKeyString := base64.StdEncoding.EncodeToString(pushKeyBinary)
+		st.SetDetailAndBundledRelation(bundle.RelationKeySpacePushNotificationsKey, domain.String(pushKeyString))
+	}
+	
+	if pushEncKey != nil {
+		pushEncBinary, err := pushEncKey.Raw()
+		if err != nil {
+			return err
+		}
+		pushEncString := base64.StdEncoding.EncodeToString(pushEncBinary)
+		st.SetDetailAndBundledRelation(bundle.RelationKeySpacePushNotificationsEncryptionKey, domain.String(pushEncString))
+	}
+
 	s.updateAccessType(st)
 	return s.Apply(st)
 }

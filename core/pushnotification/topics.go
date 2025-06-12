@@ -9,8 +9,7 @@ const ChatsTopicName = "chats"
 var chatTopics = []string{ChatsTopicName}
 
 type SpaceTopics struct {
-	spaceId   string
-	spaceKeys *spaceKeys
+	spaceId string
 
 	topics topicSet
 

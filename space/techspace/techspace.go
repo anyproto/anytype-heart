@@ -13,6 +13,7 @@ import (
 	"github.com/anyproto/any-sync/commonspace/object/keyvalue/keyvaluestorage"
 	"github.com/anyproto/any-sync/commonspace/object/tree/treestorage"
 	"github.com/anyproto/any-sync/net/peer"
+	"github.com/anyproto/any-sync/util/crypto"
 	"go.uber.org/zap"
 
 	editorsb "github.com/anyproto/anytype-heart/core/block/editor/smartblock"
@@ -76,7 +77,7 @@ type SpaceView interface {
 	SetSpaceData(details *domain.Details) error
 	SetSpaceLocalInfo(info spaceinfo.SpaceLocalInfo) error
 	SetAccessType(acc spaceinfo.AccessType) error
-	SetAclIsEmpty(isEmpty bool) (err error)
+	SetAclInfo(empty bool, pushKey crypto.PrivKey, pushEncKey crypto.SymKey) (err error)
 	SetOwner(ownerId string, createdDate int64) (err error)
 	SetSpacePersistentInfo(info spaceinfo.SpacePersistentInfo) error
 	GetSpaceDescription() (data spaceinfo.SpaceDescription)

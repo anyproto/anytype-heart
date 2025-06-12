@@ -409,7 +409,7 @@ func (mw *Middleware) SpacePushNotificationsSet(_ context.Context, req *pb.RpcSp
 		return m
 	}
 	err := mustService[detailservice.Service](mw).ModifyDetails(nil, req.SpaceViewId, func(current *domain.Details) (*domain.Details, error) {
-		return current.SetInt64(bundle.RelationKeyPushNotificationTopics, int64(req.Topics)), nil
+		return current.SetInt64(bundle.RelationKeySpacePushNotificationsTopics, int64(req.Topics)), nil
 	})
 	if err != nil {
 		return response(pb.RpcSpacePushNotificationsSetResponseError_UNKNOWN_ERROR, err)

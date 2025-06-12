@@ -38,26 +38,21 @@ func New(ownerMetadata []byte, guestKey crypto.PrivKey) AclObjectManager {
 	}
 }
 
-type pushNotificationService interface {
-	BroadcastKeyUpdate(spaceId string, aclState *list.AclState) error
-}
-
 type aclObjectManager struct {
-	ctx                     context.Context
-	cancel                  context.CancelFunc
-	wait                    chan struct{}
-	waitLoad                chan struct{}
-	sp                      clientspace.Space
-	loadErr                 error
-	spaceLoader             spaceloader.SpaceLoader
-	status                  spacestatus.SpaceStatus
-	statService             debugstat.StatService
-	started                 bool
-	notificationService     aclnotifications.AclNotification
-	spaceLoaderListener     SpaceLoaderListener
-	participantWatcher      participantwatcher.ParticipantWatcher
-	accountService          accountservice.Service
-	pushNotificationService pushNotificationService
+	ctx                 context.Context
+	cancel              context.CancelFunc
+	wait                chan struct{}
+	waitLoad            chan struct{}
+	sp                  clientspace.Space
+	loadErr             error
+	spaceLoader         spaceloader.SpaceLoader
+	status              spacestatus.SpaceStatus
+	statService         debugstat.StatService
+	started             bool
+	notificationService aclnotifications.AclNotification
+	spaceLoaderListener SpaceLoaderListener
+	participantWatcher  participantwatcher.ParticipantWatcher
+	accountService      accountservice.Service
 
 	ownerMetadata []byte
 	lastIndexed   string
@@ -111,7 +106,6 @@ func (a *aclObjectManager) Init(ap *app.App) (err error) {
 	a.statService.AddProvider(a)
 	a.waitLoad = make(chan struct{})
 	a.wait = make(chan struct{})
-	a.pushNotificationService = app.MustComponent[pushNotificationService](ap)
 	return nil
 }
 
@@ -240,19 +234,39 @@ func (a *aclObjectManager) processAcl() (err error) {
 	if err != nil {
 		return
 	}
-	err = a.status.SetAclIsEmpty(aclState.IsEmpty())
+
+	var (
+		isEmpty    = aclState.IsEmpty()
+		pushKey    crypto.PrivKey
+		pushEncKey crypto.SymKey
+		dErr       error
+	)
+	if !isEmpty {
+		firstMetadataKey, fkErr := aclState.FirstMetadataKey()
+		if fkErr == nil {
+			if pushKey, dErr = pushDeriveSpaceKey(firstMetadataKey); dErr != nil {
+				log.Warn("failed to derive push key", zap.Error(fkErr))
+			}
+		} else {
+			log.Warn("get firstMetadataKey", zap.Error(fkErr))
+		}
+
+		curReadKey, rErr := aclState.CurrentReadKey()
+		if rErr == nil {
+			if pushEncKey, dErr = pushDeriveSymmetricKey(curReadKey); dErr != nil {
+				log.Warn("failed to derive push sum key", zap.Error(dErr))
+			}
+		} else {
+			log.Warn("get currentReadKey", zap.Error(fkErr))
+		}
+	}
+	err = a.status.SetAclInfo(isEmpty, pushKey, pushEncKey)
 	if err != nil {
 		return
 	}
 	a.mx.Lock()
 	defer a.mx.Unlock()
 	a.lastIndexed = acl.Head().Id
-
-	err = a.pushNotificationService.BroadcastKeyUpdate(common.Id(), aclState)
-	if err != nil {
-		return fmt.Errorf("broadcast key update: %w", err)
-	}
-
 	return nil
 }
 
