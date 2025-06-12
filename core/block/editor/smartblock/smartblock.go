@@ -140,6 +140,7 @@ type Space interface {
 	TryRemove(objectId string) (bool, error)
 
 	StoredIds() []string
+	SyncObject(object SmartBlock) (err error)
 }
 
 type SmartBlock interface {

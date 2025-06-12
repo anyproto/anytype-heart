@@ -59,8 +59,13 @@ type Space interface {
 	GetAclIdentity() crypto.PubKey
 
 	KeyValueService() keyvalueservice.Service
+	SyncObject(object smartblock.SmartBlock) (err error)
 
 	Close(ctx context.Context) error
+}
+
+type clientSyncer interface {
+	RefreshTree(id string) error
 }
 
 type spaceIndexer interface {
@@ -411,6 +416,14 @@ func (s *space) migrationProfileObject(ctx context.Context) error {
 
 		return sb.Apply(st)
 	})
+}
+
+func (s *space) SyncObject(object smartblock.SmartBlock) (err error) {
+	syncer, ok := s.common.TreeSyncer().(clientSyncer)
+	if !ok {
+		return fmt.Errorf("space %s does not support client syncer", s.Id())
+	}
+	return syncer.RefreshTree(object.Id())
 }
 
 func (s *space) IsReadOnly() bool {

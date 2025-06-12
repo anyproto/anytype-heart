@@ -115,7 +115,7 @@ func (n *clientPeerManager) BroadcastMessage(ctx context.Context, msg drpc.Messa
 	// because the stream can be opened with this context
 	ctx = logger.CtxWithFields(context.Background(), logger.CtxGetFields(ctx)...)
 	return n.streamPool.Send(ctx, msg, func(ctx context.Context) (peers []peer.Peer, err error) {
-		return n.getStreamResponsiblePeers(ctx)
+		return n.GetResponsiblePeers(ctx)
 	})
 }
 

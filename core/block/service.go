@@ -202,6 +202,16 @@ func (s *Service) WaitAndGetObjectByFullID(ctx context.Context, id domain.FullID
 	return spc.GetObject(ctx, id.ObjectID)
 }
 
+func (s *Service) ObjectRefresh(id domain.FullID) (err error) {
+	id = s.resolveFullId(id)
+	return s.DoFullId(id, func(ob smartblock.SmartBlock) error {
+		if err = ob.Space().SyncObject(ob); err != nil {
+			log.Debug("failed to sync object", zap.String("objectId", id.ObjectID), zap.Error(err))
+		}
+		return nil
+	})
+}
+
 func (s *Service) OpenBlock(sctx session.Context, id domain.FullID, includeRelationsAsDependentObjects bool) (obj *model.ObjectView, err error) {
 	id = s.resolveFullId(id)
 	err = s.DoFullId(id, func(ob smartblock.SmartBlock) error {
@@ -217,6 +227,9 @@ func (s *Service) OpenBlock(sctx session.Context, id domain.FullID, includeRelat
 		if err = ob.Apply(st, smartblock.NoHistory, smartblock.NoEvent, smartblock.SkipIfNoChanges, smartblock.KeepInternalFlags, smartblock.IgnoreNoPermissions); err != nil {
 			log.Errorf("failed to update lastOpenedDate: %s", err)
 		}
+		if err = ob.Space().SyncObject(ob); err != nil {
+			log.Debug("failed to sync object", zap.String("objectId", id.ObjectID), zap.Error(err))
+		}
 		if obj, err = ob.Show(); err != nil {
 			return fmt.Errorf("show: %w", err)
 		}
@@ -228,7 +241,6 @@ func (s *Service) OpenBlock(sctx session.Context, id domain.FullID, includeRelat
 		if v, ok := ob.(withVirtualBlocks); ok {
 			v.InjectVirtualBlocks(id.ObjectID, obj)
 		}
-
 		return nil
 	})
 	if err != nil {
