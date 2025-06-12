@@ -26,16 +26,20 @@ func newSpaceViewSubscription(service subscription.Service, techSpaceId string, 
 		NoDepSubscription: true,
 		Keys: []string{
 			bundle.RelationKeyId.String(),
-			bundle.RelationKeySpaceId.String(),
+			bundle.RelationKeyTargetSpaceId.String(),
 			bundle.RelationKeySpaceLocalStatus.String(),
 			bundle.RelationKeySpaceShareableStatus.String(),
 			bundle.RelationKeyPushNotificationTopics.String(),
 		},
 		Filters: []database.FilterRequest{
 			{
-				RelationKey: bundle.RelationKeyType,
-				Condition:   model.BlockContentDataviewFilter_Equal,
-				Value:       domain.String(bundle.TypeKeySpaceView.String()),
+				RelationKey: bundle.RelationKeyTargetSpaceId,
+				Condition:   model.BlockContentDataviewFilter_Exists,
+			},
+			{
+				RelationKey: bundle.RelationKeyTargetSpaceId,
+				Condition:   model.BlockContentDataviewFilter_NotEqual,
+				Value:       domain.String(techSpaceId),
 			},
 		},
 	}
@@ -46,7 +50,7 @@ func newSpaceViewSubscription(service subscription.Service, techSpaceId string, 
 			shareable := details.GetInt64(bundle.RelationKeySpaceShareableStatus) == int64(model.SpaceShareableStatus_StatusShareable)
 			defer wakeUp()
 			return details.GetString(bundle.RelationKeyId), spaceViewStatus{
-				spaceId:     details.GetString(bundle.RelationKeySpaceId),
+				spaceId:     details.GetString(bundle.RelationKeyTargetSpaceId),
 				spaceViewId: details.GetString(bundle.RelationKeyId),
 				shareable:   shareable,
 				topics:      model.PushNotificationTopics(details.GetInt64(bundle.RelationKeyPushNotificationTopics)),

@@ -88,6 +88,7 @@ func (s *service) Init(a *app.App) (err error) {
 	s.subscriptionsService = app.MustComponent[subscription.Service](a)
 	s.allSpaceTopics = make(map[string]*SpaceTopics)
 	s.notifyQueue = mb.New[PushNotification](0)
+	s.wakeUpCh = make(chan struct{}, 1)
 	return
 }
 
@@ -272,6 +273,7 @@ func (s *service) loadRemoteSubscriptions() {
 			}
 			spaceTopics.topics.Add(remoteTopic.Topic)
 		}
+		return
 	}
 }
 
@@ -345,10 +347,13 @@ func (s *service) collectSpaceViewsInfo() (needCallApi bool) {
 			needCallApi = true
 		}
 	}
+	st := time.Now()
+	var spaceCount int
 	s.spaceViewSubscription.Iterate(func(id string, data spaceViewStatus) bool {
-		keys, err := s.getSpaceKeys(id)
+		keys, err := s.getSpaceKeysUnlocked(data.spaceId)
 		if err != nil {
-			log.Error("get space keys", zap.Error(err))
+			log.Error("get space keys", zap.Error(err), zap.String("spaceId", data.spaceId))
+			return true
 		}
 		spaceTopics, ok := s.allSpaceTopics[keys.spaceKeyString]
 		if !ok {
@@ -384,8 +389,10 @@ func (s *service) collectSpaceViewsInfo() (needCallApi bool) {
 				markNeedCallApi()
 			}
 		}
+		spaceCount++
 		return true
 	})
+	fmt.Println("push: collect space view info", time.Since(st), spaceCount, needCallApi)
 	return
 }
 
@@ -417,17 +424,23 @@ func (s *service) BroadcastKeyUpdate(spaceId string, aclState *list.AclState) er
 	})
 
 	// update keys in allSpaceTopics
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	if spaceTopic, ok := s.allSpaceTopics[keys.spaceKeyString]; ok {
-		spaceTopic.spaceKeys = keys
-	}
+	go func() {
+		s.mu.Lock()
+		defer s.mu.Unlock()
+		if spaceTopic, ok := s.allSpaceTopics[keys.spaceKeyString]; ok {
+			spaceTopic.spaceKeys = keys
+		}
+	}()
 	return nil
 }
 
 func (s *service) getSpaceKeys(spaceId string) (*spaceKeys, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	return s.getSpaceKeysUnlocked(spaceId)
+}
+
+func (s *service) getSpaceKeysUnlocked(spaceId string) (*spaceKeys, error) {
 	for _, spaceTopics := range s.allSpaceTopics {
 		if spaceTopics.spaceId == spaceId {
 			if spaceTopics.spaceKeys != nil {
