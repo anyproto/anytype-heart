@@ -124,20 +124,16 @@ func isRelationShouldBeIncludedAsEdge(rel *relationutils.Relation, includeTypeEd
 	if rel == nil {
 		return false
 	}
-	
+
 	// Check if relation is in skip list
 	isInSkipList := lo.Contains(relationsSkipList, domain.RelationKey(rel.Key))
-	
+
 	// Special handling for type relation based on includeTypeEdges parameter
 	if rel.Key == bundle.RelationKeyType.String() {
 		// If includeTypeEdges is true, we want to include it regardless of skip list
-		if includeTypeEdges {
-			return rel.Format == model.RelationFormat_object || rel.Format == model.RelationFormat_file
-		}
-		// If includeTypeEdges is false, follow the skip list (which excludes it)
-		return false
+		return includeTypeEdges
 	}
-	
+
 	// For all other relations, follow the normal skip list logic
 	return (rel.Format == model.RelationFormat_object || rel.Format == model.RelationFormat_file) && !isInSkipList
 }
@@ -186,7 +182,7 @@ func (gr *Builder) appendRelations(
 		if !isRelationShouldBeIncludedAsEdge(rel, includeTypeEdges) {
 			continue
 		}
-		stringValues := relValue.StringList()
+		stringValues, _ := relValue.TryWrapToStringList()
 		if len(stringValues) == 0 || isExcludedRelation(rel) {
 			continue
 		}
