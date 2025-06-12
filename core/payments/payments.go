@@ -117,6 +117,8 @@ type Service interface {
 	FinalizeSubscription(ctx context.Context, req *pb.RpcMembershipFinalizeRequest) (*pb.RpcMembershipFinalizeResponse, error)
 	GetTiers(ctx context.Context, req *pb.RpcMembershipGetTiersRequest) (*pb.RpcMembershipGetTiersResponse, error)
 	VerifyAppStoreReceipt(ctx context.Context, req *pb.RpcMembershipVerifyAppStoreReceiptRequest) (*pb.RpcMembershipVerifyAppStoreReceiptResponse, error)
+	CodeGetInfo(ctx context.Context, req *pb.RpcMembershipCodeGetInfoRequest) (*pb.RpcMembershipCodeGetInfoResponse, error)
+	CodeRedeem(ctx context.Context, req *pb.RpcMembershipCodeRedeemRequest) (*pb.RpcMembershipCodeRedeemResponse, error)
 
 	app.ComponentRunnable
 }
@@ -1002,6 +1004,93 @@ func (s *service) VerifyAppStoreReceipt(ctx context.Context, req *pb.RpcMembersh
 	return &pb.RpcMembershipVerifyAppStoreReceiptResponse{
 		Error: &pb.RpcMembershipVerifyAppStoreReceiptResponseError{
 			Code: pb.RpcMembershipVerifyAppStoreReceiptResponseError_NULL,
+		},
+	}, nil
+}
+
+func (s *service) CodeGetInfo(ctx context.Context, req *pb.RpcMembershipCodeGetInfoRequest) (*pb.RpcMembershipCodeGetInfoResponse, error) {
+	code := req.Code
+
+	codeInfo := proto.CodeGetInfoRequest{
+		Code: code,
+	}
+
+	payload, err := codeInfo.Marshal()
+	if err != nil {
+		log.Error("can not marshal CodeGetInfoRequest", zap.Error(err))
+		return nil, ErrCanNotSign
+	}
+
+	privKey := s.wallet.GetAccountPrivkey()
+	signature, err := privKey.Sign(payload)
+	if err != nil {
+		log.Error("can not sign CodeGetInfoRequest", zap.Error(err))
+		return nil, ErrCanNotSign
+	}
+
+	reqSigned := proto.CodeGetInfoRequestSigned{
+		Payload:   payload,
+		Signature: signature,
+	}
+
+	res, err := s.ppclient.CodeGetInfo(ctx, &reqSigned)
+	if err != nil {
+		return nil, err
+	}
+
+	return &pb.RpcMembershipCodeGetInfoResponse{
+		RequestedTier: res.Tier,
+		Error: &pb.RpcMembershipCodeGetInfoResponseError{
+			Code: pb.RpcMembershipCodeGetInfoResponseError_NULL,
+		},
+	}, nil
+}
+
+func (s *service) CodeRedeem(ctx context.Context, req *pb.RpcMembershipCodeRedeemRequest) (*pb.RpcMembershipCodeRedeemResponse, error) {
+	code := req.Code
+	nsName := req.NsName
+	nsNameType := req.NsNameType
+
+	codeRedeem := proto.CodeRedeemRequest{
+		OwnerAnyId:       s.wallet.Account().SignKey.GetPublic().Account(),
+		OwnerEthAddress:  s.wallet.GetAccountEthAddress().Hex(),
+		Code:             code,
+		RequestedAnyName: nameservice.NsNameToFullName(nsName, nsNameType),
+	}
+
+	payload, err := codeRedeem.Marshal()
+
+	if err != nil {
+		log.Error("can not marshal CodeRedeemRequest", zap.Error(err))
+		return nil, ErrCanNotSign
+	}
+
+	privKey := s.wallet.GetAccountPrivkey()
+	signature, err := privKey.Sign(payload)
+	if err != nil {
+		log.Error("can not sign CodeRedeemRequest", zap.Error(err))
+		return nil, ErrCanNotSign
+	}
+
+	reqSigned := proto.CodeRedeemRequestSigned{
+		Payload:   payload,
+		Signature: signature,
+	}
+
+	res, err := s.ppclient.CodeRedeem(ctx, &reqSigned)
+	if err != nil {
+		return nil, err
+	}
+
+	if !res.Success {
+		log.Error("code redemption failed", zap.String("code", code))
+		// return this error as if code was not found
+		return nil, proto.ErrCodeNotFound
+	}
+
+	return &pb.RpcMembershipCodeRedeemResponse{
+		Error: &pb.RpcMembershipCodeRedeemResponseError{
+			Code: pb.RpcMembershipCodeRedeemResponseError_NULL,
 		},
 	}, nil
 }
