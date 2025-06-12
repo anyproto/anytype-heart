@@ -134,6 +134,7 @@ func (l *Dataview) ReplaceSort(viewID string, id string, sort *model.BlockConten
 }
 
 func (l *Dataview) ReorderSorts(viewID string, ids []string) error {
+	l.resetObjectOrderForView(viewID)
 	view, err := l.GetView(viewID)
 	if err != nil {
 		return err
