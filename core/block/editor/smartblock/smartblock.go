@@ -356,6 +356,9 @@ func (sb *smartBlock) Init(ctx *InitContext) (err error) {
 		}
 	}
 	ctx.State.AddBundledRelationLinks(relKeys...)
+	if ctx.IsNewObject && ctx.State != nil {
+		source.NewSubObjectsAndProfileLinksMigration(sb.Type(), sb.space, sb.currentParticipantId, sb.spaceIndex).Migrate(ctx.State)
+	}
 
 	if err = sb.injectLocalDetails(ctx.State); err != nil {
 		return
@@ -844,6 +847,7 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 }
 
 func (sb *smartBlock) ResetToVersion(s *state.State) (err error) {
+	source.NewSubObjectsAndProfileLinksMigration(sb.Type(), sb.space, sb.currentParticipantId, sb.spaceIndex).Migrate(s)
 	s.SetParent(sb.Doc.(*state.State))
 	sb.storeFileKeys(s)
 	sb.injectLocalDetails(s)

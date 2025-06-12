@@ -259,3 +259,4 @@ packages:
   github.com/anyproto/anytype-heart/core/block/chats/chatsubscription:
     interfaces:
       Service:
+      Manager:

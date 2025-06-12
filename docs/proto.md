@@ -594,6 +594,10 @@
     - [Rpc.Chat.GetMessagesByIds.Request](#anytype-Rpc-Chat-GetMessagesByIds-Request)
     - [Rpc.Chat.GetMessagesByIds.Response](#anytype-Rpc-Chat-GetMessagesByIds-Response)
     - [Rpc.Chat.GetMessagesByIds.Response.Error](#anytype-Rpc-Chat-GetMessagesByIds-Response-Error)
+    - [Rpc.Chat.ReadAll](#anytype-Rpc-Chat-ReadAll)
+    - [Rpc.Chat.ReadAll.Request](#anytype-Rpc-Chat-ReadAll-Request)
+    - [Rpc.Chat.ReadAll.Response](#anytype-Rpc-Chat-ReadAll-Response)
+    - [Rpc.Chat.ReadAll.Response.Error](#anytype-Rpc-Chat-ReadAll-Response-Error)
     - [Rpc.Chat.ReadMessages](#anytype-Rpc-Chat-ReadMessages)
     - [Rpc.Chat.ReadMessages.Request](#anytype-Rpc-Chat-ReadMessages-Request)
     - [Rpc.Chat.ReadMessages.Response](#anytype-Rpc-Chat-ReadMessages-Response)
@@ -1504,6 +1508,7 @@
     - [Rpc.Chat.EditMessageContent.Response.Error.Code](#anytype-Rpc-Chat-EditMessageContent-Response-Error-Code)
     - [Rpc.Chat.GetMessages.Response.Error.Code](#anytype-Rpc-Chat-GetMessages-Response-Error-Code)
     - [Rpc.Chat.GetMessagesByIds.Response.Error.Code](#anytype-Rpc-Chat-GetMessagesByIds-Response-Error-Code)
+    - [Rpc.Chat.ReadAll.Response.Error.Code](#anytype-Rpc-Chat-ReadAll-Response-Error-Code)
     - [Rpc.Chat.ReadMessages.ReadType](#anytype-Rpc-Chat-ReadMessages-ReadType)
     - [Rpc.Chat.ReadMessages.Response.Error.Code](#anytype-Rpc-Chat-ReadMessages-Response-Error-Code)
     - [Rpc.Chat.SubscribeLastMessages.Response.Error.Code](#anytype-Rpc-Chat-SubscribeLastMessages-Response-Error-Code)
@@ -2422,6 +2427,7 @@
 | ChatSubscribeToMessagePreviews | [Rpc.Chat.SubscribeToMessagePreviews.Request](#anytype-Rpc-Chat-SubscribeToMessagePreviews-Request) | [Rpc.Chat.SubscribeToMessagePreviews.Response](#anytype-Rpc-Chat-SubscribeToMessagePreviews-Response) |  |
 | ChatUnsubscribeFromMessagePreviews | [Rpc.Chat.UnsubscribeFromMessagePreviews.Request](#anytype-Rpc-Chat-UnsubscribeFromMessagePreviews-Request) | [Rpc.Chat.UnsubscribeFromMessagePreviews.Response](#anytype-Rpc-Chat-UnsubscribeFromMessagePreviews-Response) |  |
 | ObjectChatAdd | [Rpc.Object.ChatAdd.Request](#anytype-Rpc-Object-ChatAdd-Request) | [Rpc.Object.ChatAdd.Response](#anytype-Rpc-Object-ChatAdd-Response) |  |
+| ChatReadAll | [Rpc.Chat.ReadAll.Request](#anytype-Rpc-Chat-ReadAll-Request) | [Rpc.Chat.ReadAll.Response](#anytype-Rpc-Chat-ReadAll-Response) |  |
 | AIWritingTools | [Rpc.AI.WritingTools.Request](#anytype-Rpc-AI-WritingTools-Request) | [Rpc.AI.WritingTools.Response](#anytype-Rpc-AI-WritingTools-Response) | mock AI RPCs for compatibility between branches. Not implemented in main |
 | AIAutofill | [Rpc.AI.Autofill.Request](#anytype-Rpc-AI-Autofill-Request) | [Rpc.AI.Autofill.Response](#anytype-Rpc-AI-Autofill-Response) |  |
 | AIListSummary | [Rpc.AI.ListSummary.Request](#anytype-Rpc-AI-ListSummary-Request) | [Rpc.AI.ListSummary.Response](#anytype-Rpc-AI-ListSummary-Response) |  |
@@ -11037,6 +11043,57 @@ Get marks list in the selected range in text block.
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | code | [Rpc.Chat.GetMessagesByIds.Response.Error.Code](#anytype-Rpc-Chat-GetMessagesByIds-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Chat-ReadAll"></a>
+
+### Rpc.Chat.ReadAll
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Chat-ReadAll-Request"></a>
+
+### Rpc.Chat.ReadAll.Request
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Chat-ReadAll-Response"></a>
+
+### Rpc.Chat.ReadAll.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Chat.ReadAll.Response.Error](#anytype-Rpc-Chat-ReadAll-Response-Error) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Chat-ReadAll-Response-Error"></a>
+
+### Rpc.Chat.ReadAll.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Chat.ReadAll.Response.Error.Code](#anytype-Rpc-Chat-ReadAll-Response-Error-Code) |  |  |
 | description | [string](#string) |  |  |
 
 
@@ -24126,6 +24183,19 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 
 
 
+<a name="anytype-Rpc-Chat-ReadAll-Response-Error-Code"></a>
+
+### Rpc.Chat.ReadAll.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 | ... |
+
+
+
 <a name="anytype-Rpc-Chat-ReadMessages-ReadType"></a>
 
 ### Rpc.Chat.ReadMessages.ReadType
@@ -27306,6 +27376,7 @@ sent when the view have been changed or added
 | cardSize | [model.Block.Content.Dataview.View.Size](#anytype-model-Block-Content-Dataview-View-Size) |  | Gallery card size |
 | coverFit | [bool](#bool) |  | Image fits container |
 | groupRelationKey | [string](#string) |  | Group view by this relationKey |
+| endRelationKey | [string](#string) |  |  |
 | groupBackgroundColors | [bool](#bool) |  | Enable backgrounds in groups |
 | pageLimit | [int32](#int32) |  | Limit of objects shown in widget |
 | defaultTemplateId | [string](#string) |  | Id of template object set default for the view |
@@ -30923,9 +30994,11 @@ Bookmark is to keep a web-link and to preview a content.
 | key | [string](#string) |  |  |
 | isVisible | [bool](#bool) |  |  |
 | width | [int32](#int32) |  | the displayed column % calculated based on other visible relations |
-| dateIncludeTime | [bool](#bool) |  |  |
-| timeFormat | [Block.Content.Dataview.Relation.TimeFormat](#anytype-model-Block-Content-Dataview-Relation-TimeFormat) |  |  |
-| dateFormat | [Block.Content.Dataview.Relation.DateFormat](#anytype-model-Block-Content-Dataview-Relation-DateFormat) |  |  |
+| dateIncludeTime | [bool](#bool) |  | bool isReadOnly = 4; // deprecated
+
+deprecated |
+| timeFormat | [Block.Content.Dataview.Relation.TimeFormat](#anytype-model-Block-Content-Dataview-Relation-TimeFormat) |  | deprecated |
+| dateFormat | [Block.Content.Dataview.Relation.DateFormat](#anytype-model-Block-Content-Dataview-Relation-DateFormat) |  | deprecated |
 | formula | [Block.Content.Dataview.Relation.FormulaType](#anytype-model-Block-Content-Dataview-Relation-FormulaType) |  |  |
 | align | [Block.Align](#anytype-model-Block-Align) |  |  |
 
@@ -31009,6 +31082,7 @@ Bookmark is to keep a web-link and to preview a content.
 | pageLimit | [int32](#int32) |  | Limit of objects shown in widget |
 | defaultTemplateId | [string](#string) |  | Default template that is chosen for new object created within the view |
 | defaultObjectTypeId | [string](#string) |  | Default object type that is chosen for new object created within the view |
+| endRelationKey | [string](#string) |  | Group view by this relationKey |
 
 
 
@@ -32193,6 +32267,7 @@ default dictionary with unique values to choose for select/multiSelect format |
 deprecated, to be removed |
 | creator | [string](#string) |  | creator profile id |
 | revision | [int64](#int64) |  | revision of system relation. Used to check if we should change relation content or not |
+| includeTime | [bool](#bool) |  | indicates whether value of relation with date format should be processed with seconds precision |
 
 
 

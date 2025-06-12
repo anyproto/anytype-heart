@@ -175,7 +175,7 @@ func (s *dsObjectStore) Init() error {
 }
 
 type LinksUpdateInfo struct {
-	LinksFromId    string
+	LinksFromId    domain.FullID
 	Added, Removed []string
 }
 
