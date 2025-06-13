@@ -7,7 +7,7 @@ require (
 	github.com/PuerkitoBio/goquery v1.10.2
 	github.com/VividCortex/ewma v1.2.0
 	github.com/adrium/goheif v0.0.0-20230113233934-ca402e77a786
-	github.com/anyproto/any-store v0.2.2
+	github.com/anyproto/any-store v0.2.3-0.20250611143446-fa11667bebea
 	github.com/anyproto/any-sync v0.8.6
 	github.com/anyproto/anytype-publish-server/publishclient v0.0.0-20250131145601-de288583ff2a
 	github.com/anyproto/anytype-push-server/pushclient v0.0.0-20250402124745-6451298047f7
@@ -118,7 +118,7 @@ require (
 	gopkg.in/natefinch/lumberjack.v2 v2.2.1
 	gopkg.in/yaml.v3 v3.0.1
 	storj.io/drpc v0.0.34
-	zombiezen.com/go/sqlite v1.4.0
+	zombiezen.com/go/sqlite v1.4.2
 )
 
 require (
@@ -292,7 +292,7 @@ require (
 	modernc.org/libc v1.65.7 // indirect
 	modernc.org/mathutil v1.7.1 // indirect
 	modernc.org/memory v1.11.0 // indirect
-	modernc.org/sqlite v1.37.0 // indirect
+	modernc.org/sqlite v1.37.1 // indirect
 	nhooyr.io/websocket v1.8.7 // indirect
 )
 
