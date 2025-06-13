@@ -31,6 +31,7 @@ type DerivedSmartblockIds struct {
 	Widgets         string
 	SystemTypes     map[domain.TypeKey]string
 	SystemRelations map[domain.RelationKey]string
+	SpaceChat       string
 }
 
 func (d DerivedSmartblockIds) IDs() []string {
