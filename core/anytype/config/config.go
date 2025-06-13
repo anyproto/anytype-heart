@@ -60,8 +60,10 @@ var (
 	ErrNetworkFileFailedToRead = fmt.Errorf("failed to read network configuration")
 )
 
+var _ Service = (*Config)(nil)
+
 type Service interface {
-	app.ComponentRunnable
+	app.Component
 	// UpdatePersistentConfig updates the persistent config and writes it to the file after
 	UpdatePersistentConfig(f func(cfg *ConfigPersistent) (updated bool)) error
 	GetPersistentConfig() ConfigPersistent
