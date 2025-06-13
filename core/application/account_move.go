@@ -67,6 +67,9 @@ func (s *Service) AccountMove(req *pb.RpcAccountMoveRequest) error {
 	}
 
 	err = conf.UpdatePersistentConfig(func(cfg *config.ConfigPersistent) (updated bool) {
+		if cfg.CustomFileStorePath == destination {
+			return false
+		}
 		cfg.CustomFileStorePath = destination
 		return true
 	})

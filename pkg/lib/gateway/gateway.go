@@ -75,6 +75,9 @@ func (g *gateway) gatewayListener() (net.Listener, error) {
 	}
 	if addr != listener.Addr().String() {
 		err = g.cfg.UpdatePersistentConfig(func(cfg *config.ConfigPersistent) bool {
+			if cfg.GatewayAddr == addr {
+				return false
+			}
 			cfg.GatewayAddr = addr
 			return true
 		})
