@@ -134,7 +134,7 @@ func (s *service) createSpace(ctx context.Context, spaceId string) (err error) {
 			spaceTopics.needCreateSpace = false
 		}
 		s.mu.Unlock()
-		
+
 	*/
 	return err
 }

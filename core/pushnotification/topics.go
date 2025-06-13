@@ -2,19 +2,71 @@ package pushnotification
 
 import (
 	"slices"
+
+	"github.com/anyproto/anytype-push-server/pushclient/pushapi"
 )
 
 const ChatsTopicName = "chats"
 
 var chatTopics = []string{ChatsTopicName}
 
+func newSpaceTopicsCollection() *spaceTopicsCollection {
+	return &spaceTopicsCollection{
+		spaceTopicsBySpaceKey: map[string]*SpaceTopics{},
+		spaceTopicsBySpaceId:  map[string]*SpaceTopics{},
+	}
+}
+
+type spaceTopicsCollection struct {
+	spaceTopicsBySpaceKey map[string]*SpaceTopics
+	spaceTopicsBySpaceId  map[string]*SpaceTopics
+}
+
+func (c *spaceTopicsCollection) SetRemoteList(remoteTopics *pushapi.Topics) {
+	for _, remoteTopic := range remoteTopics.Topics {
+		topic := c.getSpaceTopic(string(remoteTopic.SpaceKey))
+		topic.topics.Set(remoteTopic.Topic)
+	}
+}
+
+func (c *spaceTopicsCollection) SetSpaceViewStatus(status *spaceViewStatus) {
+	/*
+		if status.spaceKey == nil || status.encKey == nil {
+			return
+		}
+
+		spaceKey, err := status.spaceKey.GetPublic().Raw()
+		if err != nil {
+			log.Warn("failed to get space key raw", zap.Error(err))
+			return
+		}
+
+		 topic := c.getSpaceTopic(string(spaceKey))
+	*/
+}
+
+func (c *spaceTopicsCollection) getSpaceTopic(spaceKey string) *SpaceTopics {
+	if topic, ok := c.spaceTopicsBySpaceKey[spaceKey]; ok {
+		return topic
+	} else {
+		topic = &SpaceTopics{
+			topics: newTopicSet(),
+		}
+		c.spaceTopicsBySpaceKey[spaceKey] = topic
+		return topic
+	}
+}
+
 type SpaceTopics struct {
 	spaceId string
+
+	spaceViewStatus *spaceViewStatus
 
 	topics topicSet
 
 	needUpdateTopics bool
 	needCreateSpace  bool
+	needUpdateEncKey bool
 }
 
 type topicSet struct {

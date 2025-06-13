@@ -153,9 +153,9 @@ func (s *SpaceView) SetAclInfo(isAclEmpty bool, pushKey crypto.PrivKey, pushEncK
 		pushKeyString := base64.StdEncoding.EncodeToString(pushKeyBinary)
 		st.SetDetailAndBundledRelation(bundle.RelationKeySpacePushNotificationsKey, domain.String(pushKeyString))
 	}
-	
+
 	if pushEncKey != nil {
-		pushEncBinary, err := pushEncKey.Raw()
+		pushEncBinary, err := pushEncKey.Marshall()
 		if err != nil {
 			return err
 		}
