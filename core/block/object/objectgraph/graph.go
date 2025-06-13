@@ -23,9 +23,9 @@ import (
 
 var log = logging.LoggerNotSugared("object-graph")
 
-// relationsSkipList contains relations that SHOULD NOT be included in the graph. These relations of Object/File type that make no sense in the graph for user
-var relationsSkipList = []domain.RelationKey{
-	bundle.RelationKeyType,
+// relationsEdgesSkipList contains relations that SHOULD NOT be included in the graph. These relations of Object/File type that make no sense in the graph for user
+var relationsEdgesSkipList = []domain.RelationKey{
+	// Type is excluded optionally via IncludeTypeEdges argument
 	bundle.RelationKeySetOf,
 	bundle.RelationKeyCreator,
 	bundle.RelationKeyLastModifiedBy,
@@ -126,7 +126,7 @@ func isRelationShouldBeIncludedAsEdge(rel *relationutils.Relation, includeTypeEd
 	}
 
 	// Check if relation is in skip list
-	isInSkipList := lo.Contains(relationsSkipList, domain.RelationKey(rel.Key))
+	isInSkipList := lo.Contains(relationsEdgesSkipList, domain.RelationKey(rel.Key))
 
 	// Special handling for type relation based on includeTypeEdges parameter
 	if rel.Key == bundle.RelationKeyType.String() {
