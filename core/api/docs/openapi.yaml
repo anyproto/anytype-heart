@@ -4387,4 +4387,4 @@ paths:
       tags:
       - Templates
 servers:
-- url: http://localhost:31009
+- url: http://127.0.0.1:31009
