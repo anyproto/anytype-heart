@@ -76,6 +76,7 @@ type storeObject struct {
 	crdtDb                  anystore.DB
 	chatHandler             *ChatHandler
 	repository              chatrepository.Repository
+	detailsComponent        *detailsComponent
 
 	arenaPool          *anyenc.ArenaPool
 	componentCtx       context.Context
@@ -161,6 +162,19 @@ func (s *storeObject) Init(ctx *smartblock.InitContext) error {
 		return fmt.Errorf("read store doc: %w", err)
 	}
 
+	s.detailsComponent = &detailsComponent{
+		componentCtx:   s.componentCtx,
+		collectionName: "editor",
+		storeSource:    storeSource,
+		storeState:     stateStore,
+		sb:             s,
+	}
+	err = s.detailsComponent.setDetailsFromAnystore(ctx.Ctx, ctx.State)
+	if err != nil {
+		return fmt.Errorf("init details: %w", err)
+	}
+	storeSource.SetPushChangeHook(s.detailsComponent.onPushOrdinaryChange)
+
 	s.AnystoreDebug = anystoredebug.New(s.SmartBlock, stateStore)
 
 	s.seenHeadsCollector = newTreeSeenHeadsCollector(s.Tree())
@@ -169,6 +183,8 @@ func (s *storeObject) Init(ctx *smartblock.InitContext) error {
 }
 
 func (s *storeObject) onUpdate() {
+	s.detailsComponent.onAnystoreUpdated(s.componentCtx)
+
 	s.subscription.Lock()
 	defer s.subscription.Unlock()
 	s.subscription.Flush()
