@@ -59,7 +59,7 @@ type TechSpace interface {
 	TechSpaceId() string
 	DoSpaceView(ctx context.Context, spaceID string, apply func(spaceView SpaceView) error) (err error)
 	DoAccountObject(ctx context.Context, apply func(accountObject AccountObject) error) (err error)
-	SpaceViewCreate(ctx context.Context, spaceId string, force bool, info spaceinfo.SpacePersistentInfo) (err error)
+	SpaceViewCreate(ctx context.Context, spaceId string, force bool, info spaceinfo.SpacePersistentInfo, desc *spaceinfo.SpaceDescription) (err error)
 	GetSpaceView(ctx context.Context, spaceId string) (SpaceView, error)
 	SpaceViewExists(ctx context.Context, spaceId string) (exists bool, err error)
 	SetLocalInfo(ctx context.Context, info spaceinfo.SpaceLocalInfo) (err error)
@@ -191,9 +191,9 @@ func (s *techSpace) SetPersistentInfo(ctx context.Context, info spaceinfo.SpaceP
 	})
 }
 
-func (s *techSpace) SpaceViewCreate(ctx context.Context, spaceId string, force bool, info spaceinfo.SpacePersistentInfo) (err error) {
+func (s *techSpace) SpaceViewCreate(ctx context.Context, spaceId string, force bool, info spaceinfo.SpacePersistentInfo, desc *spaceinfo.SpaceDescription) (err error) {
 	if force {
-		return s.spaceViewCreate(ctx, spaceId, info)
+		return s.spaceViewCreate(ctx, spaceId, info, desc)
 	}
 	viewId, err := s.getViewIdLocked(ctx, spaceId)
 	if err != nil {
@@ -201,7 +201,7 @@ func (s *techSpace) SpaceViewCreate(ctx context.Context, spaceId string, force b
 	}
 	_, err = s.objectCache.GetObject(ctx, viewId)
 	if err != nil { // TODO: check specific error
-		return s.spaceViewCreate(ctx, spaceId, info)
+		return s.spaceViewCreate(ctx, spaceId, info, desc)
 	}
 	return ErrSpaceViewExists
 }
@@ -256,7 +256,7 @@ func (s *techSpace) SpaceViewId(spaceId string) (string, error) {
 	return s.getViewIdLocked(context.TODO(), spaceId)
 }
 
-func (s *techSpace) spaceViewCreate(ctx context.Context, spaceID string, info spaceinfo.SpacePersistentInfo) (err error) {
+func (s *techSpace) spaceViewCreate(ctx context.Context, spaceID string, info spaceinfo.SpacePersistentInfo, description *spaceinfo.SpaceDescription) (err error) {
 	uniqueKey, err := domain.NewUniqueKey(smartblock.SmartBlockTypeSpaceView, spaceID)
 	if err != nil {
 		return
@@ -264,6 +264,9 @@ func (s *techSpace) spaceViewCreate(ctx context.Context, spaceID string, info sp
 	initFunc := func(id string) *editorsb.InitContext {
 		st := state.NewDoc(id, nil).(*state.State)
 		info.UpdateDetails(st)
+		if description != nil {
+			description.UpdateDetails(st)
+		}
 		return &editorsb.InitContext{Ctx: ctx, SpaceID: s.techCore.Id(), State: st}
 	}
 	_, err = s.objectCache.DeriveTreeObject(ctx, objectcache.TreeDerivationParams{
