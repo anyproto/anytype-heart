@@ -5,8 +5,6 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/dgraph-io/badger/v4"
-	dshelp "github.com/ipfs/boxo/datastore/dshelp"
 	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
 	format "github.com/ipfs/go-ipld-format"
@@ -32,28 +30,19 @@ type proxyStore struct {
 
 	backgroundCtx    context.Context
 	backgroundCancel context.CancelFunc
-
-	oldStore *badger.DB
 }
 
-func newProxyStore(localStore *flatStore, origin rpcstore.RpcStore, oldStore *badger.DB) *proxyStore {
+func newProxyStore(localStore *flatStore, origin rpcstore.RpcStore) *proxyStore {
 	ctx, cancel := context.WithCancel(context.Background())
 	return &proxyStore{
 		localStore:       localStore,
 		origin:           origin,
-		oldStore:         oldStore,
 		backgroundCtx:    ctx,
 		backgroundCancel: cancel,
 	}
 }
 
 func (c *proxyStore) Get(ctx context.Context, k cid.Cid) (b blocks.Block, err error) {
-	b, err = c.getFromOldStore(k)
-	if err == nil {
-		return b, nil
-	}
-
-	log.Debug("get cid", zap.String("cid", k.String()))
 	if b, err = c.localStore.Get(ctx, k); err != nil {
 		if format.IsNotFound(err) {
 			err = nil
@@ -81,50 +70,14 @@ func (c *proxyStore) Get(ctx context.Context, k cid.Cid) (b blocks.Block, err er
 	return
 }
 
-func (c *proxyStore) getFromOldStore(k cid.Cid) (blocks.Block, error) {
-	if c.oldStore == nil {
-		return nil, fmt.Errorf("old store is not used")
-	}
-	dsKey := cidToOldDsKey(k)
-	var b blocks.Block
-	err := c.oldStore.View(func(txn *badger.Txn) error {
-		item, err := txn.Get([]byte(dsKey))
-		if err != nil {
-			return err
-		}
-		err = item.Value(func(val []byte) error {
-			b, err = blocks.NewBlockWithCid(val, k)
-			return err
-		})
-		return err
-	})
-	if err == nil {
-		return b, nil
-	}
-	if err != nil && err != badger.ErrKeyNotFound {
-		log.Error("get from old store", zap.String("cid", k.String()), zap.String("key", dsKey), zap.Error(err))
-	}
-	return nil, err
-}
-
-func cidToOldDsKey(k cid.Cid) string {
-	return "/blocks" + dshelp.MultihashToDsKey(k.Hash()).String()
-}
-
 func (c *proxyStore) GetMany(ctx context.Context, ks []cid.Cid) <-chan blocks.Block {
-	remaining, oldResults := c.getManyFromOldStore(ks)
-	if len(remaining) == 0 {
-		return oldResults
-	}
-	gotFromOldStore := len(ks) - len(remaining)
-
-	fromCache, fromOrigin, localErr := c.localStore.PartitionByExistence(ctx, remaining)
+	fromCache, fromOrigin, localErr := c.localStore.PartitionByExistence(ctx, ks)
 	if localErr != nil {
 		log.Error("proxy store hasCIDs error", zap.Error(localErr))
 		fromOrigin = ks
 	}
 	log.Debug("get many cids", zap.Int("cached", len(fromCache)), zap.Int("origin", len(fromOrigin)))
-	if len(fromOrigin) == 0 && gotFromOldStore == 0 {
+	if len(fromOrigin) == 0 {
 		return c.localStore.GetMany(ctx, fromCache)
 	}
 	results := make(chan blocks.Block)
@@ -133,14 +86,10 @@ func (c *proxyStore) GetMany(ctx context.Context, ks []cid.Cid) <-chan blocks.Bl
 		defer close(results)
 		localResults := c.localStore.GetMany(ctx, fromCache)
 		originResults := c.origin.GetMany(ctx, fromOrigin)
-		oOk, cOk, oldOk := true, true, true
+		oOk, cOk := true, true
 		for {
-			var cb, ob, b blocks.Block
+			var cb, ob blocks.Block
 			select {
-			case b, oldOk = <-oldResults:
-				if oldOk {
-					results <- b
-				}
 			case cb, cOk = <-localResults:
 				if cOk {
 					results <- cb
@@ -157,65 +106,12 @@ func (c *proxyStore) GetMany(ctx context.Context, ks []cid.Cid) <-chan blocks.Bl
 			case <-c.backgroundCtx.Done():
 				return
 			}
-			if !oOk && !cOk && !oldOk {
+			if !oOk && !cOk {
 				return
 			}
 		}
 	}()
 	return results
-}
-
-func (c *proxyStore) getManyFromOldStore(ks []cid.Cid) (remaining []cid.Cid, results chan blocks.Block) {
-	results = make(chan blocks.Block)
-
-	if c.oldStore == nil {
-		close(results)
-		return ks, results
-	}
-
-	get := func(txn *badger.Txn, k cid.Cid, dsKey string) (blocks.Block, error) {
-		item, err := txn.Get([]byte(dsKey))
-		if err != nil {
-			return nil, err
-		}
-		var b blocks.Block
-		err = item.Value(func(val []byte) error {
-			b, err = blocks.NewBlockWithCid(val, k)
-			return err
-		})
-		return b, err
-	}
-
-	var bs []blocks.Block
-	err := c.oldStore.View(func(txn *badger.Txn) error {
-		for _, k := range ks {
-			dsKey := cidToOldDsKey(k)
-			b, err := get(txn, k, dsKey)
-			if err != nil {
-				remaining = append(remaining, k)
-				if err != badger.ErrKeyNotFound {
-					log.Error("get many from old store", zap.String("cid", k.String()), zap.String("key", dsKey), zap.Error(err))
-				}
-				continue
-			}
-			bs = append(bs, b)
-		}
-		return nil
-	})
-	if err != nil {
-		log.Error("get many from old store: view tx", zap.Error(err))
-		close(results)
-		return remaining, results
-	}
-
-	results = make(chan blocks.Block)
-	go func() {
-		defer close(results)
-		for _, b := range bs {
-			results <- b
-		}
-	}()
-	return remaining, results
 }
 
 func (c *proxyStore) Add(ctx context.Context, bs []blocks.Block) (err error) {
@@ -244,11 +140,6 @@ func (c *proxyStore) NotExistsBlocks(ctx context.Context, bs []blocks.Block) (no
 func (c *proxyStore) Close() error {
 	if c.backgroundCancel != nil {
 		c.backgroundCancel()
-	}
-	if c.oldStore != nil {
-		if err := c.oldStore.Close(); err != nil {
-			log.Error("error while closing old store", zap.Error(err))
-		}
 	}
 	if err := c.localStore.Close(); err != nil {
 		log.Error("error while closing localStore store", zap.Error(err))

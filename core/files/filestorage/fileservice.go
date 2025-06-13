@@ -13,10 +13,8 @@ import (
 	"github.com/anyproto/any-sync/commonfile/fileproto"
 	"github.com/anyproto/any-sync/commonspace/spacestorage"
 	"github.com/anyproto/any-sync/net/rpc/server"
-	"github.com/dgraph-io/badger/v4"
 	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
-	"go.uber.org/zap"
 
 	"github.com/anyproto/anytype-heart/core/anytype/config"
 	"github.com/anyproto/anytype-heart/core/domain"
@@ -93,23 +91,9 @@ func (f *fileStorage) Run(ctx context.Context) (err error) {
 	}
 	f.handler.store = localStore
 
-	oldStore, storeErr := f.initOldStore()
-	if storeErr != nil {
-		log.Error("can't open legacy file store", zap.Error(storeErr))
-	}
-	ps := newProxyStore(localStore, f.rpcStore.NewStore(), oldStore)
+	ps := newProxyStore(localStore, f.rpcStore.NewStore())
 	f.proxy = ps
 	return
-}
-
-func (f *fileStorage) initOldStore() (*badger.DB, error) {
-	if f.cfg.LegacyFileStorePath == "" {
-		return nil, nil
-	}
-	if _, err := os.Stat(f.cfg.LegacyFileStorePath); os.IsNotExist(err) {
-		return nil, nil
-	}
-	return badger.Open(badger.DefaultOptions(f.cfg.LegacyFileStorePath).WithReadOnly(true).WithBypassLockGuard(true))
 }
 
 func (f *fileStorage) IterateFiles(ctx context.Context, iterFunc func(fileId domain.FullFileId)) error {

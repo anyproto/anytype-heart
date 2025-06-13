@@ -10,13 +10,14 @@ import (
 	"github.com/anyproto/any-sync/commonspace/object/tree/treestorage"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/require"
 
 	"github.com/anyproto/anytype-heart/core/block/editor"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock/smarttest"
 	"github.com/anyproto/anytype-heart/core/block/object/objectcache/mock_objectcache"
 	wallet2 "github.com/anyproto/anytype-heart/core/wallet"
-	"github.com/anyproto/anytype-heart/pkg/lib/datastore"
+	"github.com/anyproto/anytype-heart/pkg/lib/datastore/anystoreprovider"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space/clientspace"
 	"github.com/anyproto/anytype-heart/space/mock_space"
@@ -201,10 +202,8 @@ func TestService_ListDevices(t *testing.T) {
 		devicesList, err := devicesService.ListDevices(context.Background())
 
 		// then
-		assert.Nil(t, err)
-		assert.Len(t, devicesList, 2)
-		assert.Equal(t, devicesList[0].Id, "id")
-		assert.Equal(t, devicesList[1].Id, "id1")
+		assert.NoError(t, err)
+		assert.ElementsMatch(t, []*model.DeviceInfo{testDevice, testDevice1}, devicesList)
 	})
 }
 
@@ -346,33 +345,32 @@ type deviceFixture struct {
 	mockSpaceService *mock_space.MockService
 	mockCache        *mock_objectcache.MockCache
 	wallet           wallet2.Wallet
-	db               datastore.Datastore
 }
 
 func newFixture(t *testing.T, deviceObjectId string) *deviceFixture {
 	mockSpaceService := mock_space.NewMockService(t)
 	mockCache := mock_objectcache.NewMockCache(t)
 	wallet := wallet2.NewWithRepoDirAndRandomKeys(os.TempDir())
-	db, err := datastore.NewInMemory()
-	assert.Nil(t, err)
+
+	dbProvider, err := anystoreprovider.NewInPath(t.TempDir())
+	require.NoError(t, err)
 
 	df := &deviceFixture{
 		mockSpaceService: mockSpaceService,
 		mockCache:        mockCache,
 		wallet:           wallet,
 		devices:          &devices{deviceObjectId: deviceObjectId, finishLoad: make(chan struct{})},
-		db:               db,
 	}
 
 	a := &app.App{}
 
 	a.Register(testutil.PrepareMock(context.Background(), a, mockSpaceService)).
 		Register(wallet).
-		Register(db)
+		Register(dbProvider)
 
 	err = wallet.Init(a)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	err = df.Init(a)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	return df
 }

@@ -206,7 +206,7 @@ func TestIndexer_ReindexSpace_RemoveParticipants(t *testing.T) {
 
 			spc := mock_space.NewMockSpace(t)
 			spc.EXPECT().Id().Return(space)
-			spc.EXPECT().Storage().Return(storage)
+			spc.EXPECT().Storage().Return(storage).Maybe()
 			fx.sourceFx.EXPECT().IDsListerBySmartblockType(mock.Anything, mock.Anything).Return(idsLister{Ids: []string{}}, nil).Maybe()
 
 			// when

@@ -7,10 +7,10 @@ import (
 )
 
 var (
-	uploadingKeyPrefix      = []byte(keyPrefix + "queue/uploading/")
-	deletionKeyPrefix       = []byte(keyPrefix + "queue/deletion/")
-	retryUploadingKeyPrefix = []byte(keyPrefix + "queue/retry-uploading/")
-	retryDeletionKeyPrefix  = []byte(keyPrefix + "queue/retry-deletion/")
+	uploadingKeyPrefix      = "queue/uploading"
+	deletionKeyPrefix       = "queue/deletion"
+	retryUploadingKeyPrefix = "queue/retry-uploading"
+	retryDeletionKeyPrefix  = "queue/retry-deletion"
 )
 
 type QueueItem struct {
