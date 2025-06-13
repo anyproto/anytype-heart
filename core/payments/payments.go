@@ -1012,7 +1012,9 @@ func (s *service) CodeGetInfo(ctx context.Context, req *pb.RpcMembershipCodeGetI
 	code := req.Code
 
 	codeInfo := proto.CodeGetInfoRequest{
-		Code: code,
+		OwnerAnyId:      s.wallet.Account().SignKey.GetPublic().Account(),
+		OwnerEthAddress: s.wallet.GetAccountEthAddress().Hex(),
+		Code:            code,
 	}
 
 	payload, err := codeInfo.Marshal()
