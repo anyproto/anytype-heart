@@ -2,9 +2,11 @@ package chatobject
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
+	anystore "github.com/anyproto/any-store"
 	"github.com/anyproto/any-store/anyenc"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
@@ -12,6 +14,8 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/source"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pb"
+	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
+	"golang.org/x/exp/slices"
 )
 
 const detailsDocumentId = "details"
@@ -30,6 +34,10 @@ func (c *detailsComponent) onPushOrdinaryChange(params source.PushChangeParams) 
 	for _, ch := range params.Changes {
 		set := ch.GetDetailsSet()
 		if set != nil && set.Key != "" {
+			key := domain.RelationKey(set.Key)
+			if slices.Contains(bundle.LocalAndDerivedRelationKeys, key) {
+				continue
+			}
 			val := domain.ValueFromProto(set.Value)
 			if !val.Ok() {
 				continue
@@ -56,6 +64,9 @@ func (c *detailsComponent) setDetailsFromAnystore(ctx context.Context, st *state
 		return fmt.Errorf("get collection: %w", err)
 	}
 	doc, err := coll.FindId(ctx, detailsDocumentId)
+	if errors.Is(err, anystore.ErrDocNotFound) {
+		return nil
+	}
 	if err != nil {
 		return fmt.Errorf("find id: %w", err)
 	}
@@ -64,6 +75,8 @@ func (c *detailsComponent) setDetailsFromAnystore(ctx context.Context, st *state
 	if err != nil {
 		return fmt.Errorf("parse details: %w", err)
 	}
+	details.Delete(bundle.RelationKeyId)
+
 	localDetails := st.LocalDetails()
 	combined := details.Merge(localDetails)
 

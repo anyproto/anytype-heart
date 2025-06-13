@@ -17,12 +17,16 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/chats/chatrepository"
 	"github.com/anyproto/anytype-heart/core/block/chats/chatsubscription"
 	"github.com/anyproto/anytype-heart/core/block/editor/anystoredebug"
+	"github.com/anyproto/anytype-heart/core/block/editor/basic"
+	"github.com/anyproto/anytype-heart/core/block/editor/converter"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/storestate"
 	"github.com/anyproto/anytype-heart/core/block/source"
 	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/core/files/fileobject"
 	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pb"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/spaceindex"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
@@ -63,6 +67,7 @@ type seenHeadsCollector interface {
 
 type storeObject struct {
 	anystoredebug.AnystoreDebug
+	basic.DetailsSettable
 	smartblock.SmartBlock
 	locker smartblock.Locker
 
@@ -83,7 +88,16 @@ type storeObject struct {
 	componentCtxCancel context.CancelFunc
 }
 
-func New(sb smartblock.SmartBlock, accountService AccountService, crdtDb anystore.DB, repositoryService chatrepository.Service, chatSubscriptionService chatsubscription.Service) StoreObject {
+func New(
+	sb smartblock.SmartBlock,
+	accountService AccountService,
+	crdtDb anystore.DB,
+	repositoryService chatrepository.Service,
+	chatSubscriptionService chatsubscription.Service,
+	spaceObjects spaceindex.Store,
+	layoutConverter converter.LayoutConverter,
+	fileObjectService fileobject.Service,
+) StoreObject {
 	ctx, cancel := context.WithCancel(context.Background())
 	return &storeObject{
 		SmartBlock:              sb,
@@ -95,6 +109,7 @@ func New(sb smartblock.SmartBlock, accountService AccountService, crdtDb anystor
 		componentCtx:            ctx,
 		componentCtxCancel:      cancel,
 		chatSubscriptionService: chatSubscriptionService,
+		DetailsSettable:         basic.NewBasic(sb, spaceObjects, layoutConverter, fileObjectService),
 	}
 }
 
@@ -145,7 +160,7 @@ func (s *storeObject) Init(ctx *smartblock.InitContext) error {
 		myParticipantId: myParticipantId,
 	}
 
-	stateStore, err := storestate.New(ctx.Ctx, s.Id(), s.crdtDb, s.chatHandler)
+	stateStore, err := storestate.New(ctx.Ctx, s.Id(), s.crdtDb, s.chatHandler, storestate.DefaultHandler{Name: "editor", ModifyMode: storestate.ModifyModeUpsert})
 	if err != nil {
 		return fmt.Errorf("create state store: %w", err)
 	}
@@ -167,7 +182,7 @@ func (s *storeObject) Init(ctx *smartblock.InitContext) error {
 		collectionName: "editor",
 		storeSource:    storeSource,
 		storeState:     stateStore,
-		sb:             s,
+		sb:             s.SmartBlock,
 	}
 	err = s.detailsComponent.setDetailsFromAnystore(ctx.Ctx, ctx.State)
 	if err != nil {
