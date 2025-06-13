@@ -17,6 +17,10 @@ service ClientCommands {
     rpc WalletConvert (anytype.Rpc.Wallet.Convert.Request) returns (anytype.Rpc.Wallet.Convert.Response);
     rpc AccountLocalLinkNewChallenge (anytype.Rpc.Account.LocalLink.NewChallenge.Request) returns (anytype.Rpc.Account.LocalLink.NewChallenge.Response);
     rpc AccountLocalLinkSolveChallenge (anytype.Rpc.Account.LocalLink.SolveChallenge.Request) returns (anytype.Rpc.Account.LocalLink.SolveChallenge.Response);
+    rpc AccountLocalLinkCreateApp (anytype.Rpc.Account.LocalLink.CreateApp.Request) returns (anytype.Rpc.Account.LocalLink.CreateApp.Response);
+    rpc AccountLocalLinkListApps (anytype.Rpc.Account.LocalLink.ListApps.Request) returns (anytype.Rpc.Account.LocalLink.ListApps.Response);
+    rpc AccountLocalLinkRevokeApp (anytype.Rpc.Account.LocalLink.RevokeApp.Request) returns (anytype.Rpc.Account.LocalLink.RevokeApp.Response);
+
     rpc WalletCreateSession (anytype.Rpc.Wallet.CreateSession.Request) returns (anytype.Rpc.Wallet.CreateSession.Response);
     rpc WalletCloseSession (anytype.Rpc.Wallet.CloseSession.Request) returns (anytype.Rpc.Wallet.CloseSession.Response);
     // Workspace
@@ -55,6 +59,7 @@ service ClientCommands {
     // ***
     rpc SpaceDelete (anytype.Rpc.Space.Delete.Request) returns (anytype.Rpc.Space.Delete.Response);
     rpc SpaceInviteGenerate (anytype.Rpc.Space.InviteGenerate.Request) returns (anytype.Rpc.Space.InviteGenerate.Response);
+    rpc SpaceInviteChange (anytype.Rpc.Space.InviteChange.Request) returns (anytype.Rpc.Space.InviteChange.Response);
     rpc SpaceInviteGetCurrent (anytype.Rpc.Space.InviteGetCurrent.Request) returns (anytype.Rpc.Space.InviteGetCurrent.Response);
     rpc SpaceInviteGetGuest (anytype.Rpc.Space.InviteGetGuest.Request) returns (anytype.Rpc.Space.InviteGetGuest.Response);
     rpc SpaceInviteRevoke(anytype.Rpc.Space.InviteRevoke.Request) returns (anytype.Rpc.Space.InviteRevoke.Response);
@@ -167,6 +172,7 @@ service ClientCommands {
     rpc ObjectTypeRecommendedRelationsSet (anytype.Rpc.ObjectType.Recommended.RelationsSet.Request) returns (anytype.Rpc.ObjectType.Recommended.RelationsSet.Response);
     rpc ObjectTypeRecommendedFeaturedRelationsSet (anytype.Rpc.ObjectType.Recommended.FeaturedRelationsSet.Request) returns (anytype.Rpc.ObjectType.Recommended.FeaturedRelationsSet.Response);
     rpc ObjectTypeListConflictingRelations (anytype.Rpc.ObjectType.ListConflictingRelations.Request) returns (anytype.Rpc.ObjectType.ListConflictingRelations.Response);
+    rpc ObjectTypeResolveLayoutConflicts (anytype.Rpc.ObjectType.ResolveLayoutConflicts.Request) returns (anytype.Rpc.ObjectType.ResolveLayoutConflicts.Response);
 
     rpc HistoryShowVersion (anytype.Rpc.History.ShowVersion.Request) returns (anytype.Rpc.History.ShowVersion.Response);
     rpc HistoryGetVersions (anytype.Rpc.History.GetVersions.Request) returns (anytype.Rpc.History.GetVersions.Response);
@@ -402,10 +408,14 @@ service ClientCommands {
     rpc ChatSubscribeToMessagePreviews (anytype.Rpc.Chat.SubscribeToMessagePreviews.Request) returns (anytype.Rpc.Chat.SubscribeToMessagePreviews.Response);
     rpc ChatUnsubscribeFromMessagePreviews (anytype.Rpc.Chat.UnsubscribeFromMessagePreviews.Request) returns (anytype.Rpc.Chat.UnsubscribeFromMessagePreviews.Response);
     rpc ObjectChatAdd (anytype.Rpc.Object.ChatAdd.Request) returns (anytype.Rpc.Object.ChatAdd.Response);
+    rpc ChatReadAll (anytype.Rpc.Chat.ReadAll.Request) returns (anytype.Rpc.Chat.ReadAll.Response);
 
     // mock AI RPCs for compatibility between branches. Not implemented in main
     rpc AIWritingTools (anytype.Rpc.AI.WritingTools.Request) returns (anytype.Rpc.AI.WritingTools.Response);
     rpc AIAutofill (anytype.Rpc.AI.Autofill.Request) returns (anytype.Rpc.AI.Autofill.Response);
     rpc AIListSummary (anytype.Rpc.AI.ListSummary.Request) returns (anytype.Rpc.AI.ListSummary.Response);
     rpc AIObjectCreateFromUrl (anytype.Rpc.AI.ObjectCreateFromUrl.Request) returns (anytype.Rpc.AI.ObjectCreateFromUrl.Response);
+
+    // Push
+    rpc PushNotificationRegisterToken(anytype.Rpc.PushNotification.RegisterToken.Request) returns (anytype.Rpc.PushNotification.RegisterToken.Response);
 }

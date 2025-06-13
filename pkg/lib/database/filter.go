@@ -16,6 +16,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/dateutil"
+	"github.com/anyproto/anytype-heart/util/debug"
 )
 
 var (
@@ -90,7 +91,7 @@ func makeFilterByCondition(spaceID string, rawFilter FilterRequest, store Object
 		relationKey := domain.RelationKey(parts[0])
 		nestedRelationKey := domain.RelationKey(parts[1])
 
-		if rawFilter.Condition == model.BlockContentDataviewFilter_NotEqual {
+		if rawFilter.Condition == model.BlockContentDataviewFilter_NotEqual || rawFilter.Condition == model.BlockContentDataviewFilter_NotIn {
 			return makeFilterNestedNotIn(spaceID, rawFilter, store, relationKey, nestedRelationKey)
 		} else {
 			return makeFilterNestedIn(spaceID, rawFilter, store, relationKey, nestedRelationKey)
@@ -416,9 +417,35 @@ func (e FilterEq) AnystoreFilter() query.Filter {
 	case model.BlockContentDataviewFilter_NotEqual:
 		op = query.CompOpNe
 	}
+
+	// TODO: GO-5616 Remove logging
+	e.logIfInvalidValue()
+
 	return query.Key{
 		Path:   path,
-		Filter: query.NewComp(op, e.Value.Raw()),
+		Filter: query.NewCompValue(op, e.Value.ToAnyEnc(&anyenc.Arena{})),
+	}
+}
+
+// TODO: GO-5616 Remove logging when we understand what filters clients pass as []string values
+func (e FilterEq) logIfInvalidValue() {
+	var typeS string
+	switch e.Value.Raw().(type) {
+	case []string:
+		typeS = "[]string"
+	case []float64:
+		typeS = "[]float64"
+	case []int64:
+		typeS = "[]int64"
+	}
+
+	if typeS != "" {
+		stack := debug.Stack(false)
+		log.With("key", e.Key).
+			With("cond", e.Cond).
+			With("type", typeS).
+			With("stacktrace", stack).
+			Warn("Eq filter contains value of invalid type")
 	}
 }
 
@@ -516,10 +543,11 @@ func (i FilterIn) FilterObject(g *domain.Details) bool {
 func (i FilterIn) AnystoreFilter() query.Filter {
 	path := []string{string(i.Key)}
 	conds := make([]query.Filter, 0, len(i.Value))
+	arena := &anyenc.Arena{}
 	for _, v := range i.Value {
 		conds = append(conds, query.Key{
 			Path:   path,
-			Filter: query.NewComp(query.CompOpEq, v.Raw()),
+			Filter: query.NewCompValue(query.CompOpEq, v.ToAnyEnc(arena)),
 		})
 	}
 	return query.Or(conds)
@@ -858,13 +886,29 @@ type FilterNestedNotIn struct {
 	IDs []string
 }
 
+func negativeConditionToPositive(cond model.BlockContentDataviewFilterCondition) (model.BlockContentDataviewFilterCondition, error) {
+	switch cond {
+	case model.BlockContentDataviewFilter_NotEqual:
+		return model.BlockContentDataviewFilter_Equal, nil
+	case model.BlockContentDataviewFilter_NotIn:
+		return model.BlockContentDataviewFilter_In, nil
+	default:
+		return 0, fmt.Errorf("condition %d is not supported", cond)
+	}
+}
+
 func makeFilterNestedNotIn(spaceID string, rawFilter FilterRequest, store ObjectStore, relationKey domain.RelationKey, nestedRelationKey domain.RelationKey) (Filter, error) {
 	rawNestedFilter := rawFilter
 	rawNestedFilter.RelationKey = nestedRelationKey
 
+	cond, err := negativeConditionToPositive(rawFilter.Condition)
+	if err != nil {
+		return nil, fmt.Errorf("convert condition: %w", err)
+	}
+
 	subQueryRawFilter := rawFilter
 	subQueryRawFilter.RelationKey = nestedRelationKey
-	subQueryRawFilter.Condition = model.BlockContentDataviewFilter_Equal
+	subQueryRawFilter.Condition = cond
 
 	subQueryFilter, err := MakeFilter(spaceID, subQueryRawFilter, store)
 	if err != nil {

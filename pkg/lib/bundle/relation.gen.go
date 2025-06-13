@@ -9,7 +9,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-const RelationChecksum = "a23583f8faef1cbfcd05ca1d2761538e67bbdd1336d1a467a0d657b5f986b313"
+const RelationChecksum = "b196956336cb7348a79d913d5e8e0a3f542424d3b175070725b90444114eaf0f"
 const (
 	RelationKeyTag                          domain.RelationKey = "tag"
 	RelationKeyCamera                       domain.RelationKey = "camera"
@@ -126,10 +126,12 @@ const (
 	RelationKeySpaceAccountStatus           domain.RelationKey = "spaceAccountStatus"
 	RelationKeySpaceInviteFileCid           domain.RelationKey = "spaceInviteFileCid"
 	RelationKeySpaceInviteFileKey           domain.RelationKey = "spaceInviteFileKey"
+	RelationKeySpaceInviteType              domain.RelationKey = "spaceInviteType"
 	RelationKeySpaceInviteGuestFileCid      domain.RelationKey = "spaceInviteGuestFileCid"
 	RelationKeySpaceInviteGuestFileKey      domain.RelationKey = "spaceInviteGuestFileKey"
 	RelationKeyGuestKey                     domain.RelationKey = "guestKey"
 	RelationKeyParticipantPermissions       domain.RelationKey = "participantPermissions"
+	RelationKeySpaceInvitePermissions       domain.RelationKey = "spaceInvitePermissions"
 	RelationKeyIdentity                     domain.RelationKey = "identity"
 	RelationKeyParticipantStatus            domain.RelationKey = "participantStatus"
 	RelationKeyIdentityProfileLink          domain.RelationKey = "identityProfileLink"
@@ -160,6 +162,9 @@ const (
 	RelationKeyAutoWidgetTargets            domain.RelationKey = "autoWidgetTargets"
 	RelationKeyAutoWidgetDisabled           domain.RelationKey = "autoWidgetDisabled"
 	RelationKeyPluralName                   domain.RelationKey = "pluralName"
+	RelationKeyHeaderRelationsLayout        domain.RelationKey = "headerRelationsLayout"
+	RelationKeyApiObjectKey                 domain.RelationKey = "apiObjectKey"
+	RelationKeyRelationFormatIncludeTime    domain.RelationKey = "relationFormatIncludeTime"
 )
 
 var (
@@ -170,11 +175,13 @@ var (
 			Description:      "Date when the file were added into the anytype",
 			Format:           model.RelationFormat_date,
 			Id:               "_braddedDate",
+			IncludeTime:      true,
 			Key:              "addedDate",
 			MaxCount:         1,
 			Name:             "Added date",
 			ReadOnly:         true,
 			ReadOnlyRelation: true,
+			Revision:         1,
 			Scope:            model.Relation_type,
 		},
 		RelationKeyAperture: {
@@ -186,6 +193,20 @@ var (
 			Key:              "aperture",
 			MaxCount:         1,
 			Name:             "Camera aperture",
+			ReadOnly:         false,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
+		RelationKeyApiObjectKey: {
+
+			DataSource:       model.Relation_details,
+			Description:      "Identifier to use in intergrations with Anytype API",
+			Format:           model.RelationFormat_longtext,
+			Hidden:           true,
+			Id:               "_brapiObjectKey",
+			Key:              "apiObjectKey",
+			MaxCount:         1,
+			Name:             "API Object Key",
 			ReadOnly:         false,
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
@@ -291,6 +312,7 @@ var (
 			Hidden:           true,
 			Id:               "_brautoWidgetDisabled",
 			Key:              "autoWidgetDisabled",
+			MaxCount:         1,
 			Name:             "Auto Widget disabled",
 			ReadOnly:         false,
 			ReadOnlyRelation: true,
@@ -464,11 +486,13 @@ var (
 			Description:      "Date when the object was initially created",
 			Format:           model.RelationFormat_date,
 			Id:               "_brcreatedDate",
+			IncludeTime:      true,
 			Key:              "createdDate",
 			MaxCount:         1,
 			Name:             "Creation date",
 			ReadOnly:         true,
 			ReadOnlyRelation: true,
+			Revision:         1,
 			Scope:            model.Relation_type,
 		},
 		RelationKeyCreator: {
@@ -755,6 +779,20 @@ var (
 			MaxCount:         1,
 			Name:             "Has a chat",
 			ReadOnly:         true,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
+		RelationKeyHeaderRelationsLayout: {
+
+			DataSource:       model.Relation_details,
+			Description:      "Layout of header relations. Line or column",
+			Format:           model.RelationFormat_number,
+			Hidden:           true,
+			Id:               "_brheaderRelationsLayout",
+			Key:              "headerRelationsLayout",
+			MaxCount:         1,
+			Name:             "Header relations layout",
+			ReadOnly:         false,
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
 		},
@@ -1084,11 +1122,13 @@ var (
 			Description:      "Date when the object was modified last time",
 			Format:           model.RelationFormat_date,
 			Id:               "_brlastModifiedDate",
+			IncludeTime:      true,
 			Key:              "lastModifiedDate",
 			MaxCount:         1,
 			Name:             "Last modified date",
 			ReadOnly:         true,
 			ReadOnlyRelation: true,
+			Revision:         1,
 			Scope:            model.Relation_type,
 		},
 		RelationKeyLastOpenedDate: {
@@ -1097,11 +1137,13 @@ var (
 			Description:      "Date when the object was modified last opened",
 			Format:           model.RelationFormat_date,
 			Id:               "_brlastOpenedDate",
+			IncludeTime:      true,
 			Key:              "lastOpenedDate",
 			MaxCount:         1,
 			Name:             "Last opened date",
 			ReadOnly:         true,
 			ReadOnlyRelation: true,
+			Revision:         1,
 			Scope:            model.Relation_type,
 		},
 		RelationKeyLastUsedDate: {
@@ -1111,12 +1153,13 @@ var (
 			Format:           model.RelationFormat_date,
 			Hidden:           true,
 			Id:               "_brlastUsedDate",
+			IncludeTime:      true,
 			Key:              "lastUsedDate",
 			MaxCount:         1,
 			Name:             "Last used date",
 			ReadOnly:         true,
 			ReadOnlyRelation: true,
-			Revision:         1,
+			Revision:         2,
 			Scope:            model.Relation_type,
 		},
 		RelationKeyLatestAclHeadId: {
@@ -1519,6 +1562,19 @@ var (
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
 		},
+		RelationKeyRelationFormatIncludeTime: {
+
+			DataSource:       model.Relation_details,
+			Description:      "Should time be shown for relation values with date format",
+			Format:           model.RelationFormat_checkbox,
+			Hidden:           true,
+			Id:               "_brrelationFormatIncludeTime",
+			Key:              "relationFormatIncludeTime",
+			Name:             "IncludeTime",
+			ReadOnly:         true,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
 		RelationKeyRelationFormatObjectTypes: {
 
 			DataSource:       model.Relation_details,
@@ -1879,6 +1935,34 @@ var (
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
 		},
+		RelationKeySpaceInvitePermissions: {
+
+			DataSource:       model.Relation_details,
+			Description:      "Invite permissions. Possible values: models.ParticipantPermissions",
+			Format:           model.RelationFormat_number,
+			Hidden:           true,
+			Id:               "_brspaceInvitePermissions",
+			Key:              "spaceInvitePermissions",
+			MaxCount:         1,
+			Name:             "Invite permissions",
+			ReadOnly:         true,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
+		RelationKeySpaceInviteType: {
+
+			DataSource:       model.Relation_details,
+			Description:      "Encoded encryption key of invite file for current space. It stored in SpaceView",
+			Format:           model.RelationFormat_number,
+			Hidden:           true,
+			Id:               "_brspaceInviteType",
+			Key:              "spaceInviteType",
+			MaxCount:         1,
+			Name:             "Invite type of space",
+			ReadOnly:         true,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
 		RelationKeySpaceLocalStatus: {
 
 			DataSource:       model.Relation_derived,
@@ -1982,11 +2066,13 @@ var (
 			Format:           model.RelationFormat_date,
 			Hidden:           true,
 			Id:               "_brsyncDate",
+			IncludeTime:      true,
 			Key:              "syncDate",
 			MaxCount:         1,
 			Name:             "Sync date",
 			ReadOnly:         true,
 			ReadOnlyRelation: true,
+			Revision:         1,
 			Scope:            model.Relation_type,
 		},
 		RelationKeySyncError: {
@@ -2061,7 +2147,7 @@ var (
 		RelationKeyTasks: {
 
 			DataSource:       model.Relation_details,
-			Description:      "List of related tasks\n",
+			Description:      "List of related tasks",
 			Format:           model.RelationFormat_object,
 			Id:               "_brtasks",
 			Key:              "tasks",

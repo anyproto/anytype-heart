@@ -143,3 +143,19 @@ func (mw *Middleware) ObjectTypeListConflictingRelations(_ context.Context, req 
 		RelationIds: conflictingRelations,
 	}
 }
+
+func (mw *Middleware) ObjectTypeResolveLayoutConflicts(_ context.Context, req *pb.RpcObjectTypeResolveLayoutConflictsRequest) *pb.RpcObjectTypeResolveLayoutConflictsResponse {
+	code := pb.RpcObjectTypeResolveLayoutConflictsResponseError_NULL
+	err := mw.doBlockService(func(bs *block.Service) error {
+		return bs.SyncObjectsWithType(req.TypeObjectId)
+	})
+	if err != nil {
+		code = pb.RpcObjectTypeResolveLayoutConflictsResponseError_UNKNOWN_ERROR
+	}
+	return &pb.RpcObjectTypeResolveLayoutConflictsResponse{
+		Error: &pb.RpcObjectTypeResolveLayoutConflictsResponseError{
+			Code:        code,
+			Description: getErrorDescription(err),
+		},
+	}
+}

@@ -106,6 +106,11 @@ type DebugAPIConfig struct {
 	IsEnabled bool
 }
 
+type PushConfig struct {
+	PeerId string
+	Addr   []string
+}
+
 var DefaultConfig = Config{
 	DS: clientds.DefaultConfig,
 	ConfigPersistent: ConfigPersistent{
@@ -429,7 +434,7 @@ func (c *Config) GetNetworkMode() pb.RpcAccountNetworkMode {
 
 func (c *Config) GetPublishServer() publishclient.Config {
 	publishPeerId := "12D3KooWEQPgbxGPvkny8kikS3zqfziM7JsQBnJHXHL9ByCcATs7"
-	publishAddr := "anytype-publish-server-yamux-fb3a0765ead8fc08.elb.eu-central-2.amazonaws.com:443"
+	publishAddr := "anytype-publish-server.anytype.io:4940"
 
 	if peerId := os.Getenv("ANYTYPE_PUBLISH_PEERID"); peerId != "" {
 		if addr := os.Getenv("ANYTYPE_PUBLISH_ADDRESS"); addr != "" {
@@ -445,5 +450,22 @@ func (c *Config) GetPublishServer() publishclient.Config {
 				Addrs:  []string{"yamux://" + publishAddr},
 			},
 		},
+	}
+}
+
+func (c *Config) GetPushConfig() PushConfig {
+	pushPeerId := "12D3KooWMATrdteJNq2YvYhtq3RDeWxq6RVXDAr36MsGd5RJzXDn"
+	pushAddr := "anytype-push-server.anytype.io:4941"
+
+	if peerId := os.Getenv("ANYTYPE_PUSH_PEERID"); peerId != "" {
+		if addr := os.Getenv("ANYTYPE_PUSH_ADDRESS"); addr != "" {
+			pushPeerId = peerId
+			pushAddr = addr
+		}
+	}
+
+	return PushConfig{
+		PeerId: pushPeerId,
+		Addr:   []string{"yamux://" + pushAddr},
 	}
 }

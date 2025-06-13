@@ -24,8 +24,10 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/threads"
+	"github.com/anyproto/anytype-heart/space/clientspace/keyvalueservice"
 	"github.com/anyproto/anytype-heart/space/internal/objectprovider"
 	"github.com/anyproto/anytype-heart/space/spacecore"
+	"github.com/anyproto/anytype-heart/space/spacecore/keyvalueobserver"
 	"github.com/anyproto/anytype-heart/space/spacecore/peermanager"
 	"github.com/anyproto/anytype-heart/space/spacecore/storage"
 	"github.com/anyproto/anytype-heart/space/spacecore/storage/anystorage"
@@ -56,6 +58,8 @@ type Space interface {
 	IsPersonal() bool
 	GetAclIdentity() crypto.PubKey
 
+	KeyValueService() keyvalueservice.Service
+
 	Close(ctx context.Context) error
 }
 
@@ -82,6 +86,7 @@ type space struct {
 	derivedIDs      threads.DerivedSmartblockIds
 	installer       bundledObjectsInstaller
 	spaceCore       spacecore.SpaceCoreService
+	keyValueService keyvalueservice.Service
 	personalSpaceId string
 
 	aclIdentity crypto.PubKey
@@ -102,6 +107,7 @@ type SpaceDeps struct {
 	AccountService    accountservice.Service
 	StorageService    storage.ClientStorage
 	SpaceCore         spacecore.SpaceCoreService
+	KeyValueObserver  keyvalueobserver.Observer
 	PersonalSpaceId   string
 	LoadCtx           context.Context
 	DisableRemoteLoad bool
@@ -150,7 +156,14 @@ func BuildSpace(ctx context.Context, deps SpaceDeps) (Space, error) {
 			return nil, fmt.Errorf("install bundled objects: %w", err)
 		}
 	}
+
+	sp.keyValueService, err = keyvalueservice.New(sp.common, deps.KeyValueObserver)
+	if err != nil {
+		return nil, fmt.Errorf("create key value service: %w", err)
+	}
+
 	go sp.mandatoryObjectsLoad(deps.LoadCtx, deps.DisableRemoteLoad)
+
 	return sp, nil
 }
 
@@ -164,11 +177,10 @@ func (s *space) tryLoadBundledAndInstallIfMissing(disableRemoteLoad bool) {
 		if errors.Is(err, context.Canceled) {
 			return // we are closing, skip installation,
 		}
-		log.Error("failed to load bundled objects", zap.Error(err))
+		log.Warn("failed to load bundled objects", zap.Error(err))
 	}
-	_, _, err = s.installer.InstallBundledObjects(s.loadMissingBundledObjectsCtx, s, missingSourceIds, true)
-	if err != nil {
-		log.Error("failed to install bundled objects", zap.Error(err))
+	if len(missingSourceIds) > 0 {
+		log.Warn("missing bundled objects", zap.Strings("ids", missingSourceIds))
 	}
 }
 
@@ -187,9 +199,7 @@ func (s *space) mandatoryObjectsLoad(ctx context.Context, disableRemoteLoad bool
 		return
 	}
 	go s.tryLoadBundledAndInstallIfMissing(disableRemoteLoad)
-	if s.loadMandatoryObjectsErr != nil {
-		return
-	}
+
 	err := s.migrationProfileObject(ctx)
 	if err != nil {
 		log.Error("failed to migrate profile object", zap.Error(err))
@@ -229,6 +239,10 @@ func (s *space) DerivedIDs() threads.DerivedSmartblockIds {
 
 func (s *space) CommonSpace() commonspace.Space {
 	return s.common
+}
+
+func (s *space) KeyValueService() keyvalueservice.Service {
+	return s.keyValueService
 }
 
 func (s *space) WaitMandatoryObjects(ctx context.Context) (err error) {

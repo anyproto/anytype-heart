@@ -122,7 +122,7 @@ func (s *dsObjectStore) UpdateObjectLinks(ctx context.Context, id string, links 
 		return err
 	}
 
-	s.subManager.updateObjectLinks(id, added, removed)
+	s.subManager.updateObjectLinks(domain.FullID{SpaceID: s.SpaceId(), ObjectID: id}, added, removed)
 
 	return nil
 }
@@ -250,7 +250,7 @@ func (s *dsObjectStore) getPendingLocalDetails(txn *badger.Txn, key []byte) (*mo
 func (s *dsObjectStore) updateObjectLinks(ctx context.Context, id string, links []string) (added []string, removed []string, err error) {
 	_, err = s.links.UpsertId(ctx, id, query.ModifyFunc(func(arena *anyenc.Arena, val *anyenc.Value) (*anyenc.Value, bool, error) {
 		prev := anyEncArrayToStrings(val.GetArray(linkOutboundField))
-		added, removed = slice.DifferenceRemovedAdded(prev, links)
+		removed, added = slice.DifferenceRemovedAdded(prev, links)
 		val.Set(linkOutboundField, stringsToJsonArray(arena, links))
 		return val, len(added)+len(removed) > 0, nil
 	}))

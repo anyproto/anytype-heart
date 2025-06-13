@@ -166,7 +166,6 @@ func (oc *ObjectCreator) Create(dataObject *DataObject, sn *common.Snapshot) (*d
 
 func canUpdateObject(sbType coresb.SmartBlockType) bool {
 	return sbType != coresb.SmartBlockTypeRelation &&
-		sbType != coresb.SmartBlockTypeObjectType &&
 		sbType != coresb.SmartBlockTypeRelationOption &&
 		sbType != coresb.SmartBlockTypeFileObject &&
 		sbType != coresb.SmartBlockTypeParticipant
@@ -367,17 +366,20 @@ func (oc *ObjectCreator) setSpaceDashboardID(spaceID string, st *state.State) {
 func (oc *ObjectCreator) resetState(newID string, st *state.State) *domain.Details {
 	var respDetails *domain.Details
 	err := cache.Do(oc.objectGetterDeleter, newID, func(b smartblock.SmartBlock) error {
+		currentRevision := b.Details().GetInt64(bundle.RelationKeyRevision)
+		newRevision := st.Details().GetInt64(bundle.RelationKeyRevision)
+		if currentRevision > newRevision {
+			log.With(zap.String("object id", newID)).Warnf("skipping object %s, revision %d > %d", st.Details().GetString(bundle.RelationKeyUniqueKey), currentRevision, newRevision)
+			// never update objects with older revision
+			// we use revision for bundled objects like relations and object types
+			return nil
+		}
+		if st.ObjectTypeKey() == bundle.TypeKeyObjectType {
+			template.InitTemplate(st, template.WithDetail(bundle.RelationKeyRecommendedLayout, domain.Int64(model.ObjectType_basic)))
+		}
 		err := history.ResetToVersion(b, st)
 		if err != nil {
 			log.With(zap.String("object id", newID)).Errorf("failed to set state %s: %s", newID, err)
-		}
-		commonOperations, ok := b.(basic.CommonOperations)
-		if !ok {
-			return nil
-		}
-		err = commonOperations.FeaturedRelationAdd(nil, bundle.RelationKeyType.String())
-		if err != nil {
-			log.With(zap.String("object id", newID)).Errorf("failed to set featuredRelations %s: %s", newID, err)
 		}
 		respDetails = b.CombinedDetails()
 		return nil

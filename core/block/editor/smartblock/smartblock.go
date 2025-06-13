@@ -52,6 +52,7 @@ type ApplyFlag int
 var (
 	ErrSimpleBlockNotFound                         = errors.New("simple block not found")
 	ErrCantInitExistingSmartblockWithNonEmptyState = errors.New("can't init existing smartblock with non-empty state")
+	ErrApplyOnEmptyTreeDisallowed                  = errors.New("apply on empty tree disallowed")
 )
 
 const (
@@ -64,15 +65,17 @@ const (
 	KeepInternalFlags
 	IgnoreNoPermissions
 	NotPushChanges // Used only for read-only actions like InitObject or OpenObject
+	AllowApplyWithEmptyTree
 )
 
 type Hook int
 
 type ApplyInfo struct {
-	State       *state.State
-	ParentState *state.State
-	Events      []simple.EventMessage
-	Changes     []*pb.ChangeContent
+	State             *state.State
+	ParentDetails     *domain.Details
+	Events            []simple.EventMessage
+	Changes           []*pb.ChangeContent
+	ApplyOtherObjects bool
 }
 
 type HookCallback func(info ApplyInfo) (err error)
@@ -96,7 +99,6 @@ func New(
 	space Space,
 	currentParticipantId string,
 	fileStore filestore.FileStore,
-	restrictionService restriction.Service,
 	spaceIndex spaceindex.Store,
 	objectStore objectstore.ObjectStore,
 	indexer Indexer,
@@ -111,14 +113,13 @@ func New(
 		Locker:               &sync.Mutex{},
 		sessions:             map[string]session.Context{},
 
-		fileStore:          fileStore,
-		restrictionService: restrictionService,
-		spaceIndex:         spaceIndex,
-		indexer:            indexer,
-		eventSender:        eventSender,
-		objectStore:        objectStore,
-		spaceIdResolver:    spaceIdResolver,
-		lastDepDetails:     map[string]*domain.Details{},
+		fileStore:       fileStore,
+		spaceIndex:      spaceIndex,
+		indexer:         indexer,
+		eventSender:     eventSender,
+		objectStore:     objectStore,
+		spaceIdResolver: spaceIdResolver,
+		lastDepDetails:  map[string]*domain.Details{},
 	}
 	return s
 }
@@ -136,6 +137,7 @@ type Space interface {
 
 	Do(objectId string, apply func(sb SmartBlock) error) error
 	DoLockedIfNotExists(objectID string, proc func() error) error // TODO Temporarily before rewriting favorites/archive mechanism
+	TryRemove(objectId string) (bool, error)
 
 	StoredIds() []string
 }
@@ -201,7 +203,6 @@ type InitContext struct {
 	RequiredInternalRelationKeys []domain.RelationKey // bundled relations that MUST be present in the state
 	State                        *state.State
 	Relations                    []*model.Relation
-	Restriction                  restriction.Service
 	ObjectStore                  objectstore.ObjectStore
 	SpaceID                      string
 	BuildOpts                    source.BuildOptions
@@ -248,13 +249,12 @@ type smartBlock struct {
 	space Space
 
 	// Deps
-	fileStore          filestore.FileStore
-	restrictionService restriction.Service
-	spaceIndex         spaceindex.Store
-	objectStore        objectstore.ObjectStore
-	indexer            Indexer
-	eventSender        event.Sender
-	spaceIdResolver    idresolver.Resolver
+	fileStore       filestore.FileStore
+	spaceIndex      spaceindex.Store
+	objectStore     objectstore.ObjectStore
+	indexer         Indexer
+	eventSender     event.Sender
+	spaceIdResolver idresolver.Resolver
 }
 
 func (sb *smartBlock) SetLocker(locker Locker) {
@@ -325,7 +325,7 @@ func (sb *smartBlock) Init(ctx *InitContext) (err error) {
 		sb.ObjectTree = provider.Tree()
 	}
 	sb.undo = undo.NewHistory(0)
-	sb.restrictions = sb.restrictionService.GetRestrictions(sb)
+	sb.restrictions = restriction.GetRestrictions(sb)
 	if ctx.State != nil {
 		// need to store file keys in case we have some new files in the state
 		sb.storeFileKeys(ctx.State)
@@ -368,6 +368,7 @@ func (sb *smartBlock) Init(ctx *InitContext) (err error) {
 		return
 	}
 	sb.injectDerivedDetails(ctx.State, sb.SpaceID(), sb.Type())
+	sb.resolveLayout(ctx.State)
 
 	sb.AddHook(sb.sendObjectCloseEvent, HookOnClose, HookOnBlockClose)
 	return
@@ -387,7 +388,7 @@ func (sb *smartBlock) sendObjectCloseEvent(_ ApplyInfo) error {
 
 // updateRestrictions refetch restrictions from restriction service and update them in the smartblock
 func (sb *smartBlock) updateRestrictions() {
-	r := sb.restrictionService.GetRestrictions(sb)
+	r := restriction.GetRestrictions(sb)
 	if sb.restrictions.Equal(r) {
 		return
 	}
@@ -632,15 +633,16 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 		return domain.ErrObjectIsDeleted
 	}
 	var (
-		sendEvent           = true
-		addHistory          = true
-		doSnapshot          = false
-		checkRestrictions   = true
-		hooks               = true
-		skipIfNoChanges     = false
-		keepInternalFlags   = false
-		ignoreNoPermissions = false
-		notPushChanges      = false
+		sendEvent               = true
+		addHistory              = true
+		doSnapshot              = false
+		checkRestrictions       = true
+		hooks                   = true
+		skipIfNoChanges         = false
+		keepInternalFlags       = false
+		ignoreNoPermissions     = false
+		notPushChanges          = false
+		allowApplyWithEmptyTree = false
 	)
 	for _, f := range flags {
 		switch f {
@@ -662,12 +664,25 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 			ignoreNoPermissions = true
 		case NotPushChanges:
 			notPushChanges = true
+		case AllowApplyWithEmptyTree:
+			allowApplyWithEmptyTree = true
 		}
+	}
+	if sb.ObjectTree != nil &&
+		len(sb.ObjectTree.Heads()) == 1 &&
+		sb.ObjectTree.Heads()[0] == sb.ObjectTree.Id() &&
+		!allowApplyWithEmptyTree &&
+		sb.Type() != smartblock.SmartBlockTypeChatDerivedObject &&
+		sb.Type() != smartblock.SmartBlockTypeAccountObject {
+		// protection for applying migrations on empty tree
+		log.With("sbType", sb.Type().String(), "objectId", sb.Id()).Warnf("apply on empty tree discarded")
+		return ErrApplyOnEmptyTreeDisallowed
 	}
 
 	// Inject derived details to make sure we have consistent state.
 	// For example, we have to set ObjectTypeID into Type relation according to ObjectTypeKey from the state
 	sb.injectDerivedDetails(s, sb.SpaceID(), sb.Type())
+	sb.resolveLayout(s)
 
 	if hooks {
 		if err = sb.execHooks(HookBeforeApply, ApplyInfo{State: s}); err != nil {
@@ -699,8 +714,11 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 		removeInternalFlags(s)
 	}
 
-	migrationVersionUpdated := true
-	parent := s.ParentState()
+	var (
+		migrationVersionUpdated = true
+		parent                  = s.ParentState()
+	)
+
 	if parent != nil {
 		migrationVersionUpdated = s.MigrationVersion() != parent.MigrationVersion()
 	}
@@ -814,11 +832,16 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 		sb.CheckSubscriptions()
 	}
 	if hooks {
+		var parentDetails *domain.Details
+		if act.Details != nil {
+			parentDetails = act.Details.Before
+		}
 		if e := sb.execHooks(HookAfterApply, ApplyInfo{
-			State:       sb.Doc.(*state.State),
-			ParentState: parent,
-			Events:      msgs,
-			Changes:     changes,
+			State:             sb.Doc.(*state.State),
+			ParentDetails:     parentDetails,
+			Events:            msgs,
+			Changes:           changes,
+			ApplyOtherObjects: true,
 		}); e != nil {
 			log.With("objectID", sb.Id()).Warnf("after apply execHooks error: %v", e)
 		}
@@ -941,6 +964,7 @@ func (sb *smartBlock) StateAppend(f func(d state.Doc) (s *state.State, changes [
 	}
 	sb.updateRestrictions()
 	sb.injectDerivedDetails(s, sb.SpaceID(), sb.Type())
+	sb.resolveLayout(s)
 	sb.execHooks(HookBeforeApply, ApplyInfo{State: s})
 	msgs, act, err := state.ApplyState(sb.SpaceID(), s, sb.enableLayouts)
 	if err != nil {
@@ -959,11 +983,15 @@ func (sb *smartBlock) StateAppend(f func(d state.Doc) (s *state.State, changes [
 		sb.CheckSubscriptions()
 	}
 	sb.runIndexer(s)
+	var parentDetails *domain.Details
+	if s.ParentState() != nil {
+		parentDetails = s.ParentState().Details()
+	}
 	if err = sb.execHooks(HookAfterApply, ApplyInfo{
-		State:       s,
-		ParentState: s.ParentState(),
-		Events:      msgs,
-		Changes:     changes,
+		State:         s,
+		ParentDetails: parentDetails,
+		Events:        msgs,
+		Changes:       changes,
 	}); err != nil {
 		log.Errorf("failed to execute smartblock hooks after apply on StateAppend: %v", err)
 	}
@@ -978,6 +1006,7 @@ func (sb *smartBlock) StateRebuild(d state.Doc) (err error) {
 	}
 	sb.updateRestrictions()
 	sb.injectDerivedDetails(d.(*state.State), sb.SpaceID(), sb.Type())
+	sb.resolveLayout(d.(*state.State))
 	err = sb.injectLocalDetails(d.(*state.State))
 	if err != nil {
 		log.Errorf("failed to inject local details in StateRebuild: %v", err)
@@ -1263,11 +1292,11 @@ func (sb *smartBlock) setRestrictionsDetail(s *state.State) {
 
 	s.SetLocalDetail(bundle.RelationKeyRestrictions, sb.Restrictions().Object.ToValue())
 
-	// todo: verify this logic with clients
 	if sb.Restrictions().Object.Check(model.Restrictions_Details) != nil &&
 		sb.Restrictions().Object.Check(model.Restrictions_Blocks) != nil {
-
 		s.SetDetailAndBundledRelation(bundle.RelationKeyIsReadonly, domain.Bool(true))
+	} else if s.LocalDetails().GetBool(bundle.RelationKeyIsReadonly) {
+		s.SetDetailAndBundledRelation(bundle.RelationKeyIsReadonly, domain.Bool(false))
 	}
 }
 

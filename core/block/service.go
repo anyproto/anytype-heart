@@ -20,13 +20,13 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/basic"
 	"github.com/anyproto/anytype-heart/core/block/editor/collection"
 	"github.com/anyproto/anytype-heart/core/block/editor/file"
+	"github.com/anyproto/anytype-heart/core/block/editor/layout"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/history"
 	"github.com/anyproto/anytype-heart/core/block/object/idresolver"
 	"github.com/anyproto/anytype-heart/core/block/object/objectcreator"
 	"github.com/anyproto/anytype-heart/core/block/process"
-	"github.com/anyproto/anytype-heart/core/block/restriction"
 	"github.com/anyproto/anytype-heart/core/block/simple/bookmark"
 	"github.com/anyproto/anytype-heart/core/block/template"
 	"github.com/anyproto/anytype-heart/core/domain"
@@ -45,6 +45,8 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space"
+	"github.com/anyproto/anytype-heart/space/spaceinfo"
+	"github.com/anyproto/anytype-heart/space/techspace"
 	"github.com/anyproto/anytype-heart/util/internalflag"
 	"github.com/anyproto/anytype-heart/util/mutex"
 	"github.com/anyproto/anytype-heart/util/uri"
@@ -90,7 +92,6 @@ type Service struct {
 	eventSender          event.Sender
 	process              process.Service
 	objectStore          objectstore.ObjectStore
-	restriction          restriction.Service
 	bookmark             bookmarksvc.Service
 	objectCreator        objectcreator.Service
 	templateService      template.Service
@@ -106,10 +107,13 @@ type Service struct {
 
 	predefinedObjectWasMissing bool
 	openedObjs                 *openedObjects
+
+	componentCtx       context.Context
+	componentCtxCancel context.CancelFunc
 }
 
 type builtinObjects interface {
-	CreateObjectsForUseCase(ctx session.Context, spaceID string, req pb.RpcObjectImportUseCaseRequestUseCase) (code pb.RpcObjectImportUseCaseResponseErrorCode, err error)
+	CreateObjectsForUseCase(ctx session.Context, spaceID string, req pb.RpcObjectImportUseCaseRequestUseCase) (startingPageId string, code pb.RpcObjectImportUseCaseResponseErrorCode, err error)
 }
 
 type openedObjects struct {
@@ -122,10 +126,11 @@ func (s *Service) Name() string {
 }
 
 func (s *Service) Init(a *app.App) (err error) {
+	s.componentCtx, s.componentCtxCancel = context.WithCancel(context.Background())
+
 	s.process = a.MustComponent(process.CName).(process.Service)
 	s.eventSender = a.MustComponent(event.CName).(event.Sender)
 	s.objectStore = a.MustComponent(objectstore.CName).(objectstore.ObjectStore)
-	s.restriction = a.MustComponent(restriction.CName).(restriction.Service)
 	s.bookmark = a.MustComponent("bookmark-importer").(bookmarksvc.Service)
 	s.objectCreator = app.MustComponent[objectcreator.Service](a)
 	s.templateService = app.MustComponent[template.Service](a)
@@ -154,6 +159,14 @@ func (s *Service) GetObject(ctx context.Context, objectID string) (sb smartblock
 	return s.GetObjectByFullID(ctx, domain.FullID{SpaceID: spaceID, ObjectID: objectID})
 }
 
+func (s *Service) WaitAndGetObject(ctx context.Context, objectID string) (sb smartblock.SmartBlock, err error) {
+	spaceID, err := s.resolver.ResolveSpaceID(objectID)
+	if err != nil {
+		return nil, err
+	}
+	return s.WaitAndGetObjectByFullID(ctx, domain.FullID{SpaceID: spaceID, ObjectID: objectID})
+}
+
 func (s *Service) TryRemoveFromCache(ctx context.Context, objectId string) (res bool, err error) {
 	spaceId, err := s.resolver.ResolveSpaceID(objectId)
 	if err != nil {
@@ -177,6 +190,14 @@ func (s *Service) GetObjectByFullID(ctx context.Context, id domain.FullID) (sb s
 	spc, err := s.spaceService.Get(ctx, id.SpaceID)
 	if err != nil {
 		return nil, fmt.Errorf("get space: %w", err)
+	}
+	return spc.GetObject(ctx, id.ObjectID)
+}
+
+func (s *Service) WaitAndGetObjectByFullID(ctx context.Context, id domain.FullID) (sb smartblock.SmartBlock, err error) {
+	spc, err := s.spaceService.Wait(ctx, id.SpaceID)
+	if err != nil {
+		return nil, fmt.Errorf("wait space: %w", err)
 	}
 	return spc.GetObject(ctx, id.ObjectID)
 }
@@ -342,14 +363,30 @@ func (s *Service) SpaceInitChat(ctx context.Context, spaceId string) error {
 		return err
 	}
 
+	// cheap check if chat already exists
 	if spaceChatExists, err := spc.Storage().HasTree(ctx, chatId); err != nil {
 		return err
-	} else if !spaceChatExists {
-		_, err = s.objectCreator.AddChatDerivedObject(ctx, spc, workspaceId)
-		if err != nil {
-			if !errors.Is(err, treestorage.ErrTreeExists) {
-				return fmt.Errorf("add chat derived object: %w", err)
-			}
+	} else if spaceChatExists {
+		return nil
+	}
+
+	var spaceInfo spaceinfo.SpaceLocalInfo
+	err = s.spaceService.TechSpace().DoSpaceView(ctx, spaceId, func(spaceView techspace.SpaceView) error {
+		spaceInfo = spaceView.GetLocalInfo()
+		return nil
+	})
+	if err != nil {
+		return fmt.Errorf("get space info: %w", err)
+	}
+	if spaceInfo.GetShareableStatus() != spaceinfo.ShareableStatusShareable {
+		// we do not create chat in non-shareable spaces
+		return nil
+	}
+
+	_, err = s.objectCreator.AddChatDerivedObject(ctx, spc, workspaceId)
+	if err != nil {
+		if !errors.Is(err, treestorage.ErrTreeExists) {
+			return fmt.Errorf("add chat derived object: %w", err)
 		}
 	}
 
@@ -364,7 +401,7 @@ func (s *Service) SpaceInitChat(ctx context.Context, spaceId string) error {
 		return fmt.Errorf("apply chatId to workspace: %w", err)
 	}
 
-	return nil
+	return s.autoInstallSpaceChatWidget(ctx, spc)
 }
 
 func (s *Service) SelectWorkspace(req *pb.RpcWorkspaceSelectRequest) error {
@@ -512,7 +549,10 @@ func (s *Service) ProcessCancel(id string) (err error) {
 	return s.process.Cancel(id)
 }
 
-func (s *Service) Close(ctx context.Context) (err error) {
+func (s *Service) Close(_ context.Context) (err error) {
+	if s.componentCtxCancel != nil {
+		s.componentCtxCancel()
+	}
 	return nil
 }
 
@@ -696,4 +736,27 @@ func (s *Service) enrichDetailsWithOrigin(details *domain.Details, origin model.
 	}
 	details.SetInt64(bundle.RelationKeyOrigin, int64(origin))
 	return details
+}
+
+func (s *Service) SyncObjectsWithType(typeId string) error {
+	spaceId, err := s.resolver.ResolveSpaceID(typeId)
+	if err != nil {
+		return fmt.Errorf("failed to resolve spaceId for type object: %w", err)
+	}
+
+	spc, err := s.spaceService.Get(s.componentCtx, spaceId)
+	if err != nil {
+		return fmt.Errorf("failed to get space: %w", err)
+	}
+
+	index := s.objectStore.SpaceIndex(spaceId)
+	details, err := index.GetDetails(typeId)
+	if err != nil {
+		return fmt.Errorf("failed to get details of type object: %w", err)
+	}
+
+	syncer := layout.NewSyncer(typeId, spc, index)
+	newLayout := layout.NewLayoutStateFromDetails(details)
+	oldLayout := newLayout.Copy()
+	return syncer.SyncLayoutWithType(oldLayout, newLayout, true, true, false)
 }

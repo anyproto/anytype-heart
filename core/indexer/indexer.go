@@ -32,7 +32,7 @@ const (
 var log = logging.Logger("anytype-doc-indexer")
 
 func New() Indexer {
-	return &indexer{}
+	return new(indexer)
 }
 
 type Indexer interface {
@@ -59,6 +59,7 @@ type indexer struct {
 
 	runCtx          context.Context
 	runCtxCancel    context.CancelFunc
+	ftQueueStop     context.CancelFunc
 	ftQueueFinished chan struct{}
 	config          *config.Config
 
@@ -77,7 +78,7 @@ type indexer struct {
 func (i *indexer) Init(a *app.App) (err error) {
 	i.store = a.MustComponent(objectstore.CName).(objectstore.ObjectStore)
 	i.storageService = a.MustComponent(spacestorage.CName).(storage.ClientStorage)
-	i.source = a.MustComponent(source.CName).(source.Service)
+	i.source = app.MustComponent[source.Service](a)
 	i.btHash = a.MustComponent("builtintemplate").(Hasher)
 	i.fileStore = app.MustComponent[filestore.FileStore](a)
 	i.ftsearch = app.MustComponent[ftsearch.FTSearch](a)
@@ -98,12 +99,20 @@ func (i *indexer) Run(context.Context) (err error) {
 	return i.StartFullTextIndex()
 }
 
+func (f *indexer) StateChange(state int) {
+	if state == int(domain.CompStateAppClosingInitiated) && f.ftQueueStop != nil {
+		f.ftQueueStop()
+	}
+}
+
 func (i *indexer) StartFullTextIndex() (err error) {
 	if ftErr := i.ftInit(); ftErr != nil {
 		log.Errorf("can't init ft: %v", ftErr)
 	}
 	i.ftQueueFinished = make(chan struct{})
-	go i.ftLoopRoutine()
+	var ftCtx context.Context
+	ftCtx, i.ftQueueStop = context.WithCancel(i.runCtx)
+	go i.ftLoopRoutine(ftCtx)
 	return
 }
 

@@ -93,7 +93,7 @@ func TestSubscribe(t *testing.T) {
 
 		// Add space view and objects
 		fx.objectStore.AddObjects(t, techSpaceId, []objectstore.TestObject{
-			givenSpaceViewObject("spaceView1", "space1", model.Account_Active, model.SpaceStatus_Ok),
+			givenSpaceViewObject("spaceView1", "space1", model.SpaceStatus_SpaceActive, model.SpaceStatus_Ok),
 		})
 
 		// Subscribe
@@ -166,7 +166,7 @@ func TestSubscribe(t *testing.T) {
 		t.Run("add first space", func(t *testing.T) {
 			// Add space view
 			fx.objectStore.AddObjects(t, techSpaceId, []objectstore.TestObject{
-				givenSpaceViewObject("spaceView1", "space1", model.Account_Active, model.SpaceStatus_Ok),
+				givenSpaceViewObject("spaceView1", "space1", model.SpaceStatus_SpaceActive, model.SpaceStatus_Ok),
 			})
 
 			// Add objects
@@ -213,7 +213,7 @@ func TestSubscribe(t *testing.T) {
 		t.Run("add second space", func(t *testing.T) {
 			// Add space view
 			fx.objectStore.AddObjects(t, techSpaceId, []objectstore.TestObject{
-				givenSpaceViewObject("spaceView2", "space2", model.Account_Active, model.SpaceStatus_Ok),
+				givenSpaceViewObject("spaceView2", "space2", model.SpaceStatus_SpaceActive, model.SpaceStatus_Ok),
 			})
 
 			// Add objects
@@ -246,7 +246,7 @@ func TestSubscribe(t *testing.T) {
 
 		// Add space view and objects
 		fx.objectStore.AddObjects(t, techSpaceId, []objectstore.TestObject{
-			givenSpaceViewObject("spaceView1", "space1", model.Account_Active, model.SpaceStatus_Ok),
+			givenSpaceViewObject("spaceView1", "space1", model.SpaceStatus_SpaceActive, model.SpaceStatus_Ok),
 		})
 		obj1 := objectstore.TestObject{
 			bundle.RelationKeyId:             domain.String("participant1"),
@@ -270,7 +270,7 @@ func TestSubscribe(t *testing.T) {
 
 		// Remove space view by changing its status
 		fx.objectStore.AddObjects(t, techSpaceId, []objectstore.TestObject{
-			givenSpaceViewObject("spaceView1", "space1", model.Account_Deleted, model.SpaceStatus_Unknown),
+			givenSpaceViewObject("spaceView1", "space1", model.SpaceStatus_SpaceDeleted, model.SpaceStatus_Unknown),
 		})
 
 		// Wait events
@@ -283,6 +283,45 @@ func TestSubscribe(t *testing.T) {
 			makeCountersEvent(resp.SubId, 0),
 		}
 		assert.Equal(t, want, msgs)
+	})
+
+	t.Run("local status of space is changed to loading", func(t *testing.T) {
+		fx := newFixture(t)
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Millisecond)
+		defer cancel()
+
+		// Add space view and objects
+		fx.objectStore.AddObjects(t, techSpaceId, []objectstore.TestObject{
+			givenSpaceViewObject("spaceView1", "space1", model.SpaceStatus_SpaceActive, model.SpaceStatus_Ok),
+		})
+		obj1 := objectstore.TestObject{
+			bundle.RelationKeyId:             domain.String("participant1"),
+			bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_participant)),
+		}
+		obj2 := objectstore.TestObject{
+			bundle.RelationKeyId:             domain.String("participant2"),
+			bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_participant)),
+		}
+		fx.objectStore.AddObjects(t, "space1", []objectstore.TestObject{
+			obj1,
+			obj2,
+		})
+
+		// Subscribe
+		resp, err := fx.Subscribe(givenRequest())
+		require.NoError(t, err)
+		require.NotNil(t, resp)
+		assert.NotEmpty(t, resp.SubId)
+		assert.Equal(t, []*domain.Details{obj1.Details(), obj2.Details()}, resp.Records)
+
+		// Change status to loading. It reflects how it could work in real application.
+		fx.objectStore.AddObjects(t, techSpaceId, []objectstore.TestObject{
+			givenSpaceViewObject("spaceView1", "space1", model.SpaceStatus_SpaceActive, model.SpaceStatus_Loading),
+		})
+
+		// Nothing happens
+		_, err = fx.eventQueue.NewCond().WithMin(1).Wait(ctx)
+		require.ErrorIs(t, err, context.DeadlineExceeded)
 	})
 }
 
@@ -299,7 +338,7 @@ func TestUnsubscribe(t *testing.T) {
 
 		// Add space view
 		fx.objectStore.AddObjects(t, techSpaceId, []objectstore.TestObject{
-			givenSpaceViewObject("spaceView1", "space1", model.Account_Active, model.SpaceStatus_Ok),
+			givenSpaceViewObject("spaceView1", "space1", model.SpaceStatus_SpaceActive, model.SpaceStatus_Ok),
 		})
 
 		// Subscribe
@@ -414,12 +453,12 @@ func givenRequest() subscriptionservice.SubscribeRequest {
 	}
 }
 
-func givenSpaceViewObject(id string, targetSpaceId string, accountStatus model.AccountStatusType, localStatus model.SpaceStatus) objectstore.TestObject {
+func givenSpaceViewObject(id string, targetSpaceId string, spaceStatus model.SpaceStatus, localStatus model.SpaceStatus) objectstore.TestObject {
 	return objectstore.TestObject{
 		bundle.RelationKeyId:                 domain.String(id),
 		bundle.RelationKeyTargetSpaceId:      domain.String(targetSpaceId),
 		bundle.RelationKeyResolvedLayout:     domain.Int64(int64(model.ObjectType_spaceView)),
-		bundle.RelationKeySpaceAccountStatus: domain.Int64(int64(accountStatus)),
+		bundle.RelationKeySpaceAccountStatus: domain.Int64(int64(spaceStatus)),
 		bundle.RelationKeySpaceLocalStatus:   domain.Int64(int64(localStatus)),
 	}
 }

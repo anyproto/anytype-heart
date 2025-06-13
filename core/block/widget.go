@@ -18,6 +18,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+	"github.com/anyproto/anytype-heart/space/clientspace"
 )
 
 var skippedTypesForAutoWidget = []domain.TypeKey{
@@ -144,4 +145,32 @@ func (s *Service) CreateTypeWidgetIfMissing(ctx context.Context, spaceId string,
 	return cache.DoState(s, widgetObjectId, func(st *state.State, w widget.Widget) (err error) {
 		return w.AddAutoWidget(st, typeId, key.String(), addr.ObjectTypeAllViewId, model.BlockContentWidget_View, targetName)
 	})
+}
+
+// autoInstallSpaceChatWidget automatically installs the chat widget in the space if it is not already installed.
+func (s *Service) autoInstallSpaceChatWidget(ctx context.Context, spc clientspace.Space) error {
+	widgetObjectId := spc.DerivedIDs().Widgets
+	widgetDetails, err := s.objectStore.SpaceIndex(spc.Id()).GetDetails(widgetObjectId)
+	if err != nil {
+		return err
+	}
+	keys := widgetDetails.Get(bundle.RelationKeyAutoWidgetTargets).StringList()
+	if slices.Contains(keys, widget.DefaultWidgetChat) {
+		return nil
+	}
+	err = spc.DoCtx(ctx, widgetObjectId, func(sb smartblock.SmartBlock) error {
+		st := sb.NewState()
+		if w, ok := sb.(widget.Widget); ok {
+			// We rely on AddAutoWidget to check if the widget was already installed/removed before
+			err = w.AddAutoWidget(st, widget.DefaultWidgetChat, widget.DefaultWidgetChat, "", model.BlockContentWidget_Link, "")
+			if err != nil {
+				return err
+			}
+		}
+		return sb.Apply(st)
+	})
+	if err != nil {
+		return err
+	}
+	return nil
 }

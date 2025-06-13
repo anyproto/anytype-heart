@@ -117,10 +117,12 @@ message Event {
             Chat.Add chatAdd = 128;
             Chat.Update chatUpdate = 129;
             Chat.UpdateReactions chatUpdateReactions = 130;
-            Chat.UpdateReadStatus chatUpdateReadStatus = 134; // received to update per-message read status (if needed to highlight the unread messages in the UI)
+            Chat.UpdateMessageReadStatus chatUpdateMessageReadStatus = 134; // received to update per-message read status (if needed to highlight the unread messages in the UI)
+            Chat.UpdateMentionReadStatus chatUpdateMentionReadStatus = 135; // received to update per-message mention read status (if needed to highlight the unread mentions in the UI)
 
             Chat.Delete chatDelete = 131;
             Chat.UpdateState chatStateUpdate = 133; // in case new unread messages received or chat state changed (e.g. message read on another device)
+            PushEncryptionKey.Update pushEncryptionKeyUpdate = 136;
         }
     }
 
@@ -136,7 +138,6 @@ message Event {
         message Delete {
             string id = 1;
             repeated string subIds = 2;
-            model.ChatState state = 3; // Chat state. dbState should be persisted after rendered
         }
         message Update {
             string id = 1;
@@ -149,7 +150,12 @@ message Event {
             repeated string subIds = 3;
         }
 
-        message UpdateReadStatus {
+        message UpdateMessageReadStatus {
+            repeated string ids = 1;
+            bool isRead = 2;
+            repeated string subIds = 3;
+        }
+        message UpdateMentionReadStatus {
             repeated string ids = 1;
             bool isRead = 2;
             repeated string subIds = 3;
@@ -191,6 +197,7 @@ message Event {
             message ClientInfo {
                 string processName = 1;
                 string processPath = 2;
+                string name = 4;
                 bool signatureVerified = 3;
             }
             string challenge = 1;
@@ -810,6 +817,7 @@ message Event {
                     anytype.model.Block.Content.Dataview.View.Size cardSize = 5; // Gallery card size
                     bool coverFit = 6; // Image fits container
                     string groupRelationKey = 7; // Group view by this relationKey
+                    string endRelationKey = 16;
                     bool groupBackgroundColors = 8; // Enable backgrounds in groups
                     int32 pageLimit = 9; // Limit of objects shown in widget
                     string defaultTemplateId = 10; // Id of template object set default for the view
@@ -1182,6 +1190,13 @@ message Event {
             string rootCollectionID = 1;
             int64 objectsCount = 2;
             model.Import.Type importType = 3;
+        }
+    }
+
+    message PushEncryptionKey {
+        message Update {
+            string encryptionKeyId = 1;
+            string encryptionKey = 2;
         }
     }
 }

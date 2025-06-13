@@ -79,24 +79,17 @@ func (i *spaceIndexer) indexBatch(tasks []indexTask) (err error) {
 		}
 	}
 
-	defer func() {
-		if err != nil {
-			_ = tx.Rollback()
-		} else {
-			if err = tx.Commit(); err != nil {
-				closeTasks(err)
-			} else {
-				closeTasks(nil)
-			}
-			log.Infof("indexBatch: indexed %d docs for a %v: err: %v", len(tasks), time.Since(st), err)
-		}
-	}()
-
 	for _, task := range tasks {
 		if iErr := i.index(tx.Context(), task.info, task.options...); iErr != nil {
 			task.done <- iErr
 		}
 	}
+	if err = tx.Commit(); err != nil {
+		closeTasks(err)
+	} else {
+		closeTasks(nil)
+	}
+	log.Infof("indexBatch: indexed %d docs for a %v: err: %v", len(tasks), time.Since(st), err)
 	return
 }
 

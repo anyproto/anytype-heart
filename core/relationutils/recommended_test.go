@@ -187,10 +187,11 @@ func TestFillRecommendedRelations(t *testing.T) {
 		// then
 		assert.NoError(t, err)
 		assert.False(t, isAlreadyFilled)
-		assert.Equal(t, buildRelationIds(defaultRecommendedRelationKeys), details.GetStringList(bundle.RelationKeyRecommendedRelations))
+		assert.Equal(t, buildRelationIds(append([]domain.RelationKey{bundle.RelationKeyTag}, defaultRecommendedRelationKeys...)),
+			details.GetStringList(bundle.RelationKeyRecommendedRelations))
 		assert.Equal(t, buildRelationIds(defaultSetFeaturedRelationKeys), details.GetStringList(bundle.RelationKeyRecommendedFeaturedRelations))
 		assert.Equal(t, defaultRecHiddenRelIds, details.GetStringList(bundle.RelationKeyRecommendedHiddenRelations))
-		assert.Len(t, keys, 4+3+3) // 4 featured + 3 sidebar + 3 hidden
+		assert.Len(t, keys, 3+4+3) // 3 featured + 4 sidebar + 3 hidden
 	})
 }
 
