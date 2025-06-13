@@ -223,10 +223,17 @@ func (sb *smartBlock) deriveChatId(s *state.State) error {
 // layout > recommendedLayout from type > current resolvedLayout > basic (fallback)
 // resolveLayout also converts object from Note, i.e. adds Name and Title to state
 func (sb *smartBlock) resolveLayout(s *state.State) {
-	if s.Details() == nil && s.LocalDetails() == nil {
+	if sb.Type() != smartblock.SmartBlockTypePage {
+		layout := s.Details().Get(bundle.RelationKeyLayout)
+		if layout.Ok() {
+			s.SetDetailAndBundledRelation(bundle.RelationKeyResolvedLayout, layout)
+		}
 		return
 	}
 
+	if s.Details() == nil && s.LocalDetails() == nil {
+		return
+	}
 	var (
 		layoutValue   = s.Details().Get(bundle.RelationKeyLayout)
 		currentValue  = s.LocalDetails().Get(bundle.RelationKeyResolvedLayout)
