@@ -21605,6 +21605,7 @@ Middleware-to-front-end response, that can contain mnemonic of a created account
 | ----- | ---- | ----- | ----------- |
 | mnemonic | [string](#string) |  | cold auth |
 | appKey | [string](#string) |  | persistent app key, that can be used to restore session |
+| token | [string](#string) |  | token from the previous session |
 
 
 
