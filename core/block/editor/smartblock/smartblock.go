@@ -162,6 +162,10 @@ type SmartBlock interface {
 	IsDeleted() bool
 	IsLocked() bool
 
+	InitComponents(a *app.App) error
+	Components() []domain.EditorComponent
+	AddComponent(c domain.EditorComponent)
+
 	SendEvent(msgs []*pb.EventMessage)
 	ResetToVersion(s *state.State) (err error)
 	EnableLayouts()
@@ -237,6 +241,8 @@ type smartBlock struct {
 	restrictions         restriction.Restrictions
 	isDeleted            bool
 	enableLayouts        bool
+
+	components []domain.EditorComponent
 
 	includeRelationObjectsAsDependents bool // used by some clients
 
@@ -372,6 +378,24 @@ func (sb *smartBlock) Init(ctx *InitContext) (err error) {
 
 	sb.AddHook(sb.sendObjectCloseEvent, HookOnClose, HookOnBlockClose)
 	return
+}
+
+func (sb *smartBlock) InitComponents(a *app.App) error {
+	// TODO return not implemented ?
+	return nil
+}
+
+func (sb *smartBlock) Components() []domain.EditorComponent {
+	return sb.components
+}
+
+func (sb *smartBlock) AddComponent(comp domain.EditorComponent) {
+	for _, c := range sb.Components() {
+		if c.Name() == comp.Name() {
+			return
+		}
+	}
+	sb.components = append(sb.components, comp)
 }
 
 func (sb *smartBlock) sendObjectCloseEvent(_ ApplyInfo) error {

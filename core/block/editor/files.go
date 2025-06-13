@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/anyproto/any-sync/app"
+
 	"github.com/anyproto/anytype-heart/core/block/editor/basic"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
@@ -11,12 +13,14 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/migration"
 	"github.com/anyproto/anytype-heart/core/block/source"
 	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/core/files/fileobject"
 	"github.com/anyproto/anytype-heart/core/files/fileobject/fileblocks"
 	"github.com/anyproto/anytype-heart/core/files/reconciler"
 	"github.com/anyproto/anytype-heart/core/filestorage"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
@@ -33,7 +37,6 @@ func (f *ObjectFactory) newFile(spaceId string, sb smartblock.SmartBlock) *File 
 		SmartBlock:        sb,
 		ChangeReceiver:    sb.(source.ChangeReceiver),
 		AllOperations:     basicComponent,
-		Text:              stext.NewText(sb, store, f.eventSender),
 		fileObjectService: f.fileObjectService,
 		reconciler:        f.fileReconciler,
 		accountService:    f.accountService,
@@ -44,12 +47,23 @@ type File struct {
 	smartblock.SmartBlock
 	source.ChangeReceiver
 	basic.AllOperations
-	stext.Text
 	fileObjectService fileobject.Service
 	reconciler        reconciler.Reconciler
 	accountService    accountService
 }
 
+func (p *File) InitComponents(a *app.App) error {
+	spaceIndex := app.MustComponent[objectstore.ObjectStore](a).SpaceIndex(p.SpaceID())
+	eventSender := app.MustComponent[event.Sender](a)
+	text := stext.NewText(
+		p.SmartBlock,
+		spaceIndex,
+		eventSender,
+	)
+
+	p.AddComponent(text)
+	return nil
+}
 func (f *File) CreationStateMigration(ctx *smartblock.InitContext) migration.Migration {
 	return migration.Migration{
 		Version: 1,

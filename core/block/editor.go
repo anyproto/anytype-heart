@@ -8,10 +8,10 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/basic"
 	"github.com/anyproto/anytype-heart/core/block/editor/bookmark"
 	"github.com/anyproto/anytype-heart/core/block/editor/clipboard"
+	"github.com/anyproto/anytype-heart/core/block/editor/components"
 	"github.com/anyproto/anytype-heart/core/block/editor/file"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
-	"github.com/anyproto/anytype-heart/core/block/editor/stext"
 	"github.com/anyproto/anytype-heart/core/block/editor/table"
 	"github.com/anyproto/anytype-heart/core/block/editor/widget"
 	"github.com/anyproto/anytype-heart/core/block/restriction"
@@ -91,7 +91,7 @@ func (s *Service) SetDivStyle(
 }
 
 func (s *Service) SplitBlock(ctx session.Context, req pb.RpcBlockSplitRequest) (blockId string, err error) {
-	err = cache.Do(s, req.ContextId, func(b stext.Text) error {
+	err = cache.DoComponent(s, req.ContextId, func(sb smartblock.SmartBlock, b components.Text) error {
 		blockId, err = b.Split(ctx, req)
 		return err
 	})
@@ -99,15 +99,16 @@ func (s *Service) SplitBlock(ctx session.Context, req pb.RpcBlockSplitRequest) (
 }
 
 func (s *Service) MergeBlock(ctx session.Context, req pb.RpcBlockMergeRequest) (err error) {
-	return cache.Do(s, req.ContextId, func(b stext.Text) error {
+	err = cache.DoComponent(s, req.ContextId, func(sb smartblock.SmartBlock, b components.Text) error {
 		return b.Merge(ctx, req.FirstBlockId, req.SecondBlockId)
 	})
+	return
 }
 
 func (s *Service) TurnInto(
 	ctx session.Context, contextId string, style model.BlockContentTextStyle, ids ...string,
 ) error {
-	return cache.Do(s, contextId, func(b stext.Text) error {
+	return cache.DoComponent(s, contextId, func(sb smartblock.SmartBlock, b components.Text) error {
 		return b.TurnInto(ctx, style, ids...)
 	})
 }
@@ -177,7 +178,7 @@ func (s *Service) Export(req pb.RpcBlockExportRequest) (path string, err error) 
 }
 
 func (s *Service) SetTextText(ctx session.Context, req pb.RpcBlockTextSetTextRequest) error {
-	return cache.Do(s, req.ContextId, func(b stext.Text) error {
+	return cache.DoComponent(s, req.ContextId, func(sb smartblock.SmartBlock, b components.Text) error {
 		return b.SetText(ctx, req)
 	})
 }
@@ -197,7 +198,7 @@ func (s *Service) SetLatexProcessor(ctx session.Context, req pb.RpcBlockLatexSet
 func (s *Service) SetTextStyle(
 	ctx session.Context, contextId string, style model.BlockContentTextStyle, blockIds ...string,
 ) error {
-	return cache.Do(s, contextId, func(b stext.Text) error {
+	return cache.DoComponent(s, contextId, func(sb smartblock.SmartBlock, b components.Text) error {
 		return b.UpdateTextBlocks(ctx, blockIds, true, func(t text.Block) error {
 			t.SetStyle(style)
 			return nil
@@ -206,7 +207,7 @@ func (s *Service) SetTextStyle(
 }
 
 func (s *Service) SetTextChecked(ctx session.Context, req pb.RpcBlockTextSetCheckedRequest) error {
-	return cache.Do(s, req.ContextId, func(b stext.Text) error {
+	return cache.DoComponent(s, req.ContextId, func(sb smartblock.SmartBlock, b components.Text) error {
 		return b.UpdateTextBlocks(ctx, []string{req.BlockId}, true, func(t text.Block) error {
 			t.SetChecked(req.Checked)
 			return nil
@@ -215,7 +216,7 @@ func (s *Service) SetTextChecked(ctx session.Context, req pb.RpcBlockTextSetChec
 }
 
 func (s *Service) SetTextColor(ctx session.Context, contextId string, color string, blockIds ...string) error {
-	return cache.Do(s, contextId, func(b stext.Text) error {
+	return cache.DoComponent(s, contextId, func(sb smartblock.SmartBlock, b components.Text) error {
 		return b.UpdateTextBlocks(ctx, blockIds, true, func(t text.Block) error {
 			t.SetTextColor(color)
 			return nil
@@ -224,7 +225,7 @@ func (s *Service) SetTextColor(ctx session.Context, contextId string, color stri
 }
 
 func (s *Service) ClearTextStyle(ctx session.Context, contextId string, blockIds ...string) error {
-	return cache.Do(s, contextId, func(b stext.Text) error {
+	return cache.DoComponent(s, contextId, func(sb smartblock.SmartBlock, b components.Text) error {
 		return b.UpdateTextBlocks(ctx, blockIds, true, func(t text.Block) error {
 			t.Model().BackgroundColor = ""
 			t.Model().Align = model.Block_AlignLeft
@@ -254,7 +255,7 @@ func (s *Service) ClearTextStyle(ctx session.Context, contextId string, blockIds
 }
 
 func (s *Service) ClearTextContent(ctx session.Context, contextId string, blockIds ...string) error {
-	return cache.Do(s, contextId, func(b stext.Text) error {
+	return cache.DoComponent(s, contextId, func(sb smartblock.SmartBlock, b components.Text) error {
 		return b.UpdateTextBlocks(ctx, blockIds, true, func(t text.Block) error {
 			t.SetText("", nil)
 			return nil
@@ -265,13 +266,13 @@ func (s *Service) ClearTextContent(ctx session.Context, contextId string, blockI
 func (s *Service) SetTextMark(
 	ctx session.Context, contextId string, mark *model.BlockContentTextMark, blockIds ...string,
 ) error {
-	return cache.Do(s, contextId, func(b stext.Text) error {
+	return cache.DoComponent(s, contextId, func(sb smartblock.SmartBlock, b components.Text) error {
 		return b.SetMark(ctx, mark, blockIds...)
 	})
 }
 
 func (s *Service) SetTextIcon(ctx session.Context, contextId, image, emoji string, blockIds ...string) error {
-	return cache.Do(s, contextId, func(b stext.Text) error {
+	return cache.DoComponent(s, contextId, func(sb smartblock.SmartBlock, b components.Text) error {
 		return b.SetIcon(ctx, image, emoji, blockIds...)
 	})
 }

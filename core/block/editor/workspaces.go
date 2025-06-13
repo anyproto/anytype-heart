@@ -1,6 +1,7 @@
 package editor
 
 import (
+	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/commonspace/object/acl/list"
 
 	"github.com/anyproto/anytype-heart/core/anytype/config"
@@ -12,8 +13,10 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/template"
 	"github.com/anyproto/anytype-heart/core/block/migration"
 	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/metrics"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/spaceindex"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
@@ -28,7 +31,6 @@ type Workspaces struct {
 	basic.AllOperations
 	basic.IHistory
 	dataview.Dataview
-	stext.Text
 
 	spaceService spaceService
 	config       *config.Config
@@ -40,14 +42,9 @@ func (f *ObjectFactory) newWorkspace(sb smartblock.SmartBlock, store spaceindex.
 		SmartBlock:    sb,
 		AllOperations: basic.NewBasic(sb, store, f.layoutConverter, f.fileObjectService),
 		IHistory:      basic.NewHistory(sb),
-		Text: stext.NewText(
-			sb,
-			store,
-			f.eventSender,
-		),
-		Dataview:     dataview.NewDataview(sb, store),
-		spaceService: f.spaceService,
-		config:       f.config,
+		Dataview:      dataview.NewDataview(sb, store),
+		spaceService:  f.spaceService,
+		config:        f.config,
 	}
 	w.migrator = &subObjectsMigration{
 		workspace: w,
@@ -65,6 +62,19 @@ func (w *Workspaces) Init(ctx *smartblock.InitContext) (err error) {
 	w.migrator.migrateSubObjects(ctx.State)
 	w.onWorkspaceChanged(ctx.State)
 	w.AddHook(w.onApply, smartblock.HookAfterApply)
+	return nil
+}
+
+func (p *Workspaces) InitComponents(a *app.App) error {
+	spaceIndex := app.MustComponent[objectstore.ObjectStore](a).SpaceIndex(p.SpaceID())
+	eventSender := app.MustComponent[event.Sender](a)
+	text := stext.NewText(
+		p.SmartBlock,
+		spaceIndex,
+		eventSender,
+	)
+
+	p.AddComponent(text)
 	return nil
 }
 

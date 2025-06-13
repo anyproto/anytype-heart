@@ -6,6 +6,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/anyproto/anytype-heart/core/block/editor/components"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/editor/template"
@@ -25,21 +26,11 @@ import (
 
 var setTextApplyInterval = time.Second * 3
 
-type Text interface {
-	UpdateTextBlocks(ctx session.Context, ids []string, showEvent bool, apply func(t text.Block) error) error
-	Split(ctx session.Context, req pb.RpcBlockSplitRequest) (newId string, err error)
-	Merge(ctx session.Context, firstId, secondId string) (err error)
-	SetMark(ctx session.Context, mark *model.BlockContentTextMark, blockIds ...string) error
-	SetIcon(ctx session.Context, image, emoji string, blockIds ...string) error
-	SetText(ctx session.Context, req pb.RpcBlockTextSetTextRequest) (err error)
-	TurnInto(ctx session.Context, style model.BlockContentTextStyle, ids ...string) error
-}
-
 func NewText(
 	sb smartblock.SmartBlock,
 	objectStore spaceindex.Store,
 	eventSender event.Sender,
-) Text {
+) components.Text {
 	t := &textImpl{
 		SmartBlock:     sb,
 		objectStore:    objectStore,
@@ -61,6 +52,10 @@ type textImpl struct {
 	lastSetTextId    string
 	lastSetTextState *state.State
 	setTextFlushed   chan struct{}
+}
+
+func (t *textImpl) Name() string {
+	return "text"
 }
 
 func (t *textImpl) UpdateTextBlocks(ctx session.Context, ids []string, showEvent bool, apply func(t text.Block) error) error {

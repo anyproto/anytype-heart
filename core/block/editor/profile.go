@@ -1,6 +1,7 @@
 package editor
 
 import (
+	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/anytype-heart/core/block/editor/basic"
 	"github.com/anyproto/anytype-heart/core/block/editor/bookmark"
 	"github.com/anyproto/anytype-heart/core/block/editor/clipboard"
@@ -18,6 +19,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
@@ -26,7 +28,6 @@ type Profile struct {
 	basic.AllOperations
 	basic.IHistory
 	file.File
-	stext.Text
 	clipboard.Clipboard
 	bookmark.Bookmark
 	table.TableEditor
@@ -42,12 +43,7 @@ func (f *ObjectFactory) newProfile(spaceId string, sb smartblock.SmartBlock) *Pr
 		SmartBlock:    sb,
 		AllOperations: basic.NewBasic(sb, store, f.layoutConverter, f.fileObjectService),
 		IHistory:      basic.NewHistory(sb),
-		Text: stext.NewText(
-			sb,
-			store,
-			f.eventSender,
-		),
-		File: fileComponent,
+		File:          fileComponent,
 		Clipboard: clipboard.NewClipboard(
 			sb,
 			fileComponent,
@@ -61,6 +57,19 @@ func (f *ObjectFactory) newProfile(spaceId string, sb smartblock.SmartBlock) *Pr
 		eventSender:       f.eventSender,
 		fileObjectService: f.fileObjectService,
 	}
+}
+
+func (p *Profile) InitComponents(a *app.App) error {
+	spaceIndex := app.MustComponent[objectstore.ObjectStore](a).SpaceIndex(p.SpaceID())
+	eventSender := app.MustComponent[event.Sender](a)
+	text := stext.NewText(
+		p.SmartBlock,
+		spaceIndex,
+		eventSender,
+	)
+
+	p.AddComponent(text)
+	return nil
 }
 
 func (p *Profile) Init(ctx *smartblock.InitContext) (err error) {

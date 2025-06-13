@@ -4,6 +4,7 @@ import (
 	"context"
 	"slices"
 
+	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/anytype-heart/core/block/editor/basic"
 	"github.com/anyproto/anytype-heart/core/block/editor/clipboard"
 	"github.com/anyproto/anytype-heart/core/block/editor/dataview"
@@ -16,10 +17,12 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/migration"
 	"github.com/anyproto/anytype-heart/core/block/source"
 	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/core/relationutils"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/spaceindex"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
@@ -41,7 +44,6 @@ type ObjectType struct {
 	smartblock.SmartBlock
 	basic.AllOperations
 	basic.IHistory
-	stext.Text
 	clipboard.Clipboard
 	source.ChangeReceiver
 	dataview.Dataview
@@ -57,11 +59,6 @@ func (f *ObjectFactory) newObjectType(spaceId string, sb smartblock.SmartBlock) 
 		ChangeReceiver: sb.(source.ChangeReceiver),
 		AllOperations:  basic.NewBasic(sb, store, f.layoutConverter, f.fileObjectService),
 		IHistory:       basic.NewHistory(sb),
-		Text: stext.NewText(
-			sb,
-			store,
-			f.eventSender,
-		),
 		Clipboard: clipboard.NewClipboard(
 			sb,
 			fileComponent,
@@ -74,6 +71,19 @@ func (f *ObjectFactory) newObjectType(spaceId string, sb smartblock.SmartBlock) 
 
 		spaceIndex: store,
 	}
+}
+
+func (p *ObjectType) InitComponents(a *app.App) error {
+	spaceIndex := app.MustComponent[objectstore.ObjectStore](a).SpaceIndex(p.SpaceID())
+	eventSender := app.MustComponent[event.Sender](a)
+	text := stext.NewText(
+		p.SmartBlock,
+		spaceIndex,
+		eventSender,
+	)
+
+	p.AddComponent(text)
+	return nil
 }
 
 func (ot *ObjectType) Init(ctx *smartblock.InitContext) (err error) {

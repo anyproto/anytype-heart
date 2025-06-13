@@ -1,6 +1,7 @@
 package editor
 
 import (
+	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/anytype-heart/core/block/editor/basic"
 	"github.com/anyproto/anytype-heart/core/block/editor/bookmark"
 	"github.com/anyproto/anytype-heart/core/block/editor/clipboard"
@@ -14,6 +15,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/migration"
 	"github.com/anyproto/anytype-heart/core/block/source"
 	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/core/files/fileobject"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
@@ -60,7 +62,6 @@ type Page struct {
 	basic.AllOperations
 	basic.IHistory
 	file.File
-	stext.Text
 	clipboard.Clipboard
 	bookmark.Bookmark
 	source.ChangeReceiver
@@ -81,12 +82,7 @@ func (f *ObjectFactory) newPage(spaceId string, sb smartblock.SmartBlock) *Page 
 		ChangeReceiver: sb.(source.ChangeReceiver),
 		AllOperations:  basic.NewBasic(sb, store, f.layoutConverter, f.fileObjectService),
 		IHistory:       basic.NewHistory(sb),
-		Text: stext.NewText(
-			sb,
-			store,
-			f.eventSender,
-		),
-		File: fileComponent,
+		File:           fileComponent,
 		Clipboard: clipboard.NewClipboard(
 			sb,
 			fileComponent,
@@ -102,6 +98,18 @@ func (f *ObjectFactory) newPage(spaceId string, sb smartblock.SmartBlock) *Page 
 		fileObjectService: f.fileObjectService,
 		objectDeleter:     f.objectDeleter,
 	}
+}
+
+func (p *Page) InitComponents(a *app.App) error {
+	eventSender := app.MustComponent[event.Sender](a)
+	text := stext.NewText(
+		p.SmartBlock,
+		p.objectStore,
+		eventSender,
+	)
+
+	p.AddComponent(text)
+	return nil
 }
 
 func (p *Page) Init(ctx *smartblock.InitContext) (err error) {
