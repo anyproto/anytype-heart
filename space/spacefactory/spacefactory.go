@@ -28,7 +28,7 @@ type SpaceFactory interface {
 	app.Component
 	CreatePersonalSpace(ctx context.Context, metadata []byte) (sp spacecontroller.SpaceController, err error)
 	NewPersonalSpace(ctx context.Context, metadata []byte) (spacecontroller.SpaceController, error)
-	CreateShareableSpace(ctx context.Context, id string) (sp spacecontroller.SpaceController, err error)
+	CreateShareableSpace(ctx context.Context, id string, desc *spaceinfo.SpaceDescription) (sp spacecontroller.SpaceController, err error)
 	NewShareableSpace(ctx context.Context, id string, info spaceinfo.SpacePersistentInfo) (spacecontroller.SpaceController, error)
 	CreateStreamableSpace(ctx context.Context, privKey crypto.PrivKey, id string, metadata []byte) (spacecontroller.SpaceController, error)
 	NewStreamableSpace(ctx context.Context, id string, info spaceinfo.SpacePersistentInfo, metadata []byte) (spacecontroller.SpaceController, error)
@@ -83,7 +83,7 @@ func (s *spaceFactory) CreatePersonalSpace(ctx context.Context, metadata []byte)
 	}
 	info := spaceinfo.NewSpacePersistentInfo(coreSpace.Id())
 	info.SetAccountStatus(spaceinfo.AccountStatusUnknown)
-	if err := s.techSpace.SpaceViewCreate(ctx, coreSpace.Id(), true, info); err != nil {
+	if err := s.techSpace.SpaceViewCreate(ctx, coreSpace.Id(), true, info, nil); err != nil {
 		if errors.Is(err, techspace.ErrSpaceViewExists) {
 			return s.NewPersonalSpace(ctx, metadata)
 		}
@@ -197,7 +197,7 @@ func (s *spaceFactory) CreateInvitingSpace(ctx context.Context, id, aclHeadId st
 	info := spaceinfo.NewSpacePersistentInfo(id)
 	info.SetAclHeadId(aclHeadId).SetAccountStatus(spaceinfo.AccountStatusJoining)
 	if !exists {
-		if err := s.techSpace.SpaceViewCreate(ctx, id, true, info); err != nil {
+		if err := s.techSpace.SpaceViewCreate(ctx, id, true, info, nil); err != nil {
 			return nil, err
 		}
 	}
@@ -217,7 +217,7 @@ func (s *spaceFactory) CreateActiveSpace(ctx context.Context, id, aclHeadId stri
 	info := spaceinfo.NewSpacePersistentInfo(id)
 	info.SetAclHeadId(aclHeadId).SetAccountStatus(spaceinfo.AccountStatusActive)
 	if !exists {
-		if err := s.techSpace.SpaceViewCreate(ctx, id, true, info); err != nil {
+		if err := s.techSpace.SpaceViewCreate(ctx, id, true, info, nil); err != nil {
 			return nil, err
 		}
 	}
@@ -229,7 +229,7 @@ func (s *spaceFactory) CreateActiveSpace(ctx context.Context, id, aclHeadId stri
 	return ctrl, err
 }
 
-func (s *spaceFactory) CreateShareableSpace(ctx context.Context, id string) (sp spacecontroller.SpaceController, err error) {
+func (s *spaceFactory) CreateShareableSpace(ctx context.Context, id string, spaceDesc *spaceinfo.SpaceDescription) (sp spacecontroller.SpaceController, err error) {
 	coreSpace, err := s.spaceCore.Get(ctx, id)
 	if err != nil {
 		return
@@ -240,7 +240,7 @@ func (s *spaceFactory) CreateShareableSpace(ctx context.Context, id string) (sp 
 	}
 	info := spaceinfo.NewSpacePersistentInfo(id)
 	info.SetAccountStatus(spaceinfo.AccountStatusUnknown)
-	if err := s.techSpace.SpaceViewCreate(ctx, id, true, info); err != nil {
+	if err := s.techSpace.SpaceViewCreate(ctx, id, true, info, spaceDesc); err != nil {
 		return nil, err
 	}
 	ctrl, err := shareablespace.NewSpaceController(id, info, s.app)
@@ -259,7 +259,7 @@ func (s *spaceFactory) CreateStreamableSpace(ctx context.Context, privKey crypto
 	info := spaceinfo.NewSpacePersistentInfo(id)
 	info.SetAccountStatus(spaceinfo.AccountStatusUnknown).
 		SetEncodedKey(encodedKey)
-	if err := s.techSpace.SpaceViewCreate(ctx, id, false, info); err != nil {
+	if err := s.techSpace.SpaceViewCreate(ctx, id, false, info, nil); err != nil {
 		return nil, err
 	}
 	return s.NewStreamableSpace(ctx, id, info, metadata)
