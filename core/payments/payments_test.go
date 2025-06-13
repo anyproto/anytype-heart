@@ -1708,6 +1708,9 @@ func TestCodeGetInfo(t *testing.T) {
 				Tier: expectedTier,
 			}, nil)
 
+		// mock GetAccountEthAddress
+		fx.wallet.EXPECT().GetAccountEthAddress().Return(common.HexToAddress("0x55DCad916750C19C4Ec69D65Ff0317767B36cE90")).Once()
+
 		// When
 		resp, err := fx.CodeGetInfo(context.Background(), &pb.RpcMembershipCodeGetInfoRequest{
 			Code: code,
@@ -1733,6 +1736,8 @@ func TestCodeGetInfo(t *testing.T) {
 			Return(&psp.CodeGetInfoResponse{
 				Tier: 0,
 			}, psp.ErrCodeNotFound)
+
+		fx.wallet.EXPECT().GetAccountEthAddress().Return(common.HexToAddress("0x55DCad916750C19C4Ec69D65Ff0317767B36cE90")).Once()
 
 		// When
 		resp, err := fx.CodeGetInfo(context.Background(), &pb.RpcMembershipCodeGetInfoRequest{
