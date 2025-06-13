@@ -6,6 +6,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/anytype-heart/core/block/editor/components"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
@@ -17,6 +18,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pb"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/spaceindex"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -28,16 +30,15 @@ var setTextApplyInterval = time.Second * 3
 
 func NewText(
 	sb smartblock.SmartBlock,
-	objectStore spaceindex.Store,
-	eventSender event.Sender,
+	a *app.App,
 ) components.Text {
 	t := &textImpl{
 		SmartBlock:     sb,
-		objectStore:    objectStore,
 		setTextFlushed: make(chan struct{}),
-		eventSender:    eventSender,
 	}
 
+	t.objectStore = app.MustComponent[objectstore.ObjectStore](a).SpaceIndex(t.SpaceID())
+	t.eventSender = app.MustComponent[event.Sender](a)
 	t.AddHook(t.flushSetTextState, smartblock.HookOnNewState, smartblock.HookOnClose, smartblock.HookOnBlockClose)
 	return t
 }

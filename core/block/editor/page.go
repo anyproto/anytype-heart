@@ -2,6 +2,7 @@ package editor
 
 import (
 	"github.com/anyproto/any-sync/app"
+
 	"github.com/anyproto/anytype-heart/core/block/editor/basic"
 	"github.com/anyproto/anytype-heart/core/block/editor/bookmark"
 	"github.com/anyproto/anytype-heart/core/block/editor/clipboard"
@@ -15,7 +16,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/migration"
 	"github.com/anyproto/anytype-heart/core/block/source"
 	"github.com/anyproto/anytype-heart/core/domain"
-	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/core/files/fileobject"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
@@ -101,11 +101,9 @@ func (f *ObjectFactory) newPage(spaceId string, sb smartblock.SmartBlock) *Page 
 }
 
 func (p *Page) InitComponents(a *app.App) error {
-	eventSender := app.MustComponent[event.Sender](a)
 	text := stext.NewText(
 		p.SmartBlock,
-		p.objectStore,
-		eventSender,
+		a,
 	)
 
 	p.AddComponent(text)

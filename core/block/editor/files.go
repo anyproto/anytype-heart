@@ -13,14 +13,12 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/migration"
 	"github.com/anyproto/anytype-heart/core/block/source"
 	"github.com/anyproto/anytype-heart/core/domain"
-	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/core/files/fileobject"
 	"github.com/anyproto/anytype-heart/core/files/fileobject/fileblocks"
 	"github.com/anyproto/anytype-heart/core/files/reconciler"
 	"github.com/anyproto/anytype-heart/core/filestorage"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
@@ -53,17 +51,15 @@ type File struct {
 }
 
 func (p *File) InitComponents(a *app.App) error {
-	spaceIndex := app.MustComponent[objectstore.ObjectStore](a).SpaceIndex(p.SpaceID())
-	eventSender := app.MustComponent[event.Sender](a)
 	text := stext.NewText(
 		p.SmartBlock,
-		spaceIndex,
-		eventSender,
+		a,
 	)
 
 	p.AddComponent(text)
 	return nil
 }
+
 func (f *File) CreationStateMigration(ctx *smartblock.InitContext) migration.Migration {
 	return migration.Migration{
 		Version: 1,

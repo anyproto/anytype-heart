@@ -5,6 +5,7 @@ import (
 	"slices"
 
 	"github.com/anyproto/any-sync/app"
+
 	"github.com/anyproto/anytype-heart/core/block/editor/basic"
 	"github.com/anyproto/anytype-heart/core/block/editor/clipboard"
 	"github.com/anyproto/anytype-heart/core/block/editor/dataview"
@@ -17,12 +18,10 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/migration"
 	"github.com/anyproto/anytype-heart/core/block/source"
 	"github.com/anyproto/anytype-heart/core/domain"
-	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/core/relationutils"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/spaceindex"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
@@ -74,12 +73,9 @@ func (f *ObjectFactory) newObjectType(spaceId string, sb smartblock.SmartBlock) 
 }
 
 func (p *ObjectType) InitComponents(a *app.App) error {
-	spaceIndex := app.MustComponent[objectstore.ObjectStore](a).SpaceIndex(p.SpaceID())
-	eventSender := app.MustComponent[event.Sender](a)
 	text := stext.NewText(
 		p.SmartBlock,
-		spaceIndex,
-		eventSender,
+		a,
 	)
 
 	p.AddComponent(text)

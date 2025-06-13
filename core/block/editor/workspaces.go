@@ -13,10 +13,8 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/template"
 	"github.com/anyproto/anytype-heart/core/block/migration"
 	"github.com/anyproto/anytype-heart/core/domain"
-	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/metrics"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/spaceindex"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
@@ -66,12 +64,9 @@ func (w *Workspaces) Init(ctx *smartblock.InitContext) (err error) {
 }
 
 func (p *Workspaces) InitComponents(a *app.App) error {
-	spaceIndex := app.MustComponent[objectstore.ObjectStore](a).SpaceIndex(p.SpaceID())
-	eventSender := app.MustComponent[event.Sender](a)
 	text := stext.NewText(
 		p.SmartBlock,
-		spaceIndex,
-		eventSender,
+		a,
 	)
 
 	p.AddComponent(text)
