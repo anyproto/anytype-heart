@@ -202,3 +202,11 @@ func (s *invalidStore) WriteTx(ctx context.Context) (anystore.WriteTx, error) {
 func (s *invalidStore) SubscribeForAll(callback func(rec database.Record)) {
 
 }
+
+func (s *invalidStore) AddFileKeys(fileKeys ...domain.FileEncryptionKeys) error {
+	return s.err
+}
+
+func (s *invalidStore) GetFileKeys(fileId domain.FileId) (map[string]string, error) {
+	return nil, s.err
+}

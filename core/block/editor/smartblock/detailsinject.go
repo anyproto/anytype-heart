@@ -137,7 +137,7 @@ func (sb *smartBlock) injectDerivedDetails(s *state.State, spaceID string, sbt s
 	}
 
 	if info := s.GetFileInfo(); info.FileId != "" {
-		err := sb.fileStore.AddFileKeys(domain.FileEncryptionKeys{
+		err := sb.objectStore.AddFileKeys(domain.FileEncryptionKeys{
 			FileId:         info.FileId,
 			EncryptionKeys: info.EncryptionKeys,
 		})

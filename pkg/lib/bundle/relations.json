@@ -1460,6 +1460,78 @@
     "source": "derived"
   },
   {
+    "format": "shorttext",
+    "hidden": true,
+    "key": "fileVariantIds",
+    "maxCount": 0,
+    "name": "Underlying file id",
+    "readonly": true,
+    "source": "details"
+  },
+  {
+    "format": "shorttext",
+    "hidden": true,
+    "key": "fileVariantPaths",
+    "maxCount": 0,
+    "name": "Underlying file id",
+    "readonly": true,
+    "source": "details"
+  },
+  {
+    "format": "shorttext",
+    "hidden": true,
+    "key": "fileVariantKeys",
+    "maxCount": 0,
+    "name": "Underlying file id",
+    "readonly": true,
+    "source": "details"
+  },
+  {
+    "format": "number",
+    "hidden": true,
+    "key": "fileVariantWidths",
+    "maxCount": 0,
+    "name": "Underlying file id",
+    "readonly": true,
+    "source": "details"
+  },
+  {
+    "format": "shorttext",
+    "hidden": true,
+    "key": "fileVariantChecksums",
+    "maxCount": 0,
+    "name": "Underlying file id",
+    "readonly": true,
+    "source": "details"
+  },
+  {
+    "format": "shorttext",
+    "hidden": true,
+    "key": "fileVariantMills",
+    "maxCount": 0,
+    "name": "Underlying file id",
+    "readonly": true,
+    "source": "details"
+  },
+  {
+    "format": "shorttext",
+    "hidden": true,
+    "key": "fileVariantOptions",
+    "maxCount": 0,
+    "name": "Underlying file id",
+    "readonly": true,
+    "source": "details"
+  },
+  {
+    "format": "shorttext",
+    "hidden": true,
+    "key": "fileSourceChecksum",
+    "maxCount": 1,
+    "name": "Underlying file id",
+    "readonly": true,
+    "source": "details"
+  },
+  {
     "description": "Space order",
     "format": "longtext",
     "hidden": true,
