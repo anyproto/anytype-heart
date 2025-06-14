@@ -1,6 +1,8 @@
-# YAML Front Matter Implementation Summary
+# Markdown Import Implementation Summary
 
-## Overview
+## Part 1: YAML Front Matter Support
+
+### Overview
 We've implemented YAML front matter support for markdown import that parses metadata at the beginning of markdown files and converts it to Anytype object properties.
 
 ## Key Features
@@ -104,3 +106,111 @@ Result:
 - Plugs into existing markdown import pipeline
 - Reuses existing relation creation logic
 - Compatible with existing object type system
+
+## Part 2: JSON Schema Support
+
+### Overview
+This implementation adds JSON schema support to the Markdown import workflow. When exporting objects with rich properties from Anytype and importing them back, the system now maintains the exact same structure using JSON schemas.
+
+### Key Components
+
+#### 1. Schema Parser (`schema.go`)
+- **SchemaImporter**: Main struct that handles schema loading and parsing
+- **SchemaInfo**: Stores parsed type information from JSON schemas
+- **RelationInfo**: Stores relation metadata including format, options, and examples
+
+#### 2. Enhanced Import Process (`import.go`)
+- Integrated schema loading into the import workflow
+- Falls back to YAML-based creation when no schemas are present
+- Uses schema-defined types and relations when available
+
+#### 3. Key Features Implemented
+
+##### x-key Support
+- All properties in exported schemas include `x-key` with the original RelationKey
+- Import process uses `x-key` to match existing types/relations and avoid duplicates
+
+##### Relation Option Creation
+- **Status Relations**: Enum values are converted to relation option snapshots
+- **Tag Relations**: Example values are converted to relation option snapshots
+- Each option is created as a separate SmartBlock of type RelationOption
+
+##### Type Creation
+- Types are created with all properties from the schema
+- Featured relations are marked using `x-featured` flag
+- Properties are ordered using `x-order` attribute
+
+### Schema Structure Example
+```json
+{
+  "properties": {
+    "Status": {
+      "type": "string",
+      "enum": ["Draft", "Published", "Archived"],
+      "x-key": "custom_status_key",
+      "x-featured": true,
+      "x-order": 3
+    },
+    "Tags": {
+      "type": "array",
+      "items": {"type": "string"},
+      "examples": ["urgent", "important"],
+      "x-key": "custom_tags_key",
+      "x-order": 4
+    }
+  }
+}
+```
+
+### Methods Added
+
+#### SchemaImporter Methods
+- `LoadSchemas()`: Loads all JSON schema files from schemas/ folder
+- `parseSchema()`: Parses individual schema file
+- `parseRelationFromProperty()`: Extracts relation info from schema property
+- `CreateRelationSnapshots()`: Creates snapshots for all discovered relations
+- `CreateRelationOptionSnapshots()`: Creates option snapshots for status/tag relations
+- `CreateTypeSnapshots()`: Creates type snapshots with all properties
+- `GetTypeKeyByName()`: Returns type key for a given type name
+- `GetRelationKeyByName()`: Returns relation key for a given property name
+
+### Testing
+
+#### Comprehensive Test Coverage
+- `schema_test.go`: Basic schema parsing and snapshot creation
+- `schema_comprehensive_test.go`: Tests all possible property types
+- `schema_integration_test.go`: Integration tests with custom relations
+
+#### Test Results
+- ✅ Schema loading and parsing
+- ✅ Relation format detection (all types)
+- ✅ Status relation option creation
+- ✅ Tag relation example creation
+- ✅ Type snapshot creation with all properties
+- ✅ Round-trip export/import compatibility
+
+### Important Notes
+
+#### Bundled Relations
+- Bundled relations (like `email`, `status`, `type`) are skipped during import
+- Only custom relations create new snapshots
+- The system checks each relation key against the bundle to avoid duplicates
+
+#### Relation Options
+- Status options are created from `enum` values in the schema
+- Tag examples are created from `examples` array in the schema
+- Each option/example becomes a separate RelationOption snapshot
+
+#### Import Workflow
+1. Load schemas from `schemas/` folder if present
+2. Parse each schema to extract types and relations
+3. Create relation snapshots for non-bundled relations
+4. Create relation option snapshots for status/tag relations
+5. Create type snapshots with all properties
+6. Use schema-defined keys when importing objects
+
+### Future Enhancements
+- Support for relation constraints (min/max values, patterns)
+- Import of relation colors and icons from schema
+- Support for nested object schemas
+- Validation of imported data against schemas

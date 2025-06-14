@@ -31,8 +31,9 @@ var (
 const numberOfStages = 9 // 8 cycles to get snapshots and 1 cycle to create objects
 
 type Markdown struct {
-	blockConverter *mdConverter
-	service        *collection.Service
+	blockConverter  *mdConverter
+	service         *collection.Service
+	schemaImporter  *SchemaImporter
 }
 
 const (
@@ -43,7 +44,11 @@ const (
 )
 
 func New(tempDirProvider core.TempDirProvider, service *collection.Service) common.Converter {
-	return &Markdown{blockConverter: newMDConverter(tempDirProvider), service: service}
+	return &Markdown{
+		blockConverter:  newMDConverter(tempDirProvider),
+		service:         service,
+		schemaImporter:  NewSchemaImporter(),
+	}
 }
 
 func (m *Markdown) Name() string {
@@ -134,6 +139,12 @@ func (m *Markdown) getSnapshotsAndRootObjectsIds(
 		return nil, nil
 	}
 	defer importSource.Close()
+	
+	// Load schemas if available
+	if err := m.schemaImporter.LoadSchemas(importSource, allErrors); err != nil {
+		log.Warnf("failed to load schemas: %v", err)
+	}
+	
 	files := m.blockConverter.markdownToBlocks(path, importSource, allErrors)
 	pathsCount := len(req.GetMarkdownParams().Path)
 	if allErrors.ShouldAbortImport(pathsCount, req.Type) {
@@ -412,6 +423,9 @@ func (m *Markdown) createSnapshots(
 	objectTypeSnapshots := make([]*common.Snapshot, 0)
 	progress.SetProgressMessage("Start creating snapshots")
 
+	// Check if we have schemas loaded
+	hasSchemas := m.schemaImporter.HasSchemas()
+
 	// First pass: collect all YAML properties to create relation snapshots
 	yamlRelations := make(map[string]*yamlProperty) // property name -> property
 	objectTypes := make(map[string][]string)        // Track unique object type names
@@ -421,6 +435,15 @@ func (m *Markdown) createSnapshots(
 		if file.YAMLProperties != nil {
 			for i := range file.YAMLProperties {
 				prop := &file.YAMLProperties[i]
+				
+				// If we have schemas, try to find the relation by name
+				if hasSchemas {
+					if schemaKey := m.schemaImporter.GetRelationKeyByName(prop.name); schemaKey != "" {
+						// Use the schema-defined key
+						prop.key = schemaKey
+					}
+				}
+				
 				// Use existing relation if already seen
 				if _, exists := yamlRelations[prop.name]; !exists {
 					yamlRelations[prop.name] = prop
@@ -435,57 +458,82 @@ func (m *Markdown) createSnapshots(
 		}
 	}
 
-	// Create relation snapshots for YAML properties
-	for propName, prop := range yamlRelations {
-		// Generate BSON ID for the relation key
-		relationDetails := getRelationDetails(propName, prop.key, float64(prop.format), prop.includeTime)
+	// Variable to hold objectTypeKeys
+	var objectTypeKeys map[string]string
 
+	// If we have schemas, use them to create relations and types
+	if hasSchemas {
+		// Create relation snapshots from schemas
+		relationsSnapshots = append(relationsSnapshots, m.schemaImporter.CreateRelationSnapshots()...)
+		
+		// Create relation option snapshots from schemas
+		relationsSnapshots = append(relationsSnapshots, m.schemaImporter.CreateRelationOptionSnapshots()...)
+		
+		// Create type snapshots from schemas
+		objectTypeSnapshots = append(objectTypeSnapshots, m.schemaImporter.CreateTypeSnapshots()...)
+		
+		// Map type names to keys for later use
+		objectTypeKeys = make(map[string]string)
+		for typeName := range objectTypes {
+			if typeKey := m.schemaImporter.GetTypeKeyByName(typeName); typeKey != "" {
+				objectTypeKeys[typeName] = typeKey
+			}
+		}
+	} else {
+		// Fallback to original YAML-based creation
+		// Create relation snapshots for YAML properties
+		for propName, prop := range yamlRelations {
+			// Generate BSON ID for the relation key
+			relationDetails := getRelationDetails(propName, prop.key, float64(prop.format), prop.includeTime)
+
+			relationsSnapshots = append(relationsSnapshots, &common.Snapshot{
+				Id: propIdPrefix + prop.key,
+				Snapshot: &common.SnapshotModel{
+					SbType: smartblock.SmartBlockTypeRelation,
+					Data: &common.StateSnapshot{
+						Details:       relationDetails,
+						RelationLinks: bundledRelationLinks(relationDetails),
+						ObjectTypes:   []string{bundle.TypeKeyRelation.String()},
+						Key:           prop.key,
+					},
+				},
+			})
+		}
+
+		typeRelation := bundle.MustGetRelation(bundle.RelationKeyType)
 		relationsSnapshots = append(relationsSnapshots, &common.Snapshot{
-			Id: propIdPrefix + prop.key,
+			Id: propIdPrefix + bundle.TypeKeyObjectType.String(),
 			Snapshot: &common.SnapshotModel{
 				SbType: smartblock.SmartBlockTypeRelation,
 				Data: &common.StateSnapshot{
-					Details:       relationDetails,
-					RelationLinks: bundledRelationLinks(relationDetails),
-					ObjectTypes:   []string{bundle.TypeKeyRelation.String()},
-					Key:           prop.key,
+					Details:     getRelationDetails(typeRelation.Name, typeRelation.Key, float64(typeRelation.Format), false),
+					ObjectTypes: []string{bundle.TypeKeyRelation.String()},
+					Key:         bundle.TypeKeyObjectType.String(),
 				},
 			},
 		})
-	}
-
-	typeRelation := bundle.MustGetRelation(bundle.RelationKeyType)
-	relationsSnapshots = append(relationsSnapshots, &common.Snapshot{
-		Id: propIdPrefix + bundle.TypeKeyObjectType.String(),
-		Snapshot: &common.SnapshotModel{
-			SbType: smartblock.SmartBlockTypeRelation,
-			Data: &common.StateSnapshot{
-				Details:     getRelationDetails(typeRelation.Name, typeRelation.Key, float64(typeRelation.Format), false),
-				ObjectTypes: []string{bundle.TypeKeyRelation.String()},
-				Key:         bundle.TypeKeyObjectType.String(),
-			},
-		},
-	})
-	// Create object type snapshots for YAML type values
-	objectTypeKeys := make(map[string]string) // name -> key mapping
-	for typeName := range objectTypes {
-		typeKey := bson.NewObjectId().Hex()
-		// Create object type snapshot
-		props := append([]string{bundle.TypeKeyObjectType.String()}, objectTypes[typeName]...)
-		objectTypeDetails := getObjectTypeDetails(typeName, typeKey, props)
-		objectTypeSnapshots = append(objectTypeSnapshots, &common.Snapshot{
-			Id: typeIdPrefix + typeKey,
-			Snapshot: &common.SnapshotModel{
-				SbType: smartblock.SmartBlockTypeObjectType,
-				Data: &common.StateSnapshot{
-					Details:       objectTypeDetails,
-					RelationLinks: bundledRelationLinks(objectTypeDetails),
-					ObjectTypes:   []string{bundle.TypeKeyObjectType.String()},
-					Key:           typeKey,
+		
+		// Create object type snapshots for YAML type values
+		objectTypeKeys = make(map[string]string) // name -> key mapping
+		for typeName := range objectTypes {
+			typeKey := bson.NewObjectId().Hex()
+			// Create object type snapshot
+			props := append([]string{bundle.TypeKeyObjectType.String()}, objectTypes[typeName]...)
+			objectTypeDetails := getObjectTypeDetails(typeName, typeKey, props)
+			objectTypeSnapshots = append(objectTypeSnapshots, &common.Snapshot{
+				Id: typeIdPrefix + typeKey,
+				Snapshot: &common.SnapshotModel{
+					SbType: smartblock.SmartBlockTypeObjectType,
+					Data: &common.StateSnapshot{
+						Details:       objectTypeDetails,
+						RelationLinks: bundledRelationLinks(objectTypeDetails),
+						ObjectTypes:   []string{bundle.TypeKeyObjectType.String()},
+						Key:           typeKey,
+					},
 				},
-			},
-		})
-		objectTypeKeys[typeName] = typeKey
+			})
+			objectTypeKeys[typeName] = typeKey
+		}
 	}
 
 	// Second pass: create object snapshots
