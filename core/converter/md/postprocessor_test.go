@@ -9,6 +9,7 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
+	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
 // mockWriter for testing
@@ -94,41 +95,45 @@ func TestPostProcessor_GenerateAllSchemas(t *testing.T) {
 		bundle.RelationKeyId:             domain.String(typeRelationId),
 		bundle.RelationKeyRelationKey:    domain.String("type"),
 		bundle.RelationKeyName:           domain.String("Type"),
+		bundle.RelationKeyRelationFormat: domain.Int64(int64(model.RelationFormat_object)),
 	})
 	resolver.keyMapping["type"] = typeRelationId
-
-	// Add Task type
-	taskTypeId := "type-task"
-	resolver.types[taskTypeId] = domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
-		bundle.RelationKeyId:   domain.String(taskTypeId),
-		bundle.RelationKeyName: domain.String("Task"),
-		bundle.RelationKeyRecommendedFeaturedRelations: domain.StringList([]string{"rel-name"}),
-	})
-
-	// Add Page type
-	pageTypeId := "type-page"
-	resolver.types[pageTypeId] = domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
-		bundle.RelationKeyId:   domain.String(pageTypeId),
-		bundle.RelationKeyName: domain.String("Page"),
-		bundle.RelationKeyRecommendedRelations: domain.StringList([]string{"rel-desc"}),
-	})
 
 	// Add Name relation
 	nameRelationId := "rel-name"
 	resolver.relations[nameRelationId] = domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
 		bundle.RelationKeyId:               domain.String(nameRelationId),
-		bundle.RelationKeyRelationKey:      domain.String("name"),
+		bundle.RelationKeyRelationKey:      domain.String("custom_name"),
 		bundle.RelationKeyName:             domain.String("Name"),
-		bundle.RelationKeyRelationFormat:   domain.Int64(int64(1)), // shorttext
+		bundle.RelationKeyRelationFormat:   domain.Int64(int64(model.RelationFormat_shorttext)),
 	})
 
 	// Add Description relation
 	descRelationId := "rel-desc"
 	resolver.relations[descRelationId] = domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
 		bundle.RelationKeyId:               domain.String(descRelationId),
-		bundle.RelationKeyRelationKey:      domain.String("description"),
+		bundle.RelationKeyRelationKey:      domain.String("custom_description"),
 		bundle.RelationKeyName:             domain.String("Description"),
-		bundle.RelationKeyRelationFormat:   domain.Int64(int64(2)), // longtext
+		bundle.RelationKeyRelationFormat:   domain.Int64(int64(model.RelationFormat_longtext)),
+	})
+
+	// Add Task type (including Type relation in featured)
+	taskTypeId := "type-task"
+	resolver.types[taskTypeId] = domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+		bundle.RelationKeyId:   domain.String(taskTypeId),
+		bundle.RelationKeyName: domain.String("Task"),
+		bundle.RelationKeyUniqueKey: domain.String("ot-task"), // Add unique key for type key extraction
+		bundle.RelationKeyRecommendedFeaturedRelations: domain.StringList([]string{nameRelationId}),
+	})
+
+	// Add Page type (including Type relation in featured)
+	pageTypeId := "type-page"
+	resolver.types[pageTypeId] = domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+		bundle.RelationKeyId:   domain.String(pageTypeId),
+		bundle.RelationKeyName: domain.String("Page"),
+		bundle.RelationKeyUniqueKey: domain.String("ot-page"), // Add unique key for type key extraction
+		bundle.RelationKeyRecommendedFeaturedRelations: domain.StringList([]string{}),
+		bundle.RelationKeyRecommendedRelations: domain.StringList([]string{descRelationId}),
 	})
 
 	// Create test documents with different types

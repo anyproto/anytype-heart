@@ -407,8 +407,8 @@ func SchemaFromObjectDetails(typeDetails *domain.Details, relationDetailsList []
 			continue
 		}
 
-		// Skip bundled relations
-		if rel.IsBundled() && rel.Key != bundle.RelationKeyType.String() {
+		// Skip bundled relations (including Type which is handled specially)
+		if rel.IsBundled() {
 			continue
 		}
 

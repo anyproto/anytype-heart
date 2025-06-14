@@ -142,7 +142,7 @@ func TestMD_RenderProperties_WithID(t *testing.T) {
 
 	st.SetDetailAndBundledRelation(bundle.RelationKeyId, domain.String("obj-123-456"))
 	st.SetDetailAndBundledRelation(bundle.RelationKeyType, domain.String("test-type"))
-	st.SetDetail(domain.RelationKey("name"), domain.String("My Task"))
+	st.SetDetail(domain.RelationKey("custom_name"), domain.String("My Task"))
 
 	// Create mock resolver
 	resolver := &testResolver{
@@ -164,7 +164,7 @@ func TestMD_RenderProperties_WithID(t *testing.T) {
 	}
 	resolver.keyMapping = map[string]string{
 		"type": "rel-type",
-		"name": "rel-name",
+		"custom_name": "rel-name",
 	}
 
 	// Create converter with schema
@@ -208,6 +208,7 @@ func TestMD_GenerateJSONSchema_PropertyOrder(t *testing.T) {
 			"test-type": domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
 				bundle.RelationKeyId:          domain.String("test-type"),
 				bundle.RelationKeyName:        domain.String("Complex Type"),
+				bundle.RelationKeyUniqueKey:   domain.String("ot-complextype"), // Add unique key for type key extraction
 				bundle.RelationKeyRecommendedFeaturedRelations: domain.StringList([]string{"rel-1", "rel-2"}),
 				bundle.RelationKeyRecommendedRelations:         domain.StringList([]string{"rel-3", "rel-4", "rel-5"}),
 			}),
@@ -273,7 +274,7 @@ func TestMD_GenerateJSONSchema_PropertyOrder(t *testing.T) {
 	expectedOrder := map[string]float64{
 		"id":         0,
 		"Type":       1,
-		"Property 1": 2, // Featured properties come first
+		"Property 1": 2, // Featured properties come after Type
 		"Property 2": 3,
 		"Property 3": 4, // Regular properties follow
 		"Property 4": 5,
