@@ -9,6 +9,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/api/pagination"
 	"github.com/anyproto/anytype-heart/core/api/service"
 	"github.com/anyproto/anytype-heart/core/api/util"
+	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
 // ListSpacesHandler retrieves a list of spaces
@@ -31,7 +32,10 @@ func ListSpacesHandler(s *service.Service) gin.HandlerFunc {
 		offset := c.GetInt("offset")
 		limit := c.GetInt("limit")
 
-		spaces, total, hasMore, err := s.ListSpaces(c.Request.Context(), offset, limit)
+		filtersAny, _ := c.Get("filters")
+		filters := filtersAny.([]*model.BlockContentDataviewFilter)
+
+		spaces, total, hasMore, err := s.ListSpaces(c.Request.Context(), filters, offset, limit)
 		code := util.MapErrorCode(err,
 			util.ErrToCode(service.ErrFailedListSpaces, http.StatusInternalServerError),
 			util.ErrToCode(service.ErrFailedOpenWorkspace, http.StatusInternalServerError),

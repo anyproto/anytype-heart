@@ -211,7 +211,7 @@ func TestObjectService_ListObjects(t *testing.T) {
 		}, nil).Once()
 
 		// when
-		objects, total, hasMore, err := fx.service.ListObjects(ctx, mockedSpaceId, offset, limit)
+		objects, total, hasMore, err := fx.service.ListObjects(ctx, mockedSpaceId, nil, offset, limit)
 
 		// then
 		require.NoError(t, err)
@@ -309,7 +309,7 @@ func TestObjectService_ListObjects(t *testing.T) {
 		}).Times(3)
 
 		// when
-		objects, total, hasMore, err := fx.service.ListObjects(ctx, mockedSpaceId, offset, limit)
+		objects, total, hasMore, err := fx.service.ListObjects(ctx, mockedSpaceId, nil, offset, limit)
 
 		// then
 		require.NoError(t, err)
