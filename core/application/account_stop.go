@@ -55,7 +55,7 @@ func (s *Service) AccountStop(req *pb.RpcAccountStopRequest) error {
 	}
 
 	if req.RemoveData {
-		err := s.accountRemoveLocalData()
+		err := s.accountStopAndRemoveLocalData()
 		if err != nil {
 			return errors.Join(ErrFailedToRemoveAccountData, anyerror.CleanupError(err))
 		}
@@ -110,23 +110,18 @@ func (s *Service) AccountChangeNetworkConfigAndRestart(ctx context.Context, req 
 	return err
 }
 
-func (s *Service) accountRemoveLocalData() error {
+func (s *Service) accountStopAndRemoveLocalData() error {
 	conf := s.app.MustComponent(config.CName).(*config.Config)
 	address := s.app.MustComponent(walletComp.CName).(walletComp.Wallet).GetAccountPrivkey().GetPublic().Account()
-
-	configPath := conf.GetConfigPath()
-	fileConf := config.ConfigRequired{}
-	if err := config.GetFileConfig(configPath, &fileConf); err != nil {
-		return err
-	}
+	customFilePath := conf.CustomFileStorePath
 
 	err := s.stop()
 	if err != nil {
 		return err
 	}
 
-	if fileConf.CustomFileStorePath != "" {
-		if err2 := os.RemoveAll(fileConf.CustomFileStorePath); err2 != nil {
+	if customFilePath != "" {
+		if err2 := os.RemoveAll(customFilePath); err2 != nil {
 			return err2
 		}
 	}

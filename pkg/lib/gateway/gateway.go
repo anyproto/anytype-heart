@@ -18,19 +18,19 @@ import (
 	"github.com/avast/retry-go/v4"
 	"github.com/ipfs/go-cid"
 
+	"github.com/anyproto/anytype-heart/core/anytype/config"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/files"
 	"github.com/anyproto/anytype-heart/core/files/fileobject"
 	"github.com/anyproto/anytype-heart/core/filestorage/rpcstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/util/constant"
+	"github.com/anyproto/anytype-heart/util/netutil"
 	"github.com/anyproto/anytype-heart/util/svg"
 )
 
 const (
-	CName = "gateway"
-
-	defaultPort    = 47800
+	CName          = "gateway"
 	getFileTimeout = 1 * time.Minute
 	requestLimit   = 32
 )
@@ -51,6 +51,7 @@ type Gateway interface {
 type gateway struct {
 	fileService       files.Service
 	fileObjectService fileobject.Service
+	cfg               config.Service
 	server            *http.Server
 	listener          net.Listener
 	handler           *http.ServeMux
@@ -60,29 +61,38 @@ type gateway struct {
 	limitCh           chan struct{}
 }
 
-func GatewayAddr() string {
+func (g *gateway) gatewayListener() (net.Listener, error) {
 	if addr := os.Getenv("ANYTYPE_GATEWAY_ADDR"); addr != "" {
-		return addr
+		// do not do any fallback here
+		return net.Listen("tcp", addr)
 	}
 
-	port := defaultPort
-	for range 100 {
-		ln, err := net.Listen("tcp", fmt.Sprintf("127.0.0.1:%d", port))
-		if err == nil {
-			_ = ln.Close()
-			break
+	addr := g.cfg.GetPersistentConfig().GatewayAddr
+	listener, err := netutil.GetTcpListener(addr)
+	if err != nil {
+		// it means we are not able to run on both preferred and random port
+		return nil, err
+	}
+	if addr != listener.Addr().String() {
+		err = g.cfg.UpdatePersistentConfig(func(cfg *config.ConfigPersistent) bool {
+			if cfg.GatewayAddr == addr {
+				return false
+			}
+			cfg.GatewayAddr = addr
+			return true
+		})
+		if err != nil {
+			log.Errorf("failed to update persistent config: %s", err)
 		}
-		port++
 	}
 
-	return fmt.Sprintf("127.0.0.1:%d", port)
+	return listener, err
 }
 
 func (g *gateway) Init(a *app.App) (err error) {
 	g.fileService = app.MustComponent[files.Service](a)
 	g.fileObjectService = app.MustComponent[fileobject.Service](a)
-	g.addr = GatewayAddr()
-	log.Debugf("gateway.Init: %s", g.addr)
+	g.cfg = a.MustComponent(config.CName).(config.Service)
 	return nil
 }
 
@@ -95,27 +105,12 @@ func (g *gateway) Run(context.Context) error {
 		return fmt.Errorf("gateway already started")
 	}
 
-	log.Infof("gateway.Run: %s", g.addr)
 	g.handler = http.NewServeMux()
 	g.handler.HandleFunc("/file/", g.fileHandler)
 	g.handler.HandleFunc("/image/", g.imageHandler)
 	g.limitCh = make(chan struct{}, requestLimit)
 
-	// check port first
-	listener, err := net.Listen("tcp", g.addr)
-	if err != nil {
-		// todo: choose next available port
-		return err
-	}
-
-	err = listener.Close()
-	if err != nil {
-		return err
-	}
-
-	g.startServer()
-
-	return nil
+	return g.startServer()
 }
 
 // Close stops the gateway
@@ -126,13 +121,18 @@ func (g *gateway) Close(ctx context.Context) (err error) {
 
 // Addr returns the gateway's address
 func (g *gateway) Addr() string {
-	return g.addr
+	if g.listener == nil {
+		return ""
+	}
+	return g.listener.Addr().String()
 }
 
 func (g *gateway) StateChange(state int) {
 	switch domain.CompState(state) {
 	case domain.CompStateAppWentForeground:
-		g.startServer()
+		if err := g.startServer(); err != nil {
+			log.Errorf("err gateway start after state change: %+v", err)
+		}
 	case domain.CompStateAppWentBackground, domain.CompStateAppClosingInitiated:
 		if err := g.stopServer(); err != nil {
 			log.Errorf("err gateway close: %+v", err)
@@ -140,40 +140,39 @@ func (g *gateway) StateChange(state int) {
 	}
 }
 
-func (g *gateway) startServer() {
+func (g *gateway) startServer() error {
 	g.mu.Lock()
 	defer g.mu.Unlock()
 
 	if g.isServerStarted {
 		log.Errorf("server already started")
-		return
+		return nil
 	}
 
-	ln, err := net.Listen("tcp", g.addr)
+	var err error
+	g.listener, err = g.gatewayListener()
 	if err != nil {
-		log.Errorf("listen addr err: %s", err)
-		return
+		return err
 	}
-
-	g.listener = ln
 
 	g.server = &http.Server{
-		Addr:    g.addr,
+		Addr:    g.listener.Addr().String(),
 		Handler: g.handler,
 	}
 
 	go func(srv *http.Server, l net.Listener) {
 		err := srv.Serve(l)
-		if err != nil && err != http.ErrServerClosed {
+		if err != nil && !errors.Is(err, http.ErrServerClosed) {
 			log.Errorf("gateway error: %s", err)
 			return
 		}
 		log.Info("gateway was shutdown")
-	}(g.server, ln)
+	}(g.server, g.listener)
 
 	g.isServerStarted = true
 
 	log.Infof("gateway listening at %s", g.server.Addr)
+	return nil
 }
 
 func (g *gateway) stopServer() error {

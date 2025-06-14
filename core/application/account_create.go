@@ -98,10 +98,14 @@ func (s *Service) handleCustomStorageLocation(req *pb.RpcAccountCreateRequest, a
 		if err != nil {
 			return errors.Join(ErrFailedToCreateLocalRepo, err)
 		}
-		// Bootstrap config will later read this config with custom storage location
-		if err := config.WriteJsonConfig(configPath, config.ConfigRequired{CustomFileStorePath: storePath}); err != nil {
-			return errors.Join(ErrFailedToWriteConfig, err)
-		}
+		// Bootstrap config will later read this config with custom storage location }
+		return config.ModifyJsonFileConfig(configPath, func(cfg *config.ConfigPersistent) (updated bool) {
+			if cfg.CustomFileStorePath == storePath {
+				return false
+			}
+			cfg.CustomFileStorePath = storePath
+			return true
+		})
 	}
 	return nil
 }
