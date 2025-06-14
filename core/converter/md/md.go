@@ -71,11 +71,15 @@ type MD struct {
 	fn               FileNamer
 }
 
-var shortObjectRelations = []string{
-	bundle.RelationKeyType.String(),
+var shortObjectRelations = append(removeArrayRelations, []string{
 	bundle.RelationKeyBacklinks.String(),
 	bundle.RelationKeyLinks.String(),
-	bundle.RelationKeyMentions.String(),
+	bundle.RelationKeyMentions.String()}...)
+
+var removeArrayRelations = []string{
+	bundle.RelationKeyLastModifiedBy.String(),
+	bundle.RelationKeyCreator.String(),
+	bundle.RelationKeyType.String(),
 }
 
 func (h *MD) Convert(sbType model.SmartBlockType) (result []byte) {
@@ -114,7 +118,7 @@ func (h *MD) renderProperties(buf writer) {
 	if err == nil && typeRelation != nil {
 		propertiesIds = append(propertiesIds, typeRelation.GetString(bundle.RelationKeyId))
 	}
-
+	h.s.Store()
 	// Get object type details
 	objectTypeId := h.s.LocalDetails().GetString(bundle.RelationKeyType)
 	if objectTypeId != "" {
@@ -134,6 +138,12 @@ func (h *MD) renderProperties(buf writer) {
 						schemaFileName := h.GenerateSchemaFileName(typeName)
 						fmt.Fprintf(buf, "# yaml-language-server: $schema=%s\n", schemaFileName)
 					}
+				}
+
+				// Add object ID
+				objectId := h.s.LocalDetails().GetString(bundle.RelationKeyId)
+				if objectId != "" {
+					fmt.Fprintf(buf, "  id: %s\n", objectId)
 				}
 			}
 		}
@@ -224,8 +234,7 @@ func (h *MD) renderProperties(buf writer) {
 			if slices.Contains(shortObjectRelations, key) {
 				shortObject = true
 			}
-			if key == bundle.RelationKeyType.String() {
-				// If relation is Type, we want to remove array brackets
+			if slices.Contains(removeArrayRelations, key) {
 				removeArray = true
 			}
 
@@ -243,7 +252,7 @@ func (h *MD) renderProperties(buf writer) {
 					}
 					// Check if object is actually in the export (knownDocs)
 					_, isInExport := h.knownDocs[id]
-					
+
 					if !shortObject {
 						_, _ = fmt.Fprintf(buf, "    - Name: %s\n", objectName)
 						// Only render File field if object is in the export
@@ -910,6 +919,13 @@ func (h *MD) GenerateJSONSchema() ([]byte, error) {
 		schema["description"] = description
 	}
 
+	// Add TypeKey from UniqueKey
+	if rawUniqueKey := objectTypeDetails.GetString(bundle.RelationKeyUniqueKey); rawUniqueKey != "" {
+		if typeKey, err := domain.GetTypeKeyFromRawUniqueKey(rawUniqueKey); err == nil {
+			schema["x-type-key"] = string(typeKey)
+		}
+	}
+
 	// Add custom extensions for Anytype-specific metadata
 	if plural := objectTypeDetails.GetString(bundle.RelationKeyPluralName); plural != "" {
 		schema["x-plural"] = plural
@@ -923,6 +939,14 @@ func (h *MD) GenerateJSONSchema() ([]byte, error) {
 
 	properties := make(map[string]interface{})
 	required := []string{}
+
+	// Add id property (optional) with order 0
+	properties["id"] = map[string]interface{}{
+		"type":        "string",
+		"description": "Unique identifier of the Anytype object",
+		"readOnly":    true,
+		"x-order":     0,
+	}
 
 	// Get all relations for this type
 	featuredRelations := objectTypeDetails.GetStringList(bundle.RelationKeyRecommendedFeaturedRelations)
@@ -940,6 +964,15 @@ func (h *MD) GenerateJSONSchema() ([]byte, error) {
 		allRelations = append([]string{typeRelationId}, allRelations...)
 	}
 
+	// Create a set for featured relations for quick lookup
+	featuredSet := make(map[string]bool)
+	for _, id := range featuredRelations {
+		featuredSet[id] = true
+	}
+
+	// Track property order (starting from 1 since id is 0)
+	propertyOrder := 1
+
 	for _, relationId := range allRelations {
 		relationDetails, err := h.resolver.ResolveRelation(relationId)
 		if err != nil || relationDetails == nil || relationDetails.GetBool(bundle.RelationKeyIsHidden) {
@@ -951,12 +984,16 @@ func (h *MD) GenerateJSONSchema() ([]byte, error) {
 
 		property := h.getJSONSchemaProperty(relationDetails, format, typeName)
 		if property != nil {
-			properties[name] = property
+			// Add order to maintain property sequence
+			property["x-order"] = propertyOrder
+			propertyOrder++
 
-			// Mark required fields (you can customize this logic)
-			if featuredRelations != nil && slices.Contains(featuredRelations, relationId) {
-				required = append(required, name)
+			// Mark as featured if it's in the featured set
+			if featuredSet[relationId] {
+				property["x-featured"] = true
 			}
+
+			properties[name] = property
 		}
 	}
 
@@ -981,6 +1018,11 @@ func (h *MD) getJSONSchemaProperty(relationDetails *domain.Details, format model
 		}
 		return property
 	} else if slices.Contains(shortObjectRelations, key) {
+		if slices.Contains(removeArrayRelations, key) {
+			// Short object relations without array
+			property["type"] = "string"
+			return property
+		}
 		property["type"] = "array"
 		property["items"] = map[string]string{"type": "string"}
 		return property
