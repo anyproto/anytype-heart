@@ -191,7 +191,6 @@ type exportContext struct {
 	relations         map[string]struct{}
 	setOfList         map[string]struct{}
 	objectTypes       map[string]struct{}
-	writtenSchemas    map[string]bool
 	gatewayUrl        string
 	*export
 }
@@ -215,7 +214,6 @@ func newExportContext(e *export, req pb.RpcObjectListExportRequest) *exportConte
 		setOfList:         make(map[string]struct{}),
 		objectTypes:       make(map[string]struct{}),
 		relations:         make(map[string]struct{}),
-		writtenSchemas:    make(map[string]bool),
 		export:            e,
 	}
 	if e.gatewayService != nil {
@@ -374,11 +372,8 @@ func (e *exportContext) exportByFormat(ctx context.Context, wr writer, queue pro
 		}
 		succeed += int(succeedAsync)
 
-		// Generate schemas for all object types if markdown export with schemas enabled
-		if e.format == model.Export_Markdown && e.includeJsonSchema {
-			if err := e.generateAllSchemas(ctx, wr); err != nil {
-				log.Warnf("failed to generate all schemas: %v", err)
-			}
+		if err := e.postProcess(ctx, wr); err != nil {
+			log.Warnf("failed to generate all schemas: %v", err)
 		}
 	}
 	return succeed, nil
@@ -1197,33 +1192,6 @@ func (e *exportContext) writeDoc(ctx context.Context, wr writer, docId string, d
 			return err
 		}
 
-		// Write JSON schema file if enabled and this is markdown export
-		if e.format == model.Export_Markdown && e.includeJsonSchema {
-			if mdConv, ok := conv.(*md.MD); ok {
-				// Get the object type name to create schema filename
-				objectTypeId := st.LocalDetails().GetString(bundle.RelationKeyType)
-				if typeDetails, exists := details[objectTypeId]; exists {
-					typeName := typeDetails.GetString(bundle.RelationKeyName)
-					if typeName != "" {
-						schemaFileName := mdConv.GenerateSchemaFileName(typeName)
-						// Remove the leading ./ from schema file name for actual file writing
-						actualFileName := strings.TrimPrefix(schemaFileName, "./")
-
-						// Only write schema if we haven't written it yet
-						if !e.writtenSchemas[actualFileName] {
-							if schemaBytes, err := mdConv.GenerateJSONSchema(); err == nil && schemaBytes != nil {
-								if err = wr.WriteFile(actualFileName, bytes.NewReader(schemaBytes), 0); err != nil {
-									log.Warnf("failed to write JSON schema: %v", err)
-								} else {
-									e.writtenSchemas[actualFileName] = true
-								}
-							}
-						}
-					}
-				}
-			}
-		}
-
 		return nil
 	})
 }
@@ -1464,61 +1432,18 @@ func pbFiltersToState(filters *pb.RpcObjectListExportStateFilters) *state.Filter
 }
 
 // generateAllSchemas generates JSON schemas for all object types found in the export
-func (e *exportContext) generateAllSchemas(ctx context.Context, wr writer) error {
+func (e *exportContext) postProcess(ctx context.Context, wr writer) error {
+	if e.format != model.Export_Markdown || !e.includeJsonSchema {
+		// for now only needed for MD
+		return nil
+	}
 	// Create a lazy object resolver
 	knownObjects := e.docs.transformToDetailsMap()
 	resolver := newLazyObjectResolver(e.objectStore, e.spaceId, knownObjects)
 
-	// Track all unique object types
-	processedTypes := make(map[string]bool)
+	// Create markdown post-processor
+	postProcessor := md.NewMDPostProcessor(resolver, wr.Namer())
 
-	// Iterate through all docs to find their types
-	for _, doc := range e.docs {
-		if doc.Details == nil {
-			continue
-		}
-
-		objectTypeId := doc.Details.GetString(bundle.RelationKeyType)
-		if objectTypeId == "" || processedTypes[objectTypeId] {
-			continue
-		}
-
-		// Mark as processed
-		processedTypes[objectTypeId] = true
-
-		// Get type details
-		typeDetails, err := resolver.ResolveType(objectTypeId)
-		if err != nil || typeDetails == nil {
-			continue
-		}
-
-		typeName := typeDetails.GetString(bundle.RelationKeyName)
-		if typeName == "" {
-			continue
-		}
-
-		// Create a temporary state and converter to generate schema
-		tempState := &state.State{}
-		tempState.SetDetailAndBundledRelation(bundle.RelationKeyType, domain.String(objectTypeId))
-
-		mdConv := md.NewMDConverterWithResolver(tempState, wr.Namer(), true, true, resolver)
-		schemaFileName := mdConv.(*md.MD).GenerateSchemaFileName(typeName)
-		actualFileName := strings.TrimPrefix(schemaFileName, "./")
-
-		// Skip if already written
-		if e.writtenSchemas[actualFileName] {
-			continue
-		}
-
-		// Generate and write schema
-		if schemaBytes, err := mdConv.(*md.MD).GenerateJSONSchema(); err == nil && schemaBytes != nil {
-			if err = wr.WriteFile(actualFileName, bytes.NewReader(schemaBytes), 0); err != nil {
-				log.Warnf("failed to write JSON schema for type %s: %v", typeName, err)
-			} else {
-				e.writtenSchemas[actualFileName] = true
-			}
-		}
-	}
-
-	return nil
+	// Generate all schemas
+	return postProcessor.Process(knownObjects, wr)
 }

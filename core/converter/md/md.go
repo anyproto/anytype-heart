@@ -217,21 +217,40 @@ func (h *MD) renderProperties(buf writer) {
 			if len(ids) == 0 {
 				continue
 			}
-			var shortObject bool
-			if key == bundle.RelationKeyType.String() || key == bundle.RelationKeyBacklinks.String() {
+			var (
+				shortObject bool
+				removeArray bool
+			)
+			if slices.Contains(shortObjectRelations, key) {
 				shortObject = true
+			}
+			if key == bundle.RelationKeyType.String() {
+				// If relation is Type, we want to remove array brackets
+				removeArray = true
 			}
 
 			// Each target rendered as list item.
-			_, _ = fmt.Fprintf(buf, "  %s:\n", name)
+			if !removeArray {
+				_, _ = fmt.Fprintf(buf, "  %s:\n", name)
+			}
 			for _, id := range ids {
 				if d := h.getObjectInfo(id); d != nil {
 					// Object is included in export
 					objectName := d.Get(bundle.RelationKeyName).String()
-					filename := h.fn.Get("", id, objectName, h.Ext())
+					if removeArray {
+						_, _ = fmt.Fprintf(buf, "  %s: %s\n", name, objectName)
+						break
+					}
+					// Check if object is actually in the export (knownDocs)
+					_, isInExport := h.knownDocs[id]
+					
 					if !shortObject {
 						_, _ = fmt.Fprintf(buf, "    - Name: %s\n", objectName)
-						_, _ = fmt.Fprintf(buf, "      File: %s\n", filename)
+						// Only render File field if object is in the export
+						if isInExport {
+							filename := h.fn.Get("", id, objectName, h.Ext())
+							_, _ = fmt.Fprintf(buf, "      File: %s\n", filename)
+						}
 					} else {
 						// Short object format, just show name
 						_, _ = fmt.Fprintf(buf, "    - %s\n", objectName)
@@ -1023,9 +1042,10 @@ func (h *MD) getJSONSchemaProperty(relationDetails *domain.Details, format model
 			},
 			"File": map[string]interface{}{
 				"type":        "string",
-				"description": "Path to the object file in the export",
+				"description": "Path to the object file in the export (only present if object is included in export)",
 			},
 		}
+		// Only Name is required, File is optional since object might not be in export
 		required := []string{"Name"}
 
 		// Add Object Type property
