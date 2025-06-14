@@ -31,12 +31,29 @@ type FileNamer interface {
 	Get(path, hash, title, ext string) (name string)
 }
 
+type ObjectResolver interface {
+	// ResolveRelation gets relation details by ID
+	ResolveRelation(relationId string) (*domain.Details, error)
+	// ResolveType gets type details by ID
+	ResolveType(typeId string) (*domain.Details, error)
+	// ResolveRelationOptions gets relation options for a given relation
+	ResolveRelationOptions(relationKey string) ([]*domain.Details, error)
+	// ResolveObject gets object details by ID (for already loaded objects)
+	ResolveObject(objectId string) (*domain.Details, bool)
+	// GetRelationByKey gets relation by its key
+	GetRelationByKey(relationKey string) (*domain.Details, error)
+}
+
 func NewMDConverter(s *state.State, fn FileNamer, includeRelations bool) converter.Converter {
 	return &MD{s: s, fn: fn, includeRelations: includeRelations, knownDocs: make(map[string]*domain.Details)}
 }
 
 func NewMDConverterWithSchema(s *state.State, fn FileNamer, includeRelations bool, includeSchema bool) converter.Converter {
 	return &MD{s: s, fn: fn, includeRelations: includeRelations, includeSchema: true, knownDocs: make(map[string]*domain.Details)}
+}
+
+func NewMDConverterWithResolver(s *state.State, fn FileNamer, includeRelations bool, includeSchema bool, resolver ObjectResolver) converter.Converter {
+	return &MD{s: s, fn: fn, includeRelations: includeRelations, includeSchema: includeSchema, resolver: resolver}
 }
 
 type MD struct {
@@ -46,11 +63,19 @@ type MD struct {
 	imageHashes []string
 
 	knownDocs map[string]*domain.Details
+	resolver  ObjectResolver
 
 	includeRelations bool
 	includeSchema    bool
 	mw               *marksWriter
 	fn               FileNamer
+}
+
+var shortObjectRelations = []string{
+	bundle.RelationKeyType.String(),
+	bundle.RelationKeyBacklinks.String(),
+	bundle.RelationKeyLinks.String(),
+	bundle.RelationKeyMentions.String(),
 }
 
 func (h *MD) Convert(sbType model.SmartBlockType) (result []byte) {
@@ -79,54 +104,62 @@ func (h *MD) renderProperties(buf writer) {
 	}
 	var propertiesIds []string
 
-	// get type property id, because it can be omitted from recommended relations of the type
-	for id, d := range h.knownDocs {
-		if d.GetString(bundle.RelationKeyRelationKey) == bundle.RelationKeyType.String() &&
-			d.GetInt64(bundle.RelationKeyLayout) == int64(model.ObjectType_relation) {
-			propertiesIds = append(propertiesIds, id)
-			break
-		}
+	// Use resolver if available, otherwise fall back to knownDocs
+	if h.resolver == nil {
+		log.Error("MD converter requires ObjectResolver to resolve properties, but it is not set")
+		return
+	}
+	// Get type relation ID first
+	typeRelation, err := h.resolver.GetRelationByKey(bundle.RelationKeyType.String())
+	if err == nil && typeRelation != nil {
+		propertiesIds = append(propertiesIds, typeRelation.GetString(bundle.RelationKeyId))
 	}
 
+	// Get object type details
 	objectTypeId := h.s.LocalDetails().GetString(bundle.RelationKeyType)
-	var objectTypeDetails *domain.Details
-	if d, exists := h.knownDocs[objectTypeId]; exists {
-		objectTypeDetails = d
-		propertiesIds = append(d.GetStringList(bundle.RelationKeyRecommendedFeaturedRelations), d.GetStringList(bundle.RelationKeyRecommendedRelations)...)
-	}
+	if objectTypeId != "" {
+		objectTypeDetails, err := h.resolver.ResolveType(objectTypeId)
+		if err == nil && objectTypeDetails != nil {
+			propertiesIds = append(propertiesIds, objectTypeDetails.GetStringList(bundle.RelationKeyRecommendedFeaturedRelations)...)
+			propertiesIds = append(propertiesIds, objectTypeDetails.GetStringList(bundle.RelationKeyRecommendedRelations)...)
 
-	propertiesIds = slices.Compact(propertiesIds)
-	if len(propertiesIds) > 0 {
-		fmt.Fprintf(buf, "---\n")
+			propertiesIds = slices.Compact(propertiesIds)
+			if len(propertiesIds) > 0 {
+				fmt.Fprintf(buf, "---\n")
 
-		// Add JSON schema reference if enabled
-		if h.includeSchema && objectTypeDetails != nil {
-			typeName := objectTypeDetails.GetString(bundle.RelationKeyName)
-			if typeName != "" {
-				schemaFileName := h.GenerateSchemaFileName(typeName)
-				fmt.Fprintf(buf, "# yaml-language-server: $schema=%s\n", schemaFileName)
+				// Add JSON schema reference if enabled
+				if h.includeSchema {
+					typeName := objectTypeDetails.GetString(bundle.RelationKeyName)
+					if typeName != "" {
+						schemaFileName := h.GenerateSchemaFileName(typeName)
+						fmt.Fprintf(buf, "# yaml-language-server: $schema=%s\n", schemaFileName)
+					}
+				}
 			}
 		}
 	}
+
 	for _, id := range propertiesIds {
 		var (
-			name        string
-			key         string
-			format      model.RelationFormat
-			includeTime bool
+			name            string
+			key             string
+			format          model.RelationFormat
+			includeTime     bool
+			relationDetails *domain.Details
 		)
 
-		if d, ok := h.knownDocs[id]; ok {
-			if d.GetBool(bundle.RelationKeyIsHidden) {
-				continue
-			}
-			name = d.GetString(bundle.RelationKeyName)
-			key = d.GetString(bundle.RelationKeyRelationKey)
-			format = model.RelationFormat(d.GetInt64(bundle.RelationKeyRelationFormat))
-			includeTime = d.GetBool(bundle.RelationKeyRelationFormatIncludeTime)
-		} else {
+		var err error
+		relationDetails, err = h.resolver.ResolveRelation(id)
+		if err != nil || relationDetails == nil {
 			continue
-		} // Resolve relation metadata, skipping hidden ones.
+		}
+		if relationDetails.GetBool(bundle.RelationKeyIsHidden) {
+			continue
+		}
+		name = relationDetails.GetString(bundle.RelationKeyName)
+		key = relationDetails.GetString(bundle.RelationKeyRelationKey)
+		format = model.RelationFormat(relationDetails.GetInt64(bundle.RelationKeyRelationFormat))
+		includeTime = relationDetails.GetBool(bundle.RelationKeyRelationFormatIncludeTime)
 
 		v := h.s.CombinedDetails().Get(domain.RelationKey(key))
 		switch format {
@@ -142,35 +175,10 @@ func (h *MD) renderProperties(buf writer) {
 				continue
 			}
 
-			if len(ids) == 1 {
-				// Single file - check if it's a file object in knownDocs
-				fileId := ids[0]
-				if info, exists := h.knownDocs[fileId]; exists {
-					layout := info.GetInt64(bundle.RelationKeyLayout)
-					// Check if it's a file object type
-					if layout == int64(model.ObjectType_file) || layout == int64(model.ObjectType_image) ||
-						layout == int64(model.ObjectType_audio) || layout == int64(model.ObjectType_video) ||
-						layout == int64(model.ObjectType_pdf) {
-						// Get the file path using the same logic as getLinkInfo
-						_, filename, _ := h.getLinkInfo(fileId)
-						if filename != "" {
-							_, _ = fmt.Fprintf(buf, "  %s: %s\n", name, filename)
-							// Add to appropriate hash list for later use
-							if layout == int64(model.ObjectType_image) {
-								h.imageHashes = append(h.imageHashes, fileId)
-							} else {
-								h.fileHashes = append(h.fileHashes, fileId)
-							}
-						}
-					}
-				}
-				continue
-			}
-
 			// Multiple files
 			var fileList []string
 			for _, fileId := range ids {
-				if info, exists := h.knownDocs[fileId]; exists {
+				if info := h.getObjectInfo(fileId); info != nil {
 					layout := info.GetInt64(bundle.RelationKeyLayout)
 					// Check if it's a file object type
 					if layout == int64(model.ObjectType_file) || layout == int64(model.ObjectType_image) ||
@@ -209,30 +217,25 @@ func (h *MD) renderProperties(buf writer) {
 			if len(ids) == 0 {
 				continue
 			}
-
-			if len(ids) == 1 {
-				if d, ok := h.knownDocs[ids[0]]; ok {
-					// Object is included in export, render with File property
-					objectName := d.Get(bundle.RelationKeyName).String()
-					filename := h.fn.Get("", ids[0], objectName, h.Ext())
-					_, _ = fmt.Fprintf(buf, "  %s:\n", name)
-					_, _ = fmt.Fprintf(buf, "    Name: %s\n", objectName)
-					_, _ = fmt.Fprintf(buf, "    File: %s\n", filename)
-				} else {
-					// Object not included in export, just show ID or empty
-					_, _ = fmt.Fprintf(buf, "  %s: %s\n", name, ids[0])
-				}
-				continue
+			var shortObject bool
+			if key == bundle.RelationKeyType.String() || key == bundle.RelationKeyBacklinks.String() {
+				shortObject = true
 			}
+
 			// Each target rendered as list item.
 			_, _ = fmt.Fprintf(buf, "  %s:\n", name)
 			for _, id := range ids {
-				if d, ok := h.knownDocs[id]; ok {
+				if d := h.getObjectInfo(id); d != nil {
 					// Object is included in export
 					objectName := d.Get(bundle.RelationKeyName).String()
 					filename := h.fn.Get("", id, objectName, h.Ext())
-					_, _ = fmt.Fprintf(buf, "    - Name: %s\n", objectName)
-					_, _ = fmt.Fprintf(buf, "      File: %s\n", filename)
+					if !shortObject {
+						_, _ = fmt.Fprintf(buf, "    - Name: %s\n", objectName)
+						_, _ = fmt.Fprintf(buf, "      File: %s\n", filename)
+					} else {
+						// Short object format, just show name
+						_, _ = fmt.Fprintf(buf, "    - %s\n", objectName)
+					}
 				}
 			}
 
@@ -249,16 +252,10 @@ func (h *MD) renderProperties(buf writer) {
 				continue
 			}
 
-			if len(ids) == 1 {
-				if d, ok := h.knownDocs[ids[0]]; ok {
-					_, _ = fmt.Fprintf(buf, "  %s: %s\n", name, d.Get(bundle.RelationKeyName).String())
-				}
-				continue
-			}
 			// Each target rendered as list item.
 			_, _ = fmt.Fprintf(buf, "  %s:\n", name)
 			for _, id := range ids {
-				if d, ok := h.knownDocs[id]; ok {
+				if d := h.getObjectInfo(id); d != nil {
 					label := d.Get(bundle.RelationKeyName).String()
 					_, _ = fmt.Fprintf(buf, "    - %s\n", label)
 				}
@@ -629,11 +626,23 @@ func (h *MD) SetKnownDocs(docs map[string]*domain.Details) converter.Converter {
 	return h
 }
 
+// getObjectInfo returns object details using resolver if available, otherwise uses knownDocs
+func (h *MD) getObjectInfo(objectId string) *domain.Details {
+	details, _ := h.knownDocs[objectId]
+	if details != nil {
+		return details
+	}
+
+	details, _ = h.resolver.ResolveObject(objectId)
+	return details
+}
+
 func (h *MD) getLinkInfo(docId string) (title, filename string, ok bool) {
-	info, ok := h.knownDocs[docId]
-	if !ok {
+	info := h.getObjectInfo(docId)
+	if info == nil {
 		return
 	}
+	ok = true
 	title = info.GetString(bundle.RelationKeyName)
 	// if object is a file
 	layout := info.GetInt64(bundle.RelationKeyLayout)
@@ -804,8 +813,12 @@ func (h *MD) GenerateSchemaFileName(typeName string) string {
 // GenerateJSONSchema generates a JSON schema for the object type
 func (h *MD) GenerateJSONSchema() ([]byte, error) {
 	objectTypeId := h.s.LocalDetails().GetString(bundle.RelationKeyType)
-	objectTypeDetails, exists := h.knownDocs[objectTypeId]
-	if !exists {
+
+	var objectTypeDetails *domain.Details
+	var err error
+
+	objectTypeDetails, err = h.resolver.ResolveType(objectTypeId)
+	if err != nil || objectTypeDetails == nil {
 		return nil, fmt.Errorf("object type not found")
 	}
 
@@ -898,28 +911,26 @@ func (h *MD) GenerateJSONSchema() ([]byte, error) {
 	allRelations := append(featuredRelations, regularRelations...)
 
 	// Also add the Type property
-	typeRelationId := ""
-	for id, d := range h.knownDocs {
-		if d.GetString(bundle.RelationKeyRelationKey) == bundle.RelationKeyType.String() &&
-			d.GetInt64(bundle.RelationKeyLayout) == int64(model.ObjectType_relation) {
-			typeRelationId = id
-			break
-		}
+	var typeRelationId string
+	typeRelation, err := h.resolver.GetRelationByKey(bundle.RelationKeyType.String())
+	if err == nil && typeRelation != nil {
+		typeRelationId = typeRelation.GetString(bundle.RelationKeyId)
 	}
+
 	if typeRelationId != "" {
 		allRelations = append([]string{typeRelationId}, allRelations...)
 	}
 
 	for _, relationId := range allRelations {
-		relationDetails, ok := h.knownDocs[relationId]
-		if !ok || relationDetails.GetBool(bundle.RelationKeyIsHidden) {
+		relationDetails, err := h.resolver.ResolveRelation(relationId)
+		if err != nil || relationDetails == nil || relationDetails.GetBool(bundle.RelationKeyIsHidden) {
 			continue
 		}
 
 		name := relationDetails.GetString(bundle.RelationKeyName)
 		format := model.RelationFormat(relationDetails.GetInt64(bundle.RelationKeyRelationFormat))
 
-		property := h.getJSONSchemaProperty(relationDetails, format)
+		property := h.getJSONSchemaProperty(relationDetails, format, typeName)
 		if property != nil {
 			properties[name] = property
 
@@ -938,12 +949,21 @@ func (h *MD) GenerateJSONSchema() ([]byte, error) {
 	return json.MarshalIndent(schema, "", "  ")
 }
 
-func (h *MD) getJSONSchemaProperty(relationDetails *domain.Details, format model.RelationFormat) map[string]interface{} {
+func (h *MD) getJSONSchemaProperty(relationDetails *domain.Details, format model.RelationFormat, typeName string) map[string]interface{} {
 	key := relationDetails.GetString(bundle.RelationKeyRelationKey)
 	property := make(map[string]interface{})
 	if key == bundle.RelationKeyType.String() {
-		// exception for Object Type relation, we don't need to fill it as object
-		property["const"] = relationDetails.GetString(bundle.RelationKeyName)
+		// exception for Object Type relation
+		// it's const because it basically refers to the type itself
+		if typeName == "" {
+			property["type"] = "string"
+		} else {
+			property["const"] = typeName
+		}
+		return property
+	} else if slices.Contains(shortObjectRelations, key) {
+		property["type"] = "array"
+		property["items"] = map[string]string{"type": "string"}
 		return property
 	}
 	switch format {
@@ -1019,7 +1039,8 @@ func (h *MD) getJSONSchemaProperty(relationDetails *domain.Details, format model
 			// Get the names of these object types
 			var typeNames []string
 			for _, typeId := range objectTypes {
-				if typeDetails, exists := h.knownDocs[typeId]; exists {
+				typeDetails, _ := h.resolver.ResolveType(typeId)
+				if typeDetails != nil {
 					if typeName := typeDetails.GetString(bundle.RelationKeyName); typeName != "" {
 						typeNames = append(typeNames, typeName)
 					}
@@ -1042,15 +1063,13 @@ func (h *MD) getJSONSchemaProperty(relationDetails *domain.Details, format model
 	return property
 }
 
-func (h *MD) getRelationOptions(relationId string) []string {
+func (h *MD) getRelationOptions(relationKey string) []string {
 	var options []string
 
-	// Look for relation options in knownDocs
-	for _, details := range h.knownDocs {
-		if details.GetString(bundle.RelationKeyRelationKey) == relationId &&
-			details.GetInt64(bundle.RelationKeyLayout) == int64(model.ObjectType_relationOption) {
-			optionName := details.GetString(bundle.RelationKeyName)
-			if optionName != "" {
+	optionDetails, err := h.resolver.ResolveRelationOptions(relationKey)
+	if err == nil && optionDetails != nil {
+		for _, details := range optionDetails {
+			if optionName := details.GetString(bundle.RelationKeyName); optionName != "" {
 				options = append(options, optionName)
 			}
 		}

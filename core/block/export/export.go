@@ -373,6 +373,13 @@ func (e *exportContext) exportByFormat(ctx context.Context, wr writer, queue pro
 			return 0, nil
 		}
 		succeed += int(succeedAsync)
+
+		// Generate schemas for all object types if markdown export with schemas enabled
+		if e.format == model.Export_Markdown && e.includeJsonSchema {
+			if err := e.generateAllSchemas(ctx, wr); err != nil {
+				log.Warnf("failed to generate all schemas: %v", err)
+			}
+		}
 	}
 	return succeed, nil
 }
@@ -527,10 +534,6 @@ func (e *exportContext) processNotProtobuf() error {
 			return err
 		}
 		ids = append(ids, fileObjectsIds...)
-	}
-	err := e.addDerivedObjects()
-	if err != nil {
-		return err
 	}
 	if e.includeNested {
 		for _, id := range ids {
@@ -1161,17 +1164,22 @@ func (e *exportContext) writeDoc(ctx context.Context, wr writer, docId string, d
 		var conv converter.Converter
 		switch e.format {
 		case model.Export_Markdown:
+			// Create a lazy object resolver for markdown export
+			knownObjects := e.docs.transformToDetailsMap()
+			resolver := newLazyObjectResolver(e.objectStore, e.spaceId, knownObjects)
+
 			if e.includeJsonSchema {
-				conv = md.NewMDConverterWithSchema(st, wr.Namer(), true, true)
+				conv = md.NewMDConverterWithResolver(st, wr.Namer(), true, true, resolver)
 			} else {
-				conv = md.NewMDConverter(st, wr.Namer(), true)
+				conv = md.NewMDConverterWithResolver(st, wr.Namer(), true, false, resolver)
 			}
 		case model.Export_Protobuf:
 			conv = pbc.NewConverter(st, e.isJson)
+			conv.SetKnownDocs(details)
 		case model.Export_JSON:
 			conv = pbjson.NewConverter(st)
+			conv.SetKnownDocs(details)
 		}
-		conv.SetKnownDocs(details)
 		result := conv.Convert(b.Type().ToProto())
 		if result == nil {
 			return nil
@@ -1453,4 +1461,64 @@ func pbFiltersToState(filters *pb.RpcObjectListExportStateFilters) *state.Filter
 		RelationsWhiteList: relationByLayoutList,
 		RemoveBlocks:       filters.RemoveBlocks,
 	}
+}
+
+// generateAllSchemas generates JSON schemas for all object types found in the export
+func (e *exportContext) generateAllSchemas(ctx context.Context, wr writer) error {
+	// Create a lazy object resolver
+	knownObjects := e.docs.transformToDetailsMap()
+	resolver := newLazyObjectResolver(e.objectStore, e.spaceId, knownObjects)
+
+	// Track all unique object types
+	processedTypes := make(map[string]bool)
+
+	// Iterate through all docs to find their types
+	for _, doc := range e.docs {
+		if doc.Details == nil {
+			continue
+		}
+
+		objectTypeId := doc.Details.GetString(bundle.RelationKeyType)
+		if objectTypeId == "" || processedTypes[objectTypeId] {
+			continue
+		}
+
+		// Mark as processed
+		processedTypes[objectTypeId] = true
+
+		// Get type details
+		typeDetails, err := resolver.ResolveType(objectTypeId)
+		if err != nil || typeDetails == nil {
+			continue
+		}
+
+		typeName := typeDetails.GetString(bundle.RelationKeyName)
+		if typeName == "" {
+			continue
+		}
+
+		// Create a temporary state and converter to generate schema
+		tempState := &state.State{}
+		tempState.SetDetailAndBundledRelation(bundle.RelationKeyType, domain.String(objectTypeId))
+
+		mdConv := md.NewMDConverterWithResolver(tempState, wr.Namer(), true, true, resolver)
+		schemaFileName := mdConv.(*md.MD).GenerateSchemaFileName(typeName)
+		actualFileName := strings.TrimPrefix(schemaFileName, "./")
+
+		// Skip if already written
+		if e.writtenSchemas[actualFileName] {
+			continue
+		}
+
+		// Generate and write schema
+		if schemaBytes, err := mdConv.(*md.MD).GenerateJSONSchema(); err == nil && schemaBytes != nil {
+			if err = wr.WriteFile(actualFileName, bytes.NewReader(schemaBytes), 0); err != nil {
+				log.Warnf("failed to write JSON schema for type %s: %v", typeName, err)
+			} else {
+				e.writtenSchemas[actualFileName] = true
+			}
+		}
+	}
+
+	return nil
 }
