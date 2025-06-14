@@ -1,0 +1,56 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "title": "Document",
+  "description": "A document that can have file attachments",
+  "properties": {
+    "Object Type": {
+      "const": "Document"
+    },
+    "name": {
+      "type": "string"
+    },
+    "attachments": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "Name": {
+            "type": "string",
+            "description": "Name of the referenced object"
+          },
+          "Object Type": {
+            "type": "string",
+            "description": "Type of the referenced object",
+            "enum": ["File", "Image", "Video", "Audio", "PDF"]
+          },
+          "File": {
+            "type": "string",
+            "description": "Path to the file (for file objects)"
+          }
+        },
+        "required": ["Name"]
+      }
+    },
+    "cover_image": {
+      "type": "object",
+      "properties": {
+        "Name": {
+          "type": "string",
+          "description": "Name of the referenced object"
+        },
+        "Object Type": {
+          "type": "string",
+          "description": "Type of the referenced object",
+          "enum": ["Image"]
+        },
+        "File": {
+          "type": "string",
+          "description": "Path to the file (for file objects)"
+        }
+      },
+      "required": ["Name"]
+    }
+  },
+  "required": ["name"]
+}
