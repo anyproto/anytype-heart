@@ -418,4 +418,5 @@ service ClientCommands {
 
     // Push
     rpc PushNotificationRegisterToken(anytype.Rpc.PushNotification.RegisterToken.Request) returns (anytype.Rpc.PushNotification.RegisterToken.Response);
+    rpc PushNotificationSetSpaceMode(anytype.Rpc.PushNotification.SetSpaceMode.Request) returns (anytype.Rpc.PushNotification.SetSpaceMode.Response);
 }

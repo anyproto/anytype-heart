@@ -8,6 +8,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/subscription"
 	"github.com/anyproto/anytype-heart/core/subscription/objectsubscription"
+	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -16,7 +17,7 @@ import (
 type spaceViewStatus struct {
 	spaceId        string
 	spaceViewId    string
-	topics         model.PushNotificationTopics
+	mode           pb.RpcPushNotificationSetSpaceModeMode
 	spaceKeyBase64 string
 	spaceKey       crypto.PrivKey
 	encKeyBase64   string
@@ -33,9 +34,9 @@ func newSpaceViewSubscription(service subscription.Service, techSpaceId string, 
 		Keys: []string{
 			bundle.RelationKeyId.String(),
 			bundle.RelationKeyTargetSpaceId.String(),
-			bundle.RelationKeySpacePushNotificationsKey.String(),
-			bundle.RelationKeySpacePushNotificationsEncryptionKey.String(),
-			bundle.RelationKeySpacePushNotificationsTopics.String(),
+			bundle.RelationKeySpacePushNotificationKey.String(),
+			bundle.RelationKeySpacePushNotificationEncryptionKey.String(),
+			bundle.RelationKeySpacePushNotificationMode.String(),
 			bundle.RelationKeyCreator.String(),
 		},
 		Filters: []database.FilterRequest{
@@ -45,7 +46,7 @@ func newSpaceViewSubscription(service subscription.Service, techSpaceId string, 
 				Value:       domain.Int64(int64(model.ObjectType_spaceView)),
 			},
 			{
-				RelationKey: bundle.RelationKeySpacePushNotificationsKey,
+				RelationKey: bundle.RelationKeySpacePushNotificationKey,
 				Condition:   model.BlockContentDataviewFilter_Exists,
 			},
 			{
@@ -62,9 +63,9 @@ func newSpaceViewSubscription(service subscription.Service, techSpaceId string, 
 		Request: objectReq,
 		Extract: func(details *domain.Details) (string, spaceViewStatus) {
 			defer wakeUp()
-			spaceKeyBase64 := details.GetString(bundle.RelationKeySpacePushNotificationsKey)
+			spaceKeyBase64 := details.GetString(bundle.RelationKeySpacePushNotificationKey)
 			spaceKey, _ := decodePrivKey(spaceKeyBase64)
-			encKeyBase64 := details.GetString(bundle.RelationKeySpacePushNotificationsEncryptionKey)
+			encKeyBase64 := details.GetString(bundle.RelationKeySpacePushNotificationEncryptionKey)
 			encKey, _ := decodeSymKey(encKeyBase64)
 			return details.GetString(bundle.RelationKeyId), spaceViewStatus{
 				spaceId:        details.GetString(bundle.RelationKeyTargetSpaceId),
@@ -73,27 +74,27 @@ func newSpaceViewSubscription(service subscription.Service, techSpaceId string, 
 				spaceKey:       spaceKey,
 				encKeyBase64:   encKeyBase64,
 				encKey:         encKey,
-				topics:         model.PushNotificationTopics(details.GetInt64(bundle.RelationKeySpacePushNotificationsTopics)),
+				mode:           pb.RpcPushNotificationSetSpaceModeMode(details.GetInt64(bundle.RelationKeySpacePushNotificationMode)),
 				creator:        details.GetString(bundle.RelationKeyCreator),
 			}
 		},
 		Update: func(key string, value domain.Value, status spaceViewStatus) spaceViewStatus {
 			defer wakeUp()
 			switch domain.RelationKey(key) {
-			case bundle.RelationKeySpacePushNotificationsKey:
+			case bundle.RelationKeySpacePushNotificationKey:
 				keyBase64 := value.String()
 				if status.spaceKeyBase64 != keyBase64 {
 					status.spaceKeyBase64 = keyBase64
 					status.spaceKey, _ = decodePrivKey(keyBase64)
 				}
-			case bundle.RelationKeySpacePushNotificationsEncryptionKey:
+			case bundle.RelationKeySpacePushNotificationEncryptionKey:
 				keyBase64 := value.String()
 				if status.encKeyBase64 != keyBase64 {
 					status.encKeyBase64 = keyBase64
 					status.encKey, _ = decodeSymKey(keyBase64)
 				}
-			case bundle.RelationKeySpacePushNotificationsTopics:
-				status.topics = model.PushNotificationTopics(value.Int64())
+			case bundle.RelationKeySpacePushNotificationMode:
+				status.mode = pb.RpcPushNotificationSetSpaceModeMode(value.Int64())
 			case bundle.RelationKeyCreator:
 				status.creator = value.String()
 			}
@@ -101,8 +102,8 @@ func newSpaceViewSubscription(service subscription.Service, techSpaceId string, 
 		},
 		Unset: func(strings []string, status spaceViewStatus) spaceViewStatus {
 			for _, key := range strings {
-				if key == bundle.RelationKeySpacePushNotificationsTopics.String() {
-					status.topics = model.PushNotificationTopics_All
+				if key == bundle.RelationKeySpacePushNotificationMode.String() {
+					status.mode = pb.RpcPushNotificationSetSpaceMode_All
 				}
 			}
 			return status

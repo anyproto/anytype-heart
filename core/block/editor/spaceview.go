@@ -151,7 +151,7 @@ func (s *SpaceView) SetAclInfo(isAclEmpty bool, pushKey crypto.PrivKey, pushEncK
 			return err
 		}
 		pushKeyString := base64.StdEncoding.EncodeToString(pushKeyBinary)
-		st.SetDetailAndBundledRelation(bundle.RelationKeySpacePushNotificationsKey, domain.String(pushKeyString))
+		st.SetDetailAndBundledRelation(bundle.RelationKeySpacePushNotificationKey, domain.String(pushKeyString))
 	}
 
 	if pushEncKey != nil {
@@ -160,7 +160,7 @@ func (s *SpaceView) SetAclInfo(isAclEmpty bool, pushKey crypto.PrivKey, pushEncK
 			return err
 		}
 		pushEncString := base64.StdEncoding.EncodeToString(pushEncBinary)
-		st.SetDetailAndBundledRelation(bundle.RelationKeySpacePushNotificationsEncryptionKey, domain.String(pushEncString))
+		st.SetDetailAndBundledRelation(bundle.RelationKeySpacePushNotificationEncryptionKey, domain.String(pushEncString))
 	}
 
 	s.updateAccessType(st)

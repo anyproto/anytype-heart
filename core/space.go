@@ -9,12 +9,10 @@ import (
 	"github.com/ipfs/go-cid"
 
 	"github.com/anyproto/anytype-heart/core/acl"
-	"github.com/anyproto/anytype-heart/core/block/detailservice"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/inviteservice"
 	"github.com/anyproto/anytype-heart/core/spaceview"
 	"github.com/anyproto/anytype-heart/pb"
-	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space"
 	"github.com/anyproto/anytype-heart/util/encode"
@@ -398,24 +396,6 @@ func (mw *Middleware) SpaceUnsetOrder(_ context.Context, request *pb.RpcSpaceUns
 		return response(pb.RpcSpaceUnsetOrderResponseError_UNKNOWN_ERROR, err)
 	}
 	return response(pb.RpcSpaceUnsetOrderResponseError_NULL, nil)
-}
-
-func (mw *Middleware) SpacePushNotificationsSet(_ context.Context, req *pb.RpcSpacePushNotificationsSetRequest) *pb.RpcSpacePushNotificationsSetResponse {
-	response := func(code pb.RpcSpacePushNotificationsSetResponseErrorCode, err error) *pb.RpcSpacePushNotificationsSetResponse {
-		m := &pb.RpcSpacePushNotificationsSetResponse{Error: &pb.RpcSpacePushNotificationsSetResponseError{Code: code}}
-		if err != nil {
-			m.Error.Description = getErrorDescription(err)
-		}
-		return m
-	}
-	err := mustService[detailservice.Service](mw).ModifyDetails(nil, req.SpaceViewId, func(current *domain.Details) (*domain.Details, error) {
-		return current.SetInt64(bundle.RelationKeySpacePushNotificationsTopics, int64(req.Topics)), nil
-	})
-	if err != nil {
-		return response(pb.RpcSpacePushNotificationsSetResponseError_UNKNOWN_ERROR, err)
-	}
-
-	return response(pb.RpcSpacePushNotificationsSetResponseError_NULL, nil)
 }
 
 func join(ctx context.Context, aclService acl.AclService, req *pb.RpcSpaceJoinRequest) (err error) {
