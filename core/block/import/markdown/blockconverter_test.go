@@ -42,7 +42,7 @@ func Test_processFiles(t *testing.T) {
 		files := converter.processFiles(absolutePath, common.NewError(pb.RpcObjectImportRequest_IGNORE_ERRORS), source)
 
 		// then
-		assert.Len(t, files, 9)
+		assert.Len(t, files, 16)
 
 		pdfFilePath := filepath.Join(absolutePath, "test.pdf")
 		assert.Contains(t, files, pdfFilePath)
@@ -74,7 +74,7 @@ func Test_processFiles(t *testing.T) {
 		files := converter.processFiles(absolutePath, common.NewError(pb.RpcObjectImportRequest_IGNORE_ERRORS), source)
 
 		// then
-		assert.Len(t, files, 7)
+		assert.Len(t, files, 14)
 
 		pdfFilePath := filepath.Join(absolutePath, "test.pdf")
 		assert.NotContains(t, files, pdfFilePath)

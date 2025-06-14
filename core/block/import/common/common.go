@@ -3,6 +3,7 @@ package common
 import (
 	"crypto/sha256"
 	"encoding/hex"
+	"fmt"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -267,7 +268,13 @@ func UpdateObjectIDsInRelations(st *state.State, oldIDtoNew map[string]string) {
 		if relLink == nil {
 			continue
 		}
+		if k == bundle.RelationKeyRecommendedRelations {
+			fmt.Println("### RecommendedRelations")
+		}
 		if !isLinkToObject(relLink) {
+			if k == bundle.RelationKeyRecommendedRelations {
+				fmt.Println("### RecommendedRelations skip")
+			}
 			continue
 		}
 		if relLink.Key == bundle.RelationKeyFeaturedRelations.String() {

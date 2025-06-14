@@ -12,7 +12,7 @@ reviewed: false
 website: https://anytype.io
 email: contact@anytype.io
 description: This is a longer description that contains more details about the project documentation. It should be imported as a longtext relation.
-Type: Task
+Object Type: Task
 ---
 
 # Project Overview

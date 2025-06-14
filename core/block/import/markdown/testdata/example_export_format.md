@@ -1,4 +1,5 @@
 ---
+# yaml-language-server: $schema=./schemas/route.schema.json
 Object type: Route
 Distance (km): 4418
 Difficulty Level: Difficult

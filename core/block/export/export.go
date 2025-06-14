@@ -173,46 +173,50 @@ func (d Docs) transformToDetailsMap() map[string]*domain.Details {
 }
 
 type exportContext struct {
-	spaceId          string
-	docs             Docs
-	includeArchive   bool
-	includeNested    bool
-	includeFiles     bool
-	format           model.ExportFormat
-	isJson           bool
-	reqIds           []string
-	zip              bool
-	path             string
-	linkStateFilters *state.Filters
-	isLinkProcess    bool
-	includeBackLinks bool
-	includeSpace     bool
-	relations        map[string]struct{}
-	setOfList        map[string]struct{}
-	objectTypes      map[string]struct{}
-	gatewayUrl       string
+	spaceId           string
+	docs              Docs
+	includeArchive    bool
+	includeNested     bool
+	includeFiles      bool
+	format            model.ExportFormat
+	isJson            bool
+	reqIds            []string
+	zip               bool
+	path              string
+	linkStateFilters  *state.Filters
+	isLinkProcess     bool
+	includeBackLinks  bool
+	includeSpace      bool
+	includeJsonSchema bool
+	relations         map[string]struct{}
+	setOfList         map[string]struct{}
+	objectTypes       map[string]struct{}
+	writtenSchemas    map[string]bool
+	gatewayUrl        string
 	*export
 }
 
 func newExportContext(e *export, req pb.RpcObjectListExportRequest) *exportContext {
 	ec := &exportContext{
-		path:             req.Path,
-		spaceId:          req.SpaceId,
-		docs:             map[string]*Doc{},
-		includeArchive:   req.IncludeArchived,
-		includeNested:    req.IncludeNested,
-		includeFiles:     req.IncludeFiles,
-		format:           req.Format,
-		isJson:           req.IsJson,
-		reqIds:           req.ObjectIds,
-		zip:              req.Zip,
-		linkStateFilters: pbFiltersToState(req.LinksStateFilters),
-		includeBackLinks: req.IncludeBacklinks,
-		includeSpace:     req.IncludeSpace,
-		setOfList:        make(map[string]struct{}),
-		objectTypes:      make(map[string]struct{}),
-		relations:        make(map[string]struct{}),
-		export:           e,
+		path:              req.Path,
+		spaceId:           req.SpaceId,
+		docs:              map[string]*Doc{},
+		includeArchive:    req.IncludeArchived,
+		includeNested:     req.IncludeNested,
+		includeFiles:      req.IncludeFiles,
+		format:            req.Format,
+		isJson:            req.IsJson,
+		reqIds:            req.ObjectIds,
+		zip:               req.Zip,
+		linkStateFilters:  pbFiltersToState(req.LinksStateFilters),
+		includeBackLinks:  req.IncludeBacklinks,
+		includeSpace:      req.IncludeSpace,
+		includeJsonSchema: req.IncludeJsonSchema,
+		setOfList:         make(map[string]struct{}),
+		objectTypes:       make(map[string]struct{}),
+		relations:         make(map[string]struct{}),
+		writtenSchemas:    make(map[string]bool),
+		export:            e,
 	}
 	if e.gatewayService != nil {
 		ec.gatewayUrl = "http://" + e.gatewayService.Addr()
@@ -1157,7 +1161,11 @@ func (e *exportContext) writeDoc(ctx context.Context, wr writer, docId string, d
 		var conv converter.Converter
 		switch e.format {
 		case model.Export_Markdown:
-			conv = md.NewMDConverter(st, wr.Namer(), true)
+			if e.includeJsonSchema {
+				conv = md.NewMDConverterWithSchema(st, wr.Namer(), true, true)
+			} else {
+				conv = md.NewMDConverter(st, wr.Namer(), true)
+			}
 		case model.Export_Protobuf:
 			conv = pbc.NewConverter(st, e.isJson)
 		case model.Export_JSON:
@@ -1180,6 +1188,34 @@ func (e *exportContext) writeDoc(ctx context.Context, wr writer, docId string, d
 		if err = wr.WriteFile(filename, bytes.NewReader(result), lastModifiedDate); err != nil {
 			return err
 		}
+
+		// Write JSON schema file if enabled and this is markdown export
+		if e.format == model.Export_Markdown && e.includeJsonSchema {
+			if mdConv, ok := conv.(*md.MD); ok {
+				// Get the object type name to create schema filename
+				objectTypeId := st.LocalDetails().GetString(bundle.RelationKeyType)
+				if typeDetails, exists := details[objectTypeId]; exists {
+					typeName := typeDetails.GetString(bundle.RelationKeyName)
+					if typeName != "" {
+						schemaFileName := mdConv.GenerateSchemaFileName(typeName)
+						// Remove the leading ./ from schema file name for actual file writing
+						actualFileName := strings.TrimPrefix(schemaFileName, "./")
+
+						// Only write schema if we haven't written it yet
+						if !e.writtenSchemas[actualFileName] {
+							if schemaBytes, err := mdConv.GenerateJSONSchema(); err == nil && schemaBytes != nil {
+								if err = wr.WriteFile(actualFileName, bytes.NewReader(schemaBytes), 0); err != nil {
+									log.Warnf("failed to write JSON schema: %v", err)
+								} else {
+									e.writtenSchemas[actualFileName] = true
+								}
+							}
+						}
+					}
+				}
+			}
+		}
+
 		return nil
 	})
 }

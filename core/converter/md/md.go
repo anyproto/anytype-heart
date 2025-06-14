@@ -2,6 +2,7 @@ package md
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"html"
 	"io"
@@ -34,6 +35,10 @@ func NewMDConverter(s *state.State, fn FileNamer, includeRelations bool) convert
 	return &MD{s: s, fn: fn, includeRelations: includeRelations, knownDocs: make(map[string]*domain.Details)}
 }
 
+func NewMDConverterWithSchema(s *state.State, fn FileNamer, includeRelations bool, includeSchema bool) converter.Converter {
+	return &MD{s: s, fn: fn, includeRelations: includeRelations, includeSchema: true, knownDocs: make(map[string]*domain.Details)}
+}
+
 type MD struct {
 	s *state.State
 
@@ -43,6 +48,7 @@ type MD struct {
 	knownDocs map[string]*domain.Details
 
 	includeRelations bool
+	includeSchema    bool
 	mw               *marksWriter
 	fn               FileNamer
 }
@@ -82,13 +88,25 @@ func (h *MD) renderProperties(buf writer) {
 		}
 	}
 
-	if d, exists := h.knownDocs[h.s.LocalDetails().GetString(bundle.RelationKeyType)]; exists {
+	objectTypeId := h.s.LocalDetails().GetString(bundle.RelationKeyType)
+	var objectTypeDetails *domain.Details
+	if d, exists := h.knownDocs[objectTypeId]; exists {
+		objectTypeDetails = d
 		propertiesIds = append(d.GetStringList(bundle.RelationKeyRecommendedFeaturedRelations), d.GetStringList(bundle.RelationKeyRecommendedRelations)...)
 	}
 
 	propertiesIds = slices.Compact(propertiesIds)
 	if len(propertiesIds) > 0 {
 		fmt.Fprintf(buf, "---\n")
+
+		// Add JSON schema reference if enabled
+		if h.includeSchema && objectTypeDetails != nil {
+			typeName := objectTypeDetails.GetString(bundle.RelationKeyName)
+			if typeName != "" {
+				schemaFileName := h.GenerateSchemaFileName(typeName)
+				fmt.Fprintf(buf, "# yaml-language-server: $schema=%s\n", schemaFileName)
+			}
+		}
 	}
 	for _, id := range propertiesIds {
 		var (
@@ -112,10 +130,115 @@ func (h *MD) renderProperties(buf writer) {
 
 		v := h.s.CombinedDetails().Get(domain.RelationKey(key))
 		switch format {
-		case model.RelationFormat_object,
-			model.RelationFormat_tag,
-			model.RelationFormat_status:
+		case model.RelationFormat_file:
+			// Handle file format relations
+			var ids []string
+			if v.String() != "" {
+				ids = append(ids, v.String())
+			} else {
+				ids = v.StringList()
+			}
+			if len(ids) == 0 {
+				continue
+			}
 
+			if len(ids) == 1 {
+				// Single file - check if it's a file object in knownDocs
+				fileId := ids[0]
+				if info, exists := h.knownDocs[fileId]; exists {
+					layout := info.GetInt64(bundle.RelationKeyLayout)
+					// Check if it's a file object type
+					if layout == int64(model.ObjectType_file) || layout == int64(model.ObjectType_image) ||
+						layout == int64(model.ObjectType_audio) || layout == int64(model.ObjectType_video) ||
+						layout == int64(model.ObjectType_pdf) {
+						// Get the file path using the same logic as getLinkInfo
+						_, filename, _ := h.getLinkInfo(fileId)
+						if filename != "" {
+							_, _ = fmt.Fprintf(buf, "  %s: %s\n", name, filename)
+							// Add to appropriate hash list for later use
+							if layout == int64(model.ObjectType_image) {
+								h.imageHashes = append(h.imageHashes, fileId)
+							} else {
+								h.fileHashes = append(h.fileHashes, fileId)
+							}
+						}
+					}
+				}
+				continue
+			}
+
+			// Multiple files
+			var fileList []string
+			for _, fileId := range ids {
+				if info, exists := h.knownDocs[fileId]; exists {
+					layout := info.GetInt64(bundle.RelationKeyLayout)
+					// Check if it's a file object type
+					if layout == int64(model.ObjectType_file) || layout == int64(model.ObjectType_image) ||
+						layout == int64(model.ObjectType_audio) || layout == int64(model.ObjectType_video) ||
+						layout == int64(model.ObjectType_pdf) {
+						_, filename, _ := h.getLinkInfo(fileId)
+						if filename != "" {
+							fileList = append(fileList, filename)
+							// Add to appropriate hash list for later use
+							if layout == int64(model.ObjectType_image) {
+								h.imageHashes = append(h.imageHashes, fileId)
+							} else {
+								h.fileHashes = append(h.fileHashes, fileId)
+							}
+						}
+					}
+				}
+			}
+
+			// Only render if we found any files
+			if len(fileList) > 0 {
+				_, _ = fmt.Fprintf(buf, "  %s:\n", name)
+				for _, filename := range fileList {
+					_, _ = fmt.Fprintf(buf, "    - %s\n", filename)
+				}
+			}
+
+		case model.RelationFormat_object:
+			// Object format - render with File property when included in export
+			var ids []string
+			if v.String() != "" {
+				ids = append(ids, v.String())
+			} else {
+				ids = v.StringList()
+			}
+			if len(ids) == 0 {
+				continue
+			}
+
+			if len(ids) == 1 {
+				if d, ok := h.knownDocs[ids[0]]; ok {
+					// Object is included in export, render with File property
+					objectName := d.Get(bundle.RelationKeyName).String()
+					filename := h.fn.Get("", ids[0], objectName, h.Ext())
+					_, _ = fmt.Fprintf(buf, "  %s:\n", name)
+					_, _ = fmt.Fprintf(buf, "    Name: %s\n", objectName)
+					_, _ = fmt.Fprintf(buf, "    File: %s\n", filename)
+				} else {
+					// Object not included in export, just show ID or empty
+					_, _ = fmt.Fprintf(buf, "  %s: %s\n", name, ids[0])
+				}
+				continue
+			}
+			// Each target rendered as list item.
+			_, _ = fmt.Fprintf(buf, "  %s:\n", name)
+			for _, id := range ids {
+				if d, ok := h.knownDocs[id]; ok {
+					// Object is included in export
+					objectName := d.Get(bundle.RelationKeyName).String()
+					filename := h.fn.Get("", id, objectName, h.Ext())
+					_, _ = fmt.Fprintf(buf, "    - Name: %s\n", objectName)
+					_, _ = fmt.Fprintf(buf, "      File: %s\n", filename)
+				}
+			}
+
+		case model.RelationFormat_tag,
+			model.RelationFormat_status:
+			// Tag and status formats - just render names
 			var ids []string
 			if v.String() != "" {
 				ids = append(ids, v.String())
@@ -129,8 +252,8 @@ func (h *MD) renderProperties(buf writer) {
 			if len(ids) == 1 {
 				if d, ok := h.knownDocs[ids[0]]; ok {
 					_, _ = fmt.Fprintf(buf, "  %s: %s\n", name, d.Get(bundle.RelationKeyName).String())
-					continue
 				}
+				continue
 			}
 			// Each target rendered as list item.
 			_, _ = fmt.Fprintf(buf, "  %s:\n", name)
@@ -666,4 +789,272 @@ func (a sortedMarks) Less(i, j int) bool {
 		return a[i].Type < a[j].Type
 	}
 	return li > lj
+}
+
+// GenerateSchemaFileName creates a schema file name from the object type name
+func (h *MD) GenerateSchemaFileName(typeName string) string {
+	// Convert to lowercase and replace spaces with underscores
+	fileName := strings.ToLower(typeName)
+	fileName = strings.ReplaceAll(fileName, " ", "_")
+	fileName = strings.ReplaceAll(fileName, "/", "_")
+	fileName = strings.ReplaceAll(fileName, "\\", "_")
+	return "./schemas/" + fileName + ".schema.json"
+}
+
+// GenerateJSONSchema generates a JSON schema for the object type
+func (h *MD) GenerateJSONSchema() ([]byte, error) {
+	objectTypeId := h.s.LocalDetails().GetString(bundle.RelationKeyType)
+	objectTypeDetails, exists := h.knownDocs[objectTypeId]
+	if !exists {
+		return nil, fmt.Errorf("object type not found")
+	}
+
+	// Get type name for URN
+	typeName := objectTypeDetails.GetString(bundle.RelationKeyName)
+	typeNameForId := strings.ToLower(typeName)
+	typeNameForId = strings.ReplaceAll(typeNameForId, " ", "-")
+	typeNameForId = strings.ReplaceAll(typeNameForId, "/", "-")
+	typeNameForId = strings.ReplaceAll(typeNameForId, "\\", "-")
+
+	// Get dates and author for URN components
+	lastModified := objectTypeDetails.GetInt64(bundle.RelationKeyLastModifiedDate)
+	if lastModified == 0 {
+		// Fallback to created date if no last modified
+		lastModified = objectTypeDetails.GetInt64(bundle.RelationKeyCreatedDate)
+	}
+	dateForId := ""
+	if lastModified > 0 {
+		dateForId = time.Unix(lastModified, 0).UTC().Format("2006-01-02")
+	} else {
+		// Use current date as fallback
+		dateForId = time.Now().UTC().Format("2006-01-02")
+	}
+
+	// Get author (lastModifiedBy or fallback to creator)
+	author := objectTypeDetails.GetString(bundle.RelationKeyLastModifiedBy)
+	if author == "" {
+		author = objectTypeDetails.GetString(bundle.RelationKeyCreator)
+	}
+	// Create short author ID (first 4 chars of ID or "anon")
+	authorForId := "anon"
+	if author != "" {
+		if len(author) >= 4 {
+			authorForId = author[:4]
+		} else {
+			authorForId = author
+		}
+	}
+
+	// Build URN-style ID
+	// Format: urn:anytype:schema:2025-06-14:author-7a12:type-task:gen-2.3.0
+	schemaId := fmt.Sprintf("urn:anytype:schema:%s:author-%s:type-%s:gen-%s",
+		dateForId,
+		authorForId,
+		typeNameForId,
+		"1.0.0")
+
+	// Handle dates for x-type-date
+	createdDate := objectTypeDetails.GetInt64(bundle.RelationKeyCreatedDate)
+	typeDate := ""
+	if createdDate > 0 {
+		typeDate = time.Unix(createdDate, 0).UTC().Format(time.RFC3339)
+	}
+
+	schema := map[string]interface{}{
+		"$schema":       "http://json-schema.org/draft-07/schema#",
+		"$id":           schemaId,
+		"type":          "object",
+		"x-app":         "Anytype",
+		"x-type-author": author,
+		"x-type-date":   typeDate,
+		"x-genVersion":  "1.0.0",
+	}
+
+	// Add type metadata
+	if typeName != "" {
+		schema["title"] = typeName
+	}
+	if description := objectTypeDetails.GetString(bundle.RelationKeyDescription); description != "" {
+		schema["description"] = description
+	}
+
+	// Add custom extensions for Anytype-specific metadata
+	if plural := objectTypeDetails.GetString(bundle.RelationKeyPluralName); plural != "" {
+		schema["x-plural"] = plural
+	}
+	if iconEmoji := objectTypeDetails.GetString(bundle.RelationKeyIconEmoji); iconEmoji != "" {
+		schema["x-icon-emoji"] = iconEmoji
+	}
+	if iconImage := objectTypeDetails.GetString(bundle.RelationKeyIconImage); iconImage != "" {
+		schema["x-icon-name"] = iconImage
+	}
+
+	properties := make(map[string]interface{})
+	required := []string{}
+
+	// Get all relations for this type
+	featuredRelations := objectTypeDetails.GetStringList(bundle.RelationKeyRecommendedFeaturedRelations)
+	regularRelations := objectTypeDetails.GetStringList(bundle.RelationKeyRecommendedRelations)
+	allRelations := append(featuredRelations, regularRelations...)
+
+	// Also add the Type property
+	typeRelationId := ""
+	for id, d := range h.knownDocs {
+		if d.GetString(bundle.RelationKeyRelationKey) == bundle.RelationKeyType.String() &&
+			d.GetInt64(bundle.RelationKeyLayout) == int64(model.ObjectType_relation) {
+			typeRelationId = id
+			break
+		}
+	}
+	if typeRelationId != "" {
+		allRelations = append([]string{typeRelationId}, allRelations...)
+	}
+
+	for _, relationId := range allRelations {
+		relationDetails, ok := h.knownDocs[relationId]
+		if !ok || relationDetails.GetBool(bundle.RelationKeyIsHidden) {
+			continue
+		}
+
+		name := relationDetails.GetString(bundle.RelationKeyName)
+		format := model.RelationFormat(relationDetails.GetInt64(bundle.RelationKeyRelationFormat))
+
+		property := h.getJSONSchemaProperty(relationDetails, format)
+		if property != nil {
+			properties[name] = property
+
+			// Mark required fields (you can customize this logic)
+			if featuredRelations != nil && slices.Contains(featuredRelations, relationId) {
+				required = append(required, name)
+			}
+		}
+	}
+
+	schema["properties"] = properties
+	if len(required) > 0 {
+		schema["required"] = required
+	}
+
+	return json.MarshalIndent(schema, "", "  ")
+}
+
+func (h *MD) getJSONSchemaProperty(relationDetails *domain.Details, format model.RelationFormat) map[string]interface{} {
+	key := relationDetails.GetString(bundle.RelationKeyRelationKey)
+	property := make(map[string]interface{})
+	if key == bundle.RelationKeyType.String() {
+		// exception for Object Type relation, we don't need to fill it as object
+		property["const"] = relationDetails.GetString(bundle.RelationKeyName)
+		return property
+	}
+	switch format {
+	case model.RelationFormat_shorttext, model.RelationFormat_longtext:
+		property["type"] = "string"
+		property["description"] = "Long text field"
+
+	case model.RelationFormat_number:
+		property["type"] = "number"
+
+	case model.RelationFormat_checkbox:
+		property["type"] = "boolean"
+
+	case model.RelationFormat_date:
+		property["type"] = "string"
+		property["format"] = "date"
+		if relationDetails.GetBool(bundle.RelationKeyRelationFormatIncludeTime) {
+			property["format"] = "date-time"
+		}
+
+	case model.RelationFormat_tag:
+		property["type"] = "array"
+		property["items"] = map[string]string{"type": "string"}
+
+	case model.RelationFormat_status:
+		property["type"] = "string"
+		// Get status options if available
+		options := h.getRelationOptions(relationDetails.GetString(bundle.RelationKeyId))
+		if len(options) > 0 {
+			property["enum"] = options
+		}
+
+	case model.RelationFormat_email:
+		property["type"] = "string"
+		property["format"] = "email"
+
+	case model.RelationFormat_url:
+		property["type"] = "string"
+		property["format"] = "uri"
+
+	case model.RelationFormat_phone:
+		property["type"] = "string"
+		property["pattern"] = "^[+]?[0-9\\s()-]+$"
+
+	case model.RelationFormat_file:
+		// For file format relations, the value is the file path
+		property["type"] = "string"
+		property["description"] = "Path to the file in the export"
+
+	case model.RelationFormat_object:
+		// For object relations, create a more detailed schema
+		property["type"] = "object"
+		properties := map[string]interface{}{
+			"Name": map[string]interface{}{
+				"type":        "string",
+				"description": "Name of the referenced object",
+			},
+			"File": map[string]interface{}{
+				"type":        "string",
+				"description": "Path to the object file in the export",
+			},
+		}
+		required := []string{"Name"}
+
+		// Add Object Type property
+		properties["Object type"] = map[string]interface{}{
+			"type":        "string",
+			"description": "Type of the referenced object",
+		}
+
+		// Check if specific object types are defined for this relation
+		if objectTypes := relationDetails.GetStringList(bundle.RelationKeyRelationFormatObjectTypes); len(objectTypes) > 0 {
+			// Get the names of these object types
+			var typeNames []string
+			for _, typeId := range objectTypes {
+				if typeDetails, exists := h.knownDocs[typeId]; exists {
+					if typeName := typeDetails.GetString(bundle.RelationKeyName); typeName != "" {
+						typeNames = append(typeNames, typeName)
+					}
+				}
+			}
+
+			// If we found type names, add them as enum
+			if len(typeNames) > 0 {
+				properties["Object type"].(map[string]interface{})["enum"] = typeNames
+			}
+		}
+
+		property["properties"] = properties
+		property["required"] = required
+
+	default:
+		property["type"] = "string"
+	}
+
+	return property
+}
+
+func (h *MD) getRelationOptions(relationId string) []string {
+	var options []string
+
+	// Look for relation options in knownDocs
+	for _, details := range h.knownDocs {
+		if details.GetString(bundle.RelationKeyRelationKey) == relationId &&
+			details.GetInt64(bundle.RelationKeyLayout) == int64(model.ObjectType_relationOption) {
+			optionName := details.GetString(bundle.RelationKeyName)
+			if optionName != "" {
+				options = append(options, optionName)
+			}
+		}
+	}
+
+	return options
 }

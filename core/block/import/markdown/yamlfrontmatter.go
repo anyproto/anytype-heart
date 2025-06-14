@@ -96,14 +96,20 @@ func parseYAMLFrontMatter(frontMatter []byte) (*YAMLParseResult, error) {
 	}
 
 	// Check for object type property (case-insensitive)
+	var typeKey string
 	for k, v := range data {
-		if strings.EqualFold(k, "object type") {
+		if strings.EqualFold(k, "object type") || strings.EqualFold(k, "type") {
 			if typeStr, ok := v.(string); ok {
 				result.ObjectType = typeStr
-				// delete(data, k)
+				typeKey = k
 				break
 			}
 		}
+	}
+	
+	// Remove the type key from data so it's not processed as a property
+	if typeKey != "" {
+		delete(data, typeKey)
 	}
 
 	// Process remaining properties in one pass
