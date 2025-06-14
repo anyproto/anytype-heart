@@ -340,10 +340,10 @@ func (h *MD) renderProperties(buf writer) {
 						filename := h.fn.Get("", objId, objectName, h.Ext())
 						_, _ = fmt.Fprintf(buf, "      File: %s\n", filename)
 					} else {
-							// Object not in export, show ID
-							_, _ = fmt.Fprintf(buf, "      Id: %s\n", objId)
-						}
-					} else {
+						// Object not in export, show ID
+						_, _ = fmt.Fprintf(buf, "      Id: %s\n", objId)
+					}
+				} else {
 					// Object not found, just show ID
 					_, _ = fmt.Fprintf(buf, "    - Name: %s\n", objId)
 				}
@@ -987,6 +987,7 @@ func (h *MD) GenerateJSONSchema() ([]byte, error) {
 		"description": "Unique identifier of the Anytype object",
 		"readOnly":    true,
 		"x-order":     0,
+		"x-key":       "id",
 	}
 
 	// Get all relations for this type
@@ -1077,6 +1078,10 @@ func (h *MD) GenerateJSONSchema() ([]byte, error) {
 func (h *MD) getJSONSchemaProperty(relationDetails *domain.Details, format model.RelationFormat, typeName string) map[string]interface{} {
 	key := relationDetails.GetString(bundle.RelationKeyRelationKey)
 	property := make(map[string]interface{})
+	
+	// Add x-key for all properties
+	property["x-key"] = key
+	
 	if key == bundle.RelationKeyType.String() {
 		// exception for Object Type relation
 		// it's const because it basically refers to the type itself
@@ -1116,12 +1121,19 @@ func (h *MD) getJSONSchemaProperty(relationDetails *domain.Details, format model
 
 	case model.RelationFormat_tag:
 		property["type"] = "array"
-		property["items"] = map[string]string{"type": "string"}
+		options := h.getRelationOptions(relationDetails.GetString(bundle.RelationKeyRelationKey))
+		v := map[string]interface{}{
+			"type": "string",
+		}
+		if len(options) > 0 {
+			v["examples"] = options
+		}
+		property["items"] = v
 
 	case model.RelationFormat_status:
 		property["type"] = "string"
 		// Get status options if available
-		options := h.getRelationOptions(relationDetails.GetString(bundle.RelationKeyId))
+		options := h.getRelationOptions(relationDetails.GetString(bundle.RelationKeyRelationKey))
 		if len(options) > 0 {
 			property["enum"] = options
 		}

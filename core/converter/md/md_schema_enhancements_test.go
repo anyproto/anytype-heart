@@ -89,25 +89,30 @@ func TestMD_GenerateJSONSchema_WithEnhancements(t *testing.T) {
 	assert.Equal(t, "Unique identifier of the Anytype object", idProp["description"])
 	assert.Equal(t, true, idProp["readOnly"])
 	assert.Equal(t, float64(0), idProp["x-order"]) // JSON numbers are float64
+	assert.Equal(t, "id", idProp["x-key"])
 
 	// Check Type property comes first (after id)
 	typeProp := properties["Type"].(map[string]interface{})
 	assert.Equal(t, float64(1), typeProp["x-order"]) // Type is always first after id
+	assert.Equal(t, "type", typeProp["x-key"])
 
 	// Check featured properties have x-featured and correct order
 	nameProp := properties["Name"].(map[string]interface{})
 	assert.Equal(t, true, nameProp["x-featured"])
 	assert.Equal(t, float64(2), nameProp["x-order"]) // Second property after Type
+	assert.Equal(t, "name", nameProp["x-key"])
 
 	statusProp := properties["Status"].(map[string]interface{})
 	assert.Equal(t, true, statusProp["x-featured"])
 	assert.Equal(t, float64(3), statusProp["x-order"]) // Third property
+	assert.Equal(t, "status", statusProp["x-key"])
 
 	// Check non-featured property doesn't have x-featured but has order
 	descProp := properties["Description"].(map[string]interface{})
 	_, hasFeatured := descProp["x-featured"]
 	assert.False(t, hasFeatured, "Non-featured property should not have x-featured")
 	assert.Equal(t, float64(4), descProp["x-order"]) // Fourth property
+	assert.Equal(t, "description", descProp["x-key"])
 
 	// Verify required array is not present (since we don't add anything to it)
 	_, hasRequired := schema["required"]
@@ -284,5 +289,30 @@ func TestMD_GenerateJSONSchema_PropertyOrder(t *testing.T) {
 		prop := propValue.(map[string]interface{})
 		_, hasOrder := prop["x-order"]
 		assert.True(t, hasOrder, "Property %s should have x-order", propName)
+	}
+
+	// Verify all properties have x-key
+	for propName, propValue := range properties {
+		prop := propValue.(map[string]interface{})
+		xKey, hasXKey := prop["x-key"]
+		assert.True(t, hasXKey, "Property %s should have x-key", propName)
+		
+		// Verify x-key values for specific properties
+		switch propName {
+		case "id":
+			assert.Equal(t, "id", xKey)
+		case "Type":
+			assert.Equal(t, "type", xKey)
+		case "Property 1":
+			assert.Equal(t, "prop1", xKey)
+		case "Property 2":
+			assert.Equal(t, "prop2", xKey)
+		case "Property 3":
+			assert.Equal(t, "prop3", xKey)
+		case "Property 4":
+			assert.Equal(t, "prop4", xKey)
+		case "Property 5":
+			assert.Equal(t, "prop5", xKey)
+		}
 	}
 }
