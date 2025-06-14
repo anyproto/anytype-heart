@@ -195,7 +195,75 @@ func (si *SchemaImporter) parseRelationFromProperty(name string, prop map[string
 		rel.Key = bson.NewObjectId().Hex()
 	}
 	
-	// Determine format from property schema
+	// Check for explicit x-format first
+	if xFormat := getStringField(prop, "x-format"); xFormat != "" {
+		// Parse the format string (e.g., "RelationFormat_file" -> model.RelationFormat_file)
+		formatName := xFormat
+		if strings.HasPrefix(formatName, "RelationFormat_") {
+			formatName = strings.TrimPrefix(formatName, "RelationFormat_")
+		}
+		
+		// Map string to format enum
+		switch formatName {
+		case "shorttext":
+			rel.Format = model.RelationFormat_shorttext
+		case "longtext":
+			rel.Format = model.RelationFormat_longtext
+		case "number":
+			rel.Format = model.RelationFormat_number
+		case "checkbox":
+			rel.Format = model.RelationFormat_checkbox
+		case "date":
+			rel.Format = model.RelationFormat_date
+		case "tag":
+			rel.Format = model.RelationFormat_tag
+		case "status":
+			rel.Format = model.RelationFormat_status
+		case "email":
+			rel.Format = model.RelationFormat_email
+		case "url":
+			rel.Format = model.RelationFormat_url
+		case "phone":
+			rel.Format = model.RelationFormat_phone
+		case "file":
+			rel.Format = model.RelationFormat_file
+		case "object":
+			rel.Format = model.RelationFormat_object
+		}
+		
+		// For date format, still check for includeTime
+		if rel.Format == model.RelationFormat_date {
+			format := getStringField(prop, "format")
+			rel.IncludeTime = (format == "date-time")
+		}
+		
+		// For tag/status, still extract options/examples
+		if rel.Format == model.RelationFormat_status {
+			if enumValues, hasEnum := prop["enum"]; hasEnum {
+				if enumArray, ok := enumValues.([]interface{}); ok {
+					for _, val := range enumArray {
+						if strVal, ok := val.(string); ok {
+							rel.Options = append(rel.Options, strVal)
+						}
+					}
+				}
+			}
+		} else if rel.Format == model.RelationFormat_tag {
+			if examples, hasExamples := prop["examples"]; hasExamples {
+				if exampleArray, ok := examples.([]interface{}); ok {
+					for _, val := range exampleArray {
+						if strVal, ok := val.(string); ok {
+							rel.Examples = append(rel.Examples, strVal)
+						}
+					}
+				}
+			}
+		}
+		
+		return rel
+	}
+	
+	// Fall back to inferring format from property schema
 	propType := getStringField(prop, "type")
 	format := getStringField(prop, "format")
 	

@@ -1082,6 +1082,9 @@ func (h *MD) getJSONSchemaProperty(relationDetails *domain.Details, format model
 	// Add x-key for all properties
 	property["x-key"] = key
 	
+	// Add x-format to explicitly specify the relation format
+	property["x-format"] = "RelationFormat_" + format.String()
+	
 	if key == bundle.RelationKeyType.String() {
 		// exception for Object Type relation
 		// it's const because it basically refers to the type itself
@@ -1156,31 +1159,32 @@ func (h *MD) getJSONSchemaProperty(relationDetails *domain.Details, format model
 		property["description"] = "Path to the file in the export"
 
 	case model.RelationFormat_object:
-		// For object relations, create a more detailed schema
-		property["type"] = "object"
-		properties := map[string]interface{}{
-			"Name": map[string]interface{}{
-				"type":        "string",
-				"description": "Name of the referenced object",
+		// For object relations, create an array of objects schema
+		property["type"] = "array"
+		objectSchema := map[string]interface{}{
+			"type": "object",
+			"properties": map[string]interface{}{
+				"Name": map[string]interface{}{
+					"type":        "string",
+					"description": "Name of the referenced object",
+				},
+				"File": map[string]interface{}{
+					"type":        "string",
+					"description": "Path to the object file in the export (only present if object is included in export)",
+				},
+				"Id": map[string]interface{}{
+					"type":        "string",
+					"description": "Unique identifier of the referenced object (only present if object is not included in export)",
+				},
+				"Object type": map[string]interface{}{
+					"type":        "string",
+					"description": "Type of the referenced object",
+				},
 			},
-			"File": map[string]interface{}{
-				"type":        "string",
-				"description": "Path to the object file in the export (only present if object is included in export)",
-			},
+			"required": []string{"Name"},
 		}
-		// Add Id property
-		properties["Id"] = map[string]interface{}{
-			"type":        "string",
-			"description": "Unique identifier of the referenced object (only present if object is not included in export)",
-		}
-		// Only Name is required, File and Id are optional/conditional
-		required := []string{"Name"}
-
-		// Add Object Type property
-		properties["Object type"] = map[string]interface{}{
-			"type":        "string",
-			"description": "Type of the referenced object",
-		}
+		
+		properties := objectSchema["properties"].(map[string]interface{})
 
 		// Check if specific object types are defined for this relation
 		if objectTypes := relationDetails.GetStringList(bundle.RelationKeyRelationFormatObjectTypes); len(objectTypes) > 0 {
@@ -1201,8 +1205,8 @@ func (h *MD) getJSONSchemaProperty(relationDetails *domain.Details, format model
 			}
 		}
 
-		property["properties"] = properties
-		property["required"] = required
+		// Set the items property for the array
+		property["items"] = objectSchema
 
 	default:
 		property["type"] = "string"
@@ -1213,6 +1217,11 @@ func (h *MD) getJSONSchemaProperty(relationDetails *domain.Details, format model
 
 func (h *MD) getRelationOptions(relationKey string) []string {
 	var options []string
+	
+	// Return empty if resolver is not available
+	if h.resolver == nil {
+		return options
+	}
 
 	optionDetails, err := h.resolver.ResolveRelationOptions(relationKey)
 	if err == nil && optionDetails != nil {

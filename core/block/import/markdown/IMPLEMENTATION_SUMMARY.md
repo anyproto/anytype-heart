@@ -209,6 +209,23 @@ This implementation adds JSON schema support to the Markdown import workflow. Wh
 5. Create type snapshots with all properties
 6. Use schema-defined keys when importing objects
 
+### Recent Enhancements
+
+#### x-format Support (Completed)
+- Added `x-format` field to all relation properties in exported schemas
+- Format is exported as `"RelationFormat_<format>"` (e.g., `"RelationFormat_file"`)
+- Import now prioritizes x-format over schema structure inference
+- Disambiguates between file and tag relations (both can be arrays)
+
+#### Object Relation Schema Fix (Completed)
+- Object relations now export as array of objects instead of single object
+- Each object in the array has properties: Name, File, Id, Object type
+- Properly represents multi-value object relations
+
+### Import Format Detection Priority
+1. **x-format** (if present) - Most reliable, explicitly specifies format
+2. **Schema structure inference** - Falls back to analyzing type/format/enum
+
 ### Future Enhancements
 - Support for relation constraints (min/max values, patterns)
 - Import of relation colors and icons from schema

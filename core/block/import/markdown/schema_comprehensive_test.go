@@ -85,20 +85,20 @@ func TestSchemaImporter_ComprehensiveTypes(t *testing.T) {
 				"x-order": 9,
 				"x-key": "website"
 			},
-			"Status": {
+			"Document Status": {
 				"type": "string",
 				"enum": ["Draft", "In Review", "Published", "Archived"],
 				"description": "Status with options",
 				"x-featured": true,
 				"x-order": 10,
-				"x-key": "status"
+				"x-key": "doc_status"
 			},
-			"Priority": {
+			"Priority Level": {
 				"type": "string",
 				"enum": ["Low", "Medium", "High", "Critical"],
 				"description": "Another status field",
 				"x-order": 11,
-				"x-key": "priority"
+				"x-key": "priority_level"
 			},
 			"Tags": {
 				"type": "array",
@@ -177,8 +177,8 @@ func TestSchemaImporter_ComprehensiveTypes(t *testing.T) {
 		{"meeting_time", "Meeting Time", model.RelationFormat_date, false, 0, false, 0},
 		{"email", "Email", model.RelationFormat_email, false, 0, false, 0},
 		{"website", "Website", model.RelationFormat_url, false, 0, false, 0},
-		{"status", "Status", model.RelationFormat_status, true, 4, false, 0},
-		{"priority", "Priority", model.RelationFormat_status, true, 4, false, 0},
+		{"doc_status", "Document Status", model.RelationFormat_status, true, 4, false, 0},
+		{"priority_level", "Priority Level", model.RelationFormat_status, true, 4, false, 0},
 		{"tags", "Tags", model.RelationFormat_tag, false, 0, true, 4},
 		{"categories", "Categories", model.RelationFormat_tag, false, 0, true, 3},
 		{"assignee", "Assignee", model.RelationFormat_object, false, 0, false, 0},
