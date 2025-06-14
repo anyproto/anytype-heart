@@ -91,8 +91,9 @@ func TestMD_RenderObjectRelation_FileFieldOnlyForExportedObjects(t *testing.T) {
 	assert.Contains(t, resultStr, "- Name: Object Two")
 	assert.Contains(t, resultStr, "  File: Object Two.md")
 
-	// Verify obj3 has Name but NO File field
+	// Verify obj3 has Name and Id field (not File)
 	assert.Contains(t, resultStr, "- Name: Object Three")
+	assert.Contains(t, resultStr, "  Id: obj3")
 	assert.NotContains(t, resultStr, "  File: Object Three.md")
 }
 

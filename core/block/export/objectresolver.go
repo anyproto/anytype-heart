@@ -15,16 +15,14 @@ import (
 type lazyObjectResolver struct {
 	objectStore    objectstore.ObjectStore
 	spaceId        string
-	knownObjects   map[string]*domain.Details
 	relationsCache map[string]*domain.Details
 	typesCache     map[string]*domain.Details
 }
 
-func newLazyObjectResolver(objectStore objectstore.ObjectStore, spaceId string, knownObjects map[string]*domain.Details) md.ObjectResolver {
+func newLazyObjectResolver(objectStore objectstore.ObjectStore, spaceId string) md.ObjectResolver {
 	return &lazyObjectResolver{
 		objectStore:    objectStore,
 		spaceId:        spaceId,
-		knownObjects:   knownObjects,
 		relationsCache: make(map[string]*domain.Details),
 		typesCache:     make(map[string]*domain.Details),
 	}
@@ -167,7 +165,6 @@ func (r *lazyObjectResolver) ResolveRelationOptions(relationKey string) ([]*doma
 }
 
 func (r *lazyObjectResolver) ResolveObject(objectId string) (*domain.Details, bool) {
-	// Query from objectStore
 	records, err := r.objectStore.SpaceIndex(r.spaceId).QueryByIds([]string{objectId})
 	if err != nil {
 		log.Error("failed to resolve object", zap.String("objectId", objectId), zap.Error(err))

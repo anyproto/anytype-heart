@@ -1160,9 +1160,7 @@ func (e *exportContext) writeDoc(ctx context.Context, wr writer, docId string, d
 		switch e.format {
 		case model.Export_Markdown:
 			// Create a lazy object resolver for markdown export
-			knownObjects := e.docs.transformToDetailsMap()
-			resolver := newLazyObjectResolver(e.objectStore, e.spaceId, knownObjects)
-
+			resolver := newLazyObjectResolver(e.objectStore, e.spaceId)
 			if e.includeJsonSchema {
 				conv = md.NewMDConverterWithResolver(st, wr.Namer(), true, true, resolver)
 			} else {
@@ -1439,7 +1437,7 @@ func (e *exportContext) postProcess(ctx context.Context, wr writer) error {
 	}
 	// Create a lazy object resolver
 	knownObjects := e.docs.transformToDetailsMap()
-	resolver := newLazyObjectResolver(e.objectStore, e.spaceId, knownObjects)
+	resolver := newLazyObjectResolver(e.objectStore, e.spaceId)
 
 	// Create markdown post-processor
 	postProcessor := md.NewMDPostProcessor(resolver, wr.Namer())

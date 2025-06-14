@@ -16,6 +16,7 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/editor/table"
+	"github.com/anyproto/anytype-heart/core/block/editor/template"
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/converter"
 	"github.com/anyproto/anytype-heart/core/domain"
@@ -53,7 +54,7 @@ func NewMDConverterWithSchema(s *state.State, fn FileNamer, includeRelations boo
 }
 
 func NewMDConverterWithResolver(s *state.State, fn FileNamer, includeRelations bool, includeSchema bool, resolver ObjectResolver) converter.Converter {
-	return &MD{s: s, fn: fn, includeRelations: includeRelations, includeSchema: includeSchema, resolver: resolver}
+	return &MD{s: s, fn: fn, includeRelations: includeRelations, includeSchema: includeSchema, resolver: resolver, knownDocs: make(map[string]*domain.Details)}
 }
 
 type MD struct {
@@ -118,7 +119,7 @@ func (h *MD) renderProperties(buf writer) {
 	if err == nil && typeRelation != nil {
 		propertiesIds = append(propertiesIds, typeRelation.GetString(bundle.RelationKeyId))
 	}
-	h.s.Store()
+
 	// Get object type details
 	objectTypeId := h.s.LocalDetails().GetString(bundle.RelationKeyType)
 	if objectTypeId != "" {
@@ -128,7 +129,13 @@ func (h *MD) renderProperties(buf writer) {
 			propertiesIds = append(propertiesIds, objectTypeDetails.GetStringList(bundle.RelationKeyRecommendedRelations)...)
 
 			propertiesIds = slices.Compact(propertiesIds)
-			if len(propertiesIds) > 0 {
+
+			// Check if this is a collection
+			layout, hasLayout := h.s.Layout()
+			isCollection := hasLayout && layout == model.ObjectType_collection
+
+			// Start YAML frontmatter if we have properties or it's a collection
+			if len(propertiesIds) > 0 || isCollection {
 				fmt.Fprintf(buf, "---\n")
 
 				// Add JSON schema reference if enabled
@@ -188,7 +195,7 @@ func (h *MD) renderProperties(buf writer) {
 			// Multiple files
 			var fileList []string
 			for _, fileId := range ids {
-				if info := h.getObjectInfo(fileId); info != nil {
+				if info, _ := h.getObjectInfo(fileId); info != nil {
 					layout := info.GetInt64(bundle.RelationKeyLayout)
 					// Check if it's a file object type
 					if layout == int64(model.ObjectType_file) || layout == int64(model.ObjectType_image) ||
@@ -243,22 +250,20 @@ func (h *MD) renderProperties(buf writer) {
 				_, _ = fmt.Fprintf(buf, "  %s:\n", name)
 			}
 			for _, id := range ids {
-				if d := h.getObjectInfo(id); d != nil {
-					// Object is included in export
+				if d, isInExport := h.getObjectInfo(id); d != nil {
 					objectName := d.Get(bundle.RelationKeyName).String()
 					if removeArray {
 						_, _ = fmt.Fprintf(buf, "  %s: %s\n", name, objectName)
 						break
 					}
-					// Check if object is actually in the export (knownDocs)
-					_, isInExport := h.knownDocs[id]
-
 					if !shortObject {
 						_, _ = fmt.Fprintf(buf, "    - Name: %s\n", objectName)
-						// Only render File field if object is in the export
 						if isInExport {
 							filename := h.fn.Get("", id, objectName, h.Ext())
 							_, _ = fmt.Fprintf(buf, "      File: %s\n", filename)
+						} else {
+							// Object not in export, show ID
+							_, _ = fmt.Fprintf(buf, "      Id: %s\n", id)
 						}
 					} else {
 						// Short object format, just show name
@@ -283,7 +288,7 @@ func (h *MD) renderProperties(buf writer) {
 			// Each target rendered as list item.
 			_, _ = fmt.Fprintf(buf, "  %s:\n", name)
 			for _, id := range ids {
-				if d := h.getObjectInfo(id); d != nil {
+				if d, _ := h.getObjectInfo(id); d != nil {
 					label := d.Get(bundle.RelationKeyName).String()
 					_, _ = fmt.Fprintf(buf, "    - %s\n", label)
 				}
@@ -314,7 +319,40 @@ func (h *MD) renderProperties(buf writer) {
 			}
 		}
 	}
-	if len(propertiesIds) > 0 {
+
+	// Add collection objects if this is a collection
+	layout, hasLayout := h.s.Layout()
+	if hasLayout && layout == model.ObjectType_collection {
+		// Get collection objects from store
+		collectionObjects := h.s.GetStoreSlice(template.CollectionStoreKey)
+		if len(collectionObjects) > 0 {
+			_, _ = fmt.Fprintf(buf, "  Collection:\n")
+			for _, objId := range collectionObjects {
+				if d, isInExport := h.getObjectInfo(objId); d != nil {
+					objectName := d.Get(bundle.RelationKeyName).String()
+					if objectName == "" {
+						objectName = objId
+					}
+
+					_, _ = fmt.Fprintf(buf, "    - Name: %s\n", objectName)
+
+					if isInExport {
+						filename := h.fn.Get("", objId, objectName, h.Ext())
+						_, _ = fmt.Fprintf(buf, "      File: %s\n", filename)
+					} else {
+							// Object not in export, show ID
+							_, _ = fmt.Fprintf(buf, "      Id: %s\n", objId)
+						}
+					} else {
+					// Object not found, just show ID
+					_, _ = fmt.Fprintf(buf, "    - Name: %s\n", objId)
+				}
+			}
+		}
+	}
+
+	// Close YAML frontmatter if we started it
+	if len(propertiesIds) > 0 || (hasLayout && layout == model.ObjectType_collection) {
 		fmt.Fprintf(buf, "---\n\n")
 	}
 }
@@ -654,19 +692,18 @@ func (h *MD) SetKnownDocs(docs map[string]*domain.Details) converter.Converter {
 	return h
 }
 
-// getObjectInfo returns object details using resolver if available, otherwise uses knownDocs
-func (h *MD) getObjectInfo(objectId string) *domain.Details {
-	details, _ := h.knownDocs[objectId]
+func (h *MD) getObjectInfo(objectId string) (details *domain.Details, isIncludedInExport bool) {
+	details, _ = h.knownDocs[objectId]
 	if details != nil {
-		return details
+		return details, true
 	}
 
 	details, _ = h.resolver.ResolveObject(objectId)
-	return details
+	return details, false
 }
 
 func (h *MD) getLinkInfo(docId string) (title, filename string, ok bool) {
-	info := h.getObjectInfo(docId)
+	info, _ := h.getObjectInfo(docId)
 	if info == nil {
 		return
 	}
@@ -840,6 +877,10 @@ func (h *MD) GenerateSchemaFileName(typeName string) string {
 
 // GenerateJSONSchema generates a JSON schema for the object type
 func (h *MD) GenerateJSONSchema() ([]byte, error) {
+	if h.resolver == nil {
+		return nil, fmt.Errorf("resolver not set")
+	}
+
 	objectTypeId := h.s.LocalDetails().GetString(bundle.RelationKeyType)
 
 	var objectTypeDetails *domain.Details
@@ -997,6 +1038,34 @@ func (h *MD) GenerateJSONSchema() ([]byte, error) {
 		}
 	}
 
+	// Add Collection property if this is a collection type
+	// Check if object has collection layout
+	if rawLayout := objectTypeDetails.GetInt64(bundle.RelationKeyRecommendedLayout); rawLayout == int64(model.ObjectType_collection) {
+		properties["Collection"] = map[string]interface{}{
+			"type":        "array",
+			"description": "List of objects in this collection",
+			"items": map[string]interface{}{
+				"type": "object",
+				"properties": map[string]interface{}{
+					"Name": map[string]interface{}{
+						"type":        "string",
+						"description": "Name of the object in the collection",
+					},
+					"File": map[string]interface{}{
+						"type":        "string",
+						"description": "Path to the object file (only present if object is included in export)",
+					},
+					"Id": map[string]interface{}{
+						"type":        "string",
+						"description": "Unique identifier of the object (only present if object is not included in export)",
+					},
+				},
+				"required": []string{"Name"},
+			},
+			"x-order": propertyOrder,
+		}
+	}
+
 	schema["properties"] = properties
 	if len(required) > 0 {
 		schema["required"] = required
@@ -1087,7 +1156,12 @@ func (h *MD) getJSONSchemaProperty(relationDetails *domain.Details, format model
 				"description": "Path to the object file in the export (only present if object is included in export)",
 			},
 		}
-		// Only Name is required, File is optional since object might not be in export
+		// Add Id property
+		properties["Id"] = map[string]interface{}{
+			"type":        "string",
+			"description": "Unique identifier of the referenced object (only present if object is not included in export)",
+		}
+		// Only Name is required, File and Id are optional/conditional
 		required := []string{"Name"}
 
 		// Add Object Type property
