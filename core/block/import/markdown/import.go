@@ -601,16 +601,16 @@ func (m *Markdown) addChildBlocks(files map[string]*FileInfo, progress process.P
 	}
 }
 
-func (m *Markdown) extractChildBlocks(files map[string]*FileInfo) []string {
-	childBlocks := make([]string, 0)
+func (m *Markdown) extractChildBlocks(files map[string]*FileInfo) map[string]struct{} {
+	childBlocks := make(map[string]struct{})
 	for _, file := range files {
 		if file.PageID == "" {
 			continue
 		}
 
 		for _, b := range file.ParsedBlocks {
-			if len(b.ChildrenIds) != 0 {
-				childBlocks = append(childBlocks, b.ChildrenIds...)
+			for _, childBlock := range b.ChildrenIds {
+				childBlocks[childBlock] = struct{}{}
 			}
 		}
 	}
@@ -750,13 +750,9 @@ func (m *Markdown) retrieveRootObjectsIds(files map[string]*FileInfo) []string {
 	return rootObjectsIds
 }
 
-func isChildBlock(blocks []string, b *model.Block) bool {
-	for _, block := range blocks {
-		if b.Id == block {
-			return true
-		}
-	}
-	return false
+func isChildBlock(blocks map[string]struct{}, b *model.Block) bool {
+	_, ok := blocks[b.Id]
+	return ok
 }
 
 func getRelationDetails(name, key string, format float64, includeTime bool) *domain.Details {

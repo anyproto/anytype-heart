@@ -21,6 +21,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/files"
 	"github.com/anyproto/anytype-heart/core/files/fileobject"
+	"github.com/anyproto/anytype-heart/core/filestorage/rpcstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/util/constant"
 	"github.com/anyproto/anytype-heart/util/svg"
@@ -217,7 +218,7 @@ func (g *gateway) fileHandler(w http.ResponseWriter, r *http.Request) {
 
 	ctx, cancel := context.WithTimeout(r.Context(), getFileTimeout)
 	defer cancel()
-	file, reader, err := g.getFile(ctx, r)
+	file, reader, err := g.getFile(rpcstore.ContextWithWaitAvailable(ctx), r)
 	if err != nil {
 		log.With("path", cleanUpPathForLogging(r.URL.Path)).Errorf("error getting file: %s", err)
 		http.Error(w, err.Error(), 500)
@@ -226,6 +227,7 @@ func (g *gateway) fileHandler(w http.ResponseWriter, r *http.Request) {
 	meta := file.Meta()
 	w.Header().Set("Content-Type", meta.Media)
 	w.Header().Set("Content-Disposition", fmt.Sprintf("inline; filename=\"%s\"", meta.Name))
+	w.Header().Set("Cache-Control", "max-age=31536000")
 
 	// todo: inside textile it still requires the file to be fully downloaded and decrypted(consuming 2xSize in ram) to provide the ReadSeeker interface
 	// 	need to find a way to use ReadSeeker all the way from downloading files from IPFS to writing the decrypted chunk to the HTTP
@@ -274,7 +276,7 @@ func (g *gateway) imageHandler(w http.ResponseWriter, r *http.Request) {
 	ctx, cancel := context.WithTimeout(r.Context(), getFileTimeout)
 	defer cancel()
 
-	file, reader, err := g.getImage(ctx, r)
+	file, reader, err := g.getImage(rpcstore.ContextWithWaitAvailable(ctx), r)
 	if err != nil {
 		log.With("path", cleanUpPathForLogging(r.URL.Path)).Errorf("error getting image: %s", err)
 		http.Error(w, err.Error(), 500)
@@ -284,6 +286,7 @@ func (g *gateway) imageHandler(w http.ResponseWriter, r *http.Request) {
 	meta := file.Meta()
 	w.Header().Set("Content-Type", meta.Media)
 	w.Header().Set("Content-Disposition", fmt.Sprintf("inline; filename=\"%s\"", meta.Name))
+	w.Header().Set("Cache-Control", "max-age=31536000")
 
 	// todo: inside textile it still requires the file to be fully downloaded and decrypted(consuming 2xSize in ram) to provide the ReadSeeker interface
 	// 	need to find a way to use ReadSeeker all the way from downloading files from IPFS to writing the decrypted chunk to the HTTP
