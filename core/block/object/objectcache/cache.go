@@ -11,6 +11,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/object/payloadcreator"
 	"github.com/anyproto/anytype-heart/core/block/source"
+	"github.com/anyproto/anytype-heart/metrics"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 )
 
@@ -81,12 +82,18 @@ func New(accountService accountservice.Service, objectFactory ObjectFactory, per
 		ocache.WithGCPeriod(time.Minute),
 		// TODO: [MR] Get ttl from config
 		ocache.WithTTL(time.Duration(60)*time.Second),
+		ocache.WithPrometheusMetrics(metrics.ObjectCacheHitCounter, metrics.ObjectCacheMissCounter, metrics.ObjectCacheGCCount),
 	)
+	metricSetSpace(space.Id(), c.cache.Len)
+
 	return c
 }
 
 func (c *objectCache) Close(_ context.Context) error {
 	close(c.closing)
+	defer func() {
+		metricUnsetSpace(c.space.Id())
+	}()
 	return c.cache.Close()
 }
 
