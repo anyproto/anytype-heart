@@ -125,7 +125,7 @@ func TestTechSpace_SpaceViewCreate(t *testing.T) {
 		info := spaceinfo.NewSpacePersistentInfo(spaceId)
 		info.SetAccountStatus(spaceinfo.AccountStatusUnknown)
 
-		require.NoError(t, fx.SpaceViewCreate(ctx, spaceId, false, info))
+		require.NoError(t, fx.SpaceViewCreate(ctx, spaceId, false, info, &spaceinfo.SpaceDescription{Name: "test"}))
 	})
 
 	t.Run("err spaceView exists", func(t *testing.T) {
@@ -137,7 +137,7 @@ func TestTechSpace_SpaceViewCreate(t *testing.T) {
 		info := spaceinfo.NewSpacePersistentInfo(spaceId)
 		info.SetAccountStatus(spaceinfo.AccountStatusUnknown)
 
-		assert.EqualError(t, fx.SpaceViewCreate(ctx, spaceId, false, info), ErrSpaceViewExists.Error())
+		assert.EqualError(t, fx.SpaceViewCreate(ctx, spaceId, false, info, nil), ErrSpaceViewExists.Error())
 	})
 }
 

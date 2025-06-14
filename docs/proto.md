@@ -15950,6 +15950,7 @@ DEPRECATED, GO-1926 |
 | spaceId | [string](#string) |  |  |
 | collectionId | [string](#string) |  |  |
 | setSource | [string](#string) | repeated |  |
+| includeTypeEdges | [bool](#bool) |  |  |
 
 
 
@@ -21668,6 +21669,7 @@ Middleware-to-front-end response, that can contain mnemonic of a created account
 | ----- | ---- | ----- | ----------- |
 | mnemonic | [string](#string) |  | cold auth |
 | appKey | [string](#string) |  | persistent app key, that can be used to restore session |
+| token | [string](#string) |  | token from the previous session |
 
 
 
@@ -21796,7 +21798,7 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | ----- | ---- | ----- | ----------- |
 | details | [google.protobuf.Struct](#google-protobuf-Struct) |  | object details |
 | useCase | [Rpc.Object.ImportUseCase.Request.UseCase](#anytype-Rpc-Object-ImportUseCase-Request-UseCase) |  | use case |
-| withChat | [bool](#bool) |  | create space-level chat; temporary solution, should be removed after chats released for all users |
+| withChat | [bool](#bool) |  | deprecated |
 
 
 
@@ -30835,6 +30837,7 @@ Contains basic information about a user account
 | profileObjectId | [string](#string) |  | profile block id |
 | marketplaceWorkspaceId | [string](#string) |  | marketplace workspace id |
 | workspaceObjectId | [string](#string) |  | workspace object id. used for space-level chat |
+| spaceChatId | [string](#string) |  | space-level chat if exists |
 | deviceId | [string](#string) |  |  |
 | accountSpaceId | [string](#string) |  | the first created private space. It&#39;s filled only when account is created |
 | widgetsId | [string](#string) |  |  |

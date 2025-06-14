@@ -23,9 +23,9 @@ import (
 
 var log = logging.LoggerNotSugared("object-graph")
 
-// relationsSkipList contains relations that SHOULD NOT be included in the graph. These relations of Object/File type that make no sense in the graph for user
-var relationsSkipList = []domain.RelationKey{
-	bundle.RelationKeyType,
+// relationsEdgesSkipList contains relations that SHOULD NOT be included in the graph. These relations of Object/File type that make no sense in the graph for user
+var relationsEdgesSkipList = []domain.RelationKey{
+	// Type is excluded optionally via IncludeTypeEdges argument
 	bundle.RelationKeySetOf,
 	bundle.RelationKeyCreator,
 	bundle.RelationKeyLastModifiedBy,
@@ -74,6 +74,7 @@ type ObjectGraphRequest struct {
 	SpaceId          string
 	CollectionId     string
 	SetSource        []string
+	IncludeTypeEdges bool
 }
 
 func (gr *Builder) ObjectGraph(req ObjectGraphRequest) ([]*domain.Details, []*pb.RpcObjectGraphEdge, error) {
@@ -86,7 +87,7 @@ func (gr *Builder) ObjectGraph(req ObjectGraphRequest) ([]*domain.Details, []*pb
 	}
 	req.Keys = append(req.Keys, bundle.RelationKeyLinks.String())
 	req.Keys = append(req.Keys, lo.FilterMap(relations, func(rel *relationutils.Relation, _ int) (string, bool) {
-		return rel.Key, isRelationShouldBeIncludedAsEdge(rel)
+		return rel.Key, isRelationShouldBeIncludedAsEdge(rel, req.IncludeTypeEdges)
 	})...)
 
 	resp, err := gr.subscriptionService.Search(subscription.SubscribeRequest{
@@ -119,8 +120,22 @@ func (gr *Builder) ObjectGraph(req ObjectGraphRequest) ([]*domain.Details, []*pb
 	return nodes, edges, nil
 }
 
-func isRelationShouldBeIncludedAsEdge(rel *relationutils.Relation) bool {
-	return rel != nil && (rel.Format == model.RelationFormat_object || rel.Format == model.RelationFormat_file) && !lo.Contains(relationsSkipList, domain.RelationKey(rel.Key))
+func isRelationShouldBeIncludedAsEdge(rel *relationutils.Relation, includeTypeEdges bool) bool {
+	if rel == nil {
+		return false
+	}
+
+	// Check if relation is in skip list
+	isInSkipList := lo.Contains(relationsEdgesSkipList, domain.RelationKey(rel.Key))
+
+	// Special handling for type relation based on includeTypeEdges parameter
+	if rel.Key == bundle.RelationKeyType.String() {
+		// If includeTypeEdges is true, we want to include it regardless of skip list
+		return includeTypeEdges
+	}
+
+	// For all other relations, follow the normal skip list logic
+	return (rel.Format == model.RelationFormat_object || rel.Format == model.RelationFormat_file) && !isInSkipList
 }
 
 func (gr *Builder) buildGraph(
@@ -141,7 +156,7 @@ func (gr *Builder) buildGraph(
 		}
 
 		outgoingRelationLink := make(map[string]struct{}, 10)
-		edges = gr.appendRelations(rec, relations, edges, existedNodes, sourceId, outgoingRelationLink)
+		edges = gr.appendRelations(rec, relations, edges, existedNodes, sourceId, outgoingRelationLink, req.IncludeTypeEdges)
 		var nodesToAdd []*domain.Details
 		nodesToAdd, edges = gr.appendLinks(req.SpaceId, rec, outgoingRelationLink, existedNodes, edges, sourceId)
 
@@ -160,13 +175,14 @@ func (gr *Builder) appendRelations(
 	existedNodes map[string]struct{},
 	sourceId string,
 	outgoingRelationLink map[string]struct{},
+	includeTypeEdges bool,
 ) []*pb.RpcObjectGraphEdge {
 	for relKey, relValue := range rec.Iterate() {
 		rel := relations.GetByKey(string(relKey))
-		if !isRelationShouldBeIncludedAsEdge(rel) {
+		if !isRelationShouldBeIncludedAsEdge(rel, includeTypeEdges) {
 			continue
 		}
-		stringValues := relValue.StringList()
+		stringValues, _ := relValue.TryWrapToStringList()
 		if len(stringValues) == 0 || isExcludedRelation(rel) {
 			continue
 		}

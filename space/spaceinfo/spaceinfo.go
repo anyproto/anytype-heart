@@ -1,6 +1,9 @@
 package spaceinfo
 
 import (
+	"github.com/anyproto/anytype-heart/core/block/editor/state"
+	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
@@ -120,4 +123,13 @@ type SpaceDescription struct {
 	Name        string
 	IconImage   string
 	SpaceUxType model.SpaceUxType
+}
+
+func (s *SpaceDescription) UpdateDetails(st *state.State) {
+	if s == nil {
+		return
+	}
+	st.SetDetailAndBundledRelation(bundle.RelationKeyName, domain.String(s.Name))
+	st.SetDetailAndBundledRelation(bundle.RelationKeySpaceUxType, domain.Int64(s.SpaceUxType))
+	st.SetDetailAndBundledRelation(bundle.RelationKeyIconImage, domain.String(s.IconImage))
 }
