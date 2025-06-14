@@ -50,6 +50,11 @@ func newSpaceViewSubscription(service subscription.Service, techSpaceId string, 
 				Condition:   model.BlockContentDataviewFilter_Exists,
 			},
 			{
+				RelationKey: bundle.RelationKeyIsAclShared,
+				Condition:   model.BlockContentDataviewFilter_Equal,
+				Value:       domain.Bool(true),
+			},
+			{
 				RelationKey: bundle.RelationKeySpaceAccountStatus,
 				Condition:   model.BlockContentDataviewFilter_NotIn,
 				Value: domain.Int64List(

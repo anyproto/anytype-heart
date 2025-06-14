@@ -1,110 +1,162 @@
 package pushnotification
 
 import (
+	"bytes"
+	"crypto/sha256"
+	"encoding/hex"
+	"errors"
 	"slices"
+	"strings"
+	"sync"
 
+	"github.com/anyproto/any-sync/util/crypto"
 	"github.com/anyproto/anytype-push-server/pushclient/pushapi"
+
+	"github.com/anyproto/anytype-heart/pb"
 )
 
 const ChatsTopicName = "chats"
 
-var chatTopics = []string{ChatsTopicName}
-
-func newSpaceTopicsCollection() *spaceTopicsCollection {
+func newSpaceTopicsCollection(identity string) *spaceTopicsCollection {
 	return &spaceTopicsCollection{
-		spaceTopicsBySpaceKey: map[string]*SpaceTopics{},
-		spaceTopicsBySpaceId:  map[string]*SpaceTopics{},
+		identity: identity,
+		statuses: map[string]*spaceViewStatus{},
 	}
 }
 
 type spaceTopicsCollection struct {
-	spaceTopicsBySpaceKey map[string]*SpaceTopics
-	spaceTopicsBySpaceId  map[string]*SpaceTopics
+	identity          string
+	remoteTopics      []*pushapi.Topic
+	localTopics       []*pushapi.Topic
+	spaceKeysToCreate []crypto.PrivKey
+	statuses          map[string]*spaceViewStatus
+	mu                sync.Mutex
+}
+
+func (c *spaceTopicsCollection) Flush() {
+	c.remoteTopics, c.localTopics = c.localTopics, c.remoteTopics
+	c.ResetLocal()
+}
+
+func (c *spaceTopicsCollection) ResetLocal() {
+	c.localTopics = c.localTopics[:0]
+	c.spaceKeysToCreate = c.spaceKeysToCreate[:0]
 }
 
 func (c *spaceTopicsCollection) SetRemoteList(remoteTopics *pushapi.Topics) {
 	for _, remoteTopic := range remoteTopics.Topics {
-		topic := c.getSpaceTopic(string(remoteTopic.SpaceKey))
-		topic.topics.Set(remoteTopic.Topic)
+		c.remoteTopics = append(c.remoteTopics, remoteTopic)
 	}
 }
 
 func (c *spaceTopicsCollection) SetSpaceViewStatus(status *spaceViewStatus) {
-	/*
-		if status.spaceKey == nil || status.encKey == nil {
-			return
-		}
+	if status.spaceKey == nil || status.encKey == nil {
+		return
+	}
+	pubKey, _ := status.spaceKey.GetPublic().Raw()
 
-		spaceKey, err := status.spaceKey.GetPublic().Raw()
-		if err != nil {
-			log.Warn("failed to get space key raw", zap.Error(err))
-			return
+	needCreate := true
+	if isOwner := strings.HasSuffix(status.creator, c.identity); isOwner {
+		for _, remoteTopic := range c.remoteTopics {
+			if bytes.Equal(remoteTopic.SpaceKey, pubKey) {
+				needCreate = false
+				break
+			}
 		}
+	}
+	if needCreate {
+		c.spaceKeysToCreate = append(c.spaceKeysToCreate, status.spaceKey)
+	}
 
-		 topic := c.getSpaceTopic(string(spaceKey))
-	*/
+	makeTopic := func(topic string) *pushapi.Topic {
+		sign, _ := status.spaceKey.Sign([]byte(topic))
+		return &pushapi.Topic{
+			SpaceKey:  pubKey,
+			Topic:     topic,
+			Signature: sign,
+		}
+	}
+
+	switch status.mode {
+	case pb.RpcPushNotificationSetSpaceMode_All:
+		c.localTopics = append(c.localTopics, makeTopic(ChatsTopicName))
+	case pb.RpcPushNotificationSetSpaceMode_Mentions:
+		c.localTopics = append(c.localTopics, makeTopic(c.identity))
+	}
+
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.statuses[status.spaceId] = status
 }
 
-func (c *spaceTopicsCollection) getSpaceTopic(spaceKey string) *SpaceTopics {
-	if topic, ok := c.spaceTopicsBySpaceKey[spaceKey]; ok {
-		return topic
-	} else {
-		topic = &SpaceTopics{
-			topics: newTopicSet(),
-		}
-		c.spaceTopicsBySpaceKey[spaceKey] = topic
-		return topic
+func (c *spaceTopicsCollection) SpaceKeysToCreate() []crypto.PrivKey {
+	return c.spaceKeysToCreate
+}
+
+func compareTopics(a, b *pushapi.Topic) int {
+	res := bytes.Compare(a.SpaceKey, b.SpaceKey)
+	if res == 0 {
+		res = strings.Compare(a.Topic, b.Topic)
+	}
+	return res
+}
+
+func (c *spaceTopicsCollection) MakeApiRequest() *pushapi.Topics {
+	slices.SortFunc(c.remoteTopics, compareTopics)
+	slices.SortFunc(c.localTopics, compareTopics)
+	isEqual := slices.EqualFunc(c.remoteTopics, c.localTopics, func(a *pushapi.Topic, b *pushapi.Topic) bool {
+		return bytes.Equal(a.SpaceKey, b.SpaceKey) && a.Topic == b.Topic
+	})
+	if isEqual {
+		return nil
+	}
+	return &pushapi.Topics{
+		Topics: c.localTopics,
 	}
 }
 
-type SpaceTopics struct {
-	spaceId string
+var errNoKey = errors.New("no key")
 
-	spaceViewStatus *spaceViewStatus
-
-	topics topicSet
-
-	needUpdateTopics bool
-	needCreateSpace  bool
-	needUpdateEncKey bool
-}
-
-type topicSet struct {
-	topics map[string]struct{}
-}
-
-func newTopicSet() topicSet {
-	return topicSet{topics: make(map[string]struct{})}
-}
-
-func (ts *topicSet) Set(topics ...string) (changed bool) {
-	for topic := range ts.topics {
-		if !slices.Contains(topics, topic) {
-			delete(ts.topics, topic)
-			changed = true
-		}
+func (c *spaceTopicsCollection) EncryptPayload(spaceId string, payload []byte) (keyId string, result []byte, err error) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	status, ok := c.statuses[spaceId]
+	if !ok {
+		return "", nil, errNoKey
 	}
-	for _, topic := range topics {
-		if _, ok := ts.topics[topic]; !ok {
-			ts.topics[topic] = struct{}{}
-			changed = true
-		}
+	if result, err = status.encKey.Encrypt(payload); err != nil {
+		return
 	}
+	encKeyRaw, _ := status.encKey.Raw()
+	keyHash := sha256.Sum256(encKeyRaw)
+	keyId = hex.EncodeToString(keyHash[:])
 	return
 }
 
-func (ts *topicSet) Slice() []string {
-	out := make([]string, 0, len(ts.topics))
-	for t := range ts.topics {
-		out = append(out, t)
+func (c *spaceTopicsCollection) MakeTopics(spaceId string, topics []string) (*pushapi.Topics, error) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	status, ok := c.statuses[spaceId]
+	if !ok {
+		return nil, errNoKey
 	}
-	return out
-}
-
-func (ts *topicSet) Add(topic string) {
-	ts.topics[topic] = struct{}{}
-}
-
-func (ts *topicSet) Len() int {
-	return len(ts.topics)
+	res := &pushapi.Topics{
+		Topics: make([]*pushapi.Topic, 0, len(topics)),
+	}
+	for _, topic := range topics {
+		rawKey, err := status.spaceKey.GetPublic().Raw()
+		if err != nil {
+			return nil, err
+		}
+		sig, err := status.spaceKey.Sign(rawKey)
+		if err != nil {
+			return nil, err
+		}
+		res.Topics = append(res.Topics, &pushapi.Topic{
+			SpaceKey:  rawKey,
+			Topic:     topic,
+			Signature: sig,
+		})
+	}
+	return res, nil
 }
