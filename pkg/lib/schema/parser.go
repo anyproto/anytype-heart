@@ -24,42 +24,42 @@ func (p *JSONSchemaParser) Parse(reader io.Reader) (*Schema, error) {
 	if err := decoder.Decode(&jsonSchema); err != nil {
 		return nil, fmt.Errorf("failed to decode JSON: %w", err)
 	}
-	
+
 	schema := NewSchema()
-	
+
 	// Parse as a type schema
 	if jsonSchema["type"] == "object" && jsonSchema["properties"] != nil {
 		t, err := p.parseTypeFromSchema(jsonSchema)
 		if err != nil {
 			return nil, fmt.Errorf("failed to parse type: %w", err)
 		}
-		
+
 		// Parse relations from properties
 		properties, ok := jsonSchema["properties"].(map[string]interface{})
 		if !ok {
 			return nil, fmt.Errorf("invalid properties format")
 		}
-		
+
 		for propName, propValue := range properties {
 			prop, ok := propValue.(map[string]interface{})
 			if !ok {
 				continue
 			}
-			
+
 			rel, err := p.parseRelationFromProperty(propName, prop)
 			if err != nil {
 				continue // Skip invalid relations
 			}
-			
+
 			// Add relation to schema
 			if err := schema.AddRelation(rel); err != nil {
 				return nil, fmt.Errorf("failed to add relation %s: %w", rel.Key, err)
 			}
-			
+
 			// Add relation to type
 			isFeatured := getBoolField(prop, "x-featured")
 			order := getIntField(prop, "x-order")
-			
+
 			// Use order to determine if it should be featured (first few relations)
 			if isFeatured || order > 0 && order <= 3 {
 				t.AddRelation(rel.Key, true)
@@ -67,13 +67,13 @@ func (p *JSONSchemaParser) Parse(reader io.Reader) (*Schema, error) {
 				t.AddRelation(rel.Key, false)
 			}
 		}
-		
+
 		// Set type for schema
 		if err := schema.SetType(t); err != nil {
 			return nil, fmt.Errorf("failed to set type: %w", err)
 		}
 	}
-	
+
 	return schema, nil
 }
 
@@ -82,14 +82,14 @@ func (p *JSONSchemaParser) parseTypeFromSchema(jsonSchema map[string]interface{}
 	t := &Type{
 		Extension: make(map[string]interface{}),
 	}
-	
+
 	// Get type name from title
 	if title, ok := jsonSchema["title"].(string); ok {
 		t.Name = title
 	} else {
 		return nil, fmt.Errorf("type name (title) is required")
 	}
-	
+
 	// Get type key from x-type-key
 	if typeKey, ok := jsonSchema["x-type-key"].(string); ok {
 		t.Key = typeKey
@@ -97,32 +97,32 @@ func (p *JSONSchemaParser) parseTypeFromSchema(jsonSchema map[string]interface{}
 		// Generate key from name
 		t.Key = strings.ToLower(strings.ReplaceAll(t.Name, " ", "_"))
 	}
-	
+
 	// Get description
 	if desc, ok := jsonSchema["description"].(string); ok {
 		t.Description = desc
 	}
-	
+
 	// Get Anytype-specific extensions
 	if plural, ok := jsonSchema["x-plural"].(string); ok {
 		t.PluralName = plural
 	}
-	
+
 	if emoji, ok := jsonSchema["x-icon-emoji"].(string); ok {
 		t.IconEmoji = emoji
 	}
-	
+
 	if iconName, ok := jsonSchema["x-icon-name"].(string); ok {
 		t.IconImage = iconName
 	}
-	
+
 	// Store other x-* fields in extension
 	for key, value := range jsonSchema {
 		if strings.HasPrefix(key, "x-") && !isKnownExtension(key) {
 			t.Extension[key] = value
 		}
 	}
-	
+
 	return t, nil
 }
 
@@ -132,19 +132,19 @@ func (p *JSONSchemaParser) parseRelationFromProperty(name string, prop map[strin
 		Name:      name,
 		Extension: make(map[string]interface{}),
 	}
-	
+
 	// Get key from x-key or generate from name
 	if key, ok := prop["x-key"].(string); ok {
 		r.Key = key
 	} else {
 		r.Key = strings.ToLower(strings.ReplaceAll(name, " ", "_"))
 	}
-	
+
 	// Get description
 	if desc, ok := prop["description"].(string); ok {
 		r.Description = desc
 	}
-	
+
 	// Determine format from x-format first
 	if xFormat, ok := prop["x-format"].(string); ok {
 		r.Format = parseFormatString(xFormat)
@@ -152,7 +152,7 @@ func (p *JSONSchemaParser) parseRelationFromProperty(name string, prop map[strin
 		// Infer format from schema structure
 		r.Format = inferRelationFormat(prop)
 	}
-	
+
 	// Get format-specific properties
 	switch r.Format {
 	case model.RelationFormat_status:
@@ -163,7 +163,7 @@ func (p *JSONSchemaParser) parseRelationFromProperty(name string, prop map[strin
 				}
 			}
 		}
-		
+
 	case model.RelationFormat_tag:
 		if examples, ok := prop["examples"].([]interface{}); ok {
 			for _, v := range examples {
@@ -172,12 +172,12 @@ func (p *JSONSchemaParser) parseRelationFromProperty(name string, prop map[strin
 				}
 			}
 		}
-		
+
 	case model.RelationFormat_date:
 		if format, ok := prop["format"].(string); ok {
 			r.IncludeTime = (format == "date-time")
 		}
-		
+
 	case model.RelationFormat_object:
 		// Parse object types from items schema if available
 		if items, ok := prop["items"].(map[string]interface{}); ok {
@@ -194,24 +194,24 @@ func (p *JSONSchemaParser) parseRelationFromProperty(name string, prop map[strin
 			}
 		}
 	}
-	
+
 	// Check if read-only
 	if readOnly, ok := prop["readOnly"].(bool); ok {
 		r.IsReadOnly = readOnly
 	}
-	
+
 	// Check if multi-value (array type)
 	if propType, ok := prop["type"].(string); ok && propType == "array" {
 		r.IsMulti = true
 	}
-	
+
 	// Store other fields in extension
 	for key, value := range prop {
 		if strings.HasPrefix(key, "x-") && key != "x-key" && key != "x-format" && key != "x-featured" && key != "x-order" {
 			r.Extension[key] = value
 		}
 	}
-	
+
 	return r, nil
 }
 
@@ -219,7 +219,7 @@ func (p *JSONSchemaParser) parseRelationFromProperty(name string, prop map[strin
 func inferRelationFormat(prop map[string]interface{}) model.RelationFormat {
 	propType := getStringField(prop, "type")
 	format := getStringField(prop, "format")
-	
+
 	// Check for specific formats first
 	switch format {
 	case "email":
@@ -231,22 +231,22 @@ func inferRelationFormat(prop map[string]interface{}) model.RelationFormat {
 	case "date-time":
 		return model.RelationFormat_date
 	}
-	
+
 	// Check for enum (status)
 	if _, hasEnum := prop["enum"]; hasEnum {
 		return model.RelationFormat_status
 	}
-	
+
 	// Check for boolean
 	if propType == "boolean" {
 		return model.RelationFormat_checkbox
 	}
-	
+
 	// Check for number
 	if propType == "number" || propType == "integer" {
 		return model.RelationFormat_number
 	}
-	
+
 	// Check for array
 	if propType == "array" {
 		if items, ok := prop["items"].(map[string]interface{}); ok {
@@ -262,21 +262,18 @@ func inferRelationFormat(prop map[string]interface{}) model.RelationFormat {
 		// Default array to tag
 		return model.RelationFormat_tag
 	}
-	
+
 	// Check for object type
 	if propType == "object" {
 		return model.RelationFormat_object
 	}
-	
+
 	// Default to short text
 	return model.RelationFormat_shorttext
 }
 
 // parseFormatString parses x-format string to RelationFormat
 func parseFormatString(format string) model.RelationFormat {
-	// Remove "RelationFormat_" prefix if present
-	format = strings.TrimPrefix(format, "RelationFormat_")
-	
 	switch format {
 	case "shorttext":
 		return model.RelationFormat_shorttext
