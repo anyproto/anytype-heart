@@ -32,29 +32,6 @@ import (
 	"github.com/anyproto/anytype-heart/tests/testutil"
 )
 
-type pushNotificationServiceDummy struct {
-}
-
-func (s *pushNotificationServiceDummy) Init(a *app.App) (err error) {
-	return nil
-}
-
-func (s *pushNotificationServiceDummy) Name() (name string) {
-	return "pushNotificationServiceDummy"
-}
-
-func (s *pushNotificationServiceDummy) SubscribeToTopics(ctx context.Context, spaceId string, topics []string) {
-
-}
-
-func (s *pushNotificationServiceDummy) CreateSpace(ctx context.Context, spaceId string) (err error) {
-	return nil
-}
-
-func (s *pushNotificationServiceDummy) BroadcastKeyUpdate(spaceId string, aclState *list.AclState) error {
-	return nil
-}
-
 func TestAclObjectManager(t *testing.T) {
 	t.Run("owner", func(t *testing.T) {
 		a := list.NewAclExecutor("spaceId")
@@ -81,7 +58,7 @@ func TestAclObjectManager(t *testing.T) {
 				return nil
 			})
 		fx.mockParticipantWatcher.EXPECT().WatchParticipant(mock.Anything, fx.mockSpace, mock.Anything).Return(nil)
-		fx.mockStatus.EXPECT().SetAclIsEmpty(true).Return(nil)
+		fx.mockStatus.EXPECT().SetAclInfo(true, nil, nil).Return(nil)
 		fx.mockCommonSpace.EXPECT().Id().AnyTimes().Return("spaceId")
 		fx.mockStatus.EXPECT().GetLocalStatus().Return(spaceinfo.LocalStatusOk)
 		fx.mockAclNotification.EXPECT().AddRecords(acl, list.AclPermissionsOwner, "spaceId", spaceinfo.AccountStatusActive, spaceinfo.LocalStatusOk)
@@ -127,7 +104,7 @@ func TestAclObjectManager(t *testing.T) {
 				return nil
 			})
 		fx.mockParticipantWatcher.EXPECT().WatchParticipant(mock.Anything, fx.mockSpace, mock.Anything).Return(nil)
-		fx.mockStatus.EXPECT().SetAclIsEmpty(false).Return(nil)
+		fx.mockStatus.EXPECT().SetAclInfo(false, mock.Anything, mock.Anything).Return(nil)
 		fx.mockCommonSpace.EXPECT().Id().AnyTimes().Return("spaceId")
 		fx.mockStatus.EXPECT().GetLocalStatus().Return(spaceinfo.LocalStatusOk)
 		fx.mockAclNotification.EXPECT().AddRecords(acl, list.AclPermissionsReader, "spaceId", spaceinfo.AccountStatusActive, spaceinfo.LocalStatusOk)
@@ -168,7 +145,7 @@ func TestAclObjectManager(t *testing.T) {
 			})
 		fx.mockParticipantWatcher.EXPECT().WatchParticipant(mock.Anything, fx.mockSpace, mock.Anything).Return(nil)
 		fx.mockStatus.EXPECT().SetPersistentStatus(spaceinfo.AccountStatusRemoving).Return(nil)
-		fx.mockStatus.EXPECT().SetAclIsEmpty(false).Return(nil)
+		fx.mockStatus.EXPECT().SetAclInfo(false, mock.Anything, mock.Anything).Return(nil)
 		fx.mockCommonSpace.EXPECT().Id().AnyTimes().Return("spaceId")
 		fx.mockStatus.EXPECT().GetLocalStatus().Return(spaceinfo.LocalStatusOk)
 		fx.mockAclNotification.EXPECT().AddRecords(acl, list.AclPermissionsNone, "spaceId", spaceinfo.AccountStatusDeleted, spaceinfo.LocalStatusOk)
@@ -221,8 +198,7 @@ func newFixture(t *testing.T) *fixture {
 		Register(testutil.PrepareMock(ctx, fx.a, fx.mockAclNotification)).
 		Register(testutil.PrepareMock(ctx, fx.a, fx.mockAccountService)).
 		Register(fx.spaceLoaderListener).
-		Register(fx).
-		Register(&pushNotificationServiceDummy{})
+		Register(fx)
 	return fx
 }
 
