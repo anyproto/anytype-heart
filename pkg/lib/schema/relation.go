@@ -116,7 +116,8 @@ func (r *Relation) Validate() error {
 	if r.Name == "" {
 		return fmt.Errorf("relation name is required")
 	}
-	if r.Format == 0 {
+	// Note: Format 0 (RelationFormat_longtext) is valid, so we don't check for == 0
+	if int(r.Format) < 0 {
 		return fmt.Errorf("invalid relation format")
 	}
 	return nil

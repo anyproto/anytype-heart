@@ -156,8 +156,8 @@ func TestJSONSchemaParser_Parse(t *testing.T) {
 	require.NoError(t, err)
 	
 	// Check type
-	typ, ok := schema.GetType("task")
-	require.True(t, ok)
+	typ := schema.GetType()
+	require.NotNil(t, typ)
 	assert.Equal(t, "Task", typ.Name)
 	assert.Equal(t, "✅", typ.IconEmoji)
 	assert.Contains(t, typ.FeaturedRelations, "name")
@@ -189,7 +189,7 @@ func TestJSONSchemaExporter_Export(t *testing.T) {
 		FeaturedRelations: []string{"name", "status"},
 		RecommendedRelations: []string{"due_date"},
 	}
-	schema.AddType(typ)
+	schema.SetType(typ)
 	
 	// Add relations
 	nameRel := &Relation{
@@ -242,7 +242,7 @@ func TestSchema_Merge(t *testing.T) {
 		Name:              "Task",
 		FeaturedRelations: []string{"name"},
 	}
-	schema1.AddType(typ1)
+	schema1.SetType(typ1)
 	
 	rel1 := &Relation{
 		Key:    "name",
@@ -258,7 +258,7 @@ func TestSchema_Merge(t *testing.T) {
 		Name:                 "Task",
 		RecommendedRelations: []string{"status"},
 	}
-	schema2.AddType(typ2)
+	schema2.SetType(typ2)
 	
 	rel2 := &Relation{
 		Key:     "status",
@@ -273,12 +273,12 @@ func TestSchema_Merge(t *testing.T) {
 	require.NoError(t, err)
 	
 	// Check merged schema
-	typ, ok := schema1.GetType("task")
-	require.True(t, ok)
+	typ := schema1.GetType()
+	require.NotNil(t, typ)
 	assert.Contains(t, typ.FeaturedRelations, "name")
 	assert.Contains(t, typ.RecommendedRelations, "status")
 	
-	_, ok = schema1.GetRelation("name")
+	_, ok := schema1.GetRelation("name")
 	assert.True(t, ok)
 	
 	statusRel, ok := schema1.GetRelation("status")

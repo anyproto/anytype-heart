@@ -25,18 +25,11 @@ func NewJSONSchemaExporter(indent string) Exporter {
 
 // Export writes a type from Schema as JSON Schema
 func (e *JSONSchemaExporter) Export(schema *Schema, writer io.Writer) error {
-	if len(schema.Types) == 0 {
-		return fmt.Errorf("no types in schema")
+	if schema.Type == nil {
+		return fmt.Errorf("no type in schema")
 	}
 	
-	// Get the first type (should only be one for JSON Schema export)
-	var t *Type
-	for _, typ := range schema.Types {
-		t = typ
-		break
-	}
-	
-	jsonSchema := e.typeToJSONSchema(t, schema)
+	jsonSchema := e.typeToJSONSchema(schema.Type, schema)
 	
 	encoder := json.NewEncoder(writer)
 	if e.Indent != "" {
@@ -426,8 +419,8 @@ func SchemaFromObjectDetails(typeDetails *domain.Details, relationDetailsList []
 		t.AddRelation(rel.Key, or.featured)
 	}
 	
-	// Add type to schema
-	schema.AddType(t)
+	// Set type for schema
+	schema.SetType(t)
 	
 	return schema, nil
 }

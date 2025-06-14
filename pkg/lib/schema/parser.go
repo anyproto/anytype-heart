@@ -68,9 +68,9 @@ func (p *JSONSchemaParser) Parse(reader io.Reader) (*Schema, error) {
 			}
 		}
 		
-		// Add type to schema
-		if err := schema.AddType(t); err != nil {
-			return nil, fmt.Errorf("failed to add type: %w", err)
+		// Set type for schema
+		if err := schema.SetType(t); err != nil {
+			return nil, fmt.Errorf("failed to set type: %w", err)
 		}
 	}
 	

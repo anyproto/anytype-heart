@@ -36,19 +36,19 @@ func TestMD_GenerateJSONSchema_WithEnhancements(t *testing.T) {
 		relations: map[string]*domain.Details{
 			"rel-name": domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
 				bundle.RelationKeyId:             domain.String("rel-name"),
-				bundle.RelationKeyRelationKey:    domain.String("name"),
+				bundle.RelationKeyRelationKey:    domain.String("custom_name"),
 				bundle.RelationKeyName:           domain.String("Name"),
 				bundle.RelationKeyRelationFormat: domain.Int64(int64(model.RelationFormat_shorttext)),
 			}),
 			"rel-status": domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
 				bundle.RelationKeyId:             domain.String("rel-status"),
-				bundle.RelationKeyRelationKey:    domain.String("status"),
+				bundle.RelationKeyRelationKey:    domain.String("custom_status"),
 				bundle.RelationKeyName:           domain.String("Status"),
 				bundle.RelationKeyRelationFormat: domain.Int64(int64(model.RelationFormat_status)),
 			}),
 			"rel-desc": domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
 				bundle.RelationKeyId:             domain.String("rel-desc"),
-				bundle.RelationKeyRelationKey:    domain.String("description"),
+				bundle.RelationKeyRelationKey:    domain.String("custom_description"),
 				bundle.RelationKeyName:           domain.String("Description"),
 				bundle.RelationKeyRelationFormat: domain.Int64(int64(model.RelationFormat_longtext)),
 			}),
@@ -67,6 +67,7 @@ func TestMD_GenerateJSONSchema_WithEnhancements(t *testing.T) {
 	// Create converter
 	conv := NewMDConverterWithResolver(st, &testFileNamer{}, true, true, resolver).(*MD)
 
+
 	// Generate schema
 	schemaBytes, err := conv.GenerateJSONSchema()
 	require.NoError(t, err)
@@ -76,6 +77,7 @@ func TestMD_GenerateJSONSchema_WithEnhancements(t *testing.T) {
 	var schema map[string]interface{}
 	err = json.Unmarshal(schemaBytes, &schema)
 	require.NoError(t, err)
+	
 
 	// Verify x-type-key is present
 	assert.Equal(t, "task", schema["x-type-key"])
@@ -100,19 +102,19 @@ func TestMD_GenerateJSONSchema_WithEnhancements(t *testing.T) {
 	nameProp := properties["Name"].(map[string]interface{})
 	assert.Equal(t, true, nameProp["x-featured"])
 	assert.Equal(t, float64(2), nameProp["x-order"]) // Second property after Type
-	assert.Equal(t, "name", nameProp["x-key"])
+	assert.Equal(t, "custom_name", nameProp["x-key"])
 
 	statusProp := properties["Status"].(map[string]interface{})
 	assert.Equal(t, true, statusProp["x-featured"])
 	assert.Equal(t, float64(3), statusProp["x-order"]) // Third property
-	assert.Equal(t, "status", statusProp["x-key"])
+	assert.Equal(t, "custom_status", statusProp["x-key"])
 
 	// Check non-featured property doesn't have x-featured but has order
 	descProp := properties["Description"].(map[string]interface{})
 	_, hasFeatured := descProp["x-featured"]
 	assert.False(t, hasFeatured, "Non-featured property should not have x-featured")
 	assert.Equal(t, float64(4), descProp["x-order"]) // Fourth property
-	assert.Equal(t, "description", descProp["x-key"])
+	assert.Equal(t, "custom_description", descProp["x-key"])
 
 	// Verify required array is not present (since we don't add anything to it)
 	_, hasRequired := schema["required"]
@@ -154,7 +156,7 @@ func TestMD_RenderProperties_WithID(t *testing.T) {
 		relations: map[string]*domain.Details{
 			"rel-name": domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
 				bundle.RelationKeyId:             domain.String("rel-name"),
-				bundle.RelationKeyRelationKey:    domain.String("name"),
+				bundle.RelationKeyRelationKey:    domain.String("custom_name"),
 				bundle.RelationKeyName:           domain.String("Name"),
 				bundle.RelationKeyRelationFormat: domain.Int64(int64(model.RelationFormat_shorttext)),
 			}),

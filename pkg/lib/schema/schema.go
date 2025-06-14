@@ -5,26 +5,25 @@ import (
 	"io"
 )
 
-// Schema represents a collection of types and relations
+// Schema represents a single type with its relations
 type Schema struct {
-	Types     map[string]*Type     `json:"types"`
+	Type      *Type                `json:"type"`
 	Relations map[string]*Relation `json:"relations"`
 }
 
 // NewSchema creates a new empty schema
 func NewSchema() *Schema {
 	return &Schema{
-		Types:     make(map[string]*Type),
 		Relations: make(map[string]*Relation),
 	}
 }
 
-// AddType adds a type to the schema
-func (s *Schema) AddType(t *Type) error {
+// SetType sets the type for the schema
+func (s *Schema) SetType(t *Type) error {
 	if err := t.Validate(); err != nil {
 		return fmt.Errorf("invalid type: %w", err)
 	}
-	s.Types[t.Key] = t
+	s.Type = t
 	return nil
 }
 
@@ -37,10 +36,9 @@ func (s *Schema) AddRelation(r *Relation) error {
 	return nil
 }
 
-// GetType returns a type by key
-func (s *Schema) GetType(key string) (*Type, bool) {
-	t, ok := s.Types[key]
-	return t, ok
+// GetType returns the schema's type
+func (s *Schema) GetType() *Type {
+	return s.Type
 }
 
 // GetRelation returns a relation by key
@@ -49,12 +47,10 @@ func (s *Schema) GetRelation(key string) (*Relation, bool) {
 	return r, ok
 }
 
-// GetTypeByName returns a type by name
+// GetTypeByName returns the type if the name matches
 func (s *Schema) GetTypeByName(name string) (*Type, bool) {
-	for _, t := range s.Types {
-		if t.Name == name {
-			return t, true
-		}
+	if s.Type != nil && s.Type.Name == name {
+		return s.Type, true
 	}
 	return nil, false
 }
@@ -71,10 +67,10 @@ func (s *Schema) GetRelationByName(name string) (*Relation, bool) {
 
 // Validate validates the entire schema
 func (s *Schema) Validate() error {
-	// Validate all types
-	for key, t := range s.Types {
-		if err := t.Validate(); err != nil {
-			return fmt.Errorf("invalid type %s: %w", key, err)
+	// Validate type
+	if s.Type != nil {
+		if err := s.Type.Validate(); err != nil {
+			return fmt.Errorf("invalid type: %w", err)
 		}
 	}
 	
@@ -86,9 +82,9 @@ func (s *Schema) Validate() error {
 	}
 	
 	// Validate type-relation references
-	for _, t := range s.Types {
+	if s.Type != nil {
 		// Check featured relations exist
-		for _, relId := range t.FeaturedRelations {
+		for _, relId := range s.Type.FeaturedRelations {
 			if _, ok := s.Relations[relId]; !ok {
 				// Could be a bundled relation, so we don't error
 				continue
@@ -96,7 +92,7 @@ func (s *Schema) Validate() error {
 		}
 		
 		// Check recommended relations exist
-		for _, relId := range t.RecommendedRelations {
+		for _, relId := range s.Type.RecommendedRelations {
 			if _, ok := s.Relations[relId]; !ok {
 				// Could be a bundled relation, so we don't error
 				continue
@@ -113,23 +109,24 @@ func (s *Schema) Merge(other *Schema) error {
 		return nil
 	}
 	
-	// Merge types
-	for key, t := range other.Types {
-		if existing, ok := s.Types[key]; ok {
-			// Type already exists, merge relations
-			for _, rel := range t.FeaturedRelations {
-				if !existing.HasRelation(rel) {
-					existing.FeaturedRelations = append(existing.FeaturedRelations, rel)
+	// Merge type
+	if other.Type != nil {
+		if s.Type == nil {
+			s.Type = other.Type
+		} else if s.Type.Key == other.Type.Key {
+			// Same type, merge relations
+			for _, rel := range other.Type.FeaturedRelations {
+				if !s.Type.HasRelation(rel) {
+					s.Type.FeaturedRelations = append(s.Type.FeaturedRelations, rel)
 				}
 			}
-			for _, rel := range t.RecommendedRelations {
-				if !existing.HasRelation(rel) {
-					existing.RecommendedRelations = append(existing.RecommendedRelations, rel)
+			for _, rel := range other.Type.RecommendedRelations {
+				if !s.Type.HasRelation(rel) {
+					s.Type.RecommendedRelations = append(s.Type.RecommendedRelations, rel)
 				}
 			}
-		} else {
-			s.Types[key] = t
 		}
+		// If different types, keep the existing one
 	}
 	
 	// Merge relations
@@ -146,28 +143,28 @@ func (s *Schema) Merge(other *Schema) error {
 func (s *Schema) Clone() *Schema {
 	clone := NewSchema()
 	
-	// Clone types
-	for key, t := range s.Types {
+	// Clone type
+	if s.Type != nil {
 		clonedType := &Type{
-			Key:                  t.Key,
-			Name:                 t.Name,
-			Description:          t.Description,
-			PluralName:           t.PluralName,
-			IconEmoji:            t.IconEmoji,
-			IconImage:            t.IconImage,
-			IsArchived:           t.IsArchived,
-			IsHidden:             t.IsHidden,
-			Layout:               t.Layout,
-			FeaturedRelations:    append([]string{}, t.FeaturedRelations...),
-			RecommendedRelations: append([]string{}, t.RecommendedRelations...),
-			RestrictedRelations:  append([]string{}, t.RestrictedRelations...),
+			Key:                  s.Type.Key,
+			Name:                 s.Type.Name,
+			Description:          s.Type.Description,
+			PluralName:           s.Type.PluralName,
+			IconEmoji:            s.Type.IconEmoji,
+			IconImage:            s.Type.IconImage,
+			IsArchived:           s.Type.IsArchived,
+			IsHidden:             s.Type.IsHidden,
+			Layout:               s.Type.Layout,
+			FeaturedRelations:    append([]string{}, s.Type.FeaturedRelations...),
+			RecommendedRelations: append([]string{}, s.Type.RecommendedRelations...),
+			RestrictedRelations:  append([]string{}, s.Type.RestrictedRelations...),
 			Extension:            make(map[string]interface{}),
 		}
 		// Clone extensions
-		for k, v := range t.Extension {
+		for k, v := range s.Type.Extension {
 			clonedType.Extension[k] = v
 		}
-		clone.Types[key] = clonedType
+		clone.Type = clonedType
 	}
 	
 	// Clone relations
