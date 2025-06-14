@@ -2,7 +2,6 @@ package md
 
 import (
 	"bytes"
-	"encoding/json"
 	"fmt"
 	"html"
 	"io"
@@ -23,6 +22,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+	"github.com/anyproto/anytype-heart/pkg/lib/schema"
 	"github.com/anyproto/anytype-heart/util/uri"
 )
 
@@ -875,119 +875,16 @@ func (h *MD) GenerateSchemaFileName(typeName string) string {
 	return "./schemas/" + fileName + ".schema.json"
 }
 
-// GenerateJSONSchema generates a JSON schema for the object type
+// GenerateJSONSchema generates a JSON schema for the object type using the schema package
 func (h *MD) GenerateJSONSchema() ([]byte, error) {
 	if h.resolver == nil {
 		return nil, fmt.Errorf("resolver not set")
 	}
 
 	objectTypeId := h.s.LocalDetails().GetString(bundle.RelationKeyType)
-
-	var objectTypeDetails *domain.Details
-	var err error
-
-	objectTypeDetails, err = h.resolver.ResolveType(objectTypeId)
+	objectTypeDetails, err := h.resolver.ResolveType(objectTypeId)
 	if err != nil || objectTypeDetails == nil {
 		return nil, fmt.Errorf("object type not found")
-	}
-
-	// Get type name for URN
-	typeName := objectTypeDetails.GetString(bundle.RelationKeyName)
-	typeNameForId := strings.ToLower(typeName)
-	typeNameForId = strings.ReplaceAll(typeNameForId, " ", "-")
-	typeNameForId = strings.ReplaceAll(typeNameForId, "/", "-")
-	typeNameForId = strings.ReplaceAll(typeNameForId, "\\", "-")
-
-	// Get dates and author for URN components
-	lastModified := objectTypeDetails.GetInt64(bundle.RelationKeyLastModifiedDate)
-	if lastModified == 0 {
-		// Fallback to created date if no last modified
-		lastModified = objectTypeDetails.GetInt64(bundle.RelationKeyCreatedDate)
-	}
-	dateForId := ""
-	if lastModified > 0 {
-		dateForId = time.Unix(lastModified, 0).UTC().Format("2006-01-02")
-	} else {
-		// Use current date as fallback
-		dateForId = time.Now().UTC().Format("2006-01-02")
-	}
-
-	// Get author (lastModifiedBy or fallback to creator)
-	author := objectTypeDetails.GetString(bundle.RelationKeyLastModifiedBy)
-	if author == "" {
-		author = objectTypeDetails.GetString(bundle.RelationKeyCreator)
-	}
-	// Create short author ID (first 4 chars of ID or "anon")
-	authorForId := "anon"
-	if author != "" {
-		if len(author) >= 4 {
-			authorForId = author[:4]
-		} else {
-			authorForId = author
-		}
-	}
-
-	// Build URN-style ID
-	// Format: urn:anytype:schema:2025-06-14:author-7a12:type-task:gen-2.3.0
-	schemaId := fmt.Sprintf("urn:anytype:schema:%s:author-%s:type-%s:gen-%s",
-		dateForId,
-		authorForId,
-		typeNameForId,
-		"1.0.0")
-
-	// Handle dates for x-type-date
-	createdDate := objectTypeDetails.GetInt64(bundle.RelationKeyCreatedDate)
-	typeDate := ""
-	if createdDate > 0 {
-		typeDate = time.Unix(createdDate, 0).UTC().Format(time.RFC3339)
-	}
-
-	schema := map[string]interface{}{
-		"$schema":       "http://json-schema.org/draft-07/schema#",
-		"$id":           schemaId,
-		"type":          "object",
-		"x-app":         "Anytype",
-		"x-type-author": author,
-		"x-type-date":   typeDate,
-		"x-genVersion":  "1.0.0",
-	}
-
-	// Add type metadata
-	if typeName != "" {
-		schema["title"] = typeName
-	}
-	if description := objectTypeDetails.GetString(bundle.RelationKeyDescription); description != "" {
-		schema["description"] = description
-	}
-
-	// Add TypeKey from UniqueKey
-	if rawUniqueKey := objectTypeDetails.GetString(bundle.RelationKeyUniqueKey); rawUniqueKey != "" {
-		if typeKey, err := domain.GetTypeKeyFromRawUniqueKey(rawUniqueKey); err == nil {
-			schema["x-type-key"] = string(typeKey)
-		}
-	}
-
-	// Add custom extensions for Anytype-specific metadata
-	if plural := objectTypeDetails.GetString(bundle.RelationKeyPluralName); plural != "" {
-		schema["x-plural"] = plural
-	}
-	if iconEmoji := objectTypeDetails.GetString(bundle.RelationKeyIconEmoji); iconEmoji != "" {
-		schema["x-icon-emoji"] = iconEmoji
-	}
-	if iconImage := objectTypeDetails.GetString(bundle.RelationKeyIconImage); iconImage != "" {
-		schema["x-icon-name"] = iconImage
-	}
-
-	properties := make(map[string]interface{})
-	required := []string{}
-
-	// Add id property (optional) with order 0
-	properties["id"] = map[string]interface{}{
-		"type":        "string",
-		"description": "Unique identifier of the Anytype object",
-		"readOnly":    true,
-		"x-order":     0,
-		"x-key":       "id",
 	}
 
 	// Get all relations for this type
@@ -995,224 +892,29 @@ func (h *MD) GenerateJSONSchema() ([]byte, error) {
 	regularRelations := objectTypeDetails.GetStringList(bundle.RelationKeyRecommendedRelations)
 	allRelations := append(featuredRelations, regularRelations...)
 
-	// Also add the Type property
-	var typeRelationId string
-	typeRelation, err := h.resolver.GetRelationByKey(bundle.RelationKeyType.String())
-	if err == nil && typeRelation != nil {
-		typeRelationId = typeRelation.GetString(bundle.RelationKeyId)
-	}
-
-	if typeRelationId != "" {
-		allRelations = append([]string{typeRelationId}, allRelations...)
-	}
-
-	// Create a set for featured relations for quick lookup
-	featuredSet := make(map[string]bool)
-	for _, id := range featuredRelations {
-		featuredSet[id] = true
-	}
-
-	// Track property order (starting from 1 since id is 0)
-	propertyOrder := 1
-
+	// Collect relation details
+	var relationDetailsList []*domain.Details
 	for _, relationId := range allRelations {
 		relationDetails, err := h.resolver.ResolveRelation(relationId)
-		if err != nil || relationDetails == nil || relationDetails.GetBool(bundle.RelationKeyIsHidden) {
-			continue
-		}
-
-		name := relationDetails.GetString(bundle.RelationKeyName)
-		format := model.RelationFormat(relationDetails.GetInt64(bundle.RelationKeyRelationFormat))
-
-		property := h.getJSONSchemaProperty(relationDetails, format, typeName)
-		if property != nil {
-			// Add order to maintain property sequence
-			property["x-order"] = propertyOrder
-			propertyOrder++
-
-			// Mark as featured if it's in the featured set
-			if featuredSet[relationId] {
-				property["x-featured"] = true
-			}
-
-			properties[name] = property
+		if err == nil && relationDetails != nil {
+			relationDetailsList = append(relationDetailsList, relationDetails)
 		}
 	}
 
-	// Add Collection property if this is a collection type
-	// Check if object has collection layout
-	if rawLayout := objectTypeDetails.GetInt64(bundle.RelationKeyRecommendedLayout); rawLayout == int64(model.ObjectType_collection) {
-		properties["Collection"] = map[string]interface{}{
-			"type":        "array",
-			"description": "List of objects in this collection",
-			"items": map[string]interface{}{
-				"type": "object",
-				"properties": map[string]interface{}{
-					"Name": map[string]interface{}{
-						"type":        "string",
-						"description": "Name of the object in the collection",
-					},
-					"File": map[string]interface{}{
-						"type":        "string",
-						"description": "Path to the object file (only present if object is included in export)",
-					},
-					"Id": map[string]interface{}{
-						"type":        "string",
-						"description": "Unique identifier of the object (only present if object is not included in export)",
-					},
-				},
-				"required": []string{"Name"},
-			},
-			"x-order": propertyOrder,
-		}
+	// Create schema using the schema package
+	s, err := schema.SchemaFromObjectDetails(objectTypeDetails, relationDetailsList, h.resolver.ResolveRelation)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create schema: %w", err)
 	}
 
-	schema["properties"] = properties
-	if len(required) > 0 {
-		schema["required"] = required
+	// Export using the schema package
+	exporter := schema.NewJSONSchemaExporter("  ")
+	var buf bytes.Buffer
+	if err := exporter.Export(s, &buf); err != nil {
+		return nil, fmt.Errorf("failed to export schema: %w", err)
 	}
 
-	return json.MarshalIndent(schema, "", "  ")
-}
-
-func (h *MD) getJSONSchemaProperty(relationDetails *domain.Details, format model.RelationFormat, typeName string) map[string]interface{} {
-	key := relationDetails.GetString(bundle.RelationKeyRelationKey)
-	property := make(map[string]interface{})
-	
-	// Add x-key for all properties
-	property["x-key"] = key
-	
-	// Add x-format to explicitly specify the relation format
-	property["x-format"] = "RelationFormat_" + format.String()
-	
-	if key == bundle.RelationKeyType.String() {
-		// exception for Object Type relation
-		// it's const because it basically refers to the type itself
-		if typeName == "" {
-			property["type"] = "string"
-		} else {
-			property["const"] = typeName
-		}
-		return property
-	} else if slices.Contains(shortObjectRelations, key) {
-		if slices.Contains(removeArrayRelations, key) {
-			// Short object relations without array
-			property["type"] = "string"
-			return property
-		}
-		property["type"] = "array"
-		property["items"] = map[string]string{"type": "string"}
-		return property
-	}
-	switch format {
-	case model.RelationFormat_shorttext, model.RelationFormat_longtext:
-		property["type"] = "string"
-		property["description"] = "Long text field"
-
-	case model.RelationFormat_number:
-		property["type"] = "number"
-
-	case model.RelationFormat_checkbox:
-		property["type"] = "boolean"
-
-	case model.RelationFormat_date:
-		property["type"] = "string"
-		property["format"] = "date"
-		if relationDetails.GetBool(bundle.RelationKeyRelationFormatIncludeTime) {
-			property["format"] = "date-time"
-		}
-
-	case model.RelationFormat_tag:
-		property["type"] = "array"
-		options := h.getRelationOptions(relationDetails.GetString(bundle.RelationKeyRelationKey))
-		v := map[string]interface{}{
-			"type": "string",
-		}
-		if len(options) > 0 {
-			v["examples"] = options
-		}
-		property["items"] = v
-
-	case model.RelationFormat_status:
-		property["type"] = "string"
-		// Get status options if available
-		options := h.getRelationOptions(relationDetails.GetString(bundle.RelationKeyRelationKey))
-		if len(options) > 0 {
-			property["enum"] = options
-		}
-
-	case model.RelationFormat_email:
-		property["type"] = "string"
-		property["format"] = "email"
-
-	case model.RelationFormat_url:
-		property["type"] = "string"
-		property["format"] = "uri"
-
-	case model.RelationFormat_phone:
-		property["type"] = "string"
-		property["pattern"] = "^[+]?[0-9\\s()-]+$"
-
-	case model.RelationFormat_file:
-		// For file format relations, the value is the file path
-		property["type"] = "string"
-		property["description"] = "Path to the file in the export"
-
-	case model.RelationFormat_object:
-		// For object relations, create an array of objects schema
-		property["type"] = "array"
-		objectSchema := map[string]interface{}{
-			"type": "object",
-			"properties": map[string]interface{}{
-				"Name": map[string]interface{}{
-					"type":        "string",
-					"description": "Name of the referenced object",
-				},
-				"File": map[string]interface{}{
-					"type":        "string",
-					"description": "Path to the object file in the export (only present if object is included in export)",
-				},
-				"Id": map[string]interface{}{
-					"type":        "string",
-					"description": "Unique identifier of the referenced object (only present if object is not included in export)",
-				},
-				"Object type": map[string]interface{}{
-					"type":        "string",
-					"description": "Type of the referenced object",
-				},
-			},
-			"required": []string{"Name"},
-		}
-		
-		properties := objectSchema["properties"].(map[string]interface{})
-
-		// Check if specific object types are defined for this relation
-		if objectTypes := relationDetails.GetStringList(bundle.RelationKeyRelationFormatObjectTypes); len(objectTypes) > 0 {
-			// Get the names of these object types
-			var typeNames []string
-			for _, typeId := range objectTypes {
-				typeDetails, _ := h.resolver.ResolveType(typeId)
-				if typeDetails != nil {
-					if typeName := typeDetails.GetString(bundle.RelationKeyName); typeName != "" {
-						typeNames = append(typeNames, typeName)
-					}
-				}
-			}
-
-			// If we found type names, add them as enum
-			if len(typeNames) > 0 {
-				properties["Object type"].(map[string]interface{})["enum"] = typeNames
-			}
-		}
-
-		// Set the items property for the array
-		property["items"] = objectSchema
-
-	default:
-		property["type"] = "string"
-	}
-
-	return property
+	return buf.Bytes(), nil
 }
 
 func (h *MD) getRelationOptions(relationKey string) []string {
@@ -1234,3 +936,4 @@ func (h *MD) getRelationOptions(relationKey string) []string {
 
 	return options
 }
+
