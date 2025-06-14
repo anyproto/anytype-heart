@@ -265,5 +265,16 @@ func (p *Page) CreationStateMigration(ctx *smartblock.InitContext) migration.Mig
 }
 
 func (p *Page) StateMigrations() migration.Migrations {
-	return migration.Migrations{Migrations: []migration.Migration{}}
+	return migration.Migrations{Migrations: []migration.Migration{
+		{
+			Version: 4,
+			Proc: func(s *state.State) {
+				templates := []template.StateTransformer{
+					template.WithFeaturedRelationsBlock,
+				}
+
+				template.InitTemplate(s, templates...)
+			},
+		},
+	}}
 }
