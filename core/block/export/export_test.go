@@ -1006,14 +1006,6 @@ func Test_docsForExport(t *testing.T) {
 		objectGetter.EXPECT().GetObject(context.Background(), "id").Return(smartBlockTest, nil)
 		objectGetter.EXPECT().GetObject(context.Background(), "id1").Return(linkObject, nil)
 
-		// Also expect the object type to be fetched during export processing
-		objectTypeSmartBlock := smarttest.New("objectTypeId")
-		objectTypeSmartBlock.Doc = objectTypeSmartBlock.NewState().SetDetails(domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
-			bundle.RelationKeyId:   domain.String("objectTypeId"),
-			bundle.RelationKeyType: domain.String("objectTypeId"),
-		}))
-		objectGetter.EXPECT().GetObject(context.Background(), "objectTypeId").Return(objectTypeSmartBlock, nil)
-
 		e := &export{
 			objectStore: storeFixture,
 			sbtProvider: provider,
@@ -1067,14 +1059,6 @@ func Test_docsForExport(t *testing.T) {
 		smartBlockTest.AddBlock(simple.New(&model.Block{Id: "linkBlock", Content: &model.BlockContentOfLink{Link: &model.BlockContentLink{TargetBlockId: "id1"}}}))
 
 		objectGetter.EXPECT().GetObject(context.Background(), "id").Return(smartBlockTest, nil)
-
-		// Also expect the object type to be fetched during export processing
-		objectTypeSmartBlock := smarttest.New("objectTypeId")
-		objectTypeSmartBlock.Doc = objectTypeSmartBlock.NewState().SetDetails(domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
-			bundle.RelationKeyId:   domain.String("objectTypeId"),
-			bundle.RelationKeyType: domain.String("objectTypeId"),
-		}))
-		objectGetter.EXPECT().GetObject(context.Background(), "objectTypeId").Return(objectTypeSmartBlock, nil)
 
 		provider := mock_typeprovider.NewMockSmartBlockTypeProvider(t)
 		provider.EXPECT().Type(spaceId, "id1").Return(smartblock.SmartBlockTypePage, nil)
@@ -1965,14 +1949,6 @@ func Test_docsForExport(t *testing.T) {
 		objectGetter := mock_cache.NewMockObjectGetter(t)
 		objectGetter.EXPECT().GetObject(context.Background(), "id").Return(smartBlockTest, nil)
 
-		// Also expect the object type to be fetched during export processing
-		objectTypeSmartBlock := smarttest.New(objectTypeId)
-		objectTypeSmartBlock.Doc = objectTypeSmartBlock.NewState().SetDetails(domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
-			bundle.RelationKeyId:   domain.String(objectTypeId),
-			bundle.RelationKeyType: domain.String(objectTypeId),
-		}))
-		objectGetter.EXPECT().GetObject(context.Background(), objectTypeId).Return(objectTypeSmartBlock, nil)
-
 		e := &export{
 			objectStore: storeFixture,
 			picker:      objectGetter,
@@ -1991,7 +1967,7 @@ func Test_docsForExport(t *testing.T) {
 
 		// then
 		assert.Nil(t, err)
-		assert.Equal(t, 2, len(expCtx.docs)) // The set object and its object type are both collected
+		assert.Equal(t, 1, len(expCtx.docs))
 	})
 
 	t.Run("get derived objects - relation, object type with recommended relations, template with link", func(t *testing.T) {
