@@ -509,8 +509,9 @@ func (s *service) GetFileData(ctx context.Context, objectId string) (files.File,
 func (s *service) GetImageData(ctx context.Context, objectId string) (files.Image, error) {
 	var img files.Image
 	err := s.DoFileWaitLoad(ctx, objectId, func(object fileobject.FileObject) error {
-		img = object.GetImage()
-		return nil
+		var err error
+		img, err = object.GetImage()
+		return err
 	})
 	return img, err
 }

@@ -1,6 +1,8 @@
 package fileobject
 
 import (
+	"fmt"
+
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/files"
@@ -13,7 +15,7 @@ var log = logging.Logger("anytype-mw-editor-fileobject")
 
 type FileObject interface {
 	GetFile() (files.File, error)
-	GetImage() files.Image
+	GetImage() (files.Image, error)
 	GetFullFileId() domain.FullFileId
 }
 
@@ -37,11 +39,17 @@ func (f *fileObject) GetFullFileId() domain.FullFileId {
 }
 
 func (f *fileObject) GetFile() (files.File, error) {
-	infos := filemodels.GetFileInfosFromDetails(f.Details())
+	infos, err := filemodels.GetFileInfosFromDetails(f.Details())
+	if err != nil {
+		return nil, fmt.Errorf("get file infos from details: %w", err)
+	}
 	return files.NewFile(f.fileService, f.GetFullFileId(), infos)
 }
 
-func (f *fileObject) GetImage() files.Image {
-	infos := filemodels.GetFileInfosFromDetails(f.Details())
-	return files.NewImage(f.fileService, f.GetFullFileId(), infos)
+func (f *fileObject) GetImage() (files.Image, error) {
+	infos, err := filemodels.GetFileInfosFromDetails(f.Details())
+	if err != nil {
+		return nil, fmt.Errorf("get file infos from details: %w", err)
+	}
+	return files.NewImage(f.fileService, f.GetFullFileId(), infos), nil
 }

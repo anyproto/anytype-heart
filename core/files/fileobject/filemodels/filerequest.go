@@ -66,7 +66,7 @@ func InjectVariantsToDetails(infos []*storage.FileInfo, st *state.State) error {
 	return nil
 }
 
-func GetFileInfosFromDetails(details *domain.Details) []*storage.FileInfo {
+func GetFileInfosFromDetails(details *domain.Details) ([]*storage.FileInfo, error) {
 	ext := details.GetString(bundle.RelationKeyFileExt)
 	name := details.GetString(bundle.RelationKeyName)
 	if ext != "" {
@@ -74,17 +74,43 @@ func GetFileInfosFromDetails(details *domain.Details) []*storage.FileInfo {
 	}
 
 	variantsList := details.GetStringList(bundle.RelationKeyFileVariantIds)
+	checksumList := details.GetStringList(bundle.RelationKeyFileVariantChecksums)
+	millList := details.GetStringList(bundle.RelationKeyFileVariantMills)
+	pathList := details.GetStringList(bundle.RelationKeyFileVariantPaths)
+	keysList := details.GetStringList(bundle.RelationKeyFileVariantKeys)
+	optsList := details.GetStringList(bundle.RelationKeyFileVariantOptions)
+	widthList := details.GetInt64List(bundle.RelationKeyFileVariantWidths)
+
+	if len(variantsList) != len(checksumList) {
+		return nil, fmt.Errorf("checksum list mismatch")
+	}
+	if len(variantsList) != len(millList) {
+		return nil, fmt.Errorf("mill list mismatch")
+	}
+	if len(variantsList) != len(pathList) {
+		return nil, fmt.Errorf("path list mismatch")
+	}
+	if len(variantsList) != len(keysList) {
+		return nil, fmt.Errorf("keys list mismatch")
+	}
+	if len(variantsList) != len(optsList) {
+		return nil, fmt.Errorf("opts list mismatch")
+	}
+	if len(widthList) != len(optsList) {
+		return nil, fmt.Errorf("width list mismatch")
+	}
+
 	sourceChecksum := details.GetString(bundle.RelationKeyFileSourceChecksum)
 	addedAt := details.GetInt64(bundle.RelationKeyAddedDate)
 	lastModifiedAt := details.GetInt64(bundle.RelationKeyLastModifiedDate)
 	infos := make([]*storage.FileInfo, 0, len(variantsList))
+
 	for i, variantId := range variantsList {
 		var meta *types.Struct
-		widths := details.GetInt64List(bundle.RelationKeyFileVariantWidths)
-		if widths[i] > 0 {
+		if widthList[i] > 0 {
 			meta = &types.Struct{
 				Fields: map[string]*types.Value{
-					"width": pbtypes.Int64(widths[i]),
+					"width": pbtypes.Int64(widthList[i]),
 				},
 			}
 		}
@@ -96,16 +122,16 @@ func GetFileInfosFromDetails(details *domain.Details) []*storage.FileInfo {
 			Media:  details.GetString(bundle.RelationKeyFileMimeType),
 
 			Hash:             variantId,
-			Checksum:         details.GetStringList(bundle.RelationKeyFileVariantChecksums)[i],
-			Mill:             details.GetStringList(bundle.RelationKeyFileVariantMills)[i],
+			Checksum:         checksumList[i],
+			Mill:             millList[i],
 			Meta:             meta,
-			Path:             details.GetStringList(bundle.RelationKeyFileVariantPaths)[i],
-			Key:              details.GetStringList(bundle.RelationKeyFileVariantKeys)[i],
-			Opts:             details.GetStringList(bundle.RelationKeyFileVariantOptions)[i],
+			Path:             pathList[i],
+			Key:              keysList[i],
+			Opts:             optsList[i],
 			Added:            addedAt,
 			LastModifiedDate: lastModifiedAt,
 		}
 		infos = append(infos, info)
 	}
-	return infos
+	return infos, nil
 }
