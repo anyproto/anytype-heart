@@ -320,170 +320,83 @@ func TestTextImpl_SetMark(t *testing.T) {
 	})
 }
 
-// func TestTextImpl_SetText(t *testing.T) {
-// 	setTextApplyInterval = time.Second / 2
+func TestTextImpl_SetText(t *testing.T) {
+	t.Run("set text after interval", func(t *testing.T) {
+		sb := newFixture(t)
+		sb.AddBlock(simple.New(&model.Block{Id: "test", ChildrenIds: []string{"1", "2"}})).
+			AddBlock(newTextBlock("1", " ")).
+			AddBlock(newTextBlock("2", " "))
 
-// 	t.Run("set text after interval", func(t *testing.T) {
-// 		ctx := session.NewContext()
-// 		sb := smarttest.New("test")
-// 		sb.AddBlock(simple.New(&model.Block{Id: "test", ChildrenIds: []string{"1", "2"}})).
-// 			AddBlock(newTextBlock("1", " ")).
-// 			AddBlock(newTextBlock("2", " "))
-// 		tb := newFixture(t)
+		st := sb.NewState()
 
-// 		require.NoError(t, setText(tb, ctx, pb.RpcBlockTextSetTextRequest{
-// 			BlockId: "1",
-// 			Text:    "1",
-// 		}))
-// 		require.NoError(t, setText(tb, ctx, pb.RpcBlockTextSetTextRequest{
-// 			BlockId: "1",
-// 			Text:    "12",
-// 		}))
-// 		tb.(*textImpl).Lock()
-// 		assert.Equal(t, " ", sb.NewState().Pick("1").Model().GetText().Text)
-// 		tb.(*textImpl).Unlock()
-// 		time.Sleep(time.Second)
-// 		tb.(*textImpl).Lock()
-// 		assert.Equal(t, "12", sb.NewState().Pick("1").Model().GetText().Text)
-// 		tb.(*textImpl).Unlock()
-// 		assert.Len(t, sb.Results.Applies, 1)
-// 	})
-// 	t.Run("set text and new op", func(t *testing.T) {
-// 		ctx := session.NewContext()
-// 		sb := smarttest.New("test")
-// 		sb.AddBlock(simple.New(&model.Block{Id: "test", ChildrenIds: []string{"1", "2"}})).
-// 			AddBlock(newTextBlock("1", " ")).
-// 			AddBlock(newTextBlock("2", " "))
-// 		sender := mock_event.NewMockSender(t)
-// 		tb := NewText(sb, nil, sender)
+		_, _, err := sb.SetText(st, pb.RpcBlockTextSetTextRequest{
+			BlockId: "1",
+			Text:    "1",
+		})
+		require.NoError(t, err)
 
-// 		require.NoError(t, setText(tb, ctx, pb.RpcBlockTextSetTextRequest{
-// 			BlockId: "1",
-// 			Text:    "1",
-// 		}))
-// 		require.NoError(t, setText(tb, ctx, pb.RpcBlockTextSetTextRequest{
-// 			BlockId: "1",
-// 			Text:    "12",
-// 		}))
-// 		tb.(*textImpl).Lock()
-// 		assert.Equal(t, " ", sb.NewState().Pick("1").Model().GetText().Text)
-// 		tb.(*textImpl).flushSetTextState(smartblock.ApplyInfo{})
-// 		assert.Equal(t, "12", sb.NewState().Pick("1").Model().GetText().Text)
-// 		tb.(*textImpl).Unlock()
-// 		time.Sleep(time.Second)
-// 		tb.(*textImpl).Lock()
-// 		assert.Equal(t, "12", sb.NewState().Pick("1").Model().GetText().Text)
-// 		tb.(*textImpl).Unlock()
-// 		assert.Len(t, sb.Results.Applies, 1)
-// 	})
-// 	t.Run("set text two blocks", func(t *testing.T) {
-// 		ctx := session.NewContext()
-// 		sb := smarttest.New("test")
-// 		sb.AddBlock(simple.New(&model.Block{Id: "test", ChildrenIds: []string{"1", "2"}})).
-// 			AddBlock(newTextBlock("1", "")).
-// 			AddBlock(newTextBlock("2", ""))
-// 		sender := mock_event.NewMockSender(t)
-// 		tb := NewText(sb, nil, sender)
+		err = sb.Apply(st)
+		require.NoError(t, err)
 
-// 		require.NoError(t, setText(tb, ctx, pb.RpcBlockTextSetTextRequest{
-// 			BlockId: "1",
-// 			Text:    "1",
-// 		}))
-// 		flushLocked(tb)
-// 		require.NoError(t, setText(tb, ctx, pb.RpcBlockTextSetTextRequest{
-// 			BlockId: "2",
-// 			Text:    "2",
-// 		}))
-// 		flushLocked(tb)
-// 		assert.Equal(t, "1", sb.NewState().Pick("1").Model().GetText().Text)
-// 		assert.Equal(t, "2", sb.NewState().Pick("2").Model().GetText().Text)
-// 		time.Sleep(time.Second)
-// 		assert.Len(t, sb.Results.Applies, 2)
-// 	})
-// 	t.Run("flush on mention", func(t *testing.T) {
-// 		ctx := session.NewContext()
-// 		sb := smarttest.New("test")
-// 		sb.AddBlock(simple.New(&model.Block{Id: "test", ChildrenIds: []string{"1", "2"}})).
-// 			AddBlock(newTextBlock("1", "")).
-// 			AddBlock(newTextBlock("2", ""))
-// 		sender := mock_event.NewMockSender(t)
-// 		tb := NewText(sb, nil, sender)
+		assert.Equal(t, "1", sb.NewState().Pick("1").Model().GetText().Text)
+		assert.Len(t, sb.Results.Applies, 1)
+	})
+	t.Run("flush on mention", func(t *testing.T) {
+		sb := newFixture(t)
+		sb.AddBlock(simple.New(&model.Block{Id: "test", ChildrenIds: []string{"1", "2"}})).
+			AddBlock(newTextBlock("1", "")).
+			AddBlock(newTextBlock("2", ""))
 
-// 		require.NoError(t, setText(tb, ctx, pb.RpcBlockTextSetTextRequest{
-// 			BlockId: "1",
-// 			Text:    "1",
-// 			Marks: &model.BlockContentTextMarks{
-// 				Marks: []*model.BlockContentTextMark{
-// 					{
-// 						Range: &model.Range{0, 1},
-// 						Type:  model.BlockContentTextMark_Mention,
-// 						Param: "blockId",
-// 					},
-// 				},
-// 			},
-// 		}))
+		st := sb.NewState()
+		_, mentionsChanged, err := sb.SetText(st, pb.RpcBlockTextSetTextRequest{
+			BlockId: "1",
+			Text:    "1",
+			Marks: &model.BlockContentTextMarks{
+				Marks: []*model.BlockContentTextMark{
+					{
+						Range: &model.Range{0, 1},
+						Type:  model.BlockContentTextMark_Mention,
+						Param: "blockId",
+					},
+				},
+			},
+		})
+		require.NoError(t, err)
 
-// 		assert.Equal(t, "1", sb.Pick("1").Model().GetText().Text)
-// 	})
-// 	t.Run("on error", func(t *testing.T) {
-// 		ctx := session.NewContext()
-// 		sb := smarttest.New("test")
-// 		sb.AddBlock(simple.New(&model.Block{Id: "test", ChildrenIds: []string{"1", "2"}})).
-// 			AddBlock(newTextBlock("1", "")).
-// 			AddBlock(simple.New(&model.Block{Id: "2"}))
-// 		sender := mock_event.NewMockSender(t)
-// 		tb := NewText(sb, nil, sender)
-// 		assert.Error(t, setText(tb, ctx, pb.RpcBlockTextSetTextRequest{
-// 			BlockId: "2",
-// 			Text:    "",
-// 		}))
-// 	})
-// 	// TODO: GO-2062 Need to review tests after text shortening refactor
-// 	// t.Run("set text greater than limit", func(t *testing.T) {
-// 	//	//given
-// 	//	sb := smarttest.New("test")
-// 	//	sb.AddBlock(simple.New(&model.Block{Id: "test", ChildrenIds: []string{"1"}})).
-// 	//		AddBlock(newTextBlock("1", ""))
-// 	//	tb := NewText(sb, nil)
-// 	//
-// 	//	//when
-// 	//	err := setText(tb, nil, pb.RpcBlockTextSetTextRequest{
-// 	//		BlockId: "1",
-// 	//		Text:    strings.Repeat("a", textSizeLimit+1),
-// 	//	})
-// 	//
-// 	//	//then
-// 	//	assert.NoError(t, err)
-// 	//	assert.Equal(t, strings.Repeat("a", textSizeLimit), sb.NewState().Pick("1").Model().GetText().Text)
-// 	// })
-// 	t.Run("carriage state is saved in history", func(t *testing.T) {
-// 		// given
-// 		ctx := session.NewContext()
-// 		sb := smarttest.New("test")
-// 		sb.AddBlock(simple.New(&model.Block{Id: "test", ChildrenIds: []string{"1"}})).
-// 			AddBlock(newTextBlock("1", ""))
-// 		tb := NewText(sb, nil, nil)
-// 		carriageState := undo.CarriageState{BlockID: "1", RangeFrom: 2, RangeTo: 3}
+		err = sb.Apply(st)
+		require.NoError(t, err)
 
-// 		// when
-// 		err := setText(tb, ctx, pb.RpcBlockTextSetTextRequest{
-// 			BlockId:           carriageState.BlockID,
-// 			SelectedTextRange: &model.Range{From: carriageState.RangeFrom, To: carriageState.RangeTo},
-// 		})
-// 		tb.(*textImpl).History().Add(undo.Action{Add: []simple.Block{simple.New(&model.Block{Id: "1"})}})
-// 		action, err := tb.(*textImpl).History().Previous()
+		assert.True(t, mentionsChanged)
+		assert.Equal(t, "1", sb.NewState().Pick("1").Model().GetText().Text)
+	})
 
-// 		// then
-// 		assert.NoError(t, err)
-// 		assert.Equal(t, carriageState, action.CarriageInfo.Before)
-// 	})
-// }
+	// TODO Move to flusher tests
+	// t.Run("carriage state is saved in history", func(t *testing.T) {
+	// 	// given
+	// 	sb := newFixture(t)
+	// 	sb.AddBlock(simple.New(&model.Block{Id: "test", ChildrenIds: []string{"1"}})).
+	// 		AddBlock(newTextBlock("1", ""))
+	// 	carriageState := undo.CarriageState{BlockID: "1", RangeFrom: 2, RangeTo: 3}
 
-// func setText(tb Text, ctx session.Context, req pb.RpcBlockTextSetTextRequest) error {
-// 	tb.(*textImpl).Lock()
-// 	defer tb.(*textImpl).Unlock()
-// 	return tb.SetText(ctx, req)
-// }
+	// 	// when
+	// 	st := sb.NewState()
+	// 	_, _, err := sb.SetText(st, pb.RpcBlockTextSetTextRequest{
+	// 		BlockId:           carriageState.BlockID,
+	// 		SelectedTextRange: &model.Range{From: carriageState.RangeFrom, To: carriageState.RangeTo},
+	// 	})
+	// 	require.NoError(t, err)
+
+	// 	err = sb.Apply(st)
+	// 	require.NoError(t, err)
+
+	// 	sb.History().Add(undo.Action{Add: []simple.Block{simple.New(&model.Block{Id: "1"})}})
+	// 	action, err := sb.History().Previous()
+
+	// 	// then
+	// 	assert.NoError(t, err)
+	// 	assert.Equal(t, carriageState, action.CarriageInfo.Before)
+	// })
+}
 
 func TestTextImpl_TurnInto(t *testing.T) {
 	t.Run("common text style", func(t *testing.T) {

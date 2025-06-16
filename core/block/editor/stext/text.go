@@ -217,7 +217,7 @@ func (t *textImpl) SetIcon(ctx session.Context, image string, emoji string, bloc
 	return t.Apply(s)
 }
 
-func (t *textImpl) SetText(s *state.State, parentCtx session.Context, req pb.RpcBlockTextSetTextRequest) (detailsChanged bool, mentionsChanged bool, err error) {
+func (t *textImpl) SetText(s *state.State, req pb.RpcBlockTextSetTextRequest) (detailsChanged bool, mentionsChanged bool, err error) {
 	// TODO: GO-2062 Need to refactor text shortening, as it could cut string incorrectly
 	// if len(req.Text) > textSizeLimit {
 	//	log.With("objectID", t.Id()).Errorf("cannot set text more than %d symbols to single block. Shortening it", textSizeLimit)

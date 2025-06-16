@@ -42,47 +42,6 @@ func (t *flusher) Name() string {
 	return "text-flusher"
 }
 
-func exampleSetText(req pb.RpcBlockTextSetTextRequest) error {
-	// Components on the same object
-	t := &textImpl{}
-	f := newFlusher()
-
-	// code
-
-	parentCtx := session.NewContext()
-
-	ctx := session.NewChildContext(parentCtx)
-	s := f.NewSetTextState(req.BlockId, req.SelectedTextRange, ctx)
-
-	detailsBlockChanged, mentionsChanged, err := t.SetText(s, parentCtx, req)
-
-	if err != nil {
-		f.CancelSetTextState()
-		return err
-	}
-
-	if detailsBlockChanged {
-		f.CancelSetTextState()
-		if err = t.Apply(s, smartblock.KeepInternalFlags); err != nil {
-			return err
-		}
-		f.SendEvents(ctx)
-	}
-
-	f.RemoveInternalFlags(s)
-	if mentionsChanged {
-		f.FlushSetTextState(smartblock.ApplyInfo{})
-	}
-
-	return nil
-}
-
-func newFlusher() *flusher {
-	return &flusher{
-		setTextFlushed: make(chan struct{}),
-	}
-}
-
 func (t *flusher) CancelSetTextState() {
 	if t.lastSetTextState != nil {
 		t.lastSetTextState = nil

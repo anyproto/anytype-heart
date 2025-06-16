@@ -20,7 +20,7 @@ type Text interface {
 	Merge(ctx session.Context, firstId, secondId string) (err error)
 	SetMark(ctx session.Context, mark *model.BlockContentTextMark, blockIds ...string) error
 	SetIcon(ctx session.Context, image, emoji string, blockIds ...string) error
-	SetText(s *state.State, parentCtx session.Context, req pb.RpcBlockTextSetTextRequest) (detailsChanged bool, mentionsChanged bool, err error)
+	SetText(s *state.State, req pb.RpcBlockTextSetTextRequest) (detailsChanged bool, mentionsChanged bool, err error)
 	TurnInto(ctx session.Context, style model.BlockContentTextStyle, ids ...string) error
 }
 
