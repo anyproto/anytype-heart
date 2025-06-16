@@ -62,6 +62,8 @@ type SmartTest struct {
 	os               *spaceindex.StoreFixture
 	space            smartblock.Space
 
+	components []domain.EditorComponent
+
 	// Rudimentary hooks
 	hooks     []smartblock.HookCallback
 	hooksOnce map[string]struct{}
@@ -266,10 +268,16 @@ func (st *SmartTest) InitComponents(a *app.App) error {
 }
 
 func (st *SmartTest) Components() []domain.EditorComponent {
-	return nil
+	return st.components
 }
 
-func (st *SmartTest) AddComponent(c domain.EditorComponent) {
+func (st *SmartTest) AddComponent(comp domain.EditorComponent) {
+	for _, c := range st.Components() {
+		if c.Name() == comp.Name() {
+			return
+		}
+	}
+	st.components = append(st.components, comp)
 }
 
 func (st *SmartTest) SetDetails(ctx session.Context, details []domain.Detail, showEvent bool) (err error) {
@@ -366,9 +374,21 @@ func (st *SmartTest) Apply(s *state.State, flags ...smartblock.ApplyFlag) (err e
 	}
 	if sendEvent {
 		st.Results.Events = append(st.Results.Events, msgs)
+		events := msgsToEvents(msgs)
+		if ctx := s.Context(); ctx != nil {
+			ctx.SetMessages(st.Id(), events)
+		}
 	}
 	st.Results.Applies = append(st.Results.Applies, st.Blocks())
 	return
+}
+
+func msgsToEvents(msgs []simple.EventMessage) []*pb.EventMessage {
+	events := make([]*pb.EventMessage, len(msgs))
+	for i := range msgs {
+		events[i] = msgs[i].Msg
+	}
+	return events
 }
 
 func (st *SmartTest) History() undo.History {

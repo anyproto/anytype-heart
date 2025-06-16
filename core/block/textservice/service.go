@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"github.com/anyproto/any-sync/app"
+
 	"github.com/anyproto/anytype-heart/core/block/cache"
 	"github.com/anyproto/anytype-heart/core/block/editor/components"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
@@ -65,15 +66,11 @@ func (s *service) SetText(parentCtx session.Context, req pb.RpcBlockTextSetTextR
 		}
 
 		if detailsBlockChanged {
-			f.CancelSetTextState()
-			if err = sb.Apply(s, smartblock.KeepInternalFlags); err != nil {
-				return err
-			}
-			f.SendEvents(ctx)
+			f.FlushSetTextState(smartblock.ApplyInfo{})
 		}
 
-		f.RemoveInternalFlags(s)
 		if mentionsChanged {
+			f.RemoveInternalFlags(s)
 			f.FlushSetTextState(smartblock.ApplyInfo{})
 		}
 

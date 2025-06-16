@@ -381,7 +381,6 @@ func (sb *smartBlock) Init(ctx *InitContext) (err error) {
 }
 
 func (sb *smartBlock) InitComponents(a *app.App) error {
-	// TODO return not implemented ?
 	return nil
 }
 
