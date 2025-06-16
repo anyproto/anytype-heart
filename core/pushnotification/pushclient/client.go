@@ -23,6 +23,7 @@ const CName = "core.pushnotification.client"
 type Client interface {
 	app.Component
 	SetToken(ctx context.Context, req *pushapi.SetTokenRequest) (err error)
+	RevokeToken(ctx context.Context) (err error)
 	SubscribeAll(ctx context.Context, req *pushapi.SubscribeAllRequest) (err error)
 	CreateSpace(ctx context.Context, req *pushapi.CreateSpaceRequest) (err error)
 	Notify(ctx context.Context, req *pushapi.NotifyRequest) (err error)
@@ -53,6 +54,20 @@ func (c *client) SetToken(ctx context.Context, req *pushapi.SetTokenRequest) (er
 		_, err = c.SetToken(ctx, req)
 		if err != nil {
 			return fmt.Errorf("set token: %w", err)
+		}
+		return nil
+	})
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (c *client) RevokeToken(ctx context.Context) (err error) {
+	err = c.doClient(ctx, func(c pushapi.DRPCPushClient) error {
+		_, err = c.RevokeToken(ctx, &pushapi.Ok{})
+		if err != nil {
+			return fmt.Errorf("revoke token: %w", err)
 		}
 		return nil
 	})

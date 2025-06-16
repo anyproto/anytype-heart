@@ -149,7 +149,7 @@ func (c *spaceTopicsCollection) MakeTopics(spaceId string, topics []string) (*pu
 		if err != nil {
 			return nil, err
 		}
-		sig, err := status.spaceKey.Sign(rawKey)
+		sig, err := status.spaceKey.Sign([]byte(topic))
 		if err != nil {
 			return nil, err
 		}

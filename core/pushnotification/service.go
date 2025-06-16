@@ -26,11 +26,12 @@ import (
 
 const CName = "core.pushnotification.service"
 
-var log = logging.Logger(CName)
+var log = logging.Logger(CName).Desugar()
 
 type Service interface {
 	app.ComponentRunnable
 	RegisterToken(req *pb.RpcPushNotificationRegisterTokenRequest)
+	RevokeToken(background context.Context) (err error)
 	Notify(ctx context.Context, spaceId string, topic []string, payload []byte) (err error)
 }
 
@@ -149,26 +150,6 @@ func (s *service) loadRemoteSubscriptions() {
 	s.topics.SetRemoteList(resp.Topics)
 }
 
-func (s *service) sendNotificationsLoop() {
-	for {
-		message, err := s.notifyQueue.WaitOne(s.runCtx)
-		if err != nil {
-			return
-		}
-		for range 6 {
-			if err := s.notify(s.runCtx, message); err != nil {
-				log.Warn("notify error", zap.Error(err))
-			} else {
-				break
-			}
-			select {
-			case <-s.runCtx.Done():
-			case <-time.After(time.Second * 10):
-			}
-		}
-	}
-}
-
 func (s *service) createSpace(ctx context.Context, spaceKey crypto.PrivKey) (err error) {
 	signature, err := spaceKey.Sign([]byte(s.wallet.GetAccountPrivkey().GetPublic().Account()))
 	if err != nil {
@@ -218,6 +199,29 @@ func (s *service) notify(ctx context.Context, message PushNotification) (err err
 	return err
 }
 
+func (s *service) sendNotificationsLoop() {
+	for {
+		message, err := s.notifyQueue.WaitOne(s.runCtx)
+		if err != nil {
+			return
+		}
+		for range 6 {
+			if err := s.notify(s.runCtx, message); err != nil {
+				if errors.Is(err, pushapi.ErrNoValidTopics) {
+					break
+				}
+				log.Warn("notify error", zap.Error(err))
+			} else {
+				break
+			}
+			select {
+			case <-s.runCtx.Done():
+			case <-time.After(time.Second * 10):
+			}
+		}
+	}
+}
+
 func (s *service) registerToken() (err error) {
 	s.mu.Lock()
 	if s.isTokenRegistered || s.token == "" {
@@ -264,6 +268,10 @@ func (s *service) syncSubscriptions() (err error) {
 		}
 	}
 	return
+}
+
+func (s *service) RevokeToken(ctx context.Context) (err error) {
+	return s.pushClient.RevokeToken(ctx)
 }
 
 func (s *service) Close(ctx context.Context) (err error) {
