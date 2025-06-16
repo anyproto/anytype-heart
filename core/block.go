@@ -14,6 +14,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/import/markdown/anymark"
 	"github.com/anyproto/anytype-heart/core/block/source"
+	"github.com/anyproto/anytype-heart/core/block/textservice"
 	"github.com/anyproto/anytype-heart/core/block/undo"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/domain/objectorigin"
@@ -453,9 +454,7 @@ func (mw *Middleware) BlockTextSetColor(cctx context.Context, req *pb.RpcBlockTe
 		}
 		return m
 	}
-	err := mw.doBlockService(func(bs *block.Service) (err error) {
-		return bs.SetTextColor(nil, req.ContextId, req.Color, req.BlockId)
-	})
+	err := mustService[textservice.Service](mw).SetTextColor(ctx, req.ContextId, req.Color, req.BlockId)
 	if err != nil {
 		return response(pb.RpcBlockTextSetColorResponseError_UNKNOWN_ERROR, err)
 	}
@@ -619,9 +618,7 @@ func (mw *Middleware) BlockTextListSetStyle(cctx context.Context, req *pb.RpcBlo
 		}
 		return m
 	}
-	err := mw.doBlockService(func(bs *block.Service) (err error) {
-		return bs.SetTextStyle(ctx, req.ContextId, req.Style, req.BlockIds...)
-	})
+	err := mustService[textservice.Service](mw).SetTextStyle(ctx, req.ContextId, req.Style, req.BlockIds...)
 	if err != nil {
 		return response(pb.RpcBlockTextListSetStyleResponseError_UNKNOWN_ERROR, err)
 	}
@@ -659,9 +656,7 @@ func (mw *Middleware) BlockTextListSetColor(cctx context.Context, req *pb.RpcBlo
 		}
 		return m
 	}
-	err := mw.doBlockService(func(bs *block.Service) (err error) {
-		return bs.SetTextColor(ctx, req.ContextId, req.Color, req.BlockIds...)
-	})
+	err := mustService[textservice.Service](mw).SetTextColor(ctx, req.ContextId, req.Color, req.BlockIds...)
 	if err != nil {
 		return response(pb.RpcBlockTextListSetColorResponseError_UNKNOWN_ERROR, err)
 	}
@@ -679,9 +674,7 @@ func (mw *Middleware) BlockTextListSetMark(cctx context.Context, req *pb.RpcBloc
 		}
 		return m
 	}
-	err := mw.doBlockService(func(bs *block.Service) (err error) {
-		return bs.SetTextMark(ctx, req.ContextId, req.Mark, req.BlockIds...)
-	})
+	err := mustService[textservice.Service](mw).SetTextMark(ctx, req.ContextId, req.Mark, req.BlockIds...)
 	if err != nil {
 		return response(pb.RpcBlockTextListSetMarkResponseError_UNKNOWN_ERROR, err)
 	}
@@ -724,9 +717,7 @@ func (mw *Middleware) BlockTextListClearStyle(cctx context.Context, req *pb.RpcB
 		}
 		return m
 	}
-	err := mw.doBlockService(func(bs *block.Service) (err error) {
-		return bs.ClearTextStyle(ctx, req.ContextId, req.BlockIds...)
-	})
+	err := mustService[textservice.Service](mw).ClearTextStyle(ctx, req.ContextId, req.BlockIds...)
 	if err != nil {
 		return response(pb.RpcBlockTextListClearStyleResponseError_UNKNOWN_ERROR, err)
 	}
@@ -744,9 +735,7 @@ func (mw *Middleware) BlockTextListClearContent(cctx context.Context, req *pb.Rp
 		}
 		return m
 	}
-	err := mw.doBlockService(func(bs *block.Service) (err error) {
-		return bs.ClearTextContent(ctx, req.ContextId, req.BlockIds...)
-	})
+	err := mustService[textservice.Service](mw).ClearTextContent(ctx, req.ContextId, req.BlockIds...)
 	if err != nil {
 		return response(pb.RpcBlockTextListClearContentResponseError_UNKNOWN_ERROR, err)
 	}
@@ -765,9 +754,8 @@ func (mw *Middleware) BlockTextSetText(cctx context.Context, req *pb.RpcBlockTex
 		}
 		return m
 	}
-	err := mw.doBlockService(func(bs *block.Service) (err error) {
-		return bs.SetTextText(ctx, *req)
-	})
+
+	err := mustService[textservice.Service](mw).SetText(ctx, *req)
 	if err != nil {
 		return response(pb.RpcBlockTextSetTextResponseError_UNKNOWN_ERROR, err)
 	}
@@ -805,9 +793,7 @@ func (mw *Middleware) BlockTextSetStyle(cctx context.Context, req *pb.RpcBlockTe
 		}
 		return m
 	}
-	err := mw.doBlockService(func(bs *block.Service) (err error) {
-		return bs.SetTextStyle(ctx, req.ContextId, req.Style, req.BlockId)
-	})
+	err := mustService[textservice.Service](mw).SetTextStyle(ctx, req.ContextId, req.Style, req.BlockId)
 	if err != nil {
 		return response(pb.RpcBlockTextSetStyleResponseError_UNKNOWN_ERROR, err)
 	}
@@ -825,9 +811,7 @@ func (mw *Middleware) BlockTextSetIcon(cctx context.Context, req *pb.RpcBlockTex
 		}
 		return m
 	}
-	err := mw.doBlockService(func(bs *block.Service) (err error) {
-		return bs.SetTextIcon(ctx, req.ContextId, req.IconImage, req.IconEmoji, req.BlockId)
-	})
+	err := mustService[textservice.Service](mw).SetTextIcon(ctx, req.ContextId, req.IconImage, req.IconEmoji, req.BlockId)
 	if err != nil {
 		return response(pb.RpcBlockTextSetIconResponseError_UNKNOWN_ERROR, err)
 	}
@@ -845,9 +829,7 @@ func (mw *Middleware) BlockTextSetChecked(cctx context.Context, req *pb.RpcBlock
 		}
 		return m
 	}
-	err := mw.doBlockService(func(bs *block.Service) (err error) {
-		return bs.SetTextChecked(ctx, *req)
-	})
+	err := mustService[textservice.Service](mw).SetTextChecked(ctx, *req)
 	if err != nil {
 		return response(pb.RpcBlockTextSetCheckedResponseError_UNKNOWN_ERROR, err)
 	}

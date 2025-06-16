@@ -17,7 +17,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/restriction"
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/block/simple/link"
-	"github.com/anyproto/anytype-heart/core/block/simple/text"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/domain/objectorigin"
 	"github.com/anyproto/anytype-heart/core/session"
@@ -177,39 +176,6 @@ func (s *Service) Export(req pb.RpcBlockExportRequest) (path string, err error) 
 	return path, err
 }
 
-func (s *Service) SetTextText(parentCtx session.Context, req pb.RpcBlockTextSetTextRequest) error {
-	return cache.DoComponent(s, req.ContextId, func(sb smartblock.SmartBlock, b components.Text) error {
-		f, err := components.GetComponent[components.TextFlusher](sb)
-		if err != nil {
-			return err
-		}
-
-		ctx := session.NewChildContext(parentCtx)
-		s := f.NewSetTextState(req.BlockId, req.SelectedTextRange, ctx)
-
-		detailsBlockChanged, mentionsChanged, err := b.SetText(s, parentCtx, req)
-		if err != nil {
-			f.CancelSetTextState()
-			return err
-		}
-
-		if detailsBlockChanged {
-			f.CancelSetTextState()
-			if err = sb.Apply(s, smartblock.KeepInternalFlags); err != nil {
-				return err
-			}
-			f.SendEvents(ctx)
-		}
-
-		f.RemoveInternalFlags(s)
-		if mentionsChanged {
-			f.FlushSetTextState(smartblock.ApplyInfo{})
-		}
-
-		return nil
-	})
-}
-
 func (s *Service) SetLatexText(ctx session.Context, req pb.RpcBlockLatexSetTextRequest) error {
 	return cache.Do(s, req.ContextId, func(b basic.CommonOperations) error {
 		return b.SetLatexText(ctx, req)
@@ -219,88 +185,6 @@ func (s *Service) SetLatexText(ctx session.Context, req pb.RpcBlockLatexSetTextR
 func (s *Service) SetLatexProcessor(ctx session.Context, req pb.RpcBlockLatexSetTextRequest) error {
 	return cache.Do(s, req.ContextId, func(b basic.CommonOperations) error {
 		return b.SetLatexText(ctx, req)
-	})
-}
-
-func (s *Service) SetTextStyle(
-	ctx session.Context, contextId string, style model.BlockContentTextStyle, blockIds ...string,
-) error {
-	return cache.DoComponent(s, contextId, func(sb smartblock.SmartBlock, b components.Text) error {
-		return b.UpdateTextBlocks(ctx, blockIds, true, func(t text.Block) error {
-			t.SetStyle(style)
-			return nil
-		})
-	})
-}
-
-func (s *Service) SetTextChecked(ctx session.Context, req pb.RpcBlockTextSetCheckedRequest) error {
-	return cache.DoComponent(s, req.ContextId, func(sb smartblock.SmartBlock, b components.Text) error {
-		return b.UpdateTextBlocks(ctx, []string{req.BlockId}, true, func(t text.Block) error {
-			t.SetChecked(req.Checked)
-			return nil
-		})
-	})
-}
-
-func (s *Service) SetTextColor(ctx session.Context, contextId string, color string, blockIds ...string) error {
-	return cache.DoComponent(s, contextId, func(sb smartblock.SmartBlock, b components.Text) error {
-		return b.UpdateTextBlocks(ctx, blockIds, true, func(t text.Block) error {
-			t.SetTextColor(color)
-			return nil
-		})
-	})
-}
-
-func (s *Service) ClearTextStyle(ctx session.Context, contextId string, blockIds ...string) error {
-	return cache.DoComponent(s, contextId, func(sb smartblock.SmartBlock, b components.Text) error {
-		return b.UpdateTextBlocks(ctx, blockIds, true, func(t text.Block) error {
-			t.Model().BackgroundColor = ""
-			t.Model().Align = model.Block_AlignLeft
-			t.Model().VerticalAlign = model.Block_VerticalAlignTop
-			t.SetTextColor("")
-			t.SetStyle(model.BlockContentText_Paragraph)
-
-			marks := t.Model().GetText().Marks.Marks[:0]
-			for _, m := range t.Model().GetText().Marks.Marks {
-				switch m.Type {
-				case model.BlockContentTextMark_Strikethrough,
-					model.BlockContentTextMark_Keyboard,
-					model.BlockContentTextMark_Italic,
-					model.BlockContentTextMark_Bold,
-					model.BlockContentTextMark_Underscored,
-					model.BlockContentTextMark_TextColor,
-					model.BlockContentTextMark_BackgroundColor:
-				default:
-					marks = append(marks, m)
-				}
-			}
-			t.Model().GetText().Marks.Marks = marks
-
-			return nil
-		})
-	})
-}
-
-func (s *Service) ClearTextContent(ctx session.Context, contextId string, blockIds ...string) error {
-	return cache.DoComponent(s, contextId, func(sb smartblock.SmartBlock, b components.Text) error {
-		return b.UpdateTextBlocks(ctx, blockIds, true, func(t text.Block) error {
-			t.SetText("", nil)
-			return nil
-		})
-	})
-}
-
-func (s *Service) SetTextMark(
-	ctx session.Context, contextId string, mark *model.BlockContentTextMark, blockIds ...string,
-) error {
-	return cache.DoComponent(s, contextId, func(sb smartblock.SmartBlock, b components.Text) error {
-		return b.SetMark(ctx, mark, blockIds...)
-	})
-}
-
-func (s *Service) SetTextIcon(ctx session.Context, contextId, image, emoji string, blockIds ...string) error {
-	return cache.DoComponent(s, contextId, func(sb smartblock.SmartBlock, b components.Text) error {
-		return b.SetIcon(ctx, image, emoji, blockIds...)
 	})
 }
 

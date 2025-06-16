@@ -16,8 +16,6 @@ import (
 	"github.com/anyproto/anytype-heart/util/internalflag"
 )
 
-var setTextApplyInterval = time.Second * 3
-
 type flusher struct {
 	smartblock.SmartBlock
 	eventSender event.Sender
@@ -52,7 +50,7 @@ func (t *flusher) CancelSetTextState() {
 	}
 }
 
-func (t *flusher) NewSetTextState(blockID string, selectedRange *model.Range, ctx session.Context) *state.State {
+func (t *flusher) NewSetTextState(ctx session.Context, blockID string, selectedRange *model.Range, setTextApplyInterval time.Duration) *state.State {
 	if t.lastSetTextState != nil && t.lastSetTextId == blockID {
 		return t.lastSetTextState
 	}

@@ -2,6 +2,7 @@ package components
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
@@ -27,7 +28,7 @@ type Text interface {
 type TextFlusher interface {
 	domain.EditorComponent
 
-	NewSetTextState(blockID string, selectedRange *model.Range, ctx session.Context) *state.State
+	NewSetTextState(ctx session.Context, blockID string, selectedRange *model.Range, setTextApplyInterval time.Duration) *state.State
 	CancelSetTextState()
 	FlushSetTextState(smartblock.ApplyInfo) error
 	SendEvents(ctx session.Context)
