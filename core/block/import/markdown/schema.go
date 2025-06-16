@@ -1,429 +1,152 @@
 package markdown
 
 import (
-	"encoding/json"
+	"bytes"
 	"fmt"
 	"io"
 	"path/filepath"
 	"strings"
 
-	"github.com/globalsign/mgo/bson"
-
 	"github.com/anyproto/anytype-heart/core/block/import/common"
 	"github.com/anyproto/anytype-heart/core/block/import/common/source"
-	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
+	"github.com/anyproto/anytype-heart/pkg/lib/schema"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-// SchemaInfo holds information about a parsed JSON schema
-type SchemaInfo struct {
-	TypeName       string
-	TypeKey        string   // x-type-key from schema
-	Properties     []string // Property keys in order
-	Relations      map[string]*RelationInfo
-	SchemaFileName string
-}
-
-// RelationInfo holds information about a relation from schema
-type RelationInfo struct {
-	Name        string
-	Key         string // x-key from schema
-	Format      model.RelationFormat
-	Description string
-	Featured    bool
-	Order       int
-	IncludeTime bool     // For date relations
-	Options     []string // For status relations (enum values)
-	Examples    []string // For tag relations (example values)
-}
-
-// SchemaImporter handles schema-based import
+// SchemaImporter handles schema-based import workflow
 type SchemaImporter struct {
-	schemas       map[string]*SchemaInfo  // typeName -> SchemaInfo
-	relations     map[string]*RelationInfo // relationKey -> RelationInfo
-	existingTypes map[string]string       // typeKey -> typeId
-	existingRels  map[string]string       // relationKey -> relationId
+	schemas       map[string]*schema.Schema // filename -> parsed schema
+	existingTypes map[string]string         // typeKey -> typeId
+	existingRels  map[string]string         // relationKey -> relationId
+	parser        schema.Parser
+	
+	// ID prefixes for import
+	propIdPrefix  string
+	typeIdPrefix  string
 }
 
-// NewSchemaImporter creates a new schema importer
 func NewSchemaImporter() *SchemaImporter {
 	return &SchemaImporter{
-		schemas:       make(map[string]*SchemaInfo),
-		relations:     make(map[string]*RelationInfo),
+		schemas:       make(map[string]*schema.Schema),
 		existingTypes: make(map[string]string),
 		existingRels:  make(map[string]string),
+		parser:        schema.NewJSONSchemaParser(),
+		propIdPrefix:  "import_prop_",
+		typeIdPrefix:  "import_type_",
 	}
 }
 
-// LoadSchemas loads all schemas from the schemas folder in the import source
+// LoadSchemas loads all JSON schema files from import source
 func (si *SchemaImporter) LoadSchemas(importSource source.Source, allErrors *common.ConvertError) error {
-	schemasFound := false
-	
-	// Iterate through files looking for schemas folder
-	err := importSource.Iterate(func(fileName string, fileReader io.ReadCloser) bool {
-		defer fileReader.Close()
-		
-		// Check if file is in schemas folder and is a JSON file
-		if strings.HasPrefix(fileName, "schemas/") && strings.HasSuffix(fileName, ".schema.json") {
-			schemasFound = true
+	importSource.Iterate(func(fileName string, fileReader io.ReadCloser) bool {
+		if strings.HasSuffix(fileName, ".json") {
+			defer fileReader.Close()
 			
-			// Read schema file
-			data, err := io.ReadAll(fileReader)
+			schemaData, err := io.ReadAll(fileReader)
 			if err != nil {
-				allErrors.Add(fmt.Errorf("failed to read schema %s: %w", fileName, err))
-				return true
+				allErrors.Add(fmt.Errorf("failed to read schema file %s: %w", fileName, err))
+				return true // continue iteration
 			}
-			
-			// Parse schema
-			if err := si.parseSchema(fileName, data); err != nil {
-				allErrors.Add(fmt.Errorf("failed to parse schema %s: %w", fileName, err))
+
+			// Try to parse as JSON Schema
+			parsedSchema, err := si.parser.Parse(bytes.NewReader(schemaData))
+			if err != nil {
+				// Not a schema file, skip silently
+				return true // continue iteration
 			}
+
+			si.schemas[fileName] = parsedSchema
 		}
-		
-		return true
+		return true // continue iteration
 	})
-	
-	if err != nil {
-		return err
-	}
-	
-	if !schemasFound {
-		// No schemas folder found, this is not an error
-		return nil
-	}
-	
-	log.Infof("Loaded %d schemas with %d relations", len(si.schemas), len(si.relations))
+
 	return nil
 }
 
-// parseSchema parses a single JSON schema file
-func (si *SchemaImporter) parseSchema(fileName string, data []byte) error {
-	var schema map[string]interface{}
-	if err := json.Unmarshal(data, &schema); err != nil {
-		return err
-	}
-	
-	// Extract type information
-	typeName, _ := schema["title"].(string)
-	if typeName == "" {
-		// Try to derive from filename
-		base := filepath.Base(fileName)
-		typeName = strings.TrimSuffix(base, ".schema.json")
-		typeName = strings.ReplaceAll(typeName, "_", " ")
-		typeName = strings.Title(typeName)
-	}
-	
-	info := &SchemaInfo{
-		TypeName:       typeName,
-		TypeKey:        getStringField(schema, "x-type-key"),
-		Relations:      make(map[string]*RelationInfo),
-		SchemaFileName: fileName,
-	}
-	
-	// Parse properties
-	if props, ok := schema["properties"].(map[string]interface{}); ok {
-		// Sort properties by x-order
-		type propWithOrder struct {
-			name  string
-			order int
-			prop  map[string]interface{}
-		}
-		
-		var sortedProps []propWithOrder
-		for name, propData := range props {
-			if prop, ok := propData.(map[string]interface{}); ok {
-				order := 999 // Default high order for props without x-order
-				if o, ok := prop["x-order"].(float64); ok {
-					order = int(o)
-				}
-				sortedProps = append(sortedProps, propWithOrder{name, order, prop})
-			}
-		}
-		
-		// Sort by order
-		for i := 0; i < len(sortedProps); i++ {
-			for j := i + 1; j < len(sortedProps); j++ {
-				if sortedProps[i].order > sortedProps[j].order {
-					sortedProps[i], sortedProps[j] = sortedProps[j], sortedProps[i]
-				}
-			}
-		}
-		
-		// Process sorted properties
-		for _, sp := range sortedProps {
-			if sp.name == "id" {
-				// Skip id property as it's system-managed
-				continue
-			}
-			
-			relInfo := si.parseRelationFromProperty(sp.name, sp.prop)
-			if relInfo != nil {
-				relInfo.Order = sp.order
-				
-				// Store relation globally
-				if relInfo.Key != "" {
-					si.relations[relInfo.Key] = relInfo
-				}
-				
-				// Add to type's relations
-				info.Relations[relInfo.Key] = relInfo
-				info.Properties = append(info.Properties, relInfo.Key)
-			}
-		}
-	}
-	
-	// Store schema info
-	si.schemas[typeName] = info
-	
-	return nil
-}
-
-// parseRelationFromProperty parses relation info from a schema property
-func (si *SchemaImporter) parseRelationFromProperty(name string, prop map[string]interface{}) *RelationInfo {
-	rel := &RelationInfo{
-		Name:        name,
-		Key:         getStringField(prop, "x-key"),
-		Description: getStringField(prop, "description"),
-		Featured:    getBoolField(prop, "x-featured"),
-		Format:      model.RelationFormat_shorttext, // Default
-	}
-	
-	// If no x-key, generate one
-	if rel.Key == "" {
-		rel.Key = bson.NewObjectId().Hex()
-	}
-	
-	// Check for explicit x-format first
-	if xFormat := getStringField(prop, "x-format"); xFormat != "" {
-		// Parse the format string (e.g., "RelationFormat_file" -> model.RelationFormat_file)
-		formatName := xFormat
-		if strings.HasPrefix(formatName, "RelationFormat_") {
-			formatName = strings.TrimPrefix(formatName, "RelationFormat_")
-		}
-		
-		// Map string to format enum
-		switch formatName {
-		case "shorttext":
-			rel.Format = model.RelationFormat_shorttext
-		case "longtext":
-			rel.Format = model.RelationFormat_longtext
-		case "number":
-			rel.Format = model.RelationFormat_number
-		case "checkbox":
-			rel.Format = model.RelationFormat_checkbox
-		case "date":
-			rel.Format = model.RelationFormat_date
-		case "tag":
-			rel.Format = model.RelationFormat_tag
-		case "status":
-			rel.Format = model.RelationFormat_status
-		case "email":
-			rel.Format = model.RelationFormat_email
-		case "url":
-			rel.Format = model.RelationFormat_url
-		case "phone":
-			rel.Format = model.RelationFormat_phone
-		case "file":
-			rel.Format = model.RelationFormat_file
-		case "object":
-			rel.Format = model.RelationFormat_object
-		}
-		
-		// For date format, still check for includeTime
-		if rel.Format == model.RelationFormat_date {
-			format := getStringField(prop, "format")
-			rel.IncludeTime = (format == "date-time")
-		}
-		
-		// For tag/status, still extract options/examples
-		if rel.Format == model.RelationFormat_status {
-			if enumValues, hasEnum := prop["enum"]; hasEnum {
-				if enumArray, ok := enumValues.([]interface{}); ok {
-					for _, val := range enumArray {
-						if strVal, ok := val.(string); ok {
-							rel.Options = append(rel.Options, strVal)
-						}
-					}
-				}
-			}
-		} else if rel.Format == model.RelationFormat_tag {
-			if examples, hasExamples := prop["examples"]; hasExamples {
-				if exampleArray, ok := examples.([]interface{}); ok {
-					for _, val := range exampleArray {
-						if strVal, ok := val.(string); ok {
-							rel.Examples = append(rel.Examples, strVal)
-						}
-					}
-				}
-			}
-		}
-		
-		return rel
-	}
-	
-	// Fall back to inferring format from property schema
-	propType := getStringField(prop, "type")
-	format := getStringField(prop, "format")
-	
-	switch propType {
-	case "boolean":
-		rel.Format = model.RelationFormat_checkbox
-		
-	case "number":
-		rel.Format = model.RelationFormat_number
-		
-	case "string":
-		switch format {
-		case "date":
-			rel.Format = model.RelationFormat_date
-			rel.IncludeTime = false
-		case "date-time":
-			rel.Format = model.RelationFormat_date
-			rel.IncludeTime = true
-		case "email":
-			rel.Format = model.RelationFormat_email
-		case "uri":
-			rel.Format = model.RelationFormat_url
-		default:
-			// Check for enum (status)
-			if enumValues, hasEnum := prop["enum"]; hasEnum {
-				rel.Format = model.RelationFormat_status
-				// Extract enum values as options
-				if enumArray, ok := enumValues.([]interface{}); ok {
-					for _, val := range enumArray {
-						if strVal, ok := val.(string); ok {
-							rel.Options = append(rel.Options, strVal)
-						}
-					}
-				}
-			} else if desc, _ := prop["description"].(string); strings.Contains(desc, "Long text") {
-				rel.Format = model.RelationFormat_longtext
-			} else if strings.Contains(desc, "Path to the file") {
-				rel.Format = model.RelationFormat_file
-			}
-		}
-		
-	case "array":
-		// Check items type
-		if items, ok := prop["items"].(map[string]interface{}); ok {
-			if itemType, _ := items["type"].(string); itemType == "string" {
-				rel.Format = model.RelationFormat_tag
-				// Extract examples if present
-				if examples, hasExamples := prop["examples"]; hasExamples {
-					if exampleArray, ok := examples.([]interface{}); ok {
-						for _, val := range exampleArray {
-							if strVal, ok := val.(string); ok {
-								rel.Examples = append(rel.Examples, strVal)
-							}
-						}
-					}
-				}
-			}
-		}
-		
-	case "object":
-		// This is an object relation
-		rel.Format = model.RelationFormat_object
-		
-	default:
-		// Check for const (like Type property)
-		if _, hasConst := prop["const"]; hasConst {
-			// This is likely the Type property
-			rel.Format = model.RelationFormat_object
-		}
-	}
-	
-	return rel
-}
-
-// CreateRelationSnapshots creates snapshots for all discovered relations
+// CreateRelationSnapshots creates snapshots for all relations found in schemas
 func (si *SchemaImporter) CreateRelationSnapshots() []*common.Snapshot {
 	var snapshots []*common.Snapshot
-	
-	for key, rel := range si.relations {
-		// Skip if this is a bundled relation
-		if _, err := bundle.GetRelation(domain.RelationKey(key)); err == nil {
-			continue
-		}
-		
-		details := si.getRelationDetails(rel)
-		
-		snapshot := &common.Snapshot{
-			Id: propIdPrefix + key,
-			Snapshot: &common.SnapshotModel{
-				SbType: smartblock.SmartBlockTypeRelation,
-				Data: &common.StateSnapshot{
-					Details:       details,
-					RelationLinks: bundledRelationLinks(details),
-					ObjectTypes:   []string{bundle.TypeKeyRelation.String()},
-					Key:           key,
+	relMap := make(map[string]bool) // track processed relations
+
+	for _, s := range si.schemas {
+		for _, rel := range s.Relations {
+			if relMap[rel.Key] {
+				continue // already processed
+			}
+			relMap[rel.Key] = true
+
+			// Check if it's a bundled relation
+			if rel.IsBundled() {
+				continue
+			}
+
+			relationId := si.propIdPrefix + rel.Key
+			si.existingRels[rel.Key] = relationId
+
+			snapshot := &common.Snapshot{
+				Id:   relationId,
+				Snapshot: &common.SnapshotModel{
+					SbType: smartblock.SmartBlockTypeRelation,
+					Data: &common.StateSnapshot{
+						Blocks: []*model.Block{{
+							Id: relationId,
+							Content: &model.BlockContentOfSmartblock{
+								Smartblock: &model.BlockContentSmartblock{},
+							},
+						}},
+						Details: rel.ToDetails(),
+						Key:     rel.Key,
+						ObjectTypes: []string{
+							bundle.TypeKeyRelation.String(),
+						},
+					},
 				},
-			},
+			}
+			snapshots = append(snapshots, snapshot)
 		}
-		
-		snapshots = append(snapshots, snapshot)
-		
-		// Track the relation ID for deduplication
-		si.existingRels[key] = snapshot.Id
 	}
-	
+
 	return snapshots
 }
 
-// CreateRelationOptionSnapshots creates snapshots for relation options (status and tag examples)
+// CreateRelationOptionSnapshots creates snapshots for relation options (for select/multi-select relations)
 func (si *SchemaImporter) CreateRelationOptionSnapshots() []*common.Snapshot {
 	var snapshots []*common.Snapshot
-
-	for key, rel := range si.relations {
-		// Skip if this is a bundled relation
-		if _, err := bundle.GetRelation(domain.RelationKey(key)); err == nil {
-			continue
-		}
-
-		// Create options for status relations
-		if rel.Format == model.RelationFormat_status && len(rel.Options) > 0 {
-			for _, option := range rel.Options {
-				details := si.getRelationOptionDetails(option, key)
-				optionKey := bson.NewObjectId().Hex()
-
-				snapshot := &common.Snapshot{
-					Id: "opt_" + optionKey,
-					Snapshot: &common.SnapshotModel{
-						SbType: smartblock.SmartBlockTypeRelationOption,
-						Data: &common.StateSnapshot{
-							Details:       details,
-							RelationLinks: bundledRelationLinks(details),
-							ObjectTypes:   []string{bundle.TypeKeyRelationOption.String()},
-							Key:           optionKey,
-						},
-					},
-				}
-
-				snapshots = append(snapshots, snapshot)
+	
+	for _, s := range si.schemas {
+		for _, rel := range s.Relations {
+			if rel.Format != model.RelationFormat_status {
+				continue
 			}
-		}
 
-		// Create options for tag relations with examples
-		if rel.Format == model.RelationFormat_tag && len(rel.Examples) > 0 {
-			for _, example := range rel.Examples {
-				details := si.getRelationOptionDetails(example, key)
-				optionKey := bson.NewObjectId().Hex()
+			// Get options from relation
+			if len(rel.Options) == 0 {
+				continue
+			}
 
+			for _, opt := range rel.Options {
+				optionId := si.propIdPrefix + "option_" + rel.Key + "_" + opt
+				
 				snapshot := &common.Snapshot{
-					Id: "opt_" + optionKey,
+					Id:   optionId,
 					Snapshot: &common.SnapshotModel{
 						SbType: smartblock.SmartBlockTypeRelationOption,
 						Data: &common.StateSnapshot{
-							Details:       details,
-							RelationLinks: bundledRelationLinks(details),
-							ObjectTypes:   []string{bundle.TypeKeyRelationOption.String()},
-							Key:           optionKey,
+							Blocks: []*model.Block{{
+								Id: optionId,
+								Content: &model.BlockContentOfSmartblock{
+									Smartblock: &model.BlockContentSmartblock{},
+								},
+							}},
+							Details: rel.CreateOptionDetails(opt, ""),
+							ObjectTypes: []string{
+								bundle.TypeKeyRelationOption.String(),
+							},
 						},
 					},
 				}
-
 				snapshots = append(snapshots, snapshot)
 			}
 		}
@@ -432,213 +155,80 @@ func (si *SchemaImporter) CreateRelationOptionSnapshots() []*common.Snapshot {
 	return snapshots
 }
 
-// CreateTypeSnapshots creates snapshots for all discovered types
+// CreateTypeSnapshots creates snapshots for all object types found in schemas
 func (si *SchemaImporter) CreateTypeSnapshots() []*common.Snapshot {
 	var snapshots []*common.Snapshot
-	
-	for typeName, schema := range si.schemas {
-		// Use schema's x-type-key if available, otherwise generate
-		typeKey := schema.TypeKey
-		if typeKey == "" {
-			typeKey = bson.NewObjectId().Hex()
-		}
-		
-		// Collect relation IDs
-		var relationIds []string
-		var featuredIds []string
-		var regularIds []string
-		
-		for _, relKey := range schema.Properties {
-			relId := si.getRelationId(relKey)
-			if relId != "" {
-				relationIds = append(relationIds, relId)
-				
-				// Check if featured
-				if rel, ok := schema.Relations[relKey]; ok && rel.Featured {
-					featuredIds = append(featuredIds, relId)
-				} else {
-					regularIds = append(regularIds, relId)
-				}
+	typeMap := make(map[string]bool) // track processed types
+
+	for _, s := range si.schemas {
+		if s.Type != nil {
+			t := s.Type
+			if typeMap[t.Key] {
+				continue // already processed
 			}
-		}
-		
-		// If no featured relations specified, use first 3
-		if len(featuredIds) == 0 && len(relationIds) > 0 {
-			maxFeatured := 3
-			if len(relationIds) < maxFeatured {
-				maxFeatured = len(relationIds)
+			typeMap[t.Key] = true
+
+			// Check if it's a bundled type
+			if t.IsBundled() {
+				continue // it's a bundled type, skip
 			}
-			featuredIds = relationIds[:maxFeatured]
-			if len(relationIds) > maxFeatured {
-				regularIds = relationIds[maxFeatured:]
-			}
-		}
-		
-		details := si.getObjectTypeDetails(typeName, typeKey, featuredIds, regularIds)
-		
-		snapshot := &common.Snapshot{
-			Id: typeIdPrefix + typeKey,
-			Snapshot: &common.SnapshotModel{
-				SbType: smartblock.SmartBlockTypeObjectType,
-				Data: &common.StateSnapshot{
-					Details:       details,
-					RelationLinks: bundledRelationLinks(details),
-					ObjectTypes:   []string{bundle.TypeKeyObjectType.String()},
-					Key:           typeKey,
+
+			typeId := si.typeIdPrefix + t.Key
+			si.existingTypes[t.Key] = typeId
+
+			snapshot := &common.Snapshot{
+				Id:   typeId,
+				Snapshot: &common.SnapshotModel{
+					SbType: smartblock.SmartBlockTypeObjectType,
+					Data: &common.StateSnapshot{
+						Blocks: []*model.Block{{
+							Id: typeId,
+							Content: &model.BlockContentOfSmartblock{
+								Smartblock: &model.BlockContentSmartblock{},
+							},
+						}},
+						Details: t.ToDetails(),
+						Key:     t.Key,
+						ObjectTypes: []string{
+							bundle.TypeKeyObjectType.String(),
+						},
+					},
 				},
-			},
+			}
+			snapshots = append(snapshots, snapshot)
 		}
-		
-		snapshots = append(snapshots, snapshot)
-		
-		// Track the type ID for lookup
-		si.existingTypes[typeKey] = snapshot.Id
 	}
-	
+
 	return snapshots
 }
 
-// GetTypeKeyByName returns the type key for a given type name
-func (si *SchemaImporter) GetTypeKeyByName(typeName string) string {
-	if schema, ok := si.schemas[typeName]; ok {
-		if schema.TypeKey != "" {
-			return schema.TypeKey
-		}
-		// Return the generated ID if no x-type-key
-		if typeId, ok := si.existingTypes[schema.TypeKey]; ok {
-			return strings.TrimPrefix(typeId, typeIdPrefix)
+// GetTypeKeyByName returns type key for given schema filename
+func (si *SchemaImporter) GetTypeKeyByName(name string) string {
+	// First check if it's a known type in our schemas
+	for path, s := range si.schemas {
+		if filepath.Base(path) == name+".json" && s.Type != nil {
+			return s.Type.Key
 		}
 	}
-	return ""
+	
+	// Default to generic Page type
+	return bundle.TypeKeyPage.String()
 }
 
-// GetRelationKeyByName returns the relation key for a given property name
-func (si *SchemaImporter) GetRelationKeyByName(propName string) string {
-	// First check if any schema has this property
-	for _, schema := range si.schemas {
-		for relKey, rel := range schema.Relations {
-			if rel.Name == propName {
-				return relKey
+// GetRelationKeyByName returns relation key by property name
+func (si *SchemaImporter) GetRelationKeyByName(name string) (string, bool) {
+	for _, s := range si.schemas {
+		for _, rel := range s.Relations {
+			if rel.Key == name {
+				return rel.Key, true
 			}
 		}
 	}
-	
-	// Check global relations
-	for key, rel := range si.relations {
-		if rel.Name == propName {
-			return key
-		}
-	}
-	
-	return ""
+	return "", false
 }
 
 // HasSchemas returns true if any schemas were loaded
 func (si *SchemaImporter) HasSchemas() bool {
 	return len(si.schemas) > 0
-}
-
-// Helper functions
-
-func getStringField(data map[string]interface{}, field string) string {
-	if v, ok := data[field].(string); ok {
-		return v
-	}
-	return ""
-}
-
-func getBoolField(data map[string]interface{}, field string) bool {
-	if v, ok := data[field].(bool); ok {
-		return v
-	}
-	return false
-}
-
-func (si *SchemaImporter) getRelationId(relKey string) string {
-	// First check if it's a bundled relation
-	if _, err := bundle.GetRelation(domain.RelationKey(relKey)); err == nil {
-		return relKey
-	}
-	
-	// Check our tracked relations
-	if id, ok := si.existingRels[relKey]; ok {
-		return id
-	}
-	
-	// Generate ID for this relation
-	return propIdPrefix + relKey
-}
-
-func (si *SchemaImporter) getRelationDetails(rel *RelationInfo) *domain.Details {
-	details := domain.NewDetails()
-	details.SetFloat64(bundle.RelationKeyRelationFormat, float64(rel.Format))
-	details.SetString(bundle.RelationKeyName, rel.Name)
-	details.SetString(bundle.RelationKeyRelationKey, rel.Key)
-	details.SetInt64(bundle.RelationKeyLayout, int64(model.ObjectType_relation))
-	
-	if rel.Description != "" {
-		details.SetString(bundle.RelationKeyDescription, rel.Description)
-	}
-	
-	// Set includeTime for date relations
-	if rel.Format == model.RelationFormat_date {
-		details.SetBool(bundle.RelationKeyRelationFormatIncludeTime, rel.IncludeTime)
-	}
-	
-	// Create unique key
-	uniqueKey, err := domain.NewUniqueKey(smartblock.SmartBlockTypeRelation, rel.Key)
-	if err != nil {
-		log.Warnf("failed to create unique key for schema relation: %v", err)
-		return details
-	}
-	details.SetString(bundle.RelationKeyId, uniqueKey.Marshal())
-	details.SetString(bundle.RelationKeyUniqueKey, uniqueKey.Marshal())
-	
-	return details
-}
-
-func (si *SchemaImporter) getRelationOptionDetails(name, relationKey string) *domain.Details {
-	details := domain.NewDetails()
-	details.SetString(bundle.RelationKeyName, name)
-	details.SetString(bundle.RelationKeyRelationKey, relationKey)
-	details.SetInt64(bundle.RelationKeyLayout, int64(model.ObjectType_relationOption))
-	
-	// Create unique key for the relation option
-	uniqueKey, err := domain.NewUniqueKey(smartblock.SmartBlockTypeRelationOption, bson.NewObjectId().Hex())
-	if err != nil {
-		log.Warnf("failed to create unique key for schema relation option: %v", err)
-		return details
-	}
-	details.SetString(bundle.RelationKeyId, uniqueKey.Marshal())
-	details.SetString(bundle.RelationKeyUniqueKey, uniqueKey.Marshal())
-	
-	return details
-}
-
-func (si *SchemaImporter) getObjectTypeDetails(name, key string, featuredIds, regularIds []string) *domain.Details {
-	details := domain.NewDetails()
-	details.SetString(bundle.RelationKeyName, name)
-	details.SetInt64(bundle.RelationKeyLayout, int64(model.ObjectType_objectType))
-	details.SetInt64(bundle.RelationKeyResolvedLayout, int64(model.ObjectType_objectType))
-	details.SetInt64(bundle.RelationKeyRecommendedLayout, int64(model.ObjectType_basic))
-	details.SetString(bundle.RelationKeyType, bundle.TypeKeyObjectType.String())
-	
-	if len(featuredIds) > 0 {
-		details.SetStringList(bundle.RelationKeyRecommendedFeaturedRelations, featuredIds)
-	}
-	if len(regularIds) > 0 {
-		details.SetStringList(bundle.RelationKeyRecommendedRelations, regularIds)
-	}
-	
-	// Create unique key for the object type
-	uniqueKey, err := domain.NewUniqueKey(smartblock.SmartBlockTypeObjectType, key)
-	if err != nil {
-		log.Warnf("failed to create unique key for schema object type: %v", err)
-		return details
-	}
-	details.SetString(bundle.RelationKeyId, uniqueKey.Marshal())
-	details.SetString(bundle.RelationKeyUniqueKey, uniqueKey.Marshal())
-	
-	return details
 }
 

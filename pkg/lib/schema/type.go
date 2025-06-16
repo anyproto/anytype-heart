@@ -24,69 +24,81 @@ type Type struct {
 	RecommendedRelations []string               `json:"recommendedRelations,omitempty"`
 	RestrictedRelations  []string               `json:"restrictedRelations,omitempty"`
 	Extension            map[string]interface{} `json:"extension,omitempty"` // x-* fields from schema
+	KeyToIdFunc          func(string) string    `json:"-"`                   // function to convert type key to ID, used for relations
+}
+
+func convertKeysToIds(from []string, keyToIdFunc func(string) string) []string {
+	if keyToIdFunc == nil {
+		return from
+	}
+	to := make([]string, len(from))
+	for i, key := range from {
+		to[i] = keyToIdFunc(key)
+	}
+	return to
 }
 
 // ToDetails converts Type to domain.Details
 func (t *Type) ToDetails() *domain.Details {
 	details := domain.NewDetails()
-	
+
 	details.SetString(bundle.RelationKeyName, t.Name)
-	
+
 	if t.Description != "" {
 		details.SetString(bundle.RelationKeyDescription, t.Description)
 	}
-	
+
 	if t.PluralName != "" {
 		details.SetString(bundle.RelationKeyPluralName, t.PluralName)
 	}
-	
+
 	if t.IconEmoji != "" {
 		details.SetString(bundle.RelationKeyIconEmoji, t.IconEmoji)
 	}
-	
+
 	if t.IconImage != "" {
 		details.SetString(bundle.RelationKeyIconImage, t.IconImage)
 	}
-	
+
 	details.SetBool(bundle.RelationKeyIsArchived, t.IsArchived)
 	details.SetBool(bundle.RelationKeyIsHidden, t.IsHidden)
-	
+
 	if t.Layout != model.ObjectType_basic {
 		details.SetInt64(bundle.RelationKeyRecommendedLayout, int64(t.Layout))
 	}
-	
+
 	// Set featured and recommended relations
 	if len(t.FeaturedRelations) > 0 {
-		details.SetStringList(bundle.RelationKeyRecommendedFeaturedRelations, t.FeaturedRelations)
+		details.SetStringList(bundle.RelationKeyRecommendedFeaturedRelations, convertKeysToIds(t.FeaturedRelations, t.KeyToIdFunc))
 	}
-	
+
 	if len(t.RecommendedRelations) > 0 {
-		details.SetStringList(bundle.RelationKeyRecommendedRelations, t.RecommendedRelations)
+		details.SetStringList(bundle.RelationKeyRecommendedRelations, convertKeysToIds(t.RecommendedRelations, t.KeyToIdFunc))
 	}
-	
+
 	// Restricted relations not supported yet
 	// if len(t.RestrictedRelations) > 0 {
 	//	details.SetStringList(bundle.RelationKeyRestrictedRelations, t.RestrictedRelations)
 	// }
-	
+
 	// Set source to indicate it's from import
 	details.SetInt64(bundle.RelationKeySourceObject, int64(model.ObjectType_objectType))
-	
+
 	// Generate unique key
 	uniqueKey, _ := domain.NewUniqueKey(smartblock.SmartBlockTypeObjectType, t.Key)
 	details.SetString(bundle.RelationKeyUniqueKey, uniqueKey.Marshal())
-	
+
 	// Set layout for object type
 	details.SetInt64(bundle.RelationKeyLayout, int64(model.ObjectType_objectType))
-	
+
 	// Set ID (will be generated if not provided)
 	if id, ok := t.Extension["id"].(string); ok && id != "" {
 		details.SetString(bundle.RelationKeyId, id)
 	}
-	
+
 	// Set the type relation to itself (object types are objects too)
 	details.SetString(bundle.RelationKeyType, bundle.TypeKeyObjectType.URL())
-	
+
 	return details
 }
 
@@ -95,7 +107,7 @@ func TypeFromDetails(details *domain.Details) (*Type, error) {
 	if details == nil {
 		return nil, fmt.Errorf("details is nil")
 	}
-	
+
 	t := &Type{
 		Name:                 details.GetString(bundle.RelationKeyName),
 		Description:          details.GetString(bundle.RelationKeyDescription),
@@ -108,21 +120,21 @@ func TypeFromDetails(details *domain.Details) (*Type, error) {
 		FeaturedRelations:    details.GetStringList(bundle.RelationKeyRecommendedFeaturedRelations),
 		RecommendedRelations: details.GetStringList(bundle.RelationKeyRecommendedRelations),
 		// RestrictedRelations:  details.GetStringList(bundle.RelationKeyRestrictedRelations),
-		Extension:            make(map[string]interface{}),
+		Extension: make(map[string]interface{}),
 	}
-	
+
 	// Extract type key from unique key if available
 	if uniqueKey := details.GetString(bundle.RelationKeyUniqueKey); uniqueKey != "" {
 		if typeKey, err := domain.GetTypeKeyFromRawUniqueKey(uniqueKey); err == nil {
 			t.Key = string(typeKey)
 		}
 	}
-	
+
 	// Store ID in extension if present
 	if id := details.GetString(bundle.RelationKeyId); id != "" {
 		t.Extension["id"] = id
 	}
-	
+
 	return t, nil
 }
 

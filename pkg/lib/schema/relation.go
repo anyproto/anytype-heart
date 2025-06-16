@@ -11,36 +11,36 @@ import (
 
 // Relation represents a property/relation in the schema
 type Relation struct {
-	Key             string                 `json:"key"`
-	Name            string                 `json:"name"`
-	Format          model.RelationFormat  `json:"format"`
-	Description     string                 `json:"description,omitempty"`
-	IsHidden        bool                   `json:"isHidden,omitempty"`
-	IsReadOnly      bool                   `json:"isReadOnly,omitempty"`
-	IsMulti         bool                   `json:"isMulti,omitempty"`
-	ObjectTypes     []string               `json:"objectTypes,omitempty"`     // For object relations
-	Options         []string               `json:"options,omitempty"`         // For status relations
-	Examples        []string               `json:"examples,omitempty"`        // For tag relations
-	IncludeTime     bool                   `json:"includeTime,omitempty"`     // For date relations
-	MaxLength       int                    `json:"maxLength,omitempty"`       // For text relations
-	Extension       map[string]interface{} `json:"extension,omitempty"`       // x-* fields from schema
+	Key         string                 `json:"key"`
+	Name        string                 `json:"name"`
+	Format      model.RelationFormat   `json:"format"`
+	Description string                 `json:"description,omitempty"`
+	IsHidden    bool                   `json:"isHidden,omitempty"`
+	IsReadOnly  bool                   `json:"isReadOnly,omitempty"`
+	IsMulti     bool                   `json:"isMulti,omitempty"`
+	ObjectTypes []string               `json:"objectTypes,omitempty"` // For object relations
+	Options     []string               `json:"options,omitempty"`     // For status relations
+	Examples    []string               `json:"examples,omitempty"`    // For tag relations
+	IncludeTime bool                   `json:"includeTime,omitempty"` // For date relations
+	MaxLength   int                    `json:"maxLength,omitempty"`   // For text relations
+	Extension   map[string]interface{} `json:"extension,omitempty"`   // x-* fields from schema
 }
 
 // ToDetails converts Relation to domain.Details
 func (r *Relation) ToDetails() *domain.Details {
 	details := domain.NewDetails()
-	
+	details.SetInt64(bundle.RelationKeyLayout, int64(model.ObjectType_relation))
 	details.SetString(bundle.RelationKeyRelationKey, r.Key)
 	details.SetString(bundle.RelationKeyName, r.Name)
 	details.SetInt64(bundle.RelationKeyRelationFormat, int64(r.Format))
-	
+
 	if r.Description != "" {
 		details.SetString(bundle.RelationKeyDescription, r.Description)
 	}
-	
+
 	details.SetBool(bundle.RelationKeyIsHidden, r.IsHidden)
 	details.SetBool(bundle.RelationKeyIsReadonly, r.IsReadOnly)
-	
+
 	// Set format-specific fields
 	switch r.Format {
 	case model.RelationFormat_date:
@@ -56,19 +56,19 @@ func (r *Relation) ToDetails() *domain.Details {
 			details.SetInt64(bundle.RelationKeyRelationMaxCount, int64(r.MaxLength))
 		}
 	}
-	
-	// Set source to indicate it's from import  
+
+	// Set source to indicate it's from import
 	details.SetInt64(bundle.RelationKeySourceObject, int64(model.ObjectType_relation))
-	
+
 	// Generate unique key
 	uniqueKey, _ := domain.NewUniqueKey(smartblock.SmartBlockTypeRelation, r.Key)
 	details.SetString(bundle.RelationKeyUniqueKey, uniqueKey.Marshal())
-	
+
 	// Set ID (will be generated if not provided)
 	if id, ok := r.Extension["id"].(string); ok && id != "" {
 		details.SetString(bundle.RelationKeyId, id)
 	}
-	
+
 	return details
 }
 
@@ -77,7 +77,7 @@ func RelationFromDetails(details *domain.Details) (*Relation, error) {
 	if details == nil {
 		return nil, fmt.Errorf("details is nil")
 	}
-	
+
 	r := &Relation{
 		Key:         details.GetString(bundle.RelationKeyRelationKey),
 		Name:        details.GetString(bundle.RelationKeyName),
@@ -87,7 +87,7 @@ func RelationFromDetails(details *domain.Details) (*Relation, error) {
 		IsReadOnly:  details.GetBool(bundle.RelationKeyIsReadonly),
 		Extension:   make(map[string]interface{}),
 	}
-	
+
 	// Get format-specific fields
 	switch r.Format {
 	case model.RelationFormat_date:
@@ -99,12 +99,12 @@ func RelationFromDetails(details *domain.Details) (*Relation, error) {
 			r.MaxLength = int(maxCount)
 		}
 	}
-	
+
 	// Store ID in extension if present
 	if id := details.GetString(bundle.RelationKeyId); id != "" {
 		r.Extension["id"] = id
 	}
-	
+
 	return r, nil
 }
 
@@ -132,21 +132,21 @@ func (r *Relation) IsBundled() bool {
 // CreateOptionDetails creates domain.Details for relation options (status/tag)
 func (r *Relation) CreateOptionDetails(optionName string, color string) *domain.Details {
 	details := domain.NewDetails()
-	
+
 	details.SetString(bundle.RelationKeyName, optionName)
 	details.SetString(bundle.RelationKeyRelationKey, r.Key)
-	
+
 	if color != "" {
 		details.SetString(bundle.RelationKeyRelationOptionColor, color)
 	}
-	
+
 	// Set layout for relation option
 	details.SetInt64(bundle.RelationKeyLayout, int64(model.ObjectType_relationOption))
-	
+
 	// Generate unique key for the option
 	optionKey := fmt.Sprintf("%s_%s", r.Key, optionName)
 	uniqueKey, _ := domain.NewUniqueKey(smartblock.SmartBlockTypeRelationOption, optionKey)
 	details.SetString(bundle.RelationKeyUniqueKey, uniqueKey.Marshal())
-	
+
 	return details
 }

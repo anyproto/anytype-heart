@@ -34,9 +34,9 @@ var (
 const numberOfStages = 9 // 8 cycles to get snapshots and 1 cycle to create objects
 
 type Markdown struct {
-	blockConverter  *mdConverter
-	service         *collection.Service
-	schemas         map[string]*schema.Schema // typeName -> Schema
+	blockConverter *mdConverter
+	service        *collection.Service
+	schemas        map[string]*schema.Schema // typeName -> Schema
 }
 
 const (
@@ -48,9 +48,9 @@ const (
 
 func New(tempDirProvider core.TempDirProvider, service *collection.Service) common.Converter {
 	return &Markdown{
-		blockConverter:  newMDConverter(tempDirProvider),
-		service:         service,
-		schemas:         make(map[string]*schema.Schema),
+		blockConverter: newMDConverter(tempDirProvider),
+		service:        service,
+		schemas:        make(map[string]*schema.Schema),
 	}
 }
 
@@ -142,12 +142,18 @@ func (m *Markdown) getSnapshotsAndRootObjectsIds(
 		return nil, nil
 	}
 	defer importSource.Close()
-	
+	err := importSource.Initialize(path)
+	if err != nil {
+		allErrors.Add(err)
+		if allErrors.ShouldAbortImport(0, model.Import_Markdown) {
+			return nil, nil
+		}
+	}
 	// Load schemas if available
 	if err := m.loadSchemas(importSource, allErrors); err != nil {
 		log.Warnf("failed to load schemas: %v", err)
 	}
-	
+
 	files := m.blockConverter.markdownToBlocks(path, importSource, allErrors)
 	pathsCount := len(req.GetMarkdownParams().Path)
 	if allErrors.ShouldAbortImport(pathsCount, req.Type) {
@@ -438,7 +444,7 @@ func (m *Markdown) createSnapshots(
 		if file.YAMLProperties != nil {
 			for i := range file.YAMLProperties {
 				prop := &file.YAMLProperties[i]
-				
+
 				// If we have schemas, try to find the relation by name
 				if hasSchemas {
 					if schemaKey := m.getRelationKeyByName(prop.name); schemaKey != "" {
@@ -446,7 +452,7 @@ func (m *Markdown) createSnapshots(
 						prop.key = schemaKey
 					}
 				}
-				
+
 				// Use existing relation if already seen
 				if _, exists := yamlRelations[prop.name]; !exists {
 					yamlRelations[prop.name] = prop
@@ -468,13 +474,13 @@ func (m *Markdown) createSnapshots(
 	if hasSchemas {
 		// Create relation snapshots from schemas
 		relationsSnapshots = append(relationsSnapshots, m.createRelationSnapshots()...)
-		
+
 		// Create relation option snapshots from schemas
 		relationsSnapshots = append(relationsSnapshots, m.createRelationOptionSnapshots()...)
-		
+
 		// Create type snapshots from schemas
 		objectTypeSnapshots = append(objectTypeSnapshots, m.createTypeSnapshots()...)
-		
+
 		// Map type names to keys for later use
 		objectTypeKeys = make(map[string]string)
 		for typeName := range objectTypes {
@@ -515,7 +521,7 @@ func (m *Markdown) createSnapshots(
 				},
 			},
 		})
-		
+
 		// Create object type snapshots for YAML type values
 		objectTypeKeys = make(map[string]string) // name -> key mapping
 		for typeName := range objectTypes {
@@ -869,28 +875,28 @@ func getObjectTypeDetails(name, key string, propKeys []string) *domain.Details {
 func (m *Markdown) loadSchemas(importSource source.Source, allErrors *common.ConvertError) error {
 	schemasFound := false
 	parser := schema.NewJSONSchemaParser()
-	
+
 	// Iterate through files looking for schemas folder
 	err := importSource.Iterate(func(fileName string, fileReader io.ReadCloser) bool {
 		defer fileReader.Close()
-		
-		// Check if file is in schemas folder and is a JSON file
-		if strings.HasPrefix(fileName, "schemas/") && strings.HasSuffix(fileName, ".schema.json") {
+
+		// Check if file is a JSON schema file
+		if strings.HasSuffix(fileName, ".schema.json") {
 			schemasFound = true
-			
+
 			// Parse schema using the schema package
 			s, err := parser.Parse(fileReader)
 			if err != nil {
 				allErrors.Add(fmt.Errorf("failed to parse schema %s: %w", fileName, err))
 				return true
 			}
-			
+
 			// Get type name from schema
 			typeName := ""
 			if s.GetType() != nil {
 				typeName = s.GetType().Name
 			}
-			
+
 			if typeName == "" {
 				// Try to derive from filename
 				base := filepath.Base(fileName)
@@ -898,25 +904,25 @@ func (m *Markdown) loadSchemas(importSource source.Source, allErrors *common.Con
 				typeName = strings.ReplaceAll(typeName, "_", " ")
 				typeName = strings.Title(typeName)
 			}
-			
+
 			if typeName != "" {
 				m.schemas[typeName] = s
 				log.Infof("Loaded schema for type: %s", typeName)
 			}
 		}
-		
+
 		return true
 	})
-	
+
 	if err != nil {
 		return err
 	}
-	
+
 	if !schemasFound {
 		log.Infof("No schemas folder found")
 		return nil
 	}
-	
+
 	log.Infof("Loaded %d schemas", len(m.schemas))
 	return nil
 }
@@ -947,7 +953,7 @@ func (m *Markdown) getTypeKeyByName(typeName string) string {
 func (m *Markdown) createRelationSnapshots() []*common.Snapshot {
 	var snapshots []*common.Snapshot
 	processedKeys := make(map[string]bool)
-	
+
 	for _, s := range m.schemas {
 		for key, rel := range s.Relations {
 			// Skip if already processed or if it's a bundled relation
@@ -957,9 +963,9 @@ func (m *Markdown) createRelationSnapshots() []*common.Snapshot {
 			if _, err := bundle.GetRelation(domain.RelationKey(key)); err == nil {
 				continue
 			}
-			
+
 			details := rel.ToDetails()
-			
+
 			snapshot := &common.Snapshot{
 				Id: propIdPrefix + key,
 				Snapshot: &common.SnapshotModel{
@@ -972,32 +978,32 @@ func (m *Markdown) createRelationSnapshots() []*common.Snapshot {
 					},
 				},
 			}
-			
+
 			snapshots = append(snapshots, snapshot)
 			processedKeys[key] = true
 		}
 	}
-	
+
 	return snapshots
 }
 
 // createRelationOptionSnapshots creates snapshots for relation options (status and tag examples)
 func (m *Markdown) createRelationOptionSnapshots() []*common.Snapshot {
 	var snapshots []*common.Snapshot
-	
+
 	for _, s := range m.schemas {
 		for key, rel := range s.Relations {
 			// Skip if this is a bundled relation
 			if _, err := bundle.GetRelation(domain.RelationKey(key)); err == nil {
 				continue
 			}
-			
+
 			// Create options for status relations
 			if rel.Format == model.RelationFormat_status && len(rel.Options) > 0 {
 				for _, option := range rel.Options {
 					details := rel.CreateOptionDetails(option, "")
 					optionKey := bson.NewObjectId().Hex()
-					
+
 					snapshot := &common.Snapshot{
 						Id: "opt_" + optionKey,
 						Snapshot: &common.SnapshotModel{
@@ -1010,17 +1016,17 @@ func (m *Markdown) createRelationOptionSnapshots() []*common.Snapshot {
 							},
 						},
 					}
-					
+
 					snapshots = append(snapshots, snapshot)
 				}
 			}
-			
+
 			// Create options for tag relations with examples
 			if rel.Format == model.RelationFormat_tag && len(rel.Examples) > 0 {
 				for _, example := range rel.Examples {
 					details := rel.CreateOptionDetails(example, "")
 					optionKey := bson.NewObjectId().Hex()
-					
+
 					snapshot := &common.Snapshot{
 						Id: "opt_" + optionKey,
 						Snapshot: &common.SnapshotModel{
@@ -1033,33 +1039,36 @@ func (m *Markdown) createRelationOptionSnapshots() []*common.Snapshot {
 							},
 						},
 					}
-					
+
 					snapshots = append(snapshots, snapshot)
 				}
 			}
 		}
 	}
-	
+
 	return snapshots
 }
 
 // createTypeSnapshots creates snapshots for all discovered types
 func (m *Markdown) createTypeSnapshots() []*common.Snapshot {
 	var snapshots []*common.Snapshot
-	
+
 	for _, s := range m.schemas {
 		if s.GetType() == nil {
 			continue
 		}
-		
+
 		typ := s.GetType()
 		typeKey := typ.Key
 		if typeKey == "" {
 			typeKey = bson.NewObjectId().Hex()
 		}
-		
+
+		typ.KeyToIdFunc = func(key string) string {
+			return propIdPrefix + key
+		}
 		details := typ.ToDetails()
-		
+
 		snapshot := &common.Snapshot{
 			Id: typeIdPrefix + typeKey,
 			Snapshot: &common.SnapshotModel{
@@ -1072,9 +1081,9 @@ func (m *Markdown) createTypeSnapshots() []*common.Snapshot {
 				},
 			},
 		}
-		
+
 		snapshots = append(snapshots, snapshot)
 	}
-	
+
 	return snapshots
 }

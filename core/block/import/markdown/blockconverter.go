@@ -47,13 +47,6 @@ func (m *mdConverter) markdownToBlocks(importPath string, importSource source.So
 }
 
 func (m *mdConverter) processFiles(importPath string, allErrors *common.ConvertError, importSource source.Source) map[string]*FileInfo {
-	err := importSource.Initialize(importPath)
-	if err != nil {
-		allErrors.Add(err)
-		if allErrors.ShouldAbortImport(0, model.Import_Markdown) {
-			return nil
-		}
-	}
 	if importSource.CountFilesWithGivenExtensions([]string{".md"}) == 0 {
 		allErrors.Add(common.ErrorBySourceType(importSource))
 		return nil
