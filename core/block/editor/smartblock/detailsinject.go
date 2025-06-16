@@ -13,6 +13,22 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
+var layoutPerSmartBlockType = map[smartblock.SmartBlockType]model.ObjectTypeLayout{
+	smartblock.SmartBlockTypeRelation:          model.ObjectType_relation,
+	smartblock.SmartBlockTypeBundledRelation:   model.ObjectType_relation,
+	smartblock.SmartBlockTypeObjectType:        model.ObjectType_objectType,
+	smartblock.SmartBlockTypeBundledObjectType: model.ObjectType_objectType,
+	smartblock.SmartBlockTypeRelationOption:    model.ObjectType_relationOption,
+	smartblock.SmartBlockTypeSpaceView:         model.ObjectType_spaceView,
+	smartblock.SmartBlockTypeParticipant:       model.ObjectType_participant,
+	smartblock.SmartBlockTypeFileObject:        model.ObjectType_file,
+	smartblock.SmartBlockTypeDate:              model.ObjectType_date,
+	smartblock.SmartBlockTypeChatDerivedObject: model.ObjectType_chatDerived,
+	smartblock.SmartBlockTypeChatObject:        model.ObjectType_chat,
+	smartblock.SmartBlockTypeWidget:            model.ObjectType_dashboard,
+	smartblock.SmartBlockTypeWorkspace:         model.ObjectType_dashboard,
+}
+
 func (sb *smartBlock) injectLocalDetails(s *state.State) error {
 	details, err := sb.getDetailsFromStore()
 	if err != nil {
@@ -225,8 +241,13 @@ func (sb *smartBlock) deriveChatId(s *state.State) error {
 func (sb *smartBlock) resolveLayout(s *state.State) {
 	if sb.Type() != smartblock.SmartBlockTypePage {
 		layout := s.Details().Get(bundle.RelationKeyLayout)
-		if layout.Ok() {
-			s.SetDetailAndBundledRelation(bundle.RelationKeyResolvedLayout, layout)
+		if layoutV, ok := layoutPerSmartBlockType[sb.Type()]; ok {
+			s.SetDetailAndBundledRelation(bundle.RelationKeyResolvedLayout, domain.Int64(int64(layoutV)))
+		} else if layout.Ok() {
+			log.With("objectId", s.RootId()).Warnf("resolveLayout: no layout for smartblock type %s, using layout from details: %s", sb.Type(), layout)
+			s.SetDetailAndBundledRelation(bundle.RelationKeyResolvedLayout, domain.Int64(int64(layout.Int64())))
+		} else {
+			log.With("objectId", s.RootId()).Errorf("resolveLayout: no layout for smartblock type %s, no layout in details", sb.Type())
 		}
 		return
 	}
