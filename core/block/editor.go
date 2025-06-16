@@ -177,9 +177,36 @@ func (s *Service) Export(req pb.RpcBlockExportRequest) (path string, err error) 
 	return path, err
 }
 
-func (s *Service) SetTextText(ctx session.Context, req pb.RpcBlockTextSetTextRequest) error {
+func (s *Service) SetTextText(parentCtx session.Context, req pb.RpcBlockTextSetTextRequest) error {
 	return cache.DoComponent(s, req.ContextId, func(sb smartblock.SmartBlock, b components.Text) error {
-		return b.SetText(ctx, req)
+		f, err := components.GetComponent[components.TextFlusher](sb)
+		if err != nil {
+			return err
+		}
+
+		ctx := session.NewChildContext(parentCtx)
+		s := f.NewSetTextState(req.BlockId, req.SelectedTextRange, ctx)
+
+		detailsBlockChanged, mentionsChanged, err := b.SetText(s, parentCtx, req)
+		if err != nil {
+			f.CancelSetTextState()
+			return err
+		}
+
+		if detailsBlockChanged {
+			f.CancelSetTextState()
+			if err = sb.Apply(s, smartblock.KeepInternalFlags); err != nil {
+				return err
+			}
+			f.SendEvents(ctx)
+		}
+
+		f.RemoveInternalFlags(s)
+		if mentionsChanged {
+			f.FlushSetTextState(smartblock.ApplyInfo{})
+		}
+
+		return nil
 	})
 }
 

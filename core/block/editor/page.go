@@ -105,8 +105,10 @@ func (p *Page) InitComponents(a *app.App) error {
 		p.SmartBlock,
 		a,
 	)
+	textFlusher := stext.NewFlusher(p.SmartBlock, a)
 
 	p.AddComponent(text)
+	p.AddComponent(textFlusher)
 	return nil
 }
 

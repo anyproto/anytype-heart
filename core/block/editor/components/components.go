@@ -3,6 +3,8 @@ package components
 import (
 	"fmt"
 
+	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
+	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/simple/text"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/session"
@@ -18,8 +20,18 @@ type Text interface {
 	Merge(ctx session.Context, firstId, secondId string) (err error)
 	SetMark(ctx session.Context, mark *model.BlockContentTextMark, blockIds ...string) error
 	SetIcon(ctx session.Context, image, emoji string, blockIds ...string) error
-	SetText(ctx session.Context, req pb.RpcBlockTextSetTextRequest) (err error)
+	SetText(s *state.State, parentCtx session.Context, req pb.RpcBlockTextSetTextRequest) (detailsChanged bool, mentionsChanged bool, err error)
 	TurnInto(ctx session.Context, style model.BlockContentTextStyle, ids ...string) error
+}
+
+type TextFlusher interface {
+	domain.EditorComponent
+
+	NewSetTextState(blockID string, selectedRange *model.Range, ctx session.Context) *state.State
+	CancelSetTextState()
+	FlushSetTextState(smartblock.ApplyInfo) error
+	SendEvents(ctx session.Context)
+	RemoveInternalFlags(s *state.State)
 }
 
 type Entity interface {

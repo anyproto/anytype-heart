@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/anyproto/any-sync/app"
+	"github.com/anyproto/anytype-heart/core/block/editor/components"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/undo"
@@ -14,6 +16,8 @@ import (
 	"github.com/anyproto/anytype-heart/util/internalflag"
 )
 
+var setTextApplyInterval = time.Second * 3
+
 type flusher struct {
 	smartblock.SmartBlock
 	eventSender event.Sender
@@ -21,6 +25,21 @@ type flusher struct {
 	lastSetTextId    string
 	lastSetTextState *state.State
 	setTextFlushed   chan struct{}
+}
+
+func NewFlusher(sb smartblock.SmartBlock, a *app.App) components.TextFlusher {
+	eventSender := app.MustComponent[event.Sender](a)
+	t := &flusher{
+		SmartBlock:  sb,
+		eventSender: eventSender,
+	}
+	sb.AddHook(t.FlushSetTextState, smartblock.HookOnNewState, smartblock.HookOnClose, smartblock.HookOnBlockClose)
+
+	return t
+}
+
+func (t *flusher) Name() string {
+	return "text-flusher"
 }
 
 func exampleSetText(req pb.RpcBlockTextSetTextRequest) error {
@@ -33,27 +52,29 @@ func exampleSetText(req pb.RpcBlockTextSetTextRequest) error {
 	parentCtx := session.NewContext()
 
 	ctx := session.NewChildContext(parentCtx)
-	s := f.newSetTextState(req.BlockId, req.SelectedTextRange, ctx)
+	s := f.NewSetTextState(req.BlockId, req.SelectedTextRange, ctx)
 
 	detailsBlockChanged, mentionsChanged, err := t.SetText(s, parentCtx, req)
 
 	if err != nil {
-		f.cancelSetTextState()
+		f.CancelSetTextState()
 		return err
 	}
 
 	if detailsBlockChanged {
-		f.cancelSetTextState()
+		f.CancelSetTextState()
 		if err = t.Apply(s, smartblock.KeepInternalFlags); err != nil {
 			return err
 		}
-		f.sendEvents(ctx)
+		f.SendEvents(ctx)
 	}
 
-	f.removeInternalFlags(s)
+	f.RemoveInternalFlags(s)
 	if mentionsChanged {
-		f.flushSetTextState(smartblock.ApplyInfo{})
+		f.FlushSetTextState(smartblock.ApplyInfo{})
 	}
+
+	return nil
 }
 
 func newFlusher() *flusher {
@@ -62,7 +83,7 @@ func newFlusher() *flusher {
 	}
 }
 
-func (t *flusher) cancelSetTextState() {
+func (t *flusher) CancelSetTextState() {
 	if t.lastSetTextState != nil {
 		t.lastSetTextState = nil
 		select {
@@ -72,7 +93,7 @@ func (t *flusher) cancelSetTextState() {
 	}
 }
 
-func (t *flusher) newSetTextState(blockID string, selectedRange *model.Range, ctx session.Context) *state.State {
+func (t *flusher) NewSetTextState(blockID string, selectedRange *model.Range, ctx session.Context) *state.State {
 	if t.lastSetTextState != nil && t.lastSetTextId == blockID {
 		return t.lastSetTextState
 	}
@@ -93,28 +114,28 @@ func (t *flusher) newSetTextState(blockID string, selectedRange *model.Range, ct
 		}
 		t.Lock()
 		defer t.Unlock()
-		t.flushSetTextState(smartblock.ApplyInfo{})
+		t.FlushSetTextState(smartblock.ApplyInfo{})
 	}()
 	return t.lastSetTextState
 }
 
-func (t *flusher) flushSetTextState(_ smartblock.ApplyInfo) error {
+func (t *flusher) FlushSetTextState(_ smartblock.ApplyInfo) error {
 	if t.lastSetTextState != nil {
 		// We create new context to avoid sending events to the current session
 		ctx := session.NewChildContext(t.lastSetTextState.Context())
 		t.lastSetTextState.SetContext(ctx)
-		t.removeInternalFlags(t.lastSetTextState)
+		t.RemoveInternalFlags(t.lastSetTextState)
 		if err := t.Apply(t.lastSetTextState, smartblock.NoHooks, smartblock.KeepInternalFlags); err != nil {
 			log.Errorf("can't apply setText state: %v", err)
 		}
-		t.sendEvents(ctx)
-		t.cancelSetTextState()
+		t.SendEvents(ctx)
+		t.CancelSetTextState()
 	}
 	return nil
 }
 
 // sendEvents send BlockSetText events only to the other sessions, other events are sent to all sessions
-func (t *flusher) sendEvents(ctx session.Context) {
+func (t *flusher) SendEvents(ctx session.Context) {
 	msgs := ctx.GetMessages()
 	filteredMsgs := msgs[:0]
 	for _, msg := range msgs {
@@ -145,7 +166,7 @@ func (t *flusher) isLastTextBlockChanged() (bool, error) {
 	return len(messages) != 0, err
 }
 
-func (t *flusher) removeInternalFlags(s *state.State) {
+func (t *flusher) RemoveInternalFlags(s *state.State) {
 	flags := internalflag.NewFromState(s.ParentState())
 	if flags.IsEmpty() {
 		return

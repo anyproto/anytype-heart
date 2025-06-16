@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"sort"
 	"strings"
-	"time"
 
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/anytype-heart/core/block/editor/components"
@@ -23,8 +22,6 @@ import (
 	"github.com/anyproto/anytype-heart/util/slice"
 )
 
-var setTextApplyInterval = time.Second * 3
-
 func NewText(
 	sb smartblock.SmartBlock,
 	a *app.App,
@@ -34,8 +31,6 @@ func NewText(
 	}
 
 	t.objectStore = app.MustComponent[objectstore.ObjectStore](a).SpaceIndex(t.SpaceID())
-	// TODO Move to flusher side
-	// t.AddHook(t.flushSetTextState, smartblock.HookOnNewState, smartblock.HookOnClose, smartblock.HookOnBlockClose)
 	return t
 }
 
@@ -222,17 +217,13 @@ func (t *textImpl) SetIcon(ctx session.Context, image string, emoji string, bloc
 	return t.Apply(s)
 }
 
-func (t *textImpl) SetText(s *state.State, parentCtx session.Context, req pb.RpcBlockTextSetTextRequest) (detailsChanges bool, mentionsChanged bool, err error) {
-	defer func() {
-	}()
-
+func (t *textImpl) SetText(s *state.State, parentCtx session.Context, req pb.RpcBlockTextSetTextRequest) (detailsChanged bool, mentionsChanged bool, err error) {
 	// TODO: GO-2062 Need to refactor text shortening, as it could cut string incorrectly
 	// if len(req.Text) > textSizeLimit {
 	//	log.With("objectID", t.Id()).Errorf("cannot set text more than %d symbols to single block. Shortening it", textSizeLimit)
 	//	req.Text = req.Text[:textSizeLimit]
 	// }
 
-	// We create new context to avoid sending events to the current session
 	wasEmpty := s.IsEmpty(true)
 
 	tb, err := getText(s, req.BlockId)
