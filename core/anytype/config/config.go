@@ -510,11 +510,8 @@ func (c *Config) GetPublishServer() publishclient.Config {
 }
 
 func (c *Config) GetPushConfig() PushConfig {
-	// pushPeerId := "12D3KooWMATrdteJNq2YvYhtq3RDeWxq6RVXDAr36MsGd5RJzXDn"
-	// pushAddr := "anytype-push-server.anytype.io:4941"
-
-	pushPeerId := "12D3KooWR8Ci1XidFCCXoZppGrUmiy4D1Mjoux9xK6QoZrpbQC3J"
-	pushAddr := "127.0.0.1:4940"
+	pushPeerId := "12D3KooWMATrdteJNq2YvYhtq3RDeWxq6RVXDAr36MsGd5RJzXDn"
+	pushAddr := "anytype-push-server.anytype.io:4941"
 
 	if peerId := os.Getenv("ANYTYPE_PUSH_PEERID"); peerId != "" {
 		if addr := os.Getenv("ANYTYPE_PUSH_ADDRESS"); addr != "" {
