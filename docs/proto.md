@@ -1024,6 +1024,10 @@
     - [Rpc.Object.Redo.Request](#anytype-Rpc-Object-Redo-Request)
     - [Rpc.Object.Redo.Response](#anytype-Rpc-Object-Redo-Response)
     - [Rpc.Object.Redo.Response.Error](#anytype-Rpc-Object-Redo-Response-Error)
+    - [Rpc.Object.Refresh](#anytype-Rpc-Object-Refresh)
+    - [Rpc.Object.Refresh.Request](#anytype-Rpc-Object-Refresh-Request)
+    - [Rpc.Object.Refresh.Response](#anytype-Rpc-Object-Refresh-Response)
+    - [Rpc.Object.Refresh.Response.Error](#anytype-Rpc-Object-Refresh-Response-Error)
     - [Rpc.Object.Search](#anytype-Rpc-Object-Search)
     - [Rpc.Object.Search.Request](#anytype-Rpc-Object-Search-Request)
     - [Rpc.Object.Search.Response](#anytype-Rpc-Object-Search-Response)
@@ -1626,6 +1630,7 @@
     - [Rpc.Object.Open.Response.Error.Code](#anytype-Rpc-Object-Open-Response-Error-Code)
     - [Rpc.Object.OpenBreadcrumbs.Response.Error.Code](#anytype-Rpc-Object-OpenBreadcrumbs-Response-Error-Code)
     - [Rpc.Object.Redo.Response.Error.Code](#anytype-Rpc-Object-Redo-Response-Error-Code)
+    - [Rpc.Object.Refresh.Response.Error.Code](#anytype-Rpc-Object-Refresh-Response-Error-Code)
     - [Rpc.Object.Search.Response.Error.Code](#anytype-Rpc-Object-Search-Response-Error-Code)
     - [Rpc.Object.SearchSubscribe.Response.Error.Code](#anytype-Rpc-Object-SearchSubscribe-Response-Error-Code)
     - [Rpc.Object.SearchUnsubscribe.Response.Error.Code](#anytype-Rpc-Object-SearchUnsubscribe-Response-Error-Code)
@@ -2205,6 +2210,7 @@
 | PublishingResolveUri | [Rpc.Publishing.ResolveUri.Request](#anytype-Rpc-Publishing-ResolveUri-Request) | [Rpc.Publishing.ResolveUri.Response](#anytype-Rpc-Publishing-ResolveUri-Response) |  |
 | PublishingGetStatus | [Rpc.Publishing.GetStatus.Request](#anytype-Rpc-Publishing-GetStatus-Request) | [Rpc.Publishing.GetStatus.Response](#anytype-Rpc-Publishing-GetStatus-Response) |  |
 | ObjectOpen | [Rpc.Object.Open.Request](#anytype-Rpc-Object-Open-Request) | [Rpc.Object.Open.Response](#anytype-Rpc-Object-Open-Response) | Object *** |
+| ObjectRefresh | [Rpc.Object.Refresh.Request](#anytype-Rpc-Object-Refresh-Request) | [Rpc.Object.Refresh.Response](#anytype-Rpc-Object-Refresh-Response) |  |
 | ObjectClose | [Rpc.Object.Close.Request](#anytype-Rpc-Object-Close-Request) | [Rpc.Object.Close.Response](#anytype-Rpc-Object-Close-Response) |  |
 | ObjectShow | [Rpc.Object.Show.Request](#anytype-Rpc-Object-Show-Request) | [Rpc.Object.Show.Response](#anytype-Rpc-Object-Show-Response) |  |
 | ObjectCreate | [Rpc.Object.Create.Request](#anytype-Rpc-Object-Create-Request) | [Rpc.Object.Create.Response](#anytype-Rpc-Object-Create-Response) | ObjectCreate just creates the new page, without adding the link to it from some other page |
@@ -17329,6 +17335,63 @@ Deletes the object, keys from the local store and unsubscribe from remote change
 
 
 
+<a name="anytype-Rpc-Object-Refresh"></a>
+
+### Rpc.Object.Refresh
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Object-Refresh-Request"></a>
+
+### Rpc.Object.Refresh.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| objectId | [string](#string) |  |  |
+| spaceId | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Object-Refresh-Response"></a>
+
+### Rpc.Object.Refresh.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Object.Refresh.Response.Error](#anytype-Rpc-Object-Refresh-Response-Error) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Object-Refresh-Response-Error"></a>
+
+### Rpc.Object.Refresh.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Object.Refresh.Response.Error.Code](#anytype-Rpc-Object-Refresh-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
 <a name="anytype-Rpc-Object-Search"></a>
 
 ### Rpc.Object.Search
@@ -25853,6 +25916,20 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | UNKNOWN_ERROR | 1 |  |
 | BAD_INPUT | 2 |  |
 | CAN_NOT_MOVE | 3 | ... |
+
+
+
+<a name="anytype-Rpc-Object-Refresh-Response-Error-Code"></a>
+
+### Rpc.Object.Refresh.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
+| OBJECT_DELETED | 4 |  |
 
 
 

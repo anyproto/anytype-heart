@@ -87,6 +87,7 @@ service ClientCommands {
     // Object
     // ***
     rpc ObjectOpen (anytype.Rpc.Object.Open.Request) returns (anytype.Rpc.Object.Open.Response);
+    rpc ObjectRefresh (anytype.Rpc.Object.Refresh.Request) returns (anytype.Rpc.Object.Refresh.Response);
     rpc ObjectClose (anytype.Rpc.Object.Close.Request) returns (anytype.Rpc.Object.Close.Response);
     rpc ObjectShow (anytype.Rpc.Object.Show.Request) returns (anytype.Rpc.Object.Show.Response);
 

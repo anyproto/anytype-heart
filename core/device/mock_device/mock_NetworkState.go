@@ -225,6 +225,39 @@ func (_c *MockNetworkState_SetNetworkState_Call) RunAndReturn(run func(model.Dev
 	return _c
 }
 
+// StateChange provides a mock function with given fields: state
+func (_m *MockNetworkState) StateChange(state int) {
+	_m.Called(state)
+}
+
+// MockNetworkState_StateChange_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'StateChange'
+type MockNetworkState_StateChange_Call struct {
+	*mock.Call
+}
+
+// StateChange is a helper method to define mock.On call
+//   - state int
+func (_e *MockNetworkState_Expecter) StateChange(state interface{}) *MockNetworkState_StateChange_Call {
+	return &MockNetworkState_StateChange_Call{Call: _e.mock.On("StateChange", state)}
+}
+
+func (_c *MockNetworkState_StateChange_Call) Run(run func(state int)) *MockNetworkState_StateChange_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(int))
+	})
+	return _c
+}
+
+func (_c *MockNetworkState_StateChange_Call) Return() *MockNetworkState_StateChange_Call {
+	_c.Call.Return()
+	return _c
+}
+
+func (_c *MockNetworkState_StateChange_Call) RunAndReturn(run func(int)) *MockNetworkState_StateChange_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // NewMockNetworkState creates a new instance of MockNetworkState. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.
 // The first argument is typically a *testing.T value.
 func NewMockNetworkState(t interface {
