@@ -65,7 +65,7 @@ func extractYAMLFrontMatter(content []byte) (frontMatter []byte, markdownContent
 // yamlProperty represents a parsed YAML property with its format information
 type yamlProperty struct {
 	name        string // Original property name from YAML
-	key         string // Generated BSON ID key
+	key         string // Property key (from schema or generated)
 	format      model.RelationFormat
 	value       domain.Value
 	includeTime bool // For date relations, whether to include time
@@ -78,8 +78,20 @@ type YAMLParseResult struct {
 	ObjectType string // If "type" or "Object type" property is present
 }
 
+// YAMLPropertyResolver resolves property keys from names
+type YAMLPropertyResolver interface {
+	// ResolvePropertyKey returns the property key for a given name
+	// Returns empty string if not found in schema
+	ResolvePropertyKey(name string) string
+}
+
 // parseYAMLFrontMatter parses YAML front matter and returns properties with their formats
 func parseYAMLFrontMatter(frontMatter []byte) (*YAMLParseResult, error) {
+	return parseYAMLFrontMatterWithResolver(frontMatter, nil)
+}
+
+// parseYAMLFrontMatterWithResolver parses YAML front matter using an optional property resolver
+func parseYAMLFrontMatterWithResolver(frontMatter []byte, resolver YAMLPropertyResolver) (*YAMLParseResult, error) {
 	if len(frontMatter) == 0 {
 		return nil, nil
 	}
@@ -114,18 +126,27 @@ func parseYAMLFrontMatter(frontMatter []byte) (*YAMLParseResult, error) {
 
 	// Process remaining properties in one pass
 	for key, value := range data {
-		// Generate BSON ID for this property
-		propertyKey := bson.NewObjectId().Hex()
-
 		// Process value and determine format in one go
 		prop := processYAMLProperty(key, value)
 		if prop == nil {
 			continue
 		}
 
-		// Set property key and store in details
-		prop.key = propertyKey
-		result.Details.Set(domain.RelationKey(propertyKey), prop.value)
+		// Try to resolve property key from schema if resolver is available
+		if resolver != nil {
+			if schemaKey := resolver.ResolvePropertyKey(key); schemaKey != "" {
+				prop.key = schemaKey
+			} else {
+				// Generate BSON ID for this property if not in schema
+				prop.key = bson.NewObjectId().Hex()
+			}
+		} else {
+			// Generate BSON ID for this property
+			prop.key = bson.NewObjectId().Hex()
+		}
+
+		// Store in details
+		result.Details.Set(domain.RelationKey(prop.key), prop.value)
 		result.Properties = append(result.Properties, *prop)
 	}
 

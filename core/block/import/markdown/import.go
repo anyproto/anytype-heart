@@ -2,8 +2,6 @@ package markdown
 
 import (
 	"context"
-	"fmt"
-	"io"
 	"net/url"
 	"path/filepath"
 	"regexp"
@@ -23,7 +21,6 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	"github.com/anyproto/anytype-heart/pkg/lib/schema"
 )
 
 var (
@@ -36,21 +33,25 @@ const numberOfStages = 9 // 8 cycles to get snapshots and 1 cycle to create obje
 type Markdown struct {
 	blockConverter *mdConverter
 	service        *collection.Service
-	schemas        map[string]*schema.Schema // typeName -> Schema
+	schemaImporter *SchemaImporter
 }
 
 const (
 	Name               = "Markdown"
 	rootCollectionName = "Markdown Import"
-	propIdPrefix       = "id_prop"
-	typeIdPrefix       = "id_type"
+	propIdPrefix       = "import_prop_"
+	typeIdPrefix       = "import_type_"
 )
 
 func New(tempDirProvider core.TempDirProvider, service *collection.Service) common.Converter {
+	bc := newMDConverter(tempDirProvider)
+	si := NewSchemaImporter()
+	bc.SetSchemaImporter(si)
+
 	return &Markdown{
-		blockConverter: newMDConverter(tempDirProvider),
+		blockConverter: bc,
 		service:        service,
-		schemas:        make(map[string]*schema.Schema),
+		schemaImporter: si,
 	}
 }
 
@@ -150,7 +151,7 @@ func (m *Markdown) getSnapshotsAndRootObjectsIds(
 		}
 	}
 	// Load schemas if available
-	if err := m.loadSchemas(importSource, allErrors); err != nil {
+	if err := m.schemaImporter.LoadSchemas(importSource, allErrors); err != nil {
 		log.Warnf("failed to load schemas: %v", err)
 	}
 
@@ -433,7 +434,7 @@ func (m *Markdown) createSnapshots(
 	progress.SetProgressMessage("Start creating snapshots")
 
 	// Check if we have schemas loaded
-	hasSchemas := len(m.schemas) > 0
+	hasSchemas := m.schemaImporter.HasSchemas()
 
 	// First pass: collect all YAML properties to create relation snapshots
 	yamlRelations := make(map[string]*yamlProperty) // property name -> property
@@ -445,13 +446,7 @@ func (m *Markdown) createSnapshots(
 			for i := range file.YAMLProperties {
 				prop := &file.YAMLProperties[i]
 
-				// If we have schemas, try to find the relation by name
-				if hasSchemas {
-					if schemaKey := m.getRelationKeyByName(prop.name); schemaKey != "" {
-						// Use the schema-defined key
-						prop.key = schemaKey
-					}
-				}
+				// Schema resolution already happened during YAML parsing if schemas were available
 
 				// Use existing relation if already seen
 				if _, exists := yamlRelations[prop.name]; !exists {
@@ -473,18 +468,18 @@ func (m *Markdown) createSnapshots(
 	// If we have schemas, use them to create relations and types
 	if hasSchemas {
 		// Create relation snapshots from schemas
-		relationsSnapshots = append(relationsSnapshots, m.createRelationSnapshots()...)
+		relationsSnapshots = append(relationsSnapshots, m.schemaImporter.CreateRelationSnapshots()...)
 
 		// Create relation option snapshots from schemas
-		relationsSnapshots = append(relationsSnapshots, m.createRelationOptionSnapshots()...)
+		relationsSnapshots = append(relationsSnapshots, m.schemaImporter.CreateRelationOptionSnapshots()...)
 
 		// Create type snapshots from schemas
-		objectTypeSnapshots = append(objectTypeSnapshots, m.createTypeSnapshots()...)
+		objectTypeSnapshots = append(objectTypeSnapshots, m.schemaImporter.CreateTypeSnapshots()...)
 
-		// Map type names to keys for later use
+		// Map type names to IDs for later use
 		objectTypeKeys = make(map[string]string)
 		for typeName := range objectTypes {
-			if typeKey := m.getTypeKeyByName(typeName); typeKey != "" {
+			if typeKey := m.schemaImporter.GetTypeKeyByName(typeName); typeKey != "" {
 				objectTypeKeys[typeName] = typeKey
 			}
 		}
@@ -510,14 +505,16 @@ func (m *Markdown) createSnapshots(
 		}
 
 		typeRelation := bundle.MustGetRelation(bundle.RelationKeyType)
+		details := getRelationDetails(typeRelation.Name, typeRelation.Key, float64(typeRelation.Format), false)
 		relationsSnapshots = append(relationsSnapshots, &common.Snapshot{
 			Id: propIdPrefix + bundle.TypeKeyObjectType.String(),
 			Snapshot: &common.SnapshotModel{
 				SbType: smartblock.SmartBlockTypeRelation,
 				Data: &common.StateSnapshot{
-					Details:     getRelationDetails(typeRelation.Name, typeRelation.Key, float64(typeRelation.Format), false),
-					ObjectTypes: []string{bundle.TypeKeyRelation.String()},
-					Key:         bundle.TypeKeyObjectType.String(),
+					Details:       details,
+					ObjectTypes:   []string{bundle.TypeKeyRelation.String()},
+					Key:           bundle.TypeKeyObjectType.String(),
+					RelationLinks: bundledRelationLinks(details),
 				},
 			},
 		})
@@ -869,221 +866,4 @@ func getObjectTypeDetails(name, key string, propKeys []string) *domain.Details {
 	details.SetString(bundle.RelationKeyUniqueKey, uniqueKey.Marshal())
 
 	return details
-}
-
-// loadSchemas loads all JSON schemas from the schemas folder using the schema package
-func (m *Markdown) loadSchemas(importSource source.Source, allErrors *common.ConvertError) error {
-	schemasFound := false
-	parser := schema.NewJSONSchemaParser()
-
-	// Iterate through files looking for schemas folder
-	err := importSource.Iterate(func(fileName string, fileReader io.ReadCloser) bool {
-		defer fileReader.Close()
-
-		// Check if file is a JSON schema file
-		if strings.HasSuffix(fileName, ".schema.json") {
-			schemasFound = true
-
-			// Parse schema using the schema package
-			s, err := parser.Parse(fileReader)
-			if err != nil {
-				allErrors.Add(fmt.Errorf("failed to parse schema %s: %w", fileName, err))
-				return true
-			}
-
-			// Get type name from schema
-			typeName := ""
-			if s.GetType() != nil {
-				typeName = s.GetType().Name
-			}
-
-			if typeName == "" {
-				// Try to derive from filename
-				base := filepath.Base(fileName)
-				typeName = strings.TrimSuffix(base, ".schema.json")
-				typeName = strings.ReplaceAll(typeName, "_", " ")
-				typeName = strings.Title(typeName)
-			}
-
-			if typeName != "" {
-				m.schemas[typeName] = s
-				log.Infof("Loaded schema for type: %s", typeName)
-			}
-		}
-
-		return true
-	})
-
-	if err != nil {
-		return err
-	}
-
-	if !schemasFound {
-		log.Infof("No schemas folder found")
-		return nil
-	}
-
-	log.Infof("Loaded %d schemas", len(m.schemas))
-	return nil
-}
-
-// getRelationKeyByName returns the relation key for a given property name
-func (m *Markdown) getRelationKeyByName(propName string) string {
-	for _, s := range m.schemas {
-		for relKey, rel := range s.Relations {
-			if rel.Name == propName {
-				return relKey
-			}
-		}
-	}
-	return ""
-}
-
-// getTypeKeyByName returns the type key for a given type name
-func (m *Markdown) getTypeKeyByName(typeName string) string {
-	if s, ok := m.schemas[typeName]; ok {
-		if s.GetType() != nil {
-			return s.GetType().Key
-		}
-	}
-	return ""
-}
-
-// createRelationSnapshots creates snapshots for all discovered relations
-func (m *Markdown) createRelationSnapshots() []*common.Snapshot {
-	var snapshots []*common.Snapshot
-	processedKeys := make(map[string]bool)
-
-	for _, s := range m.schemas {
-		for key, rel := range s.Relations {
-			// Skip if already processed or if it's a bundled relation
-			if processedKeys[key] {
-				continue
-			}
-			if _, err := bundle.GetRelation(domain.RelationKey(key)); err == nil {
-				continue
-			}
-
-			details := rel.ToDetails()
-
-			snapshot := &common.Snapshot{
-				Id: propIdPrefix + key,
-				Snapshot: &common.SnapshotModel{
-					SbType: smartblock.SmartBlockTypeRelation,
-					Data: &common.StateSnapshot{
-						Details:       details,
-						RelationLinks: bundledRelationLinks(details),
-						ObjectTypes:   []string{bundle.TypeKeyRelation.String()},
-						Key:           key,
-					},
-				},
-			}
-
-			snapshots = append(snapshots, snapshot)
-			processedKeys[key] = true
-		}
-	}
-
-	return snapshots
-}
-
-// createRelationOptionSnapshots creates snapshots for relation options (status and tag examples)
-func (m *Markdown) createRelationOptionSnapshots() []*common.Snapshot {
-	var snapshots []*common.Snapshot
-
-	for _, s := range m.schemas {
-		for key, rel := range s.Relations {
-			// Skip if this is a bundled relation
-			if _, err := bundle.GetRelation(domain.RelationKey(key)); err == nil {
-				continue
-			}
-
-			// Create options for status relations
-			if rel.Format == model.RelationFormat_status && len(rel.Options) > 0 {
-				for _, option := range rel.Options {
-					details := rel.CreateOptionDetails(option, "")
-					optionKey := bson.NewObjectId().Hex()
-
-					snapshot := &common.Snapshot{
-						Id: "opt_" + optionKey,
-						Snapshot: &common.SnapshotModel{
-							SbType: smartblock.SmartBlockTypeRelationOption,
-							Data: &common.StateSnapshot{
-								Details:       details,
-								RelationLinks: bundledRelationLinks(details),
-								ObjectTypes:   []string{bundle.TypeKeyRelationOption.String()},
-								Key:           optionKey,
-							},
-						},
-					}
-
-					snapshots = append(snapshots, snapshot)
-				}
-			}
-
-			// Create options for tag relations with examples
-			if rel.Format == model.RelationFormat_tag && len(rel.Examples) > 0 {
-				for _, example := range rel.Examples {
-					details := rel.CreateOptionDetails(example, "")
-					optionKey := bson.NewObjectId().Hex()
-
-					snapshot := &common.Snapshot{
-						Id: "opt_" + optionKey,
-						Snapshot: &common.SnapshotModel{
-							SbType: smartblock.SmartBlockTypeRelationOption,
-							Data: &common.StateSnapshot{
-								Details:       details,
-								RelationLinks: bundledRelationLinks(details),
-								ObjectTypes:   []string{bundle.TypeKeyRelationOption.String()},
-								Key:           optionKey,
-							},
-						},
-					}
-
-					snapshots = append(snapshots, snapshot)
-				}
-			}
-		}
-	}
-
-	return snapshots
-}
-
-// createTypeSnapshots creates snapshots for all discovered types
-func (m *Markdown) createTypeSnapshots() []*common.Snapshot {
-	var snapshots []*common.Snapshot
-
-	for _, s := range m.schemas {
-		if s.GetType() == nil {
-			continue
-		}
-
-		typ := s.GetType()
-		typeKey := typ.Key
-		if typeKey == "" {
-			typeKey = bson.NewObjectId().Hex()
-		}
-
-		typ.KeyToIdFunc = func(key string) string {
-			return propIdPrefix + key
-		}
-		details := typ.ToDetails()
-
-		snapshot := &common.Snapshot{
-			Id: typeIdPrefix + typeKey,
-			Snapshot: &common.SnapshotModel{
-				SbType: smartblock.SmartBlockTypeObjectType,
-				Data: &common.StateSnapshot{
-					Details:       details,
-					RelationLinks: bundledRelationLinks(details),
-					ObjectTypes:   []string{bundle.TypeKeyObjectType.String()},
-					Key:           typeKey,
-				},
-			},
-		}
-
-		snapshots = append(snapshots, snapshot)
-	}
-
-	return snapshots
 }

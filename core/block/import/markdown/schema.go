@@ -4,15 +4,14 @@ import (
 	"bytes"
 	"fmt"
 	"io"
-	"path/filepath"
 	"strings"
 
 	"github.com/anyproto/anytype-heart/core/block/import/common"
 	"github.com/anyproto/anytype-heart/core/block/import/common/source"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
-	"github.com/anyproto/anytype-heart/pkg/lib/schema"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+	"github.com/anyproto/anytype-heart/pkg/lib/schema"
 )
 
 // SchemaImporter handles schema-based import workflow
@@ -21,10 +20,10 @@ type SchemaImporter struct {
 	existingTypes map[string]string         // typeKey -> typeId
 	existingRels  map[string]string         // relationKey -> relationId
 	parser        schema.Parser
-	
+
 	// ID prefixes for import
-	propIdPrefix  string
-	typeIdPrefix  string
+	propIdPrefix string
+	typeIdPrefix string
 }
 
 func NewSchemaImporter() *SchemaImporter {
@@ -43,7 +42,7 @@ func (si *SchemaImporter) LoadSchemas(importSource source.Source, allErrors *com
 	importSource.Iterate(func(fileName string, fileReader io.ReadCloser) bool {
 		if strings.HasSuffix(fileName, ".json") {
 			defer fileReader.Close()
-			
+
 			schemaData, err := io.ReadAll(fileReader)
 			if err != nil {
 				allErrors.Add(fmt.Errorf("failed to read schema file %s: %w", fileName, err))
@@ -78,15 +77,12 @@ func (si *SchemaImporter) CreateRelationSnapshots() []*common.Snapshot {
 			relMap[rel.Key] = true
 
 			// Check if it's a bundled relation
-			if rel.IsBundled() {
-				continue
-			}
-
 			relationId := si.propIdPrefix + rel.Key
 			si.existingRels[rel.Key] = relationId
 
+			details := rel.ToDetails()
 			snapshot := &common.Snapshot{
-				Id:   relationId,
+				Id: relationId,
 				Snapshot: &common.SnapshotModel{
 					SbType: smartblock.SmartBlockTypeRelation,
 					Data: &common.StateSnapshot{
@@ -96,8 +92,9 @@ func (si *SchemaImporter) CreateRelationSnapshots() []*common.Snapshot {
 								Smartblock: &model.BlockContentSmartblock{},
 							},
 						}},
-						Details: rel.ToDetails(),
-						Key:     rel.Key,
+						Details:       details,
+						RelationLinks: bundledRelationLinks(details),
+						Key:           rel.Key,
 						ObjectTypes: []string{
 							bundle.TypeKeyRelation.String(),
 						},
@@ -114,7 +111,7 @@ func (si *SchemaImporter) CreateRelationSnapshots() []*common.Snapshot {
 // CreateRelationOptionSnapshots creates snapshots for relation options (for select/multi-select relations)
 func (si *SchemaImporter) CreateRelationOptionSnapshots() []*common.Snapshot {
 	var snapshots []*common.Snapshot
-	
+
 	for _, s := range si.schemas {
 		for _, rel := range s.Relations {
 			if rel.Format != model.RelationFormat_status {
@@ -128,9 +125,9 @@ func (si *SchemaImporter) CreateRelationOptionSnapshots() []*common.Snapshot {
 
 			for _, opt := range rel.Options {
 				optionId := si.propIdPrefix + "option_" + rel.Key + "_" + opt
-				
+
 				snapshot := &common.Snapshot{
-					Id:   optionId,
+					Id: optionId,
 					Snapshot: &common.SnapshotModel{
 						SbType: smartblock.SmartBlockTypeRelationOption,
 						Data: &common.StateSnapshot{
@@ -176,8 +173,18 @@ func (si *SchemaImporter) CreateTypeSnapshots() []*common.Snapshot {
 			typeId := si.typeIdPrefix + t.Key
 			si.existingTypes[t.Key] = typeId
 
+			// Set KeyToIdFunc to convert relation keys to IDs
+			t.KeyToIdFunc = func(key string) string {
+				if relId, exists := si.existingRels[key]; exists {
+					return relId
+				}
+				// For bundled relations, return the key as-is
+				return key
+			}
+
+			details := t.ToDetails()
 			snapshot := &common.Snapshot{
-				Id:   typeId,
+				Id: typeId,
 				Snapshot: &common.SnapshotModel{
 					SbType: smartblock.SmartBlockTypeObjectType,
 					Data: &common.StateSnapshot{
@@ -187,8 +194,9 @@ func (si *SchemaImporter) CreateTypeSnapshots() []*common.Snapshot {
 								Smartblock: &model.BlockContentSmartblock{},
 							},
 						}},
-						Details: t.ToDetails(),
-						Key:     t.Key,
+						Details:       details,
+						RelationLinks: bundledRelationLinks(details),
+						Key:           t.Key,
 						ObjectTypes: []string{
 							bundle.TypeKeyObjectType.String(),
 						},
@@ -202,15 +210,15 @@ func (si *SchemaImporter) CreateTypeSnapshots() []*common.Snapshot {
 	return snapshots
 }
 
-// GetTypeKeyByName returns type key for given schema filename
+// GetTypeKeyByName returns type key for given type name
 func (si *SchemaImporter) GetTypeKeyByName(name string) string {
-	// First check if it's a known type in our schemas
-	for path, s := range si.schemas {
-		if filepath.Base(path) == name+".json" && s.Type != nil {
+	// Check if it's a known type in our schemas by type name
+	for _, s := range si.schemas {
+		if s.Type != nil && s.Type.Name == name {
 			return s.Type.Key
 		}
 	}
-	
+
 	// Default to generic Page type
 	return bundle.TypeKeyPage.String()
 }
@@ -232,3 +240,16 @@ func (si *SchemaImporter) HasSchemas() bool {
 	return len(si.schemas) > 0
 }
 
+// ResolvePropertyKey returns the property key for a given name from schemas
+// This implements the YAMLPropertyResolver interface
+func (si *SchemaImporter) ResolvePropertyKey(name string) string {
+	for _, s := range si.schemas {
+		for _, rel := range s.Relations {
+			// Check if the relation name matches (case-sensitive)
+			if rel.Name == name {
+				return rel.Key
+			}
+		}
+	}
+	return ""
+}

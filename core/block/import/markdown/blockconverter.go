@@ -18,7 +18,8 @@ import (
 )
 
 type mdConverter struct {
-	tempDirProvider core.TempDirProvider
+	tempDirProvider  core.TempDirProvider
+	schemaImporter   *SchemaImporter // Optional schema importer for property resolution
 }
 
 type FileInfo struct {
@@ -36,6 +37,11 @@ type FileInfo struct {
 
 func newMDConverter(tempDirProvider core.TempDirProvider) *mdConverter {
 	return &mdConverter{tempDirProvider: tempDirProvider}
+}
+
+// SetSchemaImporter sets the schema importer for property resolution
+func (m *mdConverter) SetSchemaImporter(si *SchemaImporter) {
+	m.schemaImporter = si
 }
 
 func (m *mdConverter) markdownToBlocks(importPath string, importSource source.Source, allErrors *common.ConvertError) map[string]*FileInfo {
@@ -280,7 +286,16 @@ func (m *mdConverter) createBlocksFromFile(importSource source.Source, filePath 
 
 		// Parse YAML front matter if present
 		if len(frontMatter) > 0 {
-			yamlResult, err := parseYAMLFrontMatter(frontMatter)
+			var yamlResult *YAMLParseResult
+			var err error
+			
+			// Use schema importer as resolver if available
+			if m.schemaImporter != nil && m.schemaImporter.HasSchemas() {
+				yamlResult, err = parseYAMLFrontMatterWithResolver(frontMatter, m.schemaImporter)
+			} else {
+				yamlResult, err = parseYAMLFrontMatter(frontMatter)
+			}
+			
 			if err != nil {
 				log.Warnf("failed to parse YAML front matter from %s: %s", filePath, err)
 			} else if yamlResult != nil {
