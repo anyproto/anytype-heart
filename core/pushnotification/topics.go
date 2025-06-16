@@ -55,8 +55,9 @@ func (c *spaceTopicsCollection) SetSpaceViewStatus(status *spaceViewStatus) {
 	}
 	pubKey, _ := status.spaceKey.GetPublic().Raw()
 
-	needCreate := true
+	needCreate := false
 	if isOwner := strings.HasSuffix(status.creator, c.identity); isOwner {
+		needCreate = true
 		for _, remoteTopic := range c.remoteTopics {
 			if bytes.Equal(remoteTopic.SpaceKey, pubKey) {
 				needCreate = false
