@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/samber/lo"
+	"golang.org/x/text/collate"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/simple"
@@ -26,8 +27,9 @@ var (
 )
 
 type tableSorter struct {
-	rowIDs []string
-	values []string
+	rowIDs   []string
+	values   []string
+	collator *collate.Collator
 }
 
 func (t tableSorter) Len() int {
@@ -35,7 +37,7 @@ func (t tableSorter) Len() int {
 }
 
 func (t tableSorter) Less(i, j int) bool {
-	return strings.ToLower(t.values[i]) < strings.ToLower(t.values[j])
+	return t.collator.CompareString(strings.ToLower(t.values[i]), strings.ToLower(t.values[j])) < 0
 }
 
 func (t tableSorter) Swap(i, j int) {

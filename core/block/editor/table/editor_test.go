@@ -1832,6 +1832,33 @@ func TestSort(t *testing.T) {
 					"row3": {IsHeader: true},
 				})),
 		},
+		{
+			name: "alphabetical order",
+			source: mkTestTable([]string{"col1", "col2"}, []string{"row1", "row2", "row3"},
+				[][]string{
+					{"row1-col1", "row1-col2"},
+					{"row2-col1", "row2-col2"},
+					{"row3-col1", "row3-col2"},
+				}, withBlockContents(map[string]*model.Block{
+					"row1-col2": mkTextBlock("João"),
+					"row2-col2": mkTextBlock("joz"),
+					"row3-col2": mkTextBlock("Joao"),
+				})),
+			req: pb.RpcBlockTableSortRequest{
+				ColumnId: "col2",
+				Type:     model.BlockContentDataviewSort_Asc,
+			},
+			want: mkTestTable([]string{"col1", "col2"}, []string{"row3", "row1", "row2"},
+				[][]string{
+					{"row1-col1", "row1-col2"},
+					{"row2-col1", "row2-col2"},
+					{"row3-col1", "row3-col2"},
+				}, withBlockContents(map[string]*model.Block{
+					"row3-col2": mkTextBlock("Joao"),
+					"row1-col2": mkTextBlock("João"),
+					"row2-col2": mkTextBlock("joz"),
+				})),
+		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			tb := editor{}
