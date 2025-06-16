@@ -3,6 +3,7 @@ package chatmodel
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/anyproto/any-store/anyenc"
 
@@ -77,6 +78,33 @@ func (m *Message) IsCurrentUserMentioned(ctx context.Context, myParticipantId st
 	}
 
 	return false, nil
+}
+
+func (m *Message) MentionIdentities(ctx context.Context, repo MessagesGetter) ([]string, error) {
+	var mentions []string
+	for _, mark := range m.Message.Marks {
+		if mark.Type == model.BlockContentTextMark_Mention {
+			if identity := extractIdentity(mark.Param); identity != "" {
+				mentions = append(mentions, identity)
+			}
+		}
+	}
+	if m.ReplyToMessageId != "" {
+		msgs, err := repo.GetMessagesByIds(ctx, []string{m.ReplyToMessageId})
+		if err != nil {
+			return nil, fmt.Errorf("get messages by id: %w", err)
+		}
+		if len(msgs) == 1 {
+			msg := msgs[0]
+			mentions = append(mentions, msg.Creator)
+		}
+	}
+	return mentions, nil
+}
+
+func extractIdentity(participantId string) string {
+	idx := strings.LastIndex(participantId, "_")
+	return participantId[idx+1:]
 }
 
 func UnmarshalMessage(val *anyenc.Value) (*Message, error) {

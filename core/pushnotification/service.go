@@ -96,6 +96,7 @@ func (s *service) Run(_ context.Context) (err error) {
 		return err
 	}
 	go s.run()
+	go s.sendNotificationsLoop()
 	return nil
 }
 

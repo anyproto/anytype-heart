@@ -1,7 +1,7 @@
 # tests
 test:
 	@echo 'Running tests...'
-	@CGO_LDFLAGS=-Wl,-no_warn_duplicate_libraries ANYTYPE_LOG_NOGELF=1 go test -cover github.com/anyproto/anytype-heart/...
+	@ANYTYPE_LOG_NOGELF=1 go test -cover github.com/anyproto/anytype-heart/...
 
 test-no-cache:
 	@echo 'Running tests...'

@@ -30,6 +30,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+	textUtil "github.com/anyproto/anytype-heart/util/text"
 )
 
 const CName = "core.block.chats"
@@ -349,15 +350,20 @@ func (s *service) Close(ctx context.Context) error {
 }
 
 func (s *service) AddMessage(ctx context.Context, sessionCtx session.Context, chatObjectId string, message *chatmodel.Message) (string, error) {
-	var messageId, spaceId string
+	var (
+		messageId, spaceId string
+		mentions           []string
+	)
+
 	err := s.chatObjectDo(ctx, chatObjectId, func(sb chatobject.StoreObject) error {
 		var err error
 		messageId, err = sb.AddMessage(ctx, sessionCtx, message)
 		spaceId = sb.SpaceID()
+		mentions, _ = message.MentionIdentities(ctx, sb)
 		return err
 	})
 	if err == nil {
-		pushErr := s.sendPushNotification(spaceId, chatObjectId, messageId, message.Message.Text, len(message.Attachments) != 0)
+		pushErr := s.sendPushNotification(ctx, spaceId, chatObjectId, messageId, message, mentions)
 		if pushErr != nil {
 			log.Error("sendPushNotification: ", zap.Error(pushErr))
 		}
@@ -366,7 +372,7 @@ func (s *service) AddMessage(ctx context.Context, sessionCtx session.Context, ch
 	return messageId, err
 }
 
-func (s *service) sendPushNotification(spaceId, chatObjectId, messageId, messageText string, hasAttachments bool) (err error) {
+func (s *service) sendPushNotification(ctx context.Context, spaceId, chatObjectId, messageId string, message *chatmodel.Message, mentions []string) (err error) {
 	accountId := s.accountService.AccountID()
 	spaceName := s.objectStore.GetSpaceName(spaceId)
 	details, err := s.objectStore.SpaceIndex(spaceId).GetDetails(domain.NewParticipantId(spaceId, accountId))
@@ -386,8 +392,8 @@ func (s *service) sendPushNotification(spaceId, chatObjectId, messageId, message
 			MsgId:          messageId,
 			SpaceName:      spaceName,
 			SenderName:     senderName,
-			Text:           messageText,
-			HasAttachments: hasAttachments,
+			Text:           textUtil.Truncate(message.Message.Text, 1024, "..."),
+			HasAttachments: len(message.Attachments) > 0,
 		},
 	}
 
@@ -398,7 +404,8 @@ func (s *service) sendPushNotification(spaceId, chatObjectId, messageId, message
 		return
 	}
 
-	err = s.pushService.Notify(s.componentCtx, spaceId, []string{chatpush.ChatsTopicName}, jsonPayload)
+	topics := append(mentions, chatpush.ChatsTopicName)
+	err = s.pushService.Notify(s.componentCtx, spaceId, topics, jsonPayload)
 	if err != nil {
 		err = fmt.Errorf("pushService.Notify: %w", err)
 		return
