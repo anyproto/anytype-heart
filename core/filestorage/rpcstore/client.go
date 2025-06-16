@@ -22,6 +22,19 @@ import (
 	"github.com/anyproto/anytype-heart/core/domain"
 )
 
+type ctxKey string
+
+const CtxWaitAvailable = ctxKey("waitAvailable")
+
+func ContextWithWaitAvailable(ctx context.Context) context.Context {
+	return context.WithValue(ctx, CtxWaitAvailable, true)
+}
+
+func IsWaitWhenAvailable(ctx context.Context) bool {
+	wait, ok := ctx.Value(CtxWaitAvailable).(bool)
+	return ok && wait
+}
+
 func newClient(ctx context.Context, pool pool.Pool, peerId string, tq *mb.MB[*task]) (*client, error) {
 	c := &client{
 		peerId:     peerId,
@@ -215,6 +228,7 @@ func (c *client) get(ctx context.Context, spaceID string, cd cid.Cid) (data []by
 		resp, err = fileproto.NewDRPCFileClient(conn).BlockGet(ctx, &fileproto.BlockGetRequest{
 			SpaceId: spaceID,
 			Cid:     cd.Bytes(),
+			Wait:    IsWaitWhenAvailable(ctx),
 		})
 		if err != nil {
 			err = rpcerr.Unwrap(err)
