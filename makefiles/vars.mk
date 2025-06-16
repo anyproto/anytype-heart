@@ -10,6 +10,7 @@ TANTIVY_VERSION := $(shell cat go.mod | grep github.com/anyproto/tantivy-go | cu
 export GOLANGCI_LINT_VERSION=1.58.1
 export CGO_CFLAGS=-Wno-deprecated-non-prototype -Wno-unknown-warning-option -Wno-deprecated-declarations -Wno-xor-used-as-pow -Wno-single-bit-bitfield-constant-conversion
 
+
 ifndef $(GOPATH)
 GOPATH=$(shell go env GOPATH)
 export GOPATH

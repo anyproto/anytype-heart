@@ -10,10 +10,10 @@ import (
 
 const DefaultViewRelationWidth = 192
 
-func (l *Dataview) AddFilter(viewID string, filter *model.BlockContentDataviewFilter) error {
-	l.resetObjectOrderForView(viewID)
+func (d *Dataview) AddFilter(viewID string, filter *model.BlockContentDataviewFilter) error {
+	d.resetObjectOrderForView(viewID)
 
-	view, err := l.GetView(viewID)
+	view, err := d.GetView(viewID)
 	if err != nil {
 		return err
 	}
@@ -21,15 +21,15 @@ func (l *Dataview) AddFilter(viewID string, filter *model.BlockContentDataviewFi
 	if filter.Id == "" {
 		filter.Id = bson.NewObjectId().Hex()
 	}
-	l.setRelationFormat(filter)
+	d.setRelationFormat(filter)
 	view.Filters = append(view.Filters, filter)
 	return nil
 }
 
-func (l *Dataview) RemoveFilters(viewID string, filterIDs []string) error {
-	l.resetObjectOrderForView(viewID)
+func (d *Dataview) RemoveFilters(viewID string, filterIDs []string) error {
+	d.resetObjectOrderForView(viewID)
 
-	view, err := l.GetView(viewID)
+	view, err := d.GetView(viewID)
 	if err != nil {
 		return err
 	}
@@ -40,10 +40,10 @@ func (l *Dataview) RemoveFilters(viewID string, filterIDs []string) error {
 	return nil
 }
 
-func (l *Dataview) ReplaceFilter(viewID string, filterID string, filter *model.BlockContentDataviewFilter) error {
-	l.resetObjectOrderForView(viewID)
+func (d *Dataview) ReplaceFilter(viewID string, filterID string, filter *model.BlockContentDataviewFilter) error {
+	d.resetObjectOrderForView(viewID)
 
-	view, err := l.GetView(viewID)
+	view, err := d.GetView(viewID)
 	if err != nil {
 		return err
 	}
@@ -52,18 +52,18 @@ func (l *Dataview) ReplaceFilter(viewID string, filterID string, filter *model.B
 		return f.Id == filterID
 	})
 	if idx < 0 {
-		return l.AddFilter(viewID, filter)
+		return d.AddFilter(viewID, filter)
 	}
 
 	filter.Id = filterID
-	l.setRelationFormat(filter)
+	d.setRelationFormat(filter)
 	view.Filters[idx] = filter
 
 	return nil
 }
 
-func (l *Dataview) ReorderFilters(viewID string, ids []string) error {
-	view, err := l.GetView(viewID)
+func (d *Dataview) ReorderFilters(viewID string, ids []string) error {
+	view, err := d.GetView(viewID)
 	if err != nil {
 		return err
 	}
@@ -83,10 +83,10 @@ func (l *Dataview) ReorderFilters(viewID string, ids []string) error {
 	return nil
 }
 
-func (l *Dataview) AddSort(viewID string, sort *model.BlockContentDataviewSort) error {
-	l.resetObjectOrderForView(viewID)
+func (d *Dataview) AddSort(viewID string, sort *model.BlockContentDataviewSort) error {
+	d.resetObjectOrderForView(viewID)
 
-	view, err := l.GetView(viewID)
+	view, err := d.GetView(viewID)
 	if err != nil {
 		return err
 	}
@@ -99,10 +99,10 @@ func (l *Dataview) AddSort(viewID string, sort *model.BlockContentDataviewSort) 
 	return nil
 }
 
-func (l *Dataview) RemoveSorts(viewID string, ids []string) error {
-	l.resetObjectOrderForView(viewID)
+func (d *Dataview) RemoveSorts(viewID string, ids []string) error {
+	d.resetObjectOrderForView(viewID)
 
-	view, err := l.GetView(viewID)
+	view, err := d.GetView(viewID)
 	if err != nil {
 		return err
 	}
@@ -113,10 +113,10 @@ func (l *Dataview) RemoveSorts(viewID string, ids []string) error {
 	return nil
 }
 
-func (l *Dataview) ReplaceSort(viewID string, id string, sort *model.BlockContentDataviewSort) error {
-	l.resetObjectOrderForView(viewID)
+func (d *Dataview) ReplaceSort(viewID string, id string, sort *model.BlockContentDataviewSort) error {
+	d.resetObjectOrderForView(viewID)
 
-	view, err := l.GetView(viewID)
+	view, err := d.GetView(viewID)
 	if err != nil {
 		return err
 	}
@@ -125,7 +125,7 @@ func (l *Dataview) ReplaceSort(viewID string, id string, sort *model.BlockConten
 		return getViewSortID(f) == id
 	})
 	if idx < 0 {
-		return l.AddSort(viewID, sort)
+		return d.AddSort(viewID, sort)
 	}
 
 	view.Sorts[idx] = sort
@@ -133,8 +133,9 @@ func (l *Dataview) ReplaceSort(viewID string, id string, sort *model.BlockConten
 	return nil
 }
 
-func (l *Dataview) ReorderSorts(viewID string, ids []string) error {
-	view, err := l.GetView(viewID)
+func (d *Dataview) ReorderSorts(viewID string, ids []string) error {
+	d.resetObjectOrderForView(viewID)
+	view, err := d.GetView(viewID)
 	if err != nil {
 		return err
 	}
@@ -153,12 +154,12 @@ func (l *Dataview) ReorderSorts(viewID string, ids []string) error {
 	return nil
 }
 
-func (l *Dataview) AddViewRelation(viewID string, relation *model.BlockContentDataviewRelation) error {
-	return l.ReplaceViewRelation(viewID, relation.Key, relation)
+func (d *Dataview) AddViewRelation(viewID string, relation *model.BlockContentDataviewRelation) error {
+	return d.ReplaceViewRelation(viewID, relation.Key, relation)
 }
 
-func (l *Dataview) RemoveViewRelations(viewID string, relationKeys []string) error {
-	view, err := l.GetView(viewID)
+func (d *Dataview) RemoveViewRelations(viewID string, relationKeys []string) error {
+	view, err := d.GetView(viewID)
 	if err != nil {
 		return err
 	}
@@ -169,8 +170,8 @@ func (l *Dataview) RemoveViewRelations(viewID string, relationKeys []string) err
 	return nil
 }
 
-func (l *Dataview) ReplaceViewRelation(viewID string, relationKey string, relation *model.BlockContentDataviewRelation) error {
-	view, err := l.GetView(viewID)
+func (d *Dataview) ReplaceViewRelation(viewID string, relationKey string, relation *model.BlockContentDataviewRelation) error {
+	view, err := d.GetView(viewID)
 	if err != nil {
 		return err
 	}
@@ -188,8 +189,8 @@ func (l *Dataview) ReplaceViewRelation(viewID string, relationKey string, relati
 	return nil
 }
 
-func (l *Dataview) ReorderViewRelations(viewID string, relationKeys []string) error {
-	view, err := l.GetView(viewID)
+func (d *Dataview) ReorderViewRelations(viewID string, relationKeys []string) error {
+	view, err := d.GetView(viewID)
 	if err != nil {
 		return err
 	}
@@ -215,8 +216,8 @@ func (l *Dataview) ReorderViewRelations(viewID string, relationKeys []string) er
 	return nil
 }
 
-func (l *Dataview) setRelationFormat(filter *model.BlockContentDataviewFilter) {
-	for _, relLink := range l.content.RelationLinks {
+func (d *Dataview) setRelationFormat(filter *model.BlockContentDataviewFilter) {
+	for _, relLink := range d.content.RelationLinks {
 		if relLink.Key == filter.RelationKey {
 			filter.Format = relLink.Format
 		}
