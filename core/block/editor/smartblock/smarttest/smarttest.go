@@ -261,6 +261,17 @@ func (st *SmartTest) SendEvent(msgs []*pb.EventMessage) {
 	return
 }
 
+func (st *SmartTest) InitComponents(a *app.App) error {
+	return nil
+}
+
+func (st *SmartTest) Components() []domain.EditorComponent {
+	return nil
+}
+
+func (st *SmartTest) AddComponent(c domain.EditorComponent) {
+}
+
 func (st *SmartTest) SetDetails(ctx session.Context, details []domain.Detail, showEvent bool) (err error) {
 	dets := domain.NewDetails()
 	for _, d := range details {
