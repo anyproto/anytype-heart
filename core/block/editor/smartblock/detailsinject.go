@@ -245,7 +245,7 @@ func (sb *smartBlock) resolveLayout(s *state.State) {
 			s.SetDetailAndBundledRelation(bundle.RelationKeyResolvedLayout, domain.Int64(int64(layoutV)))
 		} else if layout.Ok() {
 			log.With("objectId", s.RootId()).Warnf("resolveLayout: no layout for smartblock type %s, using layout from details: %s", sb.Type(), layout)
-			s.SetDetailAndBundledRelation(bundle.RelationKeyResolvedLayout, domain.Int64(int64(layout.Int64())))
+			s.SetDetailAndBundledRelation(bundle.RelationKeyResolvedLayout, layout)
 		} else {
 			log.With("objectId", s.RootId()).Errorf("resolveLayout: no layout for smartblock type %s, no layout in details", sb.Type())
 		}
