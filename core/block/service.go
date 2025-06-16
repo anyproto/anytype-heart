@@ -266,8 +266,6 @@ func (s *Service) RefreshOpenedObjects(ctx context.Context) {
 			log.Debug("failed to refresh: get space", zap.Error(err), zap.String("spaceId", spaceId))
 			continue
 		}
-		// str := fmt.Sprintf("%s: %s", spaceId, strings.Join(objectIds, ", "))
-		// ioslogger.DebugLog(str)
 		err = sp.RefreshObjects(objectIds)
 		if err != nil {
 			log.Debug("failed to refresh: refresh objects", zap.Error(err), zap.String("spaceId", spaceId), zap.Strings("objectIds", objectIds))
