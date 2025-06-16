@@ -271,7 +271,6 @@ func (s *Service) RefreshOpenedObjects(ctx context.Context) {
 			log.Debug("failed to refresh: refresh objects", zap.Error(err), zap.String("spaceId", spaceId), zap.Strings("objectIds", objectIds))
 		}
 	}
-	return
 }
 
 func (s *Service) DoFullId(id domain.FullID, apply func(sb smartblock.SmartBlock) error) error {
