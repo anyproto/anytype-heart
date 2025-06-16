@@ -5,6 +5,8 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	
+	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
 // MockResolver implements YAMLPropertyResolver for testing
@@ -14,6 +16,18 @@ type MockResolver struct {
 
 func (m *MockResolver) ResolvePropertyKey(name string) string {
 	return m.properties[name]
+}
+
+func (m *MockResolver) GetRelationFormat(key string) model.RelationFormat {
+	return model.RelationFormat_shorttext
+}
+
+func (m *MockResolver) ResolveOptionValue(relationKey string, optionName string) string {
+	return optionName
+}
+
+func (m *MockResolver) ResolveOptionValues(relationKey string, optionNames []string) []string {
+	return optionNames
 }
 
 func TestParseYAMLFrontMatterWithResolver(t *testing.T) {

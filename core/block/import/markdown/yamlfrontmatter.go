@@ -83,6 +83,15 @@ type YAMLPropertyResolver interface {
 	// ResolvePropertyKey returns the property key for a given name
 	// Returns empty string if not found in schema
 	ResolvePropertyKey(name string) string
+	
+	// GetRelationFormat returns the format for a given relation key
+	GetRelationFormat(key string) model.RelationFormat
+	
+	// ResolveOptionValue converts option name to option ID
+	ResolveOptionValue(relationKey string, optionName string) string
+	
+	// ResolveOptionValues converts option names to option IDs
+	ResolveOptionValues(relationKey string, optionNames []string) []string
 }
 
 // parseYAMLFrontMatter parses YAML front matter and returns properties with their formats
@@ -136,6 +145,11 @@ func parseYAMLFrontMatterWithResolver(frontMatter []byte, resolver YAMLPropertyR
 		if resolver != nil {
 			if schemaKey := resolver.ResolvePropertyKey(key); schemaKey != "" {
 				prop.key = schemaKey
+				// Get the actual format from schema
+				schemaFormat := resolver.GetRelationFormat(schemaKey)
+				if schemaFormat != model.RelationFormat_longtext {
+					prop.format = schemaFormat
+				}
 			} else {
 				// Generate BSON ID for this property if not in schema
 				prop.key = bson.NewObjectId().Hex()
@@ -143,6 +157,11 @@ func parseYAMLFrontMatterWithResolver(frontMatter []byte, resolver YAMLPropertyR
 		} else {
 			// Generate BSON ID for this property
 			prop.key = bson.NewObjectId().Hex()
+		}
+
+		// Now resolve option values if needed
+		if resolver != nil && (prop.format == model.RelationFormat_status || prop.format == model.RelationFormat_tag) {
+			prop.value = resolveOptionValue(prop, resolver)
 		}
 
 		// Store in details
@@ -296,4 +315,23 @@ func parseDate(dateStr string) (time.Time, bool, error) {
 	}
 
 	return t, hasTime, nil
+}
+
+// resolveOptionValue converts option names to IDs for status/tag relations
+func resolveOptionValue(prop *yamlProperty, resolver YAMLPropertyResolver) domain.Value {
+	switch prop.format {
+	case model.RelationFormat_status:
+		// For status, we expect a single string value
+		if strVal := prop.value.String(); strVal != "" {
+			optionId := resolver.ResolveOptionValue(prop.key, strVal)
+			return domain.String(optionId)
+		}
+	case model.RelationFormat_tag:
+		// For tags, we expect a list of strings
+		if strList := prop.value.StringList(); len(strList) > 0 {
+			optionIds := resolver.ResolveOptionValues(prop.key, strList)
+			return domain.StringList(optionIds)
+		}
+	}
+	return prop.value
 }

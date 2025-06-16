@@ -2,6 +2,7 @@ package markdown
 
 import (
 	"context"
+	"fmt"
 	"net/url"
 	"path/filepath"
 	"regexp"
@@ -438,6 +439,7 @@ func (m *Markdown) createSnapshots(
 
 	// First pass: collect all YAML properties to create relation snapshots
 	yamlRelations := make(map[string]*yamlProperty) // property name -> property
+	yamlRelationOptions := make(map[string]map[string]string) // relationKey -> optionValue -> optionId
 	objectTypes := make(map[string][]string)        // Track unique object type names
 
 	for _, file := range files {
@@ -453,6 +455,25 @@ func (m *Markdown) createSnapshots(
 					yamlRelations[prop.name] = prop
 				}
 				props = append(props, yamlRelations[prop.name].key)
+				
+				// Collect option values for non-schema imports
+				if !hasSchemas && (prop.format == model.RelationFormat_status || prop.format == model.RelationFormat_tag) {
+					if yamlRelationOptions[prop.key] == nil {
+						yamlRelationOptions[prop.key] = make(map[string]string)
+					}
+					
+					// Collect values
+					switch prop.format {
+					case model.RelationFormat_status:
+						if val := prop.value.String(); val != "" {
+							yamlRelationOptions[prop.key][val] = ""
+						}
+					case model.RelationFormat_tag:
+						for _, val := range prop.value.StringList() {
+							yamlRelationOptions[prop.key][val] = ""
+						}
+					}
+				}
 			}
 		}
 
@@ -539,6 +560,96 @@ func (m *Markdown) createSnapshots(
 				},
 			})
 			objectTypeKeys[typeName] = typeKey
+		}
+		
+		// Create relation option snapshots for YAML values
+		for relationKey, options := range yamlRelationOptions {
+			for optionValue := range options {
+				optionId := propIdPrefix + "option_" + relationKey + "_" + optionValue
+				yamlRelationOptions[relationKey][optionValue] = optionId
+				
+				// Find the relation to get its format (unused for now, but might be needed later)
+				// var relFormat model.RelationFormat
+				// for _, prop := range yamlRelations {
+				// 	if prop.key == relationKey {
+				// 		relFormat = prop.format
+				// 		break
+				// 	}
+				// }
+				
+				optionDetails := domain.NewDetails()
+				optionDetails.SetString(bundle.RelationKeyRelationKey, relationKey)
+				optionDetails.SetString(bundle.RelationKeyName, optionValue)
+				optionDetails.SetInt64(bundle.RelationKeyLayout, int64(model.ObjectType_relationOption))
+				
+				// Set unique key for the option
+				optionKey := fmt.Sprintf("%s_%s", relationKey, optionValue)
+				uniqueKey, _ := domain.NewUniqueKey(smartblock.SmartBlockTypeRelationOption, optionKey)
+				optionDetails.SetString(bundle.RelationKeyUniqueKey, uniqueKey.Marshal())
+				
+				relationsSnapshots = append(relationsSnapshots, &common.Snapshot{
+					Id: optionId,
+					Snapshot: &common.SnapshotModel{
+						SbType: smartblock.SmartBlockTypeRelationOption,
+						Data: &common.StateSnapshot{
+							Details:     optionDetails,
+							ObjectTypes: []string{bundle.TypeKeyRelationOption.String()},
+						},
+					},
+				})
+			}
+		}
+	}
+
+	// Fix YAML details to use option IDs for non-schema imports
+	if !hasSchemas && len(yamlRelationOptions) > 0 {
+		for _, file := range files {
+			if file.YAMLDetails != nil {
+				// Create a new details object with updated values
+				updatedDetails := domain.NewDetails()
+				file.YAMLDetails.Iterate()(func(key domain.RelationKey, value domain.Value) bool {
+					// Check if this is a relation with options
+					if options, hasOptions := yamlRelationOptions[string(key)]; hasOptions {
+						// Find the property to get its format
+						var propFormat model.RelationFormat
+						for _, prop := range file.YAMLProperties {
+							if prop.key == string(key) {
+								propFormat = prop.format
+								break
+							}
+						}
+						
+						// Update the value to use option IDs
+						switch propFormat {
+						case model.RelationFormat_status:
+							if strVal := value.String(); strVal != "" {
+								if optionId, exists := options[strVal]; exists && optionId != "" {
+									updatedDetails.Set(key, domain.String(optionId))
+									return true
+								}
+							}
+						case model.RelationFormat_tag:
+							strList := value.StringList()
+							if len(strList) > 0 {
+								optionIds := make([]string, 0, len(strList))
+								for _, val := range strList {
+									if optionId, exists := options[val]; exists && optionId != "" {
+										optionIds = append(optionIds, optionId)
+									}
+								}
+								if len(optionIds) > 0 {
+									updatedDetails.Set(key, domain.StringList(optionIds))
+									return true
+								}
+							}
+						}
+					}
+					// Copy unchanged values
+					updatedDetails.Set(key, value)
+					return true
+				})
+				file.YAMLDetails = updatedDetails
+			}
 		}
 	}
 

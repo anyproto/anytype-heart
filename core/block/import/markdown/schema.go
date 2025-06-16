@@ -16,10 +16,11 @@ import (
 
 // SchemaImporter handles schema-based import workflow
 type SchemaImporter struct {
-	schemas       map[string]*schema.Schema // filename -> parsed schema
-	existingTypes map[string]string         // typeKey -> typeId
-	existingRels  map[string]string         // relationKey -> relationId
-	parser        schema.Parser
+	schemas         map[string]*schema.Schema // filename -> parsed schema
+	existingTypes   map[string]string         // typeKey -> typeId
+	existingRels    map[string]string         // relationKey -> relationId
+	relationOptions map[string]map[string]string // relationKey -> optionName -> optionId
+	parser          schema.Parser
 
 	// ID prefixes for import
 	propIdPrefix string
@@ -28,12 +29,13 @@ type SchemaImporter struct {
 
 func NewSchemaImporter() *SchemaImporter {
 	return &SchemaImporter{
-		schemas:       make(map[string]*schema.Schema),
-		existingTypes: make(map[string]string),
-		existingRels:  make(map[string]string),
-		parser:        schema.NewJSONSchemaParser(),
-		propIdPrefix:  "import_prop_",
-		typeIdPrefix:  "import_type_",
+		schemas:         make(map[string]*schema.Schema),
+		existingTypes:   make(map[string]string),
+		existingRels:    make(map[string]string),
+		relationOptions: make(map[string]map[string]string),
+		parser:          schema.NewJSONSchemaParser(),
+		propIdPrefix:    "import_prop_",
+		typeIdPrefix:    "import_type_",
 	}
 }
 
@@ -114,17 +116,32 @@ func (si *SchemaImporter) CreateRelationOptionSnapshots() []*common.Snapshot {
 
 	for _, s := range si.schemas {
 		for _, rel := range s.Relations {
-			if rel.Format != model.RelationFormat_status {
+			var optionsToCreate []string
+			
+			// Collect options based on relation format
+			switch rel.Format {
+			case model.RelationFormat_status:
+				optionsToCreate = rel.Options
+			case model.RelationFormat_tag:
+				optionsToCreate = rel.Examples
+			default:
 				continue
 			}
 
-			// Get options from relation
-			if len(rel.Options) == 0 {
+			if len(optionsToCreate) == 0 {
 				continue
 			}
 
-			for _, opt := range rel.Options {
+			// Initialize option map for this relation
+			if si.relationOptions[rel.Key] == nil {
+				si.relationOptions[rel.Key] = make(map[string]string)
+			}
+
+			for _, opt := range optionsToCreate {
 				optionId := si.propIdPrefix + "option_" + rel.Key + "_" + opt
+
+				// Track option ID
+				si.relationOptions[rel.Key][opt] = optionId
 
 				snapshot := &common.Snapshot{
 					Id: optionId,
@@ -252,4 +269,36 @@ func (si *SchemaImporter) ResolvePropertyKey(name string) string {
 		}
 	}
 	return ""
+}
+
+// GetRelationFormat returns the format for a given relation key
+func (si *SchemaImporter) GetRelationFormat(key string) model.RelationFormat {
+	for _, s := range si.schemas {
+		for _, rel := range s.Relations {
+			if rel.Key == key {
+				return rel.Format
+			}
+		}
+	}
+	return model.RelationFormat_shorttext
+}
+
+// ResolveOptionValue converts option name to option ID for a given relation
+func (si *SchemaImporter) ResolveOptionValue(relationKey string, optionName string) string {
+	if options, exists := si.relationOptions[relationKey]; exists {
+		if optionId, found := options[optionName]; found {
+			return optionId
+		}
+	}
+	// If no schema option found, return the name as-is
+	return optionName
+}
+
+// ResolveOptionValues converts option names to option IDs for a given relation
+func (si *SchemaImporter) ResolveOptionValues(relationKey string, optionNames []string) []string {
+	result := make([]string, 0, len(optionNames))
+	for _, name := range optionNames {
+		result = append(result, si.ResolveOptionValue(relationKey, name))
+	}
+	return result
 }
