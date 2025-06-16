@@ -24,6 +24,7 @@ type NetworkState interface {
 }
 
 type openedObjectRefresher interface {
+	app.Component
 	RefreshOpenedObjects(ctx context.Context)
 }
 
@@ -41,14 +42,17 @@ type networkState struct {
 	pool                 pool.Service
 }
 
+var getTime = time.Now // for testing purposes
+
 func (n *networkState) StateChange(state int) {
 	n.hookMu.Lock()
 	var (
+		curTime    = getTime()
 		curState   = domain.CompState(state)
 		oldState   = n.lastDeviceState
-		timePassed = time.Since(n.lastDeviceStateChange)
+		timePassed = curTime.Sub(n.lastDeviceStateChange)
 	)
-	n.lastDeviceStateChange = time.Now()
+	n.lastDeviceStateChange = curTime
 	n.lastDeviceState = curState
 	n.hookMu.Unlock()
 	if oldState != curState && curState == domain.CompStateAppWentForeground {
