@@ -80,7 +80,7 @@ func (st *SmartTest) SetSpace(space smartblock.Space) {
 type stubSpace struct {
 }
 
-func (s *stubSpace) SyncObject(object smartblock.SmartBlock) (err error) {
+func (s *stubSpace) RefreshObjects(objectIds []string) (err error) {
 	return nil
 }
 

@@ -79,7 +79,7 @@ func init() {
 func New() *Service {
 	s := &Service{
 		openedObjs: &openedObjects{
-			objects: make(map[string]bool),
+			objects: make(map[string]string),
 			lock:    &sync.Mutex{},
 		},
 	}
@@ -115,7 +115,7 @@ type builtinObjects interface {
 }
 
 type openedObjects struct {
-	objects map[string]bool
+	objects map[string]string
 	lock    *sync.Mutex
 }
 
@@ -200,14 +200,13 @@ func (s *Service) WaitAndGetObjectByFullID(ctx context.Context, id domain.FullID
 	return spc.GetObject(ctx, id.ObjectID)
 }
 
-func (s *Service) ObjectRefresh(id domain.FullID) (err error) {
+func (s *Service) ObjectRefresh(ctx context.Context, id domain.FullID) (err error) {
 	id = s.resolveFullId(id)
-	return s.DoFullId(id, func(ob smartblock.SmartBlock) error {
-		if err = ob.Space().SyncObject(ob); err != nil {
-			log.Debug("failed to sync object", zap.String("objectId", id.ObjectID), zap.Error(err))
-		}
-		return nil
-	})
+	sp, err := s.spaceService.Get(ctx, id.SpaceID)
+	if err != nil {
+		return fmt.Errorf("get space: %w", err)
+	}
+	return sp.RefreshObjects([]string{id.ObjectID})
 }
 
 func (s *Service) OpenBlock(sctx session.Context, id domain.FullID, includeRelationsAsDependentObjects bool) (obj *model.ObjectView, err error) {
@@ -225,7 +224,7 @@ func (s *Service) OpenBlock(sctx session.Context, id domain.FullID, includeRelat
 		if err = ob.Apply(st, smartblock.NoHistory, smartblock.NoEvent, smartblock.SkipIfNoChanges, smartblock.KeepInternalFlags, smartblock.IgnoreNoPermissions); err != nil {
 			log.Errorf("failed to update lastOpenedDate: %s", err)
 		}
-		if err = ob.Space().SyncObject(ob); err != nil {
+		if err = ob.Space().RefreshObjects([]string{ob.Id()}); err != nil {
 			log.Debug("failed to sync object", zap.String("objectId", id.ObjectID), zap.Error(err))
 		}
 		if obj, err = ob.Show(); err != nil {
@@ -244,8 +243,35 @@ func (s *Service) OpenBlock(sctx session.Context, id domain.FullID, includeRelat
 	if err != nil {
 		return nil, err
 	}
-	mutex.WithLock(s.openedObjs.lock, func() any { s.openedObjs.objects[id.ObjectID] = true; return nil })
+	mutex.WithLock(s.openedObjs.lock, func() any { s.openedObjs.objects[id.ObjectID] = id.SpaceID; return nil })
 	return obj, nil
+}
+
+func (s *Service) RefreshOpenedObjects(ctx context.Context) {
+	openedObjects := s.GetOpenedObjects()
+	if len(openedObjects) == 0 {
+		return
+	}
+	objsPerSpace := make(map[string][]string)
+	for _, entry := range openedObjects {
+		curVal := objsPerSpace[entry.Value]
+		curVal = append(curVal, entry.Key)
+		objsPerSpace[entry.Value] = curVal
+	}
+	for spaceId, objectIds := range objsPerSpace {
+		sp, err := s.spaceService.Get(ctx, spaceId)
+		if err != nil {
+			log.Debug("failed to refresh: get space", zap.Error(err), zap.String("spaceId", spaceId))
+			continue
+		}
+		// str := fmt.Sprintf("%s: %s", spaceId, strings.Join(objectIds, ", "))
+		// ioslogger.DebugLog(str)
+		err = sp.RefreshObjects(objectIds)
+		if err != nil {
+			log.Debug("failed to refresh: refresh objects", zap.Error(err), zap.String("spaceId", spaceId), zap.Strings("objectIds", objectIds))
+		}
+	}
+	return
 }
 
 func (s *Service) DoFullId(id domain.FullID, apply func(sb smartblock.SmartBlock) error) error {
@@ -314,8 +340,8 @@ func (s *Service) CloseBlock(ctx session.Context, id domain.FullID) error {
 	return nil
 }
 
-func (s *Service) GetOpenedObjects() []string {
-	return mutex.WithLock(s.openedObjs.lock, func() []string { return lo.Keys(s.openedObjs.objects) })
+func (s *Service) GetOpenedObjects() []lo.Entry[string, string] {
+	return mutex.WithLock(s.openedObjs.lock, func() []lo.Entry[string, string] { return lo.Entries[string, string](s.openedObjs.objects) })
 }
 
 func (s *Service) SpaceInstallBundledObject(

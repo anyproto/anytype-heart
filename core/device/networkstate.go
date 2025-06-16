@@ -23,10 +23,15 @@ type NetworkState interface {
 	RegisterHook(hook func(network model.DeviceNetworkType))
 }
 
+type openedObjectRefresher interface {
+	RefreshOpenedObjects(ctx context.Context)
+}
+
 const networkInvalid = time.Second * 10
 
 type networkState struct {
 	networkState          model.DeviceNetworkType
+	objectsRefresher      openedObjectRefresher
 	networkMu             sync.Mutex
 	lastDeviceState       domain.CompState
 	lastDeviceStateChange time.Time
@@ -38,19 +43,24 @@ type networkState struct {
 
 func (n *networkState) StateChange(state int) {
 	n.hookMu.Lock()
-	defer n.hookMu.Unlock()
-	// ioslogger.DebugLog(fmt.Sprintf("change network state to %d", state))
-	devState := domain.CompState(state)
-	timePassed := time.Since(n.lastDeviceStateChange)
-	if n.lastDeviceState != devState && devState == domain.CompStateAppWentForeground && timePassed > networkInvalid {
-		err := n.pool.Flush(context.Background())
-		if err != nil {
-			log.Debug("failed to flush pool on network state change", zap.Error(err))
-		}
-		// ioslogger.DebugLog("flushed pool on network state change")
-	}
+	var (
+		curState   = domain.CompState(state)
+		oldState   = n.lastDeviceState
+		timePassed = time.Since(n.lastDeviceStateChange)
+	)
 	n.lastDeviceStateChange = time.Now()
-	n.lastDeviceState = devState
+	n.lastDeviceState = curState
+	n.hookMu.Unlock()
+	if oldState != curState && curState == domain.CompStateAppWentForeground {
+		ctx := context.Background()
+		if timePassed > networkInvalid {
+			err := n.pool.Flush(ctx)
+			if err != nil {
+				log.Debug("failed to flush pool on network state change", zap.Error(err))
+			}
+		}
+		n.objectsRefresher.RefreshOpenedObjects(ctx)
+	}
 }
 
 func New() NetworkState {
@@ -58,7 +68,8 @@ func New() NetworkState {
 }
 
 func (n *networkState) Init(a *app.App) (err error) {
-	n.pool = a.MustComponent(pool.CName).(pool.Service)
+	n.pool = app.MustComponent[pool.Service](a)
+	n.objectsRefresher = app.MustComponent[openedObjectRefresher](a)
 	return
 }
 

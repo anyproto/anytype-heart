@@ -236,13 +236,13 @@ func (t *treeSyncer) IsRunning() bool {
 	return t.isRunning
 }
 
-func (t *treeSyncer) RefreshTree(id string) (err error) {
+func (t *treeSyncer) RefreshTrees(ids []string) (err error) {
 	if !t.IsRunning() {
 		return nil
 	}
 	t.refreshable.doAfter(func(peers []peer.Peer) {
 		if len(peers) == 0 {
-			log.Warn("no responsible peers found for tree refresh", zap.String("treeId", id), zap.String("spaceId", t.spaceId))
+			log.Warn("no responsible peers found for tree refresh", zap.Strings("treeIds", ids), zap.String("spaceId", t.spaceId))
 			return
 		}
 		p := peers[0]
@@ -256,9 +256,11 @@ func (t *treeSyncer) RefreshTree(id string) (err error) {
 			t.headPools[p.Id()] = headExec
 		}
 		t.Unlock()
-		err = headExec.tryAdd(id, func() {
-			t.updateTree(p, id)
-		})
+		for _, id := range ids {
+			err = headExec.tryAdd(id, func() {
+				t.updateTree(p, id)
+			})
+		}
 		if err != nil {
 			log.Error("failed to add to head queue", zap.Error(err))
 		}

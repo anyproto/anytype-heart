@@ -110,7 +110,7 @@ func (mw *Middleware) ObjectRefresh(cctx context.Context, req *pb.RpcObjectRefre
 		ObjectID: req.ObjectId,
 	}
 	err := mw.doBlockService(func(bs *block.Service) (err error) {
-		return bs.ObjectRefresh(id)
+		return bs.ObjectRefresh(cctx, id)
 	})
 	code := mapErrorCode(err,
 		errToCode(spacestorage.ErrTreeStorageAlreadyDeleted, pb.RpcObjectRefreshResponseError_OBJECT_DELETED),

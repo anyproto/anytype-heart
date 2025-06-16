@@ -287,7 +287,7 @@ func TestTreeSyncer(t *testing.T) {
 			return nil
 		})
 		fx.StartSync()
-		require.NoError(t, fx.RefreshTree(existingId))
+		require.NoError(t, fx.RefreshTrees([]string{existingId}))
 		<-ch
 	})
 }
