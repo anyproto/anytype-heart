@@ -88,7 +88,7 @@ func (s *dsObjectStore) DeleteLinks(ids []string) error {
 	for _, id := range ids {
 		err := s.eraseLinksForObject(txn.Context(), id)
 		if err != nil {
-			return errors.Join(txn.Rollback(), fmt.Errorf("erase links for %s: %w", id, err))
+			return fmt.Errorf("erase links for %s: %w", id, err)
 		}
 	}
 	return txn.Commit()
