@@ -113,13 +113,13 @@ func (s *service) handleSpaceViewDetails(details *domain.Details) {
 	id := details.GetString(bundle.RelationKeyId)
 
 	if spaceIsAvailable(details) {
-		s.addSpaceView(details)
+		s.processSpaceView(details)
 	} else {
 		s.removeSpaceView(id)
 	}
 }
 
-func (s *service) addSpaceView(details *domain.Details) {
+func (s *service) processSpaceView(details *domain.Details) {
 	id := details.GetString(bundle.RelationKeyId)
 
 	if _, ok := s.spaceViewTargetIds[id]; !ok {
@@ -129,9 +129,13 @@ func (s *service) addSpaceView(details *domain.Details) {
 		s.spaceIds = append(s.spaceIds, targetId)
 
 		for _, sub := range s.subscriptions {
-			err := sub.AddSpace(targetId)
-			if err != nil {
-				log.Error("onSpaceViewSet: add space", zap.Error(err), zap.String("spaceId", targetId))
+			if sub.spacePredicate(details) {
+				err := sub.AddSpace(targetId)
+				if err != nil {
+					log.Error("onSpaceViewSet: add space", zap.Error(err), zap.String("spaceId", targetId))
+				}
+			} else {
+				sub.RemoveSpace(targetId)
 			}
 		}
 	}
