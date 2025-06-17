@@ -27,6 +27,7 @@ var layoutPerSmartBlockType = map[smartblock.SmartBlockType]model.ObjectTypeLayo
 	smartblock.SmartBlockTypeChatObject:        model.ObjectType_chat,
 	smartblock.SmartBlockTypeWidget:            model.ObjectType_dashboard,
 	smartblock.SmartBlockTypeWorkspace:         model.ObjectType_dashboard,
+	smartblock.SmartBlockTypeArchive:           model.ObjectType_dashboard,
 }
 
 func (sb *smartBlock) injectLocalDetails(s *state.State) error {
@@ -249,7 +250,6 @@ func (sb *smartBlock) resolveLayout(s *state.State) {
 		} else {
 			log.With("objectId", s.RootId()).Errorf("resolveLayout: no layout for smartblock type %s, no layout in details", sb.Type())
 		}
-		return
 	}
 
 	if s.Details() == nil && s.LocalDetails() == nil {
@@ -271,6 +271,9 @@ func (sb *smartBlock) resolveLayout(s *state.State) {
 		if bt, err := bundle.GetType(s.ObjectTypeKeys()[len(s.ObjectTypeKeys())-1]); err == nil {
 			fallbackValue = domain.Int64(int64(bt.Layout))
 		}
+	} else if sb.Type() == smartblock.SmartBlockTypeFileObject {
+		// for file object we use file layout
+		fallbackValue = domain.Int64(int64(model.ObjectType_file))
 	}
 
 	typeDetails, err := sb.getTypeDetails(s)
