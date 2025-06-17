@@ -83,6 +83,9 @@ func (s *dsObjectStore) DeleteLinks(ids []string) error {
 	if err != nil {
 		return fmt.Errorf("read txn: %w", err)
 	}
+	defer func() {
+		_ = txn.Rollback()
+	}()
 	for _, id := range ids {
 		err := s.eraseLinksForObject(txn.Context(), id)
 		if err != nil {
