@@ -198,7 +198,10 @@ func (s *storeObject) Init(ctx *smartblock.InitContext) error {
 }
 
 func (s *storeObject) onUpdate() {
-	s.detailsComponent.onAnystoreUpdated(s.componentCtx)
+	err := s.detailsComponent.onAnystoreUpdated(s.componentCtx)
+	if err != nil {
+		log.Error("onUpdate: on anystore updated", zap.Error(err))
+	}
 
 	s.subscription.Lock()
 	defer s.subscription.Unlock()
