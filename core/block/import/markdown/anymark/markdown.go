@@ -14,6 +14,7 @@ import (
 	"github.com/yuin/goldmark/extension"
 	"github.com/yuin/goldmark/renderer"
 	"github.com/yuin/goldmark/util"
+	"go.abhg.dev/goldmark/wikilink"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/table"
 	"github.com/anyproto/anytype-heart/core/block/import/markdown/anymark/whitespace"
@@ -35,7 +36,7 @@ func convertBlocks(source []byte, r ...renderer.NodeRenderer) error {
 	}
 	gm := goldmark.New(goldmark.WithRenderer(
 		renderer.NewRenderer(renderer.WithNodeRenderers(nodeRenderers...)),
-	), goldmark.WithExtensions(extension.Table), goldmark.WithExtensions(extension.Strikethrough))
+	), goldmark.WithExtensions(extension.Table), goldmark.WithExtensions(extension.Strikethrough), goldmark.WithExtensions(&wikilink.Extender{}))
 	return gm.Convert(source, &bytes.Buffer{})
 }
 
@@ -57,6 +58,11 @@ func MarkdownToBlocks(markdownSource []byte,
 	return r.GetBlocks(), r.GetRootBlockIDs(), nil
 }
 
+var replacer = strings.NewReplacer(
+	`[`, `\[`,
+	`]`, `\]`,
+)
+
 func HTMLToBlocks(source []byte, url string) (blocks []*model.Block, rootBlockIDs []string, err error) {
 	preprocessedSource := string(source)
 
@@ -77,6 +83,14 @@ func HTMLToBlocks(source []byte, url string) (blocks []*model.Block, rootBlockID
 		EmDelimiter:      "*",
 		GetAbsoluteURL: func(selec *goquery.Selection, src string, domain string) string {
 			return getAbsolutePath(url, src)
+		},
+	})
+	converter.AddRules(html2md.Rule{Filter: []string{"#text"},
+		Replacement: func(content string, selec *goquery.Selection, opt *html2md.Options) *string {
+			text := selec.Text()
+
+			text = replacer.Replace(text)
+			return &text
 		},
 	})
 	converter.Use(plugin.GitHubFlavored())

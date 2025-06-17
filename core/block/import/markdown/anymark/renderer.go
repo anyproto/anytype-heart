@@ -11,6 +11,7 @@ import (
 	ext "github.com/yuin/goldmark/extension/ast"
 	"github.com/yuin/goldmark/renderer"
 	"github.com/yuin/goldmark/util"
+	"go.abhg.dev/goldmark/wikilink"
 
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -62,6 +63,7 @@ func (r *Renderer) RegisterFuncs(reg renderer.NodeRendererFuncRegisterer) {
 	reg.Register(ast.KindText, r.renderText)
 	reg.Register(ast.KindString, r.renderString)
 	reg.Register(ext.KindStrikethrough, r.renderStrikethrough)
+	reg.Register(wikilink.Kind, r.renderWikiLink)
 }
 
 func (r *Renderer) writeLines(source []byte, n ast.Node) {
@@ -326,6 +328,9 @@ func (r *Renderer) renderLink(_ util.BufWriter,
 		if !strings.HasPrefix(strings.ToLower(linkPath), "http://") &&
 			!strings.HasPrefix(strings.ToLower(linkPath), "https://") {
 			linkPath = filepath.Join(r.GetBaseFilepath(), linkPath)
+			if filepath.Ext(linkPath) == "" {
+				// linkPath += ".md" // Default to .md if no extension is provided
+			}
 		}
 
 		to := int32(text.UTF16RuneCountString(r.GetText()))
@@ -429,6 +434,49 @@ func (r *Renderer) renderStrikethrough(_ util.BufWriter, _ []byte, _ ast.Node, e
 		r.AddMark(model.BlockContentTextMark{
 			Range: &model.Range{From: int32(r.GetMarkStart()), To: to},
 			Type:  tag,
+		})
+	}
+	return ast.WalkContinue, nil
+}
+
+func (r *Renderer) renderWikiLink(_ util.BufWriter, source []byte, node ast.Node, entering bool) (ast.WalkStatus, error) {
+	n := node.(*wikilink.Node)
+	linkPath := string(n.Target)
+
+	// For embed syntax ![[]], check if it's an image
+	if n.Embed && entering {
+		// Check if destination has image extension
+		lowerPath := strings.ToLower(linkPath)
+		if strings.HasSuffix(lowerPath, ".png") || strings.HasSuffix(lowerPath, ".jpg") ||
+			strings.HasSuffix(lowerPath, ".jpeg") || strings.HasSuffix(lowerPath, ".gif") ||
+			strings.HasSuffix(lowerPath, ".svg") || strings.HasSuffix(lowerPath, ".webp") {
+			// Handle as image block
+			if !r.inTable {
+				r.ForceCloseTextBlock()
+				r.AddImageBlock(linkPath)
+			}
+			return ast.WalkSkipChildren, nil
+		}
+	}
+
+	if entering {
+		r.SetMarkStart()
+	} else {
+		// Handle as regular link (same behavior as [[]] for both [[]] and ![[]])
+		if !strings.HasPrefix(strings.ToLower(linkPath), "http://") &&
+			!strings.HasPrefix(strings.ToLower(linkPath), "https://") {
+			linkPath = filepath.Join(r.GetBaseFilepath(), linkPath)
+			if filepath.Ext(linkPath) == "" {
+				// linkPath += ".md" // Default to .md if no extension is provided
+			}
+		}
+
+		to := int32(text.UTF16RuneCountString(r.GetText()))
+
+		r.AddMark(model.BlockContentTextMark{
+			Range: &model.Range{From: int32(r.GetMarkStart()), To: to},
+			Type:  model.BlockContentTextMark_Link,
+			Param: linkPath,
 		})
 	}
 	return ast.WalkContinue, nil
