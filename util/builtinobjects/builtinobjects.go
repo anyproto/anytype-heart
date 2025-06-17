@@ -467,10 +467,8 @@ func (b *builtinObjects) createWidgets(ctx session.Context, spaceId string, useC
 	}
 	if err = cache.DoStateCtx(b.objectGetter, ctx, widgetObjectID, func(s *state.State, w widget.Widget) error {
 		if homeWidget != nil {
-			if blockId, err := w.CreateBlock(s, homeWidget); err != nil {
+			if _, err := w.CreateBlock(s, homeWidget); err != nil {
 				log.Errorf("failed to create widget for home page: %v", err)
-			} else {
-				fmt.Printf("Created home widget block with ID: %s\n", blockId)
 			}
 		}
 		for _, targetId := range widgetTargetsToCreate {
