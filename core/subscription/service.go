@@ -787,9 +787,8 @@ func (s *spaceSubscriptions) recordsHandler() {
 			}
 		}
 	}
-	ctx := mb.CtxWithTimeLimit(s.ctx, batchTime)
 	for {
-		records, err := s.recBatch.WaitCond(ctx, mb.WaitCond[database.Record]{Min: 50, Max: 1000})
+		records, err := s.recBatch.Wait(s.ctx)
 		if err != nil {
 			return
 		}
@@ -810,7 +809,9 @@ func (s *spaceSubscriptions) recordsHandler() {
 			}
 		}
 		log.Debugf("batch rewrite: %d->%d", len(entries), len(filtered))
-		s.onChange(filtered)
+		if s.onChange(filtered) < batchTime {
+			time.Sleep(batchTime)
+		}
 		entries = entries[:0]
 	}
 }
