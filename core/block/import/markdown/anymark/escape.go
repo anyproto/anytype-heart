@@ -11,6 +11,7 @@ var protectedRunes = []rune{
 	'*', // Markdown strong opener
 	'`', // Markdown code opener
 	'_', // Markdown em opener
+	'|', // Markdown table column separator
 }
 
 // Starting at the first BMP PUA code point (U+E000)
