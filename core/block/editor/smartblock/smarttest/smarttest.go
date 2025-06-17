@@ -80,6 +80,10 @@ func (st *SmartTest) SetSpace(space smartblock.Space) {
 type stubSpace struct {
 }
 
+func (s *stubSpace) RefreshObjects(objectIds []string) (err error) {
+	return nil
+}
+
 func (s *stubSpace) Id() string {
 	return ""
 }

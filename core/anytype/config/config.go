@@ -462,9 +462,10 @@ func (c *Config) GetYamux() yamux.Config {
 
 func (c *Config) GetQuic() quic.Config {
 	return quic.Config{
-		ListenAddrs:     []string{},
-		WriteTimeoutSec: 10,
-		DialTimeoutSec:  10,
+		ListenAddrs:       []string{},
+		WriteTimeoutSec:   10,
+		InitialPacketSize: 1200,
+		DialTimeoutSec:    10,
 	}
 }
 
