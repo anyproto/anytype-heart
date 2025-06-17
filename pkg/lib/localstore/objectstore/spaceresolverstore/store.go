@@ -59,7 +59,7 @@ func (d *dsObjectStore) modifyBind(ctx context.Context, objectId, spaceId string
 	}
 	defer func() {
 		_ = tx.Rollback()
-	}
+	}()
 	arena := d.arenaPool.Get()
 	defer d.arenaPool.Put(arena)
 	mod := query.ModifyFunc(func(a *anyenc.Arena, v *anyenc.Value) (result *anyenc.Value, modified bool, err error) {
