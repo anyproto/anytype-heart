@@ -70,7 +70,8 @@ func (r *Renderer) writeLines(source []byte, n ast.Node) {
 	l := n.Lines().Len()
 	for i := 0; i < l; i++ {
 		line := n.Lines().At(i)
-		r.AddTextToBuffer(string(line.Value(source)))
+		s := Unescape(string(line.Value(source)))
+		r.AddTextToBuffer(s)
 	}
 }
 
@@ -263,13 +264,14 @@ func (r *Renderer) renderCodeSpan(_ util.BufWriter,
 		for c := n.FirstChild(); c != nil; c = c.NextSibling() {
 			segment := c.(*ast.Text).Segment
 			value := segment.Value(source)
+			s := Unescape(string(value))
 			if bytes.HasSuffix(value, []byte("\n")) {
-				r.AddTextToBuffer(string(value[:len(value)-1]))
+				r.AddTextToBuffer(s[:len(s)-1])
 				if c != n.LastChild() {
 					r.AddTextToBuffer(" ")
 				}
 			} else {
-				r.AddTextToBuffer(string(value))
+				r.AddTextToBuffer(s)
 			}
 		}
 		return ast.WalkSkipChildren, nil
@@ -329,7 +331,7 @@ func (r *Renderer) renderLink(_ util.BufWriter,
 			!strings.HasPrefix(strings.ToLower(linkPath), "https://") {
 			linkPath = filepath.Join(r.GetBaseFilepath(), linkPath)
 			if filepath.Ext(linkPath) == "" {
-				// linkPath += ".md" // Default to .md if no extension is provided
+				linkPath += ".md" // Default to .md if no extension is provided
 			}
 		}
 
@@ -403,8 +405,10 @@ func (r *Renderer) renderText(_ util.BufWriter,
 	}
 	n := node.(*ast.Text)
 	segment := n.Segment
+	s := string(segment.Value(source))
+	s = Unescape(s)
+	r.AddTextToBuffer(s)
 
-	r.AddTextToBuffer(string(segment.Value(source)))
 	if n.HardLineBreak() || n.SoftLineBreak() && r.TextBufferLen() > TextBlockLengthSoftLimit {
 		r.openTextBlockWithStyle(false, model.BlockContentText_Paragraph, nil)
 
@@ -419,8 +423,9 @@ func (r *Renderer) renderString(_ util.BufWriter, source []byte, node ast.Node, 
 		return ast.WalkContinue, nil
 	}
 	n := node.(*ast.String)
-
-	r.AddTextToBuffer(string(n.Value))
+	s := string(n.Value)
+	s = Unescape(s)
+	r.AddTextToBuffer(s)
 
 	return ast.WalkContinue, nil
 }
@@ -467,7 +472,7 @@ func (r *Renderer) renderWikiLink(_ util.BufWriter, source []byte, node ast.Node
 			!strings.HasPrefix(strings.ToLower(linkPath), "https://") {
 			linkPath = filepath.Join(r.GetBaseFilepath(), linkPath)
 			if filepath.Ext(linkPath) == "" {
-				// linkPath += ".md" // Default to .md if no extension is provided
+				linkPath += ".md" // Default to .md if no extension is provided
 			}
 		}
 

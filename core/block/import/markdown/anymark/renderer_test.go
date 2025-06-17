@@ -25,7 +25,7 @@ func TestWikiLinks(t *testing.T) {
 					Marks: []*model.BlockContentTextMark{
 						{
 							Type:  model.BlockContentTextMark_Link,
-							Param: "wiki link",
+							Param: "wiki link.md",
 							Range: &model.Range{From: 10, To: 19},
 						},
 					},
@@ -42,7 +42,7 @@ func TestWikiLinks(t *testing.T) {
 					Marks: []*model.BlockContentTextMark{
 						{
 							Type:  model.BlockContentTextMark_Link,
-							Param: "page name",
+							Param: "page name.md",
 							Range: &model.Range{From: 10, To: 22},
 						},
 					},
@@ -59,7 +59,7 @@ func TestWikiLinks(t *testing.T) {
 					Marks: []*model.BlockContentTextMark{
 						{
 							Type:  model.BlockContentTextMark_Link,
-							Param: "document",
+							Param: "document.md",
 							Range: &model.Range{From: 20, To: 28},
 						},
 					},
@@ -100,17 +100,17 @@ func TestWikiLinks(t *testing.T) {
 					Marks: []*model.BlockContentTextMark{
 						{
 							Type:  model.BlockContentTextMark_Link,
-							Param: "page1",
+							Param: "page1.md",
 							Range: &model.Range{From: 8, To: 13},
 						},
 						{
 							Type:  model.BlockContentTextMark_Link,
-							Param: "page2",
+							Param: "page2.md",
 							Range: &model.Range{From: 18, To: 23},
 						},
 						{
 							Type:  model.BlockContentTextMark_Link,
-							Param: "page3",
+							Param: "page3.md",
 							Range: &model.Range{From: 34, To: 39},
 						},
 					},
@@ -127,7 +127,7 @@ func TestWikiLinks(t *testing.T) {
 					Marks: []*model.BlockContentTextMark{
 						{
 							Type:  model.BlockContentTextMark_Link,
-							Param: "My Document Name",
+							Param: "My Document Name.md",
 							Range: &model.Range{From: 8, To: 24},
 						},
 					},
@@ -159,7 +159,7 @@ func TestWikiLinks(t *testing.T) {
 						},
 						{
 							Type:  model.BlockContentTextMark_Link,
-							Param: "wiki link",
+							Param: "wiki link.md",
 							Range: &model.Range{From: 17, To: 26},
 						},
 					},

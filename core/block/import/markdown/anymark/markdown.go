@@ -15,6 +15,7 @@ import (
 	"github.com/yuin/goldmark/renderer"
 	"github.com/yuin/goldmark/util"
 	"go.abhg.dev/goldmark/wikilink"
+	"golang.org/x/net/html"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/table"
 	"github.com/anyproto/anytype-heart/core/block/import/markdown/anymark/whitespace"
@@ -58,10 +59,31 @@ func MarkdownToBlocks(markdownSource []byte,
 	return r.GetBlocks(), r.GetRootBlockIDs(), nil
 }
 
-var replacer = strings.NewReplacer(
-	`[`, `\[`,
-	`]`, `\]`,
-)
+func escapeAll(n *html.Node) {
+	if n.Type == html.TextNode {
+		n.Data = Escape(n.Data)
+		return
+	}
+	for c := n.FirstChild; c != nil; c = c.NextSibling {
+		escapeAll(c)
+	}
+}
+
+// escapeRecursively mutates every text-node under sel (including sel itself)
+func escapeRecursively(sel *goquery.Selection) {
+	// operate on the direct text children of this element
+	sel.Contents().Each(func(_ int, n *goquery.Selection) {
+		if n.Nodes[0].Type == html.TextNode {
+			text := n.Text()
+			n.SetText(Escape(text))
+		}
+	})
+
+	// recurse into element children
+	sel.Children().Each(func(_ int, child *goquery.Selection) {
+		escapeRecursively(child)
+	})
+}
 
 func HTMLToBlocks(source []byte, url string) (blocks []*model.Block, rootBlockIDs []string, err error) {
 	preprocessedSource := string(source)
@@ -85,13 +107,10 @@ func HTMLToBlocks(source []byte, url string) (blocks []*model.Block, rootBlockID
 			return getAbsolutePath(url, src)
 		},
 	})
-	converter.AddRules(html2md.Rule{Filter: []string{"#text"},
-		Replacement: func(content string, selec *goquery.Selection, opt *html2md.Options) *string {
-			text := selec.Text()
-
-			text = replacer.Replace(text)
-			return &text
-		},
+	converter.Before(func(selec *goquery.Selection) {
+		for _, n := range selec.Nodes { // the hook can hand you several roots
+			escapeAll(n)
+		}
 	})
 	converter.Use(plugin.GitHubFlavored())
 	converter.AddRules(getCustomHTMLRules()...)
