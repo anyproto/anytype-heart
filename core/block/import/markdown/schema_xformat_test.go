@@ -9,6 +9,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/import/common"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+	"github.com/anyproto/anytype-heart/pkg/lib/schema"
 )
 
 func TestSchemaImporter_XFormatSupport(t *testing.T) {
@@ -23,14 +24,14 @@ func TestSchemaImporter_XFormatSupport(t *testing.T) {
 				"items": {"type": "string"},
 				"description": "File attachments",
 				"x-key": "attachments",
-				"x-format": "RelationFormat_file"
+				"x-format": "file"
 			},
 			"Tags": {
 				"type": "array",
 				"items": {"type": "string"},
 				"examples": ["important", "urgent"],
 				"x-key": "tags",
-				"x-format": "RelationFormat_tag"
+				"x-format": "tag"
 			},
 			"References": {
 				"type": "array",
@@ -42,7 +43,7 @@ func TestSchemaImporter_XFormatSupport(t *testing.T) {
 					}
 				},
 				"x-key": "references",
-				"x-format": "RelationFormat_object"
+				"x-format": "object"
 			}
 		}
 	}`
@@ -55,22 +56,32 @@ func TestSchemaImporter_XFormatSupport(t *testing.T) {
 
 	si := NewSchemaImporter()
 	allErrors := common.NewError(pb.RpcObjectImportRequest_ALL_OR_NOTHING)
-	
+
 	err := si.LoadSchemas(source, allErrors)
 	require.NoError(t, err)
-	
+
+	// Find the schema and verify relations
+	var foundSchema *schema.Schema
+	for _, s := range si.schemas {
+		if s.Type != nil && s.Type.Name == "Document" {
+			foundSchema = s
+			break
+		}
+	}
+	require.NotNil(t, foundSchema)
+
 	// Verify all relations have correct formats from x-format
-	attachmentsRel := si.relations["attachments"]
-	require.NotNil(t, attachmentsRel)
+	attachmentsRel, ok := foundSchema.Relations["attachments"]
+	require.True(t, ok)
 	assert.Equal(t, model.RelationFormat_file, attachmentsRel.Format, "Attachments should be file format")
-	
-	tagsRel := si.relations["tags"]
-	require.NotNil(t, tagsRel)
+
+	tagsRel, ok := foundSchema.Relations["tags"]
+	require.True(t, ok)
 	assert.Equal(t, model.RelationFormat_tag, tagsRel.Format, "Tags should be tag format")
 	assert.Equal(t, []string{"important", "urgent"}, tagsRel.Examples, "Tag examples should be parsed")
-	
-	referencesRel := si.relations["references"]
-	require.NotNil(t, referencesRel)
+
+	referencesRel, ok := foundSchema.Relations["references"]
+	require.True(t, ok)
 	assert.Equal(t, model.RelationFormat_object, referencesRel.Format, "References should be object format")
 }
 
@@ -84,7 +95,7 @@ func TestSchemaImporter_XFormatWithStatusOptions(t *testing.T) {
 				"type": "string",
 				"enum": ["Not Started", "In Progress", "Completed", "Blocked"],
 				"x-key": "progress",
-				"x-format": "RelationFormat_status"
+				"x-format": "status"
 			}
 		}
 	}`
@@ -97,12 +108,22 @@ func TestSchemaImporter_XFormatWithStatusOptions(t *testing.T) {
 
 	si := NewSchemaImporter()
 	allErrors := common.NewError(pb.RpcObjectImportRequest_ALL_OR_NOTHING)
-	
+
 	err := si.LoadSchemas(source, allErrors)
 	require.NoError(t, err)
-	
-	progressRel := si.relations["progress"]
-	require.NotNil(t, progressRel)
+
+	// Find the schema and verify relation
+	var foundSchema *schema.Schema
+	for _, s := range si.schemas {
+		if s.Type != nil && s.Type.Name == "Task" {
+			foundSchema = s
+			break
+		}
+	}
+	require.NotNil(t, foundSchema)
+
+	progressRel, ok := foundSchema.Relations["progress"]
+	require.True(t, ok)
 	assert.Equal(t, model.RelationFormat_status, progressRel.Format)
 	assert.Equal(t, []string{"Not Started", "In Progress", "Completed", "Blocked"}, progressRel.Options)
 }
@@ -138,20 +159,30 @@ func TestSchemaImporter_XFormatFallback(t *testing.T) {
 
 	si := NewSchemaImporter()
 	allErrors := common.NewError(pb.RpcObjectImportRequest_ALL_OR_NOTHING)
-	
+
 	err := si.LoadSchemas(source, allErrors)
 	require.NoError(t, err)
-	
+
+	// Find the schema and verify relations
+	var foundSchema *schema.Schema
+	for _, s := range si.schemas {
+		if s.Type != nil && s.Type.Name == "Legacy" {
+			foundSchema = s
+			break
+		}
+	}
+	require.NotNil(t, foundSchema)
+
 	// Verify format inference still works
-	emailRel := si.relations["email_field"]
-	require.NotNil(t, emailRel)
+	emailRel, ok := foundSchema.Relations["email_field"]
+	require.True(t, ok)
 	assert.Equal(t, model.RelationFormat_email, emailRel.Format)
-	
-	tagsRel := si.relations["tag_field"]
-	require.NotNil(t, tagsRel)
+
+	tagsRel, ok := foundSchema.Relations["tag_field"]
+	require.True(t, ok)
 	assert.Equal(t, model.RelationFormat_tag, tagsRel.Format)
-	
-	doneRel := si.relations["done_field"]
-	require.NotNil(t, doneRel)
+
+	doneRel, ok := foundSchema.Relations["done_field"]
+	require.True(t, ok)
 	assert.Equal(t, model.RelationFormat_checkbox, doneRel.Format)
 }

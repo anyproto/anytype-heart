@@ -25,7 +25,13 @@ func TestMarkdown_GetSnapshots(t *testing.T) {
 	t.Run("get snapshots of root collection, csv collection and object", func(t *testing.T) {
 		// given
 		testDirectory := setupTestDirectory(t)
-		h := &Markdown{}
+		// Initialize Markdown properly with required components
+		h := &Markdown{
+			blockConverter: newMDConverter(&MockTempDir{}),
+			schemaImporter: NewSchemaImporter(),
+		}
+		// Set the schema importer in the block converter
+		h.blockConverter.SetSchemaImporter(h.schemaImporter)
 		p := process.NewNoOp()
 
 		// when
@@ -65,7 +71,13 @@ func TestMarkdown_GetSnapshots(t *testing.T) {
 	t.Run("no object error", func(t *testing.T) {
 		// given
 		testDirectory := t.TempDir()
-		h := &Markdown{}
+		// Initialize Markdown properly with required components
+		h := &Markdown{
+			blockConverter: newMDConverter(&MockTempDir{}),
+			schemaImporter: NewSchemaImporter(),
+		}
+		// Set the schema importer in the block converter
+		h.blockConverter.SetSchemaImporter(h.schemaImporter)
 		p := process.NewNoOp()
 
 		// when
@@ -86,7 +98,12 @@ func TestMarkdown_GetSnapshots(t *testing.T) {
 		// given
 		tempDirProvider := &MockTempDir{}
 		converter := newMDConverter(tempDirProvider)
-		h := &Markdown{blockConverter: converter}
+		schemaImporter := NewSchemaImporter()
+		converter.SetSchemaImporter(schemaImporter)
+		h := &Markdown{
+			blockConverter: converter,
+			schemaImporter: schemaImporter,
+		}
 		p := process.NewNoOp()
 
 		// when
@@ -125,7 +142,13 @@ func TestMarkdown_GetSnapshots(t *testing.T) {
 		zipPath := filepath.Join(testDirectory, "empty.zip")
 		test.CreateEmptyZip(t, zipPath)
 
-		h := &Markdown{}
+		// Initialize Markdown properly with required components
+		h := &Markdown{
+			blockConverter: newMDConverter(&MockTempDir{}),
+			schemaImporter: NewSchemaImporter(),
+		}
+		// Set the schema importer in the block converter
+		h.blockConverter.SetSchemaImporter(h.schemaImporter)
 		p := process.NewProgress(&pb.ModelProcessMessageOfImport{Import: &pb.ModelProcessImport{}})
 
 		// when
@@ -167,7 +190,13 @@ func TestMarkdown_GetSnapshots(t *testing.T) {
 			},
 		})
 
-		h := &Markdown{}
+		// Initialize Markdown properly with required components
+		h := &Markdown{
+			blockConverter: newMDConverter(&MockTempDir{}),
+			schemaImporter: NewSchemaImporter(),
+		}
+		// Set the schema importer in the block converter
+		h.blockConverter.SetSchemaImporter(h.schemaImporter)
 		p := process.NewProgress(&pb.ModelProcessMessageOfImport{Import: &pb.ModelProcessImport{}})
 
 		// when
@@ -432,7 +461,10 @@ This is the content of the test document.`
 		err := os.WriteFile(yamlMdPath, []byte(yamlContent), os.ModePerm)
 		assert.NoError(t, err)
 
-		h := &Markdown{}
+		h := &Markdown{
+			blockConverter: newMDConverter(&MockTempDir{}),
+			schemaImporter: NewSchemaImporter(),
+		}
 		p := process.NewNoOp()
 
 		// when
@@ -588,7 +620,10 @@ category: Work
 		err = os.WriteFile(filepath.Join(testDirectory, "file2.md"), []byte(yamlContent2), os.ModePerm)
 		assert.NoError(t, err)
 
-		h := &Markdown{}
+		h := &Markdown{
+			blockConverter: newMDConverter(&MockTempDir{}),
+			schemaImporter: NewSchemaImporter(),
+		}
 		p := process.NewNoOp()
 
 		// when
@@ -686,7 +721,10 @@ This document is used for snapshot testing of YAML front matter import.`
 		err := os.WriteFile(yamlMdPath, []byte(yamlContent), os.ModePerm)
 		assert.NoError(t, err)
 
-		h := &Markdown{}
+		h := &Markdown{
+			blockConverter: newMDConverter(&MockTempDir{}),
+			schemaImporter: NewSchemaImporter(),
+		}
 		p := process.NewNoOp()
 
 		// when
@@ -811,12 +849,12 @@ This document is used for snapshot testing of YAML front matter import.`
 		for relName, rel := range relationsByName {
 			key := rel["key"].(string)
 			assert.NotEmpty(t, key, "Relation %s should have a key", relName)
-			
+
 			// Skip system relations which don't have BSON IDs
 			if key == "objectType" {
 				continue
 			}
-			
+
 			assert.Len(t, key, 24, "Relation %s key should be 24 characters (BSON ID)", relName)
 		}
 	})

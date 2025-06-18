@@ -37,6 +37,10 @@ func Test_processFiles(t *testing.T) {
 		workingDir, err := os.Getwd()
 		absolutePath := filepath.Join(workingDir, "testdata")
 		source := source.GetSource(absolutePath)
+		
+		// Initialize the source with the path
+		err = source.Initialize(absolutePath)
+		assert.Nil(t, err)
 
 		// when
 		files := converter.processFiles(absolutePath, common.NewError(pb.RpcObjectImportRequest_IGNORE_ERRORS), source)
@@ -65,10 +69,14 @@ func Test_processFiles(t *testing.T) {
 	t.Run("imported directory include without mov and pdf files - no file blocks", func(t *testing.T) {
 		// given
 		converter := newMDConverter(&MockTempDir{})
-		source := source.GetSource("testdata")
 		workingDir, err := os.Getwd()
 		assert.Nil(t, err)
 		absolutePath := filepath.Join(workingDir, "testdata")
+		source := source.GetSource(absolutePath)
+		
+		// Initialize the source with the path
+		err = source.Initialize(absolutePath)
+		assert.Nil(t, err)
 
 		// when
 		files := converter.processFiles(absolutePath, common.NewError(pb.RpcObjectImportRequest_IGNORE_ERRORS), source)

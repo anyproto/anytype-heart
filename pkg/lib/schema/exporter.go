@@ -407,11 +407,6 @@ func SchemaFromObjectDetails(typeDetails *domain.Details, relationDetailsList []
 			continue
 		}
 
-		// Skip bundled relations (including Type which is handled specially)
-		if rel.IsBundled() {
-			continue
-		}
-
 		// Add to schema
 		schema.AddRelation(rel)
 

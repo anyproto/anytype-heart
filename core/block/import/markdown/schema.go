@@ -16,9 +16,9 @@ import (
 
 // SchemaImporter handles schema-based import workflow
 type SchemaImporter struct {
-	schemas         map[string]*schema.Schema // filename -> parsed schema
-	existingTypes   map[string]string         // typeKey -> typeId
-	existingRels    map[string]string         // relationKey -> relationId
+	schemas         map[string]*schema.Schema    // filename -> parsed schema
+	existingTypes   map[string]string            // typeKey -> typeId
+	existingRels    map[string]string            // relationKey -> relationId
 	relationOptions map[string]map[string]string // relationKey -> optionName -> optionId
 	parser          schema.Parser
 
@@ -117,7 +117,7 @@ func (si *SchemaImporter) CreateRelationOptionSnapshots() []*common.Snapshot {
 	for _, s := range si.schemas {
 		for _, rel := range s.Relations {
 			var optionsToCreate []string
-			
+
 			// Collect options based on relation format
 			switch rel.Format {
 			case model.RelationFormat_status:
@@ -236,15 +236,14 @@ func (si *SchemaImporter) GetTypeKeyByName(name string) string {
 		}
 	}
 
-	// Default to generic Page type
-	return bundle.TypeKeyPage.String()
+	return ""
 }
 
 // GetRelationKeyByName returns relation key by property name
 func (si *SchemaImporter) GetRelationKeyByName(name string) (string, bool) {
 	for _, s := range si.schemas {
 		for _, rel := range s.Relations {
-			if rel.Key == name {
+			if rel.Name == name {
 				return rel.Key, true
 			}
 		}

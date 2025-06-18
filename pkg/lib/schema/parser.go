@@ -58,10 +58,9 @@ func (p *JSONSchemaParser) Parse(reader io.Reader) (*Schema, error) {
 
 			// Add relation to type
 			isFeatured := getBoolField(prop, "x-featured")
-			order := getIntField(prop, "x-order")
 
-			// Use order to determine if it should be featured (first few relations)
-			if isFeatured || order > 0 && order <= 3 {
+			// Only relations with x-featured: true should be featured
+			if isFeatured {
 				t.AddRelation(rel.Key, true)
 			} else {
 				t.AddRelation(rel.Key, false)
