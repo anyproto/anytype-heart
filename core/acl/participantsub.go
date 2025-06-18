@@ -97,7 +97,7 @@ func (s *participantSub) Run(ctx context.Context) error {
 			log.Debug("participant sub: onAdd error", zap.Error(err))
 		}
 	}
-	go s.monitorParicipants()
+	go s.monitorParticipants()
 	return nil
 }
 
@@ -135,7 +135,7 @@ func (s *participantSub) getSpaceIdAndIdentity(participantId string) (spaceId st
 	return
 }
 
-func (s *participantSub) monitorParicipants() {
+func (s *participantSub) monitorParticipants() {
 	defer close(s.waiter)
 	matcher := subscriptionservice.EventMatcher{
 		OnAdd: func(_ string, add *pb.EventObjectSubscriptionAdd) {
