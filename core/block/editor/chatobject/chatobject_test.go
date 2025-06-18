@@ -2,7 +2,6 @@ package chatobject
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"testing"
 
@@ -465,6 +464,9 @@ func (fx *fixture) applyToStore(ctx context.Context, params source.PushStoreChan
 	if err != nil {
 		return "", fmt.Errorf("new tx: %w", err)
 	}
+	defer func() {
+		_ = tx.Rollback()
+	}()
 	order := fx.generateOrderId(tx)
 	err = tx.ApplyChangeSet(storestate.ChangeSet{
 		Id:        changeId,
@@ -474,7 +476,7 @@ func (fx *fixture) applyToStore(ctx context.Context, params source.PushStoreChan
 		Timestamp: params.Time.Unix(),
 	})
 	if err != nil {
-		return "", errors.Join(tx.Rollback(), fmt.Errorf("apply change set: %w", err))
+		return "", fmt.Errorf("apply change set: %w", err)
 	}
 	err = tx.Commit()
 	if err != nil {
