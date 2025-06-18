@@ -23,7 +23,7 @@ const (
 
 // NewRouter builds and returns a *gin.Engine with all routes configured.
 
-func (s *Server) NewRouter(mw apicore.ClientCommands, eventService apicore.EventService, openapiYAML []byte, openapiJSON []byte) *gin.Engine {
+func (s *Server) NewRouter(mw apicore.ClientCommands, sessionService apicore.SessionService, eventService apicore.EventService, openapiYAML []byte, openapiJSON []byte) *gin.Engine {
 	isDebug := os.Getenv("ANYTYPE_API_DEBUG") == "1"
 	if !isDebug {
 		gin.SetMode(gin.ReleaseMode)
@@ -77,7 +77,7 @@ func (s *Server) NewRouter(mw apicore.ClientCommands, eventService apicore.Event
 	// API routes
 	v1 := router.Group("/v1")
 	v1.Use(paginator)
-	v1.Use(s.ensureAuthenticated(mw))
+	v1.Use(s.ensureAuthenticated(mw, sessionService))
 	{
 		// Block
 		// TODO: implement create, update and delete block endpoints

@@ -51,7 +51,7 @@ func ensureRateLimit(rate float64, burst int, isRateLimitDisabled bool) gin.Hand
 }
 
 // ensureAuthenticated is a middleware that ensures the request is authenticated.
-func (s *Server) ensureAuthenticated(mw apicore.ClientCommands) gin.HandlerFunc {
+func (s *Server) ensureAuthenticated(mw apicore.ClientCommands, sessionService apicore.SessionService) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		authHeader := c.GetHeader("Authorization")
 		if authHeader == "" {
@@ -67,13 +67,28 @@ func (s *Server) ensureAuthenticated(mw apicore.ClientCommands) gin.HandlerFunc 
 		}
 		key := strings.TrimPrefix(authHeader, "Bearer ")
 
-		// Validate the key - if the key exists in the KeyToToken map, it is considered valid.
+		// Validate the key - if the key exists in the KeyToToken map and the session tied to the token exists, the key is considered valid.
 		// Otherwise, attempt to create a new session using the key and add it to the map upon successful validation.
 		s.mu.Lock()
 		apiSession, exists := s.KeyToToken[key]
 		s.mu.Unlock()
 
-		if !exists {
+		if exists {
+			// Check if the session is active, as it might have been closed after AccountLocalLinkRevokeApp
+			// If it's not active, remove the key from the map and return an unauthorized error.
+			_, sessionExists := sessionService.SessionExists(apiSession.Token)
+			if !sessionExists {
+				s.mu.Lock()
+				delete(s.KeyToToken, key)
+				s.mu.Unlock()
+
+				apiErr := util.CodeToAPIError(http.StatusUnauthorized, ErrMissingAuthorizationHeader.Error())
+				c.AbortWithStatusJSON(http.StatusUnauthorized, apiErr)
+				return
+			}
+		} else {
+			// Create a new session using the provided key
+			// If successful, store the session in the KeyToToken map to improve performance for subsequent requests.
 			response := mw.WalletCreateSession(context.Background(), &pb.RpcWalletCreateSessionRequest{Auth: &pb.RpcWalletCreateSessionRequestAuthOfAppKey{AppKey: key}})
 			if response.Error.Code != pb.RpcWalletCreateSessionResponseError_NULL {
 				apiErr := util.CodeToAPIError(http.StatusUnauthorized, ErrInvalidApiKey.Error())

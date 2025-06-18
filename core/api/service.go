@@ -16,6 +16,7 @@ import (
 	apicore "github.com/anyproto/anytype-heart/core/api/core"
 	"github.com/anyproto/anytype-heart/core/api/server"
 	"github.com/anyproto/anytype-heart/core/event"
+	"github.com/anyproto/anytype-heart/core/session"
 )
 
 const (
@@ -43,6 +44,7 @@ type apiService struct {
 	httpSrv        *http.Server
 	mw             apicore.ClientCommands
 	accountService apicore.AccountService
+	sessionService apicore.SessionService
 	eventService   apicore.EventService
 	listenAddr     string
 	lock           sync.Mutex
@@ -73,7 +75,8 @@ func (s *apiService) Name() (name string) {
 //	@externalDocs.url				https://swagger.io/resources/open-api/
 func (s *apiService) Init(a *app.App) (err error) {
 	s.listenAddr = a.MustComponent(config.CName).(*config.Config).JsonApiListenAddr
-	s.accountService = a.MustComponent(account.CName).(account.Service)
+	s.accountService = a.MustComponent(account.CName).(apicore.AccountService)
+	s.sessionService = a.MustComponent(session.CName).(apicore.SessionService)
 	s.eventService = a.MustComponent(event.CName).(apicore.EventService)
 	return nil
 }
@@ -95,7 +98,7 @@ func (s *apiService) runServer() {
 		return
 	}
 
-	s.srv = server.NewServer(s.mw, s.accountService, s.eventService, openapiYAML, openapiJSON)
+	s.srv = server.NewServer(s.mw, s.accountService, s.sessionService, s.eventService, openapiYAML, openapiJSON)
 
 	s.httpSrv = &http.Server{
 		Addr:              s.listenAddr,

@@ -11,6 +11,10 @@ type AccountService interface {
 	GetInfo(ctx context.Context) (*model.AccountInfo, error)
 }
 
+type SessionService interface {
+	SessionExists(token string) (scope model.AccountAuthLocalApiScope, exists bool)
+}
+
 type EventService interface {
 	Broadcast(event *pb.Event)
 }

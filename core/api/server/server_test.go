@@ -25,12 +25,13 @@ type fixture struct {
 func newFixture(t *testing.T) *fixture {
 	mwMock := mock_apicore.NewMockClientCommands(t)
 	accountService := mock_apicore.NewMockAccountService(t)
+	sessionService := mock_apicore.NewMockSessionService(t)
 	eventService := mock_apicore.NewMockEventService(t)
 	accountService.On("GetInfo", mock.Anything).Return(&model.AccountInfo{
 		GatewayUrl:  mockedGatewayUrl,
 		TechSpaceId: mockedTechSpaceId,
 	}, nil).Once()
-	server := NewServer(mwMock, accountService, eventService, []byte{}, []byte{})
+	server := NewServer(mwMock, accountService, sessionService, eventService, []byte{}, []byte{})
 
 	return &fixture{
 		Server: server,

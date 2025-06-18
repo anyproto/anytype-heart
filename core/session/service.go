@@ -16,6 +16,7 @@ const CName = "session"
 type Service interface {
 	StartSession(privKey []byte, scope model.AccountAuthLocalApiScope) (string, error)
 	ValidateToken(privKey []byte, token string) (model.AccountAuthLocalApiScope, error)
+	SessionExists(token string) (scope model.AccountAuthLocalApiScope, exists bool)
 	StartNewChallenge(scope model.AccountAuthLocalApiScope, info *pb.EventAccountLinkChallengeClientInfo) (id string, value string, err error)
 	SolveChallenge(challengeId string, challengeSolution string, signingKey []byte) (clientInfo *pb.EventAccountLinkChallengeClientInfo, token string, scope model.AccountAuthLocalApiScope, err error)
 
@@ -92,6 +93,16 @@ func (s *service) ValidateToken(privKey []byte, token string) (model.AccountAuth
 	}
 
 	return scope.Scope(), nil
+}
+
+func (s *service) SessionExists(token string) (scope model.AccountAuthLocalApiScope, exists bool) {
+	s.lock.RLock()
+	defer s.lock.RUnlock()
+	if scopeGetter, ok := s.sessions[token]; !ok {
+		return 0, false
+	} else {
+		return scopeGetter.Scope(), true
+	}
 }
 
 func (s *service) CloseSession(token string) error {
