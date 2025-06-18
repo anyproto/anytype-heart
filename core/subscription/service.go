@@ -788,8 +788,7 @@ func (s *spaceSubscriptions) recordsHandler() {
 		}
 	}
 	for {
-		ctx := mb.CtxWithTimeLimit(s.ctx, time.Millisecond*100)
-		records, err := s.recBatch.WaitCond(ctx, mb.WaitCond[database.Record]{Max: 1000})
+		records, err := s.recBatch.Wait(s.ctx)
 		if err != nil {
 			return
 		}
