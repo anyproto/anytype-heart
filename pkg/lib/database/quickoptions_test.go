@@ -114,13 +114,13 @@ func TestQuickOption(t *testing.T) {
 		{
 			"tomorrow",
 			FilterRequest{
-				QuickOption: model.BlockContentDataviewFilter_Yesterday,
+				QuickOption: model.BlockContentDataviewFilter_Tomorrow,
 				RelationKey: relationKey,
 				Condition:   model.BlockContentDataviewFilter_In,
 			},
 			[]FilterRequest{
-				{Condition: model.BlockContentDataviewFilter_LessOrEqual, Value: domain.Int64(todayEnd - dayShift)},
-				{Condition: model.BlockContentDataviewFilter_GreaterOrEqual, Value: domain.Int64(todayStart - dayShift)},
+				{Condition: model.BlockContentDataviewFilter_LessOrEqual, Value: domain.Int64(todayEnd + dayShift)},
+				{Condition: model.BlockContentDataviewFilter_GreaterOrEqual, Value: domain.Int64(todayStart + dayShift)},
 			},
 		}, {
 			"strictly after tomorrow",
@@ -185,7 +185,7 @@ func TestQuickOption(t *testing.T) {
 
 		// next week
 		{
-			"next month",
+			"next week",
 			FilterRequest{
 				QuickOption: model.BlockContentDataviewFilter_NextWeek,
 				RelationKey: relationKey,
