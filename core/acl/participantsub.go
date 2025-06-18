@@ -59,6 +59,7 @@ type participantSub struct {
 }
 
 func (s *participantSub) Run(ctx context.Context) error {
+	s.internalQueue = mb.New[*pb.EventMessage](0)
 	resp, err := s.crossSpaceSubService.Subscribe(subscriptionservice.SubscribeRequest{
 		SubId:             s.id,
 		InternalQueue:     s.internalQueue,
@@ -96,7 +97,7 @@ func (s *participantSub) Run(ctx context.Context) error {
 			log.Debug("participant sub: onAdd error", zap.Error(err))
 		}
 	}
-	go s.monitorMessagePreviews()
+	go s.monitorParicipants()
 	return nil
 }
 
@@ -124,11 +125,21 @@ func (s *participantSub) getIdentity(participantId string) (pubKey crypto.PubKey
 	return crypto.DecodeAccountAddress(identity)
 }
 
-func (s *participantSub) monitorMessagePreviews() {
+func (s *participantSub) getSpaceIdAndIdentity(participantId string) (spaceId string, pubKey crypto.PubKey, err error) {
+	spaceId, identity, err := domain.ParseParticipantId(participantId)
+	if err != nil {
+		log.Error("parse participant id", zap.String("id", participantId), zap.Error(err))
+		return
+	}
+	pubKey, err = crypto.DecodeAccountAddress(identity)
+	return
+}
+
+func (s *participantSub) monitorParicipants() {
 	defer close(s.waiter)
 	matcher := subscriptionservice.EventMatcher{
-		OnAdd: func(spaceId string, add *pb.EventObjectSubscriptionAdd) {
-			pubKey, err := s.getIdentity(add.Id)
+		OnAdd: func(_ string, add *pb.EventObjectSubscriptionAdd) {
+			spaceId, pubKey, err := s.getSpaceIdAndIdentity(add.Id)
 			if err != nil {
 				log.Debug("participant sub: invalid id", zap.String("id", add.Id), zap.Error(err))
 				return
@@ -137,14 +148,14 @@ func (s *participantSub) monitorMessagePreviews() {
 				log.Debug("participant sub: onAdd error", zap.Error(err))
 			}
 		},
-		OnRemove: func(spaceId string, remove *pb.EventObjectSubscriptionRemove) {
-			pubKey, err := s.getIdentity(remove.Id)
+		OnRemove: func(_ string, remove *pb.EventObjectSubscriptionRemove) {
+			spaceId, pubKey, err := s.getSpaceIdAndIdentity(remove.Id)
 			if err != nil {
 				log.Debug("participant sub: invalid id", zap.String("id", remove.Id), zap.Error(err))
 				return
 			}
 			if err := s.onRemove(pubKey, spaceId); err != nil {
-				log.Debug("participant sub: onAdd error", zap.Error(err))
+				log.Debug("participant sub: onRemove error", zap.Error(err))
 			}
 		},
 	}

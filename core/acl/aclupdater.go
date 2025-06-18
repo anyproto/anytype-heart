@@ -37,6 +37,8 @@ func newAclUpdater(
 	ownIdentity string,
 	crossSpaceSubService crossspacesub.Service,
 	remover participantRemover,
+	defaultTimeout time.Duration,
+	maxTimeout time.Duration,
 ) *aclUpdater {
 	queue := minwaitqueue.NewMinWaitQueue[Message](
 		func(ctx context.Context, msg Message) error {
@@ -46,8 +48,8 @@ func newAclUpdater(
 			return !errors.Is(err, ErrRequestNotExists)
 		},
 		minwaitqueue.Config{
-			DefaultTimeout: 1 * time.Second,
-			MaxTimeout:     30 * time.Second,
+			DefaultTimeout: defaultTimeout,
+			MaxTimeout:     maxTimeout,
 		},
 	)
 
