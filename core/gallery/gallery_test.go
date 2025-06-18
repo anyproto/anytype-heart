@@ -38,14 +38,14 @@ func TestIsInWhitelist(t *testing.T) {
 func TestDownloadManifestAndValidateSchema(t *testing.T) {
 	server := startHttpServer()
 	defer server.Close()
-	schema := schemaResponse{Schema: server.URL + "/schema.json"}
+	s := service{}
 
 	t.Run("download knowledge base manifest", func(t *testing.T) {
 		// given
 		url := server.URL + "/manifest.json"
 
 		// when
-		info, err := DownloadManifest(url, false)
+		info, err := s.GetManifest(url, false, false)
 
 		// then
 		assert.NoError(t, err)
@@ -53,22 +53,22 @@ func TestDownloadManifestAndValidateSchema(t *testing.T) {
 	})
 	t.Run("provided info corresponds schema", func(t *testing.T) {
 		// given
-		info := buildInfo()
+		info := buildInfo(server.URL)
 
 		// when
-		err := validateSchema(schema, info)
+		err := validateManifestSchema(info)
 
 		// then
 		assert.NoError(t, err)
 	})
 	t.Run("some required fields are missing", func(t *testing.T) {
 		// given
-		info := buildInfo()
+		info := buildInfo(server.URL)
 		info.Categories = nil
 		info.Description = ""
 
 		// when
-		err := validateSchema(schema, info)
+		err := validateManifestSchema(info)
 
 		// then
 		assert.Error(t, err)
@@ -77,11 +77,11 @@ func TestDownloadManifestAndValidateSchema(t *testing.T) {
 	})
 	t.Run("short description", func(t *testing.T) {
 		// given
-		info := buildInfo()
+		info := buildInfo(server.URL)
 		info.Description = "short"
 
 		// when
-		err := validateSchema(schema, info)
+		err := validateManifestSchema(info)
 
 		// then
 		assert.Error(t, err)
@@ -90,11 +90,11 @@ func TestDownloadManifestAndValidateSchema(t *testing.T) {
 	})
 	t.Run("not existing category", func(t *testing.T) {
 		// given
-		info := buildInfo()
+		info := buildInfo(server.URL)
 		info.Categories = append(info.Categories, "Software Engineering")
 
 		// when
-		err := validateSchema(schema, info)
+		err := validateManifestSchema(info)
 
 		// then
 		assert.Error(t, err)
@@ -102,11 +102,11 @@ func TestDownloadManifestAndValidateSchema(t *testing.T) {
 	})
 	t.Run("author should be a github account", func(t *testing.T) {
 		// given
-		info := buildInfo()
+		info := buildInfo(server.URL)
 		info.Author = "https://johnjohnsonpersonal.blog"
 
 		// when
-		err := validateSchema(schema, info)
+		err := validateManifestSchema(info)
 
 		// then
 		assert.Error(t, err)
@@ -119,7 +119,7 @@ func startHttpServer() *httptest.Server {
 	handler := http.NewServeMux()
 	handler.HandleFunc("/manifest.json", func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		info := buildInfo()
+		info := buildInfo("")
 		rawInfo, _ := json.Marshal(info)
 		_, _ = w.Write(rawInfo)
 	})
@@ -130,8 +130,9 @@ func startHttpServer() *httptest.Server {
 	return httptest.NewServer(handler)
 }
 
-func buildInfo() *model.ManifestInfo {
+func buildInfo(serverURL string) *model.ManifestInfo {
 	return &model.ManifestInfo{
+		Schema:       serverURL + "/schema.json",
 		Id:           "id",
 		Name:         "name",
 		Author:       "https://github.com/anyproto",
