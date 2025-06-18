@@ -9,7 +9,6 @@ import (
 	"time"
 )
 
-// mockTimer implements Timer interface for testing
 type mockTimer struct {
 	c        chan time.Time
 	id       int64
@@ -28,14 +27,12 @@ func (t *mockTimer) Reset(d time.Duration) bool {
 	return t.provider.resetTimer(t.id, d)
 }
 
-// timerInfo holds timer state
 type timerInfo struct {
 	timer      *mockTimer
 	expiryTime time.Time
 	stopped    bool
 }
 
-// mockTimeProvider allows controlling time in tests
 type mockTimeProvider struct {
 	currentTime time.Time
 	timers      map[int64]*timerInfo
@@ -76,7 +73,6 @@ func (m *mockTimeProvider) NewTimer(d time.Duration) Timer {
 		stopped:    false,
 	}
 
-	// If duration is 0 or negative, fire immediately
 	if d <= 0 {
 		timer.c <- m.currentTime
 	}
@@ -110,13 +106,11 @@ func (m *mockTimeProvider) resetTimer(id int64, d time.Duration) bool {
 	info.expiryTime = m.currentTime.Add(d)
 	info.stopped = false
 
-	// Drain channel if needed
 	select {
 	case <-info.timer.c:
 	default:
 	}
 
-	// If duration is 0 or negative, fire immediately
 	if d <= 0 {
 		select {
 		case info.timer.c <- m.currentTime:
@@ -133,25 +127,21 @@ func (m *mockTimeProvider) Advance(d time.Duration) {
 
 	m.currentTime = m.currentTime.Add(d)
 
-	// Fire any timers that have expired
 	for _, info := range m.timers {
 		if !info.stopped && info.expiryTime.Before(m.currentTime.Add(time.Nanosecond)) {
 			select {
 			case info.timer.c <- m.currentTime:
 				info.stopped = true
 			default:
-				// Channel full, timer will be handled on next advance
 			}
 		}
 	}
 }
 
-// waitForProcessing helps ensure async operations complete
 func waitForProcessing() {
 	time.Sleep(10 * time.Millisecond)
 }
 
-// Test helpers
 type testMessage struct {
 	ID      string
 	Content string
@@ -167,7 +157,7 @@ func TestMinWaitQueue_BasicOperation(t *testing.T) {
 	}
 
 	evaluate := func(err error) bool {
-		return false // No retries
+		return false
 	}
 
 	config := Config{
@@ -180,33 +170,28 @@ func TestMinWaitQueue_BasicOperation(t *testing.T) {
 	queue.Run()
 	defer queue.Close()
 
-	// Add items with different timeouts
 	queue.AddUpdate("1", testMessage{ID: "1", Content: "first"}, 200*time.Millisecond)
 	queue.AddUpdate("2", testMessage{ID: "2", Content: "second"}, 100*time.Millisecond)
 	queue.AddUpdate("3", testMessage{ID: "3", Content: "third"}, 300*time.Millisecond)
 
-	// Advance time to process first item (100ms timeout)
 	mockTime.Advance(100 * time.Millisecond)
 	msg := <-processedItems
 	if msg.ID != "2" {
 		t.Errorf("Expected item 2 first, got %s", msg.ID)
 	}
 
-	// Advance to process second item (200ms total)
 	mockTime.Advance(100 * time.Millisecond)
 	msg = <-processedItems
 	if msg.ID != "1" {
 		t.Errorf("Expected item 1 second, got %s", msg.ID)
 	}
 
-	// Advance to process third item (300ms total)
 	mockTime.Advance(100 * time.Millisecond)
 	msg = <-processedItems
 	if msg.ID != "3" {
 		t.Errorf("Expected item 3 third, got %s", msg.ID)
 	}
 
-	// Verify queue is empty
 	if queue.Len() != 0 {
 		t.Errorf("Expected queue to be empty, got %d items", queue.Len())
 	}
@@ -235,17 +220,13 @@ func TestMinWaitQueue_UpdateExisting(t *testing.T) {
 	queue.Run()
 	defer queue.Close()
 
-	// Add item with long timeout
 	queue.AddUpdate("1", testMessage{ID: "1", Content: "first"}, 500*time.Millisecond)
 
-	// Advance time partially
 	mockTime.Advance(100 * time.Millisecond)
-	waitForProcessing() // Let the queue process the timer change
+	waitForProcessing()
 
-	// Update same item with shorter timeout and new content
 	queue.AddUpdate("1", testMessage{ID: "1", Content: "updated"}, 50*time.Millisecond)
 
-	// Item should now process after 50ms instead of original 400ms remaining
 	mockTime.Advance(50 * time.Millisecond)
 
 	select {
@@ -281,24 +262,19 @@ func TestMinWaitQueue_RemoveUpdate(t *testing.T) {
 	queue.Run()
 	defer queue.Close()
 
-	// Add items
 	queue.AddUpdate("1", testMessage{ID: "1", Content: "first"}, 100*time.Millisecond)
 	queue.AddUpdate("2", testMessage{ID: "2", Content: "second"}, 200*time.Millisecond)
 
-	// Remove first item
 	queue.RemoveUpdate("1")
 
-	// Advance time - first item should not process
 	mockTime.Advance(100 * time.Millisecond)
 
 	select {
 	case <-processedItems:
 		t.Error("Should not have processed any items yet")
 	case <-time.After(20 * time.Millisecond):
-		// Expected timeout
 	}
 
-	// Advance more time - second item should process
 	mockTime.Advance(100 * time.Millisecond)
 
 	select {
@@ -347,24 +323,19 @@ func TestMinWaitQueue_RetryWithBackoff(t *testing.T) {
 	initialTimeout := 40 * time.Millisecond
 	queue.AddUpdate("1", testMessage{ID: "1", Content: "retry"}, initialTimeout)
 
-	// First attempt after initial timeout
 	mockTime.Advance(initialTimeout)
 	waitForProcessing()
 
-	// Second attempt after 40ms * 1.5 = 60ms
 	mockTime.Advance(60 * time.Millisecond)
 	waitForProcessing()
 
-	// Third attempt after 60ms * 1.5 = 90ms
 	mockTime.Advance(90 * time.Millisecond)
 	waitForProcessing()
 
-	// Verify attempts
 	if count := atomic.LoadInt32(&attemptCount); count != 3 {
 		t.Errorf("Expected 3 attempts, got %d", count)
 	}
 
-	// Verify timing
 	mu.Lock()
 	defer mu.Unlock()
 
@@ -372,7 +343,6 @@ func TestMinWaitQueue_RetryWithBackoff(t *testing.T) {
 		t.Fatalf("Expected 3 attempt times, got %d", len(attemptTimes))
 	}
 
-	// Check intervals between attempts (allowing some tolerance)
 	firstInterval := attemptTimes[1].Sub(attemptTimes[0])
 	if firstInterval < 55*time.Millisecond || firstInterval > 65*time.Millisecond {
 		t.Errorf("First retry interval wrong: expected ~60ms, got %v", firstInterval)
@@ -415,15 +385,12 @@ func TestMinWaitQueue_MaxTimeout(t *testing.T) {
 
 	queue.AddUpdate("1", testMessage{ID: "1", Content: "test"}, 120*time.Millisecond)
 
-	// First attempt
 	mockTime.Advance(120 * time.Millisecond)
 	waitForProcessing()
 
-	// Second attempt - would be 120 * 1.5 = 180ms, but capped at 150ms
 	mockTime.Advance(150 * time.Millisecond)
 	waitForProcessing()
 
-	// Third attempt - still capped at 150ms
 	mockTime.Advance(150 * time.Millisecond)
 	waitForProcessing()
 
@@ -434,7 +401,6 @@ func TestMinWaitQueue_MaxTimeout(t *testing.T) {
 		t.Fatalf("Expected 3 attempts, got %d", len(attemptTimes))
 	}
 
-	// Verify timeouts were capped (with tolerance)
 	gap1 := attemptTimes[1].Sub(attemptTimes[0])
 	if gap1 < 145*time.Millisecond || gap1 > 155*time.Millisecond {
 		t.Errorf("First retry gap should be capped at ~150ms, got %v", gap1)
@@ -469,11 +435,9 @@ func TestMinWaitQueue_ZeroTimeout(t *testing.T) {
 	queue.Run()
 	defer queue.Close()
 
-	// Add item with zero timeout
 	msg := testMessage{ID: "1", Content: "immediate"}
 	queue.AddUpdate("1", msg, 0)
 
-	// Should process immediately without advancing time
 	select {
 	case receivedMsg := <-processed:
 		if receivedMsg.ID != msg.ID {
@@ -507,7 +471,6 @@ func TestMinWaitQueue_ConcurrentOperations(t *testing.T) {
 	queue.Run()
 	defer queue.Close()
 
-	// Concurrent adds
 	var wg sync.WaitGroup
 	for i := 0; i < 10; i++ {
 		wg.Add(1)
@@ -521,12 +484,10 @@ func TestMinWaitQueue_ConcurrentOperations(t *testing.T) {
 		}(i)
 	}
 
-	// Concurrent removes (remove items 5, 6, 7)
 	for i := 5; i < 8; i++ {
 		wg.Add(1)
 		go func(id int) {
 			defer wg.Done()
-			// Small delay to ensure items are added first
 			time.Sleep(5 * time.Millisecond)
 			queue.RemoveUpdate(string(rune('0' + id)))
 		}(i)
@@ -534,13 +495,11 @@ func TestMinWaitQueue_ConcurrentOperations(t *testing.T) {
 
 	wg.Wait()
 
-	// Process all items by advancing time
 	for i := 0; i < 10; i++ {
 		mockTime.Advance(10 * time.Millisecond)
 		waitForProcessing()
 	}
 
-	// Should have processed 7 items (10 added - 3 removed)
 	count := atomic.LoadInt32(&processedCount)
 	if count != 7 {
 		t.Errorf("Expected 7 items to be processed, got %d", count)
@@ -571,31 +530,24 @@ func TestMinWaitQueue_CloseWhileProcessing(t *testing.T) {
 	queue := NewMinWaitQueue(updateFunc, evaluate, config)
 	queue.Run()
 
-	// Add item that will block
 	queue.AddUpdate("1", testMessage{ID: "1", Content: "test"}, 0)
 
-	// Wait for processing to start
 	<-started
 
-	// Close queue in another goroutine
 	closeDone := make(chan struct{})
 	go func() {
 		queue.Close()
 		close(closeDone)
 	}()
 
-	// Unblock the update function
 	close(blockCh)
 
-	// Close should complete
 	select {
 	case <-closeDone:
-		// Good
 	case <-time.After(100 * time.Millisecond):
 		t.Error("Close did not complete in time")
 	}
 
-	// Should not accept new items
 	err := queue.AddUpdate("2", testMessage{ID: "2", Content: "test"}, 0)
 	if err != context.Canceled {
 		t.Errorf("Expected context.Canceled error, got %v", err)
@@ -625,16 +577,13 @@ func TestMinWaitQueue_ImmediateProcessing(t *testing.T) {
 	queue.Run()
 	defer queue.Close()
 
-	// Add multiple items with zero timeout
 	for i := 0; i < 5; i++ {
 		queue.AddUpdate(string(rune('0'+i)), testMessage{ID: string(rune('0' + i))}, 0)
 	}
 
-	// All should process immediately
 	for i := 0; i < 5; i++ {
 		select {
 		case <-processed:
-			// Good
 		case <-time.After(50 * time.Millisecond):
 			t.Errorf("Item %d not processed immediately", i)
 		}
@@ -664,7 +613,6 @@ func TestMinWaitQueue_TimerReuse(t *testing.T) {
 	queue.Run()
 	defer queue.Close()
 
-	// Process multiple items sequentially to test timer reuse
 	for i := 0; i < 3; i++ {
 		queue.AddUpdate(string(rune('0'+i)), testMessage{ID: string(rune('0' + i))}, 50*time.Millisecond)
 		mockTime.Advance(50 * time.Millisecond)
