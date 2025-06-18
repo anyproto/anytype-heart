@@ -59,7 +59,9 @@ type Service interface {
 	GetFileData(ctx context.Context, objectId string) (files.File, error)
 	GetImageData(ctx context.Context, objectId string) (files.Image, error)
 
+	GetObjectDetailsByFileIdCrossSpace(fileId string) (string, *domain.Details, error)
 	GetObjectDetailsByFileId(fileId domain.FullFileId) (string, *domain.Details, error)
+
 	MigrateFileIdsInDetails(st *state.State, spc source.Space)
 	MigrateFileIdsInBlocks(st *state.State, spc source.Space)
 	MigrateFiles(st *state.State, spc source.Space, keysChanges []*pb.ChangeFileKeys)
@@ -426,6 +428,27 @@ func (s *service) addToSyncQueue(objectId string, fileId domain.FullFileId, uplo
 		return fmt.Errorf("add file to sync queue: %w", err)
 	}
 	return nil
+}
+
+func (s *service) GetObjectDetailsByFileIdCrossSpace(fileId string) (string, *domain.Details, error) {
+	records, err := s.objectStore.QueryCrossSpace(database.Query{
+		Filters: []database.FilterRequest{
+			{
+				RelationKey: bundle.RelationKeyFileId,
+				Condition:   model.BlockContentDataviewFilter_Equal,
+				Value:       domain.String(fileId),
+			},
+		},
+	})
+
+	if err != nil {
+		return "", nil, fmt.Errorf("query objects by file hash: %w", err)
+	}
+	if len(records) == 0 {
+		return "", nil, filemodels.ErrObjectNotFound
+	}
+	details := records[0].Details
+	return details.GetString(bundle.RelationKeyId), details, nil
 }
 
 func (s *service) GetObjectDetailsByFileId(fileId domain.FullFileId) (string, *domain.Details, error) {
