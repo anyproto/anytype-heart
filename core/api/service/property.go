@@ -379,7 +379,7 @@ func (s *Service) processProperties(ctx context.Context, spaceId string, entries
 			continue
 		}
 		if slices.Contains(bundle.LocalAndDerivedRelationKeys, domain.RelationKey(key)) {
-			return nil, util.ErrBadInput("property '" + key + "' cannot be set directly")
+			return nil, util.ErrBadInput("property '" + key + "' cannot be set directly as it is a reserved system property")
 		}
 		prop, ok := propertyMap[rk]
 		if !ok {
