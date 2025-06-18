@@ -444,11 +444,13 @@ func (s *Service) sanitizeAndValidatePropertyValue(spaceId string, key string, f
 			return nil, util.ErrBadInput("property '" + key + "' must be a string (date in RFC3339 format)")
 		}
 		dateStr = s.sanitizedString(dateStr)
-		t, err := time.Parse(time.RFC3339, dateStr)
-		if err != nil {
-			return nil, util.ErrBadInput("invalid date format for '" + key + "': " + dateStr)
+		layouts := []string{time.RFC3339, time.DateOnly}
+		for _, layout := range layouts {
+			if t, err := time.Parse(layout, dateStr); err == nil {
+				return t.Unix(), nil
+			}
 		}
-		return t.Unix(), nil
+		return nil, util.ErrBadInput("invalid date format for '" + key + "': " + dateStr)
 	case apimodel.PropertyFormatCheckbox:
 		b, ok := value.(bool)
 		if !ok {
