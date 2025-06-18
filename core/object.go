@@ -375,6 +375,7 @@ func (mw *Middleware) ObjectGraph(cctx context.Context, req *pb.RpcObjectGraphRe
 		SpaceId:          req.SpaceId,
 		CollectionId:     req.CollectionId,
 		SetSource:        req.SetSource,
+		IncludeTypeEdges: req.IncludeTypeEdges,
 	})
 	if err != nil {
 		return unknownError(err)

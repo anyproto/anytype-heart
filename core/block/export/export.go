@@ -1188,7 +1188,10 @@ func (e *exportContext) saveFile(ctx context.Context, wr writer, fileObject sb.S
 		return "", fmt.Errorf("get file: %w", err)
 	}
 	if strings.HasPrefix(file.MimeType(), "image") {
-		image := fileObjectComponent.GetImage()
+		image, err := fileObjectComponent.GetImage()
+		if err != nil {
+			return "", fmt.Errorf("get image: %w", err)
+		}
 		file, err = image.GetOriginalFile()
 		if err != nil {
 			return "", err

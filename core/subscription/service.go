@@ -225,10 +225,14 @@ func (s *service) SubscribeGroups(req SubscribeGroupsRequest) (*pb.RpcObjectGrou
 
 func (s *service) Unsubscribe(subIds ...string) (err error) {
 	s.lock.Lock()
+	subs := make([]*spaceSubscriptions, 0, len(s.spaceSubs))
 	for _, spaceSub := range s.spaceSubs {
-		err = errors.Join(spaceSub.Unsubscribe(subIds...))
+		subs = append(subs, spaceSub)
 	}
 	s.lock.Unlock()
+	for _, spaceSub := range subs {
+		err = errors.Join(spaceSub.Unsubscribe(subIds...))
+	}
 	return err
 }
 
@@ -614,9 +618,6 @@ type SubscribeGroupsRequest struct {
 func (s *spaceSubscriptions) SubscribeGroups(req SubscribeGroupsRequest) (*pb.RpcObjectGroupsSubscribeResponse, error) {
 	subId := ""
 
-	s.m.Lock()
-	defer s.m.Unlock()
-
 	q := database.Query{
 		Filters: req.Filters,
 	}
@@ -677,6 +678,9 @@ func (s *spaceSubscriptions) SubscribeGroups(req SubscribeGroupsRequest) (*pb.Rp
 		if subId == "" {
 			subId = bson.NewObjectId().Hex()
 		}
+
+		s.m.Lock()
+		defer s.m.Unlock()
 
 		var sub subscription
 		if colObserver != nil {
@@ -784,7 +788,8 @@ func (s *spaceSubscriptions) recordsHandler() {
 		}
 	}
 	for {
-		records, err := s.recBatch.Wait(s.ctx)
+		ctx := mb.CtxWithTimeLimit(s.ctx, time.Millisecond*100)
+		records, err := s.recBatch.WaitCond(ctx, mb.WaitCond[database.Record]{Max: 1000})
 		if err != nil {
 			return
 		}

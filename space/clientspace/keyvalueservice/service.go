@@ -61,6 +61,8 @@ type service struct {
 	lock          sync.RWMutex
 	subscriptions map[string]map[string]subscription
 
+	subscriptionBuf []subscription
+
 	keyValueStore keyvaluestorage.Storage
 	spaceCore     commonspace.Space
 	observer      keyvalueobserver.Observer
@@ -127,13 +129,20 @@ func (s *service) observeChanges(decryptor keyvaluestorage.Decryptor, kvs []inne
 			continue
 		}
 
+		// s.subscriptionBuf is safe to use without a lock because observeChanges runs only in one goroutine, and this buffer
+		// isn't used anywhere else
+		s.subscriptionBuf = s.subscriptionBuf[:0]
+
 		s.lock.RLock()
 		byKey := s.subscriptions[value.Key]
 		for _, sub := range byKey {
-			sub.observerFunc(value.Key, value)
+			s.subscriptionBuf = append(s.subscriptionBuf, sub)
 		}
 		s.lock.RUnlock()
 
+		for _, sub := range s.subscriptionBuf {
+			sub.observerFunc(value.Key, value)
+		}
 	}
 }
 

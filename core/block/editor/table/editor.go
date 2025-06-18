@@ -6,6 +6,8 @@ import (
 	"sort"
 
 	"github.com/globalsign/mgo/bson"
+	"golang.org/x/text/collate"
+	"golang.org/x/text/language"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
@@ -630,8 +632,9 @@ func (t *editor) Sort(s *state.State, req pb.RpcBlockTableSortRequest) error {
 
 	rows := s.Get(tb.Rows().Id)
 	sorter := tableSorter{
-		rowIDs: make([]string, 0, len(rows.Model().ChildrenIds)),
-		values: make([]string, len(rows.Model().ChildrenIds)),
+		rowIDs:   make([]string, 0, len(rows.Model().ChildrenIds)),
+		values:   make([]string, len(rows.Model().ChildrenIds)),
+		collator: collate.New(language.Und),
 	}
 
 	var headers []string

@@ -59,7 +59,10 @@ type Service interface {
 	GetFileData(ctx context.Context, objectId string) (files.File, error)
 	GetImageData(ctx context.Context, objectId string) (files.Image, error)
 
+	GetImageDataFromRawId(ctx context.Context, fileId domain.FileId) (files.Image, error)
+
 	GetObjectDetailsByFileId(fileId domain.FullFileId) (string, *domain.Details, error)
+
 	MigrateFileIdsInDetails(st *state.State, spc source.Space)
 	MigrateFileIdsInBlocks(st *state.State, spc source.Space)
 	MigrateFiles(st *state.State, spc source.Space, keysChanges []*pb.ChangeFileKeys)
@@ -511,10 +514,27 @@ func (s *service) GetFileData(ctx context.Context, objectId string) (files.File,
 func (s *service) GetImageData(ctx context.Context, objectId string) (files.Image, error) {
 	var img files.Image
 	err := s.DoFileWaitLoad(ctx, objectId, func(object fileobject.FileObject) error {
-		img = object.GetImage()
-		return nil
+		var err error
+		img, err = object.GetImage()
+		return err
 	})
 	return img, err
+}
+
+func (s *service) GetImageDataFromRawId(ctx context.Context, fileId domain.FileId) (files.Image, error) {
+	keys, err := s.objectStore.GetFileKeys(fileId)
+	if err != nil {
+		return nil, fmt.Errorf("get file keys: %w", err)
+	}
+
+	fullId := domain.FullFileId{
+		FileId: fileId,
+	}
+	variants, err := s.fileService.GetFileVariants(ctx, fullId, keys)
+	if err != nil {
+		return nil, fmt.Errorf("get file variants: %w", err)
+	}
+	return files.NewImage(s.fileService, fullId, variants), nil
 }
 
 func (s *service) resolveSpaceIdWithRetry(ctx context.Context, objectId string) (string, error) {

@@ -105,7 +105,7 @@ func (s *dsObjectStore) UpdateObjectLinks(ctx context.Context, id string, links 
 		return err
 	}
 
-	s.subManager.updateObjectLinks(id, added, removed)
+	s.subManager.updateObjectLinks(domain.FullID{SpaceID: s.SpaceId(), ObjectID: id}, added, removed)
 
 	return nil
 }

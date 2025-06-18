@@ -693,6 +693,7 @@ message Rpc {
                 oneof auth {
                     string mnemonic = 1; // cold auth
                     string appKey = 2; // persistent app key, that can be used to restore session
+                    string token = 3; // token from the previous session
                 }
             }
 
@@ -1385,7 +1386,7 @@ message Rpc {
             message Request {
                 google.protobuf.Struct details = 1; // object details
                 anytype.Rpc.Object.ImportUseCase.Request.UseCase useCase = 2; // use case
-                bool withChat = 3; // create space-level chat; temporary solution, should be removed after chats released for all users
+                bool withChat = 3; // deprecated
             }
 
             message Response {
@@ -1705,6 +1706,30 @@ message Rpc {
     }
 
     message Object {
+        message Refresh {
+            message Request {
+                string objectId = 1;
+                string spaceId = 2;
+            }
+
+            message Response {
+                Error error = 1;
+
+                message Error {
+                    Code code = 1;
+                    string description = 2;
+
+                    enum Code {
+                        NULL = 0;
+                        UNKNOWN_ERROR = 1;
+                        BAD_INPUT = 2;
+
+                        OBJECT_DELETED = 4;
+                    }
+                }
+            }
+        }
+
         message Open {
             message Request {
                 string contextId = 1; // id of the context blo1k
@@ -2228,6 +2253,7 @@ message Rpc {
                 string spaceId = 5;
                 string collectionId = 6;
                 repeated string setSource = 7;
+                bool includeTypeEdges = 8;
             }
 
             message Edge {
@@ -7966,6 +7992,71 @@ message Rpc {
                 }
             }
         }
+
+        message CodeGetInfo {
+            message Request {
+                string code = 1;
+            }
+
+            message Response {
+                Error error = 1;
+
+                // which tier current code can unlock
+                uint32 requestedTier = 2;
+
+                message Error {
+                    Code code = 1;
+                    string description = 2;
+
+                    enum Code {
+                        NULL = 0;
+                        UNKNOWN_ERROR = 1;
+                        BAD_INPUT = 2;
+
+                        NOT_LOGGED_IN = 3;
+                        PAYMENT_NODE_ERROR = 4;
+
+                        CODE_NOT_FOUND = 5;
+                        CODE_ALREADY_USED = 6;
+                    }
+                }
+            }
+        }
+
+        message CodeRedeem {
+            message Request {
+                string code = 1;
+
+                string nsName = 2;
+
+                anytype.model.NameserviceNameType nsNameType = 3;
+            }
+
+            message Response {
+                Error error = 1;
+
+                // which tier does the current code unlock
+                uint32 requestedTier = 2;
+
+                message Error {
+                    Code code = 1;
+                    string description = 2;
+
+                    enum Code {
+                        NULL = 0;
+                        UNKNOWN_ERROR = 1;
+                        BAD_INPUT = 2;
+
+                        NOT_LOGGED_IN = 3;
+                        PAYMENT_NODE_ERROR = 4;
+
+                        CODE_NOT_FOUND = 5;
+                        CODE_ALREADY_USED = 6;
+                        BAD_ANYNAME = 7;
+                    }
+                }
+            }
+        }
     }
 
     message NameService {
@@ -8508,6 +8599,28 @@ message Rpc {
                 }
             }
         }
+
+
+        message ReadAll {
+            message Request {}
+
+            message Response {
+                Error error = 1;
+
+                message Error {
+                    Code code = 1;
+                    string description = 2;
+
+                    enum Code {
+                        NULL = 0;
+                        UNKNOWN_ERROR = 1;
+                        BAD_INPUT = 2;
+                        // ...
+                    }
+                }
+            }
+        }
+
     }
     message PushNotification {
         message RegisterToken {

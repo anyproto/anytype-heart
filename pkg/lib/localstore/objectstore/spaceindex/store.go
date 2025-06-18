@@ -172,7 +172,7 @@ func (s *dsObjectStore) Init() error {
 }
 
 type LinksUpdateInfo struct {
-	LinksFromId    string
+	LinksFromId    domain.FullID
 	Added, Removed []string
 }
 
@@ -214,7 +214,7 @@ func (s *dsObjectStore) initCollections(ctx context.Context) error {
 			Fields: []string{bundle.RelationKeySource.String()},
 		},
 		{
-			Name:   "layout",
+			Name:   "resolvedLayout",
 			Fields: []string{bundle.RelationKeyResolvedLayout.String()},
 		},
 		{
@@ -308,6 +308,7 @@ func (s *dsObjectStore) addIndexes(ctx context.Context, coll anystore.Collection
 		}
 	}
 	if len(toCreate) > 0 {
+		coll.GetIndexes()
 		return coll.EnsureIndex(ctx, toCreate...)
 	}
 	return nil
