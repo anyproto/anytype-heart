@@ -9,6 +9,7 @@ import (
 	"go.uber.org/zap"
 
 	"github.com/anyproto/anytype-heart/core/acl/minwaitqueue"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/subscription/crossspacesub"
 )
 
@@ -58,11 +59,13 @@ func newAclUpdater(
 		ownIdentity,
 		crossSpaceSubService,
 		func(identity crypto.PubKey, spaceId string) error {
-			queue.RemoveUpdate(spaceId)
+			id := domain.NewParticipantId(spaceId, identity.Account())
+			queue.RemoveUpdate(id)
 			return nil
 		},
 		func(identity crypto.PubKey, spaceId string) error {
-			return queue.AddUpdate(spaceId, Message{
+			id := domain.NewParticipantId(spaceId, identity.Account())
+			return queue.AddUpdate(id, Message{
 				SpaceId:  spaceId,
 				Identity: identity,
 			}, 0)
