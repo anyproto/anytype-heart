@@ -3,6 +3,7 @@ package core
 import (
 	"context"
 	"fmt"
+	"os"
 
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/util/crypto"
@@ -59,10 +60,13 @@ func (mw *Middleware) SpaceMakeShareable(cctx context.Context, req *pb.RpcSpaceM
 			},
 		}
 	}
-	err = mw.doBlockService(func(bs *block.Service) (err error) {
-		err = bs.SpaceInitChat(cctx, req.SpaceId)
-		return err
-	})
+
+	if os.Getenv("ANYTYPE_EXPERIMENTAL_CHAT") == "1" {
+		err = mw.doBlockService(func(bs *block.Service) (err error) {
+			err = bs.SpaceInitChat(cctx, req.SpaceId)
+			return err
+		})
+	}
 
 	if err != nil {
 		return &pb.RpcSpaceMakeShareableResponse{
