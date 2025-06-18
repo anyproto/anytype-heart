@@ -63,7 +63,7 @@ func newAclUpdater(
 			return queue.AddUpdate(spaceId, Message{
 				SpaceId:  spaceId,
 				Identity: identity,
-			}, 100*time.Millisecond)
+			}, 0)
 		},
 	)
 

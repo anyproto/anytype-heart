@@ -97,7 +97,7 @@ func TestSubscribe(t *testing.T) {
 		})
 
 		// Subscribe
-		resp, err := fx.Subscribe(givenRequest())
+		resp, err := fx.Subscribe(givenRequest(), NoOpPredicate())
 		require.NoError(t, err)
 		require.NotNil(t, resp)
 		assert.NotEmpty(t, resp.SubId)
@@ -156,7 +156,7 @@ func TestSubscribe(t *testing.T) {
 		defer cancel()
 
 		// Subscribe
-		resp, err := fx.Subscribe(givenRequest())
+		resp, err := fx.Subscribe(givenRequest(), NoOpPredicate())
 		require.NoError(t, err)
 		require.NotNil(t, resp)
 		assert.NotEmpty(t, resp.SubId)
@@ -262,7 +262,7 @@ func TestSubscribe(t *testing.T) {
 		})
 
 		// Subscribe
-		resp, err := fx.Subscribe(givenRequest())
+		resp, err := fx.Subscribe(givenRequest(), NoOpPredicate())
 		require.NoError(t, err)
 		require.NotNil(t, resp)
 		assert.NotEmpty(t, resp.SubId)
@@ -308,7 +308,7 @@ func TestSubscribe(t *testing.T) {
 		})
 
 		// Subscribe
-		resp, err := fx.Subscribe(givenRequest())
+		resp, err := fx.Subscribe(givenRequest(), NoOpPredicate())
 		require.NoError(t, err)
 		require.NotNil(t, resp)
 		assert.NotEmpty(t, resp.SubId)
@@ -342,7 +342,7 @@ func TestUnsubscribe(t *testing.T) {
 		})
 
 		// Subscribe
-		resp, err := fx.Subscribe(givenRequest())
+		resp, err := fx.Subscribe(givenRequest(), NoOpPredicate())
 		require.NoError(t, err)
 		require.NotNil(t, resp)
 		assert.NotEmpty(t, resp.SubId)

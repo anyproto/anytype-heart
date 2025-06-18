@@ -104,9 +104,11 @@ func (s *service) Subscribe(req subscriptionservice.SubscribeRequest, predicate 
 	s.lock.Lock()
 	defer s.lock.Unlock()
 	var initialIds []string
-	for spaceId, details := range s.spaceViewDetails {
-		if predicate(details) {
-			initialIds = append(initialIds, spaceId)
+	for spaceViewId, details := range s.spaceViewDetails {
+		if predicate(details) && spaceIsAvailable(details) {
+			if targetSpaceId, ok := s.spaceViewTargetIds[spaceViewId]; ok {
+				initialIds = append(initialIds, targetSpaceId)
+			}
 		}
 	}
 	spaceSub, resp, err := newCrossSpaceSubscription(req.SubId, req, s.eventSender, s.subscriptionService, initialIds, predicate)
