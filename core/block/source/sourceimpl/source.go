@@ -21,6 +21,7 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/editor/template"
+	"github.com/anyproto/anytype-heart/core/block/object/objecthandler"
 	"github.com/anyproto/anytype-heart/core/block/source"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/files"
@@ -574,15 +575,18 @@ func BuildState(spaceId string, initState *state.State, ot objecttree.ReadableOb
 	}
 
 	// todo: can we avoid unmarshaling here? we already had this data
-	_, uniqueKeyInternalKey, err := typeprovider.GetTypeAndKeyFromRoot(ot.Header())
+	sbt, uniqueKeyInternalKey, err := typeprovider.GetTypeAndKeyFromRoot(ot.Header())
 	if err != nil {
 		return
 	}
+
+	smartblockHandler := objecthandler.GetSmartblockHandler(sbt)
+
 	var lastMigrationVersion uint32
 	err = ot.IterateFrom(startId, NewUnmarshalTreeChange(),
 		func(change *objecttree.Change) bool {
 			count++
-			lastChange = change
+
 			// that means that we are starting from tree root
 			if change.Id == ot.Id() {
 				if st != nil {
@@ -597,6 +601,11 @@ func BuildState(spaceId string, initState *state.State, ot objecttree.ReadableOb
 			}
 
 			model := change.Model.(*pb.Change)
+
+			if !smartblockHandler.SkipChangeToSetLastModifiedDate(model) {
+				lastChange = change
+			}
+
 			if model.Version > lastMigrationVersion {
 				lastMigrationVersion = model.Version
 			}
