@@ -3,7 +3,7 @@
 ## Part 1: YAML Front Matter Support
 
 ### Overview
-We've implemented YAML front matter support for markdown import that parses metadata at the beginning of markdown files and converts it to Anytype object properties.
+We've implemented YAML front matter support for markdown import that parses metadata at the beginning of markdown files and converts it to Anytype object properties. The YAML frontmatter functionality has been moved to a dedicated sub-package `yamlfm` for better modularity.
 
 ## Key Features
 
@@ -43,25 +43,34 @@ We've implemented YAML front matter support for markdown import that parses meta
 
 ### Files Modified/Created
 
-1. **yamlfrontmatter.go** (Created)
+1. **yamlfm/yamlfrontmatter.go** (Created in sub-package)
    - Main YAML parsing logic
-   - `extractYAMLFrontMatter()`: Extracts YAML block
-   - `parseYAMLFrontMatter()`: Parses YAML and returns structured result
+   - `ExtractYAMLFrontMatter()`: Extracts YAML block
+   - `ParseYAMLFrontMatter()`: Parses YAML and returns structured result
+   - `ParseYAMLFrontMatterWithResolver()`: Parses with schema-based property resolution
    - `processYAMLProperty()`: Handles individual property conversion
-   - `tryParseDate()`: Date parsing with multiple format support
+   - `parseDate()`: Date parsing with multiple format support
 
-2. **blockconverter.go** (Modified)
-   - Integrated YAML parsing into the conversion flow
-   - Stores YAML properties in FileInfo structure
-
-3. **import.go** (Modified)
-   - Creates relation snapshots from YAML properties
-   - Handles object type assignment
-   - Updated `getRelationDetails()` to support date include time flag
-
-4. **yamlfrontmatter_test.go** (Created)
+2. **yamlfm/yamlfrontmatter_test.go** (Created in sub-package)
    - Comprehensive tests for YAML parsing
    - Tests for date handling with time.Time values
+
+3. **yamlfm/yaml_resolver_test.go** (Created in sub-package)
+   - Tests for property resolver interface
+
+4. **blockconverter.go** (Modified)
+   - Integrated YAML parsing into the conversion flow
+   - Uses yamlfm package for YAML extraction and parsing
+   - Stores YAML properties in FileInfo structure
+
+5. **import.go** (Modified)
+   - Creates relation snapshots from YAML properties
+   - Handles object type assignment
+   - Updated to use yamlfm.Property type
+
+6. **schema.go** (Modified)
+   - Implements yamlfm.PropertyResolver interface
+   - Provides schema-based property resolution
 
 ## Example Usage
 

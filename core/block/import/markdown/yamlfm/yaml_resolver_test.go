@@ -1,4 +1,4 @@
-package markdown
+package yamlfm
 
 import (
 	"testing"
@@ -9,7 +9,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-// MockResolver implements YAMLPropertyResolver for testing
+// MockResolver implements PropertyResolver for testing
 type MockResolver struct {
 	properties map[string]string
 }
@@ -45,26 +45,26 @@ Status: In Progress
 Priority: 1
 Unknown Field: test`)
 
-		result, err := parseYAMLFrontMatterWithResolver(frontMatter, resolver)
+		result, err := ParseYAMLFrontMatterWithResolver(frontMatter, resolver)
 		require.NoError(t, err)
 		require.NotNil(t, result)
 
 		// Find properties by name
-		propMap := make(map[string]*yamlProperty)
+		propMap := make(map[string]*Property)
 		for i := range result.Properties {
 			prop := &result.Properties[i]
-			propMap[prop.name] = prop
+			propMap[prop.Name] = prop
 		}
 
 		// Verify known properties use resolver keys
-		assert.Equal(t, "task_title", propMap["Title"].key)
-		assert.Equal(t, "task_status", propMap["Status"].key)
-		assert.Equal(t, "task_priority", propMap["Priority"].key)
+		assert.Equal(t, "task_title", propMap["Title"].Key)
+		assert.Equal(t, "task_status", propMap["Status"].Key)
+		assert.Equal(t, "task_priority", propMap["Priority"].Key)
 
 		// Verify unknown property gets generated key
 		unknownProp := propMap["Unknown Field"]
-		assert.Len(t, unknownProp.key, 24) // BSON ID length
-		assert.Regexp(t, "^[0-9a-f]{24}$", unknownProp.key)
+		assert.Len(t, unknownProp.Key, 24) // BSON ID length
+		assert.Regexp(t, "^[0-9a-f]{24}$", unknownProp.Key)
 	})
 
 	t.Run("falls back to generated keys without resolver", func(t *testing.T) {
@@ -72,14 +72,14 @@ Unknown Field: test`)
 Author: John Doe
 Date: 2024-01-15`)
 
-		result, err := parseYAMLFrontMatterWithResolver(frontMatter, nil)
+		result, err := ParseYAMLFrontMatterWithResolver(frontMatter, nil)
 		require.NoError(t, err)
 		require.NotNil(t, result)
 
 		// All properties should have generated BSON keys
 		for _, prop := range result.Properties {
-			assert.Len(t, prop.key, 24)
-			assert.Regexp(t, "^[0-9a-f]{24}$", prop.key)
+			assert.Len(t, prop.Key, 24)
+			assert.Regexp(t, "^[0-9a-f]{24}$", prop.Key)
 		}
 	})
 
@@ -93,7 +93,7 @@ Date: 2024-01-15`)
 		frontMatter := []byte(`type: Task
 Name: My Task`)
 
-		result, err := parseYAMLFrontMatterWithResolver(frontMatter, resolver)
+		result, err := ParseYAMLFrontMatterWithResolver(frontMatter, resolver)
 		require.NoError(t, err)
 		require.NotNil(t, result)
 
@@ -102,7 +102,7 @@ Name: My Task`)
 		
 		// Should only have one property (type is excluded)
 		assert.Len(t, result.Properties, 1)
-		assert.Equal(t, "Name", result.Properties[0].name)
-		assert.Equal(t, "name", result.Properties[0].key)
+		assert.Equal(t, "Name", result.Properties[0].Name)
+		assert.Equal(t, "name", result.Properties[0].Key)
 	})
 }

@@ -11,6 +11,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/import/common"
 	"github.com/anyproto/anytype-heart/core/block/import/common/source"
 	"github.com/anyproto/anytype-heart/core/block/import/markdown/anymark"
+	"github.com/anyproto/anytype-heart/core/block/import/markdown/yamlfm"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -31,7 +32,7 @@ type FileInfo struct {
 	ParsedBlocks          []*model.Block
 	CollectionsObjectsIds []string
 	YAMLDetails           *domain.Details
-	YAMLProperties        []yamlProperty
+	YAMLProperties        []yamlfm.Property
 	ObjectTypeName        string // Name of the object type from YAML "type" property
 }
 
@@ -277,7 +278,7 @@ func (m *mdConverter) createBlocksFromFile(importSource source.Source, filePath 
 		}
 
 		// Extract and parse YAML front matter
-		frontMatter, markdownContent, err := extractYAMLFrontMatter(b)
+		frontMatter, markdownContent, err := yamlfm.ExtractYAMLFrontMatter(b)
 		if err != nil {
 			log.Warnf("failed to extract YAML front matter from %s: %s", filePath, err)
 			// Continue with original content
@@ -286,14 +287,14 @@ func (m *mdConverter) createBlocksFromFile(importSource source.Source, filePath 
 
 		// Parse YAML front matter if present
 		if len(frontMatter) > 0 {
-			var yamlResult *YAMLParseResult
+			var yamlResult *yamlfm.ParseResult
 			var err error
 			
 			// Use schema importer as resolver if available
 			if m.schemaImporter != nil && m.schemaImporter.HasSchemas() {
-				yamlResult, err = parseYAMLFrontMatterWithResolver(frontMatter, m.schemaImporter)
+				yamlResult, err = yamlfm.ParseYAMLFrontMatterWithResolver(frontMatter, m.schemaImporter)
 			} else {
-				yamlResult, err = parseYAMLFrontMatter(frontMatter)
+				yamlResult, err = yamlfm.ParseYAMLFrontMatter(frontMatter)
 			}
 			
 			if err != nil {

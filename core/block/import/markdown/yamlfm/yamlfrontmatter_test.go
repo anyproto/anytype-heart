@@ -1,4 +1,4 @@
-package markdown
+package yamlfm
 
 import (
 	"testing"
@@ -78,7 +78,7 @@ author: John
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			frontMatter, markdownContent, err := extractYAMLFrontMatter([]byte(tt.input))
+			frontMatter, markdownContent, err := ExtractYAMLFrontMatter([]byte(tt.input))
 			if tt.wantErr {
 				assert.Error(t, err)
 				return
@@ -158,7 +158,7 @@ version: 1.2.3`,
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result, err := parseYAMLFrontMatter([]byte(tt.frontMatter))
+			result, err := ParseYAMLFrontMatter([]byte(tt.frontMatter))
 			if tt.wantErr {
 				assert.Error(t, err)
 				return
@@ -170,9 +170,9 @@ version: 1.2.3`,
 			assert.Equal(t, tt.wantObjType, result.ObjectType)
 
 			// Check properties
-			propMap := make(map[string]yamlProperty)
+			propMap := make(map[string]Property)
 			for _, prop := range result.Properties {
-				propMap[prop.name] = prop
+				propMap[prop.Name] = prop
 			}
 
 			for propName, expectedFormat := range tt.wantProps {
@@ -180,7 +180,7 @@ version: 1.2.3`,
 				assert.True(t, ok, "Property %s not found", propName)
 				
 				actualFormat := ""
-				switch prop.format {
+				switch prop.Format {
 				case model.RelationFormat_shorttext:
 					actualFormat = "shorttext"
 				case model.RelationFormat_checkbox:
@@ -202,11 +202,11 @@ version: 1.2.3`,
 				
 				switch expected := expectedValue.(type) {
 				case string:
-					assert.Equal(t, expected, prop.value.String())
+					assert.Equal(t, expected, prop.Value.String())
 				case bool:
-					assert.Equal(t, expected, prop.value.Bool())
+					assert.Equal(t, expected, prop.Value.Bool())
 				case int64:
-					assert.Equal(t, expected, prop.value.Int64())
+					assert.Equal(t, expected, prop.Value.Int64())
 				}
 			}
 		})
@@ -225,7 +225,7 @@ created: 2024-01-01
 version: 1.2.3
 type: Task
 `
-	result, err := parseYAMLFrontMatter([]byte(yamlContent))
+	result, err := ParseYAMLFrontMatter([]byte(yamlContent))
 	require.NoError(t, err)
 	require.NotNil(t, result)
 	
@@ -233,31 +233,31 @@ type: Task
 	assert.Equal(t, "Task", result.ObjectType)
 	
 	// Check properties
-	propMap := make(map[string]yamlProperty)
+	propMap := make(map[string]Property)
 	for _, prop := range result.Properties {
-		propMap[prop.name] = prop
+		propMap[prop.Name] = prop
 	}
 	
 	// All date fields should be detected as date format
-	assert.Equal(t, model.RelationFormat_date, propMap["Start Date"].format)
-	assert.Equal(t, model.RelationFormat_date, propMap["End Time"].format)
-	assert.Equal(t, model.RelationFormat_date, propMap["created"].format)
-	assert.Equal(t, model.RelationFormat_shorttext, propMap["version"].format)
+	assert.Equal(t, model.RelationFormat_date, propMap["Start Date"].Format)
+	assert.Equal(t, model.RelationFormat_date, propMap["End Time"].Format)
+	assert.Equal(t, model.RelationFormat_date, propMap["created"].Format)
+	assert.Equal(t, model.RelationFormat_shorttext, propMap["version"].Format)
 	
 	// Check includeTime flags
-	assert.False(t, propMap["Start Date"].includeTime)
-	assert.True(t, propMap["End Time"].includeTime)
-	assert.False(t, propMap["created"].includeTime)
+	assert.False(t, propMap["Start Date"].IncludeTime)
+	assert.True(t, propMap["End Time"].IncludeTime)
+	assert.False(t, propMap["created"].IncludeTime)
 	
 	// All date values should be timestamps
-	assert.True(t, propMap["Start Date"].value.IsInt64())
-	assert.True(t, propMap["End Time"].value.IsInt64())
-	assert.True(t, propMap["created"].value.IsInt64())
+	assert.True(t, propMap["Start Date"].Value.IsInt64())
+	assert.True(t, propMap["End Time"].Value.IsInt64())
+	assert.True(t, propMap["created"].Value.IsInt64())
 	
 	// Version should remain as string
-	assert.True(t, propMap["version"].value.IsString())
+	assert.True(t, propMap["version"].Value.IsString())
 	
 	// Check actual timestamp values
 	startDate := time.Date(2023, 6, 1, 0, 0, 0, 0, time.UTC)
-	assert.Equal(t, startDate.Unix(), propMap["Start Date"].value.Int64())
+	assert.Equal(t, startDate.Unix(), propMap["Start Date"].Value.Int64())
 }

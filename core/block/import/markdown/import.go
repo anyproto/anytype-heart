@@ -14,6 +14,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/collection"
 	"github.com/anyproto/anytype-heart/core/block/import/common"
 	"github.com/anyproto/anytype-heart/core/block/import/common/source"
+	"github.com/anyproto/anytype-heart/core/block/import/markdown/yamlfm"
 	"github.com/anyproto/anytype-heart/core/block/process"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pb"
@@ -438,7 +439,7 @@ func (m *Markdown) createSnapshots(
 	hasSchemas := m.schemaImporter.HasSchemas()
 
 	// First pass: collect all YAML properties to create relation snapshots
-	yamlRelations := make(map[string]*yamlProperty) // property name -> property
+	yamlRelations := make(map[string]*yamlfm.Property) // property name -> property
 	yamlRelationOptions := make(map[string]map[string]string) // relationKey -> optionValue -> optionId
 	objectTypes := make(map[string][]string)        // Track unique object type names
 
@@ -451,26 +452,26 @@ func (m *Markdown) createSnapshots(
 				// Schema resolution already happened during YAML parsing if schemas were available
 
 				// Use existing relation if already seen
-				if _, exists := yamlRelations[prop.name]; !exists {
-					yamlRelations[prop.name] = prop
+				if _, exists := yamlRelations[prop.Name]; !exists {
+					yamlRelations[prop.Name] = prop
 				}
-				props = append(props, yamlRelations[prop.name].key)
+				props = append(props, yamlRelations[prop.Name].Key)
 				
 				// Collect option values for non-schema imports
-				if !hasSchemas && (prop.format == model.RelationFormat_status || prop.format == model.RelationFormat_tag) {
-					if yamlRelationOptions[prop.key] == nil {
-						yamlRelationOptions[prop.key] = make(map[string]string)
+				if !hasSchemas && (prop.Format == model.RelationFormat_status || prop.Format == model.RelationFormat_tag) {
+					if yamlRelationOptions[prop.Key] == nil {
+						yamlRelationOptions[prop.Key] = make(map[string]string)
 					}
 					
 					// Collect values
-					switch prop.format {
+					switch prop.Format {
 					case model.RelationFormat_status:
-						if val := prop.value.String(); val != "" {
-							yamlRelationOptions[prop.key][val] = ""
+						if val := prop.Value.String(); val != "" {
+							yamlRelationOptions[prop.Key][val] = ""
 						}
 					case model.RelationFormat_tag:
-						for _, val := range prop.value.StringList() {
-							yamlRelationOptions[prop.key][val] = ""
+						for _, val := range prop.Value.StringList() {
+							yamlRelationOptions[prop.Key][val] = ""
 						}
 					}
 				}
@@ -509,17 +510,17 @@ func (m *Markdown) createSnapshots(
 		// Create relation snapshots for YAML properties
 		for propName, prop := range yamlRelations {
 			// Generate BSON ID for the relation key
-			relationDetails := getRelationDetails(propName, prop.key, float64(prop.format), prop.includeTime)
+			relationDetails := getRelationDetails(propName, prop.Key, float64(prop.Format), prop.IncludeTime)
 
 			relationsSnapshots = append(relationsSnapshots, &common.Snapshot{
-				Id: propIdPrefix + prop.key,
+				Id: propIdPrefix + prop.Key,
 				Snapshot: &common.SnapshotModel{
 					SbType: smartblock.SmartBlockTypeRelation,
 					Data: &common.StateSnapshot{
 						Details:       relationDetails,
 						RelationLinks: bundledRelationLinks(relationDetails),
 						ObjectTypes:   []string{bundle.TypeKeyRelation.String()},
-						Key:           prop.key,
+						Key:           prop.Key,
 					},
 				},
 			})
@@ -613,8 +614,8 @@ func (m *Markdown) createSnapshots(
 						// Find the property to get its format
 						var propFormat model.RelationFormat
 						for _, prop := range file.YAMLProperties {
-							if prop.key == string(key) {
-								propFormat = prop.format
+							if prop.Key == string(key) {
+								propFormat = prop.Format
 								break
 							}
 						}
@@ -682,8 +683,8 @@ func (m *Markdown) createSnapshots(
 		if file.YAMLProperties != nil {
 			for _, prop := range file.YAMLProperties {
 				relationLinks = append(relationLinks, &model.RelationLink{
-					Key:    prop.key,
-					Format: prop.format,
+					Key:    prop.Key,
+					Format: prop.Format,
 				})
 			}
 		}

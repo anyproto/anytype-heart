@@ -1,4 +1,4 @@
-package markdown
+package yamlfm
 
 import (
 	"fmt"
@@ -15,19 +15,19 @@ import (
 )
 
 const (
-	yamlDelimiter = "---"
+	YAMLDelimiter = "---"
 )
 
 var emailRe = regexp.MustCompile(
 	`^[A-Za-z0-9._%+\-]+@[A-Za-z0-9.\-]+\.[A-Za-z]{2,}$`,
 )
 
-// extractYAMLFrontMatter extracts YAML front matter from markdown content
+// ExtractYAMLFrontMatter extracts YAML front matter from markdown content
 // Returns the front matter content, the markdown content without front matter, and any error
-func extractYAMLFrontMatter(content []byte) (frontMatter []byte, markdownContent []byte, err error) {
+func ExtractYAMLFrontMatter(content []byte) (frontMatter []byte, markdownContent []byte, err error) {
 	// Check if content starts with YAML delimiter
 	contentStr := string(content)
-	if !strings.HasPrefix(strings.TrimSpace(contentStr), yamlDelimiter) {
+	if !strings.HasPrefix(strings.TrimSpace(contentStr), YAMLDelimiter) {
 		return nil, content, nil
 	}
 
@@ -40,7 +40,7 @@ func extractYAMLFrontMatter(content []byte) (frontMatter []byte, markdownContent
 	// Skip first --- line
 	endIndex := -1
 	for i := 1; i < len(lines); i++ {
-		if strings.TrimSpace(lines[i]) == yamlDelimiter {
+		if strings.TrimSpace(lines[i]) == YAMLDelimiter {
 			endIndex = i
 			break
 		}
@@ -62,24 +62,24 @@ func extractYAMLFrontMatter(content []byte) (frontMatter []byte, markdownContent
 	return frontMatter, markdownContent, nil
 }
 
-// yamlProperty represents a parsed YAML property with its format information
-type yamlProperty struct {
-	name        string // Original property name from YAML
-	key         string // Property key (from schema or generated)
-	format      model.RelationFormat
-	value       domain.Value
-	includeTime bool // For date relations, whether to include time
+// Property represents a parsed YAML property with its format information
+type Property struct {
+	Name        string // Original property name from YAML
+	Key         string // Property key (from schema or generated)
+	Format      model.RelationFormat
+	Value       domain.Value
+	IncludeTime bool // For date relations, whether to include time
 }
 
-// YAMLParseResult contains the parsed YAML data with format information
-type YAMLParseResult struct {
+// ParseResult contains the parsed YAML data with format information
+type ParseResult struct {
 	Details    *domain.Details
-	Properties []yamlProperty
+	Properties []Property
 	ObjectType string // If "type" or "Object type" property is present
 }
 
-// YAMLPropertyResolver resolves property keys from names
-type YAMLPropertyResolver interface {
+// PropertyResolver resolves property keys from names
+type PropertyResolver interface {
 	// ResolvePropertyKey returns the property key for a given name
 	// Returns empty string if not found in schema
 	ResolvePropertyKey(name string) string
@@ -94,13 +94,13 @@ type YAMLPropertyResolver interface {
 	ResolveOptionValues(relationKey string, optionNames []string) []string
 }
 
-// parseYAMLFrontMatter parses YAML front matter and returns properties with their formats
-func parseYAMLFrontMatter(frontMatter []byte) (*YAMLParseResult, error) {
-	return parseYAMLFrontMatterWithResolver(frontMatter, nil)
+// ParseYAMLFrontMatter parses YAML front matter and returns properties with their formats
+func ParseYAMLFrontMatter(frontMatter []byte) (*ParseResult, error) {
+	return ParseYAMLFrontMatterWithResolver(frontMatter, nil)
 }
 
-// parseYAMLFrontMatterWithResolver parses YAML front matter using an optional property resolver
-func parseYAMLFrontMatterWithResolver(frontMatter []byte, resolver YAMLPropertyResolver) (*YAMLParseResult, error) {
+// ParseYAMLFrontMatterWithResolver parses YAML front matter using an optional property resolver
+func ParseYAMLFrontMatterWithResolver(frontMatter []byte, resolver PropertyResolver) (*ParseResult, error) {
 	if len(frontMatter) == 0 {
 		return nil, nil
 	}
@@ -111,9 +111,9 @@ func parseYAMLFrontMatterWithResolver(frontMatter []byte, resolver YAMLPropertyR
 		return nil, fmt.Errorf("failed to parse YAML front matter: %w", err)
 	}
 
-	result := &YAMLParseResult{
+	result := &ParseResult{
 		Details:    domain.NewDetails(),
-		Properties: make([]yamlProperty, 0),
+		Properties: make([]Property, 0),
 	}
 
 	// Check for object type property (case-insensitive)
@@ -144,28 +144,28 @@ func parseYAMLFrontMatterWithResolver(frontMatter []byte, resolver YAMLPropertyR
 		// Try to resolve property key from schema if resolver is available
 		if resolver != nil {
 			if schemaKey := resolver.ResolvePropertyKey(key); schemaKey != "" {
-				prop.key = schemaKey
+				prop.Key = schemaKey
 				// Get the actual format from schema
 				schemaFormat := resolver.GetRelationFormat(schemaKey)
 				if schemaFormat != model.RelationFormat_longtext {
-					prop.format = schemaFormat
+					prop.Format = schemaFormat
 				}
 			} else {
 				// Generate BSON ID for this property if not in schema
-				prop.key = bson.NewObjectId().Hex()
+				prop.Key = bson.NewObjectId().Hex()
 			}
 		} else {
 			// Generate BSON ID for this property
-			prop.key = bson.NewObjectId().Hex()
+			prop.Key = bson.NewObjectId().Hex()
 		}
 
 		// Now resolve option values if needed
-		if resolver != nil && (prop.format == model.RelationFormat_status || prop.format == model.RelationFormat_tag) {
-			prop.value = resolveOptionValue(prop, resolver)
+		if resolver != nil && (prop.Format == model.RelationFormat_status || prop.Format == model.RelationFormat_tag) {
+			prop.Value = resolveOptionValue(prop, resolver)
 		}
 
 		// Store in details
-		result.Details.Set(domain.RelationKey(prop.key), prop.value)
+		result.Details.Set(domain.RelationKey(prop.Key), prop.Value)
 		result.Properties = append(result.Properties, *prop)
 	}
 
@@ -173,71 +173,71 @@ func parseYAMLFrontMatterWithResolver(frontMatter []byte, resolver YAMLPropertyR
 }
 
 // processYAMLProperty processes a single YAML property and returns its configuration
-func processYAMLProperty(key string, value interface{}) *yamlProperty {
-	prop := &yamlProperty{
-		name:        key,
-		format:      model.RelationFormat_shorttext, // default
-		includeTime: false,
+func processYAMLProperty(key string, value interface{}) *Property {
+	prop := &Property{
+		Name:        key,
+		Format:      model.RelationFormat_shorttext, // default
+		IncludeTime: false,
 	}
 
 	switch v := value.(type) {
 	case time.Time:
 		// YAML parsed a date string
-		prop.format = model.RelationFormat_date
-		prop.value = domain.Int64(v.Unix())
-		prop.includeTime = v.Hour() != 0 || v.Minute() != 0 || v.Second() != 0 || v.Nanosecond() != 0
+		prop.Format = model.RelationFormat_date
+		prop.Value = domain.Int64(v.Unix())
+		prop.IncludeTime = v.Hour() != 0 || v.Minute() != 0 || v.Second() != 0 || v.Nanosecond() != 0
 
 	case string:
 		// Try to parse as date if key suggests it or value looks like date
 		lowerKey := strings.ToLower(key)
 		if looksLikeDate(v) {
 			if t, hasTime, err := parseDate(v); err == nil {
-				prop.format = model.RelationFormat_date
-				prop.value = domain.Int64(t.Unix())
-				prop.includeTime = hasTime
+				prop.Format = model.RelationFormat_date
+				prop.Value = domain.Int64(t.Unix())
+				prop.IncludeTime = hasTime
 				return prop
 			}
 		}
 
 		// Check for special formats
 		if isURL(v) {
-			prop.format = model.RelationFormat_url
+			prop.Format = model.RelationFormat_url
 		} else if isEmail(v) {
-			prop.format = model.RelationFormat_email
+			prop.Format = model.RelationFormat_email
 		} else if len(v) > 100 {
-			prop.format = model.RelationFormat_longtext
+			prop.Format = model.RelationFormat_longtext
 		} else if containsStatusKeyword(lowerKey) && len(v) < 50 {
-			prop.format = model.RelationFormat_status
+			prop.Format = model.RelationFormat_status
 		}
-		prop.value = domain.String(v)
+		prop.Value = domain.String(v)
 
 	case bool:
-		prop.format = model.RelationFormat_checkbox
-		prop.value = domain.Bool(v)
+		prop.Format = model.RelationFormat_checkbox
+		prop.Value = domain.Bool(v)
 
 	case int:
-		prop.format = model.RelationFormat_number
-		prop.value = domain.Int64(int64(v))
+		prop.Format = model.RelationFormat_number
+		prop.Value = domain.Int64(int64(v))
 
 	case int64:
-		prop.format = model.RelationFormat_number
-		prop.value = domain.Int64(v)
+		prop.Format = model.RelationFormat_number
+		prop.Value = domain.Int64(v)
 
 	case float64:
-		prop.format = model.RelationFormat_number
+		prop.Format = model.RelationFormat_number
 		if v == float64(int64(v)) {
-			prop.value = domain.Int64(int64(v))
+			prop.Value = domain.Int64(int64(v))
 		} else {
-			prop.value = domain.Float64(v)
+			prop.Value = domain.Float64(v)
 		}
 
 	case []interface{}:
-		prop.format = model.RelationFormat_tag
+		prop.Format = model.RelationFormat_tag
 		strSlice := make([]string, 0, len(v))
 		for _, item := range v {
 			strSlice = append(strSlice, fmt.Sprintf("%v", item))
 		}
-		prop.value = domain.StringList(strSlice)
+		prop.Value = domain.StringList(strSlice)
 
 	default:
 		// Skip unsupported types (like maps, interfaces, etc.)
@@ -318,20 +318,20 @@ func parseDate(dateStr string) (time.Time, bool, error) {
 }
 
 // resolveOptionValue converts option names to IDs for status/tag relations
-func resolveOptionValue(prop *yamlProperty, resolver YAMLPropertyResolver) domain.Value {
-	switch prop.format {
+func resolveOptionValue(prop *Property, resolver PropertyResolver) domain.Value {
+	switch prop.Format {
 	case model.RelationFormat_status:
 		// For status, we expect a single string value
-		if strVal := prop.value.String(); strVal != "" {
-			optionId := resolver.ResolveOptionValue(prop.key, strVal)
+		if strVal := prop.Value.String(); strVal != "" {
+			optionId := resolver.ResolveOptionValue(prop.Key, strVal)
 			return domain.String(optionId)
 		}
 	case model.RelationFormat_tag:
 		// For tags, we expect a list of strings
-		if strList := prop.value.StringList(); len(strList) > 0 {
-			optionIds := resolver.ResolveOptionValues(prop.key, strList)
+		if strList := prop.Value.StringList(); len(strList) > 0 {
+			optionIds := resolver.ResolveOptionValues(prop.Key, strList)
 			return domain.StringList(optionIds)
 		}
 	}
-	return prop.value
+	return prop.Value
 }

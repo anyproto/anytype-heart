@@ -8,11 +8,15 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/block/import/common"
 	"github.com/anyproto/anytype-heart/core/block/import/common/source"
+	"github.com/anyproto/anytype-heart/core/block/import/markdown/yamlfm"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/pkg/lib/schema"
 )
+
+// Verify that SchemaImporter implements yamlfm.PropertyResolver
+var _ yamlfm.PropertyResolver = (*SchemaImporter)(nil)
 
 // SchemaImporter handles schema-based import workflow
 type SchemaImporter struct {
@@ -257,7 +261,7 @@ func (si *SchemaImporter) HasSchemas() bool {
 }
 
 // ResolvePropertyKey returns the property key for a given name from schemas
-// This implements the YAMLPropertyResolver interface
+// This implements the yamlfm.PropertyResolver interface
 func (si *SchemaImporter) ResolvePropertyKey(name string) string {
 	for _, s := range si.schemas {
 		for _, rel := range s.Relations {
