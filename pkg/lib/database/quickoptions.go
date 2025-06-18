@@ -9,42 +9,33 @@ import (
 )
 
 func transformQuickOption(protoFilter FilterRequest) []FilterRequest {
-	var filters []FilterRequest
-
-	if protoFilter.QuickOption > model.BlockContentDataviewFilter_ExactDate || protoFilter.Format == model.RelationFormat_date {
-		from, to := getDateRange(protoFilter, time.Now())
-		switch protoFilter.Condition {
-		case model.BlockContentDataviewFilter_Equal:
-			protoFilter.Condition = model.BlockContentDataviewFilter_GreaterOrEqual
-			protoFilter.Value = domain.Int64(from.Unix())
-
-			filters = append(filters, FilterRequest{
-				RelationKey: protoFilter.RelationKey,
-				Condition:   model.BlockContentDataviewFilter_LessOrEqual,
-				Value:       domain.Int64(to.Unix()),
-			})
-		case model.BlockContentDataviewFilter_Less:
-			protoFilter.Value = domain.Int64(from.Unix())
-		case model.BlockContentDataviewFilter_Greater:
-			protoFilter.Value = domain.Int64(to.Unix())
-		case model.BlockContentDataviewFilter_LessOrEqual:
-			protoFilter.Value = domain.Int64(to.Unix())
-		case model.BlockContentDataviewFilter_GreaterOrEqual:
-			protoFilter.Value = domain.Int64(from.Unix())
-		case model.BlockContentDataviewFilter_In:
-			protoFilter.Condition = model.BlockContentDataviewFilter_GreaterOrEqual
-			protoFilter.Value = domain.Int64(from.Unix())
-
-			filters = append(filters, FilterRequest{
-				RelationKey: protoFilter.RelationKey,
-				Condition:   model.BlockContentDataviewFilter_LessOrEqual,
-				Value:       domain.Int64(to.Unix()),
-			})
-		}
+	if protoFilter.QuickOption == 0 && protoFilter.Format != model.RelationFormat_date {
+		return []FilterRequest{protoFilter}
 	}
 
-	filters = append(filters, protoFilter)
-	return filters
+	from, to := getDateRange(protoFilter, time.Now())
+	switch protoFilter.Condition {
+	case model.BlockContentDataviewFilter_Equal, model.BlockContentDataviewFilter_In:
+		return []FilterRequest{{
+			RelationKey: protoFilter.RelationKey,
+			Condition:   model.BlockContentDataviewFilter_LessOrEqual,
+			Value:       domain.Int64(to.Unix()),
+		}, {
+			RelationKey: protoFilter.RelationKey,
+			Condition:   model.BlockContentDataviewFilter_GreaterOrEqual,
+			Value:       domain.Int64(from.Unix()),
+		}}
+	case model.BlockContentDataviewFilter_Less:
+		protoFilter.Value = domain.Int64(from.Unix())
+	case model.BlockContentDataviewFilter_Greater:
+		protoFilter.Value = domain.Int64(to.Unix())
+	case model.BlockContentDataviewFilter_LessOrEqual:
+		protoFilter.Value = domain.Int64(to.Unix())
+	case model.BlockContentDataviewFilter_GreaterOrEqual:
+		protoFilter.Value = domain.Int64(from.Unix())
+	}
+
+	return []FilterRequest{protoFilter}
 }
 
 func getDateRange(f FilterRequest, now time.Time) (from, to time.Time) {
