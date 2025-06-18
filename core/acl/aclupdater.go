@@ -12,7 +12,7 @@ import (
 )
 
 type participantGetter interface {
-	Run(ctx context.Context)
+	Run(ctx context.Context) error
 	Close() error
 }
 
