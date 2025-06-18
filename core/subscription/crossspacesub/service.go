@@ -105,7 +105,7 @@ func (s *service) Subscribe(req subscriptionservice.SubscribeRequest, predicate 
 	defer s.lock.Unlock()
 	var initialIds []string
 	for spaceViewId, details := range s.spaceViewDetails {
-		if predicate(details) && spaceIsAvailable(details) {
+		if predicate(details) {
 			if targetSpaceId, ok := s.spaceViewTargetIds[spaceViewId]; ok {
 				initialIds = append(initialIds, targetSpaceId)
 			}

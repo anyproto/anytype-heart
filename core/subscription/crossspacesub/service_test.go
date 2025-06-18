@@ -11,6 +11,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
+	"golang.org/x/exp/slices"
 
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/event"
@@ -325,6 +326,212 @@ func TestSubscribe(t *testing.T) {
 	})
 }
 
+func TestSubscribeWithPredicate(t *testing.T) {
+	t.Run("predicate filters initial spaces", func(t *testing.T) {
+		fx := newFixture(t)
+
+		fx.objectStore.AddObjects(t, techSpaceId, []objectstore.TestObject{
+			givenSpaceViewObject("spaceView1", "space1", model.SpaceStatus_SpaceActive, model.SpaceStatus_Ok),
+			givenSpaceViewObject("spaceView2", "space2", model.SpaceStatus_SpaceActive, model.SpaceStatus_Ok),
+			givenSpaceViewObject("spaceView3", "space3", model.SpaceStatus_SpaceActive, model.SpaceStatus_Ok),
+		})
+
+		obj1 := objectstore.TestObject{
+			bundle.RelationKeyId:             domain.String("participant1"),
+			bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_participant)),
+		}
+		obj2 := objectstore.TestObject{
+			bundle.RelationKeyId:             domain.String("participant2"),
+			bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_participant)),
+		}
+		obj3 := objectstore.TestObject{
+			bundle.RelationKeyId:             domain.String("participant3"),
+			bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_participant)),
+		}
+		fx.objectStore.AddObjects(t, "space1", []objectstore.TestObject{obj1})
+		fx.objectStore.AddObjects(t, "space2", []objectstore.TestObject{obj2})
+		fx.objectStore.AddObjects(t, "space3", []objectstore.TestObject{obj3})
+
+		// Wait for space view subscription to process the space views
+		time.Sleep(500 * time.Millisecond)
+
+		predicate := func(details *domain.Details) bool {
+			targetSpaceId := details.GetString(bundle.RelationKeyTargetSpaceId)
+			return targetSpaceId == "space1" || targetSpaceId == "space3"
+		}
+
+		resp, err := fx.Subscribe(givenRequest(), predicate)
+		require.NoError(t, err)
+		require.NotNil(t, resp)
+		assert.NotEmpty(t, resp.SubId)
+
+		assert.Len(t, resp.Records, 2)
+		recordIds := make([]string, len(resp.Records))
+		for i, record := range resp.Records {
+			recordIds[i] = record.GetString(bundle.RelationKeyId)
+		}
+		slices.Sort(recordIds)
+		assert.ElementsMatch(t, []string{"participant1", "participant3"}, recordIds)
+		assert.Equal(t, int64(2), resp.Counters.Total)
+	})
+
+	t.Run("predicate filters when adding spaces dynamically", func(t *testing.T) {
+		fx := newFixture(t)
+		ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
+		defer cancel()
+
+		predicate := func(details *domain.Details) bool {
+			targetSpaceId := details.GetString(bundle.RelationKeyTargetSpaceId)
+			return targetSpaceId == "space1" || targetSpaceId == "space21"
+		}
+
+		resp, err := fx.Subscribe(givenRequest(), predicate)
+		require.NoError(t, err)
+		require.NotNil(t, resp)
+		assert.NotEmpty(t, resp.SubId)
+		assert.Empty(t, resp.Records) // No initial spaces match
+
+		fx.objectStore.AddObjects(t, techSpaceId, []objectstore.TestObject{
+			givenSpaceViewObject("spaceView1", "space1", model.SpaceStatus_SpaceActive, model.SpaceStatus_Ok),
+		})
+		obj1 := objectstore.TestObject{
+			bundle.RelationKeyId:             domain.String("participant1"),
+			bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_participant)),
+		}
+		fx.objectStore.AddObjects(t, "space1", []objectstore.TestObject{obj1})
+
+		msgs, err := fx.eventQueue.NewCond().WithMin(3).Wait(ctx)
+		require.NoError(t, err)
+		want := []*pb.EventMessage{
+			makeDetailsSetEvent(resp.SubId, obj1.Details().ToProto()),
+			makeAddEvent(resp.SubId, obj1.Id()),
+			makeCountersEvent(resp.SubId, 1),
+		}
+		assert.Equal(t, want, msgs)
+
+		fx.objectStore.AddObjects(t, techSpaceId, []objectstore.TestObject{
+			givenSpaceViewObject("spaceView2", "space2", model.SpaceStatus_SpaceActive, model.SpaceStatus_Ok),
+		})
+		obj2 := objectstore.TestObject{
+			bundle.RelationKeyId:             domain.String("participant2"),
+			bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_participant)),
+		}
+		fx.objectStore.AddObjects(t, "space2", []objectstore.TestObject{obj2})
+
+		ctx2, cancel2 := context.WithTimeout(context.Background(), 50*time.Millisecond)
+		defer cancel2()
+		msgs, err = fx.eventQueue.NewCond().WithMin(1).Wait(ctx2)
+		require.ErrorIs(t, err, context.DeadlineExceeded)
+		assert.Empty(t, msgs)
+
+		fx.objectStore.AddObjects(t, techSpaceId, []objectstore.TestObject{
+			givenSpaceViewObject("spaceView21", "space21", model.SpaceStatus_SpaceActive, model.SpaceStatus_Ok),
+		})
+		obj21 := objectstore.TestObject{
+			bundle.RelationKeyId:             domain.String("participant21"),
+			bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_participant)),
+		}
+		fx.objectStore.AddObjects(t, "space21", []objectstore.TestObject{obj21})
+
+		msgs, err = fx.eventQueue.NewCond().WithMin(3).Wait(ctx)
+		require.NoError(t, err)
+		want = []*pb.EventMessage{
+			makeDetailsSetEvent(resp.SubId, obj21.Details().ToProto()),
+			makeAddEvent(resp.SubId, obj21.Id()),
+			makeCountersEvent(resp.SubId, 2),
+		}
+		assert.Equal(t, want, msgs)
+	})
+
+	t.Run("predicate that rejects all spaces", func(t *testing.T) {
+		fx := newFixture(t)
+		ctx, cancel := context.WithTimeout(context.Background(), 50*time.Millisecond)
+		defer cancel()
+
+		fx.objectStore.AddObjects(t, techSpaceId, []objectstore.TestObject{
+			givenSpaceViewObject("spaceView1", "space1", model.SpaceStatus_SpaceActive, model.SpaceStatus_Ok),
+			givenSpaceViewObject("spaceView2", "space2", model.SpaceStatus_SpaceActive, model.SpaceStatus_Ok),
+		})
+
+		obj1 := objectstore.TestObject{
+			bundle.RelationKeyId:             domain.String("participant1"),
+			bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_participant)),
+		}
+		obj2 := objectstore.TestObject{
+			bundle.RelationKeyId:             domain.String("participant2"),
+			bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_participant)),
+		}
+		fx.objectStore.AddObjects(t, "space1", []objectstore.TestObject{obj1})
+		fx.objectStore.AddObjects(t, "space2", []objectstore.TestObject{obj2})
+
+		predicate := func(details *domain.Details) bool {
+			return false
+		}
+
+		resp, err := fx.Subscribe(givenRequest(), predicate)
+		require.NoError(t, err)
+		require.NotNil(t, resp)
+		assert.NotEmpty(t, resp.SubId)
+		assert.Empty(t, resp.Records)
+		assert.Equal(t, int64(0), resp.Counters.Total)
+
+		obj3 := objectstore.TestObject{
+			bundle.RelationKeyId:             domain.String("participant3"),
+			bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_participant)),
+		}
+		fx.objectStore.AddObjects(t, "space1", []objectstore.TestObject{obj3})
+
+		msgs, err := fx.eventQueue.NewCond().WithMin(1).Wait(ctx)
+		require.ErrorIs(t, err, context.DeadlineExceeded)
+		assert.Empty(t, msgs)
+	})
+
+	t.Run("predicate filters based on space view properties", func(t *testing.T) {
+		fx := newFixture(t)
+
+		fx.objectStore.AddObjects(t, techSpaceId, []objectstore.TestObject{
+			givenSpaceViewObjectWithCreator("spaceView1", "space1", model.SpaceStatus_SpaceActive, model.SpaceStatus_Ok, "participant1"),
+			givenSpaceViewObject("spaceView2", "space2", model.SpaceStatus_SpaceActive, model.SpaceStatus_Ok),
+			givenSpaceViewObject("spaceView3", "space3", model.SpaceStatus_SpaceJoining, model.SpaceStatus_Unknown),
+		})
+
+		obj1 := objectstore.TestObject{
+			bundle.RelationKeyId:             domain.String("participant1"),
+			bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_participant)),
+		}
+		obj2 := objectstore.TestObject{
+			bundle.RelationKeyId:             domain.String("participant2"),
+			bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_participant)),
+		}
+		obj3 := objectstore.TestObject{
+			bundle.RelationKeyId:             domain.String("participant3"),
+			bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_participant)),
+		}
+		fx.objectStore.AddObjects(t, "space1", []objectstore.TestObject{obj1})
+		fx.objectStore.AddObjects(t, "space2", []objectstore.TestObject{obj2})
+		fx.objectStore.AddObjects(t, "space3", []objectstore.TestObject{obj3})
+
+		time.Sleep(500 * time.Millisecond)
+
+		predicate := func(details *domain.Details) bool {
+			accountStatus := model.SpaceStatus(details.GetInt64(bundle.RelationKeySpaceAccountStatus))
+			creatorId := details.GetString(bundle.RelationKeyCreator)
+			return accountStatus == model.SpaceStatus_SpaceActive && creatorId == "participant1"
+		}
+
+		resp, err := fx.Subscribe(givenRequest(), predicate)
+		require.NoError(t, err)
+		require.NotNil(t, resp)
+		assert.NotEmpty(t, resp.SubId)
+
+		assert.Len(t, resp.Records, 1)
+		if len(resp.Records) > 0 {
+			assert.Equal(t, "participant1", resp.Records[0].GetString(bundle.RelationKeyId))
+		}
+		assert.Equal(t, int64(1), resp.Counters.Total)
+	})
+}
+
 func TestUnsubscribe(t *testing.T) {
 	t.Run("subscription not found", func(t *testing.T) {
 		fx := newFixture(t)
@@ -336,12 +543,9 @@ func TestUnsubscribe(t *testing.T) {
 	t.Run("with existing subscription", func(t *testing.T) {
 		fx := newFixture(t)
 
-		// Add space view
 		fx.objectStore.AddObjects(t, techSpaceId, []objectstore.TestObject{
 			givenSpaceViewObject("spaceView1", "space1", model.SpaceStatus_SpaceActive, model.SpaceStatus_Ok),
 		})
-
-		// Subscribe
 		resp, err := fx.Subscribe(givenRequest(), NoOpPredicate())
 		require.NoError(t, err)
 		require.NotNil(t, resp)
@@ -460,5 +664,16 @@ func givenSpaceViewObject(id string, targetSpaceId string, spaceStatus model.Spa
 		bundle.RelationKeyResolvedLayout:     domain.Int64(int64(model.ObjectType_spaceView)),
 		bundle.RelationKeySpaceAccountStatus: domain.Int64(int64(spaceStatus)),
 		bundle.RelationKeySpaceLocalStatus:   domain.Int64(int64(localStatus)),
+	}
+}
+
+func givenSpaceViewObjectWithCreator(id string, targetSpaceId string, spaceStatus model.SpaceStatus, localStatus model.SpaceStatus, creator string) objectstore.TestObject {
+	return objectstore.TestObject{
+		bundle.RelationKeyId:                 domain.String(id),
+		bundle.RelationKeyTargetSpaceId:      domain.String(targetSpaceId),
+		bundle.RelationKeyResolvedLayout:     domain.Int64(int64(model.ObjectType_spaceView)),
+		bundle.RelationKeySpaceAccountStatus: domain.Int64(int64(spaceStatus)),
+		bundle.RelationKeySpaceLocalStatus:   domain.Int64(int64(localStatus)),
+		bundle.RelationKeyCreator:            domain.String(creator),
 	}
 }
