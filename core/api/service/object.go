@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"errors"
+	"fmt"
 
 	"github.com/gogo/protobuf/types"
 
@@ -257,7 +258,7 @@ func (s *Service) UpdateObject(ctx context.Context, spaceId string, objectId str
 			ObjectTypeUniqueKey: typeUk,
 		})
 		if typeResp.Error != nil && typeResp.Error.Code != pb.RpcObjectSetObjectTypeResponseError_NULL {
-			return apimodel.ObjectWithBody{}, ErrFailedUpdateObject
+			return apimodel.ObjectWithBody{}, util.ErrBadInput(fmt.Sprintf("failed to update object, invalid type key: %q", *request.TypeKey))
 		}
 	}
 
