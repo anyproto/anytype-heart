@@ -46,7 +46,7 @@ func (s *Service) ListMembers(ctx context.Context, spaceId string, additionalFil
 		return nil, 0, false, ErrFailedListMembers
 	}
 
-	joiningFilters := []*model.BlockContentDataviewFilter{
+	joiningFilters := append([]*model.BlockContentDataviewFilter{
 		{
 			RelationKey: bundle.RelationKeyResolvedLayout.String(),
 			Condition:   model.BlockContentDataviewFilter_Equal,
@@ -57,14 +57,8 @@ func (s *Service) ListMembers(ctx context.Context, spaceId string, additionalFil
 			Condition:   model.BlockContentDataviewFilter_Equal,
 			Value:       pbtypes.Int64(int64(model.ParticipantStatus_Joining)),
 		},
-	}
-	for _, f := range filters {
-		joiningFilters = append(joiningFilters, &model.BlockContentDataviewFilter{
-			RelationKey: f.RelationKey,
-			Condition:   f.Condition,
-			Value:       f.Value,
-		})
-	}
+	}, additionalFilters...)
+
 	joiningResp := s.mw.ObjectSearch(ctx, &pb.RpcObjectSearchRequest{
 		SpaceId: spaceId,
 		Filters: joiningFilters,

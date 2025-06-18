@@ -64,7 +64,7 @@ func TestObjectService_ListTypes(t *testing.T) {
 		}, nil).Once()
 
 		// when
-		types, total, hasMore, err := fx.service.ListTypes(ctx, mockedSpaceId, offset, limit)
+		types, total, hasMore, err := fx.service.ListTypes(ctx, mockedSpaceId, nil, offset, limit)
 
 		// then
 		require.NoError(t, err)
@@ -121,7 +121,7 @@ func TestObjectService_ListTypes(t *testing.T) {
 		}, nil).Once()
 
 		// when
-		types, total, hasMore, err := fx.service.ListTypes(ctx, "empty-space", offset, limit)
+		types, total, hasMore, err := fx.service.ListTypes(ctx, "empty-space", nil, offset, limit)
 
 		// then
 		require.NoError(t, err)
