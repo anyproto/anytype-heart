@@ -27,7 +27,7 @@ var log = logging.Logger("api-server")
 var (
 	ErrMissingAuthorizationHeader = errors.New("missing authorization header")
 	ErrInvalidAuthorizationHeader = errors.New("invalid authorization header format")
-	ErrInvalidToken               = errors.New("invalid token")
+	ErrInvalidApiKey              = errors.New("invalid api key")
 )
 
 // ensureMetadataHeader is a middleware that ensures the metadata header is set.
@@ -64,7 +64,7 @@ func (s *Server) ensureAuthenticated(mw apicore.ClientCommands) gin.HandlerFunc 
 		if !exists {
 			response := mw.WalletCreateSession(context.Background(), &pb.RpcWalletCreateSessionRequest{Auth: &pb.RpcWalletCreateSessionRequestAuthOfAppKey{AppKey: key}})
 			if response.Error.Code != pb.RpcWalletCreateSessionResponseError_NULL {
-				apiErr := util.CodeToAPIError(http.StatusUnauthorized, ErrInvalidToken.Error())
+				apiErr := util.CodeToAPIError(http.StatusUnauthorized, ErrInvalidApiKey.Error())
 				c.AbortWithStatusJSON(http.StatusUnauthorized, apiErr)
 				return
 			}

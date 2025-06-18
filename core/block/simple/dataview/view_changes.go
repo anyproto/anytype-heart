@@ -215,9 +215,9 @@ func diffViewSorts(a, b *model.BlockContentDataviewView) []*pb.EventBlockDatavie
 		})
 }
 
-func (l *Dataview) ApplyViewUpdate(upd *pb.EventBlockDataviewViewUpdate) {
+func (d *Dataview) ApplyViewUpdate(upd *pb.EventBlockDataviewViewUpdate) {
 	var view *model.BlockContentDataviewView
-	for _, v := range l.content.Views {
+	for _, v := range d.content.Views {
 		if v.Id == upd.ViewId {
 			view = v
 			break
@@ -324,9 +324,9 @@ func diffViewObjectOrder(a, b *model.BlockContentDataviewObjectOrder) []*pb.Even
 	return res
 }
 
-func (l *Dataview) ApplyObjectOrderUpdate(upd *pb.EventBlockDataviewObjectOrderUpdate) {
+func (d *Dataview) ApplyObjectOrderUpdate(upd *pb.EventBlockDataviewObjectOrderUpdate) {
 	var existOrder []string
-	for _, order := range l.Model().GetDataview().ObjectOrders {
+	for _, order := range d.Model().GetDataview().ObjectOrders {
 		if order.ViewId == upd.ViewId && order.GroupId == upd.GroupId {
 			existOrder = order.ObjectIds
 		}
@@ -352,7 +352,7 @@ func (l *Dataview) ApplyObjectOrderUpdate(upd *pb.EventBlockDataviewObjectOrderU
 
 	changedIds := slice.ApplyChanges(existOrder, changes, slice.StringIdentity[string])
 
-	l.SetViewObjectOrder([]*model.BlockContentDataviewObjectOrder{
+	d.SetViewObjectOrder([]*model.BlockContentDataviewObjectOrder{
 		{ViewId: upd.ViewId, GroupId: upd.GroupId, ObjectIds: changedIds},
 	})
 }
