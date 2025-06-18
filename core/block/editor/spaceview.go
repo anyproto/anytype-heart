@@ -157,7 +157,7 @@ func (s *SpaceView) SetAclInfo(isAclEmpty bool, pushKey crypto.PrivKey, pushEncK
 	}
 
 	if pushEncKey != nil {
-		pushEncBinary, err := pushEncKey.Marshall()
+		pushEncBinary, err := pushEncKey.Raw()
 		if err != nil {
 			return err
 		}
