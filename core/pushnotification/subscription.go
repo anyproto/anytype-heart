@@ -133,5 +133,5 @@ func decodeSymKey(keyBase64 string) (crypto.SymKey, error) {
 	if err != nil {
 		return nil, err
 	}
-	return crypto.UnmarshallAESKeyProto(keyMarshaled)
+	return crypto.UnmarshallAESKey(keyMarshaled)
 }

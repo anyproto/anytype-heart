@@ -122,7 +122,7 @@ func (c *spaceTopicsCollection) EncryptPayload(spaceId string, payload []byte) (
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	status, ok := c.statuses[spaceId]
-	if !ok {
+	if !ok || status.encKey == nil {
 		return "", nil, errNoKey
 	}
 	if result, err = status.encKey.Encrypt(payload); err != nil {
