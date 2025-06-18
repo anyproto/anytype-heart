@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/anyproto/any-sync/util/crypto"
 	"github.com/cheggaaa/mb/v3"
@@ -112,7 +113,7 @@ func newSubPredicate(creatorId string) crossspacesub.Predicate {
 		if details == nil {
 			return false
 		}
-		return details.GetString(bundle.RelationKeyCreator) == creatorId
+		return strings.Contains(details.GetString(bundle.RelationKeyCreator), creatorId)
 	}
 }
 

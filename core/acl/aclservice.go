@@ -23,6 +23,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/inviteservice"
 	"github.com/anyproto/anytype-heart/core/subscription/crossspacesub"
+	"github.com/anyproto/anytype-heart/core/wallet"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -100,8 +101,9 @@ func (a *aclService) Init(ap *app.App) (err error) {
 	a.identityRepo = app.MustComponent[identityRepoClient](ap)
 	crossSub, _ := app.GetComponent[crossspacesub.Service](ap)
 	if crossSub != nil {
+		wlt := app.MustComponent[wallet.Wallet](ap)
 		a.updater = newAclUpdater("acl-updater",
-			a.accountService.AccountID(),
+			wlt.Account().SignKey.GetPublic().Account(),
 			crossSub,
 			a,
 			1*time.Second,
