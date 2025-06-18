@@ -87,6 +87,7 @@ service ClientCommands {
     // Object
     // ***
     rpc ObjectOpen (anytype.Rpc.Object.Open.Request) returns (anytype.Rpc.Object.Open.Response);
+    rpc ObjectRefresh (anytype.Rpc.Object.Refresh.Request) returns (anytype.Rpc.Object.Refresh.Response);
     rpc ObjectClose (anytype.Rpc.Object.Close.Request) returns (anytype.Rpc.Object.Close.Response);
     rpc ObjectShow (anytype.Rpc.Object.Show.Request) returns (anytype.Rpc.Object.Show.Response);
 
@@ -379,6 +380,8 @@ service ClientCommands {
     rpc MembershipFinalize (anytype.Rpc.Membership.Finalize.Request) returns (anytype.Rpc.Membership.Finalize.Response);
     rpc MembershipGetTiers (anytype.Rpc.Membership.GetTiers.Request) returns (anytype.Rpc.Membership.GetTiers.Response);
     rpc MembershipVerifyAppStoreReceipt (anytype.Rpc.Membership.VerifyAppStoreReceipt.Request) returns (anytype.Rpc.Membership.VerifyAppStoreReceipt.Response);
+    rpc MembershipCodeGetInfo (anytype.Rpc.Membership.CodeGetInfo.Request) returns (anytype.Rpc.Membership.CodeGetInfo.Response);
+    rpc MembershipCodeRedeem (anytype.Rpc.Membership.CodeRedeem.Request) returns (anytype.Rpc.Membership.CodeRedeem.Response);
 
     // Name Service:
     // ***

@@ -197,6 +197,7 @@ packages:
   github.com/anyproto/anytype-heart/core/device:
     interfaces:
       NetworkState:
+      openedObjectRefresher:
   github.com/anyproto/anytype-heart/space/spacecore/localdiscovery:
     interfaces:
       Notifier:

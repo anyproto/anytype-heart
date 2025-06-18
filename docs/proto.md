@@ -785,6 +785,14 @@
     - [Rpc.Log.Send.Response](#anytype-Rpc-Log-Send-Response)
     - [Rpc.Log.Send.Response.Error](#anytype-Rpc-Log-Send-Response-Error)
     - [Rpc.Membership](#anytype-Rpc-Membership)
+    - [Rpc.Membership.CodeGetInfo](#anytype-Rpc-Membership-CodeGetInfo)
+    - [Rpc.Membership.CodeGetInfo.Request](#anytype-Rpc-Membership-CodeGetInfo-Request)
+    - [Rpc.Membership.CodeGetInfo.Response](#anytype-Rpc-Membership-CodeGetInfo-Response)
+    - [Rpc.Membership.CodeGetInfo.Response.Error](#anytype-Rpc-Membership-CodeGetInfo-Response-Error)
+    - [Rpc.Membership.CodeRedeem](#anytype-Rpc-Membership-CodeRedeem)
+    - [Rpc.Membership.CodeRedeem.Request](#anytype-Rpc-Membership-CodeRedeem-Request)
+    - [Rpc.Membership.CodeRedeem.Response](#anytype-Rpc-Membership-CodeRedeem-Response)
+    - [Rpc.Membership.CodeRedeem.Response.Error](#anytype-Rpc-Membership-CodeRedeem-Response-Error)
     - [Rpc.Membership.Finalize](#anytype-Rpc-Membership-Finalize)
     - [Rpc.Membership.Finalize.Request](#anytype-Rpc-Membership-Finalize-Request)
     - [Rpc.Membership.Finalize.Response](#anytype-Rpc-Membership-Finalize-Response)
@@ -1016,6 +1024,10 @@
     - [Rpc.Object.Redo.Request](#anytype-Rpc-Object-Redo-Request)
     - [Rpc.Object.Redo.Response](#anytype-Rpc-Object-Redo-Response)
     - [Rpc.Object.Redo.Response.Error](#anytype-Rpc-Object-Redo-Response-Error)
+    - [Rpc.Object.Refresh](#anytype-Rpc-Object-Refresh)
+    - [Rpc.Object.Refresh.Request](#anytype-Rpc-Object-Refresh-Request)
+    - [Rpc.Object.Refresh.Response](#anytype-Rpc-Object-Refresh-Response)
+    - [Rpc.Object.Refresh.Response.Error](#anytype-Rpc-Object-Refresh-Response-Error)
     - [Rpc.Object.Search](#anytype-Rpc-Object-Search)
     - [Rpc.Object.Search.Request](#anytype-Rpc-Object-Search-Request)
     - [Rpc.Object.Search.Response](#anytype-Rpc-Object-Search-Response)
@@ -1556,6 +1568,8 @@
     - [Rpc.LinkPreview.Response.Error.Code](#anytype-Rpc-LinkPreview-Response-Error-Code)
     - [Rpc.Log.Send.Request.Level](#anytype-Rpc-Log-Send-Request-Level)
     - [Rpc.Log.Send.Response.Error.Code](#anytype-Rpc-Log-Send-Response-Error-Code)
+    - [Rpc.Membership.CodeGetInfo.Response.Error.Code](#anytype-Rpc-Membership-CodeGetInfo-Response-Error-Code)
+    - [Rpc.Membership.CodeRedeem.Response.Error.Code](#anytype-Rpc-Membership-CodeRedeem-Response-Error-Code)
     - [Rpc.Membership.Finalize.Response.Error.Code](#anytype-Rpc-Membership-Finalize-Response-Error-Code)
     - [Rpc.Membership.GetPortalLinkUrl.Response.Error.Code](#anytype-Rpc-Membership-GetPortalLinkUrl-Response-Error-Code)
     - [Rpc.Membership.GetStatus.Response.Error.Code](#anytype-Rpc-Membership-GetStatus-Response-Error-Code)
@@ -1616,6 +1630,7 @@
     - [Rpc.Object.Open.Response.Error.Code](#anytype-Rpc-Object-Open-Response-Error-Code)
     - [Rpc.Object.OpenBreadcrumbs.Response.Error.Code](#anytype-Rpc-Object-OpenBreadcrumbs-Response-Error-Code)
     - [Rpc.Object.Redo.Response.Error.Code](#anytype-Rpc-Object-Redo-Response-Error-Code)
+    - [Rpc.Object.Refresh.Response.Error.Code](#anytype-Rpc-Object-Refresh-Response-Error-Code)
     - [Rpc.Object.Search.Response.Error.Code](#anytype-Rpc-Object-Search-Response-Error-Code)
     - [Rpc.Object.SearchSubscribe.Response.Error.Code](#anytype-Rpc-Object-SearchSubscribe-Response-Error-Code)
     - [Rpc.Object.SearchUnsubscribe.Response.Error.Code](#anytype-Rpc-Object-SearchUnsubscribe-Response-Error-Code)
@@ -2195,6 +2210,7 @@
 | PublishingResolveUri | [Rpc.Publishing.ResolveUri.Request](#anytype-Rpc-Publishing-ResolveUri-Request) | [Rpc.Publishing.ResolveUri.Response](#anytype-Rpc-Publishing-ResolveUri-Response) |  |
 | PublishingGetStatus | [Rpc.Publishing.GetStatus.Request](#anytype-Rpc-Publishing-GetStatus-Request) | [Rpc.Publishing.GetStatus.Response](#anytype-Rpc-Publishing-GetStatus-Response) |  |
 | ObjectOpen | [Rpc.Object.Open.Request](#anytype-Rpc-Object-Open-Request) | [Rpc.Object.Open.Response](#anytype-Rpc-Object-Open-Response) | Object *** |
+| ObjectRefresh | [Rpc.Object.Refresh.Request](#anytype-Rpc-Object-Refresh-Request) | [Rpc.Object.Refresh.Response](#anytype-Rpc-Object-Refresh-Response) |  |
 | ObjectClose | [Rpc.Object.Close.Request](#anytype-Rpc-Object-Close-Request) | [Rpc.Object.Close.Response](#anytype-Rpc-Object-Close-Response) |  |
 | ObjectShow | [Rpc.Object.Show.Request](#anytype-Rpc-Object-Show-Request) | [Rpc.Object.Show.Response](#anytype-Rpc-Object-Show-Response) |  |
 | ObjectCreate | [Rpc.Object.Create.Request](#anytype-Rpc-Object-Create-Request) | [Rpc.Object.Create.Response](#anytype-Rpc-Object-Create-Response) | ObjectCreate just creates the new page, without adding the link to it from some other page |
@@ -2407,6 +2423,8 @@
 | MembershipFinalize | [Rpc.Membership.Finalize.Request](#anytype-Rpc-Membership-Finalize-Request) | [Rpc.Membership.Finalize.Response](#anytype-Rpc-Membership-Finalize-Response) | If your subscription is in PendingRequiresFinalization: please call MembershipFinalize to finish the process |
 | MembershipGetTiers | [Rpc.Membership.GetTiers.Request](#anytype-Rpc-Membership-GetTiers-Request) | [Rpc.Membership.GetTiers.Response](#anytype-Rpc-Membership-GetTiers-Response) |  |
 | MembershipVerifyAppStoreReceipt | [Rpc.Membership.VerifyAppStoreReceipt.Request](#anytype-Rpc-Membership-VerifyAppStoreReceipt-Request) | [Rpc.Membership.VerifyAppStoreReceipt.Response](#anytype-Rpc-Membership-VerifyAppStoreReceipt-Response) |  |
+| MembershipCodeGetInfo | [Rpc.Membership.CodeGetInfo.Request](#anytype-Rpc-Membership-CodeGetInfo-Request) | [Rpc.Membership.CodeGetInfo.Response](#anytype-Rpc-Membership-CodeGetInfo-Response) |  |
+| MembershipCodeRedeem | [Rpc.Membership.CodeRedeem.Request](#anytype-Rpc-Membership-CodeRedeem-Request) | [Rpc.Membership.CodeRedeem.Response](#anytype-Rpc-Membership-CodeRedeem-Response) |  |
 | NameServiceUserAccountGet | [Rpc.NameService.UserAccount.Get.Request](#anytype-Rpc-NameService-UserAccount-Get-Request) | [Rpc.NameService.UserAccount.Get.Response](#anytype-Rpc-NameService-UserAccount-Get-Response) | Name Service: *** hello.any -&gt; data |
 | NameServiceResolveName | [Rpc.NameService.ResolveName.Request](#anytype-Rpc-NameService-ResolveName-Request) | [Rpc.NameService.ResolveName.Response](#anytype-Rpc-NameService-ResolveName-Response) |  |
 | NameServiceResolveAnyId | [Rpc.NameService.ResolveAnyId.Request](#anytype-Rpc-NameService-ResolveAnyId-Request) | [Rpc.NameService.ResolveAnyId.Response](#anytype-Rpc-NameService-ResolveAnyId-Response) | 12D3KooWA8EXV3KjBxEU5EnsPfneLx84vMWAtTBQBeyooN82KSuS -&gt; hello.any |
@@ -13785,6 +13803,122 @@ users can not have N tiers (no combining)
 
 
 
+<a name="anytype-Rpc-Membership-CodeGetInfo"></a>
+
+### Rpc.Membership.CodeGetInfo
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Membership-CodeGetInfo-Request"></a>
+
+### Rpc.Membership.CodeGetInfo.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Membership-CodeGetInfo-Response"></a>
+
+### Rpc.Membership.CodeGetInfo.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Membership.CodeGetInfo.Response.Error](#anytype-Rpc-Membership-CodeGetInfo-Response-Error) |  |  |
+| requestedTier | [uint32](#uint32) |  | which tier current code can unlock |
+
+
+
+
+
+
+<a name="anytype-Rpc-Membership-CodeGetInfo-Response-Error"></a>
+
+### Rpc.Membership.CodeGetInfo.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Membership.CodeGetInfo.Response.Error.Code](#anytype-Rpc-Membership-CodeGetInfo-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Membership-CodeRedeem"></a>
+
+### Rpc.Membership.CodeRedeem
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Membership-CodeRedeem-Request"></a>
+
+### Rpc.Membership.CodeRedeem.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [string](#string) |  |  |
+| nsName | [string](#string) |  |  |
+| nsNameType | [model.NameserviceNameType](#anytype-model-NameserviceNameType) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Membership-CodeRedeem-Response"></a>
+
+### Rpc.Membership.CodeRedeem.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Membership.CodeRedeem.Response.Error](#anytype-Rpc-Membership-CodeRedeem-Response-Error) |  |  |
+| requestedTier | [uint32](#uint32) |  | which tier does the current code unlock |
+
+
+
+
+
+
+<a name="anytype-Rpc-Membership-CodeRedeem-Response-Error"></a>
+
+### Rpc.Membership.CodeRedeem.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Membership.CodeRedeem.Response.Error.Code](#anytype-Rpc-Membership-CodeRedeem-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
 <a name="anytype-Rpc-Membership-Finalize"></a>
 
 ### Rpc.Membership.Finalize
@@ -15943,6 +16077,7 @@ DEPRECATED, GO-1926 |
 | spaceId | [string](#string) |  |  |
 | collectionId | [string](#string) |  |  |
 | setSource | [string](#string) | repeated |  |
+| includeTypeEdges | [bool](#bool) |  |  |
 
 
 
@@ -17193,6 +17328,63 @@ Deletes the object, keys from the local store and unsubscribe from remote change
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | code | [Rpc.Object.Redo.Response.Error.Code](#anytype-Rpc-Object-Redo-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Object-Refresh"></a>
+
+### Rpc.Object.Refresh
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Object-Refresh-Request"></a>
+
+### Rpc.Object.Refresh.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| objectId | [string](#string) |  |  |
+| spaceId | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Object-Refresh-Response"></a>
+
+### Rpc.Object.Refresh.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Object.Refresh.Response.Error](#anytype-Rpc-Object-Refresh-Response-Error) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Object-Refresh-Response-Error"></a>
+
+### Rpc.Object.Refresh.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Object.Refresh.Response.Error.Code](#anytype-Rpc-Object-Refresh-Response-Error-Code) |  |  |
 | description | [string](#string) |  |  |
 
 
@@ -21604,6 +21796,7 @@ Middleware-to-front-end response, that can contain mnemonic of a created account
 | ----- | ---- | ----- | ----------- |
 | mnemonic | [string](#string) |  | cold auth |
 | appKey | [string](#string) |  | persistent app key, that can be used to restore session |
+| token | [string](#string) |  | token from the previous session |
 
 
 
@@ -21732,7 +21925,7 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | ----- | ---- | ----- | ----------- |
 | details | [google.protobuf.Struct](#google-protobuf-Struct) |  | object details |
 | useCase | [Rpc.Object.ImportUseCase.Request.UseCase](#anytype-Rpc-Object-ImportUseCase-Request-UseCase) |  | use case |
-| withChat | [bool](#bool) |  | create space-level chat; temporary solution, should be removed after chats released for all users |
+| withChat | [bool](#bool) |  | deprecated |
 
 
 
@@ -24815,6 +25008,41 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 
 
 
+<a name="anytype-Rpc-Membership-CodeGetInfo-Response-Error-Code"></a>
+
+### Rpc.Membership.CodeGetInfo.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
+| NOT_LOGGED_IN | 3 |  |
+| PAYMENT_NODE_ERROR | 4 |  |
+| CODE_NOT_FOUND | 5 |  |
+| CODE_ALREADY_USED | 6 |  |
+
+
+
+<a name="anytype-Rpc-Membership-CodeRedeem-Response-Error-Code"></a>
+
+### Rpc.Membership.CodeRedeem.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
+| NOT_LOGGED_IN | 3 |  |
+| PAYMENT_NODE_ERROR | 4 |  |
+| CODE_NOT_FOUND | 5 |  |
+| CODE_ALREADY_USED | 6 |  |
+| BAD_ANYNAME | 7 |  |
+
+
+
 <a name="anytype-Rpc-Membership-Finalize-Response-Error-Code"></a>
 
 ### Rpc.Membership.Finalize.Response.Error.Code
@@ -25688,6 +25916,20 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | UNKNOWN_ERROR | 1 |  |
 | BAD_INPUT | 2 |  |
 | CAN_NOT_MOVE | 3 | ... |
+
+
+
+<a name="anytype-Rpc-Object-Refresh-Response-Error-Code"></a>
+
+### Rpc.Object.Refresh.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
+| OBJECT_DELETED | 4 |  |
 
 
 
@@ -30745,6 +30987,7 @@ Contains basic information about a user account
 | profileObjectId | [string](#string) |  | profile block id |
 | marketplaceWorkspaceId | [string](#string) |  | marketplace workspace id |
 | workspaceObjectId | [string](#string) |  | workspace object id. used for space-level chat |
+| spaceChatId | [string](#string) |  | space-level chat if exists |
 | deviceId | [string](#string) |  |  |
 | accountSpaceId | [string](#string) |  | the first created private space. It&#39;s filled only when account is created |
 | widgetsId | [string](#string) |  |  |

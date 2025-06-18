@@ -93,11 +93,36 @@
           "ColorLime"
         ]
       },
+      "apimodel.CreateApiKeyRequest": {
+        "properties": {
+          "challenge_id": {
+            "description": "The challenge id associated with the previously displayed code",
+            "example": "67647f5ecda913e9a2e11b26",
+            "type": "string"
+          },
+          "code": {
+            "description": "The 4-digit code retrieved from Anytype Desktop app",
+            "example": "1234",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
       "apimodel.CreateApiKeyResponse": {
         "properties": {
           "api_key": {
             "description": "The api key used to authenticate requests",
             "example": "zhSG/zQRmgADyilWPtgdnfo1qD60oK02/SVgi1GaFt6=",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "apimodel.CreateChallengeRequest": {
+        "properties": {
+          "app_name": {
+            "description": "The name of the app that is requesting the challenge",
+            "example": "anytype_mcp",
             "type": "string"
           }
         },
@@ -2392,34 +2417,18 @@
               "default": "2025-05-20",
               "type": "string"
             }
-          },
-          {
-            "description": "The ID of the challenge to solve",
-            "in": "query",
-            "name": "challenge_id",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "description": "The 4-digit code retrieved from Anytype Desktop app",
-            "in": "query",
-            "name": "code",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
           }
         ],
         "requestBody": {
           "content": {
             "application/json": {
               "schema": {
-                "type": "object"
+                "$ref": "#/components/schemas/apimodel.CreateApiKeyRequest"
               }
             }
-          }
+          },
+          "description": "The request body containing the challenge ID and code",
+          "required": true
         },
         "responses": {
           "201": {
@@ -2473,25 +2482,18 @@
               "default": "2025-05-20",
               "type": "string"
             }
-          },
-          {
-            "description": "The name of the app requesting API access",
-            "in": "query",
-            "name": "app_name",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
           }
         ],
         "requestBody": {
           "content": {
             "application/json": {
               "schema": {
-                "type": "object"
+                "$ref": "#/components/schemas/apimodel.CreateChallengeRequest"
               }
             }
-          }
+          },
+          "description": "The request body containing the app name",
+          "required": true
         },
         "responses": {
           "201": {
@@ -6066,7 +6068,7 @@
   "openapi": "3.1.0",
   "servers": [
     {
-      "url": "http://localhost:31009"
+      "url": "http://127.0.0.1:31009"
     }
   ]
 }

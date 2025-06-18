@@ -1691,3 +1691,61 @@ func TestVerifyAppStoreReceipt(t *testing.T) {
 		assert.Equal(t, pb.RpcMembershipVerifyAppStoreReceiptResponseErrorCode(0), resp.Error.Code)
 	})
 }
+
+func TestCodeGetInfo(t *testing.T) {
+	t.Run("should get code info successfully", func(t *testing.T) {
+		// Given
+		fx := newFixture(t)
+		defer fx.finish(t)
+
+		code := "TEST-CODE-123"
+		expectedTier := uint32(psp.SubscriptionTier_TierBuilder1Year)
+
+		// Mock PP client response
+		fx.ppclient.EXPECT().
+			CodeGetInfo(gomock.Any(), gomock.Any()).
+			Return(&psp.CodeGetInfoResponse{
+				Tier: expectedTier,
+			}, nil)
+
+		// mock GetAccountEthAddress
+		fx.wallet.EXPECT().GetAccountEthAddress().Return(common.HexToAddress("0x55DCad916750C19C4Ec69D65Ff0317767B36cE90")).Once()
+
+		// When
+		resp, err := fx.CodeGetInfo(context.Background(), &pb.RpcMembershipCodeGetInfoRequest{
+			Code: code,
+		})
+
+		// Then
+		require.NoError(t, err)
+		require.NotNil(t, resp)
+		assert.Equal(t, expectedTier, resp.RequestedTier)
+		assert.Equal(t, pb.RpcMembershipCodeGetInfoResponseError_NULL, resp.Error.Code)
+	})
+
+	t.Run("should return error if code is not found", func(t *testing.T) {
+		// Given
+		fx := newFixture(t)
+		defer fx.finish(t)
+
+		code := "TEST-CODE-123"
+
+		// Mock PP client response
+		fx.ppclient.EXPECT().
+			CodeGetInfo(gomock.Any(), gomock.Any()).
+			Return(&psp.CodeGetInfoResponse{
+				Tier: 0,
+			}, psp.ErrCodeNotFound)
+
+		fx.wallet.EXPECT().GetAccountEthAddress().Return(common.HexToAddress("0x55DCad916750C19C4Ec69D65Ff0317767B36cE90")).Once()
+
+		// When
+		resp, err := fx.CodeGetInfo(context.Background(), &pb.RpcMembershipCodeGetInfoRequest{
+			Code: code,
+		})
+
+		// Then
+		require.Equal(t, psp.ErrCodeNotFound, err)
+		require.Nil(t, resp)
+	})
+}

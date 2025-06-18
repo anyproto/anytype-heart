@@ -301,6 +301,7 @@ func (s *treeSource) buildState() (doc state.Doc, err error) {
 	st.AddBundledRelationLinks(bundle.RequiredInternalRelations...)
 	if s.Type() == smartblock.SmartBlockTypePage || s.Type() == smartblock.SmartBlockTypeProfilePage {
 		template.WithRelations([]domain.RelationKey{bundle.RelationKeyBacklinks})(st)
+		template.WithFeaturedRelationsBlock(st)
 	}
 
 	if s.Type() == smartblock.SmartBlockTypeWidget {
