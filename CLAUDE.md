@@ -78,6 +78,7 @@ err := cache.Do(picker, objectId, func(sb sb.SmartBlock) error {
 
 ## Testing & Tools
 - Unit tests: `go test ./...`
+- Show only failed tests: `make test-failed` (saves tokens)
 - Debug tree: `cmd/debugtree`
 - Performance: `cmd/perfstand`
 
