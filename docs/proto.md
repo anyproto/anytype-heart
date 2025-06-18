@@ -1914,8 +1914,6 @@
     - [Event.Process.Done](#anytype-Event-Process-Done)
     - [Event.Process.New](#anytype-Event-Process-New)
     - [Event.Process.Update](#anytype-Event-Process-Update)
-    - [Event.PushEncryptionKey](#anytype-Event-PushEncryptionKey)
-    - [Event.PushEncryptionKey.Update](#anytype-Event-PushEncryptionKey-Update)
     - [Event.Space](#anytype-Event-Space)
     - [Event.Space.AutoWidgetAdded](#anytype-Event-Space-AutoWidgetAdded)
     - [Event.Space.SyncStatus](#anytype-Event-Space-SyncStatus)
@@ -20043,7 +20041,7 @@ Available undo/redo operations
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| spaceViewId | [string](#string) |  |  |
+| spaceId | [string](#string) |  |  |
 | mode | [Rpc.PushNotification.SetSpaceMode.Mode](#anytype-Rpc-PushNotification-SetSpaceMode-Mode) |  |  |
 
 
@@ -29797,7 +29795,6 @@ Precondition: user A opened a block
 | chatUpdateMentionReadStatus | [Event.Chat.UpdateMentionReadStatus](#anytype-Event-Chat-UpdateMentionReadStatus) |  | received to update per-message mention read status (if needed to highlight the unread mentions in the UI) |
 | chatDelete | [Event.Chat.Delete](#anytype-Event-Chat-Delete) |  |  |
 | chatStateUpdate | [Event.Chat.UpdateState](#anytype-Event-Chat-UpdateState) |  | in case new unread messages received or chat state changed (e.g. message read on another device) |
-| pushEncryptionKeyUpdate | [Event.PushEncryptionKey.Update](#anytype-Event-PushEncryptionKey-Update) |  |  |
 
 
 
@@ -30240,32 +30237,6 @@ Removes document from subscription
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | process | [Model.Process](#anytype-Model-Process) |  |  |
-
-
-
-
-
-
-<a name="anytype-Event-PushEncryptionKey"></a>
-
-### Event.PushEncryptionKey
-
-
-
-
-
-
-
-<a name="anytype-Event-PushEncryptionKey-Update"></a>
-
-### Event.PushEncryptionKey.Update
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| encryptionKeyId | [string](#string) |  |  |
-| encryptionKey | [string](#string) |  |  |
 
 
 

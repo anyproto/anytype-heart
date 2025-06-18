@@ -14,7 +14,6 @@ import (
 	"go.uber.org/zap"
 
 	"github.com/anyproto/anytype-heart/core/anytype/config"
-	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/core/pushnotification/pushclient"
 	"github.com/anyproto/anytype-heart/core/subscription"
 	"github.com/anyproto/anytype-heart/core/subscription/objectsubscription"
@@ -51,7 +50,6 @@ type service struct {
 	wallet               wallet.Wallet
 	config               *config.Config
 	spaceService         space.Service
-	eventSender          event.Sender
 	subscriptionsService subscription.Service
 
 	spaceViewSubscription *objectsubscription.ObjectSubscription[spaceViewStatus]
@@ -80,7 +78,6 @@ func (s *service) Init(a *app.App) (err error) {
 	s.pushClient = app.MustComponent[pushclient.Client](a)
 	s.wallet = app.MustComponent[wallet.Wallet](a)
 	s.spaceService = app.MustComponent[space.Service](a)
-	s.eventSender = app.MustComponent[event.Sender](a)
 	s.subscriptionsService = app.MustComponent[subscription.Service](a)
 	s.notifyQueue = mb.New[PushNotification](0)
 	s.topics = newSpaceTopicsCollection(s.wallet.Account().SignKey.GetPublic().Account())

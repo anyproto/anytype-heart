@@ -8648,7 +8648,7 @@ message Rpc {
         }
         message SetSpaceMode {
             message Request {
-                string spaceViewId = 1;
+                string spaceId = 1;
                 Mode mode = 2;
             }
 

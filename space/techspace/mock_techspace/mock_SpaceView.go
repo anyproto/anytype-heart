@@ -8,6 +8,10 @@ import (
 
 	mock "github.com/stretchr/testify/mock"
 
+	pb "github.com/anyproto/anytype-heart/pb"
+
+	session "github.com/anyproto/anytype-heart/core/session"
+
 	spaceinfo "github.com/anyproto/anytype-heart/space/spaceinfo"
 )
 
@@ -373,6 +377,53 @@ func (_c *MockSpaceView_SetOwner_Call) Return(err error) *MockSpaceView_SetOwner
 }
 
 func (_c *MockSpaceView_SetOwner_Call) RunAndReturn(run func(string, int64) error) *MockSpaceView_SetOwner_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// SetPushNotificationMode provides a mock function with given fields: ctx, mode
+func (_m *MockSpaceView) SetPushNotificationMode(ctx session.Context, mode pb.RpcPushNotificationSetSpaceModeMode) error {
+	ret := _m.Called(ctx, mode)
+
+	if len(ret) == 0 {
+		panic("no return value specified for SetPushNotificationMode")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(session.Context, pb.RpcPushNotificationSetSpaceModeMode) error); ok {
+		r0 = rf(ctx, mode)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// MockSpaceView_SetPushNotificationMode_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'SetPushNotificationMode'
+type MockSpaceView_SetPushNotificationMode_Call struct {
+	*mock.Call
+}
+
+// SetPushNotificationMode is a helper method to define mock.On call
+//   - ctx session.Context
+//   - mode pb.RpcPushNotificationSetSpaceModeMode
+func (_e *MockSpaceView_Expecter) SetPushNotificationMode(ctx interface{}, mode interface{}) *MockSpaceView_SetPushNotificationMode_Call {
+	return &MockSpaceView_SetPushNotificationMode_Call{Call: _e.mock.On("SetPushNotificationMode", ctx, mode)}
+}
+
+func (_c *MockSpaceView_SetPushNotificationMode_Call) Run(run func(ctx session.Context, mode pb.RpcPushNotificationSetSpaceModeMode)) *MockSpaceView_SetPushNotificationMode_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(session.Context), args[1].(pb.RpcPushNotificationSetSpaceModeMode))
+	})
+	return _c
+}
+
+func (_c *MockSpaceView_SetPushNotificationMode_Call) Return(err error) *MockSpaceView_SetPushNotificationMode_Call {
+	_c.Call.Return(err)
+	return _c
+}
+
+func (_c *MockSpaceView_SetPushNotificationMode_Call) RunAndReturn(run func(session.Context, pb.RpcPushNotificationSetSpaceModeMode) error) *MockSpaceView_SetPushNotificationMode_Call {
 	_c.Call.Return(run)
 	return _c
 }

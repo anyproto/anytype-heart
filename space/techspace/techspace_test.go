@@ -22,6 +22,8 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock/smarttest"
 	"github.com/anyproto/anytype-heart/core/block/object/objectcache/mock_objectcache"
 	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/core/session"
+	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/space/spacecore/mock_spacecore"
 	"github.com/anyproto/anytype-heart/space/spaceinfo"
 	"github.com/anyproto/anytype-heart/tests/testutil"
@@ -43,6 +45,10 @@ func TestTechSpace_Run(t *testing.T) {
 type spaceViewStub struct {
 	*smarttest.SmartTest
 	data *domain.Details
+}
+
+func (s *spaceViewStub) SetPushNotificationMode(ctx session.Context, mode pb.RpcPushNotificationSetSpaceModeMode) (err error) {
+	return
 }
 
 var _ SpaceView = (*spaceViewStub)(nil)

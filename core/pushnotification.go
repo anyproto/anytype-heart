@@ -3,11 +3,10 @@ package core
 import (
 	"context"
 
-	"github.com/anyproto/anytype-heart/core/block/detailservice"
-	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/pushnotification"
 	"github.com/anyproto/anytype-heart/pb"
-	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
+	"github.com/anyproto/anytype-heart/space"
+	"github.com/anyproto/anytype-heart/space/techspace"
 )
 
 func (mw *Middleware) PushNotificationRegisterToken(cctx context.Context, req *pb.RpcPushNotificationRegisterTokenRequest) *pb.RpcPushNotificationRegisterTokenResponse {
@@ -23,7 +22,7 @@ func (mw *Middleware) PushNotificationRegisterToken(cctx context.Context, req *p
 	return response(pb.RpcPushNotificationRegisterTokenResponseError_NULL, nil)
 }
 
-func (mw *Middleware) PushNotificationSetSpaceMode(_ context.Context, req *pb.RpcPushNotificationSetSpaceModeRequest) *pb.RpcPushNotificationSetSpaceModeResponse {
+func (mw *Middleware) PushNotificationSetSpaceMode(cctx context.Context, req *pb.RpcPushNotificationSetSpaceModeRequest) *pb.RpcPushNotificationSetSpaceModeResponse {
 	response := func(code pb.RpcPushNotificationSetSpaceModeResponseErrorCode, err error) *pb.RpcPushNotificationSetSpaceModeResponse {
 		m := &pb.RpcPushNotificationSetSpaceModeResponse{Error: &pb.RpcPushNotificationSetSpaceModeResponseError{Code: code}}
 		if err != nil {
@@ -31,12 +30,12 @@ func (mw *Middleware) PushNotificationSetSpaceMode(_ context.Context, req *pb.Rp
 		}
 		return m
 	}
-	err := mustService[detailservice.Service](mw).ModifyDetails(nil, req.SpaceViewId, func(current *domain.Details) (*domain.Details, error) {
-		return current.SetInt64(bundle.RelationKeySpacePushNotificationMode, int64(req.Mode)), nil
+	ctx := mw.newContext(cctx)
+	err := mustService[space.Service](mw).TechSpace().DoSpaceView(cctx, req.SpaceId, func(spaceView techspace.SpaceView) error {
+		return spaceView.SetPushNotificationMode(ctx, req.Mode)
 	})
 	if err != nil {
 		return response(pb.RpcPushNotificationSetSpaceModeResponseError_UNKNOWN_ERROR, err)
 	}
-
 	return response(pb.RpcPushNotificationSetSpaceModeResponseError_NULL, nil)
 }
