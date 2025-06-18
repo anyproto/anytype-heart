@@ -298,18 +298,18 @@ func (g *gateway) getImage(ctx context.Context, r *http.Request) (*getImageReade
 	}
 
 	result, err := retry.DoWithData(func() (*getImageReaderResult, error) {
-		objectId := imageId
-
+		var img files.Image
+		var err error
 		if domain.IsFileId(imageId) {
-			var err error
-			objectId, _, err = g.fileObjectService.GetObjectDetailsByFileIdCrossSpace(imageId)
+			img, err = g.fileObjectService.GetImageDataFromRawId(ctx, domain.FileId(imageId))
 			if err != nil {
-				return nil, fmt.Errorf("get object by fileId: %w", err)
+				return nil, fmt.Errorf("get image data: %w", err)
 			}
-		}
-		img, err := g.fileObjectService.GetImageData(ctx, objectId)
-		if err != nil {
-			return nil, fmt.Errorf("get image data: %w", err)
+		} else {
+			img, err = g.fileObjectService.GetImageData(ctx, imageId)
+			if err != nil {
+				return nil, fmt.Errorf("get image data: %w", err)
+			}
 		}
 		res, err := g.getImageReader(ctx, img, r)
 		if err != nil {

@@ -59,7 +59,8 @@ type Service interface {
 	GetFileData(ctx context.Context, objectId string) (files.File, error)
 	GetImageData(ctx context.Context, objectId string) (files.Image, error)
 
-	GetObjectDetailsByFileIdCrossSpace(fileId string) (string, *domain.Details, error)
+	GetImageDataFromRawId(ctx context.Context, fileId domain.FileId) (files.Image, error)
+
 	GetObjectDetailsByFileId(fileId domain.FullFileId) (string, *domain.Details, error)
 
 	MigrateFileIdsInDetails(st *state.State, spc source.Space)
@@ -430,27 +431,6 @@ func (s *service) addToSyncQueue(objectId string, fileId domain.FullFileId, uplo
 	return nil
 }
 
-func (s *service) GetObjectDetailsByFileIdCrossSpace(fileId string) (string, *domain.Details, error) {
-	records, err := s.objectStore.QueryCrossSpace(database.Query{
-		Filters: []database.FilterRequest{
-			{
-				RelationKey: bundle.RelationKeyFileId,
-				Condition:   model.BlockContentDataviewFilter_Equal,
-				Value:       domain.String(fileId),
-			},
-		},
-	})
-
-	if err != nil {
-		return "", nil, fmt.Errorf("query objects by file hash: %w", err)
-	}
-	if len(records) == 0 {
-		return "", nil, filemodels.ErrObjectNotFound
-	}
-	details := records[0].Details
-	return details.GetString(bundle.RelationKeyId), details, nil
-}
-
 func (s *service) GetObjectDetailsByFileId(fileId domain.FullFileId) (string, *domain.Details, error) {
 	records, err := s.objectStore.SpaceIndex(fileId.SpaceId).Query(database.Query{
 		Filters: []database.FilterRequest{
@@ -537,6 +517,22 @@ func (s *service) GetImageData(ctx context.Context, objectId string) (files.Imag
 		return err
 	})
 	return img, err
+}
+
+func (s *service) GetImageDataFromRawId(ctx context.Context, fileId domain.FileId) (files.Image, error) {
+	keys, err := s.objectStore.GetFileKeys(fileId)
+	if err != nil {
+		return nil, fmt.Errorf("get file keys: %w", err)
+	}
+
+	fullId := domain.FullFileId{
+		FileId: fileId,
+	}
+	variants, err := s.fileService.GetFileVariants(ctx, fullId, keys)
+	if err != nil {
+		return nil, fmt.Errorf("get file variants: %w", err)
+	}
+	return files.NewImage(s.fileService, fullId, variants), nil
 }
 
 func (s *service) resolveSpaceIdWithRetry(ctx context.Context, objectId string) (string, error) {
