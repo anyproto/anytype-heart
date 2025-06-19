@@ -99,16 +99,14 @@ func (a *aclService) Init(ap *app.App) (err error) {
 	a.inviteService = app.MustComponent[inviteservice.InviteService](ap)
 	a.coordClient = app.MustComponent[coordinatorclient.CoordinatorClient](ap)
 	a.identityRepo = app.MustComponent[identityRepoClient](ap)
-	crossSub, err := app.GetComponent[crossspacesub.Service](ap)
-	if err == nil {
-		wlt := app.MustComponent[wallet.Wallet](ap)
-		a.updater = newAclUpdater("acl-updater",
-			wlt.Account().SignKey.GetPublic().Account(),
-			crossSub,
-			a,
-			1*time.Second,
-			30*time.Second)
-	}
+	crossSub := app.MustComponent[crossspacesub.Service](ap)
+	wlt := app.MustComponent[wallet.Wallet](ap)
+	a.updater = newAclUpdater("acl-updater",
+		wlt.Account().SignKey.GetPublic().Account(),
+		crossSub,
+		a,
+		1*time.Second,
+		30*time.Second)
 	a.recordVerifier = recordverifier.New()
 	return nil
 }

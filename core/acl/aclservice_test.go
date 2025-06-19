@@ -37,6 +37,9 @@ import (
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/inviteservice"
 	"github.com/anyproto/anytype-heart/core/inviteservice/mock_inviteservice"
+	subscriptionservice "github.com/anyproto/anytype-heart/core/subscription"
+	"github.com/anyproto/anytype-heart/core/subscription/crossspacesub/mock_crossspacesub"
+	"github.com/anyproto/anytype-heart/core/wallet/mock_wallet"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space"
 	"github.com/anyproto/anytype-heart/space/clientspace"
@@ -80,6 +83,8 @@ type fixture struct {
 	mockClientSpace       *mock_clientspace.MockSpace
 	mockCommonSpace       *mock_commonspace.MockSpace
 	mockSpaceClient       *mock_aclclient.MockAclSpaceClient
+	mockCrossSpace        *mock_crossspacesub.MockService
+	mockWallet            *mock_wallet.MockWallet
 	mockAcl               *mock_list.MockAclList
 	mockConfig            *mockConfig
 }
@@ -97,6 +102,8 @@ func newFixture(t *testing.T) *fixture {
 		mockCoordinatorClient: mock_coordinatorclient.NewMockCoordinatorClient(ctrl),
 		mockTechSpace:         mock_techspace.NewMockTechSpace(t),
 		mockSpaceView:         mock_techspace.NewMockSpaceView(t),
+		mockCrossSpace:        mock_crossspacesub.NewMockService(t),
+		mockWallet:            mock_wallet.NewMockWallet(t),
 		mockClientSpace:       mock_clientspace.NewMockSpace(t),
 		mockCommonSpace:       mock_commonspace.NewMockSpace(ctrl),
 		mockSpaceClient:       mock_aclclient.NewMockAclSpaceClient(ctrl),
@@ -104,12 +111,18 @@ func newFixture(t *testing.T) *fixture {
 		mockConfig:            &mockConfig{},
 	}
 	fx.a.Register(testutil.PrepareMock(ctx, fx.a, fx.mockAccountService)).
+		Register(testutil.PrepareMock(ctx, fx.a, fx.mockWallet)).
 		Register(testutil.PrepareMock(ctx, fx.a, fx.mockJoiningClient)).
 		Register(testutil.PrepareMock(ctx, fx.a, fx.mockSpaceService)).
 		Register(testutil.PrepareMock(ctx, fx.a, fx.mockInviteService)).
 		Register(testutil.PrepareMock(ctx, fx.a, fx.mockCoordinatorClient)).
+		Register(testutil.PrepareMock(ctx, fx.a, fx.mockCrossSpace)).
 		Register(fx.mockConfig).
 		Register(fx.aclService)
+	keys, err := accountdata.NewRandom()
+	require.NoError(t, err)
+	fx.mockWallet.EXPECT().Account().Return(keys)
+	fx.mockCrossSpace.EXPECT().Subscribe(mock.Anything, mock.Anything).Return(&subscriptionservice.SubscribeResponse{}, nil)
 	require.NoError(t, fx.a.Start(ctx))
 	fx.aclService.recordVerifier = recordverifier.NewValidateFull()
 	return fx
