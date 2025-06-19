@@ -1,4 +1,4 @@
-package minwaitqueue
+package retryscheduler
 
 import (
 	"container/heap"
@@ -83,11 +83,11 @@ func (h *itemHeap[T]) Pop() interface{} {
 	return item
 }
 
-type MinWaitQueue[T any] struct {
+type RetryScheduler[T any] struct {
 	heap           itemHeap[T]
 	items          map[string]*Item[T] // for O(1) lookup
-	updateFunc     func(ctx context.Context, msg T) error
-	evaluate       func(err error) bool
+	process        func(ctx context.Context, msg T) error
+	shouldRetry    func(err error) bool
 	defaultTimeout time.Duration
 	maxTimeout     time.Duration
 	timeProvider   TimeProvider
@@ -105,11 +105,11 @@ type Config struct {
 	TimeProvider   TimeProvider // Optional, defaults to real time
 }
 
-func NewMinWaitQueue[T any](
-	updateFunc func(ctx context.Context, msg T) error,
-	evaluate func(err error) bool,
+func NewRetryScheduler[T any](
+	process func(ctx context.Context, msg T) error,
+	shouldRetry func(err error) bool,
 	config Config,
-) *MinWaitQueue[T] {
+) *RetryScheduler[T] {
 	ctx, cancel := context.WithCancel(context.Background())
 
 	if config.DefaultTimeout == 0 {
@@ -122,11 +122,11 @@ func NewMinWaitQueue[T any](
 		config.TimeProvider = realTimeProvider{}
 	}
 
-	return &MinWaitQueue[T]{
+	return &RetryScheduler[T]{
 		heap:           make(itemHeap[T], 0),
 		items:          make(map[string]*Item[T]),
-		updateFunc:     updateFunc,
-		evaluate:       evaluate,
+		process:        process,
+		shouldRetry:    shouldRetry,
 		defaultTimeout: config.DefaultTimeout,
 		maxTimeout:     config.MaxTimeout,
 		timeProvider:   config.TimeProvider,
@@ -136,7 +136,7 @@ func NewMinWaitQueue[T any](
 	}
 }
 
-func (q *MinWaitQueue[T]) AddUpdate(id string, value T, timeout time.Duration) error {
+func (q *RetryScheduler[T]) Schedule(id string, value T, timeout time.Duration) error {
 	q.mu.Lock()
 	defer q.mu.Unlock()
 
@@ -171,7 +171,7 @@ func (q *MinWaitQueue[T]) AddUpdate(id string, value T, timeout time.Duration) e
 	return nil
 }
 
-func (q *MinWaitQueue[T]) RemoveUpdate(id string) {
+func (q *RetryScheduler[T]) Remove(id string) {
 	q.mu.Lock()
 	defer q.mu.Unlock()
 
@@ -183,11 +183,11 @@ func (q *MinWaitQueue[T]) RemoveUpdate(id string) {
 	}
 }
 
-func (q *MinWaitQueue[T]) Run() {
-	go q.process()
+func (q *RetryScheduler[T]) Run() {
+	go q.run()
 }
 
-func (q *MinWaitQueue[T]) process() {
+func (q *RetryScheduler[T]) run() {
 	var timer Timer
 
 	for {
@@ -240,7 +240,7 @@ func (q *MinWaitQueue[T]) process() {
 	}
 }
 
-func (q *MinWaitQueue[T]) processNextItem() {
+func (q *RetryScheduler[T]) processNextItem() {
 	q.mu.Lock()
 
 	if len(q.heap) == 0 {
@@ -253,8 +253,8 @@ func (q *MinWaitQueue[T]) processNextItem() {
 
 	q.mu.Unlock()
 	// nolint: nestif
-	if err := q.updateFunc(q.ctx, item.Value); err != nil {
-		if q.evaluate(err) {
+	if err := q.process(q.ctx, item.Value); err != nil {
+		if q.shouldRetry(err) {
 			originalTimeout := item.Timeout
 			if originalTimeout == 0 {
 				originalTimeout = q.defaultTimeout
@@ -265,12 +265,12 @@ func (q *MinWaitQueue[T]) processNextItem() {
 				newTimeout = q.maxTimeout
 			}
 			// nolint: errcheck
-			q.AddUpdate(item.ID, item.Value, newTimeout)
+			q.Schedule(item.ID, item.Value, newTimeout)
 		}
 	}
 }
 
-func (q *MinWaitQueue[T]) Close() error {
+func (q *RetryScheduler[T]) Close() error {
 	q.mu.Lock()
 	q.closed = true
 	q.mu.Unlock()
@@ -279,7 +279,7 @@ func (q *MinWaitQueue[T]) Close() error {
 	return nil
 }
 
-func (q *MinWaitQueue[T]) Len() int {
+func (q *RetryScheduler[T]) Len() int {
 	q.mu.Lock()
 	defer q.mu.Unlock()
 	return len(q.items)

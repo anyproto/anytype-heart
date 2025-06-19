@@ -1,4 +1,4 @@
-package minwaitqueue
+package retryscheduler
 
 import (
 	"context"
@@ -147,7 +147,7 @@ type testMessage struct {
 	Content string
 }
 
-func TestMinWaitQueue_BasicOperation(t *testing.T) {
+func TestRetryScheduler_BasicOperation(t *testing.T) {
 	mockTime := newMockTimeProvider()
 	processedItems := make(chan testMessage, 10)
 
@@ -166,13 +166,13 @@ func TestMinWaitQueue_BasicOperation(t *testing.T) {
 		TimeProvider:   mockTime,
 	}
 
-	queue := NewMinWaitQueue(updateFunc, evaluate, config)
+	queue := NewRetryScheduler(updateFunc, evaluate, config)
 	queue.Run()
 	defer queue.Close()
 
-	queue.AddUpdate("1", testMessage{ID: "1", Content: "first"}, 200*time.Millisecond)
-	queue.AddUpdate("2", testMessage{ID: "2", Content: "second"}, 100*time.Millisecond)
-	queue.AddUpdate("3", testMessage{ID: "3", Content: "third"}, 300*time.Millisecond)
+	queue.Schedule("1", testMessage{ID: "1", Content: "first"}, 200*time.Millisecond)
+	queue.Schedule("2", testMessage{ID: "2", Content: "second"}, 100*time.Millisecond)
+	queue.Schedule("3", testMessage{ID: "3", Content: "third"}, 300*time.Millisecond)
 
 	mockTime.Advance(100 * time.Millisecond)
 	msg := <-processedItems
@@ -197,7 +197,7 @@ func TestMinWaitQueue_BasicOperation(t *testing.T) {
 	}
 }
 
-func TestMinWaitQueue_UpdateExisting(t *testing.T) {
+func TestRetryScheduler_UpdateExisting(t *testing.T) {
 	mockTime := newMockTimeProvider()
 	processedItems := make(chan testMessage, 10)
 
@@ -216,16 +216,16 @@ func TestMinWaitQueue_UpdateExisting(t *testing.T) {
 		TimeProvider:   mockTime,
 	}
 
-	queue := NewMinWaitQueue(updateFunc, evaluate, config)
+	queue := NewRetryScheduler(updateFunc, evaluate, config)
 	queue.Run()
 	defer queue.Close()
 
-	queue.AddUpdate("1", testMessage{ID: "1", Content: "first"}, 500*time.Millisecond)
+	queue.Schedule("1", testMessage{ID: "1", Content: "first"}, 500*time.Millisecond)
 
 	mockTime.Advance(100 * time.Millisecond)
 	waitForProcessing()
 
-	queue.AddUpdate("1", testMessage{ID: "1", Content: "updated"}, 50*time.Millisecond)
+	queue.Schedule("1", testMessage{ID: "1", Content: "updated"}, 50*time.Millisecond)
 
 	mockTime.Advance(50 * time.Millisecond)
 
@@ -239,7 +239,7 @@ func TestMinWaitQueue_UpdateExisting(t *testing.T) {
 	}
 }
 
-func TestMinWaitQueue_RemoveUpdate(t *testing.T) {
+func TestRetryScheduler_RemoveUpdate(t *testing.T) {
 	mockTime := newMockTimeProvider()
 	processedItems := make(chan testMessage, 10)
 
@@ -258,14 +258,14 @@ func TestMinWaitQueue_RemoveUpdate(t *testing.T) {
 		TimeProvider:   mockTime,
 	}
 
-	queue := NewMinWaitQueue(updateFunc, evaluate, config)
+	queue := NewRetryScheduler(updateFunc, evaluate, config)
 	queue.Run()
 	defer queue.Close()
 
-	queue.AddUpdate("1", testMessage{ID: "1", Content: "first"}, 100*time.Millisecond)
-	queue.AddUpdate("2", testMessage{ID: "2", Content: "second"}, 200*time.Millisecond)
+	queue.Schedule("1", testMessage{ID: "1", Content: "first"}, 100*time.Millisecond)
+	queue.Schedule("2", testMessage{ID: "2", Content: "second"}, 200*time.Millisecond)
 
-	queue.RemoveUpdate("1")
+	queue.Remove("1")
 
 	mockTime.Advance(100 * time.Millisecond)
 
@@ -287,7 +287,7 @@ func TestMinWaitQueue_RemoveUpdate(t *testing.T) {
 	}
 }
 
-func TestMinWaitQueue_RetryWithBackoff(t *testing.T) {
+func TestRetryScheduler_RetryWithBackoff(t *testing.T) {
 	mockTime := newMockTimeProvider()
 	var attemptCount int32
 	attemptTimes := make([]time.Time, 0)
@@ -316,12 +316,12 @@ func TestMinWaitQueue_RetryWithBackoff(t *testing.T) {
 		TimeProvider:   mockTime,
 	}
 
-	queue := NewMinWaitQueue(updateFunc, evaluate, config)
+	queue := NewRetryScheduler(updateFunc, evaluate, config)
 	queue.Run()
 	defer queue.Close()
 
 	initialTimeout := 40 * time.Millisecond
-	queue.AddUpdate("1", testMessage{ID: "1", Content: "retry"}, initialTimeout)
+	queue.Schedule("1", testMessage{ID: "1", Content: "retry"}, initialTimeout)
 
 	mockTime.Advance(initialTimeout)
 	waitForProcessing()
@@ -354,7 +354,7 @@ func TestMinWaitQueue_RetryWithBackoff(t *testing.T) {
 	}
 }
 
-func TestMinWaitQueue_MaxTimeout(t *testing.T) {
+func TestRetryScheduler_MaxTimeout(t *testing.T) {
 	mockTime := newMockTimeProvider()
 	attemptTimes := make([]time.Time, 0)
 	var mu sync.Mutex
@@ -379,11 +379,11 @@ func TestMinWaitQueue_MaxTimeout(t *testing.T) {
 		TimeProvider:   mockTime,
 	}
 
-	queue := NewMinWaitQueue(updateFunc, evaluate, config)
+	queue := NewRetryScheduler(updateFunc, evaluate, config)
 	queue.Run()
 	defer queue.Close()
 
-	queue.AddUpdate("1", testMessage{ID: "1", Content: "test"}, 120*time.Millisecond)
+	queue.Schedule("1", testMessage{ID: "1", Content: "test"}, 120*time.Millisecond)
 
 	mockTime.Advance(120 * time.Millisecond)
 	waitForProcessing()
@@ -412,7 +412,7 @@ func TestMinWaitQueue_MaxTimeout(t *testing.T) {
 	}
 }
 
-func TestMinWaitQueue_ZeroTimeout(t *testing.T) {
+func TestRetryScheduler_ZeroTimeout(t *testing.T) {
 	mockTime := newMockTimeProvider()
 	processed := make(chan testMessage, 1)
 
@@ -431,12 +431,12 @@ func TestMinWaitQueue_ZeroTimeout(t *testing.T) {
 		TimeProvider:   mockTime,
 	}
 
-	queue := NewMinWaitQueue(updateFunc, evaluate, config)
+	queue := NewRetryScheduler(updateFunc, evaluate, config)
 	queue.Run()
 	defer queue.Close()
 
 	msg := testMessage{ID: "1", Content: "immediate"}
-	queue.AddUpdate("1", msg, 0)
+	queue.Schedule("1", msg, 0)
 
 	select {
 	case receivedMsg := <-processed:
@@ -448,7 +448,7 @@ func TestMinWaitQueue_ZeroTimeout(t *testing.T) {
 	}
 }
 
-func TestMinWaitQueue_ConcurrentOperations(t *testing.T) {
+func TestRetryScheduler_ConcurrentOperations(t *testing.T) {
 	mockTime := newMockTimeProvider()
 	processedCount := int32(0)
 
@@ -467,7 +467,7 @@ func TestMinWaitQueue_ConcurrentOperations(t *testing.T) {
 		TimeProvider:   mockTime,
 	}
 
-	queue := NewMinWaitQueue(updateFunc, evaluate, config)
+	queue := NewRetryScheduler(updateFunc, evaluate, config)
 	queue.Run()
 	defer queue.Close()
 
@@ -476,7 +476,7 @@ func TestMinWaitQueue_ConcurrentOperations(t *testing.T) {
 		wg.Add(1)
 		go func(id int) {
 			defer wg.Done()
-			queue.AddUpdate(
+			queue.Schedule(
 				string(rune('0'+id)),
 				testMessage{ID: string(rune('0' + id)), Content: "test"},
 				time.Duration(id*10)*time.Millisecond,
@@ -489,7 +489,7 @@ func TestMinWaitQueue_ConcurrentOperations(t *testing.T) {
 		go func(id int) {
 			defer wg.Done()
 			time.Sleep(5 * time.Millisecond)
-			queue.RemoveUpdate(string(rune('0' + id)))
+			queue.Remove(string(rune('0' + id)))
 		}(i)
 	}
 
@@ -506,7 +506,7 @@ func TestMinWaitQueue_ConcurrentOperations(t *testing.T) {
 	}
 }
 
-func TestMinWaitQueue_CloseWhileProcessing(t *testing.T) {
+func TestRetryScheduler_CloseWhileProcessing(t *testing.T) {
 	mockTime := newMockTimeProvider()
 	blockCh := make(chan struct{})
 	started := make(chan struct{})
@@ -527,10 +527,10 @@ func TestMinWaitQueue_CloseWhileProcessing(t *testing.T) {
 		TimeProvider:   mockTime,
 	}
 
-	queue := NewMinWaitQueue(updateFunc, evaluate, config)
+	queue := NewRetryScheduler(updateFunc, evaluate, config)
 	queue.Run()
 
-	queue.AddUpdate("1", testMessage{ID: "1", Content: "test"}, 0)
+	queue.Schedule("1", testMessage{ID: "1", Content: "test"}, 0)
 
 	<-started
 
@@ -548,13 +548,13 @@ func TestMinWaitQueue_CloseWhileProcessing(t *testing.T) {
 		t.Error("Close did not complete in time")
 	}
 
-	err := queue.AddUpdate("2", testMessage{ID: "2", Content: "test"}, 0)
+	err := queue.Schedule("2", testMessage{ID: "2", Content: "test"}, 0)
 	if err != context.Canceled {
 		t.Errorf("Expected context.Canceled error, got %v", err)
 	}
 }
 
-func TestMinWaitQueue_ImmediateProcessing(t *testing.T) {
+func TestRetryScheduler_ImmediateProcessing(t *testing.T) {
 	mockTime := newMockTimeProvider()
 	processed := make(chan string, 10)
 
@@ -573,12 +573,12 @@ func TestMinWaitQueue_ImmediateProcessing(t *testing.T) {
 		TimeProvider:   mockTime,
 	}
 
-	queue := NewMinWaitQueue(updateFunc, evaluate, config)
+	queue := NewRetryScheduler(updateFunc, evaluate, config)
 	queue.Run()
 	defer queue.Close()
 
 	for i := 0; i < 5; i++ {
-		queue.AddUpdate(string(rune('0'+i)), testMessage{ID: string(rune('0' + i))}, 0)
+		queue.Schedule(string(rune('0'+i)), testMessage{ID: string(rune('0' + i))}, 0)
 	}
 
 	for i := 0; i < 5; i++ {
@@ -590,7 +590,7 @@ func TestMinWaitQueue_ImmediateProcessing(t *testing.T) {
 	}
 }
 
-func TestMinWaitQueue_TimerReuse(t *testing.T) {
+func TestRetryScheduler_TimerReuse(t *testing.T) {
 	mockTime := newMockTimeProvider()
 	processedItems := make(chan testMessage, 10)
 
@@ -609,12 +609,12 @@ func TestMinWaitQueue_TimerReuse(t *testing.T) {
 		TimeProvider:   mockTime,
 	}
 
-	queue := NewMinWaitQueue(updateFunc, evaluate, config)
+	queue := NewRetryScheduler(updateFunc, evaluate, config)
 	queue.Run()
 	defer queue.Close()
 
 	for i := 0; i < 3; i++ {
-		queue.AddUpdate(string(rune('0'+i)), testMessage{ID: string(rune('0' + i))}, 50*time.Millisecond)
+		queue.Schedule(string(rune('0'+i)), testMessage{ID: string(rune('0' + i))}, 50*time.Millisecond)
 		mockTime.Advance(50 * time.Millisecond)
 
 		select {

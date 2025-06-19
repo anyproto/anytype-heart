@@ -8,7 +8,7 @@ import (
 	"github.com/anyproto/any-sync/util/crypto"
 	"go.uber.org/zap"
 
-	"github.com/anyproto/anytype-heart/core/acl/minwaitqueue"
+	"github.com/anyproto/anytype-heart/core/acl/retryscheduler"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/subscription/crossspacesub"
 )
@@ -28,7 +28,7 @@ type Message struct {
 }
 
 type aclUpdater struct {
-	queue             *minwaitqueue.MinWaitQueue[Message]
+	scheduler         *retryscheduler.RetryScheduler[Message]
 	participantGetter participantGetter
 }
 
@@ -40,14 +40,14 @@ func newAclUpdater(
 	defaultTimeout time.Duration,
 	maxTimeout time.Duration,
 ) *aclUpdater {
-	queue := minwaitqueue.NewMinWaitQueue[Message](
+	scheduler := retryscheduler.NewRetryScheduler[Message](
 		func(ctx context.Context, msg Message) error {
 			return remover.ApproveLeave(ctx, msg.SpaceId, []crypto.PubKey{msg.Identity})
 		},
 		func(err error) bool {
 			return !errors.Is(err, ErrRequestNotExists)
 		},
-		minwaitqueue.Config{
+		retryscheduler.Config{
 			DefaultTimeout: defaultTimeout,
 			MaxTimeout:     maxTimeout,
 		},
@@ -59,12 +59,12 @@ func newAclUpdater(
 		crossSpaceSubService,
 		func(identity crypto.PubKey, spaceId string) error {
 			id := domain.NewParticipantId(spaceId, identity.Account())
-			queue.RemoveUpdate(id)
+			scheduler.Remove(id)
 			return nil
 		},
 		func(identity crypto.PubKey, spaceId string) error {
 			id := domain.NewParticipantId(spaceId, identity.Account())
-			return queue.AddUpdate(id, Message{
+			return scheduler.Schedule(id, Message{
 				SpaceId:  spaceId,
 				Identity: identity,
 			}, 0)
@@ -72,13 +72,13 @@ func newAclUpdater(
 	)
 
 	return &aclUpdater{
-		queue:             queue,
+		scheduler:         scheduler,
 		participantGetter: participantGetter,
 	}
 }
 
 func (aw *aclUpdater) Run(ctx context.Context) error {
-	aw.queue.Run()
+	aw.scheduler.Run()
 	return aw.participantGetter.Run(ctx)
 }
 
@@ -86,5 +86,5 @@ func (aw *aclUpdater) Close() error {
 	if err := aw.participantGetter.Close(); err != nil {
 		log.Debug("failed to close participant getter", zap.Error(err))
 	}
-	return aw.queue.Close()
+	return aw.scheduler.Close()
 }
