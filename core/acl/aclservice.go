@@ -99,6 +99,7 @@ func (a *aclService) Init(ap *app.App) (err error) {
 	a.inviteService = app.MustComponent[inviteservice.InviteService](ap)
 	a.coordClient = app.MustComponent[coordinatorclient.CoordinatorClient](ap)
 	a.identityRepo = app.MustComponent[identityRepoClient](ap)
+	// nolint: errcheck
 	crossSub, _ := app.GetComponent[crossspacesub.Service](ap)
 	if crossSub != nil {
 		wlt := app.MustComponent[wallet.Wallet](ap)

@@ -19,11 +19,6 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-type removingParticipant struct {
-	identity string
-	spaceId  string
-}
-
 type identityUpdateFunc = func(identity crypto.PubKey, spaceId string) error
 
 func newParticipantGetter(
@@ -126,21 +121,11 @@ func (s *participantSub) getIdentity(participantId string) (pubKey crypto.PubKey
 	return crypto.DecodeAccountAddress(identity)
 }
 
-func (s *participantSub) getSpaceIdAndIdentity(participantId string) (spaceId string, pubKey crypto.PubKey, err error) {
-	spaceId, identity, err := domain.ParseParticipantId(participantId)
-	if err != nil {
-		log.Error("parse participant id", zap.String("id", participantId), zap.Error(err))
-		return
-	}
-	pubKey, err = crypto.DecodeAccountAddress(identity)
-	return
-}
-
 func (s *participantSub) monitorParticipants() {
 	defer close(s.waiter)
 	matcher := subscriptionservice.EventMatcher{
-		OnAdd: func(_ string, add *pb.EventObjectSubscriptionAdd) {
-			spaceId, pubKey, err := s.getSpaceIdAndIdentity(add.Id)
+		OnAdd: func(spaceId string, add *pb.EventObjectSubscriptionAdd) {
+			pubKey, err := s.getIdentity(add.Id)
 			if err != nil {
 				log.Debug("participant sub: invalid id", zap.String("id", add.Id), zap.Error(err))
 				return
@@ -149,8 +134,8 @@ func (s *participantSub) monitorParticipants() {
 				log.Debug("participant sub: onAdd error", zap.Error(err))
 			}
 		},
-		OnRemove: func(_ string, remove *pb.EventObjectSubscriptionRemove) {
-			spaceId, pubKey, err := s.getSpaceIdAndIdentity(remove.Id)
+		OnRemove: func(spaceId string, remove *pb.EventObjectSubscriptionRemove) {
+			pubKey, err := s.getIdentity(remove.Id)
 			if err != nil {
 				log.Debug("participant sub: invalid id", zap.String("id", remove.Id), zap.Error(err))
 				return

@@ -252,7 +252,7 @@ func (q *MinWaitQueue[T]) processNextItem() {
 	delete(q.items, item.ID)
 
 	q.mu.Unlock()
-
+	// nolint: nestif
 	if err := q.updateFunc(q.ctx, item.Value); err != nil {
 		if q.evaluate(err) {
 			originalTimeout := item.Timeout
@@ -264,7 +264,7 @@ func (q *MinWaitQueue[T]) processNextItem() {
 			if newTimeout > q.maxTimeout {
 				newTimeout = q.maxTimeout
 			}
-
+			// nolint: errcheck
 			q.AddUpdate(item.ID, item.Value, newTimeout)
 		}
 	}

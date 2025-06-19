@@ -30,7 +30,6 @@ type Message struct {
 type aclUpdater struct {
 	queue             *minwaitqueue.MinWaitQueue[Message]
 	participantGetter participantGetter
-	remover           participantRemover
 }
 
 func newAclUpdater(
@@ -75,7 +74,6 @@ func newAclUpdater(
 	return &aclUpdater{
 		queue:             queue,
 		participantGetter: participantGetter,
-		remover:           remover,
 	}
 }
 
