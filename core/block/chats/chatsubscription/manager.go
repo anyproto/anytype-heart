@@ -164,6 +164,8 @@ func (s *subscriptionManager) Flush() {
 	if len(subIdsAllMessages) == 0 && len(subIdsOnlyLastMessage) > 0 {
 		events = s.getEventsOnlyForLastMessage(events, subIdsOnlyLastMessage)
 	} else {
+		// Merge subIds otherwise
+		subIdsAllMessages = append(subIdsAllMessages, subIdsOnlyLastMessage...)
 		for _, ev := range events {
 			if ev := ev.GetChatAdd(); ev != nil {
 				ev.SubIds = subIdsAllMessages
@@ -188,7 +190,7 @@ func (s *subscriptionManager) Flush() {
 	}
 	if s.sessionContext != nil {
 		s.sessionContext.SetMessages(s.chatId, append(s.sessionContext.GetMessages(), events...))
-		s.eventSender.BroadcastToOtherSessions(s.sessionContext.ID(), ev)
+		s.eventSender.Broadcast(ev)
 	} else if s.IsActive() {
 		s.eventSender.Broadcast(ev)
 	}
