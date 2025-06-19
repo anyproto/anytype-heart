@@ -491,7 +491,7 @@ func (c *Config) GetNetworkMode() pb.RpcAccountNetworkMode {
 
 func (c *Config) GetPublishServer() publishclient.Config {
 	publishPeerId := "12D3KooWEQPgbxGPvkny8kikS3zqfziM7JsQBnJHXHL9ByCcATs7"
-	publishAddr := "anytype-publish-server.anytype.io:4940"
+	publishAddr := "anytype-publish-server.anytype.io:443"
 
 	if peerId := os.Getenv("ANYTYPE_PUBLISH_PEERID"); peerId != "" {
 		if addr := os.Getenv("ANYTYPE_PUBLISH_ADDRESS"); addr != "" {
