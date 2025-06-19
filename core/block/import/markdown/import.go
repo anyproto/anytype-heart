@@ -439,9 +439,9 @@ func (m *Markdown) createSnapshots(
 	hasSchemas := m.schemaImporter.HasSchemas()
 
 	// First pass: collect all YAML properties to create relation snapshots
-	yamlRelations := make(map[string]*yamlfm.Property) // property name -> property
+	yamlRelations := make(map[string]*yamlfm.Property)        // property name -> property
 	yamlRelationOptions := make(map[string]map[string]string) // relationKey -> optionValue -> optionId
-	objectTypes := make(map[string][]string)        // Track unique object type names
+	objectTypes := make(map[string][]string)                  // Track unique object type names
 
 	for _, file := range files {
 		var props = make([]string, 0, len(file.YAMLProperties))
@@ -456,13 +456,13 @@ func (m *Markdown) createSnapshots(
 					yamlRelations[prop.Name] = prop
 				}
 				props = append(props, yamlRelations[prop.Name].Key)
-				
+
 				// Collect option values for non-schema imports
 				if !hasSchemas && (prop.Format == model.RelationFormat_status || prop.Format == model.RelationFormat_tag) {
 					if yamlRelationOptions[prop.Key] == nil {
 						yamlRelationOptions[prop.Key] = make(map[string]string)
 					}
-					
+
 					// Collect values
 					switch prop.Format {
 					case model.RelationFormat_status:
@@ -496,13 +496,47 @@ func (m *Markdown) createSnapshots(
 		relationsSnapshots = append(relationsSnapshots, m.schemaImporter.CreateRelationOptionSnapshots()...)
 
 		// Create type snapshots from schemas
-		objectTypeSnapshots = append(objectTypeSnapshots, m.schemaImporter.CreateTypeSnapshots()...)
+		schemaTypeSnapshots := m.schemaImporter.CreateTypeSnapshots()
+		objectTypeSnapshots = append(objectTypeSnapshots, schemaTypeSnapshots...)
 
 		// Map type names to IDs for later use
 		objectTypeKeys = make(map[string]string)
-		for typeName := range objectTypes {
-			if typeKey := m.schemaImporter.GetTypeKeyByName(typeName); typeKey != "" {
+
+		// First, add all schema-defined types
+		for _, snapshot := range schemaTypeSnapshots {
+			if snapshot.Snapshot != nil && snapshot.Snapshot.Data != nil {
+				typeName := snapshot.Snapshot.Data.Details.GetString(bundle.RelationKeyName)
+				typeKey := snapshot.Snapshot.Data.Key
+				if typeName != "" && typeKey != "" {
+					objectTypeKeys[typeName] = typeKey
+				}
+			}
+		}
+
+		// Then check for any types used in YAML that aren't in schemas and create them
+		for typeName, props := range objectTypes {
+			if _, exists := objectTypeKeys[typeName]; !exists {
+				// This type was referenced but not defined in schemas, create it
+				typeKey := bson.NewObjectId().Hex()
 				objectTypeKeys[typeName] = typeKey
+
+				// Create object type snapshot
+				props := append([]string{bundle.TypeKeyObjectType.String()}, props...)
+				objectTypeDetails := getObjectTypeDetails(typeName, typeKey, props)
+				objectTypeSnapshots = append(objectTypeSnapshots, &common.Snapshot{
+					Id: typeIdPrefix + typeKey,
+					Snapshot: &common.SnapshotModel{
+						SbType: smartblock.SmartBlockTypeObjectType,
+						Data: &common.StateSnapshot{
+							Details:       objectTypeDetails,
+							RelationLinks: bundledRelationLinks(objectTypeDetails),
+							ObjectTypes:   []string{bundle.TypeKeyObjectType.String()},
+							Key:           typeKey,
+						},
+					},
+				})
+
+				log.Debugf("Created type '%s' with key '%s' (referenced in YAML but not found in schemas)", typeName, typeKey)
 			}
 		}
 	} else {
@@ -562,13 +596,13 @@ func (m *Markdown) createSnapshots(
 			})
 			objectTypeKeys[typeName] = typeKey
 		}
-		
+
 		// Create relation option snapshots for YAML values
 		for relationKey, options := range yamlRelationOptions {
 			for optionValue := range options {
 				optionId := propIdPrefix + "option_" + relationKey + "_" + optionValue
 				yamlRelationOptions[relationKey][optionValue] = optionId
-				
+
 				// Find the relation to get its format (unused for now, but might be needed later)
 				// var relFormat model.RelationFormat
 				// for _, prop := range yamlRelations {
@@ -577,17 +611,17 @@ func (m *Markdown) createSnapshots(
 				// 		break
 				// 	}
 				// }
-				
+
 				optionDetails := domain.NewDetails()
 				optionDetails.SetString(bundle.RelationKeyRelationKey, relationKey)
 				optionDetails.SetString(bundle.RelationKeyName, optionValue)
 				optionDetails.SetInt64(bundle.RelationKeyLayout, int64(model.ObjectType_relationOption))
-				
+
 				// Set unique key for the option
 				optionKey := fmt.Sprintf("%s_%s", relationKey, optionValue)
 				uniqueKey, _ := domain.NewUniqueKey(smartblock.SmartBlockTypeRelationOption, optionKey)
 				optionDetails.SetString(bundle.RelationKeyUniqueKey, uniqueKey.Marshal())
-				
+
 				relationsSnapshots = append(relationsSnapshots, &common.Snapshot{
 					Id: optionId,
 					Snapshot: &common.SnapshotModel{
@@ -619,7 +653,7 @@ func (m *Markdown) createSnapshots(
 								break
 							}
 						}
-						
+
 						// Update the value to use option IDs
 						switch propFormat {
 						case model.RelationFormat_status:

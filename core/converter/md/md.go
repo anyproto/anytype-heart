@@ -902,7 +902,7 @@ func (h *MD) GenerateJSONSchema() ([]byte, error) {
 	}
 
 	// Create schema using the schema package
-	s, err := schema.SchemaFromObjectDetails(objectTypeDetails, relationDetailsList, h.resolver.ResolveRelation)
+	s, err := schema.SchemaFromObjectDetailsWithResolver(objectTypeDetails, relationDetailsList, h.resolver)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create schema: %w", err)
 	}

@@ -88,9 +88,11 @@ func (e *JSONSchemaExporter) typeToJSONSchema(t *Type, schema *Schema) map[strin
 		jsonSchema["x-icon-name"] = t.IconImage
 	}
 
-	// Add other extensions
+	// Add other extensions (but skip internal fields like "id")
 	for key, value := range t.Extension {
-		jsonSchema[key] = value
+		if strings.HasPrefix(key, "x-") { // Only export x-* extensions to schema
+			jsonSchema[key] = value
+		}
 	}
 
 	// Build properties
@@ -301,16 +303,33 @@ func (e *JSONSchemaExporter) relationToProperty(r *Relation) map[string]interfac
 		prop["type"] = "string"
 	}
 
-	// Add other extensions
+	// Add other extensions (but skip internal fields like "id")
 	for key, value := range r.Extension {
-		prop[key] = value
+		if strings.HasPrefix(key, "x-") { // Don't export internal ID to schema
+			prop[key] = value
+		}
 	}
 
 	return prop
 }
 
+// ObjectResolver interface for resolving relations and their options
+type ObjectResolver interface {
+	ResolveRelation(relationId string) (*domain.Details, error)
+	ResolveRelationOptions(relationKey string) ([]*domain.Details, error)
+}
+
 // SchemaFromObjectDetails creates a Schema from object type and relation details
 func SchemaFromObjectDetails(typeDetails *domain.Details, relationDetailsList []*domain.Details, resolver func(string) (*domain.Details, error)) (*Schema, error) {
+	return schemaFromObjectDetailsInternal(typeDetails, relationDetailsList, resolver, nil)
+}
+
+// SchemaFromObjectDetailsWithResolver creates a Schema from object type and relation details with full resolver
+func SchemaFromObjectDetailsWithResolver(typeDetails *domain.Details, relationDetailsList []*domain.Details, resolver ObjectResolver) (*Schema, error) {
+	return schemaFromObjectDetailsInternal(typeDetails, relationDetailsList, resolver.ResolveRelation, resolver)
+}
+
+func schemaFromObjectDetailsInternal(typeDetails *domain.Details, relationDetailsList []*domain.Details, resolver func(string) (*domain.Details, error), optionResolver ObjectResolver) (*Schema, error) {
 	schema := NewSchema()
 
 	// Create type from details
@@ -405,6 +424,23 @@ func SchemaFromObjectDetails(typeDetails *domain.Details, relationDetailsList []
 		rel, err := RelationFromDetails(or.details)
 		if err != nil {
 			continue
+		}
+
+		// Populate relation options for status/tag relations if resolver is available
+		if optionResolver != nil && (rel.Format == model.RelationFormat_status || rel.Format == model.RelationFormat_tag) {
+			if optionDetails, err := optionResolver.ResolveRelationOptions(rel.Key); err == nil && optionDetails != nil {
+				var options []string
+				for _, details := range optionDetails {
+					if optionName := details.GetString(bundle.RelationKeyName); optionName != "" {
+						options = append(options, optionName)
+					}
+				}
+				if rel.Format == model.RelationFormat_status {
+					rel.Options = options
+				} else if rel.Format == model.RelationFormat_tag {
+					rel.Examples = options
+				}
+			}
 		}
 
 		// Add to schema

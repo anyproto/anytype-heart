@@ -83,13 +83,13 @@ type PropertyResolver interface {
 	// ResolvePropertyKey returns the property key for a given name
 	// Returns empty string if not found in schema
 	ResolvePropertyKey(name string) string
-	
+
 	// GetRelationFormat returns the format for a given relation key
 	GetRelationFormat(key string) model.RelationFormat
-	
+
 	// ResolveOptionValue converts option name to option ID
 	ResolveOptionValue(relationKey string, optionName string) string
-	
+
 	// ResolveOptionValues converts option names to option IDs
 	ResolveOptionValues(relationKey string, optionNames []string) []string
 }
@@ -120,6 +120,10 @@ func ParseYAMLFrontMatterWithResolver(frontMatter []byte, resolver PropertyResol
 	var typeKey string
 	for k, v := range data {
 		if strings.EqualFold(k, "object type") || strings.EqualFold(k, "type") {
+			// if array of strings, take the first one
+			if arr, ok := v.([]interface{}); ok && len(arr) > 0 {
+				v = arr[0]
+			}
 			if typeStr, ok := v.(string); ok {
 				result.ObjectType = typeStr
 				typeKey = k
@@ -127,7 +131,7 @@ func ParseYAMLFrontMatterWithResolver(frontMatter []byte, resolver PropertyResol
 			}
 		}
 	}
-	
+
 	// Remove the type key from data so it's not processed as a property
 	if typeKey != "" {
 		delete(data, typeKey)

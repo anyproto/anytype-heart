@@ -897,6 +897,7 @@ func (sb *smartBlock) setDependentIDs(depIDs []string) (changed bool) {
 	// TODO Use algo for sorted strings
 	removed, _ := slice.DifferenceRemovedAdded(sb.depIds, depIDs)
 	for _, id := range removed {
+		fmt.Printf("### sb %s removed dep id: %s\n", sb.Id(), id)
 		delete(sb.lastDepDetails, id)
 	}
 	sb.depIds = depIDs
