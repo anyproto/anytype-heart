@@ -530,6 +530,57 @@ func TestSubscribeWithPredicate(t *testing.T) {
 		}
 		assert.Equal(t, int64(1), resp.Counters.Total)
 	})
+
+	t.Run("predicate filters space that changes to match criteria", func(t *testing.T) {
+		fx := newFixture(t)
+		ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
+		defer cancel()
+
+		// Initially create space view with creator that doesn't match predicate
+		fx.objectStore.AddObjects(t, techSpaceId, []objectstore.TestObject{
+			givenSpaceViewObjectWithCreator("spaceView1", "space1", model.SpaceStatus_SpaceActive, model.SpaceStatus_Ok, "wrongCreator"),
+		})
+
+		obj1 := objectstore.TestObject{
+			bundle.RelationKeyId:             domain.String("participant1"),
+			bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_participant)),
+		}
+		fx.objectStore.AddObjects(t, "space1", []objectstore.TestObject{obj1})
+
+		time.Sleep(500 * time.Millisecond)
+
+		// Predicate only matches spaces with creator "targetCreator"
+		predicate := func(details *domain.Details) bool {
+			accountStatus := model.SpaceStatus(details.GetInt64(bundle.RelationKeySpaceAccountStatus))
+			creatorId := details.GetString(bundle.RelationKeyCreator)
+			return accountStatus == model.SpaceStatus_SpaceActive && creatorId == "targetCreator"
+		}
+
+		resp, err := fx.Subscribe(givenRequest(), predicate)
+		require.NoError(t, err)
+		require.NotNil(t, resp)
+		assert.NotEmpty(t, resp.SubId)
+
+		// Initially no records should match
+		assert.Empty(t, resp.Records)
+		assert.Equal(t, int64(0), resp.Counters.Total)
+
+		// Now update the space view to have the matching creator
+		fx.objectStore.AddObjects(t, techSpaceId, []objectstore.TestObject{
+			givenSpaceViewObjectWithCreator("spaceView1", "space1", model.SpaceStatus_SpaceActive, model.SpaceStatus_Ok, "targetCreator"),
+		})
+
+		// Wait for events - the participant should now be included
+		msgs, err := fx.eventQueue.NewCond().WithMin(3).Wait(ctx)
+		require.NoError(t, err)
+
+		want := []*pb.EventMessage{
+			makeDetailsSetEvent(resp.SubId, obj1.Details().ToProto(), "space1"),
+			makeAddEvent(resp.SubId, obj1.Id(), "space1"),
+			makeCountersEvent(resp.SubId, 1, "space1"),
+		}
+		assert.Equal(t, want, msgs)
+	})
 }
 
 func TestUnsubscribe(t *testing.T) {

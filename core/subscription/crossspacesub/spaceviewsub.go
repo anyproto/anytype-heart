@@ -105,23 +105,24 @@ func (s *service) onSpaceViewRemove(techSpaceId string, msg *pb.EventObjectSubsc
 }
 
 func (s *service) processSpaceView(details *domain.Details) {
-	id := details.GetString(bundle.RelationKeyId)
+	var (
+		id       = details.GetString(bundle.RelationKeyId)
+		targetId = details.GetString(bundle.RelationKeyTargetSpaceId)
+	)
 
 	if _, ok := s.spaceViewTargetIds[id]; !ok {
-		targetId := details.GetString(bundle.RelationKeyTargetSpaceId)
-
 		s.spaceViewTargetIds[id] = targetId
 		s.spaceIds = append(s.spaceIds, targetId)
+	}
 
-		for _, sub := range s.subscriptions {
-			if sub.spacePredicate(details) {
-				err := sub.AddSpace(targetId)
-				if err != nil {
-					log.Error("onSpaceViewSet: add space", zap.Error(err), zap.String("spaceId", targetId))
-				}
-			} else {
-				sub.RemoveSpace(targetId)
+	for _, sub := range s.subscriptions {
+		if sub.spacePredicate(details) {
+			err := sub.AddSpace(targetId)
+			if err != nil {
+				log.Error("onSpaceViewSet: add space", zap.Error(err), zap.String("spaceId", targetId))
 			}
+		} else {
+			sub.RemoveSpace(targetId)
 		}
 	}
 }
