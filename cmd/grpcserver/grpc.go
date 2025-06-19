@@ -8,7 +8,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"net"
 	"net/http"
 	// nolint: gosec
 	_ "net/http/pprof"
@@ -39,6 +38,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/util/conc"
 	"github.com/anyproto/anytype-heart/util/grpcprocess"
+	"github.com/anyproto/anytype-heart/util/netutil"
 	"github.com/anyproto/anytype-heart/util/vcs"
 )
 
@@ -93,13 +93,13 @@ func main() {
 	var mw = core.New()
 	mw.SetEventSender(event.NewGrpcSender())
 
-	lis, err := net.Listen("tcp", addr)
+	lis, err := netutil.GetTcpListener(addr)
 	if err != nil {
 		log.Fatalf("failed to listen: %v", err)
 	}
 	addr = lis.Addr().String()
 
-	webLis, err := net.Listen("tcp", webaddr)
+	webLis, err := netutil.GetTcpListener(webaddr)
 	if err != nil {
 		log.Fatalf("failed to listen: %v", err)
 	}
