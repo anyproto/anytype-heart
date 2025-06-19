@@ -4,6 +4,8 @@ import (
 	"context"
 	"slices"
 
+	"github.com/anyproto/any-sync/app"
+
 	"github.com/anyproto/anytype-heart/core/block/editor/basic"
 	"github.com/anyproto/anytype-heart/core/block/editor/clipboard"
 	"github.com/anyproto/anytype-heart/core/block/editor/dataview"
@@ -41,7 +43,6 @@ type ObjectType struct {
 	smartblock.SmartBlock
 	basic.AllOperations
 	basic.IHistory
-	stext.Text
 	clipboard.Clipboard
 	source.ChangeReceiver
 	dataview.Dataview
@@ -57,11 +58,6 @@ func (f *ObjectFactory) newObjectType(spaceId string, sb smartblock.SmartBlock) 
 		ChangeReceiver: sb.(source.ChangeReceiver),
 		AllOperations:  basic.NewBasic(sb, store, f.layoutConverter, f.fileObjectService),
 		IHistory:       basic.NewHistory(sb),
-		Text: stext.NewText(
-			sb,
-			store,
-			f.eventSender,
-		),
 		Clipboard: clipboard.NewClipboard(
 			sb,
 			fileComponent,
@@ -74,6 +70,16 @@ func (f *ObjectFactory) newObjectType(spaceId string, sb smartblock.SmartBlock) 
 
 		spaceIndex: store,
 	}
+}
+
+func (p *ObjectType) InitComponents(a *app.App) error {
+	text := stext.NewText(
+		p.SmartBlock,
+		a,
+	)
+
+	p.AddComponent(text)
+	return nil
 }
 
 func (ot *ObjectType) Init(ctx *smartblock.InitContext) (err error) {

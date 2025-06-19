@@ -6,6 +6,7 @@ import (
 
 	"github.com/anyproto/any-sync/app"
 
+	"github.com/anyproto/anytype-heart/core/block/editor/components"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/domain"
@@ -53,6 +54,22 @@ func Do[t any](p ObjectGetter, objectID string, apply func(sb t) error) error {
 	sb.Lock()
 	defer sb.Unlock()
 	return apply(bb)
+}
+
+func DoComponent[T domain.EditorComponent](p ObjectGetter, objectID string, apply func(sb smartblock.SmartBlock, comp T) error) error {
+	ctx := context.Background()
+	sb, err := p.GetObject(ctx, objectID)
+	if err != nil {
+		return err
+	}
+
+	sb.Lock()
+	defer sb.Unlock()
+	comp, err := components.GetComponent[T](sb)
+	if err != nil {
+		return err
+	}
+	return apply(sb, comp)
 }
 
 func DoWait[t any](p ObjectWaitGetter, ctx context.Context, objectID string, apply func(sb t) error) error {

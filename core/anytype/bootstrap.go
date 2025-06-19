@@ -58,6 +58,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/process"
 	"github.com/anyproto/anytype-heart/core/block/source/sourceimpl"
 	"github.com/anyproto/anytype-heart/core/block/template/templateimpl"
+	"github.com/anyproto/anytype-heart/core/block/textservice"
 	"github.com/anyproto/anytype-heart/core/configfetcher"
 	"github.com/anyproto/anytype-heart/core/debug"
 	"github.com/anyproto/anytype-heart/core/debug/profiler"
@@ -289,6 +290,7 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(core.NewTempDirService()).
 		Register(treemanager.New()).
 		Register(block.New()).
+		Register(textservice.New(3 * time.Second)).
 		Register(detailservice.New()).
 		Register(dataviewservice.New()).
 		Register(indexer.New()).
