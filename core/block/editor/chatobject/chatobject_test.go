@@ -188,7 +188,7 @@ func TestAddMessage(t *testing.T) {
 		sessionCtx := session.NewContext()
 
 		fx := newFixture(t)
-		fx.eventSender.EXPECT().BroadcastToOtherSessions(mock.Anything, mock.Anything).Return().Maybe()
+		fx.eventSender.EXPECT().Broadcast(mock.Anything).Return().Maybe()
 
 		inputMessage := givenComplexMessage()
 		messageId, err := fx.AddMessage(ctx, sessionCtx, inputMessage)
@@ -213,7 +213,7 @@ func TestAddMessage(t *testing.T) {
 		sessionCtx := session.NewContext()
 
 		fx := newFixture(t)
-		fx.eventSender.EXPECT().BroadcastToOtherSessions(mock.Anything, mock.Anything).Return()
+		fx.eventSender.EXPECT().Broadcast(mock.Anything).Return()
 
 		// Force all messages as not read
 		fx.chatHandler.forceNotRead = true
@@ -289,7 +289,7 @@ func TestGetMessagesByIds(t *testing.T) {
 	sessionCtx := session.NewContext()
 
 	fx := newFixture(t)
-	fx.eventSender.EXPECT().BroadcastToOtherSessions(mock.Anything, mock.Anything).Return()
+	fx.eventSender.EXPECT().Broadcast(mock.Anything).Return()
 
 	inputMessage := givenComplexMessage()
 	messageId, err := fx.AddMessage(ctx, sessionCtx, inputMessage)
