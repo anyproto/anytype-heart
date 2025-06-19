@@ -119,9 +119,9 @@ func TestSubscribe(t *testing.T) {
 		require.NoError(t, err)
 
 		want := []*pb.EventMessage{
-			makeDetailsSetEvent(resp.SubId, obj1.Details().ToProto()),
-			makeAddEvent(resp.SubId, obj1.Id()),
-			makeCountersEvent(resp.SubId, 1),
+			makeDetailsSetEvent(resp.SubId, obj1.Details().ToProto(), "space1"),
+			makeAddEvent(resp.SubId, obj1.Id(), "space1"),
+			makeCountersEvent(resp.SubId, 1, "space1"),
 		}
 		assert.Equal(t, want, msgs)
 
@@ -140,7 +140,7 @@ func TestSubscribe(t *testing.T) {
 			require.NoError(t, err)
 
 			want = []*pb.EventMessage{
-				makeDetailsAmendEvent(resp.SubId, obj1.Id(), []*pb.EventObjectDetailsAmendKeyValue{
+				makeDetailsAmendEvent(resp.SubId, obj1.Id(), "space1", []*pb.EventObjectDetailsAmendKeyValue{
 					{
 						Key:   bundle.RelationKeyName.String(),
 						Value: pbtypes.String("John Doe"),
@@ -184,9 +184,9 @@ func TestSubscribe(t *testing.T) {
 			require.NoError(t, err)
 
 			want := []*pb.EventMessage{
-				makeDetailsSetEvent(resp.SubId, obj1.Details().ToProto()),
-				makeAddEvent(resp.SubId, obj1.Id()),
-				makeCountersEvent(resp.SubId, 1),
+				makeDetailsSetEvent(resp.SubId, obj1.Details().ToProto(), "space1"),
+				makeAddEvent(resp.SubId, obj1.Id(), "space1"),
+				makeCountersEvent(resp.SubId, 1, "space1"),
 			}
 			assert.Equal(t, want, msgs)
 
@@ -204,9 +204,9 @@ func TestSubscribe(t *testing.T) {
 			require.NoError(t, err)
 
 			want = []*pb.EventMessage{
-				makeDetailsSetEvent(resp.SubId, obj2.Details().ToProto()),
-				makeAddEvent(resp.SubId, obj2.Id()),
-				makeCountersEvent(resp.SubId, 2),
+				makeDetailsSetEvent(resp.SubId, obj2.Details().ToProto(), "space1"),
+				makeAddEvent(resp.SubId, obj2.Id(), "space1"),
+				makeCountersEvent(resp.SubId, 2, "space1"),
 			}
 			assert.Equal(t, want, msgs)
 		})
@@ -231,9 +231,9 @@ func TestSubscribe(t *testing.T) {
 			require.NoError(t, err)
 
 			want := []*pb.EventMessage{
-				makeDetailsSetEvent(resp.SubId, obj1.Details().ToProto()),
-				makeAddEvent(resp.SubId, obj1.Id()),
-				makeCountersEvent(resp.SubId, 3),
+				makeDetailsSetEvent(resp.SubId, obj1.Details().ToProto(), "space2"),
+				makeAddEvent(resp.SubId, obj1.Id(), "space2"),
+				makeCountersEvent(resp.SubId, 3, "space2"),
 			}
 			assert.Equal(t, want, msgs)
 		})
@@ -279,9 +279,9 @@ func TestSubscribe(t *testing.T) {
 		require.NoError(t, err)
 
 		want := []*pb.EventMessage{
-			makeRemoveEvent(resp.SubId, obj1.Id()),
-			makeRemoveEvent(resp.SubId, obj2.Id()),
-			makeCountersEvent(resp.SubId, 0),
+			makeRemoveEvent(resp.SubId, obj1.Id(), "space1"),
+			makeRemoveEvent(resp.SubId, obj2.Id(), "space1"),
+			makeCountersEvent(resp.SubId, 0, "space1"),
 		}
 		assert.Equal(t, want, msgs)
 	})
@@ -403,9 +403,9 @@ func TestSubscribeWithPredicate(t *testing.T) {
 		msgs, err := fx.eventQueue.NewCond().WithMin(3).Wait(ctx)
 		require.NoError(t, err)
 		want := []*pb.EventMessage{
-			makeDetailsSetEvent(resp.SubId, obj1.Details().ToProto()),
-			makeAddEvent(resp.SubId, obj1.Id()),
-			makeCountersEvent(resp.SubId, 1),
+			makeDetailsSetEvent(resp.SubId, obj1.Details().ToProto(), "space1"),
+			makeAddEvent(resp.SubId, obj1.Id(), "space1"),
+			makeCountersEvent(resp.SubId, 1, "space1"),
 		}
 		assert.Equal(t, want, msgs)
 
@@ -436,9 +436,9 @@ func TestSubscribeWithPredicate(t *testing.T) {
 		msgs, err = fx.eventQueue.NewCond().WithMin(3).Wait(ctx)
 		require.NoError(t, err)
 		want = []*pb.EventMessage{
-			makeDetailsSetEvent(resp.SubId, obj21.Details().ToProto()),
-			makeAddEvent(resp.SubId, obj21.Id()),
-			makeCountersEvent(resp.SubId, 2),
+			makeDetailsSetEvent(resp.SubId, obj21.Details().ToProto(), "space21"),
+			makeAddEvent(resp.SubId, obj21.Id(), "space21"),
+			makeCountersEvent(resp.SubId, 2, "space21"),
 		}
 		assert.Equal(t, want, msgs)
 	})
@@ -574,10 +574,11 @@ func TestUnsubscribe(t *testing.T) {
 	})
 }
 
-func makeDetailsSetEvent(subId string, details *types.Struct) *pb.EventMessage {
-	return event.NewMessage("", &pb.EventMessageValueOfObjectDetailsSet{
+func makeDetailsSetEvent(subId string, details *types.Struct, spaceId string) *pb.EventMessage {
+	id := pbtypes.GetString(details, bundle.RelationKeyId.String())
+	return event.NewMessage(spaceId, &pb.EventMessageValueOfObjectDetailsSet{
 		ObjectDetailsSet: &pb.EventObjectDetailsSet{
-			Id: pbtypes.GetString(details, bundle.RelationKeyId.String()),
+			Id: id,
 			SubIds: []string{
 				subId,
 			},
@@ -586,8 +587,8 @@ func makeDetailsSetEvent(subId string, details *types.Struct) *pb.EventMessage {
 	})
 }
 
-func makeDetailsAmendEvent(subId string, id string, details []*pb.EventObjectDetailsAmendKeyValue) *pb.EventMessage {
-	return event.NewMessage("", &pb.EventMessageValueOfObjectDetailsAmend{
+func makeDetailsAmendEvent(subId string, id string, spaceId string, details []*pb.EventObjectDetailsAmendKeyValue) *pb.EventMessage {
+	return event.NewMessage(spaceId, &pb.EventMessageValueOfObjectDetailsAmend{
 		ObjectDetailsAmend: &pb.EventObjectDetailsAmend{
 			Id: id,
 			SubIds: []string{
@@ -598,8 +599,8 @@ func makeDetailsAmendEvent(subId string, id string, details []*pb.EventObjectDet
 	})
 }
 
-func makeAddEvent(subId string, id string) *pb.EventMessage {
-	return event.NewMessage("", &pb.EventMessageValueOfSubscriptionAdd{
+func makeAddEvent(subId string, id string, spaceId string) *pb.EventMessage {
+	return event.NewMessage(spaceId, &pb.EventMessageValueOfSubscriptionAdd{
 		SubscriptionAdd: &pb.EventObjectSubscriptionAdd{
 			SubId:   subId,
 			Id:      id,
@@ -608,8 +609,8 @@ func makeAddEvent(subId string, id string) *pb.EventMessage {
 	})
 }
 
-func makeCountersEvent(subId string, total int) *pb.EventMessage {
-	return event.NewMessage("", &pb.EventMessageValueOfSubscriptionCounters{
+func makeCountersEvent(subId string, total int, spaceId string) *pb.EventMessage {
+	return event.NewMessage(spaceId, &pb.EventMessageValueOfSubscriptionCounters{
 		SubscriptionCounters: &pb.EventObjectSubscriptionCounters{
 			SubId: subId,
 			Total: int64(total),
@@ -617,8 +618,8 @@ func makeCountersEvent(subId string, total int) *pb.EventMessage {
 	})
 }
 
-func makeRemoveEvent(subId string, id string) *pb.EventMessage {
-	return event.NewMessage("", &pb.EventMessageValueOfSubscriptionRemove{
+func makeRemoveEvent(subId string, id string, spaceId string) *pb.EventMessage {
+	return event.NewMessage(spaceId, &pb.EventMessageValueOfSubscriptionRemove{
 		SubscriptionRemove: &pb.EventObjectSubscriptionRemove{
 			SubId: subId,
 			Id:    id,

@@ -191,7 +191,7 @@ func (s *crossSpaceSubscription) removeSpace(spaceId string) error {
 			return err
 		}
 		for _, id := range ids {
-			err = s.queue.Add(s.ctx, event.NewMessage("", &pb.EventMessageValueOfSubscriptionRemove{
+			err = s.queue.Add(s.ctx, event.NewMessage(spaceId, &pb.EventMessageValueOfSubscriptionRemove{
 				SubscriptionRemove: &pb.EventObjectSubscriptionRemove{
 					SubId: s.subId,
 					Id:    id,
@@ -204,7 +204,7 @@ func (s *crossSpaceSubscription) removeSpace(spaceId string) error {
 		}
 
 		total := s.removeTotalCount(subId)
-		err = s.queue.Add(s.ctx, event.NewMessage("", &pb.EventMessageValueOfSubscriptionCounters{
+		err = s.queue.Add(s.ctx, event.NewMessage(spaceId, &pb.EventMessageValueOfSubscriptionCounters{
 			SubscriptionCounters: &pb.EventObjectSubscriptionCounters{
 				SubId: subId,
 				Total: total,
