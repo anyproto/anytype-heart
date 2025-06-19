@@ -294,7 +294,7 @@ func (si *SchemaImporter) ResolveOptionValue(relationKey string, optionName stri
 		}
 	}
 	// If no schema option found, return the name as-is
-	return optionName
+	return si.propIdPrefix + "option_" + relationKey + "_" + optionName
 }
 
 // ResolveOptionValues converts option names to option IDs for a given relation

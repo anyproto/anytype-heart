@@ -325,8 +325,18 @@ func parseDate(dateStr string) (time.Time, bool, error) {
 func resolveOptionValue(prop *Property, resolver PropertyResolver) domain.Value {
 	switch prop.Format {
 	case model.RelationFormat_status:
-		// For status, we expect a single string value
-		if strVal := prop.Value.String(); strVal != "" {
+		// if array choose the first value
+		var strVal string
+		if prop.Value.IsStringList() {
+			strList := prop.Value.StringList()
+			if len(strList) > 0 {
+				strVal = strList[0]
+			}
+		} else if prop.Value.IsString() {
+			strVal = prop.Value.String()
+		}
+
+		if strVal != "" {
 			optionId := resolver.ResolveOptionValue(prop.Key, strVal)
 			return domain.String(optionId)
 		}
