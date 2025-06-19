@@ -54,6 +54,9 @@ packages:
   github.com/anyproto/anytype-heart/core/filestorage/filesync:
     interfaces:
       FileSync:
+  github.com/anyproto/anytype-heart/core/acl:
+    interfaces:
+      participantRemover:
   github.com/anyproto/anytype-heart/core/filestorage/rpcstore:
     interfaces:
       Service:

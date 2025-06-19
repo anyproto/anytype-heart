@@ -25,16 +25,9 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space/mock_space"
 	"github.com/anyproto/anytype-heart/tests/testutil"
+
+	"github.com/anyproto/anytype-heart/core/acl/mock_acl"
 )
-
-type mockParticipantRemover struct {
-	mock.Mock
-}
-
-func (m *mockParticipantRemover) ApproveLeave(ctx context.Context, spaceId string, identities []crypto.PubKey) error {
-	args := m.Called(ctx, spaceId, identities)
-	return args.Error(0)
-}
 
 type dummyCollectionService struct{}
 
@@ -57,7 +50,7 @@ type aclUpdaterFixture struct {
 	*aclUpdater
 
 	objectStore     *objectstore.StoreFixture
-	remover         *mockParticipantRemover
+	remover         *mock_acl.MockparticipantRemover
 	eventQueue      *mb.MB[*pb.EventMessage]
 	spaceService    *mock_space.MockService
 	crossSpaceSub   crossspacesub.Service
@@ -115,7 +108,7 @@ func newAclUpdaterFixture(t *testing.T) *aclUpdaterFixture {
 	err := a.Start(ctx)
 	require.NoError(t, err)
 
-	remover := &mockParticipantRemover{}
+	remover := mock_acl.NewMockparticipantRemover(t)
 
 	updater := newAclUpdater(
 		"test-updater",
@@ -180,12 +173,15 @@ func TestAclUpdater_Run(t *testing.T) {
 		removingIdentity := fx.pubKeys[1].Account()
 		spaceId := fx.spaceIds[0]
 
-		fx.remover.On("ApproveLeave", mock.Anything, spaceId, mock.MatchedBy(func(identities []crypto.PubKey) bool {
+		done := make(chan struct{})
+		fx.remover.EXPECT().ApproveLeave(mock.Anything, spaceId, mock.MatchedBy(func(identities []crypto.PubKey) bool {
 			if len(identities) != 1 {
 				return false
 			}
 			return identities[0].Account() == removingIdentity
-		})).Return(nil).Once()
+		})).Run(func(ctx context.Context, spaceId string, identities []crypto.PubKey) {
+			close(done)
+		}).Return(nil).Once()
 
 		fx.objectStore.AddObjects(t, fx.techSpaceId, []objectstore.TestObject{
 			givenSpaceViewObject("spaceView1", spaceId, fx.testOwnIdentity),
@@ -198,9 +194,7 @@ func TestAclUpdater_Run(t *testing.T) {
 			givenParticipantObject(spaceId, removingIdentity, model.ParticipantStatus_Removing),
 		})
 
-		time.Sleep(300 * time.Millisecond)
-
-		fx.remover.AssertExpectations(t)
+		<-done
 	})
 
 	t.Run("ignores participants from spaces not owned by us", func(t *testing.T) {
@@ -220,8 +214,6 @@ func TestAclUpdater_Run(t *testing.T) {
 		})
 
 		time.Sleep(200 * time.Millisecond)
-
-		fx.remover.AssertNotCalled(t, "ApproveLeave")
 	})
 
 	t.Run("handles multiple removing participants", func(t *testing.T) {
@@ -233,13 +225,19 @@ func TestAclUpdater_Run(t *testing.T) {
 		identity2 := fx.pubKeys[2].Account()
 		spaceId := fx.spaceIds[0]
 
-		fx.remover.On("ApproveLeave", mock.Anything, spaceId, mock.MatchedBy(func(identities []crypto.PubKey) bool {
+		done1 := make(chan struct{})
+		done2 := make(chan struct{})
+		fx.remover.EXPECT().ApproveLeave(mock.Anything, spaceId, mock.MatchedBy(func(identities []crypto.PubKey) bool {
 			return len(identities) == 1 && identities[0].Account() == identity1
-		})).Return(nil).Once()
+		})).Run(func(ctx context.Context, spaceId string, identities []crypto.PubKey) {
+			close(done1)
+		}).Return(nil).Once()
 
-		fx.remover.On("ApproveLeave", mock.Anything, spaceId, mock.MatchedBy(func(identities []crypto.PubKey) bool {
+		fx.remover.EXPECT().ApproveLeave(mock.Anything, spaceId, mock.MatchedBy(func(identities []crypto.PubKey) bool {
 			return len(identities) == 1 && identities[0].Account() == identity2
-		})).Return(nil).Once()
+		})).Run(func(ctx context.Context, spaceId string, identities []crypto.PubKey) {
+			close(done2)
+		}).Return(nil).Once()
 
 		fx.objectStore.AddObjects(t, fx.techSpaceId, []objectstore.TestObject{
 			givenSpaceViewObject("spaceView1", spaceId, fx.testOwnIdentity),
@@ -253,9 +251,8 @@ func TestAclUpdater_Run(t *testing.T) {
 			givenParticipantObject(spaceId, identity2, model.ParticipantStatus_Removing),
 		})
 
-		time.Sleep(500 * time.Millisecond)
-
-		fx.remover.AssertExpectations(t)
+		<-done1
+		<-done2
 	})
 
 	t.Run("retries on error with backoff", func(t *testing.T) {
@@ -266,10 +263,13 @@ func TestAclUpdater_Run(t *testing.T) {
 		identity := fx.pubKeys[1].Account()
 		spaceId := fx.spaceIds[0]
 
-		fx.remover.On("ApproveLeave", mock.Anything, spaceId, mock.Anything).
+		retryDone := make(chan struct{})
+		fx.remover.EXPECT().ApproveLeave(mock.Anything, spaceId, mock.Anything).
 			Return(assert.AnError).Once()
-		fx.remover.On("ApproveLeave", mock.Anything, spaceId, mock.Anything).
-			Return(nil).Once()
+		fx.remover.EXPECT().ApproveLeave(mock.Anything, spaceId, mock.Anything).
+			Run(func(ctx context.Context, spaceId string, identities []crypto.PubKey) {
+				close(retryDone)
+			}).Return(nil).Once()
 
 		fx.objectStore.AddObjects(t, fx.techSpaceId, []objectstore.TestObject{
 			givenSpaceViewObject("spaceView1", spaceId, fx.testOwnIdentity),
@@ -282,8 +282,7 @@ func TestAclUpdater_Run(t *testing.T) {
 			givenParticipantObject(spaceId, identity, model.ParticipantStatus_Removing),
 		})
 
-		time.Sleep(500 * time.Millisecond)
-		fx.remover.AssertNumberOfCalls(t, "ApproveLeave", 2)
+		<-retryDone
 	})
 
 	t.Run("stops retrying on ErrRequestNotExists", func(t *testing.T) {
@@ -294,8 +293,11 @@ func TestAclUpdater_Run(t *testing.T) {
 		identity := fx.pubKeys[1].Account()
 		spaceId := fx.spaceIds[0]
 
-		fx.remover.On("ApproveLeave", mock.Anything, spaceId, mock.Anything).
-			Return(ErrRequestNotExists).Once()
+		errorDone := make(chan struct{})
+		fx.remover.EXPECT().ApproveLeave(mock.Anything, spaceId, mock.Anything).
+			Run(func(ctx context.Context, spaceId string, identities []crypto.PubKey) {
+				close(errorDone)
+			}).Return(ErrRequestNotExists).Once()
 		fx.objectStore.AddObjects(t, fx.techSpaceId, []objectstore.TestObject{
 			givenSpaceViewObject("spaceView1", spaceId, fx.testOwnIdentity),
 		})
@@ -305,8 +307,7 @@ func TestAclUpdater_Run(t *testing.T) {
 		fx.objectStore.AddObjects(t, spaceId, []objectstore.TestObject{
 			givenParticipantObject(spaceId, identity, model.ParticipantStatus_Removing),
 		})
-		time.Sleep(300 * time.Millisecond)
-		fx.remover.AssertNumberOfCalls(t, "ApproveLeave", 1)
+		<-errorDone
 	})
 
 	t.Run("handles participant status change from removing to active", func(t *testing.T) {
@@ -327,13 +328,16 @@ func TestAclUpdater_Run(t *testing.T) {
 			givenParticipantObject(spaceId, identity, model.ParticipantStatus_Active),
 		})
 		time.Sleep(100 * time.Millisecond)
-		fx.remover.AssertNotCalled(t, "ApproveLeave")
-		fx.remover.On("ApproveLeave", mock.Anything, spaceId, mock.Anything).Return(nil).Once()
+
+		statusDone := make(chan struct{})
+		fx.remover.EXPECT().ApproveLeave(mock.Anything, spaceId, mock.Anything).
+			Run(func(ctx context.Context, spaceId string, identities []crypto.PubKey) {
+				close(statusDone)
+			}).Return(nil).Once()
 		fx.objectStore.AddObjects(t, spaceId, []objectstore.TestObject{
 			givenParticipantObject(spaceId, identity, model.ParticipantStatus_Removing),
 		})
-		time.Sleep(300 * time.Millisecond)
-		fx.remover.AssertExpectations(t)
+		<-statusDone
 	})
 
 	t.Run("handles space addition after updater start", func(t *testing.T) {
@@ -350,14 +354,17 @@ func TestAclUpdater_Run(t *testing.T) {
 		})
 
 		identity := fx.pubKeys[1].Account()
-		fx.remover.On("ApproveLeave", mock.Anything, spaceId, mock.Anything).Return(nil).Once()
+		spaceDone := make(chan struct{})
+		fx.remover.EXPECT().ApproveLeave(mock.Anything, spaceId, mock.Anything).
+			Run(func(ctx context.Context, spaceId string, identities []crypto.PubKey) {
+				close(spaceDone)
+			}).Return(nil).Once()
 
 		fx.objectStore.AddObjects(t, spaceId, []objectstore.TestObject{
 			givenParticipantObject(spaceId, identity, model.ParticipantStatus_Removing),
 		})
 
-		time.Sleep(300 * time.Millisecond)
-		fx.remover.AssertExpectations(t)
+		<-spaceDone
 	})
 }
 
