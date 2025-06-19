@@ -39,9 +39,12 @@ func newAclUpdater(
 	remover participantRemover,
 	defaultTimeout time.Duration,
 	maxTimeout time.Duration,
+	requestTimeout time.Duration,
 ) *aclUpdater {
 	scheduler := retryscheduler.NewRetryScheduler[Message](
 		func(ctx context.Context, msg Message) error {
+			ctx, cancel := context.WithTimeout(ctx, requestTimeout)
+			defer cancel()
 			return remover.ApproveLeave(ctx, msg.SpaceId, []crypto.PubKey{msg.Identity})
 		},
 		func(err error) bool {

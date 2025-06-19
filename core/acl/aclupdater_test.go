@@ -117,6 +117,7 @@ func newAclUpdaterFixture(t *testing.T) *aclUpdaterFixture {
 		remover,
 		100*time.Millisecond,
 		1*time.Second,
+		1*time.Second,
 	)
 
 	t.Cleanup(func() {

@@ -106,7 +106,8 @@ func (a *aclService) Init(ap *app.App) (err error) {
 		crossSub,
 		a,
 		1*time.Second,
-		30*time.Second)
+		30*time.Second,
+		10*time.Second)
 	a.recordVerifier = recordverifier.New()
 	return nil
 }
