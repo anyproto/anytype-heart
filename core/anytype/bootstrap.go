@@ -99,11 +99,11 @@ import (
 	"github.com/anyproto/anytype-heart/core/wallet"
 	"github.com/anyproto/anytype-heart/metrics"
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
+	"github.com/anyproto/anytype-heart/pkg/lib/datastore/anystoreprovider"
 	"github.com/anyproto/anytype-heart/pkg/lib/datastore/clientds"
 	"github.com/anyproto/anytype-heart/pkg/lib/gateway"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/ftsearch"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/oldstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/space"
 	"github.com/anyproto/anytype-heart/space/coordinatorclient"
@@ -218,11 +218,9 @@ func Bootstrap(a *app.App, components ...app.Component) {
 
 	a.
 		// Data storages
-		Register(clientds.New()).
 		Register(debugstat.New()).
-		// Register(ftsearch.BleveNew()).
+		Register(anystoreprovider.New()).
 		Register(ftsearch.TantivyNew()).
-		Register(oldstore.New()).
 		Register(objectstore.New()).
 		Register(backlinks.New()).
 		// Services
