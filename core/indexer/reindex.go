@@ -30,7 +30,7 @@ const (
 	ForceObjectsReindexCounter int32 = 19
 
 	// ForceFilesReindexCounter reindex file objects
-	ForceFilesReindexCounter int32 = 12 //
+	ForceFilesReindexCounter int32 = 13 //
 
 	// ForceBundledObjectsReindexCounter reindex objects like anytypeProfile
 	ForceBundledObjectsReindexCounter int32 = 5 // reindex objects like anytypeProfile
@@ -448,15 +448,6 @@ func (i *indexer) removeDetails(spaceId string) error {
 func (i *indexer) removeCommonIndexes(spaceId string, space clientspace.Space, flags reindexFlags) (err error) {
 	if flags.any() {
 		log.Infof("start store reindex (%s)", flags.String())
-	}
-
-	if flags.fileKeys {
-		err = i.fileStore.RemoveEmptyFileKeys()
-		if err != nil {
-			log.Errorf("reindex failed to RemoveEmptyFileKeys: %v", err)
-		} else {
-			log.Infof("RemoveEmptyFileKeys filekeys succeed")
-		}
 	}
 
 	if flags.eraseLinks {

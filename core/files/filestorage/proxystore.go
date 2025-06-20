@@ -12,7 +12,7 @@ import (
 	format "github.com/ipfs/go-ipld-format"
 	"go.uber.org/zap"
 
-	"github.com/anyproto/anytype-heart/core/filestorage/rpcstore"
+	"github.com/anyproto/anytype-heart/core/files/filestorage/rpcstore"
 )
 
 type ctxKey string

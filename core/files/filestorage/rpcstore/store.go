@@ -40,16 +40,18 @@ type RpcStore interface {
 type store struct {
 	cm *clientManager
 
-	backgroundCtx    context.Context
-	backgroundCancel context.CancelFunc
+	backgroundCtx     context.Context
+	backgroundCancel  context.CancelFunc
+	trafficStatistics *trafficStatistics
 }
 
-func newStore(cm *clientManager) *store {
+func newStore(cm *clientManager, trafficStatistics *trafficStatistics) *store {
 	ctx, cancel := context.WithCancel(context.Background())
 	return &store{
-		cm:               cm,
-		backgroundCtx:    ctx,
-		backgroundCancel: cancel,
+		cm:                cm,
+		backgroundCtx:     ctx,
+		backgroundCancel:  cancel,
+		trafficStatistics: trafficStatistics,
 	}
 }
 
@@ -61,6 +63,9 @@ func (s *store) Get(ctx context.Context, k cid.Cid) (b blocks.Block, err error) 
 	ctx = context.WithValue(ctx, operationNameKey, "get")
 	if err = s.cm.ReadOp(ctx, ready, func(c *client) (e error) {
 		data, e = c.get(ctx, fileblockstore.CtxGetSpaceId(ctx), k)
+
+		s.trafficStatistics.inbound.Add(int64(len(data)))
+
 		return
 	}, k); err != nil {
 		return
@@ -86,6 +91,8 @@ func (s *store) GetMany(ctx context.Context, ks []cid.Cid) <-chan blocks.Block {
 	var newGetFunc = func(k cid.Cid) func(c *client) error {
 		return func(c *client) error {
 			data, err := c.get(ctx, fileblockstore.CtxGetSpaceId(ctx), k)
+
+			s.trafficStatistics.inbound.Add(int64(len(data)))
 			if err != nil {
 				return err
 			}

@@ -17,13 +17,12 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/anytype/config"
 	"github.com/anyproto/anytype-heart/core/event/mock_event"
-	"github.com/anyproto/anytype-heart/core/filestorage"
-	"github.com/anyproto/anytype-heart/core/filestorage/rpcstore"
+	"github.com/anyproto/anytype-heart/core/files/filestorage"
+	"github.com/anyproto/anytype-heart/core/files/filestorage/rpcstore"
 	wallet2 "github.com/anyproto/anytype-heart/core/wallet"
 	"github.com/anyproto/anytype-heart/core/wallet/mock_wallet"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/datastore"
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore/filestore"
 	"github.com/anyproto/anytype-heart/tests/testutil"
 )
 
@@ -36,8 +35,6 @@ func newFixture(t *testing.T, limit int) *fixture {
 		ctrl:        gomock.NewController(t),
 		a:           new(app.App),
 	}
-
-	fileStore := filestore.New()
 
 	sender := mock_event.NewMockSender(t)
 	sender.EXPECT().Name().Return("event")
@@ -64,7 +61,6 @@ func newFixture(t *testing.T, limit int) *fixture {
 		Register(dataStoreProvider).
 		Register(rpcstore.NewInMemoryService(fx.rpcStore)).
 		Register(fx.fileSync).
-		Register(fileStore).
 		Register(sender).
 		Register(testutil.PrepareMock(ctx, fx.a, mock_accountservice.NewMockService(ctrl))).
 		Register(testutil.PrepareMock(ctx, fx.a, wallet)).

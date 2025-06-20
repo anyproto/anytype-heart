@@ -1,12 +1,42 @@
-package files
+package filespaceusage
 
 import (
 	"context"
 	"fmt"
 
-	"github.com/anyproto/anytype-heart/core/filestorage/filesync"
+	"github.com/anyproto/any-sync/app"
+
+	"github.com/anyproto/anytype-heart/core/files/filestorage"
+	filesync2 "github.com/anyproto/anytype-heart/core/files/filesync"
 	"github.com/anyproto/anytype-heart/pb"
 )
+
+const CName = "core.files.filespaceusage"
+
+type Service interface {
+	app.Component
+	GetSpaceUsage(ctx context.Context, spaceID string) (*pb.RpcFileSpaceUsageResponseUsage, error)
+	GetNodeUsage(ctx context.Context) (*NodeUsageResponse, error)
+}
+
+type service struct {
+	fileSync    filesync2.FileSync
+	fileStorage filestorage.FileStorage
+}
+
+func New() Service {
+	return &service{}
+}
+
+func (s *service) Init(a *app.App) (err error) {
+	s.fileSync = app.MustComponent[filesync2.FileSync](a)
+	s.fileStorage = app.MustComponent[filestorage.FileStorage](a)
+	return nil
+}
+
+func (s *service) Name() (name string) {
+	return CName
+}
 
 func (s *service) GetSpaceUsage(ctx context.Context, spaceID string) (*pb.RpcFileSpaceUsageResponseUsage, error) {
 	stat, err := s.fileSync.SpaceStat(ctx, spaceID)
@@ -35,7 +65,7 @@ func (s *service) GetSpaceUsage(ctx context.Context, spaceID string) (*pb.RpcFil
 }
 
 type NodeUsageResponse struct {
-	Usage           filesync.NodeUsage
+	Usage           filesync2.NodeUsage
 	LocalUsageBytes uint64
 }
 
