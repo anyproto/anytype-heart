@@ -51,7 +51,7 @@ var (
 
 type Service interface {
 	app.Component
-	GetManifest(url string, checkWhitelist, validateSchema bool) (*model.ManifestInfo, error)
+	GetManifest(url string) (*model.ManifestInfo, error)
 	GetGalleryIndex() (*pb.RpcGalleryDownloadIndexResponse, error)
 }
 
@@ -88,7 +88,11 @@ var whitelist = map[string]*regexp.Regexp{
 	"storage.gallery.any.coop":  regexp.MustCompile(`.*`),
 }
 
-func (s *service) GetManifest(url string, checkWhitelist, validateSchema bool) (info *model.ManifestInfo, err error) {
+func (s *service) GetManifest(url string) (info *model.ManifestInfo, err error) {
+	return s.getManifest(url, true, true)
+}
+
+func (s *service) getManifest(url string, checkWhitelist, validateSchema bool) (info *model.ManifestInfo, err error) {
 	if err = uri.ValidateURI(url); err != nil {
 		return nil, fmt.Errorf("provided URL is not valid: %w", err)
 	}
@@ -123,6 +127,10 @@ func (s *service) GetManifest(url string, checkWhitelist, validateSchema bool) (
 }
 
 func (s *service) GetGalleryIndex() (index *pb.RpcGalleryDownloadIndexResponse, err error) {
+	return s.getGalleryIndex(indexURI)
+}
+
+func (s *service) getGalleryIndex(indexURL string) (index *pb.RpcGalleryDownloadIndexResponse, err error) {
 	var localIndex *pb.RpcGalleryDownloadIndexResponse
 
 	defer func() {
@@ -146,7 +154,7 @@ func (s *service) GetGalleryIndex() (index *pb.RpcGalleryDownloadIndexResponse, 
 		}
 	}
 
-	raw, newVersion, err := getRawJson(indexURI, currentVersion)
+	raw, newVersion, err := getRawJson(indexURL, currentVersion)
 	if err != nil {
 		if errors.Is(err, ErrNotModified) {
 			return localIndex, nil

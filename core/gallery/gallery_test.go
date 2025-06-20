@@ -45,7 +45,7 @@ func TestDownloadManifestAndValidateSchema(t *testing.T) {
 		url := server.URL + "/manifest.json"
 
 		// when
-		info, err := s.GetManifest(url, false, false)
+		info, err := s.getManifest(url, false, false)
 
 		// then
 		assert.NoError(t, err)
