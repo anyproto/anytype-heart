@@ -2128,6 +2128,8 @@
     - [SpaceShareableStatus](#anytype-model-SpaceShareableStatus)
     - [SpaceStatus](#anytype-model-SpaceStatus)
     - [SpaceUxType](#anytype-model-SpaceUxType)
+    - [SyncError](#anytype-model-SyncError)
+    - [SyncStatus](#anytype-model-SyncStatus)
   
 - [Scalar Value Types](#scalar-value-types)
 
@@ -33779,6 +33781,34 @@ RelationFormat describes how the underlying data is stored in the google.protobu
 | Chat | 0 | chat-first UX |
 | Data | 1 | objects-first UX |
 | Stream | 2 | stream UX (chat with limited amount of owners) |
+
+
+
+<a name="anytype-model-SyncError"></a>
+
+### SyncError
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| SyncErrorNull | 0 |  |
+| SyncErrorIncompatibleVersion | 2 |  |
+| SyncErrorNetworkError | 3 |  |
+| SyncErrorOversized | 4 |  |
+
+
+
+<a name="anytype-model-SyncStatus"></a>
+
+### SyncStatus
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| SyncStatusSynced | 0 |  |
+| SyncStatusSyncing | 1 |  |
+| SyncStatusError | 2 |  |
+| SyncStatusQueued | 3 |  |
 
 
  

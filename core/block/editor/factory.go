@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/anyproto/any-sync/app"
+	"github.com/anyproto/any-sync/commonfile/fileservice"
 	"github.com/anyproto/any-sync/commonspace/object/accountdata"
 	"github.com/anyproto/any-sync/commonspace/object/tree/objecttree"
 
@@ -30,7 +31,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/files/reconciler"
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore/filestore"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/spaceindex"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
@@ -54,27 +54,27 @@ type deviceService interface {
 }
 
 type ObjectFactory struct {
-	bookmarkService         bookmark.BookmarkService
-	fileBlockService        file.BlockService
-	layoutConverter         converter.LayoutConverter
-	objectStore             objectstore.ObjectStore
-	sourceService           source.Service
-	tempDirProvider         core.TempDirProvider
-	fileStore               filestore.FileStore
-	fileService             files.Service
-	config                  *config.Config
-	picker                  cache.ObjectGetter
-	eventSender             event.Sender
-	indexer                 smartblock.Indexer
-	spaceService            spaceService
-	accountService          accountService
-	fileObjectService       fileobject.Service
-	processService          process.Service
-	fileUploaderService     fileuploader.Service
-	fileReconciler          reconciler.Reconciler
-	objectDeleter           ObjectDeleter
-	deviceService           deviceService
-	spaceIdResolver         idresolver.Resolver
+	bookmarkService     bookmark.BookmarkService
+	fileBlockService    file.BlockService
+	layoutConverter     converter.LayoutConverter
+	objectStore         objectstore.ObjectStore
+	sourceService       source.Service
+	tempDirProvider     core.TempDirProvider
+	fileService         files.Service
+	config              *config.Config
+	picker              cache.ObjectGetter
+	eventSender         event.Sender
+	indexer             smartblock.Indexer
+	spaceService        spaceService
+	accountService      accountService
+	fileObjectService   fileobject.Service
+	processService      process.Service
+	fileUploaderService fileuploader.Service
+	fileReconciler      reconciler.Reconciler
+	objectDeleter       ObjectDeleter
+	deviceService       deviceService
+	spaceIdResolver     idresolver.Resolver
+	commonFile          fileservice.FileService
 	chatRepositoryService   chatrepository.Service
 	chatSubscriptionService chatsubscription.Service
 }
@@ -87,7 +87,6 @@ func (f *ObjectFactory) Init(a *app.App) (err error) {
 	f.config = app.MustComponent[*config.Config](a)
 	f.picker = app.MustComponent[cache.ObjectGetter](a)
 	f.indexer = app.MustComponent[smartblock.Indexer](a)
-	f.fileStore = app.MustComponent[filestore.FileStore](a)
 	f.objectStore = app.MustComponent[objectstore.ObjectStore](a)
 	f.fileService = app.MustComponent[files.Service](a)
 	f.eventSender = app.MustComponent[event.Sender](a)
@@ -108,6 +107,7 @@ func (f *ObjectFactory) Init(a *app.App) (err error) {
 	f.fileReconciler = app.MustComponent[reconciler.Reconciler](a)
 	f.deviceService = app.MustComponent[deviceService](a)
 	f.spaceIdResolver = app.MustComponent[idresolver.Resolver](a)
+	f.commonFile = app.MustComponent[fileservice.FileService](a)
 	f.chatRepositoryService = app.MustComponent[chatrepository.Service](a)
 	f.chatSubscriptionService = app.MustComponent[chatsubscription.Service](a)
 	return nil
@@ -172,7 +172,6 @@ func (f *ObjectFactory) produceSmartblock(space smartblock.Space) (smartblock.Sm
 	return smartblock.New(
 		space,
 		f.accountService.MyParticipantId(space.Id()),
-		f.fileStore,
 		store,
 		f.objectStore,
 		f.indexer,

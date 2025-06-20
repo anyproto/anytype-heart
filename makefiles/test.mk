@@ -8,7 +8,7 @@ endif
 test:
 	@echo 'Running tests...'
 
-	@$(CGO_LDFLAGS_DARWIN) ANYTYPE_LOG_NOGELF=1 go test -cover github.com/anyproto/anytype-heart/...
+	@$(CGO_LDFLAGS_DARWIN) ANYTYPE_LOG_NOGELF=1 go test github.com/anyproto/anytype-heart/...
 
 test-no-cache:
 	@echo 'Running tests...'

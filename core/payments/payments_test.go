@@ -22,7 +22,7 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/anytype/config"
 	"github.com/anyproto/anytype-heart/core/event/mock_event"
-	"github.com/anyproto/anytype-heart/core/filestorage/filesync/mock_filesync"
+	"github.com/anyproto/anytype-heart/core/files/filesync/mock_filesync"
 	"github.com/anyproto/anytype-heart/core/nameservice/mock_nameservice"
 	"github.com/anyproto/anytype-heart/core/payments/cache"
 	"github.com/anyproto/anytype-heart/core/payments/cache/mock_cache"
@@ -471,7 +471,7 @@ func TestGetStatus(t *testing.T) {
 			return nil
 		})
 		// this should not be called because server returned Explorer tier
-		//fx.cache.EXPECT().CacheEnable().Return(nil)
+		// fx.cache.EXPECT().CacheEnable().Return(nil)
 
 		fx.expectLimitsUpdated()
 
@@ -529,7 +529,7 @@ func TestGetStatus(t *testing.T) {
 		})
 
 		// tier was not changed
-		//fx.expectLimitsUpdated()
+		// fx.expectLimitsUpdated()
 
 		// Call the function being tested
 		resp, err := fx.GetSubscriptionStatus(ctx, &pb.RpcMembershipGetStatusRequest{})
@@ -581,7 +581,7 @@ func TestGetStatus(t *testing.T) {
 		fx.cache.EXPECT().CacheGet().Return(&psgsr, nil, nil)
 
 		// tier was not changed
-		//fx.expectLimitsUpdated()
+		// fx.expectLimitsUpdated()
 
 		// Call the function being tested
 		resp, err := fx.GetSubscriptionStatus(ctx, &pb.RpcMembershipGetStatusRequest{})
@@ -633,7 +633,7 @@ func TestGetStatus(t *testing.T) {
 		fx.cache.EXPECT().CacheGet().Return(&psgsr, nil, nil)
 
 		// tier was not changed
-		//fx.expectLimitsUpdated()
+		// fx.expectLimitsUpdated()
 
 		// Call the function being tested
 		resp, err := fx.GetSubscriptionStatus(ctx, &pb.RpcMembershipGetStatusRequest{})
@@ -689,7 +689,7 @@ func TestGetStatus(t *testing.T) {
 			return errors.New("can not write to cache!")
 		})
 		// this should not be called because server returned Explorer tier
-		//fx.cache.EXPECT().CacheEnable().Return(nil)
+		// fx.cache.EXPECT().CacheEnable().Return(nil)
 
 		fx.expectLimitsUpdated()
 
@@ -903,7 +903,7 @@ func TestGetStatus(t *testing.T) {
 			return nil
 		})
 		// this should not be called because server returned Explorer tier
-		//fx.cache.EXPECT().CacheEnable().Return(nil)
+		// fx.cache.EXPECT().CacheEnable().Return(nil)
 
 		fx.expectLimitsUpdated()
 
@@ -1286,7 +1286,7 @@ func TestGetTiers(t *testing.T) {
 		}).MinTimes(1)
 
 		// this should not be called because server returned Explorer tier
-		//fx.cache.EXPECT().CacheEnable().Return(nil)
+		// fx.cache.EXPECT().CacheEnable().Return(nil)
 
 		fx.expectLimitsUpdated()
 

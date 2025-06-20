@@ -36,9 +36,7 @@ func TestFiles(t *testing.T) {
 		assert.NotEmpty(t, details.GetString(bundle.RelationKeyFileMimeType))
 		assert.True(t, details.GetInt64(bundle.RelationKeySizeInBytes) > 0)
 
-		// Image is available either by object ID or file ID
 		assertImageAvailableInGateway(t, app, objectId)
-		assertImageAvailableInGateway(t, app, fileId)
 	})
 
 	t.Run("upload file", func(t *testing.T) {
@@ -57,9 +55,7 @@ func TestFiles(t *testing.T) {
 		assert.NotEmpty(t, fileId)
 		assert.True(t, details.GetInt64(bundle.RelationKeySizeInBytes) > 0)
 
-		// File is available either by object ID or file ID
 		assertFileAvailableInGateway(t, app, objectId)
-		assertFileAvailableInGateway(t, app, fileId)
 	})
 }
 
