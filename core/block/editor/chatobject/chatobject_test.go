@@ -26,6 +26,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/event/mock_event"
 	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pb"
+	"github.com/anyproto/anytype-heart/pkg/lib/datastore/anystoreprovider"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/spaceindex"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -101,16 +102,20 @@ func newFixture(t *testing.T) *fixture {
 	repo := chatrepository.New()
 	subscriptions := chatsubscription.New()
 
+	provider, err := anystoreprovider.NewInPath(t.TempDir())
+	require.NoError(t, err)
+
 	a.Register(accountService)
 	a.Register(testutil.PrepareMock(ctx, a, eventSender))
 	a.Register(testutil.PrepareMock(ctx, a, idResolver))
 	a.Register(objectStore)
 	a.Register(repo)
 	a.Register(subscriptions)
+	a.Register(provider)
 
-	err := a.Start(ctx)
+	err = a.Start(ctx)
 	require.NoError(t, err)
-	db, err := objectStore.GetCrdtDb(testSpaceId).Wait()
+	db, err := provider.GetCrdtDb(testSpaceId).Wait()
 	require.NoError(t, err)
 
 	object := New(sb, accountService, db, repo, subscriptions)

@@ -31,6 +31,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/files/reconciler"
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
+	"github.com/anyproto/anytype-heart/pkg/lib/datastore/anystoreprovider"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/spaceindex"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
@@ -54,27 +55,28 @@ type deviceService interface {
 }
 
 type ObjectFactory struct {
-	bookmarkService     bookmark.BookmarkService
-	fileBlockService    file.BlockService
-	layoutConverter     converter.LayoutConverter
-	objectStore         objectstore.ObjectStore
-	sourceService       source.Service
-	tempDirProvider     core.TempDirProvider
-	fileService         files.Service
-	config              *config.Config
-	picker              cache.ObjectGetter
-	eventSender         event.Sender
-	indexer             smartblock.Indexer
-	spaceService        spaceService
-	accountService      accountService
-	fileObjectService   fileobject.Service
-	processService      process.Service
-	fileUploaderService fileuploader.Service
-	fileReconciler      reconciler.Reconciler
-	objectDeleter       ObjectDeleter
-	deviceService       deviceService
-	spaceIdResolver     idresolver.Resolver
-	commonFile          fileservice.FileService
+	bookmarkService         bookmark.BookmarkService
+	fileBlockService        file.BlockService
+	layoutConverter         converter.LayoutConverter
+	objectStore             objectstore.ObjectStore
+	sourceService           source.Service
+	tempDirProvider         core.TempDirProvider
+	fileService             files.Service
+	config                  *config.Config
+	picker                  cache.ObjectGetter
+	eventSender             event.Sender
+	indexer                 smartblock.Indexer
+	spaceService            spaceService
+	accountService          accountService
+	fileObjectService       fileobject.Service
+	processService          process.Service
+	fileUploaderService     fileuploader.Service
+	fileReconciler          reconciler.Reconciler
+	objectDeleter           ObjectDeleter
+	deviceService           deviceService
+	spaceIdResolver         idresolver.Resolver
+	commonFile              fileservice.FileService
+	dbProvider              anystoreprovider.Provider
 	chatRepositoryService   chatrepository.Service
 	chatSubscriptionService chatsubscription.Service
 }
@@ -108,6 +110,7 @@ func (f *ObjectFactory) Init(a *app.App) (err error) {
 	f.deviceService = app.MustComponent[deviceService](a)
 	f.spaceIdResolver = app.MustComponent[idresolver.Resolver](a)
 	f.commonFile = app.MustComponent[fileservice.FileService](a)
+	f.dbProvider = app.MustComponent[anystoreprovider.Provider](a)
 	f.chatRepositoryService = app.MustComponent[chatrepository.Service](a)
 	f.chatSubscriptionService = app.MustComponent[chatsubscription.Service](a)
 	return nil
@@ -222,17 +225,17 @@ func (f *ObjectFactory) New(space smartblock.Space, sbType coresb.SmartBlockType
 	case coresb.SmartBlockTypeDevicesObject:
 		return NewDevicesObject(sb, f.deviceService), nil
 	case coresb.SmartBlockTypeChatDerivedObject:
-		crdtDb, err := f.objectStore.GetCrdtDb(space.Id()).Wait()
+		crdtDb, err := f.dbProvider.GetCrdtDb(space.Id()).Wait()
 		if err != nil {
 			return nil, fmt.Errorf("get crdt db: %w", err)
 		}
 		return chatobject.New(sb, f.accountService, crdtDb, f.chatRepositoryService, f.chatSubscriptionService), nil
 	case coresb.SmartBlockTypeAccountObject:
-		crdtDb, err := f.objectStore.GetCrdtDb(space.Id()).Wait()
+		db, err := f.dbProvider.GetCrdtDb(space.Id()).Wait()
 		if err != nil {
 			return nil, fmt.Errorf("get crdt db: %w", err)
 		}
-		return accountobject.New(sb, f.accountService.Keys(), spaceIndex, f.layoutConverter, f.fileObjectService, crdtDb, f.config), nil
+		return accountobject.New(sb, f.accountService.Keys(), spaceIndex, f.layoutConverter, f.fileObjectService, db, f.config), nil
 	default:
 		return nil, fmt.Errorf("unexpected smartblock type: %v", sbType)
 	}
