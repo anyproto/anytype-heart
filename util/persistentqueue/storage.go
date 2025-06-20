@@ -21,9 +21,10 @@ type Storage[T Item] interface {
 }
 
 type anystoreStorage[T Item] struct {
-	coll        anystore.Collection
-	factoryFunc FactoryFunc[T]
-	arena       *anyenc.Arena
+	coll          anystore.Collection
+	factoryFunc   FactoryFunc[T]
+	arenaPool     *anyenc.ArenaPool
+	jsonArenaPool *fastjson.ArenaPool
 }
 
 func NewAnystoreStorage[T Item](db anystore.DB, collectionName string, factoryFunc FactoryFunc[T]) (Storage[T], error) {
@@ -33,9 +34,10 @@ func NewAnystoreStorage[T Item](db anystore.DB, collectionName string, factoryFu
 	}
 
 	return &anystoreStorage[T]{
-		coll:        coll,
-		factoryFunc: factoryFunc,
-		arena:       &anyenc.Arena{},
+		coll:          coll,
+		factoryFunc:   factoryFunc,
+		arenaPool:     &anyenc.ArenaPool{},
+		jsonArenaPool: &fastjson.ArenaPool{},
 	}, nil
 }
 
@@ -50,7 +52,13 @@ func (s *anystoreStorage[T]) Put(item T) error {
 	}
 
 	if doc.Get("id") == nil {
-		doc.Set("id", s.arena.NewString(item.Key()))
+		arena := s.arenaPool.Get()
+		defer func() {
+			arena.Reset()
+			s.arenaPool.Put(arena)
+		}()
+
+		doc.Set("id", arena.NewString(item.Key()))
 	}
 
 	return s.coll.UpsertOne(context.Background(), doc)
@@ -72,6 +80,12 @@ func (s *anystoreStorage[T]) List() ([]T, error) {
 	}
 	defer iter.Close()
 
+	jsonArena := s.jsonArenaPool.Get()
+	defer func() {
+		jsonArena.Reset()
+		s.jsonArenaPool.Put(jsonArena)
+	}()
+
 	buf := make([]byte, 64)
 	for iter.Next() {
 		item := s.factoryFunc()
@@ -81,8 +95,9 @@ func (s *anystoreStorage[T]) List() ([]T, error) {
 			return nil, fmt.Errorf("get doc: %w", err)
 		}
 
+		jsonArena.Reset()
 		buf = buf[:0]
-		buf = doc.Value().FastJson(&fastjson.Arena{}).MarshalTo(buf)
+		buf = doc.Value().FastJson(jsonArena).MarshalTo(buf)
 
 		err = json.Unmarshal(buf, &item)
 		if err != nil {
