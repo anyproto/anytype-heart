@@ -1,6 +1,6 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "urn:anytype:meta-schema:2025-06-20:anytype-schema:gen-1.0",
+  "$id": "https://schemas.anytype.io/meta/v1.0.0/schema.json",
   "title": "Anytype Schema Meta-Schema",
   "description": "Meta-schema for validating Anytype type schemas",
   "type": "object",

@@ -28,10 +28,10 @@ func TestMetaSchemaValidation(t *testing.T) {
 			absSchemaPath, err := filepath.Abs(schemaPath)
 			require.NoError(t, err)
 			documentLoader := gojsonschema.NewReferenceLoader("file://" + absSchemaPath)
-			
+
 			result, err := gojsonschema.Validate(metaSchemaLoader, documentLoader)
 			require.NoError(t, err)
-			
+
 			if !result.Valid() {
 				for _, desc := range result.Errors() {
 					t.Errorf("- %s", desc)
@@ -45,15 +45,15 @@ func TestMetaSchemaValidation(t *testing.T) {
 func TestMetaSchemaItself(t *testing.T) {
 	// The meta-schema should validate against JSON Schema Draft 7
 	metaSchemaPath := filepath.Join("anytype-schema.meta.json")
-	
+
 	// Load the meta-schema
 	metaSchemaData, err := os.ReadFile(metaSchemaPath)
 	require.NoError(t, err)
-	
+
 	var metaSchema map[string]interface{}
 	err = json.Unmarshal(metaSchemaData, &metaSchema)
 	require.NoError(t, err)
-	
+
 	// Verify it has the required fields
 	require.Contains(t, metaSchema, "$schema")
 	require.Contains(t, metaSchema, "$id")
@@ -61,11 +61,10 @@ func TestMetaSchemaItself(t *testing.T) {
 	require.Contains(t, metaSchema, "type")
 	require.Contains(t, metaSchema, "properties")
 	require.Contains(t, metaSchema, "definitions")
-	
+
 	// Verify the $id follows our pattern
 	schemaId := metaSchema["$id"].(string)
-	require.Contains(t, schemaId, "urn:anytype:meta-schema")
-	require.Contains(t, schemaId, ":gen-1.0")
+	require.Contains(t, schemaId, "https://schemas.anytype.io/meta/v1.0.0/schema.json")
 }
 
 func TestInvalidSchemaDetection(t *testing.T) {
@@ -139,18 +138,18 @@ func TestInvalidSchemaDetection(t *testing.T) {
 	for _, tc := range invalidSchemas {
 		t.Run(tc.name, func(t *testing.T) {
 			documentLoader := gojsonschema.NewStringLoader(tc.schema)
-			
+
 			result, err := gojsonschema.Validate(metaSchemaLoader, documentLoader)
 			require.NoError(t, err)
-			
+
 			require.False(t, result.Valid(), "Schema should be invalid")
-			
+
 			// Check that expected errors are present
 			errorMessages := []string{}
 			for _, desc := range result.Errors() {
 				errorMessages = append(errorMessages, desc.String())
 			}
-			
+
 			for _, expectedError := range tc.errors {
 				found := false
 				for _, msg := range errorMessages {
