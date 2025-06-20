@@ -1,6 +1,7 @@
 package schema
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -43,24 +44,216 @@ func (e *JSONSchemaExporter) Export(schema *Schema, writer io.Writer) error {
 
 	jsonSchema := e.typeToJSONSchema(schema.Type, schema)
 
-	encoder := json.NewEncoder(writer)
+	// Use custom marshaler for ordered output
+	orderedSchema := orderedJSONSchema{data: jsonSchema}
+	
+	var output []byte
+	var err error
+	
 	if e.Indent != "" {
-		encoder.SetIndent("", e.Indent)
+		// Pretty print with indentation
+		output, err = json.MarshalIndent(orderedSchema, "", e.Indent)
+	} else {
+		output, err = json.Marshal(orderedSchema)
 	}
-
-	return encoder.Encode(jsonSchema)
+	
+	if err != nil {
+		return err
+	}
+	
+	_, err = writer.Write(output)
+	if err != nil {
+		return err
+	}
+	
+	// Add trailing newline
+	_, err = writer.Write([]byte("\n"))
+	return err
 }
 
 // ExportType exports a single type as JSON Schema
 func (e *JSONSchemaExporter) ExportType(t *Type, schema *Schema, writer io.Writer) error {
 	jsonSchema := e.typeToJSONSchema(t, schema)
 
-	encoder := json.NewEncoder(writer)
+	// Use custom marshaler for ordered output
+	orderedSchema := orderedJSONSchema{data: jsonSchema}
+	
+	var output []byte
+	var err error
+	
 	if e.Indent != "" {
-		encoder.SetIndent("", e.Indent)
+		// Pretty print with indentation
+		output, err = json.MarshalIndent(orderedSchema, "", e.Indent)
+	} else {
+		output, err = json.Marshal(orderedSchema)
 	}
+	
+	if err != nil {
+		return err
+	}
+	
+	_, err = writer.Write(output)
+	if err != nil {
+		return err
+	}
+	
+	// Add trailing newline
+	_, err = writer.Write([]byte("\n"))
+	return err
+}
 
-	return encoder.Encode(jsonSchema)
+// orderedJSONSchema is a wrapper that implements custom JSON marshaling with property ordering
+type orderedJSONSchema struct {
+	data map[string]interface{}
+}
+
+// MarshalJSON implements custom JSON marshaling that preserves property order
+func (o orderedJSONSchema) MarshalJSON() ([]byte, error) {
+	// Create ordered list of keys
+	keys := make([]string, 0, len(o.data))
+	for k := range o.data {
+		keys = append(keys, k)
+	}
+	
+	// Sort keys in desired order:
+	// 1. Standard JSON Schema keys first ($schema, $id, type, title, description)
+	// 2. x-* extension keys
+	// 3. properties (which will be handled specially)
+	// 4. Everything else alphabetically
+	sort.Slice(keys, func(i, j int) bool {
+		// Define priority order for standard keys
+		priority := map[string]int{
+			"$schema":     1,
+			"$id":         2,
+			"type":        3,
+			"title":       4,
+			"description": 5,
+		}
+		
+		iPriority, iHasPriority := priority[keys[i]]
+		jPriority, jHasPriority := priority[keys[j]]
+		
+		if iHasPriority && jHasPriority {
+			return iPriority < jPriority
+		}
+		if iHasPriority {
+			return true
+		}
+		if jHasPriority {
+			return false
+		}
+		
+		// x-* keys come after standard keys but before others
+		iIsExtension := strings.HasPrefix(keys[i], "x-")
+		jIsExtension := strings.HasPrefix(keys[j], "x-")
+		
+		if iIsExtension && !jIsExtension {
+			return true
+		}
+		if !iIsExtension && jIsExtension {
+			return false
+		}
+		
+		// Properties comes last
+		if keys[i] == "properties" {
+			return false
+		}
+		if keys[j] == "properties" {
+			return true
+		}
+		
+		// Otherwise alphabetical
+		return keys[i] < keys[j]
+	})
+	
+	// Build ordered JSON manually
+	var buf bytes.Buffer
+	buf.WriteString("{")
+	
+	for idx, key := range keys {
+		if idx > 0 {
+			buf.WriteString(",")
+		}
+		
+		// Marshal key
+		keyJSON, _ := json.Marshal(key)
+		buf.Write(keyJSON)
+		buf.WriteString(":")
+		
+		// Special handling for properties to maintain order
+		if key == "properties" && o.data[key] != nil {
+			if props, ok := o.data[key].(map[string]interface{}); ok {
+				propertiesJSON := marshalOrderedProperties(props)
+				buf.Write(propertiesJSON)
+			} else {
+				// Fallback to regular marshaling
+				valueJSON, _ := json.Marshal(o.data[key])
+				buf.Write(valueJSON)
+			}
+		} else {
+			// Regular marshaling for other fields
+			valueJSON, _ := json.Marshal(o.data[key])
+			buf.Write(valueJSON)
+		}
+	}
+	
+	buf.WriteString("}")
+	return buf.Bytes(), nil
+}
+
+// marshalOrderedProperties marshals properties map ordered by x-order field
+func marshalOrderedProperties(props map[string]interface{}) []byte {
+	type propWithOrder struct {
+		name  string
+		order int
+		data  interface{}
+	}
+	
+	// Extract properties with their order
+	orderedProps := make([]propWithOrder, 0, len(props))
+	for name, prop := range props {
+		order := 999 // Default high order for properties without x-order
+		if propMap, ok := prop.(map[string]interface{}); ok {
+			if xOrder, ok := propMap["x-order"].(int); ok {
+				order = xOrder
+			}
+		}
+		orderedProps = append(orderedProps, propWithOrder{
+			name:  name,
+			order: order,
+			data:  prop,
+		})
+	}
+	
+	// Sort by order, then by name
+	sort.Slice(orderedProps, func(i, j int) bool {
+		if orderedProps[i].order != orderedProps[j].order {
+			return orderedProps[i].order < orderedProps[j].order
+		}
+		return orderedProps[i].name < orderedProps[j].name
+	})
+	
+	// Build ordered properties JSON
+	var buf bytes.Buffer
+	buf.WriteString("{")
+	
+	for idx, prop := range orderedProps {
+		if idx > 0 {
+			buf.WriteString(",")
+		}
+		
+		// Marshal property name
+		nameJSON, _ := json.Marshal(prop.name)
+		buf.Write(nameJSON)
+		buf.WriteString(":")
+		
+		// Marshal property data
+		propJSON, _ := json.Marshal(prop.data)
+		buf.Write(propJSON)
+	}
+	
+	buf.WriteString("}")
+	return buf.Bytes()
 }
 
 // typeToJSONSchema converts a Type to JSON Schema format

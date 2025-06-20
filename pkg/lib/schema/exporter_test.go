@@ -3,6 +3,7 @@ package schema
 import (
 	"bytes"
 	"encoding/json"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -569,6 +570,152 @@ func TestTypePropertyExport(t *testing.T) {
 		
 		// Should preserve the const value
 		assert.Equal(t, "Task", typeProp["const"])
+	})
+}
+
+func TestJSONSchemaPropertyOrdering(t *testing.T) {
+	t.Run("Properties are ordered by x-order", func(t *testing.T) {
+		// Create a schema with multiple properties in random order
+		s := NewSchema()
+		
+		// Add relations in non-sequential order
+		rel3 := &Relation{
+			Key:    "status",
+			Name:   "Status",
+			Format: model.RelationFormat_status,
+		}
+		s.AddRelation(rel3)
+		
+		rel1 := &Relation{
+			Key:    "title",
+			Name:   "Title",
+			Format: model.RelationFormat_shorttext,
+		}
+		s.AddRelation(rel1)
+		
+		rel2 := &Relation{
+			Key:    "description",
+			Name:   "Description",
+			Format: model.RelationFormat_longtext,
+		}
+		s.AddRelation(rel2)
+		
+		// Create type with relations in specific order
+		typ := &Type{
+			Key:               "task",
+			Name:              "Task",
+			FeaturedRelations: []string{"title", "status"},    // Order: title=2, status=3 (after id=0 and Type=1)
+			RecommendedRelations: []string{"description"},     // Order: description=4
+		}
+		s.SetType(typ)
+		
+		// Export to JSON Schema
+		exporter := NewJSONSchemaExporter("  ")
+		var buf bytes.Buffer
+		err := exporter.Export(s, &buf)
+		require.NoError(t, err)
+		
+		output := buf.String()
+		
+		// Find positions of properties in the output
+		titlePos := strings.Index(output, `"Title":`)
+		statusPos := strings.Index(output, `"Status":`)
+		descPos := strings.Index(output, `"Description":`)
+		
+		// Verify properties appear in the correct order
+		assert.True(t, titlePos > 0, "Title property should be present")
+		assert.True(t, statusPos > 0, "Status property should be present")
+		assert.True(t, descPos > 0, "Description property should be present")
+		
+		// Title (x-order: 1) should come before Status (x-order: 2)
+		assert.True(t, titlePos < statusPos, "Title should appear before Status")
+		// Status (x-order: 2) should come before Description (x-order: 3)
+		assert.True(t, statusPos < descPos, "Status should appear before Description")
+		
+		// Also verify the schema structure has correct ordering
+		assert.Contains(t, output, `"$schema":`)
+		assert.Contains(t, output, `"$id":`)
+		assert.Contains(t, output, `"type": "object"`)
+		assert.Contains(t, output, `"title": "Task"`)
+		
+		// Verify $schema comes first
+		schemaPos := strings.Index(output, `"$schema":`)
+		idPos := strings.Index(output, `"$id":`)
+		typePos := strings.Index(output, `"type":`)
+		titleTypePos := strings.Index(output, `"title":`)
+		propsPos := strings.Index(output, `"properties":`)
+		
+		// Standard fields should come in order
+		assert.True(t, schemaPos < idPos, "$schema should come before $id")
+		assert.True(t, idPos < typePos, "$id should come before type")
+		assert.True(t, typePos < titleTypePos, "type should come before title")
+		assert.True(t, titleTypePos < propsPos, "title should come before properties")
+	})
+	
+	t.Run("Properties without x-order come after ordered ones", func(t *testing.T) {
+		// Test that hidden relations (which get higher x-order values) come after featured/recommended
+		s := NewSchema()
+		
+		// Add relations
+		rel1 := &Relation{
+			Key:    "custom_field",
+			Name:   "Custom Field",
+			Format: model.RelationFormat_shorttext,
+		}
+		s.AddRelation(rel1)
+		
+		rel2 := &Relation{
+			Key:    "name",
+			Name:   "Name",
+			Format: model.RelationFormat_shorttext,
+		}
+		s.AddRelation(rel2)
+		
+		rel3 := &Relation{
+			Key:    "hidden_field",
+			Name:   "Hidden Field",
+			Format: model.RelationFormat_shorttext,
+		}
+		s.AddRelation(rel3)
+		
+		typ := &Type{
+			Key:                  "custom",
+			Name:                 "Custom Type",
+			FeaturedRelations:    []string{"name"},              // x-order: 2
+			RecommendedRelations: []string{"custom_field"},      // x-order: 3
+			HiddenRelations:      []string{"hidden_field"},      // x-order: 4
+		}
+		s.SetType(typ)
+		
+		// Export
+		exporter := NewJSONSchemaExporter("  ")
+		var buf bytes.Buffer
+		err := exporter.Export(s, &buf)
+		require.NoError(t, err)
+		
+		output := buf.String()
+		
+		// All properties should be present
+		assert.Contains(t, output, `"Name":`)
+		assert.Contains(t, output, `"Custom Field":`)
+		assert.Contains(t, output, `"Hidden Field":`)
+		
+		// Find positions
+		idPos := strings.Index(output, `"id":`)
+		namePos := strings.Index(output, `"Name":`)
+		customPos := strings.Index(output, `"Custom Field":`)
+		hiddenPos := strings.Index(output, `"Hidden Field":`)
+		
+		// Verify order: id (0) < Name (2) < Custom Field (3) < Hidden Field (4)
+		assert.True(t, idPos < namePos, "id should come before Name")
+		assert.True(t, namePos < customPos, "Name should come before Custom Field")
+		assert.True(t, customPos < hiddenPos, "Custom Field should come before Hidden Field")
+		
+		// Also check that x-order values are correct in the output
+		assert.Contains(t, output, `"x-order": 0`)  // id
+		assert.Contains(t, output, `"x-order": 2`)  // name
+		assert.Contains(t, output, `"x-order": 3`)  // custom_field
+		assert.Contains(t, output, `"x-order": 4`)  // hidden_field
 	})
 }
 
