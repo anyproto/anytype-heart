@@ -8,12 +8,10 @@
   "x-genversion": "1.0",
   "x-icon-emoji": "📁",
   "x-plural-name": "Projects",
-  "x-featured-relations": ["Name", "Status", "Start Date"],
-  "x-recommended-relations": ["End Date", "Owner", "Team"],
   "properties": {
     "id": {
       "type": "string",
-      "description": "Unique identifier",
+      "description": "Unique identifier of the Anytype object",
       "readOnly": true,
       "x-order": 0,
       "x-key": "id"
@@ -65,7 +63,10 @@
       "description": "When the project is expected to complete"
     },
     "Owner": {
-      "type": "string",
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
       "x-order": 7,
       "x-key": "project_owner",
       "x-format": "object",

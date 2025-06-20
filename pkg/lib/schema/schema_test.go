@@ -446,12 +446,7 @@ func TestSchema_RelationProperty_XFormat(t *testing.T) {
 
 	// Verify object relation has proper items schema
 	items := objProp["items"].(map[string]interface{})
-	assert.Equal(t, "object", items["type"])
-	itemProps := items["properties"].(map[string]interface{})
-	assert.Contains(t, itemProps, "Name")
-	assert.Contains(t, itemProps, "File")
-	assert.Contains(t, itemProps, "Id")
-	assert.Contains(t, itemProps, "Object type")
+	assert.Equal(t, "string", items["type"])
 }
 
 func TestSchema_AllFormatsHaveXFormat(t *testing.T) {

@@ -62,8 +62,8 @@ title: Test Page
 				ObjectTypeName:    "Task",
 			},
 			want: `---
+Object type: Task
 name: My Task
-type: Task
 ---
 `,
 		},

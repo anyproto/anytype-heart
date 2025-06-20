@@ -190,6 +190,11 @@ func (e *JSONSchemaExporter) typeToJSONSchema(t *Type, schema *Schema) map[strin
 		} else if or.hidden {
 			prop["x-hidden"] = true
 		}
+		
+		// Special handling for Type relation
+		if or.relation.Key == bundle.RelationKeyType.String() {
+			prop["const"] = t.Name
+		}
 
 		properties[or.name] = prop
 	}
@@ -231,10 +236,8 @@ func (e *JSONSchemaExporter) relationToProperty(r *Relation) map[string]interfac
 	}
 
 	if r.Key == bundle.RelationKeyType.String() {
-		// ID is always read-only and has a specific format
-		prop["const"] = e
-		prop["description"] = "Unique identifier of the Anytype object"
-		prop["readOnly"] = true
+		// Type relation should have the type name as const
+		// This will be set by the caller who has access to the type name
 		return prop
 	}
 
@@ -296,17 +299,14 @@ func (e *JSONSchemaExporter) relationToProperty(r *Relation) map[string]interfac
 
 	case model.RelationFormat_object:
 		prop["type"] = "array"
-		objectSchema := map[string]interface{}{
-			"type":        "string",
-			"description": "Filepath or name of the object",
+		prop["items"] = map[string]interface{}{
+			"type": "string",
 		}
-
-		// Add enum for object types if specified
+		
+		// Add x-object-types if specified
 		if len(r.ObjectTypes) > 0 {
-			objectSchema["properties"].(map[string]interface{})["Object type"].(map[string]interface{})["enum"] = r.ObjectTypes
+			prop["x-object-types"] = r.ObjectTypes
 		}
-
-		prop["items"] = objectSchema
 
 	default:
 		prop["type"] = "string"
@@ -422,6 +422,33 @@ func schemaFromObjectDetailsInternal(typeDetails *domain.Details, relationDetail
 		}
 	}
 
+	// Add hidden relations
+	for i, id := range t.HiddenRelations {
+		// Find in provided list first
+		var found *domain.Details
+		for _, rd := range relationDetailsList {
+			if rd.GetString(bundle.RelationKeyId) == id {
+				found = rd
+				break
+			}
+		}
+
+		// If not found and resolver provided, try to resolve
+		if found == nil && resolver != nil {
+			found, _ = resolver(id)
+		}
+
+		if found != nil {
+			orderedRelations = append(orderedRelations, orderedRelation{
+				id:       id,
+				details:  found,
+				order:    len(t.FeaturedRelations) + len(t.RecommendedRelations) + i,
+				featured: false,
+				hidden:   true,
+			})
+		}
+	}
+
 	// Sort by order
 	sort.Slice(orderedRelations, func(i, j int) bool {
 		return orderedRelations[i].order < orderedRelations[j].order
@@ -455,7 +482,7 @@ func schemaFromObjectDetailsInternal(typeDetails *domain.Details, relationDetail
 		schema.AddRelation(rel)
 
 		// Add to type
-		t.AddRelation(rel.Key, or.featured, or.featured)
+		t.AddRelation(rel.Key, or.featured, or.hidden)
 	}
 
 	// Set type for schema

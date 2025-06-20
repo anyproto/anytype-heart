@@ -704,14 +704,13 @@ func TestSchemaImporter_AllPropertiesAddedToType(t *testing.T) {
 	// Get all relations from the type
 	featuredRels := details.GetStringList(bundle.RelationKeyRecommendedFeaturedRelations)
 	regularRels := details.GetStringList(bundle.RelationKeyRecommendedRelations)
+	hiddenRels := details.GetStringList(bundle.RelationKeyRecommendedHiddenRelations)
 	allRels := append(featuredRels, regularRels...)
+	allRels = append(allRels, hiddenRels...)
 
-	// Should have all 10 fields (but Type might be included as a bundled relation)
-	assert.Greater(t, len(allRels), 9, "Most fields should be included in the type")
-
-	// Verify we have enough relations
-	// The actual IDs might be bundled or prefixed, so just check count
-	assert.Greater(t, len(allRels), 10, "Type should have many relations")
+	// Should have Field1-Field10 (10 fields total)
+	// id and type are standard fields and not included in relation lists
+	assert.GreaterOrEqual(t, len(allRels), 10, "Should have all Field1-Field10 relations")
 }
 
 func TestSchemaImporter_XFormatSupport(t *testing.T) {
@@ -1015,13 +1014,15 @@ func TestSchemaImporter_FileVsTagDistinction(t *testing.T) {
 	typeSnapshot := typeSnapshots[0]
 	details := typeSnapshot.Snapshot.Data.Details
 
-	allRelIds := append(
-		details.GetStringList("recommendedFeaturedRelations"),
-		details.GetStringList("recommendedRelations")...,
-	)
+	featuredRels := details.GetStringList(bundle.RelationKeyRecommendedFeaturedRelations)
+	regularRels := details.GetStringList(bundle.RelationKeyRecommendedRelations)
+	hiddenRels := details.GetStringList(bundle.RelationKeyRecommendedHiddenRelations)
+	allRelIds := append(featuredRels, regularRels...)
+	allRelIds = append(allRelIds, hiddenRels...)
 
-	// Should include all relations defined in the schema
-	assert.Greater(t, len(allRelIds), 5, "Type should include all relations from schema")
+	// Should include all relations defined in the schema except id and type
+	// We have: attachments, images, tags, categories, references = 5 relations
+	assert.GreaterOrEqual(t, len(allRelIds), 5, "Type should include all relations from schema")
 }
 
 func TestSchemaImporter_IntegrationWithCustomRelations(t *testing.T) {

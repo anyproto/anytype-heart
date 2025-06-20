@@ -9,6 +9,7 @@ import (
 	"gopkg.in/yaml.v3"
 
 	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/pkg/lib/schema"
 )
@@ -31,12 +32,14 @@ func ExportToYAML(properties []Property, options *ExportOptions) ([]byte, error)
 		options = &ExportOptions{}
 	}
 
+	options.SkipProperties = append(options.SkipProperties, bundle.RelationKeyId.String())
 	// Create a map for YAML marshaling
 	data := make(map[string]interface{})
 
 	// Add object type if requested
 	if options.IncludeObjectType && options.ObjectTypeName != "" {
-		data["type"] = options.ObjectTypeName
+		data["Object type"] = options.ObjectTypeName
+		options.SkipProperties = append(options.SkipProperties, bundle.RelationKeyType.String())
 	}
 
 	// Process properties
@@ -92,10 +95,10 @@ func ExportDetailsToYAML(details *domain.Details, formats map[string]model.Relat
 
 	// Convert Details to Properties
 	properties := make([]Property, 0, details.Len())
-	
+
 	for key, value := range details.Iterate() {
 		keyStr := string(key)
-		
+
 		// Determine format
 		format := model.RelationFormat_shorttext
 		if f, ok := formats[keyStr]; ok {
@@ -225,7 +228,7 @@ func ExportSchemaToYAML(s *schema.Schema, options *ExportOptions) ([]byte, error
 			} else {
 				prop.Value = domain.StringList([]string{})
 			}
-			
+
 		case model.RelationFormat_file:
 			// For file relations, include empty array
 			prop.Value = domain.StringList([]string{})

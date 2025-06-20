@@ -40,6 +40,8 @@ func (p *JSONSchemaParser) Parse(reader io.Reader) (*Schema, error) {
 			return nil, fmt.Errorf("invalid properties format")
 		}
 
+		// First, parse all relations and add them to schema
+		relationsByKey := make(map[string]*Relation)
 		for propName, propValue := range properties {
 			prop, ok := propValue.(map[string]interface{})
 			if !ok {
@@ -56,12 +58,29 @@ func (p *JSONSchemaParser) Parse(reader io.Reader) (*Schema, error) {
 				return nil, fmt.Errorf("failed to add relation %s: %w", rel.Key, err)
 			}
 
-			// Add relation to type
-			isFeatured := getBoolField(prop, "x-featured")
-			isHidden := getBoolField(prop, "x-hidden")
+			relationsByKey[rel.Key] = rel
+		}
 
-			// Only relations with x-featured: true should be featured
-			t.AddRelation(rel.Key, isFeatured, isHidden)
+		// Add relations to type based on x-featured and x-hidden flags on properties
+		for propName, propValue := range properties {
+			prop, ok := propValue.(map[string]interface{})
+			if !ok {
+				continue
+			}
+
+			// Get the relation key
+			relKey := getStringField(prop, "x-key")
+			if relKey == "" {
+				// todo: this logic is incorrect
+				relKey = strings.ToLower(strings.ReplaceAll(propName, " ", "_"))
+			}
+
+			// Skip standard properties that shouldn't be in relation lists
+			if relKey != "id" && relKey != "type" {
+				isFeatured := getBoolField(prop, "x-featured")
+				isHidden := getBoolField(prop, "x-hidden")
+				t.AddRelation(relKey, isFeatured, isHidden)
+			}
 		}
 
 		// Set type for schema
@@ -175,17 +194,11 @@ func (p *JSONSchemaParser) parseRelationFromProperty(name string, prop map[strin
 		}
 
 	case model.RelationFormat_object:
-		// Parse object types from items schema if available
-		if items, ok := prop["items"].(map[string]interface{}); ok {
-			if props, ok := items["properties"].(map[string]interface{}); ok {
-				if objTypeProp, ok := props["Object type"].(map[string]interface{}); ok {
-					if enum, ok := objTypeProp["enum"].([]interface{}); ok {
-						for _, v := range enum {
-							if s, ok := v.(string); ok {
-								r.ObjectTypes = append(r.ObjectTypes, s)
-							}
-						}
-					}
+		// Parse object types from x-object-types
+		if objTypes, ok := prop["x-object-types"].([]interface{}); ok {
+			for _, v := range objTypes {
+				if s, ok := v.(string); ok {
+					r.ObjectTypes = append(r.ObjectTypes, s)
 				}
 			}
 		}
@@ -326,7 +339,8 @@ func getIntField(m map[string]interface{}, key string) int {
 func isKnownExtension(key string) bool {
 	knownExtensions := []string{
 		"x-type-key", "x-plural", "x-icon-emoji", "x-icon-name",
-		"x-key", "x-format", "x-featured", "x-order",
+		"x-key", "x-format", "x-featured", "x-order", "x-hidden",
+		"x-genversion", "x-app",
 	}
 	for _, known := range knownExtensions {
 		if key == known {
