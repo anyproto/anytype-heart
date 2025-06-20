@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"errors"
+	"fmt"
 
 	"github.com/gogo/protobuf/types"
 
@@ -33,26 +34,28 @@ var (
 )
 
 // ListObjects retrieves a paginated list of objects in a specific space.
-func (s *Service) ListObjects(ctx context.Context, spaceId string, offset int, limit int) (objects []apimodel.Object, total int, hasMore bool, err error) {
+func (s *Service) ListObjects(ctx context.Context, spaceId string, additionalFilters []*model.BlockContentDataviewFilter, offset int, limit int) (objects []apimodel.Object, total int, hasMore bool, err error) {
+	filters := append([]*model.BlockContentDataviewFilter{
+		{
+			RelationKey: bundle.RelationKeyResolvedLayout.String(),
+			Condition:   model.BlockContentDataviewFilter_In,
+			Value:       pbtypes.IntList(util.LayoutsToIntArgs(util.ObjectLayouts)...),
+		},
+		{
+			RelationKey: "type.uniqueKey",
+			Condition:   model.BlockContentDataviewFilter_NotEqual,
+			Value:       pbtypes.String("ot-template"),
+		},
+		{
+			RelationKey: bundle.RelationKeyIsHidden.String(),
+			Condition:   model.BlockContentDataviewFilter_NotEqual,
+			Value:       pbtypes.Bool(true),
+		},
+	}, additionalFilters...)
+
 	resp := s.mw.ObjectSearch(ctx, &pb.RpcObjectSearchRequest{
 		SpaceId: spaceId,
-		Filters: []*model.BlockContentDataviewFilter{
-			{
-				RelationKey: bundle.RelationKeyResolvedLayout.String(),
-				Condition:   model.BlockContentDataviewFilter_In,
-				Value:       pbtypes.IntList(util.LayoutsToIntArgs(util.ObjectLayouts)...),
-			},
-			{
-				RelationKey: "type.uniqueKey",
-				Condition:   model.BlockContentDataviewFilter_NotEqual,
-				Value:       pbtypes.String("ot-template"),
-			},
-			{
-				RelationKey: bundle.RelationKeyIsHidden.String(),
-				Condition:   model.BlockContentDataviewFilter_NotEqual,
-				Value:       pbtypes.Bool(true),
-			},
-		},
+		Filters: filters,
 		Sorts: []*model.BlockContentDataviewSort{{
 			RelationKey:    bundle.RelationKeyLastModifiedDate.String(),
 			Type:           model.BlockContentDataviewSort_Desc,
@@ -147,10 +150,10 @@ func (s *Service) CreateObject(ctx context.Context, spaceId string, request apim
 	if err != nil {
 		return apimodel.ObjectWithBody{}, err
 	}
-	request.TypeKey = s.ResolveTypeApiKey(typeMap, request.TypeKey)
+	typeUk := s.ResolveTypeApiKey(typeMap, request.TypeKey)
 
 	var objectId string
-	if request.TypeKey == "ot-bookmark" {
+	if typeUk == "ot-bookmark" {
 		resp := s.mw.ObjectCreateBookmark(ctx, &pb.RpcObjectCreateBookmarkRequest{
 			Details:    details,
 			SpaceId:    spaceId,
@@ -166,7 +169,7 @@ func (s *Service) CreateObject(ctx context.Context, spaceId string, request apim
 			Details:             details,
 			TemplateId:          request.TemplateId,
 			SpaceId:             spaceId,
-			ObjectTypeUniqueKey: request.TypeKey,
+			ObjectTypeUniqueKey: typeUk,
 		})
 
 		if resp.Error != nil && resp.Error.Code != pb.RpcObjectCreateResponseError_NULL {
@@ -237,6 +240,26 @@ func (s *Service) UpdateObject(ctx context.Context, spaceId string, objectId str
 	_, err := s.GetObject(ctx, spaceId, objectId)
 	if err != nil {
 		return apimodel.ObjectWithBody{}, err
+	}
+
+	propertyMap, err := s.getPropertyMapFromStore(ctx, spaceId, true)
+	if err != nil {
+		return apimodel.ObjectWithBody{}, err
+	}
+	typeMap, err := s.getTypeMapFromStore(ctx, spaceId, propertyMap, true)
+	if err != nil {
+		return apimodel.ObjectWithBody{}, err
+	}
+
+	if request.TypeKey != nil {
+		typeUk := s.ResolveTypeApiKey(typeMap, *request.TypeKey)
+		typeResp := s.mw.ObjectSetObjectType(ctx, &pb.RpcObjectSetObjectTypeRequest{
+			ContextId:           objectId,
+			ObjectTypeUniqueKey: typeUk,
+		})
+		if typeResp.Error != nil && typeResp.Error.Code != pb.RpcObjectSetObjectTypeResponseError_NULL {
+			return apimodel.ObjectWithBody{}, util.ErrBadInput(fmt.Sprintf("failed to update object, invalid type key: %q", *request.TypeKey))
+		}
 	}
 
 	details, err := s.buildUpdatedObjectDetails(ctx, spaceId, request)

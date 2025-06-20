@@ -904,6 +904,55 @@ func (_c *MockClientCommands_ObjectSetIsArchived_Call) RunAndReturn(run func(con
 	return _c
 }
 
+// ObjectSetObjectType provides a mock function with given fields: _a0, _a1
+func (_m *MockClientCommands) ObjectSetObjectType(_a0 context.Context, _a1 *pb.RpcObjectSetObjectTypeRequest) *pb.RpcObjectSetObjectTypeResponse {
+	ret := _m.Called(_a0, _a1)
+
+	if len(ret) == 0 {
+		panic("no return value specified for ObjectSetObjectType")
+	}
+
+	var r0 *pb.RpcObjectSetObjectTypeResponse
+	if rf, ok := ret.Get(0).(func(context.Context, *pb.RpcObjectSetObjectTypeRequest) *pb.RpcObjectSetObjectTypeResponse); ok {
+		r0 = rf(_a0, _a1)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*pb.RpcObjectSetObjectTypeResponse)
+		}
+	}
+
+	return r0
+}
+
+// MockClientCommands_ObjectSetObjectType_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ObjectSetObjectType'
+type MockClientCommands_ObjectSetObjectType_Call struct {
+	*mock.Call
+}
+
+// ObjectSetObjectType is a helper method to define mock.On call
+//   - _a0 context.Context
+//   - _a1 *pb.RpcObjectSetObjectTypeRequest
+func (_e *MockClientCommands_Expecter) ObjectSetObjectType(_a0 interface{}, _a1 interface{}) *MockClientCommands_ObjectSetObjectType_Call {
+	return &MockClientCommands_ObjectSetObjectType_Call{Call: _e.mock.On("ObjectSetObjectType", _a0, _a1)}
+}
+
+func (_c *MockClientCommands_ObjectSetObjectType_Call) Run(run func(_a0 context.Context, _a1 *pb.RpcObjectSetObjectTypeRequest)) *MockClientCommands_ObjectSetObjectType_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(*pb.RpcObjectSetObjectTypeRequest))
+	})
+	return _c
+}
+
+func (_c *MockClientCommands_ObjectSetObjectType_Call) Return(_a0 *pb.RpcObjectSetObjectTypeResponse) *MockClientCommands_ObjectSetObjectType_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockClientCommands_ObjectSetObjectType_Call) RunAndReturn(run func(context.Context, *pb.RpcObjectSetObjectTypeRequest) *pb.RpcObjectSetObjectTypeResponse) *MockClientCommands_ObjectSetObjectType_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // ObjectShow provides a mock function with given fields: _a0, _a1
 func (_m *MockClientCommands) ObjectShow(_a0 context.Context, _a1 *pb.RpcObjectShowRequest) *pb.RpcObjectShowResponse {
 	ret := _m.Called(_a0, _a1)
