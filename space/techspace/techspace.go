@@ -13,6 +13,7 @@ import (
 	"github.com/anyproto/any-sync/commonspace/object/keyvalue/keyvaluestorage"
 	"github.com/anyproto/any-sync/commonspace/object/tree/treestorage"
 	"github.com/anyproto/any-sync/net/peer"
+	"github.com/anyproto/any-sync/util/crypto"
 	"go.uber.org/zap"
 
 	editorsb "github.com/anyproto/anytype-heart/core/block/editor/smartblock"
@@ -20,6 +21,8 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/object/objectcache"
 	"github.com/anyproto/anytype-heart/core/block/object/payloadcreator"
 	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/core/session"
+	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/space/spaceinfo"
 )
@@ -76,12 +79,13 @@ type SpaceView interface {
 	SetSpaceData(details *domain.Details) error
 	SetSpaceLocalInfo(info spaceinfo.SpaceLocalInfo) error
 	SetAccessType(acc spaceinfo.AccessType) error
-	SetAclIsEmpty(isEmpty bool) (err error)
+	SetAclInfo(empty bool, pushKey crypto.PrivKey, pushEncKey crypto.SymKey) (err error)
 	SetOwner(ownerId string, createdDate int64) (err error)
 	SetSpacePersistentInfo(info spaceinfo.SpacePersistentInfo) error
 	GetSpaceDescription() (data spaceinfo.SpaceDescription)
 	SetSharedSpacesLimit(limits int) (err error)
 	GetSharedSpacesLimit() (limits int)
+	SetPushNotificationMode(ctx session.Context, mode pb.RpcPushNotificationSetSpaceModeMode) (err error)
 }
 
 func New() TechSpace {

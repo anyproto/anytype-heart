@@ -9,6 +9,7 @@ import (
 
 	"github.com/anyproto/any-store/anyenc"
 	"github.com/anyproto/any-store/query"
+	"github.com/anyproto/any-store/syncpool"
 	"github.com/samber/lo"
 	"golang.org/x/exp/slices"
 
@@ -69,7 +70,7 @@ func makeFilter(spaceID string, rawFilter FilterRequest, store ObjectStore) (Fil
 	if rawFilter.Condition == model.BlockContentDataviewFilter_None {
 		return nil, nil
 	}
-	rawFilters := transformQuickOption(rawFilter, nil)
+	rawFilters := transformQuickOption(rawFilter)
 
 	if len(rawFilters) == 1 {
 		return makeFilterByCondition(spaceID, rawFilters[0], store)
@@ -541,16 +542,16 @@ func (i FilterIn) FilterObject(g *domain.Details) bool {
 }
 
 func (i FilterIn) AnystoreFilter() query.Filter {
-	path := []string{string(i.Key)}
-	conds := make([]query.Filter, 0, len(i.Value))
 	arena := &anyenc.Arena{}
+	inVals := make([]*anyenc.Value, 0, len(i.Value))
 	for _, v := range i.Value {
-		conds = append(conds, query.Key{
-			Path:   path,
-			Filter: query.NewCompValue(query.CompOpEq, v.ToAnyEnc(arena)),
-		})
+		inVals = append(inVals, v.ToAnyEnc(arena))
 	}
-	return query.Or(conds)
+	filter := query.NewInValue(inVals...)
+	return query.Key{
+		Path:   []string{string(i.Key)},
+		Filter: filter,
+	}
 }
 
 type FilterLike struct {
@@ -757,13 +758,13 @@ func (exIn *FilterOptionsEqual) FilterObject(g *domain.Details) bool {
 	return false
 }
 
-func (exIn *FilterOptionsEqual) Ok(v *anyenc.Value) bool {
+func (exIn *FilterOptionsEqual) Ok(v *anyenc.Value, docBuf *syncpool.DocBuffer) bool {
 	defer exIn.arena.Reset()
 
 	arr := v.GetArray(string(exIn.Key))
 	// Just fall back to precompiled filter
 	if len(arr) == 0 {
-		return exIn.valueFilter.Ok(v.Get(string(exIn.Key)))
+		return exIn.valueFilter.Ok(v.Get(string(exIn.Key)), docBuf)
 	}
 
 	// Discard deleted options
@@ -777,7 +778,7 @@ func (exIn *FilterOptionsEqual) Ok(v *anyenc.Value) bool {
 			i++
 		}
 	}
-	return exIn.valueFilter.Ok(optionList)
+	return exIn.valueFilter.Ok(optionList, docBuf)
 }
 
 func (exIn *FilterOptionsEqual) compileValueFilter() {
@@ -863,15 +864,17 @@ func (i *FilterNestedIn) FilterObject(g *domain.Details) bool {
 }
 
 func (i *FilterNestedIn) AnystoreFilter() query.Filter {
-	path := []string{string(i.Key)}
-	conds := make([]query.Filter, 0, len(i.IDs))
+	arena := &anyenc.Arena{}
+	values := make([]*anyenc.Value, 0, len(i.IDs))
 	for _, id := range i.IDs {
-		conds = append(conds, query.Key{
-			Path:   path,
-			Filter: query.NewComp(query.CompOpEq, id),
-		})
+		aev := domain.String(id).ToAnyEnc(arena)
+		values = append(values, aev)
 	}
-	return query.Or(conds)
+	filter := query.NewInValue(values...)
+	return query.Key{
+		Path:   []string{string(i.Key)},
+		Filter: filter,
+	}
 }
 
 func (i *FilterNestedIn) IterateNestedFilters(fn func(nestedFilter Filter) error) error {
@@ -1002,7 +1005,7 @@ type Anystore2ValuesComp struct {
 	buf1, buf2                 []byte
 }
 
-func (e *Anystore2ValuesComp) Ok(v *anyenc.Value) bool {
+func (e *Anystore2ValuesComp) Ok(v *anyenc.Value, docBuf *syncpool.DocBuffer) bool {
 	value1 := v.Get(e.RelationKey1)
 	value2 := v.Get(e.RelationKey2)
 	e.buf1 = value1.MarshalTo(e.buf1[:0])

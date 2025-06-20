@@ -236,7 +236,7 @@ func (t *treeSyncer) IsRunning() bool {
 	return t.isRunning
 }
 
-func (t *treeSyncer) RefreshTrees(ids []string) (err error) {
+func (t *treeSyncer) RefreshTrees(ids []string) error {
 	if !t.IsRunning() {
 		return nil
 	}
@@ -257,12 +257,12 @@ func (t *treeSyncer) RefreshTrees(ids []string) (err error) {
 		}
 		t.Unlock()
 		for _, id := range ids {
-			err = headExec.tryAdd(id, func() {
+			err := headExec.tryAdd(id, func() {
 				t.updateTree(p, id)
 			})
-		}
-		if err != nil {
-			log.Error("failed to add to head queue", zap.Error(err))
+			if err != nil {
+				log.Debug("failed to add to head queue", zap.Error(err))
+			}
 		}
 	})
 	return nil

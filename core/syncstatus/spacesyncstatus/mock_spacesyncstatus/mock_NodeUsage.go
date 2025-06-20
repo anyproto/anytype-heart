@@ -7,7 +7,7 @@ import (
 
 	app "github.com/anyproto/any-sync/app"
 
-	files "github.com/anyproto/anytype-heart/core/files"
+	filespaceusage "github.com/anyproto/anytype-heart/core/files/filespaceusage"
 
 	mock "github.com/stretchr/testify/mock"
 )
@@ -26,23 +26,23 @@ func (_m *MockNodeUsage) EXPECT() *MockNodeUsage_Expecter {
 }
 
 // GetNodeUsage provides a mock function with given fields: ctx
-func (_m *MockNodeUsage) GetNodeUsage(ctx context.Context) (*files.NodeUsageResponse, error) {
+func (_m *MockNodeUsage) GetNodeUsage(ctx context.Context) (*filespaceusage.NodeUsageResponse, error) {
 	ret := _m.Called(ctx)
 
 	if len(ret) == 0 {
 		panic("no return value specified for GetNodeUsage")
 	}
 
-	var r0 *files.NodeUsageResponse
+	var r0 *filespaceusage.NodeUsageResponse
 	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context) (*files.NodeUsageResponse, error)); ok {
+	if rf, ok := ret.Get(0).(func(context.Context) (*filespaceusage.NodeUsageResponse, error)); ok {
 		return rf(ctx)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context) *files.NodeUsageResponse); ok {
+	if rf, ok := ret.Get(0).(func(context.Context) *filespaceusage.NodeUsageResponse); ok {
 		r0 = rf(ctx)
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(*files.NodeUsageResponse)
+			r0 = ret.Get(0).(*filespaceusage.NodeUsageResponse)
 		}
 	}
 
@@ -73,12 +73,12 @@ func (_c *MockNodeUsage_GetNodeUsage_Call) Run(run func(ctx context.Context)) *M
 	return _c
 }
 
-func (_c *MockNodeUsage_GetNodeUsage_Call) Return(_a0 *files.NodeUsageResponse, _a1 error) *MockNodeUsage_GetNodeUsage_Call {
+func (_c *MockNodeUsage_GetNodeUsage_Call) Return(_a0 *filespaceusage.NodeUsageResponse, _a1 error) *MockNodeUsage_GetNodeUsage_Call {
 	_c.Call.Return(_a0, _a1)
 	return _c
 }
 
-func (_c *MockNodeUsage_GetNodeUsage_Call) RunAndReturn(run func(context.Context) (*files.NodeUsageResponse, error)) *MockNodeUsage_GetNodeUsage_Call {
+func (_c *MockNodeUsage_GetNodeUsage_Call) RunAndReturn(run func(context.Context) (*filespaceusage.NodeUsageResponse, error)) *MockNodeUsage_GetNodeUsage_Call {
 	_c.Call.Return(run)
 	return _c
 }
