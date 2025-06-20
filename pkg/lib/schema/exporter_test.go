@@ -2,6 +2,7 @@ package schema
 
 import (
 	"bytes"
+	"encoding/json"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -210,4 +211,363 @@ func TestSchemaFromObjectDetails_BackwardCompatibility(t *testing.T) {
 	require.True(t, exists)
 	assert.Equal(t, model.RelationFormat_status, statusRel.Format)
 	assert.Empty(t, statusRel.Options) // No options should be populated
+}
+
+// Tests for hidden relations in schema export
+func TestHiddenRelationsInSchemaExport(t *testing.T) {
+	t.Run("SchemaFromObjectDetails includes hidden relations", func(t *testing.T) {
+		// Create type details with hidden relations
+		typeDetails := domain.NewDetails()
+		typeDetails.SetString(bundle.RelationKeyName, "Task")
+		typeDetails.SetString(bundle.RelationKeyUniqueKey, "ot-task")
+		typeDetails.SetStringList(bundle.RelationKeyRecommendedFeaturedRelations, []string{"rel-title", "rel-status"})
+		typeDetails.SetStringList(bundle.RelationKeyRecommendedRelations, []string{"rel-description", "rel-assignee"})
+		typeDetails.SetStringList(bundle.RelationKeyRecommendedHiddenRelations, []string{"rel-internal-id", "rel-sync-state"})
+		
+		// Create relation details including hidden ones
+		relationDetailsList := []*domain.Details{
+			// Featured relations
+			func() *domain.Details {
+				d := domain.NewDetails()
+				d.SetString(bundle.RelationKeyId, "rel-title")
+				d.SetString(bundle.RelationKeyRelationKey, "title")
+				d.SetString(bundle.RelationKeyName, "Title")
+				d.SetInt64(bundle.RelationKeyRelationFormat, int64(model.RelationFormat_shorttext))
+				return d
+			}(),
+			func() *domain.Details {
+				d := domain.NewDetails()
+				d.SetString(bundle.RelationKeyId, "rel-status")
+				d.SetString(bundle.RelationKeyRelationKey, "status")
+				d.SetString(bundle.RelationKeyName, "Status")
+				d.SetInt64(bundle.RelationKeyRelationFormat, int64(model.RelationFormat_status))
+				return d
+			}(),
+			// Regular relations
+			func() *domain.Details {
+				d := domain.NewDetails()
+				d.SetString(bundle.RelationKeyId, "rel-description")
+				d.SetString(bundle.RelationKeyRelationKey, "description")
+				d.SetString(bundle.RelationKeyName, "Description")
+				d.SetInt64(bundle.RelationKeyRelationFormat, int64(model.RelationFormat_longtext))
+				return d
+			}(),
+			func() *domain.Details {
+				d := domain.NewDetails()
+				d.SetString(bundle.RelationKeyId, "rel-assignee")
+				d.SetString(bundle.RelationKeyRelationKey, "assignee")
+				d.SetString(bundle.RelationKeyName, "Assignee")
+				d.SetInt64(bundle.RelationKeyRelationFormat, int64(model.RelationFormat_object))
+				return d
+			}(),
+			// Hidden relations
+			func() *domain.Details {
+				d := domain.NewDetails()
+				d.SetString(bundle.RelationKeyId, "rel-internal-id")
+				d.SetString(bundle.RelationKeyRelationKey, "internal_id")
+				d.SetString(bundle.RelationKeyName, "Internal ID")
+				d.SetInt64(bundle.RelationKeyRelationFormat, int64(model.RelationFormat_shorttext))
+				return d
+			}(),
+			func() *domain.Details {
+				d := domain.NewDetails()
+				d.SetString(bundle.RelationKeyId, "rel-sync-state")
+				d.SetString(bundle.RelationKeyRelationKey, "sync_state")
+				d.SetString(bundle.RelationKeyName, "Sync State")
+				d.SetInt64(bundle.RelationKeyRelationFormat, int64(model.RelationFormat_shorttext))
+				return d
+			}(),
+		}
+		
+		// Create schema from details
+		s, err := SchemaFromObjectDetails(typeDetails, relationDetailsList, nil)
+		require.NoError(t, err)
+		
+		// Verify all relations are in the schema
+		assert.Equal(t, 6, len(s.Relations), "Should have all 6 relations")
+		
+		// Verify hidden relations are included
+		rel, ok := s.GetRelation("internal_id")
+		assert.True(t, ok, "Hidden relation internal_id should be in schema")
+		assert.Equal(t, "Internal ID", rel.Name)
+		
+		rel, ok = s.GetRelation("sync_state")
+		assert.True(t, ok, "Hidden relation sync_state should be in schema")
+		assert.Equal(t, "Sync State", rel.Name)
+		
+		// Verify type has hidden relations
+		typ := s.Type
+		// The type should have the relation IDs from the details
+		assert.Contains(t, typ.HiddenRelations, "rel-internal-id")
+		assert.Contains(t, typ.HiddenRelations, "rel-sync-state")
+	})
+	
+	t.Run("Hidden relations with resolver", func(t *testing.T) {
+		// Create type details with hidden relations
+		typeDetails := domain.NewDetails()
+		typeDetails.SetString(bundle.RelationKeyName, "Document")
+		typeDetails.SetString(bundle.RelationKeyUniqueKey, "ot-document")
+		typeDetails.SetStringList(bundle.RelationKeyRecommendedFeaturedRelations, []string{"rel-title"})
+		typeDetails.SetStringList(bundle.RelationKeyRecommendedRelations, []string{"rel-content"})
+		typeDetails.SetStringList(bundle.RelationKeyRecommendedHiddenRelations, []string{"rel-version", "rel-checksum"})
+		
+		// Only provide featured and regular relations
+		relationDetailsList := []*domain.Details{
+			func() *domain.Details {
+				d := domain.NewDetails()
+				d.SetString(bundle.RelationKeyId, "rel-title")
+				d.SetString(bundle.RelationKeyRelationKey, "title")
+				d.SetString(bundle.RelationKeyName, "Title")
+				d.SetInt64(bundle.RelationKeyRelationFormat, int64(model.RelationFormat_shorttext))
+				return d
+			}(),
+			func() *domain.Details {
+				d := domain.NewDetails()
+				d.SetString(bundle.RelationKeyId, "rel-content")
+				d.SetString(bundle.RelationKeyRelationKey, "content")
+				d.SetString(bundle.RelationKeyName, "Content")
+				d.SetInt64(bundle.RelationKeyRelationFormat, int64(model.RelationFormat_longtext))
+				return d
+			}(),
+		}
+		
+		// Create resolver that provides hidden relations
+		resolver := func(id string) (*domain.Details, error) {
+			switch id {
+			case "rel-version":
+				d := domain.NewDetails()
+				d.SetString(bundle.RelationKeyId, "rel-version")
+				d.SetString(bundle.RelationKeyRelationKey, "version")
+				d.SetString(bundle.RelationKeyName, "Version")
+				d.SetInt64(bundle.RelationKeyRelationFormat, int64(model.RelationFormat_number))
+				return d, nil
+			case "rel-checksum":
+				d := domain.NewDetails()
+				d.SetString(bundle.RelationKeyId, "rel-checksum")
+				d.SetString(bundle.RelationKeyRelationKey, "checksum")
+				d.SetString(bundle.RelationKeyName, "Checksum")
+				d.SetInt64(bundle.RelationKeyRelationFormat, int64(model.RelationFormat_shorttext))
+				return d, nil
+			}
+			return nil, nil
+		}
+		
+		// Create schema with resolver
+		s, err := SchemaFromObjectDetails(typeDetails, relationDetailsList, resolver)
+		require.NoError(t, err)
+		
+		// Verify all relations including hidden are in the schema
+		assert.Equal(t, 4, len(s.Relations), "Should have all 4 relations including hidden")
+		
+		// Verify hidden relations were resolved and included
+		rel, ok := s.GetRelation("version")
+		assert.True(t, ok, "Hidden relation version should be in schema")
+		assert.Equal(t, "Version", rel.Name)
+		assert.Equal(t, model.RelationFormat_number, rel.Format)
+		
+		rel, ok = s.GetRelation("checksum")
+		assert.True(t, ok, "Hidden relation checksum should be in schema")
+		assert.Equal(t, "Checksum", rel.Name)
+		assert.Equal(t, model.RelationFormat_shorttext, rel.Format)
+	})
+}
+
+func TestFullExportWithHiddenRelations(t *testing.T) {
+	t.Run("Full export workflow includes hidden relations", func(t *testing.T) {
+		// Create type details with hidden relations
+		typeDetails := domain.NewDetails()
+		typeDetails.SetString(bundle.RelationKeyName, "Document")
+		typeDetails.SetString(bundle.RelationKeyUniqueKey, "ot-document")
+		typeDetails.SetStringList(bundle.RelationKeyRecommendedFeaturedRelations, []string{"rel-title"})
+		typeDetails.SetStringList(bundle.RelationKeyRecommendedRelations, []string{"rel-content"})
+		typeDetails.SetStringList(bundle.RelationKeyRecommendedHiddenRelations, []string{"rel-internal-id", "rel-version"})
+		
+		// Create relation details
+		relationDetailsList := []*domain.Details{
+			// Featured relation
+			func() *domain.Details {
+				d := domain.NewDetails()
+				d.SetString(bundle.RelationKeyId, "rel-title")
+				d.SetString(bundle.RelationKeyRelationKey, "title")
+				d.SetString(bundle.RelationKeyName, "Title")
+				d.SetInt64(bundle.RelationKeyRelationFormat, int64(model.RelationFormat_shorttext))
+				return d
+			}(),
+			// Regular relation
+			func() *domain.Details {
+				d := domain.NewDetails()
+				d.SetString(bundle.RelationKeyId, "rel-content")
+				d.SetString(bundle.RelationKeyRelationKey, "content")
+				d.SetString(bundle.RelationKeyName, "Content")
+				d.SetInt64(bundle.RelationKeyRelationFormat, int64(model.RelationFormat_longtext))
+				return d
+			}(),
+			// Hidden relations
+			func() *domain.Details {
+				d := domain.NewDetails()
+				d.SetString(bundle.RelationKeyId, "rel-internal-id")
+				d.SetString(bundle.RelationKeyRelationKey, "internal_id")
+				d.SetString(bundle.RelationKeyName, "Internal ID")
+				d.SetInt64(bundle.RelationKeyRelationFormat, int64(model.RelationFormat_shorttext))
+				return d
+			}(),
+			func() *domain.Details {
+				d := domain.NewDetails()
+				d.SetString(bundle.RelationKeyId, "rel-version")
+				d.SetString(bundle.RelationKeyRelationKey, "version")
+				d.SetString(bundle.RelationKeyName, "Version")
+				d.SetInt64(bundle.RelationKeyRelationFormat, int64(model.RelationFormat_number))
+				return d
+			}(),
+		}
+		
+		// Create schema from details (this simulates what happens in the app)
+		s, err := SchemaFromObjectDetails(typeDetails, relationDetailsList, nil)
+		require.NoError(t, err)
+		
+		// Export to JSON Schema
+		exporter := NewJSONSchemaExporter("  ")
+		var buf bytes.Buffer
+		err = exporter.Export(s, &buf)
+		require.NoError(t, err)
+		
+		// Parse exported JSON
+		var jsonSchema map[string]interface{}
+		err = json.Unmarshal(buf.Bytes(), &jsonSchema)
+		require.NoError(t, err)
+		
+		// Verify properties include hidden relations
+		properties := jsonSchema["properties"].(map[string]interface{})
+		
+		// Featured relation
+		titleProp, ok := properties["Title"].(map[string]interface{})
+		require.True(t, ok, "Title property should exist")
+		assert.Equal(t, true, titleProp["x-featured"])
+		assert.Equal(t, "title", titleProp["x-key"])
+		
+		// Regular relation
+		contentProp, ok := properties["Content"].(map[string]interface{})
+		require.True(t, ok, "Content property should exist")
+		assert.Nil(t, contentProp["x-featured"])
+		assert.Nil(t, contentProp["x-hidden"])
+		assert.Equal(t, "content", contentProp["x-key"])
+		
+		// Hidden relations should be included with x-hidden: true
+		internalIdProp, ok := properties["Internal ID"].(map[string]interface{})
+		require.True(t, ok, "Internal ID property should exist")
+		assert.Equal(t, true, internalIdProp["x-hidden"])
+		assert.Equal(t, "internal_id", internalIdProp["x-key"])
+		
+		versionProp, ok := properties["Version"].(map[string]interface{})
+		require.True(t, ok, "Version property should exist")
+		assert.Equal(t, true, versionProp["x-hidden"])
+		assert.Equal(t, "version", versionProp["x-key"])
+		assert.Equal(t, "number", versionProp["x-format"])
+		
+		// Verify no root-level relation lists
+		assert.Nil(t, jsonSchema["x-featured-relations"])
+		assert.Nil(t, jsonSchema["x-recommended-relations"])
+		assert.Nil(t, jsonSchema["x-hidden-relations"])
+	})
+}
+
+func TestTypePropertyExport(t *testing.T) {
+	t.Run("Type property has correct const value", func(t *testing.T) {
+		// Create a schema with a type
+		s := NewSchema()
+		
+		// Add the type relation
+		typeRel := &Relation{
+			Key:    "type",
+			Name:   "Type",
+			Format: model.RelationFormat_shorttext,
+		}
+		s.AddRelation(typeRel)
+		
+		// Create a type
+		typ := &Type{
+			Key:               "task",
+			Name:              "Task",
+			FeaturedRelations: []string{"type"},
+		}
+		s.SetType(typ)
+		
+		// Export to JSON Schema
+		exporter := NewJSONSchemaExporter("  ")
+		var buf bytes.Buffer
+		err := exporter.Export(s, &buf)
+		require.NoError(t, err)
+		
+		// Parse exported JSON
+		var jsonSchema map[string]interface{}
+		err = json.Unmarshal(buf.Bytes(), &jsonSchema)
+		require.NoError(t, err)
+		
+		// Check properties
+		properties, ok := jsonSchema["properties"].(map[string]interface{})
+		require.True(t, ok)
+		
+		// Check Type property
+		typeProp, ok := properties["Type"].(map[string]interface{})
+		require.True(t, ok)
+		
+		// Verify const value is the type name
+		assert.Equal(t, "Task", typeProp["const"])
+		assert.Equal(t, "type", typeProp["x-key"])
+	})
+	
+	t.Run("Object type property in testdata schemas", func(t *testing.T) {
+		// Load and check task schema
+		parser := NewJSONSchemaParser()
+		taskFile := bytes.NewReader([]byte(`{
+			"$schema": "http://json-schema.org/draft-07/schema#",
+			"$id": "urn:anytype:schema:2024-06-14:author-user:type-task:gen-1.0",
+			"type": "object",
+			"title": "Task",
+			"x-type-key": "task",
+			"properties": {
+				"id": {
+					"type": "string",
+					"description": "Unique identifier of the Anytype object",
+					"readOnly": true,
+					"x-order": 0,
+					"x-key": "id"
+				},
+				"type": {
+					"const": "Task",
+					"x-order": 1,
+					"x-key": "type"
+				}
+			}
+		}`))
+		
+		s, err := parser.Parse(taskFile)
+		require.NoError(t, err)
+		
+		// Export back
+		exporter := NewJSONSchemaExporter("  ")
+		var buf bytes.Buffer
+		err = exporter.Export(s, &buf)
+		require.NoError(t, err)
+		
+		// Parse and verify
+		var jsonSchema map[string]interface{}
+		err = json.Unmarshal(buf.Bytes(), &jsonSchema)
+		require.NoError(t, err)
+		
+		properties := jsonSchema["properties"].(map[string]interface{})
+		
+		// The property name should be "Type" (capitalized) based on the relation name
+		var typeProp map[string]interface{}
+		if tp, ok := properties["Type"].(map[string]interface{}); ok {
+			typeProp = tp
+		} else if tp, ok := properties["type"].(map[string]interface{}); ok {
+			typeProp = tp
+		} else {
+			t.Fatal("Type property not found")
+		}
+		
+		// Should preserve the const value
+		assert.Equal(t, "Task", typeProp["const"])
+	})
 }
