@@ -23,6 +23,7 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/anytype/account"
 	"github.com/anyproto/anytype-heart/core/block/cache"
+	"github.com/anyproto/anytype-heart/core/block/editor/fileobject"
 	sb "github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/object/objectlink"
@@ -1195,19 +1196,18 @@ func (e *exportContext) writeDoc(ctx context.Context, wr writer, docId string, d
 }
 
 func (e *exportContext) saveFile(ctx context.Context, wr writer, fileObject sb.SmartBlock, exportAllSpaces bool) (fileName string, err error) {
-	fullId := domain.FullFileId{
-		SpaceId: fileObject.Space().Id(),
-		FileId:  domain.FileId(fileObject.Details().GetString(bundle.RelationKeyFileId)),
+	fileObjectComponent, ok := fileObject.(fileobject.FileObject)
+	if !ok {
+		return "", fmt.Errorf("object is not a file object")
 	}
-
-	file, err := e.fileService.FileByHash(ctx, fullId)
+	file, err := fileObjectComponent.GetFile()
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("get file: %w", err)
 	}
-	if strings.HasPrefix(file.Info().Media, "image") {
-		image, err := e.fileService.ImageByHash(context.TODO(), fullId)
+	if strings.HasPrefix(file.MimeType(), "image") {
+		image, err := fileObjectComponent.GetImage()
 		if err != nil {
-			return "", err
+			return "", fmt.Errorf("get image: %w", err)
 		}
 		file, err = image.GetOriginalFile()
 		if err != nil {
@@ -1224,7 +1224,7 @@ func (e *exportContext) saveFile(ctx context.Context, wr writer, fileObject sb.S
 	if err != nil {
 		return "", err
 	}
-	return fileName, wr.WriteFile(fileName, rd, file.Info().LastModifiedDate)
+	return fileName, wr.WriteFile(fileName, rd, file.LastModifiedDate())
 }
 
 func (e *exportContext) createProfileFile(spaceID string, wr writer) error {

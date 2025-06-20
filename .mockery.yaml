@@ -33,6 +33,9 @@ packages:
           dir: "{{.InterfaceDir}}"
           outpkg: "{{.PackageName}}"
           inpackage: true
+  github.com/anyproto/anytype-heart/core/block/editor/fileobject:
+    interfaces:
+      FileObject:
   github.com/anyproto/anytype-heart/core/block/editor/smartblock:
     interfaces:
       Indexer:
@@ -51,10 +54,16 @@ packages:
   github.com/anyproto/anytype-heart/core/block/import/web/parsers:
     interfaces:
       Parser:
-  github.com/anyproto/anytype-heart/core/filestorage/filesync:
+  github.com/anyproto/anytype-heart/core/block/restriction:
+    interfaces:
+      Service:
+  github.com/anyproto/anytype-heart/core/files/filesync:
     interfaces:
       FileSync:
-  github.com/anyproto/anytype-heart/core/filestorage/rpcstore:
+  github.com/anyproto/anytype-heart/core/acl:
+    interfaces:
+      participantRemover:
+  github.com/anyproto/anytype-heart/core/files/filestorage/rpcstore:
     interfaces:
       Service:
       RpcStore:
@@ -176,7 +185,7 @@ packages:
   github.com/anyproto/anytype-heart/core/block/object/idresolver:
     interfaces:
       Resolver:
-  github.com/anyproto/anytype-heart/core/filestorage:
+  github.com/anyproto/anytype-heart/core/files/filestorage:
     interfaces:
       FileStorage:
   github.com/anyproto/anytype-heart/util/linkpreview:
@@ -191,6 +200,7 @@ packages:
   github.com/anyproto/anytype-heart/core/device:
     interfaces:
       NetworkState:
+      openedObjectRefresher:
   github.com/anyproto/anytype-heart/space/spacecore/localdiscovery:
     interfaces:
       Notifier:

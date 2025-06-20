@@ -7,6 +7,8 @@ import (
 
 	app "github.com/anyproto/any-sync/app"
 
+	crypto "github.com/anyproto/any-sync/util/crypto"
+
 	mock "github.com/stretchr/testify/mock"
 
 	spaceinfo "github.com/anyproto/anytype-heart/space/spaceinfo"
@@ -438,17 +440,17 @@ func (_c *MockSpaceStatus_SetAccessType_Call) RunAndReturn(run func(spaceinfo.Ac
 	return _c
 }
 
-// SetAclIsEmpty provides a mock function with given fields: isEmpty
-func (_m *MockSpaceStatus) SetAclIsEmpty(isEmpty bool) error {
-	ret := _m.Called(isEmpty)
+// SetAclInfo provides a mock function with given fields: isAclEmpty, pushKey, pushEncryptionKey
+func (_m *MockSpaceStatus) SetAclInfo(isAclEmpty bool, pushKey crypto.PrivKey, pushEncryptionKey crypto.SymKey) error {
+	ret := _m.Called(isAclEmpty, pushKey, pushEncryptionKey)
 
 	if len(ret) == 0 {
-		panic("no return value specified for SetAclIsEmpty")
+		panic("no return value specified for SetAclInfo")
 	}
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(bool) error); ok {
-		r0 = rf(isEmpty)
+	if rf, ok := ret.Get(0).(func(bool, crypto.PrivKey, crypto.SymKey) error); ok {
+		r0 = rf(isAclEmpty, pushKey, pushEncryptionKey)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -456,30 +458,32 @@ func (_m *MockSpaceStatus) SetAclIsEmpty(isEmpty bool) error {
 	return r0
 }
 
-// MockSpaceStatus_SetAclIsEmpty_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'SetAclIsEmpty'
-type MockSpaceStatus_SetAclIsEmpty_Call struct {
+// MockSpaceStatus_SetAclInfo_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'SetAclInfo'
+type MockSpaceStatus_SetAclInfo_Call struct {
 	*mock.Call
 }
 
-// SetAclIsEmpty is a helper method to define mock.On call
-//   - isEmpty bool
-func (_e *MockSpaceStatus_Expecter) SetAclIsEmpty(isEmpty interface{}) *MockSpaceStatus_SetAclIsEmpty_Call {
-	return &MockSpaceStatus_SetAclIsEmpty_Call{Call: _e.mock.On("SetAclIsEmpty", isEmpty)}
+// SetAclInfo is a helper method to define mock.On call
+//   - isAclEmpty bool
+//   - pushKey crypto.PrivKey
+//   - pushEncryptionKey crypto.SymKey
+func (_e *MockSpaceStatus_Expecter) SetAclInfo(isAclEmpty interface{}, pushKey interface{}, pushEncryptionKey interface{}) *MockSpaceStatus_SetAclInfo_Call {
+	return &MockSpaceStatus_SetAclInfo_Call{Call: _e.mock.On("SetAclInfo", isAclEmpty, pushKey, pushEncryptionKey)}
 }
 
-func (_c *MockSpaceStatus_SetAclIsEmpty_Call) Run(run func(isEmpty bool)) *MockSpaceStatus_SetAclIsEmpty_Call {
+func (_c *MockSpaceStatus_SetAclInfo_Call) Run(run func(isAclEmpty bool, pushKey crypto.PrivKey, pushEncryptionKey crypto.SymKey)) *MockSpaceStatus_SetAclInfo_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(bool))
+		run(args[0].(bool), args[1].(crypto.PrivKey), args[2].(crypto.SymKey))
 	})
 	return _c
 }
 
-func (_c *MockSpaceStatus_SetAclIsEmpty_Call) Return(err error) *MockSpaceStatus_SetAclIsEmpty_Call {
+func (_c *MockSpaceStatus_SetAclInfo_Call) Return(err error) *MockSpaceStatus_SetAclInfo_Call {
 	_c.Call.Return(err)
 	return _c
 }
 
-func (_c *MockSpaceStatus_SetAclIsEmpty_Call) RunAndReturn(run func(bool) error) *MockSpaceStatus_SetAclIsEmpty_Call {
+func (_c *MockSpaceStatus_SetAclInfo_Call) RunAndReturn(run func(bool, crypto.PrivKey, crypto.SymKey) error) *MockSpaceStatus_SetAclInfo_Call {
 	_c.Call.Return(run)
 	return _c
 }
