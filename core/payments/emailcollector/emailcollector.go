@@ -16,7 +16,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/anytype/config"
 	"github.com/anyproto/anytype-heart/core/wallet"
 	"github.com/anyproto/anytype-heart/pb"
-	"github.com/anyproto/anytype-heart/pkg/lib/datastore"
 	"github.com/anyproto/anytype-heart/pkg/lib/datastore/anystoreprovider"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/util/keyvaluestore"
@@ -45,12 +44,11 @@ type emailcollector struct {
 	componentCtx       context.Context
 	componentCtxCancel context.CancelFunc
 
-	cfg        *config.Config
-	dbProvider datastore.Datastore
-	store      keyvaluestore.Store[pb.RpcMembershipGetVerificationEmailRequest]
-	periodic   periodicsync.PeriodicSync
-	ppclient   ppclient.AnyPpClientService
-	wallet     wallet.Wallet
+	cfg      *config.Config
+	store    keyvaluestore.Store[pb.RpcMembershipGetVerificationEmailRequest]
+	periodic periodicsync.PeriodicSync
+	ppclient ppclient.AnyPpClientService
+	wallet   wallet.Wallet
 }
 
 func New() EmailCollector {
@@ -65,7 +63,6 @@ func (e *emailcollector) Init(a *app.App) error {
 	e.componentCtx, e.componentCtxCancel = context.WithCancel(context.Background())
 
 	e.cfg = app.MustComponent[*config.Config](a)
-	e.dbProvider = app.MustComponent[datastore.Datastore](a)
 	e.ppclient = app.MustComponent[ppclient.AnyPpClientService](a)
 	e.wallet = app.MustComponent[wallet.Wallet](a)
 
