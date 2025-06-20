@@ -1,4 +1,4 @@
-package yamlfm
+package yaml
 
 import (
 	"testing"
@@ -212,7 +212,6 @@ version: 1.2.3`,
 		})
 	}
 }
-
 
 
 

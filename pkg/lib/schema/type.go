@@ -118,6 +118,7 @@ func TypeFromDetails(details *domain.Details) (*Type, error) {
 		Layout:               model.ObjectTypeLayout(details.GetInt64(bundle.RelationKeyRecommendedLayout)),
 		FeaturedRelations:    details.GetStringList(bundle.RelationKeyRecommendedFeaturedRelations),
 		RecommendedRelations: details.GetStringList(bundle.RelationKeyRecommendedRelations),
+		HiddenRelations:      details.GetStringList(bundle.RelationKeyRecommendedHiddenRelations),
 		Extension:            make(map[string]interface{}),
 	}
 
@@ -148,7 +149,7 @@ func (t *Type) Validate() error {
 }
 
 // AddRelation adds a relation to the type's recommended or featured relations
-func (t *Type) AddRelation(relationId string, featured bool) {
+func (t *Type) AddRelation(relationId string, featured, hidden bool) {
 	if featured {
 		// Check if already exists
 		for _, r := range t.FeaturedRelations {
@@ -157,8 +158,14 @@ func (t *Type) AddRelation(relationId string, featured bool) {
 			}
 		}
 		t.FeaturedRelations = append(t.FeaturedRelations, relationId)
+	} else if hidden {
+		for _, r := range t.HiddenRelations {
+			if r == relationId {
+				return
+			}
+		}
+		t.HiddenRelations = append(t.HiddenRelations, relationId)
 	} else {
-		// Check if already exists
 		for _, r := range t.RecommendedRelations {
 			if r == relationId {
 				return

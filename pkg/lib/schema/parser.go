@@ -58,13 +58,10 @@ func (p *JSONSchemaParser) Parse(reader io.Reader) (*Schema, error) {
 
 			// Add relation to type
 			isFeatured := getBoolField(prop, "x-featured")
+			isHidden := getBoolField(prop, "x-hidden")
 
 			// Only relations with x-featured: true should be featured
-			if isFeatured {
-				t.AddRelation(rel.Key, true)
-			} else {
-				t.AddRelation(rel.Key, false)
-			}
+			t.AddRelation(rel.Key, isFeatured, isHidden)
 		}
 
 		// Set type for schema

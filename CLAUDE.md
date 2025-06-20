@@ -73,6 +73,8 @@ err := cache.Do(picker, objectId, func(sb sb.SmartBlock) error {
   - `subscription/` - Real-time updates
 - `space/` - Space management (35 packages)
 - `pkg/lib/` - Shared libraries (46 packages)
+  - `schema/` - Type and property definitions
+    - `yaml/` - YAML front matter processing
 - `pb/` - Protocol buffers
 - `cmd/` - CLI tools
 
@@ -90,6 +92,8 @@ Mobile clients use C library via gomobile (not gRPC).
 - Space loading: `space/service.go`
 - Sync status: `core/syncstatus/`
 - Import/Export: `core/block/import/`, `core/block/export/`
+- Schema System: `pkg/lib/schema/`
+- YAML Processing: `pkg/lib/schema/yaml/`
 
 ## Common Operations
 

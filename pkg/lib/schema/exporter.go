@@ -13,6 +13,9 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
+// SchemaVersion is the current schema generation version
+const SchemaVersion = "1.0"
+
 // JSONSchemaExporter exports Schema to JSON Schema format
 type JSONSchemaExporter struct {
 	Indent string // Indentation for pretty printing (empty for compact)
@@ -53,11 +56,11 @@ func (e *JSONSchemaExporter) ExportType(t *Type, schema *Schema, writer io.Write
 
 // typeToJSONSchema converts a Type to JSON Schema format
 func (e *JSONSchemaExporter) typeToJSONSchema(t *Type, schema *Schema) map[string]interface{} {
-	// Generate schema ID
+	// Generate schema ID with current version
 	schemaId := fmt.Sprintf("urn:anytype:schema:%s:type-%s:gen-%s",
 		time.Now().UTC().Format("2006-01-02"),
 		strings.ToLower(strings.ReplaceAll(t.Name, " ", "-")),
-		"1.0.0")
+		SchemaVersion)
 
 	jsonSchema := map[string]interface{}{
 		"$schema": "http://json-schema.org/draft-07/schema#",
@@ -74,7 +77,7 @@ func (e *JSONSchemaExporter) typeToJSONSchema(t *Type, schema *Schema) map[strin
 	// Add Anytype extensions
 	jsonSchema["x-type-key"] = t.Key
 	jsonSchema["x-app"] = "Anytype"
-	jsonSchema["x-genVersion"] = "1.0.0"
+	jsonSchema["x-genversion"] = SchemaVersion
 
 	if t.PluralName != "" {
 		jsonSchema["x-plural"] = t.PluralName
@@ -294,26 +297,8 @@ func (e *JSONSchemaExporter) relationToProperty(r *Relation) map[string]interfac
 	case model.RelationFormat_object:
 		prop["type"] = "array"
 		objectSchema := map[string]interface{}{
-			"type": "object",
-			"properties": map[string]interface{}{
-				"Name": map[string]interface{}{
-					"type":        "string",
-					"description": "Name of the referenced object",
-				},
-				"File": map[string]interface{}{
-					"type":        "string",
-					"description": "Path to the object file in the export (only present if object is included in export)",
-				},
-				"Id": map[string]interface{}{
-					"type":        "string",
-					"description": "Unique identifier of the referenced object (only present if object is not included in export)",
-				},
-				"Object type": map[string]interface{}{
-					"type":        "string",
-					"description": "Type of the referenced object",
-				},
-			},
-			"required": []string{"Name"},
+			"type":        "string",
+			"description": "Filepath or name of the object",
 		}
 
 		// Add enum for object types if specified
@@ -362,18 +347,16 @@ func schemaFromObjectDetailsInternal(typeDetails *domain.Details, relationDetail
 		return nil, fmt.Errorf("failed to create type from details: %w", err)
 	}
 
-	// Clear relations - we'll rebuild from the relation details
-	t.FeaturedRelations = nil
-	t.RecommendedRelations = nil
-
-	// Get featured and recommended relation IDs from type
-	featuredIds := typeDetails.GetStringList(bundle.RelationKeyRecommendedFeaturedRelations)
-	recommendedIds := typeDetails.GetStringList(bundle.RelationKeyRecommendedRelations)
-
 	// Create a map for quick lookup
 	featuredSet := make(map[string]bool)
-	for _, id := range featuredIds {
+	for _, id := range t.FeaturedRelations {
 		featuredSet[id] = true
+	}
+
+	// Create a map for quick lookup
+	hiddenSet := make(map[string]bool)
+	for _, id := range t.HiddenRelations {
+		hiddenSet[id] = true
 	}
 
 	// Sort relations by their position in the type's lists
@@ -382,12 +365,13 @@ func schemaFromObjectDetailsInternal(typeDetails *domain.Details, relationDetail
 		details  *domain.Details
 		order    int
 		featured bool
+		hidden   bool
 	}
 
 	var orderedRelations []orderedRelation
 
 	// Add featured relations first
-	for i, id := range featuredIds {
+	for i, id := range t.FeaturedRelations {
 		// Find in provided list first
 		var found *domain.Details
 		for _, rd := range relationDetailsList {
@@ -413,7 +397,7 @@ func schemaFromObjectDetailsInternal(typeDetails *domain.Details, relationDetail
 	}
 
 	// Add recommended relations
-	for i, id := range recommendedIds {
+	for i, id := range t.RecommendedRelations {
 		// Find in provided list first
 		var found *domain.Details
 		for _, rd := range relationDetailsList {
@@ -432,7 +416,7 @@ func schemaFromObjectDetailsInternal(typeDetails *domain.Details, relationDetail
 			orderedRelations = append(orderedRelations, orderedRelation{
 				id:       id,
 				details:  found,
-				order:    len(featuredIds) + i,
+				order:    len(t.FeaturedRelations) + i,
 				featured: false,
 			})
 		}
@@ -471,7 +455,7 @@ func schemaFromObjectDetailsInternal(typeDetails *domain.Details, relationDetail
 		schema.AddRelation(rel)
 
 		// Add to type
-		t.AddRelation(rel.Key, or.featured)
+		t.AddRelation(rel.Key, or.featured, or.featured)
 	}
 
 	// Set type for schema

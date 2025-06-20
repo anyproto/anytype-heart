@@ -9,7 +9,6 @@ import (
 	"slices"
 	"sort"
 	"strings"
-	"time"
 
 	"github.com/JohannesKaufmann/html-to-markdown/escape"
 
@@ -23,6 +22,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/pkg/lib/schema"
+	"github.com/anyproto/anytype-heart/pkg/lib/schema/yaml"
 	"github.com/anyproto/anytype-heart/util/uri"
 )
 
@@ -107,78 +107,68 @@ func (h *MD) renderProperties(buf writer) {
 	if !h.includeRelations {
 		return
 	}
-	var propertiesIds []string
 
-	// Use resolver if available, otherwise fall back to knownDocs
+	// Use resolver if available
 	if h.resolver == nil {
 		log.Error("MD converter requires ObjectResolver to resolve properties, but it is not set")
 		return
 	}
-	// Get type relation ID first
+
+	// Get object type details
+	objectTypeId := h.s.LocalDetails().GetString(bundle.RelationKeyType)
+	if objectTypeId == "" {
+		return
+	}
+
+	objectTypeDetails, err := h.resolver.ResolveType(objectTypeId)
+	if err != nil || objectTypeDetails == nil {
+		return
+	}
+
+	// Get type name for YAML export
+	typeName := objectTypeDetails.GetString(bundle.RelationKeyName)
+
+	// Collect properties to export
+	properties := make([]yaml.Property, 0)
+
+	// Get all relation IDs
+	var propertiesIds []string
+	// Add type relation ID first
 	typeRelation, err := h.resolver.GetRelationByKey(bundle.RelationKeyType.String())
 	if err == nil && typeRelation != nil {
 		propertiesIds = append(propertiesIds, typeRelation.GetString(bundle.RelationKeyId))
 	}
+	propertiesIds = append(propertiesIds, objectTypeDetails.GetStringList(bundle.RelationKeyRecommendedFeaturedRelations)...)
+	propertiesIds = append(propertiesIds, objectTypeDetails.GetStringList(bundle.RelationKeyRecommendedRelations)...)
+	propertiesIds = slices.Compact(propertiesIds)
 
-	// Get object type details
-	objectTypeId := h.s.LocalDetails().GetString(bundle.RelationKeyType)
-	if objectTypeId != "" {
-		objectTypeDetails, err := h.resolver.ResolveType(objectTypeId)
-		if err == nil && objectTypeDetails != nil {
-			propertiesIds = append(propertiesIds, objectTypeDetails.GetStringList(bundle.RelationKeyRecommendedFeaturedRelations)...)
-			propertiesIds = append(propertiesIds, objectTypeDetails.GetStringList(bundle.RelationKeyRecommendedRelations)...)
+	// Check if this is a collection
+	layout, hasLayout := h.s.Layout()
+	isCollection := hasLayout && layout == model.ObjectType_collection
 
-			propertiesIds = slices.Compact(propertiesIds)
-
-			// Check if this is a collection
-			layout, hasLayout := h.s.Layout()
-			isCollection := hasLayout && layout == model.ObjectType_collection
-
-			// Start YAML frontmatter if we have properties or it's a collection
-			if len(propertiesIds) > 0 || isCollection {
-				fmt.Fprintf(buf, "---\n")
-
-				// Add JSON schema reference if enabled
-				if h.includeSchema {
-					typeName := objectTypeDetails.GetString(bundle.RelationKeyName)
-					if typeName != "" {
-						schemaFileName := h.GenerateSchemaFileName(typeName)
-						fmt.Fprintf(buf, "# yaml-language-server: $schema=%s\n", schemaFileName)
-					}
-				}
-
-				// Add object ID
-				objectId := h.s.LocalDetails().GetString(bundle.RelationKeyId)
-				if objectId != "" {
-					fmt.Fprintf(buf, "  id: %s\n", objectId)
-				}
-			}
-		}
-	}
-
+	// Process each relation
 	for _, id := range propertiesIds {
-		var (
-			name            string
-			key             string
-			format          model.RelationFormat
-			includeTime     bool
-			relationDetails *domain.Details
-		)
-
-		var err error
-		relationDetails, err = h.resolver.ResolveRelation(id)
+		relationDetails, err := h.resolver.ResolveRelation(id)
 		if err != nil || relationDetails == nil {
 			continue
 		}
 		if relationDetails.GetBool(bundle.RelationKeyIsHidden) {
 			continue
 		}
-		name = relationDetails.GetString(bundle.RelationKeyName)
-		key = relationDetails.GetString(bundle.RelationKeyRelationKey)
-		format = model.RelationFormat(relationDetails.GetInt64(bundle.RelationKeyRelationFormat))
-		includeTime = relationDetails.GetBool(bundle.RelationKeyRelationFormatIncludeTime)
+
+		name := relationDetails.GetString(bundle.RelationKeyName)
+		key := relationDetails.GetString(bundle.RelationKeyRelationKey)
+		format := model.RelationFormat(relationDetails.GetInt64(bundle.RelationKeyRelationFormat))
+		includeTime := relationDetails.GetBool(bundle.RelationKeyRelationFormatIncludeTime)
 
 		v := h.s.CombinedDetails().Get(domain.RelationKey(key))
+		if v.IsNull() {
+			continue
+		}
+
+		// Process special cases for file and object relations
+		var processedValue domain.Value = v
+
 		switch format {
 		case model.RelationFormat_file:
 			// Handle file format relations
@@ -215,12 +205,10 @@ func (h *MD) renderProperties(buf writer) {
 				}
 			}
 
-			// Only render if we found any files
 			if len(fileList) > 0 {
-				_, _ = fmt.Fprintf(buf, "  %s:\n", name)
-				for _, filename := range fileList {
-					_, _ = fmt.Fprintf(buf, "    - %s\n", filename)
-				}
+				processedValue = domain.StringList(fileList)
+			} else {
+				continue
 			}
 
 		case model.RelationFormat_object:
@@ -242,29 +230,30 @@ func (h *MD) renderProperties(buf writer) {
 				removeArray = true
 			}
 
-			if removeArray {
+			// Handle special single-value relations
+			if removeArray && len(ids) > 0 {
 				title, _, ok := h.getLinkInfo(ids[0])
 				if ok {
-					_, _ = fmt.Fprintf(buf, "  %s: %s\n", name, title)
+					processedValue = domain.String(title)
 				}
-				continue
 			} else {
-				_, _ = fmt.Fprintf(buf, "  %s:\n", name)
-
-			}
-			// Each target rendered as list item.
-
-			for _, id := range ids {
-				title, filename, ok := h.getLinkInfo(id)
-				if !ok {
+				var objectList []string
+				for _, id := range ids {
+					title, filename, ok := h.getLinkInfo(id)
+					if !ok {
+						continue
+					}
+					if h.knownDocs[id] == nil {
+						objectList = append(objectList, title)
+					} else {
+						objectList = append(objectList, filename)
+					}
+				}
+				if len(objectList) > 0 {
+					processedValue = domain.StringList(objectList)
+				} else {
 					continue
 				}
-				if h.knownDocs[id] == nil {
-					_, _ = fmt.Fprintf(buf, "    - %s\n", title)
-				} else {
-					_, _ = fmt.Fprintf(buf, "    - %s\n", filename)
-				}
-
 			}
 
 		case model.RelationFormat_tag,
@@ -280,48 +269,90 @@ func (h *MD) renderProperties(buf writer) {
 				continue
 			}
 
-			// Each target rendered as list item.
-			_, _ = fmt.Fprintf(buf, "  %s:\n", name)
+			var nameList []string
 			for _, id := range ids {
 				if d, _ := h.getObjectInfo(id); d != nil {
-					label := d.Get(bundle.RelationKeyName).String()
-					_, _ = fmt.Fprintf(buf, "    - %s\n", label)
+					if label := d.Get(bundle.RelationKeyName).String(); label != "" {
+						nameList = append(nameList, label)
+					}
 				}
 			}
-
-		case model.RelationFormat_date:
-
-			if ts := v.Int64(); ts > 0 {
-				var timeString string
-				if includeTime {
-					timeString = time.Unix(ts, 0).Format(time.RFC3339)
-				} else {
-					timeString = time.Unix(ts, 0).Format("2006-01-02")
-				}
-				_, _ = fmt.Fprintf(buf, "  %s: %s\n", name, timeString)
+			if len(nameList) > 0 {
+				processedValue = domain.StringList(nameList)
+			} else {
+				continue
 			}
 
-		case model.RelationFormat_number:
-			_, _ = fmt.Fprintf(buf, "  %s: %v\n", name, v.Float64())
-
-		case model.RelationFormat_checkbox:
-			// Represent checkboxes as plain booleans.
-			_, _ = fmt.Fprintf(buf, "  %s: %t\n", name, v.Bool())
-
-		default:
-			if s := v.String(); s != "" {
-				_, _ = fmt.Fprintf(buf, "  %s: %s\n", name, s)
-			}
 		}
+
+		// Create property
+		prop := yaml.Property{
+			Name:        name,
+			Key:         key,
+			Format:      format,
+			Value:       processedValue,
+			IncludeTime: includeTime,
+		}
+		properties = append(properties, prop)
+	}
+
+	// Skip empty property lists unless it's a collection
+	if len(properties) == 0 && !isCollection {
+		return
+	}
+
+	// Prepare export options
+	exportOptions := &yaml.ExportOptions{
+		IncludeObjectType: true,
+		ObjectTypeName:    typeName,
+	}
+
+	// Add object ID as a special property
+	if objectId := h.s.LocalDetails().GetString(bundle.RelationKeyId); objectId != "" {
+		idProp := yaml.Property{
+			Name:   "id",
+			Key:    "id",
+			Format: model.RelationFormat_shorttext,
+			Value:  domain.String(objectId),
+		}
+		properties = append([]yaml.Property{idProp}, properties...)
+	}
+
+	// Export using YAML exporter
+	yamlData, err := yaml.ExportToYAML(properties, exportOptions)
+	if err != nil {
+		log.Errorf("failed to export properties to YAML: %v", err)
+		return
+	}
+
+	// Extract just the content (without delimiters)
+	frontMatter, _, _ := yaml.ExtractYAMLFrontMatter(yamlData)
+	if len(frontMatter) == 0 {
+		return
+	}
+
+	// Write custom front matter with schema reference if needed
+	fmt.Fprintf(buf, "---\n")
+
+	// Add JSON schema reference if enabled
+	if h.includeSchema && typeName != "" {
+		schemaFileName := h.GenerateSchemaFileName(typeName)
+		fmt.Fprintf(buf, "# yaml-language-server: $schema=%s\n", schemaFileName)
+	}
+
+	// Write the YAML content
+	buf.Write(frontMatter)
+	
+	// Ensure there's a newline before closing delimiter or collection
+	if len(frontMatter) > 0 && frontMatter[len(frontMatter)-1] != '\n' {
+		buf.WriteString("\n")
 	}
 
 	// Add collection objects if this is a collection
-	layout, hasLayout := h.s.Layout()
-	if hasLayout && layout == model.ObjectType_collection {
-		// Get collection objects from store
+	if isCollection {
 		collectionObjects := h.s.GetStoreSlice(template.CollectionStoreKey)
 		if len(collectionObjects) > 0 {
-			_, _ = fmt.Fprintf(buf, "  Collection:\n")
+			fmt.Fprintf(buf, "Collection:\n")
 			for _, objId := range collectionObjects {
 				if d, isInExport := h.getObjectInfo(objId); d != nil {
 					objectName := d.Get(bundle.RelationKeyName).String()
@@ -329,27 +360,22 @@ func (h *MD) renderProperties(buf writer) {
 						objectName = objId
 					}
 
-					_, _ = fmt.Fprintf(buf, "    - Name: %s\n", objectName)
+					fmt.Fprintf(buf, "  - Name: %s\n", objectName)
 
 					if isInExport {
 						filename := h.fn.Get("", objId, objectName, h.Ext())
-						_, _ = fmt.Fprintf(buf, "      File: %s\n", filename)
+						fmt.Fprintf(buf, "    File: %s\n", filename)
 					} else {
-						// Object not in export, show ID
-						_, _ = fmt.Fprintf(buf, "      Id: %s\n", objId)
+						fmt.Fprintf(buf, "    Id: %s\n", objId)
 					}
 				} else {
-					// Object not found, just show ID
-					_, _ = fmt.Fprintf(buf, "    - Name: %s\n", objId)
+					fmt.Fprintf(buf, "  - Name: %s\n", objId)
 				}
 			}
 		}
 	}
 
-	// Close YAML frontmatter if we started it
-	if len(propertiesIds) > 0 || (hasLayout && layout == model.ObjectType_collection) {
-		fmt.Fprintf(buf, "---\n\n")
-	}
+	fmt.Fprintf(buf, "---\n\n")
 }
 
 func (h *MD) Export() (result string) {

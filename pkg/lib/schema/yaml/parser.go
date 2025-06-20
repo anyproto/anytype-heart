@@ -1,4 +1,4 @@
-package yamlfm
+package yaml
 
 import (
 	"fmt"
@@ -13,6 +13,7 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+	"github.com/anyproto/anytype-heart/pkg/lib/schema"
 )
 
 const (
@@ -79,23 +80,6 @@ type ParseResult struct {
 	ObjectType string // If "type" or "Object type" property is present
 }
 
-// PropertyResolver resolves property keys from names
-type PropertyResolver interface {
-	// ResolvePropertyKey returns the property key for a given name
-	// Returns empty string if not found in schema
-	ResolvePropertyKey(name string) string
-
-	// GetRelationFormat returns the format for a given relation key
-	GetRelationFormat(key string) model.RelationFormat
-
-	// ResolveOptionValue converts option name to option ID
-	ResolveOptionValue(relationKey string, optionName string) string
-
-	// ResolveOptionValues converts option names to option IDs
-	ResolveOptionValues(relationKey string, optionNames []string) []string
-
-	ResolveObjectValues(objectNames []string) []string
-}
 
 // ParseYAMLFrontMatter parses YAML front matter and returns properties with their formats
 func ParseYAMLFrontMatter(frontMatter []byte) (*ParseResult, error) {
@@ -103,12 +87,12 @@ func ParseYAMLFrontMatter(frontMatter []byte) (*ParseResult, error) {
 }
 
 // ParseYAMLFrontMatterWithResolver parses YAML front matter using an optional property resolver
-func ParseYAMLFrontMatterWithResolver(frontMatter []byte, resolver PropertyResolver) (*ParseResult, error) {
+func ParseYAMLFrontMatterWithResolver(frontMatter []byte, resolver schema.PropertyResolver) (*ParseResult, error) {
 	return ParseYAMLFrontMatterWithResolverAndPath(frontMatter, resolver, "")
 }
 
-// ParseYAMLFrontMatterWithResolverAndPath parses YAML front matter using an optional property resolver and base file path
-func ParseYAMLFrontMatterWithResolverAndPath(frontMatter []byte, resolver PropertyResolver, baseFilePath string) (*ParseResult, error) {
+// ParseYAMLFrontMatterWithFormats parses YAML front matter with pre-defined formats
+func ParseYAMLFrontMatterWithFormats(frontMatter []byte, formats map[string]model.RelationFormat) (*ParseResult, error) {
 	if len(frontMatter) == 0 {
 		return nil, nil
 	}
@@ -147,6 +131,77 @@ func ParseYAMLFrontMatterWithResolverAndPath(frontMatter []byte, resolver Proper
 
 	// Process remaining properties in one pass
 	for key, value := range data {
+		// Skip version header
+		if key == VersionHeaderKey {
+			continue
+		}
+		
+		// Process value and determine format in one go
+		prop := processYAMLProperty(key, value)
+		if prop == nil {
+			continue
+		}
+
+		prop.Key = key
+		
+		// Use provided format if available
+		if format, ok := formats[key]; ok {
+			prop.Format = format
+		}
+
+		// Store in details
+		result.Details.Set(domain.RelationKey(prop.Key), prop.Value)
+		result.Properties = append(result.Properties, *prop)
+	}
+
+	return result, nil
+}
+
+// ParseYAMLFrontMatterWithResolverAndPath parses YAML front matter using an optional property resolver and base file path
+func ParseYAMLFrontMatterWithResolverAndPath(frontMatter []byte, resolver schema.PropertyResolver, baseFilePath string) (*ParseResult, error) {
+	if len(frontMatter) == 0 {
+		return nil, nil
+	}
+
+	var data map[string]interface{}
+	err := yaml.Unmarshal(frontMatter, &data)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse YAML front matter: %w", err)
+	}
+
+	result := &ParseResult{
+		Details:    domain.NewDetails(),
+		Properties: make([]Property, 0),
+	}
+
+	// Check for object type property (case-insensitive)
+	var typeKey string
+	for k, v := range data {
+		if strings.EqualFold(k, "object type") || strings.EqualFold(k, "type") {
+			// if array of strings, take the first one
+			if arr, ok := v.([]interface{}); ok && len(arr) > 0 {
+				v = arr[0]
+			}
+			if typeStr, ok := v.(string); ok {
+				result.ObjectType = typeStr
+				typeKey = k
+				break
+			}
+		}
+	}
+
+	// Remove the type key from data so it's not processed as a property
+	if typeKey != "" {
+		delete(data, typeKey)
+	}
+
+	// Process remaining properties in one pass
+	for key, value := range data {
+		// Skip version header
+		if key == VersionHeaderKey {
+			continue
+		}
+		
 		// Process value and determine format in one go
 		prop := processYAMLProperty(key, value)
 		if prop == nil {
@@ -374,7 +429,7 @@ func parseDate(dateStr string) (time.Time, bool, error) {
 }
 
 // resolveOptionValue converts option names to IDs for status/tag relations
-func resolveOptionValue(prop *Property, resolver PropertyResolver) domain.Value {
+func resolveOptionValue(prop *Property, resolver schema.PropertyResolver) domain.Value {
 	switch prop.Format {
 	case model.RelationFormat_status:
 		// if array choose the first value

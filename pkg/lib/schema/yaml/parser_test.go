@@ -1,4 +1,4 @@
-package yamlfm
+package yaml
 
 import (
 	"testing"
@@ -7,12 +7,16 @@ import (
 	"github.com/stretchr/testify/require"
 	
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+	"github.com/anyproto/anytype-heart/pkg/lib/schema"
 )
 
-// MockResolver implements PropertyResolver for testing
+// MockResolver implements schema.PropertyResolver for testing
 type MockResolver struct {
 	properties map[string]string
 }
+
+// Ensure MockResolver implements schema.PropertyResolver
+var _ schema.PropertyResolver = (*MockResolver)(nil)
 
 func (m *MockResolver) ResolvePropertyKey(name string) string {
 	return m.properties[name]

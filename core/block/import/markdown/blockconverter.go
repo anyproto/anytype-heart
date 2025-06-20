@@ -11,7 +11,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/import/common"
 	"github.com/anyproto/anytype-heart/core/block/import/common/source"
 	"github.com/anyproto/anytype-heart/core/block/import/markdown/anymark"
-	"github.com/anyproto/anytype-heart/core/block/import/markdown/yamlfm"
+	"github.com/anyproto/anytype-heart/pkg/lib/schema/yaml"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -33,7 +33,7 @@ type FileInfo struct {
 	ParsedBlocks          []*model.Block
 	CollectionsObjectsIds []string
 	YAMLDetails           *domain.Details
-	YAMLProperties        []yamlfm.Property
+	YAMLProperties        []yaml.Property
 	ObjectTypeName        string // Name of the object type from YAML "type" property
 }
 
@@ -279,7 +279,7 @@ func (m *mdConverter) createBlocksFromFile(importSource source.Source, filePath 
 		}
 
 		// Extract and parse YAML front matter
-		frontMatter, markdownContent, err := yamlfm.ExtractYAMLFrontMatter(b)
+		frontMatter, markdownContent, err := yaml.ExtractYAMLFrontMatter(b)
 		if err != nil {
 			log.Warnf("failed to extract YAML front matter from %s: %s", filePath, err)
 			// Continue with original content
@@ -288,16 +288,16 @@ func (m *mdConverter) createBlocksFromFile(importSource source.Source, filePath 
 
 		// Parse YAML front matter if present
 		if len(frontMatter) > 0 {
-			var yamlResult *yamlfm.ParseResult
+			var yamlResult *yaml.ParseResult
 			var err error
 
 			// Use schema importer as resolver if available
 			// Get base directory of the file for relative path resolution
 			baseDir := filepath.Dir(filePath)
 			if m.schemaImporter != nil && m.schemaImporter.HasSchemas() {
-				yamlResult, err = yamlfm.ParseYAMLFrontMatterWithResolverAndPath(frontMatter, m.schemaImporter, baseDir)
+				yamlResult, err = yaml.ParseYAMLFrontMatterWithResolverAndPath(frontMatter, m.schemaImporter, baseDir)
 			} else {
-				yamlResult, err = yamlfm.ParseYAMLFrontMatterWithResolverAndPath(frontMatter, nil, baseDir)
+				yamlResult, err = yaml.ParseYAMLFrontMatterWithResolverAndPath(frontMatter, nil, baseDir)
 			}
 
 			if err != nil {

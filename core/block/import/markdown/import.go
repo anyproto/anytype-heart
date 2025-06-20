@@ -14,7 +14,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/collection"
 	"github.com/anyproto/anytype-heart/core/block/import/common"
 	"github.com/anyproto/anytype-heart/core/block/import/common/source"
-	"github.com/anyproto/anytype-heart/core/block/import/markdown/yamlfm"
+	"github.com/anyproto/anytype-heart/pkg/lib/schema/yaml"
 	"github.com/anyproto/anytype-heart/core/block/process"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pb"
@@ -439,7 +439,7 @@ func (m *Markdown) createSnapshots(
 	hasSchemas := m.schemaImporter.HasSchemas()
 
 	// First pass: collect all YAML properties to create relation snapshots
-	yamlRelations := make(map[string]*yamlfm.Property)        // property name -> property
+	yamlRelations := make(map[string]*yaml.Property)        // property name -> property
 	yamlRelationOptions := make(map[string]map[string]string) // relationKey -> optionValue -> optionId
 	objectTypes := make(map[string][]string)                  // Track unique object type names
 

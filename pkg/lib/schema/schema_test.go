@@ -234,6 +234,42 @@ func TestJSONSchemaExporter_Export(t *testing.T) {
 	assert.Contains(t, output, `"Done"`)
 	assert.Contains(t, output, `"format": "date-time"`)
 	assert.Contains(t, output, `"x-format": "status"`)
+	
+	// Check version is included
+	assert.Contains(t, output, `"x-genversion": "1.0"`)
+	assert.Contains(t, output, `:gen-1.0"`) // Check version in $id
+}
+
+func TestJSONSchemaExporter_VersionInOutput(t *testing.T) {
+	// Create a simple schema
+	schema := NewSchema()
+	typ := &Type{
+		Key:  "document",
+		Name: "Document",
+	}
+	schema.SetType(typ)
+
+	// Export
+	var buf bytes.Buffer
+	exporter := NewJSONSchemaExporter("  ")
+	err := exporter.Export(schema, &buf)
+	require.NoError(t, err)
+
+	// Parse the output as JSON to verify structure
+	var jsonOutput map[string]interface{}
+	err = json.Unmarshal(buf.Bytes(), &jsonOutput)
+	require.NoError(t, err)
+
+	// Check x-genversion field
+	genVersion, ok := jsonOutput["x-genversion"].(string)
+	assert.True(t, ok, "x-genversion should be a string")
+	assert.Equal(t, "1.0", genVersion)
+
+	// Check version in $id
+	schemaId, ok := jsonOutput["$id"].(string)
+	assert.True(t, ok, "$id should be a string")
+	assert.Contains(t, schemaId, ":gen-1.0")
+	assert.True(t, strings.HasSuffix(schemaId, ":gen-1.0"), "Schema ID should end with :gen-1.0")
 }
 
 func TestSchema_Merge(t *testing.T) {
