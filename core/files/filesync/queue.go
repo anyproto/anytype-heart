@@ -20,6 +20,11 @@ type QueueItem struct {
 	Timestamp   int64
 	AddedByUser bool
 	Imported    bool
+
+	// VariantId tells uploader to upload specific branch of file tree
+	VariantId domain.FileId
+	// Score affects priority
+	Score int
 }
 
 func (it *QueueItem) Validate() error {
@@ -33,6 +38,9 @@ func (it *QueueItem) Validate() error {
 }
 
 func (it *QueueItem) Key() string {
+	if it.VariantId != "" {
+		return it.ObjectId + "/" + it.VariantId.String()
+	}
 	return it.ObjectId
 }
 
@@ -43,6 +51,9 @@ func (it *QueueItem) FullFileId() domain.FullFileId {
 	}
 }
 
-func (it *QueueItem) Less(other *QueueItem) bool {
-	return it.Timestamp < other.Timestamp
+func queueItemLess(one, other *QueueItem) bool {
+	if one.Score != other.Score {
+		return one.Score > other.Score
+	}
+	return one.Timestamp < other.Timestamp
 }
