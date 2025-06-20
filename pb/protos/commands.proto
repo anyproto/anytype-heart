@@ -1616,6 +1616,7 @@ message Rpc {
                         NO_SUCH_OBJECT = 101;
                         NO_SUCH_SPACE = 102;
                         LIMIT_EXCEEDED = 103;
+                        URL_ALREADY_TAKEN = 409;
                     }
                 }
             }

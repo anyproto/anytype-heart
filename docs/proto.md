@@ -26438,6 +26438,7 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | NO_SUCH_OBJECT | 101 |  |
 | NO_SUCH_SPACE | 102 |  |
 | LIMIT_EXCEEDED | 103 |  |
+| URL_ALREADY_TAKEN | 409 |  |
 
 
 

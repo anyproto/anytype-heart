@@ -13,6 +13,7 @@ import (
 
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/app/logger"
+	"github.com/anyproto/any-sync/net/rpc/rpcerr"
 	"github.com/anyproto/anytype-publish-server/publishclient"
 	"github.com/anyproto/anytype-publish-server/publishclient/publishapi"
 	"github.com/gogo/protobuf/jsonpb"
@@ -51,6 +52,7 @@ const (
 var log = logger.NewNamed(CName)
 
 var ErrLimitExceeded = errors.New("limit exceeded")
+var ErrUrlAlreadyTaken = errors.New("url is already taken by another page")
 
 type PublishResult struct {
 	Url string
@@ -362,6 +364,11 @@ func (s *service) publishToServer(ctx context.Context, spaceId, pageId, uri, ver
 
 	uploadUrl, err := s.publishClientService.Publish(ctx, publishReq)
 	if err != nil {
+		err = rpcerr.Unwrap(err)
+		if errors.Is(err, publishapi.ErrUriNotUnique) {
+			return ErrUrlAlreadyTaken
+		}
+
 		return err
 	}
 
