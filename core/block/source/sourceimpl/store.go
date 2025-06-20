@@ -191,6 +191,9 @@ func (s *store) ReadStoreDoc(ctx context.Context, storeState *storestate.StoreSt
 	if err != nil {
 		return
 	}
+	defer func() {
+		_ = tx.Rollback()
+	}()
 	// checking if we have any data in the store regarding the tree (i.e. if tree is first arrived or created)
 	allIsNew := false
 	if _, err := tx.GetOrder(s.id); err != nil {
@@ -203,7 +206,7 @@ func (s *store) ReadStoreDoc(ctx context.Context, storeState *storestate.StoreSt
 		hook:     params.ReadStoreTreeHook,
 	}
 	if err = applier.Apply(); err != nil {
-		return errors.Join(tx.Rollback(), err)
+		return err
 	}
 	err = tx.Commit()
 	if err != nil {
@@ -229,16 +232,15 @@ func (s *store) PushStoreChange(ctx context.Context, params source.PushStoreChan
 	if err != nil {
 		return "", fmt.Errorf("new tx: %w", err)
 	}
-	rollback := func(err error) error {
-		return errors.Join(tx.Rollback(), err)
-	}
-
+	defer func() {
+		_ = tx.Rollback()
+	}()
 	change := &pb.StoreChange{
 		ChangeSet: params.Changes,
 	}
 	data, dataType, err := MarshalStoreChange(change)
 	if err != nil {
-		return "", rollback(fmt.Errorf("marshal change: %w", err))
+		return "", fmt.Errorf("marshal change: %w", err)
 	}
 
 	addResult, err := s.ObjectTree.AddContentWithValidator(ctx, objecttree.SignableChangeContent{
@@ -261,11 +263,11 @@ func (s *store) PushStoreChange(ctx context.Context, params source.PushStoreChan
 		return nil
 	})
 	if err != nil {
-		return "", rollback(fmt.Errorf("add content: %w", err))
+		return "", fmt.Errorf("add content: %w", err)
 	}
 
 	if len(addResult.Added) == 0 {
-		return "", rollback(fmt.Errorf("add changes list is empty"))
+		return "", fmt.Errorf("add changes list is empty")
 	}
 	changeId = addResult.Added[0].Id
 	err = tx.Commit()

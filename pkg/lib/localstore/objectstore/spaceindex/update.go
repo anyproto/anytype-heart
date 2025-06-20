@@ -141,20 +141,21 @@ func (s *dsObjectStore) UpdatePendingLocalDetails(id string, proc func(details *
 	if err != nil {
 		return fmt.Errorf("write txn: %w", err)
 	}
-	rollback := func(err error) error {
-		return errors.Join(txn.Rollback(), err)
-	}
+
+	defer func() {
+		_ = txn.Rollback()
+	}()
 
 	var inputDetails *domain.Details
 	doc, err := s.pendingDetails.FindId(txn.Context(), id)
 	if errors.Is(err, anystore.ErrDocNotFound) {
 		inputDetails = domain.NewDetails()
 	} else if err != nil {
-		return rollback(fmt.Errorf("find details: %w", err))
+		return fmt.Errorf("find details: %w", err)
 	} else {
 		inputDetails, err = domain.NewDetailsFromAnyEnc(doc.Value())
 		if err != nil {
-			return rollback(fmt.Errorf("json to proto: %w", err))
+			return fmt.Errorf("json to proto: %w", err)
 		}
 	}
 
@@ -162,12 +163,12 @@ func (s *dsObjectStore) UpdatePendingLocalDetails(id string, proc func(details *
 
 	newDetails, err := proc(inputDetails)
 	if err != nil {
-		return rollback(fmt.Errorf("run a modifier: %w", err))
+		return fmt.Errorf("run a modifier: %w", err)
 	}
 	if newDetails == nil {
 		err = s.pendingDetails.DeleteId(txn.Context(), id)
 		if err != nil && !errors.Is(err, anystore.ErrDocNotFound) {
-			return rollback(fmt.Errorf("delete details: %w", err))
+			return fmt.Errorf("delete details: %w", err)
 		}
 		return txn.Commit()
 	}
@@ -175,7 +176,7 @@ func (s *dsObjectStore) UpdatePendingLocalDetails(id string, proc func(details *
 	jsonVal := newDetails.ToAnyEnc(arena)
 	err = s.pendingDetails.UpsertOne(txn.Context(), jsonVal)
 	if err != nil {
-		return rollback(fmt.Errorf("upsert details: %w", err))
+		return fmt.Errorf("upsert details: %w", err)
 	}
 
 	err = txn.Commit()

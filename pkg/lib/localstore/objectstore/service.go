@@ -516,6 +516,7 @@ func (s *dsObjectStore) EnqueueAllForFulltextIndexing(ctx context.Context) error
 	}
 	arena := s.arenaPool.Get()
 	defer func() {
+		_ = txn.Rollback()
 		arena.Reset()
 		s.arenaPool.Put(arena)
 	}()
@@ -545,7 +546,6 @@ func (s *dsObjectStore) EnqueueAllForFulltextIndexing(ctx context.Context) error
 		return err
 	})
 	if err != nil {
-		_ = txn.Rollback()
 		return err
 	}
 	return txn.Commit()

@@ -219,7 +219,7 @@ func (s *service) Run(ctx context.Context) error {
 				Value:       domain.Int64(model.ObjectType_chatDerived),
 			},
 		},
-	})
+	}, crossspacesub.NoOpPredicate())
 	if err != nil {
 		return fmt.Errorf("cross-space sub: %w", err)
 	}

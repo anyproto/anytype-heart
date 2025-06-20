@@ -251,11 +251,8 @@ func (i *indexer) reindexChats(ctx context.Context, space clientspace.Space) err
 	if err != nil {
 		return fmt.Errorf("write tx: %w", err)
 	}
-	var commited bool
 	defer func() {
-		if !commited {
-			txn.Rollback()
-		}
+		_ = txn.Rollback()
 	}()
 	for _, id := range ids {
 		col, err := db.OpenCollection(txn.Context(), id+chatobject.CollectionName)
@@ -283,7 +280,6 @@ func (i *indexer) reindexChats(ctx context.Context, space clientspace.Space) err
 		}
 	}
 
-	commited = true
 	err = txn.Commit()
 	if err != nil {
 		return fmt.Errorf("commit: %w", err)
