@@ -10,10 +10,12 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
+	"github.com/anyproto/anytype-heart/core/block/editor/template"
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 func TestMD_Convert(t *testing.T) {
@@ -176,6 +178,16 @@ func TestMD_Convert(t *testing.T) {
 		exp := "Test ⛰️   \n"
 		assert.Equal(t, exp, string(res))
 	})
+}
+
+// testFileNamer implements FileNamer interface
+type testFileNamer struct{}
+
+func (f *testFileNamer) Get(path, hash, title, ext string) string {
+	if path != "" {
+		return path + "/" + title + ext
+	}
+	return title + ext
 }
 
 type mockFileNamer struct{}
@@ -758,4 +770,794 @@ func TestMD_FileFormatRelations(t *testing.T) {
 		assert.Contains(t, conv.fileHashes, "pdf012")
 		assert.Contains(t, conv.imageHashes, "image456")
 	})
+}
+
+func TestMD_RenderCollection(t *testing.T) {
+	// Create test state with a collection layout
+	rootBlock := &model.Block{
+		Id:          "root",
+		ChildrenIds: []string{"text1"},
+	}
+	textBlock := &model.Block{
+		Id: "text1",
+		Content: &model.BlockContentOfText{
+			Text: &model.BlockContentText{
+				Text: "My Collection",
+			},
+		},
+	}
+	st := state.NewDoc("root", map[string]simple.Block{
+		"root":  simple.New(rootBlock),
+		"text1": simple.New(textBlock),
+	}).NewState()
+
+	// Set collection layout
+	st.SetDetailAndBundledRelation(bundle.RelationKeyId, domain.String("collection-123"))
+	st.SetDetailAndBundledRelation(bundle.RelationKeyType, domain.String("type-collection"))
+	st.SetDetailAndBundledRelation(bundle.RelationKeyResolvedLayout, domain.Int64(int64(model.ObjectType_collection)))
+	st.SetDetailAndBundledRelation(bundle.RelationKeyName, domain.String("My Task Collection"))
+
+	// Add collection objects to store
+	collectionObjects := []string{"task1", "task2", "task3"}
+	st.SetInStore([]string{template.CollectionStoreKey}, pbtypes.StringList(collectionObjects))
+
+	// Create mock resolver
+	resolver := &testResolver{
+		objects: map[string]*domain.Details{
+			"task1": domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+				bundle.RelationKeyName: domain.String("First Task"),
+			}),
+			"task2": domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+				bundle.RelationKeyName: domain.String("Second Task"),
+			}),
+			"task3": domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+				bundle.RelationKeyName: domain.String("Third Task"),
+			}),
+		},
+		types: map[string]*domain.Details{
+			"type-collection": domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+				bundle.RelationKeyName:                         domain.String("Collection"),
+				bundle.RelationKeyRecommendedFeaturedRelations: domain.StringList([]string{"rel-name"}),
+			}),
+		},
+		relations: map[string]*domain.Details{
+			"rel-name": domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+				bundle.RelationKeyId:             domain.String("rel-name"),
+				bundle.RelationKeyRelationKey:    domain.String("name"),
+				bundle.RelationKeyName:           domain.String("Name"),
+				bundle.RelationKeyRelationFormat: domain.Int64(int64(model.RelationFormat_shorttext)),
+			}),
+		},
+	}
+	resolver.keyMapping = map[string]string{
+		"type": "rel-type",
+		"name": "rel-name",
+	}
+
+	// Create converter with resolver
+	conv := NewMDConverterWithResolver(st, &testFileNamer{}, true, false, resolver)
+	// Set known docs to simulate only task1 and task2 are in export
+	conv.SetKnownDocs(map[string]*domain.Details{
+		"task1": resolver.objects["task1"],
+		"task2": resolver.objects["task2"],
+		// task3 is NOT in knownDocs
+	})
+
+	// Convert to markdown
+	result := conv.Convert(model.SmartBlockType_Page)
+	resultStr := string(result)
+
+	// Verify YAML frontmatter contains collection
+	assert.Contains(t, resultStr, "Collection:")
+
+	// Verify task1 and task2 have File field (they are in knownDocs)
+	assert.Contains(t, resultStr, "- Name: First Task")
+	assert.Contains(t, resultStr, "  File: First Task.md")
+	assert.Contains(t, resultStr, "- Name: Second Task")
+	assert.Contains(t, resultStr, "  File: Second Task.md")
+
+	// Verify task3 has Id field instead (not in knownDocs)
+	assert.Contains(t, resultStr, "- Name: Third Task")
+	assert.Contains(t, resultStr, "  Id: task3")
+	assert.NotContains(t, resultStr, "  File: Third Task.md")
+
+	// Verify the structure is correct
+	lines := strings.Split(resultStr, "\n")
+	var inCollection bool
+	var collectionIndent int
+	for _, line := range lines {
+		if strings.Contains(line, "Collection:") {
+			inCollection = true
+			collectionIndent = len(line) - len(strings.TrimLeft(line, " "))
+		}
+		if inCollection && strings.TrimSpace(line) != "" && !strings.Contains(line, "Collection:") && !strings.Contains(line, "---") {
+			// Check that collection items are properly indented
+			itemIndent := len(line) - len(strings.TrimLeft(line, " "))
+			assert.Greater(t, itemIndent, collectionIndent, "Collection items should be indented")
+		}
+		// Stop checking after YAML frontmatter ends
+		if inCollection && line == "---" {
+			break
+		}
+	}
+}
+
+func TestMD_RenderCollection_EmptyCollection(t *testing.T) {
+	// Create test state with a collection layout but no objects
+	rootBlock := &model.Block{
+		Id:          "root",
+		ChildrenIds: []string{"text1"},
+	}
+	textBlock := &model.Block{
+		Id: "text1",
+		Content: &model.BlockContentOfText{
+			Text: &model.BlockContentText{
+				Text: "Empty Collection",
+			},
+		},
+	}
+	st := state.NewDoc("root", map[string]simple.Block{
+		"root":  simple.New(rootBlock),
+		"text1": simple.New(textBlock),
+	}).NewState()
+
+	// Set collection layout
+	st.SetDetailAndBundledRelation(bundle.RelationKeyId, domain.String("collection-empty"))
+	st.SetDetailAndBundledRelation(bundle.RelationKeyType, domain.String("type-collection"))
+	st.SetDetailAndBundledRelation(bundle.RelationKeyResolvedLayout, domain.Int64(int64(model.ObjectType_collection)))
+
+	// No collection objects in store
+
+	// Create mock resolver
+	resolver := &testResolver{
+		types: map[string]*domain.Details{
+			"type-collection": domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+				bundle.RelationKeyName: domain.String("Collection"),
+			}),
+		},
+	}
+
+	// Create converter
+	conv := NewMDConverterWithResolver(st, &testFileNamer{}, true, false, resolver)
+
+	// Convert to markdown
+	result := conv.Convert(model.SmartBlockType_Page)
+	resultStr := string(result)
+
+	// Verify Collection field is not present for empty collection
+	assert.NotContains(t, resultStr, "Collection:")
+}
+
+func TestMD_RenderCollection_WithSchema(t *testing.T) {
+	// Create test state with a collection layout
+	rootBlock := &model.Block{
+		Id:          "root",
+		ChildrenIds: []string{"text1"},
+	}
+	textBlock := &model.Block{
+		Id: "text1",
+		Content: &model.BlockContentOfText{
+			Text: &model.BlockContentText{
+				Text: "Collection with Schema",
+			},
+		},
+	}
+	st := state.NewDoc("root", map[string]simple.Block{
+		"root":  simple.New(rootBlock),
+		"text1": simple.New(textBlock),
+	}).NewState()
+
+	// Set collection layout
+	st.SetDetailAndBundledRelation(bundle.RelationKeyId, domain.String("collection-456"))
+	st.SetDetailAndBundledRelation(bundle.RelationKeyType, domain.String("type-collection"))
+	st.SetDetailAndBundledRelation(bundle.RelationKeyResolvedLayout, domain.Int64(int64(model.ObjectType_collection)))
+	st.SetDetailAndBundledRelation(bundle.RelationKeyName, domain.String("Collection with Schema"))
+
+	// Add one collection object
+	st.SetInStore([]string{template.CollectionStoreKey}, pbtypes.StringList([]string{"obj1"}))
+
+	// Create mock resolver
+	resolver := &testResolver{
+		objects: map[string]*domain.Details{
+			"obj1": domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+				bundle.RelationKeyName: domain.String("Object One"),
+			}),
+		},
+		types: map[string]*domain.Details{
+			"type-collection": domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+				bundle.RelationKeyName:                         domain.String("My Collection Type"),
+				bundle.RelationKeyRecommendedFeaturedRelations: domain.StringList([]string{"rel-name"}),
+			}),
+		},
+		relations: map[string]*domain.Details{
+			"rel-type": domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+				bundle.RelationKeyId:             domain.String("rel-type"),
+				bundle.RelationKeyRelationKey:    domain.String("type"),
+				bundle.RelationKeyName:           domain.String("Type"),
+				bundle.RelationKeyRelationFormat: domain.Int64(int64(model.RelationFormat_object)),
+			}),
+			"rel-name": domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+				bundle.RelationKeyId:             domain.String("rel-name"),
+				bundle.RelationKeyRelationKey:    domain.String("name"),
+				bundle.RelationKeyName:           domain.String("Name"),
+				bundle.RelationKeyRelationFormat: domain.Int64(int64(model.RelationFormat_shorttext)),
+			}),
+		},
+	}
+	resolver.keyMapping = map[string]string{
+		"type": "rel-type",
+		"name": "rel-name",
+	}
+
+	// Create converter with schema enabled
+	conv := NewMDConverterWithResolver(st, &testFileNamer{}, true, true, resolver)
+
+	// Convert to markdown
+	result := conv.Convert(model.SmartBlockType_Page)
+	resultStr := string(result)
+
+	// Verify schema reference is present
+	assert.Contains(t, resultStr, "# yaml-language-server: $schema=./schemas/my_collection_type.schema.json")
+
+	// Verify collection is present
+	assert.Contains(t, resultStr, "Collection:")
+	assert.Contains(t, resultStr, "- Name: Object One")
+	// Object is not in knownDocs (not set), so it shows Id
+	assert.Contains(t, resultStr, "  Id: obj1")
+}
+
+func TestMD_RenderCollection_UnknownObjects(t *testing.T) {
+	// Create test state
+	rootBlock := &model.Block{
+		Id:          "root",
+		ChildrenIds: []string{"text1"},
+	}
+	textBlock := &model.Block{
+		Id: "text1",
+		Content: &model.BlockContentOfText{
+			Text: &model.BlockContentText{
+				Text: "Collection",
+			},
+		},
+	}
+	st := state.NewDoc("root", map[string]simple.Block{
+		"root":  simple.New(rootBlock),
+		"text1": simple.New(textBlock),
+	}).NewState()
+
+	// Set collection layout
+	st.SetDetailAndBundledRelation(bundle.RelationKeyId, domain.String("collection-789"))
+	st.SetDetailAndBundledRelation(bundle.RelationKeyType, domain.String("type-collection"))
+	st.SetDetailAndBundledRelation(bundle.RelationKeyResolvedLayout, domain.Int64(int64(model.ObjectType_collection)))
+
+	// Add collection objects, including unknown ones
+	st.SetInStore([]string{template.CollectionStoreKey}, pbtypes.StringList([]string{"known1", "unknown1", "known2"}))
+
+	// Create mock resolver with only some objects known
+	resolver := &testResolver{
+		objects: map[string]*domain.Details{
+			"known1": domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+				bundle.RelationKeyName: domain.String("Known Object 1"),
+			}),
+			"known2": domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+				bundle.RelationKeyName: domain.String("Known Object 2"),
+			}),
+			// unknown1 is not in resolver
+		},
+		types: map[string]*domain.Details{
+			"type-collection": domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+				bundle.RelationKeyName: domain.String("Collection"),
+			}),
+		},
+	}
+
+	// Create converter
+	conv := NewMDConverterWithResolver(st, &testFileNamer{}, true, false, resolver)
+
+	// Convert to markdown
+	result := conv.Convert(model.SmartBlockType_Page)
+	resultStr := string(result)
+
+	// Verify known objects show their names
+	assert.Contains(t, resultStr, "- Name: Known Object 1")
+	assert.Contains(t, resultStr, "- Name: Known Object 2")
+
+	// Verify unknown object shows its ID
+	assert.Contains(t, resultStr, "- Name: unknown1")
+}
+
+func TestMD_RenderObjectRelation_FileFieldOnlyForExportedObjects(t *testing.T) {
+	// Create test state with a simple block
+	rootBlock := &model.Block{
+		Id:          "root",
+		ChildrenIds: []string{"text1"},
+	}
+	textBlock := &model.Block{
+		Id: "text1",
+		Content: &model.BlockContentOfText{
+			Text: &model.BlockContentText{
+				Text: "Test content",
+			},
+		},
+	}
+	st := state.NewDoc("root", map[string]simple.Block{
+		"root":  simple.New(rootBlock),
+		"text1": simple.New(textBlock),
+	}).NewState()
+
+	st.SetDetailAndBundledRelation(bundle.RelationKeyId, domain.String("test-object"))
+	st.SetDetailAndBundledRelation(bundle.RelationKeyType, domain.String("test-type"))
+
+	// Add object relation with references
+	st.SetDetail(domain.RelationKey("relatedObjects"), domain.StringList([]string{"obj1", "obj2", "obj3"}))
+
+	// Create mock resolver
+	resolver := &testResolver{
+		objects: map[string]*domain.Details{
+			"obj1": domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+				bundle.RelationKeyName: domain.String("Object One"),
+			}),
+			"obj2": domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+				bundle.RelationKeyName: domain.String("Object Two"),
+			}),
+			"obj3": domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+				bundle.RelationKeyName: domain.String("Object Three"),
+			}),
+		},
+		types: map[string]*domain.Details{
+			"test-type": domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+				bundle.RelationKeyName:                         domain.String("Test Type"),
+				bundle.RelationKeyRecommendedFeaturedRelations: domain.StringList([]string{"rel-related"}),
+			}),
+		},
+		relations: map[string]*domain.Details{
+			"rel-related": domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+				bundle.RelationKeyId:             domain.String("rel-related"),
+				bundle.RelationKeyRelationKey:    domain.String("relatedObjects"),
+				bundle.RelationKeyName:           domain.String("Related Objects"),
+				bundle.RelationKeyRelationFormat: domain.Int64(int64(model.RelationFormat_object)),
+			}),
+		},
+	}
+	resolver.keyMapping = map[string]string{
+		"type":           "rel-type",
+		"relatedObjects": "rel-related",
+	}
+
+	// Create fileNamer
+	fileNamer := &testFileNamer{}
+
+	// Create converter with known docs (only obj1 and obj2 are in export)
+	conv := NewMDConverterWithResolver(st, fileNamer, true, false, resolver)
+	conv.SetKnownDocs(map[string]*domain.Details{
+		"obj1": resolver.objects["obj1"],
+		"obj2": resolver.objects["obj2"],
+		// obj3 is NOT in knownDocs, simulating it's not included in export
+	})
+
+	// Convert to markdown
+	result := conv.Convert(model.SmartBlockType_Page)
+	resultStr := string(result)
+
+	// Verify obj1 and obj2 have File field
+	assert.Contains(t, resultStr, "- Name: Object One")
+	assert.Contains(t, resultStr, "  File: Object One.md")
+	assert.Contains(t, resultStr, "- Name: Object Two")
+	assert.Contains(t, resultStr, "  File: Object Two.md")
+
+	// Verify obj3 has Name and Id field (not File)
+	assert.Contains(t, resultStr, "- Name: Object Three")
+	assert.Contains(t, resultStr, "  Id: obj3")
+	assert.NotContains(t, resultStr, "  File: Object Three.md")
+}
+
+func TestMD_RenderObjectRelation_ShortFormatUnaffected(t *testing.T) {
+	// Create test state with a simple block
+	rootBlock := &model.Block{
+		Id:          "root",
+		ChildrenIds: []string{"text1"},
+	}
+	textBlock := &model.Block{
+		Id: "text1",
+		Content: &model.BlockContentOfText{
+			Text: &model.BlockContentText{
+				Text: "Test content",
+			},
+		},
+	}
+	st := state.NewDoc("root", map[string]simple.Block{
+		"root":  simple.New(rootBlock),
+		"text1": simple.New(textBlock),
+	}).NewState()
+
+	st.SetDetailAndBundledRelation(bundle.RelationKeyId, domain.String("test-object"))
+	st.SetDetailAndBundledRelation(bundle.RelationKeyType, domain.String("test-type"))
+
+	// Add backlinks (short format)
+	st.SetDetailAndBundledRelation(bundle.RelationKeyBacklinks, domain.StringList([]string{"obj1", "obj2"}))
+
+	// Create mock resolver
+	resolver := &testResolver{
+		objects: map[string]*domain.Details{
+			"obj1": domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+				bundle.RelationKeyName: domain.String("Backlink One"),
+			}),
+			"obj2": domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+				bundle.RelationKeyName: domain.String("Backlink Two"),
+			}),
+		},
+		types: map[string]*domain.Details{
+			"test-type": domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+				bundle.RelationKeyName:                         domain.String("Test Type"),
+				bundle.RelationKeyRecommendedFeaturedRelations: domain.StringList([]string{"rel-backlinks"}),
+			}),
+		},
+		relations: map[string]*domain.Details{
+			"rel-backlinks": domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+				bundle.RelationKeyId:             domain.String("rel-backlinks"),
+				bundle.RelationKeyRelationKey:    domain.String(bundle.RelationKeyBacklinks.String()),
+				bundle.RelationKeyName:           domain.String("Backlinks"),
+				bundle.RelationKeyRelationFormat: domain.Int64(int64(model.RelationFormat_object)),
+			}),
+		},
+	}
+	resolver.keyMapping = map[string]string{
+		bundle.RelationKeyBacklinks.String(): "rel-backlinks",
+	}
+
+	// Create fileNamer
+	fileNamer := &testFileNamer{}
+
+	// Create converter with only obj1 in known docs
+	conv := NewMDConverterWithResolver(st, fileNamer, true, false, resolver)
+	conv.SetKnownDocs(map[string]*domain.Details{
+		"obj1": resolver.objects["obj1"],
+		// obj2 is NOT in knownDocs
+	})
+
+	// Convert to markdown
+	result := conv.Convert(model.SmartBlockType_Page)
+	resultStr := string(result)
+
+	// Verify both objects are shown with just names (short format)
+	assert.Contains(t, resultStr, "- Backlink One")
+	assert.Contains(t, resultStr, "- Backlink Two")
+
+	// Verify no File fields are shown for short format
+	assert.NotContains(t, resultStr, "File:")
+}
+
+// testResolver implements ObjectResolver interface
+type testResolver struct {
+	objects    map[string]*domain.Details
+	types      map[string]*domain.Details
+	relations  map[string]*domain.Details
+	keyMapping map[string]string
+}
+
+func (r *testResolver) ResolveRelation(relationId string) (*domain.Details, error) {
+	return r.relations[relationId], nil
+}
+
+func (r *testResolver) ResolveType(typeId string) (*domain.Details, error) {
+	return r.types[typeId], nil
+}
+
+func (r *testResolver) ResolveRelationOptions(relationKey string) ([]*domain.Details, error) {
+	return nil, nil
+}
+
+func (r *testResolver) ResolveObject(objectId string) (*domain.Details, bool) {
+	obj, ok := r.objects[objectId]
+	return obj, ok
+}
+
+func (r *testResolver) GetRelationByKey(relationKey string) (*domain.Details, error) {
+	if id, ok := r.keyMapping[relationKey]; ok {
+		return r.relations[id], nil
+	}
+	return nil, nil
+}
+
+func TestMD_GenerateJSONSchema_WithEnhancements(t *testing.T) {
+	// Create test state
+	st := state.NewDoc("root", nil).NewState()
+	st.SetDetailAndBundledRelation(bundle.RelationKeyId, domain.String("test-object"))
+	st.SetDetailAndBundledRelation(bundle.RelationKeyType, domain.String("test-type"))
+
+	// Create mock resolver
+	resolver := &testResolver{
+		types: map[string]*domain.Details{
+			"test-type": domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+				bundle.RelationKeyId:                           domain.String("test-type"),
+				bundle.RelationKeyName:                         domain.String("Task"),
+				bundle.RelationKeyUniqueKey:                    domain.String("ot-task"), // UniqueKey for TypeKey extraction
+				bundle.RelationKeyDescription:                  domain.String("Task management object"),
+				bundle.RelationKeyRecommendedFeaturedRelations: domain.StringList([]string{"rel-name", "rel-status"}),
+				bundle.RelationKeyRecommendedRelations:         domain.StringList([]string{"rel-desc"}),
+			}),
+		},
+		relations: map[string]*domain.Details{
+			"rel-name": domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+				bundle.RelationKeyId:             domain.String("rel-name"),
+				bundle.RelationKeyRelationKey:    domain.String("custom_name"),
+				bundle.RelationKeyName:           domain.String("Name"),
+				bundle.RelationKeyRelationFormat: domain.Int64(int64(model.RelationFormat_shorttext)),
+			}),
+			"rel-status": domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+				bundle.RelationKeyId:             domain.String("rel-status"),
+				bundle.RelationKeyRelationKey:    domain.String("custom_status"),
+				bundle.RelationKeyName:           domain.String("Status"),
+				bundle.RelationKeyRelationFormat: domain.Int64(int64(model.RelationFormat_status)),
+			}),
+			"rel-desc": domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+				bundle.RelationKeyId:             domain.String("rel-desc"),
+				bundle.RelationKeyRelationKey:    domain.String("custom_description"),
+				bundle.RelationKeyName:           domain.String("Description"),
+				bundle.RelationKeyRelationFormat: domain.Int64(int64(model.RelationFormat_longtext)),
+			}),
+			"rel-type": domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+				bundle.RelationKeyId:             domain.String("rel-type"),
+				bundle.RelationKeyRelationKey:    domain.String("type"),
+				bundle.RelationKeyName:           domain.String("Type"),
+				bundle.RelationKeyRelationFormat: domain.Int64(int64(model.RelationFormat_object)),
+			}),
+		},
+	}
+	resolver.keyMapping = map[string]string{
+		"type": "rel-type",
+	}
+
+	// Create converter
+	conv := NewMDConverterWithResolver(st, &testFileNamer{}, true, true, resolver).(*MD)
+
+	// Generate schema
+	schemaBytes, err := conv.GenerateJSONSchema()
+	require.NoError(t, err)
+	require.NotNil(t, schemaBytes)
+
+	// Parse schema
+	var schema map[string]interface{}
+	err = json.Unmarshal(schemaBytes, &schema)
+	require.NoError(t, err)
+
+	// Verify x-type-key is present
+	assert.Equal(t, "task", schema["x-type-key"])
+
+	// Verify properties
+	properties := schema["properties"].(map[string]interface{})
+
+	// Check id property exists
+	idProp := properties["id"].(map[string]interface{})
+	assert.Equal(t, "string", idProp["type"])
+	assert.Equal(t, "Unique identifier of the Anytype object", idProp["description"])
+	assert.Equal(t, true, idProp["readOnly"])
+	assert.Equal(t, float64(0), idProp["x-order"]) // JSON numbers are float64
+	assert.Equal(t, "id", idProp["x-key"])
+
+	// Check Type property comes first (after id)
+	typeProp := properties["Type"].(map[string]interface{})
+	assert.Equal(t, float64(1), typeProp["x-order"]) // Type is always first after id
+	assert.Equal(t, "type", typeProp["x-key"])
+
+	// Check featured properties have x-featured and correct order
+	nameProp := properties["Name"].(map[string]interface{})
+	assert.Equal(t, true, nameProp["x-featured"])
+	assert.Equal(t, float64(2), nameProp["x-order"]) // Second property after Type
+	assert.Equal(t, "custom_name", nameProp["x-key"])
+
+	statusProp := properties["Status"].(map[string]interface{})
+	assert.Equal(t, true, statusProp["x-featured"])
+	assert.Equal(t, float64(3), statusProp["x-order"]) // Third property
+	assert.Equal(t, "custom_status", statusProp["x-key"])
+
+	// Check non-featured property doesn't have x-featured but has order
+	descProp := properties["Description"].(map[string]interface{})
+	_, hasFeatured := descProp["x-featured"]
+	assert.False(t, hasFeatured, "Non-featured property should not have x-featured")
+	assert.Equal(t, float64(4), descProp["x-order"]) // Fourth property
+	assert.Equal(t, "custom_description", descProp["x-key"])
+
+	// Verify required array is not present (since we don't add anything to it)
+	_, hasRequired := schema["required"]
+	assert.False(t, hasRequired, "Schema should not have required array when no properties are required")
+}
+
+func TestMD_RenderProperties_WithID(t *testing.T) {
+	// Create test state with a block
+	rootBlock := &model.Block{
+		Id:          "root",
+		ChildrenIds: []string{"text1"},
+	}
+	textBlock := &model.Block{
+		Id: "text1",
+		Content: &model.BlockContentOfText{
+			Text: &model.BlockContentText{
+				Text: "Test content",
+			},
+		},
+	}
+	st := state.NewDoc("root", map[string]simple.Block{
+		"root":  simple.New(rootBlock),
+		"text1": simple.New(textBlock),
+	}).NewState()
+
+	st.SetDetailAndBundledRelation(bundle.RelationKeyId, domain.String("obj-123-456"))
+	st.SetDetailAndBundledRelation(bundle.RelationKeyType, domain.String("test-type"))
+	st.SetDetail(domain.RelationKey("custom_name"), domain.String("My Task"))
+
+	// Create mock resolver
+	resolver := &testResolver{
+		types: map[string]*domain.Details{
+			"test-type": domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+				bundle.RelationKeyId:                           domain.String("test-type"),
+				bundle.RelationKeyName:                         domain.String("Task"),
+				bundle.RelationKeyRecommendedFeaturedRelations: domain.StringList([]string{"rel-name"}),
+			}),
+		},
+		relations: map[string]*domain.Details{
+			"rel-name": domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+				bundle.RelationKeyId:             domain.String("rel-name"),
+				bundle.RelationKeyRelationKey:    domain.String("custom_name"),
+				bundle.RelationKeyName:           domain.String("Name"),
+				bundle.RelationKeyRelationFormat: domain.Int64(int64(model.RelationFormat_shorttext)),
+			}),
+		},
+	}
+	resolver.keyMapping = map[string]string{
+		"type":        "rel-type",
+		"custom_name": "rel-name",
+	}
+
+	// Create converter with schema
+	conv := NewMDConverterWithResolver(st, &testFileNamer{}, true, true, resolver)
+
+	// Convert to markdown
+	result := conv.Convert(model.SmartBlockType_Page)
+	resultStr := string(result)
+
+	// Verify ID is rendered in YAML front matter
+	assert.Contains(t, resultStr, "id: obj-123-456")
+
+	// Verify it comes after schema reference but before other properties
+	lines := strings.Split(resultStr, "\n")
+	var schemaLine, idLine, nameLine int
+	for i, line := range lines {
+		if strings.Contains(line, "# yaml-language-server:") {
+			schemaLine = i
+		}
+		if strings.Contains(line, "id: obj-123-456") {
+			idLine = i
+		}
+		if strings.Contains(line, "Name: My Task") {
+			nameLine = i
+		}
+	}
+
+	assert.Greater(t, idLine, schemaLine, "ID should come after schema reference")
+	assert.Less(t, idLine, nameLine, "ID should come before other properties")
+}
+
+func TestMD_GenerateJSONSchema_PropertyOrder(t *testing.T) {
+	// Create test state
+	st := state.NewDoc("root", nil).NewState()
+	st.SetDetailAndBundledRelation(bundle.RelationKeyId, domain.String("test-object"))
+	st.SetDetailAndBundledRelation(bundle.RelationKeyType, domain.String("test-type"))
+
+	// Create mock resolver with multiple properties
+	resolver := &testResolver{
+		types: map[string]*domain.Details{
+			"test-type": domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+				bundle.RelationKeyId:                           domain.String("test-type"),
+				bundle.RelationKeyName:                         domain.String("Complex Type"),
+				bundle.RelationKeyUniqueKey:                    domain.String("ot-complextype"), // Add unique key for type key extraction
+				bundle.RelationKeyRecommendedFeaturedRelations: domain.StringList([]string{"rel-1", "rel-2"}),
+				bundle.RelationKeyRecommendedRelations:         domain.StringList([]string{"rel-3", "rel-4", "rel-5"}),
+			}),
+		},
+		relations: map[string]*domain.Details{
+			"rel-type": domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+				bundle.RelationKeyId:             domain.String("rel-type"),
+				bundle.RelationKeyRelationKey:    domain.String("type"),
+				bundle.RelationKeyName:           domain.String("Type"),
+				bundle.RelationKeyRelationFormat: domain.Int64(int64(model.RelationFormat_object)),
+			}),
+			"rel-1": domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+				bundle.RelationKeyId:             domain.String("rel-1"),
+				bundle.RelationKeyRelationKey:    domain.String("prop1"),
+				bundle.RelationKeyName:           domain.String("Property 1"),
+				bundle.RelationKeyRelationFormat: domain.Int64(int64(model.RelationFormat_shorttext)),
+			}),
+			"rel-2": domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+				bundle.RelationKeyId:             domain.String("rel-2"),
+				bundle.RelationKeyRelationKey:    domain.String("prop2"),
+				bundle.RelationKeyName:           domain.String("Property 2"),
+				bundle.RelationKeyRelationFormat: domain.Int64(int64(model.RelationFormat_number)),
+			}),
+			"rel-3": domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+				bundle.RelationKeyId:             domain.String("rel-3"),
+				bundle.RelationKeyRelationKey:    domain.String("prop3"),
+				bundle.RelationKeyName:           domain.String("Property 3"),
+				bundle.RelationKeyRelationFormat: domain.Int64(int64(model.RelationFormat_date)),
+			}),
+			"rel-4": domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+				bundle.RelationKeyId:             domain.String("rel-4"),
+				bundle.RelationKeyRelationKey:    domain.String("prop4"),
+				bundle.RelationKeyName:           domain.String("Property 4"),
+				bundle.RelationKeyRelationFormat: domain.Int64(int64(model.RelationFormat_checkbox)),
+			}),
+			"rel-5": domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+				bundle.RelationKeyId:             domain.String("rel-5"),
+				bundle.RelationKeyRelationKey:    domain.String("prop5"),
+				bundle.RelationKeyName:           domain.String("Property 5"),
+				bundle.RelationKeyRelationFormat: domain.Int64(int64(model.RelationFormat_tag)),
+			}),
+		},
+	}
+	resolver.keyMapping = map[string]string{
+		"type": "rel-type",
+	}
+
+	// Create converter
+	conv := NewMDConverterWithResolver(st, &testFileNamer{}, true, true, resolver).(*MD)
+
+	// Generate schema
+	schemaBytes, err := conv.GenerateJSONSchema()
+	require.NoError(t, err)
+
+	// Parse schema
+	var schema map[string]interface{}
+	err = json.Unmarshal(schemaBytes, &schema)
+	require.NoError(t, err)
+
+	properties := schema["properties"].(map[string]interface{})
+
+	// Verify order of all properties
+	expectedOrder := map[string]float64{
+		"id":         0,
+		"Type":       1,
+		"Property 1": 2, // Featured properties come after Type
+		"Property 2": 3,
+		"Property 3": 4, // Regular properties follow
+		"Property 4": 5,
+		"Property 5": 6,
+	}
+
+	for propName, expectedPos := range expectedOrder {
+		prop, exists := properties[propName].(map[string]interface{})
+		assert.True(t, exists, "Property %s should exist", propName)
+		assert.Equal(t, expectedPos, prop["x-order"], "Property %s should have order %v", propName, expectedPos)
+	}
+
+	// Verify all properties have x-order
+	for propName, propValue := range properties {
+		prop := propValue.(map[string]interface{})
+		_, hasOrder := prop["x-order"]
+		assert.True(t, hasOrder, "Property %s should have x-order", propName)
+	}
+
+	// Verify all properties have x-key
+	for propName, propValue := range properties {
+		prop := propValue.(map[string]interface{})
+		xKey, hasXKey := prop["x-key"]
+		assert.True(t, hasXKey, "Property %s should have x-key", propName)
+
+		// Verify x-key values for specific properties
+		switch propName {
+		case "id":
+			assert.Equal(t, "id", xKey)
+		case "Type":
+			assert.Equal(t, "type", xKey)
+		case "Property 1":
+			assert.Equal(t, "prop1", xKey)
+		case "Property 2":
+			assert.Equal(t, "prop2", xKey)
+		case "Property 3":
+			assert.Equal(t, "prop3", xKey)
+		case "Property 4":
+			assert.Equal(t, "prop4", xKey)
+		case "Property 5":
+			assert.Equal(t, "prop5", xKey)
+		}
+	}
 }
