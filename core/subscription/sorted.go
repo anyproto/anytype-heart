@@ -172,8 +172,8 @@ func (s *sortedSub) onChange(ctx *opCtx) {
 		s.compCountBefore = s.compCountAfter
 	}
 
-	wasAddOrRemove, ids := s.diff.diff(ctx, s.id, s.keys)
-	s.ds.depEntriesByEntries(ctx, ids)
+	wasAddOrRemove, added, removed := s.diff.diff(ctx, s.id, s.keys)
+	s.ds.depEntriesByEntries(ctx, added)
 
 	hasChanges := false
 	for _, e := range ctx.entries {
@@ -185,6 +185,12 @@ func (s *sortedSub) onChange(ctx *opCtx) {
 				keys:  s.keys,
 			})
 			hasChanges = true
+		}
+	}
+
+	for _, id := range removed {
+		if e := s.cache.Get(id); e != nil {
+			e.SetSub(s.id, false, false)
 		}
 	}
 

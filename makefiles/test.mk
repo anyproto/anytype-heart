@@ -1,11 +1,18 @@
 # tests
+UNAME_S := $(shell uname -s)
+
+ifeq ($(UNAME_S),Darwin)
+    CGO_LDFLAGS_DARWIN = CGO_LDFLAGS=-Wl,-no_warn_duplicate_libraries
+endif
+
 test:
 	@echo 'Running tests...'
-	@CGO_LDFLAGS=-Wl,-no_warn_duplicate_libraries ANYTYPE_LOG_NOGELF=1 go test github.com/anyproto/anytype-heart/...
+
+	@$(CGO_LDFLAGS_DARWIN) ANYTYPE_LOG_NOGELF=1 go test github.com/anyproto/anytype-heart/...
 
 test-no-cache:
 	@echo 'Running tests...'
-	@CGO_LDFLAGS=-Wl,-no_warn_duplicate_libraries ANYTYPE_LOG_NOGELF=1 go test -count=1 github.com/anyproto/anytype-heart/...
+	@$(CGO_LDFLAGS_DARWIN) ANYTYPE_LOG_NOGELF=1 go test -count=1 github.com/anyproto/anytype-heart/...
 
 test-integration:
 	@echo 'Running integration tests...'
@@ -13,7 +20,7 @@ test-integration:
 
 test-race:
 	@echo 'Running tests with race-detector...'
-	@CGO_LDFLAGS=-Wl,-no_warn_duplicate_libraries ANYTYPE_LOG_NOGELF=1 go test -count=1 -race github.com/anyproto/anytype-heart/...
+	@$(CGO_LDFLAGS_DARWIN) ANYTYPE_LOG_NOGELF=1 go test -count=1 -race github.com/anyproto/anytype-heart/...
 
 test-deps:
 	@echo 'Generating test mocks...'

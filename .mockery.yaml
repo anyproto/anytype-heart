@@ -60,6 +60,9 @@ packages:
   github.com/anyproto/anytype-heart/core/files/filesync:
     interfaces:
       FileSync:
+  github.com/anyproto/anytype-heart/core/acl:
+    interfaces:
+      participantRemover:
   github.com/anyproto/anytype-heart/core/files/filestorage/rpcstore:
     interfaces:
       Service:

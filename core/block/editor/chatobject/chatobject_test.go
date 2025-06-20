@@ -2,7 +2,6 @@ package chatobject
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"testing"
 
@@ -194,7 +193,7 @@ func TestAddMessage(t *testing.T) {
 		sessionCtx := session.NewContext()
 
 		fx := newFixture(t)
-		fx.eventSender.EXPECT().BroadcastToOtherSessions(mock.Anything, mock.Anything).Return().Maybe()
+		fx.eventSender.EXPECT().Broadcast(mock.Anything).Return().Maybe()
 
 		inputMessage := givenComplexMessage()
 		messageId, err := fx.AddMessage(ctx, sessionCtx, inputMessage)
@@ -219,7 +218,7 @@ func TestAddMessage(t *testing.T) {
 		sessionCtx := session.NewContext()
 
 		fx := newFixture(t)
-		fx.eventSender.EXPECT().BroadcastToOtherSessions(mock.Anything, mock.Anything).Return()
+		fx.eventSender.EXPECT().Broadcast(mock.Anything).Return()
 
 		// Force all messages as not read
 		fx.chatHandler.forceNotRead = true
@@ -295,7 +294,7 @@ func TestGetMessagesByIds(t *testing.T) {
 	sessionCtx := session.NewContext()
 
 	fx := newFixture(t)
-	fx.eventSender.EXPECT().BroadcastToOtherSessions(mock.Anything, mock.Anything).Return()
+	fx.eventSender.EXPECT().Broadcast(mock.Anything).Return()
 
 	inputMessage := givenComplexMessage()
 	messageId, err := fx.AddMessage(ctx, sessionCtx, inputMessage)
@@ -470,6 +469,9 @@ func (fx *fixture) applyToStore(ctx context.Context, params source.PushStoreChan
 	if err != nil {
 		return "", fmt.Errorf("new tx: %w", err)
 	}
+	defer func() {
+		_ = tx.Rollback()
+	}()
 	order := fx.generateOrderId(tx)
 	err = tx.ApplyChangeSet(storestate.ChangeSet{
 		Id:        changeId,
@@ -479,7 +481,7 @@ func (fx *fixture) applyToStore(ctx context.Context, params source.PushStoreChan
 		Timestamp: params.Time.Unix(),
 	})
 	if err != nil {
-		return "", errors.Join(tx.Rollback(), fmt.Errorf("apply change set: %w", err))
+		return "", fmt.Errorf("apply change set: %w", err)
 	}
 	err = tx.Commit()
 	if err != nil {

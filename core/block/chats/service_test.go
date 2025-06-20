@@ -216,7 +216,7 @@ func TestSubscribeToMessagePreviews(t *testing.T) {
 		fx := newFixture(t)
 		ctx := context.Background()
 
-		fx.crossSpaceSubService.EXPECT().Subscribe(mock.Anything).Return(&subscription.SubscribeResponse{
+		fx.crossSpaceSubService.EXPECT().Subscribe(mock.Anything, mock.Anything).Return(&subscription.SubscribeResponse{
 			Records: []*domain.Details{
 				domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
 					bundle.RelationKeyId:      domain.String("chat1"),
@@ -272,7 +272,7 @@ func TestSubscribeToMessagePreviews(t *testing.T) {
 		fx := newFixture(t)
 		ctx := context.Background()
 
-		fx.crossSpaceSubService.EXPECT().Subscribe(mock.Anything).Return(&subscription.SubscribeResponse{
+		fx.crossSpaceSubService.EXPECT().Subscribe(mock.Anything, mock.Anything).Return(&subscription.SubscribeResponse{
 			Records: []*domain.Details{},
 		}, nil).Maybe()
 
@@ -321,7 +321,7 @@ func TestSubscribeToMessagePreviews(t *testing.T) {
 		fx := newFixture(t)
 		ctx := context.Background()
 
-		fx.crossSpaceSubService.EXPECT().Subscribe(mock.Anything).Return(&subscription.SubscribeResponse{
+		fx.crossSpaceSubService.EXPECT().Subscribe(mock.Anything, mock.Anything).Return(&subscription.SubscribeResponse{
 			Records: []*domain.Details{
 				domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
 					bundle.RelationKeyId:      domain.String("chat1"),
@@ -373,7 +373,7 @@ func TestSubscribeToMessagePreviews(t *testing.T) {
 		fx := newFixture(t)
 		ctx := context.Background()
 
-		fx.crossSpaceSubService.EXPECT().Subscribe(mock.Anything).Return(&subscription.SubscribeResponse{
+		fx.crossSpaceSubService.EXPECT().Subscribe(mock.Anything, mock.Anything).Return(&subscription.SubscribeResponse{
 			Records: []*domain.Details{
 				domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
 					bundle.RelationKeyId:      domain.String("chat1"),
