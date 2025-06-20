@@ -244,7 +244,7 @@ func (s *service) syncSubscriptions() (err error) {
 	// create spaces
 	spacesToCreate := s.topics.SpaceKeysToCreate()
 	for _, spaceToCreate := range spacesToCreate {
-		if err = s.createSpace(context.Background(), spaceToCreate); err != nil {
+		if err = s.createSpace(s.runCtx, spaceToCreate); err != nil {
 			if !errors.Is(err, pushapi.ErrSpaceExists) {
 				return fmt.Errorf("create space: %w", err)
 			} else {
