@@ -235,41 +235,36 @@ func (h *MD) renderProperties(buf writer) {
 				continue
 			}
 			var (
-				shortObject bool
 				removeArray bool
 			)
-			if slices.Contains(shortObjectRelations, key) {
-				shortObject = true
-			}
+
 			if slices.Contains(removeArrayRelations, key) {
 				removeArray = true
 			}
 
-			// Each target rendered as list item.
-			if !removeArray {
-				_, _ = fmt.Fprintf(buf, "  %s:\n", name)
-			}
-			for _, id := range ids {
-				if d, isInExport := h.getObjectInfo(id); d != nil {
-					objectName := d.Get(bundle.RelationKeyName).String()
-					if removeArray {
-						_, _ = fmt.Fprintf(buf, "  %s: %s\n", name, objectName)
-						break
-					}
-					if !shortObject {
-						_, _ = fmt.Fprintf(buf, "    - Name: %s\n", objectName)
-						if isInExport {
-							filename := h.fn.Get("", id, objectName, h.Ext())
-							_, _ = fmt.Fprintf(buf, "      File: %s\n", filename)
-						} else {
-							// Object not in export, show ID
-							_, _ = fmt.Fprintf(buf, "      Id: %s\n", id)
-						}
-					} else {
-						// Short object format, just show name
-						_, _ = fmt.Fprintf(buf, "    - %s\n", objectName)
-					}
+			if removeArray {
+				title, _, ok := h.getLinkInfo(ids[0])
+				if ok {
+					_, _ = fmt.Fprintf(buf, "  %s: %s\n", name, title)
 				}
+				continue
+			} else {
+				_, _ = fmt.Fprintf(buf, "  %s:\n", name)
+
+			}
+			// Each target rendered as list item.
+
+			for _, id := range ids {
+				title, filename, ok := h.getLinkInfo(id)
+				if !ok {
+					continue
+				}
+				if h.knownDocs[id] == nil {
+					_, _ = fmt.Fprintf(buf, "    - %s\n", title)
+				} else {
+					_, _ = fmt.Fprintf(buf, "    - %s\n", filename)
+				}
+
 			}
 
 		case model.RelationFormat_tag,
@@ -919,7 +914,7 @@ func (h *MD) GenerateJSONSchema() ([]byte, error) {
 
 func (h *MD) getRelationOptions(relationKey string) []string {
 	var options []string
-	
+
 	// Return empty if resolver is not available
 	if h.resolver == nil {
 		return options
@@ -936,4 +931,3 @@ func (h *MD) getRelationOptions(relationKey string) []string {
 
 	return options
 }
-

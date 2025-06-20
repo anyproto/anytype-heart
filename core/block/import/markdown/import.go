@@ -172,6 +172,7 @@ func (m *Markdown) getSnapshotsAndRootObjectsIds(
 		m.processImportStep(pathsCount, files, progress, allErrors, details, m.linkPagesWithRootFile) ||
 		m.processImportStep(pathsCount, files, progress, allErrors, details, m.addLinkBlocks) ||
 		m.processImportStep(pathsCount, files, progress, allErrors, details, m.fillEmptyBlocks) ||
+		m.processImportStep(pathsCount, files, progress, allErrors, details, m.processObjectProperties) ||
 		m.processImportStep(pathsCount, files, progress, allErrors, details, m.addChildBlocks) {
 		return nil, nil
 	}
@@ -1012,4 +1013,34 @@ func getObjectTypeDetails(name, key string, propKeys []string) *domain.Details {
 	details.SetString(bundle.RelationKeyUniqueKey, uniqueKey.Marshal())
 
 	return details
+}
+
+func (m *Markdown) processObjectProperties(files map[string]*FileInfo, progress process.Progress, _ map[string]*domain.Details, allErrors *common.ConvertError) {
+	progress.SetProgressMessage("Start linking blocks")
+
+	for _, file := range files {
+		if err := progress.TryStep(1); err != nil {
+			allErrors.Add(common.ErrCancel)
+			return
+		}
+
+		if file.PageID == "" {
+			// file is not a page
+			continue
+		}
+
+		for _, prop := range file.YAMLProperties {
+			if prop.Format == model.RelationFormat_object {
+				paths := prop.Value.WrapToStringList()
+				ids := make([]string, 0, len(paths))
+				for _, path := range paths {
+					if filepath.Ext(path) != ".md" {
+						continue
+					}
+					fmt.Println("Processing path:", path)
+				}
+				prop.Value = domain.StringList(ids)
+			}
+		}
+	}
 }

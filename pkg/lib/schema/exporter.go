@@ -84,8 +84,8 @@ func (e *JSONSchemaExporter) typeToJSONSchema(t *Type, schema *Schema) map[strin
 		jsonSchema["x-icon-emoji"] = t.IconEmoji
 	}
 
-	if t.IconImage != "" {
-		jsonSchema["x-icon-name"] = t.IconImage
+	if t.IconName != "" {
+		jsonSchema["x-icon-name"] = t.IconName
 	}
 
 	// Add other extensions (but skip internal fields like "id")
@@ -105,13 +105,7 @@ func (e *JSONSchemaExporter) typeToJSONSchema(t *Type, schema *Schema) map[strin
 		"readOnly":    true,
 		"x-order":     0,
 		"x-key":       "id",
-	}
-
-	// Add Type property
-	properties["Type"] = map[string]interface{}{
-		"const":   t.Name,
-		"x-order": 1,
-		"x-key":   bundle.RelationKeyType.String(),
+		"x-hidden":    true, // Always hidden in JSON Schema
 	}
 
 	// Collect all relations and sort by order
@@ -120,14 +114,19 @@ func (e *JSONSchemaExporter) typeToJSONSchema(t *Type, schema *Schema) map[strin
 		relation *Relation
 		order    int
 		featured bool
+		hidden   bool // Whether this relation is hidden
 	}
 
 	var orderedRels []orderedRelation
 	propertyOrder := 2 // Start after id and Type
 
+	hasType := false // Track if we have a key relation
 	// Process featured relations first
 	for _, relKey := range t.FeaturedRelations {
 		if rel, ok := schema.GetRelation(relKey); ok {
+			if relKey == bundle.RelationKeyType.String() {
+				hasType = true // Track if Type relation is present
+			}
 			orderedRels = append(orderedRels, orderedRelation{
 				name:     rel.Name,
 				relation: rel,
@@ -141,6 +140,9 @@ func (e *JSONSchemaExporter) typeToJSONSchema(t *Type, schema *Schema) map[strin
 	// Then regular relations
 	for _, relKey := range t.RecommendedRelations {
 		if rel, ok := schema.GetRelation(relKey); ok {
+			if relKey == bundle.RelationKeyType.String() {
+				hasType = true // Track if Type relation is present
+			}
 			orderedRels = append(orderedRels, orderedRelation{
 				name:     rel.Name,
 				relation: rel,
@@ -151,13 +153,41 @@ func (e *JSONSchemaExporter) typeToJSONSchema(t *Type, schema *Schema) map[strin
 		}
 	}
 
+	for _, relKey := range t.HiddenRelations {
+		if rel, ok := schema.GetRelation(relKey); ok {
+			if relKey == bundle.RelationKeyType.String() {
+				hasType = true // Track if Type relation is present
+			}
+			orderedRels = append(orderedRels, orderedRelation{
+				name:     rel.Name,
+				relation: rel,
+				order:    propertyOrder,
+				hidden:   true,
+			})
+			propertyOrder++
+		}
+	}
+	if !hasType {
+		typeRel := bundle.MustGetRelation(bundle.RelationKeyType)
+		// If Type relation is missing, add it as a hidden property
+		orderedRels = append(orderedRels, orderedRelation{
+			name:     "Type",
+			relation: &Relation{Key: bundle.RelationKeyType.String(), Name: typeRel.Name, Format: typeRel.Format},
+			order:    propertyOrder,
+		})
+		propertyOrder++
+	}
+
 	// Convert relations to properties
 	for _, or := range orderedRels {
 		prop := e.relationToProperty(or.relation)
 		prop["x-order"] = or.order
 		if or.featured {
 			prop["x-featured"] = true
+		} else if or.hidden {
+			prop["x-hidden"] = true
 		}
+
 		properties[or.name] = prop
 	}
 
@@ -165,23 +195,9 @@ func (e *JSONSchemaExporter) typeToJSONSchema(t *Type, schema *Schema) map[strin
 	if t.Layout == model.ObjectType_collection {
 		properties["Collection"] = map[string]interface{}{
 			"type":        "array",
-			"description": "List of objects in this collection",
+			"description": "List of objects ids in this collection",
 			"items": map[string]interface{}{
-				"type": "object",
-				"properties": map[string]interface{}{
-					"Name": map[string]interface{}{
-						"type":        "string",
-						"description": "Name of the object in the collection",
-					},
-					"File": map[string]interface{}{
-						"type":        "string",
-						"description": "Path to the object file (only present if object is included in export)",
-					},
-					"Id": map[string]interface{}{
-						"type":        "string",
-						"description": "Unique identifier of the object (only present if object is not included in export)",
-					},
-				},
+				"type":     "string",
 				"required": []string{"Name"},
 			},
 			"x-order": propertyOrder,
@@ -209,6 +225,14 @@ func (e *JSONSchemaExporter) relationToProperty(r *Relation) map[string]interfac
 	// Set read-only if applicable
 	if r.IsReadOnly {
 		prop["readOnly"] = true
+	}
+
+	if r.Key == bundle.RelationKeyType.String() {
+		// ID is always read-only and has a specific format
+		prop["const"] = e
+		prop["description"] = "Unique identifier of the Anytype object"
+		prop["readOnly"] = true
+		return prop
 	}
 
 	// Handle different formats

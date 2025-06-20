@@ -73,14 +73,14 @@ func (s *Schema) Validate() error {
 			return fmt.Errorf("invalid type: %w", err)
 		}
 	}
-	
+
 	// Validate all relations
 	for key, r := range s.Relations {
 		if err := r.Validate(); err != nil {
 			return fmt.Errorf("invalid relation %s: %w", key, err)
 		}
 	}
-	
+
 	// Validate type-relation references
 	if s.Type != nil {
 		// Check featured relations exist
@@ -90,7 +90,7 @@ func (s *Schema) Validate() error {
 				continue
 			}
 		}
-		
+
 		// Check recommended relations exist
 		for _, relId := range s.Type.RecommendedRelations {
 			if _, ok := s.Relations[relId]; !ok {
@@ -99,7 +99,7 @@ func (s *Schema) Validate() error {
 			}
 		}
 	}
-	
+
 	return nil
 }
 
@@ -108,7 +108,7 @@ func (s *Schema) Merge(other *Schema) error {
 	if other == nil {
 		return nil
 	}
-	
+
 	// Merge type
 	if other.Type != nil {
 		if s.Type == nil {
@@ -128,21 +128,21 @@ func (s *Schema) Merge(other *Schema) error {
 		}
 		// If different types, keep the existing one
 	}
-	
+
 	// Merge relations
 	for key, r := range other.Relations {
 		if _, ok := s.Relations[key]; !ok {
 			s.Relations[key] = r
 		}
 	}
-	
+
 	return nil
 }
 
 // Clone creates a deep copy of the schema
 func (s *Schema) Clone() *Schema {
 	clone := NewSchema()
-	
+
 	// Clone type
 	if s.Type != nil {
 		clonedType := &Type{
@@ -151,13 +151,13 @@ func (s *Schema) Clone() *Schema {
 			Description:          s.Type.Description,
 			PluralName:           s.Type.PluralName,
 			IconEmoji:            s.Type.IconEmoji,
-			IconImage:            s.Type.IconImage,
+			IconName:             s.Type.IconName,
 			IsArchived:           s.Type.IsArchived,
 			IsHidden:             s.Type.IsHidden,
 			Layout:               s.Type.Layout,
 			FeaturedRelations:    append([]string{}, s.Type.FeaturedRelations...),
 			RecommendedRelations: append([]string{}, s.Type.RecommendedRelations...),
-			RestrictedRelations:  append([]string{}, s.Type.RestrictedRelations...),
+			HiddenRelations:      append([]string{}, s.Type.HiddenRelations...),
 			Extension:            make(map[string]interface{}),
 		}
 		// Clone extensions
@@ -166,7 +166,7 @@ func (s *Schema) Clone() *Schema {
 		}
 		clone.Type = clonedType
 	}
-	
+
 	// Clone relations
 	for key, r := range s.Relations {
 		clonedRelation := &Relation{
@@ -190,7 +190,7 @@ func (s *Schema) Clone() *Schema {
 		}
 		clone.Relations[key] = clonedRelation
 	}
-	
+
 	return clone
 }
 
@@ -199,7 +199,7 @@ type Parser interface {
 	Parse(reader io.Reader) (*Schema, error)
 }
 
-// Exporter interface for exporting schemas  
+// Exporter interface for exporting schemas
 type Exporter interface {
 	Export(schema *Schema, writer io.Writer) error
 }

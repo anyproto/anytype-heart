@@ -92,6 +92,8 @@ type PropertyResolver interface {
 
 	// ResolveOptionValues converts option names to option IDs
 	ResolveOptionValues(relationKey string, optionNames []string) []string
+
+	ResolveObjectValues(objectNames []string) []string
 }
 
 // ParseYAMLFrontMatter parses YAML front matter and returns properties with their formats
@@ -166,6 +168,10 @@ func ParseYAMLFrontMatterWithResolver(frontMatter []byte, resolver PropertyResol
 		// Now resolve option values if needed
 		if resolver != nil && (prop.Format == model.RelationFormat_status || prop.Format == model.RelationFormat_tag) {
 			prop.Value = resolveOptionValue(prop, resolver)
+		}
+		if resolver != nil && prop.Format == model.RelationFormat_object {
+			// prepend baseFilePath
+			fmt.Println("Object format detected, resolving values")
 		}
 
 		// Store in details

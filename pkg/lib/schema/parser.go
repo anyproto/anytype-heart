@@ -112,7 +112,7 @@ func (p *JSONSchemaParser) parseTypeFromSchema(jsonSchema map[string]interface{}
 	}
 
 	if iconName, ok := jsonSchema["x-icon-name"].(string); ok {
-		t.IconImage = iconName
+		t.IconName = iconName
 	}
 
 	// Store other x-* fields in extension

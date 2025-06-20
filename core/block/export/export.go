@@ -1161,6 +1161,7 @@ func (e *exportContext) writeDoc(ctx context.Context, wr writer, docId string, d
 		case model.Export_Markdown:
 			// Create a lazy object resolver for markdown export
 			resolver := newLazyObjectResolver(e.objectStore, e.spaceId)
+
 			if e.includeJsonSchema {
 				conv = md.NewMDConverterWithResolver(st, wr.Namer(), true, true, resolver)
 			} else {
@@ -1168,11 +1169,10 @@ func (e *exportContext) writeDoc(ctx context.Context, wr writer, docId string, d
 			}
 		case model.Export_Protobuf:
 			conv = pbc.NewConverter(st, e.isJson)
-			conv.SetKnownDocs(details)
 		case model.Export_JSON:
 			conv = pbjson.NewConverter(st)
-			conv.SetKnownDocs(details)
 		}
+		conv.SetKnownDocs(details)
 		result := conv.Convert(b.Type().ToProto())
 		if result == nil {
 			return nil

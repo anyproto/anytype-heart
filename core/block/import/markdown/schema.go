@@ -305,3 +305,12 @@ func (si *SchemaImporter) ResolveOptionValues(relationKey string, optionNames []
 	}
 	return result
 }
+
+// ResolveOptionValues converts option names to option IDs for a given relation
+func (si *SchemaImporter) ResolveObjectValues(objectnames []string) []string {
+	result := make([]string, 0, len(objectnames))
+	for _, name := range objectnames {
+		result = append(result, "./"+name+".md")
+	}
+	return result
+}

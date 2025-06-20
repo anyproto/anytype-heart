@@ -19,8 +19,8 @@ import (
 )
 
 type mdConverter struct {
-	tempDirProvider  core.TempDirProvider
-	schemaImporter   *SchemaImporter // Optional schema importer for property resolution
+	tempDirProvider core.TempDirProvider
+	schemaImporter  *SchemaImporter // Optional schema importer for property resolution
 }
 
 type FileInfo struct {
@@ -29,6 +29,7 @@ type FileInfo struct {
 	PageID                string
 	IsRootFile            bool
 	Title                 string
+	TitleUnique           string
 	ParsedBlocks          []*model.Block
 	CollectionsObjectsIds []string
 	YAMLDetails           *domain.Details
@@ -214,6 +215,19 @@ func (m *mdConverter) processFileBlock(block *model.Block, importedSource source
 	}
 }
 
+func (m *mdConverter) findFileByShortPath(rootPath, shortPath string, files map[string]*FileInfo) (*FileInfo, bool) {
+	if !strings.HasSuffix(rootPath, string(filepath.Separator)) {
+		rootPath += string(filepath.Separator)
+	}
+	for targetName, targetFile := range files {
+		targetShortPath := strings.TrimPrefix(targetName, rootPath)
+		if strings.EqualFold(targetShortPath, shortPath) {
+			return targetFile, true
+		}
+	}
+	return nil, false
+}
+
 func (m *mdConverter) processLinkBlock(shortPath string, file *FileInfo, files map[string]*FileInfo) {
 	ext := filepath.Ext(shortPath)
 	if !strings.EqualFold(ext, ".csv") {
@@ -289,14 +303,14 @@ func (m *mdConverter) createBlocksFromFile(importSource source.Source, filePath 
 		if len(frontMatter) > 0 {
 			var yamlResult *yamlfm.ParseResult
 			var err error
-			
+
 			// Use schema importer as resolver if available
 			if m.schemaImporter != nil && m.schemaImporter.HasSchemas() {
 				yamlResult, err = yamlfm.ParseYAMLFrontMatterWithResolver(frontMatter, m.schemaImporter)
 			} else {
 				yamlResult, err = yamlfm.ParseYAMLFrontMatter(frontMatter)
 			}
-			
+
 			if err != nil {
 				log.Warnf("failed to parse YAML front matter from %s: %s", filePath, err)
 			} else if yamlResult != nil {

@@ -16,13 +16,13 @@ type Type struct {
 	Description          string                 `json:"description,omitempty"`
 	PluralName           string                 `json:"pluralName,omitempty"`
 	IconEmoji            string                 `json:"iconEmoji,omitempty"`
-	IconImage            string                 `json:"iconImage,omitempty"`
+	IconName             string                 `json:"iconImage,omitempty"`
 	IsArchived           bool                   `json:"isArchived,omitempty"`
 	IsHidden             bool                   `json:"isHidden,omitempty"`
 	Layout               model.ObjectTypeLayout `json:"layout,omitempty"`
 	FeaturedRelations    []string               `json:"featuredRelations,omitempty"`
 	RecommendedRelations []string               `json:"recommendedRelations,omitempty"`
-	RestrictedRelations  []string               `json:"restrictedRelations,omitempty"`
+	HiddenRelations      []string               `json:"hiddenRelations,omitempty"`
 	Extension            map[string]interface{} `json:"extension,omitempty"` // x-* fields from schema
 	KeyToIdFunc          func(string) string    `json:"-"`                   // function to convert type key to ID, used for relations
 }
@@ -56,8 +56,8 @@ func (t *Type) ToDetails() *domain.Details {
 		details.SetString(bundle.RelationKeyIconEmoji, t.IconEmoji)
 	}
 
-	if t.IconImage != "" {
-		details.SetString(bundle.RelationKeyIconImage, t.IconImage)
+	if t.IconName != "" {
+		details.SetString(bundle.RelationKeyIconName, t.IconName)
 	}
 
 	details.SetBool(bundle.RelationKeyIsArchived, t.IsArchived)
@@ -76,10 +76,9 @@ func (t *Type) ToDetails() *domain.Details {
 		details.SetStringList(bundle.RelationKeyRecommendedRelations, convertKeysToIds(t.RecommendedRelations, t.KeyToIdFunc))
 	}
 
-	// Restricted relations not supported yet
-	// if len(t.RestrictedRelations) > 0 {
-	//	details.SetStringList(bundle.RelationKeyRestrictedRelations, t.RestrictedRelations)
-	// }
+	if len(t.HiddenRelations) > 0 {
+		details.SetStringList(bundle.RelationKeyRecommendedHiddenRelations, convertKeysToIds(t.HiddenRelations, t.KeyToIdFunc))
+	}
 
 	// Set source to indicate it's from import
 	details.SetInt64(bundle.RelationKeySourceObject, int64(model.ObjectType_objectType))
@@ -113,14 +112,13 @@ func TypeFromDetails(details *domain.Details) (*Type, error) {
 		Description:          details.GetString(bundle.RelationKeyDescription),
 		PluralName:           details.GetString(bundle.RelationKeyPluralName),
 		IconEmoji:            details.GetString(bundle.RelationKeyIconEmoji),
-		IconImage:            details.GetString(bundle.RelationKeyIconImage),
+		IconName:             details.GetString(bundle.RelationKeyIconName),
 		IsArchived:           details.GetBool(bundle.RelationKeyIsArchived),
 		IsHidden:             details.GetBool(bundle.RelationKeyIsHidden),
 		Layout:               model.ObjectTypeLayout(details.GetInt64(bundle.RelationKeyRecommendedLayout)),
 		FeaturedRelations:    details.GetStringList(bundle.RelationKeyRecommendedFeaturedRelations),
 		RecommendedRelations: details.GetStringList(bundle.RelationKeyRecommendedRelations),
-		// RestrictedRelations:  details.GetStringList(bundle.RelationKeyRestrictedRelations),
-		Extension: make(map[string]interface{}),
+		Extension:            make(map[string]interface{}),
 	}
 
 	// Extract type key from unique key if available
