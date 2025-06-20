@@ -165,14 +165,13 @@ func (m *Markdown) getSnapshotsAndRootObjectsIds(
 
 	progress.SetTotal(int64(numberOfStages * len(files)))
 	details := make(map[string]*domain.Details, 0)
-
 	if m.processImportStep(pathsCount, files, progress, allErrors, details, m.setInboundLinks) ||
 		m.processImportStep(pathsCount, files, progress, allErrors, details, m.setNewID) ||
+		m.processImportStep(pathsCount, files, progress, allErrors, details, m.processObjectProperties) ||
 		m.processImportStep(pathsCount, files, progress, allErrors, details, m.addLinkToObjectBlocks) ||
 		m.processImportStep(pathsCount, files, progress, allErrors, details, m.linkPagesWithRootFile) ||
 		m.processImportStep(pathsCount, files, progress, allErrors, details, m.addLinkBlocks) ||
 		m.processImportStep(pathsCount, files, progress, allErrors, details, m.fillEmptyBlocks) ||
-		m.processImportStep(pathsCount, files, progress, allErrors, details, m.processObjectProperties) ||
 		m.processImportStep(pathsCount, files, progress, allErrors, details, m.addChildBlocks) {
 		return nil, nil
 	}
@@ -885,7 +884,7 @@ func (m *Markdown) fillEmptyBlocks(files map[string]*FileInfo, progress process.
 	}
 }
 
-func (m *Markdown) setNewID(files map[string]*FileInfo, progress process.Progress, details map[string]*domain.Details, allErrors *common.ConvertError) {
+func (m *Markdown) setNewID(files map[string]*FileInfo, progress process.Progress, _ map[string]*domain.Details, allErrors *common.ConvertError) {
 	progress.SetProgressMessage("Start creating blocks")
 	for name, file := range files {
 		if err := progress.TryStep(1); err != nil {
@@ -895,8 +894,6 @@ func (m *Markdown) setNewID(files map[string]*FileInfo, progress process.Progres
 
 		if strings.EqualFold(filepath.Ext(name), ".md") || strings.EqualFold(filepath.Ext(name), ".csv") {
 			file.PageID = bson.NewObjectId().Hex()
-
-			m.setDetails(file, name, details)
 		}
 	}
 }
@@ -1015,32 +1012,54 @@ func getObjectTypeDetails(name, key string, propKeys []string) *domain.Details {
 	return details
 }
 
-func (m *Markdown) processObjectProperties(files map[string]*FileInfo, progress process.Progress, _ map[string]*domain.Details, allErrors *common.ConvertError) {
+func (m *Markdown) findFileByPath(path string, files map[string]*FileInfo) *FileInfo {
+	// First try exact match
+	if file, exists := files[path]; exists {
+		return file
+	}
+
+	// If not found, try to match by comparing paths
+	for filePath, file := range files {
+		// Compare absolute paths
+		if filePath == path {
+			return file
+		}
+		// Also try comparing just the filenames in case of path variations
+		if filepath.Base(filePath) == filepath.Base(path) {
+			return file
+		}
+	}
+
+	return nil
+}
+
+func (m *Markdown) processObjectProperties(files map[string]*FileInfo, progress process.Progress, details map[string]*domain.Details, allErrors *common.ConvertError) {
 	progress.SetProgressMessage("Start linking blocks")
 
-	for _, file := range files {
+	fmt.Printf("Processing object properties for %d files: %v\n", len(files), details)
+	for fileName, file := range files {
 		if err := progress.TryStep(1); err != nil {
 			allErrors.Add(common.ErrCancel)
 			return
 		}
 
-		if file.PageID == "" {
-			// file is not a page
-			continue
-		}
-
-		for _, prop := range file.YAMLProperties {
+		for i := range file.YAMLProperties {
+			prop := &file.YAMLProperties[i]
 			if prop.Format == model.RelationFormat_object {
-				paths := prop.Value.WrapToStringList()
+				vals := file.YAMLDetails.Get(domain.RelationKey(prop.Key))
+				paths := vals.WrapToStringList()
 				ids := make([]string, 0, len(paths))
 				for _, path := range paths {
-					if filepath.Ext(path) != ".md" {
-						continue
+					// The path should already be absolute from YAML parsing
+					// Find the file in the files map
+					targetFile := m.findFileByPath(path, files)
+					if targetFile != nil && targetFile.PageID != "" {
+						ids = append(ids, targetFile.PageID)
 					}
-					fmt.Println("Processing path:", path)
 				}
-				prop.Value = domain.StringList(ids)
+				file.YAMLDetails.Set(domain.RelationKey(prop.Key), domain.StringList(ids))
 			}
 		}
+		m.setDetails(file, fileName, details)
 	}
 }

@@ -2,6 +2,7 @@ package yamlfm
 
 import (
 	"fmt"
+	"path/filepath"
 	"regexp"
 	"strings"
 	"time"
@@ -103,6 +104,11 @@ func ParseYAMLFrontMatter(frontMatter []byte) (*ParseResult, error) {
 
 // ParseYAMLFrontMatterWithResolver parses YAML front matter using an optional property resolver
 func ParseYAMLFrontMatterWithResolver(frontMatter []byte, resolver PropertyResolver) (*ParseResult, error) {
+	return ParseYAMLFrontMatterWithResolverAndPath(frontMatter, resolver, "")
+}
+
+// ParseYAMLFrontMatterWithResolverAndPath parses YAML front matter using an optional property resolver and base file path
+func ParseYAMLFrontMatterWithResolverAndPath(frontMatter []byte, resolver PropertyResolver, baseFilePath string) (*ParseResult, error) {
 	if len(frontMatter) == 0 {
 		return nil, nil
 	}
@@ -169,9 +175,10 @@ func ParseYAMLFrontMatterWithResolver(frontMatter []byte, resolver PropertyResol
 		if resolver != nil && (prop.Format == model.RelationFormat_status || prop.Format == model.RelationFormat_tag) {
 			prop.Value = resolveOptionValue(prop, resolver)
 		}
-		if resolver != nil && prop.Format == model.RelationFormat_object {
-			// prepend baseFilePath
-			fmt.Println("Object format detected, resolving values")
+
+		// Resolve file paths for object relations
+		if (prop.Format == model.RelationFormat_object || prop.Format == model.RelationFormat_file) && baseFilePath != "" {
+			prop.Value = resolveFilePaths(prop.Value, baseFilePath)
 		}
 
 		// Store in details
@@ -218,6 +225,9 @@ func processYAMLProperty(key string, value interface{}) *Property {
 			prop.Format = model.RelationFormat_longtext
 		} else if containsStatusKeyword(lowerKey) && len(v) < 50 {
 			prop.Format = model.RelationFormat_status
+		} else if isFilePath(v) {
+			// Detect object format for file paths
+			prop.Format = model.RelationFormat_object
 		}
 		prop.Value = domain.String(v)
 
@@ -242,10 +252,21 @@ func processYAMLProperty(key string, value interface{}) *Property {
 		}
 
 	case []interface{}:
-		prop.Format = model.RelationFormat_tag
 		strSlice := make([]string, 0, len(v))
+		hasFilePaths := false
 		for _, item := range v {
-			strSlice = append(strSlice, fmt.Sprintf("%v", item))
+			itemStr := fmt.Sprintf("%v", item)
+			if isFilePath(itemStr) {
+				hasFilePaths = true
+			}
+			strSlice = append(strSlice, itemStr)
+		}
+
+		// If array contains file paths, treat as object relation, otherwise as tag
+		if hasFilePaths {
+			prop.Format = model.RelationFormat_object
+		} else {
+			prop.Format = model.RelationFormat_tag
 		}
 		prop.Value = domain.StringList(strSlice)
 
@@ -289,6 +310,31 @@ func isURL(s string) bool {
 
 func isEmail(s string) bool {
 	return emailRe.MatchString(s)
+}
+
+func isFilePath(s string) bool {
+	// Check if string looks like a file path
+	// Must have an extension and not be a URL
+	if isURL(s) {
+		return false
+	}
+
+	// Check for file extension
+	ext := filepath.Ext(s)
+	if ext == "" {
+		return false
+	}
+
+	// Common markdown and document extensions
+	commonExts := []string{".md", ".txt", ".doc", ".docx", ".pdf", ".html", ".csv", ".json", ".xml"}
+	for _, commonExt := range commonExts {
+		if strings.EqualFold(ext, commonExt) {
+			return true
+		}
+	}
+
+	// Also check if it contains path separators which indicates it's likely a file path
+	return strings.Contains(s, "/") || strings.Contains(s, "\\")
 }
 
 // parseDate tries to parse a string as a date and returns whether it includes time
@@ -354,4 +400,27 @@ func resolveOptionValue(prop *Property, resolver PropertyResolver) domain.Value 
 		}
 	}
 	return prop.Value
+}
+
+// resolveFilePaths prepends baseFilePath to relative file paths
+func resolveFilePaths(value domain.Value, baseFilePath string) domain.Value {
+	if value.IsString() {
+		path := value.String()
+		if !filepath.IsAbs(path) {
+			path = filepath.Join(baseFilePath, path)
+		}
+		return domain.String(path)
+	} else if value.IsStringList() {
+		paths := value.StringList()
+		resolvedPaths := make([]string, len(paths))
+		for i, path := range paths {
+			if !filepath.IsAbs(path) {
+				resolvedPaths[i] = filepath.Join(baseFilePath, path)
+			} else {
+				resolvedPaths[i] = path
+			}
+		}
+		return domain.StringList(resolvedPaths)
+	}
+	return value
 }

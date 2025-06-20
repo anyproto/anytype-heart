@@ -30,6 +30,11 @@ func (m *MockResolver) ResolveOptionValues(relationKey string, optionNames []str
 	return optionNames
 }
 
+func (m *MockResolver) ResolveObjectValues(objectNames []string) []string {
+	// For testing, just return the same names
+	return objectNames
+}
+
 func TestParseYAMLFrontMatterWithResolver(t *testing.T) {
 	t.Run("uses resolver keys when available", func(t *testing.T) {
 		resolver := &MockResolver{
