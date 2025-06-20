@@ -571,3 +571,153 @@ func TestTypePropertyExport(t *testing.T) {
 		assert.Equal(t, "Task", typeProp["const"])
 	})
 }
+
+func TestPropertyNameDeduplication(t *testing.T) {
+	t.Run("JSON Schema export deduplicates property names", func(t *testing.T) {
+		// Create a schema with duplicate property names
+		s := NewSchema()
+		
+		// Add relations with duplicate names but different keys
+		rel1 := &Relation{
+			Key:    "user_name",
+			Name:   "Name", // Same name
+			Format: model.RelationFormat_shorttext,
+		}
+		s.AddRelation(rel1)
+		
+		rel2 := &Relation{
+			Key:    "company_name",
+			Name:   "Name", // Same name
+			Format: model.RelationFormat_shorttext,
+		}
+		s.AddRelation(rel2)
+		
+		rel3 := &Relation{
+			Key:    "project_name",
+			Name:   "Name", // Same name
+			Format: model.RelationFormat_shorttext,
+		}
+		s.AddRelation(rel3)
+		
+		rel4 := &Relation{
+			Key:    "description",
+			Name:   "Description", // Unique name
+			Format: model.RelationFormat_longtext,
+		}
+		s.AddRelation(rel4)
+		
+		// Create type with these relations
+		typ := &Type{
+			Key:                  "entity",
+			Name:                 "Entity",
+			FeaturedRelations:    []string{"user_name"},
+			RecommendedRelations: []string{"company_name", "description"},
+			HiddenRelations:      []string{"project_name"},
+		}
+		s.SetType(typ)
+		
+		// Export to JSON Schema
+		exporter := NewJSONSchemaExporter("  ")
+		var buf bytes.Buffer
+		err := exporter.Export(s, &buf)
+		require.NoError(t, err)
+		
+		// Parse exported JSON
+		var jsonSchema map[string]interface{}
+		err = json.Unmarshal(buf.Bytes(), &jsonSchema)
+		require.NoError(t, err)
+		
+		// Check properties
+		properties := jsonSchema["properties"].(map[string]interface{})
+		
+		// Should have deduplicated names (sorted by key: company_name, project_name, user_name)
+		// Expected names: "Name" (first), "Name 2" (second), "Name 3" (third)
+		nameProp, ok := properties["Name"].(map[string]interface{})
+		require.True(t, ok, "Should have 'Name' property")
+		assert.Equal(t, "company_name", nameProp["x-key"], "First 'Name' should be company_name (alphabetically first)")
+		
+		name2Prop, ok := properties["Name 2"].(map[string]interface{})
+		require.True(t, ok, "Should have 'Name 2' property")
+		assert.Equal(t, "project_name", name2Prop["x-key"], "Second 'Name' should be project_name")
+		
+		name3Prop, ok := properties["Name 3"].(map[string]interface{})
+		require.True(t, ok, "Should have 'Name 3' property")
+		assert.Equal(t, "user_name", name3Prop["x-key"], "Third 'Name' should be user_name")
+		
+		// Description should keep original name
+		descProp, ok := properties["Description"].(map[string]interface{})
+		require.True(t, ok, "Should have 'Description' property")
+		assert.Equal(t, "description", descProp["x-key"])
+		
+		// Verify correct flags are preserved
+		assert.Equal(t, true, name3Prop["x-featured"], "user_name should be featured")
+		assert.Equal(t, true, name2Prop["x-hidden"], "project_name should be hidden")
+		assert.Nil(t, nameProp["x-featured"], "company_name should not be featured")
+		assert.Nil(t, nameProp["x-hidden"], "company_name should not be hidden")
+	})
+	
+	t.Run("Type property always keeps its name without suffix", func(t *testing.T) {
+		// Test that system Type property always remains "Type" even with conflicts
+		s := NewSchema()
+		
+		// Add the system type relation
+		typeRel := &Relation{
+			Key:    "type",
+			Name:   "Type",
+			Format: model.RelationFormat_shorttext,
+		}
+		s.AddRelation(typeRel)
+		
+		// Add relations that have "Type" as their display name
+		rel1 := &Relation{
+			Key:    "custom_type",
+			Name:   "Type", // Same as system Type property
+			Format: model.RelationFormat_shorttext,
+		}
+		s.AddRelation(rel1)
+		
+		rel2 := &Relation{
+			Key:    "another_type",
+			Name:   "Type", // Same as system Type property
+			Format: model.RelationFormat_shorttext,
+		}
+		s.AddRelation(rel2)
+		
+		// Create type
+		typ := &Type{
+			Key:                  "document",
+			Name:                 "Document",
+			FeaturedRelations:    []string{"type", "custom_type", "another_type"}, // Include system type relation
+		}
+		s.SetType(typ)
+		
+		// Export to JSON Schema
+		exporter := NewJSONSchemaExporter("  ")
+		var buf bytes.Buffer
+		err := exporter.Export(s, &buf)
+		require.NoError(t, err)
+		
+		// Parse exported JSON
+		var jsonSchema map[string]interface{}
+		err = json.Unmarshal(buf.Bytes(), &jsonSchema)
+		require.NoError(t, err)
+		
+		// Check properties
+		properties := jsonSchema["properties"].(map[string]interface{})
+		
+		// System Type property should always be "Type" without suffix
+		typeProp, ok := properties["Type"].(map[string]interface{})
+		require.True(t, ok, "Should have 'Type' property without suffix")
+		assert.Equal(t, "type", typeProp["x-key"], "Type property should be system type")
+		assert.Equal(t, "Document", typeProp["const"], "Type value should be the type name")
+		
+		// Other relations with "Type" name should get suffixes
+		type2Prop, ok := properties["Type 2"].(map[string]interface{})
+		require.True(t, ok, "Should have 'Type 2' property")
+		assert.Equal(t, "another_type", type2Prop["x-key"], "Type 2 should be another_type (alphabetically first)")
+		
+		type3Prop, ok := properties["Type 3"].(map[string]interface{})
+		require.True(t, ok, "Should have 'Type 3' property")
+		assert.Equal(t, "custom_type", type3Prop["x-key"], "Type 3 should be custom_type")
+	})
+}

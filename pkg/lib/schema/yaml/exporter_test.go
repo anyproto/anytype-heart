@@ -238,3 +238,180 @@ func TestExportDetailsToYAML(t *testing.T) {
 	assert.True(t, propNames["tags"])
 	assert.True(t, propNames["published"])
 }
+
+func TestYAMLPropertyNameDeduplication(t *testing.T) {
+	t.Run("YAML export deduplicates property names", func(t *testing.T) {
+		// Create properties with duplicate names
+		properties := []Property{
+			{
+				Name:   "Name",
+				Key:    "user_name",
+				Format: model.RelationFormat_shorttext,
+				Value:  domain.String("John Doe"),
+			},
+			{
+				Name:   "Name",
+				Key:    "company_name",
+				Format: model.RelationFormat_shorttext,
+				Value:  domain.String("Acme Corp"),
+			},
+			{
+				Name:   "Name",
+				Key:    "project_name",
+				Format: model.RelationFormat_shorttext,
+				Value:  domain.String("Alpha Project"),
+			},
+			{
+				Name:   "Description",
+				Key:    "description",
+				Format: model.RelationFormat_longtext,
+				Value:  domain.String("A detailed description"),
+			},
+		}
+		
+		// Export to YAML
+		result, err := ExportToYAML(properties, nil)
+		require.NoError(t, err)
+		
+		yamlStr := string(result)
+		
+		// Should have deduplicated names sorted by key
+		// Expected: company_name -> "Name", project_name -> "Name 2", user_name -> "Name 3"
+		assert.Contains(t, yamlStr, "Name: Acme Corp", "First Name should be company_name")
+		assert.Contains(t, yamlStr, "Name 2: Alpha Project", "Second Name should be project_name")
+		assert.Contains(t, yamlStr, "Name 3: John Doe", "Third Name should be user_name")
+		assert.Contains(t, yamlStr, "Description: A detailed description", "Description should keep original name")
+		
+		// Verify structure
+		assert.Contains(t, yamlStr, "---\n")
+		assert.Contains(t, yamlStr, "\n---\n")
+	})
+	
+	t.Run("YAML export with custom property names and deduplication", func(t *testing.T) {
+		// Create properties with some custom names that create conflicts
+		properties := []Property{
+			{
+				Name:   "Title",
+				Key:    "title",
+				Format: model.RelationFormat_shorttext,
+				Value:  domain.String("Main Title"),
+			},
+			{
+				Name:   "Name",
+				Key:    "name",
+				Format: model.RelationFormat_shorttext,
+				Value:  domain.String("Entity Name"),
+			},
+			{
+				Name:   "Other",
+				Key:    "other",
+				Format: model.RelationFormat_shorttext,
+				Value:  domain.String("Other Value"),
+			},
+		}
+		
+		// Use custom property name map that creates a conflict
+		options := &ExportOptions{
+			PropertyNameMap: map[string]string{
+				"title": "Name", // This will conflict with the "name" property
+				"other": "Custom Name",
+			},
+		}
+		
+		// Export to YAML
+		result, err := ExportToYAML(properties, options)
+		require.NoError(t, err)
+		
+		yamlStr := string(result)
+		
+		// Should have deduplicated names
+		// Expected: name -> "Name", title (custom) -> "Name 2"
+		assert.Contains(t, yamlStr, "Name: Entity Name", "First Name should be from name key")
+		assert.Contains(t, yamlStr, "Name 2: Main Title", "Second Name should be from title key with custom name")
+		assert.Contains(t, yamlStr, "Custom Name: Other Value", "Custom name should be preserved when no conflict")
+	})
+	
+	t.Run("YAML export with no duplicate names", func(t *testing.T) {
+		// Create properties with unique names
+		properties := []Property{
+			{
+				Name:   "Title",
+				Key:    "title",
+				Format: model.RelationFormat_shorttext,
+				Value:  domain.String("Page Title"),
+			},
+			{
+				Name:   "Author",
+				Key:    "author",
+				Format: model.RelationFormat_shorttext,
+				Value:  domain.String("Jane Smith"),
+			},
+			{
+				Name:   "Status",
+				Key:    "status",
+				Format: model.RelationFormat_status,
+				Value:  domain.String("published"),
+			},
+		}
+		
+		// Export to YAML
+		result, err := ExportToYAML(properties, nil)
+		require.NoError(t, err)
+		
+		yamlStr := string(result)
+		
+		// Should keep original names without any suffixes
+		assert.Contains(t, yamlStr, "Title: Page Title")
+		assert.Contains(t, yamlStr, "Author: Jane Smith")
+		assert.Contains(t, yamlStr, "Status: published")
+		
+		// Should not have any numbered suffixes
+		assert.NotContains(t, yamlStr, "Title 2")
+		assert.NotContains(t, yamlStr, "Author 2")
+		assert.NotContains(t, yamlStr, "Status 2")
+	})
+	
+	t.Run("Object type property always keeps its name", func(t *testing.T) {
+		// Create properties where user properties conflict with "Object type"
+		properties := []Property{
+			{
+				Name:   "Object type",
+				Key:    "custom_object_type",
+				Format: model.RelationFormat_shorttext,
+				Value:  domain.String("Custom Type"),
+			},
+			{
+				Name:   "Object type",
+				Key:    "another_object_type",
+				Format: model.RelationFormat_shorttext,
+				Value:  domain.String("Another Type"),
+			},
+			{
+				Name:   "Title",
+				Key:    "title",
+				Format: model.RelationFormat_shorttext,
+				Value:  domain.String("Document Title"),
+			},
+		}
+		
+		// Export to YAML with object type
+		result, err := ExportToYAML(properties, &ExportOptions{
+			IncludeObjectType: true,
+			ObjectTypeName:    "Document",
+		})
+		require.NoError(t, err)
+		
+		yamlStr := string(result)
+		
+		// "Object type" should be reserved for the system type
+		assert.Contains(t, yamlStr, "Object type: Document", "System Object type should be present")
+		
+		// User properties named "Object type" get suffixes starting from 2
+		// They are sorted by key: another_object_type, custom_object_type
+		assert.Contains(t, yamlStr, "Object type 2: Another Type", "First user property (another_object_type) gets suffix 2")
+		assert.Contains(t, yamlStr, "Object type 3: Custom Type", "Second user property (custom_object_type) gets suffix 3")
+		
+		// Other properties remain unchanged
+		assert.Contains(t, yamlStr, "Title: Document Title")
+	})
+}

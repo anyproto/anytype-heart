@@ -1158,3 +1158,143 @@ Related Documents: [intro.md, chapters/chapter1.md]`)
 		}, related)
 	})
 }
+
+func TestNameDeduplicationIntegration(t *testing.T) {
+	t.Run("end-to-end deduplication in schema and YAML export", func(t *testing.T) {
+		// Create a schema with duplicate property names
+		s := schema.NewSchema()
+		
+		// Add relations with duplicate names
+		relations := []*schema.Relation{
+			{Key: "user_name", Name: "Name", Format: model.RelationFormat_shorttext},
+			{Key: "company_name", Name: "Name", Format: model.RelationFormat_shorttext},
+			{Key: "project_title", Name: "Title", Format: model.RelationFormat_shorttext},
+			{Key: "document_title", Name: "Title", Format: model.RelationFormat_shorttext},
+			{Key: "description", Name: "Description", Format: model.RelationFormat_longtext},
+		}
+		
+		for _, rel := range relations {
+			s.AddRelation(rel)
+		}
+		
+		// Create type
+		typ := &schema.Type{
+			Key:                  "entity",
+			Name:                 "Entity",
+			Description:          "An entity with duplicate property names",
+			FeaturedRelations:    []string{"user_name", "project_title"},
+			RecommendedRelations: []string{"company_name", "description"},
+			HiddenRelations:      []string{"document_title"},
+		}
+		s.SetType(typ)
+		
+		// Test JSON Schema export
+		t.Run("JSON Schema export with deduplication", func(t *testing.T) {
+			exporter := schema.NewJSONSchemaExporter("  ")
+			var buf bytes.Buffer
+			err := exporter.Export(s, &buf)
+			require.NoError(t, err)
+			
+			var jsonSchema map[string]interface{}
+			err = json.Unmarshal(buf.Bytes(), &jsonSchema)
+			require.NoError(t, err)
+			
+			properties := jsonSchema["properties"].(map[string]interface{})
+			
+			// Verify deduplicated names (sorted by key)
+			// Expected: company_name -> "Name", user_name -> "Name 2"
+			// document_title -> "Title", project_title -> "Title 2"
+			nameProp := properties["Name"].(map[string]interface{})
+			assert.Equal(t, "company_name", nameProp["x-key"])
+			
+			name2Prop := properties["Name 2"].(map[string]interface{})
+			assert.Equal(t, "user_name", name2Prop["x-key"])
+			
+			titleProp := properties["Title"].(map[string]interface{})
+			assert.Equal(t, "document_title", titleProp["x-key"])
+			assert.Equal(t, true, titleProp["x-hidden"])
+			
+			title2Prop := properties["Title 2"].(map[string]interface{})
+			assert.Equal(t, "project_title", title2Prop["x-key"])
+			assert.Equal(t, true, title2Prop["x-featured"])
+			
+			descProp := properties["Description"].(map[string]interface{})
+			assert.Equal(t, "description", descProp["x-key"])
+		})
+		
+		// Test YAML export
+		t.Run("YAML export with deduplication", func(t *testing.T) {
+			// Create sample data using our schema
+			properties := []yaml.Property{
+				{Name: "Name", Key: "user_name", Format: model.RelationFormat_shorttext, Value: domain.String("John Doe")},
+				{Name: "Name", Key: "company_name", Format: model.RelationFormat_shorttext, Value: domain.String("Acme Corp")},
+				{Name: "Title", Key: "project_title", Format: model.RelationFormat_shorttext, Value: domain.String("Project Alpha")},
+				{Name: "Title", Key: "document_title", Format: model.RelationFormat_shorttext, Value: domain.String("Requirements Doc")},
+				{Name: "Description", Key: "description", Format: model.RelationFormat_longtext, Value: domain.String("A comprehensive entity")},
+			}
+			
+			// Export to YAML
+			result, err := yaml.ExportToYAML(properties, &yaml.ExportOptions{
+				IncludeObjectType: true,
+				ObjectTypeName:    "Entity",
+			})
+			require.NoError(t, err)
+			
+			yamlStr := string(result)
+			
+			// Verify deduplicated names
+			assert.Contains(t, yamlStr, "Object type: Entity")
+			assert.Contains(t, yamlStr, "Name: Acme Corp") // company_name first
+			assert.Contains(t, yamlStr, "Name 2: John Doe") // user_name second
+			assert.Contains(t, yamlStr, "Title: Requirements Doc") // document_title first
+			assert.Contains(t, yamlStr, "Title 2: Project Alpha") // project_title second
+			assert.Contains(t, yamlStr, "Description: A comprehensive entity")
+		})
+		
+		// Test round-trip preservation
+		t.Run("round-trip preserves deduplication logic", func(t *testing.T) {
+			// Export schema to JSON
+			exporter := schema.NewJSONSchemaExporter("  ")
+			var buf1 bytes.Buffer
+			err := exporter.Export(s, &buf1)
+			require.NoError(t, err)
+			
+			// Import back
+			parser := schema.NewJSONSchemaParser()
+			importedSchema, err := parser.Parse(bytes.NewReader(buf1.Bytes()))
+			require.NoError(t, err)
+			
+			// Export again
+			var buf2 bytes.Buffer
+			err = exporter.Export(importedSchema, &buf2)
+			require.NoError(t, err)
+			
+			// Parse both exports
+			var schema1, schema2 map[string]interface{}
+			err = json.Unmarshal(buf1.Bytes(), &schema1)
+			require.NoError(t, err)
+			err = json.Unmarshal(buf2.Bytes(), &schema2)
+			require.NoError(t, err)
+			
+			// Property names should be consistent
+			props1 := schema1["properties"].(map[string]interface{})
+			props2 := schema2["properties"].(map[string]interface{})
+			
+			// Check same property names exist
+			for propName := range props1 {
+				_, exists := props2[propName]
+				assert.True(t, exists, "Property %s should exist in both exports", propName)
+			}
+			
+			// Verify specific deduplicated names are consistent
+			assert.Contains(t, props1, "Name")
+			assert.Contains(t, props1, "Name 2")
+			assert.Contains(t, props1, "Title")
+			assert.Contains(t, props1, "Title 2")
+			assert.Contains(t, props2, "Name")
+			assert.Contains(t, props2, "Name 2")
+			assert.Contains(t, props2, "Title")
+			assert.Contains(t, props2, "Title 2")
+		})
+	})
+}

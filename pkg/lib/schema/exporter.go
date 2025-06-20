@@ -16,6 +16,15 @@ import (
 // SchemaVersion is the current schema generation version
 const SchemaVersion = "1.0"
 
+// orderedRelation represents a relation with its order and flags
+type orderedRelation struct {
+	name     string
+	relation *Relation
+	order    int
+	featured bool
+	hidden   bool // Whether this relation is hidden
+}
+
 // JSONSchemaExporter exports Schema to JSON Schema format
 type JSONSchemaExporter struct {
 	Indent string // Indentation for pretty printing (empty for compact)
@@ -112,14 +121,6 @@ func (e *JSONSchemaExporter) typeToJSONSchema(t *Type, schema *Schema) map[strin
 	}
 
 	// Collect all relations and sort by order
-	type orderedRelation struct {
-		name     string
-		relation *Relation
-		order    int
-		featured bool
-		hidden   bool // Whether this relation is hidden
-	}
-
 	var orderedRels []orderedRelation
 	propertyOrder := 2 // Start after id and Type
 
@@ -181,8 +182,9 @@ func (e *JSONSchemaExporter) typeToJSONSchema(t *Type, schema *Schema) map[strin
 		propertyOrder++
 	}
 
-	// Convert relations to properties
-	for _, or := range orderedRels {
+	// Deduplicate names and convert relations to properties
+	deduplicatedNames := e.deduplicatePropertyNames(orderedRels)
+	for i, or := range orderedRels {
 		prop := e.relationToProperty(or.relation)
 		prop["x-order"] = or.order
 		if or.featured {
@@ -190,13 +192,13 @@ func (e *JSONSchemaExporter) typeToJSONSchema(t *Type, schema *Schema) map[strin
 		} else if or.hidden {
 			prop["x-hidden"] = true
 		}
-		
+
 		// Special handling for Type relation
 		if or.relation.Key == bundle.RelationKeyType.String() {
 			prop["const"] = t.Name
 		}
 
-		properties[or.name] = prop
+		properties[deduplicatedNames[i]] = prop
 	}
 
 	// Check if this is a collection type
@@ -302,7 +304,7 @@ func (e *JSONSchemaExporter) relationToProperty(r *Relation) map[string]interfac
 		prop["items"] = map[string]interface{}{
 			"type": "string",
 		}
-		
+
 		// Add x-object-types if specified
 		if len(r.ObjectTypes) > 0 {
 			prop["x-object-types"] = r.ObjectTypes
@@ -320,6 +322,65 @@ func (e *JSONSchemaExporter) relationToProperty(r *Relation) map[string]interfac
 	}
 
 	return prop
+}
+
+// deduplicatePropertyNames ensures no duplicate property names in export
+// by sorting relations by key and adding index suffixes when needed
+// Special handling: Bundled relations always keep their names without suffix
+func (e *JSONSchemaExporter) deduplicatePropertyNames(orderedRels []orderedRelation) []string {
+	// Create a map to track names and their relation keys
+	nameToRelations := make(map[string][]struct {
+		index int
+		key   string
+	})
+
+	// Group relations by name
+	for i, or := range orderedRels {
+		nameToRelations[or.name] = append(nameToRelations[or.name], struct {
+			index int
+			key   string
+		}{i, or.relation.Key})
+	}
+
+	result := make([]string, len(orderedRels))
+
+	// Process each name group
+	for name, relations := range nameToRelations {
+		if len(relations) == 1 {
+			// No duplication, use original name
+			result[relations[0].index] = name
+		} else {
+			// Sort by relation key, but give priority to bundled relations
+			sort.Slice(relations, func(i, j int) bool {
+				// Bundled relations come first
+				iIsBundled := bundle.HasRelation(domain.RelationKey(relations[i].key))
+				jIsBundled := bundle.HasRelation(domain.RelationKey(relations[j].key))
+
+				if iIsBundled && !jIsBundled {
+					return true
+				}
+				if !iIsBundled && jIsBundled {
+					return false
+				}
+
+				// Otherwise sort by key
+				return relations[i].key < relations[j].key
+			})
+
+			// Add index suffix to duplicated names
+			for idx, rel := range relations {
+				if idx == 0 {
+					// First occurrence keeps original name
+					result[rel.index] = name
+				} else {
+					// Subsequent occurrences get index suffix
+					result[rel.index] = fmt.Sprintf("%s %d", name, idx+1)
+				}
+			}
+		}
+	}
+
+	return result
 }
 
 // ObjectResolver interface for resolving relations and their options

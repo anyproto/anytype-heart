@@ -36,18 +36,20 @@ func ExportToYAML(properties []Property, options *ExportOptions) ([]byte, error)
 	// Create a map for YAML marshaling
 	data := make(map[string]interface{})
 
-	// Add object type if requested
-	if options.IncludeObjectType && options.ObjectTypeName != "" {
-		data["Object type"] = options.ObjectTypeName
-		options.SkipProperties = append(options.SkipProperties, bundle.RelationKeyType.String())
-	}
-
-	// Process properties
+	// Process properties with deduplication first
 	skipMap := make(map[string]bool)
 	for _, skip := range options.SkipProperties {
 		skipMap[skip] = true
 	}
 
+	// Always skip the system type key if we're including object type
+	if options.IncludeObjectType && options.ObjectTypeName != "" {
+		skipMap[bundle.RelationKeyType.String()] = true
+	}
+
+	// Filter properties and collect names for deduplication
+	var validProps []Property
+	var propNames []string
 	for _, prop := range properties {
 		// Skip if in skip list
 		if skipMap[prop.Key] {
@@ -60,11 +62,28 @@ func ExportToYAML(properties []Property, options *ExportOptions) ([]byte, error)
 			name = customName
 		}
 
+		validProps = append(validProps, prop)
+		propNames = append(propNames, name)
+	}
+
+	// Check if we need to reserve "Object type" name
+	reserveObjectType := options.IncludeObjectType && options.ObjectTypeName != ""
+
+	// Deduplicate property names with awareness of reserved names
+	deduplicatedNames := deduplicateYAMLPropertyNamesWithReserved(validProps, propNames, reserveObjectType)
+
+	// Add properties to data map
+	for i, prop := range validProps {
 		// Convert value based on format
 		value := convertValueForExport(prop)
 		if value != nil {
-			data[name] = value
+			data[deduplicatedNames[i]] = value
 		}
+	}
+
+	// Add object type with its reserved name
+	if reserveObjectType {
+		data["Object type"] = options.ObjectTypeName
 	}
 
 	// Marshal to YAML
@@ -313,4 +332,75 @@ func convertValueForExport(prop Property) interface{} {
 	}
 
 	return nil
+}
+
+// deduplicateYAMLPropertyNamesWithReserved ensures no duplicate property names in YAML export
+// by sorting properties by key and adding index suffixes when needed
+// Special handling: "Object type" is reserved for system type when reserveObjectType is true
+func deduplicateYAMLPropertyNamesWithReserved(properties []Property, names []string, reserveObjectType bool) []string {
+	// Create a map to track names and their property indices
+	nameToProperties := make(map[string][]struct {
+		index int
+		key   string
+	})
+
+	// Group properties by name
+	for i, name := range names {
+		nameToProperties[name] = append(nameToProperties[name], struct {
+			index int
+			key   string
+		}{i, properties[i].Key})
+	}
+
+	result := make([]string, len(names))
+
+	// Process each name group
+	for name, props := range nameToProperties {
+		if len(props) == 1 {
+			// No duplication, use original name
+			result[props[0].index] = name
+		} else {
+			// Check if this name is "Object type" and we're reserving it
+			if reserveObjectType && name == "Object type" {
+				// All user properties named "Object type" get suffixes starting from 2
+				sort.Slice(props, func(i, j int) bool {
+					return props[i].key < props[j].key
+				})
+
+				for idx, prop := range props {
+					result[prop.index] = fmt.Sprintf("%s %d", name, idx+2)
+				}
+			} else {
+				// Normal deduplication: sort by key, but give priority to bundled relations
+				sort.Slice(props, func(i, j int) bool {
+					// Bundled relations come first
+					iIsBundled := bundle.HasRelation(domain.RelationKey(props[i].key))
+					jIsBundled := bundle.HasRelation(domain.RelationKey(props[j].key))
+
+					if iIsBundled && !jIsBundled {
+						return true
+					}
+					if !iIsBundled && jIsBundled {
+						return false
+					}
+
+					// Otherwise sort by key
+					return props[i].key < props[j].key
+				})
+
+				// Add index suffix to duplicated names
+				for idx, prop := range props {
+					if idx == 0 {
+						// First occurrence keeps original name
+						result[prop.index] = name
+					} else {
+						// Subsequent occurrences get index suffix
+						result[prop.index] = fmt.Sprintf("%s %d", name, idx+1)
+					}
+				}
+			}
+		}
+	}
+
+	return result
 }
