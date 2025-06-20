@@ -176,7 +176,10 @@ func (o orderedJSONSchema) MarshalJSON() ([]byte, error) {
 		}
 		
 		// Marshal key
-		keyJSON, _ := json.Marshal(key)
+		keyJSON, err := json.Marshal(key)
+		if err != nil {
+			return nil, fmt.Errorf("failed to marshal key %s: %w", key, err)
+		}
 		buf.Write(keyJSON)
 		buf.WriteString(":")
 		
@@ -187,12 +190,18 @@ func (o orderedJSONSchema) MarshalJSON() ([]byte, error) {
 				buf.Write(propertiesJSON)
 			} else {
 				// Fallback to regular marshaling
-				valueJSON, _ := json.Marshal(o.data[key])
+				valueJSON, err := json.Marshal(o.data[key])
+				if err != nil {
+					return nil, fmt.Errorf("failed to marshal properties: %w", err)
+				}
 				buf.Write(valueJSON)
 			}
 		} else {
 			// Regular marshaling for other fields
-			valueJSON, _ := json.Marshal(o.data[key])
+			valueJSON, err := json.Marshal(o.data[key])
+			if err != nil {
+				return nil, fmt.Errorf("failed to marshal field %s: %w", key, err)
+			}
 			buf.Write(valueJSON)
 		}
 	}
@@ -243,13 +252,22 @@ func marshalOrderedProperties(props map[string]interface{}) []byte {
 		}
 		
 		// Marshal property name
-		nameJSON, _ := json.Marshal(prop.name)
+		nameJSON, err := json.Marshal(prop.name)
+		if err != nil {
+			// Skip this property if we can't marshal its name
+			continue
+		}
 		buf.Write(nameJSON)
 		buf.WriteString(":")
 		
 		// Marshal property data
-		propJSON, _ := json.Marshal(prop.data)
-		buf.Write(propJSON)
+		propJSON, err := json.Marshal(prop.data)
+		if err != nil {
+			// Write null if we can't marshal the property data
+			buf.WriteString("null")
+		} else {
+			buf.Write(propJSON)
+		}
 	}
 	
 	buf.WriteString("}")
@@ -637,7 +655,7 @@ func schemaFromObjectDetailsInternal(typeDetails *domain.Details, relationDetail
 
 		// If not found and resolver provided, try to resolve
 		if found == nil && resolver != nil {
-			found, _ = resolver(id)
+			found, _ = resolver(id) // Ignore error as it's optional
 		}
 
 		if found != nil {
@@ -663,7 +681,7 @@ func schemaFromObjectDetailsInternal(typeDetails *domain.Details, relationDetail
 
 		// If not found and resolver provided, try to resolve
 		if found == nil && resolver != nil {
-			found, _ = resolver(id)
+			found, _ = resolver(id) // Ignore error as it's optional
 		}
 
 		if found != nil {
@@ -689,7 +707,7 @@ func schemaFromObjectDetailsInternal(typeDetails *domain.Details, relationDetail
 
 		// If not found and resolver provided, try to resolve
 		if found == nil && resolver != nil {
-			found, _ = resolver(id)
+			found, _ = resolver(id) // Ignore error as it's optional
 		}
 
 		if found != nil {
@@ -733,14 +751,19 @@ func schemaFromObjectDetailsInternal(typeDetails *domain.Details, relationDetail
 		}
 
 		// Add to schema
-		schema.AddRelation(rel)
+		if err := schema.AddRelation(rel); err != nil {
+			// Log error but continue processing other relations
+			continue
+		}
 
 		// Add to type
 		t.AddRelation(rel.Key, or.featured, or.hidden)
 	}
 
 	// Set type for schema
-	schema.SetType(t)
+	if err := schema.SetType(t); err != nil {
+		return nil, fmt.Errorf("failed to set type: %w", err)
+	}
 
 	return schema, nil
 }

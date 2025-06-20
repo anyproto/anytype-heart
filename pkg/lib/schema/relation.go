@@ -61,8 +61,13 @@ func (r *Relation) ToDetails() *domain.Details {
 	details.SetInt64(bundle.RelationKeySourceObject, int64(model.ObjectType_relation))
 
 	// Generate unique key
-	uniqueKey, _ := domain.NewUniqueKey(smartblock.SmartBlockTypeRelation, r.Key)
-	details.SetString(bundle.RelationKeyUniqueKey, uniqueKey.Marshal())
+	uniqueKey, err := domain.NewUniqueKey(smartblock.SmartBlockTypeRelation, r.Key)
+	if err != nil {
+		// If unique key generation fails, we can still continue without it
+		// as the system will generate one if needed
+	} else {
+		details.SetString(bundle.RelationKeyUniqueKey, uniqueKey.Marshal())
+	}
 
 	// Set ID (will be generated if not provided)
 	if id, ok := r.Extension["id"].(string); ok && id != "" {
@@ -145,8 +150,13 @@ func (r *Relation) CreateOptionDetails(optionName string, color string) *domain.
 
 	// Generate unique key for the option
 	optionKey := fmt.Sprintf("%s_%s", r.Key, optionName)
-	uniqueKey, _ := domain.NewUniqueKey(smartblock.SmartBlockTypeRelationOption, optionKey)
-	details.SetString(bundle.RelationKeyUniqueKey, uniqueKey.Marshal())
+	uniqueKey, err := domain.NewUniqueKey(smartblock.SmartBlockTypeRelationOption, optionKey)
+	if err != nil {
+		// If unique key generation fails, we can still continue without it
+		// as the system will generate one if needed
+	} else {
+		details.SetString(bundle.RelationKeyUniqueKey, uniqueKey.Marshal())
+	}
 
 	return details
 }

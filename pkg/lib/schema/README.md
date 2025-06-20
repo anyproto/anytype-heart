@@ -172,3 +172,66 @@ Run tests with:
 ```bash
 go test ./pkg/lib/schema/...
 ```
+
+# Property Name Deduplication Example
+
+This document demonstrates the name deduplication feature that prevents conflicts when exporting types and properties with duplicate names.
+
+## Problem
+
+When exporting schemas to JSON Schema or YAML, multiple relations can have the same display name, causing conflicts:
+
+```go
+// Multiple relations with the same "Name" display name
+relations := []*Relation{
+    {Key: "user_name", Name: "Name", Format: model.RelationFormat_shorttext},
+    {Key: "company_name", Name: "Name", Format: model.RelationFormat_shorttext}, 
+    {Key: "project_name", Name: "Name", Format: model.RelationFormat_shorttext},
+}
+```
+
+## Solution
+
+The deduplication system:
+1. **Sorts relations by their key** for consistent ordering
+2. **Keeps the first occurrence** with the original name
+3. **Adds index suffixes** to subsequent duplicates (e.g., "Name 2", "Name 3")
+
+## Example Output
+
+### JSON Schema Export
+```json
+{
+  "properties": {
+    "Name": {
+      "type": "string",
+      "x-key": "company_name",
+      "x-format": "shorttext"
+    },
+    "Name 2": {
+      "type": "string", 
+      "x-key": "project_name",
+      "x-format": "shorttext",
+      "x-hidden": true
+    },
+    "Name 3": {
+      "type": "string",
+      "x-key": "user_name", 
+      "x-format": "shorttext",
+      "x-featured": true
+    }
+  }
+}
+```
+
+### YAML Export
+```yaml
+---
+Object type: Entity
+Name: Acme Corp         # company_name (first alphabetically)
+Name 2: Project Alpha   # project_name (second alphabetically)  
+Name 3: John Doe        # user_name (third alphabetically)
+Title: Main Title
+Description: Detailed description
+---
+```
