@@ -1036,7 +1036,6 @@ func (m *Markdown) findFileByPath(path string, files map[string]*FileInfo) *File
 func (m *Markdown) processObjectProperties(files map[string]*FileInfo, progress process.Progress, details map[string]*domain.Details, allErrors *common.ConvertError) {
 	progress.SetProgressMessage("Start linking blocks")
 
-	fmt.Printf("Processing object properties for %d files: %v\n", len(files), details)
 	for fileName, file := range files {
 		if err := progress.TryStep(1); err != nil {
 			allErrors.Add(common.ErrCancel)

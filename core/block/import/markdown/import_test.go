@@ -4,8 +4,11 @@ import (
 	"archive/zip"
 	"context"
 	"errors"
+	"fmt"
+	"io"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -20,6 +23,44 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/tests/blockbuilder"
 )
+
+// testMockSource is a test implementation of source.Source for testing schema loading
+type testMockSource struct {
+	files map[string]string
+}
+
+func (m *testMockSource) Initialize(importPath string) error {
+	return nil
+}
+
+func (m *testMockSource) Iterate(callback func(fileName string, fileReader io.ReadCloser) (isContinue bool)) error {
+	for name, content := range m.files {
+		reader := strings.NewReader(content)
+		if !callback(name, io.NopCloser(reader)) {
+			break
+		}
+	}
+	return nil
+}
+
+func (m *testMockSource) ProcessFile(fileName string, callback func(io.ReadCloser) error) error {
+	if content, ok := m.files[fileName]; ok {
+		reader := strings.NewReader(content)
+		return callback(io.NopCloser(reader))
+	}
+	return nil
+}
+
+func (m *testMockSource) CountFilesWithGivenExtensions([]string) int {
+	return len(m.files)
+}
+
+func (m *testMockSource) GetFileReaders(string, []string) (map[string]io.ReadCloser, error) {
+	return nil, nil
+}
+
+func (m *testMockSource) Close()                 {}
+func (m *testMockSource) IsRootFile(string) bool { return false }
 
 func TestMarkdown_GetSnapshots(t *testing.T) {
 	t.Run("get snapshots of root collection, csv collection and object", func(t *testing.T) {
@@ -683,6 +724,289 @@ func setupTestDirectory(t *testing.T) string {
 	}
 
 	return testdataDir
+}
+
+func TestMarkdown_YAMLFrontMatterObjectRelations(t *testing.T) {
+	t.Run("YAML property with object format resolves file paths to object IDs", func(t *testing.T) {
+		// given
+		testDirectory := t.TempDir()
+		
+		// Create related documents that will be referenced
+		doc1Path := filepath.Join(testDirectory, "project", "doc1.md")
+		doc2Path := filepath.Join(testDirectory, "project", "doc2.md")
+		mainDocPath := filepath.Join(testDirectory, "main.md")
+		
+		// Create directory structure
+		err := os.MkdirAll(filepath.Dir(doc1Path), os.ModePerm)
+		assert.NoError(t, err)
+		
+		// Create referenced documents
+		doc1Content := `---
+title: Document 1
+type: Note
+---
+
+# Document 1
+This is document 1 content.`
+		
+		doc2Content := `---
+title: Document 2
+type: Note
+---
+
+# Document 2
+This is document 2 content.`
+		
+		// Create main document with object relations using file paths
+		mainContent := `---
+title: Main Document
+type: Task
+related_docs:
+  - ./project/doc1.md
+  - ./project/doc2.md
+single_reference: ./project/doc1.md
+---
+
+# Main Document
+This document references other documents.`
+		
+		err = os.WriteFile(doc1Path, []byte(doc1Content), os.ModePerm)
+		assert.NoError(t, err)
+		err = os.WriteFile(doc2Path, []byte(doc2Content), os.ModePerm)
+		assert.NoError(t, err)
+		err = os.WriteFile(mainDocPath, []byte(mainContent), os.ModePerm)
+		assert.NoError(t, err)
+		
+		// Create markdown importer with schema that defines object format relations
+		h := &Markdown{
+			blockConverter: newMDConverter(&MockTempDir{}),
+			schemaImporter: NewSchemaImporter(),
+		}
+		
+		// Add schema with object format relations
+		schemaContent := `{
+			"$schema": "http://json-schema.org/draft-07/schema#",
+			"type": "object",
+			"title": "Task",
+			"x-type-key": "task",
+			"properties": {
+				"related_docs": {
+					"type": "array",
+					"items": {
+						"type": "string"
+					},
+					"x-key": "related_docs",
+					"x-format": "object",
+					"x-order": 1
+				},
+				"single_reference": {
+					"type": "string",
+					"x-key": "single_reference",
+					"x-format": "object",
+					"x-order": 2
+				},
+				"title": {
+					"type": "string",
+					"x-key": "title",
+					"x-format": "shorttext",
+					"x-order": 0
+				}
+			}
+		}`
+		
+		// Create a mock source with the schema
+		mockSource := &testMockSource{
+			files: map[string]string{
+				"schema.json": schemaContent,
+			},
+		}
+		
+		// Load the schema
+		allErrors := common.NewError(pb.RpcObjectImportRequest_IGNORE_ERRORS)
+		err = h.schemaImporter.LoadSchemas(mockSource, allErrors)
+		assert.NoError(t, err)
+		
+		// Verify schema was loaded
+		assert.True(t, h.schemaImporter.HasSchemas())
+		
+		// Set the schema importer in the block converter
+		h.blockConverter.SetSchemaImporter(h.schemaImporter)
+		p := process.NewNoOp()
+		
+		// when
+		sn, ce := h.GetSnapshots(context.Background(), &pb.RpcObjectImportRequest{
+			Params: &pb.RpcObjectImportRequestParamsOfMarkdownParams{
+				MarkdownParams: &pb.RpcObjectImportRequestMarkdownParams{Path: []string{testDirectory}},
+			},
+			Type: model.Import_Markdown,
+			Mode: pb.RpcObjectImportRequest_IGNORE_ERRORS,
+		}, p)
+		
+		// then
+		assert.Nil(t, ce)
+		assert.NotNil(t, sn)
+		
+		// Build maps for verification
+		fileNameToSnapshot := make(map[string]*common.Snapshot)
+		fileNameToObjectId := make(map[string]string)
+		for _, snapshot := range sn.Snapshots {
+			if snapshot.FileName != "" {
+				fileNameToSnapshot[snapshot.FileName] = snapshot
+				fileNameToObjectId[snapshot.FileName] = snapshot.Id
+			}
+		}
+		
+		// Verify all documents were imported
+		assert.Contains(t, fileNameToObjectId, mainDocPath)
+		assert.Contains(t, fileNameToObjectId, doc1Path)
+		assert.Contains(t, fileNameToObjectId, doc2Path)
+		
+		// Get the main document snapshot
+		mainSnapshot := fileNameToSnapshot[mainDocPath]
+		assert.NotNil(t, mainSnapshot)
+		
+		// Get object IDs for referenced documents
+		doc1Id := fileNameToObjectId[doc1Path]
+		doc2Id := fileNameToObjectId[doc2Path]
+		
+		// Verify the object relations were resolved to IDs
+		mainDetails := mainSnapshot.Snapshot.Data.Details
+		
+		// Check array object relation
+		relatedDocsKey := domain.RelationKey("related_docs")
+		relatedDocs := mainDetails.GetStringList(relatedDocsKey)
+		assert.Len(t, relatedDocs, 2)
+		assert.Contains(t, relatedDocs, doc1Id)
+		assert.Contains(t, relatedDocs, doc2Id)
+		
+		// Check single object relation
+		singleRefKey := domain.RelationKey("single_reference")
+		singleRef := mainDetails.GetStringList(singleRefKey)
+		assert.Len(t, singleRef, 1)
+		assert.Equal(t, doc1Id, singleRef[0])
+	})
+	
+	t.Run("YAML object relations with relative and absolute paths", func(t *testing.T) {
+		// given
+		testDirectory := t.TempDir()
+		subDir := filepath.Join(testDirectory, "subdir")
+		
+		// Create directory structure
+		err := os.MkdirAll(subDir, os.ModePerm)
+		assert.NoError(t, err)
+		
+		// Create documents
+		doc1Path := filepath.Join(testDirectory, "doc1.md")
+		doc2Path := filepath.Join(subDir, "doc2.md")
+		mainDocPath := filepath.Join(subDir, "main.md")
+		
+		doc1Content := `---
+title: Doc 1
+---
+Content 1`
+		
+		doc2Content := `---
+title: Doc 2  
+---
+Content 2`
+		
+		// Main document uses both relative and absolute paths
+		mainContent := fmt.Sprintf(`---
+title: Main with Mixed Paths
+references:
+  - ../doc1.md
+  - ./doc2.md
+  - %s
+---
+Main content`, doc1Path) // Include one absolute path
+		
+		err = os.WriteFile(doc1Path, []byte(doc1Content), os.ModePerm)
+		assert.NoError(t, err)
+		err = os.WriteFile(doc2Path, []byte(doc2Content), os.ModePerm)
+		assert.NoError(t, err)
+		err = os.WriteFile(mainDocPath, []byte(mainContent), os.ModePerm)
+		assert.NoError(t, err)
+		
+		h := &Markdown{
+			blockConverter: newMDConverter(&MockTempDir{}),
+			schemaImporter: NewSchemaImporter(),
+		}
+		h.blockConverter.SetSchemaImporter(h.schemaImporter)
+		p := process.NewNoOp()
+		
+		// when
+		sn, ce := h.GetSnapshots(context.Background(), &pb.RpcObjectImportRequest{
+			Params: &pb.RpcObjectImportRequestParamsOfMarkdownParams{
+				MarkdownParams: &pb.RpcObjectImportRequestMarkdownParams{Path: []string{testDirectory}},
+			},
+			Type: model.Import_Markdown,
+			Mode: pb.RpcObjectImportRequest_IGNORE_ERRORS,
+		}, p)
+		
+		// then
+		assert.Nil(t, ce)
+		assert.NotNil(t, sn)
+		
+		// Build object ID map
+		fileNameToObjectId := make(map[string]string)
+		for _, snapshot := range sn.Snapshots {
+			if snapshot.FileName != "" {
+				fileNameToObjectId[snapshot.FileName] = snapshot.Id
+			}
+		}
+		
+		// Find main document
+		var mainSnapshot *common.Snapshot
+		for _, snapshot := range sn.Snapshots {
+			if snapshot.FileName == mainDocPath {
+				mainSnapshot = snapshot
+				break
+			}
+		}
+		
+		assert.NotNil(t, mainSnapshot)
+		mainDetails := mainSnapshot.Snapshot.Data.Details
+		
+		// Find the references property key
+		var referencesKey string
+		for k, v := range mainDetails.Iterate() {
+			// Look for a property that contains our expected IDs
+			if v.IsStringList() {
+				list := v.StringList()
+				if len(list) == 3 { // We expect 3 references
+					// This might be our references property
+					referencesKey = string(k)
+					break
+				}
+			}
+		}
+		
+		// If we found a property with 3 items, verify it contains the right IDs
+		if referencesKey != "" {
+			references := mainDetails.GetStringList(domain.RelationKey(referencesKey))
+			assert.Len(t, references, 3)
+			
+			// All three paths should resolve to doc1Id (two different paths + absolute)
+			doc1Id := fileNameToObjectId[doc1Path]
+			doc2Id := fileNameToObjectId[doc2Path]
+			
+			assert.Contains(t, references, doc1Id)
+			assert.Contains(t, references, doc2Id)
+			// The absolute path should also resolve to doc1Id
+			assert.Equal(t, 2, countOccurrences(references, doc1Id), "doc1 should appear twice (relative + absolute path)")
+		}
+	})
+}
+
+// Helper function to count occurrences in a slice
+func countOccurrences(slice []string, item string) int {
+	count := 0
+	for _, s := range slice {
+		if s == item {
+			count++
+		}
+	}
+	return count
 }
 
 func TestMarkdown_YAMLFrontMatterSnapshot(t *testing.T) {
