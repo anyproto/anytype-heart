@@ -43,6 +43,9 @@ func (e *existingObject) GetIDAndPayload(_ context.Context, spaceID string, sn *
 	if sn.Snapshot.SbType == sb.SmartBlockTypeRelation {
 		return e.getExistingRelation(sn, spaceID), treestorage.TreeStorageCreatePayload{}, nil
 	}
+	if sn.Snapshot.SbType == sb.SmartBlockTypeObjectType {
+		return e.getExistingObjectType(sn, spaceID), treestorage.TreeStorageCreatePayload{}, nil
+	}
 	return "", treestorage.TreeStorageCreatePayload{}, nil
 }
 
@@ -152,6 +155,33 @@ func (e *existingObject) getExistingRelation(snapshot *common.Snapshot, spaceID 
 	}}, 1, 0)
 	if err == nil && len(records) > 0 {
 		return records[0].Details.GetString(bundle.RelationKeyId)
+	}
+	return ""
+}
+
+func (e *existingObject) getExistingObjectType(snapshot *common.Snapshot, spaceID string) string {
+	name := snapshot.Snapshot.Data.Details.GetString(bundle.RelationKeyName)
+	if name == "" {
+		return ""
+	}
+	
+	// Search for existing object type by name
+	ids, _, err := e.objectStore.SpaceIndex(spaceID).QueryObjectIds(database.Query{
+		Filters: []database.FilterRequest{
+			{
+				Condition:   model.BlockContentDataviewFilter_Equal,
+				RelationKey: bundle.RelationKeyName,
+				Value:       domain.String(name),
+			},
+			{
+				Condition:   model.BlockContentDataviewFilter_Equal,
+				RelationKey: bundle.RelationKeyResolvedLayout,
+				Value:       domain.Int64(model.ObjectType_objectType),
+			},
+		},
+	})
+	if err == nil && len(ids) > 0 {
+		return ids[0]
 	}
 	return ""
 }

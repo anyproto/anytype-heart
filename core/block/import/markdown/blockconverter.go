@@ -11,6 +11,8 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/import/common"
 	"github.com/anyproto/anytype-heart/core/block/import/common/source"
 	"github.com/anyproto/anytype-heart/core/block/import/markdown/anymark"
+	"github.com/anyproto/anytype-heart/pkg/lib/schema/yaml"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/uri"
@@ -18,6 +20,7 @@ import (
 
 type mdConverter struct {
 	tempDirProvider core.TempDirProvider
+	schemaImporter  *SchemaImporter // Optional schema importer for property resolution
 }
 
 type FileInfo struct {
@@ -26,12 +29,21 @@ type FileInfo struct {
 	PageID                string
 	IsRootFile            bool
 	Title                 string
+	TitleUnique           string
 	ParsedBlocks          []*model.Block
 	CollectionsObjectsIds []string
+	YAMLDetails           *domain.Details
+	YAMLProperties        []yaml.Property
+	ObjectTypeName        string // Name of the object type from YAML "type" property
 }
 
 func newMDConverter(tempDirProvider core.TempDirProvider) *mdConverter {
 	return &mdConverter{tempDirProvider: tempDirProvider}
+}
+
+// SetSchemaImporter sets the schema importer for property resolution
+func (m *mdConverter) SetSchemaImporter(si *SchemaImporter) {
+	m.schemaImporter = si
 }
 
 func (m *mdConverter) markdownToBlocks(importPath string, importSource source.Source, allErrors *common.ConvertError) map[string]*FileInfo {
@@ -43,13 +55,6 @@ func (m *mdConverter) markdownToBlocks(importPath string, importSource source.So
 }
 
 func (m *mdConverter) processFiles(importPath string, allErrors *common.ConvertError, importSource source.Source) map[string]*FileInfo {
-	err := importSource.Initialize(importPath)
-	if err != nil {
-		allErrors.Add(err)
-		if allErrors.ShouldAbortImport(0, model.Import_Markdown) {
-			return nil
-		}
-	}
 	if importSource.CountFilesWithGivenExtensions([]string{".md"}) == 0 {
 		allErrors.Add(common.ErrorBySourceType(importSource))
 		return nil
@@ -272,7 +277,39 @@ func (m *mdConverter) createBlocksFromFile(importSource source.Source, filePath 
 		if err != nil {
 			return err
 		}
-		files[filePath].ParsedBlocks, _, err = anymark.MarkdownToBlocks(b, filepath.Dir(filePath), nil)
+
+		// Extract and parse YAML front matter
+		frontMatter, markdownContent, err := yaml.ExtractYAMLFrontMatter(b)
+		if err != nil {
+			log.Warnf("failed to extract YAML front matter from %s: %s", filePath, err)
+			// Continue with original content
+			markdownContent = b
+		}
+
+		// Parse YAML front matter if present
+		if len(frontMatter) > 0 {
+			var yamlResult *yaml.ParseResult
+			var err error
+
+			// Use schema importer as resolver if available
+			// Get base directory of the file for relative path resolution
+			baseDir := filepath.Dir(filePath)
+			if m.schemaImporter != nil && m.schemaImporter.HasSchemas() {
+				yamlResult, err = yaml.ParseYAMLFrontMatterWithResolverAndPath(frontMatter, m.schemaImporter, baseDir)
+			} else {
+				yamlResult, err = yaml.ParseYAMLFrontMatterWithResolverAndPath(frontMatter, nil, baseDir)
+			}
+
+			if err != nil {
+				log.Warnf("failed to parse YAML front matter from %s: %s", filePath, err)
+			} else if yamlResult != nil {
+				files[filePath].YAMLDetails = yamlResult.Details
+				files[filePath].YAMLProperties = yamlResult.Properties
+				files[filePath].ObjectTypeName = yamlResult.ObjectType
+			}
+		}
+
+		files[filePath].ParsedBlocks, _, err = anymark.MarkdownToBlocks(markdownContent, filepath.Dir(filePath), nil)
 		if err != nil {
 			log.Errorf("failed to read blocks: %s", err)
 		}

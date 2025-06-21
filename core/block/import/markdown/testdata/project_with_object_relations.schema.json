@@ -1,0 +1,75 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Project",
+  "description": "A project with team members and document references",
+  "x-plural": "Projects",
+  "x-icon-emoji": "📁",
+  "x-icon-name": "project-icon",
+  "type": "object",
+  "properties": {
+    "Type": {
+      "type": "string",
+      "const": "Project"
+    },
+    "name": {
+      "type": "string",
+      "description": "Project name"
+    },
+    "project_lead": {
+      "type": "object",
+      "description": "Person leading this project",
+      "properties": {
+        "Name": {
+          "type": "string",
+          "description": "Name of the referenced object"
+        },
+        "Object Type": {
+          "type": "string",
+          "description": "Type of the referenced object",
+          "enum": ["Person", "Contact"]
+        }
+      },
+      "required": ["Name"]
+    },
+    "team_members": {
+      "type": "array",
+      "description": "Team members working on this project",
+      "items": {
+        "type": "object",
+        "properties": {
+          "Name": {
+            "type": "string",
+            "description": "Name of the referenced object"
+          },
+          "Object Type": {
+            "type": "string",
+            "description": "Type of the referenced object",
+            "enum": ["Person", "Contact", "Contractor"]
+          }
+        },
+        "required": ["Name"]
+      }
+    },
+    "documentation": {
+      "type": "object",
+      "description": "Related documentation (any object type)",
+      "properties": {
+        "Name": {
+          "type": "string",
+          "description": "Name of the referenced object"
+        },
+        "Object Type": {
+          "type": "string",
+          "description": "Type of the referenced object"
+        }
+      },
+      "required": ["Name"]
+    },
+    "status": {
+      "type": "string",
+      "enum": ["Planning", "In Progress", "Review", "Completed"],
+      "description": "Project status"
+    }
+  },
+  "required": ["name", "project_lead", "status"]
+}

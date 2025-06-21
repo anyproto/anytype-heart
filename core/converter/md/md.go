@@ -6,6 +6,7 @@ import (
 	"html"
 	"io"
 	"path/filepath"
+	"slices"
 	"sort"
 	"strings"
 
@@ -13,12 +14,15 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/editor/table"
+	"github.com/anyproto/anytype-heart/core/block/editor/template"
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/converter"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+	"github.com/anyproto/anytype-heart/pkg/lib/schema"
+	"github.com/anyproto/anytype-heart/pkg/lib/schema/yaml"
 	"github.com/anyproto/anytype-heart/util/uri"
 )
 
@@ -28,8 +32,29 @@ type FileNamer interface {
 	Get(path, hash, title, ext string) (name string)
 }
 
-func NewMDConverter(s *state.State, fn FileNamer) converter.Converter {
-	return &MD{s: s, fn: fn}
+type ObjectResolver interface {
+	// ResolveRelation gets relation details by ID
+	ResolveRelation(relationId string) (*domain.Details, error)
+	// ResolveType gets type details by ID
+	ResolveType(typeId string) (*domain.Details, error)
+	// ResolveRelationOptions gets relation options for a given relation
+	ResolveRelationOptions(relationKey string) ([]*domain.Details, error)
+	// ResolveObject gets object details by ID (for already loaded objects)
+	ResolveObject(objectId string) (*domain.Details, bool)
+	// GetRelationByKey gets relation by its key
+	GetRelationByKey(relationKey string) (*domain.Details, error)
+}
+
+func NewMDConverter(s *state.State, fn FileNamer, includeRelations bool) converter.Converter {
+	return &MD{s: s, fn: fn, includeRelations: includeRelations, knownDocs: make(map[string]*domain.Details)}
+}
+
+func NewMDConverterWithSchema(s *state.State, fn FileNamer, includeRelations bool, includeSchema bool) converter.Converter {
+	return &MD{s: s, fn: fn, includeRelations: includeRelations, includeSchema: true, knownDocs: make(map[string]*domain.Details)}
+}
+
+func NewMDConverterWithResolver(s *state.State, fn FileNamer, includeRelations bool, includeSchema bool, resolver ObjectResolver) converter.Converter {
+	return &MD{s: s, fn: fn, includeRelations: includeRelations, includeSchema: includeSchema, resolver: resolver, knownDocs: make(map[string]*domain.Details)}
 }
 
 type MD struct {
@@ -39,9 +64,23 @@ type MD struct {
 	imageHashes []string
 
 	knownDocs map[string]*domain.Details
+	resolver  ObjectResolver
 
-	mw *marksWriter
-	fn FileNamer
+	includeRelations bool
+	includeSchema    bool
+	mw               *marksWriter
+	fn               FileNamer
+}
+
+var shortObjectRelations = append(removeArrayRelations, []string{
+	bundle.RelationKeyBacklinks.String(),
+	bundle.RelationKeyLinks.String(),
+	bundle.RelationKeyMentions.String()}...)
+
+var removeArrayRelations = []string{
+	bundle.RelationKeyLastModifiedBy.String(),
+	bundle.RelationKeyCreator.String(),
+	bundle.RelationKeyType.String(),
 }
 
 func (h *MD) Convert(sbType model.SmartBlockType) (result []byte) {
@@ -51,17 +90,299 @@ func (h *MD) Convert(sbType model.SmartBlockType) (result []byte) {
 	if len(h.s.Pick(h.s.RootId()).Model().ChildrenIds) == 0 {
 		return
 	}
+	switch sbType {
+	case model.SmartBlockType_STType, model.SmartBlockType_STRelation, model.SmartBlockType_STRelationOption:
+		return nil
+	}
 	buf := bytes.NewBuffer(nil)
 	in := new(renderState)
+	h.renderProperties(buf)
 	h.renderChildren(buf, in, h.s.Pick(h.s.RootId()).Model())
 	result = buf.Bytes()
 	buf.Reset()
 	return
 }
 
+func (h *MD) renderProperties(buf writer) {
+	if !h.includeRelations {
+		return
+	}
+
+	// Use resolver if available
+	if h.resolver == nil {
+		log.Error("MD converter requires ObjectResolver to resolve properties, but it is not set")
+		return
+	}
+
+	// Get object type details
+	objectTypeId := h.s.LocalDetails().GetString(bundle.RelationKeyType)
+	if objectTypeId == "" {
+		return
+	}
+
+	objectTypeDetails, err := h.resolver.ResolveType(objectTypeId)
+	if err != nil || objectTypeDetails == nil {
+		return
+	}
+
+	// Get type name for YAML export
+	typeName := objectTypeDetails.GetString(bundle.RelationKeyName)
+
+	// Collect properties to export
+	properties := make([]yaml.Property, 0)
+
+	// Get all relation IDs
+	var propertiesIds []string
+	// Add type relation ID first
+	typeRelation, err := h.resolver.GetRelationByKey(bundle.RelationKeyType.String())
+	if err == nil && typeRelation != nil {
+		propertiesIds = append(propertiesIds, typeRelation.GetString(bundle.RelationKeyId))
+	}
+	propertiesIds = append(propertiesIds, objectTypeDetails.GetStringList(bundle.RelationKeyRecommendedFeaturedRelations)...)
+	propertiesIds = append(propertiesIds, objectTypeDetails.GetStringList(bundle.RelationKeyRecommendedRelations)...)
+	propertiesIds = slices.Compact(propertiesIds)
+
+	// Check if this is a collection
+	layout, hasLayout := h.s.Layout()
+	isCollection := hasLayout && layout == model.ObjectType_collection
+
+	// Process each relation
+	for _, id := range propertiesIds {
+		relationDetails, err := h.resolver.ResolveRelation(id)
+		if err != nil || relationDetails == nil {
+			continue
+		}
+		if relationDetails.GetBool(bundle.RelationKeyIsHidden) {
+			continue
+		}
+
+		name := relationDetails.GetString(bundle.RelationKeyName)
+		key := relationDetails.GetString(bundle.RelationKeyRelationKey)
+		format := model.RelationFormat(relationDetails.GetInt64(bundle.RelationKeyRelationFormat))
+		includeTime := relationDetails.GetBool(bundle.RelationKeyRelationFormatIncludeTime)
+
+		v := h.s.CombinedDetails().Get(domain.RelationKey(key))
+		if v.IsNull() {
+			continue
+		}
+
+		// Process special cases for file and object relations
+		var processedValue domain.Value = v
+
+		switch format {
+		case model.RelationFormat_file:
+			// Handle file format relations
+			var ids []string
+			if v.String() != "" {
+				ids = append(ids, v.String())
+			} else {
+				ids = v.StringList()
+			}
+			if len(ids) == 0 {
+				continue
+			}
+
+			// Multiple files
+			var fileList []string
+			for _, fileId := range ids {
+				if info, _ := h.getObjectInfo(fileId); info != nil {
+					layout := info.GetInt64(bundle.RelationKeyLayout)
+					// Check if it's a file object type
+					if layout == int64(model.ObjectType_file) || layout == int64(model.ObjectType_image) ||
+						layout == int64(model.ObjectType_audio) || layout == int64(model.ObjectType_video) ||
+						layout == int64(model.ObjectType_pdf) {
+						_, filename, _ := h.getLinkInfo(fileId)
+						if filename != "" {
+							fileList = append(fileList, filename)
+							// Add to appropriate hash list for later use
+							if layout == int64(model.ObjectType_image) {
+								h.imageHashes = append(h.imageHashes, fileId)
+							} else {
+								h.fileHashes = append(h.fileHashes, fileId)
+							}
+						}
+					}
+				}
+			}
+
+			if len(fileList) > 0 {
+				processedValue = domain.StringList(fileList)
+			} else {
+				continue
+			}
+
+		case model.RelationFormat_object:
+			// Object format - render with File property when included in export
+			var ids []string
+			if v.String() != "" {
+				ids = append(ids, v.String())
+			} else {
+				ids = v.StringList()
+			}
+			if len(ids) == 0 {
+				continue
+			}
+			var (
+				removeArray bool
+			)
+
+			if slices.Contains(removeArrayRelations, key) {
+				removeArray = true
+			}
+
+			// Handle special single-value relations
+			if removeArray && len(ids) > 0 {
+				title, _, ok := h.getLinkInfo(ids[0])
+				if ok {
+					processedValue = domain.String(title)
+				}
+			} else {
+				var objectList []string
+				for _, id := range ids {
+					title, filename, ok := h.getLinkInfo(id)
+					if !ok {
+						continue
+					}
+					if h.knownDocs[id] == nil {
+						objectList = append(objectList, title)
+					} else {
+						objectList = append(objectList, filename)
+					}
+				}
+				if len(objectList) > 0 {
+					processedValue = domain.StringList(objectList)
+				} else {
+					continue
+				}
+			}
+
+		case model.RelationFormat_tag,
+			model.RelationFormat_status:
+			// Tag and status formats - just render names
+			var ids []string
+			if v.String() != "" {
+				ids = append(ids, v.String())
+			} else {
+				ids = v.StringList()
+			}
+			if len(ids) == 0 {
+				continue
+			}
+
+			var nameList []string
+			for _, id := range ids {
+				if d, _ := h.getObjectInfo(id); d != nil {
+					if label := d.Get(bundle.RelationKeyName).String(); label != "" {
+						nameList = append(nameList, label)
+					}
+				}
+			}
+			if len(nameList) > 0 {
+				processedValue = domain.StringList(nameList)
+			} else {
+				continue
+			}
+
+		}
+
+		// Create property
+		prop := yaml.Property{
+			Name:        name,
+			Key:         key,
+			Format:      format,
+			Value:       processedValue,
+			IncludeTime: includeTime,
+		}
+		properties = append(properties, prop)
+	}
+
+	// Skip empty property lists unless it's a collection
+	if len(properties) == 0 && !isCollection {
+		return
+	}
+
+	// Prepare export options
+	exportOptions := &yaml.ExportOptions{
+		IncludeObjectType: true,
+		ObjectTypeName:    typeName,
+	}
+
+	// Add object ID as a special property
+	if objectId := h.s.LocalDetails().GetString(bundle.RelationKeyId); objectId != "" {
+		idProp := yaml.Property{
+			Name:   "id",
+			Key:    "id",
+			Format: model.RelationFormat_shorttext,
+			Value:  domain.String(objectId),
+		}
+		properties = append([]yaml.Property{idProp}, properties...)
+	}
+
+	// Export using YAML exporter
+	yamlData, err := yaml.ExportToYAML(properties, exportOptions)
+	if err != nil {
+		log.Errorf("failed to export properties to YAML: %v", err)
+		return
+	}
+
+	// Extract just the content (without delimiters)
+	frontMatter, _, _ := yaml.ExtractYAMLFrontMatter(yamlData)
+	if len(frontMatter) == 0 {
+		return
+	}
+
+	// Write custom front matter with schema reference if needed
+	fmt.Fprintf(buf, "---\n")
+
+	// Add JSON schema reference if enabled
+	if h.includeSchema && typeName != "" {
+		schemaFileName := h.GenerateSchemaFileName(typeName)
+		fmt.Fprintf(buf, "# yaml-language-server: $schema=%s\n", schemaFileName)
+	}
+
+	// Write the YAML content
+	buf.Write(frontMatter)
+	
+	// Ensure there's a newline before closing delimiter or collection
+	if len(frontMatter) > 0 && frontMatter[len(frontMatter)-1] != '\n' {
+		buf.WriteString("\n")
+	}
+
+	// Add collection objects if this is a collection
+	if isCollection {
+		collectionObjects := h.s.GetStoreSlice(template.CollectionStoreKey)
+		if len(collectionObjects) > 0 {
+			fmt.Fprintf(buf, "Collection:\n")
+			for _, objId := range collectionObjects {
+				if d, isInExport := h.getObjectInfo(objId); d != nil {
+					objectName := d.Get(bundle.RelationKeyName).String()
+					if objectName == "" {
+						objectName = objId
+					}
+
+					fmt.Fprintf(buf, "  - Name: %s\n", objectName)
+
+					if isInExport {
+						filename := h.fn.Get("", objId, objectName, h.Ext())
+						fmt.Fprintf(buf, "    File: %s\n", filename)
+					} else {
+						fmt.Fprintf(buf, "    Id: %s\n", objId)
+					}
+				} else {
+					fmt.Fprintf(buf, "  - Name: %s\n", objId)
+				}
+			}
+		}
+	}
+
+	fmt.Fprintf(buf, "---\n\n")
+}
+
 func (h *MD) Export() (result string) {
 	buf := bytes.NewBuffer(nil)
 	in := new(renderState)
+	h.renderProperties(buf)
+
 	h.renderChildren(buf, in, h.s.Pick(h.s.RootId()).Model())
 	return buf.String()
 }
@@ -392,11 +713,22 @@ func (h *MD) SetKnownDocs(docs map[string]*domain.Details) converter.Converter {
 	return h
 }
 
+func (h *MD) getObjectInfo(objectId string) (details *domain.Details, isIncludedInExport bool) {
+	details, _ = h.knownDocs[objectId]
+	if details != nil {
+		return details, true
+	}
+
+	details, _ = h.resolver.ResolveObject(objectId)
+	return details, false
+}
+
 func (h *MD) getLinkInfo(docId string) (title, filename string, ok bool) {
-	info, ok := h.knownDocs[docId]
-	if !ok {
+	info, _ := h.getObjectInfo(docId)
+	if info == nil {
 		return
 	}
+	ok = true
 	title = info.GetString(bundle.RelationKeyName)
 	// if object is a file
 	layout := info.GetInt64(bundle.RelationKeyLayout)
@@ -552,4 +884,76 @@ func (a sortedMarks) Less(i, j int) bool {
 		return a[i].Type < a[j].Type
 	}
 	return li > lj
+}
+
+// GenerateSchemaFileName creates a schema file name from the object type name
+func (h *MD) GenerateSchemaFileName(typeName string) string {
+	// Convert to lowercase and replace spaces with underscores
+	fileName := strings.ToLower(typeName)
+	fileName = strings.ReplaceAll(fileName, " ", "_")
+	fileName = strings.ReplaceAll(fileName, "/", "_")
+	fileName = strings.ReplaceAll(fileName, "\\", "_")
+	return "./schemas/" + fileName + ".schema.json"
+}
+
+// GenerateJSONSchema generates a JSON schema for the object type using the schema package
+func (h *MD) GenerateJSONSchema() ([]byte, error) {
+	if h.resolver == nil {
+		return nil, fmt.Errorf("resolver not set")
+	}
+
+	objectTypeId := h.s.LocalDetails().GetString(bundle.RelationKeyType)
+	objectTypeDetails, err := h.resolver.ResolveType(objectTypeId)
+	if err != nil || objectTypeDetails == nil {
+		return nil, fmt.Errorf("object type not found")
+	}
+
+	// Get all relations for this type
+	featuredRelations := objectTypeDetails.GetStringList(bundle.RelationKeyRecommendedFeaturedRelations)
+	regularRelations := objectTypeDetails.GetStringList(bundle.RelationKeyRecommendedRelations)
+	allRelations := append(featuredRelations, regularRelations...)
+
+	// Collect relation details
+	var relationDetailsList []*domain.Details
+	for _, relationId := range allRelations {
+		relationDetails, err := h.resolver.ResolveRelation(relationId)
+		if err == nil && relationDetails != nil {
+			relationDetailsList = append(relationDetailsList, relationDetails)
+		}
+	}
+
+	// Create schema using the schema package
+	s, err := schema.SchemaFromObjectDetailsWithResolver(objectTypeDetails, relationDetailsList, h.resolver)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create schema: %w", err)
+	}
+
+	// Export using the schema package
+	exporter := schema.NewJSONSchemaExporter("  ")
+	var buf bytes.Buffer
+	if err := exporter.Export(s, &buf); err != nil {
+		return nil, fmt.Errorf("failed to export schema: %w", err)
+	}
+
+	return buf.Bytes(), nil
+}
+
+func (h *MD) getRelationOptions(relationKey string) []string {
+	var options []string
+
+	// Return empty if resolver is not available
+	if h.resolver == nil {
+		return options
+	}
+
+	optionDetails, err := h.resolver.ResolveRelationOptions(relationKey)
+	if err == nil && optionDetails != nil {
+		for _, details := range optionDetails {
+			if optionName := details.GetString(bundle.RelationKeyName); optionName != "" {
+				options = append(options, optionName)
+			}
+		}
+	}
+
+	return options
 }

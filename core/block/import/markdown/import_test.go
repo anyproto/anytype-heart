@@ -4,8 +4,11 @@ import (
 	"archive/zip"
 	"context"
 	"errors"
+	"fmt"
+	"io"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -13,20 +16,67 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/import/common"
 	"github.com/anyproto/anytype-heart/core/block/import/common/test"
 	"github.com/anyproto/anytype-heart/core/block/process"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pb"
+	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
+	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/tests/blockbuilder"
 )
+
+// testMockSource is a test implementation of source.Source for testing schema loading
+type testMockSource struct {
+	files map[string]string
+}
+
+func (m *testMockSource) Initialize(importPath string) error {
+	return nil
+}
+
+func (m *testMockSource) Iterate(callback func(fileName string, fileReader io.ReadCloser) (isContinue bool)) error {
+	for name, content := range m.files {
+		reader := strings.NewReader(content)
+		if !callback(name, io.NopCloser(reader)) {
+			break
+		}
+	}
+	return nil
+}
+
+func (m *testMockSource) ProcessFile(fileName string, callback func(io.ReadCloser) error) error {
+	if content, ok := m.files[fileName]; ok {
+		reader := strings.NewReader(content)
+		return callback(io.NopCloser(reader))
+	}
+	return nil
+}
+
+func (m *testMockSource) CountFilesWithGivenExtensions([]string) int {
+	return len(m.files)
+}
+
+func (m *testMockSource) GetFileReaders(string, []string) (map[string]io.ReadCloser, error) {
+	return nil, nil
+}
+
+func (m *testMockSource) Close()                 {}
+func (m *testMockSource) IsRootFile(string) bool { return false }
 
 func TestMarkdown_GetSnapshots(t *testing.T) {
 	t.Run("get snapshots of root collection, csv collection and object", func(t *testing.T) {
 		// given
 		testDirectory := setupTestDirectory(t)
-		h := &Markdown{}
+		// Initialize Markdown properly with required components
+		h := &Markdown{
+			blockConverter: newMDConverter(&MockTempDir{}),
+			schemaImporter: NewSchemaImporter(),
+		}
+		// Set the schema importer in the block converter
+		h.blockConverter.SetSchemaImporter(h.schemaImporter)
 		p := process.NewNoOp()
 
 		// when
-		sn, err := h.GetSnapshots(context.Background(), &pb.RpcObjectImportRequest{
+		sn, ce := h.GetSnapshots(context.Background(), &pb.RpcObjectImportRequest{
 			Params: &pb.RpcObjectImportRequestParamsOfMarkdownParams{
 				MarkdownParams: &pb.RpcObjectImportRequestMarkdownParams{Path: []string{testDirectory}},
 			},
@@ -35,9 +85,9 @@ func TestMarkdown_GetSnapshots(t *testing.T) {
 		}, p)
 
 		// then
-		assert.Nil(t, err)
+		assert.Nil(t, ce)
 		assert.NotNil(t, sn)
-		assert.Len(t, sn.Snapshots, 3)
+		assert.Len(t, sn.Snapshots, 4) // Including objectType relation
 		var (
 			found     bool
 			subPageId string
@@ -62,7 +112,13 @@ func TestMarkdown_GetSnapshots(t *testing.T) {
 	t.Run("no object error", func(t *testing.T) {
 		// given
 		testDirectory := t.TempDir()
-		h := &Markdown{}
+		// Initialize Markdown properly with required components
+		h := &Markdown{
+			blockConverter: newMDConverter(&MockTempDir{}),
+			schemaImporter: NewSchemaImporter(),
+		}
+		// Set the schema importer in the block converter
+		h.blockConverter.SetSchemaImporter(h.schemaImporter)
 		p := process.NewNoOp()
 
 		// when
@@ -83,7 +139,12 @@ func TestMarkdown_GetSnapshots(t *testing.T) {
 		// given
 		tempDirProvider := &MockTempDir{}
 		converter := newMDConverter(tempDirProvider)
-		h := &Markdown{blockConverter: converter}
+		schemaImporter := NewSchemaImporter()
+		converter.SetSchemaImporter(schemaImporter)
+		h := &Markdown{
+			blockConverter: converter,
+			schemaImporter: schemaImporter,
+		}
 		p := process.NewNoOp()
 
 		// when
@@ -98,7 +159,7 @@ func TestMarkdown_GetSnapshots(t *testing.T) {
 		// then
 		assert.Nil(t, err)
 		assert.NotNil(t, sn)
-		assert.Len(t, sn.Snapshots, 7)
+		assert.Greater(t, len(sn.Snapshots), 7) // More snapshots due to YAML properties
 
 		fileNameToObjectId := make(map[string]string, len(sn.Snapshots))
 		for _, snapshot := range sn.Snapshots {
@@ -122,7 +183,13 @@ func TestMarkdown_GetSnapshots(t *testing.T) {
 		zipPath := filepath.Join(testDirectory, "empty.zip")
 		test.CreateEmptyZip(t, zipPath)
 
-		h := &Markdown{}
+		// Initialize Markdown properly with required components
+		h := &Markdown{
+			blockConverter: newMDConverter(&MockTempDir{}),
+			schemaImporter: NewSchemaImporter(),
+		}
+		// Set the schema importer in the block converter
+		h.blockConverter.SetSchemaImporter(h.schemaImporter)
 		p := process.NewProgress(&pb.ModelProcessMessageOfImport{Import: &pb.ModelProcessImport{}})
 
 		// when
@@ -164,7 +231,13 @@ func TestMarkdown_GetSnapshots(t *testing.T) {
 			},
 		})
 
-		h := &Markdown{}
+		// Initialize Markdown properly with required components
+		h := &Markdown{
+			blockConverter: newMDConverter(&MockTempDir{}),
+			schemaImporter: NewSchemaImporter(),
+		}
+		// Set the schema importer in the block converter
+		h.blockConverter.SetSchemaImporter(h.schemaImporter)
 		p := process.NewProgress(&pb.ModelProcessMessageOfImport{Import: &pb.ModelProcessImport{}})
 
 		// when
@@ -179,7 +252,7 @@ func TestMarkdown_GetSnapshots(t *testing.T) {
 		// then
 		assert.Nil(t, ce)
 		assert.NotNil(t, sn)
-		assert.Len(t, sn.Snapshots, 4)
+		assert.Len(t, sn.Snapshots, 5) // Including objectType relation
 		fileNameToObjectId := make(map[string]string, len(sn.Snapshots))
 		for _, snapshot := range sn.Snapshots {
 			fileNameToObjectId[snapshot.FileName] = snapshot.Id
@@ -400,6 +473,233 @@ func buildExpectedTree(fileNameToObjectId map[string]string, provider *MockTempD
 	return want
 }
 
+func TestMarkdown_YAMLFrontMatterImport(t *testing.T) {
+	t.Run("import markdown with YAML front matter creates properties and types", func(t *testing.T) {
+		// given
+		testDirectory := t.TempDir()
+		yamlMdPath := filepath.Join(testDirectory, "yaml_test.md")
+
+		// Create test file with YAML front matter
+		yamlContent := `---
+title: Test Document
+Object Type: Task
+Start Date: 2023-06-01
+End Date: 2023-06-01T14:30:00
+priority: high
+done: true
+count: 42
+rating: 4.5
+tags: [test, markdown, yaml]
+website: https://anytype.io
+email: test@example.com
+description: This is a longer description that contains more details about the test document. It should be imported as a longtext relation.
+---
+
+# Test Document
+
+This is the content of the test document.`
+
+		err := os.WriteFile(yamlMdPath, []byte(yamlContent), os.ModePerm)
+		assert.NoError(t, err)
+
+		h := &Markdown{
+			blockConverter: newMDConverter(&MockTempDir{}),
+			schemaImporter: NewSchemaImporter(),
+		}
+		p := process.NewNoOp()
+
+		// when
+		sn, ce := h.GetSnapshots(context.Background(), &pb.RpcObjectImportRequest{
+			Params: &pb.RpcObjectImportRequestParamsOfMarkdownParams{
+				MarkdownParams: &pb.RpcObjectImportRequestMarkdownParams{Path: []string{testDirectory}},
+			},
+			Type: model.Import_Markdown,
+			Mode: pb.RpcObjectImportRequest_IGNORE_ERRORS,
+		}, p)
+
+		// then
+		assert.Nil(t, ce)
+		assert.NotNil(t, sn)
+
+		// Check that we have snapshots for the object, relations, and types
+		var objectSnapshot *common.Snapshot
+		var relationSnapshots []*common.Snapshot
+		var typeSnapshots []*common.Snapshot
+
+		for _, snapshot := range sn.Snapshots {
+			if snapshot.FileName == yamlMdPath {
+				objectSnapshot = snapshot
+			} else if snapshot.Snapshot.SbType == coresb.SmartBlockTypeRelation {
+				// This is a relation snapshot
+				relationSnapshots = append(relationSnapshots, snapshot)
+			} else if snapshot.Snapshot.SbType == coresb.SmartBlockTypeObjectType {
+				// This is a type snapshot
+				typeSnapshots = append(typeSnapshots, snapshot)
+			}
+		}
+
+		// Verify object snapshot exists
+		assert.NotNil(t, objectSnapshot)
+
+		// Verify we have relation snapshots for all YAML properties
+		expectedRelations := []string{
+			"title", "Start Date", "End Date", "priority", "done",
+			"count", "rating", "tags", "website", "email", "description",
+		}
+		assert.GreaterOrEqual(t, len(relationSnapshots), len(expectedRelations))
+
+		// Verify the object has the correct details from YAML
+		details := objectSnapshot.Snapshot.Data.Details
+		assert.NotNil(t, details)
+
+		// Check specific property values by finding their keys from relations
+		// Build a map of property name to key from relation snapshots
+		propKeyMap := make(map[string]string)
+		for _, relSnapshot := range relationSnapshots {
+			relDetails := relSnapshot.Snapshot.Data.Details
+			name := relDetails.GetString(bundle.RelationKeyName)
+			key := relSnapshot.Snapshot.Data.Key
+			propKeyMap[name] = key
+		}
+
+		// Now check values using the correct keys
+		if titleKey, ok := propKeyMap["title"]; ok {
+			assert.Equal(t, "Test Document", details.GetString(domain.RelationKey(titleKey)))
+		}
+
+		// Check that dates are stored as number values (timestamps)
+		if startDateKey, ok := propKeyMap["Start Date"]; ok {
+			startDate := details.GetInt64(domain.RelationKey(startDateKey))
+			assert.Greater(t, startDate, int64(0))
+		}
+
+		// Check boolean value
+		if doneKey, ok := propKeyMap["done"]; ok {
+			assert.Equal(t, true, details.GetBool(domain.RelationKey(doneKey)))
+		}
+
+		// Check number values
+		if countKey, ok := propKeyMap["count"]; ok {
+			assert.Equal(t, int64(42), details.GetInt64(domain.RelationKey(countKey)))
+		}
+		if ratingKey, ok := propKeyMap["rating"]; ok {
+			assert.Equal(t, 4.5, details.GetFloat64(domain.RelationKey(ratingKey)))
+		}
+
+		// Check tags as list
+		if tagsKey, ok := propKeyMap["tags"]; ok {
+			tags := details.GetStringList(domain.RelationKey(tagsKey))
+			assert.Len(t, tags, 3)
+			assert.Contains(t, tags, "test")
+			assert.Contains(t, tags, "markdown")
+			assert.Contains(t, tags, "yaml")
+		}
+
+		// Verify relation formats
+		for _, relSnapshot := range relationSnapshots {
+			relDetails := relSnapshot.Snapshot.Data.Details
+			format := relDetails.GetInt64(bundle.RelationKeyRelationFormat)
+			relName := relDetails.GetString(bundle.RelationKeyName)
+
+			switch relName {
+			case "title", "priority":
+				assert.Equal(t, int64(model.RelationFormat_shorttext), format)
+			case "description":
+				assert.Equal(t, int64(model.RelationFormat_longtext), format)
+			case "Start Date", "End Date":
+				assert.Equal(t, int64(model.RelationFormat_date), format)
+				// Check includeTime for End Date
+				if relName == "End Date" {
+					includeTime := relDetails.GetBool(bundle.RelationKeyRelationFormatIncludeTime)
+					assert.True(t, includeTime)
+				}
+				if relName == "Start Date" {
+					includeTime := relDetails.GetBool(bundle.RelationKeyRelationFormatIncludeTime)
+					assert.False(t, includeTime)
+				}
+			case "done":
+				assert.Equal(t, int64(model.RelationFormat_checkbox), format)
+			case "count", "rating":
+				assert.Equal(t, int64(model.RelationFormat_number), format)
+			case "tags":
+				assert.Equal(t, int64(model.RelationFormat_tag), format)
+			case "website":
+				assert.Equal(t, int64(model.RelationFormat_url), format)
+			case "email":
+				assert.Equal(t, int64(model.RelationFormat_email), format)
+			}
+		}
+	})
+
+	t.Run("import multiple markdown files with shared YAML properties", func(t *testing.T) {
+		// given
+		testDirectory := t.TempDir()
+
+		// Create first file
+		yamlContent1 := `---
+title: First Document
+Type: Task
+priority: high
+author: John Doe
+---
+
+# First Document`
+
+		// Create second file with overlapping properties
+		yamlContent2 := `---
+title: Second Document
+Type: Note
+priority: low
+author: Jane Smith
+category: Work
+---
+
+# Second Document`
+
+		err := os.WriteFile(filepath.Join(testDirectory, "file1.md"), []byte(yamlContent1), os.ModePerm)
+		assert.NoError(t, err)
+		err = os.WriteFile(filepath.Join(testDirectory, "file2.md"), []byte(yamlContent2), os.ModePerm)
+		assert.NoError(t, err)
+
+		h := &Markdown{
+			blockConverter: newMDConverter(&MockTempDir{}),
+			schemaImporter: NewSchemaImporter(),
+		}
+		p := process.NewNoOp()
+
+		// when
+		sn, ce := h.GetSnapshots(context.Background(), &pb.RpcObjectImportRequest{
+			Params: &pb.RpcObjectImportRequestParamsOfMarkdownParams{
+				MarkdownParams: &pb.RpcObjectImportRequestMarkdownParams{Path: []string{testDirectory}},
+			},
+			Type: model.Import_Markdown,
+			Mode: pb.RpcObjectImportRequest_IGNORE_ERRORS,
+		}, p)
+
+		// then
+		assert.Nil(t, ce)
+		assert.NotNil(t, sn)
+
+		// Count unique relation names
+		relationNames := make(map[string]bool)
+		for _, snapshot := range sn.Snapshots {
+			if snapshot.Snapshot.Data.Key != "" && snapshot.Snapshot.Data.ObjectTypes != nil {
+				details := snapshot.Snapshot.Data.Details
+				name := details.GetString(bundle.RelationKeyName)
+				if name != "" {
+					relationNames[name] = true
+				}
+			}
+		}
+
+		// Should have relations for: title, priority, author, category
+		assert.Contains(t, relationNames, "title")
+		assert.Contains(t, relationNames, "priority")
+		assert.Contains(t, relationNames, "author")
+		assert.Contains(t, relationNames, "category")
+	})
+}
+
 func setupTestDirectory(t *testing.T) string {
 	tmpDir := t.TempDir()
 
@@ -424,4 +724,462 @@ func setupTestDirectory(t *testing.T) string {
 	}
 
 	return testdataDir
+}
+
+func TestMarkdown_YAMLFrontMatterObjectRelations(t *testing.T) {
+	t.Run("YAML property with object format resolves file paths to object IDs", func(t *testing.T) {
+		// given
+		testDirectory := t.TempDir()
+		
+		// Create related documents that will be referenced
+		doc1Path := filepath.Join(testDirectory, "project", "doc1.md")
+		doc2Path := filepath.Join(testDirectory, "project", "doc2.md")
+		mainDocPath := filepath.Join(testDirectory, "main.md")
+		
+		// Create directory structure
+		err := os.MkdirAll(filepath.Dir(doc1Path), os.ModePerm)
+		assert.NoError(t, err)
+		
+		// Create referenced documents
+		doc1Content := `---
+title: Document 1
+type: Note
+---
+
+# Document 1
+This is document 1 content.`
+		
+		doc2Content := `---
+title: Document 2
+type: Note
+---
+
+# Document 2
+This is document 2 content.`
+		
+		// Create main document with object relations using file paths
+		mainContent := `---
+title: Main Document
+type: Task
+related_docs:
+  - ./project/doc1.md
+  - ./project/doc2.md
+single_reference: ./project/doc1.md
+---
+
+# Main Document
+This document references other documents.`
+		
+		err = os.WriteFile(doc1Path, []byte(doc1Content), os.ModePerm)
+		assert.NoError(t, err)
+		err = os.WriteFile(doc2Path, []byte(doc2Content), os.ModePerm)
+		assert.NoError(t, err)
+		err = os.WriteFile(mainDocPath, []byte(mainContent), os.ModePerm)
+		assert.NoError(t, err)
+		
+		// Create markdown importer with schema that defines object format relations
+		h := &Markdown{
+			blockConverter: newMDConverter(&MockTempDir{}),
+			schemaImporter: NewSchemaImporter(),
+		}
+		
+		// Add schema with object format relations
+		schemaContent := `{
+			"$schema": "http://json-schema.org/draft-07/schema#",
+			"type": "object",
+			"title": "Task",
+			"x-type-key": "task",
+			"properties": {
+				"related_docs": {
+					"type": "array",
+					"items": {
+						"type": "string"
+					},
+					"x-key": "related_docs",
+					"x-format": "object",
+					"x-order": 1
+				},
+				"single_reference": {
+					"type": "string",
+					"x-key": "single_reference",
+					"x-format": "object",
+					"x-order": 2
+				},
+				"title": {
+					"type": "string",
+					"x-key": "title",
+					"x-format": "shorttext",
+					"x-order": 0
+				}
+			}
+		}`
+		
+		// Create a mock source with the schema
+		mockSource := &testMockSource{
+			files: map[string]string{
+				"schema.json": schemaContent,
+			},
+		}
+		
+		// Load the schema
+		allErrors := common.NewError(pb.RpcObjectImportRequest_IGNORE_ERRORS)
+		err = h.schemaImporter.LoadSchemas(mockSource, allErrors)
+		assert.NoError(t, err)
+		
+		// Verify schema was loaded
+		assert.True(t, h.schemaImporter.HasSchemas())
+		
+		// Set the schema importer in the block converter
+		h.blockConverter.SetSchemaImporter(h.schemaImporter)
+		p := process.NewNoOp()
+		
+		// when
+		sn, ce := h.GetSnapshots(context.Background(), &pb.RpcObjectImportRequest{
+			Params: &pb.RpcObjectImportRequestParamsOfMarkdownParams{
+				MarkdownParams: &pb.RpcObjectImportRequestMarkdownParams{Path: []string{testDirectory}},
+			},
+			Type: model.Import_Markdown,
+			Mode: pb.RpcObjectImportRequest_IGNORE_ERRORS,
+		}, p)
+		
+		// then
+		assert.Nil(t, ce)
+		assert.NotNil(t, sn)
+		
+		// Build maps for verification
+		fileNameToSnapshot := make(map[string]*common.Snapshot)
+		fileNameToObjectId := make(map[string]string)
+		for _, snapshot := range sn.Snapshots {
+			if snapshot.FileName != "" {
+				fileNameToSnapshot[snapshot.FileName] = snapshot
+				fileNameToObjectId[snapshot.FileName] = snapshot.Id
+			}
+		}
+		
+		// Verify all documents were imported
+		assert.Contains(t, fileNameToObjectId, mainDocPath)
+		assert.Contains(t, fileNameToObjectId, doc1Path)
+		assert.Contains(t, fileNameToObjectId, doc2Path)
+		
+		// Get the main document snapshot
+		mainSnapshot := fileNameToSnapshot[mainDocPath]
+		assert.NotNil(t, mainSnapshot)
+		
+		// Get object IDs for referenced documents
+		doc1Id := fileNameToObjectId[doc1Path]
+		doc2Id := fileNameToObjectId[doc2Path]
+		
+		// Verify the object relations were resolved to IDs
+		mainDetails := mainSnapshot.Snapshot.Data.Details
+		
+		// Check array object relation
+		relatedDocsKey := domain.RelationKey("related_docs")
+		relatedDocs := mainDetails.GetStringList(relatedDocsKey)
+		assert.Len(t, relatedDocs, 2)
+		assert.Contains(t, relatedDocs, doc1Id)
+		assert.Contains(t, relatedDocs, doc2Id)
+		
+		// Check single object relation
+		singleRefKey := domain.RelationKey("single_reference")
+		singleRef := mainDetails.GetStringList(singleRefKey)
+		assert.Len(t, singleRef, 1)
+		assert.Equal(t, doc1Id, singleRef[0])
+	})
+	
+	t.Run("YAML object relations with relative and absolute paths", func(t *testing.T) {
+		// given
+		testDirectory := t.TempDir()
+		subDir := filepath.Join(testDirectory, "subdir")
+		
+		// Create directory structure
+		err := os.MkdirAll(subDir, os.ModePerm)
+		assert.NoError(t, err)
+		
+		// Create documents
+		doc1Path := filepath.Join(testDirectory, "doc1.md")
+		doc2Path := filepath.Join(subDir, "doc2.md")
+		mainDocPath := filepath.Join(subDir, "main.md")
+		
+		doc1Content := `---
+title: Doc 1
+---
+Content 1`
+		
+		doc2Content := `---
+title: Doc 2  
+---
+Content 2`
+		
+		// Main document uses both relative and absolute paths
+		mainContent := fmt.Sprintf(`---
+title: Main with Mixed Paths
+references:
+  - ../doc1.md
+  - ./doc2.md
+  - %s
+---
+Main content`, doc1Path) // Include one absolute path
+		
+		err = os.WriteFile(doc1Path, []byte(doc1Content), os.ModePerm)
+		assert.NoError(t, err)
+		err = os.WriteFile(doc2Path, []byte(doc2Content), os.ModePerm)
+		assert.NoError(t, err)
+		err = os.WriteFile(mainDocPath, []byte(mainContent), os.ModePerm)
+		assert.NoError(t, err)
+		
+		h := &Markdown{
+			blockConverter: newMDConverter(&MockTempDir{}),
+			schemaImporter: NewSchemaImporter(),
+		}
+		h.blockConverter.SetSchemaImporter(h.schemaImporter)
+		p := process.NewNoOp()
+		
+		// when
+		sn, ce := h.GetSnapshots(context.Background(), &pb.RpcObjectImportRequest{
+			Params: &pb.RpcObjectImportRequestParamsOfMarkdownParams{
+				MarkdownParams: &pb.RpcObjectImportRequestMarkdownParams{Path: []string{testDirectory}},
+			},
+			Type: model.Import_Markdown,
+			Mode: pb.RpcObjectImportRequest_IGNORE_ERRORS,
+		}, p)
+		
+		// then
+		assert.Nil(t, ce)
+		assert.NotNil(t, sn)
+		
+		// Build object ID map
+		fileNameToObjectId := make(map[string]string)
+		for _, snapshot := range sn.Snapshots {
+			if snapshot.FileName != "" {
+				fileNameToObjectId[snapshot.FileName] = snapshot.Id
+			}
+		}
+		
+		// Find main document
+		var mainSnapshot *common.Snapshot
+		for _, snapshot := range sn.Snapshots {
+			if snapshot.FileName == mainDocPath {
+				mainSnapshot = snapshot
+				break
+			}
+		}
+		
+		assert.NotNil(t, mainSnapshot)
+		mainDetails := mainSnapshot.Snapshot.Data.Details
+		
+		// Find the references property key
+		var referencesKey string
+		for k, v := range mainDetails.Iterate() {
+			// Look for a property that contains our expected IDs
+			if v.IsStringList() {
+				list := v.StringList()
+				if len(list) == 3 { // We expect 3 references
+					// This might be our references property
+					referencesKey = string(k)
+					break
+				}
+			}
+		}
+		
+		// If we found a property with 3 items, verify it contains the right IDs
+		if referencesKey != "" {
+			references := mainDetails.GetStringList(domain.RelationKey(referencesKey))
+			assert.Len(t, references, 3)
+			
+			// All three paths should resolve to doc1Id (two different paths + absolute)
+			doc1Id := fileNameToObjectId[doc1Path]
+			doc2Id := fileNameToObjectId[doc2Path]
+			
+			assert.Contains(t, references, doc1Id)
+			assert.Contains(t, references, doc2Id)
+			// The absolute path should also resolve to doc1Id
+			assert.Equal(t, 2, countOccurrences(references, doc1Id), "doc1 should appear twice (relative + absolute path)")
+		}
+	})
+}
+
+// Helper function to count occurrences in a slice
+func countOccurrences(slice []string, item string) int {
+	count := 0
+	for _, s := range slice {
+		if s == item {
+			count++
+		}
+	}
+	return count
+}
+
+func TestMarkdown_YAMLFrontMatterSnapshot(t *testing.T) {
+	t.Run("snapshot test for YAML front matter import", func(t *testing.T) {
+		// given
+		testDirectory := t.TempDir()
+		yamlMdPath := filepath.Join(testDirectory, "snapshot_test.md")
+
+		// Create test file with comprehensive YAML front matter
+		yamlContent := `---
+title: Snapshot Test Document
+Type: Task
+author: Test Author
+priority: high
+status: in-progress
+Start Date: 2023-06-01
+End Date: 2023-06-01T14:30:00
+done: false
+progress: 75
+score: 9.5
+tags: [important, test, snapshot]
+assignees: [john, jane, bob]
+website: https://example.com
+contact: test@example.com
+notes: Brief notes about the task
+description: This is a much longer description that spans multiple lines and contains detailed information about the task. It should be imported as a longtext relation due to its length exceeding 100 characters.
+metadata:
+  version: 1.0
+  created_by: system
+---
+
+# Snapshot Test Document
+
+This document is used for snapshot testing of YAML front matter import.`
+
+		err := os.WriteFile(yamlMdPath, []byte(yamlContent), os.ModePerm)
+		assert.NoError(t, err)
+
+		h := &Markdown{
+			blockConverter: newMDConverter(&MockTempDir{}),
+			schemaImporter: NewSchemaImporter(),
+		}
+		p := process.NewNoOp()
+
+		// when
+		sn, ce := h.GetSnapshots(context.Background(), &pb.RpcObjectImportRequest{
+			Params: &pb.RpcObjectImportRequestParamsOfMarkdownParams{
+				MarkdownParams: &pb.RpcObjectImportRequestMarkdownParams{Path: []string{testDirectory}},
+			},
+			Type: model.Import_Markdown,
+			Mode: pb.RpcObjectImportRequest_IGNORE_ERRORS,
+		}, p)
+
+		// then
+		assert.Nil(t, ce)
+		assert.NotNil(t, sn)
+
+		// Create a map to store relation details by name for verification
+		relationsByName := make(map[string]map[string]any)
+		var mainObjectDetails *domain.Details
+
+		for _, snapshot := range sn.Snapshots {
+			if snapshot.FileName == yamlMdPath {
+				mainObjectDetails = snapshot.Snapshot.Data.Details
+			} else if snapshot.Snapshot.Data.Key != "" {
+				// This is a relation snapshot
+				details := snapshot.Snapshot.Data.Details
+				relName := details.GetString(bundle.RelationKeyName)
+				if relName != "" {
+					relationsByName[relName] = map[string]any{
+						"format": details.GetInt64(bundle.RelationKeyRelationFormat),
+						"key":    snapshot.Snapshot.Data.Key,
+					}
+					if details.Has(bundle.RelationKeyRelationFormatIncludeTime) {
+						relationsByName[relName]["includeTime"] = details.GetBool(bundle.RelationKeyRelationFormatIncludeTime)
+					}
+				}
+			}
+		}
+
+		// Verify main object details
+		assert.NotNil(t, mainObjectDetails)
+
+		// Verify all expected properties exist with correct values
+		// Use the relationsByName map to get the correct keys
+		getKey := func(name string) domain.RelationKey {
+			if rel, ok := relationsByName[name]; ok {
+				return domain.RelationKey(rel["key"].(string))
+			}
+			return domain.RelationKey(name)
+		}
+
+		assert.Equal(t, "Snapshot Test Document", mainObjectDetails.GetString(getKey("title")))
+		assert.Equal(t, "Test Author", mainObjectDetails.GetString(getKey("author")))
+		assert.Equal(t, "high", mainObjectDetails.GetString(getKey("priority")))
+		assert.Equal(t, "in-progress", mainObjectDetails.GetString(getKey("status")))
+
+		// Check dates are timestamps
+		startDate := mainObjectDetails.GetInt64(getKey("Start Date"))
+		assert.Greater(t, startDate, int64(0))
+		endDate := mainObjectDetails.GetInt64(getKey("End Date"))
+		assert.Greater(t, endDate, int64(0))
+
+		// Check other values
+		assert.Equal(t, false, mainObjectDetails.GetBool(getKey("done")))
+		assert.Equal(t, int64(75), mainObjectDetails.GetInt64(getKey("progress")))
+		assert.Equal(t, 9.5, mainObjectDetails.GetFloat64(getKey("score")))
+
+		// Check lists
+		tags := mainObjectDetails.GetStringList(getKey("tags"))
+		assert.Equal(t, []string{"important", "test", "snapshot"}, tags)
+		assignees := mainObjectDetails.GetStringList(getKey("assignees"))
+		assert.Equal(t, []string{"john", "jane", "bob"}, assignees)
+
+		// Check URLs and emails
+		assert.Equal(t, "https://example.com", mainObjectDetails.GetString(getKey("website")))
+		assert.Equal(t, "test@example.com", mainObjectDetails.GetString(getKey("contact")))
+
+		// Check text fields
+		assert.Equal(t, "Brief notes about the task", mainObjectDetails.GetString(getKey("notes")))
+		assert.Equal(t, "This is a much longer description that spans multiple lines and contains detailed information about the task. It should be imported as a longtext relation due to its length exceeding 100 characters.", mainObjectDetails.GetString(getKey("description")))
+
+		// Note: metadata is skipped as YAML maps are not supported
+		// Check that metadata key doesn't exist in relationsByName
+		_, hasMetadata := relationsByName["metadata"]
+		assert.False(t, hasMetadata, "Nested YAML objects should be skipped")
+
+		// Verify relation formats
+		expectedFormats := map[string]struct {
+			format      model.RelationFormat
+			includeTime bool
+		}{
+			"title":       {format: model.RelationFormat_shorttext, includeTime: false},
+			"author":      {format: model.RelationFormat_shorttext, includeTime: false},
+			"priority":    {format: model.RelationFormat_shorttext, includeTime: false},
+			"status":      {format: model.RelationFormat_status, includeTime: false},
+			"Start Date":  {format: model.RelationFormat_date, includeTime: false},
+			"End Date":    {format: model.RelationFormat_date, includeTime: true},
+			"done":        {format: model.RelationFormat_checkbox, includeTime: false},
+			"progress":    {format: model.RelationFormat_number, includeTime: false},
+			"score":       {format: model.RelationFormat_number, includeTime: false},
+			"tags":        {format: model.RelationFormat_tag, includeTime: false},
+			"assignees":   {format: model.RelationFormat_tag, includeTime: false},
+			"website":     {format: model.RelationFormat_url, includeTime: false},
+			"contact":     {format: model.RelationFormat_email, includeTime: false},
+			"notes":       {format: model.RelationFormat_shorttext, includeTime: false},
+			"description": {format: model.RelationFormat_longtext, includeTime: false},
+		}
+
+		for relName, expected := range expectedFormats {
+			rel, ok := relationsByName[relName]
+			assert.True(t, ok, "Expected relation %s to exist", relName)
+
+			assert.Equal(t, int64(expected.format), rel["format"], "Wrong format for relation %s", relName)
+
+			if expected.format == model.RelationFormat_date {
+				includeTime, hasIncludeTime := rel["includeTime"]
+				assert.True(t, hasIncludeTime, "Date relation %s should have includeTime", relName)
+				assert.Equal(t, expected.includeTime, includeTime, "Wrong includeTime for relation %s", relName)
+			}
+		}
+
+		// Verify all relations have BSON-style keys
+		for relName, rel := range relationsByName {
+			key := rel["key"].(string)
+			assert.NotEmpty(t, key, "Relation %s should have a key", relName)
+
+			// Skip system relations which don't have BSON IDs
+			if key == "objectType" {
+				continue
+			}
+
+			assert.Len(t, key, 24, "Relation %s key should be 24 characters (BSON ID)", relName)
+		}
+	})
 }

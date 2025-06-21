@@ -1,0 +1,19 @@
+---
+type: Task
+Title: Implement schema integration
+Status: In Progress
+Priority: 1
+Due Date: 2024-02-15T14:00:00Z
+Tags: [feature, urgent]
+Estimated Hours: 8
+Description: |
+  Create proper interfaces in the schema package and add integration tests:
+  - Create interfaces.go with PropertyResolver interface
+  - Update yaml parser to use schema interfaces
+  - Add comprehensive integration tests
+  - Create testdata with sample schemas
+---
+
+# Task Details
+
+This task involves refactoring the schema package to have clean interfaces and proper integration tests between the schema and YAML parsing functionality.

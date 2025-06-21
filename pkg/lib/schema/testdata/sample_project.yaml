@@ -1,0 +1,25 @@
+---
+type: Project
+Name: Anytype Schema System
+Status: Active
+Start Date: 2024-01-01
+End Date: 2024-06-30
+Budget: 50000
+Description: |
+  Design and implement a flexible schema system for Anytype that supports:
+  - JSON schema definitions for types and relations
+  - YAML front matter parsing with schema awareness
+  - Integration with markdown import/export
+  - Support for custom object types
+---
+
+# Project Overview
+
+The Anytype Schema System project aims to provide a robust and extensible way to define custom object types and their properties. This will enable users to create structured data models that fit their specific needs.
+
+## Key Features
+
+1. **Schema Definition Format**: JSON-based schema files that define object types and their relations
+2. **Property Resolution**: Automatic mapping of property names to relation keys
+3. **Format Detection**: Smart detection of property formats (date, URL, email, etc.)
+4. **Integration Points**: Clean interfaces for integrating with import/export systems

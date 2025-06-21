@@ -1,0 +1,64 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "urn:anytype:schema:2024-06-14:author-user:type-project:gen-1.0.0",
+  "type": "object",
+  "title": "Project",
+  "description": "A project with status tracking and tags",
+  "x-type-key": "custom_project_type",
+  "x-plural": "Projects",
+  "x-icon-emoji": "🚀",
+  "properties": {
+    "id": {
+      "type": "string",
+      "description": "Unique identifier",
+      "readOnly": true,
+      "x-order": 0,
+      "x-key": "id"
+    },
+    "Type": {
+      "const": "Project",
+      "x-order": 1,
+      "x-key": "type"
+    },
+    "Project Name": {
+      "type": "string",
+      "x-featured": true,
+      "x-order": 2,
+      "x-key": "project_name"
+    },
+    "Project Status": {
+      "type": "string",
+      "enum": ["Planning", "Active", "On Hold", "Completed", "Cancelled"],
+      "default": "Planning",
+      "x-featured": true,
+      "x-order": 3,
+      "x-key": "project_status"
+    },
+    "Priority Level": {
+      "type": "string",
+      "enum": ["Low", "Medium", "High", "Critical"],
+      "x-order": 4,
+      "x-key": "priority_level"
+    },
+    "Project Tags": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "examples": ["frontend", "backend", "infrastructure", "documentation", "testing"],
+      "x-featured": true,
+      "x-order": 5,
+      "x-key": "project_tags"
+    },
+    "Department": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "examples": ["Engineering", "Marketing", "Sales"],
+      "x-order": 6,
+      "x-key": "department"
+    }
+  },
+  "required": ["Project Name", "Project Status"]
+}

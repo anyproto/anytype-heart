@@ -2,6 +2,7 @@ package markdown
 
 import (
 	"context"
+	"fmt"
 	"net/url"
 	"path/filepath"
 	"regexp"
@@ -13,6 +14,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/collection"
 	"github.com/anyproto/anytype-heart/core/block/import/common"
 	"github.com/anyproto/anytype-heart/core/block/import/common/source"
+	"github.com/anyproto/anytype-heart/pkg/lib/schema/yaml"
 	"github.com/anyproto/anytype-heart/core/block/process"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pb"
@@ -33,15 +35,26 @@ const numberOfStages = 9 // 8 cycles to get snapshots and 1 cycle to create obje
 type Markdown struct {
 	blockConverter *mdConverter
 	service        *collection.Service
+	schemaImporter *SchemaImporter
 }
 
 const (
 	Name               = "Markdown"
 	rootCollectionName = "Markdown Import"
+	propIdPrefix       = "import_prop_"
+	typeIdPrefix       = "import_type_"
 )
 
 func New(tempDirProvider core.TempDirProvider, service *collection.Service) common.Converter {
-	return &Markdown{blockConverter: newMDConverter(tempDirProvider), service: service}
+	bc := newMDConverter(tempDirProvider)
+	si := NewSchemaImporter()
+	bc.SetSchemaImporter(si)
+
+	return &Markdown{
+		blockConverter: bc,
+		service:        service,
+		schemaImporter: si,
+	}
 }
 
 func (m *Markdown) Name() string {
@@ -132,6 +145,18 @@ func (m *Markdown) getSnapshotsAndRootObjectsIds(
 		return nil, nil
 	}
 	defer importSource.Close()
+	err := importSource.Initialize(path)
+	if err != nil {
+		allErrors.Add(err)
+		if allErrors.ShouldAbortImport(0, model.Import_Markdown) {
+			return nil, nil
+		}
+	}
+	// Load schemas if available
+	if err := m.schemaImporter.LoadSchemas(importSource, allErrors); err != nil {
+		log.Warnf("failed to load schemas: %v", err)
+	}
+
 	files := m.blockConverter.markdownToBlocks(path, importSource, allErrors)
 	pathsCount := len(req.GetMarkdownParams().Path)
 	if allErrors.ShouldAbortImport(pathsCount, req.Type) {
@@ -140,9 +165,9 @@ func (m *Markdown) getSnapshotsAndRootObjectsIds(
 
 	progress.SetTotal(int64(numberOfStages * len(files)))
 	details := make(map[string]*domain.Details, 0)
-
 	if m.processImportStep(pathsCount, files, progress, allErrors, details, m.setInboundLinks) ||
 		m.processImportStep(pathsCount, files, progress, allErrors, details, m.setNewID) ||
+		m.processImportStep(pathsCount, files, progress, allErrors, details, m.processObjectProperties) ||
 		m.processImportStep(pathsCount, files, progress, allErrors, details, m.addLinkToObjectBlocks) ||
 		m.processImportStep(pathsCount, files, progress, allErrors, details, m.linkPagesWithRootFile) ||
 		m.processImportStep(pathsCount, files, progress, allErrors, details, m.addLinkBlocks) ||
@@ -380,6 +405,24 @@ func (m *Markdown) addLinkBlocks(files map[string]*FileInfo, progress process.Pr
 	}
 }
 
+func bundledRelationLinks(relationDetails *domain.Details) []*model.RelationLink {
+	links := make([]*model.RelationLink, 0, relationDetails.Len())
+	relationDetails.Iterate()(func(key domain.RelationKey, value domain.Value) bool {
+		rel, err := bundle.GetRelation(key)
+		if err != nil {
+			log.Warnf("relation %s not found in bundle", key)
+			return true
+		}
+
+		links = append(links, &model.RelationLink{
+			Key:    rel.Key,
+			Format: rel.Format,
+		})
+		return true
+	})
+	return links
+}
+
 func (m *Markdown) createSnapshots(
 	pathsCount int,
 	files map[string]*FileInfo,
@@ -388,7 +431,264 @@ func (m *Markdown) createSnapshots(
 	allErrors *common.ConvertError,
 ) []*common.Snapshot {
 	snapshots := make([]*common.Snapshot, 0)
+	relationsSnapshots := make([]*common.Snapshot, 0)
+	objectTypeSnapshots := make([]*common.Snapshot, 0)
 	progress.SetProgressMessage("Start creating snapshots")
+
+	// Check if we have schemas loaded
+	hasSchemas := m.schemaImporter.HasSchemas()
+
+	// First pass: collect all YAML properties to create relation snapshots
+	yamlRelations := make(map[string]*yaml.Property)        // property name -> property
+	yamlRelationOptions := make(map[string]map[string]string) // relationKey -> optionValue -> optionId
+	objectTypes := make(map[string][]string)                  // Track unique object type names
+
+	for _, file := range files {
+		var props = make([]string, 0, len(file.YAMLProperties))
+		if file.YAMLProperties != nil {
+			for i := range file.YAMLProperties {
+				prop := &file.YAMLProperties[i]
+
+				// Schema resolution already happened during YAML parsing if schemas were available
+
+				// Use existing relation if already seen
+				if _, exists := yamlRelations[prop.Name]; !exists {
+					yamlRelations[prop.Name] = prop
+				}
+				props = append(props, yamlRelations[prop.Name].Key)
+
+				// Collect option values for non-schema imports
+				if !hasSchemas && (prop.Format == model.RelationFormat_status || prop.Format == model.RelationFormat_tag) {
+					if yamlRelationOptions[prop.Key] == nil {
+						yamlRelationOptions[prop.Key] = make(map[string]string)
+					}
+
+					// Collect values
+					switch prop.Format {
+					case model.RelationFormat_status:
+						if val := prop.Value.String(); val != "" {
+							yamlRelationOptions[prop.Key][val] = ""
+						}
+					case model.RelationFormat_tag:
+						for _, val := range prop.Value.StringList() {
+							yamlRelationOptions[prop.Key][val] = ""
+						}
+					}
+				}
+			}
+		}
+
+		// Collect object types
+		if file.ObjectTypeName != "" {
+			objectTypes[file.ObjectTypeName] = props
+		}
+	}
+
+	// Variable to hold objectTypeKeys
+	var objectTypeKeys map[string]string
+
+	// If we have schemas, use them to create relations and types
+	if hasSchemas {
+		// Create relation snapshots from schemas
+		relationsSnapshots = append(relationsSnapshots, m.schemaImporter.CreateRelationSnapshots()...)
+
+		// Create relation option snapshots from schemas
+		relationsSnapshots = append(relationsSnapshots, m.schemaImporter.CreateRelationOptionSnapshots()...)
+
+		// Create type snapshots from schemas
+		schemaTypeSnapshots := m.schemaImporter.CreateTypeSnapshots()
+		objectTypeSnapshots = append(objectTypeSnapshots, schemaTypeSnapshots...)
+
+		// Map type names to IDs for later use
+		objectTypeKeys = make(map[string]string)
+
+		// First, add all schema-defined types
+		for _, snapshot := range schemaTypeSnapshots {
+			if snapshot.Snapshot != nil && snapshot.Snapshot.Data != nil {
+				typeName := snapshot.Snapshot.Data.Details.GetString(bundle.RelationKeyName)
+				typeKey := snapshot.Snapshot.Data.Key
+				if typeName != "" && typeKey != "" {
+					objectTypeKeys[typeName] = typeKey
+				}
+			}
+		}
+
+		// Then check for any types used in YAML that aren't in schemas and create them
+		for typeName, props := range objectTypes {
+			if _, exists := objectTypeKeys[typeName]; !exists {
+				// This type was referenced but not defined in schemas, create it
+				typeKey := bson.NewObjectId().Hex()
+				objectTypeKeys[typeName] = typeKey
+
+				// Create object type snapshot
+				props := append([]string{bundle.TypeKeyObjectType.String()}, props...)
+				objectTypeDetails := getObjectTypeDetails(typeName, typeKey, props)
+				objectTypeSnapshots = append(objectTypeSnapshots, &common.Snapshot{
+					Id: typeIdPrefix + typeKey,
+					Snapshot: &common.SnapshotModel{
+						SbType: smartblock.SmartBlockTypeObjectType,
+						Data: &common.StateSnapshot{
+							Details:       objectTypeDetails,
+							RelationLinks: bundledRelationLinks(objectTypeDetails),
+							ObjectTypes:   []string{bundle.TypeKeyObjectType.String()},
+							Key:           typeKey,
+						},
+					},
+				})
+
+				log.Debugf("Created type '%s' with key '%s' (referenced in YAML but not found in schemas)", typeName, typeKey)
+			}
+		}
+	} else {
+		// Fallback to original YAML-based creation
+		// Create relation snapshots for YAML properties
+		for propName, prop := range yamlRelations {
+			// Generate BSON ID for the relation key
+			relationDetails := getRelationDetails(propName, prop.Key, float64(prop.Format), prop.IncludeTime)
+
+			relationsSnapshots = append(relationsSnapshots, &common.Snapshot{
+				Id: propIdPrefix + prop.Key,
+				Snapshot: &common.SnapshotModel{
+					SbType: smartblock.SmartBlockTypeRelation,
+					Data: &common.StateSnapshot{
+						Details:       relationDetails,
+						RelationLinks: bundledRelationLinks(relationDetails),
+						ObjectTypes:   []string{bundle.TypeKeyRelation.String()},
+						Key:           prop.Key,
+					},
+				},
+			})
+		}
+
+		typeRelation := bundle.MustGetRelation(bundle.RelationKeyType)
+		details := getRelationDetails(typeRelation.Name, typeRelation.Key, float64(typeRelation.Format), false)
+		relationsSnapshots = append(relationsSnapshots, &common.Snapshot{
+			Id: propIdPrefix + bundle.TypeKeyObjectType.String(),
+			Snapshot: &common.SnapshotModel{
+				SbType: smartblock.SmartBlockTypeRelation,
+				Data: &common.StateSnapshot{
+					Details:       details,
+					ObjectTypes:   []string{bundle.TypeKeyRelation.String()},
+					Key:           bundle.TypeKeyObjectType.String(),
+					RelationLinks: bundledRelationLinks(details),
+				},
+			},
+		})
+
+		// Create object type snapshots for YAML type values
+		objectTypeKeys = make(map[string]string) // name -> key mapping
+		for typeName := range objectTypes {
+			typeKey := bson.NewObjectId().Hex()
+			// Create object type snapshot
+			props := append([]string{bundle.TypeKeyObjectType.String()}, objectTypes[typeName]...)
+			objectTypeDetails := getObjectTypeDetails(typeName, typeKey, props)
+			objectTypeSnapshots = append(objectTypeSnapshots, &common.Snapshot{
+				Id: typeIdPrefix + typeKey,
+				Snapshot: &common.SnapshotModel{
+					SbType: smartblock.SmartBlockTypeObjectType,
+					Data: &common.StateSnapshot{
+						Details:       objectTypeDetails,
+						RelationLinks: bundledRelationLinks(objectTypeDetails),
+						ObjectTypes:   []string{bundle.TypeKeyObjectType.String()},
+						Key:           typeKey,
+					},
+				},
+			})
+			objectTypeKeys[typeName] = typeKey
+		}
+
+		// Create relation option snapshots for YAML values
+		for relationKey, options := range yamlRelationOptions {
+			for optionValue := range options {
+				optionId := propIdPrefix + "option_" + relationKey + "_" + optionValue
+				yamlRelationOptions[relationKey][optionValue] = optionId
+
+				// Find the relation to get its format (unused for now, but might be needed later)
+				// var relFormat model.RelationFormat
+				// for _, prop := range yamlRelations {
+				// 	if prop.key == relationKey {
+				// 		relFormat = prop.format
+				// 		break
+				// 	}
+				// }
+
+				optionDetails := domain.NewDetails()
+				optionDetails.SetString(bundle.RelationKeyRelationKey, relationKey)
+				optionDetails.SetString(bundle.RelationKeyName, optionValue)
+				optionDetails.SetInt64(bundle.RelationKeyLayout, int64(model.ObjectType_relationOption))
+
+				// Set unique key for the option
+				optionKey := fmt.Sprintf("%s_%s", relationKey, optionValue)
+				uniqueKey, _ := domain.NewUniqueKey(smartblock.SmartBlockTypeRelationOption, optionKey)
+				optionDetails.SetString(bundle.RelationKeyUniqueKey, uniqueKey.Marshal())
+
+				relationsSnapshots = append(relationsSnapshots, &common.Snapshot{
+					Id: optionId,
+					Snapshot: &common.SnapshotModel{
+						SbType: smartblock.SmartBlockTypeRelationOption,
+						Data: &common.StateSnapshot{
+							Details:     optionDetails,
+							ObjectTypes: []string{bundle.TypeKeyRelationOption.String()},
+						},
+					},
+				})
+			}
+		}
+	}
+
+	// Fix YAML details to use option IDs for non-schema imports
+	if !hasSchemas && len(yamlRelationOptions) > 0 {
+		for _, file := range files {
+			if file.YAMLDetails != nil {
+				// Create a new details object with updated values
+				updatedDetails := domain.NewDetails()
+				file.YAMLDetails.Iterate()(func(key domain.RelationKey, value domain.Value) bool {
+					// Check if this is a relation with options
+					if options, hasOptions := yamlRelationOptions[string(key)]; hasOptions {
+						// Find the property to get its format
+						var propFormat model.RelationFormat
+						for _, prop := range file.YAMLProperties {
+							if prop.Key == string(key) {
+								propFormat = prop.Format
+								break
+							}
+						}
+
+						// Update the value to use option IDs
+						switch propFormat {
+						case model.RelationFormat_status:
+							if strVal := value.String(); strVal != "" {
+								if optionId, exists := options[strVal]; exists && optionId != "" {
+									updatedDetails.Set(key, domain.String(optionId))
+									return true
+								}
+							}
+						case model.RelationFormat_tag:
+							strList := value.StringList()
+							if len(strList) > 0 {
+								optionIds := make([]string, 0, len(strList))
+								for _, val := range strList {
+									if optionId, exists := options[val]; exists && optionId != "" {
+										optionIds = append(optionIds, optionId)
+									}
+								}
+								if len(optionIds) > 0 {
+									updatedDetails.Set(key, domain.StringList(optionIds))
+									return true
+								}
+							}
+						}
+					}
+					// Copy unchanged values
+					updatedDetails.Set(key, value)
+					return true
+				})
+				file.YAMLDetails = updatedDetails
+			}
+		}
+	}
+
+	// Second pass: create object snapshots
 	for name, file := range files {
 		if err := progress.TryStep(1); err != nil {
 			allErrors.Add(common.ErrCancel)
@@ -411,18 +711,44 @@ func (m *Markdown) createSnapshots(
 			}
 			continue
 		}
+
+		// Add relation links for YAML properties
+		var relationLinks []*model.RelationLink
+		if file.YAMLProperties != nil {
+			for _, prop := range file.YAMLProperties {
+				relationLinks = append(relationLinks, &model.RelationLink{
+					Key:    prop.Key,
+					Format: prop.Format,
+				})
+			}
+		}
+
+		// Determine object type
+		objectTypeKey := bundle.TypeKeyPage.String()
+		if file.ObjectTypeName != "" {
+			if typeKey, exists := objectTypeKeys[file.ObjectTypeName]; exists {
+				objectTypeKey = typeKey
+			}
+		}
+
 		snapshots = append(snapshots, &common.Snapshot{
 			Id:       file.PageID,
 			FileName: name,
 			Snapshot: &common.SnapshotModel{
 				SbType: smartblock.SmartBlockTypePage,
 				Data: &common.StateSnapshot{
-					Blocks:      file.ParsedBlocks,
-					Details:     details[name],
-					ObjectTypes: []string{bundle.TypeKeyPage.String()},
+					Blocks:        file.ParsedBlocks,
+					Details:       details[name],
+					ObjectTypes:   []string{objectTypeKey},
+					RelationLinks: relationLinks,
 				}},
 		})
 	}
+
+	// Append relation snapshots at the end
+	snapshots = append(snapshots, relationsSnapshots...)
+	// Append object type snapshots at the end
+	snapshots = append(snapshots, objectTypeSnapshots...)
 
 	return snapshots
 }
@@ -558,7 +884,7 @@ func (m *Markdown) fillEmptyBlocks(files map[string]*FileInfo, progress process.
 	}
 }
 
-func (m *Markdown) setNewID(files map[string]*FileInfo, progress process.Progress, details map[string]*domain.Details, allErrors *common.ConvertError) {
+func (m *Markdown) setNewID(files map[string]*FileInfo, progress process.Progress, _ map[string]*domain.Details, allErrors *common.ConvertError) {
 	progress.SetProgressMessage("Start creating blocks")
 	for name, file := range files {
 		if err := progress.TryStep(1); err != nil {
@@ -568,8 +894,6 @@ func (m *Markdown) setNewID(files map[string]*FileInfo, progress process.Progres
 
 		if strings.EqualFold(filepath.Ext(name), ".md") || strings.EqualFold(filepath.Ext(name), ".csv") {
 			file.PageID = bson.NewObjectId().Hex()
-
-			m.setDetails(file, name, details)
 		}
 	}
 }
@@ -580,6 +904,15 @@ func (m *Markdown) setDetails(file *FileInfo, fileName string, details map[strin
 		title, emoji = m.extractTitleAndEmojiFromBlock(file)
 	}
 	details[fileName] = common.GetCommonDetails(fileName, title, emoji, model.ObjectType_basic)
+
+	// Set YAML details directly
+	if file.YAMLDetails != nil {
+		file.YAMLDetails.Iterate()(func(key domain.RelationKey, value domain.Value) bool {
+			details[fileName].Set(key, value)
+			return true
+		})
+	}
+
 	file.Title = details[fileName].GetString(bundle.RelationKeyName)
 }
 
@@ -618,4 +951,114 @@ func (m *Markdown) retrieveRootObjectsIds(files map[string]*FileInfo) []string {
 func isChildBlock(blocks map[string]struct{}, b *model.Block) bool {
 	_, ok := blocks[b.Id]
 	return ok
+}
+
+func getRelationDetails(name, key string, format float64, includeTime bool) *domain.Details {
+	details := domain.NewDetails()
+	details.SetFloat64(bundle.RelationKeyRelationFormat, format)
+	details.SetString(bundle.RelationKeyName, name)
+	details.SetString(bundle.RelationKeyRelationKey, key)
+	details.SetInt64(bundle.RelationKeyLayout, int64(model.ObjectType_relation))
+
+	// Set includeTime for date relations
+	if format == float64(model.RelationFormat_date) {
+		details.SetBool(bundle.RelationKeyRelationFormatIncludeTime, includeTime)
+	}
+
+	uniqueKey, err := domain.NewUniqueKey(smartblock.SmartBlockTypeRelation, key)
+	if err != nil {
+		log.Warnf("failed to create unique key for YAML relation: %v", err)
+		return details
+	}
+	details.SetString(bundle.RelationKeyId, uniqueKey.Marshal())
+	return details
+}
+
+func propKeysToIds(propKeys []string) []string {
+	ids := make([]string, len(propKeys))
+	for i, key := range propKeys {
+		ids[i] = propIdPrefix + key
+	}
+	return ids
+}
+func getObjectTypeDetails(name, key string, propKeys []string) *domain.Details {
+	details := domain.NewDetails()
+	details.SetString(bundle.RelationKeyName, name)
+	details.SetInt64(bundle.RelationKeyLayout, int64(model.ObjectType_objectType))
+	details.SetInt64(bundle.RelationKeyResolvedLayout, int64(model.ObjectType_objectType))
+	details.SetInt64(bundle.RelationKeyRecommendedLayout, int64(model.ObjectType_basic))
+	details.SetString(bundle.RelationKeyType, bundle.TypeKeyObjectType.String())
+
+	propIds := propKeysToIds(propKeys)
+	// first 3 goes to featured relations, the rest to properties
+	maxFeaturedRelations := 3
+	if len(propIds) < maxFeaturedRelations {
+		maxFeaturedRelations = len(propIds)
+	}
+	details.SetStringList(bundle.RelationKeyRecommendedFeaturedRelations, propIds[:maxFeaturedRelations])
+	if len(propKeys) > maxFeaturedRelations {
+		details.SetStringList(bundle.RelationKeyRecommendedRelations, propIds[maxFeaturedRelations:])
+	}
+
+	// Create unique key for the object type
+	uniqueKey, err := domain.NewUniqueKey(smartblock.SmartBlockTypeObjectType, key)
+	if err != nil {
+		log.Warnf("failed to create unique key for YAML object type: %v", err)
+		return details
+	}
+	details.SetString(bundle.RelationKeyId, uniqueKey.Marshal())
+	details.SetString(bundle.RelationKeyUniqueKey, uniqueKey.Marshal())
+
+	return details
+}
+
+func (m *Markdown) findFileByPath(path string, files map[string]*FileInfo) *FileInfo {
+	// First try exact match
+	if file, exists := files[path]; exists {
+		return file
+	}
+
+	// If not found, try to match by comparing paths
+	for filePath, file := range files {
+		// Compare absolute paths
+		if filePath == path {
+			return file
+		}
+		// Also try comparing just the filenames in case of path variations
+		if filepath.Base(filePath) == filepath.Base(path) {
+			return file
+		}
+	}
+
+	return nil
+}
+
+func (m *Markdown) processObjectProperties(files map[string]*FileInfo, progress process.Progress, details map[string]*domain.Details, allErrors *common.ConvertError) {
+	progress.SetProgressMessage("Start linking blocks")
+
+	for fileName, file := range files {
+		if err := progress.TryStep(1); err != nil {
+			allErrors.Add(common.ErrCancel)
+			return
+		}
+
+		for i := range file.YAMLProperties {
+			prop := &file.YAMLProperties[i]
+			if prop.Format == model.RelationFormat_object {
+				vals := file.YAMLDetails.Get(domain.RelationKey(prop.Key))
+				paths := vals.WrapToStringList()
+				ids := make([]string, 0, len(paths))
+				for _, path := range paths {
+					// The path should already be absolute from YAML parsing
+					// Find the file in the files map
+					targetFile := m.findFileByPath(path, files)
+					if targetFile != nil && targetFile.PageID != "" {
+						ids = append(ids, targetFile.PageID)
+					}
+				}
+				file.YAMLDetails.Set(domain.RelationKey(prop.Key), domain.StringList(ids))
+			}
+		}
+		m.setDetails(file, fileName, details)
+	}
 }
