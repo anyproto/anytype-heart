@@ -36,7 +36,7 @@ func writePNGToReader(img image.Image) (io.ReadSeeker, string, error) {
 	pngBuffer := &bytes.Buffer{}
 	err := png.Encode(pngBuffer, img)
 	if err != nil {
-		return nil, err
+		return nil, "", err
 	}
 	return bytes.NewReader(pngBuffer.Bytes()), pngMedia, nil
 }
