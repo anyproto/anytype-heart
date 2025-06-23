@@ -399,6 +399,9 @@ func (s *sortedSub) getDep() subscription {
 }
 
 func (s *sortedSub) close() {
+	if !s.started {
+		return
+	}
 	el := s.skl.Front()
 	for el != nil {
 		s.cache.RemoveSubId(el.Key().(*entry).id, s.id)
