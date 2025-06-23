@@ -43,10 +43,8 @@ func (s *service) startIndexMigration() error {
 		}
 	}()
 
-	// Consumers
-	for range 10 {
-		go s.indexMigrationWorker()
-	}
+	// Consumer
+	go s.indexMigrationWorker()
 
 	return nil
 }
