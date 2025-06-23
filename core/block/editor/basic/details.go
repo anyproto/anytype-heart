@@ -110,7 +110,7 @@ func applyDetailUpdates(oldDetails *domain.Details, updates []domain.Detail) *do
 // TODO make no sense?
 func (bs *basic) createDetailUpdate(st *state.State, detail domain.Detail) (domain.Detail, error) {
 	if detail.Value.Ok() {
-		if err := bs.setDetailSpecialCases(st, detail); err != nil {
+		if err := bs.setDetailSpecialCases(st, &detail); err != nil {
 			return domain.Detail{}, fmt.Errorf("special case: %w", err)
 		}
 		if err := bs.addRelationLink(st, detail.Key); err != nil {
@@ -256,7 +256,7 @@ func (bs *basic) validateOptions(rel *relationutils.Relation, v []string) error 
 	return nil
 }
 
-func (bs *basic) setDetailSpecialCases(st *state.State, detail domain.Detail) error {
+func (bs *basic) setDetailSpecialCases(st *state.State, detail *domain.Detail) error {
 	if detail.Key == bundle.RelationKeyType {
 		return fmt.Errorf("can't change object type directly: %w", domain.ErrValidationFailed)
 	}
@@ -276,9 +276,9 @@ func (bs *basic) setDetailSpecialCases(st *state.State, detail domain.Detail) er
 		if err != nil {
 			return nil
 		}
-		slices.DeleteFunc(detail.Value.StringList(), func(s string) bool {
+		detail.Value = domain.StringList(slices.DeleteFunc(detail.Value.StringList(), func(s string) bool {
 			return s == descriptionRelationId
-		})
+		}))
 	}
 
 	return nil
