@@ -1235,8 +1235,7 @@ func TestNameDeduplicationIntegration(t *testing.T) {
 			
 			// Export to YAML
 			result, err := yaml.ExportToYAML(properties, &yaml.ExportOptions{
-				IncludeObjectType: true,
-				ObjectTypeName:    "Entity",
+				ObjectTypeName: "Entity",
 			})
 			require.NoError(t, err)
 			

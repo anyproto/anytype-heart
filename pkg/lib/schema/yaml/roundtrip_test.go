@@ -135,8 +135,7 @@ func TestRoundTripYAML(t *testing.T) {
 				},
 			},
 			options: &ExportOptions{
-				IncludeObjectType: true,
-				ObjectTypeName:    "Task",
+				ObjectTypeName: "Task",
 			},
 		},
 		{
@@ -206,7 +205,7 @@ func TestRoundTripYAML(t *testing.T) {
 			}
 
 			// Check object type if specified
-			if tt.options != nil && tt.options.IncludeObjectType && tt.options.ObjectTypeName != "" {
+			if tt.options != nil && tt.options.ObjectTypeName != "" {
 				assert.Equal(t, tt.options.ObjectTypeName, result.ObjectType)
 			}
 
@@ -362,9 +361,7 @@ func TestSchemaExportRoundTrip(t *testing.T) {
 	}
 
 	// Export to YAML
-	options := &ExportOptions{
-		IncludeObjectType: true,
-	}
+	options := &ExportOptions{}
 	yamlData, err := ExportSchemaToYAML(s, options)
 	require.NoError(t, err)
 	require.NotEmpty(t, yamlData)

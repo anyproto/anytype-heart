@@ -16,9 +16,7 @@ import (
 
 // ExportOptions configures YAML export behavior
 type ExportOptions struct {
-	// IncludeObjectType adds the object type to the front matter
-	IncludeObjectType bool
-	// ObjectTypeName is the name of the object type
+	// ObjectTypeName is the name of the object type (added at end if provided)
 	ObjectTypeName string
 	// SkipProperties is a list of property keys to skip during export
 	SkipProperties []string
@@ -32,7 +30,7 @@ func ExportToYAML(properties []Property, options *ExportOptions) ([]byte, error)
 		options = &ExportOptions{}
 	}
 
-	options.SkipProperties = append(options.SkipProperties, bundle.RelationKeyId.String())
+	// Don't automatically skip ID - let the caller decide
 	// Create a map for YAML marshaling
 	data := make(map[string]interface{})
 
@@ -42,8 +40,8 @@ func ExportToYAML(properties []Property, options *ExportOptions) ([]byte, error)
 		skipMap[skip] = true
 	}
 
-	// Always skip the system type key if we're including object type
-	if options.IncludeObjectType && options.ObjectTypeName != "" {
+	// Always skip the system type key if we have an object type name
+	if options.ObjectTypeName != "" {
 		skipMap[bundle.RelationKeyType.String()] = true
 	}
 
@@ -67,7 +65,7 @@ func ExportToYAML(properties []Property, options *ExportOptions) ([]byte, error)
 	}
 
 	// Check if we need to reserve "Object type" name
-	reserveObjectType := options.IncludeObjectType && options.ObjectTypeName != ""
+	reserveObjectType := options.ObjectTypeName != ""
 
 	// Deduplicate property names with awareness of reserved names
 	deduplicatedNames := deduplicateYAMLPropertyNamesWithReserved(validProps, propNames, reserveObjectType)
@@ -81,8 +79,8 @@ func ExportToYAML(properties []Property, options *ExportOptions) ([]byte, error)
 		}
 	}
 
-	// Add object type with its reserved name
-	if reserveObjectType {
+	// Add object type at the end with its reserved name
+	if options.ObjectTypeName != "" {
 		data["Object type"] = options.ObjectTypeName
 	}
 
@@ -157,9 +155,8 @@ func ExportSchemaToYAML(s *schema.Schema, options *ExportOptions) ([]byte, error
 	// Prepare properties from schema relations
 	properties := make([]Property, 0)
 
-	// Add object type if requested
-	if options.IncludeObjectType && s.Type != nil {
-		// Type is not included as a property but can be set in ObjectTypeName
+	// Set object type name from schema if available
+	if s.Type != nil {
 		options.ObjectTypeName = s.Type.Name
 	}
 

@@ -44,14 +44,9 @@ func (d *derivedObject) GetIDAndPayload(ctx context.Context, spaceID string, sn 
 		return id, payload, nil
 	}
 	rawUniqueKey := sn.Snapshot.Data.Details.GetString(bundle.RelationKeyUniqueKey)
-	if rawUniqueKey != "" {
-		fmt.Printf("### GetIDAndPayload: using raw unique key %q for sbType %s\n", rawUniqueKey, sn.Snapshot.SbType)
-	}
 	uniqueKey, err := domain.UnmarshalUniqueKey(rawUniqueKey)
 	if err != nil {
-		fmt.Printf("### GetIDAndPayload: failed to unmarshal unique key %q for sbType %s: %v\n", rawUniqueKey, sn.Snapshot.SbType, err)
 		uniqueKey, err = domain.NewUniqueKey(sn.Snapshot.SbType, sn.Snapshot.Data.Key)
-		fmt.Printf("### GetIDAndPayload: failed to create unique key from %s and %q: %v\n", sn.Snapshot.SbType, sn.Snapshot.Data.Key, err)
 		if err != nil {
 			return "", treestorage.TreeStorageCreatePayload{}, fmt.Errorf("create unique key from %s and %q: %w", sn.Snapshot.SbType, sn.Snapshot.Data.Key, err)
 		}

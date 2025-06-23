@@ -142,8 +142,7 @@ This is the project content.`
 
 		// Export with options
 		yamlContent, err := ExportToYAML(properties, &ExportOptions{
-			IncludeObjectType: true,
-			ObjectTypeName:    "Project",
+			ObjectTypeName: "Project",
 			PropertyNameMap: map[string]string{
 				"proj_name":     "name",      // Use shorter names in export
 				"proj_status":   "status",
@@ -198,7 +197,6 @@ This is the project content.`
 	t.Run("schema export round-trip", func(t *testing.T) {
 		// Export schema to YAML
 		yamlContent, err := ExportSchemaToYAML(testSchema, &ExportOptions{
-			IncludeObjectType: true,
 			PropertyNameMap: map[string]string{
 				"proj_name":     "name",
 				"proj_status":   "status",
@@ -284,8 +282,7 @@ This demonstrates the complete workflow of the YAML package.
 
 		// Export back to YAML
 		newFrontMatter, err := ExportToYAML(updatedProperties, &ExportOptions{
-			IncludeObjectType: true,
-			ObjectTypeName:    result.ObjectType,
+			ObjectTypeName: result.ObjectType,
 		})
 		require.NoError(t, err)
 

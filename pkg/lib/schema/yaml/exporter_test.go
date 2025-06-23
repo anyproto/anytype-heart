@@ -58,8 +58,7 @@ title: Test Page
 				},
 			},
 			options: &ExportOptions{
-				IncludeObjectType: true,
-				ObjectTypeName:    "Task",
+				ObjectTypeName: "Task",
 			},
 			want: `---
 Object type: Task
@@ -205,8 +204,7 @@ func TestExportDetailsToYAML(t *testing.T) {
 	}
 
 	options := &ExportOptions{
-		IncludeObjectType: true,
-		ObjectTypeName:    "Page",
+		ObjectTypeName: "Page",
 		PropertyNameMap: map[string]string{
 			"title":  "Title",
 			"author": "Author",
@@ -396,8 +394,7 @@ func TestYAMLPropertyNameDeduplication(t *testing.T) {
 		
 		// Export to YAML with object type
 		result, err := ExportToYAML(properties, &ExportOptions{
-			IncludeObjectType: true,
-			ObjectTypeName:    "Document",
+			ObjectTypeName: "Document",
 		})
 		require.NoError(t, err)
 		

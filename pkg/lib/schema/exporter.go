@@ -46,26 +46,26 @@ func (e *JSONSchemaExporter) Export(schema *Schema, writer io.Writer) error {
 
 	// Use custom marshaler for ordered output
 	orderedSchema := orderedJSONSchema{data: jsonSchema}
-	
+
 	var output []byte
 	var err error
-	
+
 	if e.Indent != "" {
 		// Pretty print with indentation
 		output, err = json.MarshalIndent(orderedSchema, "", e.Indent)
 	} else {
 		output, err = json.Marshal(orderedSchema)
 	}
-	
+
 	if err != nil {
 		return err
 	}
-	
+
 	_, err = writer.Write(output)
 	if err != nil {
 		return err
 	}
-	
+
 	// Add trailing newline
 	_, err = writer.Write([]byte("\n"))
 	return err
@@ -77,26 +77,26 @@ func (e *JSONSchemaExporter) ExportType(t *Type, schema *Schema, writer io.Write
 
 	// Use custom marshaler for ordered output
 	orderedSchema := orderedJSONSchema{data: jsonSchema}
-	
+
 	var output []byte
 	var err error
-	
+
 	if e.Indent != "" {
 		// Pretty print with indentation
 		output, err = json.MarshalIndent(orderedSchema, "", e.Indent)
 	} else {
 		output, err = json.Marshal(orderedSchema)
 	}
-	
+
 	if err != nil {
 		return err
 	}
-	
+
 	_, err = writer.Write(output)
 	if err != nil {
 		return err
 	}
-	
+
 	// Add trailing newline
 	_, err = writer.Write([]byte("\n"))
 	return err
@@ -114,7 +114,7 @@ func (o orderedJSONSchema) MarshalJSON() ([]byte, error) {
 	for k := range o.data {
 		keys = append(keys, k)
 	}
-	
+
 	// Sort keys in desired order:
 	// 1. Standard JSON Schema keys first ($schema, $id, type, title, description)
 	// 2. x-* extension keys
@@ -129,10 +129,10 @@ func (o orderedJSONSchema) MarshalJSON() ([]byte, error) {
 			"title":       4,
 			"description": 5,
 		}
-		
+
 		iPriority, iHasPriority := priority[keys[i]]
 		jPriority, jHasPriority := priority[keys[j]]
-		
+
 		if iHasPriority && jHasPriority {
 			return iPriority < jPriority
 		}
@@ -142,18 +142,18 @@ func (o orderedJSONSchema) MarshalJSON() ([]byte, error) {
 		if jHasPriority {
 			return false
 		}
-		
+
 		// x-* keys come after standard keys but before others
 		iIsExtension := strings.HasPrefix(keys[i], "x-")
 		jIsExtension := strings.HasPrefix(keys[j], "x-")
-		
+
 		if iIsExtension && !jIsExtension {
 			return true
 		}
 		if !iIsExtension && jIsExtension {
 			return false
 		}
-		
+
 		// Properties comes last
 		if keys[i] == "properties" {
 			return false
@@ -161,20 +161,20 @@ func (o orderedJSONSchema) MarshalJSON() ([]byte, error) {
 		if keys[j] == "properties" {
 			return true
 		}
-		
+
 		// Otherwise alphabetical
 		return keys[i] < keys[j]
 	})
-	
+
 	// Build ordered JSON manually
 	var buf bytes.Buffer
 	buf.WriteString("{")
-	
+
 	for idx, key := range keys {
 		if idx > 0 {
 			buf.WriteString(",")
 		}
-		
+
 		// Marshal key
 		keyJSON, err := json.Marshal(key)
 		if err != nil {
@@ -182,7 +182,7 @@ func (o orderedJSONSchema) MarshalJSON() ([]byte, error) {
 		}
 		buf.Write(keyJSON)
 		buf.WriteString(":")
-		
+
 		// Special handling for properties to maintain order
 		if key == "properties" && o.data[key] != nil {
 			if props, ok := o.data[key].(map[string]interface{}); ok {
@@ -205,7 +205,7 @@ func (o orderedJSONSchema) MarshalJSON() ([]byte, error) {
 			buf.Write(valueJSON)
 		}
 	}
-	
+
 	buf.WriteString("}")
 	return buf.Bytes(), nil
 }
@@ -217,7 +217,7 @@ func marshalOrderedProperties(props map[string]interface{}) []byte {
 		order int
 		data  interface{}
 	}
-	
+
 	// Extract properties with their order
 	orderedProps := make([]propWithOrder, 0, len(props))
 	for name, prop := range props {
@@ -233,7 +233,7 @@ func marshalOrderedProperties(props map[string]interface{}) []byte {
 			data:  prop,
 		})
 	}
-	
+
 	// Sort by order, then by name
 	sort.Slice(orderedProps, func(i, j int) bool {
 		if orderedProps[i].order != orderedProps[j].order {
@@ -241,16 +241,16 @@ func marshalOrderedProperties(props map[string]interface{}) []byte {
 		}
 		return orderedProps[i].name < orderedProps[j].name
 	})
-	
+
 	// Build ordered properties JSON
 	var buf bytes.Buffer
 	buf.WriteString("{")
-	
+
 	for idx, prop := range orderedProps {
 		if idx > 0 {
 			buf.WriteString(",")
 		}
-		
+
 		// Marshal property name
 		nameJSON, err := json.Marshal(prop.name)
 		if err != nil {
@@ -259,7 +259,7 @@ func marshalOrderedProperties(props map[string]interface{}) []byte {
 		}
 		buf.Write(nameJSON)
 		buf.WriteString(":")
-		
+
 		// Marshal property data
 		propJSON, err := json.Marshal(prop.data)
 		if err != nil {
@@ -269,7 +269,7 @@ func marshalOrderedProperties(props map[string]interface{}) []byte {
 			buf.Write(propJSON)
 		}
 	}
-	
+
 	buf.WriteString("}")
 	return buf.Bytes()
 }
@@ -333,17 +333,18 @@ func (e *JSONSchemaExporter) typeToJSONSchema(t *Type, schema *Schema) map[strin
 
 	// Collect all relations and sort by order
 	var orderedRels []orderedRelation
-	propertyOrder := 2 // Start after id and Type
+	propertyOrder := 1 // Start after id
 
 	hasType := false // Track if we have a key relation
 	// Process featured relations first
 	for _, relKey := range t.FeaturedRelations {
 		if rel, ok := schema.GetRelation(relKey); ok {
+			name := rel.Name
 			if relKey == bundle.RelationKeyType.String() {
 				hasType = true // Track if Type relation is present
 			}
 			orderedRels = append(orderedRels, orderedRelation{
-				name:     rel.Name,
+				name:     name,
 				relation: rel,
 				order:    propertyOrder,
 				featured: true,
@@ -355,11 +356,12 @@ func (e *JSONSchemaExporter) typeToJSONSchema(t *Type, schema *Schema) map[strin
 	// Then regular relations
 	for _, relKey := range t.RecommendedRelations {
 		if rel, ok := schema.GetRelation(relKey); ok {
+			name := rel.Name
 			if relKey == bundle.RelationKeyType.String() {
 				hasType = true // Track if Type relation is present
 			}
 			orderedRels = append(orderedRels, orderedRelation{
-				name:     rel.Name,
+				name:     name,
 				relation: rel,
 				order:    propertyOrder,
 				featured: false,
@@ -370,11 +372,12 @@ func (e *JSONSchemaExporter) typeToJSONSchema(t *Type, schema *Schema) map[strin
 
 	for _, relKey := range t.HiddenRelations {
 		if rel, ok := schema.GetRelation(relKey); ok {
+			name := rel.Name
 			if relKey == bundle.RelationKeyType.String() {
 				hasType = true // Track if Type relation is present
 			}
 			orderedRels = append(orderedRels, orderedRelation{
-				name:     rel.Name,
+				name:     name,
 				relation: rel,
 				order:    propertyOrder,
 				hidden:   true,
@@ -386,7 +389,7 @@ func (e *JSONSchemaExporter) typeToJSONSchema(t *Type, schema *Schema) map[strin
 		typeRel := bundle.MustGetRelation(bundle.RelationKeyType)
 		// If Type relation is missing, add it as a hidden property
 		orderedRels = append(orderedRels, orderedRelation{
-			name:     "Type",
+			name:     typeRel.Name,
 			relation: &Relation{Key: bundle.RelationKeyType.String(), Name: typeRel.Name, Format: typeRel.Format},
 			order:    propertyOrder,
 		})
@@ -406,7 +409,10 @@ func (e *JSONSchemaExporter) typeToJSONSchema(t *Type, schema *Schema) map[strin
 
 		// Special handling for Type relation
 		if or.relation.Key == bundle.RelationKeyType.String() {
+			// Override to be a simple string with const value
+			prop["type"] = "string"
 			prop["const"] = t.Name
+			delete(prop, "items") // Remove items if it was set for object format
 		}
 
 		properties[deduplicatedNames[i]] = prop

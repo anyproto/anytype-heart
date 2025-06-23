@@ -558,9 +558,11 @@ func TestTypePropertyExport(t *testing.T) {
 		
 		properties := jsonSchema["properties"].(map[string]interface{})
 		
-		// The property name should be "Type" (capitalized) based on the relation name
+		// The property name should be "Object type" based on the relation name
 		var typeProp map[string]interface{}
-		if tp, ok := properties["Type"].(map[string]interface{}); ok {
+		if tp, ok := properties["Object type"].(map[string]interface{}); ok {
+			typeProp = tp
+		} else if tp, ok := properties["Type"].(map[string]interface{}); ok {
 			typeProp = tp
 		} else if tp, ok := properties["type"].(map[string]interface{}); ok {
 			typeProp = tp

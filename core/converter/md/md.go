@@ -131,13 +131,8 @@ func (h *MD) renderProperties(buf writer) {
 	// Collect properties to export
 	properties := make([]yaml.Property, 0)
 
-	// Get all relation IDs
+	// Get all relation IDs (excluding type relation which will be handled separately)
 	var propertiesIds []string
-	// Add type relation ID first
-	typeRelation, err := h.resolver.GetRelationByKey(bundle.RelationKeyType.String())
-	if err == nil && typeRelation != nil {
-		propertiesIds = append(propertiesIds, typeRelation.GetString(bundle.RelationKeyId))
-	}
 	propertiesIds = append(propertiesIds, objectTypeDetails.GetStringList(bundle.RelationKeyRecommendedFeaturedRelations)...)
 	propertiesIds = append(propertiesIds, objectTypeDetails.GetStringList(bundle.RelationKeyRecommendedRelations)...)
 	propertiesIds = slices.Compact(propertiesIds)
@@ -160,6 +155,11 @@ func (h *MD) renderProperties(buf writer) {
 		key := relationDetails.GetString(bundle.RelationKeyRelationKey)
 		format := model.RelationFormat(relationDetails.GetInt64(bundle.RelationKeyRelationFormat))
 		includeTime := relationDetails.GetBool(bundle.RelationKeyRelationFormatIncludeTime)
+
+		// Skip the type relation - it will be added as "Object type" at the end
+		if key == bundle.RelationKeyType.String() {
+			continue
+		}
 
 		v := h.s.CombinedDetails().Get(domain.RelationKey(key))
 		if v.IsNull() {
@@ -303,8 +303,7 @@ func (h *MD) renderProperties(buf writer) {
 
 	// Prepare export options
 	exportOptions := &yaml.ExportOptions{
-		IncludeObjectType: true,
-		ObjectTypeName:    typeName,
+		ObjectTypeName: typeName,
 	}
 
 	// Add object ID as a special property
