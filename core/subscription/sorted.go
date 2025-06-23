@@ -35,9 +35,13 @@ func (s *spaceSubscriptions) newSortedSub(id string, spaceId string, keys []doma
 type sortedSub struct {
 	id      string
 	spaceId string
-	keys    []domain.RelationKey
-	filter  database.Filter
-	order   database.Order
+
+	started              bool
+	entriesBeforeStarted []*entry
+
+	keys   []domain.RelationKey
+	filter database.Filter
+	order  database.Order
 
 	afterId, beforeId string
 	limit, offset     int
@@ -70,6 +74,7 @@ type sortedSub struct {
 
 func (s *sortedSub) init(entries []*entry) (err error) {
 	s.skl = skiplist.New(s)
+	s.started = true
 
 	defer func() {
 		if err != nil {
@@ -149,7 +154,7 @@ func (s *sortedSub) onChange(ctx *opCtx) {
 			changed = true
 		}
 	}
-	if !changed {
+	if !changed || !s.started {
 		return
 	}
 	defer s.diff.reset()
@@ -220,6 +225,15 @@ func (s *sortedSub) onEntryChange(ctx *opCtx, e *entry) (noChange bool) {
 	if s.filter != nil {
 		newInSet = s.filter.FilterObject(e.data)
 	}
+
+	// Accumulate all objects observed before subscription is started
+	if !s.started {
+		if newInSet {
+			s.entriesBeforeStarted = append(s.entriesBeforeStarted, e)
+		}
+		return true
+	}
+
 	curr := s.cache.Get(e.id)
 	curInSet := curr != nil
 	// nothing
