@@ -471,6 +471,12 @@ func (s *spaceSubscriptions) subscribeForQuery(req SubscribeRequest, f *database
 		if err != nil {
 			return nil, fmt.Errorf("async: init sub entries: %w", err)
 		}
+
+		for i, e := range entries {
+			e = s.cache.GetOrSet(e)
+			entries[i] = e
+			e.SetSub(req.SubId, false, false)
+		}
 		s.onChangeWithinContext(entries, func(ctxBuf *opCtx) {
 			sub.onChange(ctxBuf)
 		})
