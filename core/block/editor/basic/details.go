@@ -3,6 +3,7 @@ package basic
 import (
 	"errors"
 	"fmt"
+	"slices"
 	"strings"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
@@ -266,6 +267,20 @@ func (bs *basic) setDetailSpecialCases(st *state.State, detail domain.Detail) er
 		// nolint:gosec
 		return bs.layoutConverter.CheckRecommendedLayoutConversionAllowed(st, model.ObjectTypeLayout(detail.Value.Int64()))
 	}
+	if slices.Contains([]domain.RelationKey{
+		bundle.RelationKeyRecommendedFeaturedRelations,
+		bundle.RelationKeyRecommendedHiddenRelations,
+		bundle.RelationKeyRecommendedRelations,
+	}, detail.Key) {
+		descriptionRelationId, err := bs.Space().DeriveObjectID(nil, domain.MustUniqueKey(coresb.SmartBlockTypeRelation, bundle.RelationKeyDescription.String()))
+		if err != nil {
+			return nil
+		}
+		slices.DeleteFunc(detail.Value.StringList(), func(s string) bool {
+			return s == descriptionRelationId
+		})
+	}
+
 	return nil
 }
 
