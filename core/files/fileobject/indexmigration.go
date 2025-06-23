@@ -34,7 +34,6 @@ func (s *service) startIndexMigration() error {
 				Id:      item.Details.GetString(bundle.RelationKeyId),
 				SpaceId: item.Details.GetString(bundle.RelationKeySpaceId),
 			}
-			fmt.Println("push to queue:", it)
 			select {
 			case s.indexMigrationChan <- it:
 			case <-s.componentCtx.Done():
@@ -89,14 +88,12 @@ func (s *service) indexMigrationWorker() {
 }
 
 func (s *service) migrateIndex(item *indexMigrationItem) error {
-	spc, err := s.spaceService.Get(s.componentCtx, item.SpaceId)
+	spc, err := s.spaceService.Wait(s.componentCtx, item.SpaceId)
 	if err != nil {
 		return fmt.Errorf("get space: %w", err)
 	}
 
 	err = spc.Do(item.Id, func(sb smartblock.SmartBlock) error {
-		vars := sb.NewState().Details().GetStringList(bundle.RelationKeyFileVariantIds)
-		fmt.Println("Migrated: ", sb.Id(), vars)
 		return nil
 	})
 	if err != nil {

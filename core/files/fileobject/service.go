@@ -104,6 +104,7 @@ func New(
 	return &service{
 		resolverRetryStartDelay: resolverRetryStartDelay,
 		resolverRetryMaxDelay:   resolverRetryMaxDelay,
+		indexMigrationChan:      make(chan *indexMigrationItem),
 		closeWg:                 &sync.WaitGroup{},
 	}
 }
