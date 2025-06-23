@@ -14,26 +14,29 @@ import (
 )
 
 var layoutPerSmartBlockType = map[smartblock.SmartBlockType]model.ObjectTypeLayout{
-	smartblock.SmartBlockTypeRelation:          model.ObjectType_relation,
-	smartblock.SmartBlockTypeBundledRelation:   model.ObjectType_relation,
-	smartblock.SmartBlockTypeObjectType:        model.ObjectType_objectType,
-	smartblock.SmartBlockTypeBundledObjectType: model.ObjectType_objectType,
-	smartblock.SmartBlockTypeRelationOption:    model.ObjectType_relationOption,
-	smartblock.SmartBlockTypeSpaceView:         model.ObjectType_spaceView,
-	smartblock.SmartBlockTypeParticipant:       model.ObjectType_participant,
-	smartblock.SmartBlockTypeFile:              model.ObjectType_file, // deprecated
-	smartblock.SmartBlockTypeDate:              model.ObjectType_date,
-	smartblock.SmartBlockTypeChatDerivedObject: model.ObjectType_chatDerived,
-	smartblock.SmartBlockTypeChatObject:        model.ObjectType_chat, // deprecated
-	smartblock.SmartBlockTypeWidget:            model.ObjectType_dashboard,
-	smartblock.SmartBlockTypeWorkspace:         model.ObjectType_dashboard,
-	smartblock.SmartBlockTypeArchive:           model.ObjectType_dashboard,
-	smartblock.SmartBlockTypeHome:              model.ObjectType_dashboard,
-	smartblock.SmartBlockTypeAccountObject:     model.ObjectType_profile,
-	smartblock.SmartBlockTypeAnytypeProfile:    model.ObjectType_profile,
-	smartblock.SmartBlockTypeIdentity:          model.ObjectType_profile,
-	smartblock.SmartBlockTypeProfilePage:       model.ObjectType_profile,
-	smartblock.SmartBlockTypeAccountOld:        model.ObjectType_profile, // deprecated
+	smartblock.SmartBlockTypeRelation:           model.ObjectType_relation,
+	smartblock.SmartBlockTypeBundledRelation:    model.ObjectType_relation,
+	smartblock.SmartBlockTypeObjectType:         model.ObjectType_objectType,
+	smartblock.SmartBlockTypeBundledObjectType:  model.ObjectType_objectType,
+	smartblock.SmartBlockTypeRelationOption:     model.ObjectType_relationOption,
+	smartblock.SmartBlockTypeSpaceView:          model.ObjectType_spaceView,
+	smartblock.SmartBlockTypeParticipant:        model.ObjectType_participant,
+	smartblock.SmartBlockTypeFile:               model.ObjectType_file, // deprecated
+	smartblock.SmartBlockTypeDate:               model.ObjectType_date,
+	smartblock.SmartBlockTypeChatDerivedObject:  model.ObjectType_chatDerived,
+	smartblock.SmartBlockTypeChatObject:         model.ObjectType_chat, // deprecated
+	smartblock.SmartBlockTypeWidget:             model.ObjectType_dashboard,
+	smartblock.SmartBlockTypeWorkspace:          model.ObjectType_dashboard,
+	smartblock.SmartBlockTypeArchive:            model.ObjectType_dashboard,
+	smartblock.SmartBlockTypeHome:               model.ObjectType_dashboard,
+	smartblock.SmartBlockTypeAccountObject:      model.ObjectType_profile,
+	smartblock.SmartBlockTypeAnytypeProfile:     model.ObjectType_profile,
+	smartblock.SmartBlockTypeIdentity:           model.ObjectType_profile,
+	smartblock.SmartBlockTypeProfilePage:        model.ObjectType_profile,
+	smartblock.SmartBlockTypeAccountOld:         model.ObjectType_profile, // deprecated
+	smartblock.SmartBlockTypeMissingObject:      model.ObjectType_missingObject,
+	smartblock.SmartBlockTypeNotificationObject: model.ObjectType_notification,
+	smartblock.SmartBlockTypeDevicesObject:      model.ObjectType_devices,
 }
 
 func (sb *smartBlock) injectLocalDetails(s *state.State) error {
@@ -263,8 +266,6 @@ func (sb *smartBlock) resolveLayout(s *state.State) {
 		return
 	}
 
-	logOnAbsentLayout(s.RootId(), sb.Type(), layoutValue)
-
 	if !currentValue.Ok() && layoutValue.Ok() {
 		// we don't have resolvedLayout in local details, but we have layout
 		currentValue = layoutValue
@@ -354,23 +355,4 @@ func (sb *smartBlock) getTypeDetails(s *state.State) (*domain.Details, error) {
 		return nil, fmt.Errorf("failed to query object %s: %w", typeObjectId, err)
 	}
 	return records[0].Details, nil
-}
-
-func logOnAbsentLayout(id string, sbType smartblock.SmartBlockType, layoutValue domain.Value) {
-	if layoutValue.Ok() || canObjectHandleDifferentLayout(sbType) {
-		return
-	}
-	log.With("objectId", id).
-		With("sbType", sbType).
-		With("layoutOk", layoutValue.Ok()).
-		With("layout", layoutValue).
-		Warn("resolveLayout: no strict layout for smartblock type")
-}
-
-func canObjectHandleDifferentLayout(sbType smartblock.SmartBlockType) bool {
-	return sbType == smartblock.SmartBlockTypeFileObject ||
-		sbType == smartblock.SmartBlockTypePage ||
-		sbType == smartblock.SmartBlockTypeTemplate ||
-		sbType == smartblock.SmartBlockTypeBundledTemplate ||
-		sbType == smartblock.SmartBlockTypeSubObject
 }
