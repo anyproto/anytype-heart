@@ -30,7 +30,7 @@ const (
 	ForceObjectsReindexCounter int32 = 19
 
 	// ForceFilesReindexCounter reindex file objects
-	ForceFilesReindexCounter int32 = 13 //
+	ForceFilesReindexCounter int32 = 12 //
 
 	// ForceBundledObjectsReindexCounter reindex objects like anytypeProfile
 	ForceBundledObjectsReindexCounter int32 = 5 // reindex objects like anytypeProfile
