@@ -6,6 +6,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/anytype/config"
 	"github.com/anyproto/anytype-heart/core/block/editor/basic"
 	"github.com/anyproto/anytype-heart/core/block/editor/dataview"
+	"github.com/anyproto/anytype-heart/core/block/editor/objectopen"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/editor/stext"
@@ -25,6 +26,8 @@ var workspaceRequiredRelations = []domain.RelationKey{
 
 type Workspaces struct {
 	smartblock.SmartBlock
+	objectopen.ObjectOpen
+
 	basic.AllOperations
 	basic.IHistory
 	dataview.Dataview
@@ -37,7 +40,9 @@ type Workspaces struct {
 
 func (f *ObjectFactory) newWorkspace(sb smartblock.SmartBlock, store spaceindex.Store) *Workspaces {
 	w := &Workspaces{
-		SmartBlock:    sb,
+		SmartBlock: sb,
+		ObjectOpen: objectopen.New(sb, f.objectStore, f.spaceIdResolver),
+
 		AllOperations: basic.NewBasic(sb, store, f.layoutConverter, f.fileObjectService),
 		IHistory:      basic.NewHistory(sb),
 		Text: stext.NewText(

@@ -9,6 +9,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/dataview"
 	"github.com/anyproto/anytype-heart/core/block/editor/file"
 	"github.com/anyproto/anytype-heart/core/block/editor/layout"
+	"github.com/anyproto/anytype-heart/core/block/editor/objectopen"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/editor/stext"
@@ -39,6 +40,7 @@ var typeRequiredRelations = append(typeAndRelationRequiredRelations,
 
 type ObjectType struct {
 	smartblock.SmartBlock
+	objectopen.ObjectOpen
 	basic.AllOperations
 	basic.IHistory
 	stext.Text
@@ -57,6 +59,8 @@ func (f *ObjectFactory) newObjectType(spaceId string, sb smartblock.SmartBlock) 
 		ChangeReceiver: sb.(source.ChangeReceiver),
 		AllOperations:  basic.NewBasic(sb, store, f.layoutConverter, f.fileObjectService),
 		IHistory:       basic.NewHistory(sb),
+		ObjectOpen:     objectopen.New(sb, f.objectStore, f.spaceIdResolver),
+
 		Text: stext.NewText(
 			sb,
 			store,

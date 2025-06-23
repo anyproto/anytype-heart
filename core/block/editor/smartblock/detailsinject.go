@@ -341,11 +341,12 @@ func (sb *smartBlock) getTypeDetails(s *state.State) (*domain.Details, error) {
 		return nil, fmt.Errorf("failed to find id of object type")
 	}
 
-	typeDetails, found := sb.lastDepDetails[typeObjectId]
-	if found {
-		return typeDetails, nil
-	}
+	// typeDetails, found := sb.lastDepDetails[typeObjectId]
+	// if found {
+	// 	return typeDetails, nil
+	// }
 
+	// TODO Cache object type details
 	records, err := sb.objectStore.SpaceIndex(sb.SpaceID()).QueryByIds([]string{typeObjectId})
 	if err != nil || len(records) != 1 {
 		return nil, fmt.Errorf("failed to query object %s: %w", typeObjectId, err)

@@ -21,6 +21,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/collection"
 	"github.com/anyproto/anytype-heart/core/block/editor/file"
 	"github.com/anyproto/anytype-heart/core/block/editor/layout"
+	"github.com/anyproto/anytype-heart/core/block/editor/objectopen"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/history"
@@ -211,8 +212,12 @@ func (s *Service) ObjectRefresh(ctx context.Context, id domain.FullID) (err erro
 func (s *Service) OpenBlock(sctx session.Context, id domain.FullID, includeRelationsAsDependentObjects bool) (obj *model.ObjectView, err error) {
 	id = s.resolveFullId(id)
 	err = s.DoFullId(id, func(ob smartblock.SmartBlock) error {
+		objOpen, ok := ob.(objectopen.ObjectOpen)
+		if !ok {
+			return fmt.Errorf("objectopen component not found")
+		}
 		if includeRelationsAsDependentObjects {
-			ob.EnabledRelationAsDependentObjects()
+			objOpen.EnabledRelationAsDependentObjects()
 		}
 
 		ob.RegisterSession(sctx)
@@ -226,7 +231,7 @@ func (s *Service) OpenBlock(sctx session.Context, id domain.FullID, includeRelat
 		if err = ob.Space().RefreshObjects([]string{ob.Id()}); err != nil {
 			log.Debug("failed to sync object", zap.String("objectId", id.ObjectID), zap.Error(err))
 		}
-		if obj, err = ob.Show(); err != nil {
+		if obj, err = objOpen.Show(); err != nil {
 			return fmt.Errorf("show: %w", err)
 		}
 
@@ -295,10 +300,14 @@ func (s *Service) resolveFullId(id domain.FullID) domain.FullID {
 func (s *Service) ShowBlock(id domain.FullID, includeRelationsAsDependentObjects bool) (obj *model.ObjectView, err error) {
 	id = s.resolveFullId(id)
 	err = s.DoFullId(id, func(b smartblock.SmartBlock) error {
-		if includeRelationsAsDependentObjects {
-			b.EnabledRelationAsDependentObjects()
+		objOpen, ok := b.(objectopen.ObjectOpen)
+		if !ok {
+			return fmt.Errorf("objectopen component not found")
 		}
-		obj, err = b.Show()
+		if includeRelationsAsDependentObjects {
+			objOpen.EnabledRelationAsDependentObjects()
+		}
+		obj, err = objOpen.Show()
 		if err != nil {
 			return err
 		}

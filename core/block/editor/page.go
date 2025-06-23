@@ -6,6 +6,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/clipboard"
 	"github.com/anyproto/anytype-heart/core/block/editor/dataview"
 	"github.com/anyproto/anytype-heart/core/block/editor/file"
+	"github.com/anyproto/anytype-heart/core/block/editor/objectopen"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/editor/stext"
@@ -64,6 +65,7 @@ type Page struct {
 	clipboard.Clipboard
 	bookmark.Bookmark
 	source.ChangeReceiver
+	objectopen.ObjectOpen
 
 	dataview.Dataview
 	table.TableEditor
@@ -98,6 +100,7 @@ func (f *ObjectFactory) newPage(spaceId string, sb smartblock.SmartBlock) *Page 
 		Bookmark:          bookmark.NewBookmark(sb, f.bookmarkService),
 		Dataview:          dataview.NewDataview(sb, store),
 		TableEditor:       table.NewEditor(sb),
+		ObjectOpen:        objectopen.New(sb, f.objectStore, f.spaceIdResolver),
 		objectStore:       store,
 		fileObjectService: f.fileObjectService,
 		objectDeleter:     f.objectDeleter,

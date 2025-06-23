@@ -9,6 +9,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/basic"
 	"github.com/anyproto/anytype-heart/core/block/editor/collection"
 	"github.com/anyproto/anytype-heart/core/block/editor/converter"
+	"github.com/anyproto/anytype-heart/core/block/editor/objectopen"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/editor/template"
@@ -28,16 +29,19 @@ type Dashboard struct {
 	smartblock.SmartBlock
 	basic.AllOperations
 	collection.Collection
+	objectopen.ObjectOpen
 
 	objectStore spaceindex.Store
 }
 
-func NewDashboard(sb smartblock.SmartBlock, objectStore spaceindex.Store, layoutConverter converter.LayoutConverter) *Dashboard {
+func (f *ObjectFactory) newDashboard(sb smartblock.SmartBlock, objectStore spaceindex.Store, layoutConverter converter.LayoutConverter) *Dashboard {
 	return &Dashboard{
 		SmartBlock:    sb,
 		AllOperations: basic.NewBasic(sb, objectStore, layoutConverter, nil),
 		Collection:    collection.NewCollection(sb, objectStore),
-		objectStore:   objectStore,
+
+		ObjectOpen:  objectopen.New(sb, f.objectStore, f.spaceIdResolver),
+		objectStore: objectStore,
 	}
 }
 
