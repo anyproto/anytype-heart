@@ -1,6 +1,7 @@
 package yaml
 
 import (
+	"strings"
 	"testing"
 	"time"
 
@@ -410,5 +411,63 @@ func TestYAMLPropertyNameDeduplication(t *testing.T) {
 		
 		// Other properties remain unchanged
 		assert.Contains(t, yamlStr, "Title: Document Title")
+	})
+}
+
+func TestExportToYAML_WithSchemaReference(t *testing.T) {
+	t.Run("includes schema reference when provided", func(t *testing.T) {
+		properties := []Property{
+			{
+				Name:   "Title",
+				Key:    "title",
+				Format: model.RelationFormat_shorttext,
+				Value:  domain.String("Test Document"),
+			},
+		}
+		
+		options := &ExportOptions{
+			ObjectTypeName:  "Document",
+			SchemaReference: "./schemas/document.schema.json",
+		}
+		
+		result, err := ExportToYAML(properties, options)
+		require.NoError(t, err)
+		
+		yamlStr := string(result)
+		
+		// Should contain schema reference comment
+		assert.Contains(t, yamlStr, "# yaml-language-server: $schema=./schemas/document.schema.json")
+		
+		// Should still have all properties
+		assert.Contains(t, yamlStr, "Title: Test Document")
+		assert.Contains(t, yamlStr, "Object type: Document")
+		
+		// Verify order - schema reference should come right after opening delimiter
+		lines := strings.Split(yamlStr, "\n")
+		assert.Equal(t, "---", lines[0])
+		assert.Equal(t, "# yaml-language-server: $schema=./schemas/document.schema.json", lines[1])
+	})
+	
+	t.Run("no schema reference when not provided", func(t *testing.T) {
+		properties := []Property{
+			{
+				Name:   "Title",
+				Key:    "title",
+				Format: model.RelationFormat_shorttext,
+				Value:  domain.String("Test Document"),
+			},
+		}
+		
+		options := &ExportOptions{
+			ObjectTypeName: "Document",
+		}
+		
+		result, err := ExportToYAML(properties, options)
+		require.NoError(t, err)
+		
+		yamlStr := string(result)
+		
+		// Should not contain schema reference
+		assert.NotContains(t, yamlStr, "yaml-language-server")
 	})
 }

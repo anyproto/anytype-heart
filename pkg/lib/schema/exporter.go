@@ -422,10 +422,9 @@ func (e *JSONSchemaExporter) typeToJSONSchema(t *Type, schema *Schema) map[strin
 	if t.Layout == model.ObjectType_collection {
 		properties["Collection"] = map[string]interface{}{
 			"type":        "array",
-			"description": "List of objects ids in this collection",
+			"description": "List of object file paths or names in this collection",
 			"items": map[string]interface{}{
-				"type":     "string",
-				"required": []string{"Name"},
+				"type": "string",
 			},
 			"x-order": propertyOrder,
 		}

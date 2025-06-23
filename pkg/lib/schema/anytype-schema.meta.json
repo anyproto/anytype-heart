@@ -65,8 +65,11 @@
         "id": {
           "$ref": "#/definitions/idProperty"
         },
-        "type": {
-          "$ref": "#/definitions/typeProperty"
+        "Object type": {
+          "$ref": "#/definitions/objectTypeProperty"
+        },
+        "Collection": {
+          "$ref": "#/definitions/collectionProperty"
         }
       },
       "additionalProperties": {
@@ -101,10 +104,13 @@
         }
       }
     },
-    "typeProperty": {
+    "objectTypeProperty": {
       "type": "object",
-      "required": ["const", "x-order", "x-key"],
+      "required": ["type", "const", "x-order", "x-key"],
       "properties": {
+        "type": {
+          "const": "string"
+        },
         "const": {
           "type": "string",
           "description": "The type name constant"
@@ -117,6 +123,32 @@
           "const": "type"
         }
       }
+    },
+    "collectionProperty": {
+      "type": "object",
+      "required": ["type", "description", "items", "x-order"],
+      "properties": {
+        "type": {
+          "const": "array"
+        },
+        "description": {
+          "const": "List of object file paths or names in this collection"
+        },
+        "items": {
+          "type": "object",
+          "required": ["type"],
+          "properties": {
+            "type": {
+              "const": "string"
+            }
+          }
+        },
+        "x-order": {
+          "type": "integer",
+          "minimum": 0
+        }
+      },
+      "description": "Collection property appears only in collection types"
     },
     "relationProperty": {
       "type": "object",

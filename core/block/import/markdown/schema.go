@@ -30,6 +30,11 @@ type SchemaImporter struct {
 	typeIdPrefix string
 }
 
+// GetSchemas returns all loaded schemas
+func (si *SchemaImporter) GetSchemas() map[string]*schema.Schema {
+	return si.schemas
+}
+
 func NewSchemaImporter() *SchemaImporter {
 	return &SchemaImporter{
 		schemas:         make(map[string]*schema.Schema),

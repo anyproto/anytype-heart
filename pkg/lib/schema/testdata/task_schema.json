@@ -16,7 +16,8 @@
       "x-order": 0,
       "x-key": "id"
     },
-    "type": {
+    "Object type": {
+      "type": "string",
       "const": "Task",
       "x-order": 1,
       "x-key": "type"

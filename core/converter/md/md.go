@@ -296,14 +296,40 @@ func (h *MD) renderProperties(buf writer) {
 		properties = append(properties, prop)
 	}
 
-	// Skip empty property lists unless it's a collection
-	if len(properties) == 0 && !isCollection {
-		return
+	// Add Collection as a property if this is a collection
+	if isCollection {
+		collectionObjects := h.s.GetStoreSlice(template.CollectionStoreKey)
+		if len(collectionObjects) > 0 {
+			var collectionList []string
+			for _, objId := range collectionObjects {
+				title, filename, ok := h.getLinkInfo(objId)
+				if !ok {
+					continue
+				}
+				
+				// Same logic as object relations - use filename if in export, otherwise title
+				if h.knownDocs[objId] != nil {
+					collectionList = append(collectionList, filename)
+				} else {
+					collectionList = append(collectionList, title)
+				}
+			}
+			
+			if len(collectionList) > 0 {
+				collectionProp := yaml.Property{
+					Name:   "Collection",
+					Key:    "collection",
+					Format: model.RelationFormat_object,
+					Value:  domain.StringList(collectionList),
+				}
+				properties = append(properties, collectionProp)
+			}
+		}
 	}
 
-	// Prepare export options
-	exportOptions := &yaml.ExportOptions{
-		ObjectTypeName: typeName,
+	// Skip empty property lists
+	if len(properties) == 0 {
+		return
 	}
 
 	// Add object ID as a special property
@@ -317,6 +343,16 @@ func (h *MD) renderProperties(buf writer) {
 		properties = append([]yaml.Property{idProp}, properties...)
 	}
 
+	// Prepare export options
+	exportOptions := &yaml.ExportOptions{
+		ObjectTypeName: typeName,
+	}
+	
+	// Add schema reference if enabled
+	if h.includeSchema && typeName != "" {
+		exportOptions.SchemaReference = h.GenerateSchemaFileName(typeName)
+	}
+
 	// Export using YAML exporter
 	yamlData, err := yaml.ExportToYAML(properties, exportOptions)
 	if err != nil {
@@ -324,57 +360,8 @@ func (h *MD) renderProperties(buf writer) {
 		return
 	}
 
-	// Extract just the content (without delimiters)
-	frontMatter, _, _ := yaml.ExtractYAMLFrontMatter(yamlData)
-	if len(frontMatter) == 0 {
-		return
-	}
-
-	// Write custom front matter with schema reference if needed
-	fmt.Fprintf(buf, "---\n")
-
-	// Add JSON schema reference if enabled
-	if h.includeSchema && typeName != "" {
-		schemaFileName := h.GenerateSchemaFileName(typeName)
-		fmt.Fprintf(buf, "# yaml-language-server: $schema=%s\n", schemaFileName)
-	}
-
-	// Write the YAML content
-	buf.Write(frontMatter)
-	
-	// Ensure there's a newline before closing delimiter or collection
-	if len(frontMatter) > 0 && frontMatter[len(frontMatter)-1] != '\n' {
-		buf.WriteString("\n")
-	}
-
-	// Add collection objects if this is a collection
-	if isCollection {
-		collectionObjects := h.s.GetStoreSlice(template.CollectionStoreKey)
-		if len(collectionObjects) > 0 {
-			fmt.Fprintf(buf, "Collection:\n")
-			for _, objId := range collectionObjects {
-				if d, isInExport := h.getObjectInfo(objId); d != nil {
-					objectName := d.Get(bundle.RelationKeyName).String()
-					if objectName == "" {
-						objectName = objId
-					}
-
-					fmt.Fprintf(buf, "  - Name: %s\n", objectName)
-
-					if isInExport {
-						filename := h.fn.Get("", objId, objectName, h.Ext())
-						fmt.Fprintf(buf, "    File: %s\n", filename)
-					} else {
-						fmt.Fprintf(buf, "    Id: %s\n", objId)
-					}
-				} else {
-					fmt.Fprintf(buf, "  - Name: %s\n", objId)
-				}
-			}
-		}
-	}
-
-	fmt.Fprintf(buf, "---\n\n")
+	// Write the YAML front matter
+	buf.Write(yamlData)
 }
 
 func (h *MD) Export() (result string) {

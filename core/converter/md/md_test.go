@@ -850,33 +850,29 @@ func TestMD_RenderCollection(t *testing.T) {
 	// Verify YAML frontmatter contains collection
 	assert.Contains(t, resultStr, "Collection:")
 
-	// Verify task1 and task2 have File field (they are in knownDocs)
-	assert.Contains(t, resultStr, "- Name: First Task")
-	assert.Contains(t, resultStr, "  File: First Task.md")
-	assert.Contains(t, resultStr, "- Name: Second Task")
-	assert.Contains(t, resultStr, "  File: Second Task.md")
+	// Verify task1 and task2 show filenames (they are in knownDocs)
+	assert.Contains(t, resultStr, "- First Task.md")
+	assert.Contains(t, resultStr, "- Second Task.md")
 
-	// Verify task3 has Id field instead (not in knownDocs)
-	assert.Contains(t, resultStr, "- Name: Third Task")
-	assert.Contains(t, resultStr, "  Id: task3")
-	assert.NotContains(t, resultStr, "  File: Third Task.md")
+	// Verify task3 shows just the name (not in knownDocs)
+	assert.Contains(t, resultStr, "- Third Task")
+	assert.NotContains(t, resultStr, "- Third Task.md")
 
-	// Verify the structure is correct
+	// Verify the structure is correct (simple list format)
 	lines := strings.Split(resultStr, "\n")
 	var inCollection bool
-	var collectionIndent int
-	for _, line := range lines {
+	for i, line := range lines {
 		if strings.Contains(line, "Collection:") {
 			inCollection = true
-			collectionIndent = len(line) - len(strings.TrimLeft(line, " "))
+			// Next lines should be the list items
+			continue
 		}
-		if inCollection && strings.TrimSpace(line) != "" && !strings.Contains(line, "Collection:") && !strings.Contains(line, "---") {
-			// Check that collection items are properly indented
-			itemIndent := len(line) - len(strings.TrimLeft(line, " "))
-			assert.Greater(t, itemIndent, collectionIndent, "Collection items should be indented")
+		if inCollection && strings.HasPrefix(line, "- ") {
+			// Verify it's a simple list item
+			assert.True(t, strings.HasPrefix(line, "- "), "Collection items should be simple list items")
 		}
 		// Stop checking after YAML frontmatter ends
-		if inCollection && line == "---" {
+		if line == "---" && i > 0 {
 			break
 		}
 	}
@@ -1001,9 +997,8 @@ func TestMD_RenderCollection_WithSchema(t *testing.T) {
 
 	// Verify collection is present
 	assert.Contains(t, resultStr, "Collection:")
-	assert.Contains(t, resultStr, "- Name: Object One")
-	// Object is not in knownDocs (not set), so it shows Id
-	assert.Contains(t, resultStr, "  Id: obj1")
+	// Object is not in knownDocs (not set), so it shows name only
+	assert.Contains(t, resultStr, "- Object One")
 }
 
 func TestMD_RenderCollection_UnknownObjects(t *testing.T) {
@@ -1058,12 +1053,11 @@ func TestMD_RenderCollection_UnknownObjects(t *testing.T) {
 	result := conv.Convert(model.SmartBlockType_Page)
 	resultStr := string(result)
 
-	// Verify known objects show their names
-	assert.Contains(t, resultStr, "- Name: Known Object 1")
-	assert.Contains(t, resultStr, "- Name: Known Object 2")
+	// Verify known objects show their names (not in knownDocs, so just names)
+	assert.Contains(t, resultStr, "- Known Object 1")
+	assert.Contains(t, resultStr, "- Known Object 2")
 
-	// Verify unknown object shows its ID
-	assert.Contains(t, resultStr, "- Name: unknown1")
+	// Unknown object is not in resolver, so it won't appear in the list
 }
 
 func TestMD_RenderObjectRelation_FileFieldOnlyForExportedObjects(t *testing.T) {

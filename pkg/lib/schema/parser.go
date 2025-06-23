@@ -138,6 +138,18 @@ func (p *JSONSchemaParser) parseTypeFromSchema(jsonSchema map[string]interface{}
 		}
 	}
 
+	// Check if this is a collection type by looking for Collection property
+	if props, ok := jsonSchema["properties"].(map[string]interface{}); ok {
+		if collProp, hasCollection := props["Collection"]; hasCollection {
+			// Verify it's an array property
+			if collMap, ok := collProp.(map[string]interface{}); ok {
+				if propType, ok := collMap["type"].(string); ok && propType == "array" {
+					t.Layout = model.ObjectType_collection
+				}
+			}
+		}
+	}
+
 	return t, nil
 }
 

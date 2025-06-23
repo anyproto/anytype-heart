@@ -12,9 +12,9 @@ import (
 	"github.com/gogo/protobuf/types"
 
 	"github.com/anyproto/anytype-heart/core/block/collection"
+	"github.com/anyproto/anytype-heart/core/block/editor/template"
 	"github.com/anyproto/anytype-heart/core/block/import/common"
 	"github.com/anyproto/anytype-heart/core/block/import/common/source"
-	"github.com/anyproto/anytype-heart/pkg/lib/schema/yaml"
 	"github.com/anyproto/anytype-heart/core/block/process"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pb"
@@ -23,6 +23,8 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+	"github.com/anyproto/anytype-heart/pkg/lib/schema/yaml"
+	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 var (
@@ -439,7 +441,7 @@ func (m *Markdown) createSnapshots(
 	hasSchemas := m.schemaImporter.HasSchemas()
 
 	// First pass: collect all YAML properties to create relation snapshots
-	yamlRelations := make(map[string]*yaml.Property)        // property name -> property
+	yamlRelations := make(map[string]*yaml.Property)          // property name -> property
 	yamlRelationOptions := make(map[string]map[string]string) // relationKey -> optionValue -> optionId
 	objectTypes := make(map[string][]string)                  // Track unique object type names
 
@@ -725,9 +727,107 @@ func (m *Markdown) createSnapshots(
 
 		// Determine object type
 		objectTypeKey := bundle.TypeKeyPage.String()
+		isCollectionType := false
 		if file.ObjectTypeName != "" {
 			if typeKey, exists := objectTypeKeys[file.ObjectTypeName]; exists {
 				objectTypeKey = typeKey
+			}
+
+			// Check if this type is a collection type from schema
+			if m.schemaImporter != nil {
+				for _, s := range m.schemaImporter.GetSchemas() {
+					if s.Type != nil && s.Type.Name == file.ObjectTypeName && s.Type.Layout == model.ObjectType_collection {
+						isCollectionType = true
+						break
+					}
+				}
+			}
+		}
+
+		// Check if YAML has Collection property
+		var collectionObjectIds []string
+		if file.YAMLProperties != nil {
+			// Look for Collection property in the parsed properties
+			for _, prop := range file.YAMLProperties {
+				if prop.Key == "collection" {
+					isCollectionType = true
+					if strList, ok := prop.Value.TryStringList(); ok {
+						collectionObjectIds = strList
+					} else if str, ok := prop.Value.TryString(); ok {
+						// Handle single string value
+						collectionObjectIds = []string{str}
+					}
+					break
+				}
+			}
+		}
+
+		// Collections are still pages, just with collection layout
+		sbType := smartblock.SmartBlockTypePage
+
+		// Create state snapshot
+		stateSnapshot := &common.StateSnapshot{
+			Blocks:        file.ParsedBlocks,
+			Details:       details[name],
+			ObjectTypes:   []string{objectTypeKey},
+			RelationLinks: relationLinks,
+		}
+
+		// Add collection store if this is a collection
+		if isCollectionType && len(collectionObjectIds) > 0 {
+			// Resolve collection object references to page IDs
+			resolvedIds := make([]string, 0, len(collectionObjectIds))
+			collectionDir := filepath.Dir(name) // Directory where the collection file is located
+
+			for _, ref := range collectionObjectIds {
+				// ref should be a filename path (relative or absolute) with .md suffix
+				// Normalize the reference path
+				refPath := ref
+				if !strings.HasSuffix(refPath, ".md") {
+					refPath = refPath + ".md"
+				}
+
+				found := false
+				for fileName, f := range files {
+					if f.PageID == "" {
+						continue
+					}
+
+					// Try different matching strategies:
+					// 1. Exact match (for absolute paths or paths relative to import root)
+					if fileName == refPath {
+						resolvedIds = append(resolvedIds, f.PageID)
+						found = true
+						break
+					}
+
+					// 2. Match relative to collection file's directory
+					relativeToCollection := filepath.Join(collectionDir, refPath)
+					if fileName == relativeToCollection {
+						resolvedIds = append(resolvedIds, f.PageID)
+						found = true
+						break
+					}
+
+					// 3. Match by base filename only (fallback for simple filenames)
+					if filepath.Base(fileName) == filepath.Base(refPath) {
+						resolvedIds = append(resolvedIds, f.PageID)
+						found = true
+						break
+					}
+				}
+				if !found {
+					log.Warnf("Collection reference '%s' not found in import", ref)
+				}
+			}
+
+			if len(resolvedIds) > 0 {
+				// Set collection store using Collections field
+				stateSnapshot.Collections = &types.Struct{
+					Fields: map[string]*types.Value{
+						template.CollectionStoreKey: pbtypes.StringList(resolvedIds),
+					},
+				}
 			}
 		}
 
@@ -735,13 +835,9 @@ func (m *Markdown) createSnapshots(
 			Id:       file.PageID,
 			FileName: name,
 			Snapshot: &common.SnapshotModel{
-				SbType: smartblock.SmartBlockTypePage,
-				Data: &common.StateSnapshot{
-					Blocks:        file.ParsedBlocks,
-					Details:       details[name],
-					ObjectTypes:   []string{objectTypeKey},
-					RelationLinks: relationLinks,
-				}},
+				SbType: sbType,
+				Data:   stateSnapshot,
+			},
 		})
 	}
 

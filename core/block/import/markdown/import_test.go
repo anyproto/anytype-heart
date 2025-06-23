@@ -22,6 +22,8 @@ import (
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/tests/blockbuilder"
+	"github.com/anyproto/anytype-heart/core/block/editor/template"
+	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 // testMockSource is a test implementation of source.Source for testing schema loading
@@ -1181,5 +1183,212 @@ This document is used for snapshot testing of YAML front matter import.`
 
 			assert.Len(t, key, 24, "Relation %s key should be 24 characters (BSON ID)", relName)
 		}
+	})
+}
+
+func TestMarkdown_CollectionImport(t *testing.T) {
+	t.Run("import collection with Collection property in YAML", func(t *testing.T) {
+		// given
+		testDirectory := t.TempDir()
+		
+		// Create test files
+		task1Path := filepath.Join(testDirectory, "Important Task.md")
+		task2Path := filepath.Join(testDirectory, "Another Task.md")
+		collectionPath := filepath.Join(testDirectory, "My Task Collection.md")
+		
+		// Create task files
+		task1Content := `---
+Name: Important Task
+Object type: Task
+Priority: high
+---
+
+# Important Task
+
+This is an important task that needs to be done.`
+		
+		task2Content := `---
+Name: Another Task
+Object type: Task
+Priority: medium
+---
+
+# Another Task
+
+This is another task in the collection.`
+		
+		// Create collection file
+		collectionContent := `---
+Name: My Task Collection
+Object type: Task Collection
+Collection:
+- Important Task.md
+- Another Task.md
+---
+
+# My Task Collection
+
+This is a collection of important tasks.`
+
+		err := os.WriteFile(task1Path, []byte(task1Content), os.ModePerm)
+		assert.NoError(t, err)
+		err = os.WriteFile(task2Path, []byte(task2Content), os.ModePerm)
+		assert.NoError(t, err)
+		err = os.WriteFile(collectionPath, []byte(collectionContent), os.ModePerm)
+		assert.NoError(t, err)
+
+		h := &Markdown{
+			blockConverter: newMDConverter(&MockTempDir{}),
+			schemaImporter: NewSchemaImporter(),
+		}
+		p := process.NewNoOp()
+
+		// when
+		sn, ce := h.GetSnapshots(context.Background(), &pb.RpcObjectImportRequest{
+			Params: &pb.RpcObjectImportRequestParamsOfMarkdownParams{
+				MarkdownParams: &pb.RpcObjectImportRequestMarkdownParams{Path: []string{testDirectory}},
+			},
+			Type: model.Import_Markdown,
+		}, p)
+
+		// then
+		assert.Nil(t, ce)
+		assert.NotNil(t, sn)
+		assert.GreaterOrEqual(t, len(sn.Snapshots), 3) // At least 3 pages
+		
+		// Find the collection snapshot
+		var collectionSnapshot *common.Snapshot
+		var task1Snapshot, task2Snapshot *common.Snapshot
+		
+		for _, snapshot := range sn.Snapshots {
+			if strings.Contains(snapshot.FileName, "My Task Collection.md") {
+				collectionSnapshot = snapshot
+			} else if strings.Contains(snapshot.FileName, "Important Task.md") {
+				task1Snapshot = snapshot
+			} else if strings.Contains(snapshot.FileName, "Another Task.md") {
+				task2Snapshot = snapshot
+			}
+		}
+		
+		assert.NotNil(t, collectionSnapshot, "Collection snapshot should exist")
+		assert.NotNil(t, task1Snapshot, "Task 1 snapshot should exist")
+		assert.NotNil(t, task2Snapshot, "Task 2 snapshot should exist")
+		
+		// Verify collection has correct SbType (collections are pages)
+		assert.Equal(t, coresb.SmartBlockTypePage, collectionSnapshot.Snapshot.SbType,
+			"Collection should have SmartBlockTypePage type")
+		
+		// Verify collection has the collection store
+		assert.NotNil(t, collectionSnapshot.Snapshot.Data.Collections, "Collection should have Collections field")
+		collectionStoreValue := collectionSnapshot.Snapshot.Data.Collections.Fields[template.CollectionStoreKey]
+		assert.NotNil(t, collectionStoreValue, "Collection should have collection store")
+		
+		// Get the collection IDs from store  
+		collectionIds := pbtypes.GetStringListValue(collectionStoreValue)
+		assert.Len(t, collectionIds, 2, "Collection should have 2 items")
+		
+		// Verify the collection contains the task IDs
+		assert.Contains(t, collectionIds, task1Snapshot.Id, "Collection should contain task 1")
+		assert.Contains(t, collectionIds, task2Snapshot.Id, "Collection should contain task 2")
+	})
+
+	t.Run("import collection with absolute and relative paths", func(t *testing.T) {
+		// given
+		testDirectory := t.TempDir()
+		
+		// Create subdirectory structure
+		subDir := filepath.Join(testDirectory, "tasks")
+		err := os.MkdirAll(subDir, os.ModePerm)
+		assert.NoError(t, err)
+		
+		// Create test files
+		task1Path := filepath.Join(subDir, "Task One.md")
+		task2Path := filepath.Join(testDirectory, "Task Two.md")
+		collectionPath := filepath.Join(testDirectory, "Collection with Paths.md")
+		
+		// Create task files
+		task1Content := `---
+Name: Task One
+Object type: Task
+---
+
+# Task One`
+		
+		task2Content := `---
+Name: Task Two
+Object type: Task
+---
+
+# Task Two`
+		
+		// Create collection file with various path formats
+		collectionContent := fmt.Sprintf(`---
+Name: Collection with Paths
+Object type: Collection
+Collection:
+- Task Two.md
+- tasks/Task One.md
+- %s
+---
+
+# Collection with Paths
+
+Testing different path formats.`, task1Path)
+
+		err = os.WriteFile(task1Path, []byte(task1Content), os.ModePerm)
+		assert.NoError(t, err)
+		err = os.WriteFile(task2Path, []byte(task2Content), os.ModePerm)
+		assert.NoError(t, err)
+		err = os.WriteFile(collectionPath, []byte(collectionContent), os.ModePerm)
+		assert.NoError(t, err)
+
+		h := &Markdown{
+			blockConverter: newMDConverter(&MockTempDir{}),
+			schemaImporter: NewSchemaImporter(),
+		}
+		p := process.NewNoOp()
+
+		// when
+		sn, ce := h.GetSnapshots(context.Background(), &pb.RpcObjectImportRequest{
+			Params: &pb.RpcObjectImportRequestParamsOfMarkdownParams{
+				MarkdownParams: &pb.RpcObjectImportRequestMarkdownParams{Path: []string{testDirectory}},
+			},
+			Type: model.Import_Markdown,
+		}, p)
+
+		// then
+		assert.Nil(t, ce)
+		assert.NotNil(t, sn)
+		
+		// Find the snapshots
+		var collectionSnapshot *common.Snapshot
+		var task1Snapshot, task2Snapshot *common.Snapshot
+		
+		for _, snapshot := range sn.Snapshots {
+			if strings.Contains(snapshot.FileName, "Collection with Paths.md") {
+				collectionSnapshot = snapshot
+			} else if strings.Contains(snapshot.FileName, "Task One.md") {
+				task1Snapshot = snapshot
+			} else if strings.Contains(snapshot.FileName, "Task Two.md") {
+				task2Snapshot = snapshot
+			}
+		}
+		
+		assert.NotNil(t, collectionSnapshot, "Collection snapshot should exist")
+		assert.NotNil(t, task1Snapshot, "Task 1 snapshot should exist")
+		assert.NotNil(t, task2Snapshot, "Task 2 snapshot should exist")
+		
+		// Verify collection has the collection store
+		assert.NotNil(t, collectionSnapshot.Snapshot.Data.Collections, "Collection should have Collections field")
+		collectionStoreValue := collectionSnapshot.Snapshot.Data.Collections.Fields[template.CollectionStoreKey]
+		assert.NotNil(t, collectionStoreValue, "Collection should have collection store")
+		
+		// Get the collection IDs from store  
+		collectionIds := pbtypes.GetStringListValue(collectionStoreValue)
+		assert.Len(t, collectionIds, 3, "Collection should have 3 items")
+		
+		// Verify all references were resolved
+		assert.Contains(t, collectionIds, task1Snapshot.Id, "Collection should contain task 1")
+		assert.Contains(t, collectionIds, task2Snapshot.Id, "Collection should contain task 2")
 	})
 }
