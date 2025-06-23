@@ -243,7 +243,7 @@ func (sb *smartBlock) deriveChatId(s *state.State) error {
 }
 
 // resolveLayout adds resolvedLayout to local details of object. Priority:
-// system sbType > layout > recommendedLayout from type > current resolvedLayout > basic (fallback)
+// layout restricted by sbType > layout > recommendedLayout from type > current resolvedLayout > basic (fallback)
 // resolveLayout also converts object from Note, i.e. adds Name and Title to state
 func (sb *smartBlock) resolveLayout(s *state.State) {
 	if s.Details() == nil && s.LocalDetails() == nil {
