@@ -85,6 +85,8 @@ type service struct {
 	accountService  accountService
 	objectArchiver  objectArchiver
 
+	indexMigrationChan chan *indexMigrationItem
+
 	indexer *indexer
 
 	resolverRetryStartDelay time.Duration
@@ -102,6 +104,7 @@ func New(
 	return &service{
 		resolverRetryStartDelay: resolverRetryStartDelay,
 		resolverRetryMaxDelay:   resolverRetryMaxDelay,
+		indexMigrationChan:      make(chan *indexMigrationItem),
 		closeWg:                 &sync.WaitGroup{},
 	}
 }
@@ -170,6 +173,11 @@ func (s *service) Run(_ context.Context) error {
 	}()
 	s.indexer.run()
 	s.migrationQueue.Run()
+
+	err := s.startIndexMigration()
+	if err != nil {
+		return fmt.Errorf("start index migration: %w", err)
+	}
 	return nil
 }
 

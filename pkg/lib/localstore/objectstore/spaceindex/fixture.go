@@ -15,6 +15,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/wallet"
 	"github.com/anyproto/anytype-heart/core/wallet/mock_wallet"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
+	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/datastore/anystoreprovider"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/ftsearch"
 )
@@ -111,6 +112,12 @@ func (o TestObject) Id() string {
 
 func (o TestObject) Details() *domain.Details {
 	return makeDetails(o)
+}
+
+func (o TestObject) Record() database.Record {
+	return database.Record{
+		Details: o.Details(),
+	}
 }
 
 func generateObjectWithRandomID() TestObject {
