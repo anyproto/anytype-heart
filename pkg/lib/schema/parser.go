@@ -7,6 +7,8 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/globalsign/mgo/bson"
+
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
@@ -73,7 +75,7 @@ func (p *JSONSchemaParser) Parse(reader io.Reader) (*Schema, error) {
 		var relationsWithOrder []relationInfo
 
 		// Add relations to type based on x-featured and x-hidden flags on properties
-		for propName, propValue := range properties {
+		for _, propValue := range properties {
 			prop, ok := propValue.(map[string]interface{})
 			if !ok {
 				continue
@@ -82,8 +84,7 @@ func (p *JSONSchemaParser) Parse(reader io.Reader) (*Schema, error) {
 			// Get the relation key
 			relKey := getStringField(prop, "x-key")
 			if relKey == "" {
-				// todo: this logic is incorrect
-				relKey = strings.ToLower(strings.ReplaceAll(propName, " ", "_"))
+				relKey = bson.NewObjectId().Hex() // Generate a new key if not specified
 			}
 
 			// Skip only the "id" property, but include "type" if it has x-featured
@@ -149,8 +150,8 @@ func (p *JSONSchemaParser) parseTypeFromSchema(jsonSchema map[string]interface{}
 	if typeKey, ok := jsonSchema["x-type-key"].(string); ok {
 		t.Key = typeKey
 	} else {
-		// Generate key from name
-		t.Key = strings.ToLower(strings.ReplaceAll(t.Name, " ", "_"))
+		// Generate a new key if not specified
+		t.Key = bson.NewObjectId().Hex()
 	}
 
 	// Get description
@@ -204,7 +205,7 @@ func (p *JSONSchemaParser) parseRelationFromProperty(name string, prop map[strin
 	if key, ok := prop["x-key"].(string); ok {
 		r.Key = key
 	} else {
-		r.Key = strings.ToLower(strings.ReplaceAll(name, " ", "_"))
+		r.Key = bson.NewObjectId().Hex() // Generate a new key if not specified
 	}
 
 	// Get description

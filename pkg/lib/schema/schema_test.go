@@ -112,6 +112,108 @@ func TestType_FromDetails(t *testing.T) {
 	assert.Equal(t, "type_101", typ.Extension["id"])
 }
 
+func TestJSONSchemaParser_BSONKeyGeneration(t *testing.T) {
+	t.Run("generates BSON ID for type without x-type-key", func(t *testing.T) {
+		schemaJSON := `{
+			"$schema": "http://json-schema.org/draft-07/schema#",
+			"type": "object",
+			"title": "My Custom Type",
+			"properties": {
+				"Name": {
+					"type": "string",
+					"x-key": "name",
+					"x-format": "shorttext"
+				}
+			}
+		}`
+
+		parser := NewJSONSchemaParser()
+		schema, err := parser.Parse(bytes.NewReader([]byte(schemaJSON)))
+		require.NoError(t, err)
+		require.NotNil(t, schema)
+		require.NotNil(t, schema.Type)
+
+		// Type key should be a generated BSON ID (24 characters)
+		assert.Len(t, schema.Type.Key, 24, "Type key should be a BSON ID (24 characters)")
+		assert.Regexp(t, "^[0-9a-f]{24}$", schema.Type.Key, "Type key should be a valid BSON ID")
+		assert.Equal(t, "My Custom Type", schema.Type.Name)
+	})
+
+	t.Run("generates BSON ID for properties without x-key", func(t *testing.T) {
+		schemaJSON := `{
+			"$schema": "http://json-schema.org/draft-07/schema#",
+			"type": "object",
+			"title": "Test Type",
+			"x-type-key": "test_type",
+			"properties": {
+				"Title": {
+					"type": "string",
+					"x-format": "shorttext"
+				},
+				"Description": {
+					"type": "string",
+					"x-format": "longtext",
+					"x-key": "desc"
+				}
+			}
+		}`
+
+		parser := NewJSONSchemaParser()
+		schema, err := parser.Parse(bytes.NewReader([]byte(schemaJSON)))
+		require.NoError(t, err)
+		require.NotNil(t, schema)
+
+		// Check that we have 2 relations
+		assert.Len(t, schema.Relations, 2)
+
+		// Find the relations
+		var titleRel, descRel *Relation
+		for _, rel := range schema.Relations {
+			if rel.Name == "Title" {
+				titleRel = rel
+			} else if rel.Name == "Description" {
+				descRel = rel
+			}
+		}
+
+		require.NotNil(t, titleRel, "Title relation should exist")
+		require.NotNil(t, descRel, "Description relation should exist")
+
+		// Title should have a generated BSON ID (24 characters)
+		assert.Len(t, titleRel.Key, 24, "Title key should be a BSON ID (24 characters)")
+		assert.Regexp(t, "^[0-9a-f]{24}$", titleRel.Key, "Title key should be a valid BSON ID")
+
+		// Description should have the specified key
+		assert.Equal(t, "desc", descRel.Key, "Description should use the x-key value")
+	})
+
+	t.Run("preserves specified x-type-key", func(t *testing.T) {
+		schemaJSON := `{
+			"$schema": "http://json-schema.org/draft-07/schema#",
+			"type": "object",
+			"title": "Task",
+			"x-type-key": "custom_task_key",
+			"properties": {
+				"Name": {
+					"type": "string",
+					"x-key": "name",
+					"x-format": "shorttext"
+				}
+			}
+		}`
+
+		parser := NewJSONSchemaParser()
+		schema, err := parser.Parse(bytes.NewReader([]byte(schemaJSON)))
+		require.NoError(t, err)
+		require.NotNil(t, schema)
+		require.NotNil(t, schema.Type)
+
+		// Type key should use the specified x-type-key
+		assert.Equal(t, "custom_task_key", schema.Type.Key)
+		assert.Equal(t, "Task", schema.Type.Name)
+	})
+}
+
 func TestJSONSchemaParser_Parse(t *testing.T) {
 	schemaJSON := `{
 		"$schema": "http://json-schema.org/draft-07/schema#",
