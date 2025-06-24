@@ -31,14 +31,14 @@ func (p *JSONSchemaParser) Parse(reader io.Reader) (*Schema, error) {
 	schema := NewSchema()
 
 	// Parse as a type schema
-	if jsonSchema["type"] == "object" && jsonSchema["properties"] != nil {
+	if jsonSchema[jsonSchemaFieldType] == jsonSchemaTypeObject && jsonSchema[jsonSchemaFieldProperties] != nil {
 		t, err := p.parseTypeFromSchema(jsonSchema)
 		if err != nil {
 			return nil, fmt.Errorf("failed to parse type: %w", err)
 		}
 
 		// Parse relations from properties
-		properties, ok := jsonSchema["properties"].(map[string]interface{})
+		properties, ok := jsonSchema[jsonSchemaFieldProperties].(map[string]interface{})
 		if !ok {
 			return nil, fmt.Errorf("invalid properties format")
 		}
@@ -82,22 +82,22 @@ func (p *JSONSchemaParser) Parse(reader io.Reader) (*Schema, error) {
 			}
 
 			// Get the relation key
-			relKey := getStringField(prop, "x-key")
+			relKey := getStringField(prop, anytypeFieldKey)
 			if relKey == "" {
 				relKey = bson.NewObjectId().Hex() // Generate a new key if not specified
 			}
 
 			// Skip only the "id" property, but include "type" if it has x-featured
-			if relKey == "id" {
+			if relKey == propertyNameID {
 				continue
 			}
 
 			// For "type" relation, only include if explicitly featured
-			isFeatured := getBoolField(prop, "x-featured")
-			isHidden := getBoolField(prop, "x-hidden")
+			isFeatured := getBoolField(prop, anytypeFieldFeatured)
+			isHidden := getBoolField(prop, anytypeFieldHidden)
 			// Get the order
 			order := 999 // Default high value for unordered items
-			if orderVal, ok := prop["x-order"]; ok {
+			if orderVal, ok := prop[anytypeFieldOrder]; ok {
 				switch v := orderVal.(type) {
 				case float64:
 					order = int(v)
@@ -143,14 +143,14 @@ func (p *JSONSchemaParser) parseTypeFromSchema(jsonSchema map[string]interface{}
 	}
 
 	// Get type name from title
-	if title, ok := jsonSchema["title"].(string); ok {
+	if title, ok := jsonSchema[jsonSchemaFieldTitle].(string); ok {
 		t.Name = title
 	} else {
 		return nil, fmt.Errorf("type name (title) is required")
 	}
 
 	// Get type key from x-type-key
-	if typeKey, ok := jsonSchema["x-type-key"].(string); ok {
+	if typeKey, ok := jsonSchema[anytypeFieldTypeKey].(string); ok {
 		t.Key = typeKey
 	} else {
 		// Generate a new key if not specified
@@ -158,36 +158,36 @@ func (p *JSONSchemaParser) parseTypeFromSchema(jsonSchema map[string]interface{}
 	}
 
 	// Get description
-	if desc, ok := jsonSchema["description"].(string); ok {
+	if desc, ok := jsonSchema[jsonSchemaFieldDescription].(string); ok {
 		t.Description = desc
 	}
 
 	// Get Anytype-specific extensions
-	if plural, ok := jsonSchema["x-plural"].(string); ok {
+	if plural, ok := jsonSchema[anytypeFieldPlural].(string); ok {
 		t.PluralName = plural
 	}
 
-	if emoji, ok := jsonSchema["x-icon-emoji"].(string); ok {
+	if emoji, ok := jsonSchema[anytypeFieldIconEmoji].(string); ok {
 		t.IconEmoji = emoji
 	}
 
-	if iconName, ok := jsonSchema["x-icon-name"].(string); ok {
+	if iconName, ok := jsonSchema[anytypeFieldIconName].(string); ok {
 		t.IconName = iconName
 	}
 
 	// Store other x-* fields in extension
 	for key, value := range jsonSchema {
-		if strings.HasPrefix(key, "x-") && !isKnownExtension(key) {
+		if strings.HasPrefix(key, extensionPrefix) && !isKnownExtension(key) {
 			t.Extension[key] = value
 		}
 	}
 
 	// Check if this is a collection type by looking for Collection property
-	if props, ok := jsonSchema["properties"].(map[string]interface{}); ok {
-		if collProp, hasCollection := props["Collection"]; hasCollection {
+	if props, ok := jsonSchema[jsonSchemaFieldProperties].(map[string]interface{}); ok {
+		if collProp, hasCollection := props[propertyNameCollection]; hasCollection {
 			// Verify it's an array property
 			if collMap, ok := collProp.(map[string]interface{}); ok {
-				if propType, ok := collMap["type"].(string); ok && propType == "array" {
+				if propType, ok := collMap[jsonSchemaFieldType].(string); ok && propType == jsonSchemaTypeArray {
 					t.Layout = model.ObjectType_collection
 				}
 			}
@@ -205,19 +205,19 @@ func (p *JSONSchemaParser) parseRelationFromProperty(name string, prop map[strin
 	}
 
 	// Get key from x-key or generate from name
-	if key, ok := prop["x-key"].(string); ok {
+	if key, ok := prop[anytypeFieldKey].(string); ok {
 		r.Key = key
 	} else {
 		r.Key = bson.NewObjectId().Hex() // Generate a new key if not specified
 	}
 
 	// Get description
-	if desc, ok := prop["description"].(string); ok {
+	if desc, ok := prop[jsonSchemaFieldDescription].(string); ok {
 		r.Description = desc
 	}
 
 	// Determine format from x-format first
-	if xFormat, ok := prop["x-format"].(string); ok {
+	if xFormat, ok := prop[anytypeFieldFormat].(string); ok {
 		r.Format = parseFormatString(xFormat)
 	} else {
 		// Infer format from schema structure
@@ -227,7 +227,7 @@ func (p *JSONSchemaParser) parseRelationFromProperty(name string, prop map[strin
 	// Get format-specific properties
 	switch r.Format {
 	case model.RelationFormat_status:
-		if enum, ok := prop["enum"].([]interface{}); ok {
+		if enum, ok := prop[jsonSchemaFieldEnum].([]interface{}); ok {
 			for _, v := range enum {
 				if s, ok := v.(string); ok {
 					r.Options = append(r.Options, s)
@@ -236,7 +236,7 @@ func (p *JSONSchemaParser) parseRelationFromProperty(name string, prop map[strin
 		}
 
 	case model.RelationFormat_tag:
-		if examples, ok := prop["examples"].([]interface{}); ok {
+		if examples, ok := prop[jsonSchemaFieldExamples].([]interface{}); ok {
 			for _, v := range examples {
 				if s, ok := v.(string); ok {
 					r.Examples = append(r.Examples, s)
@@ -245,13 +245,13 @@ func (p *JSONSchemaParser) parseRelationFromProperty(name string, prop map[strin
 		}
 
 	case model.RelationFormat_date:
-		if format, ok := prop["format"].(string); ok {
-			r.IncludeTime = (format == "date-time")
+		if format, ok := prop[jsonSchemaFieldFormat].(string); ok {
+			r.IncludeTime = (format == jsonSchemaFormatDateTime)
 		}
 
 	case model.RelationFormat_object:
 		// Parse object types from x-object-types
-		if objTypes, ok := prop["x-object-types"].([]interface{}); ok {
+		if objTypes, ok := prop[anytypeFieldObjectTypes].([]interface{}); ok {
 			for _, v := range objTypes {
 				if s, ok := v.(string); ok {
 					r.ObjectTypes = append(r.ObjectTypes, s)
@@ -261,18 +261,18 @@ func (p *JSONSchemaParser) parseRelationFromProperty(name string, prop map[strin
 	}
 
 	// Check if read-only
-	if readOnly, ok := prop["readOnly"].(bool); ok {
+	if readOnly, ok := prop[jsonSchemaFieldReadOnly].(bool); ok {
 		r.IsReadOnly = readOnly
 	}
 
 	// Check if multi-value (array type)
-	if propType, ok := prop["type"].(string); ok && propType == "array" {
+	if propType, ok := prop[jsonSchemaFieldType].(string); ok && propType == jsonSchemaTypeArray {
 		r.IsMulti = true
 	}
 
 	// Store other fields in extension
 	for key, value := range prop {
-		if strings.HasPrefix(key, "x-") && key != "x-key" && key != "x-format" && key != "x-featured" && key != "x-order" {
+		if strings.HasPrefix(key, extensionPrefix) && key != anytypeFieldKey && key != anytypeFieldFormat && key != anytypeFieldFeatured && key != anytypeFieldOrder {
 			r.Extension[key] = value
 		}
 	}
@@ -282,45 +282,45 @@ func (p *JSONSchemaParser) parseRelationFromProperty(name string, prop map[strin
 
 // inferRelationFormat infers the relation format from JSON Schema structure
 func inferRelationFormat(prop map[string]interface{}) model.RelationFormat {
-	propType := getStringField(prop, "type")
-	format := getStringField(prop, "format")
+	propType := getStringField(prop, jsonSchemaFieldType)
+	format := getStringField(prop, jsonSchemaFieldFormat)
 
 	// Check for specific formats first
 	switch format {
-	case "email":
+	case jsonSchemaFormatEmail:
 		return model.RelationFormat_email
-	case "uri":
+	case jsonSchemaFormatURI:
 		return model.RelationFormat_url
-	case "date":
+	case jsonSchemaFormatDate:
 		return model.RelationFormat_date
-	case "date-time":
+	case jsonSchemaFormatDateTime:
 		return model.RelationFormat_date
 	}
 
 	// Check for enum (status)
-	if _, hasEnum := prop["enum"]; hasEnum {
+	if _, hasEnum := prop[jsonSchemaFieldEnum]; hasEnum {
 		return model.RelationFormat_status
 	}
 
 	// Check for boolean
-	if propType == "boolean" {
+	if propType == jsonSchemaTypeBoolean {
 		return model.RelationFormat_checkbox
 	}
 
 	// Check for number
-	if propType == "number" || propType == "integer" {
+	if propType == jsonSchemaTypeNumber || propType == jsonSchemaTypeInteger {
 		return model.RelationFormat_number
 	}
 
 	// Check for array
-	if propType == "array" {
-		if items, ok := prop["items"].(map[string]interface{}); ok {
-			itemType := getStringField(items, "type")
-			if itemType == "object" {
+	if propType == jsonSchemaTypeArray {
+		if items, ok := prop[jsonSchemaFieldItems].(map[string]interface{}); ok {
+			itemType := getStringField(items, jsonSchemaFieldType)
+			if itemType == jsonSchemaTypeObject {
 				return model.RelationFormat_object
 			}
 			// Array of strings with examples = tag
-			if _, hasExamples := prop["examples"]; hasExamples {
+			if _, hasExamples := prop[jsonSchemaFieldExamples]; hasExamples {
 				return model.RelationFormat_tag
 			}
 		}
@@ -329,7 +329,7 @@ func inferRelationFormat(prop map[string]interface{}) model.RelationFormat {
 	}
 
 	// Check for object type
-	if propType == "object" {
+	if propType == jsonSchemaTypeObject {
 		return model.RelationFormat_object
 	}
 
@@ -340,27 +340,27 @@ func inferRelationFormat(prop map[string]interface{}) model.RelationFormat {
 // parseFormatString parses x-format string to RelationFormat
 func parseFormatString(format string) model.RelationFormat {
 	switch format {
-	case "shorttext":
+	case anytypeFormatShortText:
 		return model.RelationFormat_shorttext
-	case "longtext":
+	case anytypeFormatLongText:
 		return model.RelationFormat_longtext
 	case "number":
 		return model.RelationFormat_number
-	case "checkbox":
+	case anytypeFormatCheckbox:
 		return model.RelationFormat_checkbox
 	case "date":
 		return model.RelationFormat_date
-	case "tag":
+	case anytypeFormatTag:
 		return model.RelationFormat_tag
-	case "status":
+	case anytypeFormatStatus:
 		return model.RelationFormat_status
 	case "email":
 		return model.RelationFormat_email
-	case "url":
+	case anytypeFormatURL:
 		return model.RelationFormat_url
-	case "phone":
+	case anytypeFormatPhone:
 		return model.RelationFormat_phone
-	case "file":
+	case anytypeFormatFile:
 		return model.RelationFormat_file
 	case "object":
 		return model.RelationFormat_object
@@ -394,9 +394,9 @@ func getIntField(m map[string]interface{}, key string) int {
 
 func isKnownExtension(key string) bool {
 	knownExtensions := []string{
-		"x-type-key", "x-plural", "x-icon-emoji", "x-icon-name",
-		"x-key", "x-format", "x-featured", "x-order", "x-hidden",
-		"x-genversion", "x-app",
+		anytypeFieldTypeKey, anytypeFieldPlural, anytypeFieldIconEmoji, anytypeFieldIconName,
+		anytypeFieldKey, anytypeFieldFormat, anytypeFieldFeatured, anytypeFieldOrder, anytypeFieldHidden,
+		anytypeFieldGenVersion, anytypeFieldApp,
 	}
 	for _, known := range knownExtensions {
 		if key == known {

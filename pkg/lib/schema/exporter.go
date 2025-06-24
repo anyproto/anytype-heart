@@ -132,11 +132,11 @@ func (o orderedJSONSchema) MarshalJSON() ([]byte, error) {
 	sort.Slice(keys, func(i, j int) bool {
 		// Define priority order for standard keys
 		priority := map[string]int{
-			"$schema":     1,
-			"$id":         2,
-			"type":        3,
-			"title":       4,
-			"description": 5,
+			jsonSchemaFieldSchema:      1,
+			jsonSchemaFieldID:          2,
+			jsonSchemaFieldType:        3,
+			jsonSchemaFieldTitle:       4,
+			jsonSchemaFieldDescription: 5,
 		}
 
 		iPriority, iHasPriority := priority[keys[i]]
@@ -153,8 +153,8 @@ func (o orderedJSONSchema) MarshalJSON() ([]byte, error) {
 		}
 
 		// x-* keys come after standard keys but before others
-		iIsExtension := strings.HasPrefix(keys[i], "x-")
-		jIsExtension := strings.HasPrefix(keys[j], "x-")
+		iIsExtension := strings.HasPrefix(keys[i], extensionPrefix)
+		jIsExtension := strings.HasPrefix(keys[j], extensionPrefix)
 
 		if iIsExtension && !jIsExtension {
 			return true
@@ -164,10 +164,10 @@ func (o orderedJSONSchema) MarshalJSON() ([]byte, error) {
 		}
 
 		// Properties comes last
-		if keys[i] == "properties" {
+		if keys[i] == jsonSchemaFieldProperties {
 			return false
 		}
-		if keys[j] == "properties" {
+		if keys[j] == jsonSchemaFieldProperties {
 			return true
 		}
 
@@ -193,7 +193,7 @@ func (o orderedJSONSchema) MarshalJSON() ([]byte, error) {
 		buf.WriteString(":")
 
 		// Special handling for properties to maintain order
-		if key == "properties" && o.data[key] != nil {
+		if key == jsonSchemaFieldProperties && o.data[key] != nil {
 			if props, ok := o.data[key].(map[string]interface{}); ok {
 				propertiesJSON := marshalOrderedProperties(props)
 				buf.Write(propertiesJSON)
@@ -232,7 +232,7 @@ func marshalOrderedProperties(props map[string]interface{}) []byte {
 	for name, prop := range props {
 		order := 999 // Default high order for properties without x-order
 		if propMap, ok := prop.(map[string]interface{}); ok {
-			if xOrder, ok := propMap["x-order"].(int); ok {
+			if xOrder, ok := propMap[anytypeFieldOrder].(int); ok {
 				order = xOrder
 			}
 		}
@@ -292,32 +292,32 @@ func (e *JSONSchemaExporter) typeToJSONSchema(t *Type, schema *Schema) map[strin
 		SchemaVersion)
 
 	jsonSchema := map[string]interface{}{
-		"$schema": "http://json-schema.org/draft-07/schema#",
-		"$id":     schemaId,
-		"type":    "object",
-		"title":   t.Name,
+		jsonSchemaFieldSchema: jsonSchemaVersion,
+		jsonSchemaFieldID:     schemaId,
+		jsonSchemaFieldType:   jsonSchemaTypeObject,
+		jsonSchemaFieldTitle:  t.Name,
 	}
 
 	// Add description if present
 	if t.Description != "" {
-		jsonSchema["description"] = t.Description
+		jsonSchema[jsonSchemaFieldDescription] = t.Description
 	}
 
 	// Add Anytype extensions
-	jsonSchema["x-type-key"] = t.Key
-	jsonSchema["x-app"] = "Anytype"
-	jsonSchema["x-genversion"] = SchemaVersion
+	jsonSchema[anytypeFieldTypeKey] = t.Key
+	jsonSchema[anytypeFieldApp] = anytypeAppName
+	jsonSchema[anytypeFieldGenVersion] = SchemaVersion
 
 	if t.PluralName != "" {
-		jsonSchema["x-plural"] = t.PluralName
+		jsonSchema[anytypeFieldPlural] = t.PluralName
 	}
 
 	if t.IconEmoji != "" {
-		jsonSchema["x-icon-emoji"] = t.IconEmoji
+		jsonSchema[anytypeFieldIconEmoji] = t.IconEmoji
 	}
 
 	if t.IconName != "" {
-		jsonSchema["x-icon-name"] = t.IconName
+		jsonSchema[anytypeFieldIconName] = t.IconName
 	}
 
 	// Add other extensions (but skip internal fields like "id")
@@ -331,13 +331,13 @@ func (e *JSONSchemaExporter) typeToJSONSchema(t *Type, schema *Schema) map[strin
 	properties := make(map[string]interface{})
 
 	// Always add id property first
-	properties["id"] = map[string]interface{}{
-		"type":        "string",
-		"description": "Unique identifier of the Anytype object",
-		"readOnly":    true,
-		"x-order":     0,
-		"x-key":       "id",
-		"x-hidden":    true, // Always hidden in JSON Schema
+	properties[propertyNameID] = map[string]interface{}{
+		jsonSchemaFieldType:        jsonSchemaTypeString,
+		jsonSchemaFieldDescription: "Unique identifier of the Anytype object",
+		jsonSchemaFieldReadOnly:    true,
+		anytypeFieldOrder:          0,
+		anytypeFieldKey:            propertyNameID,
+		anytypeFieldHidden:         true, // Always hidden in JSON Schema
 	}
 
 	// Collect all relations and sort by order
@@ -357,19 +357,19 @@ func (e *JSONSchemaExporter) typeToJSONSchema(t *Type, schema *Schema) map[strin
 	deduplicatedNames := e.deduplicatePropertyNames(orderedRels)
 	for i, or := range orderedRels {
 		prop := e.relationToProperty(or.relation)
-		prop["x-order"] = or.order
+		prop[anytypeFieldOrder] = or.order
 		if or.featured {
-			prop["x-featured"] = true
+			prop[anytypeFieldFeatured] = true
 		} else if or.hidden {
-			prop["x-hidden"] = true
+			prop[anytypeFieldHidden] = true
 		}
 
 		// Special handling for Type relation
 		if or.relation.Key == bundle.RelationKeyType.String() {
 			// Override to be a simple string with const value
-			prop["type"] = "string"
-			prop["const"] = t.Name
-			delete(prop, "items") // Remove items if it was set for object format
+			prop[jsonSchemaFieldType] = jsonSchemaTypeString
+			prop[jsonSchemaFieldConst] = t.Name
+			delete(prop, jsonSchemaFieldItems) // Remove items if it was set for object format
 		}
 
 		properties[deduplicatedNames[i]] = prop
@@ -377,19 +377,19 @@ func (e *JSONSchemaExporter) typeToJSONSchema(t *Type, schema *Schema) map[strin
 
 	// Check if this is a collection type
 	if t.Layout == model.ObjectType_collection {
-		properties["Collection"] = map[string]interface{}{
-			"type":        "array",
-			"description": "List of object file paths or names in this collection",
-			"items": map[string]interface{}{
-				"type": "string",
+		properties[propertyNameCollection] = map[string]interface{}{
+			jsonSchemaFieldType:        jsonSchemaTypeArray,
+			jsonSchemaFieldDescription: "List of object file paths or names in this collection",
+			jsonSchemaFieldItems: map[string]interface{}{
+				jsonSchemaFieldType: jsonSchemaTypeString,
 			},
-			"x-order":  propertyOrder,
-			"x-key":    CollectionPropertyKey,
-			"x-format": "object",
+			anytypeFieldOrder:  propertyOrder,
+			anytypeFieldKey:    CollectionPropertyKey,
+			anytypeFieldFormat: "object",
 		}
 	}
 
-	jsonSchema["properties"] = properties
+	jsonSchema[jsonSchemaFieldProperties] = properties
 
 	return jsonSchema
 }
@@ -399,17 +399,17 @@ func (e *JSONSchemaExporter) relationToProperty(r *Relation) map[string]interfac
 	prop := make(map[string]interface{})
 
 	// Always add x-key and x-format
-	prop["x-key"] = r.Key
-	prop["x-format"] = r.Format.String()
+	prop[anytypeFieldKey] = r.Key
+	prop[anytypeFieldFormat] = r.Format.String()
 
 	// Add description if present
 	if r.Description != "" {
-		prop["description"] = r.Description
+		prop[jsonSchemaFieldDescription] = r.Description
 	}
 
 	// Set read-only if applicable
 	if r.IsReadOnly {
-		prop["readOnly"] = true
+		prop[jsonSchemaFieldReadOnly] = true
 	}
 
 	if r.Key == bundle.RelationKeyType.String() {
@@ -421,77 +421,77 @@ func (e *JSONSchemaExporter) relationToProperty(r *Relation) map[string]interfac
 	// Handle different formats
 	switch r.Format {
 	case model.RelationFormat_shorttext, model.RelationFormat_longtext:
-		prop["type"] = "string"
+		prop[jsonSchemaFieldType] = jsonSchemaTypeString
 		if r.MaxLength > 0 {
-			prop["maxLength"] = r.MaxLength
+			prop[jsonSchemaFieldMaxLength] = r.MaxLength
 		}
 
 	case model.RelationFormat_number:
-		prop["type"] = "number"
+		prop[jsonSchemaFieldType] = jsonSchemaTypeNumber
 
 	case model.RelationFormat_checkbox:
-		prop["type"] = "boolean"
+		prop[jsonSchemaFieldType] = jsonSchemaTypeBoolean
 
 	case model.RelationFormat_date:
-		prop["type"] = "string"
+		prop[jsonSchemaFieldType] = jsonSchemaTypeString
 		if r.IncludeTime {
-			prop["format"] = "date-time"
+			prop[jsonSchemaFieldFormat] = jsonSchemaFormatDateTime
 		} else {
-			prop["format"] = "date"
+			prop[jsonSchemaFieldFormat] = jsonSchemaFormatDate
 		}
 
 	case model.RelationFormat_tag:
-		prop["type"] = "array"
-		prop["items"] = map[string]interface{}{"type": "string"}
+		prop[jsonSchemaFieldType] = jsonSchemaTypeArray
+		prop[jsonSchemaFieldItems] = map[string]interface{}{jsonSchemaFieldType: jsonSchemaTypeString}
 		if len(r.Examples) > 0 {
-			prop["examples"] = r.Examples
+			prop[jsonSchemaFieldExamples] = r.Examples
 		}
 
 	case model.RelationFormat_status:
-		prop["type"] = "string"
+		prop[jsonSchemaFieldType] = jsonSchemaTypeString
 		if len(r.Options) > 0 {
-			prop["enum"] = r.Options
+			prop[jsonSchemaFieldEnum] = r.Options
 		}
 
 	case model.RelationFormat_email:
-		prop["type"] = "string"
-		prop["format"] = "email"
+		prop[jsonSchemaFieldType] = jsonSchemaTypeString
+		prop[jsonSchemaFieldFormat] = jsonSchemaFormatEmail
 
 	case model.RelationFormat_url:
-		prop["type"] = "string"
-		prop["format"] = "uri"
+		prop[jsonSchemaFieldType] = jsonSchemaTypeString
+		prop[jsonSchemaFieldFormat] = jsonSchemaFormatURI
 
 	case model.RelationFormat_phone:
-		prop["type"] = "string"
-		prop["pattern"] = "^[+]?[0-9\\s()-]+$"
+		prop[jsonSchemaFieldType] = jsonSchemaTypeString
+		prop[jsonSchemaFieldPattern] = phoneNumberPattern
 
 	case model.RelationFormat_file:
 		if r.IsMulti {
-			prop["type"] = "array"
-			prop["items"] = map[string]interface{}{"type": "string"}
+			prop[jsonSchemaFieldType] = jsonSchemaTypeArray
+			prop[jsonSchemaFieldItems] = map[string]interface{}{jsonSchemaFieldType: jsonSchemaTypeString}
 		} else {
-			prop["type"] = "string"
+			prop[jsonSchemaFieldType] = jsonSchemaTypeString
 		}
-		prop["description"] = "Path to the file in the export"
+		prop[jsonSchemaFieldDescription] = "Path to the file in the export"
 
 	case model.RelationFormat_object:
-		prop["type"] = "array"
-		prop["items"] = map[string]interface{}{
-			"type": "string",
+		prop[jsonSchemaFieldType] = jsonSchemaTypeArray
+		prop[jsonSchemaFieldItems] = map[string]interface{}{
+			jsonSchemaFieldType: jsonSchemaTypeString,
 		}
 
 		// Add x-object-types if specified
 		if len(r.ObjectTypes) > 0 {
-			prop["x-object-types"] = r.ObjectTypes
+			prop[anytypeFieldObjectTypes] = r.ObjectTypes
 		}
 
 	default:
-		prop["type"] = "string"
+		prop[jsonSchemaFieldType] = jsonSchemaTypeString
 	}
 
 	// Add other extensions (but skip internal fields like "id")
 	for key, value := range r.Extension {
-		if strings.HasPrefix(key, "x-") { // Don't export internal ID to schema
+		if strings.HasPrefix(key, extensionPrefix) { // Don't export internal ID to schema
 			prop[key] = value
 		}
 	}
