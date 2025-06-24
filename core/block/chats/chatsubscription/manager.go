@@ -188,22 +188,26 @@ func (s *subscriptionManager) Flush() {
 		s.chatStateUpdated = false
 	}
 
-	// TODO Buffer
+	var syncSubIds []string
 	var asyncSubIds []string
 	for _, sub := range s.subscriptions {
 		if sub.couldUseSessionContext && s.sessionContext != nil {
-			syncEvents := cloneEvents(events)
-			eventsSetSubIds([]string{sub.id}, syncEvents)
-			s.sessionContext.SetMessages(s.chatId, append(s.sessionContext.GetMessages(), syncEvents...))
-
-			ev := &pb.Event{
-				ContextId: s.chatId,
-				Messages:  syncEvents,
-			}
-			s.eventSender.BroadcastToOtherSessions(s.sessionContext.ID(), ev)
+			syncSubIds = append(syncSubIds, sub.id)
 		} else {
 			asyncSubIds = append(asyncSubIds, sub.id)
 		}
+	}
+
+	if len(syncSubIds) > 0 {
+		syncEvents := cloneEvents(events)
+		eventsSetSubIds(syncSubIds, syncEvents)
+		s.sessionContext.SetMessages(s.chatId, append(s.sessionContext.GetMessages(), syncEvents...))
+
+		ev := &pb.Event{
+			ContextId: s.chatId,
+			Messages:  syncEvents,
+		}
+		s.eventSender.BroadcastToOtherSessions(s.sessionContext.ID(), ev)
 	}
 
 	if len(asyncSubIds) > 0 {
@@ -214,6 +218,7 @@ func (s *subscriptionManager) Flush() {
 		}
 		s.eventSender.Broadcast(ev)
 	}
+
 }
 
 func (s *subscriptionManager) getEventsOnlyForLastMessage(events []*pb.EventMessage, subIdsOnlyLastMessage []string) []*pb.EventMessage {
