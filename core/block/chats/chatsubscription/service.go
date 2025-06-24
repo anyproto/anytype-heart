@@ -159,11 +159,12 @@ func (s *service) initManager(spaceId string, chatObjectId string) (*subscriptio
 }
 
 type SubscribeLastMessagesRequest struct {
-	ChatObjectId     string
-	SubId            string
-	Limit            int
-	WithDependencies bool
-	OnlyLastMessage  bool
+	ChatObjectId           string
+	SubId                  string
+	Limit                  int
+	WithDependencies       bool
+	OnlyLastMessage        bool
+	CouldUseSessionContext bool
 }
 
 type SubscribeLastMessagesResponse struct {
@@ -203,7 +204,7 @@ func (s *service) SubscribeLastMessages(ctx context.Context, req SubscribeLastMe
 		return nil, fmt.Errorf("query messages: %w", err)
 	}
 
-	mngr.subscribe(req.SubId, req.WithDependencies, req.OnlyLastMessage)
+	mngr.subscribe(req)
 
 	depsPerMessage := map[string][]*domain.Details{}
 	if req.WithDependencies {
