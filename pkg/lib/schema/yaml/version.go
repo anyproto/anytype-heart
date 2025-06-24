@@ -2,6 +2,7 @@ package yaml
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 )
 
@@ -53,19 +54,110 @@ func DetectVersion(data map[string]interface{}) string {
 	return DefaultVersion
 }
 
+// SemanticVersion represents a parsed semantic version
+type SemanticVersion struct {
+	Major int
+	Minor int
+	Patch int
+}
+
+// ParseVersion parses a version string into its semantic components
+func ParseVersion(version string) (*SemanticVersion, error) {
+	if version == "" {
+		version = DefaultVersion
+	}
+
+	parts := strings.Split(version, ".")
+	if len(parts) < 2 {
+		return nil, fmt.Errorf("invalid version format: %s", version)
+	}
+
+	sv := &SemanticVersion{}
+	
+	// Parse major version
+	major, err := strconv.Atoi(parts[0])
+	if err != nil {
+		return nil, fmt.Errorf("invalid major version: %s", parts[0])
+	}
+	sv.Major = major
+
+	// Parse minor version
+	minor, err := strconv.Atoi(parts[1])
+	if err != nil {
+		return nil, fmt.Errorf("invalid minor version: %s", parts[1])
+	}
+	sv.Minor = minor
+
+	// Parse patch version if present
+	if len(parts) >= 3 {
+		patch, err := strconv.Atoi(parts[2])
+		if err != nil {
+			return nil, fmt.Errorf("invalid patch version: %s", parts[2])
+		}
+		sv.Patch = patch
+	}
+
+	return sv, nil
+}
+
+// Compare compares two semantic versions
+// Returns -1 if v < other, 0 if v == other, 1 if v > other
+func (v *SemanticVersion) Compare(other *SemanticVersion) int {
+	if v.Major != other.Major {
+		if v.Major < other.Major {
+			return -1
+		}
+		return 1
+	}
+	if v.Minor != other.Minor {
+		if v.Minor < other.Minor {
+			return -1
+		}
+		return 1
+	}
+	if v.Patch != other.Patch {
+		if v.Patch < other.Patch {
+			return -1
+		}
+		return 1
+	}
+	return 0
+}
+
+// String returns the string representation of the version
+func (v *SemanticVersion) String() string {
+	if v.Patch > 0 {
+		return fmt.Sprintf("%d.%d.%d", v.Major, v.Minor, v.Patch)
+	}
+	return fmt.Sprintf("%d.%d", v.Major, v.Minor)
+}
+
 // IsCompatibleVersion checks if a version is compatible with the current implementation
 func IsCompatibleVersion(version string) bool {
-	switch version {
-	case VersionCurrent, "":
-		return true
-	default:
-		// Check for future versions (1.1, 2.0, etc.)
-		if strings.Contains(version, ".") {
-			// We can read newer versions but might not support all features
-			return true
-		}
+	targetVersion, err := ParseVersion(version)
+	if err != nil {
 		return false
 	}
+
+	currentVersion, err := ParseVersion(VersionCurrent)
+	if err != nil {
+		// This should never happen with a valid VersionCurrent
+		return false
+	}
+
+	// We support the current version and any earlier versions
+	// For future versions, we only support same major version
+	if targetVersion.Major == currentVersion.Major {
+		return true
+	}
+	
+	// We can read older major versions
+	if targetVersion.Major < currentVersion.Major {
+		return true
+	}
+
+	// Cannot read newer major versions (breaking changes)
+	return false
 }
 
 // MigrateOptions contains options for migrating between versions
@@ -159,33 +251,67 @@ func CheckCompatibility(fromVersion, toVersion string) *VersionCompatibility {
 		toVersion = DefaultVersion
 	}
 
-	// Check specific version combinations
+	// Parse versions
+	from, err := ParseVersion(fromVersion)
+	if err != nil {
+		compat.Compatible = false
+		compat.Warnings = append(compat.Warnings, fmt.Sprintf("Invalid from version: %s", err))
+		return compat
+	}
+
+	to, err := ParseVersion(toVersion)
+	if err != nil {
+		compat.Compatible = false
+		compat.Warnings = append(compat.Warnings, fmt.Sprintf("Invalid to version: %s", err))
+		return compat
+	}
+
+	comparison := from.Compare(to)
+
 	switch {
-	case fromVersion == toVersion:
+	case comparison == 0:
 		// Same version, fully compatible
 		return compat
 
-	default:
-		// Currently all versions are compatible as we only have 1.0
-		// Future version checks would go here
-		// Example:
-		/*
-		case fromVersion == "1.0" && toVersion == "2.0":
+	case from.Major != to.Major:
+		// Major version change
+		if from.Major < to.Major {
+			// Upgrading major version
 			compat.Warnings = append(compat.Warnings,
-				"Some property names may change in version 2.0",
-				"Arrays will be used for multi-value properties")
-		
-		case fromVersion == "2.0" && toVersion == "1.0":
+				fmt.Sprintf("Major version upgrade from %s to %s may introduce breaking changes", fromVersion, toVersion))
+		} else {
+			// Downgrading major version
 			compat.Warnings = append(compat.Warnings,
-				"Downgrading may lose array values",
-				"Only first value will be preserved for multi-value properties")
-		*/
-		
-		if !IsCompatibleVersion(fromVersion) || !IsCompatibleVersion(toVersion) {
-			compat.Compatible = false
-			compat.Warnings = append(compat.Warnings,
-				fmt.Sprintf("Unknown version combination: %s to %s", fromVersion, toVersion))
+				fmt.Sprintf("Major version downgrade from %s to %s may cause data loss", fromVersion, toVersion))
 		}
+
+	case from.Minor != to.Minor:
+		// Minor version change within same major
+		if from.Minor < to.Minor {
+			// Upgrading minor version
+			compat.Warnings = append(compat.Warnings,
+				fmt.Sprintf("Minor version upgrade from %s to %s may add new features", fromVersion, toVersion))
+		} else {
+			// Downgrading minor version
+			compat.Warnings = append(compat.Warnings,
+				fmt.Sprintf("Minor version downgrade from %s to %s may lose features", fromVersion, toVersion))
+		}
+
+	default:
+		// Patch version change only
+		// No warnings needed for patch version changes
+	}
+
+	// Check if both versions are compatible with current implementation
+	if !IsCompatibleVersion(fromVersion) {
+		compat.Compatible = false
+		compat.Warnings = append(compat.Warnings,
+			fmt.Sprintf("Version %s is not compatible with current implementation", fromVersion))
+	}
+	if !IsCompatibleVersion(toVersion) {
+		compat.Compatible = false
+		compat.Warnings = append(compat.Warnings,
+			fmt.Sprintf("Version %s is not compatible with current implementation", toVersion))
 	}
 
 	return compat
