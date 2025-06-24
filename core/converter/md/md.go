@@ -302,10 +302,7 @@ func (h *MD) processObjectRelation(v domain.Value, key string) (domain.Value, bo
 	if len(ids) == 0 {
 		return v, false
 	}
-
-	if key == bundle.RelationKeyCreator.String() {
-		fmt.Println("")
-	}
+	
 	// Check if this is a single-value relation
 	if slices.Contains(removeArrayRelations, key) && len(ids) > 0 {
 		title, _, ok := h.getLinkInfo(ids[0])
