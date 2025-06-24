@@ -7,6 +7,7 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/block/editor/basic"
 	"github.com/anyproto/anytype-heart/core/block/editor/converter"
+	"github.com/anyproto/anytype-heart/core/block/editor/objectopen"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/editor/template"
@@ -24,6 +25,7 @@ import (
 
 type WidgetObject struct {
 	smartblock.SmartBlock
+	objectopen.ObjectOpen
 	basic.IHistory
 	basic.Movable
 	basic.Unlinkable
@@ -32,7 +34,7 @@ type WidgetObject struct {
 	basic.DetailsSettable
 }
 
-func NewWidgetObject(
+func (f *ObjectFactory) newWidgetObject(
 	sb smartblock.SmartBlock,
 	objectStore spaceindex.Store,
 	layoutConverter converter.LayoutConverter,
@@ -43,6 +45,7 @@ func NewWidgetObject(
 		Movable:         bs,
 		Updatable:       bs,
 		DetailsSettable: bs,
+		ObjectOpen:      objectopen.New(sb, f.objectStore, f.spaceIdResolver),
 		IHistory:        basic.NewHistory(sb),
 		Widget:          widget.NewWidget(sb),
 	}

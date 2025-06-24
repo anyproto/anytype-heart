@@ -278,8 +278,8 @@ func (d *sdataview) SetActiveView(ctx session.Context, id string, activeViewId s
 		return err
 	}
 
-	d.SmartBlock.CheckSubscriptions()
-	return d.Apply(s, smartblock.NoHooks)
+	// Disable hook that set active view from object store
+	return d.Apply(s, smartblock.NoBeforeApplyHook)
 }
 
 func (d *sdataview) SetViewPosition(ctx session.Context, blockId string, viewId string, position uint32) (err error) {
@@ -448,6 +448,7 @@ func (d *sdataview) checkDVBlocks(info smartblock.ApplyInfo) (err error) {
 
 func (d *sdataview) injectActiveViews(info smartblock.ApplyInfo) (err error) {
 	s := info.State
+
 	views, err := d.objectStore.GetActiveViews(d.Id())
 	if errors.Is(err, anystore.ErrDocNotFound) {
 		return nil

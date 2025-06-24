@@ -8,6 +8,7 @@ import (
 	"github.com/anyproto/any-sync/commonspace/spacestorage"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/collection"
+	"github.com/anyproto/anytype-heart/core/block/editor/objectopen"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/editor/template"
@@ -28,17 +29,19 @@ var archiveRequiredRelations = []domain.RelationKey{}
 type Archive struct {
 	smartblock.SmartBlock
 	collection.Collection
+	objectopen.ObjectOpen
 	objectStore            spaceindex.Store
 	autoWidgetWasInstalled bool
 }
 
-func NewArchive(
+func (f *ObjectFactory) newArchive(
 	sb smartblock.SmartBlock,
 	objectStore spaceindex.Store,
 ) *Archive {
 	return &Archive{
 		SmartBlock:  sb,
 		Collection:  collection.NewCollection(sb, objectStore),
+		ObjectOpen:  objectopen.New(sb, f.objectStore, f.spaceIdResolver),
 		objectStore: objectStore,
 	}
 }

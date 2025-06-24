@@ -315,6 +315,7 @@ func (c *layoutConverter) removeRelationSetOf(st *state.State) {
 
 func (c *layoutConverter) generateFilters(spaceId string, typesAndRelations []string) ([]database.FilterRequest, error) {
 	var filters []database.FilterRequest
+	// TODO Query layouts
 	m, err := c.sbtProvider.PartitionIDsByType(spaceId, typesAndRelations)
 	if err != nil {
 		return nil, fmt.Errorf("partition ids by sb type: %w", err)

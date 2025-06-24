@@ -197,9 +197,9 @@ func (f *ObjectFactory) New(space smartblock.Space, sbType coresb.SmartBlockType
 	case coresb.SmartBlockTypeObjectType:
 		return f.newObjectType(space.Id(), sb), nil
 	case coresb.SmartBlockTypeArchive:
-		return NewArchive(sb, spaceIndex), nil
+		return f.newArchive(sb, spaceIndex), nil
 	case coresb.SmartBlockTypeHome:
-		return NewDashboard(sb, spaceIndex, f.layoutConverter), nil
+		return f.newDashboard(sb, spaceIndex, f.layoutConverter), nil
 	case coresb.SmartBlockTypeProfilePage,
 		coresb.SmartBlockTypeAnytypeProfile:
 		return f.newProfile(space.Id(), sb), nil
@@ -215,7 +215,7 @@ func (f *ObjectFactory) New(space smartblock.Space, sbType coresb.SmartBlockType
 	case coresb.SmartBlockTypeMissingObject:
 		return NewMissingObject(sb), nil
 	case coresb.SmartBlockTypeWidget:
-		return NewWidgetObject(sb, spaceIndex, f.layoutConverter), nil
+		return f.newWidgetObject(sb, spaceIndex, f.layoutConverter), nil
 	case coresb.SmartBlockTypeNotificationObject:
 		return NewNotificationObject(sb), nil
 	case coresb.SmartBlockTypeSubObject:
