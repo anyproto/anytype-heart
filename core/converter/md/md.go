@@ -86,7 +86,13 @@ func (h *MD) Convert(sbType model.SmartBlockType) (result []byte) {
 		return
 	}
 	switch sbType {
-	case model.SmartBlockType_STType, model.SmartBlockType_STRelation, model.SmartBlockType_STRelationOption:
+	case model.SmartBlockType_STType,
+		model.SmartBlockType_STRelation,
+		model.SmartBlockType_STRelationOption,
+		model.SmartBlockType_Participant,
+		model.SmartBlockType_SpaceView,
+		model.SmartBlockType_ChatObject,
+		model.SmartBlockType_ChatDerivedObject:
 		return nil
 	}
 	buf := bytes.NewBuffer(nil)

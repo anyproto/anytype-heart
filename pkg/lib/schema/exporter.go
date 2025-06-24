@@ -383,8 +383,9 @@ func (e *JSONSchemaExporter) typeToJSONSchema(t *Type, schema *Schema) map[strin
 			"items": map[string]interface{}{
 				"type": "string",
 			},
-			"x-order": propertyOrder,
-			"x-key":   "_collection",
+			"x-order":  propertyOrder,
+			"x-key":    CollectionPropertyKey,
+			"x-format": "object",
 		}
 	}
 
