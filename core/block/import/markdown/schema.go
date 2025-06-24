@@ -17,6 +17,8 @@ import (
 // Verify that SchemaImporter implements schema.PropertyResolver
 var _ schema.PropertyResolver = (*SchemaImporter)(nil)
 
+const CollectionPropertyKey = "collection"
+
 // SchemaImporter handles schema-based import workflow
 type SchemaImporter struct {
 	schemas         map[string]*schema.Schema    // filename -> parsed schema
@@ -91,6 +93,9 @@ func (si *SchemaImporter) CreateRelationSnapshots() []*common.Snapshot {
 			si.existingRels[rel.Key] = relationId
 
 			details := rel.ToDetails()
+			if rel.Key == CollectionPropertyKey {
+				continue // skip collection relation, handled separately
+			}
 			snapshot := &common.Snapshot{
 				Id: relationId,
 				Snapshot: &common.SnapshotModel{
@@ -192,7 +197,7 @@ func (si *SchemaImporter) CreateTypeSnapshots() []*common.Snapshot {
 
 			// Check if it's a bundled type
 			if t.IsBundled() {
-				continue // it's a bundled type, skip
+				// continue // it's a bundled type, skip
 			}
 
 			typeId := si.typeIdPrefix + t.Key
@@ -208,6 +213,8 @@ func (si *SchemaImporter) CreateTypeSnapshots() []*common.Snapshot {
 			}
 
 			details := t.ToDetails()
+			details.Delete(CollectionPropertyKey)
+
 			snapshot := &common.Snapshot{
 				Id: typeId,
 				Snapshot: &common.SnapshotModel{

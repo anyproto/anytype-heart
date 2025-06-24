@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"sort"
 	"strings"
 
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -61,6 +62,16 @@ func (p *JSONSchemaParser) Parse(reader io.Reader) (*Schema, error) {
 			relationsByKey[rel.Key] = rel
 		}
 
+		// Collect relations with their order to sort them properly
+		type relationInfo struct {
+			key      string
+			order    int
+			featured bool
+			hidden   bool
+		}
+
+		var relationsWithOrder []relationInfo
+
 		// Add relations to type based on x-featured and x-hidden flags on properties
 		for propName, propValue := range properties {
 			prop, ok := propValue.(map[string]interface{})
@@ -75,12 +86,41 @@ func (p *JSONSchemaParser) Parse(reader io.Reader) (*Schema, error) {
 				relKey = strings.ToLower(strings.ReplaceAll(propName, " ", "_"))
 			}
 
-			// Skip standard properties that shouldn't be in relation lists
-			if relKey != "id" && relKey != "type" {
-				isFeatured := getBoolField(prop, "x-featured")
-				isHidden := getBoolField(prop, "x-hidden")
-				t.AddRelation(relKey, isFeatured, isHidden)
+			// Skip only the "id" property, but include "type" if it has x-featured
+			if relKey == "id" {
+				continue
 			}
+
+			// For "type" relation, only include if explicitly featured
+			isFeatured := getBoolField(prop, "x-featured")
+			isHidden := getBoolField(prop, "x-hidden")
+			// Get the order
+			order := 999 // Default high value for unordered items
+			if orderVal, ok := prop["x-order"]; ok {
+				switch v := orderVal.(type) {
+				case float64:
+					order = int(v)
+				case int:
+					order = v
+				}
+			}
+
+			relationsWithOrder = append(relationsWithOrder, relationInfo{
+				key:      relKey,
+				order:    order,
+				featured: isFeatured,
+				hidden:   isHidden,
+			})
+		}
+
+		// Sort relations by order
+		sort.Slice(relationsWithOrder, func(i, j int) bool {
+			return relationsWithOrder[i].order < relationsWithOrder[j].order
+		})
+
+		// Add relations in sorted order
+		for _, rel := range relationsWithOrder {
+			t.AddRelation(rel.key, rel.featured, rel.hidden)
 		}
 
 		// Set type for schema
