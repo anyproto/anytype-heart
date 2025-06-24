@@ -164,24 +164,30 @@ func (e *existingObject) getExistingObjectType(snapshot *common.Snapshot, spaceI
 	if name == "" {
 		return ""
 	}
-	
-	// Search for existing object type by name
-	ids, _, err := e.objectStore.SpaceIndex(spaceID).QueryObjectIds(database.Query{
-		Filters: []database.FilterRequest{
-			{
-				Condition:   model.BlockContentDataviewFilter_Equal,
-				RelationKey: bundle.RelationKeyName,
-				Value:       domain.String(name),
+
+	// Search for existing object type by name or unique key
+	records, err := e.objectStore.SpaceIndex(spaceID).QueryRaw(&database.Filters{FilterObj: database.FiltersAnd{
+		database.FilterEq{
+			Key:   bundle.RelationKeyResolvedLayout,
+			Cond:  model.BlockContentDataviewFilter_Equal,
+			Value: domain.Int64(model.ObjectType_objectType),
+		},
+		database.FiltersOr{
+			database.FilterEq{
+				Key:   bundle.RelationKeyName,
+				Cond:  model.BlockContentDataviewFilter_Equal,
+				Value: snapshot.Snapshot.Data.Details.Get(bundle.RelationKeyName),
 			},
-			{
-				Condition:   model.BlockContentDataviewFilter_Equal,
-				RelationKey: bundle.RelationKeyResolvedLayout,
-				Value:       domain.Int64(model.ObjectType_objectType),
+			database.FilterEq{
+				Key:   bundle.RelationKeyUniqueKey,
+				Cond:  model.BlockContentDataviewFilter_Equal,
+				Value: snapshot.Snapshot.Data.Details.Get(bundle.RelationKeyUniqueKey),
 			},
 		},
-	})
-	if err == nil && len(ids) > 0 {
-		return ids[0]
+	}}, 1, 0)
+	if err == nil && len(records) > 0 {
+		return records[0].Details.GetString(bundle.RelationKeyId)
 	}
+
 	return ""
 }
