@@ -797,6 +797,7 @@ func (s *Service) SyncObjectsWithType(typeId string) error {
 	return syncer.SyncLayoutWithType(oldLayout, newLayout, true, true, false)
 }
 
+// removeDescriptionFromRecommended removes description relation id from recommended relations lists of type if it was added accidentally (see GO-5826)
 func removeDescriptionFromRecommended(typeId string, details *domain.Details, spc clientspace.Space) {
 	descriptionId, err := spc.DeriveObjectID(nil, domain.MustUniqueKey(coresb.SmartBlockTypeRelation, bundle.RelationKeyDescription.String()))
 	if err != nil {
@@ -818,7 +819,7 @@ func removeDescriptionFromRecommended(typeId string, details *domain.Details, sp
 
 		detailsToSet = append(detailsToSet, domain.Detail{
 			Key:   key,
-			Value: domain.StringList(append(list[:i], list[i+1:]...)),
+			Value: domain.StringList(slice.RemoveIndex(list, i)),
 		})
 	}
 
@@ -826,6 +827,7 @@ func removeDescriptionFromRecommended(typeId string, details *domain.Details, sp
 		return
 	}
 
+	// nolint:errcheck
 	spc.Do(typeId, func(sb smartblock.SmartBlock) error {
 		if ds, ok := sb.(basic.DetailsSettable); ok {
 			return ds.SetDetails(nil, detailsToSet, false)
