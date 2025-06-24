@@ -51,6 +51,7 @@ const (
 var log = logger.NewNamed(CName)
 
 var ErrLimitExceeded = errors.New("limit exceeded")
+var ErrUrlAlreadyTaken = errors.New("url is already taken by another page")
 
 type PublishResult struct {
 	Url string
@@ -362,6 +363,10 @@ func (s *service) publishToServer(ctx context.Context, spaceId, pageId, uri, ver
 
 	uploadUrl, err := s.publishClientService.Publish(ctx, publishReq)
 	if err != nil {
+		if errors.Is(err, publishapi.ErrUriNotUnique) {
+			return ErrUrlAlreadyTaken
+		}
+
 		return err
 	}
 

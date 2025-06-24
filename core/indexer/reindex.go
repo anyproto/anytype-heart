@@ -27,7 +27,7 @@ import (
 
 const (
 	// ForceObjectsReindexCounter reindex thread-based objects
-	ForceObjectsReindexCounter int32 = 17
+	ForceObjectsReindexCounter int32 = 19
 
 	// ForceFilesReindexCounter reindex file objects
 	ForceFilesReindexCounter int32 = 12 //
@@ -51,7 +51,7 @@ const (
 	ForceReindexDeletedObjectsCounter int32 = 1
 
 	ForceReindexParticipantsCounter int32 = 1
-	ForceReindexChatsCounter        int32 = 1
+	ForceReindexChatsCounter        int32 = 3
 )
 
 type allDeletedIdsProvider interface {
@@ -243,7 +243,7 @@ func (i *indexer) reindexChats(ctx context.Context, space clientspace.Space) err
 		return nil
 	}
 
-	db, err := i.dbProvider.GetCrdtDb(space.Id())
+	db, err := i.dbProvider.GetCrdtDb(space.Id()).Wait()
 	if err != nil {
 		return fmt.Errorf("get crdt db: %w", err)
 	}
@@ -252,8 +252,9 @@ func (i *indexer) reindexChats(ctx context.Context, space clientspace.Space) err
 	if err != nil {
 		return fmt.Errorf("write tx: %w", err)
 	}
-	defer txn.Rollback()
-
+	defer func() {
+		_ = txn.Rollback()
+	}()
 	for _, id := range ids {
 		col, err := db.OpenCollection(txn.Context(), id+chatobject.CollectionName)
 		if errors.Is(err, anystore.ErrCollectionNotFound) {
@@ -284,6 +285,8 @@ func (i *indexer) reindexChats(ctx context.Context, space clientspace.Space) err
 	if err != nil {
 		return fmt.Errorf("commit: %w", err)
 	}
+
+	i.reindexIdsIgnoreErr(ctx, space, ids...)
 
 	return nil
 }

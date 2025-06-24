@@ -214,7 +214,7 @@
     ],
     "iconColor": 9,
     "iconName": "extension-puzzle",
-    "hidden": false,
+    "hidden": true,
     "layout": "objectType",
     "relations": [
       "recommendedRelations",
@@ -298,6 +298,7 @@
       "targetObjectType",
       "templateIsBundled"
     ],
+    "restrictObjectCreation": true,
     "revision": 4
   },
   {
@@ -453,8 +454,7 @@
       "tag",
       "dueDate",
       "progress",
-      "status",
-      "tasks"
+      "status"
     ],
     "revision": 3
   },
@@ -491,8 +491,7 @@
     "hidden": false,
     "layout": "basic",
     "relations": [
-      "tag",
-      "tasks"
+      "tag"
     ],
     "revision": 3
   },

@@ -2732,7 +2732,7 @@ func TestAddBundledRealtionLinks(t *testing.T) {
 			st := &State{
 				relationLinks: []*model.RelationLink{},
 			}
-			st.AddBundledRelationLinks(bundle.RelationKeyName, bundle.RelationKeyPriority)
+			st.AddBundledRelationLinks(bundle.RelationKeyName, bundle.RelationKeyIconOption)
 
 			want := &State{
 				relationLinks: []*model.RelationLink{
@@ -2741,7 +2741,7 @@ func TestAddBundledRealtionLinks(t *testing.T) {
 						Format: model.RelationFormat_shorttext,
 					},
 					{
-						Key:    bundle.RelationKeyPriority.String(),
+						Key:    bundle.RelationKeyIconOption.String(),
 						Format: model.RelationFormat_number,
 					},
 				},
@@ -2758,7 +2758,7 @@ func TestAddBundledRealtionLinks(t *testing.T) {
 					},
 				},
 			}
-			st.AddBundledRelationLinks(bundle.RelationKeyName, bundle.RelationKeyPriority)
+			st.AddBundledRelationLinks(bundle.RelationKeyName, bundle.RelationKeyIconOption)
 
 			want := &State{
 				relationLinks: []*model.RelationLink{
@@ -2767,7 +2767,7 @@ func TestAddBundledRealtionLinks(t *testing.T) {
 						Format: model.RelationFormat_shorttext,
 					},
 					{
-						Key:    bundle.RelationKeyPriority.String(),
+						Key:    bundle.RelationKeyIconOption.String(),
 						Format: model.RelationFormat_number,
 					},
 				},
@@ -2788,7 +2788,7 @@ func TestAddBundledRealtionLinks(t *testing.T) {
 				},
 			},
 		}
-		st.AddBundledRelationLinks(bundle.RelationKeyName, bundle.RelationKeyPriority)
+		st.AddBundledRelationLinks(bundle.RelationKeyName, bundle.RelationKeyIconOption)
 
 		want := &State{
 			relationLinks: []*model.RelationLink{
@@ -2797,7 +2797,7 @@ func TestAddBundledRealtionLinks(t *testing.T) {
 					Format: model.RelationFormat_shorttext,
 				},
 				{
-					Key:    bundle.RelationKeyPriority.String(),
+					Key:    bundle.RelationKeyIconOption.String(),
 					Format: model.RelationFormat_number,
 				},
 			},

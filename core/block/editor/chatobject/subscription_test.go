@@ -9,6 +9,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/anyproto/anytype-heart/core/block/chats/chatmodel"
+	"github.com/anyproto/anytype-heart/core/block/chats/chatsubscription"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
@@ -27,7 +29,9 @@ func TestSubscription(t *testing.T) {
 		assert.NotEmpty(t, messageId)
 	}
 
-	resp, err := fx.SubscribeLastMessages(ctx, "subId", 5, false)
+	resp, err := fx.chatSubscriptionService.SubscribeLastMessages(ctx, chatsubscription.SubscribeLastMessagesRequest{
+		ChatObjectId: fx.Id(), SubId: "subId", Limit: 5,
+	})
 	require.NoError(t, err)
 	wantTexts := []string{"text 6", "text 7", "text 8", "text 9", "text 10"}
 	for i, msg := range resp.Messages {
@@ -181,7 +185,9 @@ func TestSubscriptionMessageCounters(t *testing.T) {
 	fx := newFixture(t)
 	fx.chatHandler.forceNotRead = true
 
-	subscribeResp, err := fx.SubscribeLastMessages(ctx, "subId", 10, false)
+	subscribeResp, err := fx.chatSubscriptionService.SubscribeLastMessages(ctx, chatsubscription.SubscribeLastMessagesRequest{
+		ChatObjectId: fx.Id(), SubId: "subId", Limit: 10,
+	})
 	require.NoError(t, err)
 
 	assert.Empty(t, subscribeResp.Messages)
@@ -275,7 +281,12 @@ func TestSubscriptionMessageCounters(t *testing.T) {
 
 	fx.events = nil
 
-	err = fx.MarkReadMessages(ctx, "", firstMessage.OrderId, secondMessage.StateId, CounterTypeMessage)
+	err = fx.MarkReadMessages(ctx, ReadMessagesRequest{
+		AfterOrderId:  "",
+		BeforeOrderId: firstMessage.OrderId,
+		LastStateId:   secondMessage.StateId,
+		CounterType:   chatmodel.CounterTypeMessage,
+	})
 	require.NoError(t, err)
 
 	wantEvents = []*pb.EventMessage{
@@ -315,7 +326,11 @@ func TestSubscriptionMentionCounters(t *testing.T) {
 	fx := newFixture(t)
 	fx.chatHandler.forceNotRead = true
 
-	subscribeResp, err := fx.SubscribeLastMessages(ctx, "subId", 10, false)
+	subscribeResp, err := fx.chatSubscriptionService.SubscribeLastMessages(ctx, chatsubscription.SubscribeLastMessagesRequest{
+		ChatObjectId: fx.Id(),
+		SubId:        "subId",
+		Limit:        10,
+	})
 	require.NoError(t, err)
 
 	assert.Empty(t, subscribeResp.Messages)
@@ -415,7 +430,12 @@ func TestSubscriptionMentionCounters(t *testing.T) {
 
 	fx.events = nil
 
-	err = fx.MarkReadMessages(ctx, "", firstMessage.OrderId, secondMessage.StateId, CounterTypeMention)
+	err = fx.MarkReadMessages(ctx, ReadMessagesRequest{
+		AfterOrderId:  "",
+		BeforeOrderId: firstMessage.OrderId,
+		LastStateId:   secondMessage.StateId,
+		CounterType:   chatmodel.CounterTypeMention,
+	})
 	require.NoError(t, err)
 
 	wantEvents = []*pb.EventMessage{
@@ -457,7 +477,12 @@ func TestSubscriptionWithDeps(t *testing.T) {
 	ctx := context.Background()
 	fx := newFixture(t)
 
-	_, err := fx.SubscribeLastMessages(ctx, LastMessageSubscriptionId, 10, false)
+	_, err := fx.chatSubscriptionService.SubscribeLastMessages(ctx, chatsubscription.SubscribeLastMessagesRequest{
+		ChatObjectId:     fx.Id(),
+		SubId:            "subId",
+		Limit:            10,
+		WithDependencies: true,
+	})
 	require.NoError(t, err)
 
 	myParticipantId := domain.NewParticipantId(testSpaceId, testCreator)
@@ -503,7 +528,7 @@ func TestSubscriptionWithDeps(t *testing.T) {
 					OrderId:      message.OrderId,
 					AfterOrderId: "",
 					Message:      message.ChatMessage,
-					SubIds:       []string{LastMessageSubscriptionId},
+					SubIds:       []string{"subId"},
 					Dependencies: []*types.Struct{
 						identityDetails.ToProto(),
 						attachmentDetails.ToProto(),
@@ -520,7 +545,7 @@ func TestSubscriptionWithDeps(t *testing.T) {
 						Mentions:    &model.ChatStateUnreadState{},
 						LastStateId: message.StateId,
 					},
-					SubIds: []string{LastMessageSubscriptionId},
+					SubIds: []string{"subId"},
 				},
 			},
 		},

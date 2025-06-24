@@ -40,16 +40,17 @@ func (n *deviceStore) SaveDevice(device *model.DeviceInfo) error {
 	if err != nil {
 		return fmt.Errorf("create write tx: %w", err)
 	}
+	defer tx.Rollback()
 
 	ok, err := n.db.Has(tx.Context(), device.Id)
 	if err != nil {
-		return errors.Join(fmt.Errorf("has: %w", err), tx.Rollback())
+		return fmt.Errorf("has: %w", err)
 	}
 
 	if !ok {
 		err = n.db.Set(tx.Context(), device.Id, device)
 		if err != nil {
-			return errors.Join(fmt.Errorf("set: %w", err), tx.Rollback())
+			return fmt.Errorf("set: %w", err)
 		}
 	}
 	return tx.Commit()
@@ -64,6 +65,7 @@ func (n *deviceStore) UpdateDeviceName(id, name string) error {
 	if err != nil {
 		return fmt.Errorf("create write tx: %w", err)
 	}
+	defer tx.Rollback()
 
 	info, err := n.db.Get(tx.Context(), id)
 	if errors.Is(err, anystore.ErrDocNotFound) {
@@ -72,14 +74,14 @@ func (n *deviceStore) UpdateDeviceName(id, name string) error {
 			Name: name,
 		}
 	} else if err != nil {
-		return errors.Join(fmt.Errorf("get device: %w", err), tx.Rollback())
+		return fmt.Errorf("get device: %w", err)
 	} else {
 		info.Name = name
 	}
 
 	err = n.db.Set(tx.Context(), id, info)
 	if err != nil {
-		return errors.Join(fmt.Errorf("set: %w", err), tx.Rollback())
+		return fmt.Errorf("set: %w", err)
 	}
 
 	return tx.Commit()

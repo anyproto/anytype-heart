@@ -126,7 +126,7 @@ func (_c *MockFileObject_GetFullFileId_Call) RunAndReturn(run func() domain.Full
 }
 
 // GetImage provides a mock function with given fields:
-func (_m *MockFileObject) GetImage() files.Image {
+func (_m *MockFileObject) GetImage() (files.Image, error) {
 	ret := _m.Called()
 
 	if len(ret) == 0 {
@@ -134,6 +134,10 @@ func (_m *MockFileObject) GetImage() files.Image {
 	}
 
 	var r0 files.Image
+	var r1 error
+	if rf, ok := ret.Get(0).(func() (files.Image, error)); ok {
+		return rf()
+	}
 	if rf, ok := ret.Get(0).(func() files.Image); ok {
 		r0 = rf()
 	} else {
@@ -142,7 +146,13 @@ func (_m *MockFileObject) GetImage() files.Image {
 		}
 	}
 
-	return r0
+	if rf, ok := ret.Get(1).(func() error); ok {
+		r1 = rf()
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
 }
 
 // MockFileObject_GetImage_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetImage'
@@ -162,12 +172,12 @@ func (_c *MockFileObject_GetImage_Call) Run(run func()) *MockFileObject_GetImage
 	return _c
 }
 
-func (_c *MockFileObject_GetImage_Call) Return(_a0 files.Image) *MockFileObject_GetImage_Call {
-	_c.Call.Return(_a0)
+func (_c *MockFileObject_GetImage_Call) Return(_a0 files.Image, _a1 error) *MockFileObject_GetImage_Call {
+	_c.Call.Return(_a0, _a1)
 	return _c
 }
 
-func (_c *MockFileObject_GetImage_Call) RunAndReturn(run func() files.Image) *MockFileObject_GetImage_Call {
+func (_c *MockFileObject_GetImage_Call) RunAndReturn(run func() (files.Image, error)) *MockFileObject_GetImage_Call {
 	_c.Call.Return(run)
 	return _c
 }

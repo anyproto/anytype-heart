@@ -176,14 +176,6 @@ func (bs *basic) validateDetailFormat(spaceID string, key domain.RelationKey, v 
 
 		return nil
 	case model.RelationFormat_file, model.RelationFormat_object:
-		// TODO Tell clients to use []string, but now use this hack
-		if key == bundle.RelationKeyIconImage {
-			_, ok := v.TryString()
-			if ok {
-				return nil
-			}
-		}
-
 		vals, ok := v.TryWrapToStringList()
 		if !ok {
 			return fmt.Errorf("incorrect type: %v instead of string list", v)
@@ -358,6 +350,7 @@ func (bs *basic) SetObjectTypesInState(s *state.State, objectTypeKeys []domain.T
 
 	s.SetObjectTypeKeys(objectTypeKeys)
 	removeInternalFlags(s)
+	s.Details().Delete(bundle.RelationKeyLayout)
 
 	toLayout, err := bs.getLayoutForType(objectTypeKeys[0])
 	if err != nil {
@@ -381,6 +374,9 @@ func (bs *basic) getLayoutForType(objectTypeKey domain.TypeKey) (model.ObjectTyp
 
 func (bs *basic) SetLayoutInState(s *state.State, toLayout model.ObjectTypeLayout, ignoreRestriction bool) (err error) {
 	fromLayout, _ := s.Layout()
+	if fromLayout == toLayout {
+		return nil
+	}
 
 	if !ignoreRestriction {
 		if err = bs.Restrictions().Object.Check(model.Restrictions_LayoutChange); errors.Is(err, restriction.ErrRestricted) {

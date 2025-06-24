@@ -48,20 +48,13 @@ const (
 	CName            = "builtinobjects"
 	injectionTimeout = 30 * time.Second
 
-	migrationUseCase       = -1
-	migrationDashboardName = "bafyreiha2hjbrzmwo7rpiiechv45vv37d6g5aezyr5wihj3agwawu6zi3u"
-	defaultDashboardId     = "lastOpened"
+	migrationUseCase   = -1
+	defaultDashboardId = "lastOpened"
 
 	contentLengthHeader        = "Content-Length"
 	archiveDownloadingPercents = 30
 	archiveCopyingPercents     = 10
 )
-
-type widgetParameters struct {
-	layout            model.BlockContentWidgetLayout
-	objectID, viewID  string
-	isObjectIDChanged bool
-}
 
 //go:embed data/start_guide.zip
 var startGuideZip []byte
@@ -75,13 +68,21 @@ var migrationDashboardZip []byte
 //go:embed data/empty.zip
 var emptyZip []byte
 
+//go:embed data/get_started_mobile.zip
+var getStartedMobileZip []byte
+
+//go:embed data/empty_mobile.zip
+var emptyMobileZip []byte
+
 var (
 	log = logging.Logger("anytype-mw-builtinobjects")
 
 	archives = map[pb.RpcObjectImportUseCaseRequestUseCase][]byte{
-		pb.RpcObjectImportUseCaseRequest_GET_STARTED: getStartedZip,
-		pb.RpcObjectImportUseCaseRequest_GUIDE_ONLY:  startGuideZip,
-		pb.RpcObjectImportUseCaseRequest_EMPTY:       emptyZip,
+		pb.RpcObjectImportUseCaseRequest_GET_STARTED:        getStartedZip,
+		pb.RpcObjectImportUseCaseRequest_GUIDE_ONLY:         startGuideZip,
+		pb.RpcObjectImportUseCaseRequest_EMPTY:              emptyZip,
+		pb.RpcObjectImportUseCaseRequest_GET_STARTED_MOBILE: getStartedMobileZip,
+		pb.RpcObjectImportUseCaseRequest_EMPTY_MOBILE:       emptyMobileZip,
 	}
 )
 
@@ -258,7 +259,7 @@ func (b *builtinObjects) inject(ctx session.Context, spaceID string, useCase pb.
 	_ = b.handleHomePage(profile, spaceID, useCase == migrationUseCase)
 
 	// TODO: GO-2627 Widgets creation should be moved to importer
-	b.createWidgets(ctx, spaceID, useCase)
+	b.createWidgets(ctx, spaceID, useCase, startingPageId)
 
 	return
 }
@@ -418,7 +419,7 @@ func (b *builtinObjects) typeHasObjects(spaceId, typeId string) (bool, error) {
 	return len(records) > 0, nil
 }
 
-func (b *builtinObjects) createWidgets(ctx session.Context, spaceId string, useCase pb.RpcObjectImportUseCaseRequestUseCase) {
+func (b *builtinObjects) createWidgets(ctx session.Context, spaceId string, useCase pb.RpcObjectImportUseCaseRequestUseCase, homePageId string) {
 	spc, err := b.spaceService.Get(context.Background(), spaceId)
 	if err != nil {
 		log.Errorf("failed to get space: %w", err)
@@ -427,6 +428,22 @@ func (b *builtinObjects) createWidgets(ctx session.Context, spaceId string, useC
 
 	widgetObjectID := spc.DerivedIDs().Widgets
 	var widgetTargetsToCreate []string
+	var homeWidget *pb.RpcBlockCreateWidgetRequest
+	if useCase == pb.RpcObjectImportUseCaseRequest_GET_STARTED && homePageId != "" {
+		homeWidget = &pb.RpcBlockCreateWidgetRequest{
+			ContextId:    widgetObjectID,
+			WidgetLayout: model.BlockContentWidget_Tree,
+			Position:     model.Block_Bottom,
+			Block: &model.Block{
+				Content: &model.BlockContentOfLink{
+					Link: &model.BlockContentLink{
+						TargetBlockId: homePageId,
+					},
+				},
+			},
+		}
+	}
+
 	pageTypeId, err := spc.GetTypeIdByKey(context.Background(), bundle.TypeKeyPage)
 	if err != nil {
 		log.Errorf("failed to get type id: %w", err)
@@ -449,6 +466,11 @@ func (b *builtinObjects) createWidgets(ctx session.Context, spaceId string, useC
 		return
 	}
 	if err = cache.DoStateCtx(b.objectGetter, ctx, widgetObjectID, func(s *state.State, w widget.Widget) error {
+		if homeWidget != nil {
+			if _, err := w.CreateBlock(s, homeWidget); err != nil {
+				log.Errorf("failed to create widget for home page: %v", err)
+			}
+		}
 		for _, targetId := range widgetTargetsToCreate {
 			if err := w.AddAutoWidget(s, targetId, "", addr.ObjectTypeAllViewId, model.BlockContentWidget_View, ""); err != nil {
 				log.Errorf("failed to create widget block for type '%s': %v", targetId, err)

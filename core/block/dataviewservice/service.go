@@ -17,7 +17,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/spaceindex"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
@@ -217,7 +216,7 @@ func (s *service) AddDataviewViewRelation(
 		if err = dv.AddViewRelation(viewId, relation); err != nil {
 			return err
 		}
-		s.syncViewRelationsAndRelationLinks(objectId, viewId, dv)
+		syncViewRelationsAndRelationLinks(viewId, dv)
 		return nil
 	})
 }
@@ -235,7 +234,7 @@ func (s *service) RemoveDataviewViewRelations(
 		if err = dv.RemoveViewRelations(viewId, relationKeys); err != nil {
 			return err
 		}
-		s.syncViewRelationsAndRelationLinks(objectId, viewId, dv)
+		syncViewRelationsAndRelationLinks(viewId, dv)
 		return nil
 	})
 }
@@ -254,7 +253,7 @@ func (s *service) ReplaceDataviewViewRelation(
 		if err = dv.ReplaceViewRelation(viewId, relationKey, relation); err != nil {
 			return err
 		}
-		s.syncViewRelationsAndRelationLinks(objectId, viewId, dv)
+		syncViewRelationsAndRelationLinks(viewId, dv)
 		return nil
 	})
 }
@@ -272,33 +271,16 @@ func (s *service) ReorderDataviewViewRelations(
 		if err = dv.ReorderViewRelations(viewId, relationKeys); err != nil {
 			return err
 		}
-		s.syncViewRelationsAndRelationLinks(objectId, viewId, dv)
+		syncViewRelationsAndRelationLinks(viewId, dv)
 		return nil
 	})
 }
 
-func (s *service) syncViewRelationsAndRelationLinks(objectId, viewId string, dv dvblock.Block) {
+func syncViewRelationsAndRelationLinks(viewId string, dv dvblock.Block) {
 	view, err := dv.GetView(viewId)
 	if err != nil {
 		log.Error("failed to get view", zap.String("viewId", viewId), zap.Error(err))
 		return
-	}
-
-	relationLinksKeys := make(map[string]struct{}, len(dv.ListRelationLinks()))
-	for _, relLink := range dv.ListRelationLinks() {
-		relationLinksKeys[relLink.Key] = struct{}{}
-	}
-
-	var spaceIndex spaceindex.Store
-	getRelationLink := func(key string) (*model.RelationLink, error) {
-		if spaceIndex == nil {
-			spaceId, err := s.idResolver.ResolveSpaceID(objectId)
-			if err != nil {
-				return nil, fmt.Errorf("failed to resolve space id: %w", err)
-			}
-			spaceIndex = s.objectStore.SpaceIndex(spaceId)
-		}
-		return spaceIndex.GetRelationLink(key)
 	}
 
 	currentViewKeys := make(map[string]struct{}, len(view.Relations))
@@ -306,14 +288,6 @@ func (s *service) syncViewRelationsAndRelationLinks(objectId, viewId string, dv 
 	for _, rel := range view.Relations {
 		newViewRelations = append(newViewRelations, rel)
 		currentViewKeys[rel.Key] = struct{}{}
-		if _, ok := relationLinksKeys[rel.Key]; !ok {
-			relLink, err := getRelationLink(rel.Key)
-			if err != nil {
-				log.Error("failed to get relation link", zap.String("key", rel.Key), zap.Error(err))
-				continue
-			}
-			_ = dv.AddRelation(relLink) // nolint:errcheck
-		}
 	}
 
 	for _, relLink := range dv.ListRelationLinks() {

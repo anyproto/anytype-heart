@@ -52,7 +52,10 @@ func (s *service) getFileVariantBySourceChecksum(mill string, sourceChecksum str
 		return nil, fmt.Errorf("variant not found")
 	}
 
-	variants := filemodels.GetFileInfosFromDetails(recs[0].Details)
+	variants, err := filemodels.GetFileInfosFromDetails(recs[0].Details)
+	if err != nil {
+		return nil, fmt.Errorf("get file info from details: %w", err)
+	}
 	return &existingFile{
 		fileId:   domain.FileId(recs[0].Details.GetString(bundle.RelationKeyFileId)),
 		variants: variants,
@@ -82,7 +85,10 @@ func (s *service) getFileVariantByChecksum(mill string, variantChecksum string) 
 		return nil, nil, fmt.Errorf("variant not found")
 	}
 
-	variants := filemodels.GetFileInfosFromDetails(recs[0].Details)
+	variants, err := filemodels.GetFileInfosFromDetails(recs[0].Details)
+	if err != nil {
+		return nil, nil, fmt.Errorf("get file info from details: %w", err)
+	}
 	for _, info := range variants {
 		if info.Mill == mill && info.Checksum == variantChecksum {
 			return &existingFile{

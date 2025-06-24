@@ -363,6 +363,7 @@ message Block {
                 int32 pageLimit = 13; // Limit of objects shown in widget
                 string defaultTemplateId = 14; // Default template that is chosen for new object created within the view
                 string defaultObjectTypeId = 15; // Default object type that is chosen for new object created within the view
+                string endRelationKey = 16; // Group view by this relationKey
 
                 enum Type {
                     Table = 0;
@@ -385,10 +386,9 @@ message Block {
                 bool isVisible = 2;
                 int32 width = 3; // the displayed column % calculated based on other visible relations
                 // bool isReadOnly = 4; // deprecated
-
-                bool dateIncludeTime = 5;
-                TimeFormat timeFormat = 6;
-                DateFormat dateFormat = 7;
+                bool dateIncludeTime = 5; // deprecated
+                TimeFormat timeFormat = 6; // deprecated
+                DateFormat dateFormat = 7; // deprecated
                 FormulaType formula = 8;
                 Block.Align align = 9;
 
@@ -661,6 +661,7 @@ message Account {
         string profileObjectId = 4; // profile block id
         string marketplaceWorkspaceId = 11; // marketplace workspace id
         string workspaceObjectId = 15; // workspace object id. used for space-level chat
+        string spaceChatId = 16; // space-level chat if exists
 
         string deviceId = 8;
         string accountSpaceId = 9; // the first created private space. It's filled only when account is created
@@ -677,6 +678,15 @@ message Account {
     }
 
     message Auth {
+        message AppInfo {
+            string appHash = 1;
+            string appName = 2; // either from process or specified manually when creating
+            string appKey = 4;
+            int64 createdAt = 5;
+            int64 expireAt = 6;
+            LocalApiScope scope = 7;
+            bool isActive = 8;
+        }
         enum LocalApiScope {
             Limited = 0; // Used in WebClipper; AccountSelect(to be deprecated), ObjectSearch, ObjectShow, ObjectCreate, ObjectCreateFromURL, BlockPreview, BlockPaste, BroadcastPayloadEvent
             JsonAPI = 1; // JSON API only, no direct grpc api calls allowed
@@ -844,6 +854,7 @@ message Relation {
     Scope scope = 20; // deprecated, to be removed
     string creator = 21; // creator profile id
     int64 revision = 22; // revision of system relation. Used to check if we should change relation content or not
+    bool includeTime = 23; // indicates whether value of relation with date format should be processed with seconds precision
 
     message Option {
         string id = 1; // id generated automatically if omitted
@@ -1004,6 +1015,12 @@ enum ParticipantPermissions {
     Writer = 1;
     Owner = 2;
     NoPermissions = 3;
+}
+
+enum InviteType {
+    Member = 0; // aclKey contains the key to sign the ACL record
+    Guest = 1; // guestKey contains the privateKey of the guest user
+    WithoutApprove = 2; // aclKey contains the key to sign the ACL record, but no approval needed
 }
 
 enum ParticipantStatus {
@@ -1204,10 +1221,6 @@ message InvitePayload {
 
     InviteType inviteType = 8;
     bytes guestKey = 9;
-    enum InviteType {
-        JoinAsMember = 0; // aclKey contains the key to sign the ACL record
-        JoinAsGuest = 1; // guestKey contains the privateKey of the guest user
-    }
 }
 
 message IdentityProfile {
@@ -1367,7 +1380,11 @@ message MembershipTierData {
     // Android platform-specific data:
     string androidProductId = 17;
     string androidManageUrl = 18;
+
+    // "limited offer" or somehing like that
+    string offer = 19;
 }
+
 enum DeviceNetworkType {
     WIFI = 0;
     CELLULAR = 1;
@@ -1437,4 +1454,18 @@ message ChatMessage {
             repeated string ids = 1; // List of user IDs
         }
     }
+}
+
+enum SyncStatus {
+    SyncStatusSynced  = 0;
+    SyncStatusSyncing = 1;
+    SyncStatusError   = 2;
+    SyncStatusQueued  = 3;
+}
+
+enum SyncError {
+    SyncErrorNull                = 0;
+    SyncErrorIncompatibleVersion = 2;
+    SyncErrorNetworkError        = 3;
+    SyncErrorOversized           = 4;
 }

@@ -12,6 +12,7 @@ import (
 	"github.com/anyproto/any-sync/commonspace/object/tree/treestorage"
 	"github.com/anyproto/any-sync/commonspace/object/treesyncer/mock_treesyncer"
 	"github.com/anyproto/any-sync/net/peer"
+	"github.com/anyproto/any-sync/util/crypto"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -21,6 +22,8 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock/smarttest"
 	"github.com/anyproto/anytype-heart/core/block/object/objectcache/mock_objectcache"
 	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/core/session"
+	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/space/spacecore/mock_spacecore"
 	"github.com/anyproto/anytype-heart/space/spaceinfo"
 	"github.com/anyproto/anytype-heart/tests/testutil"
@@ -42,6 +45,10 @@ func TestTechSpace_Run(t *testing.T) {
 type spaceViewStub struct {
 	*smarttest.SmartTest
 	data *domain.Details
+}
+
+func (s *spaceViewStub) SetPushNotificationMode(ctx session.Context, mode pb.RpcPushNotificationSetSpaceModeMode) (err error) {
+	return
 }
 
 var _ SpaceView = (*spaceViewStub)(nil)
@@ -74,7 +81,7 @@ func (s *spaceViewStub) SetInviteFileInfo(fileCid string, fileKey string) (err e
 	return
 }
 
-func (s *spaceViewStub) SetAclIsEmpty(isEmpty bool) (err error) {
+func (s *spaceViewStub) SetAclInfo(empty bool, pushKey crypto.PrivKey, pushEncKey crypto.SymKey) (err error) {
 	return
 }
 
@@ -124,7 +131,7 @@ func TestTechSpace_SpaceViewCreate(t *testing.T) {
 		info := spaceinfo.NewSpacePersistentInfo(spaceId)
 		info.SetAccountStatus(spaceinfo.AccountStatusUnknown)
 
-		require.NoError(t, fx.SpaceViewCreate(ctx, spaceId, false, info))
+		require.NoError(t, fx.SpaceViewCreate(ctx, spaceId, false, info, &spaceinfo.SpaceDescription{Name: "test"}))
 	})
 
 	t.Run("err spaceView exists", func(t *testing.T) {
@@ -136,7 +143,7 @@ func TestTechSpace_SpaceViewCreate(t *testing.T) {
 		info := spaceinfo.NewSpacePersistentInfo(spaceId)
 		info.SetAccountStatus(spaceinfo.AccountStatusUnknown)
 
-		assert.EqualError(t, fx.SpaceViewCreate(ctx, spaceId, false, info), ErrSpaceViewExists.Error())
+		assert.EqualError(t, fx.SpaceViewCreate(ctx, spaceId, false, info, nil), ErrSpaceViewExists.Error())
 	})
 }
 

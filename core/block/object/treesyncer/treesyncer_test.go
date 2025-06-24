@@ -12,6 +12,7 @@ import (
 	"github.com/anyproto/any-sync/commonspace/object/tree/objecttree"
 	"github.com/anyproto/any-sync/commonspace/object/tree/synctree/mock_synctree"
 	"github.com/anyproto/any-sync/commonspace/object/treemanager/mock_treemanager"
+	"github.com/anyproto/any-sync/commonspace/peermanager/mock_peermanager"
 	"github.com/anyproto/any-sync/commonspace/spacestorage/mock_spacestorage"
 	"github.com/anyproto/any-sync/net/peer"
 	"github.com/anyproto/any-sync/net/rpc/rpctest"
@@ -27,6 +28,7 @@ import (
 type fixture struct {
 	*treeSyncer
 
+	peerManagerMock    *mock_peermanager.MockPeerManager
 	missingMock        *mock_synctree.MockSyncTree
 	existingMock       *mock_synctree.MockSyncTree
 	treeManager        *mock_treemanager.MockTreeManager
@@ -39,6 +41,7 @@ type fixture struct {
 func newFixture(t *testing.T, spaceId string) *fixture {
 	ctrl := gomock.NewController(t)
 	treeManager := mock_treemanager.NewMockTreeManager(ctrl)
+	peerManager := mock_peermanager.NewMockPeerManager(ctrl)
 	missingMock := mock_synctree.NewMockSyncTree(ctrl)
 	existingMock := mock_synctree.NewMockSyncTree(ctrl)
 	nodeConf := mock_nodeconf.NewMockService(ctrl)
@@ -50,11 +53,17 @@ func newFixture(t *testing.T, spaceId string) *fixture {
 	spaceStorage.EXPECT().StateStorage().AnyTimes().Return(stateStorage)
 	stateStorage.EXPECT().SettingsId().AnyTimes().Return("settingsId")
 
+	missingMock.EXPECT().Lock().AnyTimes()
+	missingMock.EXPECT().Unlock().AnyTimes()
+	existingMock.EXPECT().Lock().AnyTimes()
+	existingMock.EXPECT().Unlock().AnyTimes()
+
 	a := new(app.App)
 	a.Register(testutil.PrepareMock(context.Background(), a, treeManager)).
 		Register(testutil.PrepareMock(context.Background(), a, spaceStorage)).
 		Register(testutil.PrepareMock(context.Background(), a, syncStatus)).
 		Register(testutil.PrepareMock(context.Background(), a, nodeConf)).
+		Register(testutil.PrepareMock(context.Background(), a, peerManager)).
 		Register(testutil.PrepareMock(context.Background(), a, syncDetailsUpdater))
 	syncer := NewTreeSyncer(spaceId)
 	err := syncer.Init(a)
@@ -69,6 +78,7 @@ func newFixture(t *testing.T, spaceId string) *fixture {
 		syncStatus:         syncStatus,
 		syncDetailsUpdater: syncDetailsUpdater,
 		stateStorage:       stateStorage,
+		peerManagerMock:    peerManager,
 	}
 }
 
@@ -266,4 +276,18 @@ func TestTreeSyncer(t *testing.T) {
 		mutex.Unlock()
 	})
 
+	t.Run("refresh tree", func(t *testing.T) {
+		pr := rpctest.MockPeer{}
+		ch := make(chan struct{})
+		fx := newFixture(t, spaceId)
+		fx.peerManagerMock.EXPECT().GetResponsiblePeers(gomock.Any()).Return([]peer.Peer{pr}, nil)
+		fx.treeManager.EXPECT().GetTree(gomock.Any(), spaceId, existingId).Return(fx.existingMock, nil)
+		fx.existingMock.EXPECT().SyncWithPeer(gomock.Any(), pr).DoAndReturn(func(ctx context.Context, peer peer.Peer) error {
+			close(ch)
+			return nil
+		})
+		fx.StartSync()
+		require.NoError(t, fx.RefreshTrees([]string{existingId}))
+		<-ch
+	})
 }

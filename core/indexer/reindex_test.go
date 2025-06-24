@@ -288,7 +288,7 @@ func TestIndexer_ReindexSpace_EraseLinks(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	headStorage := mock_headstorage.NewMockHeadStorage(ctrl)
 	storage := mock_anystorage.NewMockClientSpaceStorage(t)
-	storage.EXPECT().HeadStorage().Return(headStorage)
+	storage.EXPECT().HeadStorage().Return(headStorage).Maybe()
 	headStorage.EXPECT().IterateEntries(gomock.Any(), gomock.Any(), gomock.Any()).AnyTimes().
 		DoAndReturn(func(ctx context.Context, opts headstorage.IterOpts, entryIter headstorage.EntryIterator) error {
 			return nil
@@ -313,7 +313,7 @@ func TestIndexer_ReindexSpace_EraseLinks(t *testing.T) {
 
 		space1 := mock_space.NewMockSpace(t)
 		space1.EXPECT().Id().Return(spaceId1)
-		space1.EXPECT().Storage().Return(storage)
+		space1.EXPECT().Storage().Return(storage).Maybe()
 
 		// when
 		err = fx.ReindexSpace(space1)
@@ -354,7 +354,7 @@ func TestIndexer_ReindexSpace_EraseLinks(t *testing.T) {
 
 		space1 := mock_space.NewMockSpace(t)
 		space1.EXPECT().Id().Return(spaceId2)
-		space1.EXPECT().Storage().Return(storage)
+		space1.EXPECT().Storage().Return(storage).Maybe()
 		// when
 		err = fx.ReindexSpace(space1)
 		assert.NoError(t, err)

@@ -253,6 +253,7 @@ func (e *exportContext) getStateFilters(id string) *state.Filters {
 func (e *exportContext) exportObject(ctx context.Context, objectId string) (string, error) {
 	e.reqIds = []string{objectId}
 	e.includeArchive = true
+	e.includeFiles = false
 	err := e.docsForExport(ctx)
 	if err != nil {
 		return "", err
@@ -269,6 +270,18 @@ func (e *exportContext) exportObject(ctx context.Context, objectId string) (stri
 		docNamer = newNamer()
 	}
 	inMemoryWriter := &InMemoryWriter{fn: docNamer}
+	details, err := e.objectStore.SpaceIndex(e.spaceId).GetDetails(objectId)
+	if err != nil {
+		return "", err
+	}
+
+	// do not allow file export for in-memory writer
+	// nolint: gosec
+	switch model.ObjectTypeLayout(details.GetInt64(bundle.RelationKeyLayout)) {
+	case model.ObjectType_file, model.ObjectType_image, model.ObjectType_video, model.ObjectType_audio, model.ObjectType_pdf:
+		return "", fmt.Errorf("file export is not allowed for in-memory writer")
+	}
+
 	err = e.writeDoc(ctx, inMemoryWriter, objectId, e.docs.transformToDetailsMap())
 	if err != nil {
 		return "", err
@@ -1175,7 +1188,10 @@ func (e *exportContext) saveFile(ctx context.Context, wr writer, fileObject sb.S
 		return "", fmt.Errorf("get file: %w", err)
 	}
 	if strings.HasPrefix(file.MimeType(), "image") {
-		image := fileObjectComponent.GetImage()
+		image, err := fileObjectComponent.GetImage()
+		if err != nil {
+			return "", fmt.Errorf("get image: %w", err)
+		}
 		file, err = image.GetOriginalFile()
 		if err != nil {
 			return "", err

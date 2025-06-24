@@ -56,7 +56,7 @@ type Provider interface {
 	GetSystemCollection() anystore.Collection
 
 	GetSpaceIndexDb(spaceId string) (anystore.DB, error)
-	GetCrdtDb(spaceId string) (anystore.DB, error)
+	GetCrdtDb(spaceId string) *AnystoreGetter
 
 	ListSpaceIdsFromFilesystem() ([]string, error)
 
@@ -76,7 +76,7 @@ type provider struct {
 	systemCollection   anystore.Collection
 
 	crtdStoreLock sync.Mutex
-	crdtDbs       map[string]*dbWithFileLock
+	crdtDbs       map[string]*AnystoreGetter
 
 	spaceIndexDbsLock sync.Mutex
 	spaceIndexDbs     map[string]*dbWithFileLock
@@ -100,7 +100,7 @@ func (db *dbWithFileLock) Close(ctx context.Context) error {
 
 func New() Provider {
 	return &provider{
-		crdtDbs:        map[string]*dbWithFileLock{},
+		crdtDbs:        map[string]*AnystoreGetter{},
 		spaceIndexDbs:  map[string]*dbWithFileLock{},
 		anyStoreConfig: &anystore.Config{},
 	}
@@ -144,7 +144,7 @@ func (s *provider) initInPath(repoPath string) error {
 		return err
 	}
 
-	s.commonDb, err = s.openDatabase(context.Background(), filepath.Join(s.objectStorePath, "objects.db"))
+	s.commonDb, err = openDatabase(context.Background(), s.getAnyStoreConfig(), filepath.Join(s.objectStorePath, "objects.db"))
 	if err != nil {
 		return fmt.Errorf("open db: %w", err)
 	}
@@ -161,13 +161,13 @@ func (s *provider) Run(ctx context.Context) error {
 	return nil
 }
 
-func (s *provider) openDatabase(ctx context.Context, path string) (*dbWithFileLock, error) {
+func openDatabase(ctx context.Context, config *anystore.Config, path string) (*dbWithFileLock, error) {
 	err := ensureDirExists(filepath.Dir(path))
 	if err != nil {
 		return nil, fmt.Errorf("ensure dir exists: %w", err)
 	}
 
-	db, lockRemove, err := anystorehelper.OpenDatabaseWithLockCheck(ctx, path, s.getAnyStoreConfig())
+	db, lockRemove, err := anystorehelper.OpenDatabaseWithLockCheck(ctx, path, config)
 	if err != nil {
 		return nil, fmt.Errorf("open database: %w", err)
 	}
@@ -205,7 +205,7 @@ func (s *provider) GetSpaceIndexDb(spaceId string) (anystore.DB, error) {
 		return db.db, nil
 	}
 
-	db, err := s.openDatabase(s.componentCtx, filepath.Join(s.objectStorePath, spaceId, "objects.db"))
+	db, err := openDatabase(s.componentCtx, s.getAnyStoreConfig(), filepath.Join(s.objectStorePath, spaceId, "objects.db"))
 	if err != nil {
 		return nil, fmt.Errorf("open db: %w", err)
 	}
@@ -215,27 +215,59 @@ func (s *provider) GetSpaceIndexDb(spaceId string) (anystore.DB, error) {
 	return db.db, nil
 }
 
-func (s *provider) GetCrdtDb(spaceId string) (anystore.DB, error) {
+type AnystoreGetter struct {
+	ctx             context.Context
+	config          *anystore.Config
+	objectStorePath string
+	spaceId         string
+
+	lock sync.Mutex
+	db   *dbWithFileLock
+}
+
+func (g *AnystoreGetter) get() *dbWithFileLock {
+	g.lock.Lock()
+	defer g.lock.Unlock()
+
+	return g.db
+}
+
+func (g *AnystoreGetter) Wait() (anystore.DB, error) {
+	g.lock.Lock()
+	defer g.lock.Unlock()
+
+	if g.db != nil {
+		return g.db.db, nil
+	}
+
+	path := filepath.Join(g.objectStorePath, g.spaceId, "crdt.db")
+	db, err := openDatabase(g.ctx, g.config, path)
+	if err != nil {
+		return nil, fmt.Errorf("open: %w", err)
+	}
+
+	g.db = db
+
+	return db.db, nil
+}
+
+func (s *provider) GetCrdtDb(spaceId string) *AnystoreGetter {
 	s.crtdStoreLock.Lock()
 	defer s.crtdStoreLock.Unlock()
 
 	db, ok := s.crdtDbs[spaceId]
-	if !ok {
-		path := filepath.Join(s.objectStorePath, spaceId, "crtd.db")
-
-		db, err := s.openDatabase(s.componentCtx, path)
-		if errors.Is(err, anystore.ErrIncompatibleVersion) {
-			_ = os.RemoveAll(path)
-			db, err = s.openDatabase(s.componentCtx, path)
-		}
-		if err != nil {
-			return nil, err
-		}
-		s.crdtDbs[spaceId] = db
-
-		return db.db, nil
+	if ok {
+		return db
 	}
-	return db.db, nil
+
+	db = &AnystoreGetter{
+		spaceId:         spaceId,
+		ctx:             s.componentCtx,
+		config:          s.getAnyStoreConfig(),
+		objectStorePath: s.objectStorePath,
+	}
+	s.crdtDbs[spaceId] = db
+	return db
 }
 
 func (s *provider) getAnyStoreConfig() *anystore.Config {
@@ -272,14 +304,17 @@ func (s *provider) Close(ctx context.Context) error {
 	s.crtdStoreLock.Lock()
 	closeChan = make(chan error, len(s.crdtDbs))
 	for spaceId, store := range s.crdtDbs {
-		go func(spaceId string, store *dbWithFileLock) {
-			closeChan <- store.Close(ctx)
-		}(spaceId, store)
+		db := store.get()
+		go func(spaceId string, db *dbWithFileLock) {
+			if db != nil {
+				closeChan <- db.Close(ctx)
+			}
+		}(spaceId, db)
 	}
 	for i := 0; i < len(s.crdtDbs); i++ {
 		err = errors.Join(err, <-closeChan)
 	}
-	s.crdtDbs = map[string]*dbWithFileLock{}
+	s.crdtDbs = map[string]*AnystoreGetter{}
 	s.crtdStoreLock.Unlock()
 
 	return err

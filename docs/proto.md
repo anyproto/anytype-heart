@@ -97,10 +97,22 @@
     - [Rpc.Account.GetConfig.Get](#anytype-Rpc-Account-GetConfig-Get)
     - [Rpc.Account.GetConfig.Get.Request](#anytype-Rpc-Account-GetConfig-Get-Request)
     - [Rpc.Account.LocalLink](#anytype-Rpc-Account-LocalLink)
+    - [Rpc.Account.LocalLink.CreateApp](#anytype-Rpc-Account-LocalLink-CreateApp)
+    - [Rpc.Account.LocalLink.CreateApp.Request](#anytype-Rpc-Account-LocalLink-CreateApp-Request)
+    - [Rpc.Account.LocalLink.CreateApp.Response](#anytype-Rpc-Account-LocalLink-CreateApp-Response)
+    - [Rpc.Account.LocalLink.CreateApp.Response.Error](#anytype-Rpc-Account-LocalLink-CreateApp-Response-Error)
+    - [Rpc.Account.LocalLink.ListApps](#anytype-Rpc-Account-LocalLink-ListApps)
+    - [Rpc.Account.LocalLink.ListApps.Request](#anytype-Rpc-Account-LocalLink-ListApps-Request)
+    - [Rpc.Account.LocalLink.ListApps.Response](#anytype-Rpc-Account-LocalLink-ListApps-Response)
+    - [Rpc.Account.LocalLink.ListApps.Response.Error](#anytype-Rpc-Account-LocalLink-ListApps-Response-Error)
     - [Rpc.Account.LocalLink.NewChallenge](#anytype-Rpc-Account-LocalLink-NewChallenge)
     - [Rpc.Account.LocalLink.NewChallenge.Request](#anytype-Rpc-Account-LocalLink-NewChallenge-Request)
     - [Rpc.Account.LocalLink.NewChallenge.Response](#anytype-Rpc-Account-LocalLink-NewChallenge-Response)
     - [Rpc.Account.LocalLink.NewChallenge.Response.Error](#anytype-Rpc-Account-LocalLink-NewChallenge-Response-Error)
+    - [Rpc.Account.LocalLink.RevokeApp](#anytype-Rpc-Account-LocalLink-RevokeApp)
+    - [Rpc.Account.LocalLink.RevokeApp.Request](#anytype-Rpc-Account-LocalLink-RevokeApp-Request)
+    - [Rpc.Account.LocalLink.RevokeApp.Response](#anytype-Rpc-Account-LocalLink-RevokeApp-Response)
+    - [Rpc.Account.LocalLink.RevokeApp.Response.Error](#anytype-Rpc-Account-LocalLink-RevokeApp-Response-Error)
     - [Rpc.Account.LocalLink.SolveChallenge](#anytype-Rpc-Account-LocalLink-SolveChallenge)
     - [Rpc.Account.LocalLink.SolveChallenge.Request](#anytype-Rpc-Account-LocalLink-SolveChallenge-Request)
     - [Rpc.Account.LocalLink.SolveChallenge.Response](#anytype-Rpc-Account-LocalLink-SolveChallenge-Response)
@@ -582,6 +594,10 @@
     - [Rpc.Chat.GetMessagesByIds.Request](#anytype-Rpc-Chat-GetMessagesByIds-Request)
     - [Rpc.Chat.GetMessagesByIds.Response](#anytype-Rpc-Chat-GetMessagesByIds-Response)
     - [Rpc.Chat.GetMessagesByIds.Response.Error](#anytype-Rpc-Chat-GetMessagesByIds-Response-Error)
+    - [Rpc.Chat.ReadAll](#anytype-Rpc-Chat-ReadAll)
+    - [Rpc.Chat.ReadAll.Request](#anytype-Rpc-Chat-ReadAll-Request)
+    - [Rpc.Chat.ReadAll.Response](#anytype-Rpc-Chat-ReadAll-Response)
+    - [Rpc.Chat.ReadAll.Response.Error](#anytype-Rpc-Chat-ReadAll-Response-Error)
     - [Rpc.Chat.ReadMessages](#anytype-Rpc-Chat-ReadMessages)
     - [Rpc.Chat.ReadMessages.Request](#anytype-Rpc-Chat-ReadMessages-Request)
     - [Rpc.Chat.ReadMessages.Response](#anytype-Rpc-Chat-ReadMessages-Response)
@@ -593,6 +609,7 @@
     - [Rpc.Chat.SubscribeToMessagePreviews](#anytype-Rpc-Chat-SubscribeToMessagePreviews)
     - [Rpc.Chat.SubscribeToMessagePreviews.Request](#anytype-Rpc-Chat-SubscribeToMessagePreviews-Request)
     - [Rpc.Chat.SubscribeToMessagePreviews.Response](#anytype-Rpc-Chat-SubscribeToMessagePreviews-Response)
+    - [Rpc.Chat.SubscribeToMessagePreviews.Response.ChatPreview](#anytype-Rpc-Chat-SubscribeToMessagePreviews-Response-ChatPreview)
     - [Rpc.Chat.SubscribeToMessagePreviews.Response.Error](#anytype-Rpc-Chat-SubscribeToMessagePreviews-Response-Error)
     - [Rpc.Chat.ToggleMessageReaction](#anytype-Rpc-Chat-ToggleMessageReaction)
     - [Rpc.Chat.ToggleMessageReaction.Request](#anytype-Rpc-Chat-ToggleMessageReaction-Request)
@@ -768,6 +785,14 @@
     - [Rpc.Log.Send.Response](#anytype-Rpc-Log-Send-Response)
     - [Rpc.Log.Send.Response.Error](#anytype-Rpc-Log-Send-Response-Error)
     - [Rpc.Membership](#anytype-Rpc-Membership)
+    - [Rpc.Membership.CodeGetInfo](#anytype-Rpc-Membership-CodeGetInfo)
+    - [Rpc.Membership.CodeGetInfo.Request](#anytype-Rpc-Membership-CodeGetInfo-Request)
+    - [Rpc.Membership.CodeGetInfo.Response](#anytype-Rpc-Membership-CodeGetInfo-Response)
+    - [Rpc.Membership.CodeGetInfo.Response.Error](#anytype-Rpc-Membership-CodeGetInfo-Response-Error)
+    - [Rpc.Membership.CodeRedeem](#anytype-Rpc-Membership-CodeRedeem)
+    - [Rpc.Membership.CodeRedeem.Request](#anytype-Rpc-Membership-CodeRedeem-Request)
+    - [Rpc.Membership.CodeRedeem.Response](#anytype-Rpc-Membership-CodeRedeem-Response)
+    - [Rpc.Membership.CodeRedeem.Response.Error](#anytype-Rpc-Membership-CodeRedeem-Response-Error)
     - [Rpc.Membership.Finalize](#anytype-Rpc-Membership-Finalize)
     - [Rpc.Membership.Finalize.Request](#anytype-Rpc-Membership-Finalize-Request)
     - [Rpc.Membership.Finalize.Response](#anytype-Rpc-Membership-Finalize-Response)
@@ -999,6 +1024,10 @@
     - [Rpc.Object.Redo.Request](#anytype-Rpc-Object-Redo-Request)
     - [Rpc.Object.Redo.Response](#anytype-Rpc-Object-Redo-Response)
     - [Rpc.Object.Redo.Response.Error](#anytype-Rpc-Object-Redo-Response-Error)
+    - [Rpc.Object.Refresh](#anytype-Rpc-Object-Refresh)
+    - [Rpc.Object.Refresh.Request](#anytype-Rpc-Object-Refresh-Request)
+    - [Rpc.Object.Refresh.Response](#anytype-Rpc-Object-Refresh-Response)
+    - [Rpc.Object.Refresh.Response.Error](#anytype-Rpc-Object-Refresh-Response-Error)
     - [Rpc.Object.Search](#anytype-Rpc-Object-Search)
     - [Rpc.Object.Search.Request](#anytype-Rpc-Object-Search-Request)
     - [Rpc.Object.Search.Response](#anytype-Rpc-Object-Search-Response)
@@ -1176,6 +1205,15 @@
     - [Rpc.Publishing.ResolveUri.Request](#anytype-Rpc-Publishing-ResolveUri-Request)
     - [Rpc.Publishing.ResolveUri.Response](#anytype-Rpc-Publishing-ResolveUri-Response)
     - [Rpc.Publishing.ResolveUri.Response.Error](#anytype-Rpc-Publishing-ResolveUri-Response-Error)
+    - [Rpc.PushNotification](#anytype-Rpc-PushNotification)
+    - [Rpc.PushNotification.RegisterToken](#anytype-Rpc-PushNotification-RegisterToken)
+    - [Rpc.PushNotification.RegisterToken.Request](#anytype-Rpc-PushNotification-RegisterToken-Request)
+    - [Rpc.PushNotification.RegisterToken.Response](#anytype-Rpc-PushNotification-RegisterToken-Response)
+    - [Rpc.PushNotification.RegisterToken.Response.Error](#anytype-Rpc-PushNotification-RegisterToken-Response-Error)
+    - [Rpc.PushNotification.SetSpaceMode](#anytype-Rpc-PushNotification-SetSpaceMode)
+    - [Rpc.PushNotification.SetSpaceMode.Request](#anytype-Rpc-PushNotification-SetSpaceMode-Request)
+    - [Rpc.PushNotification.SetSpaceMode.Response](#anytype-Rpc-PushNotification-SetSpaceMode-Response)
+    - [Rpc.PushNotification.SetSpaceMode.Response.Error](#anytype-Rpc-PushNotification-SetSpaceMode-Response-Error)
     - [Rpc.Relation](#anytype-Rpc-Relation)
     - [Rpc.Relation.ListRemoveOption](#anytype-Rpc-Relation-ListRemoveOption)
     - [Rpc.Relation.ListRemoveOption.Request](#anytype-Rpc-Relation-ListRemoveOption-Request)
@@ -1195,6 +1233,10 @@
     - [Rpc.Space.Delete.Request](#anytype-Rpc-Space-Delete-Request)
     - [Rpc.Space.Delete.Response](#anytype-Rpc-Space-Delete-Response)
     - [Rpc.Space.Delete.Response.Error](#anytype-Rpc-Space-Delete-Response-Error)
+    - [Rpc.Space.InviteChange](#anytype-Rpc-Space-InviteChange)
+    - [Rpc.Space.InviteChange.Request](#anytype-Rpc-Space-InviteChange-Request)
+    - [Rpc.Space.InviteChange.Response](#anytype-Rpc-Space-InviteChange-Response)
+    - [Rpc.Space.InviteChange.Response.Error](#anytype-Rpc-Space-InviteChange-Response-Error)
     - [Rpc.Space.InviteGenerate](#anytype-Rpc-Space-InviteGenerate)
     - [Rpc.Space.InviteGenerate.Request](#anytype-Rpc-Space-InviteGenerate-Request)
     - [Rpc.Space.InviteGenerate.Response](#anytype-Rpc-Space-InviteGenerate-Response)
@@ -1362,7 +1404,10 @@
     - [Rpc.Account.Create.Response.Error.Code](#anytype-Rpc-Account-Create-Response-Error-Code)
     - [Rpc.Account.Delete.Response.Error.Code](#anytype-Rpc-Account-Delete-Response-Error-Code)
     - [Rpc.Account.EnableLocalNetworkSync.Response.Error.Code](#anytype-Rpc-Account-EnableLocalNetworkSync-Response-Error-Code)
+    - [Rpc.Account.LocalLink.CreateApp.Response.Error.Code](#anytype-Rpc-Account-LocalLink-CreateApp-Response-Error-Code)
+    - [Rpc.Account.LocalLink.ListApps.Response.Error.Code](#anytype-Rpc-Account-LocalLink-ListApps-Response-Error-Code)
     - [Rpc.Account.LocalLink.NewChallenge.Response.Error.Code](#anytype-Rpc-Account-LocalLink-NewChallenge-Response-Error-Code)
+    - [Rpc.Account.LocalLink.RevokeApp.Response.Error.Code](#anytype-Rpc-Account-LocalLink-RevokeApp-Response-Error-Code)
     - [Rpc.Account.LocalLink.SolveChallenge.Response.Error.Code](#anytype-Rpc-Account-LocalLink-SolveChallenge-Response-Error-Code)
     - [Rpc.Account.Migrate.Response.Error.Code](#anytype-Rpc-Account-Migrate-Response-Error-Code)
     - [Rpc.Account.MigrateCancel.Response.Error.Code](#anytype-Rpc-Account-MigrateCancel-Response-Error-Code)
@@ -1479,6 +1524,7 @@
     - [Rpc.Chat.EditMessageContent.Response.Error.Code](#anytype-Rpc-Chat-EditMessageContent-Response-Error-Code)
     - [Rpc.Chat.GetMessages.Response.Error.Code](#anytype-Rpc-Chat-GetMessages-Response-Error-Code)
     - [Rpc.Chat.GetMessagesByIds.Response.Error.Code](#anytype-Rpc-Chat-GetMessagesByIds-Response-Error-Code)
+    - [Rpc.Chat.ReadAll.Response.Error.Code](#anytype-Rpc-Chat-ReadAll-Response-Error-Code)
     - [Rpc.Chat.ReadMessages.ReadType](#anytype-Rpc-Chat-ReadMessages-ReadType)
     - [Rpc.Chat.ReadMessages.Response.Error.Code](#anytype-Rpc-Chat-ReadMessages-Response-Error-Code)
     - [Rpc.Chat.SubscribeLastMessages.Response.Error.Code](#anytype-Rpc-Chat-SubscribeLastMessages-Response-Error-Code)
@@ -1526,6 +1572,8 @@
     - [Rpc.LinkPreview.Response.Error.Code](#anytype-Rpc-LinkPreview-Response-Error-Code)
     - [Rpc.Log.Send.Request.Level](#anytype-Rpc-Log-Send-Request-Level)
     - [Rpc.Log.Send.Response.Error.Code](#anytype-Rpc-Log-Send-Response-Error-Code)
+    - [Rpc.Membership.CodeGetInfo.Response.Error.Code](#anytype-Rpc-Membership-CodeGetInfo-Response-Error-Code)
+    - [Rpc.Membership.CodeRedeem.Response.Error.Code](#anytype-Rpc-Membership-CodeRedeem-Response-Error-Code)
     - [Rpc.Membership.Finalize.Response.Error.Code](#anytype-Rpc-Membership-Finalize-Response-Error-Code)
     - [Rpc.Membership.GetPortalLinkUrl.Response.Error.Code](#anytype-Rpc-Membership-GetPortalLinkUrl-Response-Error-Code)
     - [Rpc.Membership.GetStatus.Response.Error.Code](#anytype-Rpc-Membership-GetStatus-Response-Error-Code)
@@ -1586,6 +1634,7 @@
     - [Rpc.Object.Open.Response.Error.Code](#anytype-Rpc-Object-Open-Response-Error-Code)
     - [Rpc.Object.OpenBreadcrumbs.Response.Error.Code](#anytype-Rpc-Object-OpenBreadcrumbs-Response-Error-Code)
     - [Rpc.Object.Redo.Response.Error.Code](#anytype-Rpc-Object-Redo-Response-Error-Code)
+    - [Rpc.Object.Refresh.Response.Error.Code](#anytype-Rpc-Object-Refresh-Response-Error-Code)
     - [Rpc.Object.Search.Response.Error.Code](#anytype-Rpc-Object-Search-Response-Error-Code)
     - [Rpc.Object.SearchSubscribe.Response.Error.Code](#anytype-Rpc-Object-SearchSubscribe-Response-Error-Code)
     - [Rpc.Object.SearchUnsubscribe.Response.Error.Code](#anytype-Rpc-Object-SearchUnsubscribe-Response-Error-Code)
@@ -1629,11 +1678,15 @@
     - [Rpc.Publishing.PublishStatus](#anytype-Rpc-Publishing-PublishStatus)
     - [Rpc.Publishing.Remove.Response.Error.Code](#anytype-Rpc-Publishing-Remove-Response-Error-Code)
     - [Rpc.Publishing.ResolveUri.Response.Error.Code](#anytype-Rpc-Publishing-ResolveUri-Response-Error-Code)
+    - [Rpc.PushNotification.RegisterToken.Platform](#anytype-Rpc-PushNotification-RegisterToken-Platform)
+    - [Rpc.PushNotification.RegisterToken.Response.Error.Code](#anytype-Rpc-PushNotification-RegisterToken-Response-Error-Code)
+    - [Rpc.PushNotification.SetSpaceMode.Mode](#anytype-Rpc-PushNotification-SetSpaceMode-Mode)
+    - [Rpc.PushNotification.SetSpaceMode.Response.Error.Code](#anytype-Rpc-PushNotification-SetSpaceMode-Response-Error-Code)
     - [Rpc.Relation.ListRemoveOption.Response.Error.Code](#anytype-Rpc-Relation-ListRemoveOption-Response-Error-Code)
     - [Rpc.Relation.ListWithValue.Response.Error.Code](#anytype-Rpc-Relation-ListWithValue-Response-Error-Code)
     - [Rpc.Relation.Options.Response.Error.Code](#anytype-Rpc-Relation-Options-Response-Error-Code)
     - [Rpc.Space.Delete.Response.Error.Code](#anytype-Rpc-Space-Delete-Response-Error-Code)
-    - [Rpc.Space.InviteGenerate.Request.InviteType](#anytype-Rpc-Space-InviteGenerate-Request-InviteType)
+    - [Rpc.Space.InviteChange.Response.Error.Code](#anytype-Rpc-Space-InviteChange-Response-Error-Code)
     - [Rpc.Space.InviteGenerate.Response.Error.Code](#anytype-Rpc-Space-InviteGenerate-Response-Error-Code)
     - [Rpc.Space.InviteGetCurrent.Response.Error.Code](#anytype-Rpc-Space-InviteGetCurrent-Response-Error-Code)
     - [Rpc.Space.InviteGetGuest.Response.Error.Code](#anytype-Rpc-Space-InviteGetGuest-Response-Error-Code)
@@ -1913,6 +1966,7 @@
 - [pkg/lib/pb/model/protos/models.proto](#pkg_lib_pb_model_protos_models-proto)
     - [Account](#anytype-model-Account)
     - [Account.Auth](#anytype-model-Account-Auth)
+    - [Account.Auth.AppInfo](#anytype-model-Account-Auth-AppInfo)
     - [Account.Config](#anytype-model-Account-Config)
     - [Account.Info](#anytype-model-Account-Info)
     - [Account.Status](#anytype-model-Account-Status)
@@ -2050,7 +2104,7 @@
     - [Import.ErrorCode](#anytype-model-Import-ErrorCode)
     - [Import.Type](#anytype-model-Import-Type)
     - [InternalFlag.Value](#anytype-model-InternalFlag-Value)
-    - [InvitePayload.InviteType](#anytype-model-InvitePayload-InviteType)
+    - [InviteType](#anytype-model-InviteType)
     - [LinkPreview.Type](#anytype-model-LinkPreview-Type)
     - [Membership.EmailVerificationStatus](#anytype-model-Membership-EmailVerificationStatus)
     - [Membership.PaymentMethod](#anytype-model-Membership-PaymentMethod)
@@ -2074,6 +2128,8 @@
     - [SpaceShareableStatus](#anytype-model-SpaceShareableStatus)
     - [SpaceStatus](#anytype-model-SpaceStatus)
     - [SpaceUxType](#anytype-model-SpaceUxType)
+    - [SyncError](#anytype-model-SyncError)
+    - [SyncStatus](#anytype-model-SyncStatus)
   
 - [Scalar Value Types](#scalar-value-types)
 
@@ -2107,6 +2163,9 @@
 | WalletConvert | [Rpc.Wallet.Convert.Request](#anytype-Rpc-Wallet-Convert-Request) | [Rpc.Wallet.Convert.Response](#anytype-Rpc-Wallet-Convert-Response) |  |
 | AccountLocalLinkNewChallenge | [Rpc.Account.LocalLink.NewChallenge.Request](#anytype-Rpc-Account-LocalLink-NewChallenge-Request) | [Rpc.Account.LocalLink.NewChallenge.Response](#anytype-Rpc-Account-LocalLink-NewChallenge-Response) |  |
 | AccountLocalLinkSolveChallenge | [Rpc.Account.LocalLink.SolveChallenge.Request](#anytype-Rpc-Account-LocalLink-SolveChallenge-Request) | [Rpc.Account.LocalLink.SolveChallenge.Response](#anytype-Rpc-Account-LocalLink-SolveChallenge-Response) |  |
+| AccountLocalLinkCreateApp | [Rpc.Account.LocalLink.CreateApp.Request](#anytype-Rpc-Account-LocalLink-CreateApp-Request) | [Rpc.Account.LocalLink.CreateApp.Response](#anytype-Rpc-Account-LocalLink-CreateApp-Response) |  |
+| AccountLocalLinkListApps | [Rpc.Account.LocalLink.ListApps.Request](#anytype-Rpc-Account-LocalLink-ListApps-Request) | [Rpc.Account.LocalLink.ListApps.Response](#anytype-Rpc-Account-LocalLink-ListApps-Response) |  |
+| AccountLocalLinkRevokeApp | [Rpc.Account.LocalLink.RevokeApp.Request](#anytype-Rpc-Account-LocalLink-RevokeApp-Request) | [Rpc.Account.LocalLink.RevokeApp.Response](#anytype-Rpc-Account-LocalLink-RevokeApp-Response) |  |
 | WalletCreateSession | [Rpc.Wallet.CreateSession.Request](#anytype-Rpc-Wallet-CreateSession-Request) | [Rpc.Wallet.CreateSession.Response](#anytype-Rpc-Wallet-CreateSession-Response) |  |
 | WalletCloseSession | [Rpc.Wallet.CloseSession.Request](#anytype-Rpc-Wallet-CloseSession-Request) | [Rpc.Wallet.CloseSession.Response](#anytype-Rpc-Wallet-CloseSession-Response) |  |
 | WorkspaceCreate | [Rpc.Workspace.Create.Request](#anytype-Rpc-Workspace-Create-Request) | [Rpc.Workspace.Create.Response](#anytype-Rpc-Workspace-Create-Response) | Workspace *** |
@@ -2135,6 +2194,7 @@
 | AccountChangeNetworkConfigAndRestart | [Rpc.Account.ChangeNetworkConfigAndRestart.Request](#anytype-Rpc-Account-ChangeNetworkConfigAndRestart-Request) | [Rpc.Account.ChangeNetworkConfigAndRestart.Response](#anytype-Rpc-Account-ChangeNetworkConfigAndRestart-Response) |  |
 | SpaceDelete | [Rpc.Space.Delete.Request](#anytype-Rpc-Space-Delete-Request) | [Rpc.Space.Delete.Response](#anytype-Rpc-Space-Delete-Response) | Space *** |
 | SpaceInviteGenerate | [Rpc.Space.InviteGenerate.Request](#anytype-Rpc-Space-InviteGenerate-Request) | [Rpc.Space.InviteGenerate.Response](#anytype-Rpc-Space-InviteGenerate-Response) |  |
+| SpaceInviteChange | [Rpc.Space.InviteChange.Request](#anytype-Rpc-Space-InviteChange-Request) | [Rpc.Space.InviteChange.Response](#anytype-Rpc-Space-InviteChange-Response) |  |
 | SpaceInviteGetCurrent | [Rpc.Space.InviteGetCurrent.Request](#anytype-Rpc-Space-InviteGetCurrent-Request) | [Rpc.Space.InviteGetCurrent.Response](#anytype-Rpc-Space-InviteGetCurrent-Response) |  |
 | SpaceInviteGetGuest | [Rpc.Space.InviteGetGuest.Request](#anytype-Rpc-Space-InviteGetGuest-Request) | [Rpc.Space.InviteGetGuest.Response](#anytype-Rpc-Space-InviteGetGuest-Response) |  |
 | SpaceInviteRevoke | [Rpc.Space.InviteRevoke.Request](#anytype-Rpc-Space-InviteRevoke-Request) | [Rpc.Space.InviteRevoke.Response](#anytype-Rpc-Space-InviteRevoke-Response) |  |
@@ -2156,6 +2216,7 @@
 | PublishingResolveUri | [Rpc.Publishing.ResolveUri.Request](#anytype-Rpc-Publishing-ResolveUri-Request) | [Rpc.Publishing.ResolveUri.Response](#anytype-Rpc-Publishing-ResolveUri-Response) |  |
 | PublishingGetStatus | [Rpc.Publishing.GetStatus.Request](#anytype-Rpc-Publishing-GetStatus-Request) | [Rpc.Publishing.GetStatus.Response](#anytype-Rpc-Publishing-GetStatus-Response) |  |
 | ObjectOpen | [Rpc.Object.Open.Request](#anytype-Rpc-Object-Open-Request) | [Rpc.Object.Open.Response](#anytype-Rpc-Object-Open-Response) | Object *** |
+| ObjectRefresh | [Rpc.Object.Refresh.Request](#anytype-Rpc-Object-Refresh-Request) | [Rpc.Object.Refresh.Response](#anytype-Rpc-Object-Refresh-Response) |  |
 | ObjectClose | [Rpc.Object.Close.Request](#anytype-Rpc-Object-Close-Request) | [Rpc.Object.Close.Response](#anytype-Rpc-Object-Close-Response) |  |
 | ObjectShow | [Rpc.Object.Show.Request](#anytype-Rpc-Object-Show-Request) | [Rpc.Object.Show.Response](#anytype-Rpc-Object-Show-Response) |  |
 | ObjectCreate | [Rpc.Object.Create.Request](#anytype-Rpc-Object-Create-Request) | [Rpc.Object.Create.Response](#anytype-Rpc-Object-Create-Response) | ObjectCreate just creates the new page, without adding the link to it from some other page |
@@ -2368,6 +2429,8 @@
 | MembershipFinalize | [Rpc.Membership.Finalize.Request](#anytype-Rpc-Membership-Finalize-Request) | [Rpc.Membership.Finalize.Response](#anytype-Rpc-Membership-Finalize-Response) | If your subscription is in PendingRequiresFinalization: please call MembershipFinalize to finish the process |
 | MembershipGetTiers | [Rpc.Membership.GetTiers.Request](#anytype-Rpc-Membership-GetTiers-Request) | [Rpc.Membership.GetTiers.Response](#anytype-Rpc-Membership-GetTiers-Response) |  |
 | MembershipVerifyAppStoreReceipt | [Rpc.Membership.VerifyAppStoreReceipt.Request](#anytype-Rpc-Membership-VerifyAppStoreReceipt-Request) | [Rpc.Membership.VerifyAppStoreReceipt.Response](#anytype-Rpc-Membership-VerifyAppStoreReceipt-Response) |  |
+| MembershipCodeGetInfo | [Rpc.Membership.CodeGetInfo.Request](#anytype-Rpc-Membership-CodeGetInfo-Request) | [Rpc.Membership.CodeGetInfo.Response](#anytype-Rpc-Membership-CodeGetInfo-Response) |  |
+| MembershipCodeRedeem | [Rpc.Membership.CodeRedeem.Request](#anytype-Rpc-Membership-CodeRedeem-Request) | [Rpc.Membership.CodeRedeem.Response](#anytype-Rpc-Membership-CodeRedeem-Response) |  |
 | NameServiceUserAccountGet | [Rpc.NameService.UserAccount.Get.Request](#anytype-Rpc-NameService-UserAccount-Get-Request) | [Rpc.NameService.UserAccount.Get.Response](#anytype-Rpc-NameService-UserAccount-Get-Response) | Name Service: *** hello.any -&gt; data |
 | NameServiceResolveName | [Rpc.NameService.ResolveName.Request](#anytype-Rpc-NameService-ResolveName-Request) | [Rpc.NameService.ResolveName.Response](#anytype-Rpc-NameService-ResolveName-Response) |  |
 | NameServiceResolveAnyId | [Rpc.NameService.ResolveAnyId.Request](#anytype-Rpc-NameService-ResolveAnyId-Request) | [Rpc.NameService.ResolveAnyId.Response](#anytype-Rpc-NameService-ResolveAnyId-Response) | 12D3KooWA8EXV3KjBxEU5EnsPfneLx84vMWAtTBQBeyooN82KSuS -&gt; hello.any |
@@ -2388,10 +2451,13 @@
 | ChatSubscribeToMessagePreviews | [Rpc.Chat.SubscribeToMessagePreviews.Request](#anytype-Rpc-Chat-SubscribeToMessagePreviews-Request) | [Rpc.Chat.SubscribeToMessagePreviews.Response](#anytype-Rpc-Chat-SubscribeToMessagePreviews-Response) |  |
 | ChatUnsubscribeFromMessagePreviews | [Rpc.Chat.UnsubscribeFromMessagePreviews.Request](#anytype-Rpc-Chat-UnsubscribeFromMessagePreviews-Request) | [Rpc.Chat.UnsubscribeFromMessagePreviews.Response](#anytype-Rpc-Chat-UnsubscribeFromMessagePreviews-Response) |  |
 | ObjectChatAdd | [Rpc.Object.ChatAdd.Request](#anytype-Rpc-Object-ChatAdd-Request) | [Rpc.Object.ChatAdd.Response](#anytype-Rpc-Object-ChatAdd-Response) |  |
+| ChatReadAll | [Rpc.Chat.ReadAll.Request](#anytype-Rpc-Chat-ReadAll-Request) | [Rpc.Chat.ReadAll.Response](#anytype-Rpc-Chat-ReadAll-Response) |  |
 | AIWritingTools | [Rpc.AI.WritingTools.Request](#anytype-Rpc-AI-WritingTools-Request) | [Rpc.AI.WritingTools.Response](#anytype-Rpc-AI-WritingTools-Response) | mock AI RPCs for compatibility between branches. Not implemented in main |
 | AIAutofill | [Rpc.AI.Autofill.Request](#anytype-Rpc-AI-Autofill-Request) | [Rpc.AI.Autofill.Response](#anytype-Rpc-AI-Autofill-Response) |  |
 | AIListSummary | [Rpc.AI.ListSummary.Request](#anytype-Rpc-AI-ListSummary-Request) | [Rpc.AI.ListSummary.Response](#anytype-Rpc-AI-ListSummary-Response) |  |
 | AIObjectCreateFromUrl | [Rpc.AI.ObjectCreateFromUrl.Request](#anytype-Rpc-AI-ObjectCreateFromUrl-Request) | [Rpc.AI.ObjectCreateFromUrl.Response](#anytype-Rpc-AI-ObjectCreateFromUrl-Response) |  |
+| PushNotificationRegisterToken | [Rpc.PushNotification.RegisterToken.Request](#anytype-Rpc-PushNotification-RegisterToken-Request) | [Rpc.PushNotification.RegisterToken.Response](#anytype-Rpc-PushNotification-RegisterToken-Response) | Push |
+| PushNotificationSetSpaceMode | [Rpc.PushNotification.SetSpaceMode.Request](#anytype-Rpc-PushNotification-SetSpaceMode-Request) | [Rpc.PushNotification.SetSpaceMode.Response](#anytype-Rpc-PushNotification-SetSpaceMode-Response) |  |
 
  
 
@@ -3733,6 +3799,115 @@ TODO: Remove this request if we do not need it, GO-1926
 
 
 
+<a name="anytype-Rpc-Account-LocalLink-CreateApp"></a>
+
+### Rpc.Account.LocalLink.CreateApp
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Account-LocalLink-CreateApp-Request"></a>
+
+### Rpc.Account.LocalLink.CreateApp.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| app | [model.Account.Auth.AppInfo](#anytype-model-Account-Auth-AppInfo) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Account-LocalLink-CreateApp-Response"></a>
+
+### Rpc.Account.LocalLink.CreateApp.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Account.LocalLink.CreateApp.Response.Error](#anytype-Rpc-Account-LocalLink-CreateApp-Response-Error) |  |  |
+| appKey | [string](#string) |  | persistent key, that can be used to restore session via CreateSession or for JSON API |
+
+
+
+
+
+
+<a name="anytype-Rpc-Account-LocalLink-CreateApp-Response-Error"></a>
+
+### Rpc.Account.LocalLink.CreateApp.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Account.LocalLink.CreateApp.Response.Error.Code](#anytype-Rpc-Account-LocalLink-CreateApp-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Account-LocalLink-ListApps"></a>
+
+### Rpc.Account.LocalLink.ListApps
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Account-LocalLink-ListApps-Request"></a>
+
+### Rpc.Account.LocalLink.ListApps.Request
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Account-LocalLink-ListApps-Response"></a>
+
+### Rpc.Account.LocalLink.ListApps.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Account.LocalLink.ListApps.Response.Error](#anytype-Rpc-Account-LocalLink-ListApps-Response-Error) |  |  |
+| app | [model.Account.Auth.AppInfo](#anytype-model-Account-Auth-AppInfo) | repeated |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Account-LocalLink-ListApps-Response-Error"></a>
+
+### Rpc.Account.LocalLink.ListApps.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Account.LocalLink.ListApps.Response.Error.Code](#anytype-Rpc-Account-LocalLink-ListApps-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
 <a name="anytype-Rpc-Account-LocalLink-NewChallenge"></a>
 
 ### Rpc.Account.LocalLink.NewChallenge
@@ -3784,6 +3959,62 @@ TODO: Remove this request if we do not need it, GO-1926
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | code | [Rpc.Account.LocalLink.NewChallenge.Response.Error.Code](#anytype-Rpc-Account-LocalLink-NewChallenge-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Account-LocalLink-RevokeApp"></a>
+
+### Rpc.Account.LocalLink.RevokeApp
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Account-LocalLink-RevokeApp-Request"></a>
+
+### Rpc.Account.LocalLink.RevokeApp.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| appHash | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Account-LocalLink-RevokeApp-Response"></a>
+
+### Rpc.Account.LocalLink.RevokeApp.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Account.LocalLink.RevokeApp.Response.Error](#anytype-Rpc-Account-LocalLink-RevokeApp-Response-Error) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Account-LocalLink-RevokeApp-Response-Error"></a>
+
+### Rpc.Account.LocalLink.RevokeApp.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Account.LocalLink.RevokeApp.Response.Error.Code](#anytype-Rpc-Account-LocalLink-RevokeApp-Response-Error-Code) |  |  |
 | description | [string](#string) |  |  |
 
 
@@ -10844,6 +11075,57 @@ Get marks list in the selected range in text block.
 
 
 
+<a name="anytype-Rpc-Chat-ReadAll"></a>
+
+### Rpc.Chat.ReadAll
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Chat-ReadAll-Request"></a>
+
+### Rpc.Chat.ReadAll.Request
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Chat-ReadAll-Response"></a>
+
+### Rpc.Chat.ReadAll.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Chat.ReadAll.Response.Error](#anytype-Rpc-Chat-ReadAll-Response-Error) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Chat-ReadAll-Response-Error"></a>
+
+### Rpc.Chat.ReadAll.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Chat.ReadAll.Response.Error.Code](#anytype-Rpc-Chat-ReadAll-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
 <a name="anytype-Rpc-Chat-ReadMessages"></a>
 
 ### Rpc.Chat.ReadMessages
@@ -10982,6 +11264,11 @@ Get marks list in the selected range in text block.
 
 
 
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| subId | [string](#string) |  |  |
+
+
 
 
 
@@ -10995,7 +11282,26 @@ Get marks list in the selected range in text block.
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | error | [Rpc.Chat.SubscribeToMessagePreviews.Response.Error](#anytype-Rpc-Chat-SubscribeToMessagePreviews-Response-Error) |  |  |
-| subId | [string](#string) |  |  |
+| previews | [Rpc.Chat.SubscribeToMessagePreviews.Response.ChatPreview](#anytype-Rpc-Chat-SubscribeToMessagePreviews-Response-ChatPreview) | repeated |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Chat-SubscribeToMessagePreviews-Response-ChatPreview"></a>
+
+### Rpc.Chat.SubscribeToMessagePreviews.Response.ChatPreview
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| spaceId | [string](#string) |  |  |
+| chatObjectId | [string](#string) |  |  |
+| message | [model.ChatMessage](#anytype-model-ChatMessage) |  |  |
+| state | [model.ChatState](#anytype-model-ChatState) |  |  |
+| dependencies | [google.protobuf.Struct](#google-protobuf-Struct) | repeated |  |
 
 
 
@@ -11206,6 +11512,11 @@ Get marks list in the selected range in text block.
 
 ### Rpc.Chat.UnsubscribeFromMessagePreviews.Request
 
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| subId | [string](#string) |  |  |
 
 
 
@@ -12814,7 +13125,6 @@ Get marks list in the selected range in text block.
 | details | [google.protobuf.Struct](#google-protobuf-Struct) |  | additional details for file object |
 | origin | [model.ObjectOrigin](#anytype-model-ObjectOrigin) |  |  |
 | imageKind | [model.ImageKind](#anytype-model-ImageKind) |  |  |
-| createTypeWidgetIfMissing | [bool](#bool) |  | experimental flag to auto-create type widget if missing |
 
 
 
@@ -13493,6 +13803,122 @@ returns blockShow event for given version
 A Membership is a bundle of several &#34;Features&#34;
 every user should have one and only one tier
 users can not have N tiers (no combining)
+
+
+
+
+
+
+<a name="anytype-Rpc-Membership-CodeGetInfo"></a>
+
+### Rpc.Membership.CodeGetInfo
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Membership-CodeGetInfo-Request"></a>
+
+### Rpc.Membership.CodeGetInfo.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Membership-CodeGetInfo-Response"></a>
+
+### Rpc.Membership.CodeGetInfo.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Membership.CodeGetInfo.Response.Error](#anytype-Rpc-Membership-CodeGetInfo-Response-Error) |  |  |
+| requestedTier | [uint32](#uint32) |  | which tier current code can unlock |
+
+
+
+
+
+
+<a name="anytype-Rpc-Membership-CodeGetInfo-Response-Error"></a>
+
+### Rpc.Membership.CodeGetInfo.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Membership.CodeGetInfo.Response.Error.Code](#anytype-Rpc-Membership-CodeGetInfo-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Membership-CodeRedeem"></a>
+
+### Rpc.Membership.CodeRedeem
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Membership-CodeRedeem-Request"></a>
+
+### Rpc.Membership.CodeRedeem.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [string](#string) |  |  |
+| nsName | [string](#string) |  |  |
+| nsNameType | [model.NameserviceNameType](#anytype-model-NameserviceNameType) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Membership-CodeRedeem-Response"></a>
+
+### Rpc.Membership.CodeRedeem.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Membership.CodeRedeem.Response.Error](#anytype-Rpc-Membership-CodeRedeem-Response-Error) |  |  |
+| requestedTier | [uint32](#uint32) |  | which tier does the current code unlock |
+
+
+
+
+
+
+<a name="anytype-Rpc-Membership-CodeRedeem-Response-Error"></a>
+
+### Rpc.Membership.CodeRedeem.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Membership.CodeRedeem.Response.Error.Code](#anytype-Rpc-Membership-CodeRedeem-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
 
 
 
@@ -14901,7 +15327,6 @@ Get the info for page alongside with info for all inbound and outbound links fro
 | spaceId | [string](#string) |  |  |
 | objectTypeUniqueKey | [string](#string) |  |  |
 | withChat | [bool](#bool) |  |  |
-| createTypeWidgetIfMissing | [bool](#bool) |  | experimental flag to auto-create type widget if missing |
 
 
 
@@ -15657,6 +16082,7 @@ DEPRECATED, GO-1926 |
 | spaceId | [string](#string) |  |  |
 | collectionId | [string](#string) |  |  |
 | setSource | [string](#string) | repeated |  |
+| includeTypeEdges | [bool](#bool) |  |  |
 
 
 
@@ -16907,6 +17333,63 @@ Deletes the object, keys from the local store and unsubscribe from remote change
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | code | [Rpc.Object.Redo.Response.Error.Code](#anytype-Rpc-Object-Redo-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Object-Refresh"></a>
+
+### Rpc.Object.Refresh
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Object-Refresh-Request"></a>
+
+### Rpc.Object.Refresh.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| objectId | [string](#string) |  |  |
+| spaceId | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Object-Refresh-Response"></a>
+
+### Rpc.Object.Refresh.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Object.Refresh.Response.Error](#anytype-Rpc-Object-Refresh-Response-Error) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Object-Refresh-Response-Error"></a>
+
+### Rpc.Object.Refresh.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Object.Refresh.Response.Error.Code](#anytype-Rpc-Object-Refresh-Response-Error-Code) |  |  |
 | description | [string](#string) |  |  |
 
 
@@ -19473,6 +19956,130 @@ Available undo/redo operations
 
 
 
+<a name="anytype-Rpc-PushNotification"></a>
+
+### Rpc.PushNotification
+
+
+
+
+
+
+
+<a name="anytype-Rpc-PushNotification-RegisterToken"></a>
+
+### Rpc.PushNotification.RegisterToken
+
+
+
+
+
+
+
+<a name="anytype-Rpc-PushNotification-RegisterToken-Request"></a>
+
+### Rpc.PushNotification.RegisterToken.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| token | [string](#string) |  |  |
+| platform | [Rpc.PushNotification.RegisterToken.Platform](#anytype-Rpc-PushNotification-RegisterToken-Platform) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-PushNotification-RegisterToken-Response"></a>
+
+### Rpc.PushNotification.RegisterToken.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.PushNotification.RegisterToken.Response.Error](#anytype-Rpc-PushNotification-RegisterToken-Response-Error) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-PushNotification-RegisterToken-Response-Error"></a>
+
+### Rpc.PushNotification.RegisterToken.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.PushNotification.RegisterToken.Response.Error.Code](#anytype-Rpc-PushNotification-RegisterToken-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-PushNotification-SetSpaceMode"></a>
+
+### Rpc.PushNotification.SetSpaceMode
+
+
+
+
+
+
+
+<a name="anytype-Rpc-PushNotification-SetSpaceMode-Request"></a>
+
+### Rpc.PushNotification.SetSpaceMode.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| spaceId | [string](#string) |  |  |
+| mode | [Rpc.PushNotification.SetSpaceMode.Mode](#anytype-Rpc-PushNotification-SetSpaceMode-Mode) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-PushNotification-SetSpaceMode-Response"></a>
+
+### Rpc.PushNotification.SetSpaceMode.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.PushNotification.SetSpaceMode.Response.Error](#anytype-Rpc-PushNotification-SetSpaceMode-Response-Error) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-PushNotification-SetSpaceMode-Response-Error"></a>
+
+### Rpc.PushNotification.SetSpaceMode.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.PushNotification.SetSpaceMode.Response.Error.Code](#anytype-Rpc-PushNotification-SetSpaceMode-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
 <a name="anytype-Rpc-Relation"></a>
 
 ### Rpc.Relation
@@ -19738,6 +20345,63 @@ Available undo/redo operations
 
 
 
+<a name="anytype-Rpc-Space-InviteChange"></a>
+
+### Rpc.Space.InviteChange
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Space-InviteChange-Request"></a>
+
+### Rpc.Space.InviteChange.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| spaceId | [string](#string) |  |  |
+| permissions | [model.ParticipantPermissions](#anytype-model-ParticipantPermissions) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Space-InviteChange-Response"></a>
+
+### Rpc.Space.InviteChange.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Space.InviteChange.Response.Error](#anytype-Rpc-Space-InviteChange-Response-Error) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Space-InviteChange-Response-Error"></a>
+
+### Rpc.Space.InviteChange.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Space.InviteChange.Response.Error.Code](#anytype-Rpc-Space-InviteChange-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
 <a name="anytype-Rpc-Space-InviteGenerate"></a>
 
 ### Rpc.Space.InviteGenerate
@@ -19757,7 +20421,8 @@ Available undo/redo operations
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | spaceId | [string](#string) |  |  |
-| inviteType | [Rpc.Space.InviteGenerate.Request.InviteType](#anytype-Rpc-Space-InviteGenerate-Request-InviteType) |  |  |
+| inviteType | [model.InviteType](#anytype-model-InviteType) |  |  |
+| permissions | [model.ParticipantPermissions](#anytype-model-ParticipantPermissions) |  |  |
 
 
 
@@ -19775,6 +20440,8 @@ Available undo/redo operations
 | error | [Rpc.Space.InviteGenerate.Response.Error](#anytype-Rpc-Space-InviteGenerate-Response-Error) |  |  |
 | inviteCid | [string](#string) |  |  |
 | inviteFileKey | [string](#string) |  |  |
+| inviteType | [model.InviteType](#anytype-model-InviteType) |  |  |
+| permissions | [model.ParticipantPermissions](#anytype-model-ParticipantPermissions) |  |  |
 
 
 
@@ -19833,6 +20500,8 @@ Available undo/redo operations
 | error | [Rpc.Space.InviteGetCurrent.Response.Error](#anytype-Rpc-Space-InviteGetCurrent-Response-Error) |  |  |
 | inviteCid | [string](#string) |  |  |
 | inviteFileKey | [string](#string) |  |  |
+| inviteType | [model.InviteType](#anytype-model-InviteType) |  |  |
+| permissions | [model.ParticipantPermissions](#anytype-model-ParticipantPermissions) |  |  |
 
 
 
@@ -20008,7 +20677,8 @@ Available undo/redo operations
 | spaceName | [string](#string) |  |  |
 | spaceIconCid | [string](#string) |  |  |
 | creatorName | [string](#string) |  |  |
-| isGuestUserInvite | [bool](#bool) |  |  |
+| isGuestUserInvite | [bool](#bool) |  | deprecated, use inviteType |
+| inviteType | [model.InviteType](#anytype-model-InviteType) |  |  |
 
 
 
@@ -21188,6 +21858,7 @@ Middleware-to-front-end response, that can contain mnemonic of a created account
 | ----- | ---- | ----- | ----------- |
 | mnemonic | [string](#string) |  | cold auth |
 | appKey | [string](#string) |  | persistent app key, that can be used to restore session |
+| token | [string](#string) |  | token from the previous session |
 
 
 
@@ -21316,7 +21987,7 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | ----- | ---- | ----- | ----------- |
 | details | [google.protobuf.Struct](#google-protobuf-Struct) |  | object details |
 | useCase | [Rpc.Object.ImportUseCase.Request.UseCase](#anytype-Rpc-Object-ImportUseCase-Request-UseCase) |  | use case |
-| withChat | [bool](#bool) |  | create space-level chat; temporary solution, should be removed after chats released for all users |
+| withChat | [bool](#bool) |  | deprecated |
 
 
 
@@ -22166,6 +22837,34 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 
 
 
+<a name="anytype-Rpc-Account-LocalLink-CreateApp-Response-Error-Code"></a>
+
+### Rpc.Account.LocalLink.CreateApp.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
+| ACCOUNT_IS_NOT_RUNNING | 101 |  |
+
+
+
+<a name="anytype-Rpc-Account-LocalLink-ListApps-Response-Error-Code"></a>
+
+### Rpc.Account.LocalLink.ListApps.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
+| ACCOUNT_IS_NOT_RUNNING | 101 |  |
+
+
+
 <a name="anytype-Rpc-Account-LocalLink-NewChallenge-Response-Error-Code"></a>
 
 ### Rpc.Account.LocalLink.NewChallenge.Response.Error.Code
@@ -22178,6 +22877,21 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | BAD_INPUT | 2 |  |
 | ACCOUNT_IS_NOT_RUNNING | 101 |  |
 | TOO_MANY_REQUESTS | 102 | protection from overuse |
+
+
+
+<a name="anytype-Rpc-Account-LocalLink-RevokeApp-Response-Error-Code"></a>
+
+### Rpc.Account.LocalLink.RevokeApp.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
+| NOT_FOUND | 3 |  |
+| ACCOUNT_IS_NOT_RUNNING | 101 |  |
 
 
 
@@ -23724,6 +24438,19 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 
 
 
+<a name="anytype-Rpc-Chat-ReadAll-Response-Error-Code"></a>
+
+### Rpc.Chat.ReadAll.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 | ... |
+
+
+
 <a name="anytype-Rpc-Chat-ReadMessages-ReadType"></a>
 
 ### Rpc.Chat.ReadMessages.ReadType
@@ -24340,6 +25067,41 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | NULL | 0 |  |
 | UNKNOWN_ERROR | 1 |  |
 | BAD_INPUT | 2 |  |
+
+
+
+<a name="anytype-Rpc-Membership-CodeGetInfo-Response-Error-Code"></a>
+
+### Rpc.Membership.CodeGetInfo.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
+| NOT_LOGGED_IN | 3 |  |
+| PAYMENT_NODE_ERROR | 4 |  |
+| CODE_NOT_FOUND | 5 |  |
+| CODE_ALREADY_USED | 6 |  |
+
+
+
+<a name="anytype-Rpc-Membership-CodeRedeem-Response-Error-Code"></a>
+
+### Rpc.Membership.CodeRedeem.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
+| NOT_LOGGED_IN | 3 |  |
+| PAYMENT_NODE_ERROR | 4 |  |
+| CODE_NOT_FOUND | 5 |  |
+| CODE_ALREADY_USED | 6 |  |
+| BAD_ANYNAME | 7 |  |
 
 
 
@@ -25054,6 +25816,8 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | GET_STARTED | 1 |  |
 | EMPTY | 2 |  |
 | GUIDE_ONLY | 3 | only the guide without other tables |
+| GET_STARTED_MOBILE | 4 |  |
+| EMPTY_MOBILE | 5 |  |
 
 
 
@@ -25214,6 +25978,20 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | UNKNOWN_ERROR | 1 |  |
 | BAD_INPUT | 2 |  |
 | CAN_NOT_MOVE | 3 | ... |
+
+
+
+<a name="anytype-Rpc-Object-Refresh-Response-Error-Code"></a>
+
+### Rpc.Object.Refresh.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
+| OBJECT_DELETED | 4 |  |
 
 
 
@@ -25720,6 +26498,7 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | NO_SUCH_OBJECT | 101 |  |
 | NO_SUCH_SPACE | 102 |  |
 | LIMIT_EXCEEDED | 103 |  |
+| URL_ALREADY_TAKEN | 409 |  |
 
 
 
@@ -25793,6 +26572,57 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 
 
 
+<a name="anytype-Rpc-PushNotification-RegisterToken-Platform"></a>
+
+### Rpc.PushNotification.RegisterToken.Platform
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| IOS | 0 |  |
+| Android | 1 |  |
+
+
+
+<a name="anytype-Rpc-PushNotification-RegisterToken-Response-Error-Code"></a>
+
+### Rpc.PushNotification.RegisterToken.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
+
+
+
+<a name="anytype-Rpc-PushNotification-SetSpaceMode-Mode"></a>
+
+### Rpc.PushNotification.SetSpaceMode.Mode
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| All | 0 |  |
+| Mentions | 1 |  |
+| Nothing | 2 |  |
+
+
+
+<a name="anytype-Rpc-PushNotification-SetSpaceMode-Response-Error-Code"></a>
+
+### Rpc.PushNotification.SetSpaceMode.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
+
+
+
 <a name="anytype-Rpc-Relation-ListRemoveOption-Response-Error-Code"></a>
 
 ### Rpc.Relation.ListRemoveOption.Response.Error.Code
@@ -25851,15 +26681,20 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 
 
 
-<a name="anytype-Rpc-Space-InviteGenerate-Request-InviteType"></a>
+<a name="anytype-Rpc-Space-InviteChange-Response-Error-Code"></a>
 
-### Rpc.Space.InviteGenerate.Request.InviteType
+### Rpc.Space.InviteChange.Response.Error.Code
 
 
 | Name | Number | Description |
 | ---- | ------ | ----------- |
-| Member | 0 |  |
-| Guest | 1 |  |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
+| NO_SUCH_SPACE | 101 |  |
+| SPACE_IS_DELETED | 102 |  |
+| REQUEST_FAILED | 103 |  |
+| INCORRECT_PERMISSIONS | 105 |  |
 
 
 
@@ -26376,6 +27211,7 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | NULL | 0 |  |
 | UNKNOWN_ERROR | 1 |  |
 | BAD_INPUT | 2 |  |
+| FAILED_TO_LOAD | 100 |  |
 
 
 
@@ -26524,6 +27360,7 @@ Event – type of message, that could be sent from a middleware to the correspon
 | ----- | ---- | ----- | ----------- |
 | processName | [string](#string) |  |  |
 | processPath | [string](#string) |  |  |
+| name | [string](#string) |  |  |
 | signatureVerified | [bool](#bool) |  |  |
 
 
@@ -26870,6 +27707,7 @@ sent when the view have been changed or added
 | cardSize | [model.Block.Content.Dataview.View.Size](#anytype-model-Block-Content-Dataview-View-Size) |  | Gallery card size |
 | coverFit | [bool](#bool) |  | Image fits container |
 | groupRelationKey | [string](#string) |  | Group view by this relationKey |
+| endRelationKey | [string](#string) |  |  |
 | groupBackgroundColors | [bool](#bool) |  | Enable backgrounds in groups |
 | pageLimit | [int32](#int32) |  | Limit of objects shown in widget |
 | defaultTemplateId | [string](#string) |  | Id of template object set default for the view |
@@ -30158,6 +30996,27 @@ Contains basic information about a user account
 
 
 
+<a name="anytype-model-Account-Auth-AppInfo"></a>
+
+### Account.Auth.AppInfo
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| appHash | [string](#string) |  |  |
+| appName | [string](#string) |  | either from process or specified manually when creating |
+| appKey | [string](#string) |  |  |
+| createdAt | [int64](#int64) |  |  |
+| expireAt | [int64](#int64) |  |  |
+| scope | [Account.Auth.LocalApiScope](#anytype-model-Account-Auth-LocalApiScope) |  |  |
+| isActive | [bool](#bool) |  |  |
+
+
+
+
+
+
 <a name="anytype-model-Account-Config"></a>
 
 ### Account.Config
@@ -30190,6 +31049,7 @@ Contains basic information about a user account
 | profileObjectId | [string](#string) |  | profile block id |
 | marketplaceWorkspaceId | [string](#string) |  | marketplace workspace id |
 | workspaceObjectId | [string](#string) |  | workspace object id. used for space-level chat |
+| spaceChatId | [string](#string) |  | space-level chat if exists |
 | deviceId | [string](#string) |  |  |
 | accountSpaceId | [string](#string) |  | the first created private space. It&#39;s filled only when account is created |
 | widgetsId | [string](#string) |  |  |
@@ -30439,9 +31299,11 @@ Bookmark is to keep a web-link and to preview a content.
 | key | [string](#string) |  |  |
 | isVisible | [bool](#bool) |  |  |
 | width | [int32](#int32) |  | the displayed column % calculated based on other visible relations |
-| dateIncludeTime | [bool](#bool) |  |  |
-| timeFormat | [Block.Content.Dataview.Relation.TimeFormat](#anytype-model-Block-Content-Dataview-Relation-TimeFormat) |  |  |
-| dateFormat | [Block.Content.Dataview.Relation.DateFormat](#anytype-model-Block-Content-Dataview-Relation-DateFormat) |  |  |
+| dateIncludeTime | [bool](#bool) |  | bool isReadOnly = 4; // deprecated
+
+deprecated |
+| timeFormat | [Block.Content.Dataview.Relation.TimeFormat](#anytype-model-Block-Content-Dataview-Relation-TimeFormat) |  | deprecated |
+| dateFormat | [Block.Content.Dataview.Relation.DateFormat](#anytype-model-Block-Content-Dataview-Relation-DateFormat) |  | deprecated |
 | formula | [Block.Content.Dataview.Relation.FormulaType](#anytype-model-Block-Content-Dataview-Relation-FormulaType) |  |  |
 | align | [Block.Align](#anytype-model-Block-Align) |  |  |
 
@@ -30525,6 +31387,7 @@ Bookmark is to keep a web-link and to preview a content.
 | pageLimit | [int32](#int32) |  | Limit of objects shown in widget |
 | defaultTemplateId | [string](#string) |  | Default template that is chosen for new object created within the view |
 | defaultObjectTypeId | [string](#string) |  | Default object type that is chosen for new object created within the view |
+| endRelationKey | [string](#string) |  | Group view by this relationKey |
 
 
 
@@ -31132,7 +31995,7 @@ Used to decode block meta only, without the content itself
 | spaceName | [string](#string) |  |  |
 | spaceIconCid | [string](#string) |  |  |
 | spaceIconEncryptionKeys | [FileEncryptionKey](#anytype-model-FileEncryptionKey) | repeated |  |
-| inviteType | [InvitePayload.InviteType](#anytype-model-InvitePayload-InviteType) |  |  |
+| inviteType | [InviteType](#anytype-model-InviteType) |  |  |
 | guestKey | [bytes](#bytes) |  |  |
 
 
@@ -31252,6 +32115,7 @@ Used to decode block meta only, without the content itself
 | iosManageUrl | [string](#string) |  |  |
 | androidProductId | [string](#string) |  | Android platform-specific data: |
 | androidManageUrl | [string](#string) |  |  |
+| offer | [string](#string) |  | &#34;limited offer&#34; or somehing like that |
 
 
 
@@ -31708,6 +32572,7 @@ default dictionary with unique values to choose for select/multiSelect format |
 deprecated, to be removed |
 | creator | [string](#string) |  | creator profile id |
 | revision | [int64](#int64) |  | revision of system relation. Used to check if we should change relation content or not |
+| includeTime | [bool](#bool) |  | indicates whether value of relation with date format should be processed with seconds precision |
 
 
 
@@ -32514,15 +33379,16 @@ Look https://github.com/golang/protobuf/issues/1135 for more information.
 
 
 
-<a name="anytype-model-InvitePayload-InviteType"></a>
+<a name="anytype-model-InviteType"></a>
 
-### InvitePayload.InviteType
+### InviteType
 
 
 | Name | Number | Description |
 | ---- | ------ | ----------- |
-| JoinAsMember | 0 | aclKey contains the key to sign the ACL record |
-| JoinAsGuest | 1 | guestKey contains the privateKey of the guest user |
+| Member | 0 | aclKey contains the key to sign the ACL record |
+| Guest | 1 | guestKey contains the privateKey of the guest user |
+| WithoutApprove | 2 | aclKey contains the key to sign the ACL record, but no approval needed |
 
 
 
@@ -32914,6 +33780,34 @@ RelationFormat describes how the underlying data is stored in the google.protobu
 | Chat | 0 | chat-first UX |
 | Data | 1 | objects-first UX |
 | Stream | 2 | stream UX (chat with limited amount of owners) |
+
+
+
+<a name="anytype-model-SyncError"></a>
+
+### SyncError
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| SyncErrorNull | 0 |  |
+| SyncErrorIncompatibleVersion | 2 |  |
+| SyncErrorNetworkError | 3 |  |
+| SyncErrorOversized | 4 |  |
+
+
+
+<a name="anytype-model-SyncStatus"></a>
+
+### SyncStatus
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| SyncStatusSynced | 0 |  |
+| SyncStatusSyncing | 1 |  |
+| SyncStatusError | 2 |  |
+| SyncStatusQueued | 3 |  |
 
 
  
