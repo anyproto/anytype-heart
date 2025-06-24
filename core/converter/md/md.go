@@ -73,11 +73,6 @@ type MD struct {
 	fn               FileNamer
 }
 
-var shortObjectRelations = append(removeArrayRelations, []string{
-	bundle.RelationKeyBacklinks.String(),
-	bundle.RelationKeyLinks.String(),
-	bundle.RelationKeyMentions.String()}...)
-
 var removeArrayRelations = []string{
 	bundle.RelationKeyLastModifiedBy.String(),
 	bundle.RelationKeyCreator.String(),
@@ -109,216 +104,283 @@ func (h *MD) renderProperties(buf writer) {
 		return
 	}
 
-	// Use resolver if available
 	if h.resolver == nil {
 		log.Error("MD converter requires ObjectResolver to resolve properties, but it is not set")
 		return
 	}
 
-	// Get object type details
-	objectTypeId := h.s.LocalDetails().GetString(bundle.RelationKeyType)
-	if objectTypeId == "" {
+	// Get object type information
+	objectTypeDetails, typeName := h.getObjectTypeInfo()
+	if objectTypeDetails == nil {
 		return
 	}
 
-	objectTypeDetails, err := h.resolver.ResolveType(objectTypeId)
-	if err != nil || objectTypeDetails == nil {
-		return
-	}
-
-	// Get type name for YAML export
-	typeName := objectTypeDetails.GetString(bundle.RelationKeyName)
-
-	// Collect properties to export
-	properties := make([]yaml.Property, 0)
-
-	// Get all relation IDs (excluding type relation which will be handled separately)
-	var propertiesIds []string
-	propertiesIds = append(propertiesIds, objectTypeDetails.GetStringList(bundle.RelationKeyRecommendedFeaturedRelations)...)
-	propertiesIds = append(propertiesIds, objectTypeDetails.GetStringList(bundle.RelationKeyRecommendedRelations)...)
-	propertiesIds = slices.Compact(propertiesIds)
-
-	// Check if this is a collection
-	layout, hasLayout := h.s.Layout()
-	isCollection := hasLayout && layout == model.ObjectType_collection
-
-	// Process each relation
-	for _, id := range propertiesIds {
-		relationDetails, err := h.resolver.ResolveRelation(id)
-		if err != nil || relationDetails == nil {
-			continue
-		}
-		if relationDetails.GetBool(bundle.RelationKeyIsHidden) {
-			continue
-		}
-
-		name := relationDetails.GetString(bundle.RelationKeyName)
-		key := relationDetails.GetString(bundle.RelationKeyRelationKey)
-		format := model.RelationFormat(relationDetails.GetInt64(bundle.RelationKeyRelationFormat))
-		includeTime := relationDetails.GetBool(bundle.RelationKeyRelationFormatIncludeTime)
-
-		// Skip the type relation - it will be added as "Object type" at the end
-		if key == bundle.RelationKeyType.String() {
-			continue
-		}
-
-		v := h.s.CombinedDetails().Get(domain.RelationKey(key))
-		if v.IsNull() {
-			continue
-		}
-
-		// Process special cases for file and object relations
-		var processedValue domain.Value = v
-
-		switch format {
-		case model.RelationFormat_file:
-			// Handle file format relations
-			var ids []string
-			if v.String() != "" {
-				ids = append(ids, v.String())
-			} else {
-				ids = v.StringList()
-			}
-			if len(ids) == 0 {
-				continue
-			}
-
-			// Multiple files
-			var fileList []string
-			for _, fileId := range ids {
-				if info, _ := h.getObjectInfo(fileId); info != nil {
-					layout := info.GetInt64(bundle.RelationKeyLayout)
-					// Check if it's a file object type
-					if layout == int64(model.ObjectType_file) || layout == int64(model.ObjectType_image) ||
-						layout == int64(model.ObjectType_audio) || layout == int64(model.ObjectType_video) ||
-						layout == int64(model.ObjectType_pdf) {
-						_, filename, _ := h.getLinkInfo(fileId)
-						if filename != "" {
-							fileList = append(fileList, filename)
-							// Add to appropriate hash list for later use
-							if layout == int64(model.ObjectType_image) {
-								h.imageHashes = append(h.imageHashes, fileId)
-							} else {
-								h.fileHashes = append(h.fileHashes, fileId)
-							}
-						}
-					}
-				}
-			}
-
-			if len(fileList) > 0 {
-				processedValue = domain.StringList(fileList)
-			} else {
-				continue
-			}
-
-		case model.RelationFormat_object:
-			// Object format - render with File property when included in export
-			var ids []string
-			if v.String() != "" {
-				ids = append(ids, v.String())
-			} else {
-				ids = v.StringList()
-			}
-			if len(ids) == 0 {
-				continue
-			}
-			var (
-				removeArray bool
-			)
-
-			if slices.Contains(removeArrayRelations, key) {
-				removeArray = true
-			}
-
-			// Handle special single-value relations
-			if removeArray && len(ids) > 0 {
-				title, _, ok := h.getLinkInfo(ids[0])
-				if ok {
-					processedValue = domain.String(title)
-				}
-			} else {
-				var objectList []string
-				for _, id := range ids {
-					title, filename, ok := h.getLinkInfo(id)
-					if !ok {
-						continue
-					}
-					if h.knownDocs[id] == nil {
-						objectList = append(objectList, title)
-					} else {
-						objectList = append(objectList, filename)
-					}
-				}
-				if len(objectList) > 0 {
-					processedValue = domain.StringList(objectList)
-				} else {
-					continue
-				}
-			}
-
-		case model.RelationFormat_tag,
-			model.RelationFormat_status:
-			// Tag and status formats - just render names
-			var ids []string
-			if v.String() != "" {
-				ids = append(ids, v.String())
-			} else {
-				ids = v.StringList()
-			}
-			if len(ids) == 0 {
-				continue
-			}
-
-			var nameList []string
-			for _, id := range ids {
-				if d, _ := h.getObjectInfo(id); d != nil {
-					if label := d.Get(bundle.RelationKeyName).String(); label != "" {
-						nameList = append(nameList, label)
-					}
-				}
-			}
-			if len(nameList) > 0 {
-				processedValue = domain.StringList(nameList)
-			} else {
-				continue
-			}
-
-		}
-
-		// Create property
-		prop := yaml.Property{
-			Name:        name,
-			Key:         key,
-			Format:      format,
-			Value:       processedValue,
-			IncludeTime: includeTime,
-		}
-		properties = append(properties, prop)
-	}
-
-	// Add Collection as a property if this is a collection
-	if isCollection {
-		properties = h.addCollectionProperty(properties)
-	}
-
-	// Skip empty property lists
+	// Collect all properties to export
+	properties := h.collectProperties(objectTypeDetails)
 	if len(properties) == 0 {
 		return
 	}
 
-	// Add object ID as a special property
-	if objectId := h.s.LocalDetails().GetString(bundle.RelationKeyId); objectId != "" {
-		idProp := yaml.Property{
-			Name:   "id",
-			Key:    "id",
-			Format: model.RelationFormat_shorttext,
-			Value:  domain.String(objectId),
-		}
-		properties = append([]yaml.Property{idProp}, properties...)
+	// Add object ID as the first property
+	properties = h.prependObjectId(properties)
+
+	// Export to YAML
+	h.exportPropertiesToYAML(buf, properties, typeName)
+}
+
+// getObjectTypeInfo retrieves object type details and name
+func (h *MD) getObjectTypeInfo() (*domain.Details, string) {
+	objectTypeId := h.s.LocalDetails().GetString(bundle.RelationKeyType)
+	if objectTypeId == "" {
+		return nil, ""
 	}
 
-	// Prepare export options
+	objectTypeDetails, err := h.resolver.ResolveType(objectTypeId)
+	if err != nil || objectTypeDetails == nil {
+		return nil, ""
+	}
+
+	typeName := objectTypeDetails.GetString(bundle.RelationKeyName)
+	return objectTypeDetails, typeName
+}
+
+// collectProperties gathers all properties from relations
+func (h *MD) collectProperties(objectTypeDetails *domain.Details) []yaml.Property {
+	var properties []yaml.Property
+
+	// Get all relation IDs
+	relationIds := h.getRelationIds(objectTypeDetails)
+
+	// Process each relation
+	for _, id := range relationIds {
+		prop := h.processRelation(id)
+		if prop != nil {
+			properties = append(properties, *prop)
+		}
+	}
+
+	// Add collection property if applicable
+	if h.isCollection() {
+		properties = h.addCollectionProperty(properties)
+	}
+
+	// Add system properties
+	properties = h.addSystemProperties(properties)
+
+	return properties
+}
+
+// getRelationIds returns all relation IDs from the object type
+func (h *MD) getRelationIds(objectTypeDetails *domain.Details) []string {
+	var ids []string
+	ids = append(ids, objectTypeDetails.GetStringList(bundle.RelationKeyRecommendedFeaturedRelations)...)
+	ids = append(ids, objectTypeDetails.GetStringList(bundle.RelationKeyRecommendedRelations)...)
+	return slices.Compact(ids)
+}
+
+// isCollection checks if the current object is a collection
+func (h *MD) isCollection() bool {
+	layout, hasLayout := h.s.Layout()
+	return hasLayout && layout == model.ObjectType_collection
+}
+
+// processRelation processes a single relation and returns a property
+func (h *MD) processRelation(relationId string) *yaml.Property {
+	relationDetails, err := h.resolver.ResolveRelation(relationId)
+	if err != nil || relationDetails == nil {
+		return nil
+	}
+
+	// Skip hidden relations
+	if relationDetails.GetBool(bundle.RelationKeyIsHidden) {
+		return nil
+	}
+
+	// Extract relation metadata
+	key := relationDetails.GetString(bundle.RelationKeyRelationKey)
+
+	// Skip type relation (will be handled separately)
+	if key == bundle.RelationKeyType.String() {
+		return nil
+	}
+
+	// Get the value for this relation
+	v := h.s.CombinedDetails().Get(domain.RelationKey(key))
+	if v.IsNull() {
+		return nil
+	}
+
+	// Process the value based on format
+	format := model.RelationFormat(relationDetails.GetInt64(bundle.RelationKeyRelationFormat))
+	processedValue, ok := h.processRelationValue(v, format, key)
+	if !ok {
+		return nil
+	}
+
+	return &yaml.Property{
+		Name:        relationDetails.GetString(bundle.RelationKeyName),
+		Key:         key,
+		Format:      format,
+		Value:       processedValue,
+		IncludeTime: relationDetails.GetBool(bundle.RelationKeyRelationFormatIncludeTime),
+	}
+}
+
+// processRelationValue processes a relation value based on its format
+// Returns the processed value and whether it should be included
+func (h *MD) processRelationValue(v domain.Value, format model.RelationFormat, key string) (domain.Value, bool) {
+	switch format {
+	case model.RelationFormat_file:
+		return h.processFileRelation(v)
+	case model.RelationFormat_object:
+		return h.processObjectRelation(v, key)
+	case model.RelationFormat_tag, model.RelationFormat_status:
+		return h.processTagOrStatusRelation(v)
+	default:
+		return v, true
+	}
+}
+
+// processFileRelation handles file format relations
+func (h *MD) processFileRelation(v domain.Value) (domain.Value, bool) {
+	ids := v.WrapToStringList()
+	if len(ids) == 0 {
+		return v, false
+	}
+
+	var fileList []string
+	for _, fileId := range ids {
+		if filename := h.processFileId(fileId); filename != "" {
+			fileList = append(fileList, filename)
+		}
+	}
+
+	if len(fileList) == 0 {
+		return v, false
+	}
+	return domain.StringList(fileList), true
+}
+
+// processFileId processes a single file ID and returns its filename
+func (h *MD) processFileId(fileId string) string {
+	info, _ := h.getObjectInfo(fileId)
+	if info == nil {
+		return ""
+	}
+
+	layout := info.GetInt64(bundle.RelationKeyLayout)
+	if !h.isFileLayout(layout) {
+		return ""
+	}
+
+	_, filename, _ := h.getLinkInfo(fileId)
+	if filename == "" {
+		return ""
+	}
+
+	// Track file hashes
+	if layout == int64(model.ObjectType_image) {
+		h.imageHashes = append(h.imageHashes, fileId)
+	} else {
+		h.fileHashes = append(h.fileHashes, fileId)
+	}
+
+	return filename
+}
+
+// isFileLayout checks if the layout represents a file object type
+func (h *MD) isFileLayout(layout int64) bool {
+	return layout == int64(model.ObjectType_file) ||
+		layout == int64(model.ObjectType_image) ||
+		layout == int64(model.ObjectType_audio) ||
+		layout == int64(model.ObjectType_video) ||
+		layout == int64(model.ObjectType_pdf)
+}
+
+// processObjectRelation handles object format relations
+func (h *MD) processObjectRelation(v domain.Value, key string) (domain.Value, bool) {
+	ids := v.WrapToStringList()
+	if len(ids) == 0 {
+		return v, false
+	}
+
+	// Check if this is a single-value relation
+	if slices.Contains(removeArrayRelations, key) && len(ids) > 0 {
+		title, _, ok := h.getLinkInfo(ids[0])
+		if ok {
+			return domain.String(title), true
+		}
+		return v, false
+	}
+
+	// Process multiple objects
+	var objectList []string
+	for _, id := range ids {
+		if name := h.getObjectName(id); name != "" {
+			objectList = append(objectList, name)
+		}
+	}
+
+	if len(objectList) == 0 {
+		return v, false
+	}
+	return domain.StringList(objectList), true
+}
+
+// getObjectName returns the appropriate name for an object
+func (h *MD) getObjectName(objectId string) string {
+	title, filename, ok := h.getLinkInfo(objectId)
+	if !ok {
+		return ""
+	}
+
+	// Use filename if object is in export, otherwise use title
+	if h.knownDocs[objectId] != nil {
+		return filename
+	}
+	return title
+}
+
+// processTagOrStatusRelation handles tag and status format relations
+func (h *MD) processTagOrStatusRelation(v domain.Value) (domain.Value, bool) {
+	ids := v.WrapToStringList()
+	if len(ids) == 0 {
+		return v, false
+	}
+
+	var nameList []string
+	for _, id := range ids {
+		if d, _ := h.getObjectInfo(id); d != nil {
+			if label := d.Get(bundle.RelationKeyName).String(); label != "" {
+				nameList = append(nameList, label)
+			}
+		}
+	}
+
+	if len(nameList) == 0 {
+		return v, false
+	}
+	return domain.StringList(nameList), true
+}
+
+// prependObjectId adds object ID as the first property
+func (h *MD) prependObjectId(properties []yaml.Property) []yaml.Property {
+	objectId := h.s.LocalDetails().GetString(bundle.RelationKeyId)
+	if objectId == "" {
+		return properties
+	}
+
+	idProp := yaml.Property{
+		Name:   "id",
+		Key:    "id",
+		Format: model.RelationFormat_shorttext,
+		Value:  domain.String(objectId),
+	}
+	return append([]yaml.Property{idProp}, properties...)
+}
+
+// exportPropertiesToYAML exports properties to YAML format
+func (h *MD) exportPropertiesToYAML(buf writer, properties []yaml.Property, typeName string) {
 	exportOptions := &yaml.ExportOptions{
 		ObjectTypeName: typeName,
 	}
@@ -372,6 +434,55 @@ func (h *MD) addCollectionProperty(properties []yaml.Property) []yaml.Property {
 		Value:  domain.StringList(collectionList),
 	}
 	return append(properties, collectionProp)
+}
+
+// addSystemProperties adds system properties that are not already included
+func (h *MD) addSystemProperties(properties []yaml.Property) []yaml.Property {
+	// Create a map of existing property keys
+	existingKeys := make(map[string]bool)
+	for _, prop := range properties {
+		existingKeys[prop.Key] = true
+	}
+
+	// System properties to check
+	systemProps := []string{
+		bundle.RelationKeyCreator.String(),
+		bundle.RelationKeyCreatedDate.String(),
+		bundle.RelationKeyIconEmoji.String(),
+		bundle.RelationKeyIconImage.String(),
+		bundle.RelationKeyCoverId.String(),
+	}
+
+	// Add system properties if they have values and are not already included
+	for _, key := range systemProps {
+		if existingKeys[key] {
+			continue
+		}
+
+		v := h.s.CombinedDetails().Get(domain.RelationKey(key))
+		if v.IsNull() {
+			continue
+		}
+
+		// Get relation details from bundle
+		relKey := domain.RelationKey(key)
+		bundledRel, err := bundle.GetRelation(relKey)
+		if err != nil {
+			continue
+		}
+
+		// Create property based on the value
+		prop := yaml.Property{
+			Name:   bundledRel.Name,
+			Key:    key,
+			Format: bundledRel.Format,
+			Value:  v,
+		}
+
+		properties = append(properties, prop)
+	}
+
+	return properties
 }
 
 func (h *MD) Export() (result string) {
