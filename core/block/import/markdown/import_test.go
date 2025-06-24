@@ -13,6 +13,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
+	"github.com/anyproto/anytype-heart/core/block/editor/template"
 	"github.com/anyproto/anytype-heart/core/block/import/common"
 	"github.com/anyproto/anytype-heart/core/block/import/common/test"
 	"github.com/anyproto/anytype-heart/core/block/process"
@@ -22,7 +23,6 @@ import (
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/tests/blockbuilder"
-	"github.com/anyproto/anytype-heart/core/block/editor/template"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
@@ -732,16 +732,16 @@ func TestMarkdown_YAMLFrontMatterObjectRelations(t *testing.T) {
 	t.Run("YAML property with object format resolves file paths to object IDs", func(t *testing.T) {
 		// given
 		testDirectory := t.TempDir()
-		
+
 		// Create related documents that will be referenced
 		doc1Path := filepath.Join(testDirectory, "project", "doc1.md")
 		doc2Path := filepath.Join(testDirectory, "project", "doc2.md")
 		mainDocPath := filepath.Join(testDirectory, "main.md")
-		
+
 		// Create directory structure
 		err := os.MkdirAll(filepath.Dir(doc1Path), os.ModePerm)
 		assert.NoError(t, err)
-		
+
 		// Create referenced documents
 		doc1Content := `---
 title: Document 1
@@ -750,7 +750,7 @@ type: Note
 
 # Document 1
 This is document 1 content.`
-		
+
 		doc2Content := `---
 title: Document 2
 type: Note
@@ -758,7 +758,7 @@ type: Note
 
 # Document 2
 This is document 2 content.`
-		
+
 		// Create main document with object relations using file paths
 		mainContent := `---
 title: Main Document
@@ -771,20 +771,20 @@ single_reference: ./project/doc1.md
 
 # Main Document
 This document references other documents.`
-		
+
 		err = os.WriteFile(doc1Path, []byte(doc1Content), os.ModePerm)
 		assert.NoError(t, err)
 		err = os.WriteFile(doc2Path, []byte(doc2Content), os.ModePerm)
 		assert.NoError(t, err)
 		err = os.WriteFile(mainDocPath, []byte(mainContent), os.ModePerm)
 		assert.NoError(t, err)
-		
+
 		// Create markdown importer with schema that defines object format relations
 		h := &Markdown{
 			blockConverter: newMDConverter(&MockTempDir{}),
 			schemaImporter: NewSchemaImporter(),
 		}
-		
+
 		// Add schema with object format relations
 		schemaContent := `{
 			"$schema": "http://json-schema.org/draft-07/schema#",
@@ -815,26 +815,26 @@ This document references other documents.`
 				}
 			}
 		}`
-		
+
 		// Create a mock source with the schema
 		mockSource := &testMockSource{
 			files: map[string]string{
 				"schema.json": schemaContent,
 			},
 		}
-		
+
 		// Load the schema
 		allErrors := common.NewError(pb.RpcObjectImportRequest_IGNORE_ERRORS)
 		err = h.schemaImporter.LoadSchemas(mockSource, allErrors)
 		assert.NoError(t, err)
-		
+
 		// Verify schema was loaded
 		assert.True(t, h.schemaImporter.HasSchemas())
-		
+
 		// Set the schema importer in the block converter
 		h.blockConverter.SetSchemaImporter(h.schemaImporter)
 		p := process.NewNoOp()
-		
+
 		// when
 		sn, ce := h.GetSnapshots(context.Background(), &pb.RpcObjectImportRequest{
 			Params: &pb.RpcObjectImportRequestParamsOfMarkdownParams{
@@ -843,11 +843,11 @@ This document references other documents.`
 			Type: model.Import_Markdown,
 			Mode: pb.RpcObjectImportRequest_IGNORE_ERRORS,
 		}, p)
-		
+
 		// then
 		assert.Nil(t, ce)
 		assert.NotNil(t, sn)
-		
+
 		// Build maps for verification
 		fileNameToSnapshot := make(map[string]*common.Snapshot)
 		fileNameToObjectId := make(map[string]string)
@@ -857,61 +857,61 @@ This document references other documents.`
 				fileNameToObjectId[snapshot.FileName] = snapshot.Id
 			}
 		}
-		
+
 		// Verify all documents were imported
 		assert.Contains(t, fileNameToObjectId, mainDocPath)
 		assert.Contains(t, fileNameToObjectId, doc1Path)
 		assert.Contains(t, fileNameToObjectId, doc2Path)
-		
+
 		// Get the main document snapshot
 		mainSnapshot := fileNameToSnapshot[mainDocPath]
 		assert.NotNil(t, mainSnapshot)
-		
+
 		// Get object IDs for referenced documents
 		doc1Id := fileNameToObjectId[doc1Path]
 		doc2Id := fileNameToObjectId[doc2Path]
-		
+
 		// Verify the object relations were resolved to IDs
 		mainDetails := mainSnapshot.Snapshot.Data.Details
-		
+
 		// Check array object relation
 		relatedDocsKey := domain.RelationKey("related_docs")
 		relatedDocs := mainDetails.GetStringList(relatedDocsKey)
 		assert.Len(t, relatedDocs, 2)
 		assert.Contains(t, relatedDocs, doc1Id)
 		assert.Contains(t, relatedDocs, doc2Id)
-		
+
 		// Check single object relation
 		singleRefKey := domain.RelationKey("single_reference")
 		singleRef := mainDetails.GetStringList(singleRefKey)
 		assert.Len(t, singleRef, 1)
 		assert.Equal(t, doc1Id, singleRef[0])
 	})
-	
+
 	t.Run("YAML object relations with relative and absolute paths", func(t *testing.T) {
 		// given
 		testDirectory := t.TempDir()
 		subDir := filepath.Join(testDirectory, "subdir")
-		
+
 		// Create directory structure
 		err := os.MkdirAll(subDir, os.ModePerm)
 		assert.NoError(t, err)
-		
+
 		// Create documents
 		doc1Path := filepath.Join(testDirectory, "doc1.md")
 		doc2Path := filepath.Join(subDir, "doc2.md")
 		mainDocPath := filepath.Join(subDir, "main.md")
-		
+
 		doc1Content := `---
 title: Doc 1
 ---
 Content 1`
-		
+
 		doc2Content := `---
 title: Doc 2  
 ---
 Content 2`
-		
+
 		// Main document uses both relative and absolute paths
 		mainContent := fmt.Sprintf(`---
 title: Main with Mixed Paths
@@ -921,21 +921,21 @@ references:
   - %s
 ---
 Main content`, doc1Path) // Include one absolute path
-		
+
 		err = os.WriteFile(doc1Path, []byte(doc1Content), os.ModePerm)
 		assert.NoError(t, err)
 		err = os.WriteFile(doc2Path, []byte(doc2Content), os.ModePerm)
 		assert.NoError(t, err)
 		err = os.WriteFile(mainDocPath, []byte(mainContent), os.ModePerm)
 		assert.NoError(t, err)
-		
+
 		h := &Markdown{
 			blockConverter: newMDConverter(&MockTempDir{}),
 			schemaImporter: NewSchemaImporter(),
 		}
 		h.blockConverter.SetSchemaImporter(h.schemaImporter)
 		p := process.NewNoOp()
-		
+
 		// when
 		sn, ce := h.GetSnapshots(context.Background(), &pb.RpcObjectImportRequest{
 			Params: &pb.RpcObjectImportRequestParamsOfMarkdownParams{
@@ -944,11 +944,11 @@ Main content`, doc1Path) // Include one absolute path
 			Type: model.Import_Markdown,
 			Mode: pb.RpcObjectImportRequest_IGNORE_ERRORS,
 		}, p)
-		
+
 		// then
 		assert.Nil(t, ce)
 		assert.NotNil(t, sn)
-		
+
 		// Build object ID map
 		fileNameToObjectId := make(map[string]string)
 		for _, snapshot := range sn.Snapshots {
@@ -956,7 +956,7 @@ Main content`, doc1Path) // Include one absolute path
 				fileNameToObjectId[snapshot.FileName] = snapshot.Id
 			}
 		}
-		
+
 		// Find main document
 		var mainSnapshot *common.Snapshot
 		for _, snapshot := range sn.Snapshots {
@@ -965,10 +965,10 @@ Main content`, doc1Path) // Include one absolute path
 				break
 			}
 		}
-		
+
 		assert.NotNil(t, mainSnapshot)
 		mainDetails := mainSnapshot.Snapshot.Data.Details
-		
+
 		// Find the references property key
 		var referencesKey string
 		for k, v := range mainDetails.Iterate() {
@@ -982,16 +982,16 @@ Main content`, doc1Path) // Include one absolute path
 				}
 			}
 		}
-		
+
 		// If we found a property with 3 items, verify it contains the right IDs
 		if referencesKey != "" {
 			references := mainDetails.GetStringList(domain.RelationKey(referencesKey))
 			assert.Len(t, references, 3)
-			
+
 			// All three paths should resolve to doc1Id (two different paths + absolute)
 			doc1Id := fileNameToObjectId[doc1Path]
 			doc2Id := fileNameToObjectId[doc2Path]
-			
+
 			assert.Contains(t, references, doc1Id)
 			assert.Contains(t, references, doc2Id)
 			// The absolute path should also resolve to doc1Id
@@ -1190,14 +1190,68 @@ func TestMarkdown_CollectionImport(t *testing.T) {
 	t.Run("import collection with Collection property in YAML", func(t *testing.T) {
 		// given
 		testDirectory := t.TempDir()
-		
+
+		// Create schema files
+		taskSchemaPath := filepath.Join(testDirectory, "task.schema.json")
+		taskCollectionSchemaPath := filepath.Join(testDirectory, "task_collection.schema.json")
+
+		// Create task schema
+		taskSchema := `{
+			"$schema": "http://json-schema.org/draft-07/schema#",
+			"type": "object",
+			"title": "Task",
+			"x-type-key": "task",
+			"properties": {
+				"Name": {
+					"type": "string",
+					"x-key": "name",
+					"x-format": "shorttext"
+				},
+				"Priority": {
+					"type": "string",
+					"x-key": "priority", 
+					"x-format": "status",
+					"enum": ["low", "medium", "high"]
+				}
+			}
+		}`
+
+		// Create collection schema with Collection property
+		taskCollectionSchema := `{
+			"$schema": "http://json-schema.org/draft-07/schema#",
+			"type": "object",
+			"title": "Task Collection",
+			"x-type-key": "task_collection",
+			"properties": {
+				"Name": {
+					"type": "string",
+					"x-key": "name",
+					"x-format": "shorttext"
+				},
+				"Collection": {
+					"type": "array",
+					"items": {
+						"type": "string"
+					},
+					"x-key": "collection",
+					"x-format": "object"
+				}
+			}
+		}`
+
+		err := os.WriteFile(taskSchemaPath, []byte(taskSchema), os.ModePerm)
+		assert.NoError(t, err)
+		err = os.WriteFile(taskCollectionSchemaPath, []byte(taskCollectionSchema), os.ModePerm)
+		assert.NoError(t, err)
+
 		// Create test files
 		task1Path := filepath.Join(testDirectory, "Important Task.md")
 		task2Path := filepath.Join(testDirectory, "Another Task.md")
 		collectionPath := filepath.Join(testDirectory, "My Task Collection.md")
-		
-		// Create task files
+
+		// Create task files with schema reference
 		task1Content := `---
+# yaml-language-server: $schema=task.schema.json
 Name: Important Task
 Object type: Task
 Priority: high
@@ -1206,8 +1260,9 @@ Priority: high
 # Important Task
 
 This is an important task that needs to be done.`
-		
+
 		task2Content := `---
+# yaml-language-server: $schema=task.schema.json
 Name: Another Task
 Object type: Task
 Priority: medium
@@ -1216,9 +1271,10 @@ Priority: medium
 # Another Task
 
 This is another task in the collection.`
-		
-		// Create collection file
+
+		// Create collection file with schema reference
 		collectionContent := `---
+# yaml-language-server: $schema=task_collection.schema.json
 Name: My Task Collection
 Object type: Task Collection
 Collection:
@@ -1230,7 +1286,7 @@ Collection:
 
 This is a collection of important tasks.`
 
-		err := os.WriteFile(task1Path, []byte(task1Content), os.ModePerm)
+		err = os.WriteFile(task1Path, []byte(task1Content), os.ModePerm)
 		assert.NoError(t, err)
 		err = os.WriteFile(task2Path, []byte(task2Content), os.ModePerm)
 		assert.NoError(t, err)
@@ -1241,6 +1297,8 @@ This is a collection of important tasks.`
 			blockConverter: newMDConverter(&MockTempDir{}),
 			schemaImporter: NewSchemaImporter(),
 		}
+		// Set the schema importer in the block converter
+		h.blockConverter.SetSchemaImporter(h.schemaImporter)
 		p := process.NewNoOp()
 
 		// when
@@ -1255,11 +1313,11 @@ This is a collection of important tasks.`
 		assert.Nil(t, ce)
 		assert.NotNil(t, sn)
 		assert.GreaterOrEqual(t, len(sn.Snapshots), 3) // At least 3 pages
-		
+
 		// Find the collection snapshot
 		var collectionSnapshot *common.Snapshot
 		var task1Snapshot, task2Snapshot *common.Snapshot
-		
+
 		for _, snapshot := range sn.Snapshots {
 			if strings.Contains(snapshot.FileName, "My Task Collection.md") {
 				collectionSnapshot = snapshot
@@ -1269,24 +1327,24 @@ This is a collection of important tasks.`
 				task2Snapshot = snapshot
 			}
 		}
-		
+
 		assert.NotNil(t, collectionSnapshot, "Collection snapshot should exist")
 		assert.NotNil(t, task1Snapshot, "Task 1 snapshot should exist")
 		assert.NotNil(t, task2Snapshot, "Task 2 snapshot should exist")
-		
+
 		// Verify collection has correct SbType (collections are pages)
 		assert.Equal(t, coresb.SmartBlockTypePage, collectionSnapshot.Snapshot.SbType,
 			"Collection should have SmartBlockTypePage type")
-		
+
 		// Verify collection has the collection store
 		assert.NotNil(t, collectionSnapshot.Snapshot.Data.Collections, "Collection should have Collections field")
 		collectionStoreValue := collectionSnapshot.Snapshot.Data.Collections.Fields[template.CollectionStoreKey]
 		assert.NotNil(t, collectionStoreValue, "Collection should have collection store")
-		
-		// Get the collection IDs from store  
+
+		// Get the collection IDs from store
 		collectionIds := pbtypes.GetStringListValue(collectionStoreValue)
 		assert.Len(t, collectionIds, 2, "Collection should have 2 items")
-		
+
 		// Verify the collection contains the task IDs
 		assert.Contains(t, collectionIds, task1Snapshot.Id, "Collection should contain task 1")
 		assert.Contains(t, collectionIds, task2Snapshot.Id, "Collection should contain task 2")
@@ -1295,34 +1353,84 @@ This is a collection of important tasks.`
 	t.Run("import collection with absolute and relative paths", func(t *testing.T) {
 		// given
 		testDirectory := t.TempDir()
-		
+
+		// Create schema files
+		taskSchemaPath := filepath.Join(testDirectory, "task.schema.json")
+		collectionSchemaPath := filepath.Join(testDirectory, "collection.schema.json")
+
+		// Create task schema
+		taskSchema := `{
+			"$schema": "http://json-schema.org/draft-07/schema#",
+			"type": "object",
+			"title": "Task",
+			"x-type-key": "task",
+			"properties": {
+				"Name": {
+					"type": "string",
+					"x-key": "name",
+					"x-format": "shorttext"
+				}
+			}
+		}`
+
+		// Create collection schema
+		collectionSchema := `{
+			"$schema": "http://json-schema.org/draft-07/schema#",
+			"type": "object",
+			"title": "Collection",
+			"x-type-key": "collection_type",
+			"properties": {
+				"Name": {
+					"type": "string",
+					"x-key": "name",
+					"x-format": "shorttext"
+				},
+				"Collection": {
+					"type": "array",
+					"items": {
+						"type": "string"
+					},
+					"x-key": "collection",
+					"x-format": "object"
+				}
+			}
+		}`
+
+		err := os.WriteFile(taskSchemaPath, []byte(taskSchema), os.ModePerm)
+		assert.NoError(t, err)
+		err = os.WriteFile(collectionSchemaPath, []byte(collectionSchema), os.ModePerm)
+		assert.NoError(t, err)
+
 		// Create subdirectory structure
 		subDir := filepath.Join(testDirectory, "tasks")
-		err := os.MkdirAll(subDir, os.ModePerm)
+		err = os.MkdirAll(subDir, os.ModePerm)
 		assert.NoError(t, err)
-		
+
 		// Create test files
 		task1Path := filepath.Join(subDir, "Task One.md")
 		task2Path := filepath.Join(testDirectory, "Task Two.md")
 		collectionPath := filepath.Join(testDirectory, "Collection with Paths.md")
-		
-		// Create task files
+
+		// Create task files with schema reference
 		task1Content := `---
+# yaml-language-server: $schema=../task.schema.json
 Name: Task One
 Object type: Task
 ---
 
 # Task One`
-		
+
 		task2Content := `---
+# yaml-language-server: $schema=task.schema.json
 Name: Task Two
 Object type: Task
 ---
 
 # Task Two`
-		
-		// Create collection file with various path formats
+
+		// Create collection file with various path formats and schema reference
 		collectionContent := fmt.Sprintf(`---
+# yaml-language-server: $schema=collection.schema.json
 Name: Collection with Paths
 Object type: Collection
 Collection:
@@ -1346,6 +1454,8 @@ Testing different path formats.`, task1Path)
 			blockConverter: newMDConverter(&MockTempDir{}),
 			schemaImporter: NewSchemaImporter(),
 		}
+		// Set the schema importer in the block converter
+		h.blockConverter.SetSchemaImporter(h.schemaImporter)
 		p := process.NewNoOp()
 
 		// when
@@ -1359,11 +1469,11 @@ Testing different path formats.`, task1Path)
 		// then
 		assert.Nil(t, ce)
 		assert.NotNil(t, sn)
-		
+
 		// Find the snapshots
 		var collectionSnapshot *common.Snapshot
 		var task1Snapshot, task2Snapshot *common.Snapshot
-		
+
 		for _, snapshot := range sn.Snapshots {
 			if strings.Contains(snapshot.FileName, "Collection with Paths.md") {
 				collectionSnapshot = snapshot
@@ -1373,20 +1483,20 @@ Testing different path formats.`, task1Path)
 				task2Snapshot = snapshot
 			}
 		}
-		
+
 		assert.NotNil(t, collectionSnapshot, "Collection snapshot should exist")
 		assert.NotNil(t, task1Snapshot, "Task 1 snapshot should exist")
 		assert.NotNil(t, task2Snapshot, "Task 2 snapshot should exist")
-		
+
 		// Verify collection has the collection store
 		assert.NotNil(t, collectionSnapshot.Snapshot.Data.Collections, "Collection should have Collections field")
 		collectionStoreValue := collectionSnapshot.Snapshot.Data.Collections.Fields[template.CollectionStoreKey]
 		assert.NotNil(t, collectionStoreValue, "Collection should have collection store")
-		
-		// Get the collection IDs from store  
+
+		// Get the collection IDs from store
 		collectionIds := pbtypes.GetStringListValue(collectionStoreValue)
 		assert.Len(t, collectionIds, 3, "Collection should have 3 items")
-		
+
 		// Verify all references were resolved
 		assert.Contains(t, collectionIds, task1Snapshot.Id, "Collection should contain task 1")
 		assert.Contains(t, collectionIds, task2Snapshot.Id, "Collection should contain task 2")

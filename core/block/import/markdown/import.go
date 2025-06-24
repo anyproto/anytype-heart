@@ -749,14 +749,11 @@ func (m *Markdown) createSnapshots(
 		if file.YAMLProperties != nil {
 			// Look for Collection property in the parsed properties
 			for _, prop := range file.YAMLProperties {
-				if prop.Key == "collection" {
+				// Check both by key and by name (case-insensitive)
+				if prop.Key == CollectionPropertyKey {
 					isCollectionType = true
-					if strList, ok := prop.Value.TryStringList(); ok {
-						collectionObjectIds = strList
-					} else if str, ok := prop.Value.TryString(); ok {
-						// Handle single string value
-						collectionObjectIds = []string{str}
-					}
+					collectionObjectIds = prop.Value.WrapToStringList()
+
 					break
 				}
 			}

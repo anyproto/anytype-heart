@@ -92,10 +92,12 @@ func (si *SchemaImporter) CreateRelationSnapshots() []*common.Snapshot {
 			relationId := si.propIdPrefix + rel.Key
 			si.existingRels[rel.Key] = relationId
 
-			details := rel.ToDetails()
+			// Skip creating snapshot for collection relation, but still register it
 			if rel.Key == CollectionPropertyKey {
-				continue // skip collection relation, handled separately
+				continue // skip collection relation snapshot, handled separately
 			}
+			
+			details := rel.ToDetails()
 			snapshot := &common.Snapshot{
 				Id: relationId,
 				Snapshot: &common.SnapshotModel{
