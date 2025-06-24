@@ -15,14 +15,14 @@ type Relation struct {
 	Name        string                 `json:"name"`
 	Format      model.RelationFormat   `json:"format"`
 	Description string                 `json:"description,omitempty"`
-	IsHidden    bool                   `json:"isHidden,omitempty"`
-	IsReadOnly  bool                   `json:"isReadOnly,omitempty"`
-	IsMulti     bool                   `json:"isMulti,omitempty"`
-	ObjectTypes []string               `json:"objectTypes,omitempty"` // For object relations
+	IsHidden    bool                   `json:"is_hidden,omitempty"`
+	IsReadOnly  bool                   `json:"is_read_only,omitempty"`
+	IsMulti     bool                   `json:"is_multi,omitempty"`
+	ObjectTypes []string               `json:"object_types,omitempty"` // For object relations
 	Options     []string               `json:"options,omitempty"`     // For status relations
 	Examples    []string               `json:"examples,omitempty"`    // For tag relations
-	IncludeTime bool                   `json:"includeTime,omitempty"` // For date relations
-	MaxLength   int                    `json:"maxLength,omitempty"`   // For text relations
+	IncludeTime bool                   `json:"include_time,omitempty"` // For date relations
+	MaxLength   int                    `json:"max_length,omitempty"`   // For text relations
 	Extension   map[string]interface{} `json:"extension,omitempty"`   // x-* fields from schema
 }
 

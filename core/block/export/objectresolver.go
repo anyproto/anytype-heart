@@ -156,7 +156,7 @@ func (r *lazyObjectResolver) ResolveRelationOptions(relationKey string) ([]*doma
 		return nil, err
 	}
 
-	var options []*domain.Details
+	options := make([]*domain.Details, 0, len(records))
 	for _, record := range records {
 		options = append(options, record.Details)
 	}

@@ -605,15 +605,6 @@ func (m *Markdown) createSnapshots(
 				optionId := propIdPrefix + "option_" + relationKey + "_" + optionValue
 				yamlRelationOptions[relationKey][optionValue] = optionId
 
-				// Find the relation to get its format (unused for now, but might be needed later)
-				// var relFormat model.RelationFormat
-				// for _, prop := range yamlRelations {
-				// 	if prop.key == relationKey {
-				// 		relFormat = prop.format
-				// 		break
-				// 	}
-				// }
-
 				optionDetails := domain.NewDetails()
 				optionDetails.SetString(bundle.RelationKeyRelationKey, relationKey)
 				optionDetails.SetString(bundle.RelationKeyName, optionValue)
@@ -621,7 +612,11 @@ func (m *Markdown) createSnapshots(
 
 				// Set unique key for the option
 				optionKey := fmt.Sprintf("%s_%s", relationKey, optionValue)
-				uniqueKey, _ := domain.NewUniqueKey(smartblock.SmartBlockTypeRelationOption, optionKey)
+				uniqueKey, err := domain.NewUniqueKey(smartblock.SmartBlockTypeRelationOption, optionKey)
+				if err != nil {
+					log.Errorf("failed to create unique key for relation option '%s': %v", optionKey, err)
+					continue
+				}
 				optionDetails.SetString(bundle.RelationKeyUniqueKey, uniqueKey.Marshal())
 
 				relationsSnapshots = append(relationsSnapshots, &common.Snapshot{

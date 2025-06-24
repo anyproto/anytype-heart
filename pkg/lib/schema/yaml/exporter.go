@@ -48,8 +48,8 @@ func ExportToYAML(properties []Property, options *ExportOptions) ([]byte, error)
 	}
 
 	// Filter properties and collect names for deduplication
-	var validProps []Property
-	var propNames []string
+	validProps := make([]Property, 0, len(properties))
+	propNames := make([]string, 0, len(properties))
 	for _, prop := range properties {
 		// Skip if in skip list
 		if skipMap[prop.Key] {
@@ -171,7 +171,7 @@ func ExportSchemaToYAML(s *schema.Schema, options *ExportOptions) ([]byte, error
 	}
 
 	// Sort relation keys for consistent output
-	var relationKeys []string
+	relationKeys := make([]string, 0, len(s.Relations))
 	for key := range s.Relations {
 		relationKeys = append(relationKeys, key)
 	}

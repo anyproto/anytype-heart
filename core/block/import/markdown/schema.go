@@ -51,7 +51,7 @@ func NewSchemaImporter() *SchemaImporter {
 
 // LoadSchemas loads all JSON schema files from import source
 func (si *SchemaImporter) LoadSchemas(importSource source.Source, allErrors *common.ConvertError) error {
-	importSource.Iterate(func(fileName string, fileReader io.ReadCloser) bool {
+	return importSource.Iterate(func(fileName string, fileReader io.ReadCloser) bool {
 		if strings.HasSuffix(fileName, ".json") {
 			defer fileReader.Close()
 
@@ -72,8 +72,6 @@ func (si *SchemaImporter) LoadSchemas(importSource source.Source, allErrors *com
 		}
 		return true // continue iteration
 	})
-
-	return nil
 }
 
 // CreateRelationSnapshots creates snapshots for all relations found in schemas
@@ -96,7 +94,7 @@ func (si *SchemaImporter) CreateRelationSnapshots() []*common.Snapshot {
 			if rel.Key == CollectionPropertyKey {
 				continue // skip collection relation snapshot, handled separately
 			}
-			
+
 			details := rel.ToDetails()
 			snapshot := &common.Snapshot{
 				Id: relationId,

@@ -14,15 +14,15 @@ type Type struct {
 	Key                  string                 `json:"key"`
 	Name                 string                 `json:"name"`
 	Description          string                 `json:"description,omitempty"`
-	PluralName           string                 `json:"pluralName,omitempty"`
-	IconEmoji            string                 `json:"iconEmoji,omitempty"`
-	IconName             string                 `json:"iconImage,omitempty"`
-	IsArchived           bool                   `json:"isArchived,omitempty"`
-	IsHidden             bool                   `json:"isHidden,omitempty"`
+	PluralName           string                 `json:"plural_name,omitempty"`
+	IconEmoji            string                 `json:"icon_emoji,omitempty"`
+	IconName             string                 `json:"icon_name,omitempty"`
+	IsArchived           bool                   `json:"is_archived,omitempty"`
+	IsHidden             bool                   `json:"is_hidden,omitempty"`
 	Layout               model.ObjectTypeLayout `json:"layout,omitempty"`
-	FeaturedRelations    []string               `json:"featuredRelations,omitempty"`
-	RecommendedRelations []string               `json:"recommendedRelations,omitempty"`
-	HiddenRelations      []string               `json:"hiddenRelations,omitempty"`
+	FeaturedRelations    []string               `json:"featured_relations,omitempty"`
+	RecommendedRelations []string               `json:"recommended_relations,omitempty"`
+	HiddenRelations      []string               `json:"hidden_relations,omitempty"`
 	Extension            map[string]interface{} `json:"extension,omitempty"` // x-* fields from schema
 	KeyToIdFunc          func(string) string    `json:"-"`                   // function to convert type key to ID, used for relations
 }
@@ -84,8 +84,10 @@ func (t *Type) ToDetails() *domain.Details {
 	details.SetInt64(bundle.RelationKeySourceObject, int64(model.ObjectType_objectType))
 
 	// Generate unique key
-	uniqueKey, _ := domain.NewUniqueKey(smartblock.SmartBlockTypeObjectType, t.Key)
-	details.SetString(bundle.RelationKeyUniqueKey, uniqueKey.Marshal())
+	uniqueKey, err := domain.NewUniqueKey(smartblock.SmartBlockTypeObjectType, t.Key)
+	if err == nil {
+		details.SetString(bundle.RelationKeyUniqueKey, uniqueKey.Marshal())
+	}
 
 	// Set layout for object type
 	details.SetInt64(bundle.RelationKeyLayout, int64(model.ObjectType_objectType))

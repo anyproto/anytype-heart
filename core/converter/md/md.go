@@ -15,6 +15,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/editor/table"
 	"github.com/anyproto/anytype-heart/core/block/editor/template"
+	"github.com/anyproto/anytype-heart/core/block/import/markdown"
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/converter"
 	"github.com/anyproto/anytype-heart/core/domain"
@@ -298,33 +299,7 @@ func (h *MD) renderProperties(buf writer) {
 
 	// Add Collection as a property if this is a collection
 	if isCollection {
-		collectionObjects := h.s.GetStoreSlice(template.CollectionStoreKey)
-		if len(collectionObjects) > 0 {
-			var collectionList []string
-			for _, objId := range collectionObjects {
-				title, filename, ok := h.getLinkInfo(objId)
-				if !ok {
-					continue
-				}
-				
-				// Same logic as object relations - use filename if in export, otherwise title
-				if h.knownDocs[objId] != nil {
-					collectionList = append(collectionList, filename)
-				} else {
-					collectionList = append(collectionList, title)
-				}
-			}
-			
-			if len(collectionList) > 0 {
-				collectionProp := yaml.Property{
-					Name:   "Collection",
-					Key:    "collection",
-					Format: model.RelationFormat_object,
-					Value:  domain.StringList(collectionList),
-				}
-				properties = append(properties, collectionProp)
-			}
-		}
+		properties = h.addCollectionProperty(properties)
 	}
 
 	// Skip empty property lists
@@ -347,7 +322,7 @@ func (h *MD) renderProperties(buf writer) {
 	exportOptions := &yaml.ExportOptions{
 		ObjectTypeName: typeName,
 	}
-	
+
 	// Add schema reference if enabled
 	if h.includeSchema && typeName != "" {
 		exportOptions.SchemaReference = h.GenerateSchemaFileName(typeName)
@@ -361,7 +336,42 @@ func (h *MD) renderProperties(buf writer) {
 	}
 
 	// Write the YAML front matter
-	buf.Write(yamlData)
+	_, _ = buf.Write(yamlData) // Error is ignored as buffer writes don't fail
+}
+
+// addCollectionProperty adds Collection property to the properties list if there are collection items
+func (h *MD) addCollectionProperty(properties []yaml.Property) []yaml.Property {
+	collectionObjects := h.s.GetStoreSlice(template.CollectionStoreKey)
+	if len(collectionObjects) == 0 {
+		return properties
+	}
+
+	var collectionList []string
+	for _, objId := range collectionObjects {
+		title, filename, ok := h.getLinkInfo(objId)
+		if !ok {
+			continue
+		}
+
+		// Same logic as object relations - use filename if in export, otherwise title
+		if h.knownDocs[objId] != nil {
+			collectionList = append(collectionList, filename)
+		} else {
+			collectionList = append(collectionList, title)
+		}
+	}
+
+	if len(collectionList) == 0 {
+		return properties
+	}
+
+	collectionProp := yaml.Property{
+		Name:   "Collection",
+		Key:    markdown.CollectionPropertyKey,
+		Format: model.RelationFormat_object,
+		Value:  domain.StringList(collectionList),
+	}
+	return append(properties, collectionProp)
 }
 
 func (h *MD) Export() (result string) {

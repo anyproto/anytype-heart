@@ -660,7 +660,9 @@ func schemaFromObjectDetailsInternal(typeDetails *domain.Details, relationDetail
 
 		// If not found and resolver provided, try to resolve
 		if found == nil && resolver != nil {
-			found, _ = resolver(id) // Ignore error as it's optional
+			var err error
+		found, err = resolver(id)
+		_ = err // Ignore error as it's optional
 		}
 
 		if found != nil {
@@ -686,7 +688,9 @@ func schemaFromObjectDetailsInternal(typeDetails *domain.Details, relationDetail
 
 		// If not found and resolver provided, try to resolve
 		if found == nil && resolver != nil {
-			found, _ = resolver(id) // Ignore error as it's optional
+			var err error
+		found, err = resolver(id)
+		_ = err // Ignore error as it's optional
 		}
 
 		if found != nil {
@@ -712,7 +716,9 @@ func schemaFromObjectDetailsInternal(typeDetails *domain.Details, relationDetail
 
 		// If not found and resolver provided, try to resolve
 		if found == nil && resolver != nil {
-			found, _ = resolver(id) // Ignore error as it's optional
+			var err error
+		found, err = resolver(id)
+		_ = err // Ignore error as it's optional
 		}
 
 		if found != nil {
