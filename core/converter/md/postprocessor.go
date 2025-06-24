@@ -105,7 +105,7 @@ func (p *PostProcessor) Process(docs map[string]*domain.Details, writer Writer) 
 		// Generate and write schema
 		if schemaBytes, err := mdConv.(*MD).GenerateJSONSchema(); err == nil && schemaBytes != nil {
 			if err = writer.WriteFile(schemaFileName, bytes.NewReader(schemaBytes), 0); err != nil {
-				log.Warnf("failed to write JSON schema for type %s: %v", typeName, err)
+				log.Warnf("failed to write JSON schema: %v", err)
 			} else {
 				p.writtenSchemas[schemaFileName] = true
 			}

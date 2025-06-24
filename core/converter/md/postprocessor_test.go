@@ -2,6 +2,7 @@ package md
 
 import (
 	"io"
+	"path/filepath"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -80,7 +81,7 @@ type postProcessorFileNamer struct{}
 
 func (f *postProcessorFileNamer) Get(path, hash, title, ext string) string {
 	if path != "" {
-		return path + "/" + title + ext
+		return filepath.Join(path, title+ext)
 	}
 	return title + ext
 }
@@ -88,7 +89,7 @@ func (f *postProcessorFileNamer) Get(path, hash, title, ext string) string {
 func TestPostProcessor_GenerateAllSchemas(t *testing.T) {
 	// Setup mock resolver
 	resolver := newMockResolver()
-	
+
 	// Add Type relation
 	typeRelationId := "rel-type"
 	resolver.relations[typeRelationId] = domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
@@ -102,38 +103,38 @@ func TestPostProcessor_GenerateAllSchemas(t *testing.T) {
 	// Add Name relation
 	nameRelationId := "rel-name"
 	resolver.relations[nameRelationId] = domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
-		bundle.RelationKeyId:               domain.String(nameRelationId),
-		bundle.RelationKeyRelationKey:      domain.String("custom_name"),
-		bundle.RelationKeyName:             domain.String("Name"),
-		bundle.RelationKeyRelationFormat:   domain.Int64(int64(model.RelationFormat_shorttext)),
+		bundle.RelationKeyId:             domain.String(nameRelationId),
+		bundle.RelationKeyRelationKey:    domain.String("custom_name"),
+		bundle.RelationKeyName:           domain.String("Name"),
+		bundle.RelationKeyRelationFormat: domain.Int64(int64(model.RelationFormat_shorttext)),
 	})
 
 	// Add Description relation
 	descRelationId := "rel-desc"
 	resolver.relations[descRelationId] = domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
-		bundle.RelationKeyId:               domain.String(descRelationId),
-		bundle.RelationKeyRelationKey:      domain.String("custom_description"),
-		bundle.RelationKeyName:             domain.String("Description"),
-		bundle.RelationKeyRelationFormat:   domain.Int64(int64(model.RelationFormat_longtext)),
+		bundle.RelationKeyId:             domain.String(descRelationId),
+		bundle.RelationKeyRelationKey:    domain.String("custom_description"),
+		bundle.RelationKeyName:           domain.String("Description"),
+		bundle.RelationKeyRelationFormat: domain.Int64(int64(model.RelationFormat_longtext)),
 	})
 
 	// Add Task type (including Type relation in featured)
 	taskTypeId := "type-task"
 	resolver.types[taskTypeId] = domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
-		bundle.RelationKeyId:   domain.String(taskTypeId),
-		bundle.RelationKeyName: domain.String("Task"),
-		bundle.RelationKeyUniqueKey: domain.String("ot-task"), // Add unique key for type key extraction
+		bundle.RelationKeyId:                           domain.String(taskTypeId),
+		bundle.RelationKeyName:                         domain.String("Task"),
+		bundle.RelationKeyUniqueKey:                    domain.String("ot-task"), // Add unique key for type key extraction
 		bundle.RelationKeyRecommendedFeaturedRelations: domain.StringList([]string{nameRelationId}),
 	})
 
 	// Add Page type (including Type relation in featured)
 	pageTypeId := "type-page"
 	resolver.types[pageTypeId] = domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
-		bundle.RelationKeyId:   domain.String(pageTypeId),
-		bundle.RelationKeyName: domain.String("Page"),
-		bundle.RelationKeyUniqueKey: domain.String("ot-page"), // Add unique key for type key extraction
+		bundle.RelationKeyId:                           domain.String(pageTypeId),
+		bundle.RelationKeyName:                         domain.String("Page"),
+		bundle.RelationKeyUniqueKey:                    domain.String("ot-page"), // Add unique key for type key extraction
 		bundle.RelationKeyRecommendedFeaturedRelations: domain.StringList([]string{}),
-		bundle.RelationKeyRecommendedRelations: domain.StringList([]string{descRelationId}),
+		bundle.RelationKeyRecommendedRelations:         domain.StringList([]string{descRelationId}),
 	})
 
 	// Create test documents with different types
@@ -168,13 +169,13 @@ func TestPostProcessor_GenerateAllSchemas(t *testing.T) {
 
 	// Verify schemas were generated
 	assert.Len(t, writer.files, 2, "Should generate 2 schemas (one for each unique type)")
-	
+
 	// Check Task schema
 	taskSchema, ok := writer.files["schemas/task.schema.json"]
 	assert.True(t, ok, "Task schema should be generated")
 	assert.Contains(t, string(taskSchema), `"title": "Task"`)
 	assert.Contains(t, string(taskSchema), `"Name"`)
-	
+
 	// Check Page schema
 	pageSchema, ok := writer.files["schemas/page.schema.json"]
 	assert.True(t, ok, "Page schema should be generated")
@@ -288,16 +289,16 @@ func TestPostProcessor_IgnoresSystemTypes(t *testing.T) {
 
 	// Verify only custom type got a schema
 	assert.Len(t, writer.files, 1, "Should generate only 1 schema (custom type)")
-	
+
 	// Check that custom type schema was generated
 	customSchema, ok := writer.files["schemas/custom_type.schema.json"]
 	assert.True(t, ok, "Custom type schema should be generated")
 	assert.Contains(t, string(customSchema), `"title": "Custom Type"`)
-	
+
 	// Verify system types were ignored
 	_, hasImageSchema := writer.files["schemas/image.schema.json"]
 	assert.False(t, hasImageSchema, "Image schema should NOT be generated")
-	
+
 	_, hasFileSchema := writer.files["schemas/file.schema.json"]
 	assert.False(t, hasFileSchema, "File schema should NOT be generated")
 }

@@ -152,7 +152,11 @@ func (h *MD) collectProperties(objectTypeDetails *domain.Details) []yaml.Propert
 
 	// Process each relation
 	for _, id := range relationIds {
-		prop := h.processRelation(id)
+		relDetails, err := h.resolver.ResolveRelation(id)
+		if err != nil || relDetails == nil {
+			continue
+		}
+		prop := h.processRelation(relDetails)
 		if prop != nil {
 			properties = append(properties, *prop)
 		}
@@ -184,19 +188,9 @@ func (h *MD) isCollection() bool {
 }
 
 // processRelation processes a single relation and returns a property
-func (h *MD) processRelation(relationId string) *yaml.Property {
-	relationDetails, err := h.resolver.ResolveRelation(relationId)
-	if err != nil || relationDetails == nil {
-		return nil
-	}
-
-	// Skip hidden relations
-	if relationDetails.GetBool(bundle.RelationKeyIsHidden) {
-		return nil
-	}
-
+func (h *MD) processRelation(details *domain.Details) *yaml.Property {
 	// Extract relation metadata
-	key := relationDetails.GetString(bundle.RelationKeyRelationKey)
+	key := details.GetString(bundle.RelationKeyRelationKey)
 
 	// Skip type relation (will be handled separately)
 	if key == bundle.RelationKeyType.String() {
@@ -210,18 +204,18 @@ func (h *MD) processRelation(relationId string) *yaml.Property {
 	}
 
 	// Process the value based on format
-	format := model.RelationFormat(relationDetails.GetInt64(bundle.RelationKeyRelationFormat))
+	format := model.RelationFormat(details.GetInt64(bundle.RelationKeyRelationFormat))
 	processedValue, ok := h.processRelationValue(v, format, key)
 	if !ok {
 		return nil
 	}
 
 	return &yaml.Property{
-		Name:        relationDetails.GetString(bundle.RelationKeyName),
+		Name:        details.GetString(bundle.RelationKeyName),
 		Key:         key,
 		Format:      format,
 		Value:       processedValue,
-		IncludeTime: relationDetails.GetBool(bundle.RelationKeyRelationFormatIncludeTime),
+		IncludeTime: details.GetBool(bundle.RelationKeyRelationFormatIncludeTime),
 	}
 }
 
@@ -303,6 +297,9 @@ func (h *MD) processObjectRelation(v domain.Value, key string) (domain.Value, bo
 		return v, false
 	}
 
+	if key == bundle.RelationKeyCreator.String() {
+		fmt.Println("")
+	}
 	// Check if this is a single-value relation
 	if slices.Contains(removeArrayRelations, key) && len(ids) > 0 {
 		title, _, ok := h.getLinkInfo(ids[0])
@@ -462,23 +459,20 @@ func (h *MD) addSystemProperties(properties []yaml.Property) []yaml.Property {
 		if v.IsNull() {
 			continue
 		}
-
-		// Get relation details from bundle
-		relKey := domain.RelationKey(key)
-		bundledRel, err := bundle.GetRelation(relKey)
-		if err != nil {
+		if s, ok := v.TryString(); ok && s == "" {
 			continue
 		}
 
-		// Create property based on the value
-		prop := yaml.Property{
-			Name:   bundledRel.Name,
-			Key:    key,
-			Format: bundledRel.Format,
-			Value:  v,
+		relDetails, err := h.resolver.GetRelationByKey(key)
+		if err != nil || relDetails == nil {
+			continue
 		}
 
-		properties = append(properties, prop)
+		prop := h.processRelation(relDetails)
+		if prop == nil {
+			continue
+		}
+		properties = append(properties, *prop)
 	}
 
 	return properties
@@ -1034,7 +1028,7 @@ func (h *MD) GenerateJSONSchema() ([]byte, error) {
 
 	// Create adapter for schema.ObjectResolver
 	schemaResolver := &schemaResolverAdapter{resolver: h.resolver}
-	
+
 	// Create schema using the schema package
 	s, err := schema.SchemaFromObjectDetailsWithResolver(objectTypeDetails, relationDetailsList, schemaResolver)
 	if err != nil {
