@@ -123,6 +123,51 @@ func TestNotificationService_List(t *testing.T) {
 		assert.Nil(t, err)
 		assert.Len(t, list, 1)
 	})
+	t.Run("notifications with GetRequestToLeave payload are filtered out", func(t *testing.T) {
+		// given
+		storeFixture := NewTestStore(t)
+		err := storeFixture.SaveNotification(&model.Notification{
+			Id:     "regular1",
+			Status: model.Notification_Created,
+			Payload: &model.NotificationPayloadOfTest{
+				Test: &model.NotificationTest{},
+			},
+		})
+		assert.Nil(t, err)
+		err = storeFixture.SaveNotification(&model.Notification{
+			Id:     "request1",
+			Status: model.Notification_Created,
+			Payload: &model.NotificationPayloadOfRequestToLeave{
+				RequestToLeave: &model.NotificationRequestToLeave{
+					SpaceId: "space123",
+				},
+			},
+		})
+		assert.Nil(t, err)
+		err = storeFixture.SaveNotification(&model.Notification{
+			Id:     "regular2",
+			Status: model.Notification_Created,
+			Payload: &model.NotificationPayloadOfTest{
+				Test: &model.NotificationTest{},
+			},
+		})
+		assert.Nil(t, err)
+		sender := mock_event.NewMockSender(t)
+		notifications := notificationService{
+			eventSender:       sender,
+			notificationStore: storeFixture,
+			loadTimeout:       10 * time.Millisecond,
+		}
+
+		// when
+		list, err := notifications.List(10, false)
+
+		// then
+		assert.Nil(t, err)
+		assert.Len(t, list, 2)
+		assert.Equal(t, "regular1", list[0].Id)
+		assert.Equal(t, "regular2", list[1].Id)
+	})
 }
 
 func TestNotificationService_Reply(t *testing.T) {
