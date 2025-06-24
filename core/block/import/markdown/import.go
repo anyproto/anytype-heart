@@ -603,7 +603,7 @@ func (m *Markdown) createSnapshots(
 		// Create relation option snapshots for YAML values
 		for relationKey, options := range yamlRelationOptions {
 			for optionValue := range options {
-				optionId := propIdPrefix + "option_" + relationKey + "_" + optionValue
+				optionId := m.schemaImporter.optionId(relationKey, optionValue)
 				yamlRelationOptions[relationKey][optionValue] = optionId
 
 				optionDetails := domain.NewDetails()
