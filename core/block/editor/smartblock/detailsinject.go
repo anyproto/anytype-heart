@@ -14,20 +14,29 @@ import (
 )
 
 var layoutPerSmartBlockType = map[smartblock.SmartBlockType]model.ObjectTypeLayout{
-	smartblock.SmartBlockTypeRelation:          model.ObjectType_relation,
-	smartblock.SmartBlockTypeBundledRelation:   model.ObjectType_relation,
-	smartblock.SmartBlockTypeObjectType:        model.ObjectType_objectType,
-	smartblock.SmartBlockTypeBundledObjectType: model.ObjectType_objectType,
-	smartblock.SmartBlockTypeRelationOption:    model.ObjectType_relationOption,
-	smartblock.SmartBlockTypeSpaceView:         model.ObjectType_spaceView,
-	smartblock.SmartBlockTypeParticipant:       model.ObjectType_participant,
-	smartblock.SmartBlockTypeFileObject:        model.ObjectType_file,
-	smartblock.SmartBlockTypeDate:              model.ObjectType_date,
-	smartblock.SmartBlockTypeChatDerivedObject: model.ObjectType_chatDerived,
-	smartblock.SmartBlockTypeChatObject:        model.ObjectType_chat,
-	smartblock.SmartBlockTypeWidget:            model.ObjectType_dashboard,
-	smartblock.SmartBlockTypeWorkspace:         model.ObjectType_dashboard,
-	smartblock.SmartBlockTypeArchive:           model.ObjectType_dashboard,
+	smartblock.SmartBlockTypeRelation:           model.ObjectType_relation,
+	smartblock.SmartBlockTypeBundledRelation:    model.ObjectType_relation,
+	smartblock.SmartBlockTypeObjectType:         model.ObjectType_objectType,
+	smartblock.SmartBlockTypeBundledObjectType:  model.ObjectType_objectType,
+	smartblock.SmartBlockTypeRelationOption:     model.ObjectType_relationOption,
+	smartblock.SmartBlockTypeSpaceView:          model.ObjectType_spaceView,
+	smartblock.SmartBlockTypeParticipant:        model.ObjectType_participant,
+	smartblock.SmartBlockTypeFile:               model.ObjectType_file, // deprecated
+	smartblock.SmartBlockTypeDate:               model.ObjectType_date,
+	smartblock.SmartBlockTypeChatDerivedObject:  model.ObjectType_chatDerived,
+	smartblock.SmartBlockTypeChatObject:         model.ObjectType_chat, // deprecated
+	smartblock.SmartBlockTypeWidget:             model.ObjectType_dashboard,
+	smartblock.SmartBlockTypeWorkspace:          model.ObjectType_dashboard,
+	smartblock.SmartBlockTypeArchive:            model.ObjectType_dashboard,
+	smartblock.SmartBlockTypeHome:               model.ObjectType_dashboard,
+	smartblock.SmartBlockTypeAccountObject:      model.ObjectType_profile,
+	smartblock.SmartBlockTypeAnytypeProfile:     model.ObjectType_profile,
+	smartblock.SmartBlockTypeIdentity:           model.ObjectType_profile,
+	smartblock.SmartBlockTypeProfilePage:        model.ObjectType_profile,
+	smartblock.SmartBlockTypeAccountOld:         model.ObjectType_profile, // deprecated
+	smartblock.SmartBlockTypeMissingObject:      model.ObjectType_missingObject,
+	smartblock.SmartBlockTypeNotificationObject: model.ObjectType_notification,
+	smartblock.SmartBlockTypeDevicesObject:      model.ObjectType_devices,
 }
 
 func (sb *smartBlock) injectLocalDetails(s *state.State) error {
@@ -237,21 +246,9 @@ func (sb *smartBlock) deriveChatId(s *state.State) error {
 }
 
 // resolveLayout adds resolvedLayout to local details of object. Priority:
-// layout > recommendedLayout from type > current resolvedLayout > basic (fallback)
+// layout restricted by sbType > layout > recommendedLayout from type > current resolvedLayout > basic (fallback)
 // resolveLayout also converts object from Note, i.e. adds Name and Title to state
 func (sb *smartBlock) resolveLayout(s *state.State) {
-	if sb.Type() != smartblock.SmartBlockTypePage {
-		layout := s.Details().Get(bundle.RelationKeyLayout)
-		if layoutV, ok := layoutPerSmartBlockType[sb.Type()]; ok {
-			s.SetDetailAndBundledRelation(bundle.RelationKeyResolvedLayout, domain.Int64(int64(layoutV)))
-		} else if layout.Ok() {
-			log.With("objectId", s.RootId()).Warnf("resolveLayout: no layout for smartblock type %s, using layout from details: %s", sb.Type(), layout)
-			s.SetDetailAndBundledRelation(bundle.RelationKeyResolvedLayout, layout)
-		} else {
-			log.With("objectId", s.RootId()).Errorf("resolveLayout: no layout for smartblock type %s, no layout in details", sb.Type())
-		}
-	}
-
 	if s.Details() == nil && s.LocalDetails() == nil {
 		return
 	}
@@ -260,7 +257,14 @@ func (sb *smartBlock) resolveLayout(s *state.State) {
 		currentValue  = s.LocalDetails().Get(bundle.RelationKeyResolvedLayout)
 		newValue      domain.Value
 		fallbackValue = domain.Int64(int64(model.ObjectType_basic))
+
+		sbTypeLayoutValue, hasStrictLayout = layoutPerSmartBlockType[sb.Type()]
 	)
+
+	if hasStrictLayout {
+		s.SetDetailAndBundledRelation(bundle.RelationKeyResolvedLayout, domain.Int64(int64(sbTypeLayoutValue)))
+		return
+	}
 
 	if !currentValue.Ok() && layoutValue.Ok() {
 		// we don't have resolvedLayout in local details, but we have layout

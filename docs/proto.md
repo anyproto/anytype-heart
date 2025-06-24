@@ -33429,6 +33429,9 @@ Look https://github.com/golang/protobuf/issues/1135 for more information.
 | chat | 21 | deprecated |
 | chatDerived | 22 |  |
 | tag | 23 |  |
+| notification | 24 |  |
+| missingObject | 25 |  |
+| devices | 26 |  |
 
 
 
