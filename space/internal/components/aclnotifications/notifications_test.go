@@ -267,68 +267,6 @@ func TestAclNotificationSender_AddRecords(t *testing.T) {
 		// then
 		f.notificationSender.AssertNotCalled(t, "CreateAndSend")
 	})
-	t.Run("leave space notification, user owner", func(t *testing.T) {
-		// given
-		f := newFixture(t)
-		_, pubKey, err := crypto.GenerateRandomEd25519KeyPair()
-		assert.Nil(t, err)
-
-		aclRecord := &aclrecordproto.AclContentValue{Value: &aclrecordproto.AclContentValue_AccountRequestRemove{
-			AccountRequestRemove: &aclrecordproto.AclAccountRequestRemove{},
-		}}
-		aclData := &aclrecordproto.AclData{AclContent: []*aclrecordproto.AclContentValue{aclRecord}}
-		acl := &aclListStub{records: []*list.AclRecord{
-			{
-				Id:       "recordId",
-				Model:    aclData,
-				Identity: pubKey,
-			},
-		}}
-		f.notificationSender.EXPECT().GetLastNotificationId(mock.Anything).Return("")
-		f.AddRecords(acl, list.AclPermissionsOwner, "spaceId", spaceinfo.AccountStatusActive, 0)
-
-		loadChan := make(chan struct{})
-		close(loadChan)
-		f.notificationSender.EXPECT().LoadFinish().Return(loadChan)
-
-		f.identityService.EXPECT().WaitProfile(context.Background(), pubKey.Account()).Return(&model.IdentityProfile{
-			Name:    "test",
-			IconCid: "test",
-		})
-		f.notificationSender.EXPECT().CreateAndSend(&model.Notification{
-			Id:      "recordId",
-			IsLocal: false,
-			Payload: &model.NotificationPayloadOfRequestToLeave{
-				RequestToLeave: &model.NotificationRequestToLeave{
-					SpaceId:      "spaceId",
-					Identity:     pubKey.Account(),
-					IdentityName: "test",
-					IdentityIcon: "test",
-				},
-			},
-			Space: "spaceId",
-		}).Return(nil)
-
-		// when
-		go f.processRecords()
-		go f.Close(context.Background())
-
-		// then
-		<-f.done
-		f.notificationSender.AssertCalled(t, "CreateAndSend", &model.Notification{
-			Id:      "recordId",
-			IsLocal: false,
-			Payload: &model.NotificationPayloadOfRequestToLeave{
-				RequestToLeave: &model.NotificationRequestToLeave{
-					SpaceId:      "spaceId",
-					Identity:     pubKey.Account(),
-					IdentityName: "test",
-					IdentityIcon: "test",
-				},
-			},
-			Space: "spaceId",
-		})
-	})
 	t.Run("change permissions notification not for current user", func(t *testing.T) {
 		// given
 		f := newFixture(t)

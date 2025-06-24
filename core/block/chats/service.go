@@ -460,10 +460,11 @@ func (s *service) GetMessagesByIds(ctx context.Context, chatObjectId string, mes
 
 func (s *service) SubscribeLastMessages(ctx context.Context, chatObjectId string, limit int, subId string) (*chatsubscription.SubscribeLastMessagesResponse, error) {
 	return s.chatSubscriptionService.SubscribeLastMessages(s.componentCtx, chatsubscription.SubscribeLastMessagesRequest{
-		ChatObjectId:     chatObjectId,
-		SubId:            subId,
-		Limit:            limit,
-		WithDependencies: false,
+		ChatObjectId:           chatObjectId,
+		SubId:                  subId,
+		Limit:                  limit,
+		WithDependencies:       false,
+		CouldUseSessionContext: true,
 	})
 }
 
