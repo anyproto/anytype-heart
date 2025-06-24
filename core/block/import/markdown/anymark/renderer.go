@@ -239,9 +239,8 @@ func (r *Renderer) renderAutoLink(_ util.BufWriter,
 		linkPath = string(destination)
 	}
 
-	// add basefilepath
-	if !strings.HasPrefix(strings.ToLower(linkPath), "http://") &&
-		!strings.HasPrefix(strings.ToLower(linkPath), "https://") {
+	if u, err := url.Parse(linkPath); err == nil && u.Scheme == "" {
+		// Only treat as a file path if there's no URL scheme
 		linkPath = filepath.Join(r.GetBaseFilepath(), linkPath)
 	}
 
@@ -327,8 +326,8 @@ func (r *Renderer) renderLink(_ util.BufWriter,
 			linkPath = string(destination)
 		}
 
-		if !strings.HasPrefix(strings.ToLower(linkPath), "http://") &&
-			!strings.HasPrefix(strings.ToLower(linkPath), "https://") {
+		if u, err := url.Parse(linkPath); err == nil && u.Scheme == "" {
+			// Only treat as a file path if there's no URL scheme
 			linkPath = filepath.Join(r.GetBaseFilepath(), linkPath)
 			if filepath.Ext(linkPath) == "" {
 				linkPath += ".md" // Default to .md if no extension is provided
@@ -468,8 +467,8 @@ func (r *Renderer) renderWikiLink(_ util.BufWriter, source []byte, node ast.Node
 		r.SetMarkStart()
 	} else {
 		// Handle as regular link (same behavior as [[]] for both [[]] and ![[]])
-		if !strings.HasPrefix(strings.ToLower(linkPath), "http://") &&
-			!strings.HasPrefix(strings.ToLower(linkPath), "https://") {
+		if u, err := url.Parse(linkPath); err == nil && u.Scheme == "" {
+			// Only treat as a file path if there's no URL scheme
 			linkPath = filepath.Join(r.GetBaseFilepath(), linkPath)
 			if filepath.Ext(linkPath) == "" {
 				linkPath += ".md" // Default to .md if no extension is provided

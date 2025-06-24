@@ -3,7 +3,7 @@ package anymark
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"os"
 	"reflect"
 	"testing"
 
@@ -17,7 +17,7 @@ type MdCase struct {
 }
 
 func TestConvertMdToBlocks(t *testing.T) {
-	bs, err := ioutil.ReadFile("testdata/md_cases.json")
+	bs, err := os.ReadFile("testdata/md_cases.json")
 	if err != nil {
 		panic(err)
 	}
@@ -45,4 +45,39 @@ func TestConvertMdToBlocks(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestAnytypeSchemeLinks(t *testing.T) {
+	t.Run("anytype link", func(t *testing.T) {
+		md := "Link to [obj](anytype://123)"
+		blocks, _, err := MarkdownToBlocks([]byte(md), "", nil)
+		require.NoError(t, err)
+
+		var markParam string
+		for _, b := range blocks {
+			if b.GetText() != nil && b.GetText().GetMarks() != nil {
+				marks := b.GetText().GetMarks().GetMarks()
+				if len(marks) > 0 {
+					markParam = marks[0].GetParam()
+					break
+				}
+			}
+		}
+		require.Equal(t, "anytype://123", markParam)
+	})
+
+	t.Run("anytype image", func(t *testing.T) {
+		md := "![img](anytype://image)"
+		blocks, _, err := MarkdownToBlocks([]byte(md), "", nil)
+		require.NoError(t, err)
+
+		var imgName string
+		for _, b := range blocks {
+			if f := b.GetFile(); f != nil {
+				imgName = f.GetName()
+				break
+			}
+		}
+		require.Equal(t, "anytype://image", imgName)
+	})
 }

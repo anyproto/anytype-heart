@@ -209,7 +209,8 @@ func (r *blocksRenderer) AddImageBlock(source string) {
 		sourceUnescaped = source
 	}
 
-	if !strings.HasPrefix(strings.ToLower(source), "http://") && !strings.HasPrefix(strings.ToLower(source), "https://") {
+	if u, err := url.Parse(sourceUnescaped); err == nil && u.Scheme == "" {
+		// Only treat as a file path if there's no URL scheme
 		sourceUnescaped = filepath.Join(r.GetBaseFilepath(), sourceUnescaped)
 	}
 
