@@ -169,6 +169,11 @@ func TestPropertyLevelFlags(t *testing.T) {
 		// Verify relations were categorized correctly
 		assert.ElementsMatch(t, []string{"title", "author"}, typ.FeaturedRelations, "Should have featured relations from x-featured properties")
 		assert.ElementsMatch(t, []string{"content", "tags"}, typ.RecommendedRelations, "Should have regular relations")
-		assert.ElementsMatch(t, []string{"internal_id", "debug_info"}, typ.HiddenRelations, "Should have hidden relations from x-hidden properties")
+		// Check that hidden relations include specified hidden relations + system properties
+		assert.Contains(t, typ.HiddenRelations, "internal_id")
+		assert.Contains(t, typ.HiddenRelations, "debug_info")
+		for _, sysProp := range SystemProperties {
+			assert.Contains(t, typ.HiddenRelations, sysProp)
+		}
 	})
 }

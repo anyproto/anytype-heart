@@ -124,6 +124,9 @@ func (p *JSONSchemaParser) Parse(reader io.Reader) (*Schema, error) {
 			t.AddRelation(rel.key, rel.featured, rel.hidden)
 		}
 
+		// Add system properties to hidden relations if not already present
+		p.addSystemPropertiesToType(t)
+
 		// Set type for schema
 		if err := schema.SetType(t); err != nil {
 			return nil, fmt.Errorf("failed to set type: %w", err)
@@ -401,4 +404,26 @@ func isKnownExtension(key string) bool {
 		}
 	}
 	return false
+}
+
+// addSystemPropertiesToType adds system properties to the type's hidden relations if not already present
+func (p *JSONSchemaParser) addSystemPropertiesToType(t *Type) {
+	// Create a map of existing relations for quick lookup
+	existingRelations := make(map[string]bool)
+	for _, rel := range t.FeaturedRelations {
+		existingRelations[rel] = true
+	}
+	for _, rel := range t.RecommendedRelations {
+		existingRelations[rel] = true
+	}
+	for _, rel := range t.HiddenRelations {
+		existingRelations[rel] = true
+	}
+
+	// Add system properties if not already present
+	for _, sysPropKey := range SystemProperties {
+		if !existingRelations[sysPropKey] {
+			t.HiddenRelations = append(t.HiddenRelations, sysPropKey)
+		}
+	}
 }

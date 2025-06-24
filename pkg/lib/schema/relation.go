@@ -9,6 +9,9 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
+// CollectionPropertyKey is a workaround for storing collection ids as a fake property
+const CollectionPropertyKey = "_collection"
+
 // Relation represents a property/relation in the schema
 type Relation struct {
 	Key         string                 `json:"key"`
@@ -19,11 +22,11 @@ type Relation struct {
 	IsReadOnly  bool                   `json:"is_read_only,omitempty"`
 	IsMulti     bool                   `json:"is_multi,omitempty"`
 	ObjectTypes []string               `json:"object_types,omitempty"` // For object relations
-	Options     []string               `json:"options,omitempty"`     // For status relations
-	Examples    []string               `json:"examples,omitempty"`    // For tag relations
+	Options     []string               `json:"options,omitempty"`      // For status relations
+	Examples    []string               `json:"examples,omitempty"`     // For tag relations
 	IncludeTime bool                   `json:"include_time,omitempty"` // For date relations
 	MaxLength   int                    `json:"max_length,omitempty"`   // For text relations
-	Extension   map[string]interface{} `json:"extension,omitempty"`   // x-* fields from schema
+	Extension   map[string]interface{} `json:"extension,omitempty"`    // x-* fields from schema
 }
 
 // ToDetails converts Relation to domain.Details

@@ -1233,7 +1233,7 @@ func TestMarkdown_CollectionImport(t *testing.T) {
 					"items": {
 						"type": "string"
 					},
-					"x-key": "collection",
+					"x-key": "_collection",
 					"x-format": "object"
 				}
 			}
@@ -1390,7 +1390,7 @@ This is a collection of important tasks.`
 					"items": {
 						"type": "string"
 					},
-					"x-key": "collection",
+					"x-key": "_collection",
 					"x-format": "object"
 				}
 			}

@@ -3,7 +3,6 @@ package md
 import (
 	"bytes"
 	"io"
-	"strings"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/domain"
@@ -26,17 +25,17 @@ var ignoredSystemTypes = map[domain.TypeKey]bool{
 	bundle.TypeKeyImage: true,
 	bundle.TypeKeyVideo: true,
 	bundle.TypeKeyAudio: true,
-	
+
 	// System infrastructure types
-	bundle.TypeKeySpace:          true,  // Workspace/space objects
-	bundle.TypeKeySpaceView:      true,  // Space view configuration
-	bundle.TypeKeyParticipant:    true,  // User/participant objects
-	bundle.TypeKeyDashboard:      true,  // Dashboard configuration
-	bundle.TypeKeyObjectType:     true,  // Type definitions themselves
-	bundle.TypeKeyRelation:       true,  // Relation/property definitions
-	bundle.TypeKeyRelationOption: true,  // Options for select/status relations
-	bundle.TypeKeyDate:           true,  // Date objects (special handling)
-	bundle.TypeKeyTemplate:       true,  // Template objects
+	bundle.TypeKeySpace:          true, // Workspace/space objects
+	bundle.TypeKeySpaceView:      true, // Space view configuration
+	bundle.TypeKeyParticipant:    true, // User/participant objects
+	bundle.TypeKeyDashboard:      true, // Dashboard configuration
+	bundle.TypeKeyObjectType:     true, // Type definitions themselves
+	bundle.TypeKeyRelation:       true, // Relation/property definitions
+	bundle.TypeKeyRelationOption: true, // Options for select/status relations
+	bundle.TypeKeyDate:           true, // Date objects (special handling)
+	bundle.TypeKeyTemplate:       true, // Template objects
 }
 
 // NewMDPostProcessor creates a new markdown post-processor
@@ -91,25 +90,24 @@ func (p *PostProcessor) Process(docs map[string]*domain.Details, writer Writer) 
 			}
 		}
 
-		// Create a temporary state and converter to generate schema
-		tempState := &state.State{}
-		tempState.SetDetailAndBundledRelation(bundle.RelationKeyType, domain.String(objectTypeId))
-
-		mdConv := NewMDConverterWithResolver(tempState, p.fileNamer, true, true, p.resolver)
-		schemaFileName := mdConv.(*MD).GenerateSchemaFileName(typeName)
-		actualFileName := strings.TrimPrefix(schemaFileName, "./")
+		schemaFileName := GenerateSchemaFileName(typeName)
 
 		// Skip if already written
-		if p.writtenSchemas[actualFileName] {
+		if p.writtenSchemas[schemaFileName] {
 			continue
 		}
 
+		// Create a temporary state and converter to generate schema
+		tempState := state.NewDoc("temp", nil).(*state.State)
+		tempState.SetDetailAndBundledRelation(bundle.RelationKeyType, domain.String(objectTypeId))
+		mdConv := NewMDConverterWithResolver(tempState, p.fileNamer, true, true, p.resolver)
+
 		// Generate and write schema
 		if schemaBytes, err := mdConv.(*MD).GenerateJSONSchema(); err == nil && schemaBytes != nil {
-			if err = writer.WriteFile(actualFileName, bytes.NewReader(schemaBytes), 0); err != nil {
+			if err = writer.WriteFile(schemaFileName, bytes.NewReader(schemaBytes), 0); err != nil {
 				log.Warnf("failed to write JSON schema for type %s: %v", typeName, err)
 			} else {
-				p.writtenSchemas[actualFileName] = true
+				p.writtenSchemas[schemaFileName] = true
 			}
 		}
 	}

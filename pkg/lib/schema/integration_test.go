@@ -527,10 +527,6 @@ func TestSchemaRegistryIntegration(t *testing.T) {
 
 		optionIds := registry.ResolveOptionValues("test_tags", []string{"urgent", "bug"})
 		assert.Equal(t, []string{"opt_test_tags_urgent", "opt_test_tags_bug"}, optionIds)
-
-		// Test object resolution
-		objectIds := registry.ResolveObjectValues([]string{"doc1", "doc2"})
-		assert.Equal(t, []string{"obj_doc1", "obj_doc2"}, objectIds)
 	})
 }
 
@@ -719,7 +715,13 @@ func TestHiddenRelationsExportImport(t *testing.T) {
 		// Verify relation lists
 		assert.ElementsMatch(t, []string{"title"}, typ.FeaturedRelations)
 		assert.ElementsMatch(t, []string{"description", "author"}, typ.RecommendedRelations)
-		assert.ElementsMatch(t, []string{"internal_id", "secret_key", "system_flag"}, typ.HiddenRelations)
+		// Verify hidden relations include specified ones + system properties
+		for _, expectedHidden := range []string{"internal_id", "secret_key", "system_flag"} {
+			assert.Contains(t, typ.HiddenRelations, expectedHidden)
+		}
+		for _, sysProp := range schema.SystemProperties {
+			assert.Contains(t, typ.HiddenRelations, sysProp)
+		}
 
 		// Verify all relations were parsed
 		rel, ok := s.GetRelation("internal_id")
@@ -784,7 +786,14 @@ func TestHiddenRelationsExportImport(t *testing.T) {
 		assert.Equal(t, originalType.Description, importedType.Description)
 		assert.ElementsMatch(t, originalType.FeaturedRelations, importedType.FeaturedRelations)
 		assert.ElementsMatch(t, originalType.RecommendedRelations, importedType.RecommendedRelations)
-		assert.ElementsMatch(t, originalType.HiddenRelations, importedType.HiddenRelations)
+		// Hidden relations should include original + system properties added on import
+		for _, expectedHidden := range originalType.HiddenRelations {
+			assert.Contains(t, importedType.HiddenRelations, expectedHidden)
+		}
+		// System properties are added during import
+		for _, sysProp := range schema.SystemProperties {
+			assert.Contains(t, importedType.HiddenRelations, sysProp)
+		}
 
 		// Verify all relations preserved
 		for _, originalRel := range relations {

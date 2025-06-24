@@ -20,11 +20,11 @@ type Type struct {
 	IsArchived           bool                   `json:"is_archived,omitempty"`
 	IsHidden             bool                   `json:"is_hidden,omitempty"`
 	Layout               model.ObjectTypeLayout `json:"layout,omitempty"`
-	FeaturedRelations    []string               `json:"featured_relations,omitempty"`
-	RecommendedRelations []string               `json:"recommended_relations,omitempty"`
-	HiddenRelations      []string               `json:"hidden_relations,omitempty"`
-	Extension            map[string]interface{} `json:"extension,omitempty"` // x-* fields from schema
-	KeyToIdFunc          func(string) string    `json:"-"`                   // function to convert type key to ID, used for relations
+	FeaturedRelations    []string               `json:"featured_relations,omitempty"`    // store keys, not ids
+	RecommendedRelations []string               `json:"recommended_relations,omitempty"` // store keys, not ids
+	HiddenRelations      []string               `json:"hidden_relations,omitempty"`      // store keys, not ids
+	Extension            map[string]interface{} `json:"extension,omitempty"`             // x-* fields from schema
+	KeyToIdFunc          func(string) string    `json:"-"`                               // function to convert type key to ID, used for relations
 }
 
 func convertKeysToIds(from []string, keyToIdFunc func(string) string) []string {
@@ -62,10 +62,7 @@ func (t *Type) ToDetails() *domain.Details {
 
 	details.SetBool(bundle.RelationKeyIsArchived, t.IsArchived)
 	details.SetBool(bundle.RelationKeyIsHidden, t.IsHidden)
-
-	if t.Layout != model.ObjectType_basic {
-		details.SetInt64(bundle.RelationKeyRecommendedLayout, int64(t.Layout))
-	}
+	details.SetInt64(bundle.RelationKeyRecommendedLayout, int64(t.Layout))
 
 	// Set featured and recommended relations
 	if len(t.FeaturedRelations) > 0 {
@@ -105,8 +102,36 @@ func (t *Type) ToDetails() *domain.Details {
 
 // FromDetails creates a Type from domain.Details
 func TypeFromDetails(details *domain.Details) (*Type, error) {
+	return TypeFromDetailsWithResolver(details, nil)
+}
+
+// TypeFromDetailsWithResolver creates a Type from domain.Details with optional ID to key resolver
+func TypeFromDetailsWithResolver(details *domain.Details, idToKeyResolver func(relationId string) (string, error)) (*Type, error) {
 	if details == nil {
 		return nil, fmt.Errorf("details is nil")
+	}
+
+	// Helper function to convert relation IDs to keys
+	convertIdsToKeys := func(relationIds []string) []string {
+		if idToKeyResolver == nil {
+			// If no resolver, assume they're already keys (for backward compatibility)
+			return relationIds
+		}
+		
+		keys := make([]string, 0, len(relationIds))
+		for _, id := range relationIds {
+			// Try to resolve ID to key
+			if key, err := idToKeyResolver(id); err == nil && key != "" {
+				keys = append(keys, key)
+			} else {
+				// If resolution fails, check if it's already a key (for bundled relations)
+				if _, err := bundle.GetRelation(domain.RelationKey(id)); err == nil {
+					keys = append(keys, id)
+				}
+				// Otherwise skip this relation
+			}
+		}
+		return keys
 	}
 
 	t := &Type{
@@ -118,9 +143,9 @@ func TypeFromDetails(details *domain.Details) (*Type, error) {
 		IsArchived:           details.GetBool(bundle.RelationKeyIsArchived),
 		IsHidden:             details.GetBool(bundle.RelationKeyIsHidden),
 		Layout:               model.ObjectTypeLayout(details.GetInt64(bundle.RelationKeyRecommendedLayout)),
-		FeaturedRelations:    details.GetStringList(bundle.RelationKeyRecommendedFeaturedRelations),
-		RecommendedRelations: details.GetStringList(bundle.RelationKeyRecommendedRelations),
-		HiddenRelations:      details.GetStringList(bundle.RelationKeyRecommendedHiddenRelations),
+		FeaturedRelations:    convertIdsToKeys(details.GetStringList(bundle.RelationKeyRecommendedFeaturedRelations)),
+		RecommendedRelations: convertIdsToKeys(details.GetStringList(bundle.RelationKeyRecommendedRelations)),
+		HiddenRelations:      convertIdsToKeys(details.GetStringList(bundle.RelationKeyRecommendedHiddenRelations)),
 		Extension:            make(map[string]interface{}),
 	}
 
@@ -151,41 +176,46 @@ func (t *Type) Validate() error {
 }
 
 // AddRelation adds a relation to the type's recommended or featured relations
-func (t *Type) AddRelation(relationId string, featured, hidden bool) {
+func (t *Type) AddRelation(relationKey string, featured, hidden bool) {
 	if featured {
 		// Check if already exists
 		for _, r := range t.FeaturedRelations {
-			if r == relationId {
+			if r == relationKey {
 				return
 			}
 		}
-		t.FeaturedRelations = append(t.FeaturedRelations, relationId)
+		t.FeaturedRelations = append(t.FeaturedRelations, relationKey)
 	} else if hidden {
 		for _, r := range t.HiddenRelations {
-			if r == relationId {
+			if r == relationKey {
 				return
 			}
 		}
-		t.HiddenRelations = append(t.HiddenRelations, relationId)
+		t.HiddenRelations = append(t.HiddenRelations, relationKey)
 	} else {
 		for _, r := range t.RecommendedRelations {
-			if r == relationId {
+			if r == relationKey {
 				return
 			}
 		}
-		t.RecommendedRelations = append(t.RecommendedRelations, relationId)
+		t.RecommendedRelations = append(t.RecommendedRelations, relationKey)
 	}
 }
 
 // HasRelation checks if the type includes a specific relation
-func (t *Type) HasRelation(relationId string) bool {
+func (t *Type) HasRelation(relationKey string) bool {
 	for _, r := range t.FeaturedRelations {
-		if r == relationId {
+		if r == relationKey {
 			return true
 		}
 	}
 	for _, r := range t.RecommendedRelations {
-		if r == relationId {
+		if r == relationKey {
+			return true
+		}
+	}
+	for _, r := range t.HiddenRelations {
+		if r == relationKey {
 			return true
 		}
 	}

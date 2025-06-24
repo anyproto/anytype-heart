@@ -18,9 +18,6 @@ type PropertyResolver interface {
 
 	// ResolveOptionValues converts option names to option IDs
 	ResolveOptionValues(relationKey string, optionNames []string) []string
-
-	// ResolveObjectValues converts object names to object IDs/paths
-	ResolveObjectValues(objectNames []string) []string
 }
 
 // SchemaProvider provides access to schemas

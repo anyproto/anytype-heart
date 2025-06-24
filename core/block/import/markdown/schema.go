@@ -17,8 +17,6 @@ import (
 // Verify that SchemaImporter implements schema.PropertyResolver
 var _ schema.PropertyResolver = (*SchemaImporter)(nil)
 
-const CollectionPropertyKey = "collection"
-
 // SchemaImporter handles schema-based import workflow
 type SchemaImporter struct {
 	schemas         map[string]*schema.Schema    // filename -> parsed schema
@@ -57,7 +55,7 @@ func (si *SchemaImporter) LoadSchemas(importSource source.Source, allErrors *com
 
 			schemaData, err := io.ReadAll(fileReader)
 			if err != nil {
-				allErrors.Add(fmt.Errorf("failed to read schema file %s: %w", fileName, err))
+				allErrors.Add(fmt.Errorf("failed to read schema file: %w", err))
 				return true // continue iteration
 			}
 
@@ -91,7 +89,7 @@ func (si *SchemaImporter) CreateRelationSnapshots() []*common.Snapshot {
 			si.existingRels[rel.Key] = relationId
 
 			// Skip creating snapshot for collection relation, but still register it
-			if rel.Key == CollectionPropertyKey {
+			if rel.Key == schema.CollectionPropertyKey {
 				continue // skip collection relation snapshot, handled separately
 			}
 
@@ -123,6 +121,11 @@ func (si *SchemaImporter) CreateRelationSnapshots() []*common.Snapshot {
 	return snapshots
 }
 
+func (si *SchemaImporter) optionId(relationKey, optionName string) string {
+	// Generate a unique ID for the option based on relation key and option name
+	return si.propIdPrefix + "option_" + relationKey + "_" + optionName
+}
+
 // CreateRelationOptionSnapshots creates snapshots for relation options (for select/multi-select relations)
 func (si *SchemaImporter) CreateRelationOptionSnapshots() []*common.Snapshot {
 	var snapshots []*common.Snapshot
@@ -151,7 +154,7 @@ func (si *SchemaImporter) CreateRelationOptionSnapshots() []*common.Snapshot {
 			}
 
 			for _, opt := range optionsToCreate {
-				optionId := si.propIdPrefix + "option_" + rel.Key + "_" + opt
+				optionId := si.optionId(rel.Key, opt)
 
 				// Track option ID
 				si.relationOptions[rel.Key][opt] = optionId
@@ -213,7 +216,7 @@ func (si *SchemaImporter) CreateTypeSnapshots() []*common.Snapshot {
 			}
 
 			details := t.ToDetails()
-			details.Delete(CollectionPropertyKey)
+			details.Delete(schema.CollectionPropertyKey)
 
 			snapshot := &common.Snapshot{
 				Id: typeId,
@@ -305,7 +308,7 @@ func (si *SchemaImporter) ResolveOptionValue(relationKey string, optionName stri
 		}
 	}
 	// If no schema option found, return the name as-is
-	return si.propIdPrefix + "option_" + relationKey + "_" + optionName
+	return si.optionId(relationKey, optionName)
 }
 
 // ResolveOptionValues converts option names to option IDs for a given relation
@@ -313,15 +316,6 @@ func (si *SchemaImporter) ResolveOptionValues(relationKey string, optionNames []
 	result := make([]string, 0, len(optionNames))
 	for _, name := range optionNames {
 		result = append(result, si.ResolveOptionValue(relationKey, name))
-	}
-	return result
-}
-
-// ResolveOptionValues converts option names to option IDs for a given relation
-func (si *SchemaImporter) ResolveObjectValues(objectnames []string) []string {
-	result := make([]string, 0, len(objectnames))
-	for _, name := range objectnames {
-		result = append(result, "./"+name+".md")
 	}
 	return result
 }

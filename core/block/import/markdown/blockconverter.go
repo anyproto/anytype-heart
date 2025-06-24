@@ -11,10 +11,10 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/import/common"
 	"github.com/anyproto/anytype-heart/core/block/import/common/source"
 	"github.com/anyproto/anytype-heart/core/block/import/markdown/anymark"
-	"github.com/anyproto/anytype-heart/pkg/lib/schema/yaml"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+	"github.com/anyproto/anytype-heart/pkg/lib/schema/yaml"
 	"github.com/anyproto/anytype-heart/util/uri"
 )
 
@@ -281,7 +281,7 @@ func (m *mdConverter) createBlocksFromFile(importSource source.Source, filePath 
 		// Extract and parse YAML front matter
 		frontMatter, markdownContent, err := yaml.ExtractYAMLFrontMatter(b)
 		if err != nil {
-			log.Warnf("failed to extract YAML front matter from %s: %s", filePath, err)
+			log.Warnf("failed to extract YAML front matter: %s", err)
 			// Continue with original content
 			markdownContent = b
 		}
@@ -301,7 +301,7 @@ func (m *mdConverter) createBlocksFromFile(importSource source.Source, filePath 
 			}
 
 			if err != nil {
-				log.Warnf("failed to parse YAML front matter from %s: %s", filePath, err)
+				log.Warnf("failed to parse YAML front matter: %s", err)
 			} else if yamlResult != nil {
 				files[filePath].YAMLDetails = yamlResult.Details
 				files[filePath].YAMLProperties = yamlResult.Properties

@@ -17,6 +17,15 @@ import (
 // SchemaVersion is the current schema generation version
 const SchemaVersion = "1.0"
 
+// SystemProperties are properties that are always included in export if not empty
+var SystemProperties = []string{
+	bundle.RelationKeyCreator.String(),
+	bundle.RelationKeyCreatedDate.String(),
+	bundle.RelationKeyIconEmoji.String(),
+	bundle.RelationKeyIconImage.String(),
+	bundle.RelationKeyCoverId.String(),
+}
+
 // orderedRelation represents a relation with its order and flags
 type orderedRelation struct {
 	name     string
@@ -332,59 +341,7 @@ func (e *JSONSchemaExporter) typeToJSONSchema(t *Type, schema *Schema) map[strin
 	}
 
 	// Collect all relations and sort by order
-	var orderedRels []orderedRelation
-	propertyOrder := 1 // Start after id
-
-	hasType := false // Track if we have a key relation
-	// Process featured relations first
-	for _, relKey := range t.FeaturedRelations {
-		if rel, ok := schema.GetRelation(relKey); ok {
-			name := rel.Name
-			if relKey == bundle.RelationKeyType.String() {
-				hasType = true // Track if Type relation is present
-			}
-			orderedRels = append(orderedRels, orderedRelation{
-				name:     name,
-				relation: rel,
-				order:    propertyOrder,
-				featured: true,
-			})
-			propertyOrder++
-		}
-	}
-
-	// Then regular relations
-	for _, relKey := range t.RecommendedRelations {
-		if rel, ok := schema.GetRelation(relKey); ok {
-			name := rel.Name
-			if relKey == bundle.RelationKeyType.String() {
-				hasType = true // Track if Type relation is present
-			}
-			orderedRels = append(orderedRels, orderedRelation{
-				name:     name,
-				relation: rel,
-				order:    propertyOrder,
-				featured: false,
-			})
-			propertyOrder++
-		}
-	}
-
-	for _, relKey := range t.HiddenRelations {
-		if rel, ok := schema.GetRelation(relKey); ok {
-			name := rel.Name
-			if relKey == bundle.RelationKeyType.String() {
-				hasType = true // Track if Type relation is present
-			}
-			orderedRels = append(orderedRels, orderedRelation{
-				name:     name,
-				relation: rel,
-				order:    propertyOrder,
-				hidden:   true,
-			})
-			propertyOrder++
-		}
-	}
+	orderedRels, propertyOrder, hasType := e.collectOrderedRelations(t, schema)
 	if !hasType {
 		typeRel := bundle.MustGetRelation(bundle.RelationKeyType)
 		// If Type relation is missing, add it as a hidden property
@@ -427,6 +384,7 @@ func (e *JSONSchemaExporter) typeToJSONSchema(t *Type, schema *Schema) map[strin
 				"type": "string",
 			},
 			"x-order": propertyOrder,
+			"x-key":   "_collection",
 		}
 	}
 
@@ -543,6 +501,51 @@ func (e *JSONSchemaExporter) relationToProperty(r *Relation) map[string]interfac
 // deduplicatePropertyNames ensures no duplicate property names in export
 // by sorting relations by key and adding index suffixes when needed
 // Special handling: Bundled relations always keep their names without suffix
+// collectOrderedRelations collects and orders all relations from the type
+func (e *JSONSchemaExporter) collectOrderedRelations(t *Type, schema *Schema) ([]orderedRelation, int, bool) {
+	var orderedRels []orderedRelation
+	propertyOrder := 1 // Start after id
+	hasType := false   // Track if we have a type relation
+	existingKeys := make(map[string]struct{})
+
+	// Define relation categories with their properties
+	relationCategories := []struct {
+		relations []string
+		featured  bool
+		hidden    bool
+	}{
+		{relations: t.FeaturedRelations, featured: true, hidden: false},
+		{relations: t.RecommendedRelations, featured: false, hidden: false},
+		{relations: t.HiddenRelations, featured: false, hidden: true},
+	}
+
+	// Process each category
+	for _, category := range relationCategories {
+		for _, relKey := range category.relations {
+			if _, exists := existingKeys[relKey]; exists {
+				// Skip if this relation is already added
+				continue
+			}
+			if rel, ok := schema.GetRelation(relKey); ok {
+				if relKey == bundle.RelationKeyType.String() {
+					hasType = true
+				}
+				orderedRels = append(orderedRels, orderedRelation{
+					name:     rel.Name,
+					relation: rel,
+					order:    propertyOrder,
+					featured: category.featured,
+					hidden:   category.hidden,
+				})
+				propertyOrder++
+				existingKeys[relKey] = struct{}{}
+			}
+		}
+	}
+
+	return orderedRels, propertyOrder, hasType
+}
+
 func (e *JSONSchemaExporter) deduplicatePropertyNames(orderedRels []orderedRelation) []string {
 	// Create a map to track names and their relation keys
 	nameToRelations := make(map[string][]struct {
@@ -601,8 +604,12 @@ func (e *JSONSchemaExporter) deduplicatePropertyNames(orderedRels []orderedRelat
 
 // ObjectResolver interface for resolving relations and their options
 type ObjectResolver interface {
-	ResolveRelation(relationId string) (*domain.Details, error)
-	ResolveRelationOptions(relationKey string) ([]*domain.Details, error)
+	// RelationById gets relation details by its ID
+	RelationById(relationId string) (*domain.Details, error)
+	// RelationByKey gets relation details by its key
+	RelationByKey(relationKey string) (*domain.Details, error)
+	// RelationOptions gets relation options for a given relation key
+	RelationOptions(relationKey string) ([]*domain.Details, error)
 }
 
 // SchemaFromObjectDetails creates a Schema from object type and relation details
@@ -612,33 +619,82 @@ func SchemaFromObjectDetails(typeDetails *domain.Details, relationDetailsList []
 
 // SchemaFromObjectDetailsWithResolver creates a Schema from object type and relation details with full resolver
 func SchemaFromObjectDetailsWithResolver(typeDetails *domain.Details, relationDetailsList []*domain.Details, resolver ObjectResolver) (*Schema, error) {
-	return schemaFromObjectDetailsInternal(typeDetails, relationDetailsList, resolver.ResolveRelation, resolver)
+	// For backward compatibility, wrap the old resolver function
+	legacyResolver := func(id string) (*domain.Details, error) {
+		return resolver.RelationById(id)
+	}
+	return schemaFromObjectDetailsInternal(typeDetails, relationDetailsList, legacyResolver, resolver)
 }
 
 func schemaFromObjectDetailsInternal(typeDetails *domain.Details, relationDetailsList []*domain.Details, resolver func(string) (*domain.Details, error), optionResolver ObjectResolver) (*Schema, error) {
 	schema := NewSchema()
 
-	// Create type from details
-	t, err := TypeFromDetails(typeDetails)
+	// Create maps for quick lookup
+	relationDetailsById := make(map[string]*domain.Details)
+	relationDetailsByKey := make(map[string]*domain.Details)
+	for _, rd := range relationDetailsList {
+		if id := rd.GetString(bundle.RelationKeyId); id != "" {
+			relationDetailsById[id] = rd
+		}
+		if key := rd.GetString(bundle.RelationKeyRelationKey); key != "" {
+			relationDetailsByKey[key] = rd
+		}
+	}
+
+	// Create ID to key resolver function that also adds resolved relations to our maps
+	idToKeyResolver := func(relationId string) (string, error) {
+		// Try to find in provided list
+		if rd, ok := relationDetailsById[relationId]; ok {
+			if key := rd.GetString(bundle.RelationKeyRelationKey); key != "" {
+				return key, nil
+			}
+		}
+
+		// Try resolver if available
+		if resolver != nil {
+			if details, err := resolver(relationId); err == nil && details != nil {
+				if key := details.GetString(bundle.RelationKeyRelationKey); key != "" {
+					// Add to our maps so we can find it later
+					relationDetailsById[relationId] = details
+					relationDetailsByKey[key] = details
+					return key, nil
+				}
+			}
+		}
+
+		return "", fmt.Errorf("could not resolve relation ID %s to key", relationId)
+	}
+
+	// Create type from details with ID to key resolution
+	t, err := TypeFromDetailsWithResolver(typeDetails, idToKeyResolver)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create type from details: %w", err)
 	}
 
-	// Create a map for quick lookup
-	featuredSet := make(map[string]bool)
-	for _, id := range t.FeaturedRelations {
-		featuredSet[id] = true
+	// Helper function to find relation details by key
+	findRelationDetailsByKey := func(relationKey string) *domain.Details {
+		// First check provided list by key
+		if details, ok := relationDetailsByKey[relationKey]; ok {
+			return details
+		}
+
+		// For bundled relations, create details from bundle
+		if bundledRel, err := bundle.GetRelation(domain.RelationKey(relationKey)); err == nil {
+			details := domain.NewDetails()
+			details.SetString(bundle.RelationKeyRelationKey, relationKey)
+			details.SetString(bundle.RelationKeyName, bundledRel.Name)
+			details.SetInt64(bundle.RelationKeyRelationFormat, int64(bundledRel.Format))
+			details.SetBool(bundle.RelationKeyIsReadonly, bundledRel.ReadOnly)
+			details.SetBool(bundle.RelationKeyIsHidden, bundledRel.Hidden)
+			return details
+		}
+
+		return nil
 	}
 
-	// Create a map for quick lookup
-	hiddenSet := make(map[string]bool)
-	for _, id := range t.HiddenRelations {
-		hiddenSet[id] = true
-	}
-
-	// Sort relations by their position in the type's lists
+	// Collect all relations with their metadata
 	type orderedRelation struct {
-		id       string
+		key      string
 		details  *domain.Details
 		order    int
 		featured bool
@@ -646,93 +702,41 @@ func schemaFromObjectDetailsInternal(typeDetails *domain.Details, relationDetail
 	}
 
 	var orderedRelations []orderedRelation
+	currentOrder := 0
 
-	// Add featured relations first
-	for i, id := range t.FeaturedRelations {
-		// Find in provided list first
-		var found *domain.Details
-		for _, rd := range relationDetailsList {
-			if rd.GetString(bundle.RelationKeyId) == id {
-				found = rd
-				break
+	// Process relation categories in order (now using keys only)
+	relationCategories := []struct {
+		relationKeys []string
+		featured     bool
+		hidden       bool
+	}{
+		{relationKeys: t.FeaturedRelations, featured: true, hidden: false},
+		{relationKeys: t.RecommendedRelations, featured: false, hidden: false},
+		{relationKeys: t.HiddenRelations, featured: false, hidden: true},
+		{relationKeys: SystemProperties, featured: false, hidden: true},
+	}
+
+	var keySet = make(map[string]struct{})
+	for _, category := range relationCategories {
+		for _, relationKey := range category.relationKeys {
+			if _, exists := keySet[relationKey]; exists {
+				continue
 			}
-		}
-
-		// If not found and resolver provided, try to resolve
-		if found == nil && resolver != nil {
-			var err error
-		found, err = resolver(id)
-		_ = err // Ignore error as it's optional
-		}
-
-		if found != nil {
-			orderedRelations = append(orderedRelations, orderedRelation{
-				id:       id,
-				details:  found,
-				order:    i,
-				featured: true,
-			})
+			keySet[relationKey] = struct{}{}
+			if details := findRelationDetailsByKey(relationKey); details != nil {
+				orderedRelations = append(orderedRelations, orderedRelation{
+					key:      relationKey,
+					details:  details,
+					order:    currentOrder,
+					featured: category.featured,
+					hidden:   category.hidden,
+				})
+				currentOrder++
+			}
 		}
 	}
 
-	// Add recommended relations
-	for i, id := range t.RecommendedRelations {
-		// Find in provided list first
-		var found *domain.Details
-		for _, rd := range relationDetailsList {
-			if rd.GetString(bundle.RelationKeyId) == id {
-				found = rd
-				break
-			}
-		}
-
-		// If not found and resolver provided, try to resolve
-		if found == nil && resolver != nil {
-			var err error
-		found, err = resolver(id)
-		_ = err // Ignore error as it's optional
-		}
-
-		if found != nil {
-			orderedRelations = append(orderedRelations, orderedRelation{
-				id:       id,
-				details:  found,
-				order:    len(t.FeaturedRelations) + i,
-				featured: false,
-			})
-		}
-	}
-
-	// Add hidden relations
-	for i, id := range t.HiddenRelations {
-		// Find in provided list first
-		var found *domain.Details
-		for _, rd := range relationDetailsList {
-			if rd.GetString(bundle.RelationKeyId) == id {
-				found = rd
-				break
-			}
-		}
-
-		// If not found and resolver provided, try to resolve
-		if found == nil && resolver != nil {
-			var err error
-		found, err = resolver(id)
-		_ = err // Ignore error as it's optional
-		}
-
-		if found != nil {
-			orderedRelations = append(orderedRelations, orderedRelation{
-				id:       id,
-				details:  found,
-				order:    len(t.FeaturedRelations) + len(t.RecommendedRelations) + i,
-				featured: false,
-				hidden:   true,
-			})
-		}
-	}
-
-	// Sort by order
+	// Sort by order (though it's already in order, this ensures consistency)
 	sort.Slice(orderedRelations, func(i, j int) bool {
 		return orderedRelations[i].order < orderedRelations[j].order
 	})
@@ -746,7 +750,7 @@ func schemaFromObjectDetailsInternal(typeDetails *domain.Details, relationDetail
 
 		// Populate relation options for status/tag relations if resolver is available
 		if optionResolver != nil && (rel.Format == model.RelationFormat_status || rel.Format == model.RelationFormat_tag) {
-			if optionDetails, err := optionResolver.ResolveRelationOptions(rel.Key); err == nil && optionDetails != nil {
+			if optionDetails, err := optionResolver.RelationOptions(rel.Key); err == nil && optionDetails != nil {
 				var options []string
 				for _, details := range optionDetails {
 					if optionName := details.GetString(bundle.RelationKeyName); optionName != "" {

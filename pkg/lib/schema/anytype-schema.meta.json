@@ -146,6 +146,9 @@
         "x-order": {
           "type": "integer",
           "minimum": 0
+        },
+        "x-key": {
+          "const": "_collection"
         }
       },
       "description": "Collection property appears only in collection types"

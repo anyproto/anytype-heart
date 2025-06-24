@@ -3,6 +3,7 @@ package schema
 import (
 	"fmt"
 	"io"
+	"slices"
 )
 
 // Schema represents a single type with its relations
@@ -155,9 +156,9 @@ func (s *Schema) Clone() *Schema {
 			IsArchived:           s.Type.IsArchived,
 			IsHidden:             s.Type.IsHidden,
 			Layout:               s.Type.Layout,
-			FeaturedRelations:    append([]string{}, s.Type.FeaturedRelations...),
-			RecommendedRelations: append([]string{}, s.Type.RecommendedRelations...),
-			HiddenRelations:      append([]string{}, s.Type.HiddenRelations...),
+			FeaturedRelations:    slices.Clone(s.Type.FeaturedRelations),
+			RecommendedRelations: slices.Clone(s.Type.RecommendedRelations),
+			HiddenRelations:      slices.Clone(s.Type.HiddenRelations),
 			Extension:            make(map[string]interface{}),
 		}
 		// Clone extensions
@@ -177,9 +178,9 @@ func (s *Schema) Clone() *Schema {
 			IsHidden:    r.IsHidden,
 			IsReadOnly:  r.IsReadOnly,
 			IsMulti:     r.IsMulti,
-			ObjectTypes: append([]string{}, r.ObjectTypes...),
-			Options:     append([]string{}, r.Options...),
-			Examples:    append([]string{}, r.Examples...),
+			ObjectTypes: slices.Clone(r.ObjectTypes),
+			Options:     slices.Clone(r.Options),
+			Examples:    slices.Clone(r.Examples),
 			IncludeTime: r.IncludeTime,
 			MaxLength:   r.MaxLength,
 			Extension:   make(map[string]interface{}),

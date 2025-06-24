@@ -23,6 +23,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+	"github.com/anyproto/anytype-heart/pkg/lib/schema"
 	"github.com/anyproto/anytype-heart/pkg/lib/schema/yaml"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
@@ -745,7 +746,7 @@ func (m *Markdown) createSnapshots(
 			// Look for Collection property in the parsed properties
 			for _, prop := range file.YAMLProperties {
 				// Check both by key and by name (case-insensitive)
-				if prop.Key == CollectionPropertyKey {
+				if prop.Key == schema.CollectionPropertyKey {
 					isCollectionType = true
 					collectionObjectIds = prop.Value.WrapToStringList()
 

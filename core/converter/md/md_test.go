@@ -2,6 +2,7 @@ package md
 
 import (
 	"encoding/json"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -185,7 +186,7 @@ type testFileNamer struct{}
 
 func (f *testFileNamer) Get(path, hash, title, ext string) string {
 	if path != "" {
-		return path + "/" + title + ext
+		return filepath.Join(path, title+ext)
 	}
 	return title + ext
 }
@@ -404,8 +405,6 @@ func TestMDConverter_GenerateJSONSchema(t *testing.T) {
 	})
 
 	t.Run("schema file name generation", func(t *testing.T) {
-		conv := NewMDConverterWithSchema(state.NewDoc("root", nil).NewState(), &mockFileNamer{}, true, true).(*MD)
-
 		tests := []struct {
 			typeName string
 			expected string
@@ -418,7 +417,7 @@ func TestMDConverter_GenerateJSONSchema(t *testing.T) {
 
 		for _, tt := range tests {
 			t.Run(tt.typeName, func(t *testing.T) {
-				result := conv.GenerateSchemaFileName(tt.typeName)
+				result := GenerateSchemaFileName(tt.typeName)
 				assert.Equal(t, tt.expected, result)
 			})
 		}
@@ -993,7 +992,7 @@ func TestMD_RenderCollection_WithSchema(t *testing.T) {
 	resultStr := string(result)
 
 	// Verify schema reference is present
-	assert.Contains(t, resultStr, "# yaml-language-server: $schema=./schemas/my_collection_type.schema.json")
+	assert.Contains(t, resultStr, "# yaml-language-server: $schema=schemas/my_collection_type.schema.json")
 
 	// Verify collection is present
 	assert.Contains(t, resultStr, "Collection:")
@@ -1135,9 +1134,9 @@ func TestMD_RenderObjectRelation_FileFieldOnlyForExportedObjects(t *testing.T) {
 
 	// Verify the YAML contains object relations as a simple list
 	assert.Contains(t, resultStr, "Related Objects:")
-	assert.Contains(t, resultStr, "- Object One.md")  // obj1 is exported, shows filename
-	assert.Contains(t, resultStr, "- Object Two.md")  // obj2 is exported, shows filename
-	assert.Contains(t, resultStr, "- Object Three")   // obj3 is not exported, shows name only
+	assert.Contains(t, resultStr, "- Object One.md") // obj1 is exported, shows filename
+	assert.Contains(t, resultStr, "- Object Two.md") // obj2 is exported, shows filename
+	assert.Contains(t, resultStr, "- Object Three")  // obj3 is not exported, shows name only
 }
 
 func TestMD_RenderObjectRelation_ShortFormatUnaffected(t *testing.T) {
@@ -1326,7 +1325,8 @@ func TestMD_GenerateJSONSchema_WithEnhancements(t *testing.T) {
 
 	// Check Object type property exists (it's added automatically if not in relations)
 	typeProp := properties["Object type"].(map[string]interface{})
-	assert.Equal(t, float64(4), typeProp["x-order"]) // Object type is added after all other relations
+	// Object type is added after all explicit relations (3) + system properties (5) = 9
+	assert.Equal(t, float64(9), typeProp["x-order"]) 
 	assert.Equal(t, "type", typeProp["x-key"])
 
 	// Check featured properties have x-featured and correct order
@@ -1504,13 +1504,14 @@ func TestMD_GenerateJSONSchema_PropertyOrder(t *testing.T) {
 
 	// Verify order of all properties
 	expectedOrder := map[string]float64{
-		"id":         0,
-		"Property 1": 1, // Featured properties start at 1
-		"Property 2": 2,
-		"Property 3": 3, // Regular properties follow
-		"Property 4": 4,
-		"Property 5": 5,
-		"Object type": 6, // Object type is added last when not in featured/recommended lists
+		"id":          0,
+		"Property 1":  1, // Featured properties start at 1
+		"Property 2":  2,
+		"Property 3":  3, // Regular properties follow
+		"Property 4":  4,
+		"Property 5":  5,
+		// System properties are added at positions 6-10
+		"Object type": 11, // Object type is added after system properties
 	}
 
 	for propName, expectedPos := range expectedOrder {

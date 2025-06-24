@@ -15,7 +15,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/editor/table"
 	"github.com/anyproto/anytype-heart/core/block/editor/template"
-	"github.com/anyproto/anytype-heart/core/block/import/markdown"
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/converter"
 	"github.com/anyproto/anytype-heart/core/domain"
@@ -387,7 +386,7 @@ func (h *MD) exportPropertiesToYAML(buf writer, properties []yaml.Property, type
 
 	// Add schema reference if enabled
 	if h.includeSchema && typeName != "" {
-		exportOptions.SchemaReference = h.GenerateSchemaFileName(typeName)
+		exportOptions.SchemaReference = GenerateSchemaFileName(typeName)
 	}
 
 	// Export using YAML exporter
@@ -429,7 +428,7 @@ func (h *MD) addCollectionProperty(properties []yaml.Property) []yaml.Property {
 
 	collectionProp := yaml.Property{
 		Name:   "Collection",
-		Key:    markdown.CollectionPropertyKey,
+		Key:    schema.CollectionPropertyKey,
 		Format: model.RelationFormat_object,
 		Value:  domain.StringList(collectionList),
 	}
@@ -993,14 +992,18 @@ func (a sortedMarks) Less(i, j int) bool {
 	return li > lj
 }
 
-// GenerateSchemaFileName creates a schema file name from the object type name
-func (h *MD) GenerateSchemaFileName(typeName string) string {
-	// Convert to lowercase and replace spaces with underscores
-	fileName := strings.ToLower(typeName)
-	fileName = strings.ReplaceAll(fileName, " ", "_")
-	fileName = strings.ReplaceAll(fileName, "/", "_")
-	fileName = strings.ReplaceAll(fileName, "\\", "_")
-	return "./schemas/" + fileName + ".schema.json"
+// Replace characters that would break or confuse file-paths.
+var replacer = strings.NewReplacer(
+	" ", "_", // spaces → underscores
+	"/", "_", // forward slashes → underscores
+	"\\", "_", // backslashes → underscores
+)
+
+// GenerateSchemaFileName creates an OS-safe schema file name from the object type name.
+func GenerateSchemaFileName(typeName string) string {
+	sanitised := strings.ToLower(typeName)
+	sanitised = replacer.Replace(sanitised)
+	return filepath.Join("schemas", sanitised+".schema.json")
 }
 
 // GenerateJSONSchema generates a JSON schema for the object type using the schema package
@@ -1029,8 +1032,11 @@ func (h *MD) GenerateJSONSchema() ([]byte, error) {
 		}
 	}
 
+	// Create adapter for schema.ObjectResolver
+	schemaResolver := &schemaResolverAdapter{resolver: h.resolver}
+	
 	// Create schema using the schema package
-	s, err := schema.SchemaFromObjectDetailsWithResolver(objectTypeDetails, relationDetailsList, h.resolver)
+	s, err := schema.SchemaFromObjectDetailsWithResolver(objectTypeDetails, relationDetailsList, schemaResolver)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create schema: %w", err)
 	}
@@ -1063,4 +1069,21 @@ func (h *MD) getRelationOptions(relationKey string) []string {
 	}
 
 	return options
+}
+
+// schemaResolverAdapter adapts md.ObjectResolver to schema.ObjectResolver
+type schemaResolverAdapter struct {
+	resolver ObjectResolver
+}
+
+func (a *schemaResolverAdapter) RelationById(relationId string) (*domain.Details, error) {
+	return a.resolver.ResolveRelation(relationId)
+}
+
+func (a *schemaResolverAdapter) RelationByKey(relationKey string) (*domain.Details, error) {
+	return a.resolver.GetRelationByKey(relationKey)
+}
+
+func (a *schemaResolverAdapter) RelationOptions(relationKey string) ([]*domain.Details, error) {
+	return a.resolver.ResolveRelationOptions(relationKey)
 }
