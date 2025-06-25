@@ -193,7 +193,14 @@ func TestAddMessage(t *testing.T) {
 		sessionCtx := session.NewContext()
 
 		fx := newFixture(t)
-		fx.eventSender.EXPECT().Broadcast(mock.Anything).Return().Maybe()
+		fx.eventSender.EXPECT().BroadcastToOtherSessions(sessionCtx.ID(), mock.Anything).Return().Maybe()
+
+		_, err := fx.chatSubscriptionService.SubscribeLastMessages(ctx, chatsubscription.SubscribeLastMessagesRequest{
+			ChatObjectId:           fx.Id(),
+			SubId:                  "sub",
+			CouldUseSessionContext: true,
+		})
+		require.NoError(t, err)
 
 		inputMessage := givenComplexMessage()
 		messageId, err := fx.AddMessage(ctx, sessionCtx, inputMessage)
@@ -218,7 +225,14 @@ func TestAddMessage(t *testing.T) {
 		sessionCtx := session.NewContext()
 
 		fx := newFixture(t)
-		fx.eventSender.EXPECT().Broadcast(mock.Anything).Return()
+		fx.eventSender.EXPECT().BroadcastToOtherSessions(sessionCtx.ID(), mock.Anything).Return().Maybe()
+
+		_, err := fx.chatSubscriptionService.SubscribeLastMessages(ctx, chatsubscription.SubscribeLastMessagesRequest{
+			ChatObjectId:           fx.Id(),
+			SubId:                  "sub",
+			CouldUseSessionContext: true,
+		})
+		require.NoError(t, err)
 
 		// Force all messages as not read
 		fx.chatHandler.forceNotRead = true
@@ -291,13 +305,11 @@ func TestGetMessages(t *testing.T) {
 
 func TestGetMessagesByIds(t *testing.T) {
 	ctx := context.Background()
-	sessionCtx := session.NewContext()
 
 	fx := newFixture(t)
-	fx.eventSender.EXPECT().Broadcast(mock.Anything).Return()
 
 	inputMessage := givenComplexMessage()
-	messageId, err := fx.AddMessage(ctx, sessionCtx, inputMessage)
+	messageId, err := fx.AddMessage(ctx, nil, inputMessage)
 	require.NoError(t, err)
 
 	messages, err := fx.GetMessagesByIds(ctx, []string{messageId, "wrongId"})
