@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	"math/rand"
 	"strings"
 
 	"github.com/anyproto/anytype-heart/core/block/import/common"
@@ -185,6 +186,11 @@ func (si *SchemaImporter) CreateRelationOptionSnapshots() []*common.Snapshot {
 	return snapshots
 }
 
+// randomIconColor returns a random color for (1-10)
+func randomIconColor() int {
+	return rand.Intn(10) + 1 // returns a number between 1 and 10
+}
+
 // CreateTypeSnapshots creates snapshots for all object types found in schemas
 func (si *SchemaImporter) CreateTypeSnapshots() []*common.Snapshot {
 	var snapshots []*common.Snapshot
@@ -216,8 +222,12 @@ func (si *SchemaImporter) CreateTypeSnapshots() []*common.Snapshot {
 			}
 
 			details := t.ToDetails()
-			details.Delete(schema.CollectionPropertyKey)
-
+			// inject random color if icon set
+			if details.GetString(bundle.RelationKeyIconName) != "" && !details.Get(bundle.RelationKeyIconOption).IsInt64() {
+				// Set a random color for the icon
+				details.SetInt64(bundle.RelationKeyIconOption, int64(randomIconColor()))
+			}
+			
 			snapshot := &common.Snapshot{
 				Id: typeId,
 				Snapshot: &common.SnapshotModel{
