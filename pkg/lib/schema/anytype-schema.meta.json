@@ -13,7 +13,7 @@
     },
     "$id": {
       "type": "string",
-      "pattern": "^urn:anytype:schema:[0-9]{4}-[0-9]{2}-[0-9]{2}:[^:]+:type-[^:]+:ver-[0-9]+\\.[0-9]+$",
+      "pattern": "^urn:anytype:schema:.+$",
       "description": "Unique identifier for the schema following Anytype URN format"
     },
     "type": {
@@ -32,7 +32,7 @@
     },
     "x-type-key": {
       "type": "string",
-      "pattern": "^[a-z][a-z0-9_]*$",
+      "pattern": "^[A-Za-z0-9_]*$",
       "description": "Unique key identifier for the type"
     },
     "x-schema-version": {
@@ -208,7 +208,7 @@
         },
         "x-key": {
           "type": "string",
-          "pattern": "^[a-z][a-z0-9_]*$",
+          "pattern": "^[A-Za-z0-9_]*$",
           "description": "Unique key identifier for the relation"
         },
         "x-format": {
@@ -225,7 +225,8 @@
             "url",
             "phone",
             "file",
-            "object"
+            "object",
+            "emoji"
           ],
           "description": "Anytype relation format"
         },
