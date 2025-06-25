@@ -464,7 +464,15 @@ func (s *service) CreateFromImport(fileId domain.FullFileId, origin objectorigin
 }
 
 func (s *service) addToSyncQueue(objectId string, fileId domain.FullFileId, uploadedByUser bool, imported bool, prioritizeVariantId domain.FileId, priority int) error {
-	if err := s.fileSync.AddFile(objectId, fileId, uploadedByUser, imported, prioritizeVariantId, priority); err != nil {
+	req := filesync.AddFileRequest{
+		FileObjectId:        objectId,
+		FileId:              fileId,
+		UploadedByUser:      uploadedByUser,
+		Imported:            imported,
+		PrioritizeVariantId: prioritizeVariantId,
+		Score:               priority,
+	}
+	if err := s.fileSync.AddFile(req); err != nil {
 		return fmt.Errorf("add file to sync queue: %w", err)
 	}
 	return nil

@@ -25,20 +25,41 @@ import (
 	"github.com/anyproto/anytype-heart/util/persistentqueue"
 )
 
-func (s *fileSync) AddFile(fileObjectId string, fileId domain.FullFileId, uploadedByUser, imported bool, prioritizeVariantId domain.FileId, score int) (err error) {
+type AddFileRequest struct {
+	FileObjectId   string
+	FileId         domain.FullFileId
+	UploadedByUser bool
+	Imported       bool
+	VariantId      domain.FileId
+
+	// PrioritizeVariantId tells uploader to upload specific branch of file tree
+	PrioritizeVariantId domain.FileId
+	// Score affects priority
+	Score int
+}
+
+func (req AddFileRequest) ToQueueItem(addedTime time.Time) (*QueueItem, error) {
 	it := &QueueItem{
-		ObjectId:    fileObjectId,
-		SpaceId:     fileId.SpaceId,
-		FileId:      fileId.FileId,
-		AddedByUser: uploadedByUser,
-		Imported:    imported,
-		Timestamp:   time.Now().UnixMilli(),
-		VariantId:   prioritizeVariantId,
-		Score:       score,
+		ObjectId:    req.FileObjectId,
+		SpaceId:     req.FileId.SpaceId,
+		FileId:      req.FileId.FileId,
+		AddedByUser: req.UploadedByUser,
+		Imported:    req.Imported,
+		Timestamp:   addedTime.UnixMilli(),
+		VariantId:   req.PrioritizeVariantId,
+		Score:       req.Score,
 	}
-	err = it.Validate()
+	err := it.Validate()
 	if err != nil {
-		return fmt.Errorf("validate queue item: %w", err)
+		return nil, fmt.Errorf("validate: %w", err)
+	}
+	return it, nil
+}
+
+func (s *fileSync) AddFile(req AddFileRequest) (err error) {
+	it, err := req.ToQueueItem(time.Now())
+	if err != nil {
+		return err
 	}
 
 	if !s.fileIsInAnyQueue(it.Key()) {
@@ -126,7 +147,7 @@ func (s *fileSync) uploadingHandler(ctx context.Context, it *QueueItem) (persist
 		return s.addToRetryUploadingQueue(it), nil
 	}
 
-	// Mark as uploaded only if the root of the file tree is uploaded.
+	// Mark as uploaded only if the root of the file tree is uploaded. It works because if the root is uploaded, all its descendants are uploaded too
 	if it.VariantId == "" {
 		err = s.runOnUploadedHook(it.ObjectId, it.FullFileId())
 		if isObjectDeletedError(err) {
