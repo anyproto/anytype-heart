@@ -80,190 +80,191 @@ func (s *Server) NewRouter(mw apicore.ClientCommands, eventService apicore.Event
 	{
 		// Block
 		// TODO: implement create, update and delete block endpoints
-		// v1.POST("/spaces/:space_id/objects/:object_id/blocks", writeRateLimitMW, object.CreateBlockHandler(s.service))
-		// v1.PATCH("/spaces/:space_id/objects/:object_id/blocks/:block_id", writeRateLimitMW, object.UpdateBlockHandler(s.service))
-		// v1.DELETE("/spaces/:space_id/objects/:object_id/blocks/:block_id", writeRateLimitMW, object.DeleteBlockHandler(s.service))
+		// v1.POST("/spaces/:space_id/objects/:object_id/blocks", writeRateLimitMW, ensureAnalyticsEvent("CreateBlock", eventService), object.CreateBlockHandler(s.service))
+		// v1.PATCH("/spaces/:space_id/objects/:object_id/blocks/:block_id", writeRateLimitMW, ensureAnalyticsEvent("UpdateBlock", eventService), object.UpdateBlockHandler(s.service))
+		// v1.DELETE("/spaces/:space_id/objects/:object_id/blocks/:block_id", writeRateLimitMW, ensureAnalyticsEvent("DeleteBlock", eventService), object.DeleteBlockHandler(s.service))
 
 		// List
 		v1.GET("/spaces/:space_id/lists/:list_id/views",
-			ensureAnalyticsEvent("ListGetViews", eventService),
+			ensureAnalyticsEvent("GetListViews", eventService),
 			handler.GetListViewsHandler(s.service),
 		)
 		v1.GET("/spaces/:space_id/lists/:list_id/views/:view_id/objects",
 			ensureFilters(),
-			ensureAnalyticsEvent("ListGetObjects", eventService),
+			ensureAnalyticsEvent("GetListObjects", eventService),
 			handler.GetObjectsInListHandler(s.service),
 		)
 		v1.POST("/spaces/:space_id/lists/:list_id/objects",
 			writeRateLimitMW,
-			ensureAnalyticsEvent("ListAddObject", eventService),
+			ensureAnalyticsEvent("AddObjectToList", eventService),
 			handler.AddObjectsToListHandler(s.service),
 		)
 		v1.DELETE("/spaces/:space_id/lists/:list_id/objects/:object_id",
 			writeRateLimitMW,
-			ensureAnalyticsEvent("ListRemoveObject", eventService),
+			ensureAnalyticsEvent("RemoveObjectFromList", eventService),
 			handler.RemoveObjectFromListHandler(s.service),
 		)
 
 		// Member
 		v1.GET("/spaces/:space_id/members",
 			ensureFilters(),
-			ensureAnalyticsEvent("MemberList", eventService),
+			ensureAnalyticsEvent("ListMembers", eventService),
 			handler.ListMembersHandler(s.service),
 		)
 		v1.GET("/spaces/:space_id/members/:member_id",
-			ensureAnalyticsEvent("MemberOpen", eventService),
+			ensureAnalyticsEvent("OpenMember", eventService),
 			handler.GetMemberHandler(s.service),
 		)
 		// TODO: renable when granular permissions are implementeds
 		// v1.PATCH("/spaces/:space_id/members/:member_id",
 		// 	writeRateLimitMW,
+		// 	ensureAnalyticsEvent("UpdateMember", eventService),
 		// 	handler.UpdateMemberHandler(s.service),
 		// )
 
 		// Object
 		v1.GET("/spaces/:space_id/objects",
 			ensureFilters(),
-			ensureAnalyticsEvent("ObjectList", eventService),
+			ensureAnalyticsEvent("ListObjects", eventService),
 			handler.ListObjectsHandler(s.service),
 		)
 		v1.GET("/spaces/:space_id/objects/:object_id",
-			ensureAnalyticsEvent("ObjectOpen", eventService),
+			ensureAnalyticsEvent("OpenObject", eventService),
 			handler.GetObjectHandler(s.service),
 		)
 		v1.POST("/spaces/:space_id/objects",
 			writeRateLimitMW,
-			ensureAnalyticsEvent("ObjectCreate", eventService),
+			ensureAnalyticsEvent("CreateObject", eventService),
 			handler.CreateObjectHandler(s.service),
 		)
 		v1.PATCH("/spaces/:space_id/objects/:object_id",
 			writeRateLimitMW,
-			ensureAnalyticsEvent("ObjectUpdate", eventService),
+			ensureAnalyticsEvent("UpdateObject", eventService),
 			handler.UpdateObjectHandler(s.service),
 		)
 		v1.DELETE("/spaces/:space_id/objects/:object_id",
 			writeRateLimitMW,
-			ensureAnalyticsEvent("ObjectDelete", eventService),
+			ensureAnalyticsEvent("DeleteObject", eventService),
 			handler.DeleteObjectHandler(s.service),
 		)
 
 		// Property
 		v1.GET("/spaces/:space_id/properties",
 			ensureFilters(),
-			ensureAnalyticsEvent("PropertyList", eventService),
+			ensureAnalyticsEvent("ListProperties", eventService),
 			handler.ListPropertiesHandler(s.service),
 		)
 		v1.GET("/spaces/:space_id/properties/:property_id",
-			ensureAnalyticsEvent("PropertyOpen", eventService),
+			ensureAnalyticsEvent("OpenProperty", eventService),
 			handler.GetPropertyHandler(s.service),
 		)
 		v1.POST("/spaces/:space_id/properties",
 			writeRateLimitMW,
-			ensureAnalyticsEvent("PropertyCreate", eventService),
+			ensureAnalyticsEvent("CreateProperty", eventService),
 			handler.CreatePropertyHandler(s.service),
 		)
 		v1.PATCH("/spaces/:space_id/properties/:property_id",
 			writeRateLimitMW,
-			ensureAnalyticsEvent("PropertyUpdate", eventService),
+			ensureAnalyticsEvent("UpdateProperty", eventService),
 			handler.UpdatePropertyHandler(s.service),
 		)
 		v1.DELETE("/spaces/:space_id/properties/:property_id",
 			writeRateLimitMW,
-			ensureAnalyticsEvent("PropertyDelete", eventService),
+			ensureAnalyticsEvent("DeleteProperty", eventService),
 			handler.DeletePropertyHandler(s.service),
 		)
 
 		// Search
 		v1.POST("/search",
-			ensureAnalyticsEvent("SearchGlobal", eventService),
+			ensureAnalyticsEvent("GlobalSearch", eventService),
 			handler.GlobalSearchHandler(s.service),
 		)
 		v1.POST("/spaces/:space_id/search",
-			ensureAnalyticsEvent("SearchSpace", eventService),
+			ensureAnalyticsEvent("SpaceSearch", eventService),
 			handler.SearchHandler(s.service),
 		)
 
 		// Space
 		v1.GET("/spaces",
 			ensureFilters(),
-			ensureAnalyticsEvent("SpaceList", eventService),
+			ensureAnalyticsEvent("ListSpaces", eventService),
 			handler.ListSpacesHandler(s.service),
 		)
 		v1.GET("/spaces/:space_id",
-			ensureAnalyticsEvent("SpaceOpen", eventService),
+			ensureAnalyticsEvent("OpenSpace", eventService),
 			handler.GetSpaceHandler(s.service),
 		)
 		v1.POST("/spaces",
 			writeRateLimitMW,
-			ensureAnalyticsEvent("SpaceCreate", eventService),
+			ensureAnalyticsEvent("CreateSpace", eventService),
 			handler.CreateSpaceHandler(s.service),
 		)
 		v1.PATCH("/spaces/:space_id",
 			writeRateLimitMW,
-			ensureAnalyticsEvent("SpaceUpdate", eventService),
+			ensureAnalyticsEvent("UpdateSpace", eventService),
 			handler.UpdateSpaceHandler(s.service),
 		)
 
 		// Tag
 		v1.GET("/spaces/:space_id/properties/:property_id/tags",
 			ensureFilters(),
-			ensureAnalyticsEvent("TagList", eventService),
+			ensureAnalyticsEvent("ListTags", eventService),
 			handler.ListTagsHandler(s.service),
 		)
 		v1.GET("/spaces/:space_id/properties/:property_id/tags/:tag_id",
-			ensureAnalyticsEvent("TagOpen", eventService),
+			ensureAnalyticsEvent("OpenTag", eventService),
 			handler.GetTagHandler(s.service),
 		)
 		v1.POST("/spaces/:space_id/properties/:property_id/tags",
 			writeRateLimitMW,
-			ensureAnalyticsEvent("TagCreate", eventService),
+			ensureAnalyticsEvent("CreateTag", eventService),
 			handler.CreateTagHandler(s.service),
 		)
 		v1.PATCH("/spaces/:space_id/properties/:property_id/tags/:tag_id",
 			writeRateLimitMW,
-			ensureAnalyticsEvent("TagUpdate", eventService),
+			ensureAnalyticsEvent("UpdateTag", eventService),
 			handler.UpdateTagHandler(s.service),
 		)
 		v1.DELETE("/spaces/:space_id/properties/:property_id/tags/:tag_id",
 			writeRateLimitMW,
-			ensureAnalyticsEvent("TagDelete", eventService),
+			ensureAnalyticsEvent("DeleteTag", eventService),
 			handler.DeleteTagHandler(s.service),
 		)
 
 		// Template
 		v1.GET("/spaces/:space_id/types/:type_id/templates",
 			ensureFilters(),
-			ensureAnalyticsEvent("TemplateList", eventService),
+			ensureAnalyticsEvent("ListTemplates", eventService),
 			handler.ListTemplatesHandler(s.service),
 		)
 		v1.GET("/spaces/:space_id/types/:type_id/templates/:template_id",
-			ensureAnalyticsEvent("TemplateOpen", eventService),
+			ensureAnalyticsEvent("OpenTemplate", eventService),
 			handler.GetTemplateHandler(s.service),
 		)
 
 		// Type
 		v1.GET("/spaces/:space_id/types",
 			ensureFilters(),
-			ensureAnalyticsEvent("TypeList", eventService),
+			ensureAnalyticsEvent("ListTypes", eventService),
 			handler.ListTypesHandler(s.service),
 		)
 		v1.GET("/spaces/:space_id/types/:type_id",
-			ensureAnalyticsEvent("TypeOpen", eventService),
+			ensureAnalyticsEvent("OpenType", eventService),
 			handler.GetTypeHandler(s.service),
 		)
 		v1.POST("/spaces/:space_id/types",
 			writeRateLimitMW,
-			ensureAnalyticsEvent("TypeCreate", eventService),
+			ensureAnalyticsEvent("CreateType", eventService),
 			handler.CreateTypeHandler(s.service),
 		)
 		v1.PATCH("/spaces/:space_id/types/:type_id",
 			writeRateLimitMW,
-			ensureAnalyticsEvent("TypeUpdate", eventService),
+			ensureAnalyticsEvent("UpdateType", eventService),
 			handler.UpdateTypeHandler(s.service),
 		)
 		v1.DELETE("/spaces/:space_id/types/:type_id",
 			writeRateLimitMW,
-			ensureAnalyticsEvent("TypeDelete", eventService),
+			ensureAnalyticsEvent("DeleteType", eventService),
 			handler.DeleteTypeHandler(s.service),
 		)
 	}
