@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/dgraph-io/badger/v4"
+	anystore "github.com/anyproto/any-store"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -122,6 +122,51 @@ func TestNotificationService_List(t *testing.T) {
 		// then
 		assert.Nil(t, err)
 		assert.Len(t, list, 1)
+	})
+	t.Run("notifications with GetRequestToLeave payload are filtered out", func(t *testing.T) {
+		// given
+		storeFixture := NewTestStore(t)
+		err := storeFixture.SaveNotification(&model.Notification{
+			Id:     "regular1",
+			Status: model.Notification_Created,
+			Payload: &model.NotificationPayloadOfTest{
+				Test: &model.NotificationTest{},
+			},
+		})
+		assert.Nil(t, err)
+		err = storeFixture.SaveNotification(&model.Notification{
+			Id:     "request1",
+			Status: model.Notification_Created,
+			Payload: &model.NotificationPayloadOfRequestToLeave{
+				RequestToLeave: &model.NotificationRequestToLeave{
+					SpaceId: "space123",
+				},
+			},
+		})
+		assert.Nil(t, err)
+		err = storeFixture.SaveNotification(&model.Notification{
+			Id:     "regular2",
+			Status: model.Notification_Created,
+			Payload: &model.NotificationPayloadOfTest{
+				Test: &model.NotificationTest{},
+			},
+		})
+		assert.Nil(t, err)
+		sender := mock_event.NewMockSender(t)
+		notifications := notificationService{
+			eventSender:       sender,
+			notificationStore: storeFixture,
+			loadTimeout:       10 * time.Millisecond,
+		}
+
+		// when
+		list, err := notifications.List(10, false)
+
+		// then
+		assert.Nil(t, err)
+		assert.Len(t, list, 2)
+		assert.Equal(t, "regular1", list[0].Id)
+		assert.Equal(t, "regular2", list[1].Id)
 	})
 }
 
@@ -323,9 +368,14 @@ func TestNotificationService_CreateAndSend(t *testing.T) {
 	})
 }
 func NewTestStore(t *testing.T) NotificationStore {
-	db, err := badger.Open(badger.DefaultOptions(filepath.Join(t.TempDir(), "badger")))
+	db, err := anystore.Open(context.Background(), filepath.Join(t.TempDir(), "test.db"), nil)
 	require.NoError(t, err)
-	return &notificationStore{
-		db: db,
-	}
+	t.Cleanup(func() {
+		require.NoError(t, db.Close())
+	})
+
+	kv, err := NewNotificationStore(db)
+	require.NoError(t, err)
+
+	return kv
 }
