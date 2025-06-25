@@ -222,6 +222,13 @@ func (s *Service) CreateProperty(ctx context.Context, spaceId string, request ap
 		return apimodel.Property{}, ErrFailedCreateProperty
 	}
 
+	if len(request.Tags) > 0 && (request.Format == apimodel.PropertyFormatSelect || request.Format == apimodel.PropertyFormatMultiSelect) {
+		err := s.createTagsForProperty(ctx, spaceId, resp.ObjectId, request.Tags)
+		if err != nil {
+			return apimodel.Property{}, fmt.Errorf("property created but tag creation failed: %w", err)
+		}
+	}
+
 	return s.GetProperty(ctx, spaceId, resp.ObjectId)
 }
 
@@ -275,10 +282,6 @@ func (s *Service) UpdateProperty(ctx context.Context, spaceId string, propertyId
 	return s.GetProperty(ctx, spaceId, propertyId)
 }
 
-func (s *Service) sanitizedString(str string) string {
-	return strings.TrimSpace(str)
-}
-
 // DeleteProperty deletes a property in a specific space.
 func (s *Service) DeleteProperty(ctx context.Context, spaceId string, propertyId string) (apimodel.Property, error) {
 	property, err := s.GetProperty(ctx, spaceId, propertyId)
@@ -296,6 +299,22 @@ func (s *Service) DeleteProperty(ctx context.Context, spaceId string, propertyId
 	}
 
 	return property, nil
+}
+
+func (s *Service) sanitizedString(str string) string {
+	return strings.TrimSpace(str)
+}
+
+// createTagsForProperty creates tags for a newly created property
+func (s *Service) createTagsForProperty(ctx context.Context, spaceId string, propertyId string, tagsToCreate []apimodel.CreateTagRequest) error {
+	for _, tagRequest := range tagsToCreate {
+		_, err := s.CreateTag(ctx, spaceId, propertyId, tagRequest)
+		if err != nil {
+			return fmt.Errorf("failed to create tag %q: %w", tagRequest.Name, err)
+		}
+	}
+
+	return nil
 }
 
 // processProperties builds detail fields for the given property entries, applying sanitization and validation for each.

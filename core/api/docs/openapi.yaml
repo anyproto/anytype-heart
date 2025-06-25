@@ -149,6 +149,12 @@ components:
           description: The name of the property
           example: Last modified date
           type: string
+        tags:
+          description: Tags to create for select/multi_select properties
+          items:
+            $ref: '#/components/schemas/apimodel.CreateTagRequest'
+          type: array
+          uniqueItems: false
       required:
       - format
       - name
@@ -1560,6 +1566,10 @@ components:
             $ref: '#/components/schemas/apimodel.PropertyLinkWithValue'
           type: array
           uniqueItems: false
+        type_key:
+          description: The key of the type of object to set
+          example: page
+          type: string
       type: object
     apimodel.UpdatePropertyRequest:
       properties:
