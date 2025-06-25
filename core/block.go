@@ -97,6 +97,27 @@ func (mw *Middleware) ObjectOpen(cctx context.Context, req *pb.RpcObjectOpenRequ
 	return response(code, err)
 }
 
+func (mw *Middleware) ObjectRefresh(cctx context.Context, req *pb.RpcObjectRefreshRequest) *pb.RpcObjectRefreshResponse {
+	response := func(code pb.RpcObjectRefreshResponseErrorCode, err error) *pb.RpcObjectRefreshResponse {
+		m := &pb.RpcObjectRefreshResponse{Error: &pb.RpcObjectRefreshResponseError{Code: code}}
+		if err != nil {
+			m.Error.Description = getErrorDescription(err)
+		}
+		return m
+	}
+	id := domain.FullID{
+		SpaceID:  req.SpaceId,
+		ObjectID: req.ObjectId,
+	}
+	err := mw.doBlockService(func(bs *block.Service) (err error) {
+		return bs.ObjectRefresh(cctx, id)
+	})
+	code := mapErrorCode(err,
+		errToCode(spacestorage.ErrTreeStorageAlreadyDeleted, pb.RpcObjectRefreshResponseError_OBJECT_DELETED),
+	)
+	return response(code, err)
+}
+
 func (mw *Middleware) ObjectShow(cctx context.Context, req *pb.RpcObjectShowRequest) *pb.RpcObjectShowResponse {
 	var obj *model.ObjectView
 	response := func(code pb.RpcObjectShowResponseErrorCode, err error) *pb.RpcObjectShowResponse {

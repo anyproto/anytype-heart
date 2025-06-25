@@ -374,17 +374,12 @@ func (oc *ObjectCreator) resetState(newID string, st *state.State) *domain.Detai
 			// we use revision for bundled objects like relations and object types
 			return nil
 		}
+		if st.ObjectTypeKey() == bundle.TypeKeyObjectType {
+			template.InitTemplate(st, template.WithDetail(bundle.RelationKeyRecommendedLayout, domain.Int64(model.ObjectType_basic)))
+		}
 		err := history.ResetToVersion(b, st)
 		if err != nil {
 			log.With(zap.String("object id", newID)).Errorf("failed to set state %s: %s", newID, err)
-		}
-		commonOperations, ok := b.(basic.CommonOperations)
-		if !ok {
-			return nil
-		}
-		err = commonOperations.FeaturedRelationAdd(nil, bundle.RelationKeyType.String())
-		if err != nil {
-			log.With(zap.String("object id", newID)).Errorf("failed to set featuredRelations %s: %s", newID, err)
 		}
 		respDetails = b.CombinedDetails()
 		return nil

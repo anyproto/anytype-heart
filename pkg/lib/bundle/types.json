@@ -298,6 +298,7 @@
       "targetObjectType",
       "templateIsBundled"
     ],
+    "restrictObjectCreation": true,
     "revision": 4
   },
   {

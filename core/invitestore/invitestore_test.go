@@ -17,14 +17,13 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/object/idresolver/mock_idresolver"
 	"github.com/anyproto/anytype-heart/core/event/mock_event"
 	"github.com/anyproto/anytype-heart/core/files/fileoffloader"
-	"github.com/anyproto/anytype-heart/core/filestorage"
-	"github.com/anyproto/anytype-heart/core/filestorage/filesync"
-	"github.com/anyproto/anytype-heart/core/filestorage/rpcstore"
+	"github.com/anyproto/anytype-heart/core/files/filestorage"
+	"github.com/anyproto/anytype-heart/core/files/filestorage/rpcstore"
+	"github.com/anyproto/anytype-heart/core/files/filesync"
 	wallet2 "github.com/anyproto/anytype-heart/core/wallet"
 	"github.com/anyproto/anytype-heart/core/wallet/mock_wallet"
 	"github.com/anyproto/anytype-heart/pb"
-	"github.com/anyproto/anytype-heart/pkg/lib/datastore"
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore/filestore"
+	"github.com/anyproto/anytype-heart/pkg/lib/datastore/anystoreprovider"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space/mock_space"
@@ -42,20 +41,16 @@ func newFixture(t *testing.T) *fixture {
 	eventSender := mock_event.NewMockSender(t)
 	eventSender.EXPECT().Broadcast(mock.Anything).Return().Maybe()
 
-	dataStoreProvider, err := datastore.NewInMemory()
-	require.NoError(t, err)
-
 	ctx := context.Background()
 	ctrl := gomock.NewController(t)
 	wallet := mock_wallet.NewMockWallet(t)
 	wallet.EXPECT().Name().Return(wallet2.CName)
-	wallet.EXPECT().RepoPath().Return("repo/path")
+	wallet.EXPECT().RepoPath().Return(t.TempDir())
 	spaceIdResolver := mock_idresolver.NewMockResolver(t)
 
 	a := new(app.App)
+	a.Register(anystoreprovider.New())
 	a.Register(objectstore.NewStoreFixture(t))
-	a.Register(dataStoreProvider)
-	a.Register(filestore.New())
 	a.Register(testutil.PrepareMock(ctx, a, eventSender))
 	a.Register(testutil.PrepareMock(ctx, a, spaceService))
 	a.Register(filestorage.NewInMemory())
@@ -68,7 +63,7 @@ func newFixture(t *testing.T) *fixture {
 	a.Register(&config.Config{DisableFileConfig: true, NetworkMode: pb.RpcAccount_DefaultConfig, PeferYamuxTransport: true})
 	a.Register(testutil.PrepareMock(ctx, a, spaceIdResolver))
 
-	err = a.Start(ctx)
+	err := a.Start(ctx)
 	require.NoError(t, err)
 
 	s := New()

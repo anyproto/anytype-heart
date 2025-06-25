@@ -266,6 +266,7 @@ var suitableLayouts = map[model.ObjectTypeLayout]struct{}{
 	model.ObjectType_pdf:            {},
 	model.ObjectType_chat:           {},
 	model.ObjectType_spaceView:      {},
+	model.ObjectType_chatDerived:    {},
 }
 
 func (u *syncStatusUpdater) isLayoutSuitableForSyncRelations(details *domain.Details) bool {

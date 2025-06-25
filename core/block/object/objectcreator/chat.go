@@ -42,6 +42,7 @@ func (s *service) createChatDerived(ctx context.Context, space clientspace.Space
 
 	createState := state.NewDocWithUniqueKey("", nil, key).(*state.State)
 	details.Set(bundle.RelationKeyLayout, domain.Int64(int64(model.ObjectType_chatDerived)))
+	details.Set(bundle.RelationKeyIsHidden, domain.Bool(true))
 	createState.SetDetails(details)
 
 	id, newDetails, err := s.CreateSmartBlockFromStateInSpace(ctx, space, []domain.TypeKey{bundle.TypeKeyChatDerived}, createState)

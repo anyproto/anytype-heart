@@ -14,14 +14,15 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	"github.com/anyproto/anytype-heart/space/spaceinfo"
 	"github.com/anyproto/anytype-heart/util/slice"
 )
+
+var deleteSpaceAccountStatuses = []model.SpaceStatus{model.SpaceStatus_SpaceDeleted, model.SpaceStatus_SpaceRemoving}
 
 func (s *service) runSpaceViewSub() error {
 	resp, err := s.subscriptionService.Search(subscriptionservice.SubscribeRequest{
 		SpaceId: s.spaceService.TechSpaceId(),
-		Keys:    []string{bundle.RelationKeyId.String(), bundle.RelationKeyTargetSpaceId.String(), bundle.RelationKeySpaceLocalStatus.String()},
+		Keys:    []string{bundle.RelationKeyId.String(), bundle.RelationKeyTargetSpaceId.String(), bundle.RelationKeySpaceLocalStatus.String(), bundle.RelationKeySpaceAccountStatus.String(), bundle.RelationKeyCreator.String()},
 		Filters: []database.FilterRequest{
 			{
 				RelationKey: bundle.RelationKeyResolvedLayout,
@@ -31,7 +32,7 @@ func (s *service) runSpaceViewSub() error {
 			{
 				RelationKey: bundle.RelationKeySpaceAccountStatus,
 				Condition:   model.BlockContentDataviewFilter_NotIn,
-				Value:       domain.Int64List([]model.SpaceStatus{model.SpaceStatus_SpaceDeleted, model.SpaceStatus_SpaceRemoving}),
+				Value:       domain.Int64List(deleteSpaceAccountStatuses),
 			},
 		},
 		Internal: true,
@@ -46,25 +47,12 @@ func (s *service) runSpaceViewSub() error {
 	s.spaceViewTargetIds = make(map[string]string, len(resp.Records))
 	for _, r := range resp.Records {
 		s.spaceViewDetails[r.GetString(bundle.RelationKeyId)] = r
-		s.handleSpaceViewDetails(r)
+		s.processSpaceView(r)
 	}
 
 	go s.monitorSpaceViewSub(resp.Output)
 
 	return nil
-}
-
-func spaceIsAvailable(spaceViewDetails *domain.Details) bool {
-	switch spaceViewDetails.GetInt64(bundle.RelationKeySpaceLocalStatus) {
-	case int64(spaceinfo.LocalStatusUnknown), int64(spaceinfo.LocalStatusOk):
-		return true
-	default:
-		return false
-	}
-}
-
-func spaceIsDeleted(spaceViewDetails *domain.Details) bool {
-	return spaceViewDetails.GetInt64(bundle.RelationKeySpaceLocalStatus) == int64(spaceinfo.LocalStatusMissing)
 }
 
 func (s *service) monitorSpaceViewSub(queue *mb.MB[*pb.EventMessage]) {
@@ -96,7 +84,7 @@ func (s *service) onSpaceViewSet(techSpaceId string, msg *pb.EventObjectDetailsS
 	details := domain.NewDetailsFromProto(msg.Details)
 	s.spaceViewDetails[details.GetString(bundle.RelationKeyId)] = details
 
-	s.handleSpaceViewDetails(details)
+	s.processSpaceView(details)
 }
 
 func (s *service) onSpaceViewAmend(techSpaceId string, msg *pb.EventObjectDetailsAmend) {
@@ -109,37 +97,32 @@ func (s *service) onSpaceViewAmend(techSpaceId string, msg *pb.EventObjectDetail
 		details.SetProtoValue(domain.RelationKey(kv.Key), kv.Value)
 	}
 
-	s.handleSpaceViewDetails(details)
+	s.processSpaceView(details)
 }
 
 func (s *service) onSpaceViewRemove(techSpaceId string, msg *pb.EventObjectSubscriptionRemove) {
 	s.removeSpaceView(msg.Id)
 }
 
-func (s *service) handleSpaceViewDetails(details *domain.Details) {
-	id := details.GetString(bundle.RelationKeyId)
-
-	if spaceIsDeleted(details) {
-		s.removeSpaceView(id)
-	} else if spaceIsAvailable(details) {
-		s.addSpaceView(details)
-	}
-}
-
-func (s *service) addSpaceView(details *domain.Details) {
-	id := details.GetString(bundle.RelationKeyId)
+func (s *service) processSpaceView(details *domain.Details) {
+	var (
+		id       = details.GetString(bundle.RelationKeyId)
+		targetId = details.GetString(bundle.RelationKeyTargetSpaceId)
+	)
 
 	if _, ok := s.spaceViewTargetIds[id]; !ok {
-		targetId := details.GetString(bundle.RelationKeyTargetSpaceId)
-
 		s.spaceViewTargetIds[id] = targetId
 		s.spaceIds = append(s.spaceIds, targetId)
+	}
 
-		for _, sub := range s.subscriptions {
+	for _, sub := range s.subscriptions {
+		if sub.spacePredicate(details) {
 			err := sub.AddSpace(targetId)
 			if err != nil {
 				log.Error("onSpaceViewSet: add space", zap.Error(err), zap.String("spaceId", targetId))
 			}
+		} else {
+			sub.RemoveSpace(targetId)
 		}
 	}
 }

@@ -2,9 +2,11 @@ package table
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 
 	"github.com/samber/lo"
+	"golang.org/x/text/collate"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/simple"
@@ -26,8 +28,9 @@ var (
 )
 
 type tableSorter struct {
-	rowIDs []string
-	values []string
+	rowIDs   []string
+	values   []string
+	collator *collate.Collator
 }
 
 func (t tableSorter) Len() int {
@@ -35,7 +38,28 @@ func (t tableSorter) Len() int {
 }
 
 func (t tableSorter) Less(i, j int) bool {
-	return strings.ToLower(t.values[i]) < strings.ToLower(t.values[j])
+	valI := strings.TrimSpace(t.values[i])
+	valJ := strings.TrimSpace(t.values[j])
+
+	// Try to parse both values as numbers
+	numI, errI := strconv.ParseFloat(valI, 64)
+	numJ, errJ := strconv.ParseFloat(valJ, 64)
+
+	// If both values are valid numbers, compare numerically
+	if errI == nil && errJ == nil {
+		return numI < numJ
+	}
+
+	// If only one is a number, numbers come before strings
+	if errI == nil {
+		return true
+	}
+	if errJ == nil {
+		return false
+	}
+
+	// Both are strings, use collator for text comparison
+	return t.collator.CompareString(strings.ToLower(valI), strings.ToLower(valJ)) < 0
 }
 
 func (t tableSorter) Swap(i, j int) {

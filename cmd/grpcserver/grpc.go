@@ -38,6 +38,7 @@ import (
 	"github.com/anyproto/anytype-heart/pb/service"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/util/conc"
+	"github.com/anyproto/anytype-heart/util/grpcprocess"
 	"github.com/anyproto/anytype-heart/util/vcs"
 )
 
@@ -180,6 +181,9 @@ func main() {
 	}
 
 	unaryInterceptors = appendInterceptor(unaryInterceptors, mw)
+	unaryInterceptors = append(unaryInterceptors, grpcprocess.ProcessInfoInterceptor(
+		"/anytype.ClientCommands/AccountLocalLinkNewChallenge",
+	))
 
 	server := grpc.NewServer(grpc.MaxRecvMsgSize(20*1024*1024),
 		grpc.UnaryInterceptor(grpc_middleware.ChainUnaryServer(unaryInterceptors...)),

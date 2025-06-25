@@ -25,6 +25,7 @@ func (s *dsObjectStore) AddToIndexQueue(ctx context.Context, ids ...domain.FullI
 	}
 	arena := s.arenaPool.Get()
 	defer func() {
+		_ = txn.Rollback()
 		arena.Reset()
 		s.arenaPool.Put(arena)
 	}()
@@ -114,6 +115,9 @@ func (s *dsObjectStore) RemoveIdsFromFullTextQueue(ids []string) error {
 	if err != nil {
 		return fmt.Errorf("start write tx: %w", err)
 	}
+	defer func() {
+		_ = txn.Rollback()
+	}()
 	for _, id := range ids {
 		err := s.fulltextQueue.DeleteId(txn.Context(), id)
 		if errors.Is(err, anystore.ErrDocNotFound) {

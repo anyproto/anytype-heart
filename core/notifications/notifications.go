@@ -7,6 +7,7 @@ import (
 	"sync"
 	"time"
 
+	anystore "github.com/anyproto/any-store"
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/commonspace/object/tree/treestorage"
 	"github.com/anyproto/any-sync/net/peer"
@@ -19,12 +20,11 @@ import (
 	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/pb"
 	sb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
-	"github.com/anyproto/anytype-heart/pkg/lib/datastore"
+	"github.com/anyproto/anytype-heart/pkg/lib/datastore/anystoreprovider"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space"
 	"github.com/anyproto/anytype-heart/space/spacecore/peermanager"
-	"github.com/anyproto/anytype-heart/util/badgerhelper"
 )
 
 var log = logging.Logger("notifications")
@@ -63,12 +63,11 @@ func New(loadTimeout time.Duration) Notifications {
 }
 
 func (n *notificationService) Init(a *app.App) (err error) {
-	datastoreService := app.MustComponent[datastore.Datastore](a)
-	db, err := datastoreService.LocalStorage()
+	provider := app.MustComponent[anystoreprovider.Provider](a)
+	n.notificationStore, err = NewNotificationStore(provider.GetCommonDb())
 	if err != nil {
-		return fmt.Errorf("failed to initialize notification store %w", err)
+		return fmt.Errorf("init store: %w", err)
 	}
-	n.notificationStore = NewNotificationStore(db)
 	n.eventSender = app.MustComponent[event.Sender](a)
 	n.spaceService = app.MustComponent[space.Service](a)
 	n.picker = app.MustComponent[cache.ObjectGetter](a)
@@ -135,7 +134,7 @@ func (n *notificationService) CreateAndSend(notification *model.Notification) er
 		n.mu.Lock()
 		defer n.mu.Unlock()
 		storeNotification, err := n.notificationStore.GetNotificationById(notification.Id)
-		if err != nil && !badgerhelper.IsNotFound(err) {
+		if err != nil && !errors.Is(err, anystore.ErrDocNotFound) {
 			return err
 		}
 		if storeNotification != nil {
@@ -238,6 +237,9 @@ func (n *notificationService) List(limit int64, includeRead bool) ([]*model.Noti
 			break
 		}
 		if !includeRead && n.isNotificationRead(notification) {
+			continue
+		}
+		if notification.GetRequestToLeave() != nil {
 			continue
 		}
 		result = append(result, notification)

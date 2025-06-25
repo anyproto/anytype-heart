@@ -11,6 +11,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
+	"golang.org/x/exp/slices"
 
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/event"
@@ -97,7 +98,7 @@ func TestSubscribe(t *testing.T) {
 		})
 
 		// Subscribe
-		resp, err := fx.Subscribe(givenRequest())
+		resp, err := fx.Subscribe(givenRequest(), NoOpPredicate())
 		require.NoError(t, err)
 		require.NotNil(t, resp)
 		assert.NotEmpty(t, resp.SubId)
@@ -118,9 +119,9 @@ func TestSubscribe(t *testing.T) {
 		require.NoError(t, err)
 
 		want := []*pb.EventMessage{
-			makeDetailsSetEvent(resp.SubId, obj1.Details().ToProto()),
-			makeAddEvent(resp.SubId, obj1.Id()),
-			makeCountersEvent(resp.SubId, 1),
+			makeDetailsSetEvent(resp.SubId, obj1.Details().ToProto(), "space1"),
+			makeAddEvent(resp.SubId, obj1.Id(), "space1"),
+			makeCountersEvent(resp.SubId, 1, "space1"),
 		}
 		assert.Equal(t, want, msgs)
 
@@ -139,7 +140,7 @@ func TestSubscribe(t *testing.T) {
 			require.NoError(t, err)
 
 			want = []*pb.EventMessage{
-				makeDetailsAmendEvent(resp.SubId, obj1.Id(), []*pb.EventObjectDetailsAmendKeyValue{
+				makeDetailsAmendEvent(resp.SubId, obj1.Id(), "space1", []*pb.EventObjectDetailsAmendKeyValue{
 					{
 						Key:   bundle.RelationKeyName.String(),
 						Value: pbtypes.String("John Doe"),
@@ -156,7 +157,7 @@ func TestSubscribe(t *testing.T) {
 		defer cancel()
 
 		// Subscribe
-		resp, err := fx.Subscribe(givenRequest())
+		resp, err := fx.Subscribe(givenRequest(), NoOpPredicate())
 		require.NoError(t, err)
 		require.NotNil(t, resp)
 		assert.NotEmpty(t, resp.SubId)
@@ -183,9 +184,9 @@ func TestSubscribe(t *testing.T) {
 			require.NoError(t, err)
 
 			want := []*pb.EventMessage{
-				makeDetailsSetEvent(resp.SubId, obj1.Details().ToProto()),
-				makeAddEvent(resp.SubId, obj1.Id()),
-				makeCountersEvent(resp.SubId, 1),
+				makeDetailsSetEvent(resp.SubId, obj1.Details().ToProto(), "space1"),
+				makeAddEvent(resp.SubId, obj1.Id(), "space1"),
+				makeCountersEvent(resp.SubId, 1, "space1"),
 			}
 			assert.Equal(t, want, msgs)
 
@@ -203,9 +204,9 @@ func TestSubscribe(t *testing.T) {
 			require.NoError(t, err)
 
 			want = []*pb.EventMessage{
-				makeDetailsSetEvent(resp.SubId, obj2.Details().ToProto()),
-				makeAddEvent(resp.SubId, obj2.Id()),
-				makeCountersEvent(resp.SubId, 2),
+				makeDetailsSetEvent(resp.SubId, obj2.Details().ToProto(), "space1"),
+				makeAddEvent(resp.SubId, obj2.Id(), "space1"),
+				makeCountersEvent(resp.SubId, 2, "space1"),
 			}
 			assert.Equal(t, want, msgs)
 		})
@@ -230,9 +231,9 @@ func TestSubscribe(t *testing.T) {
 			require.NoError(t, err)
 
 			want := []*pb.EventMessage{
-				makeDetailsSetEvent(resp.SubId, obj1.Details().ToProto()),
-				makeAddEvent(resp.SubId, obj1.Id()),
-				makeCountersEvent(resp.SubId, 3),
+				makeDetailsSetEvent(resp.SubId, obj1.Details().ToProto(), "space2"),
+				makeAddEvent(resp.SubId, obj1.Id(), "space2"),
+				makeCountersEvent(resp.SubId, 3, "space2"),
 			}
 			assert.Equal(t, want, msgs)
 		})
@@ -262,7 +263,7 @@ func TestSubscribe(t *testing.T) {
 		})
 
 		// Subscribe
-		resp, err := fx.Subscribe(givenRequest())
+		resp, err := fx.Subscribe(givenRequest(), NoOpPredicate())
 		require.NoError(t, err)
 		require.NotNil(t, resp)
 		assert.NotEmpty(t, resp.SubId)
@@ -278,9 +279,9 @@ func TestSubscribe(t *testing.T) {
 		require.NoError(t, err)
 
 		want := []*pb.EventMessage{
-			makeRemoveEvent(resp.SubId, obj1.Id()),
-			makeRemoveEvent(resp.SubId, obj2.Id()),
-			makeCountersEvent(resp.SubId, 0),
+			makeRemoveEvent(resp.SubId, obj1.Id(), "space1"),
+			makeRemoveEvent(resp.SubId, obj2.Id(), "space1"),
+			makeCountersEvent(resp.SubId, 0, "space1"),
 		}
 		assert.Equal(t, want, msgs)
 	})
@@ -308,7 +309,7 @@ func TestSubscribe(t *testing.T) {
 		})
 
 		// Subscribe
-		resp, err := fx.Subscribe(givenRequest())
+		resp, err := fx.Subscribe(givenRequest(), NoOpPredicate())
 		require.NoError(t, err)
 		require.NotNil(t, resp)
 		assert.NotEmpty(t, resp.SubId)
@@ -325,6 +326,263 @@ func TestSubscribe(t *testing.T) {
 	})
 }
 
+func TestSubscribeWithPredicate(t *testing.T) {
+	t.Run("predicate filters initial spaces", func(t *testing.T) {
+		fx := newFixture(t)
+
+		fx.objectStore.AddObjects(t, techSpaceId, []objectstore.TestObject{
+			givenSpaceViewObject("spaceView1", "space1", model.SpaceStatus_SpaceActive, model.SpaceStatus_Ok),
+			givenSpaceViewObject("spaceView2", "space2", model.SpaceStatus_SpaceActive, model.SpaceStatus_Ok),
+			givenSpaceViewObject("spaceView3", "space3", model.SpaceStatus_SpaceActive, model.SpaceStatus_Ok),
+		})
+
+		obj1 := objectstore.TestObject{
+			bundle.RelationKeyId:             domain.String("participant1"),
+			bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_participant)),
+		}
+		obj2 := objectstore.TestObject{
+			bundle.RelationKeyId:             domain.String("participant2"),
+			bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_participant)),
+		}
+		obj3 := objectstore.TestObject{
+			bundle.RelationKeyId:             domain.String("participant3"),
+			bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_participant)),
+		}
+		fx.objectStore.AddObjects(t, "space1", []objectstore.TestObject{obj1})
+		fx.objectStore.AddObjects(t, "space2", []objectstore.TestObject{obj2})
+		fx.objectStore.AddObjects(t, "space3", []objectstore.TestObject{obj3})
+
+		// Wait for space view subscription to process the space views
+		time.Sleep(500 * time.Millisecond)
+
+		predicate := func(details *domain.Details) bool {
+			targetSpaceId := details.GetString(bundle.RelationKeyTargetSpaceId)
+			return targetSpaceId == "space1" || targetSpaceId == "space3"
+		}
+
+		resp, err := fx.Subscribe(givenRequest(), predicate)
+		require.NoError(t, err)
+		require.NotNil(t, resp)
+		assert.NotEmpty(t, resp.SubId)
+
+		assert.Len(t, resp.Records, 2)
+		recordIds := make([]string, len(resp.Records))
+		for i, record := range resp.Records {
+			recordIds[i] = record.GetString(bundle.RelationKeyId)
+		}
+		slices.Sort(recordIds)
+		assert.ElementsMatch(t, []string{"participant1", "participant3"}, recordIds)
+		assert.Equal(t, int64(2), resp.Counters.Total)
+	})
+
+	t.Run("predicate filters when adding spaces dynamically", func(t *testing.T) {
+		fx := newFixture(t)
+		ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
+		defer cancel()
+
+		predicate := func(details *domain.Details) bool {
+			targetSpaceId := details.GetString(bundle.RelationKeyTargetSpaceId)
+			return targetSpaceId == "space1" || targetSpaceId == "space21"
+		}
+
+		resp, err := fx.Subscribe(givenRequest(), predicate)
+		require.NoError(t, err)
+		require.NotNil(t, resp)
+		assert.NotEmpty(t, resp.SubId)
+		assert.Empty(t, resp.Records) // No initial spaces match
+
+		fx.objectStore.AddObjects(t, techSpaceId, []objectstore.TestObject{
+			givenSpaceViewObject("spaceView1", "space1", model.SpaceStatus_SpaceActive, model.SpaceStatus_Ok),
+		})
+		obj1 := objectstore.TestObject{
+			bundle.RelationKeyId:             domain.String("participant1"),
+			bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_participant)),
+		}
+		fx.objectStore.AddObjects(t, "space1", []objectstore.TestObject{obj1})
+
+		msgs, err := fx.eventQueue.NewCond().WithMin(3).Wait(ctx)
+		require.NoError(t, err)
+		want := []*pb.EventMessage{
+			makeDetailsSetEvent(resp.SubId, obj1.Details().ToProto(), "space1"),
+			makeAddEvent(resp.SubId, obj1.Id(), "space1"),
+			makeCountersEvent(resp.SubId, 1, "space1"),
+		}
+		assert.Equal(t, want, msgs)
+
+		fx.objectStore.AddObjects(t, techSpaceId, []objectstore.TestObject{
+			givenSpaceViewObject("spaceView2", "space2", model.SpaceStatus_SpaceActive, model.SpaceStatus_Ok),
+		})
+		obj2 := objectstore.TestObject{
+			bundle.RelationKeyId:             domain.String("participant2"),
+			bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_participant)),
+		}
+		fx.objectStore.AddObjects(t, "space2", []objectstore.TestObject{obj2})
+
+		ctx2, cancel2 := context.WithTimeout(context.Background(), 50*time.Millisecond)
+		defer cancel2()
+		msgs, err = fx.eventQueue.NewCond().WithMin(1).Wait(ctx2)
+		require.ErrorIs(t, err, context.DeadlineExceeded)
+		assert.Empty(t, msgs)
+
+		fx.objectStore.AddObjects(t, techSpaceId, []objectstore.TestObject{
+			givenSpaceViewObject("spaceView21", "space21", model.SpaceStatus_SpaceActive, model.SpaceStatus_Ok),
+		})
+		obj21 := objectstore.TestObject{
+			bundle.RelationKeyId:             domain.String("participant21"),
+			bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_participant)),
+		}
+		fx.objectStore.AddObjects(t, "space21", []objectstore.TestObject{obj21})
+
+		msgs, err = fx.eventQueue.NewCond().WithMin(3).Wait(ctx)
+		require.NoError(t, err)
+		want = []*pb.EventMessage{
+			makeDetailsSetEvent(resp.SubId, obj21.Details().ToProto(), "space21"),
+			makeAddEvent(resp.SubId, obj21.Id(), "space21"),
+			makeCountersEvent(resp.SubId, 2, "space21"),
+		}
+		assert.Equal(t, want, msgs)
+	})
+
+	t.Run("predicate that rejects all spaces", func(t *testing.T) {
+		fx := newFixture(t)
+		ctx, cancel := context.WithTimeout(context.Background(), 50*time.Millisecond)
+		defer cancel()
+
+		fx.objectStore.AddObjects(t, techSpaceId, []objectstore.TestObject{
+			givenSpaceViewObject("spaceView1", "space1", model.SpaceStatus_SpaceActive, model.SpaceStatus_Ok),
+			givenSpaceViewObject("spaceView2", "space2", model.SpaceStatus_SpaceActive, model.SpaceStatus_Ok),
+		})
+
+		obj1 := objectstore.TestObject{
+			bundle.RelationKeyId:             domain.String("participant1"),
+			bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_participant)),
+		}
+		obj2 := objectstore.TestObject{
+			bundle.RelationKeyId:             domain.String("participant2"),
+			bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_participant)),
+		}
+		fx.objectStore.AddObjects(t, "space1", []objectstore.TestObject{obj1})
+		fx.objectStore.AddObjects(t, "space2", []objectstore.TestObject{obj2})
+
+		predicate := func(details *domain.Details) bool {
+			return false
+		}
+
+		resp, err := fx.Subscribe(givenRequest(), predicate)
+		require.NoError(t, err)
+		require.NotNil(t, resp)
+		assert.NotEmpty(t, resp.SubId)
+		assert.Empty(t, resp.Records)
+		assert.Equal(t, int64(0), resp.Counters.Total)
+
+		obj3 := objectstore.TestObject{
+			bundle.RelationKeyId:             domain.String("participant3"),
+			bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_participant)),
+		}
+		fx.objectStore.AddObjects(t, "space1", []objectstore.TestObject{obj3})
+
+		msgs, err := fx.eventQueue.NewCond().WithMin(1).Wait(ctx)
+		require.ErrorIs(t, err, context.DeadlineExceeded)
+		assert.Empty(t, msgs)
+	})
+
+	t.Run("predicate filters based on space view properties", func(t *testing.T) {
+		fx := newFixture(t)
+
+		fx.objectStore.AddObjects(t, techSpaceId, []objectstore.TestObject{
+			givenSpaceViewObjectWithCreator("spaceView1", "space1", model.SpaceStatus_SpaceActive, model.SpaceStatus_Ok, "participant1"),
+			givenSpaceViewObject("spaceView2", "space2", model.SpaceStatus_SpaceActive, model.SpaceStatus_Ok),
+			givenSpaceViewObject("spaceView3", "space3", model.SpaceStatus_SpaceJoining, model.SpaceStatus_Unknown),
+		})
+
+		obj1 := objectstore.TestObject{
+			bundle.RelationKeyId:             domain.String("participant1"),
+			bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_participant)),
+		}
+		obj2 := objectstore.TestObject{
+			bundle.RelationKeyId:             domain.String("participant2"),
+			bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_participant)),
+		}
+		obj3 := objectstore.TestObject{
+			bundle.RelationKeyId:             domain.String("participant3"),
+			bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_participant)),
+		}
+		fx.objectStore.AddObjects(t, "space1", []objectstore.TestObject{obj1})
+		fx.objectStore.AddObjects(t, "space2", []objectstore.TestObject{obj2})
+		fx.objectStore.AddObjects(t, "space3", []objectstore.TestObject{obj3})
+
+		time.Sleep(500 * time.Millisecond)
+
+		predicate := func(details *domain.Details) bool {
+			accountStatus := model.SpaceStatus(details.GetInt64(bundle.RelationKeySpaceAccountStatus))
+			creatorId := details.GetString(bundle.RelationKeyCreator)
+			return accountStatus == model.SpaceStatus_SpaceActive && creatorId == "participant1"
+		}
+
+		resp, err := fx.Subscribe(givenRequest(), predicate)
+		require.NoError(t, err)
+		require.NotNil(t, resp)
+		assert.NotEmpty(t, resp.SubId)
+
+		assert.Len(t, resp.Records, 1)
+		if len(resp.Records) > 0 {
+			assert.Equal(t, "participant1", resp.Records[0].GetString(bundle.RelationKeyId))
+		}
+		assert.Equal(t, int64(1), resp.Counters.Total)
+	})
+
+	t.Run("predicate filters space that changes to match criteria", func(t *testing.T) {
+		fx := newFixture(t)
+		ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
+		defer cancel()
+
+		// Initially create space view with creator that doesn't match predicate
+		fx.objectStore.AddObjects(t, techSpaceId, []objectstore.TestObject{
+			givenSpaceViewObjectWithCreator("spaceView1", "space1", model.SpaceStatus_SpaceActive, model.SpaceStatus_Ok, "wrongCreator"),
+		})
+
+		obj1 := objectstore.TestObject{
+			bundle.RelationKeyId:             domain.String("participant1"),
+			bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_participant)),
+		}
+		fx.objectStore.AddObjects(t, "space1", []objectstore.TestObject{obj1})
+
+		time.Sleep(500 * time.Millisecond)
+
+		// Predicate only matches spaces with creator "targetCreator"
+		predicate := func(details *domain.Details) bool {
+			accountStatus := model.SpaceStatus(details.GetInt64(bundle.RelationKeySpaceAccountStatus))
+			creatorId := details.GetString(bundle.RelationKeyCreator)
+			return accountStatus == model.SpaceStatus_SpaceActive && creatorId == "targetCreator"
+		}
+
+		resp, err := fx.Subscribe(givenRequest(), predicate)
+		require.NoError(t, err)
+		require.NotNil(t, resp)
+		assert.NotEmpty(t, resp.SubId)
+
+		// Initially no records should match
+		assert.Empty(t, resp.Records)
+		assert.Equal(t, int64(0), resp.Counters.Total)
+
+		// Now update the space view to have the matching creator
+		fx.objectStore.AddObjects(t, techSpaceId, []objectstore.TestObject{
+			givenSpaceViewObjectWithCreator("spaceView1", "space1", model.SpaceStatus_SpaceActive, model.SpaceStatus_Ok, "targetCreator"),
+		})
+
+		// Wait for events - the participant should now be included
+		msgs, err := fx.eventQueue.NewCond().WithMin(3).Wait(ctx)
+		require.NoError(t, err)
+
+		want := []*pb.EventMessage{
+			makeDetailsSetEvent(resp.SubId, obj1.Details().ToProto(), "space1"),
+			makeAddEvent(resp.SubId, obj1.Id(), "space1"),
+			makeCountersEvent(resp.SubId, 1, "space1"),
+		}
+		assert.Equal(t, want, msgs)
+	})
+}
+
 func TestUnsubscribe(t *testing.T) {
 	t.Run("subscription not found", func(t *testing.T) {
 		fx := newFixture(t)
@@ -336,13 +594,10 @@ func TestUnsubscribe(t *testing.T) {
 	t.Run("with existing subscription", func(t *testing.T) {
 		fx := newFixture(t)
 
-		// Add space view
 		fx.objectStore.AddObjects(t, techSpaceId, []objectstore.TestObject{
 			givenSpaceViewObject("spaceView1", "space1", model.SpaceStatus_SpaceActive, model.SpaceStatus_Ok),
 		})
-
-		// Subscribe
-		resp, err := fx.Subscribe(givenRequest())
+		resp, err := fx.Subscribe(givenRequest(), NoOpPredicate())
 		require.NoError(t, err)
 		require.NotNil(t, resp)
 		assert.NotEmpty(t, resp.SubId)
@@ -370,10 +625,11 @@ func TestUnsubscribe(t *testing.T) {
 	})
 }
 
-func makeDetailsSetEvent(subId string, details *types.Struct) *pb.EventMessage {
-	return event.NewMessage("", &pb.EventMessageValueOfObjectDetailsSet{
+func makeDetailsSetEvent(subId string, details *types.Struct, spaceId string) *pb.EventMessage {
+	id := pbtypes.GetString(details, bundle.RelationKeyId.String())
+	return event.NewMessage(spaceId, &pb.EventMessageValueOfObjectDetailsSet{
 		ObjectDetailsSet: &pb.EventObjectDetailsSet{
-			Id: pbtypes.GetString(details, bundle.RelationKeyId.String()),
+			Id: id,
 			SubIds: []string{
 				subId,
 			},
@@ -382,8 +638,8 @@ func makeDetailsSetEvent(subId string, details *types.Struct) *pb.EventMessage {
 	})
 }
 
-func makeDetailsAmendEvent(subId string, id string, details []*pb.EventObjectDetailsAmendKeyValue) *pb.EventMessage {
-	return event.NewMessage("", &pb.EventMessageValueOfObjectDetailsAmend{
+func makeDetailsAmendEvent(subId string, id string, spaceId string, details []*pb.EventObjectDetailsAmendKeyValue) *pb.EventMessage {
+	return event.NewMessage(spaceId, &pb.EventMessageValueOfObjectDetailsAmend{
 		ObjectDetailsAmend: &pb.EventObjectDetailsAmend{
 			Id: id,
 			SubIds: []string{
@@ -394,8 +650,8 @@ func makeDetailsAmendEvent(subId string, id string, details []*pb.EventObjectDet
 	})
 }
 
-func makeAddEvent(subId string, id string) *pb.EventMessage {
-	return event.NewMessage("", &pb.EventMessageValueOfSubscriptionAdd{
+func makeAddEvent(subId string, id string, spaceId string) *pb.EventMessage {
+	return event.NewMessage(spaceId, &pb.EventMessageValueOfSubscriptionAdd{
 		SubscriptionAdd: &pb.EventObjectSubscriptionAdd{
 			SubId:   subId,
 			Id:      id,
@@ -404,8 +660,8 @@ func makeAddEvent(subId string, id string) *pb.EventMessage {
 	})
 }
 
-func makeCountersEvent(subId string, total int) *pb.EventMessage {
-	return event.NewMessage("", &pb.EventMessageValueOfSubscriptionCounters{
+func makeCountersEvent(subId string, total int, spaceId string) *pb.EventMessage {
+	return event.NewMessage(spaceId, &pb.EventMessageValueOfSubscriptionCounters{
 		SubscriptionCounters: &pb.EventObjectSubscriptionCounters{
 			SubId: subId,
 			Total: int64(total),
@@ -413,8 +669,8 @@ func makeCountersEvent(subId string, total int) *pb.EventMessage {
 	})
 }
 
-func makeRemoveEvent(subId string, id string) *pb.EventMessage {
-	return event.NewMessage("", &pb.EventMessageValueOfSubscriptionRemove{
+func makeRemoveEvent(subId string, id string, spaceId string) *pb.EventMessage {
+	return event.NewMessage(spaceId, &pb.EventMessageValueOfSubscriptionRemove{
 		SubscriptionRemove: &pb.EventObjectSubscriptionRemove{
 			SubId: subId,
 			Id:    id,
@@ -460,5 +716,16 @@ func givenSpaceViewObject(id string, targetSpaceId string, spaceStatus model.Spa
 		bundle.RelationKeyResolvedLayout:     domain.Int64(int64(model.ObjectType_spaceView)),
 		bundle.RelationKeySpaceAccountStatus: domain.Int64(int64(spaceStatus)),
 		bundle.RelationKeySpaceLocalStatus:   domain.Int64(int64(localStatus)),
+	}
+}
+
+func givenSpaceViewObjectWithCreator(id string, targetSpaceId string, spaceStatus model.SpaceStatus, localStatus model.SpaceStatus, creator string) objectstore.TestObject {
+	return objectstore.TestObject{
+		bundle.RelationKeyId:                 domain.String(id),
+		bundle.RelationKeyTargetSpaceId:      domain.String(targetSpaceId),
+		bundle.RelationKeyResolvedLayout:     domain.Int64(int64(model.ObjectType_spaceView)),
+		bundle.RelationKeySpaceAccountStatus: domain.Int64(int64(spaceStatus)),
+		bundle.RelationKeySpaceLocalStatus:   domain.Int64(int64(localStatus)),
+		bundle.RelationKeyCreator:            domain.String(creator),
 	}
 }

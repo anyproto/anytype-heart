@@ -64,6 +64,9 @@ func (i *spaceIndexer) indexBatch(tasks []indexTask) (err error) {
 	if err != nil {
 		return err
 	}
+	defer func() {
+		_ = tx.Rollback()
+	}()
 	st := time.Now()
 
 	closeTasks := func(closeErr error) {

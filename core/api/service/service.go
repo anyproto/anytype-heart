@@ -5,12 +5,11 @@ import (
 )
 
 type Service struct {
-	mw            apicore.ClientCommands
-	exportService apicore.ExportService
-	gatewayUrl    string
-	techSpaceId   string
+	mw          apicore.ClientCommands
+	gatewayUrl  string
+	techSpaceId string
 }
 
-func NewService(mw apicore.ClientCommands, exportService apicore.ExportService, gatewayUrl string, techspaceId string) *Service {
-	return &Service{mw: mw, exportService: exportService, gatewayUrl: gatewayUrl, techSpaceId: techspaceId}
+func NewService(mw apicore.ClientCommands, gatewayUrl string, techspaceId string) *Service {
+	return &Service{mw: mw, gatewayUrl: gatewayUrl, techSpaceId: techspaceId}
 }

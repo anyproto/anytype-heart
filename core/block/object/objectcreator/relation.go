@@ -32,12 +32,17 @@ func (s *service) createRelation(ctx context.Context, space clientspace.Space, d
 	if details.GetString(bundle.RelationKeyName) == "" {
 		return "", nil, fmt.Errorf("missing relation name")
 	}
+
 	if !details.Has(bundle.RelationKeyCreatedDate) {
 		details.SetInt64(bundle.RelationKeyCreatedDate, time.Now().Unix())
 	}
 
 	object = details.Copy()
+
 	key := domain.RelationKey(details.GetString(bundle.RelationKeyRelationKey))
+
+	injectApiObjectKey(object, key.String())
+
 	if key == "" {
 		key = domain.RelationKey(bson.NewObjectId().Hex())
 	} else if bundle.HasRelation(key) {
@@ -50,6 +55,7 @@ func (s *service) createRelation(ctx context.Context, space clientspace.Space, d
 	object.SetString(bundle.RelationKeyUniqueKey, uniqueKey.Marshal())
 	object.SetString(bundle.RelationKeyId, id)
 	object.SetString(bundle.RelationKeyRelationKey, string(key))
+
 	if details.GetInt64(bundle.RelationKeyRelationFormat) == int64(model.RelationFormat_status) {
 		object.SetInt64(bundle.RelationKeyRelationMaxCount, 1)
 	}

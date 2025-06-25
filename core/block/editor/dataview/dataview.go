@@ -189,18 +189,14 @@ func (d *sdataview) AddRelations(ctx session.Context, blockId string, relationKe
 	}
 }
 
-func (d *sdataview) DeleteRelations(ctx session.Context, blockId string, relationIds []string, showEvent bool) error {
+func (d *sdataview) DeleteRelations(ctx session.Context, blockId string, relationKeys []string, showEvent bool) error {
 	s := d.NewStateCtx(ctx)
 	tb, err := getDataviewBlock(s, blockId)
 	if err != nil {
 		return err
 	}
 
-	for _, id := range relationIds {
-		if err = tb.DeleteRelation(id); err != nil {
-			return err
-		}
-	}
+	tb.DeleteRelations(relationKeys...)
 
 	if showEvent {
 		return d.Apply(s)

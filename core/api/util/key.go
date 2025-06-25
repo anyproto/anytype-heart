@@ -8,8 +8,8 @@ import (
 )
 
 // Internal 						-> API
-// "rel-dueDate"             		-> "due_date"
-// "rel-67b0d3e3cda913b84c1299b1" 	-> "67b0d3e3cda913b84c1299b1"
+// "dueDate"             		    -> "due_date"
+// "67b0d3e3cda913b84c1299b1" 	    -> "67b0d3e3cda913b84c1299b1"
 // "ot-page"                 		-> "page"
 // "ot-67b0d3e3cda913b84c1299b1"   	-> "67b0d3e3cda913b84c1299b1"
 // "opt-67b0d3e3cda913b84c1299b1"  	-> "67b0d3e3cda913b84c1299b1"
@@ -18,7 +18,7 @@ const (
 	propPrefix                   = ""
 	typePrefix                   = ""
 	tagPrefix                    = ""
-	internalRelationPrefix       = "rel-"
+	internalRelationPrefix       = "" // internally, we're using rk instead of uk when working with relations from api, where no "rel-" prefix exists
 	internalObjectTypePrefix     = "ot-"
 	internalRelationOptionPrefix = "opt-"
 )
@@ -32,28 +32,15 @@ func ToPropertyApiKey(internalKey string) string {
 	return toApiKey(propPrefix, internalRelationPrefix, internalKey)
 }
 
-func FromPropertyApiKey(apiKey string) string {
-	return fromApiKey(propPrefix, "", apiKey) // interally, we don't prefix relation keys
-}
-
 func ToTypeApiKey(internalKey string) string {
 	return toApiKey(typePrefix, internalObjectTypePrefix, internalKey)
-}
-
-func FromTypeApiKey(apiKey string) string {
-	return fromApiKey(typePrefix, internalObjectTypePrefix, apiKey)
 }
 
 func ToTagApiKey(internalKey string) string {
 	return toApiKey(tagPrefix, internalRelationOptionPrefix, internalKey)
 }
 
-func FromTagApiKey(apiKey string) string {
-	return fromApiKey(tagPrefix, internalRelationOptionPrefix, apiKey)
-}
-
 // IsCustomKey returns true if key is exactly 24 letters and contains at least a digit.
-// Non-custom properties never contain a digit.
 func IsCustomKey(key string) bool {
 	return len(key) == 24 && hex24Pattern.MatchString(key) && digitPattern.MatchString(key)
 }
@@ -68,13 +55,4 @@ func toApiKey(prefix, internalPrefix, internalKey string) string {
 		k = strcase.ToSnake(internalKey)
 	}
 	return prefix + k
-}
-
-// fromApiKey converts an API key back into internal format by stripping the API prefix and re-adding the internal prefix.
-func fromApiKey(prefix, internalPrefix, apiKey string) string {
-	k := strings.TrimPrefix(apiKey, prefix)
-	if IsCustomKey(k) {
-		return internalPrefix + k
-	}
-	return internalPrefix + strcase.ToLowerCamel(k)
 }

@@ -136,7 +136,9 @@ func (a *accountObject) Init(ctx *smartblock.InitContext) error {
 	}
 	storeSource.SetPushChangeHook(a.OnPushChange)
 	a.storeSource = storeSource
-	err = storeSource.ReadStoreDoc(ctx.Ctx, stateStore, a.onUpdate)
+	err = storeSource.ReadStoreDoc(ctx.Ctx, stateStore, source.ReadStoreDocParams{
+		OnUpdateHook: a.onUpdate,
+	})
 	if err != nil {
 		return fmt.Errorf("read store doc: %w", err)
 	}

@@ -12,6 +12,10 @@ import (
 
 	domain "github.com/anyproto/anytype-heart/core/domain"
 
+	inviteservice "github.com/anyproto/anytype-heart/core/inviteservice"
+
+	list "github.com/anyproto/any-sync/commonspace/object/acl/list"
+
 	mock "github.com/stretchr/testify/mock"
 
 	model "github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -28,6 +32,54 @@ type MockInviteService_Expecter struct {
 
 func (_m *MockInviteService) EXPECT() *MockInviteService_Expecter {
 	return &MockInviteService_Expecter{mock: &_m.Mock}
+}
+
+// Change provides a mock function with given fields: ctx, spaceId, permissions
+func (_m *MockInviteService) Change(ctx context.Context, spaceId string, permissions list.AclPermissions) error {
+	ret := _m.Called(ctx, spaceId, permissions)
+
+	if len(ret) == 0 {
+		panic("no return value specified for Change")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, string, list.AclPermissions) error); ok {
+		r0 = rf(ctx, spaceId, permissions)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// MockInviteService_Change_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Change'
+type MockInviteService_Change_Call struct {
+	*mock.Call
+}
+
+// Change is a helper method to define mock.On call
+//   - ctx context.Context
+//   - spaceId string
+//   - permissions list.AclPermissions
+func (_e *MockInviteService_Expecter) Change(ctx interface{}, spaceId interface{}, permissions interface{}) *MockInviteService_Change_Call {
+	return &MockInviteService_Change_Call{Call: _e.mock.On("Change", ctx, spaceId, permissions)}
+}
+
+func (_c *MockInviteService_Change_Call) Run(run func(ctx context.Context, spaceId string, permissions list.AclPermissions)) *MockInviteService_Change_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(string), args[2].(list.AclPermissions))
+	})
+	return _c
+}
+
+func (_c *MockInviteService_Change_Call) Return(_a0 error) *MockInviteService_Change_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockInviteService_Change_Call) RunAndReturn(run func(context.Context, string, list.AclPermissions) error) *MockInviteService_Change_Call {
+	_c.Call.Return(run)
+	return _c
 }
 
 // Close provides a mock function with given fields: ctx
@@ -76,9 +128,9 @@ func (_c *MockInviteService_Close_Call) RunAndReturn(run func(context.Context) e
 	return _c
 }
 
-// Generate provides a mock function with given fields: ctx, spaceId, inviteKey, sendInvite
-func (_m *MockInviteService) Generate(ctx context.Context, spaceId string, inviteKey crypto.PrivKey, sendInvite func() error) (domain.InviteInfo, error) {
-	ret := _m.Called(ctx, spaceId, inviteKey, sendInvite)
+// Generate provides a mock function with given fields: ctx, params, sendInvite
+func (_m *MockInviteService) Generate(ctx context.Context, params inviteservice.GenerateInviteParams, sendInvite func() error) (domain.InviteInfo, error) {
+	ret := _m.Called(ctx, params, sendInvite)
 
 	if len(ret) == 0 {
 		panic("no return value specified for Generate")
@@ -86,17 +138,17 @@ func (_m *MockInviteService) Generate(ctx context.Context, spaceId string, invit
 
 	var r0 domain.InviteInfo
 	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, string, crypto.PrivKey, func() error) (domain.InviteInfo, error)); ok {
-		return rf(ctx, spaceId, inviteKey, sendInvite)
+	if rf, ok := ret.Get(0).(func(context.Context, inviteservice.GenerateInviteParams, func() error) (domain.InviteInfo, error)); ok {
+		return rf(ctx, params, sendInvite)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context, string, crypto.PrivKey, func() error) domain.InviteInfo); ok {
-		r0 = rf(ctx, spaceId, inviteKey, sendInvite)
+	if rf, ok := ret.Get(0).(func(context.Context, inviteservice.GenerateInviteParams, func() error) domain.InviteInfo); ok {
+		r0 = rf(ctx, params, sendInvite)
 	} else {
 		r0 = ret.Get(0).(domain.InviteInfo)
 	}
 
-	if rf, ok := ret.Get(1).(func(context.Context, string, crypto.PrivKey, func() error) error); ok {
-		r1 = rf(ctx, spaceId, inviteKey, sendInvite)
+	if rf, ok := ret.Get(1).(func(context.Context, inviteservice.GenerateInviteParams, func() error) error); ok {
+		r1 = rf(ctx, params, sendInvite)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -111,16 +163,15 @@ type MockInviteService_Generate_Call struct {
 
 // Generate is a helper method to define mock.On call
 //   - ctx context.Context
-//   - spaceId string
-//   - inviteKey crypto.PrivKey
+//   - params inviteservice.GenerateInviteParams
 //   - sendInvite func() error
-func (_e *MockInviteService_Expecter) Generate(ctx interface{}, spaceId interface{}, inviteKey interface{}, sendInvite interface{}) *MockInviteService_Generate_Call {
-	return &MockInviteService_Generate_Call{Call: _e.mock.On("Generate", ctx, spaceId, inviteKey, sendInvite)}
+func (_e *MockInviteService_Expecter) Generate(ctx interface{}, params interface{}, sendInvite interface{}) *MockInviteService_Generate_Call {
+	return &MockInviteService_Generate_Call{Call: _e.mock.On("Generate", ctx, params, sendInvite)}
 }
 
-func (_c *MockInviteService_Generate_Call) Run(run func(ctx context.Context, spaceId string, inviteKey crypto.PrivKey, sendInvite func() error)) *MockInviteService_Generate_Call {
+func (_c *MockInviteService_Generate_Call) Run(run func(ctx context.Context, params inviteservice.GenerateInviteParams, sendInvite func() error)) *MockInviteService_Generate_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(string), args[2].(crypto.PrivKey), args[3].(func() error))
+		run(args[0].(context.Context), args[1].(inviteservice.GenerateInviteParams), args[2].(func() error))
 	})
 	return _c
 }
@@ -130,7 +181,7 @@ func (_c *MockInviteService_Generate_Call) Return(_a0 domain.InviteInfo, _a1 err
 	return _c
 }
 
-func (_c *MockInviteService_Generate_Call) RunAndReturn(run func(context.Context, string, crypto.PrivKey, func() error) (domain.InviteInfo, error)) *MockInviteService_Generate_Call {
+func (_c *MockInviteService_Generate_Call) RunAndReturn(run func(context.Context, inviteservice.GenerateInviteParams, func() error) (domain.InviteInfo, error)) *MockInviteService_Generate_Call {
 	_c.Call.Return(run)
 	return _c
 }

@@ -13,6 +13,7 @@ func (mw *Middleware) PublishingCreate(ctx context.Context, req *pb.RpcPublishin
 	code := mapErrorCode(err,
 		errToCode(nil, pb.RpcPublishingCreateResponseError_NULL),
 		errToCode(publish.ErrLimitExceeded, pb.RpcPublishingCreateResponseError_LIMIT_EXCEEDED),
+		errToCode(publish.ErrUrlAlreadyTaken, pb.RpcPublishingCreateResponseError_URL_ALREADY_TAKEN),
 		errToCode(err, pb.RpcPublishingCreateResponseError_UNKNOWN_ERROR))
 
 	r := &pb.RpcPublishingCreateResponse{

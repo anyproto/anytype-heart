@@ -12,7 +12,6 @@ const CName = "datastore"
 type Datastore interface {
 	app.ComponentRunnable
 	SpaceStorage() (*badger.DB, error) // deprecated, should be moved to either LocalStorage or sqlite db
-	LocalStorage() (*badger.DB, error)
 }
 
 type inMemoryDatastore struct {
@@ -43,9 +42,5 @@ func (i *inMemoryDatastore) Close(ctx context.Context) error {
 }
 
 func (i *inMemoryDatastore) SpaceStorage() (*badger.DB, error) {
-	return i.db, nil
-}
-
-func (i *inMemoryDatastore) LocalStorage() (*badger.DB, error) {
 	return i.db, nil
 }

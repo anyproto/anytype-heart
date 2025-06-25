@@ -56,7 +56,7 @@ func TestEditor_TableCreate(t *testing.T) {
 		// given
 		sb := smarttest.New("root")
 		sb.AddBlock(simple.New(&model.Block{Id: "root"}))
-		sb.TestRestrictions = restriction.Restrictions{Object: restriction.ObjectRestrictions{model.Restrictions_Blocks}}
+		sb.TestRestrictions = restriction.Restrictions{Object: restriction.ObjectRestrictions{model.Restrictions_Blocks: {}}}
 		e := NewEditor(sb)
 
 		s := sb.NewState()
@@ -1830,6 +1830,64 @@ func TestSort(t *testing.T) {
 				withRowBlockContents(map[string]*model.BlockContentTableRow{
 					"row1": {IsHeader: true},
 					"row3": {IsHeader: true},
+				})),
+		},
+		{
+			name: "alphabetical order",
+			source: mkTestTable([]string{"col1", "col2"}, []string{"row1", "row2", "row3"},
+				[][]string{
+					{"row1-col1", "row1-col2"},
+					{"row2-col1", "row2-col2"},
+					{"row3-col1", "row3-col2"},
+				}, withBlockContents(map[string]*model.Block{
+					"row1-col2": mkTextBlock("João"),
+					"row2-col2": mkTextBlock("joz"),
+					"row3-col2": mkTextBlock("Joao"),
+				})),
+			req: pb.RpcBlockTableSortRequest{
+				ColumnId: "col2",
+				Type:     model.BlockContentDataviewSort_Asc,
+			},
+			want: mkTestTable([]string{"col1", "col2"}, []string{"row3", "row1", "row2"},
+				[][]string{
+					{"row1-col1", "row1-col2"},
+					{"row2-col1", "row2-col2"},
+					{"row3-col1", "row3-col2"},
+				}, withBlockContents(map[string]*model.Block{
+					"row3-col2": mkTextBlock("Joao"),
+					"row1-col2": mkTextBlock("João"),
+					"row2-col2": mkTextBlock("joz"),
+				})),
+		},
+		{
+			name: "numeric order with decimals",
+			source: mkTestTable([]string{"col1", "col2"}, []string{"row1", "row2", "row3", "row4"},
+				[][]string{
+					{"row1-col1", "row1-col2"},
+					{"row2-col1", "row2-col2"},
+					{"row3-col1", "row3-col2"},
+					{"row4-col1", "row4-col2"},
+				}, withBlockContents(map[string]*model.Block{
+					"row1-col2": mkTextBlock("40.32"),
+					"row2-col2": mkTextBlock("4321.89"),
+					"row3-col2": mkTextBlock("10.32"),
+					"row4-col2": mkTextBlock("55.00"),
+				})),
+			req: pb.RpcBlockTableSortRequest{
+				ColumnId: "col2",
+				Type:     model.BlockContentDataviewSort_Asc,
+			},
+			want: mkTestTable([]string{"col1", "col2"}, []string{"row3", "row1", "row4", "row2"},
+				[][]string{
+					{"row1-col1", "row1-col2"},
+					{"row2-col1", "row2-col2"},
+					{"row3-col1", "row3-col2"},
+					{"row4-col1", "row4-col2"},
+				}, withBlockContents(map[string]*model.Block{
+					"row3-col2": mkTextBlock("10.32"),
+					"row1-col2": mkTextBlock("40.32"),
+					"row4-col2": mkTextBlock("55.00"),
+					"row2-col2": mkTextBlock("4321.89"),
 				})),
 		},
 	} {

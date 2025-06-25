@@ -25,10 +25,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
-	"github.com/anyproto/anytype-heart/util/slice"
 )
-
-var randomIcons = []string{"📓", "📕", "📗", "📘", "📙", "📖", "📔", "📒", "📝", "📄", "📑"}
 
 var log = logging.Logger("import")
 
@@ -36,9 +33,6 @@ func GetCommonDetails(sourcePath, name, emoji string, layout model.ObjectTypeLay
 	creationTime, modTime := filetime.ExtractFileTimes(sourcePath)
 	if name == "" {
 		name = strings.TrimSuffix(filepath.Base(sourcePath), filepath.Ext(sourcePath))
-	}
-	if emoji == "" {
-		emoji = slice.GetRandomString(randomIcons, name)
 	}
 	h := sha256.Sum256([]byte(sourcePath))
 	hash := hex.EncodeToString(h[:])

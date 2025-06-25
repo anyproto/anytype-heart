@@ -30,11 +30,6 @@ func (s *service) getFile(ctx context.Context, spaceID string, c cid.Cid) (ufsio
 	return s.commonFile.GetFile(cctx, c)
 }
 
-func (s *service) hasCid(ctx context.Context, spaceID string, c cid.Cid) (bool, error) {
-	cctx := fileblockstore.CtxWithSpaceId(ctx, spaceID)
-	return s.commonFile.HasCid(cctx, c)
-}
-
 func (s *service) dataAtPath(ctx context.Context, spaceID string, pth string) (cid.Cid, symmetric.ReadSeekCloser, error) {
 	dagService := s.dagServiceForSpace(spaceID)
 	newPath, err := path.NewPath("/ipfs/" + pth)

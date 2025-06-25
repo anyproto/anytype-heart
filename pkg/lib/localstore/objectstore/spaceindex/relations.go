@@ -76,6 +76,9 @@ func (s *dsObjectStore) FetchRelationByKeys(keys ...domain.RelationKey) (relatio
 		}
 		uks = append(uks, uk.Marshal())
 	}
+	if len(uks) == 0 {
+		return
+	}
 	records, err := s.Query(database.Query{
 		Filters: []database.FilterRequest{
 			{

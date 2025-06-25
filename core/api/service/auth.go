@@ -4,19 +4,19 @@ import (
 	"context"
 	"errors"
 
+	"github.com/anyproto/anytype-heart/core/api/util"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
 var (
-	ErrMissingAppName          = errors.New("missing app name")
-	ErrFailedGenerateChallenge = errors.New("failed to generate a new challenge")
-	ErrInvalidInput            = errors.New("invalid input")
-	ErrFailedAuthenticate      = errors.New("failed to authenticate user")
+	ErrMissingAppName           = errors.New("missing app name")
+	ErrFailedCreateNewChallenge = errors.New("failed to create a new challenge")
+	ErrFailedAuthenticate       = errors.New("failed to authenticate user")
 )
 
-// NewChallenge calls AccountLocalLinkNewChallenge and returns the challenge ID, or an error if it fails.
-func (s *Service) NewChallenge(ctx context.Context, appName string) (string, error) {
+// CreateChallenge calls AccountLocalLinkNewChallenge and returns the challenge ID
+func (s *Service) CreateChallenge(ctx context.Context, appName string) (string, error) {
 	if appName == "" {
 		return "", ErrMissingAppName
 	}
@@ -27,19 +27,18 @@ func (s *Service) NewChallenge(ctx context.Context, appName string) (string, err
 	})
 
 	if resp.Error != nil && resp.Error.Code != pb.RpcAccountLocalLinkNewChallengeResponseError_NULL {
-		return "", ErrFailedGenerateChallenge
+		return "", ErrFailedCreateNewChallenge
 	}
 
 	return resp.ChallengeId, nil
 }
 
-// SolveChallenge calls AccountLocalLinkSolveChallenge and returns the session token + app key, or an error if it fails.
+// SolveChallenge calls AccountLocalLinkSolveChallenge and returns the session token + app key
 func (s *Service) SolveChallenge(ctx context.Context, challengeId string, code string) (appKey string, err error) {
 	if challengeId == "" || code == "" {
-		return "", ErrInvalidInput
+		return "", util.ErrBadInput("challenge_id or code is empty")
 	}
 
-	// Call AccountLocalLinkSolveChallenge to retrieve session token and app key
 	resp := s.mw.AccountLocalLinkSolveChallenge(ctx, &pb.RpcAccountLocalLinkSolveChallengeRequest{
 		ChallengeId: challengeId,
 		Answer:      code,

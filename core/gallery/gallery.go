@@ -50,7 +50,7 @@ func DownloadManifest(url string, checkWhitelist bool) (info *model.ManifestInfo
 		return nil, fmt.Errorf("provided URL is not valid: %w", err)
 	}
 	if checkWhitelist && !IsInWhitelist(url) {
-		return nil, fmt.Errorf("URL '%s' is not in whitelist", url)
+		return nil, fmt.Errorf("URL is not in whitelist")
 	}
 	raw, err := getRawJson(url)
 	if err != nil {
@@ -73,7 +73,7 @@ func DownloadManifest(url string, checkWhitelist bool) (info *model.ManifestInfo
 
 	for _, urlToCheck := range append(info.Screenshots, info.DownloadLink) {
 		if !IsInWhitelist(urlToCheck) {
-			return nil, fmt.Errorf("URL '%s' provided in manifest is not in whitelist", urlToCheck)
+			return nil, fmt.Errorf("URL provided in manifest is not in whitelist")
 		}
 	}
 

@@ -49,6 +49,11 @@ linters-settings:
     excludes:
       - G602
       - G108
+  tagliatelle:
+    case:
+      use-field-name: true
+      rules:
+        json: snake
 
 linters:
   disable-all: true
@@ -70,6 +75,7 @@ linters:
     - govet
     - unconvert
     - errorlint
+    - tagliatelle
 
 severity:
   default-severity: error

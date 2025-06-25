@@ -49,6 +49,7 @@ type Relation struct {
 	Source      string   `json:"source"`
 	Description string   `json:"description"`
 	Revision    int      `json:"revision"`
+	IncludeTime bool     `json:"includeTime"` // nolint: tagliatelle
 }
 
 type ObjectType struct {
@@ -221,6 +222,9 @@ func generateRelations() error {
 			}
 			if relation.Revision != 0 {
 				dictS[Id("Revision")] = Lit(relation.Revision)
+			}
+			if relation.IncludeTime {
+				dictS[Id("IncludeTime")] = Lit(relation.IncludeTime)
 			}
 
 			dict[Id(relConst(relation.Key))] = Block(dictS)

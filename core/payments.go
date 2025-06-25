@@ -343,3 +343,55 @@ func (mw *Middleware) MembershipVerifyAppStoreReceipt(ctx context.Context, req *
 
 	return out
 }
+
+func (mw *Middleware) MembershipCodeGetInfo(ctx context.Context, req *pb.RpcMembershipCodeGetInfoRequest) *pb.RpcMembershipCodeGetInfoResponse {
+	ps := mustService[payments.Service](mw)
+	out, err := ps.CodeGetInfo(ctx, req)
+
+	if err != nil {
+		code := mapErrorCode(err,
+			errToCode(proto.ErrInvalidSignature, pb.RpcMembershipCodeGetInfoResponseError_NOT_LOGGED_IN),
+			errToCode(proto.ErrEthAddressEmpty, pb.RpcMembershipCodeGetInfoResponseError_NOT_LOGGED_IN),
+			errToCode(payments.ErrNoConnection, pb.RpcMembershipCodeGetInfoResponseError_PAYMENT_NODE_ERROR),
+			errToCode(net.ErrUnableToConnect, pb.RpcMembershipCodeGetInfoResponseError_PAYMENT_NODE_ERROR),
+			// special errors for this method:
+			errToCode(proto.ErrCodeNotFound, pb.RpcMembershipCodeGetInfoResponseError_CODE_NOT_FOUND),
+			errToCode(proto.ErrCodeAlreadyUsed, pb.RpcMembershipCodeGetInfoResponseError_CODE_ALREADY_USED),
+		)
+
+		return &pb.RpcMembershipCodeGetInfoResponse{
+			Error: &pb.RpcMembershipCodeGetInfoResponseError{
+				Code:        code,
+				Description: getErrorDescription(err),
+			},
+		}
+	}
+
+	return out
+}
+
+func (mw *Middleware) MembershipCodeRedeem(ctx context.Context, req *pb.RpcMembershipCodeRedeemRequest) *pb.RpcMembershipCodeRedeemResponse {
+	ps := mustService[payments.Service](mw)
+	out, err := ps.CodeRedeem(ctx, req)
+
+	if err != nil {
+		code := mapErrorCode(err,
+			errToCode(proto.ErrInvalidSignature, pb.RpcMembershipCodeRedeemResponseError_NOT_LOGGED_IN),
+			errToCode(proto.ErrEthAddressEmpty, pb.RpcMembershipCodeRedeemResponseError_NOT_LOGGED_IN),
+			errToCode(payments.ErrNoConnection, pb.RpcMembershipCodeRedeemResponseError_PAYMENT_NODE_ERROR),
+			errToCode(net.ErrUnableToConnect, pb.RpcMembershipCodeRedeemResponseError_PAYMENT_NODE_ERROR),
+			// special errors for this method:
+			errToCode(proto.ErrCodeNotFound, pb.RpcMembershipCodeRedeemResponseError_CODE_NOT_FOUND),
+			errToCode(proto.ErrCodeAlreadyUsed, pb.RpcMembershipCodeRedeemResponseError_CODE_ALREADY_USED),
+		)
+
+		return &pb.RpcMembershipCodeRedeemResponse{
+			Error: &pb.RpcMembershipCodeRedeemResponseError{
+				Code:        code,
+				Description: getErrorDescription(err),
+			},
+		}
+	}
+
+	return out
+}

@@ -462,9 +462,10 @@ func (c *Config) GetYamux() yamux.Config {
 
 func (c *Config) GetQuic() quic.Config {
 	return quic.Config{
-		ListenAddrs:     []string{},
-		WriteTimeoutSec: 10,
-		DialTimeoutSec:  10,
+		ListenAddrs:       []string{},
+		WriteTimeoutSec:   10,
+		InitialPacketSize: 1200,
+		DialTimeoutSec:    10,
 	}
 }
 
@@ -490,7 +491,7 @@ func (c *Config) GetNetworkMode() pb.RpcAccountNetworkMode {
 
 func (c *Config) GetPublishServer() publishclient.Config {
 	publishPeerId := "12D3KooWEQPgbxGPvkny8kikS3zqfziM7JsQBnJHXHL9ByCcATs7"
-	publishAddr := "anytype-publish-server-yamux-fb3a0765ead8fc08.elb.eu-central-2.amazonaws.com:443"
+	publishAddr := "anytype-publish-server.anytype.io:443"
 
 	if peerId := os.Getenv("ANYTYPE_PUBLISH_PEERID"); peerId != "" {
 		if addr := os.Getenv("ANYTYPE_PUBLISH_ADDRESS"); addr != "" {
@@ -510,8 +511,8 @@ func (c *Config) GetPublishServer() publishclient.Config {
 }
 
 func (c *Config) GetPushConfig() PushConfig {
-	pushPeerId := "12D3KooWR8Ci1XidFCCXoZppGrUmiy4D1Mjoux9xK6QoZrpbQC3J"
-	pushAddr := "stage1-anytype-push-server1.toolpad.org:4940"
+	pushPeerId := "12D3KooWMATrdteJNq2YvYhtq3RDeWxq6RVXDAr36MsGd5RJzXDn"
+	pushAddr := "anytype-push-server.anytype.io:443"
 
 	if peerId := os.Getenv("ANYTYPE_PUSH_PEERID"); peerId != "" {
 		if addr := os.Getenv("ANYTYPE_PUSH_ADDRESS"); addr != "" {

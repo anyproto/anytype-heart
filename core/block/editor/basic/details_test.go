@@ -165,7 +165,7 @@ func TestBasic_SetObjectTypesInState(t *testing.T) {
 	t.Run("type change is restricted", func(t *testing.T) {
 		// given
 		f := newBasicFixture(t)
-		f.sb.TestRestrictions = restriction.Restrictions{Object: []model.RestrictionsObjectRestriction{model.Restrictions_TypeChange}}
+		f.sb.TestRestrictions = restriction.Restrictions{Object: restriction.ObjectRestrictions{model.Restrictions_TypeChange: {}}}
 		s := f.sb.NewState()
 
 		// when

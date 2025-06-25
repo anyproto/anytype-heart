@@ -16,11 +16,13 @@ package ftsearch
 import "C"
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 	"unicode"
 
@@ -29,9 +31,11 @@ import (
 	tantivy "github.com/anyproto/tantivy-go"
 	"github.com/valyala/fastjson"
 
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/wallet"
 	"github.com/anyproto/anytype-heart/metrics"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/ftsearch/tantivycheck"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/util/text"
 )
@@ -40,7 +44,7 @@ const (
 	CName    = "fts"
 	ftsDir   = "fts"
 	ftsDir2  = "fts_tantivy"
-	ftsVer   = "13"
+	ftsVer   = "14"
 	docLimit = 10000
 
 	fieldTitle   = "Title"
@@ -57,7 +61,10 @@ const (
 	tokenizerId  = "SimpleIdTokenizer"
 )
 
-var log = logging.Logger("ftsearch")
+var (
+	log                    = logging.Logger("ftsearch")
+	ErrAppClosingInitiated = errors.New("app closing initiated")
+)
 
 type FTSearch interface {
 	app.ComponentRunnable
@@ -93,14 +100,15 @@ type DocumentMatch struct {
 }
 
 type ftSearch struct {
-	rootPath   string
-	ftsPath    string
-	builderId  string
-	index      *tantivy.TantivyContext
-	parserPool *fastjson.ParserPool
-	mu         sync.Mutex
-	blevePath  string
-	lang       tantivy.Language
+	rootPath            string
+	ftsPath             string
+	builderId           string
+	index               *tantivy.TantivyContext
+	parserPool          *fastjson.ParserPool
+	mu                  sync.Mutex
+	blevePath           string
+	lang                tantivy.Language
+	appClosingInitiated atomic.Bool
 }
 
 func (f *ftSearch) ProvideStat() any {
@@ -126,6 +134,9 @@ func (f *ftSearch) BatchDeleteObjects(ids []string) error {
 	}
 	f.mu.Lock()
 	defer f.mu.Unlock()
+	if f.appClosingInitiated.Load() {
+		return ErrAppClosingInitiated
+	}
 	start := time.Now()
 	defer func() {
 		spentMs := time.Since(start).Milliseconds()
@@ -147,6 +158,9 @@ func (f *ftSearch) BatchDeleteObjects(ids []string) error {
 func (f *ftSearch) DeleteObject(objectId string) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
+	if f.appClosingInitiated.Load() {
+		return ErrAppClosingInitiated
+	}
 	return f.index.DeleteDocuments(fieldIdRaw, objectId)
 }
 
@@ -182,6 +196,24 @@ func (f *ftSearch) Name() (name string) {
 }
 
 func (f *ftSearch) Run(context.Context) error {
+	report, err := tantivycheck.Check(f.ftsPath)
+	if err != nil {
+		if !errors.Is(err, os.ErrNotExist) {
+			log.Warnf("tantivy index checking failed: %v", err)
+		}
+	}
+	if !report.IsOk() {
+		log.With("missingSegments", len(report.MissingSegments)).
+			With("missingDelFiles", len(report.MissingDelFiles)).
+			With("extraSegments", len(report.ExtraSegments)).
+			With("extraDelFiles", len(report.ExtraDelFiles)).
+			With("writerLockPresent", report.WriterLockPresent).
+			With("metaLockPresent", report.MetaLockPresent).
+			With("totalSegmentsInMeta", report.TotalSegmentsInMeta).
+			With("uniqueSegmentPrefixesOnDisk", report.UniqueSegmentPrefixesOnDisk).
+			Warnf("tantivy index is inconsistent state, dry run")
+	}
+
 	builder, err := tantivy.NewSchemaBuilder()
 	if err != nil {
 		return err
@@ -328,6 +360,9 @@ func (f *ftSearch) tryToBuildSchema(schema *tantivy.Schema) (*tantivy.TantivyCon
 func (f *ftSearch) Index(doc SearchDoc) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
+	if f.appClosingInitiated.Load() {
+		return ErrAppClosingInitiated
+	}
 	metrics.ObjectFTUpdatedCounter.Inc()
 	tantivyDoc, err := f.convertDoc(doc)
 	if err != nil {
@@ -375,6 +410,9 @@ func (f *ftSearch) BatchIndex(ctx context.Context, docs []SearchDoc, deletedDocs
 		}
 	}()
 	f.mu.Lock()
+	if f.appClosingInitiated.Load() {
+		return ErrAppClosingInitiated
+	}
 	err = f.index.DeleteDocuments(fieldIdRaw, deletedDocs...)
 	f.mu.Unlock()
 	if err != nil {
@@ -390,6 +428,9 @@ func (f *ftSearch) BatchIndex(ctx context.Context, docs []SearchDoc, deletedDocs
 	}
 	f.mu.Lock()
 	defer f.mu.Unlock()
+	if f.appClosingInitiated.Load() {
+		return ErrAppClosingInitiated
+	}
 	return f.index.AddAndConsumeDocuments(tantivyDocs...)
 }
 
@@ -572,14 +613,22 @@ func (f *ftSearch) DocCount() (uint64, error) {
 
 func (f *ftSearch) Close(ctx context.Context) error {
 	if f.index != nil {
-		f.index.Free()
-		f.index = nil
+		err := f.index.Close()
+		if err != nil {
+			log.Errorf("failed to close tantivy index: %v", err)
+		}
 	}
 	return nil
 }
 
 func (f *ftSearch) cleanupBleve() {
 	_ = os.RemoveAll(f.blevePath)
+}
+
+func (f *ftSearch) StateChange(state int) {
+	if state == int(domain.CompStateAppClosingInitiated) {
+		f.appClosingInitiated.Store(true)
+	}
 }
 
 func prepareQuery(query string) string {

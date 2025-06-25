@@ -23,17 +23,17 @@ import (
 	"github.com/anyproto/anytype-heart/core/domain/objectorigin"
 	"github.com/anyproto/anytype-heart/core/event/mock_event"
 	"github.com/anyproto/anytype-heart/core/files"
+	"github.com/anyproto/anytype-heart/core/files/fileobject/filemodels"
 	"github.com/anyproto/anytype-heart/core/files/fileobject/mock_fileobject"
-	"github.com/anyproto/anytype-heart/core/filestorage"
-	"github.com/anyproto/anytype-heart/core/filestorage/filesync"
-	"github.com/anyproto/anytype-heart/core/filestorage/rpcstore"
+	"github.com/anyproto/anytype-heart/core/files/filestorage"
+	"github.com/anyproto/anytype-heart/core/files/filestorage/rpcstore"
+	"github.com/anyproto/anytype-heart/core/files/filesync"
 	wallet2 "github.com/anyproto/anytype-heart/core/wallet"
 	"github.com/anyproto/anytype-heart/core/wallet/mock_wallet"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
-	"github.com/anyproto/anytype-heart/pkg/lib/datastore"
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore/filestore"
+	"github.com/anyproto/anytype-heart/pkg/lib/datastore/anystoreprovider"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/tests/testutil"
@@ -178,9 +178,12 @@ func TestUploader_Upload(t *testing.T) {
 		assert.Equal(t, res.Name, "filename")
 
 		fileId := domain.FileId(res.FileObjectDetails.GetString(bundle.RelationKeyFileId))
-		file, err := fx.fileService.FileByHash(ctx, domain.FullFileId{FileId: fileId, SpaceId: "space1"})
+		fullId := domain.FullFileId{FileId: fileId, SpaceId: "space1"}
+		variants, err := fx.fileService.GetFileVariants(ctx, fullId, res.EncryptionKeys)
 		require.NoError(t, err)
 
+		file, err := files.NewFile(fx.fileService, fullId, variants)
+		require.NoError(t, err)
 		reader, err := file.Reader(ctx)
 		require.NoError(t, err)
 
@@ -205,9 +208,6 @@ func TestUploader_Upload(t *testing.T) {
 }
 
 func newFileServiceFixture(t *testing.T) files.Service {
-	dataStoreProvider, err := datastore.NewInMemory()
-	require.NoError(t, err)
-
 	blockStorage := filestorage.NewInMemory()
 
 	rpcStore := rpcstore.NewInMemoryStore(1024)
@@ -222,11 +222,10 @@ func newFileServiceFixture(t *testing.T) files.Service {
 	ctrl := gomock.NewController(t)
 	wallet := mock_wallet.NewMockWallet(t)
 	wallet.EXPECT().Name().Return(wallet2.CName)
-	wallet.EXPECT().RepoPath().Return("repo/path")
+	wallet.EXPECT().RepoPath().Return(t.TempDir())
 
 	a := new(app.App)
-	a.Register(dataStoreProvider)
-	a.Register(filestore.New())
+	a.Register(anystoreprovider.New())
 	a.Register(commonFileService)
 	a.Register(fileSyncService)
 	a.Register(testutil.PrepareMock(ctx, a, eventSender))
@@ -237,7 +236,7 @@ func newFileServiceFixture(t *testing.T) files.Service {
 	a.Register(testutil.PrepareMock(ctx, a, wallet))
 	a.Register(&config.Config{DisableFileConfig: true, NetworkMode: pb.RpcAccount_DefaultConfig, PeferYamuxTransport: true})
 
-	err = a.Start(ctx)
+	err := a.Start(ctx)
 	require.NoError(t, err)
 
 	s := files.New()
@@ -280,6 +279,11 @@ func (fx *uplFixture) tearDown() {
 
 func (fx *uplFixture) expectCreateObject() string {
 	fileObjectId := "fileObjectId1"
-	fx.fileObjectService.EXPECT().Create(mock.Anything, mock.Anything, mock.Anything).Return(fileObjectId, domain.NewDetails(), nil)
+
+	fx.fileObjectService.EXPECT().Create(mock.Anything, mock.Anything, mock.Anything).RunAndReturn(func(ctx context.Context, s string, request filemodels.CreateRequest) (string, *domain.Details, error) {
+		details := domain.NewDetails()
+		details.SetString(bundle.RelationKeyFileId, request.FileId.String())
+		return fileObjectId, details, nil
+	})
 	return fileObjectId
 }

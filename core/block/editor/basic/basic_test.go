@@ -75,7 +75,7 @@ func TestBasic_Create(t *testing.T) {
 		sb := smarttest.New("test")
 		sb.TestRestrictions = restriction.Restrictions{
 			Object: restriction.ObjectRestrictions{
-				model.Restrictions_Blocks,
+				model.Restrictions_Blocks: {},
 			},
 		}
 		sb.AddBlock(simple.New(&model.Block{Id: "test"}))

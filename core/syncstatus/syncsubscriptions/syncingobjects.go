@@ -42,6 +42,11 @@ func (s *syncingObjects) Run() error {
 					int64(domain.ObjectSyncStatusError),
 				}),
 			},
+			{
+				RelationKey: bundle.RelationKeySyncError,
+				Condition:   model.BlockContentDataviewFilter_NotEqual,
+				Value:       domain.Int64(domain.SyncErrorOversized),
+			},
 		},
 	}
 	s.objectSubscription = objectsubscription.NewIdSubscription(s.service, objectReq)

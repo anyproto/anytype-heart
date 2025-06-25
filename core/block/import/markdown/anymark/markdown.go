@@ -14,6 +14,8 @@ import (
 	"github.com/yuin/goldmark/extension"
 	"github.com/yuin/goldmark/renderer"
 	"github.com/yuin/goldmark/util"
+	"go.abhg.dev/goldmark/wikilink"
+	"golang.org/x/net/html"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/table"
 	"github.com/anyproto/anytype-heart/core/block/import/markdown/anymark/whitespace"
@@ -35,7 +37,7 @@ func convertBlocks(source []byte, r ...renderer.NodeRenderer) error {
 	}
 	gm := goldmark.New(goldmark.WithRenderer(
 		renderer.NewRenderer(renderer.WithNodeRenderers(nodeRenderers...)),
-	), goldmark.WithExtensions(extension.Table), goldmark.WithExtensions(extension.Strikethrough))
+	), goldmark.WithExtensions(extension.Table), goldmark.WithExtensions(extension.Strikethrough), goldmark.WithExtensions(&wikilink.Extender{}))
 	return gm.Convert(source, &bytes.Buffer{})
 }
 
@@ -55,6 +57,32 @@ func MarkdownToBlocks(markdownSource []byte,
 	}
 
 	return r.GetBlocks(), r.GetRootBlockIDs(), nil
+}
+
+func escapeAll(n *html.Node) {
+	if n.Type == html.TextNode {
+		n.Data = Escape(n.Data)
+		return
+	}
+	for c := n.FirstChild; c != nil; c = c.NextSibling {
+		escapeAll(c)
+	}
+}
+
+// escapeRecursively mutates every text-node under sel (including sel itself)
+func escapeRecursively(sel *goquery.Selection) {
+	// operate on the direct text children of this element
+	sel.Contents().Each(func(_ int, n *goquery.Selection) {
+		if n.Nodes[0].Type == html.TextNode {
+			text := n.Text()
+			n.SetText(Escape(text))
+		}
+	})
+
+	// recurse into element children
+	sel.Children().Each(func(_ int, child *goquery.Selection) {
+		escapeRecursively(child)
+	})
 }
 
 func HTMLToBlocks(source []byte, url string) (blocks []*model.Block, rootBlockIDs []string, err error) {
@@ -78,6 +106,11 @@ func HTMLToBlocks(source []byte, url string) (blocks []*model.Block, rootBlockID
 		GetAbsoluteURL: func(selec *goquery.Selection, src string, domain string) string {
 			return getAbsolutePath(url, src)
 		},
+	})
+	converter.Before(func(selec *goquery.Selection) {
+		for _, n := range selec.Nodes { // the hook can hand you several roots
+			escapeAll(n)
+		}
 	})
 	converter.Use(plugin.GitHubFlavored())
 	converter.AddRules(getCustomHTMLRules()...)

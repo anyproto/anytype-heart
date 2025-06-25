@@ -2,6 +2,7 @@ package files
 
 import (
 	"context"
+	"fmt"
 	"io"
 	"path/filepath"
 	"strings"
@@ -14,23 +15,27 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/storage"
 	"github.com/anyproto/anytype-heart/util/constant"
+	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 type File interface {
-	Meta() *FileMeta
 	FileId() domain.FileId
-	Reader(ctx context.Context) (io.ReadSeeker, error)
+	Meta() *FileMeta
+	Reader(ctx context.Context) (io.ReadSeeker, error) // getNode(details.FileVariants[idx])
 	Details(ctx context.Context) (*domain.Details, domain.TypeKey, error)
-	Info() *storage.FileInfo
+	Name() string
+	MimeType() string
+	LastModifiedDate() int64
+	Mill() string
 }
 
 var _ File = (*file)(nil)
 
 type file struct {
-	spaceID string
-	fileId  domain.FileId
-	info    *storage.FileInfo
-	node    *service
+	spaceID     string
+	fileId      domain.FileId
+	info        *storage.FileInfo
+	fileService Service
 }
 
 type FileMeta struct {
@@ -39,6 +44,8 @@ type FileMeta struct {
 	Size             int64
 	LastModifiedDate int64
 	Added            time.Time
+	Width            int64
+	Height           int64
 }
 
 func (f *file) audioDetails(ctx context.Context) (*domain.Details, error) {
@@ -110,8 +117,20 @@ func (f *file) Details(ctx context.Context) (*domain.Details, domain.TypeKey, er
 	return details, typeKey, nil
 }
 
-func (f *file) Info() *storage.FileInfo {
-	return f.info
+func (f *file) Name() string {
+	return f.info.Name
+}
+
+func (f *file) MimeType() string {
+	return f.info.Media
+}
+
+func (f *file) LastModifiedDate() int64 {
+	return f.info.LastModifiedDate
+}
+
+func (f *file) Mill() string {
+	return f.info.Mill
 }
 
 func (f *file) Meta() *FileMeta {
@@ -121,6 +140,8 @@ func (f *file) Meta() *FileMeta {
 		Size:             f.info.Size_,
 		LastModifiedDate: f.info.LastModifiedDate,
 		Added:            time.Unix(f.info.Added, 0),
+		Width:            pbtypes.GetInt64(f.info.Meta, "width"),
+		Height:           pbtypes.GetInt64(f.info.Meta, "height"),
 	}
 }
 
@@ -129,7 +150,7 @@ func (f *file) FileId() domain.FileId {
 }
 
 func (f *file) Reader(ctx context.Context) (io.ReadSeeker, error) {
-	return f.node.getContentReader(ctx, f.spaceID, f.info)
+	return f.fileService.GetContentReader(ctx, f.spaceID, f.info.Hash, f.info.Key)
 }
 
 func calculateCommonDetails(
@@ -143,4 +164,16 @@ func calculateCommonDetails(
 	det.SetInt64(bundle.RelationKeyLayout, int64(layout))
 	det.SetFloat64(bundle.RelationKeyLastModifiedDate, float64(lastModifiedDate))
 	return det
+}
+
+func NewFile(fileService Service, id domain.FullFileId, infos []*storage.FileInfo) (File, error) {
+	if len(infos) == 0 {
+		return nil, fmt.Errorf("empty variant infos")
+	}
+	return &file{
+		spaceID:     id.SpaceId,
+		fileId:      id.FileId,
+		info:        infos[0],
+		fileService: fileService,
+	}, nil
 }

@@ -34,6 +34,7 @@ var typeRequiredRelations = append(typeAndRelationRequiredRelations,
 	bundle.RelationKeyIconOption,
 	bundle.RelationKeyIconName,
 	bundle.RelationKeyPluralName,
+	bundle.RelationKeyHeaderRelationsLayout,
 )
 
 type ObjectType struct {
@@ -99,6 +100,7 @@ func (ot *ObjectType) CreationStateMigration(ctx *smartblock.InitContext) migrat
 				template.WithObjectTypes(ctx.State.ObjectTypeKeys()),
 				template.WithTitle,
 				template.WithLayout(model.ObjectType_objectType),
+				template.WithDetail(bundle.RelationKeyRecommendedLayout, domain.Int64(model.ObjectType_basic)),
 			}
 			templates = append(templates, ot.dataviewTemplates()...)
 

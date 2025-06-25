@@ -447,4 +447,18 @@ func TestResolveLayout(t *testing.T) {
 		assert.Equal(t, "First note block", st.Details().GetString(bundle.RelationKeyName))
 		assert.NotNil(t, st.Pick(state.TitleBlockID))
 	})
+	t.Run("layout is taken from sbType", func(t *testing.T) {
+		// given
+		fx := newFixture(id, t)
+		fx.source.sbType = smartblock.SmartBlockTypeIdentity
+
+		st := state.NewDoc(id, nil).NewState()
+		st.SetDetails(domain.NewDetails())
+
+		// when
+		fx.resolveLayout(st)
+
+		// then
+		assert.Equal(t, int64(model.ObjectType_profile), st.LocalDetails().GetInt64(bundle.RelationKeyResolvedLayout))
+	})
 }

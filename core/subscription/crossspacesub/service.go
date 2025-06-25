@@ -25,7 +25,7 @@ var (
 
 type Service interface {
 	app.ComponentRunnable
-	Subscribe(req subscriptionservice.SubscribeRequest) (resp *subscriptionservice.SubscribeResponse, err error)
+	Subscribe(req subscriptionservice.SubscribeRequest, predicate Predicate) (*subscriptionservice.SubscribeResponse, error)
 	Unsubscribe(subId string) error
 }
 
@@ -78,7 +78,7 @@ func (s *service) Close(ctx context.Context) error {
 	return err
 }
 
-func (s *service) Subscribe(req subscriptionservice.SubscribeRequest) (*subscriptionservice.SubscribeResponse, error) {
+func (s *service) Subscribe(req subscriptionservice.SubscribeRequest, predicate Predicate) (*subscriptionservice.SubscribeResponse, error) {
 	if !req.NoDepSubscription {
 		return nil, fmt.Errorf("dependency subscription is not yet supported")
 	}
@@ -103,7 +103,15 @@ func (s *service) Subscribe(req subscriptionservice.SubscribeRequest) (*subscrip
 
 	s.lock.Lock()
 	defer s.lock.Unlock()
-	spaceSub, resp, err := newCrossSpaceSubscription(req.SubId, req, s.eventSender, s.subscriptionService, s.spaceIds)
+	var initialIds []string
+	for spaceViewId, details := range s.spaceViewDetails {
+		if predicate(details) {
+			if targetSpaceId, ok := s.spaceViewTargetIds[spaceViewId]; ok {
+				initialIds = append(initialIds, targetSpaceId)
+			}
+		}
+	}
+	spaceSub, resp, err := newCrossSpaceSubscription(req.SubId, req, s.eventSender, s.subscriptionService, initialIds, predicate)
 	if err != nil {
 		return nil, fmt.Errorf("new cross space subscription: %w", err)
 	}

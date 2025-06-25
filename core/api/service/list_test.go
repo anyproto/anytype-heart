@@ -8,6 +8,7 @@ import (
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
+	apimodel "github.com/anyproto/anytype-heart/core/api/model"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -408,7 +409,7 @@ func TestListService_GetObjectsInList(t *testing.T) {
 			}).
 			Return(&pb.RpcObjectSearchUnsubscribeResponse{}, nil).Once()
 
-		// Mock GetPropertyMapsFromStore
+		// Mock getPropertyMapsFromStore
 		fx.mwMock.
 			On("ObjectSearch", mock.Anything, &pb.RpcObjectSearchRequest{
 				SpaceId: mockedSpaceId,
@@ -427,6 +428,7 @@ func TestListService_GetObjectsInList(t *testing.T) {
 				Keys: []string{
 					bundle.RelationKeyId.String(),
 					bundle.RelationKeyRelationKey.String(),
+					bundle.RelationKeyApiObjectKey.String(),
 					bundle.RelationKeyName.String(),
 					bundle.RelationKeyRelationFormat.String(),
 				},
@@ -443,7 +445,7 @@ func TestListService_GetObjectsInList(t *testing.T) {
 				},
 			}, nil).Once()
 
-		// Mock GetTypeMapFromStore
+		// Mock getTypeMapFromStore
 		fx.mwMock.
 			On("ObjectSearch", mock.Anything, &pb.RpcObjectSearchRequest{
 				SpaceId: mockedSpaceId,
@@ -460,6 +462,7 @@ func TestListService_GetObjectsInList(t *testing.T) {
 				Keys: []string{
 					bundle.RelationKeyId.String(),
 					bundle.RelationKeyUniqueKey.String(),
+					bundle.RelationKeyApiObjectKey.String(),
 					bundle.RelationKeyName.String(),
 					bundle.RelationKeyPluralName.String(),
 					bundle.RelationKeyIconEmoji.String(),
@@ -489,7 +492,7 @@ func TestListService_GetObjectsInList(t *testing.T) {
 				},
 			}, nil).Once()
 
-		// Mock GetTagMapFromStore
+		// Mock getTagMapFromStore
 		fx.mwMock.
 			On("ObjectSearch", mock.Anything, &pb.RpcObjectSearchRequest{
 				SpaceId: mockedSpaceId,
@@ -653,7 +656,7 @@ func TestListService_GetObjectsInList(t *testing.T) {
 			}).
 			Return(&pb.RpcObjectSearchUnsubscribeResponse{}, nil).Once()
 
-		// Mock GetPropertyMapsFromStore
+		// Mock getPropertyMapsFromStore
 		fx.mwMock.
 			On("ObjectSearch", mock.Anything, &pb.RpcObjectSearchRequest{
 				SpaceId: mockedSpaceId,
@@ -672,6 +675,7 @@ func TestListService_GetObjectsInList(t *testing.T) {
 				Keys: []string{
 					bundle.RelationKeyId.String(),
 					bundle.RelationKeyRelationKey.String(),
+					bundle.RelationKeyApiObjectKey.String(),
 					bundle.RelationKeyName.String(),
 					bundle.RelationKeyRelationFormat.String(),
 				},
@@ -688,7 +692,7 @@ func TestListService_GetObjectsInList(t *testing.T) {
 				},
 			}, nil).Once()
 
-		// Mock GetTypeMapFromStore
+		// Mock getTypeMapFromStore
 		fx.mwMock.
 			On("ObjectSearch", mock.Anything, &pb.RpcObjectSearchRequest{
 				SpaceId: mockedSpaceId,
@@ -705,6 +709,7 @@ func TestListService_GetObjectsInList(t *testing.T) {
 				Keys: []string{
 					bundle.RelationKeyId.String(),
 					bundle.RelationKeyUniqueKey.String(),
+					bundle.RelationKeyApiObjectKey.String(),
 					bundle.RelationKeyName.String(),
 					bundle.RelationKeyPluralName.String(),
 					bundle.RelationKeyIconEmoji.String(),
@@ -734,7 +739,7 @@ func TestListService_GetObjectsInList(t *testing.T) {
 				},
 			}, nil).Once()
 
-		// Mock GetTagMapFromStore
+		// Mock getTagMapFromStore
 		fx.mwMock.
 			On("ObjectSearch", mock.Anything, &pb.RpcObjectSearchRequest{
 				SpaceId: mockedSpaceId,
@@ -1108,7 +1113,7 @@ func TestListService_GetObjectsInList(t *testing.T) {
 			}).
 			Return(&pb.RpcObjectSearchUnsubscribeResponse{}, nil).Once()
 
-		// Mock GetPropertyMapsFromStore to return an error.
+		// Mock getPropertyMapsFromStore to return an error.
 		fx.mwMock.
 			On("ObjectSearch", mock.Anything, &pb.RpcObjectSearchRequest{
 				SpaceId: mockedSpaceId,
@@ -1127,6 +1132,7 @@ func TestListService_GetObjectsInList(t *testing.T) {
 				Keys: []string{
 					bundle.RelationKeyId.String(),
 					bundle.RelationKeyRelationKey.String(),
+					bundle.RelationKeyApiObjectKey.String(),
 					bundle.RelationKeyName.String(),
 					bundle.RelationKeyRelationFormat.String(),
 				},
@@ -1149,19 +1155,19 @@ func TestListService_AddObjectsToList(t *testing.T) {
 		// given
 		ctx := context.Background()
 		fx := newFixture(t)
-		objectIds := []string{"obj-1", "obj-2"}
+		request := apimodel.AddObjectsToListRequest{Objects: []string{"obj-1", "obj-2"}}
 
 		fx.mwMock.
 			On("ObjectCollectionAdd", mock.Anything, &pb.RpcObjectCollectionAddRequest{
 				ContextId: mockedListId,
-				ObjectIds: objectIds,
+				ObjectIds: request.Objects,
 			}).
 			Return(&pb.RpcObjectCollectionAddResponse{
 				Error: &pb.RpcObjectCollectionAddResponseError{Code: pb.RpcObjectCollectionAddResponseError_NULL},
 			}, nil).Once()
 
 		// when
-		err := fx.service.AddObjectsToList(ctx, mockedSpaceId, mockedListId, objectIds)
+		err := fx.service.AddObjectsToList(ctx, mockedSpaceId, mockedListId, request)
 
 		// then
 		require.NoError(t, err)
@@ -1171,19 +1177,19 @@ func TestListService_AddObjectsToList(t *testing.T) {
 		// given
 		ctx := context.Background()
 		fx := newFixture(t)
-		objectIds := []string{"obj-1"}
+		request := apimodel.AddObjectsToListRequest{Objects: []string{"obj-1"}}
 
 		fx.mwMock.
 			On("ObjectCollectionAdd", mock.Anything, &pb.RpcObjectCollectionAddRequest{
 				ContextId: mockedListId,
-				ObjectIds: objectIds,
+				ObjectIds: request.Objects,
 			}).
 			Return(&pb.RpcObjectCollectionAddResponse{
 				Error: &pb.RpcObjectCollectionAddResponseError{Code: pb.RpcObjectCollectionAddResponseError_UNKNOWN_ERROR},
 			}, nil).Once()
 
 		// when
-		err := fx.service.AddObjectsToList(ctx, mockedSpaceId, mockedListId, objectIds)
+		err := fx.service.AddObjectsToList(ctx, mockedSpaceId, mockedListId, request)
 
 		// then
 		require.ErrorIs(t, err, ErrFailedAddObjectsToList)
