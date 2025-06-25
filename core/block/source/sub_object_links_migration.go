@@ -43,11 +43,11 @@ func NewSubObjectsAndProfileLinksMigration(sbType smartblock.SmartBlockType, spa
 }
 
 func (m *subObjectsAndProfileLinksMigration) replaceLinksInDetails(s *state.State) {
-	for _, rel := range s.GetRelationLinks() {
-		if rel.Key == bundle.RelationKeyFeaturedRelations.String() {
+	for key, value := range s.CombinedDetails().Iterate() {
+		if key == bundle.RelationKeyFeaturedRelations {
 			continue
 		}
-		if rel.Key == bundle.RelationKeySourceObject.String() {
+		if key == bundle.RelationKeySourceObject {
 			// migrate broken sourceObject after v0.29.11
 			// todo: remove this
 			if s.UniqueKeyInternal() == "" {
@@ -69,26 +69,22 @@ func (m *subObjectsAndProfileLinksMigration) replaceLinksInDetails(s *state.Stat
 
 			continue
 		}
-		if m.canRelationContainObjectValues(rel.Format) {
-			rawValue := s.Details().Get(domain.RelationKey(rel.Key))
-
-			if oldId := rawValue.String(); oldId != "" {
+		if oldId := value.String(); oldId != "" {
+			newId := m.migrateId(oldId)
+			if oldId != newId {
+				s.SetDetail(key, domain.String(newId))
+			}
+		} else if ids := value.StringList(); len(ids) > 0 {
+			changed := false
+			for i, oldId := range ids {
 				newId := m.migrateId(oldId)
 				if oldId != newId {
-					s.SetDetail(domain.RelationKey(rel.Key), domain.String(newId))
+					ids[i] = newId
+					changed = true
 				}
-			} else if ids := rawValue.StringList(); len(ids) > 0 {
-				changed := false
-				for i, oldId := range ids {
-					newId := m.migrateId(oldId)
-					if oldId != newId {
-						ids[i] = newId
-						changed = true
-					}
-				}
-				if changed {
-					s.SetDetail(domain.RelationKey(rel.Key), domain.StringList(ids))
-				}
+			}
+			if changed {
+				s.SetDetail(key, domain.StringList(ids))
 			}
 		}
 	}
