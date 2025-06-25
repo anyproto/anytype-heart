@@ -31,10 +31,10 @@ import (
 const (
 	CName = "gallery-service"
 
-	timeout       = time.Second * 5
-	indexURI      = "https://tools.gallery.any.coop/app-index.json"
-	versionHeader = "If-None-Match"
-	eTagHeader    = "ETag"
+	defaultTimeout = time.Second * 5
+	indexURI       = "https://tools.gallery.any.coop/app-index.json"
+	versionHeader  = "If-None-Match"
+	eTagHeader     = "ETag"
 
 	cacheGalleryDir = "cache/gallery"
 	indexFileName   = "index.pb"
@@ -99,7 +99,7 @@ func (s *service) getManifest(url string, checkWhitelist, validateSchema bool) (
 	if checkWhitelist && !IsInWhitelist(url) {
 		return nil, fmt.Errorf("URL is not in whitelist")
 	}
-	raw, _, err := getRawJson(url, "")
+	raw, _, err := getRawJson(url, "", defaultTimeout)
 	if err != nil {
 		return nil, err
 	}
@@ -127,10 +127,10 @@ func (s *service) getManifest(url string, checkWhitelist, validateSchema bool) (
 }
 
 func (s *service) GetGalleryIndex() (index *pb.RpcGalleryDownloadIndexResponse, err error) {
-	return s.getGalleryIndex(indexURI)
+	return s.getGalleryIndex(indexURI, defaultTimeout)
 }
 
-func (s *service) getGalleryIndex(indexURL string) (index *pb.RpcGalleryDownloadIndexResponse, err error) {
+func (s *service) getGalleryIndex(indexURL string, timeout time.Duration) (index *pb.RpcGalleryDownloadIndexResponse, err error) {
 	var localIndex *pb.RpcGalleryDownloadIndexResponse
 
 	defer func() {
@@ -154,7 +154,7 @@ func (s *service) getGalleryIndex(indexURL string) (index *pb.RpcGalleryDownload
 		}
 	}
 
-	raw, newVersion, err := getRawJson(indexURL, currentVersion)
+	raw, newVersion, err := getRawJson(indexURL, currentVersion, timeout)
 	if err != nil {
 		if errors.Is(err, ErrNotModified) {
 			return localIndex, nil
@@ -226,7 +226,7 @@ func IsInWhitelist(url string) bool {
 	return false
 }
 
-func getRawJson(url string, currentVersion string) (body []byte, newVersion string, err error) {
+func getRawJson(url string, currentVersion string, timeout time.Duration) (body []byte, newVersion string, err error) {
 	client := http.Client{Timeout: timeout}
 	req, err := http.NewRequest(http.MethodGet, url, nil)
 	if err != nil {
