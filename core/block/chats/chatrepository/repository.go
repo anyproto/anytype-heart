@@ -15,6 +15,7 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/block/chats/chatmodel"
 	"github.com/anyproto/anytype-heart/core/block/object/idresolver"
+	"github.com/anyproto/anytype-heart/pkg/lib/datastore/anystoreprovider"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -41,6 +42,7 @@ type service struct {
 	componentCtxCancel context.CancelFunc
 
 	objectStore     objectstore.ObjectStore
+	dbProvider      anystoreprovider.Provider
 	spaceIdResolver idresolver.Resolver
 	arenaPool       *anyenc.ArenaPool
 }
@@ -65,8 +67,8 @@ func (s *service) Close(ctx context.Context) error {
 func (s *service) Init(a *app.App) (err error) {
 	s.componentCtx, s.componentCtxCancel = context.WithCancel(context.Background())
 
-	s.objectStore = app.MustComponent[objectstore.ObjectStore](a)
 	s.spaceIdResolver = app.MustComponent[idresolver.Resolver](a)
+	s.dbProvider = app.MustComponent[anystoreprovider.Provider](a)
 	return nil
 }
 
@@ -80,8 +82,7 @@ func (s *service) Repository(chatObjectId string) (Repository, error) {
 		return nil, fmt.Errorf("resolve space id: %w", err)
 	}
 
-	crdtDbGetter := s.objectStore.GetCrdtDb(spaceId)
-	crdtDb, err := crdtDbGetter.Wait()
+	crdtDb, err := s.dbProvider.GetCrdtDb(spaceId).Wait()
 	if err != nil {
 		return nil, fmt.Errorf("get crdt db: %w", err)
 	}
