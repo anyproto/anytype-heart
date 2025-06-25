@@ -17,7 +17,7 @@ type QueueItem struct {
 	SpaceId     string
 	ObjectId    string
 	FileId      domain.FileId
-	Timestamp   int64
+	Timestamp   float64
 	AddedByUser bool
 	Imported    bool
 

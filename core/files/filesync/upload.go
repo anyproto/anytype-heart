@@ -34,7 +34,7 @@ type AddFileRequest struct {
 
 	// PrioritizeVariantId tells uploader to upload specific branch of file tree
 	PrioritizeVariantId domain.FileId
-	// Score affects priority
+	// Score affects priority, files with higher score are uploaded first
 	Score int
 }
 
@@ -45,7 +45,7 @@ func (req AddFileRequest) ToQueueItem(addedTime time.Time) (*QueueItem, error) {
 		FileId:      req.FileId.FileId,
 		AddedByUser: req.UploadedByUser,
 		Imported:    req.Imported,
-		Timestamp:   addedTime.UnixMilli(),
+		Timestamp:   float64(addedTime.UnixMilli()),
 		VariantId:   req.PrioritizeVariantId,
 		Score:       req.Score,
 	}
@@ -313,14 +313,14 @@ func (s *fileSync) uploadFile(ctx context.Context, it *QueueItem) error {
 		branchToUpload = it.VariantId
 	}
 
-	blocksAvailability, err := s.blocksAvailabilityCache.Get(context.Background(), it.FileId.String())
+	blocksAvailability, err := s.blocksAvailabilityCache.Get(ctx, branchToUpload.String())
 	if err != nil || blocksAvailability.totalBytesToUpload() == 0 {
 		// Ignore error from cache and calculate blocks availability
 		blocksAvailability, err = s.checkBlocksAvailability(ctx, it.SpaceId, branchToUpload)
 		if err != nil {
 			return fmt.Errorf("check blocks availability: %w", err)
 		}
-		err = s.blocksAvailabilityCache.Set(context.Background(), it.FileId.String(), blocksAvailability)
+		err = s.blocksAvailabilityCache.Set(ctx, branchToUpload.String(), blocksAvailability)
 		if err != nil {
 			log.Error("cache blocks availability", zap.String("fileId", it.FileId.String()), zap.Error(err))
 		}
@@ -373,14 +373,15 @@ func (s *fileSync) uploadFile(ctx context.Context, it *QueueItem) error {
 				totalBytesUsage: stat.TotalBytesUsage,
 			}
 		}
+
 		return fmt.Errorf("walk file blocks: %w", err)
 	}
 
-	err = s.blocksAvailabilityCache.Delete(context.Background(), it.FileId.String())
+	err = s.blocksAvailabilityCache.Delete(ctx, branchToUpload.String())
 	if err != nil {
 		log.Warn("delete blocks availability cache entry", zap.String("fileId", it.FileId.String()), zap.Error(err))
 	}
-	err = s.isLimitReachedErrorLogged.Delete(context.Background(), it.FileId.String())
+	err = s.isLimitReachedErrorLogged.Delete(ctx, it.FileId.String())
 	if err != nil {
 		log.Warn("delete limit reached error logged", zap.String("fileId", it.FileId.String()), zap.Error(err))
 	}

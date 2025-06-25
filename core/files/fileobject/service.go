@@ -331,32 +331,9 @@ func (s *service) Create(ctx context.Context, spaceId string, req filemodels.Cre
 		return "", nil, fmt.Errorf("create in space: %w", err)
 	}
 
-	var imageVariants []imageVariant
-	for _, variant := range req.FileVariants {
-		if variant.Mill == mill.ImageResizeId {
-			imageVariants = append(imageVariants, imageVariant{
-				variantId: domain.FileId(variant.Hash),
-				size:      variant.Size_,
-			})
-		}
-	}
-	sort.Slice(imageVariants, func(i, j int) bool {
-		return imageVariants[i].size < imageVariants[j].size
-	})
-	for idx, variant := range imageVariants {
-		priority := len(imageVariants) - idx
-		syncReq := filesync.AddFileRequest{
-			FileObjectId:        id,
-			FileId:              domain.FullFileId{SpaceId: space.Id(), FileId: req.FileId},
-			UploadedByUser:      true,
-			Imported:            req.ObjectOrigin.IsImported(),
-			PrioritizeVariantId: variant.variantId,
-			Score:               priority,
-		}
-		err = s.addToSyncQueue(syncReq)
-		if err != nil {
-			return "", nil, fmt.Errorf("add image variant to sync queue: %w", err)
-		}
+	err = s.addImageVariantsToQueue(req, id, space.Id())
+	if err != nil {
+		return "", nil, fmt.Errorf("add image variants to sync queue: %w", err)
 	}
 
 	syncReq := filesync.AddFileRequest{
@@ -371,6 +348,37 @@ func (s *service) Create(ctx context.Context, spaceId string, req filemodels.Cre
 	}
 
 	return id, object, nil
+}
+
+func (s *service) addImageVariantsToQueue(req filemodels.CreateRequest, id string, spaceId string) error {
+	var imageVariants []imageVariant
+	for _, variant := range req.FileVariants {
+		if variant.Mill == mill.ImageResizeId {
+			imageVariants = append(imageVariants, imageVariant{
+				variantId: domain.FileId(variant.Hash),
+				size:      variant.Size_,
+			})
+		}
+	}
+	sort.Slice(imageVariants, func(i, j int) bool {
+		return imageVariants[i].size < imageVariants[j].size
+	})
+	for idx, variant := range imageVariants {
+		score := len(imageVariants) - idx
+		syncReq := filesync.AddFileRequest{
+			FileObjectId:        id,
+			FileId:              domain.FullFileId{SpaceId: spaceId, FileId: req.FileId},
+			UploadedByUser:      true,
+			Imported:            req.ObjectOrigin.IsImported(),
+			PrioritizeVariantId: variant.variantId,
+			Score:               score,
+		}
+		err := s.addToSyncQueue(syncReq)
+		if err != nil {
+			return fmt.Errorf("add image variant to sync queue: %w", err)
+		}
+	}
+	return nil
 }
 
 func (s *service) createInSpace(ctx context.Context, space clientspace.Space, req filemodels.CreateRequest) (id string, object *domain.Details, err error) {
