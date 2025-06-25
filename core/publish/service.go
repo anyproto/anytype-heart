@@ -41,7 +41,7 @@ const CName = "common.core.publishservice"
 
 const (
 	membershipLimit       = 100 << 20
-	uberLimit             = 10000 << 20
+	uberLimit             = 6000 << 20
 	defaultLimit          = 10 << 20
 	inviteLinkUrlTemplate = "https://invite.any.coop/%s#%s"
 	memberUrlTemplate     = "https://%s.org"
