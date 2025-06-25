@@ -60,10 +60,22 @@ func (si *SchemaImporter) LoadSchemas(importSource source.Source, allErrors *com
 				return true // continue iteration
 			}
 
+			// Quick check: must have x-app field to be an Anytype schema
+			if !strings.Contains(string(schemaData), `"x-app"`) {
+				// Not an Anytype schema file, skip silently
+				return true // continue iteration
+			}
+
 			// Try to parse as JSON Schema
 			parsedSchema, err := si.parser.Parse(bytes.NewReader(schemaData))
 			if err != nil {
-				// Not a schema file, skip silently
+				// Not a valid schema file, skip silently
+				return true // continue iteration
+			}
+
+			// Additional validation: must have at least a type or relations
+			if parsedSchema.Type == nil && len(parsedSchema.Relations) == 0 {
+				// Empty schema, skip
 				return true // continue iteration
 			}
 

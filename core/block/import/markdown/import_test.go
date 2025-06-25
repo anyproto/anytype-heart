@@ -790,6 +790,7 @@ This document references other documents.`
 			"$schema": "http://json-schema.org/draft-07/schema#",
 			"type": "object",
 			"title": "Task",
+			"x-app": "Anytype",
 			"x-type-key": "task",
 			"properties": {
 				"related_docs": {

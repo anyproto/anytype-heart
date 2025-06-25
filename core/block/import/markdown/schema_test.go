@@ -57,6 +57,7 @@ func (m *mockSource) IsRootFile(string) bool { return false }
 func TestSchemaImporter_LoadSchemas(t *testing.T) {
 	schemaContent := `{
 		"$schema": "http://json-schema.org/draft-07/schema#",
+		"x-app": "Anytype",
 		"$id": "urn:anytype:schema:2024-06-14:author-user:type-task:gen-1.0.0",
 		"type": "object",
 		"title": "Task",
@@ -169,6 +170,7 @@ func TestSchemaImporter_LoadSchemas(t *testing.T) {
 func TestSchemaImporter_CreateSnapshots(t *testing.T) {
 	schemaContent := `{
 		"$schema": "http://json-schema.org/draft-07/schema#",
+		"x-app": "Anytype",
 		"type": "object",
 		"title": "Note2",
 		"x-type-key": "note2",
@@ -298,6 +300,7 @@ func TestSchemaImporter_GetRelationKeyByName(t *testing.T) {
 func TestSchemaImporter_ComprehensiveTypes(t *testing.T) {
 	schemaContent := `{
 		"$schema": "http://json-schema.org/draft-07/schema#",
+		"x-app": "Anytype",
 		"type": "object",
 		"title": "Comprehensive Test",
 		"x-type-key": "comp_test",
@@ -547,6 +550,7 @@ func TestSchemaImporter_ComprehensiveTypes(t *testing.T) {
 func TestSchemaImporter_StatusRelationOptions(t *testing.T) {
 	schemaContent := `{
 		"$schema": "http://json-schema.org/draft-07/schema#",
+		"x-app": "Anytype",
 		"type": "object",
 		"title": "Task",
 		"properties": {
@@ -604,6 +608,7 @@ func TestSchemaImporter_StatusRelationOptions(t *testing.T) {
 func TestSchemaImporter_TagRelationExamples(t *testing.T) {
 	schemaContent := `{
 		"$schema": "http://json-schema.org/draft-07/schema#",
+		"x-app": "Anytype",
 		"type": "object",
 		"title": "Document",
 		"properties": {
@@ -664,6 +669,7 @@ func TestSchemaImporter_TagRelationExamples(t *testing.T) {
 func TestSchemaImporter_AllPropertiesAddedToType(t *testing.T) {
 	schemaContent := `{
 		"$schema": "http://json-schema.org/draft-07/schema#",
+		"x-app": "Anytype",
 		"type": "object",
 		"title": "Complete Object",
 		"x-type-key": "complete_obj",
@@ -718,6 +724,7 @@ func TestSchemaImporter_XFormatSupport(t *testing.T) {
 	// Test that x-format is properly parsed and used
 	schemaContent := `{
 		"$schema": "http://json-schema.org/draft-07/schema#",
+		"x-app": "Anytype",
 		"type": "object",
 		"title": "Document",
 		"properties": {
@@ -893,6 +900,7 @@ func TestSchemaImporter_FileVsTagDistinction(t *testing.T) {
 	// Test that file and tag relations are properly distinguished using x-format
 	schemaContent := `{
 		"$schema": "http://json-schema.org/draft-07/schema#",
+		"x-app": "Anytype",
 		"type": "object",
 		"title": "Document",
 		"x-type-key": "doc_with_files",
@@ -1030,6 +1038,7 @@ func TestSchemaImporter_IntegrationWithCustomRelations(t *testing.T) {
 	// This test uses custom relation keys that are NOT bundled
 	schemaContent := `{
 		"$schema": "http://json-schema.org/draft-07/schema#",
+		"x-app": "Anytype",
 		"type": "object",
 		"title": "Project",
 		"x-type-key": "custom_project",
@@ -1180,6 +1189,7 @@ func TestSchemaImporter_RoundTripExportImport(t *testing.T) {
 	// Test scenario: Export from Anytype with rich properties, then import back
 	schemaContent := `{
 		"$schema": "http://json-schema.org/draft-07/schema#",
+		"x-app": "Anytype",
 		"$id": "urn:anytype:schema:2024-06-14:author-user:type-article:gen-1.0.0",
 		"type": "object",
 		"title": "Article",
