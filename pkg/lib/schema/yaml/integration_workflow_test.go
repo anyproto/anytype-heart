@@ -155,7 +155,7 @@ This is the project content.`
 
 		// Verify exported content
 		content := string(yamlContent)
-		assert.Contains(t, content, "type: Project")
+		assert.Contains(t, content, "Object type: Project")
 		assert.Contains(t, content, "name: My Important Project")
 		assert.Contains(t, content, "status: In Progress")
 		assert.Contains(t, content, "deadline: \"2024-12-31\"") // Date format
@@ -191,30 +191,6 @@ This is the project content.`
 		assert.Equal(t, "Planning", sameData["Status"])
 		assert.Equal(t, []string{"important"}, sameData["Tags"])
 		assert.Equal(t, []string{"doc1.md"}, sameData["Related Documents"])
-	})
-
-	// Step 6: Test round-trip with schema export
-	t.Run("schema export round-trip", func(t *testing.T) {
-		// Export schema to YAML
-		yamlContent, err := ExportSchemaToYAML(testSchema, &ExportOptions{
-			PropertyNameMap: map[string]string{
-				"proj_name":     "name",
-				"proj_status":   "status",
-				"proj_tags":     "tags",
-				"proj_deadline": "deadline",
-				"proj_links":    "documents",
-			},
-		})
-		require.NoError(t, err)
-
-		// Verify the exported template contains all fields
-		content := string(yamlContent)
-		assert.Contains(t, content, "type: Project")
-		assert.Contains(t, content, "name:")
-		assert.Contains(t, content, "status:")
-		assert.Contains(t, content, "tags:") // May have example values
-		assert.Contains(t, content, "deadline:")
-		assert.Contains(t, content, "documents: []")
 	})
 
 	// Step 7: Test error handling and edge cases

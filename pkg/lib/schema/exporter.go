@@ -19,6 +19,7 @@ const SchemaVersion = "1.0"
 
 // SystemProperties are properties that are always included in export if not empty
 var SystemProperties = []string{
+	bundle.RelationKeyType.String(),
 	bundle.RelationKeyCreator.String(),
 	bundle.RelationKeyCreatedDate.String(),
 	bundle.RelationKeyIconEmoji.String(),

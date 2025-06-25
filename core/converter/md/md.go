@@ -126,8 +126,8 @@ func (h *MD) renderProperties(buf writer) {
 		return
 	}
 
-	// Add object ID as the first property
-	properties = h.prependObjectId(properties)
+	// Add object ID after other properties
+	properties = h.appendObjectId(properties)
 
 	// Export to YAML
 	h.exportPropertiesToYAML(buf, properties, typeName)
@@ -197,11 +197,6 @@ func (h *MD) isCollection() bool {
 func (h *MD) processRelation(details *domain.Details) *yaml.Property {
 	// Extract relation metadata
 	key := details.GetString(bundle.RelationKeyRelationKey)
-
-	// Skip type relation (will be handled separately)
-	if key == bundle.RelationKeyType.String() {
-		return nil
-	}
 
 	// Get the value for this relation
 	v := h.s.CombinedDetails().Get(domain.RelationKey(key))
@@ -362,8 +357,8 @@ func (h *MD) processTagOrStatusRelation(v domain.Value) (domain.Value, bool) {
 	return domain.StringList(nameList), true
 }
 
-// prependObjectId adds object ID as the first property
-func (h *MD) prependObjectId(properties []yaml.Property) []yaml.Property {
+// appendObjectId adds object ID after other properties
+func (h *MD) appendObjectId(properties []yaml.Property) []yaml.Property {
 	objectId := h.s.LocalDetails().GetString(bundle.RelationKeyId)
 	if objectId == "" {
 		return properties
@@ -375,7 +370,7 @@ func (h *MD) prependObjectId(properties []yaml.Property) []yaml.Property {
 		Format: model.RelationFormat_shorttext,
 		Value:  domain.String(objectId),
 	}
-	return append([]yaml.Property{idProp}, properties...)
+	return append(properties, idProp)
 }
 
 // exportPropertiesToYAML exports properties to YAML format
@@ -443,17 +438,8 @@ func (h *MD) addSystemProperties(properties []yaml.Property) []yaml.Property {
 		existingKeys[prop.Key] = true
 	}
 
-	// System properties to check
-	systemProps := []string{
-		bundle.RelationKeyCreator.String(),
-		bundle.RelationKeyCreatedDate.String(),
-		bundle.RelationKeyIconEmoji.String(),
-		bundle.RelationKeyIconImage.String(),
-		bundle.RelationKeyCoverId.String(),
-	}
-
 	// Add system properties if they have values and are not already included
-	for _, key := range systemProps {
+	for _, key := range schema.SystemProperties {
 		if existingKeys[key] {
 			continue
 		}

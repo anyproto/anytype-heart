@@ -2,6 +2,7 @@ package schema
 
 import (
 	"fmt"
+	"slices"
 
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
@@ -38,6 +39,13 @@ func convertKeysToIds(from []string, keyToIdFunc func(string) string) []string {
 	return to
 }
 
+func cleanBundledHidden(keys []string) []string {
+	return slices.DeleteFunc(keys, func(r string) bool {
+		b, _ := bundle.GetRelation(domain.RelationKey(r))
+		return b != nil && b.Hidden
+	})
+}
+
 // ToDetails converts Type to domain.Details
 func (t *Type) ToDetails() *domain.Details {
 	details := domain.NewDetails()
@@ -63,6 +71,10 @@ func (t *Type) ToDetails() *domain.Details {
 	details.SetBool(bundle.RelationKeyIsArchived, t.IsArchived)
 	details.SetBool(bundle.RelationKeyIsHidden, t.IsHidden)
 	details.SetInt64(bundle.RelationKeyRecommendedLayout, int64(t.Layout))
+
+	t.FeaturedRelations = cleanBundledHidden(t.FeaturedRelations)
+	t.RecommendedRelations = cleanBundledHidden(t.RecommendedRelations)
+	t.HiddenRelations = cleanBundledHidden(t.HiddenRelations)
 
 	// Set featured and recommended relations
 	if len(t.FeaturedRelations) > 0 {

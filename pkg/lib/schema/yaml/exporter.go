@@ -11,7 +11,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	"github.com/anyproto/anytype-heart/pkg/lib/schema"
 )
 
 // ExportOptions configures YAML export behavior
@@ -32,19 +31,10 @@ func ExportToYAML(properties []Property, options *ExportOptions) ([]byte, error)
 		options = &ExportOptions{}
 	}
 
-	// Don't automatically skip ID - let the caller decide
-	// Create a map for YAML marshaling
-	data := make(map[string]interface{})
-
 	// Process properties with deduplication first
 	skipMap := make(map[string]bool)
 	for _, skip := range options.SkipProperties {
 		skipMap[skip] = true
-	}
-
-	// Always skip the system type key if we have an object type name
-	if options.ObjectTypeName != "" {
-		skipMap[bundle.RelationKeyType.String()] = true
 	}
 
 	// Filter properties and collect names for deduplication
@@ -72,22 +62,31 @@ func ExportToYAML(properties []Property, options *ExportOptions) ([]byte, error)
 	// Deduplicate property names with awareness of reserved names
 	deduplicatedNames := deduplicateYAMLPropertyNamesWithReserved(validProps, propNames, reserveObjectType)
 
-	// Add properties to data map
+	// Create ordered YAML node to preserve property order
+	var rootNode yaml.Node
+	rootNode.Kind = yaml.MappingNode
+
+	// Add properties in order
 	for i, prop := range validProps {
 		// Convert value based on format
 		value := convertValueForExport(prop)
 		if value != nil {
-			data[deduplicatedNames[i]] = value
+			// Add key node
+			keyNode := &yaml.Node{
+				Kind:  yaml.ScalarNode,
+				Value: deduplicatedNames[i],
+			}
+
+			// Add value node
+			valueNode := &yaml.Node{}
+			valueNode.Encode(value)
+
+			rootNode.Content = append(rootNode.Content, keyNode, valueNode)
 		}
 	}
 
-	// Add object type at the end with its reserved name
-	if options.ObjectTypeName != "" {
-		data["Object type"] = options.ObjectTypeName
-	}
-
 	// Marshal to YAML
-	yamlData, err := yaml.Marshal(data)
+	yamlData, err := yaml.Marshal(&rootNode)
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal YAML: %w", err)
 	}
@@ -144,128 +143,6 @@ func ExportDetailsToYAML(details *domain.Details, formats map[string]model.Relat
 		if format == model.RelationFormat_date && value.IsInt64() {
 			t := time.Unix(value.Int64(), 0)
 			prop.IncludeTime = t.Hour() != 0 || t.Minute() != 0 || t.Second() != 0
-		}
-
-		properties = append(properties, prop)
-	}
-
-	return ExportToYAML(properties, options)
-}
-
-// ExportSchemaToYAML exports a Schema to YAML format
-func ExportSchemaToYAML(s *schema.Schema, options *ExportOptions) ([]byte, error) {
-	if s == nil {
-		return nil, fmt.Errorf("schema is nil")
-	}
-
-	if options == nil {
-		options = &ExportOptions{}
-	}
-
-	// Prepare properties from schema relations
-	properties := make([]Property, 0)
-
-	// Set object type name from schema if available
-	if s.Type != nil {
-		options.ObjectTypeName = s.Type.Name
-	}
-
-	// Sort relation keys for consistent output
-	relationKeys := make([]string, 0, len(s.Relations))
-	for key := range s.Relations {
-		relationKeys = append(relationKeys, key)
-	}
-	sort.Strings(relationKeys)
-
-	// Process relations from schema
-	for _, key := range relationKeys {
-		relation := s.Relations[key]
-		// Skip if in skip list
-		skip := false
-		for _, skipKey := range options.SkipProperties {
-			if skipKey == key {
-				skip = true
-				break
-			}
-		}
-		if skip {
-			continue
-		}
-
-		// Use custom name if provided
-		name := relation.Name
-		if customName, ok := options.PropertyNameMap[key]; ok {
-			name = customName
-		}
-
-		// Create property based on relation
-		prop := Property{
-			Name:        name,
-			Key:         key,
-			Format:      relation.Format,
-			IncludeTime: relation.IncludeTime,
-		}
-
-		// Set example values based on format
-		switch relation.Format {
-		case model.RelationFormat_date:
-			// Example date
-			t := time.Now()
-			if !relation.IncludeTime {
-				// Set to midnight for date-only
-				t = time.Date(t.Year(), t.Month(), t.Day(), 0, 0, 0, 0, time.UTC)
-			}
-			prop.Value = domain.Int64(t.Unix())
-
-		case model.RelationFormat_checkbox:
-			prop.Value = domain.Bool(false)
-
-		case model.RelationFormat_number:
-			prop.Value = domain.Float64(0)
-
-		case model.RelationFormat_status:
-			// Use first option if available
-			if len(relation.Options) > 0 {
-				prop.Value = domain.String(relation.Options[0])
-			} else {
-				prop.Value = domain.String("")
-			}
-
-		case model.RelationFormat_tag:
-			// Use example tags if available
-			if len(relation.Examples) > 0 {
-				prop.Value = domain.StringList(relation.Examples)
-			} else if len(relation.Options) > 0 {
-				// Use first few options as example
-				examples := relation.Options
-				if len(examples) > 3 {
-					examples = examples[:3]
-				}
-				prop.Value = domain.StringList(examples)
-			} else {
-				prop.Value = domain.StringList([]string{})
-			}
-
-		case model.RelationFormat_object:
-			// For object relations, include empty array or example references
-			if len(relation.ObjectTypes) > 0 {
-				// Add empty array but property should still be included
-				prop.Value = domain.StringList([]string{})
-			} else {
-				prop.Value = domain.StringList([]string{})
-			}
-
-		case model.RelationFormat_file:
-			// For file relations, include empty array
-			prop.Value = domain.StringList([]string{})
-
-		default:
-			// For text formats, use description or empty string
-			if relation.Description != "" {
-				prop.Value = domain.String(relation.Description)
-			} else {
-				prop.Value = domain.String("")
-			}
 		}
 
 		properties = append(properties, prop)

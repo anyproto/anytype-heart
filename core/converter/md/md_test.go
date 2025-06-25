@@ -1325,8 +1325,8 @@ func TestMD_GenerateJSONSchema_WithEnhancements(t *testing.T) {
 
 	// Check Object type property exists (it's added automatically if not in relations)
 	typeProp := properties["Object type"].(map[string]interface{})
-	// Object type is added after all explicit relations (3) + system properties (5) = 9
-	assert.Equal(t, float64(9), typeProp["x-order"])
+	// Object type is added after: id (0) + featured relations (2) + regular relations (1) = 4
+	assert.Equal(t, float64(4), typeProp["x-order"])
 	assert.Equal(t, "type", typeProp["x-key"])
 
 	// Check featured properties have x-featured and correct order
@@ -1510,8 +1510,8 @@ func TestMD_GenerateJSONSchema_PropertyOrder(t *testing.T) {
 		"Property 3": 3, // Regular properties follow
 		"Property 4": 4,
 		"Property 5": 5,
-		// System properties are added at positions 6-10
-		"Object type": 11, // Object type is added after system properties
+		// Object type is added after all the relations
+		"Object type": 6, // Object type is added after the 5 custom properties
 	}
 
 	for propName, expectedPos := range expectedOrder {

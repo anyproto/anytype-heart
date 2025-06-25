@@ -42,9 +42,9 @@ func TestExportToYAML(t *testing.T) {
 				},
 			},
 			want: `---
+title: Test Page
 author: John Doe
 published: true
-title: Test Page
 ---
 `,
 		},
@@ -62,8 +62,8 @@ title: Test Page
 				ObjectTypeName: "Task",
 			},
 			want: `---
-Object type: Task
 name: My Task
+Object type: Task
 ---
 `,
 		},
@@ -90,8 +90,8 @@ name: My Task
 				},
 			},
 			want: `---
-Status: in-progress
 Title: Complete integration
+Status: in-progress
 ---
 `,
 		},
@@ -121,8 +121,8 @@ Title: Complete integration
 				SkipProperties: []string{"internal_id"},
 			},
 			want: `---
-author: Jane
 title: Test
+author: Jane
 ---
 `,
 		},
@@ -167,13 +167,13 @@ updated: "2024-01-15T14:30:00Z"
 				},
 			},
 			want: `---
-files:
-    - doc1.md
-    - doc2.md
 tags:
     - test
     - markdown
     - yaml
+files:
+    - doc1.md
+    - doc2.md
 ---
 `,
 		},
