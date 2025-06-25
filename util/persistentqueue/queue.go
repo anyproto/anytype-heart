@@ -56,14 +56,14 @@ type Queue[T Item] struct {
 	storage Storage[T]
 	logger  *zap.Logger
 
-	batcher      messageQueue[T]
+	messageQueue messageQueue[T]
 	handler      HandlerFunc[T]
 	options      options
 	handledItems uint32
 
 	lock sync.Mutex
 	// set is used to keep track of queued items. If item has been added to queue and removed without processing
-	// it will be still in batcher, so we need a separate variable to track removed items
+	// it will be still in messageQueue, so we need a separate variable to track removed items
 	set map[string]struct{}
 
 	currentProcessingKey *string
@@ -122,9 +122,9 @@ func New[T Item](
 	q.ctx, q.ctxCancel = context.WithCancel(rootCtx)
 
 	if priorityQueueLessFunc != nil {
-		q.batcher = newPriorityMessageQueue[T](priorityQueueLessFunc)
+		q.messageQueue = newPriorityMessageQueue[T](priorityQueueLessFunc)
 	} else {
-		q.batcher = newSimpleMessageQueue[T](q.ctx)
+		q.messageQueue = newSimpleMessageQueue[T](q.ctx)
 	}
 
 	err := q.restore()
@@ -172,7 +172,7 @@ func (q *Queue[T]) loop() {
 }
 
 func (q *Queue[T]) handleNext() error {
-	it, err := q.batcher.waitOne()
+	it, err := q.messageQueue.waitOne()
 	if err != nil {
 		return fmt.Errorf("wait one: %w", err)
 	}
@@ -195,7 +195,7 @@ func (q *Queue[T]) handleNext() error {
 		// So just notify waiters that the item has been processed
 		q.notifyWaiters()
 		q.lock.Unlock()
-		addErr := q.batcher.add(it)
+		addErr := q.messageQueue.add(it)
 		if addErr != nil {
 			return fmt.Errorf("add to queue: %w", addErr)
 		}
@@ -219,7 +219,7 @@ func (q *Queue[T]) restore() error {
 		return fmt.Errorf("list items from storage: %w", err)
 	}
 
-	err = q.batcher.initWith(items)
+	err = q.messageQueue.initWith(items)
 	if err != nil {
 		return fmt.Errorf("add to queue: %w", err)
 	}
@@ -232,7 +232,7 @@ func (q *Queue[T]) restore() error {
 // Close stops queue processing and waits for the last in-process item to be processed
 func (q *Queue[T]) Close() error {
 	q.ctxCancel()
-	err := q.batcher.close()
+	err := q.messageQueue.close()
 	q.lock.Lock()
 	isStarted := q.isStarted
 	q.lock.Unlock()
@@ -258,7 +258,7 @@ func (q *Queue[T]) Add(item T) error {
 	q.set[item.Key()] = struct{}{}
 	q.lock.Unlock()
 
-	err = q.batcher.add(item)
+	err = q.messageQueue.add(item)
 	if err != nil {
 		return err
 	}
