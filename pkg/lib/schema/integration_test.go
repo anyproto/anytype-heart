@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 
@@ -792,6 +793,10 @@ func TestHiddenRelationsExportImport(t *testing.T) {
 		}
 		// System properties are added during import
 		for _, sysProp := range schema.SystemProperties {
+			if slices.Contains(importedType.FeaturedRelations, sysProp) ||
+				slices.Contains(importedType.RecommendedRelations, sysProp) {
+				continue
+			}
 			assert.Contains(t, importedType.HiddenRelations, sysProp)
 		}
 
@@ -1235,6 +1240,8 @@ func TestNameDeduplicationIntegration(t *testing.T) {
 		t.Run("YAML export with deduplication", func(t *testing.T) {
 			// Create sample data using our schema
 			properties := []yaml.Property{
+				{Name: "Object type", Key: "type3", Format: model.RelationFormat_shorttext, Value: domain.String("Custom field with name type")},
+				{Name: "Object type", Key: "type", Format: model.RelationFormat_shorttext, Value: domain.String("Entity")},
 				{Name: "Name", Key: "user_name", Format: model.RelationFormat_shorttext, Value: domain.String("John Doe")},
 				{Name: "Name", Key: "company_name", Format: model.RelationFormat_shorttext, Value: domain.String("Acme Corp")},
 				{Name: "Title", Key: "project_title", Format: model.RelationFormat_shorttext, Value: domain.String("Project Alpha")},
@@ -1243,9 +1250,7 @@ func TestNameDeduplicationIntegration(t *testing.T) {
 			}
 
 			// Export to YAML
-			result, err := yaml.ExportToYAML(properties, &yaml.ExportOptions{
-				ObjectTypeName: "Entity",
-			})
+			result, err := yaml.ExportToYAML(properties, &yaml.ExportOptions{})
 			require.NoError(t, err)
 
 			yamlStr := string(result)

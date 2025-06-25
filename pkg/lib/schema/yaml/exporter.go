@@ -15,8 +15,6 @@ import (
 
 // ExportOptions configures YAML export behavior
 type ExportOptions struct {
-	// ObjectTypeName is the name of the object type (added at end if provided)
-	ObjectTypeName string
 	// SkipProperties is a list of property keys to skip during export
 	SkipProperties []string
 	// PropertyNameMap maps property keys to custom names for export
@@ -56,11 +54,8 @@ func ExportToYAML(properties []Property, options *ExportOptions) ([]byte, error)
 		propNames = append(propNames, name)
 	}
 
-	// Check if we need to reserve "Object type" name
-	reserveObjectType := options.ObjectTypeName != ""
-
 	// Deduplicate property names with awareness of reserved names
-	deduplicatedNames := deduplicateYAMLPropertyNamesWithReserved(validProps, propNames, reserveObjectType)
+	deduplicatedNames := deduplicateYAMLPropertyNamesWithReserved(validProps, propNames)
 
 	// Create ordered YAML node to preserve property order
 	var rootNode yaml.Node
@@ -189,20 +184,14 @@ func convertValueForExport(prop Property) interface{} {
 		}
 
 	case model.RelationFormat_tag, model.RelationFormat_object, model.RelationFormat_file:
-		if value.IsStringList() {
-			list := value.StringList()
-			// Return empty list as empty array instead of nil
-			return list
-		} else if value.IsString() && value.String() != "" {
-			// Single value as string
-			return value.String()
-		}
-
+		return value.WrapToStringList()
 	case model.RelationFormat_status:
-		if value.IsString() {
-			return value.String()
+		v := value.WrapToStringList()
+		if len(v) > 0 {
+			// For status, we return the first value as string
+			return v[0]
 		}
-
+		return ""
 	default:
 		// For unknown formats, try to export as string
 		if value.IsString() {
@@ -220,8 +209,7 @@ func convertValueForExport(prop Property) interface{} {
 
 // deduplicateYAMLPropertyNamesWithReserved ensures no duplicate property names in YAML export
 // by sorting properties by key and adding index suffixes when needed
-// Special handling: "Object type" is reserved for system type when reserveObjectType is true
-func deduplicateYAMLPropertyNamesWithReserved(properties []Property, names []string, reserveObjectType bool) []string {
+func deduplicateYAMLPropertyNamesWithReserved(properties []Property, names []string) []string {
 	// Create a map to track names and their property indices
 	nameToProperties := make(map[string][]struct {
 		index int
@@ -244,43 +232,31 @@ func deduplicateYAMLPropertyNamesWithReserved(properties []Property, names []str
 			// No duplication, use original name
 			result[props[0].index] = name
 		} else {
-			// Check if this name is "Object type" and we're reserving it
-			if reserveObjectType && name == "Object type" {
-				// All user properties named "Object type" get suffixes starting from 2
-				sort.Slice(props, func(i, j int) bool {
-					return props[i].key < props[j].key
-				})
+			// Normal deduplication: sort by key, but give priority to bundled relations
+			sort.Slice(props, func(i, j int) bool {
+				// Bundled relations come first
+				iIsBundled := bundle.HasRelation(domain.RelationKey(props[i].key))
+				jIsBundled := bundle.HasRelation(domain.RelationKey(props[j].key))
 
-				for idx, prop := range props {
-					result[prop.index] = fmt.Sprintf("%s %d", name, idx+2)
+				if iIsBundled && !jIsBundled {
+					return true
 				}
-			} else {
-				// Normal deduplication: sort by key, but give priority to bundled relations
-				sort.Slice(props, func(i, j int) bool {
-					// Bundled relations come first
-					iIsBundled := bundle.HasRelation(domain.RelationKey(props[i].key))
-					jIsBundled := bundle.HasRelation(domain.RelationKey(props[j].key))
+				if !iIsBundled && jIsBundled {
+					return false
+				}
 
-					if iIsBundled && !jIsBundled {
-						return true
-					}
-					if !iIsBundled && jIsBundled {
-						return false
-					}
+				// Otherwise sort by key
+				return props[i].key < props[j].key
+			})
 
-					// Otherwise sort by key
-					return props[i].key < props[j].key
-				})
-
-				// Add index suffix to duplicated names
-				for idx, prop := range props {
-					if idx == 0 {
-						// First occurrence keeps original name
-						result[prop.index] = name
-					} else {
-						// Subsequent occurrences get index suffix
-						result[prop.index] = fmt.Sprintf("%s %d", name, idx+1)
-					}
+			// Add index suffix to duplicated names
+			for idx, prop := range props {
+				if idx == 0 {
+					// First occurrence keeps original name
+					result[prop.index] = name
+				} else {
+					// Subsequent occurrences get index suffix
+					result[prop.index] = fmt.Sprintf("%s %d", name, idx+1)
 				}
 			}
 		}

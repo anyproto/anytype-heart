@@ -441,8 +441,8 @@ func TestHiddenRelationsInSchemaExport(t *testing.T) {
 		require.NoError(t, err)
 
 		// Verify all relations are in the schema
-		// 6 original relations + 5 system properties (creator, createdDate, iconEmoji, iconImage, coverId)
-		assert.Equal(t, 11, len(s.Relations), "Should have all 6 relations plus 5 system properties")
+		// 6 original relations + 6 system properties (type, creator, createdDate, iconEmoji, iconImage, coverId)
+		assert.Equal(t, 12, len(s.Relations), "Should have all 6 relations plus 5 system properties")
 
 		// Verify hidden relations are included
 		rel, ok := s.GetRelation("internal_id")
@@ -529,8 +529,8 @@ func TestHiddenRelationsInSchemaExport(t *testing.T) {
 		require.NoError(t, err)
 
 		// Verify all relations including hidden are in the schema
-		// 4 original relations + 5 system properties (creator, createdDate, iconEmoji, iconImage, coverId)
-		assert.Equal(t, 9, len(s.Relations), "Should have all 4 relations plus 5 system properties")
+		// 4 original relations + 6 system properties (type, creator, createdDate, iconEmoji, iconImage, coverId)
+		assert.Equal(t, 10, len(s.Relations), "Should have all 4 relations plus 5 system properties")
 
 		// Verify hidden relations were resolved and included
 		rel, ok := s.GetRelation("version")

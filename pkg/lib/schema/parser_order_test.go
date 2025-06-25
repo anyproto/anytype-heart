@@ -2,6 +2,7 @@ package schema
 
 import (
 	"bytes"
+	"slices"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -71,6 +72,10 @@ func TestJSONSchemaParser_XOrderAndFeatured(t *testing.T) {
 	assert.Contains(t, schema.Type.HiddenRelations, "hidden_field")
 	// Check that system properties were also added
 	for _, sysProp := range SystemProperties {
+		if slices.Contains(schema.Type.FeaturedRelations, sysProp) ||
+			slices.Contains(schema.Type.RecommendedRelations, sysProp) {
+			continue
+		}
 		assert.Contains(t, schema.Type.HiddenRelations, sysProp)
 	}
 

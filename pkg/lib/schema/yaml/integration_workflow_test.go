@@ -138,11 +138,16 @@ This is the project content.`
 				Format: model.RelationFormat_object,
 				Value:  domain.StringList([]string{"./docs/spec.md", "./docs/design.md"}),
 			},
+			{
+				Name:   "Object type",
+				Key:    "type",
+				Format: model.RelationFormat_shorttext,
+				Value:  domain.String("Project"),
+			},
 		}
 
 		// Export with options
 		yamlContent, err := ExportToYAML(properties, &ExportOptions{
-			ObjectTypeName: "Project",
 			PropertyNameMap: map[string]string{
 				"proj_name":     "name", // Use shorter names in export
 				"proj_status":   "status",
@@ -256,10 +261,18 @@ This demonstrates the complete workflow of the YAML package.
 			updatedProperties = append(updatedProperties, prop)
 		}
 
+		// Add Object type property if it was in the original result
+		if result.ObjectType != "" {
+			updatedProperties = append(updatedProperties, Property{
+				Name:   "Object type",
+				Key:    "type",
+				Format: model.RelationFormat_shorttext,
+				Value:  domain.String(result.ObjectType),
+			})
+		}
+
 		// Export back to YAML
-		newFrontMatter, err := ExportToYAML(updatedProperties, &ExportOptions{
-			ObjectTypeName: result.ObjectType,
-		})
+		newFrontMatter, err := ExportToYAML(updatedProperties, &ExportOptions{})
 		require.NoError(t, err)
 
 		// Reconstruct the document

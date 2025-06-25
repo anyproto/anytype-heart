@@ -528,8 +528,9 @@ func TestSchemaImporter_ComprehensiveTypes(t *testing.T) {
 	featuredRels := details.GetStringList(bundle.RelationKeyRecommendedFeaturedRelations)
 
 	// Check that featured relations contain the expected ones
-	// Note: The actual IDs depend on what's bundled and the order
-	assert.Greater(t, len(featuredRels), 2, "Should have at least 3 featured relations")
+	// Note: "name" is filtered out because it's a bundled hidden relation
+	// So we expect 2 featured relations: "doc_status" and "tags"
+	assert.Len(t, featuredRels, 2, "Should have exactly 2 featured relations (name is filtered out)")
 
 	// Check that all relations are included in the type
 	allRelIds := append(featuredRels, details.GetStringList(bundle.RelationKeyRecommendedRelations)...)

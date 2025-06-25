@@ -65,7 +65,7 @@ func TestType_ToDetails(t *testing.T) {
 		Description:          "Task object type",
 		PluralName:           "Tasks",
 		IconEmoji:            "✅",
-		FeaturedRelations:    []string{"name", "status", "due_date"},
+		FeaturedRelations:    []string{"project", "status", "due_date"},
 		RecommendedRelations: []string{"description", "assignee"},
 		Extension: map[string]interface{}{
 			"id": "type_789",
@@ -78,7 +78,7 @@ func TestType_ToDetails(t *testing.T) {
 	assert.Equal(t, "Task object type", details.GetString(bundle.RelationKeyDescription))
 	assert.Equal(t, "Tasks", details.GetString(bundle.RelationKeyPluralName))
 	assert.Equal(t, "✅", details.GetString(bundle.RelationKeyIconEmoji))
-	assert.Equal(t, []string{"name", "status", "due_date"}, details.GetStringList(bundle.RelationKeyRecommendedFeaturedRelations))
+	assert.Equal(t, []string{"project", "status", "due_date"}, details.GetStringList(bundle.RelationKeyRecommendedFeaturedRelations))
 	assert.Equal(t, []string{"description", "assignee"}, details.GetStringList(bundle.RelationKeyRecommendedRelations))
 	assert.Equal(t, "type_789", details.GetString(bundle.RelationKeyId))
 	assert.NotEmpty(t, details.GetString(bundle.RelationKeyUniqueKey))

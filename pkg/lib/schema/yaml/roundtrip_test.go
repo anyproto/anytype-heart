@@ -132,9 +132,12 @@ func TestRoundTripYAML(t *testing.T) {
 					Format: model.RelationFormat_shorttext,
 					Value:  domain.String("Test Task"),
 				},
-			},
-			options: &ExportOptions{
-				ObjectTypeName: "Task",
+				{
+					Name:   "Object type",
+					Key:    "type",
+					Format: model.RelationFormat_shorttext,
+					Value:  domain.String("Task"),
+				},
 			},
 		},
 		{
@@ -203,11 +206,6 @@ func TestRoundTripYAML(t *testing.T) {
 				}
 			}
 
-			// Check object type if specified
-			if tt.options != nil && tt.options.ObjectTypeName != "" {
-				assert.Equal(t, tt.options.ObjectTypeName, result.ObjectType)
-			}
-
 			// Verify all properties were parsed correctly
 			parsedProps := make(map[string]Property)
 			for _, prop := range result.Properties {
@@ -218,6 +216,10 @@ func TestRoundTripYAML(t *testing.T) {
 			for _, origProp := range tt.properties {
 				parsed, ok := parsedProps[origProp.Name]
 				if !ok {
+					// Type property might be extracted as ObjectType
+					if origProp.Name == "Object type" && result.ObjectType != "" {
+						continue
+					}
 					// Empty values might be omitted
 					if isEmptyValue(origProp.Value) {
 						continue

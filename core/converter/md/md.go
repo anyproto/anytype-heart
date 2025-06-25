@@ -375,9 +375,7 @@ func (h *MD) appendObjectId(properties []yaml.Property) []yaml.Property {
 
 // exportPropertiesToYAML exports properties to YAML format
 func (h *MD) exportPropertiesToYAML(buf writer, properties []yaml.Property, typeName string) {
-	exportOptions := &yaml.ExportOptions{
-		ObjectTypeName: typeName,
-	}
+	exportOptions := &yaml.ExportOptions{}
 
 	// Add schema reference if enabled
 	if h.includeSchema && typeName != "" {

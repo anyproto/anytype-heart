@@ -57,10 +57,14 @@ published: true
 					Format: model.RelationFormat_shorttext,
 					Value:  domain.String("My Task"),
 				},
+				{
+					Name:   "Object type",
+					Key:    "type",
+					Format: model.RelationFormat_shorttext,
+					Value:  domain.String("Task"),
+				},
 			},
-			options: &ExportOptions{
-				ObjectTypeName: "Task",
-			},
+			options: &ExportOptions{},
 			want: `---
 name: My Task
 Object type: Task
@@ -195,6 +199,7 @@ func TestExportDetailsToYAML(t *testing.T) {
 	details.Set("created", domain.Int64(time.Date(2024, 1, 15, 0, 0, 0, 0, time.UTC).Unix()))
 	details.Set("tags", domain.StringList([]string{"test", "yaml"}))
 	details.Set("published", domain.Bool(true))
+	details.Set("type", domain.String("Page"))
 
 	formats := map[string]model.RelationFormat{
 		"title":     model.RelationFormat_shorttext,
@@ -202,10 +207,10 @@ func TestExportDetailsToYAML(t *testing.T) {
 		"created":   model.RelationFormat_date,
 		"tags":      model.RelationFormat_tag,
 		"published": model.RelationFormat_checkbox,
+		"type":      model.RelationFormat_shorttext,
 	}
 
 	options := &ExportOptions{
-		ObjectTypeName: "Page",
 		PropertyNameMap: map[string]string{
 			"title":  "Title",
 			"author": "Author",
@@ -391,12 +396,16 @@ func TestYAMLPropertyNameDeduplication(t *testing.T) {
 				Format: model.RelationFormat_shorttext,
 				Value:  domain.String("Document Title"),
 			},
+			{
+				Name:   "Object type",
+				Key:    "type",
+				Format: model.RelationFormat_shorttext,
+				Value:  domain.String("Document"),
+			},
 		}
 
-		// Export to YAML with object type
-		result, err := ExportToYAML(properties, &ExportOptions{
-			ObjectTypeName: "Document",
-		})
+		// Export to YAML
+		result, err := ExportToYAML(properties, &ExportOptions{})
 		require.NoError(t, err)
 
 		yamlStr := string(result)
@@ -423,10 +432,15 @@ func TestExportToYAML_WithSchemaReference(t *testing.T) {
 				Format: model.RelationFormat_shorttext,
 				Value:  domain.String("Test Document"),
 			},
+			{
+				Name:   "Object type",
+				Key:    "type",
+				Format: model.RelationFormat_shorttext,
+				Value:  domain.String("Document"),
+			},
 		}
 
 		options := &ExportOptions{
-			ObjectTypeName:  "Document",
 			SchemaReference: "./schemas/document.schema.json",
 		}
 
@@ -456,11 +470,15 @@ func TestExportToYAML_WithSchemaReference(t *testing.T) {
 				Format: model.RelationFormat_shorttext,
 				Value:  domain.String("Test Document"),
 			},
+			{
+				Name:   "Object type",
+				Key:    "type",
+				Format: model.RelationFormat_shorttext,
+				Value:  domain.String("Document"),
+			},
 		}
 
-		options := &ExportOptions{
-			ObjectTypeName: "Document",
-		}
+		options := &ExportOptions{}
 
 		result, err := ExportToYAML(properties, options)
 		require.NoError(t, err)
