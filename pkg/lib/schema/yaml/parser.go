@@ -80,7 +80,6 @@ type ParseResult struct {
 	ObjectType string // If "type" or "Object type" property is present
 }
 
-
 // ParseYAMLFrontMatter parses YAML front matter and returns properties with their formats
 func ParseYAMLFrontMatter(frontMatter []byte) (*ParseResult, error) {
 	return ParseYAMLFrontMatterWithResolver(frontMatter, nil)
@@ -135,7 +134,7 @@ func ParseYAMLFrontMatterWithFormats(frontMatter []byte, formats map[string]mode
 		if key == VersionHeaderKey {
 			continue
 		}
-		
+
 		// Process value and determine format in one go
 		prop := processYAMLProperty(key, value)
 		if prop == nil {
@@ -143,7 +142,7 @@ func ParseYAMLFrontMatterWithFormats(frontMatter []byte, formats map[string]mode
 		}
 
 		prop.Key = key
-		
+
 		// Use provided format if available
 		if format, ok := formats[key]; ok {
 			prop.Format = format
@@ -201,7 +200,7 @@ func ParseYAMLFrontMatterWithResolverAndPath(frontMatter []byte, resolver schema
 		if key == VersionHeaderKey {
 			continue
 		}
-		
+
 		// Process value and determine format in one go
 		prop := processYAMLProperty(key, value)
 		if prop == nil {

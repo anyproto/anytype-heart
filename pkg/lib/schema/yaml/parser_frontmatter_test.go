@@ -10,7 +10,6 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-
 func TestExtractYAMLFrontMatter(t *testing.T) {
 	tests := []struct {
 		name                string
@@ -45,7 +44,7 @@ This is content.`,
 			input: `# Heading
 
 This is content.`,
-			wantFrontMatter:     "",
+			wantFrontMatter: "",
 			wantMarkdownContent: `# Heading
 
 This is content.`,
@@ -56,7 +55,7 @@ This is content.`,
 ---
 
 # Heading`,
-			wantFrontMatter:     "",
+			wantFrontMatter: "",
 			wantMarkdownContent: `
 # Heading`,
 		},
@@ -67,7 +66,7 @@ title: Test
 author: John
 
 # Heading`,
-			wantFrontMatter:     "",
+			wantFrontMatter: "",
 			wantMarkdownContent: `---
 title: Test
 author: John
@@ -92,12 +91,12 @@ author: John
 
 func TestParseYAMLFrontMatter(t *testing.T) {
 	tests := []struct {
-		name         string
-		frontMatter  string
-		wantProps    map[string]string // property name -> expected format name
-		wantValues   map[string]interface{}
-		wantObjType  string
-		wantErr      bool
+		name        string
+		frontMatter string
+		wantProps   map[string]string // property name -> expected format name
+		wantValues  map[string]interface{}
+		wantObjType string
+		wantErr     bool
 	}{
 		{
 			name: "simple properties",
@@ -178,7 +177,7 @@ version: 1.2.3`,
 			for propName, expectedFormat := range tt.wantProps {
 				prop, ok := propMap[propName]
 				assert.True(t, ok, "Property %s not found", propName)
-				
+
 				actualFormat := ""
 				switch prop.Format {
 				case model.RelationFormat_shorttext:
@@ -199,7 +198,7 @@ version: 1.2.3`,
 			for propName, expectedValue := range tt.wantValues {
 				prop, ok := propMap[propName]
 				assert.True(t, ok, "Property %s not found", propName)
-				
+
 				switch expected := expectedValue.(type) {
 				case string:
 					assert.Equal(t, expected, prop.Value.String())
@@ -213,9 +212,6 @@ version: 1.2.3`,
 	}
 }
 
-
-
-
 func TestParseYAMLWithTimeTimeValues(t *testing.T) {
 	// Test that YAML parser correctly handles date strings that YAML converts to time.Time
 	yamlContent := `Start Date: 2023-06-01
@@ -227,35 +223,35 @@ type: Task
 	result, err := ParseYAMLFrontMatter([]byte(yamlContent))
 	require.NoError(t, err)
 	require.NotNil(t, result)
-	
+
 	// Check object type
 	assert.Equal(t, "Task", result.ObjectType)
-	
+
 	// Check properties
 	propMap := make(map[string]Property)
 	for _, prop := range result.Properties {
 		propMap[prop.Name] = prop
 	}
-	
+
 	// All date fields should be detected as date format
 	assert.Equal(t, model.RelationFormat_date, propMap["Start Date"].Format)
 	assert.Equal(t, model.RelationFormat_date, propMap["End Time"].Format)
 	assert.Equal(t, model.RelationFormat_date, propMap["created"].Format)
 	assert.Equal(t, model.RelationFormat_shorttext, propMap["version"].Format)
-	
+
 	// Check includeTime flags
 	assert.False(t, propMap["Start Date"].IncludeTime)
 	assert.True(t, propMap["End Time"].IncludeTime)
 	assert.False(t, propMap["created"].IncludeTime)
-	
+
 	// All date values should be timestamps
 	assert.True(t, propMap["Start Date"].Value.IsInt64())
 	assert.True(t, propMap["End Time"].Value.IsInt64())
 	assert.True(t, propMap["created"].Value.IsInt64())
-	
+
 	// Version should remain as string
 	assert.True(t, propMap["version"].Value.IsString())
-	
+
 	// Check actual timestamp values
 	startDate := time.Date(2023, 6, 1, 0, 0, 0, 0, time.UTC)
 	assert.Equal(t, startDate.Unix(), propMap["Start Date"].Value.Int64())

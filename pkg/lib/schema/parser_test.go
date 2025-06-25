@@ -15,7 +15,7 @@ func TestPropertyLevelFlags(t *testing.T) {
 	t.Run("export uses property-level flags not root-level lists", func(t *testing.T) {
 		// Create a comprehensive schema
 		s := NewSchema()
-		
+
 		// Add various relations
 		relations := []struct {
 			key    string
@@ -29,7 +29,7 @@ func TestPropertyLevelFlags(t *testing.T) {
 			{"internal_notes", "Internal Notes", model.RelationFormat_longtext},
 			{"sync_id", "Sync ID", model.RelationFormat_shorttext},
 		}
-		
+
 		for _, r := range relations {
 			rel := &Relation{
 				Key:    r.key,
@@ -38,7 +38,7 @@ func TestPropertyLevelFlags(t *testing.T) {
 			}
 			s.AddRelation(rel)
 		}
-		
+
 		// Create type with different relation categories
 		typ := &Type{
 			Key:                  "task",
@@ -49,54 +49,54 @@ func TestPropertyLevelFlags(t *testing.T) {
 			HiddenRelations:      []string{"internal_notes", "sync_id"},
 		}
 		s.SetType(typ)
-		
+
 		// Export to JSON Schema
 		exporter := NewJSONSchemaExporter("  ")
 		var buf bytes.Buffer
 		err := exporter.Export(s, &buf)
 		require.NoError(t, err)
-		
+
 		// Parse exported JSON
 		var jsonSchema map[string]interface{}
 		err = json.Unmarshal(buf.Bytes(), &jsonSchema)
 		require.NoError(t, err)
-		
+
 		// Verify NO root-level relation lists
 		assert.Nil(t, jsonSchema["x-featured-relations"], "Should not have x-featured-relations at root")
 		assert.Nil(t, jsonSchema["x-recommended-relations"], "Should not have x-recommended-relations at root")
 		assert.Nil(t, jsonSchema["x-hidden-relations"], "Should not have x-hidden-relations at root")
-		
+
 		// Verify property-level flags
 		properties := jsonSchema["properties"].(map[string]interface{})
-		
+
 		// Featured relations should have x-featured: true
 		titleProp := properties["Title"].(map[string]interface{})
 		assert.Equal(t, true, titleProp["x-featured"], "Title should be featured")
 		assert.Nil(t, titleProp["x-hidden"])
-		
+
 		statusProp := properties["Status"].(map[string]interface{})
 		assert.Equal(t, true, statusProp["x-featured"], "Status should be featured")
 		assert.Nil(t, statusProp["x-hidden"])
-		
+
 		// Regular relations should have neither flag
 		priorityProp := properties["Priority"].(map[string]interface{})
 		assert.Nil(t, priorityProp["x-featured"])
 		assert.Nil(t, priorityProp["x-hidden"])
-		
+
 		assigneeProp := properties["Assignee"].(map[string]interface{})
 		assert.Nil(t, assigneeProp["x-featured"])
 		assert.Nil(t, assigneeProp["x-hidden"])
-		
+
 		// Hidden relations should have x-hidden: true
 		internalProp := properties["Internal Notes"].(map[string]interface{})
 		assert.Nil(t, internalProp["x-featured"])
 		assert.Equal(t, true, internalProp["x-hidden"], "Internal Notes should be hidden")
-		
+
 		syncProp := properties["Sync ID"].(map[string]interface{})
 		assert.Nil(t, syncProp["x-featured"])
 		assert.Equal(t, true, syncProp["x-hidden"], "Sync ID should be hidden")
 	})
-	
+
 	t.Run("import from property-level flags works correctly", func(t *testing.T) {
 		jsonStr := `{
 			"$schema": "http://json-schema.org/draft-07/schema#",
@@ -156,16 +156,16 @@ func TestPropertyLevelFlags(t *testing.T) {
 				}
 			}
 		}`
-		
+
 		// Parse the JSON Schema
 		parser := NewJSONSchemaParser()
 		s, err := parser.Parse(bytes.NewReader([]byte(jsonStr)))
 		require.NoError(t, err)
-		
+
 		// Get the type
 		typ := s.Type
 		require.NotNil(t, typ)
-		
+
 		// Verify relations were categorized correctly
 		assert.ElementsMatch(t, []string{"title", "author"}, typ.FeaturedRelations, "Should have featured relations from x-featured properties")
 		assert.ElementsMatch(t, []string{"content", "tags"}, typ.RecommendedRelations, "Should have regular relations")

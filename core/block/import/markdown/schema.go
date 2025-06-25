@@ -227,7 +227,7 @@ func (si *SchemaImporter) CreateTypeSnapshots() []*common.Snapshot {
 				// Set a random color for the icon
 				details.SetInt64(bundle.RelationKeyIconOption, int64(randomIconColor()))
 			}
-			
+
 			snapshot := &common.Snapshot{
 				Id: typeId,
 				Snapshot: &common.SnapshotModel{

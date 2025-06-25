@@ -5,7 +5,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	
+
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/pkg/lib/schema"
 )
@@ -108,7 +108,7 @@ Name: My Task`)
 
 		// Type should be extracted
 		assert.Equal(t, "Task", result.ObjectType)
-		
+
 		// Should only have one property (type is excluded)
 		assert.Len(t, result.Properties, 1)
 		assert.Equal(t, "Name", result.Properties[0].Name)

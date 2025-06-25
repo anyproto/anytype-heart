@@ -63,17 +63,17 @@ func TestJSONSchemaParser_XOrderAndFeatured(t *testing.T) {
 
 	// Check featured relations are in correct order
 	assert.Equal(t, []string{"type", "name", "status"}, schema.Type.FeaturedRelations)
-	
+
 	// Check recommended relations
 	assert.Equal(t, []string{"description"}, schema.Type.RecommendedRelations)
-	
+
 	// Check hidden relations - should include hidden_field + system properties
 	assert.Contains(t, schema.Type.HiddenRelations, "hidden_field")
 	// Check that system properties were also added
 	for _, sysProp := range SystemProperties {
 		assert.Contains(t, schema.Type.HiddenRelations, sysProp)
 	}
-	
+
 	// Verify "type" is included when x-featured is true
 	assert.Contains(t, schema.Type.FeaturedRelations, "type")
 }
@@ -168,4 +168,3 @@ func TestJSONSchemaParser_SystemPropertiesImport(t *testing.T) {
 		assert.Contains(t, schema.Type.HiddenRelations, bundle.RelationKeyCoverId.String())
 	})
 }
-

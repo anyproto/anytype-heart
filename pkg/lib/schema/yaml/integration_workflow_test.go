@@ -28,15 +28,15 @@ func TestCompleteWorkflow(t *testing.T) {
 				Format: model.RelationFormat_shorttext,
 			},
 			"proj_status": {
-				Key:    "proj_status",
-				Name:   "Status",
-				Format: model.RelationFormat_status,
+				Key:     "proj_status",
+				Name:    "Status",
+				Format:  model.RelationFormat_status,
 				Options: []string{"Planning", "In Progress", "Completed"},
 			},
 			"proj_tags": {
-				Key:    "proj_tags",
-				Name:   "Tags",
-				Format: model.RelationFormat_tag,
+				Key:     "proj_tags",
+				Name:    "Tags",
+				Format:  model.RelationFormat_tag,
 				Options: []string{"urgent", "review", "approved"},
 			},
 			"proj_deadline": {
@@ -93,11 +93,11 @@ This is the project content.`
 		assert.Equal(t, "My Important Project", result.Details.GetString("proj_name"))
 		assert.Equal(t, "In Progress", result.Details.GetString("proj_status"))
 		assert.Equal(t, []string{"urgent", "review"}, result.Details.GetStringList("proj_tags"))
-		
+
 		// Check deadline
 		deadline := result.Details.GetInt64("proj_deadline")
 		assert.NotZero(t, deadline)
-		
+
 		// Check file paths were resolved
 		docs := result.Details.GetStringList("proj_links")
 		assert.Equal(t, []string{"/projects/docs/spec.md", "/projects/docs/design.md"}, docs)
@@ -144,7 +144,7 @@ This is the project content.`
 		yamlContent, err := ExportToYAML(properties, &ExportOptions{
 			ObjectTypeName: "Project",
 			PropertyNameMap: map[string]string{
-				"proj_name":     "name",      // Use shorter names in export
+				"proj_name":     "name", // Use shorter names in export
 				"proj_status":   "status",
 				"proj_tags":     "tags",
 				"proj_deadline": "deadline",
@@ -212,7 +212,7 @@ This is the project content.`
 		assert.Contains(t, content, "type: Project")
 		assert.Contains(t, content, "name:")
 		assert.Contains(t, content, "status:")
-		assert.Contains(t, content, "tags:")  // May have example values
+		assert.Contains(t, content, "tags:") // May have example values
 		assert.Contains(t, content, "deadline:")
 		assert.Contains(t, content, "documents: []")
 	})
@@ -307,7 +307,7 @@ func (m *mockResolver) ResolvePropertyKey(name string) string {
 			return key
 		}
 	}
-	
+
 	// Check case-insensitive match
 	nameLower := strings.ToLower(name)
 	for key, rel := range m.schema.Relations {
@@ -315,7 +315,7 @@ func (m *mockResolver) ResolvePropertyKey(name string) string {
 			return key
 		}
 	}
-	
+
 	return ""
 }
 

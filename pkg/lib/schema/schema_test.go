@@ -336,7 +336,7 @@ func TestJSONSchemaExporter_Export(t *testing.T) {
 	assert.Contains(t, output, `"Done"`)
 	assert.Contains(t, output, `"format": "date-time"`)
 	assert.Contains(t, output, `"x-format": "status"`)
-	
+
 	// Check version is included
 	assert.Contains(t, output, `"x-genversion": "1.0"`)
 	assert.Contains(t, output, `:gen-1.0"`) // Check version in $id

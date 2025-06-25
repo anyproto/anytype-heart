@@ -205,9 +205,6 @@ func (h *MD) processRelation(details *domain.Details) *yaml.Property {
 
 	// Get the value for this relation
 	v := h.s.CombinedDetails().Get(domain.RelationKey(key))
-	if v.IsNull() {
-		return nil
-	}
 
 	// Process the value based on format
 	format := model.RelationFormat(details.GetInt64(bundle.RelationKeyRelationFormat))
@@ -228,6 +225,9 @@ func (h *MD) processRelation(details *domain.Details) *yaml.Property {
 // processRelationValue processes a relation value based on its format
 // Returns the processed value and whether it should be included
 func (h *MD) processRelationValue(v domain.Value, format model.RelationFormat, key string) (domain.Value, bool) {
+	if v.IsNull() {
+		return domain.Value{}, false
+	}
 	switch format {
 	case model.RelationFormat_file:
 		return h.processFileRelation(v)
@@ -302,7 +302,7 @@ func (h *MD) processObjectRelation(v domain.Value, key string) (domain.Value, bo
 	if len(ids) == 0 {
 		return v, false
 	}
-	
+
 	// Check if this is a single-value relation
 	if slices.Contains(removeArrayRelations, key) && len(ids) > 0 {
 		title, _, ok := h.getLinkInfo(ids[0])

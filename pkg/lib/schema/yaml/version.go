@@ -73,7 +73,7 @@ func ParseVersion(version string) (*SemanticVersion, error) {
 	}
 
 	sv := &SemanticVersion{}
-	
+
 	// Parse major version
 	major, err := strconv.Atoi(parts[0])
 	if err != nil {
@@ -150,7 +150,7 @@ func IsCompatibleVersion(version string) bool {
 	if targetVersion.Major == currentVersion.Major {
 		return true
 	}
-	
+
 	// We can read older major versions
 	if targetVersion.Major < currentVersion.Major {
 		return true
@@ -197,29 +197,29 @@ func MigrateData(data map[string]interface{}, fromVersion, toVersion string, opt
 	// No-op example: future migrations would go here
 	// Example for future version 2.0:
 	/*
-	switch {
-	case fromVersion == "1.0" && toVersion == "2.0":
-		// Example: Rename "Title" to "Name" in v2.0
-		if title, exists := result["Title"]; exists {
-			result["Name"] = title
-			delete(result, "Title")
-		}
-		
-		// Example: Convert single values to arrays in v2.0
-		if assignee, exists := result["Assignee"]; exists {
-			if str, ok := assignee.(string); ok {
-				result["Assignees"] = []string{str}
-				delete(result, "Assignee")
+		switch {
+		case fromVersion == "1.0" && toVersion == "2.0":
+			// Example: Rename "Title" to "Name" in v2.0
+			if title, exists := result["Title"]; exists {
+				result["Name"] = title
+				delete(result, "Title")
+			}
+
+			// Example: Convert single values to arrays in v2.0
+			if assignee, exists := result["Assignee"]; exists {
+				if str, ok := assignee.(string); ok {
+					result["Assignees"] = []string{str}
+					delete(result, "Assignee")
+				}
+			}
+
+		case fromVersion == "2.0" && toVersion == "1.0":
+			// Downgrade example: reverse the changes
+			if name, exists := result["Name"]; exists {
+				result["Title"] = name
+				delete(result, "Name")
 			}
 		}
-		
-	case fromVersion == "2.0" && toVersion == "1.0":
-		// Downgrade example: reverse the changes
-		if name, exists := result["Name"]; exists {
-			result["Title"] = name
-			delete(result, "Name")
-		}
-	}
 	*/
 
 	// Currently no migrations needed

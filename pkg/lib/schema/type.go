@@ -117,7 +117,7 @@ func TypeFromDetailsWithResolver(details *domain.Details, idToKeyResolver func(r
 			// If no resolver, assume they're already keys (for backward compatibility)
 			return relationIds
 		}
-		
+
 		keys := make([]string, 0, len(relationIds))
 		for _, id := range relationIds {
 			// Try to resolve ID to key

@@ -37,7 +37,7 @@ func Test_processFiles(t *testing.T) {
 		workingDir, err := os.Getwd()
 		absolutePath := filepath.Join(workingDir, "testdata")
 		source := source.GetSource(absolutePath)
-		
+
 		// Initialize the source with the path
 		err = source.Initialize(absolutePath)
 		assert.Nil(t, err)
@@ -73,7 +73,7 @@ func Test_processFiles(t *testing.T) {
 		assert.Nil(t, err)
 		absolutePath := filepath.Join(workingDir, "testdata")
 		source := source.GetSource(absolutePath)
-		
+
 		// Initialize the source with the path
 		err = source.Initialize(absolutePath)
 		assert.Nil(t, err)

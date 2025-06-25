@@ -96,14 +96,14 @@ func ExportToYAML(properties []Property, options *ExportOptions) ([]byte, error)
 	var result strings.Builder
 	result.WriteString(YAMLDelimiter)
 	result.WriteString("\n")
-	
+
 	// Add schema reference if provided
 	if options.SchemaReference != "" {
 		result.WriteString("# yaml-language-server: $schema=")
 		result.WriteString(options.SchemaReference)
 		result.WriteString("\n")
 	}
-	
+
 	result.Write(yamlData)
 	if !strings.HasSuffix(string(yamlData), "\n") {
 		result.WriteString("\n")

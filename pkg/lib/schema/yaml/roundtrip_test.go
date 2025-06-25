@@ -194,7 +194,7 @@ func TestRoundTripYAML(t *testing.T) {
 			result, err := ParseYAMLFrontMatterWithFormats(frontMatter, formats)
 			require.NoError(t, err)
 			require.NotNil(t, result)
-			
+
 			// Apply includeTime information from original properties
 			for i, prop := range result.Properties {
 				if prop.Format == model.RelationFormat_date {

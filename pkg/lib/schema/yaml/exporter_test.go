@@ -267,25 +267,25 @@ func TestYAMLPropertyNameDeduplication(t *testing.T) {
 				Value:  domain.String("A detailed description"),
 			},
 		}
-		
+
 		// Export to YAML
 		result, err := ExportToYAML(properties, nil)
 		require.NoError(t, err)
-		
+
 		yamlStr := string(result)
-		
+
 		// Should have deduplicated names sorted by key
 		// Expected: company_name -> "Name", project_name -> "Name 2", user_name -> "Name 3"
 		assert.Contains(t, yamlStr, "Name: Acme Corp", "First Name should be company_name")
 		assert.Contains(t, yamlStr, "Name 2: Alpha Project", "Second Name should be project_name")
 		assert.Contains(t, yamlStr, "Name 3: John Doe", "Third Name should be user_name")
 		assert.Contains(t, yamlStr, "Description: A detailed description", "Description should keep original name")
-		
+
 		// Verify structure
 		assert.Contains(t, yamlStr, "---\n")
 		assert.Contains(t, yamlStr, "\n---\n")
 	})
-	
+
 	t.Run("YAML export with custom property names and deduplication", func(t *testing.T) {
 		// Create properties with some custom names that create conflicts
 		properties := []Property{
@@ -308,7 +308,7 @@ func TestYAMLPropertyNameDeduplication(t *testing.T) {
 				Value:  domain.String("Other Value"),
 			},
 		}
-		
+
 		// Use custom property name map that creates a conflict
 		options := &ExportOptions{
 			PropertyNameMap: map[string]string{
@@ -316,20 +316,20 @@ func TestYAMLPropertyNameDeduplication(t *testing.T) {
 				"other": "Custom Name",
 			},
 		}
-		
+
 		// Export to YAML
 		result, err := ExportToYAML(properties, options)
 		require.NoError(t, err)
-		
+
 		yamlStr := string(result)
-		
+
 		// Should have deduplicated names
 		// Expected: name -> "Name", title (custom) -> "Name 2"
 		assert.Contains(t, yamlStr, "Name: Entity Name", "First Name should be from name key")
 		assert.Contains(t, yamlStr, "Name 2: Main Title", "Second Name should be from title key with custom name")
 		assert.Contains(t, yamlStr, "Custom Name: Other Value", "Custom name should be preserved when no conflict")
 	})
-	
+
 	t.Run("YAML export with no duplicate names", func(t *testing.T) {
 		// Create properties with unique names
 		properties := []Property{
@@ -352,24 +352,24 @@ func TestYAMLPropertyNameDeduplication(t *testing.T) {
 				Value:  domain.String("published"),
 			},
 		}
-		
+
 		// Export to YAML
 		result, err := ExportToYAML(properties, nil)
 		require.NoError(t, err)
-		
+
 		yamlStr := string(result)
-		
+
 		// Should keep original names without any suffixes
 		assert.Contains(t, yamlStr, "Title: Page Title")
 		assert.Contains(t, yamlStr, "Author: Jane Smith")
 		assert.Contains(t, yamlStr, "Status: published")
-		
+
 		// Should not have any numbered suffixes
 		assert.NotContains(t, yamlStr, "Title 2")
 		assert.NotContains(t, yamlStr, "Author 2")
 		assert.NotContains(t, yamlStr, "Status 2")
 	})
-	
+
 	t.Run("Object type property always keeps its name", func(t *testing.T) {
 		// Create properties where user properties conflict with "Object type"
 		properties := []Property{
@@ -392,23 +392,23 @@ func TestYAMLPropertyNameDeduplication(t *testing.T) {
 				Value:  domain.String("Document Title"),
 			},
 		}
-		
+
 		// Export to YAML with object type
 		result, err := ExportToYAML(properties, &ExportOptions{
 			ObjectTypeName: "Document",
 		})
 		require.NoError(t, err)
-		
+
 		yamlStr := string(result)
-		
+
 		// "Object type" should be reserved for the system type
 		assert.Contains(t, yamlStr, "Object type: Document", "System Object type should be present")
-		
+
 		// User properties named "Object type" get suffixes starting from 2
 		// They are sorted by key: another_object_type, custom_object_type
 		assert.Contains(t, yamlStr, "Object type 2: Another Type", "First user property (another_object_type) gets suffix 2")
 		assert.Contains(t, yamlStr, "Object type 3: Custom Type", "Second user property (custom_object_type) gets suffix 3")
-		
+
 		// Other properties remain unchanged
 		assert.Contains(t, yamlStr, "Title: Document Title")
 	})
@@ -424,30 +424,30 @@ func TestExportToYAML_WithSchemaReference(t *testing.T) {
 				Value:  domain.String("Test Document"),
 			},
 		}
-		
+
 		options := &ExportOptions{
 			ObjectTypeName:  "Document",
 			SchemaReference: "./schemas/document.schema.json",
 		}
-		
+
 		result, err := ExportToYAML(properties, options)
 		require.NoError(t, err)
-		
+
 		yamlStr := string(result)
-		
+
 		// Should contain schema reference comment
 		assert.Contains(t, yamlStr, "# yaml-language-server: $schema=./schemas/document.schema.json")
-		
+
 		// Should still have all properties
 		assert.Contains(t, yamlStr, "Title: Test Document")
 		assert.Contains(t, yamlStr, "Object type: Document")
-		
+
 		// Verify order - schema reference should come right after opening delimiter
 		lines := strings.Split(yamlStr, "\n")
 		assert.Equal(t, "---", lines[0])
 		assert.Equal(t, "# yaml-language-server: $schema=./schemas/document.schema.json", lines[1])
 	})
-	
+
 	t.Run("no schema reference when not provided", func(t *testing.T) {
 		properties := []Property{
 			{
@@ -457,16 +457,16 @@ func TestExportToYAML_WithSchemaReference(t *testing.T) {
 				Value:  domain.String("Test Document"),
 			},
 		}
-		
+
 		options := &ExportOptions{
 			ObjectTypeName: "Document",
 		}
-		
+
 		result, err := ExportToYAML(properties, options)
 		require.NoError(t, err)
-		
+
 		yamlStr := string(result)
-		
+
 		// Should not contain schema reference
 		assert.NotContains(t, yamlStr, "yaml-language-server")
 	})

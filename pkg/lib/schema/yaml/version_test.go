@@ -12,11 +12,11 @@ import (
 
 func TestGetVersionInfo(t *testing.T) {
 	tests := []struct {
-		name        string
-		version     string
-		wantVersion string
+		name         string
+		version      string
+		wantVersion  string
 		wantFeatures map[string]bool
-		wantErr     bool
+		wantErr      bool
 	}{
 		{
 			name:        "current version",
@@ -74,9 +74,9 @@ func TestGetVersionInfo(t *testing.T) {
 
 func TestDetectVersion(t *testing.T) {
 	tests := []struct {
-		name    string
-		data    map[string]interface{}
-		want    string
+		name string
+		data map[string]interface{}
+		want string
 	}{
 		{
 			name: "version header present",
@@ -491,7 +491,7 @@ func TestCheckCompatibility(t *testing.T) {
 			result := CheckCompatibility(tt.fromVersion, tt.toVersion)
 			assert.Equal(t, tt.expectCompat, result.Compatible)
 			assert.Len(t, result.Warnings, tt.expectWarnings)
-			
+
 			for _, contains := range tt.warningContains {
 				found := false
 				for _, warning := range result.Warnings {
@@ -524,7 +524,7 @@ tags:
 
 		// Legacy parsing generates BSON IDs for keys, so we check properties instead
 		assert.Equal(t, 3, len(result.Properties))
-		
+
 		// Find properties by name
 		var titleProp, statusProp, tagsProp *Property
 		for i := range result.Properties {
@@ -537,11 +537,11 @@ tags:
 				tagsProp = &result.Properties[i]
 			}
 		}
-		
+
 		require.NotNil(t, titleProp)
 		require.NotNil(t, statusProp)
 		require.NotNil(t, tagsProp)
-		
+
 		assert.Equal(t, "Test Document", titleProp.Value.String())
 		assert.Equal(t, "active", statusProp.Value.String())
 		assert.Equal(t, []string{"important", "review"}, tagsProp.Value.StringList())
@@ -570,10 +570,10 @@ tags:
 				break
 			}
 		}
-		
+
 		require.NotNil(t, titleProp)
 		assert.Equal(t, "Test Document", titleProp.Value.String())
-		
+
 		// Verify version header is not included in properties
 		for _, prop := range result.Properties {
 			assert.NotEqual(t, VersionHeaderKey, prop.Name)
