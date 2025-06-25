@@ -3,10 +3,12 @@ package dataview
 import (
 	"errors"
 	"fmt"
+	"slices"
 
 	"github.com/globalsign/mgo/bson"
 	"github.com/gogo/protobuf/types"
 	"github.com/google/uuid"
+	"github.com/samber/lo"
 
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/block/simple/base"
@@ -52,7 +54,7 @@ type Block interface {
 	MoveObjectsInView(req *pb.RpcBlockDataviewObjectOrderMoveRequest) error
 
 	AddRelation(relation *model.RelationLink) error
-	DeleteRelation(relationKey string) error
+	DeleteRelations(relationKeys ...string)
 	SetRelations(relationLinks []*model.RelationLink)
 	ListRelationLinks() []*model.RelationLink
 
@@ -120,7 +122,7 @@ func (d *Dataview) ListViews() []*model.BlockContentDataviewView {
 }
 
 // AddView adds a view to the dataview. It doesn't fill any missing field except id
-func (s *Dataview) AddView(view model.BlockContentDataviewView) {
+func (d *Dataview) AddView(view model.BlockContentDataviewView) {
 	if view.Id == "" {
 		view.Id = uuid.New().String()
 	}
@@ -135,11 +137,11 @@ func (s *Dataview) AddView(view model.BlockContentDataviewView) {
 		}
 	}
 
-	s.content.Views = append(s.content.Views, &view)
+	d.content.Views = append(d.content.Views, &view)
 }
 
-func (s *Dataview) GetView(viewId string) (*model.BlockContentDataviewView, error) {
-	for _, view := range s.GetDataview().Views {
+func (d *Dataview) GetView(viewId string) (*model.BlockContentDataviewView, error) {
+	for _, view := range d.GetDataview().Views {
 		if view.Id == viewId {
 			return view, nil
 		}
@@ -148,13 +150,13 @@ func (s *Dataview) GetView(viewId string) (*model.BlockContentDataviewView, erro
 	return nil, fmt.Errorf("view '%s' not found", viewId)
 }
 
-func (s *Dataview) DeleteView(viewID string) error {
+func (d *Dataview) DeleteView(viewID string) error {
 	var found bool
-	for i, v := range s.content.Views {
+	for i, v := range d.content.Views {
 		if v.Id == viewID {
 			found = true
-			s.content.Views[i] = nil
-			s.content.Views = append(s.content.Views[:i], s.content.Views[i+1:]...)
+			d.content.Views[i] = nil
+			d.content.Views = append(d.content.Views[:i], d.content.Views[i+1:]...)
 			break
 		}
 	}
@@ -166,8 +168,8 @@ func (s *Dataview) DeleteView(viewID string) error {
 	return nil
 }
 
-func (s *Dataview) SetView(viewID string, view model.BlockContentDataviewView) error {
-	v, err := s.GetView(viewID)
+func (d *Dataview) SetView(viewID string, view model.BlockContentDataviewView) error {
+	v, err := d.GetView(viewID)
 	if err != nil {
 		return err
 	}
@@ -187,6 +189,7 @@ func (s *Dataview) SetView(viewID string, view model.BlockContentDataviewView) e
 	v.PageLimit = view.PageLimit
 	v.DefaultTemplateId = view.DefaultTemplateId
 	v.DefaultObjectTypeId = view.DefaultObjectTypeId
+	v.EndRelationKey = view.EndRelationKey
 
 	return nil
 }
@@ -209,20 +212,21 @@ func (d *Dataview) SetViewFields(viewID string, view *model.BlockContentDataview
 	v.PageLimit = view.PageLimit
 	v.DefaultTemplateId = view.DefaultTemplateId
 	v.DefaultObjectTypeId = view.DefaultObjectTypeId
+	v.EndRelationKey = view.EndRelationKey
 
 	return nil
 }
 
-func (l *Dataview) FillSmartIds(ids []string) []string {
+func (d *Dataview) FillSmartIds(ids []string) []string {
 	// for _ := range l.content.RelationLinks {
 	// todo: add relationIds from relationLinks
 	// }
 
-	if l.content.TargetObjectId != "" {
-		ids = append(ids, l.content.TargetObjectId)
+	if d.content.TargetObjectId != "" {
+		ids = append(ids, d.content.TargetObjectId)
 	}
 
-	for _, view := range l.content.Views {
+	for _, view := range d.content.Views {
 		if view.DefaultObjectTypeId != "" {
 			ids = append(ids, view.DefaultObjectTypeId)
 		}
@@ -235,15 +239,15 @@ func (l *Dataview) FillSmartIds(ids []string) []string {
 	return ids
 }
 
-func (l *Dataview) MigrateFile(migrateFunc func(oldHash string) (newHash string)) {
-	for _, view := range l.content.Views {
+func (d *Dataview) MigrateFile(migrateFunc func(oldHash string) (newHash string)) {
+	for _, view := range d.content.Views {
 		for _, filter := range view.Filters {
-			l.migrateFilesInFilter(filter, migrateFunc)
+			d.migrateFilesInFilter(filter, migrateFunc)
 		}
 	}
 }
 
-func (l *Dataview) migrateFilesInFilter(filter *model.BlockContentDataviewFilter, migrateFunc func(oldHash string) (newHash string)) {
+func (d *Dataview) migrateFilesInFilter(filter *model.BlockContentDataviewFilter, migrateFunc func(oldHash string) (newHash string)) {
 	if filter.Format != model.RelationFormat_object && filter.Format != model.RelationFormat_file {
 		return
 	}
@@ -295,20 +299,20 @@ func getIdsFromFilters(filters []*model.BlockContentDataviewFilter) (ids []strin
 	return ids
 }
 
-func (l *Dataview) ReplaceLinkIds(replacer func(oldId string) (newId string)) {
-	if l.content.TargetObjectId != "" {
-		l.content.TargetObjectId = replacer(l.content.TargetObjectId)
+func (d *Dataview) ReplaceLinkIds(replacer func(oldId string) (newId string)) {
+	if d.content.TargetObjectId != "" {
+		d.content.TargetObjectId = replacer(d.content.TargetObjectId)
 	}
 	return
 }
 
-func (l *Dataview) HasSmartIds() bool {
-	for _, view := range l.content.Views {
+func (d *Dataview) HasSmartIds() bool {
+	for _, view := range d.content.Views {
 		if view.DefaultObjectTypeId != "" || view.DefaultTemplateId != "" {
 			return true
 		}
 	}
-	return len(l.content.RelationLinks) > 0 || l.content.TargetObjectId != ""
+	return len(d.content.RelationLinks) > 0 || d.content.TargetObjectId != ""
 }
 
 func (d *Dataview) AddRelation(relation *model.RelationLink) error {
@@ -319,39 +323,37 @@ func (d *Dataview) AddRelation(relation *model.RelationLink) error {
 	return nil
 }
 
-func (d *Dataview) DeleteRelation(relationKey string) error {
-	d.content.RelationLinks = pbtypes.RelationLinks(d.content.RelationLinks).Remove(relationKey)
-
-	for _, view := range d.content.Views {
-		var filteredFilters []*model.BlockContentDataviewFilter
-		for _, filter := range view.Filters {
-			if filter.RelationKey != relationKey {
-				filteredFilters = append(filteredFilters, filter)
-			}
-		}
-		view.Filters = filteredFilters
-
-		var filteredSorts []*model.BlockContentDataviewSort
-		for _, sort := range view.Sorts {
-			if sort.RelationKey != relationKey {
-				filteredSorts = append(filteredSorts, sort)
-			}
-		}
-		view.Sorts = filteredSorts
-	}
-	return nil
+func (d *Dataview) DeleteRelations(relationKeys ...string) {
+	d.content.RelationLinks = pbtypes.RelationLinks(d.content.RelationLinks).Remove(relationKeys...)
+	d.removeSortsAndFiltersByKeys(relationKeys...)
 }
 
 func (d *Dataview) SetRelations(relationLinks []*model.RelationLink) {
+	_, removed := pbtypes.RelationLinks(relationLinks).Diff(d.content.RelationLinks)
 	d.content.RelationLinks = relationLinks
+	d.removeSortsAndFiltersByKeys(removed...)
+}
+
+func (d *Dataview) removeSortsAndFiltersByKeys(keys ...string) {
+	if keys == nil {
+		return
+	}
+	for _, view := range d.content.Views {
+		view.Filters = lo.Filter(view.Filters, func(filter *model.BlockContentDataviewFilter, _ int) bool {
+			return !slices.Contains(keys, filter.RelationKey)
+		})
+		view.Sorts = lo.Filter(view.Sorts, func(filter *model.BlockContentDataviewSort, _ int) bool {
+			return !slices.Contains(keys, filter.RelationKey)
+		})
+	}
 }
 
 func (d *Dataview) ListRelationLinks() []*model.RelationLink {
 	return d.content.RelationLinks
 }
 
-func (td *Dataview) ModelToSave() *model.Block {
-	b := pbtypes.CopyBlock(td.Model())
+func (d *Dataview) ModelToSave() *model.Block {
+	b := pbtypes.CopyBlock(d.Model())
 	b.Content.(*model.BlockContentOfDataview).Dataview.Relations = nil
 	b.Content.(*model.BlockContentOfDataview).Dataview.ActiveView = ""
 	return b
@@ -501,26 +503,17 @@ func (d *Dataview) resetObjectOrderForView(viewId string) {
 	}
 }
 
-func (s *Dataview) GetRelation(relationKey string) (*model.Relation, error) {
-	for _, v := range s.content.Relations {
-		if v.Key == relationKey {
-			return v, nil
-		}
-	}
-	return nil, ErrRelationNotFound
-}
-
-func (s *Dataview) UpdateRelationOld(relationKey string, rel model.Relation) error {
+func (d *Dataview) UpdateRelationOld(relationKey string, rel model.Relation) error {
 	var found bool
 	if relationKey != rel.Key {
 		return fmt.Errorf("changing key of existing relation is retricted")
 	}
 
-	for i, v := range s.content.Relations {
+	for i, v := range d.content.Relations {
 		if v.Key == relationKey {
 			found = true
 
-			s.content.Relations[i] = pbtypes.CopyRelation(&rel)
+			d.content.Relations[i] = pbtypes.CopyRelation(&rel)
 			break
 		}
 	}

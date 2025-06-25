@@ -25,6 +25,7 @@ func (s *dsObjectStore) AddToIndexQueue(ctx context.Context, ids ...domain.FullI
 	}
 	arena := s.arenaPool.Get()
 	defer func() {
+		_ = txn.Rollback()
 		arena.Reset()
 		s.arenaPool.Put(arena)
 	}()
@@ -114,6 +115,9 @@ func (s *dsObjectStore) RemoveIdsFromFullTextQueue(ids []string) error {
 	if err != nil {
 		return fmt.Errorf("start write tx: %w", err)
 	}
+	defer func() {
+		_ = txn.Rollback()
+	}()
 	for _, id := range ids {
 		err := s.fulltextQueue.DeleteId(txn.Context(), id)
 		if errors.Is(err, anystore.ErrDocNotFound) {
@@ -136,6 +140,12 @@ func (s *dsObjectStore) ClearFullTextQueue(spaceIds []string) error {
 	if err != nil {
 		return fmt.Errorf("start write tx: %w", err)
 	}
+	var commited bool
+	defer func() {
+		if !commited {
+			txn.Rollback()
+		}
+	}()
 	iter, err := s.fulltextQueue.Find(filterIn).Iter(txn.Context())
 	if err != nil {
 		return fmt.Errorf("create iterator: %w", err)
@@ -153,6 +163,7 @@ func (s *dsObjectStore) ClearFullTextQueue(spaceIds []string) error {
 			return fmt.Errorf("del doc: %w", err)
 		}
 	}
+	commited = true
 	return txn.Commit()
 }
 

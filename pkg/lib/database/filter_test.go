@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/anyproto/any-store/anyenc"
+	"github.com/anyproto/any-store/syncpool"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -19,7 +20,8 @@ func assertFilter(t *testing.T, f Filter, obj *domain.Details, expected bool) {
 	anystoreFilter := f.AnystoreFilter()
 	arena := &anyenc.Arena{}
 	val := obj.ToAnyEnc(arena)
-	result := anystoreFilter.Ok(val)
+	docBuf := &syncpool.DocBuffer{}
+	result := anystoreFilter.Ok(val, docBuf)
 	assert.Equal(t, expected, result)
 }
 

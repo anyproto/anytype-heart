@@ -9,7 +9,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-const TypeChecksum = "4c26441b1e7a99b4344c736f8237e70b122fd4b0923015c8fcb375dc5804cb55"
+const TypeChecksum = "4887c4b1b59f6fa595cc67185d19aec9212680c2316aa452ec39b66d5eea1b83"
 const (
 	TypePrefix = "_ot"
 )
@@ -100,7 +100,7 @@ var (
 			Name:          "Chat [deprecated]",
 			Readonly:      true,
 			RelationLinks: []*model.RelationLink{MustGetRelationLink(RelationKeyTag)},
-			Revision:      1,
+			Revision:      2,
 			Types:         []model.SmartBlockType{model.SmartBlockType_ChatObject},
 			Url:           TypePrefix + "chat",
 		},
@@ -170,6 +170,7 @@ var (
 			PluralName:    "Dates",
 			Readonly:      true,
 			RelationLinks: []*model.RelationLink{MustGetRelationLink(RelationKeyTag)},
+			Revision:      1,
 			Types:         []model.SmartBlockType{model.SmartBlockType_Date},
 			Url:           TypePrefix + "date",
 		},
@@ -211,7 +212,7 @@ var (
 			Name:          "Goal",
 			PluralName:    "Goals",
 			Readonly:      true,
-			RelationLinks: []*model.RelationLink{MustGetRelationLink(RelationKeyTag), MustGetRelationLink(RelationKeyDueDate), MustGetRelationLink(RelationKeyProgress), MustGetRelationLink(RelationKeyStatus), MustGetRelationLink(RelationKeyTasks)},
+			RelationLinks: []*model.RelationLink{MustGetRelationLink(RelationKeyTag), MustGetRelationLink(RelationKeyDueDate), MustGetRelationLink(RelationKeyProgress), MustGetRelationLink(RelationKeyStatus)},
 			Revision:      3,
 			Types:         []model.SmartBlockType{model.SmartBlockType_Page},
 			Url:           TypePrefix + "goal",
@@ -262,6 +263,7 @@ var (
 		TypeKeyObjectType: {
 
 			Description:   "",
+			Hidden:        true,
 			IconColor:     9,
 			IconName:      "extension-puzzle",
 			Layout:        model.ObjectType_objectType,
@@ -326,7 +328,7 @@ var (
 			Name:          "Project",
 			PluralName:    "Projects",
 			Readonly:      true,
-			RelationLinks: []*model.RelationLink{MustGetRelationLink(RelationKeyTag), MustGetRelationLink(RelationKeyTasks)},
+			RelationLinks: []*model.RelationLink{MustGetRelationLink(RelationKeyTag)},
 			Revision:      3,
 			Types:         []model.SmartBlockType{model.SmartBlockType_Page},
 			Url:           TypePrefix + "project",
@@ -433,17 +435,18 @@ var (
 		},
 		TypeKeyTemplate: {
 
-			Description:   "",
-			IconColor:     8,
-			IconName:      "copy",
-			Layout:        model.ObjectType_basic,
-			Name:          "Template",
-			PluralName:    "Templates",
-			Readonly:      true,
-			RelationLinks: []*model.RelationLink{MustGetRelationLink(RelationKeyTargetObjectType), MustGetRelationLink(RelationKeyTemplateIsBundled)},
-			Revision:      4,
-			Types:         []model.SmartBlockType{model.SmartBlockType_Template},
-			Url:           TypePrefix + "template",
+			Description:            "",
+			IconColor:              8,
+			IconName:               "copy",
+			Layout:                 model.ObjectType_basic,
+			Name:                   "Template",
+			PluralName:             "Templates",
+			Readonly:               true,
+			RelationLinks:          []*model.RelationLink{MustGetRelationLink(RelationKeyTargetObjectType), MustGetRelationLink(RelationKeyTemplateIsBundled)},
+			RestrictObjectCreation: true,
+			Revision:               4,
+			Types:                  []model.SmartBlockType{model.SmartBlockType_Template},
+			Url:                    TypePrefix + "template",
 		},
 		TypeKeyVideo: {
 

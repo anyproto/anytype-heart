@@ -4,13 +4,14 @@ import (
 	"context"
 
 	"github.com/anyproto/any-sync/net"
-	"google.golang.org/grpc/peer"
 
 	"github.com/anyproto/anytype-heart/core/anytype/config"
 	"github.com/anyproto/anytype-heart/core/application"
 	"github.com/anyproto/anytype-heart/core/session"
+	walletComp "github.com/anyproto/anytype-heart/core/wallet"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/space/spacecore/storage/migrator"
+	"github.com/anyproto/anytype-heart/util/grpcprocess"
 )
 
 func (mw *Middleware) AccountCreate(cctx context.Context, req *pb.RpcAccountCreateRequest) *pb.RpcAccountCreateResponse {
@@ -248,7 +249,7 @@ func (mw *Middleware) AccountChangeJsonApiAddr(ctx context.Context, req *pb.RpcA
 
 func (mw *Middleware) AccountLocalLinkNewChallenge(ctx context.Context, request *pb.RpcAccountLocalLinkNewChallengeRequest) *pb.RpcAccountLocalLinkNewChallengeResponse {
 	info := getClientInfo(ctx)
-
+	info.Name = request.AppName
 	challengeId, err := mw.applicationService.LinkLocalStartNewChallenge(request.Scope, &info)
 	code := mapErrorCode(err,
 		errToCode(session.ErrTooManyChallengeRequests, pb.RpcAccountLocalLinkNewChallengeResponseError_TOO_MANY_REQUESTS),
@@ -282,16 +283,56 @@ func (mw *Middleware) AccountLocalLinkSolveChallenge(_ context.Context, req *pb.
 	}
 }
 
+func (mw *Middleware) AccountLocalLinkCreateApp(_ context.Context, req *pb.RpcAccountLocalLinkCreateAppRequest) *pb.RpcAccountLocalLinkCreateAppResponse {
+	appKey, err := mw.applicationService.LinkLocalCreateApp(req)
+	code := mapErrorCode(err,
+		errToCode(application.ErrApplicationIsNotRunning, pb.RpcAccountLocalLinkCreateAppResponseError_ACCOUNT_IS_NOT_RUNNING),
+	)
+	return &pb.RpcAccountLocalLinkCreateAppResponse{
+		AppKey: appKey,
+		Error: &pb.RpcAccountLocalLinkCreateAppResponseError{
+			Code:        code,
+			Description: getErrorDescription(err),
+		},
+	}
+}
+
+func (mw *Middleware) AccountLocalLinkListApps(_ context.Context, req *pb.RpcAccountLocalLinkListAppsRequest) *pb.RpcAccountLocalLinkListAppsResponse {
+	apps, err := mw.applicationService.LinkLocalListApps()
+	code := mapErrorCode(err,
+		errToCode(application.ErrApplicationIsNotRunning, pb.RpcAccountLocalLinkListAppsResponseError_ACCOUNT_IS_NOT_RUNNING),
+	)
+
+	return &pb.RpcAccountLocalLinkListAppsResponse{
+		App: apps,
+		Error: &pb.RpcAccountLocalLinkListAppsResponseError{
+			Code:        code,
+			Description: getErrorDescription(err),
+		},
+	}
+}
+
+func (mw *Middleware) AccountLocalLinkRevokeApp(_ context.Context, req *pb.RpcAccountLocalLinkRevokeAppRequest) *pb.RpcAccountLocalLinkRevokeAppResponse {
+	err := mw.applicationService.LinkLocalRevokeApp(req)
+	code := mapErrorCode(err,
+		errToCode(walletComp.ErrAppLinkNotFound, pb.RpcAccountLocalLinkRevokeAppResponseError_NOT_FOUND),
+		errToCode(application.ErrApplicationIsNotRunning, pb.RpcAccountLocalLinkRevokeAppResponseError_ACCOUNT_IS_NOT_RUNNING),
+	)
+	return &pb.RpcAccountLocalLinkRevokeAppResponse{
+		Error: &pb.RpcAccountLocalLinkRevokeAppResponseError{
+			Code:        code,
+			Description: getErrorDescription(err),
+		},
+	}
+}
+
 func getClientInfo(ctx context.Context) pb.EventAccountLinkChallengeClientInfo {
-	p, ok := peer.FromContext(ctx)
+	info, ok := grpcprocess.FromContext(ctx)
 	if !ok {
 		return pb.EventAccountLinkChallengeClientInfo{}
 	}
-
-	// todo: get process info
 	return pb.EventAccountLinkChallengeClientInfo{
-		ProcessName:       p.Addr.String(),
-		ProcessPath:       "",
-		SignatureVerified: false,
+		ProcessName: info.Name,
+		ProcessPath: info.Path,
 	}
 }

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/anyproto/any-store/anyenc"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -283,4 +284,13 @@ func TestTryWrapToStringList(t *testing.T) {
 			assert.Equal(t, tc.wantOk, gotOk)
 		})
 	}
+}
+
+func TestValue_ToAnyEnc(t *testing.T) {
+	a := &anyenc.Arena{}
+	list := a.NewArray()
+	list.Set("0", a.NewString("apple"))
+	list.Set("1", a.NewString("banana"))
+	assert.Equal(t, list, StringList([]string{"apple", "banana"}).ToAnyEnc(a))
+	assert.Equal(t, a.NewNumberInt(42), Int64(42).ToAnyEnc(a))
 }

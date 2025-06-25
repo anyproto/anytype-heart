@@ -15,7 +15,7 @@
       "ingredients",
       "time"
     ],
-    "revision": 2
+    "revision": 3
   },
   {
     "id": "note",
@@ -31,7 +31,7 @@
     "relations": [
       "tag"
     ],
-    "revision": 2
+    "revision": 3
   },
   {
     "id": "contact",
@@ -50,7 +50,7 @@
       "email",
       "phone"
     ],
-    "revision": 2
+    "revision": 3
   },
   {
     "id": "bookmark",
@@ -68,7 +68,7 @@
       "picture",
       "source"
     ],
-    "revision": 2
+    "revision": 3
   },
   {
     "id": "date",
@@ -83,7 +83,8 @@
     "layout": "date",
     "relations": [
       "tag"
-    ]
+    ],
+    "revision": 1
   },
   {
     "id": "task",
@@ -104,7 +105,7 @@
       "linkedProjects",
       "status"
     ],
-    "revision": 2
+    "revision": 3
   },
   {
     "id": "relation",
@@ -124,7 +125,7 @@
       "relationDefaultValue",
       "relationFormatObjectTypes"
     ],
-    "revision": 2
+    "revision": 3
   },
   {
     "id": "book",
@@ -144,7 +145,7 @@
       "status",
       "url"
     ],
-    "revision": 2
+    "revision": 3
   },
   {
     "id": "video",
@@ -171,7 +172,7 @@
       "exposure"
     ],
     "restrictObjectCreation": true,
-    "revision": 4
+    "revision": 5
   },
   {
     "id": "dashboard",
@@ -201,7 +202,7 @@
       "genre",
       "status"
     ],
-    "revision": 2
+    "revision": 3
   },
   {
     "id": "objectType",
@@ -213,13 +214,13 @@
     ],
     "iconColor": 9,
     "iconName": "extension-puzzle",
-    "hidden": false,
+    "hidden": true,
     "layout": "objectType",
     "relations": [
       "recommendedRelations",
       "recommendedLayout"
     ],
-    "revision": 2
+    "revision": 3
   },
   {
     "id": "relationOption",
@@ -246,7 +247,7 @@
       "tag"
     ],
     "restrictObjectCreation": true,
-    "revision": 2
+    "revision": 3
   },
   {
     "id": "spaceView",
@@ -263,7 +264,7 @@
       "tag"
     ],
     "restrictObjectCreation": true,
-    "revision": 1
+    "revision": 2
   },
   {
     "id": "participant",
@@ -280,7 +281,7 @@
       "tag"
     ],
     "restrictObjectCreation": true,
-    "revision": 3
+    "revision": 4
   },
   {
     "id": "template",
@@ -297,7 +298,8 @@
       "targetObjectType",
       "templateIsBundled"
     ],
-    "revision": 3
+    "restrictObjectCreation": true,
+    "revision": 4
   },
   {
     "id": "set",
@@ -314,7 +316,7 @@
       "tag",
       "setOf"
     ],
-    "revision": 3
+    "revision": 4
   },
   {
     "id": "collection",
@@ -330,7 +332,7 @@
     "relations": [
       "tag"
     ],
-    "revision": 2
+    "revision": 3
   },
   {
     "id": "diaryEntry",
@@ -340,14 +342,14 @@
       "Page"
     ],
     "iconColor": 2,
-    "iconName":"reader",
+    "iconName": "reader",
     "hidden": false,
     "layout": "basic",
     "relations": [
       "tag",
       "mood"
     ],
-    "revision": 2
+    "revision": 3
   },
   {
     "id": "page",
@@ -363,7 +365,7 @@
     "relations": [
       "tag"
     ],
-    "revision": 2
+    "revision": 3
   },
   {
     "id": "image",
@@ -391,7 +393,7 @@
       "focalRatio"
     ],
     "restrictObjectCreation": true,
-    "revision": 4
+    "revision": 5
   },
   {
     "id": "profile",
@@ -408,7 +410,7 @@
     "relations": [
       "tag"
     ],
-    "revision": 2
+    "revision": 3
   },
   {
     "id": "audio",
@@ -435,7 +437,7 @@
       "audioLyrics"
     ],
     "restrictObjectCreation": true,
-    "revision": 4
+    "revision": 5
   },
   {
     "id": "goal",
@@ -452,10 +454,9 @@
       "tag",
       "dueDate",
       "progress",
-      "status",
-      "tasks"
+      "status"
     ],
-    "revision": 2
+    "revision": 3
   },
   {
     "id": "file",
@@ -476,7 +477,7 @@
       "fileMimeType"
     ],
     "restrictObjectCreation": true,
-    "revision": 4
+    "revision": 5
   },
   {
     "id": "project",
@@ -490,10 +491,9 @@
     "hidden": false,
     "layout": "basic",
     "relations": [
-      "tag",
-      "tasks"
+      "tag"
     ],
-    "revision": 2
+    "revision": 3
   },
   {
     "id": "chat",
@@ -506,9 +506,9 @@
     "hidden": true,
     "layout": "chat",
     "relations": [
-        "tag"
+      "tag"
     ],
-    "revision": 1
+    "revision": 2
   },
   {
     "id": "chatDerived",
@@ -524,6 +524,6 @@
     "relations": [
       "tag"
     ],
-    "revision": 3
+    "revision": 4
   }
 ]
