@@ -267,7 +267,7 @@ func (g *gateway) imageHandler(w http.ResponseWriter, r *http.Request) {
 	ctx, cancel := context.WithTimeout(r.Context(), getFileTimeout)
 	defer cancel()
 
-	res, err := g.getImage(ctx, r)
+	res, err := g.getImage(rpcstore.ContextWithWaitAvailable(ctx), r)
 	if err != nil {
 		log.With("path", cleanUpPathForLogging(r.URL.Path)).Errorf("error getting image: %s", err)
 		http.Error(w, err.Error(), 500)
