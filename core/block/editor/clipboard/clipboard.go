@@ -579,7 +579,7 @@ func (cb *clipboard) addRelationLinksToDataview(d *model.BlockContentDataview) (
 }
 
 func (cb *clipboard) newHTMLConverter(s *state.State) *html.HTML {
-	return html.NewHTMLConverter(cb.fileService, s, cb.fileObjectService)
+	return html.NewHTMLConverter(s, cb.fileObjectService)
 }
 
 func (cb *clipboard) processFileBlock(f *model.BlockContentOfFile) {

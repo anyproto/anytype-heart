@@ -15,6 +15,7 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/block/chats/chatmodel"
 	"github.com/anyproto/anytype-heart/core/block/object/idresolver"
+	"github.com/anyproto/anytype-heart/pkg/lib/datastore/anystoreprovider"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -41,6 +42,7 @@ type service struct {
 	componentCtxCancel context.CancelFunc
 
 	objectStore     objectstore.ObjectStore
+	dbProvider      anystoreprovider.Provider
 	spaceIdResolver idresolver.Resolver
 	arenaPool       *anyenc.ArenaPool
 }
@@ -65,8 +67,8 @@ func (s *service) Close(ctx context.Context) error {
 func (s *service) Init(a *app.App) (err error) {
 	s.componentCtx, s.componentCtxCancel = context.WithCancel(context.Background())
 
-	s.objectStore = app.MustComponent[objectstore.ObjectStore](a)
 	s.spaceIdResolver = app.MustComponent[idresolver.Resolver](a)
+	s.dbProvider = app.MustComponent[anystoreprovider.Provider](a)
 	return nil
 }
 
@@ -80,8 +82,7 @@ func (s *service) Repository(chatObjectId string) (Repository, error) {
 		return nil, fmt.Errorf("resolve space id: %w", err)
 	}
 
-	crdtDbGetter := s.objectStore.GetCrdtDb(spaceId)
-	crdtDb, err := crdtDbGetter.Wait()
+	crdtDb, err := s.dbProvider.GetCrdtDb(spaceId).Wait()
 	if err != nil {
 		return nil, fmt.Errorf("get crdt db: %w", err)
 	}
@@ -113,6 +114,7 @@ type Repository interface {
 	GetOldestOrderId(ctx context.Context, counterType chatmodel.CounterType) (string, error)
 	GetReadMessagesAfter(ctx context.Context, afterOrderId string, counterType chatmodel.CounterType) ([]string, error)
 	GetUnreadMessageIdsInRange(ctx context.Context, afterOrderId, beforeOrderId string, lastStateId string, counterType chatmodel.CounterType) ([]string, error)
+	GetAllUnreadMessages(ctx context.Context, counterType chatmodel.CounterType) ([]string, error)
 	SetReadFlag(ctx context.Context, chatObjectId string, msgIds []string, counterType chatmodel.CounterType, value bool) []string
 	GetMessages(ctx context.Context, req GetMessagesRequest) ([]*chatmodel.Message, error)
 	HasMyReaction(ctx context.Context, myIdentity string, messageId string, emoji string) (bool, error)
@@ -289,9 +291,32 @@ func (s *repository) GetUnreadMessageIdsInRange(ctx context.Context, afterOrderI
 		query.Key{Path: []string{chatmodel.OrderKey, "id"}, Filter: query.NewComp(query.CompOpGte, afterOrderId)},
 		query.Key{Path: []string{chatmodel.OrderKey, "id"}, Filter: query.NewComp(query.CompOpLte, beforeOrderId)},
 		query.Or{
-			query.Not{query.Key{Path: []string{chatmodel.StateIdKey}, Filter: query.Exists{}}},
+			query.Not{Filter: query.Key{Path: []string{chatmodel.StateIdKey}, Filter: query.Exists{}}},
 			query.Key{Path: []string{chatmodel.StateIdKey}, Filter: query.NewComp(query.CompOpLte, lastStateId)},
 		},
+		handler.getUnreadFilter(),
+	}
+	iter, err := s.collection.Find(qry).Iter(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("find id: %w", err)
+	}
+	defer iter.Close()
+
+	var msgIds []string
+	for iter.Next() {
+		doc, err := iter.Doc()
+		if err != nil {
+			return nil, fmt.Errorf("get doc: %w", err)
+		}
+		msgIds = append(msgIds, doc.Value().GetString("id"))
+	}
+	return msgIds, iter.Err()
+}
+
+func (s *repository) GetAllUnreadMessages(ctx context.Context, counterType chatmodel.CounterType) ([]string, error) {
+	handler := newReadHandler(counterType)
+
+	qry := query.And{
 		handler.getUnreadFilter(),
 	}
 	iter, err := s.collection.Find(qry).Iter(ctx)

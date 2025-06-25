@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/anyproto/any-sync/app"
+	"github.com/anyproto/any-sync/commonfile/fileservice"
 	"github.com/anyproto/any-sync/commonspace/object/accountdata"
 	"github.com/anyproto/any-sync/commonspace/object/tree/objecttree"
 
@@ -30,7 +31,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/files/reconciler"
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore/filestore"
+	"github.com/anyproto/anytype-heart/pkg/lib/datastore/anystoreprovider"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/spaceindex"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
@@ -60,7 +61,6 @@ type ObjectFactory struct {
 	objectStore             objectstore.ObjectStore
 	sourceService           source.Service
 	tempDirProvider         core.TempDirProvider
-	fileStore               filestore.FileStore
 	fileService             files.Service
 	config                  *config.Config
 	picker                  cache.ObjectGetter
@@ -75,6 +75,8 @@ type ObjectFactory struct {
 	objectDeleter           ObjectDeleter
 	deviceService           deviceService
 	spaceIdResolver         idresolver.Resolver
+	commonFile              fileservice.FileService
+	dbProvider              anystoreprovider.Provider
 	chatRepositoryService   chatrepository.Service
 	chatSubscriptionService chatsubscription.Service
 }
@@ -87,7 +89,6 @@ func (f *ObjectFactory) Init(a *app.App) (err error) {
 	f.config = app.MustComponent[*config.Config](a)
 	f.picker = app.MustComponent[cache.ObjectGetter](a)
 	f.indexer = app.MustComponent[smartblock.Indexer](a)
-	f.fileStore = app.MustComponent[filestore.FileStore](a)
 	f.objectStore = app.MustComponent[objectstore.ObjectStore](a)
 	f.fileService = app.MustComponent[files.Service](a)
 	f.eventSender = app.MustComponent[event.Sender](a)
@@ -108,6 +109,8 @@ func (f *ObjectFactory) Init(a *app.App) (err error) {
 	f.fileReconciler = app.MustComponent[reconciler.Reconciler](a)
 	f.deviceService = app.MustComponent[deviceService](a)
 	f.spaceIdResolver = app.MustComponent[idresolver.Resolver](a)
+	f.commonFile = app.MustComponent[fileservice.FileService](a)
+	f.dbProvider = app.MustComponent[anystoreprovider.Provider](a)
 	f.chatRepositoryService = app.MustComponent[chatrepository.Service](a)
 	f.chatSubscriptionService = app.MustComponent[chatsubscription.Service](a)
 	return nil
@@ -172,7 +175,6 @@ func (f *ObjectFactory) produceSmartblock(space smartblock.Space) (smartblock.Sm
 	return smartblock.New(
 		space,
 		f.accountService.MyParticipantId(space.Id()),
-		f.fileStore,
 		store,
 		f.objectStore,
 		f.indexer,
@@ -223,17 +225,17 @@ func (f *ObjectFactory) New(space smartblock.Space, sbType coresb.SmartBlockType
 	case coresb.SmartBlockTypeDevicesObject:
 		return NewDevicesObject(sb, f.deviceService), nil
 	case coresb.SmartBlockTypeChatDerivedObject:
-		crdtDb, err := f.objectStore.GetCrdtDb(space.Id()).Wait()
+		crdtDb, err := f.dbProvider.GetCrdtDb(space.Id()).Wait()
 		if err != nil {
 			return nil, fmt.Errorf("get crdt db: %w", err)
 		}
 		return chatobject.New(sb, f.accountService, crdtDb, f.chatRepositoryService, f.chatSubscriptionService), nil
 	case coresb.SmartBlockTypeAccountObject:
-		crdtDb, err := f.objectStore.GetCrdtDb(space.Id()).Wait()
+		db, err := f.dbProvider.GetCrdtDb(space.Id()).Wait()
 		if err != nil {
 			return nil, fmt.Errorf("get crdt db: %w", err)
 		}
-		return accountobject.New(sb, f.accountService.Keys(), spaceIndex, f.layoutConverter, f.fileObjectService, crdtDb, f.config), nil
+		return accountobject.New(sb, f.accountService.Keys(), spaceIndex, f.layoutConverter, f.fileObjectService, db, f.config), nil
 	default:
 		return nil, fmt.Errorf("unexpected smartblock type: %v", sbType)
 	}

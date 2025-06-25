@@ -2,6 +2,7 @@ package api
 
 import (
 	"context"
+	_ "embed"
 	"errors"
 	"fmt"
 	"net/http"
@@ -24,6 +25,12 @@ const (
 
 var (
 	mwSrv apicore.ClientCommands
+
+	//go:embed docs/openapi.yaml
+	openapiYAML []byte
+
+	//go:embed docs/openapi.json
+	openapiJSON []byte
 )
 
 type Service interface {
@@ -60,7 +67,7 @@ func (s *apiService) Name() (name string) {
 //	@contact.email					support@anytype.io
 //	@license.name					Any Source Available License 1.0
 //	@license.url					https://github.com/anyproto/anytype-api/blob/main/LICENSE.md
-//	@host							http://localhost:31009
+//	@host							http://127.0.0.1:31009
 //	@securitydefinitions.bearerauth	BearerAuth
 //	@externalDocs.description		OpenAPI
 //	@externalDocs.url				https://swagger.io/resources/open-api/
@@ -88,7 +95,7 @@ func (s *apiService) runServer() {
 		return
 	}
 
-	s.srv = server.NewServer(s.mw, s.accountService, s.eventService)
+	s.srv = server.NewServer(s.mw, s.accountService, s.eventService, openapiYAML, openapiJSON)
 
 	s.httpSrv = &http.Server{
 		Addr:              s.listenAddr,

@@ -122,7 +122,6 @@ message Event {
 
             Chat.Delete chatDelete = 131;
             Chat.UpdateState chatStateUpdate = 133; // in case new unread messages received or chat state changed (e.g. message read on another device)
-            PushEncryptionKey.Update pushEncryptionKeyUpdate = 136;
         }
     }
 
@@ -817,6 +816,7 @@ message Event {
                     anytype.model.Block.Content.Dataview.View.Size cardSize = 5; // Gallery card size
                     bool coverFit = 6; // Image fits container
                     string groupRelationKey = 7; // Group view by this relationKey
+                    string endRelationKey = 16;
                     bool groupBackgroundColors = 8; // Enable backgrounds in groups
                     int32 pageLimit = 9; // Limit of objects shown in widget
                     string defaultTemplateId = 10; // Id of template object set default for the view
@@ -1192,12 +1192,6 @@ message Event {
         }
     }
 
-    message PushEncryptionKey {
-        message Update {
-            string encryptionKeyId = 1;
-            string encryptionKey = 2;
-        }
-    }
 }
 
 message ResponseEvent {

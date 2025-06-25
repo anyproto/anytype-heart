@@ -187,7 +187,7 @@ func (s *State) applyEvent(ev *pb.EventMessage) (err error) {
 					return err
 				}
 				// MIGRATION: reinterpretation of old changes as new changes
-				f.DeleteRelation(o.BlockDataviewOldRelationDelete.RelationKey)
+				f.DeleteRelations(o.BlockDataviewOldRelationDelete.RelationKey)
 			}
 			return fmt.Errorf("not a dataview block")
 		}); err != nil {
@@ -208,10 +208,7 @@ func (s *State) applyEvent(ev *pb.EventMessage) (err error) {
 	case *pb.EventMessageValueOfBlockDataviewRelationDelete:
 		if err = apply(o.BlockDataviewRelationDelete.Id, func(b simple.Block) error {
 			if f, ok := b.(dataview.Block); ok {
-				for _, key := range o.BlockDataviewRelationDelete.RelationKeys {
-					// todo: implement DeleteRelations?
-					f.DeleteRelation(key)
-				}
+				f.DeleteRelations(o.BlockDataviewRelationDelete.RelationKeys...)
 				return nil
 			}
 			return fmt.Errorf("not a dataview block")

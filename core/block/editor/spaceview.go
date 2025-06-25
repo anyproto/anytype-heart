@@ -1,10 +1,12 @@
 package editor
 
 import (
+	"encoding/base64"
 	"errors"
 	"fmt"
 	"time"
 
+	"github.com/anyproto/any-sync/util/crypto"
 	"github.com/anyproto/lexid"
 	"github.com/gogo/protobuf/proto"
 	"golang.org/x/exp/slices"
@@ -15,6 +17,8 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/migration"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/files/fileobject"
+	"github.com/anyproto/anytype-heart/core/session"
+	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -139,9 +143,28 @@ func (s *SpaceView) SetOwner(ownerId string, createdDate int64) (err error) {
 	return s.Apply(st)
 }
 
-func (s *SpaceView) SetAclIsEmpty(isEmpty bool) (err error) {
+func (s *SpaceView) SetAclInfo(isAclEmpty bool, pushKey crypto.PrivKey, pushEncKey crypto.SymKey) error {
 	st := s.NewState()
-	st.SetDetail(bundle.RelationKeyIsAclShared, domain.Bool(!isEmpty))
+	st.SetDetail(bundle.RelationKeyIsAclShared, domain.Bool(!isAclEmpty))
+
+	if pushKey != nil {
+		pushKeyBinary, err := pushKey.Marshall()
+		if err != nil {
+			return err
+		}
+		pushKeyString := base64.StdEncoding.EncodeToString(pushKeyBinary)
+		st.SetDetail(bundle.RelationKeySpacePushNotificationKey, domain.String(pushKeyString))
+	}
+
+	if pushEncKey != nil {
+		pushEncBinary, err := pushEncKey.Raw()
+		if err != nil {
+			return err
+		}
+		pushEncString := base64.StdEncoding.EncodeToString(pushEncBinary)
+		st.SetDetail(bundle.RelationKeySpacePushNotificationEncryptionKey, domain.String(pushEncString))
+	}
+
 	s.updateAccessType(st)
 	return s.Apply(st)
 }
@@ -179,6 +202,12 @@ func (s *SpaceView) SetSpacePersistentInfo(info spaceinfo.SpacePersistentInfo) (
 func (s *SpaceView) SetSharedSpacesLimit(limit int) (err error) {
 	st := s.NewState()
 	st.SetDetail(bundle.RelationKeySharedSpacesLimit, domain.Int64(limit))
+	return s.Apply(st)
+}
+
+func (s *SpaceView) SetPushNotificationMode(ctx session.Context, mode pb.RpcPushNotificationSetSpaceModeMode) (err error) {
+	st := s.NewStateCtx(ctx)
+	st.SetDetail(bundle.RelationKeySpacePushNotificationMode, domain.Int64(mode))
 	return s.Apply(st)
 }
 

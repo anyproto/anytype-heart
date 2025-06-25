@@ -1,6 +1,7 @@
 package backlinks
 
 import (
+	"strings"
 	"testing"
 	"time"
 
@@ -10,7 +11,6 @@ import (
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
-	"github.com/anyproto/anytype-heart/core/block/object/idresolver/mock_idresolver"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
@@ -37,7 +37,6 @@ func (u *testUpdater) start() {
 
 type fixture struct {
 	store        *objectstore.StoreFixture
-	resolver     *mock_idresolver.MockResolver
 	spaceService *mock_space.MockService
 	updater      *testUpdater
 	*watcher
@@ -46,23 +45,20 @@ type fixture struct {
 func newFixture(t *testing.T, aggregationInterval time.Duration) *fixture {
 	updater := &testUpdater{}
 	store := objectstore.NewStoreFixture(t)
-	resolver := mock_idresolver.NewMockResolver(t)
 	spaceSvc := mock_space.NewMockService(t)
 
 	w := &watcher{
 		updater:      updater,
 		store:        store,
-		resolver:     resolver,
 		spaceService: spaceSvc,
 
 		aggregationInterval:  aggregationInterval,
 		infoBatch:            mb.New[spaceindex.LinksUpdateInfo](0),
-		accumulatedBacklinks: make(map[string]*backLinksUpdate),
+		accumulatedBacklinks: make(map[domain.FullID]*backLinksUpdate),
 	}
 
 	return &fixture{
 		store:        store,
-		resolver:     resolver,
 		spaceService: spaceSvc,
 		updater:      updater,
 		watcher:      w,
@@ -73,24 +69,24 @@ func TestWatcher_Run(t *testing.T) {
 	t.Run("backlinks update asynchronously", func(t *testing.T) {
 		// given
 		interval := 500 * time.Millisecond
+		fromId := domain.FullID{ObjectID: "obj1", SpaceID: spaceId}
 		f := newFixture(t, interval)
 
-		f.resolver.EXPECT().ResolveSpaceID(mock.Anything).Return(spaceId, nil)
 		f.updater.runFunc = func(callback func(info spaceindex.LinksUpdateInfo)) {
 			callback(spaceindex.LinksUpdateInfo{
-				LinksFromId: "obj1",
+				LinksFromId: fromId,
 				Added:       []string{"obj2", "obj3"},
 				Removed:     nil,
 			})
 			time.Sleep(interval / 2)
 			callback(spaceindex.LinksUpdateInfo{
-				LinksFromId: "obj1",
+				LinksFromId: fromId,
 				Added:       []string{"obj4", "obj5"},
 				Removed:     []string{"obj2"},
 			})
 			time.Sleep(interval / 2)
 			callback(spaceindex.LinksUpdateInfo{
-				LinksFromId: "obj1",
+				LinksFromId: fromId,
 				Added:       []string{"obj6"},
 				Removed:     []string{"obj5"},
 			})
@@ -129,7 +125,6 @@ func TestWatcher_updateAccumulatedBacklinks(t *testing.T) {
 	t.Run("no errors", func(t *testing.T) {
 		// given
 		f := newFixture(t, time.Second)
-		f.resolver.EXPECT().ResolveSpaceID(mock.Anything).Return(spaceId, nil)
 
 		f.store.AddObjects(t, spaceId, []spaceindex.TestObject{{
 			bundle.RelationKeyId:        domain.String("obj1"),
@@ -155,15 +150,15 @@ func TestWatcher_updateAccumulatedBacklinks(t *testing.T) {
 
 		spc.EXPECT().Do(mock.Anything, mock.Anything).Return(nil).Once()
 
-		f.watcher.accumulatedBacklinks = map[string]*backLinksUpdate{
-			"obj1": {
+		f.watcher.accumulatedBacklinks = map[domain.FullID]*backLinksUpdate{
+			domain.FullID{ObjectID: "obj1", SpaceID: spaceId}: {
 				added:   []string{"obj2", "obj3"},
 				removed: []string{"obj4", "obj5"},
 			},
-			"obj2": {
+			domain.FullID{ObjectID: "obj2", SpaceID: spaceId}: {
 				added: []string{"obj4", "obj5"},
 			},
-			"obj3": {
+			domain.FullID{ObjectID: "obj3", SpaceID: spaceId}: {
 				removed: []string{"obj1", "obj4"},
 			},
 		}
@@ -179,4 +174,99 @@ func TestWatcher_updateAccumulatedBacklinks(t *testing.T) {
 		require.NoError(t, err)
 		assert.Equal(t, []string{"obj2"}, details.GetStringList(bundle.RelationKeyBacklinks))
 	})
+}
+
+func TestApplyUpdate(t *testing.T) {
+	t.Run("empty map", func(t *testing.T) {
+		// given
+		m := make(map[domain.FullID]*backLinksUpdate)
+
+		// when
+		applyUpdate(m, spaceindex.LinksUpdateInfo{
+			LinksFromId: domain.FullID{ObjectID: "obj1", SpaceID: spaceId},
+			Added:       []string{"obj2", "spc2/obj3"},
+			Removed:     []string{"spc1/obj4", "spc3/obj5"},
+		}, parseId)
+
+		// then
+		require.Len(t, m, 4)
+
+		update, ok := m[domain.FullID{ObjectID: "obj2", SpaceID: spaceId}]
+		require.True(t, ok)
+		assert.Equal(t, []string{"obj1"}, update.added)
+		assert.Empty(t, update.removed)
+
+		update, ok = m[domain.FullID{ObjectID: "obj3", SpaceID: "spc2"}]
+		require.True(t, ok)
+		assert.Equal(t, []string{"obj1"}, update.added)
+		assert.Empty(t, update.removed)
+
+		update, ok = m[domain.FullID{ObjectID: "obj4", SpaceID: "spc1"}]
+		require.True(t, ok)
+		assert.Equal(t, []string{"obj1"}, update.removed)
+		assert.Empty(t, update.added)
+
+		update, ok = m[domain.FullID{ObjectID: "obj5", SpaceID: "spc3"}]
+		require.True(t, ok)
+		assert.Equal(t, []string{"obj1"}, update.removed)
+		assert.Empty(t, update.added)
+	})
+
+	t.Run("prefilled map", func(t *testing.T) {
+		// given
+		m := map[domain.FullID]*backLinksUpdate{
+			domain.FullID{ObjectID: "obj2", SpaceID: spaceId}: {
+				added: []string{"obj3"},
+			},
+			domain.FullID{ObjectID: "obj3", SpaceID: "spc2"}: {
+				removed: []string{"obj1"},
+			},
+			domain.FullID{ObjectID: "obj5", SpaceID: "spc3"}: {
+				added:   []string{"obj1", "obj2"},
+				removed: []string{"obj3"},
+			},
+		}
+
+		// when
+		applyUpdate(m, spaceindex.LinksUpdateInfo{
+			LinksFromId: domain.FullID{ObjectID: "obj1", SpaceID: spaceId},
+			Added:       []string{"obj2", "spc2/obj3"},
+			Removed:     []string{"spc1/obj4", "spc3/obj5"},
+		}, parseId)
+
+		// then
+		require.Len(t, m, 4)
+
+		update, ok := m[domain.FullID{ObjectID: "obj2", SpaceID: spaceId}]
+		require.True(t, ok)
+		assert.Equal(t, []string{"obj3", "obj1"}, update.added)
+		assert.Empty(t, update.removed)
+
+		update, ok = m[domain.FullID{ObjectID: "obj3", SpaceID: "spc2"}]
+		require.True(t, ok)
+		assert.Equal(t, []string{"obj1"}, update.added)
+		assert.Empty(t, update.removed)
+
+		update, ok = m[domain.FullID{ObjectID: "obj4", SpaceID: "spc1"}]
+		require.True(t, ok)
+		assert.Equal(t, []string{"obj1"}, update.removed)
+		assert.Empty(t, update.added)
+
+		update, ok = m[domain.FullID{ObjectID: "obj5", SpaceID: "spc3"}]
+		require.True(t, ok)
+		assert.Equal(t, []string{"obj3", "obj1"}, update.removed)
+		assert.Equal(t, []string{"obj2"}, update.added)
+	})
+}
+
+func parseId(id string) (domain.FullID, error) {
+	parts := strings.Split(id, "/")
+	switch len(parts) {
+	case 0:
+		return domain.FullID{}, domain.ErrParseLongId
+	case 1:
+		return domain.FullID{ObjectID: parts[0]}, nil
+	default:
+		return domain.FullID{ObjectID: parts[1], SpaceID: parts[0]}, nil
+	}
 }

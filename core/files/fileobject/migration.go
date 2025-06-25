@@ -109,10 +109,6 @@ func (s *service) migrateFile(space clientspace.Space, origin objectorigin.Objec
 	if !fileId.Valid() {
 		return nil
 	}
-	storedOrigin, err := s.fileStore.GetFileOrigin(fileId)
-	if err == nil {
-		origin = storedOrigin
-	}
 
 	// Add fileId as uniqueKey to avoid migration of the same file
 	uniqueKey, err := domain.NewUniqueKey(coresb.SmartBlockTypeFileObject, fileId.String())

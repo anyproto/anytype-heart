@@ -25,7 +25,6 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/datastore"
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore/filestore"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/ftsearch"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -51,8 +50,6 @@ func newIndexerFixture(t *testing.T) *indexerFixture {
 	clientStorage := mock_storage.NewMockClientStorage(t)
 
 	sourceService := mock_source.NewMockService(t)
-
-	fileStore := filestore.New()
 
 	ds, err := datastore.NewInMemory()
 	require.NoError(t, err)
@@ -81,7 +78,6 @@ func newIndexerFixture(t *testing.T) *indexerFixture {
 	hasher.EXPECT().Hash().Return("5d41402abc4b2a76b9719d911017c592").Maybe()
 	indxr.btHash = hasher
 
-	indxr.fileStore = fileStore
 	indxr.ftsearch = objectStore.FullText
 	indexerFx.ftsearch = indxr.ftsearch
 	indexerFx.pickerFx = mock_cache.NewMockCachedObjectGetter(t)

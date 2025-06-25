@@ -34,7 +34,6 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore/filestore"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/spaceindex"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
@@ -97,7 +96,6 @@ var log = logging.Logger("anytype-mw-smartblock")
 func New(
 	space Space,
 	currentParticipantId string,
-	fileStore filestore.FileStore,
 	spaceIndex spaceindex.Store,
 	objectStore objectstore.ObjectStore,
 	indexer Indexer,
@@ -112,13 +110,12 @@ func New(
 		Locker:               &sync.Mutex{},
 		sessions:             map[string]session.Context{},
 
-		fileStore:       fileStore,
-		spaceIndex:      spaceIndex,
-		indexer:         indexer,
-		eventSender:     eventSender,
-		objectStore:     objectStore,
-		spaceIdResolver: spaceIdResolver,
-		lastDepDetails:  map[string]*domain.Details{},
+		spaceIndex:         spaceIndex,
+		indexer:            indexer,
+		eventSender:        eventSender,
+		objectStore:        objectStore,
+		spaceIdResolver:    spaceIdResolver,
+		lastDepDetails:     map[string]*domain.Details{},
 	}
 	return s
 }
@@ -139,6 +136,7 @@ type Space interface {
 	TryRemove(objectId string) (bool, error)
 
 	StoredIds() []string
+	RefreshObjects(objectIds []string) (err error)
 }
 
 type SmartBlock interface {
@@ -246,12 +244,11 @@ type smartBlock struct {
 	space Space
 
 	// Deps
-	fileStore       filestore.FileStore
-	spaceIndex      spaceindex.Store
-	objectStore     objectstore.ObjectStore
-	indexer         Indexer
-	eventSender     event.Sender
-	spaceIdResolver idresolver.Resolver
+	spaceIndex         spaceindex.Store
+	objectStore        objectstore.ObjectStore
+	indexer            Indexer
+	eventSender        event.Sender
+	spaceIdResolver    idresolver.Resolver
 }
 
 func (sb *smartBlock) SetLocker(locker Locker) {
@@ -342,6 +339,17 @@ func (sb *smartBlock) Init(ctx *InitContext) (err error) {
 	injectRequiredRelations(ctx.State.ParentState())
 
 	ctx.State.AddRelationKeys(ctx.RelationKeys...)
+	// Add bundled relations
+	var relKeys []domain.RelationKey
+	for k, _ := range ctx.State.Details().Iterate() {
+		if bundle.HasRelation(k) {
+			relKeys = append(relKeys, k)
+		}
+	}
+	ctx.State.AddRelationKeys(relKeys...)
+	if ctx.IsNewObject && ctx.State != nil {
+		source.NewSubObjectsAndProfileLinksMigration(sb.Type(), sb.space, sb.currentParticipantId, sb.spaceIndex).Migrate(ctx.State)
+	}
 
 	if err = sb.injectLocalDetails(ctx.State); err != nil {
 		return
@@ -827,6 +835,7 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 }
 
 func (sb *smartBlock) ResetToVersion(s *state.State) (err error) {
+	source.NewSubObjectsAndProfileLinksMigration(sb.Type(), sb.space, sb.currentParticipantId, sb.spaceIndex).Migrate(s)
 	s.SetParent(sb.Doc.(*state.State))
 	sb.storeFileKeys(s)
 	sb.injectLocalDetails(s)
@@ -1139,7 +1148,7 @@ func (sb *smartBlock) storeFileKeys(doc state.Doc) {
 			EncryptionKeys: k.Keys,
 		}
 	}
-	if err := sb.fileStore.AddFileKeys(fileKeys...); err != nil {
+	if err := sb.objectStore.AddFileKeys(fileKeys...); err != nil {
 		log.Warnf("can't store file keys: %v", err)
 	}
 }

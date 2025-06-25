@@ -87,6 +87,7 @@ service ClientCommands {
     // Object
     // ***
     rpc ObjectOpen (anytype.Rpc.Object.Open.Request) returns (anytype.Rpc.Object.Open.Response);
+    rpc ObjectRefresh (anytype.Rpc.Object.Refresh.Request) returns (anytype.Rpc.Object.Refresh.Response);
     rpc ObjectClose (anytype.Rpc.Object.Close.Request) returns (anytype.Rpc.Object.Close.Response);
     rpc ObjectShow (anytype.Rpc.Object.Show.Request) returns (anytype.Rpc.Object.Show.Response);
 
@@ -378,6 +379,8 @@ service ClientCommands {
     rpc MembershipFinalize (anytype.Rpc.Membership.Finalize.Request) returns (anytype.Rpc.Membership.Finalize.Response);
     rpc MembershipGetTiers (anytype.Rpc.Membership.GetTiers.Request) returns (anytype.Rpc.Membership.GetTiers.Response);
     rpc MembershipVerifyAppStoreReceipt (anytype.Rpc.Membership.VerifyAppStoreReceipt.Request) returns (anytype.Rpc.Membership.VerifyAppStoreReceipt.Response);
+    rpc MembershipCodeGetInfo (anytype.Rpc.Membership.CodeGetInfo.Request) returns (anytype.Rpc.Membership.CodeGetInfo.Response);
+    rpc MembershipCodeRedeem (anytype.Rpc.Membership.CodeRedeem.Request) returns (anytype.Rpc.Membership.CodeRedeem.Response);
 
     // Name Service:
     // ***
@@ -407,6 +410,7 @@ service ClientCommands {
     rpc ChatSubscribeToMessagePreviews (anytype.Rpc.Chat.SubscribeToMessagePreviews.Request) returns (anytype.Rpc.Chat.SubscribeToMessagePreviews.Response);
     rpc ChatUnsubscribeFromMessagePreviews (anytype.Rpc.Chat.UnsubscribeFromMessagePreviews.Request) returns (anytype.Rpc.Chat.UnsubscribeFromMessagePreviews.Response);
     rpc ObjectChatAdd (anytype.Rpc.Object.ChatAdd.Request) returns (anytype.Rpc.Object.ChatAdd.Response);
+    rpc ChatReadAll (anytype.Rpc.Chat.ReadAll.Request) returns (anytype.Rpc.Chat.ReadAll.Response);
 
     // mock AI RPCs for compatibility between branches. Not implemented in main
     rpc AIWritingTools (anytype.Rpc.AI.WritingTools.Request) returns (anytype.Rpc.AI.WritingTools.Response);
@@ -416,4 +420,5 @@ service ClientCommands {
 
     // Push
     rpc PushNotificationRegisterToken(anytype.Rpc.PushNotification.RegisterToken.Request) returns (anytype.Rpc.PushNotification.RegisterToken.Response);
+    rpc PushNotificationSetSpaceMode(anytype.Rpc.PushNotification.SetSpaceMode.Request) returns (anytype.Rpc.PushNotification.SetSpaceMode.Response);
 }

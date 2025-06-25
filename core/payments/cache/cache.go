@@ -2,21 +2,19 @@ package cache
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
-	"strconv"
 	"sync"
 	"time"
 
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/app/logger"
 	proto "github.com/anyproto/any-sync/paymentservice/paymentserviceproto"
-	"github.com/dgraph-io/badger/v4"
 	"go.uber.org/zap"
 
 	"github.com/anyproto/anytype-heart/pb"
-	"github.com/anyproto/anytype-heart/pkg/lib/datastore"
+	"github.com/anyproto/anytype-heart/pkg/lib/datastore/anystoreprovider"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+	"github.com/anyproto/anytype-heart/util/keyvaluestore"
 )
 
 const CName = "cache"
@@ -37,8 +35,6 @@ const (
 	cacheLifetimeDurExplorer = 24 * time.Hour
 	cacheLifetimeDurOther    = 10 * time.Minute
 )
-
-var dbKey = "payments/subscription/v" + strconv.Itoa(cacheLastVersion)
 
 type StorageStruct struct {
 	// not to migrate old storage to new format, but just to check the validity of the cache
@@ -106,8 +102,7 @@ func New() CacheService {
 }
 
 type cacheservice struct {
-	dbProvider datastore.Datastore
-	db         *badger.DB
+	db keyvaluestore.Store[*StorageStruct]
 
 	m sync.Mutex
 }
@@ -117,13 +112,9 @@ func (s *cacheservice) Name() (name string) {
 }
 
 func (s *cacheservice) Init(a *app.App) (err error) {
-	s.dbProvider = app.MustComponent[datastore.Datastore](a)
+	provider := app.MustComponent[anystoreprovider.Provider](a)
 
-	db, err := s.dbProvider.LocalStorage()
-	if err != nil {
-		return err
-	}
-	s.db = db
+	s.db = keyvaluestore.NewJsonFromCollection[*StorageStruct](provider.GetSystemCollection())
 	return nil
 }
 
@@ -325,36 +316,12 @@ func (s *cacheservice) get() (out *StorageStruct, err error) {
 	if s.db == nil {
 		return nil, ErrCacheDbNotInitialized
 	}
-
-	var ss StorageStruct
-	err = s.db.View(func(txn *badger.Txn) error {
-		item, err := txn.Get([]byte(dbKey))
-		if err != nil {
-			return err
-		}
-
-		return item.Value(func(val []byte) error {
-			// convert value to out
-			return json.Unmarshal(val, &ss)
-		})
-	})
-
-	out = &ss
-	return out, err
+	return s.db.Get(context.Background(), anystoreprovider.SystemKeys.PaymentCacheKey(cacheLastVersion))
 }
 
 func (s *cacheservice) set(in *StorageStruct) (err error) {
 	if s.db == nil {
 		return ErrCacheDbNotInitialized
 	}
-
-	return s.db.Update(func(txn *badger.Txn) error {
-		// convert
-		bytes, err := json.Marshal(*in)
-		if err != nil {
-			return err
-		}
-
-		return txn.Set([]byte(dbKey), bytes)
-	})
+	return s.db.Set(context.Background(), anystoreprovider.SystemKeys.PaymentCacheKey(cacheLastVersion), in)
 }

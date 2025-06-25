@@ -103,6 +103,15 @@ func (o *objectProvider) DeriveObjectIDs(ctx context.Context) (objIDs threads.De
 		}
 		objIDs.SystemRelations[rk] = id
 	}
+	if !o.isPersonal() {
+		chatUk, err := domain.NewUniqueKey(coresb.SmartBlockTypeChatDerivedObject, objIDs.Workspace)
+		if err == nil {
+			objIDs.SpaceChat, err = o.cache.DeriveObjectID(context.Background(), chatUk)
+			if err != nil {
+				log.WarnCtx(ctx, "failed to derive chat id", zap.Error(err), zap.String("spaceId", o.spaceId), zap.String("uk", chatUk.Marshal()))
+			}
+		}
+	}
 	o.derivedObjectIds = objIDs
 	return
 }

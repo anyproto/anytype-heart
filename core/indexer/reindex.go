@@ -51,7 +51,7 @@ const (
 	ForceReindexDeletedObjectsCounter int32 = 1
 
 	ForceReindexParticipantsCounter int32 = 1
-	ForceReindexChatsCounter        int32 = 2
+	ForceReindexChatsCounter        int32 = 3
 )
 
 type allDeletedIdsProvider interface {
@@ -242,7 +242,8 @@ func (i *indexer) reindexChats(ctx context.Context, space clientspace.Space) err
 	if len(ids) == 0 {
 		return nil
 	}
-	db, err := i.store.GetCrdtDb(space.Id()).Wait()
+
+	db, err := i.dbProvider.GetCrdtDb(space.Id()).Wait()
 	if err != nil {
 		return fmt.Errorf("get crdt db: %w", err)
 	}
@@ -251,11 +252,8 @@ func (i *indexer) reindexChats(ctx context.Context, space clientspace.Space) err
 	if err != nil {
 		return fmt.Errorf("write tx: %w", err)
 	}
-	var commited bool
 	defer func() {
-		if !commited {
-			txn.Rollback()
-		}
+		_ = txn.Rollback()
 	}()
 	for _, id := range ids {
 		col, err := db.OpenCollection(txn.Context(), id+chatobject.CollectionName)
@@ -283,11 +281,12 @@ func (i *indexer) reindexChats(ctx context.Context, space clientspace.Space) err
 		}
 	}
 
-	commited = true
 	err = txn.Commit()
 	if err != nil {
 		return fmt.Errorf("commit: %w", err)
 	}
+
+	i.reindexIdsIgnoreErr(ctx, space, ids...)
 
 	return nil
 }
@@ -450,15 +449,6 @@ func (i *indexer) removeDetails(spaceId string) error {
 func (i *indexer) removeCommonIndexes(spaceId string, space clientspace.Space, flags reindexFlags) (err error) {
 	if flags.any() {
 		log.Infof("start store reindex (%s)", flags.String())
-	}
-
-	if flags.fileKeys {
-		err = i.fileStore.RemoveEmptyFileKeys()
-		if err != nil {
-			log.Errorf("reindex failed to RemoveEmptyFileKeys: %v", err)
-		} else {
-			log.Infof("RemoveEmptyFileKeys filekeys succeed")
-		}
 	}
 
 	if flags.eraseLinks {

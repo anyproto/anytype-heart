@@ -22,6 +22,8 @@ import (
 	"github.com/anyproto/anytype-heart/core/anytype/account"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/inviteservice"
+	"github.com/anyproto/anytype-heart/core/subscription/crossspacesub"
+	"github.com/anyproto/anytype-heart/core/wallet"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -86,6 +88,7 @@ type aclService struct {
 	coordClient      coordinatorclient.CoordinatorClient
 	identityRepo     identityRepoClient
 	recordVerifier   recordverifier.AcceptorVerifier
+	updater          *aclUpdater
 }
 
 func (a *aclService) Init(ap *app.App) (err error) {
@@ -96,7 +99,30 @@ func (a *aclService) Init(ap *app.App) (err error) {
 	a.inviteService = app.MustComponent[inviteservice.InviteService](ap)
 	a.coordClient = app.MustComponent[coordinatorclient.CoordinatorClient](ap)
 	a.identityRepo = app.MustComponent[identityRepoClient](ap)
+	crossSub := app.MustComponent[crossspacesub.Service](ap)
+	wlt := app.MustComponent[wallet.Wallet](ap)
+	a.updater = newAclUpdater("acl-updater",
+		wlt.Account().SignKey.GetPublic().Account(),
+		crossSub,
+		a,
+		1*time.Second,
+		30*time.Second,
+		10*time.Second)
 	a.recordVerifier = recordverifier.New()
+	return nil
+}
+
+func (a *aclService) Run(ctx context.Context) (err error) {
+	if a.updater != nil {
+		return a.updater.Run(ctx)
+	}
+	return nil
+}
+
+func (a *aclService) Close(ctx context.Context) (err error) {
+	if a.updater != nil {
+		return a.updater.Close()
+	}
 	return nil
 }
 

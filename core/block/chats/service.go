@@ -19,6 +19,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/chats/chatrepository"
 	"github.com/anyproto/anytype-heart/core/block/chats/chatsubscription"
 	"github.com/anyproto/anytype-heart/core/block/editor/chatobject"
+	"github.com/anyproto/anytype-heart/core/block/object/idresolver"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/session"
 	subscriptionservice "github.com/anyproto/anytype-heart/core/subscription"
@@ -29,6 +30,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+	textUtil "github.com/anyproto/anytype-heart/util/text"
 )
 
 const CName = "core.block.chats"
@@ -50,6 +52,8 @@ type Service interface {
 	SubscribeToMessagePreviews(ctx context.Context, subId string) (*SubscribeToMessagePreviewsResponse, error)
 	UnsubscribeFromMessagePreviews(subId string) error
 
+	ReadAll(ctx context.Context) error
+
 	app.ComponentRunnable
 }
 
@@ -64,6 +68,7 @@ type accountService interface {
 }
 
 type service struct {
+	spaceIdResolver         idresolver.Resolver
 	objectGetter            cache.ObjectWaitGetter
 	crossSpaceSubService    crossspacesub.Service
 	pushService             pushService
@@ -104,6 +109,7 @@ func (s *service) Init(a *app.App) error {
 	s.objectStore = app.MustComponent[objectstore.ObjectStore](a)
 	s.objectGetter = app.MustComponent[cache.ObjectWaitGetter](a)
 	s.chatSubscriptionService = app.MustComponent[chatsubscription.Service](a)
+	s.spaceIdResolver = app.MustComponent[idresolver.Resolver](a)
 	return nil
 }
 
@@ -147,7 +153,7 @@ func (s *service) SubscribeToMessagePreviews(ctx context.Context, subId string) 
 		go func() {
 			defer wg.Done()
 
-			chatAddResp, err := s.onChatAdded(chatObjectId, subId, false)
+			chatAddResp, err := s.onChatAdded(chatObjectId, subId)
 			if err != nil {
 				log.Error("init lastMessage subscription", zap.Error(err))
 				return
@@ -214,7 +220,7 @@ func (s *service) Run(ctx context.Context) error {
 				Value:       domain.Int64(model.ObjectType_chatDerived),
 			},
 		},
-	})
+	}, crossspacesub.NoOpPredicate())
 	if err != nil {
 		return fmt.Errorf("cross-space sub: %w", err)
 	}
@@ -240,7 +246,7 @@ func (s *service) monitorMessagePreviews() {
 			}
 
 			for subId := range s.subscriptionIds {
-				_, err := s.onChatAdded(add.Id, subId, true)
+				err := s.onChatAddedAsync(add.Id, subId)
 				if err != nil {
 					log.Error("init last message subscription", zap.Error(err))
 				}
@@ -276,14 +282,47 @@ func (s *service) monitorMessagePreviews() {
 	}
 }
 
-func (s *service) onChatAdded(chatObjectId string, subId string, asyncInit bool) (*chatsubscription.SubscribeLastMessagesResponse, error) {
+func (s *service) onChatAdded(chatObjectId string, subId string) (*chatsubscription.SubscribeLastMessagesResponse, error) {
 	return s.chatSubscriptionService.SubscribeLastMessages(s.componentCtx, chatsubscription.SubscribeLastMessagesRequest{
 		ChatObjectId:     chatObjectId,
 		SubId:            subId,
 		Limit:            1,
-		AsyncInit:        asyncInit,
 		WithDependencies: true,
+		OnlyLastMessage:  true,
 	})
+}
+
+func (s *service) onChatAddedAsync(chatObjectId string, subId string) error {
+	resp, err := s.chatSubscriptionService.SubscribeLastMessages(s.componentCtx, chatsubscription.SubscribeLastMessagesRequest{
+		ChatObjectId:     chatObjectId,
+		SubId:            subId,
+		Limit:            1,
+		WithDependencies: true,
+		OnlyLastMessage:  true,
+	})
+	if err != nil {
+		return fmt.Errorf("subscribe: %w", err)
+	}
+
+	spaceId, err := s.spaceIdResolver.ResolveSpaceID(chatObjectId)
+	if err != nil {
+		return fmt.Errorf("resolve space id: %w", err)
+	}
+
+	mngr, err := s.chatSubscriptionService.GetManager(spaceId, chatObjectId)
+	if err != nil {
+		return fmt.Errorf("get manager: %w", err)
+	}
+	mngr.Lock()
+	defer mngr.Unlock()
+
+	if len(resp.Messages) > 0 {
+		mngr.Add(resp.PreviousOrderId, resp.Messages[0])
+	}
+	mngr.ForceSendingChatState()
+	mngr.Flush()
+
+	return nil
 }
 
 func (s *service) onChatRemoved(chatObjectId string, subId string) error {
@@ -311,15 +350,20 @@ func (s *service) Close(ctx context.Context) error {
 }
 
 func (s *service) AddMessage(ctx context.Context, sessionCtx session.Context, chatObjectId string, message *chatmodel.Message) (string, error) {
-	var messageId, spaceId string
+	var (
+		messageId, spaceId string
+		mentions           []string
+	)
+
 	err := s.chatObjectDo(ctx, chatObjectId, func(sb chatobject.StoreObject) error {
 		var err error
 		messageId, err = sb.AddMessage(ctx, sessionCtx, message)
 		spaceId = sb.SpaceID()
+		mentions, _ = message.MentionIdentities(ctx, sb)
 		return err
 	})
 	if err == nil {
-		pushErr := s.sendPushNotification(spaceId, chatObjectId, messageId, message.Message.Text, len(message.Attachments) != 0)
+		pushErr := s.sendPushNotification(ctx, spaceId, chatObjectId, messageId, message, mentions)
 		if pushErr != nil {
 			log.Error("sendPushNotification: ", zap.Error(pushErr))
 		}
@@ -328,7 +372,7 @@ func (s *service) AddMessage(ctx context.Context, sessionCtx session.Context, ch
 	return messageId, err
 }
 
-func (s *service) sendPushNotification(spaceId, chatObjectId, messageId, messageText string, hasAttachments bool) (err error) {
+func (s *service) sendPushNotification(ctx context.Context, spaceId, chatObjectId, messageId string, message *chatmodel.Message, mentions []string) (err error) {
 	accountId := s.accountService.AccountID()
 	spaceName := s.objectStore.GetSpaceName(spaceId)
 	details, err := s.objectStore.SpaceIndex(spaceId).GetDetails(domain.NewParticipantId(spaceId, accountId))
@@ -348,8 +392,8 @@ func (s *service) sendPushNotification(spaceId, chatObjectId, messageId, message
 			MsgId:          messageId,
 			SpaceName:      spaceName,
 			SenderName:     senderName,
-			Text:           messageText,
-			HasAttachments: hasAttachments,
+			Text:           textUtil.Truncate(message.Message.Text, 1024, "..."),
+			HasAttachments: len(message.Attachments) > 0,
 		},
 	}
 
@@ -360,7 +404,8 @@ func (s *service) sendPushNotification(spaceId, chatObjectId, messageId, message
 		return
 	}
 
-	err = s.pushService.Notify(s.componentCtx, spaceId, []string{chatpush.ChatsTopicName}, jsonPayload)
+	topics := append(mentions, chatpush.ChatsTopicName)
+	err = s.pushService.Notify(s.componentCtx, spaceId, topics, jsonPayload)
 	if err != nil {
 		err = fmt.Errorf("pushService.Notify: %w", err)
 		return
@@ -415,11 +460,11 @@ func (s *service) GetMessagesByIds(ctx context.Context, chatObjectId string, mes
 
 func (s *service) SubscribeLastMessages(ctx context.Context, chatObjectId string, limit int, subId string) (*chatsubscription.SubscribeLastMessagesResponse, error) {
 	return s.chatSubscriptionService.SubscribeLastMessages(s.componentCtx, chatsubscription.SubscribeLastMessagesRequest{
-		ChatObjectId:     chatObjectId,
-		SubId:            subId,
-		Limit:            limit,
-		AsyncInit:        false,
-		WithDependencies: false,
+		ChatObjectId:           chatObjectId,
+		SubId:                  subId,
+		Limit:                  limit,
+		WithDependencies:       false,
+		CouldUseSessionContext: true,
 	})
 }
 
@@ -437,7 +482,12 @@ type ReadMessagesRequest struct {
 
 func (s *service) ReadMessages(ctx context.Context, req ReadMessagesRequest) error {
 	return s.chatObjectDo(ctx, req.ChatObjectId, func(sb chatobject.StoreObject) error {
-		return sb.MarkReadMessages(ctx, req.AfterOrderId, req.BeforeOrderId, req.LastStateId, req.CounterType)
+		return sb.MarkReadMessages(ctx, chatobject.ReadMessagesRequest{
+			AfterOrderId:  req.AfterOrderId,
+			BeforeOrderId: req.BeforeOrderId,
+			LastStateId:   req.LastStateId,
+			CounterType:   req.CounterType,
+		})
 	})
 }
 
@@ -451,4 +501,38 @@ func (s *service) chatObjectDo(ctx context.Context, chatObjectId string, proc fu
 	waitCtx, cancel := context.WithTimeout(ctx, 30*time.Second)
 	defer cancel()
 	return cache.DoWait(s.objectGetter, waitCtx, chatObjectId, proc)
+}
+
+func (s *service) ReadAll(ctx context.Context) error {
+	s.lock.Lock()
+	chatIds := make([]string, 0, len(s.allChatObjectIds))
+	for id := range s.allChatObjectIds {
+		chatIds = append(chatIds, id)
+	}
+	s.lock.Unlock()
+
+	for _, chatId := range chatIds {
+		err := s.chatObjectDo(ctx, chatId, func(sb chatobject.StoreObject) error {
+			err := sb.MarkReadMessages(ctx, chatobject.ReadMessagesRequest{
+				All:         true,
+				CounterType: chatmodel.CounterTypeMessage,
+			})
+			if err != nil {
+				return fmt.Errorf("messages: %w", err)
+			}
+			err = sb.MarkReadMessages(ctx, chatobject.ReadMessagesRequest{
+				All:         true,
+				CounterType: chatmodel.CounterTypeMention,
+			})
+			if err != nil {
+				return fmt.Errorf("mentions: %w", err)
+			}
+			return nil
+		})
+		if err != nil {
+			return fmt.Errorf("read: %w", err)
+		}
+	}
+
+	return nil
 }
