@@ -1,4 +1,4 @@
-package yaml
+package schema
 
 import (
 	"fmt"
@@ -10,9 +10,6 @@ import (
 const (
 	// VersionCurrent is the current version of the YAML schema format
 	VersionCurrent = "1.0"
-
-	// VersionHeaderKey is the YAML property key for version information
-	VersionHeaderKey = "_schema_version"
 
 	// DefaultVersion is used when no version is specified
 	DefaultVersion = VersionCurrent
@@ -42,16 +39,6 @@ func GetVersionInfo(version string) (*VersionInfo, error) {
 	default:
 		return nil, fmt.Errorf("unsupported schema version: %s", version)
 	}
-}
-
-// DetectVersion detects the version from YAML data
-func DetectVersion(data map[string]interface{}) string {
-	if version, ok := data[VersionHeaderKey]; ok {
-		if versionStr, ok := version.(string); ok {
-			return versionStr
-		}
-	}
-	return DefaultVersion
 }
 
 // SemanticVersion represents a parsed semantic version

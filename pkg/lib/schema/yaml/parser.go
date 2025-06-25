@@ -130,11 +130,6 @@ func ParseYAMLFrontMatterWithFormats(frontMatter []byte, formats map[string]mode
 
 	// Process remaining properties in one pass
 	for key, value := range data {
-		// Skip version header
-		if key == VersionHeaderKey {
-			continue
-		}
-
 		// Process value and determine format in one go
 		prop := processYAMLProperty(key, value)
 		if prop == nil {
@@ -196,11 +191,6 @@ func ParseYAMLFrontMatterWithResolverAndPath(frontMatter []byte, resolver schema
 
 	// Process remaining properties in one pass
 	for key, value := range data {
-		// Skip version header
-		if key == VersionHeaderKey {
-			continue
-		}
-
 		// Process value and determine format in one go
 		prop := processYAMLProperty(key, value)
 		if prop == nil {

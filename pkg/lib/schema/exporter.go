@@ -14,9 +14,6 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-// SchemaVersion is the current schema generation version
-const SchemaVersion = "1.0"
-
 // SystemProperties are properties that are always included in export if not empty
 var SystemProperties = []string{
 	bundle.RelationKeyType.String(),
@@ -290,7 +287,7 @@ func (e *JSONSchemaExporter) typeToJSONSchema(t *Type, schema *Schema) map[strin
 	schemaId := fmt.Sprintf("urn:anytype:schema:%s:type-%s:ver-%s",
 		time.Now().UTC().Format("2006-01-02"),
 		strings.ToLower(strings.ReplaceAll(t.Key, " ", "-")),
-		SchemaVersion)
+		VersionCurrent)
 
 	jsonSchema := map[string]interface{}{
 		jsonSchemaFieldSchema: jsonSchemaVersion,
@@ -307,7 +304,7 @@ func (e *JSONSchemaExporter) typeToJSONSchema(t *Type, schema *Schema) map[strin
 	// Add Anytype extensions
 	jsonSchema[anytypeFieldTypeKey] = t.Key
 	jsonSchema[anytypeFieldApp] = anytypeAppName
-	jsonSchema[anytypeFieldSchemaVersion] = SchemaVersion
+	jsonSchema[anytypeFieldSchemaVersion] = VersionCurrent
 
 	if t.PluralName != "" {
 		jsonSchema[anytypeFieldPlural] = t.PluralName

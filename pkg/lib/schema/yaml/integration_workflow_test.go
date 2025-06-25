@@ -169,35 +169,6 @@ This is the project content.`
 		assert.Contains(t, content, "- ./docs/spec.md")
 	})
 
-	// Step 5: Test version 1.0 (no migration needed)
-	t.Run("version 1.0 no-op", func(t *testing.T) {
-		// Current version 1.0 data
-		currentData := map[string]interface{}{
-			"Project Name":      "Test Project",
-			"Status":            "Planning",
-			"Tags":              []string{"important"},
-			"Related Documents": []string{"doc1.md"},
-		}
-
-		// Check version compatibility
-		compat := CheckCompatibility("1.0", "1.0")
-		assert.True(t, compat.Compatible)
-		assert.Equal(t, 0, len(compat.Warnings))
-
-		// No migration needed - just add version header
-		sameData, err := MigrateData(currentData, "1.0", "1.0", &MigrateOptions{
-			AddVersionHeader: true,
-		})
-		require.NoError(t, err)
-
-		// Verify data unchanged except for version header
-		assert.Equal(t, "1.0", sameData[VersionHeaderKey])
-		assert.Equal(t, "Test Project", sameData["Project Name"])
-		assert.Equal(t, "Planning", sameData["Status"])
-		assert.Equal(t, []string{"important"}, sameData["Tags"])
-		assert.Equal(t, []string{"doc1.md"}, sameData["Related Documents"])
-	})
-
 	// Step 7: Test error handling and edge cases
 	t.Run("edge cases", func(t *testing.T) {
 		// Test parsing with no front matter
@@ -208,16 +179,6 @@ This is the project content.`
 		// Test parsing with invalid YAML
 		_, err = ParseYAMLFrontMatter([]byte("invalid: yaml: content:"))
 		assert.Error(t, err)
-
-		// Test version detection with missing header
-		version := DetectVersion(map[string]interface{}{
-			"title": "Test",
-		})
-		assert.Equal(t, DefaultVersion, version)
-
-		// Test incompatible version
-		compat := CheckCompatibility("unknown", VersionCurrent)
-		assert.False(t, compat.Compatible)
 	})
 
 	// Step 8: Test complete markdown workflow

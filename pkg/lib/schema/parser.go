@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"io"
 	"sort"
-	"strconv"
 	"strings"
 
 	"github.com/globalsign/mgo/bson"
@@ -439,32 +438,21 @@ func (p *JSONSchemaParser) addSystemPropertiesToType(t *Type) {
 // checkSchemaVersion validates that the schema version is compatible
 func (p *JSONSchemaParser) checkSchemaVersion(schemaVersion string) error {
 	// Parse the schema version
-	schemaParts := strings.Split(schemaVersion, ".")
-	if len(schemaParts) < 2 {
-		return fmt.Errorf("invalid schema version format: %s", schemaVersion)
-	}
-	
-	schemaMajor, err := strconv.Atoi(schemaParts[0])
+	schemaVer, err := ParseVersion(schemaVersion)
 	if err != nil {
 		return fmt.Errorf("invalid schema version format: %w", err)
 	}
 
 	// Parse the current version
-	currentParts := strings.Split(SchemaVersion, ".")
-	if len(currentParts) < 2 {
-		// This should never happen with a valid SchemaVersion constant
-		return fmt.Errorf("invalid current version: %s", SchemaVersion)
-	}
-	
-	currentMajor, err := strconv.Atoi(currentParts[0])
+	currentVer, err := ParseVersion(VersionCurrent)
 	if err != nil {
 		// This should never happen with a valid SchemaVersion constant
 		return fmt.Errorf("invalid current version: %w", err)
 	}
 
 	// Check if the schema major version is greater than current
-	if schemaMajor > currentMajor {
-		return fmt.Errorf("schema version %s is not compatible with current version %s: major version is too new", schemaVersion, SchemaVersion)
+	if schemaVer.Major > currentVer.Major {
+		return fmt.Errorf("schema version %s is not compatible with current version %s: major version is too new", schemaVersion, VersionCurrent)
 	}
 
 	return nil
