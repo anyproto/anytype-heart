@@ -289,7 +289,7 @@ func (e *JSONSchemaExporter) typeToJSONSchema(t *Type, schema *Schema) map[strin
 	// Generate schema ID with current version
 	schemaId := fmt.Sprintf("urn:anytype:schema:%s:type-%s:gen-%s",
 		time.Now().UTC().Format("2006-01-02"),
-		strings.ToLower(strings.ReplaceAll(t.Name, " ", "-")),
+		strings.ToLower(strings.ReplaceAll(t.Key, " ", "-")),
 		SchemaVersion)
 
 	jsonSchema := map[string]interface{}{
