@@ -98,6 +98,8 @@ func (i *Import) Init(a *app.App) (err error) {
 	for _, c := range converters {
 		i.converters[c.Name()] = c
 	}
+	// temporary, until we don't have specific logic for obsidian import
+	i.converters[model.Import_Obsidian.String()] = i.converters[model.Import_Markdown.String()]
 	i.objectStore = app.MustComponent[objectstore.ObjectStore](a)
 	fileObjectService := app.MustComponent[fileobject.Service](a)
 	i.idProvider = objectid.NewIDProvider(i.objectStore, spaceService, i.s, fileObjectService)

@@ -233,8 +233,20 @@ func ParseYAMLFrontMatterWithResolverAndPath(frontMatter []byte, resolver schema
 	return result, nil
 }
 
+var replaceMap = map[string]string{
+	"tag":      "Tag",
+	"status":   "Status",
+	"tags":     "Tag",
+	"created":  "Creation date",
+	"modified": "Last modified date",
+}
+
 // processYAMLProperty processes a single YAML property and returns its configuration
 func processYAMLProperty(key string, value interface{}) *Property {
+	if v, ok := replaceMap[strings.ToLower(key)]; ok {
+		key = v
+	}
+
 	prop := &Property{
 		Name:        key,
 		Format:      model.RelationFormat_shorttext, // default

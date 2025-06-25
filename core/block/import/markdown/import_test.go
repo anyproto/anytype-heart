@@ -588,13 +588,24 @@ This is the content of the test document.`
 			assert.Equal(t, 4.5, details.GetFloat64(domain.RelationKey(ratingKey)))
 		}
 
-		// Check tags as list
+		// Check tags as list - they should be option IDs now
 		if tagsKey, ok := propKeyMap["tags"]; ok {
 			tags := details.GetStringList(domain.RelationKey(tagsKey))
 			assert.Len(t, tags, 3)
-			assert.Contains(t, tags, "test")
-			assert.Contains(t, tags, "markdown")
-			assert.Contains(t, tags, "yaml")
+			// Tags are now stored as option IDs, not raw values
+			// Check that we have relation option snapshots for each tag value
+			var tagOptionSnapshots int
+			for _, snapshot := range sn.Snapshots {
+				if snapshot.Snapshot.SbType == coresb.SmartBlockTypeRelationOption {
+					optionDetails := snapshot.Snapshot.Data.Details
+					if optionDetails.GetString(bundle.RelationKeyRelationKey) == tagsKey {
+						tagOptionSnapshots++
+						name := optionDetails.GetString(bundle.RelationKeyName)
+						assert.Contains(t, []string{"test", "markdown", "yaml"}, name)
+					}
+				}
+			}
+			assert.Equal(t, 3, tagOptionSnapshots, "Should have 3 tag option snapshots")
 		}
 
 		// Verify relation formats
@@ -1105,7 +1116,24 @@ This document is used for snapshot testing of YAML front matter import.`
 		assert.Equal(t, "Snapshot Test Document", mainObjectDetails.GetString(getKey("title")))
 		assert.Equal(t, "Test Author", mainObjectDetails.GetString(getKey("author")))
 		assert.Equal(t, "high", mainObjectDetails.GetString(getKey("priority")))
-		assert.Equal(t, "in-progress", mainObjectDetails.GetString(getKey("status")))
+		// Status is now stored as option ID
+		statusIds := mainObjectDetails.GetStringList(getKey("status"))
+		assert.Len(t, statusIds, 1, "Should have one status value")
+		
+		// Verify we have a status option with value "in-progress"
+		foundStatusOption := false
+		for _, snapshot := range sn.Snapshots {
+			if snapshot.Snapshot.SbType == coresb.SmartBlockTypeRelationOption {
+				optionDetails := snapshot.Snapshot.Data.Details
+				if optionDetails.GetString(bundle.RelationKeyRelationKey) == string(getKey("status")) &&
+				   optionDetails.GetString(bundle.RelationKeyName) == "in-progress" {
+					foundStatusOption = true
+					assert.Contains(t, statusIds, snapshot.Id, "Status should reference the correct option ID")
+					break
+				}
+			}
+		}
+		assert.True(t, foundStatusOption, "Should have found status option with value 'in-progress'")
 
 		// Check dates are timestamps
 		startDate := mainObjectDetails.GetInt64(getKey("Start Date"))
@@ -1118,11 +1146,30 @@ This document is used for snapshot testing of YAML front matter import.`
 		assert.Equal(t, int64(75), mainObjectDetails.GetInt64(getKey("progress")))
 		assert.Equal(t, 9.5, mainObjectDetails.GetFloat64(getKey("score")))
 
-		// Check lists
+		// Check lists - they should be option IDs now
 		tags := mainObjectDetails.GetStringList(getKey("tags"))
-		assert.Equal(t, []string{"important", "test", "snapshot"}, tags)
+		assert.Len(t, tags, 3, "Should have 3 tags")
+		
 		assignees := mainObjectDetails.GetStringList(getKey("assignees"))
-		assert.Equal(t, []string{"john", "jane", "bob"}, assignees)
+		assert.Len(t, assignees, 3, "Should have 3 assignees")
+		
+		// Verify we have option snapshots with the correct values
+		expectedTagValues := []string{"important", "test", "snapshot"}
+		expectedAssigneeValues := []string{"john", "jane", "bob"}
+		
+		for _, snapshot := range sn.Snapshots {
+			if snapshot.Snapshot.SbType == coresb.SmartBlockTypeRelationOption {
+				optionDetails := snapshot.Snapshot.Data.Details
+				relationKey := optionDetails.GetString(bundle.RelationKeyRelationKey)
+				optionName := optionDetails.GetString(bundle.RelationKeyName)
+				
+				if relationKey == string(getKey("tags")) {
+					assert.Contains(t, expectedTagValues, optionName, "Tag option value should be one of expected")
+				} else if relationKey == string(getKey("assignees")) {
+					assert.Contains(t, expectedAssigneeValues, optionName, "Assignee option value should be one of expected")
+				}
+			}
+		}
 
 		// Check URLs and emails
 		assert.Equal(t, "https://example.com", mainObjectDetails.GetString(getKey("website")))

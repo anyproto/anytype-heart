@@ -799,6 +799,7 @@ func TestSchemaImporter_XFormatWithStatusOptions(t *testing.T) {
 	schemaContent := `{
 		"type": "object",
 		"title": "Task",
+		"x-app": "Anytype",
 		"properties": {
 			"Progress": {
 				"type": "string",
@@ -842,6 +843,7 @@ func TestSchemaImporter_XFormatFallback(t *testing.T) {
 	schemaContent := `{
 		"type": "object",
 		"title": "Legacy",
+		"x-app": "Anytype",
 		"properties": {
 			"Email": {
 				"type": "string",

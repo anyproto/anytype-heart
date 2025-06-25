@@ -21,6 +21,7 @@ import (
 type mdConverter struct {
 	tempDirProvider core.TempDirProvider
 	schemaImporter  *SchemaImporter // Optional schema importer for property resolution
+	yamlResolver    *YAMLPropertyResolver // Resolver for consistent property keys when no schema
 }
 
 type FileInfo struct {
@@ -38,12 +39,20 @@ type FileInfo struct {
 }
 
 func newMDConverter(tempDirProvider core.TempDirProvider) *mdConverter {
-	return &mdConverter{tempDirProvider: tempDirProvider}
+	return &mdConverter{
+		tempDirProvider: tempDirProvider,
+		yamlResolver:    NewYAMLPropertyResolver(),
+	}
 }
 
 // SetSchemaImporter sets the schema importer for property resolution
 func (m *mdConverter) SetSchemaImporter(si *SchemaImporter) {
 	m.schemaImporter = si
+}
+
+// GetYAMLResolver returns the YAML property resolver
+func (m *mdConverter) GetYAMLResolver() *YAMLPropertyResolver {
+	return m.yamlResolver
 }
 
 func (m *mdConverter) markdownToBlocks(importPath string, importSource source.Source, allErrors *common.ConvertError) map[string]*FileInfo {
@@ -291,13 +300,16 @@ func (m *mdConverter) createBlocksFromFile(importSource source.Source, filePath 
 			var yamlResult *yaml.ParseResult
 			var err error
 
-			// Use schema importer as resolver if available
 			// Get base directory of the file for relative path resolution
 			baseDir := filepath.Dir(filePath)
+			
+			// Use appropriate resolver based on schema availability
 			if m.schemaImporter != nil && m.schemaImporter.HasSchemas() {
+				// Use schema importer as resolver
 				yamlResult, err = yaml.ParseYAMLFrontMatterWithResolverAndPath(frontMatter, m.schemaImporter, baseDir)
 			} else {
-				yamlResult, err = yaml.ParseYAMLFrontMatterWithResolverAndPath(frontMatter, nil, baseDir)
+				// Use YAML resolver for consistent property keys across files
+				yamlResult, err = yaml.ParseYAMLFrontMatterWithResolverAndPath(frontMatter, m.yamlResolver, baseDir)
 			}
 
 			if err != nil {

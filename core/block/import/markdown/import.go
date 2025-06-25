@@ -729,10 +729,10 @@ func (m *Markdown) createSnapshots(
 			// Look for Collection property in the parsed properties
 			for _, prop := range file.YAMLProperties {
 				// Check both by key and by name (case-insensitive)
-				if prop.Key == schema.CollectionPropertyKey {
+				if prop.Key == schema.CollectionPropertyKey ||
+					strings.EqualFold(prop.Name, "Collection") {
 					isCollectionType = true
 					collectionObjectIds = prop.Value.WrapToStringList()
-
 					break
 				}
 			}
