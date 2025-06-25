@@ -44,18 +44,18 @@ const (
 
 // Anytype extension field names (x-* fields)
 const (
-	anytypeFieldApp         = "x-app"
-	anytypeFieldGenVersion  = "x-genversion"
-	anytypeFieldTypeKey     = "x-type-key"
-	anytypeFieldKey         = "x-key"
-	anytypeFieldFormat      = "x-format"
-	anytypeFieldOrder       = "x-order"
-	anytypeFieldFeatured    = "x-featured"
-	anytypeFieldHidden      = "x-hidden"
-	anytypeFieldPlural      = "x-plural"
-	anytypeFieldIconEmoji   = "x-icon-emoji"
-	anytypeFieldIconName    = "x-icon-name"
-	anytypeFieldObjectTypes = "x-object-types"
+	anytypeFieldApp           = "x-app"
+	anytypeFieldSchemaVersion = "x-schema-version"
+	anytypeFieldTypeKey       = "x-type-key"
+	anytypeFieldKey           = "x-key"
+	anytypeFieldFormat        = "x-format"
+	anytypeFieldOrder         = "x-order"
+	anytypeFieldFeatured      = "x-featured"
+	anytypeFieldHidden        = "x-hidden"
+	anytypeFieldPlural        = "x-plural"
+	anytypeFieldIconEmoji     = "x-icon-emoji"
+	anytypeFieldIconName      = "x-icon-name"
+	anytypeFieldObjectTypes   = "x-object-types"
 )
 
 // Anytype format values

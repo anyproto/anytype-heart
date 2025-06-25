@@ -1,11 +1,11 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "urn:anytype:schema:2025-01-20:author-user:type-system-object:gen-1.0",
+  "$id": "urn:anytype:schema:2025-01-20:author-user:type-system-object:ver-1.0",
   "type": "object",
   "title": "System Object",
   "description": "An object with hidden system fields",
   "x-type-key": "system_object",
-  "x-genversion": "1.0",
+  "x-schema-version": "1.0",
   "x-icon-emoji": "🔧",
   "x-plural-name": "System Objects",
   "properties": {

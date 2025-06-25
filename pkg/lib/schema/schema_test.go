@@ -338,8 +338,8 @@ func TestJSONSchemaExporter_Export(t *testing.T) {
 	assert.Contains(t, output, `"x-format": "status"`)
 
 	// Check version is included
-	assert.Contains(t, output, `"x-genversion": "1.0"`)
-	assert.Contains(t, output, `:gen-1.0"`) // Check version in $id
+	assert.Contains(t, output, `"x-schema-version": "1.0"`)
+	assert.Contains(t, output, `:ver-1.0"`) // Check version in $id
 }
 
 func TestJSONSchemaExporter_VersionInOutput(t *testing.T) {
@@ -362,16 +362,16 @@ func TestJSONSchemaExporter_VersionInOutput(t *testing.T) {
 	err = json.Unmarshal(buf.Bytes(), &jsonOutput)
 	require.NoError(t, err)
 
-	// Check x-genversion field
-	genVersion, ok := jsonOutput["x-genversion"].(string)
-	assert.True(t, ok, "x-genversion should be a string")
+	// Check x-schema-version field
+	genVersion, ok := jsonOutput["x-schema-version"].(string)
+	assert.True(t, ok, "x-schema-version should be a string")
 	assert.Equal(t, "1.0", genVersion)
 
 	// Check version in $id
 	schemaId, ok := jsonOutput["$id"].(string)
 	assert.True(t, ok, "$id should be a string")
-	assert.Contains(t, schemaId, ":gen-1.0")
-	assert.True(t, strings.HasSuffix(schemaId, ":gen-1.0"), "Schema ID should end with :gen-1.0")
+	assert.Contains(t, schemaId, ":ver-1.0")
+	assert.True(t, strings.HasSuffix(schemaId, ":ver-1.0"), "Schema ID should end with :ver-1.0")
 }
 
 func TestSchema_Merge(t *testing.T) {

@@ -177,3 +177,157 @@ func TestPropertyLevelFlags(t *testing.T) {
 		}
 	})
 }
+
+func TestJSONSchemaParser_VersionCheck(t *testing.T) {
+	t.Run("accepts current version", func(t *testing.T) {
+		jsonSchema := map[string]interface{}{
+			"$schema":          "http://json-schema.org/draft-07/schema#",
+			"type":             "object",
+			"title":            "Test Type",
+			"x-type-key":       "test_type",
+			"x-schema-version": "1.0",
+			"properties": map[string]interface{}{
+				"id": map[string]interface{}{
+					"type":    "string",
+					"x-key":   "id",
+					"x-order": 0,
+				},
+			},
+		}
+
+		data, err := json.Marshal(jsonSchema)
+		require.NoError(t, err)
+
+		parser := NewJSONSchemaParser()
+		schema, err := parser.Parse(bytes.NewReader(data))
+		require.NoError(t, err)
+		require.NotNil(t, schema)
+		require.NotNil(t, schema.Type)
+		assert.Equal(t, "Test Type", schema.Type.Name)
+	})
+
+	t.Run("accepts older version", func(t *testing.T) {
+		jsonSchema := map[string]interface{}{
+			"$schema":          "http://json-schema.org/draft-07/schema#",
+			"type":             "object",
+			"title":            "Test Type",
+			"x-type-key":       "test_type",
+			"x-schema-version": "0.9",
+			"properties": map[string]interface{}{
+				"id": map[string]interface{}{
+					"type":    "string",
+					"x-key":   "id",
+					"x-order": 0,
+				},
+			},
+		}
+
+		data, err := json.Marshal(jsonSchema)
+		require.NoError(t, err)
+
+		parser := NewJSONSchemaParser()
+		schema, err := parser.Parse(bytes.NewReader(data))
+		require.NoError(t, err)
+		require.NotNil(t, schema)
+	})
+
+	t.Run("rejects newer major version", func(t *testing.T) {
+		jsonSchema := map[string]interface{}{
+			"$schema":          "http://json-schema.org/draft-07/schema#",
+			"type":             "object",
+			"title":            "Test Type",
+			"x-type-key":       "test_type",
+			"x-schema-version": "2.0",
+			"properties": map[string]interface{}{
+				"id": map[string]interface{}{
+					"type":    "string",
+					"x-key":   "id",
+					"x-order": 0,
+				},
+			},
+		}
+
+		data, err := json.Marshal(jsonSchema)
+		require.NoError(t, err)
+
+		parser := NewJSONSchemaParser()
+		_, err = parser.Parse(bytes.NewReader(data))
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "schema version 2.0 is not compatible")
+		assert.Contains(t, err.Error(), "major version is too new")
+	})
+
+	t.Run("accepts same major with higher minor version", func(t *testing.T) {
+		jsonSchema := map[string]interface{}{
+			"$schema":          "http://json-schema.org/draft-07/schema#",
+			"type":             "object",
+			"title":            "Test Type",
+			"x-type-key":       "test_type",
+			"x-schema-version": "1.5",
+			"properties": map[string]interface{}{
+				"id": map[string]interface{}{
+					"type":    "string",
+					"x-key":   "id",
+					"x-order": 0,
+				},
+			},
+		}
+
+		data, err := json.Marshal(jsonSchema)
+		require.NoError(t, err)
+
+		parser := NewJSONSchemaParser()
+		schema, err := parser.Parse(bytes.NewReader(data))
+		require.NoError(t, err)
+		require.NotNil(t, schema)
+	})
+
+	t.Run("handles missing version", func(t *testing.T) {
+		jsonSchema := map[string]interface{}{
+			"$schema":    "http://json-schema.org/draft-07/schema#",
+			"type":       "object",
+			"title":      "Test Type",
+			"x-type-key": "test_type",
+			"properties": map[string]interface{}{
+				"id": map[string]interface{}{
+					"type":    "string",
+					"x-key":   "id",
+					"x-order": 0,
+				},
+			},
+		}
+
+		data, err := json.Marshal(jsonSchema)
+		require.NoError(t, err)
+
+		parser := NewJSONSchemaParser()
+		schema, err := parser.Parse(bytes.NewReader(data))
+		require.NoError(t, err)
+		require.NotNil(t, schema)
+	})
+
+	t.Run("handles invalid version format", func(t *testing.T) {
+		jsonSchema := map[string]interface{}{
+			"$schema":          "http://json-schema.org/draft-07/schema#",
+			"type":             "object",
+			"title":            "Test Type",
+			"x-type-key":       "test_type",
+			"x-schema-version": "invalid",
+			"properties": map[string]interface{}{
+				"id": map[string]interface{}{
+					"type":    "string",
+					"x-key":   "id",
+					"x-order": 0,
+				},
+			},
+		}
+
+		data, err := json.Marshal(jsonSchema)
+		require.NoError(t, err)
+
+		parser := NewJSONSchemaParser()
+		_, err = parser.Parse(bytes.NewReader(data))
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "invalid schema version format")
+	})
+}

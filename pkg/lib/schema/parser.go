@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"sort"
+	"strconv"
 	"strings"
 
 	"github.com/globalsign/mgo/bson"
@@ -29,6 +30,13 @@ func (p *JSONSchemaParser) Parse(reader io.Reader) (*Schema, error) {
 	}
 
 	schema := NewSchema()
+
+	// Check schema version if present
+	if versionStr, ok := jsonSchema[anytypeFieldSchemaVersion].(string); ok {
+		if err := p.checkSchemaVersion(versionStr); err != nil {
+			return nil, err
+		}
+	}
 
 	// Parse as a type schema
 	if jsonSchema[jsonSchemaFieldType] == jsonSchemaTypeObject && jsonSchema[jsonSchemaFieldProperties] != nil {
@@ -396,7 +404,7 @@ func isKnownExtension(key string) bool {
 	knownExtensions := []string{
 		anytypeFieldTypeKey, anytypeFieldPlural, anytypeFieldIconEmoji, anytypeFieldIconName,
 		anytypeFieldKey, anytypeFieldFormat, anytypeFieldFeatured, anytypeFieldOrder, anytypeFieldHidden,
-		anytypeFieldGenVersion, anytypeFieldApp,
+		anytypeFieldSchemaVersion, anytypeFieldApp,
 	}
 	for _, known := range knownExtensions {
 		if key == known {
@@ -426,4 +434,38 @@ func (p *JSONSchemaParser) addSystemPropertiesToType(t *Type) {
 			t.HiddenRelations = append(t.HiddenRelations, sysPropKey)
 		}
 	}
+}
+
+// checkSchemaVersion validates that the schema version is compatible
+func (p *JSONSchemaParser) checkSchemaVersion(schemaVersion string) error {
+	// Parse the schema version
+	schemaParts := strings.Split(schemaVersion, ".")
+	if len(schemaParts) < 2 {
+		return fmt.Errorf("invalid schema version format: %s", schemaVersion)
+	}
+	
+	schemaMajor, err := strconv.Atoi(schemaParts[0])
+	if err != nil {
+		return fmt.Errorf("invalid schema version format: %w", err)
+	}
+
+	// Parse the current version
+	currentParts := strings.Split(SchemaVersion, ".")
+	if len(currentParts) < 2 {
+		// This should never happen with a valid SchemaVersion constant
+		return fmt.Errorf("invalid current version: %s", SchemaVersion)
+	}
+	
+	currentMajor, err := strconv.Atoi(currentParts[0])
+	if err != nil {
+		// This should never happen with a valid SchemaVersion constant
+		return fmt.Errorf("invalid current version: %w", err)
+	}
+
+	// Check if the schema major version is greater than current
+	if schemaMajor > currentMajor {
+		return fmt.Errorf("schema version %s is not compatible with current version %s: major version is too new", schemaVersion, SchemaVersion)
+	}
+
+	return nil
 }

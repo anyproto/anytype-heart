@@ -325,7 +325,7 @@ func TestMDConverter_GenerateJSONSchema(t *testing.T) {
 		assert.Contains(t, schemaId, ":gen-1.0.0")
 
 		assert.Equal(t, "Anytype", schema["x-app"])
-		assert.Equal(t, "1.0.0", schema["x-genVersion"])
+		assert.Equal(t, "1.0.0", schema["x-schema-version"])
 		// x-type-author and x-type-date might be empty in test data
 		assert.NotNil(t, schema["x-type-author"])
 		assert.NotNil(t, schema["x-type-date"])
@@ -551,7 +551,7 @@ func TestMDConverter_GenerateJSONSchema(t *testing.T) {
 		assert.Equal(t, "Anytype", schema["x-app"])
 		assert.Equal(t, "7a12b3c4d5e6f7890", schema["x-type-author"])
 		assert.Equal(t, "2024-01-15T10:30:00Z", schema["x-type-date"])
-		assert.Equal(t, "1.0.0", schema["x-genVersion"])
+		assert.Equal(t, "1.0.0", schema["x-schema-version"])
 	})
 
 	t.Run("schema root parameters with fallbacks", func(t *testing.T) {

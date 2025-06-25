@@ -287,7 +287,7 @@ func marshalOrderedProperties(props map[string]interface{}) []byte {
 // typeToJSONSchema converts a Type to JSON Schema format
 func (e *JSONSchemaExporter) typeToJSONSchema(t *Type, schema *Schema) map[string]interface{} {
 	// Generate schema ID with current version
-	schemaId := fmt.Sprintf("urn:anytype:schema:%s:type-%s:gen-%s",
+	schemaId := fmt.Sprintf("urn:anytype:schema:%s:type-%s:ver-%s",
 		time.Now().UTC().Format("2006-01-02"),
 		strings.ToLower(strings.ReplaceAll(t.Key, " ", "-")),
 		SchemaVersion)
@@ -307,7 +307,7 @@ func (e *JSONSchemaExporter) typeToJSONSchema(t *Type, schema *Schema) map[strin
 	// Add Anytype extensions
 	jsonSchema[anytypeFieldTypeKey] = t.Key
 	jsonSchema[anytypeFieldApp] = anytypeAppName
-	jsonSchema[anytypeFieldGenVersion] = SchemaVersion
+	jsonSchema[anytypeFieldSchemaVersion] = SchemaVersion
 
 	if t.PluralName != "" {
 		jsonSchema[anytypeFieldPlural] = t.PluralName

@@ -1,11 +1,11 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "urn:anytype:schema:2024-06-14:author-user:type-task:gen-1.0",
+  "$id": "urn:anytype:schema:2024-06-14:author-user:type-task:ver-1.0",
   "type": "object",
   "title": "Task",
   "description": "A task or todo item",
   "x-type-key": "task",
-  "x-genversion": "1.0",
+  "x-schema-version": "1.0",
   "x-icon-emoji": "✅",
   "x-plural-name": "Tasks",
   "properties": {

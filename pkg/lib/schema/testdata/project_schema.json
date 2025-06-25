@@ -1,11 +1,11 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "urn:anytype:schema:2024-06-14:author-user:type-project:gen-1.0",
+  "$id": "urn:anytype:schema:2024-06-14:author-user:type-project:ver-1.0",
   "type": "object",
   "title": "Project",
   "description": "A project or initiative",
   "x-type-key": "project",
-  "x-genversion": "1.0",
+  "x-schema-version": "1.0",
   "x-icon-emoji": "📁",
   "x-plural-name": "Projects",
   "properties": {
