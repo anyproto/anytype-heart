@@ -33362,6 +33362,7 @@ stored |
 | Html | 4 |  |
 | Txt | 5 |  |
 | Csv | 6 |  |
+| Obsidian | 7 | Markdown with obsidian improvements |
 
 
 

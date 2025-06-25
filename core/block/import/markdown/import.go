@@ -635,53 +635,36 @@ func (m *Markdown) createSnapshots(
 	}
 
 	// Fix YAML details to use option IDs for non-schema imports
-	if !hasSchemas && len(yamlRelationOptions) > 0 {
-		for _, file := range files {
-			if file.YAMLDetails != nil {
+	if !hasSchemas {
+		for filePath, d := range details {
+			if details != nil {
 				// Create a new details object with updated values
 				updatedDetails := domain.NewDetails()
-				file.YAMLDetails.Iterate()(func(key domain.RelationKey, value domain.Value) bool {
-					// Check if this is a relation with options
-					if options, hasOptions := yamlRelationOptions[string(key)]; hasOptions {
-						// Find the property to get its format
-						var propFormat model.RelationFormat
-						for _, prop := range file.YAMLProperties {
-							if prop.Key == string(key) {
-								propFormat = prop.Format
-								break
-							}
-						}
-
-						// Update the value to use option IDs
-						switch propFormat {
-						case model.RelationFormat_status:
-							if strVal := value.String(); strVal != "" {
-								if optionId, exists := options[strVal]; exists && optionId != "" {
-									updatedDetails.Set(key, domain.String(optionId))
-									return true
-								}
-							}
-						case model.RelationFormat_tag:
-							strList := value.StringList()
-							if len(strList) > 0 {
-								optionIds := make([]string, 0, len(strList))
-								for _, val := range strList {
-									if optionId, exists := options[val]; exists && optionId != "" {
-										optionIds = append(optionIds, optionId)
-									}
-								}
-								if len(optionIds) > 0 {
-									updatedDetails.Set(key, domain.StringList(optionIds))
-									return true
-								}
-							}
+				d.Iterate()(func(key domain.RelationKey, value domain.Value) bool {
+					var propFormat model.RelationFormat
+					for _, prop := range files[filePath].YAMLProperties {
+						if prop.Key == string(key) {
+							propFormat = prop.Format
+							break
 						}
 					}
-					// Copy unchanged values
-					updatedDetails.Set(key, value)
+
+					// Update the value to use option IDs
+					switch propFormat {
+					case model.RelationFormat_status, model.RelationFormat_tag:
+						list := value.WrapToStringList()
+						for i := range list {
+							list[i] = m.schemaImporter.optionId(key.String(), list[i])
+						}
+						updatedDetails.Set(key, domain.StringList(list))
+					default:
+						// For other formats, just copy the value as is
+						// Copy unchanged values
+						updatedDetails.Set(key, value)
+					}
 					return true
 				})
-				file.YAMLDetails = updatedDetails
+				details[filePath] = updatedDetails
 			}
 		}
 	}
