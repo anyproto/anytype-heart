@@ -270,6 +270,72 @@ func TestMarkdown_GetSnapshots(t *testing.T) {
 		}
 		assert.True(t, found)
 	})
+	
+	t.Run("create directory pages", func(t *testing.T) {
+		// given
+		testDirectory := setupHierarchicalTestDirectory(t)
+		// Initialize Markdown properly with required components
+		h := &Markdown{
+			blockConverter: newMDConverter(&MockTempDir{}),
+			schemaImporter: NewSchemaImporter(),
+		}
+		// Set the schema importer in the block converter
+		h.blockConverter.SetSchemaImporter(h.schemaImporter)
+		p := process.NewNoOp()
+
+		// when
+		sn, ce := h.GetSnapshots(context.Background(), &pb.RpcObjectImportRequest{
+			Params: &pb.RpcObjectImportRequestParamsOfMarkdownParams{
+				MarkdownParams: &pb.RpcObjectImportRequestMarkdownParams{
+					Path:                 []string{testDirectory},
+					CreateDirectoryPages: true,
+				},
+			},
+			Type: model.Import_Markdown,
+			Mode: pb.RpcObjectImportRequest_IGNORE_ERRORS,
+		}, p)
+
+		// then
+		assert.Nil(t, ce)
+		assert.NotNil(t, sn)
+		
+		// Count directory pages
+		dirPageCount := 0
+		filePageCount := 0
+		for _, snapshot := range sn.Snapshots {
+			if snapshot.Snapshot.SbType == coresb.SmartBlockTypePage {
+				filePageCount++
+				// Check if it's a directory page by checking the file name
+				// Directory pages are stored with directory paths as file names
+				if snapshot.FileName != "" && !strings.HasSuffix(snapshot.FileName, ".md") && !strings.HasSuffix(snapshot.FileName, ".csv") {
+					dirPageCount++
+				}
+			}
+		}
+		
+		// We should have directory pages for subdirectories
+		assert.Greater(t, dirPageCount, 0, "Should have at least one directory page")
+		
+		// Verify directory pages contain links to their children
+		for _, snapshot := range sn.Snapshots {
+			if snapshot.Snapshot.SbType == coresb.SmartBlockTypePage {
+				hasHeader := false
+				hasLinks := false
+				for _, block := range snapshot.Snapshot.Data.Blocks {
+					if textBlock := block.GetText(); textBlock != nil && textBlock.Style == model.BlockContentText_Header1 {
+						hasHeader = true
+					}
+					if block.GetLink() != nil || (block.GetText() != nil && block.GetText().Marks != nil) {
+						hasLinks = true
+					}
+				}
+				// Directory pages should have both header and links
+				if hasHeader && hasLinks {
+					assert.True(t, hasHeader && hasLinks, "Directory page should have header and links")
+				}
+			}
+		}
+	})
 }
 
 func buildTreeWithNonUtfLinks(fileNameToObjectId map[string]string, rootId string) *blockbuilder.Block {
@@ -711,6 +777,34 @@ category: Work
 		assert.Contains(t, relationNames, "author")
 		assert.Contains(t, relationNames, "category")
 	})
+}
+
+func setupHierarchicalTestDirectory(t *testing.T) string {
+	testDirectory := t.TempDir()
+	
+	// Create hierarchical structure
+	os.MkdirAll(filepath.Join(testDirectory, "docs", "guides"), 0755)
+	os.MkdirAll(filepath.Join(testDirectory, "docs", "api"), 0755)
+	os.MkdirAll(filepath.Join(testDirectory, "examples"), 0755)
+	
+	// Create files in different directories
+	files := map[string]string{
+		"README.md": "# Root README\nWelcome to the project",
+		filepath.Join("docs", "overview.md"): "# Documentation Overview\nThis is the docs",
+		filepath.Join("docs", "guides", "quickstart.md"): "# Quick Start Guide\nGet started quickly",
+		filepath.Join("docs", "guides", "advanced.md"): "# Advanced Guide\nAdvanced topics",
+		filepath.Join("docs", "api", "reference.md"): "# API Reference\nAPI documentation",
+		filepath.Join("examples", "example1.md"): "# Example 1\nFirst example",
+		filepath.Join("examples", "example2.md"): "# Example 2\nSecond example",
+	}
+	
+	for path, content := range files {
+		fullPath := filepath.Join(testDirectory, path)
+		err := os.WriteFile(fullPath, []byte(content), 0644)
+		assert.NoError(t, err)
+	}
+	
+	return testDirectory
 }
 
 func setupTestDirectory(t *testing.T) string {

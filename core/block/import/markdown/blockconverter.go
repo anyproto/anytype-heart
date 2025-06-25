@@ -4,6 +4,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 
 	"github.com/globalsign/mgo/bson"
@@ -12,6 +13,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/import/common/source"
 	"github.com/anyproto/anytype-heart/core/block/import/markdown/anymark"
 	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/pkg/lib/schema/yaml"
@@ -20,7 +22,7 @@ import (
 
 type mdConverter struct {
 	tempDirProvider core.TempDirProvider
-	schemaImporter  *SchemaImporter // Optional schema importer for property resolution
+	schemaImporter  *SchemaImporter       // Optional schema importer for property resolution
 	yamlResolver    *YAMLPropertyResolver // Resolver for consistent property keys when no schema
 }
 
@@ -55,8 +57,13 @@ func (m *mdConverter) GetYAMLResolver() *YAMLPropertyResolver {
 	return m.yamlResolver
 }
 
-func (m *mdConverter) markdownToBlocks(importPath string, importSource source.Source, allErrors *common.ConvertError) map[string]*FileInfo {
+func (m *mdConverter) markdownToBlocks(importPath string, importSource source.Source, allErrors *common.ConvertError, createDirectoryPages bool) map[string]*FileInfo {
 	files := m.processFiles(importPath, allErrors, importSource)
+
+	// Create directory pages if requested
+	if createDirectoryPages {
+		m.createDirectoryPages(importPath, files)
+	}
 
 	log.Debug("2. DirWithMarkdownToBlocks: MarkdownToBlocks completed")
 
@@ -302,7 +309,7 @@ func (m *mdConverter) createBlocksFromFile(importSource source.Source, filePath 
 
 			// Get base directory of the file for relative path resolution
 			baseDir := filepath.Dir(filePath)
-			
+
 			// Use appropriate resolver based on schema availability
 			if m.schemaImporter != nil && m.schemaImporter.HasSchemas() {
 				// Use schema importer as resolver
@@ -334,4 +341,153 @@ func (m *mdConverter) getOriginalName(link string, importSource source.Source) s
 		return originalFileNameGetter.GetFileOriginalName(link)
 	}
 	return link
+}
+
+// createDirectoryPages creates a page for each directory level (except root) in the import
+// Each directory page contains block links to nested pages and subdirectories
+func (m *mdConverter) createDirectoryPages(rootPath string, files map[string]*FileInfo) {
+	// Build directory structure
+	dirStructure := make(map[string][]string) // dir path -> list of direct children (files and subdirs)
+	dirPages := make(map[string]*FileInfo)    // dir path -> FileInfo for directory page
+
+	// First, collect all directories and their contents
+	for filePath := range files {
+		// Include all markdown files, regardless of whether they have PageID yet
+		if filepath.Ext(filePath) != ".md" && filepath.Ext(filePath) != ".csv" {
+			continue // Skip non-markdown/csv files
+		}
+
+		// Get the directory of this file
+		dir := filepath.Dir(filePath)
+
+		// Add this file to its parent directory's children
+		dirStructure[dir] = append(dirStructure[dir], filePath)
+
+		// Create parent directories up to but not including root
+		for dir != "." && dir != "/" && dir != rootPath {
+			parentDir := filepath.Dir(dir)
+			// Check if we already have this directory in the structure
+			found := false
+			for _, child := range dirStructure[parentDir] {
+				if child == dir {
+					found = true
+					break
+				}
+			}
+			if !found {
+				dirStructure[parentDir] = append(dirStructure[parentDir], dir)
+			}
+			dir = parentDir
+		}
+	}
+
+	// Now create directory pages for each directory (except root)
+	for dirPath := range dirStructure {
+		if dirPath == "." || dirPath == "/" || dirPath == rootPath {
+			continue // Skip root directory
+		}
+
+		// Check if a directory page already exists (shouldn't happen but just in case)
+		if _, exists := dirPages[dirPath]; exists {
+			continue
+		}
+
+		// Create a new directory page
+		dirName := filepath.Base(dirPath)
+
+		// Create blocks for children
+		var blocks []*model.Block
+
+		// Sort children for consistent ordering (directories first, then files)
+		children := dirStructure[dirPath]
+		sort.Slice(children, func(i, j int) bool {
+			// Check if items are directories
+			iIsDir := false
+			jIsDir := false
+			if _, exists := dirStructure[children[i]]; exists {
+				iIsDir = true
+			}
+			if _, exists := dirStructure[children[j]]; exists {
+				jIsDir = true
+			}
+
+			// Directories come first
+			if iIsDir && !jIsDir {
+				return true
+			}
+			if !iIsDir && jIsDir {
+				return false
+			}
+
+			// Otherwise sort alphabetically
+			return children[i] < children[j]
+		})
+
+		// Add links to children
+		for _, childPath := range children {
+			var linkBlock *model.Block
+
+			// Check if this is a directory
+			if _, isDir := dirStructure[childPath]; isDir {
+				// This is a subdirectory - link to its directory page
+				linkBlock = &model.Block{
+					Id: bson.NewObjectId().Hex(),
+					Content: &model.BlockContentOfLink{
+						Link: &model.BlockContentLink{
+							CardStyle:     model.BlockContentLink_Inline,
+							IconSize:      model.BlockContentLink_SizeSmall, // Mark as temporary link
+							TargetBlockId: childPath,                        // Use file path as temporary ID
+							Style:         model.BlockContentLink_Page,
+							Fields:        nil,
+						},
+					},
+				}
+			} else {
+				// This is a file - link to the page using file path as temporary ID
+				if file, exists := files[childPath]; exists {
+					fileName := file.Title
+					if fileName == "" {
+						fileName = filepath.Base(childPath)
+						// Remove .md extension for display
+						if strings.HasSuffix(fileName, ".md") {
+							fileName = fileName[:len(fileName)-3]
+						}
+					}
+
+					linkBlock = &model.Block{
+						Id: bson.NewObjectId().Hex(),
+						Content: &model.BlockContentOfLink{
+							Link: &model.BlockContentLink{
+								TargetBlockId: childPath, // Use file path as temporary ID
+								Style:         model.BlockContentLink_Page,
+								CardStyle:     model.BlockContentLink_Card,
+								Description:   model.BlockContentLink_Content,
+								IconSize:      model.BlockContentLink_SizeMedium, // Mark as temporary link
+							},
+						},
+					}
+				}
+			}
+
+			if linkBlock != nil {
+				blocks = append(blocks, linkBlock)
+			}
+		}
+
+		// Create the directory page FileInfo
+		dirFile := &FileInfo{
+			Title:           dirName,
+			ParsedBlocks:    blocks,
+			HasInboundLinks: true,                // Mark as having inbound links so it doesn't get an extra link block
+			YAMLDetails:     domain.NewDetails(), // Initialize empty details
+		}
+
+		// Initialize YAML details with basic properties
+		dirFile.YAMLDetails.SetString(domain.RelationKey(bundle.RelationKeyName.String()), dirName)
+		dirFile.YAMLDetails.SetString(domain.RelationKey(bundle.RelationKeyIconEmoji.String()), "📂")
+
+		// Store the directory page
+		dirPages[dirPath] = dirFile
+		files[dirPath] = dirFile
+	}
 }

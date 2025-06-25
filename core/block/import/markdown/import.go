@@ -160,7 +160,14 @@ func (m *Markdown) getSnapshotsAndRootObjectsIds(
 		log.Warnf("failed to load schemas: %v", err)
 	}
 
-	files := m.blockConverter.markdownToBlocks(path, importSource, allErrors)
+	var createDirPages bool
+	if req.Type == model.Import_Obsidian {
+		// Obsidian import type forces directory pages creation
+		createDirPages = true
+	} else if p := req.GetMarkdownParams(); p != nil {
+		createDirPages = p.CreateDirectoryPages
+	}
+	files := m.blockConverter.markdownToBlocks(path, importSource, allErrors, createDirPages)
 	pathsCount := len(req.GetMarkdownParams().Path)
 	if allErrors.ShouldAbortImport(pathsCount, req.Type) {
 		return nil, nil
@@ -964,7 +971,9 @@ func (m *Markdown) setNewID(files map[string]*FileInfo, progress process.Progres
 			return
 		}
 
-		if strings.EqualFold(filepath.Ext(name), ".md") || strings.EqualFold(filepath.Ext(name), ".csv") {
+		// Assign PageID to markdown files, CSV files, and directory pages
+		ext := strings.ToLower(filepath.Ext(name))
+		if ext == ".md" || ext == ".csv" || ext == "" {
 			file.PageID = bson.NewObjectId().Hex()
 		}
 	}
@@ -1009,11 +1018,17 @@ func (m *Markdown) extractTitleAndEmojiFromBlock(file *FileInfo) (string, string
 
 func (m *Markdown) retrieveRootObjectsIds(files map[string]*FileInfo) []string {
 	var rootObjectsIds []string
-	for _, file := range files {
+	for path, file := range files {
 		if file.PageID == "" {
 			continue
 		}
 		if file.IsRootFile {
+			rootObjectsIds = append(rootObjectsIds, file.PageID)
+		}
+		// Also include top-level directory pages
+		dir := filepath.Dir(path)
+		if dir == "." || dir == "/" {
+			// This is a top-level item (file or directory page)
 			rootObjectsIds = append(rootObjectsIds, file.PageID)
 		}
 	}
