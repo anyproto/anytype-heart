@@ -34,7 +34,6 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore/filestore"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/spaceindex"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
@@ -98,7 +97,6 @@ var log = logging.Logger("anytype-mw-smartblock")
 func New(
 	space Space,
 	currentParticipantId string,
-	fileStore filestore.FileStore,
 	spaceIndex spaceindex.Store,
 	objectStore objectstore.ObjectStore,
 	indexer Indexer,
@@ -113,13 +111,12 @@ func New(
 		Locker:               &sync.Mutex{},
 		sessions:             map[string]session.Context{},
 
-		fileStore:       fileStore,
-		spaceIndex:      spaceIndex,
-		indexer:         indexer,
-		eventSender:     eventSender,
-		objectStore:     objectStore,
-		spaceIdResolver: spaceIdResolver,
-		lastDepDetails:  map[string]*domain.Details{},
+		spaceIndex:         spaceIndex,
+		indexer:            indexer,
+		eventSender:        eventSender,
+		objectStore:        objectStore,
+		spaceIdResolver:    spaceIdResolver,
+		lastDepDetails:     map[string]*domain.Details{},
 	}
 	return s
 }
@@ -250,12 +247,11 @@ type smartBlock struct {
 	space Space
 
 	// Deps
-	fileStore       filestore.FileStore
-	spaceIndex      spaceindex.Store
-	objectStore     objectstore.ObjectStore
-	indexer         Indexer
-	eventSender     event.Sender
-	spaceIdResolver idresolver.Resolver
+	spaceIndex         spaceindex.Store
+	objectStore        objectstore.ObjectStore
+	indexer            Indexer
+	eventSender        event.Sender
+	spaceIdResolver    idresolver.Resolver
 }
 
 func (sb *smartBlock) SetLocker(locker Locker) {
@@ -1180,7 +1176,7 @@ func (sb *smartBlock) storeFileKeys(doc state.Doc) {
 			EncryptionKeys: k.Keys,
 		}
 	}
-	if err := sb.fileStore.AddFileKeys(fileKeys...); err != nil {
+	if err := sb.objectStore.AddFileKeys(fileKeys...); err != nil {
 		log.Warnf("can't store file keys: %v", err)
 	}
 }

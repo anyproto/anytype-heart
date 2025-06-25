@@ -59,7 +59,6 @@ func New() Service {
 
 type Service interface {
 	Create(ctx context.Context, description *spaceinfo.SpaceDescription) (space clientspace.Space, err error)
-
 	Join(ctx context.Context, id, aclHeadId string) error
 	InviteJoin(ctx context.Context, id, aclHeadId string) error
 	CancelLeave(ctx context.Context, id string) (err error)

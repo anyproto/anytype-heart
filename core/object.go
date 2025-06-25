@@ -237,7 +237,7 @@ func (mw *Middleware) ObjectCrossSpaceSearchSubscribe(cctx context.Context, req 
 		Source:            req.Source,
 		NoDepSubscription: req.NoDepSubscription,
 		CollectionId:      req.CollectionId,
-	})
+	}, crossspacesub.NoOpPredicate())
 	if err != nil {
 		return &pb.RpcObjectCrossSpaceSearchSubscribeResponse{
 			Error: &pb.RpcObjectCrossSpaceSearchSubscribeResponseError{

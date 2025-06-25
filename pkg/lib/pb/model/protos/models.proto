@@ -811,6 +811,10 @@ message ObjectType {
         chat = 21; // deprecated
         chatDerived = 22;
         tag = 23;
+
+        notification = 24;
+        missingObject = 25;
+        devices = 26;
     }
 }
 
@@ -1454,4 +1458,18 @@ message ChatMessage {
             repeated string ids = 1; // List of user IDs
         }
     }
+}
+
+enum SyncStatus {
+    SyncStatusSynced  = 0;
+    SyncStatusSyncing = 1;
+    SyncStatusError   = 2;
+    SyncStatusQueued  = 3;
+}
+
+enum SyncError {
+    SyncErrorNull                = 0;
+    SyncErrorIncompatibleVersion = 2;
+    SyncErrorNetworkError        = 3;
+    SyncErrorOversized           = 4;
 }

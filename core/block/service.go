@@ -32,7 +32,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/domain/objectorigin"
 	"github.com/anyproto/anytype-heart/core/event"
-	"github.com/anyproto/anytype-heart/core/files"
 	"github.com/anyproto/anytype-heart/core/files/fileobject"
 	"github.com/anyproto/anytype-heart/core/files/fileuploader"
 	"github.com/anyproto/anytype-heart/core/session"
@@ -45,10 +44,10 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space"
-	"github.com/anyproto/anytype-heart/space/spaceinfo"
-	"github.com/anyproto/anytype-heart/space/techspace"
+	"github.com/anyproto/anytype-heart/space/clientspace"
 	"github.com/anyproto/anytype-heart/util/internalflag"
 	"github.com/anyproto/anytype-heart/util/mutex"
+	"github.com/anyproto/anytype-heart/util/slice"
 	"github.com/anyproto/anytype-heart/util/uri"
 
 	_ "github.com/anyproto/anytype-heart/core/block/editor/table"
@@ -102,7 +101,6 @@ type Service struct {
 	fileObjectService    fileobject.Service
 	detailsService       detailservice.Service
 
-	fileService         files.Service
 	fileUploaderService fileuploader.Service
 
 	predefinedObjectWasMissing bool
@@ -135,7 +133,6 @@ func (s *Service) Init(a *app.App) (err error) {
 	s.objectCreator = app.MustComponent[objectcreator.Service](a)
 	s.templateService = app.MustComponent[template.Service](a)
 	s.spaceService = a.MustComponent(space.CName).(space.Service)
-	s.fileService = app.MustComponent[files.Service](a)
 	s.resolver = a.MustComponent(idresolver.CName).(idresolver.Resolver)
 	s.fileObjectService = app.MustComponent[fileobject.Service](a)
 	s.fileUploaderService = app.MustComponent[fileuploader.Service](a)
@@ -402,19 +399,6 @@ func (s *Service) SpaceInitChat(ctx context.Context, spaceId string) error {
 	if spaceChatExists, err := spc.Storage().HasTree(ctx, chatId); err != nil {
 		return err
 	} else if spaceChatExists {
-		return nil
-	}
-
-	var spaceInfo spaceinfo.SpaceLocalInfo
-	err = s.spaceService.TechSpace().DoSpaceView(ctx, spaceId, func(spaceView techspace.SpaceView) error {
-		spaceInfo = spaceView.GetLocalInfo()
-		return nil
-	})
-	if err != nil {
-		return fmt.Errorf("get space info: %w", err)
-	}
-	if spaceInfo.GetShareableStatus() != spaceinfo.ShareableStatusShareable {
-		// we do not create chat in non-shareable spaces
 		return nil
 	}
 
@@ -790,8 +774,49 @@ func (s *Service) SyncObjectsWithType(typeId string) error {
 		return fmt.Errorf("failed to get details of type object: %w", err)
 	}
 
+	removeDescriptionFromRecommended(typeId, details, spc)
+
 	syncer := layout.NewSyncer(typeId, spc, index)
 	newLayout := layout.NewLayoutStateFromDetails(details)
 	oldLayout := newLayout.Copy()
 	return syncer.SyncLayoutWithType(oldLayout, newLayout, true, true, false)
+}
+
+// removeDescriptionFromRecommended removes description relation id from recommended relations lists of type if it was added accidentally (see GO-5826)
+func removeDescriptionFromRecommended(typeId string, details *domain.Details, spc clientspace.Space) {
+	descriptionId, err := spc.DeriveObjectID(nil, domain.MustUniqueKey(coresb.SmartBlockTypeRelation, bundle.RelationKeyDescription.String()))
+	if err != nil {
+		return
+	}
+
+	detailsToSet := make([]domain.Detail, 0)
+	for _, key := range []domain.RelationKey{
+		bundle.RelationKeyRecommendedRelations,
+		bundle.RelationKeyRecommendedFeaturedRelations,
+		bundle.RelationKeyRecommendedFileRelations,
+		bundle.RelationKeyRecommendedHiddenRelations,
+	} {
+		list := details.GetStringList(key)
+		i := slice.FindPos(list, descriptionId)
+		if i == -1 {
+			continue
+		}
+
+		detailsToSet = append(detailsToSet, domain.Detail{
+			Key:   key,
+			Value: domain.StringList(slice.RemoveIndex(list, i)),
+		})
+	}
+
+	if len(detailsToSet) == 0 {
+		return
+	}
+
+	// nolint:errcheck
+	spc.Do(typeId, func(sb smartblock.SmartBlock) error {
+		if ds, ok := sb.(basic.DetailsSettable); ok {
+			return ds.SetDetails(nil, detailsToSet, false)
+		}
+		return nil
+	})
 }

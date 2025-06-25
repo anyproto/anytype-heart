@@ -1,12 +1,14 @@
 package persistentqueue
 
 import (
+	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 
-	"github.com/dgraph-io/badger/v4"
-
-	"github.com/anyproto/anytype-heart/util/badgerhelper"
+	anystore "github.com/anyproto/any-store"
+	"github.com/anyproto/any-store/anyenc"
+	"github.com/valyala/fastjson"
 )
 
 type FactoryFunc[T Item] func() T
@@ -15,78 +17,101 @@ type Storage[T Item] interface {
 	Put(item T) error
 	Delete(key string) error
 	List() ([]T, error)
+	Close() error
 }
 
-type badgerStorage[T Item] struct {
-	db           *badger.DB
-	badgerPrefix []byte
-	// factoryFunc is used to create new instances of T
-	factoryFunc FactoryFunc[T]
+type anystoreStorage[T Item] struct {
+	coll          anystore.Collection
+	factoryFunc   FactoryFunc[T]
+	arenaPool     *anyenc.ArenaPool
+	jsonArenaPool *fastjson.ArenaPool
 }
 
-func NewBadgerStorage[T Item](db *badger.DB, badgerPrefix []byte, factoryFunc FactoryFunc[T]) Storage[T] {
-	return &badgerStorage[T]{
-		db:           db,
-		badgerPrefix: badgerPrefix,
-		factoryFunc:  factoryFunc,
-	}
-}
-
-func (s *badgerStorage[T]) List() ([]T, error) {
-	var items []T
-	var err error
-	defer func() {
-		if r := recover(); r != nil {
-			err = fmt.Errorf("badger iterator panic: %v", r)
-		}
-	}()
-	err = s.db.View(func(txn *badger.Txn) error {
-		it := txn.NewIterator(badger.IteratorOptions{
-			PrefetchSize:   100,
-			PrefetchValues: true,
-			Prefix:         s.badgerPrefix,
-		})
-		defer it.Close()
-
-		for it.Rewind(); it.Valid(); it.Next() {
-			item := it.Item()
-			qItem, err := s.unmarshalItem(item)
-			if err != nil {
-				return fmt.Errorf("get queue item %s: %w", item.Key(), err)
-			}
-			items = append(items, qItem)
-		}
-		return nil
-	})
+func NewAnystoreStorage[T Item](db anystore.DB, collectionName string, factoryFunc FactoryFunc[T]) (Storage[T], error) {
+	coll, err := db.Collection(context.Background(), collectionName)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("collection: %w", err)
+	}
+
+	return &anystoreStorage[T]{
+		coll:          coll,
+		factoryFunc:   factoryFunc,
+		arenaPool:     &anyenc.ArenaPool{},
+		jsonArenaPool: &fastjson.ArenaPool{},
+	}, nil
+}
+
+func (s *anystoreStorage[T]) Put(item T) error {
+	raw, err := json.Marshal(item)
+	if err != nil {
+		return fmt.Errorf("marshal: %w", err)
+	}
+	doc, err := anyenc.ParseJson(string(raw))
+	if err != nil {
+		return fmt.Errorf("parse: %w", err)
+	}
+
+	if doc.Get("id") == nil {
+		arena := s.arenaPool.Get()
+		defer func() {
+			arena.Reset()
+			s.arenaPool.Put(arena)
+		}()
+
+		doc.Set("id", arena.NewString(item.Key()))
+	}
+
+	return s.coll.UpsertOne(context.Background(), doc)
+}
+
+func (s *anystoreStorage[T]) Delete(key string) error {
+	err := s.coll.DeleteId(context.Background(), key)
+	if errors.Is(err, anystore.ErrDocNotFound) {
+		return nil
+	}
+	return err
+}
+
+func (s *anystoreStorage[T]) List() ([]T, error) {
+	var items []T
+	iter, err := s.coll.Find(nil).Iter(context.Background())
+	if err != nil {
+		return nil, fmt.Errorf("create iterator: %w", err)
+	}
+	defer iter.Close()
+
+	jsonArena := s.jsonArenaPool.Get()
+	defer func() {
+		jsonArena.Reset()
+		s.jsonArenaPool.Put(jsonArena)
+	}()
+
+	buf := make([]byte, 64)
+	for iter.Next() {
+		item := s.factoryFunc()
+
+		doc, err := iter.Doc()
+		if err != nil {
+			return nil, fmt.Errorf("get doc: %w", err)
+		}
+
+		jsonArena.Reset()
+		buf = buf[:0]
+		buf = doc.Value().FastJson(jsonArena).MarshalTo(buf)
+
+		err = json.Unmarshal(buf, &item)
+		if err != nil {
+			return nil, fmt.Errorf("unmarshal: %w", err)
+		}
+
+		items = append(items, item)
 	}
 	return items, nil
 }
 
-func (s *badgerStorage[T]) unmarshalItem(item *badger.Item) (T, error) {
-	it := s.factoryFunc()
-	err := item.Value(func(raw []byte) error {
-		return json.Unmarshal(raw, it)
-	})
-	if err != nil {
-		return it, err
+func (s *anystoreStorage[T]) Close() error {
+	if s.coll != nil {
+		return s.coll.Close()
 	}
-	return it, nil
-}
-
-func (s *badgerStorage[T]) Put(item T) error {
-	raw, err := json.Marshal(item)
-	if err != nil {
-		return fmt.Errorf("create queue item: %w", err)
-	}
-	return badgerhelper.SetValue(s.db, s.makeKey(item.Key()), raw)
-}
-
-func (s *badgerStorage[T]) Delete(key string) error {
-	return badgerhelper.DeleteValue(s.db, s.makeKey(key))
-}
-
-func (s *badgerStorage[T]) makeKey(itemKey string) []byte {
-	return append(s.badgerPrefix, []byte(itemKey)...)
+	return nil
 }

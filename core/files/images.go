@@ -10,33 +10,9 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/ipfs/helpers"
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/mill/schema"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/storage"
 )
-
-func (s *service) ImageByHash(ctx context.Context, id domain.FullFileId) (Image, error) {
-	files, err := s.fileStore.ListFileVariants(id.FileId)
-	if err != nil {
-		return nil, err
-	}
-
-	// check the image files count explicitly because we have a bug when the info can be cached not fully(only for some files)
-	if len(files) < 4 || files[0].MetaHash == "" {
-		// index image files info from ipfs
-		files, err = s.fileIndexInfo(ctx, id, true)
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	return &image{
-		spaceID:            id.SpaceId,
-		fileId:             id.FileId,
-		onlyResizeVariants: selectAndSortResizeVariants(files),
-		service:            s,
-	}, nil
-}
 
 func (s *service) ImageAdd(ctx context.Context, spaceId string, options ...AddOption) (*AddResult, error) {
 	opts := AddOptions{}
@@ -56,7 +32,7 @@ func (s *service) ImageAdd(ctx context.Context, spaceId string, options ...AddOp
 		return nil, err
 	}
 	if addNodesResult.isExisting {
-		res, err := s.newExistingFileResult(addLock, addNodesResult.fileId)
+		res, err := s.newExistingFileResult(addLock, addNodesResult.fileId, addNodesResult.existingVariants)
 		if err != nil {
 			addLock.Unlock()
 			return nil, err
@@ -78,28 +54,16 @@ func (s *service) ImageAdd(ctx context.Context, spaceId string, options ...AddOp
 		FileId:         fileId,
 		EncryptionKeys: keys.KeysByPath,
 	}
-	err = s.fileStore.AddFileKeys(fileKeys)
+	err = s.objectStore.AddFileKeys(fileKeys)
 	if err != nil {
 		addLock.Unlock()
 		return nil, fmt.Errorf("failed to save file keys: %w", err)
 	}
 
 	dirEntries := addNodesResult.dirEntries
-	id := domain.FullFileId{SpaceId: spaceId, FileId: fileId}
-	successfullyAdded := make([]domain.FileContentId, 0, len(dirEntries))
-	for _, variant := range dirEntries {
-		variant.fileInfo.Targets = []string{id.FileId.String()}
-		err = s.fileStore.AddFileVariant(variant.fileInfo)
-		if err != nil && !errors.Is(err, localstore.ErrDuplicateKey) {
-			// Cleanup
-			deleteErr := s.fileStore.DeleteFileVariants(successfullyAdded)
-			if deleteErr != nil {
-				log.Errorf("cleanup: failed to delete file variants %s", deleteErr)
-			}
-			addLock.Unlock()
-			return nil, fmt.Errorf("failed to store file variant: %w", err)
-		}
-		successfullyAdded = append(successfullyAdded, domain.FileContentId(variant.fileInfo.Hash))
+	variants := make([]*storage.FileInfo, 0, len(dirEntries))
+	for _, dirEntry := range dirEntries {
+		variants = append(variants, dirEntry.fileInfo)
 	}
 
 	entry := dirEntries[0]
@@ -108,20 +72,23 @@ func (s *service) ImageAdd(ctx context.Context, spaceId string, options ...AddOp
 		MIME:           entry.fileInfo.Media,
 		Size:           entry.fileInfo.Size_,
 		EncryptionKeys: &fileKeys,
+		Variants:       variants,
 		lock:           addLock,
 	}, nil
 }
 
 type addImageNodesResult struct {
-	isExisting bool
-	fileId     domain.FileId
-	dirEntries []dirEntry
+	isExisting       bool
+	fileId           domain.FileId
+	dirEntries       []dirEntry
+	existingVariants []*storage.FileInfo
 }
 
-func newExistingImageResult(fileId domain.FileId) *addImageNodesResult {
+func newExistingImageResult(fileId domain.FileId, variants []*storage.FileInfo) *addImageNodesResult {
 	return &addImageNodesResult{
-		isExisting: true,
-		fileId:     fileId,
+		isExisting:       true,
+		fileId:           fileId,
+		existingVariants: variants,
 	}
 }
 
@@ -158,7 +125,7 @@ func (s *service) addImageNodes(ctx context.Context, spaceID string, addOpts Add
 			return nil, err
 		}
 		if addNodeResult.isExisting {
-			return newExistingImageResult(addNodeResult.fileId), nil
+			return newExistingImageResult(addNodeResult.fileId, addNodeResult.existingVariants), nil
 		}
 		dirEntries = append(dirEntries, dirEntry{
 			name:     link.Name,
