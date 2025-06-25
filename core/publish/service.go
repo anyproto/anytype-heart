@@ -41,6 +41,7 @@ const CName = "common.core.publishservice"
 
 const (
 	membershipLimit       = 100 << 20
+	uberLimit             = 10000 << 20
 	defaultLimit          = 10 << 20
 	inviteLinkUrlTemplate = "https://invite.any.coop/%s#%s"
 	memberUrlTemplate     = "https://%s.org"
@@ -167,10 +168,7 @@ func (s *service) publishToPublishServer(ctx context.Context, spaceId, pageId, u
 	}
 	defer os.RemoveAll(exportPath)
 
-	limit, err := s.getPublishLimit(globalName)
-	if err != nil {
-		return err
-	}
+	limit := int64(uberLimit)
 	tempPublishDir := filepath.Join(os.TempDir(), uniqName())
 	defer os.RemoveAll(tempPublishDir)
 
