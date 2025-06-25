@@ -247,7 +247,13 @@ func (s *service) ensureNotSyncedFilesAddedToQueue() error {
 		fullId := extractFullFileIdFromDetails(record.Details)
 		if record.Details.GetString(bundle.RelationKeyCreator) == s.accountService.MyParticipantId(fullId.SpaceId) {
 			id := record.Details.GetString(bundle.RelationKeyId)
-			err := s.addToSyncQueue(id, fullId, false, false, "", 0)
+			req := filesync.AddFileRequest{
+				FileObjectId:   id,
+				FileId:         fullId,
+				UploadedByUser: false,
+				Imported:       false,
+			}
+			err := s.addToSyncQueue(req)
 			if err != nil {
 				log.Errorf("add to sync queue: %v", err)
 			}
@@ -274,7 +280,13 @@ func (s *service) EnsureFileAddedToSyncQueue(id domain.FullID, details *domain.D
 		SpaceId: id.SpaceID,
 		FileId:  domain.FileId(details.GetString(bundle.RelationKeyFileId)),
 	}
-	err := s.addToSyncQueue(id.ObjectID, fullId, false, false, "", 0)
+	req := filesync.AddFileRequest{
+		FileObjectId:   id.ObjectID,
+		FileId:         fullId,
+		UploadedByUser: false,
+		Imported:       false,
+	}
+	err := s.addToSyncQueue(req)
 	return err
 }
 
@@ -333,13 +345,27 @@ func (s *service) Create(ctx context.Context, spaceId string, req filemodels.Cre
 	})
 	for idx, variant := range imageVariants {
 		priority := len(imageVariants) - idx
-		err = s.addToSyncQueue(id, domain.FullFileId{SpaceId: space.Id(), FileId: req.FileId}, true, req.ObjectOrigin.IsImported(), variant.variantId, priority)
+		syncReq := filesync.AddFileRequest{
+			FileObjectId:        id,
+			FileId:              domain.FullFileId{SpaceId: space.Id(), FileId: req.FileId},
+			UploadedByUser:      true,
+			Imported:            req.ObjectOrigin.IsImported(),
+			PrioritizeVariantId: variant.variantId,
+			Score:               priority,
+		}
+		err = s.addToSyncQueue(syncReq)
 		if err != nil {
 			return "", nil, fmt.Errorf("add image variant to sync queue: %w", err)
 		}
 	}
 
-	err = s.addToSyncQueue(id, domain.FullFileId{SpaceId: space.Id(), FileId: req.FileId}, true, req.ObjectOrigin.IsImported(), "", 0)
+	syncReq := filesync.AddFileRequest{
+		FileObjectId:   id,
+		FileId:         domain.FullFileId{SpaceId: space.Id(), FileId: req.FileId},
+		UploadedByUser: true,
+		Imported:       req.ObjectOrigin.IsImported(),
+	}
+	err = s.addToSyncQueue(syncReq)
 	if err != nil {
 		return "", nil, fmt.Errorf("add to sync queue: %w", err)
 	}
@@ -463,15 +489,7 @@ func (s *service) CreateFromImport(fileId domain.FullFileId, origin objectorigin
 	return fileObjectId, nil
 }
 
-func (s *service) addToSyncQueue(objectId string, fileId domain.FullFileId, uploadedByUser bool, imported bool, prioritizeVariantId domain.FileId, priority int) error {
-	req := filesync.AddFileRequest{
-		FileObjectId:        objectId,
-		FileId:              fileId,
-		UploadedByUser:      uploadedByUser,
-		Imported:            imported,
-		PrioritizeVariantId: prioritizeVariantId,
-		Score:               priority,
-	}
+func (s *service) addToSyncQueue(req filesync.AddFileRequest) error {
 	if err := s.fileSync.AddFile(req); err != nil {
 		return fmt.Errorf("add file to sync queue: %w", err)
 	}
