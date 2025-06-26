@@ -188,7 +188,7 @@ func (s *fileSync) retryingHandler(ctx context.Context, it *QueueItem) (persiste
 		var limitErrorIsLogged bool
 		if limitErr != nil {
 			var hasErr error
-			limitErrorIsLogged, hasErr = s.isLimitReachedErrorLogged.Has(context.Background(), it.ObjectId)
+			limitErrorIsLogged, hasErr = s.isLimitReachedErrorLogged.Has(ctx, it.ObjectId)
 			if hasErr != nil {
 				log.Error("check if limit reached error is logged", zap.String("objectId", it.ObjectId), zap.Error(hasErr))
 			}
@@ -221,11 +221,15 @@ func (s *fileSync) removeFromUploadingQueues(objectId string) error {
 	if objectId == "" {
 		return nil
 	}
-	err := s.uploadingQueue.Remove(objectId)
+	err := s.uploadingQueue.RemoveBy(func(key string) bool {
+		return strings.HasPrefix(key, objectId)
+	})
 	if err != nil {
 		return fmt.Errorf("remove upload task: %w", err)
 	}
-	err = s.retryUploadingQueue.Remove(objectId)
+	err = s.retryUploadingQueue.RemoveBy(func(key string) bool {
+		return strings.HasPrefix(key, objectId)
+	})
 	if err != nil {
 		return fmt.Errorf("remove upload task from retrying queue: %w", err)
 	}

@@ -313,8 +313,39 @@ func (q *Queue[T]) Remove(key string) error {
 	}
 	q.lock.Lock()
 	defer q.lock.Unlock()
+	err = q.removeKey(key)
+	if err != nil {
+		return fmt.Errorf("remove key: %w", err)
+	}
+	return nil
+}
+
+// RemoveBy removes items that satisfy given predicate
+func (q *Queue[T]) RemoveBy(predicate func(key string) bool) error {
+	err := q.checkClosed()
+	if err != nil {
+		return err
+	}
+	q.lock.Lock()
+	defer q.lock.Unlock()
+	for key := range q.set {
+		if predicate(key) {
+			err = q.removeKey(key)
+			if err != nil {
+				return fmt.Errorf("remove key: %w", err)
+			}
+		}
+	}
+	return nil
+}
+
+func (q *Queue[T]) removeKey(key string) error {
+	err := q.storage.Delete(key)
+	if err != nil {
+		return err
+	}
 	delete(q.set, key)
-	return q.storage.Delete(key)
+	return nil
 }
 
 func (q *Queue[T]) RemoveWait(key string) (chan struct{}, error) {

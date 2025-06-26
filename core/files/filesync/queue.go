@@ -6,13 +6,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/domain"
 )
 
-var (
-	uploadingKeyPrefix      = "queue/uploading"
-	deletionKeyPrefix       = "queue/deletion"
-	retryUploadingKeyPrefix = "queue/retry-uploading"
-	retryDeletionKeyPrefix  = "queue/retry-deletion"
-)
-
 type QueueItem struct {
 	SpaceId     string
 	ObjectId    string

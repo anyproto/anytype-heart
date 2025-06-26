@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"path/filepath"
+	"strings"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -40,6 +41,10 @@ func newAnystore(t *testing.T) anystore.DB {
 	db, err := anystore.Open(context.Background(), path, nil)
 	require.NoError(t, err)
 
+	t.Cleanup(func() {
+		db.Close()
+	})
+
 	return db
 }
 
@@ -49,7 +54,6 @@ func runTestQueue(t *testing.T, handlerFunc HandlerFunc[*testItem]) *Queue[*test
 	q.Run()
 	t.Cleanup(func() {
 		q.Close()
-		db.Close()
 	})
 	return q
 }
@@ -555,4 +559,38 @@ func TestHandleNext(t *testing.T) {
 		})
 	})
 
+}
+
+func TestRemoveBy(t *testing.T) {
+	db := newAnystore(t)
+	processed := make(chan *testItem)
+	q := newTestQueueWithDb(t, db, func(ctx context.Context, item *testItem) (Action, error) {
+		select {
+		case processed <- item:
+			return ActionDone, nil
+		case <-ctx.Done():
+			return ActionDone, nil
+		}
+	})
+
+	err := q.Add(&testItem{Id: "1", Timestamp: 1, Data: "data1"})
+	require.NoError(t, err)
+	err = q.Add(&testItem{Id: "1/a", Timestamp: 1, Data: "data1"})
+	require.NoError(t, err)
+	err = q.Add(&testItem{Id: "2", Timestamp: 1, Data: "data1"})
+	require.NoError(t, err)
+
+	err = q.RemoveBy(func(key string) bool {
+		return strings.HasPrefix(key, "1")
+	})
+	require.NoError(t, err)
+
+	q.Run()
+
+	select {
+	case got := <-processed:
+		assert.Equal(t, "2", got.Id)
+	case <-time.After(100 * time.Millisecond):
+		t.Fatal("timeout")
+	}
 }
