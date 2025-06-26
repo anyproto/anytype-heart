@@ -168,7 +168,11 @@ func (s *service) publishToPublishServer(ctx context.Context, spaceId, pageId, u
 	}
 	defer os.RemoveAll(exportPath)
 
-	limit := int64(uberLimit)
+	limit, err := s.getPublishLimit(globalName)
+	if err != nil {
+		return err
+	}
+
 	tempPublishDir := filepath.Join(os.TempDir(), uniqName())
 	defer os.RemoveAll(tempPublishDir)
 
@@ -395,7 +399,7 @@ func (s *service) evaluateDocumentVersion(ctx context.Context, spc clientspace.S
 
 func (s *service) getPublishLimit(globalName string) (int64, error) {
 	if globalName != "" {
-		return membershipLimit, nil
+		return uberLimit, nil
 	}
 	return defaultLimit, nil
 }
