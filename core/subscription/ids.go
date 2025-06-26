@@ -140,7 +140,6 @@ func (s *idsSub) close() {
 	if s.depSub != nil {
 		s.depSub.close()
 	}
-	return
 }
 
 func (s *idsSub) addIds(ids []string) {
