@@ -40,8 +40,7 @@ var (
 const CName = "common.core.publishservice"
 
 const (
-	membershipLimit       = 100 << 20
-	uberLimit             = 6000 << 20
+	membershipLimit       = 6000 << 20
 	defaultLimit          = 10 << 20
 	inviteLinkUrlTemplate = "https://invite.any.coop/%s#%s"
 	memberUrlTemplate     = "https://%s.org"
@@ -399,7 +398,7 @@ func (s *service) evaluateDocumentVersion(ctx context.Context, spc clientspace.S
 
 func (s *service) getPublishLimit(globalName string) (int64, error) {
 	if globalName != "" {
-		return uberLimit, nil
+		return membershipLimit, nil
 	}
 	return defaultLimit, nil
 }
