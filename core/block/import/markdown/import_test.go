@@ -340,8 +340,15 @@ func TestMarkdown_GetSnapshots(t *testing.T) {
 }
 
 func buildTreeWithNonUtfLinks(fileNameToObjectId map[string]string, rootId string) *blockbuilder.Block {
-	testMdPath := fileNameToObjectId["import file 2.md"]
-	testCsvPath := fileNameToObjectId["import file 3.csv"]
+	// The actual file names in the zip are the non-UTF8 names
+	var testMdPath, testCsvPath string
+	for fileName, objectId := range fileNameToObjectId {
+		if strings.Contains(fileName, ".md") && fileName != "nonutflinks.md" {
+			testMdPath = objectId
+		} else if strings.Contains(fileName, ".csv") {
+			testCsvPath = objectId
+		}
+	}
 
 	want := blockbuilder.Root(
 		blockbuilder.ID(rootId),
@@ -682,8 +689,10 @@ This is the content of the test document.`
 			relName := relDetails.GetString(bundle.RelationKeyName)
 
 			switch relName {
-			case "title", "priority":
+			case "title":
 				assert.Equal(t, int64(model.RelationFormat_shorttext), format)
+			case "priority":
+				assert.Equal(t, int64(model.RelationFormat_status), format)
 			case "description":
 				assert.Equal(t, int64(model.RelationFormat_longtext), format)
 			case "Start Date", "End Date":
@@ -1214,7 +1223,10 @@ This document is used for snapshot testing of YAML front matter import.`
 
 		assert.Equal(t, "Snapshot Test Document", mainObjectDetails.GetString(getKey("title")))
 		assert.Equal(t, "Test Author", mainObjectDetails.GetString(getKey("author")))
-		assert.Equal(t, "high", mainObjectDetails.GetString(getKey("priority")))
+		
+		// Priority is now stored as option ID (status field)
+		priorityIds := mainObjectDetails.GetStringList(getKey("priority"))
+		assert.Len(t, priorityIds, 1, "Should have one priority value")
 		// Status is now stored as option ID
 		statusIds := mainObjectDetails.GetStringList(getKey("Status"))
 		assert.Len(t, statusIds, 1, "Should have one status value")
@@ -1291,7 +1303,7 @@ This document is used for snapshot testing of YAML front matter import.`
 		}{
 			"title":       {format: model.RelationFormat_shorttext, includeTime: false},
 			"author":      {format: model.RelationFormat_shorttext, includeTime: false},
-			"priority":    {format: model.RelationFormat_shorttext, includeTime: false},
+			"priority":    {format: model.RelationFormat_status, includeTime: false},
 			"Status":      {format: model.RelationFormat_status, includeTime: false},
 			"Start Date":  {format: model.RelationFormat_date, includeTime: false},
 			"End Date":    {format: model.RelationFormat_date, includeTime: true},
@@ -1325,7 +1337,15 @@ This document is used for snapshot testing of YAML front matter import.`
 			assert.NotEmpty(t, key, "Relation %s should have a key", relName)
 
 			// Skip system relations which don't have BSON IDs
-			if key == "objectType" {
+			systemKeys := []string{"objectType", "tag", "status", "type"}
+			isSystemKey := false
+			for _, sysKey := range systemKeys {
+				if key == sysKey {
+					isSystemKey = true
+					break
+				}
+			}
+			if isSystemKey {
 				continue
 			}
 

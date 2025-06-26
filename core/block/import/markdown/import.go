@@ -78,11 +78,6 @@ func (m *Markdown) GetImage() ([]byte, int64, int64, error) {
 }
 
 func (m *Markdown) GetSnapshots(ctx context.Context, req *pb.RpcObjectImportRequest, progress process.Progress) (*common.Response, *common.ConvertError) {
-	if p := req.GetMarkdownParams(); p != nil /*&& req.Type == model.Import_Obsidian*/ {
-		p.CreateDirectoryPages = true
-		p.IncludePropertiesAsBlock = true
-	}
-
 	params := m.GetParams(req)
 	if len(params.Path) == 0 {
 		return nil, nil
@@ -960,7 +955,7 @@ func (m *Markdown) addLinkToObjectBlocks(files map[string]*FileInfo, progress pr
 
 		for _, block := range file.ParsedBlocks {
 			if link := block.GetLink(); link != nil {
-				target, err := url.PathUnescape(link.TargetBlockId)
+				target, err := url.PathUnescape(normalizePath(link.TargetBlockId))
 				if err != nil {
 					log.Warnf("error while url.PathUnescape: %s", err)
 					target = link.TargetBlockId
@@ -980,8 +975,9 @@ func (m *Markdown) addLinkToObjectBlocks(files map[string]*FileInfo, progress pr
 						continue
 					}
 
-					if targetFile, exists := files[mark.Param]; exists {
+					if targetFile, exists := files[normalizePath(mark.Param)]; exists {
 						mark.Param = targetFile.PageID
+						targetFile.HasInboundLinks = true
 					}
 				}
 			}

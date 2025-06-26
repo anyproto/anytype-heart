@@ -1,11 +1,14 @@
 package markdown
 
 import (
+	"fmt"
 	"io"
 	"os"
 	"path/filepath"
 	"sort"
 	"strings"
+
+	"golang.org/x/text/unicode/norm"
 
 	"github.com/globalsign/mgo/bson"
 
@@ -28,6 +31,7 @@ type mdConverter struct {
 
 type FileInfo struct {
 	os.FileInfo
+	OriginalPath          string // may be not unicode NFC-normalized. use it to get original file name
 	HasInboundLinks       bool
 	PageID                string
 	IsRootFile            bool
@@ -103,8 +107,9 @@ func (m *mdConverter) getFileInfo(importSource source.Source, allErrors *common.
 }
 
 func (m *mdConverter) fillFilesInfo(importSource source.Source, fileInfo map[string]*FileInfo, path string, rc io.ReadCloser) error {
-	fileInfo[path] = &FileInfo{}
-	if err := m.createBlocksFromFile(importSource, path, rc, fileInfo); err != nil {
+	normalizedPath := normalizePath(path)
+	fileInfo[normalizedPath] = &FileInfo{OriginalPath: path}
+	if err := m.createBlocksFromFile(importSource, normalizedPath, rc, fileInfo); err != nil {
 		log.Errorf("failed to create blocks from file: %s", err)
 		return err
 	}
@@ -129,12 +134,71 @@ func (m *mdConverter) processTextBlock(block *model.Block, files map[string]*Fil
 	}
 }
 
+func normalizePath(path string) string {
+	// Normalize the path to ensure consistent formatting
+	// This is important for matching file names across different systems
+	return norm.NFC.String(filepath.Clean(path))
+}
+
+// findCommonPrefix finds the common directory prefix of two paths
+func findCommonPrefix(path1, path2 string) string {
+	// Handle empty paths
+	if path1 == "" || path2 == "" {
+		return ""
+	}
+
+	// Clean paths
+	path1 = filepath.Clean(path1)
+	path2 = filepath.Clean(path2)
+
+	// Split paths into components
+	sep := string(filepath.Separator)
+	parts1 := strings.Split(path1, sep)
+	parts2 := strings.Split(path2, sep)
+
+	// Handle absolute paths on Unix-like systems
+	if path1 != "" && path1[0] == filepath.Separator && parts1[0] == "" {
+		parts1 = parts1[1:]
+	}
+	if path2 != "" && path2[0] == filepath.Separator && parts2[0] == "" {
+		parts2 = parts2[1:]
+	}
+
+	// Find common prefix
+	var common []string
+	for i := 0; i < len(parts1) && i < len(parts2); i++ {
+		if parts1[i] == parts2[i] && parts1[i] != "" {
+			common = append(common, parts1[i])
+		} else {
+			break
+		}
+	}
+
+	if len(common) == 0 {
+		return ""
+	}
+
+	result := filepath.Join(common...)
+	// Handle absolute paths
+	if filepath.IsAbs(path1) && filepath.IsAbs(path2) {
+		result = string(filepath.Separator) + result
+	}
+	return result
+}
+
 func (m *mdConverter) handleSingleMark(block *model.Block, files map[string]*FileInfo, importSource source.Source) {
 	txt := block.GetText()
 	wholeLineLink := m.isWholeLineLink(txt.Text, txt.Marks.Marks[0])
 	ext := filepath.Ext(txt.Marks.Marks[0].Param)
-	link := m.getOriginalName(txt.Marks.Marks[0].Param, importSource)
+
+	link := normalizePath(txt.Marks.Marks[0].Param)
+	if ext == "" || strings.Contains(ext, " ") {
+		link += ".md"
+	}
+
+	link = m.getOriginalName(link, importSource)
 	if file := files[link]; file != nil {
+		txt.Marks.Marks[0].Type = model.BlockContentTextMark_Mention
 		if strings.EqualFold(ext, ".csv") {
 			txt.Marks.Marks[0].Param = link
 			m.processCSVFileLink(block, files, link, wholeLineLink)
@@ -166,8 +230,14 @@ func (m *mdConverter) handleMultipleMarks(block *model.Block, files map[string]*
 
 func (m *mdConverter) handleSingleLinkMark(block *model.Block, files map[string]*FileInfo, mark *model.BlockContentTextMark, txt *model.BlockContentText, importSource source.Source) bool {
 	isWholeLink := m.isWholeLineLink(txt.Text, mark)
-	link := m.getOriginalName(mark.Param, importSource)
+	link := normalizePath(mark.Param)
 	ext := filepath.Ext(link)
+	if ext == "" || strings.Contains(ext, " ") {
+		link += ".md"
+	}
+
+	link = m.getOriginalName(link, importSource)
+	ext = filepath.Ext(link)
 	if file := files[link]; file != nil {
 		file.HasInboundLinks = true
 		if strings.EqualFold(ext, ".md") || strings.EqualFold(ext, ".csv") {
@@ -346,179 +416,321 @@ func (m *mdConverter) getOriginalName(link string, importSource source.Source) s
 
 // createDirectoryPages creates a page for each directory level (including root) in the import
 // Each directory page contains block links to nested pages and subdirectories
-func (m *mdConverter) createDirectoryPages(rootPath string, files map[string]*FileInfo) {
-	// Build directory structure
-	dirStructure := make(map[string][]string) // dir path -> list of direct children (files and subdirs)
-	dirPages := make(map[string]*FileInfo)    // dir path -> FileInfo for directory page
+func (m *mdConverter) createDirectoryPages(importPath string, files map[string]*FileInfo) {
+	rootPath := m.findRootPath(files)
+	dirStructure := m.buildDirectoryStructure(files, rootPath)
 
-	// Ensure root path is in directory structure
+	fmt.Println("####")
+	fmt.Println("Import path:", importPath)
+	fmt.Println("Root path:", rootPath)
+	for path, file := range files {
+		fmt.Println("File:", path, "OriginalPath:", file.OriginalPath)
+	}
+	// For zip files with single root directory, collapse it
+	if shouldCollapseRoot(rootPath, files) {
+		rootPath = ""
+		dirStructure = m.buildDirectoryStructure(files, rootPath)
+	}
+	
+	// Create a page for each directory
+	for dirPath, children := range dirStructure {
+		if shouldSkipDirectory(dirPath, rootPath) {
+			continue
+		}
+		
+		dirPage := m.createDirectoryPage(dirPath, rootPath, children, files, dirStructure)
+		files[dirPath] = dirPage
+	}
+}
+
+// findRootPath finds the common root directory of all files
+func (m *mdConverter) findRootPath(files map[string]*FileInfo) string {
+	var paths []string
+	for _, file := range files {
+		paths = append(paths, filepath.Dir(file.OriginalPath))
+	}
+
+	if len(paths) == 0 {
+		return ""
+	}
+
+	root := paths[0]
+	for _, path := range paths[1:] {
+		root = findCommonPrefix(root, path)
+	}
+
+	if root == "." || root == "" {
+		return ""
+	}
+	return root
+}
+
+// buildDirectoryStructure creates a map of directory paths to their children
+func (m *mdConverter) buildDirectoryStructure(files map[string]*FileInfo, rootPath string) map[string][]string {
+	dirStructure := make(map[string][]string)
 	dirStructure[rootPath] = []string{}
 
-	// First, collect all directories and their contents
-	for filePath := range files {
-		// Include all markdown files, regardless of whether they have PageID yet
-		if filepath.Ext(filePath) != ".md" && filepath.Ext(filePath) != ".csv" {
-			continue // Skip non-markdown/csv files
+	// If we're collapsing root (rootPath is ""), we need to strip the common prefix
+	commonPrefix := ""
+	if rootPath == "" && shouldCollapseRoot(m.findRootPath(files), files) {
+		// Find the common directory that we're collapsing
+		for _, file := range files {
+			parts := strings.Split(file.OriginalPath, string(filepath.Separator))
+			if len(parts) > 0 && parts[0] != "" && parts[0] != "." {
+				commonPrefix = parts[0]
+				break
+			}
+		}
+	}
+
+	for filePath, file := range files {
+		if !isMarkdownOrCSV(file.OriginalPath) {
+			continue
 		}
 
-		// Get the directory of this file
-		dir := filepath.Dir(filePath)
+		// Determine the directory path relative to root
+		dir := m.getRelativeDir(file.OriginalPath, rootPath, commonPrefix)
 
-		// Normalize directory path for root handling
-		if dir == "." && rootPath != "." {
-			dir = rootPath
-		}
-
-		// Add this file to its parent directory's children
+		// Add file to its directory
 		dirStructure[dir] = append(dirStructure[dir], filePath)
 
-		// Create parent directories up to but not including root
-		for dir != "." && dir != "/" && dir != rootPath {
-			parentDir := filepath.Dir(dir)
-			// Check if we already have this directory in the structure
-			found := false
-			for _, child := range dirStructure[parentDir] {
-				if child == dir {
-					found = true
-					break
-				}
+		// Create parent directory entries
+		m.createParentDirs(dir, rootPath, dirStructure)
+	}
+
+	return dirStructure
+}
+
+// getRelativeDir returns the directory path relative to the root
+func (m *mdConverter) getRelativeDir(filePath, rootPath, commonPrefix string) string {
+	// If we have a common prefix to strip (for collapsed roots)
+	if commonPrefix != "" {
+		filePath = strings.TrimPrefix(filePath, commonPrefix+string(filepath.Separator))
+	}
+
+	dir := filepath.Dir(filePath)
+
+	if rootPath == "" {
+		if dir == "." {
+			return ""
+		}
+		return dir
+	}
+
+	// For zip imports with common prefix
+	if !filepath.IsAbs(rootPath) && strings.HasPrefix(filePath, rootPath+string(filepath.Separator)) {
+		trimmed := strings.TrimPrefix(filePath, rootPath+string(filepath.Separator))
+		dir = filepath.Dir(trimmed)
+		if dir == "." {
+			return ""
+		}
+		return dir
+	}
+
+	// For regular path imports
+	if rootPath != "" && dir != rootPath {
+		relPath, err := filepath.Rel(rootPath, dir)
+		if err == nil && !strings.HasPrefix(relPath, "..") {
+			if relPath == "." {
+				return rootPath
 			}
-			if !found {
-				dirStructure[parentDir] = append(dirStructure[parentDir], dir)
-			}
-			dir = parentDir
+			return relPath
 		}
 	}
 
-	// Now create directory pages for each directory (including root)
-	for dirPath := range dirStructure {
-		// Skip filesystem-level directories but allow empty string (zip root)
-		if (dirPath == "." || dirPath == "/") && dirPath != rootPath {
-			continue
+	return dir
+}
+
+// createParentDirs ensures all parent directories exist in the structure
+func (m *mdConverter) createParentDirs(dir, rootPath string, dirStructure map[string][]string) {
+	current := dir
+	for current != rootPath && current != "" && current != "." && current != "/" {
+		parent := m.getParentDir(current, rootPath)
+
+		// Add current to parent's children if not already there
+		if !contains(dirStructure[parent], current) {
+			dirStructure[parent] = append(dirStructure[parent], current)
 		}
 
-		// Skip directories that start with "." (hidden directories)
-		dirName := filepath.Base(dirPath)
-		if strings.HasPrefix(dirName, ".") && dirPath != rootPath {
-			continue
+		if parent == rootPath {
+			break
 		}
-
-		// Check if a directory page already exists (shouldn't happen but just in case)
-		if _, exists := dirPages[dirPath]; exists {
-			continue
-		}
-
-		// Create blocks for children
-		var blocks []*model.Block
-
-		// Sort children for consistent ordering (directories first, then files)
-		children := dirStructure[dirPath]
-		sort.Slice(children, func(i, j int) bool {
-			// Check if items are directories
-			iIsDir := false
-			jIsDir := false
-			if _, exists := dirStructure[children[i]]; exists {
-				iIsDir = true
-			}
-			if _, exists := dirStructure[children[j]]; exists {
-				jIsDir = true
-			}
-
-			// Directories come first
-			if iIsDir && !jIsDir {
-				return true
-			}
-			if !iIsDir && jIsDir {
-				return false
-			}
-
-			// Otherwise sort alphabetically
-			return children[i] < children[j]
-		})
-
-		// Add links to children
-		for _, childPath := range children {
-			var linkBlock *model.Block
-
-			// Check if this is a directory
-			if _, isDir := dirStructure[childPath]; isDir {
-				// Skip hidden directories (starting with ".")
-				childDirName := filepath.Base(childPath)
-				if strings.HasPrefix(childDirName, ".") {
-					continue
-				}
-
-				// This is a subdirectory - link to its directory page
-				linkBlock = &model.Block{
-					Id: bson.NewObjectId().Hex(),
-					Content: &model.BlockContentOfLink{
-						Link: &model.BlockContentLink{
-							CardStyle:     model.BlockContentLink_Inline,
-							IconSize:      model.BlockContentLink_SizeSmall, // Mark as temporary link
-							TargetBlockId: childPath,                        // Use file path as temporary ID
-							Style:         model.BlockContentLink_Page,
-							Fields:        nil,
-						},
-					},
-				}
-			} else {
-				// This is a file - link to the page using file path as temporary ID
-				if file, exists := files[childPath]; exists {
-					fileName := file.Title
-					if fileName == "" {
-						fileName = filepath.Base(childPath)
-						// Remove .md extension for display
-						if strings.HasSuffix(fileName, ".md") {
-							fileName = fileName[:len(fileName)-3]
-						}
-					}
-
-					linkBlock = &model.Block{
-						Id: bson.NewObjectId().Hex(),
-						Content: &model.BlockContentOfLink{
-							Link: &model.BlockContentLink{
-								TargetBlockId: childPath, // Use file path as temporary ID
-								Style:         model.BlockContentLink_Page,
-								CardStyle:     model.BlockContentLink_Card,
-								Description:   model.BlockContentLink_Content,
-								IconSize:      model.BlockContentLink_SizeMedium, // Mark as temporary link
-							},
-						},
-					}
-				}
-			}
-
-			if linkBlock != nil {
-				blocks = append(blocks, linkBlock)
-			}
-		}
-
-		// Handle empty root directory names (e.g., '.', '/', or when importing from zip)
-		displayName := dirName
-		if dirPath == rootPath && (dirName == "." || dirName == "/" || dirName == "") {
-			displayName = rootCollectionName
-		}
-
-		// Create the directory page FileInfo
-		dirFile := &FileInfo{
-			Title:           displayName,
-			ParsedBlocks:    blocks,
-			HasInboundLinks: true,                // Mark as having inbound links so it doesn't get an extra link block
-			YAMLDetails:     domain.NewDetails(), // Initialize empty details
-		}
-
-		// Initialize YAML details with basic properties
-		dirFile.YAMLDetails.SetString(domain.RelationKey(bundle.RelationKeyName.String()), displayName)
-		dirFile.YAMLDetails.SetString(domain.RelationKey(bundle.RelationKeyIconEmoji.String()), "📂")
-
-		// Store the directory page
-		dirPages[dirPath] = dirFile
-
-		// Set IsRootFile for the root directory page
-		if dirPath == rootPath {
-			dirFile.IsRootDirPage = true
-		}
-
-		files[dirPath] = dirFile
+		current = parent
 	}
+}
+
+// getParentDir returns the parent directory path
+func (m *mdConverter) getParentDir(dir, rootPath string) string {
+	if rootPath != "" && !strings.Contains(dir, string(filepath.Separator)) {
+		// Direct child of root
+		return rootPath
+	}
+
+	parent := filepath.Dir(dir)
+	if parent == "." {
+		if rootPath != "" {
+			return rootPath
+		}
+		return ""
+	}
+	return parent
+}
+
+// shouldCollapseRoot checks if we should collapse a single root directory (common in zip files)
+func shouldCollapseRoot(rootPath string, files map[string]*FileInfo) bool {
+	if rootPath == "" || filepath.IsAbs(rootPath) {
+		return false
+	}
+
+	// Check if all files share the same top-level directory
+	var commonDir string
+	for _, file := range files {
+		parts := strings.Split(file.OriginalPath, string(filepath.Separator))
+		if len(parts) == 0 {
+			return false
+		}
+
+		if commonDir == "" {
+			commonDir = parts[0]
+		} else if parts[0] != commonDir {
+			return false
+		}
+	}
+
+	return commonDir != "" && commonDir != "."
+}
+
+// shouldSkipDirectory checks if a directory should be skipped
+func shouldSkipDirectory(dirPath, rootPath string) bool {
+	if dirPath == rootPath {
+		return false // Never skip root
+	}
+
+	dirName := filepath.Base(dirPath)
+	return strings.HasPrefix(dirName, ".") // Skip hidden directories
+}
+
+// createDirectoryPage creates a FileInfo for a directory page
+func (m *mdConverter) createDirectoryPage(dirPath, rootPath string, children []string, files map[string]*FileInfo, dirStructure map[string][]string) *FileInfo {
+	displayName := m.getDirectoryDisplayName(dirPath, rootPath)
+	blocks := m.createChildLinks(children, files, dirStructure)
+
+	dirFile := &FileInfo{
+		Title:           displayName,
+		ParsedBlocks:    blocks,
+		HasInboundLinks: true,
+		YAMLDetails:     domain.NewDetails(),
+		IsRootDirPage:   dirPath == rootPath,
+	}
+
+	// Set basic properties
+	dirFile.YAMLDetails.SetString(domain.RelationKey(bundle.RelationKeyName.String()), displayName)
+	dirFile.YAMLDetails.SetString(domain.RelationKey(bundle.RelationKeyIconEmoji.String()), "📂")
+
+	return dirFile
+}
+
+// getDirectoryDisplayName returns the display name for a directory
+func (m *mdConverter) getDirectoryDisplayName(dirPath, rootPath string) string {
+	if dirPath == rootPath {
+		name := filepath.Base(rootPath)
+		if name == "." || name == "/" || name == "" {
+			return rootCollectionName
+		}
+		return name
+	}
+	return filepath.Base(dirPath)
+}
+
+// createChildLinks creates block links for all children in a directory
+func (m *mdConverter) createChildLinks(children []string, files map[string]*FileInfo, dirStructure map[string][]string) []*model.Block {
+	// Sort children: directories first, then files
+	sortedChildren := m.sortChildren(children, dirStructure)
+
+	var blocks []*model.Block
+	for _, childPath := range sortedChildren {
+		if _, isDir := dirStructure[childPath]; isDir {
+			// Skip hidden directories
+			if strings.HasPrefix(filepath.Base(childPath), ".") {
+				continue
+			}
+			blocks = append(blocks, m.createDirectoryLink(childPath))
+		} else if file, exists := files[childPath]; exists {
+			blocks = append(blocks, m.createFileLink(childPath, file))
+		}
+	}
+
+	return blocks
+}
+
+// sortChildren sorts children with directories first, then files, both alphabetically
+func (m *mdConverter) sortChildren(children []string, dirStructure map[string][]string) []string {
+	sorted := make([]string, len(children))
+	copy(sorted, children)
+
+	sort.Slice(sorted, func(i, j int) bool {
+		_, iIsDir := dirStructure[sorted[i]]
+		_, jIsDir := dirStructure[sorted[j]]
+
+		if iIsDir != jIsDir {
+			return iIsDir // Directories first
+		}
+		return sorted[i] < sorted[j] // Alphabetical
+	})
+
+	return sorted
+}
+
+// createDirectoryLink creates a link block for a subdirectory
+func (m *mdConverter) createDirectoryLink(dirPath string) *model.Block {
+	return &model.Block{
+		Id: bson.NewObjectId().Hex(),
+		Content: &model.BlockContentOfLink{
+			Link: &model.BlockContentLink{
+				CardStyle:     model.BlockContentLink_Inline,
+				IconSize:      model.BlockContentLink_SizeSmall,
+				TargetBlockId: dirPath,
+				Style:         model.BlockContentLink_Page,
+			},
+		},
+	}
+}
+
+// createFileLink creates a link block for a file
+func (m *mdConverter) createFileLink(filePath string, file *FileInfo) *model.Block {
+	fileName := file.Title
+	if fileName == "" {
+		fileName = filepath.Base(filePath)
+		if strings.HasSuffix(fileName, ".md") {
+			fileName = fileName[:len(fileName)-3]
+		}
+	}
+
+	return &model.Block{
+		Id: bson.NewObjectId().Hex(),
+		Content: &model.BlockContentOfLink{
+			Link: &model.BlockContentLink{
+				TargetBlockId: filePath,
+				Style:         model.BlockContentLink_Page,
+				CardStyle:     model.BlockContentLink_Card,
+				Description:   model.BlockContentLink_Content,
+				IconSize:      model.BlockContentLink_SizeMedium,
+			},
+		},
+	}
+}
+
+// Helper functions
+func isMarkdownOrCSV(path string) bool {
+	ext := filepath.Ext(path)
+	return ext == ".md" || ext == ".csv"
+}
+
+func contains(slice []string, item string) bool {
+	for _, s := range slice {
+		if s == item {
+			return true
+		}
+	}
+	return false
 }

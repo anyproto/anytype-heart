@@ -330,7 +330,10 @@ func (r *Renderer) renderLink(_ util.BufWriter,
 		if !strings.HasPrefix(strings.ToLower(linkPath), "http://") &&
 			!strings.HasPrefix(strings.ToLower(linkPath), "https://") {
 			linkPath = filepath.Join(r.GetBaseFilepath(), linkPath)
-			if filepath.Ext(linkPath) == "" {
+			ext := filepath.Ext(linkPath)
+			// if empty or contains spaces
+			// todo: should be improved
+			if ext == "" || strings.Contains(ext, " ") {
 				linkPath += ".md" // Default to .md if no extension is provided
 			}
 		}
@@ -471,8 +474,12 @@ func (r *Renderer) renderWikiLink(_ util.BufWriter, source []byte, node ast.Node
 		if !strings.HasPrefix(strings.ToLower(linkPath), "http://") &&
 			!strings.HasPrefix(strings.ToLower(linkPath), "https://") {
 			linkPath = filepath.Join(r.GetBaseFilepath(), linkPath)
-			if filepath.Ext(linkPath) == "" {
+			ext := filepath.Ext(linkPath)
+			// if empty or contains spaces
+			// todo: should be improved
+			if ext == "" || strings.Contains(ext, " ") {
 				linkPath += ".md" // Default to .md if no extension is provided
+
 			}
 		}
 
