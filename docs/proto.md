@@ -21989,7 +21989,7 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | ----- | ---- | ----- | ----------- |
 | details | [google.protobuf.Struct](#google-protobuf-Struct) |  | object details |
 | useCase | [Rpc.Object.ImportUseCase.Request.UseCase](#anytype-Rpc-Object-ImportUseCase-Request-UseCase) |  | use case |
-| withChat | [bool](#bool) |  | deprecated |
+| withChat | [bool](#bool) |  | deprecated, use spaceUxType |
 
 
 
@@ -22395,7 +22395,7 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | spaceId | [string](#string) |  |  |
-| withChat | [bool](#bool) |  | create space-level chat if not exists; temporary solution, should be removed after chats released for all users |
+| withChat | [bool](#bool) |  | deprecated, chat will be created automatically if space is shared |
 
 
 
@@ -33567,6 +33567,9 @@ Look https://github.com/golang/protobuf/issues/1135 for more information.
 | chat | 21 | deprecated |
 | chatDerived | 22 |  |
 | tag | 23 |  |
+| notification | 24 |  |
+| missingObject | 25 |  |
+| devices | 26 |  |
 
 
 
