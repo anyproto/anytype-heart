@@ -67,10 +67,10 @@ type Import struct {
 	notificationService notifications.Notifications
 	eventSender         event.Sender
 	objectStore         objectstore.ObjectStore
+	spaceService        space.Service
 
-	importCtx       context.Context
-	importCtxCancel context.CancelFunc
-	spaceService    space.Service
+	componentCtx    context.Context
+	componentCancel context.CancelFunc
 }
 
 func New() Importer {
@@ -110,7 +110,7 @@ func (i *Import) Init(a *app.App) (err error) {
 	i.notificationService = app.MustComponent[notifications.Notifications](a)
 	i.eventSender = app.MustComponent[event.Sender](a)
 
-	i.importCtx, i.importCtxCancel = context.WithCancel(context.Background())
+	i.componentCtx, i.componentCancel = context.WithCancel(context.Background())
 	return nil
 }
 
@@ -119,8 +119,8 @@ func (i *Import) Run(ctx context.Context) (err error) {
 }
 
 func (i *Import) Close(ctx context.Context) (err error) {
-	if i.importCtxCancel != nil {
-		i.importCtxCancel()
+	if i.componentCancel != nil {
+		i.componentCancel()
 	}
 	return
 }
@@ -131,7 +131,7 @@ func (i *Import) Import(ctx context.Context, importRequest *ImportRequest) *Impo
 		return i.importObjects(ctx, importRequest)
 	}
 	conc.Go(func() {
-		res := i.importObjects(i.importCtx, importRequest)
+		res := i.importObjects(i.componentCtx, importRequest)
 		if res.Err != nil {
 			log.Errorf("import from %s failed with error: %s", importRequest.Type.String(), res.Err)
 		}
@@ -189,7 +189,7 @@ func (i *Import) onImportFinish(res *ImportResponse, req *ImportRequest, importI
 }
 
 func (i *Import) addRootCollectionWidget(res *ImportResponse, req *ImportRequest) {
-	spc, err := i.spaceService.Get(i.importCtx, req.SpaceId)
+	spc, err := i.spaceService.Get(i.componentCtx, req.SpaceId)
 	if err != nil {
 		log.Errorf("failed to create widget from root collection, error: %s", err.Error())
 	} else {
@@ -233,7 +233,15 @@ func (i *Import) importFromBuiltinConverter(ctx context.Context, req *ImportRequ
 		return "", 0, fmt.Errorf("source path doesn't contain %s resources to import", req.Type)
 	}
 
-	details, rootCollectionID := i.createObjects(ctx, res, req.Progress, req.RpcObjectImportRequest, allErrors, req.Origin)
+	importCtx := importContext{
+		ctx:          ctx,
+		origin:       req.Origin,
+		req:          req.RpcObjectImportRequest,
+		convResponse: res,
+		error:        allErrors,
+	}
+
+	details, rootCollectionID := i.createObjects(importCtx)
 	resultErr := allErrors.GetResultError(req.Type)
 	if resultErr != nil {
 		rootCollectionID = ""
@@ -250,29 +258,34 @@ func (i *Import) getObjectCount(details map[string]*domain.Details, rootCollecti
 }
 
 func (i *Import) importFromExternalSource(ctx context.Context, req *ImportRequest) (int64, error) {
-	allErrors := common.NewError(req.Mode)
-	if req.Snapshots != nil {
-		sn := make([]*common.Snapshot, len(req.Snapshots))
-		for i, s := range req.Snapshots {
-			sn[i] = &common.Snapshot{
-				Id: s.GetId(),
-				Snapshot: &common.SnapshotModel{
-					Data: common.NewStateSnapshotFromProto(s.Snapshot),
-				},
-			}
-		}
-		res := &common.Response{
-			Snapshots: sn,
-		}
-
-		originImport := objectorigin.Import(model.Import_External)
-		details, _ := i.createObjects(ctx, res, req.Progress, req.RpcObjectImportRequest, allErrors, originImport)
-		if !allErrors.IsEmpty() {
-			return 0, allErrors.GetResultError(req.Type)
-		}
-		return int64(len(details)), nil
+	if req.Snapshots == nil {
+		return 0, common.ErrNoSnapshotToImport
 	}
-	return 0, common.ErrNoSnapshotToImport
+
+	sn := make([]*common.Snapshot, len(req.Snapshots))
+	for i, s := range req.Snapshots {
+		sn[i] = &common.Snapshot{
+			Id: s.GetId(),
+			Snapshot: &common.SnapshotModel{
+				Data: common.NewStateSnapshotFromProto(s.Snapshot),
+			},
+		}
+	}
+	importCtx := importContext{
+		ctx:      ctx,
+		req:      req.RpcObjectImportRequest,
+		error:    common.NewError(req.Mode),
+		origin:   objectorigin.Import(model.Import_External),
+		progress: req.Progress,
+		convResponse: &common.Response{
+			Snapshots: sn,
+		},
+	}
+	details, _ := i.createObjects(importCtx)
+	if !importCtx.error.IsEmpty() {
+		return 0, importCtx.error.GetResultError(req.Type)
+	}
+	return int64(len(details)), nil
 }
 
 func (i *Import) finishImportProcess(returnedErr error, req *ImportRequest) {
@@ -356,7 +369,6 @@ func (i *Import) ImportWeb(ctx context.Context, req *ImportRequest) (string, *do
 			return "", nil, fmt.Errorf("failed to add process")
 		}
 	}
-	allErrors := common.NewError(0)
 
 	req.Progress.SetProgressMessage("Parse url")
 	w := i.converters[web.Name]
@@ -370,56 +382,55 @@ func (i *Import) ImportWeb(ctx context.Context, req *ImportRequest) (string, *do
 	}
 
 	req.Progress.SetProgressMessage("Create objects")
-	details, _ := i.createObjects(ctx, res, req.Progress, req.RpcObjectImportRequest, allErrors, objectorigin.None())
-	if !allErrors.IsEmpty() {
+
+	importCtx := importContext{
+		ctx:          ctx,
+		origin:       objectorigin.None(),
+		progress:     req.Progress,
+		req:          req.RpcObjectImportRequest,
+		convResponse: res,
+		error:        common.NewError(0),
+	}
+
+	details, _ := i.createObjects(importCtx)
+	if !importCtx.error.IsEmpty() {
 		return "", nil, fmt.Errorf("couldn't create objects")
 	}
 	return res.Snapshots[0].Id, details[res.Snapshots[0].Id], nil
 }
 
-func (i *Import) createObjects(ctx context.Context,
-	res *common.Response,
-	progress process.Progress,
-	req *pb.RpcObjectImportRequest,
-	allErrors *common.ConvertError,
-	origin objectorigin.ObjectOrigin,
-) (map[string]*domain.Details, string) {
-	oldIDToNew, createPayloads, err := i.getIDForAllObjects(ctx, res, allErrors, req, origin)
+func (i *Import) createObjects(ctx importContext) (map[string]*domain.Details, string) {
+	oldIDToNew, createPayloads, err := i.getIDForAllObjects(ctx)
 	if err != nil {
 		return nil, ""
 	}
 	numWorkers := workerPoolSize
-	if len(res.Snapshots) < workerPoolSize {
+	if len(ctx.convResponse.Snapshots) < workerPoolSize {
 		numWorkers = 1
 	}
-	do := creator.NewDataObject(ctx, oldIDToNew, createPayloads, origin, req.SpaceId)
+	do := creator.NewDataObject(ctx.ctx, oldIDToNew, createPayloads, ctx.origin, ctx.req.SpaceId)
 	pool := workerpool.NewPool(numWorkers)
-	progress.SetProgressMessage("Create objects")
-	go i.addWork(res, pool)
+	ctx.progress.SetProgressMessage("Create objects")
+	go i.addWork(ctx.convResponse, pool)
 	go pool.Start(do)
-	details := i.readResultFromPool(pool, req.Mode, allErrors, progress)
-	return details, oldIDToNew[res.RootCollectionID]
+	details := i.readResultFromPool(pool, ctx.req.Mode, ctx.error, ctx.progress)
+	return details, oldIDToNew[ctx.convResponse.RootCollectionID]
 }
 
-func (i *Import) getIDForAllObjects(ctx context.Context,
-	res *common.Response,
-	allErrors *common.ConvertError,
-	req *pb.RpcObjectImportRequest,
-	origin objectorigin.ObjectOrigin,
-) (map[string]string, map[string]treestorage.TreeStorageCreatePayload, error) {
+func (i *Import) getIDForAllObjects(ctx importContext) (map[string]string, map[string]treestorage.TreeStorageCreatePayload, error) {
 	relationOptions := make([]*common.Snapshot, 0)
-	oldIDToNew := make(map[string]string, len(res.Snapshots))
-	createPayloads := make(map[string]treestorage.TreeStorageCreatePayload, len(res.Snapshots))
-	for _, snapshot := range res.Snapshots {
+	oldIDToNew := make(map[string]string, len(ctx.convResponse.Snapshots))
+	createPayloads := make(map[string]treestorage.TreeStorageCreatePayload, len(ctx.convResponse.Snapshots))
+	for _, snapshot := range ctx.convResponse.Snapshots {
 		// we will get id of relation options after we figure out according relations keys
 		if lo.Contains(snapshot.Snapshot.Data.ObjectTypes, bundle.TypeKeyRelationOption.String()) {
 			relationOptions = append(relationOptions, snapshot)
 			continue
 		}
-		err := i.getObjectID(ctx, req.SpaceId, snapshot, createPayloads, oldIDToNew, req.UpdateExistingObjects, origin)
+		err := i.getObjectID(ctx, snapshot, createPayloads, oldIDToNew)
 		if err != nil {
-			allErrors.Add(err)
-			if req.Mode != pb.RpcObjectImportRequest_IGNORE_ERRORS {
+			ctx.error.Add(err)
+			if ctx.req.Mode != pb.RpcObjectImportRequest_IGNORE_ERRORS {
 				return nil, nil, err
 			}
 			log.With(zap.String("object name", snapshot.Id)).Error(err)
@@ -427,10 +438,10 @@ func (i *Import) getIDForAllObjects(ctx context.Context,
 	}
 	for _, option := range relationOptions {
 		i.replaceRelationKeyWithNew(option, oldIDToNew)
-		err := i.getObjectID(ctx, req.SpaceId, option, createPayloads, oldIDToNew, req.UpdateExistingObjects, origin)
+		err := i.getObjectID(ctx, option, createPayloads, oldIDToNew)
 		if err != nil {
-			allErrors.Add(err)
-			if req.Mode != pb.RpcObjectImportRequest_IGNORE_ERRORS {
+			ctx.error.Add(err)
+			if ctx.req.Mode != pb.RpcObjectImportRequest_IGNORE_ERRORS {
 				return nil, nil, err
 			}
 			log.With(zap.String("object name", option.Id)).Error(err)
@@ -451,13 +462,10 @@ func (i *Import) replaceRelationKeyWithNew(option *common.Snapshot, oldIDToNew m
 }
 
 func (i *Import) getObjectID(
-	ctx context.Context,
-	spaceID string,
+	ctx importContext,
 	snapshot *common.Snapshot,
 	createPayloads map[string]treestorage.TreeStorageCreatePayload,
 	oldIDToNew map[string]string,
-	updateExisting bool,
-	origin objectorigin.ObjectOrigin,
 ) error {
 
 	// Preload file keys
@@ -488,7 +496,7 @@ func (i *Import) getObjectID(
 		id      string
 		payload treestorage.TreeStorageCreatePayload
 	)
-	id, payload, err := i.idProvider.GetIDAndPayload(ctx, spaceID, snapshot, time.Now(), updateExisting, origin)
+	id, payload, err := i.idProvider.GetIDAndPayload(ctx.ctx, ctx.req.SpaceId, snapshot, time.Now(), ctx.req.UpdateExistingObjects, ctx.origin)
 	if err != nil {
 		return err
 	}

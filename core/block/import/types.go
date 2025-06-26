@@ -5,6 +5,7 @@ import (
 
 	"github.com/anyproto/any-sync/app"
 
+	"github.com/anyproto/anytype-heart/core/block/import/common"
 	_ "github.com/anyproto/anytype-heart/core/block/import/markdown"
 	_ "github.com/anyproto/anytype-heart/core/block/import/pb"
 	_ "github.com/anyproto/anytype-heart/core/block/import/web"
@@ -27,6 +28,29 @@ type ImportResponse struct {
 	ProcessId        string
 	ObjectsCount     int64
 	Err              error
+}
+
+type importContext struct {
+	ctx          context.Context
+	origin       objectorigin.ObjectOrigin
+	progress     process.Progress
+	req          *pb.RpcObjectImportRequest
+	convResponse *common.Response
+	error        *common.ConvertError
+}
+
+func newImportContext(ctx context.Context, req *ImportRequest, resp *common.Response, origin objectorigin.ObjectOrigin) *importContext {
+	if req == nil || resp == nil {
+		return nil
+	}
+	return &importContext{
+		ctx:          ctx,
+		origin:       origin,
+		progress:     req.Progress,
+		req:          req.RpcObjectImportRequest,
+		convResponse: resp,
+		error:        common.NewError(req.Mode),
+	}
 }
 
 // Importer encapsulate logic with import
