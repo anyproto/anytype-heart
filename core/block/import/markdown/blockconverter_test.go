@@ -100,3 +100,33 @@ func Test_processFiles(t *testing.T) {
 		assert.Len(t, fileBlocks, 0)
 	})
 }
+
+func TestCreateDirectoryPages_EmptyRootName(t *testing.T) {
+	// Test that empty root directory names fallback to rootCollectionName
+	converter := newMDConverter(&MockTempDir{})
+	
+	// Create test files
+	files := map[string]*FileInfo{
+		"doc1.md": {Title: "Document 1"},
+		"subdir/doc2.md": {Title: "Document 2"},
+	}
+	
+	// Test with empty root path (simulating zip import)
+	converter.createDirectoryPages("", files)
+	
+	// Check that root directory page was created with fallback name
+	rootPage, exists := files[""]
+	assert.True(t, exists, "Root directory page should exist")
+	assert.Equal(t, rootCollectionName, rootPage.Title, "Empty root should use rootCollectionName")
+	assert.True(t, rootPage.IsRootFile, "Root directory page should have IsRootFile set")
+	
+	// Test with "." as root path
+	files2 := map[string]*FileInfo{
+		"doc1.md": {Title: "Document 1"},
+	}
+	converter.createDirectoryPages(".", files2)
+	
+	rootPage2, exists := files2["."]
+	assert.True(t, exists, "Root directory page should exist for '.'")
+	assert.Equal(t, rootCollectionName, rootPage2.Title, "Root '.' should use rootCollectionName")
+}

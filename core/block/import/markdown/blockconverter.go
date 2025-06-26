@@ -350,6 +350,9 @@ func (m *mdConverter) createDirectoryPages(rootPath string, files map[string]*Fi
 	dirStructure := make(map[string][]string) // dir path -> list of direct children (files and subdirs)
 	dirPages := make(map[string]*FileInfo)    // dir path -> FileInfo for directory page
 
+	// Ensure root path is in directory structure
+	dirStructure[rootPath] = []string{}
+
 	// First, collect all directories and their contents
 	for filePath := range files {
 		// Include all markdown files, regardless of whether they have PageID yet
@@ -359,6 +362,11 @@ func (m *mdConverter) createDirectoryPages(rootPath string, files map[string]*Fi
 
 		// Get the directory of this file
 		dir := filepath.Dir(filePath)
+
+		// Normalize directory path for root handling
+		if dir == "." && rootPath != "." {
+			dir = rootPath
+		}
 
 		// Add this file to its parent directory's children
 		dirStructure[dir] = append(dirStructure[dir], filePath)
@@ -383,8 +391,9 @@ func (m *mdConverter) createDirectoryPages(rootPath string, files map[string]*Fi
 
 	// Now create directory pages for each directory (including root)
 	for dirPath := range dirStructure {
-		if dirPath == "." || dirPath == "/" {
-			continue // Skip current and root filesystem directory
+		// Skip filesystem-level directories but allow empty string (zip root)
+		if (dirPath == "." || dirPath == "/") && dirPath != rootPath {
+			continue
 		}
 
 		// Check if a directory page already exists (shouldn't happen but just in case)
@@ -474,16 +483,22 @@ func (m *mdConverter) createDirectoryPages(rootPath string, files map[string]*Fi
 			}
 		}
 
+		// Handle empty root directory names (e.g., '.', '/', or when importing from zip)
+		displayName := dirName
+		if dirPath == rootPath && (dirName == "." || dirName == "/" || dirName == "") {
+			displayName = rootCollectionName
+		}
+
 		// Create the directory page FileInfo
 		dirFile := &FileInfo{
-			Title:           dirName,
+			Title:           displayName,
 			ParsedBlocks:    blocks,
 			HasInboundLinks: true,                // Mark as having inbound links so it doesn't get an extra link block
 			YAMLDetails:     domain.NewDetails(), // Initialize empty details
 		}
 
 		// Initialize YAML details with basic properties
-		dirFile.YAMLDetails.SetString(domain.RelationKey(bundle.RelationKeyName.String()), dirName)
+		dirFile.YAMLDetails.SetString(domain.RelationKey(bundle.RelationKeyName.String()), displayName)
 		dirFile.YAMLDetails.SetString(domain.RelationKey(bundle.RelationKeyIconEmoji.String()), "📂")
 
 		// Store the directory page

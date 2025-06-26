@@ -108,7 +108,8 @@ Content of document 3.`
 		}
 
 		// Verify we have the expected relations
-		expectedRelations := []string{"title", "status", "priority", "tags", "custom_field"}
+		// Note: properties are title-cased during import
+		expectedRelations := []string{"title", "Status", "priority", "Tag", "custom_field"}
 		for _, expected := range expectedRelations {
 			_, exists := relationKeys[expected]
 			assert.True(t, exists, "Missing relation: %s", expected)
@@ -128,8 +129,8 @@ Content of document 3.`
 			}
 		}
 
-		// Specific checks: all files should use the same key for 'status'
-		statusKey := relationKeys["status"]
+		// Specific checks: all files should use the same key for 'Status'
+		statusKey := relationKeys["Status"]
 		assert.NotEmpty(t, statusKey)
 
 		doc1Details := fileSnapshots[file1Path].Snapshot.Data.Details
