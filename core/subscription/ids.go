@@ -23,11 +23,9 @@ type idsSub struct {
 	spaceId string
 	keys    []domain.RelationKey
 
-	// Deferred start fields like sortedSub
 	started              bool
 	entriesBeforeStarted []*entry
 
-	// Internal map for entries - allows working with objects not yet available
 	entryMap map[string]*entry
 
 	depKeys          []domain.RelationKey
@@ -66,7 +64,6 @@ func (s *idsSub) onChange(ctx *opCtx) {
 	for _, e := range ctx.entries {
 		// If subscription hasn't started yet, accumulate entries for later processing
 		if !s.started {
-			// Only accumulate entries that we're interested in (that have reserved slots)
 			if _, exists := s.entryMap[e.id]; exists {
 				s.entriesBeforeStarted = append(s.entriesBeforeStarted, e)
 			}
@@ -146,7 +143,6 @@ func (s *idsSub) close() {
 	return
 }
 
-// Helper method to add IDs to track, even if objects are not yet available
 func (s *idsSub) addIds(ids []string) {
 	for _, id := range ids {
 		if _, exists := s.entryMap[id]; !exists {
