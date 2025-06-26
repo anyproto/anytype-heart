@@ -397,13 +397,16 @@ func (m *mdConverter) createDirectoryPages(rootPath string, files map[string]*Fi
 			continue
 		}
 
+		// Skip directories that start with "." (hidden directories)
+		dirName := filepath.Base(dirPath)
+		if strings.HasPrefix(dirName, ".") && dirPath != rootPath {
+			continue
+		}
+
 		// Check if a directory page already exists (shouldn't happen but just in case)
 		if _, exists := dirPages[dirPath]; exists {
 			continue
 		}
-
-		// Create a new directory page
-		dirName := filepath.Base(dirPath)
 
 		// Create blocks for children
 		var blocks []*model.Block
@@ -439,6 +442,12 @@ func (m *mdConverter) createDirectoryPages(rootPath string, files map[string]*Fi
 
 			// Check if this is a directory
 			if _, isDir := dirStructure[childPath]; isDir {
+				// Skip hidden directories (starting with ".")
+				childDirName := filepath.Base(childPath)
+				if strings.HasPrefix(childDirName, ".") {
+					continue
+				}
+
 				// This is a subdirectory - link to its directory page
 				linkBlock = &model.Block{
 					Id: bson.NewObjectId().Hex(),
