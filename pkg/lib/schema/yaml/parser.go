@@ -343,7 +343,7 @@ func processYAMLProperty(key string, value interface{}) *Property {
 func containsStatusKeyword(key string) bool {
 	// Only consider exact matches or common variations
 	lowerKey := strings.ToLower(key)
-	statusKeywords := []string{"status", "state", "stage", "phase"}
+	statusKeywords := []string{"status", "state", "stage", "phase", "progress", "condition", "situation", "priority", "severity", "activity"}
 	for _, keyword := range statusKeywords {
 		if lowerKey == keyword || lowerKey == keyword+"s" ||
 			strings.HasSuffix(lowerKey, "_"+keyword) ||
