@@ -31,6 +31,7 @@ type FileInfo struct {
 	HasInboundLinks       bool
 	PageID                string
 	IsRootFile            bool
+	IsRootDirPage         bool
 	Title                 string
 	TitleUnique           string
 	ParsedBlocks          []*model.Block
@@ -503,12 +504,12 @@ func (m *mdConverter) createDirectoryPages(rootPath string, files map[string]*Fi
 
 		// Store the directory page
 		dirPages[dirPath] = dirFile
-		
+
 		// Set IsRootFile for the root directory page
 		if dirPath == rootPath {
-			dirFile.IsRootFile = true
+			dirFile.IsRootDirPage = true
 		}
-		
+
 		files[dirPath] = dirFile
 	}
 }

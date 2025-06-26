@@ -3094,6 +3094,7 @@ message Rpc {
                 message MarkdownParams {
                     repeated string path = 1;
                     bool createDirectoryPages = 2;
+                    bool includePropertiesAsBlock = 3;
                 }
 
                 message BookmarksParams {

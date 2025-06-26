@@ -12,6 +12,7 @@ import (
 	"gopkg.in/yaml.v3"
 
 	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/pkg/lib/schema"
 )
@@ -91,6 +92,7 @@ func ParseYAMLFrontMatterWithResolver(frontMatter []byte, resolver schema.Proper
 }
 
 // ParseYAMLFrontMatterWithFormats parses YAML front matter with pre-defined formats
+// should be removed
 func ParseYAMLFrontMatterWithFormats(frontMatter []byte, formats map[string]model.RelationFormat) (*ParseResult, error) {
 	if len(frontMatter) == 0 {
 		return nil, nil
@@ -136,10 +138,8 @@ func ParseYAMLFrontMatterWithFormats(frontMatter []byte, formats map[string]mode
 			continue
 		}
 
-		prop.Key = key
-
 		// Use provided format if available
-		if format, ok := formats[key]; ok {
+		if format, ok := formats[prop.Key]; ok {
 			prop.Format = format
 		}
 
@@ -197,22 +197,24 @@ func ParseYAMLFrontMatterWithResolverAndPath(frontMatter []byte, resolver schema
 			continue
 		}
 
-		// Try to resolve property key from schema if resolver is available
-		if resolver != nil {
-			if schemaKey := resolver.ResolvePropertyKey(key); schemaKey != "" {
-				prop.Key = schemaKey
-				// Get the actual format from schema
-				schemaFormat := resolver.GetRelationFormat(schemaKey)
-				if schemaFormat != model.RelationFormat_longtext {
-					prop.Format = schemaFormat
+		if prop.Key == "" {
+			// Try to resolve property key from schema if resolver is available
+			if resolver != nil {
+				if schemaKey := resolver.ResolvePropertyKey(prop.Name); schemaKey != "" {
+					prop.Key = schemaKey
+					// Get the actual format from schema
+					schemaFormat := resolver.GetRelationFormat(schemaKey)
+					if schemaFormat != model.RelationFormat_longtext {
+						prop.Format = schemaFormat
+					}
+				} else {
+					// Generate BSON ID for this property if not in schema
+					prop.Key = bson.NewObjectId().Hex()
 				}
 			} else {
-				// Generate BSON ID for this property if not in schema
+				// Generate BSON ID for this property
 				prop.Key = bson.NewObjectId().Hex()
 			}
-		} else {
-			// Generate BSON ID for this property
-			prop.Key = bson.NewObjectId().Hex()
 		}
 
 		// Now resolve option values if needed
@@ -233,20 +235,16 @@ func ParseYAMLFrontMatterWithResolverAndPath(frontMatter []byte, resolver schema
 	return result, nil
 }
 
-var replaceMap = map[string]string{
-	"tag":      "Tag",
-	"status":   "Status",
-	"tags":     "Tag",
-	"created":  "Creation date",
-	"modified": "Last modified date",
+var replaceMap = map[string]domain.RelationKey{
+	"tag":      bundle.RelationKeyTag,
+	"status":   bundle.RelationKeyStatus,
+	"tags":     bundle.RelationKeyTag,
+	"created":  bundle.RelationKeyCreatedDate,
+	"modified": bundle.RelationKeyLastModifiedDate,
 }
 
 // processYAMLProperty processes a single YAML property and returns its configuration
 func processYAMLProperty(key string, value interface{}) *Property {
-	if v, ok := replaceMap[strings.ToLower(key)]; ok {
-		key = v
-	}
-
 	prop := &Property{
 		Name:        key,
 		Format:      model.RelationFormat_shorttext, // default
@@ -329,6 +327,14 @@ func processYAMLProperty(key string, value interface{}) *Property {
 	default:
 		// Skip unsupported types (like maps, interfaces, etc.)
 		return nil
+	}
+
+	if relKey, ok := replaceMap[strings.ToLower(key)]; ok {
+		rel := bundle.MustGetRelation(relKey)
+		if prop.Format == rel.Format {
+			prop.Key = relKey.String()
+			prop.Name = rel.Name
+		}
 	}
 
 	return prop

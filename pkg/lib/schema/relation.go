@@ -7,6 +7,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+	"github.com/anyproto/anytype-heart/util/constant"
 )
 
 // CollectionPropertyKey is a workaround for storing collection ids as a fake property
@@ -146,6 +147,9 @@ func (r *Relation) CreateOptionDetails(optionName string, color string) *domain.
 
 	if color != "" {
 		details.SetString(bundle.RelationKeyRelationOptionColor, color)
+	} else {
+		// randomly assign a color if not provided
+		details.SetString(bundle.RelationKeyRelationOptionColor, constant.RandomOptionColor().String())
 	}
 
 	// Set layout for relation option

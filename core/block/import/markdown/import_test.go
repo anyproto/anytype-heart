@@ -1650,3 +1650,190 @@ Testing different path formats.`, task1Path)
 		assert.Contains(t, collectionIds, task2Snapshot.Id, "Collection should contain task 2")
 	})
 }
+
+func TestMarkdown_IncludePropertiesAsBlock(t *testing.T) {
+	t.Run("include properties as relation blocks", func(t *testing.T) {
+		// given
+		testDirectory := t.TempDir()
+		mdPath := filepath.Join(testDirectory, "test.md")
+		
+		// Create test file with YAML properties
+		content := `---
+title: Test Document
+priority: high
+status: active
+tags: [work, project]
+custom_field: Some value
+---
+
+# Document Content
+
+This is the document content.`
+		
+		err := os.WriteFile(mdPath, []byte(content), os.ModePerm)
+		assert.NoError(t, err)
+		
+		h := &Markdown{
+			blockConverter: newMDConverter(&MockTempDir{}),
+			schemaImporter: NewSchemaImporter(),
+		}
+		h.blockConverter.SetSchemaImporter(h.schemaImporter)
+		p := process.NewNoOp()
+		
+		// when - with includePropertiesAsBlock = true
+		sn, ce := h.GetSnapshots(context.Background(), &pb.RpcObjectImportRequest{
+			Params: &pb.RpcObjectImportRequestParamsOfMarkdownParams{
+				MarkdownParams: &pb.RpcObjectImportRequestMarkdownParams{
+					Path:                     []string{testDirectory},
+					IncludePropertiesAsBlock: true,
+				},
+			},
+			Type: model.Import_Markdown,
+			Mode: pb.RpcObjectImportRequest_IGNORE_ERRORS,
+		}, p)
+		
+		// then
+		assert.Nil(t, ce)
+		assert.NotNil(t, sn)
+		
+		// Find the main document snapshot
+		var mainSnapshot *common.Snapshot
+		for _, snapshot := range sn.Snapshots {
+			if snapshot.FileName == mdPath {
+				mainSnapshot = snapshot
+				break
+			}
+		}
+		
+		assert.NotNil(t, mainSnapshot)
+		blocks := mainSnapshot.Snapshot.Data.Blocks
+		assert.NotEmpty(t, blocks)
+		
+		// Count relation blocks at the beginning
+		relationBlockCount := 0
+		for _, block := range blocks {
+			if block.GetRelation() != nil {
+				relationBlockCount++
+			} else {
+				break // Stop counting when we hit non-relation blocks
+			}
+		}
+		
+		// Should have relation blocks for non-system properties
+		// title, priority, status, tags, custom_field
+		assert.Equal(t, 5, relationBlockCount, "Should have 5 relation blocks for non-system properties")
+		
+		
+		// Verify the relation keys - property names after processing
+		expectedKeys := map[string]bool{
+			"title":        false, // Custom title property (not the system Name)
+			"priority":     false,
+			"Status":       false, // status becomes Status
+			"Tag":          false, // tags becomes Tag
+			"custom_field": false,
+		}
+		
+		for i := 0; i < relationBlockCount; i++ {
+			relBlock := blocks[i].GetRelation()
+			assert.NotNil(t, relBlock)
+			
+			// Find which property this represents
+			found := false
+			for _, snapshot := range sn.Snapshots {
+				if snapshot.Snapshot.Data.Key == relBlock.Key {
+					name := snapshot.Snapshot.Data.Details.GetString(bundle.RelationKeyName)
+					if _, exists := expectedKeys[name]; exists {
+						expectedKeys[name] = true
+						found = true
+						break
+					}
+				}
+			}
+			assert.True(t, found, "Relation block key %s should correspond to a known property", relBlock.Key)
+		}
+		
+		// Verify all expected properties were found
+		for name, found := range expectedKeys {
+			assert.True(t, found, "Property %s should have a relation block", name)
+		}
+		
+		// Verify content blocks come after relation blocks
+		headerFound := false
+		for i := relationBlockCount; i < len(blocks); i++ {
+			block := blocks[i]
+			if text := block.GetText(); text != nil {
+				if text.Style == model.BlockContentText_Header1 && text.Text == "Document Content" {
+					headerFound = true
+					break
+				} else if text.Style == model.BlockContentText_Paragraph && strings.Contains(text.Text, "document content") {
+					// Content is present but as a paragraph - that's acceptable
+					headerFound = true
+					break
+				}
+			}
+		}
+		assert.True(t, headerFound, "Document content should be preserved after relation blocks")
+	})
+	
+	t.Run("do not include properties as blocks when disabled", func(t *testing.T) {
+		// given
+		testDirectory := t.TempDir()
+		mdPath := filepath.Join(testDirectory, "test2.md")
+		
+		content := `---
+title: Test Document
+priority: high
+---
+
+# Document Content`
+		
+		err := os.WriteFile(mdPath, []byte(content), os.ModePerm)
+		assert.NoError(t, err)
+		
+		h := &Markdown{
+			blockConverter: newMDConverter(&MockTempDir{}),
+			schemaImporter: NewSchemaImporter(),
+		}
+		h.blockConverter.SetSchemaImporter(h.schemaImporter)
+		p := process.NewNoOp()
+		
+		// when - with includePropertiesAsBlock = false
+		sn, ce := h.GetSnapshots(context.Background(), &pb.RpcObjectImportRequest{
+			Params: &pb.RpcObjectImportRequestParamsOfMarkdownParams{
+				MarkdownParams: &pb.RpcObjectImportRequestMarkdownParams{
+					Path:                     []string{testDirectory},
+					IncludePropertiesAsBlock: false,
+				},
+			},
+			Type: model.Import_Markdown,
+			Mode: pb.RpcObjectImportRequest_IGNORE_ERRORS,
+		}, p)
+		
+		// then
+		assert.Nil(t, ce)
+		assert.NotNil(t, sn)
+		
+		// Find the main document snapshot
+		var mainSnapshot *common.Snapshot
+		for _, snapshot := range sn.Snapshots {
+			if snapshot.FileName == mdPath {
+				mainSnapshot = snapshot
+				break
+			}
+		}
+		
+		assert.NotNil(t, mainSnapshot)
+		blocks := mainSnapshot.Snapshot.Data.Blocks
+		assert.NotEmpty(t, blocks)
+		
+		// First block should be the header, not a relation block
+		if len(blocks) > 0 {
+			firstBlock := blocks[0]
+			assert.Nil(t, firstBlock.GetRelation(), "First block should not be a relation block")
+			if firstBlock.GetText() != nil {
+				assert.Equal(t, model.BlockContentText_Header1, firstBlock.GetText().Style)
+				assert.Equal(t, "Document Content", firstBlock.GetText().Text)
+			}
+		}
+	})
+}

@@ -25,6 +25,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/pkg/lib/schema"
 	"github.com/anyproto/anytype-heart/pkg/lib/schema/yaml"
+	"github.com/anyproto/anytype-heart/util/constant"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
@@ -77,6 +78,11 @@ func (m *Markdown) GetImage() ([]byte, int64, int64, error) {
 }
 
 func (m *Markdown) GetSnapshots(ctx context.Context, req *pb.RpcObjectImportRequest, progress process.Progress) (*common.Response, *common.ConvertError) {
+	if p := req.GetMarkdownParams(); p != nil /*&& req.Type == model.Import_Obsidian*/ {
+		p.CreateDirectoryPages = true
+		p.IncludePropertiesAsBlock = true
+	}
+
 	params := m.GetParams(req)
 	if len(params.Path) == 0 {
 		return nil, nil
@@ -149,6 +155,13 @@ func (m *Markdown) createRootCollection(allSnapshots []*common.Snapshot, allRoot
 	return allSnapshots, rootCollectionID, nil
 }
 
+func wrapCallbackEnabler(enable bool, f func(files map[string]*FileInfo, progress process.Progress, details map[string]*domain.Details, allErrors *common.ConvertError)) func(map[string]*FileInfo, process.Progress, map[string]*domain.Details, *common.ConvertError) {
+	if !enable {
+		return func(_ map[string]*FileInfo, _ process.Progress, _ map[string]*domain.Details, _ *common.ConvertError) {
+		}
+	}
+	return f
+}
 func (m *Markdown) getSnapshotsAndRootObjectsIds(
 	req *pb.RpcObjectImportRequest,
 	progress process.Progress,
@@ -172,14 +185,9 @@ func (m *Markdown) getSnapshotsAndRootObjectsIds(
 		log.Warnf("failed to load schemas: %v", err)
 	}
 
-	var createDirPages bool
-	if req.Type == model.Import_Obsidian {
-		// Obsidian import type forces directory pages creation
-		createDirPages = true
-	} else if p := req.GetMarkdownParams(); p != nil {
-		createDirPages = p.CreateDirectoryPages
-	}
-	files := m.blockConverter.markdownToBlocks(path, importSource, allErrors, createDirPages)
+	params := m.GetParams(req)
+
+	files := m.blockConverter.markdownToBlocks(path, importSource, allErrors, params.CreateDirectoryPages)
 	pathsCount := len(req.GetMarkdownParams().Path)
 	if allErrors.ShouldAbortImport(pathsCount, req.Type) {
 		return nil, nil
@@ -187,6 +195,7 @@ func (m *Markdown) getSnapshotsAndRootObjectsIds(
 
 	progress.SetTotal(int64(numberOfStages * len(files)))
 	details := make(map[string]*domain.Details, 0)
+
 	if m.processImportStep(pathsCount, files, progress, allErrors, details, m.setInboundLinks) ||
 		m.processImportStep(pathsCount, files, progress, allErrors, details, m.setNewID) ||
 		m.processImportStep(pathsCount, files, progress, allErrors, details, m.processObjectProperties) ||
@@ -194,11 +203,23 @@ func (m *Markdown) getSnapshotsAndRootObjectsIds(
 		m.processImportStep(pathsCount, files, progress, allErrors, details, m.linkPagesWithRootFile) ||
 		m.processImportStep(pathsCount, files, progress, allErrors, details, m.addLinkBlocks) ||
 		m.processImportStep(pathsCount, files, progress, allErrors, details, m.fillEmptyBlocks) ||
+		m.processImportStep(pathsCount, files, progress, allErrors, details, wrapCallbackEnabler(params.IncludePropertiesAsBlock, m.addPropertyBlocks)) ||
 		m.processImportStep(pathsCount, files, progress, allErrors, details, m.addChildBlocks) {
 		return nil, nil
 	}
 
-	return m.createSnapshots(pathsCount, files, progress, details, allErrors), m.retrieveRootObjectsIds(files)
+	var rootObjectsIds []string
+	if params.CreateDirectoryPages {
+		for _, file := range files {
+			if file.IsRootDirPage {
+				rootObjectsIds = append(rootObjectsIds, file.PageID)
+				break
+			}
+		}
+	} else {
+		rootObjectsIds = m.retrieveRootObjectsIds(files)
+	}
+	return m.createSnapshots(req, pathsCount, files, progress, details, allErrors), rootObjectsIds
 }
 
 func (m *Markdown) processImportStep(pathCount int,
@@ -446,6 +467,7 @@ func bundledRelationLinks(relationDetails *domain.Details) []*model.RelationLink
 }
 
 func (m *Markdown) createSnapshots(
+	req *pb.RpcObjectImportRequest,
 	pathsCount int,
 	files map[string]*FileInfo,
 	progress process.Progress,
@@ -629,7 +651,7 @@ func (m *Markdown) createSnapshots(
 				optionDetails.SetString(bundle.RelationKeyRelationKey, relationKey)
 				optionDetails.SetString(bundle.RelationKeyName, optionValue)
 				optionDetails.SetInt64(bundle.RelationKeyLayout, int64(model.ObjectType_relationOption))
-
+				optionDetails.SetString(bundle.RelationKeyRelationOptionColor, constant.RandomOptionColor().String())
 				// Set unique key for the option
 				optionKey := fmt.Sprintf("%s_%s", relationKey, optionValue)
 				uniqueKey, err := domain.NewUniqueKey(smartblock.SmartBlockTypeRelationOption, optionKey)
@@ -760,9 +782,11 @@ func (m *Markdown) createSnapshots(
 		// Collections are still pages, just with collection layout
 		sbType := smartblock.SmartBlockTypePage
 
+		blocks := file.ParsedBlocks
+
 		// Create state snapshot
 		stateSnapshot := &common.StateSnapshot{
-			Blocks:        file.ParsedBlocks,
+			Blocks:        blocks,
 			Details:       details[name],
 			ObjectTypes:   []string{objectTypeKey},
 			RelationLinks: relationLinks,
@@ -858,6 +882,17 @@ func (m *Markdown) addCollectionSnapshot(fileName string, file *FileInfo, snapsh
 	csvCollection.FileName = fileName
 	snapshots = append(snapshots, csvCollection)
 	return snapshots, nil
+}
+
+func (m *Markdown) addPropertyBlocks(files map[string]*FileInfo, progress process.Progress, details map[string]*domain.Details, allErrors *common.ConvertError) {
+	for _, file := range files {
+		// Create relation blocks for properties (excluding system properties)
+		propertyBlocks := m.createPropertyBlocks(file.YAMLProperties)
+		if len(propertyBlocks) > 0 {
+			// Insert property blocks at the beginning
+			file.ParsedBlocks = append(propertyBlocks, file.ParsedBlocks...)
+		}
+	}
 }
 
 func (m *Markdown) addChildBlocks(files map[string]*FileInfo, progress process.Progress, _ map[string]*domain.Details, allErrors *common.ConvertError) {
@@ -1160,4 +1195,52 @@ func (m *Markdown) processObjectProperties(files map[string]*FileInfo, progress 
 		}
 		m.setDetails(file, fileName, details)
 	}
+}
+
+// createPropertyBlocks creates relation blocks for YAML properties
+func (m *Markdown) createPropertyBlocks(properties []yaml.Property) []*model.Block {
+	var blocks []*model.Block
+
+	// Define system properties to exclude
+	systemProperties := map[string]bool{
+		bundle.RelationKeyName.String():             true,
+		bundle.RelationKeyDescription.String():      true,
+		bundle.RelationKeyType.String():             true,
+		bundle.RelationKeyCreatedDate.String():      true,
+		bundle.RelationKeyLastModifiedDate.String(): true,
+		bundle.RelationKeyCreator.String():          true,
+		bundle.RelationKeyLastModifiedBy.String():   true,
+		bundle.RelationKeyId.String():               true,
+		bundle.RelationKeyIconEmoji.String():        true,
+		bundle.RelationKeyIconImage.String():        true,
+		bundle.RelationKeyCoverId.String():          true,
+		bundle.RelationKeyCoverType.String():        true,
+		bundle.RelationKeyCoverX.String():           true,
+		bundle.RelationKeyCoverY.String():           true,
+		bundle.RelationKeyCoverScale.String():       true,
+		bundle.RelationKeyLayout.String():           true,
+		bundle.RelationKeyLayoutAlign.String():      true,
+		"objectType":                                true, // Also exclude objectType
+		"Type":                                      true, // Exclude Type property
+	}
+
+	for _, prop := range properties {
+		// Skip system properties
+		if systemProperties[prop.Key] {
+			continue
+		}
+
+		// Create a relation block
+		block := &model.Block{
+			Id: bson.NewObjectId().Hex(),
+			Content: &model.BlockContentOfRelation{
+				Relation: &model.BlockContentRelation{
+					Key: prop.Key,
+				},
+			},
+		}
+		blocks = append(blocks, block)
+	}
+
+	return blocks
 }
