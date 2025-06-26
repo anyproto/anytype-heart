@@ -64,12 +64,12 @@ func (m *Markdown) Name() string {
 	return Name
 }
 
-func (m *Markdown) GetParams(req *pb.RpcObjectImportRequest) []string {
+func (m *Markdown) GetParams(req *pb.RpcObjectImportRequest) *pb.RpcObjectImportRequestMarkdownParams {
 	if p := req.GetMarkdownParams(); p != nil {
-		return p.Path
+		return p
+	} else {
+		return &pb.RpcObjectImportRequestMarkdownParams{}
 	}
-
-	return nil
 }
 
 func (m *Markdown) GetImage() ([]byte, int64, int64, error) {
@@ -77,27 +77,39 @@ func (m *Markdown) GetImage() ([]byte, int64, int64, error) {
 }
 
 func (m *Markdown) GetSnapshots(ctx context.Context, req *pb.RpcObjectImportRequest, progress process.Progress) (*common.Response, *common.ConvertError) {
-	paths := m.GetParams(req)
-	if len(paths) == 0 {
+	params := m.GetParams(req)
+	if len(params.Path) == 0 {
 		return nil, nil
 	}
 	allErrors := common.NewError(req.Mode)
-	allSnapshots, allRootObjectsIds := m.processFiles(req, progress, paths, allErrors)
-	if allErrors.ShouldAbortImport(len(paths), req.Type) {
+	allSnapshots, allRootObjectsIds := m.processFiles(req, progress, params.Path, allErrors)
+	if allErrors.ShouldAbortImport(len(params.Path), req.Type) {
 		return nil, allErrors
 	}
-	allSnapshots, rootCollectionID, err := m.createRootCollection(allSnapshots, allRootObjectsIds)
-	if err != nil {
-		allErrors.Add(err)
-		if allErrors.ShouldAbortImport(len(paths), req.Type) {
-			return nil, allErrors
+	var (
+		rootObjectID string
+		err          error
+		widgetType   model.BlockContentWidgetLayout
+	)
+	if params.CreateDirectoryPages {
+		if len(allRootObjectsIds) > 0 {
+			rootObjectID = allRootObjectsIds[0]
+			widgetType = model.BlockContentWidget_Tree
+		}
+	} else {
+		allSnapshots, rootObjectID, err = m.createRootCollection(allSnapshots, allRootObjectsIds)
+		if err != nil {
+			allErrors.Add(err)
+			if allErrors.ShouldAbortImport(len(params.Path), req.Type) {
+				return nil, allErrors
+			}
 		}
 	}
 
 	if allErrors.IsEmpty() {
-		return &common.Response{Snapshots: allSnapshots, RootCollectionID: rootCollectionID}, nil
+		return &common.Response{Snapshots: allSnapshots, RootObjectID: rootObjectID, RootObjectWidgetType: widgetType}, nil
 	}
-	return &common.Response{Snapshots: allSnapshots, RootCollectionID: rootCollectionID}, allErrors
+	return &common.Response{Snapshots: allSnapshots, RootObjectID: rootObjectID, RootObjectWidgetType: widgetType}, allErrors
 }
 
 func (m *Markdown) processFiles(req *pb.RpcObjectImportRequest, progress process.Progress, paths []string, allErrors *common.ConvertError) ([]*common.Snapshot, []string) {

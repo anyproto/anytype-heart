@@ -343,7 +343,7 @@ func (m *mdConverter) getOriginalName(link string, importSource source.Source) s
 	return link
 }
 
-// createDirectoryPages creates a page for each directory level (except root) in the import
+// createDirectoryPages creates a page for each directory level (including root) in the import
 // Each directory page contains block links to nested pages and subdirectories
 func (m *mdConverter) createDirectoryPages(rootPath string, files map[string]*FileInfo) {
 	// Build directory structure
@@ -381,10 +381,10 @@ func (m *mdConverter) createDirectoryPages(rootPath string, files map[string]*Fi
 		}
 	}
 
-	// Now create directory pages for each directory (except root)
+	// Now create directory pages for each directory (including root)
 	for dirPath := range dirStructure {
-		if dirPath == "." || dirPath == "/" || dirPath == rootPath {
-			continue // Skip root directory
+		if dirPath == "." || dirPath == "/" {
+			continue // Skip current and root filesystem directory
 		}
 
 		// Check if a directory page already exists (shouldn't happen but just in case)
@@ -488,6 +488,12 @@ func (m *mdConverter) createDirectoryPages(rootPath string, files map[string]*Fi
 
 		// Store the directory page
 		dirPages[dirPath] = dirFile
+		
+		// Set IsRootFile for the root directory page
+		if dirPath == rootPath {
+			dirFile.IsRootFile = true
+		}
+		
 		files[dirPath] = dirFile
 	}
 }

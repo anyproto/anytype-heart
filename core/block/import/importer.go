@@ -400,7 +400,7 @@ func (i *Import) createObjects(ctx context.Context,
 	go i.addWork(res, pool)
 	go pool.Start(do)
 	details := i.readResultFromPool(pool, req.Mode, allErrors, progress)
-	return details, oldIDToNew[res.RootCollectionID]
+	return details, oldIDToNew[res.RootObjectID]
 }
 
 func (i *Import) getIDForAllObjects(ctx context.Context,

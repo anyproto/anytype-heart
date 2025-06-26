@@ -138,8 +138,9 @@ func NewSnapshotModelFromProto(sn *pb.SnapshotWithType) (*SnapshotModel, error) 
 
 // Response expected response of each converter, incapsulate blocks snapshots and converting errors
 type Response struct {
-	Snapshots        []*Snapshot
-	RootCollectionID string
+	Snapshots            []*Snapshot
+	RootObjectID         string
+	RootObjectWidgetType model.BlockContentWidgetLayout
 }
 
 type SnapshotContext struct {

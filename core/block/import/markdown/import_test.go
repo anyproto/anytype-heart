@@ -313,8 +313,9 @@ func TestMarkdown_GetSnapshots(t *testing.T) {
 			}
 		}
 		
-		// We should have directory pages for subdirectories
-		assert.Greater(t, dirPageCount, 0, "Should have at least one directory page")
+		// We should have directory pages for subdirectories and root
+		// We have: root (001), docs, docs/guides, docs/api, examples, and the collection root
+		assert.Equal(t, 6, dirPageCount, "Should have 6 directory pages (import root + collection root + 4 subdirs)")
 		
 		// Verify directory pages contain links to their children
 		for _, snapshot := range sn.Snapshots {
