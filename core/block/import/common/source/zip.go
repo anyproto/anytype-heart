@@ -6,6 +6,7 @@ import (
 	"io"
 	"path/filepath"
 	"strings"
+	"unicode/utf8"
 
 	"github.com/samber/lo"
 
@@ -54,7 +55,7 @@ func (z *Zip) Initialize(importPath string) error {
 
 func normalizeName(f *zip.File, index int) string {
 	fileName := f.Name
-	if f.NonUTF8 {
+	if !utf8.ValidString(fileName) {
 		fileName = fmt.Sprintf("import file %d%s", index+1, filepath.Ext(f.Name))
 	}
 	return fileName
