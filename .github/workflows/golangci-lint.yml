@@ -28,7 +28,7 @@ jobs:
       - name: Go get
         run: go get ./...
       - name: golangci-lint
-        uses: golangci/golangci-lint-action@v6
+        uses: golangci/golangci-lint-action@v8
         env:
           GOEXPERIMENT: "rangefunc"
         with:
