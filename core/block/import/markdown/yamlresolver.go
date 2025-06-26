@@ -1,8 +1,8 @@
 package markdown
 
 import (
-	"github.com/globalsign/mgo/bson"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+	"github.com/globalsign/mgo/bson"
 )
 
 // YAMLPropertyResolver implements a simple resolver that maintains property name to key mappings
@@ -23,7 +23,7 @@ func (r *YAMLPropertyResolver) ResolvePropertyKey(name string) string {
 	if key, exists := r.nameToKey[name]; exists {
 		return key
 	}
-	
+
 	// Generate a new key for this property name
 	key := bson.NewObjectId().Hex()
 	r.nameToKey[name] = key

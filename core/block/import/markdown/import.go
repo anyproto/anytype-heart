@@ -92,12 +92,13 @@ func (m *Markdown) GetSnapshots(ctx context.Context, req *pb.RpcObjectImportRequ
 		err          error
 		widgetType   model.BlockContentWidgetLayout
 	)
-	if params.CreateDirectoryPages {
-		if len(allRootObjectsIds) > 0 {
-			rootObjectID = allRootObjectsIds[0]
-			widgetType = model.BlockContentWidget_Tree
-		}
+	if params.CreateDirectoryPages && len(allRootObjectsIds) == 1 {
+		rootObjectID = allRootObjectsIds[0]
+		widgetType = model.BlockContentWidget_Tree
 	} else {
+		if params.CreateDirectoryPages {
+			log.Warnf("%d root pages found, creating collection", len(allRootObjectsIds))
+		}
 		allSnapshots, rootObjectID, err = m.createRootCollection(allSnapshots, allRootObjectsIds)
 		if err != nil {
 			allErrors.Add(err)
@@ -118,6 +119,22 @@ func (m *Markdown) processFiles(req *pb.RpcObjectImportRequest, progress process
 		allSnapshots      []*common.Snapshot
 		allRootObjectsIds []string
 	)
+
+	// Check if all paths share the same parent directory
+	if len(paths) > 1 {
+		if commonParent := findCommonParentDir(paths); commonParent != "" {
+			// All paths are within the same parent directory
+			// Import the parent directory with filtering for selected paths
+			snapshots, rootObjectsIds := m.getSnapshotsAndRootObjectsIdsWithFilter(req, progress, commonParent, paths, allErrors)
+			if !allErrors.ShouldAbortImport(len(paths), req.Type) {
+				allSnapshots = append(allSnapshots, snapshots...)
+				allRootObjectsIds = append(allRootObjectsIds, rootObjectsIds...)
+			}
+			return allSnapshots, allRootObjectsIds
+		}
+	}
+
+	// Process paths individually (original behavior)
 	for _, path := range paths {
 		snapshots, rootObjectsIds := m.getSnapshotsAndRootObjectsIds(req, progress, path, allErrors)
 		if allErrors.ShouldAbortImport(len(paths), req.Type) {
@@ -127,6 +144,33 @@ func (m *Markdown) processFiles(req *pb.RpcObjectImportRequest, progress process
 		allRootObjectsIds = append(allRootObjectsIds, rootObjectsIds...)
 	}
 	return allSnapshots, allRootObjectsIds
+}
+
+// findCommonParentDir checks if all paths share the same parent directory
+func findCommonParentDir(paths []string) string {
+	if len(paths) < 2 {
+		return ""
+	}
+
+	// Get absolute paths and their parents
+	var parents []string
+	for _, p := range paths {
+		absPath, err := filepath.Abs(p)
+		if err != nil {
+			return "" // If we can't get absolute path, bail out
+		}
+		parents = append(parents, filepath.Dir(absPath))
+	}
+
+	// Check if all parents are the same
+	firstParent := parents[0]
+	for _, parent := range parents[1:] {
+		if parent != firstParent {
+			return ""
+		}
+	}
+
+	return firstParent
 }
 
 func (m *Markdown) createRootCollection(allSnapshots []*common.Snapshot, allRootObjectsIds []string) ([]*common.Snapshot, string, error) {
@@ -163,12 +207,30 @@ func (m *Markdown) getSnapshotsAndRootObjectsIds(
 	path string,
 	allErrors *common.ConvertError,
 ) ([]*common.Snapshot, []string) {
+	return m.getSnapshotsAndRootObjectsIdsWithFilter(req, progress, path, nil, allErrors)
+}
+
+func (m *Markdown) getSnapshotsAndRootObjectsIdsWithFilter(
+	req *pb.RpcObjectImportRequest,
+	progress process.Progress,
+	path string,
+	selectedPaths []string,
+	allErrors *common.ConvertError,
+) ([]*common.Snapshot, []string) {
 	importSource := source.GetSource(path)
 	if importSource == nil {
 		return nil, nil
 	}
 	defer importSource.Close()
-	err := importSource.Initialize(path)
+
+	// Initialize source with filtering if selectedPaths are provided
+	var err error
+	if filterSource, ok := importSource.(source.FilterableSource); ok && len(selectedPaths) > 0 {
+		err = filterSource.InitializeWithFilter(path, selectedPaths)
+	} else {
+		err = importSource.Initialize(path)
+	}
+
 	if err != nil {
 		allErrors.Add(err)
 		if allErrors.ShouldAbortImport(0, model.Import_Markdown) {

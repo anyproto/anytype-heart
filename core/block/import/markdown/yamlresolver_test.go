@@ -93,11 +93,11 @@ Content of document 3.`
 			if snapshot.Snapshot.SbType == coresb.SmartBlockTypeRelation {
 				name := snapshot.Snapshot.Data.Details.GetString(bundle.RelationKeyName)
 				key := snapshot.Snapshot.Data.Key
-				
+
 				// Check if we've seen this relation before
 				if existingKey, exists := relationKeys[name]; exists {
 					// Same property name should have the same key
-					assert.Equal(t, existingKey, key, 
+					assert.Equal(t, existingKey, key,
 						"Property '%s' has different keys: %s vs %s", name, existingKey, key)
 				} else {
 					relationKeys[name] = key
@@ -118,12 +118,12 @@ Content of document 3.`
 		// Verify that all documents use the same keys for the same properties
 		for fileName, snapshot := range fileSnapshots {
 			details := snapshot.Snapshot.Data.Details
-			
+
 			// For each property in the details, check if it uses the correct key
 			for propName, propKey := range relationKeys {
 				value := details.Get(domain.RelationKey(propKey))
 				if !value.IsNull() {
-					t.Logf("File %s has property '%s' with key '%s'", 
+					t.Logf("File %s has property '%s' with key '%s'",
 						filepath.Base(fileName), propName, propKey)
 				}
 			}

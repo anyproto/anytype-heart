@@ -1,7 +1,6 @@
 package markdown
 
 import (
-	"fmt"
 	"io"
 	"os"
 	"path/filepath"
@@ -420,24 +419,18 @@ func (m *mdConverter) createDirectoryPages(importPath string, files map[string]*
 	rootPath := m.findRootPath(files)
 	dirStructure := m.buildDirectoryStructure(files, rootPath)
 
-	fmt.Println("####")
-	fmt.Println("Import path:", importPath)
-	fmt.Println("Root path:", rootPath)
-	for path, file := range files {
-		fmt.Println("File:", path, "OriginalPath:", file.OriginalPath)
-	}
 	// For zip files with single root directory, collapse it
 	if shouldCollapseRoot(rootPath, files) {
 		rootPath = ""
 		dirStructure = m.buildDirectoryStructure(files, rootPath)
 	}
-	
+
 	// Create a page for each directory
 	for dirPath, children := range dirStructure {
 		if shouldSkipDirectory(dirPath, rootPath) {
 			continue
 		}
-		
+
 		dirPage := m.createDirectoryPage(dirPath, rootPath, children, files, dirStructure)
 		files[dirPath] = dirPage
 	}

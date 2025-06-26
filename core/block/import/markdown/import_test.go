@@ -12,6 +12,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/template"
 	"github.com/anyproto/anytype-heart/core/block/import/common"
@@ -270,7 +271,7 @@ func TestMarkdown_GetSnapshots(t *testing.T) {
 		}
 		assert.True(t, found)
 	})
-	
+
 	t.Run("create directory pages", func(t *testing.T) {
 		// given
 		testDirectory := setupHierarchicalTestDirectory(t)
@@ -298,7 +299,7 @@ func TestMarkdown_GetSnapshots(t *testing.T) {
 		// then
 		assert.Nil(t, ce)
 		assert.NotNil(t, sn)
-		
+
 		// Count directory pages
 		dirPageCount := 0
 		filePageCount := 0
@@ -312,11 +313,11 @@ func TestMarkdown_GetSnapshots(t *testing.T) {
 				}
 			}
 		}
-		
+
 		// We should have directory pages for subdirectories and root
 		// We have: root (testDirectory), docs, docs/guides, docs/api, examples
 		assert.Equal(t, 5, dirPageCount, "Should have 5 directory pages (import root + 4 subdirs)")
-		
+
 		// Verify directory pages contain links to their children
 		for _, snapshot := range sn.Snapshots {
 			if snapshot.Snapshot.SbType == coresb.SmartBlockTypePage {
@@ -791,29 +792,29 @@ category: Work
 
 func setupHierarchicalTestDirectory(t *testing.T) string {
 	testDirectory := t.TempDir()
-	
+
 	// Create hierarchical structure
 	os.MkdirAll(filepath.Join(testDirectory, "docs", "guides"), 0755)
 	os.MkdirAll(filepath.Join(testDirectory, "docs", "api"), 0755)
 	os.MkdirAll(filepath.Join(testDirectory, "examples"), 0755)
-	
+
 	// Create files in different directories
 	files := map[string]string{
-		"README.md": "# Root README\nWelcome to the project",
-		filepath.Join("docs", "overview.md"): "# Documentation Overview\nThis is the docs",
+		"README.md":                                      "# Root README\nWelcome to the project",
+		filepath.Join("docs", "overview.md"):             "# Documentation Overview\nThis is the docs",
 		filepath.Join("docs", "guides", "quickstart.md"): "# Quick Start Guide\nGet started quickly",
-		filepath.Join("docs", "guides", "advanced.md"): "# Advanced Guide\nAdvanced topics",
-		filepath.Join("docs", "api", "reference.md"): "# API Reference\nAPI documentation",
-		filepath.Join("examples", "example1.md"): "# Example 1\nFirst example",
-		filepath.Join("examples", "example2.md"): "# Example 2\nSecond example",
+		filepath.Join("docs", "guides", "advanced.md"):   "# Advanced Guide\nAdvanced topics",
+		filepath.Join("docs", "api", "reference.md"):     "# API Reference\nAPI documentation",
+		filepath.Join("examples", "example1.md"):         "# Example 1\nFirst example",
+		filepath.Join("examples", "example2.md"):         "# Example 2\nSecond example",
 	}
-	
+
 	for path, content := range files {
 		fullPath := filepath.Join(testDirectory, path)
 		err := os.WriteFile(fullPath, []byte(content), 0644)
 		assert.NoError(t, err)
 	}
-	
+
 	return testDirectory
 }
 
@@ -1185,7 +1186,7 @@ This document is used for snapshot testing of YAML front matter import.`
 		// Create a map to store relation details by name for verification
 		relationsByName := make(map[string]map[string]any)
 		var mainObjectDetails *domain.Details
-		
+
 		// Debug: Print all relations found
 		t.Logf("Found %d snapshots", len(sn.Snapshots))
 
@@ -1223,21 +1224,21 @@ This document is used for snapshot testing of YAML front matter import.`
 
 		assert.Equal(t, "Snapshot Test Document", mainObjectDetails.GetString(getKey("title")))
 		assert.Equal(t, "Test Author", mainObjectDetails.GetString(getKey("author")))
-		
+
 		// Priority is now stored as option ID (status field)
 		priorityIds := mainObjectDetails.GetStringList(getKey("priority"))
 		assert.Len(t, priorityIds, 1, "Should have one priority value")
 		// Status is now stored as option ID
 		statusIds := mainObjectDetails.GetStringList(getKey("Status"))
 		assert.Len(t, statusIds, 1, "Should have one status value")
-		
+
 		// Verify we have a status option with value "in-progress"
 		foundStatusOption := false
 		for _, snapshot := range sn.Snapshots {
 			if snapshot.Snapshot.SbType == coresb.SmartBlockTypeRelationOption {
 				optionDetails := snapshot.Snapshot.Data.Details
 				if optionDetails.GetString(bundle.RelationKeyRelationKey) == string(getKey("Status")) &&
-				   optionDetails.GetString(bundle.RelationKeyName) == "in-progress" {
+					optionDetails.GetString(bundle.RelationKeyName) == "in-progress" {
 					foundStatusOption = true
 					assert.Contains(t, statusIds, snapshot.Id, "Status should reference the correct option ID")
 					break
@@ -1261,20 +1262,20 @@ This document is used for snapshot testing of YAML front matter import.`
 		// Note: properties are title-cased during import
 		tags := mainObjectDetails.GetStringList(getKey("Tag"))
 		assert.Len(t, tags, 3, "Should have 3 tags")
-		
+
 		assignees := mainObjectDetails.GetStringList(getKey("assignees"))
 		assert.Len(t, assignees, 3, "Should have 3 assignees")
-		
+
 		// Verify we have option snapshots with the correct values
 		expectedTagValues := []string{"important", "test", "snapshot"}
 		expectedAssigneeValues := []string{"john", "jane", "bob"}
-		
+
 		for _, snapshot := range sn.Snapshots {
 			if snapshot.Snapshot.SbType == coresb.SmartBlockTypeRelationOption {
 				optionDetails := snapshot.Snapshot.Data.Details
 				relationKey := optionDetails.GetString(bundle.RelationKeyRelationKey)
 				optionName := optionDetails.GetString(bundle.RelationKeyName)
-				
+
 				if relationKey == string(getKey("Tag")) {
 					assert.Contains(t, expectedTagValues, optionName, "Tag option value should be one of expected")
 				} else if relationKey == string(getKey("assignees")) {
@@ -1676,7 +1677,7 @@ func TestMarkdown_IncludePropertiesAsBlock(t *testing.T) {
 		// given
 		testDirectory := t.TempDir()
 		mdPath := filepath.Join(testDirectory, "test.md")
-		
+
 		// Create test file with YAML properties
 		content := `---
 title: Test Document
@@ -1689,17 +1690,17 @@ custom_field: Some value
 # Document Content
 
 This is the document content.`
-		
+
 		err := os.WriteFile(mdPath, []byte(content), os.ModePerm)
 		assert.NoError(t, err)
-		
+
 		h := &Markdown{
 			blockConverter: newMDConverter(&MockTempDir{}),
 			schemaImporter: NewSchemaImporter(),
 		}
 		h.blockConverter.SetSchemaImporter(h.schemaImporter)
 		p := process.NewNoOp()
-		
+
 		// when - with includePropertiesAsBlock = true
 		sn, ce := h.GetSnapshots(context.Background(), &pb.RpcObjectImportRequest{
 			Params: &pb.RpcObjectImportRequestParamsOfMarkdownParams{
@@ -1711,11 +1712,11 @@ This is the document content.`
 			Type: model.Import_Markdown,
 			Mode: pb.RpcObjectImportRequest_IGNORE_ERRORS,
 		}, p)
-		
+
 		// then
 		assert.Nil(t, ce)
 		assert.NotNil(t, sn)
-		
+
 		// Find the main document snapshot
 		var mainSnapshot *common.Snapshot
 		for _, snapshot := range sn.Snapshots {
@@ -1724,11 +1725,11 @@ This is the document content.`
 				break
 			}
 		}
-		
+
 		assert.NotNil(t, mainSnapshot)
 		blocks := mainSnapshot.Snapshot.Data.Blocks
 		assert.NotEmpty(t, blocks)
-		
+
 		// Count relation blocks at the beginning
 		relationBlockCount := 0
 		for _, block := range blocks {
@@ -1738,12 +1739,11 @@ This is the document content.`
 				break // Stop counting when we hit non-relation blocks
 			}
 		}
-		
+
 		// Should have relation blocks for non-system properties
 		// title, priority, status, tags, custom_field
 		assert.Equal(t, 5, relationBlockCount, "Should have 5 relation blocks for non-system properties")
-		
-		
+
 		// Verify the relation keys - property names after processing
 		expectedKeys := map[string]bool{
 			"title":        false, // Custom title property (not the system Name)
@@ -1752,11 +1752,11 @@ This is the document content.`
 			"Tag":          false, // tags becomes Tag
 			"custom_field": false,
 		}
-		
+
 		for i := 0; i < relationBlockCount; i++ {
 			relBlock := blocks[i].GetRelation()
 			assert.NotNil(t, relBlock)
-			
+
 			// Find which property this represents
 			found := false
 			for _, snapshot := range sn.Snapshots {
@@ -1771,12 +1771,12 @@ This is the document content.`
 			}
 			assert.True(t, found, "Relation block key %s should correspond to a known property", relBlock.Key)
 		}
-		
+
 		// Verify all expected properties were found
 		for name, found := range expectedKeys {
 			assert.True(t, found, "Property %s should have a relation block", name)
 		}
-		
+
 		// Verify content blocks come after relation blocks
 		headerFound := false
 		for i := relationBlockCount; i < len(blocks); i++ {
@@ -1794,29 +1794,29 @@ This is the document content.`
 		}
 		assert.True(t, headerFound, "Document content should be preserved after relation blocks")
 	})
-	
+
 	t.Run("do not include properties as blocks when disabled", func(t *testing.T) {
 		// given
 		testDirectory := t.TempDir()
 		mdPath := filepath.Join(testDirectory, "test2.md")
-		
+
 		content := `---
 title: Test Document
 priority: high
 ---
 
 # Document Content`
-		
+
 		err := os.WriteFile(mdPath, []byte(content), os.ModePerm)
 		assert.NoError(t, err)
-		
+
 		h := &Markdown{
 			blockConverter: newMDConverter(&MockTempDir{}),
 			schemaImporter: NewSchemaImporter(),
 		}
 		h.blockConverter.SetSchemaImporter(h.schemaImporter)
 		p := process.NewNoOp()
-		
+
 		// when - with includePropertiesAsBlock = false
 		sn, ce := h.GetSnapshots(context.Background(), &pb.RpcObjectImportRequest{
 			Params: &pb.RpcObjectImportRequestParamsOfMarkdownParams{
@@ -1828,11 +1828,11 @@ priority: high
 			Type: model.Import_Markdown,
 			Mode: pb.RpcObjectImportRequest_IGNORE_ERRORS,
 		}, p)
-		
+
 		// then
 		assert.Nil(t, ce)
 		assert.NotNil(t, sn)
-		
+
 		// Find the main document snapshot
 		var mainSnapshot *common.Snapshot
 		for _, snapshot := range sn.Snapshots {
@@ -1841,11 +1841,11 @@ priority: high
 				break
 			}
 		}
-		
+
 		assert.NotNil(t, mainSnapshot)
 		blocks := mainSnapshot.Snapshot.Data.Blocks
 		assert.NotEmpty(t, blocks)
-		
+
 		// First block should be the header, not a relation block
 		if len(blocks) > 0 {
 			firstBlock := blocks[0]
@@ -1856,4 +1856,176 @@ priority: high
 			}
 		}
 	})
+}
+
+func TestMarkdown_ProcessFiles_MultipleSelection(t *testing.T) {
+	t.Run("multiple files in same directory should import parent directory", func(t *testing.T) {
+		// Create test directory structure
+		testDir := t.TempDir()
+		subDir1 := filepath.Join(testDir, "docs")
+		subDir2 := filepath.Join(testDir, "notes")
+		err := os.MkdirAll(subDir1, 0755)
+		require.NoError(t, err)
+		err = os.MkdirAll(subDir2, 0755)
+		require.NoError(t, err)
+
+		// Create test files
+		file1 := filepath.Join(testDir, "file1.md")
+		file2 := filepath.Join(testDir, "file2.md")
+		file3 := filepath.Join(subDir1, "doc1.md")
+		file4 := filepath.Join(subDir2, "note1.md")
+
+		for _, f := range []string{file1, file2, file3, file4} {
+			err := os.WriteFile(f, []byte("# Test\nContent"), 0644)
+			require.NoError(t, err)
+		}
+
+		// Test 1: Multiple files in same directory
+		h := &Markdown{
+			blockConverter: newMDConverter(&MockTempDir{}),
+			schemaImporter: NewSchemaImporter(),
+		}
+		h.blockConverter.SetSchemaImporter(h.schemaImporter)
+
+		req := &pb.RpcObjectImportRequest{
+			Params: &pb.RpcObjectImportRequestParamsOfMarkdownParams{
+				MarkdownParams: &pb.RpcObjectImportRequestMarkdownParams{
+					Path: []string{file1, file2},
+				},
+			},
+			Type: model.Import_Markdown,
+			Mode: pb.RpcObjectImportRequest_IGNORE_ERRORS,
+		}
+
+		progress := process.NewNoOp()
+		response, ce := h.GetSnapshots(context.Background(), req, progress)
+
+		assert.Nil(t, ce)
+		assert.NotNil(t, response)
+
+		// Should import only the selected files, not all files in directory
+		fileCount := 0
+		for _, snapshot := range response.Snapshots {
+			if snapshot.FileName == file1 || snapshot.FileName == file2 {
+				fileCount++
+			}
+			// Should not include file3 or file4
+			assert.NotEqual(t, file3, snapshot.FileName)
+			assert.NotEqual(t, file4, snapshot.FileName)
+		}
+		assert.Equal(t, 2, fileCount, "Should import exactly the 2 selected files")
+	})
+
+	t.Run("multiple paths from different directories imports individually", func(t *testing.T) {
+		// Create test directory structure
+		testDir1 := t.TempDir()
+		testDir2 := t.TempDir()
+
+		file1 := filepath.Join(testDir1, "file1.md")
+		file2 := filepath.Join(testDir2, "file2.md")
+
+		for _, f := range []string{file1, file2} {
+			err := os.WriteFile(f, []byte("# Test\nContent"), 0644)
+			require.NoError(t, err)
+		}
+
+		h := &Markdown{
+			blockConverter: newMDConverter(&MockTempDir{}),
+			schemaImporter: NewSchemaImporter(),
+		}
+		h.blockConverter.SetSchemaImporter(h.schemaImporter)
+
+		req := &pb.RpcObjectImportRequest{
+			Params: &pb.RpcObjectImportRequestParamsOfMarkdownParams{
+				MarkdownParams: &pb.RpcObjectImportRequestMarkdownParams{
+					Path: []string{file1, file2},
+				},
+			},
+			Type: model.Import_Markdown,
+			Mode: pb.RpcObjectImportRequest_IGNORE_ERRORS,
+		}
+
+		progress := process.NewNoOp()
+		response, ce := h.GetSnapshots(context.Background(), req, progress)
+
+		assert.Nil(t, ce)
+		assert.NotNil(t, response)
+
+		// Should import both files
+		fileCount := 0
+		for _, snapshot := range response.Snapshots {
+			if snapshot.FileName == file1 || snapshot.FileName == file2 {
+				fileCount++
+			}
+		}
+		assert.Equal(t, 2, fileCount, "Should import both files from different directories")
+	})
+}
+
+func TestFindCommonParentDir(t *testing.T) {
+	tests := []struct {
+		name     string
+		paths    []string
+		expected string
+	}{
+		{
+			name:     "empty paths",
+			paths:    []string{},
+			expected: "",
+		},
+		{
+			name:     "single path",
+			paths:    []string{"/home/user/docs/file1.md"},
+			expected: "",
+		},
+		{
+			name:     "same parent",
+			paths:    []string{"/home/user/docs/file1.md", "/home/user/docs/file2.md"},
+			expected: "/home/user/docs",
+		},
+		{
+			name:     "different parents",
+			paths:    []string{"/home/user/docs/file1.md", "/home/user/notes/file2.md"},
+			expected: "",
+		},
+		{
+			name:     "nested paths same parent",
+			paths:    []string{"/home/user/docs/file1.md", "/home/user/docs/sub/file2.md"},
+			expected: "",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// For this test we need to use paths that can be made absolute
+			// Create temporary files for paths that need to exist
+			if len(tt.paths) > 0 && tt.paths[0] != "" {
+				var testPaths []string
+				tempDir := t.TempDir()
+
+				for _, p := range tt.paths {
+					// Create a test file path
+					testFile := filepath.Join(tempDir, filepath.Base(filepath.Dir(p)), filepath.Base(p))
+					os.MkdirAll(filepath.Dir(testFile), 0755)
+					os.WriteFile(testFile, []byte("test"), 0644)
+					testPaths = append(testPaths, testFile)
+				}
+
+				// If we expect same parent, check with our test paths
+				if tt.expected != "" && len(testPaths) > 1 {
+					result := findCommonParentDir(testPaths)
+					// Just check that we get a common parent (exact path will differ due to temp dir)
+					assert.NotEmpty(t, result)
+				} else {
+					result := findCommonParentDir(testPaths)
+					if tt.expected == "" {
+						assert.Empty(t, result)
+					}
+				}
+			} else {
+				result := findCommonParentDir(tt.paths)
+				assert.Equal(t, tt.expected, result)
+			}
+		})
+	}
 }
