@@ -33784,9 +33784,10 @@ RelationFormat describes how the underlying data is stored in the google.protobu
 
 | Name | Number | Description |
 | ---- | ------ | ----------- |
-| Chat | 0 | chat-first UX |
+| None | 0 | old value for chat, deprecated |
 | Data | 1 | objects-first UX |
 | Stream | 2 | stream UX (chat with limited amount of owners) |
+| Chat | 3 | chat UX |
 
 
 
