@@ -16348,6 +16348,8 @@ DEPRECATED, GO-1926 |
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | path | [string](#string) | repeated |  |
+| createDirectoryPages | [bool](#bool) |  |  |
+| includePropertiesAsBlock | [bool](#bool) |  |  |
 
 
 
@@ -16798,6 +16800,7 @@ Deletes the object, keys from the local store and unsubscribe from remote change
 | linksStateFilters | [Rpc.Object.ListExport.StateFilters](#anytype-Rpc-Object-ListExport-StateFilters) |  |  |
 | includeBacklinks | [bool](#bool) |  |  |
 | includeSpace | [bool](#bool) |  |  |
+| includeJsonSchema | [bool](#bool) |  |  |
 
 
 
@@ -33361,6 +33364,7 @@ stored |
 | Html | 4 |  |
 | Txt | 5 |  |
 | Csv | 6 |  |
+| Obsidian | 7 | Markdown with obsidian improvements |
 
 
 

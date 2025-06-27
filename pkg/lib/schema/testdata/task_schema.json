@@ -1,0 +1,104 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "urn:anytype:schema:2024-06-14:author-user:type-task:ver-1.0",
+  "type": "object",
+  "title": "Task",
+  "description": "A task or todo item",
+  "x-type-key": "task",
+  "x-schema-version": "1.0",
+  "x-icon-emoji": "✅",
+  "x-plural-name": "Tasks",
+  "properties": {
+    "id": {
+      "type": "string",
+      "description": "Unique identifier of the Anytype object",
+      "readOnly": true,
+      "x-order": 0,
+      "x-key": "id"
+    },
+    "Object type": {
+      "type": "string",
+      "const": "Task",
+      "x-order": 1,
+      "x-key": "type"
+    },
+    "Title": {
+      "type": "string",
+      "x-featured": true,
+      "x-order": 2,
+      "x-key": "task_title",
+      "x-format": "shorttext",
+      "description": "The title of the task"
+    },
+    "Description": {
+      "type": "string",
+      "x-order": 3,
+      "x-key": "task_description",
+      "x-format": "longtext",
+      "description": "Detailed description of the task"
+    },
+    "Status": {
+      "type": "string",
+      "enum": ["Todo", "In Progress", "Done", "Cancelled"],
+      "x-featured": true,
+      "x-order": 4,
+      "x-key": "task_status",
+      "x-format": "status",
+      "description": "Current status of the task"
+    },
+    "Priority": {
+      "type": "number",
+      "minimum": 1,
+      "maximum": 5,
+      "x-order": 5,
+      "x-key": "task_priority",
+      "x-format": "number",
+      "description": "Priority level (1-5, where 1 is highest)"
+    },
+    "Due Date": {
+      "type": "string",
+      "format": "date-time",
+      "x-featured": true,
+      "x-order": 6,
+      "x-key": "task_due_date",
+      "x-format": "date",
+      "x-include-time": true,
+      "description": "When the task should be completed"
+    },
+    "Assignee": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "x-order": 7,
+      "x-key": "task_assignee",
+      "x-format": "object",
+      "x-object-types": ["participant"],
+      "description": "Person responsible for the task"
+    },
+    "Tags": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "x-order": 8,
+      "x-key": "task_tags",
+      "x-format": "tag",
+      "description": "Labels for categorizing tasks"
+    },
+    "Completed": {
+      "type": "boolean",
+      "x-order": 9,
+      "x-key": "task_completed",
+      "x-format": "checkbox",
+      "description": "Whether the task is completed"
+    },
+    "Estimated Hours": {
+      "type": "number",
+      "x-order": 10,
+      "x-key": "task_estimated_hours",
+      "x-format": "number",
+      "description": "Estimated time to complete in hours"
+    }
+  }
+}

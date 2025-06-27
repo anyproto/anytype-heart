@@ -1,0 +1,423 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://schemas.anytype.io/meta/v1.0.0/schema.json",
+  "title": "Anytype Schema Meta-Schema",
+  "description": "Meta-schema for validating Anytype type schemas",
+  "type": "object",
+  "required": ["$schema", "$id", "type", "title", "x-type-key", "properties"],
+  "properties": {
+    "$schema": {
+      "type": "string",
+      "const": "http://json-schema.org/draft-07/schema#",
+      "description": "JSON Schema version"
+    },
+    "$id": {
+      "type": "string",
+      "pattern": "^urn:anytype:schema:.+$",
+      "description": "Unique identifier for the schema following Anytype URN format"
+    },
+    "type": {
+      "type": "string",
+      "const": "object",
+      "description": "Anytype schemas are always objects"
+    },
+    "title": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Human-readable name of the type"
+    },
+    "description": {
+      "type": "string",
+      "description": "Optional description of the type"
+    },
+    "x-type-key": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9_]*$",
+      "description": "Unique key identifier for the type"
+    },
+    "x-schema-version": {
+      "type": "string",
+      "pattern": "^[0-9]+\\.[0-9]+$",
+      "description": "Schema generation version"
+    },
+    "x-app": {
+      "type": "string",
+      "const": "Anytype",
+      "description": "Application identifier"
+    },
+    "x-icon-emoji": {
+      "type": "string",
+      "maxLength": 10,
+      "description": "Emoji icon for the type"
+    },
+    "x-icon-name": {
+      "type": "string",
+      "description": "Icon name from the icon library"
+    },
+    "x-plural-name": {
+      "type": "string",
+      "description": "Plural form of the type name"
+    },
+    "properties": {
+      "type": "object",
+      "required": ["id"],
+      "properties": {
+        "id": {
+          "$ref": "#/definitions/idProperty"
+        },
+        "Object type": {
+          "$ref": "#/definitions/objectTypeProperty"
+        },
+        "Collection": {
+          "$ref": "#/definitions/collectionProperty"
+        }
+      },
+      "additionalProperties": {
+        "$ref": "#/definitions/relationProperty"
+      },
+      "description": "Relations/properties of the type"
+    }
+  },
+  "definitions": {
+    "idProperty": {
+      "type": "object",
+      "required": ["type", "description", "readOnly", "x-order", "x-key"],
+      "properties": {
+        "type": {
+          "const": "string"
+        },
+        "description": {
+          "const": "Unique identifier of the Anytype object"
+        },
+        "readOnly": {
+          "const": true
+        },
+        "x-order": {
+          "const": 0
+        },
+        "x-key": {
+          "const": "id"
+        },
+        "x-hidden": {
+          "type": "boolean",
+          "const": true
+        }
+      }
+    },
+    "objectTypeProperty": {
+      "type": "object",
+      "required": ["type", "const", "x-order", "x-key"],
+      "properties": {
+        "type": {
+          "const": "string"
+        },
+        "const": {
+          "type": "string",
+          "description": "The type name constant"
+        },
+        "x-order": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "x-key": {
+          "const": "type"
+        }
+      }
+    },
+    "collectionProperty": {
+      "type": "object",
+      "required": ["type", "description", "items", "x-order"],
+      "properties": {
+        "type": {
+          "const": "array"
+        },
+        "description": {
+          "const": "List of object file paths or names in this collection"
+        },
+        "items": {
+          "type": "object",
+          "required": ["type"],
+          "properties": {
+            "type": {
+              "const": "string"
+            }
+          }
+        },
+        "x-order": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "x-key": {
+          "const": "_collection"
+        }
+      },
+      "description": "Collection property appears only in collection types"
+    },
+    "relationProperty": {
+      "type": "object",
+      "required": ["x-key", "x-format"],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": ["string", "number", "boolean", "array"]
+        },
+        "const": {
+          "description": "Constant value for the property"
+        },
+        "description": {
+          "type": "string"
+        },
+        "readOnly": {
+          "type": "boolean"
+        },
+        "format": {
+          "type": "string",
+          "enum": ["date", "date-time", "email", "uri"]
+        },
+        "pattern": {
+          "type": "string",
+          "description": "Regular expression pattern"
+        },
+        "enum": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Allowed values for status relations"
+        },
+        "items": {
+          "type": "object",
+          "description": "Schema for array items"
+        },
+        "minimum": {
+          "type": "number"
+        },
+        "maximum": {
+          "type": "number"
+        },
+        "maxLength": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "examples": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Example values for tag relations"
+        },
+        "x-key": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9_]*$",
+          "description": "Unique key identifier for the relation"
+        },
+        "x-format": {
+          "type": "string",
+          "enum": [
+            "shorttext",
+            "longtext",
+            "number",
+            "checkbox",
+            "date",
+            "tag",
+            "status",
+            "email",
+            "url",
+            "phone",
+            "file",
+            "object",
+            "emoji"
+          ],
+          "description": "Anytype relation format"
+        },
+        "x-order": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Display order of the relation"
+        },
+        "x-featured": {
+          "type": "boolean",
+          "description": "Whether this relation is featured"
+        },
+        "x-hidden": {
+          "type": "boolean",
+          "description": "Whether this relation is hidden"
+        },
+        "x-include-time": {
+          "type": "boolean",
+          "description": "For date relations, whether to include time"
+        },
+        "x-object-types": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Allowed object types for object relations"
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "x-format": { "const": "shorttext" }
+            }
+          },
+          "then": {
+            "properties": {
+              "type": { "const": "string" }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "x-format": { "const": "longtext" }
+            }
+          },
+          "then": {
+            "properties": {
+              "type": { "const": "string" }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "x-format": { "const": "number" }
+            }
+          },
+          "then": {
+            "properties": {
+              "type": { "const": "number" }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "x-format": { "const": "checkbox" }
+            }
+          },
+          "then": {
+            "properties": {
+              "type": { "const": "boolean" }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "x-format": { "const": "date" }
+            }
+          },
+          "then": {
+            "properties": {
+              "type": { "const": "string" },
+              "format": { "enum": ["date", "date-time"] }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "x-format": { "const": "tag" }
+            }
+          },
+          "then": {
+            "properties": {
+              "type": { "const": "array" },
+              "items": {
+                "type": "object",
+                "properties": {
+                  "type": { "const": "string" }
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "x-format": { "const": "status" }
+            }
+          },
+          "then": {
+            "properties": {
+              "type": { "const": "string" }
+            },
+            "required": ["enum"]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "x-format": { "const": "email" }
+            }
+          },
+          "then": {
+            "properties": {
+              "type": { "const": "string" },
+              "format": { "const": "email" }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "x-format": { "const": "url" }
+            }
+          },
+          "then": {
+            "properties": {
+              "type": { "const": "string" },
+              "format": { "const": "uri" }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "x-format": { "const": "phone" }
+            }
+          },
+          "then": {
+            "properties": {
+              "type": { "const": "string" },
+              "pattern": { "const": "^[+]?[0-9\\s()-]+$" }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "x-format": { "const": "file" }
+            }
+          },
+          "then": {
+            "properties": {
+              "type": { "enum": ["string", "array"] }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "x-format": { "const": "object" }
+            }
+          },
+          "then": {
+            "properties": {
+              "type": { "const": "array" },
+              "items": {
+                "type": "object",
+                "properties": {
+                  "type": { "const": "string" }
+                }
+              }
+            }
+          }
+        }
+      ]
+    }
+  }
+}

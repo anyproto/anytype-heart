@@ -17,6 +17,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/import/notion/api/search"
 	"github.com/anyproto/anytype-heart/core/block/process"
 	"github.com/anyproto/anytype-heart/pb"
+	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
 const (
@@ -133,10 +134,10 @@ func (n *Notion) GetSnapshots(ctx context.Context, req *pb.RpcObjectImportReques
 	allSnapshots = append(allSnapshots, dbs...)
 
 	if !ce.IsEmpty() {
-		return &common.Response{Snapshots: allSnapshots, RootCollectionID: rootCollectionID}, ce
+		return &common.Response{Snapshots: allSnapshots, RootObjectID: rootCollectionID, RootObjectWidgetType: model.BlockContentWidget_CompactList}, ce
 	}
 
-	return &common.Response{Snapshots: allSnapshots, RootCollectionID: rootCollectionID}, nil
+	return &common.Response{Snapshots: allSnapshots, RootObjectID: rootCollectionID, RootObjectWidgetType: model.BlockContentWidget_CompactList}, nil
 }
 
 func (n *Notion) getUniqueProperties(db []database.Database, pages []page.Page) []string {

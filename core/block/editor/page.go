@@ -253,6 +253,12 @@ func (p *Page) CreationStateMigration(ctx *smartblock.InitContext) migration.Mig
 					template.WithNoDescription,
 					template.WithLayout(layout),
 				)
+
+			case model.ObjectType_collection:
+				blockContent := template.MakeDataviewContent(true, nil, nil, "")
+				templates = append(templates,
+					template.WithDataview(blockContent, false),
+				)
 			default:
 				templates = append(templates,
 					template.WithTitle,
