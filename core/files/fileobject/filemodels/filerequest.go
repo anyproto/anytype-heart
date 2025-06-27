@@ -46,7 +46,7 @@ func InjectVariantsToDetails(infos []*storage.FileInfo, st *state.State) error {
 
 	keysInfo := st.GetFileInfo().EncryptionKeys
 
-	st.SetDetailAndBundledRelation(bundle.RelationKeyFileSourceChecksum, domain.String(infos[0].Source))
+	st.SetDetail(bundle.RelationKeyFileSourceChecksum, domain.String(infos[0].Source))
 	for _, info := range infos {
 		variantIds = append(variantIds, info.Hash)
 		checksums = append(checksums, info.Checksum)
@@ -56,13 +56,13 @@ func InjectVariantsToDetails(infos []*storage.FileInfo, st *state.State) error {
 		options = append(options, info.Opts)
 		paths = append(paths, info.Path)
 	}
-	st.SetDetailAndBundledRelation(bundle.RelationKeyFileVariantIds, domain.StringList(variantIds))
-	st.SetDetailAndBundledRelation(bundle.RelationKeyFileVariantPaths, domain.StringList(paths))
-	st.SetDetailAndBundledRelation(bundle.RelationKeyFileVariantChecksums, domain.StringList(checksums))
-	st.SetDetailAndBundledRelation(bundle.RelationKeyFileVariantMills, domain.StringList(mills))
-	st.SetDetailAndBundledRelation(bundle.RelationKeyFileVariantWidths, domain.Int64List(widths))
-	st.SetDetailAndBundledRelation(bundle.RelationKeyFileVariantKeys, domain.StringList(keys))
-	st.SetDetailAndBundledRelation(bundle.RelationKeyFileVariantOptions, domain.StringList(options))
+	st.SetDetail(bundle.RelationKeyFileVariantIds, domain.StringList(variantIds))
+	st.SetDetail(bundle.RelationKeyFileVariantPaths, domain.StringList(paths))
+	st.SetDetail(bundle.RelationKeyFileVariantChecksums, domain.StringList(checksums))
+	st.SetDetail(bundle.RelationKeyFileVariantMills, domain.StringList(mills))
+	st.SetDetail(bundle.RelationKeyFileVariantWidths, domain.Int64List(widths))
+	st.SetDetail(bundle.RelationKeyFileVariantKeys, domain.StringList(keys))
+	st.SetDetail(bundle.RelationKeyFileVariantOptions, domain.StringList(options))
 	return nil
 }
 

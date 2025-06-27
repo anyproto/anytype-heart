@@ -212,8 +212,8 @@ func (s *service) reinstallObject(
 	err = space.Do(id, func(sb smartblock.SmartBlock) error {
 		st := sb.NewState()
 		st.SetDetails(installingDetails)
-		st.SetDetailAndBundledRelation(bundle.RelationKeyIsUninstalled, domain.Bool(false))
-		st.SetDetailAndBundledRelation(bundle.RelationKeyIsDeleted, domain.Bool(false))
+		st.SetDetail(bundle.RelationKeyIsUninstalled, domain.Bool(false))
+		st.SetDetail(bundle.RelationKeyIsDeleted, domain.Bool(false))
 		st.SetOriginalCreatedTimestamp(time.Now().Unix())
 
 		key = domain.TypeKey(st.UniqueKeyInternal())
