@@ -124,11 +124,11 @@ type: Task
 status: in-progress`,
 			wantProps: map[string]string{
 				"title":  "shorttext",
-				"status": "status",
+				"Status": "status",  // "status" is mapped to bundle.RelationKeyStatus which has name "Status"
 			},
 			wantValues: map[string]interface{}{
 				"title":  "Test",
-				"status": "in-progress",
+				"Status": "in-progress",
 			},
 			wantObjType: "Task",
 		},
@@ -172,6 +172,7 @@ version: 1.2.3`,
 			propMap := make(map[string]Property)
 			for _, prop := range result.Properties {
 				propMap[prop.Name] = prop
+				t.Logf("Property found: name=%s, key=%s, format=%v", prop.Name, prop.Key, prop.Format)
 			}
 
 			for propName, expectedFormat := range tt.wantProps {
@@ -231,23 +232,26 @@ type: Task
 	propMap := make(map[string]Property)
 	for _, prop := range result.Properties {
 		propMap[prop.Name] = prop
+		t.Logf("Property: name=%s, key=%s, format=%v", prop.Name, prop.Key, prop.Format)
 	}
 
+	assert.Equal(t, len(result.Properties), 4)
+	
 	// All date fields should be detected as date format
 	assert.Equal(t, model.RelationFormat_date, propMap["Start Date"].Format)
 	assert.Equal(t, model.RelationFormat_date, propMap["End Time"].Format)
-	assert.Equal(t, model.RelationFormat_date, propMap["created"].Format)
+	assert.Equal(t, model.RelationFormat_date, propMap["Creation date"].Format)  // "created" is mapped to bundle.RelationKeyCreatedDate
 	assert.Equal(t, model.RelationFormat_shorttext, propMap["version"].Format)
 
 	// Check includeTime flags
 	assert.False(t, propMap["Start Date"].IncludeTime)
 	assert.True(t, propMap["End Time"].IncludeTime)
-	assert.False(t, propMap["created"].IncludeTime)
+	assert.False(t, propMap["Creation date"].IncludeTime)
 
 	// All date values should be timestamps
 	assert.True(t, propMap["Start Date"].Value.IsInt64())
 	assert.True(t, propMap["End Time"].Value.IsInt64())
-	assert.True(t, propMap["created"].Value.IsInt64())
+	assert.True(t, propMap["Creation date"].Value.IsInt64())
 
 	// Version should remain as string
 	assert.True(t, propMap["version"].Value.IsString())

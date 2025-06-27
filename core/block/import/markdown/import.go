@@ -1278,8 +1278,6 @@ func (m *Markdown) createPropertyBlocks(properties []yaml.Property) []*model.Blo
 		bundle.RelationKeyCoverScale.String():       true,
 		bundle.RelationKeyLayout.String():           true,
 		bundle.RelationKeyLayoutAlign.String():      true,
-		"objectType":                                true, // Also exclude objectType
-		"Type":                                      true, // Exclude Type property
 	}
 
 	for _, prop := range properties {

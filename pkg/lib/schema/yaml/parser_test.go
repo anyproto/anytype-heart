@@ -67,7 +67,8 @@ Unknown Field: test`)
 
 		// Verify known properties use resolver keys
 		assert.Equal(t, "task_title", propMap["Title"].Key)
-		assert.Equal(t, "task_status", propMap["Status"].Key)
+		// Status is mapped to bundle.RelationKeyStatus which takes precedence over resolver
+		assert.Equal(t, "status", propMap["Status"].Key)
 		assert.Equal(t, "task_priority", propMap["Priority"].Key)
 
 		// Verify unknown property gets generated key

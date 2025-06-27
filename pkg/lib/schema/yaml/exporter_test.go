@@ -239,7 +239,7 @@ func TestExportDetailsToYAML(t *testing.T) {
 	assert.True(t, propNames["Title"])
 	assert.True(t, propNames["Author"])
 	assert.True(t, propNames["created"])
-	assert.True(t, propNames["tags"])
+	assert.True(t, propNames["Tag"])  // "tags" is mapped to bundle.RelationKeyTag which has name "Tag"
 	assert.True(t, propNames["published"])
 }
 
