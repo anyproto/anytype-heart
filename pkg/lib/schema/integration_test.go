@@ -228,6 +228,7 @@ Created: 2024-01-15`)
 		for i := range result.Properties {
 			prop := &result.Properties[i]
 			propMap[prop.Name] = prop
+			t.Logf("Property found: name=%s, key=%s, format=%v", prop.Name, prop.Key, prop.Format)
 		}
 
 		// Title should use schema key
@@ -235,30 +236,40 @@ Created: 2024-01-15`)
 		assert.Equal(t, model.RelationFormat_shorttext, propMap["Title"].Format)
 		assert.Equal(t, "Complete integration tests", propMap["Title"].Value.String())
 
-		// Status should use schema key and format
-		assert.Equal(t, "task_status", propMap["Status"].Key)
+		// Status is mapped to bundle.RelationKeyStatus, which takes precedence over schema
+		assert.Equal(t, "status", propMap["Status"].Key)
 		assert.Equal(t, model.RelationFormat_status, propMap["Status"].Format)
-		assert.Equal(t, "opt_task_status_In Progress", propMap["Status"].Value.String())
+		// When using bundled relation, option IDs follow different pattern
+		assert.Equal(t, "opt_status_In Progress", propMap["Status"].Value.String())
 
 		// Priority should use schema key and number format
 		assert.Equal(t, "task_priority", propMap["Priority"].Key)
 		assert.Equal(t, model.RelationFormat_number, propMap["Priority"].Format)
 		assert.Equal(t, int64(1), propMap["Priority"].Value.Int64())
 
-		// Tags should use schema key and tag format
-		assert.Equal(t, "task_tags", propMap["Tags"].Key)
-		assert.Equal(t, model.RelationFormat_tag, propMap["Tags"].Format)
-		expectedTags := []string{"opt_task_tags_urgent", "opt_task_tags_feature"}
-		assert.Equal(t, expectedTags, propMap["Tags"].Value.StringList())
+		// Tags is mapped to bundle.RelationKeyTag with name "Tag"
+		tagProp := propMap["Tag"]
+		if tagProp == nil {
+			t.Fatal("Tag property not found")
+		}
+		assert.Equal(t, "tag", tagProp.Key)
+		assert.Equal(t, model.RelationFormat_tag, tagProp.Format)
+		// When using bundled relation, option IDs follow different pattern
+		expectedTags := []string{"opt_tag_urgent", "opt_tag_feature"}
+		assert.Equal(t, expectedTags, tagProp.Value.StringList())
 
 		// Description should be resolved to schema key since we have it
 		assert.Equal(t, "task_description", propMap["Description"].Key)
 		// The parser auto-detects format based on content length
 		assert.Equal(t, model.RelationFormat_shorttext, propMap["Description"].Format)
 
-		// Created should be auto-detected as date (not in schema)
-		assert.Len(t, propMap["Created"].Key, 24) // BSON ID
-		assert.Equal(t, model.RelationFormat_date, propMap["Created"].Format)
+		// Created is mapped to bundle.RelationKeyCreatedDate with name "Creation date"
+		createdProp := propMap["Creation date"]
+		if createdProp == nil {
+			t.Fatal("Creation date property not found")
+		}
+		assert.Equal(t, "createdDate", createdProp.Key)
+		assert.Equal(t, model.RelationFormat_date, createdProp.Format)
 	})
 
 	t.Run("parse YAML with object type detection", func(t *testing.T) {
@@ -962,10 +973,10 @@ func TestTestdataIntegration(t *testing.T) {
 		assert.Equal(t, model.RelationFormat_shorttext, propMap["Title"].Format)
 		assert.Equal(t, "Implement schema integration", propMap["Title"].Value.String())
 
-		// Check Status
-		assert.Equal(t, "task_status", propMap["Status"].Key)
+		// Check Status - mapped to bundle.RelationKeyStatus
+		assert.Equal(t, "status", propMap["Status"].Key)
 		assert.Equal(t, model.RelationFormat_status, propMap["Status"].Format)
-		assert.Equal(t, "opt_task_status_In Progress", propMap["Status"].Value.String())
+		assert.Equal(t, "opt_status_In Progress", propMap["Status"].Value.String())
 
 		// Check Priority
 		assert.Equal(t, "task_priority", propMap["Priority"].Key)
@@ -977,11 +988,13 @@ func TestTestdataIntegration(t *testing.T) {
 		assert.Equal(t, model.RelationFormat_date, propMap["Due Date"].Format)
 		assert.True(t, propMap["Due Date"].IncludeTime)
 
-		// Check Tags
-		assert.Equal(t, "task_tags", propMap["Tags"].Key)
-		assert.Equal(t, model.RelationFormat_tag, propMap["Tags"].Format)
-		expectedTags := []string{"opt_task_tags_feature", "opt_task_tags_urgent"}
-		assert.Equal(t, expectedTags, propMap["Tags"].Value.StringList())
+		// Check Tags - mapped to bundle.RelationKeyTag with name "Tag"
+		tagProp := propMap["Tag"]
+		require.NotNil(t, tagProp, "Tag property not found")
+		assert.Equal(t, "tag", tagProp.Key)
+		assert.Equal(t, model.RelationFormat_tag, tagProp.Format)
+		expectedTags := []string{"opt_tag_feature", "opt_tag_urgent"}
+		assert.Equal(t, expectedTags, tagProp.Value.StringList())
 
 		// Check Estimated Hours
 		assert.Equal(t, "task_estimated_hours", propMap["Estimated Hours"].Key)
@@ -1046,10 +1059,10 @@ func TestTestdataIntegration(t *testing.T) {
 		assert.Equal(t, model.RelationFormat_shorttext, propMap["Name"].Format)
 		assert.Equal(t, "Anytype Schema System", propMap["Name"].Value.String())
 
-		// Check Status
-		assert.Equal(t, "project_status", propMap["Status"].Key)
+		// Check Status - mapped to bundle.RelationKeyStatus
+		assert.Equal(t, "status", propMap["Status"].Key)
 		assert.Equal(t, model.RelationFormat_status, propMap["Status"].Format)
-		assert.Equal(t, "opt_project_status_Active", propMap["Status"].Value.String())
+		assert.Equal(t, "opt_status_Active", propMap["Status"].Value.String())
 
 		// Check Dates
 		assert.Equal(t, "project_start_date", propMap["Start Date"].Key)
