@@ -276,7 +276,7 @@ func (m *Markdown) getSnapshotsAndRootObjectsIdsWithFilter(
 		m.processImportStep(pathsCount, files, progress, allErrors, details, m.addLinkToObjectBlocks) ||
 		m.processImportStep(pathsCount, files, progress, allErrors, details, m.linkPagesWithRootFile) ||
 		// todo: understand why we need this
-		// m.processImportStep(pathsCount, files, progress, allErrors, details, m.addLinkBlocks) ||
+		m.processImportStep(pathsCount, files, progress, allErrors, details, m.addLinkBlocks) ||
 		m.processImportStep(pathsCount, files, progress, allErrors, details, m.fillEmptyBlocks) ||
 		m.processImportStep(pathsCount, files, progress, allErrors, details, wrapCallbackEnabler(params.IncludePropertiesAsBlock, m.addPropertyBlocks)) ||
 		m.processImportStep(pathsCount, files, progress, allErrors, details, m.addChildBlocks) {
