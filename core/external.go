@@ -105,12 +105,12 @@ func (mw *Middleware) GalleryDownloadManifest(_ context.Context, req *pb.RpcGall
 		}
 		return m
 	}
-	info, err := gallery.DownloadManifest(req.Url, true)
+	info, err := mustService[gallery.Service](mw).GetManifest(req.Url)
 	return response(info, err)
 }
 
 func (mw *Middleware) GalleryDownloadIndex(_ context.Context, _ *pb.RpcGalleryDownloadIndexRequest) *pb.RpcGalleryDownloadIndexResponse {
-	response, err := gallery.DownloadGalleryIndex()
+	response, err := mustService[gallery.Service](mw).GetGalleryIndex()
 	if response == nil {
 		response = &pb.RpcGalleryDownloadIndexResponse{}
 	}
