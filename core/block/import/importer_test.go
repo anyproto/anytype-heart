@@ -946,7 +946,7 @@ func Test_ImportRootCollectionInResponse(t *testing.T) {
 		originalRootCollectionID := "rootCollectionId"
 
 		converter := mock_common.NewMockConverter(t)
-		converter.EXPECT().GetSnapshots(mock.Anything, mock.Anything, mock.Anything).Return(&common.Response{RootCollectionID: originalRootCollectionID,
+		converter.EXPECT().GetSnapshots(mock.Anything, mock.Anything, mock.Anything).Return(&common.Response{RootObjectID: originalRootCollectionID,
 			Snapshots: []*common.Snapshot{
 				{
 					Snapshot: &common.SnapshotModel{
@@ -1006,7 +1006,7 @@ func Test_ImportRootCollectionInResponse(t *testing.T) {
 		creatorError := errors.New("creator error")
 
 		converter := mock_common.NewMockConverter(t)
-		converter.EXPECT().GetSnapshots(mock.Anything, mock.Anything, mock.Anything).Return(&common.Response{RootCollectionID: originalRootCollectionId,
+		converter.EXPECT().GetSnapshots(mock.Anything, mock.Anything, mock.Anything).Return(&common.Response{RootObjectID: originalRootCollectionId,
 			Snapshots: []*common.Snapshot{
 				{
 					Snapshot: &common.SnapshotModel{
@@ -1062,7 +1062,7 @@ func Test_ImportRootCollectionInResponse(t *testing.T) {
 		converterError := common.NewFromError(errors.New("converter error"), pb.RpcObjectImportRequest_ALL_OR_NOTHING)
 
 		converter := mock_common.NewMockConverter(t)
-		converter.EXPECT().GetSnapshots(mock.Anything, mock.Anything, mock.Anything).Return(&common.Response{RootCollectionID: originalRootCollectionId,
+		converter.EXPECT().GetSnapshots(mock.Anything, mock.Anything, mock.Anything).Return(&common.Response{RootObjectID: originalRootCollectionId,
 			Snapshots: []*common.Snapshot{
 				{
 					Snapshot: &common.SnapshotModel{
@@ -1108,7 +1108,7 @@ func Test_ImportRootCollectionInResponse(t *testing.T) {
 		converterError := common.NewFromError(errors.New("converter error"), pb.RpcObjectImportRequest_ALL_OR_NOTHING)
 
 		converter := mock_common.NewMockConverter(t)
-		converter.EXPECT().GetSnapshots(mock.Anything, mock.Anything, mock.Anything).Return(&common.Response{RootCollectionID: originalRootCollectionId,
+		converter.EXPECT().GetSnapshots(mock.Anything, mock.Anything, mock.Anything).Return(&common.Response{RootObjectID: originalRootCollectionId,
 			Snapshots: []*common.Snapshot{
 				{
 					Snapshot: &common.SnapshotModel{

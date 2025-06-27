@@ -90,7 +90,7 @@ func (p *Pb) GetSnapshots(_ context.Context, req *pb.RpcObjectImportRequest, pro
 		rootCollectionID = rootCollections[0].Id
 	}
 	progress.SetTotalPreservingRatio(int64(snapshots.Len()))
-	return &common.Response{Snapshots: snapshots.List(), RootCollectionID: rootCollectionID}, p.errors.ErrorOrNil()
+	return &common.Response{Snapshots: snapshots.List(), RootObjectID: rootCollectionID, RootObjectWidgetType: model.BlockContentWidget_CompactList}, p.errors.ErrorOrNil()
 }
 
 func (p *Pb) Name() string {

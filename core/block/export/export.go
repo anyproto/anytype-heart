@@ -173,46 +173,48 @@ func (d Docs) transformToDetailsMap() map[string]*domain.Details {
 }
 
 type exportContext struct {
-	spaceId          string
-	docs             Docs
-	includeArchive   bool
-	includeNested    bool
-	includeFiles     bool
-	format           model.ExportFormat
-	isJson           bool
-	reqIds           []string
-	zip              bool
-	path             string
-	linkStateFilters *state.Filters
-	isLinkProcess    bool
-	includeBackLinks bool
-	includeSpace     bool
-	relations        map[string]struct{}
-	setOfList        map[string]struct{}
-	objectTypes      map[string]struct{}
-	gatewayUrl       string
+	spaceId           string
+	docs              Docs
+	includeArchive    bool
+	includeNested     bool
+	includeFiles      bool
+	format            model.ExportFormat
+	isJson            bool
+	reqIds            []string
+	zip               bool
+	path              string
+	linkStateFilters  *state.Filters
+	isLinkProcess     bool
+	includeBackLinks  bool
+	includeSpace      bool
+	includeJsonSchema bool
+	relations         map[string]struct{}
+	setOfList         map[string]struct{}
+	objectTypes       map[string]struct{}
+	gatewayUrl        string
 	*export
 }
 
 func newExportContext(e *export, req pb.RpcObjectListExportRequest) *exportContext {
 	ec := &exportContext{
-		path:             req.Path,
-		spaceId:          req.SpaceId,
-		docs:             map[string]*Doc{},
-		includeArchive:   req.IncludeArchived,
-		includeNested:    req.IncludeNested,
-		includeFiles:     req.IncludeFiles,
-		format:           req.Format,
-		isJson:           req.IsJson,
-		reqIds:           req.ObjectIds,
-		zip:              req.Zip,
-		linkStateFilters: pbFiltersToState(req.LinksStateFilters),
-		includeBackLinks: req.IncludeBacklinks,
-		includeSpace:     req.IncludeSpace,
-		setOfList:        make(map[string]struct{}),
-		objectTypes:      make(map[string]struct{}),
-		relations:        make(map[string]struct{}),
-		export:           e,
+		path:              req.Path,
+		spaceId:           req.SpaceId,
+		docs:              map[string]*Doc{},
+		includeArchive:    req.IncludeArchived,
+		includeNested:     req.IncludeNested,
+		includeFiles:      req.IncludeFiles,
+		format:            req.Format,
+		isJson:            req.IsJson,
+		reqIds:            req.ObjectIds,
+		zip:               req.Zip,
+		linkStateFilters:  pbFiltersToState(req.LinksStateFilters),
+		includeBackLinks:  req.IncludeBacklinks,
+		includeSpace:      req.IncludeSpace,
+		includeJsonSchema: req.IncludeJsonSchema,
+		setOfList:         make(map[string]struct{}),
+		objectTypes:       make(map[string]struct{}),
+		relations:         make(map[string]struct{}),
+		export:            e,
 	}
 	if e.gatewayService != nil {
 		ec.gatewayUrl = "http://" + e.gatewayService.Addr()
@@ -369,6 +371,10 @@ func (e *exportContext) exportByFormat(ctx context.Context, wr writer, queue pro
 			return 0, nil
 		}
 		succeed += int(succeedAsync)
+
+		if err := e.postProcess(ctx, wr); err != nil {
+			log.Warnf("failed to generate all schemas: %v", err)
+		}
 	}
 	return succeed, nil
 }
@@ -1153,7 +1159,14 @@ func (e *exportContext) writeDoc(ctx context.Context, wr writer, docId string, d
 		var conv converter.Converter
 		switch e.format {
 		case model.Export_Markdown:
-			conv = md.NewMDConverter(st, wr.Namer())
+			// Create a lazy object resolver for markdown export
+			resolver := newLazyObjectResolver(e.objectStore, e.spaceId)
+
+			if e.includeJsonSchema {
+				conv = md.NewMDConverterWithResolver(st, wr.Namer(), true, true, resolver)
+			} else {
+				conv = md.NewMDConverterWithResolver(st, wr.Namer(), true, false, resolver)
+			}
 		case model.Export_Protobuf:
 			conv = pbc.NewConverter(st, e.isJson)
 		case model.Export_JSON:
@@ -1161,6 +1174,9 @@ func (e *exportContext) writeDoc(ctx context.Context, wr writer, docId string, d
 		}
 		conv.SetKnownDocs(details)
 		result := conv.Convert(b.Type().ToProto())
+		if result == nil {
+			return nil
+		}
 		var filename string
 		if e.format == model.Export_Markdown {
 			filename = makeMarkdownName(st, wr, docId, conv.Ext(), e.spaceId)
@@ -1173,6 +1189,7 @@ func (e *exportContext) writeDoc(ctx context.Context, wr writer, docId string, d
 		if err = wr.WriteFile(filename, bytes.NewReader(result), lastModifiedDate); err != nil {
 			return err
 		}
+
 		return nil
 	})
 }
@@ -1410,4 +1427,21 @@ func pbFiltersToState(filters *pb.RpcObjectListExportStateFilters) *state.Filter
 		RelationsWhiteList: relationByLayoutList,
 		RemoveBlocks:       filters.RemoveBlocks,
 	}
+}
+
+// generateAllSchemas generates JSON schemas for all object types found in the export
+func (e *exportContext) postProcess(ctx context.Context, wr writer) error {
+	if e.format != model.Export_Markdown || !e.includeJsonSchema {
+		// for now only needed for MD
+		return nil
+	}
+	// Create a lazy object resolver
+	knownObjects := e.docs.transformToDetailsMap()
+	resolver := newLazyObjectResolver(e.objectStore, e.spaceId)
+
+	// Create markdown post-processor
+	postProcessor := md.NewMDPostProcessor(resolver, wr.Namer())
+
+	// Generate all schemas
+	return postProcessor.Process(knownObjects, wr)
 }
