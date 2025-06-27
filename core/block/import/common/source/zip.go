@@ -67,6 +67,9 @@ func (z *Zip) Iterate(callback func(fileName string, fileReader io.ReadCloser) b
 		if err != nil {
 			return anyerror.CleanupError(err)
 		}
+		if file.FileInfo().IsDir() {
+			continue
+		}
 		isContinue := callback(name, fileReader)
 		fileReader.Close()
 		if !isContinue {
