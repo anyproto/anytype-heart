@@ -210,7 +210,13 @@ func (s *Service) ObjectRefresh(ctx context.Context, id domain.FullID) (err erro
 
 func (s *Service) OpenBlock(sctx session.Context, id domain.FullID, includeRelationsAsDependentObjects bool) (obj *model.ObjectView, err error) {
 	id = s.resolveFullId(id)
-	err = s.DoFullId(id, func(ob smartblock.SmartBlock) error {
+
+	spc, err := s.spaceService.Wait(s.componentCtx, id.SpaceID)
+	if err != nil {
+		return nil, fmt.Errorf("wait space: %w", err)
+	}
+
+	err = spc.Do(id.ObjectID, func(ob smartblock.SmartBlock) error {
 		if includeRelationsAsDependentObjects {
 			ob.EnabledRelationAsDependentObjects()
 		}
@@ -294,7 +300,13 @@ func (s *Service) resolveFullId(id domain.FullID) domain.FullID {
 
 func (s *Service) ShowBlock(id domain.FullID, includeRelationsAsDependentObjects bool) (obj *model.ObjectView, err error) {
 	id = s.resolveFullId(id)
-	err = s.DoFullId(id, func(b smartblock.SmartBlock) error {
+
+	spc, err := s.spaceService.Wait(s.componentCtx, id.SpaceID)
+	if err != nil {
+		return nil, fmt.Errorf("wait space: %w", err)
+	}
+
+	err = spc.Do(id.ObjectID, func(b smartblock.SmartBlock) error {
 		if includeRelationsAsDependentObjects {
 			b.EnabledRelationAsDependentObjects()
 		}
