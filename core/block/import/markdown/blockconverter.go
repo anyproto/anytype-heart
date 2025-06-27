@@ -83,7 +83,7 @@ func (m *mdConverter) processFiles(importPath string, allErrors *common.ConvertE
 	for name, file := range fileInfo {
 		m.processBlocks(name, file, fileInfo, importSource)
 		for _, b := range file.ParsedBlocks {
-			m.processFileBlock(b, importSource, importPath)
+			m.processFileBlock(b, importSource, importPath, fileInfo)
 		}
 	}
 	return fileInfo
@@ -134,6 +134,10 @@ func (m *mdConverter) processTextBlock(block *model.Block, files map[string]*Fil
 }
 
 func normalizePath(path string) string {
+	if strings.HasPrefix(path, "http://") || strings.HasPrefix(path, "https://") {
+		// Return URLs as they are, no normalization needed
+		return path
+	}
 	// Normalize the path to ensure consistent formatting
 	// This is important for matching file names across different systems
 	return norm.NFC.String(filepath.Clean(path))
@@ -187,16 +191,17 @@ func findCommonPrefix(path1, path2 string) string {
 
 func (m *mdConverter) handleSingleMark(block *model.Block, files map[string]*FileInfo, importSource source.Source) {
 	txt := block.GetText()
-	wholeLineLink := m.isWholeLineLink(txt.Text, txt.Marks.Marks[0])
-	ext := filepath.Ext(txt.Marks.Marks[0].Param)
-
 	link := normalizePath(txt.Marks.Marks[0].Param)
+
+	wholeLineLink := m.isWholeLineLink(txt.Text, txt.Marks.Marks[0])
+	ext := filepath.Ext(link)
+
 	if ext == "" || strings.Contains(ext, " ") {
 		link += ".md"
 	}
 
 	link = m.getOriginalName(link, importSource)
-	if file := files[link]; file != nil {
+	if file := findFile(files, link); file != nil {
 		txt.Marks.Marks[0].Type = model.BlockContentTextMark_Mention
 		if strings.EqualFold(ext, ".csv") {
 			txt.Marks.Marks[0].Param = link
@@ -208,7 +213,7 @@ func (m *mdConverter) handleSingleMark(block *model.Block, files map[string]*Fil
 			txt.Marks.Marks[0].Param = link
 			m.convertToAnytypeLinkBlock(block, wholeLineLink)
 		} else {
-			block.Content = anymark.ConvertTextToFile(txt.Marks.Marks[0].Param)
+			block.Content = anymark.ConvertTextToFile(link)
 		}
 		file.HasInboundLinks = true
 	} else if wholeLineLink {
@@ -237,7 +242,7 @@ func (m *mdConverter) handleSingleLinkMark(block *model.Block, files map[string]
 
 	link = m.getOriginalName(link, importSource)
 	ext = filepath.Ext(link)
-	if file := files[link]; file != nil {
+	if file := findFile(files, link); file != nil {
 		file.HasInboundLinks = true
 		if strings.EqualFold(ext, ".md") || strings.EqualFold(ext, ".csv") {
 			mark.Type = model.BlockContentTextMark_Mention
@@ -245,7 +250,7 @@ func (m *mdConverter) handleSingleLinkMark(block *model.Block, files map[string]
 			return false
 		}
 		if isWholeLink {
-			block.Content = anymark.ConvertTextToFile(mark.Param)
+			block.Content = anymark.ConvertTextToFile(link)
 			return true
 		}
 	} else if isWholeLink {
@@ -288,14 +293,49 @@ func (m *mdConverter) processCSVFileLink(block *model.Block, files map[string]*F
 	files[link].HasInboundLinks = true
 }
 
-func (m *mdConverter) processFileBlock(block *model.Block, importedSource source.Source, importPath string) {
+func findFile(files map[string]*FileInfo, name string) *FileInfo {
+	if name == "" {
+		return nil
+	}
+	// Check if the file exists in the map by its original path
+	if file, exists := files[name]; exists {
+		return file
+	}
+	if strings.HasPrefix(name, "http://") || strings.HasPrefix(name, "https://") {
+		// If it's a URL, we can't find it by path, so return nil
+		return nil
+	}
+	// If not found, try to find it by base name
+	return findPathByBaseName(files, name)
+}
+
+func findPathByBaseName(files map[string]*FileInfo, name string) *FileInfo {
+	// todo: rewrite it in more effective way
+	// we should have some map by file name
+	name = filepath.Base(name)
+	for path, file := range files {
+		if filepath.Base(file.OriginalPath) == name || filepath.Base(path) == name {
+			return file
+		}
+	}
+	log.Debugf("file %s not found in files map", name)
+	return nil
+}
+
+func (m *mdConverter) processFileBlock(block *model.Block, importedSource source.Source, importPath string, files map[string]*FileInfo) {
 	if f := block.GetFile(); f != nil {
 		if block.Id == "" {
 			block.Id = bson.NewObjectId().Hex()
 		}
-		name, _, err := common.ProvideFileName(block.GetFile().Name, importedSource, importPath, m.tempDirProvider)
-		if err != nil {
-			log.Errorf("failed to update file block, %v", err)
+		var err error
+		name := f.Name
+		if file := findFile(files, name); file != nil {
+			name, _, err = common.ProvideFileName(file.OriginalPath, importedSource, importPath, m.tempDirProvider)
+			if err != nil {
+				log.Errorf("failed to update file block, %v", err)
+			}
+		} else {
+			name = ""
 		}
 		block.GetFile().Name = name
 	}

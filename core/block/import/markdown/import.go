@@ -355,7 +355,7 @@ func (m *Markdown) processFieldBlockIfItIs(blocks []*model.Block, files map[stri
 				}
 			}
 
-			file := files[shortPath]
+			file := findFile(files, shortPath)
 
 			if file == nil || len(file.PageID) == 0 {
 				text += potentialFileName
@@ -1023,9 +1023,9 @@ func (m *Markdown) addLinkToObjectBlocks(files map[string]*FileInfo, progress pr
 					target = link.TargetBlockId
 				}
 
-				if files[target] != nil {
-					link.TargetBlockId = files[target].PageID
-					files[target].HasInboundLinks = true
+				if file := findFile(files, target); file != nil {
+					link.TargetBlockId = file.PageID
+					file.HasInboundLinks = true
 				}
 
 				continue
@@ -1037,7 +1037,7 @@ func (m *Markdown) addLinkToObjectBlocks(files map[string]*FileInfo, progress pr
 						continue
 					}
 
-					if targetFile, exists := files[normalizePath(mark.Param)]; exists {
+					if targetFile := findFile(files, normalizePath(mark.Param)); targetFile != nil {
 						mark.Param = targetFile.PageID
 						targetFile.HasInboundLinks = true
 					}
