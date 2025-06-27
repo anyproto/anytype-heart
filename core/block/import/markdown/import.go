@@ -108,10 +108,22 @@ func (m *Markdown) GetSnapshots(ctx context.Context, req *pb.RpcObjectImportRequ
 		}
 	}
 
-	if allErrors.IsEmpty() {
-		return &common.Response{Snapshots: allSnapshots, RootObjectID: rootObjectID, RootObjectWidgetType: widgetType}, nil
+	var typesCreated []domain.TypeKey
+	for _, snapshot := range allSnapshots {
+		if snapshot.Snapshot.SbType == smartblock.SmartBlockTypeObjectType {
+			uk := snapshot.Snapshot.Data.Details.GetString(bundle.RelationKeyUniqueKey)
+			uniqueKey, err := domain.GetTypeKeyFromRawUniqueKey(uk)
+			if err != nil {
+				log.Warnf("type widgets, failed to get type key from unique key %s: %v", uk, err)
+				continue
+			}
+			typesCreated = append(typesCreated, uniqueKey)
+		}
 	}
-	return &common.Response{Snapshots: allSnapshots, RootObjectID: rootObjectID, RootObjectWidgetType: widgetType}, allErrors
+	if allErrors.IsEmpty() {
+		return &common.Response{Snapshots: allSnapshots, RootObjectID: rootObjectID, RootObjectWidgetType: widgetType, TypesCreated: typesCreated}, nil
+	}
+	return &common.Response{Snapshots: allSnapshots, RootObjectID: rootObjectID, RootObjectWidgetType: widgetType, TypesCreated: typesCreated}, allErrors
 }
 
 func (m *Markdown) processFiles(req *pb.RpcObjectImportRequest, progress process.Progress, paths []string, allErrors *common.ConvertError) ([]*common.Snapshot, []string) {
@@ -243,6 +255,11 @@ func (m *Markdown) getSnapshotsAndRootObjectsIdsWithFilter(
 	}
 
 	params := m.GetParams(req)
+	if m.schemaImporter.HasSchemas() {
+		// we import from anytype markdown files. disable tree structure and properties as blocks
+		params.CreateDirectoryPages = false
+		params.IncludePropertiesAsBlock = false
+	}
 
 	files := m.blockConverter.markdownToBlocks(path, importSource, allErrors, params.CreateDirectoryPages)
 	pathsCount := len(req.GetMarkdownParams().Path)

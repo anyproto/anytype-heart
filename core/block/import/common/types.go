@@ -141,6 +141,7 @@ type Response struct {
 	Snapshots            []*Snapshot
 	RootObjectID         string
 	RootObjectWidgetType model.BlockContentWidgetLayout
+	TypesCreated         []domain.TypeKey
 }
 
 type SnapshotContext struct {
