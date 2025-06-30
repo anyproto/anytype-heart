@@ -46,7 +46,7 @@ type StoreObject interface {
 	GetMessages(ctx context.Context, req chatrepository.GetMessagesRequest) (*GetMessagesResponse, error)
 	GetMessagesByIds(ctx context.Context, messageIds []string) ([]*chatmodel.Message, error)
 	EditMessage(ctx context.Context, messageId string, newMessage *chatmodel.Message) error
-	ToggleMessageReaction(ctx context.Context, messageId string, emoji string) error
+	ToggleMessageReaction(ctx context.Context, messageId string, emoji string) (bool, error)
 	DeleteMessage(ctx context.Context, messageId string) error
 	MarkReadMessages(ctx context.Context, req ReadMessagesRequest) error
 	MarkMessagesAsUnread(ctx context.Context, afterOrderId string, counterType chatmodel.CounterType) error
@@ -294,7 +294,7 @@ func (s *storeObject) EditMessage(ctx context.Context, messageId string, newMess
 	return nil
 }
 
-func (s *storeObject) ToggleMessageReaction(ctx context.Context, messageId string, emoji string) error {
+func (s *storeObject) ToggleMessageReaction(ctx context.Context, messageId string, emoji string) (bool, error) {
 	arena := s.arenaPool.Get()
 	defer func() {
 		arena.Reset()
@@ -303,7 +303,7 @@ func (s *storeObject) ToggleMessageReaction(ctx context.Context, messageId strin
 
 	hasReaction, err := s.repository.HasMyReaction(ctx, s.accountService.AccountID(), messageId, emoji)
 	if err != nil {
-		return fmt.Errorf("check reaction: %w", err)
+		return false, fmt.Errorf("check reaction: %w", err)
 	}
 
 	builder := storestate.Builder{}
@@ -311,12 +311,12 @@ func (s *storeObject) ToggleMessageReaction(ctx context.Context, messageId strin
 	if hasReaction {
 		err = builder.Modify(CollectionName, messageId, []string{chatmodel.ReactionsKey, emoji}, pb.ModifyOp_Pull, arena.NewString(s.accountService.AccountID()))
 		if err != nil {
-			return fmt.Errorf("modify content: %w", err)
+			return false, fmt.Errorf("modify content: %w", err)
 		}
 	} else {
 		err = builder.Modify(CollectionName, messageId, []string{chatmodel.ReactionsKey, emoji}, pb.ModifyOp_AddToSet, arena.NewString(s.accountService.AccountID()))
 		if err != nil {
-			return fmt.Errorf("modify content: %w", err)
+			return false, fmt.Errorf("modify content: %w", err)
 		}
 	}
 
@@ -326,9 +326,9 @@ func (s *storeObject) ToggleMessageReaction(ctx context.Context, messageId strin
 		Time:    time.Now(),
 	})
 	if err != nil {
-		return fmt.Errorf("push change: %w", err)
+		return false, fmt.Errorf("push change: %w", err)
 	}
-	return nil
+	return !hasReaction, nil
 }
 
 func (s *storeObject) TryClose(objectTTL time.Duration) (res bool, err error) {

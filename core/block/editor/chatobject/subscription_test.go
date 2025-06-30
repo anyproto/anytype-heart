@@ -114,9 +114,10 @@ func TestSubscription(t *testing.T) {
 	t.Run("toggle message reaction", func(t *testing.T) {
 		fx.events = nil
 
-		err = fx.ToggleMessageReaction(ctx, resp.Messages[0].Id, "👍")
+		added, err := fx.ToggleMessageReaction(ctx, resp.Messages[0].Id, "👍")
 		require.NoError(t, err)
 		require.Len(t, fx.events, 1)
+		assert.True(t, added)
 
 		wantEvents := []*pb.EventMessage{
 			{

@@ -11360,6 +11360,7 @@ Get marks list in the selected range in text block.
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | error | [Rpc.Chat.ToggleMessageReaction.Response.Error](#anytype-Rpc-Chat-ToggleMessageReaction-Response-Error) |  |  |
+| added | [bool](#bool) |  | Added is true when reaction is added, false when removed |
 
 
 
