@@ -53,7 +53,7 @@ func (mw *Middleware) ChatEditMessageContent(cctx context.Context, req *pb.RpcCh
 func (mw *Middleware) ChatToggleMessageReaction(cctx context.Context, req *pb.RpcChatToggleMessageReactionRequest) *pb.RpcChatToggleMessageReactionResponse {
 	chatService := mustService[chats.Service](mw)
 
-	err := chatService.ToggleMessageReaction(cctx, req.ChatObjectId, req.MessageId, req.Emoji)
+	added, err := chatService.ToggleMessageReaction(cctx, req.ChatObjectId, req.MessageId, req.Emoji)
 	if err != nil {
 		code := mapErrorCode[pb.RpcChatToggleMessageReactionResponseErrorCode](err)
 		return &pb.RpcChatToggleMessageReactionResponse{
@@ -63,7 +63,9 @@ func (mw *Middleware) ChatToggleMessageReaction(cctx context.Context, req *pb.Rp
 			},
 		}
 	}
-	return &pb.RpcChatToggleMessageReactionResponse{}
+	return &pb.RpcChatToggleMessageReactionResponse{
+		Added: added,
+	}
 }
 
 func (mw *Middleware) ChatDeleteMessage(cctx context.Context, req *pb.RpcChatDeleteMessageRequest) *pb.RpcChatDeleteMessageResponse {
