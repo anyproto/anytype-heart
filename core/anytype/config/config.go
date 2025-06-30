@@ -215,8 +215,10 @@ func (c *Config) initFromFileAndEnv(repoPath string) error {
 	if !c.DisableFileConfig {
 		var confRequired ConfigRequired
 		err := GetFileConfig(c.GetConfigPath(), &confRequired)
-		if err != nil {
-			return fmt.Errorf("failed to get config from file: %w", err)
+		if err != nil && errors.Is(err, ErrInvalidConfigFormat) {
+			log.Errorf("config file init: %v", err)
+		} else if err != nil {
+			return err
 		}
 
 		writeConfig := func() error {
