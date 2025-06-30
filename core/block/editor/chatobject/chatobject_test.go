@@ -408,14 +408,21 @@ func TestToggleReaction(t *testing.T) {
 	editedMessage.Message.Text = "edited text!"
 
 	t.Run("can toggle own reactions", func(t *testing.T) {
-		err = fx.ToggleMessageReaction(ctx, messageId, "👻")
+		added, err := fx.ToggleMessageReaction(ctx, messageId, "👻")
 		require.NoError(t, err)
-		err = fx.ToggleMessageReaction(ctx, messageId, "🐻")
+		assert.True(t, added)
+
+		added, err = fx.ToggleMessageReaction(ctx, messageId, "🐻")
 		require.NoError(t, err)
-		err = fx.ToggleMessageReaction(ctx, messageId, "👺")
+		assert.True(t, added)
+
+		added, err = fx.ToggleMessageReaction(ctx, messageId, "👺")
 		require.NoError(t, err)
-		err = fx.ToggleMessageReaction(ctx, messageId, "👺")
+		assert.True(t, added)
+
+		added, err = fx.ToggleMessageReaction(ctx, messageId, "👺")
 		require.NoError(t, err)
+		assert.False(t, added)
 	})
 
 	anotherPerson := "anotherPerson"
@@ -423,14 +430,16 @@ func TestToggleReaction(t *testing.T) {
 	t.Run("can't toggle someone else's reactions", func(t *testing.T) {
 		fx.sourceCreator = testCreator
 		fx.accountServiceStub.accountId = anotherPerson
-		err = fx.ToggleMessageReaction(ctx, messageId, "🐻")
+		added, err := fx.ToggleMessageReaction(ctx, messageId, "🐻")
 		require.Error(t, err)
+		assert.False(t, added)
 	})
 	t.Run("can toggle reactions on someone else's messages", func(t *testing.T) {
 		fx.sourceCreator = anotherPerson
 		fx.accountServiceStub.accountId = anotherPerson
-		err = fx.ToggleMessageReaction(ctx, messageId, "🐻")
+		added, err := fx.ToggleMessageReaction(ctx, messageId, "🐻")
 		require.NoError(t, err)
+		assert.True(t, added)
 	})
 
 	messagesResp, err := fx.GetMessages(ctx, chatrepository.GetMessagesRequest{})
