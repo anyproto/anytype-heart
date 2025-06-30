@@ -31,7 +31,7 @@ func GetFileConfig(configPath string, cfg interface{}) error {
 		if info.Size() > 0 {
 			err = json.NewDecoder(cfgFile).Decode(cfg)
 			if err != nil {
-				return fmt.Errorf("%w: %w", ErrInvalidConfigFormat, err)
+				return errors.Join(ErrInvalidConfigFormat, err)
 			}
 		}
 	}

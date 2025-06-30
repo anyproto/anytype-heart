@@ -216,7 +216,7 @@ func (c *Config) initFromFileAndEnv(repoPath string) error {
 		var confRequired ConfigRequired
 		err := GetFileConfig(c.GetConfigPath(), &confRequired)
 		if err != nil && errors.Is(err, ErrInvalidConfigFormat) {
-			log.Errorf("config file init: %s", err.Error())
+			log.Errorf("config file init: %v", err)
 		} else if err != nil {
 			return err
 		}
