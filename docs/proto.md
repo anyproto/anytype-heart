@@ -31824,6 +31824,7 @@ Used to decode block meta only, without the content itself
 | messages | [ChatState.UnreadState](#anytype-model-ChatState-UnreadState) |  | unread messages |
 | mentions | [ChatState.UnreadState](#anytype-model-ChatState-UnreadState) |  | unread mentions |
 | lastStateId | [string](#string) |  | reflects the state of the chat db at the moment of sending response/event that includes this state |
+| timestamp | [int64](#int64) |  | Client should apply chat state only if timestamp is greater than previously saved timestamp |
 
 
 
