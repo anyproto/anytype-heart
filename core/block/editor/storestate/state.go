@@ -285,7 +285,11 @@ func (ss *StoreState) applyDelete(ctx context.Context, ch Change) (err error) {
 		fillRootOrder(ss.arena, payload, ch.Order)
 		return coll.UpdateOne(ctx, payload)
 	case DeleteModeDelete:
-		return coll.DeleteId(ctx, del.DocumentId)
+		err = coll.DeleteId(ctx, del.DocumentId)
+		if errors.Is(err, anystore.ErrDocNotFound) {
+			return nil
+		}
+		return err
 	}
 	return
 }
