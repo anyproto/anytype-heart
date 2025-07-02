@@ -51,11 +51,6 @@ func TestGetImageForWidth(t *testing.T) {
 			requestedWidth: 320,
 			expectedWidth:  320,
 		},
-		{
-			name:           "thumbnail",
-			requestedWidth: 100,
-			expectedWidth:  100,
-		},
 	} {
 		t.Run(testCase.name, func(t *testing.T) {
 			file, err := img.GetFileForWidth(testCase.requestedWidth)

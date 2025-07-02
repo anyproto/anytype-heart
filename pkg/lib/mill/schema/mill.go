@@ -77,14 +77,6 @@ var ImageResizeSchema = &storage.ImageResizeSchema{
 			},
 		},
 		{
-			Name: LinkImageThumbnail,
-			Mill: "/image/resize",
-			Opts: map[string]string{
-				"width":   "100",
-				"quality": "80",
-			},
-		},
-		{
 			Name: LinkImageExif,
 			Mill: "/image/exif",
 		},
