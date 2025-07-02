@@ -455,6 +455,7 @@ func (s *Service) buildRelationIds(ctx context.Context, spaceId string, props []
 			continue
 		}
 		newProp, err2 := s.CreateProperty(ctx, spaceId, apimodel.CreatePropertyRequest{
+			Key:    propLink.Key,
 			Name:   propLink.Name,
 			Format: propLink.Format,
 		})
