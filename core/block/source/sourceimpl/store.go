@@ -58,7 +58,7 @@ type StoreStat struct {
 }
 
 func (s *store) ProvideStat() any {
-	var stats []DiffManagerStats
+	stats := make([]DiffManagerStats, 0, len(s.diffManagers))
 	for name, manager := range s.diffManagers {
 		ids := manager.diffManager.GetIds()
 		stats = append(stats, DiffManagerStats{
