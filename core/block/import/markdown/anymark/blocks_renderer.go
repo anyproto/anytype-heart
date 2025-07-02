@@ -209,7 +209,7 @@ func (r *blocksRenderer) AddImageBlock(source string) {
 		sourceUnescaped = source
 	}
 
-	if u, err := url.Parse(sourceUnescaped); err != nil || u.Scheme == "" {
+	if u, err := url.Parse(sourceUnescaped); err == nil && u.Scheme == "" {
 		// Treat as a file path if parse error or no URL scheme
 		sourceUnescaped = filepath.Join(r.GetBaseFilepath(), sourceUnescaped)
 	}

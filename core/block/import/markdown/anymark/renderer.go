@@ -239,7 +239,7 @@ func (r *Renderer) renderAutoLink(_ util.BufWriter,
 		linkPath = string(destination)
 	}
 
-	if u, err := url.Parse(linkPath); err != nil || u.Scheme == "" {
+	if u, err := url.Parse(linkPath); err == nil && u.Scheme == "" {
 		// Treat as a file path if parse error or no URL scheme
 		linkPath = filepath.Join(r.GetBaseFilepath(), linkPath)
 		linkPath = cleanLinkSection(linkPath)
@@ -327,7 +327,7 @@ func (r *Renderer) renderLink(_ util.BufWriter,
 			linkPath = string(destination)
 		}
 
-		if u, err := url.Parse(linkPath); err != nil || u.Scheme == "" {
+		if u, err := url.Parse(linkPath); err == nil && u.Scheme == "" {
 			// Treat as a file path if parse error or no URL scheme
 			linkPath = filepath.Join(r.GetBaseFilepath(), linkPath)
 			ext := filepath.Ext(linkPath)
@@ -483,7 +483,7 @@ func (r *Renderer) renderWikiLink(_ util.BufWriter, source []byte, node ast.Node
 		r.SetMarkStart()
 	} else {
 		// Handle as regular link (same behavior as [[]] for both [[]] and ![[]])
-		if u, err := url.Parse(linkPath); err != nil || u.Scheme == "" {
+		if u, err := url.Parse(linkPath); err == nil && u.Scheme == "" {
 			// Treat as a file path if parse error or no URL scheme
 			linkPath = filepath.Join(r.GetBaseFilepath(), linkPath)
 			ext := filepath.Ext(linkPath)
