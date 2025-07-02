@@ -85,14 +85,14 @@ type storeObject struct {
 }
 
 type UnreadStats struct {
-	MessagesCount int      `json:"messages_count"`
-	MessageIds    []string `json:"message_ids"`
-	StatType      string   `json:"stat_type"`
+	MessagesCount int      `json:"messagesCount"`
+	MessageIds    []string `json:"messageIds"`
+	StatType      string   `json:"statType"`
 }
 
 type StoreObjectStats struct {
-	StoreState  any           `json:"store_state"`
-	UnreadStats []UnreadStats `json:"unread_stats"`
+	StoreState  any           `json:"storeState"`
+	UnreadStats []UnreadStats `json:"unreadStats,omitempty"`
 }
 
 func (s *storeObject) ProvideStat() any {
