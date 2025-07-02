@@ -56,6 +56,8 @@ type deviceService interface {
 }
 
 type ObjectFactory struct {
+	app *app.App
+
 	bookmarkService         bookmark.BookmarkService
 	fileBlockService        file.BlockService
 	layoutConverter         converter.LayoutConverter
@@ -88,6 +90,7 @@ func NewObjectFactory() *ObjectFactory {
 }
 
 func (f *ObjectFactory) Init(a *app.App) (err error) {
+	f.app = a
 	f.config = app.MustComponent[*config.Config](a)
 	f.picker = app.MustComponent[cache.ObjectGetter](a)
 	f.indexer = app.MustComponent[smartblock.Indexer](a)
@@ -161,6 +164,11 @@ func (f *ObjectFactory) InitObject(space smartblock.Space, id string, initCtx *s
 	err = sb.Init(initCtx)
 	if err != nil {
 		return nil, fmt.Errorf("init smartblock: %w", err)
+	}
+
+	err = sb.InitComponents(f.app)
+	if err != nil {
+		return nil, fmt.Errorf("init components: %w", err)
 	}
 
 	applyFlags := []smartblock.ApplyFlag{smartblock.NoHistory, smartblock.NoEvent, smartblock.NoRestrictions, smartblock.SkipIfNoChanges, smartblock.KeepInternalFlags, smartblock.IgnoreNoPermissions}
