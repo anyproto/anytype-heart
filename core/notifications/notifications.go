@@ -239,6 +239,9 @@ func (n *notificationService) List(limit int64, includeRead bool) ([]*model.Noti
 		if !includeRead && n.isNotificationRead(notification) {
 			continue
 		}
+		if notification.GetRequestToLeave() != nil {
+			continue
+		}
 		result = append(result, notification)
 		addCount++
 	}

@@ -1040,6 +1040,16 @@ func (s *service) CodeGetInfo(ctx context.Context, req *pb.RpcMembershipCodeGetI
 		return nil, err
 	}
 
+	// send membership update to the payment node
+	// to get new tiers, because Code can redeem a hidden tier that is not on the list yet
+	_, err = s.GetSubscriptionStatus(ctx, &pb.RpcMembershipGetStatusRequest{
+		NoCache: true,
+	})
+	if err != nil {
+		log.Error("can not get subscription status again", zap.Error(err))
+		// eat the error...
+	}
+
 	return &pb.RpcMembershipCodeGetInfoResponse{
 		RequestedTier: res.Tier,
 		Error: &pb.RpcMembershipCodeGetInfoResponseError{

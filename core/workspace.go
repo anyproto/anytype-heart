@@ -39,8 +39,19 @@ func (mw *Middleware) WorkspaceCreate(cctx context.Context, req *pb.RpcWorkspace
 		if err != nil {
 			return
 		}
-		spaceUxType := pbtypes.GetInt64(req.GetDetails(), bundle.RelationKeySpaceUxType.String())
-		if spaceUxType == int64(model.SpaceUxType_Chat) {
+		var spaceUxType model.SpaceUxType
+		hasUxType := pbtypes.HasField(req.GetDetails(), bundle.RelationKeySpaceUxType.String())
+		if !hasUxType {
+			spaceUxType = model.SpaceUxType_Data
+		} else {
+			spaceUxType = model.SpaceUxType(pbtypes.GetInt64(req.GetDetails(), bundle.RelationKeySpaceUxType.String()))
+			if spaceUxType.String() == "" {
+				return errors.New("unknown space ux type")
+			} else if spaceUxType == model.SpaceUxType_None {
+				return errors.New("space ux type cannot be None")
+			}
+		}
+		if spaceUxType == model.SpaceUxType_Chat {
 			// todo: as soon as it will be released for all users, we need to make it async inside the space init
 			err = bs.SpaceInitChat(cctx, spaceId)
 			if err != nil {

@@ -7,9 +7,10 @@ import (
 	"github.com/anyproto/any-sync/commonspace/object/tree/objecttree"
 	"github.com/anyproto/any-sync/util/crypto"
 	"github.com/anyproto/any-sync/util/slice"
+	"golang.org/x/exp/slices"
+
 	"github.com/anyproto/anytype-heart/core/block/chats/chatmodel"
 	"github.com/anyproto/anytype-heart/core/block/source"
-	"golang.org/x/exp/slices"
 )
 
 type ReadMessagesRequest struct {

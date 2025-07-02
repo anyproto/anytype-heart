@@ -36,7 +36,7 @@ type LimitCallback func(fileObjectId string, fileId domain.FullFileId, bytesLeft
 type DeleteCallback func(fileObjectId domain.FullFileId)
 
 type FileSync interface {
-	AddFile(fileObjectId string, fileId domain.FullFileId, uploadedByUser, imported bool) (err error)
+	AddFile(req AddFileRequest) (err error)
 	UploadSynchronously(ctx context.Context, spaceId string, fileId domain.FileId) error
 	OnUploadStarted(StatusCallback)
 	OnUploaded(StatusCallback)
@@ -119,25 +119,25 @@ func (s *fileSync) Init(a *app.App) (err error) {
 	if err != nil {
 		return fmt.Errorf("init uploading queue storage: %w", err)
 	}
-	s.uploadingQueue = persistentqueue.New(uploadingQueueStorage, log.Logger, s.uploadingHandler)
+	s.uploadingQueue = persistentqueue.New(uploadingQueueStorage, log.Logger, s.uploadingHandler, queueItemLess)
 
 	retryUploadingQueueStorage, err := persistentqueue.NewAnystoreStorage(db, "filesync/retry_uploading", makeQueueItem)
 	if err != nil {
 		return fmt.Errorf("init retry uploading queue storage: %w", err)
 	}
-	s.retryUploadingQueue = persistentqueue.New(retryUploadingQueueStorage, log.Logger, s.retryingHandler, persistentqueue.WithRetryPause(loopTimeout))
+	s.retryUploadingQueue = persistentqueue.New(retryUploadingQueueStorage, log.Logger, s.retryingHandler, queueItemLess, persistentqueue.WithRetryPause(loopTimeout))
 
 	deletionQueueStorage, err := persistentqueue.NewAnystoreStorage(db, "filesync/deletion", makeDeletionQueueItem)
 	if err != nil {
 		return fmt.Errorf("init deletion queue storage: %w", err)
 	}
-	s.deletionQueue = persistentqueue.New(deletionQueueStorage, log.Logger, s.deletionHandler)
+	s.deletionQueue = persistentqueue.New(deletionQueueStorage, log.Logger, s.deletionHandler, nil)
 
 	retryDeletionQueueStorage, err := persistentqueue.NewAnystoreStorage(db, "filesync/retry_deletion", makeDeletionQueueItem)
 	if err != nil {
 		return fmt.Errorf("init retry deletion queue storage: %w", err)
 	}
-	s.retryDeletionQueue = persistentqueue.New(retryDeletionQueueStorage, log.Logger, s.retryDeletionHandler, persistentqueue.WithRetryPause(loopTimeout))
+	s.retryDeletionQueue = persistentqueue.New(retryDeletionQueueStorage, log.Logger, s.retryDeletionHandler, nil, persistentqueue.WithRetryPause(loopTimeout))
 
 	return
 }

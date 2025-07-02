@@ -11360,6 +11360,7 @@ Get marks list in the selected range in text block.
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | error | [Rpc.Chat.ToggleMessageReaction.Response.Error](#anytype-Rpc-Chat-ToggleMessageReaction-Response-Error) |  |  |
+| added | [bool](#bool) |  | Added is true when reaction is added, false when removed |
 
 
 
@@ -16348,6 +16349,8 @@ DEPRECATED, GO-1926 |
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | path | [string](#string) | repeated |  |
+| createDirectoryPages | [bool](#bool) |  |  |
+| includePropertiesAsBlock | [bool](#bool) |  |  |
 
 
 
@@ -16798,6 +16801,7 @@ Deletes the object, keys from the local store and unsubscribe from remote change
 | linksStateFilters | [Rpc.Object.ListExport.StateFilters](#anytype-Rpc-Object-ListExport-StateFilters) |  |  |
 | includeBacklinks | [bool](#bool) |  |  |
 | includeSpace | [bool](#bool) |  |  |
+| includeJsonSchema | [bool](#bool) |  |  |
 
 
 
@@ -31820,6 +31824,7 @@ Used to decode block meta only, without the content itself
 | messages | [ChatState.UnreadState](#anytype-model-ChatState-UnreadState) |  | unread messages |
 | mentions | [ChatState.UnreadState](#anytype-model-ChatState-UnreadState) |  | unread mentions |
 | lastStateId | [string](#string) |  | reflects the state of the chat db at the moment of sending response/event that includes this state |
+| order | [int64](#int64) |  | Order is serial number of this state. Client should apply chat state only if its order is greater than previously saved order |
 
 
 
@@ -33361,6 +33366,7 @@ stored |
 | Html | 4 |  |
 | Txt | 5 |  |
 | Csv | 6 |  |
+| Obsidian | 7 | Markdown with obsidian improvements |
 
 
 
@@ -33780,9 +33786,10 @@ RelationFormat describes how the underlying data is stored in the google.protobu
 
 | Name | Number | Description |
 | ---- | ------ | ----------- |
-| Chat | 0 | chat-first UX |
+| None | 0 | old value for chat, deprecated |
 | Data | 1 | objects-first UX |
 | Stream | 2 | stream UX (chat with limited amount of owners) |
+| Chat | 3 | chat UX |
 
 
 

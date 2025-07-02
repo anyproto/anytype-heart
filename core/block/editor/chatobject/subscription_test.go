@@ -74,6 +74,7 @@ func TestSubscription(t *testing.T) {
 							Messages:    &model.ChatStateUnreadState{},
 							Mentions:    &model.ChatStateUnreadState{},
 							LastStateId: message.StateId,
+							Order:       11,
 						},
 						SubIds: []string{"subId"},
 					},
@@ -114,9 +115,10 @@ func TestSubscription(t *testing.T) {
 	t.Run("toggle message reaction", func(t *testing.T) {
 		fx.events = nil
 
-		err = fx.ToggleMessageReaction(ctx, resp.Messages[0].Id, "👍")
+		added, err := fx.ToggleMessageReaction(ctx, resp.Messages[0].Id, "👍")
 		require.NoError(t, err)
 		require.Len(t, fx.events, 1)
+		assert.True(t, added)
 
 		wantEvents := []*pb.EventMessage{
 			{
@@ -170,6 +172,7 @@ func TestSubscription(t *testing.T) {
 							Messages:    &model.ChatStateUnreadState{},
 							Mentions:    &model.ChatStateUnreadState{},
 							LastStateId: lastStateId,
+							Order:       1,
 						},
 						SubIds: []string{"subId"},
 					},
@@ -228,6 +231,7 @@ func TestSubscriptionMessageCounters(t *testing.T) {
 						},
 						Mentions:    &model.ChatStateUnreadState{},
 						LastStateId: firstMessage.StateId,
+						Order:       1,
 					},
 					SubIds: []string{"subId"},
 				},
@@ -269,6 +273,7 @@ func TestSubscriptionMessageCounters(t *testing.T) {
 						},
 						Mentions:    &model.ChatStateUnreadState{},
 						LastStateId: secondMessage.StateId,
+						Order:       2,
 					},
 					SubIds: []string{"subId"},
 				},
@@ -311,6 +316,7 @@ func TestSubscriptionMessageCounters(t *testing.T) {
 						},
 						Mentions:    &model.ChatStateUnreadState{},
 						LastStateId: secondMessage.StateId,
+						Order:       4,
 					},
 					SubIds: []string{"subId"},
 				},
@@ -374,6 +380,7 @@ func TestSubscriptionMentionCounters(t *testing.T) {
 							OldestOrderId: firstMessage.OrderId,
 						},
 						LastStateId: firstMessage.StateId,
+						Order:       1,
 					},
 					SubIds: []string{"subId"},
 				},
@@ -418,6 +425,7 @@ func TestSubscriptionMentionCounters(t *testing.T) {
 							OldestOrderId: firstMessage.OrderId,
 						},
 						LastStateId: secondMessage.StateId,
+						Order:       2,
 					},
 					SubIds: []string{"subId"},
 				},
@@ -463,6 +471,7 @@ func TestSubscriptionMentionCounters(t *testing.T) {
 							OldestOrderId: secondMessage.OrderId,
 						},
 						LastStateId: secondMessage.StateId,
+						Order:       4,
 					},
 					SubIds: []string{"subId"},
 				},
@@ -544,6 +553,7 @@ func TestSubscriptionWithDeps(t *testing.T) {
 						Messages:    &model.ChatStateUnreadState{},
 						Mentions:    &model.ChatStateUnreadState{},
 						LastStateId: message.StateId,
+						Order:       1,
 					},
 					SubIds: []string{"subId"},
 				},

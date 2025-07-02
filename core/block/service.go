@@ -44,8 +44,10 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space"
+	"github.com/anyproto/anytype-heart/space/clientspace"
 	"github.com/anyproto/anytype-heart/util/internalflag"
 	"github.com/anyproto/anytype-heart/util/mutex"
+	"github.com/anyproto/anytype-heart/util/slice"
 	"github.com/anyproto/anytype-heart/util/uri"
 
 	_ "github.com/anyproto/anytype-heart/core/block/editor/table"
@@ -208,7 +210,13 @@ func (s *Service) ObjectRefresh(ctx context.Context, id domain.FullID) (err erro
 
 func (s *Service) OpenBlock(sctx session.Context, id domain.FullID, includeRelationsAsDependentObjects bool) (obj *model.ObjectView, err error) {
 	id = s.resolveFullId(id)
-	err = s.DoFullId(id, func(ob smartblock.SmartBlock) error {
+
+	spc, err := s.spaceService.Wait(s.componentCtx, id.SpaceID)
+	if err != nil {
+		return nil, fmt.Errorf("wait space: %w", err)
+	}
+
+	err = spc.Do(id.ObjectID, func(ob smartblock.SmartBlock) error {
 		if includeRelationsAsDependentObjects {
 			ob.EnabledRelationAsDependentObjects()
 		}
@@ -292,7 +300,13 @@ func (s *Service) resolveFullId(id domain.FullID) domain.FullID {
 
 func (s *Service) ShowBlock(id domain.FullID, includeRelationsAsDependentObjects bool) (obj *model.ObjectView, err error) {
 	id = s.resolveFullId(id)
-	err = s.DoFullId(id, func(b smartblock.SmartBlock) error {
+
+	spc, err := s.spaceService.Wait(s.componentCtx, id.SpaceID)
+	if err != nil {
+		return nil, fmt.Errorf("wait space: %w", err)
+	}
+
+	err = spc.Do(id.ObjectID, func(b smartblock.SmartBlock) error {
 		if includeRelationsAsDependentObjects {
 			b.EnabledRelationAsDependentObjects()
 		}
@@ -772,8 +786,49 @@ func (s *Service) SyncObjectsWithType(typeId string) error {
 		return fmt.Errorf("failed to get details of type object: %w", err)
 	}
 
+	removeDescriptionFromRecommended(typeId, details, spc)
+
 	syncer := layout.NewSyncer(typeId, spc, index)
 	newLayout := layout.NewLayoutStateFromDetails(details)
 	oldLayout := newLayout.Copy()
 	return syncer.SyncLayoutWithType(oldLayout, newLayout, true, true, false)
+}
+
+// removeDescriptionFromRecommended removes description relation id from recommended relations lists of type if it was added accidentally (see GO-5826)
+func removeDescriptionFromRecommended(typeId string, details *domain.Details, spc clientspace.Space) {
+	descriptionId, err := spc.DeriveObjectID(nil, domain.MustUniqueKey(coresb.SmartBlockTypeRelation, bundle.RelationKeyDescription.String()))
+	if err != nil {
+		return
+	}
+
+	detailsToSet := make([]domain.Detail, 0)
+	for _, key := range []domain.RelationKey{
+		bundle.RelationKeyRecommendedRelations,
+		bundle.RelationKeyRecommendedFeaturedRelations,
+		bundle.RelationKeyRecommendedFileRelations,
+		bundle.RelationKeyRecommendedHiddenRelations,
+	} {
+		list := details.GetStringList(key)
+		i := slice.FindPos(list, descriptionId)
+		if i == -1 {
+			continue
+		}
+
+		detailsToSet = append(detailsToSet, domain.Detail{
+			Key:   key,
+			Value: domain.StringList(slice.RemoveIndex(list, i)),
+		})
+	}
+
+	if len(detailsToSet) == 0 {
+		return
+	}
+
+	// nolint:errcheck
+	spc.Do(typeId, func(sb smartblock.SmartBlock) error {
+		if ds, ok := sb.(basic.DetailsSettable); ok {
+			return ds.SetDetails(nil, detailsToSet, false)
+		}
+		return nil
+	})
 }

@@ -16,6 +16,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/files/filestorage/mock_filestorage"
+	"github.com/anyproto/anytype-heart/core/files/filesync"
 	"github.com/anyproto/anytype-heart/core/files/filesync/mock_filesync"
 	"github.com/anyproto/anytype-heart/core/syncstatus/filesyncstatus"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
@@ -208,7 +209,14 @@ func TestRebindQueue(t *testing.T) {
 	fx := newFixture(t)
 
 	fx.fileSync.EXPECT().CancelDeletion("objectId1", testFullFileId).Return(nil)
-	fx.fileSync.EXPECT().AddFile("objectId1", testFullFileId, false, false).Return(nil)
+	fx.fileSync.EXPECT().AddFile(filesync.AddFileRequest{
+		FileObjectId:        "objectId1",
+		FileId:              testFullFileId,
+		UploadedByUser:      false,
+		Imported:            false,
+		PrioritizeVariantId: "",
+		Score:               0,
+	}).Return(nil)
 
 	err := fx.rebindQueue.Add(&queueItem{
 		ObjectId: "objectId1",

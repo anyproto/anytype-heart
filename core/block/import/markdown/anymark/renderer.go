@@ -242,6 +242,7 @@ func (r *Renderer) renderAutoLink(_ util.BufWriter,
 	if u, err := url.Parse(linkPath); err == nil && u.Scheme == "" {
 		// Only treat as a file path if there's no URL scheme
 		linkPath = filepath.Join(r.GetBaseFilepath(), linkPath)
+		linkPath = cleanLinkSection(linkPath)
 	}
 
 	r.AddMark(model.BlockContentTextMark{
@@ -329,7 +330,12 @@ func (r *Renderer) renderLink(_ util.BufWriter,
 		if u, err := url.Parse(linkPath); err == nil && u.Scheme == "" {
 			// Only treat as a file path if there's no URL scheme
 			linkPath = filepath.Join(r.GetBaseFilepath(), linkPath)
-			if filepath.Ext(linkPath) == "" {
+			ext := filepath.Ext(linkPath)
+			// if empty or contains spaces
+			linkPath = cleanLinkSection(linkPath)
+
+			// todo: should be improved
+			if ext == "" || strings.Contains(ext, " ") {
 				linkPath += ".md" // Default to .md if no extension is provided
 			}
 		}
@@ -443,6 +449,16 @@ func (r *Renderer) renderStrikethrough(_ util.BufWriter, _ []byte, _ ast.Node, e
 	return ast.WalkContinue, nil
 }
 
+func cleanLinkSection(linkPath string) string {
+	// Remove any section markers from the link path.
+	for _, char := range []string{"|", "#", "^"} {
+		if idx := strings.LastIndex(linkPath, char); idx != -1 {
+			linkPath = linkPath[:idx]
+		}
+	}
+	return linkPath
+}
+
 func (r *Renderer) renderWikiLink(_ util.BufWriter, source []byte, node ast.Node, entering bool) (ast.WalkStatus, error) {
 	n := node.(*wikilink.Node)
 	linkPath := string(n.Target)
@@ -470,8 +486,13 @@ func (r *Renderer) renderWikiLink(_ util.BufWriter, source []byte, node ast.Node
 		if u, err := url.Parse(linkPath); err == nil && u.Scheme == "" {
 			// Only treat as a file path if there's no URL scheme
 			linkPath = filepath.Join(r.GetBaseFilepath(), linkPath)
-			if filepath.Ext(linkPath) == "" {
+			ext := filepath.Ext(linkPath)
+			linkPath = cleanLinkSection(linkPath)
+			// if empty or contains spaces
+			// todo: should be improved
+			if ext == "" || strings.Contains(ext, " ") {
 				linkPath += ".md" // Default to .md if no extension is provided
+
 			}
 		}
 

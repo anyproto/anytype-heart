@@ -124,6 +124,7 @@ func (s *subscriptionManager) GetChatState() *model.ChatState {
 
 func (s *subscriptionManager) UpdateChatState(updater func(*model.ChatState) *model.ChatState) {
 	s.chatState = updater(s.chatState)
+	s.chatState.Order++
 	s.chatStateUpdated = true
 }
 
@@ -440,6 +441,7 @@ func copyChatState(state *model.ChatState) *model.ChatState {
 		Messages:    copyReadState(state.Messages),
 		Mentions:    copyReadState(state.Mentions),
 		LastStateId: state.LastStateId,
+		Order:       state.Order,
 	}
 }
 
