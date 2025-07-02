@@ -487,8 +487,9 @@ func (r *Renderer) renderWikiLink(_ util.BufWriter, source []byte, node ast.Node
 			// Treat as a file path if no URL scheme
 			linkPath = filepath.Join(r.GetBaseFilepath(), linkPath)
 			ext := filepath.Ext(linkPath)
-			linkPath = cleanLinkSection(linkPath)
 			// if empty or contains spaces
+			linkPath = cleanLinkSection(linkPath)
+
 			// todo: should be improved
 			if ext == "" || strings.Contains(ext, " ") {
 				linkPath += ".md" // Default to .md if no extension is provided
