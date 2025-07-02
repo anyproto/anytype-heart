@@ -58,6 +58,10 @@ linters:
     unused:
       field-writes-are-uses: false
   exclusions:
+    rules:
+      - path-except: core/api
+        linters:
+          - tagliatelle
     generated: disable
     presets:
       - comments
