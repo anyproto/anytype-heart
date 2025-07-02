@@ -21,11 +21,15 @@ import (
 	"go.uber.org/zap"
 	"golang.org/x/exp/slices"
 
+	"github.com/anyproto/anytype-heart/core/block"
 	"github.com/anyproto/anytype-heart/core/block/export"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/identity"
 	"github.com/anyproto/anytype-heart/core/inviteservice"
+	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
+	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space"
@@ -88,6 +92,7 @@ type Service interface {
 
 type service struct {
 	spaceService         space.Service
+	blockService         block.Service
 	exportService        export.Export
 	publishClientService publishclient.Client
 	identityService      identity.Service
@@ -101,6 +106,7 @@ func New() Service {
 
 func (s *service) Init(a *app.App) error {
 	s.spaceService = app.MustComponent[space.Service](a)
+	s.blockService = app.MustComponent[block.Service](a)
 	s.exportService = app.MustComponent[export.Export](a)
 	s.publishClientService = app.MustComponent[publishclient.Client](a)
 	s.identityService = app.MustComponent[identity.Service](a)
@@ -403,11 +409,55 @@ func (s *service) getPublishLimit(globalName string) (int64, error) {
 	return defaultLimit, nil
 }
 
+func (s *service) findAllAnytypeLinkBlocks(ctx context.Context, spaceId, pageId string) ([]string, error) {
+	sctx := session.NewContext()
+	id := domain.FullID{ObjectID: pageId, SpaceID: spaceId}
+	objectView, err := s.blockService.OpenBlock(sctx, id, false)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, b := range objectView.Blocks {
+		if link := b.GetLink(); link != nil {
+			// check if it is page and add
+			// snapshot.SbType != model.SmartBlockType_Page ?
+			link.TargetBlockId
+		}
+
+	}
+
+}
+
+func (s *service) gatherLinkedPageIds(ctx context.Context, spaceId, pageId string) ([]string, error) {
+	records, err := s.objectStore.SpaceIndex(spaceId).Query(database.Query{
+		Filters: []database.FilterRequest{
+			{
+				RelationKey: bundle.RelationKeyId,
+				Condition:   model.BlockContentDataviewFilter_Equal,
+				Value:       domain.String(pageId),
+			},
+		},
+	})
+
+	if err != nil {
+		return nil, err
+	}
+
+	linkedPageIDs := make([]string, 0)
+	if len(records) > 0 {
+		fmt.Printf("%#v\n", records[0])
+	}
+
+	return linkedPageIDs, nil
+}
+
 func (s *service) Publish(ctx context.Context, spaceId, pageId, uri string, joinSpace bool) (res PublishResult, err error) {
 	identity, _, details := s.identityService.GetMyProfileDetails(ctx)
 	globalName := details.GetString(bundle.RelationKeyGlobalName)
 
 	err = s.publishToPublishServer(ctx, spaceId, pageId, uri, globalName, joinSpace)
+	// for pages
+	//    s.publishToPublishServer
 
 	if err != nil {
 		log.Error("Failed to publish", zap.Error(err))
