@@ -47,14 +47,14 @@ type store struct {
 }
 
 type DiffManagerStats struct {
-	DiffManagerName string   `json:"diffManagerName"`
-	SeenHeads       []string `json:"seenHeads"`
-	AllChanges      []string `json:"allChanges"`
-	AllChangesCount int      `json:"allChangesCount"`
+	DiffManagerName string   `json:"diff_manager_name"`
+	SeenHeads       []string `json:"seen_heads"`
+	AllChanges      []string `json:"all_changes"`
+	AllChangesCount int      `json:"all_changes_count"`
 }
 
 type StoreStat struct {
-	DiffManagers []DiffManagerStats `json:"diffManagers"`
+	DiffManagers []DiffManagerStats `json:"diff_managers"`
 }
 
 func (s *store) ProvideStat() any {
