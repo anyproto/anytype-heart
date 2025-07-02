@@ -92,7 +92,8 @@ type UnreadStats struct {
 
 type StoreObjectStats struct {
 	StoreState  any           `json:"storeState"`
-	UnreadStats []UnreadStats `json:"unreadStats,omitempty"`
+	UnreadStats []UnreadStats `json:"unreadStats"`
+	Heads       []string      `json:"heads"`
 }
 
 func (s *storeObject) ProvideStat() any {
@@ -102,6 +103,8 @@ func (s *storeObject) ProvideStat() any {
 	if statProvider, ok := s.storeSource.(debugstat.StatProvider); ok {
 		stats.StoreState = statProvider.ProvideStat()
 	}
+	stats.Heads = make([]string, len(s.storeSource.Heads()))
+	copy(stats.Heads, s.storeSource.Heads())
 	statTypes := []string{diffManagerMessages, diffManagerMentions}
 	msgTypes := []chatmodel.CounterType{chatmodel.CounterTypeMessage, chatmodel.CounterTypeMention}
 	for i, statType := range statTypes {
