@@ -20,7 +20,7 @@ var (
 )
 
 // ListTemplates returns a paginated list of templates in a specific space.
-func (s *Service) ListTemplates(ctx context.Context, spaceId string, typeId string, offset int, limit int) (templates []apimodel.Object, total int, hasMore bool, err error) {
+func (s *Service) ListTemplates(ctx context.Context, spaceId string, typeId string, additionalFilters []*model.BlockContentDataviewFilter, offset int, limit int) (templates []apimodel.Object, total int, hasMore bool, err error) {
 	// First, determine the type ID of "ot-template" in the space
 	templateTypeIdResp := s.mw.ObjectSearch(ctx, &pb.RpcObjectSearchRequest{
 		SpaceId: spaceId,
@@ -44,20 +44,22 @@ func (s *Service) ListTemplates(ctx context.Context, spaceId string, typeId stri
 
 	// Then, search all objects of the template type and filter by the target type
 	templateTypeId := templateTypeIdResp.Records[0].Fields[bundle.RelationKeyId.String()].GetStringValue()
+	filters := append([]*model.BlockContentDataviewFilter{
+		{
+			RelationKey: bundle.RelationKeyType.String(),
+			Condition:   model.BlockContentDataviewFilter_Equal,
+			Value:       pbtypes.String(templateTypeId),
+		},
+		{
+			RelationKey: bundle.RelationKeyTargetObjectType.String(),
+			Condition:   model.BlockContentDataviewFilter_Equal,
+			Value:       pbtypes.String(typeId),
+		},
+	}, additionalFilters...)
+
 	templateObjectsResp := s.mw.ObjectSearch(ctx, &pb.RpcObjectSearchRequest{
 		SpaceId: spaceId,
-		Filters: []*model.BlockContentDataviewFilter{
-			{
-				RelationKey: bundle.RelationKeyType.String(),
-				Condition:   model.BlockContentDataviewFilter_Equal,
-				Value:       pbtypes.String(templateTypeId),
-			},
-			{
-				RelationKey: bundle.RelationKeyTargetObjectType.String(),
-				Condition:   model.BlockContentDataviewFilter_Equal,
-				Value:       pbtypes.String(typeId),
-			},
-		},
+		Filters: filters,
 	})
 
 	if templateObjectsResp.Error.Code != pb.RpcObjectSearchResponseError_NULL {

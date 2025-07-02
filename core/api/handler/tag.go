@@ -9,6 +9,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/api/pagination"
 	"github.com/anyproto/anytype-heart/core/api/service"
 	"github.com/anyproto/anytype-heart/core/api/util"
+	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
 // ListTagsHandler lists all tags for a given property id in a space
@@ -34,7 +35,10 @@ func ListTagsHandler(s *service.Service) gin.HandlerFunc {
 		offset := c.GetInt("offset")
 		limit := c.GetInt("limit")
 
-		tags, total, hasMore, err := s.ListTags(c.Request.Context(), spaceId, propertyId, offset, limit)
+		filtersAny, _ := c.Get("filters")
+		filters := filtersAny.([]*model.BlockContentDataviewFilter)
+
+		tags, total, hasMore, err := s.ListTags(c.Request.Context(), spaceId, propertyId, filters, offset, limit)
 		code := util.MapErrorCode(err,
 			util.ErrToCode(service.ErrInvalidPropertyId, http.StatusNotFound),
 			util.ErrToCode(service.ErrFailedRetrieveTags, http.StatusInternalServerError),

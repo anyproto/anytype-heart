@@ -33,26 +33,28 @@ var (
 )
 
 // ListSpaces returns a paginated list of spaces for the account.
-func (s *Service) ListSpaces(ctx context.Context, offset int, limit int) (spaces []apimodel.Space, total int, hasMore bool, err error) {
+func (s *Service) ListSpaces(ctx context.Context, additionalFilters []*model.BlockContentDataviewFilter, offset int, limit int) (spaces []apimodel.Space, total int, hasMore bool, err error) {
+	filters := append([]*model.BlockContentDataviewFilter{
+		{
+			RelationKey: bundle.RelationKeyResolvedLayout.String(),
+			Condition:   model.BlockContentDataviewFilter_Equal,
+			Value:       pbtypes.Int64(int64(model.ObjectType_spaceView)),
+		},
+		{
+			RelationKey: bundle.RelationKeySpaceLocalStatus.String(),
+			Condition:   model.BlockContentDataviewFilter_In,
+			Value:       pbtypes.IntList(int(model.SpaceStatus_Unknown), int(model.SpaceStatus_Ok)),
+		},
+		{
+			RelationKey: bundle.RelationKeySpaceAccountStatus.String(),
+			Condition:   model.BlockContentDataviewFilter_In,
+			Value:       pbtypes.IntList(int(model.SpaceStatus_Unknown), int(model.SpaceStatus_SpaceActive)),
+		},
+	}, additionalFilters...)
+
 	resp := s.mw.ObjectSearch(ctx, &pb.RpcObjectSearchRequest{
 		SpaceId: s.techSpaceId,
-		Filters: []*model.BlockContentDataviewFilter{
-			{
-				RelationKey: bundle.RelationKeyResolvedLayout.String(),
-				Condition:   model.BlockContentDataviewFilter_Equal,
-				Value:       pbtypes.Int64(int64(model.ObjectType_spaceView)),
-			},
-			{
-				RelationKey: bundle.RelationKeySpaceLocalStatus.String(),
-				Condition:   model.BlockContentDataviewFilter_In,
-				Value:       pbtypes.IntList(int(model.SpaceStatus_Unknown), int(model.SpaceStatus_Ok)),
-			},
-			{
-				RelationKey: bundle.RelationKeySpaceAccountStatus.String(),
-				Condition:   model.BlockContentDataviewFilter_In,
-				Value:       pbtypes.IntList(int(model.SpaceStatus_Unknown), int(model.SpaceStatus_SpaceActive)),
-			},
-		},
+		Filters: filters,
 		Sorts: []*model.BlockContentDataviewSort{
 			{
 				RelationKey:    bundle.RelationKeySpaceOrder.String(),
