@@ -80,8 +80,8 @@ github.com/andybalholm/cascadia v1.3.3 h1:AG2YHrzJIm4BZ19iwJ/DAua6Btl3IwJX+VI4kk
 github.com/andybalholm/cascadia v1.3.3/go.mod h1:xNd9bqTn98Ln4DwST8/nG+H0yuB8Hmgu1YHNnWw0GeA=
 github.com/anyproto/any-store v0.3.1 h1:WmFCCAYZS+n+dsu8JA8C51wA4mVQpHkYxq0eUtDLT+Q=
 github.com/anyproto/any-store v0.3.1/go.mod h1:jB/4WUQg5Re0F8Ug9xCqWaxqEP2M7fQU5D3XUb5eYdQ=
-github.com/anyproto/any-sync v0.8.9-0.20250702081807-1e8036a3f344 h1:Blwfhj7WGy0DiyA4Go5PdqRBDiP/7dlcOSaQgs/F/EU=
-github.com/anyproto/any-sync v0.8.9-0.20250702081807-1e8036a3f344/go.mod h1:WAitGMXIrpuiTLMD8Av9CdvVBH6cb4Ry8Kcp45Q/dqA=
+github.com/anyproto/any-sync v0.8.9 h1:OQ55oIWL/w3OdgMmhPGwrR1XiJYDQdfiGTqhmD6r+Kw=
+github.com/anyproto/any-sync v0.8.9/go.mod h1:WAitGMXIrpuiTLMD8Av9CdvVBH6cb4Ry8Kcp45Q/dqA=
 github.com/anyproto/anytype-publish-server/publishclient v0.0.0-20250620154825-2c07f7679903 h1:NHk8h9Hin+AWCsL7Q5b6dPAxDShGJLsx6nlQItbsw+g=
 github.com/anyproto/anytype-publish-server/publishclient v0.0.0-20250620154825-2c07f7679903/go.mod h1:4fkueCZcGniSMXkrwESO8zzERrh/L7WHimRNWecfGM0=
 github.com/anyproto/anytype-push-server/pushclient v0.0.0-20250616103304-db364e9f3985 h1:KIskX/AuII+os8WoiEdmGoY2H7sIIAjEnUrmaMuLarY=
