@@ -7,6 +7,7 @@ import (
 
 	anystore "github.com/anyproto/any-store"
 	"github.com/anyproto/any-store/anyenc"
+	"github.com/anyproto/any-sync/app/debugstat"
 	"github.com/anyproto/any-sync/commonspace/object/accountdata"
 	"github.com/anyproto/any-sync/commonspace/object/tree/objecttree"
 	"github.com/anyproto/any-sync/util/slice"
@@ -76,18 +77,63 @@ type storeObject struct {
 	crdtDb                  anystore.DB
 	chatHandler             *ChatHandler
 	repository              chatrepository.Repository
+	statService             debugstat.StatService
 
 	arenaPool          *anyenc.ArenaPool
 	componentCtx       context.Context
 	componentCtxCancel context.CancelFunc
 }
 
-func New(sb smartblock.SmartBlock, accountService AccountService, crdtDb anystore.DB, repositoryService chatrepository.Service, chatSubscriptionService chatsubscription.Service) StoreObject {
+type UnreadStats struct {
+	MessagesCount int      `json:"messagesCount"`
+	MessageIds    []string `json:"messageIds"`
+	StatType      string   `json:"statType"`
+}
+
+type StoreObjectStats struct {
+	StoreState  any           `json:"storeState"`
+	UnreadStats []UnreadStats `json:"unreadStats,omitempty"`
+}
+
+func (s *storeObject) ProvideStat() any {
+	s.Lock()
+	defer s.Unlock()
+	stats := StoreObjectStats{}
+	if statProvider, ok := s.storeSource.(debugstat.StatProvider); ok {
+		stats.StoreState = statProvider.ProvideStat()
+	}
+	statTypes := []string{diffManagerMessages, diffManagerMentions}
+	msgTypes := []chatmodel.CounterType{chatmodel.CounterTypeMessage, chatmodel.CounterTypeMention}
+	for i, statType := range statTypes {
+		msgIds, err := s.repository.GetAllUnreadMessages(s.componentCtx, msgTypes[i])
+		if err != nil {
+			log.Error("get unread messages", zap.Error(err), zap.String("statType", statType))
+			continue
+		}
+		stats.UnreadStats = append(stats.UnreadStats, UnreadStats{
+			MessagesCount: len(msgIds),
+			MessageIds:    msgIds[0:min(len(msgIds), 1000)],
+			StatType:      statType,
+		})
+	}
+	return stats
+}
+
+func (s *storeObject) StatId() string {
+	return s.Id()
+}
+
+func (s *storeObject) StatType() string {
+	return "store.object"
+}
+
+func New(sb smartblock.SmartBlock, accountService AccountService, crdtDb anystore.DB, repositoryService chatrepository.Service, chatSubscriptionService chatsubscription.Service, statService debugstat.StatService) StoreObject {
 	ctx, cancel := context.WithCancel(context.Background())
 	return &storeObject{
 		SmartBlock:              sb,
 		locker:                  sb.(smartblock.Locker),
 		accountService:          accountService,
+		statService:             statService,
 		arenaPool:               &anyenc.ArenaPool{},
 		crdtDb:                  crdtDb,
 		repositoryService:       repositoryService,
@@ -125,7 +171,6 @@ func (s *storeObject) Init(ctx *smartblock.InitContext) error {
 			log.Error("mark read mentions", zap.Error(markErr))
 		}
 	})
-
 	err = s.SmartBlock.Init(ctx)
 	if err != nil {
 		return err
@@ -164,6 +209,7 @@ func (s *storeObject) Init(ctx *smartblock.InitContext) error {
 	s.AnystoreDebug = anystoredebug.New(s.SmartBlock, stateStore)
 
 	s.seenHeadsCollector = newTreeSeenHeadsCollector(s.Tree())
+	s.statService.AddProvider(s)
 
 	return nil
 }
@@ -343,11 +389,13 @@ func (s *storeObject) TryClose(objectTTL time.Duration) (res bool, err error) {
 	if isActive {
 		return false, nil
 	}
+	s.statService.RemoveProvider(s)
 	return s.SmartBlock.TryClose(objectTTL)
 }
 
 func (s *storeObject) Close() error {
 	s.componentCtxCancel()
+	s.statService.RemoveProvider(s)
 	return s.SmartBlock.Close()
 }
 
