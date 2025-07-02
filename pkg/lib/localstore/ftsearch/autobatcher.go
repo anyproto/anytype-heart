@@ -14,7 +14,7 @@ type AutoBatcher interface {
 	// maxSize limit check is not performed for this operation
 	DeleteDoc(id string) error
 	// Finish performs the operations
-	Finish() error
+	Finish() (state uint64, err error)
 }
 
 func (f *ftSearch) NewAutoBatcher() AutoBatcher {
@@ -97,10 +97,11 @@ func (f *ftSearch) Iterate(objectId string, fields []string, shouldContinue func
 }
 
 type ftIndexBatcherTantivy struct {
-	index      *tantivy.TantivyContext
-	deleteIds  []string
-	updateDocs []*tantivy.Document
-	mu         *sync.Mutex // original mutex, temporary solution
+	index          *tantivy.TantivyContext
+	deleteIds      []string
+	updateDocs     []*tantivy.Document
+	tantivyOpstamp uint64
+	mu             *sync.Mutex // original mutex, temporary solution
 }
 
 // Add adds a update operation to the batcher. If the batch is reaching the size limit, it will be indexed and reset.
@@ -137,26 +138,26 @@ func (f *ftIndexBatcherTantivy) UpdateDoc(searchDoc SearchDoc) error {
 	f.updateDocs = append(f.updateDocs, doc)
 
 	if len(f.updateDocs) >= docLimit {
-		return f.Finish()
+		_, err := f.Finish()
+		if err != nil {
+			return fmt.Errorf("finish batch failed: %w", err)
+		}
 	}
 	return nil
 }
 
 // Finish indexes the remaining documents in the batch.
-func (f *ftIndexBatcherTantivy) Finish() error {
+func (f *ftIndexBatcherTantivy) Finish() (state uint64, err error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
-	err := f.index.DeleteDocuments(fieldIdRaw, f.deleteIds...)
+	opstamp, err := f.index.BatchAddAndDeleteDocumentsWithOpstamp(f.updateDocs, fieldIdRaw, f.deleteIds)
 	if err != nil {
-		return err
-	}
-	err = f.index.AddAndConsumeDocuments(f.updateDocs...)
-	if err != nil {
-		return err
+		return 0, err
 	}
 	f.deleteIds = f.deleteIds[:0]
 	f.updateDocs = f.updateDocs[:0]
-	return nil
+
+	return opstamp, nil
 }
 
 // Delete adds a delete operation to the batcher

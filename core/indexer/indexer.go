@@ -146,13 +146,17 @@ func (i *indexer) RemoveAclIndexes(spaceId string) (err error) {
 			},
 		},
 	})
-	if err != nil {
-		return fmt.Errorf("remove acl: %w", err)
-	}
 	err = i.store.ClearFullTextQueue([]string{spaceId})
 	if err != nil {
 		return fmt.Errorf("remove fts: %w", err)
 	}
+
+	// todo: should we use the queue here as well?
+	err = i.ftsearch.BatchDeleteObjects(ids)
+	if err != nil {
+		return fmt.Errorf("remove acl: %w", err)
+	}
+
 	return store.DeleteDetails(i.runCtx, ids)
 }
 

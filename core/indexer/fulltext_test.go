@@ -108,7 +108,7 @@ func TestPrepareSearchDocument_Success(t *testing.T) {
 	indexerFx.pickerFx.EXPECT().GetObject(mock.Anything, mock.Anything).Return(smartTest, nil)
 	indexerFx.pickerFx.EXPECT().TryRemoveFromCache(mock.Anything, "objectId1").Return(true, nil)
 
-	docs, err := indexerFx.prepareSearchDocument(context.Background(), "objectId1")
+	docs, err := indexerFx.prepareSearchDocument(context.Background(), domain.FullID{ObjectID: "objectId1", SpaceID: "spaceId1"})
 	assert.NoError(t, err)
 	require.Len(t, docs, 1)
 	assert.Equal(t, "objectId1/b/blockId1", docs[0].Id)
@@ -129,7 +129,7 @@ func TestPrepareSearchDocument_Empty_NotIndexing(t *testing.T) {
 		)))
 	indexerFx.pickerFx.EXPECT().GetObject(mock.Anything, mock.Anything).Return(smartTest, nil)
 
-	docs, err := indexerFx.prepareSearchDocument(context.Background(), "objectId1")
+	docs, err := indexerFx.prepareSearchDocument(context.Background(), domain.FullID{ObjectID: "objectId1", SpaceID: "spaceId1"})
 	assert.NoError(t, err)
 	require.Len(t, docs, 0)
 }
@@ -149,7 +149,7 @@ func TestPrepareSearchDocument_NoIndexableType(t *testing.T) {
 	smartTest.SetType(coresb.SmartBlockTypeDate)
 	indexerFx.pickerFx.EXPECT().GetObject(mock.Anything, mock.Anything).Return(smartTest, nil)
 
-	docs, err := indexerFx.prepareSearchDocument(context.Background(), "objectId1")
+	docs, err := indexerFx.prepareSearchDocument(context.Background(), domain.FullID{ObjectID: "objectId1", SpaceID: "spaceId1"})
 	assert.Len(t, docs, 0)
 	assert.NoError(t, err)
 }
@@ -163,7 +163,7 @@ func TestPrepareSearchDocument_NoTextBlock(t *testing.T) {
 	))
 	indexerFx.pickerFx.EXPECT().GetObject(mock.Anything, mock.Anything).Return(smartTest, nil)
 
-	docs, err := indexerFx.prepareSearchDocument(context.Background(), "objectId1")
+	docs, err := indexerFx.prepareSearchDocument(context.Background(), domain.FullID{ObjectID: "objectId1", SpaceID: "spaceId1"})
 	assert.Len(t, docs, 0)
 	assert.NoError(t, err)
 }
@@ -180,7 +180,7 @@ func TestPrepareSearchDocument_RelationShortText_Success(t *testing.T) {
 	}))
 	indexerFx.pickerFx.EXPECT().GetObject(mock.Anything, mock.Anything).Return(smartTest, nil)
 
-	docs, err := indexerFx.prepareSearchDocument(context.Background(), "objectId1")
+	docs, err := indexerFx.prepareSearchDocument(context.Background(), domain.FullID{ObjectID: "objectId1", SpaceID: "spaceId1"})
 	assert.NoError(t, err)
 	assert.Len(t, docs, 1)
 	assert.Equal(t, "objectId1/r/name", docs[0].Id)
@@ -204,7 +204,7 @@ func TestPrepareSearchDocument_System_Plural_Success(t *testing.T) {
 	smartTest.Doc.Layout()
 	indexerFx.pickerFx.EXPECT().GetObject(mock.Anything, mock.Anything).Return(smartTest, nil)
 
-	docs, err := indexerFx.prepareSearchDocument(context.Background(), "objectId1")
+	docs, err := indexerFx.prepareSearchDocument(context.Background(), domain.FullID{ObjectID: "objectId1", SpaceID: "spaceId1"})
 	assert.NoError(t, err)
 	assert.Len(t, docs, 1)
 	assert.Equal(t, "objectId1/r/pluralName", docs[0].Id)
@@ -224,7 +224,7 @@ func TestPrepareSearchDocument_RelationLongText_Success(t *testing.T) {
 	}))
 	indexerFx.pickerFx.EXPECT().GetObject(mock.Anything, mock.Anything).Return(smartTest, nil)
 
-	docs, err := indexerFx.prepareSearchDocument(context.Background(), "objectId1")
+	docs, err := indexerFx.prepareSearchDocument(context.Background(), domain.FullID{ObjectID: "objectId1", SpaceID: "spaceId1"})
 	assert.NoError(t, err)
 	assert.Len(t, docs, 1)
 	assert.Equal(t, "objectId1/r/name", docs[0].Id)
@@ -245,7 +245,7 @@ func TestPrepareSearchDocument_RelationText_EmptyValue(t *testing.T) {
 	}))
 	indexerFx.pickerFx.EXPECT().GetObject(mock.Anything, mock.Anything).Return(smartTest, nil)
 
-	docs, err := indexerFx.prepareSearchDocument(context.Background(), "objectId1")
+	docs, err := indexerFx.prepareSearchDocument(context.Background(), domain.FullID{ObjectID: "objectId1", SpaceID: "spaceId1"})
 	require.NoError(t, err)
 	require.Len(t, docs, 0)
 }
@@ -263,7 +263,7 @@ func TestPrepareSearchDocument_RelationText_WrongFormat(t *testing.T) {
 	}))
 	indexerFx.pickerFx.EXPECT().GetObject(mock.Anything, mock.Anything).Return(smartTest, nil)
 
-	docs, err := indexerFx.prepareSearchDocument(context.Background(), "objectId1")
+	docs, err := indexerFx.prepareSearchDocument(context.Background(), domain.FullID{ObjectID: "objectId1", SpaceID: "spaceId1"})
 	assert.NoError(t, err)
 	require.Len(t, docs, 0)
 }
@@ -281,7 +281,7 @@ func TestPrepareSearchDocument_BlockText_LessThanMaxSize(t *testing.T) {
 		)))
 	indexerFx.pickerFx.EXPECT().GetObject(mock.Anything, mock.Anything).Return(smartTest, nil)
 
-	docs, err := indexerFx.prepareSearchDocument(context.Background(), "objectId1")
+	docs, err := indexerFx.prepareSearchDocument(context.Background(), domain.FullID{ObjectID: "objectId1", SpaceID: "spaceId1"})
 	assert.NoError(t, err)
 	require.Len(t, docs, 1)
 	assert.Equal(t, "objectId1/b/blockId1", docs[0].Id)
@@ -303,7 +303,7 @@ func TestPrepareSearchDocument_BlockText_EqualToMaxSize(t *testing.T) {
 		)))
 	indexerFx.pickerFx.EXPECT().GetObject(mock.Anything, mock.Anything).Return(smartTest, nil)
 
-	docs, err := indexerFx.prepareSearchDocument(context.Background(), "objectId1")
+	docs, err := indexerFx.prepareSearchDocument(context.Background(), domain.FullID{ObjectID: "objectId1", SpaceID: "spaceId1"})
 	assert.NoError(t, err)
 	require.Len(t, docs, 1)
 	assert.Equal(t, "objectId1/b/blockId1", docs[0].Id)
@@ -325,7 +325,7 @@ func TestPrepareSearchDocument_BlockText_GreaterThanMaxSize(t *testing.T) {
 		)))
 	indexerFx.pickerFx.EXPECT().GetObject(mock.Anything, mock.Anything).Return(smartTest, nil)
 
-	docs, err := indexerFx.prepareSearchDocument(context.Background(), "objectId1")
+	docs, err := indexerFx.prepareSearchDocument(context.Background(), domain.FullID{ObjectID: "objectId1", SpaceID: "spaceId1"})
 	assert.NoError(t, err)
 	require.Len(t, docs, 1)
 	assert.Equal(t, "objectId1/b/blockId1", docs[0].Id)

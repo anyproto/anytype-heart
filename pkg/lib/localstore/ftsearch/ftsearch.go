@@ -78,6 +78,7 @@ type FTSearch interface {
 	Iterate(objectId string, fields []string, shouldContinue func(doc *SearchDoc) bool) (err error)
 	DeleteObject(id string) error
 	DocCount() (uint64, error)
+	LastDbState() (uint64, error)
 }
 
 type SearchDoc struct {
@@ -85,6 +86,7 @@ type SearchDoc struct {
 	SpaceId string
 	Title   string
 	Text    string
+	Deleted bool // set in case the doc is pending deletion
 }
 
 type Highlight struct {
@@ -109,6 +111,17 @@ type ftSearch struct {
 	blevePath           string
 	lang                tantivy.Language
 	appClosingInitiated atomic.Bool
+}
+
+func (f *ftSearch) LastDbState() (uint64, error) {
+	if f.index == nil {
+		return 0, fmt.Errorf("index is not initialized")
+	}
+	lastOpstamp := f.index.CommitOpstamp()
+	if lastOpstamp == 0 {
+		return 0, fmt.Errorf("index is empty")
+	}
+	return lastOpstamp, nil
 }
 
 func (f *ftSearch) ProvideStat() any {
@@ -161,7 +174,8 @@ func (f *ftSearch) DeleteObject(objectId string) error {
 	if f.appClosingInitiated.Load() {
 		return ErrAppClosingInitiated
 	}
-	return f.index.DeleteDocuments(fieldIdRaw, objectId)
+	err := f.index.DeleteDocuments(fieldIdRaw, objectId)
+	return err
 }
 
 func (f *ftSearch) Init(a *app.App) error {
@@ -369,7 +383,7 @@ func (f *ftSearch) Index(doc SearchDoc) error {
 		return err
 	}
 
-	res := f.index.AddAndConsumeDocuments(tantivyDoc)
+	_, res := f.index.AddAndConsumeDocumentsWithOpstamp(tantivyDoc)
 	return res
 }
 
@@ -394,6 +408,8 @@ func (f *ftSearch) convertDoc(doc SearchDoc) (*tantivy.Document, error) {
 	return document, nil
 }
 
+// BatchIndex is deprecated and should not be used.
+// use NewAutoBatcher instead.
 func (f *ftSearch) BatchIndex(ctx context.Context, docs []SearchDoc, deletedDocs []string) (err error) {
 	if len(docs) == 0 {
 		return nil
@@ -413,7 +429,7 @@ func (f *ftSearch) BatchIndex(ctx context.Context, docs []SearchDoc, deletedDocs
 	if f.appClosingInitiated.Load() {
 		return ErrAppClosingInitiated
 	}
-	err = f.index.DeleteDocuments(fieldIdRaw, deletedDocs...)
+	_, err = f.index.DeleteDocumentsWithOpstamp(fieldIdRaw, deletedDocs...)
 	f.mu.Unlock()
 	if err != nil {
 		return err
@@ -431,7 +447,8 @@ func (f *ftSearch) BatchIndex(ctx context.Context, docs []SearchDoc, deletedDocs
 	if f.appClosingInitiated.Load() {
 		return ErrAppClosingInitiated
 	}
-	return f.index.AddAndConsumeDocuments(tantivyDocs...)
+	_, err = f.index.AddAndConsumeDocumentsWithOpstamp(tantivyDocs...)
+	return err
 }
 
 func (f *ftSearch) NamePrefixSearch(spaceId, query string) ([]*DocumentMatch, error) {
