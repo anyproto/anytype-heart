@@ -9,6 +9,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/anyproto/any-sync/app"
@@ -21,12 +22,13 @@ import (
 	"go.uber.org/zap"
 	"golang.org/x/exp/slices"
 
-	"github.com/anyproto/anytype-heart/core/block"
+	"github.com/anyproto/anytype-heart/core/block/cache"
+	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/export"
+	"github.com/anyproto/anytype-heart/core/block/object/objectlink"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/identity"
 	"github.com/anyproto/anytype-heart/core/inviteservice"
-	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
@@ -92,7 +94,7 @@ type Service interface {
 
 type service struct {
 	spaceService         space.Service
-	blockService         block.Service
+	objectGetter         cache.ObjectGetter
 	exportService        export.Export
 	publishClientService publishclient.Client
 	identityService      identity.Service
@@ -106,7 +108,7 @@ func New() Service {
 
 func (s *service) Init(a *app.App) error {
 	s.spaceService = app.MustComponent[space.Service](a)
-	s.blockService = app.MustComponent[block.Service](a)
+	s.objectGetter = app.MustComponent[cache.ObjectGetter](a)
 	s.exportService = app.MustComponent[export.Export](a)
 	s.publishClientService = app.MustComponent[publishclient.Client](a)
 	s.identityService = app.MustComponent[identity.Service](a)
@@ -409,73 +411,112 @@ func (s *service) getPublishLimit(globalName string) (int64, error) {
 	return defaultLimit, nil
 }
 
-func (s *service) findAllAnytypeLinkBlocks(ctx context.Context, spaceId, pageId string) ([]string, error) {
-	sctx := session.NewContext()
-	id := domain.FullID{ObjectID: pageId, SpaceID: spaceId}
-	objectView, err := s.blockService.OpenBlock(sctx, id, false)
+func (s *service) findAllAnytypeLinkBlocks(ctx context.Context, spaceId, pageId string, pageIds *map[string]string) error {
+	if _, ok := (*pageIds)[pageId]; ok {
+		log.Warn("multipublish: return", zap.String("pageids", fmt.Sprintf("%#v", pageIds)))
+		return nil
+	} else {
+		(*pageIds)[pageId] = ""
+	}
+	var dependentObjectIDs []string
+	err := cache.Do(s.objectGetter, pageId, func(sb smartblock.SmartBlock) error {
+		st := sb.NewState()
+		dependentObjectIDs = objectlink.DependentObjectIDs(st, sb.Space(), objectlink.Flags{
+			Blocks:    true,
+			Details:   false,
+			Relations: false,
+			Types:     false,
+		})
+
+		return nil
+	})
 	if err != nil {
-		return nil, err
+		return err
 	}
 
-	for _, b := range objectView.Blocks {
-		if link := b.GetLink(); link != nil {
-			// check if it is page and add
-			// snapshot.SbType != model.SmartBlockType_Page ?
-			link.TargetBlockId
-		}
-
-	}
-
-}
-
-func (s *service) gatherLinkedPageIds(ctx context.Context, spaceId, pageId string) ([]string, error) {
 	records, err := s.objectStore.SpaceIndex(spaceId).Query(database.Query{
 		Filters: []database.FilterRequest{
 			{
 				RelationKey: bundle.RelationKeyId,
-				Condition:   model.BlockContentDataviewFilter_Equal,
-				Value:       domain.String(pageId),
+				Condition:   model.BlockContentDataviewFilter_In,
+				Value:       domain.StringList(dependentObjectIDs),
+			},
+			{
+				RelationKey: bundle.RelationKeyResolvedLayout,
+				Condition:   model.BlockContentDataviewFilter_In,
+				Value: domain.Int64List([]model.ObjectTypeLayout{
+					model.ObjectType_basic,
+					model.ObjectType_note,
+					model.ObjectType_todo,
+					model.ObjectType_profile,
+				}),
 			},
 		},
 	})
-
 	if err != nil {
-		return nil, err
+		return err
 	}
 
-	linkedPageIDs := make([]string, 0)
-	if len(records) > 0 {
-		fmt.Printf("%#v\n", records[0])
+	// todo: non-recursive bfs
+	for _, record := range records {
+		id := record.Details.GetString(bundle.RelationKeyId)
+		_ = s.findAllAnytypeLinkBlocks(ctx, spaceId, id, pageIds)
+		(*pageIds)[id] = record.Details.GetString(bundle.RelationKeyName)
 	}
-
-	return linkedPageIDs, nil
+	return nil
 }
 
 func (s *service) Publish(ctx context.Context, spaceId, pageId, uri string, joinSpace bool) (res PublishResult, err error) {
 	identity, _, details := s.identityService.GetMyProfileDetails(ctx)
 	globalName := details.GetString(bundle.RelationKeyGlobalName)
+	log.Warn("multipublish: hello publish.", zap.String("id", pageId))
 
+	linkedPageIds := make(map[string]string)
+	_ = s.findAllAnytypeLinkBlocks(ctx, spaceId, pageId, &linkedPageIds)
+
+	for linkedPageId := range linkedPageIds {
+		log.Warn("multipublish:  linked page id", zap.String("id", linkedPageId))
+	}
 	err = s.publishToPublishServer(ctx, spaceId, pageId, uri, globalName, joinSpace)
-	// for pages
-	//    s.publishToPublishServer
-
 	if err != nil {
 		log.Error("Failed to publish", zap.Error(err))
 		return
+	} else {
+		log.Warn("multipublish: main published", zap.String("id", pageId), zap.String("url", uri))
 	}
+	delete(linkedPageIds, pageId)
+	for linkedPageId, title := range linkedPageIds {
+		// todo: publish only if not published, to not to republish fresh changes
+		// todo: get title, make url
+		url := strings.ReplaceAll(strings.ToLower(title), " ", "-")
+		err = s.publishToPublishServer(ctx, spaceId, linkedPageId, url, globalName, joinSpace)
+		if err != nil {
+			log.Error("multipublish: Failed to publish", zap.String("lnkedpageId", linkedPageId), zap.Error(err))
+		} else {
+			log.Warn("multipublish: published", zap.String("id", linkedPageId), zap.String("url", url))
+		}
+
+	}
+
+	//
+	// for pages
+	//    s.publishToPublishServer
+
 	url := s.makeUrl(uri, identity, globalName)
 
 	return PublishResult{Url: url}, nil
 }
 
 func (s *service) makeUrl(uri, identity, globalName string) string {
-	var domain string
-	if globalName != "" {
-		domain = fmt.Sprintf(memberUrlTemplate, globalName)
-	} else {
-		domain = fmt.Sprintf(defaultUrlTemplate, identity)
-	}
-	url := fmt.Sprintf("%s/%s", domain, uri)
+	// var domain string
+	// if globalName != "" {
+	// 	domain = fmt.Sprintf(memberUrlTemplate, globalName)
+	// } else {
+	// 	domain = fmt.Sprintf(defaultUrlTemplate, identity)
+	// }
+	// url := fmt.Sprintf("%s/%s", domain, uri)
+	// todo: remove
+	url := fmt.Sprintf("http://localhost:8380/%s/%s", identity, uri)
 	return url
 }
 
