@@ -154,7 +154,7 @@ func (i *indexer) runFullTextIndexer(ctx context.Context) error {
 			}
 
 			for _, doc := range objDocs {
-				err = batcher.UpdateDoc(doc)
+				err = batcher.UpsertDoc(doc)
 				if err != nil {
 					if strings.Contains(err.Error(), "invalid utf-8 sequence") {
 						log.With("id", objectId.ObjectID).Warnf(err.Error())
@@ -186,6 +186,7 @@ func (i *indexer) filterOutNotChangedDocuments(id string, newDocs []ftsearch.Sea
 	var (
 		changedDocs []ftsearch.SearchDoc
 		removeDocs  []string
+		// todo: return new docs as a separate slice so we can avoid deletion operations in tantivy
 	)
 
 	var fields []string

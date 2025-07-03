@@ -8,8 +8,8 @@ import (
 )
 
 type AutoBatcher interface {
-	// UpdateDoc adds a update operation to the batcher. If the batch is reaching the size limit, it will be indexed and reset.
-	UpdateDoc(doc SearchDoc) error
+	// UpsertDoc adds a update operation to the batcher. If the batch is reaching the size limit, it will be indexed and reset.
+	UpsertDoc(doc SearchDoc) error
 	// DeleteDoc adds a delete operation to the batcher
 	// maxSize limit check is not performed for this operation
 	DeleteDoc(id string) error
@@ -105,7 +105,7 @@ type ftIndexBatcherTantivy struct {
 }
 
 // Add adds a update operation to the batcher. If the batch is reaching the size limit, it will be indexed and reset.
-func (f *ftIndexBatcherTantivy) UpdateDoc(searchDoc SearchDoc) error {
+func (f *ftIndexBatcherTantivy) UpsertDoc(searchDoc SearchDoc) error {
 	err := f.DeleteDoc(searchDoc.Id)
 	if err != nil {
 		return err
@@ -150,6 +150,7 @@ func (f *ftIndexBatcherTantivy) UpdateDoc(searchDoc SearchDoc) error {
 func (f *ftIndexBatcherTantivy) Finish() (state uint64, err error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
+
 	opstamp, err := f.index.BatchAddAndDeleteDocumentsWithOpstamp(f.updateDocs, fieldIdRaw, f.deleteIds)
 	if err != nil {
 		return 0, err

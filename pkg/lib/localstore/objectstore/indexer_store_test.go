@@ -28,7 +28,7 @@ func TestDsObjectStore_IndexQueue(t *testing.T) {
 	})
 
 	t.Run("remove from queue", func(t *testing.T) {
-		s.ftQueueMarkAsIndexed([]domain.FullID{{ObjectID: "one", SpaceID: "id1"}}, 1)
+		s.FtQueueMarkAsIndexed([]domain.FullID{{ObjectID: "one", SpaceID: "id1"}}, 1)
 		ids, err := s.ListIdsFromFullTextQueue([]string{"id1"}, 0)
 		require.NoError(t, err)
 
@@ -49,9 +49,9 @@ func TestIndexerBatch(t *testing.T) {
 			context.Background(),
 			func() []string { return []string{"id1"} },
 			2,
-			func(ids []domain.FullID) ([]domain.FullID, int, error) {
+			func(ids []domain.FullID) ([]domain.FullID, uint64, error) {
 				batches = append(batches, ids)
-				return ids, 0, nil
+				return ids, 1, nil
 			})
 		require.NoError(t, err)
 		require.Len(t, batches, 2)
