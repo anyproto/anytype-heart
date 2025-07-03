@@ -30,7 +30,9 @@ func (s *dsObjectStore) FtQueueReconcileWithSeq(ctx context.Context, ftIndexSeq 
 	if err != nil {
 		return fmt.Errorf("start write tx: %w", err)
 	}
-
+	defer func() {
+		_ = txn.Rollback()
+	}()
 	buf := make([]byte, 8)
 	binary.BigEndian.PutUint64(buf, ftIndexSeq)
 
@@ -42,14 +44,14 @@ func (s *dsObjectStore) FtQueueReconcileWithSeq(ctx context.Context, ftIndexSeq 
 		return fmt.Errorf("create iterator: %w", err)
 	}
 	if res.Matched > 0 {
-		log.With("seq", ftIndexSeq).Errorf("ft incosistency detection: found %d objects to reindex", res.Matched)
+		log.With("seq", ftIndexSeq).Errorf("ft incosistency: found %d objects to reindex", res.Matched)
 	} else {
 		// no inconsistency found, we can safely delete all objects with state > 0
-		res, err := s.fulltextQueue.Find(ftQueueFilterFilter(nil, emptyBuffer, query.CompOpGt)).Delete(ctx)
+		res, err := s.fulltextQueue.Find(ftQueueFilterFilter(nil, emptyBuffer, query.CompOpGt)).Delete(txn.Context())
 		if err != nil {
 			return fmt.Errorf("gc fulltext queue: %w", err)
 		} else if res.Matched > 0 {
-			log.With("seq", ftIndexSeq).Warnf("ft queue gc: found %d objects to reindex", res.Matched)
+			log.With("seq", ftIndexSeq).Warnf("ft queue gc: found %d objects to remove from the queue", res.Matched)
 		}
 	}
 	return txn.Commit()
@@ -215,6 +217,7 @@ func (s *dsObjectStore) FtQueueMarkAsIndexed(ids []domain.FullID, ftIndexSeq uin
 	}
 
 	err = txn.Commit()
+	log.With("ids", ids).With("ftIndexSeq", ftIndexSeq).Warnf("commit fulltext queue update")
 	if err != nil {
 		return fmt.Errorf("commit write tx: %w", err)
 	}
