@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/anyproto/any-sync/app"
+	"github.com/anyproto/any-sync/app/debugstat"
 	"github.com/anyproto/any-sync/commonfile/fileservice"
 	"github.com/anyproto/any-sync/commonspace/object/accountdata"
 	"github.com/anyproto/any-sync/commonspace/object/tree/objecttree"
@@ -79,6 +80,7 @@ type ObjectFactory struct {
 	dbProvider              anystoreprovider.Provider
 	chatRepositoryService   chatrepository.Service
 	chatSubscriptionService chatsubscription.Service
+	statService             debugstat.StatService
 }
 
 func NewObjectFactory() *ObjectFactory {
@@ -113,6 +115,10 @@ func (f *ObjectFactory) Init(a *app.App) (err error) {
 	f.dbProvider = app.MustComponent[anystoreprovider.Provider](a)
 	f.chatRepositoryService = app.MustComponent[chatrepository.Service](a)
 	f.chatSubscriptionService = app.MustComponent[chatsubscription.Service](a)
+	f.statService, err = app.GetComponent[debugstat.StatService](a)
+	if err != nil {
+		f.statService = debugstat.NewNoOp()
+	}
 	return nil
 }
 
@@ -229,7 +235,7 @@ func (f *ObjectFactory) New(space smartblock.Space, sbType coresb.SmartBlockType
 		if err != nil {
 			return nil, fmt.Errorf("get crdt db: %w", err)
 		}
-		return chatobject.New(sb, f.accountService, crdtDb, f.chatRepositoryService, f.chatSubscriptionService), nil
+		return chatobject.New(sb, f.accountService, crdtDb, f.chatRepositoryService, f.chatSubscriptionService, f.statService), nil
 	case coresb.SmartBlockTypeAccountObject:
 		db, err := f.dbProvider.GetCrdtDb(space.Id()).Wait()
 		if err != nil {

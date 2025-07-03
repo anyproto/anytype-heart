@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/anyproto/any-sync/app"
+	"github.com/anyproto/any-sync/app/debugstat"
 	"github.com/anyproto/any-sync/commonspace/object/accountdata"
 	"github.com/anyproto/any-sync/util/crypto"
 	"github.com/globalsign/mgo/bson"
@@ -118,7 +119,7 @@ func newFixture(t *testing.T) *fixture {
 	db, err := provider.GetCrdtDb(testSpaceId).Wait()
 	require.NoError(t, err)
 
-	object := New(sb, accountService, db, repo, subscriptions)
+	object := New(sb, accountService, db, repo, subscriptions, debugstat.NewNoOp())
 	rawObject := object.(*storeObject)
 
 	fx := &fixture{

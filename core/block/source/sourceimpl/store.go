@@ -46,6 +46,41 @@ type store struct {
 	diffManagers map[string]*diffManager
 }
 
+type DiffManagerStats struct {
+	DiffManagerName string   `json:"diffManagerName"`
+	SeenHeads       []string `json:"seenHeads"`
+	AllChanges      []string `json:"allChanges"`
+	AllChangesCount int      `json:"allChangesCount"`
+}
+
+type StoreStat struct {
+	DiffManagers []DiffManagerStats `json:"diffManagers"`
+}
+
+func (s *store) ProvideStat() any {
+	stats := make([]DiffManagerStats, 0, len(s.diffManagers))
+	for name, manager := range s.diffManagers {
+		ids := manager.diffManager.GetIds()
+		stats = append(stats, DiffManagerStats{
+			DiffManagerName: name,
+			SeenHeads:       manager.diffManager.SeenHeads(),
+			AllChanges:      ids[0:min(len(ids), 1000)],
+			AllChangesCount: len(ids),
+		})
+	}
+	return StoreStat{
+		DiffManagers: stats,
+	}
+}
+
+func (s *store) StatId() string {
+	return s.Id()
+}
+
+func (s *store) StatType() string {
+	return "source.store"
+}
+
 type diffManager struct {
 	diffManager *objecttree.DiffManager
 	onRemove    func(removed []string)

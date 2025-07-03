@@ -2351,7 +2351,7 @@ var (
 			Id:               "_brtimestamp",
 			Key:              "timestamp",
 			MaxCount:         1,
-			Name:             "Timestamp",
+			Name:             "Order",
 			ReadOnly:         true,
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
