@@ -23,6 +23,28 @@ func (s *dsObjectStore) GetLastIndexedHeadsHash(ctx context.Context, id string) 
 	return string(doc.Value().GetStringBytes(headsStateField)), nil
 }
 
+func (s *dsObjectStore) IterateLastIndexedHeadsHash(ctx context.Context, fn func(id string, headsHash string) (stop bool, err error)) error {
+	iter, err := s.headsState.Find(nil).Iter(ctx)
+	if err != nil {
+		return err
+	}
+	defer iter.Close()
+	for iter.Next() {
+		doc, err := iter.Doc()
+		if err != nil {
+			return err
+		}
+		id := doc.Value().GetString("id")
+		headsHash := doc.Value().GetString(headsStateField)
+		stop, err := fn(id, headsHash)
+		if stop || err != nil {
+			return err
+		}
+	}
+
+	return iter.Err()
+}
+
 func (s *dsObjectStore) SaveLastIndexedHeadsHash(ctx context.Context, id string, headsHash string) error {
 	_, err := s.headsState.UpsertId(ctx, id, query.ModifyFunc(func(arena *anyenc.Arena, val *anyenc.Value) (*anyenc.Value, bool, error) {
 		val.Set(headsStateField, arena.NewString(headsHash))

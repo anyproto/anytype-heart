@@ -95,18 +95,20 @@ type SourceDetailsFromID interface {
 }
 
 type FulltextQueue interface {
-	RemoveIdsFromFullTextQueue(ids []string) error
+	FtQueueMarkAsIndexed(ids []domain.FullID, state uint64) error
 	AddToIndexQueue(ctx context.Context, ids ...domain.FullID) error
 	ListIdsFromFullTextQueue(spaceIds []string, limit uint) ([]domain.FullID, error)
 	ClearFullTextQueue(spaceIds []string) error
 }
 
 type dsObjectStore struct {
-	spaceId        string
-	db             anystore.DB
-	objects        anystore.Collection
-	links          anystore.Collection
-	headsState     anystore.Collection
+	spaceId    string
+	db         anystore.DB
+	objects    anystore.Collection
+	links      anystore.Collection
+	headsState anystore.Collection
+	ftState    anystore.Collection
+
 	activeViews    anystore.Collection
 	pendingDetails anystore.Collection
 	collections    []anystore.Collection
