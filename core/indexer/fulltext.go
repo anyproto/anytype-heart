@@ -50,14 +50,15 @@ func (i *indexer) ftLoopRoutine(ctx context.Context) {
 	tickerDuration := ftIndexInterval
 	ticker := time.NewTicker(tickerDuration)
 
-	lastState, err := i.ftsearch.LastDbState()
+	var err error
+	i.ftsearchLastIndexSeq, err = i.ftsearch.LastDbState()
 	if err != nil {
 		log.Errorf("get last db state: %v", err)
 	}
-	log.Warn("full-text indexer started", zap.Uint64("lastState", lastState))
-	err = i.store.ReaddAfterFtState(ctx, lastState)
+	log.Warn("full-text indexer started", zap.Uint64("lastIndexSeq", i.ftsearchLastIndexSeq))
+	err = i.store.FtQueueReconcileWithSeq(ctx, i.ftsearchLastIndexSeq)
 	if err != nil {
-		log.Errorf("readd after ft state: %v", err)
+		log.Errorf("readd after ft seq: %v", err)
 	}
 	prevError := i.runFullTextIndexer(ctx)
 	defer close(i.ftQueueFinished)
@@ -116,7 +117,7 @@ func (i *indexer) activeSpaces() []string {
 
 func (i *indexer) runFullTextIndexer(ctx context.Context) error {
 	batcher := i.ftsearch.NewAutoBatcher()
-	err := i.store.BatchProcessFullTextQueue(ctx, i.activeSpaces, ftBatchLimit, func(objectIds []domain.FullID) (succeedIds []domain.FullID, state uint64, err error) {
+	err := i.store.BatchProcessFullTextQueue(ctx, i.activeSpaces, ftBatchLimit, func(objectIds []domain.FullID) (succeedIds []domain.FullID, ftIndexSeq uint64, err error) {
 		if len(objectIds) == 0 {
 			return nil, 0, nil
 		}
@@ -167,12 +168,17 @@ func (i *indexer) runFullTextIndexer(ctx context.Context) error {
 			succeedIds = append(succeedIds, objectId)
 		}
 
-		state, err = batcher.Finish()
+		ftIndexSeq, err = batcher.Finish()
 		if err != nil {
 			return nil, 0, fmt.Errorf("finish batch failed: %w", err)
 		}
-
-		return succeedIds, state, nil
+		if ftIndexSeq > 0 {
+			// we can have 0 ftIndexSeq if all documents were filtered-out as not changed, so the batch were empty
+			// as a result of this filter-out workaround we can return newer Seq for some objects and persist them in the queue
+			// but it's not a big problem, in case of db corruption we may just try to reindex more objects than needed
+			i.ftsearchLastIndexSeq = ftIndexSeq
+		}
+		return succeedIds, i.ftsearchLastIndexSeq, nil
 	})
 	if err != nil && maxErrSent.Load() < maxErrorsPerSession {
 		maxErrSent.Add(1)

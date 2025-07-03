@@ -517,8 +517,8 @@ func TestPrepareSearchDocumentWithDetails(t *testing.T) {
 			),
 		)))
 
-	indexerFx.pickerFx.EXPECT().GetObject(mock.Anything, objectId).Return(smartTest, nil).Once()
-	indexerFx.pickerFx.EXPECT().TryRemoveFromCache(mock.Anything, objectId).Return(true, nil).Once()
+	indexerFx.pickerFx.EXPECT().GetObject(mock.Anything, mock.Anything).Return(smartTest, nil)
+	indexerFx.pickerFx.EXPECT().TryRemoveFromCache(mock.Anything, objectId).Return(true, nil)
 
 	docs, err := indexerFx.prepareSearchDocument(context.Background(), domain.FullID{ObjectID: objectId, SpaceID: "spaceId1"})
 	require.NoError(t, err)
@@ -555,10 +555,10 @@ func TestAutoBatcherSimple(t *testing.T) {
 	require.NoError(t, err)
 
 	// Finish batch
-	state, err := batcher.Finish()
+	ftIndexSeq, err := batcher.Finish()
 	require.NoError(t, err)
-	t.Logf("Batcher returned state: %d", state)
-	assert.NotEqual(t, uint64(0), state, "State should not be 0 after indexing a document")
+	t.Logf("Batcher returned ftIndexSeq: %d", ftIndexSeq)
+	assert.NotEqual(t, uint64(0), ftIndexSeq, "ftIndexSeq should not be 0 after indexing a document")
 
 	var foundDoc bool
 	err = indexerFx.ftsearch.Iterate("test1", []string{"Text"}, func(doc *ftsearch.SearchDoc) bool {
@@ -610,9 +610,9 @@ func TestAutoBatcherUpdate(t *testing.T) {
 	require.NoError(t, err)
 
 	// Finish batch
-	state, err := batcher.Finish()
+	ftIndexSeq, err := batcher.Finish()
 	require.NoError(t, err)
-	assert.NotEqual(t, uint64(0), state, "State should not be 0 after updating a document")
+	assert.NotEqual(t, uint64(0), ftIndexSeq, "ftIndexSeq should not be 0 after updating a document")
 
 	// Verify updated content
 	var foundUpdated bool

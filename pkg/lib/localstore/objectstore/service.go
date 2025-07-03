@@ -38,7 +38,7 @@ type CrossSpace interface {
 
 	ListIdsCrossSpace() ([]string, error)
 	EnqueueAllForFulltextIndexing(ctx context.Context) error
-	BatchProcessFullTextQueue(ctx context.Context, spaceIds func() []string, limit uint, processIds func(objectIds []domain.FullID) (succeedIds []domain.FullID, state uint64, err error)) error
+	BatchProcessFullTextQueue(ctx context.Context, spaceIds func() []string, limit uint, processIds func(objectIds []domain.FullID) (succeedIds []domain.FullID, ftIndexSeq uint64, err error)) error
 
 	AccountStore
 	VirtualSpacesStore
@@ -55,8 +55,8 @@ type ObjectStore interface {
 	spaceresolverstore.Store
 	CrossSpace
 
-	ReaddAfterFtState(ctx context.Context, ftState uint64) error
-	FtQueueMarkAsIndexed(ids []domain.FullID, state uint64) error
+	FtQueueReconcileWithSeq(ctx context.Context, ftIndexSeq uint64) error
+	FtQueueMarkAsIndexed(ids []domain.FullID, ftIndexSeq uint64) error
 
 	AddFileKeys(fileKeys ...domain.FileEncryptionKeys) error
 	GetFileKeys(fileId domain.FileId) (map[string]string, error)
@@ -65,7 +65,7 @@ type ObjectStore interface {
 type IndexerStore interface {
 	AddToIndexQueue(ctx context.Context, id ...domain.FullID) error
 	ListIdsFromFullTextQueue(spaceIds []string, limit uint) ([]domain.FullID, error)
-	FtQueueMarkAsIndexed(ids []domain.FullID, state uint64) error
+	FtQueueMarkAsIndexed(ids []domain.FullID, ftIndexSeq uint64) error
 
 	// ClearFullTextQueue cleans the pending . Pass nil to clear all spaces.
 	ClearFullTextQueue(spaceIds []string) error

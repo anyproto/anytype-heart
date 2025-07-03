@@ -19,19 +19,20 @@ import (
 var idKey = bundle.RelationKeyId.String()
 var spaceIdKey = bundle.RelationKeySpaceId.String()
 
-const ftStateKey = "state" // used to store the state of the fulltext indexer in collection
+const ftStateKey = "state" // used to store the ftIndexSeq of the fulltext indexer in collection
 
 var emptyBuffer = make([]byte, 8)
 
-// ReaddAfterFtState used to check and reindex objects on ft start in case we have consistency issues
-func (s *dsObjectStore) ReaddAfterFtState(ctx context.Context, ftState uint64) error {
+// FtQueueReconcileWithSeq used to check and reindex objects on ft start in case we have consistency issues, otherwise gc the queue
+// must be called before any other fulltext operations
+func (s *dsObjectStore) FtQueueReconcileWithSeq(ctx context.Context, ftIndexSeq uint64) error {
 	txn, err := s.fulltextQueue.WriteTx(ctx)
 	if err != nil {
 		return fmt.Errorf("start write tx: %w", err)
 	}
 
 	buf := make([]byte, 8)
-	binary.BigEndian.PutUint64(buf, ftState)
+	binary.BigEndian.PutUint64(buf, ftIndexSeq)
 
 	res, err := s.fulltextQueue.Find(ftQueueFilterFilter(nil, buf, query.CompOpGt)).Update(txn.Context(), query.ModifyFunc(func(arena *anyenc.Arena, val *anyenc.Value) (*anyenc.Value, bool, error) {
 		val.Set(ftStateKey, arena.NewBinary(emptyBuffer))
@@ -41,7 +42,15 @@ func (s *dsObjectStore) ReaddAfterFtState(ctx context.Context, ftState uint64) e
 		return fmt.Errorf("create iterator: %w", err)
 	}
 	if res.Matched > 0 {
-		log.Warnf("ft incosistency deetction state %d found %d objects to reindex", ftState, res.Matched)
+		log.With("seq", ftIndexSeq).Errorf("ft incosistency detection: found %d objects to reindex", res.Matched)
+	} else {
+		// no inconsistency found, we can safely delete all objects with state > 0
+		res, err := s.fulltextQueue.Find(ftQueueFilterFilter(nil, emptyBuffer, query.CompOpGt)).Delete(ctx)
+		if err != nil {
+			return fmt.Errorf("gc fulltext queue: %w", err)
+		} else if res.Matched > 0 {
+			log.With("seq", ftIndexSeq).Warnf("ft queue gc: found %d objects to reindex", res.Matched)
+		}
 	}
 	return txn.Commit()
 
@@ -77,7 +86,7 @@ func (s *dsObjectStore) BatchProcessFullTextQueue(
 	spaceIds func() []string,
 	limit uint,
 	processIds func(objectIds []domain.FullID,
-	) (succeedIds []domain.FullID, state uint64, err error)) error {
+	) (succeedIds []domain.FullID, ftIndexSeq uint64, err error)) error {
 	for {
 		ids, err := s.ListIdsFromFullTextQueue(spaceIds(), limit)
 		if err != nil {
@@ -86,7 +95,7 @@ func (s *dsObjectStore) BatchProcessFullTextQueue(
 		if len(ids) == 0 {
 			return nil
 		}
-		succeedIds, state, err := processIds(ids)
+		succeedIds, ftIndexSeq, err := processIds(ids)
 		if err != nil {
 			// if all failed it will return an error and we will exit here
 			return fmt.Errorf("process ids: %w", err)
@@ -95,7 +104,7 @@ func (s *dsObjectStore) BatchProcessFullTextQueue(
 			// special case to prevent infinite loop
 			return fmt.Errorf("all ids failed to process")
 		}
-		err = s.FtQueueMarkAsIndexed(succeedIds, state)
+		err = s.FtQueueMarkAsIndexed(succeedIds, ftIndexSeq)
 		if err != nil {
 			return fmt.Errorf("remove ids from fulltext queue: %w", err)
 		}
@@ -169,7 +178,7 @@ func ftQueueFilterFilter(spaceIds []string, state []byte, comp query.CompOp) que
 	return filters
 }
 
-func (s *dsObjectStore) FtQueueMarkAsIndexed(ids []domain.FullID, ftState uint64) error {
+func (s *dsObjectStore) FtQueueMarkAsIndexed(ids []domain.FullID, ftIndexSeq uint64) error {
 	txn, err := s.fulltextQueue.WriteTx(s.componentCtx)
 	if err != nil {
 		return fmt.Errorf("start write tx: %w", err)
@@ -187,7 +196,7 @@ func (s *dsObjectStore) FtQueueMarkAsIndexed(ids []domain.FullID, ftState uint64
 
 	obj := arena.NewObject()
 	buf := make([]byte, 8)
-	binary.BigEndian.PutUint64(buf, ftState)
+	binary.BigEndian.PutUint64(buf, ftIndexSeq)
 	obj.Set(ftStateKey, arena.NewBinary(buf))
 	for _, id := range ids {
 		obj.Set(idKey, arena.NewString(id.ObjectID))

@@ -50,12 +50,13 @@ type Hasher interface {
 }
 
 type indexer struct {
-	dbProvider     anystoreprovider.Provider
-	store          objectstore.ObjectStore
-	source         source.Service
-	picker         cache.CachedObjectGetter
-	ftsearch       ftsearch.FTSearch
-	storageService storage.ClientStorage
+	dbProvider           anystoreprovider.Provider
+	store                objectstore.ObjectStore
+	source               source.Service
+	picker               cache.CachedObjectGetter
+	ftsearch             ftsearch.FTSearch
+	ftsearchLastIndexSeq uint64
+	storageService       storage.ClientStorage
 
 	runCtx          context.Context
 	runCtxCancel    context.CancelFunc

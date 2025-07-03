@@ -14,7 +14,7 @@ type AutoBatcher interface {
 	// maxSize limit check is not performed for this operation
 	DeleteDoc(id string) error
 	// Finish performs the operations
-	Finish() (state uint64, err error)
+	Finish() (ftIndexSeq uint64, err error)
 }
 
 func (f *ftSearch) NewAutoBatcher() AutoBatcher {
@@ -147,7 +147,7 @@ func (f *ftIndexBatcherTantivy) UpsertDoc(searchDoc SearchDoc) error {
 }
 
 // Finish indexes the remaining documents in the batch.
-func (f *ftIndexBatcherTantivy) Finish() (state uint64, err error) {
+func (f *ftIndexBatcherTantivy) Finish() (ftIndexSeq uint64, err error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 
