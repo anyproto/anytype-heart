@@ -16,7 +16,6 @@ import (
 	"github.com/anyproto/anytype-heart/space/internal/spaceprocess/loader"
 	"github.com/anyproto/anytype-heart/space/internal/spaceprocess/mode"
 	"github.com/anyproto/anytype-heart/space/internal/spaceprocess/offloader"
-	"github.com/anyproto/anytype-heart/space/internal/spaceprocess/remover"
 	"github.com/anyproto/anytype-heart/space/spaceinfo"
 )
 
@@ -164,10 +163,6 @@ func (s *spaceController) Process(md mode.Mode) mode.Process {
 		})
 	case mode.ModeOffloading:
 		return offloader.New(s.app)
-	case mode.ModeRemoving:
-		return remover.New(s.app, remover.Params{
-			SpaceId: s.spaceId,
-		})
 	case mode.ModeJoining:
 		return joiner.New(s.app, joiner.Params{
 			SpaceId: s.spaceId,
