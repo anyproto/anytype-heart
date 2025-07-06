@@ -88,7 +88,7 @@ func (w *Workspaces) initTemplate(ctx *smartblock.InitContext) {
 func (w *Workspaces) CreationStateMigration(ctx *smartblock.InitContext) migration.Migration {
 	// TODO Maybe move init logic here?
 	return migration.Migration{
-		Version: 1,
+		Version: 2,
 		Proc: func(s *state.State) {
 			// no-op
 		},
