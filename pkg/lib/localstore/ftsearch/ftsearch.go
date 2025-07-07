@@ -118,9 +118,6 @@ func (f *ftSearch) LastDbState() (uint64, error) {
 		return 0, fmt.Errorf("index is not initialized")
 	}
 	lastOpstamp := f.index.CommitOpstamp()
-	if lastOpstamp == 0 {
-		return 0, fmt.Errorf("index is empty")
-	}
 	return lastOpstamp, nil
 }
 

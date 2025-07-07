@@ -10,7 +10,6 @@ import (
 
 	"github.com/anyproto/any-sync/commonspace/spacestorage"
 	"github.com/samber/lo"
-	"go.uber.org/zap"
 	"golang.org/x/exp/slices"
 
 	"github.com/anyproto/anytype-heart/core/block/cache"
@@ -54,10 +53,11 @@ func (i *indexer) ftLoopRoutine(ctx context.Context) {
 	i.ftsearchLastIndexSeq, err = i.ftsearch.LastDbState()
 	if err != nil {
 		log.Errorf("get last db state: %v", err)
-	}
-	err = i.store.FtQueueReconcileWithSeq(ctx, i.ftsearchLastIndexSeq)
-	if err != nil {
-		log.Errorf("readd after ft seq: %v", err)
+	} else {
+		err = i.store.FtQueueReconcileWithSeq(ctx, i.ftsearchLastIndexSeq)
+		if err != nil {
+			log.Errorf("readd after ft seq: %v", err)
+		}
 	}
 	prevError := i.runFullTextIndexer(ctx)
 	defer close(i.ftQueueFinished)
