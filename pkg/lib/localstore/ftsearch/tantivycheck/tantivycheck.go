@@ -98,9 +98,9 @@ func Check(dir string) (ConsistencyReport, error) {
 		name := d.Name()
 
 		switch name {
-		case "INDEX_WRITER_LOCK":
+		case "INDEX_WRITER_LOCK", ".tantivy-writer.lock":
 			writerLockPresent = true
-		case "META_LOCK":
+		case "META_LOCK", ".tantivy-meta.lock":
 			metaLockPresent = true
 		}
 
@@ -197,10 +197,14 @@ func (r *ConsistencyReport) IsOk() bool {
 
 var segmentFileExts = []string{".fast", ".fieldnorm", ".pos", ".store", ".term", ".idx"}
 
+// GCExtraFiles removes all extra segment files and .del files that are not
+// referenced in meta.json.
+// MUST be called before any write operations to the index directory.
 func (r *ConsistencyReport) GCExtraFiles() error {
 	if r.WriterLockPresent || r.MetaLockPresent {
 		return fmt.Errorf("cannot run GC when INDEX_WRITER_LOCK or META_LOCK is present")
 	}
+
 	for _, seg := range r.ExtraSegments {
 		for _, ext := range segmentFileExts {
 			segFile := filepath.Join(r.dir, seg+ext)
