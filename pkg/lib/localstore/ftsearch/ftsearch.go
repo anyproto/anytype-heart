@@ -44,7 +44,7 @@ const (
 	CName    = "fts"
 	ftsDir   = "fts"
 	ftsDir2  = "fts_tantivy"
-	ftsVer   = "14"
+	ftsVer   = "15"
 	docLimit = 10000
 
 	fieldTitle   = "Title"
@@ -217,6 +217,10 @@ func (f *ftSearch) Run(context.Context) error {
 		}
 	}
 	if !report.IsOk() {
+		var gcErr error
+		if len(report.ExtraDelFiles) > 0 || len(report.ExtraSegments) > 0 {
+			gcErr = report.GCExtraFiles()
+		}
 		log.With("missingSegments", len(report.MissingSegments)).
 			With("missingDelFiles", len(report.MissingDelFiles)).
 			With("extraSegments", len(report.ExtraSegments)).
@@ -225,7 +229,8 @@ func (f *ftSearch) Run(context.Context) error {
 			With("metaLockPresent", report.MetaLockPresent).
 			With("totalSegmentsInMeta", report.TotalSegmentsInMeta).
 			With("uniqueSegmentPrefixesOnDisk", report.UniqueSegmentPrefixesOnDisk).
-			Warnf("tantivy index is inconsistent state, dry run")
+			With("gcErr", gcErr).
+			Warnf("tantivy index is inconsistent state, cleaning extra files")
 	}
 
 	builder, err := tantivy.NewSchemaBuilder()
