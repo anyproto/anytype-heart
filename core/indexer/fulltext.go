@@ -55,7 +55,6 @@ func (i *indexer) ftLoopRoutine(ctx context.Context) {
 	if err != nil {
 		log.Errorf("get last db state: %v", err)
 	}
-	log.Warn("full-text indexer started", zap.Uint64("lastIndexSeq", i.ftsearchLastIndexSeq))
 	err = i.store.FtQueueReconcileWithSeq(ctx, i.ftsearchLastIndexSeq)
 	if err != nil {
 		log.Errorf("readd after ft seq: %v", err)
