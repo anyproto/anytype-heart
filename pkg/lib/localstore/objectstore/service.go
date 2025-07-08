@@ -209,9 +209,6 @@ func (s *dsObjectStore) initCollections(ctx context.Context) error {
 
 	indexes := []anystore.IndexInfo{
 		{
-			Fields: []string{idKey},
-		},
-		{
 			Fields: []string{spaceIdKey, ftSeqKey},
 		},
 	}
