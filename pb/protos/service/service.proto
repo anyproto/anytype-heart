@@ -384,6 +384,7 @@ service ClientCommands {
     rpc MembershipVerifyAppStoreReceipt (anytype.Rpc.Membership.VerifyAppStoreReceipt.Request) returns (anytype.Rpc.Membership.VerifyAppStoreReceipt.Response);
     rpc MembershipCodeGetInfo (anytype.Rpc.Membership.CodeGetInfo.Request) returns (anytype.Rpc.Membership.CodeGetInfo.Response);
     rpc MembershipCodeRedeem (anytype.Rpc.Membership.CodeRedeem.Request) returns (anytype.Rpc.Membership.CodeRedeem.Response);
+    rpc MembershipWebAuth (anytype.Rpc.Membership.WebAuth.Request) returns (anytype.Rpc.Membership.WebAuth.Response);
 
     // Name Service:
     // ***

@@ -13,6 +13,7 @@ import (
 	"go.uber.org/zap"
 
 	ppclient "github.com/anyproto/any-sync/paymentservice/paymentserviceclient"
+	ppclient2 "github.com/anyproto/any-sync/paymentservice/paymentserviceclient2"
 	proto "github.com/anyproto/any-sync/paymentservice/paymentserviceproto"
 
 	"github.com/anyproto/anytype-heart/core/anytype/config"
@@ -119,6 +120,7 @@ type Service interface {
 	VerifyAppStoreReceipt(ctx context.Context, req *pb.RpcMembershipVerifyAppStoreReceiptRequest) (*pb.RpcMembershipVerifyAppStoreReceiptResponse, error)
 	CodeGetInfo(ctx context.Context, req *pb.RpcMembershipCodeGetInfoRequest) (*pb.RpcMembershipCodeGetInfoResponse, error)
 	CodeRedeem(ctx context.Context, req *pb.RpcMembershipCodeRedeemRequest) (*pb.RpcMembershipCodeRedeemResponse, error)
+	WebAuth(ctx context.Context, req *pb.RpcMembershipWebAuthRequest) (*pb.RpcMembershipWebAuthResponse, error)
 
 	app.ComponentRunnable
 }
@@ -128,9 +130,11 @@ func New() Service {
 }
 
 type service struct {
-	cfg                    *config.Config
-	cache                  cache.CacheService
-	ppclient               ppclient.AnyPpClientService
+	cfg       *config.Config
+	cache     cache.CacheService
+	ppclient  ppclient.AnyPpClientService
+	ppclient2 ppclient2.AnyPpClientService2
+
 	wallet                 wallet.Wallet
 	getSubscriptionLimiter chan struct{}
 	periodicGetStatus      periodicsync.PeriodicSync
@@ -153,6 +157,7 @@ func (s *service) Init(a *app.App) (err error) {
 	s.cache = app.MustComponent[cache.CacheService](a)
 	s.emailCollector = app.MustComponent[emailcollector.EmailCollector](a)
 	s.ppclient = app.MustComponent[ppclient.AnyPpClientService](a)
+	s.ppclient2 = app.MustComponent[ppclient2.AnyPpClientService2](a)
 	s.wallet = app.MustComponent[wallet.Wallet](a)
 	s.ns = app.MustComponent[nameservice.Service](a)
 	s.eventSender = app.MustComponent[event.Sender](a)
@@ -1107,6 +1112,24 @@ func (s *service) CodeRedeem(ctx context.Context, req *pb.RpcMembershipCodeRedee
 	return &pb.RpcMembershipCodeRedeemResponse{
 		Error: &pb.RpcMembershipCodeRedeemResponseError{
 			Code: pb.RpcMembershipCodeRedeemResponseError_NULL,
+		},
+	}, nil
+}
+
+func (s *service) WebAuth(ctx context.Context, req *pb.RpcMembershipWebAuthRequest) (*pb.RpcMembershipWebAuthResponse, error) {
+	webAuth := proto.Membership2_WebAuthRequest{}
+
+	res, err := s.ppclient2.WebAuth(ctx, &webAuth)
+	if err != nil {
+		return nil, err
+	}
+
+	return &pb.RpcMembershipWebAuthResponse{
+		Jwt: res.Jwt,
+		Url: res.Url,
+
+		Error: &pb.RpcMembershipWebAuthResponseError{
+			Code: pb.RpcMembershipWebAuthResponseError_NULL,
 		},
 	}, nil
 }

@@ -8089,6 +8089,37 @@ message Rpc {
                 }
             }
         }
+
+        message WebAuth {
+            message Request {
+
+            }
+
+            message Response {
+                Error error = 1;
+
+                string jwt = 2;
+
+                // optional
+                string url = 3;
+
+                message Error {
+                    Code code = 1;
+                    string description = 2;
+
+                    enum Code {
+                        NULL = 0;
+                        UNKNOWN_ERROR = 1;
+                        BAD_INPUT = 2;
+
+                        NOT_LOGGED_IN = 3;
+                        PAYMENT_NODE_ERROR = 4;
+
+                        AUTH_BAD = 5;
+                    }
+                }
+            }
+        }
     }
 
     message NameService {

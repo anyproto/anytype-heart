@@ -395,3 +395,27 @@ func (mw *Middleware) MembershipCodeRedeem(ctx context.Context, req *pb.RpcMembe
 
 	return out
 }
+
+func (mw *Middleware) MembershipWebAuth(ctx context.Context, req *pb.RpcMembershipWebAuthRequest) *pb.RpcMembershipWebAuthResponse {
+	ps := mustService[payments.Service](mw)
+	out, err := ps.WebAuth(ctx, req)
+
+	if err != nil {
+		code := mapErrorCode(err,
+			errToCode(proto.ErrInvalidSignature, pb.RpcMembershipWebAuthResponseError_NOT_LOGGED_IN),
+			errToCode(proto.ErrEthAddressEmpty, pb.RpcMembershipWebAuthResponseError_NOT_LOGGED_IN),
+			errToCode(payments.ErrNoConnection, pb.RpcMembershipWebAuthResponseError_PAYMENT_NODE_ERROR),
+			errToCode(net.ErrUnableToConnect, pb.RpcMembershipWebAuthResponseError_PAYMENT_NODE_ERROR),
+			// use special return pb.RpcMembershipWebAuthResponseError_AUTH_BAD
+		)
+
+		return &pb.RpcMembershipWebAuthResponse{
+			Error: &pb.RpcMembershipWebAuthResponseError{
+				Code:        code,
+				Description: getErrorDescription(err),
+			},
+		}
+	}
+
+	return out
+}

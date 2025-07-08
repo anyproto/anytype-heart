@@ -837,6 +837,10 @@
     - [Rpc.Membership.VerifyEmailCode.Request](#anytype-Rpc-Membership-VerifyEmailCode-Request)
     - [Rpc.Membership.VerifyEmailCode.Response](#anytype-Rpc-Membership-VerifyEmailCode-Response)
     - [Rpc.Membership.VerifyEmailCode.Response.Error](#anytype-Rpc-Membership-VerifyEmailCode-Response-Error)
+    - [Rpc.Membership.WebAuth](#anytype-Rpc-Membership-WebAuth)
+    - [Rpc.Membership.WebAuth.Request](#anytype-Rpc-Membership-WebAuth-Request)
+    - [Rpc.Membership.WebAuth.Response](#anytype-Rpc-Membership-WebAuth-Response)
+    - [Rpc.Membership.WebAuth.Response.Error](#anytype-Rpc-Membership-WebAuth-Response-Error)
     - [Rpc.NameService](#anytype-Rpc-NameService)
     - [Rpc.NameService.ResolveAnyId](#anytype-Rpc-NameService-ResolveAnyId)
     - [Rpc.NameService.ResolveAnyId.Request](#anytype-Rpc-NameService-ResolveAnyId-Request)
@@ -1594,6 +1598,7 @@
     - [Rpc.Membership.RegisterPaymentRequest.Response.Error.Code](#anytype-Rpc-Membership-RegisterPaymentRequest-Response-Error-Code)
     - [Rpc.Membership.VerifyAppStoreReceipt.Response.Error.Code](#anytype-Rpc-Membership-VerifyAppStoreReceipt-Response-Error-Code)
     - [Rpc.Membership.VerifyEmailCode.Response.Error.Code](#anytype-Rpc-Membership-VerifyEmailCode-Response-Error-Code)
+    - [Rpc.Membership.WebAuth.Response.Error.Code](#anytype-Rpc-Membership-WebAuth-Response-Error-Code)
     - [Rpc.NameService.ResolveAnyId.Response.Error.Code](#anytype-Rpc-NameService-ResolveAnyId-Response-Error-Code)
     - [Rpc.NameService.ResolveName.Response.Error.Code](#anytype-Rpc-NameService-ResolveName-Response-Error-Code)
     - [Rpc.NameService.ResolveSpaceId.Response.Error.Code](#anytype-Rpc-NameService-ResolveSpaceId-Response-Error-Code)
@@ -2444,6 +2449,7 @@
 | MembershipVerifyAppStoreReceipt | [Rpc.Membership.VerifyAppStoreReceipt.Request](#anytype-Rpc-Membership-VerifyAppStoreReceipt-Request) | [Rpc.Membership.VerifyAppStoreReceipt.Response](#anytype-Rpc-Membership-VerifyAppStoreReceipt-Response) |  |
 | MembershipCodeGetInfo | [Rpc.Membership.CodeGetInfo.Request](#anytype-Rpc-Membership-CodeGetInfo-Request) | [Rpc.Membership.CodeGetInfo.Response](#anytype-Rpc-Membership-CodeGetInfo-Response) |  |
 | MembershipCodeRedeem | [Rpc.Membership.CodeRedeem.Request](#anytype-Rpc-Membership-CodeRedeem-Request) | [Rpc.Membership.CodeRedeem.Response](#anytype-Rpc-Membership-CodeRedeem-Response) |  |
+| MembershipWebAuth | [Rpc.Membership.WebAuth.Request](#anytype-Rpc-Membership-WebAuth-Request) | [Rpc.Membership.WebAuth.Response](#anytype-Rpc-Membership-WebAuth-Response) |  |
 | NameServiceUserAccountGet | [Rpc.NameService.UserAccount.Get.Request](#anytype-Rpc-NameService-UserAccount-Get-Request) | [Rpc.NameService.UserAccount.Get.Response](#anytype-Rpc-NameService-UserAccount-Get-Response) | Name Service: *** hello.any -&gt; data |
 | NameServiceResolveName | [Rpc.NameService.ResolveName.Request](#anytype-Rpc-NameService-ResolveName-Request) | [Rpc.NameService.ResolveName.Response](#anytype-Rpc-NameService-ResolveName-Response) |  |
 | NameServiceResolveAnyId | [Rpc.NameService.ResolveAnyId.Request](#anytype-Rpc-NameService-ResolveAnyId-Request) | [Rpc.NameService.ResolveAnyId.Response](#anytype-Rpc-NameService-ResolveAnyId-Response) | 12D3KooWA8EXV3KjBxEU5EnsPfneLx84vMWAtTBQBeyooN82KSuS -&gt; hello.any |
@@ -14577,6 +14583,59 @@ need a correct code that was sent to the user when calling GetVerificationEmail
 
 
 
+<a name="anytype-Rpc-Membership-WebAuth"></a>
+
+### Rpc.Membership.WebAuth
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Membership-WebAuth-Request"></a>
+
+### Rpc.Membership.WebAuth.Request
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Membership-WebAuth-Response"></a>
+
+### Rpc.Membership.WebAuth.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Membership.WebAuth.Response.Error](#anytype-Rpc-Membership-WebAuth-Response-Error) |  |  |
+| jwt | [string](#string) |  |  |
+| url | [string](#string) |  | optional |
+
+
+
+
+
+
+<a name="anytype-Rpc-Membership-WebAuth-Response-Error"></a>
+
+### Rpc.Membership.WebAuth.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Membership.WebAuth.Response.Error.Code](#anytype-Rpc-Membership-WebAuth-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
 <a name="anytype-Rpc-NameService"></a>
 
 ### Rpc.NameService
@@ -25464,6 +25523,22 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | MEMBERSHIP_NOT_FOUND | 9 |  |
 | MEMBERSHIP_ALREADY_ACTIVE | 10 |  |
 | CAN_NOT_CONNECT | 11 |  |
+
+
+
+<a name="anytype-Rpc-Membership-WebAuth-Response-Error-Code"></a>
+
+### Rpc.Membership.WebAuth.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
+| NOT_LOGGED_IN | 3 |  |
+| PAYMENT_NODE_ERROR | 4 |  |
+| AUTH_BAD | 5 |  |
 
 
 

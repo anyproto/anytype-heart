@@ -17,6 +17,7 @@ import (
 	"go.uber.org/mock/gomock"
 
 	mock_ppclient "github.com/anyproto/any-sync/paymentservice/paymentserviceclient/mock"
+	mock_ppclient2 "github.com/anyproto/any-sync/paymentservice/paymentserviceclient2/mock"
 	psp "github.com/anyproto/any-sync/paymentservice/paymentserviceproto"
 	mock_emailcollector "github.com/anyproto/anytype-heart/core/payments/emailcollector/mock_emailcollector"
 
@@ -58,6 +59,7 @@ type fixture struct {
 	ctrl                     *gomock.Controller
 	cache                    *mock_cache.MockCacheService
 	ppclient                 *mock_ppclient.MockAnyPpClientService
+	ppclient2                *mock_ppclient2.MockAnyPpClientService2
 	wallet                   *mock_wallet.MockWallet
 	eventSender              *mock_event.MockSender
 	periodicGetStatus        *mock_periodicsync.MockPeriodicSync
@@ -79,6 +81,7 @@ func newFixture(t *testing.T) *fixture {
 
 	fx.cache = mock_cache.NewMockCacheService(t)
 	fx.ppclient = mock_ppclient.NewMockAnyPpClientService(fx.ctrl)
+	fx.ppclient2 = mock_ppclient2.NewMockAnyPpClientService2(fx.ctrl)
 	fx.wallet = mock_wallet.NewMockWallet(t)
 	fx.eventSender = mock_event.NewMockSender(t)
 	fx.multiplayerLimitsUpdater = mock_deletioncontroller.NewMockDeletionController(t)
@@ -111,6 +114,7 @@ func newFixture(t *testing.T) *fixture {
 	fx.a.Register(fx.service).
 		Register(testutil.PrepareMock(ctx, fx.a, fx.cache)).
 		Register(testutil.PrepareMock(ctx, fx.a, fx.ppclient)).
+		Register(testutil.PrepareMock(ctx, fx.a, fx.ppclient2)).
 		Register(testutil.PrepareMock(ctx, fx.a, fx.wallet)).
 		Register(testutil.PrepareMock(ctx, fx.a, fx.emailCollector)).
 		Register(testutil.PrepareMock(ctx, fx.a, fx.eventSender)).
