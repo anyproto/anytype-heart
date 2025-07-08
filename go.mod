@@ -2,13 +2,15 @@ module github.com/anyproto/anytype-heart
 
 go 1.23.2
 
+toolchain go1.23.10
+
 require (
 	github.com/JohannesKaufmann/html-to-markdown v1.4.0
 	github.com/PuerkitoBio/goquery v1.10.2
 	github.com/VividCortex/ewma v1.2.0
 	github.com/adrium/goheif v0.0.0-20230113233934-ca402e77a786
 	github.com/anyproto/any-store v0.3.1
-	github.com/anyproto/any-sync v0.8.8
+	github.com/anyproto/any-sync v0.8.10-0.20250708112303-fe46c963d82d
 	github.com/anyproto/anytype-publish-server/publishclient v0.0.0-20250620154825-2c07f7679903
 	github.com/anyproto/anytype-push-server/pushclient v0.0.0-20250616103304-db364e9f3985
 	github.com/anyproto/go-chash v0.1.0
@@ -282,7 +284,7 @@ require (
 	golang.org/x/mod v0.25.0 // indirect
 	golang.org/x/sync v0.15.0 // indirect
 	golang.org/x/term v0.32.0 // indirect
-	golang.org/x/time v0.11.0 // indirect
+	golang.org/x/time v0.12.0 // indirect
 	golang.org/x/tools v0.34.0 // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20250106144421-5f5ef82da422 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20250115164207-1a7da9e5054f // indirect
