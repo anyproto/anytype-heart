@@ -19,7 +19,7 @@ import (
 var idKey = bundle.RelationKeyId.String()
 var spaceIdKey = bundle.RelationKeySpaceId.String()
 
-const ftStateKey = "state" // used to store the ftIndexSeq of the fulltext indexer in collection
+const ftSeqKey = "seq" // used to store the ftIndexSeq of the fulltext indexer in collection
 
 var emptyBuffer = make([]byte, 8)
 
@@ -37,7 +37,7 @@ func (s *dsObjectStore) FtQueueReconcileWithSeq(ctx context.Context, ftIndexSeq 
 	binary.BigEndian.PutUint64(buf, ftIndexSeq)
 
 	res, err := s.fulltextQueue.Find(ftQueueFilterFilter(nil, buf, query.CompOpGt)).Update(txn.Context(), query.ModifyFunc(func(arena *anyenc.Arena, val *anyenc.Value) (*anyenc.Value, bool, error) {
-		val.Set(ftStateKey, arena.NewBinary(emptyBuffer))
+		val.Set(ftSeqKey, arena.NewBinary(emptyBuffer))
 		return val, true, nil
 	}))
 	if err != nil {
@@ -74,7 +74,7 @@ func (s *dsObjectStore) AddToIndexQueue(ctx context.Context, ids ...domain.FullI
 	for _, id := range ids {
 		obj.Set(idKey, arena.NewString(id.ObjectID))
 		obj.Set(spaceIdKey, arena.NewString(id.SpaceID))
-		obj.Set(ftStateKey, arena.NewBinary(emptyBuffer))
+		obj.Set(ftSeqKey, arena.NewBinary(emptyBuffer))
 		err = s.fulltextQueue.UpsertOne(txn.Context(), obj)
 		if err != nil {
 			return errors.Join(txn.Rollback(), fmt.Errorf("upsert: %w", err))
@@ -88,7 +88,7 @@ func (s *dsObjectStore) BatchProcessFullTextQueue(
 	spaceIds func() []string,
 	limit uint,
 	processIds func(objectIds []domain.FullID,
-	) (succeedIds []domain.FullID, ftIndexSeq uint64, err error)) error {
+) (succeedIds []domain.FullID, ftIndexSeq uint64, err error)) error {
 	for {
 		ids, err := s.ListIdsFromFullTextQueue(spaceIds(), limit)
 		if err != nil {
@@ -147,14 +147,14 @@ func ftQueueFilterNotIndexed(spaceIds []string) query.Filter {
 }
 
 // fulltextQueueFilter creates a filter for the fulltext queue based on space IDs and state.
-func ftQueueFilterFilter(spaceIds []string, state []byte, comp query.CompOp) query.Filter {
-	if len(spaceIds) == 0 && len(state) == 0 {
+func ftQueueFilterFilter(spaceIds []string, seq []byte, comp query.CompOp) query.Filter {
+	if len(spaceIds) == 0 && len(seq) == 0 {
 		return query.And{} // no filter, return all
 	}
-	const properStateLength = 8
-	if len(state) > 0 && len(state) != properStateLength {
+	const properSeqLength = 8
+	if len(seq) > 0 && len(seq) != properSeqLength {
 		// should never happen
-		panic(fmt.Sprintf("state must be 8 bytes, got %d bytes", len(state)))
+		panic(fmt.Sprintf("seq must be 8 bytes, got %d bytes", len(seq)))
 	}
 	arena := &anyenc.Arena{}
 	filters := query.And{}
@@ -170,10 +170,10 @@ func ftQueueFilterFilter(spaceIds []string, state []byte, comp query.CompOp) que
 		})
 	}
 
-	if len(state) == properStateLength {
+	if len(seq) == properSeqLength {
 		filters = append(filters, query.Key{
-			Path:   []string{ftStateKey},
-			Filter: query.NewCompValue(comp, arena.NewBinary(state)),
+			Path:   []string{ftSeqKey},
+			Filter: query.NewCompValue(comp, arena.NewBinary(seq)),
 		})
 	}
 
@@ -199,7 +199,7 @@ func (s *dsObjectStore) FtQueueMarkAsIndexed(ids []domain.FullID, ftIndexSeq uin
 	obj := arena.NewObject()
 	buf := make([]byte, 8)
 	binary.BigEndian.PutUint64(buf, ftIndexSeq)
-	obj.Set(ftStateKey, arena.NewBinary(buf))
+	obj.Set(ftSeqKey, arena.NewBinary(buf))
 	for _, id := range ids {
 		obj.Set(idKey, arena.NewString(id.ObjectID))
 		obj.Set(spaceIdKey, arena.NewString(id.SpaceID))
@@ -226,7 +226,7 @@ func (s *dsObjectStore) FtQueueMarkAsIndexed(ids []domain.FullID, ftIndexSeq uin
 }
 
 func (s *dsObjectStore) GetFullTextState() (int, error) {
-	doc, err := s.indexerChecksums.FindId(s.componentCtx, ftStateKey)
+	doc, err := s.indexerChecksums.FindId(s.componentCtx, ftSeqKey)
 	if err != nil {
 		if errors.Is(err, anystore.ErrDocNotFound) {
 			return 0, nil
