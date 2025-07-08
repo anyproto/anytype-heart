@@ -17,6 +17,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/datastore/anystoreprovider"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/ftsearch"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/anystorehelper"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/spaceindex"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/spaceresolverstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
@@ -204,6 +205,19 @@ func (s *dsObjectStore) initCollections(ctx context.Context) error {
 	fulltextQueue, err := store.Collection(ctx, "fulltext_queue")
 	if err != nil {
 		return fmt.Errorf("open fulltextQueue collection: %w", err)
+	}
+
+	indexes := []anystore.IndexInfo{
+		{
+			Fields: []string{idKey},
+		},
+		{
+			Fields: []string{spaceIdKey, ftStateKey},
+		},
+	}
+	err = anystorehelper.AddIndexes(ctx, fulltextQueue, indexes)
+	if err != nil {
+		return fmt.Errorf("add indexes to fulltextQueue collection: %w", err)
 	}
 
 	fileKeys, err := keyvaluestore.NewJson[map[string]string](store, "file_keys")
