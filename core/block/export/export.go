@@ -129,12 +129,14 @@ func (e *export) Export(ctx context.Context, req pb.RpcObjectListExportRequest) 
 
 func (e *export) ExportSingleInMemory(ctx context.Context, spaceId string, objectId string, format model.ExportFormat) (res string, err error) {
 	req := pb.RpcObjectListExportRequest{
-		SpaceId:         spaceId,
-		ObjectIds:       []string{objectId},
-		IncludeFiles:    true,
-		Format:          format,
-		IncludeNested:   true,
-		IncludeArchived: true,
+		SpaceId:           spaceId,
+		ObjectIds:         []string{objectId},
+		IncludeFiles:      false,
+		Format:            format,
+		IncludeNested:     true,
+		IncludeArchived:   true,
+		NoProgress:        true,
+		IncludeJsonSchema: false,
 	}
 
 	exportCtx := newExportContext(e, req)
@@ -253,9 +255,6 @@ func (e *exportContext) getStateFilters(id string) *state.Filters {
 
 // exportObject synchronously exports a single object and return the bytes slice
 func (e *exportContext) exportObject(ctx context.Context, objectId string) (string, error) {
-	e.reqIds = []string{objectId}
-	e.includeArchive = true
-	e.includeFiles = false
 	err := e.docsForExport(ctx)
 	if err != nil {
 		return "", err
@@ -296,7 +295,7 @@ func (e *exportContext) exportObject(ctx context.Context, objectId string) (stri
 		return string(v), nil
 	}
 
-	return "", fmt.Errorf("failed to find data in writer")
+	return "", nil
 }
 
 func (e *exportContext) exportObjects(ctx context.Context, queue process.Queue) (string, int, error) {
@@ -1166,7 +1165,7 @@ func (e *exportContext) writeDoc(ctx context.Context, wr writer, docId string, d
 			if e.includeJsonSchema {
 				conv = md.NewMDConverterWithResolver(st, wr.Namer(), true, true, resolver)
 			} else {
-				conv = md.NewMDConverterWithResolver(st, wr.Namer(), true, false, resolver)
+				conv = md.NewMDConverterWithResolver(st, wr.Namer(), false, false, resolver)
 			}
 		case model.Export_Protobuf:
 			conv = pbc.NewConverter(st, e.isJson)
