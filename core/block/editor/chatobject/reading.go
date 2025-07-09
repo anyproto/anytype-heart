@@ -197,3 +197,30 @@ func (h *readStoreTreeHook) AfterDiffManagersInit(ctx context.Context) error {
 	}
 	return nil
 }
+
+func (s *storeObject) setMessagesSyncStatus(changeIds []string) error {
+	if len(changeIds) == 0 {
+		return nil
+	}
+
+	txn, err := s.repository.WriteTx(s.componentCtx)
+	if err != nil {
+		return fmt.Errorf("start write tx: %w", err)
+	}
+	defer txn.Rollback()
+
+	idsModified := s.repository.SetSyncedFlag(txn.Context(), s.Id(), changeIds, true)
+
+	if len(idsModified) > 0 {
+		err = txn.Commit()
+		if err != nil {
+			return fmt.Errorf("commit: %w", err)
+		}
+
+		s.subscription.Lock()
+		defer s.subscription.Unlock()
+		s.subscription.UpdateSyncStatus(idsModified, true)
+		s.subscription.Flush()
+	}
+	return nil
+}
