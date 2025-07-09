@@ -129,14 +129,14 @@ func (e *export) Export(ctx context.Context, req pb.RpcObjectListExportRequest) 
 
 func (e *export) ExportSingleInMemory(ctx context.Context, spaceId string, objectId string, format model.ExportFormat) (res string, err error) {
 	req := pb.RpcObjectListExportRequest{
-		SpaceId:           spaceId,
-		ObjectIds:         []string{objectId},
-		IncludeFiles:      false,
-		Format:            format,
-		IncludeNested:     true,
-		IncludeArchived:   true,
-		NoProgress:        true,
-		IncludeJsonSchema: false,
+		SpaceId:                      spaceId,
+		ObjectIds:                    []string{objectId},
+		IncludeFiles:                 false,
+		Format:                       format,
+		IncludeNested:                true,
+		IncludeArchived:              true,
+		NoProgress:                   true,
+		MdIncludePropertiesAndSchema: false,
 	}
 
 	exportCtx := newExportContext(e, req)
@@ -176,48 +176,48 @@ func (d Docs) transformToDetailsMap() map[string]*domain.Details {
 }
 
 type exportContext struct {
-	spaceId           string
-	docs              Docs
-	includeArchive    bool
-	includeNested     bool
-	includeFiles      bool
-	format            model.ExportFormat
-	isJson            bool
-	reqIds            []string
-	zip               bool
-	path              string
-	linkStateFilters  *state.Filters
-	isLinkProcess     bool
-	includeBackLinks  bool
-	includeSpace      bool
-	includeJsonSchema bool
-	relations         map[string]struct{}
-	setOfList         map[string]struct{}
-	objectTypes       map[string]struct{}
-	gatewayUrl        string
+	spaceId                      string
+	docs                         Docs
+	includeArchive               bool
+	includeNested                bool
+	includeFiles                 bool
+	format                       model.ExportFormat
+	isJson                       bool
+	reqIds                       []string
+	zip                          bool
+	path                         string
+	linkStateFilters             *state.Filters
+	isLinkProcess                bool
+	includeBackLinks             bool
+	includeSpace                 bool
+	mdIncludePropertiesAndSchema bool
+	relations                    map[string]struct{}
+	setOfList                    map[string]struct{}
+	objectTypes                  map[string]struct{}
+	gatewayUrl                   string
 	*export
 }
 
 func newExportContext(e *export, req pb.RpcObjectListExportRequest) *exportContext {
 	ec := &exportContext{
-		path:              req.Path,
-		spaceId:           req.SpaceId,
-		docs:              map[string]*Doc{},
-		includeArchive:    req.IncludeArchived,
-		includeNested:     req.IncludeNested,
-		includeFiles:      req.IncludeFiles,
-		format:            req.Format,
-		isJson:            req.IsJson,
-		reqIds:            req.ObjectIds,
-		zip:               req.Zip,
-		linkStateFilters:  pbFiltersToState(req.LinksStateFilters),
-		includeBackLinks:  req.IncludeBacklinks,
-		includeSpace:      req.IncludeSpace,
-		includeJsonSchema: req.IncludeJsonSchema,
-		setOfList:         make(map[string]struct{}),
-		objectTypes:       make(map[string]struct{}),
-		relations:         make(map[string]struct{}),
-		export:            e,
+		path:                         req.Path,
+		spaceId:                      req.SpaceId,
+		docs:                         map[string]*Doc{},
+		includeArchive:               req.IncludeArchived,
+		includeNested:                req.IncludeNested,
+		includeFiles:                 req.IncludeFiles,
+		format:                       req.Format,
+		isJson:                       req.IsJson,
+		reqIds:                       req.ObjectIds,
+		zip:                          req.Zip,
+		linkStateFilters:             pbFiltersToState(req.LinksStateFilters),
+		includeBackLinks:             req.IncludeBacklinks,
+		includeSpace:                 req.IncludeSpace,
+		mdIncludePropertiesAndSchema: req.MdIncludePropertiesAndSchema,
+		setOfList:                    make(map[string]struct{}),
+		objectTypes:                  make(map[string]struct{}),
+		relations:                    make(map[string]struct{}),
+		export:                       e,
 	}
 	if e.gatewayService != nil {
 		ec.gatewayUrl = "http://" + e.gatewayService.Addr()
@@ -1162,7 +1162,7 @@ func (e *exportContext) writeDoc(ctx context.Context, wr writer, docId string, d
 			// Create a lazy object resolver for markdown export
 			resolver := newLazyObjectResolver(e.objectStore, e.spaceId)
 
-			if e.includeJsonSchema {
+			if e.mdIncludePropertiesAndSchema {
 				conv = md.NewMDConverterWithResolver(st, wr.Namer(), true, true, resolver)
 			} else {
 				conv = md.NewMDConverterWithResolver(st, wr.Namer(), false, false, resolver)
@@ -1430,7 +1430,7 @@ func pbFiltersToState(filters *pb.RpcObjectListExportStateFilters) *state.Filter
 
 // generateAllSchemas generates JSON schemas for all object types found in the export
 func (e *exportContext) postProcess(ctx context.Context, wr writer) error {
-	if e.format != model.Export_Markdown || !e.includeJsonSchema {
+	if e.format != model.Export_Markdown || !e.mdIncludePropertiesAndSchema {
 		// for now only needed for MD
 		return nil
 	}
