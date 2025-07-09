@@ -514,7 +514,7 @@ func (h *MD) render(buf writer, in *renderState, b *model.Block) {
 	case *model.BlockContentOfLink:
 		h.renderLink(buf, in, b)
 	case *model.BlockContentOfLatex:
-		h.renderLatex(buf, in, b)
+		h.renderEmbed(buf, in, b)
 	case *model.BlockContentOfTable:
 		h.renderTable(buf, in, b)
 	default:
@@ -683,11 +683,20 @@ func (h *MD) renderLink(buf writer, in *renderState, b *model.Block) {
 	}
 }
 
-func (h *MD) renderLatex(buf writer, in *renderState, b *model.Block) {
+func (h *MD) renderEmbed(buf writer, in *renderState, b *model.Block) {
 	l := b.GetLatex()
 	if l != nil {
 		buf.WriteString(in.indent)
-		fmt.Fprintf(buf, "\n$$\n%s\n$$\n", l.Text)
+		switch l.Processor {
+		case model.BlockContentLatex_Latex:
+			fmt.Fprintf(buf, "\n$$\n%s\n$$\n", l.Text)
+		case model.BlockContentLatex_Mermaid, model.BlockContentLatex_Chart, model.BlockContentLatex_Kroki, model.BlockContentLatex_Graphviz:
+			buf.WriteString("```" + strings.ToLower(l.Processor.String()) + "\n")
+			buf.WriteString(strings.ReplaceAll(l.Text, "```", "\\`\\`\\`"))
+			buf.WriteString("\n```\n")
+		default:
+			buf.WriteString("![" + strings.ToLower(l.Processor.String()) + "](" + l.Processor.String() + ")\n")
+		}
 	}
 }
 
