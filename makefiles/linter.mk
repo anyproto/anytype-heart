@@ -1,6 +1,6 @@
 install-linter:
 	@go install github.com/daixiang0/gci@latest
-	@go install github.com/golangci/golangci-lint/cmd/golangci-lint@$(GOLANGCI_LINT_VERSION)
+	@go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@$(GOLANGCI_LINT_VERSION)
 
 run-linter:
 ifdef GOLANGCI_LINT_BRANCH
