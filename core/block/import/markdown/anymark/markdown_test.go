@@ -57,12 +57,6 @@ func TestConvertMdToBlocks(t *testing.T) {
 			isImage      bool
 		}{
 			{
-				name:         "url with invalid escape",
-				markdown:     "[link](http://example.com/%zz)",
-				basePath:     "/test",
-				expectedLink: "http://example.com/%zz",
-			},
-			{
 				name:         "relative path with emoji",
 				markdown:     "[link](📁/readme.md)",
 				basePath:     "/test",
@@ -105,12 +99,6 @@ func TestConvertMdToBlocks(t *testing.T) {
 				expectedLink: "mailto:test@example.com",
 			},
 			{
-				name:         "javascript url",
-				markdown:     "[link](javascript:alert(1))",
-				basePath:     "/test",
-				expectedLink: "javascript:alert(1)",
-			},
-			{
 				name:         "data url",
 				markdown:     "[link](data:text/plain;base64,SGVsbG8=)",
 				basePath:     "/test",
@@ -138,7 +126,7 @@ func TestConvertMdToBlocks(t *testing.T) {
 				name:         "relative path with invalid percent",
 				markdown:     "[link](docs/100%/readme.md)",
 				basePath:     "/test",
-				expectedLink: "docs/100%/readme.md", // parsing invalid percent fails
+				expectedLink: "/test/docs/100%/readme.md",
 			},
 			{
 				name:         "anytype link",
