@@ -14,5 +14,5 @@ func BuildStateFromAST(root *blockbuilder.Block) *state.State {
 		},
 	}).(*state.State)
 	state.ApplyState("", st, true)
-	return st.NewState()
+	return st
 }

@@ -3,6 +3,7 @@
 package mock_techspace
 
 import (
+	app "github.com/anyproto/any-sync/app"
 	domain "github.com/anyproto/anytype-heart/core/domain"
 	coresmartblock "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 
@@ -44,6 +45,39 @@ type MockAccountObject_Expecter struct {
 
 func (_m *MockAccountObject) EXPECT() *MockAccountObject_Expecter {
 	return &MockAccountObject_Expecter{mock: &_m.Mock}
+}
+
+// AddComponent provides a mock function with given fields: c
+func (_m *MockAccountObject) AddComponent(c domain.EditorComponent) {
+	_m.Called(c)
+}
+
+// MockAccountObject_AddComponent_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'AddComponent'
+type MockAccountObject_AddComponent_Call struct {
+	*mock.Call
+}
+
+// AddComponent is a helper method to define mock.On call
+//   - c domain.EditorComponent
+func (_e *MockAccountObject_Expecter) AddComponent(c interface{}) *MockAccountObject_AddComponent_Call {
+	return &MockAccountObject_AddComponent_Call{Call: _e.mock.On("AddComponent", c)}
+}
+
+func (_c *MockAccountObject_AddComponent_Call) Run(run func(c domain.EditorComponent)) *MockAccountObject_AddComponent_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(domain.EditorComponent))
+	})
+	return _c
+}
+
+func (_c *MockAccountObject_AddComponent_Call) Return() *MockAccountObject_AddComponent_Call {
+	_c.Call.Return()
+	return _c
+}
+
+func (_c *MockAccountObject_AddComponent_Call) RunAndReturn(run func(domain.EditorComponent)) *MockAccountObject_AddComponent_Call {
+	_c.Call.Return(run)
+	return _c
 }
 
 // AddHook provides a mock function with given fields: f, events
@@ -523,6 +557,53 @@ func (_c *MockAccountObject_CombinedDetails_Call) Return(_a0 *domain.Details) *M
 }
 
 func (_c *MockAccountObject_CombinedDetails_Call) RunAndReturn(run func() *domain.Details) *MockAccountObject_CombinedDetails_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// Components provides a mock function with given fields:
+func (_m *MockAccountObject) Components() []domain.EditorComponent {
+	ret := _m.Called()
+
+	if len(ret) == 0 {
+		panic("no return value specified for Components")
+	}
+
+	var r0 []domain.EditorComponent
+	if rf, ok := ret.Get(0).(func() []domain.EditorComponent); ok {
+		r0 = rf()
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]domain.EditorComponent)
+		}
+	}
+
+	return r0
+}
+
+// MockAccountObject_Components_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Components'
+type MockAccountObject_Components_Call struct {
+	*mock.Call
+}
+
+// Components is a helper method to define mock.On call
+func (_e *MockAccountObject_Expecter) Components() *MockAccountObject_Components_Call {
+	return &MockAccountObject_Components_Call{Call: _e.mock.On("Components")}
+}
+
+func (_c *MockAccountObject_Components_Call) Run(run func()) *MockAccountObject_Components_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *MockAccountObject_Components_Call) Return(_a0 []domain.EditorComponent) *MockAccountObject_Components_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockAccountObject_Components_Call) RunAndReturn(run func() []domain.EditorComponent) *MockAccountObject_Components_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -1013,6 +1094,52 @@ func (_c *MockAccountObject_Init_Call) Return(err error) *MockAccountObject_Init
 }
 
 func (_c *MockAccountObject_Init_Call) RunAndReturn(run func(*smartblock.InitContext) error) *MockAccountObject_Init_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// InitComponents provides a mock function with given fields: a
+func (_m *MockAccountObject) InitComponents(a *app.App) error {
+	ret := _m.Called(a)
+
+	if len(ret) == 0 {
+		panic("no return value specified for InitComponents")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(*app.App) error); ok {
+		r0 = rf(a)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// MockAccountObject_InitComponents_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'InitComponents'
+type MockAccountObject_InitComponents_Call struct {
+	*mock.Call
+}
+
+// InitComponents is a helper method to define mock.On call
+//   - a *app.App
+func (_e *MockAccountObject_Expecter) InitComponents(a interface{}) *MockAccountObject_InitComponents_Call {
+	return &MockAccountObject_InitComponents_Call{Call: _e.mock.On("InitComponents", a)}
+}
+
+func (_c *MockAccountObject_InitComponents_Call) Run(run func(a *app.App)) *MockAccountObject_InitComponents_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(*app.App))
+	})
+	return _c
+}
+
+func (_c *MockAccountObject_InitComponents_Call) Return(_a0 error) *MockAccountObject_InitComponents_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockAccountObject_InitComponents_Call) RunAndReturn(run func(*app.App) error) *MockAccountObject_InitComponents_Call {
 	_c.Call.Return(run)
 	return _c
 }

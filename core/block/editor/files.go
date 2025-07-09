@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/anyproto/any-sync/app"
+
 	"github.com/anyproto/anytype-heart/core/block/editor/basic"
 	fileobject2 "github.com/anyproto/anytype-heart/core/block/editor/fileobject"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
@@ -37,7 +39,6 @@ func (f *ObjectFactory) newFile(spaceId string, sb smartblock.SmartBlock) *File 
 		ChangeReceiver:    sb.(source.ChangeReceiver),
 		FileObject:        fileobject2.NewFileObject(sb, f.fileService),
 		AllOperations:     basicComponent,
-		Text:              stext.NewText(sb, store, f.eventSender),
 		fileObjectService: f.fileObjectService,
 		reconciler:        f.fileReconciler,
 		accountService:    f.accountService,
@@ -50,11 +51,20 @@ type File struct {
 	fileobject2.FileObject
 	source.ChangeReceiver
 	basic.AllOperations
-	stext.Text
 	fileObjectService fileobject.Service
 	reconciler        reconciler.Reconciler
 	fileService       files.Service
 	accountService    accountService
+}
+
+func (p *File) InitComponents(a *app.App) error {
+	text := stext.NewText(
+		p.SmartBlock,
+		a,
+	)
+
+	p.AddComponent(text)
+	return nil
 }
 
 func (f *File) CreationStateMigration(ctx *smartblock.InitContext) migration.Migration {

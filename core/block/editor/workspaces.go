@@ -1,6 +1,7 @@
 package editor
 
 import (
+	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/commonspace/object/acl/list"
 
 	"github.com/anyproto/anytype-heart/core/anytype/config"
@@ -28,7 +29,6 @@ type Workspaces struct {
 	basic.AllOperations
 	basic.IHistory
 	dataview.Dataview
-	stext.Text
 
 	spaceService spaceService
 	config       *config.Config
@@ -40,14 +40,9 @@ func (f *ObjectFactory) newWorkspace(sb smartblock.SmartBlock, store spaceindex.
 		SmartBlock:    sb,
 		AllOperations: basic.NewBasic(sb, store, f.layoutConverter, f.fileObjectService),
 		IHistory:      basic.NewHistory(sb),
-		Text: stext.NewText(
-			sb,
-			store,
-			f.eventSender,
-		),
-		Dataview:     dataview.NewDataview(sb, store),
-		spaceService: f.spaceService,
-		config:       f.config,
+		Dataview:      dataview.NewDataview(sb, store),
+		spaceService:  f.spaceService,
+		config:        f.config,
 	}
 	w.migrator = &subObjectsMigration{
 		workspace: w,
@@ -65,6 +60,16 @@ func (w *Workspaces) Init(ctx *smartblock.InitContext) (err error) {
 	w.migrator.migrateSubObjects(ctx.State)
 	w.onWorkspaceChanged(ctx.State)
 	w.AddHook(w.onApply, smartblock.HookAfterApply)
+	return nil
+}
+
+func (p *Workspaces) InitComponents(a *app.App) error {
+	text := stext.NewText(
+		p.SmartBlock,
+		a,
+	)
+
+	p.AddComponent(text)
 	return nil
 }
 
