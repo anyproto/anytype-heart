@@ -695,7 +695,16 @@ func (h *MD) renderEmbed(buf writer, in *renderState, b *model.Block) {
 			buf.WriteString(strings.ReplaceAll(l.Text, "```", "\\`\\`\\`"))
 			buf.WriteString("\n```\n")
 		default:
-			buf.WriteString("![" + strings.ToLower(l.Processor.String()) + "](" + l.Processor.String() + ")\n")
+			// For unknown processors, check if text is a valid URL
+			if parsedURI, err := uri.ParseURI(l.Text); err == nil && parsedURI.Host != "" {
+				// Valid URL - use hostname as alt text
+				fmt.Fprintf(buf, "![%s](%s)\n", parsedURI.Host, l.Text)
+			} else {
+				// Not a valid URL - render as generic code block
+				buf.WriteString("```\n")
+				buf.WriteString(strings.ReplaceAll(l.Text, "```", "\\`\\`\\`"))
+				buf.WriteString("\n```\n")
+			}
 		}
 	}
 }
