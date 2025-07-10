@@ -515,6 +515,40 @@ func (_c *MockManager_UpdateReactions_Call) RunAndReturn(run func(*chatmodel.Mes
 	return _c
 }
 
+// UpdateSyncStatus provides a mock function with given fields: messageIds, isSynced
+func (_m *MockManager) UpdateSyncStatus(messageIds []string, isSynced bool) {
+	_m.Called(messageIds, isSynced)
+}
+
+// MockManager_UpdateSyncStatus_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'UpdateSyncStatus'
+type MockManager_UpdateSyncStatus_Call struct {
+	*mock.Call
+}
+
+// UpdateSyncStatus is a helper method to define mock.On call
+//   - messageIds []string
+//   - isSynced bool
+func (_e *MockManager_Expecter) UpdateSyncStatus(messageIds interface{}, isSynced interface{}) *MockManager_UpdateSyncStatus_Call {
+	return &MockManager_UpdateSyncStatus_Call{Call: _e.mock.On("UpdateSyncStatus", messageIds, isSynced)}
+}
+
+func (_c *MockManager_UpdateSyncStatus_Call) Run(run func(messageIds []string, isSynced bool)) *MockManager_UpdateSyncStatus_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].([]string), args[1].(bool))
+	})
+	return _c
+}
+
+func (_c *MockManager_UpdateSyncStatus_Call) Return() *MockManager_UpdateSyncStatus_Call {
+	_c.Call.Return()
+	return _c
+}
+
+func (_c *MockManager_UpdateSyncStatus_Call) RunAndReturn(run func([]string, bool)) *MockManager_UpdateSyncStatus_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // NewMockManager creates a new instance of MockManager. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.
 // The first argument is typically a *testing.T value.
 func NewMockManager(t interface {

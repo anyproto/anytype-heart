@@ -120,6 +120,7 @@ type Repository interface {
 	HasMyReaction(ctx context.Context, myIdentity string, messageId string, emoji string) (bool, error)
 	GetMessagesByIds(ctx context.Context, messageIds []string) ([]*chatmodel.Message, error)
 	GetLastMessages(ctx context.Context, limit uint) ([]*chatmodel.Message, error)
+	SetSyncedFlag(ctx context.Context, chatObjectId string, msgIds []string, value bool) []string
 }
 
 type repository struct {
@@ -352,6 +353,36 @@ func (r *repository) SetReadFlag(ctx context.Context, chatObjectId string, msgId
 		}
 		if err != nil {
 			log.Error("markReadMessages: update message", zap.Error(err), zap.String("changeId", id), zap.String("chatObjectId", chatObjectId))
+			continue
+		}
+		if res.Modified > 0 {
+			idsModified = append(idsModified, id)
+		}
+	}
+	return idsModified
+}
+
+func (r *repository) SetSyncedFlag(ctx context.Context, chatObjectId string, msgIds []string, value bool) []string {
+	var idsModified []string
+	for _, id := range msgIds {
+		if id == chatObjectId {
+			// skip tree root
+			continue
+		}
+		res, err := r.collection.UpdateId(ctx, id, query.ModifyFunc(func(a *anyenc.Arena, v *anyenc.Value) (result *anyenc.Value, modified bool, err error) {
+			oldValue := v.GetBool(chatmodel.SyncedKey)
+			if oldValue != value {
+				v.Set(chatmodel.SyncedKey, arenaNewBool(a, value))
+				return v, true, nil
+			}
+			return v, false, nil
+		}))
+		// Not all changes are messages, skip them
+		if errors.Is(err, anystore.ErrDocNotFound) {
+			continue
+		}
+		if err != nil {
+			log.Error("set synced flag: update message", zap.Error(err), zap.String("changeId", id), zap.String("chatObjectId", chatObjectId))
 			continue
 		}
 		if res.Modified > 0 {
