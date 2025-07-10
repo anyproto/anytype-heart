@@ -276,6 +276,9 @@ func (s *storeObject) AddMessage(ctx context.Context, sessionCtx session.Context
 
 	obj := arena.NewObject()
 	message.MarshalAnyenc(obj, arena)
+	obj.Del(chatmodel.ReadKey)
+	obj.Del(chatmodel.MentionReadKey)
+	obj.Del(chatmodel.SyncedKey)
 
 	builder := storestate.Builder{}
 	err := builder.Create(CollectionName, storestate.IdFromChange, obj)
