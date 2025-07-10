@@ -14,7 +14,6 @@ import (
 	"strings"
 
 	"github.com/dsoprea/go-exif/v3"
-	jpegstructure "github.com/dsoprea/go-jpeg-image-structure/v2"
 	"github.com/kovidgoyal/imaging"
 
 	"github.com/anyproto/anytype-heart/pkg/lib/mill/ico"
@@ -145,6 +144,20 @@ func (m *ImageResize) resizeJPEG(imgConfig *image.Config, r io.ReadSeeker) (*Res
 	if err != nil {
 		return nil, fmt.Errorf("invalid width: " + m.Opts.Width)
 	}
+
+	// Handle original
+	if width == 0 {
+		// here is an optimization
+		// lets return the original picture in case it has not been resized or normalized
+		return &Result{
+			File: noopCloser(r),
+			Meta: map[string]interface{}{
+				"width":  imgConfig.Width,
+				"height": imgConfig.Height,
+			},
+		}, nil
+	}
+
 	quality, err := strconv.Atoi(m.Opts.Quality)
 	if err != nil {
 		return nil, fmt.Errorf("invalid quality: " + m.Opts.Quality)
@@ -189,23 +202,6 @@ func (m *ImageResize) resizeJPEG(imgConfig *image.Config, r io.ReadSeeker) (*Res
 	if imgConfig.Width <= width || width == 0 {
 		// we will not do the upscale
 		width, height = imgConfig.Width, imgConfig.Height
-	}
-
-	if orientation <= 1 && width == imgConfig.Width {
-		var r2 io.ReadSeekCloser
-		r2, err = patchReaderRemoveExif(r)
-		if err != nil {
-			return nil, err
-		}
-		// here is an optimization
-		// lets return the original picture in case it has not been resized or normalized
-		return &Result{
-			File: noopCloser(r2),
-			Meta: map[string]interface{}{
-				"width":  imgConfig.Width,
-				"height": imgConfig.Height,
-			},
-		}, nil
 	}
 
 	if img == nil {
@@ -453,35 +449,4 @@ func imageToPaletted(img image.Image) *image.Paletted {
 	pm := image.NewPaletted(b, palette.Plan9)
 	draw.FloydSteinberg.Draw(pm, b, img, image.ZP)
 	return pm
-}
-
-func patchReaderRemoveExif(r io.ReadSeeker) (io.ReadSeekCloser, error) {
-	jmp := jpegstructure.NewJpegMediaParser()
-	size, err := r.Seek(0, io.SeekEnd)
-	if err != nil {
-		return nil, err
-	}
-	_, _ = r.Seek(0, io.SeekStart)
-
-	buff := pool.Get()
-	defer func() {
-		_ = buff.Close()
-	}()
-	intfc, err := jmp.Parse(r, int(size))
-	if err != nil {
-		return nil, fmt.Errorf("failed to open file to read exif: %w", err)
-	}
-	sl := intfc.(*jpegstructure.SegmentList)
-
-	_, err = sl.DropExif()
-	if err != nil {
-		return nil, err
-	}
-
-	err = sl.Write(buff)
-	if err != nil {
-		return nil, err
-	}
-
-	return buff.GetReadSeekCloser()
 }

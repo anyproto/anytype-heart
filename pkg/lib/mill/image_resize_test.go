@@ -13,6 +13,7 @@ import (
 	"github.com/davecgh/go-spew/spew"
 	exif2 "github.com/dsoprea/go-exif/v3"
 	"github.com/rwcarlsen/goexif/exif"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/anyproto/anytype-heart/pkg/lib/mill/testdata"
@@ -138,8 +139,8 @@ func TestImageResize_Mill_ShouldNotBeReencoded(t *testing.T) {
 
 		d, err := exif2.SearchAndExtractExif(b)
 		require.Error(t, exif2.ErrNoExif, err)
-		require.Nil(t, d)
-		require.Equal(t, origImgDump, spew.Sdump(*(img.(*image.YCbCr))))
+		assert.Nil(t, d)
+		assert.Equal(t, origImgDump, spew.Sdump(*(img.(*image.YCbCr))))
 	}
 }
 
@@ -175,22 +176,4 @@ func TestImageResize_Mill(t *testing.T) {
 		err = res.File.Close()
 		require.NoError(t, err)
 	}
-}
-
-func Test_patchReaderRemoveExif(t *testing.T) {
-	f, err := os.Open(testdata.Images[0].Path)
-	s, _ := f.Stat()
-	fmt.Println(s.Size())
-	require.NoError(t, err)
-	_, err = getExifData(f)
-	require.NoError(t, err)
-	f.Seek(0, io.SeekStart)
-
-	clean, err := patchReaderRemoveExif(f)
-	require.NoError(t, err)
-
-	b, err := ioutil.ReadAll(clean)
-	require.NoError(t, err)
-	_, _, err = image.Decode(bytes.NewReader(b))
-	require.NoError(t, err)
 }
