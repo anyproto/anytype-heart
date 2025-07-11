@@ -70,13 +70,11 @@ type FTSearch interface {
 	app.ComponentRunnable
 	Index(d SearchDoc) (err error)
 	NewAutoBatcher() AutoBatcher
-	BatchIndex(ctx context.Context, docs []SearchDoc, deletedDocs []string) (err error)
 	BatchDeleteObjects(ids []string) (err error)
 	Search(spaceId string, query string) (results []*DocumentMatch, err error)
 	// NamePrefixSearch special prefix case search
 	NamePrefixSearch(spaceId string, query string) (results []*DocumentMatch, err error)
 	Iterate(objectId string, fields []string, shouldContinue func(doc *SearchDoc) bool) (err error)
-	DeleteObject(id string) error
 	DocCount() (uint64, error)
 	LastDbState() (uint64, error)
 }
@@ -86,7 +84,6 @@ type SearchDoc struct {
 	SpaceId string
 	Title   string
 	Text    string
-	Deleted bool // set in case the doc is pending deletion
 }
 
 type Highlight struct {
@@ -408,49 +405,6 @@ func (f *ftSearch) convertDoc(doc SearchDoc) (*tantivy.Document, error) {
 		return nil, err
 	}
 	return document, nil
-}
-
-// BatchIndex is deprecated and should not be used.
-// use NewAutoBatcher instead.
-func (f *ftSearch) BatchIndex(ctx context.Context, docs []SearchDoc, deletedDocs []string) (err error) {
-	if len(docs) == 0 {
-		return nil
-	}
-	metrics.ObjectFTUpdatedCounter.Add(float64(len(docs)))
-	start := time.Now()
-	defer func() {
-		spentMs := time.Since(start).Milliseconds()
-		l := log.With("objects", len(docs)).With("total", time.Since(start).Milliseconds())
-		if spentMs > 1000 {
-			l.Warnf("ft index took too long")
-		} else {
-			l.Debugf("ft index done")
-		}
-	}()
-	f.mu.Lock()
-	if f.appClosingInitiated.Load() {
-		return ErrAppClosingInitiated
-	}
-	_, err = f.index.DeleteDocumentsWithOpstamp(fieldIdRaw, deletedDocs...)
-	f.mu.Unlock()
-	if err != nil {
-		return err
-	}
-	tantivyDocs := make([]*tantivy.Document, 0, len(docs))
-	for _, doc := range docs {
-		tantivyDoc, err := f.convertDoc(doc)
-		if err != nil {
-			return err
-		}
-		tantivyDocs = append(tantivyDocs, tantivyDoc)
-	}
-	f.mu.Lock()
-	defer f.mu.Unlock()
-	if f.appClosingInitiated.Load() {
-		return ErrAppClosingInitiated
-	}
-	_, err = f.index.AddAndConsumeDocumentsWithOpstamp(tantivyDocs...)
-	return err
 }
 
 func (f *ftSearch) NamePrefixSearch(spaceId, query string) ([]*DocumentMatch, error) {
