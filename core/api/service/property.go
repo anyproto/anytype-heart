@@ -106,21 +106,23 @@ var RelationFormatToPropertyFormat = map[model.RelationFormat]apimodel.PropertyF
 }
 
 // ListProperties returns a list of properties for a specific space.
-func (s *Service) ListProperties(ctx context.Context, spaceId string, offset int, limit int) (properties []apimodel.Property, total int, hasMore bool, err error) {
+func (s *Service) ListProperties(ctx context.Context, spaceId string, additionalFilters []*model.BlockContentDataviewFilter, offset int, limit int) (properties []apimodel.Property, total int, hasMore bool, err error) {
+	filters := append([]*model.BlockContentDataviewFilter{
+		{
+			RelationKey: bundle.RelationKeyResolvedLayout.String(),
+			Condition:   model.BlockContentDataviewFilter_Equal,
+			Value:       pbtypes.Int64(int64(model.ObjectType_relation)),
+		},
+		{
+			RelationKey: bundle.RelationKeyIsHidden.String(),
+			Condition:   model.BlockContentDataviewFilter_NotEqual,
+			Value:       pbtypes.Bool(true),
+		},
+	}, additionalFilters...)
+
 	resp := s.mw.ObjectSearch(ctx, &pb.RpcObjectSearchRequest{
 		SpaceId: spaceId,
-		Filters: []*model.BlockContentDataviewFilter{
-			{
-				RelationKey: bundle.RelationKeyResolvedLayout.String(),
-				Condition:   model.BlockContentDataviewFilter_Equal,
-				Value:       pbtypes.Int64(int64(model.ObjectType_relation)),
-			},
-			{
-				RelationKey: bundle.RelationKeyIsHidden.String(),
-				Condition:   model.BlockContentDataviewFilter_NotEqual,
-				Value:       pbtypes.Bool(true),
-			},
-		},
+		Filters: filters,
 		Sorts: []*model.BlockContentDataviewSort{
 			{
 				RelationKey: bundle.RelationKeyName.String(),
@@ -220,6 +222,13 @@ func (s *Service) CreateProperty(ctx context.Context, spaceId string, request ap
 		return apimodel.Property{}, ErrFailedCreateProperty
 	}
 
+	if len(request.Tags) > 0 && (request.Format == apimodel.PropertyFormatSelect || request.Format == apimodel.PropertyFormatMultiSelect) {
+		err := s.createTagsForProperty(ctx, spaceId, resp.ObjectId, request.Tags)
+		if err != nil {
+			return apimodel.Property{}, fmt.Errorf("property created but tag creation failed: %w", err)
+		}
+	}
+
 	return s.GetProperty(ctx, spaceId, resp.ObjectId)
 }
 
@@ -273,10 +282,6 @@ func (s *Service) UpdateProperty(ctx context.Context, spaceId string, propertyId
 	return s.GetProperty(ctx, spaceId, propertyId)
 }
 
-func (s *Service) sanitizedString(str string) string {
-	return strings.TrimSpace(str)
-}
-
 // DeleteProperty deletes a property in a specific space.
 func (s *Service) DeleteProperty(ctx context.Context, spaceId string, propertyId string) (apimodel.Property, error) {
 	property, err := s.GetProperty(ctx, spaceId, propertyId)
@@ -294,6 +299,22 @@ func (s *Service) DeleteProperty(ctx context.Context, spaceId string, propertyId
 	}
 
 	return property, nil
+}
+
+func (s *Service) sanitizedString(str string) string {
+	return strings.TrimSpace(str)
+}
+
+// createTagsForProperty creates tags for a newly created property
+func (s *Service) createTagsForProperty(ctx context.Context, spaceId string, propertyId string, tagsToCreate []apimodel.CreateTagRequest) error {
+	for _, tagRequest := range tagsToCreate {
+		_, err := s.CreateTag(ctx, spaceId, propertyId, tagRequest)
+		if err != nil {
+			return fmt.Errorf("failed to create tag %q: %w", tagRequest.Name, err)
+		}
+	}
+
+	return nil
 }
 
 // processProperties builds detail fields for the given property entries, applying sanitization and validation for each.
@@ -377,7 +398,7 @@ func (s *Service) processProperties(ctx context.Context, spaceId string, entries
 			continue
 		}
 		if slices.Contains(bundle.LocalAndDerivedRelationKeys, domain.RelationKey(key)) {
-			return nil, util.ErrBadInput("property '" + key + "' cannot be set directly")
+			return nil, util.ErrBadInput("property '" + key + "' cannot be set directly as it is a reserved system property")
 		}
 		prop, ok := propertyMap[rk]
 		if !ok {
@@ -442,11 +463,13 @@ func (s *Service) sanitizeAndValidatePropertyValue(spaceId string, key string, f
 			return nil, util.ErrBadInput("property '" + key + "' must be a string (date in RFC3339 format)")
 		}
 		dateStr = s.sanitizedString(dateStr)
-		t, err := time.Parse(time.RFC3339, dateStr)
-		if err != nil {
-			return nil, util.ErrBadInput("invalid date format for '" + key + "': " + dateStr)
+		layouts := []string{time.RFC3339, time.DateOnly}
+		for _, layout := range layouts {
+			if t, err := time.Parse(layout, dateStr); err == nil {
+				return t.Unix(), nil
+			}
 		}
-		return t.Unix(), nil
+		return nil, util.ErrBadInput("invalid date format for '" + key + "': " + dateStr)
 	case apimodel.PropertyFormatCheckbox:
 		b, ok := value.(bool)
 		if !ok {
