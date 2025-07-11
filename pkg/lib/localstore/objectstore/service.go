@@ -209,7 +209,7 @@ func (s *dsObjectStore) initCollections(ctx context.Context) error {
 
 	indexes := []anystore.IndexInfo{
 		{
-			Fields: []string{spaceIdKey, ftSeqKey},
+			Fields: []string{spaceIdKey, ftSequenceKey},
 		},
 	}
 	err = anystorehelper.AddIndexes(ctx, fulltextQueue, indexes)
@@ -389,7 +389,7 @@ func (s *dsObjectStore) EnqueueAllForFulltextIndexing(ctx context.Context) error
 			obj := arena.NewObject()
 			obj.Set(idKey, arena.NewString(id))
 			obj.Set(spaceIdKey, arena.NewString(spaceId))
-			obj.Set(ftSeqKey, arena.NewBinary(emptyBuffer))
+			obj.Set(ftSequenceKey, arena.NewBinary(emptyBuffer))
 			err := s.fulltextQueue.UpsertOne(txn.Context(), obj)
 			if err != nil {
 				if loggedErrors < maxErrorsToLog {

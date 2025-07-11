@@ -19,7 +19,7 @@ import (
 var idKey = bundle.RelationKeyId.String()
 var spaceIdKey = bundle.RelationKeySpaceId.String()
 
-const ftSeqKey = "seq" // used to store the ftIndexSeq of the fulltext indexer in collection
+const ftSequenceKey = "seq" // used to store the opstamp of the fulltext commit for specific object
 
 var emptyBuffer = make([]byte, 8)
 
@@ -35,7 +35,7 @@ func (s *dsObjectStore) FtQueueReconcileWithSeq(ctx context.Context, ftIndexSeq 
 	}()
 
 	res, err := s.fulltextQueue.Find(ftQueueFilterSeq(ftIndexSeq, query.CompOpGt)).Update(txn.Context(), query.ModifyFunc(func(arena *anyenc.Arena, val *anyenc.Value) (*anyenc.Value, bool, error) {
-		val.Set(ftSeqKey, arena.NewBinary(emptyBuffer))
+		val.Set(ftSequenceKey, arena.NewBinary(emptyBuffer))
 		return val, true, nil
 	}))
 	if err != nil {
@@ -72,7 +72,7 @@ func (s *dsObjectStore) AddToIndexQueue(ctx context.Context, ids ...domain.FullI
 	for _, id := range ids {
 		obj.Set(idKey, arena.NewString(id.ObjectID))
 		obj.Set(spaceIdKey, arena.NewString(id.SpaceID))
-		obj.Set(ftSeqKey, arena.NewBinary(emptyBuffer))
+		obj.Set(ftSequenceKey, arena.NewBinary(emptyBuffer))
 		err = s.fulltextQueue.UpsertOne(txn.Context(), obj)
 		if err != nil {
 			return errors.Join(txn.Rollback(), fmt.Errorf("upsert: %w", err))
@@ -161,7 +161,7 @@ func ftQueueFilterSeq(seq uint64, comp query.CompOp) query.Filter {
 	binary.BigEndian.PutUint64(buf, seq)
 
 	return query.Key{
-		Path:   []string{ftSeqKey},
+		Path:   []string{ftSequenceKey},
 		Filter: query.NewCompValue(comp, arena.NewBinary(buf)),
 	}
 }
@@ -185,7 +185,7 @@ func (s *dsObjectStore) FtQueueMarkAsIndexed(ids []domain.FullID, ftIndexSeq uin
 	obj := arena.NewObject()
 	buf := make([]byte, 8)
 	binary.BigEndian.PutUint64(buf, ftIndexSeq)
-	obj.Set(ftSeqKey, arena.NewBinary(buf))
+	obj.Set(ftSequenceKey, arena.NewBinary(buf))
 	for _, id := range ids {
 		obj.Set(idKey, arena.NewString(id.ObjectID))
 		obj.Set(spaceIdKey, arena.NewString(id.SpaceID))
@@ -209,21 +209,6 @@ func (s *dsObjectStore) FtQueueMarkAsIndexed(ids []domain.FullID, ftIndexSeq uin
 	}
 
 	return nil
-}
-
-func (s *dsObjectStore) GetFullTextState() (int, error) {
-	doc, err := s.indexerChecksums.FindId(s.componentCtx, ftSeqKey)
-	if err != nil {
-		if errors.Is(err, anystore.ErrDocNotFound) {
-			return 0, nil
-		}
-		return 0, fmt.Errorf("get fulltext state: %w", err)
-	}
-	state := doc.Value().GetInt("value")
-	if state < 0 {
-		return 0, fmt.Errorf("invalid fulltext state %d", state)
-	}
-	return state, nil
 }
 
 func (s *dsObjectStore) ClearFullTextQueue(spaceIds []string) error {
