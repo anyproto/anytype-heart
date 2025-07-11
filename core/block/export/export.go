@@ -1166,7 +1166,7 @@ func (e *exportContext) writeDoc(ctx context.Context, wr writer, docId string, d
 			if e.includeJsonSchema {
 				conv = md.NewMDConverterWithResolver(st, wr.Namer(), true, true, resolver)
 			} else {
-				conv = md.NewMDConverterWithResolver(st, wr.Namer(), true, false, resolver)
+				conv = md.NewMDConverterWithResolver(st, wr.Namer(), false, false, resolver)
 			}
 		case model.Export_Protobuf:
 			conv = pbc.NewConverter(st, e.isJson)
