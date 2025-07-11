@@ -67,6 +67,7 @@ type Service interface {
 	AddStreamable(ctx context.Context, id string, guestKey crypto.PrivKey) (err error)
 	Delete(ctx context.Context, id string) (err error)
 	TechSpaceId() string
+	SpacePersistentStatus(ctx context.Context, spaceId string) (spaceinfo.AccountStatus, error)
 	PersonalSpaceId() string
 	FirstCreatedSpaceId() string
 	TechSpace() *clientspace.TechSpace
@@ -471,6 +472,14 @@ func (s *service) AllSpaceIds() (ids []string) {
 
 func (s *service) TechSpaceId() string {
 	return s.techSpaceId
+}
+
+func (s *service) SpacePersistentStatus(ctx context.Context, spaceId string) (spaceinfo.AccountStatus, error) {
+	controller, isFound := s.spaceControllers[spaceId]
+	if !isFound {
+		return spaceinfo.AccountStatusUnknown, fmt.Errorf("controller not found")
+	}
+	return controller.GetStatus(), nil
 }
 
 func (s *service) PersonalSpaceId() string {
