@@ -37,6 +37,7 @@ var (
 
 // ConsistencyReport gathers all findings of the dry-run.
 type ConsistencyReport struct {
+	dir string // Directory that was checked
 	// Segments present in meta.json but with no files on disk.
 	MissingSegments []string
 	// <segment>.<opstamp>.del files that meta.json expects but are absent.
@@ -97,9 +98,9 @@ func Check(dir string) (ConsistencyReport, error) {
 		name := d.Name()
 
 		switch name {
-		case "INDEX_WRITER_LOCK":
+		case "INDEX_WRITER_LOCK", ".tantivy-writer.lock":
 			writerLockPresent = true
-		case "META_LOCK":
+		case "META_LOCK", ".tantivy-meta.lock":
 			metaLockPresent = true
 		}
 
@@ -163,6 +164,7 @@ func Check(dir string) (ConsistencyReport, error) {
 	// 4) Return aggregated report
 	// ---------------------------------------------------------------------
 	return ConsistencyReport{
+		dir:                         dir,
 		MissingSegments:             missingSegments,
 		MissingDelFiles:             missingDelFiles,
 		ExtraSegments:               extraSegments,
@@ -191,6 +193,37 @@ func (r *ConsistencyReport) IsOk() bool {
 		len(r.ExtraDelFiles) == 0 &&
 		!r.WriterLockPresent &&
 		!r.MetaLockPresent
+}
+
+var segmentFileExts = []string{".fast", ".fieldnorm", ".pos", ".store", ".term", ".idx"}
+
+// GCExtraFiles removes all extra segment files and .del files that are not
+// referenced in meta.json.
+// MUST be called before any write operations to the index directory.
+func (r *ConsistencyReport) GCExtraFiles() error {
+	if r.WriterLockPresent || r.MetaLockPresent {
+		return fmt.Errorf("cannot run GC when INDEX_WRITER_LOCK or META_LOCK is present")
+	}
+
+	for _, seg := range r.ExtraSegments {
+		for _, ext := range segmentFileExts {
+			segFile := filepath.Join(r.dir, seg+ext)
+			if err := os.Remove(segFile); err != nil {
+				if os.IsNotExist(err) {
+					continue // file already gone
+				}
+				return fmt.Errorf("removing segment file %s: %w", segFile, err)
+			}
+			fmt.Printf("ft: Removed extra segment file: %s\n", segFile)
+		}
+	}
+	for _, delFile := range r.ExtraDelFiles {
+		if err := os.Remove(filepath.Join(r.dir, delFile)); err != nil {
+			return fmt.Errorf("removing extra .del file %s: %w", delFile, err)
+		}
+		fmt.Printf("ft: Removed extra .del file: %s\n", delFile)
+	}
+	return nil
 }
 
 // -----------------------------------------------------------------------------

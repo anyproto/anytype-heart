@@ -295,11 +295,20 @@ func assertProperIds(t *testing.T, tmpDir string) {
 			SpaceId: fmt.Sprintf("randomspaceid%d", i),
 		})
 	}
-	assert.NoError(t, ft.BatchIndex(context.Background(), docs, nil))
+	batcher := ft.NewAutoBatcher()
+	for _, doc := range docs {
+		require.NoError(t, batcher.UpsertDoc(doc))
+	}
+	batcher.Finish()
+	count, err := ft.DocCount()
+	require.NoError(t, err)
+	require.Equal(t, 100, int(count))
 
-	assert.NoError(t, ft.DeleteObject(fmt.Sprintf("randomid%d/r/randomrel%d", 49, 149)))
+	batcher = ft.NewAutoBatcher()
+	batcher.DeleteDoc(fmt.Sprintf("randomid%d/r/randomrel%d", 49, 149))
+	batcher.Finish()
 
-	count, _ := ft.DocCount()
+	count, _ = ft.DocCount()
 	require.Equal(t, 99, int(count))
 
 	_ = ft.Close(nil)

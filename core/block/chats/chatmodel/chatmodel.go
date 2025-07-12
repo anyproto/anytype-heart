@@ -44,7 +44,6 @@ const (
 	HasMentionKey  = "hasMention"
 	StateIdKey     = "stateId"
 	OrderKey       = "_o"
-	SyncedKey      = "synced"
 )
 
 type Message struct {
@@ -203,7 +202,6 @@ func (m *Message) MarshalAnyenc(marshalTo *anyenc.Value, arena *anyenc.Arena) {
 	marshalTo.Set(HasMentionKey, arenaNewBool(arena, m.CurrentUserMentioned))
 	marshalTo.Set(StateIdKey, arena.NewString(m.StateId))
 	marshalTo.Set(ReactionsKey, reactions)
-	marshalTo.Set(SyncedKey, arenaNewBool(arena, m.Synced))
 }
 
 func arenaNewBool(a *anyenc.Arena, value bool) *anyenc.Value {
@@ -229,7 +227,6 @@ func (m *messageUnmarshaller) toModel() (*Message, error) {
 			MentionRead:      m.val.GetBool(MentionReadKey),
 			Attachments:      m.attachmentsToModel(),
 			Reactions:        m.reactionsToModel(),
-			Synced:           m.val.GetBool(SyncedKey),
 		},
 		CurrentUserMentioned: m.val.GetBool(HasMentionKey),
 	}, nil

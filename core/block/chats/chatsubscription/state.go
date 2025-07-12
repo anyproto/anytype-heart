@@ -47,8 +47,6 @@ func (s *messagesState) applyEvent(ev *pb.EventMessage) {
 		s.applyUpdateMessageReadStatus(v)
 	} else if v := ev.GetChatUpdateReactions(); v != nil {
 		s.applyUpdateReactions(v)
-	} else if v := ev.GetChatUpdateMessageSyncStatus(); v != nil {
-		s.applyUpdateMessageSyncStatus(v)
 	}
 }
 
@@ -87,14 +85,5 @@ func (s *messagesState) applyUpdateReactions(ev *pb.EventChatUpdateReactions) {
 	msg, ok := s.messages[ev.Id]
 	if ok {
 		msg.Reactions = ev.Reactions
-	}
-}
-
-func (s *messagesState) applyUpdateMessageSyncStatus(ev *pb.EventChatUpdateMessageSyncStatus) {
-	for _, id := range ev.Ids {
-		msg, ok := s.messages[id]
-		if ok {
-			msg.Synced = ev.IsSynced
-		}
 	}
 }
