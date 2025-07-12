@@ -107,7 +107,6 @@ type dsObjectStore struct {
 	objects    anystore.Collection
 	links      anystore.Collection
 	headsState anystore.Collection
-	ftState    anystore.Collection
 
 	activeViews    anystore.Collection
 	pendingDetails anystore.Collection

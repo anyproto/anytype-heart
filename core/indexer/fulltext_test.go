@@ -69,7 +69,6 @@ func NewIndexerFixture(t *testing.T) *IndexerFixture {
 	}
 
 	indxr.store = objectStore
-	indexerFx.storageService = clientStorage
 	indexerFx.storageServiceFx = clientStorage
 	indexerFx.techSpaceIdProviderFx = mock_spacesyncstatus.NewMockSpaceIdGetter(t)
 	indxr.source = sourceService
