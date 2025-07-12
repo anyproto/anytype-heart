@@ -138,7 +138,7 @@ func (f *ftIndexBatcherTantivy) UpsertDoc(searchDoc SearchDoc) error {
 	f.updateDocs = append(f.updateDocs, doc)
 
 	if len(f.updateDocs) >= docLimit {
-		_, err := f.Finish()
+		f.tantivyOpstamp, err = f.Finish()
 		if err != nil {
 			return fmt.Errorf("finish batch failed: %w", err)
 		}
@@ -153,6 +153,9 @@ func (f *ftIndexBatcherTantivy) Finish() (ftIndexSeq uint64, err error) {
 
 	opstamp, err := f.index.BatchAddAndDeleteDocumentsWithOpstamp(f.updateDocs, fieldIdRaw, f.deleteIds)
 	if err != nil {
+		if f.tantivyOpstamp > 0 {
+			log.Warnf("batch was partially commited with opstamp %d, but failed to finish: %v", f.tantivyOpstamp, err)
+		}
 		return 0, err
 	}
 	f.deleteIds = f.deleteIds[:0]

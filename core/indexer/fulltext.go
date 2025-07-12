@@ -244,12 +244,9 @@ func (i *indexer) prepareSearchDocument(ctx context.Context, id domain.FullID) (
 	details, err := i.store.SpaceIndex(id.SpaceID).GetDetails(id.ObjectID)
 	if err != nil {
 		log.With("id", id).Errorf("prepareSearchDocument: get details: %v", err)
-	} else {
-		if details.GetBool(bundle.RelationKeyIsDeleted) {
-			// object is deleted, no need to index it
-			log.With("id", id).Debugf("prepareSearchDocument: object is deleted")
-			return
-		}
+	} else if details.GetBool(bundle.RelationKeyIsDeleted) {
+		// object is deleted, no need to index it
+		return
 	}
 
 	ctx = context.WithValue(ctx, metrics.CtxKeyEntrypoint, "index_fulltext")

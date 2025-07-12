@@ -57,9 +57,6 @@ func TestReindexMarketplaceSpace(t *testing.T) {
 
 		virtualSpace := getMockSpace(indexerFx)
 
-		storage := mock_storage.NewMockClientStorage(t)
-		indexerFx.storageService = storage
-
 		// when
 		err = indexerFx.ReindexMarketplaceSpace(virtualSpace)
 

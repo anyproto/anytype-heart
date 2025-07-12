@@ -6,7 +6,6 @@ import (
 	"sync"
 
 	"github.com/anyproto/any-sync/app"
-	"github.com/anyproto/any-sync/commonspace/spacestorage"
 	"go.uber.org/zap"
 
 	"github.com/anyproto/anytype-heart/core/anytype/config"
@@ -22,7 +21,6 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space/clientspace"
-	"github.com/anyproto/anytype-heart/space/spacecore/storage"
 )
 
 const (
@@ -56,7 +54,6 @@ type indexer struct {
 	picker               cache.CachedObjectGetter
 	ftsearch             ftsearch.FTSearch
 	ftsearchLastIndexSeq uint64
-	storageService       storage.ClientStorage
 
 	runCtx          context.Context
 	runCtxCancel    context.CancelFunc
@@ -78,7 +75,6 @@ type indexer struct {
 
 func (i *indexer) Init(a *app.App) (err error) {
 	i.store = a.MustComponent(objectstore.CName).(objectstore.ObjectStore)
-	i.storageService = a.MustComponent(spacestorage.CName).(storage.ClientStorage)
 	i.source = app.MustComponent[source.Service](a)
 	i.btHash = a.MustComponent("builtintemplate").(Hasher)
 	i.ftsearch = app.MustComponent[ftsearch.FTSearch](a)
