@@ -122,21 +122,6 @@ func (s *Service) GetType(ctx context.Context, spaceId string, typeId string) (a
 
 // CreateType creates a new type in a specific space.
 func (s *Service) CreateType(ctx context.Context, spaceId string, request apimodel.CreateTypeRequest) (apimodel.Type, error) {
-	if request.Key != "" {
-		apiKey := strcase.ToSnake(s.sanitizedString(request.Key))
-		propertyMap, err := s.getPropertyMapFromStore(ctx, spaceId, true)
-		if err != nil {
-			return apimodel.Type{}, err
-		}
-		typeMap, err := s.getTypeMapFromStore(ctx, spaceId, propertyMap, true)
-		if err != nil {
-			return apimodel.Type{}, err
-		}
-		if _, exists := typeMap[apiKey]; exists {
-			return apimodel.Type{}, util.ErrBadInput(fmt.Sprintf("type key %q already exists", apiKey))
-		}
-	}
-
 	details, err := s.buildTypeDetails(ctx, spaceId, request)
 	if err != nil {
 		return apimodel.Type{}, err
@@ -306,8 +291,21 @@ func (s *Service) buildTypeDetails(ctx context.Context, spaceId string, request 
 		bundle.RelationKeyOrigin.String():            pbtypes.Int64(int64(model.ObjectOrigin_api)),
 	}
 
+	propertyMap, err := s.getPropertyMapFromStore(ctx, spaceId, true)
+	if err != nil {
+		return nil, err
+	}
+
 	if request.Key != "" {
-		fields[bundle.RelationKeyApiObjectKey.String()] = pbtypes.String(strcase.ToSnake(s.sanitizedString(request.Key)))
+		apiKey := strcase.ToSnake(s.sanitizedString(request.Key))
+		typeMap, err := s.getTypeMapFromStore(ctx, spaceId, propertyMap, true)
+		if err != nil {
+			return nil, err
+		}
+		if _, exists := typeMap[apiKey]; exists {
+			return nil, util.ErrBadInput(fmt.Sprintf("type key %q already exists", apiKey))
+		}
+		fields[bundle.RelationKeyApiObjectKey.String()] = pbtypes.String(apiKey)
 	}
 
 	iconFields, err := s.processIconFields(spaceId, request.Icon, true)
@@ -316,11 +314,6 @@ func (s *Service) buildTypeDetails(ctx context.Context, spaceId string, request 
 	}
 	for k, v := range iconFields {
 		fields[k] = v
-	}
-
-	propertyMap, err := s.getPropertyMapFromStore(ctx, spaceId, true)
-	if err != nil {
-		return nil, err
 	}
 
 	relationIds, err := s.buildRelationIds(ctx, spaceId, request.Properties, propertyMap)
