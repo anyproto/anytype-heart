@@ -458,9 +458,6 @@ func TestListService_GetObjectsInList(t *testing.T) {
 					{
 						RelationKey: bundle.RelationKeyIsArchived.String(),
 					},
-					{
-						RelationKey: bundle.RelationKeyIsDeleted.String(),
-					},
 				},
 				Keys: []string{
 					bundle.RelationKeyId.String(),
@@ -707,9 +704,6 @@ func TestListService_GetObjectsInList(t *testing.T) {
 					},
 					{
 						RelationKey: bundle.RelationKeyIsArchived.String(),
-					},
-					{
-						RelationKey: bundle.RelationKeyIsDeleted.String(),
 					},
 				},
 				Keys: []string{

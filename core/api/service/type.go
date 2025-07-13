@@ -228,10 +228,6 @@ func (s *Service) getTypeMapFromStore(ctx context.Context, spaceId string, prope
 				// resolve archived types as well
 				RelationKey: bundle.RelationKeyIsArchived.String(),
 			},
-			{
-				// resolve deleted types as well
-				RelationKey: bundle.RelationKeyIsDeleted.String(),
-			},
 		},
 		Keys: []string{
 			bundle.RelationKeyId.String(),
@@ -289,8 +285,7 @@ func (s *Service) getTypeFromStruct(details *types.Struct, propertyMap map[strin
 		Archived:   details.Fields[bundle.RelationKeyIsArchived.String()].GetBoolValue(),
 		Layout:     s.otLayoutToObjectLayout(model.ObjectTypeLayout(details.Fields[bundle.RelationKeyRecommendedLayout.String()].GetNumberValue())),
 		Properties: s.getRecommendedPropertiesFromLists(details.Fields[bundle.RelationKeyRecommendedFeaturedRelations.String()].GetListValue(), details.Fields[bundle.RelationKeyRecommendedRelations.String()].GetListValue(), propertyMap),
-		UniqueKey:  uk,                                                                  // internal only for simplified lookup
-		Deleted:    details.Fields[bundle.RelationKeyIsDeleted.String()].GetBoolValue(), // interal only for simplified uniqueness constraint
+		UniqueKey:  uk, // internal only for simplified lookup
 	}
 }
 
@@ -385,7 +380,7 @@ func (s *Service) buildUpdatedTypeDetails(ctx context.Context, spaceId string, t
 		if err != nil {
 			return nil, err
 		}
-		if existing, exists := typeMap[newKey]; exists && existing.Id != t.Id && !existing.Deleted {
+		if existing, exists := typeMap[newKey]; exists && existing.Id != t.Id {
 			return nil, util.ErrBadInput(fmt.Sprintf("type key %q already exists", newKey))
 		}
 		if bundle.HasObjectTypeByKey(domain.TypeKey(util.ToTypeApiKey(t.UniqueKey))) {

@@ -205,9 +205,6 @@ func TestSearchService_GlobalSearch(t *testing.T) {
 				{
 					RelationKey: bundle.RelationKeyIsArchived.String(),
 				},
-				{
-					RelationKey: bundle.RelationKeyIsDeleted.String(),
-				},
 			},
 			Keys: []string{
 				bundle.RelationKeyId.String(),
@@ -518,9 +515,6 @@ func TestSearchService_Search(t *testing.T) {
 				},
 				{
 					RelationKey: bundle.RelationKeyIsArchived.String(),
-				},
-				{
-					RelationKey: bundle.RelationKeyIsDeleted.String(),
 				},
 			},
 			Keys: []string{

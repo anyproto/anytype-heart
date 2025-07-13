@@ -151,9 +151,6 @@ func TestObjectService_ListObjects(t *testing.T) {
 				{
 					RelationKey: bundle.RelationKeyIsArchived.String(),
 				},
-				{
-					RelationKey: bundle.RelationKeyIsDeleted.String(),
-				},
 			},
 			Keys: []string{
 				bundle.RelationKeyId.String(),
@@ -448,9 +445,6 @@ func TestObjectService_GetObject(t *testing.T) {
 				{
 					RelationKey: bundle.RelationKeyIsArchived.String(),
 				},
-				{
-					RelationKey: bundle.RelationKeyIsDeleted.String(),
-				},
 			},
 			Keys: []string{
 				bundle.RelationKeyId.String(),
@@ -671,9 +665,6 @@ func TestObjectService_CreateObject(t *testing.T) {
 				{
 					RelationKey: bundle.RelationKeyIsArchived.String(),
 				},
-				{
-					RelationKey: bundle.RelationKeyIsDeleted.String(),
-				},
 			},
 			Keys: []string{
 				bundle.RelationKeyId.String(),
@@ -738,9 +729,6 @@ func TestObjectService_CreateObject(t *testing.T) {
 				},
 				{
 					RelationKey: bundle.RelationKeyIsArchived.String(),
-				},
-				{
-					RelationKey: bundle.RelationKeyIsDeleted.String(),
 				},
 			},
 			Keys: []string{

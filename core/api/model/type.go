@@ -64,6 +64,4 @@ type Type struct {
 	Properties []Property   `json:"properties"`                                                                       // The properties linked to the type
 	// Uk is internal-only to simplify lookup on entry, won't be serialized to type responses
 	UniqueKey string `json:"-" swaggerignore:"true"`
-	// Deleted is internal-only, to lift uniqueness constraint on type keys for keys of deleted types
-	Deleted bool `json:"deleted" swaggerignore:"true"`
 }
