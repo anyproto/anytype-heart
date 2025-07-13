@@ -456,6 +456,9 @@ func TestListService_GetObjectsInList(t *testing.T) {
 						Value:       pbtypes.Int64(int64(model.ObjectType_objectType)),
 					},
 					{
+						RelationKey: bundle.RelationKeyIsArchived.String(),
+					},
+					{
 						RelationKey: bundle.RelationKeyIsDeleted.String(),
 					},
 				},
@@ -701,6 +704,9 @@ func TestListService_GetObjectsInList(t *testing.T) {
 						RelationKey: bundle.RelationKeyResolvedLayout.String(),
 						Condition:   model.BlockContentDataviewFilter_Equal,
 						Value:       pbtypes.Int64(int64(model.ObjectType_objectType)),
+					},
+					{
+						RelationKey: bundle.RelationKeyIsArchived.String(),
 					},
 					{
 						RelationKey: bundle.RelationKeyIsDeleted.String(),

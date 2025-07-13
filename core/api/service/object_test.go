@@ -149,6 +149,9 @@ func TestObjectService_ListObjects(t *testing.T) {
 					Value:       pbtypes.Int64(int64(model.ObjectType_objectType)),
 				},
 				{
+					RelationKey: bundle.RelationKeyIsArchived.String(),
+				},
+				{
 					RelationKey: bundle.RelationKeyIsDeleted.String(),
 				},
 			},
@@ -443,6 +446,9 @@ func TestObjectService_GetObject(t *testing.T) {
 					Value:       pbtypes.Int64(int64(model.ObjectType_objectType)),
 				},
 				{
+					RelationKey: bundle.RelationKeyIsArchived.String(),
+				},
+				{
 					RelationKey: bundle.RelationKeyIsDeleted.String(),
 				},
 			},
@@ -663,6 +669,9 @@ func TestObjectService_CreateObject(t *testing.T) {
 					Value:       pbtypes.Int64(int64(model.ObjectType_objectType)),
 				},
 				{
+					RelationKey: bundle.RelationKeyIsArchived.String(),
+				},
+				{
 					RelationKey: bundle.RelationKeyIsDeleted.String(),
 				},
 			},
@@ -691,11 +700,109 @@ func TestObjectService_CreateObject(t *testing.T) {
 			Error: &pb.RpcObjectSearchResponseError{Code: pb.RpcObjectSearchResponseError_NULL},
 		}).Times(1)
 
-		// Mock getPropertyMapFromStore, getTypeMapFromStore and getTagMapFromStore
+		// Mock getPropertyMapFromStore
+		fx.mwMock.On("ObjectSearch", mock.Anything, &pb.RpcObjectSearchRequest{
+			SpaceId: mockedSpaceId,
+			Filters: []*model.BlockContentDataviewFilter{
+				{
+					RelationKey: bundle.RelationKeyResolvedLayout.String(),
+					Condition:   model.BlockContentDataviewFilter_Equal,
+					Value:       pbtypes.Int64(int64(model.ObjectType_relation)),
+				},
+				{
+					RelationKey: bundle.RelationKeyIsHidden.String(),
+					Condition:   model.BlockContentDataviewFilter_NotEqual,
+					Value:       pbtypes.Bool(true),
+				},
+			},
+			Keys: []string{
+				bundle.RelationKeyId.String(),
+				bundle.RelationKeyRelationKey.String(),
+				bundle.RelationKeyApiObjectKey.String(),
+				bundle.RelationKeyName.String(),
+				bundle.RelationKeyRelationFormat.String(),
+			},
+		}).Return(&pb.RpcObjectSearchResponse{
+			Records: []*types.Struct{},
+			Error:   &pb.RpcObjectSearchResponseError{Code: pb.RpcObjectSearchResponseError_NULL},
+		}).Once()
+
+		// Mock getTypeMapFromStore
+		fx.mwMock.On("ObjectSearch", mock.Anything, &pb.RpcObjectSearchRequest{
+			SpaceId: mockedSpaceId,
+			Filters: []*model.BlockContentDataviewFilter{
+				{
+					RelationKey: bundle.RelationKeyResolvedLayout.String(),
+					Condition:   model.BlockContentDataviewFilter_Equal,
+					Value:       pbtypes.Int64(int64(model.ObjectType_objectType)),
+				},
+				{
+					RelationKey: bundle.RelationKeyIsArchived.String(),
+				},
+				{
+					RelationKey: bundle.RelationKeyIsDeleted.String(),
+				},
+			},
+			Keys: []string{
+				bundle.RelationKeyId.String(),
+				bundle.RelationKeyUniqueKey.String(),
+				bundle.RelationKeyApiObjectKey.String(),
+				bundle.RelationKeyName.String(),
+				bundle.RelationKeyPluralName.String(),
+				bundle.RelationKeyIconEmoji.String(),
+				bundle.RelationKeyIconName.String(),
+				bundle.RelationKeyIconOption.String(),
+				bundle.RelationKeyRecommendedLayout.String(),
+				bundle.RelationKeyIsArchived.String(),
+				bundle.RelationKeyRecommendedFeaturedRelations.String(),
+				bundle.RelationKeyRecommendedRelations.String(),
+			},
+		}).Return(&pb.RpcObjectSearchResponse{
+			Records: []*types.Struct{
+				{
+					Fields: map[string]*types.Value{
+						bundle.RelationKeyId.String():           pbtypes.String(mockedTypeId),
+						bundle.RelationKeyUniqueKey.String():    pbtypes.String("ot-" + mockedTypeKey),
+						bundle.RelationKeyApiObjectKey.String(): pbtypes.String(mockedTypeKey),
+						bundle.RelationKeyName.String():         pbtypes.String(mockedTypeName),
+						bundle.RelationKeyIconEmoji.String():    pbtypes.String(mockedTypeIcon),
+					},
+				},
+			},
+			Error: &pb.RpcObjectSearchResponseError{Code: pb.RpcObjectSearchResponseError_NULL},
+		}).Once()
+
+		// Mock getTagMapFromStore
+		fx.mwMock.On("ObjectSearch", mock.Anything, &pb.RpcObjectSearchRequest{
+			SpaceId: mockedSpaceId,
+			Filters: []*model.BlockContentDataviewFilter{
+				{
+					RelationKey: bundle.RelationKeyResolvedLayout.String(),
+					Condition:   model.BlockContentDataviewFilter_Equal,
+					Value:       pbtypes.Int64(int64(model.ObjectType_relationOption)),
+				},
+				{
+					RelationKey: bundle.RelationKeyIsHidden.String(),
+					Condition:   model.BlockContentDataviewFilter_NotEqual,
+					Value:       pbtypes.Bool(true),
+				},
+			},
+			Keys: []string{
+				bundle.RelationKeyId.String(),
+				bundle.RelationKeyUniqueKey.String(),
+				bundle.RelationKeyName.String(),
+				bundle.RelationKeyRelationOptionColor.String(),
+			},
+		}).Return(&pb.RpcObjectSearchResponse{
+			Records: []*types.Struct{},
+			Error:   &pb.RpcObjectSearchResponseError{Code: pb.RpcObjectSearchResponseError_NULL},
+		}).Once()
+
+		// Mock getPropertyMapFromStore after create
 		fx.mwMock.On("ObjectSearch", mock.Anything, mock.Anything).Return(&pb.RpcObjectSearchResponse{
 			Records: []*types.Struct{},
 			Error:   &pb.RpcObjectSearchResponseError{Code: pb.RpcObjectSearchResponseError_NULL},
-		}).Times(4)
+		}).Once()
 
 		// Mock ExportMarkdown
 		fx.mwMock.On("ObjectExport", mock.Anything, &pb.RpcObjectExportRequest{
