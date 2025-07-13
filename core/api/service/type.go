@@ -225,6 +225,10 @@ func (s *Service) getTypeMapFromStore(ctx context.Context, spaceId string, prope
 				Value:       pbtypes.Int64(int64(model.ObjectType_objectType)),
 			},
 			{
+				// resolve archived types as well
+				RelationKey: bundle.RelationKeyIsArchived.String(),
+			},
+			{
 				// resolve deleted types as well
 				RelationKey: bundle.RelationKeyIsDeleted.String(),
 			},
