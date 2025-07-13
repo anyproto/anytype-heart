@@ -236,11 +236,11 @@ func (s *Service) getTypeMapFromStore(ctx context.Context, spaceId string, prope
 
 	typeMap := make(map[string]*apimodel.Type, len(resp.Records))
 	for _, record := range resp.Records {
-		uk, key, t := s.getTypeFromStruct(record, propertyMap)
+		uk, apiKey, t := s.getTypeFromStruct(record, propertyMap)
 		ot := t
 		typeMap[t.Id] = &ot
 		if keyByUniqueKey {
-			typeMap[key] = &ot
+			typeMap[apiKey] = &ot
 			typeMap[uk] = &ot
 		}
 	}
@@ -251,19 +251,19 @@ func (s *Service) getTypeMapFromStore(ctx context.Context, spaceId string, prope
 // `uk` is what we use internally, `key` is the key being referenced in the API.
 func (s *Service) getTypeFromStruct(details *types.Struct, propertyMap map[string]*apimodel.Property) (string, string, apimodel.Type) {
 	uk := details.Fields[bundle.RelationKeyUniqueKey.String()].GetStringValue()
-	key := util.ToTypeApiKey(uk)
+	apiKey := util.ToTypeApiKey(uk)
 
 	// apiObjectKey as key takes precedence over unique key
 	if apiObjectKeyField, exists := details.Fields[bundle.RelationKeyApiObjectKey.String()]; exists {
 		if apiObjectKey := apiObjectKeyField.GetStringValue(); apiObjectKey != "" {
-			key = apiObjectKey
+			apiKey = apiObjectKey
 		}
 	}
 
-	return uk, key, apimodel.Type{
+	return uk, apiKey, apimodel.Type{
 		Object:     "type",
 		Id:         details.Fields[bundle.RelationKeyId.String()].GetStringValue(),
-		Key:        key,
+		Key:        apiKey,
 		Name:       details.Fields[bundle.RelationKeyName.String()].GetStringValue(),
 		PluralName: details.Fields[bundle.RelationKeyPluralName.String()].GetStringValue(),
 		Icon:       GetIcon(s.gatewayUrl, details.Fields[bundle.RelationKeyIconEmoji.String()].GetStringValue(), "", details.Fields[bundle.RelationKeyIconName.String()].GetStringValue(), details.Fields[bundle.RelationKeyIconOption.String()].GetNumberValue()),
@@ -364,7 +364,7 @@ func (s *Service) buildUpdatedTypeDetails(ctx context.Context, spaceId string, t
 		fields[bundle.RelationKeyRecommendedLayout.String()] = pbtypes.Int64(int64(s.typeLayoutToObjectTypeLayout(*request.Layout)))
 	}
 	if request.Key != nil {
-		newKey := strcase.ToSnake(s.sanitizedString(*request.Key))
+		apiKey := strcase.ToSnake(s.sanitizedString(*request.Key))
 		propertyMap, err := s.getPropertyMapFromStore(ctx, spaceId, true)
 		if err != nil {
 			return nil, err
@@ -373,13 +373,13 @@ func (s *Service) buildUpdatedTypeDetails(ctx context.Context, spaceId string, t
 		if err != nil {
 			return nil, err
 		}
-		if existing, exists := typeMap[newKey]; exists && existing.Id != t.Id {
-			return nil, util.ErrBadInput(fmt.Sprintf("type key %q already exists", newKey))
+		if existing, exists := typeMap[apiKey]; exists && existing.Id != t.Id {
+			return nil, util.ErrBadInput(fmt.Sprintf("type key %q already exists", apiKey))
 		}
 		if bundle.HasObjectTypeByKey(domain.TypeKey(util.ToTypeApiKey(t.UniqueKey))) {
 			return nil, util.ErrBadInput("type key of bundled types cannot be changed")
 		}
-		fields[bundle.RelationKeyApiObjectKey.String()] = pbtypes.String(newKey)
+		fields[bundle.RelationKeyApiObjectKey.String()] = pbtypes.String(apiKey)
 	}
 
 	if request.Icon != nil {

@@ -604,10 +604,10 @@ func (s *Service) getPropertyMapFromStore(ctx context.Context, spaceId string, k
 
 	propertyMap := make(map[string]*apimodel.Property, len(resp.Records))
 	for _, record := range resp.Records {
-		rk, key, p := s.getPropertyFromStruct(record)
+		rk, apiKey, p := s.getPropertyFromStruct(record)
 		prop := p
 		propertyMap[rk] = &prop
-		propertyMap[key] = &prop // TODO: add under api key as well, double check
+		propertyMap[apiKey] = &prop
 		if keyByPropertyId {
 			propertyMap[p.Id] = &prop // add property under id as key to map as well
 		}
@@ -620,19 +620,19 @@ func (s *Service) getPropertyMapFromStore(ctx context.Context, spaceId string, k
 // `rk` is what we use internally, `key` is the key being referenced in the API.
 func (s *Service) getPropertyFromStruct(details *types.Struct) (string, string, apimodel.Property) {
 	rk := details.Fields[bundle.RelationKeyRelationKey.String()].GetStringValue()
-	key := util.ToPropertyApiKey(rk)
+	apiKey := util.ToPropertyApiKey(rk)
 
 	// apiObjectKey as key takes precedence over relation key
 	if apiObjectKeyField, exists := details.Fields[bundle.RelationKeyApiObjectKey.String()]; exists {
 		if apiObjectKey := apiObjectKeyField.GetStringValue(); apiObjectKey != "" {
-			key = apiObjectKey
+			apiKey = apiObjectKey
 		}
 	}
 
-	return rk, key, apimodel.Property{
+	return rk, apiKey, apimodel.Property{
 		Object:      "property",
 		Id:          details.Fields[bundle.RelationKeyId.String()].GetStringValue(),
-		Key:         key,
+		Key:         apiKey,
 		Name:        details.Fields[bundle.RelationKeyName.String()].GetStringValue(),
 		Format:      RelationFormatToPropertyFormat[model.RelationFormat(details.Fields[bundle.RelationKeyRelationFormat.String()].GetNumberValue())],
 		RelationKey: rk, // internal-only for simplified lookup
@@ -649,7 +649,7 @@ func (s *Service) getPropertiesFromStruct(details *types.Struct, propertyMap map
 
 		prop, ok := propertyMap[rk]
 		if !ok {
-			// Relation key present in details but missing from propertyMap; skip it
+			// relation key present in details but missing from propertyMap; skip it
 			continue
 		}
 
