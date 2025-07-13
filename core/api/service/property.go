@@ -203,11 +203,11 @@ func (s *Service) CreateProperty(ctx context.Context, spaceId string, request ap
 
 	if request.Key != "" {
 		apiKey := strcase.ToSnake(s.sanitizedString(request.Key))
-		propMap, err := s.getPropertyMapFromStore(ctx, spaceId, false)
+		propertyMap, err := s.getPropertyMapFromStore(ctx, spaceId, false)
 		if err != nil {
 			return apimodel.Property{}, err
 		}
-		if _, exists := propMap[apiKey]; exists {
+		if _, exists := propertyMap[apiKey]; exists {
 			return apimodel.Property{}, util.ErrBadInput(fmt.Sprintf("property key %q already exists", apiKey))
 		}
 		details.Fields[bundle.RelationKeyApiObjectKey.String()] = pbtypes.String(apiKey)
@@ -622,10 +622,10 @@ func (s *Service) getPropertyFromStruct(details *types.Struct) (string, string, 
 	rk := details.Fields[bundle.RelationKeyRelationKey.String()].GetStringValue()
 	key := util.ToPropertyApiKey(rk)
 
-	// apiId as key takes precedence over relation key
-	if apiIDField, exists := details.Fields[bundle.RelationKeyApiObjectKey.String()]; exists {
-		if apiId := apiIDField.GetStringValue(); apiId != "" {
-			key = apiId
+	// apiObjectKey as key takes precedence over relation key
+	if apiObjectKeyField, exists := details.Fields[bundle.RelationKeyApiObjectKey.String()]; exists {
+		if apiObjectKey := apiObjectKeyField.GetStringValue(); apiObjectKey != "" {
+			key = apiObjectKey
 		}
 	}
 

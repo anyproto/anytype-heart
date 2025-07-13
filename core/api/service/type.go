@@ -123,7 +123,7 @@ func (s *Service) GetType(ctx context.Context, spaceId string, typeId string) (a
 // CreateType creates a new type in a specific space.
 func (s *Service) CreateType(ctx context.Context, spaceId string, request apimodel.CreateTypeRequest) (apimodel.Type, error) {
 	if request.Key != "" {
-		newKey := strcase.ToSnake(s.sanitizedString(request.Key))
+		apiKey := strcase.ToSnake(s.sanitizedString(request.Key))
 		propertyMap, err := s.getPropertyMapFromStore(ctx, spaceId, true)
 		if err != nil {
 			return apimodel.Type{}, err
@@ -132,8 +132,8 @@ func (s *Service) CreateType(ctx context.Context, spaceId string, request apimod
 		if err != nil {
 			return apimodel.Type{}, err
 		}
-		if _, exists := typeMap[newKey]; exists {
-			return apimodel.Type{}, util.ErrBadInput(fmt.Sprintf("type key %q already exists", newKey))
+		if _, exists := typeMap[apiKey]; exists {
+			return apimodel.Type{}, util.ErrBadInput(fmt.Sprintf("type key %q already exists", apiKey))
 		}
 	}
 
@@ -272,10 +272,10 @@ func (s *Service) getTypeFromStruct(details *types.Struct, propertyMap map[strin
 	uk := details.Fields[bundle.RelationKeyUniqueKey.String()].GetStringValue()
 	key := util.ToTypeApiKey(uk)
 
-	// apiId as key takes precedence over unique key
-	if apiIDField, exists := details.Fields[bundle.RelationKeyApiObjectKey.String()]; exists {
-		if apiId := apiIDField.GetStringValue(); apiId != "" {
-			key = apiId
+	// apiObjectKey as key takes precedence over unique key
+	if apiObjectKeyField, exists := details.Fields[bundle.RelationKeyApiObjectKey.String()]; exists {
+		if apiObjectKey := apiObjectKeyField.GetStringValue(); apiObjectKey != "" {
+			key = apiObjectKey
 		}
 	}
 
@@ -289,7 +289,8 @@ func (s *Service) getTypeFromStruct(details *types.Struct, propertyMap map[strin
 		Archived:   details.Fields[bundle.RelationKeyIsArchived.String()].GetBoolValue(),
 		Layout:     s.otLayoutToObjectLayout(model.ObjectTypeLayout(details.Fields[bundle.RelationKeyRecommendedLayout.String()].GetNumberValue())),
 		Properties: s.getRecommendedPropertiesFromLists(details.Fields[bundle.RelationKeyRecommendedFeaturedRelations.String()].GetListValue(), details.Fields[bundle.RelationKeyRecommendedRelations.String()].GetListValue(), propertyMap),
-		UniqueKey:  uk, // internal only for simplified lookup
+		UniqueKey:  uk,                                                                  // internal only for simplified lookup
+		Deleted:    details.Fields[bundle.RelationKeyIsDeleted.String()].GetBoolValue(), // interal only for simplified uniqueness constraint
 	}
 }
 
@@ -384,7 +385,7 @@ func (s *Service) buildUpdatedTypeDetails(ctx context.Context, spaceId string, t
 		if err != nil {
 			return nil, err
 		}
-		if existing, exists := typeMap[newKey]; exists && existing.Id != t.Id {
+		if existing, exists := typeMap[newKey]; exists && existing.Id != t.Id && !existing.Deleted {
 			return nil, util.ErrBadInput(fmt.Sprintf("type key %q already exists", newKey))
 		}
 		if bundle.HasObjectTypeByKey(domain.TypeKey(util.ToTypeApiKey(t.UniqueKey))) {
