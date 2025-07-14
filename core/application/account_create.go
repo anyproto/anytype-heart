@@ -5,8 +5,13 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"strings"
+	"time"
 
 	"github.com/anyproto/any-sync/app"
+	"github.com/goombaio/namegenerator"
+	"golang.org/x/text/cases"
+	"golang.org/x/text/language"
 
 	"github.com/anyproto/anytype-heart/core/anytype"
 	"github.com/anyproto/anytype-heart/core/anytype/account"
@@ -83,7 +88,7 @@ func (s *Service) AccountCreate(ctx context.Context, req *pb.RpcAccountCreateReq
 		return newAcc, errors.Join(ErrFailedToStartApplication, err)
 	}
 
-	if err = s.setAccountAndProfileDetails(ctx, req, newAcc); err != nil {
+	if err = s.setProfileDetails(ctx, req, newAcc); err != nil {
 		return newAcc, err
 	}
 
@@ -106,7 +111,7 @@ func (s *Service) handleCustomStorageLocation(req *pb.RpcAccountCreateRequest, a
 	return nil
 }
 
-func (s *Service) setAccountAndProfileDetails(ctx context.Context, req *pb.RpcAccountCreateRequest, newAcc *model.Account) error {
+func (s *Service) setProfileDetails(ctx context.Context, req *pb.RpcAccountCreateRequest, newAcc *model.Account) error {
 	spaceService := app.MustComponent[space.Service](s.app)
 	techSpaceId := spaceService.TechSpaceId()
 	var err error
@@ -117,21 +122,24 @@ func (s *Service) setAccountAndProfileDetails(ctx context.Context, req *pb.RpcAc
 	// TODO: remove it release 8, this is need for client to set "My First Space" as space name
 	newAcc.Info.AccountSpaceId = spaceService.FirstCreatedSpaceId()
 
-	bs := s.app.MustComponent(block.CName).(*block.Service)
-	commonDetails := []domain.Detail{
+	profileName := req.Name
+	if profileName == "" {
+		profileName = generateName(newAcc.Id)
+	}
+
+	profileDetails := []domain.Detail{
 		{
 			Key:   bundle.RelationKeyName,
-			Value: domain.String(req.Name),
+			Value: domain.String(profileName),
 		},
 		{
 			Key:   bundle.RelationKeyIconOption,
 			Value: domain.Int64(req.Icon),
 		},
 	}
-	profileDetails := make([]domain.Detail, 0)
-	profileDetails = append(profileDetails, commonDetails...)
 
 	if req.GetAvatarLocalPath() != "" {
+		bs := s.app.MustComponent(block.CName).(*block.Service)
 		hash, _, _, err := bs.UploadFile(context.Background(), techSpaceId, block.FileUploadRequest{
 			RpcFileUploadRequest: pb.RpcFileUploadRequest{
 				LocalPath: req.GetAvatarLocalPath(),
@@ -154,11 +162,22 @@ func (s *Service) setAccountAndProfileDetails(ctx context.Context, req *pb.RpcAc
 		return errors.Join(ErrSetDetails, err)
 	}
 	ds := app.MustComponent[detailservice.Service](s.app)
-	if err := ds.SetDetails(nil,
-		accId,
-		profileDetails,
-	); err != nil {
+	if err = ds.SetDetails(nil, accId, profileDetails); err != nil {
 		return errors.Join(ErrSetDetails, err)
 	}
 	return nil
+}
+
+func generateName(accountId string) string {
+	seed := time.Now().UTC().UnixNano()
+	nameGenerator := namegenerator.NewNameGenerator(seed)
+
+	name := nameGenerator.Generate()
+	words := strings.Split(name, "-")
+	caser := cases.Title(language.English)
+	for i, word := range words {
+		words[i] = caser.String(word)
+	}
+	words = append(words, accountId[len(accountId)-8:])
+	return strings.Join(words, " ")
 }
