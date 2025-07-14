@@ -26,6 +26,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/fileobject"
 	sb "github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
+	"github.com/anyproto/anytype-heart/core/block/editor/template"
 	"github.com/anyproto/anytype-heart/core/block/object/objectlink"
 	"github.com/anyproto/anytype-heart/core/block/process"
 	"github.com/anyproto/anytype-heart/core/block/simple"
@@ -1107,6 +1108,9 @@ func (e *exportContext) writeMultiDoc(ctx context.Context, mw converter.MultiCon
 			log.With("objectID", did).Debugf("write doc")
 			werr := cache.Do(e.picker, did, func(b sb.SmartBlock) error {
 				st := b.NewState().Copy()
+				if isCollection(st) {
+					e.collectionFilterMissing(st)
+				}
 				if e.includeFiles && b.Type() == smartblock.SmartBlockTypeFileObject {
 					fileName, err := e.saveFile(ctx, wr, b, false)
 					if err != nil {
@@ -1143,7 +1147,9 @@ func (e *exportContext) writeDoc(ctx context.Context, wr writer, docId string, d
 		if st.CombinedDetails().GetBool(bundle.RelationKeyIsDeleted) {
 			return nil
 		}
-
+		if isCollection(st) {
+			e.collectionFilterMissing(st)
+		}
 		st = st.Copy().Filter(e.getStateFilters(docId))
 		if e.includeFiles && b.Type() == smartblock.SmartBlockTypeFileObject {
 			fileName, err := e.saveFile(ctx, wr, b, e.spaceId == "")
@@ -1444,4 +1450,19 @@ func (e *exportContext) postProcess(ctx context.Context, wr writer) error {
 
 	// Generate all schemas
 	return postProcessor.Process(knownObjects, wr)
+}
+
+func (e *exportContext) collectionFilterMissing(st *state.State) {
+	collectionIds := st.GetStoreSlice(template.CollectionStoreKey)
+	existingIds := lo.Filter(collectionIds, func(item string, index int) bool {
+		_, exists := e.docs[item]
+		return exists
+	})
+	if len(existingIds) != len(collectionIds) {
+		st.UpdateStoreSlice(template.CollectionStoreKey, existingIds)
+	}
+}
+
+func isCollection(st state.Doc) bool {
+	return st.CombinedDetails().GetInt64(bundle.RelationKeyResolvedLayout) == int64(model.ObjectType_collection)
 }
