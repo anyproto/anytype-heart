@@ -7,11 +7,11 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/anyproto/any-sync/app"
 	"github.com/gogo/protobuf/jsonpb"
-	"github.com/gogo/protobuf/proto"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -38,7 +38,6 @@ import (
 	"github.com/anyproto/anytype-heart/space/mock_space"
 	"github.com/anyproto/anytype-heart/space/spacecore/typeprovider/mock_typeprovider"
 	"github.com/anyproto/anytype-heart/tests/testutil"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 func TestFileNamer_Get(t *testing.T) {
@@ -2883,9 +2882,11 @@ func TestExport_CollectionFilterMissing(t *testing.T) {
 			Format:  model.Export_Protobuf,
 		})
 
+		collectionDetails, _ := storeFixture.GetDetails(spaceId, collectionId)
+		existingObjectDetails, _ := storeFixture.GetDetails(spaceId, existingObjectId)
 		expCtx.docs = map[string]*Doc{
-			collectionId:     {Details: storeFixture.GetDetails(spaceId, collectionId)},
-			existingObjectId: {Details: storeFixture.GetDetails(spaceId, existingObjectId)},
+			collectionId:     {Details: collectionDetails},
+			existingObjectId: {Details: existingObjectDetails},
 		}
 
 		collectionState := state.NewDoc(collectionId, map[string]simple.Block{
@@ -2938,10 +2939,13 @@ func TestExport_CollectionFilterMissing(t *testing.T) {
 			Format:  model.Export_Protobuf,
 		})
 
+		collectionDetails, _ := storeFixture.GetDetails(spaceId, collectionId)
+		object1Details, _ := storeFixture.GetDetails(spaceId, object1Id)
+		object2Details, _ := storeFixture.GetDetails(spaceId, object2Id)
 		expCtx.docs = map[string]*Doc{
-			collectionId: {Details: storeFixture.GetDetails(spaceId, collectionId)},
-			object1Id:    {Details: storeFixture.GetDetails(spaceId, object1Id)},
-			object2Id:    {Details: storeFixture.GetDetails(spaceId, object2Id)},
+			collectionId: {Details: collectionDetails},
+			object1Id:    {Details: object1Details},
+			object2Id:    {Details: object2Details},
 		}
 
 		collectionState := state.NewDoc(collectionId, map[string]simple.Block{
@@ -2982,8 +2986,9 @@ func TestExport_CollectionFilterMissing(t *testing.T) {
 			Format:  model.Export_Protobuf,
 		})
 
+		collectionDetails, _ := storeFixture.GetDetails(spaceId, collectionId)
 		expCtx.docs = map[string]*Doc{
-			collectionId: {Details: storeFixture.GetDetails(spaceId, collectionId)},
+			collectionId: {Details: collectionDetails},
 		}
 
 		collectionState := state.NewDoc(collectionId, map[string]simple.Block{
@@ -3060,36 +3065,52 @@ func TestExport_ExportCollectionWithNonExistingObjects(t *testing.T) {
 		}))
 		object2Block.Doc = object2Doc
 
-		objectGetter.EXPECT().GetObject(mock.Anything, collectionId).Return(collectionBlock, nil)
-		objectGetter.EXPECT().GetObject(mock.Anything, existingObject1).Return(object1Block, nil)
-		objectGetter.EXPECT().GetObject(mock.Anything, existingObject2).Return(object2Block, nil)
+		objectGetter.EXPECT().GetObject(mock.Anything, mock.Anything).Return(collectionBlock, nil).Maybe()
+		objectGetter.EXPECT().GetObject(mock.Anything, mock.Anything).Return(object1Block, nil).Maybe()
+		objectGetter.EXPECT().GetObject(mock.Anything, mock.Anything).Return(object2Block, nil).Maybe()
+		objectGetter.EXPECT().GetObject(mock.Anything, mock.Anything).Return(nil, fmt.Errorf("not found")).Maybe()
 
 		sbtProvider := mock_typeprovider.NewMockSmartBlockTypeProvider(t)
-		sbtProvider.EXPECT().Type(spaceId, collectionId).Return(smartblock.SmartBlockTypePage, nil)
-		sbtProvider.EXPECT().Type(spaceId, existingObject1).Return(smartblock.SmartBlockTypePage, nil)
-		sbtProvider.EXPECT().Type(spaceId, existingObject2).Return(smartblock.SmartBlockTypePage, nil)
+		sbtProvider.EXPECT().Type(mock.Anything, mock.Anything).Return(smartblock.SmartBlockTypePage, nil).Maybe()
+		sbtProvider.EXPECT().Type(mock.Anything, mock.Anything).Return(smartblock.SmartBlockTypePage, nil).Maybe()
+		sbtProvider.EXPECT().Type(mock.Anything, mock.Anything).Return(smartblock.SmartBlockTypePage, nil).Maybe()
 
 		syncService := mock_notifications.NewMockNotifications(t)
-		eventSender := mock_event.NewMockSender(t)
-		tmpDir := os.TempDir()
+		notificationSend := make(chan struct{})
+		syncService.EXPECT().CreateAndSend(mock.Anything).RunAndReturn(func(notification *model.Notification) error {
+			close(notificationSend)
+			return nil
+		})
+
+		a := &app.App{}
+		mockSender := mock_event.NewMockSender(t)
+		mockSender.EXPECT().Broadcast(mock.Anything).Return()
+		a.Register(testutil.PrepareMock(context.Background(), a, mockSender))
+
+		service := process.New()
+		err := service.Init(a)
+		assert.Nil(t, err)
 
 		e := &export{
-			objectStore:     storeFixture,
-			picker:          objectGetter,
-			sbtProvider:     sbtProvider,
-			syncService:     syncService,
-			eventSender:     eventSender,
-			tempDirProvider: func() string { return tmpDir },
+			objectStore:         storeFixture,
+			picker:              objectGetter,
+			sbtProvider:         sbtProvider,
+			notificationService: syncService,
+			processService:      service,
 		}
 
 		path, succeed, err := e.Export(context.Background(), pb.RpcObjectListExportRequest{
 			SpaceId:       spaceId,
+			Path:          t.TempDir(),
 			Format:        model.Export_Protobuf,
 			ObjectIds:     []string{collectionId},
+			Zip:           true,
 			IncludeNested: true,
 			IncludeFiles:  false,
+			IsJson:        true,
 		})
 
+		<-notificationSend
 		assert.NoError(t, err)
 		assert.NotEmpty(t, path)
 		assert.Equal(t, 3, int(succeed))
@@ -3099,13 +3120,15 @@ func TestExport_ExportCollectionWithNonExistingObjects(t *testing.T) {
 		defer reader.Close()
 
 		var collectionFile *zip.File
+		expectedPath := filepath.Join("objects", collectionId+".pb.json")
+
 		for _, f := range reader.File {
-			if f.Name == filepath.Join("objects", collectionId+".pb") {
+			if f.Name == expectedPath {
 				collectionFile = f
 				break
 			}
 		}
-		require.NotNil(t, collectionFile)
+		require.NotNil(t, collectionFile, "Collection file not found in export")
 
 		rc, err := collectionFile.Open()
 		require.NoError(t, err)
@@ -3114,38 +3137,33 @@ func TestExport_ExportCollectionWithNonExistingObjects(t *testing.T) {
 		data, err := io.ReadAll(rc)
 		require.NoError(t, err)
 
-		var snapshot pb.ChangeSnapshot
-		err = proto.Unmarshal(data, &snapshot)
+		var snapshotWithType pb.SnapshotWithType
+		unmarshaler := &jsonpb.Unmarshaler{AllowUnknownFields: true}
+		err = unmarshaler.Unmarshal(strings.NewReader(string(data)), &snapshotWithType)
 		require.NoError(t, err)
 
-		var foundCollectionData bool
-		var objectIds []string
+		var collectionObjects []string
 
-		for _, block := range snapshot.Data.Blocks {
-			if store := block.GetSmartblock(); store != nil {
-				if details := store.GetDetails(); details != nil {
-					if details.Fields != nil {
-						if storeField, exists := details.Fields[template.CollectionStoreKey]; exists {
-							if listVal := storeField.GetListValue(); listVal != nil {
-								for _, val := range listVal.Values {
-									if strVal := val.GetStringValue(); strVal != "" {
-										objectIds = append(objectIds, strVal)
-									}
-								}
-								foundCollectionData = true
-								break
-							}
-						}
+		snapshot := snapshotWithType.GetSnapshot()
+		require.NotNil(t, snapshot, "Snapshot should not be nil")
+
+		collections := snapshot.GetData().GetCollections()
+		require.NotNil(t, collections, "Collections should not be nil")
+
+		if objectsField := collections.GetFields()[template.CollectionStoreKey]; objectsField != nil {
+			if objectsList := objectsField.GetListValue(); objectsList != nil {
+				for _, obj := range objectsList.GetValues() {
+					if objStr := obj.GetStringValue(); objStr != "" {
+						collectionObjects = append(collectionObjects, objStr)
 					}
 				}
 			}
 		}
 
-		require.True(t, foundCollectionData, "Could not find collection store data in exported protobuf")
-		assert.Len(t, objectIds, 2)
-		assert.Contains(t, objectIds, existingObject1)
-		assert.Contains(t, objectIds, existingObject2)
-		assert.NotContains(t, objectIds, missingObject)
+		assert.Len(t, collectionObjects, 2, "Collection should contain exactly 2 objects (missing object filtered out)")
+		assert.Contains(t, collectionObjects, existingObject1, "Collection should contain existing object 1")
+		assert.Contains(t, collectionObjects, existingObject2, "Collection should contain existing object 2")
+		assert.NotContains(t, collectionObjects, missingObject, "Collection should not contain missing object")
 
 		os.Remove(path)
 	})
