@@ -329,106 +329,24 @@ func (s *Service) processProperties(ctx context.Context, spaceId string, entries
 	}
 
 	for _, entry := range entries {
-		var key string
-		var raw interface{}
-		switch e := entry.WrappedPropertyLinkWithValue.(type) {
-		case apimodel.TextPropertyLinkValue:
-			key = e.Key
-			if e.Text == nil {
-				fields[s.ResolvePropertyApiKey(propertyMap, key)] = pbtypes.ToValue(nil)
-				continue
-			}
-			raw = *e.Text
-		case apimodel.NumberPropertyLinkValue:
-			key = e.Key
-			if e.Number == nil {
-				fields[s.ResolvePropertyApiKey(propertyMap, key)] = pbtypes.ToValue(nil)
-				continue
-			}
-			raw = *e.Number
-		case apimodel.SelectPropertyLinkValue:
-			key = e.Key
-			if e.Select == nil {
-				fields[s.ResolvePropertyApiKey(propertyMap, key)] = pbtypes.ToValue(nil)
-				continue
-			}
-			raw = *e.Select
-		case apimodel.MultiSelectPropertyLinkValue:
-			key = e.Key
-			if e.MultiSelect == nil || len(*e.MultiSelect) == 0 {
-				fields[s.ResolvePropertyApiKey(propertyMap, key)] = pbtypes.ToValue(nil)
-				continue
-			}
-			ids := make([]interface{}, len(*e.MultiSelect))
-			for i, id := range *e.MultiSelect {
-				ids[i] = id
-			}
-			raw = ids
-		case apimodel.DatePropertyLinkValue:
-			key = e.Key
-			if e.Date == nil {
-				fields[s.ResolvePropertyApiKey(propertyMap, key)] = pbtypes.ToValue(nil)
-				continue
-			}
-			raw = *e.Date
-		case apimodel.CheckboxPropertyLinkValue:
-			key = e.Key
-			if e.Checkbox == nil {
-				fields[s.ResolvePropertyApiKey(propertyMap, key)] = pbtypes.ToValue(nil)
-				continue
-			}
-			raw = *e.Checkbox
-		case apimodel.URLPropertyLinkValue:
-			key = e.Key
-			if e.Url == nil {
-				fields[s.ResolvePropertyApiKey(propertyMap, key)] = pbtypes.ToValue(nil)
-				continue
-			}
-			raw = *e.Url
-		case apimodel.EmailPropertyLinkValue:
-			key = e.Key
-			if e.Email == nil {
-				fields[s.ResolvePropertyApiKey(propertyMap, key)] = pbtypes.ToValue(nil)
-				continue
-			}
-			raw = *e.Email
-		case apimodel.PhonePropertyLinkValue:
-			key = e.Key
-			if e.Phone == nil {
-				fields[s.ResolvePropertyApiKey(propertyMap, key)] = pbtypes.ToValue(nil)
-				continue
-			}
-			raw = *e.Phone
-		case apimodel.FilesPropertyLinkValue:
-			key = e.Key
-			if e.Files == nil || len(*e.Files) == 0 {
-				fields[s.ResolvePropertyApiKey(propertyMap, key)] = pbtypes.ToValue(nil)
-				continue
-			}
-			ids := make([]interface{}, len(*e.Files))
-			for i, id := range *e.Files {
-				ids[i] = id
-			}
-			raw = ids
-		case apimodel.ObjectsPropertyLinkValue:
-			key = e.Key
-			if e.Objects == nil || len(*e.Objects) == 0 {
-				fields[s.ResolvePropertyApiKey(propertyMap, key)] = pbtypes.ToValue(nil)
-				continue
-			}
-			ids := make([]interface{}, len(*e.Objects))
-			for i, id := range *e.Objects {
-				ids[i] = id
-			}
-			raw = ids
-		default:
-			return nil, util.ErrBadInput("unsupported property link value type " + fmt.Sprintf("%T", e))
+		wrapped, ok := entry.WrappedPropertyLinkWithValue.(apimodel.WrappedPropertyLinkWithValue)
+		if !ok {
+			return nil, util.ErrBadInput("invalid property link value type")
 		}
+
+		key := wrapped.Key()
+		value := wrapped.Value()
 
 		rk := s.ResolvePropertyApiKey(propertyMap, key)
 		if _, excluded := excludedSystemProperties[rk]; excluded {
 			continue
 		}
+
+		if value == nil {
+			fields[rk] = pbtypes.ToValue(nil)
+			continue
+		}
+
 		if slices.Contains(bundle.LocalAndDerivedRelationKeys, domain.RelationKey(key)) {
 			return nil, util.ErrBadInput("property '" + key + "' cannot be set directly as it is a reserved system property")
 		}
@@ -437,7 +355,7 @@ func (s *Service) processProperties(ctx context.Context, spaceId string, entries
 			return nil, util.ErrBadInput(fmt.Sprintf("unknown property key: %q", rk))
 		}
 
-		sanitized, err := s.sanitizeAndValidatePropertyValue(spaceId, key, prop.Format, raw, prop, propertyMap)
+		sanitized, err := s.sanitizeAndValidatePropertyValue(spaceId, key, prop.Format, value, prop, propertyMap)
 		if err != nil {
 			return nil, err
 		}
