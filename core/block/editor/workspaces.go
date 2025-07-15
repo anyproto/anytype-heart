@@ -88,7 +88,7 @@ func (w *Workspaces) initTemplate(ctx *smartblock.InitContext) {
 func (w *Workspaces) CreationStateMigration(ctx *smartblock.InitContext) migration.Migration {
 	// TODO Maybe move init logic here?
 	return migration.Migration{
-		Version: 1,
+		Version: 2,
 		Proc: func(s *state.State) {
 			// no-op
 		},
@@ -144,14 +144,16 @@ func (w *Workspaces) GetExistingGuestInviteInfo() (fileCid string, fileKey strin
 
 func (w *Workspaces) StateMigrations() migration.Migrations {
 	return migration.MakeMigrations([]migration.Migration{{
-		Version: 1,
+		Version: 2,
 		Proc: func(s *state.State) {
 			spaceUxType, ok := s.Details().TryInt64(bundle.RelationKeySpaceUxType)
 			if !ok {
 				spaceUxType = int64(model.SpaceUxType_Data)
+				s.SetDetail(bundle.RelationKeySpaceUxType, domain.Int64(spaceUxType))
 			} else if spaceUxType == 0 {
 				// convert old spaceUxType 0 to Chat
 				spaceUxType = int64(model.SpaceUxType_Chat)
+				s.SetDetail(bundle.RelationKeySpaceUxType, domain.Int64(spaceUxType))
 			}
 		},
 	}})
