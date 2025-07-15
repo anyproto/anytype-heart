@@ -219,7 +219,7 @@ func TestObjectService_ListObjects(t *testing.T) {
 		require.Equal(t, mockedTypeId, objects[0].Type.Id)
 		require.Equal(t, mockedTypeName, objects[0].Type.Name)
 		require.Equal(t, mockedTypeKey, objects[0].Type.Key)
-		require.Equal(t, apimodel.Icon{
+		require.Equal(t, &apimodel.Icon{
 			WrappedIcon: apimodel.EmojiIcon{
 				Format: apimodel.IconFormatEmoji,
 				Emoji:  mockedTypeIcon,
@@ -229,7 +229,7 @@ func TestObjectService_ListObjects(t *testing.T) {
 		require.Equal(t, mockedObjectId, objects[0].Id)
 		require.Equal(t, mockedObjectName, objects[0].Name)
 		require.Equal(t, mockedObjectSnippet, objects[0].Snippet)
-		require.Equal(t, apimodel.Icon{
+		require.Equal(t, &apimodel.Icon{
 			WrappedIcon: apimodel.EmojiIcon{
 				Format: apimodel.IconFormatEmoji,
 				Emoji:  mockedObjectIcon,
@@ -523,7 +523,7 @@ func TestObjectService_GetObject(t *testing.T) {
 		require.Equal(t, mockedTypeId, object.Type.Id)
 		require.Equal(t, mockedTypeName, object.Type.Name)
 		require.Equal(t, mockedTypeKey, object.Type.Key)
-		require.Equal(t, apimodel.Icon{
+		require.Equal(t, &apimodel.Icon{
 			WrappedIcon: apimodel.EmojiIcon{
 				Format: apimodel.IconFormatEmoji,
 				Emoji:  mockedTypeIcon,
@@ -533,7 +533,7 @@ func TestObjectService_GetObject(t *testing.T) {
 		require.Equal(t, mockedObjectId, object.Id)
 		require.Equal(t, mockedObjectName, object.Name)
 		require.Equal(t, mockedObjectSnippet, object.Snippet)
-		require.Equal(t, apimodel.Icon{
+		require.Equal(t, &apimodel.Icon{
 			WrappedIcon: apimodel.EmojiIcon{
 				Format: apimodel.IconFormatEmoji,
 				Emoji:  mockedObjectIcon,
@@ -815,7 +815,7 @@ func TestObjectService_CreateObject(t *testing.T) {
 		require.Equal(t, "object", object.Object)
 		require.Equal(t, mockedNewObjectId, object.Id)
 		require.Equal(t, mockedObjectName, object.Name)
-		require.Equal(t, apimodel.Icon{WrappedIcon: apimodel.EmojiIcon{Format: apimodel.IconFormatEmoji, Emoji: mockedObjectIcon}}, object.Icon)
+		require.Equal(t, &apimodel.Icon{WrappedIcon: apimodel.EmojiIcon{Format: apimodel.IconFormatEmoji, Emoji: mockedObjectIcon}}, object.Icon)
 		require.Equal(t, mockedSpaceId, object.SpaceId)
 	})
 

@@ -144,7 +144,7 @@ func TestSpaceService_ListSpaces(t *testing.T) {
 		require.Equal(t, "My Workspace", spaces[1].Name)
 		require.Equal(t, "my-space-id", spaces[1].Id)
 		require.Equal(t, "desc2", spaces[1].Description)
-		require.Equal(t, apimodel.Icon{
+		require.Equal(t, &apimodel.Icon{
 			WrappedIcon: apimodel.EmojiIcon{
 				Format: apimodel.IconFormatEmoji,
 				Emoji:  "🚀",
@@ -285,7 +285,7 @@ func TestSpaceService_GetSpace(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, "My Workspace", space.Name)
 		require.Equal(t, "space-id", space.Id)
-		require.Equal(t, apimodel.Icon{
+		require.Equal(t, &apimodel.Icon{
 			WrappedIcon: apimodel.EmojiIcon{
 				Format: apimodel.IconFormatEmoji,
 				Emoji:  "🚀",
@@ -439,7 +439,7 @@ func TestSpaceService_CreateSpace(t *testing.T) {
 		require.Equal(t, "new-space-id", space.Id)
 		require.Equal(t, "New Space", space.Name)
 		require.Equal(t, "A new space", space.Description)
-		require.Equal(t, apimodel.Icon{
+		require.Equal(t, &apimodel.Icon{
 			WrappedIcon: apimodel.EmojiIcon{
 				Format: apimodel.IconFormatEmoji,
 				Emoji:  "🚀",

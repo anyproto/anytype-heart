@@ -285,7 +285,7 @@ func TestSearchService_GlobalSearch(t *testing.T) {
 		require.Equal(t, mockedTypeId, objects[0].Type.Id)
 		require.Equal(t, mockedSpaceId, objects[0].SpaceId)
 		require.Equal(t, apimodel.ObjectLayoutBasic, objects[0].Layout)
-		require.Equal(t, apimodel.Icon{
+		require.Equal(t, &apimodel.Icon{
 			WrappedIcon: apimodel.EmojiIcon{
 				Format: apimodel.IconFormatEmoji,
 				Emoji:  mockedObjectIcon,
