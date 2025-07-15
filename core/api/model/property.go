@@ -364,8 +364,8 @@ func (p *PropertyLinkWithValue) UnmarshalJSON(data []byte) error {
 type WrappedPropertyLinkWithValue interface{ isPropertyLinkWithValue() }
 
 type TextPropertyLinkValue struct {
-	Key  string `json:"key" example:"description"`
-	Text string `json:"text" example:"Some text..."` // The text value of the property
+	Key  string  `json:"key" example:"description"`
+	Text *string `json:"text" example:"Some text..."` // The text value of the property
 }
 
 func (TextPropertyLinkValue) isPropertyLinkWithValue() {}
@@ -379,14 +379,14 @@ func (NumberPropertyLinkValue) isPropertyLinkWithValue() {}
 
 type SelectPropertyLinkValue struct {
 	Key    string  `json:"key" example:"status"`
-	Select *string `json:"select,omitempty" example:"tag_id"` // The selected tag id of the property; see ListTags endpoint for valid values
+	Select *string `json:"select" example:"tag_id"` // The selected tag id of the property; see ListTags endpoint for valid values
 }
 
 func (SelectPropertyLinkValue) isPropertyLinkWithValue() {}
 
 type MultiSelectPropertyLinkValue struct {
-	Key         string   `json:"key" example:"tag"`
-	MultiSelect []string `json:"multi_select,omitempty" example:"['tag_id']"` // The selected tag ids of the property; see ListTags endpoint for valid values
+	Key         string    `json:"key" example:"tag"`
+	MultiSelect *[]string `json:"multi_select" example:"['tag_id']"` // The selected tag ids of the property; see ListTags endpoint for valid values
 }
 
 func (MultiSelectPropertyLinkValue) isPropertyLinkWithValue() {}
@@ -399,43 +399,43 @@ type DatePropertyLinkValue struct {
 func (DatePropertyLinkValue) isPropertyLinkWithValue() {}
 
 type FilesPropertyLinkValue struct {
-	Key   string   `json:"key" example:"files"`
-	Files []string `json:"files" example:"['file_id']"` // The file ids of the property
+	Key   string    `json:"key" example:"files"`
+	Files *[]string `json:"files" example:"['file_id']"` // The file ids of the property
 }
 
 func (FilesPropertyLinkValue) isPropertyLinkWithValue() {}
 
 type CheckboxPropertyLinkValue struct {
 	Key      string `json:"key" example:"done"`
-	Checkbox bool   `json:"checkbox" example:"true"` // The checkbox value of the property
+	Checkbox *bool  `json:"checkbox" example:"true"` // The checkbox value of the property
 }
 
 func (CheckboxPropertyLinkValue) isPropertyLinkWithValue() {}
 
 type URLPropertyLinkValue struct {
-	Key string `json:"key" example:"source"`
-	Url string `json:"url" example:"https://example.com"` // The URL value of the property
+	Key string  `json:"key" example:"source"`
+	Url *string `json:"url" example:"https://example.com"` // The URL value of the property
 }
 
 func (URLPropertyLinkValue) isPropertyLinkWithValue() {}
 
 type EmailPropertyLinkValue struct {
-	Key   string `json:"key" example:"email"`
-	Email string `json:"email" example:"example@example.com"` // The email value of the property
+	Key   string  `json:"key" example:"email"`
+	Email *string `json:"email" example:"example@example.com"` // The email value of the property
 }
 
 func (EmailPropertyLinkValue) isPropertyLinkWithValue() {}
 
 type PhonePropertyLinkValue struct {
-	Key   string `json:"key" example:"phone"`
-	Phone string `json:"phone" example:"+1234567890"` // The phone value of the property
+	Key   string  `json:"key" example:"phone"`
+	Phone *string `json:"phone" example:"+1234567890"` // The phone value of the property
 }
 
 func (PhonePropertyLinkValue) isPropertyLinkWithValue() {}
 
 type ObjectsPropertyLinkValue struct {
-	Key     string   `json:"key" example:"creator"`
-	Objects []string `json:"objects" example:"['object_id']"` // The object ids of the property
+	Key     string    `json:"key" example:"creator"`
+	Objects *[]string `json:"objects" example:"['object_id']"` // The object ids of the property
 }
 
 func (ObjectsPropertyLinkValue) isPropertyLinkWithValue() {}

@@ -334,7 +334,11 @@ func (s *Service) processProperties(ctx context.Context, spaceId string, entries
 		switch e := entry.WrappedPropertyLinkWithValue.(type) {
 		case apimodel.TextPropertyLinkValue:
 			key = e.Key
-			raw = e.Text
+			if e.Text == nil {
+				fields[s.ResolvePropertyApiKey(propertyMap, key)] = pbtypes.ToValue(nil)
+				continue
+			}
+			raw = *e.Text
 		case apimodel.NumberPropertyLinkValue:
 			key = e.Key
 			if e.Number == nil {
@@ -351,8 +355,12 @@ func (s *Service) processProperties(ctx context.Context, spaceId string, entries
 			raw = *e.Select
 		case apimodel.MultiSelectPropertyLinkValue:
 			key = e.Key
-			ids := make([]interface{}, len(e.MultiSelect))
-			for i, id := range e.MultiSelect {
+			if e.MultiSelect == nil || len(*e.MultiSelect) == 0 {
+				fields[s.ResolvePropertyApiKey(propertyMap, key)] = pbtypes.ToValue(nil)
+				continue
+			}
+			ids := make([]interface{}, len(*e.MultiSelect))
+			for i, id := range *e.MultiSelect {
 				ids[i] = id
 			}
 			raw = ids
@@ -365,27 +373,51 @@ func (s *Service) processProperties(ctx context.Context, spaceId string, entries
 			raw = *e.Date
 		case apimodel.CheckboxPropertyLinkValue:
 			key = e.Key
-			raw = e.Checkbox
+			if e.Checkbox == nil {
+				fields[s.ResolvePropertyApiKey(propertyMap, key)] = pbtypes.ToValue(nil)
+				continue
+			}
+			raw = *e.Checkbox
 		case apimodel.URLPropertyLinkValue:
 			key = e.Key
-			raw = e.Url
+			if e.Url == nil {
+				fields[s.ResolvePropertyApiKey(propertyMap, key)] = pbtypes.ToValue(nil)
+				continue
+			}
+			raw = *e.Url
 		case apimodel.EmailPropertyLinkValue:
 			key = e.Key
-			raw = e.Email
+			if e.Email == nil {
+				fields[s.ResolvePropertyApiKey(propertyMap, key)] = pbtypes.ToValue(nil)
+				continue
+			}
+			raw = *e.Email
 		case apimodel.PhonePropertyLinkValue:
 			key = e.Key
-			raw = e.Phone
+			if e.Phone == nil {
+				fields[s.ResolvePropertyApiKey(propertyMap, key)] = pbtypes.ToValue(nil)
+				continue
+			}
+			raw = *e.Phone
 		case apimodel.FilesPropertyLinkValue:
 			key = e.Key
-			ids := make([]interface{}, len(e.Files))
-			for i, id := range e.Files {
+			if e.Files == nil || len(*e.Files) == 0 {
+				fields[s.ResolvePropertyApiKey(propertyMap, key)] = pbtypes.ToValue(nil)
+				continue
+			}
+			ids := make([]interface{}, len(*e.Files))
+			for i, id := range *e.Files {
 				ids[i] = id
 			}
 			raw = ids
 		case apimodel.ObjectsPropertyLinkValue:
 			key = e.Key
-			ids := make([]interface{}, len(e.Objects))
-			for i, id := range e.Objects {
+			if e.Objects == nil || len(*e.Objects) == 0 {
+				fields[s.ResolvePropertyApiKey(propertyMap, key)] = pbtypes.ToValue(nil)
+				continue
+			}
+			ids := make([]interface{}, len(*e.Objects))
+			for i, id := range *e.Objects {
 				ids[i] = id
 			}
 			raw = ids
