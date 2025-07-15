@@ -22,26 +22,26 @@ func IsEmoji(s string) bool {
 }
 
 // GetIcon returns the appropriate Icon implementation.
-func GetIcon(gatewayUrl string, iconEmoji string, iconImage string, iconName string, iconOption float64) apimodel.Icon {
+func GetIcon(gatewayUrl string, iconEmoji string, iconImage string, iconName string, iconOption float64) *apimodel.Icon {
 	if iconName != "" {
-		return apimodel.Icon{WrappedIcon: apimodel.NamedIcon{
+		return &apimodel.Icon{WrappedIcon: apimodel.NamedIcon{
 			Format: apimodel.IconFormatIcon,
 			Name:   apimodel.IconName(iconName),
 			Color:  apimodel.IconOptionToColor[iconOption],
 		}}
 	}
 	if iconEmoji != "" {
-		return apimodel.Icon{WrappedIcon: apimodel.EmojiIcon{
+		return &apimodel.Icon{WrappedIcon: apimodel.EmojiIcon{
 			Format: apimodel.IconFormatEmoji,
 			Emoji:  iconEmoji,
 		}}
 	}
 	if iconImage != "" {
-		return apimodel.Icon{WrappedIcon: apimodel.FileIcon{
+		return &apimodel.Icon{WrappedIcon: apimodel.FileIcon{
 			Format: apimodel.IconFormatFile,
 			File:   fmt.Sprintf("%s/image/%s", gatewayUrl, iconImage),
 		}}
 	}
 
-	return apimodel.Icon{}
+	return nil
 }

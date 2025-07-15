@@ -508,7 +508,8 @@
         "type": "object"
       },
       "apimodel.Icon": {
-        "description": "The icon of the object",
+        "description": "The icon of the object, or null if the object has no icon",
+        "nullable": true,
         "oneOf": [
           {
             "$ref": "#/components/schemas/apimodel.EmojiIcon"
@@ -2206,7 +2207,8 @@
         "type": "object"
       },
       "apimodel.Type": {
-        "description": "The type of the object",
+        "description": "The type of the object, or null if the type has been deleted.",
+        "nullable": true,
         "properties": {
           "archived": {
             "description": "Whether the type is archived",

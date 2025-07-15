@@ -84,13 +84,12 @@ func (s *Service) ListMembers(ctx context.Context, spaceId string, additionalFil
 	members = make([]apimodel.Member, 0, len(paginatedMembers))
 
 	for _, record := range paginatedMembers {
-		icon := GetIcon(s.gatewayUrl, record.Fields[bundle.RelationKeyIconEmoji.String()].GetStringValue(), record.Fields[bundle.RelationKeyIconImage.String()].GetStringValue(), "", 0)
 
 		member := apimodel.Member{
 			Object:     "member",
 			Id:         record.Fields[bundle.RelationKeyId.String()].GetStringValue(),
 			Name:       record.Fields[bundle.RelationKeyName.String()].GetStringValue(),
-			Icon:       icon,
+			Icon:       GetIcon(s.gatewayUrl, record.Fields[bundle.RelationKeyIconEmoji.String()].GetStringValue(), record.Fields[bundle.RelationKeyIconImage.String()].GetStringValue(), "", 0),
 			Identity:   record.Fields[bundle.RelationKeyIdentity.String()].GetStringValue(),
 			GlobalName: record.Fields[bundle.RelationKeyGlobalName.String()].GetStringValue(),
 			Status:     strcase.ToSnake(model.ParticipantStatus_name[int32(record.Fields[bundle.RelationKeyParticipantStatus.String()].GetNumberValue())]),
@@ -131,13 +130,11 @@ func (s *Service) GetMember(ctx context.Context, spaceId string, memberId string
 		return apimodel.Member{}, ErrMemberNotFound
 	}
 
-	icon := GetIcon(s.gatewayUrl, "", resp.Records[0].Fields[bundle.RelationKeyIconImage.String()].GetStringValue(), "", 0)
-
 	return apimodel.Member{
 		Object:     "member",
 		Id:         resp.Records[0].Fields[bundle.RelationKeyId.String()].GetStringValue(),
 		Name:       resp.Records[0].Fields[bundle.RelationKeyName.String()].GetStringValue(),
-		Icon:       icon,
+		Icon:       GetIcon(s.gatewayUrl, "", resp.Records[0].Fields[bundle.RelationKeyIconImage.String()].GetStringValue(), "", 0),
 		Identity:   resp.Records[0].Fields[bundle.RelationKeyIdentity.String()].GetStringValue(),
 		GlobalName: resp.Records[0].Fields[bundle.RelationKeyGlobalName.String()].GetStringValue(),
 		Status:     strcase.ToSnake(model.ParticipantStatus_name[int32(resp.Records[0].Fields[bundle.RelationKeyParticipantStatus.String()].GetNumberValue())]),

@@ -58,7 +58,7 @@ type Type struct {
 	Key        string       `json:"key" example:"page"`                                                               // The key of the type (can be the same across spaces for known types)
 	Name       string       `json:"name" example:"Page"`                                                              // The name of the type
 	PluralName string       `json:"plural_name" example:"Pages"`                                                      // The plural name of the type
-	Icon       Icon         `json:"icon" oneOf:"EmojiIcon,FileIcon,NamedIcon"`                                        // The icon of the type
+	Icon       *Icon        `json:"icon" oneOf:"EmojiIcon,FileIcon,NamedIcon" extensions:"nullable"`                  // The icon of the type, or null if the type has no icon
 	Archived   bool         `json:"archived" example:"false"`                                                         // Whether the type is archived
 	Layout     ObjectLayout `json:"layout" enums:"basic,profile,action,note,bookmark,set,set,collection,participant"` // The layout of the type
 	Properties []Property   `json:"properties"`                                                                       // The properties linked to the type
