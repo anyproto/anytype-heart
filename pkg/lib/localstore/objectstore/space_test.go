@@ -2,9 +2,12 @@ package objectstore
 
 import (
 	"context"
+	"fmt"
 	"testing"
 
+	"github.com/anyproto/lexid"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
@@ -15,6 +18,17 @@ func TestGetSpaceName(t *testing.T) {
 	spaceId := "id"
 	spaceViewId := "spaceViewId"
 	spaceName := "Test"
+
+	lid := lexid.Must(lexid.CharsAlphanumericLower, 4, 1000)
+	current := "aaaa"
+	fmt.Printf("start: %s\n", current)
+	var err error
+	for i := 0; i < 1000; i++ {
+		current, err = lid.NextBefore("", current)
+		fmt.Printf("current: %s\n", current)
+		require.NoErrorf(t, err, current)
+	}
+	assert.Equal(t, "002", lid.Next(""))
 
 	t.Run("no space find", func(t *testing.T) {
 		// given
