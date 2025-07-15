@@ -3,6 +3,7 @@ package basic
 import (
 	"errors"
 	"fmt"
+	"slices"
 	"strings"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
@@ -350,13 +351,24 @@ func (bs *basic) SetObjectTypesInState(s *state.State, objectTypeKeys []domain.T
 
 	s.SetObjectTypeKeys(objectTypeKeys)
 	removeInternalFlags(s)
-	s.Details().Delete(bundle.RelationKeyLayout)
+	removeLayoutSettings(s)
 
 	toLayout, err := bs.getLayoutForType(objectTypeKeys[0])
 	if err != nil {
 		return fmt.Errorf("get layout for type %s: %w", objectTypeKeys[0], err)
 	}
 	return bs.SetLayoutInState(s, toLayout, ignoreRestrictions)
+}
+
+func removeLayoutSettings(s *state.State) {
+	s.Details().Delete(bundle.RelationKeyLayout)
+	s.Details().Delete(bundle.RelationKeyLayoutAlign)
+	featuredRelations := s.Details().GetStringList(bundle.RelationKeyFeaturedRelations)
+	if slices.Contains(featuredRelations, bundle.RelationKeyDescription.String()) {
+		s.Details().SetStringList(bundle.RelationKeyFeaturedRelations, []string{bundle.RelationKeyDescription.String()})
+	} else {
+		s.Details().Delete(bundle.RelationKeyFeaturedRelations)
+	}
 }
 
 func (bs *basic) getLayoutForType(objectTypeKey domain.TypeKey) (model.ObjectTypeLayout, error) {
