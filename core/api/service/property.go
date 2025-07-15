@@ -329,13 +329,8 @@ func (s *Service) processProperties(ctx context.Context, spaceId string, entries
 	}
 
 	for _, entry := range entries {
-		wrapped, ok := entry.WrappedPropertyLinkWithValue.(apimodel.WrappedPropertyLinkWithValue)
-		if !ok {
-			return nil, util.ErrBadInput("invalid property link value type")
-		}
-
-		key := wrapped.Key()
-		value := wrapped.Value()
+		key := entry.Key()
+		value := entry.Value()
 
 		rk := s.ResolvePropertyApiKey(propertyMap, key)
 		if _, excluded := excludedSystemProperties[rk]; excluded {
