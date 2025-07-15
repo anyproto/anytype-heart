@@ -48,7 +48,7 @@ func (stx *StoreStateTx) GetMaxOrder() string {
 }
 
 func (stx *StoreStateTx) NextOrder(prev string) string {
-	return lexId.Next(prev)
+	return LexId.Next(prev)
 }
 
 func (stx *StoreStateTx) SetOrder(changeId, order string) (err error) {

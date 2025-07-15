@@ -40,7 +40,7 @@ var (
 const CName = "common.core.publishservice"
 
 const (
-	membershipLimit       = 100 << 20
+	membershipLimit       = 6000 << 20
 	defaultLimit          = 10 << 20
 	inviteLinkUrlTemplate = "https://invite.any.coop/%s#%s"
 	memberUrlTemplate     = "https://%s.org"
@@ -51,6 +51,7 @@ const (
 var log = logger.NewNamed(CName)
 
 var ErrLimitExceeded = errors.New("limit exceeded")
+var ErrUrlAlreadyTaken = errors.New("url is already taken by another page")
 
 type PublishResult struct {
 	Url string
@@ -124,7 +125,7 @@ func uniqName() string {
 	return time.Now().Format("Anytype.WebPublish.20060102.150405.99")
 }
 
-func (s *service) exportToDir(ctx context.Context, spaceId, pageId string) (dirEntries []fs.DirEntry, exportPath string, err error) {
+func (s *service) exportToDir(ctx context.Context, spaceId, pageId string, includeSpaceInfo bool) (dirEntries []fs.DirEntry, exportPath string, err error) {
 	tempDir := os.TempDir()
 	exportPath, _, err = s.exportService.Export(ctx, pb.RpcObjectListExportRequest{
 		SpaceId:          spaceId,
@@ -137,7 +138,7 @@ func (s *service) exportToDir(ctx context.Context, spaceId, pageId string) (dirE
 		NoProgress:       true,
 		IncludeNested:    true,
 		IncludeBacklinks: true,
-		IncludeSpace:     true,
+		IncludeSpace:     includeSpaceInfo,
 		LinksStateFilters: &pb.RpcObjectListExportStateFilters{
 			RelationsWhiteList: relationsWhiteListToPbModel(),
 			RemoveBlocks:       true,
@@ -155,7 +156,12 @@ func (s *service) exportToDir(ctx context.Context, spaceId, pageId string) (dirE
 }
 
 func (s *service) publishToPublishServer(ctx context.Context, spaceId, pageId, uri, globalName string, joinSpace bool) (err error) {
-	dirEntries, exportPath, err := s.exportToDir(ctx, spaceId, pageId)
+	spc, err := s.spaceService.Get(ctx, spaceId)
+	if err != nil {
+		return err
+	}
+	includeInviteLinkAndSpaceInfo := joinSpace && !spc.IsPersonal()
+	dirEntries, exportPath, err := s.exportToDir(ctx, spaceId, pageId, includeInviteLinkAndSpaceInfo)
 	if err != nil {
 		return err
 	}
@@ -165,6 +171,7 @@ func (s *service) publishToPublishServer(ctx context.Context, spaceId, pageId, u
 	if err != nil {
 		return err
 	}
+
 	tempPublishDir := filepath.Join(os.TempDir(), uniqName())
 	defer os.RemoveAll(tempPublishDir)
 
@@ -177,12 +184,7 @@ func (s *service) publishToPublishServer(ctx context.Context, spaceId, pageId, u
 		return err
 	}
 
-	spc, err := s.spaceService.Get(ctx, spaceId)
-	if err != nil {
-		return err
-	}
-
-	err = s.applyInviteLink(ctx, spc, &uberSnapshot, joinSpace)
+	err = s.applyInviteLink(ctx, spaceId, &uberSnapshot, includeInviteLinkAndSpaceInfo)
 	if err != nil {
 		return err
 	}
@@ -210,12 +212,18 @@ func (s *service) publishToPublishServer(ctx context.Context, spaceId, pageId, u
 	return nil
 }
 
-func (s *service) applyInviteLink(ctx context.Context, spc clientspace.Space, snapshot *PublishingUberSnapshot, joinSpace bool) error {
-	inviteLink, err := s.extractInviteLink(ctx, spc.Id(), joinSpace, spc.IsPersonal())
+func (s *service) applyInviteLink(ctx context.Context, spaceId string, snapshot *PublishingUberSnapshot, includeInviteLink bool) error {
+	if !includeInviteLink {
+		return nil
+	}
+	inviteInfo, err := s.inviteService.GetCurrent(ctx, spaceId)
+	if err != nil && errors.Is(err, inviteservice.ErrInviteNotExists) {
+		return nil
+	}
 	if err != nil {
 		return err
 	}
-	snapshot.Meta.InviteLink = inviteLink
+	snapshot.Meta.InviteLink = fmt.Sprintf(inviteLinkUrlTemplate, inviteInfo.InviteFileCid, inviteInfo.InviteFileKey)
 	return nil
 }
 
@@ -356,6 +364,10 @@ func (s *service) publishToServer(ctx context.Context, spaceId, pageId, uri, ver
 
 	uploadUrl, err := s.publishClientService.Publish(ctx, publishReq)
 	if err != nil {
+		if errors.Is(err, publishapi.ErrUriNotUnique) {
+			return ErrUrlAlreadyTaken
+		}
+
 		return err
 	}
 
@@ -364,21 +376,6 @@ func (s *service) publishToServer(ctx context.Context, spaceId, pageId, uri, ver
 	}
 
 	return nil
-}
-
-func (s *service) extractInviteLink(ctx context.Context, spaceId string, joinSpace, isPersonal bool) (string, error) {
-	var inviteLink string
-	if joinSpace && !isPersonal {
-		inviteInfo, err := s.inviteService.GetCurrent(ctx, spaceId)
-		if err != nil && errors.Is(err, inviteservice.ErrInviteNotExists) {
-			return "", nil
-		}
-		if err != nil {
-			return "", err
-		}
-		inviteLink = fmt.Sprintf(inviteLinkUrlTemplate, inviteInfo.InviteFileCid, inviteInfo.InviteFileKey)
-	}
-	return inviteLink, nil
 }
 
 func (s *service) evaluateDocumentVersion(ctx context.Context, spc clientspace.Space, pageId string, joinSpace bool) (string, error) {

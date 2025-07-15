@@ -11,6 +11,7 @@ import (
 	"github.com/anyproto/any-sync/accountservice/mock_accountservice"
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/commonfile/fileservice"
+	"github.com/globalsign/mgo/bson"
 	"github.com/ipfs/go-cid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -18,18 +19,21 @@ import (
 	"go.uber.org/mock/gomock"
 
 	"github.com/anyproto/anytype-heart/core/anytype/config"
+	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/event/mock_event"
-	"github.com/anyproto/anytype-heart/core/filestorage"
-	"github.com/anyproto/anytype-heart/core/filestorage/filesync"
-	"github.com/anyproto/anytype-heart/core/filestorage/rpcstore"
+	"github.com/anyproto/anytype-heart/core/files/fileobject/filemodels"
+	"github.com/anyproto/anytype-heart/core/files/filestorage"
+	rpcstore2 "github.com/anyproto/anytype-heart/core/files/filestorage/rpcstore"
+	"github.com/anyproto/anytype-heart/core/files/filesync"
 	wallet2 "github.com/anyproto/anytype-heart/core/wallet"
 	"github.com/anyproto/anytype-heart/core/wallet/mock_wallet"
 	"github.com/anyproto/anytype-heart/pb"
-	"github.com/anyproto/anytype-heart/pkg/lib/datastore"
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore/filestore"
+	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
+	"github.com/anyproto/anytype-heart/pkg/lib/datastore/anystoreprovider"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/mill/schema"
+	"github.com/anyproto/anytype-heart/pkg/lib/pb/storage"
 	"github.com/anyproto/anytype-heart/tests/testutil"
 )
 
@@ -39,8 +43,8 @@ type fixture struct {
 	eventSender       *mock_event.MockSender
 	commonFileService fileservice.FileService
 	fileSyncService   filesync.FileSync
-	rpcStore          rpcstore.RpcStore
-	fileStore         filestore.FileStore
+	rpcStore          rpcstore2.RpcStore
+	objectStore       objectstore.ObjectStore
 }
 
 const (
@@ -50,14 +54,10 @@ const (
 )
 
 func newFixture(t *testing.T) *fixture {
-	fileStore := filestore.New()
-	dataStoreProvider, err := datastore.NewInMemory()
-	require.NoError(t, err)
-
 	blockStorage := filestorage.NewInMemory()
 
-	rpcStore := rpcstore.NewInMemoryStore(1024)
-	rpcStoreService := rpcstore.NewInMemoryService(rpcStore)
+	rpcStore := rpcstore2.NewInMemoryStore(1024)
+	rpcStoreService := rpcstore2.NewInMemoryService(rpcStore)
 	commonFileService := fileservice.New()
 	fileSyncService := filesync.New()
 	objectStore := objectstore.NewStoreFixture(t)
@@ -67,11 +67,10 @@ func newFixture(t *testing.T) *fixture {
 	ctrl := gomock.NewController(t)
 	wallet := mock_wallet.NewMockWallet(t)
 	wallet.EXPECT().Name().Return(wallet2.CName)
-	wallet.EXPECT().RepoPath().Return("repo/path")
+	wallet.EXPECT().RepoPath().Return(t.TempDir())
 	ctx := context.Background()
 	a := new(app.App)
-	a.Register(dataStoreProvider)
-	a.Register(fileStore)
+	a.Register(anystoreprovider.New())
 	a.Register(commonFileService)
 	a.Register(fileSyncService)
 	a.Register(testutil.PrepareMock(ctx, a, eventSender))
@@ -81,7 +80,7 @@ func newFixture(t *testing.T) *fixture {
 	a.Register(testutil.PrepareMock(ctx, a, mock_accountservice.NewMockService(ctrl)))
 	a.Register(testutil.PrepareMock(ctx, a, wallet))
 	a.Register(&config.Config{DisableFileConfig: true, NetworkMode: pb.RpcAccount_DefaultConfig, PeferYamuxTransport: true})
-	err = a.Start(ctx)
+	err := a.Start(ctx)
 	require.NoError(t, err)
 
 	s := New()
@@ -93,7 +92,7 @@ func newFixture(t *testing.T) *fixture {
 		commonFileService: commonFileService,
 		fileSyncService:   fileSyncService,
 		rpcStore:          rpcStore,
-		fileStore:         fileStore,
+		objectStore:       objectStore,
 	}
 }
 
@@ -101,13 +100,17 @@ func TestFileAdd(t *testing.T) {
 	fx, got, uploaded := getFixtureAndFileInfo(t)
 	ctx := context.Background()
 
+	require.Len(t, got.Variants, 1)
+
+	var variantCid string
+
 	t.Run("expect decrypting content", func(t *testing.T) {
-		file, err := fx.FileByHash(ctx, domain.FullFileId{FileId: got.FileId, SpaceId: spaceId})
-		require.NoError(t, err)
+		assertFileMeta(t, got, got.Variants)
 
-		assertFileMeta(t, got, file)
+		variant := got.Variants[0]
 
-		reader, err := file.Reader(ctx)
+		variantCid = variant.Hash
+		reader, err := fx.GetContentReader(ctx, spaceId, variantCid, got.EncryptionKeys.EncryptionKeys[variant.Path])
 		require.NoError(t, err)
 
 		gotContent, err := io.ReadAll(reader)
@@ -117,10 +120,7 @@ func TestFileAdd(t *testing.T) {
 	})
 
 	t.Run("expect that encrypted content stored in DAG", func(t *testing.T) {
-		file, err := fx.FileByHash(ctx, domain.FullFileId{FileId: got.FileId, SpaceId: spaceId})
-		require.NoError(t, err)
-
-		contentCid := cid.MustParse(file.Info().Hash)
+		contentCid := cid.MustParse(variantCid)
 		encryptedContent, err := fx.commonFileService.GetFile(ctx, contentCid)
 		require.NoError(t, err)
 		gotEncryptedContent, err := io.ReadAll(encryptedContent)
@@ -129,7 +129,15 @@ func TestFileAdd(t *testing.T) {
 	})
 
 	t.Run("check that file is uploaded to backup node", func(t *testing.T) {
-		err := fx.fileSyncService.AddFile("objectId1", domain.FullFileId{SpaceId: spaceId, FileId: got.FileId}, true, false)
+		req := filesync.AddFileRequest{
+			FileObjectId:        "objectId1",
+			FileId:              domain.FullFileId{SpaceId: spaceId, FileId: got.FileId},
+			UploadedByUser:      true,
+			Imported:            false,
+			PrioritizeVariantId: "",
+			Score:               0,
+		}
+		err := fx.fileSyncService.AddFile(req)
 		require.NoError(t, err)
 		<-uploaded
 		infos, err := fx.rpcStore.FilesInfo(ctx, spaceId, got.FileId)
@@ -173,15 +181,8 @@ func TestIndexFile(t *testing.T) {
 
 		fileResult := testAddFile(t, fx)
 
-		// Delete from index
-		err := fx.fileStore.DeleteFile(fileResult.FileId)
-		require.NoError(t, err)
-
-		err = fx.fileStore.AddFileKeys(*fileResult.EncryptionKeys)
-		require.NoError(t, err)
-
 		// Index
-		file, err := fx.FileByHash(context.Background(), domain.FullFileId{FileId: fileResult.FileId, SpaceId: spaceId})
+		file, err := fx.GetFileVariants(context.Background(), domain.FullFileId{FileId: fileResult.FileId, SpaceId: spaceId}, fileResult.EncryptionKeys.EncryptionKeys)
 		require.NoError(t, err)
 
 		assertFileMeta(t, fileResult, file)
@@ -192,24 +193,23 @@ func TestIndexFile(t *testing.T) {
 
 		fileResult := testAddFile(t, fx)
 
-		// Delete from index
-		err := fx.fileStore.DeleteFile(fileResult.FileId)
-		require.NoError(t, err)
-
-		_, err = fx.FileByHash(context.Background(), domain.FullFileId{FileId: fileResult.FileId, SpaceId: spaceId})
+		_, err := fx.GetFileVariants(context.Background(), domain.FullFileId{FileId: fileResult.FileId, SpaceId: spaceId}, nil)
 		require.Error(t, err)
 	})
 }
 
-func assertFileMeta(t *testing.T, fileResult *AddResult, file File) {
-	assert.Equal(t, fileResult.FileId, file.FileId())
-	assert.Equal(t, fileResult.MIME, file.Meta().Media)
-	assert.Equal(t, testFileName, file.Meta().Name)
-	assert.Equal(t, int64(len(testFileContent)), file.Meta().Size)
-
-	now := time.Now()
-	assert.True(t, now.Sub(time.Unix(file.Meta().LastModifiedDate, 0)) < time.Second)
-	assert.True(t, now.Sub(file.Meta().Added) < time.Second)
+func assertFileMeta(t *testing.T, fileResult *AddResult, variants []*storage.FileInfo) {
+	for _, v := range variants {
+		assert.Equal(t, fileResult.MIME, v.Media)
+		assert.Equal(t, testFileName, v.Name)
+		assert.Equal(t, int64(len(testFileContent)), v.Size_)
+		now := time.Now()
+		if !assert.True(t, now.Sub(time.Unix(v.LastModifiedDate, 0)) < time.Second) {
+			fmt.Println(now)
+			fmt.Println(time.Unix(v.LastModifiedDate, 0))
+		}
+		assert.True(t, now.Sub(time.Unix(v.Added, 0)) < time.Second)
+	}
 }
 
 func TestFileAddWithCustomKeys(t *testing.T) {
@@ -276,7 +276,7 @@ func TestFileAddWithCustomKeys(t *testing.T) {
 				assert.NotEmpty(t, got.FileId)
 				got.Commit()
 
-				encKeys, err := fx.fileStore.GetFileKeys(got.FileId)
+				encKeys, err := fx.objectStore.GetFileKeys(got.FileId)
 				require.NoError(t, err)
 				assert.NotEmpty(t, encKeys)
 				assert.NotEqual(t, customKeys, encKeys)
@@ -332,6 +332,37 @@ func testAddFile(t *testing.T, fx *fixture) *AddResult {
 	}
 	got, err := fx.FileAdd(context.Background(), spaceId, opts...)
 	require.NoError(t, err)
+
+	fx.addFileObjectToStore(t, got)
+
 	got.Commit()
+
 	return got
+}
+
+func (fx *fixture) addFileObjectToStore(t *testing.T, got *AddResult) {
+	fullFileId := domain.FullFileId{
+		SpaceId: spaceId,
+		FileId:  got.FileId,
+	}
+
+	file, err := NewFile(fx.Service, fullFileId, got.Variants)
+	require.NoError(t, err)
+
+	objectId := bson.NewObjectId().Hex()
+	st := state.NewDoc(objectId, nil).(*state.State)
+	st.SetFileInfo(state.FileInfo{
+		FileId:         got.FileId,
+		EncryptionKeys: got.EncryptionKeys.EncryptionKeys,
+	})
+	details, _, err := file.Details(context.Background())
+	require.NoError(t, err)
+
+	st.SetDetails(details)
+	st.SetDetailAndBundledRelation(bundle.RelationKeyFileId, domain.String(got.FileId))
+	err = filemodels.InjectVariantsToDetails(got.Variants, st)
+	require.NoError(t, err)
+
+	err = fx.objectStore.SpaceIndex(spaceId).UpdateObjectDetails(context.Background(), objectId, st.CombinedDetails())
+	require.NoError(t, err)
 }

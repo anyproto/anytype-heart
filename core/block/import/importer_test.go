@@ -16,6 +16,8 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/import/web/parsers/mock_parsers"
 	"github.com/anyproto/anytype-heart/core/block/process"
 	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/core/files/filesync/mock_filesync"
+	"github.com/anyproto/anytype-heart/space/mock_space"
 
 	"github.com/anyproto/anytype-heart/core/block/import/common"
 	"github.com/anyproto/anytype-heart/core/block/import/common/mock_common"
@@ -25,7 +27,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/import/web/parsers"
 	"github.com/anyproto/anytype-heart/core/domain/objectorigin"
 	"github.com/anyproto/anytype-heart/core/event/mock_event"
-	"github.com/anyproto/anytype-heart/core/filestorage/filesync/mock_filesync"
 	"github.com/anyproto/anytype-heart/core/notifications/mock_notifications"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
@@ -945,7 +946,7 @@ func Test_ImportRootCollectionInResponse(t *testing.T) {
 		originalRootCollectionID := "rootCollectionId"
 
 		converter := mock_common.NewMockConverter(t)
-		converter.EXPECT().GetSnapshots(mock.Anything, mock.Anything, mock.Anything).Return(&common.Response{RootCollectionID: originalRootCollectionID,
+		converter.EXPECT().GetSnapshots(mock.Anything, mock.Anything, mock.Anything).Return(&common.Response{RootObjectID: originalRootCollectionID,
 			Snapshots: []*common.Snapshot{
 				{
 					Snapshot: &common.SnapshotModel{
@@ -971,6 +972,9 @@ func Test_ImportRootCollectionInResponse(t *testing.T) {
 		fileSync.EXPECT().SendImportEvents().Return().Times(1)
 		fileSync.EXPECT().ClearImportEvents().Return().Times(1)
 		i.fileSync = fileSync
+		mockSpaceService := mock_space.NewMockService(t)
+		mockSpaceService.EXPECT().Get(nil, "space1").Return(nil, fmt.Errorf("not found"))
+		i.spaceService = mockSpaceService
 
 		// when
 		importRequest := &ImportRequest{
@@ -1002,7 +1006,7 @@ func Test_ImportRootCollectionInResponse(t *testing.T) {
 		creatorError := errors.New("creator error")
 
 		converter := mock_common.NewMockConverter(t)
-		converter.EXPECT().GetSnapshots(mock.Anything, mock.Anything, mock.Anything).Return(&common.Response{RootCollectionID: originalRootCollectionId,
+		converter.EXPECT().GetSnapshots(mock.Anything, mock.Anything, mock.Anything).Return(&common.Response{RootObjectID: originalRootCollectionId,
 			Snapshots: []*common.Snapshot{
 				{
 					Snapshot: &common.SnapshotModel{
@@ -1058,7 +1062,7 @@ func Test_ImportRootCollectionInResponse(t *testing.T) {
 		converterError := common.NewFromError(errors.New("converter error"), pb.RpcObjectImportRequest_ALL_OR_NOTHING)
 
 		converter := mock_common.NewMockConverter(t)
-		converter.EXPECT().GetSnapshots(mock.Anything, mock.Anything, mock.Anything).Return(&common.Response{RootCollectionID: originalRootCollectionId,
+		converter.EXPECT().GetSnapshots(mock.Anything, mock.Anything, mock.Anything).Return(&common.Response{RootObjectID: originalRootCollectionId,
 			Snapshots: []*common.Snapshot{
 				{
 					Snapshot: &common.SnapshotModel{
@@ -1104,7 +1108,7 @@ func Test_ImportRootCollectionInResponse(t *testing.T) {
 		converterError := common.NewFromError(errors.New("converter error"), pb.RpcObjectImportRequest_ALL_OR_NOTHING)
 
 		converter := mock_common.NewMockConverter(t)
-		converter.EXPECT().GetSnapshots(mock.Anything, mock.Anything, mock.Anything).Return(&common.Response{RootCollectionID: originalRootCollectionId,
+		converter.EXPECT().GetSnapshots(mock.Anything, mock.Anything, mock.Anything).Return(&common.Response{RootObjectID: originalRootCollectionId,
 			Snapshots: []*common.Snapshot{
 				{
 					Snapshot: &common.SnapshotModel{

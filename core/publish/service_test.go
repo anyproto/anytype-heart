@@ -10,6 +10,7 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 
 	anystore "github.com/anyproto/any-store"
 	"github.com/anyproto/any-sync/app"
@@ -25,13 +26,16 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/anytype/account/mock_account"
 	"github.com/anyproto/anytype-heart/core/block/cache/mock_cache"
+	"github.com/anyproto/anytype-heart/core/block/editor/fileobject"
+	"github.com/anyproto/anytype-heart/core/block/editor/fileobject/mock_fileobject"
+	editorsb "github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock/smarttest"
 	"github.com/anyproto/anytype-heart/core/block/export"
 	"github.com/anyproto/anytype-heart/core/block/process"
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/event/mock_event"
-	files2 "github.com/anyproto/anytype-heart/core/files"
+	"github.com/anyproto/anytype-heart/core/files"
 	"github.com/anyproto/anytype-heart/core/files/mock_files"
 	"github.com/anyproto/anytype-heart/core/identity/mock_identity"
 	"github.com/anyproto/anytype-heart/core/inviteservice"
@@ -44,7 +48,6 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/spaceindex"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	"github.com/anyproto/anytype-heart/pkg/lib/pb/storage"
 	"github.com/anyproto/anytype-heart/pkg/lib/threads"
 	"github.com/anyproto/anytype-heart/space/clientspace/mock_clientspace"
 	"github.com/anyproto/anytype-heart/space/mock_space"
@@ -139,7 +142,9 @@ func TestPublish(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
 		// given
 		isPersonal := true
-		spaceService, err := prepareSpaceService(t, isPersonal)
+		includeSpaceInfo := false
+
+		spaceService, err := prepareSpaceService(t, isPersonal, includeSpaceInfo)
 
 		objectTypeId := "customObjectType"
 		expectedUri := "test"
@@ -159,7 +164,7 @@ func TestPublish(t *testing.T) {
 		identityService := mock_identity.NewMockService(t)
 		identityService.EXPECT().GetMyProfileDetails(context.Background()).Return("identity", nil, domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{}))
 
-		exp := prepareExporter(t, objectTypeId, spaceService)
+		exp := prepareExporter(t, objectTypeId, spaceService, false)
 
 		svc := &service{
 			spaceService:         spaceService,
@@ -169,7 +174,7 @@ func TestPublish(t *testing.T) {
 		}
 
 		// when
-		publish, err := svc.Publish(context.Background(), spaceId, objectId, expectedUri, false)
+		publish, err := svc.Publish(context.Background(), spaceId, objectId, expectedUri, includeSpaceInfo)
 
 		// then
 		assert.NoError(t, err)
@@ -182,7 +187,9 @@ func TestPublish(t *testing.T) {
 	t.Run("success with space sharing", func(t *testing.T) {
 		// given
 		isPersonal := false
-		spaceService, err := prepareSpaceService(t, isPersonal)
+		includeSpaceInfo := true
+
+		spaceService, err := prepareSpaceService(t, isPersonal, includeSpaceInfo)
 
 		objectTypeId := "customObjectType"
 		expectedUri := "test"
@@ -206,7 +213,7 @@ func TestPublish(t *testing.T) {
 		identityService := mock_identity.NewMockService(t)
 		identityService.EXPECT().GetMyProfileDetails(context.Background()).Return("identity", nil, domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{}))
 
-		exp := prepareExporter(t, objectTypeId, spaceService)
+		exp := prepareExporter(t, objectTypeId, spaceService, includeSpaceInfo)
 
 		inviteService := mock_inviteservice.NewMockInviteService(t)
 		inviteService.EXPECT().GetCurrent(context.Background(), "spaceId").Return(domain.InviteInfo{
@@ -223,7 +230,7 @@ func TestPublish(t *testing.T) {
 		}
 
 		// when
-		publish, err := svc.Publish(context.Background(), spaceId, objectId, expectedUri, true)
+		publish, err := svc.Publish(context.Background(), spaceId, objectId, expectedUri, includeSpaceInfo)
 
 		// then
 		assert.NoError(t, err)
@@ -235,7 +242,9 @@ func TestPublish(t *testing.T) {
 	})
 	t.Run("success with space sharing - invite not exists", func(t *testing.T) {
 		isPersonal := false
-		spaceService, err := prepareSpaceService(t, isPersonal)
+		includeSpaceInfo := true
+
+		spaceService, err := prepareSpaceService(t, isPersonal, includeSpaceInfo)
 
 		objectTypeId := "customObjectType"
 		expectedUri := "test"
@@ -256,7 +265,7 @@ func TestPublish(t *testing.T) {
 		identityService := mock_identity.NewMockService(t)
 		identityService.EXPECT().GetMyProfileDetails(context.Background()).Return("identity", nil, domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{}))
 
-		exp := prepareExporter(t, objectTypeId, spaceService)
+		exp := prepareExporter(t, objectTypeId, spaceService, includeSpaceInfo)
 
 		inviteService := mock_inviteservice.NewMockInviteService(t)
 		inviteService.EXPECT().GetCurrent(context.Background(), "spaceId").Return(domain.InviteInfo{}, inviteservice.ErrInviteNotExists)
@@ -270,7 +279,7 @@ func TestPublish(t *testing.T) {
 		}
 
 		// when
-		publish, err := svc.Publish(context.Background(), spaceId, objectId, expectedUri, true)
+		publish, err := svc.Publish(context.Background(), spaceId, objectId, expectedUri, includeSpaceInfo)
 
 		// then
 		assert.NoError(t, err)
@@ -283,7 +292,8 @@ func TestPublish(t *testing.T) {
 	t.Run("success for member", func(t *testing.T) {
 		// given
 		isPersonal := false
-		spaceService, err := prepareSpaceService(t, isPersonal)
+		includeSpaceInfo := true
+		spaceService, err := prepareSpaceService(t, isPersonal, includeSpaceInfo)
 
 		objectTypeId := "customObjectType"
 		expectedUri := "test"
@@ -311,7 +321,7 @@ func TestPublish(t *testing.T) {
 			},
 		}
 
-		exp := prepareExporter(t, objectTypeId, spaceService)
+		exp := prepareExporter(t, objectTypeId, spaceService, includeSpaceInfo)
 
 		inviteService := mock_inviteservice.NewMockInviteService(t)
 		inviteService.EXPECT().GetCurrent(context.Background(), "spaceId").Return(domain.InviteInfo{
@@ -328,7 +338,7 @@ func TestPublish(t *testing.T) {
 		}
 
 		// when
-		publish, err := svc.Publish(context.Background(), spaceId, objectId, expectedUri, true)
+		publish, err := svc.Publish(context.Background(), spaceId, objectId, expectedUri, includeSpaceInfo)
 
 		// then
 		assert.NoError(t, err)
@@ -341,7 +351,9 @@ func TestPublish(t *testing.T) {
 	t.Run("internal error", func(t *testing.T) {
 		// given
 		isPersonal := true
-		spaceService, err := prepareSpaceService(t, isPersonal)
+		includeSpaceInfo := true
+
+		spaceService, err := prepareSpaceService(t, isPersonal, includeSpaceInfo)
 
 		objectTypeId := "customObjectType"
 		expectedUri := "test"
@@ -363,7 +375,7 @@ func TestPublish(t *testing.T) {
 			expectedErr: fmt.Errorf("internal error"),
 		}
 
-		exp := prepareExporter(t, objectTypeId, spaceService)
+		exp := prepareExporter(t, objectTypeId, spaceService, false)
 
 		svc := &service{
 			spaceService:         spaceService,
@@ -373,7 +385,7 @@ func TestPublish(t *testing.T) {
 		}
 
 		// when
-		publish, err := svc.Publish(context.Background(), spaceId, objectId, expectedUri, true)
+		publish, err := svc.Publish(context.Background(), spaceId, objectId, expectedUri, includeSpaceInfo)
 
 		// then
 		assert.Error(t, err)
@@ -385,11 +397,19 @@ func TestPublish(t *testing.T) {
 	})
 	t.Run("limit error for members", func(t *testing.T) {
 		// given
-		spaceService := mock_space.NewMockService(t)
+		isPersonal := false
+		includeSpaceInfo := true
+
+		spaceService, err := prepareSpaceService(t, isPersonal, includeSpaceInfo)
+		require.NoError(t, err)
+		space := mock_clientspace.NewMockSpace(t)
+		space.EXPECT().DerivedIDs().Return(threads.DerivedSmartblockIds{Workspace: workspaceId}).Maybe()
+		space.EXPECT().IsPersonal().Return(isPersonal).Maybe()
+		spaceService.EXPECT().Get(context.Background(), spaceId).Return(space, nil)
 
 		expectedUri := "test"
 		testFile := "test"
-		err := createTestFile(testFile, membershipLimit+1)
+		err = createTestFile(testFile, membershipLimit+1)
 		assert.NoError(t, err)
 
 		objectTypeId := "customObjectType"
@@ -408,14 +428,18 @@ func TestPublish(t *testing.T) {
 			bundle.RelationKeyGlobalName: domain.String(globalName),
 		}))
 
+		inviteService := mock_inviteservice.NewMockInviteService(t)
+		inviteService.EXPECT().GetCurrent(mock.Anything, mock.Anything).Return(domain.InviteInfo{}, inviteservice.ErrInviteNotExists).Maybe()
+
 		svc := &service{
 			spaceService:    spaceService,
 			exportService:   exp,
 			identityService: identityService,
+			inviteService:   inviteService,
 		}
 
 		// when
-		publish, err := svc.Publish(context.Background(), spaceId, objectId, expectedUri, true)
+		publish, err := svc.Publish(context.Background(), spaceId, objectId, expectedUri, includeSpaceInfo)
 
 		// then
 		assert.Error(t, err)
@@ -424,11 +448,19 @@ func TestPublish(t *testing.T) {
 	})
 	t.Run("default limit error", func(t *testing.T) {
 		// given
-		spaceService := mock_space.NewMockService(t)
+		isPersonal := false
+		includeSpaceInfo := true
+
+		spaceService, err := prepareSpaceService(t, isPersonal, includeSpaceInfo)
+		require.NoError(t, err)
+		space := mock_clientspace.NewMockSpace(t)
+		space.EXPECT().DerivedIDs().Return(threads.DerivedSmartblockIds{Workspace: workspaceId}).Maybe()
+		space.EXPECT().IsPersonal().Return(isPersonal).Maybe()
+		spaceService.EXPECT().Get(context.Background(), spaceId).Return(space, nil)
 
 		expectedUri := "test"
 		testFile := "test"
-		err := createTestFile(testFile, defaultLimit+1)
+		err = createTestFile(testFile, defaultLimit+1)
 		assert.NoError(t, err)
 
 		objectTypeId := "customObjectType"
@@ -444,14 +476,18 @@ func TestPublish(t *testing.T) {
 		identityService := mock_identity.NewMockService(t)
 		identityService.EXPECT().GetMyProfileDetails(context.Background()).Return("identity", nil, domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{}))
 
+		inviteService := mock_inviteservice.NewMockInviteService(t)
+		inviteService.EXPECT().GetCurrent(mock.Anything, mock.Anything).Return(domain.InviteInfo{}, inviteservice.ErrInviteNotExists).Maybe()
+
 		svc := &service{
 			spaceService:    spaceService,
 			exportService:   exp,
 			identityService: identityService,
+			inviteService:   inviteService,
 		}
 
 		// when
-		publish, err := svc.Publish(context.Background(), spaceId, objectId, expectedUri, true)
+		publish, err := svc.Publish(context.Background(), spaceId, objectId, expectedUri, includeSpaceInfo)
 
 		// then
 		assert.Error(t, err)
@@ -666,24 +702,27 @@ func TestService_PublishingList(t *testing.T) {
 
 var ctx = context.Background()
 
-func prepareSpaceService(t *testing.T, isPersonal bool) (*mock_space.MockService, error) {
+func prepareSpaceService(t *testing.T, isPersonal bool, includeSpaceInfo bool) (*mock_space.MockService, error) {
 	spaceService := mock_space.NewMockService(t)
 	space := mock_clientspace.NewMockSpace(t)
 	ctrl := gomock.NewController(t)
-	space.EXPECT().IsPersonal().Return(isPersonal)
-	space.EXPECT().Id().Return(spaceId)
 
 	st := mock_anystorage.NewMockClientSpaceStorage(t)
 	mockSt := mock_objecttree.NewMockStorage(ctrl)
-	st.EXPECT().TreeStorage(mock.Anything, mock.Anything).Return(mockSt, nil)
-	mockSt.EXPECT().Heads(gomock.Any()).Return([]string{"heads"}, nil)
-	space.EXPECT().Storage().Return(st)
-	space.EXPECT().DerivedIDs().Return(threads.DerivedSmartblockIds{Workspace: workspaceId})
+	st.EXPECT().TreeStorage(mock.Anything, mock.Anything).Return(mockSt, nil).Maybe()
+	mockSt.EXPECT().Heads(gomock.Any()).Return([]string{"heads"}, nil).AnyTimes()
+	space.EXPECT().Storage().Return(st).Maybe()
+	if includeSpaceInfo && !isPersonal {
+		space.EXPECT().DerivedIDs().Return(threads.DerivedSmartblockIds{Workspace: workspaceId})
+	}
+	if includeSpaceInfo {
+		space.EXPECT().IsPersonal().Return(isPersonal)
+	}
 	spaceService.EXPECT().Get(context.Background(), spaceId).Return(space, nil)
 	return spaceService, nil
 }
 
-func prepareExporter(t *testing.T, objectTypeId string, spaceService *mock_space.MockService) export.Export {
+func prepareExporter(t *testing.T, objectTypeId string, spaceService *mock_space.MockService, includeSpaceInfo bool) export.Export {
 	storeFixture := objectstore.NewStoreFixture(t)
 	objectTypeUniqueKey, err := domain.NewUniqueKey(smartblock.SmartBlockTypeObjectType, objectTypeId)
 	assert.Nil(t, err)
@@ -740,23 +779,25 @@ func prepareExporter(t *testing.T, objectTypeId string, spaceService *mock_space
 	objectType.Doc = objectTypeDoc
 	objectType.SetType(smartblock.SmartBlockTypeObjectType)
 
-	workspaceTest := smarttest.New(workspaceId)
-	workspaceDoc := workspaceTest.NewState().SetDetails(domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
-		bundle.RelationKeyId:   domain.String(workspaceId),
-		bundle.RelationKeyType: domain.String(objectTypeId),
-	}))
-	workspaceDoc.AddRelationLinks(&model.RelationLink{
-		Key:    bundle.RelationKeyId.String(),
-		Format: model.RelationFormat_longtext,
-	}, &model.RelationLink{
-		Key:    bundle.RelationKeyType.String(),
-		Format: model.RelationFormat_longtext,
-	})
-	workspaceTest.Doc = workspaceDoc
+	if includeSpaceInfo {
+		workspaceTest := smarttest.New(workspaceId)
+		workspaceDoc := workspaceTest.NewState().SetDetails(domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+			bundle.RelationKeyId:   domain.String(workspaceId),
+			bundle.RelationKeyType: domain.String(objectTypeId),
+		}))
+		workspaceDoc.AddRelationLinks(&model.RelationLink{
+			Key:    bundle.RelationKeyId.String(),
+			Format: model.RelationFormat_longtext,
+		}, &model.RelationLink{
+			Key:    bundle.RelationKeyType.String(),
+			Format: model.RelationFormat_longtext,
+		})
+		workspaceTest.Doc = workspaceDoc
+		objectGetter.EXPECT().GetObject(context.Background(), workspaceId).Return(workspaceTest, nil)
+	}
 
 	objectGetter.EXPECT().GetObject(context.Background(), objectId).Return(smartBlockTest, nil)
 	objectGetter.EXPECT().GetObject(context.Background(), objectTypeId).Return(objectType, nil)
-	objectGetter.EXPECT().GetObject(context.Background(), workspaceId).Return(workspaceTest, nil)
 
 	a := &app.App{}
 	mockSender := mock_event.NewMockSender(t)
@@ -774,6 +815,11 @@ func prepareExporter(t *testing.T, objectTypeId string, spaceService *mock_space
 	err = exp.Init(a)
 	assert.Nil(t, err)
 	return exp
+}
+
+type fileObjectWrapper struct {
+	editorsb.SmartBlock
+	fileobject.FileObject
 }
 
 func prepareExporterWithFile(t *testing.T, objectTypeId string, spaceService *mock_space.MockService, testFile *os.File) export.Export {
@@ -841,6 +887,19 @@ func prepareExporterWithFile(t *testing.T, objectTypeId string, spaceService *mo
 	objectType.Doc = objectTypeDoc
 	objectType.SetType(smartblock.SmartBlockTypeObjectType)
 
+	fileService := mock_files.NewMockService(t)
+	fileData := mock_files.NewMockFile(t)
+	fileData.EXPECT().Reader(context.Background()).Return(testFile, nil)
+	fileData.EXPECT().Meta().Return(&files.FileMeta{Name: fileId})
+	fileData.EXPECT().LastModifiedDate().Return(time.Now().Unix())
+	fileData.EXPECT().MimeType().Return("text/plain")
+
+	fileObjectSb := smarttest.New(fileId)
+
+	fileObjectMock := mock_fileobject.NewMockFileObject(t)
+	fileObjectMock.EXPECT().GetFile().Return(fileData, nil)
+	file := &fileObjectWrapper{SmartBlock: fileObjectSb, FileObject: fileObjectMock}
+
 	workspaceTest := smarttest.New(workspaceId)
 	workspaceDoc := workspaceTest.NewState().SetDetails(domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
 		bundle.RelationKeyId:   domain.String(workspaceId),
@@ -855,7 +914,6 @@ func prepareExporterWithFile(t *testing.T, objectTypeId string, spaceService *mo
 	})
 	workspaceTest.Doc = workspaceDoc
 
-	file := smarttest.New(fileId)
 	fileDoc := file.NewState().SetDetails(domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
 		bundle.RelationKeyId:     domain.String(fileId),
 		bundle.RelationKeyType:   domain.String(objectTypeId),
@@ -868,13 +926,12 @@ func prepareExporterWithFile(t *testing.T, objectTypeId string, spaceService *mo
 		Key:    bundle.RelationKeyType.String(),
 		Format: model.RelationFormat_longtext,
 	})
-	file.Doc = fileDoc
-	file.SetType(smartblock.SmartBlockTypeFileObject)
-	file.SetSpaceId(spaceId)
-	space := mock_clientspace.NewMockSpace(t)
-	space.EXPECT().Id().Return(spaceId)
-	space.EXPECT().DerivedIDs().Return(threads.DerivedSmartblockIds{Workspace: workspaceId})
-	file.SetSpace(space)
+	fileObjectSb.Doc = fileDoc
+	fileObjectSb.SetType(smartblock.SmartBlockTypeFileObject)
+	fileObjectSb.SetSpaceId(spaceId)
+	space, err := spaceService.Get(context.Background(), spaceId)
+	require.NoError(t, err)
+	fileObjectSb.SetSpace(space)
 
 	spaceService.EXPECT().Get(context.Background(), spaceId).Return(space, nil)
 	objectGetter.EXPECT().GetObject(context.Background(), objectId).Return(smartBlockTest, nil).Times(4)
@@ -882,27 +939,18 @@ func prepareExporterWithFile(t *testing.T, objectTypeId string, spaceService *mo
 	objectGetter.EXPECT().GetObject(context.Background(), fileId).Return(file, nil)
 	objectGetter.EXPECT().GetObject(context.Background(), workspaceId).Return(workspaceTest, nil)
 
-	fileService := mock_files.NewMockService(t)
-	fileObject := mock_files.NewMockFile(t)
-	fileObject.EXPECT().Info().Return(&storage.FileInfo{
-		Media: "file",
-	})
-	fileObject.EXPECT().Meta().Return(&files2.FileMeta{
-		Name: testFile.Name(),
-	})
-	fileObject.EXPECT().Reader(context.Background()).Return(testFile, nil)
-	fileService.EXPECT().FileByHash(context.Background(), domain.FullFileId{FileId: domain.FileId(fileId), SpaceId: spaceId}).Return(fileObject, nil)
 	a := &app.App{}
 	mockSender := mock_event.NewMockSender(t)
+	ctx := context.Background()
 	a.Register(storeFixture)
-	a.Register(testutil.PrepareMock(context.Background(), a, mockSender))
-	a.Register(testutil.PrepareMock(context.Background(), a, objectGetter))
+	a.Register(testutil.PrepareMock(ctx, a, mockSender))
+	a.Register(testutil.PrepareMock(ctx, a, objectGetter))
 	a.Register(process.New())
-	a.Register(testutil.PrepareMock(context.Background(), a, spaceService))
-	a.Register(testutil.PrepareMock(context.Background(), a, mock_typeprovider.NewMockSmartBlockTypeProvider(t)))
-	a.Register(testutil.PrepareMock(context.Background(), a, mock_account.NewMockService(t)))
-	a.Register(testutil.PrepareMock(context.Background(), a, mock_notifications.NewMockNotifications(t)))
-	a.Register(testutil.PrepareMock(context.Background(), a, fileService))
+	a.Register(testutil.PrepareMock(ctx, a, spaceService))
+	a.Register(testutil.PrepareMock(ctx, a, mock_typeprovider.NewMockSmartBlockTypeProvider(t)))
+	a.Register(testutil.PrepareMock(ctx, a, mock_account.NewMockService(t)))
+	a.Register(testutil.PrepareMock(ctx, a, mock_notifications.NewMockNotifications(t)))
+	a.Register(testutil.PrepareMock(ctx, a, fileService))
 
 	exp := export.New()
 	err = exp.Init(a)

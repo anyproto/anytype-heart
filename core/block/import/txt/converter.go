@@ -56,7 +56,12 @@ func (t *TXT) GetSnapshots(ctx context.Context, req *pb.RpcObjectImportRequest, 
 		return nil, allErrors
 	}
 	rootCollection := common.NewImportCollection(t.service)
-	settings := common.MakeImportCollectionSetting(rootCollectionName, targetObjects, "", nil, true, true, true)
+	settings := common.NewImportCollectionSetting(
+		common.WithCollectionName(rootCollectionName),
+		common.WithTargetObjects(targetObjects),
+		common.WithRelations(),
+		common.WithAddDate(),
+	)
 	rootCol, err := rootCollection.MakeImportCollection(settings)
 	if err != nil {
 		allErrors.Add(err)
@@ -71,11 +76,12 @@ func (t *TXT) GetSnapshots(ctx context.Context, req *pb.RpcObjectImportRequest, 
 	}
 	progress.SetTotal(int64(numberOfStages * len(snapshots)))
 	if allErrors.IsEmpty() {
-		return &common.Response{Snapshots: snapshots, RootCollectionID: rootCollectionID}, nil
+		return &common.Response{Snapshots: snapshots, RootObjectID: rootCollectionID, RootObjectWidgetType: model.BlockContentWidget_CompactList}, nil
 	}
 	return &common.Response{
-		Snapshots:        snapshots,
-		RootCollectionID: rootCollectionID,
+		Snapshots:            snapshots,
+		RootObjectID:         rootCollectionID,
+		RootObjectWidgetType: model.BlockContentWidget_CompactList,
 	}, allErrors
 }
 

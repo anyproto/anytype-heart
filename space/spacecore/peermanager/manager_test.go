@@ -201,7 +201,7 @@ func (t *testPeer) AcquireDrpcConn(ctx context.Context) (drpc.Conn, error) {
 	return nil, fmt.Errorf("not implemented")
 }
 
-func (t *testPeer) ReleaseDrpcConn(conn drpc.Conn) {}
+func (t *testPeer) ReleaseDrpcConn(ctx context.Context, conn drpc.Conn) {}
 
 func (t *testPeer) Context() context.Context {
 	return t.ctx

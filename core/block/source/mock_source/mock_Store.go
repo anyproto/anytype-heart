@@ -276,17 +276,17 @@ func (_c *MockStore_Id_Call) RunAndReturn(run func() string) *MockStore_Id_Call 
 	return _c
 }
 
-// InitDiffManager provides a mock function with given fields: ctx, seenHeads
-func (_m *MockStore) InitDiffManager(ctx context.Context, seenHeads []string) error {
-	ret := _m.Called(ctx, seenHeads)
+// InitDiffManager provides a mock function with given fields: ctx, name, seenHeads
+func (_m *MockStore) InitDiffManager(ctx context.Context, name string, seenHeads []string) error {
+	ret := _m.Called(ctx, name, seenHeads)
 
 	if len(ret) == 0 {
 		panic("no return value specified for InitDiffManager")
 	}
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(context.Context, []string) error); ok {
-		r0 = rf(ctx, seenHeads)
+	if rf, ok := ret.Get(0).(func(context.Context, string, []string) error); ok {
+		r0 = rf(ctx, name, seenHeads)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -301,14 +301,15 @@ type MockStore_InitDiffManager_Call struct {
 
 // InitDiffManager is a helper method to define mock.On call
 //   - ctx context.Context
+//   - name string
 //   - seenHeads []string
-func (_e *MockStore_Expecter) InitDiffManager(ctx interface{}, seenHeads interface{}) *MockStore_InitDiffManager_Call {
-	return &MockStore_InitDiffManager_Call{Call: _e.mock.On("InitDiffManager", ctx, seenHeads)}
+func (_e *MockStore_Expecter) InitDiffManager(ctx interface{}, name interface{}, seenHeads interface{}) *MockStore_InitDiffManager_Call {
+	return &MockStore_InitDiffManager_Call{Call: _e.mock.On("InitDiffManager", ctx, name, seenHeads)}
 }
 
-func (_c *MockStore_InitDiffManager_Call) Run(run func(ctx context.Context, seenHeads []string)) *MockStore_InitDiffManager_Call {
+func (_c *MockStore_InitDiffManager_Call) Run(run func(ctx context.Context, name string, seenHeads []string)) *MockStore_InitDiffManager_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].([]string))
+		run(args[0].(context.Context), args[1].(string), args[2].([]string))
 	})
 	return _c
 }
@@ -318,22 +319,22 @@ func (_c *MockStore_InitDiffManager_Call) Return(_a0 error) *MockStore_InitDiffM
 	return _c
 }
 
-func (_c *MockStore_InitDiffManager_Call) RunAndReturn(run func(context.Context, []string) error) *MockStore_InitDiffManager_Call {
+func (_c *MockStore_InitDiffManager_Call) RunAndReturn(run func(context.Context, string, []string) error) *MockStore_InitDiffManager_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
-// MarkSeenHeads provides a mock function with given fields: ctx, heads
-func (_m *MockStore) MarkSeenHeads(ctx context.Context, heads []string) error {
-	ret := _m.Called(ctx, heads)
+// MarkSeenHeads provides a mock function with given fields: ctx, name, heads
+func (_m *MockStore) MarkSeenHeads(ctx context.Context, name string, heads []string) error {
+	ret := _m.Called(ctx, name, heads)
 
 	if len(ret) == 0 {
 		panic("no return value specified for MarkSeenHeads")
 	}
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(context.Context, []string) error); ok {
-		r0 = rf(ctx, heads)
+	if rf, ok := ret.Get(0).(func(context.Context, string, []string) error); ok {
+		r0 = rf(ctx, name, heads)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -348,14 +349,15 @@ type MockStore_MarkSeenHeads_Call struct {
 
 // MarkSeenHeads is a helper method to define mock.On call
 //   - ctx context.Context
+//   - name string
 //   - heads []string
-func (_e *MockStore_Expecter) MarkSeenHeads(ctx interface{}, heads interface{}) *MockStore_MarkSeenHeads_Call {
-	return &MockStore_MarkSeenHeads_Call{Call: _e.mock.On("MarkSeenHeads", ctx, heads)}
+func (_e *MockStore_Expecter) MarkSeenHeads(ctx interface{}, name interface{}, heads interface{}) *MockStore_MarkSeenHeads_Call {
+	return &MockStore_MarkSeenHeads_Call{Call: _e.mock.On("MarkSeenHeads", ctx, name, heads)}
 }
 
-func (_c *MockStore_MarkSeenHeads_Call) Run(run func(ctx context.Context, heads []string)) *MockStore_MarkSeenHeads_Call {
+func (_c *MockStore_MarkSeenHeads_Call) Run(run func(ctx context.Context, name string, heads []string)) *MockStore_MarkSeenHeads_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].([]string))
+		run(args[0].(context.Context), args[1].(string), args[2].([]string))
 	})
 	return _c
 }
@@ -365,7 +367,7 @@ func (_c *MockStore_MarkSeenHeads_Call) Return(_a0 error) *MockStore_MarkSeenHea
 	return _c
 }
 
-func (_c *MockStore_MarkSeenHeads_Call) RunAndReturn(run func(context.Context, []string) error) *MockStore_MarkSeenHeads_Call {
+func (_c *MockStore_MarkSeenHeads_Call) RunAndReturn(run func(context.Context, string, []string) error) *MockStore_MarkSeenHeads_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -588,17 +590,17 @@ func (_c *MockStore_ReadOnly_Call) RunAndReturn(run func() bool) *MockStore_Read
 	return _c
 }
 
-// ReadStoreDoc provides a mock function with given fields: ctx, stateStore, onUpdateHook
-func (_m *MockStore) ReadStoreDoc(ctx context.Context, stateStore *storestate.StoreState, onUpdateHook func()) error {
-	ret := _m.Called(ctx, stateStore, onUpdateHook)
+// ReadStoreDoc provides a mock function with given fields: ctx, stateStore, params
+func (_m *MockStore) ReadStoreDoc(ctx context.Context, stateStore *storestate.StoreState, params source.ReadStoreDocParams) error {
+	ret := _m.Called(ctx, stateStore, params)
 
 	if len(ret) == 0 {
 		panic("no return value specified for ReadStoreDoc")
 	}
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(context.Context, *storestate.StoreState, func()) error); ok {
-		r0 = rf(ctx, stateStore, onUpdateHook)
+	if rf, ok := ret.Get(0).(func(context.Context, *storestate.StoreState, source.ReadStoreDocParams) error); ok {
+		r0 = rf(ctx, stateStore, params)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -614,14 +616,14 @@ type MockStore_ReadStoreDoc_Call struct {
 // ReadStoreDoc is a helper method to define mock.On call
 //   - ctx context.Context
 //   - stateStore *storestate.StoreState
-//   - onUpdateHook func()
-func (_e *MockStore_Expecter) ReadStoreDoc(ctx interface{}, stateStore interface{}, onUpdateHook interface{}) *MockStore_ReadStoreDoc_Call {
-	return &MockStore_ReadStoreDoc_Call{Call: _e.mock.On("ReadStoreDoc", ctx, stateStore, onUpdateHook)}
+//   - params source.ReadStoreDocParams
+func (_e *MockStore_Expecter) ReadStoreDoc(ctx interface{}, stateStore interface{}, params interface{}) *MockStore_ReadStoreDoc_Call {
+	return &MockStore_ReadStoreDoc_Call{Call: _e.mock.On("ReadStoreDoc", ctx, stateStore, params)}
 }
 
-func (_c *MockStore_ReadStoreDoc_Call) Run(run func(ctx context.Context, stateStore *storestate.StoreState, onUpdateHook func())) *MockStore_ReadStoreDoc_Call {
+func (_c *MockStore_ReadStoreDoc_Call) Run(run func(ctx context.Context, stateStore *storestate.StoreState, params source.ReadStoreDocParams)) *MockStore_ReadStoreDoc_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(*storestate.StoreState), args[2].(func()))
+		run(args[0].(context.Context), args[1].(*storestate.StoreState), args[2].(source.ReadStoreDocParams))
 	})
 	return _c
 }
@@ -631,40 +633,41 @@ func (_c *MockStore_ReadStoreDoc_Call) Return(err error) *MockStore_ReadStoreDoc
 	return _c
 }
 
-func (_c *MockStore_ReadStoreDoc_Call) RunAndReturn(run func(context.Context, *storestate.StoreState, func()) error) *MockStore_ReadStoreDoc_Call {
+func (_c *MockStore_ReadStoreDoc_Call) RunAndReturn(run func(context.Context, *storestate.StoreState, source.ReadStoreDocParams) error) *MockStore_ReadStoreDoc_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
-// SetDiffManagerOnRemoveHook provides a mock function with given fields: f
-func (_m *MockStore) SetDiffManagerOnRemoveHook(f func([]string)) {
-	_m.Called(f)
+// RegisterDiffManager provides a mock function with given fields: name, onRemoveHook
+func (_m *MockStore) RegisterDiffManager(name string, onRemoveHook func([]string)) {
+	_m.Called(name, onRemoveHook)
 }
 
-// MockStore_SetDiffManagerOnRemoveHook_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'SetDiffManagerOnRemoveHook'
-type MockStore_SetDiffManagerOnRemoveHook_Call struct {
+// MockStore_RegisterDiffManager_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'RegisterDiffManager'
+type MockStore_RegisterDiffManager_Call struct {
 	*mock.Call
 }
 
-// SetDiffManagerOnRemoveHook is a helper method to define mock.On call
-//   - f func([]string)
-func (_e *MockStore_Expecter) SetDiffManagerOnRemoveHook(f interface{}) *MockStore_SetDiffManagerOnRemoveHook_Call {
-	return &MockStore_SetDiffManagerOnRemoveHook_Call{Call: _e.mock.On("SetDiffManagerOnRemoveHook", f)}
+// RegisterDiffManager is a helper method to define mock.On call
+//   - name string
+//   - onRemoveHook func([]string)
+func (_e *MockStore_Expecter) RegisterDiffManager(name interface{}, onRemoveHook interface{}) *MockStore_RegisterDiffManager_Call {
+	return &MockStore_RegisterDiffManager_Call{Call: _e.mock.On("RegisterDiffManager", name, onRemoveHook)}
 }
 
-func (_c *MockStore_SetDiffManagerOnRemoveHook_Call) Run(run func(f func([]string))) *MockStore_SetDiffManagerOnRemoveHook_Call {
+func (_c *MockStore_RegisterDiffManager_Call) Run(run func(name string, onRemoveHook func([]string))) *MockStore_RegisterDiffManager_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(func([]string)))
+		run(args[0].(string), args[1].(func([]string)))
 	})
 	return _c
 }
 
-func (_c *MockStore_SetDiffManagerOnRemoveHook_Call) Return() *MockStore_SetDiffManagerOnRemoveHook_Call {
+func (_c *MockStore_RegisterDiffManager_Call) Return() *MockStore_RegisterDiffManager_Call {
 	_c.Call.Return()
 	return _c
 }
 
-func (_c *MockStore_SetDiffManagerOnRemoveHook_Call) RunAndReturn(run func(func([]string))) *MockStore_SetDiffManagerOnRemoveHook_Call {
+func (_c *MockStore_RegisterDiffManager_Call) RunAndReturn(run func(string, func([]string))) *MockStore_RegisterDiffManager_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -747,17 +750,17 @@ func (_c *MockStore_SpaceID_Call) RunAndReturn(run func() string) *MockStore_Spa
 	return _c
 }
 
-// StoreSeenHeads provides a mock function with given fields: ctx
-func (_m *MockStore) StoreSeenHeads(ctx context.Context) error {
-	ret := _m.Called(ctx)
+// StoreSeenHeads provides a mock function with given fields: ctx, name
+func (_m *MockStore) StoreSeenHeads(ctx context.Context, name string) error {
+	ret := _m.Called(ctx, name)
 
 	if len(ret) == 0 {
 		panic("no return value specified for StoreSeenHeads")
 	}
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(context.Context) error); ok {
-		r0 = rf(ctx)
+	if rf, ok := ret.Get(0).(func(context.Context, string) error); ok {
+		r0 = rf(ctx, name)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -772,13 +775,14 @@ type MockStore_StoreSeenHeads_Call struct {
 
 // StoreSeenHeads is a helper method to define mock.On call
 //   - ctx context.Context
-func (_e *MockStore_Expecter) StoreSeenHeads(ctx interface{}) *MockStore_StoreSeenHeads_Call {
-	return &MockStore_StoreSeenHeads_Call{Call: _e.mock.On("StoreSeenHeads", ctx)}
+//   - name string
+func (_e *MockStore_Expecter) StoreSeenHeads(ctx interface{}, name interface{}) *MockStore_StoreSeenHeads_Call {
+	return &MockStore_StoreSeenHeads_Call{Call: _e.mock.On("StoreSeenHeads", ctx, name)}
 }
 
-func (_c *MockStore_StoreSeenHeads_Call) Run(run func(ctx context.Context)) *MockStore_StoreSeenHeads_Call {
+func (_c *MockStore_StoreSeenHeads_Call) Run(run func(ctx context.Context, name string)) *MockStore_StoreSeenHeads_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context))
+		run(args[0].(context.Context), args[1].(string))
 	})
 	return _c
 }
@@ -788,7 +792,7 @@ func (_c *MockStore_StoreSeenHeads_Call) Return(_a0 error) *MockStore_StoreSeenH
 	return _c
 }
 
-func (_c *MockStore_StoreSeenHeads_Call) RunAndReturn(run func(context.Context) error) *MockStore_StoreSeenHeads_Call {
+func (_c *MockStore_StoreSeenHeads_Call) RunAndReturn(run func(context.Context, string) error) *MockStore_StoreSeenHeads_Call {
 	_c.Call.Return(run)
 	return _c
 }

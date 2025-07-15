@@ -80,6 +80,10 @@ func (st *SmartTest) SetSpace(space smartblock.Space) {
 type stubSpace struct {
 }
 
+func (s *stubSpace) RefreshObjects(objectIds []string) (err error) {
+	return nil
+}
+
 func (s *stubSpace) Id() string {
 	return ""
 }
@@ -110,6 +114,10 @@ func (s *stubSpace) Do(objectId string, apply func(sb smartblock.SmartBlock) err
 
 func (s *stubSpace) DoLockedIfNotExists(objectID string, proc func() error) error {
 	return nil
+}
+
+func (s *stubSpace) TryRemove(objectId string) (bool, error) {
+	return true, nil
 }
 
 func (s *stubSpace) IsPersonal() bool {

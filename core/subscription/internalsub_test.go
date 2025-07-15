@@ -33,12 +33,12 @@ func TestInternalSubscriptionSingle(t *testing.T) {
 		SubId:   "test",
 		Filters: []database.FilterRequest{
 			{
-				RelationKey: bundle.RelationKeyPriority,
+				RelationKey: bundle.RelationKeyIconOption,
 				Condition:   model.BlockContentDataviewFilter_Equal,
 				Value:       domain.Int64(10),
 			},
 		},
-		Keys:     []string{bundle.RelationKeyId.String(), bundle.RelationKeyName.String(), bundle.RelationKeyPriority.String()},
+		Keys:     []string{bundle.RelationKeyId.String(), bundle.RelationKeyName.String(), bundle.RelationKeyIconOption.String()},
 		Internal: true,
 	})
 
@@ -50,16 +50,16 @@ func TestInternalSubscriptionSingle(t *testing.T) {
 			{
 				bundle.RelationKeyId:             domain.String("id1"),
 				bundle.RelationKeyName:           domain.String("task1"),
-				bundle.RelationKeyPriority:       domain.Int64(10),
+				bundle.RelationKeyIconOption:     domain.Int64(10),
 				bundle.RelationKeyLinkedProjects: domain.StringList([]string{"project1", "project2"}), // Should be ignored as not listed in keys
 			},
 		})
 		time.Sleep(batchTime)
 		fx.AddObjects(t, testSpaceId, []objectstore.TestObject{
 			{
-				bundle.RelationKeyId:       domain.String("id1"),
-				bundle.RelationKeyName:     domain.String("task1 renamed"),
-				bundle.RelationKeyPriority: domain.Int64(10),
+				bundle.RelationKeyId:         domain.String("id1"),
+				bundle.RelationKeyName:       domain.String("task1 renamed"),
+				bundle.RelationKeyIconOption: domain.Int64(10),
 			},
 		})
 		time.Sleep(batchTime)
@@ -78,18 +78,18 @@ func TestInternalSubscriptionSingle(t *testing.T) {
 	t.Run("amend details related to filter -- remove from subscription", func(t *testing.T) {
 		fx.AddObjects(t, testSpaceId, []objectstore.TestObject{
 			{
-				bundle.RelationKeyId:       domain.String("id2"),
-				bundle.RelationKeyName:     domain.String("task2"),
-				bundle.RelationKeyPriority: domain.Int64(10),
+				bundle.RelationKeyId:         domain.String("id2"),
+				bundle.RelationKeyName:       domain.String("task2"),
+				bundle.RelationKeyIconOption: domain.Int64(10),
 			},
 		})
 		time.Sleep(batchTime)
 
 		fx.AddObjects(t, testSpaceId, []objectstore.TestObject{
 			{
-				bundle.RelationKeyId:       domain.String("id2"),
-				bundle.RelationKeyName:     domain.String("task2"),
-				bundle.RelationKeyPriority: domain.Int64(9),
+				bundle.RelationKeyId:         domain.String("id2"),
+				bundle.RelationKeyName:       domain.String("task2"),
+				bundle.RelationKeyIconOption: domain.Int64(9),
 			},
 		})
 		time.Sleep(batchTime)
@@ -116,9 +116,9 @@ func TestInternalSubscriptionSingle(t *testing.T) {
 		time.Sleep(batchTime)
 		fx.AddObjects(t, testSpaceId, []objectstore.TestObject{
 			{
-				bundle.RelationKeyId:       domain.String("id3"),
-				bundle.RelationKeyName:     domain.String("task2"),
-				bundle.RelationKeyPriority: domain.Int64(10),
+				bundle.RelationKeyId:         domain.String("id3"),
+				bundle.RelationKeyName:       domain.String("task2"),
+				bundle.RelationKeyIconOption: domain.Int64(10),
 			},
 		})
 	})
@@ -131,12 +131,12 @@ func TestInternalSubscriptionMultiple(t *testing.T) {
 		SubId:   "internal1",
 		Filters: []database.FilterRequest{
 			{
-				RelationKey: bundle.RelationKeyPriority,
+				RelationKey: bundle.RelationKeyIconOption,
 				Condition:   model.BlockContentDataviewFilter_Equal,
 				Value:       domain.Int64(10),
 			},
 		},
-		Keys:     []string{bundle.RelationKeyId.String(), bundle.RelationKeyName.String(), bundle.RelationKeyPriority.String()},
+		Keys:     []string{bundle.RelationKeyId.String(), bundle.RelationKeyName.String(), bundle.RelationKeyIconOption.String()},
 		Internal: true,
 	})
 	_, err = fx.Search(SubscribeRequest{
@@ -144,24 +144,24 @@ func TestInternalSubscriptionMultiple(t *testing.T) {
 		SubId:   "client1",
 		Filters: []database.FilterRequest{
 			{
-				RelationKey: bundle.RelationKeyPriority,
+				RelationKey: bundle.RelationKeyIconOption,
 				Condition:   model.BlockContentDataviewFilter_Equal,
 				Value:       domain.Int64(10),
 			},
 		},
-		Keys: []string{bundle.RelationKeyId.String(), bundle.RelationKeyName.String(), bundle.RelationKeyPriority.String()},
+		Keys: []string{bundle.RelationKeyId.String(), bundle.RelationKeyName.String(), bundle.RelationKeyIconOption.String()},
 	})
 	_, err = fx.Search(SubscribeRequest{
 		SpaceId: testSpaceId,
 		SubId:   "client2",
 		Filters: []database.FilterRequest{
 			{
-				RelationKey: bundle.RelationKeyPriority,
+				RelationKey: bundle.RelationKeyIconOption,
 				Condition:   model.BlockContentDataviewFilter_Equal,
 				Value:       domain.Int64(10),
 			},
 		},
-		Keys: []string{bundle.RelationKeyId.String(), bundle.RelationKeyName.String(), bundle.RelationKeyPriority.String()},
+		Keys: []string{bundle.RelationKeyId.String(), bundle.RelationKeyName.String(), bundle.RelationKeyIconOption.String()},
 	})
 	resp4, err := fx.Search(SubscribeRequest{
 		SpaceId: testSpaceId,
@@ -173,7 +173,7 @@ func TestInternalSubscriptionMultiple(t *testing.T) {
 				Value:       domain.String("Jane Doe"),
 			},
 		},
-		Keys:     []string{bundle.RelationKeyId.String(), bundle.RelationKeyName.String(), bundle.RelationKeyPriority.String()},
+		Keys:     []string{bundle.RelationKeyId.String(), bundle.RelationKeyName.String(), bundle.RelationKeyIconOption.String()},
 		Internal: true,
 	})
 
@@ -185,16 +185,16 @@ func TestInternalSubscriptionMultiple(t *testing.T) {
 			{
 				bundle.RelationKeyId:             domain.String("id1"),
 				bundle.RelationKeyName:           domain.String("task1"),
-				bundle.RelationKeyPriority:       domain.Int64(10),
+				bundle.RelationKeyIconOption:     domain.Int64(10),
 				bundle.RelationKeyLinkedProjects: domain.StringList([]string{"project1", "project2"}), // Should be ignored as not listed in keys
 			},
 		})
 		time.Sleep(batchTime)
 		fx.store.AddObjects(t, testSpaceId, []objectstore.TestObject{
 			{
-				bundle.RelationKeyId:       domain.String("id1"),
-				bundle.RelationKeyName:     domain.String("task1 renamed"),
-				bundle.RelationKeyPriority: domain.Int64(10),
+				bundle.RelationKeyId:         domain.String("id1"),
+				bundle.RelationKeyName:       domain.String("task1 renamed"),
+				bundle.RelationKeyIconOption: domain.Int64(10),
 			},
 		})
 		time.Sleep(batchTime)
@@ -216,18 +216,18 @@ func TestInternalSubscriptionMultiple(t *testing.T) {
 	t.Run("amend details related to filter -- remove from subscription", func(t *testing.T) {
 		fx.store.AddObjects(t, testSpaceId, []objectstore.TestObject{
 			{
-				bundle.RelationKeyId:       domain.String("id2"),
-				bundle.RelationKeyName:     domain.String("task2"),
-				bundle.RelationKeyPriority: domain.Int64(10),
+				bundle.RelationKeyId:         domain.String("id2"),
+				bundle.RelationKeyName:       domain.String("task2"),
+				bundle.RelationKeyIconOption: domain.Int64(10),
 			},
 		})
 		time.Sleep(batchTime)
 
 		fx.store.AddObjects(t, testSpaceId, []objectstore.TestObject{
 			{
-				bundle.RelationKeyId:       domain.String("id2"),
-				bundle.RelationKeyName:     domain.String("task2"),
-				bundle.RelationKeyPriority: domain.Int64(9),
+				bundle.RelationKeyId:         domain.String("id2"),
+				bundle.RelationKeyName:       domain.String("task2"),
+				bundle.RelationKeyIconOption: domain.Int64(9),
 			},
 		})
 		time.Sleep(batchTime)
@@ -248,9 +248,9 @@ func TestInternalSubscriptionMultiple(t *testing.T) {
 	t.Run("add item satisfying filters from all subscription", func(t *testing.T) {
 		fx.store.AddObjects(t, testSpaceId, []objectstore.TestObject{
 			{
-				bundle.RelationKeyId:       domain.String("id3"),
-				bundle.RelationKeyName:     domain.String("Jane Doe"),
-				bundle.RelationKeyPriority: domain.Int64(10),
+				bundle.RelationKeyId:         domain.String("id3"),
+				bundle.RelationKeyName:       domain.String("Jane Doe"),
+				bundle.RelationKeyIconOption: domain.Int64(10),
 			},
 		})
 		time.Sleep(batchTime)
@@ -287,12 +287,12 @@ func TestInternalSubCustomQueue(t *testing.T) {
 		SubId:   subId,
 		Filters: []database.FilterRequest{
 			{
-				RelationKey: bundle.RelationKeyPriority,
+				RelationKey: bundle.RelationKeyIconOption,
 				Condition:   model.BlockContentDataviewFilter_Equal,
 				Value:       domain.Int64(10),
 			},
 		},
-		Keys:          []string{bundle.RelationKeyId.String(), bundle.RelationKeyName.String(), bundle.RelationKeyPriority.String()},
+		Keys:          []string{bundle.RelationKeyId.String(), bundle.RelationKeyName.String(), bundle.RelationKeyIconOption.String()},
 		Internal:      true,
 		InternalQueue: queue,
 	})
@@ -300,9 +300,9 @@ func TestInternalSubCustomQueue(t *testing.T) {
 	require.Same(t, resp.Output, queue)
 
 	obj := objectstore.TestObject{
-		bundle.RelationKeyId:       domain.String("id1"),
-		bundle.RelationKeyName:     domain.String("Jane Doe"),
-		bundle.RelationKeyPriority: domain.Int64(10),
+		bundle.RelationKeyId:         domain.String("id1"),
+		bundle.RelationKeyName:       domain.String("Jane Doe"),
+		bundle.RelationKeyIconOption: domain.Int64(10),
 	}
 	fx.store.AddObjects(t, testSpaceId, []objectstore.TestObject{obj})
 
@@ -338,9 +338,9 @@ func TestInternalSubAsyncInit(t *testing.T) {
 	subId := "test"
 	fx := newFixtureWithRealObjectStore(t)
 	obj := objectstore.TestObject{
-		bundle.RelationKeyId:       domain.String("id1"),
-		bundle.RelationKeyName:     domain.String("Jane Doe"),
-		bundle.RelationKeyPriority: domain.Int64(10),
+		bundle.RelationKeyId:         domain.String("id1"),
+		bundle.RelationKeyName:       domain.String("Jane Doe"),
+		bundle.RelationKeyIconOption: domain.Int64(10),
 	}
 
 	fx.store.AddObjects(t, testSpaceId, []objectstore.TestObject{
@@ -352,12 +352,12 @@ func TestInternalSubAsyncInit(t *testing.T) {
 		SubId:   subId,
 		Filters: []database.FilterRequest{
 			{
-				RelationKey: bundle.RelationKeyPriority,
+				RelationKey: bundle.RelationKeyIconOption,
 				Condition:   model.BlockContentDataviewFilter_Equal,
 				Value:       domain.Int64(10),
 			},
 		},
-		Keys:      []string{bundle.RelationKeyId.String(), bundle.RelationKeyName.String(), bundle.RelationKeyPriority.String()},
+		Keys:      []string{bundle.RelationKeyId.String(), bundle.RelationKeyName.String(), bundle.RelationKeyIconOption.String()},
 		Internal:  true,
 		AsyncInit: true,
 	})
@@ -399,9 +399,9 @@ func givenMessagesForFirstObject(subIds ...string) []pb.IsEventMessageValue {
 			Id:     "id1",
 			SubIds: subIds,
 			Details: domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
-				bundle.RelationKeyId:       domain.String("id1"),
-				bundle.RelationKeyName:     domain.String("task1"),
-				bundle.RelationKeyPriority: domain.Int64(10),
+				bundle.RelationKeyId:         domain.String("id1"),
+				bundle.RelationKeyName:       domain.String("task1"),
+				bundle.RelationKeyIconOption: domain.Int64(10),
 			}).ToProto(),
 		},
 	})
@@ -444,9 +444,9 @@ func givenMessagesForSecondObject(subIds ...string) []pb.IsEventMessageValue {
 			Id:     "id2",
 			SubIds: subIds,
 			Details: domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
-				bundle.RelationKeyId:       domain.String("id2"),
-				bundle.RelationKeyName:     domain.String("task2"),
-				bundle.RelationKeyPriority: domain.Int64(10),
+				bundle.RelationKeyId:         domain.String("id2"),
+				bundle.RelationKeyName:       domain.String("task2"),
+				bundle.RelationKeyIconOption: domain.Int64(10),
 			}).ToProto(),
 		},
 	})
@@ -494,9 +494,9 @@ func givenMessagesForThirdObject(total int, afterId string, subIds ...string) []
 			Id:     "id3",
 			SubIds: subIds,
 			Details: domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
-				bundle.RelationKeyId:       domain.String("id3"),
-				bundle.RelationKeyName:     domain.String("Jane Doe"),
-				bundle.RelationKeyPriority: domain.Int64(10),
+				bundle.RelationKeyId:         domain.String("id3"),
+				bundle.RelationKeyName:       domain.String("Jane Doe"),
+				bundle.RelationKeyIconOption: domain.Int64(10),
 			}).ToProto(),
 		},
 	})

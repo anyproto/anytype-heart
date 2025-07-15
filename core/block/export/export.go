@@ -3,8 +3,10 @@ package export
 import (
 	"bytes"
 	"context"
+	"encoding/base64"
 	"fmt"
 	"math/rand"
+	"net/url"
 	"os"
 	"path/filepath"
 	"slices"
@@ -21,6 +23,7 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/anytype/account"
 	"github.com/anyproto/anytype-heart/core/block/cache"
+	"github.com/anyproto/anytype-heart/core/block/editor/fileobject"
 	sb "github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/object/objectlink"
@@ -39,6 +42,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
+	"github.com/anyproto/anytype-heart/pkg/lib/gateway"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
@@ -63,12 +67,15 @@ const (
 
 	FilesObjects = "filesObjects"
 	Files        = "files"
+
+	defaultFileName = "untitled"
 )
 
 var log = logging.Logger("anytype-mw-export")
 
 type Export interface {
 	Export(ctx context.Context, req pb.RpcObjectListExportRequest) (path string, succeed int, err error)
+	ExportSingleInMemory(ctx context.Context, spaceId string, objectId string, format model.ExportFormat) (res string, err error)
 	app.Component
 }
 
@@ -81,6 +88,7 @@ type export struct {
 	accountService      account.Service
 	notificationService notifications.Notifications
 	processService      process.Service
+	gatewayService      gateway.Gateway
 }
 
 func New() Export {
@@ -96,6 +104,7 @@ func (e *export) Init(a *app.App) (err error) {
 	e.spaceService = app.MustComponent[space.Service](a)
 	e.accountService = app.MustComponent[account.Service](a)
 	e.notificationService = app.MustComponent[notifications.Notifications](a)
+	e.gatewayService, _ = app.GetComponent[gateway.Gateway](a)
 	return
 }
 
@@ -116,6 +125,20 @@ func (e *export) Export(ctx context.Context, req pb.RpcObjectListExportRequest) 
 	}
 	exportCtx := newExportContext(e, req)
 	return exportCtx.exportObjects(ctx, queue)
+}
+
+func (e *export) ExportSingleInMemory(ctx context.Context, spaceId string, objectId string, format model.ExportFormat) (res string, err error) {
+	req := pb.RpcObjectListExportRequest{
+		SpaceId:         spaceId,
+		ObjectIds:       []string{objectId},
+		IncludeFiles:    true,
+		Format:          format,
+		IncludeNested:   true,
+		IncludeArchived: true,
+	}
+
+	exportCtx := newExportContext(e, req)
+	return exportCtx.exportObject(ctx, objectId)
 }
 
 func (e *export) finishWithNotification(spaceId string, exportFormat model.ExportFormat, queue process.Queue, err error) {
@@ -151,47 +174,51 @@ func (d Docs) transformToDetailsMap() map[string]*domain.Details {
 }
 
 type exportContext struct {
-	spaceId          string
-	docs             Docs
-	includeArchive   bool
-	includeNested    bool
-	includeFiles     bool
-	format           model.ExportFormat
-	isJson           bool
-	reqIds           []string
-	zip              bool
-	path             string
-	linkStateFilters *state.Filters
-	isLinkProcess    bool
-	includeBackLinks bool
-	includeSpace     bool
-	relations        map[string]struct{}
-	setOfList        map[string]struct{}
-	objectTypes      map[string]struct{}
-
+	spaceId           string
+	docs              Docs
+	includeArchive    bool
+	includeNested     bool
+	includeFiles      bool
+	format            model.ExportFormat
+	isJson            bool
+	reqIds            []string
+	zip               bool
+	path              string
+	linkStateFilters  *state.Filters
+	isLinkProcess     bool
+	includeBackLinks  bool
+	includeSpace      bool
+	includeJsonSchema bool
+	relations         map[string]struct{}
+	setOfList         map[string]struct{}
+	objectTypes       map[string]struct{}
+	gatewayUrl        string
 	*export
 }
 
 func newExportContext(e *export, req pb.RpcObjectListExportRequest) *exportContext {
 	ec := &exportContext{
-		path:             req.Path,
-		spaceId:          req.SpaceId,
-		docs:             map[string]*Doc{},
-		includeArchive:   req.IncludeArchived,
-		includeNested:    req.IncludeNested,
-		includeFiles:     req.IncludeFiles,
-		format:           req.Format,
-		isJson:           req.IsJson,
-		reqIds:           req.ObjectIds,
-		zip:              req.Zip,
-		linkStateFilters: pbFiltersToState(req.LinksStateFilters),
-		includeBackLinks: req.IncludeBacklinks,
-		includeSpace:     req.IncludeSpace,
-		setOfList:        make(map[string]struct{}),
-		objectTypes:      make(map[string]struct{}),
-		relations:        make(map[string]struct{}),
-
-		export: e,
+		path:              req.Path,
+		spaceId:           req.SpaceId,
+		docs:              map[string]*Doc{},
+		includeArchive:    req.IncludeArchived,
+		includeNested:     req.IncludeNested,
+		includeFiles:      req.IncludeFiles,
+		format:            req.Format,
+		isJson:            req.IsJson,
+		reqIds:            req.ObjectIds,
+		zip:               req.Zip,
+		linkStateFilters:  pbFiltersToState(req.LinksStateFilters),
+		includeBackLinks:  req.IncludeBacklinks,
+		includeSpace:      req.IncludeSpace,
+		includeJsonSchema: req.IncludeJsonSchema,
+		setOfList:         make(map[string]struct{}),
+		objectTypes:       make(map[string]struct{}),
+		relations:         make(map[string]struct{}),
+		export:            e,
+	}
+	if e.gatewayService != nil {
+		ec.gatewayUrl = "http://" + e.gatewayService.Addr()
 	}
 	return ec
 }
@@ -222,6 +249,54 @@ func (e *exportContext) getStateFilters(id string) *state.Filters {
 		return e.linkStateFilters
 	}
 	return nil
+}
+
+// exportObject synchronously exports a single object and return the bytes slice
+func (e *exportContext) exportObject(ctx context.Context, objectId string) (string, error) {
+	e.reqIds = []string{objectId}
+	e.includeArchive = true
+	e.includeFiles = false
+	err := e.docsForExport(ctx)
+	if err != nil {
+		return "", err
+	}
+
+	var docNamer Namer
+	if e.format == model.Export_Markdown && e.gatewayUrl != "" {
+		u, err := url.Parse(e.gatewayUrl)
+		if err != nil {
+			return "", err
+		}
+		docNamer = &deepLinkNamer{gatewayUrl: *u}
+	} else {
+		docNamer = newNamer()
+	}
+	inMemoryWriter := &InMemoryWriter{fn: docNamer}
+	details, err := e.objectStore.SpaceIndex(e.spaceId).GetDetails(objectId)
+	if err != nil {
+		return "", err
+	}
+
+	// do not allow file export for in-memory writer
+	// nolint: gosec
+	switch model.ObjectTypeLayout(details.GetInt64(bundle.RelationKeyLayout)) {
+	case model.ObjectType_file, model.ObjectType_image, model.ObjectType_video, model.ObjectType_audio, model.ObjectType_pdf:
+		return "", fmt.Errorf("file export is not allowed for in-memory writer")
+	}
+
+	err = e.writeDoc(ctx, inMemoryWriter, objectId, e.docs.transformToDetailsMap())
+	if err != nil {
+		return "", err
+	}
+
+	for _, v := range inMemoryWriter.data {
+		if e.format == model.Export_Protobuf {
+			return base64.StdEncoding.EncodeToString(v), nil
+		}
+		return string(v), nil
+	}
+
+	return "", fmt.Errorf("failed to find data in writer")
 }
 
 func (e *exportContext) exportObjects(ctx context.Context, queue process.Queue) (string, int, error) {
@@ -297,6 +372,10 @@ func (e *exportContext) exportByFormat(ctx context.Context, wr writer, queue pro
 			return 0, nil
 		}
 		succeed += int(succeedAsync)
+
+		if err := e.postProcess(ctx, wr); err != nil {
+			log.Warnf("failed to generate all schemas: %v", err)
+		}
 	}
 	return succeed, nil
 }
@@ -1081,7 +1160,14 @@ func (e *exportContext) writeDoc(ctx context.Context, wr writer, docId string, d
 		var conv converter.Converter
 		switch e.format {
 		case model.Export_Markdown:
-			conv = md.NewMDConverter(st, wr.Namer())
+			// Create a lazy object resolver for markdown export
+			resolver := newLazyObjectResolver(e.objectStore, e.spaceId)
+
+			if e.includeJsonSchema {
+				conv = md.NewMDConverterWithResolver(st, wr.Namer(), true, true, resolver)
+			} else {
+				conv = md.NewMDConverterWithResolver(st, wr.Namer(), true, false, resolver)
+			}
 		case model.Export_Protobuf:
 			conv = pbc.NewConverter(st, e.isJson)
 		case model.Export_JSON:
@@ -1089,6 +1175,9 @@ func (e *exportContext) writeDoc(ctx context.Context, wr writer, docId string, d
 		}
 		conv.SetKnownDocs(details)
 		result := conv.Convert(b.Type().ToProto())
+		if result == nil {
+			return nil
+		}
 		var filename string
 		if e.format == model.Export_Markdown {
 			filename = makeMarkdownName(st, wr, docId, conv.Ext(), e.spaceId)
@@ -1101,24 +1190,24 @@ func (e *exportContext) writeDoc(ctx context.Context, wr writer, docId string, d
 		if err = wr.WriteFile(filename, bytes.NewReader(result), lastModifiedDate); err != nil {
 			return err
 		}
+
 		return nil
 	})
 }
 
 func (e *exportContext) saveFile(ctx context.Context, wr writer, fileObject sb.SmartBlock, exportAllSpaces bool) (fileName string, err error) {
-	fullId := domain.FullFileId{
-		SpaceId: fileObject.Space().Id(),
-		FileId:  domain.FileId(fileObject.Details().GetString(bundle.RelationKeyFileId)),
+	fileObjectComponent, ok := fileObject.(fileobject.FileObject)
+	if !ok {
+		return "", fmt.Errorf("object is not a file object")
 	}
-
-	file, err := e.fileService.FileByHash(ctx, fullId)
+	file, err := fileObjectComponent.GetFile()
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("get file: %w", err)
 	}
-	if strings.HasPrefix(file.Info().Media, "image") {
-		image, err := e.fileService.ImageByHash(context.TODO(), fullId)
+	if strings.HasPrefix(file.MimeType(), "image") {
+		image, err := fileObjectComponent.GetImage()
 		if err != nil {
-			return "", err
+			return "", fmt.Errorf("get image: %w", err)
 		}
 		file, err = image.GetOriginalFile()
 		if err != nil {
@@ -1135,7 +1224,7 @@ func (e *exportContext) saveFile(ctx context.Context, wr writer, fileObject sb.S
 	if err != nil {
 		return "", err
 	}
-	return fileName, wr.WriteFile(fileName, rd, file.Info().LastModifiedDate)
+	return fileName, wr.WriteFile(fileName, rd, file.LastModifiedDate())
 }
 
 func (e *exportContext) createProfileFile(spaceID string, wr writer) error {
@@ -1258,6 +1347,9 @@ func (fn *namer) Get(path, hash, title, ext string) (name string) {
 	title = slug.Make(strings.TrimSuffix(title, ext))
 	name = text.TruncateEllipsized(title, fileLenLimit)
 	name = strings.TrimSuffix(name, text.TruncateEllipsis)
+	if name == "" {
+		name = defaultFileName
+	}
 	var (
 		i = 0
 		b = 36
@@ -1335,4 +1427,21 @@ func pbFiltersToState(filters *pb.RpcObjectListExportStateFilters) *state.Filter
 		RelationsWhiteList: relationByLayoutList,
 		RemoveBlocks:       filters.RemoveBlocks,
 	}
+}
+
+// generateAllSchemas generates JSON schemas for all object types found in the export
+func (e *exportContext) postProcess(ctx context.Context, wr writer) error {
+	if e.format != model.Export_Markdown || !e.includeJsonSchema {
+		// for now only needed for MD
+		return nil
+	}
+	// Create a lazy object resolver
+	knownObjects := e.docs.transformToDetailsMap()
+	resolver := newLazyObjectResolver(e.objectStore, e.spaceId)
+
+	// Create markdown post-processor
+	postProcessor := md.NewMDPostProcessor(resolver, wr.Namer())
+
+	// Generate all schemas
+	return postProcessor.Process(knownObjects, wr)
 }

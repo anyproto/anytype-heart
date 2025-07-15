@@ -14,6 +14,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/editor/widget"
+	"github.com/anyproto/anytype-heart/core/block/restriction"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
@@ -170,7 +171,7 @@ func (s *service) checkArchivedRestriction(isArchived bool, objectId string) err
 		return nil
 	}
 	return cache.Do(s.objectGetter, objectId, func(sb smartblock.SmartBlock) error {
-		return s.restriction.CheckRestrictions(sb, model.Restrictions_Delete)
+		return restriction.CheckRestrictions(sb, model.Restrictions_Delete)
 	})
 }
 
@@ -267,12 +268,15 @@ func (s *service) createFavoriteWidget(spc clientspace.Space) error {
 	if err != nil {
 		return fmt.Errorf("get widget details: %w", err)
 	}
+	if widgetDetails.GetBool(bundle.RelationKeyAutoWidgetDisabled) {
+		return nil
+	}
 	targetIds := widgetDetails.GetStringList(bundle.RelationKeyAutoWidgetTargets)
 	if slices.Contains(targetIds, widget.DefaultWidgetFavorite) {
 		return nil
 	}
 
 	return cache.DoState(s.objectGetter, widgetObjectId, func(st *state.State, w widget.Widget) (err error) {
-		return w.AddAutoWidget(st, widget.DefaultWidgetFavorite, widget.DefaultWidgetFavorite, "", model.BlockContentWidget_CompactList)
+		return w.AddAutoWidget(st, widget.DefaultWidgetFavorite, widget.DefaultWidgetFavorite, "", model.BlockContentWidget_CompactList, widget.DefaultWidgetFavoriteEventName)
 	})
 }

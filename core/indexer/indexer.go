@@ -16,7 +16,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore/filestore"
+	"github.com/anyproto/anytype-heart/pkg/lib/datastore/anystoreprovider"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/ftsearch"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
@@ -32,7 +32,7 @@ const (
 var log = logging.Logger("anytype-doc-indexer")
 
 func New() Indexer {
-	return &indexer{}
+	return new(indexer)
 }
 
 type Indexer interface {
@@ -50,8 +50,8 @@ type Hasher interface {
 }
 
 type indexer struct {
+	dbProvider     anystoreprovider.Provider
 	store          objectstore.ObjectStore
-	fileStore      filestore.FileStore
 	source         source.Service
 	picker         cache.CachedObjectGetter
 	ftsearch       ftsearch.FTSearch
@@ -59,6 +59,7 @@ type indexer struct {
 
 	runCtx          context.Context
 	runCtxCancel    context.CancelFunc
+	ftQueueStop     context.CancelFunc
 	ftQueueFinished chan struct{}
 	config          *config.Config
 
@@ -77,9 +78,8 @@ type indexer struct {
 func (i *indexer) Init(a *app.App) (err error) {
 	i.store = a.MustComponent(objectstore.CName).(objectstore.ObjectStore)
 	i.storageService = a.MustComponent(spacestorage.CName).(storage.ClientStorage)
-	i.source = a.MustComponent(source.CName).(source.Service)
+	i.source = app.MustComponent[source.Service](a)
 	i.btHash = a.MustComponent("builtintemplate").(Hasher)
-	i.fileStore = app.MustComponent[filestore.FileStore](a)
 	i.ftsearch = app.MustComponent[ftsearch.FTSearch](a)
 	i.picker = app.MustComponent[cache.CachedObjectGetter](a)
 	i.runCtx, i.runCtxCancel = context.WithCancel(context.Background())
@@ -87,6 +87,7 @@ func (i *indexer) Init(a *app.App) (err error) {
 	i.config = app.MustComponent[*config.Config](a)
 	i.spaceIndexers = map[string]*spaceIndexer{}
 	i.techSpaceIdProvider = app.MustComponent[objectstore.TechSpaceIdProvider](a)
+	i.dbProvider = app.MustComponent[anystoreprovider.Provider](a)
 	return
 }
 
@@ -98,12 +99,20 @@ func (i *indexer) Run(context.Context) (err error) {
 	return i.StartFullTextIndex()
 }
 
+func (f *indexer) StateChange(state int) {
+	if state == int(domain.CompStateAppClosingInitiated) && f.ftQueueStop != nil {
+		f.ftQueueStop()
+	}
+}
+
 func (i *indexer) StartFullTextIndex() (err error) {
 	if ftErr := i.ftInit(); ftErr != nil {
 		log.Errorf("can't init ft: %v", ftErr)
 	}
 	i.ftQueueFinished = make(chan struct{})
-	go i.ftLoopRoutine()
+	var ftCtx context.Context
+	ftCtx, i.ftQueueStop = context.WithCancel(i.runCtx)
+	go i.ftLoopRoutine(ftCtx)
 	return
 }
 

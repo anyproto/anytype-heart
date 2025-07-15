@@ -58,9 +58,9 @@ func New() Service {
 }
 
 type Service interface {
-	Create(ctx context.Context) (space clientspace.Space, err error)
-
+	Create(ctx context.Context, description *spaceinfo.SpaceDescription) (space clientspace.Space, err error)
 	Join(ctx context.Context, id, aclHeadId string) error
+	InviteJoin(ctx context.Context, id, aclHeadId string) error
 	CancelLeave(ctx context.Context, id string) (err error)
 	Get(ctx context.Context, id string) (space clientspace.Space, err error)
 	Wait(ctx context.Context, spaceId string) (sp clientspace.Space, err error)
@@ -278,7 +278,7 @@ func (s *service) createAccount(ctx context.Context) (err error) {
 		return fmt.Errorf("init tech space: %w", err)
 	}
 	if s.autoJoinStreamSpace == "" {
-		firstSpace, err := s.create(ctx)
+		firstSpace, err := s.create(ctx, nil)
 		if err != nil {
 			if errors.Is(err, spacesyncproto.ErrSpaceMissing) || errors.Is(err, treechangeproto.ErrGetTree) {
 				err = ErrSpaceNotExists
@@ -305,11 +305,11 @@ func (s *service) createAccount(ctx context.Context) (err error) {
 	return nil
 }
 
-func (s *service) Create(ctx context.Context) (clientspace.Space, error) {
+func (s *service) Create(ctx context.Context, description *spaceinfo.SpaceDescription) (clientspace.Space, error) {
 	if s.isClosing.Load() {
 		return nil, ErrSpaceIsClosing
 	}
-	return s.create(ctx)
+	return s.create(ctx, description)
 }
 
 func (s *service) Wait(ctx context.Context, spaceId string) (sp clientspace.Space, err error) {

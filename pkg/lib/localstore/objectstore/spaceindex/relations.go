@@ -76,6 +76,9 @@ func (s *dsObjectStore) FetchRelationByKeys(keys ...domain.RelationKey) (relatio
 		}
 		uks = append(uks, uk.Marshal())
 	}
+	if len(uks) == 0 {
+		return
+	}
 	records, err := s.Query(database.Query{
 		Filters: []database.FilterRequest{
 			{
@@ -126,15 +129,26 @@ func (s *dsObjectStore) ListAllRelations() (relations relationutils.Relations, e
 		},
 	}
 
-	relations2, err := s.Query(database.Query{
+	records, err := s.Query(database.Query{
 		Filters: filters,
 	})
 	if err != nil {
 		return
 	}
 
-	for _, rec := range relations2 {
-		relations = append(relations, relationutils.RelationFromDetails(rec.Details))
+	allKeys := make(map[domain.RelationKey]struct{}, len(records))
+	for _, rec := range records {
+		relationModel := relationutils.RelationFromDetails(rec.Details)
+		relations = append(relations, relationModel)
+		allKeys[domain.RelationKey(relationModel.Key)] = struct{}{}
+	}
+
+	for _, key := range bundle.SystemRelations {
+		if _, found := allKeys[key]; found {
+			continue
+		}
+		// we should include system relations if they were not indexed
+		relations = append(relations, &relationutils.Relation{Relation: bundle.MustGetRelation(key)})
 	}
 	return
 }
@@ -170,7 +184,7 @@ func (s *dsObjectStore) GetRelationByKey(key string) (*model.Relation, error) {
 }
 
 func (s *dsObjectStore) GetRelationFormatByKey(key domain.RelationKey) (model.RelationFormat, error) {
-	rel, err := bundle.GetRelation(domain.RelationKey(key))
+	rel, err := bundle.GetRelation(key)
 	if err == nil {
 		return rel.Format, nil
 	}

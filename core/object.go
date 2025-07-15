@@ -237,7 +237,7 @@ func (mw *Middleware) ObjectCrossSpaceSearchSubscribe(cctx context.Context, req 
 		Source:            req.Source,
 		NoDepSubscription: req.NoDepSubscription,
 		CollectionId:      req.CollectionId,
-	})
+	}, crossspacesub.NoOpPredicate())
 	if err != nil {
 		return &pb.RpcObjectCrossSpaceSearchSubscribeResponse{
 			Error: &pb.RpcObjectCrossSpaceSearchSubscribeResponseError{
@@ -375,6 +375,7 @@ func (mw *Middleware) ObjectGraph(cctx context.Context, req *pb.RpcObjectGraphRe
 		SpaceId:          req.SpaceId,
 		CollectionId:     req.CollectionId,
 		SetSource:        req.SetSource,
+		IncludeTypeEdges: req.IncludeTypeEdges,
 	})
 	if err != nil {
 		return unknownError(err)
@@ -693,8 +694,9 @@ func (mw *Middleware) ObjectImportNotionValidateToken(ctx context.Context,
 func (mw *Middleware) ObjectImportUseCase(cctx context.Context, req *pb.RpcObjectImportUseCaseRequest) *pb.RpcObjectImportUseCaseResponse {
 	ctx := mw.newContext(cctx)
 
-	response := func(code pb.RpcObjectImportUseCaseResponseErrorCode, err error) *pb.RpcObjectImportUseCaseResponse {
+	response := func(startingPageId string, code pb.RpcObjectImportUseCaseResponseErrorCode, err error) *pb.RpcObjectImportUseCaseResponse {
 		resp := &pb.RpcObjectImportUseCaseResponse{
+			StartingObjectId: startingPageId,
 			Error: &pb.RpcObjectImportUseCaseResponseError{
 				Code: code,
 			},

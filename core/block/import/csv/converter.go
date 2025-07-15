@@ -67,7 +67,12 @@ func (c *CSV) GetSnapshots(ctx context.Context, req *pb.RpcObjectImportRequest, 
 		return nil, allErrors
 	}
 	rootCollection := common.NewImportCollection(c.collectionService)
-	settings := common.MakeImportCollectionSetting(rootCollectionName, result.objectIDs, "", nil, true, true, true)
+	settings := common.NewImportCollectionSetting(
+		common.WithCollectionName(rootCollectionName),
+		common.WithTargetObjects(result.objectIDs),
+		common.WithAddDate(),
+		common.WithRelations(),
+	)
 	rootCol, err := rootCollection.MakeImportCollection(settings)
 	if err != nil {
 		allErrors.Add(err)
@@ -82,10 +87,10 @@ func (c *CSV) GetSnapshots(ctx context.Context, req *pb.RpcObjectImportRequest, 
 	}
 	progress.SetTotal(int64(len(result.snapshots)))
 	if allErrors.IsEmpty() {
-		return &common.Response{Snapshots: result.snapshots, RootCollectionID: rootCollectionID}, nil
+		return &common.Response{Snapshots: result.snapshots, RootObjectID: rootCollectionID, RootObjectWidgetType: model.BlockContentWidget_CompactList}, nil
 	}
 
-	return &common.Response{Snapshots: result.snapshots, RootCollectionID: rootCollectionID}, allErrors
+	return &common.Response{Snapshots: result.snapshots, RootObjectID: rootCollectionID, RootObjectWidgetType: model.BlockContentWidget_CompactList}, allErrors
 }
 
 func (c *CSV) createObjectsFromCSVFiles(req *pb.RpcObjectImportRequest,

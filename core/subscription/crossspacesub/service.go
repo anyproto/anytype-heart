@@ -8,6 +8,7 @@ import (
 	"github.com/anyproto/any-sync/app"
 	"github.com/globalsign/mgo/bson"
 
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/event"
 	subscriptionservice "github.com/anyproto/anytype-heart/core/subscription"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
@@ -18,9 +19,13 @@ var log = logging.Logger(CName).Desugar()
 
 const CName = "core.subscription.crossspacesub"
 
+var (
+	ErrSubscriptionNotFound = fmt.Errorf("subscription not found")
+)
+
 type Service interface {
 	app.ComponentRunnable
-	Subscribe(req subscriptionservice.SubscribeRequest) (resp *subscriptionservice.SubscribeResponse, err error)
+	Subscribe(req subscriptionservice.SubscribeRequest, predicate Predicate) (*subscriptionservice.SubscribeResponse, error)
 	Unsubscribe(subId string) error
 }
 
@@ -32,8 +37,10 @@ type service struct {
 	componentCtx       context.Context
 	componentCtxCancel context.CancelFunc
 
-	lock               sync.Mutex
-	spaceViewsSubId    string
+	lock             sync.Mutex
+	spaceViewsSubId  string
+	spaceViewDetails map[string]*domain.Details
+	// spaceViewId => targetSpaceId
 	spaceViewTargetIds map[string]string
 	spaceIds           []string
 	subscriptions      map[string]*crossSpaceSubscription
@@ -50,6 +57,7 @@ func (s *service) Init(a *app.App) error {
 	s.eventSender = app.MustComponent[event.Sender](a)
 	s.subscriptions = map[string]*crossSpaceSubscription{}
 	s.spaceViewTargetIds = map[string]string{}
+	s.spaceViewDetails = map[string]*domain.Details{}
 
 	return nil
 }
@@ -70,7 +78,7 @@ func (s *service) Close(ctx context.Context) error {
 	return err
 }
 
-func (s *service) Subscribe(req subscriptionservice.SubscribeRequest) (*subscriptionservice.SubscribeResponse, error) {
+func (s *service) Subscribe(req subscriptionservice.SubscribeRequest, predicate Predicate) (*subscriptionservice.SubscribeResponse, error) {
 	if !req.NoDepSubscription {
 		return nil, fmt.Errorf("dependency subscription is not yet supported")
 	}
@@ -95,7 +103,15 @@ func (s *service) Subscribe(req subscriptionservice.SubscribeRequest) (*subscrip
 
 	s.lock.Lock()
 	defer s.lock.Unlock()
-	spaceSub, resp, err := newCrossSpaceSubscription(req.SubId, req, s.eventSender, s.subscriptionService, s.spaceIds)
+	var initialIds []string
+	for spaceViewId, details := range s.spaceViewDetails {
+		if predicate(details) {
+			if targetSpaceId, ok := s.spaceViewTargetIds[spaceViewId]; ok {
+				initialIds = append(initialIds, targetSpaceId)
+			}
+		}
+	}
+	spaceSub, resp, err := newCrossSpaceSubscription(req.SubId, req, s.eventSender, s.subscriptionService, initialIds, predicate)
 	if err != nil {
 		return nil, fmt.Errorf("new cross space subscription: %w", err)
 	}
@@ -110,7 +126,7 @@ func (s *service) Unsubscribe(subId string) error {
 
 	sub, ok := s.subscriptions[subId]
 	if !ok {
-		return fmt.Errorf("subscription not found")
+		return ErrSubscriptionNotFound
 	}
 
 	err := sub.close()

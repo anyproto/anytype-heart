@@ -345,9 +345,14 @@ func (i InterfacesAddrs) SortIPsLikeInterfaces(ips []net.IP) {
 func (i InterfacesAddrs) findInterfacePosByIP(ip net.IP) (pos int, equal bool) {
 	for position, iface := range i.Interfaces {
 		for _, addr := range iface.GetAddr() {
-			if ni, ok := addr.(*net.IPNet); ok {
-				if ni.Contains(ip) {
-					return position, ni.IP.Equal(ip)
+			switch a := addr.(type) {
+			case *net.IPNet:
+				if a.Contains(ip) {
+					return position, a.IP.Equal(ip)
+				}
+			case *net.IPAddr:
+				if a.IP.Equal(ip) {
+					return position, true
 				}
 			}
 		}

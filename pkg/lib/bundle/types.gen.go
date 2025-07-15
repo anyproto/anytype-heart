@@ -9,7 +9,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-const TypeChecksum = "91c804ca7dd4df74fafbdaff99e50fa2ffcc6cb0fb073887a90bdf1b4a3d98d5"
+const TypeChecksum = "4887c4b1b59f6fa595cc67185d19aec9212680c2316aa452ec39b66d5eea1b83"
 const (
 	TypePrefix = "_ot"
 )
@@ -49,7 +49,7 @@ var (
 	types = map[domain.TypeKey]*model.ObjectType{
 		TypeKeyAudio: {
 
-			Description:            "Sound when recorded, with ability to reproduce",
+			Description:            "",
 			IconColor:              5,
 			IconName:               "musical-notes",
 			Layout:                 model.ObjectType_file,
@@ -58,13 +58,13 @@ var (
 			Readonly:               true,
 			RelationLinks:          []*model.RelationLink{MustGetRelationLink(RelationKeyAddedDate), MustGetRelationLink(RelationKeyOrigin), MustGetRelationLink(RelationKeyFileExt), MustGetRelationLink(RelationKeySizeInBytes), MustGetRelationLink(RelationKeyFileMimeType), MustGetRelationLink(RelationKeyArtist), MustGetRelationLink(RelationKeyAudioAlbum), MustGetRelationLink(RelationKeyAudioGenre), MustGetRelationLink(RelationKeyReleasedYear), MustGetRelationLink(RelationKeyAudioAlbumTrackNumber), MustGetRelationLink(RelationKeyAudioLyrics)},
 			RestrictObjectCreation: true,
-			Revision:               4,
+			Revision:               5,
 			Types:                  []model.SmartBlockType{model.SmartBlockType_File},
 			Url:                    TypePrefix + "audio",
 		},
 		TypeKeyBook: {
 
-			Description:   "A book is a medium for recording information in the form of writing or images, typically composed of many pages bound together and protected by a cover",
+			Description:   "",
 			IconColor:     3,
 			IconName:      "book",
 			Layout:        model.ObjectType_basic,
@@ -72,13 +72,13 @@ var (
 			PluralName:    "Books",
 			Readonly:      true,
 			RelationLinks: []*model.RelationLink{MustGetRelationLink(RelationKeyTag), MustGetRelationLink(RelationKeyAuthor), MustGetRelationLink(RelationKeyStarred), MustGetRelationLink(RelationKeyStatus), MustGetRelationLink(RelationKeyUrl)},
-			Revision:      2,
+			Revision:      3,
 			Types:         []model.SmartBlockType{model.SmartBlockType_Page},
 			Url:           TypePrefix + "book",
 		},
 		TypeKeyBookmark: {
 
-			Description:   "URL that is stored as Object and may be categorised and linked with objects",
+			Description:   "",
 			IconColor:     4,
 			IconName:      "bookmark",
 			Layout:        model.ObjectType_bookmark,
@@ -86,13 +86,13 @@ var (
 			PluralName:    "Bookmarks",
 			Readonly:      true,
 			RelationLinks: []*model.RelationLink{MustGetRelationLink(RelationKeyTag), MustGetRelationLink(RelationKeyPicture), MustGetRelationLink(RelationKeySource)},
-			Revision:      2,
+			Revision:      3,
 			Types:         []model.SmartBlockType{model.SmartBlockType_Page},
 			Url:           TypePrefix + "bookmark",
 		},
 		TypeKeyChat: {
 
-			Description:   "A chat [deprecated]",
+			Description:   "",
 			Hidden:        true,
 			IconColor:     7,
 			IconName:      "chatbubble",
@@ -100,13 +100,13 @@ var (
 			Name:          "Chat [deprecated]",
 			Readonly:      true,
 			RelationLinks: []*model.RelationLink{MustGetRelationLink(RelationKeyTag)},
-			Revision:      1,
+			Revision:      2,
 			Types:         []model.SmartBlockType{model.SmartBlockType_ChatObject},
 			Url:           TypePrefix + "chat",
 		},
 		TypeKeyChatDerived: {
 
-			Description:   "A chat derived object",
+			Description:   "",
 			Hidden:        true,
 			IconColor:     7,
 			IconName:      "chatbubble",
@@ -115,13 +115,13 @@ var (
 			PluralName:    "Chat Derived Objects",
 			Readonly:      true,
 			RelationLinks: []*model.RelationLink{MustGetRelationLink(RelationKeyTag)},
-			Revision:      3,
+			Revision:      4,
 			Types:         []model.SmartBlockType{model.SmartBlockType_ChatDerivedObject},
 			Url:           TypePrefix + "chatDerived",
 		},
 		TypeKeyCollection: {
 
-			Description:   "Collect objects in one place, use different views to organize them",
+			Description:   "",
 			IconColor:     7,
 			IconName:      "layers",
 			Layout:        model.ObjectType_collection,
@@ -129,13 +129,13 @@ var (
 			PluralName:    "Collections",
 			Readonly:      true,
 			RelationLinks: []*model.RelationLink{MustGetRelationLink(RelationKeyTag)},
-			Revision:      2,
+			Revision:      3,
 			Types:         []model.SmartBlockType{model.SmartBlockType_Page},
 			Url:           TypePrefix + "collection",
 		},
 		TypeKeyContact: {
 
-			Description:   "Information to make action of communicating or meeting with Human or Company",
+			Description:   "",
 			IconColor:     8,
 			IconName:      "id-card",
 			Layout:        model.ObjectType_profile,
@@ -143,13 +143,13 @@ var (
 			PluralName:    "Contacts",
 			Readonly:      true,
 			RelationLinks: []*model.RelationLink{MustGetRelationLink(RelationKeyTag), MustGetRelationLink(RelationKeyCompany), MustGetRelationLink(RelationKeyEmail), MustGetRelationLink(RelationKeyPhone)},
-			Revision:      2,
+			Revision:      3,
 			Types:         []model.SmartBlockType{model.SmartBlockType_Page},
 			Url:           TypePrefix + "contact",
 		},
 		TypeKeyDashboard: {
 
-			Description:            "Internal home dashboard with favourite objects",
+			Description:            "",
 			Hidden:                 true,
 			IconColor:              0,
 			Layout:                 model.ObjectType_dashboard,
@@ -161,7 +161,7 @@ var (
 		},
 		TypeKeyDate: {
 
-			Description:   "Gregorian calendar date",
+			Description:   "",
 			Hidden:        true,
 			IconColor:     9,
 			IconName:      "calendar",
@@ -170,12 +170,13 @@ var (
 			PluralName:    "Dates",
 			Readonly:      true,
 			RelationLinks: []*model.RelationLink{MustGetRelationLink(RelationKeyTag)},
+			Revision:      1,
 			Types:         []model.SmartBlockType{model.SmartBlockType_Date},
 			Url:           TypePrefix + "date",
 		},
 		TypeKeyDiaryEntry: {
 
-			Description:   "Record of events and experiences",
+			Description:   "",
 			IconColor:     2,
 			IconName:      "reader",
 			Layout:        model.ObjectType_basic,
@@ -183,13 +184,13 @@ var (
 			PluralName:    "Diary Entries",
 			Readonly:      true,
 			RelationLinks: []*model.RelationLink{MustGetRelationLink(RelationKeyTag), MustGetRelationLink(RelationKeyMood)},
-			Revision:      2,
+			Revision:      3,
 			Types:         []model.SmartBlockType{model.SmartBlockType_Page},
 			Url:           TypePrefix + "diaryEntry",
 		},
 		TypeKeyFile: {
 
-			Description:            "Computer resource for recording data in a computer storage device",
+			Description:            "",
 			IconColor:              7,
 			IconName:               "attach",
 			Layout:                 model.ObjectType_file,
@@ -198,27 +199,27 @@ var (
 			Readonly:               true,
 			RelationLinks:          []*model.RelationLink{MustGetRelationLink(RelationKeyAddedDate), MustGetRelationLink(RelationKeyOrigin), MustGetRelationLink(RelationKeyFileExt), MustGetRelationLink(RelationKeySizeInBytes), MustGetRelationLink(RelationKeyFileMimeType)},
 			RestrictObjectCreation: true,
-			Revision:               4,
+			Revision:               5,
 			Types:                  []model.SmartBlockType{model.SmartBlockType_File},
 			Url:                    TypePrefix + "file",
 		},
 		TypeKeyGoal: {
 
-			Description:   "The object of a person's ambition or effort; an aim or desired result",
+			Description:   "",
 			IconColor:     4,
 			IconName:      "flag",
 			Layout:        model.ObjectType_todo,
 			Name:          "Goal",
 			PluralName:    "Goals",
 			Readonly:      true,
-			RelationLinks: []*model.RelationLink{MustGetRelationLink(RelationKeyTag), MustGetRelationLink(RelationKeyDueDate), MustGetRelationLink(RelationKeyProgress), MustGetRelationLink(RelationKeyStatus), MustGetRelationLink(RelationKeyTasks)},
-			Revision:      2,
+			RelationLinks: []*model.RelationLink{MustGetRelationLink(RelationKeyTag), MustGetRelationLink(RelationKeyDueDate), MustGetRelationLink(RelationKeyProgress), MustGetRelationLink(RelationKeyStatus)},
+			Revision:      3,
 			Types:         []model.SmartBlockType{model.SmartBlockType_Page},
 			Url:           TypePrefix + "goal",
 		},
 		TypeKeyImage: {
 
-			Description:            "A representation of the external form of a person or thing in art",
+			Description:            "",
 			IconColor:              10,
 			IconName:               "image",
 			Layout:                 model.ObjectType_image,
@@ -227,13 +228,13 @@ var (
 			Readonly:               true,
 			RelationLinks:          []*model.RelationLink{MustGetRelationLink(RelationKeyAddedDate), MustGetRelationLink(RelationKeyOrigin), MustGetRelationLink(RelationKeyFileExt), MustGetRelationLink(RelationKeySizeInBytes), MustGetRelationLink(RelationKeyHeightInPixels), MustGetRelationLink(RelationKeyWidthInPixels), MustGetRelationLink(RelationKeyFileMimeType), MustGetRelationLink(RelationKeyCamera), MustGetRelationLink(RelationKeyCameraIso), MustGetRelationLink(RelationKeyAperture), MustGetRelationLink(RelationKeyExposure), MustGetRelationLink(RelationKeyFocalRatio)},
 			RestrictObjectCreation: true,
-			Revision:               4,
+			Revision:               5,
 			Types:                  []model.SmartBlockType{model.SmartBlockType_File},
 			Url:                    TypePrefix + "image",
 		},
 		TypeKeyMovie: {
 
-			Description:   "Motion picture or Moving picture, is a work of visual art used to simulate experiences that communicate ideas, stories, perceptions, feelings, beauty, or atmosphere through the use of moving images",
+			Description:   "",
 			IconColor:     5,
 			IconName:      "film",
 			Layout:        model.ObjectType_basic,
@@ -241,13 +242,13 @@ var (
 			PluralName:    "Movies",
 			Readonly:      true,
 			RelationLinks: []*model.RelationLink{MustGetRelationLink(RelationKeyTag), MustGetRelationLink(RelationKeyGenre), MustGetRelationLink(RelationKeyStatus)},
-			Revision:      2,
+			Revision:      3,
 			Types:         []model.SmartBlockType{model.SmartBlockType_Page},
 			Url:           TypePrefix + "movie",
 		},
 		TypeKeyNote: {
 
-			Description:   "Blank canvas with no Title. A brief record of points written down as an aid to memory",
+			Description:   "",
 			IconColor:     2,
 			IconName:      "create",
 			Layout:        model.ObjectType_note,
@@ -255,13 +256,14 @@ var (
 			PluralName:    "Notes",
 			Readonly:      true,
 			RelationLinks: []*model.RelationLink{MustGetRelationLink(RelationKeyTag)},
-			Revision:      2,
+			Revision:      3,
 			Types:         []model.SmartBlockType{model.SmartBlockType_Page},
 			Url:           TypePrefix + "note",
 		},
 		TypeKeyObjectType: {
 
-			Description:   "Object that contains a definition of some object type",
+			Description:   "",
+			Hidden:        true,
 			IconColor:     9,
 			IconName:      "extension-puzzle",
 			Layout:        model.ObjectType_objectType,
@@ -269,13 +271,13 @@ var (
 			PluralName:    "Types",
 			Readonly:      true,
 			RelationLinks: []*model.RelationLink{MustGetRelationLink(RelationKeyRecommendedRelations), MustGetRelationLink(RelationKeyRecommendedLayout)},
-			Revision:      2,
+			Revision:      3,
 			Types:         []model.SmartBlockType{model.SmartBlockType_SubObject, model.SmartBlockType_BundledObjectType},
 			Url:           TypePrefix + "objectType",
 		},
 		TypeKeyPage: {
 
-			Description:   "Blank canvas with Title",
+			Description:   "",
 			IconColor:     8,
 			IconName:      "document",
 			Layout:        model.ObjectType_basic,
@@ -283,13 +285,13 @@ var (
 			PluralName:    "Pages",
 			Readonly:      true,
 			RelationLinks: []*model.RelationLink{MustGetRelationLink(RelationKeyTag)},
-			Revision:      2,
+			Revision:      3,
 			Types:         []model.SmartBlockType{model.SmartBlockType_Page},
 			Url:           TypePrefix + "page",
 		},
 		TypeKeyParticipant: {
 
-			Description:            "Anytype identity as a space participant",
+			Description:            "",
 			IconColor:              3,
 			IconName:               "person",
 			Layout:                 model.ObjectType_participant,
@@ -298,13 +300,13 @@ var (
 			Readonly:               true,
 			RelationLinks:          []*model.RelationLink{MustGetRelationLink(RelationKeyTag)},
 			RestrictObjectCreation: true,
-			Revision:               3,
+			Revision:               4,
 			Types:                  []model.SmartBlockType{model.SmartBlockType_Participant},
 			Url:                    TypePrefix + "participant",
 		},
 		TypeKeyProfile: {
 
-			Description:   "Homo sapiens",
+			Description:   "",
 			Hidden:        true,
 			IconColor:     3,
 			IconName:      "man",
@@ -313,27 +315,27 @@ var (
 			PluralName:    "Humans",
 			Readonly:      true,
 			RelationLinks: []*model.RelationLink{MustGetRelationLink(RelationKeyTag)},
-			Revision:      2,
+			Revision:      3,
 			Types:         []model.SmartBlockType{model.SmartBlockType_Page, model.SmartBlockType_ProfilePage},
 			Url:           TypePrefix + "profile",
 		},
 		TypeKeyProject: {
 
-			Description:   "An individual or collaborative enterprise that is carefully planned to achieve a particular aim",
+			Description:   "",
 			IconColor:     3,
 			IconName:      "hammer",
 			Layout:        model.ObjectType_basic,
 			Name:          "Project",
 			PluralName:    "Projects",
 			Readonly:      true,
-			RelationLinks: []*model.RelationLink{MustGetRelationLink(RelationKeyTag), MustGetRelationLink(RelationKeyTasks)},
-			Revision:      2,
+			RelationLinks: []*model.RelationLink{MustGetRelationLink(RelationKeyTag)},
+			Revision:      3,
 			Types:         []model.SmartBlockType{model.SmartBlockType_Page},
 			Url:           TypePrefix + "project",
 		},
 		TypeKeyRecipe: {
 
-			Description:   "A recipe is a set of instructions that describes how to prepare or make something, especially a dish of prepared food",
+			Description:   "",
 			IconColor:     4,
 			IconName:      "pizza",
 			Layout:        model.ObjectType_basic,
@@ -341,13 +343,13 @@ var (
 			PluralName:    "Recipes",
 			Readonly:      true,
 			RelationLinks: []*model.RelationLink{MustGetRelationLink(RelationKeyTag), MustGetRelationLink(RelationKeyIngredients), MustGetRelationLink(RelationKeyTime)},
-			Revision:      2,
+			Revision:      3,
 			Types:         []model.SmartBlockType{model.SmartBlockType_Page},
 			Url:           TypePrefix + "recipe",
 		},
 		TypeKeyRelation: {
 
-			Description:   "Meaningful connection between objects",
+			Description:   "",
 			Hidden:        true,
 			IconColor:     7,
 			IconName:      "share-social",
@@ -356,13 +358,13 @@ var (
 			PluralName:    "Relation",
 			Readonly:      true,
 			RelationLinks: []*model.RelationLink{MustGetRelationLink(RelationKeyRelationFormat), MustGetRelationLink(RelationKeyRelationMaxCount), MustGetRelationLink(RelationKeyRelationDefaultValue), MustGetRelationLink(RelationKeyRelationFormatObjectTypes)},
-			Revision:      2,
+			Revision:      3,
 			Types:         []model.SmartBlockType{model.SmartBlockType_SubObject, model.SmartBlockType_BundledRelation},
 			Url:           TypePrefix + "relation",
 		},
 		TypeKeyRelationOption: {
 
-			Description: "Object that contains a relation option",
+			Description: "",
 			Hidden:      true,
 			IconColor:   0,
 			Layout:      model.ObjectType_relationOption,
@@ -373,7 +375,7 @@ var (
 		},
 		TypeKeySet: {
 
-			Description:   "Query all objects in your space based on types and relations",
+			Description:   "",
 			IconColor:     6,
 			IconName:      "search",
 			Layout:        model.ObjectType_set,
@@ -381,13 +383,13 @@ var (
 			PluralName:    "Queries",
 			Readonly:      true,
 			RelationLinks: []*model.RelationLink{MustGetRelationLink(RelationKeyTag), MustGetRelationLink(RelationKeySetOf)},
-			Revision:      3,
+			Revision:      4,
 			Types:         []model.SmartBlockType{model.SmartBlockType_Page},
 			Url:           TypePrefix + "set",
 		},
 		TypeKeySpace: {
 
-			Description:            "Workspace",
+			Description:            "",
 			Hidden:                 true,
 			IconColor:              10,
 			IconName:               "folder",
@@ -397,13 +399,13 @@ var (
 			Readonly:               true,
 			RelationLinks:          []*model.RelationLink{MustGetRelationLink(RelationKeyTag)},
 			RestrictObjectCreation: true,
-			Revision:               2,
+			Revision:               3,
 			Types:                  []model.SmartBlockType{model.SmartBlockType_Workspace},
 			Url:                    TypePrefix + "space",
 		},
 		TypeKeySpaceView: {
 
-			Description:            "Space",
+			Description:            "",
 			Hidden:                 true,
 			IconColor:              10,
 			IconName:               "folder",
@@ -413,41 +415,42 @@ var (
 			Readonly:               true,
 			RelationLinks:          []*model.RelationLink{MustGetRelationLink(RelationKeyTag)},
 			RestrictObjectCreation: true,
-			Revision:               1,
+			Revision:               2,
 			Types:                  []model.SmartBlockType{model.SmartBlockType_SpaceView},
 			Url:                    TypePrefix + "spaceView",
 		},
 		TypeKeyTask: {
 
-			Description:   "A piece of work to be done or undertaken",
+			Description:   "",
 			IconColor:     10,
 			IconName:      "checkbox",
 			Layout:        model.ObjectType_todo,
 			Name:          "Task",
 			PluralName:    "Tasks",
 			Readonly:      true,
-			RelationLinks: []*model.RelationLink{MustGetRelationLink(RelationKeyTag), MustGetRelationLink(RelationKeyAssignee), MustGetRelationLink(RelationKeyDone), MustGetRelationLink(RelationKeyDueDate), MustGetRelationLink(RelationKeyLinkedProjects), MustGetRelationLink(RelationKeyPriority), MustGetRelationLink(RelationKeyStatus), MustGetRelationLink(RelationKeyTasks)},
-			Revision:      2,
+			RelationLinks: []*model.RelationLink{MustGetRelationLink(RelationKeyTag), MustGetRelationLink(RelationKeyAssignee), MustGetRelationLink(RelationKeyDone), MustGetRelationLink(RelationKeyDueDate), MustGetRelationLink(RelationKeyLinkedProjects), MustGetRelationLink(RelationKeyStatus)},
+			Revision:      3,
 			Types:         []model.SmartBlockType{model.SmartBlockType_Page},
 			Url:           TypePrefix + "task",
 		},
 		TypeKeyTemplate: {
 
-			Description:   "Sample object that has already some details in place and used to create objects from",
-			IconColor:     8,
-			IconName:      "copy",
-			Layout:        model.ObjectType_basic,
-			Name:          "Template",
-			PluralName:    "Templates",
-			Readonly:      true,
-			RelationLinks: []*model.RelationLink{MustGetRelationLink(RelationKeyTargetObjectType), MustGetRelationLink(RelationKeyTemplateIsBundled)},
-			Revision:      3,
-			Types:         []model.SmartBlockType{model.SmartBlockType_Template},
-			Url:           TypePrefix + "template",
+			Description:            "",
+			IconColor:              8,
+			IconName:               "copy",
+			Layout:                 model.ObjectType_basic,
+			Name:                   "Template",
+			PluralName:             "Templates",
+			Readonly:               true,
+			RelationLinks:          []*model.RelationLink{MustGetRelationLink(RelationKeyTargetObjectType), MustGetRelationLink(RelationKeyTemplateIsBundled)},
+			RestrictObjectCreation: true,
+			Revision:               4,
+			Types:                  []model.SmartBlockType{model.SmartBlockType_Template},
+			Url:                    TypePrefix + "template",
 		},
 		TypeKeyVideo: {
 
-			Description:            "The recording of moving visual images",
+			Description:            "",
 			IconColor:              6,
 			IconName:               "videocam",
 			Layout:                 model.ObjectType_file,
@@ -456,7 +459,7 @@ var (
 			Readonly:               true,
 			RelationLinks:          []*model.RelationLink{MustGetRelationLink(RelationKeyAddedDate), MustGetRelationLink(RelationKeyOrigin), MustGetRelationLink(RelationKeyFileExt), MustGetRelationLink(RelationKeySizeInBytes), MustGetRelationLink(RelationKeyHeightInPixels), MustGetRelationLink(RelationKeyWidthInPixels), MustGetRelationLink(RelationKeyFileMimeType), MustGetRelationLink(RelationKeyCamera), MustGetRelationLink(RelationKeyCameraIso), MustGetRelationLink(RelationKeyAperture), MustGetRelationLink(RelationKeyExposure)},
 			RestrictObjectCreation: true,
-			Revision:               4,
+			Revision:               5,
 			Types:                  []model.SmartBlockType{model.SmartBlockType_File},
 			Url:                    TypePrefix + "video",
 		},

@@ -3,88 +3,91 @@ package util
 import (
 	"context"
 	"errors"
-	"fmt"
-	"strings"
+
+	"github.com/gogo/protobuf/types"
 
 	"github.com/anyproto/anytype-heart/pb"
-	"github.com/anyproto/anytype-heart/pb/service"
+
+	apicore "github.com/anyproto/anytype-heart/core/api/core"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 var (
-	ErrFailedSearchType = errors.New("failed to search for type")
-	ErrorTypeNotFound   = errors.New("type not found")
+	ErrFailedResolveToUniqueKey = errors.New("failed to resolve to unique key")
+	ErrFailedGetById            = errors.New("failed to get object by id")
+	ErrFailedGetByIdNotFound    = errors.New("failed to find object by id")
+	ErrFailedGetRelationKeys    = errors.New("failed to get relation keys")
+	ErrRelationKeysNotFound     = errors.New("failed to find relation keys")
 )
 
-// GetIconFromEmojiOrImage returns the icon to use for the object, which can be either an emoji or an image url
-func GetIconFromEmojiOrImage(accountInfo *model.AccountInfo, iconEmoji string, iconImage string) string {
-	if iconEmoji != "" {
-		return iconEmoji
+// ResolveIdtoUniqueKeyAndRelationKey resolves the type's ID to the unique key
+func ResolveIdtoUniqueKeyAndRelationKey(mw apicore.ClientCommands, spaceId string, objectId string) (uk string, rk string, err error) {
+	resp := mw.ObjectShow(context.Background(), &pb.RpcObjectShowRequest{
+		SpaceId:  spaceId,
+		ObjectId: objectId,
+	})
+
+	if resp.Error != nil && resp.Error.Code != pb.RpcObjectShowResponseError_NULL {
+		return "", "", ErrFailedResolveToUniqueKey
 	}
 
-	if iconImage != "" {
-		return fmt.Sprintf("%s/image/%s", accountInfo.GatewayUrl, iconImage)
-	}
-
-	return ""
+	return resp.ObjectView.Details[0].Details.Fields[bundle.RelationKeyUniqueKey.String()].GetStringValue(),
+		resp.ObjectView.Details[0].Details.Fields[bundle.RelationKeyRelationKey.String()].GetStringValue(), nil
 }
 
-// ResolveTypeToName resolves the type ID to the name of the type, e.g. "ot-page" to "Page" or "bafyreigyb6l5szohs32ts26ku2j42yd65e6hqy2u3gtzgdwqv6hzftsetu" to "Custom Type"
-func ResolveTypeToName(mw service.ClientCommandsServer, spaceId string, typeId string) (typeName string, err error) {
-	// Can't look up preinstalled types based on relation key, therefore need to use unique key
-	relKey := bundle.RelationKeyId.String()
-	if strings.HasPrefix(typeId, "ot-") {
-		relKey = bundle.RelationKeyUniqueKey.String()
-	}
-
-	// Call ObjectSearch for object of specified type and return the name
+// GetFieldsByID retrieves the specified fields of an object by its ID.
+func GetFieldsByID(mw apicore.ClientCommands, spaceId string, objectId string, keys []string) (map[string]*types.Value, error) {
 	resp := mw.ObjectSearch(context.Background(), &pb.RpcObjectSearchRequest{
 		SpaceId: spaceId,
 		Filters: []*model.BlockContentDataviewFilter{
 			{
-				Operator:    model.BlockContentDataviewFilter_No,
-				RelationKey: relKey,
+				RelationKey: bundle.RelationKeyId.String(),
 				Condition:   model.BlockContentDataviewFilter_Equal,
-				Value:       pbtypes.String(typeId),
+				Value:       pbtypes.String(objectId),
 			},
 		},
-		Keys: []string{bundle.RelationKeyName.String()},
+		Keys: keys,
 	})
 
-	if resp.Error.Code != pb.RpcObjectSearchResponseError_NULL {
-		return "", ErrFailedSearchType
+	if resp.Error != nil && resp.Error.Code != pb.RpcObjectSearchResponseError_NULL {
+		return nil, ErrFailedGetById
 	}
 
 	if len(resp.Records) == 0 {
-		return "", ErrorTypeNotFound
+		return nil, ErrFailedGetByIdNotFound
 	}
 
-	return resp.Records[0].Fields[bundle.RelationKeyName.String()].GetStringValue(), nil
+	return resp.Records[0].Fields, nil
 }
 
-func ResolveUniqueKeyToTypeId(mw service.ClientCommandsServer, spaceId string, uniqueKey string) (typeId string, err error) {
-	// Call ObjectSearch for type with unique key and return the type's ID
+// GetAllRelationKeys retrieves all relation keys within a space, including hidden ones.
+func GetAllRelationKeys(mw apicore.ClientCommands, spaceId string) ([]string, error) {
 	resp := mw.ObjectSearch(context.Background(), &pb.RpcObjectSearchRequest{
 		SpaceId: spaceId,
 		Filters: []*model.BlockContentDataviewFilter{
 			{
-				RelationKey: bundle.RelationKeyUniqueKey.String(),
+				RelationKey: bundle.RelationKeyResolvedLayout.String(),
 				Condition:   model.BlockContentDataviewFilter_Equal,
-				Value:       pbtypes.String(uniqueKey),
+				Value:       pbtypes.Int64(int64(model.ObjectType_relation)),
 			},
 		},
-		Keys: []string{bundle.RelationKeyId.String()},
+		Keys: []string{bundle.RelationKeyRelationKey.String()},
 	})
 
-	if resp.Error.Code != pb.RpcObjectSearchResponseError_NULL {
-		return "", ErrFailedSearchType
+	if resp.Error != nil && resp.Error.Code != pb.RpcObjectSearchResponseError_NULL {
+		return nil, ErrFailedGetRelationKeys
 	}
 
 	if len(resp.Records) == 0 {
-		return "", ErrorTypeNotFound
+		return nil, ErrRelationKeysNotFound
 	}
 
-	return resp.Records[0].Fields[bundle.RelationKeyId.String()].GetStringValue(), nil
+	relationKeys := make([]string, len(resp.Records))
+	for i, record := range resp.Records {
+		relationKeys[i] = record.Fields[bundle.RelationKeyRelationKey.String()].GetStringValue()
+	}
+
+	return relationKeys, nil
 }

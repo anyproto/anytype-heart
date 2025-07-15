@@ -478,9 +478,6 @@ func (s *dsObjectStore) QueryByIds(ids []string) (records []database.Record, err
 }
 
 func (s *dsObjectStore) QueryByIdsAndSubscribeForChanges(ids []string, sub database.Subscription) (records []database.Record, closeFunc func(), err error) {
-	s.lock.Lock()
-	defer s.lock.Unlock()
-
 	if sub == nil {
 		err = fmt.Errorf("subscription func is nil")
 		return
@@ -496,6 +493,9 @@ func (s *dsObjectStore) QueryByIdsAndSubscribeForChanges(ids []string, sub datab
 	closeFunc = func() {
 		s.closeAndRemoveSubscription(sub)
 	}
+
+	s.lock.Lock()
+	defer s.lock.Unlock()
 
 	s.addSubscriptionIfNotExists(sub)
 	return
@@ -576,10 +576,17 @@ func (s *dsObjectStore) IterateAll(proc func(doc *anyenc.Value) error) error {
 	}
 	defer iter.Close()
 
+	const maxErrorsToLog = 5
+	var loggedErrors int
+
 	for iter.Next() {
 		doc, err := iter.Doc()
 		if err != nil {
-			return fmt.Errorf("get doc: %w", err)
+			if loggedErrors < maxErrorsToLog {
+				log.With("error", err).Error("IterateAll: get doc")
+				loggedErrors++
+			}
+			continue
 		}
 		err = proc(doc.Value())
 		if err != nil {

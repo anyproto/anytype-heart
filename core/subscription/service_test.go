@@ -94,9 +94,11 @@ func TestService_Search(t *testing.T) {
 			})),
 		})
 
+		fx.lock.Lock()
 		assert.Equal(t, []string{"test"}, spaceSub.cache.entries["1"].SubIds())
 		assert.Equal(t, []string{"test", "test/dep"}, spaceSub.cache.entries["author2"].SubIds())
 		assert.Equal(t, []string{"test", "test/dep"}, spaceSub.cache.entries["author3"].SubIds())
+		fx.lock.Unlock()
 
 		fx.events = fx.events[:0]
 
