@@ -361,14 +361,18 @@ func (bs *basic) SetObjectTypesInState(s *state.State, objectTypeKeys []domain.T
 }
 
 func removeLayoutSettings(s *state.State) {
-	s.Details().Delete(bundle.RelationKeyLayout)
-	s.Details().Delete(bundle.RelationKeyLayoutAlign)
 	featuredRelations := s.Details().GetStringList(bundle.RelationKeyFeaturedRelations)
+	newFRValue := domain.Null()
 	if slices.Contains(featuredRelations, bundle.RelationKeyDescription.String()) {
-		s.Details().SetStringList(bundle.RelationKeyFeaturedRelations, []string{bundle.RelationKeyDescription.String()})
-	} else {
-		s.Details().Delete(bundle.RelationKeyFeaturedRelations)
+		newFRValue = domain.StringList([]string{bundle.RelationKeyDescription.String()})
 	}
+	updates := []domain.Detail{
+		{Key: bundle.RelationKeyLayout, Value: domain.Null()},
+		{Key: bundle.RelationKeyLayoutAlign, Value: domain.Null()},
+		{Key: bundle.RelationKeyFeaturedRelations, Value: newFRValue},
+	}
+	newDetails := applyDetailUpdates(s.Details(), updates)
+	s.SetDetails(newDetails)
 }
 
 func (bs *basic) getLayoutForType(objectTypeKey domain.TypeKey) (model.ObjectTypeLayout, error) {
