@@ -4,7 +4,6 @@ import (
 	"context"
 	"testing"
 
-	"github.com/samber/lo"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -29,7 +28,7 @@ func TestDsObjectStore_IndexQueue(t *testing.T) {
 	})
 
 	t.Run("remove from queue", func(t *testing.T) {
-		s.RemoveIdsFromFullTextQueue([]string{"one"})
+		s.FtQueueMarkAsIndexed([]domain.FullID{{ObjectID: "one", SpaceID: "id1"}}, 1)
 		ids, err := s.ListIdsFromFullTextQueue([]string{"id1"}, 0)
 		require.NoError(t, err)
 
@@ -50,15 +49,29 @@ func TestIndexerBatch(t *testing.T) {
 			context.Background(),
 			func() []string { return []string{"id1"} },
 			2,
-			func(ids []domain.FullID) ([]string, error) {
+			func(ids []domain.FullID) ([]domain.FullID, uint64, error) {
 				batches = append(batches, ids)
-				return lo.Map(ids, func(item domain.FullID, _ int) string { return item.ObjectID }), nil
+				return ids, 1, nil
 			})
 		require.NoError(t, err)
 		require.Len(t, batches, 2)
 
-		assert.ElementsMatch(t, []domain.FullID{{ObjectID: "one", SpaceID: "id1"}, {ObjectID: "two", SpaceID: "id1"}}, batches[0])
-		assert.ElementsMatch(t, []domain.FullID{{ObjectID: "three", SpaceID: "id1"}}, batches[1])
+		// Collect all processed IDs
+		var allProcessed []domain.FullID
+		for _, batch := range batches {
+			allProcessed = append(allProcessed, batch...)
+		}
+		
+		// Verify all items were processed
+		assert.ElementsMatch(t, []domain.FullID{
+			{ObjectID: "one", SpaceID: "id1"},
+			{ObjectID: "two", SpaceID: "id1"},
+			{ObjectID: "three", SpaceID: "id1"},
+		}, allProcessed)
+		
+		// Verify batch sizes
+		assert.LessOrEqual(t, len(batches[0]), 2)
+		assert.LessOrEqual(t, len(batches[1]), 2)
 	})
 }
 

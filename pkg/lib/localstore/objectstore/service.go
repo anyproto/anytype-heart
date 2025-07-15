@@ -17,6 +17,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/datastore/anystoreprovider"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/ftsearch"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/anystorehelper"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/spaceindex"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/spaceresolverstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
@@ -38,7 +39,7 @@ type CrossSpace interface {
 
 	ListIdsCrossSpace() ([]string, error)
 	EnqueueAllForFulltextIndexing(ctx context.Context) error
-	BatchProcessFullTextQueue(ctx context.Context, spaceIds func() []string, limit uint, processIds func(objectIds []domain.FullID) (succeedIds []string, err error)) error
+	BatchProcessFullTextQueue(ctx context.Context, spaceIds func() []string, limit uint, processIds func(objectIds []domain.FullID) (succeedIds []domain.FullID, ftIndexSeq uint64, err error)) error
 
 	AccountStore
 	VirtualSpacesStore
@@ -55,6 +56,9 @@ type ObjectStore interface {
 	spaceresolverstore.Store
 	CrossSpace
 
+	FtQueueReconcileWithSeq(ctx context.Context, ftIndexSeq uint64) error
+	FtQueueMarkAsIndexed(ids []domain.FullID, ftIndexSeq uint64) error
+
 	AddFileKeys(fileKeys ...domain.FileEncryptionKeys) error
 	GetFileKeys(fileId domain.FileId) (map[string]string, error)
 }
@@ -62,7 +66,9 @@ type ObjectStore interface {
 type IndexerStore interface {
 	AddToIndexQueue(ctx context.Context, id ...domain.FullID) error
 	ListIdsFromFullTextQueue(spaceIds []string, limit uint) ([]domain.FullID, error)
-	RemoveIdsFromFullTextQueue(ids []string) error
+	FtQueueMarkAsIndexed(ids []domain.FullID, ftIndexSeq uint64) error
+
+	// ClearFullTextQueue cleans the pending . Pass nil to clear all spaces.
 	ClearFullTextQueue(spaceIds []string) error
 
 	// GetChecksums Used to get information about localstore state and decide do we need to reindex some objects
@@ -199,6 +205,16 @@ func (s *dsObjectStore) initCollections(ctx context.Context) error {
 	fulltextQueue, err := store.Collection(ctx, "fulltext_queue")
 	if err != nil {
 		return fmt.Errorf("open fulltextQueue collection: %w", err)
+	}
+
+	indexes := []anystore.IndexInfo{
+		{
+			Fields: []string{spaceIdKey, ftSequenceKey},
+		},
+	}
+	err = anystorehelper.AddIndexes(ctx, fulltextQueue, indexes)
+	if err != nil {
+		return fmt.Errorf("add indexes to fulltextQueue collection: %w", err)
 	}
 
 	fileKeys, err := keyvaluestore.NewJson[map[string]string](store, "file_keys")
@@ -373,6 +389,7 @@ func (s *dsObjectStore) EnqueueAllForFulltextIndexing(ctx context.Context) error
 			obj := arena.NewObject()
 			obj.Set(idKey, arena.NewString(id))
 			obj.Set(spaceIdKey, arena.NewString(spaceId))
+			obj.Set(ftSequenceKey, arena.NewBinary(emptyBuffer))
 			err := s.fulltextQueue.UpsertOne(txn.Context(), obj)
 			if err != nil {
 				if loggedErrors < maxErrorsToLog {
