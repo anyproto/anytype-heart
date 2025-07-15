@@ -1147,10 +1147,10 @@ func (e *exportContext) writeDoc(ctx context.Context, wr writer, docId string, d
 		if st.CombinedDetails().GetBool(bundle.RelationKeyIsDeleted) {
 			return nil
 		}
+		st = st.Copy().Filter(e.getStateFilters(docId))
 		if isCollection(st) {
 			e.collectionFilterMissing(st)
 		}
-		st = st.Copy().Filter(e.getStateFilters(docId))
 		if e.includeFiles && b.Type() == smartblock.SmartBlockTypeFileObject {
 			fileName, err := e.saveFile(ctx, wr, b, e.spaceId == "")
 			if err != nil {
