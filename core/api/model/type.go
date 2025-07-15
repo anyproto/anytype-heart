@@ -44,12 +44,12 @@ type CreateTypeRequest struct {
 }
 
 type UpdateTypeRequest struct {
-	Key        *string         `json:"key,omitempty" example:"some_user_defined_type_key"`  // The key to set for the type; should always be snake_case, otherwise it will be converted to snake_case
-	Name       *string         `json:"name,omitempty" example:"Page"`                       // The name to set for the type
-	PluralName *string         `json:"plural_name,omitempty" example:"Pages"`               // The plural name to set for the type
-	Icon       *Icon           `json:"icon,omitempty" oneOf:"EmojiIcon,FileIcon,NamedIcon"` // The icon to set for the type
-	Layout     *TypeLayout     `json:"layout,omitempty" enums:"basic,profile,action,note"`  // The layout to set for the type
-	Properties *[]PropertyLink `json:"properties,omitempty"`                                // ⚠ Warning: Properties are experimental and may change in the next update. ⚠ The properties to set for the type
+	Key        *string         `json:"key" example:"some_user_defined_type_key"`  // The key to set for the type; should always be snake_case, otherwise it will be converted to snake_case
+	Name       *string         `json:"name" example:"Page"`                       // The name to set for the type
+	PluralName *string         `json:"plural_name" example:"Pages"`               // The plural name to set for the type
+	Icon       *Icon           `json:"icon" oneOf:"EmojiIcon,FileIcon,NamedIcon"` // The icon to set for the type
+	Layout     *TypeLayout     `json:"layout" enums:"basic,profile,action,note"`  // The layout to set for the type
+	Properties *[]PropertyLink `json:"properties"`                                // ⚠ Warning: Properties are experimental and may change in the next update. ⚠ The properties to set for the type
 }
 
 type Type struct {

@@ -6,7 +6,7 @@ type MemberResponse struct {
 
 type UpdateMemberRequest struct {
 	Status string `json:"status" enums:"active,removed,declined" example:"active"` // Status of the member
-	Role   string `json:"role,omitempty" enums:"viewer,editor" example:"viewer"`   // Role to assign if approving a joining member
+	Role   string `json:"role" enums:"viewer,editor" example:"viewer"`             // Role to assign if approving a joining member
 }
 
 type Member struct {

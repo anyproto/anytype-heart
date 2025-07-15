@@ -5,13 +5,13 @@ type SpaceResponse struct {
 }
 
 type CreateSpaceRequest struct {
-	Name        *string `json:"name,omitempty" binding:"required" example:"New Space"` // The name of the space
-	Description *string `json:"description,omitempty" example:"The local-first wiki"`  // The description of the space
+	Name        *string `json:"name" binding:"required" example:"New Space"` // The name of the space
+	Description *string `json:"description" example:"The local-first wiki"`  // The description of the space
 }
 
 type UpdateSpaceRequest struct {
-	Name        *string `json:"name,omitempty" example:"New Space"`                   // The name of the space
-	Description *string `json:"description,omitempty" example:"The local-first wiki"` // The description of the space
+	Name        *string `json:"name" example:"New Space"`                   // The name of the space
+	Description *string `json:"description" example:"The local-first wiki"` // The description of the space
 }
 
 type Space struct {

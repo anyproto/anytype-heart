@@ -45,12 +45,12 @@ type CreatePropertyRequest struct {
 	Key    string             `json:"key" example:"some_user_defined_property_key"`                                                                  // The key of the property; should always be snake_case, otherwise it will be converted to snake_case
 	Name   string             `json:"name" binding:"required" example:"Last modified date"`                                                          // The name of the property
 	Format PropertyFormat     `json:"format" binding:"required" enums:"text,number,select,multi_select,date,files,checkbox,url,email,phone,objects"` // The format of the property
-	Tags   []CreateTagRequest `json:"tags,omitempty"`                                                                                                // Tags to create for select/multi_select properties
+	Tags   []CreateTagRequest `json:"tags"`                                                                                                          // Tags to create for select/multi_select properties
 }
 
 type UpdatePropertyRequest struct {
-	Key  *string `json:"key,omitempty" example:"some_user_defined_property_key"`         // The key to set for the property; ; should always be snake_case, otherwise it will be converted to snake_case
-	Name *string `json:"name,omitempty" binding:"required" example:"Last modified date"` // The name to set for the property
+	Key  *string `json:"key" example:"some_user_defined_property_key"`         // The key to set for the property; ; should always be snake_case, otherwise it will be converted to snake_case
+	Name *string `json:"name" binding:"required" example:"Last modified date"` // The name to set for the property
 }
 
 type Property struct {
