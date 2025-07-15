@@ -708,7 +708,7 @@ func (s *Service) buildPropertyWithValue(id string, key string, name string, for
 		if sel, ok := val.(apimodel.Tag); ok {
 			return &apimodel.PropertyWithValue{WrappedPropertyWithValue: apimodel.SelectPropertyValue{
 				PropertyBase: base, Key: key, Name: name, Format: format,
-				Select: &sel,
+				Select: sel,
 			}}
 		}
 	case apimodel.PropertyFormatMultiSelect:

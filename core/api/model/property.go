@@ -190,7 +190,7 @@ type SelectPropertyValue struct {
 	Key    string         `json:"key" example:"status"`  // The key of the property
 	Name   string         `json:"name" example:"Status"` // The name of the property
 	Format PropertyFormat `json:"format" enums:"select"` // The format of the property
-	Select *Tag           `json:"select"`                // The selected tag value of the property
+	Select Tag            `json:"select"`                // The selected tag value of the property
 }
 
 func (SelectPropertyValue) isPropertyWithValue() {}
