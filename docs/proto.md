@@ -16789,7 +16789,7 @@ Deletes the object, keys from the local store and unsubscribe from remote change
 | linksStateFilters | [Rpc.Object.ListExport.StateFilters](#anytype-Rpc-Object-ListExport-StateFilters) |  |  |
 | includeBacklinks | [bool](#bool) |  |  |
 | includeSpace | [bool](#bool) |  |  |
-| includeJsonSchema | [bool](#bool) |  |  |
+| mdIncludePropertiesAndSchema | [bool](#bool) |  | include properties frontmatter and schema in directory for markdown export |
 
 
 
