@@ -40,7 +40,7 @@ var log = logging.Logger(CName).Desugar()
 type Service interface {
 	AddMessage(ctx context.Context, sessionCtx session.Context, chatObjectId string, message *chatmodel.Message) (string, error)
 	EditMessage(ctx context.Context, chatObjectId string, messageId string, newMessage *chatmodel.Message) error
-	ToggleMessageReaction(ctx context.Context, chatObjectId string, messageId string, emoji string) error
+	ToggleMessageReaction(ctx context.Context, chatObjectId string, messageId string, emoji string) (bool, error)
 	DeleteMessage(ctx context.Context, chatObjectId string, messageId string) error
 	GetMessages(ctx context.Context, chatObjectId string, req chatrepository.GetMessagesRequest) (*chatobject.GetMessagesResponse, error)
 	GetMessagesByIds(ctx context.Context, chatObjectId string, messageIds []string) ([]*chatmodel.Message, error)
@@ -420,10 +420,14 @@ func (s *service) EditMessage(ctx context.Context, chatObjectId string, messageI
 	})
 }
 
-func (s *service) ToggleMessageReaction(ctx context.Context, chatObjectId string, messageId string, emoji string) error {
-	return s.chatObjectDo(ctx, chatObjectId, func(sb chatobject.StoreObject) error {
-		return sb.ToggleMessageReaction(ctx, messageId, emoji)
+func (s *service) ToggleMessageReaction(ctx context.Context, chatObjectId string, messageId string, emoji string) (bool, error) {
+	var added bool
+	err := s.chatObjectDo(ctx, chatObjectId, func(sb chatobject.StoreObject) error {
+		var err error
+		added, err = sb.ToggleMessageReaction(ctx, messageId, emoji)
+		return err
 	})
+	return added, err
 }
 
 func (s *service) DeleteMessage(ctx context.Context, chatObjectId string, messageId string) error {

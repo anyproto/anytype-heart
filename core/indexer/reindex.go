@@ -199,7 +199,7 @@ func (i *indexer) ReindexSpace(space clientspace.Space) (err error) {
 			l := log.With(zap.String("space", space.Id()), zap.Int("total", total), zap.Int("succeed", success), zap.Int("spentMs", int(time.Since(start).Milliseconds())))
 			if success != total {
 				l.Errorf("reindex outdated partially failed")
-			} else {
+			} else if total != 0 {
 				l.Debugf("reindex outdated finished")
 			}
 			if total > 0 {

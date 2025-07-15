@@ -6,7 +6,6 @@ import (
 	"sync"
 
 	"github.com/anyproto/any-sync/app"
-	"github.com/anyproto/any-sync/commonspace/spacestorage"
 	"go.uber.org/zap"
 
 	"github.com/anyproto/anytype-heart/core/anytype/config"
@@ -22,7 +21,6 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space/clientspace"
-	"github.com/anyproto/anytype-heart/space/spacecore/storage"
 )
 
 const (
@@ -50,12 +48,12 @@ type Hasher interface {
 }
 
 type indexer struct {
-	dbProvider     anystoreprovider.Provider
-	store          objectstore.ObjectStore
-	source         source.Service
-	picker         cache.CachedObjectGetter
-	ftsearch       ftsearch.FTSearch
-	storageService storage.ClientStorage
+	dbProvider           anystoreprovider.Provider
+	store                objectstore.ObjectStore
+	source               source.Service
+	picker               cache.CachedObjectGetter
+	ftsearch             ftsearch.FTSearch
+	ftsearchLastIndexSeq uint64
 
 	runCtx          context.Context
 	runCtxCancel    context.CancelFunc
@@ -77,7 +75,6 @@ type indexer struct {
 
 func (i *indexer) Init(a *app.App) (err error) {
 	i.store = a.MustComponent(objectstore.CName).(objectstore.ObjectStore)
-	i.storageService = a.MustComponent(spacestorage.CName).(storage.ClientStorage)
 	i.source = app.MustComponent[source.Service](a)
 	i.btHash = a.MustComponent("builtintemplate").(Hasher)
 	i.ftsearch = app.MustComponent[ftsearch.FTSearch](a)
@@ -146,13 +143,17 @@ func (i *indexer) RemoveAclIndexes(spaceId string) (err error) {
 			},
 		},
 	})
-	if err != nil {
-		return fmt.Errorf("remove acl: %w", err)
-	}
 	err = i.store.ClearFullTextQueue([]string{spaceId})
 	if err != nil {
 		return fmt.Errorf("remove fts: %w", err)
 	}
+
+	// todo: should we use the queue here as well?
+	err = i.ftsearch.BatchDeleteObjects(ids)
+	if err != nil {
+		return fmt.Errorf("remove acl: %w", err)
+	}
+
 	return store.DeleteDetails(i.runCtx, ids)
 }
 

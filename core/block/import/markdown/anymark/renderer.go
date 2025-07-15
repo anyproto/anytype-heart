@@ -5,6 +5,7 @@ import (
 	"net/url"
 	"path/filepath"
 	"strings"
+	"unicode"
 
 	"github.com/gogo/protobuf/types"
 	"github.com/yuin/goldmark/ast"
@@ -239,10 +240,10 @@ func (r *Renderer) renderAutoLink(_ util.BufWriter,
 		linkPath = string(destination)
 	}
 
-	// add basefilepath
-	if !strings.HasPrefix(strings.ToLower(linkPath), "http://") &&
-		!strings.HasPrefix(strings.ToLower(linkPath), "https://") {
+	if !isUrl(linkPath) {
+		// Treat as a file path if no URL scheme
 		linkPath = filepath.Join(r.GetBaseFilepath(), linkPath)
+		linkPath = cleanLinkSection(linkPath)
 	}
 
 	r.AddMark(model.BlockContentTextMark{
@@ -252,6 +253,32 @@ func (r *Renderer) renderAutoLink(_ util.BufWriter,
 	})
 	r.AddTextToBuffer(string(util.EscapeHTML(label)))
 	return ast.WalkContinue, nil
+}
+
+func isUrl(raw string) bool {
+	colon := strings.IndexByte(raw, ':')
+
+	if colon > 0 {
+		scheme := raw[:colon]
+		if isASCIIAlpha(scheme) {
+			return true
+		}
+	}
+
+	if u, err := url.Parse(raw); err == nil && u.Scheme != "" && len(u.Scheme) > 1 {
+		return true
+	}
+
+	return false
+}
+
+func isASCIIAlpha(s string) bool {
+	for _, r := range s {
+		if !unicode.IsLetter(r) || r > unicode.MaxASCII {
+			return false
+		}
+	}
+	return true
 }
 
 func (r *Renderer) renderCodeSpan(_ util.BufWriter,
@@ -327,10 +354,15 @@ func (r *Renderer) renderLink(_ util.BufWriter,
 			linkPath = string(destination)
 		}
 
-		if !strings.HasPrefix(strings.ToLower(linkPath), "http://") &&
-			!strings.HasPrefix(strings.ToLower(linkPath), "https://") {
+		if !isUrl(linkPath) {
+			// Treat as a file path if no URL scheme
 			linkPath = filepath.Join(r.GetBaseFilepath(), linkPath)
-			if filepath.Ext(linkPath) == "" {
+			ext := filepath.Ext(linkPath)
+			// if empty or contains spaces
+			linkPath = cleanLinkSection(linkPath)
+
+			// todo: should be improved
+			if ext == "" || strings.Contains(ext, " ") {
 				linkPath += ".md" // Default to .md if no extension is provided
 			}
 		}
@@ -444,6 +476,16 @@ func (r *Renderer) renderStrikethrough(_ util.BufWriter, _ []byte, _ ast.Node, e
 	return ast.WalkContinue, nil
 }
 
+func cleanLinkSection(linkPath string) string {
+	// Remove any section markers from the link path.
+	for _, char := range []string{"|", "#", "^"} {
+		if idx := strings.LastIndex(linkPath, char); idx != -1 {
+			linkPath = linkPath[:idx]
+		}
+	}
+	return linkPath
+}
+
 func (r *Renderer) renderWikiLink(_ util.BufWriter, source []byte, node ast.Node, entering bool) (ast.WalkStatus, error) {
 	n := node.(*wikilink.Node)
 	linkPath := string(n.Target)
@@ -468,11 +510,17 @@ func (r *Renderer) renderWikiLink(_ util.BufWriter, source []byte, node ast.Node
 		r.SetMarkStart()
 	} else {
 		// Handle as regular link (same behavior as [[]] for both [[]] and ![[]])
-		if !strings.HasPrefix(strings.ToLower(linkPath), "http://") &&
-			!strings.HasPrefix(strings.ToLower(linkPath), "https://") {
+		if !isUrl(linkPath) {
+			// Treat as a file path if no URL scheme
 			linkPath = filepath.Join(r.GetBaseFilepath(), linkPath)
-			if filepath.Ext(linkPath) == "" {
+			ext := filepath.Ext(linkPath)
+			// if empty or contains spaces
+			linkPath = cleanLinkSection(linkPath)
+
+			// todo: should be improved
+			if ext == "" || strings.Contains(ext, " ") {
 				linkPath += ".md" // Default to .md if no extension is provided
+
 			}
 		}
 

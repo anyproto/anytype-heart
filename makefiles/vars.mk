@@ -7,7 +7,7 @@ TANTIVY_GO_PATH ?= ../tantivy-go
 BUILD_FLAGS ?=
 TANTIVY_VERSION := $(shell cat go.mod | grep github.com/anyproto/tantivy-go | cut -d' ' -f2)
 
-export GOLANGCI_LINT_VERSION=1.58.1
+export GOLANGCI_LINT_VERSION=v2.2.1
 export CGO_CFLAGS=-Wno-deprecated-non-prototype -Wno-unknown-warning-option -Wno-deprecated-declarations -Wno-xor-used-as-pow -Wno-single-bit-bitfield-constant-conversion
 
 
