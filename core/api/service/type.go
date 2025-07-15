@@ -275,11 +275,11 @@ func (s *Service) getTypeFromStruct(details *types.Struct, propertyMap map[strin
 }
 
 // getTypeFromMap retrieves the type from the details.
-func (s *Service) getTypeFromMap(details *types.Struct, typeMap map[string]*apimodel.Type) apimodel.Type {
+func (s *Service) getTypeFromMap(details *types.Struct, typeMap map[string]*apimodel.Type) *apimodel.Type {
 	if t, ok := typeMap[details.Fields[bundle.RelationKeyType.String()].GetStringValue()]; ok {
-		return *t
+		return t
 	}
-	return apimodel.Type{}
+	return nil
 }
 
 // buildTypeDetails builds the type details from the CreateTypeRequest.
