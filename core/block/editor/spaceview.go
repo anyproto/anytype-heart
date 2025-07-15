@@ -32,10 +32,6 @@ var ErrLexidInsertionFailed = errors.New("lexid insertion failed")
 
 var lx = lexid.Must(lexid.CharsBase64, 4, 4000)
 
-// firstLexIdPadding is used to create the first lexid with a huge padding
-// to allow many insertions before the first element
-const firstLexIdPadding = "mmmm"
-
 // required relations for spaceview beside the bundle.RequiredInternalRelations
 var spaceViewRequiredRelations = []domain.RelationKey{
 	bundle.RelationKeySpaceLocalStatus,
@@ -332,7 +328,7 @@ func (s *SpaceView) SetOrder(prevViewOrderId string) (string, error) {
 	var spaceOrderId string
 	if prevViewOrderId == "" {
 		// For the first element, use a lexid with huge padding
-		spaceOrderId = lx.Next(firstLexIdPadding)
+		spaceOrderId = lx.Middle()
 	} else {
 		spaceOrderId = lx.Next(prevViewOrderId)
 	}
@@ -353,7 +349,17 @@ func (s *SpaceView) SetAfterGivenView(viewOrderId string) error {
 
 func (s *SpaceView) SetBetweenViews(prevViewOrderId, afterViewOrderId string) error {
 	st := s.NewState()
-	before, err := lx.NextBefore(prevViewOrderId, afterViewOrderId)
+	var before string
+	var err error
+
+	if prevViewOrderId == "" {
+		// Insert before the first existing element
+		before = lx.Prev(afterViewOrderId)
+	} else {
+		// Insert between two existing elements
+		before, err = lx.NextBefore(prevViewOrderId, afterViewOrderId)
+	}
+
 	if err != nil {
 		// Return a specific error that can be caught by the caller
 		return fmt.Errorf("%w: %s", ErrLexidInsertionFailed, err)

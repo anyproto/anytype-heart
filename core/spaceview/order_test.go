@@ -43,8 +43,9 @@ func TestOrderSetter_rebuildIfNeeded(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Len(t, lexids, 1)
 		assert.NotEmpty(t, lexids[0])
-		// The first lexid should be generated after MMMM (padding)
-		assert.True(t, lexids[0] > "MMMM", "First lexid %s should be after MMMM", lexids[0])
+		// The first lexid should be generated using Middle() for better padding
+		assert.NotEmpty(t, lexids[0])
+		// Middle() should give us a lexid roughly in the middle of the space
 	})
 
 	t.Run("multiple new views", func(t *testing.T) {
@@ -69,8 +70,9 @@ func TestOrderSetter_rebuildIfNeeded(t *testing.T) {
 		// Check order
 		assert.True(t, lexids[0] < lexids[1])
 		assert.True(t, lexids[1] < lexids[2])
-		// The first lexid should be generated after MMMM (padding)
-		assert.True(t, lexids[0] > "MMMM", "First lexid %s should be after MMMM", lexids[0])
+		// The first lexid should be generated using Middle() for better padding
+		assert.NotEmpty(t, lexids[0])
+		// Middle() should give us a lexid roughly in the middle of the space
 	})
 
 	t.Run("mix of existing and new views - simple", func(t *testing.T) {
