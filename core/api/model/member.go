@@ -1,12 +1,62 @@
 package apimodel
 
+import (
+	"encoding/json"
+	"fmt"
+
+	"github.com/anyproto/anytype-heart/core/api/util"
+)
+
+type MemberStatus string
+
+const (
+	MemberStatusActive   MemberStatus = "active"
+	MemberStatusRemoved  MemberStatus = "removed"
+	MemberStatusDeclined MemberStatus = "declined"
+)
+
+func (ms *MemberStatus) UnmarshalJSON(data []byte) error {
+	var s string
+	if err := json.Unmarshal(data, &s); err != nil {
+		return err
+	}
+	switch MemberStatus(s) {
+	case MemberStatusActive, MemberStatusRemoved, MemberStatusDeclined:
+		*ms = MemberStatus(s)
+		return nil
+	default:
+		return util.ErrBadInput(fmt.Sprintf("invalid member status: %q", s))
+	}
+}
+
+type MemberRole string
+
+const (
+	MemberRoleViewer MemberRole = "viewer"
+	MemberRoleEditor MemberRole = "editor"
+)
+
+func (mr *MemberRole) UnmarshalJSON(data []byte) error {
+	var s string
+	if err := json.Unmarshal(data, &s); err != nil {
+		return err
+	}
+	switch MemberRole(s) {
+	case MemberRoleViewer, MemberRoleEditor:
+		*mr = MemberRole(s)
+		return nil
+	default:
+		return util.ErrBadInput(fmt.Sprintf("invalid member role: %q", s))
+	}
+}
+
 type MemberResponse struct {
 	Member Member `json:"member"` // The member
 }
 
 type UpdateMemberRequest struct {
-	Status string `json:"status" enums:"active,removed,declined" example:"active"` // Status of the member
-	Role   string `json:"role" enums:"viewer,editor" example:"viewer"`             // Role to assign if approving a joining member
+	Status *MemberStatus `json:"status" binding:"required" enums:"active,removed,declined" example:"active"` // Status of the member
+	Role   *MemberRole   `json:"role" enums:"viewer,editor" example:"viewer"`                                // Role to assign if approving a joining member
 }
 
 type Member struct {

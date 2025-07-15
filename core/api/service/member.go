@@ -149,22 +149,22 @@ func (s *Service) UpdateMember(ctx context.Context, spaceId string, memberId str
 		return apimodel.Member{}, err
 	}
 
-	if request.Status != "active" && request.Status != "removed" && request.Status != "declined" {
-		return apimodel.Member{}, ErrInvalidApproveMemberStatus
-	}
+	status := *request.Status
 
-	switch request.Status {
-	case "active":
-		if request.Role != "viewer" && request.Role != "editor" {
+	switch status {
+	case apimodel.MemberStatusActive:
+		if request.Role == nil {
 			return apimodel.Member{}, ErrInvalidApproveMemberRole
 		}
+
+		role := *request.Role
 
 		if member.Status == "joining" {
 			// Approve the member's join request.
 			approveResp := s.mw.SpaceRequestApprove(ctx, &pb.RpcSpaceRequestApproveRequest{
 				SpaceId:     spaceId,
 				Identity:    memberId,
-				Permissions: s.mapMemberRole(request.Role),
+				Permissions: s.mapMemberRole(string(role)),
 			})
 			if approveResp.Error.Code != pb.RpcSpaceRequestApproveResponseError_NULL {
 				return apimodel.Member{}, ErrFailedUpdateMember
@@ -173,13 +173,13 @@ func (s *Service) UpdateMember(ctx context.Context, spaceId string, memberId str
 			// Update the member's role.
 			resp := s.mw.SpaceParticipantPermissionsChange(ctx, &pb.RpcSpaceParticipantPermissionsChangeRequest{
 				SpaceId: spaceId,
-				Changes: []*model.ParticipantPermissionChange{{Identity: memberId, Perms: s.mapMemberRole(request.Role)}},
+				Changes: []*model.ParticipantPermissionChange{{Identity: memberId, Perms: s.mapMemberRole(string(role))}},
 			})
 			if resp.Error != nil && resp.Error.Code != pb.RpcSpaceParticipantPermissionsChangeResponseError_NULL {
 				return apimodel.Member{}, ErrFailedUpdateMember
 			}
 		}
-	case "declined":
+	case apimodel.MemberStatusDeclined:
 		// Reject the member's join request.
 		rejectResp := s.mw.SpaceRequestDecline(ctx, &pb.RpcSpaceRequestDeclineRequest{
 			SpaceId:  spaceId,
@@ -188,7 +188,7 @@ func (s *Service) UpdateMember(ctx context.Context, spaceId string, memberId str
 		if rejectResp.Error.Code != pb.RpcSpaceRequestDeclineResponseError_NULL {
 			return apimodel.Member{}, ErrFailedUpdateMember
 		}
-	case "removed":
+	case apimodel.MemberStatusRemoved:
 		// Remove the member from the space.
 		removeResp := s.mw.SpaceParticipantRemove(ctx, &pb.RpcSpaceParticipantRemoveRequest{
 			SpaceId:    spaceId,
@@ -197,8 +197,6 @@ func (s *Service) UpdateMember(ctx context.Context, spaceId string, memberId str
 		if removeResp.Error.Code != pb.RpcSpaceParticipantRemoveResponseError_NULL {
 			return apimodel.Member{}, ErrFailedUpdateMember
 		}
-	default:
-		return apimodel.Member{}, ErrInvalidApproveMemberStatus
 	}
 
 	member, err = s.GetMember(ctx, spaceId, memberId)

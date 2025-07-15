@@ -129,7 +129,7 @@ func TestSpaceService_ListMembers(t *testing.T) {
 
 		require.Equal(t, "member-1", members[0].Id)
 		require.Equal(t, "Jane Doe", members[0].Name)
-		require.Equal(t, apimodel.Icon{
+		require.Equal(t, &apimodel.Icon{
 			WrappedIcon: apimodel.FileIcon{
 				Format: apimodel.IconFormatFile,
 				File:   gatewayUrl + "/image/" + iconImage,
@@ -141,7 +141,7 @@ func TestSpaceService_ListMembers(t *testing.T) {
 
 		require.Equal(t, "member-2", members[1].Id)
 		require.Equal(t, "John Doe", members[1].Name)
-		require.Equal(t, apimodel.Icon{
+		require.Equal(t, &apimodel.Icon{
 			WrappedIcon: apimodel.EmojiIcon{
 				Format: apimodel.IconFormatEmoji,
 				Emoji:  "👤",
@@ -231,7 +231,7 @@ func TestSpaceService_GetMember(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, "member-id", member.Id)
 		require.Equal(t, "John Doe", member.Name)
-		require.Equal(t, apimodel.Icon{
+		require.Equal(t, &apimodel.Icon{
 			WrappedIcon: apimodel.FileIcon{
 				Format: apimodel.IconFormatFile,
 				File:   gatewayUrl + "/image/icon.png",
@@ -375,7 +375,7 @@ func TestSpaceService_GetMember(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, participantId, member.Id)
 		require.Equal(t, "Alice", member.Name)
-		require.Equal(t, apimodel.Icon{
+		require.Equal(t, &apimodel.Icon{
 			WrappedIcon: apimodel.FileIcon{
 				Format: apimodel.IconFormatFile,
 				File:   gatewayUrl + "/image/participant.png",
@@ -480,9 +480,11 @@ func TestSpaceService_UpdateMember(t *testing.T) {
 		}, nil).Once()
 
 		// when
+		status := apimodel.MemberStatusActive
+		role := apimodel.MemberRoleViewer
 		member, err := fx.service.UpdateMember(ctx, "space-id", "member-1", apimodel.UpdateMemberRequest{
-			Status: "active",
-			Role:   "viewer",
+			Status: &status,
+			Role:   &role,
 		})
 
 		// then
@@ -586,9 +588,11 @@ func TestSpaceService_UpdateMember(t *testing.T) {
 		}, nil).Once()
 
 		// when
+		status := apimodel.MemberStatusActive
+		role := apimodel.MemberRoleEditor
 		member, err := fx.service.UpdateMember(ctx, "space-id", "member-2", apimodel.UpdateMemberRequest{
-			Status: "active",
-			Role:   "editor",
+			Status: &status,
+			Role:   &role,
 		})
 
 		// then
@@ -687,8 +691,9 @@ func TestSpaceService_UpdateMember(t *testing.T) {
 		}, nil).Once()
 
 		// when
+		status := apimodel.MemberStatusDeclined
 		member, err := fx.service.UpdateMember(ctx, "space-id", "member-3", apimodel.UpdateMemberRequest{
-			Status: "declined",
+			Status: &status,
 		})
 
 		// then
@@ -786,8 +791,9 @@ func TestSpaceService_UpdateMember(t *testing.T) {
 		}, nil).Once()
 
 		// when
+		status := apimodel.MemberStatusRemoved
 		member, err := fx.service.UpdateMember(ctx, "space-id", "member-4", apimodel.UpdateMemberRequest{
-			Status: "removed",
+			Status: &status,
 		})
 
 		// then
@@ -795,60 +801,7 @@ func TestSpaceService_UpdateMember(t *testing.T) {
 		require.Equal(t, "removed", member.Status)
 	})
 
-	t.Run("invalid status returns error", func(t *testing.T) {
-		// given
-		ctx := context.Background()
-		fx := newFixture(t)
-
-		// First GetMember call returns a member record
-		fx.mwMock.On("ObjectSearch", mock.Anything, &pb.RpcObjectSearchRequest{
-			SpaceId: "space-id",
-			Filters: []*model.BlockContentDataviewFilter{
-				{
-					RelationKey: bundle.RelationKeyIdentity.String(),
-					Condition:   model.BlockContentDataviewFilter_Equal,
-					Value:       pbtypes.String("member-5"),
-				},
-			},
-			Keys: []string{
-				bundle.RelationKeyId.String(),
-				bundle.RelationKeyName.String(),
-				bundle.RelationKeyIconEmoji.String(),
-				bundle.RelationKeyIconImage.String(),
-				bundle.RelationKeyIdentity.String(),
-				bundle.RelationKeyGlobalName.String(),
-				bundle.RelationKeyParticipantPermissions.String(),
-				bundle.RelationKeyParticipantStatus.String(),
-			},
-		}).Return(&pb.RpcObjectSearchResponse{
-			Records: []*types.Struct{
-				{
-					Fields: map[string]*types.Value{
-						bundle.RelationKeyId.String():                     pbtypes.String("member-5"),
-						bundle.RelationKeyName.String():                   pbtypes.String("Member Invalid Status"),
-						bundle.RelationKeyIconEmoji.String():              pbtypes.String(""),
-						bundle.RelationKeyIconImage.String():              pbtypes.String(""),
-						bundle.RelationKeyIdentity.String():               pbtypes.String("member-5"),
-						bundle.RelationKeyGlobalName.String():             pbtypes.String("invalid.any"),
-						bundle.RelationKeyParticipantPermissions.String(): pbtypes.Int64(int64(model.ParticipantPermissions_Reader)),
-						bundle.RelationKeyParticipantStatus.String():      pbtypes.Int64(int64(model.ParticipantStatus_Active)),
-					},
-				},
-			},
-			Error: &pb.RpcObjectSearchResponseError{Code: pb.RpcObjectSearchResponseError_NULL},
-		}, nil).Once()
-
-		// when
-		_, err := fx.service.UpdateMember(ctx, "space-id", "member-5", apimodel.UpdateMemberRequest{
-			Status: "invalid",
-			Role:   "viewer",
-		})
-
-		// then
-		require.ErrorIs(t, err, ErrInvalidApproveMemberStatus)
-	})
-
-	t.Run("invalid role for active update returns error", func(t *testing.T) {
+	t.Run("missing role for active update returns error", func(t *testing.T) {
 		// given
 		ctx := context.Background()
 		fx := newFixture(t)
@@ -878,11 +831,11 @@ func TestSpaceService_UpdateMember(t *testing.T) {
 				{
 					Fields: map[string]*types.Value{
 						bundle.RelationKeyId.String():                     pbtypes.String("member-6"),
-						bundle.RelationKeyName.String():                   pbtypes.String("Member Invalid Role"),
+						bundle.RelationKeyName.String():                   pbtypes.String("Member Missing Role"),
 						bundle.RelationKeyIconEmoji.String():              pbtypes.String(""),
 						bundle.RelationKeyIconImage.String():              pbtypes.String(""),
 						bundle.RelationKeyIdentity.String():               pbtypes.String("member-6"),
-						bundle.RelationKeyGlobalName.String():             pbtypes.String("invalidrole.any"),
+						bundle.RelationKeyGlobalName.String():             pbtypes.String("missingrole.any"),
 						bundle.RelationKeyParticipantPermissions.String(): pbtypes.Int64(int64(model.ParticipantPermissions_Reader)),
 						bundle.RelationKeyParticipantStatus.String():      pbtypes.Int64(int64(model.ParticipantStatus_Joining)),
 					},
@@ -892,9 +845,10 @@ func TestSpaceService_UpdateMember(t *testing.T) {
 		}, nil).Once()
 
 		// when
+		status := apimodel.MemberStatusActive
 		_, err := fx.service.UpdateMember(ctx, "space-id", "member-6", apimodel.UpdateMemberRequest{
-			Status: "active",
-			Role:   "invalid",
+			Status: &status,
+			Role:   nil, // Missing role for active status
 		})
 
 		// then
@@ -954,9 +908,11 @@ func TestSpaceService_UpdateMember(t *testing.T) {
 		}, nil).Once()
 
 		// when
+		status := apimodel.MemberStatusActive
+		role := apimodel.MemberRoleViewer
 		_, err := fx.service.UpdateMember(ctx, "space-id", "member-7", apimodel.UpdateMemberRequest{
-			Status: "active",
-			Role:   "viewer",
+			Status: &status,
+			Role:   &role,
 		})
 
 		// then
@@ -993,9 +949,11 @@ func TestSpaceService_UpdateMember(t *testing.T) {
 		}, nil).Once()
 
 		// when
+		status := apimodel.MemberStatusActive
+		role := apimodel.MemberRoleViewer
 		_, err := fx.service.UpdateMember(ctx, "space-id", "member-8", apimodel.UpdateMemberRequest{
-			Status: "active",
-			Role:   "viewer",
+			Status: &status,
+			Role:   &role,
 		})
 
 		// then
