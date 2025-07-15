@@ -61,14 +61,14 @@ func (h historyStub) Header() *treechangeproto.RawTreeChangeWithId {
 		ChangePayload: objectChangeRaw,
 		ChangeType:    spacecore.ChangeType,
 	}
-	createChangeRaw, err := createChange.Marshal()
+	createChangeRaw, err := createChange.MarshalVT()
 	if err != nil {
 		return nil
 	}
 	rootChange := &treechangeproto.RawTreeChange{
 		Payload: createChangeRaw,
 	}
-	rootChangeBytes, err := rootChange.Marshal()
+	rootChangeBytes, err := rootChange.MarshalVT()
 	if err != nil {
 		return nil
 	}
