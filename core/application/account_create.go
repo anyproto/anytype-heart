@@ -5,13 +5,9 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
-	"strings"
 	"time"
 
 	"github.com/anyproto/any-sync/app"
-	"github.com/goombaio/namegenerator"
-	"golang.org/x/text/cases"
-	"golang.org/x/text/language"
 
 	"github.com/anyproto/anytype-heart/core/anytype"
 	"github.com/anyproto/anytype-heart/core/anytype/account"
@@ -25,6 +21,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space"
+	"github.com/anyproto/anytype-heart/util/namegenerator"
 )
 
 func (s *Service) AccountCreate(ctx context.Context, req *pb.RpcAccountCreateRequest) (*model.Account, error) {
@@ -124,7 +121,8 @@ func (s *Service) setProfileDetails(ctx context.Context, req *pb.RpcAccountCreat
 
 	profileName := req.Name
 	if profileName == "" {
-		profileName = generateName(newAcc.Id)
+		nameGenerator := namegenerator.NewNameGenerator(time.Now().UnixNano())
+		profileName = nameGenerator.Generate()
 	}
 
 	profileDetails := []domain.Detail{
@@ -166,18 +164,4 @@ func (s *Service) setProfileDetails(ctx context.Context, req *pb.RpcAccountCreat
 		return errors.Join(ErrSetDetails, err)
 	}
 	return nil
-}
-
-func generateName(accountId string) string {
-	seed := time.Now().UTC().UnixNano()
-	nameGenerator := namegenerator.NewNameGenerator(seed)
-
-	name := nameGenerator.Generate()
-	words := strings.Split(name, "-")
-	caser := cases.Title(language.English)
-	for i, word := range words {
-		words[i] = caser.String(word)
-	}
-	words = append(words, accountId[len(accountId)-8:])
-	return strings.Join(words, " ")
 }
