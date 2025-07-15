@@ -5,10 +5,6 @@ import (
 	"math/rand"
 )
 
-type Generator interface {
-	Generate() string
-}
-
 type NameGenerator struct {
 	random            *rand.Rand
 	nouns, adjectives []string
@@ -17,19 +13,13 @@ type NameGenerator struct {
 func (ng *NameGenerator) Generate() string {
 	randomAdjective := ng.adjectives[ng.random.Intn(len(ng.adjectives))]
 	randomNoun := ng.nouns[ng.random.Intn(len(ng.nouns))]
-
-	randomName := fmt.Sprintf("%v %v", randomAdjective, randomNoun)
-
-	return randomName
+	return fmt.Sprintf("%v %v", randomAdjective, randomNoun)
 }
 
-func NewNameGenerator(seed int64) Generator {
-	nameGenerator := &NameGenerator{
-		random:     rand.New(rand.New(rand.NewSource(99))),
+func NewNameGenerator(seed int64) *NameGenerator {
+	return &NameGenerator{
+		random:     rand.New(rand.NewSource(seed)),
 		nouns:      getNouns(),
 		adjectives: getAdjectives(),
 	}
-	nameGenerator.random.Seed(seed)
-
-	return nameGenerator
 }
