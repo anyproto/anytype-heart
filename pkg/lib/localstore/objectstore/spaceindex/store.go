@@ -8,7 +8,6 @@ import (
 
 	anystore "github.com/anyproto/any-store"
 	"github.com/anyproto/any-store/anyenc"
-	"golang.org/x/exp/slices"
 
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/relationutils"
@@ -16,6 +15,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/datastore/anystoreprovider"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/ftsearch"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/anystorehelper"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
@@ -95,18 +95,19 @@ type SourceDetailsFromID interface {
 }
 
 type FulltextQueue interface {
-	RemoveIdsFromFullTextQueue(ids []string) error
+	FtQueueMarkAsIndexed(ids []domain.FullID, state uint64) error
 	AddToIndexQueue(ctx context.Context, ids ...domain.FullID) error
 	ListIdsFromFullTextQueue(spaceIds []string, limit uint) ([]domain.FullID, error)
 	ClearFullTextQueue(spaceIds []string) error
 }
 
 type dsObjectStore struct {
-	spaceId        string
-	db             anystore.DB
-	objects        anystore.Collection
-	links          anystore.Collection
-	headsState     anystore.Collection
+	spaceId    string
+	db         anystore.DB
+	objects    anystore.Collection
+	links      anystore.Collection
+	headsState anystore.Collection
+
 	activeViews    anystore.Collection
 	pendingDetails anystore.Collection
 	collections    []anystore.Collection
@@ -240,7 +241,7 @@ func (s *dsObjectStore) initCollections(ctx context.Context) error {
 			Sparse: true,
 		},
 	}
-	err = s.addIndexes(ctx, objects, objectIndexes)
+	err = anystorehelper.AddIndexes(ctx, objects, objectIndexes)
 	if err != nil {
 		log.Errorf("ensure object indexes: %s", err)
 	}
@@ -251,7 +252,7 @@ func (s *dsObjectStore) initCollections(ctx context.Context) error {
 			Fields: []string{linkOutboundField},
 		},
 	}
-	err = s.addIndexes(ctx, links, linksIndexes)
+	err = anystorehelper.AddIndexes(ctx, links, linksIndexes)
 	if err != nil {
 		log.Errorf("ensure links indexes: %s", err)
 	}
@@ -280,38 +281,6 @@ func (s *dsObjectStore) Close() error {
 		err = errors.Join(err, col.Close())
 	}
 	return err
-}
-
-func (s *dsObjectStore) addIndexes(ctx context.Context, coll anystore.Collection, indexes []anystore.IndexInfo) error {
-	gotIndexes := coll.GetIndexes()
-	toCreate := indexes[:0]
-	var toDrop []string
-	for _, idx := range indexes {
-		if !slices.ContainsFunc(gotIndexes, func(i anystore.Index) bool {
-			return i.Info().Name == idx.Name
-		}) {
-			toCreate = append(toCreate, idx)
-		}
-	}
-	for _, idx := range gotIndexes {
-		if !slices.ContainsFunc(indexes, func(i anystore.IndexInfo) bool {
-			return i.Name == idx.Info().Name
-		}) {
-			toDrop = append(toDrop, idx.Info().Name)
-		}
-	}
-	if len(toDrop) > 0 {
-		for _, indexName := range toDrop {
-			if err := coll.DropIndex(ctx, indexName); err != nil {
-				return err
-			}
-		}
-	}
-	if len(toCreate) > 0 {
-		coll.GetIndexes()
-		return coll.EnsureIndex(ctx, toCreate...)
-	}
-	return nil
 }
 
 func (s *dsObjectStore) SpaceId() string {

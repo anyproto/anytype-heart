@@ -44,10 +44,18 @@ func (q *dummyFulltextQueue) ClearFullTextQueue(spaceIds []string) error {
 	return nil
 }
 
-func (q *dummyFulltextQueue) RemoveIdsFromFullTextQueue(ids []string) error {
+func (q *dummyFulltextQueue) FtQueueMarkAsIndexed(ids []domain.FullID, state uint64) error {
 	q.lock.Lock()
 	defer q.lock.Unlock()
-	q.ids = lo.Without(q.ids, ids...)
+	// filter-out ids that are not in the queue
+	q.ids = lo.Filter(q.ids, func(item string, index int) bool {
+		for _, id := range ids {
+			if item == id.ObjectID {
+				return false
+			}
+		}
+		return true
+	})
 	return nil
 }
 

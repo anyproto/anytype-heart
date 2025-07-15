@@ -44,7 +44,7 @@ const (
 	CName    = "fts"
 	ftsDir   = "fts"
 	ftsDir2  = "fts_tantivy"
-	ftsVer   = "14"
+	ftsVer   = "15"
 	docLimit = 10000
 
 	fieldTitle   = "Title"
@@ -70,14 +70,13 @@ type FTSearch interface {
 	app.ComponentRunnable
 	Index(d SearchDoc) (err error)
 	NewAutoBatcher() AutoBatcher
-	BatchIndex(ctx context.Context, docs []SearchDoc, deletedDocs []string) (err error)
 	BatchDeleteObjects(ids []string) (err error)
 	Search(spaceId string, query string) (results []*DocumentMatch, err error)
 	// NamePrefixSearch special prefix case search
 	NamePrefixSearch(spaceId string, query string) (results []*DocumentMatch, err error)
 	Iterate(objectId string, fields []string, shouldContinue func(doc *SearchDoc) bool) (err error)
-	DeleteObject(id string) error
 	DocCount() (uint64, error)
+	LastDbState() (uint64, error)
 }
 
 type SearchDoc struct {
@@ -109,6 +108,14 @@ type ftSearch struct {
 	blevePath           string
 	lang                tantivy.Language
 	appClosingInitiated atomic.Bool
+}
+
+func (f *ftSearch) LastDbState() (uint64, error) {
+	if f.index == nil {
+		return 0, fmt.Errorf("index is not initialized")
+	}
+	lastOpstamp := f.index.CommitOpstamp()
+	return lastOpstamp, nil
 }
 
 func (f *ftSearch) ProvideStat() any {
@@ -161,7 +168,8 @@ func (f *ftSearch) DeleteObject(objectId string) error {
 	if f.appClosingInitiated.Load() {
 		return ErrAppClosingInitiated
 	}
-	return f.index.DeleteDocuments(fieldIdRaw, objectId)
+	err := f.index.DeleteDocuments(fieldIdRaw, objectId)
+	return err
 }
 
 func (f *ftSearch) Init(a *app.App) error {
@@ -203,6 +211,10 @@ func (f *ftSearch) Run(context.Context) error {
 		}
 	}
 	if !report.IsOk() {
+		var gcErr error
+		if len(report.ExtraDelFiles) > 0 || len(report.ExtraSegments) > 0 {
+			gcErr = report.GCExtraFiles()
+		}
 		log.With("missingSegments", len(report.MissingSegments)).
 			With("missingDelFiles", len(report.MissingDelFiles)).
 			With("extraSegments", len(report.ExtraSegments)).
@@ -211,7 +223,8 @@ func (f *ftSearch) Run(context.Context) error {
 			With("metaLockPresent", report.MetaLockPresent).
 			With("totalSegmentsInMeta", report.TotalSegmentsInMeta).
 			With("uniqueSegmentPrefixesOnDisk", report.UniqueSegmentPrefixesOnDisk).
-			Warnf("tantivy index is inconsistent state, dry run")
+			With("gcErr", gcErr).
+			Warnf("tantivy index is inconsistent state, cleaning extra files")
 	}
 
 	builder, err := tantivy.NewSchemaBuilder()
@@ -369,7 +382,7 @@ func (f *ftSearch) Index(doc SearchDoc) error {
 		return err
 	}
 
-	res := f.index.AddAndConsumeDocuments(tantivyDoc)
+	_, res := f.index.AddAndConsumeDocumentsWithOpstamp(tantivyDoc)
 	return res
 }
 
@@ -392,46 +405,6 @@ func (f *ftSearch) convertDoc(doc SearchDoc) (*tantivy.Document, error) {
 		return nil, err
 	}
 	return document, nil
-}
-
-func (f *ftSearch) BatchIndex(ctx context.Context, docs []SearchDoc, deletedDocs []string) (err error) {
-	if len(docs) == 0 {
-		return nil
-	}
-	metrics.ObjectFTUpdatedCounter.Add(float64(len(docs)))
-	start := time.Now()
-	defer func() {
-		spentMs := time.Since(start).Milliseconds()
-		l := log.With("objects", len(docs)).With("total", time.Since(start).Milliseconds())
-		if spentMs > 1000 {
-			l.Warnf("ft index took too long")
-		} else {
-			l.Debugf("ft index done")
-		}
-	}()
-	f.mu.Lock()
-	if f.appClosingInitiated.Load() {
-		return ErrAppClosingInitiated
-	}
-	err = f.index.DeleteDocuments(fieldIdRaw, deletedDocs...)
-	f.mu.Unlock()
-	if err != nil {
-		return err
-	}
-	tantivyDocs := make([]*tantivy.Document, 0, len(docs))
-	for _, doc := range docs {
-		tantivyDoc, err := f.convertDoc(doc)
-		if err != nil {
-			return err
-		}
-		tantivyDocs = append(tantivyDocs, tantivyDoc)
-	}
-	f.mu.Lock()
-	defer f.mu.Unlock()
-	if f.appClosingInitiated.Load() {
-		return ErrAppClosingInitiated
-	}
-	return f.index.AddAndConsumeDocuments(tantivyDocs...)
 }
 
 func (f *ftSearch) NamePrefixSearch(spaceId, query string) ([]*DocumentMatch, error) {
