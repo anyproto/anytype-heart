@@ -467,7 +467,7 @@ func (s *Service) getObjectWithBlocksFromStruct(details *types.Struct, markdown 
 		Layout:     s.otLayoutToObjectLayout(model.ObjectTypeLayout(details.Fields[bundle.RelationKeyResolvedLayout.String()].GetNumberValue())),
 		Type:       s.getTypeFromMap(details, typeMap),
 		Properties: s.getPropertiesFromStruct(details, propertyMap, tagMap),
-		Markdown:   &markdown,
+		Markdown:   markdown,
 	}
 }
 
