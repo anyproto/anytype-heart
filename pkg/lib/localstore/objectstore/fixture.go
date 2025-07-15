@@ -160,3 +160,7 @@ func (fx *StoreFixture) AddVirtualDetails(id string, details *domain.Details) {
 		handler.AddVirtualDetails(id, details)
 	}
 }
+
+func (fx *StoreFixture) GetDetails(spaceId, objectId string) (*domain.Details, error) {
+	return fx.SpaceIndex(spaceId).GetDetails(objectId)
+}
