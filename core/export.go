@@ -9,7 +9,6 @@ import (
 )
 
 func (mw *Middleware) ObjectListExport(cctx context.Context, req *pb.RpcObjectListExportRequest) *pb.RpcObjectListExportResponse {
-	req.IncludeJsonSchema = true
 	response := func(path string, succeed int, err error) (res *pb.RpcObjectListExportResponse) {
 		res = &pb.RpcObjectListExportResponse{
 			Error: &pb.RpcObjectListExportResponseError{
