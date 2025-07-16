@@ -53,10 +53,6 @@ func (s *dsObjectStore) DeleteObject(id string) error {
 	if err != nil {
 		return fmt.Errorf("delete: update details: %w", err)
 	}
-	err = s.fulltextQueue.RemoveIdsFromFullTextQueue([]string{id})
-	if err != nil {
-		return fmt.Errorf("delete: fulltext queue remove: %w", err)
-	}
 
 	err = s.headsState.DeleteId(txn.Context(), id)
 	if err != nil && !errors.Is(err, anystore.ErrDocNotFound) {
@@ -66,14 +62,21 @@ func (s *dsObjectStore) DeleteObject(id string) error {
 	if err != nil {
 		return fmt.Errorf("delete: erase links: %w", err)
 	}
+	// add to ft index queue in order to remove the object
+	// it will find the object not found error and remove all the docs
+	err = s.fulltextQueue.AddToIndexQueue(txn.Context(), domain.FullID{
+		ObjectID: id,
+		SpaceID:  s.spaceId,
+	})
+	if err != nil {
+		log.Errorf("delete object %s: add to fulltext queue: %v", id, err)
+	}
+
 	err = txn.Commit()
 	if err != nil {
 		return fmt.Errorf("delete object info: %w", err)
 	}
 
-	if err := s.fts.DeleteObject(id); err != nil {
-		return err
-	}
 	return nil
 }
 
