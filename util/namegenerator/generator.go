@@ -18,6 +18,7 @@ func (ng *NameGenerator) Generate() string {
 
 func NewNameGenerator(seed int64) *NameGenerator {
 	return &NameGenerator{
+		// nolint:gosec
 		random:     rand.New(rand.NewSource(seed)),
 		nouns:      getNouns(),
 		adjectives: getAdjectives(),
