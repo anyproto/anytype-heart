@@ -12,7 +12,7 @@ require (
 	github.com/anyproto/any-store v0.3.2
 	github.com/anyproto/any-sync v0.9.0
 	github.com/anyproto/anytype-publish-server/publishclient v0.0.0-20250620154825-2c07f7679903
-	github.com/anyproto/anytype-push-server/pushclient v0.0.0-20250616103304-db364e9f3985
+	github.com/anyproto/anytype-push-server/pushclient v0.0.0-20250716112212-b3ac9fbaa2ed
 	github.com/anyproto/go-chash v0.1.0
 	github.com/anyproto/go-naturaldate/v2 v2.0.2-0.20230524105841-9829cfd13438
 	github.com/anyproto/go-slip10 v1.0.0
