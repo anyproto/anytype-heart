@@ -152,6 +152,7 @@ jobs:
         with:
           prerelease: ${{ contains(github.ref, '-rc') }}
           fail_on_unmatched_files: true
+          generate_release_notes: true
           files: '.release/*'
 
       # start of notifications in Linear
