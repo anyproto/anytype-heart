@@ -508,6 +508,12 @@ func (s *service) Publish(ctx context.Context, spaceId, pageId, uri string, join
 }
 
 func (s *service) makeUrl(uri, identity, globalName string) string {
+	// TODO: workaround for staging testing, remove
+	// TODO: maybe put it in config to make it mockable
+	uriTemplate := defaultUrlTemplate
+	if envTemplate := os.Getenv("ANYTYPE_PUBLISHED_URI_TEMPLATE"); envTemplate != "" {
+		uriTemplate = envTemplate
+	}
 	// var domain string
 	// if globalName != "" {
 	// 	domain = fmt.Sprintf(memberUrlTemplate, globalName)
@@ -516,7 +522,8 @@ func (s *service) makeUrl(uri, identity, globalName string) string {
 	// }
 	// url := fmt.Sprintf("%s/%s", domain, uri)
 	// todo: remove
-	url := fmt.Sprintf("http://localhost:8380/%s/%s", identity, uri)
+	// "http://localhost:8380/%s/%s"
+	url := fmt.Sprintf(uriTemplate, identity, uri)
 	return url
 }
 
