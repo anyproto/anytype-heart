@@ -486,9 +486,18 @@ func (s *service) Publish(ctx context.Context, spaceId, pageId, uri string, join
 	}
 	delete(linkedPageIds, pageId)
 	for linkedPageId, title := range linkedPageIds {
-		// todo: publish only if not published, to not to republish fresh changes
-		// todo: get title, make url
+		status, err := s.GetStatus(ctx, spaceId, linkedPageId)
 		url := strings.ReplaceAll(strings.ToLower(title), " ", "-")
+		if err != nil {
+			log.Error("failed to get status of linked page", zap.String("uri", url), zap.String("objectId", linkedPageId), zap.Error(err))
+			continue
+		}
+
+		if status.GetStatus() == pb.RpcPublishing_PublishStatusPublished {
+			log.Warn("page is already published, don't republish: skip", zap.String("uri", url), zap.String("objectId", linkedPageId), zap.Error(err))
+			continue
+		}
+
 		err = s.publishToPublishServer(ctx, spaceId, linkedPageId, url, globalName, joinSpace)
 		if err != nil {
 			log.Error("multipublish: Failed to publish", zap.String("lnkedpageId", linkedPageId), zap.Error(err))
@@ -497,10 +506,6 @@ func (s *service) Publish(ctx context.Context, spaceId, pageId, uri string, join
 		}
 
 	}
-
-	//
-	// for pages
-	//    s.publishToPublishServer
 
 	url := s.makeUrl(uri, identity, globalName)
 
