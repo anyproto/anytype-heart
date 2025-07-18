@@ -106,8 +106,8 @@ github.com/anyproto/go-sqlite v1.4.2-any h1:ZTIcq/u2mYYJ6rJB4I3Ds5QH/7IlONebMiG1
 github.com/anyproto/go-sqlite v1.4.2-any/go.mod h1:nW7TvS+4bzPU2vNaPlPFNPYcejK5RdjH6qZY2kjT3Io=
 github.com/anyproto/html-to-markdown v0.0.0-20231025221133-830bf0a6f139 h1:Wp9z0Q2kAstznWUmTZyOb9UgpVmUgYt1LXRvK/cg10E=
 github.com/anyproto/html-to-markdown v0.0.0-20231025221133-830bf0a6f139/go.mod h1:1zaDDQVWTRwNksmTUTkcVXqgNF28YHiEUIm8FL9Z+II=
-github.com/anyproto/lexid v0.0.4 h1:2ztI0y5pNdtojd3vChw/YV/P6IO9pB7PccYysImDxWI=
-github.com/anyproto/lexid v0.0.4/go.mod h1:2RfpYiZkgoNmSDklXdwCCwGlso1FIp9Te8ZtoF3/Ehg=
+github.com/anyproto/lexid v0.0.6-0.20250715190719-9469c8076429 h1:Mui5ftRrBZw4mWQDL7gUQ8M2YDSADOvNypdj5K7WBBU=
+github.com/anyproto/lexid v0.0.6-0.20250715190719-9469c8076429/go.mod h1:2RfpYiZkgoNmSDklXdwCCwGlso1FIp9Te8ZtoF3/Ehg=
 github.com/anyproto/protobuf v1.3.3-0.20240201225420-6e325cf0ac38 h1:80jke82/c+bNQQpnx4VO3Mi/lAxARyyfUpZvFaPxdzE=
 github.com/anyproto/protobuf v1.3.3-0.20240201225420-6e325cf0ac38/go.mod h1:P1XiOD3dCwIKUDQYPy72D8LYyHL2YPYrpS2s69NZV8Q=
 github.com/anyproto/protobuf v1.3.3-0.20240814124528-72b8c7e0e0f5 h1:aY7tBzQ+z8Hr/v8vOL4/EaKwPZx+J/ClZ1WuD6sqPvE=
