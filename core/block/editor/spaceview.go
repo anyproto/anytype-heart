@@ -361,8 +361,7 @@ func (s *SpaceView) SetBetweenViews(prevViewOrderId, afterViewOrderId string) er
 	}
 
 	if err != nil {
-		// Return a specific error that can be caught by the caller
-		return fmt.Errorf("%w: %s", ErrLexidInsertionFailed, err)
+		return errors.Join(ErrLexidInsertionFailed, err)
 	}
 	st.SetDetail(bundle.RelationKeySpaceOrder, domain.String(before))
 	return s.Apply(st)

@@ -73,12 +73,12 @@ func (o *orderSetter) SetOrder(spaceViewOrder []string) ([]string, error) {
 	if len(spaceViewOrder) == 0 {
 		return nil, errors.New("empty spaceViewOrder")
 	}
-	
+
 	existing, err := o.getCurrentSpaceOrder()
 	if err != nil {
 		return nil, err
 	}
-	
+
 	return o.rebuildIfNeeded(spaceViewOrder, existing)
 }
 
@@ -96,18 +96,8 @@ func (o *orderSetter) rebuildIfNeeded(order []string, existing map[string]string
 		case curr != "" && (prev == "" || curr > prev) && (next == "" || curr < next):
 			// rank already valid - no change needed
 			out[i] = curr
-		case i == 0 && next != "":
-			// First element with existing element after it
-			curr = o.setRank(id, "", next, true)
 		case i == 0:
-			// First element with no existing after it
-			curr = o.setRank(id, "", "", true)
-		case prev == "" && next != "":
-			// Insert between nothing and next
-			curr = o.setRank(id, "", next, false)
-		case prev != "" && next == "":
-			// Insert after prev with nothing after
-			curr = o.setRank(id, prev, "", false)
+			curr = o.setRank(id, "", next, true)
 		default:
 			// Insert between prev and next
 			curr = o.setRank(id, prev, next, false)
@@ -145,14 +135,13 @@ func (o *orderSetter) setRank(viewID, before, after string, isFirst bool) string
 			// Insert between two elements
 			e = v.SetBetweenViews(before, after)
 		}
-		
+
 		// Read the lexid from details if not returned directly
 		if e == nil && newID == "" {
 			newID = v.Details().GetString(bundle.RelationKeySpaceOrder)
 		}
 		return e
 	})
-	
 	if err != nil {
 		// Log error for debugging but return empty string to trigger rebuild
 		return ""
@@ -185,7 +174,7 @@ func (o *orderSetter) UnsetOrder(spaceViewId string) error {
 // rebuildAllLexIds rebuilds all lexids from scratch
 func (o *orderSetter) rebuildAllLexIds(spaceViewOrder []string) ([]string, error) {
 	finalOrder := make([]string, len(spaceViewOrder))
-	
+
 	// Clear all existing lexids first
 	for _, viewId := range spaceViewOrder {
 		err := cache.Do[*editor.SpaceView](o.objectGetter, viewId, func(sv *editor.SpaceView) error {
@@ -216,14 +205,14 @@ func (o *orderSetter) rebuildAllLexIds(spaceViewOrder []string) ([]string, error
 			}
 			return err
 		})
-		
+
 		if err != nil {
 			return nil, fmt.Errorf("failed to set lexid for view %s at position %d: %w", viewId, i, err)
 		}
-		
+
 		finalOrder[i] = newLexId
 		previousLexId = newLexId
 	}
-	
+
 	return finalOrder, nil
 }
