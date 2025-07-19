@@ -251,7 +251,7 @@ func (oc *ObjectCreator) createNewObject(
 		// at this point, collection contains uuids, we need to replace them with new ids
 		// it should happen before first index, otherwise uuids can be indexed as real objects
 		if st.Store() != nil {
-			oc.replaceCollections(st, oldIDtoNew)
+			oc.replaceInCollection(st, oldIDtoNew)
 		}
 		return &smartblock.InitContext{
 			Ctx:         ctx,
@@ -461,7 +461,7 @@ func (oc *ObjectCreator) updateLinksInCollections(st *state.State, oldIDtoNew ma
 	}
 }
 
-func (oc ObjectCreator) replaceCollections(st *state.State, oldIDtoNew map[string]string) {
+func (oc ObjectCreator) replaceInCollection(st *state.State, oldIDtoNew map[string]string) {
 	objectsInCollections := st.GetStoreSlice(template.CollectionStoreKey)
 	newObjs := make([]string, 0, len(objectsInCollections))
 	for _, id := range objectsInCollections {

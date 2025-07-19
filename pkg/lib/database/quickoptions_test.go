@@ -53,6 +53,7 @@ func TestQuickOption(t *testing.T) {
 		now         = time.Now()
 	)
 
+	// Test uses methods which account for daylight saving time
 	for _, tc := range []struct {
 		name            string
 		inputFilter     FilterRequest

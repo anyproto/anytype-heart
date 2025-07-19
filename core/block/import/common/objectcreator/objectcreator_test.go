@@ -288,7 +288,7 @@ func TestObjectCreator_createNewObject(t *testing.T) {
 	})
 }
 
-func TestObjectCreator_replaceCollections(t *testing.T) {
+func TestObjectCreator_replaceInCollection(t *testing.T) {
 	t.Run("replace collection store IDs correctly", func(t *testing.T) {
 		// given
 		oc := ObjectCreator{}
@@ -309,7 +309,7 @@ func TestObjectCreator_replaceCollections(t *testing.T) {
 		assert.Equal(t, []string{oldID1, oldID2}, initialObjects)
 
 		// when
-		oc.replaceCollections(st, oldIDtoNew)
+		oc.replaceInCollection(st, oldIDtoNew)
 
 		// then
 		finalObjects := st.GetStoreSlice(template.CollectionStoreKey)
@@ -332,7 +332,7 @@ func TestObjectCreator_replaceCollections(t *testing.T) {
 		st.UpdateStoreSlice(template.CollectionStoreKey, []string{oldID1, oldID2, unmappedID})
 
 		// when
-		oc.replaceCollections(st, oldIDtoNew)
+		oc.replaceInCollection(st, oldIDtoNew)
 
 		// then
 		finalObjects := st.GetStoreSlice(template.CollectionStoreKey)
