@@ -11,30 +11,46 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-const dayShift = 24 * 60 * 60
+func calculateDayEnd(base time.Time, daysOffset int) int64 {
+	t := time.Date(base.Year(), base.Month(), base.Day(), 0, 0, 0, 0, base.Location())
+	t = t.AddDate(0, 0, daysOffset)
+	return time.Date(t.Year(), t.Month(), t.Day(), 23, 59, 59, 0, t.Location()).Unix()
+}
+
+func calculateDayStart(base time.Time, daysOffset int) int64 {
+	t := time.Date(base.Year(), base.Month(), base.Day(), 0, 0, 0, 0, base.Location())
+	t = t.AddDate(0, 0, daysOffset)
+	return t.Unix()
+}
+
+func calculateMonthStart(base time.Time, monthsOffset int) int64 {
+	return time.Date(base.Year(), base.Month()+time.Month(monthsOffset), 1, 0, 0, 0, 0, base.Location()).Unix()
+}
+
+func calculateMonthEnd(base time.Time, monthsOffset int) int64 {
+	firstDayOfMonth := time.Date(base.Year(), base.Month()+time.Month(monthsOffset), 1, 0, 0, 0, 0, base.Location())
+	return firstDayOfMonth.AddDate(0, 1, 0).Add(-1 * time.Nanosecond).Unix()
+}
+
+func calculateWeekStartTime(base time.Time, weeksOffset int) time.Time {
+	shift := -1 * ((base.Weekday() + 6) % 7)
+	monday := time.Date(base.Year(), base.Month(), base.Day(), 0, 0, 0, 0, base.Location()).AddDate(0, 0, int(shift))
+	return monday.AddDate(0, 0, weeksOffset*7)
+}
+
+func calculateWeekStart(base time.Time, weeksOffset int) int64 {
+	return calculateWeekStartTime(base, weeksOffset).Unix()
+}
+
+func calculateWeekEnd(base time.Time, weeksOffset int) int64 {
+	sunday := calculateWeekStartTime(base, weeksOffset).AddDate(0, 0, 6)
+	return time.Date(sunday.Year(), sunday.Month(), sunday.Day(), 23, 59, 59, 0, sunday.Location()).Unix()
+}
 
 func TestQuickOption(t *testing.T) {
 	var (
 		relationKey = bundle.RelationKeyCreatedDate
 		now         = time.Now()
-		todayStart  = time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location()).Unix()
-		todayEnd    = time.Date(now.Year(), now.Month(), now.Day(), 23, 59, 59, 0, now.Location()).Unix()
-
-		monthStart     = time.Date(now.Year(), now.Month(), 1, 0, 0, 0, 0, now.Location()).Unix()
-		monthEnd       = time.Date(now.Year(), now.Month()+1, 1, 0, 0, 0, 0, now.Location()).Add(-1 * time.Nanosecond).Unix()
-		prevMonthStart = time.Date(now.Year(), now.Month()-1, 1, 0, 0, 0, 0, now.Location()).Unix()
-		prevMonthEnd   = time.Date(now.Year(), now.Month(), 1, 0, 0, 0, 0, now.Location()).Add(-1 * time.Nanosecond).Unix()
-		nextMonthStart = time.Date(now.Year(), now.Month()+1, 1, 0, 0, 0, 0, now.Location()).Unix()
-		nextMonthEnd   = time.Date(now.Year(), now.Month()+2, 1, 0, 0, 0, 0, now.Location()).Add(-1 * time.Nanosecond).Unix()
-	)
-
-	var (
-		mondayStart     = lastMondayStart(now)
-		sundayEnd       = mondayStart + 7*dayShift - 1
-		prevMondayStart = mondayStart - 7*dayShift
-		prevSundayEnd   = sundayEnd - 7*dayShift
-		nextMondayStart = mondayStart + 7*dayShift
-		nextSundayEnd   = sundayEnd + 7*dayShift
 	)
 
 	for _, tc := range []struct {
@@ -51,8 +67,8 @@ func TestQuickOption(t *testing.T) {
 				Condition:   model.BlockContentDataviewFilter_Equal,
 			},
 			[]FilterRequest{
-				{Condition: model.BlockContentDataviewFilter_LessOrEqual, Value: domain.Int64(todayEnd)},
-				{Condition: model.BlockContentDataviewFilter_GreaterOrEqual, Value: domain.Int64(todayStart)},
+				{Condition: model.BlockContentDataviewFilter_LessOrEqual, Value: domain.Int64(calculateDayEnd(now, 0))},
+				{Condition: model.BlockContentDataviewFilter_GreaterOrEqual, Value: domain.Int64(calculateDayStart(now, 0))},
 			},
 		}, {
 			"strictly before today",
@@ -61,7 +77,7 @@ func TestQuickOption(t *testing.T) {
 				RelationKey: relationKey,
 				Condition:   model.BlockContentDataviewFilter_Less,
 			},
-			[]FilterRequest{{Condition: model.BlockContentDataviewFilter_Less, Value: domain.Int64(todayStart)}},
+			[]FilterRequest{{Condition: model.BlockContentDataviewFilter_Less, Value: domain.Int64(calculateDayStart(now, 0))}},
 		}, {
 			"today or before",
 			FilterRequest{
@@ -69,7 +85,7 @@ func TestQuickOption(t *testing.T) {
 				RelationKey: relationKey,
 				Condition:   model.BlockContentDataviewFilter_LessOrEqual,
 			},
-			[]FilterRequest{{Condition: model.BlockContentDataviewFilter_LessOrEqual, Value: domain.Int64(todayEnd)}},
+			[]FilterRequest{{Condition: model.BlockContentDataviewFilter_LessOrEqual, Value: domain.Int64(calculateDayEnd(now, 0))}},
 		}, {
 			"strictly after today",
 			FilterRequest{
@@ -77,7 +93,7 @@ func TestQuickOption(t *testing.T) {
 				RelationKey: relationKey,
 				Condition:   model.BlockContentDataviewFilter_Greater,
 			},
-			[]FilterRequest{{Condition: model.BlockContentDataviewFilter_Greater, Value: domain.Int64(todayEnd)}},
+			[]FilterRequest{{Condition: model.BlockContentDataviewFilter_Greater, Value: domain.Int64(calculateDayEnd(now, 0))}},
 		}, {
 			"today or after",
 			FilterRequest{
@@ -85,7 +101,7 @@ func TestQuickOption(t *testing.T) {
 				RelationKey: relationKey,
 				Condition:   model.BlockContentDataviewFilter_GreaterOrEqual,
 			},
-			[]FilterRequest{{Condition: model.BlockContentDataviewFilter_GreaterOrEqual, Value: domain.Int64(todayStart)}},
+			[]FilterRequest{{Condition: model.BlockContentDataviewFilter_GreaterOrEqual, Value: domain.Int64(calculateDayStart(now, 0))}},
 		},
 
 		// yesterday
@@ -97,8 +113,8 @@ func TestQuickOption(t *testing.T) {
 				Condition:   model.BlockContentDataviewFilter_In,
 			},
 			[]FilterRequest{
-				{Condition: model.BlockContentDataviewFilter_LessOrEqual, Value: domain.Int64(todayEnd - dayShift)},
-				{Condition: model.BlockContentDataviewFilter_GreaterOrEqual, Value: domain.Int64(todayStart - dayShift)},
+				{Condition: model.BlockContentDataviewFilter_LessOrEqual, Value: domain.Int64(calculateDayEnd(now, -1))},
+				{Condition: model.BlockContentDataviewFilter_GreaterOrEqual, Value: domain.Int64(calculateDayStart(now, -1))},
 			},
 		}, {
 			"yesterday or after",
@@ -107,7 +123,7 @@ func TestQuickOption(t *testing.T) {
 				RelationKey: relationKey,
 				Condition:   model.BlockContentDataviewFilter_GreaterOrEqual,
 			},
-			[]FilterRequest{{Condition: model.BlockContentDataviewFilter_GreaterOrEqual, Value: domain.Int64(todayStart - dayShift)}},
+			[]FilterRequest{{Condition: model.BlockContentDataviewFilter_GreaterOrEqual, Value: domain.Int64(calculateDayStart(now, -1))}},
 		},
 
 		// tomorrow
@@ -119,8 +135,8 @@ func TestQuickOption(t *testing.T) {
 				Condition:   model.BlockContentDataviewFilter_In,
 			},
 			[]FilterRequest{
-				{Condition: model.BlockContentDataviewFilter_LessOrEqual, Value: domain.Int64(todayEnd + dayShift)},
-				{Condition: model.BlockContentDataviewFilter_GreaterOrEqual, Value: domain.Int64(todayStart + dayShift)},
+				{Condition: model.BlockContentDataviewFilter_LessOrEqual, Value: domain.Int64(calculateDayEnd(now, 1))},
+				{Condition: model.BlockContentDataviewFilter_GreaterOrEqual, Value: domain.Int64(calculateDayStart(now, 1))},
 			},
 		}, {
 			"strictly after tomorrow",
@@ -129,7 +145,7 @@ func TestQuickOption(t *testing.T) {
 				RelationKey: relationKey,
 				Condition:   model.BlockContentDataviewFilter_Greater,
 			},
-			[]FilterRequest{{Condition: model.BlockContentDataviewFilter_Greater, Value: domain.Int64(todayEnd + dayShift)}},
+			[]FilterRequest{{Condition: model.BlockContentDataviewFilter_Greater, Value: domain.Int64(calculateDayEnd(now, 1))}},
 		},
 
 		// this week
@@ -141,8 +157,8 @@ func TestQuickOption(t *testing.T) {
 				Condition:   model.BlockContentDataviewFilter_Equal,
 			},
 			[]FilterRequest{
-				{Condition: model.BlockContentDataviewFilter_LessOrEqual, Value: domain.Int64(sundayEnd)},
-				{Condition: model.BlockContentDataviewFilter_GreaterOrEqual, Value: domain.Int64(mondayStart)},
+				{Condition: model.BlockContentDataviewFilter_LessOrEqual, Value: domain.Int64(calculateWeekEnd(now, 0))},
+				{Condition: model.BlockContentDataviewFilter_GreaterOrEqual, Value: domain.Int64(calculateWeekStart(now, 0))},
 			},
 		}, {
 			"strictly before this week",
@@ -151,7 +167,7 @@ func TestQuickOption(t *testing.T) {
 				RelationKey: relationKey,
 				Condition:   model.BlockContentDataviewFilter_Less,
 			},
-			[]FilterRequest{{Condition: model.BlockContentDataviewFilter_Less, Value: domain.Int64(mondayStart)}},
+			[]FilterRequest{{Condition: model.BlockContentDataviewFilter_Less, Value: domain.Int64(calculateWeekStart(now, 0))}},
 		},
 
 		// previous week
@@ -163,7 +179,7 @@ func TestQuickOption(t *testing.T) {
 				Condition:   model.BlockContentDataviewFilter_LessOrEqual,
 			},
 			[]FilterRequest{
-				{Condition: model.BlockContentDataviewFilter_LessOrEqual, Value: domain.Int64(prevSundayEnd)},
+				{Condition: model.BlockContentDataviewFilter_LessOrEqual, Value: domain.Int64(calculateWeekEnd(now, -1))},
 			},
 		}, {
 			"strictly after previous week",
@@ -172,7 +188,7 @@ func TestQuickOption(t *testing.T) {
 				RelationKey: relationKey,
 				Condition:   model.BlockContentDataviewFilter_Greater,
 			},
-			[]FilterRequest{{Condition: model.BlockContentDataviewFilter_Greater, Value: domain.Int64(prevSundayEnd)}},
+			[]FilterRequest{{Condition: model.BlockContentDataviewFilter_Greater, Value: domain.Int64(calculateWeekEnd(now, -1))}},
 		}, {
 			"strictly before previous week",
 			FilterRequest{
@@ -180,7 +196,7 @@ func TestQuickOption(t *testing.T) {
 				RelationKey: relationKey,
 				Condition:   model.BlockContentDataviewFilter_Less,
 			},
-			[]FilterRequest{{Condition: model.BlockContentDataviewFilter_Less, Value: domain.Int64(prevMondayStart)}},
+			[]FilterRequest{{Condition: model.BlockContentDataviewFilter_Less, Value: domain.Int64(calculateWeekStart(now, -1))}},
 		},
 
 		// next week
@@ -192,8 +208,8 @@ func TestQuickOption(t *testing.T) {
 				Condition:   model.BlockContentDataviewFilter_In,
 			},
 			[]FilterRequest{
-				{Condition: model.BlockContentDataviewFilter_LessOrEqual, Value: domain.Int64(nextSundayEnd)},
-				{Condition: model.BlockContentDataviewFilter_GreaterOrEqual, Value: domain.Int64(nextMondayStart)},
+				{Condition: model.BlockContentDataviewFilter_LessOrEqual, Value: domain.Int64(calculateWeekEnd(now, 1))},
+				{Condition: model.BlockContentDataviewFilter_GreaterOrEqual, Value: domain.Int64(calculateWeekStart(now, 1))},
 			},
 		}, {
 			"next week and after",
@@ -202,7 +218,7 @@ func TestQuickOption(t *testing.T) {
 				RelationKey: relationKey,
 				Condition:   model.BlockContentDataviewFilter_GreaterOrEqual,
 			},
-			[]FilterRequest{{Condition: model.BlockContentDataviewFilter_GreaterOrEqual, Value: domain.Int64(nextMondayStart)}},
+			[]FilterRequest{{Condition: model.BlockContentDataviewFilter_GreaterOrEqual, Value: domain.Int64(calculateWeekStart(now, 1))}},
 		},
 
 		// this month
@@ -214,8 +230,8 @@ func TestQuickOption(t *testing.T) {
 				Condition:   model.BlockContentDataviewFilter_Equal,
 			},
 			[]FilterRequest{
-				{Condition: model.BlockContentDataviewFilter_LessOrEqual, Value: domain.Int64(monthEnd)},
-				{Condition: model.BlockContentDataviewFilter_GreaterOrEqual, Value: domain.Int64(monthStart)},
+				{Condition: model.BlockContentDataviewFilter_LessOrEqual, Value: domain.Int64(calculateMonthEnd(now, 0))},
+				{Condition: model.BlockContentDataviewFilter_GreaterOrEqual, Value: domain.Int64(calculateMonthStart(now, 0))},
 			},
 		}, {
 			"this month and later",
@@ -224,7 +240,7 @@ func TestQuickOption(t *testing.T) {
 				RelationKey: relationKey,
 				Condition:   model.BlockContentDataviewFilter_GreaterOrEqual,
 			},
-			[]FilterRequest{{Condition: model.BlockContentDataviewFilter_GreaterOrEqual, Value: domain.Int64(monthStart)}},
+			[]FilterRequest{{Condition: model.BlockContentDataviewFilter_GreaterOrEqual, Value: domain.Int64(calculateMonthStart(now, 0))}},
 		},
 
 		// previous month
@@ -236,8 +252,8 @@ func TestQuickOption(t *testing.T) {
 				Condition:   model.BlockContentDataviewFilter_In,
 			},
 			[]FilterRequest{
-				{Condition: model.BlockContentDataviewFilter_LessOrEqual, Value: domain.Int64(prevMonthEnd)},
-				{Condition: model.BlockContentDataviewFilter_GreaterOrEqual, Value: domain.Int64(prevMonthStart)},
+				{Condition: model.BlockContentDataviewFilter_LessOrEqual, Value: domain.Int64(calculateMonthEnd(now, -1))},
+				{Condition: model.BlockContentDataviewFilter_GreaterOrEqual, Value: domain.Int64(calculateMonthStart(now, -1))},
 			},
 		}, {
 			"strictly before previous month",
@@ -246,7 +262,7 @@ func TestQuickOption(t *testing.T) {
 				RelationKey: relationKey,
 				Condition:   model.BlockContentDataviewFilter_Less,
 			},
-			[]FilterRequest{{Condition: model.BlockContentDataviewFilter_Less, Value: domain.Int64(prevMonthStart)}},
+			[]FilterRequest{{Condition: model.BlockContentDataviewFilter_Less, Value: domain.Int64(calculateMonthStart(now, -1))}},
 		},
 
 		// next month
@@ -258,8 +274,8 @@ func TestQuickOption(t *testing.T) {
 				Condition:   model.BlockContentDataviewFilter_Equal,
 			},
 			[]FilterRequest{
-				{Condition: model.BlockContentDataviewFilter_LessOrEqual, Value: domain.Int64(nextMonthEnd)},
-				{Condition: model.BlockContentDataviewFilter_GreaterOrEqual, Value: domain.Int64(nextMonthStart)},
+				{Condition: model.BlockContentDataviewFilter_LessOrEqual, Value: domain.Int64(calculateMonthEnd(now, 1))},
+				{Condition: model.BlockContentDataviewFilter_GreaterOrEqual, Value: domain.Int64(calculateMonthStart(now, 1))},
 			},
 		}, {
 			"strictly after next month",
@@ -268,7 +284,7 @@ func TestQuickOption(t *testing.T) {
 				RelationKey: relationKey,
 				Condition:   model.BlockContentDataviewFilter_Greater,
 			},
-			[]FilterRequest{{Condition: model.BlockContentDataviewFilter_Greater, Value: domain.Int64(nextMonthEnd)}},
+			[]FilterRequest{{Condition: model.BlockContentDataviewFilter_Greater, Value: domain.Int64(calculateMonthEnd(now, 1))}},
 		},
 
 		// number of days ago
@@ -281,8 +297,8 @@ func TestQuickOption(t *testing.T) {
 				Value:       domain.Int64(6),
 			},
 			[]FilterRequest{
-				{Condition: model.BlockContentDataviewFilter_LessOrEqual, Value: domain.Int64(todayEnd - 6*dayShift)},
-				{Condition: model.BlockContentDataviewFilter_GreaterOrEqual, Value: domain.Int64(todayStart - 6*dayShift)},
+				{Condition: model.BlockContentDataviewFilter_LessOrEqual, Value: domain.Int64(calculateDayEnd(now, -6))},
+				{Condition: model.BlockContentDataviewFilter_GreaterOrEqual, Value: domain.Int64(calculateDayStart(now, -6))},
 			},
 		}, {
 			"3 days ago or more",
@@ -292,7 +308,7 @@ func TestQuickOption(t *testing.T) {
 				Condition:   model.BlockContentDataviewFilter_LessOrEqual,
 				Value:       domain.Int64(3),
 			},
-			[]FilterRequest{{Condition: model.BlockContentDataviewFilter_LessOrEqual, Value: domain.Int64(todayEnd - 3*dayShift)}},
+			[]FilterRequest{{Condition: model.BlockContentDataviewFilter_LessOrEqual, Value: domain.Int64(calculateDayEnd(now, -3))}},
 		}, {
 			"more than 4 days ago",
 			FilterRequest{
@@ -301,7 +317,7 @@ func TestQuickOption(t *testing.T) {
 				Condition:   model.BlockContentDataviewFilter_Less,
 				Value:       domain.Int64(4),
 			},
-			[]FilterRequest{{Condition: model.BlockContentDataviewFilter_Less, Value: domain.Int64(todayStart - 4*dayShift)}},
+			[]FilterRequest{{Condition: model.BlockContentDataviewFilter_Less, Value: domain.Int64(calculateDayStart(now, -4))}},
 		}, {
 			"10 days ago and after",
 			FilterRequest{
@@ -310,7 +326,7 @@ func TestQuickOption(t *testing.T) {
 				Condition:   model.BlockContentDataviewFilter_GreaterOrEqual,
 				Value:       domain.Int64(10),
 			},
-			[]FilterRequest{{Condition: model.BlockContentDataviewFilter_GreaterOrEqual, Value: domain.Int64(todayStart - 10*dayShift)}},
+			[]FilterRequest{{Condition: model.BlockContentDataviewFilter_GreaterOrEqual, Value: domain.Int64(calculateDayStart(now, -10))}},
 		},
 
 		// number of days after
@@ -323,8 +339,8 @@ func TestQuickOption(t *testing.T) {
 				Value:       domain.Int64(3),
 			},
 			[]FilterRequest{
-				{Condition: model.BlockContentDataviewFilter_LessOrEqual, Value: domain.Int64(todayEnd + 3*dayShift)},
-				{Condition: model.BlockContentDataviewFilter_GreaterOrEqual, Value: domain.Int64(todayStart + 3*dayShift)},
+				{Condition: model.BlockContentDataviewFilter_LessOrEqual, Value: domain.Int64(calculateDayEnd(now, 3))},
+				{Condition: model.BlockContentDataviewFilter_GreaterOrEqual, Value: domain.Int64(calculateDayStart(now, 3))},
 			},
 		}, {
 			"in 12 days and after",
@@ -334,7 +350,7 @@ func TestQuickOption(t *testing.T) {
 				Condition:   model.BlockContentDataviewFilter_GreaterOrEqual,
 				Value:       domain.Int64(12),
 			},
-			[]FilterRequest{{Condition: model.BlockContentDataviewFilter_GreaterOrEqual, Value: domain.Int64(todayStart + 12*dayShift)}},
+			[]FilterRequest{{Condition: model.BlockContentDataviewFilter_GreaterOrEqual, Value: domain.Int64(calculateDayStart(now, 12))}},
 		}, {
 			"more than 100 days after",
 			FilterRequest{
@@ -343,7 +359,7 @@ func TestQuickOption(t *testing.T) {
 				Condition:   model.BlockContentDataviewFilter_Greater,
 				Value:       domain.Int64(100),
 			},
-			[]FilterRequest{{Condition: model.BlockContentDataviewFilter_Greater, Value: domain.Int64(todayEnd + 100*dayShift)}},
+			[]FilterRequest{{Condition: model.BlockContentDataviewFilter_Greater, Value: domain.Int64(calculateDayEnd(now, 100))}},
 		}, {
 			"before next 7 days",
 			FilterRequest{
@@ -352,7 +368,7 @@ func TestQuickOption(t *testing.T) {
 				Condition:   model.BlockContentDataviewFilter_LessOrEqual,
 				Value:       domain.Int64(7),
 			},
-			[]FilterRequest{{Condition: model.BlockContentDataviewFilter_LessOrEqual, Value: domain.Int64(todayEnd + 7*dayShift)}},
+			[]FilterRequest{{Condition: model.BlockContentDataviewFilter_LessOrEqual, Value: domain.Int64(calculateDayEnd(now, 7))}},
 		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
