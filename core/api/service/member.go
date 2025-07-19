@@ -16,21 +16,23 @@ import (
 )
 
 // ListMembers returns a paginated list of members in the space with the given ID.
-func (s *Service) ListMembers(ctx context.Context, spaceId string, offset int, limit int) (members []apimodel.Member, total int, hasMore bool, err error) {
+func (s *Service) ListMembers(ctx context.Context, spaceId string, additionalFilters []*model.BlockContentDataviewFilter, offset int, limit int) (members []apimodel.Member, total int, hasMore bool, err error) {
+	filters := append([]*model.BlockContentDataviewFilter{
+		{
+			RelationKey: bundle.RelationKeyResolvedLayout.String(),
+			Condition:   model.BlockContentDataviewFilter_Equal,
+			Value:       pbtypes.Int64(int64(model.ObjectType_participant)),
+		},
+		{
+			RelationKey: bundle.RelationKeyParticipantStatus.String(),
+			Condition:   model.BlockContentDataviewFilter_Equal,
+			Value:       pbtypes.Int64(int64(model.ParticipantStatus_Active)),
+		},
+	}, additionalFilters...)
+
 	activeResp := s.mw.ObjectSearch(ctx, &pb.RpcObjectSearchRequest{
 		SpaceId: spaceId,
-		Filters: []*model.BlockContentDataviewFilter{
-			{
-				RelationKey: bundle.RelationKeyResolvedLayout.String(),
-				Condition:   model.BlockContentDataviewFilter_Equal,
-				Value:       pbtypes.Int64(int64(model.ObjectType_participant)),
-			},
-			{
-				RelationKey: bundle.RelationKeyParticipantStatus.String(),
-				Condition:   model.BlockContentDataviewFilter_Equal,
-				Value:       pbtypes.Int64(int64(model.ParticipantStatus_Active)),
-			},
-		},
+		Filters: filters,
 		Sorts: []*model.BlockContentDataviewSort{
 			{
 				RelationKey: bundle.RelationKeyName.String(),
@@ -44,20 +46,22 @@ func (s *Service) ListMembers(ctx context.Context, spaceId string, offset int, l
 		return nil, 0, false, ErrFailedListMembers
 	}
 
+	joiningFilters := append([]*model.BlockContentDataviewFilter{
+		{
+			RelationKey: bundle.RelationKeyResolvedLayout.String(),
+			Condition:   model.BlockContentDataviewFilter_Equal,
+			Value:       pbtypes.Int64(int64(model.ObjectType_participant)),
+		},
+		{
+			RelationKey: bundle.RelationKeyParticipantStatus.String(),
+			Condition:   model.BlockContentDataviewFilter_Equal,
+			Value:       pbtypes.Int64(int64(model.ParticipantStatus_Joining)),
+		},
+	}, additionalFilters...)
+
 	joiningResp := s.mw.ObjectSearch(ctx, &pb.RpcObjectSearchRequest{
 		SpaceId: spaceId,
-		Filters: []*model.BlockContentDataviewFilter{
-			{
-				RelationKey: bundle.RelationKeyResolvedLayout.String(),
-				Condition:   model.BlockContentDataviewFilter_Equal,
-				Value:       pbtypes.Int64(int64(model.ObjectType_participant)),
-			},
-			{
-				RelationKey: bundle.RelationKeyParticipantStatus.String(),
-				Condition:   model.BlockContentDataviewFilter_Equal,
-				Value:       pbtypes.Int64(int64(model.ParticipantStatus_Joining)),
-			},
-		},
+		Filters: joiningFilters,
 		Sorts: []*model.BlockContentDataviewSort{
 			{
 				RelationKey: bundle.RelationKeyName.String(),
@@ -80,13 +84,12 @@ func (s *Service) ListMembers(ctx context.Context, spaceId string, offset int, l
 	members = make([]apimodel.Member, 0, len(paginatedMembers))
 
 	for _, record := range paginatedMembers {
-		icon := GetIcon(s.gatewayUrl, record.Fields[bundle.RelationKeyIconEmoji.String()].GetStringValue(), record.Fields[bundle.RelationKeyIconImage.String()].GetStringValue(), "", 0)
 
 		member := apimodel.Member{
 			Object:     "member",
 			Id:         record.Fields[bundle.RelationKeyId.String()].GetStringValue(),
 			Name:       record.Fields[bundle.RelationKeyName.String()].GetStringValue(),
-			Icon:       icon,
+			Icon:       GetIcon(s.gatewayUrl, record.Fields[bundle.RelationKeyIconEmoji.String()].GetStringValue(), record.Fields[bundle.RelationKeyIconImage.String()].GetStringValue(), "", 0),
 			Identity:   record.Fields[bundle.RelationKeyIdentity.String()].GetStringValue(),
 			GlobalName: record.Fields[bundle.RelationKeyGlobalName.String()].GetStringValue(),
 			Status:     strcase.ToSnake(model.ParticipantStatus_name[int32(record.Fields[bundle.RelationKeyParticipantStatus.String()].GetNumberValue())]),
@@ -127,13 +130,11 @@ func (s *Service) GetMember(ctx context.Context, spaceId string, memberId string
 		return apimodel.Member{}, ErrMemberNotFound
 	}
 
-	icon := GetIcon(s.gatewayUrl, "", resp.Records[0].Fields[bundle.RelationKeyIconImage.String()].GetStringValue(), "", 0)
-
 	return apimodel.Member{
 		Object:     "member",
 		Id:         resp.Records[0].Fields[bundle.RelationKeyId.String()].GetStringValue(),
 		Name:       resp.Records[0].Fields[bundle.RelationKeyName.String()].GetStringValue(),
-		Icon:       icon,
+		Icon:       GetIcon(s.gatewayUrl, "", resp.Records[0].Fields[bundle.RelationKeyIconImage.String()].GetStringValue(), "", 0),
 		Identity:   resp.Records[0].Fields[bundle.RelationKeyIdentity.String()].GetStringValue(),
 		GlobalName: resp.Records[0].Fields[bundle.RelationKeyGlobalName.String()].GetStringValue(),
 		Status:     strcase.ToSnake(model.ParticipantStatus_name[int32(resp.Records[0].Fields[bundle.RelationKeyParticipantStatus.String()].GetNumberValue())]),
@@ -148,22 +149,22 @@ func (s *Service) UpdateMember(ctx context.Context, spaceId string, memberId str
 		return apimodel.Member{}, err
 	}
 
-	if request.Status != "active" && request.Status != "removed" && request.Status != "declined" {
-		return apimodel.Member{}, ErrInvalidApproveMemberStatus
-	}
+	status := *request.Status
 
-	switch request.Status {
-	case "active":
-		if request.Role != "viewer" && request.Role != "editor" {
+	switch status {
+	case apimodel.MemberStatusActive:
+		if request.Role == nil {
 			return apimodel.Member{}, ErrInvalidApproveMemberRole
 		}
+
+		role := *request.Role
 
 		if member.Status == "joining" {
 			// Approve the member's join request.
 			approveResp := s.mw.SpaceRequestApprove(ctx, &pb.RpcSpaceRequestApproveRequest{
 				SpaceId:     spaceId,
 				Identity:    memberId,
-				Permissions: s.mapMemberRole(request.Role),
+				Permissions: s.mapMemberRole(string(role)),
 			})
 			if approveResp.Error.Code != pb.RpcSpaceRequestApproveResponseError_NULL {
 				return apimodel.Member{}, ErrFailedUpdateMember
@@ -172,13 +173,13 @@ func (s *Service) UpdateMember(ctx context.Context, spaceId string, memberId str
 			// Update the member's role.
 			resp := s.mw.SpaceParticipantPermissionsChange(ctx, &pb.RpcSpaceParticipantPermissionsChangeRequest{
 				SpaceId: spaceId,
-				Changes: []*model.ParticipantPermissionChange{{Identity: memberId, Perms: s.mapMemberRole(request.Role)}},
+				Changes: []*model.ParticipantPermissionChange{{Identity: memberId, Perms: s.mapMemberRole(string(role))}},
 			})
 			if resp.Error != nil && resp.Error.Code != pb.RpcSpaceParticipantPermissionsChangeResponseError_NULL {
 				return apimodel.Member{}, ErrFailedUpdateMember
 			}
 		}
-	case "declined":
+	case apimodel.MemberStatusDeclined:
 		// Reject the member's join request.
 		rejectResp := s.mw.SpaceRequestDecline(ctx, &pb.RpcSpaceRequestDeclineRequest{
 			SpaceId:  spaceId,
@@ -187,7 +188,7 @@ func (s *Service) UpdateMember(ctx context.Context, spaceId string, memberId str
 		if rejectResp.Error.Code != pb.RpcSpaceRequestDeclineResponseError_NULL {
 			return apimodel.Member{}, ErrFailedUpdateMember
 		}
-	case "removed":
+	case apimodel.MemberStatusRemoved:
 		// Remove the member from the space.
 		removeResp := s.mw.SpaceParticipantRemove(ctx, &pb.RpcSpaceParticipantRemoveRequest{
 			SpaceId:    spaceId,
@@ -196,8 +197,6 @@ func (s *Service) UpdateMember(ctx context.Context, spaceId string, memberId str
 		if removeResp.Error.Code != pb.RpcSpaceParticipantRemoveResponseError_NULL {
 			return apimodel.Member{}, ErrFailedUpdateMember
 		}
-	default:
-		return apimodel.Member{}, ErrInvalidApproveMemberStatus
 	}
 
 	member, err = s.GetMember(ctx, spaceId, memberId)

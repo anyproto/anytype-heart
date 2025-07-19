@@ -9,6 +9,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/api/pagination"
 	"github.com/anyproto/anytype-heart/core/api/service"
 	"github.com/anyproto/anytype-heart/core/api/util"
+	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
 // ListMembersHandler retrieves a list of members in a space
@@ -33,7 +34,10 @@ func ListMembersHandler(s *service.Service) gin.HandlerFunc {
 		offset := c.GetInt("offset")
 		limit := c.GetInt("limit")
 
-		members, total, hasMore, err := s.ListMembers(c.Request.Context(), spaceId, offset, limit)
+		filtersAny, _ := c.Get("filters")
+		filters := filtersAny.([]*model.BlockContentDataviewFilter)
+
+		members, total, hasMore, err := s.ListMembers(c.Request.Context(), spaceId, filters, offset, limit)
 		code := util.MapErrorCode(err,
 			util.ErrToCode(service.ErrFailedListMembers, http.StatusInternalServerError),
 		)

@@ -31,21 +31,23 @@ var (
 )
 
 // ListTypes returns a paginated list of types in a specific space.
-func (s *Service) ListTypes(ctx context.Context, spaceId string, offset int, limit int) (types []apimodel.Type, total int, hasMore bool, err error) {
+func (s *Service) ListTypes(ctx context.Context, spaceId string, additionalFilters []*model.BlockContentDataviewFilter, offset int, limit int) (types []apimodel.Type, total int, hasMore bool, err error) {
+	filters := append([]*model.BlockContentDataviewFilter{
+		{
+			RelationKey: bundle.RelationKeyResolvedLayout.String(),
+			Condition:   model.BlockContentDataviewFilter_Equal,
+			Value:       pbtypes.Int64(int64(model.ObjectType_objectType)),
+		},
+		{
+			RelationKey: bundle.RelationKeyIsHidden.String(),
+			Condition:   model.BlockContentDataviewFilter_NotEqual,
+			Value:       pbtypes.Bool(true),
+		},
+	}, additionalFilters...)
+
 	resp := s.mw.ObjectSearch(ctx, &pb.RpcObjectSearchRequest{
 		SpaceId: spaceId,
-		Filters: []*model.BlockContentDataviewFilter{
-			{
-				RelationKey: bundle.RelationKeyResolvedLayout.String(),
-				Condition:   model.BlockContentDataviewFilter_Equal,
-				Value:       pbtypes.Int64(int64(model.ObjectType_objectType)),
-			},
-			{
-				RelationKey: bundle.RelationKeyIsHidden.String(),
-				Condition:   model.BlockContentDataviewFilter_NotEqual,
-				Value:       pbtypes.Bool(true),
-			},
-		},
+		Filters: filters,
 		Sorts: []*model.BlockContentDataviewSort{
 			{
 				RelationKey: bundle.RelationKeyName.String(),
@@ -120,21 +122,6 @@ func (s *Service) GetType(ctx context.Context, spaceId string, typeId string) (a
 
 // CreateType creates a new type in a specific space.
 func (s *Service) CreateType(ctx context.Context, spaceId string, request apimodel.CreateTypeRequest) (apimodel.Type, error) {
-	if request.Key != "" {
-		newKey := strcase.ToSnake(s.sanitizedString(request.Key))
-		propertyMap, err := s.getPropertyMapFromStore(ctx, spaceId, true)
-		if err != nil {
-			return apimodel.Type{}, err
-		}
-		typeMap, err := s.getTypeMapFromStore(ctx, spaceId, propertyMap, true)
-		if err != nil {
-			return apimodel.Type{}, err
-		}
-		if _, exists := typeMap[newKey]; exists {
-			return apimodel.Type{}, util.ErrBadInput(fmt.Sprintf("type key %q already exists", newKey))
-		}
-	}
-
 	details, err := s.buildTypeDetails(ctx, spaceId, request)
 	if err != nil {
 		return apimodel.Type{}, err
@@ -223,8 +210,8 @@ func (s *Service) getTypeMapFromStore(ctx context.Context, spaceId string, prope
 				Value:       pbtypes.Int64(int64(model.ObjectType_objectType)),
 			},
 			{
-				// resolve deleted types as well
-				RelationKey: bundle.RelationKeyIsDeleted.String(),
+				// resolve archived types as well
+				RelationKey: bundle.RelationKeyIsArchived.String(),
 			},
 		},
 		Keys: []string{
@@ -249,11 +236,11 @@ func (s *Service) getTypeMapFromStore(ctx context.Context, spaceId string, prope
 
 	typeMap := make(map[string]*apimodel.Type, len(resp.Records))
 	for _, record := range resp.Records {
-		uk, key, t := s.getTypeFromStruct(record, propertyMap)
+		uk, apiKey, t := s.getTypeFromStruct(record, propertyMap)
 		ot := t
 		typeMap[t.Id] = &ot
 		if keyByUniqueKey {
-			typeMap[key] = &ot
+			typeMap[apiKey] = &ot
 			typeMap[uk] = &ot
 		}
 	}
@@ -264,19 +251,19 @@ func (s *Service) getTypeMapFromStore(ctx context.Context, spaceId string, prope
 // `uk` is what we use internally, `key` is the key being referenced in the API.
 func (s *Service) getTypeFromStruct(details *types.Struct, propertyMap map[string]*apimodel.Property) (string, string, apimodel.Type) {
 	uk := details.Fields[bundle.RelationKeyUniqueKey.String()].GetStringValue()
-	key := util.ToTypeApiKey(uk)
+	apiKey := util.ToTypeApiKey(uk)
 
-	// apiId as key takes precedence over unique key
-	if apiIDField, exists := details.Fields[bundle.RelationKeyApiObjectKey.String()]; exists {
-		if apiId := apiIDField.GetStringValue(); apiId != "" {
-			key = apiId
+	// apiObjectKey as key takes precedence over unique key
+	if apiObjectKeyField, exists := details.Fields[bundle.RelationKeyApiObjectKey.String()]; exists {
+		if apiObjectKey := apiObjectKeyField.GetStringValue(); apiObjectKey != "" {
+			apiKey = apiObjectKey
 		}
 	}
 
-	return uk, key, apimodel.Type{
+	return uk, apiKey, apimodel.Type{
 		Object:     "type",
 		Id:         details.Fields[bundle.RelationKeyId.String()].GetStringValue(),
-		Key:        key,
+		Key:        apiKey,
 		Name:       details.Fields[bundle.RelationKeyName.String()].GetStringValue(),
 		PluralName: details.Fields[bundle.RelationKeyPluralName.String()].GetStringValue(),
 		Icon:       GetIcon(s.gatewayUrl, details.Fields[bundle.RelationKeyIconEmoji.String()].GetStringValue(), "", details.Fields[bundle.RelationKeyIconName.String()].GetStringValue(), details.Fields[bundle.RelationKeyIconOption.String()].GetNumberValue()),
@@ -288,11 +275,11 @@ func (s *Service) getTypeFromStruct(details *types.Struct, propertyMap map[strin
 }
 
 // getTypeFromMap retrieves the type from the details.
-func (s *Service) getTypeFromMap(details *types.Struct, typeMap map[string]*apimodel.Type) apimodel.Type {
+func (s *Service) getTypeFromMap(details *types.Struct, typeMap map[string]*apimodel.Type) *apimodel.Type {
 	if t, ok := typeMap[details.Fields[bundle.RelationKeyType.String()].GetStringValue()]; ok {
-		return *t
+		return t
 	}
-	return apimodel.Type{}
+	return nil
 }
 
 // buildTypeDetails builds the type details from the CreateTypeRequest.
@@ -304,8 +291,21 @@ func (s *Service) buildTypeDetails(ctx context.Context, spaceId string, request 
 		bundle.RelationKeyOrigin.String():            pbtypes.Int64(int64(model.ObjectOrigin_api)),
 	}
 
+	propertyMap, err := s.getPropertyMapFromStore(ctx, spaceId, true)
+	if err != nil {
+		return nil, err
+	}
+
 	if request.Key != "" {
-		fields[bundle.RelationKeyApiObjectKey.String()] = pbtypes.String(strcase.ToSnake(s.sanitizedString(request.Key)))
+		apiKey := strcase.ToSnake(s.sanitizedString(request.Key))
+		typeMap, err := s.getTypeMapFromStore(ctx, spaceId, propertyMap, true)
+		if err != nil {
+			return nil, err
+		}
+		if _, exists := typeMap[apiKey]; exists {
+			return nil, util.ErrBadInput(fmt.Sprintf("type key %q already exists", apiKey))
+		}
+		fields[bundle.RelationKeyApiObjectKey.String()] = pbtypes.String(apiKey)
 	}
 
 	iconFields, err := s.processIconFields(spaceId, request.Icon, true)
@@ -314,11 +314,6 @@ func (s *Service) buildTypeDetails(ctx context.Context, spaceId string, request 
 	}
 	for k, v := range iconFields {
 		fields[k] = v
-	}
-
-	propertyMap, err := s.getPropertyMapFromStore(ctx, spaceId, true)
-	if err != nil {
-		return nil, err
 	}
 
 	relationIds, err := s.buildRelationIds(ctx, spaceId, request.Properties, propertyMap)
@@ -369,7 +364,7 @@ func (s *Service) buildUpdatedTypeDetails(ctx context.Context, spaceId string, t
 		fields[bundle.RelationKeyRecommendedLayout.String()] = pbtypes.Int64(int64(s.typeLayoutToObjectTypeLayout(*request.Layout)))
 	}
 	if request.Key != nil {
-		newKey := strcase.ToSnake(s.sanitizedString(*request.Key))
+		apiKey := strcase.ToSnake(s.sanitizedString(*request.Key))
 		propertyMap, err := s.getPropertyMapFromStore(ctx, spaceId, true)
 		if err != nil {
 			return nil, err
@@ -378,13 +373,13 @@ func (s *Service) buildUpdatedTypeDetails(ctx context.Context, spaceId string, t
 		if err != nil {
 			return nil, err
 		}
-		if existing, exists := typeMap[newKey]; exists && existing.Id != t.Id {
-			return nil, util.ErrBadInput(fmt.Sprintf("type key %q already exists", newKey))
+		if existing, exists := typeMap[apiKey]; exists && existing.Id != t.Id {
+			return nil, util.ErrBadInput(fmt.Sprintf("type key %q already exists", apiKey))
 		}
 		if bundle.HasObjectTypeByKey(domain.TypeKey(util.ToTypeApiKey(t.UniqueKey))) {
 			return nil, util.ErrBadInput("type key of bundled types cannot be changed")
 		}
-		fields[bundle.RelationKeyApiObjectKey.String()] = pbtypes.String(newKey)
+		fields[bundle.RelationKeyApiObjectKey.String()] = pbtypes.String(apiKey)
 	}
 
 	if request.Icon != nil {
@@ -453,6 +448,7 @@ func (s *Service) buildRelationIds(ctx context.Context, spaceId string, props []
 			continue
 		}
 		newProp, err2 := s.CreateProperty(ctx, spaceId, apimodel.CreatePropertyRequest{
+			Key:    propLink.Key,
 			Name:   propLink.Name,
 			Format: propLink.Format,
 		})
