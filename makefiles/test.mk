@@ -33,3 +33,13 @@ test-deps:
 clear-test-deps:
 	@echo 'Removing test mocks...'
 	@find . -name "*_mock.go" | xargs -r rm -v
+
+test-failed:
+	@echo 'Running tests and showing only failures...'
+	@set -o pipefail; \
+	CGO_LDFLAGS=-Wl,-no_warn_duplicate_libraries ANYTYPE_LOG_NOGELF=1 go test -v github.com/anyproto/anytype-heart/... 2>&1 | \
+	awk '/^=== RUN|^--- FAIL:|^FAIL|Error:|error:|panic:|\t.*\.go:[0-9]+:/ { \
+		if ($$0 ~ /^=== RUN/) { current_test = $$0 } \
+		else { if (current_test != "") { print current_test; current_test = "" } print $$0 } \
+	} \
+	END { if (NR == 0) print "All tests passed!" }'

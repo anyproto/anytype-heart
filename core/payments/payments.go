@@ -176,8 +176,12 @@ func (s *service) Run(ctx context.Context) (err error) {
 }
 
 func (s *service) Close(_ context.Context) (err error) {
-	close(s.closing)
-	s.periodicGetStatus.Close()
+	if s.closing != nil {
+		close(s.closing)
+	}
+	if s.periodicGetStatus != nil {
+		s.periodicGetStatus.Close()
+	}
 	return nil
 }
 
@@ -1038,6 +1042,16 @@ func (s *service) CodeGetInfo(ctx context.Context, req *pb.RpcMembershipCodeGetI
 	res, err := s.ppclient.CodeGetInfo(ctx, &reqSigned)
 	if err != nil {
 		return nil, err
+	}
+
+	// send membership update to the payment node
+	// to get new tiers, because Code can redeem a hidden tier that is not on the list yet
+	_, err = s.GetSubscriptionStatus(ctx, &pb.RpcMembershipGetStatusRequest{
+		NoCache: true,
+	})
+	if err != nil {
+		log.Error("can not get subscription status again", zap.Error(err))
+		// eat the error...
 	}
 
 	return &pb.RpcMembershipCodeGetInfoResponse{
