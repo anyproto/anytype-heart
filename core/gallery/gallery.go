@@ -31,10 +31,10 @@ import (
 const (
 	CName = "gallery-service"
 
-	defaultTimeout = time.Second * 5
-	indexURI       = "https://tools.gallery.any.coop/app-index.json"
-	versionHeader  = "If-None-Match"
-	eTagHeader     = "ETag"
+	defaultTimeout    = time.Second * 5
+	indexUrl          = "https://tools.gallery.any.coop/app-index.json"
+	ifNoneMatchHeader = "If-None-Match"
+	eTagHeader        = "ETag"
 
 	cacheGalleryDir = "cache/gallery"
 	indexFileName   = "index.pb"
@@ -127,21 +127,11 @@ func (s *service) getManifest(url string, checkWhitelist, validateSchema bool) (
 }
 
 func (s *service) GetGalleryIndex() (index *pb.RpcGalleryDownloadIndexResponse, err error) {
-	return s.getGalleryIndex(indexURI, defaultTimeout)
+	return s.getGalleryIndex(indexUrl, defaultTimeout)
 }
 
 func (s *service) getGalleryIndex(indexURL string, timeout time.Duration) (index *pb.RpcGalleryDownloadIndexResponse, err error) {
-	var localIndex *pb.RpcGalleryDownloadIndexResponse
-
-	defer func() {
-		if err != nil && localIndex != nil {
-			log.Warn("failed to download index from remote. Returning local index", zap.Error(err))
-			err = nil
-			index = localIndex
-		}
-	}()
-
-	localIndex, err = s.readIndex()
+	localIndex, err := s.readIndex()
 	if err != nil {
 		log.Warn("failed to read local index. Need to re-fetch index from remote", zap.Error(err))
 	}
@@ -159,12 +149,20 @@ func (s *service) getGalleryIndex(indexURL string, timeout time.Duration) (index
 		if errors.Is(err, ErrNotModified) {
 			return localIndex, nil
 		}
+		if localIndex != nil {
+			log.Warn("failed to download index from remote. Returning local index", zap.Error(err))
+			return localIndex, nil
+		}
 		return nil, err
 	}
 
 	index = &pb.RpcGalleryDownloadIndexResponse{}
 	err = jsonpb.Unmarshal(bytes.NewReader(raw), index)
 	if err != nil {
+		if localIndex != nil {
+			log.Warn("failed to parse remote index. Returning local index", zap.Error(err))
+			return localIndex, nil
+		}
 		return nil, fmt.Errorf("%w to get lists of categories and experiences from gallery index: %w", ErrUnmarshalJson, err)
 	}
 
@@ -234,7 +232,7 @@ func getRawJson(url string, currentVersion string, timeout time.Duration) (body 
 	}
 
 	if currentVersion != "" {
-		req.Header.Add(versionHeader, currentVersion)
+		req.Header.Add(ifNoneMatchHeader, currentVersion)
 	}
 	req.Close = true
 	res, err := client.Do(req)
