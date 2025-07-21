@@ -20,11 +20,17 @@ func (s *service) createObjectType(ctx context.Context, space clientspace.Space,
 		return "", nil, fmt.Errorf("create object type: no data")
 	}
 
-	uniqueKey, err := getUniqueKeyOrGenerate(coresb.SmartBlockTypeObjectType, details)
+	uniqueKey, wasGenerated, err := getUniqueKeyOrGenerate(coresb.SmartBlockTypeObjectType, details)
 	if err != nil {
 		return "", nil, fmt.Errorf("getUniqueKeyOrGenerate: %w", err)
 	}
 	object := details.Copy()
+
+	var objectKey string
+	if !wasGenerated {
+		objectKey = uniqueKey.InternalKey()
+	}
+	injectApiObjectKey(object, objectKey)
 
 	if !object.Has(bundle.RelationKeyRecommendedLayout) {
 		object.SetInt64(bundle.RelationKeyRecommendedLayout, int64(model.ObjectType_basic))

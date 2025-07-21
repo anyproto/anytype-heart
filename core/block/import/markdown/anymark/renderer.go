@@ -5,12 +5,14 @@ import (
 	"net/url"
 	"path/filepath"
 	"strings"
+	"unicode"
 
 	"github.com/gogo/protobuf/types"
 	"github.com/yuin/goldmark/ast"
 	ext "github.com/yuin/goldmark/extension/ast"
 	"github.com/yuin/goldmark/renderer"
 	"github.com/yuin/goldmark/util"
+	"go.abhg.dev/goldmark/wikilink"
 
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -62,13 +64,15 @@ func (r *Renderer) RegisterFuncs(reg renderer.NodeRendererFuncRegisterer) {
 	reg.Register(ast.KindText, r.renderText)
 	reg.Register(ast.KindString, r.renderString)
 	reg.Register(ext.KindStrikethrough, r.renderStrikethrough)
+	reg.Register(wikilink.Kind, r.renderWikiLink)
 }
 
 func (r *Renderer) writeLines(source []byte, n ast.Node) {
 	l := n.Lines().Len()
 	for i := 0; i < l; i++ {
 		line := n.Lines().At(i)
-		r.AddTextToBuffer(string(line.Value(source)))
+		s := Unescape(string(line.Value(source)))
+		r.AddTextToBuffer(s)
 	}
 }
 
@@ -236,10 +240,10 @@ func (r *Renderer) renderAutoLink(_ util.BufWriter,
 		linkPath = string(destination)
 	}
 
-	// add basefilepath
-	if !strings.HasPrefix(strings.ToLower(linkPath), "http://") &&
-		!strings.HasPrefix(strings.ToLower(linkPath), "https://") {
+	if !isUrl(linkPath) {
+		// Treat as a file path if no URL scheme
 		linkPath = filepath.Join(r.GetBaseFilepath(), linkPath)
+		linkPath = cleanLinkSection(linkPath)
 	}
 
 	r.AddMark(model.BlockContentTextMark{
@@ -249,6 +253,32 @@ func (r *Renderer) renderAutoLink(_ util.BufWriter,
 	})
 	r.AddTextToBuffer(string(util.EscapeHTML(label)))
 	return ast.WalkContinue, nil
+}
+
+func isUrl(raw string) bool {
+	colon := strings.IndexByte(raw, ':')
+
+	if colon > 0 {
+		scheme := raw[:colon]
+		if isASCIIAlpha(scheme) {
+			return true
+		}
+	}
+
+	if u, err := url.Parse(raw); err == nil && u.Scheme != "" && len(u.Scheme) > 1 {
+		return true
+	}
+
+	return false
+}
+
+func isASCIIAlpha(s string) bool {
+	for _, r := range s {
+		if !unicode.IsLetter(r) || r > unicode.MaxASCII {
+			return false
+		}
+	}
+	return true
 }
 
 func (r *Renderer) renderCodeSpan(_ util.BufWriter,
@@ -261,13 +291,14 @@ func (r *Renderer) renderCodeSpan(_ util.BufWriter,
 		for c := n.FirstChild(); c != nil; c = c.NextSibling() {
 			segment := c.(*ast.Text).Segment
 			value := segment.Value(source)
+			s := Unescape(string(value))
 			if bytes.HasSuffix(value, []byte("\n")) {
-				r.AddTextToBuffer(string(value[:len(value)-1]))
+				r.AddTextToBuffer(s[:len(s)-1])
 				if c != n.LastChild() {
 					r.AddTextToBuffer(" ")
 				}
 			} else {
-				r.AddTextToBuffer(string(value))
+				r.AddTextToBuffer(s)
 			}
 		}
 		return ast.WalkSkipChildren, nil
@@ -323,9 +354,17 @@ func (r *Renderer) renderLink(_ util.BufWriter,
 			linkPath = string(destination)
 		}
 
-		if !strings.HasPrefix(strings.ToLower(linkPath), "http://") &&
-			!strings.HasPrefix(strings.ToLower(linkPath), "https://") {
+		if !isUrl(linkPath) {
+			// Treat as a file path if no URL scheme
 			linkPath = filepath.Join(r.GetBaseFilepath(), linkPath)
+			ext := filepath.Ext(linkPath)
+			// if empty or contains spaces
+			linkPath = cleanLinkSection(linkPath)
+
+			// todo: should be improved
+			if ext == "" || strings.Contains(ext, " ") {
+				linkPath += ".md" // Default to .md if no extension is provided
+			}
 		}
 
 		to := int32(text.UTF16RuneCountString(r.GetText()))
@@ -398,8 +437,10 @@ func (r *Renderer) renderText(_ util.BufWriter,
 	}
 	n := node.(*ast.Text)
 	segment := n.Segment
+	s := string(segment.Value(source))
+	s = Unescape(s)
+	r.AddTextToBuffer(s)
 
-	r.AddTextToBuffer(string(segment.Value(source)))
 	if n.HardLineBreak() || n.SoftLineBreak() && r.TextBufferLen() > TextBlockLengthSoftLimit {
 		r.openTextBlockWithStyle(false, model.BlockContentText_Paragraph, nil)
 
@@ -414,8 +455,9 @@ func (r *Renderer) renderString(_ util.BufWriter, source []byte, node ast.Node, 
 		return ast.WalkContinue, nil
 	}
 	n := node.(*ast.String)
-
-	r.AddTextToBuffer(string(n.Value))
+	s := string(n.Value)
+	s = Unescape(s)
+	r.AddTextToBuffer(s)
 
 	return ast.WalkContinue, nil
 }
@@ -429,6 +471,65 @@ func (r *Renderer) renderStrikethrough(_ util.BufWriter, _ []byte, _ ast.Node, e
 		r.AddMark(model.BlockContentTextMark{
 			Range: &model.Range{From: int32(r.GetMarkStart()), To: to},
 			Type:  tag,
+		})
+	}
+	return ast.WalkContinue, nil
+}
+
+func cleanLinkSection(linkPath string) string {
+	// Remove any section markers from the link path.
+	for _, char := range []string{"|", "#", "^"} {
+		if idx := strings.LastIndex(linkPath, char); idx != -1 {
+			linkPath = linkPath[:idx]
+		}
+	}
+	return linkPath
+}
+
+func (r *Renderer) renderWikiLink(_ util.BufWriter, source []byte, node ast.Node, entering bool) (ast.WalkStatus, error) {
+	n := node.(*wikilink.Node)
+	linkPath := string(n.Target)
+
+	// For embed syntax ![[]], check if it's an image
+	if n.Embed && entering {
+		// Check if destination has image extension
+		lowerPath := strings.ToLower(linkPath)
+		if strings.HasSuffix(lowerPath, ".png") || strings.HasSuffix(lowerPath, ".jpg") ||
+			strings.HasSuffix(lowerPath, ".jpeg") || strings.HasSuffix(lowerPath, ".gif") ||
+			strings.HasSuffix(lowerPath, ".svg") || strings.HasSuffix(lowerPath, ".webp") {
+			// Handle as image block
+			if !r.inTable {
+				r.ForceCloseTextBlock()
+				r.AddImageBlock(linkPath)
+			}
+			return ast.WalkSkipChildren, nil
+		}
+	}
+
+	if entering {
+		r.SetMarkStart()
+	} else {
+		// Handle as regular link (same behavior as [[]] for both [[]] and ![[]])
+		if !isUrl(linkPath) {
+			// Treat as a file path if no URL scheme
+			linkPath = filepath.Join(r.GetBaseFilepath(), linkPath)
+			ext := filepath.Ext(linkPath)
+			// if empty or contains spaces
+			linkPath = cleanLinkSection(linkPath)
+
+			// todo: should be improved
+			if ext == "" || strings.Contains(ext, " ") {
+				linkPath += ".md" // Default to .md if no extension is provided
+
+			}
+		}
+
+		to := int32(text.UTF16RuneCountString(r.GetText()))
+
+		r.AddMark(model.BlockContentTextMark{
+			Range: &model.Range{From: int32(r.GetMarkStart()), To: to},
+			Type:  model.BlockContentTextMark_Link,
+			Param: linkPath,
 		})
 	}
 	return ast.WalkContinue, nil

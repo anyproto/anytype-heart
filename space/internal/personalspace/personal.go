@@ -50,7 +50,7 @@ func NewSpaceController(ctx context.Context, spaceId string, metadata []byte, a 
 	if !exists || err != nil {
 		info := spaceinfo.NewSpacePersistentInfo(spaceId)
 		info.SetAccountStatus(spaceinfo.AccountStatusUnknown)
-		err = techSpace.SpaceViewCreate(ctx, spaceId, false, info)
+		err = techSpace.SpaceViewCreate(ctx, spaceId, false, info, nil)
 		if err != nil {
 			return nil, err
 		}

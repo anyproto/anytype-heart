@@ -46,6 +46,41 @@ type store struct {
 	diffManagers map[string]*diffManager
 }
 
+type DiffManagerStats struct {
+	DiffManagerName string   `json:"diffManagerName"`
+	SeenHeads       []string `json:"seenHeads"`
+	AllChanges      []string `json:"allChanges"`
+	AllChangesCount int      `json:"allChangesCount"`
+}
+
+type StoreStat struct {
+	DiffManagers []DiffManagerStats `json:"diffManagers"`
+}
+
+func (s *store) ProvideStat() any {
+	stats := make([]DiffManagerStats, 0, len(s.diffManagers))
+	for name, manager := range s.diffManagers {
+		ids := manager.diffManager.GetIds()
+		stats = append(stats, DiffManagerStats{
+			DiffManagerName: name,
+			SeenHeads:       manager.diffManager.SeenHeads(),
+			AllChanges:      ids[0:min(len(ids), 1000)],
+			AllChangesCount: len(ids),
+		})
+	}
+	return StoreStat{
+		DiffManagers: stats,
+	}
+}
+
+func (s *store) StatId() string {
+	return s.Id()
+}
+
+func (s *store) StatType() string {
+	return "source.store"
+}
+
 type diffManager struct {
 	diffManager *objecttree.DiffManager
 	onRemove    func(removed []string)
@@ -128,6 +163,7 @@ func (s *store) InitDiffManager(ctx context.Context, name string, seenHeads []st
 	if err != nil {
 		return fmt.Errorf("init diff manager: %w", err)
 	}
+	manager.diffManager.Init()
 
 	err = s.getTechSpace().KeyValueService().SubscribeForKey(s.seenHeadsKey(name), name, func(key string, val keyvalueservice.Value) {
 		s.ObjectTree.Lock()
@@ -182,14 +218,17 @@ func (s *store) PushChange(params source.PushChangeParams) (id string, err error
 	return "", nil
 }
 
-func (s *store) ReadStoreDoc(ctx context.Context, storeState *storestate.StoreState, onUpdateHook func()) (err error) {
-	s.onUpdateHook = onUpdateHook
+func (s *store) ReadStoreDoc(ctx context.Context, storeState *storestate.StoreState, params source.ReadStoreDocParams) (err error) {
+	s.onUpdateHook = params.OnUpdateHook
 	s.store = storeState
 
 	tx, err := s.store.NewTx(ctx)
 	if err != nil {
 		return
 	}
+	defer func() {
+		_ = tx.Rollback()
+	}()
 	// checking if we have any data in the store regarding the tree (i.e. if tree is first arrived or created)
 	allIsNew := false
 	if _, err := tx.GetOrder(s.id); err != nil {
@@ -199,9 +238,10 @@ func (s *store) ReadStoreDoc(ctx context.Context, storeState *storestate.StoreSt
 		tx:       tx,
 		allIsNew: allIsNew,
 		ot:       s.ObjectTree,
+		hook:     params.ReadStoreTreeHook,
 	}
 	if err = applier.Apply(); err != nil {
-		return errors.Join(tx.Rollback(), err)
+		return err
 	}
 	err = tx.Commit()
 	if err != nil {
@@ -212,6 +252,13 @@ func (s *store) ReadStoreDoc(ctx context.Context, storeState *storestate.StoreSt
 	if err != nil {
 		return fmt.Errorf("init diff managers: %w", err)
 	}
+
+	if params.ReadStoreTreeHook != nil {
+		err = params.ReadStoreTreeHook.AfterDiffManagersInit(ctx)
+		if err != nil {
+			return fmt.Errorf("after diff managers init hook: %w", err)
+		}
+	}
 	return nil
 }
 
@@ -220,16 +267,15 @@ func (s *store) PushStoreChange(ctx context.Context, params source.PushStoreChan
 	if err != nil {
 		return "", fmt.Errorf("new tx: %w", err)
 	}
-	rollback := func(err error) error {
-		return errors.Join(tx.Rollback(), err)
-	}
-
+	defer func() {
+		_ = tx.Rollback()
+	}()
 	change := &pb.StoreChange{
 		ChangeSet: params.Changes,
 	}
 	data, dataType, err := MarshalStoreChange(change)
 	if err != nil {
-		return "", rollback(fmt.Errorf("marshal change: %w", err))
+		return "", fmt.Errorf("marshal change: %w", err)
 	}
 
 	addResult, err := s.ObjectTree.AddContentWithValidator(ctx, objecttree.SignableChangeContent{
@@ -252,11 +298,11 @@ func (s *store) PushStoreChange(ctx context.Context, params source.PushStoreChan
 		return nil
 	})
 	if err != nil {
-		return "", rollback(fmt.Errorf("add content: %w", err))
+		return "", fmt.Errorf("add content: %w", err)
 	}
 
 	if len(addResult.Added) == 0 {
-		return "", rollback(fmt.Errorf("add changes list is empty"))
+		return "", fmt.Errorf("add changes list is empty")
 	}
 	changeId = addResult.Added[0].Id
 	err = tx.Commit()

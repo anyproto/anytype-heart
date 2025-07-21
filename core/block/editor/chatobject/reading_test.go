@@ -8,6 +8,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/anyproto/anytype-heart/core/block/chats/chatmodel"
+	"github.com/anyproto/anytype-heart/core/block/chats/chatrepository"
 	"github.com/anyproto/anytype-heart/core/block/editor/storestate"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
@@ -25,7 +27,12 @@ func TestReadMessages(t *testing.T) {
 	// All messages forced as not read
 	messagesResp := fx.assertReadStatus(t, ctx, "", "", false, false)
 
-	err := fx.MarkReadMessages(ctx, "", messagesResp.Messages[2].OrderId, messagesResp.ChatState.LastStateId, CounterTypeMessage)
+	err := fx.MarkReadMessages(ctx, ReadMessagesRequest{
+		AfterOrderId:  "",
+		BeforeOrderId: messagesResp.Messages[2].OrderId,
+		LastStateId:   messagesResp.ChatState.LastStateId,
+		CounterType:   chatmodel.CounterTypeMessage,
+	})
 	require.NoError(t, err)
 
 	fx.assertReadStatus(t, ctx, "", messagesResp.Messages[2].OrderId, true, false)
@@ -56,14 +63,18 @@ func TestReadMessagesLoadedInBackground(t *testing.T) {
 	secondMessage, err := fx.GetMessageById(ctx, secondMessageId)
 	require.NoError(t, err)
 
-	err = fx.MarkReadMessages(ctx, "", firstMessage.OrderId, firstMessage.StateId, CounterTypeMessage)
-	require.NoError(t, err)
+	err = fx.MarkReadMessages(ctx, ReadMessagesRequest{
+		AfterOrderId:  "",
+		BeforeOrderId: firstMessage.OrderId,
+		LastStateId:   firstMessage.StateId,
+		CounterType:   chatmodel.CounterTypeMessage,
+	})
 
-	gotResponse, err := fx.GetMessages(ctx, GetMessagesRequest{})
+	gotResponse, err := fx.GetMessages(ctx, chatrepository.GetMessagesRequest{})
 	require.NoError(t, err)
 
 	firstMessage.Read = true
-	wantMessages := []*Message{
+	wantMessages := []*chatmodel.Message{
 		secondMessage,
 		firstMessage,
 	}
@@ -77,6 +88,7 @@ func TestReadMessagesLoadedInBackground(t *testing.T) {
 			},
 			Mentions:    &model.ChatStateUnreadState{},
 			LastStateId: secondMessage.StateId,
+			Order:       4,
 		},
 	}
 	assert.Equal(t, wantResponse, gotResponse)
@@ -95,7 +107,12 @@ func TestReadMentions(t *testing.T) {
 		// All messages forced as not read
 		messagesResp := fx.assertReadStatus(t, ctx, "", "", false, false)
 
-		err := fx.MarkReadMessages(ctx, "", messagesResp.Messages[2].OrderId, messagesResp.ChatState.LastStateId, CounterTypeMention)
+		err := fx.MarkReadMessages(ctx, ReadMessagesRequest{
+			AfterOrderId:  "",
+			BeforeOrderId: messagesResp.Messages[2].OrderId,
+			LastStateId:   messagesResp.ChatState.LastStateId,
+			CounterType:   chatmodel.CounterTypeMention,
+		})
 		require.NoError(t, err)
 
 		fx.assertReadStatus(t, ctx, "", messagesResp.Messages[2].OrderId, false, true)
@@ -122,7 +139,12 @@ func TestReadMentions(t *testing.T) {
 		// All messages forced as not read
 		messagesResp := fx.assertReadStatus(t, ctx, "", "", false, false)
 
-		err = fx.MarkReadMessages(ctx, "", secondMessage.OrderId, messagesResp.ChatState.LastStateId, CounterTypeMention)
+		err = fx.MarkReadMessages(ctx, ReadMessagesRequest{
+			AfterOrderId:  "",
+			BeforeOrderId: secondMessage.OrderId,
+			LastStateId:   messagesResp.ChatState.LastStateId,
+			CounterType:   chatmodel.CounterTypeMention,
+		})
 		require.NoError(t, err)
 
 		fx.assertReadStatus(t, ctx, secondMessage.OrderId, secondMessage.OrderId, false, true)
@@ -141,7 +163,7 @@ func TestMarkMessagesAsNotRead(t *testing.T) {
 	// All messages added by myself are read
 	fx.assertReadStatus(t, ctx, "", "", true, true)
 
-	err := fx.MarkMessagesAsUnread(ctx, "", CounterTypeMessage)
+	err := fx.MarkMessagesAsUnread(ctx, "", chatmodel.CounterTypeMessage)
 	require.NoError(t, err)
 
 	fx.assertReadStatus(t, ctx, "", "", false, true)
@@ -159,7 +181,7 @@ func TestMarkMentionsAsNotRead(t *testing.T) {
 	// All messages added by myself are read
 	fx.assertReadStatus(t, ctx, "", "", true, true)
 
-	err := fx.MarkMessagesAsUnread(ctx, "", CounterTypeMention)
+	err := fx.MarkMessagesAsUnread(ctx, "", chatmodel.CounterTypeMention)
 	require.NoError(t, err)
 
 	fx.assertReadStatus(t, ctx, "", "", true, false)

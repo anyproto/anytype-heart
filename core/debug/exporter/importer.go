@@ -80,7 +80,7 @@ func ImportStorage(ctx context.Context, path string) (res ImportResult, err erro
 	if err != nil {
 		return
 	}
-	acl, err := list.BuildAclListWithIdentity(randomKeys, listStorage, list.NoOpAcceptorVerifier{})
+	acl, err := list.BuildAclListWithIdentity(randomKeys, listStorage, recordVerifier{})
 	if err != nil {
 		return
 	}

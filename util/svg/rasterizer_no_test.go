@@ -10,7 +10,6 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/anyproto/anytype-heart/core/files/mock_files"
-	"github.com/anyproto/anytype-heart/pkg/lib/pb/storage"
 )
 
 func TestProcessSvg(t *testing.T) {
@@ -21,15 +20,13 @@ func TestProcessSvg(t *testing.T) {
 	</svg>`)
 		file := mock_files.NewMockFile(t)
 		file.EXPECT().Reader(context.Background()).Return(bytes.NewReader(svgContent), nil)
-		fileInfo := &storage.FileInfo{}
-		file.EXPECT().Info().Return(fileInfo)
 
 		// when
-		result, err := ProcessSvg(context.Background(), file)
+		result, mimeType, err := ProcessSvg(context.Background(), file)
 
 		// then
 		assert.NoError(t, err)
 		assert.NotNil(t, result)
-		assert.Equal(t, svgMedia, fileInfo.Media)
+		assert.Equal(t, svgMedia, mimeType)
 	})
 }

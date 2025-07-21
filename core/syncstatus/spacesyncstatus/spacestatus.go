@@ -12,7 +12,7 @@ import (
 	"github.com/samber/lo"
 
 	"github.com/anyproto/anytype-heart/core/event"
-	"github.com/anyproto/anytype-heart/core/files"
+	"github.com/anyproto/anytype-heart/core/files/filespaceusage"
 	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/core/syncstatus/nodestatus"
 	"github.com/anyproto/anytype-heart/core/syncstatus/syncsubscriptions"
@@ -33,7 +33,7 @@ type Updater interface {
 
 type NodeUsage interface {
 	app.Component
-	GetNodeUsage(ctx context.Context) (*files.NodeUsageResponse, error)
+	GetNodeUsage(ctx context.Context) (*filespaceusage.NodeUsageResponse, error)
 }
 
 type SpaceIdGetter interface {

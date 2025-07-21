@@ -152,7 +152,7 @@ func (s *Service) GetObjectsInList(ctx context.Context, spaceId string, listId s
 	var collectionId string
 	var source []string
 	switch model.ObjectTypeLayout(typeDetail.Fields[bundle.RelationKeyRecommendedLayout.String()].GetNumberValue()) {
-	case model.ObjectType_set:
+	case model.ObjectType_set, model.ObjectType_objectType:
 		// for queries, we search within the space for objects of the setOf type
 		setOfValues := resp.ObjectView.Details[0].Details.Fields[bundle.RelationKeySetOf.String()].GetListValue().Values
 		for _, value := range setOfValues {
@@ -197,31 +197,31 @@ func (s *Service) GetObjectsInList(ctx context.Context, spaceId string, listId s
 	total := int(searchResp.Counters.Total)
 	hasMore := searchResp.Counters.Total > int64(offset+limit)
 
-	propertyMap, err := s.GetPropertyMapFromStore(spaceId)
+	propertyMap, err := s.getPropertyMapFromStore(ctx, spaceId, true)
 	if err != nil {
 		return nil, 0, false, err
 	}
-	typeMap, err := s.GetTypeMapFromStore(spaceId, propertyMap)
+	typeMap, err := s.getTypeMapFromStore(ctx, spaceId, propertyMap, false)
 	if err != nil {
 		return nil, 0, false, err
 	}
-	tagMap, err := s.GetTagMapFromStore(spaceId)
+	tagMap, err := s.getTagMapFromStore(ctx, spaceId)
 	if err != nil {
 		return nil, 0, false, err
 	}
 	objects := make([]apimodel.Object, 0, len(searchResp.Records))
 	for _, record := range searchResp.Records {
-		objects = append(objects, s.GetObjectFromStruct(record, propertyMap, typeMap, tagMap))
+		objects = append(objects, s.getObjectFromStruct(record, propertyMap, typeMap, tagMap))
 	}
 
 	return objects, total, hasMore, nil
 }
 
 // AddObjectsToList adds objects to a list
-func (s *Service) AddObjectsToList(ctx context.Context, spaceId string, listId string, objectIds []string) error {
+func (s *Service) AddObjectsToList(ctx context.Context, _ string, listId string, request apimodel.AddObjectsToListRequest) error {
 	resp := s.mw.ObjectCollectionAdd(ctx, &pb.RpcObjectCollectionAddRequest{
 		ContextId: listId,
-		ObjectIds: objectIds,
+		ObjectIds: request.Objects,
 	})
 
 	if resp.Error != nil && resp.Error.Code != pb.RpcObjectCollectionAddResponseError_NULL {

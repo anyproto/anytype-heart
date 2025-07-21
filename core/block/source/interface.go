@@ -58,9 +58,20 @@ type Service interface {
 	app.Component
 }
 
+type ReadStoreTreeHook interface {
+	BeforeIteration(ot objecttree.ObjectTree)
+	OnIteration(ot objecttree.ObjectTree, change *objecttree.Change)
+	AfterDiffManagersInit(ctx context.Context) error
+}
+
+type ReadStoreDocParams struct {
+	OnUpdateHook      func()
+	ReadStoreTreeHook ReadStoreTreeHook
+}
+
 type Store interface {
 	Source
-	ReadStoreDoc(ctx context.Context, stateStore *storestate.StoreState, onUpdateHook func()) (err error)
+	ReadStoreDoc(ctx context.Context, stateStore *storestate.StoreState, params ReadStoreDocParams) (err error)
 	PushStoreChange(ctx context.Context, params PushStoreChangeParams) (changeId string, err error)
 	SetPushChangeHook(onPushChange PushChangeHook)
 

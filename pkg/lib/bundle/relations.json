@@ -36,7 +36,9 @@
     "maxCount": 1,
     "name": "Creation date",
     "readonly": true,
-    "source": "derived"
+    "source": "derived",
+    "includeTime": true,
+    "revision": 1
   },
   {
     "description": "Date when the object will be deleted from your device",
@@ -380,7 +382,9 @@
     "maxCount": 1,
     "name": "Last modified date",
     "readonly": true,
-    "source": "derived"
+    "source": "derived",
+    "includeTime": true,
+    "revision": 1
   },
   {
     "description": "List of recommended relations",
@@ -427,7 +431,9 @@
     "maxCount": 1,
     "name": "Last opened date",
     "readonly": true,
-    "source": "account"
+    "source": "account",
+    "includeTime": true,
+    "revision": 1
   },
   {
     "format": "object",
@@ -542,7 +548,9 @@
     "maxCount": 1,
     "name": "Added date",
     "readonly": true,
-    "source": "details"
+    "source": "details",
+    "includeTime": true,
+    "revision": 1
   },
   {
     "description": "Person who is responsible for this task or object",
@@ -1187,6 +1195,16 @@
     "source": "details"
   },
   {
+    "description": "Encoded encryption key of invite file for current space. It stored in SpaceView",
+    "format": "number",
+    "hidden": true,
+    "key": "spaceInviteType",
+    "maxCount": 1,
+    "name": "Invite type of space",
+    "readonly": true,
+    "source": "details"
+  },
+  {
     "description": "CID of invite file for  for guest user in the current space. It's stored in SpaceView",
     "format": "shorttext",
     "hidden": true,
@@ -1223,6 +1241,16 @@
     "key": "participantPermissions",
     "maxCount": 1,
     "name": "Participant permissions",
+    "readonly": true,
+    "source": "details"
+  },
+  {
+    "description": "Invite permissions. Possible values: models.ParticipantPermissions",
+    "format": "number",
+    "hidden": true,
+    "key": "spaceInvitePermissions",
+    "maxCount": 1,
+    "name": "Invite permissions",
     "readonly": true,
     "source": "details"
   },
@@ -1295,7 +1323,8 @@
     "name": "Last used date",
     "readonly": true,
     "source": "local",
-    "revision": 1
+    "revision": 2,
+    "includeTime": true
   },
   {
     "description": "Revision of system object",
@@ -1356,7 +1385,9 @@
     "maxCount": 1,
     "name": "Sync date",
     "readonly": true,
-    "source": "local"
+    "source": "local",
+    "includeTime": true,
+    "revision": 1
   },
   {
     "description": "Object sync error",
@@ -1427,6 +1458,78 @@
     "name": "Resolved layout",
     "readonly": true,
     "source": "derived"
+  },
+  {
+    "format": "shorttext",
+    "hidden": true,
+    "key": "fileVariantIds",
+    "maxCount": 0,
+    "name": "Underlying file id",
+    "readonly": true,
+    "source": "details"
+  },
+  {
+    "format": "shorttext",
+    "hidden": true,
+    "key": "fileVariantPaths",
+    "maxCount": 0,
+    "name": "Underlying file id",
+    "readonly": true,
+    "source": "details"
+  },
+  {
+    "format": "shorttext",
+    "hidden": true,
+    "key": "fileVariantKeys",
+    "maxCount": 0,
+    "name": "Underlying file id",
+    "readonly": true,
+    "source": "details"
+  },
+  {
+    "format": "number",
+    "hidden": true,
+    "key": "fileVariantWidths",
+    "maxCount": 0,
+    "name": "Underlying file id",
+    "readonly": true,
+    "source": "details"
+  },
+  {
+    "format": "shorttext",
+    "hidden": true,
+    "key": "fileVariantChecksums",
+    "maxCount": 0,
+    "name": "Underlying file id",
+    "readonly": true,
+    "source": "details"
+  },
+  {
+    "format": "shorttext",
+    "hidden": true,
+    "key": "fileVariantMills",
+    "maxCount": 0,
+    "name": "Underlying file id",
+    "readonly": true,
+    "source": "details"
+  },
+  {
+    "format": "shorttext",
+    "hidden": true,
+    "key": "fileVariantOptions",
+    "maxCount": 0,
+    "name": "Underlying file id",
+    "readonly": true,
+    "source": "details"
+  },
+  {
+    "format": "shorttext",
+    "hidden": true,
+    "key": "fileSourceChecksum",
+    "maxCount": 1,
+    "name": "Underlying file id",
+    "readonly": true,
+    "source": "details"
   },
   {
     "description": "Space order",
@@ -1535,5 +1638,65 @@
     "name": "Plural name",
     "readonly": false,
     "source": "details"
+  },
+  {
+    "description": "Layout of header relations. Line or column",
+    "format": "number",
+    "hidden": true,
+    "key": "headerRelationsLayout",
+    "maxCount": 1,
+    "name": "Header relations layout",
+    "readonly": false,
+    "source": "details"
+  },
+  {
+    "description": "Identifier to use in intergrations with Anytype API",
+    "format": "longtext",
+    "hidden": true,
+    "key": "apiObjectKey",
+    "maxCount": 1,
+    "name": "API Object Key",
+    "readonly": false,
+    "source": "details"
+  },
+  {
+    "description": "Should time be shown for relation values with date format",
+    "format": "checkbox",
+    "hidden": true,
+    "key": "relationFormatIncludeTime",
+    "maxCount": 0,
+    "name": "IncludeTime",
+    "readonly": true,
+    "source": "details"
+  },
+  {
+    "description": "Push notification mode - mute/all/mentions (see model.SpacePushNotificationMode)",
+    "format": "number",
+    "hidden": true,
+    "key": "spacePushNotificationMode",
+    "maxCount": 1,
+    "name": "Push topics",
+    "readonly": false,
+    "source": "details"
+  },
+  {
+    "description": "Push notifications space key (base64)",
+    "format": "longtext",
+    "hidden": true,
+    "key": "spacePushNotificationKey",
+    "maxCount": 1,
+    "name": "Push notifications space key",
+    "readonly": true,
+    "source": "details"
+  },
+  {
+    "description": "Push notifications encryption key (base64)",
+    "format": "longtext",
+    "hidden": true,
+    "key": "spacePushNotificationEncryptionKey",
+    "maxCount": 1,
+    "name": "Push notifications encryption key",
+    "readonly": true,
+    "source": "local"
   }
 ]

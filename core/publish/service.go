@@ -40,7 +40,7 @@ var (
 const CName = "common.core.publishservice"
 
 const (
-	membershipLimit       = 100 << 20
+	membershipLimit       = 6000 << 20
 	defaultLimit          = 10 << 20
 	inviteLinkUrlTemplate = "https://invite.any.coop/%s#%s"
 	memberUrlTemplate     = "https://%s.org"
@@ -51,6 +51,7 @@ const (
 var log = logger.NewNamed(CName)
 
 var ErrLimitExceeded = errors.New("limit exceeded")
+var ErrUrlAlreadyTaken = errors.New("url is already taken by another page")
 
 type PublishResult struct {
 	Url string
@@ -170,6 +171,7 @@ func (s *service) publishToPublishServer(ctx context.Context, spaceId, pageId, u
 	if err != nil {
 		return err
 	}
+
 	tempPublishDir := filepath.Join(os.TempDir(), uniqName())
 	defer os.RemoveAll(tempPublishDir)
 
@@ -362,6 +364,10 @@ func (s *service) publishToServer(ctx context.Context, spaceId, pageId, uri, ver
 
 	uploadUrl, err := s.publishClientService.Publish(ctx, publishReq)
 	if err != nil {
+		if errors.Is(err, publishapi.ErrUriNotUnique) {
+			return ErrUrlAlreadyTaken
+		}
+
 		return err
 	}
 

@@ -9,7 +9,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-const TypeChecksum = "880c466315e22d0b573f6542b4ca1dcc4e2cb3395de3bad901f87460ff914191"
+const TypeChecksum = "4887c4b1b59f6fa595cc67185d19aec9212680c2316aa452ec39b66d5eea1b83"
 const (
 	TypePrefix = "_ot"
 )
@@ -435,17 +435,18 @@ var (
 		},
 		TypeKeyTemplate: {
 
-			Description:   "",
-			IconColor:     8,
-			IconName:      "copy",
-			Layout:        model.ObjectType_basic,
-			Name:          "Template",
-			PluralName:    "Templates",
-			Readonly:      true,
-			RelationLinks: []*model.RelationLink{MustGetRelationLink(RelationKeyTargetObjectType), MustGetRelationLink(RelationKeyTemplateIsBundled)},
-			Revision:      4,
-			Types:         []model.SmartBlockType{model.SmartBlockType_Template},
-			Url:           TypePrefix + "template",
+			Description:            "",
+			IconColor:              8,
+			IconName:               "copy",
+			Layout:                 model.ObjectType_basic,
+			Name:                   "Template",
+			PluralName:             "Templates",
+			Readonly:               true,
+			RelationLinks:          []*model.RelationLink{MustGetRelationLink(RelationKeyTargetObjectType), MustGetRelationLink(RelationKeyTemplateIsBundled)},
+			RestrictObjectCreation: true,
+			Revision:               4,
+			Types:                  []model.SmartBlockType{model.SmartBlockType_Template},
+			Url:                    TypePrefix + "template",
 		},
 		TypeKeyVideo: {
 

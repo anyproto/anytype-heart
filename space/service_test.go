@@ -391,7 +391,7 @@ func (fx *fixture) expectRun(t *testing.T, expectOldAccount func(t *testing.T, f
 		commonSpace := mock_commonspace.NewMockSpace(fx.ctrl)
 		commonSpace.EXPECT().Id().Return(fx.spaceId).AnyTimes()
 		fx.spaceCore.EXPECT().Create(mock.Anything, mock.Anything, mock.Anything).Return(&spacecore.AnySpace{Space: commonSpace}, nil)
-		fx.factory.EXPECT().CreateShareableSpace(mock.Anything, mock.Anything).Return(prCtrl, nil)
+		fx.factory.EXPECT().CreateShareableSpace(mock.Anything, mock.Anything, mock.Anything).Return(prCtrl, nil)
 		lw := lwMock{clientSpace}
 		clientSpace.EXPECT().Id().Return(fx.spaceId)
 		prCtrl.EXPECT().Current().Return(lw)

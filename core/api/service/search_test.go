@@ -129,7 +129,7 @@ func TestSearchService_GlobalSearch(t *testing.T) {
 			Error: &pb.RpcObjectSearchResponseError{Code: pb.RpcObjectSearchResponseError_NULL},
 		}).Once()
 
-		// Mock GetPropertyMapsFromStore
+		// Mock getPropertyMapsFromStore
 		fx.mwMock.On("ObjectSearch", mock.Anything, &pb.RpcObjectSearchRequest{
 			SpaceId: mockedSpaceId,
 			Filters: []*model.BlockContentDataviewFilter{
@@ -147,6 +147,7 @@ func TestSearchService_GlobalSearch(t *testing.T) {
 			Keys: []string{
 				bundle.RelationKeyId.String(),
 				bundle.RelationKeyRelationKey.String(),
+				bundle.RelationKeyApiObjectKey.String(),
 				bundle.RelationKeyName.String(),
 				bundle.RelationKeyRelationFormat.String(),
 			},
@@ -192,7 +193,7 @@ func TestSearchService_GlobalSearch(t *testing.T) {
 			},
 		}, nil).Once()
 
-		// Mock GetTypeMapsFromStore
+		// Mock getTypeMapsFromStore
 		fx.mwMock.On("ObjectSearch", mock.Anything, &pb.RpcObjectSearchRequest{
 			SpaceId: mockedSpaceId,
 			Filters: []*model.BlockContentDataviewFilter{
@@ -208,6 +209,7 @@ func TestSearchService_GlobalSearch(t *testing.T) {
 			Keys: []string{
 				bundle.RelationKeyId.String(),
 				bundle.RelationKeyUniqueKey.String(),
+				bundle.RelationKeyApiObjectKey.String(),
 				bundle.RelationKeyName.String(),
 				bundle.RelationKeyPluralName.String(),
 				bundle.RelationKeyIconEmoji.String(),
@@ -229,7 +231,7 @@ func TestSearchService_GlobalSearch(t *testing.T) {
 			},
 		}, nil).Once()
 
-		// Mock GetTagMapFromStore
+		// Mock getTagMapFromStore
 		fx.mwMock.On("ObjectSearch", mock.Anything, &pb.RpcObjectSearchRequest{
 			SpaceId: mockedSpaceId,
 			Filters: []*model.BlockContentDataviewFilter{
@@ -438,7 +440,7 @@ func TestSearchService_Search(t *testing.T) {
 			Error: &pb.RpcObjectSearchResponseError{Code: pb.RpcObjectSearchResponseError_NULL},
 		}).Once()
 
-		// Mock GetPropertyMapsFromStore
+		// Mock getPropertyMapsFromStore
 		fx.mwMock.On("ObjectSearch", mock.Anything, &pb.RpcObjectSearchRequest{
 			SpaceId: mockedSpaceId,
 			Filters: []*model.BlockContentDataviewFilter{
@@ -456,6 +458,7 @@ func TestSearchService_Search(t *testing.T) {
 			Keys: []string{
 				bundle.RelationKeyId.String(),
 				bundle.RelationKeyRelationKey.String(),
+				bundle.RelationKeyApiObjectKey.String(),
 				bundle.RelationKeyName.String(),
 				bundle.RelationKeyRelationFormat.String(),
 			},
@@ -501,7 +504,7 @@ func TestSearchService_Search(t *testing.T) {
 			},
 		}, nil).Once()
 
-		// Mock GetTypeMapFromStore
+		// Mock getTypeMapFromStore
 		fx.mwMock.On("ObjectSearch", mock.Anything, &pb.RpcObjectSearchRequest{
 			SpaceId: mockedSpaceId,
 			Filters: []*model.BlockContentDataviewFilter{
@@ -517,6 +520,7 @@ func TestSearchService_Search(t *testing.T) {
 			Keys: []string{
 				bundle.RelationKeyId.String(),
 				bundle.RelationKeyUniqueKey.String(),
+				bundle.RelationKeyApiObjectKey.String(),
 				bundle.RelationKeyName.String(),
 				bundle.RelationKeyPluralName.String(),
 				bundle.RelationKeyIconEmoji.String(),
@@ -538,7 +542,7 @@ func TestSearchService_Search(t *testing.T) {
 			},
 		}, nil).Once()
 
-		// Mock GetTagMapFromStore
+		// Mock getTagMapFromStore
 		fx.mwMock.On("ObjectSearch", mock.Anything, &pb.RpcObjectSearchRequest{
 			SpaceId: mockedSpaceId,
 			Filters: []*model.BlockContentDataviewFilter{

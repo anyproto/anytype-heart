@@ -7,6 +7,7 @@ import (
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/net/peerservice"
 	"github.com/anyproto/any-sync/net/pool"
+	"github.com/anyproto/any-sync/net/rpc/rpcerr"
 	"github.com/anyproto/any-sync/net/secureservice"
 	"github.com/anyproto/anytype-push-server/pushclient/pushapi"
 	"storj.io/drpc"
@@ -23,6 +24,7 @@ const CName = "core.pushnotification.client"
 type Client interface {
 	app.Component
 	SetToken(ctx context.Context, req *pushapi.SetTokenRequest) (err error)
+	RevokeToken(ctx context.Context) (err error)
 	SubscribeAll(ctx context.Context, req *pushapi.SubscribeAllRequest) (err error)
 	CreateSpace(ctx context.Context, req *pushapi.CreateSpaceRequest) (err error)
 	Notify(ctx context.Context, req *pushapi.NotifyRequest) (err error)
@@ -52,7 +54,21 @@ func (c *client) SetToken(ctx context.Context, req *pushapi.SetTokenRequest) (er
 	err = c.doClient(ctx, func(c pushapi.DRPCPushClient) error {
 		_, err = c.SetToken(ctx, req)
 		if err != nil {
-			return fmt.Errorf("set token: %w", err)
+			return fmt.Errorf("set token: %w", rpcerr.Unwrap(err))
+		}
+		return nil
+	})
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (c *client) RevokeToken(ctx context.Context) (err error) {
+	err = c.doClient(ctx, func(c pushapi.DRPCPushClient) error {
+		_, err = c.RevokeToken(ctx, &pushapi.Ok{})
+		if err != nil {
+			return fmt.Errorf("revoke token: %w", rpcerr.Unwrap(err))
 		}
 		return nil
 	})
@@ -66,7 +82,27 @@ func (c *client) SubscribeAll(ctx context.Context, req *pushapi.SubscribeAllRequ
 	return c.doClient(ctx, func(c pushapi.DRPCPushClient) error {
 		_, err := c.SubscribeAll(ctx, req)
 		if err != nil {
-			return fmt.Errorf("subscribe all: %w", err)
+			return fmt.Errorf("subscribe all: %w", rpcerr.Unwrap(err))
+		}
+		return nil
+	})
+}
+
+func (c *client) Subscribe(ctx context.Context, req *pushapi.SubscribeRequest) error {
+	return c.doClient(ctx, func(c pushapi.DRPCPushClient) error {
+		_, err := c.Subscribe(ctx, req)
+		if err != nil {
+			return fmt.Errorf("subscribe: %w", rpcerr.Unwrap(err))
+		}
+		return nil
+	})
+}
+
+func (c *client) Unsubscribe(ctx context.Context, req *pushapi.UnsubscribeRequest) error {
+	return c.doClient(ctx, func(c pushapi.DRPCPushClient) error {
+		_, err := c.Unsubscribe(ctx, req)
+		if err != nil {
+			return fmt.Errorf("unsubscribe: %w", rpcerr.Unwrap(err))
 		}
 		return nil
 	})
@@ -76,7 +112,7 @@ func (c *client) CreateSpace(ctx context.Context, req *pushapi.CreateSpaceReques
 	return c.doClient(ctx, func(c pushapi.DRPCPushClient) error {
 		_, err := c.CreateSpace(ctx, req)
 		if err != nil {
-			return fmt.Errorf("create space: %w", err)
+			return fmt.Errorf("create space: %w", rpcerr.Unwrap(err))
 		}
 		return nil
 	})
@@ -86,7 +122,7 @@ func (c *client) Notify(ctx context.Context, req *pushapi.NotifyRequest) error {
 	return c.doClient(ctx, func(c pushapi.DRPCPushClient) error {
 		_, err := c.Notify(ctx, req)
 		if err != nil {
-			return fmt.Errorf("notify: %w", err)
+			return fmt.Errorf("notify: %w", rpcerr.Unwrap(err))
 		}
 		return nil
 	})
@@ -96,7 +132,7 @@ func (c *client) Subscriptions(ctx context.Context, req *pushapi.SubscriptionsRe
 	err = c.doClient(ctx, func(c pushapi.DRPCPushClient) error {
 		resp, err = c.Subscriptions(ctx, req)
 		if err != nil {
-			return fmt.Errorf("subscriptions: %w", err)
+			return fmt.Errorf("subscriptions: %w", rpcerr.Unwrap(err))
 		}
 		return nil
 	})

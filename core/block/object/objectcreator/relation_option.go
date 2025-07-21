@@ -3,9 +3,8 @@ package objectcreator
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
-
-	"github.com/globalsign/mgo/bson"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/domain"
@@ -29,7 +28,7 @@ func (s *service) createRelationOption(ctx context.Context, space clientspace.Sp
 	if !details.Has(bundle.RelationKeyCreatedDate) {
 		details.SetInt64(bundle.RelationKeyCreatedDate, time.Now().Unix())
 	}
-	uniqueKey, err := getUniqueKeyOrGenerate(coresb.SmartBlockTypeRelationOption, details)
+	uniqueKey, wasGenerated, err := getUniqueKeyOrGenerate(coresb.SmartBlockTypeRelationOption, details)
 	if err != nil {
 		return "", nil, fmt.Errorf("getUniqueKeyOrGenerate: %w", err)
 	}
@@ -38,21 +37,18 @@ func (s *service) createRelationOption(ctx context.Context, space clientspace.Sp
 	object.SetString(bundle.RelationKeyUniqueKey, uniqueKey.Marshal())
 	object.SetInt64(bundle.RelationKeyLayout, int64(model.ObjectType_relationOption))
 
+	var objectKey string
+	if !wasGenerated {
+		objectKey = uniqueKey.InternalKey()
+	}
+	injectApiObjectKey(object, objectKey)
+
+	if strings.TrimSpace(object.GetString(bundle.RelationKeyApiObjectKey)) == "" {
+		object.SetString(bundle.RelationKeyApiObjectKey, transliterate(object.GetString(bundle.RelationKeyName)))
+	}
+
 	createState := state.NewDocWithUniqueKey("", nil, uniqueKey).(*state.State)
 	createState.SetDetails(object)
 	setOriginalCreatedTimestamp(createState, details)
 	return s.CreateSmartBlockFromStateInSpace(ctx, space, []domain.TypeKey{bundle.TypeKeyRelationOption}, createState)
-}
-
-func getUniqueKeyOrGenerate(sbType coresb.SmartBlockType, details *domain.Details) (domain.UniqueKey, error) {
-	uniqueKey := details.GetString(bundle.RelationKeyUniqueKey)
-	if uniqueKey == "" {
-		newUniqueKey, err := domain.NewUniqueKey(sbType, bson.NewObjectId().Hex())
-		if err != nil {
-			return nil, err
-		}
-		details.SetString(bundle.RelationKeyUniqueKey, newUniqueKey.Marshal())
-		return newUniqueKey, err
-	}
-	return domain.UnmarshalUniqueKey(uniqueKey)
 }

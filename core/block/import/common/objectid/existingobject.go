@@ -43,6 +43,9 @@ func (e *existingObject) GetIDAndPayload(_ context.Context, spaceID string, sn *
 	if sn.Snapshot.SbType == sb.SmartBlockTypeRelation {
 		return e.getExistingRelation(sn, spaceID), treestorage.TreeStorageCreatePayload{}, nil
 	}
+	if sn.Snapshot.SbType == sb.SmartBlockTypeObjectType {
+		return e.getExistingObjectType(sn, spaceID), treestorage.TreeStorageCreatePayload{}, nil
+	}
 	return "", treestorage.TreeStorageCreatePayload{}, nil
 }
 
@@ -126,29 +129,65 @@ func (e *existingObject) getExistingRelationOption(snapshot *common.Snapshot, sp
 }
 
 func (e *existingObject) getExistingRelation(snapshot *common.Snapshot, spaceID string) string {
-	name := snapshot.Snapshot.Data.Details.GetString(bundle.RelationKeyName)
-	format := snapshot.Snapshot.Data.Details.GetFloat64(bundle.RelationKeyRelationFormat)
-	ids, _, err := e.objectStore.SpaceIndex(spaceID).QueryObjectIds(database.Query{
-		Filters: []database.FilterRequest{
-			{
-				Condition:   model.BlockContentDataviewFilter_Equal,
-				RelationKey: bundle.RelationKeyName,
-				Value:       domain.String(name),
+	records, err := e.objectStore.SpaceIndex(spaceID).QueryRaw(&database.Filters{FilterObj: database.FiltersAnd{
+		database.FilterEq{
+			Key:   bundle.RelationKeyRelationFormat,
+			Cond:  model.BlockContentDataviewFilter_Equal,
+			Value: snapshot.Snapshot.Data.Details.Get(bundle.RelationKeyRelationFormat),
+		},
+		database.FilterEq{
+			Key:   bundle.RelationKeyResolvedLayout,
+			Cond:  model.BlockContentDataviewFilter_Equal,
+			Value: domain.Int64(model.ObjectType_relation),
+		},
+		database.FiltersOr{
+			database.FilterEq{
+				Key:   bundle.RelationKeyName,
+				Cond:  model.BlockContentDataviewFilter_Equal,
+				Value: snapshot.Snapshot.Data.Details.Get(bundle.RelationKeyName),
 			},
-			{
-				Condition:   model.BlockContentDataviewFilter_Equal,
-				RelationKey: bundle.RelationKeyRelationFormat,
-				Value:       domain.Float64(format),
-			},
-			{
-				Condition:   model.BlockContentDataviewFilter_Equal,
-				RelationKey: bundle.RelationKeyResolvedLayout,
-				Value:       domain.Int64(model.ObjectType_relation),
+			database.FilterEq{
+				Key:   bundle.RelationKeyRelationKey,
+				Cond:  model.BlockContentDataviewFilter_Equal,
+				Value: snapshot.Snapshot.Data.Details.Get(bundle.RelationKeyRelationKey),
 			},
 		},
-	})
-	if err == nil && len(ids) > 0 {
-		return ids[0]
+	}}, 1, 0)
+	if err == nil && len(records) > 0 {
+		return records[0].Details.GetString(bundle.RelationKeyId)
 	}
+	return ""
+}
+
+func (e *existingObject) getExistingObjectType(snapshot *common.Snapshot, spaceID string) string {
+	name := snapshot.Snapshot.Data.Details.GetString(bundle.RelationKeyName)
+	if name == "" {
+		return ""
+	}
+
+	// Search for existing object type by name or unique key
+	records, err := e.objectStore.SpaceIndex(spaceID).QueryRaw(&database.Filters{FilterObj: database.FiltersAnd{
+		database.FilterEq{
+			Key:   bundle.RelationKeyResolvedLayout,
+			Cond:  model.BlockContentDataviewFilter_Equal,
+			Value: domain.Int64(model.ObjectType_objectType),
+		},
+		database.FiltersOr{
+			database.FilterEq{
+				Key:   bundle.RelationKeyName,
+				Cond:  model.BlockContentDataviewFilter_Equal,
+				Value: snapshot.Snapshot.Data.Details.Get(bundle.RelationKeyName),
+			},
+			database.FilterEq{
+				Key:   bundle.RelationKeyUniqueKey,
+				Cond:  model.BlockContentDataviewFilter_Equal,
+				Value: snapshot.Snapshot.Data.Details.Get(bundle.RelationKeyUniqueKey),
+			},
+		},
+	}}, 1, 0)
+	if err == nil && len(records) > 0 {
+		return records[0].Details.GetString(bundle.RelationKeyId)
+	}
+
 	return ""
 }

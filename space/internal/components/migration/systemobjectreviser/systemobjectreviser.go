@@ -39,9 +39,11 @@ var (
 		bundle.RelationKeyIconName,
 		bundle.RelationKeyPluralName,
 		bundle.RelationKeyRecommendedLayout,
+		bundle.RelationKeyRelationFormatIncludeTime,
 	}
 
 	customObjectFilterKeys = []domain.RelationKey{
+		bundle.RelationKeyRevision,
 		bundle.RelationKeyIconOption,
 		bundle.RelationKeyIconName,
 		bundle.RelationKeyPluralName,

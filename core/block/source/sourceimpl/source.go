@@ -21,6 +21,7 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/editor/template"
+	"github.com/anyproto/anytype-heart/core/block/object/objecthandler"
 	"github.com/anyproto/anytype-heart/core/block/source"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/files"
@@ -28,6 +29,7 @@ import (
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/spaceindex"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -157,7 +159,8 @@ func (s *service) newTreeSource(ctx context.Context, space source.Space, id stri
 		accountKeysService: s.accountKeysService,
 		sbtProvider:        s.sbtProvider,
 		fileService:        s.fileService,
-		objectStore:        s.objectStore.SpaceIndex(space.Id()),
+		objectStore:        s.objectStore,
+		spaceIndex:         s.objectStore.SpaceIndex(space.Id()),
 		fileObjectMigrator: s.fileObjectMigrator,
 	}
 	if sbt == smartblock.SmartBlockTypeChatDerivedObject || sbt == smartblock.SmartBlockTypeAccountObject {
@@ -188,7 +191,8 @@ type treeSource struct {
 	accountService     accountService
 	accountKeysService accountservice.Service
 	sbtProvider        typeprovider.SmartBlockTypeProvider
-	objectStore        spaceindex.Store
+	objectStore        objectstore.ObjectStore
+	spaceIndex         spaceindex.Store
 	fileObjectMigrator fileObjectMigrator
 }
 
@@ -284,10 +288,21 @@ func (s *treeSource) buildState() (doc state.Doc, err error) {
 	}
 	st.BlocksInit(st)
 
+	// This is temporary migration. We will move it to persistent migration later after several releases.
+	// The reason is to minimize the number of glitches for users of both old and new versions of Anytype.
+	// For example, if we persist this migration for Dataview block now, user will see "No query selected"
+	// error in the old version of Anytype. We want to avoid this as much as possible by making this migration
+	// temporary, though the applying change to this Dataview block will persist this migration, breaking backward
+	// compatibility. But in many cases we expect that users update object not so often as they just view them.
+	// TODO: we can skip migration for non-personal spaces
+	migration := source.NewSubObjectsAndProfileLinksMigration(s.smartblockType, s.space, s.accountService.MyParticipantId(s.spaceID), s.spaceIndex)
+	migration.Migrate(st)
+
 	// we need to have required internal relations for all objects, including system
 	st.AddBundledRelationLinks(bundle.RequiredInternalRelations...)
 	if s.Type() == smartblock.SmartBlockTypePage || s.Type() == smartblock.SmartBlockTypeProfilePage {
 		template.WithRelations([]domain.RelationKey{bundle.RelationKeyBacklinks})(st)
+		template.WithFeaturedRelationsBlock(st)
 	}
 
 	if s.Type() == smartblock.SmartBlockTypeWidget {
@@ -491,16 +506,18 @@ func (s *treeSource) getFileHashesForSnapshot(changeHashes []string) []*pb.Chang
 func (s *treeSource) getFileKeysByHashes(hashes []string) []*pb.ChangeFileKeys {
 	fileKeys := make([]*pb.ChangeFileKeys, 0, len(hashes))
 	for _, h := range hashes {
-		fk, err := s.fileService.FileGetKeys(domain.FileId(h))
+		fileId := domain.FileId(h)
+		keys, err := s.objectStore.GetFileKeys(fileId)
 		if err != nil {
 			// New file
 			log.Debugf("can't get file key for hash: %v: %v", h, err)
 			continue
 		}
+
 		// Migrated file
 		fileKeys = append(fileKeys, &pb.ChangeFileKeys{
-			Hash: fk.FileId.String(),
-			Keys: fk.EncryptionKeys,
+			Hash: fileId.String(),
+			Keys: keys,
 		})
 	}
 	return fileKeys
@@ -558,18 +575,23 @@ func BuildState(spaceId string, initState *state.State, ot objecttree.ReadableOb
 	}
 
 	// todo: can we avoid unmarshaling here? we already had this data
-	_, uniqueKeyInternalKey, err := typeprovider.GetTypeAndKeyFromRoot(ot.Header())
+	sbt, uniqueKeyInternalKey, err := typeprovider.GetTypeAndKeyFromRoot(ot.Header())
 	if err != nil {
 		return
 	}
+
+	smartblockHandler := objecthandler.GetSmartblockHandler(sbt)
+
 	var lastMigrationVersion uint32
 	err = ot.IterateFrom(startId, NewUnmarshalTreeChange(),
 		func(change *objecttree.Change) bool {
 			count++
-			lastChange = change
+
 			// that means that we are starting from tree root
 			if change.Id == ot.Id() {
-				if uniqueKeyInternalKey != "" {
+				if st != nil {
+					st = st.NewState()
+				} else if uniqueKeyInternalKey != "" {
 					st = newState(st, state.NewDocWithInternalKey(ot.Id(), nil, uniqueKeyInternalKey).(*state.State))
 				} else {
 					st = newState(st, state.NewDoc(ot.Id(), nil).(*state.State))
@@ -579,6 +601,11 @@ func BuildState(spaceId string, initState *state.State, ot objecttree.ReadableOb
 			}
 
 			model := change.Model.(*pb.Change)
+
+			if !smartblockHandler.SkipChangeToSetLastModifiedDate(model) {
+				lastChange = change
+			}
+
 			if model.Version > lastMigrationVersion {
 				lastMigrationVersion = model.Version
 			}

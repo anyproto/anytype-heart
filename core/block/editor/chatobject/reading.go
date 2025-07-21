@@ -4,162 +4,54 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/anyproto/any-store/anyenc"
-	"github.com/anyproto/any-store/query"
+	"github.com/anyproto/any-sync/commonspace/object/tree/objecttree"
+	"github.com/anyproto/any-sync/util/crypto"
+	"github.com/anyproto/any-sync/util/slice"
+	"golang.org/x/exp/slices"
 
-	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+	"github.com/anyproto/anytype-heart/core/block/chats/chatmodel"
+	"github.com/anyproto/anytype-heart/core/block/source"
 )
 
-type CounterType int
+type ReadMessagesRequest struct {
+	AfterOrderId  string
+	BeforeOrderId string
+	LastStateId   string
 
-const (
-	CounterTypeMessage = CounterType(iota)
-	CounterTypeMention
-)
+	CounterType chatmodel.CounterType
 
-type readHandler interface {
-	getUnreadFilter() query.Filter
-	getMessagesFilter() query.Filter
-	getDiffManagerName() string
-	getReadKey() string
-	readModifier(value bool) query.Modifier
-
-	readMessages(newOldestOrderId string, idsModified []string)
-	unreadMessages(newOldestOrderId string, lastStateId string, msgIds []string)
+	// All forces to read all messages
+	All bool
 }
 
-type readMessagesHandler struct {
-	subscription *subscriptionManager
-}
-
-func (h *readMessagesHandler) getUnreadFilter() query.Filter {
-	return query.Not{
-		Filter: query.Key{Path: []string{readKey}, Filter: query.NewComp(query.CompOpEq, true)},
-	}
-}
-
-func (h *readMessagesHandler) getMessagesFilter() query.Filter {
-	return nil
-}
-
-func (h *readMessagesHandler) getDiffManagerName() string {
-	return diffManagerMessages
-}
-
-func (h *readMessagesHandler) getReadKey() string {
-	return readKey
-}
-
-func (h *readMessagesHandler) readMessages(newOldestOrderId string, idsModified []string) {
-	h.subscription.updateChatState(func(state *model.ChatState) *model.ChatState {
-		state.Messages.OldestOrderId = newOldestOrderId
-		return state
-	})
-	h.subscription.updateMessageRead(idsModified, true)
-}
-
-func (h *readMessagesHandler) unreadMessages(newOldestOrderId string, lastStateId string, msgIds []string) {
-	h.subscription.updateChatState(func(state *model.ChatState) *model.ChatState {
-		state.Messages.OldestOrderId = newOldestOrderId
-		state.LastStateId = lastStateId
-		return state
-	})
-	h.subscription.updateMessageRead(msgIds, false)
-}
-
-func (h *readMessagesHandler) readModifier(value bool) query.Modifier {
-	return query.ModifyFunc(func(a *anyenc.Arena, v *anyenc.Value) (result *anyenc.Value, modified bool, err error) {
-		oldValue := v.GetBool(h.getReadKey())
-		if oldValue != value {
-			v.Set(h.getReadKey(), arenaNewBool(a, value))
-			return v, true, nil
-		}
-		return v, false, nil
-	})
-}
-
-type readMentionsHandler struct {
-	subscription *subscriptionManager
-}
-
-func (h *readMentionsHandler) getUnreadFilter() query.Filter {
-	return query.And{
-		query.Key{Path: []string{hasMentionKey}, Filter: query.NewComp(query.CompOpEq, true)},
-		query.Key{Path: []string{mentionReadKey}, Filter: query.NewComp(query.CompOpEq, false)},
-	}
-}
-
-func (h *readMentionsHandler) getMessagesFilter() query.Filter {
-	return query.Key{Path: []string{hasMentionKey}, Filter: query.NewComp(query.CompOpEq, true)}
-}
-
-func (h *readMentionsHandler) getDiffManagerName() string {
-	return diffManagerMentions
-}
-
-func (h *readMentionsHandler) getReadKey() string {
-	return mentionReadKey
-}
-
-func (h *readMentionsHandler) readMessages(newOldestOrderId string, idsModified []string) {
-	h.subscription.updateChatState(func(state *model.ChatState) *model.ChatState {
-		state.Mentions.OldestOrderId = newOldestOrderId
-		return state
-	})
-	h.subscription.updateMentionRead(idsModified, true)
-}
-
-func (h *readMentionsHandler) unreadMessages(newOldestOrderId string, lastStateId string, msgIds []string) {
-	h.subscription.updateChatState(func(state *model.ChatState) *model.ChatState {
-		state.Mentions.OldestOrderId = newOldestOrderId
-		state.LastStateId = lastStateId
-		return state
-	})
-	h.subscription.updateMentionRead(msgIds, false)
-}
-
-func (h *readMentionsHandler) readModifier(value bool) query.Modifier {
-	return query.ModifyFunc(func(a *anyenc.Arena, v *anyenc.Value) (result *anyenc.Value, modified bool, err error) {
-		if v.GetBool(hasMentionKey) {
-			oldValue := v.GetBool(h.getReadKey())
-			if oldValue != value {
-				v.Set(h.getReadKey(), arenaNewBool(a, value))
-				return v, true, nil
-			}
-		}
-		return v, false, nil
-	})
-}
-
-func newReadHandler(counterType CounterType, subscription *subscriptionManager) readHandler {
-	switch counterType {
-	case CounterTypeMessage:
-		return &readMessagesHandler{subscription: subscription}
-	case CounterTypeMention:
-		return &readMentionsHandler{subscription: subscription}
-	default:
-		panic("unknown counter type")
-	}
-}
-
-func (s *storeObject) MarkReadMessages(ctx context.Context, afterOrderId, beforeOrderId string, lastStateId string, counterType CounterType) error {
-	handler := newReadHandler(counterType, s.subscription)
+func (s *storeObject) MarkReadMessages(ctx context.Context, req ReadMessagesRequest) error {
 	// 1. select all messages with orderId < beforeOrderId and addedTime < lastDbState
 	// 2. use the last(by orderId) message id as lastHead
 	// 3. update the MarkSeenHeads
 	// 2. mark messages as read in the DB
 
-	msgs, err := s.repository.getUnreadMessageIdsInRange(ctx, afterOrderId, beforeOrderId, lastStateId, handler)
-	if err != nil {
-		return fmt.Errorf("get message: %w", err)
+	var msgs []string
+
+	if req.All {
+		var err error
+		msgs, err = s.repository.GetAllUnreadMessages(ctx, req.CounterType)
+		if err != nil {
+			return fmt.Errorf("get all messages: %w", err)
+		}
+	} else {
+		var err error
+		msgs, err = s.repository.GetUnreadMessageIdsInRange(ctx, req.AfterOrderId, req.BeforeOrderId, req.LastStateId, req.CounterType)
+		if err != nil {
+			return fmt.Errorf("get messages: %w", err)
+		}
 	}
 
 	// mark the whole tree as seen from the current message
-	return s.storeSource.MarkSeenHeads(ctx, handler.getDiffManagerName(), msgs)
+	return s.storeSource.MarkSeenHeads(ctx, req.CounterType.DiffManagerName(), msgs)
 }
 
-func (s *storeObject) MarkMessagesAsUnread(ctx context.Context, afterOrderId string, counterType CounterType) error {
-	txn, err := s.repository.writeTx(ctx)
+func (s *storeObject) MarkMessagesAsUnread(ctx context.Context, afterOrderId string, counterType chatmodel.CounterType) error {
+	txn, err := s.repository.WriteTx(ctx)
 	if err != nil {
 		return fmt.Errorf("create tx: %w", err)
 	}
@@ -169,8 +61,7 @@ func (s *storeObject) MarkMessagesAsUnread(ctx context.Context, afterOrderId str
 			_ = txn.Rollback()
 		}
 	}()
-	handler := newReadHandler(counterType, s.subscription)
-	messageIds, err := s.repository.getReadMessagesAfter(txn.Context(), afterOrderId, handler)
+	messageIds, err := s.repository.GetReadMessagesAfter(txn.Context(), afterOrderId, counterType)
 	if err != nil {
 		return fmt.Errorf("get read messages: %w", err)
 	}
@@ -179,23 +70,25 @@ func (s *storeObject) MarkMessagesAsUnread(ctx context.Context, afterOrderId str
 		return nil
 	}
 
-	idsModified := s.repository.setReadFlag(txn.Context(), s.Id(), messageIds, handler, false)
+	idsModified := s.repository.SetReadFlag(txn.Context(), s.Id(), messageIds, counterType, false)
 	if len(idsModified) == 0 {
 		return nil
 	}
 
-	newOldestOrderId, err := s.repository.getOldestOrderId(txn.Context(), handler)
+	newOldestOrderId, err := s.repository.GetOldestOrderId(txn.Context(), counterType)
 	if err != nil {
 		return fmt.Errorf("get oldest order id: %w", err)
 	}
 
-	lastAdded, err := s.repository.getLastStateId(txn.Context())
+	lastAdded, err := s.repository.GetLastStateId(txn.Context())
 	if err != nil {
 		return fmt.Errorf("get last added date: %w", err)
 	}
 
-	handler.unreadMessages(newOldestOrderId, lastAdded, idsModified)
-	s.subscription.flush()
+	s.subscription.Lock()
+	defer s.subscription.Unlock()
+	s.subscription.UnreadMessages(newOldestOrderId, lastAdded, idsModified, counterType)
+	s.subscription.Flush()
 
 	seenHeads, err := s.seenHeadsCollector.collectSeenHeads(ctx, afterOrderId)
 	if err != nil {
@@ -214,12 +107,12 @@ func (s *storeObject) MarkMessagesAsUnread(ctx context.Context, afterOrderId str
 	return txn.Commit()
 }
 
-func (s *storeObject) markReadMessages(changeIds []string, handler readHandler) error {
+func (s *storeObject) markReadMessages(changeIds []string, counterType chatmodel.CounterType) error {
 	if len(changeIds) == 0 {
 		return nil
 	}
 
-	txn, err := s.repository.writeTx(s.componentCtx)
+	txn, err := s.repository.WriteTx(s.componentCtx)
 	if err != nil {
 		return fmt.Errorf("start write tx: %w", err)
 	}
@@ -230,10 +123,10 @@ func (s *storeObject) markReadMessages(changeIds []string, handler readHandler) 
 		}
 	}()
 
-	idsModified := s.repository.setReadFlag(txn.Context(), s.Id(), changeIds, handler, true)
+	idsModified := s.repository.SetReadFlag(txn.Context(), s.Id(), changeIds, counterType, true)
 
 	if len(idsModified) > 0 {
-		newOldestOrderId, err := s.repository.getOldestOrderId(txn.Context(), handler)
+		newOldestOrderId, err := s.repository.GetOldestOrderId(txn.Context(), counterType)
 		if err != nil {
 			return fmt.Errorf("get oldest order id: %w", err)
 		}
@@ -244,8 +137,90 @@ func (s *storeObject) markReadMessages(changeIds []string, handler readHandler) 
 			return fmt.Errorf("commit: %w", err)
 		}
 
-		handler.readMessages(newOldestOrderId, idsModified)
-		s.subscription.flush()
+		s.subscription.Lock()
+		defer s.subscription.Unlock()
+		s.subscription.ReadMessages(newOldestOrderId, idsModified, counterType)
+		s.subscription.Flush()
+	}
+	return nil
+}
+
+type readStoreTreeHook struct {
+	joinedAclRecordId string
+	headsBeforeJoin   []string
+	currentIdentity   crypto.PubKey
+	source            source.Store
+}
+
+func (h *readStoreTreeHook) BeforeIteration(ot objecttree.ObjectTree) {
+	h.joinedAclRecordId = ot.AclList().Head().Id
+	for _, accState := range ot.AclList().AclState().CurrentAccounts() {
+		if !accState.PubKey.Equals(h.currentIdentity) {
+			continue
+		}
+		// Find the first record in which the user has got permissions since the last join
+		// Example:
+		// We have acl: [ 1:noPermissions, 2:reader, 3:noPermission, 4:reader, 5:writer ]
+		// Record with id=4 is one that we need
+		for i := len(accState.PermissionChanges) - 1; i >= 0; i-- {
+			permChange := accState.PermissionChanges[i]
+
+			if permChange.Permission.NoPermissions() {
+				break
+			} else {
+				h.joinedAclRecordId = permChange.RecordId
+			}
+		}
+		break
+	}
+}
+
+func (h *readStoreTreeHook) OnIteration(ot objecttree.ObjectTree, change *objecttree.Change) {
+	if ok, _ := ot.AclList().IsAfter(h.joinedAclRecordId, change.AclHeadId); ok {
+		h.headsBeforeJoin = slice.DiscardFromSlice(h.headsBeforeJoin, func(s string) bool {
+			return slices.Contains(change.PreviousIds, s)
+		})
+		if !slices.Contains(h.headsBeforeJoin, change.Id) {
+			h.headsBeforeJoin = append(h.headsBeforeJoin, change.Id)
+		}
+	}
+}
+
+func (h *readStoreTreeHook) AfterDiffManagersInit(ctx context.Context) error {
+	err := h.source.MarkSeenHeads(ctx, diffManagerMessages, h.headsBeforeJoin)
+	if err != nil {
+		return fmt.Errorf("mark read messages: %w", err)
+	}
+	err = h.source.MarkSeenHeads(ctx, diffManagerMentions, h.headsBeforeJoin)
+	if err != nil {
+		return fmt.Errorf("mark read mentions: %w", err)
+	}
+	return nil
+}
+
+func (s *storeObject) setMessagesSyncStatus(changeIds []string) error {
+	if len(changeIds) == 0 {
+		return nil
+	}
+
+	txn, err := s.repository.WriteTx(s.componentCtx)
+	if err != nil {
+		return fmt.Errorf("start write tx: %w", err)
+	}
+	defer txn.Rollback()
+
+	idsModified := s.repository.SetSyncedFlag(txn.Context(), s.Id(), changeIds, true)
+
+	if len(idsModified) > 0 {
+		err = txn.Commit()
+		if err != nil {
+			return fmt.Errorf("commit: %w", err)
+		}
+
+		s.subscription.Lock()
+		defer s.subscription.Unlock()
+		s.subscription.UpdateSyncStatus(idsModified, true)
+		s.subscription.Flush()
 	}
 	return nil
 }

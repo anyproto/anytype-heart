@@ -61,9 +61,6 @@ func (r *clientds) syncer() error {
 	if r.spaceDS != nil {
 		syncers = append(syncers, newDbSyncer(r.spaceDS))
 	}
-	if r.localstoreDS != nil {
-		syncers = append(syncers, newDbSyncer(r.localstoreDS))
-	}
 
 	for {
 		select {

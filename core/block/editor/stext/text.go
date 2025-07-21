@@ -393,36 +393,6 @@ func (t *textImpl) TurnInto(ctx session.Context, style model.BlockContentTextSty
 		}
 	}
 
-	onlyParents := func(ids []string) (parents []string) {
-		var childrenIds []string
-		for _, id := range ids {
-			if b := s.Pick(id); b != nil {
-				childrenIds = append(childrenIds, b.Model().ChildrenIds...)
-			}
-		}
-		parents = ids[:0]
-		for _, id := range ids {
-			if slice.FindPos(childrenIds, id) == -1 {
-				parents = append(parents, id)
-			}
-		}
-		return
-	}
-
-	switch style {
-	case model.BlockContentText_Toggle,
-		model.BlockContentText_Checkbox,
-		model.BlockContentText_Marked,
-		model.BlockContentText_Numbered,
-		model.BlockContentText_Header1,
-		model.BlockContentText_Header2,
-		model.BlockContentText_Header3,
-		model.BlockContentText_Code,
-		model.BlockContentText_Callout,
-		model.BlockContentText_Quote:
-		ids = onlyParents(ids)
-	}
-
 	for _, id := range ids {
 		var textBlock text.Block
 		var ok bool

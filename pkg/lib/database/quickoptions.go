@@ -8,91 +8,67 @@ import (
 	timeutil "github.com/anyproto/anytype-heart/util/time"
 )
 
-func transformQuickOption(protoFilter FilterRequest, loc *time.Location) []FilterRequest {
-	var filters []FilterRequest
-
-	if protoFilter.QuickOption > model.BlockContentDataviewFilter_ExactDate || protoFilter.Format == model.RelationFormat_date {
-		d1, d2 := getRange(protoFilter, loc)
-		switch protoFilter.Condition {
-		case model.BlockContentDataviewFilter_Equal:
-			protoFilter.Condition = model.BlockContentDataviewFilter_GreaterOrEqual
-			protoFilter.Value = domain.Int64(d1)
-
-			filters = append(filters, FilterRequest{
-				RelationKey: protoFilter.RelationKey,
-				Condition:   model.BlockContentDataviewFilter_LessOrEqual,
-				Value:       domain.Int64(d2),
-			})
-		case model.BlockContentDataviewFilter_Less:
-			protoFilter.Value = domain.Int64(d1)
-		case model.BlockContentDataviewFilter_Greater:
-			protoFilter.Value = domain.Int64(d2)
-		case model.BlockContentDataviewFilter_LessOrEqual:
-			protoFilter.Value = domain.Int64(d2)
-		case model.BlockContentDataviewFilter_GreaterOrEqual:
-			protoFilter.Value = domain.Int64(d1)
-		case model.BlockContentDataviewFilter_In:
-			protoFilter.Condition = model.BlockContentDataviewFilter_GreaterOrEqual
-			protoFilter.Value = domain.Int64(d1)
-
-			filters = append(filters, FilterRequest{
-				RelationKey: protoFilter.RelationKey,
-				Condition:   model.BlockContentDataviewFilter_LessOrEqual,
-				Value:       domain.Int64(d2),
-			})
-		}
+func transformQuickOption(protoFilter FilterRequest) []FilterRequest {
+	if protoFilter.QuickOption == 0 && protoFilter.Format != model.RelationFormat_date {
+		return []FilterRequest{protoFilter}
 	}
 
-	filters = append(filters, protoFilter)
-	return filters
+	from, to := getDateRange(protoFilter, time.Now())
+	switch protoFilter.Condition {
+	case model.BlockContentDataviewFilter_Equal, model.BlockContentDataviewFilter_In:
+		return []FilterRequest{{
+			RelationKey: protoFilter.RelationKey,
+			Condition:   model.BlockContentDataviewFilter_LessOrEqual,
+			Value:       domain.Int64(to.Unix()),
+		}, {
+			RelationKey: protoFilter.RelationKey,
+			Condition:   model.BlockContentDataviewFilter_GreaterOrEqual,
+			Value:       domain.Int64(from.Unix()),
+		}}
+	case model.BlockContentDataviewFilter_Less:
+		protoFilter.Value = domain.Int64(from.Unix())
+	case model.BlockContentDataviewFilter_Greater:
+		protoFilter.Value = domain.Int64(to.Unix())
+	case model.BlockContentDataviewFilter_LessOrEqual:
+		protoFilter.Value = domain.Int64(to.Unix())
+	case model.BlockContentDataviewFilter_GreaterOrEqual:
+		protoFilter.Value = domain.Int64(from.Unix())
+	}
+
+	return []FilterRequest{protoFilter}
 }
 
-func getRange(f FilterRequest, loc *time.Location) (int64, int64) {
-	var d1, d2 time.Time
-	calendar := timeutil.NewCalendar(time.Now(), loc)
+func getDateRange(f FilterRequest, now time.Time) (from, to time.Time) {
+	calendar := timeutil.NewCalendar(now, nil)
 	switch f.QuickOption {
 	case model.BlockContentDataviewFilter_Yesterday:
-		d1 = calendar.DayNumStart(-1)
-		d2 = calendar.DayNumEnd(-1)
+		return calendar.DayNumStart(-1), calendar.DayNumEnd(-1)
 	case model.BlockContentDataviewFilter_Today:
-		d1 = calendar.DayNumStart(0)
-		d2 = calendar.DayNumEnd(0)
+		return calendar.DayNumStart(0), calendar.DayNumEnd(0)
 	case model.BlockContentDataviewFilter_Tomorrow:
-		d1 = calendar.DayNumStart(1)
-		d2 = calendar.DayNumEnd(1)
+		return calendar.DayNumStart(1), calendar.DayNumEnd(1)
 	case model.BlockContentDataviewFilter_LastWeek:
-		d1 = calendar.WeekNumStart(-1)
-		d2 = calendar.WeekNumEnd(-1)
+		return calendar.WeekNumStart(-1), calendar.WeekNumEnd(-1)
 	case model.BlockContentDataviewFilter_CurrentWeek:
-		d1 = calendar.WeekNumStart(0)
-		d2 = calendar.WeekNumEnd(0)
+		return calendar.WeekNumStart(0), calendar.WeekNumEnd(0)
 	case model.BlockContentDataviewFilter_NextWeek:
-		d1 = calendar.WeekNumStart(1)
-		d2 = calendar.WeekNumEnd(1)
+		return calendar.WeekNumStart(1), calendar.WeekNumEnd(1)
 	case model.BlockContentDataviewFilter_LastMonth:
-		d1 = calendar.MonthNumStart(-1)
-		d2 = calendar.MonthNumEnd(-1)
+		return calendar.MonthNumStart(-1), calendar.MonthNumEnd(-1)
 	case model.BlockContentDataviewFilter_CurrentMonth:
-		d1 = calendar.MonthNumStart(0)
-		d2 = calendar.MonthNumEnd(0)
+		return calendar.MonthNumStart(0), calendar.MonthNumEnd(0)
 	case model.BlockContentDataviewFilter_NextMonth:
-		d1 = calendar.MonthNumStart(1)
-		d2 = calendar.MonthNumEnd(1)
+		return calendar.MonthNumStart(1), calendar.MonthNumEnd(1)
 	case model.BlockContentDataviewFilter_NumberOfDaysAgo:
 		daysCnt := f.Value.Int64()
-		d1 = calendar.DayNumStart(-int(daysCnt))
-		d2 = calendar.DayNumEnd(-1)
+		return calendar.DayNumStart(-int(daysCnt)), calendar.DayNumEnd(-int(daysCnt))
 	case model.BlockContentDataviewFilter_NumberOfDaysNow:
 		daysCnt := f.Value.Int64()
-		d1 = calendar.DayNumStart(0)
-		d2 = calendar.DayNumEnd(int(daysCnt))
-	case model.BlockContentDataviewFilter_ExactDate:
+		return calendar.DayNumStart(int(daysCnt)), calendar.DayNumEnd(int(daysCnt))
+	default:
 		timestamp := f.Value.Int64()
-		t := time.Unix(int64(timestamp), 0)
-		calendar2 := timeutil.NewCalendar(t, loc)
-		d1 = calendar2.DayNumStart(0)
-		d2 = calendar2.DayNumEnd(0)
+		t := time.Unix(timestamp, 0)
+		calendar = timeutil.NewCalendar(t, nil)
+		return calendar.DayNumStart(0), calendar.DayNumEnd(0)
 	}
-
-	return d1.Unix(), d2.Unix()
 }

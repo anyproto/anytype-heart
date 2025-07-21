@@ -363,6 +363,7 @@ message Block {
                 int32 pageLimit = 13; // Limit of objects shown in widget
                 string defaultTemplateId = 14; // Default template that is chosen for new object created within the view
                 string defaultObjectTypeId = 15; // Default object type that is chosen for new object created within the view
+                string endRelationKey = 16; // Group view by this relationKey
 
                 enum Type {
                     Table = 0;
@@ -385,10 +386,9 @@ message Block {
                 bool isVisible = 2;
                 int32 width = 3; // the displayed column % calculated based on other visible relations
                 // bool isReadOnly = 4; // deprecated
-
-                bool dateIncludeTime = 5;
-                TimeFormat timeFormat = 6;
-                DateFormat dateFormat = 7;
+                bool dateIncludeTime = 5; // deprecated
+                TimeFormat timeFormat = 6; // deprecated
+                DateFormat dateFormat = 7; // deprecated
                 FormulaType formula = 8;
                 Block.Align align = 9;
 
@@ -661,6 +661,7 @@ message Account {
         string profileObjectId = 4; // profile block id
         string marketplaceWorkspaceId = 11; // marketplace workspace id
         string workspaceObjectId = 15; // workspace object id. used for space-level chat
+        string spaceChatId = 16; // space-level chat if exists
 
         string deviceId = 8;
         string accountSpaceId = 9; // the first created private space. It's filled only when account is created
@@ -677,6 +678,15 @@ message Account {
     }
 
     message Auth {
+        message AppInfo {
+            string appHash = 1;
+            string appName = 2; // either from process or specified manually when creating
+            string appKey = 4;
+            int64 createdAt = 5;
+            int64 expireAt = 6;
+            LocalApiScope scope = 7;
+            bool isActive = 8;
+        }
         enum LocalApiScope {
             Limited = 0; // Used in WebClipper; AccountSelect(to be deprecated), ObjectSearch, ObjectShow, ObjectCreate, ObjectCreateFromURL, BlockPreview, BlockPaste, BroadcastPayloadEvent
             JsonAPI = 1; // JSON API only, no direct grpc api calls allowed
@@ -801,6 +811,10 @@ message ObjectType {
         chat = 21; // deprecated
         chatDerived = 22;
         tag = 23;
+
+        notification = 24;
+        missingObject = 25;
+        devices = 26;
     }
 }
 
@@ -844,6 +858,7 @@ message Relation {
     Scope scope = 20; // deprecated, to be removed
     string creator = 21; // creator profile id
     int64 revision = 22; // revision of system relation. Used to check if we should change relation content or not
+    bool includeTime = 23; // indicates whether value of relation with date format should be processed with seconds precision
 
     message Option {
         string id = 1; // id generated automatically if omitted
@@ -1006,6 +1021,12 @@ enum ParticipantPermissions {
     NoPermissions = 3;
 }
 
+enum InviteType {
+    Member = 0; // aclKey contains the key to sign the ACL record
+    Guest = 1; // guestKey contains the privateKey of the guest user
+    WithoutApprove = 2; // aclKey contains the key to sign the ACL record, but no approval needed
+}
+
 enum ParticipantStatus {
     Joining = 0;
     Active = 1;
@@ -1022,9 +1043,10 @@ enum SpaceAccessType {
 }
 
 enum SpaceUxType {
-    Chat = 0; // chat-first UX
+    None = 0; // old value for chat, deprecated
     Data = 1; // objects-first UX
     Stream = 2; // stream UX (chat with limited amount of owners)
+    Chat = 3; // chat UX
 }
 
 message Metadata {
@@ -1161,6 +1183,7 @@ message Import {
         Html = 4;
         Txt = 5;
         Csv = 6;
+        Obsidian = 7; // Markdown with obsidian improvements
     }
 
     enum ErrorCode {
@@ -1204,10 +1227,6 @@ message InvitePayload {
 
     InviteType inviteType = 8;
     bytes guestKey = 9;
-    enum InviteType {
-        JoinAsMember = 0; // aclKey contains the key to sign the ACL record
-        JoinAsGuest = 1; // guestKey contains the privateKey of the guest user
-    }
 }
 
 message IdentityProfile {
@@ -1399,6 +1418,7 @@ message ChatState {
     UnreadState messages = 1; // unread messages
     UnreadState mentions = 2; // unread mentions
     string lastStateId = 3; // reflects the state of the chat db at the moment of sending response/event that includes this state
+    int64 order = 4; // Order is serial number of this state. Client should apply chat state only if its order is greater than previously saved order
 }
 
 message ChatMessage {
@@ -1417,6 +1437,7 @@ message ChatMessage {
     Reactions reactions = 8;  // Reactions to the message
     bool read = 10; // Message read status
     bool mentionRead = 12;
+    bool synced = 13;
     message MessageContent {
         string text = 1;      // The text content of the message part
         Block.Content.Text.Style style = 2;    // The style/type of the message part
@@ -1441,4 +1462,18 @@ message ChatMessage {
             repeated string ids = 1; // List of user IDs
         }
     }
+}
+
+enum SyncStatus {
+    SyncStatusSynced  = 0;
+    SyncStatusSyncing = 1;
+    SyncStatusError   = 2;
+    SyncStatusQueued  = 3;
+}
+
+enum SyncError {
+    SyncErrorNull                = 0;
+    SyncErrorIncompatibleVersion = 2;
+    SyncErrorNetworkError        = 3;
+    SyncErrorOversized           = 4;
 }

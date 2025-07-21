@@ -9,8 +9,8 @@ import (
 	"github.com/anyproto/anytype-heart/core/block"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/domain/objectorigin"
-	"github.com/anyproto/anytype-heart/core/files"
 	"github.com/anyproto/anytype-heart/core/files/fileoffloader"
+	"github.com/anyproto/anytype-heart/core/files/filespaceusage"
 	"github.com/anyproto/anytype-heart/core/files/reconciler"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
@@ -140,29 +140,27 @@ func (mw *Middleware) FileUpload(cctx context.Context, req *pb.RpcFileUploadRequ
 		return
 	})
 
-	if req.CreateTypeWidgetIfMissing {
-		var typeKey domain.TypeKey
-		switch fileType {
-		case model.BlockContentFile_Audio:
-			typeKey = bundle.TypeKeyAudio
-		case model.BlockContentFile_Image:
-			typeKey = bundle.TypeKeyImage
-		case model.BlockContentFile_Video:
-			typeKey = bundle.TypeKeyVideo
-		case model.BlockContentFile_PDF, model.BlockContentFile_File:
-			typeKey = bundle.TypeKeyFile
-		default:
+	var typeKey domain.TypeKey
+	switch fileType {
+	case model.BlockContentFile_Audio:
+		typeKey = bundle.TypeKeyAudio
+	case model.BlockContentFile_Image:
+		typeKey = bundle.TypeKeyImage
+	case model.BlockContentFile_Video:
+		typeKey = bundle.TypeKeyVideo
+	case model.BlockContentFile_PDF, model.BlockContentFile_File:
+		typeKey = bundle.TypeKeyFile
+	default:
 
-		}
-		if typeKey != "" {
-			// do not create widget if type is not detected. Shouldn't happen, but just in case
-			err := mw.doBlockService(func(bs *block.Service) (err error) {
-				err = bs.CreateTypeWidgetIfMissing(cctx, req.SpaceId, typeKey)
-				return err
-			})
-			if err != nil {
-				return response(objectId, nil, pb.RpcFileUploadResponseError_UNKNOWN_ERROR, err)
-			}
+	}
+	if typeKey != "" {
+		// do not create widget if type is not detected. Shouldn't happen, but just in case
+		err := mw.doBlockService(func(bs *block.Service) (err error) {
+			err = bs.CreateTypeWidgetIfMissing(cctx, req.SpaceId, typeKey)
+			return err
+		})
+		if err != nil {
+			return response(objectId, nil, pb.RpcFileUploadResponseError_UNKNOWN_ERROR, err)
 		}
 	}
 
@@ -185,7 +183,7 @@ func (mw *Middleware) FileSpaceUsage(cctx context.Context, req *pb.RpcFileSpaceU
 		return m
 	}
 
-	usage, err := mustService[files.Service](mw).GetSpaceUsage(cctx, req.SpaceId)
+	usage, err := mustService[filespaceusage.Service](mw).GetSpaceUsage(cctx, req.SpaceId)
 	if err != nil {
 		return response(pb.RpcFileSpaceUsageResponseError_UNKNOWN_ERROR, err, nil)
 	}
@@ -193,7 +191,7 @@ func (mw *Middleware) FileSpaceUsage(cctx context.Context, req *pb.RpcFileSpaceU
 }
 
 func (mw *Middleware) FileNodeUsage(ctx context.Context, req *pb.RpcFileNodeUsageRequest) *pb.RpcFileNodeUsageResponse {
-	usage, err := mustService[files.Service](mw).GetNodeUsage(ctx)
+	usage, err := mustService[filespaceusage.Service](mw).GetNodeUsage(ctx)
 	code := mapErrorCode[pb.RpcFileNodeUsageResponseErrorCode](err)
 	resp := &pb.RpcFileNodeUsageResponse{
 		Error: &pb.RpcFileNodeUsageResponseError{

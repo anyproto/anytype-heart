@@ -11,14 +11,17 @@ import (
 	"github.com/anyproto/any-store/query"
 	"github.com/globalsign/mgo/bson"
 
+	"github.com/anyproto/anytype-heart/core/block/chats/chatmodel"
+	"github.com/anyproto/anytype-heart/core/block/chats/chatrepository"
+	"github.com/anyproto/anytype-heart/core/block/chats/chatsubscription"
 	"github.com/anyproto/anytype-heart/core/block/editor/storestate"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
 type ChatHandler struct {
-	repository      *repository
-	subscription    *subscriptionManager
+	repository      chatrepository.Repository
+	subscription    chatsubscription.Manager
 	currentIdentity string
 	myParticipantId string
 	// forceNotRead forces handler to mark all messages as not read. It's useful for unit testing
@@ -44,7 +47,7 @@ func (d *ChatHandler) Init(ctx context.Context, s *storestate.StoreState) (err e
 }
 
 func (d *ChatHandler) BeforeCreate(ctx context.Context, ch storestate.ChangeOp) error {
-	msg, err := unmarshalMessage(ch.Value)
+	msg, err := chatmodel.UnmarshalMessage(ch.Value)
 	if err != nil {
 		return fmt.Errorf("unmarshal message: %w", err)
 	}
@@ -63,6 +66,12 @@ func (d *ChatHandler) BeforeCreate(ctx context.Context, ch storestate.ChangeOp) 
 		}
 	}
 
+	if ch.Change.Creator == d.currentIdentity {
+		msg.Synced = false
+	} else {
+		msg.Synced = true
+	}
+
 	msg.StateId = bson.NewObjectId().Hex()
 
 	isMentioned, err := msg.IsCurrentUserMentioned(ctx, d.myParticipantId, d.currentIdentity, d.repository)
@@ -72,12 +81,14 @@ func (d *ChatHandler) BeforeCreate(ctx context.Context, ch storestate.ChangeOp) 
 	msg.CurrentUserMentioned = isMentioned
 	msg.OrderId = ch.Change.Order
 
-	prevOrderId, err := d.repository.getPrevOrderId(ctx, ch.Change.Order)
+	prevOrderId, err := d.repository.GetPrevOrderId(ctx, ch.Change.Order)
 	if err != nil {
 		return fmt.Errorf("get prev order id: %w", err)
 	}
 
-	d.subscription.updateChatState(func(state *model.ChatState) *model.ChatState {
+	d.subscription.Lock()
+	defer d.subscription.Unlock()
+	d.subscription.UpdateChatState(func(state *model.ChatState) *model.ChatState {
 		if !msg.Read {
 			if msg.OrderId < state.Messages.OldestOrderId || state.Messages.OldestOrderId == "" {
 				state.Messages.OldestOrderId = msg.OrderId
@@ -98,7 +109,7 @@ func (d *ChatHandler) BeforeCreate(ctx context.Context, ch storestate.ChangeOp) 
 		return state
 	})
 
-	d.subscription.add(prevOrderId, msg)
+	d.subscription.Add(prevOrderId, msg)
 
 	msg.MarshalAnyenc(ch.Value, ch.Arena)
 
@@ -118,11 +129,14 @@ func (d *ChatHandler) BeforeDelete(ctx context.Context, ch storestate.ChangeOp) 
 	messageId := ch.Change.Change.GetDelete().GetDocumentId()
 
 	doc, err := coll.FindId(ctx, messageId)
+	if errors.Is(err, anystore.ErrDocNotFound) {
+		return storestate.DeleteModeDelete, nil
+	}
 	if err != nil {
 		return storestate.DeleteModeDelete, fmt.Errorf("get message: %w", err)
 	}
 
-	message, err := unmarshalMessage(doc.Value())
+	message, err := chatmodel.UnmarshalMessage(doc.Value())
 	if err != nil {
 		return storestate.DeleteModeDelete, fmt.Errorf("unmarshal message: %w", err)
 	}
@@ -130,7 +144,9 @@ func (d *ChatHandler) BeforeDelete(ctx context.Context, ch storestate.ChangeOp) 
 		return storestate.DeleteModeDelete, errors.New("can't delete not own message")
 	}
 
-	d.subscription.delete(messageId)
+	d.subscription.Lock()
+	defer d.subscription.Unlock()
+	d.subscription.Delete(messageId)
 
 	return storestate.DeleteModeDelete, nil
 }
@@ -149,13 +165,16 @@ func (d *ChatHandler) UpgradeKeyModifier(ch storestate.ChangeOp, key *pb.KeyModi
 		}
 
 		if modified {
-			msg, err := unmarshalMessage(result)
+			msg, err := chatmodel.UnmarshalMessage(result)
 			if err != nil {
 				return nil, false, fmt.Errorf("unmarshal message: %w", err)
 			}
 
+			d.subscription.Lock()
+			defer d.subscription.Unlock()
+
 			switch path {
-			case reactionsKey:
+			case chatmodel.ReactionsKey:
 				// Do not parse json, just trim "
 				identity := strings.Trim(key.ModifyValue, `"`)
 				if identity != ch.Change.Creator {
@@ -163,15 +182,15 @@ func (d *ChatHandler) UpgradeKeyModifier(ch storestate.ChangeOp, key *pb.KeyModi
 				}
 				// TODO Count validation
 
-				d.subscription.updateReactions(msg)
-			case contentKey:
+				d.subscription.UpdateReactions(msg)
+			case chatmodel.ContentKey:
 				creator := msg.Creator
 				if creator != ch.Change.Creator {
 					return v, false, errors.Join(storestate.ErrValidation, fmt.Errorf("can't modify someone else's message"))
 				}
 				msg.ModifiedAt = ch.Change.Timestamp
 				msg.MarshalAnyenc(result, a)
-				d.subscription.updateFull(msg)
+				d.subscription.UpdateFull(msg)
 			default:
 				return nil, false, fmt.Errorf("invalid key path %s", key.KeyPath)
 			}

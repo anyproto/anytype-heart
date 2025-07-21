@@ -3,6 +3,7 @@ package emailcollector
 import (
 	"context"
 	"errors"
+	"fmt"
 	"time"
 
 	"github.com/anyproto/any-sync/app"
@@ -15,7 +16,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/anytype/config"
 	"github.com/anyproto/anytype-heart/core/wallet"
 	"github.com/anyproto/anytype-heart/pb"
-	"github.com/anyproto/anytype-heart/pkg/lib/datastore"
+	"github.com/anyproto/anytype-heart/pkg/lib/datastore/anystoreprovider"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/util/keyvaluestore"
 )
@@ -27,7 +28,6 @@ var log = logging.Logger(CName)
 const (
 	refreshIntervalSecs = 60
 	timeout             = 30 * time.Second
-	keyPrefix           = "payments/emailcollector/"
 )
 
 // EmailCollector is a simple component that will save email to the DB
@@ -41,13 +41,14 @@ type EmailCollector interface {
 }
 
 type emailcollector struct {
-	cfg        *config.Config
-	dbProvider datastore.Datastore
-	store      keyvaluestore.Store[pb.RpcMembershipGetVerificationEmailRequest]
-	periodic   periodicsync.PeriodicSync
-	ppclient   ppclient.AnyPpClientService
-	wallet     wallet.Wallet
-	closing    chan struct{}
+	componentCtx       context.Context
+	componentCtxCancel context.CancelFunc
+
+	cfg      *config.Config
+	store    keyvaluestore.Store[pb.RpcMembershipGetVerificationEmailRequest]
+	periodic periodicsync.PeriodicSync
+	ppclient ppclient.AnyPpClientService
+	wallet   wallet.Wallet
 }
 
 func New() EmailCollector {
@@ -59,19 +60,20 @@ func (e *emailcollector) Name() string {
 }
 
 func (e *emailcollector) Init(a *app.App) error {
-	e.closing = make(chan struct{})
+	e.componentCtx, e.componentCtxCancel = context.WithCancel(context.Background())
+
 	e.cfg = app.MustComponent[*config.Config](a)
-	e.dbProvider = app.MustComponent[datastore.Datastore](a)
 	e.ppclient = app.MustComponent[ppclient.AnyPpClientService](a)
 	e.wallet = app.MustComponent[wallet.Wallet](a)
 
-	db, err := e.dbProvider.LocalStorage()
-	if err != nil {
-		return err
-	}
-
 	// Initialize keyvaluestore
-	e.store = keyvaluestore.NewJson[pb.RpcMembershipGetVerificationEmailRequest](db, []byte(keyPrefix+"email"))
+	anystoreProvider := app.MustComponent[anystoreprovider.Provider](a)
+	store := anystoreProvider.GetCommonDb()
+	var err error
+	e.store, err = keyvaluestore.NewJson[pb.RpcMembershipGetVerificationEmailRequest](store, "payments/emailcollector/email")
+	if err != nil {
+		return fmt.Errorf("init request store: %w", err)
+	}
 
 	// run periodic cycle to send email to the payment service
 	e.periodic = periodicsync.NewPeriodicSync(refreshIntervalSecs, timeout, e.periodicUpdateEmail, logger.CtxLogger{Logger: log.Desugar()})
@@ -90,7 +92,9 @@ func (e *emailcollector) Run(ctx context.Context) (err error) {
 }
 
 func (e *emailcollector) Close(_ context.Context) (err error) {
-	close(e.closing)
+	if e.componentCtxCancel != nil {
+		e.componentCtxCancel()
+	}
 	e.periodic.Close()
 	return nil
 }
@@ -203,7 +207,7 @@ func (e *emailcollector) get() (pb.RpcMembershipGetVerificationEmailRequest, err
 		return pb.RpcMembershipGetVerificationEmailRequest{}, errors.New("store not initialized")
 	}
 
-	req, err := e.store.Get("req")
+	req, err := e.store.Get(e.componentCtx, "req")
 	if err != nil {
 		return pb.RpcMembershipGetVerificationEmailRequest{}, err
 	}
@@ -215,5 +219,5 @@ func (e *emailcollector) set(req *pb.RpcMembershipGetVerificationEmailRequest) e
 		return errors.New("store not initialized")
 	}
 
-	return e.store.Set("req", *req)
+	return e.store.Set(e.componentCtx, "req", *req)
 }

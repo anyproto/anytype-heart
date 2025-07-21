@@ -3,8 +3,12 @@
 package mock_chatobject
 
 import (
+	chatmodel "github.com/anyproto/anytype-heart/core/block/chats/chatmodel"
 	anystoredebug "github.com/anyproto/anytype-heart/core/block/editor/anystoredebug"
+
 	chatobject "github.com/anyproto/anytype-heart/core/block/editor/chatobject"
+
+	chatrepository "github.com/anyproto/anytype-heart/core/block/chats/chatrepository"
 
 	context "context"
 
@@ -150,7 +154,7 @@ func (_c *MockStoreObject_AddHookOnce_Call) RunAndReturn(run func(string, smartb
 }
 
 // AddMessage provides a mock function with given fields: ctx, sessionCtx, message
-func (_m *MockStoreObject) AddMessage(ctx context.Context, sessionCtx session.Context, message *chatobject.Message) (string, error) {
+func (_m *MockStoreObject) AddMessage(ctx context.Context, sessionCtx session.Context, message *chatmodel.Message) (string, error) {
 	ret := _m.Called(ctx, sessionCtx, message)
 
 	if len(ret) == 0 {
@@ -159,16 +163,16 @@ func (_m *MockStoreObject) AddMessage(ctx context.Context, sessionCtx session.Co
 
 	var r0 string
 	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, session.Context, *chatobject.Message) (string, error)); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, session.Context, *chatmodel.Message) (string, error)); ok {
 		return rf(ctx, sessionCtx, message)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context, session.Context, *chatobject.Message) string); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, session.Context, *chatmodel.Message) string); ok {
 		r0 = rf(ctx, sessionCtx, message)
 	} else {
 		r0 = ret.Get(0).(string)
 	}
 
-	if rf, ok := ret.Get(1).(func(context.Context, session.Context, *chatobject.Message) error); ok {
+	if rf, ok := ret.Get(1).(func(context.Context, session.Context, *chatmodel.Message) error); ok {
 		r1 = rf(ctx, sessionCtx, message)
 	} else {
 		r1 = ret.Error(1)
@@ -185,14 +189,14 @@ type MockStoreObject_AddMessage_Call struct {
 // AddMessage is a helper method to define mock.On call
 //   - ctx context.Context
 //   - sessionCtx session.Context
-//   - message *chatobject.Message
+//   - message *chatmodel.Message
 func (_e *MockStoreObject_Expecter) AddMessage(ctx interface{}, sessionCtx interface{}, message interface{}) *MockStoreObject_AddMessage_Call {
 	return &MockStoreObject_AddMessage_Call{Call: _e.mock.On("AddMessage", ctx, sessionCtx, message)}
 }
 
-func (_c *MockStoreObject_AddMessage_Call) Run(run func(ctx context.Context, sessionCtx session.Context, message *chatobject.Message)) *MockStoreObject_AddMessage_Call {
+func (_c *MockStoreObject_AddMessage_Call) Run(run func(ctx context.Context, sessionCtx session.Context, message *chatmodel.Message)) *MockStoreObject_AddMessage_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(session.Context), args[2].(*chatobject.Message))
+		run(args[0].(context.Context), args[1].(session.Context), args[2].(*chatmodel.Message))
 	})
 	return _c
 }
@@ -202,7 +206,7 @@ func (_c *MockStoreObject_AddMessage_Call) Return(_a0 string, _a1 error) *MockSt
 	return _c
 }
 
-func (_c *MockStoreObject_AddMessage_Call) RunAndReturn(run func(context.Context, session.Context, *chatobject.Message) (string, error)) *MockStoreObject_AddMessage_Call {
+func (_c *MockStoreObject_AddMessage_Call) RunAndReturn(run func(context.Context, session.Context, *chatmodel.Message) (string, error)) *MockStoreObject_AddMessage_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -744,7 +748,7 @@ func (_c *MockStoreObject_Details_Call) RunAndReturn(run func() *domain.Details)
 }
 
 // EditMessage provides a mock function with given fields: ctx, messageId, newMessage
-func (_m *MockStoreObject) EditMessage(ctx context.Context, messageId string, newMessage *chatobject.Message) error {
+func (_m *MockStoreObject) EditMessage(ctx context.Context, messageId string, newMessage *chatmodel.Message) error {
 	ret := _m.Called(ctx, messageId, newMessage)
 
 	if len(ret) == 0 {
@@ -752,7 +756,7 @@ func (_m *MockStoreObject) EditMessage(ctx context.Context, messageId string, ne
 	}
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(context.Context, string, *chatobject.Message) error); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, string, *chatmodel.Message) error); ok {
 		r0 = rf(ctx, messageId, newMessage)
 	} else {
 		r0 = ret.Error(0)
@@ -769,14 +773,14 @@ type MockStoreObject_EditMessage_Call struct {
 // EditMessage is a helper method to define mock.On call
 //   - ctx context.Context
 //   - messageId string
-//   - newMessage *chatobject.Message
+//   - newMessage *chatmodel.Message
 func (_e *MockStoreObject_Expecter) EditMessage(ctx interface{}, messageId interface{}, newMessage interface{}) *MockStoreObject_EditMessage_Call {
 	return &MockStoreObject_EditMessage_Call{Call: _e.mock.On("EditMessage", ctx, messageId, newMessage)}
 }
 
-func (_c *MockStoreObject_EditMessage_Call) Run(run func(ctx context.Context, messageId string, newMessage *chatobject.Message)) *MockStoreObject_EditMessage_Call {
+func (_c *MockStoreObject_EditMessage_Call) Run(run func(ctx context.Context, messageId string, newMessage *chatmodel.Message)) *MockStoreObject_EditMessage_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(string), args[2].(*chatobject.Message))
+		run(args[0].(context.Context), args[1].(string), args[2].(*chatmodel.Message))
 	})
 	return _c
 }
@@ -786,7 +790,7 @@ func (_c *MockStoreObject_EditMessage_Call) Return(_a0 error) *MockStoreObject_E
 	return _c
 }
 
-func (_c *MockStoreObject_EditMessage_Call) RunAndReturn(run func(context.Context, string, *chatobject.Message) error) *MockStoreObject_EditMessage_Call {
+func (_c *MockStoreObject_EditMessage_Call) RunAndReturn(run func(context.Context, string, *chatmodel.Message) error) *MockStoreObject_EditMessage_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -948,7 +952,7 @@ func (_c *MockStoreObject_GetDocInfo_Call) RunAndReturn(run func() smartblock.Do
 }
 
 // GetMessages provides a mock function with given fields: ctx, req
-func (_m *MockStoreObject) GetMessages(ctx context.Context, req chatobject.GetMessagesRequest) (*chatobject.GetMessagesResponse, error) {
+func (_m *MockStoreObject) GetMessages(ctx context.Context, req chatrepository.GetMessagesRequest) (*chatobject.GetMessagesResponse, error) {
 	ret := _m.Called(ctx, req)
 
 	if len(ret) == 0 {
@@ -957,10 +961,10 @@ func (_m *MockStoreObject) GetMessages(ctx context.Context, req chatobject.GetMe
 
 	var r0 *chatobject.GetMessagesResponse
 	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, chatobject.GetMessagesRequest) (*chatobject.GetMessagesResponse, error)); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, chatrepository.GetMessagesRequest) (*chatobject.GetMessagesResponse, error)); ok {
 		return rf(ctx, req)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context, chatobject.GetMessagesRequest) *chatobject.GetMessagesResponse); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, chatrepository.GetMessagesRequest) *chatobject.GetMessagesResponse); ok {
 		r0 = rf(ctx, req)
 	} else {
 		if ret.Get(0) != nil {
@@ -968,7 +972,7 @@ func (_m *MockStoreObject) GetMessages(ctx context.Context, req chatobject.GetMe
 		}
 	}
 
-	if rf, ok := ret.Get(1).(func(context.Context, chatobject.GetMessagesRequest) error); ok {
+	if rf, ok := ret.Get(1).(func(context.Context, chatrepository.GetMessagesRequest) error); ok {
 		r1 = rf(ctx, req)
 	} else {
 		r1 = ret.Error(1)
@@ -984,14 +988,14 @@ type MockStoreObject_GetMessages_Call struct {
 
 // GetMessages is a helper method to define mock.On call
 //   - ctx context.Context
-//   - req chatobject.GetMessagesRequest
+//   - req chatrepository.GetMessagesRequest
 func (_e *MockStoreObject_Expecter) GetMessages(ctx interface{}, req interface{}) *MockStoreObject_GetMessages_Call {
 	return &MockStoreObject_GetMessages_Call{Call: _e.mock.On("GetMessages", ctx, req)}
 }
 
-func (_c *MockStoreObject_GetMessages_Call) Run(run func(ctx context.Context, req chatobject.GetMessagesRequest)) *MockStoreObject_GetMessages_Call {
+func (_c *MockStoreObject_GetMessages_Call) Run(run func(ctx context.Context, req chatrepository.GetMessagesRequest)) *MockStoreObject_GetMessages_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(chatobject.GetMessagesRequest))
+		run(args[0].(context.Context), args[1].(chatrepository.GetMessagesRequest))
 	})
 	return _c
 }
@@ -1001,29 +1005,29 @@ func (_c *MockStoreObject_GetMessages_Call) Return(_a0 *chatobject.GetMessagesRe
 	return _c
 }
 
-func (_c *MockStoreObject_GetMessages_Call) RunAndReturn(run func(context.Context, chatobject.GetMessagesRequest) (*chatobject.GetMessagesResponse, error)) *MockStoreObject_GetMessages_Call {
+func (_c *MockStoreObject_GetMessages_Call) RunAndReturn(run func(context.Context, chatrepository.GetMessagesRequest) (*chatobject.GetMessagesResponse, error)) *MockStoreObject_GetMessages_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
 // GetMessagesByIds provides a mock function with given fields: ctx, messageIds
-func (_m *MockStoreObject) GetMessagesByIds(ctx context.Context, messageIds []string) ([]*chatobject.Message, error) {
+func (_m *MockStoreObject) GetMessagesByIds(ctx context.Context, messageIds []string) ([]*chatmodel.Message, error) {
 	ret := _m.Called(ctx, messageIds)
 
 	if len(ret) == 0 {
 		panic("no return value specified for GetMessagesByIds")
 	}
 
-	var r0 []*chatobject.Message
+	var r0 []*chatmodel.Message
 	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, []string) ([]*chatobject.Message, error)); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, []string) ([]*chatmodel.Message, error)); ok {
 		return rf(ctx, messageIds)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context, []string) []*chatobject.Message); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, []string) []*chatmodel.Message); ok {
 		r0 = rf(ctx, messageIds)
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).([]*chatobject.Message)
+			r0 = ret.Get(0).([]*chatmodel.Message)
 		}
 	}
 
@@ -1055,12 +1059,12 @@ func (_c *MockStoreObject_GetMessagesByIds_Call) Run(run func(ctx context.Contex
 	return _c
 }
 
-func (_c *MockStoreObject_GetMessagesByIds_Call) Return(_a0 []*chatobject.Message, _a1 error) *MockStoreObject_GetMessagesByIds_Call {
+func (_c *MockStoreObject_GetMessagesByIds_Call) Return(_a0 []*chatmodel.Message, _a1 error) *MockStoreObject_GetMessagesByIds_Call {
 	_c.Call.Return(_a0, _a1)
 	return _c
 }
 
-func (_c *MockStoreObject_GetMessagesByIds_Call) RunAndReturn(run func(context.Context, []string) ([]*chatobject.Message, error)) *MockStoreObject_GetMessagesByIds_Call {
+func (_c *MockStoreObject_GetMessagesByIds_Call) RunAndReturn(run func(context.Context, []string) ([]*chatmodel.Message, error)) *MockStoreObject_GetMessagesByIds_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -1108,6 +1112,41 @@ func (_c *MockStoreObject_GetRelationLinks_Call) Return(_a0 pbtypes.RelationLink
 }
 
 func (_c *MockStoreObject_GetRelationLinks_Call) RunAndReturn(run func() pbtypes.RelationLinks) *MockStoreObject_GetRelationLinks_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// HandleSyncStatusUpdate provides a mock function with given fields: heads, status, syncError
+func (_m *MockStoreObject) HandleSyncStatusUpdate(heads []string, status domain.ObjectSyncStatus, syncError domain.SyncError) {
+	_m.Called(heads, status, syncError)
+}
+
+// MockStoreObject_HandleSyncStatusUpdate_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'HandleSyncStatusUpdate'
+type MockStoreObject_HandleSyncStatusUpdate_Call struct {
+	*mock.Call
+}
+
+// HandleSyncStatusUpdate is a helper method to define mock.On call
+//   - heads []string
+//   - status domain.ObjectSyncStatus
+//   - syncError domain.SyncError
+func (_e *MockStoreObject_Expecter) HandleSyncStatusUpdate(heads interface{}, status interface{}, syncError interface{}) *MockStoreObject_HandleSyncStatusUpdate_Call {
+	return &MockStoreObject_HandleSyncStatusUpdate_Call{Call: _e.mock.On("HandleSyncStatusUpdate", heads, status, syncError)}
+}
+
+func (_c *MockStoreObject_HandleSyncStatusUpdate_Call) Run(run func(heads []string, status domain.ObjectSyncStatus, syncError domain.SyncError)) *MockStoreObject_HandleSyncStatusUpdate_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].([]string), args[1].(domain.ObjectSyncStatus), args[2].(domain.SyncError))
+	})
+	return _c
+}
+
+func (_c *MockStoreObject_HandleSyncStatusUpdate_Call) Return() *MockStoreObject_HandleSyncStatusUpdate_Call {
+	_c.Call.Return()
+	return _c
+}
+
+func (_c *MockStoreObject_HandleSyncStatusUpdate_Call) RunAndReturn(run func([]string, domain.ObjectSyncStatus, domain.SyncError)) *MockStoreObject_HandleSyncStatusUpdate_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -1568,7 +1607,7 @@ func (_c *MockStoreObject_Lock_Call) RunAndReturn(run func()) *MockStoreObject_L
 }
 
 // MarkMessagesAsUnread provides a mock function with given fields: ctx, afterOrderId, counterType
-func (_m *MockStoreObject) MarkMessagesAsUnread(ctx context.Context, afterOrderId string, counterType chatobject.CounterType) error {
+func (_m *MockStoreObject) MarkMessagesAsUnread(ctx context.Context, afterOrderId string, counterType chatmodel.CounterType) error {
 	ret := _m.Called(ctx, afterOrderId, counterType)
 
 	if len(ret) == 0 {
@@ -1576,7 +1615,7 @@ func (_m *MockStoreObject) MarkMessagesAsUnread(ctx context.Context, afterOrderI
 	}
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(context.Context, string, chatobject.CounterType) error); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, string, chatmodel.CounterType) error); ok {
 		r0 = rf(ctx, afterOrderId, counterType)
 	} else {
 		r0 = ret.Error(0)
@@ -1593,14 +1632,14 @@ type MockStoreObject_MarkMessagesAsUnread_Call struct {
 // MarkMessagesAsUnread is a helper method to define mock.On call
 //   - ctx context.Context
 //   - afterOrderId string
-//   - counterType chatobject.CounterType
+//   - counterType chatmodel.CounterType
 func (_e *MockStoreObject_Expecter) MarkMessagesAsUnread(ctx interface{}, afterOrderId interface{}, counterType interface{}) *MockStoreObject_MarkMessagesAsUnread_Call {
 	return &MockStoreObject_MarkMessagesAsUnread_Call{Call: _e.mock.On("MarkMessagesAsUnread", ctx, afterOrderId, counterType)}
 }
 
-func (_c *MockStoreObject_MarkMessagesAsUnread_Call) Run(run func(ctx context.Context, afterOrderId string, counterType chatobject.CounterType)) *MockStoreObject_MarkMessagesAsUnread_Call {
+func (_c *MockStoreObject_MarkMessagesAsUnread_Call) Run(run func(ctx context.Context, afterOrderId string, counterType chatmodel.CounterType)) *MockStoreObject_MarkMessagesAsUnread_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(string), args[2].(chatobject.CounterType))
+		run(args[0].(context.Context), args[1].(string), args[2].(chatmodel.CounterType))
 	})
 	return _c
 }
@@ -1610,22 +1649,22 @@ func (_c *MockStoreObject_MarkMessagesAsUnread_Call) Return(_a0 error) *MockStor
 	return _c
 }
 
-func (_c *MockStoreObject_MarkMessagesAsUnread_Call) RunAndReturn(run func(context.Context, string, chatobject.CounterType) error) *MockStoreObject_MarkMessagesAsUnread_Call {
+func (_c *MockStoreObject_MarkMessagesAsUnread_Call) RunAndReturn(run func(context.Context, string, chatmodel.CounterType) error) *MockStoreObject_MarkMessagesAsUnread_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
-// MarkReadMessages provides a mock function with given fields: ctx, afterOrderId, beforeOrderId, lastStateId, counterType
-func (_m *MockStoreObject) MarkReadMessages(ctx context.Context, afterOrderId string, beforeOrderId string, lastStateId string, counterType chatobject.CounterType) error {
-	ret := _m.Called(ctx, afterOrderId, beforeOrderId, lastStateId, counterType)
+// MarkReadMessages provides a mock function with given fields: ctx, req
+func (_m *MockStoreObject) MarkReadMessages(ctx context.Context, req chatobject.ReadMessagesRequest) error {
+	ret := _m.Called(ctx, req)
 
 	if len(ret) == 0 {
 		panic("no return value specified for MarkReadMessages")
 	}
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(context.Context, string, string, string, chatobject.CounterType) error); ok {
-		r0 = rf(ctx, afterOrderId, beforeOrderId, lastStateId, counterType)
+	if rf, ok := ret.Get(0).(func(context.Context, chatobject.ReadMessagesRequest) error); ok {
+		r0 = rf(ctx, req)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -1640,17 +1679,14 @@ type MockStoreObject_MarkReadMessages_Call struct {
 
 // MarkReadMessages is a helper method to define mock.On call
 //   - ctx context.Context
-//   - afterOrderId string
-//   - beforeOrderId string
-//   - lastStateId string
-//   - counterType chatobject.CounterType
-func (_e *MockStoreObject_Expecter) MarkReadMessages(ctx interface{}, afterOrderId interface{}, beforeOrderId interface{}, lastStateId interface{}, counterType interface{}) *MockStoreObject_MarkReadMessages_Call {
-	return &MockStoreObject_MarkReadMessages_Call{Call: _e.mock.On("MarkReadMessages", ctx, afterOrderId, beforeOrderId, lastStateId, counterType)}
+//   - req chatobject.ReadMessagesRequest
+func (_e *MockStoreObject_Expecter) MarkReadMessages(ctx interface{}, req interface{}) *MockStoreObject_MarkReadMessages_Call {
+	return &MockStoreObject_MarkReadMessages_Call{Call: _e.mock.On("MarkReadMessages", ctx, req)}
 }
 
-func (_c *MockStoreObject_MarkReadMessages_Call) Run(run func(ctx context.Context, afterOrderId string, beforeOrderId string, lastStateId string, counterType chatobject.CounterType)) *MockStoreObject_MarkReadMessages_Call {
+func (_c *MockStoreObject_MarkReadMessages_Call) Run(run func(ctx context.Context, req chatobject.ReadMessagesRequest)) *MockStoreObject_MarkReadMessages_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(string), args[2].(string), args[3].(string), args[4].(chatobject.CounterType))
+		run(args[0].(context.Context), args[1].(chatobject.ReadMessagesRequest))
 	})
 	return _c
 }
@@ -1660,7 +1696,7 @@ func (_c *MockStoreObject_MarkReadMessages_Call) Return(_a0 error) *MockStoreObj
 	return _c
 }
 
-func (_c *MockStoreObject_MarkReadMessages_Call) RunAndReturn(run func(context.Context, string, string, string, chatobject.CounterType) error) *MockStoreObject_MarkReadMessages_Call {
+func (_c *MockStoreObject_MarkReadMessages_Call) RunAndReturn(run func(context.Context, chatobject.ReadMessagesRequest) error) *MockStoreObject_MarkReadMessages_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -2628,81 +2664,32 @@ func (_c *MockStoreObject_SpaceID_Call) RunAndReturn(run func() string) *MockSto
 	return _c
 }
 
-// SubscribeLastMessages provides a mock function with given fields: ctx, req
-func (_m *MockStoreObject) SubscribeLastMessages(ctx context.Context, req chatobject.SubscribeLastMessagesRequest) (*chatobject.SubscribeLastMessagesResponse, error) {
-	ret := _m.Called(ctx, req)
-
-	if len(ret) == 0 {
-		panic("no return value specified for SubscribeLastMessages")
-	}
-
-	var r0 *chatobject.SubscribeLastMessagesResponse
-	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, chatobject.SubscribeLastMessagesRequest) (*chatobject.SubscribeLastMessagesResponse, error)); ok {
-		return rf(ctx, req)
-	}
-	if rf, ok := ret.Get(0).(func(context.Context, chatobject.SubscribeLastMessagesRequest) *chatobject.SubscribeLastMessagesResponse); ok {
-		r0 = rf(ctx, req)
-	} else {
-		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(*chatobject.SubscribeLastMessagesResponse)
-		}
-	}
-
-	if rf, ok := ret.Get(1).(func(context.Context, chatobject.SubscribeLastMessagesRequest) error); ok {
-		r1 = rf(ctx, req)
-	} else {
-		r1 = ret.Error(1)
-	}
-
-	return r0, r1
-}
-
-// MockStoreObject_SubscribeLastMessages_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'SubscribeLastMessages'
-type MockStoreObject_SubscribeLastMessages_Call struct {
-	*mock.Call
-}
-
-// SubscribeLastMessages is a helper method to define mock.On call
-//   - ctx context.Context
-//   - req chatobject.SubscribeLastMessagesRequest
-func (_e *MockStoreObject_Expecter) SubscribeLastMessages(ctx interface{}, req interface{}) *MockStoreObject_SubscribeLastMessages_Call {
-	return &MockStoreObject_SubscribeLastMessages_Call{Call: _e.mock.On("SubscribeLastMessages", ctx, req)}
-}
-
-func (_c *MockStoreObject_SubscribeLastMessages_Call) Run(run func(ctx context.Context, req chatobject.SubscribeLastMessagesRequest)) *MockStoreObject_SubscribeLastMessages_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(chatobject.SubscribeLastMessagesRequest))
-	})
-	return _c
-}
-
-func (_c *MockStoreObject_SubscribeLastMessages_Call) Return(_a0 *chatobject.SubscribeLastMessagesResponse, _a1 error) *MockStoreObject_SubscribeLastMessages_Call {
-	_c.Call.Return(_a0, _a1)
-	return _c
-}
-
-func (_c *MockStoreObject_SubscribeLastMessages_Call) RunAndReturn(run func(context.Context, chatobject.SubscribeLastMessagesRequest) (*chatobject.SubscribeLastMessagesResponse, error)) *MockStoreObject_SubscribeLastMessages_Call {
-	_c.Call.Return(run)
-	return _c
-}
-
 // ToggleMessageReaction provides a mock function with given fields: ctx, messageId, emoji
-func (_m *MockStoreObject) ToggleMessageReaction(ctx context.Context, messageId string, emoji string) error {
+func (_m *MockStoreObject) ToggleMessageReaction(ctx context.Context, messageId string, emoji string) (bool, error) {
 	ret := _m.Called(ctx, messageId, emoji)
 
 	if len(ret) == 0 {
 		panic("no return value specified for ToggleMessageReaction")
 	}
 
-	var r0 error
-	if rf, ok := ret.Get(0).(func(context.Context, string, string) error); ok {
+	var r0 bool
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, string, string) (bool, error)); ok {
+		return rf(ctx, messageId, emoji)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, string, string) bool); ok {
 		r0 = rf(ctx, messageId, emoji)
 	} else {
-		r0 = ret.Error(0)
+		r0 = ret.Get(0).(bool)
 	}
 
-	return r0
+	if rf, ok := ret.Get(1).(func(context.Context, string, string) error); ok {
+		r1 = rf(ctx, messageId, emoji)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
 }
 
 // MockStoreObject_ToggleMessageReaction_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ToggleMessageReaction'
@@ -2725,12 +2712,12 @@ func (_c *MockStoreObject_ToggleMessageReaction_Call) Run(run func(ctx context.C
 	return _c
 }
 
-func (_c *MockStoreObject_ToggleMessageReaction_Call) Return(_a0 error) *MockStoreObject_ToggleMessageReaction_Call {
-	_c.Call.Return(_a0)
+func (_c *MockStoreObject_ToggleMessageReaction_Call) Return(_a0 bool, _a1 error) *MockStoreObject_ToggleMessageReaction_Call {
+	_c.Call.Return(_a0, _a1)
 	return _c
 }
 
-func (_c *MockStoreObject_ToggleMessageReaction_Call) RunAndReturn(run func(context.Context, string, string) error) *MockStoreObject_ToggleMessageReaction_Call {
+func (_c *MockStoreObject_ToggleMessageReaction_Call) RunAndReturn(run func(context.Context, string, string) (bool, error)) *MockStoreObject_ToggleMessageReaction_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -3003,52 +2990,6 @@ func (_c *MockStoreObject_Unlock_Call) Return() *MockStoreObject_Unlock_Call {
 }
 
 func (_c *MockStoreObject_Unlock_Call) RunAndReturn(run func()) *MockStoreObject_Unlock_Call {
-	_c.Call.Return(run)
-	return _c
-}
-
-// Unsubscribe provides a mock function with given fields: subId
-func (_m *MockStoreObject) Unsubscribe(subId string) error {
-	ret := _m.Called(subId)
-
-	if len(ret) == 0 {
-		panic("no return value specified for Unsubscribe")
-	}
-
-	var r0 error
-	if rf, ok := ret.Get(0).(func(string) error); ok {
-		r0 = rf(subId)
-	} else {
-		r0 = ret.Error(0)
-	}
-
-	return r0
-}
-
-// MockStoreObject_Unsubscribe_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Unsubscribe'
-type MockStoreObject_Unsubscribe_Call struct {
-	*mock.Call
-}
-
-// Unsubscribe is a helper method to define mock.On call
-//   - subId string
-func (_e *MockStoreObject_Expecter) Unsubscribe(subId interface{}) *MockStoreObject_Unsubscribe_Call {
-	return &MockStoreObject_Unsubscribe_Call{Call: _e.mock.On("Unsubscribe", subId)}
-}
-
-func (_c *MockStoreObject_Unsubscribe_Call) Run(run func(subId string)) *MockStoreObject_Unsubscribe_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(string))
-	})
-	return _c
-}
-
-func (_c *MockStoreObject_Unsubscribe_Call) Return(_a0 error) *MockStoreObject_Unsubscribe_Call {
-	_c.Call.Return(_a0)
-	return _c
-}
-
-func (_c *MockStoreObject_Unsubscribe_Call) RunAndReturn(run func(string) error) *MockStoreObject_Unsubscribe_Call {
 	_c.Call.Return(run)
 	return _c
 }

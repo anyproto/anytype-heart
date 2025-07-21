@@ -35,7 +35,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/domain/objectorigin"
 	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/core/files/fileobject"
-	"github.com/anyproto/anytype-heart/core/filestorage/filesync"
+	"github.com/anyproto/anytype-heart/core/files/filesync"
 	"github.com/anyproto/anytype-heart/core/notifications"
 	"github.com/anyproto/anytype-heart/metrics"
 	"github.com/anyproto/anytype-heart/metrics/anymetry"
@@ -44,7 +44,6 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore/filestore"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -64,10 +63,10 @@ type Import struct {
 	oc                  creator.Service
 	idProvider          objectid.IdAndKeyProvider
 	tempDirProvider     core.TempDirProvider
-	fileStore           filestore.FileStore
 	fileSync            filesync.FileSync
 	notificationService notifications.Notifications
 	eventSender         event.Sender
+	objectStore         objectstore.ObjectStore
 
 	importCtx       context.Context
 	importCtxCancel context.CancelFunc
@@ -99,15 +98,16 @@ func (i *Import) Init(a *app.App) (err error) {
 	for _, c := range converters {
 		i.converters[c.Name()] = c
 	}
-	store := app.MustComponent[objectstore.ObjectStore](a)
-	i.fileStore = app.MustComponent[filestore.FileStore](a)
+	// temporary, until we don't have specific logic for obsidian import
+	i.converters[model.Import_Obsidian.String()] = i.converters[model.Import_Markdown.String()]
+	i.objectStore = app.MustComponent[objectstore.ObjectStore](a)
 	fileObjectService := app.MustComponent[fileobject.Service](a)
-	i.idProvider = objectid.NewIDProvider(store, spaceService, i.s, i.fileStore, fileObjectService)
+	i.idProvider = objectid.NewIDProvider(i.objectStore, spaceService, i.s, fileObjectService)
 	factory := syncer.New(syncer.NewFileSyncer(i.s, fileObjectService), syncer.NewBookmarkSyncer(i.s), syncer.NewIconSyncer(i.s, fileObjectService))
 	relationSyncer := syncer.NewFileRelationSyncer(i.s, fileObjectService)
 	objectCreator := app.MustComponent[objectcreator.Service](a)
 	detailsService := app.MustComponent[detailservice.Service](a)
-	i.oc = creator.New(detailsService, factory, store, relationSyncer, spaceService, objectCreator, i.s)
+	i.oc = creator.New(detailsService, factory, i.objectStore, relationSyncer, spaceService, objectCreator, i.s)
 	i.fileSync = app.MustComponent[filesync.FileSync](a)
 	i.notificationService = app.MustComponent[notifications.Notifications](a)
 	i.eventSender = app.MustComponent[event.Sender](a)
@@ -154,6 +154,7 @@ func (i *Import) importObjects(ctx context.Context, importRequest *ImportRequest
 		res           = &ImportResponse{}
 		importId      = uuid.New().String()
 		isNewProgress = false
+		widgetLayout  model.BlockContentWidgetLayout
 	)
 	if importRequest.Progress == nil {
 		i.setupProgressBar(importRequest)
@@ -170,13 +171,16 @@ func (i *Import) importObjects(ctx context.Context, importRequest *ImportRequest
 	}
 	i.recordEvent(&metrics.ImportStartedEvent{ID: importId, ImportType: importRequest.Type.String()})
 	res.Err = fmt.Errorf("unknown import type %s", importRequest.Type)
+
 	if c, ok := i.converters[importRequest.Type.String()]; ok {
-		res.RootCollectionId, res.ObjectsCount, res.Err = i.importFromBuiltinConverter(ctx, importRequest, c)
+		res.RootCollectionId, widgetLayout, res.ObjectsCount, res.Err = i.importFromBuiltinConverter(ctx, importRequest, c)
 	}
 	if importRequest.Type == model.Import_External {
 		res.ObjectsCount, res.Err = i.importFromExternalSource(ctx, importRequest)
 	}
 	res.ProcessId = importRequest.Progress.Id()
+	res.RootWidgetLayout = widgetLayout
+
 	return res
 }
 
@@ -186,8 +190,16 @@ func (i *Import) onImportFinish(res *ImportResponse, req *ImportRequest, importI
 	if res.RootCollectionId != "" {
 		i.addRootCollectionWidget(res, req)
 	}
+
 	i.recordEvent(&metrics.ImportFinishedEvent{ID: importId, ImportType: req.Type.String()})
 	i.sendImportFinishEventToClient(res.RootCollectionId, req.IsSync, res.ObjectsCount, req.Type)
+}
+
+func (i *Import) typeWidgetCreation(req *ImportRequest, typeKeys []domain.TypeKey) {
+	err := i.s.CreateTypeWidgetsIfMissing(context.Background(), req.SpaceId, typeKeys, true)
+	if err != nil {
+		log.Errorf("failed to create widget from root collection, error: %s", err.Error())
+	}
 }
 
 func (i *Import) addRootCollectionWidget(res *ImportResponse, req *ImportRequest) {
@@ -197,7 +209,7 @@ func (i *Import) addRootCollectionWidget(res *ImportResponse, req *ImportRequest
 	} else {
 		_, err = i.s.CreateWidgetBlock(nil, &pb.RpcBlockCreateWidgetRequest{
 			ContextId:    spc.DerivedIDs().Widgets,
-			WidgetLayout: model.BlockContentWidget_CompactList,
+			WidgetLayout: res.RootWidgetLayout,
 			Block: &model.Block{
 				Content: &model.BlockContentOfLink{Link: &model.BlockContentLink{
 					TargetBlockId: res.RootCollectionId,
@@ -217,30 +229,32 @@ func (i *Import) sendFileEvents(returnedErr error) {
 	i.fileSync.ClearImportEvents()
 }
 
-func (i *Import) importFromBuiltinConverter(ctx context.Context, req *ImportRequest, c common.Converter) (string, int64, error) {
+func (i *Import) importFromBuiltinConverter(ctx context.Context, req *ImportRequest, c common.Converter) (string, model.BlockContentWidgetLayout, int64, error) {
 	allErrors := common.NewError(req.Mode)
 	res, err := c.GetSnapshots(ctx, req.RpcObjectImportRequest, req.Progress)
 	if !err.IsEmpty() {
 		resultErr := err.GetResultError(req.Type)
 		if shouldReturnError(resultErr, res, req.RpcObjectImportRequest) {
-			return "", 0, resultErr
+			return "", 0, 0, resultErr
 		}
 		allErrors.Merge(err)
 	}
 	if res == nil {
-		return "", 0, fmt.Errorf("source path doesn't contain %s resources to import", req.Type)
+		return "", 0, 0, fmt.Errorf("source path doesn't contain %s resources to import", req.Type)
 	}
 
 	if len(res.Snapshots) == 0 {
-		return "", 0, fmt.Errorf("source path doesn't contain %s resources to import", req.Type)
+		return "", 0, 0, fmt.Errorf("source path doesn't contain %s resources to import", req.Type)
 	}
 
+	i.typeWidgetCreation(req, res.TypesCreated)
 	details, rootCollectionID := i.createObjects(ctx, res, req.Progress, req.RpcObjectImportRequest, allErrors, req.Origin)
 	resultErr := allErrors.GetResultError(req.Type)
 	if resultErr != nil {
 		rootCollectionID = ""
 	}
-	return rootCollectionID, i.getObjectCount(details, rootCollectionID), resultErr
+
+	return rootCollectionID, res.RootObjectWidgetType, i.getObjectCount(details, rootCollectionID), resultErr
 }
 
 func (i *Import) getObjectCount(details map[string]*domain.Details, rootCollectionID string) int64 {
@@ -400,7 +414,7 @@ func (i *Import) createObjects(ctx context.Context,
 	go i.addWork(res, pool)
 	go pool.Start(do)
 	details := i.readResultFromPool(pool, req.Mode, allErrors, progress)
-	return details, oldIDToNew[res.RootCollectionID]
+	return details, oldIDToNew[res.RootObjectID]
 }
 
 func (i *Import) getIDForAllObjects(ctx context.Context,
@@ -464,7 +478,7 @@ func (i *Import) getObjectID(
 
 	// Preload file keys
 	for _, fileKeys := range snapshot.Snapshot.FileKeys {
-		err := i.fileStore.AddFileKeys(domain.FileEncryptionKeys{
+		err := i.objectStore.AddFileKeys(domain.FileEncryptionKeys{
 			FileId:         domain.FileId(fileKeys.Hash),
 			EncryptionKeys: fileKeys.Keys,
 		})
@@ -477,7 +491,7 @@ func (i *Import) getObjectID(
 		for _, key := range fileInfo.EncryptionKeys {
 			keys[key.Path] = key.Key
 		}
-		err := i.fileStore.AddFileKeys(domain.FileEncryptionKeys{
+		err := i.objectStore.AddFileKeys(domain.FileEncryptionKeys{
 			FileId:         domain.FileId(fileInfo.FileId),
 			EncryptionKeys: keys,
 		})

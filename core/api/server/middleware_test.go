@@ -34,7 +34,7 @@ func TestEnsureAuthenticated(t *testing.T) {
 	t.Run("missing auth header", func(t *testing.T) {
 		// given
 		fx := newFixture(t)
-		fx.KeyToToken = make(map[string]string)
+		fx.KeyToToken = make(map[string]ApiSessionEntry)
 		middleware := fx.ensureAuthenticated(fx.mwMock)
 		w := httptest.NewRecorder()
 		c, _ := gin.CreateTestContext(w)
@@ -54,7 +54,7 @@ func TestEnsureAuthenticated(t *testing.T) {
 	t.Run("invalid auth header format", func(t *testing.T) {
 		// given
 		fx := newFixture(t)
-		fx.KeyToToken = make(map[string]string)
+		fx.KeyToToken = make(map[string]ApiSessionEntry)
 		middleware := fx.ensureAuthenticated(fx.mwMock)
 		w := httptest.NewRecorder()
 		c, _ := gin.CreateTestContext(w)
@@ -75,7 +75,7 @@ func TestEnsureAuthenticated(t *testing.T) {
 	t.Run("valid token creation", func(t *testing.T) {
 		// given
 		fx := newFixture(t)
-		fx.KeyToToken = make(map[string]string)
+		fx.KeyToToken = make(map[string]ApiSessionEntry)
 		tokenExpected := "valid-token"
 
 		fx.mwMock.
@@ -108,7 +108,7 @@ func TestEnsureAuthenticated(t *testing.T) {
 	t.Run("invalid token", func(t *testing.T) {
 		// given
 		fx := newFixture(t)
-		fx.KeyToToken = make(map[string]string)
+		fx.KeyToToken = make(map[string]ApiSessionEntry)
 		middleware := fx.ensureAuthenticated(fx.mwMock)
 		w := httptest.NewRecorder()
 		c, _ := gin.CreateTestContext(w)
@@ -132,16 +132,15 @@ func TestEnsureAuthenticated(t *testing.T) {
 
 		// then
 		require.Equal(t, http.StatusUnauthorized, w.Code)
-		expectedJSON, err := json.Marshal(util.CodeToAPIError(http.StatusUnauthorized, ErrInvalidToken.Error()))
+		expectedJSON, err := json.Marshal(util.CodeToAPIError(http.StatusUnauthorized, ErrInvalidApiKey.Error()))
 		require.NoError(t, err)
 		require.JSONEq(t, string(expectedJSON), w.Body.String())
 	})
 }
 
 func TestRateLimit(t *testing.T) {
-	fx := newFixture(t)
 	router := gin.New()
-	router.GET("/", fx.rateLimit(1), func(c *gin.Context) {
+	router.GET("/", ensureRateLimit(1, 1, false), func(c *gin.Context) {
 		c.String(http.StatusOK, "OK")
 	})
 
@@ -169,5 +168,52 @@ func TestRateLimit(t *testing.T) {
 
 		// then
 		require.Equal(t, http.StatusTooManyRequests, w.Code)
+	})
+
+	t.Run("burst of size 2 allows two requests", func(t *testing.T) {
+		burstRouter := gin.New()
+		burstRouter.GET("/", ensureRateLimit(1, 2, false), func(c *gin.Context) {
+			c.String(http.StatusOK, "OK")
+		})
+
+		// first request (within burst)
+		w1 := httptest.NewRecorder()
+		req1 := httptest.NewRequest("GET", "/", nil)
+		req1.RemoteAddr = "1.2.3.4:5678"
+		burstRouter.ServeHTTP(w1, req1)
+		require.Equal(t, http.StatusOK, w1.Code)
+
+		// second request (within burst)
+		w2 := httptest.NewRecorder()
+		req2 := httptest.NewRequest("GET", "/", nil)
+		req2.RemoteAddr = "1.2.3.4:5678"
+		burstRouter.ServeHTTP(w2, req2)
+		require.Equal(t, http.StatusOK, w2.Code)
+
+		// third request should be rate-limited
+		w3 := httptest.NewRecorder()
+		req3 := httptest.NewRequest("GET", "/", nil)
+		req3.RemoteAddr = "1.2.3.4:5678"
+		burstRouter.ServeHTTP(w3, req3)
+		require.Equal(t, http.StatusTooManyRequests, w3.Code)
+	})
+
+	t.Run("disabled rate limit allows all requests", func(t *testing.T) {
+		// given
+		disabledRouter := gin.New()
+		disabledRouter.GET("/", ensureRateLimit(1, 1, true), func(c *gin.Context) {
+			c.String(http.StatusOK, "OK")
+		})
+
+		// when
+		for i := 0; i < 5; i++ {
+			w := httptest.NewRecorder()
+			req := httptest.NewRequest("GET", "/", nil)
+			req.RemoteAddr = "1.2.3.4:5678"
+			disabledRouter.ServeHTTP(w, req)
+
+			// then
+			require.Equal(t, http.StatusOK, w.Code)
+		}
 	})
 }
