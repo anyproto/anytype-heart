@@ -15,8 +15,8 @@ import (
 
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/app/logger"
+	"github.com/gogo/protobuf/jsonpb"
 	"github.com/gogo/protobuf/proto"
-	"github.com/golang/protobuf/jsonpb"
 	strip "github.com/grokify/html-strip-tags-go"
 	"github.com/xeipuuv/gojsonschema"
 	"go.uber.org/zap"
