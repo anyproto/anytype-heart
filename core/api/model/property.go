@@ -217,10 +217,10 @@ func (DatePropertyValue) isPropertyWithValue() {}
 
 type FilesPropertyValue struct {
 	PropertyBase
-	Key    string         `json:"key" example:"files"`         // The key of the property
-	Name   string         `json:"name" example:"Files"`        // The name of the property
-	Format PropertyFormat `json:"format" enums:"files"`        // The format of the property
-	Files  []string       `json:"files" example:"['file_id']"` // The file values of the property
+	Key    string         `json:"key" example:"files"`                                                         // The key of the property
+	Name   string         `json:"name" example:"Files"`                                                        // The name of the property
+	Format PropertyFormat `json:"format" enums:"files"`                                                        // The format of the property
+	Files  []string       `json:"files" example:"bafyreie6n5l5nkbjal37su54cha4coy7qzuhrnajluzv5qd5jvtsrxkequ"` // The file values of the property
 }
 
 func (FilesPropertyValue) isPropertyWithValue() {}
@@ -267,10 +267,10 @@ func (PhonePropertyValue) isPropertyWithValue() {}
 
 type ObjectsPropertyValue struct {
 	PropertyBase
-	Key     string         `json:"key" example:"creator"`           // The key of the property
-	Name    string         `json:"name" example:"Created by"`       // The name of the property
-	Format  PropertyFormat `json:"format" enums:"objects"`          // The format of the property
-	Objects []string       `json:"objects" example:"['object_id']"` // The object values of the property
+	Key     string         `json:"key" example:"creator"`                                                         // The key of the property
+	Name    string         `json:"name" example:"Created by"`                                                     // The name of the property
+	Format  PropertyFormat `json:"format" enums:"objects"`                                                        // The format of the property
+	Objects []string       `json:"objects" example:"bafyreie6n5l5nkbjal37su54cha4coy7qzuhrnajluzv5qd5jvtsrxkequ"` // The object values of the property
 }
 
 func (ObjectsPropertyValue) isPropertyWithValue() {}
@@ -423,7 +423,7 @@ func (v SelectPropertyLinkValue) Value() interface{} {
 
 type MultiSelectPropertyLinkValue struct {
 	PropertyKey string    `json:"key" example:"tag"`
-	MultiSelect *[]string `json:"multi_select" example:"['tag_id']"` // The selected tag ids of the property; see ListTags endpoint for valid values
+	MultiSelect *[]string `json:"multi_select" example:"bafyreiaixlnaefu3ci22zdenjhsdlyaeeoyjrsid5qhfeejzlccijbj7sq,bafyreie6n5l5nkbjal37su54cha4coy7qzuhrnajluzv5qd5jvtsrxkequ"` // The selected tag ids of the property; see ListTags endpoint for valid values
 }
 
 func (MultiSelectPropertyLinkValue) isPropertyLinkWithValue() {}
@@ -463,7 +463,7 @@ func (v DatePropertyLinkValue) Value() interface{} {
 
 type FilesPropertyLinkValue struct {
 	PropertyKey string    `json:"key" example:"files"`
-	Files       *[]string `json:"files" example:"['file_id']"` // The file ids of the property
+	Files       *[]string `json:"files" example:"bafyreie6n5l5nkbjal37su54cha4coy7qzuhrnajluzv5qd5jvtsrxkequ"` // The file ids of the property
 }
 
 func (FilesPropertyLinkValue) isPropertyLinkWithValue() {}
@@ -557,7 +557,7 @@ func (v PhonePropertyLinkValue) Value() interface{} {
 
 type ObjectsPropertyLinkValue struct {
 	PropertyKey string    `json:"key" example:"creator"`
-	Objects     *[]string `json:"objects" example:"['object_id']"` // The object ids of the property
+	Objects     *[]string `json:"objects" example:"bafyreie6n5l5nkbjal37su54cha4coy7qzuhrnajluzv5qd5jvtsrxkequ"` // The object ids of the property
 }
 
 func (ObjectsPropertyLinkValue) isPropertyLinkWithValue() {}

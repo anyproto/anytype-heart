@@ -406,7 +406,7 @@
           "files": {
             "description": "The file ids of the property",
             "example": [
-              "['file_id']"
+              "bafyreie6n5l5nkbjal37su54cha4coy7qzuhrnajluzv5qd5jvtsrxkequ"
             ],
             "items": {
               "type": "string"
@@ -426,7 +426,7 @@
           "files": {
             "description": "The file values of the property",
             "example": [
-              "['file_id']"
+              "bafyreie6n5l5nkbjal37su54cha4coy7qzuhrnajluzv5qd5jvtsrxkequ"
             ],
             "items": {
               "type": "string"
@@ -1401,7 +1401,8 @@
           "multi_select": {
             "description": "The selected tag ids of the property; see ListTags endpoint for valid values",
             "example": [
-              "['tag_id']"
+              "bafyreiaixlnaefu3ci22zdenjhsdlyaeeoyjrsid5qhfeejzlccijbj7sq",
+              "bafyreie6n5l5nkbjal37su54cha4coy7qzuhrnajluzv5qd5jvtsrxkequ"
             ],
             "items": {
               "type": "string"
@@ -1663,7 +1664,7 @@
           "objects": {
             "description": "The object ids of the property",
             "example": [
-              "['object_id']"
+              "bafyreie6n5l5nkbjal37su54cha4coy7qzuhrnajluzv5qd5jvtsrxkequ"
             ],
             "items": {
               "type": "string"
@@ -1702,7 +1703,7 @@
           "objects": {
             "description": "The object values of the property",
             "example": [
-              "['object_id']"
+              "bafyreie6n5l5nkbjal37su54cha4coy7qzuhrnajluzv5qd5jvtsrxkequ"
             ],
             "items": {
               "type": "string"
