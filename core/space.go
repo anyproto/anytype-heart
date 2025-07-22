@@ -382,19 +382,19 @@ func (mw *Middleware) SpaceLeaveApprove(cctx context.Context, req *pb.RpcSpaceLe
 }
 
 func (mw *Middleware) SpaceSetOrder(_ context.Context, request *pb.RpcSpaceSetOrderRequest) *pb.RpcSpaceSetOrderResponse {
-	response := func(code pb.RpcSpaceSetOrderResponseErrorCode, err error) *pb.RpcSpaceSetOrderResponse {
-		m := &pb.RpcSpaceSetOrderResponse{Error: &pb.RpcSpaceSetOrderResponseError{Code: code}}
+	response := func(code pb.RpcSpaceSetOrderResponseErrorCode, err error, finalOrder []string) *pb.RpcSpaceSetOrderResponse {
+		m := &pb.RpcSpaceSetOrderResponse{Error: &pb.RpcSpaceSetOrderResponseError{Code: code}, SpaceViewOrder: finalOrder}
 		if err != nil {
 			m.Error.Description = getErrorDescription(err)
 		}
 		return m
 	}
 	orderService := app.MustComponent[spaceview.OrderSetter](mw.applicationService.GetApp())
-	err := orderService.SetOrder(request.SpaceViewId, request.GetSpaceViewOrder())
+	finalOrder, err := orderService.SetOrder(request.GetSpaceViewOrder())
 	if err != nil {
-		return response(pb.RpcSpaceSetOrderResponseError_UNKNOWN_ERROR, err)
+		return response(pb.RpcSpaceSetOrderResponseError_UNKNOWN_ERROR, err, nil)
 	}
-	return response(pb.RpcSpaceSetOrderResponseError_NULL, nil)
+	return response(pb.RpcSpaceSetOrderResponseError_NULL, nil, finalOrder)
 }
 
 func (mw *Middleware) SpaceUnsetOrder(_ context.Context, request *pb.RpcSpaceUnsetOrderRequest) *pb.RpcSpaceUnsetOrderResponse {

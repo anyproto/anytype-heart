@@ -176,8 +176,12 @@ func (s *service) Run(ctx context.Context) (err error) {
 }
 
 func (s *service) Close(_ context.Context) (err error) {
-	close(s.closing)
-	s.periodicGetStatus.Close()
+	if s.closing != nil {
+		close(s.closing)
+	}
+	if s.periodicGetStatus != nil {
+		s.periodicGetStatus.Close()
+	}
 	return nil
 }
 

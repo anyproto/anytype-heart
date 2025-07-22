@@ -419,3 +419,91 @@ func TestSubscribeToMessagePreviews(t *testing.T) {
 		})
 	})
 }
+
+func TestApplyEmojiMarks(t *testing.T) {
+	for _, tc := range []struct {
+		name  string
+		text  string
+		marks []*model.BlockContentTextMark
+		want  string
+	}{
+		{
+			name:  "empty text",
+			text:  "",
+			marks: []*model.BlockContentTextMark{},
+			want:  "",
+		},
+		{
+			name:  "no marks",
+			text:  "hello",
+			marks: []*model.BlockContentTextMark{},
+			want:  "hello",
+		},
+		{
+			name: "invalid range",
+			text: "hello",
+			marks: []*model.BlockContentTextMark{
+				{
+					Type: model.BlockContentTextMark_Emoji,
+					Range: &model.Range{
+						From: 100,
+						To:   101,
+					},
+					Param: "👍",
+				},
+			},
+			want: "hello",
+		},
+		{
+			name: "only emoji",
+			text: " ",
+			marks: []*model.BlockContentTextMark{
+				{
+					Type: model.BlockContentTextMark_Emoji,
+					Range: &model.Range{
+						From: 0,
+						To:   1,
+					},
+					Param: "👍",
+				},
+			},
+			want: "👍",
+		},
+		{
+			name: "multiple marks",
+			text: " a b ",
+			marks: []*model.BlockContentTextMark{
+				{
+					Type: model.BlockContentTextMark_Emoji,
+					Range: &model.Range{
+						From: 0,
+						To:   1,
+					},
+					Param: "👍",
+				},
+				{
+					Type: model.BlockContentTextMark_Emoji,
+					Range: &model.Range{
+						From: 2,
+						To:   3,
+					},
+					Param: "👌",
+				},
+				{
+					Type: model.BlockContentTextMark_Emoji,
+					Range: &model.Range{
+						From: 4,
+						To:   5,
+					},
+					Param: "😀",
+				},
+			},
+			want: "👍a👌b😀",
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			got := applyEmojiMarks(tc.text, tc.marks)
+			assert.Equal(t, tc.want, got)
+		})
+	}
+}
