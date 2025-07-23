@@ -25,7 +25,7 @@ type SpaceStatus interface {
 	SetLocalStatus(status spaceinfo.LocalStatus) error
 	SetLocalInfo(info spaceinfo.SpaceLocalInfo) (err error)
 	SetAccessType(status spaceinfo.AccessType) (err error)
-	SetAclInfo(isAclEmpty bool, pushKey crypto.PrivKey, pushEncryptionKey crypto.SymKey) (err error)
+	SetAclInfo(isAclEmpty bool, pushKey crypto.PrivKey, pushEncryptionKey crypto.SymKey, joinedDate int64) (err error)
 	SetOwner(ownerIdentity string, createdDate int64) (err error)
 	GetSpaceView() techspace.SpaceView
 }
@@ -165,9 +165,9 @@ func (s *spaceStatus) SetAccessType(acc spaceinfo.AccessType) (err error) {
 	})
 }
 
-func (s *spaceStatus) SetAclInfo(isAclEmpty bool, pushKey crypto.PrivKey, pushEncryptionKey crypto.SymKey) (err error) {
+func (s *spaceStatus) SetAclInfo(isAclEmpty bool, pushKey crypto.PrivKey, pushEncryptionKey crypto.SymKey, joinedDate int64) (err error) {
 	return doSpaceView(s.spaceView, func(view techspace.SpaceView) error {
-		return view.SetAclInfo(isAclEmpty, pushKey, pushEncryptionKey)
+		return view.SetAclInfo(isAclEmpty, pushKey, pushEncryptionKey, joinedDate)
 	})
 }
 

@@ -9,7 +9,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-const RelationChecksum = "3fe5a1aa23d9f84c89d3946507fb29a57a322c15400875b3e4e44ee5e473180d"
+const RelationChecksum = "82683a0ef7e8215417c1c0163c2230cdd683ef24992356c2e9fed325b15500c5"
 const (
 	RelationKeyTag                                domain.RelationKey = "tag"
 	RelationKeyCamera                             domain.RelationKey = "camera"
@@ -176,6 +176,7 @@ const (
 	RelationKeySpacePushNotificationMode          domain.RelationKey = "spacePushNotificationMode"
 	RelationKeySpacePushNotificationKey           domain.RelationKey = "spacePushNotificationKey"
 	RelationKeySpacePushNotificationEncryptionKey domain.RelationKey = "spacePushNotificationEncryptionKey"
+	RelationKeySpaceJoinDate                      domain.RelationKey = "spaceJoinDate"
 )
 
 var (
@@ -2079,6 +2080,20 @@ var (
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
 		},
+		RelationKeySpaceJoinDate: {
+
+			DataSource:       model.Relation_derived,
+			Description:      "Space join date",
+			Format:           model.RelationFormat_date,
+			Id:               "_brspaceJoinDate",
+			IncludeTime:      true,
+			Key:              "spaceJoinDate",
+			MaxCount:         1,
+			Name:             "Space join date",
+			ReadOnly:         true,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
 		RelationKeySpaceLocalStatus: {
 
 			DataSource:       model.Relation_derived,
@@ -2351,7 +2366,7 @@ var (
 			Id:               "_brtimestamp",
 			Key:              "timestamp",
 			MaxCount:         1,
-			Name:             "Order",
+			Name:             "Timestamp",
 			ReadOnly:         true,
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
