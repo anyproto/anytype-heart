@@ -84,8 +84,6 @@ github.com/anyproto/any-sync v0.9.0 h1:Lq0Dx2nlub59v3+3GANc+en9PO7Mv3o5EwlQTf0+7
 github.com/anyproto/any-sync v0.9.0/go.mod h1:WTPTp7QBZEF2eB+q3xRQjM1/atT8gah4KVEjzjTGsbo=
 github.com/anyproto/anytype-publish-server/publishclient v0.0.0-20250716122732-cdcfe3a126bb h1:X1os44y0QWf1mYGj8BOoYKlXwY5xb94xTQIw1IIKJbY=
 github.com/anyproto/anytype-publish-server/publishclient v0.0.0-20250716122732-cdcfe3a126bb/go.mod h1:OzzODq4OigiRVD2lSOX1iHAoLcxhJDRbZb8n5PLG3WE=
-github.com/anyproto/anytype-push-server/pushclient v0.0.0-20250616103304-db364e9f3985 h1:KIskX/AuII+os8WoiEdmGoY2H7sIIAjEnUrmaMuLarY=
-github.com/anyproto/anytype-push-server/pushclient v0.0.0-20250616103304-db364e9f3985/go.mod h1:IjVnEyh6QiLsPPfZinTTnOtxe79uJUKZyC1z65b2Yuc=
 github.com/anyproto/anytype-push-server/pushclient v0.0.0-20250716112212-b3ac9fbaa2ed h1:sTeFNOqt6JB1Ge2RXG4DJnbH3gF2CBllbdnhcmLx2Q4=
 github.com/anyproto/anytype-push-server/pushclient v0.0.0-20250716112212-b3ac9fbaa2ed/go.mod h1:fY9DmDaVetOtBqr5di6sVZKKx1AiIiCQkKxttAD7xWc=
 github.com/anyproto/badger/v4 v4.2.1-0.20240110160636-80743fa3d580 h1:Ba80IlCCxkZ9H1GF+7vFu/TSpPvbpDCxXJ5ogc4euYc=
@@ -393,6 +391,8 @@ github.com/goccy/go-graphviz v0.2.9/go.mod h1:hssjl/qbvUXGmloY81BwXt2nqoApKo7DFg
 github.com/goccy/go-json v0.10.3 h1:KZ5WoDbxAIgm2HNbYckL0se1fHD6rz5j4ywS6ebzDqA=
 github.com/goccy/go-json v0.10.3/go.mod h1:oq7eo15ShAhp70Anwd5lgX2pLfOS3QCiwU/PULtXL6M=
 github.com/godbus/dbus/v5 v5.0.4/go.mod h1:xhWf0FNVPg57R7Z0UbKHbJfkEywrmjJnf7w5xrFpKfA=
+github.com/gofrs/flock v0.12.1 h1:MTLVXXHf8ekldpJk3AKicLij9MdwOWkZ+a/jHHZby9E=
+github.com/gofrs/flock v0.12.1/go.mod h1:9zxTsyu5xtJ9DK+1tFZyibEV7y3uwDxPPfbxeeHCoD0=
 github.com/gogo/googleapis v0.0.0-20180223154316-0cd9801be74a/go.mod h1:gf4bu3Q80BeJ6H1S1vYPm8/ELATdvryBaNFGgqEef3s=
 github.com/gogo/googleapis v1.1.0/go.mod h1:gf4bu3Q80BeJ6H1S1vYPm8/ELATdvryBaNFGgqEef3s=
 github.com/gogo/googleapis v1.3.1 h1:CzMaKrvF6Qa7XtRii064vKBQiyvmY8H8vG1xa1/W1JA=
