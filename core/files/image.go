@@ -62,7 +62,14 @@ func selectAndSortResizeVariants(variants []*storage.FileInfo) []*storage.FileIn
 
 	// Sort by width
 	sort.Slice(onlyResizeVariants, func(i, j int) bool {
-		return getVariantWidth(onlyResizeVariants[i]) < getVariantWidth(onlyResizeVariants[j])
+		varI, varJ := onlyResizeVariants[i], onlyResizeVariants[j]
+		widthI, widthJ := getVariantWidth(varI), getVariantWidth(varJ)
+		// Sort by width first
+		if widthI != widthJ {
+			return widthI < widthJ
+		}
+		// Then by size
+		return varI.Size_ < varJ.Size_
 	})
 	return onlyResizeVariants
 }
