@@ -99,7 +99,7 @@ func TestImageDetails(t *testing.T) {
 		{key: bundle.RelationKeyName, value: domain.String("myFile")},
 		{key: bundle.RelationKeyFileExt, value: domain.String("jpg")},
 		{key: bundle.RelationKeyFileMimeType, value: domain.String("image/jpeg")},
-		{key: bundle.RelationKeySizeInBytes, value: domain.Int64(5480)},
+		{key: bundle.RelationKeySizeInBytes, value: domain.Int64(7958)},
 		{key: bundle.RelationKeyCreatedDate, value: domain.Int64(createdDate.Unix())},
 		{key: bundle.RelationKeyCamera, value: domain.String("Canon EOS 40D")},
 		{key: bundle.RelationKeyExposure, value: domain.String("1/160")},

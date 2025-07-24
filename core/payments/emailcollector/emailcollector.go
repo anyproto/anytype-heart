@@ -170,7 +170,7 @@ func (e *emailcollector) SendRequest(ctx context.Context, req *pb.RpcMembershipG
 		IsOnboardingList:        req.IsOnboardingList,
 	}
 
-	payload, err := bsr.Marshal()
+	payload, err := bsr.MarshalVT()
 	if err != nil {
 		log.Error("can not marshal GetVerificationEmailRequest", zap.Error(err))
 		return nil, errors.New("can not marshal GetVerificationEmailRequest")

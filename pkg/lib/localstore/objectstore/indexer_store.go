@@ -86,7 +86,7 @@ func (s *dsObjectStore) BatchProcessFullTextQueue(
 	spaceIds func() []string,
 	limit uint,
 	processIds func(objectIds []domain.FullID,
-	) (succeedIds []domain.FullID, ftIndexSeq uint64, err error)) error {
+) (succeedIds []domain.FullID, ftIndexSeq uint64, err error)) error {
 	for {
 		ids, err := s.ListIdsFromFullTextQueue(spaceIds(), limit)
 		if err != nil {
@@ -203,7 +203,6 @@ func (s *dsObjectStore) FtQueueMarkAsIndexed(ids []domain.FullID, ftIndexSeq uin
 	}
 
 	err = txn.Commit()
-	log.With("ids", ids).With("ftIndexSeq", ftIndexSeq).Warnf("commit fulltext queue update")
 	if err != nil {
 		return fmt.Errorf("commit write tx: %w", err)
 	}

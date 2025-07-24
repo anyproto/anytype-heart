@@ -12,7 +12,6 @@ import (
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/commonspace/object/tree/treechangeproto"
 	"github.com/globalsign/mgo/bson"
-	"github.com/gogo/protobuf/proto"
 	"github.com/ipfs/go-cid"
 	"github.com/multiformats/go-multihash"
 
@@ -235,13 +234,13 @@ func GetTypeAndKeyFromRoot(rawRoot *treechangeproto.RawTreeChangeWithId) (sbt sm
 
 func unmarshallRoot(rawRoot *treechangeproto.RawTreeChangeWithId) (root *treechangeproto.RootChange, err error) {
 	raw := &treechangeproto.RawTreeChange{}
-	err = proto.Unmarshal(rawRoot.GetRawChange(), raw)
+	err = raw.UnmarshalVT(rawRoot.GetRawChange())
 	if err != nil {
 		return
 	}
 
 	root = &treechangeproto.RootChange{}
-	err = proto.Unmarshal(raw.Payload, root)
+	err = root.UnmarshalVT(raw.Payload)
 	if err != nil {
 		return
 	}
@@ -250,6 +249,6 @@ func unmarshallRoot(rawRoot *treechangeproto.RawTreeChangeWithId) (root *treecha
 
 func objectType(changePayload []byte) (payload *model.ObjectChangePayload, err error) {
 	payload = &model.ObjectChangePayload{}
-	err = proto.Unmarshal(changePayload, payload)
+	err = payload.Unmarshal(changePayload)
 	return
 }

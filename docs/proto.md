@@ -21198,6 +21198,7 @@ Available undo/redo operations
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | error | [Rpc.Space.SetOrder.Response.Error](#anytype-Rpc-Space-SetOrder-Response-Error) |  |  |
+| spaceViewOrder | [string](#string) | repeated | final order of space view ids with their lexids |
 
 
 
