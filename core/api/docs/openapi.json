@@ -388,6 +388,57 @@
         },
         "type": "object"
       },
+      "apimodel.File": {
+        "description": "The file object",
+        "properties": {
+          "id": {
+            "description": "The id of the file",
+            "example": "bafyreie6n5l5nkbjal37su54cha4coy7qzuhrnajluzv5qd5jvtsrxkequ",
+            "type": "string"
+          },
+          "layout": {
+            "description": "The layout of the file object (file or image)",
+            "enum": [
+              "file",
+              "image"
+            ],
+            "example": "file",
+            "type": "string"
+          },
+          "name": {
+            "description": "The name of the file",
+            "example": "My document.pdf",
+            "type": "string"
+          },
+          "object": {
+            "description": "The data model of the object",
+            "example": "file",
+            "type": "string"
+          },
+          "properties": {
+            "description": "The properties of the file",
+            "items": {
+              "$ref": "#/components/schemas/apimodel.PropertyWithValue"
+            },
+            "type": "array",
+            "uniqueItems": false
+          },
+          "space_id": {
+            "description": "The id of the space the file is in",
+            "example": "bafyreigyfkt6rbv24sbv5aq2hko3bhmv5xxlf22b4bypdu6j7hnphm3psq.23me69r569oi1",
+            "type": "string"
+          },
+          "type": {
+            "$ref": "#/components/schemas/apimodel.Type"
+          },
+          "url": {
+            "description": "The URL to access/download the file content via the gateway",
+            "example": "http://localhost:31006/image/bafyreie6n5l5nkbjal37su54cha4coy7qzuhrnajluzv5qd5jvtsrxkequ",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
       "apimodel.FileIcon": {
         "properties": {
           "file": {
@@ -397,6 +448,14 @@
           },
           "format": {
             "$ref": "#/components/schemas/apimodel.IconFormat"
+          }
+        },
+        "type": "object"
+      },
+      "apimodel.FileResponse": {
+        "properties": {
+          "file": {
+            "$ref": "#/components/schemas/apimodel.File"
           }
         },
         "type": "object"
@@ -508,7 +567,7 @@
         "type": "object"
       },
       "apimodel.Icon": {
-        "description": "The icon of the object, or null if the object has no icon",
+        "description": "The icon of the type, or null if the type has no icon",
         "nullable": true,
         "oneOf": [
           {
@@ -1563,7 +1622,7 @@
         "type": "object"
       },
       "apimodel.ObjectLayout": {
-        "description": "The layout of the object",
+        "description": "The layout of the type",
         "example": "basic",
         "type": "string",
         "x-enum-varnames": [
@@ -1574,7 +1633,9 @@
           "ObjectLayoutBookmark",
           "ObjectLayoutSet",
           "ObjectLayoutCollection",
-          "ObjectLayoutParticipant"
+          "ObjectLayoutParticipant",
+          "ObjectLayoutImage",
+          "ObjectLayoutFile"
         ]
       },
       "apimodel.ObjectResponse": {
@@ -1602,7 +1663,7 @@
             "type": "string"
           },
           "layout": {
-            "description": "The layout of the object",
+            "description": "The layout of the type",
             "example": "basic",
             "type": "string",
             "x-enum-varnames": [
@@ -1613,7 +1674,9 @@
               "ObjectLayoutBookmark",
               "ObjectLayoutSet",
               "ObjectLayoutCollection",
-              "ObjectLayoutParticipant"
+              "ObjectLayoutParticipant",
+              "ObjectLayoutImage",
+              "ObjectLayoutFile"
             ]
           },
           "markdown": {
@@ -1791,7 +1854,7 @@
         "type": "object"
       },
       "apimodel.PropertyFormat": {
-        "description": "The format of the property used for filtering",
+        "description": "The format of the property",
         "enum": [
           "text",
           "number",
@@ -2208,7 +2271,7 @@
         "type": "object"
       },
       "apimodel.Type": {
-        "description": "The type of the object, or null if the type has been deleted.",
+        "description": "The type of the file, or null if the type has been deleted",
         "nullable": true,
         "properties": {
           "archived": {
@@ -2230,29 +2293,7 @@
             "type": "string"
           },
           "layout": {
-            "description": "The layout of the object",
-            "enum": [
-              "basic",
-              "profile",
-              "action",
-              "note",
-              "bookmark",
-              "set",
-              "set",
-              "collection",
-              "participant"
-            ],
-            "type": "string",
-            "x-enum-varnames": [
-              "ObjectLayoutBasic",
-              "ObjectLayoutProfile",
-              "ObjectLayoutAction",
-              "ObjectLayoutNote",
-              "ObjectLayoutBookmark",
-              "ObjectLayoutSet",
-              "ObjectLayoutCollection",
-              "ObjectLayoutParticipant"
-            ]
+            "$ref": "#/components/schemas/apimodel.ObjectLayout"
           },
           "name": {
             "description": "The name of the type",
@@ -2493,6 +2534,22 @@
             },
             "type": "array",
             "uniqueItems": false
+          }
+        },
+        "type": "object"
+      },
+      "pagination.PaginatedResponse-apimodel_File": {
+        "properties": {
+          "data": {
+            "description": "The list of items in the current result set",
+            "items": {
+              "$ref": "#/components/schemas/apimodel.File"
+            },
+            "type": "array",
+            "uniqueItems": false
+          },
+          "pagination": {
+            "$ref": "#/components/schemas/pagination.PaginationMeta"
           }
         },
         "type": "object"
@@ -3388,6 +3445,188 @@
         "summary": "Update space",
         "tags": [
           "Spaces"
+        ]
+      }
+    },
+    "/v1/spaces/{space_id}/files": {
+      "get": {
+        "description": "Retrieves a paginated list of file objects (images, videos, audio, PDFs, and generic files) in the given space. The response includes file metadata such as ID, name, space ID, layout (file or image), associated type, properties, and a URL for direct content access via the gateway. The endpoint supports pagination and name filtering. This endpoint is useful for building file galleries, media browsers, or document management interfaces.",
+        "operationId": "list_files",
+        "parameters": [
+          {
+            "description": "The version of the API to use",
+            "in": "header",
+            "name": "Anytype-Version",
+            "required": true,
+            "schema": {
+              "default": "2025-05-20",
+              "type": "string"
+            }
+          },
+          {
+            "description": "The ID of the space in which to list files; must be retrieved from ListSpaces endpoint",
+            "in": "path",
+            "name": "space_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Filter files by name (partial match)",
+            "in": "query",
+            "name": "name",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "The number of items to skip before starting to collect the result set",
+            "in": "query",
+            "name": "offset",
+            "schema": {
+              "default": 0,
+              "type": "integer"
+            }
+          },
+          {
+            "description": "The number of items to return",
+            "in": "query",
+            "name": "limit",
+            "schema": {
+              "default": 100,
+              "maximum": 1000,
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/pagination.PaginatedResponse-apimodel_File"
+                }
+              }
+            },
+            "description": "The list of files in the specified space"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/util.UnauthorizedError"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/util.ServerError"
+                }
+              }
+            },
+            "description": "Internal server error"
+          }
+        },
+        "security": [
+          {
+            "bearerauth": []
+          }
+        ],
+        "summary": "List files",
+        "tags": [
+          "Files"
+        ]
+      }
+    },
+    "/v1/spaces/{space_id}/files/{file_id}": {
+      "get": {
+        "description": "Fetches the full details of a single file object identified by the file ID within the specified space. The response includes the file's ID, name, space ID, layout (file or image), associated type object, properties with their values, and a URL for direct content access via the gateway. This endpoint is essential when a client needs to display detailed file information or access the file content.",
+        "operationId": "get_file",
+        "parameters": [
+          {
+            "description": "The version of the API to use",
+            "in": "header",
+            "name": "Anytype-Version",
+            "required": true,
+            "schema": {
+              "default": "2025-05-20",
+              "type": "string"
+            }
+          },
+          {
+            "description": "The ID of the space in which the file exists; must be retrieved from ListSpaces endpoint",
+            "in": "path",
+            "name": "space_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "The ID of the file to retrieve; must be retrieved from ListFiles endpoint or obtained from response context",
+            "in": "path",
+            "name": "file_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/apimodel.FileResponse"
+                }
+              }
+            },
+            "description": "The retrieved file"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/util.UnauthorizedError"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/util.NotFoundError"
+                }
+              }
+            },
+            "description": "Resource not found"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/util.ServerError"
+                }
+              }
+            },
+            "description": "Internal server error"
+          }
+        },
+        "security": [
+          {
+            "bearerauth": []
+          }
+        ],
+        "summary": "Get file",
+        "tags": [
+          "Files"
         ]
       }
     },

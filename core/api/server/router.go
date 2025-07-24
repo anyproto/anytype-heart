@@ -122,6 +122,17 @@ func (s *Server) NewRouter(mw apicore.ClientCommands, eventService apicore.Event
 		// 	handler.UpdateMemberHandler(s.service),
 		// )
 
+		// File
+		v1.GET("/spaces/:space_id/files",
+			ensureFilters(),
+			ensureAnalyticsEvent("ListFiles", eventService),
+			handler.ListFilesHandler(s.service),
+		)
+		v1.GET("/spaces/:space_id/files/:file_id",
+			ensureAnalyticsEvent("OpenFile", eventService),
+			handler.GetFileHandler(s.service),
+		)
+
 		// Object
 		v1.GET("/spaces/:space_id/objects",
 			ensureFilters(),

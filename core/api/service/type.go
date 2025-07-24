@@ -489,6 +489,10 @@ func (s *Service) otLayoutToObjectLayout(objectTypeLayout model.ObjectTypeLayout
 		return apimodel.ObjectLayoutCollection
 	case model.ObjectType_participant:
 		return apimodel.ObjectLayoutParticipant
+	case model.ObjectType_image:
+		return apimodel.ObjectLayoutImage
+	case model.ObjectType_pdf, model.ObjectType_file, model.ObjectType_audio, model.ObjectType_video:
+		return apimodel.ObjectLayoutFile
 	default:
 		return apimodel.ObjectLayoutBasic
 	}

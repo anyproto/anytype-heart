@@ -18,6 +18,8 @@ const (
 	ObjectLayoutSet         ObjectLayout = "set"
 	ObjectLayoutCollection  ObjectLayout = "collection"
 	ObjectLayoutParticipant ObjectLayout = "participant"
+	ObjectLayoutImage       ObjectLayout = "image"
+	ObjectLayoutFile        ObjectLayout = "file"
 )
 
 func (ol *ObjectLayout) UnmarshalJSON(data []byte) error {
@@ -26,7 +28,7 @@ func (ol *ObjectLayout) UnmarshalJSON(data []byte) error {
 		return err
 	}
 	switch ObjectLayout(s) {
-	case ObjectLayoutBasic, ObjectLayoutProfile, ObjectLayoutAction, ObjectLayoutNote, ObjectLayoutBookmark, ObjectLayoutSet, ObjectLayoutCollection, ObjectLayoutParticipant:
+	case ObjectLayoutBasic, ObjectLayoutProfile, ObjectLayoutAction, ObjectLayoutNote, ObjectLayoutBookmark, ObjectLayoutSet, ObjectLayoutCollection, ObjectLayoutParticipant, ObjectLayoutImage, ObjectLayoutFile:
 		*ol = ObjectLayout(s)
 		return nil
 	default:
