@@ -84,8 +84,6 @@ github.com/anyproto/any-sync v0.9.0 h1:Lq0Dx2nlub59v3+3GANc+en9PO7Mv3o5EwlQTf0+7
 github.com/anyproto/any-sync v0.9.0/go.mod h1:WTPTp7QBZEF2eB+q3xRQjM1/atT8gah4KVEjzjTGsbo=
 github.com/anyproto/anytype-publish-server/publishclient v0.0.0-20250716122732-cdcfe3a126bb h1:X1os44y0QWf1mYGj8BOoYKlXwY5xb94xTQIw1IIKJbY=
 github.com/anyproto/anytype-publish-server/publishclient v0.0.0-20250716122732-cdcfe3a126bb/go.mod h1:OzzODq4OigiRVD2lSOX1iHAoLcxhJDRbZb8n5PLG3WE=
-github.com/anyproto/anytype-push-server/pushclient v0.0.0-20250616103304-db364e9f3985 h1:KIskX/AuII+os8WoiEdmGoY2H7sIIAjEnUrmaMuLarY=
-github.com/anyproto/anytype-push-server/pushclient v0.0.0-20250616103304-db364e9f3985/go.mod h1:IjVnEyh6QiLsPPfZinTTnOtxe79uJUKZyC1z65b2Yuc=
 github.com/anyproto/anytype-push-server/pushclient v0.0.0-20250716112212-b3ac9fbaa2ed h1:sTeFNOqt6JB1Ge2RXG4DJnbH3gF2CBllbdnhcmLx2Q4=
 github.com/anyproto/anytype-push-server/pushclient v0.0.0-20250716112212-b3ac9fbaa2ed/go.mod h1:fY9DmDaVetOtBqr5di6sVZKKx1AiIiCQkKxttAD7xWc=
 github.com/anyproto/badger/v4 v4.2.1-0.20240110160636-80743fa3d580 h1:Ba80IlCCxkZ9H1GF+7vFu/TSpPvbpDCxXJ5ogc4euYc=
@@ -1096,8 +1094,8 @@ github.com/yuin/goldmark v1.2.1/go.mod h1:3hX8gzYuyVAZsxl0MRgGTJEmQBFcNTphYh9dec
 github.com/yuin/goldmark v1.3.5/go.mod h1:mwnBkeHKe2W/ZEtQ+71ViKU8L12m81fl3OWwC1Zlc8k=
 github.com/yuin/goldmark v1.4.13/go.mod h1:6yULJ656Px+3vBD8DxQVa3kxgyrAnzto9xy5taEt/CY=
 github.com/yuin/goldmark v1.5.5/go.mod h1:6yULJ656Px+3vBD8DxQVa3kxgyrAnzto9xy5taEt/CY=
-github.com/yuin/goldmark v1.7.8 h1:iERMLn0/QJeHFhxSt3p6PeN9mGnvIKSpG9YYorDMnic=
-github.com/yuin/goldmark v1.7.8/go.mod h1:uzxRWxtg69N339t3louHJ7+O03ezfj6PlliRlaOzY1E=
+github.com/yuin/goldmark v1.7.13 h1:GPddIs617DnBLFFVJFgpo1aBfe/4xcvMc3SB5t/D0pA=
+github.com/yuin/goldmark v1.7.13/go.mod h1:ip/1k0VRfGynBgxOz0yCqHrbZXhcjxyuS66Brc7iBKg=
 github.com/yusufpapurcu/wmi v1.2.4 h1:zFUKzehAFReQwLys1b/iSMl+JQGSCSjtVqQn9bBrPo0=
 github.com/yusufpapurcu/wmi v1.2.4/go.mod h1:SBZ9tNy3G9/m5Oi98Zks0QjeHVDvuK0qfxQmPyzfmi0=
 github.com/zeebo/assert v1.3.0 h1:g7C04CbJuIDKNPFHmsk4hwZDO5O+kntRxzaUoNXj+IQ=
