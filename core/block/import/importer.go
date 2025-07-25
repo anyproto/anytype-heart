@@ -233,8 +233,7 @@ func (i *Import) importFromBuiltinConverter(ctx context.Context, req *ImportRequ
 		return "", 0, fmt.Errorf("source path doesn't contain %s resources to import", req.Type)
 	}
 
-	importCtx := newImportContext(ctx, req, res, req.Origin)
-	importCtx.error = allErrors
+	importCtx := newImportContext(ctx, req, res, req.Origin, allErrors)
 	details, rootCollectionID := i.createObjects(importCtx)
 	resultErr := importCtx.error.GetResultError(req.Type)
 	if resultErr != nil {
@@ -265,7 +264,7 @@ func (i *Import) importFromExternalSource(ctx context.Context, req *ImportReques
 			},
 		}
 	}
-	importCtx := newImportContext(ctx, req, &common.Response{Snapshots: sn}, objectorigin.Import(model.Import_External))
+	importCtx := newImportContext(ctx, req, &common.Response{Snapshots: sn}, objectorigin.Import(model.Import_External), nil)
 	details, _ := i.createObjects(importCtx)
 	if !importCtx.error.IsEmpty() {
 		return 0, importCtx.error.GetResultError(req.Type)
@@ -368,7 +367,7 @@ func (i *Import) ImportWeb(ctx context.Context, req *ImportRequest) (string, *do
 
 	req.Progress.SetProgressMessage("Create objects")
 
-	importCtx := newImportContext(ctx, req, res, objectorigin.None())
+	importCtx := newImportContext(ctx, req, res, objectorigin.None(), nil)
 	details, _ := i.createObjects(importCtx)
 	if !importCtx.error.IsEmpty() {
 		return "", nil, fmt.Errorf("couldn't create objects")

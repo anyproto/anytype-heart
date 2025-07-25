@@ -44,9 +44,12 @@ type importContext struct {
 	relationKeysToFormat map[domain.RelationKey]int32
 }
 
-func newImportContext(ctx context.Context, req *ImportRequest, resp *common.Response, origin objectorigin.ObjectOrigin) *importContext {
+func newImportContext(ctx context.Context, req *ImportRequest, resp *common.Response, origin objectorigin.ObjectOrigin, error *common.ConvertError) *importContext {
 	if req == nil || resp == nil {
 		return nil
+	}
+	if error == nil {
+		error = common.NewError(req.Mode)
 	}
 	return &importContext{
 		ctx:          ctx,
@@ -54,7 +57,7 @@ func newImportContext(ctx context.Context, req *ImportRequest, resp *common.Resp
 		progress:     req.Progress,
 		req:          req.RpcObjectImportRequest,
 		convResponse: resp,
-		error:        common.NewError(req.Mode),
+		error:        error,
 	}
 }
 
