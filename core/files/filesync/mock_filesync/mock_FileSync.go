@@ -29,17 +29,17 @@ func (_m *MockFileSync) EXPECT() *MockFileSync_Expecter {
 	return &MockFileSync_Expecter{mock: &_m.Mock}
 }
 
-// AddFile provides a mock function with given fields: fileObjectId, fileId, uploadedByUser, imported
-func (_m *MockFileSync) AddFile(fileObjectId string, fileId domain.FullFileId, uploadedByUser bool, imported bool) error {
-	ret := _m.Called(fileObjectId, fileId, uploadedByUser, imported)
+// AddFile provides a mock function with given fields: req
+func (_m *MockFileSync) AddFile(req filesync.AddFileRequest) error {
+	ret := _m.Called(req)
 
 	if len(ret) == 0 {
 		panic("no return value specified for AddFile")
 	}
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(string, domain.FullFileId, bool, bool) error); ok {
-		r0 = rf(fileObjectId, fileId, uploadedByUser, imported)
+	if rf, ok := ret.Get(0).(func(filesync.AddFileRequest) error); ok {
+		r0 = rf(req)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -53,17 +53,14 @@ type MockFileSync_AddFile_Call struct {
 }
 
 // AddFile is a helper method to define mock.On call
-//   - fileObjectId string
-//   - fileId domain.FullFileId
-//   - uploadedByUser bool
-//   - imported bool
-func (_e *MockFileSync_Expecter) AddFile(fileObjectId interface{}, fileId interface{}, uploadedByUser interface{}, imported interface{}) *MockFileSync_AddFile_Call {
-	return &MockFileSync_AddFile_Call{Call: _e.mock.On("AddFile", fileObjectId, fileId, uploadedByUser, imported)}
+//   - req filesync.AddFileRequest
+func (_e *MockFileSync_Expecter) AddFile(req interface{}) *MockFileSync_AddFile_Call {
+	return &MockFileSync_AddFile_Call{Call: _e.mock.On("AddFile", req)}
 }
 
-func (_c *MockFileSync_AddFile_Call) Run(run func(fileObjectId string, fileId domain.FullFileId, uploadedByUser bool, imported bool)) *MockFileSync_AddFile_Call {
+func (_c *MockFileSync_AddFile_Call) Run(run func(req filesync.AddFileRequest)) *MockFileSync_AddFile_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(string), args[1].(domain.FullFileId), args[2].(bool), args[3].(bool))
+		run(args[0].(filesync.AddFileRequest))
 	})
 	return _c
 }
@@ -73,7 +70,7 @@ func (_c *MockFileSync_AddFile_Call) Return(err error) *MockFileSync_AddFile_Cal
 	return _c
 }
 
-func (_c *MockFileSync_AddFile_Call) RunAndReturn(run func(string, domain.FullFileId, bool, bool) error) *MockFileSync_AddFile_Call {
+func (_c *MockFileSync_AddFile_Call) RunAndReturn(run func(filesync.AddFileRequest) error) *MockFileSync_AddFile_Call {
 	_c.Call.Return(run)
 	return _c
 }

@@ -111,12 +111,12 @@ func New(
 		Locker:               &sync.Mutex{},
 		sessions:             map[string]session.Context{},
 
-		spaceIndex:         spaceIndex,
-		indexer:            indexer,
-		eventSender:        eventSender,
-		objectStore:        objectStore,
-		spaceIdResolver:    spaceIdResolver,
-		lastDepDetails:     map[string]*domain.Details{},
+		spaceIndex:      spaceIndex,
+		indexer:         indexer,
+		eventSender:     eventSender,
+		objectStore:     objectStore,
+		spaceIdResolver: spaceIdResolver,
+		lastDepDetails:  map[string]*domain.Details{},
 	}
 	return s
 }
@@ -247,11 +247,11 @@ type smartBlock struct {
 	space Space
 
 	// Deps
-	spaceIndex         spaceindex.Store
-	objectStore        objectstore.ObjectStore
-	indexer            Indexer
-	eventSender        event.Sender
-	spaceIdResolver    idresolver.Resolver
+	spaceIndex      spaceindex.Store
+	objectStore     objectstore.ObjectStore
+	indexer         Indexer
+	eventSender     event.Sender
+	spaceIdResolver idresolver.Resolver
 }
 
 func (sb *smartBlock) SetLocker(locker Locker) {

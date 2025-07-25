@@ -11,7 +11,6 @@ import (
 	"github.com/anyproto/any-sync/app"
 	"github.com/cheggaaa/mb/v3"
 	"github.com/globalsign/mgo/bson"
-	"github.com/gogo/protobuf/types"
 	"golang.org/x/exp/slices"
 	"golang.org/x/text/collate"
 
@@ -578,26 +577,38 @@ func (s *spaceSubscriptions) SubscribeIdsReq(req pb.RpcObjectSubscribeIdsRequest
 	if req.SpaceId == "" {
 		return nil, fmt.Errorf("spaceId is required")
 	}
-	records, err := s.objectStore.QueryByIds(req.Ids)
-	if err != nil {
-		return
-	}
-
 	if req.SubId == "" {
 		req.SubId = bson.NewObjectId().Hex()
 	}
 
 	s.m.Lock()
-	defer s.m.Unlock()
+	sub := s.newIdsSub(req.SubId, req.SpaceId, slice.StringsInto[domain.RelationKey](req.Keys), req.NoDepSubscription)
+	sub.addIds(req.Ids)
+	s.m.Unlock()
 
-	sub := s.newSimpleSub(req.SubId, req.SpaceId, slice.StringsInto[domain.RelationKey](req.Keys), !req.NoDepSubscription)
+	// Query initial entries out of critical section to reduce lock contention
+	// For full consistency we've already started to observe objects for this subscription, see entriesBeforeStarted
+	records, err := s.objectStore.QueryByIds(req.Ids)
+	if err != nil {
+		return
+	}
 	entries := make([]*entry, 0, len(records))
 	for _, r := range records {
 		entries = append(entries, newEntry(r.Details.GetString(bundle.RelationKeyId), r.Details))
 	}
+
+	s.m.Lock()
+	defer s.m.Unlock()
+	// Process entries before started to handle the deferred start pattern
+	if len(sub.entriesBeforeStarted) > 0 {
+		entries = append(entries, sub.entriesBeforeStarted...)
+		sub.entriesBeforeStarted = nil
+	}
+
 	if err = sub.init(entries); err != nil {
 		return
 	}
+
 	s.setSubscription(sub.id, sub)
 
 	var depRecords, subRecords []*domain.Details
@@ -606,21 +617,11 @@ func (s *spaceSubscriptions) SubscribeIdsReq(req pb.RpcObjectSubscribeIdsRequest
 	if sub.depSub != nil {
 		depRecords = sub.depSub.getActiveRecords()
 	}
-
 	return &pb.RpcObjectSubscribeIdsResponse{
-		Error:        &pb.RpcObjectSubscribeIdsResponseError{},
-		Records:      detailsToProtos(subRecords),
-		Dependencies: detailsToProtos(depRecords),
+		Records:      domain.DetailsListToProtos(subRecords),
+		Dependencies: domain.DetailsListToProtos(depRecords),
 		SubId:        req.SubId,
 	}, nil
-}
-
-func detailsToProtos(detailsList []*domain.Details) []*types.Struct {
-	res := make([]*types.Struct, 0, len(detailsList))
-	for _, d := range detailsList {
-		res = append(res, d.ToProto())
-	}
-	return res
 }
 
 type SubscribeGroupsRequest struct {

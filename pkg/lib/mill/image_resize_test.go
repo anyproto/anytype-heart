@@ -13,6 +13,7 @@ import (
 	"github.com/davecgh/go-spew/spew"
 	exif2 "github.com/dsoprea/go-exif/v3"
 	"github.com/rwcarlsen/goexif/exif"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/anyproto/anytype-heart/pkg/lib/mill/testdata"
@@ -22,12 +23,6 @@ var errFailedToFindExifMarker = fmt.Errorf("exif: failed to find exif intro mark
 
 func TestImageResize_Mill_ShouldRotateAndRemoveExif(t *testing.T) {
 	configs := []*ImageResize{
-		{
-			Opts: ImageResizeOpts{
-				Width:   "0",
-				Quality: "100",
-			},
-		},
 		{
 			Opts: ImageResizeOpts{
 				Width:   "2200",
@@ -105,7 +100,7 @@ func TestImageResize_Mill_ShouldNotBeReencoded(t *testing.T) {
 	}
 	origImg, err := jpeg.Decode(file)
 	origImgDump := spew.Sdump(*(origImg.(*image.YCbCr)))
-	for _, cfg := range configs {
+	for i, cfg := range configs {
 		file, err := os.Open(testdata.Images[1].Path)
 		if err != nil {
 			t.Fatal(err)
@@ -136,10 +131,19 @@ func TestImageResize_Mill_ShouldNotBeReencoded(t *testing.T) {
 		require.Equal(t, 680, img.Bounds().Max.X)
 		require.Equal(t, 518, img.Bounds().Max.Y)
 
-		d, err := exif2.SearchAndExtractExif(b)
-		require.Error(t, exif2.ErrNoExif, err)
-		require.Nil(t, d)
-		require.Equal(t, origImgDump, spew.Sdump(*(img.(*image.YCbCr))))
+		// For original
+		if i == 0 {
+			d, err := exif2.SearchAndExtractExif(b)
+			require.NoError(t, err)
+			assert.NotNil(t, d)
+			t.Run(fmt.Sprintf("%d", i), func(t *testing.T) {
+				assert.Equal(t, origImgDump, spew.Sdump(*(img.(*image.YCbCr))))
+			})
+			// For rest sizes
+		} else {
+			_, err := exif2.SearchAndExtractExif(b)
+			require.Error(t, err, exif2.ErrNoExif)
+		}
 	}
 }
 
@@ -175,22 +179,4 @@ func TestImageResize_Mill(t *testing.T) {
 		err = res.File.Close()
 		require.NoError(t, err)
 	}
-}
-
-func Test_patchReaderRemoveExif(t *testing.T) {
-	f, err := os.Open(testdata.Images[0].Path)
-	s, _ := f.Stat()
-	fmt.Println(s.Size())
-	require.NoError(t, err)
-	_, err = getExifData(f)
-	require.NoError(t, err)
-	f.Seek(0, io.SeekStart)
-
-	clean, err := patchReaderRemoveExif(f)
-	require.NoError(t, err)
-
-	b, err := ioutil.ReadAll(clean)
-	require.NoError(t, err)
-	_, _, err = image.Decode(bytes.NewReader(b))
-	require.NoError(t, err)
 }

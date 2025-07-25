@@ -76,11 +76,12 @@ func (t *TXT) GetSnapshots(ctx context.Context, req *pb.RpcObjectImportRequest, 
 	}
 	progress.SetTotal(int64(numberOfStages * len(snapshots)))
 	if allErrors.IsEmpty() {
-		return &common.Response{Snapshots: snapshots, RootCollectionID: rootCollectionID}, nil
+		return &common.Response{Snapshots: snapshots, RootObjectID: rootCollectionID, RootObjectWidgetType: model.BlockContentWidget_CompactList}, nil
 	}
 	return &common.Response{
-		Snapshots:        snapshots,
-		RootCollectionID: rootCollectionID,
+		Snapshots:            snapshots,
+		RootObjectID:         rootCollectionID,
+		RootObjectWidgetType: model.BlockContentWidget_CompactList,
 	}, allErrors
 }
 

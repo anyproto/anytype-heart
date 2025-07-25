@@ -1,0 +1,87 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "urn:anytype:schema:2025-01-20:author-user:type-system-object:ver-1.0",
+  "type": "object",
+  "title": "System Object",
+  "description": "An object with hidden system fields",
+  "x-type-key": "system_object",
+  "x-schema-version": "1.0",
+  "x-icon-emoji": "🔧",
+  "x-plural-name": "System Objects",
+  "properties": {
+    "id": {
+      "type": "string",
+      "description": "Unique identifier of the Anytype object",
+      "readOnly": true,
+      "x-order": 0,
+      "x-key": "id"
+    },
+    "Object type": {
+      "type": "string",
+      "const": "System Object",
+      "x-order": 1,
+      "x-key": "type"
+    },
+    "Name": {
+      "type": "string",
+      "x-featured": true,
+      "x-order": 2,
+      "x-key": "system_object_name",
+      "x-format": "shorttext",
+      "description": "The name of the system object"
+    },
+    "Status": {
+      "type": "string",
+      "enum": ["Active", "Inactive", "Maintenance"],
+      "x-featured": true,
+      "x-order": 3,
+      "x-key": "system_object_status",
+      "x-format": "status",
+      "description": "Current status of the system object"
+    },
+    "Created By": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "x-order": 4,
+      "x-key": "system_object_created_by",
+      "x-format": "object",
+      "x-object-types": ["participant"],
+      "description": "User who created this object"
+    },
+    "Modified Date": {
+      "type": "string",
+      "format": "date-time",
+      "x-order": 5,
+      "x-key": "system_object_modified_date",
+      "x-format": "date",
+      "x-include-time": true,
+      "description": "When the object was last modified"
+    },
+    "Internal State": {
+      "type": "string",
+      "x-hidden": true,
+      "x-order": 6,
+      "x-key": "system_object_internal_state",
+      "x-format": "shorttext",
+      "description": "Internal state information"
+    },
+    "Sync ID": {
+      "type": "string",
+      "x-hidden": true,
+      "x-order": 7,
+      "x-key": "system_object_sync_id",
+      "x-format": "shorttext",
+      "description": "Synchronization identifier"
+    },
+    "Debug Info": {
+      "type": "string",
+      "x-hidden": true,
+      "x-order": 8,
+      "x-key": "system_object_debug_info",
+      "x-format": "longtext",
+      "description": "Debug information for troubleshooting"
+    }
+  }
+}

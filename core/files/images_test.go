@@ -77,11 +77,10 @@ func TestImageAddWithCustomEncryptionKeys(t *testing.T) {
 	fx := newFixture(t)
 
 	customKeys := map[string]string{
-		encryptionKeyPath(schema.LinkImageOriginal):  "bweokjjonr756czpdoymdfwzromqtqb27z44tmcb2vv322y2v62ja",
-		encryptionKeyPath(schema.LinkImageLarge):     "bweokjjonr756czpdoymdfwzromqtqb27z44tmcb2vv322y2v62ja",
-		encryptionKeyPath(schema.LinkImageSmall):     "bear36qgxpvnsqis2omwqi33zcrjo6arxhokpqr3bnh2oqphxkiba",
-		encryptionKeyPath(schema.LinkImageThumbnail): "bcewq7zoa6cbbev6nxkykrrclvidriuglgags67zbdda53wfnn6eq",
-		encryptionKeyPath(schema.LinkImageExif):      "bdoiogvdd5bayrezafzf2lvgh3xxjk7ru4yq2frpxhjgmx26ih6sq",
+		encryptionKeyPath(schema.LinkImageOriginal): "bweokjjonr756czpdoymdfwzromqtqb27z44tmcb2vv322y2v62ja",
+		encryptionKeyPath(schema.LinkImageLarge):    "bweokjjonr756czpdoymdfwzromqtqb27z44tmcb2vv322y2v62ja",
+		encryptionKeyPath(schema.LinkImageSmall):    "bear36qgxpvnsqis2omwqi33zcrjo6arxhokpqr3bnh2oqphxkiba",
+		encryptionKeyPath(schema.LinkImageExif):     "bdoiogvdd5bayrezafzf2lvgh3xxjk7ru4yq2frpxhjgmx26ih6sq",
 	}
 	f, err := os.Open("../../pkg/lib/mill/testdata/image.jpeg")
 	require.NoError(t, err)

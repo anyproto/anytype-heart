@@ -15,6 +15,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/domain/objectorigin"
 	"github.com/anyproto/anytype-heart/core/files/fileobject/filemodels"
+	"github.com/anyproto/anytype-heart/core/files/filesync"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
@@ -191,7 +192,13 @@ func (s *service) migrateDeriveObject(ctx context.Context, space clientspace.Spa
 		err = nil
 	}
 
-	err = s.addToSyncQueue(id, fullFileId, false, false)
+	syncReq := filesync.AddFileRequest{
+		FileObjectId:   id,
+		FileId:         fullFileId,
+		UploadedByUser: false,
+		Imported:       false,
+	}
+	err = s.addToSyncQueue(syncReq)
 	if err != nil {
 		return fmt.Errorf("add to sync queue: %w", err)
 	}

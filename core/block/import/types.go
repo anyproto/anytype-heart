@@ -14,6 +14,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/domain/objectorigin"
 	"github.com/anyproto/anytype-heart/pb"
+	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
 type ImportRequest struct {
@@ -26,6 +27,7 @@ type ImportRequest struct {
 
 type ImportResponse struct {
 	RootCollectionId string
+	RootWidgetLayout model.BlockContentWidgetLayout
 	ProcessId        string
 	ObjectsCount     int64
 	Err              error

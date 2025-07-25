@@ -26,7 +26,6 @@ import (
 	"github.com/anyproto/anytype-heart/space/clientspace"
 	mock_space "github.com/anyproto/anytype-heart/space/clientspace/mock_clientspace"
 	"github.com/anyproto/anytype-heart/space/spacecore/storage/anystorage/mock_anystorage"
-	"github.com/anyproto/anytype-heart/space/spacecore/storage/mock_storage"
 )
 
 func TestReindexMarketplaceSpace(t *testing.T) {
@@ -56,9 +55,6 @@ func TestReindexMarketplaceSpace(t *testing.T) {
 		assert.Nil(t, err)
 
 		virtualSpace := getMockSpace(indexerFx)
-
-		storage := mock_storage.NewMockClientStorage(t)
-		indexerFx.storageService = storage
 
 		// when
 		err = indexerFx.ReindexMarketplaceSpace(virtualSpace)
@@ -94,9 +90,6 @@ func TestReindexMarketplaceSpace(t *testing.T) {
 		err = fx.objectStore.SaveChecksums(spaceId, &checksums)
 		require.NoError(t, err)
 
-		storage := mock_storage.NewMockClientStorage(t)
-		fx.storageService = storage
-
 		// when
 		err = fx.ReindexMarketplaceSpace(getMockSpace(fx))
 		assert.NoError(t, err)
@@ -128,9 +121,6 @@ func TestReindexMarketplaceSpace(t *testing.T) {
 
 		err := fx.objectStore.SaveChecksums(spaceId, &checksums)
 		require.NoError(t, err)
-
-		storage := mock_storage.NewMockClientStorage(t)
-		fx.storageService = storage
 
 		fx.sourceFx.EXPECT().IDsListerBySmartblockType(mock.Anything, mock.Anything).Return(idsLister{Ids: []string{}}, nil).Maybe()
 

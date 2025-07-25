@@ -87,10 +87,10 @@ func (c *CSV) GetSnapshots(ctx context.Context, req *pb.RpcObjectImportRequest, 
 	}
 	progress.SetTotal(int64(len(result.snapshots)))
 	if allErrors.IsEmpty() {
-		return &common.Response{Snapshots: result.snapshots, RootCollectionID: rootCollectionID}, nil
+		return &common.Response{Snapshots: result.snapshots, RootObjectID: rootCollectionID, RootObjectWidgetType: model.BlockContentWidget_CompactList}, nil
 	}
 
-	return &common.Response{Snapshots: result.snapshots, RootCollectionID: rootCollectionID}, allErrors
+	return &common.Response{Snapshots: result.snapshots, RootObjectID: rootCollectionID, RootObjectWidgetType: model.BlockContentWidget_CompactList}, allErrors
 }
 
 func (c *CSV) createObjectsFromCSVFiles(req *pb.RpcObjectImportRequest,
