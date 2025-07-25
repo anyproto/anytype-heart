@@ -70,21 +70,8 @@ func (s *Service) ListTemplates(ctx context.Context, spaceId string, typeId stri
 	paginatedTemplates, hasMore := pagination.Paginate(templateObjectsResp.Records, offset, limit)
 	templates = make([]apimodel.Object, 0, len(paginatedTemplates))
 
-	propertyMap, err := s.getPropertyMapFromStore(ctx, spaceId, true)
-	if err != nil {
-		return nil, 0, false, err
-	}
-	typeMap, err := s.getTypeMapFromStore(ctx, spaceId, propertyMap, false)
-	if err != nil {
-		return nil, 0, false, err
-	}
-	tagMap, err := s.getTagMapFromStore(ctx, spaceId)
-	if err != nil {
-		return nil, 0, false, err
-	}
-
 	for _, record := range paginatedTemplates {
-		templates = append(templates, s.getObjectFromStruct(record, propertyMap, typeMap, tagMap))
+		templates = append(templates, s.getObjectFromStruct(record))
 	}
 
 	return templates, total, hasMore, nil
@@ -111,23 +98,10 @@ func (s *Service) GetTemplate(ctx context.Context, spaceId string, _ string, tem
 		}
 	}
 
-	propertyMap, err := s.getPropertyMapFromStore(ctx, spaceId, true)
-	if err != nil {
-		return nil, err
-	}
-	typeMap, err := s.getTypeMapFromStore(ctx, spaceId, propertyMap, false)
-	if err != nil {
-		return nil, err
-	}
-	tagMap, err := s.getTagMapFromStore(ctx, spaceId)
-	if err != nil {
-		return nil, err
-	}
-
 	markdown, err := s.getMarkdownExport(ctx, spaceId, templateId, model.ObjectTypeLayout(resp.ObjectView.Details[0].Details.Fields[bundle.RelationKeyResolvedLayout.String()].GetNumberValue()))
 	if err != nil {
 		return nil, err
 	}
 
-	return s.getObjectWithBlocksFromStruct(resp.ObjectView.Details[0].Details, markdown, propertyMap, typeMap, tagMap), nil
+	return s.getObjectWithBlocksFromStruct(resp.ObjectView.Details[0].Details, markdown), nil
 }

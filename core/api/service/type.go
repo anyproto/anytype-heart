@@ -77,10 +77,9 @@ func (s *Service) ListTypes(ctx context.Context, spaceId string, additionalFilte
 	paginatedTypes, hasMore := pagination.Paginate(resp.Records, offset, limit)
 	types = make([]*apimodel.Type, 0, len(paginatedTypes))
 
-	propertyMap, err := s.getPropertyMapFromStore(ctx, spaceId, true)
-	if err != nil {
-		return nil, 0, false, err
-	}
+	s.propertyMapMu.RLock()
+	propertyMap := s.propertyMapCache[spaceId]
+	s.propertyMapMu.RUnlock()
 
 	for _, record := range paginatedTypes {
 		_, _, t := s.getTypeFromStruct(record, propertyMap)
@@ -111,10 +110,9 @@ func (s *Service) GetType(ctx context.Context, spaceId string, typeId string) (*
 	}
 
 	// pre-fetch properties to fill the type
-	propertyMap, err := s.getPropertyMapFromStore(ctx, spaceId, true)
-	if err != nil {
-		return nil, err
-	}
+	s.propertyMapMu.RLock()
+	propertyMap := s.propertyMapCache[spaceId]
+	s.propertyMapMu.RUnlock()
 
 	_, _, t := s.getTypeFromStruct(resp.ObjectView.Details[0].Details, propertyMap)
 	return t, nil
@@ -135,6 +133,10 @@ func (s *Service) CreateType(ctx context.Context, spaceId string, request apimod
 	if resp.Error != nil && resp.Error.Code != pb.RpcObjectCreateObjectTypeResponseError_NULL {
 		return nil, ErrFailedCreateType
 	}
+
+	// Invalidate cache after creating a new type
+	s.invalidateTypeCache(spaceId)
+	s.invalidatePropertyCache(spaceId) // Properties may reference types
 
 	return s.GetType(ctx, spaceId, resp.ObjectId)
 }
@@ -160,6 +162,10 @@ func (s *Service) UpdateType(ctx context.Context, spaceId string, typeId string,
 		return nil, ErrFailedUpdateType
 	}
 
+	// Invalidate cache after updating a type
+	s.invalidateTypeCache(spaceId)
+	s.invalidatePropertyCache(spaceId) // Properties may reference types
+
 	return s.GetType(ctx, spaceId, typeId)
 }
 
@@ -179,71 +185,11 @@ func (s *Service) DeleteType(ctx context.Context, spaceId string, typeId string)
 		return nil, ErrFailedDeleteType
 	}
 
+	// Invalidate cache after deleting (archiving) a type
+	s.invalidateTypeCache(spaceId)
+	s.invalidatePropertyCache(spaceId) // Properties may reference types
+
 	return t, nil
-}
-
-// getTypeMapsFromStore retrieves all types from all spaces.
-// Type entries can also be keyed by uniqueKey. Required for resolving type keys to IDs for search filters.
-func (s *Service) getTypeMapsFromStore(ctx context.Context, spaceIds []string, propertyMap map[string]map[string]*apimodel.Property, keyByUniqueKey bool) (map[string]map[string]*apimodel.Type, error) {
-	spacesToTypes := make(map[string]map[string]*apimodel.Type, len(spaceIds))
-
-	for _, spaceId := range spaceIds {
-		typeMap, err := s.getTypeMapFromStore(ctx, spaceId, propertyMap[spaceId], keyByUniqueKey)
-		if err != nil {
-			return nil, err
-		}
-		spacesToTypes[spaceId] = typeMap
-	}
-
-	return spacesToTypes, nil
-}
-
-// getTypeMapFromStore retrieves all types for a specific space.
-// Type entries can also be keyed by uniqueKey. Required for resolving type keys to IDs for search filters.
-func (s *Service) getTypeMapFromStore(ctx context.Context, spaceId string, propertyMap map[string]*apimodel.Property, keyByUniqueKey bool) (map[string]*apimodel.Type, error) {
-	resp := s.mw.ObjectSearch(ctx, &pb.RpcObjectSearchRequest{
-		SpaceId: spaceId,
-		Filters: []*model.BlockContentDataviewFilter{
-			{
-				RelationKey: bundle.RelationKeyResolvedLayout.String(),
-				Condition:   model.BlockContentDataviewFilter_Equal,
-				Value:       pbtypes.Int64(int64(model.ObjectType_objectType)),
-			},
-			{
-				// resolve archived types as well
-				RelationKey: bundle.RelationKeyIsArchived.String(),
-			},
-		},
-		Keys: []string{
-			bundle.RelationKeyId.String(),
-			bundle.RelationKeyUniqueKey.String(),
-			bundle.RelationKeyApiObjectKey.String(),
-			bundle.RelationKeyName.String(),
-			bundle.RelationKeyPluralName.String(),
-			bundle.RelationKeyIconEmoji.String(),
-			bundle.RelationKeyIconName.String(),
-			bundle.RelationKeyIconOption.String(),
-			bundle.RelationKeyRecommendedLayout.String(),
-			bundle.RelationKeyIsArchived.String(),
-			bundle.RelationKeyRecommendedFeaturedRelations.String(),
-			bundle.RelationKeyRecommendedRelations.String(),
-		},
-	})
-
-	if resp.Error != nil && resp.Error.Code != pb.RpcObjectSearchResponseError_NULL {
-		return nil, ErrFailedRetrieveTypes
-	}
-
-	typeMap := make(map[string]*apimodel.Type, len(resp.Records))
-	for _, record := range resp.Records {
-		uk, apiKey, t := s.getTypeFromStruct(record, propertyMap)
-		typeMap[t.Id] = t
-		if keyByUniqueKey {
-			typeMap[apiKey] = t
-			typeMap[uk] = t
-		}
-	}
-	return typeMap, nil
 }
 
 // getTypeFromStruct maps a type's details into an apimodel.Type.
@@ -274,7 +220,14 @@ func (s *Service) getTypeFromStruct(details *types.Struct, propertyMap map[strin
 }
 
 // getTypeFromMap retrieves the type from the details.
-func (s *Service) getTypeFromMap(details *types.Struct, typeMap map[string]*apimodel.Type) *apimodel.Type {
+func (s *Service) getTypeFromMap(details *types.Struct) *apimodel.Type {
+	spaceId := details.Fields[bundle.RelationKeySpaceId.String()].GetStringValue()
+
+	// Get cached type map
+	s.typeMapMu.RLock()
+	typeMap := s.typeMapCache[spaceId]
+	s.typeMapMu.RUnlock()
+
 	if t, ok := typeMap[details.Fields[bundle.RelationKeyType.String()].GetStringValue()]; ok {
 		return t
 	}
@@ -290,17 +243,16 @@ func (s *Service) buildTypeDetails(ctx context.Context, spaceId string, request 
 		bundle.RelationKeyOrigin.String():            pbtypes.Int64(int64(model.ObjectOrigin_api)),
 	}
 
-	propertyMap, err := s.getPropertyMapFromStore(ctx, spaceId, true)
-	if err != nil {
-		return nil, err
-	}
+	s.propertyMapMu.RLock()
+	propertyMap := s.propertyMapCache[spaceId]
+	s.propertyMapMu.RUnlock()
 
 	if request.Key != "" {
 		apiKey := strcase.ToSnake(s.sanitizedString(request.Key))
-		typeMap, err := s.getTypeMapFromStore(ctx, spaceId, propertyMap, true)
-		if err != nil {
-			return nil, err
-		}
+
+		s.typeMapMu.RLock()
+		typeMap := s.typeMapCache[spaceId]
+		s.typeMapMu.RUnlock()
 		if _, exists := typeMap[apiKey]; exists {
 			return nil, util.ErrBadInput(fmt.Sprintf("type key %q already exists", apiKey))
 		}
@@ -364,14 +316,10 @@ func (s *Service) buildUpdatedTypeDetails(ctx context.Context, spaceId string, t
 	}
 	if request.Key != nil {
 		apiKey := strcase.ToSnake(s.sanitizedString(*request.Key))
-		propertyMap, err := s.getPropertyMapFromStore(ctx, spaceId, true)
-		if err != nil {
-			return nil, err
-		}
-		typeMap, err := s.getTypeMapFromStore(ctx, spaceId, propertyMap, true)
-		if err != nil {
-			return nil, err
-		}
+
+		s.typeMapMu.RLock()
+		typeMap := s.typeMapCache[spaceId]
+		s.typeMapMu.RUnlock()
 		if existing, exists := typeMap[apiKey]; exists && existing.Id != t.Id {
 			return nil, util.ErrBadInput(fmt.Sprintf("type key %q already exists", apiKey))
 		}
@@ -395,10 +343,9 @@ func (s *Service) buildUpdatedTypeDetails(ctx context.Context, spaceId string, t
 		return &types.Struct{Fields: fields}, nil
 	}
 
-	propertyMap, err := s.getPropertyMapFromStore(ctx, spaceId, true)
-	if err != nil {
-		return nil, err
-	}
+	s.propertyMapMu.RLock()
+	propertyMap := s.propertyMapCache[spaceId]
+	s.propertyMapMu.RUnlock()
 
 	currentFields, err := util.GetFieldsByID(s.mw, spaceId, t.Id, []string{bundle.RelationKeyRecommendedFeaturedRelations.String()})
 	if err != nil {

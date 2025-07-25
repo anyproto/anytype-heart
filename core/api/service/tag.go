@@ -125,6 +125,9 @@ func (s *Service) CreateTag(ctx context.Context, spaceId string, propertyId stri
 		return nil, ErrFailedCreateTag
 	}
 
+	// Invalidate cache after creating a new tag
+	s.invalidateTagCache(spaceId)
+
 	return s.GetTag(ctx, spaceId, propertyId, resp.ObjectId)
 }
 
@@ -160,6 +163,9 @@ func (s *Service) UpdateTag(ctx context.Context, spaceId string, propertyId stri
 		}
 	}
 
+	// Invalidate cache after updating a tag
+	s.invalidateTagCache(spaceId)
+
 	return s.GetTag(ctx, spaceId, propertyId, tagId)
 }
 
@@ -179,57 +185,10 @@ func (s *Service) DeleteTag(ctx context.Context, spaceId string, propertyId stri
 		return nil, ErrFailedDeleteTag
 	}
 
+	// Invalidate cache after deleting (archiving) a tag
+	s.invalidateTagCache(spaceId)
+
 	return tag, nil
-}
-
-// getTagMapsFromStore retrieves all tags for all spaces.
-func (s *Service) getTagMapsFromStore(ctx context.Context, spaceIds []string) (map[string]map[string]*apimodel.Tag, error) {
-	spacesToTags := make(map[string]map[string]*apimodel.Tag)
-	for _, spaceId := range spaceIds {
-		tagMap, err := s.getTagMapFromStore(ctx, spaceId)
-		if err != nil {
-			return nil, err
-		}
-		spacesToTags[spaceId] = tagMap
-	}
-	return spacesToTags, nil
-}
-
-// getTagMapFromStore retrieves all tags for a specific space.
-func (s *Service) getTagMapFromStore(ctx context.Context, spaceId string) (map[string]*apimodel.Tag, error) {
-	resp := s.mw.ObjectSearch(ctx, &pb.RpcObjectSearchRequest{
-		SpaceId: spaceId,
-		Filters: []*model.BlockContentDataviewFilter{
-			{
-				RelationKey: bundle.RelationKeyResolvedLayout.String(),
-				Condition:   model.BlockContentDataviewFilter_Equal,
-				Value:       pbtypes.Int64(int64(model.ObjectType_relationOption)),
-			},
-			{
-				RelationKey: bundle.RelationKeyIsHidden.String(),
-				Condition:   model.BlockContentDataviewFilter_NotEqual,
-				Value:       pbtypes.Bool(true),
-			},
-		},
-		Keys: []string{
-			bundle.RelationKeyId.String(),
-			bundle.RelationKeyUniqueKey.String(),
-			bundle.RelationKeyName.String(),
-			bundle.RelationKeyRelationOptionColor.String(),
-		},
-	})
-
-	if resp.Error != nil && resp.Error.Code != pb.RpcObjectSearchResponseError_NULL {
-		return nil, ErrFailedRetrieveTags
-	}
-
-	tags := make(map[string]*apimodel.Tag)
-	for _, record := range resp.Records {
-		tag := s.getTagFromStruct(record)
-		tags[tag.Id] = tag
-	}
-
-	return tags, nil
 }
 
 // getTagFromStruct converts a tag's details from a struct to an apimodel.Tag.

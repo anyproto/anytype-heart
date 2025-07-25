@@ -203,10 +203,10 @@ func (s *Service) CreateProperty(ctx context.Context, spaceId string, request ap
 
 	if request.Key != "" {
 		apiKey := strcase.ToSnake(s.sanitizedString(request.Key))
-		propertyMap, err := s.getPropertyMapFromStore(ctx, spaceId, false)
-		if err != nil {
-			return nil, err
-		}
+
+		s.propertyMapMu.RLock()
+		propertyMap := s.propertyMapCache[spaceId]
+		s.propertyMapMu.RUnlock()
 		if _, exists := propertyMap[apiKey]; exists {
 			return nil, util.ErrBadInput(fmt.Sprintf("property key %q already exists", apiKey))
 		}
@@ -228,6 +228,11 @@ func (s *Service) CreateProperty(ctx context.Context, spaceId string, request ap
 			return nil, fmt.Errorf("property created but tag creation failed: %w", err)
 		}
 	}
+
+	// Invalidate cache after creating a new property
+	s.invalidatePropertyCache(spaceId)
+	s.invalidateTypeCache(spaceId) // Types reference properties
+	s.invalidateTagCache(spaceId)  // Tags may have been created
 
 	return s.GetProperty(ctx, spaceId, resp.ObjectId)
 }
@@ -253,10 +258,10 @@ func (s *Service) UpdateProperty(ctx context.Context, spaceId string, propertyId
 	}
 	if request.Key != nil {
 		apiKey := strcase.ToSnake(s.sanitizedString(*request.Key))
-		propertyMap, err := s.getPropertyMapFromStore(ctx, spaceId, false)
-		if err != nil {
-			return nil, err
-		}
+
+		s.propertyMapMu.RLock()
+		propertyMap := s.propertyMapCache[spaceId]
+		s.propertyMapMu.RUnlock()
 		if existing, exists := propertyMap[apiKey]; exists && existing.Id != propertyId {
 			return nil, util.ErrBadInput(fmt.Sprintf("property key %q already exists", apiKey))
 		}
@@ -279,6 +284,10 @@ func (s *Service) UpdateProperty(ctx context.Context, spaceId string, propertyId
 		}
 	}
 
+	// Invalidate cache after updating a property
+	s.invalidatePropertyCache(spaceId)
+	s.invalidateTypeCache(spaceId) // Types reference properties
+
 	return s.GetProperty(ctx, spaceId, propertyId)
 }
 
@@ -297,6 +306,10 @@ func (s *Service) DeleteProperty(ctx context.Context, spaceId string, propertyId
 	if resp.Error != nil && resp.Error.Code != pb.RpcObjectSetIsArchivedResponseError_NULL {
 		return nil, ErrFailedDeleteProperty
 	}
+
+	// Invalidate cache after deleting (archiving) a property
+	s.invalidatePropertyCache(spaceId)
+	s.invalidateTypeCache(spaceId) // Types reference properties
 
 	return property, nil
 }
@@ -323,10 +336,10 @@ func (s *Service) processProperties(ctx context.Context, spaceId string, entries
 	if len(entries) == 0 {
 		return fields, nil
 	}
-	propertyMap, err := s.getPropertyMapFromStore(ctx, spaceId, false)
-	if err != nil {
-		return nil, err
-	}
+
+	s.propertyMapMu.RLock()
+	propertyMap := s.propertyMapCache[spaceId]
+	s.propertyMapMu.RUnlock()
 
 	for _, entry := range entries {
 		key := entry.Key()
@@ -501,65 +514,6 @@ func (s *Service) getRecommendedPropertiesFromLists(featured, regular *types.Lis
 	return props
 }
 
-// getPropertyMapsFromStore retrieves all properties for all spaces.
-// Property entries can also be keyed by property id. Required for filling types with properties, as recommended properties are referenced by id and not key.
-func (s *Service) getPropertyMapsFromStore(ctx context.Context, spaceIds []string, keyByPropertyId bool) (map[string]map[string]*apimodel.Property, error) {
-	spacesToProperties := make(map[string]map[string]*apimodel.Property, len(spaceIds))
-
-	for _, spaceId := range spaceIds {
-		propertyMap, err := s.getPropertyMapFromStore(ctx, spaceId, keyByPropertyId)
-		if err != nil {
-			return nil, err
-		}
-		spacesToProperties[spaceId] = propertyMap
-	}
-
-	return spacesToProperties, nil
-}
-
-// getPropertyMapFromStore retrieves all properties for a specific space
-// Property entries can also be keyed by property id. Required for filling types with properties, as recommended properties are referenced by id and not key.
-func (s *Service) getPropertyMapFromStore(ctx context.Context, spaceId string, keyByPropertyId bool) (map[string]*apimodel.Property, error) {
-	resp := s.mw.ObjectSearch(ctx, &pb.RpcObjectSearchRequest{
-		SpaceId: spaceId,
-		Filters: []*model.BlockContentDataviewFilter{
-			{
-				RelationKey: bundle.RelationKeyResolvedLayout.String(),
-				Condition:   model.BlockContentDataviewFilter_Equal,
-				Value:       pbtypes.Int64(int64(model.ObjectType_relation)),
-			},
-			{
-				RelationKey: bundle.RelationKeyIsHidden.String(),
-				Condition:   model.BlockContentDataviewFilter_NotEqual,
-				Value:       pbtypes.Bool(true),
-			},
-		},
-		Keys: []string{
-			bundle.RelationKeyId.String(),
-			bundle.RelationKeyRelationKey.String(),
-			bundle.RelationKeyApiObjectKey.String(),
-			bundle.RelationKeyName.String(),
-			bundle.RelationKeyRelationFormat.String(),
-		},
-	})
-
-	if resp.Error != nil && resp.Error.Code != pb.RpcObjectSearchResponseError_NULL {
-		return nil, ErrFailedRetrievePropertyMap
-	}
-
-	propertyMap := make(map[string]*apimodel.Property, len(resp.Records))
-	for _, record := range resp.Records {
-		rk, apiKey, prop := s.getPropertyFromStruct(record)
-		propertyMap[rk] = prop
-		propertyMap[apiKey] = prop
-		if keyByPropertyId {
-			propertyMap[prop.Id] = prop // add property under id as key to map as well
-		}
-	}
-
-	return propertyMap, nil
-}
-
 // getPropertyFromStruct maps a property's details into an apimodel.Property.
 // `rk` is what we use internally, `key` is the key being referenced in the API.
 func (s *Service) getPropertyFromStruct(details *types.Struct) (string, string, *apimodel.Property) {
@@ -584,7 +538,17 @@ func (s *Service) getPropertyFromStruct(details *types.Struct) (string, string, 
 }
 
 // getPropertiesFromStruct retrieves the properties from the details.
-func (s *Service) getPropertiesFromStruct(details *types.Struct, propertyMap map[string]*apimodel.Property, tagMap map[string]*apimodel.Tag) []apimodel.PropertyWithValue {
+func (s *Service) getPropertiesFromStruct(details *types.Struct) []apimodel.PropertyWithValue {
+	spaceId := details.Fields[bundle.RelationKeySpaceId.String()].GetStringValue()
+
+	// Get cached maps
+	s.propertyMapMu.RLock()
+	propertyMap := s.propertyMapCache[spaceId]
+	s.propertyMapMu.RUnlock()
+
+	s.tagMapMu.RLock()
+	tagMap := s.tagMapCache[spaceId]
+	s.tagMapMu.RUnlock()
 	properties := make([]apimodel.PropertyWithValue, 0)
 	for rk, value := range details.GetFields() {
 		if _, isExcluded := excludedSystemProperties[rk]; isExcluded {

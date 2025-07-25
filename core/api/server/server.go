@@ -22,6 +22,8 @@ type Server struct {
 
 	mu         sync.Mutex
 	KeyToToken map[string]ApiSessionEntry // appKey -> token
+
+	initOnce sync.Once
 }
 
 // NewServer constructs a new Server with the default config and sets up the routes.

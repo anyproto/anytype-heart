@@ -73,22 +73,8 @@ func (s *Service) ListObjects(ctx context.Context, spaceId string, additionalFil
 	paginatedObjects, hasMore := pagination.Paginate(resp.Records, offset, limit)
 	objects = make([]apimodel.Object, 0, len(paginatedObjects))
 
-	// pre-fetch properties, types and tags to fill the objects
-	propertyMap, err := s.getPropertyMapFromStore(ctx, spaceId, true)
-	if err != nil {
-		return nil, 0, false, err
-	}
-	typeMap, err := s.getTypeMapFromStore(ctx, spaceId, propertyMap, false)
-	if err != nil {
-		return nil, 0, false, err
-	}
-	tagMap, err := s.getTagMapFromStore(ctx, spaceId)
-	if err != nil {
-		return nil, 0, false, err
-	}
-
 	for _, record := range paginatedObjects {
-		objects = append(objects, s.getObjectFromStruct(record, propertyMap, typeMap, tagMap))
+		objects = append(objects, s.getObjectFromStruct(record))
 	}
 	return objects, total, hasMore, nil
 }
@@ -114,25 +100,12 @@ func (s *Service) GetObject(ctx context.Context, spaceId string, objectId string
 		}
 	}
 
-	propertyMap, err := s.getPropertyMapFromStore(ctx, spaceId, true)
-	if err != nil {
-		return nil, err
-	}
-	typeMap, err := s.getTypeMapFromStore(ctx, spaceId, propertyMap, false)
-	if err != nil {
-		return nil, err
-	}
-	tagMap, err := s.getTagMapFromStore(ctx, spaceId)
-	if err != nil {
-		return nil, err
-	}
-
 	markdown, err := s.getMarkdownExport(ctx, spaceId, objectId, model.ObjectTypeLayout(resp.ObjectView.Details[0].Details.Fields[bundle.RelationKeyResolvedLayout.String()].GetNumberValue()))
 	if err != nil {
 		return nil, err
 	}
 
-	return s.getObjectWithBlocksFromStruct(resp.ObjectView.Details[0].Details, markdown, propertyMap, typeMap, tagMap), nil
+	return s.getObjectWithBlocksFromStruct(resp.ObjectView.Details[0].Details, markdown), nil
 }
 
 // CreateObject creates a new object in a specific space.
@@ -142,14 +115,10 @@ func (s *Service) CreateObject(ctx context.Context, spaceId string, request apim
 		return nil, err
 	}
 
-	propertyMap, err := s.getPropertyMapFromStore(ctx, spaceId, true)
-	if err != nil {
-		return nil, err
-	}
-	typeMap, err := s.getTypeMapFromStore(ctx, spaceId, propertyMap, true)
-	if err != nil {
-		return nil, err
-	}
+	s.typeMapMu.RLock()
+	typeMap := s.typeMapCache[spaceId]
+	s.typeMapMu.RUnlock()
+
 	typeUk := s.ResolveTypeApiKey(typeMap, request.TypeKey)
 
 	var objectId string
@@ -242,16 +211,11 @@ func (s *Service) UpdateObject(ctx context.Context, spaceId string, objectId str
 		return nil, err
 	}
 
-	propertyMap, err := s.getPropertyMapFromStore(ctx, spaceId, true)
-	if err != nil {
-		return nil, err
-	}
-	typeMap, err := s.getTypeMapFromStore(ctx, spaceId, propertyMap, true)
-	if err != nil {
-		return nil, err
-	}
-
 	if request.TypeKey != nil {
+		s.typeMapMu.RLock()
+		typeMap := s.typeMapCache[spaceId]
+		s.typeMapMu.RUnlock()
+
 		typeUk := s.ResolveTypeApiKey(typeMap, *request.TypeKey)
 		typeResp := s.mw.ObjectSetObjectType(ctx, &pb.RpcObjectSetObjectTypeRequest{
 			ContextId:           objectId,
@@ -439,7 +403,7 @@ func (s *Service) processIconFields(spaceId string, icon apimodel.Icon, isType b
 // }
 
 // getObjectFromStruct creates an Object without blocks from the details.
-func (s *Service) getObjectFromStruct(details *types.Struct, propertyMap map[string]*apimodel.Property, typeMap map[string]*apimodel.Type, tagMap map[string]*apimodel.Tag) apimodel.Object {
+func (s *Service) getObjectFromStruct(details *types.Struct) apimodel.Object {
 	return apimodel.Object{
 		Object:     "object",
 		Id:         details.Fields[bundle.RelationKeyId.String()].GetStringValue(),
@@ -449,24 +413,26 @@ func (s *Service) getObjectFromStruct(details *types.Struct, propertyMap map[str
 		SpaceId:    details.Fields[bundle.RelationKeySpaceId.String()].GetStringValue(),
 		Snippet:    details.Fields[bundle.RelationKeySnippet.String()].GetStringValue(),
 		Layout:     s.otLayoutToObjectLayout(model.ObjectTypeLayout(details.Fields[bundle.RelationKeyResolvedLayout.String()].GetNumberValue())),
-		Type:       s.getTypeFromMap(details, typeMap),
-		Properties: s.getPropertiesFromStruct(details, propertyMap, tagMap),
+		Type:       s.getTypeFromMap(details),
+		Properties: s.getPropertiesFromStruct(details),
 	}
 }
 
 // getObjectWithBlocksFromStruct creates an ObjectWithBody from the details.
-func (s *Service) getObjectWithBlocksFromStruct(details *types.Struct, markdown string, propertyMap map[string]*apimodel.Property, typeMap map[string]*apimodel.Type, tagMap map[string]*apimodel.Tag) *apimodel.ObjectWithBody {
+func (s *Service) getObjectWithBlocksFromStruct(details *types.Struct, markdown string) *apimodel.ObjectWithBody {
+	spaceId := details.Fields[bundle.RelationKeySpaceId.String()].GetStringValue()
+
 	return &apimodel.ObjectWithBody{
 		Object:     "object",
 		Id:         details.Fields[bundle.RelationKeyId.String()].GetStringValue(),
 		Name:       details.Fields[bundle.RelationKeyName.String()].GetStringValue(),
 		Icon:       GetIcon(s.gatewayUrl, details.Fields[bundle.RelationKeyIconEmoji.String()].GetStringValue(), details.Fields[bundle.RelationKeyIconImage.String()].GetStringValue(), details.Fields[bundle.RelationKeyIconName.String()].GetStringValue(), details.Fields[bundle.RelationKeyIconOption.String()].GetNumberValue()),
 		Archived:   details.Fields[bundle.RelationKeyIsArchived.String()].GetBoolValue(),
-		SpaceId:    details.Fields[bundle.RelationKeySpaceId.String()].GetStringValue(),
+		SpaceId:    spaceId,
 		Snippet:    details.Fields[bundle.RelationKeySnippet.String()].GetStringValue(),
 		Layout:     s.otLayoutToObjectLayout(model.ObjectTypeLayout(details.Fields[bundle.RelationKeyResolvedLayout.String()].GetNumberValue())),
-		Type:       s.getTypeFromMap(details, typeMap),
-		Properties: s.getPropertiesFromStruct(details, propertyMap, tagMap),
+		Type:       s.getTypeFromMap(details),
+		Properties: s.getPropertiesFromStruct(details),
 		Markdown:   markdown,
 	}
 }

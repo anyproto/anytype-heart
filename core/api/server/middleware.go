@@ -22,7 +22,7 @@ import (
 
 const ApiVersion = "2025-05-20"
 
-var log = logging.Logger("api-server")
+var log = logging.Logger("anytype-api-server")
 
 var (
 	ErrMissingAuthorizationHeader = errors.New("missing authorization header")
@@ -151,6 +151,23 @@ func ensureFilters() gin.HandlerFunc {
 			}
 		}
 		c.Set("filters", filters)
+		c.Next()
+	}
+}
+
+// ensureCacheInitialized is a middleware that ensures the API service caches are initialized on first request.
+func (s *Server) ensureCacheInitialized() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		s.initOnce.Do(func() {
+			log.Warn("Initializing API service caches on first request...")
+			// Block on first request to ensure caches are ready
+			if err := s.service.InitializeAllCaches(context.Background()); err != nil {
+				log.Errorf("Failed to initialize API service caches: %v", err)
+			} else {
+				log.Warn("API service caches initialized successfully")
+			}
+		})
+
 		c.Next()
 	}
 }

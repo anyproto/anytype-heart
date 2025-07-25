@@ -31,18 +31,29 @@ func (s *Service) GlobalSearch(ctx context.Context, request apimodel.SearchReque
 	queryFilters := s.prepareQueryFilter(request.Query)
 	sorts, criterionToSortAfter := s.prepareSorts(request.Sort)
 
-	// pre-fetch properties, types and tags to fill the objects
-	propertyMaps, err := s.getPropertyMapsFromStore(ctx, spaceIds, true)
-	if err != nil {
-		return nil, 0, false, err
-	}
-	typeMaps, err := s.getTypeMapsFromStore(ctx, spaceIds, propertyMaps, true)
-	if err != nil {
-		return nil, 0, false, err
-	}
-	tagMap, err := s.getTagMapsFromStore(ctx, spaceIds)
-	if err != nil {
-		return nil, 0, false, err
+	// Get cached properties, types and tags to fill the objects
+	propertyMaps := make(map[string]map[string]*apimodel.Property)
+	typeMaps := make(map[string]map[string]*apimodel.Type)
+	tagMap := make(map[string]map[string]*apimodel.Tag)
+
+	for _, spaceId := range spaceIds {
+		s.propertyMapMu.RLock()
+		if spaceCache, exists := s.propertyMapCache[spaceId]; exists {
+			propertyMaps[spaceId] = spaceCache
+		}
+		s.propertyMapMu.RUnlock()
+
+		s.typeMapMu.RLock()
+		if spaceCache, exists := s.typeMapCache[spaceId]; exists {
+			typeMaps[spaceId] = spaceCache
+		}
+		s.typeMapMu.RUnlock()
+
+		s.tagMapMu.RLock()
+		if spaceCache, exists := s.tagMapCache[spaceId]; exists {
+			tagMap[spaceId] = spaceCache
+		}
+		s.tagMapMu.RUnlock()
 	}
 
 	var combinedRecords []*types.Struct
@@ -96,7 +107,7 @@ func (s *Service) GlobalSearch(ctx context.Context, request apimodel.SearchReque
 
 	results := make([]apimodel.Object, 0, len(paginatedRecords))
 	for _, record := range paginatedRecords {
-		results = append(results, s.getObjectFromStruct(record, propertyMaps[record.Fields[bundle.RelationKeySpaceId.String()].GetStringValue()], typeMaps[record.Fields[bundle.RelationKeySpaceId.String()].GetStringValue()], tagMap[record.Fields[bundle.RelationKeySpaceId.String()].GetStringValue()]))
+		results = append(results, s.getObjectFromStruct(record))
 	}
 
 	return results, total, hasMore, nil
@@ -108,18 +119,27 @@ func (s *Service) Search(ctx context.Context, spaceId string, request apimodel.S
 	templateFilter := s.prepareTemplateFilter()
 	queryFilters := s.prepareQueryFilter(request.Query)
 
-	// pre-fetch properties and types to fill the objects
-	propertyMap, err := s.getPropertyMapFromStore(ctx, spaceId, true)
-	if err != nil {
-		return nil, 0, false, err
+	// Get cached properties, types and tags to fill the objects
+	s.propertyMapMu.RLock()
+	propertyMap := s.propertyMapCache[spaceId]
+	s.propertyMapMu.RUnlock()
+
+	s.typeMapMu.RLock()
+	typeMap := s.typeMapCache[spaceId]
+	s.typeMapMu.RUnlock()
+
+	s.tagMapMu.RLock()
+	tagMap := s.tagMapCache[spaceId]
+	s.tagMapMu.RUnlock()
+
+	if propertyMap == nil {
+		propertyMap = make(map[string]*apimodel.Property)
 	}
-	typeMap, err := s.getTypeMapFromStore(ctx, spaceId, propertyMap, true)
-	if err != nil {
-		return nil, 0, false, err
+	if typeMap == nil {
+		typeMap = make(map[string]*apimodel.Type)
 	}
-	tagMap, err := s.getTagMapFromStore(ctx, spaceId)
-	if err != nil {
-		return nil, 0, false, err
+	if tagMap == nil {
+		tagMap = make(map[string]*apimodel.Tag)
 	}
 
 	typeFilters := s.prepareTypeFilters(request.Types, typeMap)
@@ -145,7 +165,7 @@ func (s *Service) Search(ctx context.Context, spaceId string, request apimodel.S
 
 	results := make([]apimodel.Object, 0, len(paginatedRecords))
 	for _, record := range paginatedRecords {
-		results = append(results, s.getObjectFromStruct(record, propertyMap, typeMap, tagMap))
+		results = append(results, s.getObjectFromStruct(record))
 	}
 
 	return results, total, hasMore, nil
