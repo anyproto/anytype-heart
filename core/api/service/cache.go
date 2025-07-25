@@ -16,23 +16,19 @@ var log = logging.Logger("anytype-api-service")
 
 // InitializeAllCaches initializes caches for all available spaces
 func (s *Service) InitializeAllCaches(ctx context.Context) error {
-	// Subscribe to workspace/space changes in tech space
 	if s.techSpaceId != "" {
 		if err := s.subscribeToSpaceChanges(ctx); err != nil {
 			return fmt.Errorf("failed to subscribe to space changes: %w", err)
 		}
 	}
 
-	// Get all space IDs using the existing method
 	spaceIds, err := s.GetAllSpaceIds(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to get all space IDs: %w", err)
 	}
 
-	// Initialize cache for each space (excluding tech space)
 	for _, spaceId := range spaceIds {
 		if err := s.initializeSpaceCache(ctx, spaceId); err != nil {
-			// Log error but continue with other spaces
 			log.Debugf("failed to initialize cache for space %s: %v", spaceId, err)
 		}
 	}
@@ -42,7 +38,6 @@ func (s *Service) InitializeAllCaches(ctx context.Context) error {
 
 // subscribeToSpaceChanges subscribes to workspace/space changes in the tech space
 func (s *Service) subscribeToSpaceChanges(ctx context.Context) error {
-	// Subscribe to workspace views in tech space
 	resp := s.mw.ObjectSearchSubscribe(ctx, &pb.RpcObjectSearchSubscribeRequest{
 		SpaceId: s.techSpaceId,
 		SubId:   "api_space_changes",
@@ -66,7 +61,6 @@ func (s *Service) subscribeToSpaceChanges(ctx context.Context) error {
 		return fmt.Errorf("failed to subscribe to space changes: %s", resp.Error)
 	}
 
-	// Store subscription ID
 	s.spaceSubscriptionId = resp.SubId
 
 	// TODO: Handle subscription updates via event processing
@@ -75,14 +69,13 @@ func (s *Service) subscribeToSpaceChanges(ctx context.Context) error {
 	// - Workspaces being deleted or archived
 	// - Workspace status changes
 	// When a new space is created, call s.initializeSpaceCache(ctx, newSpaceId)
-	// When a space is deleted/archived, call s.clearSpaceCache(spaceId)
+	// When a space is deleted/archived, invalidate caches for that space
 
 	return nil
 }
 
 // initializeSpaceCache initializes all caches for a specific space
 func (s *Service) initializeSpaceCache(ctx context.Context, spaceId string) error {
-	// Subscribe to properties first as types depend on property map
 	if err := s.subscribeToProperties(ctx, spaceId); err != nil {
 		return fmt.Errorf("failed to subscribe to properties: %w", err)
 	}
@@ -100,12 +93,10 @@ func (s *Service) subscribeToTypes(ctx context.Context, spaceId string) error {
 	s.typeMapMu.Lock()
 	defer s.typeMapMu.Unlock()
 
-	// Check if already subscribed
 	if _, exists := s.typeSubscriptions[spaceId]; exists {
 		return nil
 	}
 
-	// Subscribe to types
 	resp := s.mw.ObjectSearchSubscribe(ctx, &pb.RpcObjectSearchSubscribeRequest{
 		SpaceId: spaceId,
 		SubId:   fmt.Sprintf("api_types_%s", spaceId),
@@ -116,7 +107,6 @@ func (s *Service) subscribeToTypes(ctx context.Context, spaceId string) error {
 				Value:       pbtypes.Int64(int64(model.ObjectType_objectType)),
 			},
 			{
-				// Include archived types as well
 				RelationKey: bundle.RelationKeyIsArchived.String(),
 			},
 		},
@@ -140,25 +130,20 @@ func (s *Service) subscribeToTypes(ctx context.Context, spaceId string) error {
 		return fmt.Errorf("failed to subscribe to types: %w", ErrFailedRetrieveTypes)
 	}
 
-	// Store subscription ID
 	s.typeSubscriptions[spaceId] = resp.SubId
 
-	// Initialize type map for this space if not exists
 	if _, exists := s.typeMapCache[spaceId]; !exists {
 		s.typeMapCache[spaceId] = make(map[string]*apimodel.Type)
 	}
 
-	// Get property map from cache for converting types
 	s.propertyMapMu.RLock()
 	propertyMap := s.propertyMapCache[spaceId]
 	s.propertyMapMu.RUnlock()
 
 	if propertyMap == nil {
-		// Properties should have been loaded first
 		return fmt.Errorf("property cache not initialized for space %s", spaceId)
 	}
 
-	// Process initial records
 	for _, record := range resp.Records {
 		uk, apiKey, t := s.getTypeFromStruct(record, propertyMap)
 		s.typeMapCache[spaceId][t.Id] = t
@@ -180,12 +165,10 @@ func (s *Service) subscribeToProperties(ctx context.Context, spaceId string) err
 	s.propertyMapMu.Lock()
 	defer s.propertyMapMu.Unlock()
 
-	// Check if already subscribed
 	if _, exists := s.propertySubscriptions[spaceId]; exists {
 		return nil
 	}
 
-	// Subscribe to properties
 	resp := s.mw.ObjectSearchSubscribe(ctx, &pb.RpcObjectSearchSubscribeRequest{
 		SpaceId: spaceId,
 		SubId:   fmt.Sprintf("api_properties_%s", spaceId),
@@ -214,15 +197,12 @@ func (s *Service) subscribeToProperties(ctx context.Context, spaceId string) err
 		return fmt.Errorf("failed to subscribe to properties: %w", ErrFailedRetrievePropertyMap)
 	}
 
-	// Store subscription ID
 	s.propertySubscriptions[spaceId] = resp.SubId
 
-	// Initialize property map for this space if not exists
 	if _, exists := s.propertyMapCache[spaceId]; !exists {
 		s.propertyMapCache[spaceId] = make(map[string]*apimodel.Property)
 	}
 
-	// Process initial records
 	for _, record := range resp.Records {
 		rk, apiKey, prop := s.getPropertyFromStruct(record)
 		s.propertyMapCache[spaceId][prop.Id] = prop
@@ -238,12 +218,10 @@ func (s *Service) subscribeToTags(ctx context.Context, spaceId string) error {
 	s.tagMapMu.Lock()
 	defer s.tagMapMu.Unlock()
 
-	// Check if already subscribed
 	if _, exists := s.tagSubscriptions[spaceId]; exists {
 		return nil
 	}
 
-	// Subscribe to tags
 	resp := s.mw.ObjectSearchSubscribe(ctx, &pb.RpcObjectSearchSubscribeRequest{
 		SpaceId: spaceId,
 		SubId:   fmt.Sprintf("api_tags_%s", spaceId),
@@ -271,15 +249,12 @@ func (s *Service) subscribeToTags(ctx context.Context, spaceId string) error {
 		return fmt.Errorf("failed to subscribe to tags: %w", ErrFailedRetrieveTags)
 	}
 
-	// Store subscription ID
 	s.tagSubscriptions[spaceId] = resp.SubId
 
-	// Initialize tag map for this space if not exists
 	if _, exists := s.tagMapCache[spaceId]; !exists {
 		s.tagMapCache[spaceId] = make(map[string]*apimodel.Tag)
 	}
 
-	// Process initial records
 	for _, record := range resp.Records {
 		tag := s.getTagFromStruct(record)
 		s.tagMapCache[spaceId][tag.Id] = tag
@@ -290,7 +265,6 @@ func (s *Service) subscribeToTags(ctx context.Context, spaceId string) error {
 
 // unsubscribeFromSpace unsubscribes from all subscriptions for a space
 func (s *Service) unsubscribeFromSpace(ctx context.Context, spaceId string) {
-	// Unsubscribe from types
 	s.typeMapMu.Lock()
 	if subId, exists := s.typeSubscriptions[spaceId]; exists {
 		s.mw.ObjectSearchUnsubscribe(ctx, &pb.RpcObjectSearchUnsubscribeRequest{
@@ -301,7 +275,6 @@ func (s *Service) unsubscribeFromSpace(ctx context.Context, spaceId string) {
 	}
 	s.typeMapMu.Unlock()
 
-	// Unsubscribe from properties
 	s.propertyMapMu.Lock()
 	if subId, exists := s.propertySubscriptions[spaceId]; exists {
 		s.mw.ObjectSearchUnsubscribe(ctx, &pb.RpcObjectSearchUnsubscribeRequest{
@@ -312,7 +285,6 @@ func (s *Service) unsubscribeFromSpace(ctx context.Context, spaceId string) {
 	}
 	s.propertyMapMu.Unlock()
 
-	// Unsubscribe from tags
 	s.tagMapMu.Lock()
 	if subId, exists := s.tagSubscriptions[spaceId]; exists {
 		s.mw.ObjectSearchUnsubscribe(ctx, &pb.RpcObjectSearchUnsubscribeRequest{
@@ -328,7 +300,6 @@ func (s *Service) unsubscribeFromSpace(ctx context.Context, spaceId string) {
 func (s *Service) Stop() {
 	ctx := context.Background()
 
-	// Unsubscribe from space changes in tech space
 	if s.spaceSubscriptionId != "" {
 		s.mw.ObjectSearchUnsubscribe(ctx, &pb.RpcObjectSearchUnsubscribeRequest{
 			SubIds: []string{s.spaceSubscriptionId},
@@ -336,7 +307,6 @@ func (s *Service) Stop() {
 		s.spaceSubscriptionId = ""
 	}
 
-	// Unsubscribe from all type subscriptions
 	s.typeMapMu.Lock()
 	for _, subId := range s.typeSubscriptions {
 		s.mw.ObjectSearchUnsubscribe(ctx, &pb.RpcObjectSearchUnsubscribeRequest{
@@ -347,7 +317,6 @@ func (s *Service) Stop() {
 	s.typeMapCache = make(map[string]map[string]*apimodel.Type)
 	s.typeMapMu.Unlock()
 
-	// Unsubscribe from all property subscriptions
 	s.propertyMapMu.Lock()
 	for _, subId := range s.propertySubscriptions {
 		s.mw.ObjectSearchUnsubscribe(ctx, &pb.RpcObjectSearchUnsubscribeRequest{
@@ -358,7 +327,6 @@ func (s *Service) Stop() {
 	s.propertyMapCache = make(map[string]map[string]*apimodel.Property)
 	s.propertyMapMu.Unlock()
 
-	// Unsubscribe from all tag subscriptions
 	s.tagMapMu.Lock()
 	for _, subId := range s.tagSubscriptions {
 		s.mw.ObjectSearchUnsubscribe(ctx, &pb.RpcObjectSearchUnsubscribeRequest{
@@ -369,8 +337,6 @@ func (s *Service) Stop() {
 	s.tagMapCache = make(map[string]map[string]*apimodel.Tag)
 	s.tagMapMu.Unlock()
 }
-
-// Cache invalidation methods - now they just clear the cache and re-subscribe
 
 func (s *Service) invalidateTypeCache(spaceId string) {
 	ctx := context.Background()
@@ -409,10 +375,4 @@ func (s *Service) invalidateTagCache(spaceId string) {
 		delete(s.tagMapCache, spaceId)
 	}
 	s.tagMapMu.Unlock()
-}
-
-func (s *Service) clearSpaceCache(spaceId string) {
-	s.invalidateTypeCache(spaceId)
-	s.invalidatePropertyCache(spaceId)
-	s.invalidateTagCache(spaceId)
 }

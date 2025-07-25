@@ -84,6 +84,9 @@ func (s *apiService) Run(ctx context.Context) (err error) {
 }
 
 func (s *apiService) Close(ctx context.Context) (err error) {
+	if s.srv != nil {
+		s.srv.Stop()
+	}
 	return s.shutdown(ctx)
 }
 

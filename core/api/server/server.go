@@ -51,6 +51,13 @@ func getAccountInfo(accountService apicore.AccountService) (gatewayUrl string, t
 	return gatewayUrl, techSpaceId, nil
 }
 
+// Stop the service to clean up caches and subscriptions
+func (s *Server) Stop() {
+	if s.service != nil {
+		s.service.Stop()
+	}
+}
+
 // Engine returns the underlying gin.Engine.
 func (s *Server) Engine() *gin.Engine {
 	return s.engine
