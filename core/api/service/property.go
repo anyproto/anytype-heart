@@ -435,7 +435,7 @@ func (s *Service) sanitizeAndValidatePropertyValue(spaceId string, key string, f
 			id = s.sanitizedString(id)
 			if format == apimodel.PropertyFormatFiles && !s.isValidFileReference(spaceId, id) {
 				return nil, util.ErrBadInput("invalid file reference for '" + key + "': " + id)
-			} else if format == apimodel.PropertyFormatObjects && !s.isValidObjectReference(spaceId, id) {
+			} else if format == apimodel.PropertyFormatObjects && !s.isValidObjectOrMemberReference(spaceId, id) {
 				return nil, util.ErrBadInput("invalid object reference for '" + key + "': " + id)
 			}
 			validIds = append(validIds, id)
@@ -457,13 +457,13 @@ func (s *Service) isValidSelectOption(spaceId string, property *apimodel.Propert
 	return util.IsTagLayout(layout) && rk == s.ResolvePropertyApiKey(propertyMap, property.Key)
 }
 
-func (s *Service) isValidObjectReference(spaceId string, objectId string) bool {
+func (s *Service) isValidObjectOrMemberReference(spaceId string, objectId string) bool {
 	fields, err := util.GetFieldsByID(s.mw, spaceId, objectId, []string{bundle.RelationKeyResolvedLayout.String()})
 	if err != nil {
 		return false
 	}
 	layout := model.ObjectTypeLayout(fields[bundle.RelationKeyResolvedLayout.String()].GetNumberValue())
-	return util.IsObjectLayout(layout)
+	return util.IsObjectOrMemberLayout(layout)
 }
 
 func (s *Service) isValidFileReference(spaceId string, fileId string) bool {
