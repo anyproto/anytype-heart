@@ -495,7 +495,7 @@ func (i *Import) getObjectID(ctx *importContext, snapshot *common.Snapshot) erro
 		key := domain.RelationKey(snapshot.Snapshot.Data.Key)
 		isBundled = bundle.HasRelation(key)
 		if !isBundled {
-			ctx.relationKeysToFormat[key] = int32(snapshot.Snapshot.Data.Details.GetInt64(bundle.RelationKeyRelationFormat))
+			ctx.relationKeysToFormat[key] = int32(snapshot.Snapshot.Data.Details.GetInt64(bundle.RelationKeyRelationFormat)) //nolint:gosec
 		}
 	}
 	// bundled types will be created and then updated, cause they can be installed asynchronously
