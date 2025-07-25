@@ -316,7 +316,7 @@ func TestSearchService_GlobalSearch(t *testing.T) {
 		}
 
 		// check tags
-		tags := []apimodel.Tag{}
+		tags := []*apimodel.Tag{}
 		for _, propResp := range objects[0].Properties {
 			if v, ok := propResp.WrappedPropertyWithValue.(apimodel.MultiSelectPropertyValue); ok {
 				tags = append(tags, v.MultiSelect...)
