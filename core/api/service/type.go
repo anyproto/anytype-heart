@@ -31,7 +31,7 @@ var (
 )
 
 // ListTypes returns a paginated list of types in a specific space.
-func (s *Service) ListTypes(ctx context.Context, spaceId string, additionalFilters []*model.BlockContentDataviewFilter, offset int, limit int) (types []apimodel.Type, total int, hasMore bool, err error) {
+func (s *Service) ListTypes(ctx context.Context, spaceId string, additionalFilters []*model.BlockContentDataviewFilter, offset int, limit int) (types []*apimodel.Type, total int, hasMore bool, err error) {
 	filters := append([]*model.BlockContentDataviewFilter{
 		{
 			RelationKey: bundle.RelationKeyResolvedLayout.String(),
@@ -75,7 +75,7 @@ func (s *Service) ListTypes(ctx context.Context, spaceId string, additionalFilte
 
 	total = len(resp.Records)
 	paginatedTypes, hasMore := pagination.Paginate(resp.Records, offset, limit)
-	types = make([]apimodel.Type, 0, len(paginatedTypes))
+	types = make([]*apimodel.Type, 0, len(paginatedTypes))
 
 	propertyMap, err := s.getPropertyMapFromStore(ctx, spaceId, true)
 	if err != nil {
@@ -90,7 +90,7 @@ func (s *Service) ListTypes(ctx context.Context, spaceId string, additionalFilte
 }
 
 // GetType returns a single type by its ID in a specific space.
-func (s *Service) GetType(ctx context.Context, spaceId string, typeId string) (apimodel.Type, error) {
+func (s *Service) GetType(ctx context.Context, spaceId string, typeId string) (*apimodel.Type, error) {
 	resp := s.mw.ObjectShow(ctx, &pb.RpcObjectShowRequest{
 		SpaceId:  spaceId,
 		ObjectId: typeId,
@@ -98,22 +98,22 @@ func (s *Service) GetType(ctx context.Context, spaceId string, typeId string) (a
 
 	if resp.Error != nil {
 		if resp.Error.Code == pb.RpcObjectShowResponseError_NOT_FOUND {
-			return apimodel.Type{}, ErrTypeNotFound
+			return nil, ErrTypeNotFound
 		}
 
 		if resp.Error.Code == pb.RpcObjectShowResponseError_OBJECT_DELETED {
-			return apimodel.Type{}, ErrTypeDeleted
+			return nil, ErrTypeDeleted
 		}
 
 		if resp.Error != nil && resp.Error.Code != pb.RpcObjectShowResponseError_NULL {
-			return apimodel.Type{}, ErrFailedRetrieveType
+			return nil, ErrFailedRetrieveType
 		}
 	}
 
 	// pre-fetch properties to fill the type
 	propertyMap, err := s.getPropertyMapFromStore(ctx, spaceId, true)
 	if err != nil {
-		return apimodel.Type{}, err
+		return nil, err
 	}
 
 	_, _, t := s.getTypeFromStruct(resp.ObjectView.Details[0].Details, propertyMap)
@@ -121,10 +121,10 @@ func (s *Service) GetType(ctx context.Context, spaceId string, typeId string) (a
 }
 
 // CreateType creates a new type in a specific space.
-func (s *Service) CreateType(ctx context.Context, spaceId string, request apimodel.CreateTypeRequest) (apimodel.Type, error) {
+func (s *Service) CreateType(ctx context.Context, spaceId string, request apimodel.CreateTypeRequest) (*apimodel.Type, error) {
 	details, err := s.buildTypeDetails(ctx, spaceId, request)
 	if err != nil {
-		return apimodel.Type{}, err
+		return nil, err
 	}
 
 	resp := s.mw.ObjectCreateObjectType(ctx, &pb.RpcObjectCreateObjectTypeRequest{
@@ -133,22 +133,22 @@ func (s *Service) CreateType(ctx context.Context, spaceId string, request apimod
 	})
 
 	if resp.Error != nil && resp.Error.Code != pb.RpcObjectCreateObjectTypeResponseError_NULL {
-		return apimodel.Type{}, ErrFailedCreateType
+		return nil, ErrFailedCreateType
 	}
 
 	return s.GetType(ctx, spaceId, resp.ObjectId)
 }
 
 // UpdateType updates an existing type in a specific space.
-func (s *Service) UpdateType(ctx context.Context, spaceId string, typeId string, request apimodel.UpdateTypeRequest) (apimodel.Type, error) {
+func (s *Service) UpdateType(ctx context.Context, spaceId string, typeId string, request apimodel.UpdateTypeRequest) (*apimodel.Type, error) {
 	t, err := s.GetType(ctx, spaceId, typeId)
 	if err != nil {
-		return apimodel.Type{}, err
+		return nil, err
 	}
 
 	details, err := s.buildUpdatedTypeDetails(ctx, spaceId, t, request)
 	if err != nil {
-		return apimodel.Type{}, err
+		return nil, err
 	}
 
 	resp := s.mw.ObjectSetDetails(ctx, &pb.RpcObjectSetDetailsRequest{
@@ -157,17 +157,17 @@ func (s *Service) UpdateType(ctx context.Context, spaceId string, typeId string,
 	})
 
 	if resp.Error != nil && resp.Error.Code != pb.RpcObjectSetDetailsResponseError_NULL {
-		return apimodel.Type{}, ErrFailedUpdateType
+		return nil, ErrFailedUpdateType
 	}
 
 	return s.GetType(ctx, spaceId, typeId)
 }
 
 // DeleteType deletes a type by its ID in a specific space.
-func (s *Service) DeleteType(ctx context.Context, spaceId string, typeId string) (apimodel.Type, error) {
+func (s *Service) DeleteType(ctx context.Context, spaceId string, typeId string) (*apimodel.Type, error) {
 	t, err := s.GetType(ctx, spaceId, typeId)
 	if err != nil {
-		return apimodel.Type{}, err
+		return nil, err
 	}
 
 	resp := s.mw.ObjectSetIsArchived(ctx, &pb.RpcObjectSetIsArchivedRequest{
@@ -176,7 +176,7 @@ func (s *Service) DeleteType(ctx context.Context, spaceId string, typeId string)
 	})
 
 	if resp.Error != nil && resp.Error.Code != pb.RpcObjectSetIsArchivedResponseError_NULL {
-		return apimodel.Type{}, ErrFailedDeleteType
+		return nil, ErrFailedDeleteType
 	}
 
 	return t, nil
@@ -237,11 +237,10 @@ func (s *Service) getTypeMapFromStore(ctx context.Context, spaceId string, prope
 	typeMap := make(map[string]*apimodel.Type, len(resp.Records))
 	for _, record := range resp.Records {
 		uk, apiKey, t := s.getTypeFromStruct(record, propertyMap)
-		ot := t
-		typeMap[t.Id] = &ot
+		typeMap[t.Id] = t
 		if keyByUniqueKey {
-			typeMap[apiKey] = &ot
-			typeMap[uk] = &ot
+			typeMap[apiKey] = t
+			typeMap[uk] = t
 		}
 	}
 	return typeMap, nil
@@ -249,7 +248,7 @@ func (s *Service) getTypeMapFromStore(ctx context.Context, spaceId string, prope
 
 // getTypeFromStruct maps a type's details into an apimodel.Type.
 // `uk` is what we use internally, `key` is the key being referenced in the API.
-func (s *Service) getTypeFromStruct(details *types.Struct, propertyMap map[string]*apimodel.Property) (string, string, apimodel.Type) {
+func (s *Service) getTypeFromStruct(details *types.Struct, propertyMap map[string]*apimodel.Property) (string, string, *apimodel.Type) {
 	uk := details.Fields[bundle.RelationKeyUniqueKey.String()].GetStringValue()
 	apiKey := util.ToTypeApiKey(uk)
 
@@ -260,7 +259,7 @@ func (s *Service) getTypeFromStruct(details *types.Struct, propertyMap map[strin
 		}
 	}
 
-	return uk, apiKey, apimodel.Type{
+	return uk, apiKey, &apimodel.Type{
 		Object:     "type",
 		Id:         details.Fields[bundle.RelationKeyId.String()].GetStringValue(),
 		Key:        apiKey,
@@ -352,7 +351,7 @@ func (s *Service) buildTypeDetails(ctx context.Context, spaceId string, request 
 }
 
 // buildUpdatedTypeDetails builds a partial details struct for UpdateTypeRequest.
-func (s *Service) buildUpdatedTypeDetails(ctx context.Context, spaceId string, t apimodel.Type, request apimodel.UpdateTypeRequest) (*types.Struct, error) {
+func (s *Service) buildUpdatedTypeDetails(ctx context.Context, spaceId string, t *apimodel.Type, request apimodel.UpdateTypeRequest) (*types.Struct, error) {
 	fields := make(map[string]*types.Value)
 	if request.Name != nil {
 		fields[bundle.RelationKeyName.String()] = pbtypes.String(s.sanitizedString(*request.Name))

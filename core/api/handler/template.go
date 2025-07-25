@@ -95,6 +95,6 @@ func GetTemplateHandler(s *service.Service) gin.HandlerFunc {
 			return
 		}
 
-		c.JSON(http.StatusOK, apimodel.TemplateResponse{Template: template})
+		c.JSON(http.StatusOK, apimodel.TemplateResponse{Template: *template})
 	}
 }

@@ -92,7 +92,7 @@ func GetObjectHandler(s *service.Service) gin.HandlerFunc {
 			return
 		}
 
-		c.JSON(http.StatusOK, apimodel.ObjectResponse{Object: object})
+		c.JSON(http.StatusOK, apimodel.ObjectResponse{Object: *object})
 	}
 }
 
@@ -143,7 +143,7 @@ func CreateObjectHandler(s *service.Service) gin.HandlerFunc {
 			return
 		}
 
-		c.JSON(http.StatusCreated, apimodel.ObjectResponse{Object: object})
+		c.JSON(http.StatusCreated, apimodel.ObjectResponse{Object: *object})
 	}
 }
 
@@ -195,7 +195,7 @@ func UpdateObjectHandler(s *service.Service) gin.HandlerFunc {
 			return
 		}
 
-		c.JSON(http.StatusOK, apimodel.ObjectResponse{Object: object})
+		c.JSON(http.StatusOK, apimodel.ObjectResponse{Object: *object})
 	}
 }
 
@@ -237,6 +237,6 @@ func DeleteObjectHandler(s *service.Service) gin.HandlerFunc {
 			return
 		}
 
-		c.JSON(http.StatusOK, apimodel.ObjectResponse{Object: object})
+		c.JSON(http.StatusOK, apimodel.ObjectResponse{Object: *object})
 	}
 }
