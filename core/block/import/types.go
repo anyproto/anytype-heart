@@ -4,7 +4,9 @@ import (
 	"context"
 
 	"github.com/anyproto/any-sync/app"
+	"github.com/anyproto/any-sync/commonspace/object/tree/treestorage"
 
+	"github.com/anyproto/anytype-heart/core/block/import/common"
 	_ "github.com/anyproto/anytype-heart/core/block/import/markdown"
 	_ "github.com/anyproto/anytype-heart/core/block/import/pb"
 	_ "github.com/anyproto/anytype-heart/core/block/import/web"
@@ -29,6 +31,36 @@ type ImportResponse struct {
 	ProcessId        string
 	ObjectsCount     int64
 	Err              error
+}
+
+type importContext struct {
+	ctx          context.Context
+	origin       objectorigin.ObjectOrigin
+	progress     process.Progress
+	req          *pb.RpcObjectImportRequest
+	convResponse *common.Response
+	error        *common.ConvertError
+
+	oldIDToNew           map[string]string
+	createPayloads       map[string]treestorage.TreeStorageCreatePayload
+	relationKeysToFormat map[domain.RelationKey]int32
+}
+
+func newImportContext(ctx context.Context, req *ImportRequest, resp *common.Response, origin objectorigin.ObjectOrigin, error *common.ConvertError) *importContext {
+	if req == nil || resp == nil {
+		return nil
+	}
+	if error == nil {
+		error = common.NewError(req.Mode)
+	}
+	return &importContext{
+		ctx:          ctx,
+		origin:       origin,
+		progress:     req.Progress,
+		req:          req.RpcObjectImportRequest,
+		convResponse: resp,
+		error:        error,
+	}
 }
 
 // Importer encapsulate logic with import

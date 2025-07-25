@@ -106,7 +106,7 @@ func (oc *ObjectCreator) Create(dataObject *DataObject, sn *common.Snapshot) (*d
 		oc.onFinish(err, spaceID, st, filesToDelete)
 	}()
 
-	common.UpdateObjectIDsInRelations(st, oldIDtoNew)
+	common.UpdateObjectIDsInRelations(st, oldIDtoNew, dataObject.relationKeysToFormat)
 
 	if err = common.UpdateLinksToObjects(st, oldIDtoNew); err != nil {
 		log.With("objectID", newID).Errorf("failed to update objects ids: %s", err)
