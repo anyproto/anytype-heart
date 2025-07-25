@@ -1171,7 +1171,15 @@ func Test_getObjectId(t *testing.T) {
 		i.idProvider = idGetter
 
 		// when
-		err := i.getObjectID(context.Background(), "spaceId", sn, createPayloads, oldIDToNew, false, objectorigin.Import(model.Import_Pb))
+		err := i.getObjectID(&importContext{
+			ctx:    context.Background(),
+			origin: objectorigin.Import(model.Import_Pb),
+			req: &pb.RpcObjectImportRequest{
+				SpaceId: "spaceId",
+			},
+			createPayloads: createPayloads,
+			oldIDToNew:     oldIDToNew,
+		}, sn)
 
 		// then
 		assert.Nil(t, err)
@@ -1196,7 +1204,15 @@ func Test_getObjectId(t *testing.T) {
 		i.idProvider = idGetter
 
 		// when
-		err := i.getObjectID(context.Background(), "spaceId", sn, createPayloads, oldIDToNew, false, objectorigin.Import(model.Import_Pb))
+		err := i.getObjectID(&importContext{
+			ctx:    context.Background(),
+			origin: objectorigin.Import(model.Import_Pb),
+			req: &pb.RpcObjectImportRequest{
+				SpaceId: "spaceId",
+			},
+			createPayloads: createPayloads,
+			oldIDToNew:     oldIDToNew,
+		}, sn)
 
 		// then
 		assert.Nil(t, err)
@@ -1224,7 +1240,15 @@ func Test_getObjectId(t *testing.T) {
 		i.idProvider = idGetter
 
 		// when
-		err := i.getObjectID(context.Background(), "spaceId", sn, createPayloads, oldIDToNew, false, objectorigin.Import(model.Import_Pb))
+		err := i.getObjectID(&importContext{
+			ctx:    context.Background(),
+			origin: objectorigin.Import(model.Import_Pb),
+			req: &pb.RpcObjectImportRequest{
+				SpaceId: "spaceId",
+			},
+			createPayloads: createPayloads,
+			oldIDToNew:     oldIDToNew,
+		}, sn)
 
 		// then
 		assert.Nil(t, err)
@@ -1254,7 +1278,15 @@ func Test_getObjectId(t *testing.T) {
 		i.idProvider = idGetter
 
 		// when
-		err := i.getObjectID(context.Background(), "spaceId", sn, createPayloads, oldIDToNew, false, objectorigin.Import(model.Import_Pb))
+		err := i.getObjectID(&importContext{
+			ctx:    context.Background(),
+			origin: objectorigin.Import(model.Import_Pb),
+			req: &pb.RpcObjectImportRequest{
+				SpaceId: "spaceId",
+			},
+			createPayloads: createPayloads,
+			oldIDToNew:     oldIDToNew,
+		}, sn)
 
 		// then
 		assert.Nil(t, err)

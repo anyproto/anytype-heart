@@ -39,7 +39,7 @@ func TestObjectCreator_Create(t *testing.T) {
 		importedSpaceIdParticipantId := domain.NewParticipantId(importedSpaceId, identity)
 
 		oldToNew := map[string]string{importedSpaceIdParticipantId: participantId}
-		dataObject := NewDataObject(context.Background(), oldToNew, nil, objectorigin.Import(model.Import_Pb), spaceID)
+		dataObject := NewDataObject(context.Background(), oldToNew, nil, nil, objectorigin.Import(model.Import_Pb), spaceID)
 		sn := &common.Snapshot{
 			Id: importedSpaceIdParticipantId,
 			Snapshot: &common.SnapshotModel{

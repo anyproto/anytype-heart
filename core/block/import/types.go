@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/anyproto/any-sync/app"
+	"github.com/anyproto/any-sync/commonspace/object/tree/treestorage"
 
 	"github.com/anyproto/anytype-heart/core/block/import/common"
 	_ "github.com/anyproto/anytype-heart/core/block/import/markdown"
@@ -37,6 +38,10 @@ type importContext struct {
 	req          *pb.RpcObjectImportRequest
 	convResponse *common.Response
 	error        *common.ConvertError
+
+	oldIDToNew           map[string]string
+	createPayloads       map[string]treestorage.TreeStorageCreatePayload
+	relationKeysToFormat map[domain.RelationKey]int32
 }
 
 func newImportContext(ctx context.Context, req *ImportRequest, resp *common.Response, origin objectorigin.ObjectOrigin) *importContext {

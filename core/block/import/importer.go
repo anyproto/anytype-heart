@@ -233,16 +233,10 @@ func (i *Import) importFromBuiltinConverter(ctx context.Context, req *ImportRequ
 		return "", 0, fmt.Errorf("source path doesn't contain %s resources to import", req.Type)
 	}
 
-	importCtx := importContext{
-		ctx:          ctx,
-		origin:       req.Origin,
-		req:          req.RpcObjectImportRequest,
-		convResponse: res,
-		error:        allErrors,
-	}
-
+	importCtx := newImportContext(ctx, req, res, req.Origin)
+	importCtx.error = allErrors
 	details, rootCollectionID := i.createObjects(importCtx)
-	resultErr := allErrors.GetResultError(req.Type)
+	resultErr := importCtx.error.GetResultError(req.Type)
 	if resultErr != nil {
 		rootCollectionID = ""
 	}
@@ -271,16 +265,7 @@ func (i *Import) importFromExternalSource(ctx context.Context, req *ImportReques
 			},
 		}
 	}
-	importCtx := importContext{
-		ctx:      ctx,
-		req:      req.RpcObjectImportRequest,
-		error:    common.NewError(req.Mode),
-		origin:   objectorigin.Import(model.Import_External),
-		progress: req.Progress,
-		convResponse: &common.Response{
-			Snapshots: sn,
-		},
-	}
+	importCtx := newImportContext(ctx, req, &common.Response{Snapshots: sn}, objectorigin.Import(model.Import_External))
 	details, _ := i.createObjects(importCtx)
 	if !importCtx.error.IsEmpty() {
 		return 0, importCtx.error.GetResultError(req.Type)
@@ -383,15 +368,7 @@ func (i *Import) ImportWeb(ctx context.Context, req *ImportRequest) (string, *do
 
 	req.Progress.SetProgressMessage("Create objects")
 
-	importCtx := importContext{
-		ctx:          ctx,
-		origin:       objectorigin.None(),
-		progress:     req.Progress,
-		req:          req.RpcObjectImportRequest,
-		convResponse: res,
-		error:        common.NewError(0),
-	}
-
+	importCtx := newImportContext(ctx, req, res, objectorigin.None())
 	details, _ := i.createObjects(importCtx)
 	if !importCtx.error.IsEmpty() {
 		return "", nil, fmt.Errorf("couldn't create objects")
@@ -399,55 +376,55 @@ func (i *Import) ImportWeb(ctx context.Context, req *ImportRequest) (string, *do
 	return res.Snapshots[0].Id, details[res.Snapshots[0].Id], nil
 }
 
-func (i *Import) createObjects(ctx importContext) (map[string]*domain.Details, string) {
-	oldIDToNew, createPayloads, err := i.getIDForAllObjects(ctx)
-	if err != nil {
+func (i *Import) createObjects(ctx *importContext) (map[string]*domain.Details, string) {
+	if err := i.getIDForAllObjects(ctx); err != nil {
 		return nil, ""
 	}
 	numWorkers := workerPoolSize
 	if len(ctx.convResponse.Snapshots) < workerPoolSize {
 		numWorkers = 1
 	}
-	do := creator.NewDataObject(ctx.ctx, oldIDToNew, createPayloads, ctx.origin, ctx.req.SpaceId)
+	do := creator.NewDataObject(ctx.ctx, ctx.oldIDToNew, ctx.createPayloads, ctx.relationKeysToFormat, ctx.origin, ctx.req.SpaceId)
 	pool := workerpool.NewPool(numWorkers)
 	ctx.progress.SetProgressMessage("Create objects")
 	go i.addWork(ctx.convResponse, pool)
 	go pool.Start(do)
 	details := i.readResultFromPool(pool, ctx.req.Mode, ctx.error, ctx.progress)
-	return details, oldIDToNew[ctx.convResponse.RootCollectionID]
+	return details, ctx.oldIDToNew[ctx.convResponse.RootCollectionID]
 }
 
-func (i *Import) getIDForAllObjects(ctx importContext) (map[string]string, map[string]treestorage.TreeStorageCreatePayload, error) {
+func (i *Import) getIDForAllObjects(ctx *importContext) (err error) {
 	relationOptions := make([]*common.Snapshot, 0)
-	oldIDToNew := make(map[string]string, len(ctx.convResponse.Snapshots))
-	createPayloads := make(map[string]treestorage.TreeStorageCreatePayload, len(ctx.convResponse.Snapshots))
+	ctx.oldIDToNew = make(map[string]string, len(ctx.convResponse.Snapshots))
+	ctx.createPayloads = make(map[string]treestorage.TreeStorageCreatePayload, len(ctx.convResponse.Snapshots))
+	ctx.relationKeysToFormat = make(map[domain.RelationKey]int32, len(ctx.convResponse.Snapshots))
 	for _, snapshot := range ctx.convResponse.Snapshots {
 		// we will get id of relation options after we figure out according relations keys
 		if lo.Contains(snapshot.Snapshot.Data.ObjectTypes, bundle.TypeKeyRelationOption.String()) {
 			relationOptions = append(relationOptions, snapshot)
 			continue
 		}
-		err := i.getObjectID(ctx, snapshot, createPayloads, oldIDToNew)
+		err := i.getObjectID(ctx, snapshot)
 		if err != nil {
 			ctx.error.Add(err)
 			if ctx.req.Mode != pb.RpcObjectImportRequest_IGNORE_ERRORS {
-				return nil, nil, err
+				return err
 			}
 			log.With(zap.String("object name", snapshot.Id)).Error(err)
 		}
 	}
 	for _, option := range relationOptions {
-		i.replaceRelationKeyWithNew(option, oldIDToNew)
-		err := i.getObjectID(ctx, option, createPayloads, oldIDToNew)
+		i.replaceRelationKeyWithNew(option, ctx.oldIDToNew)
+		err := i.getObjectID(ctx, option)
 		if err != nil {
 			ctx.error.Add(err)
 			if ctx.req.Mode != pb.RpcObjectImportRequest_IGNORE_ERRORS {
-				return nil, nil, err
+				return err
 			}
 			log.With(zap.String("object name", option.Id)).Error(err)
 		}
 	}
-	return oldIDToNew, createPayloads, nil
+	return nil
 }
 
 func (i *Import) replaceRelationKeyWithNew(option *common.Snapshot, oldIDToNew map[string]string) {
@@ -461,13 +438,7 @@ func (i *Import) replaceRelationKeyWithNew(option *common.Snapshot, oldIDToNew m
 	option.Snapshot.Data.Details.SetString(bundle.RelationKeyRelationKey, key)
 }
 
-func (i *Import) getObjectID(
-	ctx importContext,
-	snapshot *common.Snapshot,
-	createPayloads map[string]treestorage.TreeStorageCreatePayload,
-	oldIDToNew map[string]string,
-) error {
-
+func (i *Import) getObjectID(ctx *importContext, snapshot *common.Snapshot) error {
 	// Preload file keys
 	for _, fileKeys := range snapshot.Snapshot.FileKeys {
 		err := i.objectStore.AddFileKeys(domain.FileEncryptionKeys{
@@ -500,19 +471,23 @@ func (i *Import) getObjectID(
 	if err != nil {
 		return err
 	}
-	oldIDToNew[snapshot.Id] = id
+	ctx.oldIDToNew[snapshot.Id] = id
 	var isBundled bool
 	switch snapshot.Snapshot.SbType {
 	case smartblock.SmartBlockTypeObjectType:
 		isBundled = bundle.HasObjectTypeByKey(domain.TypeKey(snapshot.Snapshot.Data.Key))
 	case smartblock.SmartBlockTypeRelation:
-		isBundled = bundle.HasRelation(domain.RelationKey(snapshot.Snapshot.Data.Key))
+		key := domain.RelationKey(snapshot.Snapshot.Data.Key)
+		isBundled = bundle.HasRelation(key)
+		if !isBundled {
+			ctx.relationKeysToFormat[key] = int32(snapshot.Snapshot.Data.Details.GetInt64(bundle.RelationKeyRelationFormat))
+		}
 	}
 	// bundled types will be created and then updated, cause they can be installed asynchronously
 	if payload.RootRawChange != nil && !isBundled {
-		createPayloads[id] = payload
+		ctx.createPayloads[id] = payload
 	}
-	return i.extractInternalKey(snapshot, oldIDToNew)
+	return i.extractInternalKey(snapshot, ctx.oldIDToNew)
 }
 
 func (i *Import) extractInternalKey(snapshot *common.Snapshot, oldIDToNew map[string]string) error {
