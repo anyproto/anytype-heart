@@ -1,6 +1,7 @@
 package service
 
 import (
+	"context"
 	"sync"
 
 	"github.com/cheggaaa/mb/v3"
@@ -33,13 +34,13 @@ type Service struct {
 	tagMapMu      sync.RWMutex
 }
 
-func NewService(mw apicore.ClientCommands, gatewayUrl string, techspaceId string, subscriptionService subscription.Service, eventQueue *mb.MB[*pb.EventMessage]) *Service {
+func NewService(mw apicore.ClientCommands, gatewayUrl string, techspaceId string, subscriptionService subscription.Service) *Service {
 	s := &Service{
 		mw:                    mw,
 		gatewayUrl:            gatewayUrl,
 		techSpaceId:           techspaceId,
 		subscriptionService:   subscriptionService,
-		eventQueue:            eventQueue,
+		eventQueue:            mb.New[*pb.EventMessage](0),
 		typeMapCache:          make(map[string]map[string]*apimodel.Type),
 		propertyMapCache:      make(map[string]map[string]*apimodel.Property),
 		tagMapCache:           make(map[string]map[string]*apimodel.Tag),
@@ -48,5 +49,22 @@ func NewService(mw apicore.ClientCommands, gatewayUrl string, techspaceId string
 		tagSubscriptions:      make(map[string]string),
 	}
 
+	// Start event processing goroutine
+	go s.processEvents()
+
 	return s
+}
+
+func (s *Service) processEvents() {
+	for {
+		msgs, err := s.eventQueue.Wait(context.Background())
+		if err != nil {
+			return
+		}
+
+		if len(msgs) > 0 {
+			event := &pb.Event{Messages: msgs}
+			s.ProcessSubscriptionEvent(event)
+		}
+	}
 }
