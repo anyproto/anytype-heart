@@ -89,8 +89,6 @@ func (s *apiService) Init(a *app.App) (err error) {
 }
 
 func (s *apiService) Run(ctx context.Context) (err error) {
-	// Start event listener first so the queue is ready
-	s.startEventListener()
 	s.runServer()
 	return nil
 }
@@ -116,16 +114,20 @@ func (s *apiService) runServer() {
 		return
 	}
 
-	s.srv = server.NewServer(s.mw, s.accountService, s.eventService, openapiYAML, openapiJSON)
-
-	// Set the event queue and subscription service for real-time updates
+	// Stop existing event listener if any
+	if s.eventCancel != nil {
+		s.eventCancel()
+	}
 	if s.eventQueue != nil {
-		s.srv.SetEventQueue(s.eventQueue)
-	}
-	if s.subscriptionService != nil {
-		s.srv.SetSubscriptionService(s.subscriptionService)
+		s.eventQueue.Close()
 	}
 
+	// Start new event listener
+	s.eventQueue = mb.New[*pb.EventMessage](0)
+	s.eventCtx, s.eventCancel = context.WithCancel(context.Background())
+	go s.listenForEvents()
+
+	s.srv = server.NewServer(s.mw, s.accountService, s.eventService, s.subscriptionService, s.eventQueue, openapiYAML, openapiJSON)
 	s.httpSrv = &http.Server{
 		Addr:              s.listenAddr,
 		Handler:           s.srv.Engine(),
@@ -173,15 +175,6 @@ func SetMiddlewareParams(mw apicore.ClientCommands) {
 	mwSrv = mw
 }
 
-// startEventListener starts a goroutine to listen for events from internal subscriptions
-func (s *apiService) startEventListener() {
-	// Create the event queue first
-	s.eventQueue = mb.New[*pb.EventMessage](0)
-	s.eventCtx, s.eventCancel = context.WithCancel(context.Background())
-
-	go s.listenForEvents()
-}
-
 // listenForEvents processes events from the internal subscription queue
 func (s *apiService) listenForEvents() {
 	log := logging.Logger("api-event-listener")
@@ -202,15 +195,9 @@ func (s *apiService) listenForEvents() {
 			}
 
 			if len(msgs) > 0 && s.srv != nil {
-				// Process events through the API server
 				event := &pb.Event{Messages: msgs}
 				s.srv.ProcessEvent(event)
 			}
 		}
 	}
-}
-
-// GetEventQueue returns the event queue for internal subscriptions
-func (s *apiService) GetEventQueue() *mb.MB[*pb.EventMessage] {
-	return s.eventQueue
 }

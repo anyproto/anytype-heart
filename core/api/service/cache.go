@@ -41,16 +41,6 @@ func (s *Service) InitializeAllCaches(ctx context.Context) error {
 
 // subscribeToSpaceChanges subscribes to workspace/space changes in the tech space
 func (s *Service) subscribeToSpaceChanges(ctx context.Context) error {
-	if s.subscriptionSvc == nil {
-		return fmt.Errorf("subscription service not available")
-	}
-
-	// Get the event queue from the parent API service
-	queue := s.getEventQueue()
-	if queue == nil {
-		return fmt.Errorf("event queue not available")
-	}
-
 	filters := []database.FilterRequest{
 		{
 			RelationKey: bundle.RelationKeyResolvedLayout,
@@ -59,7 +49,7 @@ func (s *Service) subscribeToSpaceChanges(ctx context.Context) error {
 		},
 	}
 
-	resp, err := s.subscriptionSvc.Search(subscription.SubscribeRequest{
+	resp, err := s.subscriptionService.Search(subscription.SubscribeRequest{
 		SpaceId: s.techSpaceId,
 		SubId:   "api_space_changes",
 		Filters: filters,
@@ -71,7 +61,7 @@ func (s *Service) subscribeToSpaceChanges(ctx context.Context) error {
 			bundle.RelationKeyIsDeleted.String(),
 		},
 		Internal:      true,
-		InternalQueue: queue,
+		InternalQueue: s.eventQueue,
 	})
 
 	if err != nil {
@@ -105,16 +95,6 @@ func (s *Service) subscribeToTypes(ctx context.Context, spaceId string) error {
 		return nil
 	}
 
-	if s.subscriptionSvc == nil {
-		return fmt.Errorf("subscription service not available")
-	}
-
-	// Get the event queue from the parent API service
-	queue := s.getEventQueue()
-	if queue == nil {
-		return fmt.Errorf("event queue not available")
-	}
-
 	filters := []database.FilterRequest{
 		{
 			RelationKey: bundle.RelationKeyResolvedLayout,
@@ -126,7 +106,7 @@ func (s *Service) subscribeToTypes(ctx context.Context, spaceId string) error {
 		},
 	}
 
-	resp, err := s.subscriptionSvc.Search(subscription.SubscribeRequest{
+	resp, err := s.subscriptionService.Search(subscription.SubscribeRequest{
 		SpaceId: spaceId,
 		SubId:   fmt.Sprintf("api_types_%s", spaceId),
 		Filters: filters,
@@ -145,7 +125,7 @@ func (s *Service) subscribeToTypes(ctx context.Context, spaceId string) error {
 			bundle.RelationKeyRecommendedRelations.String(),
 		},
 		Internal:      true,
-		InternalQueue: queue,
+		InternalQueue: s.eventQueue,
 	})
 
 	if err != nil {
@@ -185,16 +165,6 @@ func (s *Service) subscribeToProperties(ctx context.Context, spaceId string) err
 		return nil
 	}
 
-	if s.subscriptionSvc == nil {
-		return fmt.Errorf("subscription service not available")
-	}
-
-	// Get the event queue from the parent API service
-	queue := s.getEventQueue()
-	if queue == nil {
-		return fmt.Errorf("event queue not available")
-	}
-
 	filters := []database.FilterRequest{
 		{
 			RelationKey: bundle.RelationKeyResolvedLayout,
@@ -208,7 +178,7 @@ func (s *Service) subscribeToProperties(ctx context.Context, spaceId string) err
 		},
 	}
 
-	resp, err := s.subscriptionSvc.Search(subscription.SubscribeRequest{
+	resp, err := s.subscriptionService.Search(subscription.SubscribeRequest{
 		SpaceId: spaceId,
 		SubId:   fmt.Sprintf("api_properties_%s", spaceId),
 		Filters: filters,
@@ -220,7 +190,7 @@ func (s *Service) subscribeToProperties(ctx context.Context, spaceId string) err
 			bundle.RelationKeyRelationFormat.String(),
 		},
 		Internal:      true,
-		InternalQueue: queue,
+		InternalQueue: s.eventQueue,
 	})
 
 	if err != nil {
@@ -252,16 +222,6 @@ func (s *Service) subscribeToTags(ctx context.Context, spaceId string) error {
 		return nil
 	}
 
-	if s.subscriptionSvc == nil {
-		return fmt.Errorf("subscription service not available")
-	}
-
-	// Get the event queue from the parent API service
-	queue := s.getEventQueue()
-	if queue == nil {
-		return fmt.Errorf("event queue not available")
-	}
-
 	filters := []database.FilterRequest{
 		{
 			RelationKey: bundle.RelationKeyResolvedLayout,
@@ -275,7 +235,7 @@ func (s *Service) subscribeToTags(ctx context.Context, spaceId string) error {
 		},
 	}
 
-	resp, err := s.subscriptionSvc.Search(subscription.SubscribeRequest{
+	resp, err := s.subscriptionService.Search(subscription.SubscribeRequest{
 		SpaceId: spaceId,
 		SubId:   fmt.Sprintf("api_tags_%s", spaceId),
 		Filters: filters,
@@ -286,7 +246,7 @@ func (s *Service) subscribeToTags(ctx context.Context, spaceId string) error {
 			bundle.RelationKeyRelationOptionColor.String(),
 		},
 		Internal:      true,
-		InternalQueue: queue,
+		InternalQueue: s.eventQueue,
 	})
 
 	if err != nil {
@@ -309,13 +269,9 @@ func (s *Service) subscribeToTags(ctx context.Context, spaceId string) error {
 
 // unsubscribeFromSpace unsubscribes from all subscriptions for a space
 func (s *Service) unsubscribeFromSpace(ctx context.Context, spaceId string) {
-	if s.subscriptionSvc == nil {
-		return
-	}
-
 	s.typeMapMu.Lock()
 	if subId, exists := s.typeSubscriptions[spaceId]; exists {
-		s.subscriptionSvc.Unsubscribe(subId)
+		s.subscriptionService.Unsubscribe(subId)
 		delete(s.typeSubscriptions, spaceId)
 		delete(s.typeMapCache, spaceId)
 	}
@@ -323,7 +279,7 @@ func (s *Service) unsubscribeFromSpace(ctx context.Context, spaceId string) {
 
 	s.propertyMapMu.Lock()
 	if subId, exists := s.propertySubscriptions[spaceId]; exists {
-		s.subscriptionSvc.Unsubscribe(subId)
+		s.subscriptionService.Unsubscribe(subId)
 		delete(s.propertySubscriptions, spaceId)
 		delete(s.propertyMapCache, spaceId)
 	}
@@ -331,7 +287,7 @@ func (s *Service) unsubscribeFromSpace(ctx context.Context, spaceId string) {
 
 	s.tagMapMu.Lock()
 	if subId, exists := s.tagSubscriptions[spaceId]; exists {
-		s.subscriptionSvc.Unsubscribe(subId)
+		s.subscriptionService.Unsubscribe(subId)
 		delete(s.tagSubscriptions, spaceId)
 		delete(s.tagMapCache, spaceId)
 	}
@@ -466,36 +422,34 @@ func (s *Service) handleSubscriptionRemove(remove *pb.EventObjectSubscriptionRem
 
 // Stop unsubscribes from all spaces and cleans up
 func (s *Service) Stop() {
-	if s.subscriptionSvc != nil {
-		if s.spaceSubscriptionId != "" {
-			s.subscriptionSvc.Unsubscribe(s.spaceSubscriptionId)
-			s.spaceSubscriptionId = ""
-		}
-
-		s.typeMapMu.Lock()
-		for _, subId := range s.typeSubscriptions {
-			s.subscriptionSvc.Unsubscribe(subId)
-		}
-		s.typeSubscriptions = make(map[string]string)
-		s.typeMapCache = make(map[string]map[string]*apimodel.Type)
-		s.typeMapMu.Unlock()
-
-		s.propertyMapMu.Lock()
-		for _, subId := range s.propertySubscriptions {
-			s.subscriptionSvc.Unsubscribe(subId)
-		}
-		s.propertySubscriptions = make(map[string]string)
-		s.propertyMapCache = make(map[string]map[string]*apimodel.Property)
-		s.propertyMapMu.Unlock()
-
-		s.tagMapMu.Lock()
-		for _, subId := range s.tagSubscriptions {
-			s.subscriptionSvc.Unsubscribe(subId)
-		}
-		s.tagSubscriptions = make(map[string]string)
-		s.tagMapCache = make(map[string]map[string]*apimodel.Tag)
-		s.tagMapMu.Unlock()
+	if s.spaceSubscriptionId != "" {
+		s.subscriptionService.Unsubscribe(s.spaceSubscriptionId)
+		s.spaceSubscriptionId = ""
 	}
+
+	s.typeMapMu.Lock()
+	for _, subId := range s.typeSubscriptions {
+		s.subscriptionService.Unsubscribe(subId)
+	}
+	s.typeSubscriptions = make(map[string]string)
+	s.typeMapCache = make(map[string]map[string]*apimodel.Type)
+	s.typeMapMu.Unlock()
+
+	s.propertyMapMu.Lock()
+	for _, subId := range s.propertySubscriptions {
+		s.subscriptionService.Unsubscribe(subId)
+	}
+	s.propertySubscriptions = make(map[string]string)
+	s.propertyMapCache = make(map[string]map[string]*apimodel.Property)
+	s.propertyMapMu.Unlock()
+
+	s.tagMapMu.Lock()
+	for _, subId := range s.tagSubscriptions {
+		s.subscriptionService.Unsubscribe(subId)
+	}
+	s.tagSubscriptions = make(map[string]string)
+	s.tagMapCache = make(map[string]map[string]*apimodel.Tag)
+	s.tagMapMu.Unlock()
 }
 
 // handleObjectUpdate fetches fresh object data and updates cache

@@ -31,34 +31,20 @@ type Server struct {
 }
 
 // NewServer constructs a new Server with the default config and sets up the routes.
-func NewServer(mw apicore.ClientCommands, accountService apicore.AccountService, eventService apicore.EventService, openapiYAML []byte, openapiJSON []byte) *Server {
+func NewServer(mw apicore.ClientCommands, accountService apicore.AccountService, eventService apicore.EventService, subscriptionService subscription.Service, eventQueue *mb.MB[*pb.EventMessage], openapiYAML []byte, openapiJSON []byte) *Server {
 	gatewayUrl, techSpaceId, err := getAccountInfo(accountService)
 	if err != nil {
 		panic(err)
 	}
 
 	s := &Server{
-		service:      service.NewService(mw, gatewayUrl, techSpaceId),
+		service:      service.NewService(mw, gatewayUrl, techSpaceId, subscriptionService, eventQueue),
 		eventService: eventService,
 	}
 	s.engine = s.NewRouter(mw, eventService, openapiYAML, openapiJSON)
 	s.KeyToToken = make(map[string]ApiSessionEntry)
 
 	return s
-}
-
-// SetEventQueue sets the event queue for the service to receive real-time updates
-func (s *Server) SetEventQueue(queue *mb.MB[*pb.EventMessage]) {
-	if s.service != nil {
-		s.service.SetEventQueue(queue)
-	}
-}
-
-// SetSubscriptionService sets the subscription service for internal subscriptions
-func (s *Server) SetSubscriptionService(svc subscription.Service) {
-	if s.service != nil {
-		s.service.SetSubscriptionService(svc)
-	}
 }
 
 // getAccountInfo retrieves the account information from the account service and returns the gateway URL and tech space ID.

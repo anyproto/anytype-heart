@@ -155,16 +155,12 @@ func ensureFilters() gin.HandlerFunc {
 	}
 }
 
-// ensureCacheInitialized is a middleware that ensures the API service caches are initialized on first request.
+// ensureCacheInitialized initializes the API service caches on the first request.
 func (s *Server) ensureCacheInitialized() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		s.initOnce.Do(func() {
-			log.Warn("Initializing API service caches on first request...")
-			// Block on first request to ensure caches are ready
 			if err := s.service.InitializeAllCaches(context.Background()); err != nil {
 				log.Errorf("Failed to initialize API service caches: %v", err)
-			} else {
-				log.Warn("API service caches initialized successfully")
 			}
 		})
 
