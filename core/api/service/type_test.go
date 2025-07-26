@@ -64,7 +64,7 @@ func TestObjectService_ListTypes(t *testing.T) {
 		}, nil).Once()
 
 		// when
-		types, total, hasMore, err := fx.service.ListTypes(ctx, mockedSpaceId, offset, limit)
+		types, total, hasMore, err := fx.service.ListTypes(ctx, mockedSpaceId, nil, offset, limit)
 
 		// then
 		require.NoError(t, err)
@@ -72,7 +72,7 @@ func TestObjectService_ListTypes(t *testing.T) {
 		require.Equal(t, "type-1", types[0].Id)
 		require.Equal(t, "Type One", types[0].Name)
 		require.Equal(t, "type_one_key", types[0].Key)
-		require.Equal(t, apimodel.Icon{
+		require.Equal(t, &apimodel.Icon{
 			WrappedIcon: apimodel.EmojiIcon{
 				Format: apimodel.IconFormatEmoji,
 				Emoji:  "🗂️",
@@ -121,7 +121,7 @@ func TestObjectService_ListTypes(t *testing.T) {
 		}, nil).Once()
 
 		// when
-		types, total, hasMore, err := fx.service.ListTypes(ctx, "empty-space", offset, limit)
+		types, total, hasMore, err := fx.service.ListTypes(ctx, "empty-space", nil, offset, limit)
 
 		// then
 		require.NoError(t, err)
@@ -194,7 +194,7 @@ func TestObjectService_GetType(t *testing.T) {
 		require.Equal(t, mockedTypeId, ot.Id)
 		require.Equal(t, mockedTypeName, ot.Name)
 		require.Equal(t, mockedTypeKey, ot.Key)
-		require.Equal(t, apimodel.Icon{
+		require.Equal(t, &apimodel.Icon{
 			WrappedIcon: apimodel.EmojiIcon{
 				Format: apimodel.IconFormatEmoji,
 				Emoji:  mockedTypeIcon,
