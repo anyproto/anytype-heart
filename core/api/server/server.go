@@ -4,10 +4,13 @@ import (
 	"context"
 	"sync"
 
+	"github.com/cheggaaa/mb/v3"
 	"github.com/gin-gonic/gin"
 
 	apicore "github.com/anyproto/anytype-heart/core/api/core"
 	"github.com/anyproto/anytype-heart/core/api/service"
+	"github.com/anyproto/anytype-heart/core/subscription"
+	"github.com/anyproto/anytype-heart/pb"
 )
 
 type ApiSessionEntry struct {
@@ -17,8 +20,9 @@ type ApiSessionEntry struct {
 
 // Server wraps the HTTP server and service logic.
 type Server struct {
-	engine  *gin.Engine
-	service *service.Service
+	engine       *gin.Engine
+	service      *service.Service
+	eventService apicore.EventService
 
 	mu         sync.Mutex
 	KeyToToken map[string]ApiSessionEntry // appKey -> token
@@ -33,11 +37,28 @@ func NewServer(mw apicore.ClientCommands, accountService apicore.AccountService,
 		panic(err)
 	}
 
-	s := &Server{service: service.NewService(mw, gatewayUrl, techSpaceId)}
+	s := &Server{
+		service:      service.NewService(mw, gatewayUrl, techSpaceId),
+		eventService: eventService,
+	}
 	s.engine = s.NewRouter(mw, eventService, openapiYAML, openapiJSON)
 	s.KeyToToken = make(map[string]ApiSessionEntry)
 
 	return s
+}
+
+// SetEventQueue sets the event queue for the service to receive real-time updates
+func (s *Server) SetEventQueue(queue *mb.MB[*pb.EventMessage]) {
+	if s.service != nil {
+		s.service.SetEventQueue(queue)
+	}
+}
+
+// SetSubscriptionService sets the subscription service for internal subscriptions
+func (s *Server) SetSubscriptionService(svc subscription.Service) {
+	if s.service != nil {
+		s.service.SetSubscriptionService(svc)
+	}
 }
 
 // getAccountInfo retrieves the account information from the account service and returns the gateway URL and tech space ID.
@@ -49,6 +70,19 @@ func getAccountInfo(accountService apicore.AccountService) (gatewayUrl string, t
 	gatewayUrl = accountInfo.GatewayUrl
 	techSpaceId = accountInfo.TechSpaceId
 	return gatewayUrl, techSpaceId, nil
+}
+
+// Start initializes the server
+func (s *Server) Start() {
+	// Event processing is handled automatically when caches are initialized
+}
+
+// ProcessEvent processes events from the event system to update caches
+// This method should be called by the parent application when events are received
+func (s *Server) ProcessEvent(event *pb.Event) {
+	if s.service != nil {
+		s.service.ProcessSubscriptionEvent(event)
+	}
 }
 
 // Stop the service to clean up caches and subscriptions

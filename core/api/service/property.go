@@ -229,11 +229,6 @@ func (s *Service) CreateProperty(ctx context.Context, spaceId string, request ap
 		}
 	}
 
-	// Invalidate cache after creating a new property
-	s.invalidatePropertyCache(spaceId)
-	s.invalidateTypeCache(spaceId) // Types reference properties
-	s.invalidateTagCache(spaceId)  // Tags may have been created
-
 	return s.GetProperty(ctx, spaceId, resp.ObjectId)
 }
 
@@ -284,10 +279,6 @@ func (s *Service) UpdateProperty(ctx context.Context, spaceId string, propertyId
 		}
 	}
 
-	// Invalidate cache after updating a property
-	s.invalidatePropertyCache(spaceId)
-	s.invalidateTypeCache(spaceId) // Types reference properties
-
 	return s.GetProperty(ctx, spaceId, propertyId)
 }
 
@@ -306,10 +297,6 @@ func (s *Service) DeleteProperty(ctx context.Context, spaceId string, propertyId
 	if resp.Error != nil && resp.Error.Code != pb.RpcObjectSetIsArchivedResponseError_NULL {
 		return nil, ErrFailedDeleteProperty
 	}
-
-	// Invalidate cache after deleting (archiving) a property
-	s.invalidatePropertyCache(spaceId)
-	s.invalidateTypeCache(spaceId) // Types reference properties
 
 	return property, nil
 }

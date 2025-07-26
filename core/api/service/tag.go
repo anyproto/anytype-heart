@@ -125,9 +125,6 @@ func (s *Service) CreateTag(ctx context.Context, spaceId string, propertyId stri
 		return nil, ErrFailedCreateTag
 	}
 
-	// Invalidate cache after creating a new tag
-	s.invalidateTagCache(spaceId)
-
 	return s.GetTag(ctx, spaceId, propertyId, resp.ObjectId)
 }
 
@@ -163,9 +160,6 @@ func (s *Service) UpdateTag(ctx context.Context, spaceId string, propertyId stri
 		}
 	}
 
-	// Invalidate cache after updating a tag
-	s.invalidateTagCache(spaceId)
-
 	return s.GetTag(ctx, spaceId, propertyId, tagId)
 }
 
@@ -184,9 +178,6 @@ func (s *Service) DeleteTag(ctx context.Context, spaceId string, propertyId stri
 	if resp.Error != nil && resp.Error.Code != pb.RpcObjectSetIsArchivedResponseError_NULL {
 		return nil, ErrFailedDeleteTag
 	}
-
-	// Invalidate cache after deleting (archiving) a tag
-	s.invalidateTagCache(spaceId)
 
 	return tag, nil
 }

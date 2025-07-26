@@ -3,14 +3,22 @@ package service
 import (
 	"sync"
 
+	"github.com/cheggaaa/mb/v3"
+
 	apicore "github.com/anyproto/anytype-heart/core/api/core"
 	apimodel "github.com/anyproto/anytype-heart/core/api/model"
+	"github.com/anyproto/anytype-heart/core/subscription"
+	"github.com/anyproto/anytype-heart/pb"
 )
 
 type Service struct {
-	mw          apicore.ClientCommands
-	gatewayUrl  string
-	techSpaceId string
+	mw              apicore.ClientCommands
+	subscriptionSvc subscription.Service
+	gatewayUrl      string
+	techSpaceId     string
+
+	// Event queue for receiving updates from internal subscriptions
+	eventQueue *mb.MB[*pb.EventMessage]
 
 	// Cache maps for types, properties, and tags
 	typeMapCache     map[string]map[string]*apimodel.Type     // map[spaceId]map[typeId]*Type
@@ -43,4 +51,16 @@ func NewService(mw apicore.ClientCommands, gatewayUrl string, techspaceId string
 	}
 
 	return s
+}
+
+func (s *Service) SetSubscriptionService(svc subscription.Service) {
+	s.subscriptionSvc = svc
+}
+
+func (s *Service) SetEventQueue(queue *mb.MB[*pb.EventMessage]) {
+	s.eventQueue = queue
+}
+
+func (s *Service) getEventQueue() *mb.MB[*pb.EventMessage] {
+	return s.eventQueue
 }

@@ -134,10 +134,6 @@ func (s *Service) CreateType(ctx context.Context, spaceId string, request apimod
 		return nil, ErrFailedCreateType
 	}
 
-	// Invalidate cache after creating a new type
-	s.invalidateTypeCache(spaceId)
-	s.invalidatePropertyCache(spaceId) // Properties may reference types
-
 	return s.GetType(ctx, spaceId, resp.ObjectId)
 }
 
@@ -162,10 +158,6 @@ func (s *Service) UpdateType(ctx context.Context, spaceId string, typeId string,
 		return nil, ErrFailedUpdateType
 	}
 
-	// Invalidate cache after updating a type
-	s.invalidateTypeCache(spaceId)
-	s.invalidatePropertyCache(spaceId) // Properties may reference types
-
 	return s.GetType(ctx, spaceId, typeId)
 }
 
@@ -184,10 +176,6 @@ func (s *Service) DeleteType(ctx context.Context, spaceId string, typeId string)
 	if resp.Error != nil && resp.Error.Code != pb.RpcObjectSetIsArchivedResponseError_NULL {
 		return nil, ErrFailedDeleteType
 	}
-
-	// Invalidate cache after deleting (archiving) a type
-	s.invalidateTypeCache(spaceId)
-	s.invalidatePropertyCache(spaceId) // Properties may reference types
 
 	return t, nil
 }

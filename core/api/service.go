@@ -10,12 +10,16 @@ import (
 	"time"
 
 	"github.com/anyproto/any-sync/app"
+	"github.com/cheggaaa/mb/v3"
 
 	"github.com/anyproto/anytype-heart/core/anytype/account"
 	"github.com/anyproto/anytype-heart/core/anytype/config"
 	apicore "github.com/anyproto/anytype-heart/core/api/core"
 	"github.com/anyproto/anytype-heart/core/api/server"
 	"github.com/anyproto/anytype-heart/core/event"
+	"github.com/anyproto/anytype-heart/core/subscription"
+	"github.com/anyproto/anytype-heart/pb"
+	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 )
 
 const (
@@ -39,13 +43,18 @@ type Service interface {
 }
 
 type apiService struct {
-	srv            *server.Server
-	httpSrv        *http.Server
-	mw             apicore.ClientCommands
-	accountService apicore.AccountService
-	eventService   apicore.EventService
-	listenAddr     string
-	lock           sync.Mutex
+	srv                 *server.Server
+	httpSrv             *http.Server
+	mw                  apicore.ClientCommands
+	accountService      apicore.AccountService
+	eventService        apicore.EventService
+	subscriptionService subscription.Service
+	listenAddr          string
+	lock                sync.Mutex
+
+	eventQueue  *mb.MB[*pb.EventMessage]
+	eventCtx    context.Context
+	eventCancel context.CancelFunc
 }
 
 func New() Service {
@@ -75,15 +84,24 @@ func (s *apiService) Init(a *app.App) (err error) {
 	s.listenAddr = a.MustComponent(config.CName).(*config.Config).JsonApiListenAddr
 	s.accountService = a.MustComponent(account.CName).(account.Service)
 	s.eventService = a.MustComponent(event.CName).(apicore.EventService)
+	s.subscriptionService = app.MustComponent[subscription.Service](a)
 	return nil
 }
 
 func (s *apiService) Run(ctx context.Context) (err error) {
+	// Start event listener first so the queue is ready
+	s.startEventListener()
 	s.runServer()
 	return nil
 }
 
 func (s *apiService) Close(ctx context.Context) (err error) {
+	if s.eventCancel != nil {
+		s.eventCancel()
+	}
+	if s.eventQueue != nil {
+		s.eventQueue.Close()
+	}
 	if s.srv != nil {
 		s.srv.Stop()
 	}
@@ -99,6 +117,14 @@ func (s *apiService) runServer() {
 	}
 
 	s.srv = server.NewServer(s.mw, s.accountService, s.eventService, openapiYAML, openapiJSON)
+
+	// Set the event queue and subscription service for real-time updates
+	if s.eventQueue != nil {
+		s.srv.SetEventQueue(s.eventQueue)
+	}
+	if s.subscriptionService != nil {
+		s.srv.SetSubscriptionService(s.subscriptionService)
+	}
 
 	s.httpSrv = &http.Server{
 		Addr:              s.listenAddr,
@@ -145,4 +171,46 @@ func (s *apiService) ReassignAddress(ctx context.Context, listenAddr string) (er
 
 func SetMiddlewareParams(mw apicore.ClientCommands) {
 	mwSrv = mw
+}
+
+// startEventListener starts a goroutine to listen for events from internal subscriptions
+func (s *apiService) startEventListener() {
+	// Create the event queue first
+	s.eventQueue = mb.New[*pb.EventMessage](0)
+	s.eventCtx, s.eventCancel = context.WithCancel(context.Background())
+
+	go s.listenForEvents()
+}
+
+// listenForEvents processes events from the internal subscription queue
+func (s *apiService) listenForEvents() {
+	log := logging.Logger("api-event-listener")
+	log.Warn("Starting API event listener")
+
+	for {
+		select {
+		case <-s.eventCtx.Done():
+			log.Warn("Stopping API event listener")
+			return
+		default:
+			msgs, err := s.eventQueue.Wait(s.eventCtx)
+			if err != nil {
+				if !errors.Is(err, context.Canceled) {
+					log.Errorf("Error waiting for events: %v", err)
+				}
+				return
+			}
+
+			if len(msgs) > 0 && s.srv != nil {
+				// Process events through the API server
+				event := &pb.Event{Messages: msgs}
+				s.srv.ProcessEvent(event)
+			}
+		}
+	}
+}
+
+// GetEventQueue returns the event queue for internal subscriptions
+func (s *apiService) GetEventQueue() *mb.MB[*pb.EventMessage] {
+	return s.eventQueue
 }
