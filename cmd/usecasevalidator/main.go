@@ -562,6 +562,11 @@ func processProfile(info *useCaseInfo, spaceDashboardId string) ([]byte, error) 
 		return profile.Marshal()
 	}
 
+	if spaceDashboardId == "" {
+		profile.SpaceDashboardId = "lastOpened"
+		return profile.Marshal()
+	}
+
 	fmt.Println("spaceDashboardId = " + profile.SpaceDashboardId)
 	if _, found := info.objects[profile.SpaceDashboardId]; !found && !slices.Contains([]string{"lastOpened"}, profile.SpaceDashboardId) {
 		err := fmt.Errorf("failed to find Space Dashboard object '%s' among provided", profile.SpaceDashboardId)
