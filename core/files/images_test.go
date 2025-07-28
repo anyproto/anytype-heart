@@ -213,7 +213,7 @@ func (fx *fixture) addImageObjectToStore(t *testing.T, got *AddResult) {
 	require.NoError(t, err)
 
 	st.SetDetails(details)
-	st.SetDetailAndBundledRelation(bundle.RelationKeyFileId, domain.String(got.FileId))
+	st.SetDetail(bundle.RelationKeyFileId, domain.String(got.FileId))
 	err = filemodels.InjectVariantsToDetails(got.Variants, st)
 	require.NoError(t, err)
 

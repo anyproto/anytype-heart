@@ -262,7 +262,7 @@ func (sb *smartBlock) resolveLayout(s *state.State) {
 	)
 
 	if hasStrictLayout {
-		s.SetDetailAndBundledRelation(bundle.RelationKeyResolvedLayout, domain.Int64(int64(sbTypeLayoutValue)))
+		s.SetDetail(bundle.RelationKeyResolvedLayout, domain.Int64(int64(sbTypeLayoutValue)))
 		return
 	}
 

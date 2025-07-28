@@ -791,10 +791,10 @@ func TestMD_RenderCollection(t *testing.T) {
 	}).NewState()
 
 	// Set collection layout
-	st.SetDetailAndBundledRelation(bundle.RelationKeyId, domain.String("collection-123"))
-	st.SetDetailAndBundledRelation(bundle.RelationKeyType, domain.String("type-collection"))
-	st.SetDetailAndBundledRelation(bundle.RelationKeyResolvedLayout, domain.Int64(int64(model.ObjectType_collection)))
-	st.SetDetailAndBundledRelation(bundle.RelationKeyName, domain.String("My Task Collection"))
+	st.SetDetail(bundle.RelationKeyId, domain.String("collection-123"))
+	st.SetDetail(bundle.RelationKeyType, domain.String("type-collection"))
+	st.SetDetail(bundle.RelationKeyResolvedLayout, domain.Int64(int64(model.ObjectType_collection)))
+	st.SetDetail(bundle.RelationKeyName, domain.String("My Task Collection"))
 
 	// Add collection objects to store
 	collectionObjects := []string{"task1", "task2", "task3"}
@@ -897,9 +897,9 @@ func TestMD_RenderCollection_EmptyCollection(t *testing.T) {
 	}).NewState()
 
 	// Set collection layout
-	st.SetDetailAndBundledRelation(bundle.RelationKeyId, domain.String("collection-empty"))
-	st.SetDetailAndBundledRelation(bundle.RelationKeyType, domain.String("type-collection"))
-	st.SetDetailAndBundledRelation(bundle.RelationKeyResolvedLayout, domain.Int64(int64(model.ObjectType_collection)))
+	st.SetDetail(bundle.RelationKeyId, domain.String("collection-empty"))
+	st.SetDetail(bundle.RelationKeyType, domain.String("type-collection"))
+	st.SetDetail(bundle.RelationKeyResolvedLayout, domain.Int64(int64(model.ObjectType_collection)))
 
 	// No collection objects in store
 
@@ -943,10 +943,10 @@ func TestMD_RenderCollection_WithSchema(t *testing.T) {
 	}).NewState()
 
 	// Set collection layout
-	st.SetDetailAndBundledRelation(bundle.RelationKeyId, domain.String("collection-456"))
-	st.SetDetailAndBundledRelation(bundle.RelationKeyType, domain.String("type-collection"))
-	st.SetDetailAndBundledRelation(bundle.RelationKeyResolvedLayout, domain.Int64(int64(model.ObjectType_collection)))
-	st.SetDetailAndBundledRelation(bundle.RelationKeyName, domain.String("Collection with Schema"))
+	st.SetDetail(bundle.RelationKeyId, domain.String("collection-456"))
+	st.SetDetail(bundle.RelationKeyType, domain.String("type-collection"))
+	st.SetDetail(bundle.RelationKeyResolvedLayout, domain.Int64(int64(model.ObjectType_collection)))
+	st.SetDetail(bundle.RelationKeyName, domain.String("Collection with Schema"))
 
 	// Add one collection object
 	st.SetInStore([]string{template.CollectionStoreKey}, pbtypes.StringList([]string{"obj1"}))
@@ -1020,9 +1020,9 @@ func TestMD_RenderCollection_UnknownObjects(t *testing.T) {
 	}).NewState()
 
 	// Set collection layout
-	st.SetDetailAndBundledRelation(bundle.RelationKeyId, domain.String("collection-789"))
-	st.SetDetailAndBundledRelation(bundle.RelationKeyType, domain.String("type-collection"))
-	st.SetDetailAndBundledRelation(bundle.RelationKeyResolvedLayout, domain.Int64(int64(model.ObjectType_collection)))
+	st.SetDetail(bundle.RelationKeyId, domain.String("collection-789"))
+	st.SetDetail(bundle.RelationKeyType, domain.String("type-collection"))
+	st.SetDetail(bundle.RelationKeyResolvedLayout, domain.Int64(int64(model.ObjectType_collection)))
 
 	// Add collection objects, including unknown ones
 	st.SetInStore([]string{template.CollectionStoreKey}, pbtypes.StringList([]string{"known1", "unknown1", "known2"}))
@@ -1078,8 +1078,8 @@ func TestMD_RenderObjectRelation_FileFieldOnlyForExportedObjects(t *testing.T) {
 		"text1": simple.New(textBlock),
 	}).NewState()
 
-	st.SetDetailAndBundledRelation(bundle.RelationKeyId, domain.String("test-object"))
-	st.SetDetailAndBundledRelation(bundle.RelationKeyType, domain.String("test-type"))
+	st.SetDetail(bundle.RelationKeyId, domain.String("test-object"))
+	st.SetDetail(bundle.RelationKeyType, domain.String("test-type"))
 
 	// Add object relation with references
 	st.SetDetail(domain.RelationKey("relatedObjects"), domain.StringList([]string{"obj1", "obj2", "obj3"}))
@@ -1158,11 +1158,11 @@ func TestMD_RenderObjectRelation_ShortFormatUnaffected(t *testing.T) {
 		"text1": simple.New(textBlock),
 	}).NewState()
 
-	st.SetDetailAndBundledRelation(bundle.RelationKeyId, domain.String("test-object"))
-	st.SetDetailAndBundledRelation(bundle.RelationKeyType, domain.String("test-type"))
+	st.SetDetail(bundle.RelationKeyId, domain.String("test-object"))
+	st.SetDetail(bundle.RelationKeyType, domain.String("test-type"))
 
 	// Add backlinks (short format)
-	st.SetDetailAndBundledRelation(bundle.RelationKeyBacklinks, domain.StringList([]string{"obj1", "obj2"}))
+	st.SetDetail(bundle.RelationKeyBacklinks, domain.StringList([]string{"obj1", "obj2"}))
 
 	// Create mock resolver
 	resolver := &testResolver{
@@ -1250,8 +1250,8 @@ func (r *testResolver) GetRelationByKey(relationKey string) (*domain.Details, er
 func TestMD_GenerateJSONSchema_WithEnhancements(t *testing.T) {
 	// Create test state
 	st := state.NewDoc("root", nil).NewState()
-	st.SetDetailAndBundledRelation(bundle.RelationKeyId, domain.String("test-object"))
-	st.SetDetailAndBundledRelation(bundle.RelationKeyType, domain.String("test-type"))
+	st.SetDetail(bundle.RelationKeyId, domain.String("test-object"))
+	st.SetDetail(bundle.RelationKeyType, domain.String("test-type"))
 
 	// Create mock resolver
 	resolver := &testResolver{
@@ -1371,8 +1371,8 @@ func TestMD_RenderProperties_WithID(t *testing.T) {
 		"text1": simple.New(textBlock),
 	}).NewState()
 
-	st.SetDetailAndBundledRelation(bundle.RelationKeyId, domain.String("obj-123-456"))
-	st.SetDetailAndBundledRelation(bundle.RelationKeyType, domain.String("test-type"))
+	st.SetDetail(bundle.RelationKeyId, domain.String("obj-123-456"))
+	st.SetDetail(bundle.RelationKeyType, domain.String("test-type"))
 	st.SetDetail(domain.RelationKey("custom_name"), domain.String("My Task"))
 
 	// Create mock resolver
@@ -1431,8 +1431,8 @@ func TestMD_RenderProperties_WithID(t *testing.T) {
 func TestMD_GenerateJSONSchema_PropertyOrder(t *testing.T) {
 	// Create test state
 	st := state.NewDoc("root", nil).NewState()
-	st.SetDetailAndBundledRelation(bundle.RelationKeyId, domain.String("test-object"))
-	st.SetDetailAndBundledRelation(bundle.RelationKeyType, domain.String("test-type"))
+	st.SetDetail(bundle.RelationKeyId, domain.String("test-object"))
+	st.SetDetail(bundle.RelationKeyType, domain.String("test-type"))
 
 	// Create mock resolver with multiple properties
 	resolver := &testResolver{

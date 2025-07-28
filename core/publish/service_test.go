@@ -877,13 +877,12 @@ func prepareExporterWithFile(t *testing.T, objectTypeId string, spaceService *mo
 		bundle.RelationKeyType:   domain.String(objectTypeId),
 		bundle.RelationKeyFileId: domain.String(fileId),
 	}))
-	file.Doc = fileDoc
-	file.SetType(smartblock.SmartBlockTypeFileObject)
-	file.SetSpaceId(spaceId)
-	space := mock_clientspace.NewMockSpace(t)
-	space.EXPECT().Id().Return(spaceId)
-	space.EXPECT().DerivedIDs().Return(threads.DerivedSmartblockIds{Workspace: workspaceId})
-	file.SetSpace(space)
+	fileObjectSb.Doc = fileDoc
+	fileObjectSb.SetType(smartblock.SmartBlockTypeFileObject)
+	fileObjectSb.SetSpaceId(spaceId)
+	space, err := spaceService.Get(context.Background(), spaceId)
+	require.NoError(t, err)
+	fileObjectSb.SetSpace(space)
 
 	spaceService.EXPECT().Get(context.Background(), spaceId).Return(space, nil)
 	objectGetter.EXPECT().GetObject(context.Background(), objectId).Return(smartBlockTest, nil).Times(4)

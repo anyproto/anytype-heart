@@ -119,7 +119,6 @@ func (si *SchemaImporter) CreateRelationSnapshots() []*common.Snapshot {
 							},
 						}},
 						Details:       details,
-						RelationLinks: bundledRelationLinks(details),
 						Key:           rel.Key,
 						ObjectTypes: []string{
 							bundle.TypeKeyRelation.String(),
@@ -252,7 +251,6 @@ func (si *SchemaImporter) CreateTypeSnapshots() []*common.Snapshot {
 							},
 						}},
 						Details:       details,
-						RelationLinks: bundledRelationLinks(details),
 						Key:           t.Key,
 						ObjectTypes: []string{
 							bundle.TypeKeyObjectType.String(),
