@@ -1866,6 +1866,7 @@
     - [Event.Chat.Update](#anytype-Event-Chat-Update)
     - [Event.Chat.UpdateMentionReadStatus](#anytype-Event-Chat-UpdateMentionReadStatus)
     - [Event.Chat.UpdateMessageReadStatus](#anytype-Event-Chat-UpdateMessageReadStatus)
+    - [Event.Chat.UpdateMessageSyncStatus](#anytype-Event-Chat-UpdateMessageSyncStatus)
     - [Event.Chat.UpdateReactions](#anytype-Event-Chat-UpdateReactions)
     - [Event.Chat.UpdateState](#anytype-Event-Chat-UpdateState)
     - [Event.File](#anytype-Event-File)
@@ -11354,6 +11355,7 @@ Get marks list in the selected range in text block.
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | error | [Rpc.Chat.ToggleMessageReaction.Response.Error](#anytype-Rpc-Chat-ToggleMessageReaction-Response-Error) |  |  |
+| added | [bool](#bool) |  | Added is true when reaction is added, false when removed |
 
 
 
@@ -16342,6 +16344,8 @@ DEPRECATED, GO-1926 |
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | path | [string](#string) | repeated |  |
+| createDirectoryPages | [bool](#bool) |  |  |
+| includePropertiesAsBlock | [bool](#bool) |  |  |
 
 
 
@@ -16792,6 +16796,7 @@ Deletes the object, keys from the local store and unsubscribe from remote change
 | linksStateFilters | [Rpc.Object.ListExport.StateFilters](#anytype-Rpc-Object-ListExport-StateFilters) |  |  |
 | includeBacklinks | [bool](#bool) |  |  |
 | includeSpace | [bool](#bool) |  |  |
+| mdIncludePropertiesAndSchema | [bool](#bool) |  | include properties frontmatter and schema in directory for markdown export |
 
 
 
@@ -21129,6 +21134,7 @@ Available undo/redo operations
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | error | [Rpc.Space.SetOrder.Response.Error](#anytype-Rpc-Space-SetOrder-Response-Error) |  |  |
+| spaceViewOrder | [string](#string) | repeated | final order of space view ids with their lexids |
 
 
 
@@ -29474,6 +29480,23 @@ Precondition: user A opened a block
 
 
 
+<a name="anytype-Event-Chat-UpdateMessageSyncStatus"></a>
+
+### Event.Chat.UpdateMessageSyncStatus
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| ids | [string](#string) | repeated |  |
+| isSynced | [bool](#bool) |  |  |
+| subIds | [string](#string) | repeated |  |
+
+
+
+
+
+
 <a name="anytype-Event-Chat-UpdateReactions"></a>
 
 ### Event.Chat.UpdateReactions
@@ -29717,6 +29740,7 @@ Precondition: user A opened a block
 | chatUpdateReactions | [Event.Chat.UpdateReactions](#anytype-Event-Chat-UpdateReactions) |  |  |
 | chatUpdateMessageReadStatus | [Event.Chat.UpdateMessageReadStatus](#anytype-Event-Chat-UpdateMessageReadStatus) |  | received to update per-message read status (if needed to highlight the unread messages in the UI) |
 | chatUpdateMentionReadStatus | [Event.Chat.UpdateMentionReadStatus](#anytype-Event-Chat-UpdateMentionReadStatus) |  | received to update per-message mention read status (if needed to highlight the unread mentions in the UI) |
+| chatUpdateMessageSyncStatus | [Event.Chat.UpdateMessageSyncStatus](#anytype-Event-Chat-UpdateMessageSyncStatus) |  |  |
 | chatDelete | [Event.Chat.Delete](#anytype-Event-Chat-Delete) |  |  |
 | chatStateUpdate | [Event.Chat.UpdateState](#anytype-Event-Chat-UpdateState) |  | in case new unread messages received or chat state changed (e.g. message read on another device) |
 
@@ -31647,6 +31671,7 @@ Used to decode block meta only, without the content itself
 | reactions | [ChatMessage.Reactions](#anytype-model-ChatMessage-Reactions) |  | Reactions to the message |
 | read | [bool](#bool) |  | Message read status |
 | mentionRead | [bool](#bool) |  |  |
+| synced | [bool](#bool) |  |  |
 
 
 
@@ -31743,6 +31768,7 @@ Used to decode block meta only, without the content itself
 | messages | [ChatState.UnreadState](#anytype-model-ChatState-UnreadState) |  | unread messages |
 | mentions | [ChatState.UnreadState](#anytype-model-ChatState-UnreadState) |  | unread mentions |
 | lastStateId | [string](#string) |  | reflects the state of the chat db at the moment of sending response/event that includes this state |
+| order | [int64](#int64) |  | Order is serial number of this state. Client should apply chat state only if its order is greater than previously saved order |
 
 
 
@@ -33284,6 +33310,7 @@ stored |
 | Html | 4 |  |
 | Txt | 5 |  |
 | Csv | 6 |  |
+| Obsidian | 7 | Markdown with obsidian improvements |
 
 
 
@@ -33703,9 +33730,10 @@ RelationFormat describes how the underlying data is stored in the google.protobu
 
 | Name | Number | Description |
 | ---- | ------ | ----------- |
-| Chat | 0 | chat-first UX |
+| None | 0 | old value for chat, deprecated |
 | Data | 1 | objects-first UX |
 | Stream | 2 | stream UX (chat with limited amount of owners) |
+| Chat | 3 | chat UX |
 
 
 

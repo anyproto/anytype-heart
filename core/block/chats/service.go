@@ -5,10 +5,13 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"sort"
+	"strings"
 	"sync"
 	"time"
 
 	"github.com/anyproto/any-sync/app"
+	"github.com/samber/lo"
 
 	"github.com/cheggaaa/mb/v3"
 	"go.uber.org/zap"
@@ -40,7 +43,7 @@ var log = logging.Logger(CName).Desugar()
 type Service interface {
 	AddMessage(ctx context.Context, sessionCtx session.Context, chatObjectId string, message *chatmodel.Message) (string, error)
 	EditMessage(ctx context.Context, chatObjectId string, messageId string, newMessage *chatmodel.Message) error
-	ToggleMessageReaction(ctx context.Context, chatObjectId string, messageId string, emoji string) error
+	ToggleMessageReaction(ctx context.Context, chatObjectId string, messageId string, emoji string) (bool, error)
 	DeleteMessage(ctx context.Context, chatObjectId string, messageId string) error
 	GetMessages(ctx context.Context, chatObjectId string, req chatrepository.GetMessagesRequest) (*chatobject.GetMessagesResponse, error)
 	GetMessagesByIds(ctx context.Context, chatObjectId string, messageIds []string) ([]*chatmodel.Message, error)
@@ -383,6 +386,8 @@ func (s *service) sendPushNotification(ctx context.Context, spaceId, chatObjectI
 		senderName = details.GetString(bundle.RelationKeyName)
 	}
 
+	text := applyEmojiMarks(message.Message.Text, message.Message.Marks)
+
 	payload := &chatpush.Payload{
 		SpaceId:  spaceId,
 		SenderId: accountId,
@@ -392,7 +397,7 @@ func (s *service) sendPushNotification(ctx context.Context, spaceId, chatObjectI
 			MsgId:          messageId,
 			SpaceName:      spaceName,
 			SenderName:     senderName,
-			Text:           textUtil.Truncate(message.Message.Text, 1024, "..."),
+			Text:           textUtil.Truncate(text, 1024, "..."),
 			HasAttachments: len(message.Attachments) > 0,
 		},
 	}
@@ -414,16 +419,49 @@ func (s *service) sendPushNotification(ctx context.Context, spaceId, chatObjectI
 	return
 }
 
+func applyEmojiMarks(text string, marks []*model.BlockContentTextMark) string {
+	var res strings.Builder
+
+	toApply := lo.Filter(marks, func(mark *model.BlockContentTextMark, _ int) bool {
+		return mark.Type == model.BlockContentTextMark_Emoji
+	})
+	sort.Slice(toApply, func(i, j int) bool {
+		return toApply[i].Range.From < toApply[j].Range.From
+	})
+	var prev int
+	var lastTo int
+	for _, mark := range toApply {
+		if mark.Range.From >= mark.Range.To {
+			continue
+		}
+		if int(mark.Range.From) >= len(text) {
+			continue
+		}
+		res.WriteString(text[prev:mark.Range.From])
+		res.WriteString(mark.Param)
+		prev = int(mark.Range.To)
+		lastTo = int(mark.Range.To)
+	}
+	if lastTo < len(text) {
+		res.WriteString(text[lastTo:])
+	}
+	return res.String()
+}
+
 func (s *service) EditMessage(ctx context.Context, chatObjectId string, messageId string, newMessage *chatmodel.Message) error {
 	return s.chatObjectDo(ctx, chatObjectId, func(sb chatobject.StoreObject) error {
 		return sb.EditMessage(ctx, messageId, newMessage)
 	})
 }
 
-func (s *service) ToggleMessageReaction(ctx context.Context, chatObjectId string, messageId string, emoji string) error {
-	return s.chatObjectDo(ctx, chatObjectId, func(sb chatobject.StoreObject) error {
-		return sb.ToggleMessageReaction(ctx, messageId, emoji)
+func (s *service) ToggleMessageReaction(ctx context.Context, chatObjectId string, messageId string, emoji string) (bool, error) {
+	var added bool
+	err := s.chatObjectDo(ctx, chatObjectId, func(sb chatobject.StoreObject) error {
+		var err error
+		added, err = sb.ToggleMessageReaction(ctx, messageId, emoji)
+		return err
 	})
+	return added, err
 }
 
 func (s *service) DeleteMessage(ctx context.Context, chatObjectId string, messageId string) error {

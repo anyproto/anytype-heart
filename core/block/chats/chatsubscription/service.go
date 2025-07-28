@@ -40,6 +40,7 @@ type Manager interface {
 	Flush()
 	ReadMessages(newOldestOrderId string, idsModified []string, counterType chatmodel.CounterType)
 	UnreadMessages(newOldestOrderId string, lastStateId string, msgIds []string, counterType chatmodel.CounterType)
+	UpdateSyncStatus(messageIds []string, isSynced bool)
 }
 
 type Service interface {

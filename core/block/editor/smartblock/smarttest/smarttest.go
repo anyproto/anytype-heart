@@ -266,6 +266,8 @@ func (st *SmartTest) UpdateDetails(ctx session.Context, update func(current *dom
 func (st *SmartTest) Init(ctx *smartblock.InitContext) (err error) {
 	if ctx.State == nil {
 		ctx.State = st.NewState()
+	} else {
+		ctx.State.SetParent(st.Doc.(*state.State))
 	}
 	return
 }

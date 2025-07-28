@@ -11,6 +11,7 @@ import (
 	"github.com/anyproto/any-sync/app/ocache"
 	"github.com/cheggaaa/mb/v3"
 
+	"github.com/anyproto/anytype-heart/core/block/editor/components"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/syncstatus/detailsupdater/helper"
@@ -198,6 +199,12 @@ func (u *syncStatusUpdater) updateObjectDetails(syncStatusDetails *syncStatusDet
 			if details == nil {
 				details = domain.NewDetails()
 			}
+
+			// Force updating via cache
+			if details.GetInt64(bundle.RelationKeyResolvedLayout) == int64(model.ObjectType_chatDerived) {
+				return nil, false, ocache.ErrExists
+			}
+
 			// todo: make the checks consistent here and in setSyncDetails
 			if !u.isLayoutSuitableForSyncRelations(details) {
 				return details, false, nil
@@ -223,6 +230,10 @@ func (u *syncStatusUpdater) updateObjectDetails(syncStatusDetails *syncStatusDet
 }
 
 func (u *syncStatusUpdater) setSyncDetails(sb smartblock.SmartBlock, status domain.ObjectSyncStatus, syncError domain.SyncError) error {
+	if comp, ok := sb.(components.SyncStatusHandler); ok {
+		comp.HandleSyncStatusUpdate(sb.Tree().Heads(), status, syncError)
+	}
+
 	if !slices.Contains(helper.SyncRelationsSmartblockTypes(), sb.Type()) {
 		if sb.LocalDetails().Has(bundle.RelationKeySyncStatus) {
 			// do cleanup because of previous sync relations indexation problem

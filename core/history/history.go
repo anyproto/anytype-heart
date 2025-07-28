@@ -13,7 +13,6 @@ import (
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/commonspace/object/tree/objecttree"
 	"github.com/anyproto/any-sync/commonspace/objecttreebuilder"
-	"github.com/gogo/protobuf/proto"
 	"github.com/samber/lo"
 	"github.com/zeebo/blake3"
 
@@ -530,7 +529,7 @@ func (h *history) treeWithId(id domain.FullID, versionId string, includeBeforeId
 	}
 
 	payload := &model.ObjectChangePayload{}
-	err = proto.Unmarshal(ht.ChangeInfo().ChangePayload, payload)
+	err = payload.Unmarshal(ht.ChangeInfo().ChangePayload)
 	if err != nil {
 		return
 	}
