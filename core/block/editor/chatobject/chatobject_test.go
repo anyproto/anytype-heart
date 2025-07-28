@@ -14,6 +14,7 @@ import (
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
+	"github.com/anyproto/anytype-heart/core/block/cache/mock_cache"
 	"github.com/anyproto/anytype-heart/core/block/chats/chatmodel"
 	"github.com/anyproto/anytype-heart/core/block/chats/chatrepository"
 	"github.com/anyproto/anytype-heart/core/block/chats/chatsubscription"
@@ -106,9 +107,13 @@ func newFixture(t *testing.T) *fixture {
 	provider, err := anystoreprovider.NewInPath(t.TempDir())
 	require.NoError(t, err)
 
+	objectGetter := mock_cache.NewMockObjectWaitGetterComponent(t)
+	objectGetter.EXPECT().WaitAndGetObject(mock.Anything, mock.Anything).Return(nil, nil).Maybe()
+
 	a.Register(accountService)
 	a.Register(testutil.PrepareMock(ctx, a, eventSender))
 	a.Register(testutil.PrepareMock(ctx, a, idResolver))
+	a.Register(testutil.PrepareMock(ctx, a, objectGetter))
 	a.Register(objectStore)
 	a.Register(repo)
 	a.Register(subscriptions)
