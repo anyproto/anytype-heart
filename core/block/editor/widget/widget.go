@@ -1,6 +1,7 @@
 package widget
 
 import (
+	"errors"
 	"fmt"
 	"slices"
 
@@ -92,50 +93,12 @@ func (w *widget) AddAutoWidget(st *state.State, targetId, widgetBlockId, viewId 
 	targets = append(targets, targetId)
 	st.SetDetail(bundle.RelationKeyAutoWidgetTargets, domain.StringList(targets))
 
-	var (
-		binBlockWrapperId      string
-		binIsTheLast           bool
-		typeBlockAlreadyExists bool
-	)
-	err := st.Iterate(func(b simple.Block) (isContinue bool) {
-		link := b.Model().GetLink()
-		if link == nil {
-			return true
-		}
-		if link.TargetBlockId == targetId {
-			// check by targetBlockId in case user created the same block manually
-			typeBlockAlreadyExists = true
-		}
-		if link.TargetBlockId == DefaultWidgetBin {
-			binBlockWrapperId = st.GetParentOf(b.Model().Id).Model().Id
-			rootBlock := st.Get(st.RootId())
-			if len(rootBlock.Model().GetChildrenIds()) == 0 {
-				return true
-			}
-			if rootBlock.Model().GetChildrenIds()[len(rootBlock.Model().GetChildrenIds())-1] == binBlockWrapperId {
-				binIsTheLast = true
-			}
-		}
-		return true
-	})
-
+	targetBlockId, position, err := calculateTargetAndPosition(st, targetId)
 	if err != nil {
+		if errors.Is(err, ErrWidgetAlreadyExists) {
+			return nil
+		}
 		return err
-	}
-	if typeBlockAlreadyExists {
-		return nil
-	}
-
-	var (
-		targetBlockId string
-		position      model.BlockPosition
-	)
-	if binIsTheLast {
-		targetBlockId = binBlockWrapperId
-		position = model.Block_Top
-	} else {
-		targetBlockId = ""
-		position = model.Block_Bottom
 	}
 
 	_, err = w.createBlock(st, &pb.RpcBlockCreateWidgetRequest{
@@ -168,6 +131,55 @@ func (w *widget) AddAutoWidget(st *state.State, targetId, widgetBlockId, viewId 
 	}
 
 	return nil
+}
+
+func calculateTargetAndPosition(st *state.State, targetId string) (string, model.BlockPosition, error) {
+	if targetId == DefaultWidgetFavorite {
+		rootBlock := st.Get(st.RootId())
+		rootChildren := rootBlock.Model().ChildrenIds
+		if len(rootChildren) == 0 {
+			return "", model.Block_Bottom, nil
+		}
+		return rootChildren[0], model.Block_Top, nil
+	}
+
+	var (
+		binBlockWrapperId      string
+		binIsTheLast           bool
+		typeBlockAlreadyExists bool
+	)
+	err := st.Iterate(func(b simple.Block) (isContinue bool) {
+		link := b.Model().GetLink()
+		if link == nil {
+			return true
+		}
+		if link.TargetBlockId == targetId {
+			// check by targetBlockId in case user created the same block manually
+			typeBlockAlreadyExists = true
+		}
+		if link.TargetBlockId == DefaultWidgetBin {
+			binBlockWrapperId = st.GetParentOf(b.Model().Id).Model().Id
+			rootBlock := st.Get(st.RootId())
+			if len(rootBlock.Model().GetChildrenIds()) == 0 {
+				return true
+			}
+			if rootBlock.Model().GetChildrenIds()[len(rootBlock.Model().GetChildrenIds())-1] == binBlockWrapperId {
+				binIsTheLast = true
+			}
+		}
+		return true
+	})
+
+	if err != nil {
+		return "", 0, err
+	}
+	if typeBlockAlreadyExists {
+		return "", 0, ErrWidgetAlreadyExists
+	}
+	if binIsTheLast {
+		return binBlockWrapperId, model.Block_Top, nil
+	}
+	return "", model.Block_Bottom, nil
 }
 
 func (w *widget) CreateBlock(s *state.State, req *pb.RpcBlockCreateWidgetRequest) (string, error) {
