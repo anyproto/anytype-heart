@@ -11,11 +11,8 @@ import (
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
-	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
-
-var log = logging.Logger("anytype-api-service")
 
 // InitializeAllCaches initializes caches for all available spaces
 func (s *Service) InitializeAllCaches(ctx context.Context) error {
@@ -27,7 +24,7 @@ func (s *Service) InitializeAllCaches(ctx context.Context) error {
 
 	spaceIds, err := s.GetAllSpaceIds(ctx)
 	if err != nil {
-		return fmt.Errorf("failed to get all space IDs: %w", err)
+		return fmt.Errorf("failed to get all space Ids: %w", err)
 	}
 
 	for _, spaceId := range spaceIds {

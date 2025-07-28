@@ -31,36 +31,11 @@ func (s *Service) GlobalSearch(ctx context.Context, request apimodel.SearchReque
 	queryFilters := s.prepareQueryFilter(request.Query)
 	sorts, criterionToSortAfter := s.prepareSorts(request.Sort)
 
-	// Get cached properties, types and tags to fill the objects
-	propertyMaps := make(map[string]map[string]*apimodel.Property)
-	typeMaps := make(map[string]map[string]*apimodel.Type)
-	tagMap := make(map[string]map[string]*apimodel.Tag)
-
-	for _, spaceId := range spaceIds {
-		s.propertyMapMu.RLock()
-		if spaceCache, exists := s.propertyMapCache[spaceId]; exists {
-			propertyMaps[spaceId] = spaceCache
-		}
-		s.propertyMapMu.RUnlock()
-
-		s.typeMapMu.RLock()
-		if spaceCache, exists := s.typeMapCache[spaceId]; exists {
-			typeMaps[spaceId] = spaceCache
-		}
-		s.typeMapMu.RUnlock()
-
-		s.tagMapMu.RLock()
-		if spaceCache, exists := s.tagMapCache[spaceId]; exists {
-			tagMap[spaceId] = spaceCache
-		}
-		s.tagMapMu.RUnlock()
-	}
-
 	var combinedRecords []*types.Struct
 	for _, spaceId := range spaceIds {
 		// Resolve template and type IDs per spaceId, as they are unique per spaceId
 		templateFilter := s.prepareTemplateFilter()
-		typeFilters := s.prepareTypeFilters(request.Types, typeMaps[spaceId])
+		typeFilters := s.prepareTypeFilters(request.Types, spaceId)
 		if len(request.Types) > 0 && len(typeFilters) == 0 {
 			// Skip spaces that don’t have any of the requested types
 			continue
@@ -119,30 +94,7 @@ func (s *Service) Search(ctx context.Context, spaceId string, request apimodel.S
 	templateFilter := s.prepareTemplateFilter()
 	queryFilters := s.prepareQueryFilter(request.Query)
 
-	// Get cached properties, types and tags to fill the objects
-	s.propertyMapMu.RLock()
-	propertyMap := s.propertyMapCache[spaceId]
-	s.propertyMapMu.RUnlock()
-
-	s.typeMapMu.RLock()
-	typeMap := s.typeMapCache[spaceId]
-	s.typeMapMu.RUnlock()
-
-	s.tagMapMu.RLock()
-	tagMap := s.tagMapCache[spaceId]
-	s.tagMapMu.RUnlock()
-
-	if propertyMap == nil {
-		propertyMap = make(map[string]*apimodel.Property)
-	}
-	if typeMap == nil {
-		typeMap = make(map[string]*apimodel.Type)
-	}
-	if tagMap == nil {
-		tagMap = make(map[string]*apimodel.Tag)
-	}
-
-	typeFilters := s.prepareTypeFilters(request.Types, typeMap)
+	typeFilters := s.prepareTypeFilters(request.Types, spaceId)
 	if len(request.Types) > 0 && len(typeFilters) == 0 {
 		// No matching types in this space; return empty result
 		return nil, 0, false, nil
@@ -245,8 +197,17 @@ func (s *Service) prepareQueryFilter(searchQuery string) []*model.BlockContentDa
 }
 
 // prepareTypeFilters combines type filters with an OR condition.
-func (s *Service) prepareTypeFilters(types []string, typeMap map[string]*apimodel.Type) []*model.BlockContentDataviewFilter {
+func (s *Service) prepareTypeFilters(types []string, spaceId string) []*model.BlockContentDataviewFilter {
 	if len(types) == 0 {
+		return nil
+	}
+
+	s.typeMapMu.RLock()
+	typeMap := s.typeMapCache[spaceId]
+	s.typeMapMu.RUnlock()
+
+	if typeMap == nil {
+		log.Errorf("prepareTypeFilters: typeMap is nil for spaceId %s", spaceId)
 		return nil
 	}
 

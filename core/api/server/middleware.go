@@ -22,7 +22,7 @@ import (
 
 const ApiVersion = "2025-05-20"
 
-var log = logging.Logger("anytype-api-server")
+var log = logging.Logger("api-server")
 
 var (
 	ErrMissingAuthorizationHeader = errors.New("missing authorization header")
@@ -94,7 +94,7 @@ func ensureAnalyticsEvent(code string, eventService apicore.EventService) gin.Ha
 		status := c.Writer.Status()
 		payload, err := util.NewAnalyticsEventForApi(c.Request.Context(), code, status)
 		if err != nil {
-			log.Errorf("failed to create api analytics event: %v", err)
+			log.Errorf("failed to create API analytics event: %v", err)
 			return
 		}
 

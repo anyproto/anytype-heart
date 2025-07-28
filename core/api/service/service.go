@@ -10,7 +10,10 @@ import (
 	apimodel "github.com/anyproto/anytype-heart/core/api/model"
 	"github.com/anyproto/anytype-heart/core/subscription"
 	"github.com/anyproto/anytype-heart/pb"
+	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 )
+
+var log = logging.Logger("api-internal-service")
 
 type Service struct {
 	mw          apicore.ClientCommands
