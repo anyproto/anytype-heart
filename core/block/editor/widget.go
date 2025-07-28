@@ -20,7 +20,6 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/spaceindex"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	"github.com/anyproto/anytype-heart/util/slice"
 )
 
 type WidgetObject struct {
@@ -185,42 +184,11 @@ func (w *WidgetObject) StateMigrations() migration.Migrations {
 
 func (w *WidgetObject) Unlink(ctx session.Context, ids ...string) (err error) {
 	st := w.NewStateCtx(ctx)
-	targets := st.Details().GetStringList(bundle.RelationKeyAutoWidgetTargets)
-	var targetsToRemove []string
-	
 	for _, id := range ids {
 		if p := st.PickParentOf(id); p != nil && p.Model().GetWidget() != nil {
 			st.Unlink(p.Model().Id)
 		}
 		st.Unlink(id)
-
-		if targetId := getTargetBlockId(st, id); targetId != "" {
-			targetsToRemove = append(targetsToRemove, targetId)
-		}
 	}
-	
-	newTargets := slice.Difference(targets, targetsToRemove)
-	st.SetDetail(bundle.RelationKeyAutoWidgetTargets, domain.StringList(newTargets))
 	return w.Apply(st)
-}
-
-func getTargetBlockId(st *state.State, blockId string) string {
-	b := st.Pick(blockId)
-	if b == nil {
-		return ""
-	}
-	
-	if link := b.Model().GetLink(); link != nil {
-		return link.TargetBlockId
-	}
-	
-	if len(b.Model().ChildrenIds) > 0 {
-		if child := st.Pick(b.Model().ChildrenIds[0]); child != nil {
-			if link := child.Model().GetLink(); link != nil {
-				return link.TargetBlockId
-			}
-		}
-	}
-	
-	return ""
 }
