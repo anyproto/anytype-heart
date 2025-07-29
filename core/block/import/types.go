@@ -2,6 +2,7 @@ package importer
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/commonspace/object/tree/treestorage"
@@ -46,9 +47,15 @@ type importContext struct {
 	relationKeysToFormat map[domain.RelationKey]int32
 }
 
-func newImportContext(ctx context.Context, req *ImportRequest, resp *common.Response, origin objectorigin.ObjectOrigin, error *common.ConvertError) *importContext {
+func buildImportContext(
+	ctx context.Context,
+	req *ImportRequest,
+	resp *common.Response,
+	origin objectorigin.ObjectOrigin,
+	error *common.ConvertError,
+) (*importContext, error) {
 	if req == nil || resp == nil {
-		return nil
+		return nil, fmt.Errorf("import request and converter response should not be nil")
 	}
 	if error == nil {
 		error = common.NewError(req.Mode)
@@ -60,7 +67,7 @@ func newImportContext(ctx context.Context, req *ImportRequest, resp *common.Resp
 		req:          req.RpcObjectImportRequest,
 		convResponse: resp,
 		error:        error,
-	}
+	}, nil
 }
 
 // Importer encapsulate logic with import
