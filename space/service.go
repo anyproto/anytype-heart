@@ -378,29 +378,32 @@ func (s *service) AccountMetadataPayload() []byte {
 }
 
 func (s *service) UpdateRemoteStatus(ctx context.Context, status spaceinfo.SpaceRemoteStatusInfo) error {
-	spaceId := status.LocalInfo.SpaceId
-	s.mu.Lock()
-	ctrl := s.spaceControllers[spaceId]
-	s.mu.Unlock()
-	if ctrl == nil {
-		return fmt.Errorf("no such space: %s", spaceId)
-	}
-	err := ctrl.SetLocalInfo(ctx, status.LocalInfo)
-	if err != nil {
-		return fmt.Errorf("updateRemoteStatus: %w", err)
-	}
-	if !status.IsOwned && status.LocalInfo.GetRemoteStatus() == spaceinfo.RemoteStatusDeleted {
-		accountStatus := ctrl.GetStatus()
-		if accountStatus != spaceinfo.AccountStatusDeleted && accountStatus != spaceinfo.AccountStatusRemoving {
-			if ctrl.GetLocalStatus() == spaceinfo.LocalStatusOk {
-				s.sendNotification(spaceId)
-			}
-			info := spaceinfo.NewSpacePersistentInfo(spaceId)
-			info.SetAccountStatus(spaceinfo.AccountStatusRemoving)
-			return ctrl.SetPersistentInfo(ctx, info)
-		}
-	}
-	return nil
+	return s.techSpace.DoSpaceView(ctx, status.LocalInfo.SpaceId, func(spaceView techspace.SpaceView) error {
+		return spaceView.SetSpaceLocalInfo(status.LocalInfo)
+	})
+	// spaceId := status.LocalInfo.SpaceId
+	// s.mu.Lock()
+	// ctrl := s.spaceControllers[spaceId]
+	// s.mu.Unlock()
+	// if ctrl == nil {
+	// 	return fmt.Errorf("no such space: %s", spaceId)
+	// }
+	// err := ctrl.SetLocalInfo(ctx, status.LocalInfo)
+	// if err != nil {
+	// 	return fmt.Errorf("updateRemoteStatus: %w", err)
+	// }
+	// if !status.IsOwned && status.LocalInfo.GetRemoteStatus() == spaceinfo.RemoteStatusDeleted {
+	// 	accountStatus := ctrl.GetStatus()
+	// 	if accountStatus != spaceinfo.AccountStatusDeleted && accountStatus != spaceinfo.AccountStatusRemoving {
+	// 		if ctrl.GetLocalStatus() == spaceinfo.LocalStatusOk {
+	// 			s.sendNotification(spaceId)
+	// 		}
+	// 		info := spaceinfo.NewSpacePersistentInfo(spaceId)
+	// 		info.SetAccountStatus(spaceinfo.AccountStatusRemoving)
+	// 		return ctrl.SetPersistentInfo(ctx, info)
+	// 	}
+	// }
+	// return nil
 }
 
 func (s *service) sendNotification(spaceId string) {
