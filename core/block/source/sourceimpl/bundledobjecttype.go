@@ -43,21 +43,14 @@ func (v *bundledObjectType) Type() smartblock.SmartBlockType {
 	return smartblock.SmartBlockTypeBundledObjectType
 }
 
-// getDetailsForBundledObjectType returns extra relations and details for bundled object type
-// return bundle.ErrNotFound if object type not found
-func getDetailsForBundledObjectType(id string) (extraRels []*model.RelationLink, p *domain.Details, err error) {
+func getDetailsForBundledObjectType(id string) (extraRels []domain.RelationKey, p *domain.Details, err error) {
 	ot, err := bundle.GetTypeByUrl(id)
 	if err != nil {
 		return nil, nil, err
 	}
-	extraRels = []*model.RelationLink{bundle.MustGetRelationLink(bundle.RelationKeyRecommendedRelations), bundle.MustGetRelationLink(bundle.RelationKeyRecommendedLayout)}
 
 	for _, rl := range ot.RelationLinks {
-		relationLink := &model.RelationLink{
-			Key:    rl.Key,
-			Format: rl.Format,
-		}
-		extraRels = append(extraRels, relationLink)
+		extraRels = append(extraRels, domain.RelationKey(rl.Key))
 	}
 
 	return extraRels, (&relationutils.ObjectType{ot}).BundledTypeDetails(), nil
@@ -77,11 +70,9 @@ func (v *bundledObjectType) ReadDoc(ctx context.Context, receiver source.ChangeR
 		// it is either not found or invalid id. We return not found for both cases
 		return nil, domain.ErrObjectNotFound
 	}
-	for _, r := range rels {
-		s.AddRelationLinks(&model.RelationLink{Format: r.Format, Key: r.Key})
-	}
+	s.AddRelationKeys(rels...)
 	s.SetDetails(d)
-	s.SetDetailAndBundledRelation(bundle.RelationKeyOrigin, domain.Int64(model.ObjectOrigin_builtin))
+	s.SetDetail(bundle.RelationKeyOrigin, domain.Int64(model.ObjectOrigin_builtin))
 	s.SetObjectTypeKey(bundle.TypeKeyObjectType)
 	return s, nil
 }

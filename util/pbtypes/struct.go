@@ -8,7 +8,7 @@ import (
 	st "github.com/gogo/protobuf/types"
 )
 
-func StructDeleteEmptyFields(v *st.Struct) {
+func StructDeleteNilFields(v *st.Struct) {
 	if v == nil || v.Fields == nil {
 		return
 	}

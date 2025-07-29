@@ -129,7 +129,7 @@ func (s *SpaceDescription) UpdateDetails(st *state.State) {
 	if s == nil {
 		return
 	}
-	st.SetDetailAndBundledRelation(bundle.RelationKeyName, domain.String(s.Name))
-	st.SetDetailAndBundledRelation(bundle.RelationKeySpaceUxType, domain.Int64(s.SpaceUxType))
-	st.SetDetailAndBundledRelation(bundle.RelationKeyIconImage, domain.String(s.IconImage))
+	st.SetDetail(bundle.RelationKeyName, domain.String(s.Name))
+	st.SetDetail(bundle.RelationKeySpaceUxType, domain.Int64(s.SpaceUxType))
+	st.SetDetail(bundle.RelationKeyIconImage, domain.String(s.IconImage))
 }

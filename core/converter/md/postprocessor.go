@@ -99,7 +99,7 @@ func (p *PostProcessor) Process(docs map[string]*domain.Details, writer Writer) 
 
 		// Create a temporary state and converter to generate schema
 		tempState := state.NewDoc("temp", nil).(*state.State)
-		tempState.SetDetailAndBundledRelation(bundle.RelationKeyType, domain.String(objectTypeId))
+		tempState.SetDetail(bundle.RelationKeyType, domain.String(objectTypeId))
 		mdConv := NewMDConverterWithResolver(tempState, p.fileNamer, true, true, p.resolver)
 
 		// Generate and write schema

@@ -97,10 +97,10 @@ func (w *Workspaces) CreationStateMigration(ctx *smartblock.InitContext) migrati
 
 func (w *Workspaces) SetInviteFileInfo(info domain.InviteInfo) (err error) {
 	st := w.NewState()
-	st.SetDetailAndBundledRelation(bundle.RelationKeySpaceInvitePermissions, domain.Int64(domain.ConvertAclPermissions(info.Permissions)))
-	st.SetDetailAndBundledRelation(bundle.RelationKeySpaceInviteType, domain.Int64(info.InviteType))
-	st.SetDetailAndBundledRelation(bundle.RelationKeySpaceInviteFileCid, domain.String(info.InviteFileCid))
-	st.SetDetailAndBundledRelation(bundle.RelationKeySpaceInviteFileKey, domain.String(info.InviteFileKey))
+	st.SetDetail(bundle.RelationKeySpaceInvitePermissions, domain.Int64(domain.ConvertAclPermissions(info.Permissions)))
+	st.SetDetail(bundle.RelationKeySpaceInviteType, domain.Int64(info.InviteType))
+	st.SetDetail(bundle.RelationKeySpaceInviteFileCid, domain.String(info.InviteFileCid))
+	st.SetDetail(bundle.RelationKeySpaceInviteFileKey, domain.String(info.InviteFileKey))
 	return w.Apply(st)
 }
 
@@ -130,8 +130,8 @@ func (w *Workspaces) RemoveExistingInviteInfo() (info domain.InviteInfo, err err
 
 func (w *Workspaces) SetGuestInviteFileInfo(fileCid string, fileKey string) (err error) {
 	st := w.NewState()
-	st.SetDetailAndBundledRelation(bundle.RelationKeySpaceInviteGuestFileCid, domain.String(fileCid))
-	st.SetDetailAndBundledRelation(bundle.RelationKeySpaceInviteGuestFileKey, domain.String(fileKey))
+	st.SetDetail(bundle.RelationKeySpaceInviteGuestFileCid, domain.String(fileCid))
+	st.SetDetail(bundle.RelationKeySpaceInviteGuestFileKey, domain.String(fileKey))
 	return w.Apply(st)
 }
 

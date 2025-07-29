@@ -299,7 +299,7 @@ func (s *treeSource) buildState() (doc state.Doc, err error) {
 	migration.Migrate(st)
 
 	// we need to have required internal relations for all objects, including system
-	st.AddBundledRelationLinks(bundle.RequiredInternalRelations...)
+	st.AddRelationKeys(bundle.RequiredInternalRelations...)
 	if s.Type() == smartblock.SmartBlockTypePage || s.Type() == smartblock.SmartBlockTypeProfilePage {
 		template.WithRelations([]domain.RelationKey{bundle.RelationKeyBacklinks})(st)
 		template.WithFeaturedRelationsBlock(st)
@@ -404,7 +404,6 @@ func (s *treeSource) buildChange(params source.PushChangeParams) (c *pb.Change) 
 				Details:                  params.State.Details().ToProto(),
 				ObjectTypes:              domain.MarshalTypeKeys(params.State.ObjectTypeKeys()),
 				Collections:              params.State.Store(),
-				RelationLinks:            params.State.PickRelationLinks(),
 				Key:                      params.State.UniqueKeyInternal(),
 				OriginalCreatedTimestamp: params.State.OriginalCreatedTimestamp(),
 				FileInfo:                 params.State.GetFileInfo().ToModel(),
