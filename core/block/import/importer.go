@@ -231,13 +231,13 @@ func (i *Import) sendFileEvents(returnedErr error) {
 
 func (i *Import) importFromBuiltinConverter(ctx context.Context, req *ImportRequest, c common.Converter) (string, model.BlockContentWidgetLayout, int64, error) {
 	allErrors := common.NewError(req.Mode)
-	res, err := c.GetSnapshots(ctx, req.RpcObjectImportRequest, req.Progress)
-	if !err.IsEmpty() {
-		resultErr := err.GetResultError(req.Type)
+	res, convErr := c.GetSnapshots(ctx, req.RpcObjectImportRequest, req.Progress)
+	if !convErr.IsEmpty() {
+		resultErr := convErr.GetResultError(req.Type)
 		if shouldReturnError(resultErr, res, req.RpcObjectImportRequest) {
 			return "", 0, 0, resultErr
 		}
-		allErrors.Merge(err)
+		allErrors.Merge(convErr)
 	}
 	if res == nil {
 		return "", 0, 0, fmt.Errorf("source path doesn't contain %s resources to import", req.Type)
@@ -248,8 +248,8 @@ func (i *Import) importFromBuiltinConverter(ctx context.Context, req *ImportRequ
 	}
 
 	i.typeWidgetCreation(req, res.TypesCreated)
-	importCtx, e := buildImportContext(ctx, req, res, req.Origin, allErrors)
-	if e != nil {
+	importCtx, err := buildImportContext(ctx, req, res, req.Origin, allErrors)
+	if err != nil {
 		allErrors.Add(fmt.Errorf("failed to build import context, error: %s", e.Error()))
 		return "", 0, 0, allErrors.GetResultError(req.Type)
 	}
@@ -379,10 +379,10 @@ func (i *Import) ImportWeb(ctx context.Context, req *ImportRequest) (string, *do
 
 	req.Progress.SetProgressMessage("Parse url")
 	w := i.converters[web.Name]
-	res, err := w.GetSnapshots(ctx, req.RpcObjectImportRequest, req.Progress)
+	res, convErr := w.GetSnapshots(ctx, req.RpcObjectImportRequest, req.Progress)
 
-	if err != nil {
-		return "", nil, err.Error()
+	if convErr != nil {
+		return "", nil, convErr.Error()
 	}
 	if res.Snapshots == nil || len(res.Snapshots) == 0 {
 		return "", nil, fmt.Errorf("snpashots are empty")
@@ -390,8 +390,8 @@ func (i *Import) ImportWeb(ctx context.Context, req *ImportRequest) (string, *do
 
 	req.Progress.SetProgressMessage("Create objects")
 
-	importCtx, e := buildImportContext(ctx, req, res, objectorigin.None(), nil)
-	if e != nil {
+	importCtx, err := buildImportContext(ctx, req, res, objectorigin.None(), nil)
+	if err != nil {
 		return "", nil, fmt.Errorf("failed to build import context, error: %s", err.Error())
 	}
 	details, _ := i.createObjects(importCtx)
