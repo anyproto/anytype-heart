@@ -81,7 +81,7 @@ func (s *spaceViewStub) SetInviteFileInfo(fileCid string, fileKey string) (err e
 	return
 }
 
-func (s *spaceViewStub) SetAclInfo(empty bool, pushKey crypto.PrivKey, pushEncKey crypto.SymKey) (err error) {
+func (s *spaceViewStub) SetAclInfo(empty bool, pushKey crypto.PrivKey, pushEncKey crypto.SymKey, spaceJoinDate int64) (err error) {
 	return
 }
 
