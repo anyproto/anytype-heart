@@ -144,6 +144,12 @@ func (s *SpaceView) SetOwner(ownerId string, createdDate int64) (err error) {
 	return s.Apply(st)
 }
 
+func (s *SpaceView) SetMyParticipantStatus(status model.ParticipantStatus) (err error) {
+	st := s.NewState()
+	st.SetDetailAndBundledRelation(bundle.RelationKeyMyParticipantStatus, domain.Int64(int64(status)))
+	return s.Apply(st)
+}
+
 func (s *SpaceView) SetAclInfo(isAclEmpty bool, pushKey crypto.PrivKey, pushEncKey crypto.SymKey, joinedDate int64) error {
 	st := s.NewState()
 	st.SetDetailAndBundledRelation(bundle.RelationKeyIsAclShared, domain.Bool(!isAclEmpty))

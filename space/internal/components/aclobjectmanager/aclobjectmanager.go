@@ -16,6 +16,7 @@ import (
 	"github.com/samber/lo"
 	"go.uber.org/zap"
 
+	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space/clientspace"
 	"github.com/anyproto/anytype-heart/space/internal/components/aclnotifications"
 	"github.com/anyproto/anytype-heart/space/internal/components/participantwatcher"
@@ -271,6 +272,10 @@ func (a *aclObjectManager) processAcl() (err error) {
 	if err != nil {
 		return
 	}
+	err = a.status.SetMyParticipantStatus(model.ParticipantStatus_Active)
+	if err != nil {
+		return
+	}
 	a.mx.Lock()
 	defer a.mx.Unlock()
 	a.lastIndexed = acl.Head().Id
@@ -309,6 +314,10 @@ func (a *aclObjectManager) findJoinedDate(acl syncacl.SyncAcl) (int64, error) {
 func (a *aclObjectManager) processStates(states []list.AccountState, upToDate bool, myIdentity crypto.PubKey) (err error) {
 	for _, state := range states {
 		if state.Permissions.NoPermissions() && state.PubKey.Equals(myIdentity) && upToDate {
+			err = a.status.SetMyParticipantStatus(model.ParticipantStatus_Removed)
+			if err != nil {
+				log.Warn("failed to set my participant status", zap.Error(err))
+			}
 			return a.status.SetPersistentStatus(spaceinfo.AccountStatusRemoving)
 		}
 		err := a.participantWatcher.UpdateParticipantFromAclState(a.ctx, a.sp, state)
