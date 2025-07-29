@@ -156,6 +156,7 @@ func calculateTargetAndPosition(st *state.State, targetId string) (string, model
 		if link.TargetBlockId == targetId {
 			// check by targetBlockId in case user created the same block manually
 			typeBlockAlreadyExists = true
+			return false
 		}
 		if link.TargetBlockId == DefaultWidgetBin {
 			binBlockWrapperId = st.GetParentOf(b.Model().Id).Model().Id
@@ -165,6 +166,7 @@ func calculateTargetAndPosition(st *state.State, targetId string) (string, model
 			}
 			if rootBlock.Model().GetChildrenIds()[len(rootBlock.Model().GetChildrenIds())-1] == binBlockWrapperId {
 				binIsTheLast = true
+				return false
 			}
 		}
 		return true
