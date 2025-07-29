@@ -250,7 +250,7 @@ func (i *Import) importFromBuiltinConverter(ctx context.Context, req *ImportRequ
 	i.typeWidgetCreation(req, res.TypesCreated)
 	importCtx, err := buildImportContext(ctx, req, res, req.Origin, allErrors)
 	if err != nil {
-		allErrors.Add(fmt.Errorf("failed to build import context, error: %s", e.Error()))
+		allErrors.Add(fmt.Errorf("failed to build import context, error: %s", err.Error()))
 		return "", 0, 0, allErrors.GetResultError(req.Type)
 	}
 	details, rootCollectionID := i.createObjects(importCtx)
