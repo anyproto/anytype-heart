@@ -47,6 +47,14 @@ func calculateWeekEnd(base time.Time, weeksOffset int) int64 {
 	return time.Date(sunday.Year(), sunday.Month(), sunday.Day(), 23, 59, 59, 0, sunday.Location()).Unix()
 }
 
+func calculateYearStart(base time.Time, yearsOffset int) int64 {
+	return time.Date(base.Year()+yearsOffset, 1, 1, 0, 0, 0, 0, base.Location()).Unix()
+}
+
+func calculateYearEnd(base time.Time, yearsOffset int) int64 {
+	return time.Date(base.Year()+yearsOffset, 12, 31, 23, 59, 59, 0, base.Location()).Unix()
+}
+
 func TestQuickOption(t *testing.T) {
 	var (
 		relationKey = bundle.RelationKeyCreatedDate
@@ -286,6 +294,144 @@ func TestQuickOption(t *testing.T) {
 				Condition:   model.BlockContentDataviewFilter_Greater,
 			},
 			[]FilterRequest{{Condition: model.BlockContentDataviewFilter_Greater, Value: domain.Int64(calculateMonthEnd(now, 1))}},
+		},
+
+		// last year
+		{
+			"last year",
+			FilterRequest{
+				QuickOption: model.BlockContentDataviewFilter_LastYear,
+				RelationKey: relationKey,
+				Condition:   model.BlockContentDataviewFilter_Equal,
+			},
+			[]FilterRequest{
+				{Condition: model.BlockContentDataviewFilter_LessOrEqual, Value: domain.Int64(calculateYearEnd(now, -1))},
+				{Condition: model.BlockContentDataviewFilter_GreaterOrEqual, Value: domain.Int64(calculateYearStart(now, -1))},
+			},
+		}, {
+			"strictly before last year",
+			FilterRequest{
+				QuickOption: model.BlockContentDataviewFilter_LastYear,
+				RelationKey: relationKey,
+				Condition:   model.BlockContentDataviewFilter_Less,
+			},
+			[]FilterRequest{{Condition: model.BlockContentDataviewFilter_Less, Value: domain.Int64(calculateYearStart(now, -1))}},
+		}, {
+			"last year or before",
+			FilterRequest{
+				QuickOption: model.BlockContentDataviewFilter_LastYear,
+				RelationKey: relationKey,
+				Condition:   model.BlockContentDataviewFilter_LessOrEqual,
+			},
+			[]FilterRequest{{Condition: model.BlockContentDataviewFilter_LessOrEqual, Value: domain.Int64(calculateYearEnd(now, -1))}},
+		}, {
+			"strictly after last year",
+			FilterRequest{
+				QuickOption: model.BlockContentDataviewFilter_LastYear,
+				RelationKey: relationKey,
+				Condition:   model.BlockContentDataviewFilter_Greater,
+			},
+			[]FilterRequest{{Condition: model.BlockContentDataviewFilter_Greater, Value: domain.Int64(calculateYearEnd(now, -1))}},
+		}, {
+			"last year or after",
+			FilterRequest{
+				QuickOption: model.BlockContentDataviewFilter_LastYear,
+				RelationKey: relationKey,
+				Condition:   model.BlockContentDataviewFilter_GreaterOrEqual,
+			},
+			[]FilterRequest{{Condition: model.BlockContentDataviewFilter_GreaterOrEqual, Value: domain.Int64(calculateYearStart(now, -1))}},
+		},
+
+		// current year
+		{
+			"current year",
+			FilterRequest{
+				QuickOption: model.BlockContentDataviewFilter_CurrentYear,
+				RelationKey: relationKey,
+				Condition:   model.BlockContentDataviewFilter_Equal,
+			},
+			[]FilterRequest{
+				{Condition: model.BlockContentDataviewFilter_LessOrEqual, Value: domain.Int64(calculateYearEnd(now, 0))},
+				{Condition: model.BlockContentDataviewFilter_GreaterOrEqual, Value: domain.Int64(calculateYearStart(now, 0))},
+			},
+		}, {
+			"strictly before current year",
+			FilterRequest{
+				QuickOption: model.BlockContentDataviewFilter_CurrentYear,
+				RelationKey: relationKey,
+				Condition:   model.BlockContentDataviewFilter_Less,
+			},
+			[]FilterRequest{{Condition: model.BlockContentDataviewFilter_Less, Value: domain.Int64(calculateYearStart(now, 0))}},
+		}, {
+			"current year or before",
+			FilterRequest{
+				QuickOption: model.BlockContentDataviewFilter_CurrentYear,
+				RelationKey: relationKey,
+				Condition:   model.BlockContentDataviewFilter_LessOrEqual,
+			},
+			[]FilterRequest{{Condition: model.BlockContentDataviewFilter_LessOrEqual, Value: domain.Int64(calculateYearEnd(now, 0))}},
+		}, {
+			"strictly after current year",
+			FilterRequest{
+				QuickOption: model.BlockContentDataviewFilter_CurrentYear,
+				RelationKey: relationKey,
+				Condition:   model.BlockContentDataviewFilter_Greater,
+			},
+			[]FilterRequest{{Condition: model.BlockContentDataviewFilter_Greater, Value: domain.Int64(calculateYearEnd(now, 0))}},
+		}, {
+			"current year or after",
+			FilterRequest{
+				QuickOption: model.BlockContentDataviewFilter_CurrentYear,
+				RelationKey: relationKey,
+				Condition:   model.BlockContentDataviewFilter_GreaterOrEqual,
+			},
+			[]FilterRequest{{Condition: model.BlockContentDataviewFilter_GreaterOrEqual, Value: domain.Int64(calculateYearStart(now, 0))}},
+		},
+
+		// next year
+		{
+			"next year",
+			FilterRequest{
+				QuickOption: model.BlockContentDataviewFilter_NextYear,
+				RelationKey: relationKey,
+				Condition:   model.BlockContentDataviewFilter_Equal,
+			},
+			[]FilterRequest{
+				{Condition: model.BlockContentDataviewFilter_LessOrEqual, Value: domain.Int64(calculateYearEnd(now, 1))},
+				{Condition: model.BlockContentDataviewFilter_GreaterOrEqual, Value: domain.Int64(calculateYearStart(now, 1))},
+			},
+		}, {
+			"strictly before next year",
+			FilterRequest{
+				QuickOption: model.BlockContentDataviewFilter_NextYear,
+				RelationKey: relationKey,
+				Condition:   model.BlockContentDataviewFilter_Less,
+			},
+			[]FilterRequest{{Condition: model.BlockContentDataviewFilter_Less, Value: domain.Int64(calculateYearStart(now, 1))}},
+		}, {
+			"next year or before",
+			FilterRequest{
+				QuickOption: model.BlockContentDataviewFilter_NextYear,
+				RelationKey: relationKey,
+				Condition:   model.BlockContentDataviewFilter_LessOrEqual,
+			},
+			[]FilterRequest{{Condition: model.BlockContentDataviewFilter_LessOrEqual, Value: domain.Int64(calculateYearEnd(now, 1))}},
+		}, {
+			"strictly after next year",
+			FilterRequest{
+				QuickOption: model.BlockContentDataviewFilter_NextYear,
+				RelationKey: relationKey,
+				Condition:   model.BlockContentDataviewFilter_Greater,
+			},
+			[]FilterRequest{{Condition: model.BlockContentDataviewFilter_Greater, Value: domain.Int64(calculateYearEnd(now, 1))}},
+		}, {
+			"next year or after",
+			FilterRequest{
+				QuickOption: model.BlockContentDataviewFilter_NextYear,
+				RelationKey: relationKey,
+				Condition:   model.BlockContentDataviewFilter_GreaterOrEqual,
+			},
+			[]FilterRequest{{Condition: model.BlockContentDataviewFilter_GreaterOrEqual, Value: domain.Int64(calculateYearStart(now, 1))}},
 		},
 
 		// number of days ago
