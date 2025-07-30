@@ -203,9 +203,7 @@ func (s *Service) CreateProperty(ctx context.Context, spaceId string, request ap
 
 	if request.Key != "" {
 		apiKey := strcase.ToSnake(s.sanitizedString(request.Key))
-
-		propertyMap := s.getPropertyMap(spaceId)
-		if propertyMap != nil && propertyMap[apiKey] != nil {
+		if s.getPropertyMap(spaceId)[apiKey] != nil {
 			return nil, util.ErrBadInput(fmt.Sprintf("property key %q already exists", apiKey))
 		}
 		details.Fields[bundle.RelationKeyApiObjectKey.String()] = pbtypes.String(apiKey)
@@ -251,12 +249,8 @@ func (s *Service) UpdateProperty(ctx context.Context, spaceId string, propertyId
 	}
 	if request.Key != nil {
 		apiKey := strcase.ToSnake(s.sanitizedString(*request.Key))
-
-		propertyMap := s.getPropertyMap(spaceId)
-		if propertyMap != nil {
-			if existing, exists := propertyMap[apiKey]; exists && existing.Id != propertyId {
-				return nil, util.ErrBadInput(fmt.Sprintf("property key %q already exists", apiKey))
-			}
+		if existing, exists := s.getPropertyMap(spaceId)[apiKey]; exists && existing.Id != propertyId {
+			return nil, util.ErrBadInput(fmt.Sprintf("property key %q already exists", apiKey))
 		}
 		if bundle.HasRelation(domain.RelationKey(prop.RelationKey)) {
 			return nil, util.ErrBadInput("property key of bundled properties cannot be changed")
@@ -323,7 +317,6 @@ func (s *Service) processProperties(ctx context.Context, spaceId string, entries
 	}
 
 	propertyMap := s.getPropertyMap(spaceId)
-
 	for _, entry := range entries {
 		key := entry.Key()
 		value := entry.Value()
@@ -524,9 +517,9 @@ func (s *Service) getPropertyFromStruct(details *types.Struct) (string, string, 
 func (s *Service) getPropertiesFromStruct(details *types.Struct) []apimodel.PropertyWithValue {
 	spaceId := details.Fields[bundle.RelationKeySpaceId.String()].GetStringValue()
 
-	// Get cached maps
 	propertyMap := s.getPropertyMap(spaceId)
 	tagMap := s.getTagMap(spaceId)
+
 	properties := make([]apimodel.PropertyWithValue, 0)
 	for rk, value := range details.GetFields() {
 		if _, isExcluded := excludedSystemProperties[rk]; isExcluded {

@@ -206,9 +206,7 @@ func (s *Service) getTypeFromStruct(details *types.Struct, propertyMap map[strin
 // getTypeFromMap retrieves the type from the details.
 func (s *Service) getTypeFromMap(details *types.Struct) *apimodel.Type {
 	spaceId := details.Fields[bundle.RelationKeySpaceId.String()].GetStringValue()
-
 	typeMap := s.getTypeMap(spaceId)
-
 	if t, ok := typeMap[details.Fields[bundle.RelationKeyType.String()].GetStringValue()]; ok {
 		return t
 	}
@@ -226,8 +224,7 @@ func (s *Service) buildTypeDetails(ctx context.Context, spaceId string, request 
 
 	if request.Key != "" {
 		apiKey := strcase.ToSnake(s.sanitizedString(request.Key))
-		typeMap := s.getTypeMap(spaceId)
-		if _, exists := typeMap[apiKey]; exists {
+		if _, exists := s.getTypeMap(spaceId)[apiKey]; exists {
 			return nil, util.ErrBadInput(fmt.Sprintf("type key %q already exists", apiKey))
 		}
 		fields[bundle.RelationKeyApiObjectKey.String()] = pbtypes.String(apiKey)
@@ -291,9 +288,7 @@ func (s *Service) buildUpdatedTypeDetails(ctx context.Context, spaceId string, t
 	}
 	if request.Key != nil {
 		apiKey := strcase.ToSnake(s.sanitizedString(*request.Key))
-
-		typeMap := s.getTypeMap(spaceId)
-		if existing, exists := typeMap[apiKey]; exists && existing.Id != t.Id {
+		if existing, exists := s.getTypeMap(spaceId)[apiKey]; exists && existing.Id != t.Id {
 			return nil, util.ErrBadInput(fmt.Sprintf("type key %q already exists", apiKey))
 		}
 		if bundle.HasObjectTypeByKey(domain.TypeKey(util.ToTypeApiKey(t.UniqueKey))) {

@@ -18,12 +18,13 @@ type Service struct {
 	techSpaceId string
 
 	subscriptionService subscription.Service
+	subscriptionsMu     sync.RWMutex
 
-	spaceSubscription     *objectsubscription.ObjectSubscription[struct{}]
+	spaceSubscription     *objectsubscription.ObjectSubscription[struct{}]                      // subscription for techspace to track space changes
 	typeSubscriptions     map[string]*objectsubscription.ObjectSubscription[*apimodel.Type]     // map[spaceId]*ObjectSubscription
 	propertySubscriptions map[string]*objectsubscription.ObjectSubscription[*apimodel.Property] // map[spaceId]*ObjectSubscription
 	tagSubscriptions      map[string]*objectsubscription.ObjectSubscription[*apimodel.Tag]      // map[spaceId]*ObjectSubscription
-	subscriptionsMu       sync.RWMutex
+
 }
 
 func NewService(mw apicore.ClientCommands, gatewayUrl string, techspaceId string, subscriptionService subscription.Service) *Service {
@@ -46,10 +47,6 @@ func (s *Service) getTypeMap(spaceId string) map[string]*apimodel.Type {
 	sub := s.typeSubscriptions[spaceId]
 	s.subscriptionsMu.RUnlock()
 
-	if sub == nil {
-		return nil
-	}
-
 	typeMap := make(map[string]*apimodel.Type)
 	sub.Iterate(func(id string, t *apimodel.Type) bool {
 		typeMap[t.Id] = t
@@ -67,10 +64,6 @@ func (s *Service) getPropertyMap(spaceId string) map[string]*apimodel.Property {
 	sub := s.propertySubscriptions[spaceId]
 	s.subscriptionsMu.RUnlock()
 
-	if sub == nil {
-		return nil
-	}
-
 	propertyMap := make(map[string]*apimodel.Property)
 	sub.Iterate(func(id string, prop *apimodel.Property) bool {
 		propertyMap[prop.Id] = prop
@@ -87,10 +80,6 @@ func (s *Service) getTagMap(spaceId string) map[string]*apimodel.Tag {
 	s.subscriptionsMu.RLock()
 	sub := s.tagSubscriptions[spaceId]
 	s.subscriptionsMu.RUnlock()
-
-	if sub == nil {
-		return nil
-	}
 
 	tagMap := make(map[string]*apimodel.Tag)
 	sub.Iterate(func(id string, tag *apimodel.Tag) bool {
