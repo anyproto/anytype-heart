@@ -202,15 +202,6 @@ func (s *Service) prepareTypeFilters(types []string, spaceId string) []*model.Bl
 		return nil
 	}
 
-	s.typeMapMu.RLock()
-	typeMap := s.typeMapCache[spaceId]
-	s.typeMapMu.RUnlock()
-
-	if typeMap == nil {
-		log.Errorf("prepareTypeFilters: typeMap is nil for spaceId %s", spaceId)
-		return nil
-	}
-
 	// Prepare nested filters for each type
 	nestedFilters := make([]*model.BlockContentDataviewFilter, 0, len(types))
 	for _, key := range types {
@@ -218,8 +209,8 @@ func (s *Service) prepareTypeFilters(types []string, spaceId string) []*model.Bl
 			continue
 		}
 
-		uk := s.ResolveTypeApiKey(typeMap, key)
-		typeDef, ok := typeMap[uk]
+		uk := s.ResolveTypeApiKey(spaceId, key)
+		typeDef, ok := s.getTypeMap(spaceId)[uk]
 		if !ok {
 			continue
 		}

@@ -115,11 +115,7 @@ func (s *Service) CreateObject(ctx context.Context, spaceId string, request apim
 		return nil, err
 	}
 
-	s.typeMapMu.RLock()
-	typeMap := s.typeMapCache[spaceId]
-	s.typeMapMu.RUnlock()
-
-	typeUk := s.ResolveTypeApiKey(typeMap, request.TypeKey)
+	typeUk := s.ResolveTypeApiKey(spaceId, request.TypeKey)
 
 	var objectId string
 	if typeUk == "ot-bookmark" {
@@ -212,11 +208,7 @@ func (s *Service) UpdateObject(ctx context.Context, spaceId string, objectId str
 	}
 
 	if request.TypeKey != nil {
-		s.typeMapMu.RLock()
-		typeMap := s.typeMapCache[spaceId]
-		s.typeMapMu.RUnlock()
-
-		typeUk := s.ResolveTypeApiKey(typeMap, *request.TypeKey)
+		typeUk := s.ResolveTypeApiKey(spaceId, *request.TypeKey)
 		typeResp := s.mw.ObjectSetObjectType(ctx, &pb.RpcObjectSetObjectTypeRequest{
 			ContextId:           objectId,
 			ObjectTypeUniqueKey: typeUk,

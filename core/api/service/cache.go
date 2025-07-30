@@ -3,12 +3,11 @@ package service
 import (
 	"context"
 	"fmt"
-	"strings"
 
 	apimodel "github.com/anyproto/anytype-heart/core/api/model"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/subscription"
-	"github.com/anyproto/anytype-heart/pb"
+	"github.com/anyproto/anytype-heart/core/subscription/objectsubscription"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -38,6 +37,10 @@ func (s *Service) InitializeAllCaches(ctx context.Context) error {
 
 // subscribeToSpaceChanges subscribes to workspace/space changes in the tech space
 func (s *Service) subscribeToSpaceChanges(ctx context.Context) error {
+	if s.spaceSubscription != nil {
+		return nil
+	}
+
 	filters := []database.FilterRequest{
 		{
 			RelationKey: bundle.RelationKeyResolvedLayout,
@@ -46,50 +49,101 @@ func (s *Service) subscribeToSpaceChanges(ctx context.Context) error {
 		},
 	}
 
-	resp, err := s.subscriptionService.Search(subscription.SubscribeRequest{
-		SpaceId: s.techSpaceId,
-		SubId:   "api_space_changes",
-		Filters: filters,
-		Keys: []string{
-			bundle.RelationKeyTargetSpaceId.String(),
-			bundle.RelationKeySpaceAccountStatus.String(),
-			bundle.RelationKeySpaceLocalStatus.String(),
-			bundle.RelationKeyIsArchived.String(),
-			bundle.RelationKeyIsDeleted.String(),
+	// Create object subscription for space changes
+	sub := objectsubscription.New(s.subscriptionService, objectsubscription.SubscriptionParams[struct{}]{
+		Request: subscription.SubscribeRequest{
+			SpaceId: s.techSpaceId,
+			SubId:   "api.space.changes",
+			Filters: filters,
+			Keys: []string{
+				bundle.RelationKeyId.String(),
+				bundle.RelationKeyTargetSpaceId.String(),
+				bundle.RelationKeySpaceAccountStatus.String(),
+				bundle.RelationKeySpaceLocalStatus.String(),
+				bundle.RelationKeyIsArchived.String(),
+				bundle.RelationKeyIsDeleted.String(),
+			},
+			NoDepSubscription: true,
 		},
-		Internal:      true,
-		InternalQueue: s.eventQueue,
+		Extract: func(details *domain.Details) (string, struct{}) {
+			// Extract space details and handle space changes
+			id := details.GetString(bundle.RelationKeyId)
+			spaceId := details.GetString(bundle.RelationKeyTargetSpaceId)
+			if spaceId != "" {
+				// Check space status and initialize/uninitialize cache as needed
+				spaceAccountStatus := details.GetInt64(bundle.RelationKeySpaceAccountStatus)
+				spaceLocalStatus := details.GetInt64(bundle.RelationKeySpaceLocalStatus)
+				isArchived := details.GetBool(bundle.RelationKeyIsArchived)
+				isDeleted := details.GetBool(bundle.RelationKeyIsDeleted)
+
+				// If space is active and not deleted/archived, initialize cache
+				if !isDeleted && !isArchived && spaceAccountStatus == int64(model.SpaceStatus_Ok) && spaceLocalStatus == int64(model.SpaceStatus_Ok) {
+					if err := s.initializeSpaceCache(ctx, spaceId); err != nil {
+						log.Debugf("failed to initialize cache for space %s: %v", spaceId, err)
+					}
+				} else {
+					// Otherwise, unsubscribe from the space
+					s.unsubscribeFromSpace(spaceId)
+				}
+			}
+			return id, struct{}{}
+		},
+		Update: func(key string, value domain.Value, data struct{}) struct{} {
+			// Handle updates to space status fields
+			switch key {
+			case bundle.RelationKeyTargetSpaceId.String(),
+				bundle.RelationKeySpaceAccountStatus.String(),
+				bundle.RelationKeySpaceLocalStatus.String(),
+				bundle.RelationKeyIsArchived.String(),
+				bundle.RelationKeyIsDeleted.String():
+				// We need to re-evaluate the space status
+				// Since we don't have access to the full object here, we'll rely on the subscription remove event
+				// or fetch the full object if needed
+			}
+			return data
+		},
+		Unset: func(keys []string, data struct{}) struct{} {
+			// Nothing to unset for space monitoring
+			return data
+		},
 	})
 
-	if err != nil {
+	if err := sub.Run(); err != nil {
 		return fmt.Errorf("failed to subscribe to space changes: %w", err)
 	}
 
-	s.spaceSubscriptionId = resp.SubId
+	s.spaceSubscription = sub
 	return nil
 }
 
 // initializeSpaceCache initializes all caches for a specific space
-func (s *Service) initializeSpaceCache(ctx context.Context, spaceId string) error {
-	if err := s.subscribeToProperties(ctx, spaceId); err != nil {
+func (s *Service) initializeSpaceCache(_ context.Context, spaceId string) error {
+	if err := s.subscribeToProperties(spaceId); err != nil {
 		return fmt.Errorf("failed to subscribe to properties: %w", err)
 	}
-	if err := s.subscribeToTypes(ctx, spaceId); err != nil {
+	if err := s.subscribeToTypes(spaceId); err != nil {
 		return fmt.Errorf("failed to subscribe to types: %w", err)
 	}
-	if err := s.subscribeToTags(ctx, spaceId); err != nil {
+	if err := s.subscribeToTags(spaceId); err != nil {
 		return fmt.Errorf("failed to subscribe to tags: %w", err)
 	}
 	return nil
 }
 
 // subscribeToTypes subscribes to type changes for a space
-func (s *Service) subscribeToTypes(ctx context.Context, spaceId string) error {
-	s.typeMapMu.Lock()
-	defer s.typeMapMu.Unlock()
+func (s *Service) subscribeToTypes(spaceId string) error {
+	s.subscriptionsMu.Lock()
+	defer s.subscriptionsMu.Unlock()
 
 	if _, exists := s.typeSubscriptions[spaceId]; exists {
 		return nil
+	}
+
+	// Get property subscription to access property data for type conversion
+	propSub := s.propertySubscriptions[spaceId]
+
+	if propSub == nil {
+		return fmt.Errorf("property subscription not initialized for space %s", spaceId)
 	}
 
 	filters := []database.FilterRequest{
@@ -103,60 +157,86 @@ func (s *Service) subscribeToTypes(ctx context.Context, spaceId string) error {
 		},
 	}
 
-	resp, err := s.subscriptionService.Search(subscription.SubscribeRequest{
-		SpaceId: spaceId,
-		SubId:   fmt.Sprintf("api_types_%s", spaceId),
-		Filters: filters,
-		Keys: []string{
-			bundle.RelationKeyId.String(),
-			bundle.RelationKeyUniqueKey.String(),
-			bundle.RelationKeyApiObjectKey.String(),
-			bundle.RelationKeyName.String(),
-			bundle.RelationKeyPluralName.String(),
-			bundle.RelationKeyIconEmoji.String(),
-			bundle.RelationKeyIconName.String(),
-			bundle.RelationKeyIconOption.String(),
-			bundle.RelationKeyRecommendedLayout.String(),
-			bundle.RelationKeyIsArchived.String(),
-			bundle.RelationKeyRecommendedFeaturedRelations.String(),
-			bundle.RelationKeyRecommendedRelations.String(),
+	// Create object subscription for types
+	sub := objectsubscription.New(s.subscriptionService, objectsubscription.SubscriptionParams[*apimodel.Type]{
+		Request: subscription.SubscribeRequest{
+			SpaceId: spaceId,
+			SubId:   fmt.Sprintf("api.types.%s", spaceId),
+			Filters: filters,
+			Keys: []string{
+				bundle.RelationKeyId.String(),
+				bundle.RelationKeyUniqueKey.String(),
+				bundle.RelationKeyApiObjectKey.String(),
+				bundle.RelationKeyName.String(),
+				bundle.RelationKeyPluralName.String(),
+				bundle.RelationKeyIconEmoji.String(),
+				bundle.RelationKeyIconName.String(),
+				bundle.RelationKeyIconOption.String(),
+				bundle.RelationKeyRecommendedLayout.String(),
+				bundle.RelationKeyIsArchived.String(),
+				bundle.RelationKeyRecommendedFeaturedRelations.String(),
+				bundle.RelationKeyRecommendedRelations.String(),
+			},
+			NoDepSubscription: true,
 		},
-		Internal:      true,
-		InternalQueue: s.eventQueue,
+		Extract: func(details *domain.Details) (string, *apimodel.Type) {
+			// Get property map from property subscription
+			propertyMap := make(map[string]*apimodel.Property)
+			propSub.Iterate(func(id string, prop *apimodel.Property) bool {
+				propertyMap[id] = prop
+				propertyMap[prop.Key] = prop
+				propertyMap[prop.RelationKey] = prop
+				return true
+			})
+
+			_, _, t := s.getTypeFromStruct(details.ToProto(), propertyMap)
+			return t.Id, t
+		},
+		Update: func(key string, value domain.Value, t *apimodel.Type) *apimodel.Type {
+			// Handle updates to type fields
+			switch key {
+			case bundle.RelationKeyName.String():
+				t.Name = value.String()
+			case bundle.RelationKeyPluralName.String():
+				t.PluralName = value.String()
+			case bundle.RelationKeyIsArchived.String():
+				t.Archived = value.Bool()
+			case bundle.RelationKeyApiObjectKey.String():
+				// Update API key if changed
+				if apiKey := value.String(); apiKey != "" {
+					t.Key = apiKey
+				}
+				// Add other field updates as needed
+			}
+			return t
+		},
+		Unset: func(keys []string, t *apimodel.Type) *apimodel.Type {
+			// Handle unset fields if needed
+			for _, key := range keys {
+				switch key {
+				case bundle.RelationKeyName.String():
+					t.Name = ""
+				case bundle.RelationKeyPluralName.String():
+					t.PluralName = ""
+					// Add other field unsets as needed
+				}
+			}
+			return t
+		},
 	})
 
-	if err != nil {
+	if err := sub.Run(); err != nil {
 		return fmt.Errorf("failed to subscribe to types: %w", err)
 	}
 
-	s.typeSubscriptions[spaceId] = resp.SubId
-
-	if _, exists := s.typeMapCache[spaceId]; !exists {
-		s.typeMapCache[spaceId] = make(map[string]*apimodel.Type)
-	}
-
-	s.propertyMapMu.RLock()
-	propertyMap := s.propertyMapCache[spaceId]
-	s.propertyMapMu.RUnlock()
-
-	if propertyMap == nil {
-		return fmt.Errorf("property cache not initialized for space %s", spaceId)
-	}
-
-	for _, record := range resp.Records {
-		uk, apiKey, t := s.getTypeFromStruct(record.ToProto(), propertyMap)
-		s.typeMapCache[spaceId][t.Id] = t
-		s.typeMapCache[spaceId][apiKey] = t
-		s.typeMapCache[spaceId][uk] = t
-	}
-
+	s.typeSubscriptions[spaceId] = sub
 	return nil
 }
 
 // subscribeToProperties subscribes to property changes for a space
-func (s *Service) subscribeToProperties(ctx context.Context, spaceId string) error {
-	s.propertyMapMu.Lock()
-	defer s.propertyMapMu.Unlock()
+func (s *Service) subscribeToProperties(spaceId string) error {
+	s.subscriptionsMu.Lock()
+	defer s.subscriptionsMu.Unlock()
 
 	if _, exists := s.propertySubscriptions[spaceId]; exists {
 		return nil
@@ -175,45 +255,66 @@ func (s *Service) subscribeToProperties(ctx context.Context, spaceId string) err
 		},
 	}
 
-	resp, err := s.subscriptionService.Search(subscription.SubscribeRequest{
-		SpaceId: spaceId,
-		SubId:   fmt.Sprintf("api_properties_%s", spaceId),
-		Filters: filters,
-		Keys: []string{
-			bundle.RelationKeyId.String(),
-			bundle.RelationKeyRelationKey.String(),
-			bundle.RelationKeyApiObjectKey.String(),
-			bundle.RelationKeyName.String(),
-			bundle.RelationKeyRelationFormat.String(),
+	// Create object subscription for properties
+	sub := objectsubscription.New(s.subscriptionService, objectsubscription.SubscriptionParams[*apimodel.Property]{
+		Request: subscription.SubscribeRequest{
+			SpaceId: spaceId,
+			SubId:   fmt.Sprintf("api.properties.%s", spaceId),
+			Filters: filters,
+			Keys: []string{
+				bundle.RelationKeyId.String(),
+				bundle.RelationKeyRelationKey.String(),
+				bundle.RelationKeyApiObjectKey.String(),
+				bundle.RelationKeyName.String(),
+				bundle.RelationKeyRelationFormat.String(),
+			},
+			NoDepSubscription: true,
 		},
-		Internal:      true,
-		InternalQueue: s.eventQueue,
+		Extract: func(details *domain.Details) (string, *apimodel.Property) {
+			_, _, prop := s.getPropertyFromStruct(details.ToProto())
+			return prop.Id, prop
+		},
+		Update: func(key string, value domain.Value, prop *apimodel.Property) *apimodel.Property {
+			// Handle updates to property fields
+			switch key {
+			case bundle.RelationKeyName.String():
+				prop.Name = value.String()
+			case bundle.RelationKeyRelationFormat.String():
+				prop.Format = RelationFormatToPropertyFormat[model.RelationFormat(value.Int64())]
+			case bundle.RelationKeyApiObjectKey.String():
+				// Update API key if changed
+				if apiKey := value.String(); apiKey != "" {
+					prop.Key = apiKey
+				}
+				// Add other field updates as needed
+			}
+			return prop
+		},
+		Unset: func(keys []string, prop *apimodel.Property) *apimodel.Property {
+			// Handle unset fields if needed
+			for _, key := range keys {
+				switch key {
+				case bundle.RelationKeyName.String():
+					prop.Name = ""
+					// Add other field unsets as needed
+				}
+			}
+			return prop
+		},
 	})
 
-	if err != nil {
+	if err := sub.Run(); err != nil {
 		return fmt.Errorf("failed to subscribe to properties: %w", err)
 	}
 
-	s.propertySubscriptions[spaceId] = resp.SubId
-
-	if _, exists := s.propertyMapCache[spaceId]; !exists {
-		s.propertyMapCache[spaceId] = make(map[string]*apimodel.Property)
-	}
-
-	for _, record := range resp.Records {
-		rk, apiKey, prop := s.getPropertyFromStruct(record.ToProto())
-		s.propertyMapCache[spaceId][prop.Id] = prop
-		s.propertyMapCache[spaceId][rk] = prop
-		s.propertyMapCache[spaceId][apiKey] = prop
-	}
-
+	s.propertySubscriptions[spaceId] = sub
 	return nil
 }
 
 // subscribeToTags subscribes to tag changes for a space
-func (s *Service) subscribeToTags(ctx context.Context, spaceId string) error {
-	s.tagMapMu.Lock()
-	defer s.tagMapMu.Unlock()
+func (s *Service) subscribeToTags(spaceId string) error {
+	s.subscriptionsMu.Lock()
+	defer s.subscriptionsMu.Unlock()
 
 	if _, exists := s.tagSubscriptions[spaceId]; exists {
 		return nil
@@ -232,311 +333,99 @@ func (s *Service) subscribeToTags(ctx context.Context, spaceId string) error {
 		},
 	}
 
-	resp, err := s.subscriptionService.Search(subscription.SubscribeRequest{
-		SpaceId: spaceId,
-		SubId:   fmt.Sprintf("api_tags_%s", spaceId),
-		Filters: filters,
-		Keys: []string{
-			bundle.RelationKeyId.String(),
-			bundle.RelationKeyUniqueKey.String(),
-			bundle.RelationKeyName.String(),
-			bundle.RelationKeyRelationOptionColor.String(),
+	// Create object subscription for tags
+	sub := objectsubscription.New(s.subscriptionService, objectsubscription.SubscriptionParams[*apimodel.Tag]{
+		Request: subscription.SubscribeRequest{
+			SpaceId: spaceId,
+			SubId:   fmt.Sprintf("api.tags.%s", spaceId),
+			Filters: filters,
+			Keys: []string{
+				bundle.RelationKeyId.String(),
+				bundle.RelationKeyUniqueKey.String(),
+				bundle.RelationKeyName.String(),
+				bundle.RelationKeyRelationOptionColor.String(),
+			},
+			NoDepSubscription: true,
 		},
-		Internal:      true,
-		InternalQueue: s.eventQueue,
+		Extract: func(details *domain.Details) (string, *apimodel.Tag) {
+			tag := s.getTagFromStruct(details.ToProto())
+			return tag.Id, tag
+		},
+		Update: func(key string, value domain.Value, tag *apimodel.Tag) *apimodel.Tag {
+			// Handle updates to tag fields
+			switch key {
+			case bundle.RelationKeyName.String():
+				tag.Name = value.String()
+			case bundle.RelationKeyRelationOptionColor.String():
+				tag.Color = apimodel.ColorOptionToColor[value.String()]
+				// Add other field updates as needed
+			}
+			return tag
+		},
+		Unset: func(keys []string, tag *apimodel.Tag) *apimodel.Tag {
+			// Handle unset fields if needed
+			for _, key := range keys {
+				switch key {
+				case bundle.RelationKeyName.String():
+					tag.Name = ""
+					// Add other field unsets as needed
+				}
+			}
+			return tag
+		},
 	})
 
-	if err != nil {
+	if err := sub.Run(); err != nil {
 		return fmt.Errorf("failed to subscribe to tags: %w", err)
 	}
 
-	s.tagSubscriptions[spaceId] = resp.SubId
-
-	if _, exists := s.tagMapCache[spaceId]; !exists {
-		s.tagMapCache[spaceId] = make(map[string]*apimodel.Tag)
-	}
-
-	for _, record := range resp.Records {
-		tag := s.getTagFromStruct(record.ToProto())
-		s.tagMapCache[spaceId][tag.Id] = tag
-	}
-
+	s.tagSubscriptions[spaceId] = sub
 	return nil
 }
 
 // unsubscribeFromSpace unsubscribes from all subscriptions for a space
-func (s *Service) unsubscribeFromSpace(ctx context.Context, spaceId string) {
-	s.typeMapMu.Lock()
-	if subId, exists := s.typeSubscriptions[spaceId]; exists {
-		s.subscriptionService.Unsubscribe(subId)
+func (s *Service) unsubscribeFromSpace(spaceId string) {
+	s.subscriptionsMu.Lock()
+	defer s.subscriptionsMu.Unlock()
+
+	if sub, exists := s.typeSubscriptions[spaceId]; exists {
+		sub.Close()
 		delete(s.typeSubscriptions, spaceId)
-		delete(s.typeMapCache, spaceId)
 	}
-	s.typeMapMu.Unlock()
 
-	s.propertyMapMu.Lock()
-	if subId, exists := s.propertySubscriptions[spaceId]; exists {
-		s.subscriptionService.Unsubscribe(subId)
+	if sub, exists := s.propertySubscriptions[spaceId]; exists {
+		sub.Close()
 		delete(s.propertySubscriptions, spaceId)
-		delete(s.propertyMapCache, spaceId)
 	}
-	s.propertyMapMu.Unlock()
 
-	s.tagMapMu.Lock()
-	if subId, exists := s.tagSubscriptions[spaceId]; exists {
-		s.subscriptionService.Unsubscribe(subId)
+	if sub, exists := s.tagSubscriptions[spaceId]; exists {
+		sub.Close()
 		delete(s.tagSubscriptions, spaceId)
-		delete(s.tagMapCache, spaceId)
-	}
-	s.tagMapMu.Unlock()
-}
-
-// ProcessSubscriptionEvent processes events from subscriptions to update caches in real-time
-func (s *Service) ProcessSubscriptionEvent(event *pb.Event) {
-	for _, msg := range event.Messages {
-		switch v := msg.Value.(type) {
-		case *pb.EventMessageValueOfObjectDetailsAmend:
-			s.handleObjectDetailsAmend(v.ObjectDetailsAmend)
-		case *pb.EventMessageValueOfObjectDetailsSet:
-			s.handleObjectDetailsSet(v.ObjectDetailsSet)
-		case *pb.EventMessageValueOfObjectRemove:
-			s.handleObjectRemove(v.ObjectRemove)
-		case *pb.EventMessageValueOfSubscriptionAdd:
-			// New objects will be handled via ObjectDetailsSet events
-		case *pb.EventMessageValueOfSubscriptionRemove:
-			s.handleSubscriptionRemove(v.SubscriptionRemove)
-		}
-	}
-}
-
-// handleObjectDetailsAmend updates cache when object details are amended
-func (s *Service) handleObjectDetailsAmend(amend *pb.EventObjectDetailsAmend) {
-	// Check all subscription IDs this event applies to
-	for _, subId := range amend.SubIds {
-		if strings.HasPrefix(subId, "api_types_") {
-			s.handleObjectUpdate(subId, amend.Id)
-		} else if strings.HasPrefix(subId, "api_properties_") {
-			s.handleObjectUpdate(subId, amend.Id)
-		} else if strings.HasPrefix(subId, "api_tags_") {
-			s.handleObjectUpdate(subId, amend.Id)
-		}
-	}
-}
-
-// handleObjectDetailsSet replaces entire object in cache
-func (s *Service) handleObjectDetailsSet(set *pb.EventObjectDetailsSet) {
-	// Check all subscription IDs this event applies to
-	for _, subId := range set.SubIds {
-		if strings.HasPrefix(subId, "api_types_") {
-			s.handleObjectUpdate(subId, set.Id)
-		} else if strings.HasPrefix(subId, "api_properties_") {
-			s.handleObjectUpdate(subId, set.Id)
-		} else if strings.HasPrefix(subId, "api_tags_") {
-			s.handleObjectUpdate(subId, set.Id)
-		}
-	}
-}
-
-// handleObjectRemove removes object from cache
-func (s *Service) handleObjectRemove(remove *pb.EventObjectRemove) {
-	// Iterate through removed object IDs
-	for _, objectId := range remove.Ids {
-		// Check all cached spaces for this object
-		s.typeMapMu.Lock()
-		for _, cache := range s.typeMapCache {
-			// Remove by all possible keys
-			for k, v := range cache {
-				if v.Id == objectId {
-					delete(cache, k)
-				}
-			}
-		}
-		s.typeMapMu.Unlock()
-
-		s.propertyMapMu.Lock()
-		for _, cache := range s.propertyMapCache {
-			for k, v := range cache {
-				if v.Id == objectId {
-					delete(cache, k)
-				}
-			}
-		}
-		s.propertyMapMu.Unlock()
-
-		s.tagMapMu.Lock()
-		for _, cache := range s.tagMapCache {
-			delete(cache, objectId)
-		}
-		s.tagMapMu.Unlock()
-	}
-}
-
-// handleSubscriptionRemove removes object from cache
-func (s *Service) handleSubscriptionRemove(remove *pb.EventObjectSubscriptionRemove) {
-	subId := remove.SubId
-	if subId == "" {
-		return
-	}
-
-	// Handle type cache
-	if strings.HasPrefix(subId, "api_types_") {
-		spaceId := strings.TrimPrefix(subId, "api_types_")
-		s.typeMapMu.Lock()
-		if cache, exists := s.typeMapCache[spaceId]; exists {
-			for k, v := range cache {
-				if v.Id == remove.Id {
-					delete(cache, k)
-				}
-			}
-		}
-		s.typeMapMu.Unlock()
-	}
-
-	// Handle property cache
-	if strings.HasPrefix(subId, "api_properties_") {
-		spaceId := strings.TrimPrefix(subId, "api_properties_")
-		s.propertyMapMu.Lock()
-		if cache, exists := s.propertyMapCache[spaceId]; exists {
-			for k, v := range cache {
-				if v.Id == remove.Id {
-					delete(cache, k)
-				}
-			}
-		}
-		s.propertyMapMu.Unlock()
-	}
-
-	// Handle tag cache
-	if strings.HasPrefix(subId, "api_tags_") {
-		spaceId := strings.TrimPrefix(subId, "api_tags_")
-		s.tagMapMu.Lock()
-		if cache, exists := s.tagMapCache[spaceId]; exists {
-			delete(cache, remove.Id)
-		}
-		s.tagMapMu.Unlock()
 	}
 }
 
 // Stop unsubscribes from all spaces and cleans up
 func (s *Service) Stop() {
-	if s.spaceSubscriptionId != "" {
-		s.subscriptionService.Unsubscribe(s.spaceSubscriptionId)
-		s.spaceSubscriptionId = ""
+	if s.spaceSubscription != nil {
+		s.spaceSubscription.Close()
+		s.spaceSubscription = nil
 	}
 
-	s.typeMapMu.Lock()
-	for _, subId := range s.typeSubscriptions {
-		s.subscriptionService.Unsubscribe(subId)
+	s.subscriptionsMu.Lock()
+	defer s.subscriptionsMu.Unlock()
+
+	for _, sub := range s.typeSubscriptions {
+		sub.Close()
 	}
-	s.typeSubscriptions = make(map[string]string)
-	s.typeMapCache = make(map[string]map[string]*apimodel.Type)
-	s.typeMapMu.Unlock()
+	s.typeSubscriptions = make(map[string]*objectsubscription.ObjectSubscription[*apimodel.Type])
 
-	s.propertyMapMu.Lock()
-	for _, subId := range s.propertySubscriptions {
-		s.subscriptionService.Unsubscribe(subId)
+	for _, sub := range s.propertySubscriptions {
+		sub.Close()
 	}
-	s.propertySubscriptions = make(map[string]string)
-	s.propertyMapCache = make(map[string]map[string]*apimodel.Property)
-	s.propertyMapMu.Unlock()
+	s.propertySubscriptions = make(map[string]*objectsubscription.ObjectSubscription[*apimodel.Property])
 
-	s.tagMapMu.Lock()
-	for _, subId := range s.tagSubscriptions {
-		s.subscriptionService.Unsubscribe(subId)
+	for _, sub := range s.tagSubscriptions {
+		sub.Close()
 	}
-	s.tagSubscriptions = make(map[string]string)
-	s.tagMapCache = make(map[string]map[string]*apimodel.Tag)
-	s.tagMapMu.Unlock()
-}
-
-// handleObjectUpdate fetches fresh object data and updates cache
-func (s *Service) handleObjectUpdate(subId string, objectId string) {
-	ctx := context.Background()
-
-	// Extract space ID from subscription ID
-	var spaceId string
-	if strings.HasPrefix(subId, "api_types_") {
-		spaceId = strings.TrimPrefix(subId, "api_types_")
-
-		// Fetch fresh object data
-		resp := s.mw.ObjectShow(ctx, &pb.RpcObjectShowRequest{
-			SpaceId:  spaceId,
-			ObjectId: objectId,
-		})
-		if resp.Error != nil && resp.Error.Code != pb.RpcObjectShowResponseError_NULL {
-			log.Debugf("failed to fetch type object %s: %s", objectId, resp.Error)
-			return
-		}
-
-		// Get property map for type conversion
-		s.propertyMapMu.RLock()
-		propertyMap := s.propertyMapCache[spaceId]
-		s.propertyMapMu.RUnlock()
-
-		if propertyMap != nil {
-			if resp.ObjectView == nil || len(resp.ObjectView.Details) == 0 {
-				log.Debugf("type object %s has no details", objectId)
-				return
-			}
-			uk, apiKey, t := s.getTypeFromStruct(resp.ObjectView.Details[0].Details, propertyMap)
-
-			s.typeMapMu.Lock()
-			if cache, exists := s.typeMapCache[spaceId]; exists {
-				cache[t.Id] = t
-				cache[apiKey] = t
-				cache[uk] = t
-			}
-			s.typeMapMu.Unlock()
-		}
-	} else if strings.HasPrefix(subId, "api_properties_") {
-		spaceId = strings.TrimPrefix(subId, "api_properties_")
-
-		// Fetch fresh object data
-		resp := s.mw.ObjectShow(ctx, &pb.RpcObjectShowRequest{
-			SpaceId:  spaceId,
-			ObjectId: objectId,
-		})
-		if resp.Error != nil && resp.Error.Code != pb.RpcObjectShowResponseError_NULL {
-			log.Debugf("failed to fetch property object %s: %s", objectId, resp.Error)
-			return
-		}
-
-		if resp.ObjectView == nil || len(resp.ObjectView.Details) == 0 {
-			log.Debugf("property object %s has no details", objectId)
-			return
-		}
-		rk, apiKey, prop := s.getPropertyFromStruct(resp.ObjectView.Details[0].Details)
-
-		s.propertyMapMu.Lock()
-		if cache, exists := s.propertyMapCache[spaceId]; exists {
-			cache[prop.Id] = prop
-			cache[rk] = prop
-			cache[apiKey] = prop
-		}
-		s.propertyMapMu.Unlock()
-	} else if strings.HasPrefix(subId, "api_tags_") {
-		spaceId = strings.TrimPrefix(subId, "api_tags_")
-
-		// Fetch fresh object data
-		resp := s.mw.ObjectShow(ctx, &pb.RpcObjectShowRequest{
-			SpaceId:  spaceId,
-			ObjectId: objectId,
-		})
-		if resp.Error != nil && resp.Error.Code != pb.RpcObjectShowResponseError_NULL {
-			log.Debugf("failed to fetch tag object %s: %s", objectId, resp.Error)
-			return
-		}
-
-		if resp.ObjectView == nil || len(resp.ObjectView.Details) == 0 {
-			log.Debugf("tag object %s has no details", objectId)
-			return
-		}
-		tag := s.getTagFromStruct(resp.ObjectView.Details[0].Details)
-
-		s.tagMapMu.Lock()
-		if cache, exists := s.tagMapCache[spaceId]; exists {
-			cache[tag.Id] = tag
-		}
-		s.tagMapMu.Unlock()
-	}
+	s.tagSubscriptions = make(map[string]*objectsubscription.ObjectSubscription[*apimodel.Tag])
 }

@@ -1,15 +1,12 @@
 package service
 
 import (
-	"context"
 	"sync"
-
-	"github.com/cheggaaa/mb/v3"
 
 	apicore "github.com/anyproto/anytype-heart/core/api/core"
 	apimodel "github.com/anyproto/anytype-heart/core/api/model"
 	"github.com/anyproto/anytype-heart/core/subscription"
-	"github.com/anyproto/anytype-heart/pb"
+	"github.com/anyproto/anytype-heart/core/subscription/objectsubscription"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 )
 
@@ -21,20 +18,12 @@ type Service struct {
 	techSpaceId string
 
 	subscriptionService subscription.Service
-	eventQueue          *mb.MB[*pb.EventMessage]
 
-	typeMapCache     map[string]map[string]*apimodel.Type     // map[spaceId]map[typeId]*Type
-	propertyMapCache map[string]map[string]*apimodel.Property // map[spaceId]map[propertyId]*Property
-	tagMapCache      map[string]map[string]*apimodel.Tag      // map[spaceId]map[tagId]*Tag
-
-	spaceSubscriptionId   string            // space changes in tech space
-	typeSubscriptions     map[string]string // map[spaceId]subscriptionId
-	propertySubscriptions map[string]string // map[spaceId]subscriptionId
-	tagSubscriptions      map[string]string // map[spaceId]subscriptionId
-
-	typeMapMu     sync.RWMutex
-	propertyMapMu sync.RWMutex
-	tagMapMu      sync.RWMutex
+	spaceSubscription     *objectsubscription.ObjectSubscription[struct{}]
+	typeSubscriptions     map[string]*objectsubscription.ObjectSubscription[*apimodel.Type]     // map[spaceId]*ObjectSubscription
+	propertySubscriptions map[string]*objectsubscription.ObjectSubscription[*apimodel.Property] // map[spaceId]*ObjectSubscription
+	tagSubscriptions      map[string]*objectsubscription.ObjectSubscription[*apimodel.Tag]      // map[spaceId]*ObjectSubscription
+	subscriptionsMu       sync.RWMutex
 }
 
 func NewService(mw apicore.ClientCommands, gatewayUrl string, techspaceId string, subscriptionService subscription.Service) *Service {
@@ -43,31 +32,71 @@ func NewService(mw apicore.ClientCommands, gatewayUrl string, techspaceId string
 		gatewayUrl:            gatewayUrl,
 		techSpaceId:           techspaceId,
 		subscriptionService:   subscriptionService,
-		eventQueue:            mb.New[*pb.EventMessage](0),
-		typeMapCache:          make(map[string]map[string]*apimodel.Type),
-		propertyMapCache:      make(map[string]map[string]*apimodel.Property),
-		tagMapCache:           make(map[string]map[string]*apimodel.Tag),
-		typeSubscriptions:     make(map[string]string),
-		propertySubscriptions: make(map[string]string),
-		tagSubscriptions:      make(map[string]string),
+		typeSubscriptions:     make(map[string]*objectsubscription.ObjectSubscription[*apimodel.Type]),
+		propertySubscriptions: make(map[string]*objectsubscription.ObjectSubscription[*apimodel.Property]),
+		tagSubscriptions:      make(map[string]*objectsubscription.ObjectSubscription[*apimodel.Tag]),
 	}
-
-	// Start event processing goroutine
-	go s.processEvents()
 
 	return s
 }
 
-func (s *Service) processEvents() {
-	for {
-		msgs, err := s.eventQueue.Wait(context.Background())
-		if err != nil {
-			return
-		}
+// getTypeMap builds a map of types from the subscription for quick lookups
+func (s *Service) getTypeMap(spaceId string) map[string]*apimodel.Type {
+	s.subscriptionsMu.RLock()
+	sub := s.typeSubscriptions[spaceId]
+	s.subscriptionsMu.RUnlock()
 
-		if len(msgs) > 0 {
-			event := &pb.Event{Messages: msgs}
-			s.ProcessSubscriptionEvent(event)
-		}
+	if sub == nil {
+		return nil
 	}
+
+	typeMap := make(map[string]*apimodel.Type)
+	sub.Iterate(func(id string, t *apimodel.Type) bool {
+		typeMap[t.Id] = t
+		typeMap[t.Key] = t
+		typeMap[t.UniqueKey] = t
+		return true
+	})
+
+	return typeMap
+}
+
+// getPropertyMap builds a map of properties from the subscription for quick lookups
+func (s *Service) getPropertyMap(spaceId string) map[string]*apimodel.Property {
+	s.subscriptionsMu.RLock()
+	sub := s.propertySubscriptions[spaceId]
+	s.subscriptionsMu.RUnlock()
+
+	if sub == nil {
+		return nil
+	}
+
+	propertyMap := make(map[string]*apimodel.Property)
+	sub.Iterate(func(id string, prop *apimodel.Property) bool {
+		propertyMap[prop.Id] = prop
+		propertyMap[prop.Key] = prop
+		propertyMap[prop.RelationKey] = prop
+		return true
+	})
+
+	return propertyMap
+}
+
+// getTagMap builds a map of tags from the subscription for quick lookups
+func (s *Service) getTagMap(spaceId string) map[string]*apimodel.Tag {
+	s.subscriptionsMu.RLock()
+	sub := s.tagSubscriptions[spaceId]
+	s.subscriptionsMu.RUnlock()
+
+	if sub == nil {
+		return nil
+	}
+
+	tagMap := make(map[string]*apimodel.Tag)
+	sub.Iterate(func(id string, tag *apimodel.Tag) bool {
+		tagMap[tag.Id] = tag
+		return true
+	})
+
+	return tagMap
 }
