@@ -27272,7 +27272,8 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 <a name="anytype-Event"></a>
 
 ### Event
-Event – type of message, that could be sent from a middleware to the corresponding front-end.
+Event – type of message, that could be sent from a middleware to the
+corresponding front-end.
 
 
 | Field | Type | Label | Description |
@@ -27392,7 +27393,8 @@ Event – type of message, that could be sent from a middleware to the correspon
 <a name="anytype-Event-Account-Show"></a>
 
 ### Event.Account.Show
-Message, that will be sent to the front on each account found after an AccountRecoverRequest
+Message, that will be sent to the front on each account found after an
+AccountRecoverRequest
 
 
 | Field | Type | Label | Description |
@@ -27438,8 +27440,8 @@ Event to show internal blocks on a client.
 Example Scenarios
 A. Block Creation
 1. Block A have been created on a client C1
-2. Client C2 receives Event.Block.Add(Block A), Event.Block.Update(Page.children)
-B. Partial block load
+2. Client C2 receives Event.Block.Add(Block A),
+Event.Block.Update(Page.children) B. Partial block load
 1. Client C1 opens Page1, that contains, for example, 133 blocks.
 2. M -&gt; F: ShowFullScreen(Root, blocks1-50)
 3. M -&gt; F: Block.Add(blocks51-100)
@@ -27670,8 +27672,8 @@ sent when the view have been changed or added
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | id | [string](#string) |  | dataview block&#39;s id |
-| viewId | [string](#string) |  | view id, client should double check this to make sure client doesn&#39;t switch the active view in the middle |
-| view | [model.Block.Content.Dataview.View](#anytype-model-Block-Content-Dataview-View) |  |  |
+| viewId | [string](#string) |  | view id, client should double check this to make sure client |
+| view | [model.Block.Content.Dataview.View](#anytype-model-Block-Content-Dataview-View) |  | doesn&#39;t switch the active view in the middle |
 
 
 
@@ -27717,7 +27719,7 @@ sent when the view have been changed or added
 | groupBackgroundColors | [bool](#bool) |  | Enable backgrounds in groups |
 | pageLimit | [int32](#int32) |  | Limit of objects shown in widget |
 | defaultTemplateId | [string](#string) |  | Id of template object set default for the view |
-| defaultObjectTypeId | [string](#string) |  | Default object type that is chosen for new object created within the view |
+| defaultObjectTypeId | [string](#string) |  | Default object type that is chosen for new object created |
 
 
 
@@ -27985,10 +27987,11 @@ sent when the view have been changed or added
 <a name="anytype-Event-Block-FilesUpload"></a>
 
 ### Event.Block.FilesUpload
-Middleware to front end event message, that will be sent on one of this scenarios:
-Precondition: user A opened a block
+Middleware to front end event message, that will be sent on one of this
+scenarios: Precondition: user A opened a block
 1. User A drops a set of files/pictures/videos
-2. User A creates a MediaBlock and drops a single media, that corresponds to its type.
+2. User A creates a MediaBlock and drops a single media, that corresponds
+to its type.
 
 
 | Field | Type | Label | Description |
@@ -29815,11 +29818,13 @@ Precondition: user A opened a block
 | chatAdd | [Event.Chat.Add](#anytype-Event-Chat-Add) |  |  |
 | chatUpdate | [Event.Chat.Update](#anytype-Event-Chat-Update) |  |  |
 | chatUpdateReactions | [Event.Chat.UpdateReactions](#anytype-Event-Chat-UpdateReactions) |  |  |
-| chatUpdateMessageReadStatus | [Event.Chat.UpdateMessageReadStatus](#anytype-Event-Chat-UpdateMessageReadStatus) |  | received to update per-message read status (if needed to highlight the unread messages in the UI) |
-| chatUpdateMentionReadStatus | [Event.Chat.UpdateMentionReadStatus](#anytype-Event-Chat-UpdateMentionReadStatus) |  | received to update per-message mention read status (if needed to highlight the unread mentions in the UI) |
-| chatUpdateMessageSyncStatus | [Event.Chat.UpdateMessageSyncStatus](#anytype-Event-Chat-UpdateMessageSyncStatus) |  |  |
+| chatUpdateMessageReadStatus | [Event.Chat.UpdateMessageReadStatus](#anytype-Event-Chat-UpdateMessageReadStatus) |  | received to update per-message read status (if needed to |
+| chatUpdateMentionReadStatus | [Event.Chat.UpdateMentionReadStatus](#anytype-Event-Chat-UpdateMentionReadStatus) |  | highlight the unread messages in the UI)
+
+received to update per-message mention read status (if needed |
+| chatUpdateMessageSyncStatus | [Event.Chat.UpdateMessageSyncStatus](#anytype-Event-Chat-UpdateMessageSyncStatus) |  | to highlight the unread mentions in the UI) |
 | chatDelete | [Event.Chat.Delete](#anytype-Event-Chat-Delete) |  |  |
-| chatStateUpdate | [Event.Chat.UpdateState](#anytype-Event-Chat-UpdateState) |  | in case new unread messages received or chat state changed (e.g. message read on another device) |
+| chatStateUpdate | [Event.Chat.UpdateState](#anytype-Event-Chat-UpdateState) |  | in case new unread messages received or chat state changed |
 
 
 
@@ -29904,7 +29909,8 @@ Precondition: user A opened a block
 <a name="anytype-Event-Object-Details-Amend"></a>
 
 ### Event.Object.Details.Amend
-Amend (i.e. add a new key-value pair or update an existing key-value pair) existing state
+Amend (i.e. add a new key-value pair or update an existing key-value
+pair) existing state
 
 
 | Field | Type | Label | Description |
@@ -29943,8 +29949,8 @@ Overwrite current state
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | id | [string](#string) |  | context objectId |
-| details | [google.protobuf.Struct](#google-protobuf-Struct) |  | can not be a partial state. Should replace client details state |
-| subIds | [string](#string) | repeated |  |
+| details | [google.protobuf.Struct](#google-protobuf-Struct) |  | can not be a partial state. Should replace client details |
+| subIds | [string](#string) | repeated | state |
 
 
 
@@ -30287,8 +30293,8 @@ Removes document from subscription
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | targetId | [string](#string) |  |  |
-| targetName | [string](#string) |  | pluralName (if exists) for types, fallback to name. Special cases for &#34;bin&#34; and &#34;favorites&#34; |
-| widgetBlockId | [string](#string) |  |  |
+| targetName | [string](#string) |  | pluralName (if exists) for types, fallback to |
+| widgetBlockId | [string](#string) |  | name. Special cases for &#34;bin&#34; and &#34;favorites&#34; |
 
 
 
@@ -30318,6 +30324,7 @@ Removes document from subscription
 | network | [Event.Space.Network](#anytype-Event-Space-Network) |  |  |
 | error | [Event.Space.SyncError](#anytype-Event-Space-SyncError) |  |  |
 | syncingObjectsCounter | [int64](#int64) |  |  |
+| notSyncedFilesCounter | [int64](#int64) |  |  |
 
 
 
@@ -30464,8 +30471,8 @@ Removes document from subscription
 <a name="anytype-Event-User-Block-Join"></a>
 
 ### Event.User.Block.Join
-Middleware to front end event message, that will be sent in this scenario:
-Precondition: user A opened a block
+Middleware to front end event message, that will be sent in this
+scenario: Precondition: user A opened a block
 1. User B opens the same block
 2. User A receives a message about p.1
 
@@ -30482,8 +30489,8 @@ Precondition: user A opened a block
 <a name="anytype-Event-User-Block-Left"></a>
 
 ### Event.User.Block.Left
-Middleware to front end event message, that will be sent in this scenario:
-Precondition: user A and user B opened the same block
+Middleware to front end event message, that will be sent in this
+scenario: Precondition: user A and user B opened the same block
 1. User B closes the block
 2. User A receives a message about p.1
 
@@ -30500,8 +30507,8 @@ Precondition: user A and user B opened the same block
 <a name="anytype-Event-User-Block-SelectRange"></a>
 
 ### Event.User.Block.SelectRange
-Middleware to front end event message, that will be sent in this scenario:
-Precondition: user A and user B opened the same block
+Middleware to front end event message, that will be sent in this
+scenario: Precondition: user A and user B opened the same block
 1. User B selects some inner blocks
 2. User A receives a message about p.1
 
@@ -30519,8 +30526,8 @@ Precondition: user A and user B opened the same block
 <a name="anytype-Event-User-Block-TextRange"></a>
 
 ### Event.User.Block.TextRange
-Middleware to front end event message, that will be sent in this scenario:
-Precondition: user A and user B opened the same block
+Middleware to front end event message, that will be sent in this
+scenario: Precondition: user A and user B opened the same block
 1. User B sets cursor or selects a text region into a text block
 2. User A receives a message about p.1
 
@@ -30681,7 +30688,7 @@ Precondition: user A and user B opened the same block
 | NotConnected | 0 |  |
 | NotPossible | 1 |  |
 | Connected | 2 |  |
-| Restricted | 3 | only for ios for now, fallback to NotPossible if not implemented on client |
+| Restricted | 3 | only for ios for now, fallback to NotPossible if not |
 
 
 
@@ -32922,6 +32929,9 @@ stored |
 | NextMonth | 9 |  |
 | NumberOfDaysAgo | 10 |  |
 | NumberOfDaysNow | 11 |  |
+| LastYear | 12 |  |
+| CurrentYear | 13 |  |
+| NextYear | 14 |  |
 
 
 

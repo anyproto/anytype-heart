@@ -45,7 +45,10 @@ jobs:
 
       - name: Setup GO
         run: |
-          go version
+          echo "PATH=$PATH"
+          echo "which go: '$(which go)'"
+          echo "which go version: '$( $(which go) version )'"
+          echo "go version: '$(go version)'"
           echo GOPATH=$(go env GOPATH) >> $GITHUB_ENV
           echo GOBIN=$(go env GOPATH)/bin >> $GITHUB_ENV
           echo $(go env GOPATH)/bin >> $GITHUB_PATH
