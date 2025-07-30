@@ -13,10 +13,9 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-// InitializeAllCaches initializes caches for all available spaces
 func (s *Service) InitializeAllCaches(ctx context.Context) error {
 	if s.techSpaceId != "" {
-		if err := s.subscribeToSpaceChanges(ctx); err != nil {
+		if err := s.subscribeToSpaceChanges(); err != nil {
 			return fmt.Errorf("failed to subscribe to space changes: %w", err)
 		}
 	}
@@ -27,7 +26,7 @@ func (s *Service) InitializeAllCaches(ctx context.Context) error {
 	}
 
 	for _, spaceId := range spaceIds {
-		if err := s.initializeSpaceCache(ctx, spaceId); err != nil {
+		if err := s.initializeSpaceCache(spaceId); err != nil {
 			log.Debugf("failed to initialize cache for space %s: %v", spaceId, err)
 		}
 	}
@@ -35,8 +34,7 @@ func (s *Service) InitializeAllCaches(ctx context.Context) error {
 	return nil
 }
 
-// subscribeToSpaceChanges subscribes to workspace/space changes in the tech space
-func (s *Service) subscribeToSpaceChanges(ctx context.Context) error {
+func (s *Service) subscribeToSpaceChanges() error {
 	if s.spaceSubscription != nil {
 		return nil
 	}
@@ -49,7 +47,6 @@ func (s *Service) subscribeToSpaceChanges(ctx context.Context) error {
 		},
 	}
 
-	// Create object subscription for space changes
 	sub := objectsubscription.New(s.subscriptionService, objectsubscription.SubscriptionParams[struct{}]{
 		Request: subscription.SubscribeRequest{
 			SpaceId: s.techSpaceId,
@@ -78,7 +75,7 @@ func (s *Service) subscribeToSpaceChanges(ctx context.Context) error {
 
 				// If space is active and not deleted/archived, initialize cache
 				if !isDeleted && !isArchived && spaceAccountStatus == int64(model.SpaceStatus_Ok) && spaceLocalStatus == int64(model.SpaceStatus_Ok) {
-					if err := s.initializeSpaceCache(ctx, spaceId); err != nil {
+					if err := s.initializeSpaceCache(spaceId); err != nil {
 						log.Debugf("failed to initialize cache for space %s: %v", spaceId, err)
 					}
 				} else {
@@ -117,7 +114,7 @@ func (s *Service) subscribeToSpaceChanges(ctx context.Context) error {
 }
 
 // initializeSpaceCache initializes all caches for a specific space
-func (s *Service) initializeSpaceCache(_ context.Context, spaceId string) error {
+func (s *Service) initializeSpaceCache(spaceId string) error {
 	if err := s.subscribeToProperties(spaceId); err != nil {
 		return fmt.Errorf("failed to subscribe to properties: %w", err)
 	}
@@ -139,9 +136,7 @@ func (s *Service) subscribeToTypes(spaceId string) error {
 		return nil
 	}
 
-	// Get property subscription to access property data for type conversion
 	propSub := s.propertySubscriptions[spaceId]
-
 	if propSub == nil {
 		return fmt.Errorf("property subscription not initialized for space %s", spaceId)
 	}
@@ -157,7 +152,6 @@ func (s *Service) subscribeToTypes(spaceId string) error {
 		},
 	}
 
-	// Create object subscription for types
 	sub := objectsubscription.New(s.subscriptionService, objectsubscription.SubscriptionParams[*apimodel.Type]{
 		Request: subscription.SubscribeRequest{
 			SpaceId: spaceId,
@@ -180,7 +174,6 @@ func (s *Service) subscribeToTypes(spaceId string) error {
 			NoDepSubscription: true,
 		},
 		Extract: func(details *domain.Details) (string, *apimodel.Type) {
-			// Get property map from property subscription
 			propertyMap := make(map[string]*apimodel.Property)
 			propSub.Iterate(func(id string, prop *apimodel.Property) bool {
 				propertyMap[id] = prop
@@ -193,7 +186,6 @@ func (s *Service) subscribeToTypes(spaceId string) error {
 			return t.Id, t
 		},
 		Update: func(key string, value domain.Value, t *apimodel.Type) *apimodel.Type {
-			// Handle updates to type fields
 			switch key {
 			case bundle.RelationKeyName.String():
 				t.Name = value.String()
@@ -202,7 +194,6 @@ func (s *Service) subscribeToTypes(spaceId string) error {
 			case bundle.RelationKeyIsArchived.String():
 				t.Archived = value.Bool()
 			case bundle.RelationKeyApiObjectKey.String():
-				// Update API key if changed
 				if apiKey := value.String(); apiKey != "" {
 					t.Key = apiKey
 				}
@@ -211,7 +202,6 @@ func (s *Service) subscribeToTypes(spaceId string) error {
 			return t
 		},
 		Unset: func(keys []string, t *apimodel.Type) *apimodel.Type {
-			// Handle unset fields if needed
 			for _, key := range keys {
 				switch key {
 				case bundle.RelationKeyName.String():
@@ -255,7 +245,6 @@ func (s *Service) subscribeToProperties(spaceId string) error {
 		},
 	}
 
-	// Create object subscription for properties
 	sub := objectsubscription.New(s.subscriptionService, objectsubscription.SubscriptionParams[*apimodel.Property]{
 		Request: subscription.SubscribeRequest{
 			SpaceId: spaceId,
@@ -275,14 +264,12 @@ func (s *Service) subscribeToProperties(spaceId string) error {
 			return prop.Id, prop
 		},
 		Update: func(key string, value domain.Value, prop *apimodel.Property) *apimodel.Property {
-			// Handle updates to property fields
 			switch key {
 			case bundle.RelationKeyName.String():
 				prop.Name = value.String()
 			case bundle.RelationKeyRelationFormat.String():
 				prop.Format = RelationFormatToPropertyFormat[model.RelationFormat(value.Int64())]
 			case bundle.RelationKeyApiObjectKey.String():
-				// Update API key if changed
 				if apiKey := value.String(); apiKey != "" {
 					prop.Key = apiKey
 				}
@@ -291,7 +278,6 @@ func (s *Service) subscribeToProperties(spaceId string) error {
 			return prop
 		},
 		Unset: func(keys []string, prop *apimodel.Property) *apimodel.Property {
-			// Handle unset fields if needed
 			for _, key := range keys {
 				switch key {
 				case bundle.RelationKeyName.String():
@@ -333,7 +319,6 @@ func (s *Service) subscribeToTags(spaceId string) error {
 		},
 	}
 
-	// Create object subscription for tags
 	sub := objectsubscription.New(s.subscriptionService, objectsubscription.SubscriptionParams[*apimodel.Tag]{
 		Request: subscription.SubscribeRequest{
 			SpaceId: spaceId,
@@ -352,7 +337,6 @@ func (s *Service) subscribeToTags(spaceId string) error {
 			return tag.Id, tag
 		},
 		Update: func(key string, value domain.Value, tag *apimodel.Tag) *apimodel.Tag {
-			// Handle updates to tag fields
 			switch key {
 			case bundle.RelationKeyName.String():
 				tag.Name = value.String()
@@ -363,7 +347,6 @@ func (s *Service) subscribeToTags(spaceId string) error {
 			return tag
 		},
 		Unset: func(keys []string, tag *apimodel.Tag) *apimodel.Tag {
-			// Handle unset fields if needed
 			for _, key := range keys {
 				switch key {
 				case bundle.RelationKeyName.String():
