@@ -2,20 +2,27 @@ package importer
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/anyproto/any-sync/app"
-	"github.com/anyproto/any-sync/commonspace/object/tree/treestorage"
 
+	"github.com/anyproto/anytype-heart/core/block"
 	"github.com/anyproto/anytype-heart/core/block/import/common"
+	creator "github.com/anyproto/anytype-heart/core/block/import/common/objectcreator"
+	"github.com/anyproto/anytype-heart/core/block/import/common/objectid"
 	_ "github.com/anyproto/anytype-heart/core/block/import/markdown"
 	_ "github.com/anyproto/anytype-heart/core/block/import/pb"
 	_ "github.com/anyproto/anytype-heart/core/block/import/web"
 	"github.com/anyproto/anytype-heart/core/block/process"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/domain/objectorigin"
+	"github.com/anyproto/anytype-heart/core/event"
+	"github.com/anyproto/anytype-heart/core/files/filesync"
+	"github.com/anyproto/anytype-heart/core/notifications"
 	"github.com/anyproto/anytype-heart/pb"
+	"github.com/anyproto/anytype-heart/pkg/lib/core"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+	"github.com/anyproto/anytype-heart/space"
 )
 
 type ImportRequest struct {
@@ -34,40 +41,17 @@ type ImportResponse struct {
 	Err              error
 }
 
-type importContext struct {
-	ctx          context.Context
-	origin       objectorigin.ObjectOrigin
-	progress     process.Progress
-	req          *pb.RpcObjectImportRequest
-	convResponse *common.Response
-	error        *common.ConvertError
-
-	oldIDToNew           map[string]string
-	createPayloads       map[string]treestorage.TreeStorageCreatePayload
-	relationKeysToFormat map[domain.RelationKey]int32
-}
-
-func buildImportContext(
-	ctx context.Context,
-	req *ImportRequest,
-	resp *common.Response,
-	origin objectorigin.ObjectOrigin,
-	error *common.ConvertError,
-) (*importContext, error) {
-	if req == nil || resp == nil {
-		return nil, fmt.Errorf("import request and converter response should not be nil")
-	}
-	if error == nil {
-		error = common.NewError(req.Mode)
-	}
-	return &importContext{
-		ctx:          ctx,
-		origin:       origin,
-		progress:     req.Progress,
-		req:          req.RpcObjectImportRequest,
-		convResponse: resp,
-		error:        error,
-	}, nil
+type Dependencies struct {
+	converters          map[string]common.Converter
+	blockService        *block.Service
+	objectCreator       creator.Service
+	idProvider          objectid.IdAndKeyProvider
+	tempDirProvider     core.TempDirProvider
+	fileSync            filesync.FileSync
+	notificationService notifications.Notifications
+	eventSender         event.Sender
+	objectStore         objectstore.ObjectStore
+	spaceService        space.Service
 }
 
 // Importer encapsulate logic with import
