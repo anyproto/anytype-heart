@@ -21,7 +21,7 @@ const CName = "filegc"
 
 type FileGC interface {
 	app.ComponentRunnable
-	CheckFilesOnLinksRemoval(spaceId, contextId string, removedLinks []string, skipBin bool) error
+	CheckFilesOnLinksRemoval(spaceId, contextId string, removedLinks []string, skipBin bool, onlyBlockIds ...string) error
 }
 
 // ObjectDeleter is an interface to delete objects by their full ID
@@ -64,7 +64,8 @@ func (gc *fileGC) Close(ctx context.Context) error {
 }
 
 // CheckFilesOnLinksRemoval checks if any of the removed links are file objects that should be garbage collected
-func (gc *fileGC) CheckFilesOnLinksRemoval(spaceId, contextId string, removedLinks []string, skipBin bool) error {
+// If onlyBlockIds is provided, it will only process files created in those specific block IDs
+func (gc *fileGC) CheckFilesOnLinksRemoval(spaceId, contextId string, removedLinks []string, skipBin bool, onlyBlockIds ...string) error {
 	if len(removedLinks) == 0 {
 		return nil
 	}
@@ -77,25 +78,37 @@ func (gc *fileGC) CheckFilesOnLinksRemoval(spaceId, contextId string, removedLin
 		return fmt.Errorf("space index not found for space %s", spaceId)
 	}
 
+	// Build query filters
+	filters := []database.FilterRequest{
+		{
+			RelationKey: bundle.RelationKeyId,
+			Condition:   model.BlockContentDataviewFilter_In,
+			Value:       domain.StringList(removedLinks),
+		},
+		{
+			RelationKey: bundle.RelationKeyCreatedInContext,
+			Condition:   model.BlockContentDataviewFilter_Equal,
+			Value:       domain.String(contextId),
+		},
+		{
+			RelationKey: bundle.RelationKeyResolvedLayout,
+			Condition:   model.BlockContentDataviewFilter_In,
+			Value:       domain.Int64List([]int64{int64(model.ObjectType_file), int64(model.ObjectType_image)}),
+		},
+	}
+
+	// If onlyBlockIds is provided, add filter for CreatedInBlockId
+	if len(onlyBlockIds) > 0 {
+		filters = append(filters, database.FilterRequest{
+			RelationKey: bundle.RelationKeyCreatedInBlockId,
+			Condition:   model.BlockContentDataviewFilter_In,
+			Value:       domain.StringList(onlyBlockIds),
+		})
+	}
+
 	// Query file objects from removed links
 	fileRecords, err := spaceIndex.Query(database.Query{
-		Filters: []database.FilterRequest{
-			{
-				RelationKey: bundle.RelationKeyId,
-				Condition:   model.BlockContentDataviewFilter_In,
-				Value:       domain.StringList(removedLinks),
-			},
-			{
-				RelationKey: bundle.RelationKeyCreatedInContext,
-				Condition:   model.BlockContentDataviewFilter_Equal,
-				Value:       domain.String(contextId),
-			},
-			{
-				RelationKey: bundle.RelationKeyResolvedLayout,
-				Condition:   model.BlockContentDataviewFilter_In,
-				Value:       domain.Int64List([]int64{int64(model.ObjectType_file), int64(model.ObjectType_image)}),
-			},
-		},
+		Filters: filters,
 	})
 	if err != nil {
 		return fmt.Errorf("failed to query file objects: %w", err)
