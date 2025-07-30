@@ -436,17 +436,8 @@ func (s *service) collectAttachmentPayloads(message *chatmodel.Message, spaceId 
 		}
 		attachments := make([]*chatpush.Attachment, 0, len(message.Attachments))
 		for _, att := range attachmentDetails {
-			var attachmentType int
-			switch model.ObjectTypeLayout(att.Details.GetInt64(bundle.RelationKeyResolvedLayout)) {
-			case model.ObjectType_image:
-				attachmentType = int(model.ChatMessageAttachment_IMAGE)
-			case model.ObjectType_video, model.ObjectType_audio, model.ObjectType_pdf, model.ObjectType_file:
-				attachmentType = int(model.ChatMessageAttachment_FILE)
-			default:
-				attachmentType = int(model.ChatMessageAttachment_LINK)
-			}
 			attachments = append(attachments, &chatpush.Attachment{
-				Type: attachmentType,
+				Layout: int(att.Details.GetInt64(bundle.RelationKeyResolvedLayout)),
 			})
 		}
 		return attachments, nil

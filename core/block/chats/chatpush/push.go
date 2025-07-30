@@ -24,6 +24,6 @@ type NewMessagePayload struct {
 }
 
 type Attachment struct {
-	// See model.ChatMessageAttachmentAttachmentType
-	Type int `json:"type"`
+	// Layout is resolvedLayout from object details
+	Layout int `json:"layout"`
 }
