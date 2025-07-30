@@ -16,6 +16,7 @@ type (
 	extract[T any] func(*domain.Details) (string, T)
 	update[T any]  func(string, domain.Value, T) T
 	unset[T any]   func([]string, T) T
+	remove[T any]  func(string, T) T
 )
 
 type entry[T any] struct {
@@ -35,6 +36,7 @@ type SubscriptionParams[T any] struct {
 	Extract extract[T]
 	Update  update[T]
 	Unset   unset[T]
+	Remove  remove[T]
 }
 
 type ObjectSubscription[T any] struct {
@@ -48,6 +50,7 @@ type ObjectSubscription[T any] struct {
 	extract extract[T]
 	update  update[T]
 	unset   unset[T]
+	remove  remove[T]
 	mx      sync.Mutex
 }
 
@@ -63,6 +66,9 @@ func NewIdSubscription(service subscription.Service, request subscription.Subscr
 		Unset: func(strings []string, s struct{}) struct{} {
 			return struct{}{}
 		},
+		Remove: func(s string, s2 struct{}) struct{} {
+			return struct{}{}
+		},
 	})
 }
 
@@ -74,6 +80,7 @@ func New[T any](service subscription.Service, params SubscriptionParams[T]) *Obj
 		extract: params.Extract,
 		update:  params.Update,
 		unset:   params.Unset,
+		remove:  params.Remove,
 	}
 }
 
@@ -124,6 +131,11 @@ func (o *ObjectSubscription[T]) read() {
 		case *pb.EventMessageValueOfSubscriptionAdd:
 			o.sub[v.SubscriptionAdd.Id] = newEmptyEntry[T]()
 		case *pb.EventMessageValueOfSubscriptionRemove:
+			curEntry := o.sub[v.SubscriptionRemove.Id]
+			if curEntry == nil {
+				return
+			}
+			o.remove(v.SubscriptionRemove.Id, curEntry.data)
 			delete(o.sub, v.SubscriptionRemove.Id)
 		case *pb.EventMessageValueOfObjectDetailsAmend:
 			curEntry := o.sub[v.ObjectDetailsAmend.Id]

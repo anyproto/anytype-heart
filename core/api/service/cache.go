@@ -2,16 +2,46 @@ package service
 
 import (
 	"context"
+	"errors"
 	"fmt"
+
+	"github.com/gogo/protobuf/types"
 
 	apimodel "github.com/anyproto/anytype-heart/core/api/model"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/subscription"
 	"github.com/anyproto/anytype-heart/core/subscription/objectsubscription"
+	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
+
+// getObjectDetails fetches object details by Id using ObjectSearch
+func (s *Service) getObjectDetails(ctx context.Context, spaceId, objectId string) (*types.Struct, error) {
+	resp := s.mw.ObjectSearch(ctx, &pb.RpcObjectSearchRequest{
+		SpaceId: spaceId,
+		Filters: []*model.BlockContentDataviewFilter{
+			{
+				RelationKey: bundle.RelationKeyId.String(),
+				Condition:   model.BlockContentDataviewFilter_Equal,
+				Value:       pbtypes.String(objectId),
+			},
+		},
+		Limit: 1,
+	})
+
+	if resp.Error != nil && resp.Error.Code != pb.RpcObjectSearchResponseError_NULL {
+		return nil, fmt.Errorf("failed to fetch object: %w", errors.New(resp.Error.Description))
+	}
+
+	if len(resp.Records) == 0 {
+		return nil, fmt.Errorf("object not found: %s", objectId)
+	}
+
+	return resp.Records[0], nil
+}
 
 func (s *Service) InitializeAllCaches(ctx context.Context) error {
 	if s.techSpaceId != "" {
@@ -20,14 +50,10 @@ func (s *Service) InitializeAllCaches(ctx context.Context) error {
 		}
 	}
 
-	spaceIds, err := s.GetAllSpaceIds(ctx)
-	if err != nil {
-		return fmt.Errorf("failed to get all space Ids: %w", err)
-	}
-
+	spaceIds := s.getAllSpaceIds()
 	for _, spaceId := range spaceIds {
 		if err := s.initializeSpaceCache(spaceId); err != nil {
-			log.Debugf("failed to initialize cache for space %s: %v", spaceId, err)
+			log.Warnf("failed to initialize cache for space %s: %v", spaceId, err)
 		}
 	}
 
@@ -45,9 +71,19 @@ func (s *Service) subscribeToSpaceChanges() error {
 			Condition:   model.BlockContentDataviewFilter_Equal,
 			Value:       domain.Int64(int64(model.ObjectType_spaceView)),
 		},
+		{
+			RelationKey: bundle.RelationKeySpaceLocalStatus,
+			Condition:   model.BlockContentDataviewFilter_In,
+			Value:       domain.Int64List([]int64{int64(model.SpaceStatus_Unknown), int64(model.SpaceStatus_Ok)}),
+		},
+		{
+			RelationKey: bundle.RelationKeySpaceAccountStatus,
+			Condition:   model.BlockContentDataviewFilter_In,
+			Value:       domain.Int64List([]int64{int64(model.SpaceStatus_Unknown), int64(model.SpaceStatus_SpaceActive)}),
+		},
 	}
 
-	sub := objectsubscription.New(s.subscriptionService, objectsubscription.SubscriptionParams[struct{}]{
+	sub := objectsubscription.New(s.subscriptionService, objectsubscription.SubscriptionParams[string]{
 		Request: subscription.SubscribeRequest{
 			SpaceId: s.techSpaceId,
 			SubId:   "api.space.changes",
@@ -62,46 +98,38 @@ func (s *Service) subscribeToSpaceChanges() error {
 			},
 			NoDepSubscription: true,
 		},
-		Extract: func(details *domain.Details) (string, struct{}) {
-			// Extract space details and handle space changes
+		Extract: func(details *domain.Details) (string, string) {
 			id := details.GetString(bundle.RelationKeyId)
 			spaceId := details.GetString(bundle.RelationKeyTargetSpaceId)
-			if spaceId != "" {
-				// Check space status and initialize/uninitialize cache as needed
-				spaceAccountStatus := details.GetInt64(bundle.RelationKeySpaceAccountStatus)
-				spaceLocalStatus := details.GetInt64(bundle.RelationKeySpaceLocalStatus)
-				isArchived := details.GetBool(bundle.RelationKeyIsArchived)
-				isDeleted := details.GetBool(bundle.RelationKeyIsDeleted)
 
-				// If space is active and not deleted/archived, initialize cache
-				if !isDeleted && !isArchived && spaceAccountStatus == int64(model.SpaceStatus_Ok) && spaceLocalStatus == int64(model.SpaceStatus_Ok) {
+			// Schedule cache initialization asynchronously to avoid deadlock
+			// The subscription is holding a lock when calling Extract, so we can't
+			// create new subscriptions synchronously here
+			if spaceId != "" {
+				go func() {
 					if err := s.initializeSpaceCache(spaceId); err != nil {
-						log.Debugf("failed to initialize cache for space %s: %v", spaceId, err)
+						log.Warnf("failed to initialize cache for space %s: %v", spaceId, err)
 					}
-				} else {
-					// Otherwise, unsubscribe from the space
+				}()
+			}
+
+			return id, spaceId
+		},
+		Update: func(key string, value domain.Value, spaceId string) string {
+			return spaceId
+		},
+		Unset: func(keys []string, spaceId string) string {
+			return spaceId
+		},
+		Remove: func(id string, spaceId string) string {
+			// Space no longer matches filters - clean up its caches asynchronously
+			// to avoid deadlock (Remove is called while subscription holds a lock)
+			if spaceId != "" {
+				go func() {
 					s.unsubscribeFromSpace(spaceId)
-				}
+				}()
 			}
-			return id, struct{}{}
-		},
-		Update: func(key string, value domain.Value, data struct{}) struct{} {
-			// Handle updates to space status fields
-			switch key {
-			case bundle.RelationKeyTargetSpaceId.String(),
-				bundle.RelationKeySpaceAccountStatus.String(),
-				bundle.RelationKeySpaceLocalStatus.String(),
-				bundle.RelationKeyIsArchived.String(),
-				bundle.RelationKeyIsDeleted.String():
-				// We need to re-evaluate the space status
-				// Since we don't have access to the full object here, we'll rely on the subscription remove event
-				// or fetch the full object if needed
-			}
-			return data
-		},
-		Unset: func(keys []string, data struct{}) struct{} {
-			// Nothing to unset for space monitoring
-			return data
+			return spaceId
 		},
 	})
 
@@ -186,31 +214,42 @@ func (s *Service) subscribeToTypes(spaceId string) error {
 			return t.Id, t
 		},
 		Update: func(key string, value domain.Value, t *apimodel.Type) *apimodel.Type {
-			switch key {
-			case bundle.RelationKeyName.String():
-				t.Name = value.String()
-			case bundle.RelationKeyPluralName.String():
-				t.PluralName = value.String()
-			case bundle.RelationKeyIsArchived.String():
-				t.Archived = value.Bool()
-			case bundle.RelationKeyApiObjectKey.String():
-				if apiKey := value.String(); apiKey != "" {
-					t.Key = apiKey
-				}
-				// Add other field updates as needed
+			details, err := s.getObjectDetails(context.Background(), spaceId, t.Id)
+			if err != nil {
+				return t
 			}
-			return t
+
+			// Get property map for type construction
+			propertyMap := make(map[string]*apimodel.Property)
+			propSub.Iterate(func(id string, prop *apimodel.Property) bool {
+				propertyMap[id] = prop
+				propertyMap[prop.Key] = prop
+				propertyMap[prop.RelationKey] = prop
+				return true
+			})
+
+			_, _, updatedType := s.getTypeFromStruct(details, propertyMap)
+			return updatedType
 		},
 		Unset: func(keys []string, t *apimodel.Type) *apimodel.Type {
-			for _, key := range keys {
-				switch key {
-				case bundle.RelationKeyName.String():
-					t.Name = ""
-				case bundle.RelationKeyPluralName.String():
-					t.PluralName = ""
-					// Add other field unsets as needed
-				}
+			details, err := s.getObjectDetails(context.Background(), spaceId, t.Id)
+			if err != nil {
+				return t
 			}
+
+			// Get property map for type construction
+			propertyMap := make(map[string]*apimodel.Property)
+			propSub.Iterate(func(id string, prop *apimodel.Property) bool {
+				propertyMap[id] = prop
+				propertyMap[prop.Key] = prop
+				propertyMap[prop.RelationKey] = prop
+				return true
+			})
+
+			_, _, updatedType := s.getTypeFromStruct(details, propertyMap)
+			return updatedType
+		},
+		Remove: func(id string, t *apimodel.Type) *apimodel.Type {
 			return t
 		},
 	})
@@ -264,27 +303,24 @@ func (s *Service) subscribeToProperties(spaceId string) error {
 			return prop.Id, prop
 		},
 		Update: func(key string, value domain.Value, prop *apimodel.Property) *apimodel.Property {
-			switch key {
-			case bundle.RelationKeyName.String():
-				prop.Name = value.String()
-			case bundle.RelationKeyRelationFormat.String():
-				prop.Format = RelationFormatToPropertyFormat[model.RelationFormat(value.Int64())]
-			case bundle.RelationKeyApiObjectKey.String():
-				if apiKey := value.String(); apiKey != "" {
-					prop.Key = apiKey
-				}
-				// Add other field updates as needed
+			details, err := s.getObjectDetails(context.Background(), spaceId, prop.Id)
+			if err != nil {
+				return prop
 			}
-			return prop
+
+			_, _, updatedProp := s.getPropertyFromStruct(details)
+			return updatedProp
 		},
 		Unset: func(keys []string, prop *apimodel.Property) *apimodel.Property {
-			for _, key := range keys {
-				switch key {
-				case bundle.RelationKeyName.String():
-					prop.Name = ""
-					// Add other field unsets as needed
-				}
+			details, err := s.getObjectDetails(context.Background(), spaceId, prop.Id)
+			if err != nil {
+				return prop
 			}
+
+			_, _, updatedProp := s.getPropertyFromStruct(details)
+			return updatedProp
+		},
+		Remove: func(id string, prop *apimodel.Property) *apimodel.Property {
 			return prop
 		},
 	})
@@ -337,23 +373,24 @@ func (s *Service) subscribeToTags(spaceId string) error {
 			return tag.Id, tag
 		},
 		Update: func(key string, value domain.Value, tag *apimodel.Tag) *apimodel.Tag {
-			switch key {
-			case bundle.RelationKeyName.String():
-				tag.Name = value.String()
-			case bundle.RelationKeyRelationOptionColor.String():
-				tag.Color = apimodel.ColorOptionToColor[value.String()]
-				// Add other field updates as needed
+			details, err := s.getObjectDetails(context.Background(), spaceId, tag.Id)
+			if err != nil {
+				return tag
 			}
-			return tag
+
+			updatedTag := s.getTagFromStruct(details)
+			return updatedTag
 		},
 		Unset: func(keys []string, tag *apimodel.Tag) *apimodel.Tag {
-			for _, key := range keys {
-				switch key {
-				case bundle.RelationKeyName.String():
-					tag.Name = ""
-					// Add other field unsets as needed
-				}
+			details, err := s.getObjectDetails(context.Background(), spaceId, tag.Id)
+			if err != nil {
+				return tag
 			}
+
+			updatedTag := s.getTagFromStruct(details)
+			return updatedTag
+		},
+		Remove: func(id string, tag *apimodel.Tag) *apimodel.Tag {
 			return tag
 		},
 	})
@@ -400,15 +437,15 @@ func (s *Service) Stop() {
 	for _, sub := range s.typeSubscriptions {
 		sub.Close()
 	}
-	s.typeSubscriptions = make(map[string]*objectsubscription.ObjectSubscription[*apimodel.Type])
+	s.typeSubscriptions = nil
 
 	for _, sub := range s.propertySubscriptions {
 		sub.Close()
 	}
-	s.propertySubscriptions = make(map[string]*objectsubscription.ObjectSubscription[*apimodel.Property])
+	s.propertySubscriptions = nil
 
 	for _, sub := range s.tagSubscriptions {
 		sub.Close()
 	}
-	s.tagSubscriptions = make(map[string]*objectsubscription.ObjectSubscription[*apimodel.Tag])
+	s.tagSubscriptions = nil
 }

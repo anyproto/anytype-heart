@@ -22,11 +22,7 @@ var (
 
 // GlobalSearch retrieves a paginated list of objects from all spaces that match the search parameters.
 func (s *Service) GlobalSearch(ctx context.Context, request apimodel.SearchRequest, offset int, limit int) (objects []apimodel.Object, total int, hasMore bool, err error) {
-	spaceIds, err := s.GetAllSpaceIds(ctx)
-	if err != nil {
-		return nil, 0, false, err
-	}
-
+	spaceIds := s.getAllSpaceIds()
 	baseFilters := s.prepareBaseFilters()
 	queryFilters := s.prepareQueryFilter(request.Query)
 	sorts, criterionToSortAfter := s.prepareSorts(request.Sort)

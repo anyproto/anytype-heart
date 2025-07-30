@@ -231,36 +231,3 @@ func (s *Service) getSpaceInfo(ctx context.Context, spaceId string) (space apimo
 		NetworkId:   workspaceResponse.Info.NetworkId,
 	}, nil
 }
-
-// GetAllSpaceIds effectively retrieves all space IDs from the tech space.
-func (s *Service) GetAllSpaceIds(ctx context.Context) ([]string, error) {
-	resp := s.mw.ObjectSearch(ctx, &pb.RpcObjectSearchRequest{
-		SpaceId: s.techSpaceId,
-		Filters: []*model.BlockContentDataviewFilter{
-			{
-				RelationKey: bundle.RelationKeyResolvedLayout.String(),
-				Condition:   model.BlockContentDataviewFilter_Equal,
-				Value:       pbtypes.Int64(int64(model.ObjectType_spaceView)),
-			},
-			{
-				RelationKey: bundle.RelationKeySpaceAccountStatus.String(),
-				Condition:   model.BlockContentDataviewFilter_In,
-				Value:       pbtypes.IntList(int(model.SpaceStatus_Unknown), int(model.SpaceStatus_SpaceActive)),
-			},
-		},
-		Keys: []string{bundle.RelationKeyTargetSpaceId.String()},
-	})
-
-	if resp.Error != nil && resp.Error.Code != pb.RpcObjectSearchResponseError_NULL {
-		return nil, ErrFailedListSpaces
-	}
-
-	spaceIds := make([]string, 0, len(resp.Records))
-	for _, record := range resp.Records {
-		if id := record.Fields[bundle.RelationKeyTargetSpaceId.String()].GetStringValue(); id != "" {
-			spaceIds = append(spaceIds, id)
-		}
-	}
-
-	return spaceIds, nil
-}

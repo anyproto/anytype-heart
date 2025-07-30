@@ -20,7 +20,7 @@ type Service struct {
 	subscriptionService subscription.Service
 	subscriptionsMu     sync.RWMutex
 
-	spaceSubscription     *objectsubscription.ObjectSubscription[struct{}]                      // subscription for techspace to track space changes
+	spaceSubscription     *objectsubscription.ObjectSubscription[string]                        // subscription for techspace to track space Ids
 	typeSubscriptions     map[string]*objectsubscription.ObjectSubscription[*apimodel.Type]     // map[spaceId]*ObjectSubscription
 	propertySubscriptions map[string]*objectsubscription.ObjectSubscription[*apimodel.Property] // map[spaceId]*ObjectSubscription
 	tagSubscriptions      map[string]*objectsubscription.ObjectSubscription[*apimodel.Tag]      // map[spaceId]*ObjectSubscription
@@ -48,12 +48,14 @@ func (s *Service) getTypeMap(spaceId string) map[string]*apimodel.Type {
 	s.subscriptionsMu.RUnlock()
 
 	typeMap := make(map[string]*apimodel.Type)
-	sub.Iterate(func(id string, t *apimodel.Type) bool {
-		typeMap[t.Id] = t
-		typeMap[t.Key] = t
-		typeMap[t.UniqueKey] = t
-		return true
-	})
+	if sub != nil {
+		sub.Iterate(func(id string, t *apimodel.Type) bool {
+			typeMap[t.Id] = t
+			typeMap[t.Key] = t
+			typeMap[t.UniqueKey] = t
+			return true
+		})
+	}
 
 	return typeMap
 }
@@ -65,12 +67,14 @@ func (s *Service) getPropertyMap(spaceId string) map[string]*apimodel.Property {
 	s.subscriptionsMu.RUnlock()
 
 	propertyMap := make(map[string]*apimodel.Property)
-	sub.Iterate(func(id string, prop *apimodel.Property) bool {
-		propertyMap[prop.Id] = prop
-		propertyMap[prop.Key] = prop
-		propertyMap[prop.RelationKey] = prop
-		return true
-	})
+	if sub != nil {
+		sub.Iterate(func(id string, prop *apimodel.Property) bool {
+			propertyMap[prop.Id] = prop
+			propertyMap[prop.Key] = prop
+			propertyMap[prop.RelationKey] = prop
+			return true
+		})
+	}
 
 	return propertyMap
 }
@@ -82,10 +86,29 @@ func (s *Service) getTagMap(spaceId string) map[string]*apimodel.Tag {
 	s.subscriptionsMu.RUnlock()
 
 	tagMap := make(map[string]*apimodel.Tag)
-	sub.Iterate(func(id string, tag *apimodel.Tag) bool {
-		tagMap[tag.Id] = tag
+	if sub != nil {
+		sub.Iterate(func(id string, tag *apimodel.Tag) bool {
+			tagMap[tag.Id] = tag
+			return true
+		})
+	}
+
+	return tagMap
+}
+
+// getAllSpaceIds returns all space IDs from the subscription
+func (s *Service) getAllSpaceIds() []string {
+	if s.spaceSubscription == nil {
+		return nil
+	}
+
+	var spaceIds []string
+	s.spaceSubscription.Iterate(func(id string, spaceId string) bool {
+		if spaceId != "" {
+			spaceIds = append(spaceIds, spaceId)
+		}
 		return true
 	})
 
-	return tagMap
+	return spaceIds
 }
