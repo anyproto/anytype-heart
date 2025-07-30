@@ -172,7 +172,7 @@ func TestSubscription(t *testing.T) {
 							Messages:    &model.ChatStateUnreadState{},
 							Mentions:    &model.ChatStateUnreadState{},
 							LastStateId: lastStateId,
-							Order:       1,
+							Order:       12,
 						},
 						SubIds: []string{"subId"},
 					},
