@@ -385,6 +385,11 @@ func (s *service) sendPushNotification(ctx context.Context, spaceId, chatObjectI
 		senderName = details.GetString(bundle.RelationKeyName)
 	}
 
+	attachments, err := s.collectAttachmentPayloads(message, spaceId)
+	if err != nil {
+		return fmt.Errorf("collect attachments: %w", err)
+	}
+
 	text := applyEmojiMarks(message.Message.Text, message.Message.Marks)
 
 	payload := &chatpush.Payload{
@@ -398,11 +403,11 @@ func (s *service) sendPushNotification(ctx context.Context, spaceId, chatObjectI
 			SenderName:     senderName,
 			Text:           textUtil.Truncate(text, 1024, "..."),
 			HasAttachments: len(message.Attachments) > 0,
+			Attachments:    attachments,
 		},
 	}
 
 	jsonPayload, err := json.Marshal(payload)
-
 	if err != nil {
 		err = fmt.Errorf("marshal push payload: %w", err)
 		return
@@ -416,6 +421,37 @@ func (s *service) sendPushNotification(ctx context.Context, spaceId, chatObjectI
 	}
 
 	return
+}
+
+func (s *service) collectAttachmentPayloads(message *chatmodel.Message, spaceId string) ([]*chatpush.Attachment, error) {
+	if len(message.Attachments) > 0 {
+		attachmentIds := make([]string, 0, len(message.Attachments))
+		for _, attachment := range message.Attachments {
+			attachmentIds = append(attachmentIds, attachment.Target)
+		}
+
+		attachmentDetails, err := s.objectStore.SpaceIndex(spaceId).QueryByIds(attachmentIds)
+		if err != nil {
+			return nil, fmt.Errorf("query attachments: %w", err)
+		}
+		attachments := make([]*chatpush.Attachment, 0, len(message.Attachments))
+		for _, att := range attachmentDetails {
+			var attachmentType int
+			switch model.ObjectTypeLayout(att.Details.GetInt64(bundle.RelationKeyResolvedLayout)) {
+			case model.ObjectType_image:
+				attachmentType = int(model.ChatMessageAttachment_IMAGE)
+			case model.ObjectType_video, model.ObjectType_audio, model.ObjectType_pdf, model.ObjectType_file:
+				attachmentType = int(model.ChatMessageAttachment_FILE)
+			default:
+				attachmentType = int(model.ChatMessageAttachment_LINK)
+			}
+			attachments = append(attachments, &chatpush.Attachment{
+				Type: attachmentType,
+			})
+		}
+		return attachments, nil
+	}
+	return nil, nil
 }
 
 func applyEmojiMarks(text string, marks []*model.BlockContentTextMark) string {
