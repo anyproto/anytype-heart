@@ -256,6 +256,9 @@ type smartBlock struct {
 	eventSender     event.Sender
 	spaceIdResolver idresolver.Resolver
 	fileGC          filegc.FileGC
+
+	// Track initial outgoing links to detect session-created files
+	initialLinks []string
 }
 
 func (sb *smartBlock) SetLocker(locker Locker) {
@@ -371,6 +374,8 @@ func (sb *smartBlock) Init(ctx *InitContext) (err error) {
 	sb.injectDerivedDetails(ctx.State, sb.SpaceID(), sb.Type())
 	sb.resolveLayout(ctx.State)
 
+	// Capture initial outgoing links to track links that were added within the session
+	sb.initialLinks = sb.LocalDetails().GetStringList(bundle.RelationKeyLinks)
 	sb.AddHook(sb.sendObjectCloseEvent, HookOnClose, HookOnBlockClose)
 	return
 }
@@ -1401,8 +1406,38 @@ func (sb *smartBlock) performFileGC(spaceId, contextId string, removedLinks []st
 	if sb.fileGC == nil {
 		return
 	}
-	// skipBin is false to archive files instead of deleting them permanently
-	if err := sb.fileGC.CheckFilesOnLinksRemoval(spaceId, contextId, removedLinks, false); err != nil {
-		log.Errorf("file GC failed for context %s: %v", contextId, err)
+
+	// Create a map of initial links for efficient lookup
+	initialLinksMap := make(map[string]bool, len(sb.initialLinks))
+	for _, link := range sb.initialLinks {
+		initialLinksMap[link] = true
+	}
+
+	// Determine if files were created in this session
+	sessionCreatedLinks := []string{}
+	existingLinks := []string{}
+
+	for _, link := range removedLinks {
+		if initialLinksMap[link] {
+			// This link existed when the smartblock was initialized
+			existingLinks = append(existingLinks, link)
+		} else {
+			// This link was added during the current session
+			sessionCreatedLinks = append(sessionCreatedLinks, link)
+		}
+	}
+
+	// Process existing files - archive them (skipBin=false)
+	if len(existingLinks) > 0 {
+		if err := sb.fileGC.CheckFilesOnLinksRemoval(spaceId, contextId, existingLinks, false); err != nil {
+			log.Errorf("file GC failed for existing files in context %s: %v", contextId, err)
+		}
+	}
+
+	// Process session-created files - delete them permanently (skipBin=true)
+	if len(sessionCreatedLinks) > 0 {
+		if err := sb.fileGC.CheckFilesOnLinksRemoval(spaceId, contextId, sessionCreatedLinks, true); err != nil {
+			log.Errorf("file GC failed for session-created files in context %s: %v", contextId, err)
+		}
 	}
 }
