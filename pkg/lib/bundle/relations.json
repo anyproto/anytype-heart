@@ -1347,6 +1347,26 @@
     "source": "details"
   },
   {
+    "description": "Object ID where the file was initially created",
+    "format": "object",
+    "hidden": true,
+    "key": "createdInContext",
+    "maxCount": 1,
+    "name": "Created in context",
+    "readonly": true,
+    "source": "details"
+  },
+  {
+    "description": "Block ID where the file was initially created",
+    "format": "shorttext",
+    "hidden": true,
+    "key": "createdInBlockId",
+    "maxCount": 1,
+    "name": "Created in block",
+    "readonly": true,
+    "source": "details"
+  },
+  {
     "description": "Import type, used to create object (notion, md and etc)",
     "format": "number",
     "hidden": false,

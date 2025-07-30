@@ -28,6 +28,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/undo"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/event"
+	"github.com/anyproto/anytype-heart/core/files/filegc"
 	"github.com/anyproto/anytype-heart/core/relationutils"
 	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pb"
@@ -102,6 +103,7 @@ func New(
 	indexer Indexer,
 	eventSender event.Sender,
 	spaceIdResolver idresolver.Resolver,
+	fileGC filegc.FileGC,
 ) SmartBlock {
 	s := &smartBlock{
 		currentParticipantId: currentParticipantId,
@@ -113,6 +115,7 @@ func New(
 
 		spaceIndex:      spaceIndex,
 		indexer:         indexer,
+		fileGC:          fileGC,
 		eventSender:     eventSender,
 		objectStore:     objectStore,
 		spaceIdResolver: spaceIdResolver,
@@ -252,6 +255,7 @@ type smartBlock struct {
 	indexer         Indexer
 	eventSender     event.Sender
 	spaceIdResolver idresolver.Resolver
+	fileGC          filegc.FileGC
 }
 
 func (sb *smartBlock) SetLocker(locker Locker) {
@@ -676,6 +680,12 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 		return ErrApplyOnEmptyTreeDisallowed
 	}
 
+	// Capture current links before applying changes (for GC)
+	var linksBefore []string
+	if parent := s.ParentState(); parent != nil {
+		linksBefore = parent.LocalDetails().GetStringList(bundle.RelationKeyLinks)
+	}
+
 	// Inject derived details to make sure we have consistent state.
 	// For example, we have to set ObjectTypeID into Type relation according to ObjectTypeKey from the state
 	sb.injectDerivedDetails(s, sb.SpaceID(), sb.Type())
@@ -724,7 +734,6 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 	if err != nil {
 		return
 	}
-
 	// we may have layout changed, so we need to update restrictions
 	sb.updateRestrictions()
 	sb.setRestrictionsDetail(s)
@@ -827,6 +836,16 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 
 	if hasDepIds(sb.GetRelationLinks(), &act) {
 		sb.CheckSubscriptions()
+	}
+
+	// Check for file GC after successful apply
+	if parent := s.ParentState(); parent != nil && len(linksBefore) > 0 {
+		linksAfter := st.LocalDetails().GetStringList(bundle.RelationKeyLinks)
+		removedLinks := getRemovedLinks(linksBefore, linksAfter)
+		if len(removedLinks) > 0 {
+			// Perform file GC asynchronously to not block the Apply
+			go sb.performFileGC(sb.SpaceID(), sb.Id(), removedLinks)
+		}
 	}
 	if hooks {
 		var parentDetails *domain.Details
@@ -1360,3 +1379,30 @@ func SkipFullTextIfHeadsNotChanged(o *IndexOptions) {
 }
 
 type InitFunc = func(id string) *InitContext
+
+// getRemovedLinks returns links that were in linksBefore but not in linksAfter
+func getRemovedLinks(linksBefore, linksAfter []string) []string {
+	afterSet := make(map[string]struct{}, len(linksAfter))
+	for _, link := range linksAfter {
+		afterSet[link] = struct{}{}
+	}
+
+	var removed []string
+	for _, link := range linksBefore {
+		if _, exists := afterSet[link]; !exists {
+			removed = append(removed, link)
+		}
+	}
+	return removed
+}
+
+// performFileGC runs the file garbage collector for removed links
+func (sb *smartBlock) performFileGC(spaceId, contextId string, removedLinks []string) {
+	if sb.fileGC == nil {
+		return
+	}
+	// skipBin is false to archive files instead of deleting them permanently
+	if err := sb.fileGC.CheckFilesOnLinksRemoval(spaceId, contextId, removedLinks, false); err != nil {
+		log.Errorf("file GC failed for context %s: %v", contextId, err)
+	}
+}

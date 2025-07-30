@@ -3940,6 +3940,8 @@ message Rpc {
                 google.protobuf.Struct details = 7; // additional details for file object
                 anytype.model.ObjectOrigin origin = 8;
                 anytype.model.ImageKind imageKind = 9;
+                string createdInContext = 10; // Object ID where the file was initially created
+                string createdInBlockId = 11; // Block ID where the file was initially created
             }
 
             message Response {
@@ -4274,6 +4276,8 @@ message Rpc {
                 string pictureId = 1;
                 string spaceId = 2;
                 anytype.model.ImageKind imageKind = 3;
+                string createdInContext = 4; // Object ID where the file was initially created
+                string createdInBlockId = 5; // Block ID where the file was initially created
             }
 
             message Response {

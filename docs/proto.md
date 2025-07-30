@@ -13127,6 +13127,8 @@ Get marks list in the selected range in text block.
 | details | [google.protobuf.Struct](#google-protobuf-Struct) |  | additional details for file object |
 | origin | [model.ObjectOrigin](#anytype-model-ObjectOrigin) |  |  |
 | imageKind | [model.ImageKind](#anytype-model-ImageKind) |  |  |
+| createdInContext | [string](#string) |  | Object ID where the file was initially created |
+| createdInBlockId | [string](#string) |  | Block ID where the file was initially created |
 
 
 
@@ -21547,6 +21549,8 @@ Available undo/redo operations
 | pictureId | [string](#string) |  |  |
 | spaceId | [string](#string) |  |  |
 | imageKind | [model.ImageKind](#anytype-model-ImageKind) |  |  |
+| createdInContext | [string](#string) |  | Object ID where the file was initially created |
+| createdInBlockId | [string](#string) |  | Block ID where the file was initially created |
 
 
 

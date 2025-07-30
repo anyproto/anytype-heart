@@ -25,6 +25,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/domain/objectorigin"
 	"github.com/anyproto/anytype-heart/core/files"
 	"github.com/anyproto/anytype-heart/core/files/fileobject/filemodels"
+	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/mill"
@@ -103,6 +104,8 @@ type Uploader interface {
 	SetGroupId(groupId string) Uploader
 	SetCustomEncryptionKeys(keys map[string]string) Uploader
 	SetImageKind(imageKind model.ImageKind) Uploader
+	SetCreatedInContext(contextId string) Uploader
+	SetCreatedInBlockId(blockId string) Uploader
 	AddOptions(options ...files.AddOption) Uploader
 	AsyncUpdates(smartBlockId string) Uploader
 
@@ -169,6 +172,8 @@ type uploader struct {
 	imageKind            model.ImageKind
 	additionalDetails    *domain.Details
 	customEncryptionKeys map[string]string
+	createdInContext     string
+	createdInBlockId     string
 }
 
 type bufioSeekClose struct {
@@ -260,6 +265,16 @@ func (u *uploader) SetCustomEncryptionKeys(keys map[string]string) Uploader {
 
 func (u *uploader) SetImageKind(imageKind model.ImageKind) Uploader {
 	u.imageKind = imageKind
+	return u
+}
+
+func (u *uploader) SetCreatedInContext(contextId string) Uploader {
+	u.createdInContext = contextId
+	return u
+}
+
+func (u *uploader) SetCreatedInBlockId(blockId string) Uploader {
+	u.createdInBlockId = blockId
 	return u
 }
 
@@ -532,12 +547,24 @@ func (u *uploader) getOrCreateFileObject(ctx context.Context, addResult *files.A
 		}
 	}
 
+	// Add creation context to additional details
+	additionalDetails := u.additionalDetails
+	if additionalDetails == nil {
+		additionalDetails = domain.NewDetails()
+	}
+	if u.createdInContext != "" {
+		additionalDetails.SetString(bundle.RelationKeyCreatedInContext, u.createdInContext)
+	}
+	if u.createdInBlockId != "" {
+		additionalDetails.SetString(bundle.RelationKeyCreatedInBlockId, u.createdInBlockId)
+	}
+
 	fileObjectId, fileObjectDetails, err := u.fileObjectService.Create(ctx, u.spaceId, filemodels.CreateRequest{
 		FileId:            addResult.FileId,
 		EncryptionKeys:    addResult.EncryptionKeys.EncryptionKeys,
 		ObjectOrigin:      u.origin,
 		ImageKind:         u.imageKind,
-		AdditionalDetails: u.additionalDetails,
+		AdditionalDetails: additionalDetails,
 		FileVariants:      addResult.Variants,
 	})
 	if err != nil {

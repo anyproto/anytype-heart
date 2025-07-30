@@ -27,6 +27,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/core/files"
+	"github.com/anyproto/anytype-heart/core/files/filegc"
 	"github.com/anyproto/anytype-heart/core/files/fileobject"
 	"github.com/anyproto/anytype-heart/core/files/fileuploader"
 	"github.com/anyproto/anytype-heart/core/files/reconciler"
@@ -81,6 +82,7 @@ type ObjectFactory struct {
 	chatRepositoryService   chatrepository.Service
 	chatSubscriptionService chatsubscription.Service
 	statService             debugstat.StatService
+	fileGC                  filegc.FileGC
 }
 
 func NewObjectFactory() *ObjectFactory {
@@ -115,6 +117,7 @@ func (f *ObjectFactory) Init(a *app.App) (err error) {
 	f.dbProvider = app.MustComponent[anystoreprovider.Provider](a)
 	f.chatRepositoryService = app.MustComponent[chatrepository.Service](a)
 	f.chatSubscriptionService = app.MustComponent[chatsubscription.Service](a)
+	f.fileGC = app.MustComponent[filegc.FileGC](a)
 	f.statService, err = app.GetComponent[debugstat.StatService](a)
 	if err != nil {
 		f.statService = debugstat.NewNoOp()
@@ -186,6 +189,7 @@ func (f *ObjectFactory) produceSmartblock(space smartblock.Space) (smartblock.Sm
 		f.indexer,
 		f.eventSender,
 		f.spaceIdResolver,
+		f.fileGC,
 	), store
 }
 

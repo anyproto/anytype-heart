@@ -65,13 +65,15 @@ type File interface {
 }
 
 type FileSource struct {
-	Path      string
-	Url       string // nolint:revive
-	Bytes     []byte
-	Name      string
-	GroupID   string
-	Origin    objectorigin.ObjectOrigin
-	ImageKind model.ImageKind
+	Path            string
+	Url             string // nolint:revive
+	Bytes           []byte
+	Name            string
+	GroupID         string
+	Origin          objectorigin.ObjectOrigin
+	ImageKind       model.ImageKind
+	CreatedInContext string
+	CreatedInBlockId string
 }
 
 type sfile struct {
@@ -165,9 +167,11 @@ func (sf *sfile) CreateAndUpload(ctx session.Context, req pb.RpcBlockFileCreateA
 		return
 	}
 	if err = sf.upload(s, newId, FileSource{
-		Path:      req.LocalPath,
-		Url:       req.Url,
-		ImageKind: req.ImageKind,
+		Path:             req.LocalPath,
+		Url:              req.Url,
+		ImageKind:        req.ImageKind,
+		CreatedInContext: req.ContextId,
+		CreatedInBlockId: newId,
 	}, false).Err; err != nil {
 		return
 	}
@@ -197,6 +201,14 @@ func (sf *sfile) upload(s *state.State, id string, source FileSource, isSync boo
 		upl.SetBytes(source.Bytes).
 			SetName(source.Name).
 			SetLastModifiedDate()
+	}
+
+	// Set creation context if provided
+	if source.CreatedInContext != "" {
+		upl.SetCreatedInContext(source.CreatedInContext)
+	}
+	if source.CreatedInBlockId != "" {
+		upl.SetCreatedInBlockId(source.CreatedInBlockId)
 	}
 
 	if isSync {
@@ -239,6 +251,7 @@ func (sf *sfile) DropFiles(req pb.RpcFileDropRequest) (err error) {
 		processService:      sf.processService,
 		picker:              sf.picker,
 		fileUploaderFactory: sf.fileUploaderFactory,
+		contextId:           req.ContextId,
 	}
 	if err = proc.Init(req.LocalFilePaths); err != nil {
 		return
@@ -372,6 +385,7 @@ type dropFilesProcess struct {
 	doneCh         chan struct{}
 	canceling      int32
 	groupId        string
+	contextId      string
 
 	fileUploaderFactory fileuploader.Service
 }
@@ -626,6 +640,8 @@ func (dp *dropFilesProcess) addFile(f *dropFileInfo) {
 	res := upl.
 		SetName(f.name).
 		SetFile(f.path).
+		SetCreatedInContext(dp.contextId).
+		SetCreatedInBlockId(f.blockId).
 		Upload(context.Background())
 
 	if res.Err != nil {

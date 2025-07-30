@@ -77,10 +77,12 @@ func (mw *Middleware) UnsplashDownload(cctx context.Context, req *pb.RpcUnsplash
 	err = mw.doBlockService(func(bs *block.Service) (err error) {
 		objectId, _, _, err = bs.UploadFile(cctx, req.SpaceId, block.FileUploadRequest{
 			RpcFileUploadRequest: pb.RpcFileUploadRequest{
-				LocalPath: imagePath,
-				Type:      model.BlockContentFile_Image,
-				Style:     model.BlockContentFile_Embed,
-				ImageKind: req.ImageKind,
+				LocalPath:        imagePath,
+				Type:             model.BlockContentFile_Image,
+				Style:            model.BlockContentFile_Embed,
+				ImageKind:        req.ImageKind,
+				CreatedInContext: req.CreatedInContext,
+				CreatedInBlockId: req.CreatedInBlockId,
 			},
 			ObjectOrigin: objectorigin.None(),
 		})

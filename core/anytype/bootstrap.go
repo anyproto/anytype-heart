@@ -64,6 +64,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/device"
 	"github.com/anyproto/anytype-heart/core/files"
 	"github.com/anyproto/anytype-heart/core/files/fileacl"
+	"github.com/anyproto/anytype-heart/core/files/filegc"
 	"github.com/anyproto/anytype-heart/core/files/fileobject"
 	"github.com/anyproto/anytype-heart/core/files/fileoffloader"
 	"github.com/anyproto/anytype-heart/core/files/filespaceusage"
@@ -277,6 +278,7 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(filesync.New()).
 		Register(reconciler.New()).
 		Register(fileobject.New(200*time.Millisecond, 2*time.Second)).
+		Register(filegc.New()).
 		Register(inviteservice.New()).
 		Register(publish.New()).
 		Register(publishclient.New()).

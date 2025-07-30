@@ -14,6 +14,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/basic"
 	"github.com/anyproto/anytype-heart/core/block/object/idresolver"
 	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/core/files/filegc"
 	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
@@ -59,6 +60,7 @@ type service struct {
 	resolver     idresolver.Resolver
 	spaceService space.Service
 	store        objectstore.ObjectStore
+	fileGC       filegc.FileGC
 }
 
 func (s *service) Init(a *app.App) error {
@@ -66,6 +68,7 @@ func (s *service) Init(a *app.App) error {
 	s.resolver = app.MustComponent[idresolver.Resolver](a)
 	s.spaceService = app.MustComponent[space.Service](a)
 	s.store = app.MustComponent[objectstore.ObjectStore](a)
+	s.fileGC = app.MustComponent[filegc.FileGC](a)
 	return nil
 }
 

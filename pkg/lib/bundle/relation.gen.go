@@ -9,7 +9,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-const RelationChecksum = "82683a0ef7e8215417c1c0163c2230cdd683ef24992356c2e9fed325b15500c5"
+const RelationChecksum = "e886a66af3ad75a7d4c6abd445ecd0bfb15867970807e14bc1212ce3b0f55fe9"
 const (
 	RelationKeyTag                                domain.RelationKey = "tag"
 	RelationKeyCamera                             domain.RelationKey = "camera"
@@ -141,6 +141,8 @@ const (
 	RelationKeyLastUsedDate                       domain.RelationKey = "lastUsedDate"
 	RelationKeyRevision                           domain.RelationKey = "revision"
 	RelationKeyImageKind                          domain.RelationKey = "imageKind"
+	RelationKeyCreatedInContext                   domain.RelationKey = "createdInContext"
+	RelationKeyCreatedInBlockId                   domain.RelationKey = "createdInBlockId"
 	RelationKeyImportType                         domain.RelationKey = "importType"
 	RelationKeyGlobalName                         domain.RelationKey = "globalName"
 	RelationKeySyncStatus                         domain.RelationKey = "syncStatus"
@@ -505,6 +507,34 @@ var (
 			ReadOnly:         true,
 			ReadOnlyRelation: true,
 			Revision:         1,
+			Scope:            model.Relation_type,
+		},
+		RelationKeyCreatedInBlockId: {
+
+			DataSource:       model.Relation_details,
+			Description:      "Block ID where the file was initially created",
+			Format:           model.RelationFormat_shorttext,
+			Hidden:           true,
+			Id:               "_brcreatedInBlockId",
+			Key:              "createdInBlockId",
+			MaxCount:         1,
+			Name:             "Created in block",
+			ReadOnly:         true,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
+		RelationKeyCreatedInContext: {
+
+			DataSource:       model.Relation_details,
+			Description:      "Object ID where the file was initially created",
+			Format:           model.RelationFormat_object,
+			Hidden:           true,
+			Id:               "_brcreatedInContext",
+			Key:              "createdInContext",
+			MaxCount:         1,
+			Name:             "Created in context",
+			ReadOnly:         true,
+			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
 		},
 		RelationKeyCreator: {

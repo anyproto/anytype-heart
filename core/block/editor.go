@@ -342,12 +342,14 @@ func (s *Service) UploadBlockFile(
 ) (fileObjectId string, err error) {
 	err = cache.Do(s, req.ContextId, func(b file.File) error {
 		fileObjectId, err = b.Upload(ctx, req.BlockId, file.FileSource{
-			Path:      req.FilePath,
-			Url:       req.Url,
-			Bytes:     req.Bytes,
-			GroupID:   groupID,
-			Origin:    req.ObjectOrigin,
-			ImageKind: req.ImageKind,
+			Path:             req.FilePath,
+			Url:              req.Url,
+			Bytes:            req.Bytes,
+			GroupID:          groupID,
+			Origin:           req.ObjectOrigin,
+			ImageKind:        req.ImageKind,
+			CreatedInContext: req.ContextId,
+			CreatedInBlockId: req.BlockId,
 		}, isSync)
 		return err
 	})
@@ -385,6 +387,12 @@ func (s *Service) UploadFile(ctx context.Context, spaceId string, req FileUpload
 	}
 	if req.ImageKind != model.ImageKind_Basic {
 		upl.SetImageKind(req.ImageKind)
+	}
+	if req.CreatedInContext != "" {
+		upl.SetCreatedInContext(req.CreatedInContext)
+	}
+	if req.CreatedInBlockId != "" {
+		upl.SetCreatedInBlockId(req.CreatedInBlockId)
 	}
 	res := upl.Upload(ctx)
 	if res.Err != nil {
