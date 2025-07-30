@@ -87,7 +87,7 @@ func GetTypeHandler(s *service.Service) gin.HandlerFunc {
 			return
 		}
 
-		c.JSON(http.StatusOK, apimodel.TypeResponse{Type: object})
+		c.JSON(http.StatusOK, apimodel.TypeResponse{Type: *object})
 	}
 }
 
@@ -133,7 +133,7 @@ func CreateTypeHandler(s *service.Service) gin.HandlerFunc {
 			return
 		}
 
-		c.JSON(http.StatusCreated, apimodel.TypeResponse{Type: object})
+		c.JSON(http.StatusCreated, apimodel.TypeResponse{Type: *object})
 	}
 }
 
@@ -185,7 +185,7 @@ func UpdateTypeHandler(s *service.Service) gin.HandlerFunc {
 			return
 		}
 
-		c.JSON(http.StatusOK, apimodel.TypeResponse{Type: object})
+		c.JSON(http.StatusOK, apimodel.TypeResponse{Type: *object})
 	}
 }
 
@@ -227,6 +227,6 @@ func DeleteTypeHandler(s *service.Service) gin.HandlerFunc {
 			return
 		}
 
-		c.JSON(http.StatusOK, apimodel.TypeResponse{Type: object})
+		c.JSON(http.StatusOK, apimodel.TypeResponse{Type: *object})
 	}
 }

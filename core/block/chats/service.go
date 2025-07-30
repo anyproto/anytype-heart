@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"sort"
-	"strings"
 	"sync"
 	"time"
 
@@ -420,7 +419,8 @@ func (s *service) sendPushNotification(ctx context.Context, spaceId, chatObjectI
 }
 
 func applyEmojiMarks(text string, marks []*model.BlockContentTextMark) string {
-	var res strings.Builder
+	utf16text := textUtil.StrToUTF16(text)
+	res := make([]uint16, 0, len(text))
 
 	toApply := lo.Filter(marks, func(mark *model.BlockContentTextMark, _ int) bool {
 		return mark.Type == model.BlockContentTextMark_Emoji
@@ -434,18 +434,18 @@ func applyEmojiMarks(text string, marks []*model.BlockContentTextMark) string {
 		if mark.Range.From >= mark.Range.To {
 			continue
 		}
-		if int(mark.Range.From) >= len(text) {
+		if int(mark.Range.From) >= len(utf16text) {
 			continue
 		}
-		res.WriteString(text[prev:mark.Range.From])
-		res.WriteString(mark.Param)
+		res = append(res, utf16text[prev:mark.Range.From]...)
+		res = append(res, textUtil.StrToUTF16(mark.Param)...)
 		prev = int(mark.Range.To)
 		lastTo = int(mark.Range.To)
 	}
 	if lastTo < len(text) {
-		res.WriteString(text[lastTo:])
+		res = append(res, utf16text[lastTo:]...)
 	}
-	return res.String()
+	return textUtil.UTF16ToStr(res)
 }
 
 func (s *service) EditMessage(ctx context.Context, chatObjectId string, messageId string, newMessage *chatmodel.Message) error {

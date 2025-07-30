@@ -275,7 +275,7 @@ func TestSpaceService_GetMember(t *testing.T) {
 
 		// then
 		require.ErrorIs(t, err, ErrMemberNotFound)
-		require.Equal(t, apimodel.Member{}, member)
+		require.Nil(t, member)
 	})
 	t.Run("failed get member", func(t *testing.T) {
 		// given
@@ -323,7 +323,7 @@ func TestSpaceService_GetMember(t *testing.T) {
 
 		// then
 		require.ErrorIs(t, err, ErrFailedGetMember)
-		require.Equal(t, apimodel.Member{}, member)
+		require.Nil(t, member)
 	})
 
 	t.Run("successful retrieval of member with participant id", func(t *testing.T) {

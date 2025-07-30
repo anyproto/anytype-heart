@@ -94,7 +94,7 @@ func (s *Service) ListObjects(ctx context.Context, spaceId string, additionalFil
 }
 
 // GetObject retrieves a single object by its ID in a specific space.
-func (s *Service) GetObject(ctx context.Context, spaceId string, objectId string) (apimodel.ObjectWithBody, error) {
+func (s *Service) GetObject(ctx context.Context, spaceId string, objectId string) (*apimodel.ObjectWithBody, error) {
 	resp := s.mw.ObjectShow(ctx, &pb.RpcObjectShowRequest{
 		SpaceId:  spaceId,
 		ObjectId: objectId,
@@ -102,53 +102,53 @@ func (s *Service) GetObject(ctx context.Context, spaceId string, objectId string
 
 	if resp.Error != nil {
 		if resp.Error.Code == pb.RpcObjectShowResponseError_NOT_FOUND {
-			return apimodel.ObjectWithBody{}, ErrObjectNotFound
+			return nil, ErrObjectNotFound
 		}
 
 		if resp.Error.Code == pb.RpcObjectShowResponseError_OBJECT_DELETED {
-			return apimodel.ObjectWithBody{}, ErrObjectDeleted
+			return nil, ErrObjectDeleted
 		}
 
 		if resp.Error != nil && resp.Error.Code != pb.RpcObjectShowResponseError_NULL {
-			return apimodel.ObjectWithBody{}, ErrFailedRetrieveObject
+			return nil, ErrFailedRetrieveObject
 		}
 	}
 
 	propertyMap, err := s.getPropertyMapFromStore(ctx, spaceId, true)
 	if err != nil {
-		return apimodel.ObjectWithBody{}, err
+		return nil, err
 	}
 	typeMap, err := s.getTypeMapFromStore(ctx, spaceId, propertyMap, false)
 	if err != nil {
-		return apimodel.ObjectWithBody{}, err
+		return nil, err
 	}
 	tagMap, err := s.getTagMapFromStore(ctx, spaceId)
 	if err != nil {
-		return apimodel.ObjectWithBody{}, err
+		return nil, err
 	}
 
 	markdown, err := s.getMarkdownExport(ctx, spaceId, objectId, model.ObjectTypeLayout(resp.ObjectView.Details[0].Details.Fields[bundle.RelationKeyResolvedLayout.String()].GetNumberValue()))
 	if err != nil {
-		return apimodel.ObjectWithBody{}, err
+		return nil, err
 	}
 
 	return s.getObjectWithBlocksFromStruct(resp.ObjectView.Details[0].Details, markdown, propertyMap, typeMap, tagMap), nil
 }
 
 // CreateObject creates a new object in a specific space.
-func (s *Service) CreateObject(ctx context.Context, spaceId string, request apimodel.CreateObjectRequest) (apimodel.ObjectWithBody, error) {
+func (s *Service) CreateObject(ctx context.Context, spaceId string, request apimodel.CreateObjectRequest) (*apimodel.ObjectWithBody, error) {
 	details, err := s.buildObjectDetails(ctx, spaceId, request)
 	if err != nil {
-		return apimodel.ObjectWithBody{}, err
+		return nil, err
 	}
 
 	propertyMap, err := s.getPropertyMapFromStore(ctx, spaceId, true)
 	if err != nil {
-		return apimodel.ObjectWithBody{}, err
+		return nil, err
 	}
 	typeMap, err := s.getTypeMapFromStore(ctx, spaceId, propertyMap, true)
 	if err != nil {
-		return apimodel.ObjectWithBody{}, err
+		return nil, err
 	}
 	typeUk := s.ResolveTypeApiKey(typeMap, request.TypeKey)
 
@@ -161,7 +161,7 @@ func (s *Service) CreateObject(ctx context.Context, spaceId string, request apim
 		})
 
 		if resp.Error != nil && resp.Error.Code != pb.RpcObjectCreateBookmarkResponseError_NULL {
-			return apimodel.ObjectWithBody{}, ErrFailedCreateBookmark
+			return nil, ErrFailedCreateBookmark
 		}
 		objectId = resp.ObjectId
 	} else {
@@ -173,7 +173,7 @@ func (s *Service) CreateObject(ctx context.Context, spaceId string, request apim
 		})
 
 		if resp.Error != nil && resp.Error.Code != pb.RpcObjectCreateResponseError_NULL {
-			return apimodel.ObjectWithBody{}, ErrFailedCreateObject
+			return nil, ErrFailedCreateObject
 		}
 		objectId = resp.ObjectId
 	}
@@ -236,19 +236,19 @@ func (s *Service) CreateObject(ctx context.Context, spaceId string, request apim
 }
 
 // UpdateObject updates an existing object in a specific space.
-func (s *Service) UpdateObject(ctx context.Context, spaceId string, objectId string, request apimodel.UpdateObjectRequest) (apimodel.ObjectWithBody, error) {
+func (s *Service) UpdateObject(ctx context.Context, spaceId string, objectId string, request apimodel.UpdateObjectRequest) (*apimodel.ObjectWithBody, error) {
 	_, err := s.GetObject(ctx, spaceId, objectId)
 	if err != nil {
-		return apimodel.ObjectWithBody{}, err
+		return nil, err
 	}
 
 	propertyMap, err := s.getPropertyMapFromStore(ctx, spaceId, true)
 	if err != nil {
-		return apimodel.ObjectWithBody{}, err
+		return nil, err
 	}
 	typeMap, err := s.getTypeMapFromStore(ctx, spaceId, propertyMap, true)
 	if err != nil {
-		return apimodel.ObjectWithBody{}, err
+		return nil, err
 	}
 
 	if request.TypeKey != nil {
@@ -258,13 +258,13 @@ func (s *Service) UpdateObject(ctx context.Context, spaceId string, objectId str
 			ObjectTypeUniqueKey: typeUk,
 		})
 		if typeResp.Error != nil && typeResp.Error.Code != pb.RpcObjectSetObjectTypeResponseError_NULL {
-			return apimodel.ObjectWithBody{}, util.ErrBadInput(fmt.Sprintf("failed to update object, invalid type key: %q", *request.TypeKey))
+			return nil, util.ErrBadInput(fmt.Sprintf("failed to update object, invalid type key: %q", *request.TypeKey))
 		}
 	}
 
 	details, err := s.buildUpdatedObjectDetails(ctx, spaceId, request)
 	if err != nil {
-		return apimodel.ObjectWithBody{}, err
+		return nil, err
 	}
 
 	resp := s.mw.ObjectSetDetails(ctx, &pb.RpcObjectSetDetailsRequest{
@@ -273,17 +273,17 @@ func (s *Service) UpdateObject(ctx context.Context, spaceId string, objectId str
 	})
 
 	if resp.Error != nil && resp.Error.Code != pb.RpcObjectSetDetailsResponseError_NULL {
-		return apimodel.ObjectWithBody{}, ErrFailedUpdateObject
+		return nil, ErrFailedUpdateObject
 	}
 
 	return s.GetObject(ctx, spaceId, objectId)
 }
 
 // DeleteObject deletes an existing object in a specific space.
-func (s *Service) DeleteObject(ctx context.Context, spaceId string, objectId string) (apimodel.ObjectWithBody, error) {
+func (s *Service) DeleteObject(ctx context.Context, spaceId string, objectId string) (*apimodel.ObjectWithBody, error) {
 	object, err := s.GetObject(ctx, spaceId, objectId)
 	if err != nil {
-		return apimodel.ObjectWithBody{}, err
+		return nil, err
 	}
 
 	resp := s.mw.ObjectSetIsArchived(ctx, &pb.RpcObjectSetIsArchivedRequest{
@@ -292,7 +292,7 @@ func (s *Service) DeleteObject(ctx context.Context, spaceId string, objectId str
 	})
 
 	if resp.Error != nil && resp.Error.Code != pb.RpcObjectSetIsArchivedResponseError_NULL {
-		return apimodel.ObjectWithBody{}, ErrFailedDeleteObject
+		return nil, ErrFailedDeleteObject
 	}
 
 	return object, nil
@@ -439,7 +439,7 @@ func (s *Service) processIconFields(spaceId string, icon apimodel.Icon, isType b
 // }
 
 // getObjectFromStruct creates an Object without blocks from the details.
-func (s *Service) getObjectFromStruct(details *types.Struct, propertyMap map[string]*apimodel.Property, typeMap map[string]*apimodel.Type, tagMap map[string]apimodel.Tag) apimodel.Object {
+func (s *Service) getObjectFromStruct(details *types.Struct, propertyMap map[string]*apimodel.Property, typeMap map[string]*apimodel.Type, tagMap map[string]*apimodel.Tag) apimodel.Object {
 	return apimodel.Object{
 		Object:     "object",
 		Id:         details.Fields[bundle.RelationKeyId.String()].GetStringValue(),
@@ -455,8 +455,8 @@ func (s *Service) getObjectFromStruct(details *types.Struct, propertyMap map[str
 }
 
 // getObjectWithBlocksFromStruct creates an ObjectWithBody from the details.
-func (s *Service) getObjectWithBlocksFromStruct(details *types.Struct, markdown string, propertyMap map[string]*apimodel.Property, typeMap map[string]*apimodel.Type, tagMap map[string]apimodel.Tag) apimodel.ObjectWithBody {
-	return apimodel.ObjectWithBody{
+func (s *Service) getObjectWithBlocksFromStruct(details *types.Struct, markdown string, propertyMap map[string]*apimodel.Property, typeMap map[string]*apimodel.Type, tagMap map[string]*apimodel.Tag) *apimodel.ObjectWithBody {
+	return &apimodel.ObjectWithBody{
 		Object:     "object",
 		Id:         details.Fields[bundle.RelationKeyId.String()].GetStringValue(),
 		Name:       details.Fields[bundle.RelationKeyName.String()].GetStringValue(),

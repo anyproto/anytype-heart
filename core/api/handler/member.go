@@ -85,7 +85,7 @@ func GetMemberHandler(s *service.Service) gin.HandlerFunc {
 			return
 		}
 
-		c.JSON(http.StatusOK, apimodel.MemberResponse{Member: member})
+		c.JSON(http.StatusOK, apimodel.MemberResponse{Member: *member})
 	}
 }
 

@@ -264,6 +264,10 @@ func (s *storeObject) GetMessages(ctx context.Context, req chatrepository.GetMes
 }
 
 func (s *storeObject) AddMessage(ctx context.Context, sessionCtx session.Context, message *chatmodel.Message) (string, error) {
+	err := message.Validate()
+	if err != nil {
+		return "", fmt.Errorf("validate: %w", err)
+	}
 	arena := s.arenaPool.Get()
 	defer func() {
 		arena.Reset()
@@ -281,7 +285,7 @@ func (s *storeObject) AddMessage(ctx context.Context, sessionCtx session.Context
 	obj.Del(chatmodel.SyncedKey)
 
 	builder := storestate.Builder{}
-	err := builder.Create(CollectionName, storestate.IdFromChange, obj)
+	err = builder.Create(CollectionName, storestate.IdFromChange, obj)
 	if err != nil {
 		return "", fmt.Errorf("create chat: %w", err)
 	}
@@ -330,6 +334,11 @@ func (s *storeObject) DeleteMessage(ctx context.Context, messageId string) error
 }
 
 func (s *storeObject) EditMessage(ctx context.Context, messageId string, newMessage *chatmodel.Message) error {
+	err := newMessage.Validate()
+	if err != nil {
+		return fmt.Errorf("validate: %w", err)
+	}
+
 	arena := s.arenaPool.Get()
 	defer func() {
 		arena.Reset()
@@ -340,7 +349,7 @@ func (s *storeObject) EditMessage(ctx context.Context, messageId string, newMess
 	newMessage.MarshalAnyenc(obj, arena)
 
 	builder := storestate.Builder{}
-	err := builder.Modify(CollectionName, messageId, []string{chatmodel.ContentKey}, pb.ModifyOp_Set, obj.Get(chatmodel.ContentKey))
+	err = builder.Modify(CollectionName, messageId, []string{chatmodel.ContentKey}, pb.ModifyOp_Set, obj.Get(chatmodel.ContentKey))
 	if err != nil {
 		return fmt.Errorf("modify content: %w", err)
 	}

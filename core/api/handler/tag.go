@@ -78,7 +78,7 @@ func GetTagHandler(s *service.Service) gin.HandlerFunc {
 		propertyId := c.Param("property_id")
 		tagId := c.Param("tag_id")
 
-		option, err := s.GetTag(c.Request.Context(), spaceId, propertyId, tagId)
+		tag, err := s.GetTag(c.Request.Context(), spaceId, propertyId, tagId)
 		code := util.MapErrorCode(err,
 			util.ErrToCode(service.ErrTagNotFound, http.StatusNotFound),
 			util.ErrToCode(service.ErrTagDeleted, http.StatusGone),
@@ -91,7 +91,7 @@ func GetTagHandler(s *service.Service) gin.HandlerFunc {
 			return
 		}
 
-		c.JSON(http.StatusOK, apimodel.TagResponse{Tag: option})
+		c.JSON(http.StatusOK, apimodel.TagResponse{Tag: *tag})
 	}
 }
 
@@ -126,7 +126,7 @@ func CreateTagHandler(s *service.Service) gin.HandlerFunc {
 			return
 		}
 
-		option, err := s.CreateTag(c.Request.Context(), spaceId, propertyId, request)
+		tag, err := s.CreateTag(c.Request.Context(), spaceId, propertyId, request)
 		code := util.MapErrorCode(err,
 			util.ErrToCode(util.ErrBad, http.StatusBadRequest),
 			util.ErrToCode(service.ErrFailedCreateTag, http.StatusInternalServerError),
@@ -139,7 +139,7 @@ func CreateTagHandler(s *service.Service) gin.HandlerFunc {
 			return
 		}
 
-		c.JSON(http.StatusCreated, apimodel.TagResponse{Tag: option})
+		c.JSON(http.StatusCreated, apimodel.TagResponse{Tag: *tag})
 	}
 }
 
@@ -179,7 +179,7 @@ func UpdateTagHandler(s *service.Service) gin.HandlerFunc {
 			return
 		}
 
-		option, err := s.UpdateTag(c.Request.Context(), spaceId, propertyId, tagId, request)
+		tag, err := s.UpdateTag(c.Request.Context(), spaceId, propertyId, tagId, request)
 		code := util.MapErrorCode(err,
 			util.ErrToCode(util.ErrBad, http.StatusBadRequest),
 			util.ErrToCode(service.ErrTagNotFound, http.StatusNotFound),
@@ -194,7 +194,7 @@ func UpdateTagHandler(s *service.Service) gin.HandlerFunc {
 			return
 		}
 
-		c.JSON(http.StatusOK, apimodel.TagResponse{Tag: option})
+		c.JSON(http.StatusOK, apimodel.TagResponse{Tag: *tag})
 	}
 }
 
@@ -224,7 +224,7 @@ func DeleteTagHandler(s *service.Service) gin.HandlerFunc {
 		propertyId := c.Param("property_id")
 		tagId := c.Param("tag_id")
 
-		option, err := s.DeleteTag(c.Request.Context(), spaceId, propertyId, tagId)
+		tag, err := s.DeleteTag(c.Request.Context(), spaceId, propertyId, tagId)
 		code := util.MapErrorCode(err,
 			util.ErrToCode(service.ErrTagNotFound, http.StatusNotFound),
 			util.ErrToCode(service.ErrTagDeleted, http.StatusGone),
@@ -238,6 +238,6 @@ func DeleteTagHandler(s *service.Service) gin.HandlerFunc {
 			return
 		}
 
-		c.JSON(http.StatusOK, apimodel.TagResponse{Tag: option})
+		c.JSON(http.StatusOK, apimodel.TagResponse{Tag: *tag})
 	}
 }

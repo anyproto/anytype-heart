@@ -103,7 +103,7 @@ func (s *Service) ListMembers(ctx context.Context, spaceId string, additionalFil
 }
 
 // GetMember returns the member with the given ID in the space with the given ID.
-func (s *Service) GetMember(ctx context.Context, spaceId string, memberId string) (apimodel.Member, error) {
+func (s *Service) GetMember(ctx context.Context, spaceId string, memberId string) (*apimodel.Member, error) {
 	// Member ID can be either a participant ID or an identity.
 	relationKey := bundle.RelationKeyId
 	if !strings.HasPrefix(memberId, "_participant") {
@@ -123,14 +123,14 @@ func (s *Service) GetMember(ctx context.Context, spaceId string, memberId string
 	})
 
 	if resp.Error != nil && resp.Error.Code != pb.RpcObjectSearchResponseError_NULL {
-		return apimodel.Member{}, ErrFailedGetMember
+		return nil, ErrFailedGetMember
 	}
 
 	if len(resp.Records) == 0 {
-		return apimodel.Member{}, ErrMemberNotFound
+		return nil, ErrMemberNotFound
 	}
 
-	return apimodel.Member{
+	return &apimodel.Member{
 		Object:     "member",
 		Id:         resp.Records[0].Fields[bundle.RelationKeyId.String()].GetStringValue(),
 		Name:       resp.Records[0].Fields[bundle.RelationKeyName.String()].GetStringValue(),
@@ -143,10 +143,10 @@ func (s *Service) GetMember(ctx context.Context, spaceId string, memberId string
 }
 
 // UpdateMember approves member with a defined role or removes them
-func (s *Service) UpdateMember(ctx context.Context, spaceId string, memberId string, request apimodel.UpdateMemberRequest) (apimodel.Member, error) {
+func (s *Service) UpdateMember(ctx context.Context, spaceId string, memberId string, request apimodel.UpdateMemberRequest) (*apimodel.Member, error) {
 	member, err := s.GetMember(ctx, spaceId, memberId)
 	if err != nil {
-		return apimodel.Member{}, err
+		return nil, err
 	}
 
 	status := *request.Status
@@ -154,7 +154,7 @@ func (s *Service) UpdateMember(ctx context.Context, spaceId string, memberId str
 	switch status {
 	case apimodel.MemberStatusActive:
 		if request.Role == nil {
-			return apimodel.Member{}, ErrInvalidApproveMemberRole
+			return nil, ErrInvalidApproveMemberRole
 		}
 
 		role := *request.Role
@@ -167,7 +167,7 @@ func (s *Service) UpdateMember(ctx context.Context, spaceId string, memberId str
 				Permissions: s.mapMemberRole(string(role)),
 			})
 			if approveResp.Error.Code != pb.RpcSpaceRequestApproveResponseError_NULL {
-				return apimodel.Member{}, ErrFailedUpdateMember
+				return nil, ErrFailedUpdateMember
 			}
 		} else {
 			// Update the member's role.
@@ -176,7 +176,7 @@ func (s *Service) UpdateMember(ctx context.Context, spaceId string, memberId str
 				Changes: []*model.ParticipantPermissionChange{{Identity: memberId, Perms: s.mapMemberRole(string(role))}},
 			})
 			if resp.Error != nil && resp.Error.Code != pb.RpcSpaceParticipantPermissionsChangeResponseError_NULL {
-				return apimodel.Member{}, ErrFailedUpdateMember
+				return nil, ErrFailedUpdateMember
 			}
 		}
 	case apimodel.MemberStatusDeclined:
@@ -186,7 +186,7 @@ func (s *Service) UpdateMember(ctx context.Context, spaceId string, memberId str
 			Identity: memberId,
 		})
 		if rejectResp.Error.Code != pb.RpcSpaceRequestDeclineResponseError_NULL {
-			return apimodel.Member{}, ErrFailedUpdateMember
+			return nil, ErrFailedUpdateMember
 		}
 	case apimodel.MemberStatusRemoved:
 		// Remove the member from the space.
@@ -195,13 +195,13 @@ func (s *Service) UpdateMember(ctx context.Context, spaceId string, memberId str
 			Identities: []string{memberId},
 		})
 		if removeResp.Error.Code != pb.RpcSpaceParticipantRemoveResponseError_NULL {
-			return apimodel.Member{}, ErrFailedUpdateMember
+			return nil, ErrFailedUpdateMember
 		}
 	}
 
 	member, err = s.GetMember(ctx, spaceId, memberId)
 	if err != nil {
-		return apimodel.Member{}, err
+		return nil, err
 	}
 
 	return member, nil

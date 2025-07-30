@@ -91,7 +91,7 @@ func (s *Service) ListTemplates(ctx context.Context, spaceId string, typeId stri
 }
 
 // GetTemplate returns a single template by its ID in a specific space.
-func (s *Service) GetTemplate(ctx context.Context, spaceId string, _ string, templateId string) (apimodel.ObjectWithBody, error) {
+func (s *Service) GetTemplate(ctx context.Context, spaceId string, _ string, templateId string) (*apimodel.ObjectWithBody, error) {
 	resp := s.mw.ObjectShow(ctx, &pb.RpcObjectShowRequest{
 		SpaceId:  spaceId,
 		ObjectId: templateId,
@@ -99,34 +99,34 @@ func (s *Service) GetTemplate(ctx context.Context, spaceId string, _ string, tem
 
 	if resp.Error != nil {
 		if resp.Error.Code == pb.RpcObjectShowResponseError_NOT_FOUND {
-			return apimodel.ObjectWithBody{}, ErrTemplateNotFound
+			return nil, ErrTemplateNotFound
 		}
 
 		if resp.Error.Code == pb.RpcObjectShowResponseError_OBJECT_DELETED {
-			return apimodel.ObjectWithBody{}, ErrTemplateDeleted
+			return nil, ErrTemplateDeleted
 		}
 
 		if resp.Error != nil && resp.Error.Code != pb.RpcObjectShowResponseError_NULL {
-			return apimodel.ObjectWithBody{}, ErrFailedRetrieveTemplate
+			return nil, ErrFailedRetrieveTemplate
 		}
 	}
 
 	propertyMap, err := s.getPropertyMapFromStore(ctx, spaceId, true)
 	if err != nil {
-		return apimodel.ObjectWithBody{}, err
+		return nil, err
 	}
 	typeMap, err := s.getTypeMapFromStore(ctx, spaceId, propertyMap, false)
 	if err != nil {
-		return apimodel.ObjectWithBody{}, err
+		return nil, err
 	}
 	tagMap, err := s.getTagMapFromStore(ctx, spaceId)
 	if err != nil {
-		return apimodel.ObjectWithBody{}, err
+		return nil, err
 	}
 
 	markdown, err := s.getMarkdownExport(ctx, spaceId, templateId, model.ObjectTypeLayout(resp.ObjectView.Details[0].Details.Fields[bundle.RelationKeyResolvedLayout.String()].GetNumberValue()))
 	if err != nil {
-		return apimodel.ObjectWithBody{}, err
+		return nil, err
 	}
 
 	return s.getObjectWithBlocksFromStruct(resp.ObjectView.Details[0].Details, markdown, propertyMap, typeMap, tagMap), nil

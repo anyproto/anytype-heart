@@ -193,7 +193,7 @@ func (s *spaceStatusStub) SetAccessType(status spaceinfo.AccessType) (err error)
 	return
 }
 
-func (s *spaceStatusStub) SetAclInfo(isAclEmpty bool, pushKey crypto.PrivKey, pushEncryptionKey crypto.SymKey) (err error) {
+func (s *spaceStatusStub) SetAclInfo(isAclEmpty bool, pushKey crypto.PrivKey, pushEncryptionKey crypto.SymKey, spaceJoinedDate int64) (err error) {
 	return
 }
 

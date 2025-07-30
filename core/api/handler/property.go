@@ -87,7 +87,7 @@ func GetPropertyHandler(s *service.Service) gin.HandlerFunc {
 			return
 		}
 
-		c.JSON(http.StatusOK, apimodel.PropertyResponse{Property: property})
+		c.JSON(http.StatusOK, apimodel.PropertyResponse{Property: *property})
 	}
 }
 
@@ -133,7 +133,7 @@ func CreatePropertyHandler(s *service.Service) gin.HandlerFunc {
 			return
 		}
 
-		c.JSON(http.StatusCreated, apimodel.PropertyResponse{Property: property})
+		c.JSON(http.StatusCreated, apimodel.PropertyResponse{Property: *property})
 	}
 }
 
@@ -187,7 +187,7 @@ func UpdatePropertyHandler(s *service.Service) gin.HandlerFunc {
 			return
 		}
 
-		c.JSON(http.StatusOK, apimodel.PropertyResponse{Property: property})
+		c.JSON(http.StatusOK, apimodel.PropertyResponse{Property: *property})
 	}
 }
 
@@ -229,6 +229,6 @@ func DeletePropertyHandler(s *service.Service) gin.HandlerFunc {
 			return
 		}
 
-		c.JSON(http.StatusOK, apimodel.PropertyResponse{Property: property})
+		c.JSON(http.StatusOK, apimodel.PropertyResponse{Property: *property})
 	}
 }

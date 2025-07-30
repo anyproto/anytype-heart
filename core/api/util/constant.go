@@ -1,6 +1,9 @@
 package util
 
-import "github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+import (
+	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+)
 
 var ObjectLayouts = []model.ObjectTypeLayout{
 	model.ObjectType_basic,
@@ -10,15 +13,10 @@ var ObjectLayouts = []model.ObjectTypeLayout{
 	model.ObjectType_bookmark,
 	model.ObjectType_set,
 	model.ObjectType_collection,
-	model.ObjectType_participant,
 }
 
-var FileLayouts = []model.ObjectTypeLayout{
-	model.ObjectType_file,
-	model.ObjectType_image,
-	model.ObjectType_video,
-	model.ObjectType_audio,
-	model.ObjectType_pdf,
+var MemberLayouts = []model.ObjectTypeLayout{
+	model.ObjectType_participant,
 }
 
 var TagLayouts = []model.ObjectTypeLayout{
@@ -34,9 +32,17 @@ var objectLayoutSet = func() map[model.ObjectTypeLayout]struct{} {
 	return m
 }()
 
+var memberLayoutSet = func() map[model.ObjectTypeLayout]struct{} {
+	m := make(map[model.ObjectTypeLayout]struct{}, len(MemberLayouts))
+	for _, l := range MemberLayouts {
+		m[l] = struct{}{}
+	}
+	return m
+}()
+
 var fileLayoutSet = func() map[model.ObjectTypeLayout]struct{} {
-	m := make(map[model.ObjectTypeLayout]struct{}, len(FileLayouts))
-	for _, l := range FileLayouts {
+	m := make(map[model.ObjectTypeLayout]struct{}, len(domain.FileLayouts))
+	for _, l := range domain.FileLayouts {
 		m[l] = struct{}{}
 	}
 	return m
@@ -53,6 +59,15 @@ var tagLayoutSet = func() map[model.ObjectTypeLayout]struct{} {
 func IsObjectLayout(layout model.ObjectTypeLayout) bool {
 	_, ok := objectLayoutSet[layout]
 	return ok
+}
+
+func IsMemberLayout(layout model.ObjectTypeLayout) bool {
+	_, ok := memberLayoutSet[layout]
+	return ok
+}
+
+func IsObjectOrMemberLayout(layout model.ObjectTypeLayout) bool {
+	return IsObjectLayout(layout) || IsMemberLayout(layout)
 }
 
 func IsFileLayout(layout model.ObjectTypeLayout) bool {
