@@ -1,6 +1,9 @@
 package util
 
-import "github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+import (
+	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+)
 
 var ObjectLayouts = []model.ObjectTypeLayout{
 	model.ObjectType_basic,
@@ -14,14 +17,6 @@ var ObjectLayouts = []model.ObjectTypeLayout{
 
 var MemberLayouts = []model.ObjectTypeLayout{
 	model.ObjectType_participant,
-}
-
-var FileLayouts = []model.ObjectTypeLayout{
-	model.ObjectType_file,
-	model.ObjectType_image,
-	model.ObjectType_video,
-	model.ObjectType_audio,
-	model.ObjectType_pdf,
 }
 
 var TagLayouts = []model.ObjectTypeLayout{
@@ -46,8 +41,8 @@ var memberLayoutSet = func() map[model.ObjectTypeLayout]struct{} {
 }()
 
 var fileLayoutSet = func() map[model.ObjectTypeLayout]struct{} {
-	m := make(map[model.ObjectTypeLayout]struct{}, len(FileLayouts))
-	for _, l := range FileLayouts {
+	m := make(map[model.ObjectTypeLayout]struct{}, len(domain.FileLayouts))
+	for _, l := range domain.FileLayouts {
 		m[l] = struct{}{}
 	}
 	return m
