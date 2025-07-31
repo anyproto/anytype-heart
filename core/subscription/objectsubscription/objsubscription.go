@@ -28,18 +28,18 @@ func newEntry[T any](data T) *entry[T] {
 type SubscriptionParams[T any] struct {
 	// OnDetails called when details appears in subscription for the first time
 	// It's mandatory
-	OnDetailsSet func(*domain.Details) (string, T)
+	OnDetailsSet func(details *domain.Details) (id string, entry T)
 	// OnKeyUpdate called when value for given key is updated
 	// It's mandatory
-	OnKeyUpdated func(string, domain.Value, T) T
+	OnKeyUpdated func(relationKey string, relationValue domain.Value, curEntry T) (updatedEntry T)
 	// OnKeysRemoved called when specified keys are removed from the details
 	// It's mandatory
-	OnKeysRemoved func([]string, T) T
+	OnKeysRemoved func(keys []string, curEntry T) (updatedEntry T)
 
 	// OnAdded called when object appears in subscription
-	OnAdded func(string)
+	OnAdded func(id string)
 	// OnRemove called when object is removed from subscription
-	OnRemoved func(string)
+	OnRemoved func(id string)
 }
 
 type ObjectSubscription[T any] struct {
