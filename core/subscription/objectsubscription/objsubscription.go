@@ -13,12 +13,6 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 )
 
-type (
-	extract[T any] func(*domain.Details) (string, T)
-	update[T any]  func(string, domain.Value, T) T
-	unset[T any]   func([]string, T) T
-)
-
 type entry[T any] struct {
 	data T
 }
@@ -32,9 +26,20 @@ func newEntry[T any](data T) *entry[T] {
 }
 
 type SubscriptionParams[T any] struct {
-	Extract extract[T]
-	Update  update[T]
-	Unset   unset[T]
+	// OnDetails called when details appears in subscription for the first time
+	// It's mandatory
+	OnDetailsSet func(*domain.Details) (string, T)
+	// OnKeyUpdate called when value for given key is updated
+	// It's mandatory
+	OnKeyUpdated func(string, domain.Value, T) T
+	// OnKeysRemoved called when specified keys are removed from the details
+	// It's mandatory
+	OnKeysRemoved func([]string, T) T
+
+	// OnAdded called when object appears in subscription
+	OnAdded func(string)
+	// OnRemove called when object is removed from subscription
+	OnRemoved func(string)
 }
 
 type ObjectSubscription[T any] struct {
@@ -44,21 +49,21 @@ type ObjectSubscription[T any] struct {
 	events  *mb.MB[*pb.EventMessage]
 	ctx     context.Context
 	cancel  context.CancelFunc
-	sub     map[string]*entry[T]
-	extract extract[T]
-	update  update[T]
-	unset   unset[T]
-	mx      sync.Mutex
+
+	params SubscriptionParams[T]
+
+	mx  sync.Mutex
+	sub map[string]*entry[T]
 }
 
 var IdSubscriptionParams = SubscriptionParams[struct{}]{
-	Extract: func(t *domain.Details) (string, struct{}) {
+	OnDetailsSet: func(t *domain.Details) (string, struct{}) {
 		return t.GetString(bundle.RelationKeyId), struct{}{}
 	},
-	Update: func(s string, value domain.Value, s2 struct{}) struct{} {
+	OnKeyUpdated: func(s string, value domain.Value, s2 struct{}) struct{} {
 		return struct{}{}
 	},
-	Unset: func(strings []string, s struct{}) struct{} {
+	OnKeysRemoved: func(strings []string, s struct{}) struct{} {
 		return struct{}{}
 	},
 }
@@ -76,19 +81,15 @@ func New[T any](subService subscription.Service, req subscription.SubscribeReque
 		request: req,
 		service: subService,
 		ch:      make(chan struct{}),
-		extract: params.Extract,
-		update:  params.Update,
-		unset:   params.Unset,
+		params:  params,
 	}
 }
 
 func NewFromQueue[T any](queue *mb.MB[*pb.EventMessage], params SubscriptionParams[T]) *ObjectSubscription[T] {
 	return &ObjectSubscription[T]{
-		events:  queue,
-		ch:      make(chan struct{}),
-		extract: params.Extract,
-		update:  params.Update,
-		unset:   params.Unset,
+		events: queue,
+		ch:     make(chan struct{}),
+		params: params,
 	}
 }
 
@@ -96,6 +97,16 @@ func (o *ObjectSubscription[T]) Run() error {
 	if o.service == nil && o.events == nil {
 		return fmt.Errorf("subscription created with nil event queue")
 	}
+	if o.params.OnDetailsSet == nil {
+		return fmt.Errorf("OnDetailsSet function not set")
+	}
+	if o.params.OnKeyUpdated == nil {
+		return fmt.Errorf("OnKeyUpdated function not set")
+	}
+	if o.params.OnKeysRemoved == nil {
+		return fmt.Errorf("OnKeysRemoved function not set")
+	}
+
 	o.request.Internal = true
 	o.sub = map[string]*entry[T]{}
 	if o.service != nil {
@@ -104,7 +115,7 @@ func (o *ObjectSubscription[T]) Run() error {
 			return err
 		}
 		for _, rec := range resp.Records {
-			id, data := o.extract(rec)
+			id, data := o.params.OnDetailsSet(rec)
 			o.sub[id] = newEntry(data)
 		}
 		o.events = resp.Output
@@ -160,30 +171,36 @@ func (o *ObjectSubscription[T]) read() {
 		defer o.mx.Unlock()
 		switch v := event.Value.(type) {
 		case *pb.EventMessageValueOfSubscriptionAdd:
+			if o.params.OnAdded != nil {
+				o.params.OnAdded(v.SubscriptionAdd.Id)
+			}
 			o.sub[v.SubscriptionAdd.Id] = newEmptyEntry[T]()
 		case *pb.EventMessageValueOfSubscriptionRemove:
 			delete(o.sub, v.SubscriptionRemove.Id)
+			if o.params.OnRemoved != nil {
+				o.params.OnRemoved(v.SubscriptionRemove.Id)
+			}
 		case *pb.EventMessageValueOfObjectDetailsAmend:
 			curEntry := o.sub[v.ObjectDetailsAmend.Id]
 			if curEntry == nil {
 				return
 			}
 			for _, value := range v.ObjectDetailsAmend.Details {
-				curEntry.data = o.update(value.Key, domain.ValueFromProto(value.Value), curEntry.data)
+				curEntry.data = o.params.OnKeyUpdated(value.Key, domain.ValueFromProto(value.Value), curEntry.data)
 			}
 		case *pb.EventMessageValueOfObjectDetailsUnset:
 			curEntry := o.sub[v.ObjectDetailsUnset.Id]
 			if curEntry == nil {
 				return
 			}
-			curEntry.data = o.unset(v.ObjectDetailsUnset.Keys, curEntry.data)
+			curEntry.data = o.params.OnKeysRemoved(v.ObjectDetailsUnset.Keys, curEntry.data)
 		case *pb.EventMessageValueOfObjectDetailsSet:
 			curEntry := o.sub[v.ObjectDetailsSet.Id]
 			if curEntry == nil {
 				return
 			}
 			// TODO Think about using domain layer structs for events with domain.Details inside
-			_, curEntry.data = o.extract(domain.NewDetailsFromProto(v.ObjectDetailsSet.Details))
+			_, curEntry.data = o.params.OnDetailsSet(domain.NewDetailsFromProto(v.ObjectDetailsSet.Details))
 		}
 	}
 	for {
