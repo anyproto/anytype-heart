@@ -232,7 +232,7 @@ func (s *service) SubscribeLastMessages(ctx context.Context, req SubscribeLastMe
 
 	// Warm up cache
 	go func() {
-		_, err = s.objectGetter.WaitAndGetObject(ctx, req.ChatObjectId)
+		_, err = s.objectGetter.WaitAndGetObject(s.componentCtx, req.ChatObjectId)
 		if err != nil {
 			log.Error("load chat to cache", zap.String("chatObjectId", req.ChatObjectId), zap.Error(err))
 		}
