@@ -2,6 +2,7 @@ package objectsubscription
 
 import (
 	"context"
+	"fmt"
 	"sync"
 
 	"github.com/cheggaaa/mb/v3"
@@ -31,7 +32,6 @@ func newEntry[T any](data T) *entry[T] {
 }
 
 type SubscriptionParams[T any] struct {
-	Request subscription.SubscribeRequest
 	Extract extract[T]
 	Update  update[T]
 	Unset   unset[T]
@@ -51,25 +51,40 @@ type ObjectSubscription[T any] struct {
 	mx      sync.Mutex
 }
 
-func NewIdSubscription(service subscription.Service, request subscription.SubscribeRequest) *ObjectSubscription[struct{}] {
-	return New(service, SubscriptionParams[struct{}]{
-		Request: request,
-		Extract: func(t *domain.Details) (string, struct{}) {
-			return t.GetString(bundle.RelationKeyId), struct{}{}
-		},
-		Update: func(s string, value domain.Value, s2 struct{}) struct{} {
-			return struct{}{}
-		},
-		Unset: func(strings []string, s struct{}) struct{} {
-			return struct{}{}
-		},
-	})
+var IdSubscriptionParams = SubscriptionParams[struct{}]{
+	Extract: func(t *domain.Details) (string, struct{}) {
+		return t.GetString(bundle.RelationKeyId), struct{}{}
+	},
+	Update: func(s string, value domain.Value, s2 struct{}) struct{} {
+		return struct{}{}
+	},
+	Unset: func(strings []string, s struct{}) struct{} {
+		return struct{}{}
+	},
 }
 
-func New[T any](service subscription.Service, params SubscriptionParams[T]) *ObjectSubscription[T] {
+func NewIdSubscription(subService subscription.Service, req subscription.SubscribeRequest) *ObjectSubscription[struct{}] {
+	return New(subService, req, IdSubscriptionParams)
+}
+
+func NewIdSubscriptionFromQueue(queue *mb.MB[*pb.EventMessage]) *ObjectSubscription[struct{}] {
+	return NewFromQueue(queue, IdSubscriptionParams)
+}
+
+func New[T any](subService subscription.Service, req subscription.SubscribeRequest, params SubscriptionParams[T]) *ObjectSubscription[T] {
 	return &ObjectSubscription[T]{
-		request: params.Request,
-		service: service,
+		request: req,
+		service: subService,
+		ch:      make(chan struct{}),
+		extract: params.Extract,
+		update:  params.Update,
+		unset:   params.Unset,
+	}
+}
+
+func NewFromQueue[T any](queue *mb.MB[*pb.EventMessage], params SubscriptionParams[T]) *ObjectSubscription[T] {
+	return &ObjectSubscription[T]{
+		events:  queue,
 		ch:      make(chan struct{}),
 		extract: params.Extract,
 		update:  params.Update,
@@ -78,18 +93,23 @@ func New[T any](service subscription.Service, params SubscriptionParams[T]) *Obj
 }
 
 func (o *ObjectSubscription[T]) Run() error {
+	if o.service == nil && o.events == nil {
+		return fmt.Errorf("subscription created with nil event queue")
+	}
 	o.request.Internal = true
-	resp, err := o.service.Search(o.request)
-	if err != nil {
-		return err
+	o.sub = map[string]*entry[T]{}
+	if o.service != nil {
+		resp, err := o.service.Search(o.request)
+		if err != nil {
+			return err
+		}
+		for _, rec := range resp.Records {
+			id, data := o.extract(rec)
+			o.sub[id] = newEntry(data)
+		}
+		o.events = resp.Output
 	}
 	o.ctx, o.cancel = context.WithCancel(context.Background())
-	o.events = resp.Output
-	o.sub = map[string]*entry[T]{}
-	for _, rec := range resp.Records {
-		id, data := o.extract(rec)
-		o.sub[id] = newEntry(data)
-	}
 	go o.read()
 	return nil
 }
@@ -103,6 +123,24 @@ func (o *ObjectSubscription[T]) Len() int {
 	o.mx.Lock()
 	defer o.mx.Unlock()
 	return len(o.sub)
+}
+
+func (o *ObjectSubscription[T]) Get(id string) (T, bool) {
+	o.mx.Lock()
+	defer o.mx.Unlock()
+	entry, ok := o.sub[id]
+	if !ok {
+		var defVal T
+		return defVal, false
+	}
+	return entry.data, true
+}
+
+func (o *ObjectSubscription[T]) Has(id string) bool {
+	o.mx.Lock()
+	defer o.mx.Unlock()
+	_, ok := o.sub[id]
+	return ok
 }
 
 func (o *ObjectSubscription[T]) Iterate(iter func(id string, data T) bool) {
