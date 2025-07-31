@@ -69,7 +69,6 @@ func (i *Import) initDependencies(a *app.App) {
 	i.deps.blockService = app.MustComponent[*block.Service](a)
 	i.deps.spaceService = app.MustComponent[space.Service](a)
 	i.deps.objectStore = app.MustComponent[objectstore.ObjectStore](a)
-	i.deps.tempDirProvider = app.MustComponent[core.TempDirProvider](a)
 	i.deps.fileSync = app.MustComponent[filesync.FileSync](a)
 	i.deps.notificationService = app.MustComponent[notifications.Notifications](a)
 	i.deps.eventSender = app.MustComponent[event.Sender](a)

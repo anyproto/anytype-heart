@@ -479,7 +479,7 @@ func (p *importProcessor) ExecuteWebImport(ctx context.Context) (string, *domain
 		return "", nil, converterError.Error()
 	}
 
-	if converterResponse.Snapshots == nil || len(converterResponse.Snapshots) == 0 {
+	if len(converterResponse.Snapshots) == 0 {
 		return "", nil, fmt.Errorf("snpashots are empty")
 	}
 

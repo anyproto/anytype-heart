@@ -19,7 +19,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/files/filesync"
 	"github.com/anyproto/anytype-heart/core/notifications"
 	"github.com/anyproto/anytype-heart/pb"
-	"github.com/anyproto/anytype-heart/pkg/lib/core"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space"
@@ -46,7 +45,6 @@ type Dependencies struct {
 	blockService        *block.Service
 	objectCreator       creator.Service
 	idProvider          objectid.IdAndKeyProvider
-	tempDirProvider     core.TempDirProvider
 	fileSync            filesync.FileSync
 	notificationService notifications.Notifications
 	eventSender         event.Sender
