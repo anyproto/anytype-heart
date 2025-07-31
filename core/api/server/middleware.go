@@ -159,7 +159,7 @@ func ensureFilters() gin.HandlerFunc {
 func (s *Server) ensureCacheInitialized() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		s.initOnce.Do(func() {
-			if err := s.service.InitializeAllCaches(context.Background()); err != nil {
+			if err := s.service.InitializeAllCaches(); err != nil {
 				log.Errorf("Failed to initialize API service caches: %v", err)
 			}
 		})

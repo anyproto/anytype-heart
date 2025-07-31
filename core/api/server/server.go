@@ -9,6 +9,7 @@ import (
 	apicore "github.com/anyproto/anytype-heart/core/api/core"
 	"github.com/anyproto/anytype-heart/core/api/service"
 	"github.com/anyproto/anytype-heart/core/subscription"
+	"github.com/anyproto/anytype-heart/core/subscription/crossspacesub"
 )
 
 type ApiSessionEntry struct {
@@ -28,14 +29,14 @@ type Server struct {
 }
 
 // NewServer constructs a new Server with the default config and sets up the routes.
-func NewServer(mw apicore.ClientCommands, accountService apicore.AccountService, eventService apicore.EventService, subscriptionService subscription.Service, openapiYAML []byte, openapiJSON []byte) *Server {
+func NewServer(mw apicore.ClientCommands, accountService apicore.AccountService, eventService apicore.EventService, subscriptionService subscription.Service, crossSpaceSubService crossspacesub.Service, openapiYAML []byte, openapiJSON []byte) *Server {
 	gatewayUrl, techSpaceId, err := getAccountInfo(accountService)
 	if err != nil {
 		panic(err)
 	}
 
 	s := &Server{
-		service: service.NewService(mw, gatewayUrl, techSpaceId, subscriptionService),
+		service: service.NewService(mw, gatewayUrl, techSpaceId, subscriptionService, crossSpaceSubService),
 	}
 	s.engine = s.NewRouter(mw, eventService, openapiYAML, openapiJSON)
 	s.KeyToToken = make(map[string]ApiSessionEntry)

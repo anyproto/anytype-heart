@@ -1,12 +1,16 @@
 package service
 
 import (
+	"context"
 	"sync"
+
+	"github.com/cheggaaa/mb/v3"
 
 	apicore "github.com/anyproto/anytype-heart/core/api/core"
 	apimodel "github.com/anyproto/anytype-heart/core/api/model"
 	"github.com/anyproto/anytype-heart/core/subscription"
-	"github.com/anyproto/anytype-heart/core/subscription/objectsubscription"
+	"github.com/anyproto/anytype-heart/core/subscription/crossspacesub"
+	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 )
 
@@ -17,98 +21,119 @@ type Service struct {
 	gatewayUrl  string
 	techSpaceId string
 
-	subscriptionService subscription.Service
-	subscriptionsMu     sync.RWMutex
+	subscriptionService  subscription.Service
+	crossSpaceSubService crossspacesub.Service
+	subscriptionsMu      sync.RWMutex
+	componentCtx         context.Context
+	componentCtxCancel   context.CancelFunc
 
-	spaceSubscription     *objectsubscription.ObjectSubscription[string]                        // subscription for techspace to track space Ids
-	typeSubscriptions     map[string]*objectsubscription.ObjectSubscription[*apimodel.Type]     // map[spaceId]*ObjectSubscription
-	propertySubscriptions map[string]*objectsubscription.ObjectSubscription[*apimodel.Property] // map[spaceId]*ObjectSubscription
-	tagSubscriptions      map[string]*objectsubscription.ObjectSubscription[*apimodel.Tag]      // map[spaceId]*ObjectSubscription
+	// Cross-space subscription IDs
+	propertySubId string
+	typeSubId     string
+	tagSubId      string
 
+	// Event queues for cross-space subscriptions
+	propertyQueue *mb.MB[*pb.EventMessage]
+	typeQueue     *mb.MB[*pb.EventMessage]
+	tagQueue      *mb.MB[*pb.EventMessage]
+
+	// Caches organized by spaceId -> key -> object
+	// For properties: key can be id, relationKey, or apiObjectKey
+	// For types: key can be id, uniqueKey, or apiObjectKey
+	// For tags: key is just id
+	propertyCache map[string]map[string]*apimodel.Property // spaceId -> key -> Property
+	typeCache     map[string]map[string]*apimodel.Type     // spaceId -> key -> Type
+	tagCache      map[string]map[string]*apimodel.Tag      // spaceId -> id -> Tag
 }
 
-func NewService(mw apicore.ClientCommands, gatewayUrl string, techspaceId string, subscriptionService subscription.Service) *Service {
+func NewService(mw apicore.ClientCommands, gatewayUrl string, techspaceId string, subscriptionService subscription.Service, crossSpaceSubService crossspacesub.Service) *Service {
+	ctx, cancel := context.WithCancel(context.Background())
 	s := &Service{
-		mw:                    mw,
-		gatewayUrl:            gatewayUrl,
-		techSpaceId:           techspaceId,
-		subscriptionService:   subscriptionService,
-		typeSubscriptions:     make(map[string]*objectsubscription.ObjectSubscription[*apimodel.Type]),
-		propertySubscriptions: make(map[string]*objectsubscription.ObjectSubscription[*apimodel.Property]),
-		tagSubscriptions:      make(map[string]*objectsubscription.ObjectSubscription[*apimodel.Tag]),
+		mw:                   mw,
+		gatewayUrl:           gatewayUrl,
+		techSpaceId:          techspaceId,
+		subscriptionService:  subscriptionService,
+		crossSpaceSubService: crossSpaceSubService,
+		componentCtx:         ctx,
+		componentCtxCancel:   cancel,
 	}
 
 	return s
 }
 
-// getTypeMap builds a map of types from the subscription for quick lookups
+// getTypeMap builds a map of types from the cache for quick lookups
 func (s *Service) getTypeMap(spaceId string) map[string]*apimodel.Type {
 	s.subscriptionsMu.RLock()
-	sub := s.typeSubscriptions[spaceId]
-	s.subscriptionsMu.RUnlock()
+	defer s.subscriptionsMu.RUnlock()
 
-	typeMap := make(map[string]*apimodel.Type)
-	if sub != nil {
-		sub.Iterate(func(id string, t *apimodel.Type) bool {
-			typeMap[t.Id] = t
-			typeMap[t.Key] = t
-			typeMap[t.UniqueKey] = t
-			return true
-		})
+	// Return a copy of the cache since it already contains all keys
+	if spaceCache, exists := s.typeCache[spaceId]; exists {
+		typeMap := make(map[string]*apimodel.Type, len(spaceCache))
+		for k, v := range spaceCache {
+			typeMap[k] = v
+		}
+		return typeMap
 	}
 
-	return typeMap
+	return make(map[string]*apimodel.Type)
 }
 
-// getPropertyMap builds a map of properties from the subscription for quick lookups
+// getPropertyMap builds a map of properties from the cache for quick lookups
 func (s *Service) getPropertyMap(spaceId string) map[string]*apimodel.Property {
 	s.subscriptionsMu.RLock()
-	sub := s.propertySubscriptions[spaceId]
-	s.subscriptionsMu.RUnlock()
+	defer s.subscriptionsMu.RUnlock()
 
-	propertyMap := make(map[string]*apimodel.Property)
-	if sub != nil {
-		sub.Iterate(func(id string, prop *apimodel.Property) bool {
-			propertyMap[prop.Id] = prop
-			propertyMap[prop.Key] = prop
-			propertyMap[prop.RelationKey] = prop
-			return true
-		})
+	// Return a copy of the cache since it already contains all keys
+	if spaceCache, exists := s.propertyCache[spaceId]; exists {
+		propertyMap := make(map[string]*apimodel.Property, len(spaceCache))
+		for k, v := range spaceCache {
+			propertyMap[k] = v
+		}
+		return propertyMap
 	}
 
-	return propertyMap
+	return make(map[string]*apimodel.Property)
 }
 
-// getTagMap builds a map of tags from the subscription for quick lookups
+// getTagMap builds a map of tags from the cache for quick lookups
 func (s *Service) getTagMap(spaceId string) map[string]*apimodel.Tag {
 	s.subscriptionsMu.RLock()
-	sub := s.tagSubscriptions[spaceId]
-	s.subscriptionsMu.RUnlock()
+	defer s.subscriptionsMu.RUnlock()
 
-	tagMap := make(map[string]*apimodel.Tag)
-	if sub != nil {
-		sub.Iterate(func(id string, tag *apimodel.Tag) bool {
-			tagMap[tag.Id] = tag
-			return true
-		})
+	// Return a copy of the cache
+	if spaceCache, exists := s.tagCache[spaceId]; exists {
+		tagMap := make(map[string]*apimodel.Tag, len(spaceCache))
+		for k, v := range spaceCache {
+			tagMap[k] = v
+		}
+		return tagMap
 	}
 
-	return tagMap
+	return make(map[string]*apimodel.Tag)
 }
 
-// getAllSpaceIds returns all space IDs from the subscription
+// getAllSpaceIds returns all space IDs from the caches
 func (s *Service) getAllSpaceIds() []string {
-	if s.spaceSubscription == nil {
-		return nil
+	s.subscriptionsMu.RLock()
+	defer s.subscriptionsMu.RUnlock()
+
+	spaceMap := make(map[string]bool)
+
+	// Collect unique space IDs from all caches
+	for spaceId := range s.propertyCache {
+		spaceMap[spaceId] = true
+	}
+	for spaceId := range s.typeCache {
+		spaceMap[spaceId] = true
+	}
+	for spaceId := range s.tagCache {
+		spaceMap[spaceId] = true
 	}
 
 	var spaceIds []string
-	s.spaceSubscription.Iterate(func(id string, spaceId string) bool {
-		if spaceId != "" {
-			spaceIds = append(spaceIds, spaceId)
-		}
-		return true
-	})
+	for spaceId := range spaceMap {
+		spaceIds = append(spaceIds, spaceId)
+	}
 
 	return spaceIds
 }

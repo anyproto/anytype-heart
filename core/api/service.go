@@ -17,6 +17,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/api/server"
 	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/core/subscription"
+	"github.com/anyproto/anytype-heart/core/subscription/crossspacesub"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 )
 
@@ -44,10 +45,11 @@ type Service interface {
 }
 
 type apiService struct {
-	mw                  apicore.ClientCommands
-	accountService      apicore.AccountService
-	eventService        apicore.EventService
-	subscriptionService subscription.Service
+	mw                   apicore.ClientCommands
+	accountService       apicore.AccountService
+	eventService         apicore.EventService
+	subscriptionService  subscription.Service
+	crossSpaceSubService crossspacesub.Service
 
 	listenAddr string
 
@@ -85,6 +87,7 @@ func (s *apiService) Init(a *app.App) error {
 	s.accountService = a.MustComponent(account.CName).(account.Service)
 	s.eventService = a.MustComponent(event.CName).(apicore.EventService)
 	s.subscriptionService = app.MustComponent[subscription.Service](a)
+	s.crossSpaceSubService = app.MustComponent[crossspacesub.Service](a)
 	return nil
 }
 
@@ -117,6 +120,7 @@ func (s *apiService) startServer() error {
 		s.accountService,
 		s.eventService,
 		s.subscriptionService,
+		s.crossSpaceSubService,
 		openapiYAML,
 		openapiJSON,
 	)
