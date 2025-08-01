@@ -179,7 +179,7 @@ func (s *service) NotifyRead(ctx context.Context, spaceId, groupId string) (err 
 	return s.notifyQueue.Add(ctx, PushNotification{
 		SpaceId: spaceId,
 		GroupId: groupId,
-		Topics:  []string{},
+		Topics:  []string{s.wallet.Account().SignKey.GetPublic().Account()},
 		Silent:  true,
 	})
 }
