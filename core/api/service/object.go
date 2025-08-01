@@ -23,7 +23,6 @@ var (
 	ErrFailedRetrieveObject      = errors.New("failed to retrieve object")
 	ErrFailedExportMarkdown      = errors.New("failed to export markdown")
 	ErrFailedRetrieveObjects     = errors.New("failed to retrieve list of objects")
-	ErrFailedRetrievePropertyMap = errors.New("failed to retrieve property  map")
 	ErrFailedCreateObject        = errors.New("failed to create object")
 	ErrFailedSetPropertyFeatured = errors.New("failed to set property featured")
 	ErrFailedCreateBookmark      = errors.New("failed to fetch bookmark")
@@ -100,7 +99,8 @@ func (s *Service) GetObject(ctx context.Context, spaceId string, objectId string
 		}
 	}
 
-	markdown, err := s.getMarkdownExport(ctx, spaceId, objectId, model.ObjectTypeLayout(resp.ObjectView.Details[0].Details.Fields[bundle.RelationKeyResolvedLayout.String()].GetNumberValue()))
+	layout := model.ObjectTypeLayout(resp.ObjectView.Details[0].Details.Fields[bundle.RelationKeyResolvedLayout.String()].GetNumberValue())
+	markdown, err := s.getMarkdownExport(ctx, spaceId, objectId, layout)
 	if err != nil {
 		return nil, err
 	}
@@ -158,42 +158,9 @@ func (s *Service) CreateObject(ctx context.Context, spaceId string, request apim
 
 	// First call BlockCreate at top, then BlockPaste to paste the body
 	if request.Body != "" {
-		blockCreateResp := s.mw.BlockCreate(ctx, &pb.RpcBlockCreateRequest{
-			ContextId: objectId,
-			TargetId:  "",
-			Block: &model.Block{
-				Id:              "",
-				BackgroundColor: "",
-				Align:           model.Block_AlignLeft,
-				VerticalAlign:   model.Block_VerticalAlignTop,
-				Content: &model.BlockContentOfText{
-					Text: &model.BlockContentText{
-						Text:      "",
-						Style:     model.BlockContentText_Paragraph,
-						Checked:   false,
-						Color:     "",
-						IconEmoji: "",
-						IconImage: "",
-					},
-				},
-			},
-			Position: model.Block_Bottom,
-		})
-
-		if blockCreateResp.Error.Code != pb.RpcBlockCreateResponseError_NULL {
+		if err := s.createAndPasteBody(ctx, spaceId, objectId, request.Body); err != nil {
 			object, _ := s.GetObject(ctx, spaceId, objectId) // nolint:errcheck
-			return object, ErrFailedCreateBlock
-		}
-
-		blockPasteResp := s.mw.BlockPaste(ctx, &pb.RpcBlockPasteRequest{
-			ContextId:      objectId,
-			FocusedBlockId: blockCreateResp.BlockId,
-			TextSlot:       request.Body,
-		})
-
-		if blockPasteResp.Error.Code != pb.RpcBlockPasteResponseError_NULL {
-			object, _ := s.GetObject(ctx, spaceId, objectId) // nolint:errcheck
-			return object, ErrFailedPasteBody
+			return object, err
 		}
 	}
 
@@ -461,4 +428,35 @@ func structToDetails(details *types.Struct) []*model.Detail {
 		})
 	}
 	return detailList
+}
+
+// createAndPasteBody creates a text block and pastes the body content into it.
+func (s *Service) createAndPasteBody(ctx context.Context, spaceId string, objectId string, body string) error {
+	blockCreateResp := s.mw.BlockCreate(ctx, &pb.RpcBlockCreateRequest{
+		ContextId: objectId,
+		TargetId:  "",
+		Block: &model.Block{
+			Id:            "",
+			Align:         model.Block_AlignLeft,
+			VerticalAlign: model.Block_VerticalAlignTop,
+			Content:       &model.BlockContentOfText{Text: &model.BlockContentText{}},
+		},
+		Position: model.Block_Bottom,
+	})
+
+	if blockCreateResp.Error.Code != pb.RpcBlockCreateResponseError_NULL {
+		return ErrFailedCreateBlock
+	}
+
+	blockPasteResp := s.mw.BlockPaste(ctx, &pb.RpcBlockPasteRequest{
+		ContextId:      objectId,
+		FocusedBlockId: blockCreateResp.BlockId,
+		TextSlot:       body,
+	})
+
+	if blockPasteResp.Error.Code != pb.RpcBlockPasteResponseError_NULL {
+		return ErrFailedPasteBody
+	}
+
+	return nil
 }
