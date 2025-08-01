@@ -721,13 +721,15 @@ func (s *Service) buildPropertyWithValue(id string, key string, name string, for
 	return nil
 }
 
-// ResolvePropertyApiKey returns the internal relationKey for a clientKey by looking it up in the propertyMap
-// TODO: If not found, this detail shouldn't be set by clients, and strict validation errors
-func (s *Service) ResolvePropertyApiKey(propertyMap map[string]*apimodel.Property, clientKey string) string {
-	if p, ok := propertyMap[clientKey]; ok {
-		return p.RelationKey
+// ResolvePropertyApiKey resolves an API property key to its internal relation key
+// by looking it up in the property cache. This is necessary because users can
+// define custom API keys via the apiObjectKey field.
+//
+// Returns empty string if the property is not found in the cache.
+// TODO: Return error for strict validation when property doesn't exist
+func (s *Service) ResolvePropertyApiKey(propertyMap map[string]*apimodel.Property, apiKey string) (rk string) {
+	if property, exists := propertyMap[apiKey]; exists {
+		return property.RelationKey
 	}
 	return ""
-	// TODO: enable later for strict validation
-	// return "", false
 }
