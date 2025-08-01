@@ -33,9 +33,7 @@ func NewServer(mw apicore.ClientCommands, accountService apicore.AccountService,
 		panic(err)
 	}
 
-	s := &Server{
-		service: service.NewService(mw, gatewayUrl, techSpaceId, crossSpaceSubService),
-	}
+	s := &Server{service: service.NewService(mw, gatewayUrl, techSpaceId, crossSpaceSubService)}
 	s.engine = s.NewRouter(mw, eventService, openapiYAML, openapiJSON)
 	s.KeyToToken = make(map[string]ApiSessionEntry)
 

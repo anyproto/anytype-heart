@@ -15,7 +15,6 @@ type Service struct {
 	techSpaceId string
 
 	crossSpaceSubService apicore.CrossSpaceSubscriptionService
-	componentCtx         context.Context
 	componentCtxCancel   context.CancelFunc
 
 	cache         *cacheManager
@@ -23,13 +22,12 @@ type Service struct {
 }
 
 func NewService(mw apicore.ClientCommands, gatewayUrl string, techspaceId string, crossSpaceSubService apicore.CrossSpaceSubscriptionService) *Service {
-	ctx, cancel := context.WithCancel(context.Background())
+	_, cancel := context.WithCancel(context.Background())
 	s := &Service{
 		mw:                   mw,
 		gatewayUrl:           gatewayUrl,
 		techSpaceId:          techspaceId,
 		crossSpaceSubService: crossSpaceSubService,
-		componentCtx:         ctx,
 		componentCtxCancel:   cancel,
 		cache:                newCacheManager(),
 		subscriptions:        newSubscriptions(),
