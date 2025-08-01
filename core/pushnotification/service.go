@@ -31,7 +31,8 @@ type Service interface {
 	app.ComponentRunnable
 	RegisterToken(req *pb.RpcPushNotificationRegisterTokenRequest)
 	RevokeToken(background context.Context) (err error)
-	Notify(ctx context.Context, spaceId string, topic []string, payload []byte) (err error)
+	Notify(ctx context.Context, spaceId, groupId string, topic []string, payload []byte) (err error)
+	NotifyRead(ctx context.Context, spaceId, groupId string) (err error)
 }
 
 func New() Service {
@@ -40,9 +41,11 @@ func New() Service {
 
 type PushNotification struct {
 	SpaceId  string
+	GroupId  string
 	Topics   []string
 	Payload  []byte
 	Deadline time.Time
+	Silent   bool
 }
 
 type service struct {
@@ -163,11 +166,21 @@ func (s *service) createSpace(ctx context.Context, spaceKey crypto.PrivKey) (err
 	return err
 }
 
-func (s *service) Notify(ctx context.Context, spaceId string, topic []string, payload []byte) (err error) {
+func (s *service) Notify(ctx context.Context, spaceId, groupId string, topic []string, payload []byte) (err error) {
 	return s.notifyQueue.Add(ctx, PushNotification{
 		SpaceId: spaceId,
+		GroupId: groupId,
 		Topics:  topic,
 		Payload: payload,
+	})
+}
+
+func (s *service) NotifyRead(ctx context.Context, spaceId, groupId string) (err error) {
+	return s.notifyQueue.Add(ctx, PushNotification{
+		SpaceId: spaceId,
+		GroupId: groupId,
+		Topics:  []string{},
+		Silent:  true,
 	})
 }
 
@@ -192,6 +205,19 @@ func (s *service) notify(ctx context.Context, message PushNotification) (err err
 	err = s.pushClient.Notify(ctx, &pushapi.NotifyRequest{
 		Topics:  topics,
 		Message: p,
+		GroupId: message.GroupId,
+	})
+	return err
+}
+
+func (s *service) notifySilent(ctx context.Context, message PushNotification) (err error) {
+	topics, err := s.topics.MakeTopics(message.SpaceId, message.Topics)
+	if err != nil {
+		return fmt.Errorf("make topics: %w", err)
+	}
+	err = s.pushClient.NotifySilent(ctx, &pushapi.NotifyRequest{
+		Topics:  topics,
+		GroupId: message.GroupId,
 	})
 	return err
 }
@@ -202,8 +228,14 @@ func (s *service) sendNotificationsLoop() {
 		if err != nil {
 			return
 		}
+		var f func(ctx context.Context, message PushNotification) error
+		if message.Silent {
+			f = s.notifySilent
+		} else {
+			f = s.notify
+		}
 		for range 6 {
-			if err := s.notify(s.runCtx, message); err != nil {
+			if err := f(s.runCtx, message); err != nil {
 				if errors.Is(err, pushapi.ErrNoValidTopics) {
 					break
 				}

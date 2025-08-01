@@ -78,9 +78,10 @@ func (c *spaceTopicsCollection) SetSpaceViewStatus(status *spaceViewStatus) {
 		}
 	}
 
+	c.localTopics = c.localTopics[:0]
 	switch status.mode {
 	case pb.RpcPushNotificationSetSpaceMode_All:
-		c.localTopics = append(c.localTopics, makeTopic(ChatsTopicName))
+		c.localTopics = append(c.localTopics, makeTopic(ChatsTopicName), makeTopic(c.identity))
 	case pb.RpcPushNotificationSetSpaceMode_Mentions:
 		c.localTopics = append(c.localTopics, makeTopic(c.identity))
 	}
