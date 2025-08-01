@@ -3,6 +3,8 @@ package apicore
 import (
 	"context"
 
+	"github.com/anyproto/anytype-heart/core/subscription"
+	"github.com/anyproto/anytype-heart/core/subscription/crossspacesub"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
@@ -13,6 +15,11 @@ type AccountService interface {
 
 type EventService interface {
 	Broadcast(event *pb.Event)
+}
+
+type CrossSpaceSubscriptionService interface {
+	Subscribe(req subscription.SubscribeRequest, predicate crossspacesub.Predicate) (*subscription.SubscribeResponse, error)
+	Unsubscribe(subId string) error
 }
 
 type ClientCommands interface {
