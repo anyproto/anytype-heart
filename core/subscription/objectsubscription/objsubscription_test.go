@@ -177,7 +177,7 @@ func TestSubscriptionFromQueue(t *testing.T) {
 		err := events.Add(context.Background(), msg)
 		require.NoError(t, err)
 	}
-	sub := NewIdSubscriptionFromQueue(events)
+	sub := NewIdSubscriptionFromQueue(events, nil)
 	err := sub.Run()
 	require.NoError(t, err)
 	time.Sleep(100 * time.Millisecond)
