@@ -47,7 +47,6 @@ func TestSpaceService_ListSpaces(t *testing.T) {
 				{
 					RelationKey:    "spaceOrder",
 					Type:           model.BlockContentDataviewSort_Asc,
-					NoCollate:      true,
 					EmptyPlacement: model.BlockContentDataviewSort_End,
 				},
 			},
