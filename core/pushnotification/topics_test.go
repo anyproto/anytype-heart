@@ -59,7 +59,7 @@ func TestSpaceTopicsCollection(t *testing.T) {
 		tc.SetSpaceViewStatus(statusS2)
 		req := tc.MakeApiRequest()
 		require.NotNil(t, req)
-		assert.Len(t, req.Topics, 2)
+		assert.Len(t, req.Topics, 4)
 
 		// same list - no results
 		tc.Flush()
@@ -75,7 +75,7 @@ func TestSpaceTopicsCollection(t *testing.T) {
 		tc.SetSpaceViewStatus(statusS2)
 		req = tc.MakeApiRequest()
 		require.NotNil(t, req)
-		assert.Len(t, req.Topics, 1)
+		assert.Len(t, req.Topics, 3)
 	})
 	t.Run("encrypt", func(t *testing.T) {
 		tc := newSpaceTopicsCollection("my")
