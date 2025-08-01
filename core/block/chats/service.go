@@ -2,6 +2,8 @@ package chats
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -62,7 +64,8 @@ type Service interface {
 var _ Service = (*service)(nil)
 
 type pushService interface {
-	Notify(ctx context.Context, spaceId string, topic []string, payload []byte) (err error)
+	Notify(ctx context.Context, spaceId, groupId string, topic []string, payload []byte) (err error)
+	NotifyRead(ctx context.Context, spaceId, groupId string) (err error)
 }
 
 type accountService interface {
@@ -414,7 +417,7 @@ func (s *service) sendPushNotification(ctx context.Context, spaceId, chatObjectI
 	}
 
 	topics := append(mentions, chatpush.ChatsTopicName)
-	err = s.pushService.Notify(s.componentCtx, spaceId, topics, jsonPayload)
+	err = s.pushService.Notify(s.componentCtx, spaceId, pushGroupId(chatObjectId), topics, jsonPayload)
 	if err != nil {
 		err = fmt.Errorf("pushService.Notify: %w", err)
 		return
@@ -547,12 +550,21 @@ type ReadMessagesRequest struct {
 
 func (s *service) ReadMessages(ctx context.Context, req ReadMessagesRequest) error {
 	return s.chatObjectDo(ctx, req.ChatObjectId, func(sb chatobject.StoreObject) error {
-		return sb.MarkReadMessages(ctx, chatobject.ReadMessagesRequest{
+		markedCount, err := sb.MarkReadMessages(ctx, chatobject.ReadMessagesRequest{
 			AfterOrderId:  req.AfterOrderId,
 			BeforeOrderId: req.BeforeOrderId,
 			LastStateId:   req.LastStateId,
 			CounterType:   req.CounterType,
 		})
+		if err != nil {
+			return err
+		}
+		if markedCount > 0 {
+			if nErr := s.pushService.NotifyRead(ctx, sb.SpaceID(), pushGroupId(req.ChatObjectId)); nErr != nil {
+				log.Error("notifyRead", zap.Error(nErr))
+			}
+		}
+		return nil
 	})
 }
 
@@ -578,19 +590,24 @@ func (s *service) ReadAll(ctx context.Context) error {
 
 	for _, chatId := range chatIds {
 		err := s.chatObjectDo(ctx, chatId, func(sb chatobject.StoreObject) error {
-			err := sb.MarkReadMessages(ctx, chatobject.ReadMessagesRequest{
+			markedMessages, err := sb.MarkReadMessages(ctx, chatobject.ReadMessagesRequest{
 				All:         true,
 				CounterType: chatmodel.CounterTypeMessage,
 			})
 			if err != nil {
 				return fmt.Errorf("messages: %w", err)
 			}
-			err = sb.MarkReadMessages(ctx, chatobject.ReadMessagesRequest{
+			markedMentions, err := sb.MarkReadMessages(ctx, chatobject.ReadMessagesRequest{
 				All:         true,
 				CounterType: chatmodel.CounterTypeMention,
 			})
 			if err != nil {
 				return fmt.Errorf("mentions: %w", err)
+			}
+			if markedMessages+markedMentions > 0 {
+				if nErr := s.pushService.NotifyRead(ctx, sb.SpaceID(), pushGroupId(chatId)); nErr != nil {
+					log.Error("notifyRead", zap.Error(nErr))
+				}
 			}
 			return nil
 		})
@@ -600,4 +617,9 @@ func (s *service) ReadAll(ctx context.Context) error {
 	}
 
 	return nil
+}
+
+func pushGroupId(objectId string) string {
+	hash := sha256.Sum256([]byte(objectId))
+	return hex.EncodeToString(hash[:])
 }

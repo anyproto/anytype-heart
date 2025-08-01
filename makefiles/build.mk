@@ -33,7 +33,7 @@ build-server: setup-network-config check-tantivy-version
 ifdef ANY_SYNC_NETWORK
 	@$(eval TAGS := $(TAGS) envnetworkcustom)
 endif
-	go build -o dist/server -ldflags "$(FLAGS)" --tags "$(TAGS)" $(BUILD_FLAGS) github.com/anyproto/anytype-heart/cmd/grpcserver
+	go build -o dist/server -ldflags "$(FLAGS)" --tags "$(TAGS)" $(BUILD_FLAGS) -v github.com/anyproto/anytype-heart/cmd/grpcserver
 
 build-js: setup-go build-server protos-js
 	@echo "Run 'make install-dev-js' instead if you want to build & install into $(CLIENT_DESKTOP_PATH)"

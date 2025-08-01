@@ -32,7 +32,11 @@ const techSpaceId = "techSpaceId"
 type pushServiceDummy struct {
 }
 
-func (s *pushServiceDummy) Notify(ctx context.Context, spaceId string, topic []string, payload []byte) (err error) {
+func (s *pushServiceDummy) Notify(ctx context.Context, spaceId, groupId string, topic []string, payload []byte) (err error) {
+	return nil
+}
+
+func (s *pushServiceDummy) NotifyRead(ctx context.Context, spaceId, groupId string) (err error) {
 	return nil
 }
 
