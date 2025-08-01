@@ -128,14 +128,14 @@ func AddObjectsToListHandler(s *service.Service) gin.HandlerFunc {
 		spaceId := c.Param("space_id")
 		listId := c.Param("list_id")
 
-		request := apimodel.AddObjectsToListRequest{}
-		if err := c.ShouldBindJSON(&request); err != nil {
+		var req apimodel.AddObjectsToListRequest
+		if err := c.ShouldBindJSON(&req); err != nil {
 			apiErr := util.CodeToAPIError(http.StatusBadRequest, err.Error())
 			c.JSON(http.StatusBadRequest, apiErr)
 			return
 		}
 
-		err := s.AddObjectsToList(c, spaceId, listId, request)
+		err := s.AddObjectsToList(c, spaceId, listId, req)
 		code := util.MapErrorCode(err,
 			util.ErrToCode(service.ErrFailedAddObjectsToList, http.StatusInternalServerError),
 		)
