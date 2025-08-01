@@ -12,6 +12,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/subscription"
 	"github.com/anyproto/anytype-heart/core/subscription/crossspacesub"
+	"github.com/anyproto/anytype-heart/core/subscription/objectsubscription"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
@@ -63,7 +64,6 @@ func (s *Service) InitializeAllCaches() error {
 
 // subscribeToCrossSpaceProperties subscribes to property changes across all active spaces
 func (s *Service) subscribeToCrossSpaceProperties() error {
-	// No lock needed during initialization - protected by sync.Once in middleware
 	if s.propertyQueue != nil {
 		return nil // Already subscribed
 	}
@@ -100,7 +100,6 @@ func (s *Service) subscribeToCrossSpaceProperties() error {
 
 	s.propertySubId = resp.SubId
 
-	// Process initial records - no concurrent access during initialization
 	for _, record := range resp.Records {
 		spaceId := record.GetString(bundle.RelationKeySpaceId)
 		if spaceId == "" {
@@ -110,15 +109,16 @@ func (s *Service) subscribeToCrossSpaceProperties() error {
 		s.cacheProperty(spaceId, prop)
 	}
 
-	// Start processing property events
-	go s.processPropertyEvents()
+	propertyObjSub := objectsubscription.NewFromQueue(s.propertyQueue, s.createPropertySubscriptionParams())
+	if err := propertyObjSub.Run(); err != nil {
+		return fmt.Errorf("failed to run property object subscription: %w", err)
+	}
 
 	return nil
 }
 
 // subscribeToCrossSpaceTypes subscribes to type changes across all active spaces
 func (s *Service) subscribeToCrossSpaceTypes() error {
-	// No lock needed during initialization - protected by sync.Once in middleware
 	if s.typeQueue != nil {
 		return nil // Already subscribed
 	}
@@ -162,29 +162,28 @@ func (s *Service) subscribeToCrossSpaceTypes() error {
 
 	s.typeSubId = resp.SubId
 
-	// Process initial records - no concurrent access during initialization
 	for _, record := range resp.Records {
 		spaceId := record.GetString(bundle.RelationKeySpaceId)
 		if spaceId == "" {
 			continue
 		}
-		// Get property map for this space
-		propertyMap := s.getPropertyMapForSpace(spaceId)
+		propertyMap := s.getPropertyMap(spaceId)
 		_, _, t := s.getTypeFromStruct(record.ToProto(), propertyMap)
 		s.cacheType(spaceId, t)
 	}
 
-	// Start processing type events
-	go s.processTypeEvents()
+	typeObjSub := objectsubscription.NewFromQueue(s.typeQueue, s.createTypeSubscriptionParams())
+	if err := typeObjSub.Run(); err != nil {
+		return fmt.Errorf("failed to run type object subscription: %w", err)
+	}
 
 	return nil
 }
 
 // subscribeToCrossSpaceTags subscribes to tag changes across all active spaces
 func (s *Service) subscribeToCrossSpaceTags() error {
-	// No lock needed during initialization - protected by sync.Once in middleware
 	if s.tagQueue != nil {
-		return nil // Already subscribed
+		return nil
 	}
 
 	s.tagQueue = mb.New[*pb.EventMessage](0)
@@ -218,7 +217,6 @@ func (s *Service) subscribeToCrossSpaceTags() error {
 
 	s.tagSubId = resp.SubId
 
-	// Process initial records - no concurrent access during initialization
 	for _, record := range resp.Records {
 		spaceId := record.GetString(bundle.RelationKeySpaceId)
 		if spaceId == "" {
@@ -228,195 +226,167 @@ func (s *Service) subscribeToCrossSpaceTags() error {
 		s.cacheTag(spaceId, tag)
 	}
 
-	// Start processing tag events
-	go s.processTagEvents()
+	tagObjSub := objectsubscription.NewFromQueue(s.tagQueue, s.createTagSubscriptionParams())
+	if err := tagObjSub.Run(); err != nil {
+		return fmt.Errorf("failed to run tag object subscription: %w", err)
+	}
 
 	return nil
 }
 
-// processPropertyEvents processes property change events from the queue
-func (s *Service) processPropertyEvents() {
-	for {
-		messages, err := s.propertyQueue.Wait(s.componentCtx)
-		if err != nil {
-			if errors.Is(err, context.Canceled) {
-				return
-			}
-			log.Errorf("error waiting for property messages: %v", err)
-			continue
-		}
+type propertyWithSpace struct {
+	*apimodel.Property
+	spaceId string
+}
 
-		for _, msg := range messages {
-			s.handlePropertyEvent(msg)
-		}
+// refreshPropertyFromDetails re-fetches and updates property details
+func (s *Service) refreshPropertyFromDetails(curEntry *propertyWithSpace) *propertyWithSpace {
+	details, err := s.getObjectDetails(context.Background(), curEntry.spaceId, curEntry.Id)
+	if err != nil {
+		log.Errorf("failed to get property details for %s: %v", curEntry.Id, err)
+		return curEntry
+	}
+	_, _, prop := s.getPropertyFromStruct(details)
+	curEntry.Property = prop
+	return curEntry
+}
+
+// refreshTypeFromDetails re-fetches and updates type details
+func (s *Service) refreshTypeFromDetails(curEntry *typeWithSpace) *typeWithSpace {
+	details, err := s.getObjectDetails(context.Background(), curEntry.spaceId, curEntry.Id)
+	if err != nil {
+		log.Errorf("failed to get type details for %s: %v", curEntry.Id, err)
+		return curEntry
+	}
+	propertyMap := s.getPropertyMap(curEntry.spaceId)
+	_, _, t := s.getTypeFromStruct(details, propertyMap)
+	curEntry.Type = t
+	return curEntry
+}
+
+// refreshTagFromDetails re-fetches and updates tag details
+func (s *Service) refreshTagFromDetails(curEntry *tagWithSpace) *tagWithSpace {
+	details, err := s.getObjectDetails(context.Background(), curEntry.spaceId, curEntry.Id)
+	if err != nil {
+		log.Errorf("failed to get tag details for %s: %v", curEntry.Id, err)
+		return curEntry
+	}
+	tag := s.getTagFromStruct(details)
+	curEntry.Tag = tag
+	return curEntry
+}
+
+// createPropertySubscriptionParams creates the subscription parameters for properties
+func (s *Service) createPropertySubscriptionParams() objectsubscription.SubscriptionParams[*propertyWithSpace] {
+	return objectsubscription.SubscriptionParams[*propertyWithSpace]{
+		SetDetails: func(details *domain.Details) (id string, entry *propertyWithSpace) {
+			spaceId := details.GetString(bundle.RelationKeySpaceId)
+			_, _, prop := s.getPropertyFromStruct(details.ToProto())
+			return prop.Id, &propertyWithSpace{
+				Property: prop,
+				spaceId:  spaceId,
+			}
+		},
+		UpdateKey: func(relationKey string, relationValue domain.Value, curEntry *propertyWithSpace) *propertyWithSpace {
+			return s.refreshPropertyFromDetails(curEntry)
+		},
+		RemoveKeys: func(keys []string, curEntry *propertyWithSpace) *propertyWithSpace {
+			return s.refreshPropertyFromDetails(curEntry)
+		},
+		OnAdded: func(id string, entry *propertyWithSpace) {
+			s.subscriptionsMu.Lock()
+			s.cacheProperty(entry.spaceId, entry.Property)
+			s.subscriptionsMu.Unlock()
+		},
+		OnRemoved: func(id string, entry *propertyWithSpace) {
+			s.subscriptionsMu.Lock()
+			if spaceCache, exists := s.propertyCache[entry.spaceId]; exists {
+				delete(spaceCache, entry.Id)
+				delete(spaceCache, entry.RelationKey)
+				delete(spaceCache, entry.Key)
+			}
+			s.subscriptionsMu.Unlock()
+		},
 	}
 }
 
-// processTypeEvents processes type change events from the queue
-func (s *Service) processTypeEvents() {
-	for {
-		messages, err := s.typeQueue.Wait(s.componentCtx)
-		if err != nil {
-			if errors.Is(err, context.Canceled) {
-				return
-			}
-			log.Errorf("error waiting for type messages: %v", err)
-			continue
-		}
-
-		for _, msg := range messages {
-			s.handleTypeEvent(msg)
-		}
-	}
+// typeWithSpace wraps a type with its space ID for cross-space tracking
+type typeWithSpace struct {
+	*apimodel.Type
+	spaceId string
 }
 
-// processTagEvents processes tag change events from the queue
-func (s *Service) processTagEvents() {
-	for {
-		messages, err := s.tagQueue.Wait(s.componentCtx)
-		if err != nil {
-			if errors.Is(err, context.Canceled) {
-				return
+// createTypeSubscriptionParams creates the subscription parameters for types
+func (s *Service) createTypeSubscriptionParams() objectsubscription.SubscriptionParams[*typeWithSpace] {
+	return objectsubscription.SubscriptionParams[*typeWithSpace]{
+		SetDetails: func(details *domain.Details) (id string, entry *typeWithSpace) {
+			spaceId := details.GetString(bundle.RelationKeySpaceId)
+			propertyMap := s.getPropertyMap(spaceId)
+			_, _, t := s.getTypeFromStruct(details.ToProto(), propertyMap)
+			return t.Id, &typeWithSpace{
+				Type:    t,
+				spaceId: spaceId,
 			}
-			log.Errorf("error waiting for tag messages: %v", err)
-			continue
-		}
-
-		for _, msg := range messages {
-			s.handleTagEvent(msg)
-		}
-	}
-}
-
-// handlePropertyEvent handles a single property event
-func (s *Service) handlePropertyEvent(msg *pb.EventMessage) {
-	spaceId := msg.SpaceId
-
-	switch value := msg.Value.(type) {
-	case *pb.EventMessageValueOfSubscriptionAdd:
-		// For cross-space subscriptions, we need to fetch the full details
-		details, err := s.getObjectDetails(context.Background(), spaceId, value.SubscriptionAdd.Id)
-		if err != nil {
-			log.Errorf("failed to get property details for %s: %v", value.SubscriptionAdd.Id, err)
-			return
-		}
-		_, _, prop := s.getPropertyFromStruct(details)
-		s.subscriptionsMu.Lock()
-		s.cacheProperty(spaceId, prop)
-		s.subscriptionsMu.Unlock()
-
-	case *pb.EventMessageValueOfSubscriptionRemove:
-		s.subscriptionsMu.Lock()
-		if spaceCache, exists := s.propertyCache[spaceId]; exists {
-			if prop, exists := spaceCache[value.SubscriptionRemove.Id]; exists {
-				// Remove all keys pointing to this property
-				delete(spaceCache, prop.Id)
-				delete(spaceCache, prop.RelationKey)
-				delete(spaceCache, prop.Key)
-			}
-		}
-		s.subscriptionsMu.Unlock()
-
-	case *pb.EventMessageValueOfObjectDetailsSet, *pb.EventMessageValueOfObjectDetailsUnset, *pb.EventMessageValueOfObjectDetailsAmend:
-		// Re-fetch the property details
-		if spaceCache, exists := s.propertyCache[spaceId]; exists {
-			for _, prop := range spaceCache {
-				details, err := s.getObjectDetails(context.Background(), spaceId, prop.Id)
-				if err == nil {
-					_, _, updatedProp := s.getPropertyFromStruct(details)
-					s.subscriptionsMu.Lock()
-					s.cacheProperty(spaceId, updatedProp)
-					s.subscriptionsMu.Unlock()
-				}
-			}
-		}
-	}
-}
-
-// handleTypeEvent handles a single type event
-func (s *Service) handleTypeEvent(msg *pb.EventMessage) {
-	spaceId := msg.SpaceId
-
-	switch value := msg.Value.(type) {
-	case *pb.EventMessageValueOfSubscriptionAdd:
-		// For cross-space subscriptions, we need to fetch the full details
-		details, err := s.getObjectDetails(context.Background(), spaceId, value.SubscriptionAdd.Id)
-		if err != nil {
-			log.Errorf("failed to get type details for %s: %v", value.SubscriptionAdd.Id, err)
-			return
-		}
-		propertyMap := s.getPropertyMapForSpace(spaceId)
-		_, _, t := s.getTypeFromStruct(details, propertyMap)
-		s.subscriptionsMu.Lock()
-		s.cacheType(spaceId, t)
-		s.subscriptionsMu.Unlock()
-
-	case *pb.EventMessageValueOfSubscriptionRemove:
-		s.subscriptionsMu.Lock()
-		if spaceCache, exists := s.typeCache[spaceId]; exists {
-			if t, exists := spaceCache[value.SubscriptionRemove.Id]; exists {
+		},
+		UpdateKey: func(relationKey string, relationValue domain.Value, curEntry *typeWithSpace) *typeWithSpace {
+			return s.refreshTypeFromDetails(curEntry)
+		},
+		RemoveKeys: func(keys []string, curEntry *typeWithSpace) *typeWithSpace {
+			return s.refreshTypeFromDetails(curEntry)
+		},
+		OnAdded: func(id string, entry *typeWithSpace) {
+			s.subscriptionsMu.Lock()
+			s.cacheType(entry.spaceId, entry.Type)
+			s.subscriptionsMu.Unlock()
+		},
+		OnRemoved: func(id string, entry *typeWithSpace) {
+			s.subscriptionsMu.Lock()
+			if spaceCache, exists := s.typeCache[entry.spaceId]; exists {
 				// Remove all keys pointing to this type
-				delete(spaceCache, t.Id)
-				delete(spaceCache, t.UniqueKey)
-				delete(spaceCache, t.Key)
+				delete(spaceCache, entry.Id)
+				delete(spaceCache, entry.UniqueKey)
+				delete(spaceCache, entry.Key)
 			}
-		}
-		s.subscriptionsMu.Unlock()
-
-	case *pb.EventMessageValueOfObjectDetailsSet, *pb.EventMessageValueOfObjectDetailsUnset, *pb.EventMessageValueOfObjectDetailsAmend:
-		// Re-fetch the type details
-		if spaceCache, exists := s.typeCache[spaceId]; exists {
-			for _, t := range spaceCache {
-				details, err := s.getObjectDetails(context.Background(), spaceId, t.Id)
-				if err == nil {
-					propertyMap := s.getPropertyMapForSpace(spaceId)
-					_, _, updatedType := s.getTypeFromStruct(details, propertyMap)
-					s.subscriptionsMu.Lock()
-					s.cacheType(spaceId, updatedType)
-					s.subscriptionsMu.Unlock()
-				}
-			}
-		}
+			s.subscriptionsMu.Unlock()
+		},
 	}
 }
 
-// handleTagEvent handles a single tag event
-func (s *Service) handleTagEvent(msg *pb.EventMessage) {
-	spaceId := msg.SpaceId
+// tagWithSpace wraps a tag with its space ID for cross-space tracking
+type tagWithSpace struct {
+	*apimodel.Tag
+	spaceId string
+}
 
-	switch value := msg.Value.(type) {
-	case *pb.EventMessageValueOfSubscriptionAdd:
-		// For cross-space subscriptions, we need to fetch the full details
-		details, err := s.getObjectDetails(context.Background(), spaceId, value.SubscriptionAdd.Id)
-		if err != nil {
-			log.Errorf("failed to get tag details for %s: %v", value.SubscriptionAdd.Id, err)
-			return
-		}
-		tag := s.getTagFromStruct(details)
-		s.subscriptionsMu.Lock()
-		s.cacheTag(spaceId, tag)
-		s.subscriptionsMu.Unlock()
-
-	case *pb.EventMessageValueOfSubscriptionRemove:
-		s.subscriptionsMu.Lock()
-		if spaceCache, exists := s.tagCache[spaceId]; exists {
-			delete(spaceCache, value.SubscriptionRemove.Id)
-		}
-		s.subscriptionsMu.Unlock()
-
-	case *pb.EventMessageValueOfObjectDetailsSet, *pb.EventMessageValueOfObjectDetailsUnset, *pb.EventMessageValueOfObjectDetailsAmend:
-		// Re-fetch the tag details
-		if spaceCache, exists := s.tagCache[spaceId]; exists {
-			for _, tag := range spaceCache {
-				details, err := s.getObjectDetails(context.Background(), spaceId, tag.Id)
-				if err == nil {
-					updatedTag := s.getTagFromStruct(details)
-					s.subscriptionsMu.Lock()
-					s.cacheTag(spaceId, updatedTag)
-					s.subscriptionsMu.Unlock()
-				}
+// createTagSubscriptionParams creates the subscription parameters for tags
+func (s *Service) createTagSubscriptionParams() objectsubscription.SubscriptionParams[*tagWithSpace] {
+	return objectsubscription.SubscriptionParams[*tagWithSpace]{
+		SetDetails: func(details *domain.Details) (id string, entry *tagWithSpace) {
+			spaceId := details.GetString(bundle.RelationKeySpaceId)
+			tag := s.getTagFromStruct(details.ToProto())
+			return tag.Id, &tagWithSpace{
+				Tag:     tag,
+				spaceId: spaceId,
 			}
-		}
+		},
+		UpdateKey: func(relationKey string, relationValue domain.Value, curEntry *tagWithSpace) *tagWithSpace {
+			return s.refreshTagFromDetails(curEntry)
+		},
+		RemoveKeys: func(keys []string, curEntry *tagWithSpace) *tagWithSpace {
+			return s.refreshTagFromDetails(curEntry)
+		},
+		OnAdded: func(id string, entry *tagWithSpace) {
+			s.subscriptionsMu.Lock()
+			s.cacheTag(entry.spaceId, entry.Tag)
+			s.subscriptionsMu.Unlock()
+		},
+		OnRemoved: func(id string, entry *tagWithSpace) {
+			s.subscriptionsMu.Lock()
+			if spaceCache, exists := s.tagCache[entry.spaceId]; exists {
+				delete(spaceCache, entry.Id)
+			}
+			s.subscriptionsMu.Unlock()
+		},
 	}
 }
 
@@ -451,23 +421,6 @@ func (s *Service) cacheTag(spaceId string, tag *apimodel.Tag) {
 	s.tagCache[spaceId][tag.Id] = tag
 }
 
-// getPropertyMapForSpace returns the property map for a specific space
-func (s *Service) getPropertyMapForSpace(spaceId string) map[string]*apimodel.Property {
-	s.subscriptionsMu.RLock()
-	defer s.subscriptionsMu.RUnlock()
-
-	// Return the cache directly since it already contains all keys
-	if spaceCache, exists := s.propertyCache[spaceId]; exists {
-		// Create a copy to avoid external modifications
-		propertyMap := make(map[string]*apimodel.Property, len(spaceCache))
-		for k, v := range spaceCache {
-			propertyMap[k] = v
-		}
-		return propertyMap
-	}
-	return make(map[string]*apimodel.Property)
-}
-
 // Stop unsubscribes from all cross-space subscriptions and cleans up
 func (s *Service) Stop() {
 	if s.componentCtxCancel != nil {
@@ -495,7 +448,6 @@ func (s *Service) Stop() {
 		}
 	}
 
-	// Close queues
 	if s.propertyQueue != nil {
 		s.propertyQueue.Close()
 	}
@@ -506,7 +458,6 @@ func (s *Service) Stop() {
 		s.tagQueue.Close()
 	}
 
-	// Clear caches
 	s.propertyCache = nil
 	s.typeCache = nil
 	s.tagCache = nil
