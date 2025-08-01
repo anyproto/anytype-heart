@@ -45,9 +45,15 @@ func TestSpaceService_ListSpaces(t *testing.T) {
 			},
 			Sorts: []*model.BlockContentDataviewSort{
 				{
-					RelationKey:    "spaceOrder",
+					RelationKey:    bundle.RelationKeySpaceOrder.String(),
 					Type:           model.BlockContentDataviewSort_Asc,
 					EmptyPlacement: model.BlockContentDataviewSort_End,
+				},
+				{
+					RelationKey: bundle.RelationKeyCreatedDate.String(),
+					Type:        model.BlockContentDataviewSort_Desc,
+					Format:      model.RelationFormat_longtext,
+					IncludeTime: true,
 				},
 			},
 			Keys: []string{bundle.RelationKeyTargetSpaceId.String()},
