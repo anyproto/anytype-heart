@@ -1,12 +1,9 @@
 package service
 
 import (
-	"context"
-	"errors"
 	"fmt"
 
 	"github.com/cheggaaa/mb/v3"
-	"github.com/gogo/protobuf/types"
 
 	"github.com/anyproto/anytype-heart/core/api/util"
 	"github.com/anyproto/anytype-heart/core/domain"
@@ -17,33 +14,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
-
-// getObjectDetails fetches object details by Id using ObjectSearch
-func (s *Service) getObjectDetails(ctx context.Context, spaceId, objectId string) (*types.Struct, error) {
-	resp := s.mw.ObjectSearch(ctx, &pb.RpcObjectSearchRequest{
-		SpaceId: spaceId,
-		Filters: []*model.BlockContentDataviewFilter{
-			{
-				RelationKey: bundle.RelationKeyId.String(),
-				Condition:   model.BlockContentDataviewFilter_Equal,
-				Value:       pbtypes.String(objectId),
-			},
-		},
-		Limit: 1,
-	})
-
-	if resp.Error != nil && resp.Error.Code != pb.RpcObjectSearchResponseError_NULL {
-		return nil, fmt.Errorf("failed to fetch object: %w", errors.New(resp.Error.Description))
-	}
-
-	if len(resp.Records) == 0 {
-		return nil, fmt.Errorf("object not found: %s", objectId)
-	}
-
-	return resp.Records[0], nil
-}
 
 func (s *Service) InitializeAllCaches() error {
 	// Initialize the cross-space subscriptions for types, properties, and tags

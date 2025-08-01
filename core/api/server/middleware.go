@@ -94,7 +94,7 @@ func ensureAnalyticsEvent(code string, eventService apicore.EventService) gin.Ha
 		status := c.Writer.Status()
 		payload, err := util.NewAnalyticsEventForApi(c.Request.Context(), code, status)
 		if err != nil {
-			log.Errorf("failed to create API analytics event: %v", err)
+			log.Errorf("Failed to create API analytics event: %v", err)
 			return
 		}
 
