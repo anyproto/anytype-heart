@@ -61,52 +61,40 @@ func NewService(mw apicore.ClientCommands, gatewayUrl string, techspaceId string
 	return s
 }
 
-// getTypeMap builds a map of types from the cache for quick lookups
+// getTypeMap returns the type cache for a space for quick lookups
+// The returned map should not be modified by callers
 func (s *Service) getTypeMap(spaceId string) map[string]*apimodel.Type {
 	s.subscriptionsMu.RLock()
 	defer s.subscriptionsMu.RUnlock()
 
-	// Return a copy of the cache since it already contains all keys
 	if spaceCache, exists := s.typeCache[spaceId]; exists {
-		typeMap := make(map[string]*apimodel.Type, len(spaceCache))
-		for k, v := range spaceCache {
-			typeMap[k] = v
-		}
-		return typeMap
+		return spaceCache
 	}
 
 	return make(map[string]*apimodel.Type)
 }
 
-// getPropertyMap builds a map of properties from the cache for quick lookups
+// getPropertyMap returns the property cache for a space for quick lookups
+// The returned map should not be modified by callers
 func (s *Service) getPropertyMap(spaceId string) map[string]*apimodel.Property {
 	s.subscriptionsMu.RLock()
 	defer s.subscriptionsMu.RUnlock()
 
-	// Return a copy of the cache since it already contains all keys
 	if spaceCache, exists := s.propertyCache[spaceId]; exists {
-		propertyMap := make(map[string]*apimodel.Property, len(spaceCache))
-		for k, v := range spaceCache {
-			propertyMap[k] = v
-		}
-		return propertyMap
+		return spaceCache
 	}
 
 	return make(map[string]*apimodel.Property)
 }
 
-// getTagMap builds a map of tags from the cache for quick lookups
+// getTagMap returns the tag cache for a space for quick lookups
+// The returned map should not be modified by callers
 func (s *Service) getTagMap(spaceId string) map[string]*apimodel.Tag {
 	s.subscriptionsMu.RLock()
 	defer s.subscriptionsMu.RUnlock()
 
-	// Return a copy of the cache
 	if spaceCache, exists := s.tagCache[spaceId]; exists {
-		tagMap := make(map[string]*apimodel.Tag, len(spaceCache))
-		for k, v := range spaceCache {
-			tagMap[k] = v
-		}
-		return tagMap
+		return spaceCache
 	}
 
 	return make(map[string]*apimodel.Tag)
