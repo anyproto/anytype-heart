@@ -13,33 +13,21 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 )
 
-type entry[T any] struct {
-	data T
-}
-
-func newEmptyEntry[T any]() *entry[T] {
-	return &entry[T]{}
-}
-
-func newEntry[T any](data T) *entry[T] {
-	return &entry[T]{data: data}
-}
-
 type SubscriptionParams[T any] struct {
-	// OnDetails called when details appears in subscription for the first time
+	// SetDetails transforms details to entry
 	// It's mandatory
-	OnDetailsSet func(details *domain.Details) (id string, entry T)
-	// OnKeyUpdate called when value for given key is updated
+	SetDetails func(details *domain.Details) (id string, entry T)
+	// UpdateKey updates a value for a given key
 	// It's mandatory
-	OnKeyUpdated func(relationKey string, relationValue domain.Value, curEntry T) (updatedEntry T)
-	// OnKeysRemoved called when specified keys are removed from the details
+	UpdateKey func(relationKey string, relationValue domain.Value, curEntry T) (updatedEntry T)
+	// RemoveKeys removes keys
 	// It's mandatory
-	OnKeysRemoved func(keys []string, curEntry T) (updatedEntry T)
+	RemoveKeys func(keys []string, curEntry T) (updatedEntry T)
 
 	// OnAdded called when object appears in subscription
-	OnAdded func(id string)
+	OnAdded func(id string, entry T)
 	// OnRemove called when object is removed from subscription
-	OnRemoved func(id string)
+	OnRemoved func(id string, entry T)
 }
 
 type ObjectSubscription[T any] struct {
@@ -53,17 +41,17 @@ type ObjectSubscription[T any] struct {
 	params SubscriptionParams[T]
 
 	mx  sync.Mutex
-	sub map[string]*entry[T]
+	sub map[string]T
 }
 
 var IdSubscriptionParams = SubscriptionParams[struct{}]{
-	OnDetailsSet: func(t *domain.Details) (string, struct{}) {
+	SetDetails: func(t *domain.Details) (string, struct{}) {
 		return t.GetString(bundle.RelationKeyId), struct{}{}
 	},
-	OnKeyUpdated: func(s string, value domain.Value, s2 struct{}) struct{} {
+	UpdateKey: func(s string, value domain.Value, s2 struct{}) struct{} {
 		return struct{}{}
 	},
-	OnKeysRemoved: func(strings []string, s struct{}) struct{} {
+	RemoveKeys: func(strings []string, s struct{}) struct{} {
 		return struct{}{}
 	},
 }
@@ -97,26 +85,26 @@ func (o *ObjectSubscription[T]) Run() error {
 	if o.service == nil && o.events == nil {
 		return fmt.Errorf("subscription created with nil event queue")
 	}
-	if o.params.OnDetailsSet == nil {
-		return fmt.Errorf("OnDetailsSet function not set")
+	if o.params.SetDetails == nil {
+		return fmt.Errorf("SetDetails function not set")
 	}
-	if o.params.OnKeyUpdated == nil {
-		return fmt.Errorf("OnKeyUpdated function not set")
+	if o.params.UpdateKey == nil {
+		return fmt.Errorf("UpdateKey function not set")
 	}
-	if o.params.OnKeysRemoved == nil {
-		return fmt.Errorf("OnKeysRemoved function not set")
+	if o.params.RemoveKeys == nil {
+		return fmt.Errorf("RemoveKeys function not set")
 	}
 
 	o.request.Internal = true
-	o.sub = map[string]*entry[T]{}
+	o.sub = map[string]T{}
 	if o.service != nil {
 		resp, err := o.service.Search(o.request)
 		if err != nil {
 			return err
 		}
 		for _, rec := range resp.Records {
-			id, data := o.params.OnDetailsSet(rec)
-			o.sub[id] = newEntry(data)
+			id, data := o.params.SetDetails(rec)
+			o.sub[id] = data
 		}
 		o.events = resp.Output
 	}
@@ -140,11 +128,7 @@ func (o *ObjectSubscription[T]) Get(id string) (T, bool) {
 	o.mx.Lock()
 	defer o.mx.Unlock()
 	entry, ok := o.sub[id]
-	if !ok {
-		var defVal T
-		return defVal, false
-	}
-	return entry.data, true
+	return entry, ok
 }
 
 func (o *ObjectSubscription[T]) Has(id string) bool {
@@ -158,7 +142,7 @@ func (o *ObjectSubscription[T]) Iterate(iter func(id string, data T) bool) {
 	o.mx.Lock()
 	defer o.mx.Unlock()
 	for id, ent := range o.sub {
-		if !iter(id, ent.data) {
+		if !iter(id, ent) {
 			return
 		}
 	}
@@ -171,36 +155,37 @@ func (o *ObjectSubscription[T]) read() {
 		defer o.mx.Unlock()
 		switch v := event.Value.(type) {
 		case *pb.EventMessageValueOfSubscriptionAdd:
-			if o.params.OnAdded != nil {
-				o.params.OnAdded(v.SubscriptionAdd.Id)
-			}
-			o.sub[v.SubscriptionAdd.Id] = newEmptyEntry[T]()
+			// Nothing to do here, add logic is in ObjectDetailsSet case
 		case *pb.EventMessageValueOfSubscriptionRemove:
-			delete(o.sub, v.SubscriptionRemove.Id)
-			if o.params.OnRemoved != nil {
-				o.params.OnRemoved(v.SubscriptionRemove.Id)
+			curEntry, ok := o.sub[v.SubscriptionRemove.Id]
+			if ok {
+				delete(o.sub, v.SubscriptionRemove.Id)
+				if o.params.OnRemoved != nil {
+					o.params.OnRemoved(v.SubscriptionRemove.Id, curEntry)
+				}
 			}
 		case *pb.EventMessageValueOfObjectDetailsAmend:
-			curEntry := o.sub[v.ObjectDetailsAmend.Id]
-			if curEntry == nil {
-				return
-			}
-			for _, value := range v.ObjectDetailsAmend.Details {
-				curEntry.data = o.params.OnKeyUpdated(value.Key, domain.ValueFromProto(value.Value), curEntry.data)
+			curEntry, ok := o.sub[v.ObjectDetailsAmend.Id]
+			if ok {
+				for _, value := range v.ObjectDetailsAmend.Details {
+					curEntry = o.params.UpdateKey(value.Key, domain.ValueFromProto(value.Value), curEntry)
+				}
+				o.sub[v.ObjectDetailsAmend.Id] = curEntry
 			}
 		case *pb.EventMessageValueOfObjectDetailsUnset:
-			curEntry := o.sub[v.ObjectDetailsUnset.Id]
-			if curEntry == nil {
-				return
+			curEntry, ok := o.sub[v.ObjectDetailsUnset.Id]
+			if ok {
+				curEntry = o.params.RemoveKeys(v.ObjectDetailsUnset.Keys, curEntry)
+				o.sub[v.ObjectDetailsUnset.Id] = curEntry
 			}
-			curEntry.data = o.params.OnKeysRemoved(v.ObjectDetailsUnset.Keys, curEntry.data)
 		case *pb.EventMessageValueOfObjectDetailsSet:
-			curEntry := o.sub[v.ObjectDetailsSet.Id]
-			if curEntry == nil {
-				return
+			_, newEntry := o.params.SetDetails(domain.NewDetailsFromProto(v.ObjectDetailsSet.Details))
+			if _, ok := o.sub[v.ObjectDetailsSet.Id]; !ok {
+				if o.params.OnAdded != nil {
+					o.params.OnAdded(v.ObjectDetailsSet.Id, newEntry)
+				}
 			}
-			// TODO Think about using domain layer structs for events with domain.Details inside
-			_, curEntry.data = o.params.OnDetailsSet(domain.NewDetailsFromProto(v.ObjectDetailsSet.Details))
+			o.sub[v.ObjectDetailsSet.Id] = newEntry
 		}
 	}
 	for {

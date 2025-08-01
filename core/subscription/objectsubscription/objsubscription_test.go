@@ -117,8 +117,10 @@ func TestIdSubscription(t *testing.T) {
 		makeDetailsUnset("2"),
 		makeDetailsAmend("3"),
 		makeSubscriptionAdd("4"),
+		makeDetailsSet("4"),
 		makeSubscriptionRemove("1"),
 		makeSubscriptionAdd("3"),
+		makeDetailsSet("3"),
 		makeSubscriptionRemove("5"),
 	}
 	for _, msg := range messages {
