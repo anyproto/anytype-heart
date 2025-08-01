@@ -94,12 +94,7 @@ func (s *syncingObjects) GetObjectSubscription() *objectsubscription.ObjectSubsc
 }
 
 func (s *syncingObjects) NotSyncedFilesCount() int {
-	var count int
-	s.notSyncedFilesSubscription.Iterate(func(id string, _ struct{}) bool {
-		count++
-		return true
-	})
-	return count
+	return s.notSyncedFilesSubscription.Len()
 }
 
 func (s *syncingObjects) SyncingObjectsCount(missing []string) int {
