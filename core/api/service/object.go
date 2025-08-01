@@ -322,7 +322,7 @@ func (s *Service) processIconFields(spaceId string, icon apimodel.Icon, isType b
 			return nil, util.ErrBadInput("icon name and color are not supported for object")
 		}
 	case apimodel.EmojiIcon:
-		if len(e.Emoji) > 0 && !IsEmoji(e.Emoji) {
+		if len(e.Emoji) > 0 && !isEmoji(e.Emoji) {
 			return nil, util.ErrBadInput("icon emoji is not valid")
 		}
 		iconFields[bundle.RelationKeyIconEmoji.String()] = pbtypes.String(e.Emoji)
@@ -354,7 +354,7 @@ func (s *Service) processIconFields(spaceId string, icon apimodel.Icon, isType b
 // 				Style:   model.BlockContentTextStyle_name[int32(content.Text.Style)],
 // 				Checked: content.Text.Checked,
 // 				Color:   content.Text.Color,
-// 				Icon:    GetIcon(s.gatewayUrl, content.Text.IconEmoji, content.Text.IconImage, "", 0),
+// 				Icon:    getIcon(s.gatewayUrl, content.Text.IconEmoji, content.Text.IconImage, "", 0),
 // 			}
 // 		case *model.BlockContentOfFile:
 // 			file = &apimodel.File{
@@ -396,16 +396,19 @@ func (s *Service) processIconFields(spaceId string, icon apimodel.Icon, isType b
 
 // getObjectFromStruct creates an Object without blocks from the details.
 func (s *Service) getObjectFromStruct(details *types.Struct) apimodel.Object {
+	spaceId := details.Fields[bundle.RelationKeySpaceId.String()].GetStringValue()
+	typeMap := s.cache.getTypes(spaceId)
+
 	return apimodel.Object{
 		Object:     "object",
 		Id:         details.Fields[bundle.RelationKeyId.String()].GetStringValue(),
 		Name:       details.Fields[bundle.RelationKeyName.String()].GetStringValue(),
-		Icon:       GetIcon(s.gatewayUrl, details.GetFields()[bundle.RelationKeyIconEmoji.String()].GetStringValue(), details.GetFields()[bundle.RelationKeyIconImage.String()].GetStringValue(), details.GetFields()[bundle.RelationKeyIconName.String()].GetStringValue(), details.GetFields()[bundle.RelationKeyIconOption.String()].GetNumberValue()),
+		Icon:       getIcon(s.gatewayUrl, details.Fields[bundle.RelationKeyIconEmoji.String()].GetStringValue(), details.Fields[bundle.RelationKeyIconImage.String()].GetStringValue(), details.Fields[bundle.RelationKeyIconName.String()].GetStringValue(), details.Fields[bundle.RelationKeyIconOption.String()].GetNumberValue()),
 		Archived:   details.Fields[bundle.RelationKeyIsArchived.String()].GetBoolValue(),
-		SpaceId:    details.Fields[bundle.RelationKeySpaceId.String()].GetStringValue(),
+		SpaceId:    spaceId,
 		Snippet:    details.Fields[bundle.RelationKeySnippet.String()].GetStringValue(),
 		Layout:     s.otLayoutToObjectLayout(model.ObjectTypeLayout(details.Fields[bundle.RelationKeyResolvedLayout.String()].GetNumberValue())),
-		Type:       s.getTypeFromMap(details),
+		Type:       typeMap[details.Fields[bundle.RelationKeyType.String()].GetStringValue()],
 		Properties: s.getPropertiesFromStruct(details),
 	}
 }
@@ -413,17 +416,18 @@ func (s *Service) getObjectFromStruct(details *types.Struct) apimodel.Object {
 // getObjectWithBlocksFromStruct creates an ObjectWithBody from the details.
 func (s *Service) getObjectWithBlocksFromStruct(details *types.Struct, markdown string) *apimodel.ObjectWithBody {
 	spaceId := details.Fields[bundle.RelationKeySpaceId.String()].GetStringValue()
+	typeMap := s.cache.getTypes(spaceId)
 
 	return &apimodel.ObjectWithBody{
 		Object:     "object",
 		Id:         details.Fields[bundle.RelationKeyId.String()].GetStringValue(),
 		Name:       details.Fields[bundle.RelationKeyName.String()].GetStringValue(),
-		Icon:       GetIcon(s.gatewayUrl, details.Fields[bundle.RelationKeyIconEmoji.String()].GetStringValue(), details.Fields[bundle.RelationKeyIconImage.String()].GetStringValue(), details.Fields[bundle.RelationKeyIconName.String()].GetStringValue(), details.Fields[bundle.RelationKeyIconOption.String()].GetNumberValue()),
+		Icon:       getIcon(s.gatewayUrl, details.Fields[bundle.RelationKeyIconEmoji.String()].GetStringValue(), details.Fields[bundle.RelationKeyIconImage.String()].GetStringValue(), details.Fields[bundle.RelationKeyIconName.String()].GetStringValue(), details.Fields[bundle.RelationKeyIconOption.String()].GetNumberValue()),
 		Archived:   details.Fields[bundle.RelationKeyIsArchived.String()].GetBoolValue(),
 		SpaceId:    spaceId,
 		Snippet:    details.Fields[bundle.RelationKeySnippet.String()].GetStringValue(),
 		Layout:     s.otLayoutToObjectLayout(model.ObjectTypeLayout(details.Fields[bundle.RelationKeyResolvedLayout.String()].GetNumberValue())),
-		Type:       s.getTypeFromMap(details),
+		Type:       typeMap[details.Fields[bundle.RelationKeyType.String()].GetStringValue()],
 		Properties: s.getPropertiesFromStruct(details),
 		Markdown:   markdown,
 	}

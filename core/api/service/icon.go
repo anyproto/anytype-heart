@@ -7,7 +7,8 @@ import (
 	apimodel "github.com/anyproto/anytype-heart/core/api/model"
 )
 
-func IsEmoji(s string) bool {
+// isEmoji checks if the given string is a valid emoji.
+func isEmoji(s string) bool {
 	if s == "" {
 		return false
 	}
@@ -21,8 +22,8 @@ func IsEmoji(s string) bool {
 	return true
 }
 
-// GetIcon returns the appropriate Icon implementation.
-func GetIcon(gatewayUrl string, iconEmoji string, iconImage string, iconName string, iconOption float64) *apimodel.Icon {
+// getIcon returns the appropriate apimodel.Icon based on the provided parameters.
+func getIcon(gatewayUrl string, iconEmoji string, iconImage string, iconName string, iconOption float64) *apimodel.Icon {
 	if iconName != "" {
 		return &apimodel.Icon{WrappedIcon: apimodel.NamedIcon{
 			Format: apimodel.IconFormatIcon,
@@ -30,12 +31,14 @@ func GetIcon(gatewayUrl string, iconEmoji string, iconImage string, iconName str
 			Color:  apimodel.IconOptionToColor[iconOption],
 		}}
 	}
+
 	if iconEmoji != "" {
 		return &apimodel.Icon{WrappedIcon: apimodel.EmojiIcon{
 			Format: apimodel.IconFormatEmoji,
 			Emoji:  iconEmoji,
 		}}
 	}
+
 	if iconImage != "" {
 		return &apimodel.Icon{WrappedIcon: apimodel.FileIcon{
 			Format: apimodel.IconFormatFile,
