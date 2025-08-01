@@ -20,6 +20,7 @@ func TestObjectService_ListTemplates(t *testing.T) {
 		// given
 		ctx := context.Background()
 		fx := newFixture(t)
+		fx.populateCache(mockedSpaceId)
 
 		// Mock template type search
 		fx.mwMock.On("ObjectSearch", mock.Anything, mock.Anything).Return(&pb.RpcObjectSearchResponse{
@@ -49,12 +50,6 @@ func TestObjectService_ListTemplates(t *testing.T) {
 			Error: &pb.RpcObjectSearchResponseError{Code: pb.RpcObjectSearchResponseError_NULL},
 		}).Once()
 
-		// Mock getPropertyMapFromStore, getTypeMapFromStore and getTagMapFromStore
-		fx.mwMock.On("ObjectSearch", mock.Anything, mock.Anything).Return(&pb.RpcObjectSearchResponse{
-			Records: []*types.Struct{},
-			Error:   &pb.RpcObjectSearchResponseError{Code: pb.RpcObjectSearchResponseError_NULL},
-		}).Times(3)
-
 		// when
 		templates, total, hasMore, err := fx.service.ListTemplates(ctx, mockedSpaceId, "target-type-id", nil, offset, limit)
 
@@ -77,6 +72,7 @@ func TestObjectService_ListTemplates(t *testing.T) {
 		// given
 		ctx := context.Background()
 		fx := newFixture(t)
+		fx.populateCache(mockedSpaceId)
 
 		fx.mwMock.On("ObjectSearch", mock.Anything, mock.Anything).
 			Return(&pb.RpcObjectSearchResponse{
@@ -100,6 +96,7 @@ func TestObjectService_GetTemplate(t *testing.T) {
 		// given
 		ctx := context.Background()
 		fx := newFixture(t)
+		fx.populateCache(mockedSpaceId)
 
 		fx.mwMock.On("ObjectShow", mock.Anything, &pb.RpcObjectShowRequest{
 			SpaceId:  mockedSpaceId,
@@ -120,12 +117,6 @@ func TestObjectService_GetTemplate(t *testing.T) {
 				},
 			},
 		}).Once()
-
-		// Mock getPropertyMapFromStore, getTypeMapFromStore and getTagMapFromStore
-		fx.mwMock.On("ObjectSearch", mock.Anything, mock.Anything).Return(&pb.RpcObjectSearchResponse{
-			Records: []*types.Struct{},
-			Error:   &pb.RpcObjectSearchResponseError{Code: pb.RpcObjectSearchResponseError_NULL},
-		}).Times(3)
 
 		// Mock ExportMarkdown
 		fx.mwMock.On("ObjectExport", mock.Anything, &pb.RpcObjectExportRequest{
@@ -156,6 +147,7 @@ func TestObjectService_GetTemplate(t *testing.T) {
 		// given
 		ctx := context.Background()
 		fx := newFixture(t)
+		fx.populateCache(mockedSpaceId)
 
 		fx.mwMock.On("ObjectShow", mock.Anything, &pb.RpcObjectShowRequest{
 			SpaceId:  mockedSpaceId,

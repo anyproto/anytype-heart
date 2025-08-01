@@ -23,115 +23,9 @@ func stringSlicePtr(s []string) *[]string { return &s }
 func TestProcessProperties(t *testing.T) {
 	ctx := context.Background()
 
-	setupPropertyMapMock := func(fx *fixture) {
-		fx.mwMock.On("ObjectSearch", mock.Anything, mock.MatchedBy(func(req *pb.RpcObjectSearchRequest) bool {
-			return req.SpaceId == mockedSpaceId &&
-				req.Filters[0].RelationKey == bundle.RelationKeyResolvedLayout.String() &&
-				req.Filters[0].Value.Equal(pbtypes.Int64(int64(model.ObjectType_relation)))
-		})).Return(&pb.RpcObjectSearchResponse{
-			Records: []*types.Struct{
-				{
-					Fields: map[string]*types.Value{
-						bundle.RelationKeyId.String():             pbtypes.String("text_prop_id"),
-						bundle.RelationKeyRelationKey.String():    pbtypes.String("text_prop"),
-						bundle.RelationKeyApiObjectKey.String():   pbtypes.String("text_prop"),
-						bundle.RelationKeyName.String():           pbtypes.String("Text Property"),
-						bundle.RelationKeyRelationFormat.String(): pbtypes.Int64(int64(model.RelationFormat_longtext)),
-					},
-				},
-				{
-					Fields: map[string]*types.Value{
-						bundle.RelationKeyId.String():             pbtypes.String("number_prop_id"),
-						bundle.RelationKeyRelationKey.String():    pbtypes.String("number_prop"),
-						bundle.RelationKeyApiObjectKey.String():   pbtypes.String("number_prop"),
-						bundle.RelationKeyName.String():           pbtypes.String("Number Property"),
-						bundle.RelationKeyRelationFormat.String(): pbtypes.Int64(int64(model.RelationFormat_number)),
-					},
-				},
-				{
-					Fields: map[string]*types.Value{
-						bundle.RelationKeyId.String():             pbtypes.String("select_prop_id"),
-						bundle.RelationKeyRelationKey.String():    pbtypes.String("select_prop"),
-						bundle.RelationKeyApiObjectKey.String():   pbtypes.String("select_prop"),
-						bundle.RelationKeyName.String():           pbtypes.String("Select Property"),
-						bundle.RelationKeyRelationFormat.String(): pbtypes.Int64(int64(model.RelationFormat_status)),
-					},
-				},
-				{
-					Fields: map[string]*types.Value{
-						bundle.RelationKeyId.String():             pbtypes.String("multi_select_prop_id"),
-						bundle.RelationKeyRelationKey.String():    pbtypes.String("multi_select_prop"),
-						bundle.RelationKeyApiObjectKey.String():   pbtypes.String("multi_select_prop"),
-						bundle.RelationKeyName.String():           pbtypes.String("Multi Select Property"),
-						bundle.RelationKeyRelationFormat.String(): pbtypes.Int64(int64(model.RelationFormat_tag)),
-					},
-				},
-				{
-					Fields: map[string]*types.Value{
-						bundle.RelationKeyId.String():             pbtypes.String("date_prop_id"),
-						bundle.RelationKeyRelationKey.String():    pbtypes.String("date_prop"),
-						bundle.RelationKeyApiObjectKey.String():   pbtypes.String("date_prop"),
-						bundle.RelationKeyName.String():           pbtypes.String("Date Property"),
-						bundle.RelationKeyRelationFormat.String(): pbtypes.Int64(int64(model.RelationFormat_date)),
-					},
-				},
-				{
-					Fields: map[string]*types.Value{
-						bundle.RelationKeyId.String():             pbtypes.String("files_prop_id"),
-						bundle.RelationKeyRelationKey.String():    pbtypes.String("files_prop"),
-						bundle.RelationKeyApiObjectKey.String():   pbtypes.String("files_prop"),
-						bundle.RelationKeyName.String():           pbtypes.String("Files Property"),
-						bundle.RelationKeyRelationFormat.String(): pbtypes.Int64(int64(model.RelationFormat_file)),
-					},
-				},
-				{
-					Fields: map[string]*types.Value{
-						bundle.RelationKeyId.String():             pbtypes.String("checkbox_prop_id"),
-						bundle.RelationKeyRelationKey.String():    pbtypes.String("checkbox_prop"),
-						bundle.RelationKeyApiObjectKey.String():   pbtypes.String("checkbox_prop"),
-						bundle.RelationKeyName.String():           pbtypes.String("Checkbox Property"),
-						bundle.RelationKeyRelationFormat.String(): pbtypes.Int64(int64(model.RelationFormat_checkbox)),
-					},
-				},
-				{
-					Fields: map[string]*types.Value{
-						bundle.RelationKeyId.String():             pbtypes.String("url_prop_id"),
-						bundle.RelationKeyRelationKey.String():    pbtypes.String("url_prop"),
-						bundle.RelationKeyApiObjectKey.String():   pbtypes.String("url_prop"),
-						bundle.RelationKeyName.String():           pbtypes.String("URL Property"),
-						bundle.RelationKeyRelationFormat.String(): pbtypes.Int64(int64(model.RelationFormat_url)),
-					},
-				},
-				{
-					Fields: map[string]*types.Value{
-						bundle.RelationKeyId.String():             pbtypes.String("email_prop_id"),
-						bundle.RelationKeyRelationKey.String():    pbtypes.String("email_prop"),
-						bundle.RelationKeyApiObjectKey.String():   pbtypes.String("email_prop"),
-						bundle.RelationKeyName.String():           pbtypes.String("Email Property"),
-						bundle.RelationKeyRelationFormat.String(): pbtypes.Int64(int64(model.RelationFormat_email)),
-					},
-				},
-				{
-					Fields: map[string]*types.Value{
-						bundle.RelationKeyId.String():             pbtypes.String("phone_prop_id"),
-						bundle.RelationKeyRelationKey.String():    pbtypes.String("phone_prop"),
-						bundle.RelationKeyApiObjectKey.String():   pbtypes.String("phone_prop"),
-						bundle.RelationKeyName.String():           pbtypes.String("Phone Property"),
-						bundle.RelationKeyRelationFormat.String(): pbtypes.Int64(int64(model.RelationFormat_phone)),
-					},
-				},
-				{
-					Fields: map[string]*types.Value{
-						bundle.RelationKeyId.String():             pbtypes.String("objects_prop_id"),
-						bundle.RelationKeyRelationKey.String():    pbtypes.String("objects_prop"),
-						bundle.RelationKeyApiObjectKey.String():   pbtypes.String("objects_prop"),
-						bundle.RelationKeyName.String():           pbtypes.String("Objects Property"),
-						bundle.RelationKeyRelationFormat.String(): pbtypes.Int64(int64(model.RelationFormat_object)),
-					},
-				},
-			},
-			Error: &pb.RpcObjectSearchResponseError{Code: pb.RpcObjectSearchResponseError_NULL},
-		}).Maybe()
+	// setupPropertyCache populates the cache with test properties
+	setupPropertyCache := func(fx *fixture) {
+		fx.populateCache(mockedSpaceId)
 	}
 
 	setupValidationMock := func(fx *fixture, objectId string, isValid bool, layout model.ObjectTypeLayout) {
@@ -196,7 +90,7 @@ func TestProcessProperties(t *testing.T) {
 
 	t.Run("text property", func(t *testing.T) {
 		fx := newFixture(t)
-		setupPropertyMapMock(fx)
+		setupPropertyCache(fx)
 
 		t.Run("valid value", func(t *testing.T) {
 			entries := []apimodel.PropertyLinkWithValue{
@@ -249,7 +143,7 @@ func TestProcessProperties(t *testing.T) {
 
 	t.Run("number property", func(t *testing.T) {
 		fx := newFixture(t)
-		setupPropertyMapMock(fx)
+		setupPropertyCache(fx)
 
 		t.Run("valid value", func(t *testing.T) {
 			num := 42.5
@@ -305,7 +199,7 @@ func TestProcessProperties(t *testing.T) {
 
 	t.Run("select property", func(t *testing.T) {
 		fx := newFixture(t)
-		setupPropertyMapMock(fx)
+		setupPropertyCache(fx)
 
 		t.Run("valid value", func(t *testing.T) {
 			setupTagValidationMock(fx, "tag123", "select_prop", true)
@@ -364,7 +258,7 @@ func TestProcessProperties(t *testing.T) {
 
 	t.Run("multi_select property", func(t *testing.T) {
 		fx := newFixture(t)
-		setupPropertyMapMock(fx)
+		setupPropertyCache(fx)
 
 		t.Run("valid values", func(t *testing.T) {
 			setupTagValidationMock(fx, "tag1", "multi_select_prop", true)
@@ -440,7 +334,7 @@ func TestProcessProperties(t *testing.T) {
 
 	t.Run("date property", func(t *testing.T) {
 		fx := newFixture(t)
-		setupPropertyMapMock(fx)
+		setupPropertyCache(fx)
 
 		t.Run("valid RFC3339 date", func(t *testing.T) {
 			dateStr := "2023-12-25T10:30:00Z"
@@ -509,7 +403,7 @@ func TestProcessProperties(t *testing.T) {
 
 	t.Run("files property", func(t *testing.T) {
 		fx := newFixture(t)
-		setupPropertyMapMock(fx)
+		setupPropertyCache(fx)
 
 		t.Run("valid file IDs", func(t *testing.T) {
 			setupValidationMock(fx, "file1", true, model.ObjectType_file)
@@ -585,7 +479,7 @@ func TestProcessProperties(t *testing.T) {
 
 	t.Run("checkbox property", func(t *testing.T) {
 		fx := newFixture(t)
-		setupPropertyMapMock(fx)
+		setupPropertyCache(fx)
 
 		t.Run("true value", func(t *testing.T) {
 			entries := []apimodel.PropertyLinkWithValue{
@@ -626,7 +520,7 @@ func TestProcessProperties(t *testing.T) {
 
 	t.Run("url property", func(t *testing.T) {
 		fx := newFixture(t)
-		setupPropertyMapMock(fx)
+		setupPropertyCache(fx)
 
 		t.Run("valid value", func(t *testing.T) {
 			entries := []apimodel.PropertyLinkWithValue{
@@ -679,7 +573,7 @@ func TestProcessProperties(t *testing.T) {
 
 	t.Run("email property", func(t *testing.T) {
 		fx := newFixture(t)
-		setupPropertyMapMock(fx)
+		setupPropertyCache(fx)
 
 		t.Run("valid value", func(t *testing.T) {
 			entries := []apimodel.PropertyLinkWithValue{
@@ -732,7 +626,7 @@ func TestProcessProperties(t *testing.T) {
 
 	t.Run("phone property", func(t *testing.T) {
 		fx := newFixture(t)
-		setupPropertyMapMock(fx)
+		setupPropertyCache(fx)
 
 		t.Run("valid value", func(t *testing.T) {
 			entries := []apimodel.PropertyLinkWithValue{
@@ -785,7 +679,7 @@ func TestProcessProperties(t *testing.T) {
 
 	t.Run("objects property", func(t *testing.T) {
 		fx := newFixture(t)
-		setupPropertyMapMock(fx)
+		setupPropertyCache(fx)
 
 		t.Run("valid object IDs", func(t *testing.T) {
 			setupValidationMock(fx, "obj1", true, model.ObjectType_basic)
@@ -861,7 +755,7 @@ func TestProcessProperties(t *testing.T) {
 
 	t.Run("error cases", func(t *testing.T) {
 		fx := newFixture(t)
-		setupPropertyMapMock(fx)
+		setupPropertyCache(fx)
 
 		t.Run("unknown property key", func(t *testing.T) {
 			entries := []apimodel.PropertyLinkWithValue{
@@ -877,7 +771,7 @@ func TestProcessProperties(t *testing.T) {
 
 		t.Run("excluded system property", func(t *testing.T) {
 			fx := newFixture(t)
-			setupPropertyMapMock(fx)
+			setupPropertyCache(fx)
 			entries := []apimodel.PropertyLinkWithValue{
 				{WrappedPropertyLinkWithValue: apimodel.TextPropertyLinkValue{
 					PropertyKey: "id",
@@ -892,7 +786,7 @@ func TestProcessProperties(t *testing.T) {
 
 	t.Run("multiple properties", func(t *testing.T) {
 		fx := newFixture(t)
-		setupPropertyMapMock(fx)
+		setupPropertyCache(fx)
 		setupValidationMock(fx, "file1", true, model.ObjectType_file)
 		setupTagValidationMock(fx, "tag1", "select_prop", true)
 
@@ -932,7 +826,7 @@ func TestProcessProperties(t *testing.T) {
 
 	t.Run("partial update", func(t *testing.T) {
 		fx := newFixture(t)
-		setupPropertyMapMock(fx)
+		setupPropertyCache(fx)
 
 		entries := []apimodel.PropertyLinkWithValue{
 			{WrappedPropertyLinkWithValue: apimodel.TextPropertyLinkValue{
@@ -951,7 +845,7 @@ func TestProcessProperties(t *testing.T) {
 
 	t.Run("clearing values", func(t *testing.T) {
 		fx := newFixture(t)
-		setupPropertyMapMock(fx)
+		setupPropertyCache(fx)
 
 		entries := []apimodel.PropertyLinkWithValue{
 			{WrappedPropertyLinkWithValue: apimodel.TextPropertyLinkValue{
