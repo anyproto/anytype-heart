@@ -231,7 +231,7 @@ func TestFlush(t *testing.T) {
 										Messages:    &model.ChatStateUnreadState{},
 										Mentions:    &model.ChatStateUnreadState{},
 										LastStateId: "",
-										Order:       1,
+										Order:       6,
 									},
 									SubIds: []string{
 										subId,

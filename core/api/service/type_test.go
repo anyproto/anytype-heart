@@ -20,6 +20,7 @@ func TestObjectService_ListTypes(t *testing.T) {
 		// given
 		ctx := context.Background()
 		fx := newFixture(t)
+		fx.populateCache(mockedSpaceId)
 
 		fx.mwMock.On("ObjectSearch", mock.Anything, mock.Anything).
 			Return(&pb.RpcObjectSearchResponse{
@@ -35,33 +36,6 @@ func TestObjectService_ListTypes(t *testing.T) {
 				},
 				Error: &pb.RpcObjectSearchResponseError{Code: pb.RpcObjectSearchResponseError_NULL},
 			}).Once()
-
-		// Mock getPropertyMapFromStore
-		fx.mwMock.On("ObjectSearch", mock.Anything, &pb.RpcObjectSearchRequest{
-			SpaceId: mockedSpaceId,
-			Filters: []*model.BlockContentDataviewFilter{
-				{
-					RelationKey: bundle.RelationKeyResolvedLayout.String(),
-					Condition:   model.BlockContentDataviewFilter_Equal,
-					Value:       pbtypes.Int64(int64(model.ObjectType_relation)),
-				},
-				{
-					RelationKey: bundle.RelationKeyIsHidden.String(),
-					Condition:   model.BlockContentDataviewFilter_NotEqual,
-					Value:       pbtypes.Bool(true),
-				},
-			},
-			Keys: []string{
-				bundle.RelationKeyId.String(),
-				bundle.RelationKeyRelationKey.String(),
-				bundle.RelationKeyApiObjectKey.String(),
-				bundle.RelationKeyName.String(),
-				bundle.RelationKeyRelationFormat.String(),
-			},
-		}).Return(&pb.RpcObjectSearchResponse{
-			Error:   &pb.RpcObjectSearchResponseError{Code: pb.RpcObjectSearchResponseError_NULL},
-			Records: []*types.Struct{},
-		}, nil).Once()
 
 		// when
 		types, total, hasMore, err := fx.service.ListTypes(ctx, mockedSpaceId, nil, offset, limit)
@@ -86,39 +60,13 @@ func TestObjectService_ListTypes(t *testing.T) {
 		// given
 		ctx := context.Background()
 		fx := newFixture(t)
+		fx.populateCache("empty-space")
 
 		fx.mwMock.On("ObjectSearch", mock.Anything, mock.Anything).
 			Return(&pb.RpcObjectSearchResponse{
 				Records: []*types.Struct{},
 				Error:   &pb.RpcObjectSearchResponseError{Code: pb.RpcObjectSearchResponseError_NULL},
 			}).Once()
-
-		// Mock getPropertyMapFromStore
-		fx.mwMock.On("ObjectSearch", mock.Anything, &pb.RpcObjectSearchRequest{
-			SpaceId: "empty-space",
-			Filters: []*model.BlockContentDataviewFilter{
-				{
-					RelationKey: bundle.RelationKeyResolvedLayout.String(),
-					Condition:   model.BlockContentDataviewFilter_Equal,
-					Value:       pbtypes.Int64(int64(model.ObjectType_relation)),
-				},
-				{
-					RelationKey: bundle.RelationKeyIsHidden.String(),
-					Condition:   model.BlockContentDataviewFilter_NotEqual,
-					Value:       pbtypes.Bool(true),
-				},
-			},
-			Keys: []string{
-				bundle.RelationKeyId.String(),
-				bundle.RelationKeyRelationKey.String(),
-				bundle.RelationKeyApiObjectKey.String(),
-				bundle.RelationKeyName.String(),
-				bundle.RelationKeyRelationFormat.String(),
-			},
-		}).Return(&pb.RpcObjectSearchResponse{
-			Error:   &pb.RpcObjectSearchResponseError{Code: pb.RpcObjectSearchResponseError_NULL},
-			Records: []*types.Struct{},
-		}, nil).Once()
 
 		// when
 		types, total, hasMore, err := fx.service.ListTypes(ctx, "empty-space", nil, offset, limit)
@@ -136,6 +84,7 @@ func TestObjectService_GetType(t *testing.T) {
 		// given
 		ctx := context.Background()
 		fx := newFixture(t)
+		fx.populateCache(mockedSpaceId)
 
 		fx.mwMock.On("ObjectShow", mock.Anything, &pb.RpcObjectShowRequest{
 			SpaceId:  mockedSpaceId,
@@ -159,33 +108,6 @@ func TestObjectService_GetType(t *testing.T) {
 			},
 		}).Once()
 
-		// Mock getPropertyMapFromStore
-		fx.mwMock.On("ObjectSearch", mock.Anything, &pb.RpcObjectSearchRequest{
-			SpaceId: mockedSpaceId,
-			Filters: []*model.BlockContentDataviewFilter{
-				{
-					RelationKey: bundle.RelationKeyResolvedLayout.String(),
-					Condition:   model.BlockContentDataviewFilter_Equal,
-					Value:       pbtypes.Int64(int64(model.ObjectType_relation)),
-				},
-				{
-					RelationKey: bundle.RelationKeyIsHidden.String(),
-					Condition:   model.BlockContentDataviewFilter_NotEqual,
-					Value:       pbtypes.Bool(true),
-				},
-			},
-			Keys: []string{
-				bundle.RelationKeyId.String(),
-				bundle.RelationKeyRelationKey.String(),
-				bundle.RelationKeyApiObjectKey.String(),
-				bundle.RelationKeyName.String(),
-				bundle.RelationKeyRelationFormat.String(),
-			},
-		}).Return(&pb.RpcObjectSearchResponse{
-			Error:   &pb.RpcObjectSearchResponseError{Code: pb.RpcObjectSearchResponseError_NULL},
-			Records: []*types.Struct{},
-		}, nil).Once()
-
 		// when
 		ot, err := fx.service.GetType(ctx, mockedSpaceId, mockedTypeId)
 
@@ -207,6 +129,7 @@ func TestObjectService_GetType(t *testing.T) {
 		// given
 		ctx := context.Background()
 		fx := newFixture(t)
+		fx.populateCache(mockedSpaceId)
 
 		fx.mwMock.On("ObjectShow", mock.Anything, &pb.RpcObjectShowRequest{
 			SpaceId:  mockedSpaceId,

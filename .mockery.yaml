@@ -250,6 +250,7 @@ packages:
     interfaces:
       AccountService:
       EventService:
+      CrossSpaceSubscriptionService:
       ClientCommands:
   github.com/anyproto/anytype-heart/core/block/template:
     interfaces:

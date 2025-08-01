@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"errors"
+	"fmt"
 	"sort"
 
 	"github.com/gogo/protobuf/types"
@@ -24,32 +25,18 @@ var (
 func (s *Service) GlobalSearch(ctx context.Context, request apimodel.SearchRequest, offset int, limit int) (objects []apimodel.Object, total int, hasMore bool, err error) {
 	spaceIds, err := s.GetAllSpaceIds(ctx)
 	if err != nil {
-		return nil, 0, false, err
+		return nil, 0, false, fmt.Errorf("failed to get all space Ids: %w", err)
 	}
 
 	baseFilters := s.prepareBaseFilters()
 	queryFilters := s.prepareQueryFilter(request.Query)
 	sorts, criterionToSortAfter := s.prepareSorts(request.Sort)
 
-	// pre-fetch properties, types and tags to fill the objects
-	propertyMaps, err := s.getPropertyMapsFromStore(ctx, spaceIds, true)
-	if err != nil {
-		return nil, 0, false, err
-	}
-	typeMaps, err := s.getTypeMapsFromStore(ctx, spaceIds, propertyMaps, true)
-	if err != nil {
-		return nil, 0, false, err
-	}
-	tagMap, err := s.getTagMapsFromStore(ctx, spaceIds)
-	if err != nil {
-		return nil, 0, false, err
-	}
-
 	var combinedRecords []*types.Struct
 	for _, spaceId := range spaceIds {
 		// Resolve template and type IDs per spaceId, as they are unique per spaceId
 		templateFilter := s.prepareTemplateFilter()
-		typeFilters := s.prepareTypeFilters(request.Types, typeMaps[spaceId])
+		typeFilters := s.prepareTypeFilters(request.Types, spaceId)
 		if len(request.Types) > 0 && len(typeFilters) == 0 {
 			// Skip spaces that don’t have any of the requested types
 			continue
@@ -96,7 +83,7 @@ func (s *Service) GlobalSearch(ctx context.Context, request apimodel.SearchReque
 
 	results := make([]apimodel.Object, 0, len(paginatedRecords))
 	for _, record := range paginatedRecords {
-		results = append(results, s.getObjectFromStruct(record, propertyMaps[record.Fields[bundle.RelationKeySpaceId.String()].GetStringValue()], typeMaps[record.Fields[bundle.RelationKeySpaceId.String()].GetStringValue()], tagMap[record.Fields[bundle.RelationKeySpaceId.String()].GetStringValue()]))
+		results = append(results, s.getObjectFromStruct(record))
 	}
 
 	return results, total, hasMore, nil
@@ -108,21 +95,7 @@ func (s *Service) Search(ctx context.Context, spaceId string, request apimodel.S
 	templateFilter := s.prepareTemplateFilter()
 	queryFilters := s.prepareQueryFilter(request.Query)
 
-	// pre-fetch properties and types to fill the objects
-	propertyMap, err := s.getPropertyMapFromStore(ctx, spaceId, true)
-	if err != nil {
-		return nil, 0, false, err
-	}
-	typeMap, err := s.getTypeMapFromStore(ctx, spaceId, propertyMap, true)
-	if err != nil {
-		return nil, 0, false, err
-	}
-	tagMap, err := s.getTagMapFromStore(ctx, spaceId)
-	if err != nil {
-		return nil, 0, false, err
-	}
-
-	typeFilters := s.prepareTypeFilters(request.Types, typeMap)
+	typeFilters := s.prepareTypeFilters(request.Types, spaceId)
 	if len(request.Types) > 0 && len(typeFilters) == 0 {
 		// No matching types in this space; return empty result
 		return nil, 0, false, nil
@@ -145,7 +118,7 @@ func (s *Service) Search(ctx context.Context, spaceId string, request apimodel.S
 
 	results := make([]apimodel.Object, 0, len(paginatedRecords))
 	for _, record := range paginatedRecords {
-		results = append(results, s.getObjectFromStruct(record, propertyMap, typeMap, tagMap))
+		results = append(results, s.getObjectFromStruct(record))
 	}
 
 	return results, total, hasMore, nil
@@ -225,7 +198,7 @@ func (s *Service) prepareQueryFilter(searchQuery string) []*model.BlockContentDa
 }
 
 // prepareTypeFilters combines type filters with an OR condition.
-func (s *Service) prepareTypeFilters(types []string, typeMap map[string]*apimodel.Type) []*model.BlockContentDataviewFilter {
+func (s *Service) prepareTypeFilters(types []string, spaceId string) []*model.BlockContentDataviewFilter {
 	if len(types) == 0 {
 		return nil
 	}
@@ -237,8 +210,8 @@ func (s *Service) prepareTypeFilters(types []string, typeMap map[string]*apimode
 			continue
 		}
 
-		uk := s.ResolveTypeApiKey(typeMap, key)
-		typeDef, ok := typeMap[uk]
+		uk := s.ResolveTypeApiKey(spaceId, key)
+		typeDef, ok := s.cache.getTypes(spaceId)[uk]
 		if !ok {
 			continue
 		}

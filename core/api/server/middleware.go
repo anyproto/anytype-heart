@@ -94,7 +94,7 @@ func ensureAnalyticsEvent(code string, eventService apicore.EventService) gin.Ha
 		status := c.Writer.Status()
 		payload, err := util.NewAnalyticsEventForApi(c.Request.Context(), code, status)
 		if err != nil {
-			log.Errorf("failed to create api analytics event: %v", err)
+			log.Errorf("Failed to create API analytics event: %v", err)
 			return
 		}
 
@@ -151,6 +151,19 @@ func ensureFilters() gin.HandlerFunc {
 			}
 		}
 		c.Set("filters", filters)
+		c.Next()
+	}
+}
+
+// ensureCacheInitialized initializes the API service caches on the first request.
+func (s *Server) ensureCacheInitialized() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		s.initOnce.Do(func() {
+			if err := s.service.InitializeAllCaches(); err != nil {
+				log.Errorf("Failed to initialize API service caches: %v", err)
+			}
+		})
+
 		c.Next()
 	}
 }

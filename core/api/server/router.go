@@ -76,6 +76,7 @@ func (s *Server) NewRouter(mw apicore.ClientCommands, eventService apicore.Event
 	// API routes
 	v1 := router.Group("/v1")
 	v1.Use(paginator)
+	v1.Use(s.ensureCacheInitialized())
 	v1.Use(s.ensureAuthenticated(mw))
 	{
 		// Block

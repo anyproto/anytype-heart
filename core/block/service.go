@@ -157,7 +157,7 @@ func (s *Service) GetObject(ctx context.Context, objectID string) (sb smartblock
 }
 
 func (s *Service) WaitAndGetObject(ctx context.Context, objectID string) (sb smartblock.SmartBlock, err error) {
-	spaceID, err := s.resolver.ResolveSpaceID(objectID)
+	spaceID, err := s.resolver.ResolveSpaceIdWithRetry(ctx, objectID)
 	if err != nil {
 		return nil, err
 	}
