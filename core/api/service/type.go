@@ -238,13 +238,13 @@ func (s *Service) buildTypeDetails(ctx context.Context, spaceId string, request 
 		fields[k] = v
 	}
 
-	propertyMap := s.getPropertyMap(spaceId)
-	relationIds, err := s.buildRelationIds(ctx, spaceId, request.Properties, propertyMap)
+	relationIds, err := s.buildRelationIds(ctx, spaceId, request.Properties)
 	if err != nil {
 		return nil, err
 	}
 	fields[bundle.RelationKeyRecommendedRelations.String()] = pbtypes.StringList(relationIds)
 
+	propertyMap := s.getPropertyMap(spaceId)
 	featuredKeys := []domain.RelationKey{
 		bundle.RelationKeyType,
 		bundle.RelationKeyTag,
@@ -288,13 +288,15 @@ func (s *Service) buildUpdatedTypeDetails(ctx context.Context, spaceId string, t
 	}
 	if request.Key != nil {
 		apiKey := strcase.ToSnake(s.sanitizedString(*request.Key))
-		if existing, exists := s.getTypeMap(spaceId)[apiKey]; exists && existing.Id != t.Id {
-			return nil, util.ErrBadInput(fmt.Sprintf("type key %q already exists", apiKey))
+		if apiKey != t.Key {
+			if existing, exists := s.getTypeMap(spaceId)[apiKey]; exists && existing.Id != t.Id {
+				return nil, util.ErrBadInput(fmt.Sprintf("type key %q already exists", apiKey))
+			}
+			if bundle.HasObjectTypeByKey(domain.TypeKey(util.ToTypeApiKey(t.UniqueKey))) {
+				return nil, util.ErrBadInput("type key of bundled types cannot be changed")
+			}
+			fields[bundle.RelationKeyApiObjectKey.String()] = pbtypes.String(apiKey)
 		}
-		if bundle.HasObjectTypeByKey(domain.TypeKey(util.ToTypeApiKey(t.UniqueKey))) {
-			return nil, util.ErrBadInput("type key of bundled types cannot be changed")
-		}
-		fields[bundle.RelationKeyApiObjectKey.String()] = pbtypes.String(apiKey)
 	}
 
 	if request.Icon != nil {
@@ -311,14 +313,12 @@ func (s *Service) buildUpdatedTypeDetails(ctx context.Context, spaceId string, t
 		return &types.Struct{Fields: fields}, nil
 	}
 
-	propertyMap := s.getPropertyMap(spaceId)
-
 	currentFields, err := util.GetFieldsByID(s.mw, spaceId, t.Id, []string{bundle.RelationKeyRecommendedFeaturedRelations.String()})
 	if err != nil {
 		return nil, err
 	}
 
-	relationIds, err := s.buildRelationIds(ctx, spaceId, *request.Properties, propertyMap)
+	relationIds, err := s.buildRelationIds(ctx, spaceId, *request.Properties)
 	if err != nil {
 		return nil, err
 	}
@@ -351,8 +351,10 @@ func (s *Service) buildUpdatedTypeDetails(ctx context.Context, spaceId string, t
 }
 
 // buildRelationIds constructs relation IDs for property links, creating new properties if necessary.
-func (s *Service) buildRelationIds(ctx context.Context, spaceId string, props []apimodel.PropertyLink, propertyMap map[string]*apimodel.Property) ([]string, error) {
+func (s *Service) buildRelationIds(ctx context.Context, spaceId string, props []apimodel.PropertyLink) ([]string, error) {
+	propertyMap := s.getPropertyMap(spaceId)
 	relationIds := make([]string, 0, len(props))
+
 	for _, propLink := range props {
 		rk := s.ResolvePropertyApiKey(propertyMap, propLink.Key)
 		if propDef, exists := propertyMap[rk]; exists {
@@ -369,6 +371,7 @@ func (s *Service) buildRelationIds(ctx context.Context, spaceId string, props []
 		}
 		relationIds = append(relationIds, newProp.Id)
 	}
+
 	return relationIds, nil
 }
 

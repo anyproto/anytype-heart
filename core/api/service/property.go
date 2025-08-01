@@ -249,16 +249,18 @@ func (s *Service) UpdateProperty(ctx context.Context, spaceId string, propertyId
 	}
 	if request.Key != nil {
 		apiKey := strcase.ToSnake(s.sanitizedString(*request.Key))
-		if existing, exists := s.getPropertyMap(spaceId)[apiKey]; exists && existing.Id != propertyId {
-			return nil, util.ErrBadInput(fmt.Sprintf("property key %q already exists", apiKey))
+		if apiKey != prop.Key {
+			if existing, exists := s.getPropertyMap(spaceId)[apiKey]; exists && existing.Id != propertyId {
+				return nil, util.ErrBadInput(fmt.Sprintf("property key %q already exists", apiKey))
+			}
+			if bundle.HasRelation(domain.RelationKey(prop.RelationKey)) {
+				return nil, util.ErrBadInput("property key of bundled properties cannot be changed")
+			}
+			detailsToUpdate = append(detailsToUpdate, &model.Detail{
+				Key:   bundle.RelationKeyApiObjectKey.String(),
+				Value: pbtypes.String(apiKey),
+			})
 		}
-		if bundle.HasRelation(domain.RelationKey(prop.RelationKey)) {
-			return nil, util.ErrBadInput("property key of bundled properties cannot be changed")
-		}
-		detailsToUpdate = append(detailsToUpdate, &model.Detail{
-			Key:   bundle.RelationKeyApiObjectKey.String(),
-			Value: pbtypes.String(apiKey),
-		})
 	}
 
 	if len(detailsToUpdate) > 0 {
