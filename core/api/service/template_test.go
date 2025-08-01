@@ -20,6 +20,7 @@ func TestObjectService_ListTemplates(t *testing.T) {
 		// given
 		ctx := context.Background()
 		fx := newFixture(t)
+		fx.populateCache(mockedSpaceId)
 
 		// Mock template type search
 		fx.mwMock.On("ObjectSearch", mock.Anything, mock.Anything).Return(&pb.RpcObjectSearchResponse{
@@ -49,21 +50,15 @@ func TestObjectService_ListTemplates(t *testing.T) {
 			Error: &pb.RpcObjectSearchResponseError{Code: pb.RpcObjectSearchResponseError_NULL},
 		}).Once()
 
-		// Mock getPropertyMapFromStore, getTypeMapFromStore and getTagMapFromStore
-		fx.mwMock.On("ObjectSearch", mock.Anything, mock.Anything).Return(&pb.RpcObjectSearchResponse{
-			Records: []*types.Struct{},
-			Error:   &pb.RpcObjectSearchResponseError{Code: pb.RpcObjectSearchResponseError_NULL},
-		}).Times(3)
-
 		// when
-		templates, total, hasMore, err := fx.service.ListTemplates(ctx, mockedSpaceId, "target-type-id", offset, limit)
+		templates, total, hasMore, err := fx.service.ListTemplates(ctx, mockedSpaceId, "target-type-id", nil, offset, limit)
 
 		// then
 		require.NoError(t, err)
 		require.Len(t, templates, 1)
 		require.Equal(t, "template-1", templates[0].Id)
 		require.Equal(t, "Template Name", templates[0].Name)
-		require.Equal(t, apimodel.Icon{
+		require.Equal(t, &apimodel.Icon{
 			WrappedIcon: apimodel.EmojiIcon{
 				Format: apimodel.IconFormatEmoji,
 				Emoji:  "📝",
@@ -77,6 +72,7 @@ func TestObjectService_ListTemplates(t *testing.T) {
 		// given
 		ctx := context.Background()
 		fx := newFixture(t)
+		fx.populateCache(mockedSpaceId)
 
 		fx.mwMock.On("ObjectSearch", mock.Anything, mock.Anything).
 			Return(&pb.RpcObjectSearchResponse{
@@ -85,7 +81,7 @@ func TestObjectService_ListTemplates(t *testing.T) {
 			}).Once()
 
 		// when
-		templates, total, hasMore, err := fx.service.ListTemplates(ctx, mockedSpaceId, "missing-type-id", offset, limit)
+		templates, total, hasMore, err := fx.service.ListTemplates(ctx, mockedSpaceId, "missing-type-id", nil, offset, limit)
 
 		// then
 		require.ErrorIs(t, err, ErrTemplateTypeNotFound)
@@ -100,6 +96,7 @@ func TestObjectService_GetTemplate(t *testing.T) {
 		// given
 		ctx := context.Background()
 		fx := newFixture(t)
+		fx.populateCache(mockedSpaceId)
 
 		fx.mwMock.On("ObjectShow", mock.Anything, &pb.RpcObjectShowRequest{
 			SpaceId:  mockedSpaceId,
@@ -121,12 +118,6 @@ func TestObjectService_GetTemplate(t *testing.T) {
 			},
 		}).Once()
 
-		// Mock getPropertyMapFromStore, getTypeMapFromStore and getTagMapFromStore
-		fx.mwMock.On("ObjectSearch", mock.Anything, mock.Anything).Return(&pb.RpcObjectSearchResponse{
-			Records: []*types.Struct{},
-			Error:   &pb.RpcObjectSearchResponseError{Code: pb.RpcObjectSearchResponseError_NULL},
-		}).Times(3)
-
 		// Mock ExportMarkdown
 		fx.mwMock.On("ObjectExport", mock.Anything, &pb.RpcObjectExportRequest{
 			SpaceId:  mockedSpaceId,
@@ -144,7 +135,7 @@ func TestObjectService_GetTemplate(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, mockedTemplateId, template.Id)
 		require.Equal(t, mockedTemplateName, template.Name)
-		require.Equal(t, apimodel.Icon{
+		require.Equal(t, &apimodel.Icon{
 			WrappedIcon: apimodel.EmojiIcon{
 				Format: apimodel.IconFormatEmoji,
 				Emoji:  mockedTemplateIcon,
@@ -156,6 +147,7 @@ func TestObjectService_GetTemplate(t *testing.T) {
 		// given
 		ctx := context.Background()
 		fx := newFixture(t)
+		fx.populateCache(mockedSpaceId)
 
 		fx.mwMock.On("ObjectShow", mock.Anything, &pb.RpcObjectShowRequest{
 			SpaceId:  mockedSpaceId,

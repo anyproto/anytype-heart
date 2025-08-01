@@ -9,6 +9,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/api/pagination"
 	"github.com/anyproto/anytype-heart/core/api/service"
 	"github.com/anyproto/anytype-heart/core/api/util"
+	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
 // ListObjectsHandler retrieves a list of objects in a space
@@ -33,7 +34,10 @@ func ListObjectsHandler(s *service.Service) gin.HandlerFunc {
 		offset := c.GetInt("offset")
 		limit := c.GetInt("limit")
 
-		objects, total, hasMore, err := s.ListObjects(c.Request.Context(), spaceId, offset, limit)
+		filtersAny, _ := c.Get("filters")
+		filters := filtersAny.([]*model.BlockContentDataviewFilter)
+
+		objects, total, hasMore, err := s.ListObjects(c.Request.Context(), spaceId, filters, offset, limit)
 		code := util.MapErrorCode(err,
 			util.ErrToCode(service.ErrFailedRetrieveObjects, http.StatusInternalServerError),
 			util.ErrToCode(service.ErrObjectNotFound, http.StatusInternalServerError),
@@ -88,7 +92,7 @@ func GetObjectHandler(s *service.Service) gin.HandlerFunc {
 			return
 		}
 
-		c.JSON(http.StatusOK, apimodel.ObjectResponse{Object: object})
+		c.JSON(http.StatusOK, apimodel.ObjectResponse{Object: *object})
 	}
 }
 
@@ -139,7 +143,7 @@ func CreateObjectHandler(s *service.Service) gin.HandlerFunc {
 			return
 		}
 
-		c.JSON(http.StatusCreated, apimodel.ObjectResponse{Object: object})
+		c.JSON(http.StatusCreated, apimodel.ObjectResponse{Object: *object})
 	}
 }
 
@@ -191,7 +195,7 @@ func UpdateObjectHandler(s *service.Service) gin.HandlerFunc {
 			return
 		}
 
-		c.JSON(http.StatusOK, apimodel.ObjectResponse{Object: object})
+		c.JSON(http.StatusOK, apimodel.ObjectResponse{Object: *object})
 	}
 }
 
@@ -233,6 +237,6 @@ func DeleteObjectHandler(s *service.Service) gin.HandlerFunc {
 			return
 		}
 
-		c.JSON(http.StatusOK, apimodel.ObjectResponse{Object: object})
+		c.JSON(http.StatusOK, apimodel.ObjectResponse{Object: *object})
 	}
 }
