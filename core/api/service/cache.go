@@ -8,7 +8,6 @@ import (
 	"github.com/cheggaaa/mb/v3"
 	"github.com/gogo/protobuf/types"
 
-	apimodel "github.com/anyproto/anytype-heart/core/api/model"
 	"github.com/anyproto/anytype-heart/core/api/util"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/subscription"
@@ -65,12 +64,11 @@ func (s *Service) InitializeAllCaches() error {
 
 // subscribeToCrossSpaceProperties subscribes to property changes across all active spaces
 func (s *Service) subscribeToCrossSpaceProperties() error {
-	if s.propertyQueue != nil {
+	if s.subscriptions.properties.queue != nil {
 		return nil // Already subscribed
 	}
 
-	s.propertyQueue = mb.New[*pb.EventMessage](0)
-	s.propertyCache = make(map[string]map[string]*apimodel.Property) // spaceId -> key -> Property
+	s.subscriptions.properties.queue = mb.New[*pb.EventMessage](0)
 
 	filters := []database.FilterRequest{
 		{
@@ -97,14 +95,14 @@ func (s *Service) subscribeToCrossSpaceProperties() error {
 			bundle.RelationKeySpaceId.String(),
 		},
 		NoDepSubscription: true,
-		InternalQueue:     s.propertyQueue,
+		InternalQueue:     s.subscriptions.properties.queue,
 	}, crossspacesub.NoOpPredicate())
 
 	if err != nil {
 		return fmt.Errorf("failed to subscribe to cross-space properties: %w", err)
 	}
 
-	s.propertySubId = resp.SubId
+	s.subscriptions.properties.subId = resp.SubId
 
 	for _, record := range resp.Records {
 		spaceId := record.GetString(bundle.RelationKeySpaceId)
@@ -112,11 +110,11 @@ func (s *Service) subscribeToCrossSpaceProperties() error {
 			continue
 		}
 		_, _, prop := s.getPropertyFromStruct(record.ToProto())
-		s.cacheProperty(spaceId, prop)
+		s.cache.cacheProperty(spaceId, prop)
 	}
 
-	s.propertyObjSub = objectsubscription.NewFromQueue(s.propertyQueue, s.createPropertySubscriptionParams(), resp.Records)
-	if err := s.propertyObjSub.(*objectsubscription.ObjectSubscription[*propertyWithSpace]).Run(); err != nil {
+	s.subscriptions.properties.objSub = objectsubscription.NewFromQueue(s.subscriptions.properties.queue, s.createPropertySubscriptionParams(), resp.Records)
+	if err := s.subscriptions.properties.objSub.(*objectsubscription.ObjectSubscription[*propertyWithSpace]).Run(); err != nil {
 		return fmt.Errorf("failed to run property object subscription: %w", err)
 	}
 
@@ -125,12 +123,11 @@ func (s *Service) subscribeToCrossSpaceProperties() error {
 
 // subscribeToCrossSpaceTypes subscribes to type changes across all active spaces
 func (s *Service) subscribeToCrossSpaceTypes() error {
-	if s.typeQueue != nil {
+	if s.subscriptions.types.queue != nil {
 		return nil // Already subscribed
 	}
 
-	s.typeQueue = mb.New[*pb.EventMessage](0)
-	s.typeCache = make(map[string]map[string]*apimodel.Type) // spaceId -> key -> Type
+	s.subscriptions.types.queue = mb.New[*pb.EventMessage](0)
 
 	filters := []database.FilterRequest{
 		{
@@ -164,27 +161,27 @@ func (s *Service) subscribeToCrossSpaceTypes() error {
 			bundle.RelationKeySpaceId.String(),
 		},
 		NoDepSubscription: true,
-		InternalQueue:     s.typeQueue,
+		InternalQueue:     s.subscriptions.types.queue,
 	}, crossspacesub.NoOpPredicate())
 
 	if err != nil {
 		return fmt.Errorf("failed to subscribe to cross-space types: %w", err)
 	}
 
-	s.typeSubId = resp.SubId
+	s.subscriptions.types.subId = resp.SubId
 
 	for _, record := range resp.Records {
 		spaceId := record.GetString(bundle.RelationKeySpaceId)
 		if spaceId == "" {
 			continue
 		}
-		propertyMap := s.getPropertyMap(spaceId)
+		propertyMap := s.cache.getProperties(spaceId)
 		_, _, t := s.getTypeFromStruct(record.ToProto(), propertyMap)
-		s.cacheType(spaceId, t)
+		s.cache.cacheType(spaceId, t)
 	}
 
-	s.typeObjSub = objectsubscription.NewFromQueue(s.typeQueue, s.createTypeSubscriptionParams(), resp.Records)
-	if err := s.typeObjSub.(*objectsubscription.ObjectSubscription[*typeWithSpace]).Run(); err != nil {
+	s.subscriptions.types.objSub = objectsubscription.NewFromQueue(s.subscriptions.types.queue, s.createTypeSubscriptionParams(), resp.Records)
+	if err := s.subscriptions.types.objSub.(*objectsubscription.ObjectSubscription[*typeWithSpace]).Run(); err != nil {
 		return fmt.Errorf("failed to run type object subscription: %w", err)
 	}
 
@@ -193,12 +190,11 @@ func (s *Service) subscribeToCrossSpaceTypes() error {
 
 // subscribeToCrossSpaceTags subscribes to tag changes across all active spaces
 func (s *Service) subscribeToCrossSpaceTags() error {
-	if s.tagQueue != nil {
+	if s.subscriptions.tags.queue != nil {
 		return nil
 	}
 
-	s.tagQueue = mb.New[*pb.EventMessage](0)
-	s.tagCache = make(map[string]map[string]*apimodel.Tag) // spaceId -> id -> Tag
+	s.subscriptions.tags.queue = mb.New[*pb.EventMessage](0)
 
 	filters := []database.FilterRequest{
 		{
@@ -224,14 +220,14 @@ func (s *Service) subscribeToCrossSpaceTags() error {
 			bundle.RelationKeySpaceId.String(),
 		},
 		NoDepSubscription: true,
-		InternalQueue:     s.tagQueue,
+		InternalQueue:     s.subscriptions.tags.queue,
 	}, crossspacesub.NoOpPredicate())
 
 	if err != nil {
 		return fmt.Errorf("failed to subscribe to cross-space tags: %w", err)
 	}
 
-	s.tagSubId = resp.SubId
+	s.subscriptions.tags.subId = resp.SubId
 
 	for _, record := range resp.Records {
 		spaceId := record.GetString(bundle.RelationKeySpaceId)
@@ -239,11 +235,11 @@ func (s *Service) subscribeToCrossSpaceTags() error {
 			continue
 		}
 		tag := s.getTagFromStruct(record.ToProto())
-		s.cacheTag(spaceId, tag)
+		s.cache.cacheTag(spaceId, tag)
 	}
 
-	s.tagObjSub = objectsubscription.NewFromQueue(s.tagQueue, s.createTagSubscriptionParams(), resp.Records)
-	if err := s.tagObjSub.(*objectsubscription.ObjectSubscription[*tagWithSpace]).Run(); err != nil {
+	s.subscriptions.tags.objSub = objectsubscription.NewFromQueue(s.subscriptions.tags.queue, s.createTagSubscriptionParams(), resp.Records)
+	if err := s.subscriptions.tags.objSub.(*objectsubscription.ObjectSubscription[*tagWithSpace]).Run(); err != nil {
 		return fmt.Errorf("failed to run tag object subscription: %w", err)
 	}
 
@@ -261,9 +257,7 @@ func (s *Service) createPropertySubscriptionParams() objectsubscription.Subscrip
 		SetDetails: func(details *domain.Details) (id string, entry *propertyWithSpace) {
 			spaceId := details.GetString(bundle.RelationKeySpaceId)
 			_, _, prop := s.getPropertyFromStruct(details.ToProto())
-			s.subscriptionsMu.Lock()
-			s.cacheProperty(spaceId, prop)
-			s.subscriptionsMu.Unlock()
+			s.cache.cacheProperty(spaceId, prop)
 			return details.GetString(bundle.RelationKeyId), &propertyWithSpace{
 				details: details,
 				spaceId: spaceId,
@@ -272,9 +266,7 @@ func (s *Service) createPropertySubscriptionParams() objectsubscription.Subscrip
 		UpdateKey: func(relationKey string, relationValue domain.Value, curEntry *propertyWithSpace) *propertyWithSpace {
 			curEntry.details.Set(domain.RelationKey(relationKey), relationValue)
 			_, _, prop := s.getPropertyFromStruct(curEntry.details.ToProto())
-			s.subscriptionsMu.Lock()
-			s.cacheProperty(curEntry.spaceId, prop)
-			s.subscriptionsMu.Unlock()
+			s.cache.cacheProperty(curEntry.spaceId, prop)
 			return curEntry
 		},
 		RemoveKeys: func(keys []string, curEntry *propertyWithSpace) *propertyWithSpace {
@@ -282,20 +274,12 @@ func (s *Service) createPropertySubscriptionParams() objectsubscription.Subscrip
 				curEntry.details.Delete(domain.RelationKey(key))
 			}
 			_, _, prop := s.getPropertyFromStruct(curEntry.details.ToProto())
-			s.subscriptionsMu.Lock()
-			s.cacheProperty(curEntry.spaceId, prop)
-			s.subscriptionsMu.Unlock()
+			s.cache.cacheProperty(curEntry.spaceId, prop)
 			return curEntry
 		},
 		OnRemoved: func(id string, entry *propertyWithSpace) {
 			_, _, prop := s.getPropertyFromStruct(entry.details.ToProto())
-			s.subscriptionsMu.Lock()
-			if spaceCache, exists := s.propertyCache[entry.spaceId]; exists {
-				delete(spaceCache, prop.Id)
-				delete(spaceCache, prop.RelationKey)
-				delete(spaceCache, prop.Key)
-			}
-			s.subscriptionsMu.Unlock()
+			s.cache.removeProperty(entry.spaceId, prop.Id, prop.RelationKey, prop.Key)
 		},
 	}
 }
@@ -310,11 +294,9 @@ func (s *Service) createTypeSubscriptionParams() objectsubscription.Subscription
 	return objectsubscription.SubscriptionParams[*typeWithSpace]{
 		SetDetails: func(details *domain.Details) (id string, entry *typeWithSpace) {
 			spaceId := details.GetString(bundle.RelationKeySpaceId)
-			propertyMap := s.getPropertyMap(spaceId)
+			propertyMap := s.cache.getProperties(spaceId)
 			_, _, t := s.getTypeFromStruct(details.ToProto(), propertyMap)
-			s.subscriptionsMu.Lock()
-			s.cacheType(spaceId, t)
-			s.subscriptionsMu.Unlock()
+			s.cache.cacheType(spaceId, t)
 			return details.GetString(bundle.RelationKeyId), &typeWithSpace{
 				details: details,
 				spaceId: spaceId,
@@ -322,35 +304,24 @@ func (s *Service) createTypeSubscriptionParams() objectsubscription.Subscription
 		},
 		UpdateKey: func(relationKey string, relationValue domain.Value, curEntry *typeWithSpace) *typeWithSpace {
 			curEntry.details.Set(domain.RelationKey(relationKey), relationValue)
-			propertyMap := s.getPropertyMap(curEntry.spaceId)
+			propertyMap := s.cache.getProperties(curEntry.spaceId)
 			_, _, t := s.getTypeFromStruct(curEntry.details.ToProto(), propertyMap)
-			s.subscriptionsMu.Lock()
-			s.cacheType(curEntry.spaceId, t)
-			s.subscriptionsMu.Unlock()
+			s.cache.cacheType(curEntry.spaceId, t)
 			return curEntry
 		},
 		RemoveKeys: func(keys []string, curEntry *typeWithSpace) *typeWithSpace {
 			for _, key := range keys {
 				curEntry.details.Delete(domain.RelationKey(key))
 			}
-			propertyMap := s.getPropertyMap(curEntry.spaceId)
+			propertyMap := s.cache.getProperties(curEntry.spaceId)
 			_, _, t := s.getTypeFromStruct(curEntry.details.ToProto(), propertyMap)
-			s.subscriptionsMu.Lock()
-			s.cacheType(curEntry.spaceId, t)
-			s.subscriptionsMu.Unlock()
+			s.cache.cacheType(curEntry.spaceId, t)
 			return curEntry
 		},
 		OnRemoved: func(id string, entry *typeWithSpace) {
-			propertyMap := s.getPropertyMap(entry.spaceId)
+			propertyMap := s.cache.getProperties(entry.spaceId)
 			_, _, t := s.getTypeFromStruct(entry.details.ToProto(), propertyMap)
-			s.subscriptionsMu.Lock()
-			if spaceCache, exists := s.typeCache[entry.spaceId]; exists {
-				// Remove all keys pointing to this type
-				delete(spaceCache, t.Id)
-				delete(spaceCache, t.UniqueKey)
-				delete(spaceCache, t.Key)
-			}
-			s.subscriptionsMu.Unlock()
+			s.cache.removeType(entry.spaceId, t.Id, t.UniqueKey, t.Key)
 		},
 	}
 }
@@ -366,9 +337,7 @@ func (s *Service) createTagSubscriptionParams() objectsubscription.SubscriptionP
 		SetDetails: func(details *domain.Details) (id string, entry *tagWithSpace) {
 			spaceId := details.GetString(bundle.RelationKeySpaceId)
 			tag := s.getTagFromStruct(details.ToProto())
-			s.subscriptionsMu.Lock()
-			s.cacheTag(spaceId, tag)
-			s.subscriptionsMu.Unlock()
+			s.cache.cacheTag(spaceId, tag)
 			return details.GetString(bundle.RelationKeyId), &tagWithSpace{
 				details: details,
 				spaceId: spaceId,
@@ -377,9 +346,7 @@ func (s *Service) createTagSubscriptionParams() objectsubscription.SubscriptionP
 		UpdateKey: func(relationKey string, relationValue domain.Value, curEntry *tagWithSpace) *tagWithSpace {
 			curEntry.details.Set(domain.RelationKey(relationKey), relationValue)
 			tag := s.getTagFromStruct(curEntry.details.ToProto())
-			s.subscriptionsMu.Lock()
-			s.cacheTag(curEntry.spaceId, tag)
-			s.subscriptionsMu.Unlock()
+			s.cache.cacheTag(curEntry.spaceId, tag)
 			return curEntry
 		},
 		RemoveKeys: func(keys []string, curEntry *tagWithSpace) *tagWithSpace {
@@ -387,50 +354,13 @@ func (s *Service) createTagSubscriptionParams() objectsubscription.SubscriptionP
 				curEntry.details.Delete(domain.RelationKey(key))
 			}
 			tag := s.getTagFromStruct(curEntry.details.ToProto())
-			s.subscriptionsMu.Lock()
-			s.cacheTag(curEntry.spaceId, tag)
-			s.subscriptionsMu.Unlock()
+			s.cache.cacheTag(curEntry.spaceId, tag)
 			return curEntry
 		},
 		OnRemoved: func(id string, entry *tagWithSpace) {
-			s.subscriptionsMu.Lock()
-			if spaceCache, exists := s.tagCache[entry.spaceId]; exists {
-				delete(spaceCache, id)
-			}
-			s.subscriptionsMu.Unlock()
+			s.cache.removeTag(entry.spaceId, id)
 		},
 	}
-}
-
-// Helper methods for caching
-func (s *Service) cacheProperty(spaceId string, prop *apimodel.Property) {
-	if _, exists := s.propertyCache[spaceId]; !exists {
-		s.propertyCache[spaceId] = make(map[string]*apimodel.Property)
-	}
-
-	// Store with all possible keys: id, relationKey, apiObjectKey
-	s.propertyCache[spaceId][prop.Id] = prop
-	s.propertyCache[spaceId][prop.RelationKey] = prop
-	s.propertyCache[spaceId][prop.Key] = prop
-}
-
-func (s *Service) cacheType(spaceId string, t *apimodel.Type) {
-	if _, exists := s.typeCache[spaceId]; !exists {
-		s.typeCache[spaceId] = make(map[string]*apimodel.Type)
-	}
-
-	// Store with all possible keys: id, uniqueKey, apiObjectKey
-	s.typeCache[spaceId][t.Id] = t
-	s.typeCache[spaceId][t.UniqueKey] = t
-	s.typeCache[spaceId][t.Key] = t
-}
-
-func (s *Service) cacheTag(spaceId string, tag *apimodel.Tag) {
-	if _, exists := s.tagCache[spaceId]; !exists {
-		s.tagCache[spaceId] = make(map[string]*apimodel.Tag)
-	}
-
-	s.tagCache[spaceId][tag.Id] = tag
 }
 
 // Stop unsubscribes from all cross-space subscriptions and cleans up
@@ -439,49 +369,28 @@ func (s *Service) Stop() {
 		s.componentCtxCancel()
 	}
 
-	// Close object subscriptions first
-	if s.propertyObjSub != nil {
-		s.propertyObjSub.Close()
-	}
-	if s.typeObjSub != nil {
-		s.typeObjSub.Close()
-	}
-	if s.tagObjSub != nil {
-		s.tagObjSub.Close()
-	}
+	// Close all subscriptions
+	s.subscriptions.close()
 
-	s.subscriptionsMu.Lock()
-	defer s.subscriptionsMu.Unlock()
-
-	if s.propertySubId != "" {
-		if err := s.crossSpaceSubService.Unsubscribe(s.propertySubId); err != nil {
+	// Unsubscribe from cross-space subscriptions
+	if s.subscriptions.properties.subId != "" {
+		if err := s.crossSpaceSubService.Unsubscribe(s.subscriptions.properties.subId); err != nil {
 			log.Errorf("Failed to unsubscribe from cross-space properties: %v", err)
 		}
 	}
 
-	if s.typeSubId != "" {
-		if err := s.crossSpaceSubService.Unsubscribe(s.typeSubId); err != nil {
+	if s.subscriptions.types.subId != "" {
+		if err := s.crossSpaceSubService.Unsubscribe(s.subscriptions.types.subId); err != nil {
 			log.Errorf("Failed to unsubscribe from cross-space types: %v", err)
 		}
 	}
 
-	if s.tagSubId != "" {
-		if err := s.crossSpaceSubService.Unsubscribe(s.tagSubId); err != nil {
+	if s.subscriptions.tags.subId != "" {
+		if err := s.crossSpaceSubService.Unsubscribe(s.subscriptions.tags.subId); err != nil {
 			log.Errorf("Failed to unsubscribe from cross-space tags: %v", err)
 		}
 	}
 
-	if s.propertyQueue != nil {
-		s.propertyQueue.Close()
-	}
-	if s.typeQueue != nil {
-		s.typeQueue.Close()
-	}
-	if s.tagQueue != nil {
-		s.tagQueue.Close()
-	}
-
-	s.propertyCache = nil
-	s.typeCache = nil
-	s.tagCache = nil
+	// Clear cache
+	s.cache.clear()
 }

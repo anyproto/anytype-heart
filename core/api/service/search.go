@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"errors"
+	"fmt"
 	"sort"
 
 	"github.com/gogo/protobuf/types"
@@ -22,7 +23,11 @@ var (
 
 // GlobalSearch retrieves a paginated list of objects from all spaces that match the search parameters.
 func (s *Service) GlobalSearch(ctx context.Context, request apimodel.SearchRequest, offset int, limit int) (objects []apimodel.Object, total int, hasMore bool, err error) {
-	spaceIds := s.getAllSpaceIds()
+	spaceIds, err := s.GetAllSpaceIds(ctx)
+	if err != nil {
+		return nil, 0, false, fmt.Errorf("failed to get all space Ids: %w", err)
+	}
+
 	baseFilters := s.prepareBaseFilters()
 	queryFilters := s.prepareQueryFilter(request.Query)
 	sorts, criterionToSortAfter := s.prepareSorts(request.Sort)
@@ -206,7 +211,7 @@ func (s *Service) prepareTypeFilters(types []string, spaceId string) []*model.Bl
 		}
 
 		uk := s.ResolveTypeApiKey(spaceId, key)
-		typeDef, ok := s.getTypeMap(spaceId)[uk]
+		typeDef, ok := s.cache.getTypes(spaceId)[uk]
 		if !ok {
 			continue
 		}

@@ -77,7 +77,7 @@ func (s *Service) ListTypes(ctx context.Context, spaceId string, additionalFilte
 	paginatedTypes, hasMore := pagination.Paginate(resp.Records, offset, limit)
 	types = make([]*apimodel.Type, 0, len(paginatedTypes))
 
-	propertyMap := s.getPropertyMap(spaceId)
+	propertyMap := s.cache.getProperties(spaceId)
 
 	for _, record := range paginatedTypes {
 		_, _, t := s.getTypeFromStruct(record, propertyMap)
@@ -108,7 +108,7 @@ func (s *Service) GetType(ctx context.Context, spaceId string, typeId string) (*
 	}
 
 	// pre-fetch properties to fill the type
-	propertyMap := s.getPropertyMap(spaceId)
+	propertyMap := s.cache.getProperties(spaceId)
 
 	_, _, t := s.getTypeFromStruct(resp.ObjectView.Details[0].Details, propertyMap)
 	return t, nil
@@ -206,7 +206,7 @@ func (s *Service) getTypeFromStruct(details *types.Struct, propertyMap map[strin
 // getTypeFromMap retrieves the type from the details.
 func (s *Service) getTypeFromMap(details *types.Struct) *apimodel.Type {
 	spaceId := details.Fields[bundle.RelationKeySpaceId.String()].GetStringValue()
-	typeMap := s.getTypeMap(spaceId)
+	typeMap := s.cache.getTypes(spaceId)
 	if t, ok := typeMap[details.Fields[bundle.RelationKeyType.String()].GetStringValue()]; ok {
 		return t
 	}
@@ -224,7 +224,7 @@ func (s *Service) buildTypeDetails(ctx context.Context, spaceId string, request 
 
 	if request.Key != "" {
 		apiKey := strcase.ToSnake(s.sanitizedString(request.Key))
-		if _, exists := s.getTypeMap(spaceId)[apiKey]; exists {
+		if _, exists := s.cache.getTypes(spaceId)[apiKey]; exists {
 			return nil, util.ErrBadInput(fmt.Sprintf("type key %q already exists", apiKey))
 		}
 		fields[bundle.RelationKeyApiObjectKey.String()] = pbtypes.String(apiKey)
@@ -244,7 +244,7 @@ func (s *Service) buildTypeDetails(ctx context.Context, spaceId string, request 
 	}
 	fields[bundle.RelationKeyRecommendedRelations.String()] = pbtypes.StringList(relationIds)
 
-	propertyMap := s.getPropertyMap(spaceId)
+	propertyMap := s.cache.getProperties(spaceId)
 	featuredKeys := []domain.RelationKey{
 		bundle.RelationKeyType,
 		bundle.RelationKeyTag,
@@ -289,7 +289,7 @@ func (s *Service) buildUpdatedTypeDetails(ctx context.Context, spaceId string, t
 	if request.Key != nil {
 		apiKey := strcase.ToSnake(s.sanitizedString(*request.Key))
 		if apiKey != t.Key {
-			if existing, exists := s.getTypeMap(spaceId)[apiKey]; exists && existing.Id != t.Id {
+			if existing, exists := s.cache.getTypes(spaceId)[apiKey]; exists && existing.Id != t.Id {
 				return nil, util.ErrBadInput(fmt.Sprintf("type key %q already exists", apiKey))
 			}
 			if bundle.HasObjectTypeByKey(domain.TypeKey(util.ToTypeApiKey(t.UniqueKey))) {
@@ -352,7 +352,7 @@ func (s *Service) buildUpdatedTypeDetails(ctx context.Context, spaceId string, t
 
 // buildRelationIds constructs relation IDs for property links, creating new properties if necessary.
 func (s *Service) buildRelationIds(ctx context.Context, spaceId string, props []apimodel.PropertyLink) ([]string, error) {
-	propertyMap := s.getPropertyMap(spaceId)
+	propertyMap := s.cache.getProperties(spaceId)
 	relationIds := make([]string, 0, len(props))
 
 	for _, propLink := range props {
@@ -378,7 +378,7 @@ func (s *Service) buildRelationIds(ctx context.Context, spaceId string, props []
 // ResolveTypeApiKey returns the internal uniqueKey for a clientKey by looking it up in the typeMap
 // TODO: If not found, this detail shouldn't be set by clients, and strict validation errors
 func (s *Service) ResolveTypeApiKey(spaceId string, clientKey string) string {
-	typeMap := s.getTypeMap(spaceId)
+	typeMap := s.cache.getTypes(spaceId)
 	if p, ok := typeMap[clientKey]; ok {
 		return p.UniqueKey
 	}

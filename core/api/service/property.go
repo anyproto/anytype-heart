@@ -203,7 +203,7 @@ func (s *Service) CreateProperty(ctx context.Context, spaceId string, request ap
 
 	if request.Key != "" {
 		apiKey := strcase.ToSnake(s.sanitizedString(request.Key))
-		if s.getPropertyMap(spaceId)[apiKey] != nil {
+		if s.cache.getProperties(spaceId)[apiKey] != nil {
 			return nil, util.ErrBadInput(fmt.Sprintf("property key %q already exists", apiKey))
 		}
 		details.Fields[bundle.RelationKeyApiObjectKey.String()] = pbtypes.String(apiKey)
@@ -250,7 +250,7 @@ func (s *Service) UpdateProperty(ctx context.Context, spaceId string, propertyId
 	if request.Key != nil {
 		apiKey := strcase.ToSnake(s.sanitizedString(*request.Key))
 		if apiKey != prop.Key {
-			if existing, exists := s.getPropertyMap(spaceId)[apiKey]; exists && existing.Id != propertyId {
+			if existing, exists := s.cache.getProperties(spaceId)[apiKey]; exists && existing.Id != propertyId {
 				return nil, util.ErrBadInput(fmt.Sprintf("property key %q already exists", apiKey))
 			}
 			if bundle.HasRelation(domain.RelationKey(prop.RelationKey)) {
@@ -318,7 +318,7 @@ func (s *Service) processProperties(ctx context.Context, spaceId string, entries
 		return fields, nil
 	}
 
-	propertyMap := s.getPropertyMap(spaceId)
+	propertyMap := s.cache.getProperties(spaceId)
 	for _, entry := range entries {
 		key := entry.Key()
 		value := entry.Value()
@@ -519,8 +519,8 @@ func (s *Service) getPropertyFromStruct(details *types.Struct) (string, string, 
 func (s *Service) getPropertiesFromStruct(details *types.Struct) []apimodel.PropertyWithValue {
 	spaceId := details.Fields[bundle.RelationKeySpaceId.String()].GetStringValue()
 
-	propertyMap := s.getPropertyMap(spaceId)
-	tagMap := s.getTagMap(spaceId)
+	propertyMap := s.cache.getProperties(spaceId)
+	tagMap := s.cache.getTags(spaceId)
 
 	properties := make([]apimodel.PropertyWithValue, 0)
 	for rk, value := range details.GetFields() {
