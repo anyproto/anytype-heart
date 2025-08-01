@@ -9,6 +9,7 @@ import (
 	"github.com/gogo/protobuf/types"
 
 	apimodel "github.com/anyproto/anytype-heart/core/api/model"
+	"github.com/anyproto/anytype-heart/core/api/util"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/subscription"
 	"github.com/anyproto/anytype-heart/core/subscription/crossspacesub"
@@ -77,6 +78,11 @@ func (s *Service) subscribeToCrossSpaceProperties() error {
 			Condition:   model.BlockContentDataviewFilter_Equal,
 			Value:       domain.Int64(int64(model.ObjectType_relation)),
 		},
+		{
+			RelationKey: bundle.RelationKeyIsHidden,
+			Condition:   model.BlockContentDataviewFilter_NotEqual,
+			Value:       domain.Bool(true),
+		},
 	}
 
 	resp, err := s.crossSpaceSubService.Subscribe(subscription.SubscribeRequest{
@@ -109,8 +115,8 @@ func (s *Service) subscribeToCrossSpaceProperties() error {
 		s.cacheProperty(spaceId, prop)
 	}
 
-	propertyObjSub := objectsubscription.NewFromQueue(s.propertyQueue, s.createPropertySubscriptionParams())
-	if err := propertyObjSub.Run(); err != nil {
+	s.propertyObjSub = objectsubscription.NewFromQueue(s.propertyQueue, s.createPropertySubscriptionParams(), resp.Records)
+	if err := s.propertyObjSub.(*objectsubscription.ObjectSubscription[*propertyWithSpace]).Run(); err != nil {
 		return fmt.Errorf("failed to run property object subscription: %w", err)
 	}
 
@@ -131,6 +137,11 @@ func (s *Service) subscribeToCrossSpaceTypes() error {
 			RelationKey: bundle.RelationKeyResolvedLayout,
 			Condition:   model.BlockContentDataviewFilter_Equal,
 			Value:       domain.Int64(int64(model.ObjectType_objectType)),
+		},
+		{
+			RelationKey: bundle.RelationKeyIsHidden,
+			Condition:   model.BlockContentDataviewFilter_NotEqual,
+			Value:       domain.Bool(true),
 		},
 	}
 
@@ -172,8 +183,8 @@ func (s *Service) subscribeToCrossSpaceTypes() error {
 		s.cacheType(spaceId, t)
 	}
 
-	typeObjSub := objectsubscription.NewFromQueue(s.typeQueue, s.createTypeSubscriptionParams())
-	if err := typeObjSub.Run(); err != nil {
+	s.typeObjSub = objectsubscription.NewFromQueue(s.typeQueue, s.createTypeSubscriptionParams(), resp.Records)
+	if err := s.typeObjSub.(*objectsubscription.ObjectSubscription[*typeWithSpace]).Run(); err != nil {
 		return fmt.Errorf("failed to run type object subscription: %w", err)
 	}
 
@@ -192,8 +203,13 @@ func (s *Service) subscribeToCrossSpaceTags() error {
 	filters := []database.FilterRequest{
 		{
 			RelationKey: bundle.RelationKeyResolvedLayout,
-			Condition:   model.BlockContentDataviewFilter_Equal,
-			Value:       domain.Int64(int64(model.ObjectType_relationOption)),
+			Condition:   model.BlockContentDataviewFilter_In,
+			Value:       domain.Int64List(util.LayoutsToIntArgs(util.TagLayouts)),
+		},
+		{
+			RelationKey: bundle.RelationKeyIsHidden,
+			Condition:   model.BlockContentDataviewFilter_NotEqual,
+			Value:       domain.Bool(true),
 		},
 	}
 
@@ -226,8 +242,8 @@ func (s *Service) subscribeToCrossSpaceTags() error {
 		s.cacheTag(spaceId, tag)
 	}
 
-	tagObjSub := objectsubscription.NewFromQueue(s.tagQueue, s.createTagSubscriptionParams())
-	if err := tagObjSub.Run(); err != nil {
+	s.tagObjSub = objectsubscription.NewFromQueue(s.tagQueue, s.createTagSubscriptionParams(), resp.Records)
+	if err := s.tagObjSub.(*objectsubscription.ObjectSubscription[*tagWithSpace]).Run(); err != nil {
 		return fmt.Errorf("failed to run tag object subscription: %w", err)
 	}
 
@@ -235,45 +251,8 @@ func (s *Service) subscribeToCrossSpaceTags() error {
 }
 
 type propertyWithSpace struct {
-	*apimodel.Property
+	details *domain.Details
 	spaceId string
-}
-
-// refreshPropertyFromDetails re-fetches and updates property details
-func (s *Service) refreshPropertyFromDetails(curEntry *propertyWithSpace) *propertyWithSpace {
-	details, err := s.getObjectDetails(context.Background(), curEntry.spaceId, curEntry.Id)
-	if err != nil {
-		log.Errorf("failed to get property details for %s: %v", curEntry.Id, err)
-		return curEntry
-	}
-	_, _, prop := s.getPropertyFromStruct(details)
-	curEntry.Property = prop
-	return curEntry
-}
-
-// refreshTypeFromDetails re-fetches and updates type details
-func (s *Service) refreshTypeFromDetails(curEntry *typeWithSpace) *typeWithSpace {
-	details, err := s.getObjectDetails(context.Background(), curEntry.spaceId, curEntry.Id)
-	if err != nil {
-		log.Errorf("failed to get type details for %s: %v", curEntry.Id, err)
-		return curEntry
-	}
-	propertyMap := s.getPropertyMap(curEntry.spaceId)
-	_, _, t := s.getTypeFromStruct(details, propertyMap)
-	curEntry.Type = t
-	return curEntry
-}
-
-// refreshTagFromDetails re-fetches and updates tag details
-func (s *Service) refreshTagFromDetails(curEntry *tagWithSpace) *tagWithSpace {
-	details, err := s.getObjectDetails(context.Background(), curEntry.spaceId, curEntry.Id)
-	if err != nil {
-		log.Errorf("failed to get tag details for %s: %v", curEntry.Id, err)
-		return curEntry
-	}
-	tag := s.getTagFromStruct(details)
-	curEntry.Tag = tag
-	return curEntry
 }
 
 // createPropertySubscriptionParams creates the subscription parameters for properties
@@ -282,37 +261,47 @@ func (s *Service) createPropertySubscriptionParams() objectsubscription.Subscrip
 		SetDetails: func(details *domain.Details) (id string, entry *propertyWithSpace) {
 			spaceId := details.GetString(bundle.RelationKeySpaceId)
 			_, _, prop := s.getPropertyFromStruct(details.ToProto())
-			return prop.Id, &propertyWithSpace{
-				Property: prop,
-				spaceId:  spaceId,
+			s.subscriptionsMu.Lock()
+			s.cacheProperty(spaceId, prop)
+			s.subscriptionsMu.Unlock()
+			return details.GetString(bundle.RelationKeyId), &propertyWithSpace{
+				details: details,
+				spaceId: spaceId,
 			}
 		},
 		UpdateKey: func(relationKey string, relationValue domain.Value, curEntry *propertyWithSpace) *propertyWithSpace {
-			return s.refreshPropertyFromDetails(curEntry)
+			curEntry.details.Set(domain.RelationKey(relationKey), relationValue)
+			_, _, prop := s.getPropertyFromStruct(curEntry.details.ToProto())
+			s.subscriptionsMu.Lock()
+			s.cacheProperty(curEntry.spaceId, prop)
+			s.subscriptionsMu.Unlock()
+			return curEntry
 		},
 		RemoveKeys: func(keys []string, curEntry *propertyWithSpace) *propertyWithSpace {
-			return s.refreshPropertyFromDetails(curEntry)
-		},
-		OnAdded: func(id string, entry *propertyWithSpace) {
+			for _, key := range keys {
+				curEntry.details.Delete(domain.RelationKey(key))
+			}
+			_, _, prop := s.getPropertyFromStruct(curEntry.details.ToProto())
 			s.subscriptionsMu.Lock()
-			s.cacheProperty(entry.spaceId, entry.Property)
+			s.cacheProperty(curEntry.spaceId, prop)
 			s.subscriptionsMu.Unlock()
+			return curEntry
 		},
 		OnRemoved: func(id string, entry *propertyWithSpace) {
+			_, _, prop := s.getPropertyFromStruct(entry.details.ToProto())
 			s.subscriptionsMu.Lock()
 			if spaceCache, exists := s.propertyCache[entry.spaceId]; exists {
-				delete(spaceCache, entry.Id)
-				delete(spaceCache, entry.RelationKey)
-				delete(spaceCache, entry.Key)
+				delete(spaceCache, prop.Id)
+				delete(spaceCache, prop.RelationKey)
+				delete(spaceCache, prop.Key)
 			}
 			s.subscriptionsMu.Unlock()
 		},
 	}
 }
 
-// typeWithSpace wraps a type with its space ID for cross-space tracking
 type typeWithSpace struct {
-	*apimodel.Type
+	details *domain.Details
 	spaceId string
 }
 
@@ -323,38 +312,51 @@ func (s *Service) createTypeSubscriptionParams() objectsubscription.Subscription
 			spaceId := details.GetString(bundle.RelationKeySpaceId)
 			propertyMap := s.getPropertyMap(spaceId)
 			_, _, t := s.getTypeFromStruct(details.ToProto(), propertyMap)
-			return t.Id, &typeWithSpace{
-				Type:    t,
+			s.subscriptionsMu.Lock()
+			s.cacheType(spaceId, t)
+			s.subscriptionsMu.Unlock()
+			return details.GetString(bundle.RelationKeyId), &typeWithSpace{
+				details: details,
 				spaceId: spaceId,
 			}
 		},
 		UpdateKey: func(relationKey string, relationValue domain.Value, curEntry *typeWithSpace) *typeWithSpace {
-			return s.refreshTypeFromDetails(curEntry)
+			curEntry.details.Set(domain.RelationKey(relationKey), relationValue)
+			propertyMap := s.getPropertyMap(curEntry.spaceId)
+			_, _, t := s.getTypeFromStruct(curEntry.details.ToProto(), propertyMap)
+			s.subscriptionsMu.Lock()
+			s.cacheType(curEntry.spaceId, t)
+			s.subscriptionsMu.Unlock()
+			return curEntry
 		},
 		RemoveKeys: func(keys []string, curEntry *typeWithSpace) *typeWithSpace {
-			return s.refreshTypeFromDetails(curEntry)
-		},
-		OnAdded: func(id string, entry *typeWithSpace) {
+			for _, key := range keys {
+				curEntry.details.Delete(domain.RelationKey(key))
+			}
+			propertyMap := s.getPropertyMap(curEntry.spaceId)
+			_, _, t := s.getTypeFromStruct(curEntry.details.ToProto(), propertyMap)
 			s.subscriptionsMu.Lock()
-			s.cacheType(entry.spaceId, entry.Type)
+			s.cacheType(curEntry.spaceId, t)
 			s.subscriptionsMu.Unlock()
+			return curEntry
 		},
 		OnRemoved: func(id string, entry *typeWithSpace) {
+			propertyMap := s.getPropertyMap(entry.spaceId)
+			_, _, t := s.getTypeFromStruct(entry.details.ToProto(), propertyMap)
 			s.subscriptionsMu.Lock()
 			if spaceCache, exists := s.typeCache[entry.spaceId]; exists {
 				// Remove all keys pointing to this type
-				delete(spaceCache, entry.Id)
-				delete(spaceCache, entry.UniqueKey)
-				delete(spaceCache, entry.Key)
+				delete(spaceCache, t.Id)
+				delete(spaceCache, t.UniqueKey)
+				delete(spaceCache, t.Key)
 			}
 			s.subscriptionsMu.Unlock()
 		},
 	}
 }
 
-// tagWithSpace wraps a tag with its space ID for cross-space tracking
 type tagWithSpace struct {
-	*apimodel.Tag
+	details *domain.Details
 	spaceId string
 }
 
@@ -364,26 +366,36 @@ func (s *Service) createTagSubscriptionParams() objectsubscription.SubscriptionP
 		SetDetails: func(details *domain.Details) (id string, entry *tagWithSpace) {
 			spaceId := details.GetString(bundle.RelationKeySpaceId)
 			tag := s.getTagFromStruct(details.ToProto())
-			return tag.Id, &tagWithSpace{
-				Tag:     tag,
+			s.subscriptionsMu.Lock()
+			s.cacheTag(spaceId, tag)
+			s.subscriptionsMu.Unlock()
+			return details.GetString(bundle.RelationKeyId), &tagWithSpace{
+				details: details,
 				spaceId: spaceId,
 			}
 		},
 		UpdateKey: func(relationKey string, relationValue domain.Value, curEntry *tagWithSpace) *tagWithSpace {
-			return s.refreshTagFromDetails(curEntry)
+			curEntry.details.Set(domain.RelationKey(relationKey), relationValue)
+			tag := s.getTagFromStruct(curEntry.details.ToProto())
+			s.subscriptionsMu.Lock()
+			s.cacheTag(curEntry.spaceId, tag)
+			s.subscriptionsMu.Unlock()
+			return curEntry
 		},
 		RemoveKeys: func(keys []string, curEntry *tagWithSpace) *tagWithSpace {
-			return s.refreshTagFromDetails(curEntry)
-		},
-		OnAdded: func(id string, entry *tagWithSpace) {
+			for _, key := range keys {
+				curEntry.details.Delete(domain.RelationKey(key))
+			}
+			tag := s.getTagFromStruct(curEntry.details.ToProto())
 			s.subscriptionsMu.Lock()
-			s.cacheTag(entry.spaceId, entry.Tag)
+			s.cacheTag(curEntry.spaceId, tag)
 			s.subscriptionsMu.Unlock()
+			return curEntry
 		},
 		OnRemoved: func(id string, entry *tagWithSpace) {
 			s.subscriptionsMu.Lock()
 			if spaceCache, exists := s.tagCache[entry.spaceId]; exists {
-				delete(spaceCache, entry.Id)
+				delete(spaceCache, id)
 			}
 			s.subscriptionsMu.Unlock()
 		},
@@ -425,6 +437,17 @@ func (s *Service) cacheTag(spaceId string, tag *apimodel.Tag) {
 func (s *Service) Stop() {
 	if s.componentCtxCancel != nil {
 		s.componentCtxCancel()
+	}
+
+	// Close object subscriptions first
+	if s.propertyObjSub != nil {
+		s.propertyObjSub.Close()
+	}
+	if s.typeObjSub != nil {
+		s.typeObjSub.Close()
+	}
+	if s.tagObjSub != nil {
+		s.tagObjSub.Close()
 	}
 
 	s.subscriptionsMu.Lock()

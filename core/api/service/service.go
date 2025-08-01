@@ -37,6 +37,11 @@ type Service struct {
 	typeQueue     *mb.MB[*pb.EventMessage]
 	tagQueue      *mb.MB[*pb.EventMessage]
 
+	// Object subscriptions for event handling
+	propertyObjSub interface{ Close() }
+	typeObjSub     interface{ Close() }
+	tagObjSub      interface{ Close() }
+
 	// Caches organized by spaceId -> key -> object
 	// For properties: key can be id, relationKey, or apiObjectKey
 	// For types: key can be id, uniqueKey, or apiObjectKey
