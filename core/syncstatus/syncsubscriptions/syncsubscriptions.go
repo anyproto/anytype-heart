@@ -17,7 +17,7 @@ type SyncSubscription interface {
 	Run() error
 	Close()
 	GetObjectSubscription() *objectsubscription.ObjectSubscription[struct{}]
-	NotSyncedFilesCount() int 
+	LimitedFilesCount() int
 	SyncingObjectsCount(missing []string) int
 }
 
