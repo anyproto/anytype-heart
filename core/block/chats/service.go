@@ -605,7 +605,7 @@ func (s *service) ReadAll(ctx context.Context) error {
 				return fmt.Errorf("mentions: %w", err)
 			}
 			if markedMessages+markedMentions > 0 {
-				if nErr := s.pushService.NotifyRead(ctx, s.allChatObjectIds[chatId], pushGroupId(chatId)); nErr != nil {
+				if nErr := s.pushService.NotifyRead(ctx, sb.SpaceID(), pushGroupId(chatId)); nErr != nil {
 					log.Error("notifyRead", zap.Error(nErr))
 				}
 			}
