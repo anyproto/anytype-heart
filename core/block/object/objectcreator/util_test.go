@@ -1,6 +1,7 @@
 package objectcreator
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -106,6 +107,32 @@ func TestEnsureUniqueApiObjectKey(t *testing.T) {
 		err := fx.service.(*service).ensureUniqueApiObjectKey(spaceId, object, coresb.SmartBlockTypeObjectType)
 		require.NoError(t, err)
 		assert.Equal(t, "task", object.GetString(bundle.RelationKeyApiObjectKey))
+	})
+
+	t.Run("should fail after max iterations", func(t *testing.T) {
+		fx := newFixture(t)
+
+		// Add many existing objects to force hitting the limit
+		var existingObjects []objectstore.TestObject
+		for i := 0; i <= 1000; i++ {
+			key := "task"
+			if i > 0 {
+				key = fmt.Sprintf("task%d", i)
+			}
+			existingObjects = append(existingObjects, objectstore.TestObject{
+				bundle.RelationKeyId:           domain.String(fmt.Sprintf("id-%d", i)),
+				bundle.RelationKeyApiObjectKey: domain.String(key),
+				bundle.RelationKeyLayout:       domain.Int64(int64(model.ObjectType_objectType)),
+			})
+		}
+		fx.objectStore.AddObjects(t, spaceId, existingObjects)
+
+		object := domain.NewDetails()
+		object.SetString(bundle.RelationKeyApiObjectKey, "task")
+
+		err := fx.service.(*service).ensureUniqueApiObjectKey(spaceId, object, coresb.SmartBlockTypeObjectType)
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "failed to find unique apiObjectKey after 1000 attempts")
 	})
 }
 

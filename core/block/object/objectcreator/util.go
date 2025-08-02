@@ -39,10 +39,10 @@ func (s *service) ensureUniqueApiObjectKey(spaceId string, object *domain.Detail
 		return nil
 	}
 
-	var filters []database.FilterRequest
+	var baseFilters []database.FilterRequest
 	switch objectType {
 	case coresb.SmartBlockTypeObjectType:
-		filters = []database.FilterRequest{
+		baseFilters = []database.FilterRequest{
 			{
 				RelationKey: bundle.RelationKeyLayout,
 				Condition:   model.BlockContentDataviewFilter_Equal,
@@ -50,7 +50,7 @@ func (s *service) ensureUniqueApiObjectKey(spaceId string, object *domain.Detail
 			},
 		}
 	case coresb.SmartBlockTypeRelation:
-		filters = []database.FilterRequest{
+		baseFilters = []database.FilterRequest{
 			{
 				RelationKey: bundle.RelationKeyLayout,
 				Condition:   model.BlockContentDataviewFilter_Equal,
@@ -58,7 +58,7 @@ func (s *service) ensureUniqueApiObjectKey(spaceId string, object *domain.Detail
 			},
 		}
 	case coresb.SmartBlockTypeRelationOption:
-		filters = []database.FilterRequest{
+		baseFilters = []database.FilterRequest{
 			{
 				RelationKey: bundle.RelationKeyLayout,
 				Condition:   model.BlockContentDataviewFilter_Equal,
@@ -71,17 +71,18 @@ func (s *service) ensureUniqueApiObjectKey(spaceId string, object *domain.Detail
 
 	baseKey := apiKey
 	suffix := 1
+	const maxIterations = 1000
 
-	for {
-		// Check if this key already exists
-		filters := append(filters, database.FilterRequest{
+	for suffix <= maxIterations {
+		queryFilters := append([]database.FilterRequest{}, baseFilters...)
+		queryFilters = append(queryFilters, database.FilterRequest{
 			RelationKey: bundle.RelationKeyApiObjectKey,
 			Condition:   model.BlockContentDataviewFilter_Equal,
 			Value:       domain.String(apiKey),
 		})
 
 		records, err := s.objectStore.SpaceIndex(spaceId).Query(database.Query{
-			Filters: filters,
+			Filters: queryFilters,
 			Limit:   1,
 		})
 		if err != nil {
@@ -97,9 +98,9 @@ func (s *service) ensureUniqueApiObjectKey(spaceId string, object *domain.Detail
 		// Key exists, try with suffix
 		apiKey = fmt.Sprintf("%s%d", baseKey, suffix)
 		suffix++
-
-		filters = filters[:len(filters)-1]
 	}
+
+	return fmt.Errorf("failed to find unique apiObjectKey after %d attempts for key: %s", maxIterations, baseKey)
 }
 
 func transliterate(in string) string {
