@@ -3,7 +3,6 @@ package objectcreator
 import (
 	"context"
 	"fmt"
-	"strings"
 	"time"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
@@ -42,9 +41,8 @@ func (s *service) createRelationOption(ctx context.Context, space clientspace.Sp
 		objectKey = uniqueKey.InternalKey()
 	}
 	injectApiObjectKey(object, objectKey)
-
-	if strings.TrimSpace(object.GetString(bundle.RelationKeyApiObjectKey)) == "" {
-		object.SetString(bundle.RelationKeyApiObjectKey, transliterate(object.GetString(bundle.RelationKeyName)))
+	if err := s.ensureUniqueApiObjectKey(space.Id(), object, coresb.SmartBlockTypeRelationOption); err != nil {
+		return "", nil, fmt.Errorf("ensure unique apiObjectKey: %w", err)
 	}
 
 	createState := state.NewDocWithUniqueKey("", nil, uniqueKey).(*state.State)
