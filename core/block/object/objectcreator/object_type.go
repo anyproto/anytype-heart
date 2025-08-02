@@ -30,9 +30,8 @@ func (s *service) createObjectType(ctx context.Context, space clientspace.Space,
 	if !wasGenerated {
 		objectKey = uniqueKey.InternalKey()
 	}
-	injectApiObjectKey(object, objectKey)
-	if err := s.ensureUniqueApiObjectKey(space.Id(), object, coresb.SmartBlockTypeObjectType); err != nil {
-		return "", nil, fmt.Errorf("ensure unique apiObjectKey: %w", err)
+	if err := s.injectAndEnsureUniqueApiObjectKey(space.Id(), object, objectKey, coresb.SmartBlockTypeObjectType); err != nil {
+		return "", nil, fmt.Errorf("inject and ensure unique apiObjectKey: %w", err)
 	}
 
 	if !object.Has(bundle.RelationKeyRecommendedLayout) {

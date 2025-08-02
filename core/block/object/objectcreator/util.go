@@ -15,11 +15,12 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-// injectApiObjectKey sets a value for ApiObjectKey relation in priority:
+// injectAndEnsureUniqueApiObjectKey sets a value for ApiObjectKey relation in priority:
 // - User-provided ApiObjectKey
 // - Key from relationKey/uniqueKey
 // - Transliterated Name relation
-func injectApiObjectKey(object *domain.Details, key string) {
+// Then ensures the key is unique by adding sequential suffixes if needed
+func (s *service) injectAndEnsureUniqueApiObjectKey(spaceId string, object *domain.Details, key string, objectType coresb.SmartBlockType) error {
 	if strings.TrimSpace(object.GetString(bundle.RelationKeyApiObjectKey)) == "" {
 		if key == "" {
 			key = transliterate(object.GetString(bundle.RelationKeyName))
@@ -27,6 +28,8 @@ func injectApiObjectKey(object *domain.Details, key string) {
 		key = strcase.ToSnake(key)
 		object.SetString(bundle.RelationKeyApiObjectKey, key)
 	}
+
+	return s.ensureUniqueApiObjectKey(spaceId, object, objectType)
 }
 
 // ensureUniqueApiObjectKey checks if the ApiObjectKey already exists and generates a unique one with sequential suffix if needed

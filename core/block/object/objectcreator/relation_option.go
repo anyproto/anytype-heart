@@ -40,9 +40,8 @@ func (s *service) createRelationOption(ctx context.Context, space clientspace.Sp
 	if !wasGenerated {
 		objectKey = uniqueKey.InternalKey()
 	}
-	injectApiObjectKey(object, objectKey)
-	if err := s.ensureUniqueApiObjectKey(space.Id(), object, coresb.SmartBlockTypeRelationOption); err != nil {
-		return "", nil, fmt.Errorf("ensure unique apiObjectKey: %w", err)
+	if err := s.injectAndEnsureUniqueApiObjectKey(space.Id(), object, objectKey, coresb.SmartBlockTypeRelationOption); err != nil {
+		return "", nil, fmt.Errorf("inject and ensure unique apiObjectKey: %w", err)
 	}
 
 	createState := state.NewDocWithUniqueKey("", nil, uniqueKey).(*state.State)

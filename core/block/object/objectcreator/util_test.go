@@ -109,40 +109,56 @@ func TestEnsureUniqueApiObjectKey(t *testing.T) {
 	})
 }
 
-func TestInjectApiObjectKey(t *testing.T) {
+func TestInjectAndEnsureUniqueApiObjectKey(t *testing.T) {
 	t.Run("when apiObjectKey already set should not change it", func(t *testing.T) {
+		fx := newFixture(t)
+		fx.objectStore.AddObjects(t, spaceId, []objectstore.TestObject{})
+
 		object := domain.NewDetails()
 		object.SetString(bundle.RelationKeyApiObjectKey, "existing_key")
 		object.SetString(bundle.RelationKeyName, "My Name")
 
-		injectApiObjectKey(object, "provided_key")
+		err := fx.service.(*service).injectAndEnsureUniqueApiObjectKey(spaceId, object, "provided_key", coresb.SmartBlockTypeObjectType)
+		require.NoError(t, err)
 
 		assert.Equal(t, "existing_key", object.GetString(bundle.RelationKeyApiObjectKey))
 	})
 
 	t.Run("when apiObjectKey empty and key provided should use provided key", func(t *testing.T) {
+		fx := newFixture(t)
+		fx.objectStore.AddObjects(t, spaceId, []objectstore.TestObject{})
+
 		object := domain.NewDetails()
 		object.SetString(bundle.RelationKeyName, "My Name")
 
-		injectApiObjectKey(object, "provided_key")
+		err := fx.service.(*service).injectAndEnsureUniqueApiObjectKey(spaceId, object, "provided_key", coresb.SmartBlockTypeObjectType)
+		require.NoError(t, err)
 
 		assert.Equal(t, "provided_key", object.GetString(bundle.RelationKeyApiObjectKey))
 	})
 
 	t.Run("when apiObjectKey empty and no key provided should transliterate name", func(t *testing.T) {
+		fx := newFixture(t)
+		fx.objectStore.AddObjects(t, spaceId, []objectstore.TestObject{})
+
 		object := domain.NewDetails()
 		object.SetString(bundle.RelationKeyName, "My Task Name")
 
-		injectApiObjectKey(object, "")
+		err := fx.service.(*service).injectAndEnsureUniqueApiObjectKey(spaceId, object, "", coresb.SmartBlockTypeObjectType)
+		require.NoError(t, err)
 
 		assert.Equal(t, "my_task_name", object.GetString(bundle.RelationKeyApiObjectKey))
 	})
 
 	t.Run("should handle unicode characters", func(t *testing.T) {
+		fx := newFixture(t)
+		fx.objectStore.AddObjects(t, spaceId, []objectstore.TestObject{})
+
 		object := domain.NewDetails()
 		object.SetString(bundle.RelationKeyName, "Привет мир")
 
-		injectApiObjectKey(object, "")
+		err := fx.service.(*service).injectAndEnsureUniqueApiObjectKey(spaceId, object, "", coresb.SmartBlockTypeObjectType)
+		require.NoError(t, err)
 
 		assert.Equal(t, "privet_mir", object.GetString(bundle.RelationKeyApiObjectKey))
 	})
