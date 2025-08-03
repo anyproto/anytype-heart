@@ -52,11 +52,11 @@ func getAccountInfo(accountService apicore.AccountService) (gatewayUrl string, t
 }
 
 // Stop the service to clean up caches and subscriptions
-func (s *Server) Stop() {
-	s.service.Stop()
+func (srv *Server) Stop() {
+	srv.service.Stop()
 }
 
 // Engine returns the underlying gin.Engine.
-func (s *Server) Engine() *gin.Engine {
-	return s.engine
+func (srv *Server) Engine() *gin.Engine {
+	return srv.engine
 }

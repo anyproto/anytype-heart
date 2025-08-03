@@ -39,7 +39,7 @@ func ensureMetadataHeader() gin.HandlerFunc {
 }
 
 // ensureAuthenticated is a middleware that ensures the request is authenticated.
-func (s *Server) ensureAuthenticated(mw apicore.ClientCommands) gin.HandlerFunc {
+func (srv *Server) ensureAuthenticated(mw apicore.ClientCommands) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		authHeader := c.GetHeader("Authorization")
 		if authHeader == "" {
@@ -57,9 +57,9 @@ func (s *Server) ensureAuthenticated(mw apicore.ClientCommands) gin.HandlerFunc 
 
 		// Validate the key - if the key exists in the KeyToToken map, it is considered valid.
 		// Otherwise, attempt to create a new session using the key and add it to the map upon successful validation.
-		s.mu.Lock()
-		apiSession, exists := s.KeyToToken[key]
-		s.mu.Unlock()
+		srv.mu.Lock()
+		apiSession, exists := srv.KeyToToken[key]
+		srv.mu.Unlock()
 
 		if !exists {
 			response := mw.WalletCreateSession(context.Background(), &pb.RpcWalletCreateSessionRequest{Auth: &pb.RpcWalletCreateSessionRequestAuthOfAppKey{AppKey: key}})
@@ -74,9 +74,9 @@ func (s *Server) ensureAuthenticated(mw apicore.ClientCommands) gin.HandlerFunc 
 				// AppName: response.AppName,
 			}
 
-			s.mu.Lock()
-			s.KeyToToken[key] = apiSession
-			s.mu.Unlock()
+			srv.mu.Lock()
+			srv.KeyToToken[key] = apiSession
+			srv.mu.Unlock()
 		}
 
 		// Add token to request context for downstream services (subscriptions, events, etc.)
@@ -156,10 +156,10 @@ func ensureFilters() gin.HandlerFunc {
 }
 
 // ensureCacheInitialized initializes the API service caches on the first request.
-func (s *Server) ensureCacheInitialized() gin.HandlerFunc {
+func (srv *Server) ensureCacheInitialized() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		s.initOnce.Do(func() {
-			if err := s.service.InitializeAllCaches(); err != nil {
+		srv.initOnce.Do(func() {
+			if err := srv.service.InitializeAllCaches(); err != nil {
 				log.Errorf("Failed to initialize API service caches: %v", err)
 			}
 		})
