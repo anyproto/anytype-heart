@@ -396,7 +396,7 @@ func (s *Service) sanitizeAndValidatePropertyValue(spaceId string, key string, f
 	case apimodel.PropertyFormatDate:
 		dateStr, ok := value.(string)
 		if !ok {
-			return nil, util.ErrBadInput("property '" + key + "' must be a string (date in RFC3339 format)")
+			return nil, util.ErrBadInput("property '" + key + "' must be a string containing a date in one of these formats: RFC3339 (2006-01-02T15:04:05Z) or date-only (2006-01-02)")
 		}
 		dateStr = s.sanitizedString(dateStr)
 		layouts := []string{time.RFC3339, time.DateOnly}

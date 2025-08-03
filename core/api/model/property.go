@@ -210,7 +210,7 @@ type DatePropertyValue struct {
 	Key    string         `json:"key" example:"last_modified_date"`    // The key of the property
 	Name   string         `json:"name" example:"Last modified date"`   // The name of the property
 	Format PropertyFormat `json:"format" enums:"date"`                 // The format of the property
-	Date   string         `json:"date" example:"2025-02-14T12:34:56Z"` // The date value of the property
+	Date   string         `json:"date" example:"2006-01-02T15:04:05Z"` // The date value of the property. Returns dates in RFC3339 format (2006-01-02T15:04:05Z)
 }
 
 func (DatePropertyValue) isPropertyWithValue() {}
@@ -445,7 +445,7 @@ func (v MultiSelectPropertyLinkValue) Value() interface{} {
 
 type DatePropertyLinkValue struct {
 	PropertyKey string  `json:"key" example:"last_modified_date"`
-	Date        *string `json:"date" example:"2025-02-14T12:34:56Z"` // The date value of the property
+	Date        *string `json:"date" example:"2006-01-02T15:04:05Z"` // The date value of the property. Accepts dates in RFC3339 format (2006-01-02T15:04:05Z) or date-only format (2006-01-02)
 }
 
 func (DatePropertyLinkValue) isPropertyLinkWithValue() {}
