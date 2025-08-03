@@ -75,7 +75,7 @@ func GlobalSearchHandler(s *service.Service) gin.HandlerFunc {
 //	@Router			/v1/spaces/{space_id}/search [post]
 func SearchHandler(s *service.Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		spaceID := c.Param("space_id")
+		spaceId := c.Param("space_id")
 		offset := c.GetInt("offset")
 		limit := c.GetInt("limit")
 
@@ -86,7 +86,7 @@ func SearchHandler(s *service.Service) gin.HandlerFunc {
 			return
 		}
 
-		objects, total, hasMore, err := s.Search(c, spaceID, request, offset, limit)
+		objects, total, hasMore, err := s.Search(c, spaceId, request, offset, limit)
 		code := util.MapErrorCode(err,
 			util.ErrToCode(service.ErrFailedSearchObjects, http.StatusInternalServerError),
 		)

@@ -439,7 +439,7 @@ func (s *Service) sanitizeAndValidatePropertyValue(spaceId string, key string, f
 
 // isValidSelectOption checks if the option id is valid for the given property.
 func (s *Service) isValidSelectOption(spaceId string, property *apimodel.Property, tagId string, propertyMap map[string]*apimodel.Property) bool {
-	fields, err := util.GetFieldsByID(s.mw, spaceId, tagId, []string{bundle.RelationKeyResolvedLayout.String(), bundle.RelationKeyRelationKey.String()})
+	fields, err := util.GetFieldsById(s.mw, spaceId, tagId, []string{bundle.RelationKeyResolvedLayout.String(), bundle.RelationKeyRelationKey.String()})
 	if err != nil {
 		return false
 	}
@@ -449,7 +449,7 @@ func (s *Service) isValidSelectOption(spaceId string, property *apimodel.Propert
 }
 
 func (s *Service) isValidObjectOrMemberReference(spaceId string, objectId string) bool {
-	fields, err := util.GetFieldsByID(s.mw, spaceId, objectId, []string{bundle.RelationKeyResolvedLayout.String()})
+	fields, err := util.GetFieldsById(s.mw, spaceId, objectId, []string{bundle.RelationKeyResolvedLayout.String()})
 	if err != nil {
 		return false
 	}
@@ -458,7 +458,7 @@ func (s *Service) isValidObjectOrMemberReference(spaceId string, objectId string
 }
 
 func (s *Service) isValidFileReference(spaceId string, fileId string) bool {
-	fields, err := util.GetFieldsByID(s.mw, spaceId, fileId, []string{bundle.RelationKeyResolvedLayout.String()})
+	fields, err := util.GetFieldsById(s.mw, spaceId, fileId, []string{bundle.RelationKeyResolvedLayout.String()})
 	if err != nil {
 		return false
 	}

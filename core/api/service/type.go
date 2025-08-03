@@ -303,7 +303,7 @@ func (s *Service) buildUpdatedTypeDetails(ctx context.Context, spaceId string, t
 		return &types.Struct{Fields: fields}, nil
 	}
 
-	currentFields, err := util.GetFieldsByID(s.mw, spaceId, t.Id, []string{bundle.RelationKeyRecommendedFeaturedRelations.String()})
+	currentFields, err := util.GetFieldsById(s.mw, spaceId, t.Id, []string{bundle.RelationKeyRecommendedFeaturedRelations.String()})
 	if err != nil {
 		return nil, err
 	}
