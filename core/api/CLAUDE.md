@@ -116,6 +116,57 @@ func TestServiceMethod(t *testing.T) {
 }
 ```
 
+#### Test Style Preferences
+
+1. **Mock Generation**: Use mockery with `.mockery.yaml` configuration
+   ```yaml
+   github.com/anyproto/anytype-heart/core/api/filter:
+     interfaces:
+       PropertyService:
+   ```
+
+2. **Mock Library**: Use `github.com/stretchr/testify/mock` (not gomock)
+   ```go
+   import "github.com/stretchr/testify/mock"
+   
+   mockService := mock_filter.NewMockPropertyService(t)
+   mockService.On("Method", args...).Return(results...)
+   ```
+
+3. **Table-Driven Tests**: Preferred for comprehensive test coverage
+   ```go
+   tests := []struct {
+       name          string
+       input         InputType
+       setupMock     func(m *MockType)
+       expectedError string
+       checkResult   func(t *testing.T, result ResultType)
+   }{
+       // test cases
+   }
+   
+   for _, tt := range tests {
+       t.Run(tt.name, func(t *testing.T) {
+           // test implementation
+       })
+   }
+   ```
+
+4. **Assertion Style**: Use testify assertions
+   ```go
+   assert.Equal(t, expected, actual)
+   require.NoError(t, err)
+   require.Len(t, slice, expectedLen)
+   ```
+
+5. **Mock Expectations**: Use `mock.Anything` for flexible matching
+   ```go
+   mockService.On("Method", 
+       mock.Anything,  // for parameters you don't need to match exactly
+       specificValue,  // for parameters that must match
+   ).Return(result, nil)
+   ```
+
 ### API Resources
 
 Main resources exposed by the API:

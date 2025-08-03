@@ -11,13 +11,11 @@ import (
 	"github.com/gin-gonic/gin"
 
 	apicore "github.com/anyproto/anytype-heart/core/api/core"
+	"github.com/anyproto/anytype-heart/core/api/filter"
 	"github.com/anyproto/anytype-heart/core/api/util"
 	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/pb"
-	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
-	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 const ApiVersion = "2025-05-20"
@@ -130,26 +128,33 @@ func ensureRateLimit(rate float64, burst int, isRateLimitDisabled bool) gin.Hand
 }
 
 // ensureFilters is a middleware that ensures the filters are set in the context.
-func ensureFilters() gin.HandlerFunc {
-	filterDefs := []struct {
-		Param       string
-		RelationKey string
-		Condition   model.BlockContentDataviewFilterCondition
-	}{
-		{bundle.RelationKeyName.String(), bundle.RelationKeyName.String(), model.BlockContentDataviewFilter_Like},
-	}
+func (srv *Server) ensureFilters() gin.HandlerFunc {
+	parser := filter.NewParser()
+	validator := filter.NewValidator(srv.service)
 
 	return func(c *gin.Context) {
-		var filters []*model.BlockContentDataviewFilter
-		for _, def := range filterDefs {
-			if v := c.Query(def.Param); v != "" {
-				filters = append(filters, &model.BlockContentDataviewFilter{
-					RelationKey: def.RelationKey,
-					Condition:   def.Condition,
-					Value:       pbtypes.String(v),
-				})
+		// Parse filters from query parameters
+		parsedFilters, err := parser.ParseQueryParams(c)
+		if err != nil {
+			apiErr := util.CodeToAPIError(http.StatusBadRequest, err.Error())
+			c.AbortWithStatusJSON(http.StatusBadRequest, apiErr)
+			return
+		}
+
+		// Extract space ID from path if available
+		spaceId := c.Param("space_id")
+
+		// Validate filters if we have a space context
+		if spaceId != "" && parsedFilters != nil && len(parsedFilters.Filters) > 0 {
+			if err := validator.ValidateFilters(spaceId, parsedFilters); err != nil {
+				apiErr := util.CodeToAPIError(http.StatusBadRequest, err.Error())
+				c.AbortWithStatusJSON(http.StatusBadRequest, apiErr)
+				return
 			}
 		}
+
+		// Convert to dataview filters and set in context
+		filters := parsedFilters.ToDataviewFilters()
 		c.Set("filters", filters)
 		c.Next()
 	}

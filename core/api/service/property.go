@@ -341,7 +341,7 @@ func (s *Service) processProperties(ctx context.Context, spaceId string, entries
 			return nil, util.ErrBadInput(fmt.Sprintf("unknown property key: %q", rk))
 		}
 
-		sanitized, err := s.sanitizeAndValidatePropertyValue(spaceId, key, prop.Format, value, prop, propertyMap)
+		sanitized, err := s.SanitizeAndValidatePropertyValue(spaceId, key, prop.Format, value, prop, propertyMap)
 		if err != nil {
 			return nil, err
 		}
@@ -350,8 +350,8 @@ func (s *Service) processProperties(ctx context.Context, spaceId string, entries
 	return fields, nil
 }
 
-// sanitizeAndValidatePropertyValue checks the value for a property according to its format and ensures referenced IDs exist and are valid.
-func (s *Service) sanitizeAndValidatePropertyValue(spaceId string, key string, format apimodel.PropertyFormat, value interface{}, property *apimodel.Property, propertyMap map[string]*apimodel.Property) (interface{}, error) {
+// SanitizeAndValidatePropertyValue checks the value for a property according to its format and ensures referenced IDs exist and are valid.
+func (s *Service) SanitizeAndValidatePropertyValue(spaceId string, key string, format apimodel.PropertyFormat, value interface{}, property *apimodel.Property, propertyMap map[string]*apimodel.Property) (interface{}, error) {
 	switch format {
 	case apimodel.PropertyFormatText, apimodel.PropertyFormatUrl, apimodel.PropertyFormatEmail, apimodel.PropertyFormatPhone:
 		str, ok := value.(string)
@@ -732,4 +732,9 @@ func (s *Service) ResolvePropertyApiKey(propertyMap map[string]*apimodel.Propert
 		return property.RelationKey
 	}
 	return ""
+}
+
+// GetCachedProperties returns the cached properties for a space
+func (s *Service) GetCachedProperties(spaceId string) map[string]*apimodel.Property {
+	return s.cache.getProperties(spaceId)
 }
