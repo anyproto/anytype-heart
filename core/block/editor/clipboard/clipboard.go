@@ -526,11 +526,13 @@ func (cb *clipboard) pasteFiles(ctx session.Context, req *pb.RpcBlockPasteReques
 		s.Add(b)
 
 		if err = cb.file.UploadState(ctx, s, b.Model().Id, file.FileSource{
-			Bytes:     fs.Data,
-			Path:      fs.LocalPath,
-			Name:      fs.Name,
-			Origin:    objectorigin.Clipboard(),
-			ImageKind: model.ImageKind_Basic,
+			Bytes:            fs.Data,
+			Path:             fs.LocalPath,
+			Name:             fs.Name,
+			Origin:           objectorigin.Clipboard(),
+			ImageKind:        model.ImageKind_Basic,
+			CreatedInContext: cb.Id(),
+			CreatedInBlockId: b.Model().Id,
 		}, false); err != nil {
 			return
 		}

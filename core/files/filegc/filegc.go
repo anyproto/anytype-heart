@@ -122,7 +122,7 @@ func (gc *fileGC) CheckFilesOnLinksRemoval(spaceId, contextId string, removedLin
 
 		// Filter out the current context from backlinks
 		activeBacklinks := lo.Filter(backlinks, func(link string, _ int) bool {
-			return link != contextId
+			return link != contextId && link != fileId
 		})
 
 		if len(activeBacklinks) > 0 {
