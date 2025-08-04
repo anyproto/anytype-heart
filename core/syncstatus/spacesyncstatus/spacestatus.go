@@ -219,7 +219,7 @@ func (s *spaceSyncStatus) getNotSyncedFilesCount(spaceId string) int {
 		log.Errorf("get not synced files count: failed to get subscription: %v", err)
 		return 0
 	}
-	return curSub.NotSyncedFilesCount()
+	return curSub.LimitedFilesCount()
 }
 
 func (s *spaceSyncStatus) getBytesLeftPercentage(spaceId string) float64 {
