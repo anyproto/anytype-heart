@@ -190,3 +190,133 @@ func TestInjectAndEnsureUniqueApiObjectKey(t *testing.T) {
 		assert.Equal(t, "privet_mir", object.GetString(bundle.RelationKeyApiObjectKey))
 	})
 }
+
+func TestEnsureUniqueApiObjectKey_BatchQueryBehavior(t *testing.T) {
+	t.Run("batch query should only load keys with potential conflicts", func(t *testing.T) {
+		fx := newFixture(t)
+
+		// Add various objects with different key patterns
+		fx.objectStore.AddObjects(t, spaceId, []objectstore.TestObject{
+			// These should be loaded (same prefix)
+			{
+				bundle.RelationKeyId:           domain.String("id1"),
+				bundle.RelationKeyApiObjectKey: domain.String("task"),
+				bundle.RelationKeyLayout:       domain.Int64(int64(model.ObjectType_objectType)),
+			},
+			{
+				bundle.RelationKeyId:           domain.String("id2"),
+				bundle.RelationKeyApiObjectKey: domain.String("task1"),
+				bundle.RelationKeyLayout:       domain.Int64(int64(model.ObjectType_objectType)),
+			},
+			{
+				bundle.RelationKeyId:           domain.String("id3"),
+				bundle.RelationKeyApiObjectKey: domain.String("task10"),
+				bundle.RelationKeyLayout:       domain.Int64(int64(model.ObjectType_objectType)),
+			},
+			// These should be loaded but not conflict (different prefix)
+			{
+				bundle.RelationKeyId:           domain.String("id4"),
+				bundle.RelationKeyApiObjectKey: domain.String("different_key"),
+				bundle.RelationKeyLayout:       domain.Int64(int64(model.ObjectType_objectType)),
+			},
+			{
+				bundle.RelationKeyId:           domain.String("id5"),
+				bundle.RelationKeyApiObjectKey: domain.String("task_with_suffix"),
+				bundle.RelationKeyLayout:       domain.Int64(int64(model.ObjectType_objectType)),
+			},
+			// Different object types - should not be loaded
+			{
+				bundle.RelationKeyId:           domain.String("id6"),
+				bundle.RelationKeyApiObjectKey: domain.String("task"),
+				bundle.RelationKeyLayout:       domain.Int64(int64(model.ObjectType_relation)),
+			},
+		})
+
+		object := domain.NewDetails()
+		object.SetString(bundle.RelationKeyApiObjectKey, "task")
+
+		err := fx.service.(*service).ensureUniqueApiObjectKey(spaceId, object, coresb.SmartBlockTypeObjectType)
+		require.NoError(t, err)
+		// Should find task2 since task, task1, and task10 exist
+		assert.Equal(t, "task2", object.GetString(bundle.RelationKeyApiObjectKey))
+	})
+
+	t.Run("should handle non-sequential suffixes correctly", func(t *testing.T) {
+		fx := newFixture(t)
+
+		// Add objects with gaps in sequence
+		fx.objectStore.AddObjects(t, spaceId, []objectstore.TestObject{
+			{
+				bundle.RelationKeyId:           domain.String("id1"),
+				bundle.RelationKeyApiObjectKey: domain.String("task"),
+				bundle.RelationKeyLayout:       domain.Int64(int64(model.ObjectType_objectType)),
+			},
+			{
+				bundle.RelationKeyId:           domain.String("id2"),
+				bundle.RelationKeyApiObjectKey: domain.String("task1"),
+				bundle.RelationKeyLayout:       domain.Int64(int64(model.ObjectType_objectType)),
+			},
+			{
+				bundle.RelationKeyId:           domain.String("id3"),
+				bundle.RelationKeyApiObjectKey: domain.String("task5"),
+				bundle.RelationKeyLayout:       domain.Int64(int64(model.ObjectType_objectType)),
+			},
+			{
+				bundle.RelationKeyId:           domain.String("id4"),
+				bundle.RelationKeyApiObjectKey: domain.String("task10"),
+				bundle.RelationKeyLayout:       domain.Int64(int64(model.ObjectType_objectType)),
+			},
+		})
+
+		object := domain.NewDetails()
+		object.SetString(bundle.RelationKeyApiObjectKey, "task")
+
+		err := fx.service.(*service).ensureUniqueApiObjectKey(spaceId, object, coresb.SmartBlockTypeObjectType)
+		require.NoError(t, err)
+		// Should find task2 (the first available sequential suffix)
+		assert.Equal(t, "task2", object.GetString(bundle.RelationKeyApiObjectKey))
+	})
+
+	t.Run("should filter out keys that don't match the baseKey pattern", func(t *testing.T) {
+		fx := newFixture(t)
+
+		// Add objects with various key patterns
+		fx.objectStore.AddObjects(t, spaceId, []objectstore.TestObject{
+			// This will conflict
+			{
+				bundle.RelationKeyId:           domain.String("id1"),
+				bundle.RelationKeyApiObjectKey: domain.String("mytask"),
+				bundle.RelationKeyLayout:       domain.Int64(int64(model.ObjectType_objectType)),
+			},
+			// These won't conflict with "mytask" base key
+			{
+				bundle.RelationKeyId:           domain.String("id2"),
+				bundle.RelationKeyApiObjectKey: domain.String("my"),
+				bundle.RelationKeyLayout:       domain.Int64(int64(model.ObjectType_objectType)),
+			},
+			{
+				bundle.RelationKeyId:           domain.String("id3"),
+				bundle.RelationKeyApiObjectKey: domain.String("myt"),
+				bundle.RelationKeyLayout:       domain.Int64(int64(model.ObjectType_objectType)),
+			},
+			{
+				bundle.RelationKeyId:           domain.String("id4"),
+				bundle.RelationKeyApiObjectKey: domain.String("mytasks"),
+				bundle.RelationKeyLayout:       domain.Int64(int64(model.ObjectType_objectType)),
+			},
+			{
+				bundle.RelationKeyId:           domain.String("id5"),
+				bundle.RelationKeyApiObjectKey: domain.String("mytask_other"),
+				bundle.RelationKeyLayout:       domain.Int64(int64(model.ObjectType_objectType)),
+			},
+		})
+
+		object := domain.NewDetails()
+		object.SetString(bundle.RelationKeyApiObjectKey, "mytask")
+
+		err := fx.service.(*service).ensureUniqueApiObjectKey(spaceId, object, coresb.SmartBlockTypeObjectType)
+		require.NoError(t, err)
+		// Should find mytask1 since only "mytask" exists
+		assert.Equal(t, "mytask1", object.GetString(bundle.RelationKeyApiObjectKey))
+	})
+}

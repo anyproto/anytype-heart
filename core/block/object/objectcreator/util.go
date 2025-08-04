@@ -70,34 +70,39 @@ func (s *service) ensureUniqueApiObjectKey(spaceId string, object *domain.Detail
 	}
 
 	baseKey := apiKey
-	suffix := 1
-	const maxIterations = 1000
+	const maxIterations = 100
 
-	for suffix <= maxIterations {
-		queryFilters := append([]database.FilterRequest{}, baseFilters...)
-		queryFilters = append(queryFilters, database.FilterRequest{
-			RelationKey: bundle.RelationKeyApiObjectKey,
-			Condition:   model.BlockContentDataviewFilter_Equal,
-			Value:       domain.String(apiKey),
-		})
+	records, err := s.objectStore.SpaceIndex(spaceId).Query(database.Query{
+		Filters: baseFilters,
+		Limit:   0,
+	})
+	if err != nil {
+		return fmt.Errorf("query existing apiObjectKey: %w", err)
+	}
 
-		records, err := s.objectStore.SpaceIndex(spaceId).Query(database.Query{
-			Filters: queryFilters,
-			Limit:   1,
-		})
-		if err != nil {
-			return fmt.Errorf("query existing apiObjectKey: %w", err)
+	existingKeys := make(map[string]struct{})
+	for _, rec := range records {
+		if key := rec.Details.GetString(bundle.RelationKeyApiObjectKey); key != "" {
+			// Only add keys that could conflict (baseKey or baseKey with numeric suffix)
+			if key == baseKey || (len(key) > len(baseKey) && key[:len(baseKey)] == baseKey) {
+				existingKeys[key] = struct{}{}
+			}
+		}
+	}
+
+	// Try baseKey first, then baseKey1, baseKey2, ..., up to maxIterations
+	for i := 0; i <= maxIterations; i++ {
+		var candidate string
+		if i == 0 {
+			candidate = baseKey
+		} else {
+			candidate = fmt.Sprintf("%s%d", baseKey, i)
 		}
 
-		// If no existing object with this key, we're good
-		if len(records) == 0 {
-			object.SetString(bundle.RelationKeyApiObjectKey, apiKey)
+		if _, exists := existingKeys[candidate]; !exists {
+			object.SetString(bundle.RelationKeyApiObjectKey, candidate)
 			return nil
 		}
-
-		// Key exists, try with suffix
-		apiKey = fmt.Sprintf("%s%d", baseKey, suffix)
-		suffix++
 	}
 
 	return fmt.Errorf("failed to find unique apiObjectKey after %d attempts for key: %s", maxIterations, baseKey)
