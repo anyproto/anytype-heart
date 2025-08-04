@@ -185,7 +185,10 @@ func (s *service) SubscribeLastMessages(ctx context.Context, req SubscribeLastMe
 		return nil, fmt.Errorf("empty chat object id")
 	}
 
-	spaceId, err := s.spaceIdResolver.ResolveSpaceID(req.ChatObjectId)
+	ctx, cancel := context.WithTimeout(ctx, 1*time.Minute)
+	defer cancel()
+
+	spaceId, err := s.spaceIdResolver.ResolveSpaceIdWithRetry(ctx, req.ChatObjectId)
 	if err != nil {
 		return nil, fmt.Errorf("resolve space id: %w", err)
 	}
@@ -229,7 +232,7 @@ func (s *service) SubscribeLastMessages(ctx context.Context, req SubscribeLastMe
 
 	// Warm up cache
 	go func() {
-		_, err = s.objectGetter.WaitAndGetObject(ctx, req.ChatObjectId)
+		_, err = s.objectGetter.WaitAndGetObject(s.componentCtx, req.ChatObjectId)
 		if err != nil {
 			log.Error("load chat to cache", zap.String("chatObjectId", req.ChatObjectId), zap.Error(err))
 		}

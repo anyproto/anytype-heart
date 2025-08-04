@@ -91,6 +91,7 @@ func newFixture(t *testing.T) *fixture {
 
 	idResolver := mock_idresolver.NewMockResolver(t)
 	idResolver.EXPECT().ResolveSpaceID(mock.Anything).Return(testSpaceId, nil).Maybe()
+	idResolver.EXPECT().ResolveSpaceIdWithRetry(mock.Anything, mock.Anything).Return(testSpaceId, nil).Maybe()
 
 	accountService := &accountServiceStub{accountId: testCreator}
 

@@ -65,6 +65,12 @@ func getDateRange(f FilterRequest, now time.Time) (from, to time.Time) {
 	case model.BlockContentDataviewFilter_NumberOfDaysNow:
 		daysCnt := f.Value.Int64()
 		return calendar.DayNumStart(int(daysCnt)), calendar.DayNumEnd(int(daysCnt))
+	case model.BlockContentDataviewFilter_LastYear:
+		return calendar.YearNumStart(-1), calendar.YearNumEnd(-1)
+	case model.BlockContentDataviewFilter_CurrentYear:
+		return calendar.YearNumStart(0), calendar.YearNumEnd(0)
+	case model.BlockContentDataviewFilter_NextYear:
+		return calendar.YearNumStart(1), calendar.YearNumEnd(1)
 	default:
 		timestamp := f.Value.Int64()
 		t := time.Unix(timestamp, 0)

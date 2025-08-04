@@ -32929,6 +32929,9 @@ stored |
 | NextMonth | 9 |  |
 | NumberOfDaysAgo | 10 |  |
 | NumberOfDaysNow | 11 |  |
+| LastYear | 12 |  |
+| CurrentYear | 13 |  |
+| NextYear | 14 |  |
 
 
 

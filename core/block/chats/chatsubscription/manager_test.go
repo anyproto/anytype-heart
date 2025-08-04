@@ -57,6 +57,7 @@ func newFixture(t *testing.T) *fixture {
 
 	idResolver := mock_idresolver.NewMockResolver(t)
 	idResolver.EXPECT().ResolveSpaceID(mock.Anything).Return(testSpaceId, nil).Maybe()
+	idResolver.EXPECT().ResolveSpaceIdWithRetry(mock.Anything, mock.Anything).Return(testSpaceId, nil).Maybe()
 
 	accountService := &accountServiceStub{accountId: testCreator}
 
@@ -230,7 +231,7 @@ func TestFlush(t *testing.T) {
 										Messages:    &model.ChatStateUnreadState{},
 										Mentions:    &model.ChatStateUnreadState{},
 										LastStateId: "",
-										Order:       1,
+										Order:       6,
 									},
 									SubIds: []string{
 										subId,

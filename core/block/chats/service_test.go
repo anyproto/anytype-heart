@@ -470,6 +470,21 @@ func TestApplyEmojiMarks(t *testing.T) {
 			want: "👍",
 		},
 		{
+			name: "with cyrillic symbol",
+			text: "ц ",
+			marks: []*model.BlockContentTextMark{
+				{
+					Type: model.BlockContentTextMark_Emoji,
+					Range: &model.Range{
+						From: 1,
+						To:   2,
+					},
+					Param: "👍",
+				},
+			},
+			want: "ц👍",
+		},
+		{
 			name: "multiple marks",
 			text: " a b ",
 			marks: []*model.BlockContentTextMark{

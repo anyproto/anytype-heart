@@ -14,10 +14,10 @@ import (
 )
 
 type syncingObjects struct {
-	objectSubscription         *objectsubscription.ObjectSubscription[struct{}]
-	notSyncedFilesSubscription *objectsubscription.ObjectSubscription[struct{}]
-	service                    subscription.Service
-	spaceId                    string
+	objectSubscription       *objectsubscription.ObjectSubscription[struct{}]
+	limitedFilesSubscription *objectsubscription.ObjectSubscription[struct{}]
+	service                  subscription.Service
+	spaceId                  string
 }
 
 func newSyncingObjects(spaceId string, service subscription.Service) *syncingObjects {
@@ -66,8 +66,8 @@ func (s *syncingObjects) Run() error {
 		Filters: []database.FilterRequest{
 			{
 				RelationKey: bundle.RelationKeyFileBackupStatus,
-				Condition:   model.BlockContentDataviewFilter_NotEqual,
-				Value:       domain.Int64(filesyncstatus.Synced),
+				Condition:   model.BlockContentDataviewFilter_Equal,
+				Value:       domain.Int64(filesyncstatus.Limited),
 			},
 			{
 				RelationKey: bundle.RelationKeyResolvedLayout,
@@ -76,8 +76,8 @@ func (s *syncingObjects) Run() error {
 			},
 		},
 	}
-	s.notSyncedFilesSubscription = objectsubscription.NewIdSubscription(s.service, filesReq)
-	err := s.notSyncedFilesSubscription.Run()
+	s.limitedFilesSubscription = objectsubscription.NewIdSubscription(s.service, filesReq)
+	err := s.limitedFilesSubscription.Run()
 	if err != nil {
 		return fmt.Errorf("run not synced files sub: %w", err)
 	}
@@ -86,20 +86,15 @@ func (s *syncingObjects) Run() error {
 
 func (s *syncingObjects) Close() {
 	s.objectSubscription.Close()
-	s.notSyncedFilesSubscription.Close()
+	s.limitedFilesSubscription.Close()
 }
 
 func (s *syncingObjects) GetObjectSubscription() *objectsubscription.ObjectSubscription[struct{}] {
 	return s.objectSubscription
 }
 
-func (s *syncingObjects) NotSyncedFilesCount() int {
-	var count int
-	s.notSyncedFilesSubscription.Iterate(func(id string, _ struct{}) bool {
-		count++
-		return true
-	})
-	return count
+func (s *syncingObjects) LimitedFilesCount() int {
+	return s.limitedFilesSubscription.Len()
 }
 
 func (s *syncingObjects) SyncingObjectsCount(missing []string) int {
