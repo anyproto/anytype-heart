@@ -127,7 +127,7 @@ func ResourceActionHandler(s *service.Service) gin.HandlerFunc {
    ```yaml
    github.com/anyproto/anytype-heart/core/api/core:
     interfaces:
-        AccountService:
+      AccountService:
    ```
 
 3. **Mock Library**: Use `github.com/stretchr/testify/mock` (not gomock)

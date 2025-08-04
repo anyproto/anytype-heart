@@ -7,6 +7,12 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
+type ApiService interface {
+	GetCachedProperties(spaceId string) map[string]*apimodel.Property
+	ResolvePropertyApiKey(properties map[string]*apimodel.Property, key string) string
+	SanitizeAndValidatePropertyValue(spaceId string, key string, format apimodel.PropertyFormat, value interface{}, property *apimodel.Property, propertyMap map[string]*apimodel.Property) (interface{}, error)
+}
+
 // Validator validates filters against property definitions
 type Validator struct {
 	apiService ApiService

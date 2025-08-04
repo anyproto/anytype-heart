@@ -13,7 +13,6 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-// Integration test for the complete filter flow
 func TestFilterIntegration(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
@@ -30,7 +29,7 @@ func TestFilterIntegration(t *testing.T) {
 			checkFilter: func(t *testing.T, filters []*model.BlockContentDataviewFilter) {
 				require.Len(t, filters, 2)
 
-				// Check filters exist (order may vary due to map iteration)
+				// Check filters exist
 				filterMap := make(map[string]*model.BlockContentDataviewFilter)
 				for _, f := range filters {
 					filterMap[f.RelationKey] = f
@@ -56,7 +55,7 @@ func TestFilterIntegration(t *testing.T) {
 			checkFilter: func(t *testing.T, filters []*model.BlockContentDataviewFilter) {
 				require.Len(t, filters, 3)
 
-				// Check filters exist (order may vary due to map iteration)
+				// Check filters exist
 				filterMap := make(map[string]*model.BlockContentDataviewFilter)
 				for _, f := range filters {
 					filterMap[f.RelationKey] = f
@@ -85,7 +84,7 @@ func TestFilterIntegration(t *testing.T) {
 			checkFilter: func(t *testing.T, filters []*model.BlockContentDataviewFilter) {
 				require.Len(t, filters, 2)
 
-				// Check filters exist (order may vary due to map iteration)
+				// Check filters exist
 				filterMap := make(map[string]*model.BlockContentDataviewFilter)
 				for _, f := range filters {
 					filterMap[f.RelationKey] = f
@@ -123,23 +122,18 @@ func TestFilterIntegration(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			// Create parser
 			parser := filter.NewParser()
 
-			// Create a test request
 			req := httptest.NewRequest(http.MethodGet, "/?"+tt.queryString, nil)
 			w := httptest.NewRecorder()
 			c, _ := gin.CreateTestContext(w)
 			c.Request = req
 
-			// Parse filters
 			parsedFilters, err := parser.ParseQueryParams(c)
 			require.NoError(t, err)
 
-			// Convert to dataview filters
 			filters := parsedFilters.ToDataviewFilters()
 
-			// Check results
 			if tt.expectedFilters == 0 {
 				assert.Nil(t, filters)
 			} else {
@@ -153,7 +147,6 @@ func TestFilterIntegration(t *testing.T) {
 	}
 }
 
-// Test error handling
 func TestFilterErrors(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	parser := filter.NewParser()
