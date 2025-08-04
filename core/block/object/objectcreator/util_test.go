@@ -114,7 +114,7 @@ func TestEnsureUniqueApiObjectKey(t *testing.T) {
 
 		// Add many existing objects to force hitting the limit
 		var existingObjects []objectstore.TestObject
-		for i := 0; i <= 1000; i++ {
+		for i := 0; i <= 100; i++ {
 			key := "task"
 			if i > 0 {
 				key = fmt.Sprintf("task%d", i)
@@ -132,7 +132,7 @@ func TestEnsureUniqueApiObjectKey(t *testing.T) {
 
 		err := fx.service.(*service).ensureUniqueApiObjectKey(spaceId, object, coresb.SmartBlockTypeObjectType)
 		require.Error(t, err)
-		assert.Contains(t, err.Error(), "failed to find unique apiObjectKey after 1000 attempts")
+		assert.Contains(t, err.Error(), "failed to find unique apiObjectKey after 100 attempts")
 	})
 }
 
