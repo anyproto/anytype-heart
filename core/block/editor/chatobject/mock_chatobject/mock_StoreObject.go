@@ -1116,6 +1116,41 @@ func (_c *MockStoreObject_GetRelationLinks_Call) RunAndReturn(run func() pbtypes
 	return _c
 }
 
+// HandleSyncStatusUpdate provides a mock function with given fields: heads, status, syncError
+func (_m *MockStoreObject) HandleSyncStatusUpdate(heads []string, status domain.ObjectSyncStatus, syncError domain.SyncError) {
+	_m.Called(heads, status, syncError)
+}
+
+// MockStoreObject_HandleSyncStatusUpdate_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'HandleSyncStatusUpdate'
+type MockStoreObject_HandleSyncStatusUpdate_Call struct {
+	*mock.Call
+}
+
+// HandleSyncStatusUpdate is a helper method to define mock.On call
+//   - heads []string
+//   - status domain.ObjectSyncStatus
+//   - syncError domain.SyncError
+func (_e *MockStoreObject_Expecter) HandleSyncStatusUpdate(heads interface{}, status interface{}, syncError interface{}) *MockStoreObject_HandleSyncStatusUpdate_Call {
+	return &MockStoreObject_HandleSyncStatusUpdate_Call{Call: _e.mock.On("HandleSyncStatusUpdate", heads, status, syncError)}
+}
+
+func (_c *MockStoreObject_HandleSyncStatusUpdate_Call) Run(run func(heads []string, status domain.ObjectSyncStatus, syncError domain.SyncError)) *MockStoreObject_HandleSyncStatusUpdate_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].([]string), args[1].(domain.ObjectSyncStatus), args[2].(domain.SyncError))
+	})
+	return _c
+}
+
+func (_c *MockStoreObject_HandleSyncStatusUpdate_Call) Return() *MockStoreObject_HandleSyncStatusUpdate_Call {
+	_c.Call.Return()
+	return _c
+}
+
+func (_c *MockStoreObject_HandleSyncStatusUpdate_Call) RunAndReturn(run func([]string, domain.ObjectSyncStatus, domain.SyncError)) *MockStoreObject_HandleSyncStatusUpdate_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // HasRelation provides a mock function with given fields: s, relationKey
 func (_m *MockStoreObject) HasRelation(s *state.State, relationKey string) bool {
 	ret := _m.Called(s, relationKey)
@@ -2630,21 +2665,31 @@ func (_c *MockStoreObject_SpaceID_Call) RunAndReturn(run func() string) *MockSto
 }
 
 // ToggleMessageReaction provides a mock function with given fields: ctx, messageId, emoji
-func (_m *MockStoreObject) ToggleMessageReaction(ctx context.Context, messageId string, emoji string) error {
+func (_m *MockStoreObject) ToggleMessageReaction(ctx context.Context, messageId string, emoji string) (bool, error) {
 	ret := _m.Called(ctx, messageId, emoji)
 
 	if len(ret) == 0 {
 		panic("no return value specified for ToggleMessageReaction")
 	}
 
-	var r0 error
-	if rf, ok := ret.Get(0).(func(context.Context, string, string) error); ok {
+	var r0 bool
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, string, string) (bool, error)); ok {
+		return rf(ctx, messageId, emoji)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, string, string) bool); ok {
 		r0 = rf(ctx, messageId, emoji)
 	} else {
-		r0 = ret.Error(0)
+		r0 = ret.Get(0).(bool)
 	}
 
-	return r0
+	if rf, ok := ret.Get(1).(func(context.Context, string, string) error); ok {
+		r1 = rf(ctx, messageId, emoji)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
 }
 
 // MockStoreObject_ToggleMessageReaction_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ToggleMessageReaction'
@@ -2667,12 +2712,12 @@ func (_c *MockStoreObject_ToggleMessageReaction_Call) Run(run func(ctx context.C
 	return _c
 }
 
-func (_c *MockStoreObject_ToggleMessageReaction_Call) Return(_a0 error) *MockStoreObject_ToggleMessageReaction_Call {
-	_c.Call.Return(_a0)
+func (_c *MockStoreObject_ToggleMessageReaction_Call) Return(_a0 bool, _a1 error) *MockStoreObject_ToggleMessageReaction_Call {
+	_c.Call.Return(_a0, _a1)
 	return _c
 }
 
-func (_c *MockStoreObject_ToggleMessageReaction_Call) RunAndReturn(run func(context.Context, string, string) error) *MockStoreObject_ToggleMessageReaction_Call {
+func (_c *MockStoreObject_ToggleMessageReaction_Call) RunAndReturn(run func(context.Context, string, string) (bool, error)) *MockStoreObject_ToggleMessageReaction_Call {
 	_c.Call.Return(run)
 	return _c
 }

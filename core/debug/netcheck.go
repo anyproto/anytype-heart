@@ -5,12 +5,14 @@ import (
 	"fmt"
 	"net"
 	"os"
+	"slices"
 	"strings"
 	"time"
 
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/coordinator/coordinatorproto"
 	"github.com/anyproto/any-sync/net/connutil"
+	"github.com/anyproto/any-sync/net/rpc/encoding"
 	"github.com/anyproto/any-sync/net/secureservice"
 	"github.com/anyproto/any-sync/net/secureservice/handshake"
 	"github.com/anyproto/any-sync/net/secureservice/handshake/handshakeproto"
@@ -136,7 +138,11 @@ func probeYamux(ctx context.Context, a *app.App, addr string) (string, error) {
 
 	sb.WriteString("start proto handshake\n")
 	phst := time.Now()
-	if err = handshake.OutgoingProtoHandshake(ctx, sc, handshakeproto.ProtoType_DRPC); err != nil {
+	var remoteProto *handshakeproto.Proto
+	if remoteProto, err = handshake.OutgoingProtoHandshake(ctx, sc, &handshakeproto.Proto{
+		Proto:     handshakeproto.ProtoType_DRPC,
+		Encodings: []handshakeproto.Encoding{handshakeproto.Encoding_Snappy, handshakeproto.Encoding_None},
+	}); err != nil {
 		return "", fmt.Errorf("proto handshake error: %w, dur: %s", err, time.Since(phst))
 	} else {
 		sb.WriteString(fmt.Sprintf("proto handshake success, dur: %s, total: %s\n", time.Since(phst), time.Since(st)))
@@ -144,7 +150,8 @@ func probeYamux(ctx context.Context, a *app.App, addr string) (string, error) {
 
 	sb.WriteString("start configuration request\n")
 	rst := time.Now()
-	resp, err := coordinatorproto.NewDRPCCoordinatorClient(drpcconn.New(sc)).NetworkConfiguration(ctx, &coordinatorproto.NetworkConfigurationRequest{})
+	useSnappy := slices.Contains(remoteProto.Encodings, handshakeproto.Encoding_Snappy)
+	resp, err := coordinatorproto.NewDRPCCoordinatorClient(encoding.WrapConnEncoding(drpcconn.New(sc), useSnappy)).NetworkConfiguration(ctx, &coordinatorproto.NetworkConfigurationRequest{})
 	if err != nil {
 		return "", fmt.Errorf("configuration request error: %w, dur: %s", err, time.Since(rst))
 	} else {
@@ -179,7 +186,11 @@ func probeQuic(ctx context.Context, a *app.App, addr string) (string, error) {
 
 	sb.WriteString("start proto handshake\n")
 	phst := time.Now()
-	if err = handshake.OutgoingProtoHandshake(ctx, sc, handshakeproto.ProtoType_DRPC); err != nil {
+	var remoteProto *handshakeproto.Proto
+	if remoteProto, err = handshake.OutgoingProtoHandshake(ctx, sc, &handshakeproto.Proto{
+		Proto:     handshakeproto.ProtoType_DRPC,
+		Encodings: []handshakeproto.Encoding{handshakeproto.Encoding_Snappy, handshakeproto.Encoding_None},
+	}); err != nil {
 		return "", fmt.Errorf("proto handshake error: %w", err)
 	} else {
 		sb.WriteString(fmt.Sprintf("proto handshake success, dur: %s, total: %s\n", time.Since(phst), time.Since(st)))
@@ -187,7 +198,8 @@ func probeQuic(ctx context.Context, a *app.App, addr string) (string, error) {
 
 	sb.WriteString("start configuration request\n")
 	rst := time.Now()
-	resp, err := coordinatorproto.NewDRPCCoordinatorClient(drpcconn.New(sc)).NetworkConfiguration(ctx, &coordinatorproto.NetworkConfigurationRequest{})
+	useSnappy := slices.Contains(remoteProto.Encodings, handshakeproto.Encoding_Snappy)
+	resp, err := coordinatorproto.NewDRPCCoordinatorClient(encoding.WrapConnEncoding(drpcconn.New(sc), useSnappy)).NetworkConfiguration(ctx, &coordinatorproto.NetworkConfigurationRequest{})
 	if err != nil {
 		return "", fmt.Errorf("configuration request error: %w", err)
 	} else {

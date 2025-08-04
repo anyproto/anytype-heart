@@ -66,6 +66,12 @@ func (d *ChatHandler) BeforeCreate(ctx context.Context, ch storestate.ChangeOp) 
 		}
 	}
 
+	if ch.Change.Creator == d.currentIdentity {
+		msg.Synced = false
+	} else {
+		msg.Synced = true
+	}
+
 	msg.StateId = bson.NewObjectId().Hex()
 
 	isMentioned, err := msg.IsCurrentUserMentioned(ctx, d.myParticipantId, d.currentIdentity, d.repository)

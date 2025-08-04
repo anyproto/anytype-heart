@@ -28,8 +28,9 @@ import (
 var spaceViewLog = logging.Logger("core.block.editor.spaceview")
 
 var ErrIncorrectSpaceInfo = errors.New("space info is incorrect")
+var ErrLexidInsertionFailed = errors.New("lexid insertion failed")
 
-var lx = lexid.Must(lexid.CharsBase64, 4, 1000)
+var lx = lexid.Must(lexid.CharsBase64, 4, 4000)
 
 // required relations for spaceview beside the bundle.RequiredInternalRelations
 var spaceViewRequiredRelations = []domain.RelationKey{
@@ -143,9 +144,11 @@ func (s *SpaceView) SetOwner(ownerId string, createdDate int64) (err error) {
 	return s.Apply(st)
 }
 
-func (s *SpaceView) SetAclInfo(isAclEmpty bool, pushKey crypto.PrivKey, pushEncKey crypto.SymKey) error {
+func (s *SpaceView) SetAclInfo(isAclEmpty bool, pushKey crypto.PrivKey, pushEncKey crypto.SymKey, joinedDate int64) error {
 	st := s.NewState()
 	st.SetDetailAndBundledRelation(bundle.RelationKeyIsAclShared, domain.Bool(!isAclEmpty))
+
+	st.SetDetailAndBundledRelation(bundle.RelationKeySpaceJoinDate, domain.Int64(joinedDate))
 
 	if pushKey != nil {
 		pushKeyBinary, err := pushKey.Marshall()
@@ -324,7 +327,13 @@ func (s *SpaceView) UpdateLastOpenedDate() error {
 
 func (s *SpaceView) SetOrder(prevViewOrderId string) (string, error) {
 	st := s.NewState()
-	spaceOrderId := lx.Next(prevViewOrderId)
+	var spaceOrderId string
+	if prevViewOrderId == "" {
+		// For the first element, use a lexid with huge padding
+		spaceOrderId = lx.Middle()
+	} else {
+		spaceOrderId = lx.Next(prevViewOrderId)
+	}
 	st.SetDetail(bundle.RelationKeySpaceOrder, domain.String(spaceOrderId))
 	return spaceOrderId, s.Apply(st)
 }
@@ -342,9 +351,19 @@ func (s *SpaceView) SetAfterGivenView(viewOrderId string) error {
 
 func (s *SpaceView) SetBetweenViews(prevViewOrderId, afterViewOrderId string) error {
 	st := s.NewState()
-	before, err := lx.NextBefore(prevViewOrderId, afterViewOrderId)
+	var before string
+	var err error
+
+	if prevViewOrderId == "" {
+		// Insert before the first existing element
+		before = lx.Prev(afterViewOrderId)
+	} else {
+		// Insert between two existing elements
+		before, err = lx.NextBefore(prevViewOrderId, afterViewOrderId)
+	}
+
 	if err != nil {
-		return fmt.Errorf("failed to get before lexid, %w", err)
+		return errors.Join(ErrLexidInsertionFailed, err)
 	}
 	st.SetDetail(bundle.RelationKeySpaceOrder, domain.String(before))
 	return s.Apply(st)

@@ -555,7 +555,7 @@ func (s *service) PublishList(ctx context.Context, spaceId string) ([]*pb.RpcPub
 			Status:    pb.RpcPublishingPublishStatus(publish.Status),
 			Version:   publish.Version,
 			Timestamp: publish.Timestamp,
-			Size_:     publish.Size_,
+			Size_:     publish.Size,
 			JoinSpace: version.JoinSpace,
 			Details:   details,
 		})
@@ -599,7 +599,7 @@ func (s *service) ResolveUri(ctx context.Context, uri string) (*pb.RpcPublishing
 		Status:    pb.RpcPublishingPublishStatus(publish.Status),
 		Version:   publish.Version,
 		Timestamp: publish.Timestamp,
-		Size_:     publish.Size_,
+		Size_:     publish.Size,
 		JoinSpace: version.JoinSpace,
 	}, nil
 }
@@ -617,7 +617,7 @@ func (s *service) GetStatus(ctx context.Context, spaceId string, objectId string
 		Status:    pb.RpcPublishingPublishStatus(status.Status),
 		Version:   status.Version,
 		Timestamp: status.Timestamp,
-		Size_:     status.Size_,
+		Size_:     status.Size,
 		JoinSpace: version.JoinSpace,
 	}, nil
 }

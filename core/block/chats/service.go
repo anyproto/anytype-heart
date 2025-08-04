@@ -5,10 +5,12 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"sort"
 	"sync"
 	"time"
 
 	"github.com/anyproto/any-sync/app"
+	"github.com/samber/lo"
 
 	"github.com/cheggaaa/mb/v3"
 	"go.uber.org/zap"
@@ -383,6 +385,13 @@ func (s *service) sendPushNotification(ctx context.Context, spaceId, chatObjectI
 		senderName = details.GetString(bundle.RelationKeyName)
 	}
 
+	attachments, err := s.collectAttachmentPayloads(message, spaceId)
+	if err != nil {
+		return fmt.Errorf("collect attachments: %w", err)
+	}
+
+	text := applyEmojiMarks(message.Message.Text, message.Message.Marks)
+
 	payload := &chatpush.Payload{
 		SpaceId:  spaceId,
 		SenderId: accountId,
@@ -392,13 +401,13 @@ func (s *service) sendPushNotification(ctx context.Context, spaceId, chatObjectI
 			MsgId:          messageId,
 			SpaceName:      spaceName,
 			SenderName:     senderName,
-			Text:           textUtil.Truncate(message.Message.Text, 1024, "..."),
+			Text:           textUtil.Truncate(text, 1024, "..."),
 			HasAttachments: len(message.Attachments) > 0,
+			Attachments:    attachments,
 		},
 	}
 
 	jsonPayload, err := json.Marshal(payload)
-
 	if err != nil {
 		err = fmt.Errorf("marshal push payload: %w", err)
 		return
@@ -412,6 +421,58 @@ func (s *service) sendPushNotification(ctx context.Context, spaceId, chatObjectI
 	}
 
 	return
+}
+
+func (s *service) collectAttachmentPayloads(message *chatmodel.Message, spaceId string) ([]*chatpush.Attachment, error) {
+	if len(message.Attachments) > 0 {
+		attachmentIds := make([]string, 0, len(message.Attachments))
+		for _, attachment := range message.Attachments {
+			attachmentIds = append(attachmentIds, attachment.Target)
+		}
+
+		attachmentDetails, err := s.objectStore.SpaceIndex(spaceId).QueryByIds(attachmentIds)
+		if err != nil {
+			return nil, fmt.Errorf("query attachments: %w", err)
+		}
+		attachments := make([]*chatpush.Attachment, 0, len(message.Attachments))
+		for _, att := range attachmentDetails {
+			attachments = append(attachments, &chatpush.Attachment{
+				Layout: int(att.Details.GetInt64(bundle.RelationKeyResolvedLayout)),
+			})
+		}
+		return attachments, nil
+	}
+	return nil, nil
+}
+
+func applyEmojiMarks(text string, marks []*model.BlockContentTextMark) string {
+	utf16text := textUtil.StrToUTF16(text)
+	res := make([]uint16, 0, len(text))
+
+	toApply := lo.Filter(marks, func(mark *model.BlockContentTextMark, _ int) bool {
+		return mark.Type == model.BlockContentTextMark_Emoji
+	})
+	sort.Slice(toApply, func(i, j int) bool {
+		return toApply[i].Range.From < toApply[j].Range.From
+	})
+	var prev int
+	var lastTo int
+	for _, mark := range toApply {
+		if mark.Range.From >= mark.Range.To {
+			continue
+		}
+		if int(mark.Range.From) >= len(utf16text) {
+			continue
+		}
+		res = append(res, utf16text[prev:mark.Range.From]...)
+		res = append(res, textUtil.StrToUTF16(mark.Param)...)
+		prev = int(mark.Range.To)
+		lastTo = int(mark.Range.To)
+	}
+	if lastTo < len(text) {
+		res = append(res, utf16text[lastTo:]...)
+	}
+	return textUtil.UTF16ToStr(res)
 }
 
 func (s *service) EditMessage(ctx context.Context, chatObjectId string, messageId string, newMessage *chatmodel.Message) error {

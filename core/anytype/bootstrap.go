@@ -72,6 +72,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/files/filesync"
 	"github.com/anyproto/anytype-heart/core/files/fileuploader"
 	"github.com/anyproto/anytype-heart/core/files/reconciler"
+	"github.com/anyproto/anytype-heart/core/gallery"
 	"github.com/anyproto/anytype-heart/core/history"
 	"github.com/anyproto/anytype-heart/core/identity"
 	"github.com/anyproto/anytype-heart/core/indexer"
@@ -251,7 +252,7 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(aclclient.NewAclJoiningClient()).
 		Register(virtualspaceservice.New()).
 		Register(spacecore.New()).
-		Register(idresolver.New()).
+		Register(idresolver.New(200*time.Millisecond, 2*time.Second)).
 		Register(device.New()).
 		Register(localdiscovery.New()).
 		Register(peermanager.New()).
@@ -275,7 +276,7 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(invitestore.New()).
 		Register(filesync.New()).
 		Register(reconciler.New()).
-		Register(fileobject.New(200*time.Millisecond, 2*time.Second)).
+		Register(fileobject.New()).
 		Register(inviteservice.New()).
 		Register(publish.New()).
 		Register(publishclient.New()).
@@ -303,6 +304,7 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(debug.New()).
 		Register(syncsubscriptions.New()).
 		Register(builtinobjects.New()).
+		Register(gallery.New()).
 		Register(bookmark.New()).
 		Register(importer.New()).
 		Register(decorator.New()).

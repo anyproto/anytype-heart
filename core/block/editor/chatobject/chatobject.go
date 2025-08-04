@@ -18,6 +18,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/chats/chatrepository"
 	"github.com/anyproto/anytype-heart/core/block/chats/chatsubscription"
 	"github.com/anyproto/anytype-heart/core/block/editor/anystoredebug"
+	"github.com/anyproto/anytype-heart/core/block/editor/components"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/storestate"
 	"github.com/anyproto/anytype-heart/core/block/source"
@@ -29,12 +30,13 @@ import (
 )
 
 const (
-	CollectionName      = "chats"
-	descOrder           = "-_o.id"
-	ascOrder            = "_o.id"
-	descStateId         = "-stateId"
-	diffManagerMessages = "messages"
-	diffManagerMentions = "mentions"
+	CollectionName        = "chats"
+	descOrder             = "-_o.id"
+	ascOrder              = "_o.id"
+	descStateId           = "-stateId"
+	diffManagerMessages   = "messages"
+	diffManagerMentions   = "mentions"
+	diffManagerSyncStatus = "syncStatus"
 )
 
 var log = logging.Logger("core.block.editor.chatobject").Desugar()
@@ -42,6 +44,7 @@ var log = logging.Logger("core.block.editor.chatobject").Desugar()
 type StoreObject interface {
 	smartblock.SmartBlock
 	anystoredebug.AnystoreDebug
+	components.SyncStatusHandler
 
 	AddMessage(ctx context.Context, sessionCtx session.Context, message *chatmodel.Message) (string, error)
 	GetMessages(ctx context.Context, req chatrepository.GetMessagesRequest) (*GetMessagesResponse, error)
@@ -174,6 +177,12 @@ func (s *storeObject) Init(ctx *smartblock.InitContext) error {
 			log.Error("mark read mentions", zap.Error(markErr))
 		}
 	})
+	storeSource.RegisterDiffManager(diffManagerSyncStatus, func(removed []string) {
+		updateErr := s.setMessagesSyncStatus(removed)
+		if updateErr != nil {
+			log.Error("set sync status", zap.Error(updateErr))
+		}
+	})
 	err = s.SmartBlock.Init(ctx)
 	if err != nil {
 		return err
@@ -255,6 +264,10 @@ func (s *storeObject) GetMessages(ctx context.Context, req chatrepository.GetMes
 }
 
 func (s *storeObject) AddMessage(ctx context.Context, sessionCtx session.Context, message *chatmodel.Message) (string, error) {
+	err := message.Validate()
+	if err != nil {
+		return "", fmt.Errorf("validate: %w", err)
+	}
 	arena := s.arenaPool.Get()
 	defer func() {
 		arena.Reset()
@@ -267,9 +280,12 @@ func (s *storeObject) AddMessage(ctx context.Context, sessionCtx session.Context
 
 	obj := arena.NewObject()
 	message.MarshalAnyenc(obj, arena)
+	obj.Del(chatmodel.ReadKey)
+	obj.Del(chatmodel.MentionReadKey)
+	obj.Del(chatmodel.SyncedKey)
 
 	builder := storestate.Builder{}
-	err := builder.Create(CollectionName, storestate.IdFromChange, obj)
+	err = builder.Create(CollectionName, storestate.IdFromChange, obj)
 	if err != nil {
 		return "", fmt.Errorf("create chat: %w", err)
 	}
@@ -318,6 +334,11 @@ func (s *storeObject) DeleteMessage(ctx context.Context, messageId string) error
 }
 
 func (s *storeObject) EditMessage(ctx context.Context, messageId string, newMessage *chatmodel.Message) error {
+	err := newMessage.Validate()
+	if err != nil {
+		return fmt.Errorf("validate: %w", err)
+	}
+
 	arena := s.arenaPool.Get()
 	defer func() {
 		arena.Reset()
@@ -328,7 +349,7 @@ func (s *storeObject) EditMessage(ctx context.Context, messageId string, newMess
 	newMessage.MarshalAnyenc(obj, arena)
 
 	builder := storestate.Builder{}
-	err := builder.Modify(CollectionName, messageId, []string{chatmodel.ContentKey}, pb.ModifyOp_Set, obj.Get(chatmodel.ContentKey))
+	err = builder.Modify(CollectionName, messageId, []string{chatmodel.ContentKey}, pb.ModifyOp_Set, obj.Get(chatmodel.ContentKey))
 	if err != nil {
 		return fmt.Errorf("modify content: %w", err)
 	}
@@ -400,6 +421,15 @@ func (s *storeObject) Close() error {
 	s.componentCtxCancel()
 	s.statService.RemoveProvider(s)
 	return s.SmartBlock.Close()
+}
+
+func (s *storeObject) HandleSyncStatusUpdate(heads []string, status domain.ObjectSyncStatus, syncError domain.SyncError) {
+	if status == (domain.ObjectSyncStatusSynced) {
+		err := s.storeSource.MarkSeenHeads(s.componentCtx, diffManagerSyncStatus, heads)
+		if err != nil {
+			log.Error("mark sync status heads", zap.Error(err))
+		}
+	}
 }
 
 type treeSeenHeadsCollector struct {

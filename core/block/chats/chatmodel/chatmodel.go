@@ -8,6 +8,7 @@ import (
 	"github.com/anyproto/any-store/anyenc"
 
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+	textUtil "github.com/anyproto/anytype-heart/util/text"
 )
 
 type CounterType int
@@ -44,6 +45,7 @@ const (
 	HasMentionKey  = "hasMention"
 	StateIdKey     = "stateId"
 	OrderKey       = "_o"
+	SyncedKey      = "synced"
 )
 
 type Message struct {
@@ -100,6 +102,30 @@ func (m *Message) MentionIdentities(ctx context.Context, repo MessagesGetter) ([
 		}
 	}
 	return mentions, nil
+}
+
+func (m *Message) Validate() error {
+	utf16text := textUtil.StrToUTF16(m.Message.Text)
+
+	for _, mark := range m.Message.Marks {
+		if mark.Range.From < 0 {
+			return fmt.Errorf("invalid range.from")
+		}
+		if mark.Range.To < 0 {
+			return fmt.Errorf("invalid range.to")
+		}
+		if mark.Range.From > mark.Range.To {
+			return fmt.Errorf("range.from should be less than range.to")
+		}
+		if int(mark.Range.From) >= len(utf16text) {
+			return fmt.Errorf("invalid range.from")
+		}
+		if int(mark.Range.To) > len(utf16text) {
+			return fmt.Errorf("invalid range.to")
+		}
+	}
+
+	return nil
 }
 
 func extractIdentity(participantId string) string {
@@ -202,6 +228,7 @@ func (m *Message) MarshalAnyenc(marshalTo *anyenc.Value, arena *anyenc.Arena) {
 	marshalTo.Set(HasMentionKey, arenaNewBool(arena, m.CurrentUserMentioned))
 	marshalTo.Set(StateIdKey, arena.NewString(m.StateId))
 	marshalTo.Set(ReactionsKey, reactions)
+	marshalTo.Set(SyncedKey, arenaNewBool(arena, m.Synced))
 }
 
 func arenaNewBool(a *anyenc.Arena, value bool) *anyenc.Value {
@@ -227,6 +254,7 @@ func (m *messageUnmarshaller) toModel() (*Message, error) {
 			MentionRead:      m.val.GetBool(MentionReadKey),
 			Attachments:      m.attachmentsToModel(),
 			Reactions:        m.reactionsToModel(),
+			Synced:           m.val.GetBool(SyncedKey),
 		},
 		CurrentUserMentioned: m.val.GetBool(HasMentionKey),
 	}, nil

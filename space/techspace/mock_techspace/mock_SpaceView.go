@@ -286,17 +286,17 @@ func (_c *MockSpaceView_SetAccessType_Call) RunAndReturn(run func(spaceinfo.Acce
 	return _c
 }
 
-// SetAclInfo provides a mock function with given fields: empty, pushKey, pushEncKey
-func (_m *MockSpaceView) SetAclInfo(empty bool, pushKey crypto.PrivKey, pushEncKey crypto.SymKey) error {
-	ret := _m.Called(empty, pushKey, pushEncKey)
+// SetAclInfo provides a mock function with given fields: empty, pushKey, pushEncKey, joinedDate
+func (_m *MockSpaceView) SetAclInfo(empty bool, pushKey crypto.PrivKey, pushEncKey crypto.SymKey, joinedDate int64) error {
+	ret := _m.Called(empty, pushKey, pushEncKey, joinedDate)
 
 	if len(ret) == 0 {
 		panic("no return value specified for SetAclInfo")
 	}
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(bool, crypto.PrivKey, crypto.SymKey) error); ok {
-		r0 = rf(empty, pushKey, pushEncKey)
+	if rf, ok := ret.Get(0).(func(bool, crypto.PrivKey, crypto.SymKey, int64) error); ok {
+		r0 = rf(empty, pushKey, pushEncKey, joinedDate)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -313,13 +313,14 @@ type MockSpaceView_SetAclInfo_Call struct {
 //   - empty bool
 //   - pushKey crypto.PrivKey
 //   - pushEncKey crypto.SymKey
-func (_e *MockSpaceView_Expecter) SetAclInfo(empty interface{}, pushKey interface{}, pushEncKey interface{}) *MockSpaceView_SetAclInfo_Call {
-	return &MockSpaceView_SetAclInfo_Call{Call: _e.mock.On("SetAclInfo", empty, pushKey, pushEncKey)}
+//   - joinedDate int64
+func (_e *MockSpaceView_Expecter) SetAclInfo(empty interface{}, pushKey interface{}, pushEncKey interface{}, joinedDate interface{}) *MockSpaceView_SetAclInfo_Call {
+	return &MockSpaceView_SetAclInfo_Call{Call: _e.mock.On("SetAclInfo", empty, pushKey, pushEncKey, joinedDate)}
 }
 
-func (_c *MockSpaceView_SetAclInfo_Call) Run(run func(empty bool, pushKey crypto.PrivKey, pushEncKey crypto.SymKey)) *MockSpaceView_SetAclInfo_Call {
+func (_c *MockSpaceView_SetAclInfo_Call) Run(run func(empty bool, pushKey crypto.PrivKey, pushEncKey crypto.SymKey, joinedDate int64)) *MockSpaceView_SetAclInfo_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(bool), args[1].(crypto.PrivKey), args[2].(crypto.SymKey))
+		run(args[0].(bool), args[1].(crypto.PrivKey), args[2].(crypto.SymKey), args[3].(int64))
 	})
 	return _c
 }
@@ -329,7 +330,7 @@ func (_c *MockSpaceView_SetAclInfo_Call) Return(err error) *MockSpaceView_SetAcl
 	return _c
 }
 
-func (_c *MockSpaceView_SetAclInfo_Call) RunAndReturn(run func(bool, crypto.PrivKey, crypto.SymKey) error) *MockSpaceView_SetAclInfo_Call {
+func (_c *MockSpaceView_SetAclInfo_Call) RunAndReturn(run func(bool, crypto.PrivKey, crypto.SymKey, int64) error) *MockSpaceView_SetAclInfo_Call {
 	_c.Call.Return(run)
 	return _c
 }

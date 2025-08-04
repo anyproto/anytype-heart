@@ -36,6 +36,7 @@ type subscriptionManager struct {
 	identityCache *expirable.LRU[string, *domain.Details]
 	subscriptions map[string]*subscription
 
+	chatStateOrder   int64
 	chatState        *model.ChatState
 	needReloadState  bool
 	chatStateUpdated bool
@@ -124,7 +125,8 @@ func (s *subscriptionManager) GetChatState() *model.ChatState {
 
 func (s *subscriptionManager) UpdateChatState(updater func(*model.ChatState) *model.ChatState) {
 	s.chatState = updater(s.chatState)
-	s.chatState.Order++
+	s.chatStateOrder++
+	s.chatState.Order = s.chatStateOrder
 	s.chatStateUpdated = true
 }
 
@@ -343,6 +345,20 @@ func (s *subscriptionManager) UpdateReactions(message *chatmodel.Message) {
 	}))
 }
 
+func (s *subscriptionManager) UpdateSyncStatus(messageIds []string, isSynced bool) {
+	if !s.canSend() {
+		return
+	}
+	ev := &pb.EventChatUpdateMessageSyncStatus{
+		Ids:      messageIds,
+		IsSynced: isSynced,
+		SubIds:   s.listSubIds(),
+	}
+	s.eventsBuffer = append(s.eventsBuffer, event.NewMessage(s.spaceId, &pb.EventMessageValueOfChatUpdateMessageSyncStatus{
+		ChatUpdateMessageSyncStatus: ev,
+	}))
+}
+
 // updateMessageRead updates the read status of the messages with the given ids
 // read ids should ONLY contain ids if they were actually modified in the DB
 func (s *subscriptionManager) updateMessageRead(ids []string, read bool) {
@@ -479,6 +495,8 @@ func eventsSetSubIds(subIds []string, events []*pb.EventMessage) {
 		} else if v := ev.GetChatUpdateReactions(); v != nil {
 			v.SubIds = subIds
 		} else if v := ev.GetChatStateUpdate(); v != nil {
+			v.SubIds = subIds
+		} else if v := ev.GetChatUpdateMessageSyncStatus(); v != nil {
 			v.SubIds = subIds
 		}
 	}
