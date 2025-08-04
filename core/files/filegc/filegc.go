@@ -78,6 +78,11 @@ func (gc *fileGC) CheckFilesOnLinksRemoval(spaceId, contextId string, removedLin
 		return fmt.Errorf("space index not found for space %s", spaceId)
 	}
 
+	fileLayouts := make([]int64, 0, len(domain.FileLayouts))
+	for _, layout := range domain.FileLayouts {
+		fileLayouts = append(fileLayouts, int64(layout))
+	}
+
 	// Build query filters
 	filters := []database.FilterRequest{
 		{
@@ -93,7 +98,7 @@ func (gc *fileGC) CheckFilesOnLinksRemoval(spaceId, contextId string, removedLin
 		{
 			RelationKey: bundle.RelationKeyResolvedLayout,
 			Condition:   model.BlockContentDataviewFilter_In,
-			Value:       domain.Int64List([]int64{int64(model.ObjectType_file), int64(model.ObjectType_image)}),
+			Value:       domain.Int64List(fileLayouts),
 		},
 	}
 
