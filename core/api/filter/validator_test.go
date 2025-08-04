@@ -65,14 +65,14 @@ func TestValidator_ValidateFilters(t *testing.T) {
 	tests := []struct {
 		name          string
 		filters       *filter.ParsedFilters
-		setupMock     func(m *mock_filter.MockPropertyService)
+		setupMock     func(m *mock_filter.MockApiService)
 		expectedError string
 		checkResult   func(t *testing.T, filters *filter.ParsedFilters)
 	}{
 		{
 			name:    "nil filters",
 			filters: nil,
-			setupMock: func(m *mock_filter.MockPropertyService) {
+			setupMock: func(m *mock_filter.MockApiService) {
 				// No calls expected
 			},
 			checkResult: func(t *testing.T, filters *filter.ParsedFilters) {
@@ -82,7 +82,7 @@ func TestValidator_ValidateFilters(t *testing.T) {
 		{
 			name:    "empty filters",
 			filters: &filter.ParsedFilters{Filters: []filter.Filter{}},
-			setupMock: func(m *mock_filter.MockPropertyService) {
+			setupMock: func(m *mock_filter.MockApiService) {
 				// No calls expected
 			},
 			checkResult: func(t *testing.T, filters *filter.ParsedFilters) {
@@ -100,7 +100,7 @@ func TestValidator_ValidateFilters(t *testing.T) {
 					},
 				},
 			},
-			setupMock: func(m *mock_filter.MockPropertyService) {
+			setupMock: func(m *mock_filter.MockApiService) {
 				m.On("GetCachedProperties", testSpaceId).Return(mockProperties)
 				m.On("ResolvePropertyApiKey", mockProperties, "name").Return("name")
 				m.On("SanitizeAndValidatePropertyValue",
@@ -129,7 +129,7 @@ func TestValidator_ValidateFilters(t *testing.T) {
 					},
 				},
 			},
-			setupMock: func(m *mock_filter.MockPropertyService) {
+			setupMock: func(m *mock_filter.MockApiService) {
 				m.On("GetCachedProperties", testSpaceId).Return(mockProperties)
 				m.On("ResolvePropertyApiKey", mockProperties, "age").Return("age")
 				m.On("SanitizeAndValidatePropertyValue",
@@ -158,7 +158,7 @@ func TestValidator_ValidateFilters(t *testing.T) {
 					},
 				},
 			},
-			setupMock: func(m *mock_filter.MockPropertyService) {
+			setupMock: func(m *mock_filter.MockApiService) {
 				m.On("GetCachedProperties", testSpaceId).Return(mockProperties)
 				m.On("ResolvePropertyApiKey", mockProperties, "my_custom_property").Return("custom_prop")
 				m.On("SanitizeAndValidatePropertyValue",
@@ -187,7 +187,7 @@ func TestValidator_ValidateFilters(t *testing.T) {
 					},
 				},
 			},
-			setupMock: func(m *mock_filter.MockPropertyService) {
+			setupMock: func(m *mock_filter.MockApiService) {
 				m.On("GetCachedProperties", testSpaceId).Return(mockProperties)
 				m.On("ResolvePropertyApiKey", mockProperties, "unknown_property").Return("")
 			},
@@ -204,7 +204,7 @@ func TestValidator_ValidateFilters(t *testing.T) {
 					},
 				},
 			},
-			setupMock: func(m *mock_filter.MockPropertyService) {
+			setupMock: func(m *mock_filter.MockApiService) {
 				m.On("GetCachedProperties", testSpaceId).Return(mockProperties)
 				m.On("ResolvePropertyApiKey", mockProperties, "name").Return("name")
 			},
@@ -221,7 +221,7 @@ func TestValidator_ValidateFilters(t *testing.T) {
 					},
 				},
 			},
-			setupMock: func(m *mock_filter.MockPropertyService) {
+			setupMock: func(m *mock_filter.MockApiService) {
 				m.On("GetCachedProperties", testSpaceId).Return(mockProperties)
 				m.On("ResolvePropertyApiKey", mockProperties, "age").Return("age")
 				m.On("SanitizeAndValidatePropertyValue",
@@ -246,7 +246,7 @@ func TestValidator_ValidateFilters(t *testing.T) {
 					},
 				},
 			},
-			setupMock: func(m *mock_filter.MockPropertyService) {
+			setupMock: func(m *mock_filter.MockApiService) {
 				m.On("GetCachedProperties", testSpaceId).Return(mockProperties)
 				m.On("ResolvePropertyApiKey", mockProperties, "name").Return("name")
 				// Empty condition doesn't call SanitizeAndValidatePropertyValue
@@ -267,7 +267,7 @@ func TestValidator_ValidateFilters(t *testing.T) {
 					},
 				},
 			},
-			setupMock: func(m *mock_filter.MockPropertyService) {
+			setupMock: func(m *mock_filter.MockApiService) {
 				m.On("GetCachedProperties", testSpaceId).Return(mockProperties)
 				m.On("ResolvePropertyApiKey", mockProperties, "tags").Return("tags")
 				m.On("SanitizeAndValidatePropertyValue",
@@ -295,7 +295,7 @@ func TestValidator_ValidateFilters(t *testing.T) {
 					},
 				},
 			},
-			setupMock: func(m *mock_filter.MockPropertyService) {
+			setupMock: func(m *mock_filter.MockApiService) {
 				m.On("GetCachedProperties", testSpaceId).Return(mockProperties)
 				m.On("ResolvePropertyApiKey", mockProperties, "tags").Return("tags")
 				m.On("SanitizeAndValidatePropertyValue",
@@ -328,7 +328,7 @@ func TestValidator_ValidateFilters(t *testing.T) {
 					},
 				},
 			},
-			setupMock: func(m *mock_filter.MockPropertyService) {
+			setupMock: func(m *mock_filter.MockApiService) {
 				m.On("GetCachedProperties", testSpaceId).Return(mockProperties)
 				// First filter passes
 				m.On("ResolvePropertyApiKey", mockProperties, "name").Return("name")
@@ -349,7 +349,7 @@ func TestValidator_ValidateFilters(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			mockService := mock_filter.NewMockPropertyService(t)
+			mockService := mock_filter.NewMockApiService(t)
 			if tt.setupMock != nil {
 				tt.setupMock(mockService)
 			}
@@ -413,7 +413,7 @@ func TestValidator_ConditionValidation(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			mockService := mock_filter.NewMockPropertyService(t)
+			mockService := mock_filter.NewMockApiService(t)
 
 			property := &apimodel.Property{
 				Id:          "test-id",

@@ -89,43 +89,48 @@ func ResourceActionHandler(s *service.Service) gin.HandlerFunc {
 }
 ```
 
-#### Service Testing Pattern
-```go
-type fixture struct {
-    service  *Service
-    mwMock   *mock_apicore.MockClientCommands
-    // other mocks
-}
+#### Testing Guidelines
 
-func newFixture(t *testing.T) *fixture {
-    // Setup mocks and service
-}
+1. **Test Structure**: Use fixture pattern for consistent test setup
+   ```go
+   type fixture struct {
+       service  *Service
+       mwMock   *mock_apicore.MockClientCommands
+       // other mocks as needed
+   }
 
-func TestServiceMethod(t *testing.T) {
-    fx := newFixture(t)
-    
-    // Setup expectations
-    fx.mwMock.EXPECT().Method().Return(...)
-    
-    // Execute
-    result, err := fx.service.Method(context.Background(), ...)
-    
-    // Assert
-    assert.NoError(t, err)
-    assert.Equal(t, expected, result)
-}
-```
+   func newFixture(t *testing.T) *fixture {
+       mwMock := mock_apicore.NewMockClientCommands(t)
+       service := NewService(mwMock, gatewayUrl, techSpaceId, crossSpaceSubService)
+       return &fixture{
+           service: service,
+           mwMock:  mwMock,
+       }
+   }
 
-#### Test Style Preferences
-
-1. **Mock Generation**: Use mockery with `.mockery.yaml` configuration
-   ```yaml
-   github.com/anyproto/anytype-heart/core/api/filter:
-     interfaces:
-       PropertyService:
+   func TestServiceMethod(t *testing.T) {
+       fx := newFixture(t)
+       
+       // Setup expectations using testify/mock
+       fx.mwMock.On("Method", mock.Anything, expectedArgs).Return(result, nil)
+       
+       // Execute
+       result, err := fx.service.Method(context.Background(), ...)
+       
+       // Assert
+       assert.NoError(t, err)
+       assert.Equal(t, expected, result)
+   }
    ```
 
-2. **Mock Library**: Use `github.com/stretchr/testify/mock` (not gomock)
+2. **Mock Generation**: Use mockery with `.mockery.yaml` configuration
+   ```yaml
+   github.com/anyproto/anytype-heart/core/api/core:
+    interfaces:
+        AccountService:
+   ```
+
+3. **Mock Library**: Use `github.com/stretchr/testify/mock` (not gomock)
    ```go
    import "github.com/stretchr/testify/mock"
    
@@ -133,7 +138,7 @@ func TestServiceMethod(t *testing.T) {
    mockService.On("Method", args...).Return(results...)
    ```
 
-3. **Table-Driven Tests**: Preferred for comprehensive test coverage
+4. **Table-Driven Tests**: Preferred for comprehensive test coverage
    ```go
    tests := []struct {
        name          string
@@ -152,14 +157,14 @@ func TestServiceMethod(t *testing.T) {
    }
    ```
 
-4. **Assertion Style**: Use testify assertions
+5. **Assertion Style**: Use testify assertions
    ```go
    assert.Equal(t, expected, actual)
    require.NoError(t, err)
    require.Len(t, slice, expectedLen)
    ```
 
-5. **Mock Expectations**: Use `mock.Anything` for flexible matching
+6. **Mock Expectations**: Use `mock.Anything` for flexible matching
    ```go
    mockService.On("Method", 
        mock.Anything,  // for parameters you don't need to match exactly
