@@ -85,7 +85,7 @@ type PublishingUberSnapshot struct {
 
 type Service interface {
 	app.ComponentRunnable
-	Publish(ctx context.Context, spaceId, pageObjId, uri string, joinSpace bool) (res PublishResult, err error)
+	Publish(ctx context.Context, spaceId, pageObjId, uri string, joinSpace bool, enableMultipublish bool) (res PublishResult, err error)
 	Unpublish(ctx context.Context, spaceId, pageObjId string) error
 	PublishList(ctx context.Context, id string) ([]*pb.RpcPublishingPublishState, error)
 	ResolveUri(ctx context.Context, uri string) (*pb.RpcPublishingPublishState, error)
@@ -466,50 +466,70 @@ func (s *service) findAllAnytypeLinkBlocks(ctx context.Context, spaceId, pageId 
 	return nil
 }
 
-func (s *service) Publish(ctx context.Context, spaceId, pageId, uri string, joinSpace bool) (res PublishResult, err error) {
+func (s *service) PublishSingle(ctx context.Context, spaceId, pageId, uri string, joinSpace bool) (res PublishResult, err error) {
 	identity, _, details := s.identityService.GetMyProfileDetails(ctx)
 	globalName := details.GetString(bundle.RelationKeyGlobalName)
-	log.Warn("multipublish: hello publish.", zap.String("id", pageId))
 
-	linkedPageIds := make(map[string]string)
-	_ = s.findAllAnytypeLinkBlocks(ctx, spaceId, pageId, &linkedPageIds)
-
-	for linkedPageId := range linkedPageIds {
-		log.Warn("multipublish:  linked page id", zap.String("id", linkedPageId))
-	}
 	err = s.publishToPublishServer(ctx, spaceId, pageId, uri, globalName, joinSpace)
+
 	if err != nil {
 		log.Error("Failed to publish", zap.Error(err))
 		return
-	} else {
-		log.Warn("multipublish: main published", zap.String("id", pageId), zap.String("url", uri))
 	}
-	delete(linkedPageIds, pageId)
-	for linkedPageId, title := range linkedPageIds {
-		status, err := s.GetStatus(ctx, spaceId, linkedPageId)
-		url := strings.ReplaceAll(strings.ToLower(title), " ", "-")
-		if err != nil {
-			log.Error("failed to get status of linked page", zap.String("uri", url), zap.String("objectId", linkedPageId), zap.Error(err))
-			continue
-		}
-
-		if status.GetStatus() == pb.RpcPublishing_PublishStatusPublished {
-			log.Warn("page is already published, don't republish: skip", zap.String("uri", url), zap.String("objectId", linkedPageId), zap.Error(err))
-			continue
-		}
-
-		err = s.publishToPublishServer(ctx, spaceId, linkedPageId, url, globalName, joinSpace)
-		if err != nil {
-			log.Error("multipublish: Failed to publish", zap.String("lnkedpageId", linkedPageId), zap.Error(err))
-		} else {
-			log.Warn("multipublish: published", zap.String("id", linkedPageId), zap.String("url", url))
-		}
-
-	}
-
 	url := s.makeUrl(uri, identity, globalName)
 
 	return PublishResult{Url: url}, nil
+}
+
+func (s *service) Publish(ctx context.Context, spaceId, pageId, uri string, joinSpace bool, enableMultipublish bool) (res PublishResult, err error) {
+	if !enableMultipublish {
+		log.Warn("multipublish disabled.", zap.String("id", pageId))
+		return s.PublishSingle(ctx, spaceId, pageId, uri, joinSpace)
+	} else {
+		identity, _, details := s.identityService.GetMyProfileDetails(ctx)
+		globalName := details.GetString(bundle.RelationKeyGlobalName)
+		log.Warn("multipublish: hello publish.", zap.String("id", pageId))
+
+		linkedPageIds := make(map[string]string)
+		_ = s.findAllAnytypeLinkBlocks(ctx, spaceId, pageId, &linkedPageIds)
+
+		for linkedPageId := range linkedPageIds {
+			log.Warn("multipublish:  linked page id", zap.String("id", linkedPageId))
+		}
+		err = s.publishToPublishServer(ctx, spaceId, pageId, uri, globalName, joinSpace)
+		if err != nil {
+			log.Error("Failed to publish", zap.Error(err))
+			return
+		} else {
+			log.Warn("multipublish: main published", zap.String("id", pageId), zap.String("url", uri))
+		}
+		delete(linkedPageIds, pageId)
+		for linkedPageId, title := range linkedPageIds {
+			status, err := s.GetStatus(ctx, spaceId, linkedPageId)
+			url := strings.ReplaceAll(strings.ToLower(title), " ", "-")
+			if err != nil {
+				log.Error("failed to get status of linked page", zap.String("uri", url), zap.String("objectId", linkedPageId), zap.Error(err))
+				continue
+			}
+
+			if status.GetStatus() == pb.RpcPublishing_PublishStatusPublished {
+				log.Warn("page is already published, don't republish: skip", zap.String("uri", url), zap.String("objectId", linkedPageId), zap.Error(err))
+				continue
+			}
+
+			err = s.publishToPublishServer(ctx, spaceId, linkedPageId, url, globalName, joinSpace)
+			if err != nil {
+				log.Error("multipublish: Failed to publish", zap.String("lnkedpageId", linkedPageId), zap.Error(err))
+			} else {
+				log.Warn("multipublish: published", zap.String("id", linkedPageId), zap.String("url", url))
+			}
+
+		}
+
+		url := s.makeUrl(uri, identity, globalName)
+
+		return PublishResult{Url: url}, nil
+	}
 }
 
 func (s *service) makeUrl(uri, identity, globalName string) string {
