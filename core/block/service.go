@@ -623,41 +623,6 @@ func (s *Service) ObjectBookmarkFetch(req pb.RpcObjectBookmarkFetchRequest) (err
 	return nil
 }
 
-func (s *Service) ObjectToBookmark(ctx context.Context, id string, url string) (objectId string, err error) {
-	spaceID, err := s.resolver.ResolveSpaceID(id)
-	if err != nil {
-		return "", fmt.Errorf("resolve spaceID: %w", err)
-	}
-	req := objectcreator.CreateObjectRequest{
-		ObjectTypeKey: bundle.TypeKeyBookmark,
-		Details: domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
-			bundle.RelationKeySource: domain.String(url),
-		}),
-	}
-	objectId, _, err = s.objectCreator.CreateObject(ctx, spaceID, req)
-	if err != nil {
-		return
-	}
-
-	res, err := s.objectStore.SpaceIndex(spaceID).GetWithLinksInfoById(id)
-	if err != nil {
-		return
-	}
-	for _, il := range res.Links.Inbound {
-		if err = s.replaceLink(il.Id, id, objectId); err != nil {
-			return
-		}
-	}
-	err = s.DeleteObject(id)
-	if err != nil {
-		// intentionally do not return error here
-		log.Errorf("failed to delete object after conversion to bookmark: %s", err)
-		err = nil
-	}
-
-	return
-}
-
 func (s *Service) CreateObjectFromUrl(
 	ctx context.Context, req *pb.RpcObjectCreateFromUrlRequest,
 ) (id string, objectDetails *domain.Details, err error) {
