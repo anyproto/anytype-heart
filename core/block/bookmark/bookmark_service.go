@@ -281,7 +281,7 @@ func (s *service) ContentUpdaters(spaceID string, url string, parseBlock bool) (
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			hash, err := s.loadImage(spaceID, getFileNameFromURL(url, "cover"), data.ImageUrl)
+			hash, err := s.loadImage(spaceID, getFileNameFromURL(url, data.ImageUrl, "cover"), data.ImageUrl)
 			if err != nil {
 				log.Errorf("load image: %s", err)
 				return
@@ -298,7 +298,7 @@ func (s *service) ContentUpdaters(spaceID string, url string, parseBlock bool) (
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			hash, err := s.loadImage(spaceID, getFileNameFromURL(url, "icon"), data.FaviconUrl)
+			hash, err := s.loadImage(spaceID, getFileNameFromURL(url, data.FaviconUrl, "icon"), data.FaviconUrl)
 			if err != nil {
 				log.Errorf("load favicon: %s", err)
 				return
@@ -373,21 +373,21 @@ func (s *service) fetcher(spaceID string, blockID string, params bookmark.FetchP
 	return nil
 }
 
-func getFileNameFromURL(url, filename string) string {
-	u, err := uri.ParseURI(url)
+func getFileNameFromURL(baseUrl, fileUrl, filename string) string {
+	bu, err := uri.ParseURI(baseUrl)
 	if err != nil {
 		return ""
 	}
-	if u.Hostname() == "" {
+	if bu.Hostname() == "" {
 		return ""
 	}
-	var urlFileExt string
-	lastPath := strings.Split(u.Path, "/")
-	if len(lastPath) > 0 {
-		urlFileExt = filepath.Ext(lastPath[len(lastPath)-1])
+	fu, err := uri.ParseURI(fileUrl)
+	if err != nil {
+		return ""
 	}
+	urlFileExt := filepath.Ext(fu.Path)
 
-	source := strings.TrimPrefix(u.Hostname(), "www.")
+	source := strings.TrimPrefix(bu.Hostname(), "www.")
 	source = strings.ReplaceAll(source, ".", "_")
 	if source != "" {
 		source += "_"
