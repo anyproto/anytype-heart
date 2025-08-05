@@ -134,7 +134,7 @@ type CalloutBlock struct {
 
 type CalloutObject struct {
 	TextObjectWithChildren
-	Icon *api.Icon `json:"icon"`
+	Icon *api.Icon `json:"icon" oneOf:"EmojiIcon,FileIcon,NamedIcon"`
 }
 
 func (c *CalloutBlock) GetBlocks(req *api.NotionImportContext, pageID string) *MapResponse {

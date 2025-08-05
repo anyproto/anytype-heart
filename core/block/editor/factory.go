@@ -1,14 +1,19 @@
 package editor
 
 import (
+	"errors"
 	"fmt"
 
 	"github.com/anyproto/any-sync/app"
+	"github.com/anyproto/any-sync/app/debugstat"
+	"github.com/anyproto/any-sync/commonfile/fileservice"
 	"github.com/anyproto/any-sync/commonspace/object/accountdata"
 	"github.com/anyproto/any-sync/commonspace/object/tree/objecttree"
 
 	"github.com/anyproto/anytype-heart/core/anytype/config"
 	"github.com/anyproto/anytype-heart/core/block/cache"
+	"github.com/anyproto/anytype-heart/core/block/chats/chatrepository"
+	"github.com/anyproto/anytype-heart/core/block/chats/chatsubscription"
 	"github.com/anyproto/anytype-heart/core/block/editor/accountobject"
 	"github.com/anyproto/anytype-heart/core/block/editor/bookmark"
 	"github.com/anyproto/anytype-heart/core/block/editor/chatobject"
@@ -18,7 +23,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/migration"
 	"github.com/anyproto/anytype-heart/core/block/object/idresolver"
 	"github.com/anyproto/anytype-heart/core/block/process"
-	"github.com/anyproto/anytype-heart/core/block/restriction"
 	"github.com/anyproto/anytype-heart/core/block/source"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/event"
@@ -28,7 +32,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/files/reconciler"
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore/filestore"
+	"github.com/anyproto/anytype-heart/pkg/lib/datastore/anystoreprovider"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/spaceindex"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
@@ -52,28 +56,31 @@ type deviceService interface {
 }
 
 type ObjectFactory struct {
-	bookmarkService     bookmark.BookmarkService
-	fileBlockService    file.BlockService
-	layoutConverter     converter.LayoutConverter
-	objectStore         objectstore.ObjectStore
-	sourceService       source.Service
-	tempDirProvider     core.TempDirProvider
-	fileStore           filestore.FileStore
-	fileService         files.Service
-	config              *config.Config
-	picker              cache.ObjectGetter
-	eventSender         event.Sender
-	restrictionService  restriction.Service
-	indexer             smartblock.Indexer
-	spaceService        spaceService
-	accountService      accountService
-	fileObjectService   fileobject.Service
-	processService      process.Service
-	fileUploaderService fileuploader.Service
-	fileReconciler      reconciler.Reconciler
-	objectDeleter       ObjectDeleter
-	deviceService       deviceService
-	spaceIdResolver     idresolver.Resolver
+	bookmarkService         bookmark.BookmarkService
+	fileBlockService        file.BlockService
+	layoutConverter         converter.LayoutConverter
+	objectStore             objectstore.ObjectStore
+	sourceService           source.Service
+	tempDirProvider         core.TempDirProvider
+	fileService             files.Service
+	config                  *config.Config
+	picker                  cache.ObjectGetter
+	eventSender             event.Sender
+	indexer                 smartblock.Indexer
+	spaceService            spaceService
+	accountService          accountService
+	fileObjectService       fileobject.Service
+	processService          process.Service
+	fileUploaderService     fileuploader.Service
+	fileReconciler          reconciler.Reconciler
+	objectDeleter           ObjectDeleter
+	deviceService           deviceService
+	spaceIdResolver         idresolver.Resolver
+	commonFile              fileservice.FileService
+	dbProvider              anystoreprovider.Provider
+	chatRepositoryService   chatrepository.Service
+	chatSubscriptionService chatsubscription.Service
+	statService             debugstat.StatService
 }
 
 func NewObjectFactory() *ObjectFactory {
@@ -84,7 +91,6 @@ func (f *ObjectFactory) Init(a *app.App) (err error) {
 	f.config = app.MustComponent[*config.Config](a)
 	f.picker = app.MustComponent[cache.ObjectGetter](a)
 	f.indexer = app.MustComponent[smartblock.Indexer](a)
-	f.fileStore = app.MustComponent[filestore.FileStore](a)
 	f.objectStore = app.MustComponent[objectstore.ObjectStore](a)
 	f.fileService = app.MustComponent[files.Service](a)
 	f.eventSender = app.MustComponent[event.Sender](a)
@@ -100,12 +106,19 @@ func (f *ObjectFactory) Init(a *app.App) (err error) {
 	f.layoutConverter = app.MustComponent[converter.LayoutConverter](a)
 	f.fileBlockService = app.MustComponent[file.BlockService](a)
 	f.fileObjectService = app.MustComponent[fileobject.Service](a)
-	f.restrictionService = app.MustComponent[restriction.Service](a)
 	f.fileUploaderService = app.MustComponent[fileuploader.Service](a)
 	f.objectDeleter = app.MustComponent[ObjectDeleter](a)
 	f.fileReconciler = app.MustComponent[reconciler.Reconciler](a)
 	f.deviceService = app.MustComponent[deviceService](a)
 	f.spaceIdResolver = app.MustComponent[idresolver.Resolver](a)
+	f.commonFile = app.MustComponent[fileservice.FileService](a)
+	f.dbProvider = app.MustComponent[anystoreprovider.Provider](a)
+	f.chatRepositoryService = app.MustComponent[chatrepository.Service](a)
+	f.chatSubscriptionService = app.MustComponent[chatsubscription.Service](a)
+	f.statService, err = app.GetComponent[debugstat.StatService](a)
+	if err != nil {
+		f.statService = debugstat.NewNoOp()
+	}
 	return nil
 }
 
@@ -150,8 +163,17 @@ func (f *ObjectFactory) InitObject(space smartblock.Space, id string, initCtx *s
 		return nil, fmt.Errorf("init smartblock: %w", err)
 	}
 
+	applyFlags := []smartblock.ApplyFlag{smartblock.NoHistory, smartblock.NoEvent, smartblock.NoRestrictions, smartblock.SkipIfNoChanges, smartblock.KeepInternalFlags, smartblock.IgnoreNoPermissions}
+	if initCtx.IsNewObject {
+		applyFlags = append(applyFlags, smartblock.AllowApplyWithEmptyTree)
+	}
 	migration.RunMigrations(sb, initCtx)
-	return sb, sb.Apply(initCtx.State, smartblock.NoHistory, smartblock.NoEvent, smartblock.NoRestrictions, smartblock.SkipIfNoChanges, smartblock.KeepInternalFlags, smartblock.IgnoreNoPermissions)
+	err = sb.Apply(initCtx.State, applyFlags...)
+	if errors.Is(err, smartblock.ErrApplyOnEmptyTreeDisallowed) {
+		// in this case we still want the smartblock to bootstrap to receive the rest of the tree
+		err = nil
+	}
+	return sb, err
 }
 
 func (f *ObjectFactory) produceSmartblock(space smartblock.Space) (smartblock.SmartBlock, spaceindex.Store) {
@@ -159,8 +181,6 @@ func (f *ObjectFactory) produceSmartblock(space smartblock.Space) (smartblock.Sm
 	return smartblock.New(
 		space,
 		f.accountService.MyParticipantId(space.Id()),
-		f.fileStore,
-		f.restrictionService,
 		store,
 		f.objectStore,
 		f.indexer,
@@ -211,9 +231,17 @@ func (f *ObjectFactory) New(space smartblock.Space, sbType coresb.SmartBlockType
 	case coresb.SmartBlockTypeDevicesObject:
 		return NewDevicesObject(sb, f.deviceService), nil
 	case coresb.SmartBlockTypeChatDerivedObject:
-		return chatobject.New(sb, f.accountService, f.eventSender, f.objectStore.GetCrdtDb(space.Id()), spaceIndex), nil
+		crdtDb, err := f.dbProvider.GetCrdtDb(space.Id()).Wait()
+		if err != nil {
+			return nil, fmt.Errorf("get crdt db: %w", err)
+		}
+		return chatobject.New(sb, f.accountService, crdtDb, f.chatRepositoryService, f.chatSubscriptionService, f.statService), nil
 	case coresb.SmartBlockTypeAccountObject:
-		return accountobject.New(sb, f.accountService.Keys(), spaceIndex, f.layoutConverter, f.fileObjectService, f.objectStore.GetCrdtDb(space.Id()), f.config), nil
+		db, err := f.dbProvider.GetCrdtDb(space.Id()).Wait()
+		if err != nil {
+			return nil, fmt.Errorf("get crdt db: %w", err)
+		}
+		return accountobject.New(sb, f.accountService.Keys(), spaceIndex, f.layoutConverter, f.fileObjectService, db, f.config), nil
 	default:
 		return nil, fmt.Errorf("unexpected smartblock type: %v", sbType)
 	}

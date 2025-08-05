@@ -1,7 +1,6 @@
 package typeprovider
 
 import (
-	"bytes"
 	"context"
 	"encoding/binary"
 	"errors"
@@ -9,23 +8,21 @@ import (
 	"strings"
 	"sync"
 
+	anystore "github.com/anyproto/any-store"
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/commonspace/object/tree/treechangeproto"
-	"github.com/dgraph-io/badger/v4"
 	"github.com/globalsign/mgo/bson"
-	"github.com/gogo/protobuf/proto"
 	"github.com/ipfs/go-cid"
 	"github.com/multiformats/go-multihash"
 
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
-	"github.com/anyproto/anytype-heart/pkg/lib/datastore"
-	"github.com/anyproto/anytype-heart/pkg/lib/datastore/clientds"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space/spacecore"
 	"github.com/anyproto/anytype-heart/space/spacecore/storage/anystorage"
+	"github.com/anyproto/anytype-heart/util/keyvaluestore"
 )
 
 const CName = "space.typeprovider"
@@ -58,59 +55,44 @@ func (p *provider) PartitionIDsByType(spaceId string, ids []string) (map[smartbl
 type provider struct {
 	sync.RWMutex
 	spaceService spacecore.SpaceCoreService
-	badger       *badger.DB
-	cache        map[string]smartblock.SmartBlockType
+
+	store keyvaluestore.Store[smartblock.SmartBlockType]
+	cache map[string]smartblock.SmartBlockType
 }
 
 func New() SmartBlockTypeProvider {
 	return &provider{}
 }
 
-var badgerPrefix = []byte("typeprovider/")
+type DbProvider interface {
+	GetCommonDb() anystore.DB
+}
 
 func (p *provider) Init(a *app.App) (err error) {
 	p.cache = map[string]smartblock.SmartBlockType{}
-	ds := app.MustComponent[datastore.Datastore](a)
-	// todo: use sqlite
-	p.badger, err = ds.SpaceStorage()
-	if err != nil {
-		if errors.Is(err, clientds.ErrSpaceStoreNotAvailable) {
-			p.badger, err = ds.LocalStorage()
-			if err != nil {
-				return err
-			}
-		} else {
-			return err
-		}
-	}
-	p.badger, err = app.MustComponent[datastore.Datastore](a).LocalStorage()
-	if err != nil {
-		return fmt.Errorf("get badger storage: %w", err)
-	}
-	// TODO multi-space: I forgot why we need this
-	err = p.badger.View(func(txn *badger.Txn) error {
-		opts := badger.DefaultIteratorOptions
-		opts.Prefix = badgerPrefix
-		iter := txn.NewIterator(opts)
-		defer iter.Close()
 
-		for iter.Rewind(); iter.Valid(); iter.Next() {
-			it := iter.Item()
-			err := it.Value(func(v []byte) error {
-				id := string(bytes.TrimPrefix(it.Key(), badgerPrefix))
-				rawType := binary.LittleEndian.Uint64(v)
-				p.cache[id] = smartblock.SmartBlockType(rawType)
-				return nil
-			})
-			if err != nil {
-				return fmt.Errorf("get value from key %s: %w", it.Key(), err)
-			}
-		}
-		return nil
+	dbProvider := app.MustComponent[DbProvider](a)
+
+	store, err := keyvaluestore.New(dbProvider.GetCommonDb(), "smartblock_types", func(tp smartblock.SmartBlockType) ([]byte, error) {
+		raw := binary.LittleEndian.AppendUint64(nil, uint64(tp))
+		return raw, nil
+	}, func(raw []byte) (smartblock.SmartBlockType, error) {
+		return smartblock.SmartBlockType(binary.LittleEndian.Uint64(raw)), nil
 	})
 	if err != nil {
-		return fmt.Errorf("init cache from badger: %w", err)
+		return fmt.Errorf("init store: %w", err)
 	}
+
+	iter := store.Iterator(context.Background())
+	for k, v := range iter.All() {
+		p.cache[k] = v
+	}
+	err = iter.Err()
+	if err != nil {
+		return fmt.Errorf("warm-up cache: %w", err)
+	}
+
+	p.store = store
 	p.spaceService = app.MustComponent[spacecore.SpaceCoreService](a)
 	return
 }
@@ -218,12 +200,11 @@ func (p *provider) objectTypeFromSpace(spaceID string, id string) (tp smartblock
 }
 
 func (p *provider) setType(id string, tp smartblock.SmartBlockType) (err error) {
-	err = p.badger.Update(func(txn *badger.Txn) error {
-		return txn.Set(append(badgerPrefix, []byte(id)...), binary.LittleEndian.AppendUint64(nil, uint64(tp)))
-	})
+	err = p.store.Set(context.Background(), id, tp)
 	if err != nil {
-		return fmt.Errorf("set type in badger: %w", err)
+		return fmt.Errorf("set in store: %w", err)
 	}
+
 	p.Lock()
 	defer p.Unlock()
 	p.cache[id] = tp
@@ -253,13 +234,13 @@ func GetTypeAndKeyFromRoot(rawRoot *treechangeproto.RawTreeChangeWithId) (sbt sm
 
 func unmarshallRoot(rawRoot *treechangeproto.RawTreeChangeWithId) (root *treechangeproto.RootChange, err error) {
 	raw := &treechangeproto.RawTreeChange{}
-	err = proto.Unmarshal(rawRoot.GetRawChange(), raw)
+	err = raw.UnmarshalVT(rawRoot.GetRawChange())
 	if err != nil {
 		return
 	}
 
 	root = &treechangeproto.RootChange{}
-	err = proto.Unmarshal(raw.Payload, root)
+	err = root.UnmarshalVT(raw.Payload)
 	if err != nil {
 		return
 	}
@@ -268,6 +249,6 @@ func unmarshallRoot(rawRoot *treechangeproto.RawTreeChangeWithId) (root *treecha
 
 func objectType(changePayload []byte) (payload *model.ObjectChangePayload, err error) {
 	payload = &model.ObjectChangePayload{}
-	err = proto.Unmarshal(changePayload, payload)
+	err = payload.Unmarshal(changePayload)
 	return
 }

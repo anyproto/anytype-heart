@@ -14,6 +14,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/editor/widget"
+	"github.com/anyproto/anytype-heart/core/block/restriction"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
@@ -170,7 +171,7 @@ func (s *service) checkArchivedRestriction(isArchived bool, objectId string) err
 		return nil
 	}
 	return cache.Do(s.objectGetter, objectId, func(sb smartblock.SmartBlock) error {
-		return s.restriction.CheckRestrictions(sb, model.Restrictions_Delete)
+		return restriction.CheckRestrictions(sb, model.Restrictions_Delete)
 	})
 }
 

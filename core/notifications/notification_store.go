@@ -1,18 +1,15 @@
 package notifications
 
 import (
-	"github.com/dgraph-io/badger/v4"
+	"context"
+	"fmt"
+
+	anystore "github.com/anyproto/any-store"
 	"github.com/gogo/protobuf/proto"
-	ds "github.com/ipfs/go-datastore"
 
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	"github.com/anyproto/anytype-heart/util/badgerhelper"
+	"github.com/anyproto/anytype-heart/util/keyvaluestore"
 )
-
-const notificationsPrefix = "notifications"
-
-var notificationsInfo = ds.NewKey("/" + notificationsPrefix + "/info")
 
 type NotificationStore interface {
 	SaveNotification(notification *model.Notification) error
@@ -21,45 +18,31 @@ type NotificationStore interface {
 }
 
 type notificationStore struct {
-	db *badger.DB
+	db keyvaluestore.Store[*model.Notification]
 }
 
-func NewNotificationStore(db *badger.DB) NotificationStore {
-	return &notificationStore{db: db}
+func NewNotificationStore(db anystore.DB) (NotificationStore, error) {
+	kv, err := keyvaluestore.New(db, "notifications", func(notification *model.Notification) ([]byte, error) {
+		return proto.Marshal(notification)
+	}, func(raw []byte) (*model.Notification, error) {
+		n := &model.Notification{}
+		err := proto.Unmarshal(raw, n)
+		return n, err
+	})
+	if err != nil {
+		return nil, fmt.Errorf("init store: %w", err)
+	}
+	return &notificationStore{db: kv}, nil
 }
 
 func (n *notificationStore) SaveNotification(notification *model.Notification) error {
-	return badgerhelper.SetValue(n.db, notificationsInfo.ChildString(notification.Id).Bytes(), notification)
+	return n.db.Set(context.Background(), notification.Id, notification)
 }
 
 func (n *notificationStore) ListNotifications() ([]*model.Notification, error) {
-	return badgerhelper.ViewTxnWithResult(n.db, func(txn *badger.Txn) ([]*model.Notification, error) {
-		keys := localstore.GetKeys(txn, notificationsInfo.String(), 0)
-
-		notificationsIds, err := localstore.GetLeavesFromResults(keys)
-		if err != nil {
-			return nil, err
-		}
-
-		notifications := make([]*model.Notification, 0, len(notificationsIds))
-		for _, id := range notificationsIds {
-			notificationInfo := notificationsInfo.ChildString(id)
-			notification, err := badgerhelper.GetValueTxn(txn, notificationInfo.Bytes(), unmarshalNotification)
-			if badgerhelper.IsNotFound(err) {
-				continue
-			}
-			notifications = append(notifications, notification)
-		}
-
-		return notifications, nil
-	})
+	return n.db.ListAllValues(context.Background())
 }
 
 func (n *notificationStore) GetNotificationById(notificationId string) (*model.Notification, error) {
-	return badgerhelper.GetValue(n.db, notificationsInfo.ChildString(notificationId).Bytes(), unmarshalNotification)
-}
-
-func unmarshalNotification(raw []byte) (*model.Notification, error) {
-	v := &model.Notification{}
-	return v, proto.Unmarshal(raw, v)
+	return n.db.Get(context.Background(), notificationId)
 }

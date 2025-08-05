@@ -8,6 +8,7 @@ import (
 	"github.com/anyproto/any-sync/accountservice/mock_accountservice"
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/commonspace/mock_commonspace"
+	"github.com/anyproto/any-sync/commonspace/object/accountdata"
 	"github.com/anyproto/any-sync/commonspace/object/acl/list"
 	"github.com/anyproto/any-sync/commonspace/object/acl/syncacl"
 	"github.com/anyproto/any-sync/commonspace/object/acl/syncacl/headupdater"
@@ -15,17 +16,16 @@ import (
 	"github.com/anyproto/any-sync/commonspace/sync/syncdeps"
 	"github.com/anyproto/any-sync/commonspace/syncstatus"
 	"github.com/anyproto/any-sync/net/peer"
-	"github.com/anyproto/protobuf/proto"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
+	"google.golang.org/protobuf/proto"
 	"storj.io/drpc"
 
 	"github.com/anyproto/anytype-heart/space/clientspace"
 	"github.com/anyproto/anytype-heart/space/clientspace/mock_clientspace"
 	"github.com/anyproto/anytype-heart/space/internal/components/aclnotifications/mock_aclnotifications"
 	"github.com/anyproto/anytype-heart/space/internal/components/dependencies/mock_dependencies"
-	"github.com/anyproto/anytype-heart/space/internal/components/invitemigrator/mock_invitemigrator"
 	"github.com/anyproto/anytype-heart/space/internal/components/participantwatcher/mock_participantwatcher"
 	"github.com/anyproto/anytype-heart/space/internal/components/spaceloader/mock_spaceloader"
 	"github.com/anyproto/anytype-heart/space/internal/components/spacestatus/mock_spacestatus"
@@ -47,7 +47,6 @@ func TestAclObjectManager(t *testing.T) {
 		fx := newFixture(t)
 		defer fx.finish(t)
 		fx.mockLoader.EXPECT().WaitLoad(mock.Anything).Return(fx.mockSpace, nil)
-		fx.mockInviteMigrator.EXPECT().MigrateExistingInvites(fx.mockSpace).Return(nil)
 		fx.mockParticipantWatcher.EXPECT().UpdateAccountParticipantFromProfile(mock.Anything, fx.mockSpace).Return(nil)
 		fx.mockSpace.EXPECT().CommonSpace().Return(fx.mockCommonSpace)
 		fx.mockSpace.EXPECT().Id().Return("spaceId")
@@ -60,7 +59,7 @@ func TestAclObjectManager(t *testing.T) {
 				return nil
 			})
 		fx.mockParticipantWatcher.EXPECT().WatchParticipant(mock.Anything, fx.mockSpace, mock.Anything).Return(nil)
-		fx.mockStatus.EXPECT().SetAclIsEmpty(true).Return(nil)
+		fx.mockStatus.EXPECT().SetAclInfo(true, nil, nil, mock.Anything).Return(nil)
 		fx.mockCommonSpace.EXPECT().Id().AnyTimes().Return("spaceId")
 		fx.mockStatus.EXPECT().GetLocalStatus().Return(spaceinfo.LocalStatusOk)
 		fx.mockAclNotification.EXPECT().AddRecords(acl, list.AclPermissionsOwner, "spaceId", spaceinfo.AccountStatusActive, spaceinfo.LocalStatusOk)
@@ -88,7 +87,6 @@ func TestAclObjectManager(t *testing.T) {
 		fx := newFixture(t)
 		defer fx.finish(t)
 		fx.mockLoader.EXPECT().WaitLoad(mock.Anything).Return(fx.mockSpace, nil)
-		fx.mockInviteMigrator.EXPECT().MigrateExistingInvites(fx.mockSpace).Return(nil)
 		fx.mockParticipantWatcher.EXPECT().UpdateAccountParticipantFromProfile(mock.Anything, fx.mockSpace).Return(nil)
 		fx.mockSpace.EXPECT().CommonSpace().Return(fx.mockCommonSpace)
 		fx.mockSpace.EXPECT().Id().Return("spaceId")
@@ -107,7 +105,7 @@ func TestAclObjectManager(t *testing.T) {
 				return nil
 			})
 		fx.mockParticipantWatcher.EXPECT().WatchParticipant(mock.Anything, fx.mockSpace, mock.Anything).Return(nil)
-		fx.mockStatus.EXPECT().SetAclIsEmpty(false).Return(nil)
+		fx.mockStatus.EXPECT().SetAclInfo(false, mock.Anything, mock.Anything, mock.Anything).Return(nil)
 		fx.mockCommonSpace.EXPECT().Id().AnyTimes().Return("spaceId")
 		fx.mockStatus.EXPECT().GetLocalStatus().Return(spaceinfo.LocalStatusOk)
 		fx.mockAclNotification.EXPECT().AddRecords(acl, list.AclPermissionsReader, "spaceId", spaceinfo.AccountStatusActive, spaceinfo.LocalStatusOk)
@@ -135,7 +133,6 @@ func TestAclObjectManager(t *testing.T) {
 		fx := newFixture(t)
 		defer fx.finish(t)
 		fx.mockLoader.EXPECT().WaitLoad(mock.Anything).Return(fx.mockSpace, nil)
-		fx.mockInviteMigrator.EXPECT().MigrateExistingInvites(fx.mockSpace).Return(nil)
 		fx.mockStatus.EXPECT().SetOwner(a.ActualAccounts()["a"].Acl.AclState().Identity().Account(), mock.Anything).Return(nil)
 		fx.mockParticipantWatcher.EXPECT().UpdateAccountParticipantFromProfile(mock.Anything, fx.mockSpace).Return(nil)
 		fx.mockSpace.EXPECT().CommonSpace().Return(fx.mockCommonSpace)
@@ -149,7 +146,7 @@ func TestAclObjectManager(t *testing.T) {
 			})
 		fx.mockParticipantWatcher.EXPECT().WatchParticipant(mock.Anything, fx.mockSpace, mock.Anything).Return(nil)
 		fx.mockStatus.EXPECT().SetPersistentStatus(spaceinfo.AccountStatusRemoving).Return(nil)
-		fx.mockStatus.EXPECT().SetAclIsEmpty(false).Return(nil)
+		fx.mockStatus.EXPECT().SetAclInfo(false, mock.Anything, mock.Anything, mock.Anything).Return(nil)
 		fx.mockCommonSpace.EXPECT().Id().AnyTimes().Return("spaceId")
 		fx.mockStatus.EXPECT().GetLocalStatus().Return(spaceinfo.LocalStatusOk)
 		fx.mockAclNotification.EXPECT().AddRecords(acl, list.AclPermissionsNone, "spaceId", spaceinfo.AccountStatusDeleted, spaceinfo.LocalStatusOk)
@@ -175,7 +172,6 @@ type fixture struct {
 	mockCommonSpace        *mock_commonspace.MockSpace
 	mockParticipantWatcher *mock_participantwatcher.MockParticipantWatcher
 	mockAclNotification    *mock_aclnotifications.MockAclNotification
-	mockInviteMigrator     *mock_invitemigrator.MockInviteMigrator
 	mockAccountService     *mock_accountservice.MockService
 	spaceLoaderListener    *testSpaceLoaderListener
 }
@@ -193,12 +189,15 @@ func newFixture(t *testing.T) *fixture {
 		mockCommonSpace:        mock_commonspace.NewMockSpace(ctrl),
 		mockParticipantWatcher: mock_participantwatcher.NewMockParticipantWatcher(t),
 		mockAclNotification:    mock_aclnotifications.NewMockAclNotification(t),
-		mockInviteMigrator:     mock_invitemigrator.NewMockInviteMigrator(t),
 		mockAccountService:     mock_accountservice.NewMockService(ctrl),
 		spaceLoaderListener:    &testSpaceLoaderListener{},
 	}
+
+	accKeys, err := accountdata.NewRandom()
+	require.NoError(t, err)
+
+	fx.mockAccountService.EXPECT().Account().Return(accKeys).AnyTimes()
 	fx.a.Register(testutil.PrepareMock(ctx, fx.a, fx.mockStatus)).
-		Register(testutil.PrepareMock(ctx, fx.a, fx.mockInviteMigrator)).
 		Register(testutil.PrepareMock(ctx, fx.a, fx.mockIndexer)).
 		Register(testutil.PrepareMock(ctx, fx.a, fx.mockLoader)).
 		Register(testutil.PrepareMock(ctx, fx.a, fx.mockParticipantWatcher)).

@@ -11,7 +11,6 @@ import (
 	"github.com/anyproto/any-sync/app"
 	"github.com/cheggaaa/mb/v3"
 	"github.com/globalsign/mgo/bson"
-	"github.com/gogo/protobuf/types"
 	"golang.org/x/exp/slices"
 	"golang.org/x/text/collate"
 
@@ -225,10 +224,14 @@ func (s *service) SubscribeGroups(req SubscribeGroupsRequest) (*pb.RpcObjectGrou
 
 func (s *service) Unsubscribe(subIds ...string) (err error) {
 	s.lock.Lock()
+	subs := make([]*spaceSubscriptions, 0, len(s.spaceSubs))
 	for _, spaceSub := range s.spaceSubs {
-		err = errors.Join(spaceSub.Unsubscribe(subIds...))
+		subs = append(subs, spaceSub)
 	}
 	s.lock.Unlock()
+	for _, spaceSub := range subs {
+		err = errors.Join(spaceSub.Unsubscribe(subIds...))
+	}
 	return err
 }
 
@@ -384,9 +387,8 @@ func (s *spaceSubscriptions) Search(req SubscribeRequest) (*SubscribeResponse, e
 		f.FilterObj = database.FiltersAnd{f.FilterObj, sourceFilter}
 	}
 
-	entries, err := queryEntries(s.objectStore, f)
-	if err != nil {
-		return nil, err
+	qryEntries := func() ([]*entry, error) {
+		return queryEntries(s.objectStore, f)
 	}
 
 	s.m.Lock()
@@ -407,16 +409,17 @@ func (s *spaceSubscriptions) Search(req SubscribeRequest) (*SubscribeResponse, e
 	if req.CollectionId != "" {
 		return s.subscribeForCollection(req, f, filterDepIds)
 	}
-	return s.subscribeForQuery(req, f, entries, filterDepIds)
+	return s.subscribeForQuery(req, f, qryEntries, filterDepIds)
 }
 
-func (s *spaceSubscriptions) subscribeForQuery(req SubscribeRequest, f *database.Filters, entries []*entry, filterDepIds []string) (*SubscribeResponse, error) {
+func (s *spaceSubscriptions) subscribeForQuery(req SubscribeRequest, f *database.Filters, queryEntries func() ([]*entry, error), filterDepIds []string) (*SubscribeResponse, error) {
 	sub := s.newSortedSub(req.SubId, req.SpaceId, slice.StringsInto[domain.RelationKey](req.Keys), f.FilterObj, f.Order, int(req.Limit), int(req.Offset))
 	if req.NoDepSubscription {
 		sub.disableDep = true
 	} else {
 		sub.forceSubIds = filterDepIds
 	}
+	s.setSubscription(sub.id, sub)
 
 	// FIXME Nested subscriptions disabled now. We should enable them only by client's request
 	// Uncomment test xTestNestedSubscription after enabling this
@@ -449,11 +452,29 @@ func (s *spaceSubscriptions) subscribeForQuery(req SubscribeRequest, f *database
 		outputQueue = output.queue
 		s.customOutput[req.SubId] = output
 	}
+	s.m.Unlock()
+
+	// Query initial entries out of critical section to reduce lock contention
+	// For full consistency we've already started to observe objects for this subscription, see entriesBeforeStarted
+	entries, err := queryEntries()
+	if err != nil {
+		return nil, fmt.Errorf("query entries: %w", err)
+	}
+
+	s.m.Lock()
+	entries = append(entries, sub.entriesBeforeStarted...)
+	sub.entriesBeforeStarted = nil
 
 	if req.AsyncInit {
 		err := sub.init(nil)
 		if err != nil {
 			return nil, fmt.Errorf("async: init sub entries: %w", err)
+		}
+
+		for i, e := range entries {
+			e = s.cache.GetOrSet(e)
+			entries[i] = e
+			e.SetSub(req.SubId, false, false)
 		}
 		s.onChangeWithinContext(entries, func(ctxBuf *opCtx) {
 			sub.onChange(ctxBuf)
@@ -466,7 +487,6 @@ func (s *spaceSubscriptions) subscribeForQuery(req SubscribeRequest, f *database
 		}
 	}
 
-	s.setSubscription(sub.id, sub)
 	prev, next := sub.counters()
 
 	var depRecords, subRecords []*domain.Details
@@ -557,26 +577,38 @@ func (s *spaceSubscriptions) SubscribeIdsReq(req pb.RpcObjectSubscribeIdsRequest
 	if req.SpaceId == "" {
 		return nil, fmt.Errorf("spaceId is required")
 	}
-	records, err := s.objectStore.QueryByIds(req.Ids)
-	if err != nil {
-		return
-	}
-
 	if req.SubId == "" {
 		req.SubId = bson.NewObjectId().Hex()
 	}
 
 	s.m.Lock()
-	defer s.m.Unlock()
+	sub := s.newIdsSub(req.SubId, req.SpaceId, slice.StringsInto[domain.RelationKey](req.Keys), req.NoDepSubscription)
+	sub.addIds(req.Ids)
+	s.m.Unlock()
 
-	sub := s.newSimpleSub(req.SubId, req.SpaceId, slice.StringsInto[domain.RelationKey](req.Keys), !req.NoDepSubscription)
+	// Query initial entries out of critical section to reduce lock contention
+	// For full consistency we've already started to observe objects for this subscription, see entriesBeforeStarted
+	records, err := s.objectStore.QueryByIds(req.Ids)
+	if err != nil {
+		return
+	}
 	entries := make([]*entry, 0, len(records))
 	for _, r := range records {
 		entries = append(entries, newEntry(r.Details.GetString(bundle.RelationKeyId), r.Details))
 	}
+
+	s.m.Lock()
+	defer s.m.Unlock()
+	// Process entries before started to handle the deferred start pattern
+	if len(sub.entriesBeforeStarted) > 0 {
+		entries = append(entries, sub.entriesBeforeStarted...)
+		sub.entriesBeforeStarted = nil
+	}
+
 	if err = sub.init(entries); err != nil {
 		return
 	}
+
 	s.setSubscription(sub.id, sub)
 
 	var depRecords, subRecords []*domain.Details
@@ -585,21 +617,11 @@ func (s *spaceSubscriptions) SubscribeIdsReq(req pb.RpcObjectSubscribeIdsRequest
 	if sub.depSub != nil {
 		depRecords = sub.depSub.getActiveRecords()
 	}
-
 	return &pb.RpcObjectSubscribeIdsResponse{
-		Error:        &pb.RpcObjectSubscribeIdsResponseError{},
-		Records:      detailsToProtos(subRecords),
-		Dependencies: detailsToProtos(depRecords),
+		Records:      domain.DetailsListToProtos(subRecords),
+		Dependencies: domain.DetailsListToProtos(depRecords),
 		SubId:        req.SubId,
 	}, nil
-}
-
-func detailsToProtos(detailsList []*domain.Details) []*types.Struct {
-	res := make([]*types.Struct, 0, len(detailsList))
-	for _, d := range detailsList {
-		res = append(res, d.ToProto())
-	}
-	return res
 }
 
 type SubscribeGroupsRequest struct {
@@ -613,9 +635,6 @@ type SubscribeGroupsRequest struct {
 
 func (s *spaceSubscriptions) SubscribeGroups(req SubscribeGroupsRequest) (*pb.RpcObjectGroupsSubscribeResponse, error) {
 	subId := ""
-
-	s.m.Lock()
-	defer s.m.Unlock()
 
 	q := database.Query{
 		Filters: req.Filters,
@@ -677,6 +696,9 @@ func (s *spaceSubscriptions) SubscribeGroups(req SubscribeGroupsRequest) (*pb.Rp
 		if subId == "" {
 			subId = bson.NewObjectId().Hex()
 		}
+
+		s.m.Lock()
+		defer s.m.Unlock()
 
 		var sub subscription
 		if colObserver != nil {

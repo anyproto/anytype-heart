@@ -3,7 +3,6 @@ package application
 import (
 	"errors"
 	"fmt"
-	"time"
 
 	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/core/session"
@@ -16,6 +15,7 @@ func (s *Service) CreateSession(req *pb.RpcWalletCreateSessionRequest) (token st
 	// test if mnemonic is correct
 	mnemonic := req.GetMnemonic()
 	appKey := req.GetAppKey()
+	providedToken := req.GetToken()
 
 	if appKey != "" {
 		app := s.GetApp()
@@ -32,14 +32,25 @@ func (s *Service) CreateSession(req *pb.RpcWalletCreateSessionRequest) (token st
 			return "", "", err
 		}
 		log.Infof("appLink auth %s", appLink.AppName)
-
 		token, err := s.sessions.StartSession(s.sessionSigningKey, model.AccountAuthLocalApiScope(appLink.Scope)) // nolint:gosec
 		if err != nil {
 			return "", "", err
 		}
+		s.lock.Lock()
+		defer s.lock.Unlock()
+		s.sessionsByAppHash[appLink.AppHash] = token
+
 		return token, w.Account().SignKey.GetPublic().Account(), nil
 	}
 
+	if providedToken != "" {
+		scope, err := s.sessions.ValidateToken(s.sessionSigningKey, providedToken)
+		if err != nil {
+			return "", "", err
+		}
+		token, err = s.sessions.StartSession(s.sessionSigningKey, scope) // nolint:gosec
+		return token, "", err
+	}
 	if s.mnemonic == "" {
 		// todo: rewrite this after appKey auth is implemented
 		// we can derive and check the account in this case
@@ -94,18 +105,92 @@ func (s *Service) LinkLocalSolveChallenge(req *pb.RpcAccountLocalLinkSolveChalle
 	if err != nil {
 		return "", "", err
 	}
-	wallet := s.app.Component(walletComp.CName).(walletComp.Wallet)
-	appKey, err = wallet.PersistAppLink(&walletComp.AppLinkPayload{
-		AppName:   clientInfo.ProcessName,
-		AppPath:   clientInfo.ProcessPath,
-		CreatedAt: time.Now().Unix(),
-		Scope:     int(scope),
-	})
 
+	wallet := s.app.Component(walletComp.CName).(walletComp.Wallet)
+	name := clientInfo.Name
+	if name == "" {
+		name = clientInfo.ProcessName
+	}
+	appInfo, err := wallet.PersistAppLink(name, scope)
+	if err != nil {
+		return token, appKey, err
+	}
+
+	s.lock.Lock()
+	s.sessionsByAppHash[appInfo.AppHash] = token
+	s.lock.Unlock()
+	appKey = appInfo.AppKey
 	s.eventSender.Broadcast(event.NewEventSingleMessage("", &pb.EventMessageValueOfAccountLinkChallengeHide{
 		AccountLinkChallengeHide: &pb.EventAccountLinkChallengeHide{
 			Challenge: req.Answer,
 		},
 	}))
 	return
+}
+
+func (s *Service) LinkLocalCreateApp(req *pb.RpcAccountLocalLinkCreateAppRequest) (appKey string, err error) {
+	if s.app == nil {
+		return "", ErrApplicationIsNotRunning
+	}
+
+	wallet := s.app.Component(walletComp.CName).(walletComp.Wallet)
+	appInfo, err := wallet.PersistAppLink(req.App.AppName, req.App.Scope)
+	return appInfo.AppKey, err
+}
+
+func (s *Service) LinkLocalListApps() ([]*model.AccountAuthAppInfo, error) {
+	if s.app == nil {
+		return nil, ErrApplicationIsNotRunning
+	}
+
+	wallet := s.app.Component(walletComp.CName).(walletComp.Wallet)
+	links, err := wallet.ListAppLinks()
+	if err != nil {
+		return nil, err
+	}
+	appsList := make([]*model.AccountAuthAppInfo, len(links))
+	s.lock.RLock()
+	defer s.lock.RUnlock()
+
+	for i, app := range links {
+		if app.AppName == "" {
+			app.AppName = app.AppHash
+		}
+		_, isActive := s.sessionsByAppHash[app.AppHash]
+		appsList[i] = &model.AccountAuthAppInfo{
+			AppHash:   app.AppHash,
+			AppName:   app.AppName,
+			AppKey:    app.AppKey,
+			CreatedAt: app.CreatedAt,
+			ExpireAt:  app.ExpireAt,
+			Scope:     model.AccountAuthLocalApiScope(app.Scope),
+			IsActive:  isActive,
+		}
+	}
+	return appsList, nil
+}
+
+func (s *Service) LinkLocalRevokeApp(req *pb.RpcAccountLocalLinkRevokeAppRequest) error {
+	if s.app == nil {
+		return ErrApplicationIsNotRunning
+	}
+
+	wallet := s.app.Component(walletComp.CName).(walletComp.Wallet)
+	err := wallet.RevokeAppLink(req.AppHash)
+	if err != nil {
+		return err
+	}
+
+	s.lock.Lock()
+	defer s.lock.Unlock()
+	if token, ok := s.sessionsByAppHash[req.AppHash]; ok {
+		delete(s.sessionsByAppHash, req.AppHash)
+		closeErr := s.sessions.CloseSession(token)
+		if closeErr != nil {
+			log.Errorf("error while closing session: %v", err)
+		}
+	}
+
+	return err
+
 }

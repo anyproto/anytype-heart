@@ -11,12 +11,15 @@ import (
 
 	anystore "github.com/anyproto/any-store"
 	"github.com/anyproto/any-sync/app"
+	"github.com/anyproto/any-sync/commonspace/spacestorage"
 	"github.com/anyproto/any-sync/commonspace/spacestorage/migration"
+	"go.uber.org/zap"
 
 	"github.com/anyproto/anytype-heart/core/block/process"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/anystorehelper"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/spaceresolverstore"
+	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/space/spacecore/oldstorage"
 	"github.com/anyproto/anytype-heart/space/spacecore/storage"
 	"github.com/anyproto/anytype-heart/space/spacecore/storage/migratorfinisher"
@@ -34,6 +37,8 @@ func (e *NotEnoughFreeSpaceError) Error() string {
 	}
 	return fmt.Sprintf("Not enough free space: %d, required: %d", e.Free, e.Required)
 }
+
+var log = logging.Logger(CName)
 
 const CName = "client.storage.migration"
 
@@ -128,6 +133,22 @@ func (m *migrator) Run(ctx context.Context) (err error) {
 	return nil
 }
 
+func (m *migrator) closeNewStorage(ctx context.Context, newStorage spacestorage.SpaceStorage) (err error) {
+	if newStorage == nil {
+		return nil
+	}
+	store := newStorage.AnyStore()
+	err = m.newStorage.Close(ctx)
+	if err != nil {
+		return fmt.Errorf("close new storage: %w", err)
+	}
+	err = store.Close()
+	if err != nil {
+		return fmt.Errorf("close new storage any store: %w", err)
+	}
+	return nil
+}
+
 func (m *migrator) run(ctx context.Context) (err error) {
 	progress := process.NewProgress(&pb.ModelProcessMessageOfMigration{Migration: &pb.ModelProcessMigration{}})
 	progress.SetProgressMessage("Migrating spaces")
@@ -138,7 +159,13 @@ func (m *migrator) run(ctx context.Context) (err error) {
 	defer func() {
 		progress.Finish(err)
 	}()
-	migrator := migration.NewSpaceMigrator(m.oldStorage, m.newStorage, 40, m.path)
+	migrator := migration.NewSpaceMigrator(m.oldStorage, m.newStorage, 40, m.path, func(newStorage spacestorage.SpaceStorage, id, rootPath string) error {
+		err := m.closeNewStorage(ctx, newStorage)
+		if err != nil {
+			log.Error("failed to close new storage", zap.String("spaceId", id), zap.Error(err))
+		}
+		return os.RemoveAll(filepath.Join(rootPath, id))
+	})
 	allIds, err := m.oldStorage.AllSpaceIds()
 	if err != nil {
 		return err

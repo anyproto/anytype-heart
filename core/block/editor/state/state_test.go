@@ -2876,40 +2876,6 @@ func TestState_FileRelationKeys(t *testing.T) {
 		expectedKeys := []domain.RelationKey{bundle.RelationKeyCoverId}
 		assert.ElementsMatch(t, keys, expectedKeys)
 	})
-	t.Run("skip coverId relation", func(t *testing.T) {
-		// given
-		s := &State{
-			relationLinks: pbtypes.RelationLinks{
-				{Key: bundle.RelationKeyCoverId.String()},
-			},
-			details: domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
-				bundle.RelationKeyCoverType: domain.Int64(2),
-			}),
-		}
-
-		// when
-		keys := s.FileRelationKeys()
-
-		// then
-		assert.Len(t, keys, 0)
-	})
-	t.Run("skip gradient coverId relation", func(t *testing.T) {
-		// given
-		s := &State{
-			relationLinks: pbtypes.RelationLinks{
-				{Key: bundle.RelationKeyCoverId.String()},
-			},
-			details: domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
-				bundle.RelationKeyCoverType: domain.Int64(3),
-			}),
-		}
-
-		// when
-		keys := s.FileRelationKeys()
-
-		// then
-		assert.Len(t, keys, 0)
-	})
 	t.Run("mixed relations", func(t *testing.T) {
 		// given
 		s := &State{
@@ -2941,7 +2907,7 @@ func TestState_FileRelationKeys(t *testing.T) {
 		keys := s.FileRelationKeys()
 
 		// then
-		assert.Len(t, keys, 0)
+		assert.Empty(t, keys)
 	})
 	t.Run("unsplash cover", func(t *testing.T) {
 		// given

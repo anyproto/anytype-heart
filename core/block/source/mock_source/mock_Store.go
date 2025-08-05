@@ -590,17 +590,17 @@ func (_c *MockStore_ReadOnly_Call) RunAndReturn(run func() bool) *MockStore_Read
 	return _c
 }
 
-// ReadStoreDoc provides a mock function with given fields: ctx, stateStore, onUpdateHook
-func (_m *MockStore) ReadStoreDoc(ctx context.Context, stateStore *storestate.StoreState, onUpdateHook func()) error {
-	ret := _m.Called(ctx, stateStore, onUpdateHook)
+// ReadStoreDoc provides a mock function with given fields: ctx, stateStore, params
+func (_m *MockStore) ReadStoreDoc(ctx context.Context, stateStore *storestate.StoreState, params source.ReadStoreDocParams) error {
+	ret := _m.Called(ctx, stateStore, params)
 
 	if len(ret) == 0 {
 		panic("no return value specified for ReadStoreDoc")
 	}
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(context.Context, *storestate.StoreState, func()) error); ok {
-		r0 = rf(ctx, stateStore, onUpdateHook)
+	if rf, ok := ret.Get(0).(func(context.Context, *storestate.StoreState, source.ReadStoreDocParams) error); ok {
+		r0 = rf(ctx, stateStore, params)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -616,14 +616,14 @@ type MockStore_ReadStoreDoc_Call struct {
 // ReadStoreDoc is a helper method to define mock.On call
 //   - ctx context.Context
 //   - stateStore *storestate.StoreState
-//   - onUpdateHook func()
-func (_e *MockStore_Expecter) ReadStoreDoc(ctx interface{}, stateStore interface{}, onUpdateHook interface{}) *MockStore_ReadStoreDoc_Call {
-	return &MockStore_ReadStoreDoc_Call{Call: _e.mock.On("ReadStoreDoc", ctx, stateStore, onUpdateHook)}
+//   - params source.ReadStoreDocParams
+func (_e *MockStore_Expecter) ReadStoreDoc(ctx interface{}, stateStore interface{}, params interface{}) *MockStore_ReadStoreDoc_Call {
+	return &MockStore_ReadStoreDoc_Call{Call: _e.mock.On("ReadStoreDoc", ctx, stateStore, params)}
 }
 
-func (_c *MockStore_ReadStoreDoc_Call) Run(run func(ctx context.Context, stateStore *storestate.StoreState, onUpdateHook func())) *MockStore_ReadStoreDoc_Call {
+func (_c *MockStore_ReadStoreDoc_Call) Run(run func(ctx context.Context, stateStore *storestate.StoreState, params source.ReadStoreDocParams)) *MockStore_ReadStoreDoc_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(*storestate.StoreState), args[2].(func()))
+		run(args[0].(context.Context), args[1].(*storestate.StoreState), args[2].(source.ReadStoreDocParams))
 	})
 	return _c
 }
@@ -633,7 +633,7 @@ func (_c *MockStore_ReadStoreDoc_Call) Return(err error) *MockStore_ReadStoreDoc
 	return _c
 }
 
-func (_c *MockStore_ReadStoreDoc_Call) RunAndReturn(run func(context.Context, *storestate.StoreState, func()) error) *MockStore_ReadStoreDoc_Call {
+func (_c *MockStore_ReadStoreDoc_Call) RunAndReturn(run func(context.Context, *storestate.StoreState, source.ReadStoreDocParams) error) *MockStore_ReadStoreDoc_Call {
 	_c.Call.Return(run)
 	return _c
 }

@@ -10,14 +10,13 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/anyproto/anytype-heart/pb"
-	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
 func TestRouter_Unauthenticated(t *testing.T) {
 	t.Run("GET /v1/spaces without auth returns 401", func(t *testing.T) {
 		// given
 		fx := newFixture(t)
-		engine := fx.NewRouter(fx.mwMock, &fx.accountService)
+		engine := fx.NewRouter(fx.mwMock, &fx.eventService, []byte{}, []byte{})
 		w := httptest.NewRecorder()
 		req := httptest.NewRequest("GET", "/v1/spaces", nil)
 
@@ -33,7 +32,7 @@ func TestRouter_AuthRoute(t *testing.T) {
 	t.Run("POST /v1/auth/token is accessible without auth", func(t *testing.T) {
 		// given
 		fx := newFixture(t)
-		engine := fx.NewRouter(fx.mwMock, &fx.accountService)
+		engine := fx.NewRouter(fx.mwMock, &fx.eventService, []byte{}, []byte{})
 		w := httptest.NewRecorder()
 		req := httptest.NewRequest("POST", "/v1/auth/token", nil)
 
@@ -49,17 +48,14 @@ func TestRouter_MetadataHeader(t *testing.T) {
 	t.Run("Response includes Anytype-Version header", func(t *testing.T) {
 		// given
 		fx := newFixture(t)
-		engine := fx.NewRouter(fx.mwMock, &fx.accountService)
-		fx.KeyToToken = map[string]string{"validKey": "dummyToken"}
-		fx.accountService.On("GetInfo", mock.Anything).
-			Return(&model.AccountInfo{
-				GatewayUrl: "http://localhost:31006",
-			}, nil).Once()
+		engine := fx.NewRouter(fx.mwMock, &fx.eventService, []byte{}, []byte{})
+		fx.KeyToToken = map[string]ApiSessionEntry{"validKey": {Token: "dummyToken", AppName: "dummyApp"}}
 		fx.mwMock.On("ObjectSearch", mock.Anything, mock.Anything).
 			Return(&pb.RpcObjectSearchResponse{
 				Records: []*types.Struct{},
 				Error:   &pb.RpcObjectSearchResponseError{Code: pb.RpcObjectSearchResponseError_NULL},
 			}, nil).Once()
+		fx.eventService.On("Broadcast", mock.Anything).Return(nil).Maybe()
 
 		w := httptest.NewRecorder()
 		req := httptest.NewRequest("GET", "/v1/spaces", nil)
@@ -69,6 +65,6 @@ func TestRouter_MetadataHeader(t *testing.T) {
 		engine.ServeHTTP(w, req)
 
 		// then
-		require.Equal(t, "2025-03-17", w.Header().Get("Anytype-Version"))
+		require.Equal(t, "2025-05-20", w.Header().Get("Anytype-Version"))
 	})
 }

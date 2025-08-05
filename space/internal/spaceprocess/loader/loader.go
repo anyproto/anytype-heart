@@ -10,7 +10,6 @@ import (
 	"github.com/anyproto/anytype-heart/space/internal/components/aclnotifications"
 	"github.com/anyproto/anytype-heart/space/internal/components/aclobjectmanager"
 	"github.com/anyproto/anytype-heart/space/internal/components/builder"
-	"github.com/anyproto/anytype-heart/space/internal/components/invitemigrator"
 	"github.com/anyproto/anytype-heart/space/internal/components/migration"
 	"github.com/anyproto/anytype-heart/space/internal/components/participantwatcher"
 	"github.com/anyproto/anytype-heart/space/internal/components/spaceloader"
@@ -44,7 +43,6 @@ func New(app *app.App, params Params) Loader {
 		Register(spaceloader.New(params.IsPersonal, false)).
 		Register(aclnotifications.NewAclNotificationSender()).
 		Register(aclobjectmanager.New(params.OwnerMetadata, params.GuestKey)).
-		Register(invitemigrator.New()).
 		Register(participantwatcher.New()).
 		Register(migration.New())
 	for _, comp := range params.AdditionalComps {

@@ -45,10 +45,20 @@ func (i *indexer) ForceFTIndex() {
 
 // ftLoop runs full-text indexer
 // MUST NOT be called more than once
-func (i *indexer) ftLoopRoutine() {
+func (i *indexer) ftLoopRoutine(ctx context.Context) {
 	tickerDuration := ftIndexInterval
 	ticker := time.NewTicker(tickerDuration)
-	ctx := i.runCtx
+
+	var err error
+	i.ftsearchLastIndexSeq, err = i.ftsearch.LastDbState()
+	if err != nil {
+		log.Errorf("get last db state: %v", err)
+	} else {
+		err = i.store.FtQueueReconcileWithSeq(ctx, i.ftsearchLastIndexSeq)
+		if err != nil {
+			log.Errorf("readd after ft seq: %v", err)
+		}
+	}
 	prevError := i.runFullTextIndexer(ctx)
 	defer close(i.ftQueueFinished)
 	var lastForceIndex time.Time
@@ -106,21 +116,21 @@ func (i *indexer) activeSpaces() []string {
 
 func (i *indexer) runFullTextIndexer(ctx context.Context) error {
 	batcher := i.ftsearch.NewAutoBatcher()
-	err := i.store.BatchProcessFullTextQueue(ctx, i.activeSpaces, ftBatchLimit, func(objectIds []domain.FullID) (succeedIds []string, err error) {
+	err := i.store.BatchProcessFullTextQueue(ctx, i.activeSpaces, ftBatchLimit, func(objectIds []domain.FullID) (succeedIds []domain.FullID, ftIndexSeq uint64, err error) {
 		if len(objectIds) == 0 {
-			return nil, nil
+			return nil, 0, nil
 		}
 
 		for _, objectId := range objectIds {
 			select {
 			case <-ctx.Done():
-				return nil, ctx.Err()
+				return nil, 0, ctx.Err()
 			default:
 			}
-			objDocs, err := i.prepareSearchDocument(ctx, objectId.ObjectID)
+			objDocs, err := i.prepareSearchDocument(ctx, objectId)
 			if err != nil {
 				if errors.Is(err, context.Canceled) {
-					return nil, err
+					return nil, 0, err
 				}
 				if !errors.Is(err, domain.ErrObjectNotFound) &&
 					!errors.Is(err, spacestorage.ErrTreeStorageAlreadyDeleted) {
@@ -130,35 +140,44 @@ func (i *indexer) runFullTextIndexer(ctx context.Context) error {
 				}
 			}
 
-			objDocs, objRemovedIds, err := i.filterOutNotChangedDocuments(objectId.ObjectID, objDocs)
+			objDocs, removedDocIds, err := i.filterOutNotChangedDocuments(objectId.ObjectID, objDocs)
 			if err != nil {
 				log.With("id", objectId).Errorf("filter not changed error:: %s", err)
 				// try to process the other returned values.
 				continue
 			}
-			for _, removeId := range objRemovedIds {
+			for _, removeId := range removedDocIds {
 				err = batcher.DeleteDoc(removeId)
 				if err != nil {
-					return nil, fmt.Errorf("batcher delete: %w", err)
+					return nil, 0, fmt.Errorf("batcher delete: %w", err)
 				}
 			}
 
 			for _, doc := range objDocs {
-				err = batcher.UpdateDoc(doc)
+				err = batcher.UpsertDoc(doc)
 				if err != nil {
-					return nil, fmt.Errorf("batcher add: %w", err)
+					if strings.Contains(err.Error(), "invalid utf-8 sequence") {
+						log.With("id", objectId.ObjectID).Warnf(err.Error())
+						continue // skip this document
+					}
+					return nil, 0, fmt.Errorf("batcher add: %w", err)
 				}
 			}
 
-			succeedIds = append(succeedIds, objectId.ObjectID)
+			succeedIds = append(succeedIds, objectId)
 		}
 
-		err = batcher.Finish()
+		ftIndexSeq, err = batcher.Finish()
 		if err != nil {
-			return nil, fmt.Errorf("finish batch failed: %w", err)
+			return nil, 0, fmt.Errorf("finish batch failed: %w", err)
 		}
-
-		return succeedIds, nil
+		if ftIndexSeq > 0 {
+			// we can have 0 ftIndexSeq if all documents were filtered-out as not changed, so the batch were empty
+			// as a result of this filter-out workaround we can return newer Seq for some objects and persist them in the queue
+			// but it's not a big problem, in case of db corruption we may just try to reindex more objects than needed
+			i.ftsearchLastIndexSeq = ftIndexSeq
+		}
+		return succeedIds, i.ftsearchLastIndexSeq, nil
 	})
 	if err != nil && maxErrSent.Load() < maxErrorsPerSession {
 		maxErrSent.Add(1)
@@ -172,8 +191,15 @@ func (i *indexer) filterOutNotChangedDocuments(id string, newDocs []ftsearch.Sea
 	var (
 		changedDocs []ftsearch.SearchDoc
 		removeDocs  []string
+		// todo: return new docs as a separate slice so we can avoid deletion operations in tantivy
 	)
-	err = i.ftsearch.Iterate(id, []string{"Title", "Text"}, func(doc *ftsearch.SearchDoc) bool {
+
+	var fields []string
+	if len(newDocs) > 0 {
+		// no need to query fields if we have no documents to compare (means the whole object is deleted)
+		fields = []string{"Title", "Text"}
+	}
+	err = i.ftsearch.Iterate(id, fields, func(doc *ftsearch.SearchDoc) bool {
 		newDocIndex := slice.Find(newDocs, func(d ftsearch.SearchDoc) bool {
 			return d.Id == doc.Id
 		})
@@ -212,10 +238,21 @@ var filesLayouts = map[model.ObjectTypeLayout]struct{}{
 	model.ObjectType_pdf:   {},
 }
 
-func (i *indexer) prepareSearchDocument(ctx context.Context, id string) (docs []ftsearch.SearchDoc, err error) {
+func (i *indexer) prepareSearchDocument(ctx context.Context, id domain.FullID) (docs []ftsearch.SearchDoc, err error) {
+	// shortcut for deleted objects via objectstore
+	// otherwise we can have race condition when object is marked as deleted but the tree is not yet deleted
+	details, err := i.store.SpaceIndex(id.SpaceID).GetDetails(id.ObjectID)
+	if err != nil {
+		log.With("id", id).Errorf("prepareSearchDocument: get details: %v", err)
+	} else if details.GetBool(bundle.RelationKeyIsDeleted) {
+		// object is deleted, no need to index it
+		return
+	}
+
 	ctx = context.WithValue(ctx, metrics.CtxKeyEntrypoint, "index_fulltext")
 	var fulltextSkipped bool
-	err = cache.DoContext(i.picker, ctx, id, func(sb smartblock2.SmartBlock) error {
+
+	err = cache.DoContext(i.picker, ctx, id.ObjectID, func(sb smartblock2.SmartBlock) error {
 		fulltext, _, _ := sb.Type().Indexable()
 		if !fulltext {
 			fulltextSkipped = true
@@ -251,7 +288,7 @@ func (i *indexer) prepareSearchDocument(ctx context.Context, id string) (docs []
 			}
 
 			doc := ftsearch.SearchDoc{
-				Id:      domain.NewObjectPathWithRelation(id, rel.Key).String(),
+				Id:      domain.NewObjectPathWithRelation(id.ObjectID, rel.Key).String(),
 				SpaceId: sb.SpaceID(),
 				Text:    val,
 			}
@@ -283,7 +320,7 @@ func (i *indexer) prepareSearchDocument(ctx context.Context, id string) (docs []
 					return true
 				}
 				doc := ftsearch.SearchDoc{
-					Id:      domain.NewObjectPathWithBlock(id, b.Model().Id).String(),
+					Id:      domain.NewObjectPathWithBlock(id.ObjectID, b.Model().Id).String(),
 					SpaceId: sb.SpaceID(),
 				}
 				if len(tb.Text) > ftBlockMaxSize {
@@ -299,6 +336,7 @@ func (i *indexer) prepareSearchDocument(ctx context.Context, id string) (docs []
 
 		return nil
 	})
+
 	if fulltextSkipped {
 		// todo: this should be removed. objects which is not supposed to be added to fulltext index should not be added to the queue
 		// but now it happens in the ftInit that some objects still can be added to the queue
@@ -308,7 +346,7 @@ func (i *indexer) prepareSearchDocument(ctx context.Context, id string) (docs []
 	if err != nil {
 		return nil, err
 	}
-	_, cacheErr := i.picker.TryRemoveFromCache(ctx, id)
+	_, cacheErr := i.picker.TryRemoveFromCache(ctx, id.ObjectID)
 	if cacheErr != nil &&
 		!errors.Is(err, domain.ErrObjectNotFound) {
 		log.With("objectId", id).Errorf("object cache remove: %v", err)
@@ -328,7 +366,7 @@ func (i *indexer) ftInit() error {
 			return err
 		}
 		if docCount == 0 {
-			// delete the remnants from the last run if any
+			// means db got removed, lets remove the queue and reindex all objects
 			err = i.store.ClearFullTextQueue(nil)
 			if err != nil {
 				return err

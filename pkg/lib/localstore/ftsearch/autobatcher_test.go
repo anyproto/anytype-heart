@@ -21,7 +21,7 @@ func Test_AutoBatcher(t *testing.T) {
 
 	batcher := ft.NewAutoBatcher()
 	for i := 0; i < 32; i++ {
-		err = batcher.UpdateDoc(
+		err = batcher.UpsertDoc(
 			SearchDoc{
 				Id:    domain.NewObjectPathWithBlock("o", fmt.Sprintf("%d", i)).String(),
 				Title: "one",
@@ -32,7 +32,8 @@ func Test_AutoBatcher(t *testing.T) {
 	docsCount, err = ft.DocCount()
 	require.Equal(t, 30, int(docsCount))
 
-	err = batcher.Finish()
+	_, err = batcher.Finish()
+	require.NoError(t, err)
 	docsCount, err = ft.DocCount()
 	require.Equal(t, 32, int(docsCount))
 

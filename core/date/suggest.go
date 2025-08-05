@@ -11,6 +11,7 @@ import (
 	"github.com/araddon/dateparse"
 
 	"github.com/anyproto/anytype-heart/core/block/source"
+	"github.com/anyproto/anytype-heart/core/block/source/sourceimpl"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
@@ -190,7 +191,7 @@ func makeSuggestedDateRecord(ctx context.Context, spc source.Space, id string) (
 		return database.Record{}, fmt.Errorf("failed to find Date type to build Date object: %w", err)
 	}
 
-	dateSource := source.NewDate(source.DateSourceParams{
+	dateSource := sourceimpl.NewDate(sourceimpl.DateSourceParams{
 		Id: domain.FullID{
 			ObjectID: id,
 			SpaceID:  spc.Id(),
@@ -198,7 +199,7 @@ func makeSuggestedDateRecord(ctx context.Context, spc source.Space, id string) (
 		DateObjectTypeId: typeId,
 	})
 
-	v, ok := dateSource.(source.SourceIdEndodedDetails)
+	v, ok := dateSource.(sourceimpl.SourceIdEndodedDetails)
 	if !ok {
 		return database.Record{}, fmt.Errorf("source does not implement DetailsFromId")
 	}

@@ -42,6 +42,7 @@ var typeAndRelationRequiredRelations = []domain.RelationKey{
 	bundle.RelationKeyLastUsedDate,
 	bundle.RelationKeyRevision,
 	bundle.RelationKeyIsHidden,
+	bundle.RelationKeyApiObjectKey,
 }
 
 var relationRequiredRelations = append(typeAndRelationRequiredRelations,
@@ -49,6 +50,10 @@ var relationRequiredRelations = append(typeAndRelationRequiredRelations,
 	bundle.RelationKeyRelationFormatObjectTypes,
 	bundle.RelationKeyRelationKey,
 )
+
+var relationOptionRequiredRelations = []domain.RelationKey{
+	bundle.RelationKeyApiObjectKey,
+}
 
 type Page struct {
 	smartblock.SmartBlock
@@ -136,6 +141,8 @@ func appendRequiredInternalRelations(ctx *smartblock.InitContext) {
 		ctx.RequiredInternalRelationKeys = append(ctx.RequiredInternalRelationKeys, typeRequiredRelations...)
 	case bundle.TypeKeyRelation:
 		ctx.RequiredInternalRelationKeys = append(ctx.RequiredInternalRelationKeys, relationRequiredRelations...)
+	case bundle.TypeKeyRelationOption:
+		ctx.RequiredInternalRelationKeys = append(ctx.RequiredInternalRelationKeys, relationOptionRequiredRelations...)
 	}
 }
 
@@ -237,8 +244,6 @@ func (p *Page) CreationStateMigration(ctx *smartblock.InitContext) migration.Mig
 				)
 			case model.ObjectType_chatDerived:
 				templates = append(templates,
-					template.WithTitle,
-					template.WithBlockChat,
 					template.WithLayout(layout),
 				)
 				// TODO case for relationOption?
@@ -247,6 +252,12 @@ func (p *Page) CreationStateMigration(ctx *smartblock.InitContext) migration.Mig
 					template.WithTitle,
 					template.WithNoDescription,
 					template.WithLayout(layout),
+				)
+
+			case model.ObjectType_collection:
+				blockContent := template.MakeDataviewContent(true, nil, nil, "")
+				templates = append(templates,
+					template.WithDataview(blockContent, false),
 				)
 			default:
 				templates = append(templates,

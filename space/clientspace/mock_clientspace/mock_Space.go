@@ -15,6 +15,8 @@ import (
 
 	headsync "github.com/anyproto/any-sync/commonspace/headsync"
 
+	keyvalueservice "github.com/anyproto/anytype-heart/space/clientspace/keyvalueservice"
+
 	mock "github.com/stretchr/testify/mock"
 
 	objectcache "github.com/anyproto/anytype-heart/core/block/object/objectcache"
@@ -1431,6 +1433,53 @@ func (_c *MockSpace_IsReadOnly_Call) RunAndReturn(run func() bool) *MockSpace_Is
 	return _c
 }
 
+// KeyValueService provides a mock function with given fields:
+func (_m *MockSpace) KeyValueService() keyvalueservice.Service {
+	ret := _m.Called()
+
+	if len(ret) == 0 {
+		panic("no return value specified for KeyValueService")
+	}
+
+	var r0 keyvalueservice.Service
+	if rf, ok := ret.Get(0).(func() keyvalueservice.Service); ok {
+		r0 = rf()
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(keyvalueservice.Service)
+		}
+	}
+
+	return r0
+}
+
+// MockSpace_KeyValueService_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'KeyValueService'
+type MockSpace_KeyValueService_Call struct {
+	*mock.Call
+}
+
+// KeyValueService is a helper method to define mock.On call
+func (_e *MockSpace_Expecter) KeyValueService() *MockSpace_KeyValueService_Call {
+	return &MockSpace_KeyValueService_Call{Call: _e.mock.On("KeyValueService")}
+}
+
+func (_c *MockSpace_KeyValueService_Call) Run(run func()) *MockSpace_KeyValueService_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *MockSpace_KeyValueService_Call) Return(_a0 keyvalueservice.Service) *MockSpace_KeyValueService_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockSpace_KeyValueService_Call) RunAndReturn(run func() keyvalueservice.Service) *MockSpace_KeyValueService_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // LoadObjects provides a mock function with given fields: ctx, ids
 func (_m *MockSpace) LoadObjects(ctx context.Context, ids []string) error {
 	ret := _m.Called(ctx, ids)
@@ -1508,6 +1557,52 @@ func (_c *MockSpace_LoadObjectsIgnoreErrs_Call) Return() *MockSpace_LoadObjectsI
 }
 
 func (_c *MockSpace_LoadObjectsIgnoreErrs_Call) RunAndReturn(run func(context.Context, []string)) *MockSpace_LoadObjectsIgnoreErrs_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// RefreshObjects provides a mock function with given fields: objectIds
+func (_m *MockSpace) RefreshObjects(objectIds []string) error {
+	ret := _m.Called(objectIds)
+
+	if len(ret) == 0 {
+		panic("no return value specified for RefreshObjects")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func([]string) error); ok {
+		r0 = rf(objectIds)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// MockSpace_RefreshObjects_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'RefreshObjects'
+type MockSpace_RefreshObjects_Call struct {
+	*mock.Call
+}
+
+// RefreshObjects is a helper method to define mock.On call
+//   - objectIds []string
+func (_e *MockSpace_Expecter) RefreshObjects(objectIds interface{}) *MockSpace_RefreshObjects_Call {
+	return &MockSpace_RefreshObjects_Call{Call: _e.mock.On("RefreshObjects", objectIds)}
+}
+
+func (_c *MockSpace_RefreshObjects_Call) Run(run func(objectIds []string)) *MockSpace_RefreshObjects_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].([]string))
+	})
+	return _c
+}
+
+func (_c *MockSpace_RefreshObjects_Call) Return(err error) *MockSpace_RefreshObjects_Call {
+	_c.Call.Return(err)
+	return _c
+}
+
+func (_c *MockSpace_RefreshObjects_Call) RunAndReturn(run func([]string) error) *MockSpace_RefreshObjects_Call {
 	_c.Call.Return(run)
 	return _c
 }

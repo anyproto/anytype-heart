@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/anyproto/anytype-heart/core/block/source"
+	"github.com/anyproto/anytype-heart/core/block/source/sourceimpl"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/space"
@@ -25,7 +25,7 @@ func BuildDetailsFromTimestamp(
 		return nil, fmt.Errorf("failed to get date type id: %w", err)
 	}
 
-	dateSource := source.NewDate(source.DateSourceParams{
+	dateSource := sourceimpl.NewDate(sourceimpl.DateSourceParams{
 		Id: domain.FullID{
 			SpaceID:  spaceId,
 			ObjectID: dateutil.NewDateObject(time.Unix(timestamp, 0), false).Id(),
@@ -33,7 +33,7 @@ func BuildDetailsFromTimestamp(
 		DateObjectTypeId: dateTypeId,
 	})
 
-	detailsGetter, ok := dateSource.(source.SourceIdEndodedDetails)
+	detailsGetter, ok := dateSource.(sourceimpl.SourceIdEndodedDetails)
 	if !ok {
 		return nil, fmt.Errorf("date object does not implement SourceIdEndodedDetails: %w", err)
 	}

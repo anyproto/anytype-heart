@@ -165,7 +165,7 @@ func TestBasic_SetObjectTypesInState(t *testing.T) {
 	t.Run("type change is restricted", func(t *testing.T) {
 		// given
 		f := newBasicFixture(t)
-		f.sb.TestRestrictions = restriction.Restrictions{Object: []model.RestrictionsObjectRestriction{model.Restrictions_TypeChange}}
+		f.sb.TestRestrictions = restriction.Restrictions{Object: restriction.ObjectRestrictions{model.Restrictions_TypeChange: {}}}
 		s := f.sb.NewState()
 
 		// when
@@ -223,5 +223,32 @@ func TestBasic_SetObjectTypesInState(t *testing.T) {
 
 		// then
 		assert.Error(t, err)
+	})
+
+	t.Run("layout settings should be removed", func(t *testing.T) {
+		// given
+		f := newBasicFixture(t)
+
+		f.store.AddObjects(t, []objectstore.TestObject{{
+			bundle.RelationKeySpaceId:   domain.String(spaceId),
+			bundle.RelationKeyId:        domain.String(bundle.TypeKeyPage.URL()),
+			bundle.RelationKeyUniqueKey: domain.String(bundle.TypeKeyPage.URL()),
+		}})
+
+		s := f.sb.NewState()
+		s.SetDetail(bundle.RelationKeyLayout, domain.Int64(model.ObjectType_todo))
+		s.SetDetail(bundle.RelationKeyLayoutAlign, domain.Int64(model.Block_AlignRight))
+		s.SetDetail(bundle.RelationKeyFeaturedRelations, domain.StringList([]string{
+			bundle.RelationKeyDescription.String(), bundle.RelationKeyTag.String(),
+		}))
+
+		// when
+		err := f.basic.SetObjectTypesInState(s, []domain.TypeKey{bundle.TypeKeyPage}, false)
+
+		// then
+		assert.NoError(t, err)
+		assert.False(t, s.Details().Has(bundle.RelationKeyLayout))
+		assert.False(t, s.Details().Has(bundle.RelationKeyLayoutAlign))
+		assert.Len(t, s.Details().GetStringList(bundle.RelationKeyFeaturedRelations), 1)
 	})
 }

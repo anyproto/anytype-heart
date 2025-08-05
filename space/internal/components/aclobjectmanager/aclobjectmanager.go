@@ -11,13 +11,13 @@ import (
 	"github.com/anyproto/any-sync/app/debugstat"
 	"github.com/anyproto/any-sync/app/logger"
 	"github.com/anyproto/any-sync/commonspace/object/acl/list"
+	"github.com/anyproto/any-sync/commonspace/object/acl/syncacl"
 	"github.com/anyproto/any-sync/util/crypto"
 	"github.com/samber/lo"
 	"go.uber.org/zap"
 
 	"github.com/anyproto/anytype-heart/space/clientspace"
 	"github.com/anyproto/anytype-heart/space/internal/components/aclnotifications"
-	"github.com/anyproto/anytype-heart/space/internal/components/invitemigrator"
 	"github.com/anyproto/anytype-heart/space/internal/components/participantwatcher"
 	"github.com/anyproto/anytype-heart/space/internal/components/spaceloader"
 	"github.com/anyproto/anytype-heart/space/internal/components/spacestatus"
@@ -53,7 +53,6 @@ type aclObjectManager struct {
 	notificationService aclnotifications.AclNotification
 	spaceLoaderListener SpaceLoaderListener
 	participantWatcher  participantwatcher.ParticipantWatcher
-	inviteMigrator      invitemigrator.InviteMigrator
 	accountService      accountservice.Service
 
 	ownerMetadata []byte
@@ -105,7 +104,6 @@ func (a *aclObjectManager) Init(ap *app.App) (err error) {
 	if a.statService == nil {
 		a.statService = debugstat.NewNoOp()
 	}
-	a.inviteMigrator = app.MustComponent[invitemigrator.InviteMigrator](ap)
 	a.statService.AddProvider(a)
 	a.waitLoad = make(chan struct{})
 	a.wait = make(chan struct{})
@@ -147,11 +145,7 @@ func (a *aclObjectManager) process() {
 		return
 	}
 	a.spaceLoaderListener.OnSpaceLoad(a.sp.Id())
-	err := a.inviteMigrator.MigrateExistingInvites(a.sp)
-	if err != nil {
-		log.Warn("migrate existing invites", zap.Error(err))
-	}
-	err = a.participantWatcher.UpdateAccountParticipantFromProfile(a.ctx, a.sp)
+	err := a.participantWatcher.UpdateAccountParticipantFromProfile(a.ctx, a.sp)
 	if err != nil {
 		log.Error("init my identity", zap.Error(err))
 	}
@@ -164,6 +158,7 @@ func (a *aclObjectManager) process() {
 	err = a.processAcl()
 	if err != nil {
 		log.Error("error processing acl", zap.Error(err))
+		return
 	}
 }
 
@@ -240,14 +235,75 @@ func (a *aclObjectManager) processAcl() (err error) {
 	if err != nil {
 		return
 	}
-	err = a.status.SetAclIsEmpty(aclState.IsEmpty())
+
+	var (
+		isEmpty    = aclState.IsEmpty()
+		pushKey    crypto.PrivKey
+		pushEncKey crypto.SymKey
+		dErr       error
+	)
+	if !isEmpty {
+		firstMetadataKey, fkErr := aclState.FirstMetadataKey()
+		if fkErr == nil {
+			if pushKey, dErr = pushDeriveSpaceKey(firstMetadataKey); dErr != nil {
+				log.Warn("failed to derive push key", zap.Error(fkErr))
+			}
+		} else {
+			log.Warn("get firstMetadataKey", zap.Error(fkErr))
+		}
+
+		curReadKey, rErr := aclState.CurrentReadKey()
+		if rErr == nil {
+			if pushEncKey, dErr = pushDeriveSymmetricKey(curReadKey); dErr != nil {
+				log.Warn("failed to derive push sum key", zap.Error(dErr))
+			}
+		} else {
+			log.Warn("get currentReadKey", zap.Error(fkErr))
+		}
+	}
+
+	joinedDate, err := a.findJoinedDate(acl)
+	if err != nil {
+		return
+	}
+
+	err = a.status.SetAclInfo(isEmpty, pushKey, pushEncKey, joinedDate)
 	if err != nil {
 		return
 	}
 	a.mx.Lock()
 	defer a.mx.Unlock()
 	a.lastIndexed = acl.Head().Id
-	return
+	return nil
+}
+
+func (a *aclObjectManager) findJoinedDate(acl syncacl.SyncAcl) (int64, error) {
+	currentIdentity := a.accountService.Account().SignKey.GetPublic()
+	joinedAclRecordId := acl.Head().Id
+	for _, accState := range acl.AclState().CurrentAccounts() {
+		if !accState.PubKey.Equals(currentIdentity) {
+			continue
+		}
+		// Find the first record in which the user has got permissions since the last join
+		// Example:
+		// We have acl: [ 1:noPermissions, 2:reader, 3:noPermission, 4:reader, 5:writer ]
+		// Record with id=4 is one that we need
+		for i := len(accState.PermissionChanges) - 1; i >= 0; i-- {
+			permChange := accState.PermissionChanges[i]
+
+			if permChange.Permission.NoPermissions() {
+				break
+			} else {
+				joinedAclRecordId = permChange.RecordId
+			}
+		}
+		break
+	}
+	joinedRecord, err := acl.Get(joinedAclRecordId)
+	if err != nil {
+		return 0, fmt.Errorf("get joined acl record: %w", err)
+	}
+	return joinedRecord.Timestamp, nil
 }
 
 func (a *aclObjectManager) processStates(states []list.AccountState, upToDate bool, myIdentity crypto.PubKey) (err error) {

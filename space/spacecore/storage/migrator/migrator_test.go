@@ -10,6 +10,7 @@ import (
 	"testing"
 
 	"github.com/anyproto/any-sync/app"
+	"github.com/anyproto/any-sync/commonspace/spacestorage"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -30,6 +31,7 @@ type fixture struct {
 	migrator *migrator
 	app      *app.App
 	cfg      *config.Config
+	storage  *failingNewStorage
 }
 
 type quicPreferenceSetterStub struct {
@@ -47,9 +49,13 @@ func (q *quicPreferenceSetterStub) PreferQuic(b bool) {
 }
 
 func newFixture(t *testing.T, mode storage.SpaceStorageMode) *fixture {
+	return newFixtureWithPath(mode, t.TempDir())
+}
+
+func newFixtureWithPath(mode storage.SpaceStorageMode, path string) *fixture {
 	cfg := config.New()
 	cfg.SpaceStorageMode = mode
-	cfg.RepoPath = t.TempDir()
+	cfg.RepoPath = path
 
 	fx := &fixture{
 		cfg: cfg,
@@ -57,10 +63,29 @@ func newFixture(t *testing.T, mode storage.SpaceStorageMode) *fixture {
 	return fx
 }
 
-func (fx *fixture) start(t *testing.T) {
+type failingNewStorage struct {
+	storage.ClientStorage
+	err error
+}
+
+func newFailingNewStorage(err error) *failingNewStorage {
+	return &failingNewStorage{
+		ClientStorage: storage.New(),
+		err:           err,
+	}
+}
+
+func (f *failingNewStorage) WaitSpaceStorage(ctx context.Context, id string) (spacestorage.SpaceStorage, error) {
+	if f.err != nil {
+		return nil, f.err
+	}
+	return f.ClientStorage.WaitSpaceStorage(ctx, id)
+}
+
+func (fx *fixture) startWithError(t *testing.T, err error) {
 	walletService := wallet.NewWithRepoDirAndRandomKeys(fx.cfg.RepoPath)
 	oldStorage := oldstorage.New()
-	newStorage := storage.New()
+	newStorage := &failingNewStorage{storage.New(), err}
 	processService := process.New()
 	eventSender := mock_event.NewMockSender(t)
 	eventSender.EXPECT().Broadcast(mock.Anything).Run(func(ev *pb.Event) {
@@ -86,8 +111,19 @@ func (fx *fixture) start(t *testing.T) {
 
 	fx.app = testApp
 	fx.migrator = migrator
+	fx.storage = newStorage
 
-	err := testApp.Start(ctx)
+	err = testApp.Start(ctx)
+	require.NoError(t, err)
+}
+
+func (fx *fixture) start(t *testing.T) {
+	fx.startWithError(t, nil)
+}
+
+func (fx *fixture) stop(t *testing.T) {
+	ctx := context.Background()
+	err := fx.app.Close(ctx)
 	require.NoError(t, err)
 }
 
@@ -119,6 +155,27 @@ func TestMigration(t *testing.T) {
 		reports, err := fx.migrator.verify(context.Background(), true)
 		require.NoError(t, err)
 		assertReports(t, reports)
+	})
+
+	t.Run("with sqlite, load error", func(t *testing.T) {
+		// start and verify first migration
+		fx := newFixture(t, storage.SpaceStorageModeSqlite)
+		err := copyFile("testdata/spaceStore.db", fx.cfg.GetOldSpaceStorePath())
+		require.NoError(t, err)
+		fx.start(t)
+		reports, err := fx.migrator.verify(context.Background(), true)
+		require.NoError(t, err)
+		assertReports(t, reports)
+		fx.stop(t)
+
+		// start and verify second migration where every new storage is "broken"
+		otherFx := newFixtureWithPath(storage.SpaceStorageModeSqlite, fx.cfg.RepoPath)
+		err = copyFile("testdata/spaceStore.db", fx.cfg.GetOldSpaceStorePath())
+		require.NoError(t, err)
+		otherFx.startWithError(t, fmt.Errorf("load error"))
+		otherFx.storage.err = nil
+		reports, err = otherFx.migrator.verify(context.Background(), true)
+		require.NoError(t, err)
 	})
 
 	t.Run("with sqlite, full verification", func(t *testing.T) {

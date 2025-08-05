@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/anyproto/any-sync/app"
+	"github.com/anyproto/any-sync/util/crypto"
 	"github.com/stretchr/testify/require"
 
 	"github.com/anyproto/anytype-heart/space/internal/components/spacestatus"
@@ -192,7 +193,7 @@ func (s *spaceStatusStub) SetAccessType(status spaceinfo.AccessType) (err error)
 	return
 }
 
-func (s *spaceStatusStub) SetAclIsEmpty(isEmpty bool) (err error) {
+func (s *spaceStatusStub) SetAclInfo(isAclEmpty bool, pushKey crypto.PrivKey, pushEncryptionKey crypto.SymKey, spaceJoinedDate int64) (err error) {
 	return
 }
 

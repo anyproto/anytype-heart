@@ -3,6 +3,7 @@ package history
 import (
 	"context"
 	"fmt"
+	"strings"
 	"testing"
 
 	"github.com/anyproto/any-sync/commonspace/object/accountdata"
@@ -15,6 +16,7 @@ import (
 	"github.com/gogo/protobuf/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
@@ -32,6 +34,7 @@ import (
 
 type historyStub struct {
 	changes  []*objecttree.Change
+	heads    []string
 	objectId string
 }
 
@@ -58,14 +61,14 @@ func (h historyStub) Header() *treechangeproto.RawTreeChangeWithId {
 		ChangePayload: objectChangeRaw,
 		ChangeType:    spacecore.ChangeType,
 	}
-	createChangeRaw, err := createChange.Marshal()
+	createChangeRaw, err := createChange.MarshalVT()
 	if err != nil {
 		return nil
 	}
 	rootChange := &treechangeproto.RawTreeChange{
 		Payload: createChangeRaw,
 	}
-	rootChangeBytes, err := rootChange.Marshal()
+	rootChangeBytes, err := rootChange.MarshalVT()
 	if err != nil {
 		return nil
 	}
@@ -85,7 +88,7 @@ func (h historyStub) ChangeInfo() *treechangeproto.TreeChangeInfo {
 	}
 }
 
-func (h historyStub) Heads() []string { return nil }
+func (h historyStub) Heads() []string { return h.heads }
 
 func (h historyStub) Root() *objecttree.Change {
 	return &objecttree.Change{
@@ -1006,83 +1009,17 @@ func TestHistory_Versions(t *testing.T) {
 			Id:          "id",
 			PreviousIds: []string{"id2"},
 			Identity:    account,
-			Model: &pb.Change{
-				Content: []*pb.ChangeContent{
-					{
-						Value: &pb.ChangeContentValueOfBlockUpdate{
-							BlockUpdate: &pb.ChangeBlockUpdate{
-								Events: []*pb.EventMessage{
-									{
-										Value: &pb.EventMessageValueOfBlockSetText{
-											BlockSetText: &pb.EventBlockSetText{
-												Id: "blockId",
-												Text: &pb.EventBlockSetTextText{
-													Value: "new text",
-												},
-											},
-										},
-									},
-								},
-							},
-						},
-					},
-				},
-			},
 		}
 
 		ch1 := &objecttree.Change{
 			Identity:    account,
 			Id:          "id1",
 			PreviousIds: []string{"id2"},
-			Model: &pb.Change{
-				Content: []*pb.ChangeContent{
-					{
-						Value: &pb.ChangeContentValueOfBlockUpdate{
-							BlockUpdate: &pb.ChangeBlockUpdate{
-								Events: []*pb.EventMessage{
-									{
-										Value: &pb.EventMessageValueOfBlockSetText{
-											BlockSetText: &pb.EventBlockSetText{
-												Id: "blockId",
-												Text: &pb.EventBlockSetTextText{
-													Value: "some text",
-												},
-											},
-										},
-									},
-								},
-							},
-						},
-					},
-				},
-			},
 		}
 
 		ch2 := &objecttree.Change{
 			Id:       "id2",
 			Identity: account,
-			Model: &pb.Change{
-				Content: []*pb.ChangeContent{
-					{
-						Value: &pb.ChangeContentValueOfBlockUpdate{
-							BlockUpdate: &pb.ChangeBlockUpdate{
-								Events: []*pb.EventMessage{
-									{
-										Value: &pb.EventMessageValueOfBlockSetText{
-											BlockSetText: &pb.EventBlockSetText{
-												Id: "blockId",
-												Text: &pb.EventBlockSetTextText{
-													Value: "new text some text",
-												},
-											},
-										},
-									},
-								},
-							},
-						},
-					},
-				},
-			},
 		}
 
 		currChange := []*objecttree.Change{
@@ -1169,6 +1106,57 @@ func TestHistory_injectLocalDetails(t *testing.T) {
 	})
 }
 
+func TestHistory_Show(t *testing.T) {
+	t.Run("show history when parallel editing", func(t *testing.T) {
+		objectId := "objectId"
+		spaceID := "spaceID"
+
+		accountKeys, _ := accountdata.NewRandom()
+		account := accountKeys.SignKey.GetPublic()
+
+		ch := &objecttree.Change{
+			Id:          "id",
+			PreviousIds: []string{objectId},
+			Identity:    account,
+			Model:       &pb.Change{},
+		}
+
+		ch1 := &objecttree.Change{
+			Identity:    account,
+			Id:          "id1",
+			PreviousIds: []string{objectId},
+			Model:       &pb.Change{},
+		}
+
+		root := &objecttree.Change{
+			Id:       objectId,
+			Identity: account,
+			Model:    &pb.Change{},
+		}
+
+		changesMap := map[string][]*objecttree.Change{
+			"id id1": {root, ch1},
+			"id1 id": {root, ch},
+			objectId: {root, ch, ch1},
+		}
+
+		h := newFixtureShow(t, changesMap, objectId, spaceID)
+
+		// when
+		fullId := domain.FullID{ObjectID: objectId, SpaceID: spaceID}
+		resp, err := h.Versions(fullId, objectId, 10, false)
+		require.Nil(t, err)
+		require.Len(t, resp, 2)
+
+		view, version, err := h.Show(fullId, resp[0].Id)
+
+		// then
+		assert.Nil(t, err)
+		assert.NotNil(t, view)
+		assert.NotNil(t, version)
+	})
+}
+
 type historyFixture struct {
 	*history
 	space       *mock_clientspace.MockSpace
@@ -1225,6 +1213,48 @@ func newFixtureDiffVersions(t *testing.T,
 	}
 }
 
+func newFixtureShow(t *testing.T, changes map[string][]*objecttree.Change, objectId, spaceID string) *historyFixture {
+	spaceService := mock_space.NewMockService(t)
+	space := mock_clientspace.NewMockSpace(t)
+	ctrl := gomock.NewController(t)
+	treeBuilder := mock_objecttreebuilder.NewMockTreeBuilder(ctrl)
+
+	if len(changes) > 0 {
+		treeBuilder.EXPECT().BuildHistoryTree(gomock.Any(), gomock.Any(), gomock.Any()).DoAndReturn(func(ctx context.Context, id string, opts objecttreebuilder.HistoryTreeOpts) (objecttree.HistoryTree, error) {
+			assert.True(t, opts.Include)
+			assert.Equal(t, objectId, id)
+			versionId := strings.Join(opts.Heads, " ")
+
+			chs, ok := changes[versionId]
+			assert.True(t, ok)
+
+			return &historyStub{
+				objectId: objectId,
+				changes:  chs,
+				heads:    opts.Heads,
+			}, nil
+		}).AnyTimes()
+		space.EXPECT().TreeBuilder().Return(treeBuilder)
+		space.EXPECT().Id().Return(spaceID).Maybe()
+		spaceService.EXPECT().Get(context.Background(), spaceID).Return(space, nil)
+	}
+
+	space.EXPECT().GetTypeIdByKey(mock.Anything, mock.Anything).RunAndReturn(func(ctx context.Context, key domain.TypeKey) (string, error) {
+		return key.URL(), nil
+	})
+
+	h := &history{
+		objectStore:  objectstore.NewStoreFixture(t),
+		spaceService: spaceService,
+		heads:        map[string]string{},
+	}
+	return &historyFixture{
+		history:     h,
+		space:       space,
+		treeBuilder: treeBuilder,
+	}
+}
+
 func configureTreeBuilder(treeBuilder *mock_objecttreebuilder.MockTreeBuilder,
 	objectId, currVersionId, spaceID string,
 	expectedChanges []*objecttree.Change,
@@ -1237,6 +1267,7 @@ func configureTreeBuilder(treeBuilder *mock_objecttreebuilder.MockTreeBuilder,
 	}).Return(&historyStub{
 		objectId: objectId,
 		changes:  expectedChanges,
+		heads:    []string{currVersionId},
 	}, nil)
 	space.EXPECT().TreeBuilder().Return(treeBuilder)
 	space.EXPECT().Id().Return(spaceID).Maybe()

@@ -169,34 +169,50 @@ func Test(t *testing.T) {
 func Test_isRelationShouldBeIncludedAsEdge(t *testing.T) {
 
 	tests := []struct {
-		name string
-		rel  *relationutils.Relation
-		want bool
+		name             string
+		rel              *relationutils.Relation
+		includeTypeEdges bool
+		want             bool
 	}{
 		{"creator",
 			&relationutils.Relation{Relation: bundle.MustGetRelation(bundle.RelationKeyCreator)},
 			false,
+			false,
 		},
 		{"assignee",
 			&relationutils.Relation{Relation: bundle.MustGetRelation(bundle.RelationKeyAssignee)},
+			false,
 			true,
 		},
 		{"cover",
 			&relationutils.Relation{Relation: bundle.MustGetRelation(bundle.RelationKeyCoverId)},
 			false,
+			false,
 		},
 		{"file relation",
 			&relationutils.Relation{Relation: bundle.MustGetRelation(bundle.RelationKeyPicture)},
+			false,
 			true,
 		},
 		{"custom relation",
 			&relationutils.Relation{Relation: &model.Relation{Name: "custom", Format: model.RelationFormat_object}},
+			false,
+			true,
+		},
+		{"type with includeTypeEdges false",
+			&relationutils.Relation{Relation: bundle.MustGetRelation(bundle.RelationKeyType)},
+			false,
+			false,
+		},
+		{"type with includeTypeEdges true",
+			&relationutils.Relation{Relation: bundle.MustGetRelation(bundle.RelationKeyType)},
+			true,
 			true,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := isRelationShouldBeIncludedAsEdge(tt.rel); got != tt.want {
+			if got := isRelationShouldBeIncludedAsEdge(tt.rel, tt.includeTypeEdges); got != tt.want {
 				t.Errorf("isRelationShouldBeIncludedAsEdge() = %v, want %v", got, tt.want)
 			}
 		})

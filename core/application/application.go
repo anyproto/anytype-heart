@@ -8,6 +8,7 @@ import (
 
 	"github.com/anyproto/any-sync/app"
 
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
@@ -24,6 +25,7 @@ type Service struct {
 
 	// memoized private key derived from mnemonic, used for signing session tokens
 	sessionSigningKey []byte
+	sessionsByAppHash map[string]string
 
 	rootPath                string
 	fulltextPrimaryLanguage string
@@ -39,8 +41,9 @@ type Service struct {
 
 func New() *Service {
 	s := &Service{
-		sessions:      session.New(),
-		traceRecorder: &traceRecorder{},
+		sessions:          session.New(),
+		traceRecorder:     &traceRecorder{},
+		sessionsByAppHash: make(map[string]string),
 	}
 	m := newMigrationManager(s)
 	s.migrationManager = m
@@ -70,6 +73,8 @@ func (s *Service) stop() error {
 	defer task.End()
 
 	if s != nil && s.app != nil {
+		log.Warnf("stopping app")
+		s.app.SetDeviceState(int(domain.CompStateAppClosingInitiated))
 		err := s.app.Close(ctx)
 		if err != nil {
 			log.Warnf("error while stop anytype: %v", err)

@@ -24,8 +24,10 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/threads"
+	"github.com/anyproto/anytype-heart/space/clientspace/keyvalueservice"
 	"github.com/anyproto/anytype-heart/space/internal/objectprovider"
 	"github.com/anyproto/anytype-heart/space/spacecore"
+	"github.com/anyproto/anytype-heart/space/spacecore/keyvalueobserver"
 	"github.com/anyproto/anytype-heart/space/spacecore/peermanager"
 	"github.com/anyproto/anytype-heart/space/spacecore/storage"
 	"github.com/anyproto/anytype-heart/space/spacecore/storage/anystorage"
@@ -56,7 +58,14 @@ type Space interface {
 	IsPersonal() bool
 	GetAclIdentity() crypto.PubKey
 
+	KeyValueService() keyvalueservice.Service
+	RefreshObjects(objectIds []string) (err error)
+
 	Close(ctx context.Context) error
+}
+
+type clientSyncer interface {
+	RefreshTrees(ids []string) error
 }
 
 type spaceIndexer interface {
@@ -82,6 +91,7 @@ type space struct {
 	derivedIDs      threads.DerivedSmartblockIds
 	installer       bundledObjectsInstaller
 	spaceCore       spacecore.SpaceCoreService
+	keyValueService keyvalueservice.Service
 	personalSpaceId string
 
 	aclIdentity crypto.PubKey
@@ -102,6 +112,7 @@ type SpaceDeps struct {
 	AccountService    accountservice.Service
 	StorageService    storage.ClientStorage
 	SpaceCore         spacecore.SpaceCoreService
+	KeyValueObserver  keyvalueobserver.Observer
 	PersonalSpaceId   string
 	LoadCtx           context.Context
 	DisableRemoteLoad bool
@@ -150,7 +161,14 @@ func BuildSpace(ctx context.Context, deps SpaceDeps) (Space, error) {
 			return nil, fmt.Errorf("install bundled objects: %w", err)
 		}
 	}
+
+	sp.keyValueService, err = keyvalueservice.New(sp.common, deps.KeyValueObserver)
+	if err != nil {
+		return nil, fmt.Errorf("create key value service: %w", err)
+	}
+
 	go sp.mandatoryObjectsLoad(deps.LoadCtx, deps.DisableRemoteLoad)
+
 	return sp, nil
 }
 
@@ -226,6 +244,10 @@ func (s *space) DerivedIDs() threads.DerivedSmartblockIds {
 
 func (s *space) CommonSpace() commonspace.Space {
 	return s.common
+}
+
+func (s *space) KeyValueService() keyvalueservice.Service {
+	return s.keyValueService
 }
 
 func (s *space) WaitMandatoryObjects(ctx context.Context) (err error) {
@@ -394,6 +416,14 @@ func (s *space) migrationProfileObject(ctx context.Context) error {
 
 		return sb.Apply(st)
 	})
+}
+
+func (s *space) RefreshObjects(objectIds []string) (err error) {
+	syncer, ok := s.common.TreeSyncer().(clientSyncer)
+	if !ok {
+		return fmt.Errorf("space %s does not support client syncer", s.Id())
+	}
+	return syncer.RefreshTrees(objectIds)
 }
 
 func (s *space) IsReadOnly() bool {

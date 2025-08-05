@@ -12,7 +12,7 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/storestate"
-	"github.com/anyproto/anytype-heart/core/block/source"
+	"github.com/anyproto/anytype-heart/core/block/source/sourceimpl"
 )
 
 type DebugChange struct {
@@ -55,7 +55,7 @@ func (s *debugComponent) DebugChanges(ctx context.Context) ([]*DebugChange, erro
 	defer tx.Rollback()
 
 	var result []*DebugChange
-	err = historyTree.IterateFrom(historyTree.Root().Id, source.UnmarshalStoreChange, func(change *objecttree.Change) bool {
+	err = historyTree.IterateFrom(historyTree.Root().Id, sourceimpl.UnmarshalStoreChange, func(change *objecttree.Change) bool {
 		orderId, err := tx.GetOrder(change.Id)
 		if err != nil {
 			result = append(result, &DebugChange{

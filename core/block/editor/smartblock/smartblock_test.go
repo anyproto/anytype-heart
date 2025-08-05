@@ -10,8 +10,6 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/object/idresolver/mock_idresolver"
-	"github.com/anyproto/anytype-heart/core/block/restriction"
-	"github.com/anyproto/anytype-heart/core/block/restriction/mock_restriction"
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	_ "github.com/anyproto/anytype-heart/core/block/simple/base"
 	_ "github.com/anyproto/anytype-heart/core/block/simple/link"
@@ -52,8 +50,6 @@ func TestSmartBlock_Apply(t *testing.T) {
 		// given
 		fx := newFixture("", t)
 
-		fx.restrictionService.EXPECT().GetRestrictions(mock.Anything).Return(restriction.Restrictions{})
-
 		fx.init(t, []*model.Block{{Id: "1"}})
 		s := fx.NewState()
 		s.Add(simple.New(&model.Block{Id: "2"}))
@@ -82,7 +78,6 @@ func TestBasic_SetAlign(t *testing.T) {
 		// given
 		fx := newFixture("", t)
 
-		fx.restrictionService.EXPECT().GetRestrictions(mock.Anything).Return(restriction.Restrictions{})
 		fx.init(t, []*model.Block{
 			{Id: "test", ChildrenIds: []string{"title", "2"}},
 			{Id: "title"},
@@ -102,7 +97,6 @@ func TestBasic_SetAlign(t *testing.T) {
 		// given
 		fx := newFixture("", t)
 
-		fx.restrictionService.EXPECT().GetRestrictions(mock.Anything).Return(restriction.Restrictions{})
 		fx.init(t, []*model.Block{
 			{Id: "test", ChildrenIds: []string{"title", "2"}},
 			{Id: "title"},
@@ -180,14 +174,13 @@ func Test_removeInternalFlags(t *testing.T) {
 }
 
 type fixture struct {
-	objectStore        *objectstore.StoreFixture
-	store              spaceindex.Store
-	restrictionService *mock_restriction.MockService
-	indexer            *MockIndexer
-	eventSender        *mock_event.MockSender
-	source             *sourceStub
-	spaceIdResolver    *mock_idresolver.MockResolver
-	space              *MockSpace
+	objectStore     *objectstore.StoreFixture
+	store           spaceindex.Store
+	indexer         *MockIndexer
+	eventSender     *mock_event.MockSender
+	source          *sourceStub
+	spaceIdResolver *mock_idresolver.MockResolver
+	space           *MockSpace
 
 	*smartBlock
 }
@@ -204,12 +197,9 @@ func newFixture(id string, t *testing.T) *fixture {
 
 	indexer := NewMockIndexer(t)
 
-	restrictionService := mock_restriction.NewMockService(t)
-	restrictionService.EXPECT().GetRestrictions(mock.Anything).Return(restriction.Restrictions{}).Maybe()
-
 	sender := mock_event.NewMockSender(t)
 
-	sb := New(space, "", nil, restrictionService, spaceIndex, objectStore, indexer, sender, spaceIdResolver).(*smartBlock)
+	sb := New(space, "", spaceIndex, objectStore, indexer, sender, spaceIdResolver).(*smartBlock)
 	source := &sourceStub{
 		id:      id,
 		spaceId: "space1",
@@ -218,15 +208,14 @@ func newFixture(id string, t *testing.T) *fixture {
 	sb.source = source
 
 	return &fixture{
-		source:             source,
-		smartBlock:         sb,
-		store:              spaceIndex,
-		restrictionService: restrictionService,
-		indexer:            indexer,
-		eventSender:        sender,
-		spaceIdResolver:    spaceIdResolver,
-		objectStore:        objectStore,
-		space:              space,
+		source:          source,
+		smartBlock:      sb,
+		store:           spaceIndex,
+		indexer:         indexer,
+		eventSender:     sender,
+		spaceIdResolver: spaceIdResolver,
+		objectStore:     objectStore,
+		space:           space,
 	}
 }
 

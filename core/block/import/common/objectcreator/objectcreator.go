@@ -106,7 +106,7 @@ func (oc *ObjectCreator) Create(dataObject *DataObject, sn *common.Snapshot) (*d
 		oc.onFinish(err, spaceID, st, filesToDelete)
 	}()
 
-	common.UpdateObjectIDsInRelations(st, oldIDtoNew)
+	common.UpdateObjectIDsInRelations(st, oldIDtoNew, dataObject.relationKeysToFormat)
 
 	if err = common.UpdateLinksToObjects(st, oldIDtoNew); err != nil {
 		log.With("objectID", newID).Errorf("failed to update objects ids: %s", err)
@@ -248,6 +248,11 @@ func (oc *ObjectCreator) createNewObject(
 		return nil, fmt.Errorf("get space %s: %w", spaceID, err)
 	}
 	sb, err := spc.CreateTreeObjectWithPayload(ctx, payload, func(id string) *smartblock.InitContext {
+		// at this point, collection contains uuids, we need to replace them with new ids
+		// it should happen before first index, otherwise uuids can be indexed as real objects
+		if st.Store() != nil {
+			oc.replaceInCollection(st, oldIDtoNew)
+		}
 		return &smartblock.InitContext{
 			Ctx:         ctx,
 			IsNewObject: true,
@@ -270,12 +275,6 @@ func (oc *ObjectCreator) createNewObject(
 	} else {
 		log.With("objectID", newID).Errorf("failed to create %s: %s", newID, err)
 		return nil, err
-	}
-
-	// update collection after we create it
-	if st.Store() != nil {
-		oc.updateLinksInCollections(st, oldIDtoNew, true)
-		oc.resetState(newID, st)
 	}
 	return respDetails, nil
 }
@@ -374,17 +373,12 @@ func (oc *ObjectCreator) resetState(newID string, st *state.State) *domain.Detai
 			// we use revision for bundled objects like relations and object types
 			return nil
 		}
+		if st.ObjectTypeKey() == bundle.TypeKeyObjectType {
+			template.InitTemplate(st, template.WithDetail(bundle.RelationKeyRecommendedLayout, domain.Int64(model.ObjectType_basic)))
+		}
 		err := history.ResetToVersion(b, st)
 		if err != nil {
 			log.With(zap.String("object id", newID)).Errorf("failed to set state %s: %s", newID, err)
-		}
-		commonOperations, ok := b.(basic.CommonOperations)
-		if !ok {
-			return nil
-		}
-		err = commonOperations.FeaturedRelationAdd(nil, bundle.RelationKeyType.String())
-		if err != nil {
-			log.With(zap.String("object id", newID)).Errorf("failed to set featuredRelations %s: %s", newID, err)
 		}
 		respDetails = b.CombinedDetails()
 		return nil
@@ -465,6 +459,17 @@ func (oc *ObjectCreator) updateLinksInCollections(st *state.State, oldIDtoNew ma
 	if err != nil {
 		log.Errorf("failed to get existed objects in collection, %s", err)
 	}
+}
+
+func (oc ObjectCreator) replaceInCollection(st *state.State, oldIDtoNew map[string]string) {
+	objectsInCollections := st.GetStoreSlice(template.CollectionStoreKey)
+	newObjs := make([]string, 0, len(objectsInCollections))
+	for _, id := range objectsInCollections {
+		if newId, ok := oldIDtoNew[id]; ok {
+			newObjs = append(newObjs, newId)
+		}
+	}
+	st.UpdateStoreSlice(template.CollectionStoreKey, newObjs)
 }
 
 func (oc *ObjectCreator) mergeCollections(existedObjects []string, st *state.State, oldIDtoNew map[string]string) {

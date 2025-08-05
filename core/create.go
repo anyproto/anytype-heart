@@ -40,18 +40,15 @@ func (mw *Middleware) ObjectCreate(cctx context.Context, req *pb.RpcObjectCreate
 	if req.WithChat {
 		return response(pb.RpcObjectCreateResponseError_UNKNOWN_ERROR, "", nil, fmt.Errorf("WithChat is not implemented"))
 	}
-	if req.CreateTypeWidgetIfMissing {
-		err := mw.doBlockService(func(bs *block.Service) (err error) {
-			typeKey, err := domain.GetTypeKeyFromRawUniqueKey(req.ObjectTypeUniqueKey)
-			if err != nil {
-				return err
-			}
-			err = bs.CreateTypeWidgetIfMissing(cctx, req.SpaceId, typeKey)
-			return err
-		})
+	err = mw.doBlockService(func(bs *block.Service) (err error) {
+		typeKey, err := domain.GetTypeKeyFromRawUniqueKey(req.ObjectTypeUniqueKey)
 		if err != nil {
-			return response(pb.RpcObjectCreateResponseError_UNKNOWN_ERROR, "", nil, err)
+			return err
 		}
+		return bs.CreateTypeWidgetIfMissing(cctx, req.SpaceId, typeKey)
+	})
+	if err != nil {
+		return response(pb.RpcObjectCreateResponseError_UNKNOWN_ERROR, "", nil, err)
 	}
 	return response(pb.RpcObjectCreateResponseError_NULL, id, newDetails.ToProto(), nil)
 }
@@ -103,6 +100,12 @@ func (mw *Middleware) ObjectCreateSet(cctx context.Context, req *pb.RpcObjectCre
 	if req.WithChat {
 		return response(pb.RpcObjectCreateSetResponseError_UNKNOWN_ERROR, "", nil, fmt.Errorf("WithChat is not implemented"))
 	}
+	err = mw.doBlockService(func(bs *block.Service) (err error) {
+		return bs.CreateTypeWidgetIfMissing(cctx, req.SpaceId, bundle.TypeKeySet)
+	})
+	if err != nil {
+		return response(pb.RpcObjectCreateSetResponseError_UNKNOWN_ERROR, "", nil, err)
+	}
 	return response(pb.RpcObjectCreateSetResponseError_NULL, id, newDetails.ToProto(), nil)
 }
 
@@ -127,6 +130,12 @@ func (mw *Middleware) ObjectCreateBookmark(cctx context.Context, req *pb.RpcObje
 	}
 	if req.WithChat {
 		return response(pb.RpcObjectCreateBookmarkResponseError_UNKNOWN_ERROR, "", nil, fmt.Errorf("WithChat is not implemented"))
+	}
+	err = mw.doBlockService(func(bs *block.Service) (err error) {
+		return bs.CreateTypeWidgetIfMissing(cctx, req.SpaceId, bundle.TypeKeyBookmark)
+	})
+	if err != nil {
+		return response(pb.RpcObjectCreateBookmarkResponseError_UNKNOWN_ERROR, "", nil, err)
 	}
 
 	return response(pb.RpcObjectCreateBookmarkResponseError_NULL, id, newDetails.ToProto(), nil)
@@ -232,6 +241,16 @@ func (mw *Middleware) ObjectCreateFromUrl(cctx context.Context, req *pb.RpcObjec
 
 	if req.WithChat {
 		return response(pb.RpcObjectCreateFromUrlResponseError_UNKNOWN_ERROR, "", fmt.Errorf("WithChat is not implemented"), nil)
+	}
+	err = mw.doBlockService(func(bs *block.Service) (err error) {
+		typeKey, err := domain.GetTypeKeyFromRawUniqueKey(req.ObjectTypeUniqueKey)
+		if err != nil {
+			return err
+		}
+		return bs.CreateTypeWidgetIfMissing(cctx, req.SpaceId, typeKey)
+	})
+	if err != nil {
+		return response(pb.RpcObjectCreateFromUrlResponseError_UNKNOWN_ERROR, "", err, nil)
 	}
 	return response(pb.RpcObjectCreateFromUrlResponseError_NULL, id, nil, newDetails.ToProto())
 }

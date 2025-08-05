@@ -206,46 +206,6 @@ func TestUpdatePendingLocalDetails(t *testing.T) {
 		})
 		require.NoError(t, err)
 	})
-
-	t.Run("with local details present in old store, merge only missing keys", func(t *testing.T) {
-		s := NewStoreFixture(t)
-		lastUsed := time.Now().Add(-time.Hour).Unix()
-		lastOpened := time.Now().Unix()
-
-		obj := TestObject{
-			bundle.RelationKeyId:           domain.String("id1"),
-			bundle.RelationKeyName:         domain.String("foo"),
-			bundle.RelationKeyLastUsedDate: domain.Int64(lastUsed),
-		}
-		err := s.UpdatePendingLocalDetails("id1", func(details *domain.Details) (*domain.Details, error) {
-			return makeDetails(obj), nil
-		})
-
-		oldObject := TestObject{
-			bundle.RelationKeyId:             domain.String("id1"),
-			bundle.RelationKeyName:           domain.String("foo old"),
-			bundle.RelationKeyLastUsedDate:   domain.Int64(lastUsed - 1000),
-			bundle.RelationKeyLastOpenedDate: domain.Int64(lastOpened),
-		}
-		err = s.oldStore.SetDetails("id1", makeDetails(oldObject).ToProto())
-		require.NoError(t, err)
-
-		err = s.UpdatePendingLocalDetails("id1", func(details *domain.Details) (*domain.Details, error) {
-			newObj := TestObject{
-				bundle.RelationKeyId:             domain.String("id1"),
-				bundle.RelationKeyName:           domain.String("foo"),
-				bundle.RelationKeyLastUsedDate:   domain.Int64(lastUsed),
-				bundle.RelationKeyLastOpenedDate: domain.Int64(lastOpened),
-			}
-			assert.Equal(t, makeDetails(newObj), details)
-			return details, nil
-		})
-		require.NoError(t, err)
-
-		oldDetails, err := s.oldStore.GetLocalDetails("id1")
-		require.Error(t, err)
-		require.Nil(t, oldDetails)
-	})
 }
 
 func (fx *StoreFixture) givenPendingLocalDetails(t *testing.T) {

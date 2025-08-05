@@ -12,7 +12,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/domain/objectorigin"
 	"github.com/anyproto/anytype-heart/core/files/fileobject"
 	sb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore/filestore"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/space"
@@ -41,7 +40,6 @@ func NewIDProvider(
 	objectStore objectstore.ObjectStore,
 	spaceService space.Service,
 	blockService *block.Service,
-	fileStore filestore.FileStore,
 	fileObjectService fileobject.Service,
 ) IdAndKeyProvider {
 	p := &Provider{
@@ -56,7 +54,7 @@ func NewIDProvider(
 	}
 	oldFile := &oldFile{
 		blockService:      blockService,
-		fileStore:         fileStore,
+		objectStore:       objectStore,
 		fileObjectService: fileObjectService,
 	}
 	p.idProviderBySmartBlockType[sb.SmartBlockTypeWorkspace] = newWorkspace(spaceService)

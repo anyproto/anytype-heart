@@ -5,16 +5,14 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/anyproto/any-store/anyenc"
 	"github.com/anyproto/any-sync/app"
 	"github.com/stretchr/testify/require"
 
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/wallet"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
-	"github.com/anyproto/anytype-heart/pkg/lib/datastore"
+	"github.com/anyproto/anytype-heart/pkg/lib/datastore/anystoreprovider"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/ftsearch"
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/oldstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/spaceindex"
 )
 
@@ -31,18 +29,26 @@ type virtualDetailsHandler interface {
 	AddVirtualDetails(id string, det *domain.Details)
 }
 
-type detailsFromId struct {
+type stubDetailsFromId struct {
 	details map[string]*domain.Details
 }
 
-func (d *detailsFromId) DetailsFromIdBasedSource(id domain.FullID) (*domain.Details, error) {
+func (d *stubDetailsFromId) Name() string {
+	return "stubDetailsFromId"
+}
+
+func (d *stubDetailsFromId) Init(a *app.App) error {
+	return nil
+}
+
+func (d *stubDetailsFromId) DetailsFromIdBasedSource(id domain.FullID) (*domain.Details, error) {
 	if det, found := d.details[id.ObjectID]; found {
 		return det, nil
 	}
 	return nil, fmt.Errorf("not found")
 }
 
-func (d *detailsFromId) AddVirtualDetails(id string, det *domain.Details) {
+func (d *stubDetailsFromId) AddVirtualDetails(id string, det *domain.Details) {
 	if d.details == nil {
 		d.details = map[string]*domain.Details{}
 	}
@@ -53,6 +59,14 @@ type stubTechSpaceIdProvider struct{}
 
 func (s *stubTechSpaceIdProvider) TechSpaceId() string {
 	return "test-tech-space"
+}
+
+func (s *stubTechSpaceIdProvider) Name() string {
+	return "stubTechSpaceIdProvider"
+}
+
+func (s *stubTechSpaceIdProvider) Init(a *app.App) error {
+	return nil
 }
 
 type walletStub struct {
@@ -77,48 +91,46 @@ func (w *walletStub) RepoPath() string {
 func (w *walletStub) Name() string { return wallet.CName }
 
 func NewStoreFixture(t testing.TB) *StoreFixture {
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx := context.Background()
 
 	fullText := ftsearch.TantivyNew()
 	testApp := &app.App{}
 
-	dataStore, err := datastore.NewInMemory()
+	testApp.Register(newWalletStub(t))
+	err := fullText.Init(testApp)
 	require.NoError(t, err)
 
-	testApp.Register(newWalletStub(t))
-	testApp.Register(dataStore)
+	provider, err := anystoreprovider.NewInPath(t.TempDir())
+	require.NoError(t, err)
+
+	testApp.Register(provider)
+	testApp.Register(fullText)
+	testApp.Register(&stubDetailsFromId{})
+	testApp.Register(&stubTechSpaceIdProvider{})
+
 	err = fullText.Init(testApp)
 	require.NoError(t, err)
 	err = fullText.Run(context.Background())
 	require.NoError(t, err)
 
-	oldStore := oldstore.New()
-	err = oldStore.Init(testApp)
-	require.NoError(t, err)
-
-	ds := &dsObjectStore{
-		componentCtx:        ctx,
-		componentCtxCancel:  cancel,
-		fts:                 fullText,
-		sourceService:       &detailsFromId{},
-		arenaPool:           &anyenc.ArenaPool{},
-		objectStorePath:     t.TempDir(),
-		oldStore:            oldStore,
-		spaceIndexes:        map[string]spaceindex.Store{},
-		techSpaceIdProvider: &stubTechSpaceIdProvider{},
-		subManager:          &spaceindex.SubscriptionManager{},
-	}
+	ds := New()
 
 	t.Cleanup(func() {
-		_ = fullText.Close(context.Background())
+		err = fullText.Close(context.Background())
+		if err != nil {
+			t.Fatal("FOTAL:", err)
+		}
 		_ = ds.Close(context.Background())
 	})
+
+	err = ds.Init(testApp)
+	require.NoError(t, err)
 
 	err = ds.Run(ctx)
 	require.NoError(t, err)
 
 	return &StoreFixture{
-		dsObjectStore: ds,
+		dsObjectStore: ds.(*dsObjectStore),
 		FullText:      fullText,
 	}
 }
@@ -147,4 +159,8 @@ func (fx *StoreFixture) AddVirtualDetails(id string, details *domain.Details) {
 	if handler := fx.sourceService.(virtualDetailsHandler); handler != nil {
 		handler.AddVirtualDetails(id, details)
 	}
+}
+
+func (fx *StoreFixture) GetDetails(spaceId, objectId string) (*domain.Details, error) {
+	return fx.SpaceIndex(spaceId).GetDetails(objectId)
 }

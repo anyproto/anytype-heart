@@ -16,7 +16,7 @@ type Config struct {
 	MaxPageSize     int
 }
 
-// New creates a Gin middleware for pagination with the provided Config.
+// New creates Gin middleware for pagination with the provided Config.
 func New(cfg Config) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		page := getIntQueryParam(c, "offset", cfg.DefaultPage)

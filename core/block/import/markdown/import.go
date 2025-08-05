@@ -2,6 +2,7 @@ package markdown
 
 import (
 	"context"
+	"fmt"
 	"net/url"
 	"path/filepath"
 	"regexp"
@@ -11,6 +12,7 @@ import (
 	"github.com/gogo/protobuf/types"
 
 	"github.com/anyproto/anytype-heart/core/block/collection"
+	"github.com/anyproto/anytype-heart/core/block/editor/template"
 	"github.com/anyproto/anytype-heart/core/block/import/common"
 	"github.com/anyproto/anytype-heart/core/block/import/common/source"
 	"github.com/anyproto/anytype-heart/core/block/process"
@@ -21,6 +23,10 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+	"github.com/anyproto/anytype-heart/pkg/lib/schema"
+	"github.com/anyproto/anytype-heart/pkg/lib/schema/yaml"
+	"github.com/anyproto/anytype-heart/util/constant"
+	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 var (
@@ -33,27 +39,38 @@ const numberOfStages = 9 // 8 cycles to get snapshots and 1 cycle to create obje
 type Markdown struct {
 	blockConverter *mdConverter
 	service        *collection.Service
+	schemaImporter *SchemaImporter
 }
 
 const (
 	Name               = "Markdown"
 	rootCollectionName = "Markdown Import"
+	propIdPrefix       = "import_prop_"
+	typeIdPrefix       = "import_type_"
 )
 
 func New(tempDirProvider core.TempDirProvider, service *collection.Service) common.Converter {
-	return &Markdown{blockConverter: newMDConverter(tempDirProvider), service: service}
+	bc := newMDConverter(tempDirProvider)
+	si := NewSchemaImporter()
+	bc.SetSchemaImporter(si)
+
+	return &Markdown{
+		blockConverter: bc,
+		service:        service,
+		schemaImporter: si,
+	}
 }
 
 func (m *Markdown) Name() string {
 	return Name
 }
 
-func (m *Markdown) GetParams(req *pb.RpcObjectImportRequest) []string {
+func (m *Markdown) GetParams(req *pb.RpcObjectImportRequest) *pb.RpcObjectImportRequestMarkdownParams {
 	if p := req.GetMarkdownParams(); p != nil {
-		return p.Path
+		return p
+	} else {
+		return &pb.RpcObjectImportRequestMarkdownParams{}
 	}
-
-	return nil
 }
 
 func (m *Markdown) GetImage() ([]byte, int64, int64, error) {
@@ -61,27 +78,52 @@ func (m *Markdown) GetImage() ([]byte, int64, int64, error) {
 }
 
 func (m *Markdown) GetSnapshots(ctx context.Context, req *pb.RpcObjectImportRequest, progress process.Progress) (*common.Response, *common.ConvertError) {
-	paths := m.GetParams(req)
-	if len(paths) == 0 {
+	params := m.GetParams(req)
+	if len(params.Path) == 0 {
 		return nil, nil
 	}
 	allErrors := common.NewError(req.Mode)
-	allSnapshots, allRootObjectsIds := m.processFiles(req, progress, paths, allErrors)
-	if allErrors.ShouldAbortImport(len(paths), req.Type) {
+	allSnapshots, allRootObjectsIds := m.processFiles(req, progress, params.Path, allErrors)
+	if allErrors.ShouldAbortImport(len(params.Path), req.Type) {
 		return nil, allErrors
 	}
-	allSnapshots, rootCollectionID, err := m.createRootCollection(allSnapshots, allRootObjectsIds)
-	if err != nil {
-		allErrors.Add(err)
-		if allErrors.ShouldAbortImport(len(paths), req.Type) {
-			return nil, allErrors
+	var (
+		rootObjectID string
+		err          error
+		widgetType   model.BlockContentWidgetLayout
+	)
+	if params.CreateDirectoryPages && len(allRootObjectsIds) == 1 {
+		rootObjectID = allRootObjectsIds[0]
+		widgetType = model.BlockContentWidget_Tree
+	} else {
+		if params.CreateDirectoryPages {
+			log.Warnf("%d root pages found, creating collection", len(allRootObjectsIds))
+		}
+		allSnapshots, rootObjectID, err = m.createRootCollection(allSnapshots, allRootObjectsIds)
+		if err != nil {
+			allErrors.Add(err)
+			if allErrors.ShouldAbortImport(len(params.Path), req.Type) {
+				return nil, allErrors
+			}
 		}
 	}
 
-	if allErrors.IsEmpty() {
-		return &common.Response{Snapshots: allSnapshots, RootCollectionID: rootCollectionID}, nil
+	var typesCreated []domain.TypeKey
+	for _, snapshot := range allSnapshots {
+		if snapshot.Snapshot.SbType == smartblock.SmartBlockTypeObjectType {
+			uk := snapshot.Snapshot.Data.Details.GetString(bundle.RelationKeyUniqueKey)
+			uniqueKey, err := domain.GetTypeKeyFromRawUniqueKey(uk)
+			if err != nil {
+				log.Warnf("type widgets, failed to get type key from unique key %s: %v", uk, err)
+				continue
+			}
+			typesCreated = append(typesCreated, uniqueKey)
+		}
 	}
-	return &common.Response{Snapshots: allSnapshots, RootCollectionID: rootCollectionID}, allErrors
+	if allErrors.IsEmpty() {
+		return &common.Response{Snapshots: allSnapshots, RootObjectID: rootObjectID, RootObjectWidgetType: widgetType, TypesCreated: typesCreated}, nil
+	}
+	return &common.Response{Snapshots: allSnapshots, RootObjectID: rootObjectID, RootObjectWidgetType: widgetType, TypesCreated: typesCreated}, allErrors
 }
 
 func (m *Markdown) processFiles(req *pb.RpcObjectImportRequest, progress process.Progress, paths []string, allErrors *common.ConvertError) ([]*common.Snapshot, []string) {
@@ -89,6 +131,22 @@ func (m *Markdown) processFiles(req *pb.RpcObjectImportRequest, progress process
 		allSnapshots      []*common.Snapshot
 		allRootObjectsIds []string
 	)
+
+	// Check if all paths share the same parent directory
+	if len(paths) > 1 {
+		if commonParent := findCommonParentDir(paths); commonParent != "" {
+			// All paths are within the same parent directory
+			// Import the parent directory with filtering for selected paths
+			snapshots, rootObjectsIds := m.getSnapshotsAndRootObjectsIdsWithFilter(req, progress, commonParent, paths, allErrors)
+			if !allErrors.ShouldAbortImport(len(paths), req.Type) {
+				allSnapshots = append(allSnapshots, snapshots...)
+				allRootObjectsIds = append(allRootObjectsIds, rootObjectsIds...)
+			}
+			return allSnapshots, allRootObjectsIds
+		}
+	}
+
+	// Process paths individually (original behavior)
 	for _, path := range paths {
 		snapshots, rootObjectsIds := m.getSnapshotsAndRootObjectsIds(req, progress, path, allErrors)
 		if allErrors.ShouldAbortImport(len(paths), req.Type) {
@@ -98,6 +156,33 @@ func (m *Markdown) processFiles(req *pb.RpcObjectImportRequest, progress process
 		allRootObjectsIds = append(allRootObjectsIds, rootObjectsIds...)
 	}
 	return allSnapshots, allRootObjectsIds
+}
+
+// findCommonParentDir checks if all paths share the same parent directory
+func findCommonParentDir(paths []string) string {
+	if len(paths) < 2 {
+		return ""
+	}
+
+	// Get absolute paths and their parents
+	var parents []string
+	for _, p := range paths {
+		absPath, err := filepath.Abs(p)
+		if err != nil {
+			return "" // If we can't get absolute path, bail out
+		}
+		parents = append(parents, filepath.Dir(absPath))
+	}
+
+	// Check if all parents are the same
+	firstParent := parents[0]
+	for _, parent := range parents[1:] {
+		if parent != firstParent {
+			return ""
+		}
+	}
+
+	return firstParent
 }
 
 func (m *Markdown) createRootCollection(allSnapshots []*common.Snapshot, allRootObjectsIds []string) ([]*common.Snapshot, string, error) {
@@ -121,10 +206,27 @@ func (m *Markdown) createRootCollection(allSnapshots []*common.Snapshot, allRoot
 	return allSnapshots, rootCollectionID, nil
 }
 
+func wrapCallbackEnabler(enable bool, f func(files map[string]*FileInfo, progress process.Progress, details map[string]*domain.Details, allErrors *common.ConvertError)) func(map[string]*FileInfo, process.Progress, map[string]*domain.Details, *common.ConvertError) {
+	if !enable {
+		return func(_ map[string]*FileInfo, _ process.Progress, _ map[string]*domain.Details, _ *common.ConvertError) {
+		}
+	}
+	return f
+}
 func (m *Markdown) getSnapshotsAndRootObjectsIds(
 	req *pb.RpcObjectImportRequest,
 	progress process.Progress,
 	path string,
+	allErrors *common.ConvertError,
+) ([]*common.Snapshot, []string) {
+	return m.getSnapshotsAndRootObjectsIdsWithFilter(req, progress, path, nil, allErrors)
+}
+
+func (m *Markdown) getSnapshotsAndRootObjectsIdsWithFilter(
+	req *pb.RpcObjectImportRequest,
+	progress process.Progress,
+	path string,
+	selectedPaths []string,
 	allErrors *common.ConvertError,
 ) ([]*common.Snapshot, []string) {
 	importSource := source.GetSource(path)
@@ -132,7 +234,34 @@ func (m *Markdown) getSnapshotsAndRootObjectsIds(
 		return nil, nil
 	}
 	defer importSource.Close()
-	files := m.blockConverter.markdownToBlocks(path, importSource, allErrors)
+
+	// Initialize source with filtering if selectedPaths are provided
+	var err error
+	if filterSource, ok := importSource.(source.FilterableSource); ok && len(selectedPaths) > 0 {
+		err = filterSource.InitializeWithFilter(path, selectedPaths)
+	} else {
+		err = importSource.Initialize(path)
+	}
+
+	if err != nil {
+		allErrors.Add(err)
+		if allErrors.ShouldAbortImport(0, model.Import_Markdown) {
+			return nil, nil
+		}
+	}
+	// Load schemas if available
+	if err := m.schemaImporter.LoadSchemas(importSource, allErrors); err != nil {
+		log.Warnf("failed to load schemas: %v", err)
+	}
+
+	params := m.GetParams(req)
+	if m.schemaImporter.HasSchemas() {
+		// we import from anytype markdown files. disable tree structure and properties as blocks
+		params.CreateDirectoryPages = false
+		params.IncludePropertiesAsBlock = false
+	}
+
+	files := m.blockConverter.markdownToBlocks(path, importSource, allErrors, params.CreateDirectoryPages)
 	pathsCount := len(req.GetMarkdownParams().Path)
 	if allErrors.ShouldAbortImport(pathsCount, req.Type) {
 		return nil, nil
@@ -143,15 +272,29 @@ func (m *Markdown) getSnapshotsAndRootObjectsIds(
 
 	if m.processImportStep(pathsCount, files, progress, allErrors, details, m.setInboundLinks) ||
 		m.processImportStep(pathsCount, files, progress, allErrors, details, m.setNewID) ||
+		m.processImportStep(pathsCount, files, progress, allErrors, details, m.processObjectProperties) ||
 		m.processImportStep(pathsCount, files, progress, allErrors, details, m.addLinkToObjectBlocks) ||
 		m.processImportStep(pathsCount, files, progress, allErrors, details, m.linkPagesWithRootFile) ||
+		// todo: understand why we need this
 		m.processImportStep(pathsCount, files, progress, allErrors, details, m.addLinkBlocks) ||
 		m.processImportStep(pathsCount, files, progress, allErrors, details, m.fillEmptyBlocks) ||
+		m.processImportStep(pathsCount, files, progress, allErrors, details, wrapCallbackEnabler(params.IncludePropertiesAsBlock, m.addPropertyBlocks)) ||
 		m.processImportStep(pathsCount, files, progress, allErrors, details, m.addChildBlocks) {
 		return nil, nil
 	}
 
-	return m.createSnapshots(pathsCount, files, progress, details, allErrors), m.retrieveRootObjectsIds(files)
+	var rootObjectsIds []string
+	if params.CreateDirectoryPages {
+		for _, file := range files {
+			if file.IsRootDirPage {
+				rootObjectsIds = append(rootObjectsIds, file.PageID)
+				break
+			}
+		}
+	} else {
+		rootObjectsIds = m.retrieveRootObjectsIds(files)
+	}
+	return m.createSnapshots(req, pathsCount, files, progress, details, allErrors), rootObjectsIds
 }
 
 func (m *Markdown) processImportStep(pathCount int,
@@ -230,7 +373,7 @@ func (m *Markdown) processFieldBlockIfItIs(blocks []*model.Block, files map[stri
 				}
 			}
 
-			file := files[shortPath]
+			file := findFile(files, shortPath)
 
 			if file == nil || len(file.PageID) == 0 {
 				text += potentialFileName
@@ -380,7 +523,26 @@ func (m *Markdown) addLinkBlocks(files map[string]*FileInfo, progress process.Pr
 	}
 }
 
+func bundledRelationLinks(relationDetails *domain.Details) []*model.RelationLink {
+	links := make([]*model.RelationLink, 0, relationDetails.Len())
+	relationDetails.Iterate()(func(key domain.RelationKey, value domain.Value) bool {
+		rel, err := bundle.GetRelation(key)
+		if err != nil {
+			log.Warnf("relation %s not found in bundle", key)
+			return true
+		}
+
+		links = append(links, &model.RelationLink{
+			Key:    rel.Key,
+			Format: rel.Format,
+		})
+		return true
+	})
+	return links
+}
+
 func (m *Markdown) createSnapshots(
+	req *pb.RpcObjectImportRequest,
 	pathsCount int,
 	files map[string]*FileInfo,
 	progress process.Progress,
@@ -388,7 +550,242 @@ func (m *Markdown) createSnapshots(
 	allErrors *common.ConvertError,
 ) []*common.Snapshot {
 	snapshots := make([]*common.Snapshot, 0)
+	relationsSnapshots := make([]*common.Snapshot, 0)
+	objectTypeSnapshots := make([]*common.Snapshot, 0)
 	progress.SetProgressMessage("Start creating snapshots")
+
+	// Check if we have schemas loaded
+	hasSchemas := m.schemaImporter.HasSchemas()
+
+	// First pass: collect all YAML properties to create relation snapshots
+	yamlRelations := make(map[string]*yaml.Property)          // property name -> property
+	yamlRelationOptions := make(map[string]map[string]string) // relationKey -> optionValue -> optionId
+	objectTypes := make(map[string][]string)                  // Track unique object type names
+
+	for _, file := range files {
+		var props = make([]string, 0, len(file.YAMLProperties))
+		if file.YAMLProperties != nil {
+			for i := range file.YAMLProperties {
+				prop := &file.YAMLProperties[i]
+
+				// Schema resolution already happened during YAML parsing if schemas were available
+
+				// Use existing relation if already seen
+				if _, exists := yamlRelations[prop.Name]; !exists {
+					yamlRelations[prop.Name] = prop
+				}
+				props = append(props, yamlRelations[prop.Name].Key)
+
+				// Collect option values for non-schema imports
+				if !hasSchemas && (prop.Format == model.RelationFormat_status || prop.Format == model.RelationFormat_tag) {
+					if yamlRelationOptions[prop.Key] == nil {
+						yamlRelationOptions[prop.Key] = make(map[string]string)
+					}
+
+					// Collect values
+					switch prop.Format {
+					case model.RelationFormat_status:
+						if val := prop.Value.String(); val != "" {
+							yamlRelationOptions[prop.Key][val] = ""
+						}
+					case model.RelationFormat_tag:
+						for _, val := range prop.Value.StringList() {
+							yamlRelationOptions[prop.Key][val] = ""
+						}
+					}
+				}
+			}
+		}
+
+		// Collect object types
+		if file.ObjectTypeName != "" {
+			objectTypes[file.ObjectTypeName] = props
+		}
+	}
+
+	// Variable to hold objectTypeKeys
+	var objectTypeKeys map[string]string
+
+	// If we have schemas, use them to create relations and types
+	if hasSchemas {
+		// Create relation snapshots from schemas
+		relationsSnapshots = append(relationsSnapshots, m.schemaImporter.CreateRelationSnapshots()...)
+
+		// Create relation option snapshots from schemas
+		relationsSnapshots = append(relationsSnapshots, m.schemaImporter.CreateRelationOptionSnapshots()...)
+
+		// Create type snapshots from schemas
+		schemaTypeSnapshots := m.schemaImporter.CreateTypeSnapshots()
+		objectTypeSnapshots = append(objectTypeSnapshots, schemaTypeSnapshots...)
+
+		// Map type names to IDs for later use
+		objectTypeKeys = make(map[string]string)
+
+		// First, add all schema-defined types
+		for _, snapshot := range schemaTypeSnapshots {
+			if snapshot.Snapshot != nil && snapshot.Snapshot.Data != nil {
+				typeName := snapshot.Snapshot.Data.Details.GetString(bundle.RelationKeyName)
+				typeKey := snapshot.Snapshot.Data.Key
+				if typeName != "" && typeKey != "" {
+					objectTypeKeys[typeName] = typeKey
+				}
+			}
+		}
+
+		// Then check for any types used in YAML that aren't in schemas and create them
+		for typeName, props := range objectTypes {
+			if _, exists := objectTypeKeys[typeName]; !exists {
+				// This type was referenced but not defined in schemas, create it
+				typeKey := bson.NewObjectId().Hex()
+				objectTypeKeys[typeName] = typeKey
+
+				// Create object type snapshot
+				props := append([]string{bundle.TypeKeyObjectType.String()}, props...)
+				objectTypeDetails := getObjectTypeDetails(typeName, typeKey, props)
+				objectTypeSnapshots = append(objectTypeSnapshots, &common.Snapshot{
+					Id: typeIdPrefix + typeKey,
+					Snapshot: &common.SnapshotModel{
+						SbType: smartblock.SmartBlockTypeObjectType,
+						Data: &common.StateSnapshot{
+							Details:       objectTypeDetails,
+							RelationLinks: bundledRelationLinks(objectTypeDetails),
+							ObjectTypes:   []string{bundle.TypeKeyObjectType.String()},
+							Key:           typeKey,
+						},
+					},
+				})
+
+				log.Debugf("Created type '%s' with key '%s' (referenced in YAML but not found in schemas)", typeName, typeKey)
+			}
+		}
+	} else {
+		// Fallback to original YAML-based creation
+		// Create relation snapshots for YAML properties
+		for propName, prop := range yamlRelations {
+			// Generate BSON ID for the relation key
+			relationDetails := getRelationDetails(propName, prop.Key, float64(prop.Format), prop.IncludeTime)
+
+			relationsSnapshots = append(relationsSnapshots, &common.Snapshot{
+				Id: propIdPrefix + prop.Key,
+				Snapshot: &common.SnapshotModel{
+					SbType: smartblock.SmartBlockTypeRelation,
+					Data: &common.StateSnapshot{
+						Details:       relationDetails,
+						RelationLinks: bundledRelationLinks(relationDetails),
+						ObjectTypes:   []string{bundle.TypeKeyRelation.String()},
+						Key:           prop.Key,
+					},
+				},
+			})
+		}
+
+		typeRelation := bundle.MustGetRelation(bundle.RelationKeyType)
+		details := getRelationDetails(typeRelation.Name, typeRelation.Key, float64(typeRelation.Format), false)
+		relationsSnapshots = append(relationsSnapshots, &common.Snapshot{
+			Id: propIdPrefix + bundle.TypeKeyObjectType.String(),
+			Snapshot: &common.SnapshotModel{
+				SbType: smartblock.SmartBlockTypeRelation,
+				Data: &common.StateSnapshot{
+					Details:       details,
+					ObjectTypes:   []string{bundle.TypeKeyRelation.String()},
+					Key:           bundle.TypeKeyObjectType.String(),
+					RelationLinks: bundledRelationLinks(details),
+				},
+			},
+		})
+
+		// Create object type snapshots for YAML type values
+		objectTypeKeys = make(map[string]string) // name -> key mapping
+		for typeName := range objectTypes {
+			typeKey := bson.NewObjectId().Hex()
+			// Create object type snapshot
+			props := append([]string{bundle.TypeKeyObjectType.String()}, objectTypes[typeName]...)
+			objectTypeDetails := getObjectTypeDetails(typeName, typeKey, props)
+			objectTypeSnapshots = append(objectTypeSnapshots, &common.Snapshot{
+				Id: typeIdPrefix + typeKey,
+				Snapshot: &common.SnapshotModel{
+					SbType: smartblock.SmartBlockTypeObjectType,
+					Data: &common.StateSnapshot{
+						Details:       objectTypeDetails,
+						RelationLinks: bundledRelationLinks(objectTypeDetails),
+						ObjectTypes:   []string{bundle.TypeKeyObjectType.String()},
+						Key:           typeKey,
+					},
+				},
+			})
+			objectTypeKeys[typeName] = typeKey
+		}
+
+		// Create relation option snapshots for YAML values
+		for relationKey, options := range yamlRelationOptions {
+			for optionValue := range options {
+				optionId := m.schemaImporter.optionId(relationKey, optionValue)
+				yamlRelationOptions[relationKey][optionValue] = optionId
+
+				optionDetails := domain.NewDetails()
+				optionDetails.SetString(bundle.RelationKeyRelationKey, relationKey)
+				optionDetails.SetString(bundle.RelationKeyName, optionValue)
+				optionDetails.SetInt64(bundle.RelationKeyLayout, int64(model.ObjectType_relationOption))
+				optionDetails.SetString(bundle.RelationKeyRelationOptionColor, constant.RandomOptionColor().String())
+				// Set unique key for the option
+				optionKey := fmt.Sprintf("%s_%s", relationKey, optionValue)
+				uniqueKey, err := domain.NewUniqueKey(smartblock.SmartBlockTypeRelationOption, optionKey)
+				if err != nil {
+					log.Errorf("failed to create unique key for relation option '%s': %v", optionKey, err)
+					continue
+				}
+				optionDetails.SetString(bundle.RelationKeyUniqueKey, uniqueKey.Marshal())
+
+				relationsSnapshots = append(relationsSnapshots, &common.Snapshot{
+					Id: optionId,
+					Snapshot: &common.SnapshotModel{
+						SbType: smartblock.SmartBlockTypeRelationOption,
+						Data: &common.StateSnapshot{
+							Details:     optionDetails,
+							ObjectTypes: []string{bundle.TypeKeyRelationOption.String()},
+						},
+					},
+				})
+			}
+		}
+	}
+
+	// Fix YAML details to use option IDs for non-schema imports
+	if !hasSchemas {
+		for filePath, d := range details {
+			if details != nil {
+				// Create a new details object with updated values
+				updatedDetails := domain.NewDetails()
+				d.Iterate()(func(key domain.RelationKey, value domain.Value) bool {
+					var propFormat model.RelationFormat
+					for _, prop := range files[filePath].YAMLProperties {
+						if prop.Key == string(key) {
+							propFormat = prop.Format
+							break
+						}
+					}
+
+					// Update the value to use option IDs
+					switch propFormat {
+					case model.RelationFormat_status, model.RelationFormat_tag:
+						list := value.WrapToStringList()
+						for i := range list {
+							list[i] = m.schemaImporter.optionId(key.String(), list[i])
+						}
+						updatedDetails.Set(key, domain.StringList(list))
+					default:
+						// For other formats, just copy the value as is
+						// Copy unchanged values
+						updatedDetails.Set(key, value)
+					}
+					return true
+				})
+				details[filePath] = updatedDetails
+			}
+		}
+	}
+
+	// Second pass: create object snapshots
 	for name, file := range files {
 		if err := progress.TryStep(1); err != nil {
 			allErrors.Add(common.ErrCancel)
@@ -411,18 +808,137 @@ func (m *Markdown) createSnapshots(
 			}
 			continue
 		}
+
+		// Add relation links for YAML properties
+		var relationLinks []*model.RelationLink
+		if file.YAMLProperties != nil {
+			for _, prop := range file.YAMLProperties {
+				relationLinks = append(relationLinks, &model.RelationLink{
+					Key:    prop.Key,
+					Format: prop.Format,
+				})
+			}
+		}
+
+		// Determine object type
+		objectTypeKey := bundle.TypeKeyPage.String()
+		isCollectionType := false
+		if file.ObjectTypeName != "" {
+			if typeKey, exists := objectTypeKeys[file.ObjectTypeName]; exists {
+				objectTypeKey = typeKey
+			}
+
+			// Check if this type is a collection type from schema
+			if m.schemaImporter != nil {
+				for _, s := range m.schemaImporter.GetSchemas() {
+					if s.Type != nil && s.Type.Name == file.ObjectTypeName && s.Type.Layout == model.ObjectType_collection {
+						isCollectionType = true
+						break
+					}
+				}
+			}
+		}
+
+		// Check if YAML has Collection property
+		var collectionObjectIds []string
+		if file.YAMLProperties != nil {
+			// Look for Collection property in the parsed properties
+			for _, prop := range file.YAMLProperties {
+				// Check both by key and by name (case-insensitive)
+				if prop.Key == schema.CollectionPropertyKey ||
+					strings.EqualFold(prop.Name, "Collection") {
+					isCollectionType = true
+					collectionObjectIds = prop.Value.WrapToStringList()
+					break
+				}
+			}
+		}
+
+		// Collections are still pages, just with collection layout
+		sbType := smartblock.SmartBlockTypePage
+
+		blocks := file.ParsedBlocks
+
+		// Create state snapshot
+		stateSnapshot := &common.StateSnapshot{
+			Blocks:        blocks,
+			Details:       details[name],
+			ObjectTypes:   []string{objectTypeKey},
+			RelationLinks: relationLinks,
+		}
+
+		// Add collection store if this is a collection
+		if isCollectionType && len(collectionObjectIds) > 0 {
+			// Resolve collection object references to page IDs
+			resolvedIds := make([]string, 0, len(collectionObjectIds))
+			collectionDir := filepath.Dir(name) // Directory where the collection file is located
+
+			for _, ref := range collectionObjectIds {
+				// ref should be a filename path (relative or absolute) with .md suffix
+				// Normalize the reference path
+				refPath := ref
+				if !strings.HasSuffix(refPath, ".md") {
+					refPath = refPath + ".md"
+				}
+
+				found := false
+				for fileName, f := range files {
+					if f.PageID == "" {
+						continue
+					}
+
+					// Try different matching strategies:
+					// 1. Exact match (for absolute paths or paths relative to import root)
+					if fileName == refPath {
+						resolvedIds = append(resolvedIds, f.PageID)
+						found = true
+						break
+					}
+
+					// 2. Match relative to collection file's directory
+					relativeToCollection := filepath.Join(collectionDir, refPath)
+					if fileName == relativeToCollection {
+						resolvedIds = append(resolvedIds, f.PageID)
+						found = true
+						break
+					}
+
+					// 3. Match by base filename only (fallback for simple filenames)
+					if filepath.Base(fileName) == filepath.Base(refPath) {
+						resolvedIds = append(resolvedIds, f.PageID)
+						found = true
+						break
+					}
+				}
+				if !found {
+					log.Warnf("Collection reference '%s' not found in import", ref)
+				}
+			}
+
+			if len(resolvedIds) > 0 {
+				// Set collection store using Collections field
+				stateSnapshot.Collections = &types.Struct{
+					Fields: map[string]*types.Value{
+						template.CollectionStoreKey: pbtypes.StringList(resolvedIds),
+					},
+				}
+			}
+		}
+
 		snapshots = append(snapshots, &common.Snapshot{
 			Id:       file.PageID,
 			FileName: name,
 			Snapshot: &common.SnapshotModel{
-				SbType: smartblock.SmartBlockTypePage,
-				Data: &common.StateSnapshot{
-					Blocks:      file.ParsedBlocks,
-					Details:     details[name],
-					ObjectTypes: []string{bundle.TypeKeyPage.String()},
-				}},
+				SbType: sbType,
+				Data:   stateSnapshot,
+			},
 		})
 	}
+
+	// Append relation snapshots at the end
+	snapshots = append(snapshots, relationsSnapshots...)
+	// Append object type snapshots at the end
+	snapshots = append(snapshots, objectTypeSnapshots...)
 
 	return snapshots
 }
@@ -441,6 +957,17 @@ func (m *Markdown) addCollectionSnapshot(fileName string, file *FileInfo, snapsh
 	csvCollection.FileName = fileName
 	snapshots = append(snapshots, csvCollection)
 	return snapshots, nil
+}
+
+func (m *Markdown) addPropertyBlocks(files map[string]*FileInfo, progress process.Progress, details map[string]*domain.Details, allErrors *common.ConvertError) {
+	for _, file := range files {
+		// Create relation blocks for properties (excluding system properties)
+		propertyBlocks := m.createPropertyBlocks(file.YAMLProperties)
+		if len(propertyBlocks) > 0 {
+			// Insert property blocks at the beginning
+			file.ParsedBlocks = append(propertyBlocks, file.ParsedBlocks...)
+		}
+	}
 }
 
 func (m *Markdown) addChildBlocks(files map[string]*FileInfo, progress process.Progress, _ map[string]*domain.Details, allErrors *common.ConvertError) {
@@ -475,16 +1002,16 @@ func (m *Markdown) addChildBlocks(files map[string]*FileInfo, progress process.P
 	}
 }
 
-func (m *Markdown) extractChildBlocks(files map[string]*FileInfo) []string {
-	childBlocks := make([]string, 0)
+func (m *Markdown) extractChildBlocks(files map[string]*FileInfo) map[string]struct{} {
+	childBlocks := make(map[string]struct{})
 	for _, file := range files {
 		if file.PageID == "" {
 			continue
 		}
 
 		for _, b := range file.ParsedBlocks {
-			if len(b.ChildrenIds) != 0 {
-				childBlocks = append(childBlocks, b.ChildrenIds...)
+			for _, childBlock := range b.ChildrenIds {
+				childBlocks[childBlock] = struct{}{}
 			}
 		}
 	}
@@ -508,15 +1035,15 @@ func (m *Markdown) addLinkToObjectBlocks(files map[string]*FileInfo, progress pr
 
 		for _, block := range file.ParsedBlocks {
 			if link := block.GetLink(); link != nil {
-				target, err := url.PathUnescape(link.TargetBlockId)
+				target, err := url.PathUnescape(normalizePath(link.TargetBlockId))
 				if err != nil {
 					log.Warnf("error while url.PathUnescape: %s", err)
 					target = link.TargetBlockId
 				}
 
-				if files[target] != nil {
-					link.TargetBlockId = files[target].PageID
-					files[target].HasInboundLinks = true
+				if file := findFile(files, target); file != nil {
+					link.TargetBlockId = file.PageID
+					file.HasInboundLinks = true
 				}
 
 				continue
@@ -528,8 +1055,9 @@ func (m *Markdown) addLinkToObjectBlocks(files map[string]*FileInfo, progress pr
 						continue
 					}
 
-					if targetFile, exists := files[mark.Param]; exists {
+					if targetFile := findFile(files, normalizePath(mark.Param)); targetFile != nil {
 						mark.Param = targetFile.PageID
+						targetFile.HasInboundLinks = true
 					}
 				}
 			}
@@ -558,7 +1086,7 @@ func (m *Markdown) fillEmptyBlocks(files map[string]*FileInfo, progress process.
 	}
 }
 
-func (m *Markdown) setNewID(files map[string]*FileInfo, progress process.Progress, details map[string]*domain.Details, allErrors *common.ConvertError) {
+func (m *Markdown) setNewID(files map[string]*FileInfo, progress process.Progress, _ map[string]*domain.Details, allErrors *common.ConvertError) {
 	progress.SetProgressMessage("Start creating blocks")
 	for name, file := range files {
 		if err := progress.TryStep(1); err != nil {
@@ -566,10 +1094,10 @@ func (m *Markdown) setNewID(files map[string]*FileInfo, progress process.Progres
 			return
 		}
 
-		if strings.EqualFold(filepath.Ext(name), ".md") || strings.EqualFold(filepath.Ext(name), ".csv") {
+		// Assign PageID to markdown files, CSV files, and directory pages
+		ext := strings.ToLower(filepath.Ext(name))
+		if ext == ".md" || ext == ".csv" || ext == "" {
 			file.PageID = bson.NewObjectId().Hex()
-
-			m.setDetails(file, name, details)
 		}
 	}
 }
@@ -580,6 +1108,15 @@ func (m *Markdown) setDetails(file *FileInfo, fileName string, details map[strin
 		title, emoji = m.extractTitleAndEmojiFromBlock(file)
 	}
 	details[fileName] = common.GetCommonDetails(fileName, title, emoji, model.ObjectType_basic)
+
+	// Set YAML details directly
+	if file.YAMLDetails != nil {
+		file.YAMLDetails.Iterate()(func(key domain.RelationKey, value domain.Value) bool {
+			details[fileName].Set(key, value)
+			return true
+		})
+	}
+
 	file.Title = details[fileName].GetString(bundle.RelationKeyName)
 }
 
@@ -604,22 +1141,180 @@ func (m *Markdown) extractTitleAndEmojiFromBlock(file *FileInfo) (string, string
 
 func (m *Markdown) retrieveRootObjectsIds(files map[string]*FileInfo) []string {
 	var rootObjectsIds []string
-	for _, file := range files {
+	for path, file := range files {
 		if file.PageID == "" {
 			continue
 		}
 		if file.IsRootFile {
 			rootObjectsIds = append(rootObjectsIds, file.PageID)
 		}
+		// Also include top-level directory pages
+		dir := filepath.Dir(path)
+		if dir == "." || dir == "/" {
+			// This is a top-level item (file or directory page)
+			rootObjectsIds = append(rootObjectsIds, file.PageID)
+		}
 	}
 	return rootObjectsIds
 }
 
-func isChildBlock(blocks []string, b *model.Block) bool {
-	for _, block := range blocks {
-		if b.Id == block {
-			return true
+func isChildBlock(blocks map[string]struct{}, b *model.Block) bool {
+	_, ok := blocks[b.Id]
+	return ok
+}
+
+func getRelationDetails(name, key string, format float64, includeTime bool) *domain.Details {
+	details := domain.NewDetails()
+	details.SetFloat64(bundle.RelationKeyRelationFormat, format)
+	details.SetString(bundle.RelationKeyName, name)
+	details.SetString(bundle.RelationKeyRelationKey, key)
+	details.SetInt64(bundle.RelationKeyLayout, int64(model.ObjectType_relation))
+
+	// Set includeTime for date relations
+	if format == float64(model.RelationFormat_date) {
+		details.SetBool(bundle.RelationKeyRelationFormatIncludeTime, includeTime)
+	}
+
+	uniqueKey, err := domain.NewUniqueKey(smartblock.SmartBlockTypeRelation, key)
+	if err != nil {
+		log.Warnf("failed to create unique key for YAML relation: %v", err)
+		return details
+	}
+	details.SetString(bundle.RelationKeyId, uniqueKey.Marshal())
+	return details
+}
+
+func propKeysToIds(propKeys []string) []string {
+	ids := make([]string, len(propKeys))
+	for i, key := range propKeys {
+		ids[i] = propIdPrefix + key
+	}
+	return ids
+}
+func getObjectTypeDetails(name, key string, propKeys []string) *domain.Details {
+	details := domain.NewDetails()
+	details.SetString(bundle.RelationKeyName, name)
+	details.SetInt64(bundle.RelationKeyLayout, int64(model.ObjectType_objectType))
+	details.SetInt64(bundle.RelationKeyResolvedLayout, int64(model.ObjectType_objectType))
+	details.SetInt64(bundle.RelationKeyRecommendedLayout, int64(model.ObjectType_basic))
+	details.SetString(bundle.RelationKeyType, bundle.TypeKeyObjectType.String())
+
+	propIds := propKeysToIds(propKeys)
+	// first 3 goes to featured relations, the rest to properties
+	maxFeaturedRelations := 3
+	if len(propIds) < maxFeaturedRelations {
+		maxFeaturedRelations = len(propIds)
+	}
+	details.SetStringList(bundle.RelationKeyRecommendedFeaturedRelations, propIds[:maxFeaturedRelations])
+	if len(propKeys) > maxFeaturedRelations {
+		details.SetStringList(bundle.RelationKeyRecommendedRelations, propIds[maxFeaturedRelations:])
+	}
+
+	// Create unique key for the object type
+	uniqueKey, err := domain.NewUniqueKey(smartblock.SmartBlockTypeObjectType, key)
+	if err != nil {
+		log.Warnf("failed to create unique key for YAML object type: %v", err)
+		return details
+	}
+	details.SetString(bundle.RelationKeyId, uniqueKey.Marshal())
+	details.SetString(bundle.RelationKeyUniqueKey, uniqueKey.Marshal())
+
+	return details
+}
+
+func (m *Markdown) findFileByPath(path string, files map[string]*FileInfo) *FileInfo {
+	// First try exact match
+	if file, exists := files[path]; exists {
+		return file
+	}
+
+	// If not found, try to match by comparing paths
+	for filePath, file := range files {
+		// Compare absolute paths
+		if filePath == path {
+			return file
+		}
+		// Also try comparing just the filenames in case of path variations
+		if filepath.Base(filePath) == filepath.Base(path) {
+			return file
 		}
 	}
-	return false
+
+	return nil
+}
+
+func (m *Markdown) processObjectProperties(files map[string]*FileInfo, progress process.Progress, details map[string]*domain.Details, allErrors *common.ConvertError) {
+	progress.SetProgressMessage("Start linking blocks")
+
+	for fileName, file := range files {
+		if err := progress.TryStep(1); err != nil {
+			allErrors.Add(common.ErrCancel)
+			return
+		}
+
+		for i := range file.YAMLProperties {
+			prop := &file.YAMLProperties[i]
+			if prop.Format == model.RelationFormat_object {
+				vals := file.YAMLDetails.Get(domain.RelationKey(prop.Key))
+				paths := vals.WrapToStringList()
+				ids := make([]string, 0, len(paths))
+				for _, path := range paths {
+					// The path should already be absolute from YAML parsing
+					// Find the file in the files map
+					targetFile := m.findFileByPath(path, files)
+					if targetFile != nil && targetFile.PageID != "" {
+						ids = append(ids, targetFile.PageID)
+					}
+				}
+				file.YAMLDetails.Set(domain.RelationKey(prop.Key), domain.StringList(ids))
+			}
+		}
+		m.setDetails(file, fileName, details)
+	}
+}
+
+// createPropertyBlocks creates relation blocks for YAML properties
+func (m *Markdown) createPropertyBlocks(properties []yaml.Property) []*model.Block {
+	var blocks []*model.Block
+
+	// Define system properties to exclude
+	systemProperties := map[string]bool{
+		bundle.RelationKeyName.String():             true,
+		bundle.RelationKeyDescription.String():      true,
+		bundle.RelationKeyType.String():             true,
+		bundle.RelationKeyCreatedDate.String():      true,
+		bundle.RelationKeyLastModifiedDate.String(): true,
+		bundle.RelationKeyCreator.String():          true,
+		bundle.RelationKeyLastModifiedBy.String():   true,
+		bundle.RelationKeyId.String():               true,
+		bundle.RelationKeyIconEmoji.String():        true,
+		bundle.RelationKeyIconImage.String():        true,
+		bundle.RelationKeyCoverId.String():          true,
+		bundle.RelationKeyCoverType.String():        true,
+		bundle.RelationKeyCoverX.String():           true,
+		bundle.RelationKeyCoverY.String():           true,
+		bundle.RelationKeyCoverScale.String():       true,
+		bundle.RelationKeyLayout.String():           true,
+		bundle.RelationKeyLayoutAlign.String():      true,
+	}
+
+	for _, prop := range properties {
+		// Skip system properties
+		if systemProperties[prop.Key] {
+			continue
+		}
+
+		// Create a relation block
+		block := &model.Block{
+			Id: bson.NewObjectId().Hex(),
+			Content: &model.BlockContentOfRelation{
+				Relation: &model.BlockContentRelation{
+					Key: prop.Key,
+				},
+			},
+		}
+		blocks = append(blocks, block)
+	}
+
+	return blocks
 }

@@ -2,6 +2,7 @@ package editor
 
 import (
 	"testing"
+	"time"
 
 	"github.com/anyproto/any-sync/commonspace/object/tree/objecttree/mock_objecttree"
 	"github.com/anyproto/any-sync/commonspace/object/tree/treechangeproto"
@@ -31,7 +32,7 @@ func TestSpaceView_AccessType(t *testing.T) {
 		err = fx.SetAccessType(spaceinfo.AccessTypePrivate)
 		require.NoError(t, err)
 		require.Equal(t, spaceinfo.AccessTypePersonal, fx.getAccessType())
-		err = fx.SetAclIsEmpty(false)
+		err = fx.SetAclInfo(false, nil, nil, time.Now().Unix())
 		require.NoError(t, err)
 		require.Equal(t, spaceinfo.AccessTypePersonal, fx.getAccessType())
 		info := spaceinfo.NewSpaceLocalInfo("spaceId")
@@ -52,7 +53,7 @@ func TestSpaceView_AccessType(t *testing.T) {
 		err = fx.SetAccessType(spaceinfo.AccessTypePrivate)
 		require.NoError(t, err)
 		require.Equal(t, spaceinfo.AccessTypePrivate, fx.getAccessType())
-		err = fx.SetAclIsEmpty(false)
+		err = fx.SetAclInfo(false, nil, nil, time.Now().Unix())
 		require.NoError(t, err)
 		require.Equal(t, spaceinfo.AccessTypeShared, fx.getAccessType())
 		info := spaceinfo.NewSpaceLocalInfo("spaceId")
@@ -60,7 +61,7 @@ func TestSpaceView_AccessType(t *testing.T) {
 		err = fx.SetSpaceLocalInfo(info)
 		require.NoError(t, err)
 		require.Equal(t, spaceinfo.AccessTypeShared, fx.getAccessType())
-		err = fx.SetAclIsEmpty(true)
+		err = fx.SetAclInfo(true, nil, nil, time.Now().Unix())
 		require.NoError(t, err)
 		require.Equal(t, spaceinfo.AccessTypePrivate, fx.getAccessType())
 		info.SetShareableStatus(spaceinfo.ShareableStatusShareable)

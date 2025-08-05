@@ -14,7 +14,7 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/block/cache"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
-	"github.com/anyproto/anytype-heart/core/block/source"
+	"github.com/anyproto/anytype-heart/core/block/source/sourceimpl"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/tests/blockbuilder"
 	"github.com/anyproto/anytype-heart/util/debug"
@@ -102,7 +102,7 @@ func (s *Service) debugTree(req *http.Request) (debugTree, error) {
 	}
 	err := cache.Do(s, id, func(sb smartblock.SmartBlock) error {
 		ot := sb.Tree()
-		return ot.IterateRoot(source.UnmarshalChange, func(change *objecttree.Change) bool {
+		return ot.IterateRoot(sourceimpl.UnmarshalChange, func(change *objecttree.Change) bool {
 			change.Next = nil
 			raw, err := json.Marshal(change)
 			if err != nil {
@@ -140,7 +140,7 @@ func (s *Service) debugTreeInSpace(req *http.Request) (debugTree, error) {
 
 	err = spc.Do(id, func(sb smartblock.SmartBlock) error {
 		ot := sb.Tree()
-		return ot.IterateRoot(source.UnmarshalChange, func(change *objecttree.Change) bool {
+		return ot.IterateRoot(sourceimpl.UnmarshalChange, func(change *objecttree.Change) bool {
 			change.Next = nil
 			raw, err := json.Marshal(change)
 			if err != nil {

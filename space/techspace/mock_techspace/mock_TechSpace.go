@@ -520,17 +520,17 @@ func (_c *MockTechSpace_SetPersistentInfo_Call) RunAndReturn(run func(context.Co
 	return _c
 }
 
-// SpaceViewCreate provides a mock function with given fields: ctx, spaceId, force, info
-func (_m *MockTechSpace) SpaceViewCreate(ctx context.Context, spaceId string, force bool, info spaceinfo.SpacePersistentInfo) error {
-	ret := _m.Called(ctx, spaceId, force, info)
+// SpaceViewCreate provides a mock function with given fields: ctx, spaceId, force, info, desc
+func (_m *MockTechSpace) SpaceViewCreate(ctx context.Context, spaceId string, force bool, info spaceinfo.SpacePersistentInfo, desc *spaceinfo.SpaceDescription) error {
+	ret := _m.Called(ctx, spaceId, force, info, desc)
 
 	if len(ret) == 0 {
 		panic("no return value specified for SpaceViewCreate")
 	}
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(context.Context, string, bool, spaceinfo.SpacePersistentInfo) error); ok {
-		r0 = rf(ctx, spaceId, force, info)
+	if rf, ok := ret.Get(0).(func(context.Context, string, bool, spaceinfo.SpacePersistentInfo, *spaceinfo.SpaceDescription) error); ok {
+		r0 = rf(ctx, spaceId, force, info, desc)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -548,13 +548,14 @@ type MockTechSpace_SpaceViewCreate_Call struct {
 //   - spaceId string
 //   - force bool
 //   - info spaceinfo.SpacePersistentInfo
-func (_e *MockTechSpace_Expecter) SpaceViewCreate(ctx interface{}, spaceId interface{}, force interface{}, info interface{}) *MockTechSpace_SpaceViewCreate_Call {
-	return &MockTechSpace_SpaceViewCreate_Call{Call: _e.mock.On("SpaceViewCreate", ctx, spaceId, force, info)}
+//   - desc *spaceinfo.SpaceDescription
+func (_e *MockTechSpace_Expecter) SpaceViewCreate(ctx interface{}, spaceId interface{}, force interface{}, info interface{}, desc interface{}) *MockTechSpace_SpaceViewCreate_Call {
+	return &MockTechSpace_SpaceViewCreate_Call{Call: _e.mock.On("SpaceViewCreate", ctx, spaceId, force, info, desc)}
 }
 
-func (_c *MockTechSpace_SpaceViewCreate_Call) Run(run func(ctx context.Context, spaceId string, force bool, info spaceinfo.SpacePersistentInfo)) *MockTechSpace_SpaceViewCreate_Call {
+func (_c *MockTechSpace_SpaceViewCreate_Call) Run(run func(ctx context.Context, spaceId string, force bool, info spaceinfo.SpacePersistentInfo, desc *spaceinfo.SpaceDescription)) *MockTechSpace_SpaceViewCreate_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(string), args[2].(bool), args[3].(spaceinfo.SpacePersistentInfo))
+		run(args[0].(context.Context), args[1].(string), args[2].(bool), args[3].(spaceinfo.SpacePersistentInfo), args[4].(*spaceinfo.SpaceDescription))
 	})
 	return _c
 }
@@ -564,7 +565,7 @@ func (_c *MockTechSpace_SpaceViewCreate_Call) Return(err error) *MockTechSpace_S
 	return _c
 }
 
-func (_c *MockTechSpace_SpaceViewCreate_Call) RunAndReturn(run func(context.Context, string, bool, spaceinfo.SpacePersistentInfo) error) *MockTechSpace_SpaceViewCreate_Call {
+func (_c *MockTechSpace_SpaceViewCreate_Call) RunAndReturn(run func(context.Context, string, bool, spaceinfo.SpacePersistentInfo, *spaceinfo.SpaceDescription) error) *MockTechSpace_SpaceViewCreate_Call {
 	_c.Call.Return(run)
 	return _c
 }

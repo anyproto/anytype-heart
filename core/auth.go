@@ -25,12 +25,12 @@ var limitedScopeMethods = map[string]struct{}{
 	"BlockPreview":               {},
 	"BlockPaste":                 {},
 	"BroadcastPayloadEvent":      {},
-	"AccountSelect":              {},
+	"AccountSelect":              {}, // need to replace with other method to get info
 	"ListenSessionEvents":        {},
 	"ObjectSearchSubscribe":      {},
 	"ObjectCreateRelationOption": {},
 	"BlockLinkCreateWithObject":  {},
-	// need to replace with other method to get info
+	"ObjectCollectionAdd":        {},
 }
 
 var noAuthMethods = map[string]struct{}{

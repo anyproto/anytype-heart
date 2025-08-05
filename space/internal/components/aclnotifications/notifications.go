@@ -230,9 +230,6 @@ func (n *aclNotificationSender) handleOwnerNotifications(ctx context.Context,
 	if reqJoin := content.GetRequestJoin(); reqJoin != nil {
 		return n.sendJoinRequest(ctx, reqJoin, aclNotificationRecord, notificationId)
 	}
-	if reqLeave := content.GetAccountRequestRemove(); reqLeave != nil {
-		return n.sendAccountRequestRemove(ctx, aclNotificationRecord, notificationId)
-	}
 	return nil
 }
 
@@ -295,35 +292,6 @@ func (n *aclNotificationSender) sendParticipantRequestApprove(ctx context.Contex
 		},
 		Space:     notificationRecord.spaceId,
 		AclHeadId: notificationRecord.aclId,
-	})
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
-func (n *aclNotificationSender) sendAccountRequestRemove(ctx context.Context,
-	aclNotificationRecord *aclNotificationRecord,
-	notificationId string,
-) error {
-	var name, iconCid string
-	profile := n.identityService.WaitProfile(ctx, aclNotificationRecord.record.Identity.Account())
-	if profile != nil {
-		name = profile.Name
-		iconCid = profile.IconCid
-	}
-	err := n.notificationService.CreateAndSend(&model.Notification{
-		Id:      notificationId,
-		IsLocal: false,
-		Payload: &model.NotificationPayloadOfRequestToLeave{RequestToLeave: &model.NotificationRequestToLeave{
-			SpaceId:      aclNotificationRecord.spaceId,
-			Identity:     aclNotificationRecord.record.Identity.Account(),
-			IdentityName: name,
-			IdentityIcon: iconCid,
-			SpaceName:    aclNotificationRecord.spaceName,
-		}},
-		Space:     aclNotificationRecord.spaceId,
-		AclHeadId: aclNotificationRecord.aclId,
 	})
 	if err != nil {
 		return err

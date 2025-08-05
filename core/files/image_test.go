@@ -14,7 +14,6 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/mill"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/storage"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 func TestGetImageForWidth(t *testing.T) {
@@ -27,8 +26,10 @@ func TestGetImageForWidth(t *testing.T) {
 	}
 	ctx := context.Background()
 
-	img, err := fx.ImageByHash(ctx, fullId)
+	variants, err := fx.GetFileVariants(ctx, fullId, res.EncryptionKeys.EncryptionKeys)
 	require.NoError(t, err)
+
+	img := NewImage(fx, fullId, variants)
 
 	for _, testCase := range []struct {
 		name           string
@@ -50,11 +51,6 @@ func TestGetImageForWidth(t *testing.T) {
 			requestedWidth: 320,
 			expectedWidth:  320,
 		},
-		{
-			name:           "thumbnail",
-			requestedWidth: 100,
-			expectedWidth:  100,
-		},
 	} {
 		t.Run(testCase.name, func(t *testing.T) {
 			file, err := img.GetFileForWidth(testCase.requestedWidth)
@@ -67,11 +63,11 @@ func TestGetImageForWidth(t *testing.T) {
 
 func assertWidth(t *testing.T, file File, width int64) {
 	require.NotNil(t, file)
-	require.NotNil(t, file.Info().GetMeta())
+	require.NotNil(t, file.Meta())
 
-	meta := file.Info().GetMeta()
+	meta := file.Meta()
 
-	assert.Equal(t, width, pbtypes.GetInt64(meta, "width"))
+	assert.Equal(t, width, meta.Width)
 }
 
 func TestImageDetails(t *testing.T) {
@@ -79,9 +75,12 @@ func TestImageDetails(t *testing.T) {
 
 	got := testAddImageWithRichExifData(t, fx)
 
+	fullId := domain.FullFileId{SpaceId: spaceId, FileId: got.FileId}
 	ctx := context.Background()
-	image, err := fx.ImageByHash(ctx, domain.FullFileId{SpaceId: spaceId, FileId: got.FileId})
+	variants, err := fx.GetFileVariants(ctx, fullId, got.EncryptionKeys.EncryptionKeys)
 	require.NoError(t, err)
+
+	image := NewImage(fx, fullId, variants)
 
 	details, err := image.Details(ctx)
 	require.NoError(t, err)
@@ -100,7 +99,7 @@ func TestImageDetails(t *testing.T) {
 		{key: bundle.RelationKeyName, value: domain.String("myFile")},
 		{key: bundle.RelationKeyFileExt, value: domain.String("jpg")},
 		{key: bundle.RelationKeyFileMimeType, value: domain.String("image/jpeg")},
-		{key: bundle.RelationKeySizeInBytes, value: domain.Int64(5480)},
+		{key: bundle.RelationKeySizeInBytes, value: domain.Int64(7958)},
 		{key: bundle.RelationKeyCreatedDate, value: domain.Int64(createdDate.Unix())},
 		{key: bundle.RelationKeyCamera, value: domain.String("Canon EOS 40D")},
 		{key: bundle.RelationKeyExposure, value: domain.String("1/160")},
@@ -118,9 +117,12 @@ func TestImageGetOriginalFile(t *testing.T) {
 
 	got := testAddImageWithRichExifData(t, fx)
 
+	fullId := domain.FullFileId{SpaceId: spaceId, FileId: got.FileId}
 	ctx := context.Background()
-	image, err := fx.ImageByHash(ctx, domain.FullFileId{SpaceId: spaceId, FileId: got.FileId})
+	variants, err := fx.GetFileVariants(ctx, fullId, got.EncryptionKeys.EncryptionKeys)
 	require.NoError(t, err)
+
+	image := NewImage(fx, fullId, variants)
 
 	file, err := image.GetOriginalFile()
 	require.NoError(t, err)

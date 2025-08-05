@@ -2,6 +2,7 @@ package clientspace
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/anyproto/any-sync/accountservice"
 	"github.com/anyproto/any-sync/commonspace"
@@ -10,6 +11,8 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/object/objectcache"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
+	"github.com/anyproto/anytype-heart/space/clientspace/keyvalueservice"
+	"github.com/anyproto/anytype-heart/space/spacecore/keyvalueobserver"
 	"github.com/anyproto/anytype-heart/space/techspace"
 )
 
@@ -19,16 +22,17 @@ type TechSpace struct {
 }
 
 type TechSpaceDeps struct {
-	CommonSpace     commonspace.Space
-	ObjectFactory   objectcache.ObjectFactory
-	AccountService  accountservice.Service
-	PersonalSpaceId string
-	Indexer         spaceIndexer
-	Installer       bundledObjectsInstaller
-	TechSpace       techspace.TechSpace
+	CommonSpace      commonspace.Space
+	ObjectFactory    objectcache.ObjectFactory
+	AccountService   accountservice.Service
+	PersonalSpaceId  string
+	Indexer          spaceIndexer
+	Installer        bundledObjectsInstaller
+	TechSpace        techspace.TechSpace
+	KeyValueObserver keyvalueobserver.Observer
 }
 
-func NewTechSpace(deps TechSpaceDeps) *TechSpace {
+func NewTechSpace(deps TechSpaceDeps) (*TechSpace, error) {
 	sp := &TechSpace{
 		space: &space{
 			indexer:                deps.Indexer,
@@ -40,8 +44,13 @@ func NewTechSpace(deps TechSpaceDeps) *TechSpace {
 		},
 		TechSpace: deps.TechSpace,
 	}
+	var err error
+	sp.keyValueService, err = keyvalueservice.New(sp.common, deps.KeyValueObserver)
+	if err != nil {
+		return nil, fmt.Errorf("create key value service: %w", err)
+	}
 	sp.Cache = objectcache.New(deps.AccountService, deps.ObjectFactory, deps.PersonalSpaceId, sp)
-	return sp
+	return sp, nil
 }
 
 func (s *TechSpace) Close(ctx context.Context) error {
@@ -64,4 +73,8 @@ func (s *TechSpace) GetTypeIdByKey(ctx context.Context, key domain.TypeKey) (id 
 		return key.BundledURL(), nil
 	}
 	return s.space.GetTypeIdByKey(ctx, key)
+}
+
+func (s *TechSpace) CommonSpace() commonspace.Space {
+	return s.space.CommonSpace()
 }

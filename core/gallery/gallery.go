@@ -1,38 +1,81 @@
 package gallery
 
 import (
+	"bytes"
 	_ "embed"
-	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
+	"os"
+	"path/filepath"
 	"regexp"
 	"strings"
 	"time"
 
+	"github.com/anyproto/any-sync/app"
+	"github.com/anyproto/any-sync/app/logger"
+	"github.com/gogo/protobuf/jsonpb"
+	"github.com/gogo/protobuf/proto"
 	strip "github.com/grokify/html-strip-tags-go"
 	"github.com/xeipuuv/gojsonschema"
+	"go.uber.org/zap"
 	"golang.org/x/net/html"
 
+	"github.com/anyproto/anytype-heart/core/wallet"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/uri"
 )
 
 const (
-	timeout = time.Second * 30
+	CName = "gallery-service"
 
-	indexURI = "https://tools.gallery.any.coop/app-index.json"
+	defaultTimeout    = time.Second * 5
+	indexUrl          = "https://tools.gallery.any.coop/app-index.json"
+	ifNoneMatchHeader = "If-None-Match"
+	eTagHeader        = "ETag"
+
+	cacheGalleryDir = "cache/gallery"
+	indexFileName   = "index.pb"
+	eTagFileName    = "index.pb.etag"
 )
-
-type schemaResponse struct {
-	Schema string `json:"$schema"`
-}
 
 var (
+	log = logger.NewNamed(CName)
+
 	ErrUnmarshalJson = fmt.Errorf("failed to unmarshall json")
 	ErrDownloadIndex = fmt.Errorf("failed to download gallery index")
+	ErrNotModified   = fmt.Errorf("resource is not modified")
 )
+
+type Service interface {
+	app.Component
+	GetManifest(url string) (*model.ManifestInfo, error)
+	GetGalleryIndex() (*pb.RpcGalleryDownloadIndexResponse, error)
+}
+
+func New() Service {
+	return &service{}
+}
+
+type service struct {
+	indexPath, versionPath string
+}
+
+func (s *service) Name() string {
+	return CName
+}
+
+func (s *service) Init(a *app.App) error {
+	path := filepath.Join(app.MustComponent[wallet.Wallet](a).RootPath(), cacheGalleryDir)
+	if err := os.MkdirAll(path, 0777); err != nil && !os.IsExist(err) {
+		return fmt.Errorf("failed to init gallery index directory: %w", err)
+	}
+	s.indexPath = filepath.Join(path, indexFileName)
+	s.versionPath = filepath.Join(path, eTagFileName)
+	return nil
+}
 
 // whitelist maps allowed hosts to regular expressions of URL paths
 var whitelist = map[string]*regexp.Regexp{
@@ -45,35 +88,37 @@ var whitelist = map[string]*regexp.Regexp{
 	"storage.gallery.any.coop":  regexp.MustCompile(`.*`),
 }
 
-func DownloadManifest(url string, checkWhitelist bool) (info *model.ManifestInfo, err error) {
+func (s *service) GetManifest(url string) (info *model.ManifestInfo, err error) {
+	return s.getManifest(url, true, true)
+}
+
+func (s *service) getManifest(url string, checkWhitelist, validateSchema bool) (info *model.ManifestInfo, err error) {
 	if err = uri.ValidateURI(url); err != nil {
 		return nil, fmt.Errorf("provided URL is not valid: %w", err)
 	}
 	if checkWhitelist && !IsInWhitelist(url) {
-		return nil, fmt.Errorf("URL '%s' is not in whitelist", url)
+		return nil, fmt.Errorf("URL is not in whitelist")
 	}
-	raw, err := getRawJson(url)
+	raw, _, err := getRawJson(url, "", defaultTimeout)
 	if err != nil {
 		return nil, err
 	}
-	schemaResp := schemaResponse{}
-	err = json.Unmarshal(raw, &schemaResp)
-	if err != nil {
-		return nil, fmt.Errorf("failed to unmarshall json to get schema: %w", err)
-	}
 
-	err = json.Unmarshal(raw, &info)
+	info = &model.ManifestInfo{}
+	err = jsonpb.Unmarshal(bytes.NewReader(raw), info)
 	if err != nil {
 		return nil, fmt.Errorf("failed to unmarshall json to get manifest: %w", err)
 	}
 
-	if err = validateSchema(schemaResp, info); err != nil {
-		return nil, err
+	if validateSchema {
+		if err = validateManifestSchema(info); err != nil {
+			return nil, err
+		}
 	}
 
 	for _, urlToCheck := range append(info.Screenshots, info.DownloadLink) {
 		if !IsInWhitelist(urlToCheck) {
-			return nil, fmt.Errorf("URL '%s' provided in manifest is not in whitelist", urlToCheck)
+			return nil, fmt.Errorf("URL provided in manifest is not in whitelist")
 		}
 	}
 
@@ -81,19 +126,86 @@ func DownloadManifest(url string, checkWhitelist bool) (info *model.ManifestInfo
 	return info, nil
 }
 
-func DownloadGalleryIndex() (*pb.RpcGalleryDownloadIndexResponse, error) {
-	raw, err := getRawJson(indexURI)
+func (s *service) GetGalleryIndex() (index *pb.RpcGalleryDownloadIndexResponse, err error) {
+	return s.getGalleryIndex(indexUrl, defaultTimeout)
+}
+
+func (s *service) getGalleryIndex(indexURL string, timeout time.Duration) (index *pb.RpcGalleryDownloadIndexResponse, err error) {
+	localIndex, err := s.readIndex()
 	if err != nil {
-		return nil, fmt.Errorf("%w: %w", ErrDownloadIndex, err)
+		log.Warn("failed to read local index. Need to re-fetch index from remote", zap.Error(err))
 	}
 
-	response := &pb.RpcGalleryDownloadIndexResponse{}
-	err = json.Unmarshal(raw, &response)
+	var currentVersion string
+	if localIndex != nil {
+		currentVersion, err = s.readVersion()
+		if err != nil {
+			log.Warn("failed to read local version. Need to re-fetch version from remote", zap.Error(err))
+		}
+	}
+
+	raw, newVersion, err := getRawJson(indexURL, currentVersion, timeout)
 	if err != nil {
+		if errors.Is(err, ErrNotModified) {
+			return localIndex, nil
+		}
+		if localIndex != nil {
+			log.Warn("failed to download index from remote. Returning local index", zap.Error(err))
+			return localIndex, nil
+		}
+		return nil, err
+	}
+
+	index = &pb.RpcGalleryDownloadIndexResponse{}
+	err = jsonpb.Unmarshal(bytes.NewReader(raw), index)
+	if err != nil {
+		if localIndex != nil {
+			log.Warn("failed to parse remote index. Returning local index", zap.Error(err))
+			return localIndex, nil
+		}
 		return nil, fmt.Errorf("%w to get lists of categories and experiences from gallery index: %w", ErrUnmarshalJson, err)
 	}
 
-	return response, nil
+	s.saveIndexAndVersion(index, newVersion)
+	return index, nil
+}
+
+func (s *service) readIndex() (*pb.RpcGalleryDownloadIndexResponse, error) {
+	rawData, err := os.ReadFile(s.indexPath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read local gallery index: %w", err)
+	}
+
+	index := &pb.RpcGalleryDownloadIndexResponse{}
+	if err = proto.Unmarshal(rawData, index); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal local gallery index: %w", err)
+	}
+	return index, nil
+}
+
+func (s *service) readVersion() (string, error) {
+	rawData, err := os.ReadFile(s.versionPath)
+	if err != nil {
+		return "", fmt.Errorf("failed to read local gallery index version: %w", err)
+	}
+	return string(rawData), nil
+}
+
+func (s *service) saveIndexAndVersion(index *pb.RpcGalleryDownloadIndexResponse, version string) {
+	data, err := proto.Marshal(index)
+	if err != nil {
+		log.Error("failed to marshal local gallery index", zap.Error(err))
+		return
+	}
+
+	if err = os.WriteFile(s.indexPath, data, 0600); err != nil {
+		log.Error("failed to save local gallery index", zap.Error(err))
+		return
+	}
+
+	if err = os.WriteFile(s.versionPath, []byte(version), 0600); err != nil {
+		log.Error("failed to save local gallery version", zap.Error(err))
+	}
 }
 
 func IsInWhitelist(url string) bool {
@@ -112,39 +224,48 @@ func IsInWhitelist(url string) bool {
 	return false
 }
 
-func getRawJson(url string) ([]byte, error) {
+func getRawJson(url string, currentVersion string, timeout time.Duration) (body []byte, newVersion string, err error) {
 	client := http.Client{Timeout: timeout}
 	req, err := http.NewRequest(http.MethodGet, url, nil)
 	if err != nil {
-		return nil, err
+		return nil, "", err
+	}
+
+	if currentVersion != "" {
+		req.Header.Add(ifNoneMatchHeader, currentVersion)
 	}
 	req.Close = true
 	res, err := client.Do(req)
 	if err != nil {
-		return nil, err
+		return nil, "", err
 	}
 
 	if res.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("failed to get json file. Status: %s", res.Status)
+		if res.StatusCode == http.StatusNotModified {
+			return nil, currentVersion, ErrNotModified
+		}
+		return nil, "", fmt.Errorf("failed to get json file. Status: %s", res.Status)
 	}
+
+	newVersion = res.Header.Get(eTagHeader)
 
 	if res.Body != nil {
 		defer res.Body.Close()
 	}
 
-	body, err := io.ReadAll(res.Body)
+	body, err = io.ReadAll(res.Body)
 	if err != nil {
-		return nil, err
+		return nil, "", err
 	}
-	return body, nil
+	return body, newVersion, nil
 }
 
-func validateSchema(schemaResp schemaResponse, info *model.ManifestInfo) (err error) {
-	if schemaResp.Schema == "" {
+func validateManifestSchema(info *model.ManifestInfo) (err error) {
+	if info.Schema == "" {
 		return
 	}
 	var result *gojsonschema.Result
-	schemaLoader := gojsonschema.NewReferenceLoader(schemaResp.Schema)
+	schemaLoader := gojsonschema.NewReferenceLoader(info.Schema)
 	jsonLoader := gojsonschema.NewGoLoader(info)
 	result, err = gojsonschema.Validate(schemaLoader, jsonLoader)
 	if err != nil {
@@ -153,7 +274,6 @@ func validateSchema(schemaResp schemaResponse, info *model.ManifestInfo) (err er
 	if !result.Valid() {
 		return buildResultError(result)
 	}
-	info.Schema = schemaResp.Schema
 	return nil
 }
 

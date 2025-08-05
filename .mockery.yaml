@@ -19,8 +19,10 @@ packages:
   github.com/anyproto/anytype-heart/core/block/cache:
     interfaces:
       ObjectGetter:
+      ObjectWaitGetter:
       CachedObjectGetter:
       ObjectGetterComponent:
+      ObjectWaitGetterComponent:
   github.com/anyproto/anytype-heart/pkg/lib/core:
     interfaces:
       Service:
@@ -31,6 +33,9 @@ packages:
           dir: "{{.InterfaceDir}}"
           outpkg: "{{.PackageName}}"
           inpackage: true
+  github.com/anyproto/anytype-heart/core/block/editor/fileobject:
+    interfaces:
+      FileObject:
   github.com/anyproto/anytype-heart/core/block/editor/smartblock:
     interfaces:
       Indexer:
@@ -52,10 +57,13 @@ packages:
   github.com/anyproto/anytype-heart/core/block/restriction:
     interfaces:
       Service:
-  github.com/anyproto/anytype-heart/core/filestorage/filesync:
+  github.com/anyproto/anytype-heart/core/files/filesync:
     interfaces:
       FileSync:
-  github.com/anyproto/anytype-heart/core/filestorage/rpcstore:
+  github.com/anyproto/anytype-heart/core/acl:
+    interfaces:
+      participantRemover:
+  github.com/anyproto/anytype-heart/core/files/filestorage/rpcstore:
     interfaces:
       Service:
       RpcStore:
@@ -121,9 +129,6 @@ packages:
   github.com/anyproto/anytype-heart/space/internal/components/participantwatcher:
     interfaces:
       ParticipantWatcher:
-  github.com/anyproto/anytype-heart/space/internal/components/invitemigrator:
-    interfaces:
-      InviteMigrator:
   github.com/anyproto/anytype-heart/space/internal/components/aclnotifications:
     interfaces:
       AclNotification:
@@ -167,6 +172,9 @@ packages:
   github.com/anyproto/anytype-heart/core/payments/cache:
     interfaces:
       CacheService:
+  github.com/anyproto/anytype-heart/core/payments/emailcollector:
+    interfaces:
+      EmailCollector:
   github.com/anyproto/anytype-heart/core/block:
     interfaces:
       ObjectGetter:
@@ -177,7 +185,7 @@ packages:
   github.com/anyproto/anytype-heart/core/block/object/idresolver:
     interfaces:
       Resolver:
-  github.com/anyproto/anytype-heart/core/filestorage:
+  github.com/anyproto/anytype-heart/core/files/filestorage:
     interfaces:
       FileStorage:
   github.com/anyproto/anytype-heart/util/linkpreview:
@@ -192,6 +200,7 @@ packages:
   github.com/anyproto/anytype-heart/core/device:
     interfaces:
       NetworkState:
+      openedObjectRefresher:
   github.com/anyproto/anytype-heart/space/spacecore/localdiscovery:
     interfaces:
       Notifier:
@@ -237,11 +246,21 @@ packages:
   github.com/anyproto/anytype-heart/core/identity:
     interfaces:
       Service:
-  github.com/anyproto/anytype-heart/core/api/apicore:
+  github.com/anyproto/anytype-heart/core/api/core:
     interfaces:
       AccountService:
-      ExportService:
+      EventService:
       ClientCommands:
   github.com/anyproto/anytype-heart/core/block/template:
     interfaces:
       Service:
+  github.com/anyproto/anytype-heart/core/subscription/crossspacesub:
+    interfaces:
+      Service:
+  github.com/anyproto/anytype-heart/core/block/editor/chatobject:
+    interfaces:
+      StoreObject:
+  github.com/anyproto/anytype-heart/core/block/chats/chatsubscription:
+    interfaces:
+      Service:
+      Manager:

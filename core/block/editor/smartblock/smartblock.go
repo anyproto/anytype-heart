@@ -34,7 +34,6 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore/filestore"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/spaceindex"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
@@ -52,6 +51,7 @@ type ApplyFlag int
 var (
 	ErrSimpleBlockNotFound                         = errors.New("simple block not found")
 	ErrCantInitExistingSmartblockWithNonEmptyState = errors.New("can't init existing smartblock with non-empty state")
+	ErrApplyOnEmptyTreeDisallowed                  = errors.New("apply on empty tree disallowed")
 )
 
 const (
@@ -64,6 +64,7 @@ const (
 	KeepInternalFlags
 	IgnoreNoPermissions
 	NotPushChanges // Used only for read-only actions like InitObject or OpenObject
+	AllowApplyWithEmptyTree
 )
 
 type Hook int
@@ -96,8 +97,6 @@ var log = logging.Logger("anytype-mw-smartblock")
 func New(
 	space Space,
 	currentParticipantId string,
-	fileStore filestore.FileStore,
-	restrictionService restriction.Service,
 	spaceIndex spaceindex.Store,
 	objectStore objectstore.ObjectStore,
 	indexer Indexer,
@@ -112,14 +111,12 @@ func New(
 		Locker:               &sync.Mutex{},
 		sessions:             map[string]session.Context{},
 
-		fileStore:          fileStore,
-		restrictionService: restrictionService,
-		spaceIndex:         spaceIndex,
-		indexer:            indexer,
-		eventSender:        eventSender,
-		objectStore:        objectStore,
-		spaceIdResolver:    spaceIdResolver,
-		lastDepDetails:     map[string]*domain.Details{},
+		spaceIndex:      spaceIndex,
+		indexer:         indexer,
+		eventSender:     eventSender,
+		objectStore:     objectStore,
+		spaceIdResolver: spaceIdResolver,
+		lastDepDetails:  map[string]*domain.Details{},
 	}
 	return s
 }
@@ -140,6 +137,7 @@ type Space interface {
 	TryRemove(objectId string) (bool, error)
 
 	StoredIds() []string
+	RefreshObjects(objectIds []string) (err error)
 }
 
 type SmartBlock interface {
@@ -203,7 +201,6 @@ type InitContext struct {
 	RequiredInternalRelationKeys []domain.RelationKey // bundled relations that MUST be present in the state
 	State                        *state.State
 	Relations                    []*model.Relation
-	Restriction                  restriction.Service
 	ObjectStore                  objectstore.ObjectStore
 	SpaceID                      string
 	BuildOpts                    source.BuildOptions
@@ -250,13 +247,11 @@ type smartBlock struct {
 	space Space
 
 	// Deps
-	fileStore          filestore.FileStore
-	restrictionService restriction.Service
-	spaceIndex         spaceindex.Store
-	objectStore        objectstore.ObjectStore
-	indexer            Indexer
-	eventSender        event.Sender
-	spaceIdResolver    idresolver.Resolver
+	spaceIndex      spaceindex.Store
+	objectStore     objectstore.ObjectStore
+	indexer         Indexer
+	eventSender     event.Sender
+	spaceIdResolver idresolver.Resolver
 }
 
 func (sb *smartBlock) SetLocker(locker Locker) {
@@ -327,7 +322,7 @@ func (sb *smartBlock) Init(ctx *InitContext) (err error) {
 		sb.ObjectTree = provider.Tree()
 	}
 	sb.undo = undo.NewHistory(0)
-	sb.restrictions = sb.restrictionService.GetRestrictions(sb)
+	sb.restrictions = restriction.GetRestrictions(sb)
 	if ctx.State != nil {
 		// need to store file keys in case we have some new files in the state
 		sb.storeFileKeys(ctx.State)
@@ -390,7 +385,7 @@ func (sb *smartBlock) sendObjectCloseEvent(_ ApplyInfo) error {
 
 // updateRestrictions refetch restrictions from restriction service and update them in the smartblock
 func (sb *smartBlock) updateRestrictions() {
-	r := sb.restrictionService.GetRestrictions(sb)
+	r := restriction.GetRestrictions(sb)
 	if sb.restrictions.Equal(r) {
 		return
 	}
@@ -635,15 +630,16 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 		return domain.ErrObjectIsDeleted
 	}
 	var (
-		sendEvent           = true
-		addHistory          = true
-		doSnapshot          = false
-		checkRestrictions   = true
-		hooks               = true
-		skipIfNoChanges     = false
-		keepInternalFlags   = false
-		ignoreNoPermissions = false
-		notPushChanges      = false
+		sendEvent               = true
+		addHistory              = true
+		doSnapshot              = false
+		checkRestrictions       = true
+		hooks                   = true
+		skipIfNoChanges         = false
+		keepInternalFlags       = false
+		ignoreNoPermissions     = false
+		notPushChanges          = false
+		allowApplyWithEmptyTree = false
 	)
 	for _, f := range flags {
 		switch f {
@@ -665,7 +661,19 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 			ignoreNoPermissions = true
 		case NotPushChanges:
 			notPushChanges = true
+		case AllowApplyWithEmptyTree:
+			allowApplyWithEmptyTree = true
 		}
+	}
+	if sb.ObjectTree != nil &&
+		len(sb.ObjectTree.Heads()) == 1 &&
+		sb.ObjectTree.Heads()[0] == sb.ObjectTree.Id() &&
+		!allowApplyWithEmptyTree &&
+		sb.Type() != smartblock.SmartBlockTypeChatDerivedObject &&
+		sb.Type() != smartblock.SmartBlockTypeAccountObject {
+		// protection for applying migrations on empty tree
+		log.With("sbType", sb.Type().String(), "objectId", sb.Id()).Warnf("apply on empty tree discarded")
+		return ErrApplyOnEmptyTreeDisallowed
 	}
 
 	// Inject derived details to make sure we have consistent state.
@@ -1168,7 +1176,7 @@ func (sb *smartBlock) storeFileKeys(doc state.Doc) {
 			EncryptionKeys: k.Keys,
 		}
 	}
-	if err := sb.fileStore.AddFileKeys(fileKeys...); err != nil {
+	if err := sb.objectStore.AddFileKeys(fileKeys...); err != nil {
 		log.Warnf("can't store file keys: %v", err)
 	}
 }

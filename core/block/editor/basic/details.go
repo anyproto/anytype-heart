@@ -3,6 +3,7 @@ package basic
 import (
 	"errors"
 	"fmt"
+	"slices"
 	"strings"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
@@ -350,12 +351,28 @@ func (bs *basic) SetObjectTypesInState(s *state.State, objectTypeKeys []domain.T
 
 	s.SetObjectTypeKeys(objectTypeKeys)
 	removeInternalFlags(s)
+	removeLayoutSettings(s)
 
 	toLayout, err := bs.getLayoutForType(objectTypeKeys[0])
 	if err != nil {
 		return fmt.Errorf("get layout for type %s: %w", objectTypeKeys[0], err)
 	}
 	return bs.SetLayoutInState(s, toLayout, ignoreRestrictions)
+}
+
+func removeLayoutSettings(s *state.State) {
+	featuredRelations := s.Details().GetStringList(bundle.RelationKeyFeaturedRelations)
+	newFRValue := domain.Null()
+	if slices.Contains(featuredRelations, bundle.RelationKeyDescription.String()) {
+		newFRValue = domain.StringList([]string{bundle.RelationKeyDescription.String()})
+	}
+	updates := []domain.Detail{
+		{Key: bundle.RelationKeyLayout, Value: domain.Null()},
+		{Key: bundle.RelationKeyLayoutAlign, Value: domain.Null()},
+		{Key: bundle.RelationKeyFeaturedRelations, Value: newFRValue},
+	}
+	newDetails := applyDetailUpdates(s.Details(), updates)
+	s.SetDetails(newDetails)
 }
 
 func (bs *basic) getLayoutForType(objectTypeKey domain.TypeKey) (model.ObjectTypeLayout, error) {
@@ -373,6 +390,9 @@ func (bs *basic) getLayoutForType(objectTypeKey domain.TypeKey) (model.ObjectTyp
 
 func (bs *basic) SetLayoutInState(s *state.State, toLayout model.ObjectTypeLayout, ignoreRestriction bool) (err error) {
 	fromLayout, _ := s.Layout()
+	if fromLayout == toLayout {
+		return nil
+	}
 
 	if !ignoreRestriction {
 		if err = bs.Restrictions().Object.Check(model.Restrictions_LayoutChange); errors.Is(err, restriction.ErrRestricted) {

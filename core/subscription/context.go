@@ -375,14 +375,14 @@ func (ctx *opCtx) reset() {
 }
 
 type EventMatcher struct {
-	OnAdd      func(*pb.EventObjectSubscriptionAdd)
-	OnRemove   func(*pb.EventObjectSubscriptionRemove)
-	OnPosition func(*pb.EventObjectSubscriptionPosition)
-	OnSet      func(*pb.EventObjectDetailsSet)
-	OnUnset    func(*pb.EventObjectDetailsUnset)
-	OnAmend    func(*pb.EventObjectDetailsAmend)
-	OnCounters func(*pb.EventObjectSubscriptionCounters)
-	OnGroups   func(*pb.EventObjectSubscriptionGroups)
+	OnAdd      func(spaceId string, msg *pb.EventObjectSubscriptionAdd)
+	OnRemove   func(spaceId string, msg *pb.EventObjectSubscriptionRemove)
+	OnPosition func(spaceId string, msg *pb.EventObjectSubscriptionPosition)
+	OnSet      func(spaceId string, msg *pb.EventObjectDetailsSet)
+	OnUnset    func(spaceId string, msg *pb.EventObjectDetailsUnset)
+	OnAmend    func(spaceId string, msg *pb.EventObjectDetailsAmend)
+	OnCounters func(spaceId string, msg *pb.EventObjectSubscriptionCounters)
+	OnGroups   func(spaceId string, msg *pb.EventObjectSubscriptionGroups)
 }
 
 func (m EventMatcher) Match(msg *pb.EventMessage) {
@@ -392,35 +392,35 @@ func (m EventMatcher) Match(msg *pb.EventMessage) {
 	switch v := msg.Value.(type) {
 	case *pb.EventMessageValueOfSubscriptionAdd:
 		if m.OnAdd != nil {
-			m.OnAdd(v.SubscriptionAdd)
+			m.OnAdd(msg.SpaceId, v.SubscriptionAdd)
 		}
 	case *pb.EventMessageValueOfSubscriptionRemove:
 		if m.OnRemove != nil {
-			m.OnRemove(v.SubscriptionRemove)
+			m.OnRemove(msg.SpaceId, v.SubscriptionRemove)
 		}
 	case *pb.EventMessageValueOfSubscriptionPosition:
 		if m.OnPosition != nil {
-			m.OnPosition(v.SubscriptionPosition)
+			m.OnPosition(msg.SpaceId, v.SubscriptionPosition)
 		}
 	case *pb.EventMessageValueOfObjectDetailsSet:
 		if m.OnSet != nil {
-			m.OnSet(v.ObjectDetailsSet)
+			m.OnSet(msg.SpaceId, v.ObjectDetailsSet)
 		}
 	case *pb.EventMessageValueOfObjectDetailsUnset:
 		if m.OnUnset != nil {
-			m.OnUnset(v.ObjectDetailsUnset)
+			m.OnUnset(msg.SpaceId, v.ObjectDetailsUnset)
 		}
 	case *pb.EventMessageValueOfObjectDetailsAmend:
 		if m.OnAmend != nil {
-			m.OnAmend(v.ObjectDetailsAmend)
+			m.OnAmend(msg.SpaceId, v.ObjectDetailsAmend)
 		}
 	case *pb.EventMessageValueOfSubscriptionCounters:
 		if m.OnCounters != nil {
-			m.OnCounters(v.SubscriptionCounters)
+			m.OnCounters(msg.SpaceId, v.SubscriptionCounters)
 		}
 	case *pb.EventMessageValueOfSubscriptionGroups:
 		if m.OnGroups != nil {
-			m.OnGroups(v.SubscriptionGroups)
+			m.OnGroups(msg.SpaceId, v.SubscriptionGroups)
 		}
 	}
 }

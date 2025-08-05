@@ -25,6 +25,7 @@ func RelationFromDetails(det *domain.Details) *Relation {
 			Description:      det.GetString(bundle.RelationKeyDescription),
 			Creator:          det.GetString(bundle.RelationKeyCreator),
 			Revision:         det.GetInt64(bundle.RelationKeyRevision),
+			IncludeTime:      det.GetBool(bundle.RelationKeyRelationFormatIncludeTime),
 		},
 	}
 
@@ -59,8 +60,9 @@ func (r *Relation) ToDetails() *domain.Details {
 		bundle.RelationKeyRelationReadonlyValue:     domain.Bool(r.GetReadOnly()),
 		bundle.RelationKeyType:                      domain.String(bundle.TypeKeyRelation.BundledURL()),
 		// TODO Is it ok?
-		bundle.RelationKeyUniqueKey: domain.String(domain.RelationKey(r.GetKey()).URL()),
-		bundle.RelationKeyRevision:  domain.Int64(r.GetRevision()),
+		bundle.RelationKeyUniqueKey:                 domain.String(domain.RelationKey(r.GetKey()).URL()),
+		bundle.RelationKeyRevision:                  domain.Int64(r.GetRevision()),
+		bundle.RelationKeyRelationFormatIncludeTime: domain.Bool(r.GetIncludeTime()),
 	})
 }
 

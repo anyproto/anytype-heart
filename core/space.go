@@ -9,6 +9,7 @@ import (
 	"github.com/ipfs/go-cid"
 
 	"github.com/anyproto/anytype-heart/core/acl"
+	"github.com/anyproto/anytype-heart/core/block"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/inviteservice"
 	"github.com/anyproto/anytype-heart/core/spaceview"
@@ -58,12 +59,26 @@ func (mw *Middleware) SpaceMakeShareable(cctx context.Context, req *pb.RpcSpaceM
 			},
 		}
 	}
+	err = mw.doBlockService(func(bs *block.Service) (err error) {
+		err = bs.SpaceInitChat(cctx, req.SpaceId)
+		return err
+	})
+
+	if err != nil {
+		return &pb.RpcSpaceMakeShareableResponse{
+			Error: &pb.RpcSpaceMakeShareableResponseError{
+				Code:        pb.RpcSpaceMakeShareableResponseError_UNKNOWN_ERROR,
+				Description: getErrorDescription(err),
+			},
+		}
+	}
+
 	return &pb.RpcSpaceMakeShareableResponse{&pb.RpcSpaceMakeShareableResponseError{}}
 }
 
 func (mw *Middleware) SpaceInviteGenerate(cctx context.Context, req *pb.RpcSpaceInviteGenerateRequest) *pb.RpcSpaceInviteGenerateResponse {
 	aclService := mustService[acl.AclService](mw)
-	inviteInfo, err := aclService.GenerateInvite(cctx, req.SpaceId)
+	inviteInfo, err := aclService.GenerateInvite(cctx, req.SpaceId, req.InviteType, req.Permissions)
 	if err != nil {
 		code := mapErrorCode(err,
 			errToCode(space.ErrSpaceDeleted, pb.RpcSpaceInviteGenerateResponseError_SPACE_IS_DELETED),
@@ -83,7 +98,30 @@ func (mw *Middleware) SpaceInviteGenerate(cctx context.Context, req *pb.RpcSpace
 	return &pb.RpcSpaceInviteGenerateResponse{
 		InviteCid:     inviteInfo.InviteFileCid,
 		InviteFileKey: inviteInfo.InviteFileKey,
+		// nolint: gosec
+		InviteType:  model.InviteType(inviteInfo.InviteType),
+		Permissions: domain.ConvertAclPermissions(inviteInfo.Permissions),
 	}
+}
+
+func (mw *Middleware) SpaceInviteChange(cctx context.Context, req *pb.RpcSpaceInviteChangeRequest) *pb.RpcSpaceInviteChangeResponse {
+	aclService := mustService[acl.AclService](mw)
+	err := aclService.ChangeInvite(cctx, req.SpaceId, req.Permissions)
+	if err != nil {
+		code := mapErrorCode(err,
+			errToCode(space.ErrSpaceDeleted, pb.RpcSpaceInviteChangeResponseError_SPACE_IS_DELETED),
+			errToCode(space.ErrSpaceNotExists, pb.RpcSpaceInviteChangeResponseError_NO_SUCH_SPACE),
+			errToCode(acl.ErrPersonalSpace, pb.RpcSpaceInviteChangeResponseError_BAD_INPUT),
+			errToCode(acl.ErrAclRequestFailed, pb.RpcSpaceInviteChangeResponseError_REQUEST_FAILED),
+		)
+		return &pb.RpcSpaceInviteChangeResponse{
+			Error: &pb.RpcSpaceInviteChangeResponseError{
+				Code:        code,
+				Description: getErrorDescription(err),
+			},
+		}
+	}
+	return &pb.RpcSpaceInviteChangeResponse{}
 }
 
 func (mw *Middleware) SpaceInviteGetCurrent(cctx context.Context, req *pb.RpcSpaceInviteGetCurrentRequest) *pb.RpcSpaceInviteGetCurrentResponse {
@@ -104,6 +142,9 @@ func (mw *Middleware) SpaceInviteGetCurrent(cctx context.Context, req *pb.RpcSpa
 	return &pb.RpcSpaceInviteGetCurrentResponse{
 		InviteCid:     inviteInfo.InviteFileCid,
 		InviteFileKey: inviteInfo.InviteFileKey,
+		// nolint: gosec
+		InviteType:  model.InviteType(inviteInfo.InviteType),
+		Permissions: domain.ConvertAclPermissions(inviteInfo.Permissions),
 	}
 }
 
@@ -168,6 +209,8 @@ func (mw *Middleware) SpaceInviteView(cctx context.Context, req *pb.RpcSpaceInvi
 		SpaceName:         inviteView.SpaceName,
 		SpaceIconCid:      inviteView.SpaceIconCid,
 		IsGuestUserInvite: inviteView.IsGuestUserInvite(),
+		// nolint: gosec
+		InviteType: model.InviteType(inviteView.InviteType),
 	}
 }
 
@@ -339,19 +382,19 @@ func (mw *Middleware) SpaceLeaveApprove(cctx context.Context, req *pb.RpcSpaceLe
 }
 
 func (mw *Middleware) SpaceSetOrder(_ context.Context, request *pb.RpcSpaceSetOrderRequest) *pb.RpcSpaceSetOrderResponse {
-	response := func(code pb.RpcSpaceSetOrderResponseErrorCode, err error) *pb.RpcSpaceSetOrderResponse {
-		m := &pb.RpcSpaceSetOrderResponse{Error: &pb.RpcSpaceSetOrderResponseError{Code: code}}
+	response := func(code pb.RpcSpaceSetOrderResponseErrorCode, err error, finalOrder []string) *pb.RpcSpaceSetOrderResponse {
+		m := &pb.RpcSpaceSetOrderResponse{Error: &pb.RpcSpaceSetOrderResponseError{Code: code}, SpaceViewOrder: finalOrder}
 		if err != nil {
 			m.Error.Description = getErrorDescription(err)
 		}
 		return m
 	}
 	orderService := app.MustComponent[spaceview.OrderSetter](mw.applicationService.GetApp())
-	err := orderService.SetOrder(request.SpaceViewId, request.GetSpaceViewOrder())
+	finalOrder, err := orderService.SetOrder(request.GetSpaceViewOrder())
 	if err != nil {
-		return response(pb.RpcSpaceSetOrderResponseError_UNKNOWN_ERROR, err)
+		return response(pb.RpcSpaceSetOrderResponseError_UNKNOWN_ERROR, err, nil)
 	}
-	return response(pb.RpcSpaceSetOrderResponseError_NULL, nil)
+	return response(pb.RpcSpaceSetOrderResponseError_NULL, nil, finalOrder)
 }
 
 func (mw *Middleware) SpaceUnsetOrder(_ context.Context, request *pb.RpcSpaceUnsetOrderRequest) *pb.RpcSpaceUnsetOrderResponse {

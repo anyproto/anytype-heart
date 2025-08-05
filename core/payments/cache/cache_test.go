@@ -2,15 +2,17 @@ package cache
 
 import (
 	"context"
+	"path/filepath"
 	"testing"
 	"time"
 
+	anystore "github.com/anyproto/any-store"
 	"github.com/anyproto/any-sync/app"
-	"github.com/dgraph-io/badger/v4"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/anyproto/anytype-heart/pb"
+	"github.com/anyproto/anytype-heart/pkg/lib/datastore/anystoreprovider"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 
 	psp "github.com/anyproto/any-sync/paymentservice/paymentserviceproto"
@@ -26,15 +28,29 @@ type fixture struct {
 	*cacheservice
 }
 
+func newTestAnystore(t *testing.T) anystore.DB {
+	db, err := anystore.Open(context.Background(), filepath.Join(t.TempDir(), "test.db"), nil)
+	require.NoError(t, err)
+	t.Cleanup(func() {
+		require.NoError(t, db.Close())
+	})
+	return db
+}
+
 func newFixture(t *testing.T) *fixture {
+	testApp := new(app.App)
 	fx := &fixture{
-		a:            new(app.App),
+		a:            testApp,
 		cacheservice: New().(*cacheservice),
 	}
 
-	db, err := badger.Open(badger.DefaultOptions("").WithInMemory(true))
+	dbProvider, err := anystoreprovider.NewInPath(t.TempDir())
 	require.NoError(t, err)
-	fx.db = db
+
+	testApp.Register(dbProvider)
+
+	err = fx.Init(testApp)
+	require.NoError(t, err)
 
 	// fx.a.Register(fx.ts)
 

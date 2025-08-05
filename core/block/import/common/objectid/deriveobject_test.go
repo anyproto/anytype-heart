@@ -73,8 +73,9 @@ func TestDerivedObject_GetIDAndPayload(t *testing.T) {
 			Snapshot: &common.SnapshotModel{
 				Data: &common.StateSnapshot{
 					Details: domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
-						bundle.RelationKeyName:           domain.String("name"),
+						bundle.RelationKeyName:           domain.String("IMPORTED NAME"),
 						bundle.RelationKeyRelationFormat: domain.Int64(int64(model.RelationFormat_number)),
+						bundle.RelationKeyRelationKey:    domain.String(bundle.RelationKeyName.String()),
 					}),
 				},
 				SbType: coresb.SmartBlockTypeRelation,
@@ -88,6 +89,7 @@ func TestDerivedObject_GetIDAndPayload(t *testing.T) {
 				bundle.RelationKeyUniqueKey:      domain.String(uniqueKey.Marshal()),
 				bundle.RelationKeyId:             domain.String("oldId"),
 				bundle.RelationKeyName:           domain.String("name"),
+				bundle.RelationKeyRelationKey:    domain.String(bundle.RelationKeyName.String()),
 				bundle.RelationKeyRelationFormat: domain.Int64(int64(model.RelationFormat_number)),
 				bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_relation)),
 				bundle.RelationKeySpaceId:        domain.String("spaceId"),

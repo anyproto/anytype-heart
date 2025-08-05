@@ -5,6 +5,7 @@ import (
 
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/app/debugstat"
+	"github.com/anyproto/any-sync/util/crypto"
 
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/space/spaceinfo"
@@ -24,7 +25,7 @@ type SpaceStatus interface {
 	SetLocalStatus(status spaceinfo.LocalStatus) error
 	SetLocalInfo(info spaceinfo.SpaceLocalInfo) (err error)
 	SetAccessType(status spaceinfo.AccessType) (err error)
-	SetAclIsEmpty(isEmpty bool) (err error)
+	SetAclInfo(isAclEmpty bool, pushKey crypto.PrivKey, pushEncryptionKey crypto.SymKey, joinedDate int64) (err error)
 	SetOwner(ownerIdentity string, createdDate int64) (err error)
 	GetSpaceView() techspace.SpaceView
 }
@@ -164,9 +165,9 @@ func (s *spaceStatus) SetAccessType(acc spaceinfo.AccessType) (err error) {
 	})
 }
 
-func (s *spaceStatus) SetAclIsEmpty(isEmpty bool) (err error) {
+func (s *spaceStatus) SetAclInfo(isAclEmpty bool, pushKey crypto.PrivKey, pushEncryptionKey crypto.SymKey, joinedDate int64) (err error) {
 	return doSpaceView(s.spaceView, func(view techspace.SpaceView) error {
-		return view.SetAclIsEmpty(isEmpty)
+		return view.SetAclInfo(isAclEmpty, pushKey, pushEncryptionKey, joinedDate)
 	})
 }
 

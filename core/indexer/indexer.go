@@ -6,7 +6,6 @@ import (
 	"sync"
 
 	"github.com/anyproto/any-sync/app"
-	"github.com/anyproto/any-sync/commonspace/spacestorage"
 	"go.uber.org/zap"
 
 	"github.com/anyproto/anytype-heart/core/anytype/config"
@@ -16,13 +15,12 @@ import (
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore/filestore"
+	"github.com/anyproto/anytype-heart/pkg/lib/datastore/anystoreprovider"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/ftsearch"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space/clientspace"
-	"github.com/anyproto/anytype-heart/space/spacecore/storage"
 )
 
 const (
@@ -32,7 +30,7 @@ const (
 var log = logging.Logger("anytype-doc-indexer")
 
 func New() Indexer {
-	return &indexer{}
+	return new(indexer)
 }
 
 type Indexer interface {
@@ -50,15 +48,16 @@ type Hasher interface {
 }
 
 type indexer struct {
-	store          objectstore.ObjectStore
-	fileStore      filestore.FileStore
-	source         source.Service
-	picker         cache.CachedObjectGetter
-	ftsearch       ftsearch.FTSearch
-	storageService storage.ClientStorage
+	dbProvider           anystoreprovider.Provider
+	store                objectstore.ObjectStore
+	source               source.Service
+	picker               cache.CachedObjectGetter
+	ftsearch             ftsearch.FTSearch
+	ftsearchLastIndexSeq uint64
 
 	runCtx          context.Context
 	runCtxCancel    context.CancelFunc
+	ftQueueStop     context.CancelFunc
 	ftQueueFinished chan struct{}
 	config          *config.Config
 
@@ -76,10 +75,8 @@ type indexer struct {
 
 func (i *indexer) Init(a *app.App) (err error) {
 	i.store = a.MustComponent(objectstore.CName).(objectstore.ObjectStore)
-	i.storageService = a.MustComponent(spacestorage.CName).(storage.ClientStorage)
-	i.source = a.MustComponent(source.CName).(source.Service)
+	i.source = app.MustComponent[source.Service](a)
 	i.btHash = a.MustComponent("builtintemplate").(Hasher)
-	i.fileStore = app.MustComponent[filestore.FileStore](a)
 	i.ftsearch = app.MustComponent[ftsearch.FTSearch](a)
 	i.picker = app.MustComponent[cache.CachedObjectGetter](a)
 	i.runCtx, i.runCtxCancel = context.WithCancel(context.Background())
@@ -87,6 +84,7 @@ func (i *indexer) Init(a *app.App) (err error) {
 	i.config = app.MustComponent[*config.Config](a)
 	i.spaceIndexers = map[string]*spaceIndexer{}
 	i.techSpaceIdProvider = app.MustComponent[objectstore.TechSpaceIdProvider](a)
+	i.dbProvider = app.MustComponent[anystoreprovider.Provider](a)
 	return
 }
 
@@ -98,12 +96,20 @@ func (i *indexer) Run(context.Context) (err error) {
 	return i.StartFullTextIndex()
 }
 
+func (f *indexer) StateChange(state int) {
+	if state == int(domain.CompStateAppClosingInitiated) && f.ftQueueStop != nil {
+		f.ftQueueStop()
+	}
+}
+
 func (i *indexer) StartFullTextIndex() (err error) {
 	if ftErr := i.ftInit(); ftErr != nil {
 		log.Errorf("can't init ft: %v", ftErr)
 	}
 	i.ftQueueFinished = make(chan struct{})
-	go i.ftLoopRoutine()
+	var ftCtx context.Context
+	ftCtx, i.ftQueueStop = context.WithCancel(i.runCtx)
+	go i.ftLoopRoutine(ftCtx)
 	return
 }
 
@@ -137,13 +143,17 @@ func (i *indexer) RemoveAclIndexes(spaceId string) (err error) {
 			},
 		},
 	})
-	if err != nil {
-		return fmt.Errorf("remove acl: %w", err)
-	}
 	err = i.store.ClearFullTextQueue([]string{spaceId})
 	if err != nil {
 		return fmt.Errorf("remove fts: %w", err)
 	}
+
+	// todo: should we use the queue here as well?
+	err = i.ftsearch.BatchDeleteObjects(ids)
+	if err != nil {
+		return fmt.Errorf("remove acl: %w", err)
+	}
+
 	return store.DeleteDetails(i.runCtx, ids)
 }
 

@@ -3,8 +3,10 @@ package spacestatus
 import (
 	"context"
 	"testing"
+	"time"
 
 	"github.com/anyproto/any-sync/app"
+	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
 	"github.com/anyproto/anytype-heart/space/spaceinfo"
@@ -95,12 +97,12 @@ func TestSpaceStatus_GetPersistentStatus(t *testing.T) {
 	require.Equal(t, spaceinfo.AccountStatusActive, fx.GetPersistentStatus())
 }
 
-func TestSpaceStatus_SetAclIsEmpty(t *testing.T) {
+func TestSpaceStatus_SetAclInfo(t *testing.T) {
 	fx := newFixture(t)
 	fx.mockSpaceView.EXPECT().Lock().Return()
 	fx.mockSpaceView.EXPECT().Unlock().Return()
-	fx.mockSpaceView.EXPECT().SetAclIsEmpty(true).Return(nil)
-	require.NoError(t, fx.SetAclIsEmpty(true))
+	fx.mockSpaceView.EXPECT().SetAclInfo(true, nil, nil, mock.Anything).Return(nil)
+	require.NoError(t, fx.SetAclInfo(true, nil, nil, time.Now().Unix()))
 }
 
 func TestSpaceStatus_SetAccessType(t *testing.T) {

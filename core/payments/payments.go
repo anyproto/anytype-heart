@@ -17,9 +17,10 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/anytype/config"
 	"github.com/anyproto/anytype-heart/core/event"
-	"github.com/anyproto/anytype-heart/core/filestorage/filesync"
+	"github.com/anyproto/anytype-heart/core/files/filesync"
 	"github.com/anyproto/anytype-heart/core/nameservice"
 	"github.com/anyproto/anytype-heart/core/payments/cache"
+	"github.com/anyproto/anytype-heart/core/payments/emailcollector"
 	"github.com/anyproto/anytype-heart/core/wallet"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
@@ -116,6 +117,8 @@ type Service interface {
 	FinalizeSubscription(ctx context.Context, req *pb.RpcMembershipFinalizeRequest) (*pb.RpcMembershipFinalizeResponse, error)
 	GetTiers(ctx context.Context, req *pb.RpcMembershipGetTiersRequest) (*pb.RpcMembershipGetTiersResponse, error)
 	VerifyAppStoreReceipt(ctx context.Context, req *pb.RpcMembershipVerifyAppStoreReceiptRequest) (*pb.RpcMembershipVerifyAppStoreReceiptResponse, error)
+	CodeGetInfo(ctx context.Context, req *pb.RpcMembershipCodeGetInfoRequest) (*pb.RpcMembershipCodeGetInfoResponse, error)
+	CodeRedeem(ctx context.Context, req *pb.RpcMembershipCodeRedeemRequest) (*pb.RpcMembershipCodeRedeemResponse, error)
 
 	app.ComponentRunnable
 }
@@ -138,6 +141,7 @@ type service struct {
 
 	multiplayerLimitsUpdater deletioncontroller.DeletionController
 	fileLimitsUpdater        filesync.FileSync
+	emailCollector           emailcollector.EmailCollector
 }
 
 func (s *service) Name() (name string) {
@@ -147,6 +151,7 @@ func (s *service) Name() (name string) {
 func (s *service) Init(a *app.App) (err error) {
 	s.cfg = app.MustComponent[*config.Config](a)
 	s.cache = app.MustComponent[cache.CacheService](a)
+	s.emailCollector = app.MustComponent[emailcollector.EmailCollector](a)
 	s.ppclient = app.MustComponent[ppclient.AnyPpClientService](a)
 	s.wallet = app.MustComponent[wallet.Wallet](a)
 	s.ns = app.MustComponent[nameservice.Service](a)
@@ -171,8 +176,12 @@ func (s *service) Run(ctx context.Context) (err error) {
 }
 
 func (s *service) Close(_ context.Context) (err error) {
-	close(s.closing)
-	s.periodicGetStatus.Close()
+	if s.closing != nil {
+		close(s.closing)
+	}
+	if s.periodicGetStatus != nil {
+		s.periodicGetStatus.Close()
+	}
 	return nil
 }
 
@@ -312,7 +321,7 @@ func (s *service) generateRequest() (*proto.GetSubscriptionRequestSigned, error)
 		// payment node will check if signature matches with this OwnerAnyID
 		OwnerAnyID: ownerID,
 	}
-	payload, err := gsr.Marshal()
+	payload, err := gsr.MarshalVT()
 	if err != nil {
 		log.Error("can not marshal GetSubscriptionRequest", zap.Error(err))
 		return nil, ErrCanNotSign
@@ -598,7 +607,7 @@ func (s *service) RegisterPaymentRequest(ctx context.Context, req *pb.RpcMembers
 		UserEmail: req.UserEmail,
 	}
 
-	payload, err := bsr.Marshal()
+	payload, err := bsr.MarshalVT()
 	if err != nil {
 		log.Error("can not marshal BuySubscriptionRequest", zap.Error(err))
 		return nil, ErrCanNotSign
@@ -648,7 +657,7 @@ func (s *service) GetPortalLink(ctx context.Context, req *pb.RpcMembershipGetPor
 		OwnerAnyId: s.wallet.Account().SignKey.GetPublic().Account(),
 	}
 
-	payload, err := bsr.Marshal()
+	payload, err := bsr.MarshalVT()
 	if err != nil {
 		log.Error("can not marshal GetSubscriptionPortalLinkRequest", zap.Error(err))
 		return nil, ErrCanNotSign
@@ -689,45 +698,31 @@ func (s *service) GetPortalLink(ctx context.Context, req *pb.RpcMembershipGetPor
 }
 
 func (s *service) GetVerificationEmail(ctx context.Context, req *pb.RpcMembershipGetVerificationEmailRequest) (*pb.RpcMembershipGetVerificationEmailResponse, error) {
-	// 1 - send request
-	bsr := proto.GetVerificationEmailRequest{
-		// payment node will check if signature matches with this OwnerAnyID
-		OwnerAnyId:              s.wallet.Account().SignKey.GetPublic().Account(),
-		Email:                   req.Email,
-		SubscribeToNewsletter:   req.SubscribeToNewsletter,
-		InsiderTipsAndTutorials: req.InsiderTipsAndTutorials,
-		IsOnboardingList:        req.IsOnboardingList,
+	if req.IsOnboardingList {
+		// special logics just for onboarding list:
+		// use email collector to save email to the DB/PP node (should work offline too)
+		err := s.emailCollector.SetRequest(req)
+		if err != nil {
+			log.Error("can not set email", zap.Error(err))
+			return nil, err
+		}
+
+		// default OK response
+		return &pb.RpcMembershipGetVerificationEmailResponse{
+			Error: &pb.RpcMembershipGetVerificationEmailResponseError{
+				Code: pb.RpcMembershipGetVerificationEmailResponseError_NULL,
+			},
+		}, nil
 	}
 
-	payload, err := bsr.Marshal()
+	// send request to PP node directly
+	out, err := s.emailCollector.SendRequest(ctx, req)
 	if err != nil {
-		log.Error("can not marshal GetVerificationEmailRequest", zap.Error(err))
-		return nil, ErrCanNotSign
-	}
-
-	privKey := s.wallet.GetAccountPrivkey()
-	signature, err := privKey.Sign(payload)
-	if err != nil {
-		log.Error("can not sign GetVerificationEmailRequest", zap.Error(err))
-		return nil, ErrCanNotSign
-	}
-
-	reqSigned := proto.GetVerificationEmailRequestSigned{
-		Payload:   payload,
-		Signature: signature,
-	}
-
-	_, err = s.ppclient.GetVerificationEmail(ctx, &reqSigned)
-	if err != nil {
+		log.Error("can not get verification email", zap.Error(err))
 		return nil, err
 	}
 
-	var out pb.RpcMembershipGetVerificationEmailResponse
-	out.Error = &pb.RpcMembershipGetVerificationEmailResponseError{
-		Code: pb.RpcMembershipGetVerificationEmailResponseError_NULL,
-	}
-
-	return &out, nil
+	return out, nil
 }
 
 func (s *service) VerifyEmailCode(ctx context.Context, req *pb.RpcMembershipVerifyEmailCodeRequest) (*pb.RpcMembershipVerifyEmailCodeResponse, error) {
@@ -739,7 +734,7 @@ func (s *service) VerifyEmailCode(ctx context.Context, req *pb.RpcMembershipVeri
 		Code:            req.Code,
 	}
 
-	payload, err := bsr.Marshal()
+	payload, err := bsr.MarshalVT()
 	if err != nil {
 		log.Error("can not marshal VerifyEmailRequest", zap.Error(err))
 		return nil, ErrCanNotSign
@@ -789,7 +784,7 @@ func (s *service) FinalizeSubscription(ctx context.Context, req *pb.RpcMembershi
 		RequestedAnyName: nameservice.NsNameToFullName(req.NsName, req.NsNameType),
 	}
 
-	payload, err := bsr.Marshal()
+	payload, err := bsr.MarshalVT()
 	if err != nil {
 		log.Error("can not marshal FinalizeSubscriptionRequest", zap.Error(err))
 		return nil, ErrCanNotSign
@@ -901,7 +896,7 @@ func (s *service) getAllTiers(ctx context.Context, req *pb.RpcMembershipGetTiers
 		Locale: req.Locale,
 	}
 
-	payload, err := bsr.Marshal()
+	payload, err := bsr.MarshalVT()
 	if err != nil {
 		log.Error("can not marshal GetTiersRequest", zap.Error(err))
 		return nil, ErrCanNotSign
@@ -959,6 +954,7 @@ func (s *service) getAllTiers(ctx context.Context, req *pb.RpcMembershipGetTiers
 			IosManageUrl:     tier.IosManageUrl,
 			AndroidProductId: tier.AndroidProductId,
 			AndroidManageUrl: tier.AndroidManageUrl,
+			Offer:            tier.Offer,
 		}
 
 		// copy all features
@@ -986,7 +982,7 @@ func (s *service) VerifyAppStoreReceipt(ctx context.Context, req *pb.RpcMembersh
 		Receipt:    req.Receipt,
 	}
 
-	payload, err := verifyReq.Marshal()
+	payload, err := verifyReq.MarshalVT()
 	if err != nil {
 		log.Error("can not marshal VerifyAppStoreReceiptRequest", zap.Error(err))
 		return nil, ErrCanNotSign
@@ -1012,6 +1008,105 @@ func (s *service) VerifyAppStoreReceipt(ctx context.Context, req *pb.RpcMembersh
 	return &pb.RpcMembershipVerifyAppStoreReceiptResponse{
 		Error: &pb.RpcMembershipVerifyAppStoreReceiptResponseError{
 			Code: pb.RpcMembershipVerifyAppStoreReceiptResponseError_NULL,
+		},
+	}, nil
+}
+
+func (s *service) CodeGetInfo(ctx context.Context, req *pb.RpcMembershipCodeGetInfoRequest) (*pb.RpcMembershipCodeGetInfoResponse, error) {
+	code := req.Code
+
+	codeInfo := proto.CodeGetInfoRequest{
+		OwnerAnyId:      s.wallet.Account().SignKey.GetPublic().Account(),
+		OwnerEthAddress: s.wallet.GetAccountEthAddress().Hex(),
+		Code:            code,
+	}
+
+	payload, err := codeInfo.MarshalVT()
+	if err != nil {
+		log.Error("can not marshal CodeGetInfoRequest", zap.Error(err))
+		return nil, ErrCanNotSign
+	}
+
+	privKey := s.wallet.GetAccountPrivkey()
+	signature, err := privKey.Sign(payload)
+	if err != nil {
+		log.Error("can not sign CodeGetInfoRequest", zap.Error(err))
+		return nil, ErrCanNotSign
+	}
+
+	reqSigned := proto.CodeGetInfoRequestSigned{
+		Payload:   payload,
+		Signature: signature,
+	}
+
+	res, err := s.ppclient.CodeGetInfo(ctx, &reqSigned)
+	if err != nil {
+		return nil, err
+	}
+
+	// send membership update to the payment node
+	// to get new tiers, because Code can redeem a hidden tier that is not on the list yet
+	_, err = s.GetSubscriptionStatus(ctx, &pb.RpcMembershipGetStatusRequest{
+		NoCache: true,
+	})
+	if err != nil {
+		log.Error("can not get subscription status again", zap.Error(err))
+		// eat the error...
+	}
+
+	return &pb.RpcMembershipCodeGetInfoResponse{
+		RequestedTier: res.Tier,
+		Error: &pb.RpcMembershipCodeGetInfoResponseError{
+			Code: pb.RpcMembershipCodeGetInfoResponseError_NULL,
+		},
+	}, nil
+}
+
+func (s *service) CodeRedeem(ctx context.Context, req *pb.RpcMembershipCodeRedeemRequest) (*pb.RpcMembershipCodeRedeemResponse, error) {
+	code := req.Code
+	nsName := req.NsName
+	nsNameType := req.NsNameType
+
+	codeRedeem := proto.CodeRedeemRequest{
+		OwnerAnyId:       s.wallet.Account().SignKey.GetPublic().Account(),
+		OwnerEthAddress:  s.wallet.GetAccountEthAddress().Hex(),
+		Code:             code,
+		RequestedAnyName: nameservice.NsNameToFullName(nsName, nsNameType),
+	}
+
+	payload, err := codeRedeem.MarshalVT()
+
+	if err != nil {
+		log.Error("can not marshal CodeRedeemRequest", zap.Error(err))
+		return nil, ErrCanNotSign
+	}
+
+	privKey := s.wallet.GetAccountPrivkey()
+	signature, err := privKey.Sign(payload)
+	if err != nil {
+		log.Error("can not sign CodeRedeemRequest", zap.Error(err))
+		return nil, ErrCanNotSign
+	}
+
+	reqSigned := proto.CodeRedeemRequestSigned{
+		Payload:   payload,
+		Signature: signature,
+	}
+
+	res, err := s.ppclient.CodeRedeem(ctx, &reqSigned)
+	if err != nil {
+		return nil, err
+	}
+
+	if !res.Success {
+		log.Error("code redemption failed", zap.String("code", code))
+		// return this error as if code was not found
+		return nil, proto.ErrCodeNotFound
+	}
+
+	return &pb.RpcMembershipCodeRedeemResponse{
+		Error: &pb.RpcMembershipCodeRedeemResponseError{
+			Code: pb.RpcMembershipCodeRedeemResponseError_NULL,
 		},
 	}, nil
 }
