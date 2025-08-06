@@ -381,6 +381,30 @@ func TestIsValidConditionForType(t *testing.T) {
 			expected:  true,
 		},
 		{
+			name:      "files with all in",
+			format:    apimodel.PropertyFormatFiles,
+			condition: model.BlockContentDataviewFilter_AllIn,
+			expected:  true,
+		},
+		{
+			name:      "files with not all in",
+			format:    apimodel.PropertyFormatFiles,
+			condition: model.BlockContentDataviewFilter_NotAllIn,
+			expected:  true,
+		},
+		{
+			name:      "files with exact in",
+			format:    apimodel.PropertyFormatFiles,
+			condition: model.BlockContentDataviewFilter_ExactIn,
+			expected:  true,
+		},
+		{
+			name:      "files with not exact in",
+			format:    apimodel.PropertyFormatFiles,
+			condition: model.BlockContentDataviewFilter_NotExactIn,
+			expected:  true,
+		},
+		{
 			name:      "files with equal (invalid)",
 			format:    apimodel.PropertyFormatFiles,
 			condition: model.BlockContentDataviewFilter_Equal,
@@ -391,6 +415,30 @@ func TestIsValidConditionForType(t *testing.T) {
 			name:      "objects with in",
 			format:    apimodel.PropertyFormatObjects,
 			condition: model.BlockContentDataviewFilter_In,
+			expected:  true,
+		},
+		{
+			name:      "objects with all in",
+			format:    apimodel.PropertyFormatObjects,
+			condition: model.BlockContentDataviewFilter_AllIn,
+			expected:  true,
+		},
+		{
+			name:      "objects with not all in",
+			format:    apimodel.PropertyFormatObjects,
+			condition: model.BlockContentDataviewFilter_NotAllIn,
+			expected:  true,
+		},
+		{
+			name:      "objects with exact in",
+			format:    apimodel.PropertyFormatObjects,
+			condition: model.BlockContentDataviewFilter_ExactIn,
+			expected:  true,
+		},
+		{
+			name:      "objects with not exact in",
+			format:    apimodel.PropertyFormatObjects,
+			condition: model.BlockContentDataviewFilter_NotExactIn,
 			expected:  true,
 		},
 		{
@@ -486,6 +534,38 @@ func TestConditionsForPropertyType(t *testing.T) {
 		conditions := ConditionsForPropertyType[apimodel.PropertyFormatMultiSelect]
 		assert.Contains(t, conditions, model.BlockContentDataviewFilter_In)
 		assert.Contains(t, conditions, model.BlockContentDataviewFilter_NotIn)
+		assert.Contains(t, conditions, model.BlockContentDataviewFilter_AllIn)
+		assert.Contains(t, conditions, model.BlockContentDataviewFilter_NotAllIn)
+		assert.Contains(t, conditions, model.BlockContentDataviewFilter_ExactIn)
+		assert.Contains(t, conditions, model.BlockContentDataviewFilter_NotExactIn)
+		assert.NotContains(t, conditions, model.BlockContentDataviewFilter_Equal)
+	})
+
+	t.Run("files conditions", func(t *testing.T) {
+		conditions := ConditionsForPropertyType[apimodel.PropertyFormatFiles]
+		assert.Contains(t, conditions, model.BlockContentDataviewFilter_In)
+		assert.Contains(t, conditions, model.BlockContentDataviewFilter_NotIn)
+		assert.Contains(t, conditions, model.BlockContentDataviewFilter_AllIn)
+		assert.Contains(t, conditions, model.BlockContentDataviewFilter_NotAllIn)
+		assert.Contains(t, conditions, model.BlockContentDataviewFilter_ExactIn)
+		assert.Contains(t, conditions, model.BlockContentDataviewFilter_NotExactIn)
+		assert.Contains(t, conditions, model.BlockContentDataviewFilter_Empty)
+		assert.Contains(t, conditions, model.BlockContentDataviewFilter_NotEmpty)
+		assert.Contains(t, conditions, model.BlockContentDataviewFilter_Exists)
+		assert.NotContains(t, conditions, model.BlockContentDataviewFilter_Equal)
+	})
+
+	t.Run("objects conditions", func(t *testing.T) {
+		conditions := ConditionsForPropertyType[apimodel.PropertyFormatObjects]
+		assert.Contains(t, conditions, model.BlockContentDataviewFilter_In)
+		assert.Contains(t, conditions, model.BlockContentDataviewFilter_NotIn)
+		assert.Contains(t, conditions, model.BlockContentDataviewFilter_AllIn)
+		assert.Contains(t, conditions, model.BlockContentDataviewFilter_NotAllIn)
+		assert.Contains(t, conditions, model.BlockContentDataviewFilter_ExactIn)
+		assert.Contains(t, conditions, model.BlockContentDataviewFilter_NotExactIn)
+		assert.Contains(t, conditions, model.BlockContentDataviewFilter_Empty)
+		assert.Contains(t, conditions, model.BlockContentDataviewFilter_NotEmpty)
+		assert.Contains(t, conditions, model.BlockContentDataviewFilter_Exists)
 		assert.NotContains(t, conditions, model.BlockContentDataviewFilter_Equal)
 	})
 }

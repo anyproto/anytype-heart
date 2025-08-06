@@ -113,6 +113,10 @@ var ConditionsForPropertyType = map[apimodel.PropertyFormat][]model.BlockContent
 	apimodel.PropertyFormatMultiSelect: {
 		model.BlockContentDataviewFilter_In,
 		model.BlockContentDataviewFilter_NotIn,
+		model.BlockContentDataviewFilter_AllIn,
+		model.BlockContentDataviewFilter_NotAllIn,
+		model.BlockContentDataviewFilter_ExactIn,
+		model.BlockContentDataviewFilter_NotExactIn,
 		model.BlockContentDataviewFilter_Empty,
 		model.BlockContentDataviewFilter_NotEmpty,
 		model.BlockContentDataviewFilter_Exists,
@@ -120,6 +124,10 @@ var ConditionsForPropertyType = map[apimodel.PropertyFormat][]model.BlockContent
 	apimodel.PropertyFormatFiles: {
 		model.BlockContentDataviewFilter_In,
 		model.BlockContentDataviewFilter_NotIn,
+		model.BlockContentDataviewFilter_AllIn,
+		model.BlockContentDataviewFilter_NotAllIn,
+		model.BlockContentDataviewFilter_ExactIn,
+		model.BlockContentDataviewFilter_NotExactIn,
 		model.BlockContentDataviewFilter_Empty,
 		model.BlockContentDataviewFilter_NotEmpty,
 		model.BlockContentDataviewFilter_Exists,
@@ -127,6 +135,10 @@ var ConditionsForPropertyType = map[apimodel.PropertyFormat][]model.BlockContent
 	apimodel.PropertyFormatObjects: {
 		model.BlockContentDataviewFilter_In,
 		model.BlockContentDataviewFilter_NotIn,
+		model.BlockContentDataviewFilter_AllIn,
+		model.BlockContentDataviewFilter_NotAllIn,
+		model.BlockContentDataviewFilter_ExactIn,
+		model.BlockContentDataviewFilter_NotExactIn,
 		model.BlockContentDataviewFilter_Empty,
 		model.BlockContentDataviewFilter_NotEmpty,
 		model.BlockContentDataviewFilter_Exists,
