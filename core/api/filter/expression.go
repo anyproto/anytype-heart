@@ -84,6 +84,11 @@ func buildConditionFilter(ctx context.Context, cond apimodel.FilterItem, validat
 		return nil, fmt.Errorf("failed to resolve property %s: %w", cond.PropertyKey, err)
 	}
 
+	// Check if condition is valid for property type
+	if !isValidConditionForType(property.Format, dbCondition) {
+		return nil, fmt.Errorf("condition %v is not valid for property type %q", dbCondition, property.Format)
+	}
+
 	// Use the resolved relation key
 	relationKey := property.RelationKey
 

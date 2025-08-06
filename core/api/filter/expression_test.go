@@ -387,6 +387,59 @@ func TestBuildExpressionFilters(t *testing.T) {
 			},
 		},
 		{
+			name: "invalid condition for property type",
+			expr: &apimodel.FilterExpression{
+				Conditions: []apimodel.FilterItem{
+					{
+						PropertyKey: "name",
+						Condition:   apimodel.FilterConditionGt, // Greater than is invalid for text
+						Value:       "test",
+					},
+				},
+			},
+			setupMock: func(m *mock_filter.MockApiService) {
+				propertyMap := map[string]*apimodel.Property{
+					"name": {
+						Key:         "name",
+						RelationKey: bundle.RelationKeyName.String(),
+						Format:      apimodel.PropertyFormatText,
+					},
+				}
+				m.On("GetCachedProperties", spaceId).Return(propertyMap)
+				m.On("ResolvePropertyApiKey", propertyMap, "name").Return("name")
+			},
+			expectedError: "failed to build condition filter: condition Greater is not valid for property type \"text\"",
+		},
+		{
+			name: "valid array condition for multi-select property",
+			expr: &apimodel.FilterExpression{
+				Conditions: []apimodel.FilterItem{
+					{
+						PropertyKey: "tags",
+						Condition:   apimodel.FilterConditionAll, // AllIn is valid for multi-select
+						Value:       []string{"important", "urgent"},
+					},
+				},
+			},
+			setupMock: func(m *mock_filter.MockApiService) {
+				propertyMap := map[string]*apimodel.Property{
+					"tags": {
+						Key:         "tags",
+						RelationKey: "tags",
+						Format:      apimodel.PropertyFormatMultiSelect,
+					},
+				}
+				m.On("GetCachedProperties", spaceId).Return(propertyMap)
+				m.On("ResolvePropertyApiKey", propertyMap, "tags").Return("tags")
+				m.On("SanitizeAndValidatePropertyValue", spaceId, "tags", apimodel.PropertyFormatMultiSelect, []string{"important", "urgent"}, mock.Anything, propertyMap).Return([]string{"important", "urgent"}, nil)
+			},
+			checkResult: func(t *testing.T, result *model.BlockContentDataviewFilter) {
+				require.NotNil(t, result)
+				assert.Equal(t, "tags", result.RelationKey)
+				assert.Equal(t, model.BlockContentDataviewFilter_AllIn, result.Condition)
+			},
+		},
+		{
 			name: "invalid property key",
 			expr: &apimodel.FilterExpression{
 				Conditions: []apimodel.FilterItem{
@@ -580,8 +633,8 @@ func TestBuildExpressionFilters(t *testing.T) {
 					"p13": {Key: "p13", RelationKey: bundle.RelationKeySetOf.String(), Format: apimodel.PropertyFormatMultiSelect},
 					"p14": {Key: "p14", RelationKey: bundle.RelationKeyFeaturedRelations.String(), Format: apimodel.PropertyFormatMultiSelect},
 					"p15": {Key: "p15", RelationKey: bundle.RelationKeyDone.String(), Format: apimodel.PropertyFormatCheckbox},
-					"p16": {Key: "p16", RelationKey: bundle.RelationKeyIsArchived.String(), Format: apimodel.PropertyFormatCheckbox},
-					"p17": {Key: "p17", RelationKey: bundle.RelationKeyIsHidden.String(), Format: apimodel.PropertyFormatCheckbox},
+					"p16": {Key: "p16", RelationKey: bundle.RelationKeyDescription.String(), Format: apimodel.PropertyFormatText},
+					"p17": {Key: "p17", RelationKey: bundle.RelationKeySnippet.String(), Format: apimodel.PropertyFormatText},
 				}
 
 				m.On("GetCachedProperties", spaceId).Return(propertyMap)
