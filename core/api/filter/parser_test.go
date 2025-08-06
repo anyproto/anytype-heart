@@ -380,6 +380,44 @@ func TestParser_ParseQueryParams(t *testing.T) {
 				},
 			},
 		},
+		{
+			name:        "date filter with RFC3339 format",
+			queryString: "created_date[gte]=2024-01-15T10:30:00Z",
+			expectedFilters: []Filter{
+				{
+					PropertyKey: "created_date",
+					Condition:   model.BlockContentDataviewFilter_GreaterOrEqual,
+					Value:       "2024-01-15T10:30:00Z",
+				},
+			},
+		},
+		{
+			name:        "date filter with date-only format",
+			queryString: "due_date[lte]=2024-12-31",
+			expectedFilters: []Filter{
+				{
+					PropertyKey: "due_date",
+					Condition:   model.BlockContentDataviewFilter_LessOrEqual,
+					Value:       "2024-12-31",
+				},
+			},
+		},
+		{
+			name:        "multiple date filters",
+			queryString: "start_date[gte]=2024-01-01&end_date[lt]=2024-12-31T23:59:59Z",
+			expectedFilters: []Filter{
+				{
+					PropertyKey: "start_date",
+					Condition:   model.BlockContentDataviewFilter_GreaterOrEqual,
+					Value:       "2024-01-01",
+				},
+				{
+					PropertyKey: "end_date",
+					Condition:   model.BlockContentDataviewFilter_Less,
+					Value:       "2024-12-31T23:59:59Z",
+				},
+			},
+		},
 	}
 
 	parser := NewParser()

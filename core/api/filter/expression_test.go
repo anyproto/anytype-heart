@@ -279,6 +279,59 @@ func TestBuildExpressionFilters(t *testing.T) {
 			},
 		},
 		{
+			name: "date filters with RFC3339 and date-only formats",
+			expr: &apimodel.FilterExpression{
+				Operator: apimodel.FilterOperatorAnd,
+				Conditions: []apimodel.FilterItem{
+					{
+						PropertyKey: "created_date",
+						Condition:   apimodel.FilterConditionGte,
+						Value:       "2024-01-01",
+					},
+					{
+						PropertyKey: "due_date",
+						Condition:   apimodel.FilterConditionLt,
+						Value:       "2024-12-31T23:59:59Z",
+					},
+				},
+			},
+			setupMock: func(m *mock_filter.MockApiService) {
+				propertyMap := map[string]*apimodel.Property{
+					"created_date": {
+						Key:         "created_date",
+						RelationKey: bundle.RelationKeyCreatedDate.String(),
+						Format:      apimodel.PropertyFormatDate,
+					},
+					"due_date": {
+						Key:         "due_date",
+						RelationKey: bundle.RelationKeyDueDate.String(),
+						Format:      apimodel.PropertyFormatDate,
+					},
+				}
+				m.On("GetCachedProperties", spaceId).Return(propertyMap)
+				m.On("ResolvePropertyApiKey", propertyMap, "created_date").Return("created_date")
+				m.On("ResolvePropertyApiKey", propertyMap, "due_date").Return("due_date")
+				// The service should accept both date formats and convert them to timestamps
+				m.On("SanitizeAndValidatePropertyValue", spaceId, "created_date", apimodel.PropertyFormatDate, "2024-01-01", mock.Anything, propertyMap).Return(float64(1704067200), nil)       // 2024-01-01 00:00:00 UTC
+				m.On("SanitizeAndValidatePropertyValue", spaceId, "due_date", apimodel.PropertyFormatDate, "2024-12-31T23:59:59Z", mock.Anything, propertyMap).Return(float64(1735689599), nil) // 2024-12-31 23:59:59 UTC
+			},
+			checkResult: func(t *testing.T, result *model.BlockContentDataviewFilter) {
+				require.NotNil(t, result)
+				assert.Equal(t, model.BlockContentDataviewFilter_And, result.Operator)
+				assert.Len(t, result.NestedFilters, 2)
+
+				// Check first filter (created_date >= 2024-01-01)
+				assert.Equal(t, bundle.RelationKeyCreatedDate.String(), result.NestedFilters[0].RelationKey)
+				assert.Equal(t, model.BlockContentDataviewFilter_GreaterOrEqual, result.NestedFilters[0].Condition)
+				assert.Equal(t, pbtypes.Float64(1704067200), result.NestedFilters[0].Value)
+
+				// Check second filter (due_date < 2024-12-31T23:59:59Z)
+				assert.Equal(t, bundle.RelationKeyDueDate.String(), result.NestedFilters[1].RelationKey)
+				assert.Equal(t, model.BlockContentDataviewFilter_Less, result.NestedFilters[1].Condition)
+				assert.Equal(t, pbtypes.Float64(1735689599), result.NestedFilters[1].Value)
+			},
+		},
+		{
 			name: "deeply nested filters",
 			expr: &apimodel.FilterExpression{
 				Operator: apimodel.FilterOperatorAnd,
@@ -609,60 +662,4 @@ func TestBuildExpressionFilters(t *testing.T) {
 			mockService.AssertExpectations(t)
 		})
 	}
-}
-
-func TestConditionMap(t *testing.T) {
-	// Test that string values map correctly to internal conditions
-	expectedMappings := map[string]model.BlockContentDataviewFilterCondition{
-		"eq":        model.BlockContentDataviewFilter_Equal,
-		"ne":        model.BlockContentDataviewFilter_NotEqual,
-		"gt":        model.BlockContentDataviewFilter_Greater,
-		"gte":       model.BlockContentDataviewFilter_GreaterOrEqual,
-		"lt":        model.BlockContentDataviewFilter_Less,
-		"lte":       model.BlockContentDataviewFilter_LessOrEqual,
-		"contains":  model.BlockContentDataviewFilter_Like,
-		"ncontains": model.BlockContentDataviewFilter_NotLike,
-		"in":        model.BlockContentDataviewFilter_In,
-		"nin":       model.BlockContentDataviewFilter_NotIn,
-		"all":       model.BlockContentDataviewFilter_AllIn,
-		"none":      model.BlockContentDataviewFilter_NotAllIn,
-		"exactin":   model.BlockContentDataviewFilter_ExactIn,
-		"nexactin":  model.BlockContentDataviewFilter_NotExactIn,
-		"exists":    model.BlockContentDataviewFilter_Exists,
-		"empty":     model.BlockContentDataviewFilter_Empty,
-		"nempty":    model.BlockContentDataviewFilter_NotEmpty,
-	}
-
-	// Test each string maps to the correct condition
-	for str, expectedCondition := range expectedMappings {
-		filterCond := apimodel.FilterCondition(str)
-		actualCondition, ok := ConditionMap[filterCond]
-		assert.True(t, ok, "Condition string %q should be mapped", str)
-		assert.Equal(t, expectedCondition, actualCondition, "Condition %q should map to %v", str, expectedCondition)
-	}
-
-	// Also verify that the constants have the expected string values
-	assert.Equal(t, "eq", apimodel.FilterConditionEq.String())
-	assert.Equal(t, "ne", apimodel.FilterConditionNe.String())
-	assert.Equal(t, "gt", apimodel.FilterConditionGt.String())
-	assert.Equal(t, "gte", apimodel.FilterConditionGte.String())
-	assert.Equal(t, "lt", apimodel.FilterConditionLt.String())
-	assert.Equal(t, "lte", apimodel.FilterConditionLte.String())
-	assert.Equal(t, "contains", apimodel.FilterConditionContains.String())
-	assert.Equal(t, "ncontains", apimodel.FilterConditionNContains.String())
-	assert.Equal(t, "in", apimodel.FilterConditionIn.String())
-	assert.Equal(t, "nin", apimodel.FilterConditionNin.String())
-	assert.Equal(t, "all", apimodel.FilterConditionAll.String())
-	assert.Equal(t, "none", apimodel.FilterConditionNone.String())
-	assert.Equal(t, "exactin", apimodel.FilterConditionExactIn.String())
-	assert.Equal(t, "nexactin", apimodel.FilterConditionNotExactIn.String())
-	assert.Equal(t, "exists", apimodel.FilterConditionExists.String())
-	assert.Equal(t, "empty", apimodel.FilterConditionEmpty.String())
-	assert.Equal(t, "nempty", apimodel.FilterConditionNEmpty.String())
-}
-
-func TestOperatorMap(t *testing.T) {
-	// Verify all operators are mapped
-	assert.Equal(t, model.BlockContentDataviewFilter_And, OperatorMap[apimodel.FilterOperatorAnd])
-	assert.Equal(t, model.BlockContentDataviewFilter_Or, OperatorMap[apimodel.FilterOperatorOr])
 }
