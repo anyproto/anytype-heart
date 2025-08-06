@@ -154,7 +154,7 @@
             "type": "string"
           },
           "properties": {
-            "description": "⚠ Warning: Properties are experimental and may change in the next update. ⚠ The properties to set on the object; see ListTypes or GetType endpoints for linked properties",
+            "description": "The properties to set on the object; see ListTypes or GetType endpoints for linked properties",
             "items": {
               "$ref": "#/components/schemas/apimodel.PropertyLinkWithValue"
             },
@@ -266,7 +266,7 @@
             "type": "string"
           },
           "properties": {
-            "description": "⚠ Warning: Properties are experimental and may change in the next update. ⚠ The properties linked to the type",
+            "description": "The properties linked to the type",
             "items": {
               "$ref": "#/components/schemas/apimodel.PropertyLink"
             },
@@ -2460,7 +2460,7 @@
             "type": "string"
           },
           "properties": {
-            "description": "⚠ Warning: Properties are experimental and may change in the next update. ⚠ The properties to set for the object; see ListTypes or GetType endpoints for linked properties",
+            "description": "The properties to set for the object; see ListTypes or GetType endpoints for linked properties",
             "items": {
               "$ref": "#/components/schemas/apimodel.PropertyLinkWithValue"
             },
@@ -2545,7 +2545,7 @@
             "type": "string"
           },
           "properties": {
-            "description": "⚠ Warning: Properties are experimental and may change in the next update. ⚠ The properties to set for the type",
+            "description": "The properties to set for the type",
             "items": {
               "$ref": "#/components/schemas/apimodel.PropertyLink"
             },
@@ -4650,7 +4650,7 @@
     },
     "/v1/spaces/{space_id}/properties": {
       "get": {
-        "description": "⚠ Warning: Properties are experimental and may change in the next update. ⚠ Retrieves a paginated list of properties available within a specific space. Each property record includes its unique identifier, name and format. This information is essential for clients to understand the available properties for filtering or creating objects.\nSupports dynamic filtering via query parameters (e.g., ?format=text, ?name[contains]=date, ?key[ne]=custom_prop). See FilterCondition enum for available conditions.",
+        "description": "Retrieves a paginated list of properties available within a specific space. Each property record includes its unique identifier, name and format. This information is essential for clients to understand the available properties for filtering or creating objects.\nSupports dynamic filtering via query parameters (e.g., ?format=text, ?name[contains]=date, ?key[ne]=custom_prop). See FilterCondition enum for available conditions.",
         "operationId": "list_properties",
         "parameters": [
           {
@@ -4735,7 +4735,7 @@
         ]
       },
       "post": {
-        "description": "⚠ Warning: Properties are experimental and may change in the next update. ⚠ Creates a new property in the specified space using a JSON payload. The creation process is subject to rate limiting. The payload must include property details such as the name and format. The endpoint then returns the full property data, ready for further interactions.",
+        "description": "Creates a new property in the specified space using a JSON payload. The creation process is subject to rate limiting. The payload must include property details such as the name and format. The endpoint then returns the full property data, ready for further interactions.",
         "operationId": "create_property",
         "parameters": [
           {
@@ -4834,7 +4834,7 @@
     },
     "/v1/spaces/{space_id}/properties/{property_id}": {
       "delete": {
-        "description": "⚠ Warning: Properties are experimental and may change in the next update. ⚠ This endpoint “deletes” a property by marking it as archived. The deletion process is performed safely and is subject to rate limiting. It returns the property’s details after it has been archived. Proper error handling is in place for situations such as when the property isn’t found or the deletion cannot be performed because of permission issues.",
+        "description": "This endpoint “deletes” a property by marking it as archived. The deletion process is performed safely and is subject to rate limiting. It returns the property’s details after it has been archived. Proper error handling is in place for situations such as when the property isn’t found or the deletion cannot be performed because of permission issues.",
         "operationId": "delete_property",
         "parameters": [
           {
@@ -4949,7 +4949,7 @@
         ]
       },
       "get": {
-        "description": "⚠ Warning: Properties are experimental and may change in the next update. ⚠ Fetches detailed information about one specific property by its ID. This includes the property’s unique identifier, name and format. This detailed view assists clients in showing property options to users and in guiding the user interface (such as displaying appropriate input fields or selection options).",
+        "description": "Fetches detailed information about one specific property by its ID. This includes the property’s unique identifier, name and format. This detailed view assists clients in showing property options to users and in guiding the user interface (such as displaying appropriate input fields or selection options).",
         "operationId": "get_property",
         "parameters": [
           {
@@ -5044,7 +5044,7 @@
         ]
       },
       "patch": {
-        "description": "⚠ Warning: Properties are experimental and may change in the next update. ⚠ This endpoint updates an existing property in the specified space using a JSON payload. The update process is subject to rate limiting. The payload must include the name to be updated. The endpoint then returns the full property data, ready for further interactions.",
+        "description": "This endpoint updates an existing property in the specified space using a JSON payload. The update process is subject to rate limiting. The payload must include the name to be updated. The endpoint then returns the full property data, ready for further interactions.",
         "operationId": "update_property",
         "parameters": [
           {
