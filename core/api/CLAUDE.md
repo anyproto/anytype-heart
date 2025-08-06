@@ -134,7 +134,7 @@ func ResourceActionHandler(s *service.Service) gin.HandlerFunc {
    ```go
    import "github.com/stretchr/testify/mock"
    
-   mockService := mock_filter.NewMockPropertyService(t)
+   mockService := mock_filter.NewMockApiService(t)
    mockService.On("Method", args...).Return(results...)
    ```
 

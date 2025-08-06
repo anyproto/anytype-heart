@@ -8,6 +8,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 
+	apimodel "github.com/anyproto/anytype-heart/core/api/model"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
@@ -63,9 +64,9 @@ func (p *Parser) ParseQueryParams(c *gin.Context) (*ParsedFilters, error) {
 func (p *Parser) parseFilterKey(key string) (property string, condition model.BlockContentDataviewFilterCondition, err error) {
 	if matches := conditionPattern.FindStringSubmatch(key); len(matches) == 3 {
 		property = matches[1]
-		conditionStr := matches[2]
+		conditionStr := strings.ToLower(matches[2])
 
-		cond, ok := SupportedConditions[strings.ToLower(conditionStr)]
+		cond, ok := ConditionMap[apimodel.FilterCondition(conditionStr)]
 		if !ok {
 			return "", 0, fmt.Errorf("unsupported condition: %s", conditionStr)
 		}
@@ -96,7 +97,12 @@ func (p *Parser) parseFilterValue(rawValue string, condition model.BlockContentD
 		}
 		return false, nil
 
-	case model.BlockContentDataviewFilter_In, model.BlockContentDataviewFilter_NotIn:
+	case model.BlockContentDataviewFilter_In,
+		model.BlockContentDataviewFilter_NotIn,
+		model.BlockContentDataviewFilter_AllIn,
+		model.BlockContentDataviewFilter_NotAllIn,
+		model.BlockContentDataviewFilter_ExactIn,
+		model.BlockContentDataviewFilter_NotExactIn:
 		if decodedValue == "" {
 			return []string{}, nil
 		}

@@ -64,12 +64,56 @@ func TestParser_ParseQueryParams(t *testing.T) {
 			},
 		},
 		{
-			name:        "filter with like condition",
-			queryString: "title[like]=test",
+			name:        "filter with greater than or equal condition",
+			queryString: "age[gte]=25",
+			expectedFilters: []Filter{
+				{
+					PropertyKey: "age",
+					Condition:   model.BlockContentDataviewFilter_GreaterOrEqual,
+					Value:       "25",
+				},
+			},
+		},
+		{
+			name:        "filter with less than condition",
+			queryString: "age[lt]=25",
+			expectedFilters: []Filter{
+				{
+					PropertyKey: "age",
+					Condition:   model.BlockContentDataviewFilter_Less,
+					Value:       "25",
+				},
+			},
+		},
+		{
+			name:        "filter with less than or equal condition",
+			queryString: "age[lte]=25",
+			expectedFilters: []Filter{
+				{
+					PropertyKey: "age",
+					Condition:   model.BlockContentDataviewFilter_LessOrEqual,
+					Value:       "25",
+				},
+			},
+		},
+		{
+			name:        "filter with contains condition",
+			queryString: "title[contains]=test",
 			expectedFilters: []Filter{
 				{
 					PropertyKey: "title",
 					Condition:   model.BlockContentDataviewFilter_Like,
+					Value:       "test",
+				},
+			},
+		},
+		{
+			name:        "filter with not contains condition",
+			queryString: "title[ncontains]=test",
+			expectedFilters: []Filter{
+				{
+					PropertyKey: "title",
+					Condition:   model.BlockContentDataviewFilter_NotLike,
 					Value:       "test",
 				},
 			},
@@ -97,12 +141,78 @@ func TestParser_ParseQueryParams(t *testing.T) {
 			},
 		},
 		{
+			name:        "filter with not in condition",
+			queryString: "tags[nin]=archived,deleted",
+			expectedFilters: []Filter{
+				{
+					PropertyKey: "tags",
+					Condition:   model.BlockContentDataviewFilter_NotIn,
+					Value:       []string{"archived", "deleted"},
+				},
+			},
+		},
+		{
+			name:        "filter with all condition",
+			queryString: "tags[all]=urgent,important",
+			expectedFilters: []Filter{
+				{
+					PropertyKey: "tags",
+					Condition:   model.BlockContentDataviewFilter_AllIn,
+					Value:       []string{"urgent", "important"},
+				},
+			},
+		},
+		{
+			name:        "filter with none condition",
+			queryString: "tags[none]=spam,trash",
+			expectedFilters: []Filter{
+				{
+					PropertyKey: "tags",
+					Condition:   model.BlockContentDataviewFilter_NotAllIn,
+					Value:       []string{"spam", "trash"},
+				},
+			},
+		},
+		{
+			name:        "filter with exact in condition",
+			queryString: "tags[exactin]=todo,done",
+			expectedFilters: []Filter{
+				{
+					PropertyKey: "tags",
+					Condition:   model.BlockContentDataviewFilter_ExactIn,
+					Value:       []string{"todo", "done"},
+				},
+			},
+		},
+		{
+			name:        "filter with not exact in condition",
+			queryString: "tags[nexactin]=todo,done",
+			expectedFilters: []Filter{
+				{
+					PropertyKey: "tags",
+					Condition:   model.BlockContentDataviewFilter_NotExactIn,
+					Value:       []string{"todo", "done"},
+				},
+			},
+		},
+		{
 			name:        "filter with empty condition",
 			queryString: "description[empty]=true",
 			expectedFilters: []Filter{
 				{
 					PropertyKey: "description",
 					Condition:   model.BlockContentDataviewFilter_Empty,
+					Value:       true,
+				},
+			},
+		},
+		{
+			name:        "filter with not empty condition",
+			queryString: "description[nempty]=true",
+			expectedFilters: []Filter{
+				{
+					PropertyKey: "description",
+					Condition:   model.BlockContentDataviewFilter_NotEmpty,
 					Value:       true,
 				},
 			},
@@ -141,7 +251,7 @@ func TestParser_ParseQueryParams(t *testing.T) {
 		},
 		{
 			name:        "url encoded values",
-			queryString: "title=hello%20world&description[like]=test%2525",
+			queryString: "title=hello%20world&description[contains]=test%2525",
 			expectedFilters: []Filter{
 				{
 					PropertyKey: "title",
@@ -291,7 +401,7 @@ func TestParser_parseFilterKey(t *testing.T) {
 		},
 		{
 			name:              "property with underscore",
-			key:               "custom_property[like]",
+			key:               "custom_property[contains]",
 			expectedProperty:  "custom_property",
 			expectedCondition: model.BlockContentDataviewFilter_Like,
 		},

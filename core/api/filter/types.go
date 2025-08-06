@@ -36,23 +36,6 @@ func (pf *ParsedFilters) ToDataviewFilters() []*model.BlockContentDataviewFilter
 	return filters
 }
 
-// SupportedConditions maps condition strings to database filter conditions
-var SupportedConditions = map[string]model.BlockContentDataviewFilterCondition{
-	"eq":       model.BlockContentDataviewFilter_Equal,
-	"ne":       model.BlockContentDataviewFilter_NotEqual,
-	"gt":       model.BlockContentDataviewFilter_Greater,
-	"gte":      model.BlockContentDataviewFilter_GreaterOrEqual,
-	"lt":       model.BlockContentDataviewFilter_Less,
-	"lte":      model.BlockContentDataviewFilter_LessOrEqual,
-	"like":     model.BlockContentDataviewFilter_Like,
-	"notlike":  model.BlockContentDataviewFilter_NotLike,
-	"in":       model.BlockContentDataviewFilter_In,
-	"notin":    model.BlockContentDataviewFilter_NotIn,
-	"empty":    model.BlockContentDataviewFilter_Empty,
-	"notempty": model.BlockContentDataviewFilter_NotEmpty,
-	"exists":   model.BlockContentDataviewFilter_Exists,
-}
-
 // ConditionsForPropertyType defines which conditions are valid for each property type
 var ConditionsForPropertyType = map[apimodel.PropertyFormat][]model.BlockContentDataviewFilterCondition{
 	apimodel.PropertyFormatText: {

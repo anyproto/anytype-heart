@@ -351,27 +351,7 @@ components:
     apimodel.Filter:
       properties:
         condition:
-          description: The filter condition
-          enum:
-          - equal
-          - not_equal
-          - greater
-          - less
-          - greater_or_equal
-          - less_or_equal
-          - like
-          - not_like
-          - in
-          - not_in
-          - empty
-          - not_empty
-          - all_in
-          - not_all_in
-          - exact_in
-          - not_exact_in
-          - exists
-          example: contains
-          type: string
+        $ref: '#/components/schemas/apimodel.FilterCondition'
         format:
           $ref: '#/components/schemas/apimodel.PropertyFormat'
         id:
@@ -387,6 +367,103 @@ components:
           example: Some value...
           type: string
       type: object
+    apimodel.FilterCondition:
+      description: The filter condition
+      enum:
+      - eq
+      - ne
+      - gt
+      - gte
+      - lt
+      - lte
+      - contains
+      - ncontains
+      - in
+      - nin
+      - all
+      - none
+      - exactin
+      - nexactin
+      - exists
+      - empty
+      - nempty
+      example: eq
+      type: string
+      x-enum-comments:
+        FilterConditionAll: Contains all (AllIn)
+        FilterConditionContains: Like/Contains substring
+        FilterConditionEmpty: Field is empty
+        FilterConditionEq: Equal
+        FilterConditionExactIn: Exact in array (ExactIn)
+        FilterConditionExists: Field exists
+        FilterConditionGt: Greater Than
+        FilterConditionGte: Greater or Equal
+        FilterConditionIn: In array
+        FilterConditionLt: Less Than
+        FilterConditionLte: Less or Equal
+        FilterConditionNContains: Not Contains
+        FilterConditionNEmpty: Field not empty
+        FilterConditionNe: Not Equal
+        FilterConditionNin: Not in array
+        FilterConditionNone: Contains none (NotAllIn)
+        FilterConditionNotExactIn: Not exact in array (NotExactIn)
+      x-enum-varnames:
+      - FilterConditionEq
+      - FilterConditionNe
+      - FilterConditionGt
+      - FilterConditionGte
+      - FilterConditionLt
+      - FilterConditionLte
+      - FilterConditionContains
+      - FilterConditionNContains
+      - FilterConditionIn
+      - FilterConditionNin
+      - FilterConditionAll
+      - FilterConditionNone
+      - FilterConditionExactIn
+      - FilterConditionNotExactIn
+      - FilterConditionExists
+      - FilterConditionEmpty
+      - FilterConditionNEmpty
+    apimodel.FilterExpression:
+      description: Advanced filter expressions with nested AND/OR conditions
+      properties:
+        conditions:
+          description: List of filter conditions
+          items:
+            $ref: '#/components/schemas/apimodel.FilterItem'
+          type: array
+          uniqueItems: false
+        filters:
+          description: Nested filter expressions for complex logic
+          items:
+            $ref: '#/components/schemas/apimodel.FilterExpression'
+          type: array
+          uniqueItems: false
+        operator:
+          $ref: '#/components/schemas/apimodel.FilterOperator'
+      type: object
+    apimodel.FilterItem:
+      properties:
+        condition:
+          $ref: '#/components/schemas/apimodel.FilterCondition'
+        property_key:
+          description: The property key to filter on
+          example: status
+          type: string
+        value:
+          description: The value to compare against (omit for exists/empty conditions)
+          example: done
+      type: object
+    apimodel.FilterOperator:
+      description: Logical operator for combining filters (and, or)
+      enum:
+      - and
+      - or
+      type: string
+      x-enum-varnames:
+      - FilterOperatorAnd
+      - FilterOperatorOr
     apimodel.Icon:
       description: The icon of the object, or null if the object has no icon
       nullable: true
@@ -1625,6 +1702,8 @@ components:
       type: object
     apimodel.SearchRequest:
       properties:
+        filters:
+          $ref: '#/components/schemas/apimodel.FilterExpression'
         query:
           description: The text to search within object names and content; use types
             field for type filtering

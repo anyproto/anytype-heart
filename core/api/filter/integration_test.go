@@ -50,7 +50,7 @@ func TestFilterIntegration(t *testing.T) {
 		},
 		{
 			name:            "filter with conditions",
-			queryString:     "age[gt]=25&name[like]=john&tags[in]=todo,done",
+			queryString:     "age[gt]=25&name[contains]=john&tags[in]=todo,done",
 			expectedFilters: 3,
 			checkFilter: func(t *testing.T, filters []*model.BlockContentDataviewFilter) {
 				require.Len(t, filters, 3)

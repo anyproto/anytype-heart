@@ -435,27 +435,6 @@ func TestIsValidConditionForType(t *testing.T) {
 	}
 }
 
-func TestSupportedConditions(t *testing.T) {
-	// Test that all supported condition strings map to valid conditions
-	expectedConditions := map[string]model.BlockContentDataviewFilterCondition{
-		"eq":       model.BlockContentDataviewFilter_Equal,
-		"ne":       model.BlockContentDataviewFilter_NotEqual,
-		"gt":       model.BlockContentDataviewFilter_Greater,
-		"gte":      model.BlockContentDataviewFilter_GreaterOrEqual,
-		"lt":       model.BlockContentDataviewFilter_Less,
-		"lte":      model.BlockContentDataviewFilter_LessOrEqual,
-		"like":     model.BlockContentDataviewFilter_Like,
-		"notlike":  model.BlockContentDataviewFilter_NotLike,
-		"in":       model.BlockContentDataviewFilter_In,
-		"notin":    model.BlockContentDataviewFilter_NotIn,
-		"empty":    model.BlockContentDataviewFilter_Empty,
-		"notempty": model.BlockContentDataviewFilter_NotEmpty,
-		"exists":   model.BlockContentDataviewFilter_Exists,
-	}
-
-	assert.Equal(t, expectedConditions, SupportedConditions)
-}
-
 func TestConditionsForPropertyType(t *testing.T) {
 	// Test that all property formats have conditions defined
 	expectedFormats := []apimodel.PropertyFormat{

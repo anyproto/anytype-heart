@@ -9,6 +9,7 @@ import (
 
 	"github.com/anyproto/anytype-heart/pb"
 
+	"github.com/anyproto/anytype-heart/core/api/filter"
 	apimodel "github.com/anyproto/anytype-heart/core/api/model"
 	"github.com/anyproto/anytype-heart/core/api/pagination"
 	"github.com/anyproto/anytype-heart/core/api/util"
@@ -59,11 +60,14 @@ func (s *Service) GetListViews(ctx context.Context, spaceId string, listId strin
 		for _, view := range content.Dataview.Views {
 			var filters []apimodel.Filter
 			for _, f := range view.Filters {
+				if f.Condition == model.BlockContentDataviewFilter_None {
+					continue
+				}
 				filters = append(filters, apimodel.Filter{
 					Id:          f.Id,
 					PropertyKey: f.RelationKey,
 					Format:      RelationFormatToPropertyFormat[f.Format],
-					Condition:   strcase.ToSnake(model.BlockContentDataviewFilterCondition_name[int32(f.Condition)]),
+					Condition:   filter.ReverseConditionMap[f.Condition],
 					Value:       f.Value.GetStringValue(),
 				})
 			}
