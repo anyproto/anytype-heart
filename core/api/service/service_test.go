@@ -240,14 +240,18 @@ func GetTestTypes() []*apimodel.Type {
 func GetTestTags() []*apimodel.Tag {
 	return []*apimodel.Tag{
 		{
-			Id:    "tag1",
-			Name:  "Important",
-			Color: "red",
+			Id:        "tag1",
+			Key:       "important_tag",
+			Name:      "Important",
+			Color:     "red",
+			UniqueKey: "unique_tag_1",
 		},
 		{
-			Id:    "tag2",
-			Name:  "Urgent",
-			Color: "orange",
+			Id:        "tag2",
+			Key:       "urgent_tag",
+			Name:      "Urgent",
+			Color:     "orange",
+			UniqueKey: "unique_tag_2",
 		},
 	}
 }

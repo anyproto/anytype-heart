@@ -186,6 +186,7 @@ func (s *Service) subscribeToCrossSpaceTags() error {
 		Keys: []string{
 			bundle.RelationKeyId.String(),
 			bundle.RelationKeyUniqueKey.String(),
+			bundle.RelationKeyApiObjectKey.String(),
 			bundle.RelationKeyName.String(),
 			bundle.RelationKeyRelationOptionColor.String(),
 			bundle.RelationKeySpaceId.String(),
@@ -329,7 +330,8 @@ func (s *Service) createTagSubscriptionParams() objectsubscription.SubscriptionP
 			return curEntry
 		},
 		OnRemoved: func(id string, entry *tagWithSpace) {
-			s.cache.removeTag(entry.spaceId, id)
+			tag := s.getTagFromStruct(entry.details.ToProto())
+			s.cache.removeTag(entry.spaceId, tag.Id, tag.UniqueKey, tag.Key)
 		},
 	}
 }

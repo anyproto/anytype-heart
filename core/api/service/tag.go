@@ -3,8 +3,10 @@ package service
 import (
 	"context"
 	"errors"
+	"fmt"
 
 	"github.com/gogo/protobuf/types"
+	"github.com/iancoleman/strcase"
 
 	apimodel "github.com/anyproto/anytype-heart/core/api/model"
 	"github.com/anyproto/anytype-heart/core/api/pagination"
@@ -52,6 +54,7 @@ func (s *Service) ListTags(ctx context.Context, spaceId string, propertyId strin
 		Keys: []string{
 			bundle.RelationKeyId.String(),
 			bundle.RelationKeyUniqueKey.String(),
+			bundle.RelationKeyApiObjectKey.String(),
 			bundle.RelationKeyName.String(),
 			bundle.RelationKeyRelationOptionColor.String(),
 		},
@@ -116,6 +119,14 @@ func (s *Service) CreateTag(ctx context.Context, spaceId string, propertyId stri
 		},
 	}
 
+	if request.Key != "" {
+		apiKey := strcase.ToSnake(s.sanitizedString(request.Key))
+		if s.cache.getTags(spaceId)[apiKey] != nil {
+			return nil, util.ErrBadInput(fmt.Sprintf("tag key %q already exists", apiKey))
+		}
+		details.Fields[bundle.RelationKeyApiObjectKey.String()] = pbtypes.String(apiKey)
+	}
+
 	resp := s.mw.ObjectCreateRelationOption(ctx, &pb.RpcObjectCreateRelationOptionRequest{
 		SpaceId: spaceId,
 		Details: details,
@@ -130,7 +141,7 @@ func (s *Service) CreateTag(ctx context.Context, spaceId string, propertyId stri
 
 // UpdateTag updates an existing tag option for a given property ID in a space.
 func (s *Service) UpdateTag(ctx context.Context, spaceId string, propertyId string, tagId string, request apimodel.UpdateTagRequest) (*apimodel.Tag, error) {
-	_, err := s.GetTag(ctx, spaceId, propertyId, tagId)
+	tag, err := s.GetTag(ctx, spaceId, propertyId, tagId)
 	if err != nil {
 		return nil, err
 	}
@@ -147,6 +158,18 @@ func (s *Service) UpdateTag(ctx context.Context, spaceId string, propertyId stri
 			Key:   bundle.RelationKeyRelationOptionColor.String(),
 			Value: pbtypes.String(apimodel.ColorToColorOption[*request.Color]),
 		})
+	}
+	if request.Key != nil {
+		apiKey := strcase.ToSnake(s.sanitizedString(*request.Key))
+		if apiKey != tag.Key {
+			if existing, exists := s.cache.getTags(spaceId)[apiKey]; exists && existing.Id != tagId {
+				return nil, util.ErrBadInput(fmt.Sprintf("tag key %q already exists", apiKey))
+			}
+			details = append(details, &model.Detail{
+				Key:   bundle.RelationKeyApiObjectKey.String(),
+				Value: pbtypes.String(apiKey),
+			})
+		}
 	}
 
 	if len(details) > 0 {
@@ -184,12 +207,23 @@ func (s *Service) DeleteTag(ctx context.Context, spaceId string, propertyId stri
 
 // getTagFromStruct converts a tag's details from a struct to an apimodel.Tag.
 func (s *Service) getTagFromStruct(details *types.Struct) *apimodel.Tag {
+	uk := details.Fields[bundle.RelationKeyUniqueKey.String()].GetStringValue()
+	apiKey := util.ToTagApiKey(uk)
+
+	// apiObjectKey as key takes precedence over unique key
+	if apiObjectKeyField, exists := details.Fields[bundle.RelationKeyApiObjectKey.String()]; exists {
+		if apiObjectKey := apiObjectKeyField.GetStringValue(); apiObjectKey != "" {
+			apiKey = apiObjectKey
+		}
+	}
+
 	return &apimodel.Tag{
-		Object: "tag",
-		Id:     details.Fields[bundle.RelationKeyId.String()].GetStringValue(),
-		Key:    util.ToTagApiKey(details.Fields[bundle.RelationKeyUniqueKey.String()].GetStringValue()),
-		Name:   details.Fields[bundle.RelationKeyName.String()].GetStringValue(),
-		Color:  apimodel.ColorOptionToColor[details.Fields[bundle.RelationKeyRelationOptionColor.String()].GetStringValue()],
+		Object:    "tag",
+		Id:        details.Fields[bundle.RelationKeyId.String()].GetStringValue(),
+		Key:       apiKey,
+		Name:      details.Fields[bundle.RelationKeyName.String()].GetStringValue(),
+		Color:     apimodel.ColorOptionToColor[details.Fields[bundle.RelationKeyRelationOptionColor.String()].GetStringValue()],
+		UniqueKey: uk, // internal only for simplified lookup
 	}
 }
 
