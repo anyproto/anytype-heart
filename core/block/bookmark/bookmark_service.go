@@ -3,7 +3,7 @@ package bookmark
 import (
 	"context"
 	"fmt"
-	"path/filepath"
+	"path"
 	"strings"
 	"sync"
 	"time"
@@ -385,7 +385,7 @@ func getFileNameFromURL(baseUrl, fileUrl, filename string) string {
 	if err != nil {
 		return ""
 	}
-	urlFileExt := filepath.Ext(fu.Path)
+	urlFileExt := path.Ext(fu.Path)
 
 	source := strings.TrimPrefix(bu.Hostname(), "www.")
 	source = strings.ReplaceAll(source, ".", "_")
