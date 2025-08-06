@@ -38,29 +38,29 @@ type FilterCondition string
 
 const (
 	// Basic comparisons
-	FilterConditionEq  FilterCondition = "eq"  // Equal
-	FilterConditionNe  FilterCondition = "ne"  // Not Equal
-	FilterConditionGt  FilterCondition = "gt"  // Greater Than
-	FilterConditionGte FilterCondition = "gte" // Greater or Equal
-	FilterConditionLt  FilterCondition = "lt"  // Less Than
-	FilterConditionLte FilterCondition = "lte" // Less or Equal
+	FilterConditionEq  FilterCondition = "eq"  // Equal to value
+	FilterConditionNe  FilterCondition = "ne"  // Not equal to value
+	FilterConditionGt  FilterCondition = "gt"  // Greater than value
+	FilterConditionGte FilterCondition = "gte" // Greater than or equal to value
+	FilterConditionLt  FilterCondition = "lt"  // Less than value
+	FilterConditionLte FilterCondition = "lte" // Less than or equal to value
 
 	// Text operations
-	FilterConditionContains  FilterCondition = "contains"  // Like/Contains substring
-	FilterConditionNContains FilterCondition = "ncontains" // Not Contains
+	FilterConditionContains  FilterCondition = "contains"  // Contains substring
+	FilterConditionNContains FilterCondition = "ncontains" // Does not contain substring
 
 	// Array operations
-	FilterConditionIn         FilterCondition = "in"       // In array
-	FilterConditionNin        FilterCondition = "nin"      // Not in array
-	FilterConditionAll        FilterCondition = "all"      // Contains all (AllIn)
-	FilterConditionNone       FilterCondition = "none"     // Contains none (NotAllIn)
-	FilterConditionExactIn    FilterCondition = "exactin"  // Exact in array (ExactIn)
-	FilterConditionNotExactIn FilterCondition = "nexactin" // Not exact in array (NotExactIn)
+	FilterConditionIn         FilterCondition = "in"       // Value is in the specified array
+	FilterConditionNin        FilterCondition = "nin"      // Value is not in the specified array
+	FilterConditionAll        FilterCondition = "all"      // Contains all specified values
+	FilterConditionNone       FilterCondition = "none"     // Contains none of the specified values
+	FilterConditionExactIn    FilterCondition = "exactin"  // Array exactly matches specified values
+	FilterConditionNotExactIn FilterCondition = "nexactin" // Array does not exactly match specified values
 
 	// Existence checks
-	FilterConditionExists FilterCondition = "exists" // Field exists
-	FilterConditionEmpty  FilterCondition = "empty"  // Field is empty
-	FilterConditionNEmpty FilterCondition = "nempty" // Field not empty
+	FilterConditionExists FilterCondition = "exists" // Property exists on the object
+	FilterConditionEmpty  FilterCondition = "empty"  // Property value is empty
+	FilterConditionNEmpty FilterCondition = "nempty" // Property value is not empty
 )
 
 func (fc FilterCondition) String() string {

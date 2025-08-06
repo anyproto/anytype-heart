@@ -510,23 +510,23 @@
         "example": "eq",
         "type": "string",
         "x-enum-comments": {
-          "FilterConditionAll": "Contains all (AllIn)",
-          "FilterConditionContains": "Like/Contains substring",
-          "FilterConditionEmpty": "Field is empty",
-          "FilterConditionEq": "Equal",
-          "FilterConditionExactIn": "Exact in array (ExactIn)",
-          "FilterConditionExists": "Field exists",
-          "FilterConditionGt": "Greater Than",
-          "FilterConditionGte": "Greater or Equal",
-          "FilterConditionIn": "In array",
-          "FilterConditionLt": "Less Than",
-          "FilterConditionLte": "Less or Equal",
-          "FilterConditionNContains": "Not Contains",
-          "FilterConditionNEmpty": "Field not empty",
-          "FilterConditionNe": "Not Equal",
-          "FilterConditionNin": "Not in array",
-          "FilterConditionNone": "Contains none (NotAllIn)",
-          "FilterConditionNotExactIn": "Not exact in array (NotExactIn)"
+          "FilterConditionAll": "Contains all specified values",
+          "FilterConditionContains": "Contains substring",
+          "FilterConditionEmpty": "Property value is empty",
+          "FilterConditionEq": "Equal to value",
+          "FilterConditionExactIn": "Array exactly matches specified values",
+          "FilterConditionExists": "Property exists on the object",
+          "FilterConditionGt": "Greater than value",
+          "FilterConditionGte": "Greater than or equal to value",
+          "FilterConditionIn": "Value is in the specified array",
+          "FilterConditionLt": "Less than value",
+          "FilterConditionLte": "Less than or equal to value",
+          "FilterConditionNContains": "Does not contain substring",
+          "FilterConditionNEmpty": "Property value is not empty",
+          "FilterConditionNe": "Not equal to value",
+          "FilterConditionNin": "Value is not in the specified array",
+          "FilterConditionNone": "Contains none of the specified values",
+          "FilterConditionNotExactIn": "Array does not exactly match specified values"
         },
         "x-enum-varnames": [
           "FilterConditionEq",
@@ -549,7 +549,7 @@
         ]
       },
       "apimodel.FilterExpression": {
-        "description": "Advanced filter expressions with nested AND/OR conditions",
+        "description": "Expression filter with nested AND/OR conditions",
         "properties": {
           "conditions": {
             "description": "List of filter conditions",

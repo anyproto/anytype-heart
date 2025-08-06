@@ -366,6 +366,127 @@ func TestBuildExpressionFilters(t *testing.T) {
 			expectedError: "failed to build condition filter: unsupported filter condition: unsupported",
 		},
 		{
+			name: "empty expression with only operator",
+			expr: &apimodel.FilterExpression{
+				Operator: apimodel.FilterOperatorAnd,
+				// No conditions or filters
+			},
+			setupMock: func(m *mock_filter.MockApiService) {
+				// No setup needed
+			},
+			checkResult: func(t *testing.T, result *model.BlockContentDataviewFilter) {
+				assert.Nil(t, result)
+			},
+		},
+		{
+			name: "contradictory conditions on same property",
+			expr: &apimodel.FilterExpression{
+				Operator: apimodel.FilterOperatorAnd,
+				Conditions: []apimodel.FilterItem{
+					{
+						PropertyKey: "priority",
+						Condition:   apimodel.FilterConditionGt,
+						Value:       10,
+					},
+					{
+						PropertyKey: "priority",
+						Condition:   apimodel.FilterConditionLt,
+						Value:       5,
+					},
+				},
+			},
+			setupMock: func(m *mock_filter.MockApiService) {
+				propertyMap := map[string]*apimodel.Property{
+					"priority": {
+						Key:         "priority",
+						RelationKey: bundle.RelationKeyPriority.String(),
+						Format:      apimodel.PropertyFormatNumber,
+					},
+				}
+				m.On("GetCachedProperties", spaceId).Return(propertyMap)
+				m.On("ResolvePropertyApiKey", propertyMap, "priority").Return("priority")
+				m.On("SanitizeAndValidatePropertyValue", spaceId, "priority", apimodel.PropertyFormatNumber, 10, mock.Anything, propertyMap).Return(float64(10), nil)
+				m.On("SanitizeAndValidatePropertyValue", spaceId, "priority", apimodel.PropertyFormatNumber, 5, mock.Anything, propertyMap).Return(float64(5), nil)
+			},
+			checkResult: func(t *testing.T, result *model.BlockContentDataviewFilter) {
+				// Should still build the filter even if it's contradictory
+				require.NotNil(t, result)
+				assert.Equal(t, model.BlockContentDataviewFilter_And, result.Operator)
+				assert.Len(t, result.NestedFilters, 2)
+			},
+		},
+		{
+			name: "multiple in conditions on same property with OR",
+			expr: &apimodel.FilterExpression{
+				Operator: apimodel.FilterOperatorOr,
+				Conditions: []apimodel.FilterItem{
+					{
+						PropertyKey: "tags",
+						Condition:   apimodel.FilterConditionIn,
+						Value:       []string{"urgent", "important"},
+					},
+					{
+						PropertyKey: "tags",
+						Condition:   apimodel.FilterConditionIn,
+						Value:       []string{"critical", "high-priority"},
+					},
+				},
+			},
+			setupMock: func(m *mock_filter.MockApiService) {
+				propertyMap := map[string]*apimodel.Property{
+					"tags": {
+						Key:         "tags",
+						RelationKey: bundle.RelationKeyTag.String(),
+						Format:      apimodel.PropertyFormatMultiSelect,
+					},
+				}
+				m.On("GetCachedProperties", spaceId).Return(propertyMap)
+				m.On("ResolvePropertyApiKey", propertyMap, "tags").Return("tags")
+				m.On("SanitizeAndValidatePropertyValue", spaceId, "tags", apimodel.PropertyFormatMultiSelect, []string{"urgent", "important"}, mock.Anything, propertyMap).Return([]string{"urgent", "important"}, nil)
+				m.On("SanitizeAndValidatePropertyValue", spaceId, "tags", apimodel.PropertyFormatMultiSelect, []string{"critical", "high-priority"}, mock.Anything, propertyMap).Return([]string{"critical", "high-priority"}, nil)
+			},
+			checkResult: func(t *testing.T, result *model.BlockContentDataviewFilter) {
+				require.NotNil(t, result)
+				assert.Equal(t, model.BlockContentDataviewFilter_Or, result.Operator)
+				assert.Len(t, result.NestedFilters, 2)
+				// Both should be In conditions on tags
+				assert.Equal(t, bundle.RelationKeyTag.String(), result.NestedFilters[0].RelationKey)
+				assert.Equal(t, model.BlockContentDataviewFilter_In, result.NestedFilters[0].Condition)
+				assert.Equal(t, bundle.RelationKeyTag.String(), result.NestedFilters[1].RelationKey)
+				assert.Equal(t, model.BlockContentDataviewFilter_In, result.NestedFilters[1].Condition)
+			},
+		},
+		{
+			name: "filter with nil value in condition",
+			expr: &apimodel.FilterExpression{
+				Conditions: []apimodel.FilterItem{
+					{
+						PropertyKey: "description",
+						Condition:   apimodel.FilterConditionEq,
+						Value:       nil,
+					},
+				},
+			},
+			setupMock: func(m *mock_filter.MockApiService) {
+				propertyMap := map[string]*apimodel.Property{
+					"description": {
+						Key:         "description",
+						RelationKey: bundle.RelationKeyDescription.String(),
+						Format:      apimodel.PropertyFormatText,
+					},
+				}
+				m.On("GetCachedProperties", spaceId).Return(propertyMap)
+				m.On("ResolvePropertyApiKey", propertyMap, "description").Return("description")
+				m.On("SanitizeAndValidatePropertyValue", spaceId, "description", apimodel.PropertyFormatText, nil, mock.Anything, propertyMap).Return(nil, nil)
+			},
+			checkResult: func(t *testing.T, result *model.BlockContentDataviewFilter) {
+				require.NotNil(t, result)
+				assert.Equal(t, bundle.RelationKeyDescription.String(), result.RelationKey)
+				assert.Equal(t, model.BlockContentDataviewFilter_Equal, result.Condition)
+				assert.Nil(t, result.Value)
+			},
+		},
+		{
 			name: "all supported conditions test",
 			expr: &apimodel.FilterExpression{
 				Operator: apimodel.FilterOperatorAnd,

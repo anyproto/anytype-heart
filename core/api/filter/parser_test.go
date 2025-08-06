@@ -314,6 +314,72 @@ func TestParser_ParseQueryParams(t *testing.T) {
 				},
 			},
 		},
+		{
+			name:        "property key with special characters",
+			queryString: "custom.property_name-123[eq]=value",
+			expectedFilters: []Filter{
+				{
+					PropertyKey: "custom.property_name-123",
+					Condition:   model.BlockContentDataviewFilter_Equal,
+					Value:       "value",
+				},
+			},
+		},
+		{
+			name:        "empty array for in condition",
+			queryString: "tags[in]=",
+			expectedFilters: []Filter{
+				{
+					PropertyKey: "tags",
+					Condition:   model.BlockContentDataviewFilter_In,
+					Value:       []string{},
+				},
+			},
+		},
+		{
+			name:        "special characters in values",
+			queryString: "description[contains]=%26%3D%2B%40%23",
+			expectedFilters: []Filter{
+				{
+					PropertyKey: "description",
+					Condition:   model.BlockContentDataviewFilter_Like,
+					Value:       "&= @#", // + is decoded as space in URL encoding
+				},
+			},
+		},
+		{
+			name:        "malformed bracket syntax - missing closing bracket",
+			queryString: "name[eq=test",
+			expectedFilters: []Filter{
+				{
+					PropertyKey: "name[eq",
+					Condition:   model.BlockContentDataviewFilter_Equal,
+					Value:       "test",
+				},
+			},
+		},
+		{
+			name:        "malformed bracket syntax - extra bracket",
+			queryString: "name][eq]=test",
+			expectedFilters: []Filter{
+				{
+					PropertyKey: "name]",
+					Condition:   model.BlockContentDataviewFilter_Equal,
+					Value:       "test",
+				},
+			},
+		},
+		{
+			name:        "multiple values for non-array condition",
+			queryString: "priority[gt]=5,10,15",
+			expectedFilters: []Filter{
+				{
+					PropertyKey: "priority",
+					Condition:   model.BlockContentDataviewFilter_Greater,
+					Value:       "5,10,15", // Treated as single string
+				},
+			},
+		},
 	}
 
 	parser := NewParser()
