@@ -9,7 +9,7 @@ import (
 
 func (mw *Middleware) PublishingCreate(ctx context.Context, req *pb.RpcPublishingCreateRequest) *pb.RpcPublishingCreateResponse {
 	publishService := mustService[publish.Service](mw)
-	res, err := publishService.Publish(ctx, req.SpaceId, req.ObjectId, req.Uri, req.JoinSpace)
+	res, err := publishService.Publish(ctx, req.SpaceId, req.ObjectId, req.Uri, req.JoinSpace, req.EnableMultipublish)
 	code := mapErrorCode(err,
 		errToCode(nil, pb.RpcPublishingCreateResponseError_NULL),
 		errToCode(publish.ErrLimitExceeded, pb.RpcPublishingCreateResponseError_LIMIT_EXCEEDED),

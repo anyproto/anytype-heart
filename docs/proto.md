@@ -19671,6 +19671,7 @@ Available undo/redo operations
 | objectId | [string](#string) |  |  |
 | uri | [string](#string) |  |  |
 | joinSpace | [bool](#bool) |  |  |
+| enableMultipublish | [bool](#bool) |  |  |
 
 
 

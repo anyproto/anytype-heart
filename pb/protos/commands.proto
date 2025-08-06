@@ -1584,6 +1584,7 @@ message Rpc {
                 string objectId = 2;
                 string uri = 3;
                 bool joinSpace = 4;
+                bool enableMultipublish = 5;
             }
             message Response {
                 Error error = 1;
