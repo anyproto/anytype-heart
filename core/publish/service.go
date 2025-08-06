@@ -363,11 +363,19 @@ func (s *service) createIndexFile(tempPublishDir string, uberSnapshot Publishing
 }
 
 func (s *service) publishToServer(ctx context.Context, spaceId, pageId, uri, version, tempPublishDir string) error {
+	var backlinks []string
+	err := cache.Do(s.objectGetter, pageId, func(sb smartblock.SmartBlock) error {
+		st := sb.NewState()
+		backlinks = st.LocalDetails().GetStringList(bundle.RelationKeyBacklinks)
+		return nil
+	})
+
 	publishReq := &publishapi.PublishRequest{
-		SpaceId:  spaceId,
-		ObjectId: pageId,
-		Uri:      uri,
-		Version:  version,
+		SpaceId:   spaceId,
+		ObjectId:  pageId,
+		Backlinks: backlinks,
+		Uri:       uri,
+		Version:   version,
 	}
 
 	uploadUrl, err := s.publishClientService.Publish(ctx, publishReq)
@@ -453,6 +461,7 @@ func (s *service) findAllAnytypeLinkBlocks(ctx context.Context, spaceId, pageId 
 			},
 		},
 	})
+
 	if err != nil {
 		return err
 	}
