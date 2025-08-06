@@ -14,6 +14,8 @@ import (
 const (
 	CollectionStoreKey = "objects"
 	defaultViewName    = "All"
+	defaultWidth       = 200
+	defaultWidthShort  = 100
 )
 
 var (
@@ -47,11 +49,15 @@ var (
 )
 
 func MakeDataviewContent(isCollection bool, ot *model.ObjectType, relLinks []*model.RelationLink, forceViewId string) *model.BlockContentOfDataview {
+	var visibleRelations []domain.RelationKey
 	var (
 		defaultRelations = defaultCollectionRelations
-		visibleRelations = defaultVisibleRelations
 		sorts            = DefaultLastModifiedDateSort()
 	)
+
+	if len(relLinks) == 0 {
+		visibleRelations = defaultVisibleRelations
+	}
 
 	if isCollection {
 		sorts = defaultNameSort()
@@ -89,6 +95,21 @@ func MakeDataviewContent(isCollection bool, ot *model.ObjectType, relLinks []*mo
 	}
 }
 
+func propertyWidth(format model.RelationFormat) int32 {
+	if slices.Contains([]model.RelationFormat{
+		model.RelationFormat_number,
+		model.RelationFormat_phone,
+		model.RelationFormat_email,
+		model.RelationFormat_tag,
+		model.RelationFormat_status,
+		model.RelationFormat_checkbox,
+		model.RelationFormat_url,
+	}, format) {
+		return defaultWidthShort
+	}
+	return defaultWidth
+}
+
 func generateRelationLists(
 	defaultRelations []domain.RelationKey,
 	additionalRelations []*model.RelationLink,
@@ -110,6 +131,7 @@ func generateRelationLists(
 		viewRelations = append(viewRelations, &model.BlockContentDataviewRelation{
 			Key:       rel.Key,
 			IsVisible: isVisible(relKey),
+			Width:     propertyWidth(rel.Format),
 		})
 	}
 
@@ -121,9 +143,11 @@ func generateRelationLists(
 			Format: relLink.Format,
 			Key:    relLink.Key,
 		})
+
 		viewRelations = append(viewRelations, &model.BlockContentDataviewRelation{
 			Key:       relLink.Key,
 			IsVisible: isVisible(domain.RelationKey(relLink.Key)),
+			Width:     propertyWidth(relLink.Format),
 		})
 	}
 	return relationLinks, viewRelations
