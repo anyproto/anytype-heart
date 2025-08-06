@@ -16,6 +16,7 @@ import (
 //
 //	@Summary		List properties
 //	@Description	⚠ Warning: Properties are experimental and may change in the next update. ⚠ Retrieves a paginated list of properties available within a specific space. Each property record includes its unique identifier, name and format. This information is essential for clients to understand the available properties for filtering or creating objects.
+//	@Description	Supports dynamic filtering via query parameters (e.g., ?format=text, ?name[contains]=date, ?key[ne]=custom_prop). See FilterCondition enum for available conditions.
 //	@Id				list_properties
 //	@Tags			Properties
 //	@Produce		json

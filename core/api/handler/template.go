@@ -16,6 +16,7 @@ import (
 //
 //	@Summary		List templates
 //	@Description	This endpoint returns a paginated list of templates that are associated with a specific type within a space. Templates provide pre‑configured structures for creating new objects. Each template record contains its identifier, name, and icon, so that clients can offer users a selection of templates when creating objects.
+//	@Description	Supports dynamic filtering via query parameters (e.g., ?name[contains]=invoice, ?is_default=true). See FilterCondition enum for available conditions.
 //	@Id				list_templates
 //	@Tags			Templates
 //	@Produce		json

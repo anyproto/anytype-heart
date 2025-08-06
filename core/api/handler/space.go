@@ -15,7 +15,8 @@ import (
 // ListSpacesHandler retrieves a list of spaces
 //
 //	@Summary		List spaces
-//	@Description	Retrieves a paginated list of all spaces that are accessible by the authenticated user. Each space record contains detailed information such as the space ID, name, icon (derived either from an emoji or image URL), and additional metadata. This endpoint is key to displaying a user’s workspaces.
+//	@Description	Retrieves a paginated list of all spaces that are accessible by the authenticated user. Each space record contains detailed information such as the space ID, name, icon (derived either from an emoji or image URL), and additional metadata. This endpoint is key to displaying a user's workspaces.
+//	@Description	Supports dynamic filtering via query parameters (e.g., ?name[contains]=project, ?is_archived=false). See FilterCondition enum for available conditions.
 //	@Id				list_spaces
 //	@Tags			Spaces
 //	@Produce		json

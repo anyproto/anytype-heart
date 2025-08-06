@@ -57,6 +57,7 @@ func GetListViewsHandler(s *service.Service) gin.HandlerFunc {
 //
 //	@Summary		Get objects in list
 //	@Description	Returns a paginated list of objects associated with a specific list (query or collection) within a space. When a view ID is provided, the objects are filtered and sorted according to the view's configuration. If no view ID is specified, all list objects are returned without filtering and sorting. This endpoint helps clients to manage grouped objects (for example, tasks within a list) by returning information for each item of the list.
+//	@Description	Supports dynamic filtering via query parameters (e.g., ?type=page, ?done=false, ?created_date[gte]=2024-01-01, ?tags[in]=urgent,important). For select/tag properties use tag keys, for object properties use object IDs. See FilterCondition enum for available conditions.
 //	@Id				get_list_objects
 //	@Tags			Lists
 //	@Produce		json
