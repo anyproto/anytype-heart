@@ -605,6 +605,28 @@ func (mw *Middleware) ObjectBookmarkFetch(cctx context.Context, req *pb.RpcObjec
 	return response(pb.RpcObjectBookmarkFetchResponseError_NULL, nil)
 }
 
+func (mw *Middleware) ObjectToBookmark(cctx context.Context, req *pb.RpcObjectToBookmarkRequest) *pb.RpcObjectToBookmarkResponse {
+	response := func(code pb.RpcObjectToBookmarkResponseErrorCode, id string, err error) *pb.RpcObjectToBookmarkResponse {
+		m := &pb.RpcObjectToBookmarkResponse{Error: &pb.RpcObjectToBookmarkResponseError{Code: code}, ObjectId: id}
+		if err != nil {
+			m.Error.Description = getErrorDescription(err)
+		}
+		return m
+	}
+
+	var id string
+	err := mw.doBlockService(func(bs *block.Service) error {
+		var err error
+		id, err = bs.ObjectToBookmark(cctx, req.ContextId, req.Url)
+		return err
+	})
+
+	if err != nil {
+		return response(pb.RpcObjectToBookmarkResponseError_UNKNOWN_ERROR, "", err)
+	}
+	return response(pb.RpcObjectToBookmarkResponseError_NULL, id, nil)
+}
+
 func (mw *Middleware) ObjectImport(cctx context.Context, req *pb.RpcObjectImportRequest) *pb.RpcObjectImportResponse {
 	importRequest := &importer.ImportRequest{
 		RpcObjectImportRequest: req,
