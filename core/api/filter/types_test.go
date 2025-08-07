@@ -248,12 +248,6 @@ func TestIsValidConditionForType(t *testing.T) {
 			expected:  true,
 		},
 		{
-			name:      "checkbox with exists",
-			format:    apimodel.PropertyFormatCheckbox,
-			condition: model.BlockContentDataviewFilter_Exists,
-			expected:  true,
-		},
-		{
 			name:      "checkbox with greater (invalid)",
 			format:    apimodel.PropertyFormatCheckbox,
 			condition: model.BlockContentDataviewFilter_Greater,
@@ -261,10 +255,10 @@ func TestIsValidConditionForType(t *testing.T) {
 		},
 		// Select format tests
 		{
-			name:      "select with equal",
+			name:      "select with equal (invalid)",
 			format:    apimodel.PropertyFormatSelect,
 			condition: model.BlockContentDataviewFilter_Equal,
-			expected:  true,
+			expected:  false,
 		},
 		{
 			name:      "select with in",
@@ -387,24 +381,6 @@ func TestIsValidConditionForType(t *testing.T) {
 			expected:  true,
 		},
 		{
-			name:      "files with not all in",
-			format:    apimodel.PropertyFormatFiles,
-			condition: model.BlockContentDataviewFilter_NotAllIn,
-			expected:  true,
-		},
-		{
-			name:      "files with exact in",
-			format:    apimodel.PropertyFormatFiles,
-			condition: model.BlockContentDataviewFilter_ExactIn,
-			expected:  true,
-		},
-		{
-			name:      "files with not exact in",
-			format:    apimodel.PropertyFormatFiles,
-			condition: model.BlockContentDataviewFilter_NotExactIn,
-			expected:  true,
-		},
-		{
 			name:      "files with equal (invalid)",
 			format:    apimodel.PropertyFormatFiles,
 			condition: model.BlockContentDataviewFilter_Equal,
@@ -421,24 +397,6 @@ func TestIsValidConditionForType(t *testing.T) {
 			name:      "objects with all in",
 			format:    apimodel.PropertyFormatObjects,
 			condition: model.BlockContentDataviewFilter_AllIn,
-			expected:  true,
-		},
-		{
-			name:      "objects with not all in",
-			format:    apimodel.PropertyFormatObjects,
-			condition: model.BlockContentDataviewFilter_NotAllIn,
-			expected:  true,
-		},
-		{
-			name:      "objects with exact in",
-			format:    apimodel.PropertyFormatObjects,
-			condition: model.BlockContentDataviewFilter_ExactIn,
-			expected:  true,
-		},
-		{
-			name:      "objects with not exact in",
-			format:    apimodel.PropertyFormatObjects,
-			condition: model.BlockContentDataviewFilter_NotExactIn,
 			expected:  true,
 		},
 		{
@@ -465,12 +423,6 @@ func TestIsValidConditionForType(t *testing.T) {
 			name:      "number with not empty",
 			format:    apimodel.PropertyFormatNumber,
 			condition: model.BlockContentDataviewFilter_NotEmpty,
-			expected:  true,
-		},
-		{
-			name:      "select with exists",
-			format:    apimodel.PropertyFormatSelect,
-			condition: model.BlockContentDataviewFilter_Exists,
 			expected:  true,
 		},
 	}
@@ -526,8 +478,7 @@ func TestConditionsForPropertyType(t *testing.T) {
 		conditions := ConditionsForPropertyType[apimodel.PropertyFormatCheckbox]
 		assert.Contains(t, conditions, model.BlockContentDataviewFilter_Equal)
 		assert.Contains(t, conditions, model.BlockContentDataviewFilter_NotEqual)
-		assert.Contains(t, conditions, model.BlockContentDataviewFilter_Exists)
-		assert.Len(t, conditions, 3) // Only these 3 conditions
+		assert.Len(t, conditions, 2) // Only these 2 conditions
 	})
 
 	t.Run("multi-select conditions", func(t *testing.T) {
@@ -535,9 +486,8 @@ func TestConditionsForPropertyType(t *testing.T) {
 		assert.Contains(t, conditions, model.BlockContentDataviewFilter_In)
 		assert.Contains(t, conditions, model.BlockContentDataviewFilter_NotIn)
 		assert.Contains(t, conditions, model.BlockContentDataviewFilter_AllIn)
-		assert.Contains(t, conditions, model.BlockContentDataviewFilter_NotAllIn)
-		assert.Contains(t, conditions, model.BlockContentDataviewFilter_ExactIn)
-		assert.Contains(t, conditions, model.BlockContentDataviewFilter_NotExactIn)
+		assert.Contains(t, conditions, model.BlockContentDataviewFilter_Empty)
+		assert.Contains(t, conditions, model.BlockContentDataviewFilter_NotEmpty)
 		assert.NotContains(t, conditions, model.BlockContentDataviewFilter_Equal)
 	})
 
@@ -546,12 +496,8 @@ func TestConditionsForPropertyType(t *testing.T) {
 		assert.Contains(t, conditions, model.BlockContentDataviewFilter_In)
 		assert.Contains(t, conditions, model.BlockContentDataviewFilter_NotIn)
 		assert.Contains(t, conditions, model.BlockContentDataviewFilter_AllIn)
-		assert.Contains(t, conditions, model.BlockContentDataviewFilter_NotAllIn)
-		assert.Contains(t, conditions, model.BlockContentDataviewFilter_ExactIn)
-		assert.Contains(t, conditions, model.BlockContentDataviewFilter_NotExactIn)
 		assert.Contains(t, conditions, model.BlockContentDataviewFilter_Empty)
 		assert.Contains(t, conditions, model.BlockContentDataviewFilter_NotEmpty)
-		assert.Contains(t, conditions, model.BlockContentDataviewFilter_Exists)
 		assert.NotContains(t, conditions, model.BlockContentDataviewFilter_Equal)
 	})
 
@@ -560,12 +506,8 @@ func TestConditionsForPropertyType(t *testing.T) {
 		assert.Contains(t, conditions, model.BlockContentDataviewFilter_In)
 		assert.Contains(t, conditions, model.BlockContentDataviewFilter_NotIn)
 		assert.Contains(t, conditions, model.BlockContentDataviewFilter_AllIn)
-		assert.Contains(t, conditions, model.BlockContentDataviewFilter_NotAllIn)
-		assert.Contains(t, conditions, model.BlockContentDataviewFilter_ExactIn)
-		assert.Contains(t, conditions, model.BlockContentDataviewFilter_NotExactIn)
 		assert.Contains(t, conditions, model.BlockContentDataviewFilter_Empty)
 		assert.Contains(t, conditions, model.BlockContentDataviewFilter_NotEmpty)
-		assert.Contains(t, conditions, model.BlockContentDataviewFilter_Exists)
 		assert.NotContains(t, conditions, model.BlockContentDataviewFilter_Equal)
 	})
 }

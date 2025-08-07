@@ -396,7 +396,7 @@ func TestValidator_ConditionValidation(t *testing.T) {
 		{"checkbox with greater", apimodel.PropertyFormatCheckbox, model.BlockContentDataviewFilter_Greater, false},
 
 		// Select format
-		{"select with equal", apimodel.PropertyFormatSelect, model.BlockContentDataviewFilter_Equal, true},
+		{"select with equal", apimodel.PropertyFormatSelect, model.BlockContentDataviewFilter_Equal, false},
 		{"select with in", apimodel.PropertyFormatSelect, model.BlockContentDataviewFilter_In, true},
 		{"select with like", apimodel.PropertyFormatSelect, model.BlockContentDataviewFilter_Like, false},
 

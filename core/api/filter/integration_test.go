@@ -79,7 +79,7 @@ func TestFilterIntegration(t *testing.T) {
 		},
 		{
 			name:            "filter with special conditions",
-			queryString:     "description[empty]=true&optional_field[exists]=1",
+			queryString:     "description[empty]=true&tags[nempty]=true",
 			expectedFilters: 2,
 			checkFilter: func(t *testing.T, filters []*model.BlockContentDataviewFilter) {
 				require.Len(t, filters, 2)
@@ -95,10 +95,10 @@ func TestFilterIntegration(t *testing.T) {
 				require.True(t, ok, "description filter should exist")
 				assert.Equal(t, model.BlockContentDataviewFilter_Empty, descFilter.Condition)
 
-				// Check exists condition
-				optionalFilter, ok := filterMap["optional_field"]
-				require.True(t, ok, "optional_field filter should exist")
-				assert.Equal(t, model.BlockContentDataviewFilter_Exists, optionalFilter.Condition)
+				// Check not empty condition
+				tagsFilter, ok := filterMap["tags"]
+				require.True(t, ok, "tags filter should exist")
+				assert.Equal(t, model.BlockContentDataviewFilter_NotEmpty, tagsFilter.Condition)
 			},
 		},
 		{

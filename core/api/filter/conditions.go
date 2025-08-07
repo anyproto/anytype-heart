@@ -20,15 +20,11 @@ var ConditionMap = map[apimodel.FilterCondition]model.BlockContentDataviewFilter
 	apimodel.FilterConditionNContains: model.BlockContentDataviewFilter_NotLike,
 
 	// Array operations
-	apimodel.FilterConditionIn:         model.BlockContentDataviewFilter_In,
-	apimodel.FilterConditionNin:        model.BlockContentDataviewFilter_NotIn,
-	apimodel.FilterConditionAll:        model.BlockContentDataviewFilter_AllIn,
-	apimodel.FilterConditionNone:       model.BlockContentDataviewFilter_NotAllIn,
-	apimodel.FilterConditionExactIn:    model.BlockContentDataviewFilter_ExactIn,
-	apimodel.FilterConditionNotExactIn: model.BlockContentDataviewFilter_NotExactIn,
+	apimodel.FilterConditionIn:  model.BlockContentDataviewFilter_In,
+	apimodel.FilterConditionNin: model.BlockContentDataviewFilter_NotIn,
+	apimodel.FilterConditionAll: model.BlockContentDataviewFilter_AllIn,
 
-	// Existence checks
-	apimodel.FilterConditionExists: model.BlockContentDataviewFilter_Exists,
+	// Emptiness checks
 	apimodel.FilterConditionEmpty:  model.BlockContentDataviewFilter_Empty,
 	apimodel.FilterConditionNEmpty: model.BlockContentDataviewFilter_NotEmpty,
 }
@@ -57,15 +53,13 @@ var ReverseConditionMap = map[model.BlockContentDataviewFilterCondition]apimodel
 	model.BlockContentDataviewFilter_NotLike: apimodel.FilterConditionNContains,
 
 	// Array operations
-	model.BlockContentDataviewFilter_In:         apimodel.FilterConditionIn,
-	model.BlockContentDataviewFilter_NotIn:      apimodel.FilterConditionNin,
-	model.BlockContentDataviewFilter_AllIn:      apimodel.FilterConditionAll,
-	model.BlockContentDataviewFilter_NotAllIn:   apimodel.FilterConditionNone,
-	model.BlockContentDataviewFilter_ExactIn:    apimodel.FilterConditionExactIn,
-	model.BlockContentDataviewFilter_NotExactIn: apimodel.FilterConditionNotExactIn,
+	model.BlockContentDataviewFilter_In:    apimodel.FilterConditionIn,
+	model.BlockContentDataviewFilter_NotIn: apimodel.FilterConditionNin,
+	model.BlockContentDataviewFilter_AllIn: apimodel.FilterConditionAll,
+	// Note: NotAllIn, ExactIn, NotExactIn are internal only - not exposed in API
 
-	// Existence checks
-	model.BlockContentDataviewFilter_Exists:   apimodel.FilterConditionExists,
+	// Emptiness checks
 	model.BlockContentDataviewFilter_Empty:    apimodel.FilterConditionEmpty,
 	model.BlockContentDataviewFilter_NotEmpty: apimodel.FilterConditionNEmpty,
+	// Note: Exists is internal only - not exposed in API
 }

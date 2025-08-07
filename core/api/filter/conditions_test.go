@@ -22,10 +22,6 @@ func TestConditionMap(t *testing.T) {
 		"in":        model.BlockContentDataviewFilter_In,
 		"nin":       model.BlockContentDataviewFilter_NotIn,
 		"all":       model.BlockContentDataviewFilter_AllIn,
-		"none":      model.BlockContentDataviewFilter_NotAllIn,
-		"exactin":   model.BlockContentDataviewFilter_ExactIn,
-		"nexactin":  model.BlockContentDataviewFilter_NotExactIn,
-		"exists":    model.BlockContentDataviewFilter_Exists,
 		"empty":     model.BlockContentDataviewFilter_Empty,
 		"nempty":    model.BlockContentDataviewFilter_NotEmpty,
 	}
@@ -50,10 +46,6 @@ func TestConditionMap(t *testing.T) {
 	assert.Equal(t, "in", apimodel.FilterConditionIn.String())
 	assert.Equal(t, "nin", apimodel.FilterConditionNin.String())
 	assert.Equal(t, "all", apimodel.FilterConditionAll.String())
-	assert.Equal(t, "none", apimodel.FilterConditionNone.String())
-	assert.Equal(t, "exactin", apimodel.FilterConditionExactIn.String())
-	assert.Equal(t, "nexactin", apimodel.FilterConditionNotExactIn.String())
-	assert.Equal(t, "exists", apimodel.FilterConditionExists.String())
 	assert.Equal(t, "empty", apimodel.FilterConditionEmpty.String())
 	assert.Equal(t, "nempty", apimodel.FilterConditionNEmpty.String())
 }

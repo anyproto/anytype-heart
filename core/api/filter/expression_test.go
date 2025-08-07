@@ -284,36 +284,6 @@ func TestBuildExpressionFilters(t *testing.T) {
 			},
 		},
 		{
-			name: "exists condition filter",
-			expr: &apimodel.FilterExpression{
-				Conditions: []apimodel.FilterItem{
-					{
-						WrappedFilterItem: apimodel.ExistsFilterItem{
-							PropertyKey: "due_date",
-							Condition:   apimodel.FilterConditionExists,
-						},
-					},
-				},
-			},
-			setupMock: func(m *mock_filter.MockApiService) {
-				propertyMap := map[string]*apimodel.Property{
-					"due_date": {
-						Key:         "due_date",
-						RelationKey: bundle.RelationKeyDueDate.String(),
-						Format:      apimodel.PropertyFormatDate,
-					},
-				}
-				m.On("GetCachedProperties", spaceId).Return(propertyMap)
-				m.On("ResolvePropertyApiKey", propertyMap, "due_date").Return("due_date")
-			},
-			checkResult: func(t *testing.T, result *model.BlockContentDataviewFilter) {
-				require.NotNil(t, result)
-				assert.Equal(t, bundle.RelationKeyDueDate.String(), result.RelationKey)
-				assert.Equal(t, model.BlockContentDataviewFilter_Exists, result.Condition)
-				assert.Nil(t, result.Value)
-			},
-		},
-		{
 			name: "date filters with RFC3339 and date-only formats",
 			expr: &apimodel.FilterExpression{
 				Operator: apimodel.FilterOperatorAnd,

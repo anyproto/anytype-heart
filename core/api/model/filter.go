@@ -50,15 +50,11 @@ const (
 	FilterConditionNContains FilterCondition = "ncontains" // Does not contain substring
 
 	// Array operations
-	FilterConditionIn         FilterCondition = "in"       // Value is in the specified array
-	FilterConditionNin        FilterCondition = "nin"      // Value is not in the specified array
-	FilterConditionAll        FilterCondition = "all"      // Contains all specified values
-	FilterConditionNone       FilterCondition = "none"     // Contains none of the specified values
-	FilterConditionExactIn    FilterCondition = "exactin"  // Array exactly matches specified values
-	FilterConditionNotExactIn FilterCondition = "nexactin" // Array does not exactly match specified values
+	FilterConditionIn  FilterCondition = "in"  // Value is in the specified array
+	FilterConditionNin FilterCondition = "nin" // Value is not in the specified array
+	FilterConditionAll FilterCondition = "all" // Contains all specified values
 
-	// Existence checks
-	FilterConditionExists FilterCondition = "exists" // Property exists on the object
+	// Emptiness checks
 	FilterConditionEmpty  FilterCondition = "empty"  // Property value is empty
 	FilterConditionNEmpty FilterCondition = "nempty" // Property value is not empty
 )
@@ -75,9 +71,8 @@ func (fc *FilterCondition) UnmarshalJSON(data []byte) error {
 	switch FilterCondition(s) {
 	case FilterConditionEq, FilterConditionNe, FilterConditionGt, FilterConditionGte,
 		FilterConditionLt, FilterConditionLte, FilterConditionContains, FilterConditionNContains,
-		FilterConditionIn, FilterConditionNin, FilterConditionAll, FilterConditionNone,
-		FilterConditionExactIn, FilterConditionNotExactIn,
-		FilterConditionExists, FilterConditionEmpty, FilterConditionNEmpty:
+		FilterConditionIn, FilterConditionNin, FilterConditionAll,
+		FilterConditionEmpty, FilterConditionNEmpty:
 		*fc = FilterCondition(s)
 		return nil
 	default:
@@ -87,9 +82,9 @@ func (fc *FilterCondition) UnmarshalJSON(data []byte) error {
 
 // FilterExpression represents a filter expression that can be nested with AND/OR operators
 type FilterExpression struct {
-	Operator   FilterOperator     `json:"operator,omitempty" enums:"and,or"`                                                                                                                                                                                                                      // Logical operator for combining filters (and, or)
-	Conditions []FilterItem       `json:"conditions,omitempty" oneOf:"TextFilterItem,NumberFilterItem,SelectFilterItem,MultiSelectFilterItem,DateFilterItem,CheckboxFilterItem,FilesFilterItem,UrlFilterItem,EmailFilterItem,PhoneFilterItem,ObjectsFilterItem,ExistsFilterItem,EmptyFilterItem"` // List of format-specific filter conditions
-	Filters    []FilterExpression `json:"filters,omitempty"`                                                                                                                                                                                                                                      // Nested filter expressions for complex logic
+	Operator   FilterOperator     `json:"operator,omitempty" enums:"and,or"`                                                                                                                                                                                                     // Logical operator for combining filters (and, or)
+	Conditions []FilterItem       `json:"conditions,omitempty" oneOf:"TextFilterItem,NumberFilterItem,SelectFilterItem,MultiSelectFilterItem,DateFilterItem,CheckboxFilterItem,FilesFilterItem,UrlFilterItem,EmailFilterItem,PhoneFilterItem,ObjectsFilterItem,EmptyFilterItem"` // List of format-specific filter conditions
+	Filters    []FilterExpression `json:"filters,omitempty"`                                                                                                                                                                                                                     // Nested filter expressions for complex logic
 }
 
 // FilterItem is a wrapper for format-specific filter conditions
@@ -102,21 +97,12 @@ func (f FilterItem) MarshalJSON() ([]byte, error) {
 }
 
 func (f *FilterItem) UnmarshalJSON(data []byte) error {
-	// First check if it has "exists" condition (no value field needed)
+	// Check for empty/nempty conditions without value
 	var checkCondition struct {
 		Condition FilterCondition `json:"condition"`
 	}
 	if err := json.Unmarshal(data, &checkCondition); err != nil {
 		return err
-	}
-
-	if checkCondition.Condition == FilterConditionExists {
-		var v ExistsFilterItem
-		if err := json.Unmarshal(data, &v); err != nil {
-			return err
-		}
-		f.WrappedFilterItem = v
-		return nil
 	}
 
 	// Check for empty/nempty conditions without value
@@ -252,9 +238,9 @@ func (f NumberFilterItem) GetCondition() FilterCondition { return f.Condition }
 
 // SelectFilterItem for select property filters
 type SelectFilterItem struct {
-	PropertyKey string          `json:"property_key" example:"status"`                            // The property key to filter on
-	Condition   FilterCondition `json:"condition" example:"eq" enums:"eq,ne,in,nin,empty,nempty"` // The filter condition
-	Select      *string         `json:"select,omitempty" example:"tag_id_done"`                   // Tag Id - for eq/ne conditions (single selection)
+	PropertyKey string          `json:"property_key" example:"status"`                          // The property key to filter on
+	Condition   FilterCondition `json:"condition" example:"in" enums:"in,all,nin,empty,nempty"` // The filter condition
+	Select      *string         `json:"select,omitempty" example:"tag_id_done"`                 // Tag Id - for eq/ne conditions (single selection)
 }
 
 func (SelectFilterItem) isFilterItem()                   {}
@@ -263,9 +249,9 @@ func (f SelectFilterItem) GetCondition() FilterCondition { return f.Condition }
 
 // MultiSelectFilterItem for multi-select property filters
 type MultiSelectFilterItem struct {
-	PropertyKey string          `json:"property_key" example:"tags"`                                            // The property key to filter on
-	Condition   FilterCondition `json:"condition" example:"all" enums:"all,none,exactin,nexactin,empty,nempty"` // The filter condition
-	MultiSelect *[]string       `json:"multi_select,omitempty"`                                                 // The tag IDs to filter by
+	PropertyKey string          `json:"property_key" example:"tags"`                             // The property key to filter on
+	Condition   FilterCondition `json:"condition" example:"all" enums:"in,all,nin,empty,nempty"` // The filter condition
+	MultiSelect *[]string       `json:"multi_select,omitempty"`                                  // The tag IDs to filter by
 }
 
 func (MultiSelectFilterItem) isFilterItem()                   {}
@@ -275,7 +261,7 @@ func (f MultiSelectFilterItem) GetCondition() FilterCondition { return f.Conditi
 // DateFilterItem for date property filters
 type DateFilterItem struct {
 	PropertyKey string          `json:"property_key" example:"due_date"`                                  // The property key to filter on
-	Condition   FilterCondition `json:"condition" example:"lte" enums:"eq,ne,gt,gte,lt,lte,empty,nempty"` // The filter condition
+	Condition   FilterCondition `json:"condition" example:"lte" enums:"eq,gt,gte,lt,lte,in,empty,nempty"` // The filter condition
 	Date        *string         `json:"date,omitempty" example:"2024-12-31T23:59:59Z"`                    // The date value to filter by. Accepts dates in RFC3339 format (2006-01-02T15:04:05Z) or date-only format (2006-01-02)
 }
 
@@ -296,9 +282,9 @@ func (f CheckboxFilterItem) GetCondition() FilterCondition { return f.Condition 
 
 // FilesFilterItem for files property filters
 type FilesFilterItem struct {
-	PropertyKey string          `json:"property_key" example:"attachments"`                      // The property key to filter on
-	Condition   FilterCondition `json:"condition" example:"empty" enums:"empty,nempty,contains"` // The filter condition
-	Files       *[]string       `json:"files,omitempty"`                                         // File IDs for contains condition
+	PropertyKey string          `json:"property_key" example:"attachments"`                     // The property key to filter on
+	Condition   FilterCondition `json:"condition" example:"in" enums:"in,all,nin,empty,nempty"` // The filter condition
+	Files       *[]string       `json:"files,omitempty"`                                        // File IDs for contains condition
 }
 
 func (FilesFilterItem) isFilterItem()                   {}
@@ -340,24 +326,14 @@ func (f PhoneFilterItem) GetCondition() FilterCondition { return f.Condition }
 
 // ObjectsFilterItem for objects/relation property filters
 type ObjectsFilterItem struct {
-	PropertyKey string          `json:"property_key" example:"assignee"`                             // The property key to filter on
-	Condition   FilterCondition `json:"condition" example:"in" enums:"in,nin,all,none,empty,nempty"` // The filter condition
-	Objects     *[]string       `json:"objects,omitempty"`                                           // Object Ids to filter by
+	PropertyKey string          `json:"property_key" example:"assignee"`                        // The property key to filter on
+	Condition   FilterCondition `json:"condition" example:"in" enums:"in,all,nin,empty,nempty"` // The filter condition
+	Objects     *[]string       `json:"objects,omitempty"`                                      // Object Ids to filter by
 }
 
 func (ObjectsFilterItem) isFilterItem()                   {}
 func (f ObjectsFilterItem) GetPropertyKey() string        { return f.PropertyKey }
 func (f ObjectsFilterItem) GetCondition() FilterCondition { return f.Condition }
-
-// ExistsFilterItem for checking property existence
-type ExistsFilterItem struct {
-	PropertyKey string          `json:"property_key" example:"custom_field"`       // The property key to filter on
-	Condition   FilterCondition `json:"condition" example:"exists" enums:"exists"` // The filter condition (always "exists")
-}
-
-func (ExistsFilterItem) isFilterItem()                   {}
-func (f ExistsFilterItem) GetPropertyKey() string        { return f.PropertyKey }
-func (f ExistsFilterItem) GetCondition() FilterCondition { return f.Condition }
 
 // EmptyFilterItem for checking if property is empty/not empty (without specifying format)
 type EmptyFilterItem struct {

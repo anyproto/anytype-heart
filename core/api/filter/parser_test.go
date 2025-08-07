@@ -163,39 +163,6 @@ func TestParser_ParseQueryParams(t *testing.T) {
 			},
 		},
 		{
-			name:        "filter with none condition",
-			queryString: "tags[none]=spam,trash",
-			expectedFilters: []Filter{
-				{
-					PropertyKey: "tags",
-					Condition:   model.BlockContentDataviewFilter_NotAllIn,
-					Value:       []string{"spam", "trash"},
-				},
-			},
-		},
-		{
-			name:        "filter with exact in condition",
-			queryString: "tags[exactin]=todo,done",
-			expectedFilters: []Filter{
-				{
-					PropertyKey: "tags",
-					Condition:   model.BlockContentDataviewFilter_ExactIn,
-					Value:       []string{"todo", "done"},
-				},
-			},
-		},
-		{
-			name:        "filter with not exact in condition",
-			queryString: "tags[nexactin]=todo,done",
-			expectedFilters: []Filter{
-				{
-					PropertyKey: "tags",
-					Condition:   model.BlockContentDataviewFilter_NotExactIn,
-					Value:       []string{"todo", "done"},
-				},
-			},
-		},
-		{
 			name:        "filter with empty condition",
 			queryString: "description[empty]=true",
 			expectedFilters: []Filter{
@@ -213,17 +180,6 @@ func TestParser_ParseQueryParams(t *testing.T) {
 				{
 					PropertyKey: "description",
 					Condition:   model.BlockContentDataviewFilter_NotEmpty,
-					Value:       true,
-				},
-			},
-		},
-		{
-			name:        "filter with exists condition",
-			queryString: "custom_field[exists]=1",
-			expectedFilters: []Filter{
-				{
-					PropertyKey: "custom_field",
-					Condition:   model.BlockContentDataviewFilter_Exists,
 					Value:       true,
 				},
 			},
