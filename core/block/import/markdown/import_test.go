@@ -12,6 +12,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/template"
@@ -24,6 +25,7 @@ import (
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/tests/blockbuilder"
+	"github.com/anyproto/anytype-heart/util/linkpreview/mock_linkpreview"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
@@ -69,9 +71,10 @@ func TestMarkdown_GetSnapshots(t *testing.T) {
 	t.Run("get snapshots of root collection, csv collection and object", func(t *testing.T) {
 		// given
 		testDirectory := setupTestDirectory(t)
+		mockLinkPreview := mock_linkpreview.NewMockLinkPreview(t)
 		// Initialize Markdown properly with required components
 		h := &Markdown{
-			blockConverter: newMDConverter(&MockTempDir{}),
+			blockConverter: newMDConverter(&MockTempDir{}, mockLinkPreview),
 			schemaImporter: NewSchemaImporter(),
 		}
 		// Set the schema importer in the block converter
@@ -115,9 +118,10 @@ func TestMarkdown_GetSnapshots(t *testing.T) {
 	t.Run("no object error", func(t *testing.T) {
 		// given
 		testDirectory := t.TempDir()
+		mockLinkPreview := mock_linkpreview.NewMockLinkPreview(t)
 		// Initialize Markdown properly with required components
 		h := &Markdown{
-			blockConverter: newMDConverter(&MockTempDir{}),
+			blockConverter: newMDConverter(&MockTempDir{}, mockLinkPreview),
 			schemaImporter: NewSchemaImporter(),
 		}
 		// Set the schema importer in the block converter
@@ -141,7 +145,9 @@ func TestMarkdown_GetSnapshots(t *testing.T) {
 	t.Run("import file with links", func(t *testing.T) {
 		// given
 		tempDirProvider := &MockTempDir{}
-		converter := newMDConverter(tempDirProvider)
+		mockLinkPreview := mock_linkpreview.NewMockLinkPreview(t)
+		mockLinkPreview.EXPECT().Fetch(mock.Anything, mock.Anything).Return(model.LinkPreview{}, nil, false, nil)
+		converter := newMDConverter(tempDirProvider, mockLinkPreview)
 		schemaImporter := NewSchemaImporter()
 		converter.SetSchemaImporter(schemaImporter)
 		h := &Markdown{
@@ -185,10 +191,11 @@ func TestMarkdown_GetSnapshots(t *testing.T) {
 		testDirectory := t.TempDir()
 		zipPath := filepath.Join(testDirectory, "empty.zip")
 		test.CreateEmptyZip(t, zipPath)
+		mockLinkPreview := mock_linkpreview.NewMockLinkPreview(t)
 
 		// Initialize Markdown properly with required components
 		h := &Markdown{
-			blockConverter: newMDConverter(&MockTempDir{}),
+			blockConverter: newMDConverter(&MockTempDir{}, mockLinkPreview),
 			schemaImporter: NewSchemaImporter(),
 		}
 		// Set the schema importer in the block converter
@@ -233,10 +240,11 @@ func TestMarkdown_GetSnapshots(t *testing.T) {
 				NonUTF8: true,
 			},
 		})
+		mockLinkPreview := mock_linkpreview.NewMockLinkPreview(t)
 
 		// Initialize Markdown properly with required components
 		h := &Markdown{
-			blockConverter: newMDConverter(&MockTempDir{}),
+			blockConverter: newMDConverter(&MockTempDir{}, mockLinkPreview),
 			schemaImporter: NewSchemaImporter(),
 		}
 		// Set the schema importer in the block converter
@@ -275,9 +283,10 @@ func TestMarkdown_GetSnapshots(t *testing.T) {
 	t.Run("create directory pages", func(t *testing.T) {
 		// given
 		testDirectory := setupHierarchicalTestDirectory(t)
+		mockLinkPreview := mock_linkpreview.NewMockLinkPreview(t)
 		// Initialize Markdown properly with required components
 		h := &Markdown{
-			blockConverter: newMDConverter(&MockTempDir{}),
+			blockConverter: newMDConverter(&MockTempDir{}, mockLinkPreview),
 			schemaImporter: NewSchemaImporter(),
 		}
 		// Set the schema importer in the block converter
@@ -578,9 +587,10 @@ This is the content of the test document.`
 
 		err := os.WriteFile(yamlMdPath, []byte(yamlContent), os.ModePerm)
 		assert.NoError(t, err)
+		mockLinkPreview := mock_linkpreview.NewMockLinkPreview(t)
 
 		h := &Markdown{
-			blockConverter: newMDConverter(&MockTempDir{}),
+			blockConverter: newMDConverter(&MockTempDir{}, mockLinkPreview),
 			schemaImporter: NewSchemaImporter(),
 		}
 		p := process.NewNoOp()
@@ -750,9 +760,10 @@ category: Work
 		assert.NoError(t, err)
 		err = os.WriteFile(filepath.Join(testDirectory, "file2.md"), []byte(yamlContent2), os.ModePerm)
 		assert.NoError(t, err)
+		mockLinkPreview := mock_linkpreview.NewMockLinkPreview(t)
 
 		h := &Markdown{
-			blockConverter: newMDConverter(&MockTempDir{}),
+			blockConverter: newMDConverter(&MockTempDir{}, mockLinkPreview),
 			schemaImporter: NewSchemaImporter(),
 		}
 		p := process.NewNoOp()
@@ -894,10 +905,11 @@ This document references other documents.`
 		assert.NoError(t, err)
 		err = os.WriteFile(mainDocPath, []byte(mainContent), os.ModePerm)
 		assert.NoError(t, err)
+		mockLinkPreview := mock_linkpreview.NewMockLinkPreview(t)
 
 		// Create markdown importer with schema that defines object format relations
 		h := &Markdown{
-			blockConverter: newMDConverter(&MockTempDir{}),
+			blockConverter: newMDConverter(&MockTempDir{}, mockLinkPreview),
 			schemaImporter: NewSchemaImporter(),
 		}
 
@@ -1045,9 +1057,10 @@ Main content`, doc1Path) // Include one absolute path
 		assert.NoError(t, err)
 		err = os.WriteFile(mainDocPath, []byte(mainContent), os.ModePerm)
 		assert.NoError(t, err)
+		mockLinkPreview := mock_linkpreview.NewMockLinkPreview(t)
 
 		h := &Markdown{
-			blockConverter: newMDConverter(&MockTempDir{}),
+			blockConverter: newMDConverter(&MockTempDir{}, mockLinkPreview),
 			schemaImporter: NewSchemaImporter(),
 		}
 		h.blockConverter.SetSchemaImporter(h.schemaImporter)
@@ -1163,9 +1176,10 @@ This document is used for snapshot testing of YAML front matter import.`
 
 		err := os.WriteFile(yamlMdPath, []byte(yamlContent), os.ModePerm)
 		assert.NoError(t, err)
+		mockLinkPreview := mock_linkpreview.NewMockLinkPreview(t)
 
 		h := &Markdown{
-			blockConverter: newMDConverter(&MockTempDir{}),
+			blockConverter: newMDConverter(&MockTempDir{}, mockLinkPreview),
 			schemaImporter: NewSchemaImporter(),
 		}
 		p := process.NewNoOp()
@@ -1461,9 +1475,10 @@ This is a collection of important tasks.`
 		assert.NoError(t, err)
 		err = os.WriteFile(collectionPath, []byte(collectionContent), os.ModePerm)
 		assert.NoError(t, err)
+		mockLinkPreview := mock_linkpreview.NewMockLinkPreview(t)
 
 		h := &Markdown{
-			blockConverter: newMDConverter(&MockTempDir{}),
+			blockConverter: newMDConverter(&MockTempDir{}, mockLinkPreview),
 			schemaImporter: NewSchemaImporter(),
 		}
 		// Set the schema importer in the block converter
@@ -1618,9 +1633,10 @@ Testing different path formats.`, task1Path)
 		assert.NoError(t, err)
 		err = os.WriteFile(collectionPath, []byte(collectionContent), os.ModePerm)
 		assert.NoError(t, err)
+		mockLinkPreview := mock_linkpreview.NewMockLinkPreview(t)
 
 		h := &Markdown{
-			blockConverter: newMDConverter(&MockTempDir{}),
+			blockConverter: newMDConverter(&MockTempDir{}, mockLinkPreview),
 			schemaImporter: NewSchemaImporter(),
 		}
 		// Set the schema importer in the block converter
@@ -1693,9 +1709,10 @@ This is the document content.`
 
 		err := os.WriteFile(mdPath, []byte(content), os.ModePerm)
 		assert.NoError(t, err)
+		mockLinkPreview := mock_linkpreview.NewMockLinkPreview(t)
 
 		h := &Markdown{
-			blockConverter: newMDConverter(&MockTempDir{}),
+			blockConverter: newMDConverter(&MockTempDir{}, mockLinkPreview),
 			schemaImporter: NewSchemaImporter(),
 		}
 		h.blockConverter.SetSchemaImporter(h.schemaImporter)
@@ -1809,9 +1826,10 @@ priority: high
 
 		err := os.WriteFile(mdPath, []byte(content), os.ModePerm)
 		assert.NoError(t, err)
+		mockLinkPreview := mock_linkpreview.NewMockLinkPreview(t)
 
 		h := &Markdown{
-			blockConverter: newMDConverter(&MockTempDir{}),
+			blockConverter: newMDConverter(&MockTempDir{}, mockLinkPreview),
 			schemaImporter: NewSchemaImporter(),
 		}
 		h.blockConverter.SetSchemaImporter(h.schemaImporter)
@@ -1879,10 +1897,11 @@ func TestMarkdown_ProcessFiles_MultipleSelection(t *testing.T) {
 			err := os.WriteFile(f, []byte("# Test\nContent"), 0644)
 			require.NoError(t, err)
 		}
+		mockLinkPreview := mock_linkpreview.NewMockLinkPreview(t)
 
 		// Test 1: Multiple files in same directory
 		h := &Markdown{
-			blockConverter: newMDConverter(&MockTempDir{}),
+			blockConverter: newMDConverter(&MockTempDir{}, mockLinkPreview),
 			schemaImporter: NewSchemaImporter(),
 		}
 		h.blockConverter.SetSchemaImporter(h.schemaImporter)
@@ -1928,9 +1947,10 @@ func TestMarkdown_ProcessFiles_MultipleSelection(t *testing.T) {
 			err := os.WriteFile(f, []byte("# Test\nContent"), 0644)
 			require.NoError(t, err)
 		}
+		mockLinkPreview := mock_linkpreview.NewMockLinkPreview(t)
 
 		h := &Markdown{
-			blockConverter: newMDConverter(&MockTempDir{}),
+			blockConverter: newMDConverter(&MockTempDir{}, mockLinkPreview),
 			schemaImporter: NewSchemaImporter(),
 		}
 		h.blockConverter.SetSchemaImporter(h.schemaImporter)

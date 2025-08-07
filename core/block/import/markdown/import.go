@@ -26,6 +26,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/schema"
 	"github.com/anyproto/anytype-heart/pkg/lib/schema/yaml"
 	"github.com/anyproto/anytype-heart/util/constant"
+	"github.com/anyproto/anytype-heart/util/linkpreview"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
@@ -49,8 +50,8 @@ const (
 	typeIdPrefix       = "import_type_"
 )
 
-func New(tempDirProvider core.TempDirProvider, service *collection.Service) common.Converter {
-	bc := newMDConverter(tempDirProvider)
+func New(tempDirProvider core.TempDirProvider, service *collection.Service, linkPreview linkpreview.LinkPreview) common.Converter {
+	bc := newMDConverter(tempDirProvider, linkPreview)
 	si := NewSchemaImporter()
 	bc.SetSchemaImporter(si)
 

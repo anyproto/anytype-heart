@@ -16,6 +16,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+	"github.com/anyproto/anytype-heart/util/linkpreview/mock_linkpreview"
 )
 
 func TestMarkdown_YAMLConsistentProperties(t *testing.T) {
@@ -65,9 +66,10 @@ Content of document 3.`
 		require.NoError(t, err)
 		err = os.WriteFile(file3Path, []byte(file3Content), os.ModePerm)
 		require.NoError(t, err)
+		mockLinkPreview := mock_linkpreview.NewMockLinkPreview(t)
 
 		h := &Markdown{
-			blockConverter: newMDConverter(&MockTempDir{}),
+			blockConverter: newMDConverter(&MockTempDir{}, mockLinkPreview),
 			schemaImporter: NewSchemaImporter(), // No schemas loaded
 		}
 		p := process.NewNoOp()

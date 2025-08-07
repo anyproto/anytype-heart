@@ -13,6 +13,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/import/common/source"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+	"github.com/anyproto/anytype-heart/util/linkpreview/mock_linkpreview"
 )
 
 type MockTempDir struct{}
@@ -24,7 +25,8 @@ func (m MockTempDir) TempDir() string {
 func Test_processFiles(t *testing.T) {
 	t.Run("imported directory include mov and pdf files - md file has file blocks", func(t *testing.T) {
 		// given
-		converter := newMDConverter(&MockTempDir{})
+		mockLinkPreview := mock_linkpreview.NewMockLinkPreview(t)
+		converter := newMDConverter(&MockTempDir{}, mockLinkPreview)
 		pdfFile := filepath.Join("testdata", "test.pdf")
 		_, err := os.Create(pdfFile)
 		assert.Nil(t, err)
@@ -69,7 +71,8 @@ func Test_processFiles(t *testing.T) {
 
 	t.Run("imported directory include without mov and pdf files - no file blocks", func(t *testing.T) {
 		// given
-		converter := newMDConverter(&MockTempDir{})
+		mockLinkPreview := mock_linkpreview.NewMockLinkPreview(t)
+		converter := newMDConverter(&MockTempDir{}, mockLinkPreview)
 		workingDir, err := os.Getwd()
 		assert.Nil(t, err)
 		absolutePath := filepath.Join(workingDir, "testdata")
@@ -104,7 +107,8 @@ func Test_processFiles(t *testing.T) {
 
 func TestCreateDirectoryPages_EmptyRootName(t *testing.T) {
 	// Test that empty root directory names fallback to rootCollectionName
-	converter := newMDConverter(&MockTempDir{})
+	mockLinkPreview := mock_linkpreview.NewMockLinkPreview(t)
+	converter := newMDConverter(&MockTempDir{}, mockLinkPreview)
 
 	// Create test files
 	files := map[string]*FileInfo{
@@ -134,7 +138,8 @@ func TestCreateDirectoryPages_EmptyRootName(t *testing.T) {
 
 func TestCreateDirectoryPages_SkipHiddenDirectories(t *testing.T) {
 	// Test that directories starting with "." are skipped
-	converter := newMDConverter(&MockTempDir{})
+	mockLinkPreview := mock_linkpreview.NewMockLinkPreview(t)
+	converter := newMDConverter(&MockTempDir{}, mockLinkPreview)
 
 	// Create test files including hidden directories
 	files := map[string]*FileInfo{
@@ -195,7 +200,8 @@ func TestCreateDirectoryPages_SkipHiddenDirectories(t *testing.T) {
 
 func TestCreateDirectoryPages_PathImport(t *testing.T) {
 	// Test Example 1: Regular path import
-	converter := newMDConverter(&MockTempDir{})
+	mockLinkPreview := mock_linkpreview.NewMockLinkPreview(t)
+	converter := newMDConverter(&MockTempDir{}, mockLinkPreview)
 
 	// Create test files matching Example 1
 	files := map[string]*FileInfo{
@@ -258,7 +264,8 @@ func TestCreateDirectoryPages_PathImport(t *testing.T) {
 
 func TestCreateDirectoryPages_ZipImport(t *testing.T) {
 	// Test Example 2: Zip import with single root directory
-	converter := newMDConverter(&MockTempDir{})
+	mockLinkPreview := mock_linkpreview.NewMockLinkPreview(t)
+	converter := newMDConverter(&MockTempDir{}, mockLinkPreview)
 
 	// Create test files matching Example 2
 	files := map[string]*FileInfo{
@@ -326,7 +333,8 @@ func TestCreateDirectoryPages_ZipImport(t *testing.T) {
 
 func TestCreateDirectoryPages_NestedDirectories(t *testing.T) {
 	// Test with nested directory structure
-	converter := newMDConverter(&MockTempDir{})
+	mockLinkPreview := mock_linkpreview.NewMockLinkPreview(t)
+	converter := newMDConverter(&MockTempDir{}, mockLinkPreview)
 
 	// Create test files with nested structure
 	files := map[string]*FileInfo{

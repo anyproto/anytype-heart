@@ -1,11 +1,13 @@
 package markdown
 
 import (
+	"context"
 	"io"
 	"os"
 	"path/filepath"
 	"sort"
 	"strings"
+	"time"
 
 	"golang.org/x/text/unicode/norm"
 
@@ -19,11 +21,13 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/pkg/lib/schema/yaml"
+	"github.com/anyproto/anytype-heart/util/linkpreview"
 	"github.com/anyproto/anytype-heart/util/uri"
 )
 
 type mdConverter struct {
 	tempDirProvider core.TempDirProvider
+	linkPreview     linkpreview.LinkPreview
 	schemaImporter  *SchemaImporter       // Optional schema importer for property resolution
 	yamlResolver    *YAMLPropertyResolver // Resolver for consistent property keys when no schema
 }
@@ -44,9 +48,10 @@ type FileInfo struct {
 	ObjectTypeName        string // Name of the object type from YAML "type" property
 }
 
-func newMDConverter(tempDirProvider core.TempDirProvider) *mdConverter {
+func newMDConverter(tempDirProvider core.TempDirProvider, linkPreview linkpreview.LinkPreview) *mdConverter {
 	return &mdConverter{
 		tempDirProvider: tempDirProvider,
+		linkPreview:     linkPreview,
 		yamlResolver:    NewYAMLPropertyResolver(),
 	}
 }
@@ -374,7 +379,14 @@ func (m *mdConverter) convertTextToPageLink(block *model.Block) {
 }
 
 func (m *mdConverter) convertTextToBookmark(url string, block *model.Block) {
-	if err := uri.ValidateURI(url); err != nil {
+	err := uri.ValidateURI(url)
+	if err != nil {
+		return
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
+	_, _, _, err = m.linkPreview.Fetch(ctx, url)
+	if err != nil {
 		return
 	}
 

@@ -35,6 +35,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space"
 	"github.com/anyproto/anytype-heart/util/conc"
+	"github.com/anyproto/anytype-heart/util/linkpreview"
 )
 
 var log = logging.Logger("import")
@@ -105,9 +106,10 @@ func (i *Import) setupConverters(a *app.App) {
 	accountService := app.MustComponent[account.Service](a)
 	collectionService := app.MustComponent[*collection.Service](a)
 	tempDirProvider := app.MustComponent[core.TempDirProvider](a)
+	linkPreview := app.MustComponent[linkpreview.LinkPreview](a)
 
 	converters := []common.Converter{
-		markdown.New(tempDirProvider, collectionService),
+		markdown.New(tempDirProvider, collectionService, linkPreview),
 		notion.New(collectionService),
 		pbc.New(collectionService, accountService, tempDirProvider),
 		web.NewConverter(),
