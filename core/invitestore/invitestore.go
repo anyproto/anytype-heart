@@ -16,7 +16,6 @@ import (
 	"github.com/ipfs/go-cid"
 	mh "github.com/multiformats/go-multihash"
 
-	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/files/fileoffloader"
 	"github.com/anyproto/anytype-heart/core/files/filesync"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -87,26 +86,14 @@ func (s *service) StoreInvite(ctx context.Context, invite *model.Invite) (cid.Ci
 		return cid.Cid{}, nil, fmt.Errorf("make block: %w", err)
 	}
 
-	if err = s.coordinator.AclUploadInvite(ctx, block.RawData()); err != nil {
+	if err = s.coordinator.AclUploadInvite(ctx, block); err != nil {
 		return cid.Cid{}, nil, fmt.Errorf("add data to IPFS: %w", err)
-	}
-
-	err = s.fileSyncService.UploadSynchronously(ctx, s.techSpaceId, domain.FileId(block.Cid().String()))
-	if err != nil {
-		return cid.Cid{}, nil, fmt.Errorf("add file to sync queue: %w", err)
 	}
 	return block.Cid(), key, nil
 }
 
 func (s *service) RemoveInvite(ctx context.Context, id cid.Cid) error {
-	_, err := s.fileOffloader.FileOffloadRaw(ctx, domain.FullFileId{
-		SpaceId: s.techSpaceId,
-		FileId:  domain.FileId(id.String()),
-	})
-	if err != nil {
-		return fmt.Errorf("offload file: %w", err)
-	}
-	return s.fileSyncService.DeleteFileSynchronously(domain.FullFileId{SpaceId: s.techSpaceId, FileId: domain.FileId(id.String())})
+	return nil
 }
 
 func (s *service) GetInvite(ctx context.Context, id cid.Cid, key crypto.SymKey) (*model.Invite, error) {

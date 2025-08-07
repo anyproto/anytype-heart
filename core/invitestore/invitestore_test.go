@@ -10,8 +10,6 @@ import (
 	"github.com/anyproto/any-sync/coordinator/coordinatorclient/mock_coordinatorclient"
 	"github.com/anyproto/any-sync/util/crypto"
 	blocks "github.com/ipfs/go-block-format"
-	"github.com/ipfs/go-cid"
-	mh "github.com/multiformats/go-multihash"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -102,15 +100,7 @@ func TestStore(t *testing.T) {
 		Signature: signature,
 	}
 
-	fx.coordinator.EXPECT().AclUploadInvite(ctx, gomock.Any()).Do(func(ctx context.Context, data []byte) {
-		prefix := cid.Prefix{
-			Version:  1,
-			Codec:    cid.DagProtobuf, // 0x70
-			MhType:   mh.SHA2_256,
-			MhLength: -1, // default length
-		}
-		c, _ := prefix.Sum(data)
-		b, _ := blocks.NewBlockWithCid(data, c)
+	fx.coordinator.EXPECT().AclUploadInvite(ctx, gomock.Any()).Do(func(ctx context.Context, b blocks.Block) {
 		_ = fx.fileStore.Add(ctx, []blocks.Block{b})
 	})
 	id, key, err := fx.StoreInvite(ctx, wantInvite)
@@ -126,7 +116,4 @@ func TestStore(t *testing.T) {
 
 	err = fx.RemoveInvite(ctx, id)
 	require.NoError(t, err)
-
-	_, err = fx.GetInvite(ctx, id, key)
-	require.Error(t, err)
 }
