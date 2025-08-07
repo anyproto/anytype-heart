@@ -11,6 +11,19 @@ components:
           type: array
           uniqueItems: false
       type: object
+    apimodel.CheckboxFilterItem:
+      properties:
+        checkbox:
+          description: The checkbox value to filter by
+          example: true
+          type: boolean
+        condition:
+          $ref: '#/components/schemas/apimodel.FilterCondition'
+        property_key:
+          description: The property key to filter on
+          example: done
+          type: string
+      type: object
     apimodel.CheckboxPropertyLinkValue:
       properties:
         checkbox:
@@ -175,6 +188,10 @@ components:
       properties:
         color:
           $ref: '#/components/schemas/apimodel.Color'
+        key:
+          description: The optional custom key for the tag
+          example: in_progress
+          type: string
         name:
           description: The name of the tag
           example: In progress
@@ -213,6 +230,20 @@ components:
       - name
       - plural_name
       type: object
+    apimodel.DateFilterItem:
+      properties:
+        condition:
+          $ref: '#/components/schemas/apimodel.FilterCondition'
+        date:
+          description: The date value to filter by. Accepts dates in RFC3339 format
+            (2006-01-02T15:04:05Z) or date-only format (2006-01-02)
+          example: "2024-12-31T23:59:59Z"
+          type: string
+        property_key:
+          description: The property key to filter on
+          example: due_date
+          type: string
+      type: object
     apimodel.DatePropertyLinkValue:
       properties:
         date:
@@ -248,6 +279,19 @@ components:
         object:
           description: The data model of the object
           example: property
+          type: string
+      type: object
+    apimodel.EmailFilterItem:
+      properties:
+        condition:
+          $ref: '#/components/schemas/apimodel.FilterCondition'
+        email:
+          description: The email value to filter by
+          example: user@example.com
+          type: string
+        property_key:
+          description: The property key to filter on
+          example: contact_email
           type: string
       type: object
     apimodel.EmailPropertyLinkValue:
@@ -294,6 +338,24 @@ components:
         format:
           $ref: '#/components/schemas/apimodel.IconFormat'
       type: object
+    apimodel.EmptyFilterItem:
+      properties:
+        condition:
+          $ref: '#/components/schemas/apimodel.FilterCondition'
+        property_key:
+          description: The property key to filter on
+          example: description
+          type: string
+      type: object
+    apimodel.ExistsFilterItem:
+      properties:
+        condition:
+          $ref: '#/components/schemas/apimodel.FilterCondition'
+        property_key:
+          description: The property key to filter on
+          example: custom_field
+          type: string
+      type: object
     apimodel.FileIcon:
       properties:
         file:
@@ -302,6 +364,21 @@ components:
           type: string
         format:
           $ref: '#/components/schemas/apimodel.IconFormat'
+      type: object
+    apimodel.FilesFilterItem:
+      properties:
+        condition:
+          $ref: '#/components/schemas/apimodel.FilterCondition'
+        files:
+          description: File IDs for contains condition
+          items:
+            type: string
+          type: array
+          uniqueItems: false
+        property_key:
+          description: The property key to filter on
+          example: attachments
+          type: string
       type: object
     apimodel.FilesPropertyLinkValue:
       properties:
@@ -368,24 +445,9 @@ components:
     apimodel.FilterCondition:
       description: The filter condition
       enum:
-      - eq
-      - ne
-      - gt
-      - gte
-      - lt
-      - lte
-      - contains
-      - ncontains
-      - in
-      - nin
-      - all
-      - none
-      - exactin
-      - nexactin
-      - exists
       - empty
       - nempty
-      example: eq
+      example: empty
       type: string
       x-enum-comments:
         FilterConditionAll: Contains all specified values
@@ -427,7 +489,7 @@ components:
       description: Expression filter with nested AND/OR conditions
       properties:
         conditions:
-          description: List of filter conditions
+          description: List of format-specific filter conditions
           items:
             $ref: '#/components/schemas/apimodel.FilterItem'
           type: array
@@ -442,16 +504,20 @@ components:
           $ref: '#/components/schemas/apimodel.FilterOperator'
       type: object
     apimodel.FilterItem:
-      properties:
-        condition:
-          $ref: '#/components/schemas/apimodel.FilterCondition'
-        property_key:
-          description: The property key to filter on
-          example: status
-          type: string
-        value:
-          description: The value to compare against (omit for exists/empty conditions)
-          example: done
+      oneOf:
+      - $ref: '#/components/schemas/apimodel.TextFilterItem'
+      - $ref: '#/components/schemas/apimodel.NumberFilterItem'
+      - $ref: '#/components/schemas/apimodel.SelectFilterItem'
+      - $ref: '#/components/schemas/apimodel.MultiSelectFilterItem'
+      - $ref: '#/components/schemas/apimodel.DateFilterItem'
+      - $ref: '#/components/schemas/apimodel.CheckboxFilterItem'
+      - $ref: '#/components/schemas/apimodel.FilesFilterItem'
+      - $ref: '#/components/schemas/apimodel.UrlFilterItem'
+      - $ref: '#/components/schemas/apimodel.EmailFilterItem'
+      - $ref: '#/components/schemas/apimodel.PhoneFilterItem'
+      - $ref: '#/components/schemas/apimodel.ObjectsFilterItem'
+      - $ref: '#/components/schemas/apimodel.ExistsFilterItem'
+      - $ref: '#/components/schemas/apimodel.EmptyFilterItem'
       type: object
     apimodel.FilterOperator:
       description: Logical operator for combining filters (and, or)
@@ -1318,6 +1384,21 @@ components:
         member:
           $ref: '#/components/schemas/apimodel.Member'
       type: object
+    apimodel.MultiSelectFilterItem:
+      properties:
+        condition:
+          $ref: '#/components/schemas/apimodel.FilterCondition'
+        multi_select:
+          description: The tag IDs to filter by
+          items:
+            type: string
+          type: array
+          uniqueItems: false
+        property_key:
+          description: The property key to filter on
+          example: tags
+          type: string
+      type: object
     apimodel.MultiSelectPropertyLinkValue:
       properties:
         key:
@@ -1369,6 +1450,19 @@ components:
           $ref: '#/components/schemas/apimodel.IconFormat'
         name:
           $ref: '#/components/schemas/apimodel.IconName'
+      type: object
+    apimodel.NumberFilterItem:
+      properties:
+        condition:
+          $ref: '#/components/schemas/apimodel.FilterCondition'
+        number:
+          description: The number value to filter by
+          example: 5
+          type: number
+        property_key:
+          description: The property key to filter on
+          example: priority
+          type: string
       type: object
     apimodel.NumberPropertyLinkValue:
       properties:
@@ -1521,6 +1615,21 @@ components:
         type:
           $ref: '#/components/schemas/apimodel.Type'
       type: object
+    apimodel.ObjectsFilterItem:
+      properties:
+        condition:
+          $ref: '#/components/schemas/apimodel.FilterCondition'
+        objects:
+          description: Object Ids to filter by
+          items:
+            type: string
+          type: array
+          uniqueItems: false
+        property_key:
+          description: The property key to filter on
+          example: assignee
+          type: string
+      type: object
     apimodel.ObjectsPropertyLinkValue:
       properties:
         key:
@@ -1563,6 +1672,19 @@ components:
             type: string
           type: array
           uniqueItems: false
+      type: object
+    apimodel.PhoneFilterItem:
+      properties:
+        condition:
+          $ref: '#/components/schemas/apimodel.FilterCondition'
+        phone:
+          description: The phone value to filter by
+          example: "+1234567890"
+          type: string
+        property_key:
+          description: The property key to filter on
+          example: contact_phone
+          type: string
       type: object
     apimodel.PhonePropertyLinkValue:
       properties:
@@ -1721,6 +1843,19 @@ components:
           type: array
           uniqueItems: false
       type: object
+    apimodel.SelectFilterItem:
+      properties:
+        condition:
+          $ref: '#/components/schemas/apimodel.FilterCondition'
+        property_key:
+          description: The property key to filter on
+          example: status
+          type: string
+        select:
+          description: Tag Id - for eq/ne conditions (single selection)
+          example: tag_id_done
+          type: string
+      type: object
     apimodel.SelectPropertyLinkValue:
       properties:
         key:
@@ -1874,6 +2009,19 @@ components:
       properties:
         template:
           $ref: '#/components/schemas/apimodel.ObjectWithBody'
+      type: object
+    apimodel.TextFilterItem:
+      properties:
+        condition:
+          $ref: '#/components/schemas/apimodel.FilterCondition'
+        property_key:
+          description: The property key to filter on
+          example: description
+          type: string
+        text:
+          description: The text value to filter by
+          example: important
+          type: string
       type: object
     apimodel.TextPropertyLinkValue:
       properties:
@@ -2072,6 +2220,10 @@ components:
       properties:
         color:
           $ref: '#/components/schemas/apimodel.Color'
+        key:
+          description: The key to set for the tag
+          example: in_progress
+          type: string
         name:
           description: The name to set for the tag
           example: In progress
@@ -2102,6 +2254,19 @@ components:
             $ref: '#/components/schemas/apimodel.PropertyLink'
           type: array
           uniqueItems: false
+      type: object
+    apimodel.UrlFilterItem:
+      properties:
+        condition:
+          $ref: '#/components/schemas/apimodel.FilterCondition'
+        property_key:
+          description: The property key to filter on
+          example: source
+          type: string
+        url:
+          description: The Url value to filter by
+          example: https://example.com
+          type: string
       type: object
     apimodel.View:
       properties:
@@ -3673,7 +3838,7 @@ paths:
       - Properties
   /v1/spaces/{space_id}/properties/{property_id}:
     delete:
-      description: This endpoint “deletes” a property by marking it as archived. The
+      description: This endpoint "deletes" a property by marking it as archived. The
         deletion process is performed safely and is subject to rate limiting. It returns
         the property’s details after it has been archived. Proper error handling is
         in place for situations such as when the property isn’t found or the deletion

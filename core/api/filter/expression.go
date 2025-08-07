@@ -69,19 +69,24 @@ func BuildExpressionFilters(ctx context.Context, expr *apimodel.FilterExpression
 
 // buildConditionFilter builds a single condition filter
 func buildConditionFilter(ctx context.Context, cond apimodel.FilterItem, validator *Validator, spaceId string) (*model.BlockContentDataviewFilter, error) {
+	wrapped := cond.WrappedFilterItem
+	if wrapped == nil {
+		return nil, fmt.Errorf("invalid filter condition: no wrapped filter item")
+	}
+
 	// Map condition
-	dbCondition, ok := ConditionMap[cond.Condition]
+	dbCondition, ok := ConditionMap[wrapped.GetCondition()]
 	if !ok {
-		return nil, fmt.Errorf("unsupported filter condition: %s", cond.Condition)
+		return nil, fmt.Errorf("unsupported filter condition: %s", wrapped.GetCondition())
 	}
 
 	// Get property map
 	propertyMap := validator.apiService.GetCachedProperties(spaceId)
 
 	// Resolve and validate property
-	property, err := validator.resolveProperty(spaceId, cond.PropertyKey, propertyMap)
+	property, err := validator.resolveProperty(spaceId, wrapped.GetPropertyKey(), propertyMap)
 	if err != nil {
-		return nil, fmt.Errorf("failed to resolve property %s: %w", cond.PropertyKey, err)
+		return nil, fmt.Errorf("failed to resolve property %s: %w", wrapped.GetPropertyKey(), err)
 	}
 
 	// Check if condition is valid for property type
@@ -102,10 +107,59 @@ func buildConditionFilter(ctx context.Context, cond apimodel.FilterItem, validat
 		}, nil
 	}
 
+	// Extract value from the specific filter type
+	var value interface{}
+	switch fc := wrapped.(type) {
+	case apimodel.TextFilterItem:
+		if fc.Text != nil {
+			value = *fc.Text
+		}
+	case apimodel.NumberFilterItem:
+		if fc.Number != nil {
+			value = *fc.Number
+		}
+	case apimodel.SelectFilterItem:
+		if fc.Select != nil {
+			value = *fc.Select
+		}
+	case apimodel.MultiSelectFilterItem:
+		if fc.MultiSelect != nil {
+			value = *fc.MultiSelect
+		}
+	case apimodel.DateFilterItem:
+		if fc.Date != nil {
+			value = *fc.Date
+		}
+	case apimodel.CheckboxFilterItem:
+		if fc.Checkbox != nil {
+			value = *fc.Checkbox
+		}
+	case apimodel.FilesFilterItem:
+		if fc.Files != nil {
+			value = *fc.Files
+		}
+	case apimodel.UrlFilterItem:
+		if fc.Url != nil {
+			value = *fc.Url
+		}
+	case apimodel.EmailFilterItem:
+		if fc.Email != nil {
+			value = *fc.Email
+		}
+	case apimodel.PhoneFilterItem:
+		if fc.Phone != nil {
+			value = *fc.Phone
+		}
+	case apimodel.ObjectsFilterItem:
+		if fc.Objects != nil {
+			value = *fc.Objects
+		}
+	}
+
 	// Validate value against property type
-	validatedValue, err := validator.apiService.SanitizeAndValidatePropertyValue(spaceId, property.Key, property.Format, cond.Value, property, propertyMap)
+	validatedValue, err := validator.apiService.SanitizeAndValidatePropertyValue(spaceId, property.Key, property.Format, value, property, propertyMap)
 	if err != nil {
-		return nil, fmt.Errorf("invalid value for property %s: %w", cond.PropertyKey, err)
+		return nil, fmt.Errorf("invalid value for property %s: %w", wrapped.GetPropertyKey(), err)
 	}
 
 	// Convert value to protobuf format

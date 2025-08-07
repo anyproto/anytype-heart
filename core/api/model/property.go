@@ -23,6 +23,10 @@ const (
 	PropertyFormatObjects     PropertyFormat = "objects"
 )
 
+func (pf PropertyFormat) String() string {
+	return string(pf)
+}
+
 func (pf *PropertyFormat) UnmarshalJSON(data []byte) error {
 	var s string
 	if err := json.Unmarshal(data, &s); err != nil {
@@ -289,67 +293,67 @@ func (p *PropertyLinkWithValue) UnmarshalJSON(data []byte) error {
 		return err
 	}
 	switch {
-	case aux["text"] != nil:
+	case aux[PropertyFormatText.String()] != nil:
 		var v TextPropertyLinkValue
 		if err := json.Unmarshal(data, &v); err != nil {
 			return err
 		}
 		p.WrappedPropertyLinkWithValue = v
-	case aux["number"] != nil:
+	case aux[PropertyFormatNumber.String()] != nil:
 		var v NumberPropertyLinkValue
 		if err := json.Unmarshal(data, &v); err != nil {
 			return err
 		}
 		p.WrappedPropertyLinkWithValue = v
-	case aux["select"] != nil:
+	case aux[PropertyFormatSelect.String()] != nil:
 		var v SelectPropertyLinkValue
 		if err := json.Unmarshal(data, &v); err != nil {
 			return err
 		}
 		p.WrappedPropertyLinkWithValue = v
-	case aux["multi_select"] != nil:
+	case aux[PropertyFormatMultiSelect.String()] != nil:
 		var v MultiSelectPropertyLinkValue
 		if err := json.Unmarshal(data, &v); err != nil {
 			return err
 		}
 		p.WrappedPropertyLinkWithValue = v
-	case aux["date"] != nil:
+	case aux[PropertyFormatDate.String()] != nil:
 		var v DatePropertyLinkValue
 		if err := json.Unmarshal(data, &v); err != nil {
 			return err
 		}
 		p.WrappedPropertyLinkWithValue = v
-	case aux["files"] != nil:
+	case aux[PropertyFormatFiles.String()] != nil:
 		var v FilesPropertyLinkValue
 		if err := json.Unmarshal(data, &v); err != nil {
 			return err
 		}
 		p.WrappedPropertyLinkWithValue = v
-	case aux["checkbox"] != nil:
+	case aux[PropertyFormatCheckbox.String()] != nil:
 		var v CheckboxPropertyLinkValue
 		if err := json.Unmarshal(data, &v); err != nil {
 			return err
 		}
 		p.WrappedPropertyLinkWithValue = v
-	case aux["url"] != nil:
+	case aux[PropertyFormatUrl.String()] != nil:
 		var v URLPropertyLinkValue
 		if err := json.Unmarshal(data, &v); err != nil {
 			return err
 		}
 		p.WrappedPropertyLinkWithValue = v
-	case aux["email"] != nil:
+	case aux[PropertyFormatEmail.String()] != nil:
 		var v EmailPropertyLinkValue
 		if err := json.Unmarshal(data, &v); err != nil {
 			return err
 		}
 		p.WrappedPropertyLinkWithValue = v
-	case aux["phone"] != nil:
+	case aux[PropertyFormatPhone.String()] != nil:
 		var v PhonePropertyLinkValue
 		if err := json.Unmarshal(data, &v); err != nil {
 			return err
 		}
 		p.WrappedPropertyLinkWithValue = v
-	case aux["objects"] != nil:
+	case aux[PropertyFormatObjects.String()] != nil:
 		var v ObjectsPropertyLinkValue
 		if err := json.Unmarshal(data, &v); err != nil {
 			return err
