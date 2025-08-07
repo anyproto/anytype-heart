@@ -99,8 +99,7 @@ func (p *Parser) parseFilterValue(rawValue string, condition model.BlockContentD
 
 	case model.BlockContentDataviewFilter_In,
 		model.BlockContentDataviewFilter_NotIn,
-		model.BlockContentDataviewFilter_AllIn,
-		model.BlockContentDataviewFilter_NotAllIn:
+		model.BlockContentDataviewFilter_AllIn:
 		if decodedValue == "" {
 			return []string{}, nil
 		}

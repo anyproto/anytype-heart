@@ -36,97 +36,79 @@ func (pf *ParsedFilters) ToDataviewFilters() []*model.BlockContentDataviewFilter
 	return filters
 }
 
+var (
+	// Text-like properties support equality, pattern matching, and emptiness checks
+	textConditions = []model.BlockContentDataviewFilterCondition{
+		model.BlockContentDataviewFilter_Equal,
+		model.BlockContentDataviewFilter_NotEqual,
+		model.BlockContentDataviewFilter_Like,
+		model.BlockContentDataviewFilter_NotLike,
+		model.BlockContentDataviewFilter_Empty,
+		model.BlockContentDataviewFilter_NotEmpty,
+	}
+
+	// Array-like properties support set operations and emptiness checks
+	arrayConditions = []model.BlockContentDataviewFilterCondition{
+		model.BlockContentDataviewFilter_In,
+		model.BlockContentDataviewFilter_AllIn,
+		model.BlockContentDataviewFilter_NotIn,
+		model.BlockContentDataviewFilter_Empty,
+		model.BlockContentDataviewFilter_NotEmpty,
+	}
+
+	// Number properties support comparison operations
+	numberConditions = []model.BlockContentDataviewFilterCondition{
+		model.BlockContentDataviewFilter_Equal,
+		model.BlockContentDataviewFilter_NotEqual,
+		model.BlockContentDataviewFilter_Greater,
+		model.BlockContentDataviewFilter_GreaterOrEqual,
+		model.BlockContentDataviewFilter_Less,
+		model.BlockContentDataviewFilter_LessOrEqual,
+		model.BlockContentDataviewFilter_Empty,
+		model.BlockContentDataviewFilter_NotEmpty,
+	}
+
+	// Date properties support comparison and range operations
+	dateConditions = []model.BlockContentDataviewFilterCondition{
+		model.BlockContentDataviewFilter_Equal,
+		model.BlockContentDataviewFilter_Greater,
+		model.BlockContentDataviewFilter_Less,
+		model.BlockContentDataviewFilter_GreaterOrEqual,
+		model.BlockContentDataviewFilter_LessOrEqual,
+		model.BlockContentDataviewFilter_In,
+		model.BlockContentDataviewFilter_Empty,
+		model.BlockContentDataviewFilter_NotEmpty,
+	}
+
+	// Checkbox properties only support equality checks
+	checkboxConditions = []model.BlockContentDataviewFilterCondition{
+		model.BlockContentDataviewFilter_Equal,
+		model.BlockContentDataviewFilter_NotEqual,
+	}
+)
+
 // ConditionsForPropertyType defines which conditions are valid for each property type
 var ConditionsForPropertyType = map[apimodel.PropertyFormat][]model.BlockContentDataviewFilterCondition{
-	// Text types: Text, Url, Email, Phone
-	apimodel.PropertyFormatText: {
-		model.BlockContentDataviewFilter_Equal,
-		model.BlockContentDataviewFilter_NotEqual,
-		model.BlockContentDataviewFilter_Like,
-		model.BlockContentDataviewFilter_NotLike,
-		model.BlockContentDataviewFilter_Empty,
-		model.BlockContentDataviewFilter_NotEmpty,
-	},
-	apimodel.PropertyFormatUrl: {
-		model.BlockContentDataviewFilter_Equal,
-		model.BlockContentDataviewFilter_NotEqual,
-		model.BlockContentDataviewFilter_Like,
-		model.BlockContentDataviewFilter_NotLike,
-		model.BlockContentDataviewFilter_Empty,
-		model.BlockContentDataviewFilter_NotEmpty,
-	},
-	apimodel.PropertyFormatEmail: {
-		model.BlockContentDataviewFilter_Equal,
-		model.BlockContentDataviewFilter_NotEqual,
-		model.BlockContentDataviewFilter_Like,
-		model.BlockContentDataviewFilter_NotLike,
-		model.BlockContentDataviewFilter_Empty,
-		model.BlockContentDataviewFilter_NotEmpty,
-	},
-	apimodel.PropertyFormatPhone: {
-		model.BlockContentDataviewFilter_Equal,
-		model.BlockContentDataviewFilter_NotEqual,
-		model.BlockContentDataviewFilter_Like,
-		model.BlockContentDataviewFilter_NotLike,
-		model.BlockContentDataviewFilter_Empty,
-		model.BlockContentDataviewFilter_NotEmpty,
-	},
-	// Number type
-	apimodel.PropertyFormatNumber: {
-		model.BlockContentDataviewFilter_Equal,
-		model.BlockContentDataviewFilter_NotEqual,
-		model.BlockContentDataviewFilter_Greater,
-		model.BlockContentDataviewFilter_GreaterOrEqual,
-		model.BlockContentDataviewFilter_Less,
-		model.BlockContentDataviewFilter_LessOrEqual,
-		model.BlockContentDataviewFilter_Empty,
-		model.BlockContentDataviewFilter_NotEmpty,
-	},
+	// Text-like types
+	apimodel.PropertyFormatText:  textConditions,
+	apimodel.PropertyFormatUrl:   textConditions,
+	apimodel.PropertyFormatEmail: textConditions,
+	apimodel.PropertyFormatPhone: textConditions,
+
+	// Numeric type
+	apimodel.PropertyFormatNumber: numberConditions,
+
 	// Date type
-	apimodel.PropertyFormatDate: {
-		model.BlockContentDataviewFilter_Equal,
-		model.BlockContentDataviewFilter_Greater,
-		model.BlockContentDataviewFilter_Less,
-		model.BlockContentDataviewFilter_GreaterOrEqual,
-		model.BlockContentDataviewFilter_LessOrEqual,
-		model.BlockContentDataviewFilter_In,
-		model.BlockContentDataviewFilter_Empty,
-		model.BlockContentDataviewFilter_NotEmpty,
-	},
-	// Checkbox type
-	apimodel.PropertyFormatCheckbox: {
-		model.BlockContentDataviewFilter_Equal,
-		model.BlockContentDataviewFilter_NotEqual,
-	},
-	// Select types: Select, MultiSelect, File, Object
-	apimodel.PropertyFormatSelect: {
-		model.BlockContentDataviewFilter_In,
-		model.BlockContentDataviewFilter_AllIn,
-		model.BlockContentDataviewFilter_NotIn,
-		model.BlockContentDataviewFilter_Empty,
-		model.BlockContentDataviewFilter_NotEmpty,
-	},
-	apimodel.PropertyFormatMultiSelect: {
-		model.BlockContentDataviewFilter_In,
-		model.BlockContentDataviewFilter_AllIn,
-		model.BlockContentDataviewFilter_NotIn,
-		model.BlockContentDataviewFilter_Empty,
-		model.BlockContentDataviewFilter_NotEmpty,
-	},
-	apimodel.PropertyFormatFiles: {
-		model.BlockContentDataviewFilter_In,
-		model.BlockContentDataviewFilter_AllIn,
-		model.BlockContentDataviewFilter_NotIn,
-		model.BlockContentDataviewFilter_Empty,
-		model.BlockContentDataviewFilter_NotEmpty,
-	},
-	apimodel.PropertyFormatObjects: {
-		model.BlockContentDataviewFilter_In,
-		model.BlockContentDataviewFilter_AllIn,
-		model.BlockContentDataviewFilter_NotIn,
-		model.BlockContentDataviewFilter_Empty,
-		model.BlockContentDataviewFilter_NotEmpty,
-	},
+	apimodel.PropertyFormatDate: dateConditions,
+
+	// Boolean type
+	apimodel.PropertyFormatCheckbox: checkboxConditions,
+
+	// Array-like types
+	apimodel.PropertyFormatSelect:      arrayConditions,
+	apimodel.PropertyFormatMultiSelect: arrayConditions,
+	apimodel.PropertyFormatFiles:       arrayConditions,
+	apimodel.PropertyFormatObjects:     arrayConditions,
 }
 
 // isValidConditionForType checks if a condition is valid for a property type
