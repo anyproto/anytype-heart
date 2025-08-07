@@ -1,6 +1,6 @@
 components:
   schemas:
-    apimodel.AddObjectsToListRequest:
+    AddObjectsToListRequest:
       properties:
         objects:
           description: The list of object IDs to add to the list
@@ -11,20 +11,20 @@ components:
           type: array
           uniqueItems: false
       type: object
-    apimodel.CheckboxFilterItem:
+    CheckboxFilterItem:
       properties:
         checkbox:
           description: The checkbox value to filter by
           example: true
           type: boolean
         condition:
-          $ref: '#/components/schemas/apimodel.FilterCondition'
+          $ref: '#/components/schemas/FilterCondition'
         property_key:
           description: The property key to filter on
           example: done
           type: string
       type: object
-    apimodel.CheckboxPropertyLinkValue:
+    CheckboxPropertyLinkValue:
       properties:
         checkbox:
           description: The checkbox value of the property
@@ -34,14 +34,14 @@ components:
           example: done
           type: string
       type: object
-    apimodel.CheckboxPropertyValue:
+    CheckboxPropertyValue:
       properties:
         checkbox:
           description: The checkbox value of the property
           example: true
           type: boolean
         format:
-          $ref: '#/components/schemas/apimodel.PropertyFormat'
+          $ref: '#/components/schemas/PropertyFormat'
         id:
           description: The id of the property
           example: bafyreids36kpw5ppuwm3ce2p4ezb3ab7cihhkq6yfbwzwpp4mln7rcgw7a
@@ -59,7 +59,7 @@ components:
           example: property
           type: string
       type: object
-    apimodel.Color:
+    Color:
       description: The color of the icon
       enum:
       - grey
@@ -85,7 +85,7 @@ components:
       - ColorIce
       - ColorTeal
       - ColorLime
-    apimodel.CreateApiKeyRequest:
+    CreateApiKeyRequest:
       properties:
         challenge_id:
           description: The challenge id associated with the previously displayed code
@@ -96,21 +96,21 @@ components:
           example: "1234"
           type: string
       type: object
-    apimodel.CreateApiKeyResponse:
+    CreateApiKeyResponse:
       properties:
         api_key:
           description: The api key used to authenticate requests
           example: zhSG/zQRmgADyilWPtgdnfo1qD60oK02/SVgi1GaFt6=
           type: string
       type: object
-    apimodel.CreateChallengeRequest:
+    CreateChallengeRequest:
       properties:
         app_name:
           description: The name of the app that is requesting the challenge
           example: anytype_mcp
           type: string
       type: object
-    apimodel.CreateChallengeResponse:
+    CreateChallengeResponse:
       properties:
         challenge_id:
           description: The challenge id associated with the displayed code and needed
@@ -118,14 +118,14 @@ components:
           example: 67647f5ecda913e9a2e11b26
           type: string
       type: object
-    apimodel.CreateObjectRequest:
+    CreateObjectRequest:
       properties:
         body:
           description: The body of the object
           example: This is the body of the object. Markdown syntax is supported here.
           type: string
         icon:
-          $ref: '#/components/schemas/apimodel.Icon'
+          $ref: '#/components/schemas/Icon'
         name:
           description: The name of the object
           example: My object
@@ -134,7 +134,7 @@ components:
           description: The properties to set on the object; see ListTypes or GetType
             endpoints for linked properties
           items:
-            $ref: '#/components/schemas/apimodel.PropertyLinkWithValue'
+            $ref: '#/components/schemas/PropertyLinkWithValue'
           type: array
           uniqueItems: false
         template_id:
@@ -148,10 +148,10 @@ components:
       required:
       - type_key
       type: object
-    apimodel.CreatePropertyRequest:
+    CreatePropertyRequest:
       properties:
         format:
-          $ref: '#/components/schemas/apimodel.PropertyFormat'
+          $ref: '#/components/schemas/PropertyFormat'
         key:
           description: The key of the property; should always be snake_case, otherwise
             it will be converted to snake_case
@@ -164,14 +164,14 @@ components:
         tags:
           description: Tags to create for select/multi_select properties
           items:
-            $ref: '#/components/schemas/apimodel.CreateTagRequest'
+            $ref: '#/components/schemas/CreateTagRequest'
           type: array
           uniqueItems: false
       required:
       - format
       - name
       type: object
-    apimodel.CreateSpaceRequest:
+    CreateSpaceRequest:
       properties:
         description:
           description: The description of the space
@@ -184,10 +184,10 @@ components:
       required:
       - name
       type: object
-    apimodel.CreateTagRequest:
+    CreateTagRequest:
       properties:
         color:
-          $ref: '#/components/schemas/apimodel.Color'
+          $ref: '#/components/schemas/Color'
         key:
           description: The optional custom key for the tag
           example: in_progress
@@ -200,17 +200,17 @@ components:
       - color
       - name
       type: object
-    apimodel.CreateTypeRequest:
+    CreateTypeRequest:
       properties:
         icon:
-          $ref: '#/components/schemas/apimodel.Icon'
+          $ref: '#/components/schemas/Icon'
         key:
           description: The key of the type; should always be snake_case, otherwise
             it will be converted to snake_case
           example: some_user_defined_type_key
           type: string
         layout:
-          $ref: '#/components/schemas/apimodel.TypeLayout'
+          $ref: '#/components/schemas/TypeLayout'
         name:
           description: The name of the type
           example: Page
@@ -222,7 +222,7 @@ components:
         properties:
           description: The properties linked to the type
           items:
-            $ref: '#/components/schemas/apimodel.PropertyLink'
+            $ref: '#/components/schemas/PropertyLink'
           type: array
           uniqueItems: false
       required:
@@ -230,10 +230,10 @@ components:
       - name
       - plural_name
       type: object
-    apimodel.DateFilterItem:
+    DateFilterItem:
       properties:
         condition:
-          $ref: '#/components/schemas/apimodel.FilterCondition'
+          $ref: '#/components/schemas/FilterCondition'
         date:
           description: The date value to filter by. Accepts dates in RFC3339 format
             (2006-01-02T15:04:05Z) or date-only format (2006-01-02)
@@ -244,7 +244,7 @@ components:
           example: due_date
           type: string
       type: object
-    apimodel.DatePropertyLinkValue:
+    DatePropertyLinkValue:
       properties:
         date:
           description: The date value of the property. Accepts dates in RFC3339 format
@@ -255,7 +255,7 @@ components:
           example: last_modified_date
           type: string
       type: object
-    apimodel.DatePropertyValue:
+    DatePropertyValue:
       properties:
         date:
           description: The date value of the property. Returns dates in RFC3339 format
@@ -263,7 +263,7 @@ components:
           example: "2006-01-02T15:04:05Z"
           type: string
         format:
-          $ref: '#/components/schemas/apimodel.PropertyFormat'
+          $ref: '#/components/schemas/PropertyFormat'
         id:
           description: The id of the property
           example: bafyreids36kpw5ppuwm3ce2p4ezb3ab7cihhkq6yfbwzwpp4mln7rcgw7a
@@ -281,10 +281,10 @@ components:
           example: property
           type: string
       type: object
-    apimodel.EmailFilterItem:
+    EmailFilterItem:
       properties:
         condition:
-          $ref: '#/components/schemas/apimodel.FilterCondition'
+          $ref: '#/components/schemas/FilterCondition'
         email:
           description: The email value to filter by
           example: user@example.com
@@ -294,7 +294,7 @@ components:
           example: contact_email
           type: string
       type: object
-    apimodel.EmailPropertyLinkValue:
+    EmailPropertyLinkValue:
       properties:
         email:
           description: The email value of the property
@@ -304,14 +304,14 @@ components:
           example: email
           type: string
       type: object
-    apimodel.EmailPropertyValue:
+    EmailPropertyValue:
       properties:
         email:
           description: The email value of the property
           example: example@example.com
           type: string
         format:
-          $ref: '#/components/schemas/apimodel.PropertyFormat'
+          $ref: '#/components/schemas/PropertyFormat'
         id:
           description: The id of the property
           example: bafyreids36kpw5ppuwm3ce2p4ezb3ab7cihhkq6yfbwzwpp4mln7rcgw7a
@@ -329,46 +329,37 @@ components:
           example: property
           type: string
       type: object
-    apimodel.EmojiIcon:
+    EmojiIcon:
       properties:
         emoji:
           description: The emoji of the icon
           example: "\U0001F4C4"
           type: string
         format:
-          $ref: '#/components/schemas/apimodel.IconFormat'
+          $ref: '#/components/schemas/IconFormat'
       type: object
-    apimodel.EmptyFilterItem:
+    EmptyFilterItem:
       properties:
         condition:
-          $ref: '#/components/schemas/apimodel.FilterCondition'
+          $ref: '#/components/schemas/FilterCondition'
         property_key:
           description: The property key to filter on
           example: description
           type: string
       type: object
-    apimodel.ExistsFilterItem:
-      properties:
-        condition:
-          $ref: '#/components/schemas/apimodel.FilterCondition'
-        property_key:
-          description: The property key to filter on
-          example: custom_field
-          type: string
-      type: object
-    apimodel.FileIcon:
+    FileIcon:
       properties:
         file:
           description: The file of the icon
           example: bafybeieptz5hvcy6txplcvphjbbh5yjc2zqhmihs3owkh5oab4ezauzqay
           type: string
         format:
-          $ref: '#/components/schemas/apimodel.IconFormat'
+          $ref: '#/components/schemas/IconFormat'
       type: object
-    apimodel.FilesFilterItem:
+    FilesFilterItem:
       properties:
         condition:
-          $ref: '#/components/schemas/apimodel.FilterCondition'
+          $ref: '#/components/schemas/FilterCondition'
         files:
           description: File IDs for contains condition
           items:
@@ -380,7 +371,7 @@ components:
           example: attachments
           type: string
       type: object
-    apimodel.FilesPropertyLinkValue:
+    FilesPropertyLinkValue:
       properties:
         files:
           description: The file ids of the property
@@ -394,7 +385,7 @@ components:
           example: files
           type: string
       type: object
-    apimodel.FilesPropertyValue:
+    FilesPropertyValue:
       properties:
         files:
           description: The file values of the property
@@ -405,7 +396,7 @@ components:
           type: array
           uniqueItems: false
         format:
-          $ref: '#/components/schemas/apimodel.PropertyFormat'
+          $ref: '#/components/schemas/PropertyFormat'
         id:
           description: The id of the property
           example: bafyreids36kpw5ppuwm3ce2p4ezb3ab7cihhkq6yfbwzwpp4mln7rcgw7a
@@ -423,12 +414,12 @@ components:
           example: property
           type: string
       type: object
-    apimodel.Filter:
+    Filter:
       properties:
         condition:
-          $ref: '#/components/schemas/apimodel.FilterCondition'
+          $ref: '#/components/schemas/FilterCondition'
         format:
-          $ref: '#/components/schemas/apimodel.PropertyFormat'
+          $ref: '#/components/schemas/PropertyFormat'
         id:
           description: The id of the filter
           example: 67bf3f21cda9134102e2422c
@@ -442,7 +433,7 @@ components:
           example: Some value...
           type: string
       type: object
-    apimodel.FilterCondition:
+    FilterCondition:
       description: The filter condition
       enum:
       - empty
@@ -454,8 +445,6 @@ components:
         FilterConditionContains: Contains substring
         FilterConditionEmpty: Property value is empty
         FilterConditionEq: Equal to value
-        FilterConditionExactIn: Array exactly matches specified values
-        FilterConditionExists: Property exists on the object
         FilterConditionGt: Greater than value
         FilterConditionGte: Greater than or equal to value
         FilterConditionIn: Value is in the specified array
@@ -465,8 +454,6 @@ components:
         FilterConditionNEmpty: Property value is not empty
         FilterConditionNe: Not equal to value
         FilterConditionNin: Value is not in the specified array
-        FilterConditionNone: Contains none of the specified values
-        FilterConditionNotExactIn: Array does not exactly match specified values
       x-enum-varnames:
       - FilterConditionEq
       - FilterConditionNe
@@ -479,47 +466,42 @@ components:
       - FilterConditionIn
       - FilterConditionNin
       - FilterConditionAll
-      - FilterConditionNone
-      - FilterConditionExactIn
-      - FilterConditionNotExactIn
-      - FilterConditionExists
       - FilterConditionEmpty
       - FilterConditionNEmpty
-    apimodel.FilterExpression:
+    FilterExpression:
       description: Expression filter with nested AND/OR conditions
       properties:
         conditions:
           description: List of format-specific filter conditions
           items:
-            $ref: '#/components/schemas/apimodel.FilterItem'
+            $ref: '#/components/schemas/FilterItem'
           type: array
           uniqueItems: false
         filters:
           description: Nested filter expressions for complex logic
           items:
-            $ref: '#/components/schemas/apimodel.FilterExpression'
+            $ref: '#/components/schemas/FilterExpression'
           type: array
           uniqueItems: false
         operator:
-          $ref: '#/components/schemas/apimodel.FilterOperator'
+          $ref: '#/components/schemas/FilterOperator'
       type: object
-    apimodel.FilterItem:
+    FilterItem:
       oneOf:
-      - $ref: '#/components/schemas/apimodel.TextFilterItem'
-      - $ref: '#/components/schemas/apimodel.NumberFilterItem'
-      - $ref: '#/components/schemas/apimodel.SelectFilterItem'
-      - $ref: '#/components/schemas/apimodel.MultiSelectFilterItem'
-      - $ref: '#/components/schemas/apimodel.DateFilterItem'
-      - $ref: '#/components/schemas/apimodel.CheckboxFilterItem'
-      - $ref: '#/components/schemas/apimodel.FilesFilterItem'
-      - $ref: '#/components/schemas/apimodel.UrlFilterItem'
-      - $ref: '#/components/schemas/apimodel.EmailFilterItem'
-      - $ref: '#/components/schemas/apimodel.PhoneFilterItem'
-      - $ref: '#/components/schemas/apimodel.ObjectsFilterItem'
-      - $ref: '#/components/schemas/apimodel.ExistsFilterItem'
-      - $ref: '#/components/schemas/apimodel.EmptyFilterItem'
+      - $ref: '#/components/schemas/TextFilterItem'
+      - $ref: '#/components/schemas/NumberFilterItem'
+      - $ref: '#/components/schemas/SelectFilterItem'
+      - $ref: '#/components/schemas/MultiSelectFilterItem'
+      - $ref: '#/components/schemas/DateFilterItem'
+      - $ref: '#/components/schemas/CheckboxFilterItem'
+      - $ref: '#/components/schemas/FilesFilterItem'
+      - $ref: '#/components/schemas/UrlFilterItem'
+      - $ref: '#/components/schemas/EmailFilterItem'
+      - $ref: '#/components/schemas/PhoneFilterItem'
+      - $ref: '#/components/schemas/ObjectsFilterItem'
+      - $ref: '#/components/schemas/EmptyFilterItem'
       type: object
-    apimodel.FilterOperator:
+    FilterOperator:
       description: Logical operator for combining filters (and, or)
       enum:
       - and
@@ -528,15 +510,15 @@ components:
       x-enum-varnames:
       - FilterOperatorAnd
       - FilterOperatorOr
-    apimodel.Icon:
+    Icon:
       description: The icon of the object, or null if the object has no icon
       nullable: true
       oneOf:
-      - $ref: '#/components/schemas/apimodel.EmojiIcon'
-      - $ref: '#/components/schemas/apimodel.FileIcon'
-      - $ref: '#/components/schemas/apimodel.NamedIcon'
+      - $ref: '#/components/schemas/EmojiIcon'
+      - $ref: '#/components/schemas/FileIcon'
+      - $ref: '#/components/schemas/NamedIcon'
       type: object
-    apimodel.IconFormat:
+    IconFormat:
       description: The format of the icon
       enum:
       - emoji
@@ -547,7 +529,7 @@ components:
       - IconFormatEmoji
       - IconFormatFile
       - IconFormatIcon
-    apimodel.IconName:
+    IconName:
       description: The name of the icon
       enum:
       - accessibility
@@ -1333,7 +1315,7 @@ components:
       - IconNameWifi
       - IconNameWine
       - IconNameWoman
-    apimodel.Member:
+    Member:
       description: The member
       properties:
         global_name:
@@ -1341,7 +1323,7 @@ components:
           example: john.any
           type: string
         icon:
-          $ref: '#/components/schemas/apimodel.Icon'
+          $ref: '#/components/schemas/Icon'
         id:
           description: The profile object id of the member
           example: _participant_bafyreigyfkt6rbv24sbv5aq2hko1bhmv5xxlf22b4bypdu6j7hnphm3psq_23me69r569oi1_AAjEaEwPF4nkEh9AWkqEnzcQ8HziBB4ETjiTpvRCQvWnSMDZ
@@ -1379,15 +1361,15 @@ components:
           example: active
           type: string
       type: object
-    apimodel.MemberResponse:
+    MemberResponse:
       properties:
         member:
-          $ref: '#/components/schemas/apimodel.Member'
+          $ref: '#/components/schemas/Member'
       type: object
-    apimodel.MultiSelectFilterItem:
+    MultiSelectFilterItem:
       properties:
         condition:
-          $ref: '#/components/schemas/apimodel.FilterCondition'
+          $ref: '#/components/schemas/FilterCondition'
         multi_select:
           description: The tag IDs to filter by
           items:
@@ -1399,7 +1381,7 @@ components:
           example: tags
           type: string
       type: object
-    apimodel.MultiSelectPropertyLinkValue:
+    MultiSelectPropertyLinkValue:
       properties:
         key:
           example: tag
@@ -1415,10 +1397,10 @@ components:
           type: array
           uniqueItems: false
       type: object
-    apimodel.MultiSelectPropertyValue:
+    MultiSelectPropertyValue:
       properties:
         format:
-          $ref: '#/components/schemas/apimodel.PropertyFormat'
+          $ref: '#/components/schemas/PropertyFormat'
         id:
           description: The id of the property
           example: bafyreids36kpw5ppuwm3ce2p4ezb3ab7cihhkq6yfbwzwpp4mln7rcgw7a
@@ -1430,7 +1412,7 @@ components:
         multi_select:
           description: The selected tag values of the property
           items:
-            $ref: '#/components/schemas/apimodel.Tag'
+            $ref: '#/components/schemas/Tag'
           type: array
           uniqueItems: false
         name:
@@ -1442,19 +1424,19 @@ components:
           example: property
           type: string
       type: object
-    apimodel.NamedIcon:
+    NamedIcon:
       properties:
         color:
-          $ref: '#/components/schemas/apimodel.Color'
+          $ref: '#/components/schemas/Color'
         format:
-          $ref: '#/components/schemas/apimodel.IconFormat'
+          $ref: '#/components/schemas/IconFormat'
         name:
-          $ref: '#/components/schemas/apimodel.IconName'
+          $ref: '#/components/schemas/IconName'
       type: object
-    apimodel.NumberFilterItem:
+    NumberFilterItem:
       properties:
         condition:
-          $ref: '#/components/schemas/apimodel.FilterCondition'
+          $ref: '#/components/schemas/FilterCondition'
         number:
           description: The number value to filter by
           example: 5
@@ -1464,7 +1446,7 @@ components:
           example: priority
           type: string
       type: object
-    apimodel.NumberPropertyLinkValue:
+    NumberPropertyLinkValue:
       properties:
         key:
           example: height
@@ -1474,10 +1456,10 @@ components:
           example: 42
           type: number
       type: object
-    apimodel.NumberPropertyValue:
+    NumberPropertyValue:
       properties:
         format:
-          $ref: '#/components/schemas/apimodel.PropertyFormat'
+          $ref: '#/components/schemas/PropertyFormat'
         id:
           description: The id of the property
           example: bafyreids36kpw5ppuwm3ce2p4ezb3ab7cihhkq6yfbwzwpp4mln7rcgw7a
@@ -1499,20 +1481,20 @@ components:
           example: property
           type: string
       type: object
-    apimodel.Object:
+    Object:
       properties:
         archived:
           description: Whether the object is archived
           example: false
           type: boolean
         icon:
-          $ref: '#/components/schemas/apimodel.Icon'
+          $ref: '#/components/schemas/Icon'
         id:
           description: The id of the object
           example: bafyreie6n5l5nkbjal37su54cha4coy7qzuhrnajluzv5qd5jvtsrxkequ
           type: string
         layout:
-          $ref: '#/components/schemas/apimodel.ObjectLayout'
+          $ref: '#/components/schemas/ObjectLayout'
         name:
           description: The name of the object
           example: My object
@@ -1524,7 +1506,7 @@ components:
         properties:
           description: The properties of the object
           items:
-            $ref: '#/components/schemas/apimodel.PropertyWithValue'
+            $ref: '#/components/schemas/PropertyWithValue'
           type: array
           uniqueItems: false
         snippet:
@@ -1537,9 +1519,9 @@ components:
           example: bafyreigyfkt6rbv24sbv5aq2hko3bhmv5xxlf22b4bypdu6j7hnphm3psq.23me69r569oi1
           type: string
         type:
-          $ref: '#/components/schemas/apimodel.Type'
+          $ref: '#/components/schemas/Type'
       type: object
-    apimodel.ObjectLayout:
+    ObjectLayout:
       description: The layout of the object
       example: basic
       type: string
@@ -1552,12 +1534,12 @@ components:
       - ObjectLayoutSet
       - ObjectLayoutCollection
       - ObjectLayoutParticipant
-    apimodel.ObjectResponse:
+    ObjectResponse:
       properties:
         object:
-          $ref: '#/components/schemas/apimodel.ObjectWithBody'
+          $ref: '#/components/schemas/ObjectWithBody'
       type: object
-    apimodel.ObjectWithBody:
+    ObjectWithBody:
       description: The object
       properties:
         archived:
@@ -1565,7 +1547,7 @@ components:
           example: false
           type: boolean
         icon:
-          $ref: '#/components/schemas/apimodel.Icon'
+          $ref: '#/components/schemas/Icon'
         id:
           description: The id of the object
           example: bafyreie6n5l5nkbjal37su54cha4coy7qzuhrnajluzv5qd5jvtsrxkequ
@@ -1600,7 +1582,7 @@ components:
         properties:
           description: The properties of the object
           items:
-            $ref: '#/components/schemas/apimodel.PropertyWithValue'
+            $ref: '#/components/schemas/PropertyWithValue'
           type: array
           uniqueItems: false
         snippet:
@@ -1613,12 +1595,12 @@ components:
           example: bafyreigyfkt6rbv24sbv5aq2hko3bhmv5xxlf22b4bypdu6j7hnphm3psq.23me69r569oi1
           type: string
         type:
-          $ref: '#/components/schemas/apimodel.Type'
+          $ref: '#/components/schemas/Type'
       type: object
-    apimodel.ObjectsFilterItem:
+    ObjectsFilterItem:
       properties:
         condition:
-          $ref: '#/components/schemas/apimodel.FilterCondition'
+          $ref: '#/components/schemas/FilterCondition'
         objects:
           description: Object Ids to filter by
           items:
@@ -1630,7 +1612,7 @@ components:
           example: assignee
           type: string
       type: object
-    apimodel.ObjectsPropertyLinkValue:
+    ObjectsPropertyLinkValue:
       properties:
         key:
           example: creator
@@ -1644,10 +1626,10 @@ components:
           type: array
           uniqueItems: false
       type: object
-    apimodel.ObjectsPropertyValue:
+    ObjectsPropertyValue:
       properties:
         format:
-          $ref: '#/components/schemas/apimodel.PropertyFormat'
+          $ref: '#/components/schemas/PropertyFormat'
         id:
           description: The id of the property
           example: bafyreids36kpw5ppuwm3ce2p4ezb3ab7cihhkq6yfbwzwpp4mln7rcgw7a
@@ -1673,10 +1655,10 @@ components:
           type: array
           uniqueItems: false
       type: object
-    apimodel.PhoneFilterItem:
+    PhoneFilterItem:
       properties:
         condition:
-          $ref: '#/components/schemas/apimodel.FilterCondition'
+          $ref: '#/components/schemas/FilterCondition'
         phone:
           description: The phone value to filter by
           example: "+1234567890"
@@ -1686,7 +1668,7 @@ components:
           example: contact_phone
           type: string
       type: object
-    apimodel.PhonePropertyLinkValue:
+    PhonePropertyLinkValue:
       properties:
         key:
           example: phone
@@ -1696,10 +1678,10 @@ components:
           example: "+1234567890"
           type: string
       type: object
-    apimodel.PhonePropertyValue:
+    PhonePropertyValue:
       properties:
         format:
-          $ref: '#/components/schemas/apimodel.PropertyFormat'
+          $ref: '#/components/schemas/PropertyFormat'
         id:
           description: The id of the property
           example: bafyreids36kpw5ppuwm3ce2p4ezb3ab7cihhkq6yfbwzwpp4mln7rcgw7a
@@ -1721,11 +1703,11 @@ components:
           example: "+1234567890"
           type: string
       type: object
-    apimodel.Property:
+    Property:
       description: The property
       properties:
         format:
-          $ref: '#/components/schemas/apimodel.PropertyFormat'
+          $ref: '#/components/schemas/PropertyFormat'
         id:
           description: The id of the property
           example: bafyreids36kpw5ppuwm3ce2p4ezb3ab7cihhkq6yfbwzwpp4mln7rcgw7a
@@ -1743,7 +1725,7 @@ components:
           example: property
           type: string
       type: object
-    apimodel.PropertyFormat:
+    PropertyFormat:
       description: The format of the property used for filtering
       enum:
       - text
@@ -1770,10 +1752,10 @@ components:
       - PropertyFormatEmail
       - PropertyFormatPhone
       - PropertyFormatObjects
-    apimodel.PropertyLink:
+    PropertyLink:
       properties:
         format:
-          $ref: '#/components/schemas/apimodel.PropertyFormat'
+          $ref: '#/components/schemas/PropertyFormat'
         key:
           description: The key of the property
           example: last_modified_date
@@ -1787,50 +1769,50 @@ components:
       - key
       - name
       type: object
-    apimodel.PropertyLinkWithValue:
+    PropertyLinkWithValue:
       oneOf:
-      - $ref: '#/components/schemas/apimodel.TextPropertyLinkValue'
-      - $ref: '#/components/schemas/apimodel.NumberPropertyLinkValue'
-      - $ref: '#/components/schemas/apimodel.SelectPropertyLinkValue'
-      - $ref: '#/components/schemas/apimodel.MultiSelectPropertyLinkValue'
-      - $ref: '#/components/schemas/apimodel.DatePropertyLinkValue'
-      - $ref: '#/components/schemas/apimodel.FilesPropertyLinkValue'
-      - $ref: '#/components/schemas/apimodel.CheckboxPropertyLinkValue'
-      - $ref: '#/components/schemas/apimodel.URLPropertyLinkValue'
-      - $ref: '#/components/schemas/apimodel.EmailPropertyLinkValue'
-      - $ref: '#/components/schemas/apimodel.PhonePropertyLinkValue'
-      - $ref: '#/components/schemas/apimodel.ObjectsPropertyLinkValue'
+      - $ref: '#/components/schemas/TextPropertyLinkValue'
+      - $ref: '#/components/schemas/NumberPropertyLinkValue'
+      - $ref: '#/components/schemas/SelectPropertyLinkValue'
+      - $ref: '#/components/schemas/MultiSelectPropertyLinkValue'
+      - $ref: '#/components/schemas/DatePropertyLinkValue'
+      - $ref: '#/components/schemas/FilesPropertyLinkValue'
+      - $ref: '#/components/schemas/CheckboxPropertyLinkValue'
+      - $ref: '#/components/schemas/URLPropertyLinkValue'
+      - $ref: '#/components/schemas/EmailPropertyLinkValue'
+      - $ref: '#/components/schemas/PhonePropertyLinkValue'
+      - $ref: '#/components/schemas/ObjectsPropertyLinkValue'
       type: object
-    apimodel.PropertyResponse:
+    PropertyResponse:
       properties:
         property:
-          $ref: '#/components/schemas/apimodel.Property'
+          $ref: '#/components/schemas/Property'
       type: object
-    apimodel.PropertyWithValue:
+    PropertyWithValue:
       oneOf:
-      - $ref: '#/components/schemas/apimodel.TextPropertyValue'
-      - $ref: '#/components/schemas/apimodel.NumberPropertyValue'
-      - $ref: '#/components/schemas/apimodel.SelectPropertyValue'
-      - $ref: '#/components/schemas/apimodel.MultiSelectPropertyValue'
-      - $ref: '#/components/schemas/apimodel.DatePropertyValue'
-      - $ref: '#/components/schemas/apimodel.FilesPropertyValue'
-      - $ref: '#/components/schemas/apimodel.CheckboxPropertyValue'
-      - $ref: '#/components/schemas/apimodel.URLPropertyValue'
-      - $ref: '#/components/schemas/apimodel.EmailPropertyValue'
-      - $ref: '#/components/schemas/apimodel.PhonePropertyValue'
-      - $ref: '#/components/schemas/apimodel.ObjectsPropertyValue'
+      - $ref: '#/components/schemas/TextPropertyValue'
+      - $ref: '#/components/schemas/NumberPropertyValue'
+      - $ref: '#/components/schemas/SelectPropertyValue'
+      - $ref: '#/components/schemas/MultiSelectPropertyValue'
+      - $ref: '#/components/schemas/DatePropertyValue'
+      - $ref: '#/components/schemas/FilesPropertyValue'
+      - $ref: '#/components/schemas/CheckboxPropertyValue'
+      - $ref: '#/components/schemas/URLPropertyValue'
+      - $ref: '#/components/schemas/EmailPropertyValue'
+      - $ref: '#/components/schemas/PhonePropertyValue'
+      - $ref: '#/components/schemas/ObjectsPropertyValue'
       type: object
-    apimodel.SearchRequest:
+    SearchRequest:
       properties:
         filters:
-          $ref: '#/components/schemas/apimodel.FilterExpression'
+          $ref: '#/components/schemas/FilterExpression'
         query:
           description: The text to search within object names and content; use types
             field for type filtering
           example: test
           type: string
         sort:
-          $ref: '#/components/schemas/apimodel.SortOptions'
+          $ref: '#/components/schemas/SortOptions'
         types:
           description: The types of objects to include in results (e.g., "page", "task",
             "bookmark"); see ListTypes endpoint for valid values
@@ -1843,10 +1825,10 @@ components:
           type: array
           uniqueItems: false
       type: object
-    apimodel.SelectFilterItem:
+    SelectFilterItem:
       properties:
         condition:
-          $ref: '#/components/schemas/apimodel.FilterCondition'
+          $ref: '#/components/schemas/FilterCondition'
         property_key:
           description: The property key to filter on
           example: status
@@ -1856,7 +1838,7 @@ components:
           example: tag_id_done
           type: string
       type: object
-    apimodel.SelectPropertyLinkValue:
+    SelectPropertyLinkValue:
       properties:
         key:
           example: status
@@ -1867,10 +1849,10 @@ components:
           example: tag_id
           type: string
       type: object
-    apimodel.SelectPropertyValue:
+    SelectPropertyValue:
       properties:
         format:
-          $ref: '#/components/schemas/apimodel.PropertyFormat'
+          $ref: '#/components/schemas/PropertyFormat'
         id:
           description: The id of the property
           example: bafyreids36kpw5ppuwm3ce2p4ezb3ab7cihhkq6yfbwzwpp4mln7rcgw7a
@@ -1888,12 +1870,12 @@ components:
           example: property
           type: string
         select:
-          $ref: '#/components/schemas/apimodel.Tag'
+          $ref: '#/components/schemas/Tag'
       type: object
-    apimodel.Sort:
+    Sort:
       properties:
         format:
-          $ref: '#/components/schemas/apimodel.PropertyFormat'
+          $ref: '#/components/schemas/PropertyFormat'
         id:
           description: The id of the sort
           example: 67bf3f21cda9134102e2422c
@@ -1911,7 +1893,7 @@ components:
           example: asc
           type: string
       type: object
-    apimodel.SortDirection:
+    SortDirection:
       default: desc
       description: The direction to sort the search results by
       enum:
@@ -1921,15 +1903,15 @@ components:
       x-enum-varnames:
       - Asc
       - Desc
-    apimodel.SortOptions:
+    SortOptions:
       description: The sorting options for the search results
       properties:
         direction:
-          $ref: '#/components/schemas/apimodel.SortDirection'
+          $ref: '#/components/schemas/SortDirection'
         property_key:
-          $ref: '#/components/schemas/apimodel.SortProperty'
+          $ref: '#/components/schemas/SortProperty'
       type: object
-    apimodel.SortProperty:
+    SortProperty:
       default: last_modified_date
       description: The key of the property to sort the search results by
       enum:
@@ -1943,7 +1925,7 @@ components:
       - LastModifiedDate
       - LastOpenedDate
       - Name
-    apimodel.Space:
+    Space:
       description: The space
       properties:
         description:
@@ -1955,7 +1937,7 @@ components:
           example: http://127.0.0.1:31006
           type: string
         icon:
-          $ref: '#/components/schemas/apimodel.Icon'
+          $ref: '#/components/schemas/Icon'
         id:
           description: The id of the space
           example: bafyreigyfkt6rbv24sbv5aq2hko3bhmv5xxlf22b4bypdu6j7hnphm3psq.23me69r569oi1
@@ -1973,16 +1955,16 @@ components:
           example: space
           type: string
       type: object
-    apimodel.SpaceResponse:
+    SpaceResponse:
       properties:
         space:
-          $ref: '#/components/schemas/apimodel.Space'
+          $ref: '#/components/schemas/Space'
       type: object
-    apimodel.Tag:
+    Tag:
       description: The selected tag value of the property
       properties:
         color:
-          $ref: '#/components/schemas/apimodel.Color'
+          $ref: '#/components/schemas/Color'
         id:
           description: The id of the tag
           example: bafyreiaixlnaefu3ci22zdenjhsdlyaeeoyjrsid5qhfeejzlccijbj7sq
@@ -2000,20 +1982,20 @@ components:
           example: tag
           type: string
       type: object
-    apimodel.TagResponse:
+    TagResponse:
       properties:
         tag:
-          $ref: '#/components/schemas/apimodel.Tag'
+          $ref: '#/components/schemas/Tag'
       type: object
-    apimodel.TemplateResponse:
+    TemplateResponse:
       properties:
         template:
-          $ref: '#/components/schemas/apimodel.ObjectWithBody'
+          $ref: '#/components/schemas/ObjectWithBody'
       type: object
-    apimodel.TextFilterItem:
+    TextFilterItem:
       properties:
         condition:
-          $ref: '#/components/schemas/apimodel.FilterCondition'
+          $ref: '#/components/schemas/FilterCondition'
         property_key:
           description: The property key to filter on
           example: description
@@ -2023,7 +2005,7 @@ components:
           example: important
           type: string
       type: object
-    apimodel.TextPropertyLinkValue:
+    TextPropertyLinkValue:
       properties:
         key:
           example: description
@@ -2033,10 +2015,10 @@ components:
           example: Some text...
           type: string
       type: object
-    apimodel.TextPropertyValue:
+    TextPropertyValue:
       properties:
         format:
-          $ref: '#/components/schemas/apimodel.PropertyFormat'
+          $ref: '#/components/schemas/PropertyFormat'
         id:
           description: The id of the property
           example: bafyreids36kpw5ppuwm3ce2p4ezb3ab7cihhkq6yfbwzwpp4mln7rcgw7a
@@ -2058,7 +2040,7 @@ components:
           example: Some text...
           type: string
       type: object
-    apimodel.Type:
+    Type:
       description: The type of the object, or null if the type has been deleted.
       nullable: true
       properties:
@@ -2067,7 +2049,7 @@ components:
           example: false
           type: boolean
         icon:
-          $ref: '#/components/schemas/apimodel.Icon'
+          $ref: '#/components/schemas/Icon'
         id:
           description: The id of the type (which is unique across spaces)
           example: bafyreigyb6l5szohs32ts26ku2j42yd65e6hqy2u3gtzgdwqv6hzftsetu
@@ -2114,11 +2096,11 @@ components:
         properties:
           description: The properties linked to the type
           items:
-            $ref: '#/components/schemas/apimodel.Property'
+            $ref: '#/components/schemas/Property'
           type: array
           uniqueItems: false
       type: object
-    apimodel.TypeLayout:
+    TypeLayout:
       description: The layout of the type
       enum:
       - basic
@@ -2131,12 +2113,12 @@ components:
       - TypeLayoutProfile
       - TypeLayoutAction
       - TypeLayoutNote
-    apimodel.TypeResponse:
+    TypeResponse:
       properties:
         type:
-          $ref: '#/components/schemas/apimodel.Type'
+          $ref: '#/components/schemas/Type'
       type: object
-    apimodel.URLPropertyLinkValue:
+    URLPropertyLinkValue:
       properties:
         key:
           example: source
@@ -2146,10 +2128,10 @@ components:
           example: https://example.com
           type: string
       type: object
-    apimodel.URLPropertyValue:
+    URLPropertyValue:
       properties:
         format:
-          $ref: '#/components/schemas/apimodel.PropertyFormat'
+          $ref: '#/components/schemas/PropertyFormat'
         id:
           description: The id of the property
           example: bafyreids36kpw5ppuwm3ce2p4ezb3ab7cihhkq6yfbwzwpp4mln7rcgw7a
@@ -2171,10 +2153,10 @@ components:
           example: https://example.com
           type: string
       type: object
-    apimodel.UpdateObjectRequest:
+    UpdateObjectRequest:
       properties:
         icon:
-          $ref: '#/components/schemas/apimodel.Icon'
+          $ref: '#/components/schemas/Icon'
         name:
           description: The name of the object
           example: My object
@@ -2183,7 +2165,7 @@ components:
           description: The properties to set for the object; see ListTypes or GetType
             endpoints for linked properties
           items:
-            $ref: '#/components/schemas/apimodel.PropertyLinkWithValue'
+            $ref: '#/components/schemas/PropertyLinkWithValue'
           type: array
           uniqueItems: false
         type_key:
@@ -2191,7 +2173,7 @@ components:
           example: page
           type: string
       type: object
-    apimodel.UpdatePropertyRequest:
+    UpdatePropertyRequest:
       properties:
         key:
           description: The key to set for the property; ; should always be snake_case,
@@ -2205,7 +2187,7 @@ components:
       required:
       - name
       type: object
-    apimodel.UpdateSpaceRequest:
+    UpdateSpaceRequest:
       properties:
         description:
           description: The description of the space
@@ -2216,10 +2198,10 @@ components:
           example: New Space
           type: string
       type: object
-    apimodel.UpdateTagRequest:
+    UpdateTagRequest:
       properties:
         color:
-          $ref: '#/components/schemas/apimodel.Color'
+          $ref: '#/components/schemas/Color'
         key:
           description: The key to set for the tag
           example: in_progress
@@ -2229,17 +2211,17 @@ components:
           example: In progress
           type: string
       type: object
-    apimodel.UpdateTypeRequest:
+    UpdateTypeRequest:
       properties:
         icon:
-          $ref: '#/components/schemas/apimodel.Icon'
+          $ref: '#/components/schemas/Icon'
         key:
           description: The key to set for the type; should always be snake_case, otherwise
             it will be converted to snake_case
           example: some_user_defined_type_key
           type: string
         layout:
-          $ref: '#/components/schemas/apimodel.TypeLayout'
+          $ref: '#/components/schemas/TypeLayout'
         name:
           description: The name to set for the type
           example: Page
@@ -2251,14 +2233,14 @@ components:
         properties:
           description: The properties to set for the type
           items:
-            $ref: '#/components/schemas/apimodel.PropertyLink'
+            $ref: '#/components/schemas/PropertyLink'
           type: array
           uniqueItems: false
       type: object
-    apimodel.UrlFilterItem:
+    UrlFilterItem:
       properties:
         condition:
-          $ref: '#/components/schemas/apimodel.FilterCondition'
+          $ref: '#/components/schemas/FilterCondition'
         property_key:
           description: The property key to filter on
           example: source
@@ -2268,12 +2250,12 @@ components:
           example: https://example.com
           type: string
       type: object
-    apimodel.View:
+    View:
       properties:
         filters:
           description: The list of filters
           items:
-            $ref: '#/components/schemas/apimodel.Filter'
+            $ref: '#/components/schemas/Filter'
           type: array
           uniqueItems: false
         id:
@@ -2294,88 +2276,88 @@ components:
         sorts:
           description: The list of sorts
           items:
-            $ref: '#/components/schemas/apimodel.Sort'
+            $ref: '#/components/schemas/Sort'
           type: array
           uniqueItems: false
       type: object
-    pagination.PaginatedResponse-apimodel_Member:
+    PaginatedResponse-Member:
       properties:
         data:
           description: The list of items in the current result set
           items:
-            $ref: '#/components/schemas/apimodel.Member'
+            $ref: '#/components/schemas/Member'
           type: array
           uniqueItems: false
         pagination:
-          $ref: '#/components/schemas/pagination.PaginationMeta'
+          $ref: '#/components/schemas/PaginationMeta'
       type: object
-    pagination.PaginatedResponse-apimodel_Object:
+    PaginatedResponse-Object:
       properties:
         data:
           description: The list of items in the current result set
           items:
-            $ref: '#/components/schemas/apimodel.Object'
+            $ref: '#/components/schemas/Object'
           type: array
           uniqueItems: false
         pagination:
-          $ref: '#/components/schemas/pagination.PaginationMeta'
+          $ref: '#/components/schemas/PaginationMeta'
       type: object
-    pagination.PaginatedResponse-apimodel_Property:
+    PaginatedResponse-Property:
       properties:
         data:
           description: The list of items in the current result set
           items:
-            $ref: '#/components/schemas/apimodel.Property'
+            $ref: '#/components/schemas/Property'
           type: array
           uniqueItems: false
         pagination:
-          $ref: '#/components/schemas/pagination.PaginationMeta'
+          $ref: '#/components/schemas/PaginationMeta'
       type: object
-    pagination.PaginatedResponse-apimodel_Space:
+    PaginatedResponse-Space:
       properties:
         data:
           description: The list of items in the current result set
           items:
-            $ref: '#/components/schemas/apimodel.Space'
+            $ref: '#/components/schemas/Space'
           type: array
           uniqueItems: false
         pagination:
-          $ref: '#/components/schemas/pagination.PaginationMeta'
+          $ref: '#/components/schemas/PaginationMeta'
       type: object
-    pagination.PaginatedResponse-apimodel_Tag:
+    PaginatedResponse-Tag:
       properties:
         data:
           description: The list of items in the current result set
           items:
-            $ref: '#/components/schemas/apimodel.Tag'
+            $ref: '#/components/schemas/Tag'
           type: array
           uniqueItems: false
         pagination:
-          $ref: '#/components/schemas/pagination.PaginationMeta'
+          $ref: '#/components/schemas/PaginationMeta'
       type: object
-    pagination.PaginatedResponse-apimodel_Type:
+    PaginatedResponse-Type:
       properties:
         data:
           description: The list of items in the current result set
           items:
-            $ref: '#/components/schemas/apimodel.Type'
+            $ref: '#/components/schemas/Type'
           type: array
           uniqueItems: false
         pagination:
-          $ref: '#/components/schemas/pagination.PaginationMeta'
+          $ref: '#/components/schemas/PaginationMeta'
       type: object
-    pagination.PaginatedResponse-apimodel_View:
+    PaginatedResponse-View:
       properties:
         data:
           description: The list of items in the current result set
           items:
-            $ref: '#/components/schemas/apimodel.View'
+            $ref: '#/components/schemas/View'
           type: array
           uniqueItems: false
         pagination:
-          $ref: '#/components/schemas/pagination.PaginationMeta'
+          $ref: '#/components/schemas/PaginationMeta'
       type: object
-    pagination.PaginationMeta:
+    PaginationMeta:
       description: The pagination metadata for the response
       properties:
         has_more:
@@ -2397,7 +2379,7 @@ components:
           example: 1000
           type: integer
       type: object
-    util.ForbiddenError:
+    ForbiddenError:
       properties:
         code:
           example: forbidden
@@ -2412,7 +2394,7 @@ components:
           example: 403
           type: integer
       type: object
-    util.GoneError:
+    GoneError:
       properties:
         code:
           example: resource_gone
@@ -2427,7 +2409,7 @@ components:
           example: 410
           type: integer
       type: object
-    util.NotFoundError:
+    NotFoundError:
       properties:
         code:
           example: object_not_found
@@ -2442,7 +2424,7 @@ components:
           example: 404
           type: integer
       type: object
-    util.RateLimitError:
+    RateLimitError:
       properties:
         code:
           example: rate_limit_exceeded
@@ -2457,7 +2439,7 @@ components:
           example: 429
           type: integer
       type: object
-    util.ServerError:
+    ServerError:
       properties:
         code:
           example: internal_server_error
@@ -2472,7 +2454,7 @@ components:
           example: 500
           type: integer
       type: object
-    util.UnauthorizedError:
+    UnauthorizedError:
       properties:
         code:
           example: unauthorized
@@ -2487,7 +2469,7 @@ components:
           example: 401
           type: integer
       type: object
-    util.ValidationError:
+    ValidationError:
       properties:
         code:
           example: bad_request
@@ -2546,7 +2528,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/apimodel.CreateApiKeyRequest'
+              $ref: '#/components/schemas/CreateApiKeyRequest'
         description: The request body containing the challenge ID and code
         required: true
       responses:
@@ -2554,20 +2536,20 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/apimodel.CreateApiKeyResponse'
+                $ref: '#/components/schemas/CreateApiKeyResponse'
           description: The API key that can be used in the Authorization header for
             subsequent requests
         "400":
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/util.ValidationError'
+                $ref: '#/components/schemas/ValidationError'
           description: Bad request
         "500":
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/util.ServerError'
+                $ref: '#/components/schemas/ServerError'
           description: Internal server error
       summary: Create API Key
       tags:
@@ -2594,7 +2576,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/apimodel.CreateChallengeRequest'
+              $ref: '#/components/schemas/CreateChallengeRequest'
         description: The request body containing the app name
         required: true
       responses:
@@ -2602,19 +2584,19 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/apimodel.CreateChallengeResponse'
+                $ref: '#/components/schemas/CreateChallengeResponse'
           description: The challenge ID associated with the started challenge
         "400":
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/util.ValidationError'
+                $ref: '#/components/schemas/ValidationError'
           description: Bad request
         "500":
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/util.ServerError'
+                $ref: '#/components/schemas/ServerError'
           description: Internal server error
       summary: Create Challenge
       tags:
@@ -2655,7 +2637,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/apimodel.SearchRequest'
+              $ref: '#/components/schemas/SearchRequest'
         description: The search parameters used to filter and sort the results
         required: true
       responses:
@@ -2663,19 +2645,19 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/pagination.PaginatedResponse-apimodel_Object'
+                $ref: '#/components/schemas/PaginatedResponse-Object'
           description: The list of objects matching the search criteria
         "401":
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/util.UnauthorizedError'
+                $ref: '#/components/schemas/UnauthorizedError'
           description: Unauthorized
         "500":
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/util.ServerError'
+                $ref: '#/components/schemas/ServerError'
           description: Internal server error
       security:
       - bearerauth: []
@@ -2715,19 +2697,19 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/pagination.PaginatedResponse-apimodel_Space'
+                $ref: '#/components/schemas/PaginatedResponse-Space'
           description: The list of spaces accessible by the authenticated user
         "401":
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/util.UnauthorizedError'
+                $ref: '#/components/schemas/UnauthorizedError'
           description: Unauthorized
         "500":
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/util.ServerError'
+                $ref: '#/components/schemas/ServerError'
           description: Internal server error
       security:
       - bearerauth: []
@@ -2754,7 +2736,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/apimodel.CreateSpaceRequest'
+              $ref: '#/components/schemas/CreateSpaceRequest'
         description: The space to create
         required: true
       responses:
@@ -2762,31 +2744,31 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/apimodel.SpaceResponse'
+                $ref: '#/components/schemas/SpaceResponse'
           description: The created space
         "400":
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/util.ValidationError'
+                $ref: '#/components/schemas/ValidationError'
           description: Bad request
         "401":
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/util.UnauthorizedError'
+                $ref: '#/components/schemas/UnauthorizedError'
           description: Unauthorized
         "429":
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/util.RateLimitError'
+                $ref: '#/components/schemas/RateLimitError'
           description: Rate limit exceeded
         "500":
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/util.ServerError'
+                $ref: '#/components/schemas/ServerError'
           description: Internal server error
       security:
       - bearerauth: []
@@ -2820,25 +2802,25 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/apimodel.SpaceResponse'
+                $ref: '#/components/schemas/SpaceResponse'
           description: The space details
         "401":
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/util.UnauthorizedError'
+                $ref: '#/components/schemas/UnauthorizedError'
           description: Unauthorized
         "404":
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/util.NotFoundError'
+                $ref: '#/components/schemas/NotFoundError'
           description: Space not found
         "500":
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/util.ServerError'
+                $ref: '#/components/schemas/ServerError'
           description: Internal server error
       security:
       - bearerauth: []
@@ -2870,7 +2852,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/apimodel.UpdateSpaceRequest'
+              $ref: '#/components/schemas/UpdateSpaceRequest'
         description: The space details to update
         required: true
       responses:
@@ -2878,43 +2860,43 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/apimodel.SpaceResponse'
+                $ref: '#/components/schemas/SpaceResponse'
           description: The updated space
         "400":
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/util.ValidationError'
+                $ref: '#/components/schemas/ValidationError'
           description: Bad request
         "401":
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/util.UnauthorizedError'
+                $ref: '#/components/schemas/UnauthorizedError'
           description: Unauthorized
         "403":
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/util.ForbiddenError'
+                $ref: '#/components/schemas/ForbiddenError'
           description: Forbidden
         "404":
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/util.NotFoundError'
+                $ref: '#/components/schemas/NotFoundError'
           description: Space not found
         "429":
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/util.RateLimitError'
+                $ref: '#/components/schemas/RateLimitError'
           description: Rate limit exceeded
         "500":
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/util.ServerError'
+                $ref: '#/components/schemas/ServerError'
           description: Internal server error
       security:
       - bearerauth: []
@@ -2956,7 +2938,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/apimodel.AddObjectsToListRequest'
+              $ref: '#/components/schemas/AddObjectsToListRequest'
         description: The list of object IDs to add to the list; must be retrieved
           from SearchSpace or GlobalSearch endpoints or obtained from response context
         required: true
@@ -2971,31 +2953,31 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/util.ValidationError'
+                $ref: '#/components/schemas/ValidationError'
           description: Bad request
         "401":
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/util.UnauthorizedError'
+                $ref: '#/components/schemas/UnauthorizedError'
           description: Unauthorized
         "404":
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/util.NotFoundError'
+                $ref: '#/components/schemas/NotFoundError'
           description: Not found
         "429":
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/util.RateLimitError'
+                $ref: '#/components/schemas/RateLimitError'
           description: Rate limit exceeded
         "500":
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/util.ServerError'
+                $ref: '#/components/schemas/ServerError'
           description: Internal server error
       security:
       - bearerauth: []
@@ -3049,31 +3031,31 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/util.ValidationError'
+                $ref: '#/components/schemas/ValidationError'
           description: Bad request
         "401":
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/util.UnauthorizedError'
+                $ref: '#/components/schemas/UnauthorizedError'
           description: Unauthorized
         "404":
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/util.NotFoundError'
+                $ref: '#/components/schemas/NotFoundError'
           description: Not found
         "429":
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/util.RateLimitError'
+                $ref: '#/components/schemas/RateLimitError'
           description: Rate limit exceeded
         "500":
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/util.ServerError'
+                $ref: '#/components/schemas/ServerError'
           description: Internal server error
       security:
       - bearerauth: []
@@ -3128,25 +3110,25 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/pagination.PaginatedResponse-apimodel_View'
+                $ref: '#/components/schemas/PaginatedResponse-View'
           description: The list of views associated with the specified list
         "401":
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/util.UnauthorizedError'
+                $ref: '#/components/schemas/UnauthorizedError'
           description: Unauthorized
         "404":
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/util.NotFoundError'
+                $ref: '#/components/schemas/NotFoundError'
           description: Not found
         "500":
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/util.ServerError'
+                $ref: '#/components/schemas/ServerError'
           description: Internal server error
       security:
       - bearerauth: []
@@ -3206,25 +3188,25 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/pagination.PaginatedResponse-apimodel_Object'
+                $ref: '#/components/schemas/PaginatedResponse-Object'
           description: The list of objects associated with the specified list
         "401":
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/util.UnauthorizedError'
+                $ref: '#/components/schemas/UnauthorizedError'
           description: Unauthorized
         "404":
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/util.NotFoundError'
+                $ref: '#/components/schemas/NotFoundError'
           description: Not found
         "500":
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/util.ServerError'
+                $ref: '#/components/schemas/ServerError'
           description: Internal server error
       security:
       - bearerauth: []
@@ -3271,19 +3253,19 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/pagination.PaginatedResponse-apimodel_Member'
+                $ref: '#/components/schemas/PaginatedResponse-Member'
           description: The list of members in the space
         "401":
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/util.UnauthorizedError'
+                $ref: '#/components/schemas/UnauthorizedError'
           description: Unauthorized
         "500":
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/util.ServerError'
+                $ref: '#/components/schemas/ServerError'
           description: Internal server error
       security:
       - bearerauth: []
@@ -3326,25 +3308,25 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/apimodel.MemberResponse'
+                $ref: '#/components/schemas/MemberResponse'
           description: The member details
         "401":
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/util.UnauthorizedError'
+                $ref: '#/components/schemas/UnauthorizedError'
           description: Unauthorized
         "404":
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/util.NotFoundError'
+                $ref: '#/components/schemas/NotFoundError'
           description: Member not found
         "500":
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/util.ServerError'
+                $ref: '#/components/schemas/ServerError'
           description: Internal server error
       security:
       - bearerauth: []
@@ -3391,19 +3373,19 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/pagination.PaginatedResponse-apimodel_Object'
+                $ref: '#/components/schemas/PaginatedResponse-Object'
           description: The list of objects in the specified space
         "401":
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/util.UnauthorizedError'
+                $ref: '#/components/schemas/UnauthorizedError'
           description: Unauthorized
         "500":
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/util.ServerError'
+                $ref: '#/components/schemas/ServerError'
           description: Internal server error
       security:
       - bearerauth: []
@@ -3439,7 +3421,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/apimodel.CreateObjectRequest'
+              $ref: '#/components/schemas/CreateObjectRequest'
         description: The object to create
         required: true
       responses:
@@ -3447,31 +3429,31 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/apimodel.ObjectResponse'
+                $ref: '#/components/schemas/ObjectResponse'
           description: The created object
         "400":
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/util.ValidationError'
+                $ref: '#/components/schemas/ValidationError'
           description: Bad request
         "401":
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/util.UnauthorizedError'
+                $ref: '#/components/schemas/UnauthorizedError'
           description: Unauthorized
         "429":
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/util.RateLimitError'
+                $ref: '#/components/schemas/RateLimitError'
           description: Rate limit exceeded
         "500":
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/util.ServerError'
+                $ref: '#/components/schemas/ServerError'
           description: Internal server error
       security:
       - bearerauth: []
@@ -3513,43 +3495,43 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/apimodel.ObjectResponse'
+                $ref: '#/components/schemas/ObjectResponse'
           description: The deleted object
         "401":
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/util.UnauthorizedError'
+                $ref: '#/components/schemas/UnauthorizedError'
           description: Unauthorized
         "403":
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/util.ForbiddenError'
+                $ref: '#/components/schemas/ForbiddenError'
           description: Forbidden
         "404":
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/util.NotFoundError'
+                $ref: '#/components/schemas/NotFoundError'
           description: Resource not found
         "410":
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/util.GoneError'
+                $ref: '#/components/schemas/GoneError'
           description: Resource deleted
         "429":
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/util.RateLimitError'
+                $ref: '#/components/schemas/RateLimitError'
           description: Rate limit exceeded
         "500":
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/util.ServerError'
+                $ref: '#/components/schemas/ServerError'
           description: Internal server error
       security:
       - bearerauth: []
@@ -3599,31 +3581,31 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/apimodel.ObjectResponse'
+                $ref: '#/components/schemas/ObjectResponse'
           description: The retrieved object
         "401":
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/util.UnauthorizedError'
+                $ref: '#/components/schemas/UnauthorizedError'
           description: Unauthorized
         "404":
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/util.NotFoundError'
+                $ref: '#/components/schemas/NotFoundError'
           description: Resource not found
         "410":
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/util.GoneError'
+                $ref: '#/components/schemas/GoneError'
           description: Resource deleted
         "500":
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/util.ServerError'
+                $ref: '#/components/schemas/ServerError'
           description: Internal server error
       security:
       - bearerauth: []
@@ -3662,7 +3644,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/apimodel.UpdateObjectRequest'
+              $ref: '#/components/schemas/UpdateObjectRequest'
         description: The details of the object to update
         required: true
       responses:
@@ -3670,43 +3652,43 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/apimodel.ObjectResponse'
+                $ref: '#/components/schemas/ObjectResponse'
           description: The updated object
         "400":
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/util.ValidationError'
+                $ref: '#/components/schemas/ValidationError'
           description: Bad request
         "401":
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/util.UnauthorizedError'
+                $ref: '#/components/schemas/UnauthorizedError'
           description: Unauthorized
         "404":
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/util.NotFoundError'
+                $ref: '#/components/schemas/NotFoundError'
           description: Resource not found
         "410":
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/util.GoneError'
+                $ref: '#/components/schemas/GoneError'
           description: Resource deleted
         "429":
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/util.RateLimitError'
+                $ref: '#/components/schemas/RateLimitError'
           description: Rate limit exceeded
         "500":
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/util.ServerError'
+                $ref: '#/components/schemas/ServerError'
           description: Internal server error
       security:
       - bearerauth: []
@@ -3753,19 +3735,19 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/pagination.PaginatedResponse-apimodel_Property'
+                $ref: '#/components/schemas/PaginatedResponse-Property'
           description: The list of properties in the specified space
         "401":
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/util.UnauthorizedError'
+                $ref: '#/components/schemas/UnauthorizedError'
           description: Unauthorized
         "500":
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/util.ServerError'
+                $ref: '#/components/schemas/ServerError'
           description: Internal server error
       security:
       - bearerauth: []
@@ -3797,7 +3779,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/apimodel.CreatePropertyRequest'
+              $ref: '#/components/schemas/CreatePropertyRequest'
         description: The property to create
         required: true
       responses:
@@ -3805,31 +3787,31 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/apimodel.PropertyResponse'
+                $ref: '#/components/schemas/PropertyResponse'
           description: The created property
         "400":
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/util.ValidationError'
+                $ref: '#/components/schemas/ValidationError'
           description: Bad request
         "401":
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/util.UnauthorizedError'
+                $ref: '#/components/schemas/UnauthorizedError'
           description: Unauthorized
         "429":
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/util.RateLimitError'
+                $ref: '#/components/schemas/RateLimitError'
           description: Rate limit exceeded
         "500":
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/util.ServerError'
+                $ref: '#/components/schemas/ServerError'
           description: Internal server error
       security:
       - bearerauth: []
@@ -3871,43 +3853,43 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/apimodel.PropertyResponse'
+                $ref: '#/components/schemas/PropertyResponse'
           description: The deleted property
         "401":
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/util.UnauthorizedError'
+                $ref: '#/components/schemas/UnauthorizedError'
           description: Unauthorized
         "403":
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/util.ForbiddenError'
+                $ref: '#/components/schemas/ForbiddenError'
           description: Forbidden
         "404":
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/util.NotFoundError'
+                $ref: '#/components/schemas/NotFoundError'
           description: Resource not found
         "410":
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/util.GoneError'
+                $ref: '#/components/schemas/GoneError'
           description: Resource deleted
         "429":
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/util.RateLimitError'
+                $ref: '#/components/schemas/RateLimitError'
           description: Rate limit exceeded
         "500":
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/util.ServerError'
+                $ref: '#/components/schemas/ServerError'
           description: Internal server error
       security:
       - bearerauth: []
@@ -3948,31 +3930,31 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/apimodel.PropertyResponse'
+                $ref: '#/components/schemas/PropertyResponse'
           description: The requested property
         "401":
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/util.UnauthorizedError'
+                $ref: '#/components/schemas/UnauthorizedError'
           description: Unauthorized
         "404":
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/util.NotFoundError'
+                $ref: '#/components/schemas/NotFoundError'
           description: Resource not found
         "410":
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/util.GoneError'
+                $ref: '#/components/schemas/GoneError'
           description: Resource deleted
         "500":
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/util.ServerError'
+                $ref: '#/components/schemas/ServerError'
           description: Internal server error
       security:
       - bearerauth: []
@@ -4011,7 +3993,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/apimodel.UpdatePropertyRequest'
+              $ref: '#/components/schemas/UpdatePropertyRequest'
         description: The property to update
         required: true
       responses:
@@ -4019,49 +4001,49 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/apimodel.PropertyResponse'
+                $ref: '#/components/schemas/PropertyResponse'
           description: The updated property
         "400":
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/util.ValidationError'
+                $ref: '#/components/schemas/ValidationError'
           description: Bad request
         "401":
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/util.UnauthorizedError'
+                $ref: '#/components/schemas/UnauthorizedError'
           description: Unauthorized
         "403":
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/util.ForbiddenError'
+                $ref: '#/components/schemas/ForbiddenError'
           description: Forbidden
         "404":
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/util.NotFoundError'
+                $ref: '#/components/schemas/NotFoundError'
           description: Resource not found
         "410":
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/util.GoneError'
+                $ref: '#/components/schemas/GoneError'
           description: Resource deleted
         "429":
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/util.RateLimitError'
+                $ref: '#/components/schemas/RateLimitError'
           description: Rate limit exceeded
         "500":
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/util.ServerError'
+                $ref: '#/components/schemas/ServerError'
           description: Internal server error
       security:
       - bearerauth: []
@@ -4101,25 +4083,25 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/pagination.PaginatedResponse-apimodel_Tag'
+                $ref: '#/components/schemas/PaginatedResponse-Tag'
           description: The list of tags
         "401":
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/util.UnauthorizedError'
+                $ref: '#/components/schemas/UnauthorizedError'
           description: Unauthorized
         "404":
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/util.NotFoundError'
+                $ref: '#/components/schemas/NotFoundError'
           description: Property not found
         "500":
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/util.ServerError'
+                $ref: '#/components/schemas/ServerError'
           description: Internal server error
       security:
       - bearerauth: []
@@ -4160,7 +4142,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/apimodel.CreateTagRequest'
+              $ref: '#/components/schemas/CreateTagRequest'
         description: The tag to create
         required: true
       responses:
@@ -4168,31 +4150,31 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/apimodel.TagResponse'
+                $ref: '#/components/schemas/TagResponse'
           description: The created tag
         "400":
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/util.ValidationError'
+                $ref: '#/components/schemas/ValidationError'
           description: Bad request
         "401":
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/util.UnauthorizedError'
+                $ref: '#/components/schemas/UnauthorizedError'
           description: Unauthorized
         "429":
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/util.RateLimitError'
+                $ref: '#/components/schemas/RateLimitError'
           description: Rate limit exceeded
         "500":
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/util.ServerError'
+                $ref: '#/components/schemas/ServerError'
           description: Internal server error
       security:
       - bearerauth: []
@@ -4241,43 +4223,43 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/apimodel.TagResponse'
+                $ref: '#/components/schemas/TagResponse'
           description: The deleted tag
         "401":
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/util.UnauthorizedError'
+                $ref: '#/components/schemas/UnauthorizedError'
           description: Unauthorized
         "403":
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/util.ForbiddenError'
+                $ref: '#/components/schemas/ForbiddenError'
           description: Forbidden
         "404":
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/util.NotFoundError'
+                $ref: '#/components/schemas/NotFoundError'
           description: Resource not found
         "410":
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/util.GoneError'
+                $ref: '#/components/schemas/GoneError'
           description: Resource deleted
         "429":
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/util.RateLimitError'
+                $ref: '#/components/schemas/RateLimitError'
           description: Rate limit exceeded
         "500":
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/util.ServerError'
+                $ref: '#/components/schemas/ServerError'
           description: Internal server error
       security:
       - bearerauth: []
@@ -4324,31 +4306,31 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/apimodel.TagResponse'
+                $ref: '#/components/schemas/TagResponse'
           description: The retrieved tag
         "401":
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/util.UnauthorizedError'
+                $ref: '#/components/schemas/UnauthorizedError'
           description: Unauthorized
         "404":
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/util.NotFoundError'
+                $ref: '#/components/schemas/NotFoundError'
           description: Resource not found
         "410":
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/util.GoneError'
+                $ref: '#/components/schemas/GoneError'
           description: Resource deleted
         "500":
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/util.ServerError'
+                $ref: '#/components/schemas/ServerError'
           description: Internal server error
       security:
       - bearerauth: []
@@ -4396,7 +4378,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/apimodel.UpdateTagRequest'
+              $ref: '#/components/schemas/UpdateTagRequest'
         description: The tag to update
         required: true
       responses:
@@ -4404,49 +4386,49 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/apimodel.TagResponse'
+                $ref: '#/components/schemas/TagResponse'
           description: The updated tag
         "400":
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/util.ValidationError'
+                $ref: '#/components/schemas/ValidationError'
           description: Bad request
         "401":
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/util.UnauthorizedError'
+                $ref: '#/components/schemas/UnauthorizedError'
           description: Unauthorized
         "403":
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/util.ForbiddenError'
+                $ref: '#/components/schemas/ForbiddenError'
           description: Forbidden
         "404":
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/util.NotFoundError'
+                $ref: '#/components/schemas/NotFoundError'
           description: Resource not found
         "410":
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/util.GoneError'
+                $ref: '#/components/schemas/GoneError'
           description: Resource deleted
         "429":
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/util.RateLimitError'
+                $ref: '#/components/schemas/RateLimitError'
           description: Rate limit exceeded
         "500":
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/util.ServerError'
+                $ref: '#/components/schemas/ServerError'
           description: Internal server error
       security:
       - bearerauth: []
@@ -4495,7 +4477,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/apimodel.SearchRequest'
+              $ref: '#/components/schemas/SearchRequest'
         description: The search parameters used to filter and sort the results
         required: true
       responses:
@@ -4503,19 +4485,19 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/pagination.PaginatedResponse-apimodel_Object'
+                $ref: '#/components/schemas/PaginatedResponse-Object'
           description: The list of objects matching the search criteria
         "401":
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/util.UnauthorizedError'
+                $ref: '#/components/schemas/UnauthorizedError'
           description: Unauthorized
         "500":
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/util.ServerError'
+                $ref: '#/components/schemas/ServerError'
           description: Internal server error
       security:
       - bearerauth: []
@@ -4562,19 +4544,19 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/pagination.PaginatedResponse-apimodel_Type'
+                $ref: '#/components/schemas/PaginatedResponse-Type'
           description: The list of types
         "401":
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/util.UnauthorizedError'
+                $ref: '#/components/schemas/UnauthorizedError'
           description: Unauthorized
         "500":
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/util.ServerError'
+                $ref: '#/components/schemas/ServerError'
           description: Internal server error
       security:
       - bearerauth: []
@@ -4606,7 +4588,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/apimodel.CreateTypeRequest'
+              $ref: '#/components/schemas/CreateTypeRequest'
         description: The type to create
         required: true
       responses:
@@ -4614,31 +4596,31 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/apimodel.TypeResponse'
+                $ref: '#/components/schemas/TypeResponse'
           description: The created type
         "400":
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/util.ValidationError'
+                $ref: '#/components/schemas/ValidationError'
           description: Bad request
         "401":
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/util.UnauthorizedError'
+                $ref: '#/components/schemas/UnauthorizedError'
           description: Unauthorized
         "429":
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/util.RateLimitError'
+                $ref: '#/components/schemas/RateLimitError'
           description: Rate limit exceeded
         "500":
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/util.ServerError'
+                $ref: '#/components/schemas/ServerError'
           description: Internal server error
       security:
       - bearerauth: []
@@ -4680,43 +4662,43 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/apimodel.TypeResponse'
+                $ref: '#/components/schemas/TypeResponse'
           description: The deleted type
         "401":
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/util.UnauthorizedError'
+                $ref: '#/components/schemas/UnauthorizedError'
           description: Unauthorized
         "403":
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/util.ForbiddenError'
+                $ref: '#/components/schemas/ForbiddenError'
           description: Forbidden
         "404":
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/util.NotFoundError'
+                $ref: '#/components/schemas/NotFoundError'
           description: Resource not found
         "410":
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/util.GoneError'
+                $ref: '#/components/schemas/GoneError'
           description: Resource deleted
         "429":
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/util.RateLimitError'
+                $ref: '#/components/schemas/RateLimitError'
           description: Rate limit exceeded
         "500":
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/util.ServerError'
+                $ref: '#/components/schemas/ServerError'
           description: Internal server error
       security:
       - bearerauth: []
@@ -4757,31 +4739,31 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/apimodel.TypeResponse'
+                $ref: '#/components/schemas/TypeResponse'
           description: The requested type
         "401":
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/util.UnauthorizedError'
+                $ref: '#/components/schemas/UnauthorizedError'
           description: Unauthorized
         "404":
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/util.NotFoundError'
+                $ref: '#/components/schemas/NotFoundError'
           description: Resource not found
         "410":
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/util.GoneError'
+                $ref: '#/components/schemas/GoneError'
           description: Resource deleted
         "500":
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/util.ServerError'
+                $ref: '#/components/schemas/ServerError'
           description: Internal server error
       security:
       - bearerauth: []
@@ -4820,7 +4802,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/apimodel.UpdateTypeRequest'
+              $ref: '#/components/schemas/UpdateTypeRequest'
         description: The type details to update
         required: true
       responses:
@@ -4828,43 +4810,43 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/apimodel.TypeResponse'
+                $ref: '#/components/schemas/TypeResponse'
           description: The updated type
         "400":
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/util.ValidationError'
+                $ref: '#/components/schemas/ValidationError'
           description: Bad request
         "401":
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/util.UnauthorizedError'
+                $ref: '#/components/schemas/UnauthorizedError'
           description: Unauthorized
         "404":
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/util.NotFoundError'
+                $ref: '#/components/schemas/NotFoundError'
           description: Resource not found
         "410":
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/util.GoneError'
+                $ref: '#/components/schemas/GoneError'
           description: Resource deleted
         "429":
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/util.RateLimitError'
+                $ref: '#/components/schemas/RateLimitError'
           description: Rate limit exceeded
         "500":
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/util.ServerError'
+                $ref: '#/components/schemas/ServerError'
           description: Internal server error
       security:
       - bearerauth: []
@@ -4918,19 +4900,19 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/pagination.PaginatedResponse-apimodel_Object'
+                $ref: '#/components/schemas/PaginatedResponse-Object'
           description: List of templates
         "401":
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/util.UnauthorizedError'
+                $ref: '#/components/schemas/UnauthorizedError'
           description: Unauthorized
         "500":
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/util.ServerError'
+                $ref: '#/components/schemas/ServerError'
           description: Internal server error
       security:
       - bearerauth: []
@@ -4978,31 +4960,31 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/apimodel.TemplateResponse'
+                $ref: '#/components/schemas/TemplateResponse'
           description: The requested template
         "401":
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/util.UnauthorizedError'
+                $ref: '#/components/schemas/UnauthorizedError'
           description: Unauthorized
         "404":
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/util.NotFoundError'
+                $ref: '#/components/schemas/NotFoundError'
           description: Resource not found
         "410":
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/util.GoneError'
+                $ref: '#/components/schemas/GoneError'
           description: Resource deleted
         "500":
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/util.ServerError'
+                $ref: '#/components/schemas/ServerError'
           description: Internal server error
       security:
       - bearerauth: []
