@@ -7,7 +7,11 @@ import (
 	"github.com/anyproto/any-sync/accountservice/mock_accountservice"
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/commonfile/fileservice"
+	"github.com/anyproto/any-sync/coordinator/coordinatorclient/mock_coordinatorclient"
 	"github.com/anyproto/any-sync/util/crypto"
+	blocks "github.com/ipfs/go-block-format"
+	"github.com/ipfs/go-cid"
+	mh "github.com/multiformats/go-multihash"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -32,6 +36,8 @@ import (
 
 type fixture struct {
 	Service
+	coordinator *mock_coordinatorclient.MockCoordinatorClient
+	fileStore   filestorage.FileStorage
 }
 
 func newFixture(t *testing.T) *fixture {
@@ -48,12 +54,14 @@ func newFixture(t *testing.T) *fixture {
 	wallet.EXPECT().RepoPath().Return(t.TempDir())
 	spaceIdResolver := mock_idresolver.NewMockResolver(t)
 
+	fileStore := filestorage.NewInMemory()
+
 	a := new(app.App)
 	a.Register(anystoreprovider.New())
 	a.Register(objectstore.NewStoreFixture(t))
 	a.Register(testutil.PrepareMock(ctx, a, eventSender))
 	a.Register(testutil.PrepareMock(ctx, a, spaceService))
-	a.Register(filestorage.NewInMemory())
+	a.Register(fileStore)
 	a.Register(rpcstore.NewInMemoryService(rpcStore))
 	a.Register(fileservice.New())
 	a.Register(filesync.New())
@@ -62,6 +70,8 @@ func newFixture(t *testing.T) *fixture {
 	a.Register(testutil.PrepareMock(ctx, a, wallet))
 	a.Register(&config.Config{DisableFileConfig: true, NetworkMode: pb.RpcAccount_DefaultConfig, PeferYamuxTransport: true})
 	a.Register(testutil.PrepareMock(ctx, a, spaceIdResolver))
+	mockCoord := mock_coordinatorclient.NewMockCoordinatorClient(ctrl)
+	a.Register(testutil.PrepareMock(ctx, a, mockCoord))
 
 	err := a.Start(ctx)
 	require.NoError(t, err)
@@ -70,7 +80,9 @@ func newFixture(t *testing.T) *fixture {
 	s.Init(a)
 
 	return &fixture{
-		Service: s,
+		Service:     s,
+		coordinator: mockCoord,
+		fileStore:   fileStore,
 	}
 }
 
@@ -90,6 +102,17 @@ func TestStore(t *testing.T) {
 		Signature: signature,
 	}
 
+	fx.coordinator.EXPECT().AclUploadInvite(ctx, gomock.Any()).Do(func(ctx context.Context, data []byte) {
+		prefix := cid.Prefix{
+			Version:  1,
+			Codec:    cid.DagProtobuf, // 0x70
+			MhType:   mh.SHA2_256,
+			MhLength: -1, // default length
+		}
+		c, _ := prefix.Sum(data)
+		b, _ := blocks.NewBlockWithCid(data, c)
+		_ = fx.fileStore.Add(ctx, []blocks.Block{b})
+	})
 	id, key, err := fx.StoreInvite(ctx, wantInvite)
 	require.NoError(t, err)
 
