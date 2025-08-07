@@ -73,10 +73,8 @@ func (p *importProcessor) Execute(ctx context.Context) *ImportResponse {
 	}
 
 	if p.deps.blockService != nil && !p.request.GetNoProgress() {
-		if err := p.deps.blockService.ProcessAdd(p.request.Progress); err != nil {
-			p.response.Err = fmt.Errorf("failed to add process: %w", err)
-			return p.response
-		}
+		// do not error in case progress is already set up
+		_ = p.deps.blockService.ProcessAdd(p.request.Progress) // nolint:errcheck
 	}
 
 	p.response.ProcessId = p.request.Progress.Id()
