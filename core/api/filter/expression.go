@@ -97,10 +97,9 @@ func buildConditionFilter(ctx context.Context, cond apimodel.FilterItem, validat
 	// Use the resolved relation key
 	relationKey := property.RelationKey
 
-	// For conditions that don't require values (empty, exists, etc.)
+	// For conditions that don't require values (empty, etc.)
 	if dbCondition == model.BlockContentDataviewFilter_Empty ||
-		dbCondition == model.BlockContentDataviewFilter_NotEmpty ||
-		dbCondition == model.BlockContentDataviewFilter_Exists {
+		dbCondition == model.BlockContentDataviewFilter_NotEmpty {
 		return &model.BlockContentDataviewFilter{
 			RelationKey: relationKey,
 			Condition:   dbCondition,

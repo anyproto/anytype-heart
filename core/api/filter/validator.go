@@ -82,7 +82,7 @@ func (v *Validator) resolveProperty(spaceId string, propertyKey string, property
 // convertAndValidateValue converts and validates the filter value based on property type
 func (v *Validator) convertAndValidateValue(spaceId string, property *apimodel.Property, condition model.BlockContentDataviewFilterCondition, value interface{}, propertyMap map[string]*apimodel.Property) (interface{}, error) {
 	switch condition {
-	case model.BlockContentDataviewFilter_Empty, model.BlockContentDataviewFilter_NotEmpty, model.BlockContentDataviewFilter_Exists:
+	case model.BlockContentDataviewFilter_Empty, model.BlockContentDataviewFilter_NotEmpty:
 		if boolVal, ok := value.(bool); ok {
 			return boolVal, nil
 		}

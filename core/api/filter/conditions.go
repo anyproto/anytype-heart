@@ -56,10 +56,8 @@ var ReverseConditionMap = map[model.BlockContentDataviewFilterCondition]apimodel
 	model.BlockContentDataviewFilter_In:    apimodel.FilterConditionIn,
 	model.BlockContentDataviewFilter_NotIn: apimodel.FilterConditionNin,
 	model.BlockContentDataviewFilter_AllIn: apimodel.FilterConditionAll,
-	// Note: NotAllIn, ExactIn, NotExactIn are internal only - not exposed in API
 
 	// Emptiness checks
 	model.BlockContentDataviewFilter_Empty:    apimodel.FilterConditionEmpty,
 	model.BlockContentDataviewFilter_NotEmpty: apimodel.FilterConditionNEmpty,
-	// Note: Exists is internal only - not exposed in API
 }

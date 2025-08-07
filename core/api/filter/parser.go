@@ -91,7 +91,7 @@ func (p *Parser) parseFilterValue(rawValue string, condition model.BlockContentD
 	}
 
 	switch condition {
-	case model.BlockContentDataviewFilter_Empty, model.BlockContentDataviewFilter_NotEmpty, model.BlockContentDataviewFilter_Exists:
+	case model.BlockContentDataviewFilter_Empty, model.BlockContentDataviewFilter_NotEmpty:
 		if decodedValue == "" || decodedValue == "true" || decodedValue == "1" {
 			return true, nil
 		}
@@ -100,9 +100,7 @@ func (p *Parser) parseFilterValue(rawValue string, condition model.BlockContentD
 	case model.BlockContentDataviewFilter_In,
 		model.BlockContentDataviewFilter_NotIn,
 		model.BlockContentDataviewFilter_AllIn,
-		model.BlockContentDataviewFilter_NotAllIn,
-		model.BlockContentDataviewFilter_ExactIn,
-		model.BlockContentDataviewFilter_NotExactIn:
+		model.BlockContentDataviewFilter_NotAllIn:
 		if decodedValue == "" {
 			return []string{}, nil
 		}
