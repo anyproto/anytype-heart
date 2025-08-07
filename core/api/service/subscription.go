@@ -1,8 +1,9 @@
 package service
 
 import (
-	"github.com/anyproto/anytype-heart/pb"
 	"github.com/cheggaaa/mb/v3"
+
+	"github.com/anyproto/anytype-heart/pb"
 )
 
 // subscriptionTracker groups subscription-related data for a single object type

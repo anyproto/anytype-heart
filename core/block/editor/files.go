@@ -123,11 +123,13 @@ func (f *File) Init(ctx *smartblock.InitContext) error {
 		if len(ctx.State.Details().GetStringList(bundle.RelationKeyFileVariantIds)) == 0 {
 			infos, err := f.fileService.GetFileVariants(ctx.Ctx, fileId, ctx.State.GetFileInfo().EncryptionKeys)
 			if err != nil {
-				return fmt.Errorf("get infos for indexing: %w", err)
+				log.Errorf("get infos for indexing: %v", err)
 			}
-			err = filemodels.InjectVariantsToDetails(infos, ctx.State)
-			if err != nil {
-				return fmt.Errorf("inject variants: %w", err)
+			if len(infos) > 0 {
+				err = filemodels.InjectVariantsToDetails(infos, ctx.State)
+				if err != nil {
+					return fmt.Errorf("inject variants: %w", err)
+				}
 			}
 		}
 	}

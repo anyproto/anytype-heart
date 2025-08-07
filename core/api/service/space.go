@@ -17,19 +17,18 @@ import (
 )
 
 var (
-	ErrFailedListSpaces           = errors.New("failed to retrieve list of spaces")
-	ErrFailedOpenWorkspace        = errors.New("failed to open workspace")
-	ErrFailedOpenSpace            = errors.New("failed to open space")
-	ErrWorkspaceNotFound          = errors.New("workspace not found")
-	ErrFailedGenerateRandomIcon   = errors.New("failed to generate random icon")
-	ErrFailedCreateSpace          = errors.New("failed to create space")
-	ErrFailedSetSpaceInfo         = errors.New("failed to set space info")
-	ErrFailedListMembers          = errors.New("failed to retrieve list of members")
-	ErrFailedGetMember            = errors.New("failed to retrieve member")
-	ErrMemberNotFound             = errors.New("member not found")
-	ErrInvalidApproveMemberStatus = errors.New("status must be 'active', 'declined', or 'removed'")
-	ErrInvalidApproveMemberRole   = errors.New("role must be 'reader' or 'writer'")
-	ErrFailedUpdateMember         = errors.New("failed to update member")
+	ErrFailedListSpaces         = errors.New("failed to retrieve list of spaces")
+	ErrFailedOpenWorkspace      = errors.New("failed to open workspace")
+	ErrFailedOpenSpace          = errors.New("failed to open space")
+	ErrWorkspaceNotFound        = errors.New("workspace not found")
+	ErrFailedGenerateRandomIcon = errors.New("failed to generate random icon")
+	ErrFailedCreateSpace        = errors.New("failed to create space")
+	ErrFailedSetSpaceInfo       = errors.New("failed to set space info")
+	ErrFailedListMembers        = errors.New("failed to retrieve list of members")
+	ErrFailedGetMember          = errors.New("failed to retrieve member")
+	ErrMemberNotFound           = errors.New("member not found")
+	ErrInvalidApproveMemberRole = errors.New("role must be 'reader' or 'writer'")
+	ErrFailedUpdateMember       = errors.New("failed to update member")
 )
 
 // ListSpaces returns a paginated list of spaces for the account.
@@ -59,8 +58,13 @@ func (s *Service) ListSpaces(ctx context.Context, additionalFilters []*model.Blo
 			{
 				RelationKey:    bundle.RelationKeySpaceOrder.String(),
 				Type:           model.BlockContentDataviewSort_Asc,
-				NoCollate:      true,
 				EmptyPlacement: model.BlockContentDataviewSort_End,
+			},
+			{
+				RelationKey: bundle.RelationKeyCreatedDate.String(),
+				Type:        model.BlockContentDataviewSort_Desc,
+				Format:      model.RelationFormat_longtext,
+				IncludeTime: true,
 			},
 		},
 		Keys: []string{bundle.RelationKeyTargetSpaceId.String()},
@@ -218,7 +222,7 @@ func (s *Service) getSpaceInfo(ctx context.Context, spaceId string) (space apimo
 	}
 
 	name := spaceResp.ObjectView.Details[0].Details.Fields[bundle.RelationKeyName.String()].GetStringValue()
-	icon := GetIcon(s.gatewayUrl, spaceResp.ObjectView.Details[0].Details.Fields[bundle.RelationKeyIconEmoji.String()].GetStringValue(), spaceResp.ObjectView.Details[0].Details.Fields[bundle.RelationKeyIconImage.String()].GetStringValue(), "", 0)
+	icon := getIcon(s.gatewayUrl, spaceResp.ObjectView.Details[0].Details.Fields[bundle.RelationKeyIconEmoji.String()].GetStringValue(), spaceResp.ObjectView.Details[0].Details.Fields[bundle.RelationKeyIconImage.String()].GetStringValue(), "", 0)
 	description := spaceResp.ObjectView.Details[0].Details.Fields[bundle.RelationKeyDescription.String()].GetStringValue()
 
 	return apimodel.Space{

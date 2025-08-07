@@ -195,22 +195,12 @@ func (s *Service) getTypeFromStruct(details *types.Struct, propertyMap map[strin
 		Key:        apiKey,
 		Name:       details.Fields[bundle.RelationKeyName.String()].GetStringValue(),
 		PluralName: details.Fields[bundle.RelationKeyPluralName.String()].GetStringValue(),
-		Icon:       GetIcon(s.gatewayUrl, details.Fields[bundle.RelationKeyIconEmoji.String()].GetStringValue(), "", details.Fields[bundle.RelationKeyIconName.String()].GetStringValue(), details.Fields[bundle.RelationKeyIconOption.String()].GetNumberValue()),
+		Icon:       getIcon(s.gatewayUrl, details.Fields[bundle.RelationKeyIconEmoji.String()].GetStringValue(), "", details.Fields[bundle.RelationKeyIconName.String()].GetStringValue(), details.Fields[bundle.RelationKeyIconOption.String()].GetNumberValue()),
 		Archived:   details.Fields[bundle.RelationKeyIsArchived.String()].GetBoolValue(),
 		Layout:     s.otLayoutToObjectLayout(model.ObjectTypeLayout(details.Fields[bundle.RelationKeyRecommendedLayout.String()].GetNumberValue())),
 		Properties: s.getRecommendedPropertiesFromLists(details.Fields[bundle.RelationKeyRecommendedFeaturedRelations.String()].GetListValue(), details.Fields[bundle.RelationKeyRecommendedRelations.String()].GetListValue(), propertyMap),
 		UniqueKey:  uk, // internal only for simplified lookup
 	}
-}
-
-// getTypeFromMap retrieves the type from the details.
-func (s *Service) getTypeFromMap(details *types.Struct) *apimodel.Type {
-	spaceId := details.Fields[bundle.RelationKeySpaceId.String()].GetStringValue()
-	typeMap := s.cache.getTypes(spaceId)
-	if t, ok := typeMap[details.Fields[bundle.RelationKeyType.String()].GetStringValue()]; ok {
-		return t
-	}
-	return nil
 }
 
 // buildTypeDetails builds the type details from the CreateTypeRequest.
@@ -313,7 +303,7 @@ func (s *Service) buildUpdatedTypeDetails(ctx context.Context, spaceId string, t
 		return &types.Struct{Fields: fields}, nil
 	}
 
-	currentFields, err := util.GetFieldsByID(s.mw, spaceId, t.Id, []string{bundle.RelationKeyRecommendedFeaturedRelations.String()})
+	currentFields, err := util.GetFieldsById(s.mw, spaceId, t.Id, []string{bundle.RelationKeyRecommendedFeaturedRelations.String()})
 	if err != nil {
 		return nil, err
 	}
@@ -375,16 +365,17 @@ func (s *Service) buildRelationIds(ctx context.Context, spaceId string, props []
 	return relationIds, nil
 }
 
-// ResolveTypeApiKey returns the internal uniqueKey for a clientKey by looking it up in the typeMap
-// TODO: If not found, this detail shouldn't be set by clients, and strict validation errors
-func (s *Service) ResolveTypeApiKey(spaceId string, clientKey string) string {
-	typeMap := s.cache.getTypes(spaceId)
-	if p, ok := typeMap[clientKey]; ok {
-		return p.UniqueKey
+// ResolveTypeApiKey resolves an API type key to its internal unique key
+// by looking it up in the type cache. This is necessary because users can
+// define custom API keys via the apiObjectKey field.
+//
+// Returns empty string if the type is not found in the cache.
+// TODO: Return error for strict validation when type doesn't exist
+func (s *Service) ResolveTypeApiKey(spaceId string, apiKey string) (uk string) {
+	if typeObj, exists := s.cache.getTypes(spaceId)[apiKey]; exists {
+		return typeObj.UniqueKey
 	}
 	return ""
-	// TODO: enable later for strict validation
-	// return "", false
 }
 
 func (s *Service) otLayoutToObjectLayout(objectTypeLayout model.ObjectTypeLayout) apimodel.ObjectLayout {

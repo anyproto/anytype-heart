@@ -396,7 +396,7 @@ func (s *Service) sanitizeAndValidatePropertyValue(spaceId string, key string, f
 	case apimodel.PropertyFormatDate:
 		dateStr, ok := value.(string)
 		if !ok {
-			return nil, util.ErrBadInput("property '" + key + "' must be a string (date in RFC3339 format)")
+			return nil, util.ErrBadInput("property '" + key + "' must be a string containing a date in one of these formats: RFC3339 (2006-01-02T15:04:05Z) or date-only (2006-01-02)")
 		}
 		dateStr = s.sanitizedString(dateStr)
 		layouts := []string{time.RFC3339, time.DateOnly}
@@ -439,7 +439,7 @@ func (s *Service) sanitizeAndValidatePropertyValue(spaceId string, key string, f
 
 // isValidSelectOption checks if the option id is valid for the given property.
 func (s *Service) isValidSelectOption(spaceId string, property *apimodel.Property, tagId string, propertyMap map[string]*apimodel.Property) bool {
-	fields, err := util.GetFieldsByID(s.mw, spaceId, tagId, []string{bundle.RelationKeyResolvedLayout.String(), bundle.RelationKeyRelationKey.String()})
+	fields, err := util.GetFieldsById(s.mw, spaceId, tagId, []string{bundle.RelationKeyResolvedLayout.String(), bundle.RelationKeyRelationKey.String()})
 	if err != nil {
 		return false
 	}
@@ -449,7 +449,7 @@ func (s *Service) isValidSelectOption(spaceId string, property *apimodel.Propert
 }
 
 func (s *Service) isValidObjectOrMemberReference(spaceId string, objectId string) bool {
-	fields, err := util.GetFieldsByID(s.mw, spaceId, objectId, []string{bundle.RelationKeyResolvedLayout.String()})
+	fields, err := util.GetFieldsById(s.mw, spaceId, objectId, []string{bundle.RelationKeyResolvedLayout.String()})
 	if err != nil {
 		return false
 	}
@@ -458,7 +458,7 @@ func (s *Service) isValidObjectOrMemberReference(spaceId string, objectId string
 }
 
 func (s *Service) isValidFileReference(spaceId string, fileId string) bool {
-	fields, err := util.GetFieldsByID(s.mw, spaceId, fileId, []string{bundle.RelationKeyResolvedLayout.String()})
+	fields, err := util.GetFieldsById(s.mw, spaceId, fileId, []string{bundle.RelationKeyResolvedLayout.String()})
 	if err != nil {
 		return false
 	}
@@ -721,13 +721,15 @@ func (s *Service) buildPropertyWithValue(id string, key string, name string, for
 	return nil
 }
 
-// ResolvePropertyApiKey returns the internal relationKey for a clientKey by looking it up in the propertyMap
-// TODO: If not found, this detail shouldn't be set by clients, and strict validation errors
-func (s *Service) ResolvePropertyApiKey(propertyMap map[string]*apimodel.Property, clientKey string) string {
-	if p, ok := propertyMap[clientKey]; ok {
-		return p.RelationKey
+// ResolvePropertyApiKey resolves an API property key to its internal relation key
+// by looking it up in the property cache. This is necessary because users can
+// define custom API keys via the apiObjectKey field.
+//
+// Returns empty string if the property is not found in the cache.
+// TODO: Return error for strict validation when property doesn't exist
+func (s *Service) ResolvePropertyApiKey(propertyMap map[string]*apimodel.Property, apiKey string) (rk string) {
+	if property, exists := propertyMap[apiKey]; exists {
+		return property.RelationKey
 	}
 	return ""
-	// TODO: enable later for strict validation
-	// return "", false
 }

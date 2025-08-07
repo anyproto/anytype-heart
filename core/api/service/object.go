@@ -23,7 +23,6 @@ var (
 	ErrFailedRetrieveObject      = errors.New("failed to retrieve object")
 	ErrFailedExportMarkdown      = errors.New("failed to export markdown")
 	ErrFailedRetrieveObjects     = errors.New("failed to retrieve list of objects")
-	ErrFailedRetrievePropertyMap = errors.New("failed to retrieve property  map")
 	ErrFailedCreateObject        = errors.New("failed to create object")
 	ErrFailedSetPropertyFeatured = errors.New("failed to set property featured")
 	ErrFailedCreateBookmark      = errors.New("failed to fetch bookmark")
@@ -100,7 +99,8 @@ func (s *Service) GetObject(ctx context.Context, spaceId string, objectId string
 		}
 	}
 
-	markdown, err := s.getMarkdownExport(ctx, spaceId, objectId, model.ObjectTypeLayout(resp.ObjectView.Details[0].Details.Fields[bundle.RelationKeyResolvedLayout.String()].GetNumberValue()))
+	layout := model.ObjectTypeLayout(resp.ObjectView.Details[0].Details.Fields[bundle.RelationKeyResolvedLayout.String()].GetNumberValue())
+	markdown, err := s.getMarkdownExport(ctx, spaceId, objectId, layout)
 	if err != nil {
 		return nil, err
 	}
@@ -158,42 +158,9 @@ func (s *Service) CreateObject(ctx context.Context, spaceId string, request apim
 
 	// First call BlockCreate at top, then BlockPaste to paste the body
 	if request.Body != "" {
-		blockCreateResp := s.mw.BlockCreate(ctx, &pb.RpcBlockCreateRequest{
-			ContextId: objectId,
-			TargetId:  "",
-			Block: &model.Block{
-				Id:              "",
-				BackgroundColor: "",
-				Align:           model.Block_AlignLeft,
-				VerticalAlign:   model.Block_VerticalAlignTop,
-				Content: &model.BlockContentOfText{
-					Text: &model.BlockContentText{
-						Text:      "",
-						Style:     model.BlockContentText_Paragraph,
-						Checked:   false,
-						Color:     "",
-						IconEmoji: "",
-						IconImage: "",
-					},
-				},
-			},
-			Position: model.Block_Bottom,
-		})
-
-		if blockCreateResp.Error.Code != pb.RpcBlockCreateResponseError_NULL {
+		if err := s.createAndPasteBody(ctx, spaceId, objectId, request.Body); err != nil {
 			object, _ := s.GetObject(ctx, spaceId, objectId) // nolint:errcheck
-			return object, ErrFailedCreateBlock
-		}
-
-		blockPasteResp := s.mw.BlockPaste(ctx, &pb.RpcBlockPasteRequest{
-			ContextId:      objectId,
-			FocusedBlockId: blockCreateResp.BlockId,
-			TextSlot:       request.Body,
-		})
-
-		if blockPasteResp.Error.Code != pb.RpcBlockPasteResponseError_NULL {
-			object, _ := s.GetObject(ctx, spaceId, objectId) // nolint:errcheck
-			return object, ErrFailedPasteBody
+			return object, err
 		}
 	}
 
@@ -322,7 +289,7 @@ func (s *Service) processIconFields(spaceId string, icon apimodel.Icon, isType b
 			return nil, util.ErrBadInput("icon name and color are not supported for object")
 		}
 	case apimodel.EmojiIcon:
-		if len(e.Emoji) > 0 && !IsEmoji(e.Emoji) {
+		if len(e.Emoji) > 0 && !isEmoji(e.Emoji) {
 			return nil, util.ErrBadInput("icon emoji is not valid")
 		}
 		iconFields[bundle.RelationKeyIconEmoji.String()] = pbtypes.String(e.Emoji)
@@ -354,7 +321,7 @@ func (s *Service) processIconFields(spaceId string, icon apimodel.Icon, isType b
 // 				Style:   model.BlockContentTextStyle_name[int32(content.Text.Style)],
 // 				Checked: content.Text.Checked,
 // 				Color:   content.Text.Color,
-// 				Icon:    GetIcon(s.gatewayUrl, content.Text.IconEmoji, content.Text.IconImage, "", 0),
+// 				Icon:    getIcon(s.gatewayUrl, content.Text.IconEmoji, content.Text.IconImage, "", 0),
 // 			}
 // 		case *model.BlockContentOfFile:
 // 			file = &apimodel.File{
@@ -396,16 +363,19 @@ func (s *Service) processIconFields(spaceId string, icon apimodel.Icon, isType b
 
 // getObjectFromStruct creates an Object without blocks from the details.
 func (s *Service) getObjectFromStruct(details *types.Struct) apimodel.Object {
+	spaceId := details.Fields[bundle.RelationKeySpaceId.String()].GetStringValue()
+	typeMap := s.cache.getTypes(spaceId)
+
 	return apimodel.Object{
 		Object:     "object",
 		Id:         details.Fields[bundle.RelationKeyId.String()].GetStringValue(),
 		Name:       details.Fields[bundle.RelationKeyName.String()].GetStringValue(),
-		Icon:       GetIcon(s.gatewayUrl, details.GetFields()[bundle.RelationKeyIconEmoji.String()].GetStringValue(), details.GetFields()[bundle.RelationKeyIconImage.String()].GetStringValue(), details.GetFields()[bundle.RelationKeyIconName.String()].GetStringValue(), details.GetFields()[bundle.RelationKeyIconOption.String()].GetNumberValue()),
+		Icon:       getIcon(s.gatewayUrl, details.Fields[bundle.RelationKeyIconEmoji.String()].GetStringValue(), details.Fields[bundle.RelationKeyIconImage.String()].GetStringValue(), details.Fields[bundle.RelationKeyIconName.String()].GetStringValue(), details.Fields[bundle.RelationKeyIconOption.String()].GetNumberValue()),
 		Archived:   details.Fields[bundle.RelationKeyIsArchived.String()].GetBoolValue(),
-		SpaceId:    details.Fields[bundle.RelationKeySpaceId.String()].GetStringValue(),
+		SpaceId:    spaceId,
 		Snippet:    details.Fields[bundle.RelationKeySnippet.String()].GetStringValue(),
 		Layout:     s.otLayoutToObjectLayout(model.ObjectTypeLayout(details.Fields[bundle.RelationKeyResolvedLayout.String()].GetNumberValue())),
-		Type:       s.getTypeFromMap(details),
+		Type:       typeMap[details.Fields[bundle.RelationKeyType.String()].GetStringValue()],
 		Properties: s.getPropertiesFromStruct(details),
 	}
 }
@@ -413,17 +383,18 @@ func (s *Service) getObjectFromStruct(details *types.Struct) apimodel.Object {
 // getObjectWithBlocksFromStruct creates an ObjectWithBody from the details.
 func (s *Service) getObjectWithBlocksFromStruct(details *types.Struct, markdown string) *apimodel.ObjectWithBody {
 	spaceId := details.Fields[bundle.RelationKeySpaceId.String()].GetStringValue()
+	typeMap := s.cache.getTypes(spaceId)
 
 	return &apimodel.ObjectWithBody{
 		Object:     "object",
 		Id:         details.Fields[bundle.RelationKeyId.String()].GetStringValue(),
 		Name:       details.Fields[bundle.RelationKeyName.String()].GetStringValue(),
-		Icon:       GetIcon(s.gatewayUrl, details.Fields[bundle.RelationKeyIconEmoji.String()].GetStringValue(), details.Fields[bundle.RelationKeyIconImage.String()].GetStringValue(), details.Fields[bundle.RelationKeyIconName.String()].GetStringValue(), details.Fields[bundle.RelationKeyIconOption.String()].GetNumberValue()),
+		Icon:       getIcon(s.gatewayUrl, details.Fields[bundle.RelationKeyIconEmoji.String()].GetStringValue(), details.Fields[bundle.RelationKeyIconImage.String()].GetStringValue(), details.Fields[bundle.RelationKeyIconName.String()].GetStringValue(), details.Fields[bundle.RelationKeyIconOption.String()].GetNumberValue()),
 		Archived:   details.Fields[bundle.RelationKeyIsArchived.String()].GetBoolValue(),
 		SpaceId:    spaceId,
 		Snippet:    details.Fields[bundle.RelationKeySnippet.String()].GetStringValue(),
 		Layout:     s.otLayoutToObjectLayout(model.ObjectTypeLayout(details.Fields[bundle.RelationKeyResolvedLayout.String()].GetNumberValue())),
-		Type:       s.getTypeFromMap(details),
+		Type:       typeMap[details.Fields[bundle.RelationKeyType.String()].GetStringValue()],
 		Properties: s.getPropertiesFromStruct(details),
 		Markdown:   markdown,
 	}
@@ -457,4 +428,35 @@ func structToDetails(details *types.Struct) []*model.Detail {
 		})
 	}
 	return detailList
+}
+
+// createAndPasteBody creates a text block and pastes the body content into it.
+func (s *Service) createAndPasteBody(ctx context.Context, spaceId string, objectId string, body string) error {
+	blockCreateResp := s.mw.BlockCreate(ctx, &pb.RpcBlockCreateRequest{
+		ContextId: objectId,
+		TargetId:  "",
+		Block: &model.Block{
+			Id:            "",
+			Align:         model.Block_AlignLeft,
+			VerticalAlign: model.Block_VerticalAlignTop,
+			Content:       &model.BlockContentOfText{Text: &model.BlockContentText{}},
+		},
+		Position: model.Block_Bottom,
+	})
+
+	if blockCreateResp.Error.Code != pb.RpcBlockCreateResponseError_NULL {
+		return ErrFailedCreateBlock
+	}
+
+	blockPasteResp := s.mw.BlockPaste(ctx, &pb.RpcBlockPasteRequest{
+		ContextId:      objectId,
+		FocusedBlockId: blockCreateResp.BlockId,
+		TextSlot:       body,
+	})
+
+	if blockPasteResp.Error.Code != pb.RpcBlockPasteResponseError_NULL {
+		return ErrFailedPasteBody
+	}
+
+	return nil
 }

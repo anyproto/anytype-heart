@@ -284,8 +284,8 @@
       "apimodel.DatePropertyLinkValue": {
         "properties": {
           "date": {
-            "description": "The date value of the property",
-            "example": "2025-02-14T12:34:56Z",
+            "description": "The date value of the property. Accepts dates in RFC3339 format (2006-01-02T15:04:05Z) or date-only format (2006-01-02)",
+            "example": "2006-01-02T15:04:05Z",
             "type": "string"
           },
           "key": {
@@ -298,8 +298,8 @@
       "apimodel.DatePropertyValue": {
         "properties": {
           "date": {
-            "description": "The date value of the property",
-            "example": "2025-02-14T12:34:56Z",
+            "description": "The date value of the property. Returns dates in RFC3339 format (2006-01-02T15:04:05Z)",
+            "example": "2006-01-02T15:04:05Z",
             "type": "string"
           },
           "format": {

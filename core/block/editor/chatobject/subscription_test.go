@@ -286,7 +286,7 @@ func TestSubscriptionMessageCounters(t *testing.T) {
 
 	fx.events = nil
 
-	err = fx.MarkReadMessages(ctx, ReadMessagesRequest{
+	_, err = fx.MarkReadMessages(ctx, ReadMessagesRequest{
 		AfterOrderId:  "",
 		BeforeOrderId: firstMessage.OrderId,
 		LastStateId:   secondMessage.StateId,
@@ -438,7 +438,7 @@ func TestSubscriptionMentionCounters(t *testing.T) {
 
 	fx.events = nil
 
-	err = fx.MarkReadMessages(ctx, ReadMessagesRequest{
+	_, err = fx.MarkReadMessages(ctx, ReadMessagesRequest{
 		AfterOrderId:  "",
 		BeforeOrderId: firstMessage.OrderId,
 		LastStateId:   secondMessage.StateId,
