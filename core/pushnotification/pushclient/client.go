@@ -28,6 +28,7 @@ type Client interface {
 	SubscribeAll(ctx context.Context, req *pushapi.SubscribeAllRequest) (err error)
 	CreateSpace(ctx context.Context, req *pushapi.CreateSpaceRequest) (err error)
 	Notify(ctx context.Context, req *pushapi.NotifyRequest) (err error)
+	NotifySilent(ctx context.Context, req *pushapi.NotifyRequest) (err error)
 	Subscriptions(ctx context.Context, req *pushapi.SubscriptionsRequest) (resp *pushapi.SubscriptionsResponse, err error)
 }
 
@@ -123,6 +124,16 @@ func (c *client) Notify(ctx context.Context, req *pushapi.NotifyRequest) error {
 		_, err := c.Notify(ctx, req)
 		if err != nil {
 			return fmt.Errorf("notify: %w", rpcerr.Unwrap(err))
+		}
+		return nil
+	})
+}
+
+func (c *client) NotifySilent(ctx context.Context, req *pushapi.NotifyRequest) error {
+	return c.doClient(ctx, func(c pushapi.DRPCPushClient) error {
+		_, err := c.NotifySilent(ctx, req)
+		if err != nil {
+			return fmt.Errorf("notify silent: %w", rpcerr.Unwrap(err))
 		}
 		return nil
 	})
