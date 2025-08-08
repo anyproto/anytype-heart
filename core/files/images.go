@@ -153,10 +153,16 @@ func (s *service) addImageRootNode(ctx context.Context, spaceID string, dirEntri
 	dagService := s.dagServiceForSpace(spaceID)
 	keys := &storage.FileKeys{KeysByPath: make(map[string]string)}
 
-	outer := uio.NewDirectory(dagService)
+	outer, err := uio.NewDirectory(dagService)
+	if err != nil {
+		return nil, nil, err
+	}
 	outer.SetCidBuilder(cidBuilder)
 
-	inner := uio.NewDirectory(dagService)
+	inner, err := uio.NewDirectory(dagService)
+	if err != nil {
+		return nil, nil, err
+	}
 	inner.SetCidBuilder(cidBuilder)
 
 	for _, entry := range dirEntries {
