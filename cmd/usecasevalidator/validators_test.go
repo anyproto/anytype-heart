@@ -42,7 +42,7 @@ func TestValidateDetails(t *testing.T) {
 		}
 
 		// when
-		err := validateDetails(s, info)
+		err := validateDetails(s, info, FixConfig{})
 
 		// then
 		assert.NoError(t, err)
@@ -58,7 +58,7 @@ func TestValidateDetails(t *testing.T) {
 		info := &useCaseInfo{}
 
 		// when
-		err := validateDetails(s, info)
+		err := validateDetails(s, info, FixConfig{})
 
 		// then
 		assert.Error(t, err)
@@ -74,7 +74,7 @@ func TestValidateDetails(t *testing.T) {
 		info := &useCaseInfo{}
 
 		// when
-		err := validateDetails(s, info)
+		err := validateDetails(s, info, FixConfig{})
 
 		// then
 		assert.Error(t, err)
@@ -103,7 +103,7 @@ func TestValidateDetails(t *testing.T) {
 		}
 
 		// when
-		err := validateDetails(s, info)
+		err := validateDetails(s, info, FixConfig{})
 
 		// then
 		assert.NoError(t, err)
