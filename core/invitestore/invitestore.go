@@ -1,18 +1,21 @@
 package invitestore
 
 import (
-	"bytes"
 	"context"
 	"fmt"
 	"io"
 
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/commonfile/fileservice"
+	"github.com/anyproto/any-sync/coordinator/coordinatorclient"
 	"github.com/anyproto/any-sync/util/crypto"
 	"github.com/gogo/protobuf/proto"
+	"github.com/ipfs/boxo/ipld/merkledag"
+	"github.com/ipfs/boxo/ipld/unixfs/pb"
+	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
+	mh "github.com/multiformats/go-multihash"
 
-	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/files/fileoffloader"
 	"github.com/anyproto/anytype-heart/core/files/filesync"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -32,6 +35,7 @@ type service struct {
 	commonFile      fileservice.FileService
 	fileOffloader   fileoffloader.Service
 	fileSyncService filesync.FileSync
+	coordinator     coordinatorclient.CoordinatorClient
 	spaceService    space.Service
 	techSpaceId     string
 }
@@ -44,6 +48,7 @@ func (s *service) Init(a *app.App) error {
 	s.fileOffloader = app.MustComponent[fileoffloader.Service](a)
 	s.commonFile = app.MustComponent[fileservice.FileService](a)
 	s.fileSyncService = app.MustComponent[filesync.FileSync](a)
+	s.coordinator = app.MustComponent[coordinatorclient.CoordinatorClient](a)
 	s.spaceService = app.MustComponent[space.Service](a)
 	return nil
 }
@@ -76,27 +81,19 @@ func (s *service) StoreInvite(ctx context.Context, invite *model.Invite) (cid.Ci
 		return cid.Cid{}, nil, fmt.Errorf("encrypt invite data: %w", err)
 	}
 
-	rd := bytes.NewReader(data)
-	node, err := s.commonFile.AddFile(ctx, rd)
+	block, err := makeIpfsBlock(data)
 	if err != nil {
+		return cid.Cid{}, nil, fmt.Errorf("make block: %w", err)
+	}
+
+	if err = s.coordinator.AclUploadInvite(ctx, block); err != nil {
 		return cid.Cid{}, nil, fmt.Errorf("add data to IPFS: %w", err)
 	}
-	err = s.fileSyncService.UploadSynchronously(ctx, s.techSpaceId, domain.FileId(node.Cid().String()))
-	if err != nil {
-		return cid.Cid{}, nil, fmt.Errorf("add file to sync queue: %w", err)
-	}
-	return node.Cid(), key, nil
+	return block.Cid(), key, nil
 }
 
 func (s *service) RemoveInvite(ctx context.Context, id cid.Cid) error {
-	_, err := s.fileOffloader.FileOffloadRaw(ctx, domain.FullFileId{
-		SpaceId: s.techSpaceId,
-		FileId:  domain.FileId(id.String()),
-	})
-	if err != nil {
-		return fmt.Errorf("offload file: %w", err)
-	}
-	return s.fileSyncService.DeleteFileSynchronously(domain.FullFileId{SpaceId: s.techSpaceId, FileId: domain.FileId(id.String())})
+	return nil
 }
 
 func (s *service) GetInvite(ctx context.Context, id cid.Cid, key crypto.SymKey) (*model.Invite, error) {
@@ -122,4 +119,34 @@ func (s *service) GetInvite(ctx context.Context, id cid.Cid, key crypto.SymKey) 
 		return nil, fmt.Errorf("unmarshal data: %w", err)
 	}
 	return &invite, nil
+}
+
+func makeIpfsBlock(data []byte) (blocks.Block, error) {
+	uf := &pb.Data{
+		Type:     pb.Data_File.Enum(),
+		Data:     data,
+		Filesize: proto.Uint64(uint64(len(data))),
+	}
+	ufBytes, err := proto.Marshal(uf)
+	if err != nil {
+		return nil, err
+	}
+
+	node := merkledag.NodeWithData(ufBytes)
+	block, err := node.EncodeProtobuf(false)
+	if err != nil {
+		return nil, err
+	}
+
+	prefix := cid.Prefix{
+		Version:  1,
+		Codec:    cid.DagProtobuf, // 0x70
+		MhType:   mh.SHA2_256,
+		MhLength: -1, // default length
+	}
+	c, err := prefix.Sum(block)
+	if err != nil {
+		return nil, err
+	}
+	return blocks.NewBlockWithCid(block, c)
 }
