@@ -9,6 +9,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/api/pagination"
 	"github.com/anyproto/anytype-heart/core/api/service"
 	"github.com/anyproto/anytype-heart/core/api/util"
+	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
 // ListTypesHandler retrieves a list of types in a space
@@ -33,7 +34,10 @@ func ListTypesHandler(s *service.Service) gin.HandlerFunc {
 		offset := c.GetInt("offset")
 		limit := c.GetInt("limit")
 
-		types, total, hasMore, err := s.ListTypes(c.Request.Context(), spaceId, offset, limit)
+		filtersAny, _ := c.Get("filters")
+		filters := filtersAny.([]*model.BlockContentDataviewFilter)
+
+		types, total, hasMore, err := s.ListTypes(c.Request.Context(), spaceId, filters, offset, limit)
 		code := util.MapErrorCode(err,
 			util.ErrToCode(service.ErrFailedRetrieveTypes, http.StatusInternalServerError),
 		)
@@ -83,7 +87,7 @@ func GetTypeHandler(s *service.Service) gin.HandlerFunc {
 			return
 		}
 
-		c.JSON(http.StatusOK, apimodel.TypeResponse{Type: object})
+		c.JSON(http.StatusOK, apimodel.TypeResponse{Type: *object})
 	}
 }
 
@@ -129,7 +133,7 @@ func CreateTypeHandler(s *service.Service) gin.HandlerFunc {
 			return
 		}
 
-		c.JSON(http.StatusCreated, apimodel.TypeResponse{Type: object})
+		c.JSON(http.StatusCreated, apimodel.TypeResponse{Type: *object})
 	}
 }
 
@@ -181,7 +185,7 @@ func UpdateTypeHandler(s *service.Service) gin.HandlerFunc {
 			return
 		}
 
-		c.JSON(http.StatusOK, apimodel.TypeResponse{Type: object})
+		c.JSON(http.StatusOK, apimodel.TypeResponse{Type: *object})
 	}
 }
 
@@ -223,6 +227,6 @@ func DeleteTypeHandler(s *service.Service) gin.HandlerFunc {
 			return
 		}
 
-		c.JSON(http.StatusOK, apimodel.TypeResponse{Type: object})
+		c.JSON(http.StatusOK, apimodel.TypeResponse{Type: *object})
 	}
 }

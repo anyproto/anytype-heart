@@ -37,8 +37,8 @@ func ResolveIdtoUniqueKeyAndRelationKey(mw apicore.ClientCommands, spaceId strin
 		resp.ObjectView.Details[0].Details.Fields[bundle.RelationKeyRelationKey.String()].GetStringValue(), nil
 }
 
-// GetFieldsByID retrieves the specified fields of an object by its ID.
-func GetFieldsByID(mw apicore.ClientCommands, spaceId string, objectId string, keys []string) (map[string]*types.Value, error) {
+// GetFieldsById retrieves the specified fields of an object by its ID.
+func GetFieldsById(mw apicore.ClientCommands, spaceId string, objectId string, keys []string) (map[string]*types.Value, error) {
 	resp := mw.ObjectSearch(context.Background(), &pb.RpcObjectSearchRequest{
 		SpaceId: spaceId,
 		Filters: []*model.BlockContentDataviewFilter{
