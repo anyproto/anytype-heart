@@ -41,7 +41,9 @@ func (s *service) createRelation(ctx context.Context, space clientspace.Space, d
 
 	key := domain.RelationKey(details.GetString(bundle.RelationKeyRelationKey))
 
-	injectApiObjectKey(object, key.String())
+	if err := s.injectAndEnsureUniqueApiObjectKey(space.Id(), object, key.String(), coresb.SmartBlockTypeRelation); err != nil {
+		return "", nil, fmt.Errorf("inject and ensure unique apiObjectKey: %w", err)
+	}
 
 	if key == "" {
 		key = domain.RelationKey(bson.NewObjectId().Hex())
