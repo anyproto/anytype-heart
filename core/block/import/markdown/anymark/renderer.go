@@ -218,26 +218,22 @@ func (r *Renderer) renderThematicBreak(_ util.BufWriter,
 	return ast.WalkContinue, nil
 }
 
-func (r *Renderer) renderAutoLink(_ util.BufWriter,
-	source []byte,
-	node ast.Node,
-	entering bool) (ast.WalkStatus, error) {
+func (r *Renderer) renderAutoLink(_ util.BufWriter, source []byte, node ast.Node, entering bool) (ast.WalkStatus, error) {
 	n := node.(*ast.AutoLink)
 	if !entering {
 		return ast.WalkContinue, nil
 	}
 
-	destination := source
 	label := n.Label(source)
 	r.SetMarkStart()
 
 	start := int32(text.UTF16RuneCountString(r.GetText()))
 	labelLength := int32(text.UTF16RuneCount(label))
 
-	linkPath, err := url.PathUnescape(string(destination))
+	linkPath, err := url.PathUnescape(string(label))
 	if err != nil {
-		log.Errorf("failed to unescape destination %s", err)
-		linkPath = string(destination)
+		log.Errorf("failed to unescape label %s", err)
+		linkPath = string(label)
 	}
 
 	if !isUrl(linkPath) {
