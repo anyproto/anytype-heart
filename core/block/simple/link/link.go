@@ -5,8 +5,8 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/block/simple/base"
-	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -119,10 +119,6 @@ func (l *Link) ReplaceLinkIds(replacer func(oldId string) (newId string)) {
 		l.content.TargetBlockId = replacer(l.content.TargetBlockId)
 	}
 	return
-}
-
-func (l *Link) MigrateFile(replacer func(oldId string) (newId string)) {
-	l.ReplaceLinkIds(replacer)
 }
 
 func (l *Link) FillSmartIds(ids []string) []string {

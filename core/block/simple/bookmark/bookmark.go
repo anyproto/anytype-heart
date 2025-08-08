@@ -189,15 +189,6 @@ func (b *Bookmark) FillFileHashes(hashes []string) []string {
 	return hashes
 }
 
-func (b *Bookmark) MigrateFile(replacer func(oldHash string) (newHash string)) {
-	if b.content.ImageHash != "" {
-		b.content.ImageHash = replacer(b.content.ImageHash)
-	}
-	if b.content.FaviconHash != "" {
-		b.content.FaviconHash = replacer(b.content.FaviconHash)
-	}
-}
-
 func (l *Bookmark) ReplaceLinkIds(replacer func(oldId string) (newId string)) {
 	if l.content.TargetObjectId != "" {
 		l.content.TargetObjectId = replacer(l.content.TargetObjectId)

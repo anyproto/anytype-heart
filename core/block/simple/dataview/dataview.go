@@ -239,14 +239,6 @@ func (d *Dataview) FillSmartIds(ids []string) []string {
 	return ids
 }
 
-func (d *Dataview) MigrateFile(migrateFunc func(oldHash string) (newHash string)) {
-	for _, view := range d.content.Views {
-		for _, filter := range view.Filters {
-			d.migrateFilesInFilter(filter, migrateFunc)
-		}
-	}
-}
-
 func (d *Dataview) migrateFilesInFilter(filter *model.BlockContentDataviewFilter, migrateFunc func(oldHash string) (newHash string)) {
 	if filter.Format != model.RelationFormat_object && filter.Format != model.RelationFormat_file {
 		return
