@@ -100,7 +100,7 @@ func (mw *Middleware) WorkspaceOpen(cctx context.Context, req *pb.RpcWorkspaceOp
 			return err
 		}
 		if shareableStatus == spaceinfo.ShareableStatusShareable {
-			// migration for existing usets
+			// migration for existing users
 			err = bs.SpaceInitChat(cctx, req.SpaceId)
 			if err != nil {
 				log.With("spaceId", req.SpaceId).With("error", err).Warn("failed to init space level chat")
