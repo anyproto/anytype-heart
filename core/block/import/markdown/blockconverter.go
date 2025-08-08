@@ -19,7 +19,6 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/pkg/lib/schema/yaml"
-	"github.com/anyproto/anytype-heart/util/uri"
 )
 
 type mdConverter struct {
@@ -374,7 +373,7 @@ func (m *mdConverter) convertTextToPageLink(block *model.Block) {
 }
 
 func (m *mdConverter) convertTextToBookmark(url string, block *model.Block) {
-	if err := uri.ValidateURI(url); err != nil {
+	if !anymark.IsUrl(url) {
 		return
 	}
 

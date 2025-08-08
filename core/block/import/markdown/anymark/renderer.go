@@ -240,7 +240,7 @@ func (r *Renderer) renderAutoLink(_ util.BufWriter,
 		linkPath = string(destination)
 	}
 
-	if !isUrl(linkPath) {
+	if !IsUrl(linkPath) {
 		// Treat as a file path if no URL scheme
 		linkPath = filepath.Join(r.GetBaseFilepath(), linkPath)
 		linkPath = cleanLinkSection(linkPath)
@@ -255,7 +255,7 @@ func (r *Renderer) renderAutoLink(_ util.BufWriter,
 	return ast.WalkContinue, nil
 }
 
-func isUrl(raw string) bool {
+func IsUrl(raw string) bool {
 	colon := strings.IndexByte(raw, ':')
 
 	if colon > 0 {
@@ -354,7 +354,7 @@ func (r *Renderer) renderLink(_ util.BufWriter,
 			linkPath = string(destination)
 		}
 
-		if !isUrl(linkPath) {
+		if !IsUrl(linkPath) {
 			// Treat as a file path if no URL scheme
 			linkPath = filepath.Join(r.GetBaseFilepath(), linkPath)
 			ext := filepath.Ext(linkPath)
@@ -510,7 +510,7 @@ func (r *Renderer) renderWikiLink(_ util.BufWriter, source []byte, node ast.Node
 		r.SetMarkStart()
 	} else {
 		// Handle as regular link (same behavior as [[]] for both [[]] and ![[]])
-		if !isUrl(linkPath) {
+		if !IsUrl(linkPath) {
 			// Treat as a file path if no URL scheme
 			linkPath = filepath.Join(r.GetBaseFilepath(), linkPath)
 			ext := filepath.Ext(linkPath)
