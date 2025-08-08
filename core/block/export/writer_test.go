@@ -3,6 +3,7 @@ package export
 import (
 	"archive/zip"
 	"io/ioutil"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
@@ -92,5 +93,50 @@ func TestZipWriter_Get(t *testing.T) {
 		// then
 		require.NoError(t, wr.Close())
 		assert.Equal(t, filepath.Join(Files, defaultFileName), name)
+	})
+}
+
+func TestDeepLinkNamer(t *testing.T) {
+	t.Run("markdown links include spaceId", func(t *testing.T) {
+		u, _ := url.Parse("http://gateway.example.com")
+		namer := &deepLinkNamer{
+			gatewayUrl: *u,
+			spaceId:    "bafyreieorkzqmzegus55jn5ptho4bp6jtrzc7anfbd54fo3g5wrbp3j3fu.scoxzd7vu6rz",
+		}
+
+		// Test markdown link
+		result := namer.Get("", "bafyreiblv65o2t64yownuweyf6rvgd7cyosxkhd7hg4zzhpqjhaerlqxbi", "Meeting Notes", ".md")
+		expected := "anytype://object?objectId=bafyreiblv65o2t64yownuweyf6rvgd7cyosxkhd7hg4zzhpqjhaerlqxbi&spaceId=bafyreieorkzqmzegus55jn5ptho4bp6jtrzc7anfbd54fo3g5wrbp3j3fu.scoxzd7vu6rz"
+		assert.Equal(t, expected, result)
+	})
+
+	t.Run("file links via gateway", func(t *testing.T) {
+		u, _ := url.Parse("http://gateway.example.com")
+		namer := &deepLinkNamer{
+			gatewayUrl: *u,
+			spaceId:    "bafyreieorkzqmzegus55jn5ptho4bp6jtrzc7anfbd54fo3g5wrbp3j3fu.scoxzd7vu6rz",
+		}
+
+		// Test image link
+		result := namer.Get("files", "imageHash123", "photo", ".jpg")
+		expected := "http://gateway.example.com/image/imageHash123"
+		assert.Equal(t, expected, result)
+
+		// Test regular file link
+		result = namer.Get("files", "fileHash456", "document", ".pdf")
+		expected = "http://gateway.example.com/file/fileHash456"
+		assert.Equal(t, expected, result)
+	})
+
+	t.Run("fallback to anytype:// when no gateway", func(t *testing.T) {
+		namer := &deepLinkNamer{
+			gatewayUrl: url.URL{}, // empty URL
+			spaceId:    "bafyreieorkzqmzegus55jn5ptho4bp6jtrzc7anfbd54fo3g5wrbp3j3fu.scoxzd7vu6rz",
+		}
+
+		// Should fallback to anytype:// scheme with spaceId
+		result := namer.Get("files", "fileHash789", "backup", ".txt")
+		expected := "anytype://object?objectId=fileHash789&spaceId=bafyreieorkzqmzegus55jn5ptho4bp6jtrzc7anfbd54fo3g5wrbp3j3fu.scoxzd7vu6rz"
+		assert.Equal(t, expected, result)
 	})
 }

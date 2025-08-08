@@ -267,7 +267,7 @@ func (e *exportContext) exportObject(ctx context.Context, objectId string) (stri
 		if err != nil {
 			return "", err
 		}
-		docNamer = &deepLinkNamer{gatewayUrl: *u}
+		docNamer = &deepLinkNamer{gatewayUrl: *u, spaceId: e.spaceId}
 	} else {
 		docNamer = newNamer()
 	}
