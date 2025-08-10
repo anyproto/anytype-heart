@@ -10,7 +10,7 @@ import (
 	"go.uber.org/zap"
 
 	"github.com/anyproto/anytype-heart/space/deletioncontroller"
-	dependencies2 "github.com/anyproto/anytype-heart/space/internal/components/dependencies"
+	"github.com/anyproto/anytype-heart/space/internal/components/dependencies"
 	"github.com/anyproto/anytype-heart/space/internal/components/spacestatus"
 	"github.com/anyproto/anytype-heart/space/internal/spaceprocess/mode"
 	"github.com/anyproto/anytype-heart/space/spacecore/storage"
@@ -35,9 +35,9 @@ func New() SpaceOffloader {
 type spaceOffloader struct {
 	status         spacestatus.SpaceStatus
 	offloading     *offloadingSpace
-	fileOffloader  dependencies2.FileOffloader
+	fileOffloader  dependencies.FileOffloader
 	storageService storage.ClientStorage
-	indexer        dependencies2.SpaceIndexer
+	indexer        dependencies.SpaceIndexer
 	delController  deletioncontroller.DeletionController
 	ctx            context.Context
 	cancel         context.CancelFunc
@@ -46,9 +46,9 @@ type spaceOffloader struct {
 
 func (o *spaceOffloader) Init(a *app.App) (err error) {
 	o.status = app.MustComponent[spacestatus.SpaceStatus](a)
-	o.fileOffloader = app.MustComponent[dependencies2.FileOffloader](a)
+	o.fileOffloader = app.MustComponent[dependencies.FileOffloader](a)
 	o.storageService = app.MustComponent[storage.ClientStorage](a)
-	o.indexer = app.MustComponent[dependencies2.SpaceIndexer](a)
+	o.indexer = app.MustComponent[dependencies.SpaceIndexer](a)
 	o.delController = app.MustComponent[deletioncontroller.DeletionController](a)
 	o.ctx, o.cancel = context.WithCancel(context.Background())
 	return nil
@@ -60,6 +60,7 @@ func (o *spaceOffloader) Name() (name string) {
 
 func (o *spaceOffloader) Run(ctx context.Context) (err error) {
 	localStatus := o.status.GetLocalStatus()
+	o.delController.AddSpaceToDelete(o.status.SpaceId())
 	if localStatus == spaceinfo.LocalStatusMissing {
 		o.offloaded.Store(true)
 		return nil
