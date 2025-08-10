@@ -7,7 +7,10 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+	"go.uber.org/zap"
 )
+
+type spaceViewObjectSubscription = objectsubscription.ObjectSubscription[spaceViewStatus]
 
 type spaceViewStatus struct {
 	spaceId     string
@@ -15,7 +18,19 @@ type spaceViewStatus struct {
 	creator     string
 }
 
-func newRemoveSelfSub(service subscription.Service, ownIdentity, techSpaceId string, wakeUp func()) (*objectsubscription.ObjectSubscription[spaceViewStatus], error) {
+type spaceSubscription struct {
+	objSubscription *spaceViewObjectSubscription
+	afterRun        func(sub *spaceViewObjectSubscription)
+}
+
+func newSpaceSubscription(
+	service subscription.Service,
+	ownIdentity string,
+	techSpaceId string,
+	afterRun func(sub *spaceViewObjectSubscription),
+	add func(status spaceViewStatus),
+	remove func(id string, status spaceViewStatus),
+) *spaceSubscription {
 	participantId := domain.NewParticipantId(techSpaceId, ownIdentity)
 	objectReq := subscription.SubscribeRequest{
 		SpaceId:           techSpaceId,
@@ -59,32 +74,48 @@ func newRemoveSelfSub(service subscription.Service, ownIdentity, techSpaceId str
 			},
 		},
 	}
-
-	objectSubscription := objectsubscription.New[spaceViewStatus](service, objectsubscription.SubscriptionParams[spaceViewStatus]{
-		Request: objectReq,
-		Extract: func(details *domain.Details) (string, spaceViewStatus) {
-			defer wakeUp()
-			return details.GetString(bundle.RelationKeyId), spaceViewStatus{
+	var objectSubscription *spaceViewObjectSubscription
+	objectSubscription = objectsubscription.New[spaceViewStatus](service, objectReq, objectsubscription.SubscriptionParams[spaceViewStatus]{
+		SetDetails: func(details *domain.Details) (string, spaceViewStatus) {
+			status := spaceViewStatus{
 				spaceId:     details.GetString(bundle.RelationKeyTargetSpaceId),
 				spaceViewId: details.GetString(bundle.RelationKeyId),
 				creator:     details.GetString(bundle.RelationKeyCreator),
 			}
+			defer add(status)
+			return details.GetString(bundle.RelationKeyId), status
 		},
-		Update: func(key string, value domain.Value, status spaceViewStatus) spaceViewStatus {
-			defer wakeUp()
+		UpdateKey: func(key string, value domain.Value, status spaceViewStatus) spaceViewStatus {
 			switch domain.RelationKey(key) {
 			case bundle.RelationKeyCreator:
 				status.creator = value.String()
 			}
+			defer add(status)
 			return status
 		},
-		Unset: func(strings []string, status spaceViewStatus) spaceViewStatus {
-			defer wakeUp()
+		RemoveKeys: func(strings []string, status spaceViewStatus) spaceViewStatus {
+			// This should not be called for space views
+			log.Error("remove keys for space view shouldn't be called", zap.Strings("keys", strings))
 			return status
+		},
+		OnAdded: func(id string, entry spaceViewStatus) {
+			add(entry)
+		},
+		OnRemoved: func(id string, entry spaceViewStatus) {
+			remove(id, entry)
 		},
 	})
-	if err := objectSubscription.Run(); err != nil {
-		return nil, err
+	return &spaceSubscription{
+		objSubscription: objectSubscription,
+		afterRun:        afterRun,
 	}
-	return objectSubscription, nil
+}
+
+func (s *spaceSubscription) Run() error {
+	defer s.afterRun(s.objSubscription)
+	return s.objSubscription.Run()
+}
+
+func (s *spaceSubscription) Close() {
+	s.objSubscription.Close()
 }

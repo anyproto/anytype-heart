@@ -22,6 +22,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/anytype/account"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/inviteservice"
+	"github.com/anyproto/anytype-heart/core/subscription"
 	"github.com/anyproto/anytype-heart/core/subscription/crossspacesub"
 	"github.com/anyproto/anytype-heart/core/wallet"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
@@ -89,6 +90,7 @@ type aclService struct {
 	identityRepo     identityRepoClient
 	recordVerifier   recordverifier.AcceptorVerifier
 	updater          *aclUpdater
+	getter           *aclGetter
 }
 
 func (a *aclService) Init(ap *app.App) (err error) {
@@ -99,15 +101,22 @@ func (a *aclService) Init(ap *app.App) (err error) {
 	a.inviteService = app.MustComponent[inviteservice.InviteService](ap)
 	a.coordClient = app.MustComponent[coordinatorclient.CoordinatorClient](ap)
 	a.identityRepo = app.MustComponent[identityRepoClient](ap)
+	subService := app.MustComponent[subscription.Service](ap)
 	crossSub := app.MustComponent[crossspacesub.Service](ap)
 	wlt := app.MustComponent[wallet.Wallet](ap)
-	a.updater = newAclUpdater("acl-updater",
+	a.getter = newAclGetter(a.joiningClient, wlt.Account())
+	a.updater, err = newAclUpdater("acl-updater",
 		wlt.Account().SignKey.GetPublic().Account(),
 		crossSub,
+		subService,
+		a.spaceService.TechSpaceId(),
 		a,
 		1*time.Second,
 		30*time.Second,
 		10*time.Second)
+	if err != nil {
+		return err
+	}
 	a.recordVerifier = recordverifier.New()
 	return nil
 }
@@ -325,36 +334,37 @@ func (a *aclService) ApproveLeave(ctx context.Context, spaceId string, identitie
 	return a.Remove(ctx, spaceId, identities)
 }
 
-func (a *aclService) Leave(ctx context.Context, spaceId string) error {
-	removeSpace, err := a.spaceService.Get(ctx, spaceId)
+func (a *aclService) Leave(ctx context.Context, spaceId string) (err error) {
+	aclList, err := a.getter.GetOrRefreshAcl(ctx, spaceId)
 	if err != nil {
-		// space storage missing can occur only in case of missing space
-		if errors.Is(err, space.ErrSpaceStorageMissig) || errors.Is(err, space.ErrSpaceDeleted) {
+		// Handle known errors gracefully - if space is deleted, storage is missing,
+		// or user has no ACL access, leave operation should succeed since there's nothing to leave from
+		if errors.Is(err, space.ErrSpaceStorageMissig) || 
+		   errors.Is(err, space.ErrSpaceDeleted) ||
+		   errors.Is(err, list.ErrNoSuchAccount) {
 			return nil
 		}
-		return convertedOrSpaceErr(err)
+		return convertedOrAclRequestError(err)
 	}
-	identity := a.accountService.Keys().SignKey.GetPublic()
-	if !removeSpace.GetAclIdentity().Equals(identity) {
-		// this is a streamable space
-		// we exist there under ephemeral guest identity and should not remove it
-		return nil
-	}
-
-	cl := removeSpace.CommonSpace().AclClient()
-	err = cl.RequestSelfRemove(ctx)
-	if err != nil {
-		errs := []error{
-			list.ErrPendingRequest,
-			list.ErrIsOwner,
-			list.ErrNoSuchAccount,
-			coordinatorproto.ErrSpaceIsDeleted,
-			coordinatorproto.ErrSpaceNotExists,
-		}
-		for _, e := range errs {
-			if errors.Is(err, e) {
-				return nil
+	myIdentity := aclList.AclState().Identity()
+	defer func() {
+		for _, state := range aclList.AclState().CurrentAccounts() {
+			if state.PubKey.Equals(myIdentity) {
+				a.spaceService.TechSpace().DoSpaceView(ctx, spaceId, func(spaceView techspace.SpaceView) error {
+					return spaceView.SetMyParticipantStatus(domain.ConvertAclStatus(state.Status))
+				})
 			}
+		}
+	}()
+	err = a.joiningClient.RequestSelfRemove(ctx, spaceId, aclList)
+	if err != nil {
+		// Handle known errors gracefully - these are conditions where leave should succeed
+		if errors.Is(err, list.ErrPendingRequest) || 
+		   errors.Is(err, list.ErrIsOwner) || 
+		   errors.Is(err, list.ErrNoSuchAccount) || 
+		   errors.Is(err, coordinatorproto.ErrSpaceIsDeleted) ||
+		   errors.Is(err, coordinatorproto.ErrSpaceNotExists) {
+			return nil
 		}
 		return convertedOrAclRequestError(err)
 	}

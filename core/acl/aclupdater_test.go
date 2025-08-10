@@ -110,10 +110,12 @@ func newAclUpdaterFixture(t *testing.T) *aclUpdaterFixture {
 
 	remover := mock_acl.NewMockparticipantRemover(t)
 
-	updater := newAclUpdater(
+	updater, _ := newAclUpdater(
 		"test-updater",
 		testOwnIdentity,
 		crossSpaceSub,
+		subscriptionService,
+		techSpaceId,
 		remover,
 		100*time.Millisecond,
 		1*time.Second,
