@@ -2,8 +2,8 @@ package space
 
 import (
 	"context"
+	"fmt"
 	"os"
-	"strings"
 	"testing"
 	"time"
 
@@ -20,17 +20,19 @@ import (
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 
+	"github.com/cheggaaa/mb/v3"
+
 	"github.com/anyproto/anytype-heart/core/anytype/config"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/notifications/mock_notifications"
+	"github.com/anyproto/anytype-heart/core/subscription"
+	"github.com/anyproto/anytype-heart/core/subscription/mock_subscription"
 	"github.com/anyproto/anytype-heart/core/wallet/mock_wallet"
-	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
+	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
-	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space/clientspace"
 	"github.com/anyproto/anytype-heart/space/clientspace/mock_clientspace"
 	"github.com/anyproto/anytype-heart/space/internal/components/aclobjectmanager"
-	"github.com/anyproto/anytype-heart/space/internal/spacecontroller"
 	"github.com/anyproto/anytype-heart/space/internal/spacecontroller/mock_spacecontroller"
 	"github.com/anyproto/anytype-heart/space/mock_space"
 	"github.com/anyproto/anytype-heart/space/spacecore"
@@ -92,7 +94,7 @@ func TestService_Init(t *testing.T) {
 	t.Run("old account", func(t *testing.T) {
 		newFixture(t, func(t *testing.T, fx *fixture) {
 			fx.factory.EXPECT().LoadAndSetTechSpace(mock.Anything).Return(&clientspace.TechSpace{TechSpace: fx.techSpace}, nil)
-			fx.techSpace.EXPECT().WakeUpViews()
+			fx.techSpace.EXPECT().StartSync()
 		})
 	})
 	t.Run("old account, no internet, then internet appeared", func(t *testing.T) {
@@ -100,7 +102,7 @@ func TestService_Init(t *testing.T) {
 			fx.factory.EXPECT().LoadAndSetTechSpace(mock.Anything).Return(nil, context.DeadlineExceeded).Times(1)
 			fx.spaceCore.EXPECT().StorageExistsLocally(mock.Anything, fx.spaceId).Return(false, nil)
 			fx.factory.EXPECT().LoadAndSetTechSpace(mock.Anything).Return(&clientspace.TechSpace{TechSpace: fx.techSpace}, nil)
-			fx.techSpace.EXPECT().WakeUpViews()
+			fx.techSpace.EXPECT().StartSync()
 		})
 	})
 	t.Run("old account, no internet, but personal space exists", func(t *testing.T) {
@@ -112,7 +114,7 @@ func TestService_Init(t *testing.T) {
 			prCtrl := mock_spacecontroller.NewMockSpaceController(t)
 			fx.factory.EXPECT().NewPersonalSpace(mock.Anything, mock.Anything).Return(prCtrl, nil)
 			prCtrl.EXPECT().Close(mock.Anything).Return(nil)
-			fx.techSpace.EXPECT().WakeUpViews()
+			fx.techSpace.EXPECT().StartSync()
 		})
 	})
 	t.Run("very old account without tech space", func(t *testing.T) {
@@ -123,157 +125,52 @@ func TestService_Init(t *testing.T) {
 			prCtrl := mock_spacecontroller.NewMockSpaceController(t)
 			fx.factory.EXPECT().NewPersonalSpace(mock.Anything, mock.Anything).Return(prCtrl, nil)
 			prCtrl.EXPECT().Close(mock.Anything).Return(nil)
-			fx.techSpace.EXPECT().WakeUpViews()
+			fx.techSpace.EXPECT().StartSync()
 		})
 	})
 }
 
 func TestService_UpdateRemoteStatus(t *testing.T) {
 	spaceID := "id"
-	t.Run("don't send notification, because account status deleted", func(t *testing.T) {
+	t.Run("successfully updates remote status", func(t *testing.T) {
 		// given
-		controller := mock_spacecontroller.NewMockSpaceController(t)
 		statusInfo := makeRemoteInfo(spaceID, false, spaceinfo.RemoteStatusDeleted)
-		controller.EXPECT().SetLocalInfo(context.Background(), statusInfo.LocalInfo).Return(nil)
-		controller.EXPECT().GetStatus().Return(spaceinfo.AccountStatusDeleted)
-		notifications := mock_notifications.NewMockNotifications(t)
+
+		mockTechSpace := mock_techspace.NewMockTechSpace(t)
+		mockSpaceView := mock_techspace.NewMockSpaceView(t)
+		mockSpaceView.EXPECT().SetSpaceLocalInfo(statusInfo.LocalInfo).Return(nil)
+		mockTechSpace.EXPECT().DoSpaceView(ctx, statusInfo.LocalInfo.SpaceId, mock.Anything).RunAndReturn(
+			func(ctx context.Context, spaceID string, apply func(spaceView techspace.SpaceView) error) error {
+				return apply(mockSpaceView)
+			})
+
 		s := service{
-			spaceControllers:    map[string]spacecontroller.SpaceController{spaceID: controller},
-			notificationService: notifications,
+			techSpace: &clientspace.TechSpace{TechSpace: mockTechSpace},
 		}
 
 		// when
 		err := s.UpdateRemoteStatus(ctx, statusInfo)
 
 		// then
-		notifications.AssertNotCalled(t, "CreateAndSend")
-		assert.Nil(t, err)
+		assert.NoError(t, err)
 	})
-	t.Run("don't send notification, because account status removing", func(t *testing.T) {
+	t.Run("returns error when DoSpaceView fails", func(t *testing.T) {
 		// given
-		controller := mock_spacecontroller.NewMockSpaceController(t)
 		statusInfo := makeRemoteInfo(spaceID, false, spaceinfo.RemoteStatusDeleted)
-		controller.EXPECT().SetLocalInfo(context.Background(), statusInfo.LocalInfo).Return(nil)
-		controller.EXPECT().GetStatus().Return(spaceinfo.AccountStatusRemoving)
-		notifications := mock_notifications.NewMockNotifications(t)
+		expectedErr := fmt.Errorf("space view error")
+
+		mockTechSpace := mock_techspace.NewMockTechSpace(t)
+		mockTechSpace.EXPECT().DoSpaceView(ctx, statusInfo.LocalInfo.SpaceId, mock.Anything).Return(expectedErr)
+
 		s := service{
-			spaceControllers:    map[string]spacecontroller.SpaceController{spaceID: controller},
-			notificationService: notifications,
+			techSpace: &clientspace.TechSpace{TechSpace: mockTechSpace},
 		}
 
 		// when
 		err := s.UpdateRemoteStatus(ctx, statusInfo)
 
 		// then
-		notifications.AssertNotCalled(t, "CreateAndSend")
-		assert.Nil(t, err)
-	})
-	t.Run("don't send notification, because space status - not deleted", func(t *testing.T) {
-		// given
-		controller := mock_spacecontroller.NewMockSpaceController(t)
-		statusInfo := makeRemoteInfo(spaceID, false, spaceinfo.RemoteStatusOk)
-		controller.EXPECT().SetLocalInfo(context.Background(), statusInfo.LocalInfo).Return(nil)
-		notifications := mock_notifications.NewMockNotifications(t)
-		s := service{
-			spaceControllers:    map[string]spacecontroller.SpaceController{spaceID: controller},
-			notificationService: notifications,
-		}
-
-		// when
-		err := s.UpdateRemoteStatus(ctx, statusInfo)
-
-		// then
-		notifications.AssertNotCalled(t, "CreateAndSend")
-		assert.Nil(t, err)
-	})
-	t.Run("send notification, because space status - deleted, but we can't get space name", func(t *testing.T) {
-		// given
-		controller := mock_spacecontroller.NewMockSpaceController(t)
-		statusInfo := makeRemoteInfo(spaceID, false, spaceinfo.RemoteStatusDeleted)
-		controller.EXPECT().SetLocalInfo(context.Background(), statusInfo.LocalInfo).Return(nil)
-		controller.EXPECT().GetStatus().Return(spaceinfo.AccountStatusActive)
-		controller.EXPECT().GetLocalStatus().Return(spaceinfo.LocalStatusOk)
-		controller.EXPECT().SetPersistentInfo(context.Background(), makePersistentInfo(spaceID, spaceinfo.AccountStatusRemoving)).Return(nil)
-
-		accountKeys, err := accountdata.NewRandom()
-		assert.Nil(t, err)
-		wallet := mock_wallet.NewMockWallet(t)
-		wallet.EXPECT().Account().Return(accountKeys)
-		identity := accountKeys.SignKey.GetPublic().Account()
-
-		notifications := mock_notifications.NewMockNotifications(t)
-		notifications.EXPECT().CreateAndSend(&model.Notification{
-			Id: strings.Join([]string{spaceID, identity}, "_"),
-			Payload: &model.NotificationPayloadOfParticipantRemove{
-				ParticipantRemove: &model.NotificationParticipantRemove{
-					SpaceId:   spaceID,
-					SpaceName: "",
-				},
-			},
-			Space: spaceID,
-		}).Return(nil)
-
-		storeFixture := objectstore.NewStoreFixture(t)
-		s := service{
-			spaceControllers:    map[string]spacecontroller.SpaceController{spaceID: controller},
-			notificationService: notifications,
-			accountService:      wallet,
-			spaceNameGetter:     storeFixture,
-		}
-
-		// when
-		err = s.UpdateRemoteStatus(ctx, statusInfo)
-
-		// then
-		assert.Nil(t, err)
-	})
-	t.Run("send notification, because space remote status - deleted, but we get space name with name Test", func(t *testing.T) {
-		// given
-		controller := mock_spacecontroller.NewMockSpaceController(t)
-		statusInfo := makeRemoteInfo(spaceID, false, spaceinfo.RemoteStatusDeleted)
-		controller.EXPECT().SetLocalInfo(context.Background(), statusInfo.LocalInfo).Return(nil)
-		controller.EXPECT().GetStatus().Return(spaceinfo.AccountStatusActive)
-		controller.EXPECT().GetLocalStatus().Return(spaceinfo.LocalStatusOk)
-		controller.EXPECT().SetPersistentInfo(context.Background(), makePersistentInfo(spaceID, spaceinfo.AccountStatusRemoving)).Return(nil)
-
-		accountKeys, err := accountdata.NewRandom()
-		assert.Nil(t, err)
-		wallet := mock_wallet.NewMockWallet(t)
-		wallet.EXPECT().Account().Return(accountKeys)
-		identity := accountKeys.SignKey.GetPublic().Account()
-
-		notifications := mock_notifications.NewMockNotifications(t)
-		notifications.EXPECT().CreateAndSend(&model.Notification{
-			Id: strings.Join([]string{spaceID, identity}, "_"),
-			Payload: &model.NotificationPayloadOfParticipantRemove{
-				ParticipantRemove: &model.NotificationParticipantRemove{
-					SpaceId:   spaceID,
-					SpaceName: "Test",
-				},
-			},
-			Space: spaceID,
-		}).Return(nil)
-
-		storeFixture := objectstore.NewStoreFixture(t)
-		storeFixture.AddObjects(t, storeFixture.TechSpaceId(), []objectstore.TestObject{{
-			bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_spaceView)),
-			bundle.RelationKeyId:             domain.String("spaceViewId"),
-			bundle.RelationKeyTargetSpaceId:  domain.String(spaceID),
-			bundle.RelationKeyName:           domain.String("Test"),
-		}})
-
-		s := service{
-			spaceControllers:    map[string]spacecontroller.SpaceController{spaceID: controller},
-			notificationService: notifications,
-			accountService:      wallet,
-			spaceNameGetter:     storeFixture,
-		}
-
-		// when
-		err = s.UpdateRemoteStatus(ctx, statusInfo)
-
-		// then
-		assert.Nil(t, err)
+		assert.Equal(t, expectedErr, err)
 	})
 }
 
@@ -325,6 +222,9 @@ func newFixture(t *testing.T, expectOldAccount func(t *testing.T, fx *fixture)) 
 	wallet.EXPECT().Account().Return(keys)
 	wallet.EXPECT().RepoPath().Return(path)
 
+	subscriptionService := mock_subscription.NewMockService(t)
+	fx.subscriptionService = subscriptionService
+
 	fx.a.
 		Register(testutil.PrepareMock(ctx, fx.a, wallet)).
 		Register(fx.config).
@@ -335,6 +235,7 @@ func newFixture(t *testing.T, expectOldAccount func(t *testing.T, fx *fixture)) 
 		Register(testutil.PrepareMock(ctx, fx.a, fx.coordClient)).
 		Register(testutil.PrepareMock(ctx, fx.a, fx.factory)).
 		Register(testutil.PrepareMock(ctx, fx.a, mock_notifications.NewMockNotifications(t))).
+		Register(testutil.PrepareMock(ctx, fx.a, subscriptionService)).
 		Register(fx.objectStore).
 		Register(&testSpaceLoaderListener{}).
 		Register(fx.service)
@@ -349,19 +250,20 @@ func newFixture(t *testing.T, expectOldAccount func(t *testing.T, fx *fixture)) 
 
 type fixture struct {
 	*service
-	spaceId            string
-	a                  *app.App
-	config             *config.Config
-	factory            *mock_spacefactory.MockSpaceFactory
-	spaceCore          *mock_spacecore.MockSpaceCoreService
-	updater            *mock_space.MockcoordinatorStatusUpdater
-	notificationSender *mock_space.MockNotificationSender
-	accountService     *accounttest.AccountTestService
-	coordClient        *mock_coordinatorclient.MockCoordinatorClient
-	ctrl               *gomock.Controller
-	techSpace          *mock_techspace.MockTechSpace
-	clientSpace        *mock_clientspace.MockSpace
-	objectStore        *objectstore.StoreFixture
+	spaceId             string
+	a                   *app.App
+	config              *config.Config
+	factory             *mock_spacefactory.MockSpaceFactory
+	spaceCore           *mock_spacecore.MockSpaceCoreService
+	updater             *mock_space.MockcoordinatorStatusUpdater
+	notificationSender  *mock_space.MockNotificationSender
+	accountService      *accounttest.AccountTestService
+	coordClient         *mock_coordinatorclient.MockCoordinatorClient
+	ctrl                *gomock.Controller
+	techSpace           *mock_techspace.MockTechSpace
+	clientSpace         *mock_clientspace.MockSpace
+	objectStore         *objectstore.StoreFixture
+	subscriptionService *mock_subscription.MockService
 }
 
 type lwMock struct {
@@ -376,6 +278,16 @@ func (fx *fixture) expectRun(t *testing.T, expectOldAccount func(t *testing.T, f
 	fx.spaceCore.EXPECT().DeriveID(mock.Anything, spacecore.SpaceType).Return(fx.spaceId, nil).Times(1)
 	fx.spaceCore.EXPECT().DeriveID(mock.Anything, spacecore.TechSpaceType).Return("techSpaceId", nil).Times(1)
 	fx.updater.EXPECT().UpdateCoordinatorStatus()
+
+	// Mock subscription service Search call that's made during space watcher initialization
+	fx.subscriptionService.EXPECT().Search(mock.Anything).RunAndReturn(func(req subscription.SubscribeRequest) (*subscription.SubscribeResponse, error) {
+		events := mb.New[*pb.EventMessage](0)
+		return &subscription.SubscribeResponse{
+			Records: []*domain.Details{},
+			Output:  events,
+		}, nil
+	}).Maybe()
+
 	clientSpace := mock_clientspace.NewMockSpace(t)
 	mpCtrl := mock_spacecontroller.NewMockSpaceController(t)
 	fx.factory.EXPECT().CreateMarketplaceSpace(mock.Anything).Return(mpCtrl, nil)
@@ -396,7 +308,7 @@ func (fx *fixture) expectRun(t *testing.T, expectOldAccount func(t *testing.T, f
 		clientSpace.EXPECT().Id().Return(fx.spaceId)
 		prCtrl.EXPECT().Current().Return(lw)
 		prCtrl.EXPECT().Close(mock.Anything).Return(nil)
-		ts.EXPECT().WakeUpViews()
+		ts.EXPECT().StartSync()
 	} else {
 		expectOldAccount(t, fx)
 	}
@@ -438,3 +350,4 @@ func (s *testSpaceLoaderListener) OnSpaceUnload(_ string) {}
 
 func (s *testSpaceLoaderListener) Init(a *app.App) (err error) { return nil }
 func (s *testSpaceLoaderListener) Name() (name string)         { return "spaceLoaderListener" }
+

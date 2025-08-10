@@ -22,6 +22,7 @@ import (
 	"google.golang.org/protobuf/proto"
 	"storj.io/drpc"
 
+	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space/clientspace"
 	"github.com/anyproto/anytype-heart/space/clientspace/mock_clientspace"
 	"github.com/anyproto/anytype-heart/space/internal/components/aclnotifications/mock_aclnotifications"
@@ -60,6 +61,7 @@ func TestAclObjectManager(t *testing.T) {
 			})
 		fx.mockParticipantWatcher.EXPECT().WatchParticipant(mock.Anything, fx.mockSpace, mock.Anything).Return(nil)
 		fx.mockStatus.EXPECT().SetAclInfo(true, nil, nil, mock.Anything).Return(nil)
+		fx.mockStatus.EXPECT().SetMyParticipantStatus(mock.Anything).Return(nil)
 		fx.mockCommonSpace.EXPECT().Id().AnyTimes().Return("spaceId")
 		fx.mockStatus.EXPECT().GetLocalStatus().Return(spaceinfo.LocalStatusOk)
 		fx.mockAclNotification.EXPECT().AddRecords(acl, list.AclPermissionsOwner, "spaceId", spaceinfo.AccountStatusActive, spaceinfo.LocalStatusOk)
@@ -106,6 +108,7 @@ func TestAclObjectManager(t *testing.T) {
 			})
 		fx.mockParticipantWatcher.EXPECT().WatchParticipant(mock.Anything, fx.mockSpace, mock.Anything).Return(nil)
 		fx.mockStatus.EXPECT().SetAclInfo(false, mock.Anything, mock.Anything, mock.Anything).Return(nil)
+		fx.mockStatus.EXPECT().SetMyParticipantStatus(mock.Anything).Return(nil)
 		fx.mockCommonSpace.EXPECT().Id().AnyTimes().Return("spaceId")
 		fx.mockStatus.EXPECT().GetLocalStatus().Return(spaceinfo.LocalStatusOk)
 		fx.mockAclNotification.EXPECT().AddRecords(acl, list.AclPermissionsReader, "spaceId", spaceinfo.AccountStatusActive, spaceinfo.LocalStatusOk)
@@ -145,8 +148,10 @@ func TestAclObjectManager(t *testing.T) {
 				return nil
 			})
 		fx.mockParticipantWatcher.EXPECT().WatchParticipant(mock.Anything, fx.mockSpace, mock.Anything).Return(nil)
-		fx.mockStatus.EXPECT().SetPersistentStatus(spaceinfo.AccountStatusRemoving).Return(nil)
 		fx.mockStatus.EXPECT().SetAclInfo(false, mock.Anything, mock.Anything, mock.Anything).Return(nil)
+		fx.mockStatus.EXPECT().SetMyParticipantStatus(model.ParticipantStatus_Active).Return(nil)
+		fx.mockStatus.EXPECT().SetMyParticipantStatus(model.ParticipantStatus_Removed).Return(nil)
+		fx.mockStatus.EXPECT().SetPersistentStatus(spaceinfo.AccountStatusDeleted).Return(nil)
 		fx.mockCommonSpace.EXPECT().Id().AnyTimes().Return("spaceId")
 		fx.mockStatus.EXPECT().GetLocalStatus().Return(spaceinfo.LocalStatusOk)
 		fx.mockAclNotification.EXPECT().AddRecords(acl, list.AclPermissionsNone, "spaceId", spaceinfo.AccountStatusDeleted, spaceinfo.LocalStatusOk)

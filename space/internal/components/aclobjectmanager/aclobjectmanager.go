@@ -318,7 +318,7 @@ func (a *aclObjectManager) processStates(states []list.AccountState, upToDate bo
 			if err != nil {
 				log.Warn("failed to set my participant status", zap.Error(err))
 			}
-			return a.status.SetPersistentStatus(spaceinfo.AccountStatusRemoving)
+			return a.status.SetPersistentStatus(spaceinfo.AccountStatusDeleted)
 		}
 		err := a.participantWatcher.UpdateParticipantFromAclState(a.ctx, a.sp, state)
 		if err != nil {
