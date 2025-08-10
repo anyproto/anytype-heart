@@ -1,4 +1,4 @@
-package acl
+package space
 
 import (
 	"github.com/anyproto/anytype-heart/core/domain"
@@ -7,15 +7,21 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+	"github.com/anyproto/anytype-heart/space/spaceinfo"
 	"go.uber.org/zap"
 )
 
 type spaceViewObjectSubscription = objectsubscription.ObjectSubscription[spaceViewStatus]
 
 type spaceViewStatus struct {
-	spaceId     string
-	spaceViewId string
-	creator     string
+	spaceId       string
+	spaceViewId   string
+	creator       string
+	aclHeadId     string
+	localStatus   spaceinfo.LocalStatus
+	accountStatus spaceinfo.AccountStatus
+	remoteStatus  spaceinfo.RemoteStatus
+	guestKey      string
 }
 
 type spaceSubscription struct {
@@ -25,13 +31,10 @@ type spaceSubscription struct {
 
 func newSpaceSubscription(
 	service subscription.Service,
-	ownIdentity string,
 	techSpaceId string,
 	afterRun func(sub *spaceViewObjectSubscription),
-	add func(status spaceViewStatus),
-	remove func(id string, status spaceViewStatus),
+	update func(status spaceViewStatus),
 ) *spaceSubscription {
-	participantId := domain.NewParticipantId(techSpaceId, ownIdentity)
 	objectReq := subscription.SubscribeRequest{
 		SpaceId:           techSpaceId,
 		SubId:             CName,
@@ -43,34 +46,14 @@ func newSpaceSubscription(
 			bundle.RelationKeyCreator.String(),
 			bundle.RelationKeySpaceRemoteStatus.String(),
 			bundle.RelationKeySpaceAccountStatus.String(),
+			bundle.RelationKeySpaceLocalStatus.String(),
+			bundle.RelationKeyGuestKey.String(),
 		},
 		Filters: []database.FilterRequest{
-			{
-				RelationKey: bundle.RelationKeyCreator,
-				Condition:   model.BlockContentDataviewFilter_NotEqual,
-				Value:       domain.String(participantId),
-			},
 			{
 				RelationKey: bundle.RelationKeyResolvedLayout,
 				Condition:   model.BlockContentDataviewFilter_Equal,
 				Value:       domain.Int64(int64(model.ObjectType_spaceView)),
-			},
-			{
-				RelationKey: bundle.RelationKeySpaceRemoteStatus,
-				Condition:   model.BlockContentDataviewFilter_Equal,
-				Value:       domain.Int64(int64(model.SpaceStatus_Ok)),
-			},
-			{
-				RelationKey: bundle.RelationKeySpaceAccountStatus,
-				Condition:   model.BlockContentDataviewFilter_Equal,
-				Value:       domain.Int64(int64(model.SpaceStatus_SpaceDeleted)),
-			},
-			{
-				RelationKey: bundle.RelationKeyMyParticipantStatus,
-				Condition:   model.BlockContentDataviewFilter_NotIn,
-				Value: domain.Int64List(
-					[]model.ParticipantStatus{model.ParticipantStatus_Removed, model.ParticipantStatus_Removing},
-				),
 			},
 		},
 	}
@@ -78,17 +61,33 @@ func newSpaceSubscription(
 	objectSubscription = objectsubscription.New[spaceViewStatus](service, objectReq, objectsubscription.SubscriptionParams[spaceViewStatus]{
 		SetDetails: func(details *domain.Details) (string, spaceViewStatus) {
 			status := spaceViewStatus{
-				spaceId:     details.GetString(bundle.RelationKeyTargetSpaceId),
-				spaceViewId: details.GetString(bundle.RelationKeyId),
-				creator:     details.GetString(bundle.RelationKeyCreator),
+				spaceId:       details.GetString(bundle.RelationKeyTargetSpaceId),
+				spaceViewId:   details.GetString(bundle.RelationKeyId),
+				creator:       details.GetString(bundle.RelationKeyCreator),
+				aclHeadId:     details.GetString(bundle.RelationKeyLatestAclHeadId),
+				localStatus:   spaceinfo.LocalStatus(details.GetInt64(bundle.RelationKeySpaceLocalStatus)),
+				accountStatus: spaceinfo.AccountStatus(details.GetInt64(bundle.RelationKeySpaceAccountStatus)),
+				remoteStatus:  spaceinfo.RemoteStatus(details.GetInt64(bundle.RelationKeySpaceRemoteStatus)),
+				guestKey:      details.GetString(bundle.RelationKeyGuestKey),
 			}
-			defer add(status)
+			defer update(status)
 			return details.GetString(bundle.RelationKeyId), status
 		},
 		UpdateKey: func(key string, value domain.Value, status spaceViewStatus) spaceViewStatus {
+			defer update(status)
 			switch domain.RelationKey(key) {
 			case bundle.RelationKeyCreator:
 				status.creator = value.String()
+			case bundle.RelationKeySpaceRemoteStatus:
+				status.remoteStatus = spaceinfo.RemoteStatus(value.Int64())
+			case bundle.RelationKeySpaceAccountStatus:
+				status.accountStatus = spaceinfo.AccountStatus(value.Int64())
+			case bundle.RelationKeySpaceLocalStatus:
+				status.localStatus = spaceinfo.LocalStatus(value.Int64())
+			case bundle.RelationKeyLatestAclHeadId:
+				status.aclHeadId = value.String()
+			case bundle.RelationKeyGuestKey:
+				status.aclHeadId = value.String()
 			}
 			return status
 		},
@@ -98,10 +97,7 @@ func newSpaceSubscription(
 			return status
 		},
 		OnAdded: func(id string, entry spaceViewStatus) {
-			add(entry)
-		},
-		OnRemoved: func(id string, entry spaceViewStatus) {
-			remove(id, entry)
+			update(entry)
 		},
 	})
 	return &spaceSubscription{

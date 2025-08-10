@@ -24,6 +24,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pb"
+	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space/spacecore/mock_spacecore"
 	"github.com/anyproto/anytype-heart/space/spaceinfo"
 	"github.com/anyproto/anytype-heart/tests/testutil"
@@ -45,6 +46,10 @@ func TestTechSpace_Run(t *testing.T) {
 type spaceViewStub struct {
 	*smarttest.SmartTest
 	data *domain.Details
+}
+
+func (s *spaceViewStub) SetMyParticipantStatus(status model.ParticipantStatus) error {
+	panic("unimplemented")
 }
 
 func (s *spaceViewStub) SetPushNotificationMode(ctx session.Context, mode pb.RpcPushNotificationSetSpaceModeMode) (err error) {

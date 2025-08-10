@@ -20,6 +20,7 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/anytype/config"
 	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/core/subscription"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -114,6 +115,7 @@ type service struct {
 	accountMetadataPayload []byte
 	repKey                 uint64
 	spaceLoaderListener    aclobjectmanager.SpaceLoaderListener
+	watcher                *spaceWatcher
 
 	mu        sync.Mutex
 	ctx       context.Context // use ctx for the long operations within the lifecycle of the service, excluding Run
@@ -124,21 +126,11 @@ type service struct {
 }
 
 func (s *service) Delete(ctx context.Context, id string) (err error) {
-	if s.isClosing.Load() {
-		return ErrSpaceIsClosing
-	}
-	s.mu.Lock()
-	ctrl := s.spaceControllers[id]
-	s.mu.Unlock()
-	del, ok := ctrl.(spacecontroller.DeleteController)
-	if !ok {
-		return ErrSpaceNotExists
-	}
-	err = del.Delete(ctx)
-	if err != nil {
-		return fmt.Errorf("delete space: %w", err)
-	}
-	return nil
+	return s.TechSpace().DoSpaceView(ctx, id, func(spaceView techspace.SpaceView) error {
+		info := spaceinfo.NewSpacePersistentInfo(id)
+		info.SetAccountStatus(spaceinfo.AccountStatusDeleted)
+		return spaceView.SetSpacePersistentInfo(info)
+	})
 }
 
 func (s *service) TechSpace() *clientspace.TechSpace {
@@ -155,6 +147,7 @@ func (s *service) Init(a *app.App) (err error) {
 	s.autoJoinStreamSpace = s.config.AutoJoinStream
 	s.spaceControllers = make(map[string]spacecontroller.SpaceController)
 	s.updater = app.MustComponent[coordinatorStatusUpdater](a)
+	subService := app.MustComponent[subscription.Service](a)
 	s.notificationService = app.MustComponent[NotificationSender](a)
 	s.spaceNameGetter = app.MustComponent[objectstore.SpaceNameGetter](a)
 	s.spaceLoaderListener = app.MustComponent[aclobjectmanager.SpaceLoaderListener](a)
@@ -180,6 +173,8 @@ func (s *service) Init(a *app.App) (err error) {
 
 	s.repKey, err = getRepKey(s.personalSpaceId)
 	s.ctx, s.ctxCancel = context.WithCancel(context.Background())
+	s.watcher = newSpaceWatcher(s.techSpaceId, subService, s)
+
 	return err
 }
 
@@ -259,7 +254,11 @@ func (s *service) initAccount(ctx context.Context) (err error) {
 			return fmt.Errorf("create tech space for old accounts: %w", err)
 		}
 	}
-	s.techSpace.WakeUpViews()
+	err = s.watcher.Run()
+	if err != nil {
+		return fmt.Errorf("run watcher: %w", err)
+	}
+	s.techSpace.StartSync()
 	// only persist networkId after successful space init
 	err = s.config.PersistAccountNetworkId()
 	if err != nil {
@@ -296,7 +295,11 @@ func (s *service) createAccount(ctx context.Context) (err error) {
 		s.tryToJoinSpaceStream()
 	}
 
-	s.techSpace.WakeUpViews()
+	err = s.watcher.Run()
+	if err != nil {
+		return fmt.Errorf("run watcher: %w", err)
+	}
+	s.techSpace.StartSync()
 	// only persist networkId after successful space init
 	err = s.config.PersistAccountNetworkId()
 	if err != nil {
@@ -346,8 +349,23 @@ func (s *service) IsPersonal(id string) bool {
 	return s.personalSpaceId == id
 }
 
-func (s *service) OnViewUpdated(info spaceinfo.SpacePersistentInfo) {
+func (s *service) onSpaceStatusUpdated(spaceStatus spaceViewStatus) {
+	if s.isClosing.Load() {
+		return
+	}
 	go func() {
+		if spaceStatus.remoteStatus == spaceinfo.RemoteStatusDeleted && spaceStatus.accountStatus != spaceinfo.AccountStatusDeleted {
+			if spaceStatus.localStatus == spaceinfo.LocalStatusOk {
+				s.sendNotification(spaceStatus.spaceId)
+			}
+			s.techSpace.DoSpaceView(context.Background(), spaceStatus.spaceId, func(spaceView techspace.SpaceView) error {
+				info := spaceinfo.NewSpacePersistentInfo(spaceStatus.spaceId)
+				info.SetAccountStatus(spaceinfo.AccountStatusDeleted)
+				return spaceView.SetSpacePersistentInfo(info)
+			})
+			return
+		}
+		info := statusToInfo(spaceStatus)
 		ctrl, err := s.startStatus(s.ctx, info)
 		if err != nil && !errors.Is(err, ErrSpaceDeleted) {
 			log.Warn("OnViewUpdated.startStatus error", zap.Error(err))
@@ -381,29 +399,6 @@ func (s *service) UpdateRemoteStatus(ctx context.Context, status spaceinfo.Space
 	return s.techSpace.DoSpaceView(ctx, status.LocalInfo.SpaceId, func(spaceView techspace.SpaceView) error {
 		return spaceView.SetSpaceLocalInfo(status.LocalInfo)
 	})
-	// spaceId := status.LocalInfo.SpaceId
-	// s.mu.Lock()
-	// ctrl := s.spaceControllers[spaceId]
-	// s.mu.Unlock()
-	// if ctrl == nil {
-	// 	return fmt.Errorf("no such space: %s", spaceId)
-	// }
-	// err := ctrl.SetLocalInfo(ctx, status.LocalInfo)
-	// if err != nil {
-	// 	return fmt.Errorf("updateRemoteStatus: %w", err)
-	// }
-	// if !status.IsOwned && status.LocalInfo.GetRemoteStatus() == spaceinfo.RemoteStatusDeleted {
-	// 	accountStatus := ctrl.GetStatus()
-	// 	if accountStatus != spaceinfo.AccountStatusDeleted && accountStatus != spaceinfo.AccountStatusRemoving {
-	// 		if ctrl.GetLocalStatus() == spaceinfo.LocalStatusOk {
-	// 			s.sendNotification(spaceId)
-	// 		}
-	// 		info := spaceinfo.NewSpacePersistentInfo(spaceId)
-	// 		info.SetAccountStatus(spaceinfo.AccountStatusRemoving)
-	// 		return ctrl.SetPersistentInfo(ctx, info)
-	// 	}
-	// }
-	// return nil
 }
 
 func (s *service) sendNotification(spaceId string) {
@@ -457,7 +452,7 @@ func (s *service) Close(ctx context.Context) error {
 	if err != nil {
 		log.Error("close tech space", zap.Error(err))
 	}
-	return nil
+	return s.watcher.Close()
 }
 
 func (s *service) AllSpaceIds() (ids []string) {

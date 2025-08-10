@@ -59,16 +59,7 @@ func (o *spaceOffloader) Name() (name string) {
 }
 
 func (o *spaceOffloader) Run(ctx context.Context) (err error) {
-	persistentStatus := o.status.GetPersistentStatus()
-	if persistentStatus != spaceinfo.AccountStatusDeleted {
-		persistentStatus = spaceinfo.AccountStatusDeleted
-		err := o.status.SetPersistentStatus(persistentStatus)
-		if err != nil {
-			return err
-		}
-	}
 	localStatus := o.status.GetLocalStatus()
-	o.delController.AddSpaceToDelete(o.status.SpaceId())
 	if localStatus == spaceinfo.LocalStatusMissing {
 		o.offloaded.Store(true)
 		return nil
