@@ -23,13 +23,16 @@ import (
 	"github.com/cheggaaa/mb/v3"
 
 	"github.com/anyproto/anytype-heart/core/anytype/config"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/event/mock_event"
 	"github.com/anyproto/anytype-heart/core/kanban/mock_kanban"
 	"github.com/anyproto/anytype-heart/core/notifications/mock_notifications"
 	"github.com/anyproto/anytype-heart/core/subscription"
 	"github.com/anyproto/anytype-heart/core/wallet/mock_wallet"
 	"github.com/anyproto/anytype-heart/pb"
+	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
+	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space/clientspace"
 	"github.com/anyproto/anytype-heart/space/clientspace/mock_clientspace"
 	"github.com/anyproto/anytype-heart/space/internal/components/aclobjectmanager"
@@ -366,4 +369,189 @@ func (d *dummyCollectionService) SubscribeForCollection(collectionID string, sub
 }
 
 func (d *dummyCollectionService) UnsubscribeFromCollection(collectionID string, subscriptionID string) {
+}
+
+func givenSpaceViewObject(id string, targetSpaceId string, creator string, accountStatus spaceinfo.AccountStatus, remoteStatus spaceinfo.RemoteStatus, localStatus spaceinfo.LocalStatus, guestKey string) objectstore.TestObject {
+	return objectstore.TestObject{
+		bundle.RelationKeyId:                 domain.String(id),
+		bundle.RelationKeyTargetSpaceId:      domain.String(targetSpaceId),
+		bundle.RelationKeyCreator:            domain.String(creator),
+		bundle.RelationKeyResolvedLayout:     domain.Int64(int64(model.ObjectType_spaceView)),
+		bundle.RelationKeySpaceAccountStatus: domain.Int64(int64(accountStatus)),
+		bundle.RelationKeySpaceLocalStatus:   domain.Int64(int64(localStatus)),
+		bundle.RelationKeySpaceRemoteStatus:  domain.Int64(int64(remoteStatus)),
+		bundle.RelationKeyGuestKey:           domain.String(guestKey),
+	}
+}
+
+func TestService_onSpaceStatusUpdated(t *testing.T) {
+	t.Run("personal space - creates personal space controller and calls update", func(t *testing.T) {
+		fx := newFixture(t, func(t *testing.T, fx *fixture) {
+			fx.factory.EXPECT().LoadAndSetTechSpace(mock.Anything).Return(&clientspace.TechSpace{TechSpace: fx.techSpace}, nil)
+			fx.techSpace.EXPECT().StartSync()
+		})
+		
+		done := make(chan struct{})
+		personalCtrl := mock_spacecontroller.NewMockSpaceController(t)
+		personalCtrl.EXPECT().SpaceId().Return(fx.spaceId).Maybe()
+		personalCtrl.EXPECT().Close(mock.Anything).Return(nil).Maybe()
+		fx.factory.EXPECT().NewPersonalSpace(mock.Anything, fx.service.accountMetadataPayload).Return(personalCtrl, nil)
+		personalCtrl.EXPECT().Update().Run(func() {
+			close(done)
+		}).Return(nil).Once()
+
+		fx.objectStore.AddObjects(t, fx.service.techSpaceId, []objectstore.TestObject{
+			givenSpaceViewObject("spaceView1", fx.spaceId, "creator1", spaceinfo.AccountStatusActive, spaceinfo.RemoteStatusOk, spaceinfo.LocalStatusOk, ""),
+		})
+
+		<-done
+	})
+
+	t.Run("shareable space - creates shareable space controller and calls update", func(t *testing.T) {
+		fx := newFixture(t, func(t *testing.T, fx *fixture) {
+			fx.factory.EXPECT().LoadAndSetTechSpace(mock.Anything).Return(&clientspace.TechSpace{TechSpace: fx.techSpace}, nil)
+			fx.techSpace.EXPECT().StartSync()
+		})
+		
+		shareableSpaceId := "shareable.space.id"
+		done := make(chan struct{})
+		shareableCtrl := mock_spacecontroller.NewMockSpaceController(t)
+		shareableCtrl.EXPECT().SpaceId().Return(shareableSpaceId).Maybe()
+		shareableCtrl.EXPECT().Close(mock.Anything).Return(nil).Maybe()
+		fx.factory.EXPECT().NewShareableSpace(mock.Anything, shareableSpaceId, mock.Anything).Return(shareableCtrl, nil)
+		shareableCtrl.EXPECT().Update().Run(func() {
+			close(done)
+		}).Return(nil).Once()
+
+		fx.objectStore.AddObjects(t, fx.service.techSpaceId, []objectstore.TestObject{
+			givenSpaceViewObject("spaceView2", shareableSpaceId, "creator2", spaceinfo.AccountStatusActive, spaceinfo.RemoteStatusOk, spaceinfo.LocalStatusOk, ""),
+		})
+
+		<-done
+	})
+
+	t.Run("streamable space - creates streamable space controller and calls update", func(t *testing.T) {
+		fx := newFixture(t, func(t *testing.T, fx *fixture) {
+			fx.factory.EXPECT().LoadAndSetTechSpace(mock.Anything).Return(&clientspace.TechSpace{TechSpace: fx.techSpace}, nil)
+			fx.techSpace.EXPECT().StartSync()
+		})
+		
+		streamableSpaceId := "streamable.space.id"
+		done := make(chan struct{})
+		streamableCtrl := mock_spacecontroller.NewMockSpaceController(t)
+		streamableCtrl.EXPECT().SpaceId().Return(streamableSpaceId).Maybe()
+		streamableCtrl.EXPECT().Close(mock.Anything).Return(nil).Maybe()
+		fx.factory.EXPECT().NewStreamableSpace(mock.Anything, streamableSpaceId, mock.Anything, fx.service.accountMetadataPayload).Return(streamableCtrl, nil)
+		streamableCtrl.EXPECT().Update().Run(func() {
+			close(done)
+		}).Return(nil).Once()
+
+		fx.objectStore.AddObjects(t, fx.service.techSpaceId, []objectstore.TestObject{
+			givenSpaceViewObject("spaceView3", streamableSpaceId, "creator3", spaceinfo.AccountStatusActive, spaceinfo.RemoteStatusOk, spaceinfo.LocalStatusOk, "encoded_key_here"),
+		})
+
+		<-done
+	})
+
+	t.Run("space deleted remotely - sets account status to deleted and sends notification", func(t *testing.T) {
+		fx := newFixture(t, func(t *testing.T, fx *fixture) {
+			fx.factory.EXPECT().LoadAndSetTechSpace(mock.Anything).Return(&clientspace.TechSpace{TechSpace: fx.techSpace}, nil)
+			fx.techSpace.EXPECT().StartSync()
+		})
+		
+		deletedSpaceId := "deleted.space.id"
+		done := make(chan struct{})
+		mockSpaceView := mock_techspace.NewMockSpaceView(t)
+		fx.techSpace.EXPECT().DoSpaceView(mock.Anything, deletedSpaceId, mock.Anything).RunAndReturn(
+			func(ctx context.Context, spaceID string, apply func(spaceView techspace.SpaceView) error) error {
+				return apply(mockSpaceView)
+			})
+		mockSpaceView.EXPECT().SetSpacePersistentInfo(mock.MatchedBy(func(info spaceinfo.SpacePersistentInfo) bool {
+			return info.SpaceID == deletedSpaceId && info.GetAccountStatus() == spaceinfo.AccountStatusDeleted
+		})).Run(func(info spaceinfo.SpacePersistentInfo) {
+			close(done)
+		}).Return(nil)
+		
+		fx.notificationSender.EXPECT().CreateAndSend(mock.Anything).Return(nil)
+
+		fx.objectStore.AddObjects(t, fx.service.techSpaceId, []objectstore.TestObject{
+			givenSpaceViewObject("spaceView4", deletedSpaceId, "creator4", spaceinfo.AccountStatusActive, spaceinfo.RemoteStatusDeleted, spaceinfo.LocalStatusOk, ""),
+		})
+
+		<-done
+	})
+
+	t.Run("space already deleted - does not process deletion again", func(t *testing.T) {
+		fx := newFixture(t, func(t *testing.T, fx *fixture) {
+			fx.factory.EXPECT().LoadAndSetTechSpace(mock.Anything).Return(&clientspace.TechSpace{TechSpace: fx.techSpace}, nil)
+			fx.techSpace.EXPECT().StartSync()
+		})
+
+		alreadyDeletedSpaceId := "already.deleted.space"
+		done := make(chan struct{})
+		shareableCtrl := mock_spacecontroller.NewMockSpaceController(t)
+		shareableCtrl.EXPECT().SpaceId().Return(alreadyDeletedSpaceId).Maybe()
+		shareableCtrl.EXPECT().Close(mock.Anything).Return(nil).Maybe()
+		fx.factory.EXPECT().NewShareableSpace(mock.Anything, alreadyDeletedSpaceId, mock.Anything).Return(shareableCtrl, nil)
+		shareableCtrl.EXPECT().Update().Run(func() {
+			close(done)
+		}).Return(nil).Once()
+
+		fx.objectStore.AddObjects(t, fx.service.techSpaceId, []objectstore.TestObject{
+			givenSpaceViewObject("spaceView5", alreadyDeletedSpaceId, "creator5", spaceinfo.AccountStatusDeleted, spaceinfo.RemoteStatusDeleted, spaceinfo.LocalStatusOk, ""),
+		})
+
+		<-done
+	})
+
+	t.Run("handles startStatus error gracefully", func(t *testing.T) {
+		fx := newFixture(t, func(t *testing.T, fx *fixture) {
+			fx.factory.EXPECT().LoadAndSetTechSpace(mock.Anything).Return(&clientspace.TechSpace{TechSpace: fx.techSpace}, nil)
+			fx.techSpace.EXPECT().StartSync()
+		})
+		
+		errorSpaceId := "error.space.id"
+		fx.factory.EXPECT().NewShareableSpace(mock.Anything, errorSpaceId, mock.Anything).Return(nil, fmt.Errorf("factory error"))
+
+		fx.objectStore.AddObjects(t, fx.service.techSpaceId, []objectstore.TestObject{
+			givenSpaceViewObject("spaceView6", errorSpaceId, "creator6", spaceinfo.AccountStatusActive, spaceinfo.RemoteStatusOk, spaceinfo.LocalStatusOk, ""),
+		})
+
+		time.Sleep(200 * time.Millisecond)
+	})
+
+	t.Run("handles controller update error gracefully", func(t *testing.T) {
+		fx := newFixture(t, func(t *testing.T, fx *fixture) {
+			fx.factory.EXPECT().LoadAndSetTechSpace(mock.Anything).Return(&clientspace.TechSpace{TechSpace: fx.techSpace}, nil)
+			fx.techSpace.EXPECT().StartSync()
+		})
+		
+		updateErrorSpaceId := "update.error.space.id"
+		updateErrorCtrl := mock_spacecontroller.NewMockSpaceController(t)
+		updateErrorCtrl.EXPECT().SpaceId().Return(updateErrorSpaceId).Maybe()
+		updateErrorCtrl.EXPECT().Close(mock.Anything).Return(nil).Maybe()
+		fx.factory.EXPECT().NewShareableSpace(mock.Anything, updateErrorSpaceId, mock.Anything).Return(updateErrorCtrl, nil)
+		updateErrorCtrl.EXPECT().Update().Return(fmt.Errorf("update error"))
+
+		fx.objectStore.AddObjects(t, fx.service.techSpaceId, []objectstore.TestObject{
+			givenSpaceViewObject("spaceView7", updateErrorSpaceId, "creator7", spaceinfo.AccountStatusActive, spaceinfo.RemoteStatusOk, spaceinfo.LocalStatusOk, ""),
+		})
+
+		time.Sleep(200 * time.Millisecond)
+	})
+
+	t.Run("service closing - returns early", func(t *testing.T) {
+		fx := newFixture(t, func(t *testing.T, fx *fixture) {
+			fx.factory.EXPECT().LoadAndSetTechSpace(mock.Anything).Return(&clientspace.TechSpace{TechSpace: fx.techSpace}, nil)
+			fx.techSpace.EXPECT().StartSync()
+		})
+		
+		fx.service.isClosing.Store(true)
+
+		fx.objectStore.AddObjects(t, fx.service.techSpaceId, []objectstore.TestObject{
+			givenSpaceViewObject("spaceView8", "closing.space.id", "creator8", spaceinfo.AccountStatusActive, spaceinfo.RemoteStatusOk, spaceinfo.LocalStatusOk, ""),
+		})
+
+		time.Sleep(200 * time.Millisecond)
+	})
 }
