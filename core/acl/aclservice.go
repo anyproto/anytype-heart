@@ -339,9 +339,9 @@ func (a *aclService) Leave(ctx context.Context, spaceId string) (err error) {
 	if err != nil {
 		// Handle known errors gracefully - if space is deleted, storage is missing,
 		// or user has no ACL access, leave operation should succeed since there's nothing to leave from
-		if errors.Is(err, space.ErrSpaceStorageMissig) || 
-		   errors.Is(err, space.ErrSpaceDeleted) ||
-		   errors.Is(err, list.ErrNoSuchAccount) {
+		if errors.Is(err, space.ErrSpaceStorageMissig) ||
+			errors.Is(err, space.ErrSpaceDeleted) ||
+			errors.Is(err, list.ErrNoSuchAccount) {
 			return nil
 		}
 		return convertedOrAclRequestError(err)
@@ -359,11 +359,11 @@ func (a *aclService) Leave(ctx context.Context, spaceId string) (err error) {
 	err = a.joiningClient.RequestSelfRemove(ctx, spaceId, aclList)
 	if err != nil {
 		// Handle known errors gracefully - these are conditions where leave should succeed
-		if errors.Is(err, list.ErrPendingRequest) || 
-		   errors.Is(err, list.ErrIsOwner) || 
-		   errors.Is(err, list.ErrNoSuchAccount) || 
-		   errors.Is(err, coordinatorproto.ErrSpaceIsDeleted) ||
-		   errors.Is(err, coordinatorproto.ErrSpaceNotExists) {
+		if errors.Is(err, list.ErrPendingRequest) ||
+			errors.Is(err, list.ErrIsOwner) ||
+			errors.Is(err, list.ErrNoSuchAccount) ||
+			errors.Is(err, coordinatorproto.ErrSpaceIsDeleted) ||
+			errors.Is(err, coordinatorproto.ErrSpaceNotExists) {
 			return nil
 		}
 		return convertedOrAclRequestError(err)

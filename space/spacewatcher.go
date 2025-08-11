@@ -48,7 +48,7 @@ func (w *spaceWatcher) Close() error {
 
 func statusToInfo(status spaceViewStatus) spaceinfo.SpacePersistentInfo {
 	persistentInfo := spaceinfo.NewSpacePersistentInfo(status.spaceId)
-	persistentInfo.SetAccountStatus(spaceinfo.AccountStatus(status.accountStatus)).
+	persistentInfo.SetAccountStatus(status.accountStatus).
 		SetAclHeadId(status.aclHeadId).
 		SetEncodedKey(status.guestKey)
 	return persistentInfo

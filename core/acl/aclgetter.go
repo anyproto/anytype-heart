@@ -30,7 +30,7 @@ func (g *aclGetter) RemoveAcl(ctx context.Context, spaceId string) error {
 }
 
 func (g *aclGetter) GetOrRefreshAcl(ctx context.Context, spaceId string) (aclList list.AclList, err error) {
-	aclList, ok := g.currentAcls[spaceId] 
+	aclList, ok := g.currentAcls[spaceId]
 	if !ok {
 		aclList, err = g.getAcl(ctx, spaceId)
 		if err != nil {
@@ -71,4 +71,3 @@ func (g *aclGetter) refresh(ctx context.Context, spaceId string, aclList list.Ac
 	}
 	return aclList.AddRawRecords(res)
 }
-

@@ -80,8 +80,7 @@ func newSpaceSubscription(
 			},
 		},
 	}
-	var objectSubscription *spaceViewObjectSubscription
-	objectSubscription = objectsubscription.New[spaceViewStatus](service, objectReq, objectsubscription.SubscriptionParams[spaceViewStatus]{
+	objectSubscription := objectsubscription.New[spaceViewStatus](service, objectReq, objectsubscription.SubscriptionParams[spaceViewStatus]{
 		SetDetails: func(details *domain.Details) (string, spaceViewStatus) {
 			status := spaceViewStatus{
 				spaceId:     details.GetString(bundle.RelationKeyTargetSpaceId),

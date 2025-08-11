@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"sync"
 
+	"go.uber.org/zap"
+
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/subscription"
 	"github.com/anyproto/anytype-heart/core/subscription/objectsubscription"
@@ -11,7 +13,6 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space/spaceinfo"
-	"go.uber.org/zap"
 )
 
 type spaceViewObjectSubscription = objectsubscription.ObjectSubscription[spaceViewStatus]
@@ -67,8 +68,7 @@ func newSpaceSubscription(
 			},
 		},
 	}
-	var objectSubscription *spaceViewObjectSubscription
-	objectSubscription = objectsubscription.New(service, objectReq, objectsubscription.SubscriptionParams[spaceViewStatus]{
+	objectSubscription := objectsubscription.New(service, objectReq, objectsubscription.SubscriptionParams[spaceViewStatus]{
 		SetDetails: func(details *domain.Details) (string, spaceViewStatus) {
 			status := spaceViewStatus{
 				spaceId:       details.GetString(bundle.RelationKeyTargetSpaceId),
