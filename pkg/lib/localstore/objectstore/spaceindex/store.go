@@ -240,6 +240,11 @@ func (s *dsObjectStore) initCollections(ctx context.Context) error {
 			Fields: []string{bundle.RelationKeyOldAnytypeID.String()},
 			Sparse: true,
 		},
+		{
+			Name:   "fileVariantMills",
+			Fields: []string{bundle.RelationKeyFileVariantMills.String()},
+			Sparse: true,
+		},
 	}
 	err = anystorehelper.AddIndexes(ctx, objects, objectIndexes)
 	if err != nil {
