@@ -26,6 +26,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/inviteservice"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
+	"github.com/anyproto/anytype-heart/pkg/lib/core"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space"
@@ -93,6 +94,7 @@ type service struct {
 	identityService      identity.Service
 	inviteService        inviteservice.InviteService
 	objectStore          objectstore.ObjectStore
+	tempDirService       core.TempDirProvider
 }
 
 func New() Service {
@@ -106,6 +108,7 @@ func (s *service) Init(a *app.App) error {
 	s.identityService = app.MustComponent[identity.Service](a)
 	s.inviteService = app.MustComponent[inviteservice.InviteService](a)
 	s.objectStore = app.MustComponent[objectstore.ObjectStore](a)
+	s.tempDirService = app.MustComponent[core.TempDirProvider](a)
 	return nil
 }
 
@@ -126,7 +129,7 @@ func uniqName() string {
 }
 
 func (s *service) exportToDir(ctx context.Context, spaceId, pageId string, includeSpaceInfo bool) (dirEntries []fs.DirEntry, exportPath string, err error) {
-	tempDir := os.TempDir()
+	tempDir := s.tempDirService.TempDir()
 	exportPath, _, err = s.exportService.Export(ctx, pb.RpcObjectListExportRequest{
 		SpaceId:          spaceId,
 		Format:           model.Export_Protobuf,
@@ -172,7 +175,7 @@ func (s *service) publishToPublishServer(ctx context.Context, spaceId, pageId, u
 		return err
 	}
 
-	tempPublishDir := filepath.Join(os.TempDir(), uniqName())
+	tempPublishDir := filepath.Join(s.tempDirService.TempDir(), uniqName())
 	defer os.RemoveAll(tempPublishDir)
 
 	if err := os.MkdirAll(tempPublishDir, 0777); err != nil {
