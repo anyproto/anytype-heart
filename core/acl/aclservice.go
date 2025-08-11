@@ -439,6 +439,22 @@ func (a *aclService) Join(ctx context.Context, spaceId, networkId string, invite
 	if err != nil {
 		return convertedOrInternalError("get invite payload", err)
 	}
+	onJoinError := func(err error) error {
+		if errors.Is(err, coordinatorproto.ErrSpaceIsDeleted) {
+			return space.ErrSpaceDeleted
+		}
+		if errors.Is(err, list.ErrInsufficientPermissions) {
+			err = a.joiningClient.CancelRemoveSelf(ctx, spaceId)
+			if err != nil {
+				return convertedOrAclRequestError(err)
+			}
+			err = a.spaceService.CancelLeave(ctx, spaceId)
+			if err != nil {
+				return convertedOrInternalError("cancel leave", err)
+			}
+		}
+		return convertedOrAclRequestError(err)
+	}
 	switch invitePayload.InviteType {
 	case model.InviteType_Guest:
 		guestKey, err := crypto.UnmarshalEd25519PrivateKeyProto(invitePayload.GuestKey)
@@ -457,20 +473,7 @@ func (a *aclService) Join(ctx context.Context, spaceId, networkId string, invite
 		})
 		// nolint: nestif
 		if err != nil {
-			if errors.Is(err, coordinatorproto.ErrSpaceIsDeleted) {
-				return space.ErrSpaceDeleted
-			}
-			if errors.Is(err, list.ErrInsufficientPermissions) {
-				err = a.joiningClient.CancelRemoveSelf(ctx, spaceId)
-				if err != nil {
-					return convertedOrAclRequestError(err)
-				}
-				err = a.spaceService.CancelLeave(ctx, spaceId)
-				if err != nil {
-					return convertedOrInternalError("cancel leave", err)
-				}
-			}
-			return convertedOrAclRequestError(err)
+			return onJoinError(err)
 		}
 		err = a.spaceService.Join(ctx, spaceId, aclHeadId)
 		if err != nil {
@@ -493,10 +496,7 @@ func (a *aclService) Join(ctx context.Context, spaceId, networkId string, invite
 			Metadata:  a.spaceService.AccountMetadataPayload(),
 		})
 		if err != nil {
-			if errors.Is(err, coordinatorproto.ErrSpaceIsDeleted) {
-				return space.ErrSpaceDeleted
-			}
-			return convertedOrAclRequestError(err)
+			return onJoinError(err)
 		}
 		err = a.spaceService.InviteJoin(ctx, spaceId, aclHeadId)
 		if err != nil {

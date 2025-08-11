@@ -354,6 +354,9 @@ func (s *service) onSpaceStatusUpdated(spaceStatus spaceViewStatus) {
 		return
 	}
 	go func() {
+		// we want the updates for each space view to be synchronous
+		spaceStatus.mx.Lock()
+		defer spaceStatus.mx.Unlock()
 		if spaceStatus.remoteStatus == spaceinfo.RemoteStatusDeleted && spaceStatus.accountStatus != spaceinfo.AccountStatusDeleted {
 			if spaceStatus.localStatus == spaceinfo.LocalStatusOk {
 				s.sendNotification(spaceStatus.spaceId)
