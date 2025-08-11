@@ -130,7 +130,7 @@ func ensureRateLimit(rate float64, burst int, isRateLimitDisabled bool) gin.Hand
 }
 
 // ensureFilters is a middleware that ensures the filters are set in the context.
-func ensureFilters() gin.HandlerFunc {
+func (srv *Server) ensureFilters() gin.HandlerFunc {
 	filterDefs := []struct {
 		Param       string
 		RelationKey string
