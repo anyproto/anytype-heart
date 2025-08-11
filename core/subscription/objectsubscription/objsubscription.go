@@ -96,7 +96,7 @@ func (o *ObjectSubscription[T]) Run() error {
 		return fmt.Errorf("SetDetails function not set")
 	}
 	if o.params.UpdateKeys == nil {
-		return fmt.Errorf("UpdateKey function not set")
+		return fmt.Errorf("UpdateKeys function not set")
 	}
 	if o.params.RemoveKeys == nil {
 		return fmt.Errorf("RemoveKeys function not set")
