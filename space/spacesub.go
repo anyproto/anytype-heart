@@ -1,6 +1,9 @@
 package space
 
 import (
+	"fmt"
+	"sync"
+
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/subscription"
 	"github.com/anyproto/anytype-heart/core/subscription/objectsubscription"
@@ -22,6 +25,12 @@ type spaceViewStatus struct {
 	accountStatus spaceinfo.AccountStatus
 	remoteStatus  spaceinfo.RemoteStatus
 	guestKey      string
+	mx            *sync.Mutex
+}
+
+func (s spaceViewStatus) String() string {
+	return fmt.Sprintf("spaceViewStatus{spaceId: %s, spaceViewId: %s, creator: %s, aclHeadId: %s, localStatus: %s, accountStatus: %s, remoteStatus: %s, guestKey: %s}",
+		s.spaceId, s.spaceViewId, s.creator, s.aclHeadId, s.localStatus, s.accountStatus, s.remoteStatus, s.guestKey)
 }
 
 type spaceSubscription struct {
@@ -48,6 +57,7 @@ func newSpaceSubscription(
 			bundle.RelationKeySpaceAccountStatus.String(),
 			bundle.RelationKeySpaceLocalStatus.String(),
 			bundle.RelationKeyGuestKey.String(),
+			bundle.RelationKeyLatestAclHeadId.String(),
 		},
 		Filters: []database.FilterRequest{
 			{
@@ -58,7 +68,7 @@ func newSpaceSubscription(
 		},
 	}
 	var objectSubscription *spaceViewObjectSubscription
-	objectSubscription = objectsubscription.New[spaceViewStatus](service, objectReq, objectsubscription.SubscriptionParams[spaceViewStatus]{
+	objectSubscription = objectsubscription.New(service, objectReq, objectsubscription.SubscriptionParams[spaceViewStatus]{
 		SetDetails: func(details *domain.Details) (string, spaceViewStatus) {
 			status := spaceViewStatus{
 				spaceId:       details.GetString(bundle.RelationKeyTargetSpaceId),
@@ -69,26 +79,28 @@ func newSpaceSubscription(
 				accountStatus: spaceinfo.AccountStatus(details.GetInt64(bundle.RelationKeySpaceAccountStatus)),
 				remoteStatus:  spaceinfo.RemoteStatus(details.GetInt64(bundle.RelationKeySpaceRemoteStatus)),
 				guestKey:      details.GetString(bundle.RelationKeyGuestKey),
+				mx:            &sync.Mutex{},
 			}
-			defer update(status)
 			return details.GetString(bundle.RelationKeyId), status
 		},
-		UpdateKey: func(key string, value domain.Value, status spaceViewStatus) spaceViewStatus {
-			defer update(status)
-			switch domain.RelationKey(key) {
-			case bundle.RelationKeyCreator:
-				status.creator = value.String()
-			case bundle.RelationKeySpaceRemoteStatus:
-				status.remoteStatus = spaceinfo.RemoteStatus(value.Int64())
-			case bundle.RelationKeySpaceAccountStatus:
-				status.accountStatus = spaceinfo.AccountStatus(value.Int64())
-			case bundle.RelationKeySpaceLocalStatus:
-				status.localStatus = spaceinfo.LocalStatus(value.Int64())
-			case bundle.RelationKeyLatestAclHeadId:
-				status.aclHeadId = value.String()
-			case bundle.RelationKeyGuestKey:
-				status.aclHeadId = value.String()
+		UpdateKeys: func(keyValues []objectsubscription.RelationKeyValue, status spaceViewStatus) spaceViewStatus {
+			for _, kv := range keyValues {
+				switch domain.RelationKey(kv.Key) {
+				case bundle.RelationKeyCreator:
+					status.creator = kv.Value.String()
+				case bundle.RelationKeySpaceRemoteStatus:
+					status.remoteStatus = spaceinfo.RemoteStatus(kv.Value.Int64())
+				case bundle.RelationKeySpaceAccountStatus:
+					status.accountStatus = spaceinfo.AccountStatus(kv.Value.Int64())
+				case bundle.RelationKeySpaceLocalStatus:
+					status.localStatus = spaceinfo.LocalStatus(kv.Value.Int64())
+				case bundle.RelationKeyLatestAclHeadId:
+					status.aclHeadId = kv.Value.String()
+				case bundle.RelationKeyGuestKey:
+					status.aclHeadId = kv.Value.String()
+				}
 			}
+			update(status)
 			return status
 		},
 		RemoveKeys: func(strings []string, status spaceViewStatus) spaceViewStatus {

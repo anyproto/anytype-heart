@@ -1,6 +1,8 @@
 package acl
 
 import (
+	"fmt"
+
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/subscription"
 	"github.com/anyproto/anytype-heart/core/subscription/objectsubscription"
@@ -16,6 +18,10 @@ type spaceViewStatus struct {
 	spaceId     string
 	spaceViewId string
 	creator     string
+}
+
+func (s spaceViewStatus) String() string {
+	return fmt.Sprintf("spaceId: %s, spaceViewId: %s, creator: %s", s.spaceId, s.spaceViewId, s.creator)
 }
 
 type spaceSubscription struct {
@@ -82,13 +88,13 @@ func newSpaceSubscription(
 				spaceViewId: details.GetString(bundle.RelationKeyId),
 				creator:     details.GetString(bundle.RelationKeyCreator),
 			}
-			defer add(status)
 			return details.GetString(bundle.RelationKeyId), status
 		},
-		UpdateKey: func(key string, value domain.Value, status spaceViewStatus) spaceViewStatus {
-			switch domain.RelationKey(key) {
-			case bundle.RelationKeyCreator:
-				status.creator = value.String()
+		UpdateKeys: func(keyValues []objectsubscription.RelationKeyValue, status spaceViewStatus) spaceViewStatus {
+			for _, kv := range keyValues {
+				if domain.RelationKey(kv.Key) == bundle.RelationKeyCreator {
+					status.creator = kv.Value.String()
+				}
 			}
 			return status
 		},
