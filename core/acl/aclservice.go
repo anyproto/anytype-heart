@@ -350,7 +350,7 @@ func (a *aclService) Leave(ctx context.Context, spaceId string) (err error) {
 	defer func() {
 		for _, state := range aclList.AclState().CurrentAccounts() {
 			if state.PubKey.Equals(myIdentity) {
-				a.spaceService.TechSpace().DoSpaceView(ctx, spaceId, func(spaceView techspace.SpaceView) error {
+				err = a.spaceService.TechSpace().DoSpaceView(ctx, spaceId, func(spaceView techspace.SpaceView) error {
 					return spaceView.SetMyParticipantStatus(domain.ConvertAclStatus(state.Status))
 				})
 			}

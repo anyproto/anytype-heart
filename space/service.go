@@ -361,22 +361,25 @@ func (s *service) onSpaceStatusUpdated(spaceStatus spaceViewStatus) {
 			if spaceStatus.localStatus == spaceinfo.LocalStatusOk {
 				s.sendNotification(spaceStatus.spaceId)
 			}
-			s.techSpace.DoSpaceView(context.Background(), spaceStatus.spaceId, func(spaceView techspace.SpaceView) error {
+			err := s.techSpace.DoSpaceView(context.Background(), spaceStatus.spaceId, func(spaceView techspace.SpaceView) error {
 				info := spaceinfo.NewSpacePersistentInfo(spaceStatus.spaceId)
 				info.SetAccountStatus(spaceinfo.AccountStatusDeleted)
 				return spaceView.SetSpacePersistentInfo(info)
 			})
+			if err != nil {
+				log.Warn("failed to update space view", zap.Error(err))
+			}
 			return
 		}
 		info := statusToInfo(spaceStatus)
 		ctrl, err := s.startStatus(s.ctx, info)
 		if err != nil && !errors.Is(err, ErrSpaceDeleted) {
-			log.Warn("OnViewUpdated.startStatus error", zap.Error(err))
+			log.Warn("startStatus error", zap.Error(err))
 			return
 		}
 		err = ctrl.Update()
 		if err != nil {
-			log.Warn("OnViewCreated.UpdateStatus error", zap.Error(err))
+			log.Warn("ctrl.Update error", zap.Error(err))
 			return
 		}
 	}()

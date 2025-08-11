@@ -107,7 +107,7 @@ type Config struct {
 
 func NewRetryScheduler[T any](
 	process func(ctx context.Context, msg T) error,
-	shouldRetry func(msg T,err error) bool,
+	shouldRetry func(msg T, err error) bool,
 	config Config,
 ) *RetryScheduler[T] {
 	ctx, cancel := context.WithCancel(context.Background())

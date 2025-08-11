@@ -112,20 +112,26 @@ func newAclUpdater(
 		techSpaceId,
 		func(sub *spaceViewObjectSubscription) {
 			sub.Iterate(func(id string, status spaceViewStatus) bool {
-				scheduler.Schedule(id, Message{
+				err := scheduler.Schedule(id, Message{
 					SpaceId:  status.spaceId,
 					Identity: pubKey,
 					MsgType:  MsgTypeRemoveSelf,
 				}, 0)
+				if err != nil {
+					log.Error("failed to schedule message", zap.Error(err))
+				}
 				return true
 			})
 		},
 		func(status spaceViewStatus) {
-			scheduler.Schedule(id, Message{
+			err := scheduler.Schedule(id, Message{
 				SpaceId:  status.spaceId,
 				Identity: pubKey,
 				MsgType:  MsgTypeRemoveSelf,
 			}, 0)
+			if err != nil {
+				log.Error("failed to schedule message", zap.Error(err))
+			}
 		},
 		func(_ string, status spaceViewStatus) {
 			id := domain.NewParticipantId(status.spaceId, ownIdentity)

@@ -11,7 +11,7 @@ type spaceViewUpdater interface {
 }
 
 type spaceWatcher struct {
-	sub *spaceSubscription
+	sub   *spaceSubscription
 	queue *dedupqueue.DedupQueue
 }
 

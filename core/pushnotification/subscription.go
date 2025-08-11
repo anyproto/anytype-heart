@@ -92,15 +92,18 @@ func newSpaceViewSubscription(service subscription.Service, techSpaceId string, 
 						keyBase64 := kv.Value.String()
 						if status.spaceKeyBase64 != keyBase64 {
 							status.spaceKeyBase64 = keyBase64
+							// nolint: errcheck
 							status.spaceKey, _ = decodePrivKey(keyBase64)
 						}
 					case bundle.RelationKeySpacePushNotificationEncryptionKey:
 						keyBase64 := kv.Value.String()
 						if status.encKeyBase64 != keyBase64 {
 							status.encKeyBase64 = keyBase64
+							// nolint: errcheck
 							status.encKey, _ = decodeSymKey(keyBase64)
 						}
 					case bundle.RelationKeySpacePushNotificationMode:
+						// nolint: gosec
 						status.mode = pb.RpcPushNotificationSetSpaceModeMode(kv.Value.Int64())
 					case bundle.RelationKeyCreator:
 						status.creator = kv.Value.String()
