@@ -3,13 +3,14 @@ package acl
 import (
 	"fmt"
 
+	"go.uber.org/zap"
+
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/subscription"
 	"github.com/anyproto/anytype-heart/core/subscription/objectsubscription"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	"go.uber.org/zap"
 )
 
 type spaceViewObjectSubscription = objectsubscription.ObjectSubscription[spaceViewStatus]
