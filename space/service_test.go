@@ -23,10 +23,10 @@ import (
 	"github.com/cheggaaa/mb/v3"
 
 	"github.com/anyproto/anytype-heart/core/anytype/config"
-	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/core/event/mock_event"
+	"github.com/anyproto/anytype-heart/core/kanban/mock_kanban"
 	"github.com/anyproto/anytype-heart/core/notifications/mock_notifications"
 	"github.com/anyproto/anytype-heart/core/subscription"
-	"github.com/anyproto/anytype-heart/core/subscription/mock_subscription"
 	"github.com/anyproto/anytype-heart/core/wallet/mock_wallet"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
@@ -222,21 +222,31 @@ func newFixture(t *testing.T, expectOldAccount func(t *testing.T, fx *fixture)) 
 	wallet.EXPECT().Account().Return(keys)
 	wallet.EXPECT().RepoPath().Return(path)
 
-	subscriptionService := mock_subscription.NewMockService(t)
-	fx.subscriptionService = subscriptionService
-
+	eventQueue := mb.New[*pb.EventMessage](0)
+	kanbanService := mock_kanban.NewMockService(t)
+	eventSender := mock_event.NewMockSender(t)
+	eventSender.EXPECT().Broadcast(mock.Anything).Run(func(e *pb.Event) {
+		for _, msg := range e.Messages {
+			eventQueue.Add(context.Background(), msg)
+		}
+	}).Maybe()
+	collService := &dummyCollectionService{}
+	subscriptionService := subscription.New()
 	fx.a.
 		Register(testutil.PrepareMock(ctx, fx.a, wallet)).
 		Register(fx.config).
 		Register(&mockAclJoiner{}).
+		Register(testutil.PrepareMock(ctx, fx.a, kanbanService)).
+		Register(testutil.PrepareMock(ctx, fx.a, eventSender)).
+		Register(fx.objectStore).
+		Register(collService).
+		Register(subscriptionService).
 		Register(testutil.PrepareMock(ctx, fx.a, fx.notificationSender)).
 		Register(testutil.PrepareMock(ctx, fx.a, fx.updater)).
 		Register(testutil.PrepareMock(ctx, fx.a, fx.spaceCore)).
 		Register(testutil.PrepareMock(ctx, fx.a, fx.coordClient)).
 		Register(testutil.PrepareMock(ctx, fx.a, fx.factory)).
 		Register(testutil.PrepareMock(ctx, fx.a, mock_notifications.NewMockNotifications(t))).
-		Register(testutil.PrepareMock(ctx, fx.a, subscriptionService)).
-		Register(fx.objectStore).
 		Register(&testSpaceLoaderListener{}).
 		Register(fx.service)
 	fx.expectRun(t, expectOldAccount)
@@ -263,7 +273,6 @@ type fixture struct {
 	techSpace           *mock_techspace.MockTechSpace
 	clientSpace         *mock_clientspace.MockSpace
 	objectStore         *objectstore.StoreFixture
-	subscriptionService *mock_subscription.MockService
 }
 
 type lwMock struct {
@@ -278,15 +287,6 @@ func (fx *fixture) expectRun(t *testing.T, expectOldAccount func(t *testing.T, f
 	fx.spaceCore.EXPECT().DeriveID(mock.Anything, spacecore.SpaceType).Return(fx.spaceId, nil).Times(1)
 	fx.spaceCore.EXPECT().DeriveID(mock.Anything, spacecore.TechSpaceType).Return("techSpaceId", nil).Times(1)
 	fx.updater.EXPECT().UpdateCoordinatorStatus()
-
-	// Mock subscription service Search call that's made during space watcher initialization
-	fx.subscriptionService.EXPECT().Search(mock.Anything).RunAndReturn(func(req subscription.SubscribeRequest) (*subscription.SubscribeResponse, error) {
-		events := mb.New[*pb.EventMessage](0)
-		return &subscription.SubscribeResponse{
-			Records: []*domain.Details{},
-			Output:  events,
-		}, nil
-	}).Maybe()
 
 	clientSpace := mock_clientspace.NewMockSpace(t)
 	mpCtrl := mock_spacecontroller.NewMockSpaceController(t)
@@ -351,3 +351,19 @@ func (s *testSpaceLoaderListener) OnSpaceUnload(_ string) {}
 func (s *testSpaceLoaderListener) Init(a *app.App) (err error) { return nil }
 func (s *testSpaceLoaderListener) Name() (name string)         { return "spaceLoaderListener" }
 
+type dummyCollectionService struct{}
+
+func (d *dummyCollectionService) Init(a *app.App) (err error) {
+	return nil
+}
+
+func (d *dummyCollectionService) Name() (name string) {
+	return "dummyCollectionService"
+}
+
+func (d *dummyCollectionService) SubscribeForCollection(collectionID string, subscriptionID string) ([]string, <-chan []string, error) {
+	return nil, nil, nil
+}
+
+func (d *dummyCollectionService) UnsubscribeFromCollection(collectionID string, subscriptionID string) {
+}

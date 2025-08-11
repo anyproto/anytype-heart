@@ -64,7 +64,6 @@ func newAclUpdaterFixture(t *testing.T) *aclUpdaterFixture {
 	ctx := context.Background()
 	a := &app.App{}
 
-	eventQueue := mb.New[*pb.EventMessage](0)
 
 	var pubKeys []crypto.PubKey
 	for i := 0; i < 10; i++ {
@@ -82,6 +81,7 @@ func newAclUpdaterFixture(t *testing.T) *aclUpdaterFixture {
 		spaceIds = append(spaceIds, fmt.Sprintf("space%d.%d", i, i))
 	}
 
+	eventQueue := mb.New[*pb.EventMessage](0)
 	kanbanService := mock_kanban.NewMockService(t)
 	eventSender := mock_event.NewMockSender(t)
 	eventSender.EXPECT().Broadcast(mock.Anything).Run(func(e *pb.Event) {
