@@ -92,6 +92,10 @@ func (s *Service) CreateTypeWidgetsIfMissing(ctx context.Context, spaceId string
 		return nil
 	}
 
+	if spaceId == s.spaceService.TechSpaceId() {
+		return nil
+	}
+
 	space, err := s.spaceService.Get(ctx, spaceId)
 	if err != nil {
 		return err
