@@ -105,7 +105,7 @@ func (p *importProcessor) setupProgressBar() error {
 
 	p.request.Progress = progress
 
-	if p.deps.blockService != nil && !p.request.GetNoProgress() {
+	if !p.request.GetNoProgress() {
 		return p.deps.blockService.ProcessAdd(p.request.Progress)
 	}
 	return nil
