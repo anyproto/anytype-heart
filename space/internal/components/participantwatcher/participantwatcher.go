@@ -61,10 +61,10 @@ func (p *participantWatcher) WatchParticipant(ctx context.Context, space clients
 		return
 	}
 	accKey := state.PubKey.Account()
-	if _, exists := p.addedParticipants[state.PubKey.Account()]; exists {
+	if _, exists := p.addedParticipants[accKey]; exists {
 		return
 	}
-	err = p.identityService.RegisterIdentity(space.Id(), state.PubKey.Account(), key, func(identity string, profile *model.IdentityProfile) {
+	err = p.identityService.RegisterIdentity(space.Id(), accKey, key, func(identity string, profile *model.IdentityProfile) {
 		err := p.updateParticipantFromIdentity(ctx, space, identity, profile)
 		if err != nil {
 			log.Error("error updating participant from identity", zap.Error(err))

@@ -311,9 +311,15 @@ func (a *aclObjectManager) processStates(states []list.AccountState, upToDate bo
 		if state.Permissions.NoPermissions() && state.PubKey.Equals(myIdentity) && upToDate {
 			return a.status.SetPersistentStatus(spaceinfo.AccountStatusRemoving)
 		}
-		err := a.participantWatcher.UpdateParticipantFromAclState(a.ctx, a.sp, state)
+		err = a.participantWatcher.UpdateParticipantFromAclState(a.ctx, a.sp, state)
 		if err != nil {
 			return err
+		}
+		if state.PubKey == myIdentity {
+			err = a.participantWatcher.UpdateAccountParticipantFromProfile(a.ctx, a.sp)
+			if err != nil {
+				return err
+			}
 		}
 		err = a.participantWatcher.WatchParticipant(a.ctx, a.sp, state)
 		if err != nil {
