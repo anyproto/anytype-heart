@@ -35,6 +35,9 @@ func newSpaceWaiter(svc waiterService, svcCtx context.Context, retryDelay time.D
 
 func (w *spaceWaiter) waitSpace(ctx context.Context, spaceId string) (sp clientspace.Space, err error) {
 	techSpace := w.svc.TechSpace()
+	if spaceId == techSpace.TechSpaceId() {
+		return techSpace, nil
+	}
 	// wait until we start the space view loading process
 	if err := techSpace.WaitViews(); err != nil {
 		return nil, fmt.Errorf("wait views: %w", err)

@@ -25,6 +25,7 @@ func TestWaiter_Wait(t *testing.T) {
 			exists:      []bool{true},
 		}
 		wtr := newSpaceWaiter(stub, ctx, retryDelay)
+		mockTechSpace.EXPECT().TechSpaceId().Return("techSpaceId")
 		mockTechSpace.EXPECT().WaitViews().Return(nil)
 		mockTechSpace.EXPECT().SpaceViewExists(ctx, "spaceId").Return(true, nil)
 		res, err := wtr.waitSpace(ctx, "spaceId")
@@ -41,6 +42,7 @@ func TestWaiter_Wait(t *testing.T) {
 			exists:      []bool{false, false, true},
 		}
 		wtr := newSpaceWaiter(stub, ctx, retryDelay)
+		mockTechSpace.EXPECT().TechSpaceId().Return("techSpaceId")
 		mockTechSpace.EXPECT().WaitViews().Return(nil)
 		mockTechSpace.EXPECT().SpaceViewExists(ctx, "spaceId").Return(true, nil)
 		res, err := wtr.waitSpace(ctx, "spaceId")
@@ -59,6 +61,7 @@ func TestWaiter_Wait(t *testing.T) {
 		}
 		cancelCtx, cancel := context.WithCancel(context.Background())
 		wtr := newSpaceWaiter(stub, cancelCtx, retryDelay)
+		mockTechSpace.EXPECT().TechSpaceId().Return("techSpaceId")
 		mockTechSpace.EXPECT().WaitViews().Return(nil)
 		mockTechSpace.EXPECT().SpaceViewExists(ctx, "spaceId").Return(true, nil)
 		cancel()
@@ -76,6 +79,7 @@ func TestWaiter_Wait(t *testing.T) {
 			techSpace:   mockTechSpace,
 		}
 		wtr := newSpaceWaiter(stub, ctx, retryDelay)
+		mockTechSpace.EXPECT().TechSpaceId().Return("techSpaceId")
 		mockTechSpace.EXPECT().WaitViews().Return(fmt.Errorf("error"))
 		_, err := wtr.waitSpace(ctx, "spaceId")
 		require.Error(t, err)
@@ -91,6 +95,7 @@ func TestWaiter_Wait(t *testing.T) {
 		}
 		// cancelCtx, cancel := context.WithCancel(context.Background())
 		wtr := newSpaceWaiter(stub, ctx, retryDelay)
+		mockTechSpace.EXPECT().TechSpaceId().Return("techSpaceId")
 		mockTechSpace.EXPECT().WaitViews().Return(nil)
 		mockTechSpace.EXPECT().SpaceViewExists(ctx, "spaceId").Return(false, nil)
 		_, err := wtr.waitSpace(ctx, "spaceId")
