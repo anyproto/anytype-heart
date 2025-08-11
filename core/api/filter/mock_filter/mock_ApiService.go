@@ -70,7 +70,7 @@ func (_c *MockApiService_GetCachedProperties_Call) RunAndReturn(run func(string)
 }
 
 // ResolvePropertyApiKey provides a mock function with given fields: properties, key
-func (_m *MockApiService) ResolvePropertyApiKey(properties map[string]*apimodel.Property, key string) string {
+func (_m *MockApiService) ResolvePropertyApiKey(properties map[string]*apimodel.Property, key string) (string, bool) {
 	ret := _m.Called(properties, key)
 
 	if len(ret) == 0 {
@@ -78,13 +78,23 @@ func (_m *MockApiService) ResolvePropertyApiKey(properties map[string]*apimodel.
 	}
 
 	var r0 string
+	var r1 bool
+	if rf, ok := ret.Get(0).(func(map[string]*apimodel.Property, string) (string, bool)); ok {
+		return rf(properties, key)
+	}
 	if rf, ok := ret.Get(0).(func(map[string]*apimodel.Property, string) string); ok {
 		r0 = rf(properties, key)
 	} else {
 		r0 = ret.Get(0).(string)
 	}
 
-	return r0
+	if rf, ok := ret.Get(1).(func(map[string]*apimodel.Property, string) bool); ok {
+		r1 = rf(properties, key)
+	} else {
+		r1 = ret.Get(1).(bool)
+	}
+
+	return r0, r1
 }
 
 // MockApiService_ResolvePropertyApiKey_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ResolvePropertyApiKey'
@@ -106,19 +116,19 @@ func (_c *MockApiService_ResolvePropertyApiKey_Call) Run(run func(properties map
 	return _c
 }
 
-func (_c *MockApiService_ResolvePropertyApiKey_Call) Return(_a0 string) *MockApiService_ResolvePropertyApiKey_Call {
-	_c.Call.Return(_a0)
+func (_c *MockApiService_ResolvePropertyApiKey_Call) Return(_a0 string, _a1 bool) *MockApiService_ResolvePropertyApiKey_Call {
+	_c.Call.Return(_a0, _a1)
 	return _c
 }
 
-func (_c *MockApiService_ResolvePropertyApiKey_Call) RunAndReturn(run func(map[string]*apimodel.Property, string) string) *MockApiService_ResolvePropertyApiKey_Call {
+func (_c *MockApiService_ResolvePropertyApiKey_Call) RunAndReturn(run func(map[string]*apimodel.Property, string) (string, bool)) *MockApiService_ResolvePropertyApiKey_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
-// SanitizeAndValidatePropertyValue provides a mock function with given fields: spaceId, key, format, value, property, propertyMap
-func (_m *MockApiService) SanitizeAndValidatePropertyValue(spaceId string, key string, format apimodel.PropertyFormat, value interface{}, property *apimodel.Property, propertyMap map[string]*apimodel.Property) (interface{}, error) {
-	ret := _m.Called(spaceId, key, format, value, property, propertyMap)
+// SanitizeAndValidatePropertyValue provides a mock function with given fields: spaceId, key, value, property, propertyMap
+func (_m *MockApiService) SanitizeAndValidatePropertyValue(spaceId string, key string, value interface{}, property *apimodel.Property, propertyMap map[string]*apimodel.Property) (interface{}, error) {
+	ret := _m.Called(spaceId, key, value, property, propertyMap)
 
 	if len(ret) == 0 {
 		panic("no return value specified for SanitizeAndValidatePropertyValue")
@@ -126,19 +136,19 @@ func (_m *MockApiService) SanitizeAndValidatePropertyValue(spaceId string, key s
 
 	var r0 interface{}
 	var r1 error
-	if rf, ok := ret.Get(0).(func(string, string, apimodel.PropertyFormat, interface{}, *apimodel.Property, map[string]*apimodel.Property) (interface{}, error)); ok {
-		return rf(spaceId, key, format, value, property, propertyMap)
+	if rf, ok := ret.Get(0).(func(string, string, interface{}, *apimodel.Property, map[string]*apimodel.Property) (interface{}, error)); ok {
+		return rf(spaceId, key, value, property, propertyMap)
 	}
-	if rf, ok := ret.Get(0).(func(string, string, apimodel.PropertyFormat, interface{}, *apimodel.Property, map[string]*apimodel.Property) interface{}); ok {
-		r0 = rf(spaceId, key, format, value, property, propertyMap)
+	if rf, ok := ret.Get(0).(func(string, string, interface{}, *apimodel.Property, map[string]*apimodel.Property) interface{}); ok {
+		r0 = rf(spaceId, key, value, property, propertyMap)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(interface{})
 		}
 	}
 
-	if rf, ok := ret.Get(1).(func(string, string, apimodel.PropertyFormat, interface{}, *apimodel.Property, map[string]*apimodel.Property) error); ok {
-		r1 = rf(spaceId, key, format, value, property, propertyMap)
+	if rf, ok := ret.Get(1).(func(string, string, interface{}, *apimodel.Property, map[string]*apimodel.Property) error); ok {
+		r1 = rf(spaceId, key, value, property, propertyMap)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -154,17 +164,16 @@ type MockApiService_SanitizeAndValidatePropertyValue_Call struct {
 // SanitizeAndValidatePropertyValue is a helper method to define mock.On call
 //   - spaceId string
 //   - key string
-//   - format apimodel.PropertyFormat
 //   - value interface{}
 //   - property *apimodel.Property
 //   - propertyMap map[string]*apimodel.Property
-func (_e *MockApiService_Expecter) SanitizeAndValidatePropertyValue(spaceId interface{}, key interface{}, format interface{}, value interface{}, property interface{}, propertyMap interface{}) *MockApiService_SanitizeAndValidatePropertyValue_Call {
-	return &MockApiService_SanitizeAndValidatePropertyValue_Call{Call: _e.mock.On("SanitizeAndValidatePropertyValue", spaceId, key, format, value, property, propertyMap)}
+func (_e *MockApiService_Expecter) SanitizeAndValidatePropertyValue(spaceId interface{}, key interface{}, value interface{}, property interface{}, propertyMap interface{}) *MockApiService_SanitizeAndValidatePropertyValue_Call {
+	return &MockApiService_SanitizeAndValidatePropertyValue_Call{Call: _e.mock.On("SanitizeAndValidatePropertyValue", spaceId, key, value, property, propertyMap)}
 }
 
-func (_c *MockApiService_SanitizeAndValidatePropertyValue_Call) Run(run func(spaceId string, key string, format apimodel.PropertyFormat, value interface{}, property *apimodel.Property, propertyMap map[string]*apimodel.Property)) *MockApiService_SanitizeAndValidatePropertyValue_Call {
+func (_c *MockApiService_SanitizeAndValidatePropertyValue_Call) Run(run func(spaceId string, key string, value interface{}, property *apimodel.Property, propertyMap map[string]*apimodel.Property)) *MockApiService_SanitizeAndValidatePropertyValue_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(string), args[1].(string), args[2].(apimodel.PropertyFormat), args[3].(interface{}), args[4].(*apimodel.Property), args[5].(map[string]*apimodel.Property))
+		run(args[0].(string), args[1].(string), args[2].(interface{}), args[3].(*apimodel.Property), args[4].(map[string]*apimodel.Property))
 	})
 	return _c
 }
@@ -174,7 +183,7 @@ func (_c *MockApiService_SanitizeAndValidatePropertyValue_Call) Return(_a0 inter
 	return _c
 }
 
-func (_c *MockApiService_SanitizeAndValidatePropertyValue_Call) RunAndReturn(run func(string, string, apimodel.PropertyFormat, interface{}, *apimodel.Property, map[string]*apimodel.Property) (interface{}, error)) *MockApiService_SanitizeAndValidatePropertyValue_Call {
+func (_c *MockApiService_SanitizeAndValidatePropertyValue_Call) RunAndReturn(run func(string, string, interface{}, *apimodel.Property, map[string]*apimodel.Property) (interface{}, error)) *MockApiService_SanitizeAndValidatePropertyValue_Call {
 	_c.Call.Return(run)
 	return _c
 }

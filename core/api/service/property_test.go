@@ -766,16 +766,16 @@ func TestProcessProperties(t *testing.T) {
 			}
 			_, err := fx.service.processProperties(ctx, mockedSpaceId, entries)
 			require.Error(t, err)
-			assert.Contains(t, err.Error(), "unknown property key")
+			assert.Contains(t, err.Error(), "unknown property key: \"unknown_prop\"")
 		})
 
 		t.Run("excluded system property", func(t *testing.T) {
 			fx := newFixture(t)
 			setupPropertyCache(fx)
 			entries := []apimodel.PropertyLinkWithValue{
-				{WrappedPropertyLinkWithValue: apimodel.TextPropertyLinkValue{
-					PropertyKey: "id",
-					Text:        stringPtr("some_id"),
+				{WrappedPropertyLinkWithValue: apimodel.ObjectsPropertyLinkValue{
+					PropertyKey: "creator",
+					Objects:     stringSlicePtr([]string{"user1"}),
 				}},
 			}
 			_, err := fx.service.processProperties(ctx, mockedSpaceId, entries)

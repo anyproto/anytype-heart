@@ -9,8 +9,8 @@ import (
 
 type ApiService interface {
 	GetCachedProperties(spaceId string) map[string]*apimodel.Property
-	ResolvePropertyApiKey(properties map[string]*apimodel.Property, key string) string
-	SanitizeAndValidatePropertyValue(spaceId string, key string, format apimodel.PropertyFormat, value interface{}, property *apimodel.Property, propertyMap map[string]*apimodel.Property) (interface{}, error)
+	ResolvePropertyApiKey(properties map[string]*apimodel.Property, key string) (string, bool)
+	SanitizeAndValidatePropertyValue(spaceId string, key string, value interface{}, property *apimodel.Property, propertyMap map[string]*apimodel.Property) (interface{}, error)
 }
 
 // Validator validates filters against property definitions
@@ -54,7 +54,7 @@ func (v *Validator) validateFilter(spaceId string, filter *Filter, propertyMap m
 			filter.Condition, property.Format)
 	}
 
-	convertedValue, err := v.convertAndValidateValue(spaceId, property, filter.Condition, filter.Value, propertyMap)
+	convertedValue, err := v.convertAndValidateValue(spaceId, filter, property, propertyMap)
 	if err != nil {
 		return fmt.Errorf("invalid value for property %q: %w", filter.PropertyKey, err)
 	}
@@ -66,8 +66,8 @@ func (v *Validator) validateFilter(spaceId string, filter *Filter, propertyMap m
 
 // resolveProperty resolves a property by key, checking both system and custom properties
 func (v *Validator) resolveProperty(spaceId string, propertyKey string, propertyMap map[string]*apimodel.Property) (*apimodel.Property, error) {
-	rk := v.apiService.ResolvePropertyApiKey(propertyMap, propertyKey)
-	if rk == "" {
+	rk, found := v.apiService.ResolvePropertyApiKey(propertyMap, propertyKey)
+	if !found {
 		return nil, fmt.Errorf("property %q not found", propertyKey)
 	}
 
@@ -80,16 +80,17 @@ func (v *Validator) resolveProperty(spaceId string, propertyKey string, property
 }
 
 // convertAndValidateValue converts and validates the filter value based on property type
-func (v *Validator) convertAndValidateValue(spaceId string, property *apimodel.Property, condition model.BlockContentDataviewFilterCondition, value interface{}, propertyMap map[string]*apimodel.Property) (interface{}, error) {
-	switch condition {
+func (v *Validator) convertAndValidateValue(spaceId string, filter *Filter, property *apimodel.Property, propertyMap map[string]*apimodel.Property) (interface{}, error) {
+	switch filter.Condition {
 	case model.BlockContentDataviewFilter_Empty, model.BlockContentDataviewFilter_NotEmpty:
-		if boolVal, ok := value.(bool); ok {
+		if boolVal, ok := filter.Value.(bool); ok {
 			return boolVal, nil
 		}
 		return true, nil
 	}
 
-	if condition == model.BlockContentDataviewFilter_In || condition == model.BlockContentDataviewFilter_NotIn {
+	value := filter.Value
+	if filter.Condition == model.BlockContentDataviewFilter_In || filter.Condition == model.BlockContentDataviewFilter_NotIn {
 		switch v := value.(type) {
 		case []string:
 		case []interface{}:
@@ -100,5 +101,5 @@ func (v *Validator) convertAndValidateValue(spaceId string, property *apimodel.P
 		}
 	}
 
-	return v.apiService.SanitizeAndValidatePropertyValue(spaceId, property.Key, property.Format, value, property, propertyMap)
+	return v.apiService.SanitizeAndValidatePropertyValue(spaceId, filter.PropertyKey, value, property, propertyMap)
 }

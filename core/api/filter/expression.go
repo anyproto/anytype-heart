@@ -20,7 +20,7 @@ func BuildExpressionFilters(ctx context.Context, expr *apimodel.FilterExpression
 
 	// Process conditions at this level
 	for _, cond := range expr.Conditions {
-		filter, err := buildConditionFilter(ctx, cond, validator, spaceId)
+		filter, err := buildConditionFilter(cond, validator, spaceId)
 		if err != nil {
 			return nil, fmt.Errorf("failed to build condition filter: %w", err)
 		}
@@ -68,40 +68,32 @@ func BuildExpressionFilters(ctx context.Context, expr *apimodel.FilterExpression
 }
 
 // buildConditionFilter builds a single condition filter
-func buildConditionFilter(ctx context.Context, cond apimodel.FilterItem, validator *Validator, spaceId string) (*model.BlockContentDataviewFilter, error) {
+func buildConditionFilter(cond apimodel.FilterItem, validator *Validator, spaceId string) (*model.BlockContentDataviewFilter, error) {
 	wrapped := cond.WrappedFilterItem
 	if wrapped == nil {
 		return nil, fmt.Errorf("invalid filter condition: no wrapped filter item")
 	}
 
-	// Map condition
 	dbCondition, ok := ConditionMap[wrapped.GetCondition()]
 	if !ok {
 		return nil, fmt.Errorf("unsupported filter condition: %s", wrapped.GetCondition())
 	}
 
-	// Get property map
 	propertyMap := validator.apiService.GetCachedProperties(spaceId)
-
-	// Resolve and validate property
 	property, err := validator.resolveProperty(spaceId, wrapped.GetPropertyKey(), propertyMap)
 	if err != nil {
 		return nil, fmt.Errorf("failed to resolve property %s: %w", wrapped.GetPropertyKey(), err)
 	}
 
-	// Check if condition is valid for property type
 	if !isValidConditionForType(property.Format, dbCondition) {
 		return nil, fmt.Errorf("condition %v is not valid for property type %q", dbCondition, property.Format)
 	}
 
-	// Use the resolved relation key
-	relationKey := property.RelationKey
-
-	// For conditions that don't require values (empty, etc.)
+	rk := property.RelationKey
 	if dbCondition == model.BlockContentDataviewFilter_Empty ||
 		dbCondition == model.BlockContentDataviewFilter_NotEmpty {
 		return &model.BlockContentDataviewFilter{
-			RelationKey: relationKey,
+			RelationKey: rk,
 			Condition:   dbCondition,
 		}, nil
 	}
@@ -155,17 +147,15 @@ func buildConditionFilter(ctx context.Context, cond apimodel.FilterItem, validat
 		}
 	}
 
-	// Validate value against property type
-	validatedValue, err := validator.apiService.SanitizeAndValidatePropertyValue(spaceId, property.Key, property.Format, value, property, propertyMap)
+	validatedValue, err := validator.apiService.SanitizeAndValidatePropertyValue(spaceId, wrapped.GetPropertyKey(), value, property, propertyMap)
 	if err != nil {
 		return nil, fmt.Errorf("invalid value for property %s: %w", wrapped.GetPropertyKey(), err)
 	}
 
-	// Convert value to protobuf format
 	protoValue := pbtypes.ToValue(validatedValue)
 
 	return &model.BlockContentDataviewFilter{
-		RelationKey: relationKey,
+		RelationKey: rk,
 		Condition:   dbCondition,
 		Value:       protoValue,
 	}, nil

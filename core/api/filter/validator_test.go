@@ -102,11 +102,10 @@ func TestValidator_ValidateFilters(t *testing.T) {
 			},
 			setupMock: func(m *mock_filter.MockApiService) {
 				m.On("GetCachedProperties", testSpaceId).Return(mockProperties)
-				m.On("ResolvePropertyApiKey", mockProperties, "name").Return("name")
+				m.On("ResolvePropertyApiKey", mockProperties, "name").Return("name", true)
 				m.On("SanitizeAndValidatePropertyValue",
 					testSpaceId,
 					"name",
-					apimodel.PropertyFormatText,
 					"test",
 					mockProperties["name"],
 					mockProperties,
@@ -131,11 +130,10 @@ func TestValidator_ValidateFilters(t *testing.T) {
 			},
 			setupMock: func(m *mock_filter.MockApiService) {
 				m.On("GetCachedProperties", testSpaceId).Return(mockProperties)
-				m.On("ResolvePropertyApiKey", mockProperties, "age").Return("age")
+				m.On("ResolvePropertyApiKey", mockProperties, "age").Return("age", true)
 				m.On("SanitizeAndValidatePropertyValue",
 					testSpaceId,
 					"age",
-					apimodel.PropertyFormatNumber,
 					"25",
 					mockProperties["age"],
 					mockProperties,
@@ -160,11 +158,10 @@ func TestValidator_ValidateFilters(t *testing.T) {
 			},
 			setupMock: func(m *mock_filter.MockApiService) {
 				m.On("GetCachedProperties", testSpaceId).Return(mockProperties)
-				m.On("ResolvePropertyApiKey", mockProperties, "my_custom_property").Return("custom_prop")
+				m.On("ResolvePropertyApiKey", mockProperties, "my_custom_property").Return("custom_prop", true)
 				m.On("SanitizeAndValidatePropertyValue",
 					testSpaceId,
 					"my_custom_property",
-					apimodel.PropertyFormatText,
 					"test",
 					mockProperties["custom_prop"],
 					mockProperties,
@@ -189,7 +186,7 @@ func TestValidator_ValidateFilters(t *testing.T) {
 			},
 			setupMock: func(m *mock_filter.MockApiService) {
 				m.On("GetCachedProperties", testSpaceId).Return(mockProperties)
-				m.On("ResolvePropertyApiKey", mockProperties, "unknown_property").Return("")
+				m.On("ResolvePropertyApiKey", mockProperties, "unknown_property").Return("", false)
 			},
 			expectedError: "invalid filter at index 0: failed to resolve property \"unknown_property\": property \"unknown_property\" not found",
 		},
@@ -206,7 +203,7 @@ func TestValidator_ValidateFilters(t *testing.T) {
 			},
 			setupMock: func(m *mock_filter.MockApiService) {
 				m.On("GetCachedProperties", testSpaceId).Return(mockProperties)
-				m.On("ResolvePropertyApiKey", mockProperties, "name").Return("name")
+				m.On("ResolvePropertyApiKey", mockProperties, "name").Return("name", true)
 			},
 			expectedError: "invalid filter at index 0: condition Greater is not valid for property type \"text\"",
 		},
@@ -223,11 +220,10 @@ func TestValidator_ValidateFilters(t *testing.T) {
 			},
 			setupMock: func(m *mock_filter.MockApiService) {
 				m.On("GetCachedProperties", testSpaceId).Return(mockProperties)
-				m.On("ResolvePropertyApiKey", mockProperties, "age").Return("age")
+				m.On("ResolvePropertyApiKey", mockProperties, "age").Return("age", true)
 				m.On("SanitizeAndValidatePropertyValue",
 					testSpaceId,
 					"age",
-					apimodel.PropertyFormatNumber,
 					"not a number",
 					mockProperties["age"],
 					mockProperties,
@@ -248,7 +244,7 @@ func TestValidator_ValidateFilters(t *testing.T) {
 			},
 			setupMock: func(m *mock_filter.MockApiService) {
 				m.On("GetCachedProperties", testSpaceId).Return(mockProperties)
-				m.On("ResolvePropertyApiKey", mockProperties, "name").Return("name")
+				m.On("ResolvePropertyApiKey", mockProperties, "name").Return("name", true)
 				// Empty condition doesn't call SanitizeAndValidatePropertyValue
 			},
 			checkResult: func(t *testing.T, filters *filter.ParsedFilters) {
@@ -269,11 +265,10 @@ func TestValidator_ValidateFilters(t *testing.T) {
 			},
 			setupMock: func(m *mock_filter.MockApiService) {
 				m.On("GetCachedProperties", testSpaceId).Return(mockProperties)
-				m.On("ResolvePropertyApiKey", mockProperties, "tags").Return("tags")
+				m.On("ResolvePropertyApiKey", mockProperties, "tags").Return("tags", true)
 				m.On("SanitizeAndValidatePropertyValue",
 					testSpaceId,
 					"tags",
-					apimodel.PropertyFormatMultiSelect,
 					[]string{"todo", "done"},
 					mockProperties["tags"],
 					mockProperties,
@@ -297,11 +292,10 @@ func TestValidator_ValidateFilters(t *testing.T) {
 			},
 			setupMock: func(m *mock_filter.MockApiService) {
 				m.On("GetCachedProperties", testSpaceId).Return(mockProperties)
-				m.On("ResolvePropertyApiKey", mockProperties, "tags").Return("tags")
+				m.On("ResolvePropertyApiKey", mockProperties, "tags").Return("tags", true)
 				m.On("SanitizeAndValidatePropertyValue",
 					testSpaceId,
 					"tags",
-					apimodel.PropertyFormatMultiSelect,
 					[]interface{}{"single"},
 					mockProperties["tags"],
 					mockProperties,
@@ -331,17 +325,16 @@ func TestValidator_ValidateFilters(t *testing.T) {
 			setupMock: func(m *mock_filter.MockApiService) {
 				m.On("GetCachedProperties", testSpaceId).Return(mockProperties)
 				// First filter passes
-				m.On("ResolvePropertyApiKey", mockProperties, "name").Return("name")
+				m.On("ResolvePropertyApiKey", mockProperties, "name").Return("name", true)
 				m.On("SanitizeAndValidatePropertyValue",
 					testSpaceId,
 					"name",
-					apimodel.PropertyFormatText,
 					"test",
 					mockProperties["name"],
 					mockProperties,
 				).Return("test", nil)
 				// Second filter fails
-				m.On("ResolvePropertyApiKey", mockProperties, "unknown").Return("")
+				m.On("ResolvePropertyApiKey", mockProperties, "unknown").Return("", false)
 			},
 			expectedError: "invalid filter at index 1: failed to resolve property \"unknown\": property \"unknown\" not found",
 		},
@@ -437,7 +430,7 @@ func TestValidator_ConditionValidation(t *testing.T) {
 			}
 
 			mockService.On("GetCachedProperties", "test-space").Return(mockProperties)
-			mockService.On("ResolvePropertyApiKey", mockProperties, "test-key").Return("test-key")
+			mockService.On("ResolvePropertyApiKey", mockProperties, "test-key").Return("test-key", true)
 
 			if tt.shouldBeValid {
 				mockService.On("SanitizeAndValidatePropertyValue",

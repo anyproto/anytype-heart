@@ -66,15 +66,16 @@ func TestBuildExpressionFilters(t *testing.T) {
 				},
 			},
 			setupMock: func(m *mock_filter.MockApiService) {
-				m.On("GetCachedProperties", spaceId).Return(map[string]*apimodel.Property{
+				propertyMap := map[string]*apimodel.Property{
 					"done": {
 						Key:         "done",
 						RelationKey: bundle.RelationKeyDone.String(),
 						Format:      apimodel.PropertyFormatCheckbox,
 					},
-				})
-				m.On("ResolvePropertyApiKey", mock.Anything, "done").Return("done")
-				m.On("SanitizeAndValidatePropertyValue", spaceId, "done", apimodel.PropertyFormatCheckbox, true, mock.Anything, mock.Anything).Return(true, nil)
+				}
+				m.On("GetCachedProperties", spaceId).Return(propertyMap)
+				m.On("ResolvePropertyApiKey", propertyMap, "done").Return("done", true)
+				m.On("SanitizeAndValidatePropertyValue", spaceId, "done", true, propertyMap["done"], propertyMap).Return(true, nil)
 			},
 			checkResult: func(t *testing.T, result *model.BlockContentDataviewFilter) {
 				require.NotNil(t, result)
@@ -118,10 +119,10 @@ func TestBuildExpressionFilters(t *testing.T) {
 					},
 				}
 				m.On("GetCachedProperties", spaceId).Return(propertyMap)
-				m.On("ResolvePropertyApiKey", propertyMap, "done").Return("done")
-				m.On("ResolvePropertyApiKey", propertyMap, "priority").Return("priority")
-				m.On("SanitizeAndValidatePropertyValue", spaceId, "done", apimodel.PropertyFormatCheckbox, true, mock.Anything, propertyMap).Return(true, nil)
-				m.On("SanitizeAndValidatePropertyValue", spaceId, "priority", apimodel.PropertyFormatNumber, float64(5), mock.Anything, propertyMap).Return(float64(5), nil)
+				m.On("ResolvePropertyApiKey", propertyMap, "done").Return("done", true)
+				m.On("ResolvePropertyApiKey", propertyMap, "priority").Return("priority", true)
+				m.On("SanitizeAndValidatePropertyValue", spaceId, "done", true, propertyMap["done"], propertyMap).Return(true, nil)
+				m.On("SanitizeAndValidatePropertyValue", spaceId, "priority", float64(5), propertyMap["priority"], propertyMap).Return(float64(5), nil)
 			},
 			checkResult: func(t *testing.T, result *model.BlockContentDataviewFilter) {
 				require.NotNil(t, result)
@@ -167,9 +168,9 @@ func TestBuildExpressionFilters(t *testing.T) {
 					},
 				}
 				m.On("GetCachedProperties", spaceId).Return(propertyMap)
-				m.On("ResolvePropertyApiKey", propertyMap, "type").Return("type")
-				m.On("SanitizeAndValidatePropertyValue", spaceId, "type", apimodel.PropertyFormatText, "page", mock.Anything, propertyMap).Return("page", nil)
-				m.On("SanitizeAndValidatePropertyValue", spaceId, "type", apimodel.PropertyFormatText, "task", mock.Anything, propertyMap).Return("task", nil)
+				m.On("ResolvePropertyApiKey", propertyMap, "type").Return("type", true)
+				m.On("SanitizeAndValidatePropertyValue", spaceId, "type", "page", propertyMap["type"], propertyMap).Return("page", nil)
+				m.On("SanitizeAndValidatePropertyValue", spaceId, "type", "task", propertyMap["type"], propertyMap).Return("task", nil)
 			},
 			checkResult: func(t *testing.T, result *model.BlockContentDataviewFilter) {
 				require.NotNil(t, result)
@@ -231,12 +232,12 @@ func TestBuildExpressionFilters(t *testing.T) {
 					},
 				}
 				m.On("GetCachedProperties", spaceId).Return(propertyMap)
-				m.On("ResolvePropertyApiKey", propertyMap, "is_archived").Return("is_archived")
-				m.On("ResolvePropertyApiKey", propertyMap, "priority").Return("priority")
-				m.On("ResolvePropertyApiKey", propertyMap, "tags").Return("tags")
-				m.On("SanitizeAndValidatePropertyValue", spaceId, "is_archived", apimodel.PropertyFormatCheckbox, true, mock.Anything, propertyMap).Return(true, nil)
-				m.On("SanitizeAndValidatePropertyValue", spaceId, "priority", apimodel.PropertyFormatNumber, float64(7), mock.Anything, propertyMap).Return(float64(7), nil)
-				m.On("SanitizeAndValidatePropertyValue", spaceId, "tags", apimodel.PropertyFormatMultiSelect, []string{"urgent", "critical"}, mock.Anything, propertyMap).Return([]string{"urgent", "critical"}, nil)
+				m.On("ResolvePropertyApiKey", propertyMap, "is_archived").Return("is_archived", true)
+				m.On("ResolvePropertyApiKey", propertyMap, "priority").Return("priority", true)
+				m.On("ResolvePropertyApiKey", propertyMap, "tags").Return("tags", true)
+				m.On("SanitizeAndValidatePropertyValue", spaceId, "is_archived", true, propertyMap["is_archived"], propertyMap).Return(true, nil)
+				m.On("SanitizeAndValidatePropertyValue", spaceId, "priority", float64(7), propertyMap["priority"], propertyMap).Return(float64(7), nil)
+				m.On("SanitizeAndValidatePropertyValue", spaceId, "tags", []string{"urgent", "critical"}, propertyMap["tags"], propertyMap).Return([]string{"urgent", "critical"}, nil)
 			},
 			checkResult: func(t *testing.T, result *model.BlockContentDataviewFilter) {
 				require.NotNil(t, result)
@@ -274,7 +275,7 @@ func TestBuildExpressionFilters(t *testing.T) {
 					},
 				}
 				m.On("GetCachedProperties", spaceId).Return(propertyMap)
-				m.On("ResolvePropertyApiKey", propertyMap, "description").Return("description")
+				m.On("ResolvePropertyApiKey", propertyMap, "description").Return("description", true)
 			},
 			checkResult: func(t *testing.T, result *model.BlockContentDataviewFilter) {
 				require.NotNil(t, result)
@@ -318,11 +319,11 @@ func TestBuildExpressionFilters(t *testing.T) {
 					},
 				}
 				m.On("GetCachedProperties", spaceId).Return(propertyMap)
-				m.On("ResolvePropertyApiKey", propertyMap, "created_date").Return("created_date")
-				m.On("ResolvePropertyApiKey", propertyMap, "due_date").Return("due_date")
+				m.On("ResolvePropertyApiKey", propertyMap, "created_date").Return("created_date", true)
+				m.On("ResolvePropertyApiKey", propertyMap, "due_date").Return("due_date", true)
 				// The service should accept both date formats and convert them to timestamps
-				m.On("SanitizeAndValidatePropertyValue", spaceId, "created_date", apimodel.PropertyFormatDate, "2024-01-01", mock.Anything, propertyMap).Return(float64(1704067200), nil)       // 2024-01-01 00:00:00 UTC
-				m.On("SanitizeAndValidatePropertyValue", spaceId, "due_date", apimodel.PropertyFormatDate, "2024-12-31T23:59:59Z", mock.Anything, propertyMap).Return(float64(1735689599), nil) // 2024-12-31 23:59:59 UTC
+				m.On("SanitizeAndValidatePropertyValue", spaceId, "created_date", "2024-01-01", propertyMap["created_date"], propertyMap).Return(float64(1704067200), nil)   // 2024-01-01 00:00:00 UTC
+				m.On("SanitizeAndValidatePropertyValue", spaceId, "due_date", "2024-12-31T23:59:59Z", propertyMap["due_date"], propertyMap).Return(float64(1735689599), nil) // 2024-12-31 23:59:59 UTC
 			},
 			checkResult: func(t *testing.T, result *model.BlockContentDataviewFilter) {
 				require.NotNil(t, result)
@@ -373,8 +374,8 @@ func TestBuildExpressionFilters(t *testing.T) {
 					},
 				}
 				m.On("GetCachedProperties", spaceId).Return(propertyMap)
-				m.On("ResolvePropertyApiKey", propertyMap, "priority").Return("priority")
-				m.On("SanitizeAndValidatePropertyValue", spaceId, "priority", apimodel.PropertyFormatNumber, float64(5), mock.Anything, propertyMap).Return(float64(5), nil)
+				m.On("ResolvePropertyApiKey", propertyMap, "priority").Return("priority", true)
+				m.On("SanitizeAndValidatePropertyValue", spaceId, "priority", float64(5), propertyMap["priority"], propertyMap).Return(float64(5), nil)
 			},
 			checkResult: func(t *testing.T, result *model.BlockContentDataviewFilter) {
 				require.NotNil(t, result)
@@ -419,7 +420,7 @@ func TestBuildExpressionFilters(t *testing.T) {
 					},
 				}
 				m.On("GetCachedProperties", spaceId).Return(propertyMap)
-				m.On("ResolvePropertyApiKey", propertyMap, "name").Return("name")
+				m.On("ResolvePropertyApiKey", propertyMap, "name").Return("name", true)
 			},
 			expectedError: "failed to build condition filter: condition Greater is not valid for property type \"text\"",
 		},
@@ -445,8 +446,8 @@ func TestBuildExpressionFilters(t *testing.T) {
 					},
 				}
 				m.On("GetCachedProperties", spaceId).Return(propertyMap)
-				m.On("ResolvePropertyApiKey", propertyMap, "tags").Return("tags")
-				m.On("SanitizeAndValidatePropertyValue", spaceId, "tags", apimodel.PropertyFormatMultiSelect, []string{"important", "urgent"}, mock.Anything, propertyMap).Return([]string{"important", "urgent"}, nil)
+				m.On("ResolvePropertyApiKey", propertyMap, "tags").Return("tags", true)
+				m.On("SanitizeAndValidatePropertyValue", spaceId, "tags", []string{"important", "urgent"}, propertyMap["tags"], propertyMap).Return([]string{"important", "urgent"}, nil)
 			},
 			checkResult: func(t *testing.T, result *model.BlockContentDataviewFilter) {
 				require.NotNil(t, result)
@@ -469,7 +470,7 @@ func TestBuildExpressionFilters(t *testing.T) {
 			},
 			setupMock: func(m *mock_filter.MockApiService) {
 				m.On("GetCachedProperties", spaceId).Return(map[string]*apimodel.Property{})
-				m.On("ResolvePropertyApiKey", mock.Anything, "invalid_prop").Return("")
+				m.On("ResolvePropertyApiKey", mock.Anything, "invalid_prop").Return("", false)
 			},
 			expectedError: "failed to build condition filter: failed to resolve property invalid_prop",
 		},
