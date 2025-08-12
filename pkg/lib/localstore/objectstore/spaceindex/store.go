@@ -241,8 +241,13 @@ func (s *dsObjectStore) initCollections(ctx context.Context) error {
 			Sparse: true,
 		},
 		{
-			Name:   "fileVariantMills",
-			Fields: []string{bundle.RelationKeyFileVariantMills.String()},
+			Name:   "fileVariantChecksums",
+			Fields: []string{bundle.RelationKeyFileVariantChecksums.String()},
+			Sparse: true,
+		},
+		{
+			Name:   "fileSourceChecksum",
+			Fields: []string{bundle.RelationKeyFileSourceChecksum.String()},
 			Sparse: true,
 		},
 	}
