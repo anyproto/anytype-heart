@@ -476,7 +476,6 @@ func TestListService_GetObjectsInList(t *testing.T) {
 											{
 												Id:          "view_filter",
 												RelationKey: bundle.RelationKeyStatus.String(),
-												Format:      model.RelationFormat_longtext,
 												Condition:   model.BlockContentDataviewFilter_Equal,
 												Value:       pbtypes.String("active"),
 											},

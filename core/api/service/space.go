@@ -61,9 +61,13 @@ func (s *Service) ListSpaces(ctx context.Context, additionalFilters []*model.Blo
 				EmptyPlacement: model.BlockContentDataviewSort_End,
 			},
 			{
+				RelationKey: bundle.RelationKeySpaceJoinDate.String(),
+				Type:        model.BlockContentDataviewSort_Desc,
+				IncludeTime: true,
+			},
+			{
 				RelationKey: bundle.RelationKeyCreatedDate.String(),
 				Type:        model.BlockContentDataviewSort_Desc,
-				Format:      model.RelationFormat_longtext,
 				IncludeTime: true,
 			},
 		},

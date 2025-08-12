@@ -56,11 +56,9 @@ func (s *Service) ListObjects(ctx context.Context, spaceId string, additionalFil
 		SpaceId: spaceId,
 		Filters: filters,
 		Sorts: []*model.BlockContentDataviewSort{{
-			RelationKey:    bundle.RelationKeyLastModifiedDate.String(),
-			Type:           model.BlockContentDataviewSort_Desc,
-			Format:         model.RelationFormat_longtext,
-			IncludeTime:    true,
-			EmptyPlacement: model.BlockContentDataviewSort_NotSpecified,
+			RelationKey: bundle.RelationKeyLastModifiedDate.String(),
+			Type:        model.BlockContentDataviewSort_Desc,
+			IncludeTime: true,
 		}},
 	})
 

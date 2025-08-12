@@ -239,21 +239,19 @@ func (s *Service) prepareTypeFilters(types []string, spaceId string) []*model.Bl
 // prepareSorts returns a sort filter based on the given sort parameters
 func (s *Service) prepareSorts(sort apimodel.SortOptions) (sorts []*model.BlockContentDataviewSort, criterionToSortAfter string) {
 	primarySort := &model.BlockContentDataviewSort{
-		RelationKey:    s.getSortRelationKey(sort.PropertyKey),
-		Type:           s.getSortDirection(sort.Direction),
-		Format:         s.getSortFormat(sort.PropertyKey),
-		IncludeTime:    true,
-		EmptyPlacement: model.BlockContentDataviewSort_NotSpecified,
+		RelationKey: s.getSortRelationKey(sort.PropertyKey),
+		Type:        s.getSortDirection(sort.Direction),
+		Format:      s.getSortFormat(sort.PropertyKey),
+		IncludeTime: true,
 	}
 
 	// last_opened_date possibly is empty, wherefore we sort by last_modified_date as a secondary criterion
 	if primarySort.RelationKey == bundle.RelationKeyLastOpenedDate.String() {
 		secondarySort := &model.BlockContentDataviewSort{
-			RelationKey:    bundle.RelationKeyLastModifiedDate.String(),
-			Type:           s.getSortDirection(sort.Direction),
-			Format:         model.RelationFormat_date,
-			IncludeTime:    true,
-			EmptyPlacement: model.BlockContentDataviewSort_NotSpecified,
+			RelationKey: bundle.RelationKeyLastModifiedDate.String(),
+			Type:        s.getSortDirection(sort.Direction),
+			Format:      model.RelationFormat_date,
+			IncludeTime: true,
 		}
 		return []*model.BlockContentDataviewSort{primarySort, secondarySort}, primarySort.RelationKey
 	}
