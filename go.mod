@@ -2,7 +2,7 @@ module github.com/anyproto/anytype-heart
 
 go 1.23.10
 
-toolchain go1.24.5
+toolchain go1.23.11
 
 require (
 	github.com/JohannesKaufmann/html-to-markdown v1.4.0
