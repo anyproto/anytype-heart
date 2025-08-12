@@ -3,12 +3,14 @@ package linkpreview
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"mime"
 	"net/http"
 	"path/filepath"
 	"strings"
+	"unicode"
 	"unicode/utf8"
 
 	"github.com/anyproto/any-sync/app"
@@ -26,19 +28,26 @@ import (
 const (
 	CName       = "linkpreview"
 	utfEncoding = "utf-8"
-)
-
-func New() LinkPreview {
-	return &linkPreview{}
-}
-
-const (
 	// read no more than 10 mb
 	maxBytesToRead     = 10 * 1024 * 1024
 	maxDescriptionSize = 200
 )
 
-var log = logging.Logger("link-preview")
+var (
+	ErrPrivateLink = fmt.Errorf("link is private and cannot be previewed")
+	log            = logging.Logger(CName)
+
+	privacyDirectives = map[string][]string{
+		"Cache-Control":           {"no-store", "no-cache", "private"},
+		"Content-Security-Policy": {"default-src 'none'", "prefetch-src 'none'"},
+		"Referrer-Policy":         {"no-referrer"},
+		"X-Robots-Tag":            {"noindex", "nofollow", "noarchive", "none"},
+	}
+)
+
+func New() LinkPreview {
+	return &linkPreview{}
+}
 
 type LinkPreview interface {
 	Fetch(ctx context.Context, url string) (linkPreview model.LinkPreview, responseBody []byte, isFile bool, err error)
@@ -68,6 +77,9 @@ func (l *linkPreview) Fetch(ctx context.Context, fetchUrl string) (linkPreview m
 	err = og.Fetch()
 	if err != nil {
 		if resp := rt.lastResponse; resp != nil && resp.StatusCode == http.StatusOK {
+			if err = checkPrivateLink(resp); err != nil {
+				return model.LinkPreview{}, nil, false, err
+			}
 			preview, isFile, err := l.makeNonHtml(fetchUrl, resp)
 			if err != nil {
 				return preview, nil, false, err
@@ -79,6 +91,9 @@ func (l *linkPreview) Fetch(ctx context.Context, fetchUrl string) (linkPreview m
 
 	if resp := rt.lastResponse; resp != nil && resp.StatusCode != http.StatusOK {
 		return model.LinkPreview{}, nil, false, fmt.Errorf("invalid http code %d", resp.StatusCode)
+	}
+	if err = checkPrivateLink(rt.lastResponse); err != nil {
+		return model.LinkPreview{}, nil, false, err
 	}
 	res := l.convertOGToInfo(fetchUrl, og)
 	if len(res.Description) == 0 {
@@ -215,4 +230,61 @@ func (l *limitReader) Read(p []byte) (n int, err error) {
 	}
 	l.nTotal += n
 	return
+}
+
+func checkPrivateLink(resp *http.Response) error {
+	if resp == nil {
+		return fmt.Errorf("response is nil")
+	}
+
+	for header, directives := range privacyDirectives {
+		value := strings.ToLower(resp.Header.Get(header))
+		if value == "" {
+			continue
+		}
+		for _, directive := range directives {
+			if containsDirective(value, directive) {
+				return errors.Join(ErrPrivateLink, fmt.Errorf("private link detected due to %s header: %s", header, directive))
+			}
+		}
+	}
+
+	return nil
+}
+
+func containsDirective(header string, directive string) bool {
+	// For CSP directives that contain quotes or colons, use simple contains check
+	if strings.Contains(directive, "'") || strings.Contains(directive, ":") {
+		return strings.Contains(header, directive)
+	}
+
+	start := 0
+	for {
+		idx := strings.Index(header[start:], directive)
+		if idx == -1 {
+			return false
+		}
+
+		start = start + idx
+		end := start + len(directive)
+
+		// Check if it's a complete token (surrounded by separators or string boundaries)
+		startOk := start == 0 || isSeparator(rune(header[start-1]))
+		endOk := end == len(header) || isSeparator(rune(header[end]))
+
+		if startOk && endOk {
+			return true
+		}
+
+		start = start + 1
+		if start >= len(header) {
+			break
+		}
+	}
+
+	return false
+}
+
+func isSeparator(r rune) bool {
+	return unicode.IsSpace(r) || r == ',' || r == ';'
 }
