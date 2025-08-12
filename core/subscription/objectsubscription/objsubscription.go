@@ -189,7 +189,9 @@ func (o *ObjectSubscription[T]) read() {
 						Value: domain.ValueFromProto(value.Value),
 					})
 				}
-				curEntry = o.params.UpdateKeys(keyValues, curEntry)
+				if len(keyValues) != 0 {
+					curEntry = o.params.UpdateKeys(keyValues, curEntry)
+				}
 				o.sub[v.ObjectDetailsAmend.Id] = curEntry
 			}
 		case *pb.EventMessageValueOfObjectDetailsUnset:
