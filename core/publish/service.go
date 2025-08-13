@@ -508,10 +508,14 @@ func (s *service) PublishMulti(ctx context.Context, spaceId, pageId, uri string,
 	delete(linkedPageIds, pageId)
 	for linkedPageId, title := range linkedPageIds {
 		status, err := s.GetStatus(ctx, spaceId, linkedPageId)
+		// TODO: implement title->url replace logic
 		url := strings.ReplaceAll(strings.ToLower(title), " ", "-")
 		if err != nil {
-			log.Error("failed to get status of linked page", zap.String("uri", url), zap.String("objectId", linkedPageId), zap.Error(err))
-			continue
+			// TODO: impl not found
+			if err.Error() != "not found" {
+				log.Error("failed to get status of linked page", zap.String("uri", url), zap.String("objectId", linkedPageId), zap.Error(err))
+				continue
+			}
 		}
 
 		if status.GetStatus() == pb.RpcPublishing_PublishStatusPublished {
