@@ -452,7 +452,7 @@ func TestService_ChangeInvite(t *testing.T) {
 		mockCommonSpace.EXPECT().Acl().Return(acl)
 		aclClient := mock_aclclient.NewMockAclSpaceClient(fx.ctrl)
 		mockCommonSpace.EXPECT().AclClient().Return(aclClient)
-		aclClient.EXPECT().ChangeInvite(ctx, invId, list.AclPermissionsWriter).Return(nil)
+		aclClient.EXPECT().ChangeInvitePermissions(gomock.Any(), invId, list.AclPermissionsWriter).Return(nil)
 		fx.mockInviteService.EXPECT().Change(ctx, spaceId, list.AclPermissionsWriter).Return(nil)
 		err := fx.ChangeInvite(ctx, spaceId, model.ParticipantPermissions_Writer)
 		require.NoError(t, err)
@@ -489,7 +489,7 @@ func TestService_GenerateInvite(t *testing.T) {
 		rec := &consensusproto.RawRecord{
 			Payload: []byte("test"),
 		}
-		mockAclClient.EXPECT().GenerateInvite(false, true, list.AclPermissionsReader).
+		mockAclClient.EXPECT().ReplaceInvite(gomock.Any(), gomock.Any()).
 			Return(list.InviteResult{
 				InviteRec: rec,
 				InviteKey: keys.SignKey,
@@ -528,7 +528,7 @@ func TestService_GenerateInvite(t *testing.T) {
 		rec := &consensusproto.RawRecord{
 			Payload: []byte("test"),
 		}
-		mockAclClient.EXPECT().GenerateInvite(false, false, list.AclPermissionsReader).
+		mockAclClient.EXPECT().ReplaceInvite(gomock.Any(), gomock.Any()).
 			Return(list.InviteResult{
 				InviteRec: rec,
 				InviteKey: keys.SignKey,
@@ -569,7 +569,7 @@ func TestService_GenerateInvite(t *testing.T) {
 		rec := &consensusproto.RawRecord{
 			Payload: []byte("test"),
 		}
-		mockAclClient.EXPECT().GenerateInvite(true, false, list.AclPermissionsReader).
+		mockAclClient.EXPECT().ReplaceInvite(gomock.Any(), gomock.Any()).
 			Return(list.InviteResult{
 				InviteRec: rec,
 				InviteKey: keys.SignKey,

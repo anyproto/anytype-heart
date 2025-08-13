@@ -90,3 +90,12 @@ func ConvertAclStatus(status list.AclStatus) model.ParticipantStatus {
 		return model.ParticipantStatus_Joining
 	}
 }
+
+func ConvertInviteType(inviteType InviteType) aclrecordproto.AclInviteType {
+	switch inviteType {
+	case InviteTypeDefault:
+		return aclrecordproto.AclInviteType_RequestToJoin
+	default:
+		return aclrecordproto.AclInviteType_AnyoneCanJoin
+	}
+}

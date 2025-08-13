@@ -634,7 +634,7 @@ func (a *aclService) ChangeInvite(ctx context.Context, spaceId string, permissio
 	if invite.Permissions == invitePermissions {
 		return ErrIncorrectPermissions
 	}
-	err = aclClient.ChangeInvite(ctx, invites[0].Id, invitePermissions)
+	err = aclClient.ChangeInvitePermissions(ctx, invites[0].Id, invitePermissions)
 	if err != nil {
 		return convertedOrAclRequestError(err)
 	}
@@ -650,13 +650,9 @@ func (a *aclService) GenerateInvite(ctx context.Context, spaceId string, invType
 		err = ErrPersonalSpace
 		return
 	}
-	var (
-		inviteExists = false
-		inviteType   = domain.InviteType(invType)
-	)
+	inviteType := domain.InviteType(invType)
 	current, err := a.inviteService.GetCurrent(ctx, spaceId)
 	if err == nil {
-		inviteExists = true
 		if current.InviteType == inviteType {
 			return current, nil
 		}
@@ -667,7 +663,11 @@ func (a *aclService) GenerateInvite(ctx context.Context, spaceId string, invType
 	}
 	aclClient := acceptSpace.CommonSpace().AclClient()
 	aclPermissions := domain.ConvertParticipantPermissions(permissions)
-	res, err := aclClient.GenerateInvite(inviteExists, inviteType == domain.InviteTypeDefault, aclPermissions)
+	invitePayload := aclclient.InvitePayload{
+		Permissions: aclPermissions,
+		InviteType:  domain.ConvertInviteType(inviteType),
+	}
+	res, err := aclClient.ReplaceInvite(ctx, invitePayload)
 	if err != nil {
 		err = convertedOrInternalError("couldn't generate acl invite", err)
 		return
