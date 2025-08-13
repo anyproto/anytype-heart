@@ -201,6 +201,7 @@ func (n *clientPeerManager) getStreamResponsiblePeers(ctx context.Context) (peer
 
 func (n *clientPeerManager) manageResponsiblePeers() {
 	for {
+		n.responsibleNodeIds = n.peerStore.ResponsibleNodeIds(n.spaceId)
 		n.fetchResponsiblePeers()
 		select {
 		case <-time.After(time.Second * 20):
