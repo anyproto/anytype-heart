@@ -371,7 +371,7 @@ func TestAclUpdater_Run(t *testing.T) {
 	})
 }
 
-func TestAclUpdater_DeleteSpaceSub(t *testing.T) {
+func TestAclUpdater_SelfRemove(t *testing.T) {
 	t.Run("triggers self removal when space is deleted for non-creator", func(t *testing.T) {
 		fx := newAclUpdaterFixture(t)
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
@@ -639,6 +639,42 @@ func TestAclUpdater_DeleteSpaceSub(t *testing.T) {
 
 		// Wait to ensure no additional calls are made
 		time.Sleep(200 * time.Millisecond)
+	})
+
+	t.Run("retries on leave failure and succeeds", func(t *testing.T) {
+		fx := newAclUpdaterFixture(t)
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+
+		spaceId := fx.spaceIds[0]
+		creatorIdentity := fx.pubKeys[2].Account()
+		spaceViewId := "spaceView1"
+
+		retryDone := make(chan struct{})
+		fx.remover.EXPECT().Leave(mock.Anything, spaceId).
+			Return(assert.AnError).Once()
+		fx.remover.EXPECT().Leave(mock.Anything, spaceId).
+			Run(func(ctx context.Context, spaceId string) {
+				close(retryDone)
+			}).Return(nil).Once()
+
+		err := fx.Run(ctx)
+		require.NoError(t, err)
+
+		// Add space view with status SpaceDeleted for a space we're not the creator of
+		fx.objectStore.AddObjects(t, fx.techSpaceId, []objectstore.TestObject{
+			{
+				bundle.RelationKeyId:                   domain.String(spaceViewId),
+				bundle.RelationKeyTargetSpaceId:        domain.String(spaceId),
+				bundle.RelationKeyCreator:              domain.String(creatorIdentity),
+				bundle.RelationKeyResolvedLayout:       domain.Int64(int64(model.ObjectType_spaceView)),
+				bundle.RelationKeySpaceRemoteStatus:    domain.Int64(int64(model.SpaceStatus_Ok)),
+				bundle.RelationKeySpaceAccountStatus:   domain.Int64(int64(model.SpaceStatus_SpaceDeleted)),
+				bundle.RelationKeyMyParticipantStatus:  domain.Int64(int64(model.ParticipantStatus_Active)),
+			},
+		})
+
+		<-retryDone
 	})
 }
 
