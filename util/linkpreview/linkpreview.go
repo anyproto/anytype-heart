@@ -264,7 +264,7 @@ func containsDirective(header string, directive string) bool {
 			return false
 		}
 
-		start = start + idx
+		start += idx
 		end := start + len(directive)
 
 		// Check if it's a complete token (surrounded by separators or string boundaries)
@@ -275,7 +275,7 @@ func containsDirective(header string, directive string) bool {
 			return true
 		}
 
-		start = start + 1
+		start++
 		if start >= len(header) {
 			break
 		}
