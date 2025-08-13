@@ -38,10 +38,9 @@ var (
 	log            = logging.Logger(CName)
 
 	privacyDirectives = map[string][]string{
-		"Cache-Control":           {"no-store", "no-cache", "private"},
-		"Content-Security-Policy": {"default-src 'none'", "prefetch-src 'none'"},
-		"Referrer-Policy":         {"no-referrer"},
-		"X-Robots-Tag":            {"noindex", "nofollow", "noarchive", "none"},
+		"X-Robots-Tag":            {"none"},
+		"X-Frame-Options":         {"deny", "sameorigin"},
+		"Content-Security-Policy": {"default-src 'none'", "frame-ancestors 'none'"},
 	}
 )
 

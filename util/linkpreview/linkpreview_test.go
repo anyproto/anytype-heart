@@ -162,35 +162,31 @@ func TestCheckPrivateLink(t *testing.T) {
 		require.NoError(t, err)
 	})
 
-	t.Run("Cache-Control private header", func(t *testing.T) {
+	t.Run("X-Frame-Options headers", func(t *testing.T) {
 		testCases := []struct {
 			name          string
-			cacheControl  string
+			frameOptions  string
 			shouldBeError bool
 		}{
-			{"private directive", "private", true},
-			{"no-store directive", "no-store", true},
-			{"no-cache directive", "no-cache", true},
-			{"must-revalidate directive", "must-revalidate", true},
-			{"mixed with private", "public, private, max-age=3600", true},
-			{"mixed with no-store", "max-age=0, no-store", true},
-			{"public only", "public, max-age=3600", false},
-			{"max-age only", "max-age=3600", false},
-			{"case insensitive", "PRIVATE, MAX-AGE=0", true},
+			{"deny directive", "deny", true},
+			{"sameorigin directive", "sameorigin", true},
+			{"allowall should pass", "allowall", false},
+			{"case insensitive deny", "DENY", true},
+			{"case insensitive sameorigin", "SAMEORIGIN", true},
 		}
 
 		for _, tc := range testCases {
 			t.Run(tc.name, func(t *testing.T) {
 				resp := &http.Response{
 					Header: http.Header{
-						"Cache-Control": {tc.cacheControl},
+						"X-Frame-Options": {tc.frameOptions},
 					},
 				}
 				err := checkPrivateLink(resp)
 				if tc.shouldBeError {
 					require.Error(t, err)
 					assert.ErrorIs(t, err, ErrPrivateLink)
-					assert.Contains(t, err.Error(), "Cache-Control")
+					assert.Contains(t, err.Error(), "X-Frame-Options")
 				} else {
 					require.NoError(t, err)
 				}
@@ -205,8 +201,8 @@ func TestCheckPrivateLink(t *testing.T) {
 			shouldBeError bool
 		}{
 			{"default-src none", "default-src 'none'", true},
-			{"prefetch-src none", "prefetch-src 'none'", true},
-			{"both restrictive", "default-src 'none'; prefetch-src 'none'", true},
+			{"frame-ancestors none", "frame-ancestors 'none'", true},
+			{"both restrictive", "default-src 'none'; frame-ancestors 'none'", true},
 			{"normal CSP", "default-src 'self'; script-src 'unsafe-inline'", false},
 			{"case insensitive", "DEFAULT-SRC 'NONE'", true},
 		}
@@ -230,36 +226,6 @@ func TestCheckPrivateLink(t *testing.T) {
 		}
 	})
 
-	t.Run("Referrer-Policy headers", func(t *testing.T) {
-		testCases := []struct {
-			name          string
-			policy        string
-			shouldBeError bool
-		}{
-			{"no-referrer", "no-referrer", true},
-			{"strict-origin", "strict-origin", false},
-			{"same-origin", "same-origin", false},
-			{"case insensitive", "NO-REFERRER", true},
-		}
-
-		for _, tc := range testCases {
-			t.Run(tc.name, func(t *testing.T) {
-				resp := &http.Response{
-					Header: http.Header{
-						"Referrer-Policy": {tc.policy},
-					},
-				}
-				err := checkPrivateLink(resp)
-				if tc.shouldBeError {
-					require.Error(t, err)
-					assert.ErrorIs(t, err, ErrPrivateLink)
-					assert.Contains(t, err.Error(), "Referrer-Policy")
-				} else {
-					require.NoError(t, err)
-				}
-			})
-		}
-	})
 
 	t.Run("X-Robots-Tag headers", func(t *testing.T) {
 		testCases := []struct {
@@ -267,13 +233,12 @@ func TestCheckPrivateLink(t *testing.T) {
 			robotsTag     string
 			shouldBeError bool
 		}{
-			{"noindex", "noindex", true},
-			{"nofollow", "nofollow", true},
-			{"noarchive", "noarchive", true},
-			{"none", "none", true},
-			{"multiple directives", "noindex, nofollow", true},
+			{"none - most restrictive", "none", true},
+			{"noindex should be allowed", "noindex", false},
+			{"nofollow should be allowed", "nofollow", false},
+			{"noarchive should be allowed", "noarchive", false},
 			{"index allowed", "index, follow", false},
-			{"case insensitive", "NOINDEX", true},
+			{"case insensitive none", "NONE", true},
 		}
 
 		for _, tc := range testCases {
@@ -298,10 +263,9 @@ func TestCheckPrivateLink(t *testing.T) {
 	t.Run("multiple headers with privacy indicators", func(t *testing.T) {
 		resp := &http.Response{
 			Header: http.Header{
-				"Cache-Control":           {"private, no-store"},
+				"X-Frame-Options":         {"deny"},
 				"Content-Security-Policy": {"default-src 'none'"},
-				"Referrer-Policy":         {"no-referrer"},
-				"X-Robots-Tag":            {"noindex, nofollow"},
+				"X-Robots-Tag":            {"none"},
 			},
 		}
 		err := checkPrivateLink(resp)
@@ -325,15 +289,15 @@ func TestCheckPrivateLink(t *testing.T) {
 			{
 				"empty header values",
 				http.Header{
-					"Cache-Control": {""},
-					"X-Robots-Tag":  {""},
+					"X-Frame-Options": {""},
+					"X-Robots-Tag":    {""},
 				},
 				false,
 			},
 			{
 				"substring matching",
 				http.Header{
-					"Cache-Control": {"public-private"}, // should not match "private"
+					"X-Robots-Tag": {"nonexistent"}, // should not match "none"
 				},
 				false,
 			},
@@ -354,10 +318,10 @@ func TestCheckPrivateLink(t *testing.T) {
 }
 
 func TestLinkPreview_Fetch_PrivateLink(t *testing.T) {
-	t.Run("private link with Cache-Control", func(t *testing.T) {
+	t.Run("private link with X-Frame-Options", func(t *testing.T) {
 		ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set("Content-Type", "text/html")
-			w.Header().Set("Cache-Control", "private, no-store")
+			w.Header().Set("X-Frame-Options", "deny")
 			w.Write([]byte(tetsHtml))
 		}))
 		defer ts.Close()
@@ -374,7 +338,7 @@ func TestLinkPreview_Fetch_PrivateLink(t *testing.T) {
 	t.Run("private link with X-Robots-Tag", func(t *testing.T) {
 		ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set("Content-Type", "text/html")
-			w.Header().Set("X-Robots-Tag", "noindex, nofollow")
+			w.Header().Set("X-Robots-Tag", "none")
 			w.Write([]byte(tetsHtml))
 		}))
 		defer ts.Close()
@@ -391,7 +355,7 @@ func TestLinkPreview_Fetch_PrivateLink(t *testing.T) {
 		tr := testReader(0)
 		ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set("Content-Type", "image/jpg")
-			w.Header().Set("Cache-Control", "private")
+			w.Header().Set("X-Frame-Options", "sameorigin")
 			io.Copy(w, &tr)
 		}))
 		defer ts.Close()
