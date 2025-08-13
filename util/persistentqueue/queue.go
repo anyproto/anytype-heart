@@ -59,6 +59,7 @@ type Queue[T Item] struct {
 	messageQueue messageQueue[T]
 	handler      HandlerFunc[T]
 	options      options
+	workersCh    chan struct{}
 	handledItems uint32
 
 	lock sync.Mutex
@@ -77,6 +78,7 @@ type Queue[T Item] struct {
 }
 
 type options struct {
+	workers            int
 	retryPauseDuration time.Duration
 	ctx                context.Context
 }
@@ -96,6 +98,15 @@ func WithContext(ctx context.Context) Option {
 	}
 }
 
+func WithWorkersNumber(workers int) Option {
+	return func(o *options) {
+		if workers < 1 {
+			workers = 1
+		}
+		o.workers = workers
+	}
+}
+
 // New creates new queue backed by specified storage. If priorityQueueLessFunc is provided, use priority queue as underlying message queue
 func New[T Item](
 	storage Storage[T],
@@ -105,15 +116,20 @@ func New[T Item](
 	opts ...Option,
 ) *Queue[T] {
 	q := &Queue[T]{
-		storage:  storage,
-		logger:   logger,
-		handler:  handler,
-		set:      make(map[string]struct{}),
-		options:  options{},
+		storage: storage,
+		logger:  logger,
+		handler: handler,
+		set:     make(map[string]struct{}),
+		options: options{
+			workers: 1,
+		},
 		closedCh: make(chan struct{}),
 	}
 	for _, opt := range opts {
 		opt(&q.options)
+	}
+	if q.options.workers > 1 {
+		q.workersCh = make(chan struct{}, q.options.workers)
 	}
 	rootCtx := context.Background()
 	if q.options.ctx != nil {
@@ -157,18 +173,43 @@ func (q *Queue[T]) loop() {
 			return
 		default:
 		}
-		err := q.handleNext()
-		if errors.Is(err, context.Canceled) {
-			return
-		}
-		if errors.Is(err, errRemoved) {
-			continue
-		}
-		if err != nil {
-			q.logger.Error("handle next", zap.Error(err))
+
+		if q.options.workers == 1 {
+			err := q.handleNext()
+			if errors.Is(err, context.Canceled) {
+				return
+			}
+			if errors.Is(err, errRemoved) {
+				continue
+			}
+			if err != nil {
+				q.logger.Error("handle next", zap.Error(err))
+			}
+		} else {
+			select {
+			case q.workersCh <- struct{}{}:
+			case <-q.ctx.Done():
+				return
+			}
+			go func() {
+				err := q.handleNext()
+				if errors.Is(err, context.Canceled) {
+					return
+				}
+				if errors.Is(err, errRemoved) {
+					return
+				}
+				if err != nil {
+					q.logger.Error("handle next", zap.Error(err))
+				}
+				select {
+				case <-q.workersCh:
+				case <-q.ctx.Done():
+					return
+				}
+			}()
 		}
 	}
-
 }
 
 func (q *Queue[T]) handleNext() error {
