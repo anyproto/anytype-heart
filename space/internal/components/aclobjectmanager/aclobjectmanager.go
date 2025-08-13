@@ -145,17 +145,13 @@ func (a *aclObjectManager) process() {
 		return
 	}
 	a.spaceLoaderListener.OnSpaceLoad(a.sp.Id())
-	err := a.participantWatcher.UpdateAccountParticipantFromProfile(a.ctx, a.sp)
-	if err != nil {
-		log.Error("init my identity", zap.Error(err))
-	}
 
 	common := a.sp.CommonSpace()
 	acl := common.Acl()
 	acl.SetAclUpdater(a)
 	acl.RLock()
 	defer acl.RUnlock()
-	err = a.processAcl()
+	err := a.processAcl()
 	if err != nil {
 		log.Error("error processing acl", zap.Error(err))
 		return
@@ -311,7 +307,7 @@ func (a *aclObjectManager) processStates(states []list.AccountState, upToDate bo
 		if state.Permissions.NoPermissions() && state.PubKey.Equals(myIdentity) && upToDate {
 			return a.status.SetPersistentStatus(spaceinfo.AccountStatusRemoving)
 		}
-		err := a.participantWatcher.UpdateParticipantFromAclState(a.ctx, a.sp, state)
+		err = a.participantWatcher.UpdateParticipantFromAclState(a.ctx, a.sp, state)
 		if err != nil {
 			return err
 		}
