@@ -6,16 +6,14 @@ package core
 import (
 	"context"
 	"fmt"
+	"path"
 	"strings"
 
-	"github.com/gogo/protobuf/proto"
-	"github.com/gogo/protobuf/protoc-gen-gogo/descriptor"
 	"github.com/gogo/status"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/metadata"
 
-	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
@@ -35,9 +33,27 @@ var limitedScopeMethods = map[string]struct{}{
 	"ObjectCollectionAdd":        {},
 }
 
+var noAuthMethods = map[string]struct{}{
+	"AppGetVersion":                  {},
+	"WalletCreate":                   {},
+	"WalletRecover":                  {},
+	"WalletCreateSession":            {},
+	"AccountCreate":                  {},
+	"AccountMigrate":                 {},
+	"AccountMigrateCancel":           {},
+	"AccountSelect":                  {},
+	"AccountRecoverFromLegacyExport": {},
+	"AccountLocalLinkNewChallenge":   {},
+	"AccountLocalLinkSolveChallenge": {},
+	"ObjectImport":                   {},
+	"DebugRunProfiler":               {},
+	"DebugAccountSelectTrace":        {},
+	"DebugExportLog":                 {},
+	"InitialSetParameters":           {},
+}
+
 func (mw *Middleware) Authorize(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (resp interface{}, err error) {
-	_, d := descriptor.ForMessage(req.(descriptor.Message))
-	noAuth := proto.GetBoolExtension(d.GetOptions(), pb.E_NoAuth, false)
+	_, noAuth := noAuthMethods[path.Base(info.FullMethod)]
 	if noAuth {
 		resp, err = handler(ctx, req)
 		return
