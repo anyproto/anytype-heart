@@ -75,12 +75,13 @@ func newAclUpdater(
 			case MsgTypeRemoveOther:
 				return !errors.Is(err, ErrRequestNotExists)
 			case MsgTypeRemoveSelf:
-				return !(errors.Is(err, list.ErrPendingRequest) ||
+				stopRetryErrors := errors.Is(err, list.ErrPendingRequest) ||
 					errors.Is(err, list.ErrIsOwner) ||
 					errors.Is(err, list.ErrNoSuchAccount) ||
 					errors.Is(err, coordinatorproto.ErrSpaceIsDeleted) ||
 					errors.Is(err, coordinatorproto.ErrSpaceNotExists) ||
-					errors.Is(err, spacesyncproto.ErrSpaceIsDeleted))
+					errors.Is(err, spacesyncproto.ErrSpaceIsDeleted)
+				return !stopRetryErrors
 			default:
 				return false
 			}
