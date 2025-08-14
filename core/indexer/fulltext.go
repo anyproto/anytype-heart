@@ -261,7 +261,6 @@ func (i *indexer) prepareSearchDocument(ctx context.Context, id domain.FullID) (
 		}
 
 		for _, key := range sb.AllRelationKeys() {
-			// TODO: GO-4284 Test new logic with relationLinks fetching
 			relLink, err := i.store.SpaceIndex(sb.SpaceID()).GetRelationLink(key.String())
 			if err == nil && relLink != nil && relLink.Format != model.RelationFormat_shorttext && relLink.Format != model.RelationFormat_longtext {
 				continue

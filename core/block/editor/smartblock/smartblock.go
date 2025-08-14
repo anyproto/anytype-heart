@@ -1059,6 +1059,7 @@ func (sb *smartBlock) hasDepIds(act *undo.Action) bool {
 		for k, after := range act.Details.After.Iterate() {
 			rel, err := sb.spaceIndex.GetRelationLink(k.String())
 			if err != nil || rel == nil {
+				// TODO: GO-4284 Is custom relation always in store?
 				continue
 			}
 			if slices.Contains([]model.RelationFormat{

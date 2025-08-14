@@ -148,7 +148,7 @@ func (s *SpaceView) SetAclInfo(isAclEmpty bool, pushKey crypto.PrivKey, pushEncK
 	st := s.NewState()
 	st.SetDetail(bundle.RelationKeyIsAclShared, domain.Bool(!isAclEmpty))
 
-	st.SetDetailAndBundledRelation(bundle.RelationKeySpaceJoinDate, domain.Int64(joinedDate))
+	st.SetDetail(bundle.RelationKeySpaceJoinDate, domain.Int64(joinedDate))
 
 	if pushKey != nil {
 		pushKeyBinary, err := pushKey.Marshall()
