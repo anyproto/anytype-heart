@@ -89,7 +89,7 @@ func (ot *ObjectType) Init(ctx *smartblock.InitContext) (err error) {
 
 func (ot *ObjectType) CreationStateMigration(ctx *smartblock.InitContext) migration.Migration {
 	return migration.Migration{
-		Version: 5,
+		Version: 6,
 		Proc: func(s *state.State) {
 			if len(ctx.ObjectTypeKeys) > 0 && len(ctx.State.ObjectTypeKeys()) == 0 {
 				ctx.State.SetObjectTypeKeys(ctx.ObjectTypeKeys)
@@ -128,6 +128,10 @@ func (ot *ObjectType) StateMigrations() migration.Migrations {
 		{
 			Version: 5,
 			Proc:    removeDescriptionMigration,
+		},
+		{
+			Version: 6,
+			Proc:    defaultViewTypeMigration,
 		},
 	})
 }
@@ -219,5 +223,17 @@ func (ot *ObjectType) dataviewTemplates() []template.StateTransformer {
 	return []template.StateTransformer{
 		template.WithDataviewIDIfNotExists(state.DataviewBlockID, dvContent, false),
 		template.WithForcedDetail(bundle.RelationKeySetOf, domain.StringList([]string{ot.Id()})),
+	}
+}
+
+func defaultViewTypeMigration(s *state.State) {
+	recommendedLayout := model.ObjectTypeLayout(s.Details().GetInt64(bundle.RelationKeyRecommendedLayout))
+	if recommendedLayout != model.ObjectType_collection && recommendedLayout != model.ObjectType_set {
+		return
+	}
+
+	defaultViewType := model.BlockContentDataviewViewType(s.Details().GetInt64(bundle.RelationKeyDefaultViewType))
+	if defaultViewType == model.BlockContentDataviewView_Table {
+		s.SetDetail(bundle.RelationKeyDefaultViewType, domain.Int64(int64(model.BlockContentDataviewView_List)))
 	}
 }
