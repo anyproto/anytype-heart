@@ -144,9 +144,11 @@ func (s *SpaceView) SetOwner(ownerId string, createdDate int64) (err error) {
 	return s.Apply(st)
 }
 
-func (s *SpaceView) SetAclInfo(isAclEmpty bool, pushKey crypto.PrivKey, pushEncKey crypto.SymKey) error {
+func (s *SpaceView) SetAclInfo(isAclEmpty bool, pushKey crypto.PrivKey, pushEncKey crypto.SymKey, joinedDate int64) error {
 	st := s.NewState()
 	st.SetDetail(bundle.RelationKeyIsAclShared, domain.Bool(!isAclEmpty))
+
+	st.SetDetailAndBundledRelation(bundle.RelationKeySpaceJoinDate, domain.Int64(joinedDate))
 
 	if pushKey != nil {
 		pushKeyBinary, err := pushKey.Marshall()

@@ -10,6 +10,7 @@ import (
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
+	"github.com/anyproto/anytype-heart/core/block/cache/mock_cache"
 	"github.com/anyproto/anytype-heart/core/block/chats/chatmodel"
 	"github.com/anyproto/anytype-heart/core/block/chats/chatrepository"
 	"github.com/anyproto/anytype-heart/core/block/object/idresolver/mock_idresolver"
@@ -56,12 +57,16 @@ func newFixture(t *testing.T) *fixture {
 
 	idResolver := mock_idresolver.NewMockResolver(t)
 	idResolver.EXPECT().ResolveSpaceID(mock.Anything).Return(testSpaceId, nil).Maybe()
+	idResolver.EXPECT().ResolveSpaceIdWithRetry(mock.Anything, mock.Anything).Return(testSpaceId, nil).Maybe()
 
 	accountService := &accountServiceStub{accountId: testCreator}
 
 	eventSender := mock_event.NewMockSender(t)
 
 	objectStore := objectstore.NewStoreFixture(t)
+
+	objectGetter := mock_cache.NewMockObjectWaitGetterComponent(t)
+	objectGetter.EXPECT().WaitAndGetObject(mock.Anything, mock.Anything).Return(nil, nil).Maybe()
 
 	repo := chatrepository.New()
 
@@ -71,6 +76,7 @@ func newFixture(t *testing.T) *fixture {
 	a.Register(accountService)
 	a.Register(testutil.PrepareMock(ctx, a, eventSender))
 	a.Register(testutil.PrepareMock(ctx, a, idResolver))
+	a.Register(testutil.PrepareMock(ctx, a, objectGetter))
 	a.Register(objectStore)
 	a.Register(repo)
 	a.Register(provider)
@@ -225,7 +231,7 @@ func TestFlush(t *testing.T) {
 										Messages:    &model.ChatStateUnreadState{},
 										Mentions:    &model.ChatStateUnreadState{},
 										LastStateId: "",
-										Order:       1,
+										Order:       6,
 									},
 									SubIds: []string{
 										subId,

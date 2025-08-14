@@ -92,6 +92,10 @@ func (s *Service) CreateTypeWidgetsIfMissing(ctx context.Context, spaceId string
 		return nil
 	}
 
+	if spaceId == s.spaceService.TechSpaceId() {
+		return nil
+	}
+
 	space, err := s.spaceService.Get(ctx, spaceId)
 	if err != nil {
 		return err
@@ -180,7 +184,7 @@ func (s *Service) CreateTypeWidgetsIfMissing(ctx context.Context, spaceId string
 					targetName = typeDetails.Get(bundle.RelationKeyName).String()
 				}
 			}
-			
+
 			if err := w.AddAutoWidget(st, t.typeId, t.key.String(), addr.ObjectTypeAllViewId, model.BlockContentWidget_View, targetName); err != nil {
 				log.Warnf("failed to add widget for type '%s': %v", t.key, err)
 				// Continue with other widgets even if one fails
@@ -201,6 +205,29 @@ func (s *Service) autoInstallSpaceChatWidget(ctx context.Context, spc clientspac
 	if slices.Contains(keys, widget.DefaultWidgetChat) {
 		return nil
 	}
+
+	info, err := s.accountService.GetSpaceInfo(ctx, spc.Id())
+	if err != nil {
+		return fmt.Errorf("get space info: %w", err)
+	}
+
+	var createWidget bool
+	err = cache.Do(s, info.SpaceViewId, func(sb smartblock.SmartBlock) error {
+		uxType := model.SpaceUxType(sb.Details().GetInt64(bundle.RelationKeySpaceUxType))
+		if uxType == model.SpaceUxType_Chat {
+			createWidget = true
+		}
+		return nil
+	})
+	if err != nil {
+		return fmt.Errorf("get space view: %w", err)
+	}
+	// Do not create widget in the current release
+	// Disable this logic in GO-6089
+	if !createWidget {
+		return nil
+	}
+
 	err = spc.DoCtx(ctx, widgetObjectId, func(sb smartblock.SmartBlock) error {
 		st := sb.NewState()
 		if w, ok := sb.(widget.Widget); ok {

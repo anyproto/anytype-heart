@@ -498,6 +498,9 @@ message Block {
                     NextMonth = 9;
                     NumberOfDaysAgo = 10;
                     NumberOfDaysNow = 11;
+                    LastYear = 12;
+                    CurrentYear = 13;
+                    NextYear = 14;
                 }
             }
 
@@ -577,6 +580,8 @@ message Block {
                 Graphviz = 20;
                 Sketchfab = 21;
                 Image = 22;
+                Drawio = 23;
+                Spotify = 24;
             }
         }
 

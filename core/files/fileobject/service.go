@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"github.com/anyproto/any-sync/app"
-	"github.com/avast/retry-go/v4"
 	"github.com/ipfs/go-cid"
 
 	"github.com/anyproto/anytype-heart/core/anytype/config"
@@ -91,23 +90,15 @@ type service struct {
 
 	indexer *indexer
 
-	resolverRetryStartDelay time.Duration
-	resolverRetryMaxDelay   time.Duration
-
 	componentCtx       context.Context
 	componentCtxCancel context.CancelFunc
 	closeWg            *sync.WaitGroup
 }
 
-func New(
-	resolverRetryStartDelay time.Duration,
-	resolverRetryMaxDelay time.Duration,
-) Service {
+func New() Service {
 	return &service{
-		resolverRetryStartDelay: resolverRetryStartDelay,
-		resolverRetryMaxDelay:   resolverRetryMaxDelay,
-		indexMigrationChan:      make(chan *indexMigrationItem),
-		closeWg:                 &sync.WaitGroup{},
+		indexMigrationChan: make(chan *indexMigrationItem),
+		closeWg:            &sync.WaitGroup{},
 	}
 }
 
@@ -617,17 +608,7 @@ func (s *service) resolveSpaceIdWithRetry(ctx context.Context, objectId string) 
 		return "", fmt.Errorf("object id is file cid")
 	}
 
-	spaceId, err := retry.DoWithData(func() (string, error) {
-		return s.spaceIdResolver.ResolveSpaceID(objectId)
-	},
-		retry.Context(ctx),
-		retry.Attempts(0),
-		retry.Delay(s.resolverRetryStartDelay),
-		retry.MaxDelay(s.resolverRetryMaxDelay),
-		retry.DelayType(retry.BackOffDelay),
-		retry.LastErrorOnly(true),
-	)
-	return spaceId, err
+	return s.spaceIdResolver.ResolveSpaceIdWithRetry(ctx, objectId)
 }
 
 func (s *service) DeleteFileData(spaceId string, objectId string) error {

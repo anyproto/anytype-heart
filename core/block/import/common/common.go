@@ -254,28 +254,30 @@ func handleTextBlock(oldIDtoNew map[string]string, block simple.Block, st *state
 	st.Set(simple.New(block.Model()))
 }
 
-func UpdateObjectIDsInRelations(st *state.State, oldIDtoNew map[string]string) {
+func UpdateObjectIDsInRelations(st *state.State, oldIDtoNew map[string]string, relationKeysToFormat map[domain.RelationKey]int32) {
 	for k, v := range st.Details().Iterate() {
-		// TODO: GO-5214 Fetch relation format from bundled info and snapshots
-		// if !isLinkToObject(relLink) {
-		// 	continue
-		// }
-		if k == bundle.RelationKeyFeaturedRelations {
-			// special cases
-			// featured relations have incorrect IDs
+		format, ok := relationKeysToFormat[k]
+		if !ok {
+			rel, err := bundle.GetRelation(k)
+			if err != nil {
+				continue
+			}
+			format = int32(rel.Format)
+		}
+		if !isObjectRelation(k, format) {
 			continue
 		}
-		// For example, RelationKeySetOf is handled here
 		handleObjectRelation(st, oldIDtoNew, v, k)
 	}
 }
 
-func isLinkToObject(relLink *model.RelationLink) bool {
-	return relLink.Key == bundle.RelationKeyCoverId.String() || // Special case because cover could either be a color or image
-		relLink.Format == model.RelationFormat_object ||
-		relLink.Format == model.RelationFormat_tag ||
-		relLink.Format == model.RelationFormat_status ||
-		relLink.Format == model.RelationFormat_file
+func isObjectRelation(key domain.RelationKey, format int32) bool {
+	return key != bundle.RelationKeyFeaturedRelations && // featured relations have relation keys instead of IDs
+		(key == bundle.RelationKeyCoverId || // cover could either be a color (longtext) or image (object)
+			format == int32(model.RelationFormat_object) ||
+			format == int32(model.RelationFormat_tag) ||
+			format == int32(model.RelationFormat_status) ||
+			format == int32(model.RelationFormat_file))
 }
 
 func handleObjectRelation(st *state.State, oldIDtoNew map[string]string, v domain.Value, k domain.RelationKey) {

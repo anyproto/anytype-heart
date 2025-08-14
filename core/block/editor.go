@@ -535,8 +535,8 @@ type Movable interface {
 	basic.Restrictionable
 }
 
-func (s *Service) MoveBlocks(req pb.RpcBlockListMoveToExistingObjectRequest) error {
-	return cache.DoState2(s, req.ContextId, req.TargetContextId, func(srcState, destState *state.State, sb, tb Movable) error {
+func (s *Service) MoveBlocks(ctx session.Context, req pb.RpcBlockListMoveToExistingObjectRequest) error {
+	return cache.DoState2(s, ctx, req.ContextId, req.TargetContextId, func(srcState, destState *state.State, sb, tb Movable) error {
 		if err := sb.Restrictions().Object.Check(model.Restrictions_Blocks); err != nil {
 			return restriction.ErrRestricted
 		}

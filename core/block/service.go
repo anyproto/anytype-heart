@@ -14,6 +14,7 @@ import (
 	"github.com/samber/lo"
 	"go.uber.org/zap"
 
+	"github.com/anyproto/anytype-heart/core/anytype/account"
 	bookmarksvc "github.com/anyproto/anytype-heart/core/block/bookmark"
 	"github.com/anyproto/anytype-heart/core/block/cache"
 	"github.com/anyproto/anytype-heart/core/block/detailservice"
@@ -88,6 +89,7 @@ func New() *Service {
 }
 
 type Service struct {
+	accountService       account.Service
 	eventSender          event.Sender
 	process              process.Service
 	objectStore          objectstore.ObjectStore
@@ -136,11 +138,10 @@ func (s *Service) Init(a *app.App) (err error) {
 	s.resolver = a.MustComponent(idresolver.CName).(idresolver.Resolver)
 	s.fileObjectService = app.MustComponent[fileobject.Service](a)
 	s.fileUploaderService = app.MustComponent[fileuploader.Service](a)
-
 	s.tempDirProvider = app.MustComponent[core.TempDirProvider](a)
-
 	s.builtinObjectService = app.MustComponent[builtinObjects](a)
 	s.detailsService = app.MustComponent[detailservice.Service](a)
+	s.accountService = app.MustComponent[account.Service](a)
 	return
 }
 
@@ -157,7 +158,7 @@ func (s *Service) GetObject(ctx context.Context, objectID string) (sb smartblock
 }
 
 func (s *Service) WaitAndGetObject(ctx context.Context, objectID string) (sb smartblock.SmartBlock, err error) {
-	spaceID, err := s.resolver.ResolveSpaceID(objectID)
+	spaceID, err := s.resolver.ResolveSpaceIdWithRetry(ctx, objectID)
 	if err != nil {
 		return nil, err
 	}
@@ -432,7 +433,12 @@ func (s *Service) SpaceInitChat(ctx context.Context, spaceId string) error {
 		return fmt.Errorf("apply chatId to workspace: %w", err)
 	}
 
-	return s.autoInstallSpaceChatWidget(ctx, spc)
+	err = s.autoInstallSpaceChatWidget(ctx, spc)
+	if err != nil {
+		return fmt.Errorf("install chat widget: %w", err)
+	}
+
+	return nil
 }
 
 func (s *Service) SelectWorkspace(req *pb.RpcWorkspaceSelectRequest) error {

@@ -155,9 +155,9 @@ func (d *sdataview) SetRelations(ctx session.Context, blockId string, relationKe
 	}
 	var links []*model.RelationLink
 	for _, key := range relationKeys {
-		relation, err2 := d.objectStore.FetchRelationByKey(key)
-		if err2 != nil {
-			return err2
+		relation, err := d.objectStore.FetchRelationByKey(key)
+		if err != nil {
+			return fmt.Errorf("failed to find relation '%s': %w", key, err)
 		}
 		links = append(links, relation.RelationLink())
 	}

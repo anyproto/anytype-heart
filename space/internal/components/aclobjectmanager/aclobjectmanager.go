@@ -11,6 +11,7 @@ import (
 	"github.com/anyproto/any-sync/app/debugstat"
 	"github.com/anyproto/any-sync/app/logger"
 	"github.com/anyproto/any-sync/commonspace/object/acl/list"
+	"github.com/anyproto/any-sync/commonspace/object/acl/syncacl"
 	"github.com/anyproto/any-sync/util/crypto"
 	"github.com/samber/lo"
 	"go.uber.org/zap"
@@ -144,17 +145,13 @@ func (a *aclObjectManager) process() {
 		return
 	}
 	a.spaceLoaderListener.OnSpaceLoad(a.sp.Id())
-	err := a.participantWatcher.UpdateAccountParticipantFromProfile(a.ctx, a.sp)
-	if err != nil {
-		log.Error("init my identity", zap.Error(err))
-	}
 
 	common := a.sp.CommonSpace()
 	acl := common.Acl()
 	acl.SetAclUpdater(a)
 	acl.RLock()
 	defer acl.RUnlock()
-	err = a.processAcl()
+	err := a.processAcl()
 	if err != nil {
 		log.Error("error processing acl", zap.Error(err))
 		return
@@ -260,7 +257,13 @@ func (a *aclObjectManager) processAcl() (err error) {
 			log.Warn("get currentReadKey", zap.Error(fkErr))
 		}
 	}
-	err = a.status.SetAclInfo(isEmpty, pushKey, pushEncKey)
+
+	joinedDate, err := a.findJoinedDate(acl)
+	if err != nil {
+		return
+	}
+
+	err = a.status.SetAclInfo(isEmpty, pushKey, pushEncKey, joinedDate)
 	if err != nil {
 		return
 	}
@@ -270,12 +273,41 @@ func (a *aclObjectManager) processAcl() (err error) {
 	return nil
 }
 
+func (a *aclObjectManager) findJoinedDate(acl syncacl.SyncAcl) (int64, error) {
+	currentIdentity := a.accountService.Account().SignKey.GetPublic()
+	joinedAclRecordId := acl.Head().Id
+	for _, accState := range acl.AclState().CurrentAccounts() {
+		if !accState.PubKey.Equals(currentIdentity) {
+			continue
+		}
+		// Find the first record in which the user has got permissions since the last join
+		// Example:
+		// We have acl: [ 1:noPermissions, 2:reader, 3:noPermission, 4:reader, 5:writer ]
+		// Record with id=4 is one that we need
+		for i := len(accState.PermissionChanges) - 1; i >= 0; i-- {
+			permChange := accState.PermissionChanges[i]
+
+			if permChange.Permission.NoPermissions() {
+				break
+			} else {
+				joinedAclRecordId = permChange.RecordId
+			}
+		}
+		break
+	}
+	joinedRecord, err := acl.Get(joinedAclRecordId)
+	if err != nil {
+		return 0, fmt.Errorf("get joined acl record: %w", err)
+	}
+	return joinedRecord.Timestamp, nil
+}
+
 func (a *aclObjectManager) processStates(states []list.AccountState, upToDate bool, myIdentity crypto.PubKey) (err error) {
 	for _, state := range states {
 		if state.Permissions.NoPermissions() && state.PubKey.Equals(myIdentity) && upToDate {
 			return a.status.SetPersistentStatus(spaceinfo.AccountStatusRemoving)
 		}
-		err := a.participantWatcher.UpdateParticipantFromAclState(a.ctx, a.sp, state)
+		err = a.participantWatcher.UpdateParticipantFromAclState(a.ctx, a.sp, state)
 		if err != nil {
 			return err
 		}
