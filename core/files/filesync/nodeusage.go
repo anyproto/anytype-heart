@@ -12,8 +12,8 @@ import (
 
 const spaceUsageTTL = 60 * time.Second
 
-// spaceUsage helps to track limits usage for parallel uploading
-// TODO Descriptive commentary
+// spaceUsage helps to track limits usage for parallel uploading. To do that we track sizes of currently uploading files
+// and estimate free space using that information.
 type spaceUsage struct {
 	spaceId string
 	lock    sync.Mutex
@@ -61,6 +61,7 @@ func (s *spaceUsage) getFreeSpace(ctx context.Context) (int, error) {
 	return s.limit - s.usageFromNode - s.allocatedUsage, nil
 }
 
+// allocateFile tries to add size of given file to total usage and returns error if there is no free space
 func (s *spaceUsage) allocateFile(ctx context.Context, key string, size int) error {
 	s.lock.Lock()
 	defer s.lock.Unlock()
@@ -90,6 +91,7 @@ func (s *spaceUsage) allocateFile(ctx context.Context, key string, size int) err
 	return nil
 }
 
+// removeFile removes size of given file from total usage
 func (s *spaceUsage) removeFile(key string) {
 	s.lock.Lock()
 	defer s.lock.Unlock()
@@ -102,6 +104,8 @@ func (s *spaceUsage) removeFile(key string) {
 
 }
 
+// markFileUploaded removes size of given file from total local usage and adds this size to estimated node usage counter.
+// In order to keep node usage counter consistent we update it from remote node.
 func (s *spaceUsage) markFileUploaded(key string) {
 	s.lock.Lock()
 	defer s.lock.Unlock()
