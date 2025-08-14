@@ -751,7 +751,7 @@ func TestService_Leave(t *testing.T) {
 		err = fx.Leave(ctx, spaceId)
 		require.NoError(t, err)
 	})
-	t.Run("leave success if acl getter error is known", func(t *testing.T) {
+	t.Run("leave fail if acl getter error is known", func(t *testing.T) {
 		errs := []error{
 			space.ErrSpaceStorageMissig,
 			space.ErrSpaceDeleted,
@@ -761,10 +761,12 @@ func TestService_Leave(t *testing.T) {
 				fx := newFixture(t)
 				defer fx.finish(t)
 				spaceId := "spaceId"
-				// Mock ACL getter to return a known error that should be handled gracefully
+				// Mock ACL getter to return a known error
 				fx.mockJoiningClient.EXPECT().AclGetRecords(ctx, spaceId, "").Return(nil, err)
-				err = fx.Leave(ctx, spaceId)
-				require.NoError(t, err)
+				actualErr := fx.Leave(ctx, spaceId)
+				require.Error(t, actualErr)
+				// These errors are passthrough errors, so they should be returned as-is
+				require.True(t, errors.Is(actualErr, err))
 			})
 		}
 	})
@@ -777,7 +779,7 @@ func TestService_Leave(t *testing.T) {
 		err := fx.Leave(ctx, spaceId)
 		require.True(t, errors.Is(err, ErrAclRequestFailed))
 	})
-	t.Run("leave success if acl request error is known", func(t *testing.T) {
+	t.Run("leave fail if acl request error is known", func(t *testing.T) {
 		errs := []error{
 			list.ErrPendingRequest,
 			list.ErrIsOwner,
@@ -785,8 +787,8 @@ func TestService_Leave(t *testing.T) {
 			coordinatorproto.ErrSpaceIsDeleted,
 			coordinatorproto.ErrSpaceNotExists,
 		}
-		for _, err := range errs {
-			t.Run("known error "+err.Error(), func(t *testing.T) {
+		for _, testErr := range errs {
+			t.Run("known error "+testErr.Error(), func(t *testing.T) {
 				fx := newFixture(t)
 				defer fx.finish(t)
 				spaceId := "spaceId"
@@ -800,10 +802,22 @@ func TestService_Leave(t *testing.T) {
 				require.NoError(t, err)
 				
 				fx.mockJoiningClient.EXPECT().AclGetRecords(ctx, spaceId, "").Return(records, nil)
-				fx.mockJoiningClient.EXPECT().RequestSelfRemove(ctx, spaceId, gomock.Any()).Return(err)
+				fx.mockJoiningClient.EXPECT().RequestSelfRemove(ctx, spaceId, gomock.Any()).Return(testErr)
 				
-				err = fx.Leave(ctx, spaceId)
-				require.NoError(t, err)
+				actualErr := fx.Leave(ctx, spaceId)
+				require.Error(t, actualErr)
+				// Check the expected error conversion based on the error type
+				switch testErr {
+				case list.ErrNoSuchAccount:
+					require.True(t, errors.Is(actualErr, ErrNoSuchAccount))
+				case coordinatorproto.ErrSpaceIsDeleted:
+					require.True(t, errors.Is(actualErr, space.ErrSpaceDeleted))
+				case coordinatorproto.ErrSpaceNotExists:
+					require.True(t, errors.Is(actualErr, space.ErrSpaceNotExists))
+				default:
+					// Other errors should be wrapped in ErrAclRequestFailed
+					require.True(t, errors.Is(actualErr, ErrAclRequestFailed))
+				}
 			})
 		}
 	})
@@ -837,6 +851,8 @@ func TestService_Leave(t *testing.T) {
 		fx.mockJoiningClient.EXPECT().AclGetRecords(ctx, spaceId, "").Return(nil, list.ErrNoSuchAccount)
 		
 		err := fx.Leave(ctx, spaceId)
-		require.NoError(t, err)
+		require.Error(t, err)
+		// ErrNoSuchAccount should be wrapped as ErrNoSuchAccount (converted in convertedOrAclRequestError)
+		require.True(t, errors.Is(err, ErrNoSuchAccount))
 	})
 }

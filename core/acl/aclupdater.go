@@ -5,6 +5,9 @@ import (
 	"errors"
 	"time"
 
+	"github.com/anyproto/any-sync/commonspace/object/acl/list"
+	"github.com/anyproto/any-sync/commonspace/spacesyncproto"
+	"github.com/anyproto/any-sync/coordinator/coordinatorproto"
 	"github.com/anyproto/any-sync/util/crypto"
 	"go.uber.org/zap"
 
@@ -72,8 +75,12 @@ func newAclUpdater(
 			case MsgTypeRemoveOther:
 				return !errors.Is(err, ErrRequestNotExists)
 			case MsgTypeRemoveSelf:
-				// TODO: check relevant error
-				return !errors.Is(err, ErrRequestNotExists)
+				return !(errors.Is(err, list.ErrPendingRequest) ||
+					errors.Is(err, list.ErrIsOwner) ||
+					errors.Is(err, list.ErrNoSuchAccount) ||
+					errors.Is(err, coordinatorproto.ErrSpaceIsDeleted) ||
+					errors.Is(err, coordinatorproto.ErrSpaceNotExists) ||
+					errors.Is(err, spacesyncproto.ErrSpaceIsDeleted))
 			default:
 				return false
 			}
