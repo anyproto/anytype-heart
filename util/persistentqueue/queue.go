@@ -74,7 +74,7 @@ type Queue[T Item] struct {
 	ctxCancel context.CancelFunc
 
 	isStarted bool
-	closedCh  chan struct{}
+	closeWg   sync.WaitGroup
 }
 
 type options struct {
@@ -123,7 +123,6 @@ func New[T Item](
 		options: options{
 			workers: 1,
 		},
-		closedCh: make(chan struct{}),
 	}
 	for _, opt := range opts {
 		opt(&q.options)
@@ -159,12 +158,15 @@ func (q *Queue[T]) Run() {
 	}
 	q.isStarted = true
 
-	go q.loop()
+	q.closeWg.Add(q.options.workers)
+	for range q.options.workers {
+		go q.loop()
+	}
 }
 
 func (q *Queue[T]) loop() {
 	defer func() {
-		close(q.closedCh)
+		q.closeWg.Done()
 	}()
 
 	for {
@@ -174,40 +176,15 @@ func (q *Queue[T]) loop() {
 		default:
 		}
 
-		if q.options.workers == 1 {
-			err := q.handleNext()
-			if errors.Is(err, context.Canceled) {
-				return
-			}
-			if errors.Is(err, errRemoved) {
-				continue
-			}
-			if err != nil {
-				q.logger.Error("handle next", zap.Error(err))
-			}
-		} else {
-			select {
-			case q.workersCh <- struct{}{}:
-			case <-q.ctx.Done():
-				return
-			}
-			go func() {
-				err := q.handleNext()
-				if errors.Is(err, context.Canceled) {
-					return
-				}
-				if errors.Is(err, errRemoved) {
-					return
-				}
-				if err != nil {
-					q.logger.Error("handle next", zap.Error(err))
-				}
-				select {
-				case <-q.workersCh:
-				case <-q.ctx.Done():
-					return
-				}
-			}()
+		err := q.handleNext()
+		if errors.Is(err, context.Canceled) {
+			return
+		}
+		if errors.Is(err, errRemoved) {
+			continue
+		}
+		if err != nil {
+			q.logger.Error("handle next", zap.Error(err))
 		}
 	}
 }
@@ -279,7 +256,7 @@ func (q *Queue[T]) Close() error {
 	q.lock.Unlock()
 
 	if isStarted {
-		<-q.closedCh
+		q.closeWg.Wait()
 	}
 	return errors.Join(err, q.storage.Close())
 }
