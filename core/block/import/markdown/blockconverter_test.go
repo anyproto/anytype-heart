@@ -8,6 +8,7 @@ import (
 
 	"github.com/samber/lo"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/anyproto/anytype-heart/core/block/import/common"
 	"github.com/anyproto/anytype-heart/core/block/import/common/source"
@@ -47,18 +48,18 @@ func Test_processFiles(t *testing.T) {
 		files := converter.processFiles(absolutePath, common.NewError(pb.RpcObjectImportRequest_IGNORE_ERRORS), source)
 
 		// then
-		assert.Len(t, files, 22)
+		assert.Len(t, files.byPath, 22)
 
 		pdfFilePath := filepath.Join(absolutePath, "test.pdf")
-		assert.Contains(t, files, pdfFilePath)
+		assert.Contains(t, files.byPath, pdfFilePath)
 
 		movFilePath := filepath.Join(absolutePath, "test.mov")
-		assert.Contains(t, files, movFilePath)
+		assert.Contains(t, files.byPath, movFilePath)
 
 		mdFilePath := filepath.Join(absolutePath, "test.md")
-		assert.Contains(t, files, mdFilePath)
+		assert.Contains(t, files.byPath, mdFilePath)
 
-		fileBlocks := lo.Filter(files[mdFilePath].ParsedBlocks, func(item *model.Block, index int) bool {
+		fileBlocks := lo.Filter(files.byPath[mdFilePath].ParsedBlocks, func(item *model.Block, index int) bool {
 			return item.GetFile() != nil
 		})
 
@@ -83,18 +84,18 @@ func Test_processFiles(t *testing.T) {
 		files := converter.processFiles(absolutePath, common.NewError(pb.RpcObjectImportRequest_IGNORE_ERRORS), source)
 
 		// then
-		assert.Len(t, files, 20)
+		assert.Len(t, files.byPath, 20)
 
 		pdfFilePath := filepath.Join(absolutePath, "test.pdf")
-		assert.NotContains(t, files, pdfFilePath)
+		assert.NotContains(t, files.byPath, pdfFilePath)
 
 		movFilePath := filepath.Join(absolutePath, "test.mov")
-		assert.NotContains(t, files, movFilePath)
+		assert.NotContains(t, files.byPath, movFilePath)
 
 		mdFilePath := filepath.Join(absolutePath, "test.md")
-		assert.Contains(t, files, mdFilePath)
+		assert.Contains(t, files.byPath, mdFilePath)
 
-		fileBlocks := lo.Filter(files[mdFilePath].ParsedBlocks, func(item *model.Block, index int) bool {
+		fileBlocks := lo.Filter(files.byPath[mdFilePath].ParsedBlocks, func(item *model.Block, index int) bool {
 			return item.GetFile() != nil
 		})
 
@@ -107,28 +108,41 @@ func TestCreateDirectoryPages_EmptyRootName(t *testing.T) {
 	converter := newMDConverter(&MockTempDir{})
 
 	// Create test files
-	files := map[string]*FileInfo{
-		"doc1.md":        {OriginalPath: "doc1.md", Title: "Document 1"},
-		"subdir/doc2.md": {OriginalPath: "subdir/doc2.md", Title: "Document 2"},
+	files := &fileContainer{
+		byPath: map[string]*FileInfo{
+			"doc1.md":        {OriginalPath: "doc1.md", Title: "Document 1"},
+			"subdir/doc2.md": {OriginalPath: "subdir/doc2.md", Title: "Document 2"},
+		},
+		byName: map[string]*FileInfo{},
+	}
+	for path, info := range files.byPath {
+		files.byName[filepath.Base(path)] = info
 	}
 
 	// Test with empty root path (simulating zip import)
 	converter.createDirectoryPages("", files)
 
 	// Check that root directory page was created with fallback name
-	rootPage, exists := files[""]
+	rootPage, exists := files.byPath[""]
 	assert.True(t, exists, "Root directory page should exist")
 	assert.Equal(t, rootCollectionName, rootPage.Title, "Empty root should use rootCollectionName")
 	assert.True(t, rootPage.IsRootDirPage, "Root directory page should have IsRootDirPage set")
 
 	// Test with "." as root path
-	files2 := map[string]*FileInfo{
-		"doc1.md": {OriginalPath: "doc1.md", Title: "Document 1"},
+	files2 := &fileContainer{
+		byPath: map[string]*FileInfo{
+			"doc1.md": {OriginalPath: "doc1.md", Title: "Document 1"},
+		},
+		byName: map[string]*FileInfo{},
 	}
+	for path, info := range files2.byPath {
+		files2.byName[filepath.Base(path)] = info
+	}
+
 	converter.createDirectoryPages(".", files2)
 
-	rootPage2, exists := files2[""]
-	assert.True(t, exists, "Root directory page should exist for '.'")
+	rootPage2, exists := files2.byPath[""]
+	require.True(t, exists, "Root directory page should exist for '.'")
 	assert.Equal(t, rootCollectionName, rootPage2.Title, "Root '.' should use rootCollectionName")
 }
 
@@ -137,29 +151,35 @@ func TestCreateDirectoryPages_SkipHiddenDirectories(t *testing.T) {
 	converter := newMDConverter(&MockTempDir{})
 
 	// Create test files including hidden directories
-	files := map[string]*FileInfo{
-		"doc1.md":                     {OriginalPath: "doc1.md", Title: "Document 1"},
-		".hidden/doc2.md":             {OriginalPath: ".hidden/doc2.md", Title: "Document 2"},
-		".git/config":                 {OriginalPath: ".git/config", Title: "Git Config"},
-		"visible/doc3.md":             {OriginalPath: "visible/doc3.md", Title: "Document 3"},
-		"visible/.obsidian/workspace": {OriginalPath: "visible/.obsidian/workspace", Title: "Obsidian Workspace"},
+	files := &fileContainer{
+		byPath: map[string]*FileInfo{
+			"doc1.md":                     {OriginalPath: "doc1.md", Title: "Document 1"},
+			".hidden/doc2.md":             {OriginalPath: ".hidden/doc2.md", Title: "Document 2"},
+			".git/config":                 {OriginalPath: ".git/config", Title: "Git Config"},
+			"visible/doc3.md":             {OriginalPath: "visible/doc3.md", Title: "Document 3"},
+			"visible/.obsidian/workspace": {OriginalPath: "visible/.obsidian/workspace", Title: "Obsidian Workspace"},
+		},
+		byName: map[string]*FileInfo{},
+	}
+	for path, info := range files.byPath {
+		files.byName[filepath.Base(path)] = info
 	}
 
 	// Create directory pages
 	converter.createDirectoryPages("", files)
 
 	// Check that hidden directories were not created
-	_, hiddenExists := files[".hidden"]
+	_, hiddenExists := files.byPath[".hidden"]
 	assert.False(t, hiddenExists, "Hidden directory .hidden should not have a page")
 
-	_, gitExists := files[".git"]
+	_, gitExists := files.byPath[".git"]
 	assert.False(t, gitExists, "Hidden directory .git should not have a page")
 
-	_, obsidianExists := files["visible/.obsidian"]
+	_, obsidianExists := files.byPath["visible/.obsidian"]
 	assert.False(t, obsidianExists, "Hidden subdirectory .obsidian should not have a page")
 
 	// Check that visible directory was created
-	visiblePage, visibleExists := files["visible"]
+	visiblePage, visibleExists := files.byPath["visible"]
 	assert.True(t, visibleExists, "Visible directory should have a page")
 
 	// Check that visible directory doesn't contain links to hidden subdirectories
@@ -177,7 +197,7 @@ func TestCreateDirectoryPages_SkipHiddenDirectories(t *testing.T) {
 	}
 
 	// Check that root directory page exists but doesn't contain hidden directories
-	rootPage, rootExists := files[""]
+	rootPage, rootExists := files.byPath[""]
 	assert.True(t, rootExists, "Root directory page should exist")
 
 	if rootExists {
@@ -198,44 +218,50 @@ func TestCreateDirectoryPages_PathImport(t *testing.T) {
 	converter := newMDConverter(&MockTempDir{})
 
 	// Create test files matching Example 1
-	files := map[string]*FileInfo{
-		"/home/links/.obsidian/app.json": {
-			OriginalPath: "/home/links/.obsidian/app.json",
-			Title:        "app",
+	files := &fileContainer{
+		byPath: map[string]*FileInfo{
+			"/home/links/.obsidian/app.json": {
+				OriginalPath: "/home/links/.obsidian/app.json",
+				Title:        "app",
+			},
+			"/home/links/.obsidian/workspace.json": {
+				OriginalPath: "/home/links/.obsidian/workspace.json",
+				Title:        "workspace",
+			},
+			"/home/links/01. Test.md": {
+				OriginalPath: "/home/links/01. Test.md",
+				Title:        "01. Test",
+			},
+			"/home/links/Z.md": {
+				OriginalPath: "/home/links/Z.md",
+				Title:        "Index",
+			},
+			"/home/links/X.md": {
+				OriginalPath: "/home/links/X.md",
+				Title:        "Рецепты",
+			},
+			"/home/links/Y.md": {
+				OriginalPath: "/home/links/Y.md",
+				Title:        "Стейки",
+			},
 		},
-		"/home/links/.obsidian/workspace.json": {
-			OriginalPath: "/home/links/.obsidian/workspace.json",
-			Title:        "workspace",
-		},
-		"/home/links/01. Test.md": {
-			OriginalPath: "/home/links/01. Test.md",
-			Title:        "01. Test",
-		},
-		"/home/links/Z.md": {
-			OriginalPath: "/home/links/Z.md",
-			Title:        "Index",
-		},
-		"/home/links/X.md": {
-			OriginalPath: "/home/links/X.md",
-			Title:        "Рецепты",
-		},
-		"/home/links/Y.md": {
-			OriginalPath: "/home/links/Y.md",
-			Title:        "Стейки",
-		},
+		byName: map[string]*FileInfo{},
+	}
+	for path, info := range files.byPath {
+		files.byName[filepath.Base(path)] = info
 	}
 
 	// Create directory pages
 	converter.createDirectoryPages("/home/links", files)
 
 	// Check that root directory page was created
-	rootPage, exists := files["/home/links"]
+	rootPage, exists := files.byPath["/home/links"]
 	assert.True(t, exists, "Root directory page should exist")
 	assert.Equal(t, "links", rootPage.Title)
 	assert.True(t, rootPage.IsRootDirPage)
 
 	// Check that .obsidian directory was NOT created
-	_, obsidianExists := files["/home/links/.obsidian"]
+	_, obsidianExists := files.byPath["/home/links/.obsidian"]
 	assert.False(t, obsidianExists, "Hidden .obsidian directory should not have a page")
 
 	// Check root page has links to markdown files but not to hidden directories
@@ -261,31 +287,37 @@ func TestCreateDirectoryPages_ZipImport(t *testing.T) {
 	converter := newMDConverter(&MockTempDir{})
 
 	// Create test files matching Example 2
-	files := map[string]*FileInfo{
-		"links/Index.md": {
-			OriginalPath: "links/Index.md",
-			Title:        "Index",
+	files := &fileContainer{
+		byPath: map[string]*FileInfo{
+			"links/Index.md": {
+				OriginalPath: "links/Index.md",
+				Title:        "Index",
+			},
+			"links/.obsidian/graph.json": {
+				OriginalPath: "links/.obsidian/graph.json",
+				Title:        "graph",
+			},
+			"links/.obsidian/workspace.json": {
+				OriginalPath: "links/.obsidian/workspace.json",
+				Title:        "workspace",
+			},
+			"links/01. Test.md": {
+				OriginalPath: "links/01. Test.md",
+				Title:        "01. Test",
+			},
+			"links/Стейки.md": {
+				OriginalPath: "links/Стейки.md",
+				Title:        "Стейки",
+			},
+			"links/Рецепты.md": {
+				OriginalPath: "links/Рецепты.md",
+				Title:        "Рецепты",
+			},
 		},
-		"links/.obsidian/graph.json": {
-			OriginalPath: "links/.obsidian/graph.json",
-			Title:        "graph",
-		},
-		"links/.obsidian/workspace.json": {
-			OriginalPath: "links/.obsidian/workspace.json",
-			Title:        "workspace",
-		},
-		"links/01. Test.md": {
-			OriginalPath: "links/01. Test.md",
-			Title:        "01. Test",
-		},
-		"links/Стейки.md": {
-			OriginalPath: "links/Стейки.md",
-			Title:        "Стейки",
-		},
-		"links/Рецепты.md": {
-			OriginalPath: "links/Рецепты.md",
-			Title:        "Рецепты",
-		},
+		byName: map[string]*FileInfo{},
+	}
+	for path, info := range files.byPath {
+		files.byName[filepath.Base(path)] = info
 	}
 
 	// Create directory pages
@@ -293,17 +325,17 @@ func TestCreateDirectoryPages_ZipImport(t *testing.T) {
 
 	// Check that the single "links" directory was treated as root
 	// The root page should be created at "" (empty path)
-	rootPage, exists := files[""]
+	rootPage, exists := files.byPath[""]
 	assert.True(t, exists, "Root directory page should exist at empty path")
 	assert.Equal(t, rootCollectionName, rootPage.Title, "Root should use rootCollectionName")
 	assert.True(t, rootPage.IsRootDirPage)
 
 	// Check that .obsidian directory was NOT created
-	_, obsidianExists := files["links/.obsidian"]
+	_, obsidianExists := files.byPath["links/.obsidian"]
 	assert.False(t, obsidianExists, "Hidden .obsidian directory should not have a page")
 
 	// The original "links" directory should not exist as a separate page
-	_, linksExists := files["links"]
+	_, linksExists := files.byPath["links"]
 	assert.False(t, linksExists, "Single root 'links' directory should be omitted")
 
 	// Check root page has links to markdown files
@@ -329,43 +361,49 @@ func TestCreateDirectoryPages_NestedDirectories(t *testing.T) {
 	converter := newMDConverter(&MockTempDir{})
 
 	// Create test files with nested structure
-	files := map[string]*FileInfo{
-		"root/index.md": {
-			OriginalPath: "root/index.md",
-			Title:        "Index",
+	files := &fileContainer{
+		byPath: map[string]*FileInfo{
+			"root/index.md": {
+				OriginalPath: "root/index.md",
+				Title:        "Index",
+			},
+			"root/docs/guide.md": {
+				OriginalPath: "root/docs/guide.md",
+				Title:        "Guide",
+			},
+			"root/docs/api/reference.md": {
+				OriginalPath: "root/docs/api/reference.md",
+				Title:        "API Reference",
+			},
+			"root/.config/settings.json": {
+				OriginalPath: "root/.config/settings.json",
+				Title:        "Settings",
+			},
 		},
-		"root/docs/guide.md": {
-			OriginalPath: "root/docs/guide.md",
-			Title:        "Guide",
-		},
-		"root/docs/api/reference.md": {
-			OriginalPath: "root/docs/api/reference.md",
-			Title:        "API Reference",
-		},
-		"root/.config/settings.json": {
-			OriginalPath: "root/.config/settings.json",
-			Title:        "Settings",
-		},
+		byName: map[string]*FileInfo{},
+	}
+	for path, info := range files.byPath {
+		files.byName[filepath.Base(path)] = info
 	}
 
 	// Create directory pages
 	converter.createDirectoryPages("", files)
 
 	// Check that root was properly handled
-	rootPage, exists := files[""]
+	rootPage, exists := files.byPath[""]
 	assert.True(t, exists, "Root directory page should exist")
 	assert.Equal(t, rootCollectionName, rootPage.Title)
 	assert.True(t, rootPage.IsRootDirPage)
 
 	// Check that nested directories were created
-	_, docsExists := files["docs"]
+	_, docsExists := files.byPath["docs"]
 	assert.True(t, docsExists, "docs directory page should exist")
 
-	_, apiExists := files["docs/api"]
+	_, apiExists := files.byPath["docs/api"]
 	assert.True(t, apiExists, "docs/api directory page should exist")
 
 	// Check that hidden directory was not created
-	_, configExists := files[".config"]
+	_, configExists := files.byPath[".config"]
 	assert.False(t, configExists, ".config hidden directory should not have a page")
 }
 

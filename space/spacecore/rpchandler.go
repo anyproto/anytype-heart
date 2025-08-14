@@ -6,12 +6,11 @@ import (
 	"net/url"
 
 	"github.com/anyproto/any-sync/commonspace"
+	"github.com/anyproto/any-sync/commonspace/clientspaceproto"
 	"github.com/anyproto/any-sync/commonspace/spacesyncproto"
 	"github.com/anyproto/any-sync/net/peer"
 	"go.uber.org/zap"
 	"golang.org/x/exp/slices"
-
-	"github.com/anyproto/anytype-heart/space/spacecore/clientspaceproto"
 )
 
 type rpcHandler struct {
