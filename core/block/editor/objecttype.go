@@ -227,11 +227,13 @@ func (ot *ObjectType) dataviewTemplates() []template.StateTransformer {
 }
 
 func defaultViewTypeMigration(s *state.State) {
+	// nolint:gosec
 	recommendedLayout := model.ObjectTypeLayout(s.Details().GetInt64(bundle.RelationKeyRecommendedLayout))
 	if recommendedLayout != model.ObjectType_collection && recommendedLayout != model.ObjectType_set {
 		return
 	}
 
+	// nolint:gosec
 	defaultViewType := model.BlockContentDataviewViewType(s.Details().GetInt64(bundle.RelationKeyDefaultViewType))
 	if defaultViewType == model.BlockContentDataviewView_Table {
 		s.SetDetail(bundle.RelationKeyDefaultViewType, domain.Int64(int64(model.BlockContentDataviewView_List)))
