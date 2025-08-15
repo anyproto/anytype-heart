@@ -68,7 +68,6 @@ type StateSnapshot struct {
 	ObjectTypes              []string
 	Collections              *types.Struct
 	RemovedCollectionKeys    []string
-	RelationLinks            []*model.RelationLink
 	Key                      string
 	OriginalCreatedTimestamp int64
 	FileInfo                 *model.FileInfo
@@ -83,7 +82,6 @@ func (sn *StateSnapshot) ToProto() *model.SmartBlockSnapshotBase {
 		ObjectTypes:              sn.ObjectTypes,
 		Collections:              sn.Collections,
 		RemovedCollectionKeys:    sn.RemovedCollectionKeys,
-		RelationLinks:            sn.RelationLinks,
 		Key:                      sn.Key,
 		OriginalCreatedTimestamp: sn.OriginalCreatedTimestamp,
 		FileInfo:                 sn.FileInfo,
@@ -99,7 +97,6 @@ func NewStateSnapshotFromProto(sn *model.SmartBlockSnapshotBase) *StateSnapshot 
 		ObjectTypes:              sn.ObjectTypes,
 		Collections:              sn.Collections,
 		RemovedCollectionKeys:    sn.RemovedCollectionKeys,
-		RelationLinks:            sn.RelationLinks,
 		Key:                      sn.Key,
 		OriginalCreatedTimestamp: sn.OriginalCreatedTimestamp,
 		FileInfo:                 sn.FileInfo,

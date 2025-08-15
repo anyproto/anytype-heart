@@ -10,6 +10,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space/spacecore/typeprovider"
 )
@@ -51,15 +52,18 @@ type graphjson struct {
 	linksByNode map[string][]*Edge
 
 	sbtProvider typeprovider.SmartBlockTypeProvider
+	objectStore objectstore.ObjectStore
 }
 
 func NewMultiConverter(
 	sbtProvider typeprovider.SmartBlockTypeProvider,
+	objectStore objectstore.ObjectStore,
 ) converter.MultiConverter {
 	return &graphjson{
 		linksByNode: map[string][]*Edge{},
 		nodes:       map[string]*Node{},
 		sbtProvider: sbtProvider,
+		objectStore: objectStore,
 	}
 }
 
@@ -90,7 +94,7 @@ func (g *graphjson) Add(space smartblock.Space, st *state.State) error {
 	g.nodes[st.RootId()] = &n
 	// TODO: add relations
 
-	dependentObjectIDs := objectlink.DependentObjectIDs(st, space, objectlink.Flags{
+	dependentObjectIDs := objectlink.DependentObjectIDs(st, space, g.objectStore.SpaceIndex(space.Id()), objectlink.Flags{
 		Blocks:    true,
 		Details:   true,
 		Relations: false,

@@ -233,7 +233,7 @@ func TestGetFileIdFromObjectWaitLoad(t *testing.T) {
 			sb.SetSpaceId(spaceId)
 
 			st := sb.Doc.(*state.State)
-			st.SetDetailAndBundledRelation(bundle.RelationKeyFileId, domain.String(""))
+			st.SetDetail(bundle.RelationKeyFileId, domain.String(""))
 
 			return apply(fx.newTestFileObject(sb))
 		})

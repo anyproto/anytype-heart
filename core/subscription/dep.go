@@ -103,7 +103,7 @@ func (ds *dependencyService) isRelationObject(spaceId string, key domain.Relatio
 	if _, ok := ignoredKeys[key]; ok {
 		return false
 	}
-	if strings.ContainsRune(string(key), '.') {
+	if strings.ContainsRune(key.String(), '.') {
 		// skip nested keys like "assignee.type"
 		return false
 	}

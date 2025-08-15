@@ -30,7 +30,7 @@ import (
 
 func TestReindexMarketplaceSpace(t *testing.T) {
 	spaceId := addr.AnytypeMarketplaceWorkspace
-	getMockSpace := func(fx *IndexerFixture) *clientspace.VirtualSpace {
+	getMockSpace := func(fx *indexerFixture) *clientspace.VirtualSpace {
 		virtualSpace := clientspace.NewVirtualSpace(spaceId, clientspace.VirtualSpaceDeps{
 			Indexer: fx,
 		})
@@ -448,7 +448,7 @@ func TestReindex_addSyncRelations(t *testing.T) {
 	})
 }
 
-func (fx *IndexerFixture) queryDeletedObjectIds(t *testing.T, spaceId string) []string {
+func (fx *indexerFixture) queryDeletedObjectIds(t *testing.T, spaceId string) []string {
 	ids, _, err := fx.objectStore.SpaceIndex(spaceId).QueryObjectIds(database.Query{
 		Filters: []database.FilterRequest{
 			{

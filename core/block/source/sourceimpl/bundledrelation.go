@@ -81,7 +81,7 @@ func (v *bundledRelation) ReadDoc(_ context.Context, _ source.ChangeReceiver, em
 		return nil, domain.ErrObjectNotFound
 	}
 	for k, v := range d.Iterate() {
-		s.SetDetailAndBundledRelation(k, v)
+		s.SetDetail(k, v)
 	}
 	s.SetObjectTypeKey(bundle.TypeKeyRelation)
 	return s, nil

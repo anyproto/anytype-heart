@@ -26,7 +26,7 @@ func AddFileBlocks(st *state.State, details *domain.Details, objectId string) er
 	fileType := fileblock.DetectTypeByMIME(name, details.GetString(bundle.RelationKeyFileMimeType))
 
 	if fileType == model.BlockContentFile_Image {
-		st.SetDetailAndBundledRelation(bundle.RelationKeyIconImage, domain.String(objectId))
+		st.SetDetail(bundle.RelationKeyIconImage, domain.String(objectId))
 	}
 
 	blocks := buildFileBlocks(details, objectId, name, fileType)

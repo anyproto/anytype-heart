@@ -140,8 +140,8 @@ func TestFileObjectHook(t *testing.T) {
 		hook := fx.FileObjectHook(fullId)
 
 		st := state.NewDoc(fullId.ObjectID, nil).(*state.State)
-		st.SetDetailAndBundledRelation(bundle.RelationKeyFileBackupStatus, domain.Int64(int64(filesyncstatus.Synced)))
-		st.SetDetailAndBundledRelation(bundle.RelationKeyFileId, domain.String(testFileId.String()))
+		st.SetDetail(bundle.RelationKeyFileBackupStatus, domain.Int64(int64(filesyncstatus.Synced)))
+		st.SetDetail(bundle.RelationKeyFileId, domain.String(testFileId.String()))
 
 		err = hook(smartblock.ApplyInfo{
 			State: st,
@@ -165,8 +165,8 @@ func TestFileObjectHook(t *testing.T) {
 			hook := fx.FileObjectHook(fullId)
 
 			st := state.NewDoc(fullId.ObjectID, nil).(*state.State)
-			st.SetDetailAndBundledRelation(bundle.RelationKeyFileBackupStatus, domain.Int64(int64(filesyncstatus.Synced)))
-			st.SetDetailAndBundledRelation(bundle.RelationKeyFileId, domain.String(testFileId.String()))
+			st.SetDetail(bundle.RelationKeyFileBackupStatus, domain.Int64(int64(filesyncstatus.Synced)))
+			st.SetDetail(bundle.RelationKeyFileId, domain.String(testFileId.String()))
 
 			err := hook(smartblock.ApplyInfo{
 				State: st,
@@ -190,8 +190,8 @@ func TestFileObjectHook(t *testing.T) {
 			hook := fx.FileObjectHook(fullId)
 
 			st := state.NewDoc(fullId.ObjectID, nil).(*state.State)
-			st.SetDetailAndBundledRelation(bundle.RelationKeyFileBackupStatus, domain.Int64(int64(filesyncstatus.Synced)))
-			st.SetDetailAndBundledRelation(bundle.RelationKeyFileId, domain.String(testFileId.String()))
+			st.SetDetail(bundle.RelationKeyFileBackupStatus, domain.Int64(int64(filesyncstatus.Synced)))
+			st.SetDetail(bundle.RelationKeyFileId, domain.String(testFileId.String()))
 
 			err = hook(smartblock.ApplyInfo{
 				State: st,

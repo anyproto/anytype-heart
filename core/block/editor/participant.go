@@ -46,10 +46,10 @@ func (p *participant) Init(ctx *smartblock.InitContext) (err error) {
 		return
 	}
 
-	ctx.State.SetDetailAndBundledRelation(bundle.RelationKeyIsReadonly, domain.Bool(true))
-	ctx.State.SetDetailAndBundledRelation(bundle.RelationKeyIsArchived, domain.Bool(false))
-	ctx.State.SetDetailAndBundledRelation(bundle.RelationKeyIsHidden, domain.Bool(false))
-	ctx.State.SetDetailAndBundledRelation(bundle.RelationKeyLayoutAlign, domain.Int64(model.Block_AlignCenter))
+	ctx.State.SetDetail(bundle.RelationKeyIsReadonly, domain.Bool(true))
+	ctx.State.SetDetail(bundle.RelationKeyIsArchived, domain.Bool(false))
+	ctx.State.SetDetail(bundle.RelationKeyIsHidden, domain.Bool(false))
+	ctx.State.SetDetail(bundle.RelationKeyLayoutAlign, domain.Int64(model.Block_AlignCenter))
 
 	records, err := p.objectStore.QueryByIds([]string{p.Id()})
 	if err != nil {

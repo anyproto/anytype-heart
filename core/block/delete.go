@@ -68,7 +68,7 @@ func (s *Service) deleteDerivedObject(id domain.FullID, sbType coresb.SmartBlock
 	var relationKey, targetTypeId string
 	err = spc.Do(id.ObjectID, func(b smartblock.SmartBlock) error {
 		st := b.NewState()
-		st.SetDetailAndBundledRelation(bundle.RelationKeyIsUninstalled, domain.Bool(true))
+		st.SetDetail(bundle.RelationKeyIsUninstalled, domain.Bool(true))
 		switch sbType {
 		case coresb.SmartBlockTypeRelation:
 			relationKey = st.Details().GetString(bundle.RelationKeyRelationKey)
