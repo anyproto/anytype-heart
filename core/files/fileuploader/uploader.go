@@ -26,6 +26,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/files"
 	"github.com/anyproto/anytype-heart/core/files/fileobject/filemodels"
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/mill"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -47,6 +48,7 @@ type service struct {
 	tempDirProvider   core.TempDirProvider
 	picker            cache.ObjectGetter
 	fileObjectService FileObjectService
+	objectStore       objectstore.ObjectStore
 }
 
 func New() Service {
@@ -60,6 +62,7 @@ func (f *service) NewUploader(spaceId string, origin objectorigin.ObjectOrigin) 
 		fileService:       f.fileService,
 		tempDirProvider:   f.tempDirProvider,
 		fileObjectService: f.fileObjectService,
+		objectStore:       f.objectStore,
 		origin:            origin,
 	}
 }
@@ -75,6 +78,7 @@ func (f *service) Init(a *app.App) error {
 	f.tempDirProvider = app.MustComponent[core.TempDirProvider](a)
 	f.picker = app.MustComponent[cache.ObjectGetter](a)
 	f.fileObjectService = app.MustComponent[FileObjectService](a)
+	f.objectStore = app.MustComponent[objectstore.ObjectStore](a)
 	return nil
 }
 
@@ -105,6 +109,8 @@ type Uploader interface {
 	SetImageKind(imageKind model.ImageKind) Uploader
 	AddOptions(options ...files.AddOption) Uploader
 	AsyncUpdates(smartBlockId string) Uploader
+	SetPreloadOnly(preloadOnly bool) Uploader
+	SetPreloadedFileId(fileId string) Uploader
 
 	Upload(ctx context.Context) (result UploadResult)
 	UploadAsync(ctx context.Context) (ch chan UploadResult)
@@ -118,6 +124,7 @@ type UploadResult struct {
 	EncryptionKeys    map[string]string
 	MIME              string
 	Size              int64
+	FileId            string // returned when preloadOnly is true
 	Err               error
 }
 
@@ -165,10 +172,13 @@ type uploader struct {
 
 	tempDirProvider      core.TempDirProvider
 	fileService          files.Service
+	objectStore          objectstore.ObjectStore
 	origin               objectorigin.ObjectOrigin
 	imageKind            model.ImageKind
 	additionalDetails    *domain.Details
 	customEncryptionKeys map[string]string
+	preloadOnly          bool
+	preloadedFileId      string
 }
 
 type bufioSeekClose struct {
@@ -386,6 +396,16 @@ func (u *uploader) AsyncUpdates(smartBlockId string) Uploader {
 	return u
 }
 
+func (u *uploader) SetPreloadOnly(preloadOnly bool) Uploader {
+	u.preloadOnly = preloadOnly
+	return u
+}
+
+func (u *uploader) SetPreloadedFileId(fileId string) Uploader {
+	u.preloadedFileId = fileId
+	return u
+}
+
 func (u *uploader) UploadAsync(ctx context.Context) (result chan UploadResult) {
 	result = make(chan UploadResult, 1)
 	if u.block != nil {
@@ -414,6 +434,12 @@ func (u *uploader) Upload(ctx context.Context) (result UploadResult) {
 			}
 		}
 	}()
+
+	// If we have a preloaded file ID, just create the object from it
+	if u.preloadedFileId != "" {
+		return u.createObjectFromPreloadedFile(ctx)
+	}
+
 	if u.getReader == nil {
 		err = fmt.Errorf("uploader: empty source for upload")
 		return
@@ -491,6 +517,15 @@ func (u *uploader) Upload(ctx context.Context) (result UploadResult) {
 
 	result.MIME = addResult.MIME
 	result.Size = addResult.Size
+	result.FileId = string(addResult.FileId)
+	result.EncryptionKeys = addResult.EncryptionKeys.EncryptionKeys
+	result.Type = u.fileType
+	result.Name = u.name
+
+	// If preloadOnly is true, skip object creation
+	if u.preloadOnly {
+		return
+	}
 
 	fileObjectId, fileObjectDetails, err := u.getOrCreateFileObject(ctx, addResult)
 	if err != nil {
@@ -498,10 +533,7 @@ func (u *uploader) Upload(ctx context.Context) (result UploadResult) {
 	}
 	result.FileObjectId = fileObjectId
 	result.FileObjectDetails = fileObjectDetails
-	result.EncryptionKeys = addResult.EncryptionKeys.EncryptionKeys
 
-	result.Type = u.fileType
-	result.Name = u.name
 	if u.block != nil {
 		u.block.SetName(u.name).
 			SetState(model.BlockContentFile_Done).
@@ -576,4 +608,65 @@ func (u *uploader) updateBlock() {
 			log.Warnf("upload file: can't update info: %v", err)
 		}
 	}
+}
+
+func (u *uploader) createObjectFromPreloadedFile(ctx context.Context) (result UploadResult) {
+	// First check if an object already exists for this file
+	existingId, existingDetails, err := u.fileObjectService.GetObjectDetailsByFileId(domain.FullFileId{
+		SpaceId: u.spaceId,
+		FileId:  domain.FileId(u.preloadedFileId),
+	})
+	if err == nil {
+		// Object already exists, return it
+		result.FileObjectId = existingId
+		result.FileObjectDetails = existingDetails
+		result.FileId = u.preloadedFileId
+		result.Type = u.fileType
+		return
+	}
+
+	// Get stored encryption keys for the preloaded file
+	fileKeys, err := u.objectStore.GetFileKeys(domain.FileId(u.preloadedFileId))
+	if err != nil {
+		result.Err = fmt.Errorf("get preloaded file keys: %w", err)
+		return
+	}
+
+	// Get file info from storage to retrieve variants using the stored keys
+	fileVariants, err := u.fileService.GetFileVariants(ctx, domain.FullFileId{
+		SpaceId: u.spaceId,
+		FileId:  domain.FileId(u.preloadedFileId),
+	}, fileKeys)
+	if err != nil {
+		result.Err = fmt.Errorf("get preloaded file variants: %w", err)
+		return
+	}
+
+	// Create file object using the preloaded file ID
+	fileObjectId, fileObjectDetails, err := u.fileObjectService.Create(ctx, u.spaceId, filemodels.CreateRequest{
+		FileId:            domain.FileId(u.preloadedFileId),
+		EncryptionKeys:    fileKeys,
+		ObjectOrigin:      u.origin,
+		ImageKind:         u.imageKind,
+		AdditionalDetails: u.additionalDetails,
+		FileVariants:      fileVariants,
+	})
+	if err != nil {
+		result.Err = fmt.Errorf("create file object from preloaded: %w", err)
+		return
+	}
+
+	result.FileObjectId = fileObjectId
+	result.FileObjectDetails = fileObjectDetails
+	result.FileId = u.preloadedFileId
+	result.Type = u.fileType
+
+	if u.block != nil {
+		u.block.SetState(model.BlockContentFile_Done).
+			SetTargetObjectId(result.FileObjectId).
+			SetStyle(u.fileStyle)
+		u.updateBlock()
+	}
+
+	return
 }
