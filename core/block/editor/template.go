@@ -25,11 +25,6 @@ func (t *Template) Init(ctx *smartblock.InitContext) (err error) {
 	if err = t.Page.Init(ctx); err != nil {
 		return
 	}
-
-	if !ctx.IsNewObject {
-		migrateFilesToObjects(t, t.fileObjectService)(ctx.State)
-	}
-
 	return
 }
 

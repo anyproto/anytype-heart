@@ -10,7 +10,6 @@ import (
 	"github.com/anyproto/any-sync/net/peer"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
-	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/block/source"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/domain/objectorigin"
@@ -37,20 +36,6 @@ func (it *migrationItem) Key() string {
 
 func makeMigrationItem() *migrationItem {
 	return &migrationItem{}
-}
-
-func (s *service) MigrateFileIdsInBlocks(st *state.State, spc source.Space) {
-	if !spc.IsPersonal() {
-		return
-	}
-	st.Iterate(func(b simple.Block) (isContinue bool) {
-		if migrator, ok := b.(simple.FileMigrator); ok {
-			migrator.MigrateFile(func(oldId string) (newId string) {
-				return s.migrateFileId(spc.(clientspace.Space), st.RootId(), oldId)
-			})
-		}
-		return true
-	})
 }
 
 func (s *service) MigrateFileIdsInDetails(st *state.State, spc source.Space) {

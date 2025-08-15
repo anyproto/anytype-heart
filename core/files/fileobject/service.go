@@ -65,7 +65,6 @@ type Service interface {
 	GetObjectDetailsByFileId(fileId domain.FullFileId) (string, *domain.Details, error)
 
 	MigrateFileIdsInDetails(st *state.State, spc source.Space)
-	MigrateFileIdsInBlocks(st *state.State, spc source.Space)
 	MigrateFiles(st *state.State, spc source.Space, keysChanges []*pb.ChangeFileKeys)
 	EnsureFileAddedToSyncQueue(id domain.FullID, details *domain.Details) error
 }
