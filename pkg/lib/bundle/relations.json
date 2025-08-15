@@ -1275,6 +1275,16 @@
     "source": "details"
   },
   {
+    "description": "Current account status in space. Possible values: models.ParticipantStatus",
+    "format": "number",
+    "hidden": true,
+    "key": "myParticipantStatus",
+    "maxCount": 1,
+    "name": "My participant status",
+    "readonly": true,
+    "source": "local"
+  },
+  {
     "description": "Link to the profile attached to Anytype Identity",
     "format": "object",
     "hidden": true,

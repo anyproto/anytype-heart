@@ -16,6 +16,7 @@ import (
 	"github.com/samber/lo"
 	"go.uber.org/zap"
 
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/space/clientspace"
 	"github.com/anyproto/anytype-heart/space/internal/components/aclnotifications"
 	"github.com/anyproto/anytype-heart/space/internal/components/participantwatcher"
@@ -304,8 +305,14 @@ func (a *aclObjectManager) findJoinedDate(acl syncacl.SyncAcl) (int64, error) {
 
 func (a *aclObjectManager) processStates(states []list.AccountState, upToDate bool, myIdentity crypto.PubKey) (err error) {
 	for _, state := range states {
-		if state.Permissions.NoPermissions() && state.PubKey.Equals(myIdentity) && upToDate {
-			return a.status.SetPersistentStatus(spaceinfo.AccountStatusRemoving)
+		if state.PubKey.Equals(myIdentity) {
+			err = a.status.SetMyParticipantStatus(domain.ConvertAclStatus(state.Status))
+			if err != nil {
+				log.Warn("failed to set my participant status", zap.Error(err))
+			}
+			if state.Permissions.NoPermissions() && upToDate {
+				return a.status.SetPersistentStatus(spaceinfo.AccountStatusDeleted)
+			}
 		}
 		err = a.participantWatcher.UpdateParticipantFromAclState(a.ctx, a.sp, state)
 		if err != nil {

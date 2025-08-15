@@ -144,15 +144,6 @@ func (s *spaceController) Update() error {
 	}
 }
 
-func (s *spaceController) Delete(ctx context.Context) error {
-	offloading, err := s.sm.ChangeMode(mode.ModeOffloading)
-	if err != nil {
-		return err
-	}
-	of := offloading.(offloader.Offloader)
-	return of.WaitOffload(ctx)
-}
-
 func (s *spaceController) Process(md mode.Mode) mode.Process {
 	switch md {
 	case mode.ModeInitial:
