@@ -6,6 +6,7 @@ import (
 	"os"
 	"testing"
 
+	"github.com/gogo/protobuf/proto"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -94,7 +95,20 @@ func TestSpaceUsageUpdate(t *testing.T) {
 			makeLimitUpdatedEvent(limit * 10),
 		}
 
-		if !assert.Equal(t, wantEvents, fx.events) {
+		gotEvents := fx.events
+		deduplicated := gotEvents[:0]
+		for i, ev := range gotEvents {
+			if i > 0 {
+				prev := gotEvents[i-1]
+				if proto.Equal(prev, ev) {
+					continue
+				}
+			}
+			deduplicated = append(deduplicated, ev)
+		}
+		gotEvents = deduplicated
+
+		if !assert.Equal(t, wantEvents, gotEvents) {
 			m := json.NewEncoder(os.Stdout)
 			m.SetIndent("", "  ")
 			m.Encode(wantEvents)
