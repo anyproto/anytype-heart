@@ -90,7 +90,7 @@ type BuiltinObjects interface {
 	app.Component
 
 	CreateObjectsForUseCase(ctx session.Context, spaceID string, req pb.RpcObjectImportUseCaseRequestUseCase) (dashboardId string, code pb.RpcObjectImportUseCaseResponseErrorCode, err error)
-	CreateObjectsForExperience(ctx context.Context, spaceID, url, title string, newSpace bool) (err error)
+	CreateObjectsForExperience(ctx context.Context, spaceID, url, title string, newSpace, isAi bool) (err error)
 	InjectMigrationDashboard(spaceID string) error
 }
 
@@ -156,7 +156,7 @@ func (b *builtinObjects) CreateObjectsForUseCase(
 	return dashboardId, pb.RpcObjectImportUseCaseResponseError_NULL, nil
 }
 
-func (b *builtinObjects) CreateObjectsForExperience(ctx context.Context, spaceID, url, title string, isNewSpace bool) (err error) {
+func (b *builtinObjects) CreateObjectsForExperience(ctx context.Context, spaceID, url, title string, isNewSpace, isAi bool) (err error) {
 	progress, err := b.setupProgress()
 	if err != nil {
 		return err
@@ -189,7 +189,11 @@ func (b *builtinObjects) CreateObjectsForExperience(ctx context.Context, spaceID
 		}
 	}
 
-	importErr := b.importArchive(ctx, spaceID, path, title, pb.RpcObjectImportRequestPbParams_EXPERIENCE, progress, isNewSpace)
+	importFormat := model.Import_Pb
+	if isAi {
+		importFormat = model.Import_Markdown
+	}
+	importErr := b.importArchive(ctx, spaceID, path, title, pb.RpcObjectImportRequestPbParams_SPACE, importFormat, progress, isNewSpace)
 	if notificationProgress, ok := progress.(process.Notificationable); ok {
 		notificationProgress.FinishWithNotification(b.provideNotification(spaceID, progress, importErr, title), importErr)
 	}
@@ -198,7 +202,7 @@ func (b *builtinObjects) CreateObjectsForExperience(ctx context.Context, spaceID
 		log.Errorf("failed to send notification: %v", importErr)
 	}
 
-	if isNewSpace {
+	if isNewSpace && importFormat == model.Import_Pb {
 		profile, err := b.getProfile(path)
 		if err != nil {
 			log.Warnf("failed to profile object: %s", err)
@@ -206,7 +210,32 @@ func (b *builtinObjects) CreateObjectsForExperience(ctx context.Context, spaceID
 		// TODO: GO-2627 Home page handling should be moved to importer
 		b.handleHomePage(profile, spaceID, false)
 		removeFunc()
-	} else {
+	} else if importFormat == model.Import_Markdown {
+		// try to read manifest.json from archive
+		records, err := b.store.SpaceIndex(spaceID).QueryRaw(&database.Filters{FilterObj: database.FiltersAnd{
+			database.FilterLike{
+				Key:   bundle.RelationKeyName,
+				Value: "Getting Started",
+			},
+		}}, 1, 0)
+
+		if err != nil {
+			log.Warnf("failed to read manifest file: %s", err)
+		} else if len(records) > 0 {
+			id := records[0].Details.GetString(bundle.RelationKeyId)
+			profile := &pb.Profile{
+				StartingPage:     id,
+				SpaceDashboardId: id,
+			}
+			spc, err := b.spaceService.Get(context.Background(), spaceID)
+			if err != nil {
+				log.Errorf("failed to get space: %w", err)
+				return err
+			}
+			b.setHomePageIdToWorkspace(spc, id)
+			b.createWidgets(nil, spaceID, pb.RpcObjectImportUseCaseRequest_GET_STARTED, profile.StartingPage, model.BlockContentWidget_Link)
+
+		}
 		removeFunc()
 	}
 
@@ -245,7 +274,7 @@ func (b *builtinObjects) inject(ctx session.Context, spaceID string, useCase pb.
 		}
 	}()
 
-	if err = b.importArchive(context.Background(), spaceID, path, "", pb.RpcObjectImportRequestPbParams_SPACE, nil, false); err != nil {
+	if err = b.importArchive(context.Background(), spaceID, path, "", pb.RpcObjectImportRequestPbParams_SPACE, model.Import_Pb, nil, false); err != nil {
 		return "", err
 	}
 
@@ -259,7 +288,7 @@ func (b *builtinObjects) inject(ctx session.Context, spaceID string, useCase pb.
 	_ = b.handleHomePage(profile, spaceID, useCase == migrationUseCase)
 
 	// TODO: GO-2627 Widgets creation should be moved to importer
-	b.createWidgets(ctx, spaceID, useCase, startingPageId)
+	b.createWidgets(ctx, spaceID, useCase, startingPageId, model.BlockContentWidget_Tree)
 
 	return
 }
@@ -268,26 +297,39 @@ func (b *builtinObjects) importArchive(
 	ctx context.Context,
 	spaceID, path, title string,
 	importType pb.RpcObjectImportRequestPbParamsType,
+	importFormat model.ImportType,
 	progress process.Progress,
 	isNewSpace bool,
 ) (err error) {
 	origin := objectorigin.Usecase()
+
+	var params pb.IsRpcObjectImportRequestParams
+	if importFormat == model.Import_Pb {
+		params = &pb.RpcObjectImportRequestParamsOfPbParams{
+			PbParams: &pb.RpcObjectImportRequestPbParams{
+				Path:            []string{path},
+				NoCollection:    true,
+				CollectionTitle: title,
+				ImportType:      importType,
+			}}
+	} else if importFormat == model.Import_Markdown {
+		params = &pb.RpcObjectImportRequestParamsOfMarkdownParams{
+			MarkdownParams: &pb.RpcObjectImportRequestMarkdownParams{
+				Path: []string{path},
+			}}
+	} else {
+		return fmt.Errorf("unsupported import format: %s", importFormat)
+	}
 	importRequest := &importer.ImportRequest{
 		RpcObjectImportRequest: &pb.RpcObjectImportRequest{
 			SpaceId:               spaceID,
 			UpdateExistingObjects: true,
-			Type:                  model.Import_Pb,
+			Type:                  importFormat,
 			Mode:                  pb.RpcObjectImportRequest_ALL_OR_NOTHING,
 			NoProgress:            progress == nil,
-			IsMigration:           false,
-			Params: &pb.RpcObjectImportRequestParamsOfPbParams{
-				PbParams: &pb.RpcObjectImportRequestPbParams{
-					Path:            []string{path},
-					NoCollection:    true,
-					CollectionTitle: title,
-					ImportType:      importType,
-				}},
-			IsNewSpace: isNewSpace,
+			IsMigration:           true,
+			Params:                params,
+			IsNewSpace:            true,
 		},
 		Origin:   origin,
 		Progress: progress,
@@ -419,7 +461,7 @@ func (b *builtinObjects) typeHasObjects(spaceId, typeId string) (bool, error) {
 	return len(records) > 0, nil
 }
 
-func (b *builtinObjects) createWidgets(ctx session.Context, spaceId string, useCase pb.RpcObjectImportUseCaseRequestUseCase, homePageId string) {
+func (b *builtinObjects) createWidgets(ctx session.Context, spaceId string, useCase pb.RpcObjectImportUseCaseRequestUseCase, homePageId string, widgetLayout model.BlockContentWidgetLayout) {
 	spc, err := b.spaceService.Get(context.Background(), spaceId)
 	if err != nil {
 		log.Errorf("failed to get space: %w", err)
@@ -432,8 +474,9 @@ func (b *builtinObjects) createWidgets(ctx session.Context, spaceId string, useC
 	if useCase == pb.RpcObjectImportUseCaseRequest_GET_STARTED && homePageId != "" {
 		homeWidget = &pb.RpcBlockCreateWidgetRequest{
 			ContextId:    widgetObjectID,
-			WidgetLayout: model.BlockContentWidget_Tree,
-			Position:     model.Block_Bottom,
+			WidgetLayout: widgetLayout,
+			Position:     model.Block_InnerFirst,
+			TargetId:     widgetObjectID,
 			Block: &model.Block{
 				Content: &model.BlockContentOfLink{
 					Link: &model.BlockContentLink{

@@ -3248,6 +3248,7 @@ message Rpc {
                 string url = 2;
                 string title = 3;
                 bool isNewSpace = 4;
+                bool isAi = 5;
             }
 
             message Response {

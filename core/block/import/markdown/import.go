@@ -39,7 +39,6 @@ const numberOfStages = 9 // 8 cycles to get snapshots and 1 cycle to create obje
 type Markdown struct {
 	blockConverter *mdConverter
 	service        *collection.Service
-	schemaImporter *SchemaImporter
 }
 
 const (
@@ -51,13 +50,9 @@ const (
 
 func New(tempDirProvider core.TempDirProvider, service *collection.Service) common.Converter {
 	bc := newMDConverter(tempDirProvider)
-	si := NewSchemaImporter()
-	bc.SetSchemaImporter(si)
-
 	return &Markdown{
 		blockConverter: bc,
 		service:        service,
-		schemaImporter: si,
 	}
 }
 
@@ -83,6 +78,9 @@ func (m *Markdown) GetSnapshots(ctx context.Context, req *pb.RpcObjectImportRequ
 		return nil, nil
 	}
 	allErrors := common.NewError(req.Mode)
+	si := NewSchemaImporter()
+	m.blockConverter.SetSchemaImporter(si)
+
 	allSnapshots, allRootObjectsIds := m.processFiles(req, progress, params.Path, allErrors)
 	if allErrors.ShouldAbortImport(len(params.Path), req.Type) {
 		return nil, allErrors
@@ -250,12 +248,12 @@ func (m *Markdown) getSnapshotsAndRootObjectsIdsWithFilter(
 		}
 	}
 	// Load schemas if available
-	if err := m.schemaImporter.LoadSchemas(importSource, allErrors); err != nil {
+	if err := m.blockConverter.schemaImporter.LoadSchemas(importSource, allErrors); err != nil {
 		log.Warnf("failed to load schemas: %v", err)
 	}
 
 	params := m.GetParams(req)
-	if m.schemaImporter.HasSchemas() {
+	if m.blockConverter.schemaImporter.HasSchemas() {
 		// we import from anytype markdown files. disable tree structure and properties as blocks
 		params.CreateDirectoryPages = false
 		params.IncludePropertiesAsBlock = false
@@ -555,7 +553,7 @@ func (m *Markdown) createSnapshots(
 	progress.SetProgressMessage("Start creating snapshots")
 
 	// Check if we have schemas loaded
-	hasSchemas := m.schemaImporter.HasSchemas()
+	hasSchemas := m.blockConverter.schemaImporter.HasSchemas()
 
 	// First pass: collect all YAML properties to create relation snapshots
 	yamlRelations := make(map[string]*yaml.Property)          // property name -> property
@@ -609,13 +607,13 @@ func (m *Markdown) createSnapshots(
 	// If we have schemas, use them to create relations and types
 	if hasSchemas {
 		// Create relation snapshots from schemas
-		relationsSnapshots = append(relationsSnapshots, m.schemaImporter.CreateRelationSnapshots()...)
+		relationsSnapshots = append(relationsSnapshots, m.blockConverter.schemaImporter.CreateRelationSnapshots()...)
 
 		// Create relation option snapshots from schemas
-		relationsSnapshots = append(relationsSnapshots, m.schemaImporter.CreateRelationOptionSnapshots()...)
+		relationsSnapshots = append(relationsSnapshots, m.blockConverter.schemaImporter.CreateRelationOptionSnapshots()...)
 
 		// Create type snapshots from schemas
-		schemaTypeSnapshots := m.schemaImporter.CreateTypeSnapshots()
+		schemaTypeSnapshots := m.blockConverter.schemaImporter.CreateTypeSnapshots()
 		objectTypeSnapshots = append(objectTypeSnapshots, schemaTypeSnapshots...)
 
 		// Map type names to IDs for later use
@@ -719,7 +717,7 @@ func (m *Markdown) createSnapshots(
 		// Create relation option snapshots for YAML values
 		for relationKey, options := range yamlRelationOptions {
 			for optionValue := range options {
-				optionId := m.schemaImporter.optionId(relationKey, optionValue)
+				optionId := m.blockConverter.schemaImporter.optionId(relationKey, optionValue)
 				yamlRelationOptions[relationKey][optionValue] = optionId
 
 				optionDetails := domain.NewDetails()
@@ -770,7 +768,7 @@ func (m *Markdown) createSnapshots(
 					case model.RelationFormat_status, model.RelationFormat_tag:
 						list := value.WrapToStringList()
 						for i := range list {
-							list[i] = m.schemaImporter.optionId(key.String(), list[i])
+							list[i] = m.blockConverter.schemaImporter.optionId(key.String(), list[i])
 						}
 						updatedDetails.Set(key, domain.StringList(list))
 					default:
@@ -826,11 +824,17 @@ func (m *Markdown) createSnapshots(
 		if file.ObjectTypeName != "" {
 			if typeKey, exists := objectTypeKeys[file.ObjectTypeName]; exists {
 				objectTypeKey = typeKey
+			} else {
+				// Try to find bundled type by name
+				bundledKey, err := bundle.GetTypeKeyByName(file.ObjectTypeName)
+				if err == nil {
+					objectTypeKey = bundledKey.String()
+				}
 			}
 
 			// Check if this type is a collection type from schema
-			if m.schemaImporter != nil {
-				for _, s := range m.schemaImporter.GetSchemas() {
+			if m.blockConverter.schemaImporter != nil {
+				for _, s := range m.blockConverter.schemaImporter.GetSchemas() {
 					if s.Type != nil && s.Type.Name == file.ObjectTypeName && s.Type.Layout == model.ObjectType_collection {
 						isCollectionType = true
 						break
