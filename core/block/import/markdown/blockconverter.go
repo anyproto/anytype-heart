@@ -349,7 +349,10 @@ func (m *mdConverter) processFileBlock(block *model.Block, importedSource source
 				log.Errorf("failed to update file block, %v", err)
 			}
 		} else {
-			name = ""
+			// If it's a URL, preserve it; otherwise clear it
+			if !strings.HasPrefix(name, "http://") && !strings.HasPrefix(name, "https://") {
+				name = ""
+			}
 		}
 		block.GetFile().Name = name
 	}

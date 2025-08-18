@@ -705,7 +705,7 @@ func (mw *Middleware) ObjectImportExperience(ctx context.Context, req *pb.RpcObj
 	}
 
 	objCreator := mustService[builtinobjects.BuiltinObjects](mw)
-	err := objCreator.CreateObjectsForExperience(ctx, req.SpaceId, req.Url, req.Title, req.IsNewSpace)
+	err := objCreator.CreateObjectsForExperience(ctx, req.SpaceId, req.Url, req.Title, req.IsNewSpace, req.IsAi)
 	return response(common.GetGalleryResponseCode(err), err)
 }
 
