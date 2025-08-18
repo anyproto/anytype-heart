@@ -237,11 +237,11 @@ components:
         date:
           description: The date value to filter by. Accepts dates in RFC3339 format
             (2006-01-02T15:04:05Z) or date-only format (2006-01-02)
-          example: "2024-12-31T23:59:59Z"
+          example: "2006-01-02T15:04:05Z"
           type: string
         property_key:
           description: The property key to filter on
-          example: due_date
+          example: last_modified_date
           type: string
       type: object
     DatePropertyLinkValue:
@@ -287,11 +287,11 @@ components:
           $ref: '#/components/schemas/FilterCondition'
         email:
           description: The email value to filter by
-          example: user@example.com
+          example: example@example.com
           type: string
         property_key:
           description: The property key to filter on
-          example: contact_email
+          example: email
           type: string
       type: object
     EmailPropertyLinkValue:
@@ -362,13 +362,15 @@ components:
           $ref: '#/components/schemas/FilterCondition'
         files:
           description: File IDs for contains condition
+          example:
+          - bafyreie6n5l5nkbjal37su54cha4coy7qzuhrnajluzv5qd5jvtsrxkequ
           items:
             type: string
           type: array
           uniqueItems: false
         property_key:
           description: The property key to filter on
-          example: attachments
+          example: files
           type: string
       type: object
     FilesPropertyLinkValue:
@@ -1372,13 +1374,16 @@ components:
           $ref: '#/components/schemas/FilterCondition'
         multi_select:
           description: The tag IDs to filter by
+          example:
+          - bafyreiaixlnaefu3ci22zdenjhsdlyaeeoyjrsid5qhfeejzlccijbj7sq
+          - bafyreie6n5l5nkbjal37su54cha4coy7qzuhrnajluzv5qd5jvtsrxkequ
           items:
             type: string
           type: array
           uniqueItems: false
         property_key:
           description: The property key to filter on
-          example: tags
+          example: tag
           type: string
       type: object
     MultiSelectPropertyLinkValue:
@@ -1439,11 +1444,11 @@ components:
           $ref: '#/components/schemas/FilterCondition'
         number:
           description: The number value to filter by
-          example: 5
+          example: 42
           type: number
         property_key:
           description: The property key to filter on
-          example: priority
+          example: height
           type: string
       type: object
     NumberPropertyLinkValue:
@@ -1603,13 +1608,15 @@ components:
           $ref: '#/components/schemas/FilterCondition'
         objects:
           description: Object Ids to filter by
+          example:
+          - bafyreie6n5l5nkbjal37su54cha4coy7qzuhrnajluzv5qd5jvtsrxkequ
           items:
             type: string
           type: array
           uniqueItems: false
         property_key:
           description: The property key to filter on
-          example: assignee
+          example: creator
           type: string
       type: object
     ObjectsPropertyLinkValue:
@@ -1665,7 +1672,7 @@ components:
           type: string
         property_key:
           description: The property key to filter on
-          example: contact_phone
+          example: phone
           type: string
       type: object
     PhonePropertyLinkValue:
@@ -1835,7 +1842,7 @@ components:
           type: string
         select:
           description: Tag Id - for eq/ne conditions (single selection)
-          example: tag_id_done
+          example: tag_id
           type: string
       type: object
     SelectPropertyLinkValue:
@@ -2002,7 +2009,7 @@ components:
           type: string
         text:
           description: The text value to filter by
-          example: important
+          example: Some text...
           type: string
       type: object
     TextPropertyLinkValue:
