@@ -60,11 +60,12 @@ func BuildExpressionFilters(ctx context.Context, expr *apimodel.FilterExpression
 		}
 	}
 
-	// Create combined filter with operator
-	return &model.BlockContentDataviewFilter{
+	filters := &model.BlockContentDataviewFilter{
 		Operator:      operator,
 		NestedFilters: nestedFilters,
-	}, nil
+	}
+
+	return filters, nil
 }
 
 // buildConditionFilter builds a single condition filter
@@ -90,15 +91,13 @@ func buildConditionFilter(cond apimodel.FilterItem, validator *Validator, spaceI
 	}
 
 	rk := property.RelationKey
-	if dbCondition == model.BlockContentDataviewFilter_Empty ||
-		dbCondition == model.BlockContentDataviewFilter_NotEmpty {
+	if dbCondition == model.BlockContentDataviewFilter_Empty || dbCondition == model.BlockContentDataviewFilter_NotEmpty {
 		return &model.BlockContentDataviewFilter{
 			RelationKey: rk,
 			Condition:   dbCondition,
 		}, nil
 	}
 
-	// Extract value from the specific filter type
 	var value interface{}
 	switch fc := wrapped.(type) {
 	case apimodel.TextFilterItem:
@@ -152,11 +151,11 @@ func buildConditionFilter(cond apimodel.FilterItem, validator *Validator, spaceI
 		return nil, fmt.Errorf("invalid value for property %s: %w", wrapped.GetPropertyKey(), err)
 	}
 
-	protoValue := pbtypes.ToValue(validatedValue)
-
-	return &model.BlockContentDataviewFilter{
+	filter := &model.BlockContentDataviewFilter{
 		RelationKey: rk,
 		Condition:   dbCondition,
-		Value:       protoValue,
-	}, nil
+		Value:       pbtypes.ToValue(validatedValue),
+	}
+
+	return filter, nil
 }
