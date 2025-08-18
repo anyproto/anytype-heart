@@ -34,10 +34,12 @@ func (s *Service) AccountCreate(ctx context.Context, req *pb.RpcAccountCreateReq
 
 	s.requireClientWithVersion()
 
-	derivationResult, err := core.WalletAccountAt(s.mnemonic, 0)
+	// Get derivation result based on wallet type
+	derivationResultPtr, err := s.getDerivationResult()
 	if err != nil {
 		return nil, err
 	}
+	derivationResult := *derivationResultPtr
 	accountID := derivationResult.Identity.GetPublic().Account()
 
 	if err = core.WalletInitRepo(s.rootPath, derivationResult.Identity); err != nil {

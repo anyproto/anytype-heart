@@ -10,16 +10,18 @@ require (
 	github.com/VividCortex/ewma v1.2.0
 	github.com/adrium/goheif v0.0.0-20230113233934-ca402e77a786
 	github.com/anyproto/any-store v0.3.3
-	github.com/anyproto/any-sync v0.9.8
-	github.com/anyproto/anytype-publish-server/publishclient v0.0.0-20250716122732-cdcfe3a126bb
-	github.com/anyproto/anytype-push-server/pushclient v0.0.0-20250801122506-553f6c085a23
+	github.com/anyproto/any-sync v0.9.9-0.20250818132859-04a7b1bd8146
+	github.com/anyproto/anytype-publish-server/publishclient v0.0.0-20250814114147-4fd112e17c7a
+	github.com/anyproto/anytype-push-server/pushclient v0.0.0-20250807134936-b0c45835ebe4
 	github.com/anyproto/go-chash v0.1.0
 	github.com/anyproto/go-naturaldate/v2 v2.0.2-0.20230524105841-9829cfd13438
-	github.com/anyproto/go-slip10 v1.0.0
+	github.com/anyproto/go-slip10 v1.0.1-0.20250818123350-f910c27dd080
 	github.com/anyproto/lexid v0.0.6
 	github.com/anyproto/tantivy-go v1.0.4
 	github.com/araddon/dateparse v0.0.0-20210429162001-6b43995a97de
 	github.com/avast/retry-go/v4 v4.6.1
+	github.com/btcsuite/btcd v0.24.2
+	github.com/btcsuite/btcutil v1.0.3-0.20220129005943-27c39e0ab4f9
 	github.com/chai2010/webp v1.4.0
 	github.com/cheggaaa/mb/v3 v3.0.2
 	github.com/dave/jennifer v1.7.1
@@ -137,11 +139,9 @@ require (
 	github.com/anyproto/go-sqlite v1.4.2-any // indirect
 	github.com/aymerick/douceur v0.2.0 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
-	github.com/btcsuite/btcd v0.24.2 // indirect
 	github.com/btcsuite/btcd/btcec/v2 v2.3.5 // indirect
 	github.com/btcsuite/btcd/btcutil v1.1.6 // indirect
 	github.com/btcsuite/btcd/chaincfg/chainhash v1.1.0 // indirect
-	github.com/btcsuite/btcutil v1.0.3-0.20220129005943-27c39e0ab4f9 // indirect
 	github.com/bytedance/sonic v1.12.3 // indirect
 	github.com/bytedance/sonic/loader v0.2.0 // indirect
 	github.com/cenkalti/backoff/v4 v4.3.0 // indirect

@@ -1337,6 +1337,10 @@
     - [Rpc.Wallet.CreateSession.Request](#anytype-Rpc-Wallet-CreateSession-Request)
     - [Rpc.Wallet.CreateSession.Response](#anytype-Rpc-Wallet-CreateSession-Response)
     - [Rpc.Wallet.CreateSession.Response.Error](#anytype-Rpc-Wallet-CreateSession-Response-Error)
+    - [Rpc.Wallet.ExportBot](#anytype-Rpc-Wallet-ExportBot)
+    - [Rpc.Wallet.ExportBot.Request](#anytype-Rpc-Wallet-ExportBot-Request)
+    - [Rpc.Wallet.ExportBot.Response](#anytype-Rpc-Wallet-ExportBot-Response)
+    - [Rpc.Wallet.ExportBot.Response.Error](#anytype-Rpc-Wallet-ExportBot-Response-Error)
     - [Rpc.Wallet.Recover](#anytype-Rpc-Wallet-Recover)
     - [Rpc.Wallet.Recover.Request](#anytype-Rpc-Wallet-Recover-Request)
     - [Rpc.Wallet.Recover.Response](#anytype-Rpc-Wallet-Recover-Response)
@@ -1707,6 +1711,7 @@
     - [Rpc.Wallet.Convert.Response.Error.Code](#anytype-Rpc-Wallet-Convert-Response-Error-Code)
     - [Rpc.Wallet.Create.Response.Error.Code](#anytype-Rpc-Wallet-Create-Response-Error-Code)
     - [Rpc.Wallet.CreateSession.Response.Error.Code](#anytype-Rpc-Wallet-CreateSession-Response-Error-Code)
+    - [Rpc.Wallet.ExportBot.Response.Error.Code](#anytype-Rpc-Wallet-ExportBot-Response-Error-Code)
     - [Rpc.Wallet.Recover.Response.Error.Code](#anytype-Rpc-Wallet-Recover-Response-Error-Code)
     - [Rpc.Workspace.Create.Response.Error.Code](#anytype-Rpc-Workspace-Create-Response-Error-Code)
     - [Rpc.Workspace.Export.Response.Error.Code](#anytype-Rpc-Workspace-Export-Response-Error-Code)
@@ -21839,6 +21844,64 @@ Middleware-to-front-end response, that can contain mnemonic of a created account
 
 
 
+<a name="anytype-Rpc-Wallet-ExportBot"></a>
+
+### Rpc.Wallet.ExportBot
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Wallet-ExportBot-Request"></a>
+
+### Rpc.Wallet.ExportBot.Request
+Front-end-to-middleware request to export a bot account key from mnemonic
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| mnemonic | [string](#string) |  | Mnemonic to derive bot account from |
+| index | [uint32](#uint32) |  | Bot index (will be added to 100, so actual derivation index = 100 &#43; index) |
+
+
+
+
+
+
+<a name="anytype-Rpc-Wallet-ExportBot-Response"></a>
+
+### Rpc.Wallet.ExportBot.Response
+Middleware-to-front-end response containing the bot account key
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Wallet.ExportBot.Response.Error](#anytype-Rpc-Wallet-ExportBot-Response-Error) |  |  |
+| accountKey | [string](#string) |  | Base58-encoded account master node for bot authentication |
+
+
+
+
+
+
+<a name="anytype-Rpc-Wallet-ExportBot-Response-Error"></a>
+
+### Rpc.Wallet.ExportBot.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Wallet.ExportBot.Response.Error.Code](#anytype-Rpc-Wallet-ExportBot-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
 <a name="anytype-Rpc-Wallet-Recover"></a>
 
 ### Rpc.Wallet.Recover
@@ -21858,8 +21921,9 @@ Front end to middleware request-to-recover-a wallet with this mnemonic and a roo
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | rootPath | [string](#string) |  | Path to a wallet directory |
-| mnemonic | [string](#string) |  | Mnemonic of a wallet to recover |
+| mnemonic | [string](#string) |  | Mnemonic of a wallet to recover (mutually exclusive with accountKey) |
 | fulltextPrimaryLanguage | [string](#string) |  | optional, default fts language |
+| accountKey | [string](#string) |  | optional: serialized account master node (base58 encoded) for headless/bot authentication (mutually exclusive with mnemonic) |
 
 
 
@@ -27020,6 +27084,19 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | UNKNOWN_ERROR | 1 |  |
 | BAD_INPUT | 2 |  |
 | APP_TOKEN_NOT_FOUND_IN_THE_CURRENT_ACCOUNT | 101 | means the client logged into another account or the account directory has been cleaned |
+
+
+
+<a name="anytype-Rpc-Wallet-ExportBot-Response-Error-Code"></a>
+
+### Rpc.Wallet.ExportBot.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 | No error |
+| UNKNOWN_ERROR | 1 | Any other errors |
+| BAD_INPUT | 2 | Invalid mnemonic or index |
 
 
 

@@ -7,6 +7,7 @@ import (
 	"sync"
 
 	"github.com/anyproto/any-sync/app"
+	"github.com/anyproto/any-sync/util/crypto"
 
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/event"
@@ -21,9 +22,10 @@ type Service struct {
 
 	app *app.App
 
-	mnemonic string
+	// pre-derived keys (populated during wallet.create or wallet.recover)
+	derivedKeys *crypto.DerivationResult
 
-	// memoized private key derived from mnemonic, used for signing session tokens
+	// session signing key for session tokens
 	sessionSigningKey []byte
 	sessionsByAppHash map[string]string
 
@@ -101,4 +103,13 @@ func (s *Service) GetEventSender() event.Sender {
 	s.lock.RLock()
 	defer s.lock.RUnlock()
 	return s.eventSender
+}
+
+// getDerivationResult returns the key derivation result
+// Keys must be populated during wallet.create or wallet.recover
+func (s *Service) getDerivationResult() (*crypto.DerivationResult, error) {
+	if s.derivedKeys == nil {
+		return nil, errors.New("wallet not initialized - call wallet.create or wallet.recover first")
+	}
+	return s.derivedKeys, nil
 }
