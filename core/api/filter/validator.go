@@ -64,7 +64,7 @@ func (v *Validator) validateFilter(spaceId string, filter *Filter, propertyMap m
 	return nil
 }
 
-// resolveProperty resolves a property by key, checking both system and custom properties
+// resolveProperty resolves a property by key and returns it or an error if not found
 func (v *Validator) resolveProperty(spaceId string, propertyKey string, propertyMap map[string]*apimodel.Property) (*apimodel.Property, error) {
 	rk, found := v.apiService.ResolvePropertyApiKey(propertyMap, propertyKey)
 	if !found {
@@ -91,12 +91,12 @@ func (v *Validator) convertAndValidateValue(spaceId string, filter *Filter, prop
 
 	value := filter.Value
 	if filter.Condition == model.BlockContentDataviewFilter_In || filter.Condition == model.BlockContentDataviewFilter_NotIn {
+		// Ensure value is an array for In/NotIn conditions
 		switch v := value.(type) {
-		case []string:
-		case []interface{}:
-		case string:
-			value = []interface{}{v}
+		case []string, []interface{}:
+			// Already an array, keep as-is
 		default:
+			// Wrap single value in array
 			value = []interface{}{v}
 		}
 	}
