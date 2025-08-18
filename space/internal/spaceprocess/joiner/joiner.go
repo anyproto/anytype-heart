@@ -9,6 +9,7 @@ import (
 	"github.com/anyproto/any-sync/commonspace/object/acl/list"
 	"go.uber.org/zap"
 
+	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space/internal/components/aclnotifications"
 	"github.com/anyproto/anytype-heart/space/internal/components/spacestatus"
 	"github.com/anyproto/anytype-heart/space/internal/spaceprocess/mode"
@@ -16,7 +17,9 @@ import (
 )
 
 type joiner struct {
-	app *app.App
+	status spacestatus.SpaceStatus
+	log    logger.CtxLogger
+	app    *app.App
 }
 
 type Joiner interface {
@@ -43,7 +46,7 @@ func New(app *app.App, params Params) Joiner {
 					SetAclHeadId(acl.Head().Id)
 				err := params.Status.SetPersistentInfo(info)
 				if err != nil {
-					params.Log.Error("failed to set persistent status", zap.Error(err))
+					params.Log.Warn("failed to set persistent status", zap.Error(err))
 				}
 				return err
 			},
@@ -54,18 +57,24 @@ func New(app *app.App, params Params) Joiner {
 					SetAclHeadId(acl.Head().Id)
 				err := params.Status.SetPersistentInfo(info)
 				if err != nil {
-					params.Log.Error("failed to set persistent status", zap.Error(err))
+					params.Log.Warn("failed to set persistent status", zap.Error(err))
 				}
 				aclNotificationSender := child.MustComponent(aclnotifications.CName).(aclnotifications.AclNotification)
 				aclNotificationSender.AddSingleRecord(acl.Id(), acl.Head(), 0, params.SpaceId, spaceinfo.AccountStatusDeleted)
 				return err
 			}))
 	return &joiner{
-		app: child,
+		app:    child,
+		status: params.Status,
+		log:    params.Log,
 	}
 }
 
 func (i *joiner) Start(ctx context.Context) error {
+	err := i.status.SetMyParticipantStatus(model.ParticipantStatus_Joining)
+	if err != nil {
+		i.log.Warn("failed to set my participant status", zap.Error(err))
+	}
 	return i.app.Start(ctx)
 }
 

@@ -16,22 +16,15 @@ import (
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space"
+	"github.com/anyproto/anytype-heart/space/techspace"
 	"github.com/anyproto/anytype-heart/util/encode"
 )
 
 func (mw *Middleware) SpaceDelete(cctx context.Context, req *pb.RpcSpaceDeleteRequest) *pb.RpcSpaceDeleteResponse {
 	spaceService := mustService[space.Service](mw)
-	aclService := mustService[acl.AclService](mw)
-	err := aclService.Leave(cctx, req.SpaceId)
-	if err == nil {
-		err = spaceService.Delete(cctx, req.SpaceId)
-	}
+	err := spaceService.Delete(cctx, req.SpaceId)
 	code := mapErrorCode(err,
-		errToCode(space.ErrSpaceDeleted, pb.RpcSpaceDeleteResponseError_SPACE_IS_DELETED),
-		errToCode(space.ErrSpaceNotExists, pb.RpcSpaceDeleteResponseError_NO_SUCH_SPACE),
-		errToCode(acl.ErrAclRequestFailed, pb.RpcSpaceDeleteResponseError_REQUEST_FAILED),
-		errToCode(acl.ErrLimitReached, pb.RpcSpaceDeleteResponseError_LIMIT_REACHED),
-		errToCode(acl.ErrNotShareable, pb.RpcSpaceDeleteResponseError_NOT_SHAREABLE),
+		errToCode(techspace.ErrSpaceViewNotExists, pb.RpcSpaceDeleteResponseError_SPACE_IS_DELETED),
 	)
 	return &pb.RpcSpaceDeleteResponse{
 		Error: &pb.RpcSpaceDeleteResponseError{
