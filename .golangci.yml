@@ -54,6 +54,7 @@ linters:
       case:
         rules:
           json: snake
+        use-field-name: true
     unused:
       field-writes-are-uses: false
   exclusions:
