@@ -367,22 +367,22 @@ func (p *PropertyLinkWithValue) UnmarshalJSON(data []byte) error {
 
 type WrappedPropertyLinkWithValue interface {
 	isPropertyLinkWithValue()
-	Key() string
-	Value() interface{}
+	GetKey() string
+	GetValue() interface{}
 }
 
 type TextPropertyLinkValue struct {
-	PropertyKey string  `json:"key" example:"description"`
-	Text        *string `json:"text" example:"Some text..."` // The text value of the property
+	Key  string  `json:"key" example:"description"`
+	Text *string `json:"text" example:"Some text..."` // The text value of the property
 }
 
 func (TextPropertyLinkValue) isPropertyLinkWithValue() {}
 
-func (v TextPropertyLinkValue) Key() string {
-	return v.PropertyKey
+func (v TextPropertyLinkValue) GetKey() string {
+	return v.Key
 }
 
-func (v TextPropertyLinkValue) Value() interface{} {
+func (v TextPropertyLinkValue) GetValue() interface{} {
 	if v.Text == nil {
 		return nil
 	}
@@ -396,11 +396,11 @@ type NumberPropertyLinkValue struct {
 
 func (NumberPropertyLinkValue) isPropertyLinkWithValue() {}
 
-func (v NumberPropertyLinkValue) Key() string {
+func (v NumberPropertyLinkValue) GetKey() string {
 	return v.PropertyKey
 }
 
-func (v NumberPropertyLinkValue) Value() interface{} {
+func (v NumberPropertyLinkValue) GetValue() interface{} {
 	if v.Number == nil {
 		return nil
 	}
@@ -414,11 +414,11 @@ type SelectPropertyLinkValue struct {
 
 func (SelectPropertyLinkValue) isPropertyLinkWithValue() {}
 
-func (v SelectPropertyLinkValue) Key() string {
+func (v SelectPropertyLinkValue) GetKey() string {
 	return v.PropertyKey
 }
 
-func (v SelectPropertyLinkValue) Value() interface{} {
+func (v SelectPropertyLinkValue) GetValue() interface{} {
 	if v.Select == nil {
 		return nil
 	}
@@ -432,11 +432,11 @@ type MultiSelectPropertyLinkValue struct {
 
 func (MultiSelectPropertyLinkValue) isPropertyLinkWithValue() {}
 
-func (v MultiSelectPropertyLinkValue) Key() string {
+func (v MultiSelectPropertyLinkValue) GetKey() string {
 	return v.PropertyKey
 }
 
-func (v MultiSelectPropertyLinkValue) Value() interface{} {
+func (v MultiSelectPropertyLinkValue) GetValue() interface{} {
 	if v.MultiSelect == nil || len(*v.MultiSelect) == 0 {
 		return nil
 	}
@@ -454,11 +454,11 @@ type DatePropertyLinkValue struct {
 
 func (DatePropertyLinkValue) isPropertyLinkWithValue() {}
 
-func (v DatePropertyLinkValue) Key() string {
+func (v DatePropertyLinkValue) GetKey() string {
 	return v.PropertyKey
 }
 
-func (v DatePropertyLinkValue) Value() interface{} {
+func (v DatePropertyLinkValue) GetValue() interface{} {
 	if v.Date == nil {
 		return nil
 	}
@@ -472,11 +472,11 @@ type FilesPropertyLinkValue struct {
 
 func (FilesPropertyLinkValue) isPropertyLinkWithValue() {}
 
-func (v FilesPropertyLinkValue) Key() string {
+func (v FilesPropertyLinkValue) GetKey() string {
 	return v.PropertyKey
 }
 
-func (v FilesPropertyLinkValue) Value() interface{} {
+func (v FilesPropertyLinkValue) GetValue() interface{} {
 	if v.Files == nil || len(*v.Files) == 0 {
 		return nil
 	}
@@ -494,11 +494,11 @@ type CheckboxPropertyLinkValue struct {
 
 func (CheckboxPropertyLinkValue) isPropertyLinkWithValue() {}
 
-func (v CheckboxPropertyLinkValue) Key() string {
+func (v CheckboxPropertyLinkValue) GetKey() string {
 	return v.PropertyKey
 }
 
-func (v CheckboxPropertyLinkValue) Value() interface{} {
+func (v CheckboxPropertyLinkValue) GetValue() interface{} {
 	if v.Checkbox == nil {
 		return nil
 	}
@@ -512,11 +512,11 @@ type URLPropertyLinkValue struct {
 
 func (URLPropertyLinkValue) isPropertyLinkWithValue() {}
 
-func (v URLPropertyLinkValue) Key() string {
+func (v URLPropertyLinkValue) GetKey() string {
 	return v.PropertyKey
 }
 
-func (v URLPropertyLinkValue) Value() interface{} {
+func (v URLPropertyLinkValue) GetValue() interface{} {
 	if v.Url == nil {
 		return nil
 	}
@@ -530,11 +530,11 @@ type EmailPropertyLinkValue struct {
 
 func (EmailPropertyLinkValue) isPropertyLinkWithValue() {}
 
-func (v EmailPropertyLinkValue) Key() string {
+func (v EmailPropertyLinkValue) GetKey() string {
 	return v.PropertyKey
 }
 
-func (v EmailPropertyLinkValue) Value() interface{} {
+func (v EmailPropertyLinkValue) GetValue() interface{} {
 	if v.Email == nil {
 		return nil
 	}
@@ -548,11 +548,11 @@ type PhonePropertyLinkValue struct {
 
 func (PhonePropertyLinkValue) isPropertyLinkWithValue() {}
 
-func (v PhonePropertyLinkValue) Key() string {
+func (v PhonePropertyLinkValue) GetKey() string {
 	return v.PropertyKey
 }
 
-func (v PhonePropertyLinkValue) Value() interface{} {
+func (v PhonePropertyLinkValue) GetValue() interface{} {
 	if v.Phone == nil {
 		return nil
 	}
@@ -566,11 +566,11 @@ type ObjectsPropertyLinkValue struct {
 
 func (ObjectsPropertyLinkValue) isPropertyLinkWithValue() {}
 
-func (v ObjectsPropertyLinkValue) Key() string {
+func (v ObjectsPropertyLinkValue) GetKey() string {
 	return v.PropertyKey
 }
 
-func (v ObjectsPropertyLinkValue) Value() interface{} {
+func (v ObjectsPropertyLinkValue) GetValue() interface{} {
 	if v.Objects == nil || len(*v.Objects) == 0 {
 		return nil
 	}

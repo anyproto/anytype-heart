@@ -320,8 +320,8 @@ func (s *Service) processProperties(ctx context.Context, spaceId string, entries
 
 	propertyMap := s.cache.getProperties(spaceId)
 	for _, entry := range entries {
-		key := entry.Key()
-		value := entry.Value()
+		key := entry.GetKey()
+		value := entry.GetValue()
 
 		rk, found := s.ResolvePropertyApiKey(propertyMap, key)
 		if !found {
