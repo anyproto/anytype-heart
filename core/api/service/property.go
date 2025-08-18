@@ -679,7 +679,7 @@ func (s *Service) buildPropertyWithValue(id string, key string, name string, for
 		}
 	case apimodel.PropertyFormatUrl:
 		if urlStr, ok := val.(string); ok {
-			return &apimodel.PropertyWithValue{WrappedPropertyWithValue: apimodel.URLPropertyValue{
+			return &apimodel.PropertyWithValue{WrappedPropertyWithValue: apimodel.UrlPropertyValue{
 				PropertyBase: base, Key: key, Name: name, Format: format,
 				Url: urlStr,
 			}}

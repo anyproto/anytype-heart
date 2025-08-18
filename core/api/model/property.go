@@ -133,7 +133,7 @@ func (p *PropertyWithValue) UnmarshalJSON(data []byte) error {
 		}
 		p.WrappedPropertyWithValue = v
 	case PropertyFormatUrl:
-		var v URLPropertyValue
+		var v UrlPropertyValue
 		if err := json.Unmarshal(data, &v); err != nil {
 			return err
 		}
@@ -239,7 +239,7 @@ type CheckboxPropertyValue struct {
 
 func (CheckboxPropertyValue) isPropertyWithValue() {}
 
-type URLPropertyValue struct {
+type UrlPropertyValue struct {
 	PropertyBase
 	Key    string         `json:"key" example:"source"`              // The key of the property
 	Name   string         `json:"name" example:"Source"`             // The name of the property
@@ -247,7 +247,7 @@ type URLPropertyValue struct {
 	Url    string         `json:"url" example:"https://example.com"` // The URL value of the property
 }
 
-func (URLPropertyValue) isPropertyWithValue() {}
+func (UrlPropertyValue) isPropertyWithValue() {}
 
 type EmailPropertyValue struct {
 	PropertyBase
@@ -336,7 +336,7 @@ func (p *PropertyLinkWithValue) UnmarshalJSON(data []byte) error {
 		}
 		p.WrappedPropertyLinkWithValue = v
 	case aux[PropertyFormatUrl.String()] != nil:
-		var v URLPropertyLinkValue
+		var v UrlPropertyLinkValue
 		if err := json.Unmarshal(data, &v); err != nil {
 			return err
 		}
@@ -505,18 +505,18 @@ func (v CheckboxPropertyLinkValue) GetValue() interface{} {
 	return *v.Checkbox
 }
 
-type URLPropertyLinkValue struct {
+type UrlPropertyLinkValue struct {
 	PropertyKey string  `json:"key" example:"source"`
 	Url         *string `json:"url" example:"https://example.com"` // The URL value of the property
 }
 
-func (URLPropertyLinkValue) isPropertyLinkWithValue() {}
+func (UrlPropertyLinkValue) isPropertyLinkWithValue() {}
 
-func (v URLPropertyLinkValue) GetKey() string {
+func (v UrlPropertyLinkValue) GetKey() string {
 	return v.PropertyKey
 }
 
-func (v URLPropertyLinkValue) GetValue() interface{} {
+func (v UrlPropertyLinkValue) GetValue() interface{} {
 	if v.Url == nil {
 		return nil
 	}

@@ -41,13 +41,13 @@ func (srv *Server) ensureAuthenticated(mw apicore.ClientCommands) gin.HandlerFun
 	return func(c *gin.Context) {
 		authHeader := c.GetHeader("Authorization")
 		if authHeader == "" {
-			apiErr := util.CodeToAPIError(http.StatusUnauthorized, ErrMissingAuthorizationHeader.Error())
+			apiErr := util.CodeToApiError(http.StatusUnauthorized, ErrMissingAuthorizationHeader.Error())
 			c.AbortWithStatusJSON(http.StatusUnauthorized, apiErr)
 			return
 		}
 
 		if !strings.HasPrefix(authHeader, "Bearer ") {
-			apiErr := util.CodeToAPIError(http.StatusUnauthorized, ErrInvalidAuthorizationHeader.Error())
+			apiErr := util.CodeToApiError(http.StatusUnauthorized, ErrInvalidAuthorizationHeader.Error())
 			c.AbortWithStatusJSON(http.StatusUnauthorized, apiErr)
 			return
 		}
@@ -62,7 +62,7 @@ func (srv *Server) ensureAuthenticated(mw apicore.ClientCommands) gin.HandlerFun
 		if !exists {
 			response := mw.WalletCreateSession(context.Background(), &pb.RpcWalletCreateSessionRequest{Auth: &pb.RpcWalletCreateSessionRequestAuthOfAppKey{AppKey: key}})
 			if response.Error.Code != pb.RpcWalletCreateSessionResponseError_NULL {
-				apiErr := util.CodeToAPIError(http.StatusUnauthorized, ErrInvalidApiKey.Error())
+				apiErr := util.CodeToApiError(http.StatusUnauthorized, ErrInvalidApiKey.Error())
 				c.AbortWithStatusJSON(http.StatusUnauthorized, apiErr)
 				return
 			}
@@ -119,7 +119,7 @@ func ensureRateLimit(rate float64, burst int, isRateLimitDisabled bool) gin.Hand
 			return
 		}
 		if httpError := tollbooth.LimitByRequest(lmt, c.Writer, c.Request); httpError != nil {
-			apiErr := util.CodeToAPIError(httpError.StatusCode, httpError.Message)
+			apiErr := util.CodeToApiError(httpError.StatusCode, httpError.Message)
 			c.AbortWithStatusJSON(httpError.StatusCode, apiErr)
 			return
 		}
@@ -136,7 +136,7 @@ func (srv *Server) ensureFilters() gin.HandlerFunc {
 		// Parse filters from query parameters
 		parsedFilters, err := parser.ParseQueryParams(c)
 		if err != nil {
-			apiErr := util.CodeToAPIError(http.StatusBadRequest, err.Error())
+			apiErr := util.CodeToApiError(http.StatusBadRequest, err.Error())
 			c.AbortWithStatusJSON(http.StatusBadRequest, apiErr)
 			return
 		}
@@ -147,7 +147,7 @@ func (srv *Server) ensureFilters() gin.HandlerFunc {
 		// Validate filters if we have a space context
 		if spaceId != "" && parsedFilters != nil && len(parsedFilters.Filters) > 0 {
 			if err := validator.ValidateFilters(spaceId, parsedFilters); err != nil {
-				apiErr := util.CodeToAPIError(http.StatusBadRequest, err.Error())
+				apiErr := util.CodeToApiError(http.StatusBadRequest, err.Error())
 				c.AbortWithStatusJSON(http.StatusBadRequest, apiErr)
 				return
 			}

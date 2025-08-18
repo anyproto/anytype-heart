@@ -214,6 +214,11 @@ Request processing order:
    - Use `apimodel.FilterConditionEq` not `"eq"`
    - Use `model.BlockContentDataviewFilter_Equal` not magic numbers
    - This applies to all enums, conditions, operators, and status codes
+10. **Naming Conventions**: Follow Anytype's project conventions for acronyms (not standard Go idioms):
+    - Use `Api` not `API` (e.g., `ApiService`, `ToApiCondition`)
+    - Use `Url` not `URL` (e.g., `UrlFilterItem`, `GatewayUrl`)
+    - Use `Id` not `ID` (e.g., `object.Id`, `type.Id`)
+    - This maintains consistency with the rest of the Anytype codebase
 
 ### Common Tasks
 

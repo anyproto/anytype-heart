@@ -521,7 +521,7 @@ func TestProcessProperties(t *testing.T) {
 
 		t.Run("valid value", func(t *testing.T) {
 			entries := []apimodel.PropertyLinkWithValue{
-				{WrappedPropertyLinkWithValue: apimodel.URLPropertyLinkValue{
+				{WrappedPropertyLinkWithValue: apimodel.UrlPropertyLinkValue{
 					PropertyKey: "url_prop",
 					Url:         util.PtrString("https://example.com"),
 				}},
@@ -533,7 +533,7 @@ func TestProcessProperties(t *testing.T) {
 
 		t.Run("empty string", func(t *testing.T) {
 			entries := []apimodel.PropertyLinkWithValue{
-				{WrappedPropertyLinkWithValue: apimodel.URLPropertyLinkValue{
+				{WrappedPropertyLinkWithValue: apimodel.UrlPropertyLinkValue{
 					PropertyKey: "url_prop",
 					Url:         util.PtrString(""),
 				}},
@@ -545,7 +545,7 @@ func TestProcessProperties(t *testing.T) {
 
 		t.Run("nil value", func(t *testing.T) {
 			entries := []apimodel.PropertyLinkWithValue{
-				{WrappedPropertyLinkWithValue: apimodel.URLPropertyLinkValue{
+				{WrappedPropertyLinkWithValue: apimodel.UrlPropertyLinkValue{
 					PropertyKey: "url_prop",
 					Url:         nil,
 				}},
@@ -557,7 +557,7 @@ func TestProcessProperties(t *testing.T) {
 
 		t.Run("whitespace trimmed", func(t *testing.T) {
 			entries := []apimodel.PropertyLinkWithValue{
-				{WrappedPropertyLinkWithValue: apimodel.URLPropertyLinkValue{
+				{WrappedPropertyLinkWithValue: apimodel.UrlPropertyLinkValue{
 					PropertyKey: "url_prop",
 					Url:         util.PtrString("  https://example.com  "),
 				}},

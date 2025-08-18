@@ -1785,7 +1785,7 @@ components:
       - $ref: '#/components/schemas/DatePropertyLinkValue'
       - $ref: '#/components/schemas/FilesPropertyLinkValue'
       - $ref: '#/components/schemas/CheckboxPropertyLinkValue'
-      - $ref: '#/components/schemas/URLPropertyLinkValue'
+      - $ref: '#/components/schemas/UrlPropertyLinkValue'
       - $ref: '#/components/schemas/EmailPropertyLinkValue'
       - $ref: '#/components/schemas/PhonePropertyLinkValue'
       - $ref: '#/components/schemas/ObjectsPropertyLinkValue'
@@ -1804,7 +1804,7 @@ components:
       - $ref: '#/components/schemas/DatePropertyValue'
       - $ref: '#/components/schemas/FilesPropertyValue'
       - $ref: '#/components/schemas/CheckboxPropertyValue'
-      - $ref: '#/components/schemas/URLPropertyValue'
+      - $ref: '#/components/schemas/UrlPropertyValue'
       - $ref: '#/components/schemas/EmailPropertyValue'
       - $ref: '#/components/schemas/PhonePropertyValue'
       - $ref: '#/components/schemas/ObjectsPropertyValue'
@@ -2125,41 +2125,6 @@ components:
         type:
           $ref: '#/components/schemas/Type'
       type: object
-    URLPropertyLinkValue:
-      properties:
-        key:
-          example: source
-          type: string
-        url:
-          description: The URL value of the property
-          example: https://example.com
-          type: string
-      type: object
-    URLPropertyValue:
-      properties:
-        format:
-          $ref: '#/components/schemas/PropertyFormat'
-        id:
-          description: The id of the property
-          example: bafyreids36kpw5ppuwm3ce2p4ezb3ab7cihhkq6yfbwzwpp4mln7rcgw7a
-          type: string
-        key:
-          description: The key of the property
-          example: source
-          type: string
-        name:
-          description: The name of the property
-          example: Source
-          type: string
-        object:
-          description: The data model of the object
-          example: property
-          type: string
-        url:
-          description: The URL value of the property
-          example: https://example.com
-          type: string
-      type: object
     UpdateObjectRequest:
       properties:
         icon:
@@ -2254,6 +2219,41 @@ components:
           type: string
         url:
           description: The Url value to filter by
+          example: https://example.com
+          type: string
+      type: object
+    UrlPropertyLinkValue:
+      properties:
+        key:
+          example: source
+          type: string
+        url:
+          description: The URL value of the property
+          example: https://example.com
+          type: string
+      type: object
+    UrlPropertyValue:
+      properties:
+        format:
+          $ref: '#/components/schemas/PropertyFormat'
+        id:
+          description: The id of the property
+          example: bafyreids36kpw5ppuwm3ce2p4ezb3ab7cihhkq6yfbwzwpp4mln7rcgw7a
+          type: string
+        key:
+          description: The key of the property
+          example: source
+          type: string
+        name:
+          description: The name of the property
+          example: Source
+          type: string
+        object:
+          description: The data model of the object
+          example: property
+          type: string
+        url:
+          description: The URL value of the property
           example: https://example.com
           type: string
       type: object
