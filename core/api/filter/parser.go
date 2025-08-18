@@ -66,7 +66,7 @@ func (p *Parser) parseFilterKey(key string) (property string, condition model.Bl
 		property = matches[1]
 		conditionStr := strings.ToLower(matches[2])
 
-		cond, ok := ConditionMap[apimodel.FilterCondition(conditionStr)]
+		cond, ok := ToInternalCondition(apimodel.FilterCondition(conditionStr))
 		if !ok {
 			return "", 0, fmt.Errorf("unsupported condition: %s", conditionStr)
 		}

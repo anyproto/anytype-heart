@@ -9,30 +9,96 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-func TestConditionMap(t *testing.T) {
-	expectedMappings := map[string]model.BlockContentDataviewFilterCondition{
-		"eq":        model.BlockContentDataviewFilter_Equal,
-		"ne":        model.BlockContentDataviewFilter_NotEqual,
-		"gt":        model.BlockContentDataviewFilter_Greater,
-		"gte":       model.BlockContentDataviewFilter_GreaterOrEqual,
-		"lt":        model.BlockContentDataviewFilter_Less,
-		"lte":       model.BlockContentDataviewFilter_LessOrEqual,
-		"contains":  model.BlockContentDataviewFilter_Like,
-		"ncontains": model.BlockContentDataviewFilter_NotLike,
-		"in":        model.BlockContentDataviewFilter_In,
-		"nin":       model.BlockContentDataviewFilter_NotIn,
-		"all":       model.BlockContentDataviewFilter_AllIn,
-		"empty":     model.BlockContentDataviewFilter_Empty,
-		"nempty":    model.BlockContentDataviewFilter_NotEmpty,
-	}
+func TestBidirectionalConditionMapping(t *testing.T) {
+	t.Run("ToInternalCondition", func(t *testing.T) {
+		expectedMappings := map[apimodel.FilterCondition]model.BlockContentDataviewFilterCondition{
+			apimodel.FilterConditionEq:        model.BlockContentDataviewFilter_Equal,
+			apimodel.FilterConditionNe:        model.BlockContentDataviewFilter_NotEqual,
+			apimodel.FilterConditionGt:        model.BlockContentDataviewFilter_Greater,
+			apimodel.FilterConditionGte:       model.BlockContentDataviewFilter_GreaterOrEqual,
+			apimodel.FilterConditionLt:        model.BlockContentDataviewFilter_Less,
+			apimodel.FilterConditionLte:       model.BlockContentDataviewFilter_LessOrEqual,
+			apimodel.FilterConditionContains:  model.BlockContentDataviewFilter_Like,
+			apimodel.FilterConditionNContains: model.BlockContentDataviewFilter_NotLike,
+			apimodel.FilterConditionIn:        model.BlockContentDataviewFilter_In,
+			apimodel.FilterConditionNin:       model.BlockContentDataviewFilter_NotIn,
+			apimodel.FilterConditionAll:       model.BlockContentDataviewFilter_AllIn,
+			apimodel.FilterConditionEmpty:     model.BlockContentDataviewFilter_Empty,
+			apimodel.FilterConditionNEmpty:    model.BlockContentDataviewFilter_NotEmpty,
+		}
 
-	// Test each string maps to the correct condition
-	for str, expectedCondition := range expectedMappings {
-		filterCond := apimodel.FilterCondition(str)
-		actualCondition, ok := ConditionMap[filterCond]
-		assert.True(t, ok, "Condition string %q should be mapped", str)
-		assert.Equal(t, expectedCondition, actualCondition, "Condition %q should map to %v", str, expectedCondition)
-	}
+		// Test each API condition maps to the correct internal condition
+		for apiCond, expectedCondition := range expectedMappings {
+			actualCondition, ok := ToInternalCondition(apiCond)
+			assert.True(t, ok, "API condition %v should be mapped", apiCond)
+			assert.Equal(t, expectedCondition, actualCondition, "API condition %v should map to %v", apiCond, expectedCondition)
+		}
+	})
+
+	t.Run("ToAPICondition", func(t *testing.T) {
+		expectedMappings := map[model.BlockContentDataviewFilterCondition]apimodel.FilterCondition{
+			model.BlockContentDataviewFilter_Equal:          apimodel.FilterConditionEq,
+			model.BlockContentDataviewFilter_NotEqual:       apimodel.FilterConditionNe,
+			model.BlockContentDataviewFilter_Greater:        apimodel.FilterConditionGt,
+			model.BlockContentDataviewFilter_GreaterOrEqual: apimodel.FilterConditionGte,
+			model.BlockContentDataviewFilter_Less:           apimodel.FilterConditionLt,
+			model.BlockContentDataviewFilter_LessOrEqual:    apimodel.FilterConditionLte,
+			model.BlockContentDataviewFilter_Like:           apimodel.FilterConditionContains,
+			model.BlockContentDataviewFilter_NotLike:        apimodel.FilterConditionNContains,
+			model.BlockContentDataviewFilter_In:             apimodel.FilterConditionIn,
+			model.BlockContentDataviewFilter_NotIn:          apimodel.FilterConditionNin,
+			model.BlockContentDataviewFilter_AllIn:          apimodel.FilterConditionAll,
+			model.BlockContentDataviewFilter_Empty:          apimodel.FilterConditionEmpty,
+			model.BlockContentDataviewFilter_NotEmpty:       apimodel.FilterConditionNEmpty,
+		}
+
+		// Test each internal condition maps back to correct API condition
+		for internalCond, expectedCond := range expectedMappings {
+			apiCond, ok := ToAPICondition(internalCond)
+			assert.True(t, ok, "Internal condition %v should be mapped", internalCond)
+			assert.Equal(t, expectedCond, apiCond, "Internal condition %v should map to %v", internalCond, expectedCond)
+		}
+	})
+
+	t.Run("BidirectionalConsistency", func(t *testing.T) {
+		// Test that conversion is consistent in both directions
+		apiConditions := []apimodel.FilterCondition{
+			apimodel.FilterConditionEq,
+			apimodel.FilterConditionNe,
+			apimodel.FilterConditionGt,
+			apimodel.FilterConditionGte,
+			apimodel.FilterConditionLt,
+			apimodel.FilterConditionLte,
+			apimodel.FilterConditionContains,
+			apimodel.FilterConditionNContains,
+			apimodel.FilterConditionIn,
+			apimodel.FilterConditionNin,
+			apimodel.FilterConditionAll,
+			apimodel.FilterConditionEmpty,
+			apimodel.FilterConditionNEmpty,
+		}
+
+		for _, apiCond := range apiConditions {
+			// Convert to internal and back
+			internalCond, ok := ToInternalCondition(apiCond)
+			assert.True(t, ok, "API condition %v should convert to internal", apiCond)
+
+			backToAPI, ok := ToAPICondition(internalCond)
+			assert.True(t, ok, "Internal condition %v should convert back to API", internalCond)
+
+			assert.Equal(t, apiCond, backToAPI, "Round-trip conversion should preserve condition")
+		}
+	})
+
+	t.Run("InvalidCondition", func(t *testing.T) {
+		// Test that invalid conditions return false
+		_, ok := ToInternalCondition(apimodel.FilterCondition("invalid"))
+		assert.False(t, ok, "Invalid API condition should return false")
+
+		// Test that None condition (0) is not mapped
+		_, ok = ToAPICondition(model.BlockContentDataviewFilter_None)
+		assert.False(t, ok, "None condition should not be mapped")
+	})
 
 	// Also verify that the constants have the expected string values
 	assert.Equal(t, "eq", apimodel.FilterConditionEq.String())

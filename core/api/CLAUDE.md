@@ -187,7 +187,7 @@ Main resources exposed by the API:
 - **Members** - Space membership
 - **Search** - Global and space search
 
-### Middleware Stack
+### API Middleware Stack
 
 Request processing order:
 1. **Recovery** - Panic recovery
@@ -210,6 +210,10 @@ Request processing order:
 6. **Caching**: Types, properties, and tags are cached - use GetCached* methods
 7. **Testing**: Always use mocks for middleware dependencies
 8. **OpenAPI**: Update Swagger annotations when changing endpoints
+9. **Constants**: Always use defined constants instead of hardcoded strings for consistency
+   - Use `apimodel.FilterConditionEq` not `"eq"`
+   - Use `model.BlockContentDataviewFilter_Equal` not magic numbers
+   - This applies to all enums, conditions, operators, and status codes
 
 ### Common Tasks
 

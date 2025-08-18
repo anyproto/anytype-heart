@@ -63,11 +63,12 @@ func (s *Service) GetListViews(ctx context.Context, spaceId string, listId strin
 				if f.Condition == model.BlockContentDataviewFilter_None {
 					continue
 				}
+				apiCond, _ := filter.ToAPICondition(f.Condition)
 				filters = append(filters, apimodel.Filter{
 					Id:          f.Id,
 					PropertyKey: f.RelationKey,
 					Format:      RelationFormatToPropertyFormat[f.Format],
-					Condition:   filter.ReverseConditionMap[f.Condition],
+					Condition:   apiCond,
 					Value:       f.Value.GetStringValue(),
 				})
 			}

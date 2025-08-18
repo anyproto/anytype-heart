@@ -74,7 +74,7 @@ func buildConditionFilter(cond apimodel.FilterItem, validator *Validator, spaceI
 		return nil, fmt.Errorf("invalid filter condition: no wrapped filter item")
 	}
 
-	dbCondition, ok := ConditionMap[wrapped.GetCondition()]
+	dbCondition, ok := ToInternalCondition(wrapped.GetCondition())
 	if !ok {
 		return nil, fmt.Errorf("unsupported filter condition: %s", wrapped.GetCondition())
 	}
