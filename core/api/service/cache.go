@@ -235,8 +235,10 @@ func (s *Service) createPropertySubscriptionParams() objectsubscription.Subscrip
 				spaceId: spaceId,
 			}
 		},
-		UpdateKey: func(relationKey string, relationValue domain.Value, curEntry *propertyWithSpace) *propertyWithSpace {
-			curEntry.details.Set(domain.RelationKey(relationKey), relationValue)
+		UpdateKeys: func(keyValues []objectsubscription.RelationKeyValue, curEntry *propertyWithSpace) *propertyWithSpace {
+			for _, kv := range keyValues {
+				curEntry.details.Set(domain.RelationKey(kv.Key), kv.Value)
+			}
 			_, _, prop := s.getPropertyFromStruct(curEntry.details.ToProto())
 			s.cache.cacheProperty(curEntry.spaceId, prop)
 			return curEntry
@@ -274,8 +276,10 @@ func (s *Service) createTypeSubscriptionParams() objectsubscription.Subscription
 				spaceId: spaceId,
 			}
 		},
-		UpdateKey: func(relationKey string, relationValue domain.Value, curEntry *typeWithSpace) *typeWithSpace {
-			curEntry.details.Set(domain.RelationKey(relationKey), relationValue)
+		UpdateKeys: func(keyValues []objectsubscription.RelationKeyValue, curEntry *typeWithSpace) *typeWithSpace {
+			for _, kv := range keyValues {
+				curEntry.details.Set(domain.RelationKey(kv.Key), kv.Value)
+			}
 			propertyMap := s.cache.getProperties(curEntry.spaceId)
 			_, _, t := s.getTypeFromStruct(curEntry.details.ToProto(), propertyMap)
 			s.cache.cacheType(curEntry.spaceId, t)
@@ -315,8 +319,10 @@ func (s *Service) createTagSubscriptionParams() objectsubscription.SubscriptionP
 				spaceId: spaceId,
 			}
 		},
-		UpdateKey: func(relationKey string, relationValue domain.Value, curEntry *tagWithSpace) *tagWithSpace {
-			curEntry.details.Set(domain.RelationKey(relationKey), relationValue)
+		UpdateKeys: func(keyValues []objectsubscription.RelationKeyValue, curEntry *tagWithSpace) *tagWithSpace {
+			for _, kv := range keyValues {
+				curEntry.details.Set(domain.RelationKey(kv.Key), kv.Value)
+			}
 			tag := s.getTagFromStruct(curEntry.details.ToProto())
 			s.cache.cacheTag(curEntry.spaceId, tag)
 			return curEntry
