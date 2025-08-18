@@ -917,10 +917,6 @@ var ColorToColorOption = map[Color]string{
 	ColorLime:   "lime",
 }
 
-func StringPtr(s string) *string {
-	return &s
-}
-
 type Icon struct {
 	WrappedIcon `swaggerignore:"true"`
 }

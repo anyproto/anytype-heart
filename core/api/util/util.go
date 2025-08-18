@@ -22,6 +22,22 @@ var (
 	ErrRelationKeysNotFound     = errors.New("failed to find relation keys")
 )
 
+func PtrBool(b bool) *bool {
+	return &b
+}
+
+func PtrString(s string) *string {
+	return &s
+}
+
+func PtrFloat64(f float64) *float64 {
+	return &f
+}
+
+func PtrStrings(s []string) *[]string {
+	return &s
+}
+
 // ResolveIdtoUniqueKeyAndRelationKey resolves the type's ID to the unique key
 func ResolveIdtoUniqueKeyAndRelationKey(mw apicore.ClientCommands, spaceId string, objectId string) (uk string, rk string, err error) {
 	resp := mw.ObjectShow(context.Background(), &pb.RpcObjectShowRequest{

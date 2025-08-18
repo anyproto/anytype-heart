@@ -10,26 +10,11 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/api/filter/mock_filter"
 	apimodel "github.com/anyproto/anytype-heart/core/api/model"
+	"github.com/anyproto/anytype-heart/core/api/util"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
-
-func ptrBool(b bool) *bool {
-	return &b
-}
-
-func ptrString(s string) *string {
-	return &s
-}
-
-func ptrFloat64(f float64) *float64 {
-	return &f
-}
-
-func ptrStrings(s []string) *[]string {
-	return &s
-}
 
 func TestBuildExpressionFilters(t *testing.T) {
 	ctx := context.Background()
@@ -60,7 +45,7 @@ func TestBuildExpressionFilters(t *testing.T) {
 						WrappedFilterItem: apimodel.CheckboxFilterItem{
 							PropertyKey: "done",
 							Condition:   apimodel.FilterConditionEq,
-							Checkbox:    ptrBool(true),
+							Checkbox:    util.PtrBool(true),
 						},
 					},
 				},
@@ -93,14 +78,14 @@ func TestBuildExpressionFilters(t *testing.T) {
 						WrappedFilterItem: apimodel.CheckboxFilterItem{
 							PropertyKey: "done",
 							Condition:   apimodel.FilterConditionEq,
-							Checkbox:    ptrBool(true),
+							Checkbox:    util.PtrBool(true),
 						},
 					},
 					{
 						WrappedFilterItem: apimodel.NumberFilterItem{
 							PropertyKey: "priority",
 							Condition:   apimodel.FilterConditionGt,
-							Number:      ptrFloat64(5),
+							Number:      util.PtrFloat64(5),
 						},
 					},
 				},
@@ -147,14 +132,14 @@ func TestBuildExpressionFilters(t *testing.T) {
 						WrappedFilterItem: apimodel.TextFilterItem{
 							PropertyKey: "type",
 							Condition:   apimodel.FilterConditionEq,
-							Text:        ptrString("page"),
+							Text:        util.PtrString("page"),
 						},
 					},
 					{
 						WrappedFilterItem: apimodel.TextFilterItem{
 							PropertyKey: "type",
 							Condition:   apimodel.FilterConditionEq,
-							Text:        ptrString("task"),
+							Text:        util.PtrString("task"),
 						},
 					},
 				},
@@ -187,7 +172,7 @@ func TestBuildExpressionFilters(t *testing.T) {
 						WrappedFilterItem: apimodel.CheckboxFilterItem{
 							PropertyKey: "is_archived",
 							Condition:   apimodel.FilterConditionNe,
-							Checkbox:    ptrBool(true),
+							Checkbox:    util.PtrBool(true),
 						},
 					},
 				},
@@ -199,14 +184,14 @@ func TestBuildExpressionFilters(t *testing.T) {
 								WrappedFilterItem: apimodel.NumberFilterItem{
 									PropertyKey: "priority",
 									Condition:   apimodel.FilterConditionGte,
-									Number:      ptrFloat64(7),
+									Number:      util.PtrFloat64(7),
 								},
 							},
 							{
 								WrappedFilterItem: apimodel.MultiSelectFilterItem{
 									PropertyKey: "tags",
 									Condition:   apimodel.FilterConditionIn,
-									MultiSelect: ptrStrings([]string{"urgent", "critical"}),
+									MultiSelect: util.PtrStrings([]string{"urgent", "critical"}),
 								},
 							},
 						},
@@ -293,14 +278,14 @@ func TestBuildExpressionFilters(t *testing.T) {
 						WrappedFilterItem: apimodel.DateFilterItem{
 							PropertyKey: "created_date",
 							Condition:   apimodel.FilterConditionGte,
-							Date:        ptrString("2024-01-01"),
+							Date:        util.PtrString("2024-01-01"),
 						},
 					},
 					{
 						WrappedFilterItem: apimodel.DateFilterItem{
 							PropertyKey: "due_date",
 							Condition:   apimodel.FilterConditionLt,
-							Date:        ptrString("2024-12-31T23:59:59Z"),
+							Date:        util.PtrString("2024-12-31T23:59:59Z"),
 						},
 					},
 				},
@@ -356,7 +341,7 @@ func TestBuildExpressionFilters(t *testing.T) {
 										WrappedFilterItem: apimodel.NumberFilterItem{
 											PropertyKey: "priority",
 											Condition:   apimodel.FilterConditionGt,
-											Number:      ptrFloat64(5),
+											Number:      util.PtrFloat64(5),
 										},
 									},
 								},
@@ -406,7 +391,7 @@ func TestBuildExpressionFilters(t *testing.T) {
 						WrappedFilterItem: apimodel.TextFilterItem{
 							PropertyKey: "name",
 							Condition:   apimodel.FilterConditionGt, // Greater than is invalid for text
-							Text:        ptrString("test"),
+							Text:        util.PtrString("test"),
 						},
 					},
 				},
@@ -432,7 +417,7 @@ func TestBuildExpressionFilters(t *testing.T) {
 						WrappedFilterItem: apimodel.MultiSelectFilterItem{
 							PropertyKey: "tags",
 							Condition:   apimodel.FilterConditionAll, // AllIn is valid for multi-select
-							MultiSelect: ptrStrings([]string{"important", "urgent"}),
+							MultiSelect: util.PtrStrings([]string{"important", "urgent"}),
 						},
 					},
 				},
@@ -463,7 +448,7 @@ func TestBuildExpressionFilters(t *testing.T) {
 						WrappedFilterItem: apimodel.TextFilterItem{
 							PropertyKey: "invalid_prop",
 							Condition:   apimodel.FilterConditionEq,
-							Text:        ptrString("test"),
+							Text:        util.PtrString("test"),
 						},
 					},
 				},
