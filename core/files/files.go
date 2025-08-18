@@ -206,10 +206,13 @@ func (s *service) newExistingFileResult(lock *sync.Mutex, fileId domain.FileId, 
 func (s *service) addFileRootNode(ctx context.Context, spaceID string, fileInfo *storage.FileInfo, fileNode ipld.Node) (ipld.Node, *storage.FileKeys, error) {
 	dagService := s.dagServiceForSpace(spaceID)
 	keys := &storage.FileKeys{KeysByPath: make(map[string]string)}
-	outer := uio.NewDirectory(dagService)
+	outer, err := uio.NewDirectory(dagService)
+	if err != nil {
+		return nil, nil, err
+	}
 	outer.SetCidBuilder(cidBuilder)
 
-	err := helpers.AddLinkToDirectory(ctx, dagService, outer, schema.LinkFile, fileNode.Cid().String())
+	err = helpers.AddLinkToDirectory(ctx, dagService, outer, schema.LinkFile, fileNode.Cid().String())
 	if err != nil {
 		return nil, nil, err
 	}
@@ -441,14 +444,17 @@ func getOrGenerateSymmetricKey(linkName string, opts AddOptions) (symmetric.Key,
 */
 func (s *service) addFilePairNode(ctx context.Context, spaceID string, file *storage.FileInfo) (ipld.Node, error) {
 	dagService := s.dagServiceForSpace(spaceID)
-	pair := uio.NewDirectory(dagService)
+	pair, err := uio.NewDirectory(dagService)
+	if err != nil {
+		return nil, err
+	}
 	pair.SetCidBuilder(cidBuilder)
 
 	if file.MetaHash == "" {
 		return nil, fmt.Errorf("metaHash is empty")
 	}
 
-	err := helpers.AddLinkToDirectory(ctx, dagService, pair, MetaLinkName, file.MetaHash)
+	err = helpers.AddLinkToDirectory(ctx, dagService, pair, MetaLinkName, file.MetaHash)
 	if err != nil {
 		return nil, fmt.Errorf("add meta link: %w", err)
 	}
