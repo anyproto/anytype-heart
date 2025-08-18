@@ -210,6 +210,7 @@ func (c *client) put(ctx context.Context, spaceID string, fileId domain.FileId, 
 		}); err != nil {
 			return rpcerr.Unwrap(err)
 		}
+		
 		log.Debug("put cid", zap.String("cid", cd.String()))
 		c.stat.Add(st, len(data))
 		return nil

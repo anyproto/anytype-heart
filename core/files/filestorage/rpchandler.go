@@ -20,6 +20,10 @@ func (r *rpcHandler) BlockPush(ctx context.Context, request *fileproto.BlockPush
 	return nil, fileprotoerr.ErrForbidden
 }
 
+func (r *rpcHandler) BlockPushMany(ctx context.Context, request *fileproto.BlockPushManyRequest) (*fileproto.Ok, error) {
+	return nil, fileprotoerr.ErrForbidden
+}
+
 func (r *rpcHandler) BlocksBind(ctx context.Context, request *fileproto.BlocksBindRequest) (*fileproto.Ok, error) {
 	return nil, fileprotoerr.ErrForbidden
 }
