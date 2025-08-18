@@ -204,9 +204,9 @@ func (m *Markdown) createRootCollection(allSnapshots []*common.Snapshot, allRoot
 	return allSnapshots, rootCollectionID, nil
 }
 
-func wrapCallbackEnabler(enable bool, f func(files map[string]*FileInfo, progress process.Progress, details map[string]*domain.Details, allErrors *common.ConvertError)) func(map[string]*FileInfo, process.Progress, map[string]*domain.Details, *common.ConvertError) {
+func wrapCallbackEnabler(enable bool, f func(files *fileContainer, progress process.Progress, details map[string]*domain.Details, allErrors *common.ConvertError)) func(*fileContainer, process.Progress, map[string]*domain.Details, *common.ConvertError) {
 	if !enable {
-		return func(_ map[string]*FileInfo, _ process.Progress, _ map[string]*domain.Details, _ *common.ConvertError) {
+		return func(_ *fileContainer, _ process.Progress, _ map[string]*domain.Details, _ *common.ConvertError) {
 		}
 	}
 	return f
@@ -265,8 +265,8 @@ func (m *Markdown) getSnapshotsAndRootObjectsIdsWithFilter(
 		return nil, nil
 	}
 
-	progress.SetTotal(int64(numberOfStages * len(files)))
-	details := make(map[string]*domain.Details, 0)
+	progress.SetTotal(int64(numberOfStages * len(files.byPath)))
+	details := make(map[string]*domain.Details)
 
 	if m.processImportStep(pathsCount, files, progress, allErrors, details, m.setInboundLinks) ||
 		m.processImportStep(pathsCount, files, progress, allErrors, details, m.setNewID) ||
@@ -283,7 +283,7 @@ func (m *Markdown) getSnapshotsAndRootObjectsIdsWithFilter(
 
 	var rootObjectsIds []string
 	if params.CreateDirectoryPages {
-		for _, file := range files {
+		for _, file := range files.byPath {
 			if file.IsRootDirPage {
 				rootObjectsIds = append(rootObjectsIds, file.PageID)
 				break
@@ -296,21 +296,21 @@ func (m *Markdown) getSnapshotsAndRootObjectsIdsWithFilter(
 }
 
 func (m *Markdown) processImportStep(pathCount int,
-	files map[string]*FileInfo,
+	files *fileContainer,
 	progress process.Progress,
 	allErrors *common.ConvertError,
 	details map[string]*domain.Details,
-	callback func(map[string]*FileInfo, process.Progress, map[string]*domain.Details, *common.ConvertError),
+	callback func(*fileContainer, process.Progress, map[string]*domain.Details, *common.ConvertError),
 ) (abortImport bool) {
 	callback(files, progress, details, allErrors)
 	return allErrors.ShouldAbortImport(pathCount, model.Import_Markdown)
 }
 
-func (m *Markdown) retrieveCollectionObjectsIds(csvFileName string, files map[string]*FileInfo) []string {
+func (m *Markdown) retrieveCollectionObjectsIds(csvFileName string, files *fileContainer) []string {
 	ext := filepath.Ext(csvFileName)
 	csvDir := strings.TrimSuffix(csvFileName, ext)
 	var collectionsObjectsIds []string
-	for name, file := range files {
+	for name, file := range files.byPath {
 		fileExt := filepath.Ext(name)
 		if filepath.Dir(name) == csvDir && strings.EqualFold(fileExt, ".md") {
 			file.HasInboundLinks = true
@@ -321,7 +321,7 @@ func (m *Markdown) retrieveCollectionObjectsIds(csvFileName string, files map[st
 	return collectionsObjectsIds
 }
 
-func (m *Markdown) processFieldBlockIfItIs(blocks []*model.Block, files map[string]*FileInfo) (blocksOut []*model.Block) {
+func (m *Markdown) processFieldBlockIfItIs(blocks []*model.Block, files *fileContainer) (blocksOut []*model.Block) {
 	if len(blocks) < 1 || blocks[0].GetText() == nil {
 		return blocks
 	}
@@ -364,7 +364,7 @@ func (m *Markdown) processFieldBlockIfItIs(blocks []*model.Block, files map[stri
 			}
 			shortPath := ""
 			id := m.getIdFromPath(potentialFileName)
-			for name, _ := range files {
+			for name, _ := range files.byPath {
 				if m.getIdFromPath(name) == id {
 					shortPath = name
 					break
@@ -412,9 +412,9 @@ func (m *Markdown) getIdFromPath(path string) (id string) {
 	return b[:len(b)-3]
 }
 
-func (m *Markdown) setInboundLinks(files map[string]*FileInfo, progress process.Progress, _ map[string]*domain.Details, allErrors *common.ConvertError) {
+func (m *Markdown) setInboundLinks(files *fileContainer, progress process.Progress, _ map[string]*domain.Details, allErrors *common.ConvertError) {
 	progress.SetProgressMessage("Start linking database file with pages")
-	for name := range files {
+	for name := range files.byPath {
 		if err := progress.TryStep(1); err != nil {
 			allErrors.Add(common.ErrCancel)
 			return
@@ -427,7 +427,7 @@ func (m *Markdown) setInboundLinks(files map[string]*FileInfo, progress process.
 		ext := filepath.Ext(name)
 		csvDir := strings.TrimSuffix(name, ext)
 
-		for targetName, targetFile := range files {
+		for targetName, targetFile := range files.byPath {
 			fileExt := filepath.Ext(targetName)
 			if filepath.Dir(targetName) == csvDir && strings.EqualFold(fileExt, ".md") {
 				targetFile.HasInboundLinks = true
@@ -436,9 +436,9 @@ func (m *Markdown) setInboundLinks(files map[string]*FileInfo, progress process.
 	}
 }
 
-func (m *Markdown) linkPagesWithRootFile(files map[string]*FileInfo, progress process.Progress, _ map[string]*domain.Details, allErrors *common.ConvertError) {
+func (m *Markdown) linkPagesWithRootFile(files *fileContainer, progress process.Progress, _ map[string]*domain.Details, allErrors *common.ConvertError) {
 	progress.SetProgressMessage("Start linking database with pages")
-	for name, file := range files {
+	for name, file := range files.byPath {
 		if err := progress.TryStep(1); err != nil {
 			allErrors.Add(common.ErrCancel)
 			return
@@ -457,7 +457,7 @@ func (m *Markdown) linkPagesWithRootFile(files map[string]*FileInfo, progress pr
 
 		for i, b := range file.ParsedBlocks {
 			if f := b.GetFile(); f != nil && strings.EqualFold(filepath.Ext(f.Name), ".csv") {
-				csvFile, exists := files[f.Name]
+				csvFile, exists := files.byPath[f.Name]
 				if !exists {
 					continue
 				}
@@ -492,9 +492,9 @@ func (m *Markdown) getLinkBlock(file *FileInfo) *model.Block {
 	}
 }
 
-func (m *Markdown) addLinkBlocks(files map[string]*FileInfo, progress process.Progress, _ map[string]*domain.Details, allErrors *common.ConvertError) {
+func (m *Markdown) addLinkBlocks(files *fileContainer, progress process.Progress, _ map[string]*domain.Details, allErrors *common.ConvertError) {
 	progress.SetProgressMessage("Start creating link blocks")
-	for _, file := range files {
+	for _, file := range files.byPath {
 		if err := progress.TryStep(1); err != nil {
 			allErrors.Add(common.ErrCancel)
 			return
@@ -542,7 +542,7 @@ func bundledRelationLinks(relationDetails *domain.Details) []*model.RelationLink
 func (m *Markdown) createSnapshots(
 	req *pb.RpcObjectImportRequest,
 	pathsCount int,
-	files map[string]*FileInfo,
+	files *fileContainer,
 	progress process.Progress,
 	details map[string]*domain.Details,
 	allErrors *common.ConvertError,
@@ -560,7 +560,7 @@ func (m *Markdown) createSnapshots(
 	yamlRelationOptions := make(map[string]map[string]string) // relationKey -> optionValue -> optionId
 	objectTypes := make(map[string][]string)                  // Track unique object type names
 
-	for _, file := range files {
+	for _, file := range files.byPath {
 		var props = make([]string, 0, len(file.YAMLProperties))
 		if file.YAMLProperties != nil {
 			for i := range file.YAMLProperties {
@@ -756,7 +756,7 @@ func (m *Markdown) createSnapshots(
 				updatedDetails := domain.NewDetails()
 				d.Iterate()(func(key domain.RelationKey, value domain.Value) bool {
 					var propFormat model.RelationFormat
-					for _, prop := range files[filePath].YAMLProperties {
+					for _, prop := range files.byPath[filePath].YAMLProperties {
 						if prop.Key == string(key) {
 							propFormat = prop.Format
 							break
@@ -784,7 +784,7 @@ func (m *Markdown) createSnapshots(
 	}
 
 	// Second pass: create object snapshots
-	for name, file := range files {
+	for name, file := range files.byPath {
 		if err := progress.TryStep(1); err != nil {
 			allErrors.Add(common.ErrCancel)
 			return nil
@@ -886,7 +886,7 @@ func (m *Markdown) createSnapshots(
 				}
 
 				found := false
-				for fileName, f := range files {
+				for fileName, f := range files.byPath {
 					if f.PageID == "" {
 						continue
 					}
@@ -963,8 +963,8 @@ func (m *Markdown) addCollectionSnapshot(fileName string, file *FileInfo, snapsh
 	return snapshots, nil
 }
 
-func (m *Markdown) addPropertyBlocks(files map[string]*FileInfo, progress process.Progress, details map[string]*domain.Details, allErrors *common.ConvertError) {
-	for _, file := range files {
+func (m *Markdown) addPropertyBlocks(files *fileContainer, progress process.Progress, details map[string]*domain.Details, allErrors *common.ConvertError) {
+	for _, file := range files.byPath {
 		// Create relation blocks for properties (excluding system properties)
 		propertyBlocks := m.createPropertyBlocks(file.YAMLProperties)
 		if len(propertyBlocks) > 0 {
@@ -974,10 +974,10 @@ func (m *Markdown) addPropertyBlocks(files map[string]*FileInfo, progress proces
 	}
 }
 
-func (m *Markdown) addChildBlocks(files map[string]*FileInfo, progress process.Progress, _ map[string]*domain.Details, allErrors *common.ConvertError) {
+func (m *Markdown) addChildBlocks(files *fileContainer, progress process.Progress, _ map[string]*domain.Details, allErrors *common.ConvertError) {
 	progress.SetProgressMessage("Start creating root blocks")
 	childBlocks := m.extractChildBlocks(files)
-	for _, file := range files {
+	for _, file := range files.byPath {
 		if err := progress.TryStep(1); err != nil {
 			allErrors.Add(common.ErrCancel)
 			return
@@ -1006,9 +1006,9 @@ func (m *Markdown) addChildBlocks(files map[string]*FileInfo, progress process.P
 	}
 }
 
-func (m *Markdown) extractChildBlocks(files map[string]*FileInfo) map[string]struct{} {
+func (m *Markdown) extractChildBlocks(files *fileContainer) map[string]struct{} {
 	childBlocks := make(map[string]struct{})
-	for _, file := range files {
+	for _, file := range files.byPath {
 		if file.PageID == "" {
 			continue
 		}
@@ -1022,9 +1022,9 @@ func (m *Markdown) extractChildBlocks(files map[string]*FileInfo) map[string]str
 	return childBlocks
 }
 
-func (m *Markdown) addLinkToObjectBlocks(files map[string]*FileInfo, progress process.Progress, _ map[string]*domain.Details, allErrors *common.ConvertError) {
+func (m *Markdown) addLinkToObjectBlocks(files *fileContainer, progress process.Progress, _ map[string]*domain.Details, allErrors *common.ConvertError) {
 	progress.SetProgressMessage("Start linking blocks")
-	for _, file := range files {
+	for _, file := range files.byPath {
 		if err := progress.TryStep(1); err != nil {
 			allErrors.Add(common.ErrCancel)
 			return
@@ -1069,10 +1069,10 @@ func (m *Markdown) addLinkToObjectBlocks(files map[string]*FileInfo, progress pr
 	}
 }
 
-func (m *Markdown) fillEmptyBlocks(files map[string]*FileInfo, progress process.Progress, _ map[string]*domain.Details, allErrors *common.ConvertError) {
+func (m *Markdown) fillEmptyBlocks(files *fileContainer, progress process.Progress, _ map[string]*domain.Details, allErrors *common.ConvertError) {
 	progress.SetProgressMessage("Start creating file blocks")
 	// process file blocks
-	for _, file := range files {
+	for _, file := range files.byPath {
 		if err := progress.TryStep(1); err != nil {
 			allErrors.Add(common.ErrCancel)
 			return
@@ -1090,9 +1090,9 @@ func (m *Markdown) fillEmptyBlocks(files map[string]*FileInfo, progress process.
 	}
 }
 
-func (m *Markdown) setNewID(files map[string]*FileInfo, progress process.Progress, _ map[string]*domain.Details, allErrors *common.ConvertError) {
+func (m *Markdown) setNewID(files *fileContainer, progress process.Progress, _ map[string]*domain.Details, allErrors *common.ConvertError) {
 	progress.SetProgressMessage("Start creating blocks")
-	for name, file := range files {
+	for name, file := range files.byName {
 		if err := progress.TryStep(1); err != nil {
 			allErrors.Add(common.ErrCancel)
 			return
@@ -1143,9 +1143,9 @@ func (m *Markdown) extractTitleAndEmojiFromBlock(file *FileInfo) (string, string
 	return title, emoji
 }
 
-func (m *Markdown) retrieveRootObjectsIds(files map[string]*FileInfo) []string {
+func (m *Markdown) retrieveRootObjectsIds(files *fileContainer) []string {
 	var rootObjectsIds []string
-	for path, file := range files {
+	for path, file := range files.byPath {
 		if file.PageID == "" {
 			continue
 		}
@@ -1226,31 +1226,24 @@ func getObjectTypeDetails(name, key string, propKeys []string) *domain.Details {
 	return details
 }
 
-func (m *Markdown) findFileByPath(path string, files map[string]*FileInfo) *FileInfo {
+func (m *Markdown) findFileByPath(path string, files *fileContainer) *FileInfo {
 	// First try exact match
-	if file, exists := files[path]; exists {
+	if file, exists := files.byPath[path]; exists {
 		return file
 	}
 
 	// If not found, try to match by comparing paths
-	for filePath, file := range files {
-		// Compare absolute paths
-		if filePath == path {
-			return file
-		}
-		// Also try comparing just the filenames in case of path variations
-		if filepath.Base(filePath) == filepath.Base(path) {
-			return file
-		}
+	name := filepath.Base(path)
+	if file, exists := files.byName[name]; exists {
+		return file
 	}
-
 	return nil
 }
 
-func (m *Markdown) processObjectProperties(files map[string]*FileInfo, progress process.Progress, details map[string]*domain.Details, allErrors *common.ConvertError) {
+func (m *Markdown) processObjectProperties(files *fileContainer, progress process.Progress, details map[string]*domain.Details, allErrors *common.ConvertError) {
 	progress.SetProgressMessage("Start linking blocks")
 
-	for fileName, file := range files {
+	for fileName, file := range files.byPath {
 		if err := progress.TryStep(1); err != nil {
 			allErrors.Add(common.ErrCancel)
 			return
