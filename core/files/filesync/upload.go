@@ -529,7 +529,6 @@ func (s *fileSync) uploadOrBindBlocks(ctx context.Context, spaceId string, fileI
 
 	if len(blocksToUpload) > 0 {
 		err := s.requestsBatcher.addFile(spaceId, fileId.String(), blocksToUpload)
-		// err := s.rpcStore.AddToFile(ctx, spaceId, fileId, blocksToUpload)
 		if err != nil {
 			return 0, fmt.Errorf("add to file: %w", err)
 		}

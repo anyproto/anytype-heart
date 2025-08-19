@@ -36,7 +36,6 @@ var loopTimeout = time.Minute
 
 type StatusCallback func(fileObjectId string, fileId domain.FullFileId) error
 type LimitCallback func(fileObjectId string, fileId domain.FullFileId, bytesLeft float64) error
-type DeleteCallback func(fileObjectId domain.FullFileId)
 
 type FileSync interface {
 	AddFile(req AddFileRequest) (err error)
@@ -45,7 +44,6 @@ type FileSync interface {
 	OnUploaded(StatusCallback)
 	OnLimited(LimitCallback)
 	CancelDeletion(objectId string, fileId domain.FullFileId) (err error)
-	OnDelete(DeleteCallback)
 	DeleteFile(objectId string, fileId domain.FullFileId) (err error)
 	DeleteFileSynchronously(fileId domain.FullFileId) (err error)
 	UpdateNodeUsage(ctx context.Context) error
@@ -68,6 +66,14 @@ type SyncStatus struct {
 	QueueLen int
 }
 
+type statusUpdateItem struct {
+	FileObjectId string
+}
+
+func (it *statusUpdateItem) Key() string {
+	return it.FileObjectId
+}
+
 type fileSync struct {
 	rpcStore        rpcstore2.RpcStore
 	loopCtx         context.Context
@@ -77,12 +83,13 @@ type fileSync struct {
 	onUploaded      []StatusCallback
 	onUploadStarted StatusCallback
 	onLimited       LimitCallback
-	onDelete        DeleteCallback
 
-	uploadingQueue            *persistentqueue.Queue[*QueueItem]
-	retryUploadingQueue       *persistentqueue.Queue[*QueueItem]
-	deletionQueue             *persistentqueue.Queue[*deletionQueueItem]
-	retryDeletionQueue        *persistentqueue.Queue[*deletionQueueItem]
+	uploadingQueue      *persistentqueue.Queue[*QueueItem]
+	retryUploadingQueue *persistentqueue.Queue[*QueueItem]
+	deletionQueue       *persistentqueue.Queue[*deletionQueueItem]
+	retryDeletionQueue  *persistentqueue.Queue[*deletionQueueItem]
+	statusUpdateQueue   *persistentqueue.Queue[*statusUpdateItem]
+
 	blocksAvailabilityCache   keyvaluestore.Store[*blocksAvailabilityResponse]
 	isLimitReachedErrorLogged keyvaluestore.Store[bool]
 	nodeUsageCache            keyvaluestore.Store[NodeUsage]
@@ -181,10 +188,6 @@ func (s *fileSync) OnUploadStarted(callback StatusCallback) {
 
 func (s *fileSync) OnLimited(callback LimitCallback) {
 	s.onLimited = callback
-}
-
-func (s *fileSync) OnDelete(callback DeleteCallback) {
-	s.onDelete = callback
 }
 
 func (s *fileSync) Name() (name string) {
