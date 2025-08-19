@@ -354,20 +354,19 @@ func (s *service) addImageVariantsToQueue(req filemodels.CreateRequest, id strin
 	sort.Slice(imageVariants, func(i, j int) bool {
 		return imageVariants[i].size < imageVariants[j].size
 	})
-	for idx, variant := range imageVariants {
-		score := len(imageVariants) - idx
-		syncReq := filesync.AddFileRequest{
-			FileObjectId:        id,
-			FileId:              domain.FullFileId{SpaceId: spaceId, FileId: req.FileId},
-			UploadedByUser:      true,
-			Imported:            req.ObjectOrigin.IsImported(),
-			PrioritizeVariantId: variant.variantId,
-			Score:               score,
-		}
-		err := s.addToSyncQueue(syncReq)
-		if err != nil {
-			return fmt.Errorf("add image variant to sync queue: %w", err)
-		}
+	variants := make([]domain.FileId, 0, len(imageVariants))
+	for _, variant := range imageVariants {
+		variants = append(variants, variant.variantId)
+	}
+	err := s.addToSyncQueue(filesync.AddFileRequest{
+		FileObjectId:   id,
+		FileId:         domain.FullFileId{SpaceId: spaceId, FileId: req.FileId},
+		UploadedByUser: true,
+		Imported:       req.ObjectOrigin.IsImported(),
+		Variants:       variants,
+	})
+	if err != nil {
+		return fmt.Errorf("add image variant to sync queue: %w", err)
 	}
 	return nil
 }

@@ -166,12 +166,10 @@ func (r *reconciler) rebindHandler(ctx context.Context, item *queueItem) (persis
 
 	log.Warn("add to queue", zap.String("objectId", item.ObjectId), zap.String("fileId", item.FileId.FileId.String()))
 	req := filesync.AddFileRequest{
-		FileObjectId:        item.ObjectId,
-		FileId:              item.FileId,
-		UploadedByUser:      false,
-		Imported:            false,
-		PrioritizeVariantId: "",
-		Score:               0,
+		FileObjectId:   item.ObjectId,
+		FileId:         item.FileId,
+		UploadedByUser: false,
+		Imported:       false,
 	}
 	err = r.fileSync.AddFile(req)
 	if err != nil {

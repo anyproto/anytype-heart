@@ -30,12 +30,8 @@ type AddFileRequest struct {
 	FileId         domain.FullFileId
 	UploadedByUser bool
 	Imported       bool
-	VariantId      domain.FileId
 
-	// PrioritizeVariantId tells uploader to upload specific branch of file tree
-	PrioritizeVariantId domain.FileId
-	// Score affects priority, files with higher score are uploaded first
-	Score int
+	Variants []domain.FileId
 }
 
 func (req AddFileRequest) ToQueueItem(addedTime time.Time) (*QueueItem, error) {
@@ -46,18 +42,13 @@ func (req AddFileRequest) ToQueueItem(addedTime time.Time) (*QueueItem, error) {
 		AddedByUser: req.UploadedByUser,
 		Imported:    req.Imported,
 		Timestamp:   float64(addedTime.UnixMilli()),
-		VariantId:   req.PrioritizeVariantId,
-		Score:       req.Score,
+		Variants:    req.Variants,
 	}
 	err := it.Validate()
 	if err != nil {
 		return nil, fmt.Errorf("validate: %w", err)
 	}
 	return it, nil
-}
-
-func (s *fileSync) MarkFileVariants(fileObjectId string, fileId domain.FileId, variants []string) {
-
 }
 
 func (s *fileSync) AddFile(req AddFileRequest) (err error) {
@@ -327,19 +318,14 @@ func (s *fileSync) uploadFile(ctx context.Context, spaceLimits *spaceUsage, it *
 	ctx = filestorage.ContextWithDoNotCache(ctx)
 	log.Debug("uploading file", zap.String("fileId", it.FileId.String()))
 
-	branchToUpload := it.FileId
-	if it.VariantId != "" {
-		branchToUpload = it.VariantId
-	}
-
-	blocksAvailability, err := s.blocksAvailabilityCache.Get(ctx, branchToUpload.String())
+	blocksAvailability, err := s.blocksAvailabilityCache.Get(ctx, it.FileId.String())
 	if err != nil || blocksAvailability.totalBytesToUpload() == 0 {
 		// Ignore error from cache and calculate blocks availability
-		blocksAvailability, err = s.checkBlocksAvailability(ctx, it.ObjectId, it.SpaceId, branchToUpload)
+		blocksAvailability, err = s.checkBlocksAvailability(ctx, it.ObjectId, it.SpaceId, it.FileId)
 		if err != nil {
 			return fmt.Errorf("check blocks availability: %w", err)
 		}
-		err = s.blocksAvailabilityCache.Set(ctx, branchToUpload.String(), blocksAvailability)
+		err = s.blocksAvailabilityCache.Set(ctx, it.FileId.String(), blocksAvailability)
 		if err != nil {
 			log.Error("cache blocks availability", zap.String("fileId", it.FileId.String()), zap.Error(err))
 		}
@@ -363,7 +349,7 @@ func (s *fileSync) uploadFile(ctx context.Context, spaceLimits *spaceUsage, it *
 	}
 	var totalBytesUploaded int
 
-	err = s.walkFileBlocks(ctx, it.SpaceId, branchToUpload, func(fileBlocks []blocks.Block) error {
+	err = s.walkFileBlocks(ctx, it.SpaceId, it.FileId, it.Variants, func(fileBlocks []blocks.Block) error {
 		bytesToUpload, err := s.uploadOrBindBlocks(ctx, it.SpaceId, it.FileId, fileBlocks, blocksAvailability.cidsToUpload)
 		if err != nil {
 			return fmt.Errorf("select blocks to upload: %w", err)
@@ -388,7 +374,7 @@ func (s *fileSync) uploadFile(ctx context.Context, spaceLimits *spaceUsage, it *
 		return fmt.Errorf("walk file blocks: %w", err)
 	}
 
-	err = s.blocksAvailabilityCache.Delete(ctx, branchToUpload.String())
+	err = s.blocksAvailabilityCache.Delete(ctx, it.FileId.String())
 	if err != nil {
 		log.Warn("delete blocks availability cache entry", zap.String("fileId", it.FileId.String()), zap.Error(err))
 	}
@@ -469,7 +455,7 @@ func (s *fileSync) checkBlocksAvailability(ctx context.Context, fileObjectId str
 	response := blocksAvailabilityResponse{
 		cidsToUpload: map[cid.Cid]struct{}{},
 	}
-	err := s.walkFileBlocks(ctx, spaceId, fileId, func(fileBlocks []blocks.Block) error {
+	err := s.walkFileBlocks(ctx, spaceId, fileId, nil, func(fileBlocks []blocks.Block) error {
 		fileCids := lo.Map(fileBlocks, func(b blocks.Block, _ int) cid.Cid {
 			return b.Cid()
 		})
