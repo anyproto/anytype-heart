@@ -11,6 +11,8 @@ import (
 
 	mock "github.com/stretchr/testify/mock"
 
+	model "github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+
 	spaceinfo "github.com/anyproto/anytype-heart/space/spaceinfo"
 
 	techspace "github.com/anyproto/anytype-heart/space/techspace"
@@ -577,6 +579,52 @@ func (_c *MockSpaceStatus_SetLocalStatus_Call) Return(_a0 error) *MockSpaceStatu
 }
 
 func (_c *MockSpaceStatus_SetLocalStatus_Call) RunAndReturn(run func(spaceinfo.LocalStatus) error) *MockSpaceStatus_SetLocalStatus_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// SetMyParticipantStatus provides a mock function with given fields: status
+func (_m *MockSpaceStatus) SetMyParticipantStatus(status model.ParticipantStatus) error {
+	ret := _m.Called(status)
+
+	if len(ret) == 0 {
+		panic("no return value specified for SetMyParticipantStatus")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(model.ParticipantStatus) error); ok {
+		r0 = rf(status)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// MockSpaceStatus_SetMyParticipantStatus_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'SetMyParticipantStatus'
+type MockSpaceStatus_SetMyParticipantStatus_Call struct {
+	*mock.Call
+}
+
+// SetMyParticipantStatus is a helper method to define mock.On call
+//   - status model.ParticipantStatus
+func (_e *MockSpaceStatus_Expecter) SetMyParticipantStatus(status interface{}) *MockSpaceStatus_SetMyParticipantStatus_Call {
+	return &MockSpaceStatus_SetMyParticipantStatus_Call{Call: _e.mock.On("SetMyParticipantStatus", status)}
+}
+
+func (_c *MockSpaceStatus_SetMyParticipantStatus_Call) Run(run func(status model.ParticipantStatus)) *MockSpaceStatus_SetMyParticipantStatus_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(model.ParticipantStatus))
+	})
+	return _c
+}
+
+func (_c *MockSpaceStatus_SetMyParticipantStatus_Call) Return(err error) *MockSpaceStatus_SetMyParticipantStatus_Call {
+	_c.Call.Return(err)
+	return _c
+}
+
+func (_c *MockSpaceStatus_SetMyParticipantStatus_Call) RunAndReturn(run func(model.ParticipantStatus) error) *MockSpaceStatus_SetMyParticipantStatus_Call {
 	_c.Call.Return(run)
 	return _c
 }
