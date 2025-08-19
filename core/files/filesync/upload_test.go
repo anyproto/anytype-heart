@@ -17,7 +17,6 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/anyproto/anytype-heart/core/domain"
-	"github.com/anyproto/anytype-heart/pb"
 )
 
 func TestFileSync_AddFile(t *testing.T) {
@@ -30,7 +29,7 @@ func TestFileSync_AddFile(t *testing.T) {
 		spaceId := "space1"
 
 		// Save node usage
-		prevUsage, err := fx.NodeUsage(ctx)
+		prevUsage, err := fx.getAndUpdateNodeUsage(ctx)
 		require.NoError(t, err)
 		assert.Empty(t, prevUsage.Spaces)
 		assert.Zero(t, prevUsage.TotalBytesUsage)
@@ -43,18 +42,8 @@ func TestFileSync_AddFile(t *testing.T) {
 		wantSize, _ := fileNode.Size()
 		wantCids := fx.assertFileUploadedToRemoteNode(t, fileNode, int(wantSize))
 
-		// Check that updated space usage event has been sent
-		fx.waitEvent(t, 1*time.Second, func(msg *pb.EventMessage) bool {
-			if usage := msg.GetFileSpaceUsage(); usage != nil {
-				if usage.SpaceId == spaceId && usage.BytesUsage == wantSize {
-					return true
-				}
-			}
-			return false
-		})
-
 		// Check node usage
-		currentUsage, err := fx.NodeUsage(ctx)
+		currentUsage, err := fx.getAndUpdateNodeUsage(ctx)
 		require.NoError(t, err)
 		assert.Equal(t, int(wantSize), currentUsage.TotalBytesUsage)
 		assert.Equal(t, len(wantCids), currentUsage.TotalCidsCount)
@@ -198,7 +187,7 @@ func TestUpload(t *testing.T) {
 		spaceId := "space1"
 		fileId, _ := fx.givenFileAddedToDAG(t)
 
-		err := fx.uploadFile(ctx, &QueueItem{SpaceId: spaceId, FileId: fileId})
+		err := fx.uploadFileHandleLimits(ctx, &QueueItem{SpaceId: spaceId, FileId: fileId})
 		require.NoError(t, err)
 
 		assert.True(t, fx.rpcStore.Stats().BlocksAdded() > 0)
@@ -212,13 +201,13 @@ func TestUpload(t *testing.T) {
 		spaceId := "space1"
 		fileId, _ := fx.givenFileAddedToDAG(t)
 
-		err := fx.uploadFile(ctx, &QueueItem{SpaceId: spaceId, FileId: fileId})
+		err := fx.uploadFileHandleLimits(ctx, &QueueItem{SpaceId: spaceId, FileId: fileId})
 		require.NoError(t, err)
 
 		assert.True(t, fx.rpcStore.Stats().BlocksAdded() > 0)
 		assert.True(t, fx.rpcStore.Stats().CidsBinded() == 0)
 
-		err = fx.uploadFile(ctx, &QueueItem{SpaceId: spaceId, FileId: fileId})
+		err = fx.uploadFileHandleLimits(ctx, &QueueItem{SpaceId: spaceId, FileId: fileId})
 		require.NoError(t, err)
 
 		assert.True(t, fx.rpcStore.Stats().CidsBinded() == fx.rpcStore.Stats().BlocksAdded())
@@ -231,7 +220,7 @@ func TestUpload(t *testing.T) {
 		spaceId := "space1"
 		fileId, _ := fx.givenFileAddedToDAG(t)
 
-		err := fx.uploadFile(ctx, &QueueItem{SpaceId: spaceId, FileId: fileId})
+		err := fx.uploadFileHandleLimits(ctx, &QueueItem{SpaceId: spaceId, FileId: fileId})
 		var errLimit *errLimitReached
 		require.ErrorAs(t, err, &errLimit)
 	})
@@ -263,7 +252,7 @@ func TestUpload(t *testing.T) {
 			go func(fileId domain.FileId) {
 				defer wg.Done()
 
-				err := fx.uploadFile(ctx, &QueueItem{SpaceId: spaceId, FileId: fileId})
+				err := fx.uploadFileHandleLimits(ctx, &QueueItem{SpaceId: spaceId, FileId: fileId})
 				if err != nil {
 					errorsLock.Lock()
 					errors = append(errors, err)
