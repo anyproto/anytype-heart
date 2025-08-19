@@ -69,7 +69,7 @@ func (p *Parser) parseFilterKey(key string) (property string, condition model.Bl
 
 		cond, ok := ToInternalCondition(apimodel.FilterCondition(conditionStr))
 		if !ok {
-			return "", 0, util.ErrBadInput(fmt.Sprintf("unsupported condition: %s", conditionStr))
+			return "", 0, util.ErrBadInput(fmt.Sprintf("unsupported condition: %q", conditionStr))
 		}
 		condition = cond
 	} else {

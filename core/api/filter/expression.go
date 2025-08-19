@@ -57,7 +57,7 @@ func BuildExpressionFilters(ctx context.Context, expr *apimodel.FilterExpression
 		var ok bool
 		operator, ok = OperatorMap[expr.Operator]
 		if !ok {
-			return nil, util.ErrBadInput(fmt.Sprintf("unsupported filter operator: %s", expr.Operator))
+			return nil, util.ErrBadInput(fmt.Sprintf("unsupported filter operator: %q", expr.Operator))
 		}
 	}
 
@@ -78,17 +78,17 @@ func buildConditionFilter(cond apimodel.FilterItem, validator *Validator, spaceI
 
 	dbCondition, ok := ToInternalCondition(wrapped.GetCondition())
 	if !ok {
-		return nil, util.ErrBadInput(fmt.Sprintf("unsupported filter condition: %s", wrapped.GetCondition()))
+		return nil, util.ErrBadInput(fmt.Sprintf("unsupported filter condition: %q", wrapped.GetCondition()))
 	}
 
 	propertyMap := validator.apiService.GetCachedProperties(spaceId)
 	property, err := validator.resolveProperty(spaceId, wrapped.GetPropertyKey(), propertyMap)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to resolve property %q: %w", wrapped.GetPropertyKey(), err)
 	}
 
 	if !isValidConditionForType(property.Format, dbCondition) {
-		return nil, util.ErrBadInput(fmt.Sprintf("condition %v is not valid for property type %q", dbCondition, property.Format))
+		return nil, util.ErrBadInput(fmt.Sprintf("condition %q is not valid for property type %q", wrapped.GetCondition(), property.Format))
 	}
 
 	rk := property.RelationKey

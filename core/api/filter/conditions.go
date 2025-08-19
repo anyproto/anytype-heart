@@ -58,8 +58,8 @@ func (m *BiDirectionalConditionMap) ToInternal(api apimodel.FilterCondition) (mo
 	return internal, ok
 }
 
-// ToAPI converts an internal condition to API representation
-func (m *BiDirectionalConditionMap) ToAPI(internal model.BlockContentDataviewFilterCondition) (apimodel.FilterCondition, bool) {
+// ToApi converts an internal condition to API representation
+func (m *BiDirectionalConditionMap) ToApi(internal model.BlockContentDataviewFilterCondition) (apimodel.FilterCondition, bool) {
 	api, ok := m.internalToAPI[internal]
 	return api, ok
 }
@@ -72,9 +72,9 @@ func ToInternalCondition(api apimodel.FilterCondition) (model.BlockContentDatavi
 	return conditionMapper.ToInternal(api)
 }
 
-// ToAPICondition converts an internal condition to API representation
-func ToAPICondition(internal model.BlockContentDataviewFilterCondition) (apimodel.FilterCondition, bool) {
-	return conditionMapper.ToAPI(internal)
+// ToApiCondition converts an internal condition to API representation
+func ToApiCondition(internal model.BlockContentDataviewFilterCondition) (apimodel.FilterCondition, bool) {
+	return conditionMapper.ToApi(internal)
 }
 
 // OperatorMap maps API filter operators to internal database operators

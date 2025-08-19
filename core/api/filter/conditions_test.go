@@ -35,7 +35,7 @@ func TestBidirectionalConditionMapping(t *testing.T) {
 		}
 	})
 
-	t.Run("ToAPICondition", func(t *testing.T) {
+	t.Run("ToApiCondition", func(t *testing.T) {
 		expectedMappings := map[model.BlockContentDataviewFilterCondition]apimodel.FilterCondition{
 			model.BlockContentDataviewFilter_Equal:          apimodel.FilterConditionEq,
 			model.BlockContentDataviewFilter_NotEqual:       apimodel.FilterConditionNe,
@@ -54,7 +54,7 @@ func TestBidirectionalConditionMapping(t *testing.T) {
 
 		// Test each internal condition maps back to correct API condition
 		for internalCond, expectedCond := range expectedMappings {
-			apiCond, ok := ToAPICondition(internalCond)
+			apiCond, ok := ToApiCondition(internalCond)
 			assert.True(t, ok, "Internal condition %v should be mapped", internalCond)
 			assert.Equal(t, expectedCond, apiCond, "Internal condition %v should map to %v", internalCond, expectedCond)
 		}
@@ -83,7 +83,7 @@ func TestBidirectionalConditionMapping(t *testing.T) {
 			internalCond, ok := ToInternalCondition(apiCond)
 			assert.True(t, ok, "API condition %v should convert to internal", apiCond)
 
-			backToAPI, ok := ToAPICondition(internalCond)
+			backToAPI, ok := ToApiCondition(internalCond)
 			assert.True(t, ok, "Internal condition %v should convert back to API", internalCond)
 
 			assert.Equal(t, apiCond, backToAPI, "Round-trip conversion should preserve condition")
@@ -96,7 +96,7 @@ func TestBidirectionalConditionMapping(t *testing.T) {
 		assert.False(t, ok, "Invalid API condition should return false")
 
 		// Test that None condition (0) is not mapped
-		_, ok = ToAPICondition(model.BlockContentDataviewFilter_None)
+		_, ok = ToApiCondition(model.BlockContentDataviewFilter_None)
 		assert.False(t, ok, "None condition should not be mapped")
 	})
 

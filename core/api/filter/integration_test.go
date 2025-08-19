@@ -159,7 +159,7 @@ func TestFilterErrors(t *testing.T) {
 		{
 			name:          "invalid condition",
 			queryString:   "name[invalid]=test",
-			expectedError: "unsupported condition: invalid",
+			expectedError: "unsupported condition: \"invalid\"",
 		},
 		{
 			name:          "empty property name",

@@ -34,7 +34,7 @@ func (v *Validator) ValidateFilters(spaceId string, filters *ParsedFilters) erro
 
 	for i, filter := range filters.Filters {
 		if err := v.validateFilter(spaceId, &filter, propertyMap); err != nil {
-			return util.ErrBadInput(fmt.Sprintf("invalid filter at index %d: %s", i, err.Error()))
+			return fmt.Errorf("invalid filter at index %d: %w", i, err)
 		}
 		filters.Filters[i] = filter
 	}
@@ -46,18 +46,18 @@ func (v *Validator) ValidateFilters(spaceId string, filters *ParsedFilters) erro
 func (v *Validator) validateFilter(spaceId string, filter *Filter, propertyMap map[string]*apimodel.Property) error {
 	property, err := v.resolveProperty(spaceId, filter.PropertyKey, propertyMap)
 	if err != nil {
-		return util.ErrBadInput(fmt.Sprintf("failed to resolve property %q: %s", filter.PropertyKey, err.Error()))
+		return fmt.Errorf("failed to resolve property %q: %w", filter.PropertyKey, err)
 	}
 
 	// Check if condition is valid for property type
 	if !isValidConditionForType(property.Format, filter.Condition) {
-		return util.ErrBadInput(fmt.Sprintf("condition %v is not valid for property type %q",
-			filter.Condition, property.Format))
+		apiCondition, _ := ToApiCondition(filter.Condition)
+		return util.ErrBadInput(fmt.Sprintf("condition %q is not valid for property type %q", apiCondition, property.Format))
 	}
 
 	convertedValue, err := v.convertAndValidateValue(spaceId, filter, property, propertyMap)
 	if err != nil {
-		return util.ErrBadInput(fmt.Sprintf("invalid value for property %q: %s", filter.PropertyKey, err.Error()))
+		return fmt.Errorf("invalid value for property %q: %w", filter.PropertyKey, err)
 	}
 
 	filter.PropertyKey = property.RelationKey

@@ -204,7 +204,12 @@ Request processing order:
 
 1. **Authentication**: Bearer token in Authorization header
 2. **Pagination**: Use offset/limit query parameters (default: offset=0, limit=100)
-3. **Error Handling**: Use `util.MapErrorCode()` and `util.ErrToCode()` for consistent error responses
+3. **Error Handling**: 
+   - Use `util.MapErrorCode()` and `util.ErrToCode()` for consistent error responses
+   - User-facing validation errors: Use `util.ErrBadInput(fmt.Sprintf("message with %q formatting", value))`
+   - When adding context to errors: Use `fmt.Errorf("context: %w", err)` to wrap with additional information
+   - Avoid double "bad input" prefixes - use `fmt.Errorf` for wrapping, not `util.ErrBadInput` when the underlying error is already a bad input error
+   - Use quoted formatting (`%q`) in error messages for clarity when displaying user input
 4. **Response Format**: Paginated responses use `PaginatedResponse[T]` wrapper
 5. **Space Scoping**: Most resources are scoped to a space ID in the URL path
 6. **Caching**: Types, properties, and tags are cached - use GetCached* methods

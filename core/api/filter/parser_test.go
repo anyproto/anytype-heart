@@ -235,7 +235,7 @@ func TestParser_ParseQueryParams(t *testing.T) {
 		{
 			name:          "invalid condition",
 			queryString:   "name[invalid]=test",
-			expectedError: "invalid filter key \"name[invalid]\": unsupported condition: invalid",
+			expectedError: "invalid filter key \"name[invalid]\": bad input: unsupported condition: \"invalid\"",
 		},
 		{
 			name:        "brackets without property name",
@@ -451,7 +451,7 @@ func TestParser_parseFilterKey(t *testing.T) {
 		{
 			name:          "invalid condition",
 			key:           "name[invalid]",
-			expectedError: "unsupported condition: invalid",
+			expectedError: "bad input: unsupported condition: \"invalid\"",
 		},
 		{
 			name:              "brackets without property name",

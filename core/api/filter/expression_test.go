@@ -407,7 +407,7 @@ func TestBuildExpressionFilters(t *testing.T) {
 				m.On("GetCachedProperties", spaceId).Return(propertyMap)
 				m.On("ResolvePropertyApiKey", propertyMap, "name").Return("name", true)
 			},
-			expectedError: "failed to build condition filter: condition Greater is not valid for property type \"text\"",
+			expectedError: "failed to build condition filter: bad input: condition \"gt\" is not valid for property type \"text\"",
 		},
 		{
 			name: "valid array condition for multi-select property",
@@ -457,7 +457,7 @@ func TestBuildExpressionFilters(t *testing.T) {
 				m.On("GetCachedProperties", spaceId).Return(map[string]*apimodel.Property{})
 				m.On("ResolvePropertyApiKey", mock.Anything, "invalid_prop").Return("", false)
 			},
-			expectedError: "failed to build condition filter: failed to resolve property invalid_prop",
+			expectedError: "failed to build condition filter: failed to resolve property \"invalid_prop\": bad input: property \"invalid_prop\" not found",
 		},
 		{
 			name: "empty expression with only operator",

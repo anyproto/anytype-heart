@@ -188,7 +188,7 @@ func TestValidator_ValidateFilters(t *testing.T) {
 				m.On("GetCachedProperties", testSpaceId).Return(mockProperties)
 				m.On("ResolvePropertyApiKey", mockProperties, "unknown_property").Return("", false)
 			},
-			expectedError: "invalid filter at index 0: failed to resolve property \"unknown_property\": property \"unknown_property\" not found",
+			expectedError: "invalid filter at index 0: failed to resolve property \"unknown_property\": bad input: property \"unknown_property\" not found",
 		},
 		{
 			name: "invalid condition for text property",
@@ -205,7 +205,7 @@ func TestValidator_ValidateFilters(t *testing.T) {
 				m.On("GetCachedProperties", testSpaceId).Return(mockProperties)
 				m.On("ResolvePropertyApiKey", mockProperties, "name").Return("name", true)
 			},
-			expectedError: "invalid filter at index 0: condition Greater is not valid for property type \"text\"",
+			expectedError: "invalid filter at index 0: bad input: condition \"gt\" is not valid for property type \"text\"",
 		},
 		{
 			name: "invalid value for number property",
@@ -336,7 +336,7 @@ func TestValidator_ValidateFilters(t *testing.T) {
 				// Second filter fails
 				m.On("ResolvePropertyApiKey", mockProperties, "unknown").Return("", false)
 			},
-			expectedError: "invalid filter at index 1: failed to resolve property \"unknown\": property \"unknown\" not found",
+			expectedError: "invalid filter at index 1: failed to resolve property \"unknown\": bad input: property \"unknown\" not found",
 		},
 	}
 
