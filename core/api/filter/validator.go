@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	apimodel "github.com/anyproto/anytype-heart/core/api/model"
+	"github.com/anyproto/anytype-heart/core/api/util"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
@@ -33,7 +34,7 @@ func (v *Validator) ValidateFilters(spaceId string, filters *ParsedFilters) erro
 
 	for i, filter := range filters.Filters {
 		if err := v.validateFilter(spaceId, &filter, propertyMap); err != nil {
-			return fmt.Errorf("invalid filter at index %d: %w", i, err)
+			return util.ErrBadInput(fmt.Sprintf("invalid filter at index %d: %s", i, err.Error()))
 		}
 		filters.Filters[i] = filter
 	}
@@ -45,18 +46,18 @@ func (v *Validator) ValidateFilters(spaceId string, filters *ParsedFilters) erro
 func (v *Validator) validateFilter(spaceId string, filter *Filter, propertyMap map[string]*apimodel.Property) error {
 	property, err := v.resolveProperty(spaceId, filter.PropertyKey, propertyMap)
 	if err != nil {
-		return fmt.Errorf("failed to resolve property %q: %w", filter.PropertyKey, err)
+		return util.ErrBadInput(fmt.Sprintf("failed to resolve property %q: %s", filter.PropertyKey, err.Error()))
 	}
 
 	// Check if condition is valid for property type
 	if !isValidConditionForType(property.Format, filter.Condition) {
-		return fmt.Errorf("condition %v is not valid for property type %q",
-			filter.Condition, property.Format)
+		return util.ErrBadInput(fmt.Sprintf("condition %v is not valid for property type %q",
+			filter.Condition, property.Format))
 	}
 
 	convertedValue, err := v.convertAndValidateValue(spaceId, filter, property, propertyMap)
 	if err != nil {
-		return fmt.Errorf("invalid value for property %q: %w", filter.PropertyKey, err)
+		return util.ErrBadInput(fmt.Sprintf("invalid value for property %q: %s", filter.PropertyKey, err.Error()))
 	}
 
 	filter.PropertyKey = property.RelationKey
@@ -68,12 +69,12 @@ func (v *Validator) validateFilter(spaceId string, filter *Filter, propertyMap m
 func (v *Validator) resolveProperty(spaceId string, propertyKey string, propertyMap map[string]*apimodel.Property) (*apimodel.Property, error) {
 	rk, found := v.apiService.ResolvePropertyApiKey(propertyMap, propertyKey)
 	if !found {
-		return nil, fmt.Errorf("property %q not found", propertyKey)
+		return nil, util.ErrBadInput(fmt.Sprintf("property %q not found", propertyKey))
 	}
 
 	prop, exists := propertyMap[rk]
 	if !exists {
-		return nil, fmt.Errorf("property %q not found in cache", propertyKey)
+		return nil, util.ErrBadInput(fmt.Sprintf("property %q not found in cache", propertyKey))
 	}
 
 	return prop, nil

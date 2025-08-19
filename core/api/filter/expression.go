@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	apimodel "github.com/anyproto/anytype-heart/core/api/model"
+	"github.com/anyproto/anytype-heart/core/api/util"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
@@ -56,7 +57,7 @@ func BuildExpressionFilters(ctx context.Context, expr *apimodel.FilterExpression
 		var ok bool
 		operator, ok = OperatorMap[expr.Operator]
 		if !ok {
-			return nil, fmt.Errorf("unsupported filter operator: %s", expr.Operator)
+			return nil, util.ErrBadInput(fmt.Sprintf("unsupported filter operator: %s", expr.Operator))
 		}
 	}
 
@@ -72,22 +73,22 @@ func BuildExpressionFilters(ctx context.Context, expr *apimodel.FilterExpression
 func buildConditionFilter(cond apimodel.FilterItem, validator *Validator, spaceId string) (*model.BlockContentDataviewFilter, error) {
 	wrapped := cond.WrappedFilterItem
 	if wrapped == nil {
-		return nil, fmt.Errorf("invalid filter condition: no wrapped filter item")
+		return nil, util.ErrBadInput("invalid filter condition: no wrapped filter item")
 	}
 
 	dbCondition, ok := ToInternalCondition(wrapped.GetCondition())
 	if !ok {
-		return nil, fmt.Errorf("unsupported filter condition: %s", wrapped.GetCondition())
+		return nil, util.ErrBadInput(fmt.Sprintf("unsupported filter condition: %s", wrapped.GetCondition()))
 	}
 
 	propertyMap := validator.apiService.GetCachedProperties(spaceId)
 	property, err := validator.resolveProperty(spaceId, wrapped.GetPropertyKey(), propertyMap)
 	if err != nil {
-		return nil, fmt.Errorf("failed to resolve property %s: %w", wrapped.GetPropertyKey(), err)
+		return nil, err
 	}
 
 	if !isValidConditionForType(property.Format, dbCondition) {
-		return nil, fmt.Errorf("condition %v is not valid for property type %q", dbCondition, property.Format)
+		return nil, util.ErrBadInput(fmt.Sprintf("condition %v is not valid for property type %q", dbCondition, property.Format))
 	}
 
 	rk := property.RelationKey
@@ -100,7 +101,7 @@ func buildConditionFilter(cond apimodel.FilterItem, validator *Validator, spaceI
 
 	value := wrapped.GetValue()
 	if value == nil {
-		return nil, fmt.Errorf("value is required for condition %q on property %q", wrapped.GetCondition(), wrapped.GetPropertyKey())
+		return nil, util.ErrBadInput(fmt.Sprintf("value is required for condition %q on property %q", wrapped.GetCondition(), wrapped.GetPropertyKey()))
 	}
 
 	validatedValue, err := validator.apiService.SanitizeAndValidatePropertyValue(spaceId, wrapped.GetPropertyKey(), value, property, propertyMap)

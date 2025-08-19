@@ -9,6 +9,7 @@ import (
 	"github.com/gin-gonic/gin"
 
 	apimodel "github.com/anyproto/anytype-heart/core/api/model"
+	"github.com/anyproto/anytype-heart/core/api/util"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
@@ -42,12 +43,12 @@ func (p *Parser) ParseQueryParams(c *gin.Context) (*ParsedFilters, error) {
 
 		property, condition, err := p.parseFilterKey(key)
 		if err != nil {
-			return nil, fmt.Errorf("invalid filter key %q: %w", key, err)
+			return nil, util.ErrBadInput(fmt.Sprintf("invalid filter key %q: %s", key, err.Error()))
 		}
 
 		value, err := p.parseFilterValue(values[0], condition)
 		if err != nil {
-			return nil, fmt.Errorf("invalid filter value for %q: %w", key, err)
+			return nil, util.ErrBadInput(fmt.Sprintf("invalid filter value for %q: %s", key, err.Error()))
 		}
 
 		filters = append(filters, Filter{
@@ -68,7 +69,7 @@ func (p *Parser) parseFilterKey(key string) (property string, condition model.Bl
 
 		cond, ok := ToInternalCondition(apimodel.FilterCondition(conditionStr))
 		if !ok {
-			return "", 0, fmt.Errorf("unsupported condition: %s", conditionStr)
+			return "", 0, util.ErrBadInput(fmt.Sprintf("unsupported condition: %s", conditionStr))
 		}
 		condition = cond
 	} else {
@@ -77,7 +78,7 @@ func (p *Parser) parseFilterKey(key string) (property string, condition model.Bl
 	}
 
 	if property == "" {
-		return "", 0, fmt.Errorf("empty property name")
+		return "", 0, util.ErrBadInput("empty property name")
 	}
 
 	return property, condition, nil
@@ -87,7 +88,7 @@ func (p *Parser) parseFilterKey(key string) (property string, condition model.Bl
 func (p *Parser) parseFilterValue(rawValue string, condition model.BlockContentDataviewFilterCondition) (interface{}, error) {
 	decodedValue, err := url.QueryUnescape(rawValue)
 	if err != nil {
-		return nil, fmt.Errorf("failed to decode value: %w", err)
+		return nil, util.ErrBadInput(fmt.Sprintf("failed to decode value: %s", err.Error()))
 	}
 
 	switch condition {
