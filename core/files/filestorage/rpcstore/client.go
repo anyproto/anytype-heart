@@ -210,9 +210,25 @@ func (c *client) put(ctx context.Context, spaceID string, fileId domain.FileId, 
 		}); err != nil {
 			return rpcerr.Unwrap(err)
 		}
-		
+
 		log.Debug("put cid", zap.String("cid", cd.String()))
 		c.stat.Add(st, len(data))
+		return nil
+	})
+}
+
+func (c *client) putMany(ctx context.Context, req *fileproto.BlockPushManyRequest) (err error) {
+	p, err := c.pool.Get(ctx, c.peerId)
+	if err != nil {
+		return
+	}
+	// st := time.Now()
+	return p.DoDrpc(ctx, func(conn drpc.Conn) error {
+		if _, err = fileproto.NewDRPCFileClient(conn).BlockPushMany(ctx, req); err != nil {
+			return rpcerr.Unwrap(err)
+		}
+		// TODO Do we need this?
+		// c.stat.Add(st, len(data))
 		return nil
 	})
 }

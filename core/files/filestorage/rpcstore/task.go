@@ -3,8 +3,6 @@ package rpcstore
 import (
 	"context"
 	"sync"
-
-	"github.com/ipfs/go-cid"
 )
 
 var taskPool = &sync.Pool{
@@ -24,7 +22,6 @@ type result struct {
 type task struct {
 	ctx         context.Context
 	spaceId     string
-	cid         cid.Cid
 	denyPeerIds []string
 	write       bool
 	exec        func(c *client) error

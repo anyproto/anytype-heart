@@ -8,14 +8,7 @@ import (
 
 	"github.com/anyproto/any-sync/commonfile/fileproto"
 	blocks "github.com/ipfs/go-block-format"
-	"github.com/ipfs/go-cid"
 )
-
-type fileUploadIndex struct {
-	// cid => []file
-	cids  map[cid.Cid][]string
-	files map[string][]cid.Cid
-}
 
 type fileBatch struct {
 	fileId    string

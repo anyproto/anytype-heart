@@ -2,6 +2,7 @@ package filesync
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -10,7 +11,9 @@ import (
 
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/app/logger"
+	"github.com/anyproto/any-sync/commonfile/fileproto"
 	"github.com/anyproto/any-sync/commonfile/fileservice"
+	"github.com/ipfs/go-cid"
 	ipld "github.com/ipfs/go-ipld-format"
 	"go.uber.org/zap"
 
@@ -83,8 +86,12 @@ type fileSync struct {
 	blocksAvailabilityCache   keyvaluestore.Store[*blocksAvailabilityResponse]
 	isLimitReachedErrorLogged keyvaluestore.Store[bool]
 	nodeUsageCache            keyvaluestore.Store[NodeUsage]
+	pendingUploads            keyvaluestore.Store[*QueueItem]
 
-	limitManager *uploadLimitManager
+	limitManager      *uploadLimitManager
+	uploadStatusIndex *uploadStatusIndex
+	requestsBatcher   *requestsBatcher
+	requestsCh        chan *fileproto.BlockPushManyRequest
 
 	importEventsMutex sync.Mutex
 	importEvents      []*pb.Event
@@ -142,6 +149,21 @@ func (s *fileSync) Init(a *app.App) (err error) {
 	}
 	s.retryDeletionQueue = persistentqueue.New(retryDeletionQueueStorage, log.Logger, s.retryDeletionHandler, nil, persistentqueue.WithRetryPause(loopTimeout))
 
+	s.pendingUploads, err = keyvaluestore.NewJson[*QueueItem](db, "filesync/pending_uploads")
+	if err != nil {
+		return fmt.Errorf("init limit reached error logged cache: %w", err)
+	}
+
+	s.uploadStatusIndex = newUploadStatusIndex(func(fileObjectId string, fullFileId domain.FullFileId) error {
+		var cbErr error
+		for _, cb := range s.onUploaded {
+			cbErr = errors.Join(err, cb(fileObjectId, fullFileId))
+		}
+		return cbErr
+	})
+	s.requestsCh = make(chan *fileproto.BlockPushManyRequest, 10)
+	s.requestsBatcher = newRequestsBatcher(1024*1024+14, 100*time.Millisecond, s.requestsCh)
+
 	return
 }
 
@@ -185,8 +207,38 @@ func (s *fileSync) Run(ctx context.Context) (err error) {
 
 	s.closeWg.Add(1)
 	go s.runNodeUsageUpdater()
+	go s.requestsBatcher.run(s.loopCtx)
+	for range 10 {
+		go s.runUploader()
+	}
 
 	return
+}
+
+func (s *fileSync) runUploader() {
+	for {
+		select {
+		case <-s.loopCtx.Done():
+			return
+		case req := <-s.requestsCh:
+			err := s.rpcStore.AddToFileMany(s.loopCtx, req)
+			if err != nil {
+				log.Error("add to file many:", zap.Error(err))
+			} else {
+				for _, fb := range req.FileBlocks {
+					for _, b := range fb.Blocks {
+						c, err := cid.Cast(b.Cid)
+						if err != nil {
+							log.Error("failed to parse block cid", zap.Error(err))
+						} else {
+							s.uploadStatusIndex.remove(fb.FileId, c)
+						}
+					}
+				}
+			}
+			// TODO Retry mechanism
+		}
+	}
 }
 
 func (s *fileSync) Close(ctx context.Context) error {

@@ -56,6 +56,10 @@ func (req AddFileRequest) ToQueueItem(addedTime time.Time) (*QueueItem, error) {
 	return it, nil
 }
 
+func (s *fileSync) MarkFileVariants(fileObjectId string, fileId domain.FileId, variants []string) {
+
+}
+
 func (s *fileSync) AddFile(req AddFileRequest) (err error) {
 	it, err := req.ToQueueItem(time.Now())
 	if err != nil {
@@ -146,17 +150,22 @@ func (s *fileSync) uploadingHandler(ctx context.Context, it *QueueItem) (persist
 		return s.addToRetryUploadingQueue(it), nil
 	}
 
-	// Mark as uploaded only if the root of the file tree is uploaded. It works because if the root is uploaded, all its descendants are uploaded too
-	if it.VariantId == "" {
-		err = s.runOnUploadedHook(it.ObjectId, it.FullFileId())
-		if isObjectDeletedError(err) {
-			return persistentqueue.ActionDone, s.DeleteFile(it.ObjectId, it.FullFileId())
-		}
-		if err != nil {
-			return s.addToRetryUploadingQueue(it), err
-		}
-		return persistentqueue.ActionDone, s.removeFromUploadingQueues(it.ObjectId)
+	err = s.pendingUploads.Set(ctx, it.Key(), it)
+	if err != nil {
+		return persistentqueue.ActionRetry, fmt.Errorf("add to pending uploads list: %w", err)
 	}
+
+	// Mark as uploaded only if the root of the file tree is uploaded. It works because if the root is uploaded, all its descendants are uploaded too
+	// if it.VariantId == "" {
+	// 	err = s.runOnUploadedHook(it.ObjectId, it.FullFileId())
+	// 	if isObjectDeletedError(err) {
+	// 		return persistentqueue.ActionDone, s.DeleteFile(it.ObjectId, it.FullFileId())
+	// 	}
+	// 	if err != nil {
+	// 		return s.addToRetryUploadingQueue(it), err
+	// 	}
+	// 	return persistentqueue.ActionDone, s.removeFromUploadingQueues(it.ObjectId)
+	// }
 	return persistentqueue.ActionDone, nil
 }
 
@@ -326,7 +335,7 @@ func (s *fileSync) uploadFile(ctx context.Context, spaceLimits *spaceUsage, it *
 	blocksAvailability, err := s.blocksAvailabilityCache.Get(ctx, branchToUpload.String())
 	if err != nil || blocksAvailability.totalBytesToUpload() == 0 {
 		// Ignore error from cache and calculate blocks availability
-		blocksAvailability, err = s.checkBlocksAvailability(ctx, it.SpaceId, branchToUpload)
+		blocksAvailability, err = s.checkBlocksAvailability(ctx, it.ObjectId, it.SpaceId, branchToUpload)
 		if err != nil {
 			return fmt.Errorf("check blocks availability: %w", err)
 		}
@@ -456,7 +465,7 @@ func (r *blocksAvailabilityResponse) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
-func (s *fileSync) checkBlocksAvailability(ctx context.Context, spaceId string, fileId domain.FileId) (*blocksAvailabilityResponse, error) {
+func (s *fileSync) checkBlocksAvailability(ctx context.Context, fileObjectId string, spaceId string, fileId domain.FileId) (*blocksAvailabilityResponse, error) {
 	response := blocksAvailabilityResponse{
 		cidsToUpload: map[cid.Cid]struct{}{},
 	}
@@ -491,6 +500,7 @@ func (s *fileSync) checkBlocksAvailability(ctx context.Context, spaceId string, 
 				}
 				response.bytesToUpload += len(b.RawData())
 				response.cidsToUpload[blockCid] = struct{}{}
+				s.uploadStatusIndex.add(fileObjectId, spaceId, fileId.String(), blockCid)
 			} else if availability.Status == fileproto.AvailabilityStatus_Exists {
 				// Block exists in node, but not in user's space
 				b, err := getBlock()
@@ -532,7 +542,8 @@ func (s *fileSync) uploadOrBindBlocks(ctx context.Context, spaceId string, fileI
 	}
 
 	if len(blocksToUpload) > 0 {
-		err := s.rpcStore.AddToFile(ctx, spaceId, fileId, blocksToUpload)
+		err := s.requestsBatcher.addFile(spaceId, fileId.String(), blocksToUpload)
+		// err := s.rpcStore.AddToFile(ctx, spaceId, fileId, blocksToUpload)
 		if err != nil {
 			return 0, fmt.Errorf("add to file: %w", err)
 		}

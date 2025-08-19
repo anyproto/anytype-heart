@@ -11,7 +11,6 @@ import (
 	"github.com/anyproto/any-sync/commonfile/fileblockstore"
 	"github.com/anyproto/any-sync/net/pool"
 	"github.com/cheggaaa/mb/v3"
-	"github.com/ipfs/go-cid"
 	"go.uber.org/zap"
 	"golang.org/x/exp/slices"
 
@@ -88,18 +87,17 @@ func (m *clientManager) add(ctx context.Context, ts ...*task) (err error) {
 	return m.mb.Add(ctx, ts...)
 }
 
-func (m *clientManager) WriteOp(ctx context.Context, ready chan result, f func(c *client) error, c cid.Cid) (err error) {
-	return m.addOp(ctx, true, ready, f, c)
+func (m *clientManager) WriteOp(ctx context.Context, ready chan result, f func(c *client) error) (err error) {
+	return m.addOp(ctx, true, ready, f)
 }
 
-func (m *clientManager) ReadOp(ctx context.Context, ready chan result, f func(c *client) error, c cid.Cid) (err error) {
-	return m.addOp(ctx, false, ready, f, c)
+func (m *clientManager) ReadOp(ctx context.Context, ready chan result, f func(c *client) error) (err error) {
+	return m.addOp(ctx, false, ready, f)
 }
 
-func (m *clientManager) addOp(ctx context.Context, write bool, ready chan result, f func(c *client) error, c cid.Cid) (err error) {
+func (m *clientManager) addOp(ctx context.Context, write bool, ready chan result, f func(c *client) error) (err error) {
 	t := getTask()
 	t.ctx = ctx
-	t.cid = c
 	t.exec = f
 	t.spaceId = fileblockstore.CtxGetSpaceId(ctx)
 	t.onFinished = m.onTaskFinished
@@ -125,7 +123,6 @@ func (m *clientManager) onTaskFinished(t *task, c *client, taskErr error) {
 			t.denyPeerIds = append(t.denyPeerIds, c.peerId)
 		}
 		for _, peerId := range taskClientIds {
-			log.Info("retrying task", zap.Error(taskErr), zap.String("cid", t.cid.String()))
 			if !slices.Contains(t.denyPeerIds, peerId) {
 				err := m.add(t.ctx, t)
 				if err != nil {
@@ -136,7 +133,6 @@ func (m *clientManager) onTaskFinished(t *task, c *client, taskErr error) {
 			}
 		}
 	}
-	log.Debug("finishing task task", zap.String("cid", t.cid.String()))
 	t.ready <- result{err: taskErr}
 	t.release()
 }
