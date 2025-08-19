@@ -338,20 +338,8 @@ func (l *linkPreview) extractEnhancedTitle(htmlContent []byte, fetchUrl string) 
 	}
 
 	hostname := parsedURL.Hostname()
-
-	var selectors []string
-	switch {
-	case strings.Contains(hostname, "reddit.com"):
-		selectors = titleSelectors["reddit.com"]
-	case strings.Contains(hostname, "twitter.com") || strings.Contains(hostname, "x.com"):
-		selectors = titleSelectors["twitter.com"]
-	case strings.Contains(hostname, "youtube.com"):
-		selectors = titleSelectors["youtube.com"]
-	case strings.Contains(hostname, "github.com"):
-		selectors = titleSelectors["github.com"]
-	case strings.Contains(hostname, "stackoverflow.com"):
-		selectors = titleSelectors["stackoverflow.com"]
-	default:
+	selectors, found := titleSelectors[hostname]
+	if !found {
 		return ""
 	}
 
