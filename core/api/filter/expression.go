@@ -98,57 +98,14 @@ func buildConditionFilter(cond apimodel.FilterItem, validator *Validator, spaceI
 		}, nil
 	}
 
-	var value interface{}
-	switch fc := wrapped.(type) {
-	case apimodel.TextFilterItem:
-		if fc.Text != nil {
-			value = *fc.Text
-		}
-	case apimodel.NumberFilterItem:
-		if fc.Number != nil {
-			value = *fc.Number
-		}
-	case apimodel.SelectFilterItem:
-		if fc.Select != nil {
-			value = *fc.Select
-		}
-	case apimodel.MultiSelectFilterItem:
-		if fc.MultiSelect != nil {
-			value = *fc.MultiSelect
-		}
-	case apimodel.DateFilterItem:
-		if fc.Date != nil {
-			value = *fc.Date
-		}
-	case apimodel.CheckboxFilterItem:
-		if fc.Checkbox != nil {
-			value = *fc.Checkbox
-		}
-	case apimodel.FilesFilterItem:
-		if fc.Files != nil {
-			value = *fc.Files
-		}
-	case apimodel.UrlFilterItem:
-		if fc.Url != nil {
-			value = *fc.Url
-		}
-	case apimodel.EmailFilterItem:
-		if fc.Email != nil {
-			value = *fc.Email
-		}
-	case apimodel.PhoneFilterItem:
-		if fc.Phone != nil {
-			value = *fc.Phone
-		}
-	case apimodel.ObjectsFilterItem:
-		if fc.Objects != nil {
-			value = *fc.Objects
-		}
+	value := wrapped.GetValue()
+	if value == nil {
+		return nil, fmt.Errorf("value is required for condition %q on property %q", wrapped.GetCondition(), wrapped.GetPropertyKey())
 	}
 
 	validatedValue, err := validator.apiService.SanitizeAndValidatePropertyValue(spaceId, wrapped.GetPropertyKey(), value, property, propertyMap)
 	if err != nil {
-		return nil, fmt.Errorf("invalid value for property %s: %w", wrapped.GetPropertyKey(), err)
+		return nil, fmt.Errorf("invalid value for property %q: %w", wrapped.GetPropertyKey(), err)
 	}
 
 	filter := &model.BlockContentDataviewFilter{

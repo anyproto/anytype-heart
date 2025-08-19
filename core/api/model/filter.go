@@ -212,6 +212,7 @@ type WrappedFilterItem interface {
 	isFilterItem()
 	GetPropertyKey() string
 	GetCondition() FilterCondition
+	GetValue() interface{}
 }
 
 // TextFilterItem for text property filters
@@ -224,6 +225,12 @@ type TextFilterItem struct {
 func (TextFilterItem) isFilterItem()                   {}
 func (f TextFilterItem) GetPropertyKey() string        { return f.PropertyKey }
 func (f TextFilterItem) GetCondition() FilterCondition { return f.Condition }
+func (f TextFilterItem) GetValue() interface{} {
+	if f.Text != nil {
+		return *f.Text
+	}
+	return nil
+}
 
 // NumberFilterItem for number property filters
 type NumberFilterItem struct {
@@ -235,6 +242,12 @@ type NumberFilterItem struct {
 func (NumberFilterItem) isFilterItem()                   {}
 func (f NumberFilterItem) GetPropertyKey() string        { return f.PropertyKey }
 func (f NumberFilterItem) GetCondition() FilterCondition { return f.Condition }
+func (f NumberFilterItem) GetValue() interface{} {
+	if f.Number != nil {
+		return *f.Number
+	}
+	return nil
+}
 
 // SelectFilterItem for select property filters
 type SelectFilterItem struct {
@@ -246,6 +259,12 @@ type SelectFilterItem struct {
 func (SelectFilterItem) isFilterItem()                   {}
 func (f SelectFilterItem) GetPropertyKey() string        { return f.PropertyKey }
 func (f SelectFilterItem) GetCondition() FilterCondition { return f.Condition }
+func (f SelectFilterItem) GetValue() interface{} {
+	if f.Select != nil {
+		return *f.Select
+	}
+	return nil
+}
 
 // MultiSelectFilterItem for multi-select property filters
 type MultiSelectFilterItem struct {
@@ -257,6 +276,12 @@ type MultiSelectFilterItem struct {
 func (MultiSelectFilterItem) isFilterItem()                   {}
 func (f MultiSelectFilterItem) GetPropertyKey() string        { return f.PropertyKey }
 func (f MultiSelectFilterItem) GetCondition() FilterCondition { return f.Condition }
+func (f MultiSelectFilterItem) GetValue() interface{} {
+	if f.MultiSelect != nil {
+		return *f.MultiSelect
+	}
+	return nil
+}
 
 // DateFilterItem for date property filters
 type DateFilterItem struct {
@@ -268,6 +293,12 @@ type DateFilterItem struct {
 func (DateFilterItem) isFilterItem()                   {}
 func (f DateFilterItem) GetPropertyKey() string        { return f.PropertyKey }
 func (f DateFilterItem) GetCondition() FilterCondition { return f.Condition }
+func (f DateFilterItem) GetValue() interface{} {
+	if f.Date != nil {
+		return *f.Date
+	}
+	return nil
+}
 
 // CheckboxFilterItem for checkbox property filters
 type CheckboxFilterItem struct {
@@ -279,6 +310,12 @@ type CheckboxFilterItem struct {
 func (CheckboxFilterItem) isFilterItem()                   {}
 func (f CheckboxFilterItem) GetPropertyKey() string        { return f.PropertyKey }
 func (f CheckboxFilterItem) GetCondition() FilterCondition { return f.Condition }
+func (f CheckboxFilterItem) GetValue() interface{} {
+	if f.Checkbox != nil {
+		return *f.Checkbox
+	}
+	return nil
+}
 
 // FilesFilterItem for files property filters
 type FilesFilterItem struct {
@@ -290,6 +327,12 @@ type FilesFilterItem struct {
 func (FilesFilterItem) isFilterItem()                   {}
 func (f FilesFilterItem) GetPropertyKey() string        { return f.PropertyKey }
 func (f FilesFilterItem) GetCondition() FilterCondition { return f.Condition }
+func (f FilesFilterItem) GetValue() interface{} {
+	if f.Files != nil {
+		return *f.Files
+	}
+	return nil
+}
 
 // UrlFilterItem for URL property filters
 type UrlFilterItem struct {
@@ -301,6 +344,12 @@ type UrlFilterItem struct {
 func (UrlFilterItem) isFilterItem()                   {}
 func (f UrlFilterItem) GetPropertyKey() string        { return f.PropertyKey }
 func (f UrlFilterItem) GetCondition() FilterCondition { return f.Condition }
+func (f UrlFilterItem) GetValue() interface{} {
+	if f.Url != nil {
+		return *f.Url
+	}
+	return nil
+}
 
 // EmailFilterItem for email property filters
 type EmailFilterItem struct {
@@ -312,6 +361,12 @@ type EmailFilterItem struct {
 func (EmailFilterItem) isFilterItem()                   {}
 func (f EmailFilterItem) GetPropertyKey() string        { return f.PropertyKey }
 func (f EmailFilterItem) GetCondition() FilterCondition { return f.Condition }
+func (f EmailFilterItem) GetValue() interface{} {
+	if f.Email != nil {
+		return *f.Email
+	}
+	return nil
+}
 
 // PhoneFilterItem for phone property filters
 type PhoneFilterItem struct {
@@ -323,6 +378,12 @@ type PhoneFilterItem struct {
 func (PhoneFilterItem) isFilterItem()                   {}
 func (f PhoneFilterItem) GetPropertyKey() string        { return f.PropertyKey }
 func (f PhoneFilterItem) GetCondition() FilterCondition { return f.Condition }
+func (f PhoneFilterItem) GetValue() interface{} {
+	if f.Phone != nil {
+		return *f.Phone
+	}
+	return nil
+}
 
 // ObjectsFilterItem for objects/relation property filters
 type ObjectsFilterItem struct {
@@ -334,6 +395,12 @@ type ObjectsFilterItem struct {
 func (ObjectsFilterItem) isFilterItem()                   {}
 func (f ObjectsFilterItem) GetPropertyKey() string        { return f.PropertyKey }
 func (f ObjectsFilterItem) GetCondition() FilterCondition { return f.Condition }
+func (f ObjectsFilterItem) GetValue() interface{} {
+	if f.Objects != nil {
+		return *f.Objects
+	}
+	return nil
+}
 
 // EmptyFilterItem for checking if property is empty/not empty (without specifying format)
 type EmptyFilterItem struct {
@@ -344,3 +411,4 @@ type EmptyFilterItem struct {
 func (EmptyFilterItem) isFilterItem()                   {}
 func (f EmptyFilterItem) GetPropertyKey() string        { return f.PropertyKey }
 func (f EmptyFilterItem) GetCondition() FilterCondition { return f.Condition }
+func (f EmptyFilterItem) GetValue() interface{}         { return nil }
