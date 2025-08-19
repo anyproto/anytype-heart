@@ -92,12 +92,10 @@ jobs:
           git config --global url."https://${{ secrets.ANYTYPE_PAT }}@github.com/".insteadOf "https://github.com/"
 
       - name: Go mod download
-        run: |
-          go mod download
+        run: go mod download
 
       - name: install protoc
-        run: |
-          make setup-protoc
+        run: make setup-protoc
 
       - name: setup go
         run: |
