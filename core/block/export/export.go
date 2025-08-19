@@ -39,6 +39,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/files"
 	"github.com/anyproto/anytype-heart/core/notifications"
+	"github.com/anyproto/anytype-heart/core/relationutils"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
@@ -52,6 +53,7 @@ import (
 	"github.com/anyproto/anytype-heart/space/spacecore/typeprovider"
 	"github.com/anyproto/anytype-heart/util/anyerror"
 	"github.com/anyproto/anytype-heart/util/constant"
+	"github.com/anyproto/anytype-heart/util/slice"
 	"github.com/anyproto/anytype-heart/util/text"
 )
 
@@ -90,6 +92,7 @@ type export struct {
 	notificationService notifications.Notifications
 	processService      process.Service
 	gatewayService      gateway.Gateway
+	formatFetcher       relationutils.RelationFormatFetcher
 }
 
 func New() Export {
@@ -106,6 +109,7 @@ func (e *export) Init(a *app.App) (err error) {
 	e.accountService = app.MustComponent[account.Service](a)
 	e.notificationService = app.MustComponent[notifications.Notifications](a)
 	e.gatewayService, _ = app.GetComponent[gateway.Gateway](a)
+	e.formatFetcher = app.MustComponent[relationutils.RelationFormatFetcher](a)
 	return
 }
 
@@ -602,7 +606,8 @@ func (e *exportContext) addDependentObjectsFromDataview() error {
 func (e *exportContext) getViewDependentObjects(id string, viewDependentObjectsIds []string) ([]string, error) {
 	err := cache.Do(e.picker, id, func(sb sb.SmartBlock) error {
 		st := sb.NewState().Copy().Filter(e.getStateFilters(id))
-		viewDependentObjectsIds = append(viewDependentObjectsIds, objectlink.DependentObjectIDs(st, sb.Space(), objectlink.Flags{Blocks: true})...)
+		viewDependentObjectsIds = append(viewDependentObjectsIds,
+			objectlink.DependentObjectIDs(st, sb.Space(), e.formatFetcher, objectlink.Flags{Blocks: true})...)
 		return nil
 	})
 	if err != nil {
@@ -675,8 +680,8 @@ func (e *exportContext) collectDerivedObjects(objects map[string]*Doc) error {
 	for id := range objects {
 		err := cache.Do(e.picker, id, func(b sb.SmartBlock) error {
 			state := b.NewState().Copy().Filter(e.getStateFilters(id))
-			objectRelations := getObjectRelations(state)
-			fillObjectsMap(e.relations, objectRelations)
+			objectRelations := state.AllRelationKeys()
+			fillObjectsMap(e.relations, slice.IntoStrings(objectRelations))
 			details := state.CombinedDetails()
 			if isObjectWithDataview(details) {
 				dataviewRelations, err := getDataviewRelations(state)
@@ -708,15 +713,6 @@ func fillObjectsMap(dst map[string]struct{}, objectsToAdd []string) {
 	for _, objectId := range objectsToAdd {
 		dst[objectId] = struct{}{}
 	}
-}
-
-func getObjectRelations(state *state.State) []string {
-	relationLinks := state.GetRelationLinks()
-	relations := make([]string, 0, len(relationLinks))
-	for _, link := range relationLinks {
-		relations = append(relations, link.Key)
-	}
-	return relations
 }
 
 func isObjectWithDataview(details *domain.Details) bool {
@@ -990,7 +986,7 @@ func (e *exportContext) addNestedObject(id string, nestedDocs map[string]*Doc) {
 	var links []string
 	err := cache.Do(e.picker, id, func(sb sb.SmartBlock) error {
 		st := sb.NewState().Copy().Filter(e.getStateFilters(id))
-		links = objectlink.DependentObjectIDs(st, sb.Space(), objectlink.Flags{
+		links = objectlink.DependentObjectIDs(st, sb.Space(), e.formatFetcher, objectlink.Flags{
 			Blocks:                   true,
 			Details:                  true,
 			Collection:               true,
@@ -1032,7 +1028,7 @@ func (e *exportContext) fillLinkedFiles(id string) ([]string, error) {
 	spaceIndex := e.objectStore.SpaceIndex(e.spaceId)
 	var fileObjectsIds []string
 	err := cache.Do(e.picker, id, func(b sb.SmartBlock) error {
-		b.NewState().Copy().Filter(e.getStateFilters(id)).IterateLinkedFiles(func(fileObjectId string) {
+		b.NewState().Copy().Filter(e.getStateFilters(id)).IterateLinkedFiles(e.formatFetcher, func(fileObjectId string) {
 			res, err := spaceIndex.Query(database.Query{
 				Filters: []database.FilterRequest{
 					{
@@ -1117,7 +1113,7 @@ func (e *exportContext) writeMultiDoc(ctx context.Context, mw converter.MultiCon
 					}
 					st.SetDetailAndBundledRelation(bundle.RelationKeySource, domain.String(fileName))
 				}
-				if err = mw.Add(b.Space(), st); err != nil {
+				if err = mw.Add(b.Space(), st, e.formatFetcher); err != nil {
 					return err
 				}
 				return nil

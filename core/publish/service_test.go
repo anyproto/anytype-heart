@@ -41,6 +41,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/inviteservice"
 	"github.com/anyproto/anytype-heart/core/inviteservice/mock_inviteservice"
 	"github.com/anyproto/anytype-heart/core/notifications/mock_notifications"
+	"github.com/anyproto/anytype-heart/core/relationutils/mock_relationutils"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
@@ -411,6 +412,7 @@ func TestPublish(t *testing.T) {
 		space := mock_clientspace.NewMockSpace(t)
 		space.EXPECT().DerivedIDs().Return(threads.DerivedSmartblockIds{Workspace: workspaceId}).Maybe()
 		space.EXPECT().IsPersonal().Return(isPersonal).Maybe()
+		space.EXPECT().Id().Return(spaceId).Maybe()
 		spaceService.EXPECT().Get(context.Background(), spaceId).Return(space, nil)
 
 		expectedUri := "test"
@@ -463,6 +465,7 @@ func TestPublish(t *testing.T) {
 		space := mock_clientspace.NewMockSpace(t)
 		space.EXPECT().DerivedIDs().Return(threads.DerivedSmartblockIds{Workspace: workspaceId}).Maybe()
 		space.EXPECT().IsPersonal().Return(isPersonal).Maybe()
+		space.EXPECT().Id().Return(spaceId).Maybe()
 		spaceService.EXPECT().Get(context.Background(), spaceId).Return(space, nil)
 
 		expectedUri := "test"
@@ -724,6 +727,7 @@ func prepareSpaceService(t *testing.T, isPersonal bool, includeSpaceInfo bool) (
 	st.EXPECT().TreeStorage(mock.Anything, mock.Anything).Return(mockSt, nil).Maybe()
 	mockSt.EXPECT().Heads(gomock.Any()).Return([]string{"heads"}, nil).AnyTimes()
 	space.EXPECT().Storage().Return(st).Maybe()
+	space.EXPECT().Id().Return(spaceId).Maybe()
 	if includeSpaceInfo && !isPersonal {
 		space.EXPECT().DerivedIDs().Return(threads.DerivedSmartblockIds{Workspace: workspaceId})
 	}
@@ -811,6 +815,15 @@ func prepareExporter(t *testing.T, objectTypeId string, spaceService *mock_space
 	objectGetter.EXPECT().GetObject(context.Background(), objectId).Return(smartBlockTest, nil)
 	objectGetter.EXPECT().GetObject(context.Background(), objectTypeId).Return(objectType, nil)
 
+	fetcher := mock_relationutils.NewMockRelationFormatFetcher(t)
+	fetcher.EXPECT().GetRelationFormatByKey(mock.Anything, mock.Anything).RunAndReturn(func(_ string, key domain.RelationKey) (model.RelationFormat, error) {
+		rel, err := bundle.GetRelation(key)
+		if err != nil {
+			return 0, err
+		}
+		return rel.Format, nil
+	}).Maybe()
+
 	a := &app.App{}
 	mockSender := mock_event.NewMockSender(t)
 	a.Register(storeFixture)
@@ -822,6 +835,7 @@ func prepareExporter(t *testing.T, objectTypeId string, spaceService *mock_space
 	a.Register(testutil.PrepareMock(context.Background(), a, mock_files.NewMockService(t)))
 	a.Register(testutil.PrepareMock(context.Background(), a, mock_account.NewMockService(t)))
 	a.Register(testutil.PrepareMock(context.Background(), a, mock_notifications.NewMockNotifications(t)))
+	a.Register(testutil.PrepareMock(context.Background(), a, fetcher))
 
 	exp := export.New()
 	err = exp.Init(a)
@@ -951,6 +965,15 @@ func prepareExporterWithFile(t *testing.T, objectTypeId string, spaceService *mo
 	objectGetter.EXPECT().GetObject(context.Background(), fileId).Return(file, nil)
 	objectGetter.EXPECT().GetObject(context.Background(), workspaceId).Return(workspaceTest, nil)
 
+	fetcher := mock_relationutils.NewMockRelationFormatFetcher(t)
+	fetcher.EXPECT().GetRelationFormatByKey(mock.Anything, mock.Anything).RunAndReturn(func(_ string, key domain.RelationKey) (model.RelationFormat, error) {
+		rel, err := bundle.GetRelation(key)
+		if err != nil {
+			return 0, err
+		}
+		return rel.Format, nil
+	})
+
 	a := &app.App{}
 	mockSender := mock_event.NewMockSender(t)
 	ctx := context.Background()
@@ -963,6 +986,7 @@ func prepareExporterWithFile(t *testing.T, objectTypeId string, spaceService *mo
 	a.Register(testutil.PrepareMock(ctx, a, mock_account.NewMockService(t)))
 	a.Register(testutil.PrepareMock(ctx, a, mock_notifications.NewMockNotifications(t)))
 	a.Register(testutil.PrepareMock(ctx, a, fileService))
+	a.Register(testutil.PrepareMock(ctx, a, fetcher))
 
 	exp := export.New()
 	err = exp.Init(a)

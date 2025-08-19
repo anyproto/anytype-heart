@@ -113,6 +113,7 @@ func (bs *basic) createDetailUpdate(st *state.State, detail domain.Detail) (doma
 		if err := bs.setDetailSpecialCases(st, detail); err != nil {
 			return domain.Detail{}, fmt.Errorf("special case: %w", err)
 		}
+		// TODO: GO-4284 remove
 		if err := bs.addRelationLink(st, detail.Key); err != nil {
 			return domain.Detail{}, err
 		}
@@ -270,6 +271,7 @@ func (bs *basic) setDetailSpecialCases(st *state.State, detail domain.Detail) er
 	return nil
 }
 
+// TODO: GO-4284 remove
 func (bs *basic) addRelationLink(st *state.State, relationKey domain.RelationKey) error {
 	relLink, err := bs.objectStore.GetRelationLink(relationKey.String())
 	if err != nil || relLink == nil {

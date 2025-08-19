@@ -16,6 +16,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/undo"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/event"
+	"github.com/anyproto/anytype-heart/core/relationutils"
 	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
@@ -57,7 +58,7 @@ type Doc interface {
 	CombinedDetails() *domain.Details
 	LocalDetails() *domain.Details
 
-	GetRelationLinks() pbtypes.RelationLinks
+	AllRelationKeys() []domain.RelationKey
 
 	ObjectTypeKeys() []domain.TypeKey
 	ObjectTypeKey() domain.TypeKey
@@ -906,82 +907,11 @@ func (s *State) StringDebug() string {
 	return buf.String()
 }
 
-func (s *State) SetDetails(d *domain.Details) *State {
-	// TODO: GO-2062 Need to refactor details shortening, as it could cut string incorrectly
-	// if d != nil && d.Fields != nil {
-	//	shortenDetailsToLimit(s.rootId, d.Fields)
-	// }
-
-	local := d.CopyOnlyKeys(bundle.LocalAndDerivedRelationKeys...)
-	if local != nil && local.Len() > 0 {
-		for k, v := range local.Iterate() {
-			s.SetLocalDetail(k, v)
-		}
-		s.details = d.CopyWithoutKeys(bundle.LocalAndDerivedRelationKeys...)
-		return s
-	}
-	s.details = d
-	return s
-}
-
 // SetDetailAndBundledRelation sets the detail value and bundled relation in case it is missing
+// TODO: GO-4284 remove
 func (s *State) SetDetailAndBundledRelation(key domain.RelationKey, value domain.Value) {
 	s.AddBundledRelationLinks(key)
 	s.SetDetail(key, value)
-	return
-}
-
-func (s *State) SetLocalDetail(key domain.RelationKey, value domain.Value) {
-	if s.localDetails == nil && s.parent != nil {
-		d := s.parent.Details()
-		if d != nil {
-			// optimisation so we don't need to copy the struct if nothing has changed
-			if prev := d.Get(key); prev.Ok() && prev.Equal(value) {
-				return
-			}
-		}
-		s.localDetails = s.parent.LocalDetails().Copy()
-	}
-	if s.localDetails == nil {
-		s.localDetails = domain.NewDetails()
-	}
-	s.localDetails.Set(key, value)
-	return
-}
-
-func (s *State) SetLocalDetails(d *domain.Details) {
-	s.localDetails = d
-}
-
-func (s *State) AddDetails(details *domain.Details) {
-	for k, v := range details.Iterate() {
-		s.SetDetail(k, v)
-	}
-}
-
-func (s *State) SetDetail(key domain.RelationKey, value domain.Value) {
-	// TODO: GO-2062 Need to refactor details shortening, as it could cut string incorrectly
-	// value = shortenValueToLimit(s.rootId, key, value)
-
-	if slice.FindPos(bundle.LocalAndDerivedRelationKeys, key) > -1 {
-		s.SetLocalDetail(key, value)
-		return
-	}
-
-	if s.details == nil && s.parent != nil {
-		d := s.parent.Details()
-		if d != nil {
-			// optimisation so we don't need to copy the struct if nothing has changed
-			if prev := d.Get(key); prev.Ok() && prev.Equal(value) {
-				return
-			}
-			s.details = d.Copy()
-		}
-	}
-	if s.details == nil {
-		s.details = domain.NewDetails()
-	}
-	s.details.Set(key, value)
 	return
 }
 
@@ -1041,32 +971,6 @@ func (s *State) SetObjectTypeKeys(objectTypeKeys []domain.TypeKey) *State {
 	return s
 }
 
-func (s *State) InjectLocalDetails(localDetails *domain.Details) {
-	for k, v := range localDetails.Iterate() {
-		s.SetDetailAndBundledRelation(k, v)
-	}
-}
-
-func (s *State) LocalDetails() *domain.Details {
-	if s.localDetails == nil && s.parent != nil {
-		return s.parent.LocalDetails()
-	}
-
-	return s.localDetails
-}
-
-func (s *State) CombinedDetails() *domain.Details {
-	// TODO Implement combined details struct with two underlying details
-	return s.Details().Merge(s.LocalDetails())
-}
-
-func (s *State) Details() *domain.Details {
-	if s.details == nil && s.parent != nil {
-		return s.parent.Details()
-	}
-	return s.details
-}
-
 // ObjectTypeKeys returns the object types keys of the object
 // in order to get object type id you need to derive it for the space
 func (s *State) ObjectTypeKeys() []domain.TypeKey {
@@ -1119,39 +1023,19 @@ func (s *State) Snippet() string {
 	return textutil.TruncateEllipsized(builder.String(), snippetMaxSize)
 }
 
-func (s *State) FileRelationKeys() []domain.RelationKey {
-	var keys []domain.RelationKey
-	for _, rel := range s.GetRelationLinks() {
-		// coverId can contain both hash or predefined cover id
-		if rel.Format == model.RelationFormat_file {
-			key := domain.RelationKey(rel.Key)
-			if slice.FindPos(keys, key) == -1 {
-				keys = append(keys, key)
-			}
-		}
-		if rel.Key == bundle.RelationKeyCoverId.String() {
-			coverType := s.Details().GetInt64(bundle.RelationKeyCoverType)
-			if (coverType == 1 || coverType == 4 || coverType == 5) && slice.FindPos(keys, domain.RelationKey(rel.Key)) == -1 {
-				keys = append(keys, domain.RelationKey(rel.Key))
-			}
-		}
-	}
-	return keys
-}
-
 // IterateLinkedFiles iterates over all file object ids in blocks and details
-func (s *State) IterateLinkedFiles(proc func(id string)) {
+func (s *State) IterateLinkedFiles(fetcher relationutils.RelationFormatFetcher, proc func(id string)) {
 	s.Iterate(func(block simple.Block) (isContinue bool) {
 		if iter, ok := block.(simple.LinkedFilesIterator); ok {
 			iter.IterateLinkedFiles(proc)
 		}
 		return true
 	})
-	s.IterateLinkedFilesInDetails(proc)
+	s.IterateLinkedFilesInDetails(fetcher, proc)
 }
 
-func (s *State) IterateLinkedFilesInDetails(proc func(id string)) {
-	s.ModifyLinkedFilesInDetails(func(id string) string {
+func (s *State) IterateLinkedFilesInDetails(fetcher relationutils.RelationFormatFetcher, proc func(id string)) {
+	s.ModifyLinkedFilesInDetails(fetcher, func(id string) string {
 		proc(id)
 		return id
 	})
@@ -1159,13 +1043,13 @@ func (s *State) IterateLinkedFilesInDetails(proc func(id string)) {
 
 // ModifyLinkedFilesInDetails iterates over all file object ids in details and modifies them using modifier function.
 // Detail is saved only if at least one id is changed
-func (s *State) ModifyLinkedFilesInDetails(modifier func(id string) string) {
+func (s *State) ModifyLinkedFilesInDetails(fetcher relationutils.RelationFormatFetcher, modifier func(id string) string) {
 	details := s.Details()
 	if details == nil {
 		return
 	}
 
-	for _, key := range s.FileRelationKeys() {
+	for _, key := range s.FileRelationKeys(fetcher) {
 		if key == bundle.RelationKeyCoverId {
 			v := details.GetString(bundle.RelationKeyCoverId)
 			_, err := cid.Decode(v)
@@ -1181,14 +1065,18 @@ func (s *State) ModifyLinkedFilesInDetails(modifier func(id string) string) {
 
 // ModifyLinkedObjectsInDetails iterates over all object ids in details and modifies them using modifier function.
 // Detail is saved only if at least one id is changed
-func (s *State) ModifyLinkedObjectsInDetails(modifier func(id string) string) {
+func (s *State) ModifyLinkedObjectsInDetails(fetcher relationutils.RelationFormatFetcher, modifier func(id string) string) {
 	details := s.Details()
 	if details == nil {
 		return
 	}
-	for _, rel := range s.GetRelationLinks() {
-		if rel.Format == model.RelationFormat_object {
-			s.modifyIdsInDetail(details, domain.RelationKey(rel.Key), modifier)
+	for key := range s.iterateKeys() {
+		format, err := fetcher.GetRelationFormatByKey(s.SpaceID(), key)
+		if err != nil {
+			continue
+		}
+		if format == model.RelationFormat_object {
+			s.modifyIdsInDetail(details, key, modifier)
 		}
 	}
 }
@@ -1352,7 +1240,7 @@ func (s *State) Copy() *State {
 		rootId:                   s.rootId,
 		details:                  s.Details().Copy(),
 		localDetails:             s.LocalDetails().Copy(),
-		relationLinks:            s.GetRelationLinks(), // Get methods copy inside
+		relationLinks:            s.getRelationLinks(), // Get methods copy inside
 		objectTypeKeys:           objTypes,
 		noObjectType:             s.noObjectType,
 		migrationVersion:         s.migrationVersion,
@@ -1366,16 +1254,6 @@ func (s *State) Copy() *State {
 		deviceStore:              s.deviceStore,
 	}
 	return copy
-}
-
-func (s *State) HasRelation(key string) bool {
-	links := s.GetRelationLinks()
-	for _, link := range links {
-		if link.Key == key {
-			return true
-		}
-	}
-	return false
 }
 
 func (s *State) Len() (l int) {
@@ -1412,40 +1290,6 @@ func (s *State) ParentState() *State {
 // header change is the empty change without any blocks or details except protocol data
 func (s *State) IsTheHeaderChange() bool {
 	return s.changeId == s.rootId || s.changeId == "" && s.parent == nil
-}
-
-func (s *State) RemoveDetail(keys ...domain.RelationKey) (ok bool) {
-	// TODO It could be lazily copied only if actual deletion is happened
-	det := s.Details().Copy()
-	if det != nil {
-		for _, key := range keys {
-			if det.Has(key) {
-				det.Delete(key)
-				ok = true
-			}
-		}
-	}
-	if ok {
-		s.SetDetails(det)
-	}
-	return s.RemoveLocalDetail(keys...) || ok
-}
-
-func (s *State) RemoveLocalDetail(keys ...domain.RelationKey) (ok bool) {
-	// TODO It could be lazily copied only if actual deletion is happened
-	det := s.LocalDetails().Copy()
-	if det != nil {
-		for _, key := range keys {
-			if det.Has(key) {
-				det.Delete(key)
-				ok = true
-			}
-		}
-	}
-	if ok {
-		s.SetLocalDetails(det)
-	}
-	return
 }
 
 func (s *State) createOrCopyStoreFromParent() {
@@ -1761,9 +1605,9 @@ func (s *State) SetContext(context session.Context) {
 	s.ctx = context
 }
 
-// AddRelationLinks adds relation links to the state in case they are not already present
+// deprecated
 func (s *State) AddRelationLinks(links ...*model.RelationLink) {
-	relLinks := s.GetRelationLinks()
+	relLinks := s.getRelationLinks()
 	for _, l := range links {
 		if !relLinks.Has(l.Key) {
 			relLinks = append(relLinks, l)
@@ -1772,57 +1616,33 @@ func (s *State) AddRelationLinks(links ...*model.RelationLink) {
 	s.relationLinks = relLinks
 }
 
+// TODO: GO-4284 remove
 func (s *State) PickRelationLinks() pbtypes.RelationLinks {
+	return s.pickRelationLinks()
+}
+
+// TODO: GO-4284 remove
+func (s *State) pickRelationLinks() pbtypes.RelationLinks {
 	if s.relationLinks != nil {
 		return s.relationLinks
 	}
 	if s.parent != nil {
-		return s.parent.PickRelationLinks()
+		return s.parent.pickRelationLinks()
 	}
 	return nil
 }
 
-func (s *State) GetRelationLinks() pbtypes.RelationLinks {
+// TODO: GO-4284 remove
+func (s *State) getRelationLinks() pbtypes.RelationLinks {
 	if s.relationLinks != nil {
 		return s.relationLinks
 	}
 	if s.parent != nil {
-		parentLinks := s.parent.PickRelationLinks()
+		parentLinks := s.parent.pickRelationLinks()
 		s.relationLinks = parentLinks.Copy()
 		return s.relationLinks
 	}
 	return nil
-}
-
-func (s *State) RemoveRelation(keys ...domain.RelationKey) {
-	relLinks := s.GetRelationLinks()
-	relLinksFiltered := make(pbtypes.RelationLinks, 0, len(relLinks))
-	for _, link := range relLinks {
-		if slice.FindPos(keys, domain.RelationKey(link.Key)) >= 0 {
-			continue
-		}
-		relLinksFiltered = append(relLinksFiltered, &model.RelationLink{
-			Key:    link.Key,
-			Format: link.Format,
-		})
-	}
-	// remove detail value
-	s.RemoveDetail(keys...)
-	// remove from the list of featured relations
-	var foundInFeatured bool
-	featuredList := s.Details().GetStringList(bundle.RelationKeyFeaturedRelations)
-	featuredList = slice.Filter(featuredList, func(s string) bool {
-		if slice.FindPos(keys, domain.RelationKey(s)) == -1 {
-			return true
-		}
-		foundInFeatured = true
-		return false
-	})
-	if foundInFeatured {
-		s.SetDetail(bundle.RelationKeyFeaturedRelations, domain.StringList(featuredList))
-	}
-	s.relationLinks = relLinksFiltered
-	return
 }
 
 func (s *State) Descendants(rootId string) []simple.Block {
@@ -1892,8 +1712,9 @@ func (s *State) SelectRoots(ids []string) []string {
 	return res
 }
 
+// TODO: GO-4284 remove
 func (s *State) AddBundledRelationLinks(keys ...domain.RelationKey) {
-	existingLinks := s.PickRelationLinks()
+	existingLinks := s.pickRelationLinks()
 
 	var links []*model.RelationLink
 	for _, key := range keys {
