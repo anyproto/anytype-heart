@@ -3,14 +3,6 @@ name: Nightly Builds
 on:
   workflow_dispatch:
     inputs:
-      channel:
-        description: electron.builder channel
-        required: true
-        default: alpha
-        type: choice
-        options:
-          - alpha
-          - beta
       run-on-runner:
         description: 'Specify the runner to use'
         required: true
@@ -61,31 +53,6 @@ jobs:
         uses: maxim-lobanov/setup-xcode@v1.6.0
         with:
           xcode-version: '16.2'
-
-      - name: Nightly mode env settings
-        shell: bash
-        run: |
-          # choice channel name {{
-          if [[ -z "${{ github.event.inputs.channel }}" ]]; then
-            # choice default value for channel from ref name
-            if echo "${{ github.ref_name }}" | grep -q "beta"; then
-              CHANNEL="beta"
-            else
-              CHANNEL="alpha"
-            fi
-          else
-            CHANNEL="${{github.event.inputs.channel}}"
-          fi
-          echo "CHANNEL=$CHANNEL" >> $GITHUB_ENV
-          # }}
-          # choice s3 bucket for publishing {{
-          if [[ "$CHANNEL" == "beta" ]]; then
-            S3_BUCKET="${{secrets.NIGHTLY_AWS_S3_BUCKET_BETA}}"
-          else
-            S3_BUCKET="${{secrets.NIGHTLY_AWS_S3_BUCKET}}"
-          fi
-          echo "S3_BUCKET=$S3_BUCKET" >> $GITHUB_ENV
-          # }}
 
       - name: Set env vars
         env:
