@@ -76,7 +76,7 @@ func (f *formatFetcher) setupSub(spaceId string) (*spaceSubscription, error) {
 	})
 
 	if err != nil {
-		return nil, fmt.Errorf("failed to setup relation formats subscription: %v", err)
+		return nil, fmt.Errorf("failed to setup relation formats subscription: %w", err)
 	}
 
 	formats := map[domain.RelationKey]model.RelationFormat{}
@@ -93,7 +93,7 @@ func (f *formatFetcher) setupSub(spaceId string) (*spaceSubscription, error) {
 
 	sub := objectsubscription.NewFromQueue(queue, f.buildSubscriptionParams(spaceId))
 	if err = sub.Run(); err != nil {
-		return nil, fmt.Errorf("failed to run relation formats subscription: %v", err)
+		return nil, fmt.Errorf("failed to run relation formats subscription: %w", err)
 	}
 	spaceSub := &spaceSubscription{
 		sub:   sub,
