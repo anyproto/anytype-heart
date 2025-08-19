@@ -13,10 +13,8 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-// Parser handles parsing of query parameters into filters
 type Parser struct{}
 
-// NewParser creates a new filter parser
 func NewParser() *Parser {
 	return &Parser{}
 }
@@ -98,9 +96,7 @@ func (p *Parser) parseFilterValue(rawValue string, condition model.BlockContentD
 		}
 		return false, nil
 
-	case model.BlockContentDataviewFilter_In,
-		model.BlockContentDataviewFilter_NotIn,
-		model.BlockContentDataviewFilter_AllIn:
+	case model.BlockContentDataviewFilter_In, model.BlockContentDataviewFilter_NotIn, model.BlockContentDataviewFilter_AllIn:
 		if decodedValue == "" {
 			return []string{}, nil
 		}
