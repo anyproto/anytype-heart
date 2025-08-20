@@ -15,6 +15,8 @@ on:
         description: 'Nightly builds base version'
         required: true
         default: '0.44.0'
+  schedule:
+    - cron: '0 1 * * *' # every day at 1am (UTC)
 
 permissions:
   actions: 'write'
@@ -137,3 +139,25 @@ jobs:
           fail_on_unmatched_files: true
           generate_release_notes: true
           files: '.release/*'
+
+      # FAILURE - send to alerts channel
+      - name: Notify Slack (failure → alerts)
+        if: ${{ failure() }}
+        uses: ravsamhq/notify-slack-action@2.0.0
+        with:
+          status: ${{ job.status }}
+          notification_title: "❌ {workflow} / {job}"
+          message_format: "{emoji} *{job}* in *{workflow}* {status_message} — <{run_url}|Open run>"
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_ALERT_WEBHOOK }}
+
+      # SUCCESS - send to builds channel
+      - name: Notify Slack (ok → builds)
+        if: ${{ success() }}
+        uses: ravsamhq/notify-slack-action@2.0.0
+        with:
+          status: ${{ job.status }}
+          notification_title: "✅ {workflow} / {job}"
+          message_format: "{emoji} *{job}* in *{workflow}* {status_message} — <{run_url}|Open run>"
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_BUILD_WEBHOOK }}
