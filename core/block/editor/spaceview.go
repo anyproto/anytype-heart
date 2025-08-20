@@ -341,7 +341,7 @@ func (s *SpaceView) SetOrder(prevViewOrderId string) (string, error) {
 	return spaceOrderId, s.Apply(st)
 }
 
-func (s *SpaceView) SetAfterGivenView(viewOrderId string) error {
+func (s *SpaceView) SetAfterOrder(viewOrderId string) error {
 	st := s.NewState()
 	spaceOrderId := st.Details().GetString(bundle.RelationKeySpaceOrder)
 	if viewOrderId > spaceOrderId {
@@ -352,7 +352,7 @@ func (s *SpaceView) SetAfterGivenView(viewOrderId string) error {
 	return nil
 }
 
-func (s *SpaceView) SetBetweenViews(prevViewOrderId, afterViewOrderId string) error {
+func (s *SpaceView) SetBetweenOrders(prevViewOrderId, afterViewOrderId string) error {
 	st := s.NewState()
 	var before string
 	var err error
@@ -370,6 +370,16 @@ func (s *SpaceView) SetBetweenViews(prevViewOrderId, afterViewOrderId string) er
 	}
 	st.SetDetail(bundle.RelationKeySpaceOrder, domain.String(before))
 	return s.Apply(st)
+}
+
+func (s *SpaceView) UnsetOrder() error {
+	st := s.NewState()
+	st.RemoveDetail(bundle.RelationKeySpaceOrder)
+	return s.Apply(st)
+}
+
+func (s *SpaceView) GetOrder() string {
+	return s.Details().GetString(bundle.RelationKeySpaceOrder)
 }
 
 func stateSetAccessType(st *state.State, accessType spaceinfo.AccessType) {

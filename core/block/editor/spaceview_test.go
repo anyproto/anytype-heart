@@ -129,14 +129,14 @@ func TestSpaceView_SetOwner(t *testing.T) {
 	require.Equal(t, int64(125), fx.CombinedDetails().GetInt64(bundle.RelationKeyCreatedDate))
 }
 
-func TestSpaceView_SetAfterGivenView(t *testing.T) {
+func TestSpaceView_SetAfterOrder(t *testing.T) {
 	t.Run("set view after given id", func(t *testing.T) {
 		// given
 		fx := newSpaceViewFixture(t)
 		defer fx.finish()
 
 		// when
-		err := fx.SetAfterGivenView("viewOrderId")
+		err := fx.SetAfterOrder("viewOrderId")
 
 		// then
 		require.NoError(t, err)
@@ -152,7 +152,7 @@ func TestSpaceView_SetAfterGivenView(t *testing.T) {
 		require.NoError(t, err)
 
 		// when
-		err = fx.SetAfterGivenView("viewOrderId")
+		err = fx.SetAfterOrder("viewOrderId")
 
 		// then
 		require.NoError(t, err)
@@ -169,7 +169,7 @@ func TestSpaceView_SetAfterGivenView(t *testing.T) {
 		require.NoError(t, err)
 
 		// when
-		err = fx.SetAfterGivenView("spaceViewOrderId")
+		err = fx.SetAfterOrder("spaceViewOrderId")
 
 		// then
 		require.NoError(t, err)
@@ -185,7 +185,7 @@ func TestSpaceView_SetBetweenViews(t *testing.T) {
 		defer fx.finish()
 
 		// when
-		err := fx.SetBetweenViews("", "afterId")
+		err := fx.SetBetweenOrders("", "afterId")
 
 		// then
 		require.NoError(t, err)
@@ -200,7 +200,7 @@ func TestSpaceView_SetBetweenViews(t *testing.T) {
 		thirdSpaceView := lx.Next(secondSpaceView)
 
 		// when
-		err := fx.SetBetweenViews(secondSpaceView, thirdSpaceView)
+		err := fx.SetBetweenOrders(secondSpaceView, thirdSpaceView)
 
 		// then
 		require.NoError(t, err)
@@ -212,7 +212,7 @@ func TestSpaceView_SetBetweenViews(t *testing.T) {
 		defer fx.finish()
 
 		// when
-		err := fx.SetBetweenViews("afterId", "")
+		err := fx.SetBetweenOrders("afterId", "")
 
 		// then
 		require.Error(t, err)

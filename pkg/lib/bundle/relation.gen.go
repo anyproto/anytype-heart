@@ -9,7 +9,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-const RelationChecksum = "4e14a02496e8ccc15b9fe4287f48fcc5e3e4b157289e18554512da1b26fd4844"
+const RelationChecksum = "356ec2b76fd69c30dbb73cf921d2760db78d6fa1b6fefcc26bb5cc44a32cf860"
 const (
 	RelationKeyTag                                domain.RelationKey = "tag"
 	RelationKeyCamera                             domain.RelationKey = "camera"
@@ -162,6 +162,7 @@ const (
 	RelationKeyFileVariantOptions                 domain.RelationKey = "fileVariantOptions"
 	RelationKeyFileSourceChecksum                 domain.RelationKey = "fileSourceChecksum"
 	RelationKeySpaceOrder                         domain.RelationKey = "spaceOrder"
+	RelationKeyOptionOrder                        domain.RelationKey = "optionOrder"
 	RelationKeyIconName                           domain.RelationKey = "iconName"
 	RelationKeyRecommendedFeaturedRelations       domain.RelationKey = "recommendedFeaturedRelations"
 	RelationKeyRecommendedHiddenRelations         domain.RelationKey = "recommendedHiddenRelations"
@@ -1453,6 +1454,20 @@ var (
 			Key:              "oldAnytypeID",
 			MaxCount:         1,
 			Name:             "Old Anytype ID",
+			ReadOnly:         true,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
+		RelationKeyOptionOrder: {
+
+			DataSource:       model.Relation_details,
+			Description:      "Order of Relation option",
+			Format:           model.RelationFormat_longtext,
+			Hidden:           true,
+			Id:               "_broptionOrder",
+			Key:              "optionOrder",
+			MaxCount:         1,
+			Name:             "Option order",
 			ReadOnly:         true,
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,

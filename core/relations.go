@@ -7,6 +7,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block"
 	"github.com/anyproto/anytype-heart/core/block/detailservice"
 	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/core/order"
 	"github.com/anyproto/anytype-heart/pb"
 )
 
@@ -112,6 +113,27 @@ func (mw *Middleware) RelationListRemoveOption(cctx context.Context, request *pb
 func (mw *Middleware) RelationOptions(_ context.Context, _ *pb.RpcRelationOptionsRequest) *pb.RpcRelationOptionsResponse {
 	// TODO implement me
 	panic("implement me")
+}
+
+func (mw *Middleware) RelationOptionSetOrder(_ context.Context, req *pb.RpcRelationOptionSetOrderRequest) *pb.RpcRelationOptionSetOrderResponse {
+	orderIds, err := mustService[order.OrderSetter](mw).SetOptionsOrder(req.SpaceId, domain.RelationKey(req.RelationKey), req.RelationOptionOrder)
+	return &pb.RpcRelationOptionSetOrderResponse{
+		RelationOptionOrder: orderIds,
+		Error: &pb.RpcRelationOptionSetOrderResponseError{
+			Code:        mapErrorCode[pb.RpcRelationOptionSetOrderResponseErrorCode](err),
+			Description: getErrorDescription(err),
+		},
+	}
+}
+
+func (mw *Middleware) RelationOptionUnsetOrder(_ context.Context, req *pb.RpcRelationOptionUnsetOrderRequest) *pb.RpcRelationOptionUnsetOrderResponse {
+	err := mustService[order.OrderSetter](mw).UnsetOrder(req.RelationOptionId)
+	return &pb.RpcRelationOptionUnsetOrderResponse{
+		Error: &pb.RpcRelationOptionUnsetOrderResponseError{
+			Code:        mapErrorCode[pb.RpcRelationOptionUnsetOrderResponseErrorCode](err),
+			Description: getErrorDescription(err),
+		},
+	}
 }
 
 func (mw *Middleware) RelationListWithValue(_ context.Context, req *pb.RpcRelationListWithValueRequest) *pb.RpcRelationListWithValueResponse {

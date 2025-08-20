@@ -154,6 +154,8 @@ service ClientCommands {
     rpc ObjectCreateRelationOption (anytype.Rpc.Object.CreateRelationOption.Request) returns (anytype.Rpc.Object.CreateRelationOption.Response);
     rpc RelationListRemoveOption (anytype.Rpc.Relation.ListRemoveOption.Request) returns (anytype.Rpc.Relation.ListRemoveOption.Response);
     rpc RelationOptions (anytype.Rpc.Relation.Options.Request) returns (anytype.Rpc.Relation.Options.Response);
+    rpc RelationOptionSetOrder (anytype.Rpc.Relation.Option.SetOrder.Request) returns (anytype.Rpc.Relation.Option.SetOrder.Response);
+    rpc RelationOptionUnsetOrder (anytype.Rpc.Relation.Option.UnsetOrder.Request) returns (anytype.Rpc.Relation.Option.UnsetOrder.Response);
     rpc RelationListWithValue (anytype.Rpc.Relation.ListWithValue.Request) returns (anytype.Rpc.Relation.ListWithValue.Response);
 
     // Object Relations

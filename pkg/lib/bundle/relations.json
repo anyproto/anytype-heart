@@ -1552,6 +1552,16 @@
     "source": "details"
   },
   {
+    "description": "Order of Relation option",
+    "format": "longtext",
+    "hidden": true,
+    "key": "optionOrder",
+    "maxCount": 1,
+    "name": "Option order",
+    "readonly": true,
+    "source": "details"
+  },
+  {
     "description": "Choose icon for the type among custom Anytype icons",
     "format": "longtext",
     "hidden": true,
