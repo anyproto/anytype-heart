@@ -164,6 +164,9 @@ func (t *InMemoryStore) bindCid(spaceId string, fileId domain.FileId, cId cid.Ci
 	t.spaceCids[spaceId][cId] = struct{}{}
 	return nil
 }
+func (t *InMemoryStore) AddToFileMany(ctx context.Context, req *fileproto.BlockPushManyRequest) (err error) {
+	return nil
+}
 
 func (t *InMemoryStore) AddToFile(ctx context.Context, spaceId string, fileId domain.FileId, bs []blocks.Block) (err error) {
 	t.mu.Lock()

@@ -38,10 +38,6 @@ func (w *spaceWaiter) waitSpace(ctx context.Context, spaceId string) (sp clients
 	if spaceId == techSpace.TechSpaceId() {
 		return techSpace, nil
 	}
-	// wait until we start the space view loading process
-	if err := techSpace.WaitViews(); err != nil {
-		return nil, fmt.Errorf("wait views: %w", err)
-	}
 	// if there is no such space view then there is no space
 	if spaceId != addr.AnytypeMarketplaceWorkspace {
 		exists, err := techSpace.SpaceViewExists(ctx, spaceId)

@@ -491,6 +491,13 @@ func (s *service) RegisterIdentity(spaceId string, identity string, encryptionKe
 			initialized: isInitialized,
 		}
 	}
+
+	if identity == s.myIdentity {
+		ownProfile := s.ownProfileSubscription.prepareIdentityProfile()
+		observerCallback(identity, ownProfile)
+		return nil
+	}
+
 	select {
 	case s.identityForceUpdate <- struct{}{}:
 	default:

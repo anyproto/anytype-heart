@@ -70,6 +70,53 @@ func (_c *MockparticipantRemover_ApproveLeave_Call) RunAndReturn(run func(contex
 	return _c
 }
 
+// Leave provides a mock function with given fields: ctx, spaceId
+func (_m *MockparticipantRemover) Leave(ctx context.Context, spaceId string) error {
+	ret := _m.Called(ctx, spaceId)
+
+	if len(ret) == 0 {
+		panic("no return value specified for Leave")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, string) error); ok {
+		r0 = rf(ctx, spaceId)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// MockparticipantRemover_Leave_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Leave'
+type MockparticipantRemover_Leave_Call struct {
+	*mock.Call
+}
+
+// Leave is a helper method to define mock.On call
+//   - ctx context.Context
+//   - spaceId string
+func (_e *MockparticipantRemover_Expecter) Leave(ctx interface{}, spaceId interface{}) *MockparticipantRemover_Leave_Call {
+	return &MockparticipantRemover_Leave_Call{Call: _e.mock.On("Leave", ctx, spaceId)}
+}
+
+func (_c *MockparticipantRemover_Leave_Call) Run(run func(ctx context.Context, spaceId string)) *MockparticipantRemover_Leave_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(string))
+	})
+	return _c
+}
+
+func (_c *MockparticipantRemover_Leave_Call) Return(_a0 error) *MockparticipantRemover_Leave_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockparticipantRemover_Leave_Call) RunAndReturn(run func(context.Context, string) error) *MockparticipantRemover_Leave_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // NewMockparticipantRemover creates a new instance of MockparticipantRemover. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.
 // The first argument is typically a *testing.T value.
 func NewMockparticipantRemover(t interface {

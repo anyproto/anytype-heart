@@ -19,10 +19,12 @@ import (
 	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/core/files/filehelper"
 	rpcstore2 "github.com/anyproto/anytype-heart/core/files/filestorage/rpcstore"
+	"github.com/anyproto/anytype-heart/core/syncstatus/filesyncstatus"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/datastore/anystoreprovider"
 	"github.com/anyproto/anytype-heart/util/keyvaluestore"
 	"github.com/anyproto/anytype-heart/util/persistentqueue"
+	"github.com/anyproto/anytype-heart/util/timeid"
 )
 
 const CName = "filesync"
@@ -31,18 +33,13 @@ var log = logger.NewNamed(CName)
 
 var loopTimeout = time.Minute
 
-type StatusCallback func(fileObjectId string, fileId domain.FullFileId) error
-type LimitCallback func(fileObjectId string, fileId domain.FullFileId, bytesLeft float64) error
-type DeleteCallback func(fileObjectId domain.FullFileId)
+type StatusCallback func(fileObjectId string, fileId domain.FullFileId, status filesyncstatus.Status) error
 
 type FileSync interface {
 	AddFile(req AddFileRequest) (err error)
 	UploadSynchronously(ctx context.Context, spaceId string, fileId domain.FileId) error
-	OnUploadStarted(StatusCallback)
-	OnUploaded(StatusCallback)
-	OnLimited(LimitCallback)
+	OnStatusUpdated(StatusCallback)
 	CancelDeletion(objectId string, fileId domain.FullFileId) (err error)
-	OnDelete(DeleteCallback)
 	DeleteFile(objectId string, fileId domain.FullFileId) (err error)
 	DeleteFileSynchronously(fileId domain.FullFileId) (err error)
 	UpdateNodeUsage(ctx context.Context) error
@@ -65,26 +62,43 @@ type SyncStatus struct {
 	QueueLen int
 }
 
+type statusUpdateItem struct {
+	FileObjectId string
+	FileId       string
+	SpaceId      string
+	Timestamp    int64
+	Status       int
+}
+
+func (it *statusUpdateItem) Key() string {
+	return it.FileObjectId
+}
+
 type fileSync struct {
 	rpcStore        rpcstore2.RpcStore
 	loopCtx         context.Context
 	loopCancel      context.CancelFunc
 	dagService      ipld.DAGService
 	eventSender     event.Sender
-	onUploaded      []StatusCallback
-	onUploadStarted StatusCallback
-	onLimited       LimitCallback
-	onDelete        DeleteCallback
+	onStatusUpdated []StatusCallback
 
-	uploadingQueue            *persistentqueue.Queue[*QueueItem]
-	retryUploadingQueue       *persistentqueue.Queue[*QueueItem]
-	deletionQueue             *persistentqueue.Queue[*deletionQueueItem]
-	retryDeletionQueue        *persistentqueue.Queue[*deletionQueueItem]
+	uploadingQueue        *persistentqueue.Queue[*QueueItem]
+	retryUploadingQueue   *persistentqueue.Queue[*QueueItem]
+	limitedUploadingQueue *persistentqueue.Queue[*QueueItem]
+
+	deletionQueue      *persistentqueue.Queue[*deletionQueueItem]
+	retryDeletionQueue *persistentqueue.Queue[*deletionQueueItem]
+	statusUpdateQueue  *persistentqueue.Queue[*statusUpdateItem]
+
 	blocksAvailabilityCache   keyvaluestore.Store[*blocksAvailabilityResponse]
 	isLimitReachedErrorLogged keyvaluestore.Store[bool]
 	nodeUsageCache            keyvaluestore.Store[NodeUsage]
+	pendingUploads            keyvaluestore.Store[*QueueItem]
 
-	limitManager *uploadLimitManager
+	limitManager      *uploadLimitManager
+	uploadStatusIndex *uploadStatusIndex
+	requestsBatcher   *requestsBatcher
+	requestsCh        chan blockPushManyRequest
 
 	importEventsMutex sync.Mutex
 	importEvents      []*pb.Event
@@ -128,7 +142,14 @@ func (s *fileSync) Init(a *app.App) (err error) {
 	if err != nil {
 		return fmt.Errorf("init retry uploading queue storage: %w", err)
 	}
-	s.retryUploadingQueue = persistentqueue.New(retryUploadingQueueStorage, log.Logger, s.retryingHandler, queueItemLess, persistentqueue.WithRetryPause(loopTimeout))
+	// Retry queue should have the same handler as basic uploading queue
+	s.retryUploadingQueue = persistentqueue.New(retryUploadingQueueStorage, log.Logger, s.uploadingHandler, queueItemLess, persistentqueue.WithRetryPause(loopTimeout))
+
+	limitedUploadingQueueStorage, err := persistentqueue.NewAnystoreStorage(db, "filesync/limited_uploading", makeQueueItem)
+	if err != nil {
+		return fmt.Errorf("init retry uploading queue storage: %w", err)
+	}
+	s.limitedUploadingQueue = persistentqueue.New(limitedUploadingQueueStorage, log.Logger, s.retryingHandler, queueItemLess, persistentqueue.WithRetryPause(loopTimeout))
 
 	deletionQueueStorage, err := persistentqueue.NewAnystoreStorage(db, "filesync/deletion", makeDeletionQueueItem)
 	if err != nil {
@@ -142,6 +163,31 @@ func (s *fileSync) Init(a *app.App) (err error) {
 	}
 	s.retryDeletionQueue = persistentqueue.New(retryDeletionQueueStorage, log.Logger, s.retryDeletionHandler, nil, persistentqueue.WithRetryPause(loopTimeout))
 
+	statusUpdateQueueStorage, err := persistentqueue.NewAnystoreStorage(db, "filesync/status_update", makeStatusUpdateItem)
+	if err != nil {
+		return fmt.Errorf("init retry deletion queue storage: %w", err)
+	}
+	s.statusUpdateQueue = persistentqueue.New(statusUpdateQueueStorage, log.Logger, s.statusUpdateHandler, func(one, other *statusUpdateItem) bool {
+		return one.Timestamp < other.Timestamp
+	})
+
+	s.pendingUploads, err = keyvaluestore.NewJson[*QueueItem](db, "filesync/pending_uploads")
+	if err != nil {
+		return fmt.Errorf("init limit reached error logged cache: %w", err)
+	}
+
+	s.uploadStatusIndex = newUploadStatusIndex(func(fileObjectId string, fullFileId domain.FullFileId, status filesyncstatus.Status) error {
+		return s.statusUpdateQueue.Add(&statusUpdateItem{
+			FileObjectId: fileObjectId,
+			FileId:       fullFileId.FileId.String(),
+			SpaceId:      fullFileId.SpaceId,
+			Timestamp:    timeid.NewNano(),
+			Status:       int(status),
+		})
+	})
+	s.requestsCh = make(chan blockPushManyRequest, 10)
+	s.requestsBatcher = newRequestsBatcher(1024*1024+14, 100*time.Millisecond, s.requestsCh)
+
 	return
 }
 
@@ -149,20 +195,8 @@ func (s *fileSync) dagServiceForSpace(spaceID string) ipld.DAGService {
 	return filehelper.NewDAGServiceWithSpaceID(spaceID, s.dagService)
 }
 
-func (s *fileSync) OnUploaded(callback StatusCallback) {
-	s.onUploaded = append(s.onUploaded, callback)
-}
-
-func (s *fileSync) OnUploadStarted(callback StatusCallback) {
-	s.onUploadStarted = callback
-}
-
-func (s *fileSync) OnLimited(callback LimitCallback) {
-	s.onLimited = callback
-}
-
-func (s *fileSync) OnDelete(callback DeleteCallback) {
-	s.onDelete = callback
+func (s *fileSync) OnStatusUpdated(callback StatusCallback) {
+	s.onStatusUpdated = append(s.onStatusUpdated, callback)
 }
 
 func (s *fileSync) Name() (name string) {
@@ -180,11 +214,17 @@ func (s *fileSync) Run(ctx context.Context) (err error) {
 
 	s.uploadingQueue.Run()
 	s.retryUploadingQueue.Run()
+	s.limitedUploadingQueue.Run()
 	s.deletionQueue.Run()
 	s.retryDeletionQueue.Run()
+	s.statusUpdateQueue.Run()
 
 	s.closeWg.Add(1)
 	go s.runNodeUsageUpdater()
+	go s.requestsBatcher.run(s.loopCtx)
+	for range 10 {
+		go s.runUploader()
+	}
 
 	return
 }

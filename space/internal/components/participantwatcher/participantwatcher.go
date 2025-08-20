@@ -28,7 +28,6 @@ var log = logger.NewNamed(CName)
 type ParticipantWatcher interface {
 	app.ComponentRunnable
 	WatchParticipant(ctx context.Context, space clientspace.Space, accState list.AccountState) error
-	UpdateAccountParticipantFromProfile(ctx context.Context, space clientspace.Space) error
 	UpdateParticipantFromAclState(ctx context.Context, space clientspace.Space, accState list.AccountState) error
 }
 

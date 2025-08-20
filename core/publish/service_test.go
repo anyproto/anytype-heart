@@ -43,6 +43,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/notifications/mock_notifications"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
+	"github.com/anyproto/anytype-heart/pkg/lib/core"
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
@@ -171,6 +172,7 @@ func TestPublish(t *testing.T) {
 			exportService:        exp,
 			publishClientService: publishClient,
 			identityService:      identityService,
+			tempDirService:       core.NewTempDirService(),
 		}
 
 		// when
@@ -227,6 +229,7 @@ func TestPublish(t *testing.T) {
 			publishClientService: publishClient,
 			identityService:      identityService,
 			inviteService:        inviteService,
+			tempDirService:       core.NewTempDirService(),
 		}
 
 		// when
@@ -276,6 +279,7 @@ func TestPublish(t *testing.T) {
 			publishClientService: publishClient,
 			identityService:      identityService,
 			inviteService:        inviteService,
+			tempDirService:       core.NewTempDirService(),
 		}
 
 		// when
@@ -335,6 +339,7 @@ func TestPublish(t *testing.T) {
 			publishClientService: publishClient,
 			identityService:      identityService,
 			inviteService:        inviteService,
+			tempDirService:       core.NewTempDirService(),
 		}
 
 		// when
@@ -382,6 +387,7 @@ func TestPublish(t *testing.T) {
 			exportService:        exp,
 			publishClientService: publishClient,
 			identityService:      identityService,
+			tempDirService:       core.NewTempDirService(),
 		}
 
 		// when
@@ -436,6 +442,7 @@ func TestPublish(t *testing.T) {
 			exportService:   exp,
 			identityService: identityService,
 			inviteService:   inviteService,
+			tempDirService:  core.NewTempDirService(),
 		}
 
 		// when
@@ -484,6 +491,7 @@ func TestPublish(t *testing.T) {
 			exportService:   exp,
 			identityService: identityService,
 			inviteService:   inviteService,
+			tempDirService:  core.NewTempDirService(),
 		}
 
 		// when
@@ -512,6 +520,7 @@ func TestService_GetStatus(t *testing.T) {
 		}
 		svc := &service{
 			publishClientService: publishClientService,
+			tempDirService:       core.NewTempDirService(),
 		}
 
 		// when
@@ -547,6 +556,7 @@ func TestService_PublishingList(t *testing.T) {
 		svc := &service{
 			objectStore:          objectstore.NewStoreFixture(t),
 			publishClientService: publishClientService,
+			tempDirService:       core.NewTempDirService(),
 		}
 
 		// when
@@ -605,6 +615,7 @@ func TestService_PublishingList(t *testing.T) {
 		svc := &service{
 			publishClientService: publishClientService,
 			objectStore:          storeFixture,
+			tempDirService:       core.NewTempDirService(),
 		}
 
 		// when
@@ -669,6 +680,7 @@ func TestService_PublishingList(t *testing.T) {
 		svc := &service{
 			publishClientService: publishClientService,
 			objectStore:          storeFixture,
+			tempDirService:       core.NewTempDirService(),
 		}
 
 		// when

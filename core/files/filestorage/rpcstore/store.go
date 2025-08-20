@@ -29,6 +29,7 @@ type RpcStore interface {
 	CheckAvailability(ctx context.Context, spaceID string, cids []cid.Cid) (checkResult []*fileproto.BlockAvailability, err error)
 	BindCids(ctx context.Context, spaceID string, fileId domain.FileId, cids []cid.Cid) (err error)
 
+	AddToFileMany(ctx context.Context, req *fileproto.BlockPushManyRequest) error
 	AddToFile(ctx context.Context, spaceId string, fileId domain.FileId, bs []blocks.Block) (err error)
 	DeleteFiles(ctx context.Context, spaceId string, fileIds ...domain.FileId) (err error)
 	SpaceInfo(ctx context.Context, spaceId string) (info *fileproto.SpaceInfoResponse, err error)
@@ -67,7 +68,7 @@ func (s *store) Get(ctx context.Context, k cid.Cid) (b blocks.Block, err error) 
 		s.trafficStatistics.inbound.Add(int64(len(data)))
 
 		return
-	}, k); err != nil {
+	}); err != nil {
 		return
 	}
 	if err := waitResult(s.backgroundCtx, ctx, ready); err != nil {
@@ -103,7 +104,7 @@ func (s *store) GetMany(ctx context.Context, ks []cid.Cid) <-chan blocks.Block {
 	}
 	ctx = context.WithValue(ctx, operationNameKey, "getMany")
 	for _, k := range ks {
-		if err := s.cm.ReadOp(ctx, ready, newGetFunc(k), k); err != nil {
+		if err := s.cm.ReadOp(ctx, ready, newGetFunc(k)); err != nil {
 			log.Error("getMany: can't add tasks", zap.Error(err))
 			return closedBlockChan
 		}
@@ -144,6 +145,32 @@ func (s *store) Add(ctx context.Context, bs []blocks.Block) error {
 	return ErrUnsupported
 }
 
+func (s *store) AddToFileMany(ctx context.Context, req *fileproto.BlockPushManyRequest) error {
+	if len(req.FileBlocks) == 0 {
+		return nil
+	}
+
+	var (
+		ready = make(chan result, 1)
+	)
+	op := func(c *client) error {
+		return c.putMany(ctx, req)
+	}
+	ctx = context.WithValue(ctx, operationNameKey, "addToFileMany")
+	if err := s.cm.WriteOp(ctx, ready, op); err != nil {
+		return err
+	}
+	select {
+	case res := <-ready:
+		if res.err != nil {
+			return res.err
+		}
+	case <-ctx.Done():
+		return ctx.Err()
+	}
+	return nil
+}
+
 func (s *store) AddToFile(ctx context.Context, spaceID string, fileId domain.FileId, bs []blocks.Block) error {
 	if len(bs) == 0 {
 		return nil
@@ -159,7 +186,7 @@ func (s *store) AddToFile(ctx context.Context, spaceID string, fileId domain.Fil
 	}
 	ctx = context.WithValue(ctx, operationNameKey, "addToFile")
 	for _, b := range bs {
-		if err := s.cm.WriteOp(ctx, ready, newPutFunc(b), b.Cid()); err != nil {
+		if err := s.cm.WriteOp(ctx, ready, newPutFunc(b)); err != nil {
 			return err
 		}
 	}
@@ -238,7 +265,7 @@ func writeOperation[T any](backgroundCtx context.Context, ctx context.Context, s
 		var opErr error
 		res, opErr = fn(c)
 		return opErr
-	}, cid.Cid{}); err != nil {
+	}); err != nil {
 		return defaultRes, err
 	}
 	if err := waitResult(backgroundCtx, ctx, ready); err != nil {

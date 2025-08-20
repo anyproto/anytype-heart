@@ -50,7 +50,6 @@ var spaceViewRequiredRelations = []domain.RelationKey{
 }
 
 type spaceService interface {
-	OnViewUpdated(info spaceinfo.SpacePersistentInfo)
 	OnWorkspaceChanged(spaceId string, details *domain.Details)
 	PersonalSpaceId() string
 }
@@ -96,7 +95,6 @@ func (s *SpaceView) Init(ctx *smartblock.InitContext) (err error) {
 		SetRemoteStatus(spaceinfo.RemoteStatusUnknown).
 		UpdateDetails(ctx.State).
 		Log(log)
-	s.spaceService.OnViewUpdated(newInfo)
 	s.AddHook(s.afterApply, smartblock.HookAfterApply)
 	return
 }
@@ -141,6 +139,12 @@ func (s *SpaceView) SetOwner(ownerId string, createdDate int64) (err error) {
 		st.SetDetailAndBundledRelation(bundle.RelationKeyCreatedDate, domain.Int64(createdDate))
 	}
 	st.SetDetailAndBundledRelation(bundle.RelationKeyCreator, domain.String(ownerId))
+	return s.Apply(st)
+}
+
+func (s *SpaceView) SetMyParticipantStatus(status model.ParticipantStatus) (err error) {
+	st := s.NewState()
+	st.SetDetailAndBundledRelation(bundle.RelationKeyMyParticipantStatus, domain.Int64(int64(status)))
 	return s.Apply(st)
 }
 
@@ -219,7 +223,6 @@ func (s *SpaceView) GetSharedSpacesLimit() (limit int) {
 }
 
 func (s *SpaceView) afterApply(info smartblock.ApplyInfo) (err error) {
-	s.spaceService.OnViewUpdated(s.getSpacePersistentInfo(info.State))
 	return nil
 }
 
