@@ -10,9 +10,7 @@ import (
 
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/app/logger"
-	"github.com/anyproto/any-sync/commonfile/fileproto"
 	"github.com/anyproto/any-sync/commonfile/fileservice"
-	"github.com/ipfs/go-cid"
 	ipld "github.com/ipfs/go-ipld-format"
 	"go.uber.org/zap"
 
@@ -100,7 +98,7 @@ type fileSync struct {
 	limitManager      *uploadLimitManager
 	uploadStatusIndex *uploadStatusIndex
 	requestsBatcher   *requestsBatcher
-	requestsCh        chan *fileproto.BlockPushManyRequest
+	requestsCh        chan blockPushManyRequest
 
 	importEventsMutex sync.Mutex
 	importEvents      []*pb.Event
@@ -187,7 +185,7 @@ func (s *fileSync) Init(a *app.App) (err error) {
 			Status:       int(status),
 		})
 	})
-	s.requestsCh = make(chan *fileproto.BlockPushManyRequest, 10)
+	s.requestsCh = make(chan blockPushManyRequest, 10)
 	s.requestsBatcher = newRequestsBatcher(1024*1024+14, 100*time.Millisecond, s.requestsCh)
 
 	return
@@ -229,32 +227,6 @@ func (s *fileSync) Run(ctx context.Context) (err error) {
 	}
 
 	return
-}
-
-func (s *fileSync) runUploader() {
-	for {
-		select {
-		case <-s.loopCtx.Done():
-			return
-		case req := <-s.requestsCh:
-			err := s.rpcStore.AddToFileMany(s.loopCtx, req)
-			if err != nil {
-				log.Error("add to file many:", zap.Error(err))
-			} else {
-				for _, fb := range req.FileBlocks {
-					for _, b := range fb.Blocks {
-						c, err := cid.Cast(b.Cid)
-						if err != nil {
-							log.Error("failed to parse block cid", zap.Error(err))
-						} else {
-							s.uploadStatusIndex.remove(fb.FileId, c)
-						}
-					}
-				}
-			}
-			// TODO Retry mechanism
-		}
-	}
 }
 
 func (s *fileSync) Close(ctx context.Context) error {

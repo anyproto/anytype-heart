@@ -337,7 +337,7 @@ func (s *fileSync) uploadFile(ctx context.Context, spaceLimits *spaceUsage, it *
 	var totalBytesUploaded int
 
 	err = s.walkFileBlocks(ctx, it.SpaceId, it.FileId, it.Variants, func(fileBlocks []blocks.Block) error {
-		bytesToUpload, err := s.uploadOrBindBlocks(ctx, it.SpaceId, it.FileId, fileBlocks, blocksAvailability.cidsToUpload)
+		bytesToUpload, err := s.uploadOrBindBlocks(ctx, it.SpaceId, it.FileId, it.ObjectId, fileBlocks, blocksAvailability.cidsToUpload)
 		if err != nil {
 			return fmt.Errorf("select blocks to upload: %w", err)
 		}
@@ -345,7 +345,7 @@ func (s *fileSync) uploadFile(ctx context.Context, spaceLimits *spaceUsage, it *
 		return nil
 	})
 	if err != nil {
-		if strings.Contains(err.Error(), fileprotoerr.ErrSpaceLimitExceeded.Error()) {
+		if isNodeLimitReachedError(err) {
 			// Unbind partially uploaded file
 			err = s.rpcStore.DeleteFiles(ctx, it.SpaceId, it.FileId)
 			if err != nil {
@@ -491,7 +491,7 @@ func (s *fileSync) checkBlocksAvailability(ctx context.Context, fileObjectId str
 	return &response, nil
 }
 
-func (s *fileSync) uploadOrBindBlocks(ctx context.Context, spaceId string, fileId domain.FileId, fileBlocks []blocks.Block, needToUpload map[cid.Cid]struct{}) (int, error) {
+func (s *fileSync) uploadOrBindBlocks(ctx context.Context, spaceId string, fileId domain.FileId, objectId string, fileBlocks []blocks.Block, needToUpload map[cid.Cid]struct{}) (int, error) {
 	var (
 		bytesToUpload  int
 		blocksToUpload []blocks.Block
@@ -512,10 +512,22 @@ func (s *fileSync) uploadOrBindBlocks(ctx context.Context, spaceId string, fileI
 		if bindErr := s.rpcStore.BindCids(ctx, spaceId, fileId, cidsToBind); bindErr != nil {
 			return 0, fmt.Errorf("bind cids: %w", bindErr)
 		}
+		if len(blocksToUpload) == 0 {
+			err := s.statusUpdateQueue.Add(&statusUpdateItem{
+				FileObjectId: objectId,
+				FileId:       fileId.String(),
+				SpaceId:      spaceId,
+				Timestamp:    timeid.NewNano(),
+				Status:       int(filesyncstatus.Synced),
+			})
+			if err != nil {
+				return 0, fmt.Errorf("add to status update queue: %w", err)
+			}
+		}
 	}
 
 	if len(blocksToUpload) > 0 {
-		err := s.requestsBatcher.addFile(spaceId, fileId.String(), blocksToUpload)
+		err := s.requestsBatcher.addFile(spaceId, fileId.String(), objectId, blocksToUpload)
 		if err != nil {
 			return 0, fmt.Errorf("add to file: %w", err)
 		}
@@ -525,4 +537,11 @@ func (s *fileSync) uploadOrBindBlocks(ctx context.Context, spaceId string, fileI
 
 func isObjectDeletedError(err error) bool {
 	return errors.Is(err, spacestorage.ErrTreeStorageAlreadyDeleted) || errors.Is(err, peer.ErrPeerIdNotFoundInContext) || errors.Is(err, domain.ErrObjectIsDeleted)
+}
+
+func isNodeLimitReachedError(err error) bool {
+	if err == nil {
+		return false
+	}
+	return strings.Contains(err.Error(), fileprotoerr.ErrSpaceLimitExceeded.Error())
 }

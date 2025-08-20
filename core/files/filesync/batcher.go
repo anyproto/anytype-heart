@@ -12,6 +12,7 @@ import (
 
 type fileBatch struct {
 	fileId    string
+	objectId  string
 	spaceId   string
 	totalSize int
 	blocks    []blocks.Block
@@ -31,7 +32,7 @@ func (b *fileBatch) addBlock(block blocks.Block, maxBatchSize int) bool {
 	return true
 }
 
-func (b *fileBatch) buildRequest() *fileproto.BlockPushManyRequest {
+func (b *fileBatch) buildRequest() blockPushManyRequest {
 	bs := make([]*fileproto.Block, 0, len(b.blocks))
 	for _, block := range b.blocks {
 		bs = append(bs, &fileproto.Block{
@@ -39,12 +40,18 @@ func (b *fileBatch) buildRequest() *fileproto.BlockPushManyRequest {
 			Data: block.RawData(),
 		})
 	}
-	return &fileproto.BlockPushManyRequest{
-		FileBlocks: []*fileproto.FileBlocks{
-			{
-				SpaceId: b.spaceId,
-				FileId:  b.fileId,
-				Blocks:  bs,
+
+	return blockPushManyRequest{
+		fileIdToObjectId: map[string]string{
+			b.fileId: b.objectId,
+		},
+		req: &fileproto.BlockPushManyRequest{
+			FileBlocks: []*fileproto.FileBlocks{
+				{
+					SpaceId: b.spaceId,
+					FileId:  b.fileId,
+					Blocks:  bs,
+				},
 			},
 		},
 	}
@@ -56,12 +63,13 @@ func (b *fileBatch) reset() {
 }
 
 type mixedBatch struct {
-	totalSize       int
-	files           map[string][]blocks.Block
-	fileIdToSpaceId map[string]string
+	totalSize        int
+	files            map[string][]blocks.Block
+	fileIdToObjectId map[string]string
+	fileIdToSpaceId  map[string]string
 }
 
-func (b *mixedBatch) addBlock(spaceId string, fileId string, block blocks.Block, maxBatchSize int) bool {
+func (b *mixedBatch) addBlock(spaceId string, fileId string, objectId string, block blocks.Block, maxBatchSize int) bool {
 	blockSize := len(block.RawData())
 	if b.totalSize+blockSize > maxBatchSize {
 		return false
@@ -69,10 +77,11 @@ func (b *mixedBatch) addBlock(spaceId string, fileId string, block blocks.Block,
 	b.totalSize += blockSize
 	b.files[fileId] = append(b.files[fileId], block)
 	b.fileIdToSpaceId[fileId] = spaceId
+	b.fileIdToObjectId[fileId] = objectId
 	return true
 }
 
-func (b *mixedBatch) buildRequest() *fileproto.BlockPushManyRequest {
+func (b *mixedBatch) buildRequest() blockPushManyRequest {
 	fileBlocks := make([]*fileproto.FileBlocks, 0, len(b.files))
 	for fileId, bs := range b.files {
 		reqBlocks := make([]*fileproto.Block, 0, len(bs))
@@ -88,31 +97,31 @@ func (b *mixedBatch) buildRequest() *fileproto.BlockPushManyRequest {
 			Blocks:  reqBlocks,
 		})
 	}
-	return &fileproto.BlockPushManyRequest{
-		FileBlocks: fileBlocks,
+	return blockPushManyRequest{
+		fileIdToObjectId: b.fileIdToObjectId,
+		req: &fileproto.BlockPushManyRequest{
+			FileBlocks: fileBlocks,
+		},
 	}
 }
 
 func (b *mixedBatch) reset() {
 	b.totalSize = 0
-	for fileId := range b.files {
-		delete(b.files, fileId)
-	}
-	for fileId := range b.fileIdToSpaceId {
-		delete(b.fileIdToSpaceId, fileId)
-	}
+	b.files = nil
+	b.fileIdToObjectId = nil
+	b.fileIdToSpaceId = nil
 }
 
 type requestsBatcher struct {
 	maxBatchSize int
 	maxBatchWait time.Duration
-	requests     chan<- *fileproto.BlockPushManyRequest
+	requests     chan<- blockPushManyRequest
 
 	lock        sync.Mutex
 	fileBatches map[string]*fileBatch
 }
 
-func newRequestsBatcher(maxBatchSize int, maxBatchWait time.Duration, requestCh chan<- *fileproto.BlockPushManyRequest) *requestsBatcher {
+func newRequestsBatcher(maxBatchSize int, maxBatchWait time.Duration, requestCh chan<- blockPushManyRequest) *requestsBatcher {
 	return &requestsBatcher{
 		maxBatchSize: maxBatchSize,
 		maxBatchWait: maxBatchWait,
@@ -133,15 +142,16 @@ func (b *requestsBatcher) run(ctx context.Context) {
 	}
 }
 
-func (b *requestsBatcher) addFile(spaceId string, fileId string, blocks []blocks.Block) error {
+func (b *requestsBatcher) addFile(spaceId string, fileId string, objectId string, blocks []blocks.Block) error {
 	b.lock.Lock()
 	defer b.lock.Unlock()
 
 	batch, ok := b.fileBatches[fileId]
 	if !ok {
 		batch = &fileBatch{
-			spaceId: spaceId,
-			fileId:  fileId,
+			spaceId:  spaceId,
+			fileId:   fileId,
+			objectId: objectId,
 		}
 	}
 
@@ -177,17 +187,18 @@ func (b *requestsBatcher) tick() {
 		if time.Since(batch.createdAt) > b.maxBatchWait {
 			if lastMixedBatch == nil {
 				lastMixedBatch = &mixedBatch{
-					files:           make(map[string][]blocks.Block),
-					fileIdToSpaceId: make(map[string]string),
+					files:            make(map[string][]blocks.Block),
+					fileIdToSpaceId:  make(map[string]string),
+					fileIdToObjectId: make(map[string]string),
 				}
 			}
 
 			for _, block := range batch.blocks {
-				ok := lastMixedBatch.addBlock(batch.spaceId, fileId, block, b.maxBatchSize)
+				ok := lastMixedBatch.addBlock(batch.spaceId, fileId, batch.fileId, block, b.maxBatchSize)
 				if !ok {
 					b.enqueue(lastMixedBatch)
 					lastMixedBatch.reset()
-					lastMixedBatch.addBlock(batch.spaceId, fileId, block, b.maxBatchSize)
+					lastMixedBatch.addBlock(batch.spaceId, fileId, batch.fileId, block, b.maxBatchSize)
 				}
 			}
 			delete(b.fileBatches, fileId)
@@ -198,13 +209,18 @@ func (b *requestsBatcher) tick() {
 	}
 }
 
+type blockPushManyRequest struct {
+	fileIdToObjectId map[string]string
+	req              *fileproto.BlockPushManyRequest
+}
+
 type genericBatch interface {
-	buildRequest() *fileproto.BlockPushManyRequest
+	buildRequest() blockPushManyRequest
 }
 
 func (b *requestsBatcher) enqueue(batch genericBatch) {
 	req := batch.buildRequest()
-	if len(req.FileBlocks) > 0 {
+	if len(req.req.FileBlocks) > 0 {
 		b.requests <- req
 	}
 }
