@@ -6,16 +6,14 @@ import (
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
-// Filter represents a single filter with property key, condition, and value
+type ParsedFilters struct {
+	Filters []Filter `json:"filters"`
+}
+
 type Filter struct {
 	PropertyKey string                                    `json:"property_key"`
 	Condition   model.BlockContentDataviewFilterCondition `json:"condition"`
 	Value       interface{}                               `json:"value"`
-}
-
-// ParsedFilters represents filters parsed from query parameters
-type ParsedFilters struct {
-	Filters []Filter `json:"filters"`
 }
 
 // ToDataviewFilters converts parsed filters to dataview filter format

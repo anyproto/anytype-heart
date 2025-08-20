@@ -65,7 +65,7 @@ func ResourceActionHandler(s *service.Service) gin.HandlerFunc {
         // 1. Extract and validate parameters
         var req apimodel.RequestType
         if err := c.ShouldBindJSON(&req); err != nil {
-           apiErr := util.CodeToAPIError(http.StatusBadRequest, err.Error())
+           apiErr := util.CodeToApiError(http.StatusBadRequest, err.Error())
            c.JSON(http.StatusBadRequest, apiErr)
            return
         }
@@ -78,7 +78,7 @@ func ResourceActionHandler(s *service.Service) gin.HandlerFunc {
          )
          
          if code != http.StatusOK {
-			 apiErr := util.CodeToAPIError(code, err.Error())
+			 apiErr := util.CodeToApiError(code, err.Error())
 			 c.JSON(code, apiErr)
 			 return
          }

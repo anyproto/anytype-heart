@@ -12,6 +12,21 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
+func createMockContext(queryString string) *gin.Context {
+	gin.SetMode(gin.TestMode)
+
+	req := &http.Request{
+		URL: &url.URL{
+			RawQuery: queryString,
+		},
+	}
+
+	c, _ := gin.CreateTestContext(nil)
+	c.Request = req
+
+	return c
+}
+
 func TestParser_ParseQueryParams(t *testing.T) {
 	tests := []struct {
 		name            string
@@ -380,7 +395,6 @@ func TestParser_ParseQueryParams(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			// Create a mock gin context with the query string
 			c := createMockContext(tt.queryString)
 
 			result, err := parser.ParseQueryParams(c)
@@ -393,7 +407,6 @@ func TestParser_ParseQueryParams(t *testing.T) {
 				require.NotNil(t, result)
 				assert.Len(t, result.Filters, len(tt.expectedFilters))
 
-				// Check filters (order may vary due to map iteration)
 				filterMap := make(map[string]Filter)
 				for _, f := range result.Filters {
 					filterMap[f.PropertyKey] = f
@@ -582,20 +595,4 @@ func TestParser_parseFilterValue(t *testing.T) {
 			}
 		})
 	}
-}
-
-// Helper function to create a mock gin.Context with query parameters
-func createMockContext(queryString string) *gin.Context {
-	gin.SetMode(gin.TestMode)
-
-	req := &http.Request{
-		URL: &url.URL{
-			RawQuery: queryString,
-		},
-	}
-
-	c, _ := gin.CreateTestContext(nil)
-	c.Request = req
-
-	return c
 }

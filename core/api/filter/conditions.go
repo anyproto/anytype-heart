@@ -8,7 +8,7 @@ import (
 // BiDirectionalConditionMap handles bidirectional mapping between API and internal conditions
 type BiDirectionalConditionMap struct {
 	apiToInternal map[apimodel.FilterCondition]model.BlockContentDataviewFilterCondition
-	internalToAPI map[model.BlockContentDataviewFilterCondition]apimodel.FilterCondition
+	internalToApi map[model.BlockContentDataviewFilterCondition]apimodel.FilterCondition
 }
 
 // NewBiDirectionalConditionMap creates a new bidirectional condition map from a single source of truth
@@ -41,12 +41,12 @@ func NewBiDirectionalConditionMap() *BiDirectionalConditionMap {
 
 	m := &BiDirectionalConditionMap{
 		apiToInternal: make(map[apimodel.FilterCondition]model.BlockContentDataviewFilterCondition),
-		internalToAPI: make(map[model.BlockContentDataviewFilterCondition]apimodel.FilterCondition),
+		internalToApi: make(map[model.BlockContentDataviewFilterCondition]apimodel.FilterCondition),
 	}
 
 	for _, mapping := range mappings {
 		m.apiToInternal[mapping.api] = mapping.internal
-		m.internalToAPI[mapping.internal] = mapping.api
+		m.internalToApi[mapping.internal] = mapping.api
 	}
 
 	return m
@@ -60,7 +60,7 @@ func (m *BiDirectionalConditionMap) ToInternal(api apimodel.FilterCondition) (mo
 
 // ToApi converts an internal condition to API representation
 func (m *BiDirectionalConditionMap) ToApi(internal model.BlockContentDataviewFilterCondition) (apimodel.FilterCondition, bool) {
-	api, ok := m.internalToAPI[internal]
+	api, ok := m.internalToApi[internal]
 	return api, ok
 }
 

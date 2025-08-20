@@ -83,10 +83,10 @@ func TestBidirectionalConditionMapping(t *testing.T) {
 			internalCond, ok := ToInternalCondition(apiCond)
 			assert.True(t, ok, "API condition %v should convert to internal", apiCond)
 
-			backToAPI, ok := ToApiCondition(internalCond)
+			backToApi, ok := ToApiCondition(internalCond)
 			assert.True(t, ok, "Internal condition %v should convert back to API", internalCond)
 
-			assert.Equal(t, apiCond, backToAPI, "Round-trip conversion should preserve condition")
+			assert.Equal(t, apiCond, backToApi, "Round-trip conversion should preserve condition")
 		}
 	})
 
