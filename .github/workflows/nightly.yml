@@ -1,19 +1,8 @@
 name: Nightly Builds
 
 on:
-  push:
-    branches:
-      - 'nightly*'
   workflow_dispatch:
     inputs:
-      channel:
-        description: electron.builder channel
-        required: true
-        default: alpha
-        type: choice
-        options:
-          - alpha
-          - beta
       run-on-runner:
         description: 'Specify the runner to use'
         required: true
@@ -45,7 +34,10 @@ jobs:
 
       - name: Setup GO
         run: |
-          go version
+          echo "PATH=$PATH"
+          echo "which go: '$(which go)'"
+          echo "which go version: '$( $(which go) version )'"
+          echo "go version: '$(go version)'"
           echo GOPATH=$(go env GOPATH) >> $GITHUB_ENV
           echo GOBIN=$(go env GOPATH)/bin >> $GITHUB_ENV
           echo $(go env GOPATH)/bin >> $GITHUB_PATH
@@ -61,31 +53,6 @@ jobs:
         uses: maxim-lobanov/setup-xcode@v1.6.0
         with:
           xcode-version: '16.2'
-
-      - name: Nightly mode env settings
-        shell: bash
-        run: |
-          # choice channel name {{
-          if [[ -z "${{ github.event.inputs.channel }}" ]]; then
-            # choice default value for channel from ref name
-            if echo "${{ github.ref_name }}" | grep -q "beta"; then
-              CHANNEL="beta"
-            else
-              CHANNEL="alpha"
-            fi
-          else
-            CHANNEL="${{github.event.inputs.channel}}"
-          fi
-          echo "CHANNEL=$CHANNEL" >> $GITHUB_ENV
-          # }}
-          # choice s3 bucket for publishing {{
-          if [[ "$CHANNEL" == "beta" ]]; then
-            S3_BUCKET="${{secrets.NIGHTLY_AWS_S3_BUCKET_BETA}}"
-          else
-            S3_BUCKET="${{secrets.NIGHTLY_AWS_S3_BUCKET}}"
-          fi
-          echo "S3_BUCKET=$S3_BUCKET" >> $GITHUB_ENV
-          # }}
 
       - name: Set env vars
         env:
@@ -148,20 +115,32 @@ jobs:
       - name: Compile android lib
         run: make compile-android-lib
 
-      # upload release artifacts to s3 {{
-      - name: Install AWS CLI
-        run: |
-          if ! which aws; then
-            brew install awscli
-          fi
-          aws --version
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v2
+      - name: Get latest release via API
+        id: latest_release_info
+        uses: actions/github-script@v7
         with:
-          aws-access-key-id: ${{ secrets.NIGHTLY_AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.NIGHTLY_AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ secrets.NIGHTLY_AWS_REGION }}
-      - name: Upload build artifacts to S3
+          script: |
+            const latest = await github.rest.repos.getLatestRelease({
+              owner: context.repo.owner,
+              repo: context.repo.repo
+            })
+            core.setOutput("tag_name", latest.data.tag_name)
+
+      - name: Compute nightly version
+        id: nightly_info
         run: |
-          aws s3 cp .release/ s3://${{ env.S3_BUCKET }}/mw/ --recursive --acl public-read
-      # }}
+          TS=$(date -u +"%Y%m%d%H%M%S")
+          echo "version=${{ steps.latest_release_info.outputs.tag_name }}-nightly-${TS}" >> $GITHUB_OUTPUT
+
+      - name: Release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.nightly_info.outputs.version }} # create new tag
+          target_commitish: ${{ github.sha }}                 # set current commit for new tag
+          prerelease: true
+          make_latest: false
+          fail_on_unmatched_files: true
+          generate_release_notes: true
+          files: '.release/*'
