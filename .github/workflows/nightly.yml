@@ -11,6 +11,10 @@ on:
         options:
           - mac-mini-org-heart
           - macos-14
+      nightly-base-version:
+        description: 'Nightly builds base version'
+        required: true
+        default: '0.44.0'
 
 permissions:
   actions: 'write'
@@ -115,22 +119,11 @@ jobs:
       - name: Compile android lib
         run: make compile-android-lib
 
-      - name: Get latest release via API
-        id: latest_release_info
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const latest = await github.rest.repos.getLatestRelease({
-              owner: context.repo.owner,
-              repo: context.repo.repo
-            })
-            core.setOutput("tag_name", latest.data.tag_name)
-
       - name: Compute nightly version
         id: nightly_info
         run: |
           TS=$(date -u +"%Y%m%d%H%M%S")
-          echo "version=${{ steps.latest_release_info.outputs.tag_name }}-nightly-${TS}" >> $GITHUB_OUTPUT
+          echo "version=v${{ github.event.inputs.nightly-base-version }}-nightly-${TS}" >> $GITHUB_OUTPUT
 
       - name: Release
         env:
