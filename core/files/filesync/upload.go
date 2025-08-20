@@ -21,8 +21,10 @@ import (
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/core/files/filestorage"
+	"github.com/anyproto/anytype-heart/core/syncstatus/filesyncstatus"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/util/persistentqueue"
+	"github.com/anyproto/anytype-heart/util/timeid"
 )
 
 type AddFileRequest struct {
@@ -66,6 +68,7 @@ func (s *fileSync) AddFile(req AddFileRequest) (err error) {
 func (s *fileSync) fileIsInAnyQueue(itemKey string) bool {
 	return s.uploadingQueue.Has(itemKey) ||
 		s.retryUploadingQueue.Has(itemKey) ||
+		s.limitedUploadingQueue.Has(itemKey) ||
 		s.deletionQueue.Has(itemKey) ||
 		s.retryDeletionQueue.Has(itemKey)
 }
@@ -86,9 +89,9 @@ func (s *fileSync) ClearImportEvents() {
 
 // handleLimitReachedError checks if the error is limit reached error and sends event if needed
 // Returns true if limit reached error occurred
-func (s *fileSync) handleLimitReachedError(err error, it *QueueItem) *errLimitReached {
+func (s *fileSync) handleLimitReachedError(err error, it *QueueItem) (*errLimitReached, error) {
 	if err == nil {
-		return nil
+		return nil, nil
 	}
 	var limitReachedErr *errLimitReached
 	if errors.As(err, &limitReachedErr) {
@@ -97,11 +100,10 @@ func (s *fileSync) handleLimitReachedError(err error, it *QueueItem) *errLimitRe
 			log.Error("set limit reached error logged", zap.String("objectId", it.ObjectId), zap.Error(setErr))
 		}
 
-		var bytesLeftPercentage float64
-		if limitReachedErr.accountLimit != 0 {
-			bytesLeftPercentage = float64(limitReachedErr.accountLimit-limitReachedErr.totalBytesUsage) / float64(limitReachedErr.accountLimit)
+		updateErr := s.runOnLimitedHook(it.ObjectId, it.FullFileId())
+		if updateErr != nil {
+			return nil, fmt.Errorf("enqueue status update: %w", updateErr)
 		}
-		s.runOnLimitedHook(it.ObjectId, it.FullFileId(), bytesLeftPercentage)
 
 		if it.AddedByUser && !it.Imported {
 			s.sendLimitReachedEvent(it.SpaceId)
@@ -109,9 +111,9 @@ func (s *fileSync) handleLimitReachedError(err error, it *QueueItem) *errLimitRe
 		if it.Imported {
 			s.addImportEvent(it.SpaceId)
 		}
-		return limitReachedErr
+		return limitReachedErr, nil
 	}
-	return nil
+	return nil, nil
 }
 
 func (s *fileSync) uploadingHandler(ctx context.Context, it *QueueItem) (persistentqueue.Action, error) {
@@ -120,10 +122,18 @@ func (s *fileSync) uploadingHandler(ctx context.Context, it *QueueItem) (persist
 		return persistentqueue.ActionRetry, nil
 	}
 	if isObjectDeletedError(err) {
-		return persistentqueue.ActionDone, s.DeleteFile(it.ObjectId, it.FullFileId())
+		err = s.DeleteFile(it.ObjectId, it.FullFileId())
+		if err != nil {
+			return persistentqueue.ActionRetry, fmt.Errorf("object is deleted: delete file: %w", err)
+		}
+		return persistentqueue.ActionDone, nil
 	}
 	if err != nil {
-		if limitErr := s.handleLimitReachedError(err, it); limitErr != nil {
+		limitErr, handlingErr := s.handleLimitReachedError(err, it)
+		if handlingErr != nil {
+			return s.addToRetryUploadingQueue(it), nil
+		}
+		if limitErr != nil {
 			log.Warn("upload limit has been reached",
 				zap.String("fileId", it.FileId.String()),
 				zap.String("objectId", it.ObjectId),
@@ -131,32 +141,22 @@ func (s *fileSync) uploadingHandler(ctx context.Context, it *QueueItem) (persist
 				zap.Int("accountLimit", limitErr.accountLimit),
 				zap.Int("totalBytesUsage", limitErr.totalBytesUsage),
 			)
+			return s.addToLimitedUploadingQueue(it), nil
 		} else {
 			log.Error("uploading file error",
 				zap.String("fileId", it.FileId.String()), zap.Error(err),
 				zap.String("objectId", it.ObjectId),
 			)
+			return s.addToRetryUploadingQueue(it), nil
 		}
-
-		return s.addToRetryUploadingQueue(it), nil
 	}
 
+	// TODO Restore pending uploads back to uploadQueue
 	err = s.pendingUploads.Set(ctx, it.Key(), it)
 	if err != nil {
 		return persistentqueue.ActionRetry, fmt.Errorf("add to pending uploads list: %w", err)
 	}
 
-	// Mark as uploaded only if the root of the file tree is uploaded. It works because if the root is uploaded, all its descendants are uploaded too
-	// if it.VariantId == "" {
-	// 	err = s.runOnUploadedHook(it.ObjectId, it.FullFileId())
-	// 	if isObjectDeletedError(err) {
-	// 		return persistentqueue.ActionDone, s.DeleteFile(it.ObjectId, it.FullFileId())
-	// 	}
-	// 	if err != nil {
-	// 		return s.addToRetryUploadingQueue(it), err
-	// 	}
-	// 	return persistentqueue.ActionDone, s.removeFromUploadingQueues(it.ObjectId)
-	// }
 	return persistentqueue.ActionDone, nil
 }
 
@@ -164,6 +164,15 @@ func (s *fileSync) addToRetryUploadingQueue(it *QueueItem) persistentqueue.Actio
 	err := s.retryUploadingQueue.Add(it)
 	if err != nil {
 		log.Error("can't add upload task to retrying queue", zap.String("fileId", it.FileId.String()), zap.Error(err))
+		return persistentqueue.ActionRetry
+	}
+	return persistentqueue.ActionDone
+}
+
+func (s *fileSync) addToLimitedUploadingQueue(it *QueueItem) persistentqueue.Action {
+	err := s.limitedUploadingQueue.Add(it)
+	if err != nil {
+		log.Error("can't add upload task to limited retrying queue", zap.String("fileId", it.FileId.String()), zap.Error(err))
 		return persistentqueue.ActionRetry
 	}
 	return persistentqueue.ActionDone
@@ -178,7 +187,10 @@ func (s *fileSync) retryingHandler(ctx context.Context, it *QueueItem) (persiste
 		return persistentqueue.ActionDone, s.removeFromUploadingQueues(it.ObjectId)
 	}
 	if err != nil {
-		limitErr := s.handleLimitReachedError(err, it)
+		limitErr, handlingErr := s.handleLimitReachedError(err, it)
+		if handlingErr != nil {
+			return persistentqueue.ActionRetry, handlingErr
+		}
 		var limitErrorIsLogged bool
 		if limitErr != nil {
 			var hasErr error
@@ -199,7 +211,6 @@ func (s *fileSync) retryingHandler(ctx context.Context, it *QueueItem) (persiste
 		return persistentqueue.ActionRetry, nil
 	}
 
-	err = s.runOnUploadedHook(it.ObjectId, it.FullFileId())
 	if isObjectDeletedError(err) {
 		return persistentqueue.ActionDone, s.DeleteFile(it.ObjectId, it.FullFileId())
 	}
@@ -226,6 +237,12 @@ func (s *fileSync) removeFromUploadingQueues(objectId string) error {
 	if err != nil {
 		return fmt.Errorf("remove upload task from retrying queue: %w", err)
 	}
+	err = s.limitedUploadingQueue.RemoveBy(func(key string) bool {
+		return strings.HasPrefix(key, objectId)
+	})
+	if err != nil {
+		return fmt.Errorf("remove upload task from retrying queue: %w", err)
+	}
 	return nil
 }
 
@@ -240,54 +257,24 @@ func (s *fileSync) UploadSynchronously(ctx context.Context, spaceId string, file
 	return nil
 }
 
-func (s *fileSync) runOnUploadedHook(fileObjectId string, fileId domain.FullFileId) error {
-	var errs error
-	for _, hook := range s.onUploaded {
-		err := hook(fileObjectId, fileId)
-		if err != nil {
-			if !isObjectDeletedError(err) {
-				log.Warn("on upload callback failed",
-					zap.String("spaceId", fileId.SpaceId),
-					zap.String("fileObjectId", fileObjectId),
-					zap.String("fileId", fileId.FileId.String()),
-					zap.Error(err))
-			}
-			errs = errors.Join(errs, err)
-		}
-	}
-	return errs
-}
-
 func (s *fileSync) runOnUploadStartedHook(fileObjectId string, fileId domain.FullFileId) error {
-	if s.onUploadStarted != nil {
-		err := s.onUploadStarted(fileObjectId, fileId)
-		if err != nil {
-			if !isObjectDeletedError(err) {
-				log.Warn("on upload started callback failed",
-					zap.String("spaceId", fileId.SpaceId),
-					zap.String("fileObjectId", fileObjectId),
-					zap.String("fileId", fileId.FileId.String()),
-					zap.Error(err))
-			}
-			return err
-		}
-	}
-	return nil
+	return s.statusUpdateQueue.Add(&statusUpdateItem{
+		FileObjectId: fileObjectId,
+		FileId:       fileId.FileId.String(),
+		SpaceId:      fileId.SpaceId,
+		Timestamp:    timeid.NewNano(),
+		Status:       int(filesyncstatus.Syncing),
+	})
 }
 
-func (s *fileSync) runOnLimitedHook(fileObjectId string, fileId domain.FullFileId, bytesLeftPercentage float64) {
-	if s.onLimited != nil {
-		err := s.onLimited(fileObjectId, fileId, bytesLeftPercentage)
-		if err != nil {
-			if !isObjectDeletedError(err) {
-				log.Warn("on limited callback failed",
-					zap.String("spaceId", fileId.SpaceId),
-					zap.String("fileObjectId", fileObjectId),
-					zap.String("fileId", fileId.FileId.String()),
-					zap.Error(err))
-			}
-		}
-	}
+func (s *fileSync) runOnLimitedHook(fileObjectId string, fileId domain.FullFileId) error {
+	return s.statusUpdateQueue.Add(&statusUpdateItem{
+		FileObjectId: fileObjectId,
+		FileId:       fileId.FileId.String(),
+		SpaceId:      fileId.SpaceId,
+		Timestamp:    timeid.NewNano(),
+		Status:       int(filesyncstatus.Limited),
+	})
 }
 
 type errLimitReached struct {

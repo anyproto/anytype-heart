@@ -7,6 +7,7 @@ import (
 	"go.uber.org/zap"
 
 	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/core/syncstatus/filesyncstatus"
 )
 
 type uploadStatusIndex struct {
@@ -51,7 +52,7 @@ func (i *uploadStatusIndex) remove(fileId string, c cid.Cid) {
 	if len(cidsPerFile) == 0 {
 		i.lock.Unlock()
 		// TODO It's a transaction: delete from files list only if onUploaded is finished
-		err := i.onUploaded(objectId, domain.FullFileId{SpaceId: spaceId, FileId: domain.FileId(fileId)})
+		err := i.onUploaded(objectId, domain.FullFileId{SpaceId: spaceId, FileId: domain.FileId(fileId)}, filesyncstatus.Synced)
 		if err != nil {
 			log.Error("on uploaded callback", zap.Error(err))
 		}
