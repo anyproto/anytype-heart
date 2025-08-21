@@ -162,9 +162,9 @@ jobs:
         uses: ravsamhq/notify-slack-action@2.0.0
         with:
           status: ${{ job.status }}
-          notification_title: "❌ {workflow} / {job}"
-          message_format: "{emoji} *{job}* in *{workflow}* {status_message} — <{run_url}|Open run>"
-          footer: "Linked Repo <{repo_url}|{repo}> | <{workflow_url}|View Workflow>"
+          notification_title: "❌ {workflow}"
+          message_format: "{emoji} *{job}* in *{workflow}* {status_message}"
+          footer: "Linked Repo <{repo_url}|{repo}> | <{run_url}|View Workflow Run>"
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_ALERT_WEBHOOK }}
 
@@ -174,10 +174,10 @@ jobs:
         uses: ravsamhq/notify-slack-action@2.0.0
         with:
           status: ${{ job.status }}
-          notification_title: "✅ {workflow} / {job}"
+          notification_title: "✅ {workflow}"
           message_format: |
-            {emoji} *{job}* in *{workflow}* {status_message} — <{run_url}|Open run>
-            *Release:* <{release_url}|{release_tag_name}>
+            {emoji} *{job}* in *{workflow}* {status_message}
+            *Release:* <${{ steps.release_info.outputs.tag_name }}|${{ steps.release_info.outputs.html_url }}>
             *Description:*
             ${{ steps.release_info.outputs.body }}
           footer: "Linked Repo <{repo_url}|{repo}> | <{run_url}|View Workflow Run>"
