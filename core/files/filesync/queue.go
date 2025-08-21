@@ -15,6 +15,8 @@ type QueueItem struct {
 	Imported    bool
 
 	Variants []domain.FileId
+
+	BytesToUpload int64
 }
 
 func (it *QueueItem) Validate() error {

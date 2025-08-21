@@ -107,9 +107,9 @@ func (b *mixedBatch) buildRequest() blockPushManyRequest {
 
 func (b *mixedBatch) reset() {
 	b.totalSize = 0
-	b.files = nil
-	b.fileIdToObjectId = nil
-	b.fileIdToSpaceId = nil
+	b.files = map[string][]blocks.Block{}
+	b.fileIdToObjectId = map[string]string{}
+	b.fileIdToSpaceId = map[string]string{}
 }
 
 type requestsBatcher struct {

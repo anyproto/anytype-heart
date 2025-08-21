@@ -49,11 +49,19 @@ func (s *fileSync) DeleteFile(objectId string, fileId domain.FullFileId) error {
 }
 
 func (s *fileSync) deletionHandler(ctx context.Context, it *deletionQueueItem) (persistentqueue.Action, error) {
+	err := s.removeFromUploadingQueues(it.ObjectId)
+	if err != nil {
+		return persistentqueue.ActionRetry, fmt.Errorf("remove from uploading queues: %w", err)
+	}
+	s.pendingDeletionsLock.Lock()
+	s.pendingDeletions[it.ObjectId] = struct{}{}
+	s.pendingDeletionsLock.Unlock()
+
 	fileId := domain.FullFileId{
 		SpaceId: it.SpaceId,
 		FileId:  it.FileId,
 	}
-	err := s.deleteFile(ctx, fileId)
+	err = s.deleteFile(ctx, fileId)
 	if err != nil {
 		log.Error("remove file error", zap.String("fileId", fileId.FileId.String()), zap.Error(err))
 		addErr := s.retryDeletionQueue.Add(it)
@@ -70,11 +78,19 @@ func (s *fileSync) deletionHandler(ctx context.Context, it *deletionQueueItem) (
 }
 
 func (s *fileSync) retryDeletionHandler(ctx context.Context, it *deletionQueueItem) (persistentqueue.Action, error) {
+	err := s.removeFromUploadingQueues(it.ObjectId)
+	if err != nil {
+		return persistentqueue.ActionRetry, fmt.Errorf("remove from uploading queues: %w", err)
+	}
+	s.pendingDeletionsLock.Lock()
+	s.pendingDeletions[it.ObjectId] = struct{}{}
+	s.pendingDeletionsLock.Unlock()
+
 	fileId := domain.FullFileId{
 		SpaceId: it.SpaceId,
 		FileId:  it.FileId,
 	}
-	err := s.deleteFile(ctx, fileId)
+	err = s.deleteFile(ctx, fileId)
 	if err != nil {
 		return persistentqueue.ActionRetry, fmt.Errorf("remove file: %w", err)
 	}
@@ -144,6 +160,10 @@ func (s *fileSync) CancelDeletion(objectId string, fileId domain.FullFileId) err
 	case <-waitCh2:
 	case <-s.loopCtx.Done():
 	}
+
+	s.pendingDeletionsLock.Lock()
+	delete(s.pendingDeletions, objectId)
+	s.pendingDeletionsLock.Unlock()
 
 	return nil
 }

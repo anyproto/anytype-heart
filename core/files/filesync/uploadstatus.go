@@ -7,7 +7,6 @@ import (
 	"go.uber.org/zap"
 
 	"github.com/anyproto/anytype-heart/core/domain"
-	"github.com/anyproto/anytype-heart/core/syncstatus/filesyncstatus"
 )
 
 type uploadStatusIndex struct {
@@ -16,16 +15,19 @@ type uploadStatusIndex struct {
 
 	fileIdToSpaceId      map[string]string
 	fileIdToFileObjectId map[string]string
-
-	onUploaded StatusCallback
 }
 
-func newUploadStatusIndex(onUploaded StatusCallback) *uploadStatusIndex {
+type fileBlocksIndex struct {
+	fileId         string
+	fileObjectId   string
+	blocksToUpload map[cid.Cid]struct{}
+}
+
+func newUploadStatusIndex() *uploadStatusIndex {
 	return &uploadStatusIndex{
 		files:                make(map[string]map[cid.Cid]struct{}),
 		fileIdToSpaceId:      make(map[string]string),
 		fileIdToFileObjectId: make(map[string]string),
-		onUploaded:           onUploaded,
 	}
 }
 
@@ -43,7 +45,7 @@ func (i *uploadStatusIndex) add(fileObjectId string, spaceId string, fileId stri
 	i.fileIdToFileObjectId[fileId] = fileObjectId
 }
 
-func (i *uploadStatusIndex) remove(fileId string, c cid.Cid) {
+func (i *uploadStatusIndex) remove(fileId string, c cid.Cid, onUploaded func(objectId string, fullFileId domain.FullFileId) error) {
 	i.lock.Lock()
 	cidsPerFile := i.files[fileId]
 	delete(cidsPerFile, c)
@@ -51,8 +53,7 @@ func (i *uploadStatusIndex) remove(fileId string, c cid.Cid) {
 	spaceId := i.fileIdToSpaceId[fileId]
 	if len(cidsPerFile) == 0 {
 		i.lock.Unlock()
-		// TODO It's a transaction: delete from files list only if onUploaded is finished
-		err := i.onUploaded(objectId, domain.FullFileId{SpaceId: spaceId, FileId: domain.FileId(fileId)}, filesyncstatus.Synced)
+		err := onUploaded(objectId, domain.FullFileId{SpaceId: spaceId, FileId: domain.FileId(fileId)})
 		if err != nil {
 			log.Error("on uploaded callback", zap.Error(err))
 		}

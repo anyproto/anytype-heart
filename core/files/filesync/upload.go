@@ -131,7 +131,11 @@ func (s *fileSync) uploadingHandler(ctx context.Context, it *QueueItem) (persist
 	if err != nil {
 		limitErr, handlingErr := s.handleLimitReachedError(err, it)
 		if handlingErr != nil {
-			return s.addToRetryUploadingQueue(it), nil
+			err := s.addToRetryUploadingQueue(it)
+			if err != nil {
+				return persistentqueue.ActionRetry, fmt.Errorf("add to retry uploading queue: %w", err)
+			}
+			return persistentqueue.ActionDone, nil
 		}
 		if limitErr != nil {
 			log.Warn("upload limit has been reached",
@@ -141,13 +145,21 @@ func (s *fileSync) uploadingHandler(ctx context.Context, it *QueueItem) (persist
 				zap.Int("accountLimit", limitErr.accountLimit),
 				zap.Int("totalBytesUsage", limitErr.totalBytesUsage),
 			)
-			return s.addToLimitedUploadingQueue(it), nil
+			err := s.addToLimitedUploadingQueue(ctx, it)
+			if err != nil {
+				return persistentqueue.ActionRetry, fmt.Errorf("add to limited uploading queue: %w", err)
+			}
+			return persistentqueue.ActionDone, nil
 		} else {
 			log.Error("uploading file error",
 				zap.String("fileId", it.FileId.String()), zap.Error(err),
 				zap.String("objectId", it.ObjectId),
 			)
-			return s.addToRetryUploadingQueue(it), nil
+			err := s.addToRetryUploadingQueue(it)
+			if err != nil {
+				return persistentqueue.ActionRetry, fmt.Errorf("add to retry uploading queue: %w", err)
+			}
+			return persistentqueue.ActionDone, nil
 		}
 	}
 
@@ -160,22 +172,24 @@ func (s *fileSync) uploadingHandler(ctx context.Context, it *QueueItem) (persist
 	return persistentqueue.ActionDone, nil
 }
 
-func (s *fileSync) addToRetryUploadingQueue(it *QueueItem) persistentqueue.Action {
+func (s *fileSync) addToRetryUploadingQueue(it *QueueItem) error {
 	err := s.retryUploadingQueue.Add(it)
 	if err != nil {
-		log.Error("can't add upload task to retrying queue", zap.String("fileId", it.FileId.String()), zap.Error(err))
-		return persistentqueue.ActionRetry
+		return fmt.Errorf("add to retry uploading queue: %w", err)
 	}
-	return persistentqueue.ActionDone
+	return nil
 }
 
-func (s *fileSync) addToLimitedUploadingQueue(it *QueueItem) persistentqueue.Action {
-	err := s.limitedUploadingQueue.Add(it)
+func (s *fileSync) addToLimitedUploadingQueue(ctx context.Context, it *QueueItem) error {
+	err := s.rpcStore.DeleteFiles(ctx, it.SpaceId, it.FileId)
 	if err != nil {
-		log.Error("can't add upload task to limited retrying queue", zap.String("fileId", it.FileId.String()), zap.Error(err))
-		return persistentqueue.ActionRetry
+		return fmt.Errorf("delete file from node: %w", err)
 	}
-	return persistentqueue.ActionDone
+	err = s.limitedUploadingQueue.Add(it)
+	if err != nil {
+		return fmt.Errorf("add to limited uploading queue: %w", err)
+	}
+	return nil
 }
 
 func (s *fileSync) retryingHandler(ctx context.Context, it *QueueItem) (persistentqueue.Action, error) {
@@ -184,7 +198,7 @@ func (s *fileSync) retryingHandler(ctx context.Context, it *QueueItem) (persiste
 		return persistentqueue.ActionRetry, nil
 	}
 	if isObjectDeletedError(err) {
-		return persistentqueue.ActionDone, s.removeFromUploadingQueues(it.ObjectId)
+		return persistentqueue.ActionDone, nil
 	}
 	if err != nil {
 		limitErr, handlingErr := s.handleLimitReachedError(err, it)
@@ -218,31 +232,47 @@ func (s *fileSync) retryingHandler(ctx context.Context, it *QueueItem) (persiste
 		return persistentqueue.ActionRetry, err
 	}
 
-	return persistentqueue.ActionDone, s.removeFromUploadingQueues(it.ObjectId)
+	return persistentqueue.ActionDone, nil
 }
 
 func (s *fileSync) removeFromUploadingQueues(objectId string) error {
 	if objectId == "" {
 		return nil
 	}
-	err := s.uploadingQueue.RemoveBy(func(key string) bool {
-		return strings.HasPrefix(key, objectId)
-	})
+
+	chans := make([]chan struct{}, 0, 3)
+	defer func() {
+		for _, ch := range chans {
+			select {
+			case <-ch:
+			case <-s.loopCtx.Done():
+			}
+		}
+	}()
+
+	err := s.pendingUploads.Delete(s.loopCtx, objectId)
+	if err != nil {
+		return fmt.Errorf("delete from pending uploads: %w", err)
+	}
+
+	ch, err := s.uploadingQueue.RemoveWait(objectId)
 	if err != nil {
 		return fmt.Errorf("remove upload task: %w", err)
 	}
-	err = s.retryUploadingQueue.RemoveBy(func(key string) bool {
-		return strings.HasPrefix(key, objectId)
-	})
+	chans = append(chans, ch)
+
+	ch, err = s.retryUploadingQueue.RemoveWait(objectId)
 	if err != nil {
 		return fmt.Errorf("remove upload task from retrying queue: %w", err)
 	}
-	err = s.limitedUploadingQueue.RemoveBy(func(key string) bool {
-		return strings.HasPrefix(key, objectId)
-	})
+	chans = append(chans, ch)
+
+	ch, err = s.limitedUploadingQueue.RemoveWait(objectId)
 	if err != nil {
 		return fmt.Errorf("remove upload task from retrying queue: %w", err)
 	}
+	chans = append(chans, ch)
+
 	return nil
 }
 
@@ -258,7 +288,7 @@ func (s *fileSync) UploadSynchronously(ctx context.Context, spaceId string, file
 }
 
 func (s *fileSync) runOnUploadStartedHook(fileObjectId string, fileId domain.FullFileId) error {
-	return s.statusUpdateQueue.Add(&statusUpdateItem{
+	return s.addToStatusUpdateQueue(&statusUpdateItem{
 		FileObjectId: fileObjectId,
 		FileId:       fileId.FileId.String(),
 		SpaceId:      fileId.SpaceId,
@@ -268,7 +298,7 @@ func (s *fileSync) runOnUploadStartedHook(fileObjectId string, fileId domain.Ful
 }
 
 func (s *fileSync) runOnLimitedHook(fileObjectId string, fileId domain.FullFileId) error {
-	return s.statusUpdateQueue.Add(&statusUpdateItem{
+	return s.addToStatusUpdateQueue(&statusUpdateItem{
 		FileObjectId: fileObjectId,
 		FileId:       fileId.FileId.String(),
 		SpaceId:      fileId.SpaceId,
@@ -319,6 +349,7 @@ func (s *fileSync) uploadFile(ctx context.Context, spaceLimits *spaceUsage, it *
 	}
 
 	allocateErr := spaceLimits.allocateFile(ctx, it.Key(), blocksAvailability.totalBytesToUpload())
+	// TODO Idea: write bytes to upload to limited queue and prioritize by that field
 	if allocateErr != nil {
 		// Unbind file just in case
 		err = s.rpcStore.DeleteFiles(ctx, it.SpaceId, it.FileId)
@@ -335,6 +366,10 @@ func (s *fileSync) uploadFile(ctx context.Context, spaceLimits *spaceUsage, it *
 		}
 	}
 	var totalBytesUploaded int
+
+	for c := range blocksAvailability.cidsToUpload {
+		s.uploadStatusIndex.add(it.ObjectId, it.SpaceId, it.FileId.String(), c)
+	}
 
 	err = s.walkFileBlocks(ctx, it.SpaceId, it.FileId, it.Variants, func(fileBlocks []blocks.Block) error {
 		bytesToUpload, err := s.uploadOrBindBlocks(ctx, it.SpaceId, it.FileId, it.ObjectId, fileBlocks, blocksAvailability.cidsToUpload)
@@ -473,7 +508,6 @@ func (s *fileSync) checkBlocksAvailability(ctx context.Context, fileObjectId str
 				}
 				response.bytesToUpload += len(b.RawData())
 				response.cidsToUpload[blockCid] = struct{}{}
-				s.uploadStatusIndex.add(fileObjectId, spaceId, fileId.String(), blockCid)
 			} else if availability.Status == fileproto.AvailabilityStatus_Exists {
 				// Block exists in node, but not in user's space
 				b, err := getBlock()
@@ -513,7 +547,7 @@ func (s *fileSync) uploadOrBindBlocks(ctx context.Context, spaceId string, fileI
 			return 0, fmt.Errorf("bind cids: %w", bindErr)
 		}
 		if len(blocksToUpload) == 0 {
-			err := s.statusUpdateQueue.Add(&statusUpdateItem{
+			err := s.addToStatusUpdateQueue(&statusUpdateItem{
 				FileObjectId: objectId,
 				FileId:       fileId.String(),
 				SpaceId:      spaceId,
