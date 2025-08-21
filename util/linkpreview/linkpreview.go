@@ -252,11 +252,6 @@ func checkPrivateLink(resp *http.Response) error {
 }
 
 func containsDirective(header string, directive string) bool {
-	// For CSP directives that contain quotes or colons, use simple contains check
-	if strings.Contains(directive, "'") || strings.Contains(directive, ":") {
-		return strings.Contains(header, directive)
-	}
-
 	start := 0
 	for {
 		idx := strings.Index(header[start:], directive)
