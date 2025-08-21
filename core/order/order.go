@@ -82,7 +82,7 @@ func (o *orderSetter) getCurrentOptionsOrder(spaceId string, relationKey domain.
 		{
 			RelationKey: bundle.RelationKeyLayout,
 			Condition:   model.BlockContentDataviewFilter_Equal,
-			Value:       domain.Int64(model.ObjectType_tag),
+			Value:       domain.Int64(model.ObjectType_relationOption),
 		},
 		{
 			RelationKey: bundle.RelationKeyRelationKey,

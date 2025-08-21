@@ -3,8 +3,6 @@ package editor
 import (
 	"errors"
 
-	"github.com/anyproto/lexid"
-
 	"github.com/anyproto/anytype-heart/core/block/editor/basic"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
@@ -15,8 +13,6 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
-
-var optionOrderLX = lexid.Must(lexid.CharsBase64, 4, 4000)
 
 var relationOptionRequiredRelations = []domain.RelationKey{
 	bundle.RelationKeyApiObjectKey,
@@ -76,9 +72,9 @@ func (ro *RelationOption) SetOrder(previousOrderId string) (string, error) {
 	var orderId string
 	if previousOrderId == "" {
 		// For the first element, use a lexid with huge padding
-		orderId = optionOrderLX.Middle()
+		orderId = lx.Middle()
 	} else {
-		orderId = optionOrderLX.Next(previousOrderId)
+		orderId = lx.Next(previousOrderId)
 	}
 	st.SetDetail(bundle.RelationKeyOptionOrder, domain.String(orderId))
 	return orderId, ro.Apply(st)
@@ -88,7 +84,7 @@ func (ro *RelationOption) SetAfterOrder(orderId string) error {
 	st := ro.NewState()
 	currentOrderId := st.Details().GetString(bundle.RelationKeyOptionOrder)
 	if orderId > currentOrderId {
-		currentOrderId = optionOrderLX.Next(orderId)
+		currentOrderId = lx.Next(orderId)
 		st.SetDetail(bundle.RelationKeyOptionOrder, domain.String(currentOrderId))
 		return ro.Apply(st)
 	}
@@ -102,10 +98,10 @@ func (ro *RelationOption) SetBetweenOrders(previousOrderId, afterOrderId string)
 
 	if previousOrderId == "" {
 		// Insert before the first existing element
-		before = optionOrderLX.Prev(afterOrderId)
+		before = lx.Prev(afterOrderId)
 	} else {
 		// Insert between two existing elements
-		before, err = optionOrderLX.NextBefore(previousOrderId, afterOrderId)
+		before, err = lx.NextBefore(previousOrderId, afterOrderId)
 	}
 
 	if err != nil {
