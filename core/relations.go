@@ -126,16 +126,6 @@ func (mw *Middleware) RelationOptionSetOrder(_ context.Context, req *pb.RpcRelat
 	}
 }
 
-func (mw *Middleware) RelationOptionUnsetOrder(_ context.Context, req *pb.RpcRelationOptionUnsetOrderRequest) *pb.RpcRelationOptionUnsetOrderResponse {
-	err := mustService[order.OrderSetter](mw).UnsetOrder(req.RelationOptionId)
-	return &pb.RpcRelationOptionUnsetOrderResponse{
-		Error: &pb.RpcRelationOptionUnsetOrderResponseError{
-			Code:        mapErrorCode[pb.RpcRelationOptionUnsetOrderResponseErrorCode](err),
-			Description: getErrorDescription(err),
-		},
-	}
-}
-
 func (mw *Middleware) RelationListWithValue(_ context.Context, req *pb.RpcRelationListWithValueRequest) *pb.RpcRelationListWithValueResponse {
 	response := func(list []*pb.RpcRelationListWithValueResponseResponseItem, err error) *pb.RpcRelationListWithValueResponse {
 		m := &pb.RpcRelationListWithValueResponse{Error: &pb.RpcRelationListWithValueResponseError{Code: pb.RpcRelationListWithValueResponseError_NULL}}
