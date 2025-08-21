@@ -148,6 +148,7 @@ jobs:
           status: ${{ job.status }}
           notification_title: "❌ {workflow} / {job}"
           message_format: "{emoji} *{job}* in *{workflow}* {status_message} — <{run_url}|Open run>"
+          footer: "Linked Repo <{repo_url}|{repo}> | <{workflow_url}|View Workflow>"
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_ALERT_WEBHOOK }}
 
@@ -158,6 +159,12 @@ jobs:
         with:
           status: ${{ job.status }}
           notification_title: "✅ {workflow} / {job}"
-          message_format: "{emoji} *{job}* in *{workflow}* {status_message} — <{run_url}|Open run>"
+          message_format: |
+            {emoji} *{job}* in *{workflow}* {status_message} — <{run_url}|Open run>
+            *Release:* <{release_url}|{release_tag_name}>
+            *Description:*
+            ${{ github.event.release.body }}
+          footer: "Linked Repo <{repo_url}|{repo}> | <{run_url}|View Workflow Run>"
+
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_BUILD_WEBHOOK }}
