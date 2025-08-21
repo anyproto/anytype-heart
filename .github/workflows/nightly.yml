@@ -159,7 +159,7 @@ jobs:
       # FAILURE - send to alerts channel
       - name: Notify Slack (failure → alerts)
         if: ${{ failure() }}
-        uses: ravsamhq/notify-slack-action@2.0.0
+        uses: ravsamhq/notify-slack-action@v2
         with:
           status: ${{ job.status }}
           notification_title: "❌ {workflow}"
@@ -171,13 +171,13 @@ jobs:
       # SUCCESS - send to builds channel
       - name: Notify Slack (ok → builds)
         if: ${{ success() }}
-        uses: ravsamhq/notify-slack-action@2.0.0
+        uses: ravsamhq/notify-slack-action@v2
         with:
           status: ${{ job.status }}
           notification_title: "✅ {workflow}"
           message_format: |
             {emoji} *{job}* in *{workflow}* {status_message}
-            *Release:* <${{ steps.release_info.outputs.tag_name }}|${{ steps.release_info.outputs.html_url }}>
+            *Release:* <${{ steps.release_info.outputs.html_url }}|${{ steps.release_info.outputs.tag_name }}>
             *Description:*
             ${{ steps.release_info.outputs.body }}
           footer: "Linked Repo <{repo_url}|{repo}> | <{run_url}|View Workflow Run>"
