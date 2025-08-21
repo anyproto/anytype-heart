@@ -1,6 +1,7 @@
 package metrics
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/valyala/fastjson"
@@ -154,5 +155,30 @@ func (c *ChangeEvent) MarshalFastJson(arena *fastjson.Arena) anymetry.JsonEvent 
 	properties.Set("changeName", arena.NewString(c.ChangeName))
 	properties.Set("sbType", arena.NewString(c.SbType))
 	properties.Set("count", arena.NewNumberInt(c.Count))
+	return event
+}
+
+type LinkPreviewStatusEvent struct {
+	baseInfo
+	StatusCode int
+	ErrorMsg   string
+}
+
+func (l *LinkPreviewStatusEvent) Key() string {
+	return fmt.Sprintf("linkpreview_status_%d", l.StatusCode)
+}
+
+func (l *LinkPreviewStatusEvent) Aggregate(other SamplableEvent) SamplableEvent {
+	return other
+}
+
+func (l *LinkPreviewStatusEvent) GetBackend() anymetry.MetricsBackend {
+	return inhouse
+}
+
+func (l *LinkPreviewStatusEvent) MarshalFastJson(arena *fastjson.Arena) anymetry.JsonEvent {
+	event, properties := setupProperties(arena, "LinkPreviewStatusEvent")
+	properties.Set("statusCode", arena.NewNumberInt(l.StatusCode))
+	properties.Set("errorMsg", arena.NewString(l.ErrorMsg))
 	return event
 }

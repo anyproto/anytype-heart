@@ -17,6 +17,7 @@ import (
 	"github.com/otiai10/opengraph/v2"
 	"golang.org/x/net/html/charset"
 
+	"github.com/anyproto/anytype-heart/metrics"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/text"
@@ -66,20 +67,35 @@ func (l *linkPreview) Fetch(ctx context.Context, fetchUrl string) (linkPreview m
 	og.Intent.Context = ctx
 	og.Intent.HTTPClient = client
 	err = og.Fetch()
-	if err != nil {
-		if resp := rt.lastResponse; resp != nil && resp.StatusCode == http.StatusOK {
-			preview, isFile, err := l.makeNonHtml(fetchUrl, resp)
-			if err != nil {
-				return preview, nil, false, err
-			}
-			return preview, rt.lastBody, isFile, nil
-		}
-		return model.LinkPreview{}, nil, false, err
+
+	resp := rt.lastResponse
+	if resp == nil {
+		return model.LinkPreview{}, nil, false, fmt.Errorf("no response")
 	}
 
-	if resp := rt.lastResponse; resp != nil && resp.StatusCode != http.StatusOK {
-		return model.LinkPreview{}, nil, false, fmt.Errorf("invalid http code %d", resp.StatusCode)
+	if err != nil && resp.StatusCode == http.StatusOK {
+		preview, isFile, err := l.makeNonHtml(fetchUrl, resp)
+		if err != nil {
+			return preview, nil, false, err
+		}
+		return preview, rt.lastBody, isFile, nil
 	}
+
+	if resp.StatusCode != http.StatusOK {
+		code := resp.StatusCode
+		errMsg := ""
+		if err != nil {
+			errMsg = err.Error()
+		}
+		metrics.Service.SendSampled(&metrics.LinkPreviewStatusEvent{
+			StatusCode: code,
+			ErrorMsg:   errMsg,
+		})
+		statusClass := getStatusClass(code)
+		metrics.LinkPreviewStatusCounter.WithLabelValues(fmt.Sprintf("%d", code), statusClass).Inc()
+		return model.LinkPreview{}, nil, false, fmt.Errorf("invalid http code %d", code)
+	}
+
 	res := l.convertOGToInfo(fetchUrl, og)
 	if len(res.Description) == 0 {
 		res.Description = l.findContent(rt.lastBody)
@@ -215,4 +231,21 @@ func (l *limitReader) Read(p []byte) (n int, err error) {
 	}
 	l.nTotal += n
 	return
+}
+
+func getStatusClass(statusCode int) string {
+	switch {
+	case statusCode >= 100 && statusCode < 200:
+		return "1xx"
+	case statusCode >= 200 && statusCode < 300:
+		return "2xx"
+	case statusCode >= 300 && statusCode < 400:
+		return "3xx"
+	case statusCode >= 400 && statusCode < 500:
+		return "4xx"
+	case statusCode >= 500 && statusCode < 600:
+		return "5xx"
+	default:
+		return "unknown"
+	}
 }
