@@ -95,7 +95,7 @@ func (s *Service) GetListViews(ctx context.Context, spaceId string, listId strin
 }
 
 // GetObjectsInList retrieves objects in a list
-func (s *Service) GetObjectsInList(ctx context.Context, spaceId string, listId string, viewId string, offset, limit int) ([]apimodel.Object, int, bool, error) {
+func (s *Service) GetObjectsInList(ctx context.Context, spaceId string, listId string, viewId string, additionalFilters []*model.BlockContentDataviewFilter, offset, limit int) ([]apimodel.Object, int, bool, error) {
 	resp := s.mw.ObjectShow(ctx, &pb.RpcObjectShowRequest{
 		SpaceId:  spaceId,
 		ObjectId: listId,
@@ -140,6 +140,8 @@ func (s *Service) GetObjectsInList(ctx context.Context, spaceId string, listId s
 	default:
 		return nil, 0, false, ErrFailedGetListDataview
 	}
+
+	filters = append(filters, additionalFilters...)
 
 	var typeDetail *types.Struct
 	for _, detail := range resp.ObjectView.Details {
@@ -197,21 +199,9 @@ func (s *Service) GetObjectsInList(ctx context.Context, spaceId string, listId s
 	total := int(searchResp.Counters.Total)
 	hasMore := searchResp.Counters.Total > int64(offset+limit)
 
-	propertyMap, err := s.getPropertyMapFromStore(ctx, spaceId, true)
-	if err != nil {
-		return nil, 0, false, err
-	}
-	typeMap, err := s.getTypeMapFromStore(ctx, spaceId, propertyMap, false)
-	if err != nil {
-		return nil, 0, false, err
-	}
-	tagMap, err := s.getTagMapFromStore(ctx, spaceId)
-	if err != nil {
-		return nil, 0, false, err
-	}
 	objects := make([]apimodel.Object, 0, len(searchResp.Records))
 	for _, record := range searchResp.Records {
-		objects = append(objects, s.getObjectFromStruct(record, propertyMap, typeMap, tagMap))
+		objects = append(objects, s.getObjectFromStruct(record))
 	}
 
 	return objects, total, hasMore, nil

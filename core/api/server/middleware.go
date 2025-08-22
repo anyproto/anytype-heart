@@ -14,7 +14,10 @@ import (
 	"github.com/anyproto/anytype-heart/core/api/util"
 	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/pb"
+	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
+	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 const ApiVersion = "2025-05-20"
@@ -27,7 +30,83 @@ var (
 	ErrInvalidApiKey              = errors.New("invalid api key")
 )
 
-// ensureRateLimit creates a shared write-rate limiter middleware.
+// ensureMetadataHeader is a middleware that ensures the metadata header is set.
+func ensureMetadataHeader() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		c.Writer.Header().Set("Anytype-Version", ApiVersion)
+		c.Next()
+	}
+}
+
+// ensureAuthenticated is a middleware that ensures the request is authenticated.
+func (srv *Server) ensureAuthenticated(mw apicore.ClientCommands) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		authHeader := c.GetHeader("Authorization")
+		if authHeader == "" {
+			apiErr := util.CodeToAPIError(http.StatusUnauthorized, ErrMissingAuthorizationHeader.Error())
+			c.AbortWithStatusJSON(http.StatusUnauthorized, apiErr)
+			return
+		}
+
+		if !strings.HasPrefix(authHeader, "Bearer ") {
+			apiErr := util.CodeToAPIError(http.StatusUnauthorized, ErrInvalidAuthorizationHeader.Error())
+			c.AbortWithStatusJSON(http.StatusUnauthorized, apiErr)
+			return
+		}
+		key := strings.TrimPrefix(authHeader, "Bearer ")
+
+		// Validate the key - if the key exists in the KeyToToken map, it is considered valid.
+		// Otherwise, attempt to create a new session using the key and add it to the map upon successful validation.
+		srv.mu.Lock()
+		apiSession, exists := srv.KeyToToken[key]
+		srv.mu.Unlock()
+
+		if !exists {
+			response := mw.WalletCreateSession(context.Background(), &pb.RpcWalletCreateSessionRequest{Auth: &pb.RpcWalletCreateSessionRequestAuthOfAppKey{AppKey: key}})
+			if response.Error.Code != pb.RpcWalletCreateSessionResponseError_NULL {
+				apiErr := util.CodeToAPIError(http.StatusUnauthorized, ErrInvalidApiKey.Error())
+				c.AbortWithStatusJSON(http.StatusUnauthorized, apiErr)
+				return
+			}
+			apiSession = ApiSessionEntry{
+				Token: response.Token,
+				// TODO: enable once app name is returned
+				// AppName: response.AppName,
+			}
+
+			srv.mu.Lock()
+			srv.KeyToToken[key] = apiSession
+			srv.mu.Unlock()
+		}
+
+		// Add token to request context for downstream services (subscriptions, events, etc.)
+		c.Set("token", apiSession.Token)
+		c.Set("apiAppName", apiSession.AppName)
+		c.Next()
+	}
+}
+
+// ensureAnalyticsEvent is a middleware that ensures broadcasting an analytics event after a successful request.
+func ensureAnalyticsEvent(code string, eventService apicore.EventService) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		c.Next()
+
+		status := c.Writer.Status()
+		payload, err := util.NewAnalyticsEventForApi(c.Request.Context(), code, status)
+		if err != nil {
+			log.Errorf("Failed to create API analytics event: %v", err)
+			return
+		}
+
+		eventService.Broadcast(event.NewEventSingleMessage("", &pb.EventMessageValueOfPayloadBroadcast{
+			PayloadBroadcast: &pb.EventPayloadBroadcast{
+				Payload: payload,
+			},
+		}))
+	}
+}
+
+// ensureRateLimit creates shared write-rate limiter middleware.
 func ensureRateLimit(rate float64, burst int, isRateLimitDisabled bool) gin.HandlerFunc {
 	lmt := tollbooth.NewLimiter(rate, nil)
 	lmt.SetBurst(burst)
@@ -50,78 +129,41 @@ func ensureRateLimit(rate float64, burst int, isRateLimitDisabled bool) gin.Hand
 	}
 }
 
-// ensureAuthenticated is a middleware that ensures the request is authenticated.
-func (s *Server) ensureAuthenticated(mw apicore.ClientCommands) gin.HandlerFunc {
+// ensureFilters is a middleware that ensures the filters are set in the context.
+func (srv *Server) ensureFilters() gin.HandlerFunc {
+	filterDefs := []struct {
+		Param       string
+		RelationKey string
+		Condition   model.BlockContentDataviewFilterCondition
+	}{
+		{bundle.RelationKeyName.String(), bundle.RelationKeyName.String(), model.BlockContentDataviewFilter_Like},
+	}
+
 	return func(c *gin.Context) {
-		authHeader := c.GetHeader("Authorization")
-		if authHeader == "" {
-			apiErr := util.CodeToAPIError(http.StatusUnauthorized, ErrMissingAuthorizationHeader.Error())
-			c.AbortWithStatusJSON(http.StatusUnauthorized, apiErr)
-			return
-		}
-
-		if !strings.HasPrefix(authHeader, "Bearer ") {
-			apiErr := util.CodeToAPIError(http.StatusUnauthorized, ErrInvalidAuthorizationHeader.Error())
-			c.AbortWithStatusJSON(http.StatusUnauthorized, apiErr)
-			return
-		}
-		key := strings.TrimPrefix(authHeader, "Bearer ")
-
-		// Validate the key - if the key exists in the KeyToToken map, it is considered valid.
-		// Otherwise, attempt to create a new session using the key and add it to the map upon successful validation.
-		s.mu.Lock()
-		apiSession, exists := s.KeyToToken[key]
-		s.mu.Unlock()
-
-		if !exists {
-			response := mw.WalletCreateSession(context.Background(), &pb.RpcWalletCreateSessionRequest{Auth: &pb.RpcWalletCreateSessionRequestAuthOfAppKey{AppKey: key}})
-			if response.Error.Code != pb.RpcWalletCreateSessionResponseError_NULL {
-				apiErr := util.CodeToAPIError(http.StatusUnauthorized, ErrInvalidApiKey.Error())
-				c.AbortWithStatusJSON(http.StatusUnauthorized, apiErr)
-				return
+		var filters []*model.BlockContentDataviewFilter
+		for _, def := range filterDefs {
+			if v := c.Query(def.Param); v != "" {
+				filters = append(filters, &model.BlockContentDataviewFilter{
+					RelationKey: def.RelationKey,
+					Condition:   def.Condition,
+					Value:       pbtypes.String(v),
+				})
 			}
-			apiSession = ApiSessionEntry{
-				Token: response.Token,
-				// TODO: enable once app name is returned
-				// AppName: response.AppName,
-			}
-
-			s.mu.Lock()
-			s.KeyToToken[key] = apiSession
-			s.mu.Unlock()
 		}
-
-		// Add token to request context for downstream services (subscriptions, events, etc.)
-		c.Set("token", apiSession.Token)
-		c.Set("apiAppName", apiSession.AppName)
+		c.Set("filters", filters)
 		c.Next()
 	}
 }
 
-// ensureAnalyticsEvent is a middleware that ensures broadcasting an analytics event after a successful request.
-func (s *Server) ensureAnalyticsEvent(code string, eventService apicore.EventService) gin.HandlerFunc {
+// ensureCacheInitialized initializes the API service caches on the first request.
+func (srv *Server) ensureCacheInitialized() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		c.Next()
+		srv.initOnce.Do(func() {
+			if err := srv.service.InitializeAllCaches(); err != nil {
+				log.Errorf("Failed to initialize API service caches: %v", err)
+			}
+		})
 
-		status := c.Writer.Status()
-		payload, err := util.NewAnalyticsEventForApi(c.Request.Context(), code, status)
-		if err != nil {
-			log.Errorf("failed to create api analytics event: %v", err)
-			return
-		}
-
-		eventService.Broadcast(event.NewEventSingleMessage("", &pb.EventMessageValueOfPayloadBroadcast{
-			PayloadBroadcast: &pb.EventPayloadBroadcast{
-				Payload: payload,
-			},
-		}))
-	}
-}
-
-// ensureMetadataHeader is a middleware that ensures the metadata header is set.
-func (s *Server) ensureMetadataHeader() gin.HandlerFunc {
-	return func(c *gin.Context) {
-		c.Writer.Header().Set("Anytype-Version", ApiVersion)
 		c.Next()
 	}
 }
