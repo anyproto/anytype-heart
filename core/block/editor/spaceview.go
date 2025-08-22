@@ -7,10 +7,10 @@ import (
 	"time"
 
 	"github.com/anyproto/any-sync/util/crypto"
-	"github.com/anyproto/lexid"
 	"github.com/gogo/protobuf/proto"
 	"golang.org/x/exp/slices"
 
+	"github.com/anyproto/anytype-heart/core/block/editor/order"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/editor/template"
@@ -28,9 +28,6 @@ import (
 var spaceViewLog = logging.Logger("core.block.editor.spaceview")
 
 var ErrIncorrectSpaceInfo = errors.New("space info is incorrect")
-var ErrLexidInsertionFailed = errors.New("lexid insertion failed")
-
-var lx = lexid.Must(lexid.CharsBase64, 4, 4000)
 
 // required relations for spaceview beside the bundle.RequiredInternalRelations
 var spaceViewRequiredRelations = []domain.RelationKey{
@@ -57,6 +54,7 @@ type spaceService interface {
 // SpaceView is a wrapper around smartblock.SmartBlock that indicates the current space state
 type SpaceView struct {
 	smartblock.SmartBlock
+	order.OrderSettable
 	spaceService      spaceService
 	fileObjectService fileobject.Service
 	log               *logging.Sugared
@@ -66,6 +64,7 @@ type SpaceView struct {
 func (f *ObjectFactory) newSpaceView(sb smartblock.SmartBlock) *SpaceView {
 	return &SpaceView{
 		SmartBlock:        sb,
+		OrderSettable:     order.NewOrderSettable(sb, bundle.RelationKeySpaceOrder),
 		spaceService:      f.spaceService,
 		log:               spaceViewLog,
 		fileObjectService: f.fileObjectService,
@@ -326,60 +325,6 @@ func (s *SpaceView) UpdateLastOpenedDate() error {
 	st := s.NewState()
 	st.SetLocalDetail(bundle.RelationKeyLastOpenedDate, domain.Int64(time.Now().Unix()))
 	return s.Apply(st, smartblock.NoHistory, smartblock.NoEvent, smartblock.SkipIfNoChanges, smartblock.KeepInternalFlags)
-}
-
-func (s *SpaceView) SetOrder(prevViewOrderId string) (string, error) {
-	st := s.NewState()
-	var spaceOrderId string
-	if prevViewOrderId == "" {
-		// For the first element, use a lexid with huge padding
-		spaceOrderId = lx.Middle()
-	} else {
-		spaceOrderId = lx.Next(prevViewOrderId)
-	}
-	st.SetDetail(bundle.RelationKeySpaceOrder, domain.String(spaceOrderId))
-	return spaceOrderId, s.Apply(st)
-}
-
-func (s *SpaceView) SetAfterOrder(viewOrderId string) error {
-	st := s.NewState()
-	spaceOrderId := st.Details().GetString(bundle.RelationKeySpaceOrder)
-	if viewOrderId > spaceOrderId {
-		spaceOrderId = lx.Next(viewOrderId)
-		st.SetDetail(bundle.RelationKeySpaceOrder, domain.String(spaceOrderId))
-		return s.Apply(st)
-	}
-	return nil
-}
-
-func (s *SpaceView) SetBetweenOrders(prevViewOrderId, afterViewOrderId string) error {
-	st := s.NewState()
-	var before string
-	var err error
-
-	if prevViewOrderId == "" {
-		// Insert before the first existing element
-		before = lx.Prev(afterViewOrderId)
-	} else {
-		// Insert between two existing elements
-		before, err = lx.NextBefore(prevViewOrderId, afterViewOrderId)
-	}
-
-	if err != nil {
-		return errors.Join(ErrLexidInsertionFailed, err)
-	}
-	st.SetDetail(bundle.RelationKeySpaceOrder, domain.String(before))
-	return s.Apply(st)
-}
-
-func (s *SpaceView) UnsetOrder() error {
-	st := s.NewState()
-	st.RemoveDetail(bundle.RelationKeySpaceOrder)
-	return s.Apply(st)
-}
-
-func (s *SpaceView) GetOrder() string {
-	return s.Details().GetString(bundle.RelationKeySpaceOrder)
 }
 
 func stateSetAccessType(st *state.State, accessType spaceinfo.AccessType) {

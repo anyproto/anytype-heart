@@ -7,6 +7,7 @@ import (
 	"github.com/anyproto/any-sync/app"
 
 	"github.com/anyproto/anytype-heart/core/block/cache"
+	"github.com/anyproto/anytype-heart/core/block/editor/order"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
@@ -16,19 +17,10 @@ import (
 
 const CName = "core.order.setter"
 
-type orderSettable interface {
-	GetOrder() string
-	SetOrder(previousOrderId string) (string, error)
-	SetAfterOrder(orderId string) error
-	SetBetweenOrders(previousOrderId, afterOrderId string) error
-	UnsetOrder() error
-}
-
 type OrderSetter interface {
 	SetSpaceViewOrder(spaceViewOrder []string) ([]string, error)
-	UnsetOrder(objectId string) error
-
 	SetOptionsOrder(spaceId string, relationKey domain.RelationKey, order []string) ([]string, error)
+	UnsetOrder(objectId string) error
 
 	app.Component
 }
@@ -52,6 +44,42 @@ func (o *orderSetter) Init(a *app.App) (err error) {
 
 func (o *orderSetter) Name() (name string) {
 	return CName
+}
+
+// SetSpaceViewOrder sets the order for space views. It ensures all views in spaceViewOrder have lexids.
+// spaceViewOrder is the desired final order of all space views
+func (o *orderSetter) SetSpaceViewOrder(spaceViewOrder []string) ([]string, error) {
+	if len(spaceViewOrder) == 0 {
+		return nil, errors.New("empty spaceViewOrder")
+	}
+
+	existing, err := o.getCurrentSpaceOrder()
+	if err != nil {
+		return nil, err
+	}
+
+	return o.rebuildIfNeeded(spaceViewOrder, existing)
+}
+
+// SetOptionsOrder sets the order for relation options of particular relation. It ensures all options in order have lexids.
+// order is the desired final order of all space views
+func (o *orderSetter) SetOptionsOrder(spaceId string, relationKey domain.RelationKey, order []string) ([]string, error) {
+	if len(order) == 0 {
+		return nil, errors.New("empty order")
+	}
+
+	existing, err := o.getCurrentOptionsOrder(spaceId, relationKey)
+	if err != nil {
+		return nil, err
+	}
+
+	return o.rebuildIfNeeded(order, existing)
+}
+
+func (o *orderSetter) UnsetOrder(objectId string) error {
+	return cache.Do[order.OrderSettable](o.objectGetter, objectId, func(os order.OrderSettable) error {
+		return os.UnsetOrder()
+	})
 }
 
 func (o *orderSetter) getCurrentSpaceOrder() (map[string]string, error) {
@@ -100,36 +128,6 @@ func (o *orderSetter) getCurrentOptionsOrder(spaceId string, relationKey domain.
 	return optionIdToOrderId, nil
 }
 
-// SetSpaceViewOrder sets the order for space views. It ensures all views in spaceViewOrder have lexids.
-// spaceViewOrder is the desired final order of all space views
-func (o *orderSetter) SetSpaceViewOrder(spaceViewOrder []string) ([]string, error) {
-	if len(spaceViewOrder) == 0 {
-		return nil, errors.New("empty spaceViewOrder")
-	}
-
-	existing, err := o.getCurrentSpaceOrder()
-	if err != nil {
-		return nil, err
-	}
-
-	return o.rebuildIfNeeded(spaceViewOrder, existing)
-}
-
-// SetOptionsOrder sets the order for relation options of particular relation. It ensures all options in order have lexids.
-// order is the desired final order of all space views
-func (o *orderSetter) SetOptionsOrder(spaceId string, relationKey domain.RelationKey, order []string) ([]string, error) {
-	if len(order) == 0 {
-		return nil, errors.New("empty order")
-	}
-
-	existing, err := o.getCurrentOptionsOrder(spaceId, relationKey)
-	if err != nil {
-		return nil, err
-	}
-
-	return o.rebuildIfNeeded(order, existing)
-}
-
 // rebuildIfNeeded processes the order in a single pass, updating lexids as needed
 func (o *orderSetter) rebuildIfNeeded(order []string, existing map[string]string) ([]string, error) {
 	nextExisting := o.precalcNext(existing, order) // O(n)
@@ -164,7 +162,7 @@ func (o *orderSetter) rebuildIfNeeded(order []string, existing map[string]string
 // setRank sets the lexid for a view, handling all positioning cases
 func (o *orderSetter) setRank(objectId, before, after string, isFirst bool) string {
 	var newID string
-	err := cache.Do[orderSettable](o.objectGetter, objectId, func(os orderSettable) error {
+	err := cache.Do[order.OrderSettable](o.objectGetter, objectId, func(os order.OrderSettable) error {
 		var e error
 		switch {
 		case isFirst && before == "" && after == "":
@@ -211,19 +209,13 @@ func (o *orderSetter) precalcNext(existing map[string]string, order []string) []
 	return res
 }
 
-func (o *orderSetter) UnsetOrder(objectId string) error {
-	return cache.Do[orderSettable](o.objectGetter, objectId, func(os orderSettable) error {
-		return os.UnsetOrder()
-	})
-}
-
 // rebuildAllLexIds rebuilds all lexids from scratch
-func (o *orderSetter) rebuildAllLexIds(order []string) ([]string, error) {
-	finalOrder := make([]string, len(order))
+func (o *orderSetter) rebuildAllLexIds(orderedObjectIds []string) ([]string, error) {
+	finalOrder := make([]string, len(orderedObjectIds))
 
 	// Clear all existing lexids first
-	for _, objectId := range order {
-		err := cache.Do[orderSettable](o.objectGetter, objectId, func(os orderSettable) error {
+	for _, objectId := range orderedObjectIds {
+		err := cache.Do[order.OrderSettable](o.objectGetter, objectId, func(os order.OrderSettable) error {
 			return os.UnsetOrder()
 		})
 		if err != nil {
@@ -233,9 +225,9 @@ func (o *orderSetter) rebuildAllLexIds(order []string) ([]string, error) {
 
 	// Now assign new lexids in order
 	previousLexId := ""
-	for i, objectId := range order {
+	for i, objectId := range orderedObjectIds {
 		var newLexId string
-		err := cache.Do[orderSettable](o.objectGetter, objectId, func(os orderSettable) error {
+		err := cache.Do[order.OrderSettable](o.objectGetter, objectId, func(os order.OrderSettable) error {
 			var err error
 			if i == 0 {
 				// First element with padding

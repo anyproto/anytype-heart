@@ -10,6 +10,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 
+	"github.com/anyproto/anytype-heart/core/block/editor/order"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock/smarttest"
 	"github.com/anyproto/anytype-heart/core/block/migration"
@@ -195,16 +196,16 @@ func TestSpaceView_SetBetweenViews(t *testing.T) {
 		// given
 		fx := newSpaceViewFixture(t)
 		defer fx.finish()
-		firstSpaceView := lx.Next("")
-		secondSpaceView := lx.Next(firstSpaceView)
-		thirdSpaceView := lx.Next(secondSpaceView)
 
 		// when
-		err := fx.SetBetweenOrders(secondSpaceView, thirdSpaceView)
+		err := fx.SetBetweenOrders("CCCC", "FFFF")
 
 		// then
 		require.NoError(t, err)
-		assert.NotEmpty(t, fx.Details().GetString(bundle.RelationKeySpaceOrder))
+		orderId := fx.Details().GetString(bundle.RelationKeySpaceOrder)
+		require.NotEmpty(t, orderId)
+		assert.Greater(t, orderId, "CCCC")
+		assert.Greater(t, "FFFF", orderId)
 	})
 	t.Run("after id is empty", func(t *testing.T) {
 		// given
@@ -268,9 +269,10 @@ func (s *spaceServiceStub) OnWorkspaceChanged(spaceId string, details *domain.De
 func NewSpaceViewTest(t *testing.T, targetSpaceId string, tree *mock_objecttree.MockObjectTree) (*SpaceView, error) {
 	sb := smarttest.NewWithTree("root", tree)
 	a := &SpaceView{
-		SmartBlock:   sb,
-		spaceService: &spaceServiceStub{},
-		log:          log,
+		SmartBlock:    sb,
+		OrderSettable: order.NewOrderSettable(sb, bundle.RelationKeySpaceOrder),
+		spaceService:  &spaceServiceStub{},
+		log:           log,
 	}
 
 	initCtx := &smartblock.InitContext{
