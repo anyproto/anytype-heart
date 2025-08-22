@@ -18,6 +18,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+	"github.com/anyproto/anytype-heart/util/futures"
 )
 
 const (
@@ -40,8 +41,8 @@ func New() relationutils.RelationFormatFetcher {
 type formatFetcher struct {
 	subscription subscription.Service
 
-	mu   sync.RWMutex
-	subs map[string]*spaceSubscription
+	lock sync.Mutex
+	subs map[string]*futures.Future[*spaceSubscription]
 }
 
 func (f *formatFetcher) Name() string {
@@ -50,7 +51,7 @@ func (f *formatFetcher) Name() string {
 
 func (f *formatFetcher) Init(a *app.App) error {
 	f.subscription = app.MustComponent[subscription.Service](a)
-	f.subs = map[string]*spaceSubscription{}
+	f.subs = make(map[string]*futures.Future[*spaceSubscription])
 	return nil
 }
 
@@ -100,8 +101,28 @@ func (f *formatFetcher) setupSub(spaceId string) (*spaceSubscription, error) {
 		queue: queue,
 		cache: formats,
 	}
-	f.subs[spaceId] = spaceSub
 	return spaceSub, nil
+}
+
+func (f *formatFetcher) getSpaceSub(spaceId string) (*spaceSubscription, error) {
+	return f.getSpaceSubFuture(spaceId).Wait()
+}
+
+func (f *formatFetcher) getSpaceSubFuture(spaceId string) *futures.Future[*spaceSubscription] {
+	f.lock.Lock()
+	sub, ok := f.subs[spaceId]
+	if ok {
+		f.lock.Unlock()
+		return sub
+	}
+
+	sub = futures.New[*spaceSubscription]()
+	f.subs[spaceId] = sub
+	f.lock.Unlock()
+
+	sub.Resolve(f.setupSub(spaceId))
+
+	return sub
 }
 
 func (f *formatFetcher) buildSubscriptionParams(spaceId string) objectsubscription.SubscriptionParams[model.RelationLink] {
@@ -111,9 +132,12 @@ func (f *formatFetcher) buildSubscriptionParams(spaceId string) objectsubscripti
 			key := domain.RelationKey(details.GetString(bundle.RelationKeyRelationKey))
 			format := model.RelationFormat(details.GetInt64(bundle.RelationKeyRelationFormat)) // nolint:gosec
 			if !bundle.HasRelation(key) {
-				f.mu.Lock()
-				f.subs[spaceId].cache[key] = format
-				f.mu.Unlock()
+				sub, err := f.getSpaceSub(spaceId)
+				if err != nil {
+					log.Error("failed to get space sub", zap.String("spaceId", spaceId), zap.Error(err))
+				} else {
+					sub.cache[key] = format
+				}
 			}
 			return id, model.RelationLink{
 				Key:    key.String(),
@@ -129,9 +153,12 @@ func (f *formatFetcher) buildSubscriptionParams(spaceId string) objectsubscripti
 		OnAdded: func(id string, entry model.RelationLink) {
 			key := domain.RelationKey(entry.Key)
 			if !bundle.HasRelation(key) {
-				f.mu.Lock()
-				f.subs[spaceId].cache[key] = entry.Format
-				f.mu.Unlock()
+				sub, err := f.getSpaceSub(spaceId)
+				if err != nil {
+					log.Error("failed to get space sub", zap.String("spaceId", spaceId), zap.Error(err))
+				} else {
+					sub.cache[key] = entry.Format
+				}
 			}
 		},
 	}
@@ -139,9 +166,14 @@ func (f *formatFetcher) buildSubscriptionParams(spaceId string) objectsubscripti
 
 func (f *formatFetcher) Close(_ context.Context) error {
 	var subIds []string
-	for spaceId, sub := range f.subs {
+	for spaceId, future := range f.subs {
+		sub, err := future.Wait()
+		if err != nil {
+			log.Warn("failed to get space subscription on Close", zap.Error(err))
+			continue
+		}
 		sub.sub.Close()
-		if err := sub.queue.Close(); err != nil {
+		if err = sub.queue.Close(); err != nil {
 			log.Warn("failed to close queue", zap.Error(err))
 		}
 		subIds = append(subIds, buildSubId(spaceId))
@@ -159,19 +191,7 @@ func (f *formatFetcher) GetRelationFormatByKey(spaceId string, key domain.Relati
 		return rel.Format, nil
 	}
 
-	f.mu.Lock()
-	defer f.mu.Unlock()
-
-	sub, ok := f.subs[spaceId]
-	if ok {
-		format, found := sub.cache[key]
-		if found {
-			return format, nil
-		}
-		return 0, fmt.Errorf("relation format not found for key %s", key)
-	}
-
-	sub, err = f.setupSub(spaceId)
+	sub, err := f.getSpaceSub(spaceId)
 	if err != nil {
 		return 0, err
 	}

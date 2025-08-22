@@ -12,9 +12,28 @@ import (
 	"github.com/anyproto/anytype-heart/core/subscription/mock_subscription"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+	"github.com/anyproto/anytype-heart/util/futures"
 )
 
 const testSpaceId = "test-space-1"
+
+func initTestFormatFetcher(cache map[domain.RelationKey]model.RelationFormat) (f *formatFetcher) {
+	f = &formatFetcher{
+		subs: map[string]*futures.Future[*spaceSubscription]{},
+	}
+
+	if cache == nil {
+		return f
+	}
+
+	sub := futures.New[*spaceSubscription]()
+	sub.Resolve(&spaceSubscription{
+		cache: cache,
+	}, nil)
+
+	f.subs[testSpaceId] = sub
+	return f
+}
 
 func TestFormatFetcher_GetRelationFormatByKey(t *testing.T) {
 	t.Run("returns bundle relation format", func(t *testing.T) {
@@ -31,15 +50,9 @@ func TestFormatFetcher_GetRelationFormatByKey(t *testing.T) {
 
 	t.Run("returns cached format for existing subscription", func(t *testing.T) {
 		// given
-		f := &formatFetcher{
-			subs: map[string]*spaceSubscription{
-				testSpaceId: {
-					cache: map[domain.RelationKey]model.RelationFormat{
-						"custom_relation": model.RelationFormat_longtext,
-					},
-				},
-			},
-		}
+		f := initTestFormatFetcher(map[domain.RelationKey]model.RelationFormat{
+			"custom_relation": model.RelationFormat_longtext,
+		})
 
 		// when
 		format, err := f.GetRelationFormatByKey(testSpaceId, "custom_relation")
@@ -51,13 +64,7 @@ func TestFormatFetcher_GetRelationFormatByKey(t *testing.T) {
 
 	t.Run("returns error for non-existent relation in existing subscription", func(t *testing.T) {
 		// given
-		f := &formatFetcher{
-			subs: map[string]*spaceSubscription{
-				testSpaceId: {
-					cache: map[domain.RelationKey]model.RelationFormat{},
-				},
-			},
-		}
+		f := initTestFormatFetcher(map[domain.RelationKey]model.RelationFormat{})
 
 		// when
 		_, err := f.GetRelationFormatByKey(testSpaceId, "non_existent")
@@ -69,9 +76,7 @@ func TestFormatFetcher_GetRelationFormatByKey(t *testing.T) {
 
 	t.Run("sets up new subscription and returns format for custom relations", func(t *testing.T) {
 		// given
-		f := &formatFetcher{
-			subs: map[string]*spaceSubscription{},
-		}
+		f := initTestFormatFetcher(nil)
 
 		mockSub := mock_subscription.NewMockService(t)
 		mockSub.EXPECT().Search(mock.MatchedBy(func(req subscription.SubscribeRequest) bool {
@@ -105,9 +110,7 @@ func TestFormatFetcher_GetRelationFormatByKey(t *testing.T) {
 
 	t.Run("returns error when subscription setup fails", func(t *testing.T) {
 		// given
-		f := &formatFetcher{
-			subs: map[string]*spaceSubscription{},
-		}
+		f := initTestFormatFetcher(nil)
 
 		mockSub := mock_subscription.NewMockService(t)
 		mockSub.EXPECT().Search(mock.Anything).Return(nil, fmt.Errorf("subscription error"))
@@ -124,9 +127,7 @@ func TestFormatFetcher_GetRelationFormatByKey(t *testing.T) {
 
 	t.Run("returns error for non-existent relation in new subscription", func(t *testing.T) {
 		// given
-		f := &formatFetcher{
-			subs: map[string]*spaceSubscription{},
-		}
+		f := initTestFormatFetcher(nil)
 
 		mockSub := mock_subscription.NewMockService(t)
 		mockSub.EXPECT().Search(mock.Anything).Return(&subscription.SubscribeResponse{
@@ -146,9 +147,7 @@ func TestFormatFetcher_GetRelationFormatByKey(t *testing.T) {
 func TestFormatFetcher_setupSub(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
 		// given
-		f := &formatFetcher{
-			subs: map[string]*spaceSubscription{},
-		}
+		f := initTestFormatFetcher(nil)
 
 		mockSub := mock_subscription.NewMockService(t)
 		mockSub.EXPECT().Search(mock.Anything).Return(&subscription.SubscribeResponse{
@@ -177,14 +176,11 @@ func TestFormatFetcher_setupSub(t *testing.T) {
 		assert.Len(t, sub.cache, 2)
 		assert.Equal(t, model.RelationFormat_tag, sub.cache["custom_relation_1"])
 		assert.Equal(t, model.RelationFormat_status, sub.cache["custom_relation_2"])
-		assert.Contains(t, f.subs, testSpaceId)
 	})
 
 	t.Run("bundle relations are not included in cache", func(t *testing.T) {
 		// given
-		f := &formatFetcher{
-			subs: map[string]*spaceSubscription{},
-		}
+		f := initTestFormatFetcher(nil)
 
 		mockSub := mock_subscription.NewMockService(t)
 		mockSub.EXPECT().Search(mock.Anything).Return(&subscription.SubscribeResponse{
@@ -214,9 +210,7 @@ func TestFormatFetcher_setupSub(t *testing.T) {
 
 	t.Run("returns error when search fails", func(t *testing.T) {
 		// given
-		f := &formatFetcher{
-			subs: map[string]*spaceSubscription{},
-		}
+		f := initTestFormatFetcher(nil)
 
 		mockSub := mock_subscription.NewMockService(t)
 		mockSub.EXPECT().Search(mock.Anything).Return(nil, fmt.Errorf("search failed"))
@@ -235,13 +229,7 @@ func TestFormatFetcher_setupSub(t *testing.T) {
 func TestFormatFetcher_buildSubscriptionParams(t *testing.T) {
 	t.Run("SetDetails function works correctly", func(t *testing.T) {
 		// given
-		f := &formatFetcher{
-			subs: map[string]*spaceSubscription{
-				testSpaceId: {
-					cache: map[domain.RelationKey]model.RelationFormat{},
-				},
-			},
-		}
+		f := initTestFormatFetcher(map[domain.RelationKey]model.RelationFormat{})
 
 		params := f.buildSubscriptionParams(testSpaceId)
 
@@ -258,18 +246,14 @@ func TestFormatFetcher_buildSubscriptionParams(t *testing.T) {
 		assert.Equal(t, "test-id", id)
 		assert.Equal(t, "custom_relation", entry.Key)
 		assert.Equal(t, model.RelationFormat_url, entry.Format)
-		assert.Equal(t, model.RelationFormat_url, f.subs[testSpaceId].cache["custom_relation"])
+		sub, err := f.subs[testSpaceId].Wait()
+		assert.NoError(t, err)
+		assert.Equal(t, model.RelationFormat_url, sub.cache["custom_relation"])
 	})
 
 	t.Run("SetDetails ignores bundle relations", func(t *testing.T) {
 		// given
-		f := &formatFetcher{
-			subs: map[string]*spaceSubscription{
-				testSpaceId: {
-					cache: map[domain.RelationKey]model.RelationFormat{},
-				},
-			},
-		}
+		f := initTestFormatFetcher(map[domain.RelationKey]model.RelationFormat{})
 
 		params := f.buildSubscriptionParams(testSpaceId)
 
@@ -286,18 +270,14 @@ func TestFormatFetcher_buildSubscriptionParams(t *testing.T) {
 		assert.Equal(t, "test-id", id)
 		assert.Equal(t, bundle.RelationKeyName.String(), entry.Key)
 		assert.Equal(t, model.RelationFormat_shorttext, entry.Format)
-		assert.Empty(t, f.subs[testSpaceId].cache)
+		sub, err := f.subs[testSpaceId].Wait()
+		assert.NoError(t, err)
+		assert.Empty(t, sub.cache)
 	})
 
 	t.Run("OnAdded function works correctly", func(t *testing.T) {
 		// given
-		f := &formatFetcher{
-			subs: map[string]*spaceSubscription{
-				testSpaceId: {
-					cache: map[domain.RelationKey]model.RelationFormat{},
-				},
-			},
-		}
+		f := initTestFormatFetcher(map[domain.RelationKey]model.RelationFormat{})
 
 		params := f.buildSubscriptionParams(testSpaceId)
 
@@ -310,18 +290,14 @@ func TestFormatFetcher_buildSubscriptionParams(t *testing.T) {
 		params.OnAdded("test-id", entry)
 
 		// then
-		assert.Equal(t, model.RelationFormat_date, f.subs[testSpaceId].cache["custom_relation"])
+		sub, err := f.subs[testSpaceId].Wait()
+		assert.NoError(t, err)
+		assert.Equal(t, model.RelationFormat_date, sub.cache["custom_relation"])
 	})
 
 	t.Run("OnAdded ignores bundle relations", func(t *testing.T) {
 		// given
-		f := &formatFetcher{
-			subs: map[string]*spaceSubscription{
-				testSpaceId: {
-					cache: map[domain.RelationKey]model.RelationFormat{},
-				},
-			},
-		}
+		f := initTestFormatFetcher(map[domain.RelationKey]model.RelationFormat{})
 
 		params := f.buildSubscriptionParams(testSpaceId)
 
@@ -334,6 +310,8 @@ func TestFormatFetcher_buildSubscriptionParams(t *testing.T) {
 		params.OnAdded("test-id", entry)
 
 		// then
-		assert.Empty(t, f.subs[testSpaceId].cache)
+		sub, err := f.subs[testSpaceId].Wait()
+		assert.NoError(t, err)
+		assert.Empty(t, sub.cache)
 	})
 }
