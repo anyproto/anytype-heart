@@ -60,12 +60,7 @@ func (l *linkPreview) Name() (name string) {
 }
 
 func (l *linkPreview) Fetch(ctx context.Context, fetchUrl string) (linkPreview model.LinkPreview, responseBody []byte, isFile bool, err error) {
-	rt := &proxyRoundTripper{RoundTripper: http.DefaultTransport}
-	client := &http.Client{Transport: rt}
-	og := opengraph.New(fetchUrl)
-	og.URL = fetchUrl
-	og.Intent.Context = ctx
-	og.Intent.HTTPClient = client
+	og, rt := buildOpenGraph(ctx, fetchUrl)
 	err = og.Fetch()
 
 	resp := rt.lastResponse
@@ -73,32 +68,24 @@ func (l *linkPreview) Fetch(ctx context.Context, fetchUrl string) (linkPreview m
 		return model.LinkPreview{}, nil, false, fmt.Errorf("no response")
 	}
 
-	if err != nil && resp.StatusCode == http.StatusOK {
-		preview, isFile, err := l.makeNonHtml(fetchUrl, resp)
-		if err != nil {
-			return preview, nil, false, err
+	if err != nil {
+		if resp.StatusCode == http.StatusOK {
+			preview, isFile, err := l.makeNonHtml(fetchUrl, resp)
+			if err != nil {
+				return preview, nil, false, err
+			}
+			return preview, rt.lastBody, isFile, nil
 		}
-		return preview, rt.lastBody, isFile, nil
+		sendMetricsEvent(resp.StatusCode)
+		return model.LinkPreview{}, nil, false, fmt.Errorf("invalid http code %d", resp.StatusCode)
 	}
 
 	if resp.StatusCode != http.StatusOK {
-		code := resp.StatusCode
-		metrics.Service.SendSampled(&metrics.LinkPreviewStatusEvent{StatusCode: code})
-		statusClass := getStatusClass(code)
-		metrics.LinkPreviewStatusCounter.WithLabelValues(fmt.Sprintf("%d", code), statusClass).Inc()
-		return model.LinkPreview{}, nil, false, fmt.Errorf("invalid http code %d", code)
+		sendMetricsEvent(resp.StatusCode)
+		return model.LinkPreview{}, nil, false, fmt.Errorf("invalid http code %d", resp.StatusCode)
 	}
 
-	res := l.convertOGToInfo(fetchUrl, og)
-	if len(res.Description) == 0 {
-		res.Description = l.findContent(rt.lastBody)
-	}
-	if !utf8.ValidString(res.Title) {
-		res.Title = ""
-	}
-	if !utf8.ValidString(res.Description) {
-		res.Description = ""
-	}
+	res := l.convertOGToInfo(fetchUrl, og, rt)
 	decodedResponse, err := decodeResponse(rt)
 	if err != nil {
 		log.Errorf("failed to decode request %s", err)
@@ -119,7 +106,7 @@ func decodeResponse(response *proxyRoundTripper) ([]byte, error) {
 	return decodedResponse, nil
 }
 
-func (l *linkPreview) convertOGToInfo(fetchUrl string, og *opengraph.OpenGraph) (i model.LinkPreview) {
+func (l *linkPreview) convertOGToInfo(fetchUrl string, og *opengraph.OpenGraph, rt *proxyRoundTripper) (i model.LinkPreview) {
 	og.ToAbs()
 	i = model.LinkPreview{
 		Url:         fetchUrl,
@@ -134,6 +121,16 @@ func (l *linkPreview) convertOGToInfo(fetchUrl string, og *opengraph.OpenGraph) 
 		if err == nil {
 			i.ImageUrl = url
 		}
+	}
+
+	if len(i.Description) == 0 {
+		i.Description = l.findContent(rt.lastBody)
+	}
+	if !utf8.ValidString(i.Title) {
+		i.Title = ""
+	}
+	if !utf8.ValidString(i.Description) {
+		i.Description = ""
 	}
 
 	return
@@ -192,6 +189,16 @@ func isContentFile(resp *http.Response, contentType, mimeType string) bool {
 		mimeType != ""
 }
 
+func buildOpenGraph(ctx context.Context, fetchUrl string) (og *opengraph.OpenGraph, rt *proxyRoundTripper) {
+	rt = &proxyRoundTripper{RoundTripper: http.DefaultTransport}
+	client := &http.Client{Transport: rt}
+	og = opengraph.New(fetchUrl)
+	og.URL = fetchUrl
+	og.Intent.Context = ctx
+	og.Intent.HTTPClient = client
+	return og, rt
+}
+
 type proxyRoundTripper struct {
 	http.RoundTripper
 	lastResponse *http.Response
@@ -224,6 +231,12 @@ func (l *limitReader) Read(p []byte) (n int, err error) {
 	}
 	l.nTotal += n
 	return
+}
+
+func sendMetricsEvent(code int) {
+	metrics.Service.SendSampled(&metrics.LinkPreviewStatusEvent{StatusCode: code})
+	statusClass := getStatusClass(code)
+	metrics.LinkPreviewStatusCounter.WithLabelValues(fmt.Sprintf("%d", code), statusClass).Inc()
 }
 
 func getStatusClass(statusCode int) string {
