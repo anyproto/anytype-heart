@@ -14,6 +14,7 @@ func (s *fileSync) runBatchUploader() {
 		case <-s.loopCtx.Done():
 			return
 		case req := <-s.requestsCh:
+
 			err := s.rpcStore.AddToFileMany(s.loopCtx, req.req)
 			if err != nil {
 				s.onBatchUploadError(s.loopCtx, req, err)
@@ -50,6 +51,22 @@ func (s *fileSync) updateUploadedCids(objectId string, cids []cid.Cid) {
 		if !exists {
 			return ProcessActionNone, FileInfo{}, nil
 		}
+
+		// If deletion is pending, it will be deleted soon
+		if info.State == FileStatePendingDeletion {
+			return ProcessActionNone, FileInfo{}, nil
+		}
+
+		// If it was deleted, delete again to undo uploaded blocks
+		if info.State == FileStateDeleted {
+			err := s.rpcStore.DeleteFiles(s.loopCtx, info.SpaceId, info.FileId)
+			// Enqueue deletion if we can't delete right away
+			if err != nil {
+				return ProcessActionUpdate, info.ToPendingDeletion(), err
+			}
+			return ProcessActionNone, info, nil
+		}
+
 		for _, c := range cids {
 			delete(info.CidsToUpload, c)
 		}

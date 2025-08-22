@@ -22,6 +22,7 @@ const (
 	FileStateLimited
 	FileStatePendingDeletion
 	FileStateDone
+	FileStateDeleted
 )
 
 type FileInfo struct {
@@ -73,19 +74,9 @@ func (i FileInfo) ToDone() FileInfo {
 	return i
 }
 
-func (s *fileSync) processFile(ctx context.Context, fi FileInfo) (FileInfo, error) {
-	switch fi.State {
-	case FileStatePendingUpload:
-		return s.processFilePendingUpload(ctx, fi)
-	case FileStateUploading:
-		return s.processFileUploading(ctx, fi)
-	case FileStateLimited:
-		return s.processFileLimited(fi)
-	case FileStatePendingDeletion:
-		return s.processFilePendingDeletion(ctx, fi)
-	default:
-		return fi, fmt.Errorf("unknown state: %d", fi.State)
-	}
+func (i FileInfo) ToDeleted() FileInfo {
+	i.State = FileStateDeleted
+	return i
 }
 
 func (s *fileSync) processFilePendingUpload(ctx context.Context, it FileInfo) (FileInfo, error) {
@@ -202,7 +193,7 @@ func (s *fileSync) processFilePendingDeletion(ctx context.Context, fi FileInfo) 
 	}
 	log.Warn("file deleted", zap.String("fileId", fi.FileId.String()))
 
-	return fi.ToDone(), nil
+	return fi.ToDeleted(), nil
 }
 
 type ProcessAction int
@@ -317,6 +308,10 @@ func (q *stateProcessor) process(key string, proc func(exists bool, info FileInf
 func (s *fileSync) runUploader(ctx context.Context) {
 	ticker := time.NewTicker(time.Millisecond * 500)
 	defer ticker.Stop()
+
+	// TODO Decide what to do with items with Uploading status. There are at least two variants:
+	// 1. Just try to upload Cids from CidsToUpload -> maybe more cleaner approach, because state machine will be described more thoughtfully.
+	// 2. Add to pending upload queue
 
 	s.processNextPendingUploadItem(ctx)
 	for {
