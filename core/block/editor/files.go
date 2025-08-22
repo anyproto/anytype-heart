@@ -103,10 +103,11 @@ func (f *File) Init(ctx *smartblock.InitContext) error {
 	myParticipantId := f.accountService.MyParticipantId(f.SpaceID())
 
 	if !ctx.IsNewObject && creator == myParticipantId {
-		err = f.fileObjectService.EnsureFileAddedToSyncQueue(fullId, ctx.State.Details())
-		if err != nil {
-			log.Errorf("failed to ensure file added to sync queue: %v", err)
-		}
+		// TODO Do this in service?
+		// err = f.fileObjectService.EnsureFileAddedToSyncQueue(fullId, ctx.State.Details())
+		// if err != nil {
+		// 	log.Errorf("failed to ensure file added to sync queue: %v", err)
+		// }
 		f.AddHook(func(applyInfo smartblock.ApplyInfo) error {
 			return f.fileObjectService.EnsureFileAddedToSyncQueue(fullId, applyInfo.State.Details())
 		}, smartblock.HookOnStateRebuild)

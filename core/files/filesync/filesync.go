@@ -84,7 +84,8 @@ type fileSync struct {
 	requestsBatcher *requestsBatcher
 	requestsCh      chan blockPushManyRequest
 
-	stateProcessor *stateProcessor
+	filesRepository *filesRepository
+	stateProcessor  *stateProcessor
 
 	importEventsMutex sync.Mutex
 	importEvents      []*pb.Event
@@ -105,7 +106,8 @@ func (s *fileSync) Init(a *app.App) (err error) {
 	s.cfg = app.MustComponent[*config.Config](a)
 	s.limitManager = newLimitManager(s.rpcStore)
 
-	s.stateProcessor = newStateProcessor(newFilesRepository())
+	s.filesRepository = newFilesRepository()
+	s.stateProcessor = newStateProcessor(s.filesRepository)
 
 	provider := app.MustComponent[anystoreprovider.Provider](a)
 	db := provider.GetCommonDb()
@@ -140,8 +142,10 @@ func (s *fileSync) Run(ctx context.Context) (err error) {
 	go s.runNodeUsageUpdater()
 	go s.requestsBatcher.run(s.loopCtx)
 	for range 10 {
-		go s.runUploader()
+		go s.runBatchUploader()
 	}
+
+	go s.runUploader(s.loopCtx)
 
 	return
 }

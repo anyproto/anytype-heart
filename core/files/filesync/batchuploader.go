@@ -8,7 +8,7 @@ import (
 	"go.uber.org/zap"
 )
 
-func (s *fileSync) runUploader() {
+func (s *fileSync) runBatchUploader() {
 	for {
 		select {
 		case <-s.loopCtx.Done():
@@ -53,8 +53,8 @@ func (s *fileSync) updateUploadedCids(objectId string, cids []cid.Cid) {
 		for _, c := range cids {
 			delete(info.CidsToUpload, c)
 		}
-		info.HandledAt = time.Now()
-		return ProcessActionUpdate, info, nil
+		next, err := s.processFileUploading(s.loopCtx, info)
+		return ProcessActionUpdate, next, err
 	})
 }
 

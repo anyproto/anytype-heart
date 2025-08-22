@@ -232,6 +232,18 @@ func (r *filesRepository) get(key string) (FileInfo, bool) {
 	return v, ok
 }
 
+func (r *filesRepository) find(pred func(file FileInfo) bool) (FileInfo, bool) {
+	r.lock.Lock()
+	defer r.lock.Unlock()
+
+	for _, file := range r.files {
+		if pred(file) {
+			return file, true
+		}
+	}
+	return FileInfo{}, false
+}
+
 func (r *filesRepository) put(key string, file FileInfo) {
 	r.lock.Lock()
 	defer r.lock.Unlock()
@@ -301,3 +313,66 @@ func (q *stateProcessor) process(key string, proc func(exists bool, info FileInf
 	delete(q.processing, key)
 	q.lock.Unlock()
 }
+
+func (s *fileSync) runUploader(ctx context.Context) {
+	ticker := time.NewTicker(time.Millisecond * 500)
+	defer ticker.Stop()
+
+	s.processNextPendingUploadItem(ctx)
+	for {
+		select {
+		case <-ticker.C:
+			s.processNextPendingUploadItem(ctx)
+		case <-ctx.Done():
+			return
+		}
+	}
+}
+
+func (s *fileSync) processNextPendingUploadItem(ctx context.Context) {
+	next, ok := s.filesRepository.find(func(file FileInfo) bool {
+		return file.State == FileStatePendingUpload && time.Since(file.HandledAt) > time.Minute
+	})
+
+	if ok {
+		s.stateProcessor.process(next.Key(), func(exists bool, info FileInfo) (ProcessAction, FileInfo, error) {
+			if info.State == FileStatePendingUpload {
+				next, err := s.processFilePendingUpload(ctx, info)
+				return ProcessActionUpdate, next, err
+			}
+			return ProcessActionNone, info, nil
+		})
+	}
+}
+
+// func (s *fileSync) runUploadingProcessor(ctx context.Context) {
+//
+// 	ticker := time.NewTicker(time.Millisecond * 500)
+// 	defer ticker.Stop()
+//
+// 	s.processNextPendingUploadItem(ctx)
+// 	for {
+// 		select {
+// 		case <-ticker.C:
+// 			s.processNextPendingUploadItem(ctx)
+// 		case <-ctx.Done():
+// 			return
+// 		}
+// 	}
+// }
+//
+// func (s *fileSync) processNextUploadingItem(ctx context.Context) {
+// 	next, ok := s.filesRepository.find(func(file FileInfo) bool {
+// 		return file.State == FileStateUploading && time.Since(file.HandledAt) > time.Minute
+// 	})
+//
+// 	if ok {
+// 		s.stateProcessor.process(next.Key(), func(exists bool, info FileInfo) (ProcessAction, FileInfo, error) {
+// 			if info.State == FileStatePendingUpload {
+// 				next, err := s.processFilePendingUpload(ctx, info)
+// 				return ProcessActionUpdate, next, err
+// 			}
+// 			return ProcessActionNone, info, nil
+// 		})
+// 	}
+// }

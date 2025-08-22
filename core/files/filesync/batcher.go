@@ -194,11 +194,11 @@ func (b *requestsBatcher) tick() {
 			}
 
 			for _, block := range batch.blocks {
-				ok := lastMixedBatch.addBlock(batch.spaceId, fileId, batch.fileId, block, b.maxBatchSize)
+				ok := lastMixedBatch.addBlock(batch.spaceId, fileId, batch.objectId, block, b.maxBatchSize)
 				if !ok {
 					b.enqueue(lastMixedBatch)
 					lastMixedBatch.reset()
-					lastMixedBatch.addBlock(batch.spaceId, fileId, batch.fileId, block, b.maxBatchSize)
+					lastMixedBatch.addBlock(batch.spaceId, fileId, batch.objectId, block, b.maxBatchSize)
 				}
 			}
 			delete(b.fileBatches, fileId)
