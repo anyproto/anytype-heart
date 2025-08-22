@@ -10,20 +10,30 @@ import (
 
 	apimodel "github.com/anyproto/anytype-heart/core/api/model"
 	"github.com/anyproto/anytype-heart/core/api/util"
+	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-type Parser struct{}
+// topLevelTextAttributes defines top-level attributes that should default to contains for text search
+var topLevelTextAttributes = map[string]bool{
+	bundle.RelationKeyName.String(): true,
+}
 
-func NewParser() *Parser {
-	return &Parser{}
+type Parser struct {
+	apiService ApiService
+}
+
+func NewParser(apiService ApiService) *Parser {
+	return &Parser{
+		apiService: apiService,
+	}
 }
 
 // conditionPattern matches filter conditions in square brackets
 var conditionPattern = regexp.MustCompile(`^(.+)\[(\w+)\]$`)
 
 // ParseQueryParams parses query parameters into filters
-func (p *Parser) ParseQueryParams(c *gin.Context) (*ParsedFilters, error) {
+func (p *Parser) ParseQueryParams(c *gin.Context, spaceId string) (*ParsedFilters, error) {
 	queryParams := c.Request.URL.Query()
 	filters := make([]Filter, 0)
 
@@ -39,7 +49,7 @@ func (p *Parser) ParseQueryParams(c *gin.Context) (*ParsedFilters, error) {
 			continue
 		}
 
-		property, condition, err := p.parseFilterKey(key)
+		property, condition, err := p.parseFilterKey(key, spaceId)
 		if err != nil {
 			return nil, util.ErrBadInput(fmt.Sprintf("invalid filter key %q: %s", key, err.Error()))
 		}
@@ -60,7 +70,7 @@ func (p *Parser) ParseQueryParams(c *gin.Context) (*ParsedFilters, error) {
 }
 
 // parseFilterKey extracts property name and condition from a filter key
-func (p *Parser) parseFilterKey(key string) (property string, condition model.BlockContentDataviewFilterCondition, err error) {
+func (p *Parser) parseFilterKey(key string, spaceId string) (property string, condition model.BlockContentDataviewFilterCondition, err error) {
 	if matches := conditionPattern.FindStringSubmatch(key); len(matches) == 3 {
 		property = matches[1]
 		conditionStr := strings.ToLower(matches[2])
@@ -72,7 +82,7 @@ func (p *Parser) parseFilterKey(key string) (property string, condition model.Bl
 		condition = cond
 	} else {
 		property = key
-		condition = model.BlockContentDataviewFilter_Equal
+		condition = p.getDefaultCondition(property, spaceId)
 	}
 
 	if property == "" {
@@ -80,6 +90,39 @@ func (p *Parser) parseFilterKey(key string) (property string, condition model.Bl
 	}
 
 	return property, condition, nil
+}
+
+// getDefaultCondition returns the appropriate default condition based on property type
+func (p *Parser) getDefaultCondition(propertyKey string, spaceId string) model.BlockContentDataviewFilterCondition {
+	// Check if it's a top-level text attribute (like name)
+	if topLevelTextAttributes[propertyKey] {
+		return model.BlockContentDataviewFilter_Like // Contains
+	}
+
+	// For other cases without spaceId, default to Equal
+	if spaceId == "" {
+		return model.BlockContentDataviewFilter_Equal
+	}
+
+	propertyMap := p.apiService.GetCachedProperties(spaceId)
+	rk, found := p.apiService.ResolvePropertyApiKey(propertyMap, propertyKey)
+	if !found {
+		return model.BlockContentDataviewFilter_Equal
+	}
+
+	prop, exists := propertyMap[rk]
+	if !exists {
+		return model.BlockContentDataviewFilter_Equal
+	}
+
+	// For text-like properties, use Contains as default
+	switch prop.Format {
+	case apimodel.PropertyFormatText, apimodel.PropertyFormatUrl,
+		apimodel.PropertyFormatEmail, apimodel.PropertyFormatPhone:
+		return model.BlockContentDataviewFilter_Like // Contains
+	default:
+		return model.BlockContentDataviewFilter_Equal
+	}
 }
 
 // parseFilterValue parses the filter value based on the condition

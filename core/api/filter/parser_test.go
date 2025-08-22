@@ -7,8 +7,11 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
+	"github.com/anyproto/anytype-heart/core/api/filter/mock_filter"
+	apimodel "github.com/anyproto/anytype-heart/core/api/model"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
@@ -27,6 +30,112 @@ func createMockContext(queryString string) *gin.Context {
 	return c
 }
 
+func GetTestPropertyMap() map[string]*apimodel.Property {
+	return map[string]*apimodel.Property{
+		"title": {
+			Key:         "title",
+			RelationKey: "title",
+			Format:      apimodel.PropertyFormatText,
+		},
+		"description": {
+			Key:         "description",
+			RelationKey: "description",
+			Format:      apimodel.PropertyFormatText,
+		},
+		"status": {
+			Key:         "status",
+			RelationKey: "status",
+			Format:      apimodel.PropertyFormatSelect,
+		},
+		"type": {
+			Key:         "type",
+			RelationKey: "type",
+			Format:      apimodel.PropertyFormatSelect,
+		},
+		"age": {
+			Key:         "age",
+			RelationKey: "age",
+			Format:      apimodel.PropertyFormatNumber,
+		},
+		"priority": {
+			Key:         "priority",
+			RelationKey: "priority",
+			Format:      apimodel.PropertyFormatNumber,
+		},
+		"created_date": {
+			Key:         "created_date",
+			RelationKey: "created_date",
+			Format:      apimodel.PropertyFormatDate,
+		},
+		"due_date": {
+			Key:         "due_date",
+			RelationKey: "due_date",
+			Format:      apimodel.PropertyFormatDate,
+		},
+		"start_date": {
+			Key:         "start_date",
+			RelationKey: "start_date",
+			Format:      apimodel.PropertyFormatDate,
+		},
+		"end_date": {
+			Key:         "end_date",
+			RelationKey: "end_date",
+			Format:      apimodel.PropertyFormatDate,
+		},
+		"created": {
+			Key:         "created",
+			RelationKey: "created",
+			Format:      apimodel.PropertyFormatDate,
+		},
+		"tags": {
+			Key:         "tags",
+			RelationKey: "tags",
+			Format:      apimodel.PropertyFormatMultiSelect,
+		},
+		"email": {
+			Key:         "email",
+			RelationKey: "email",
+			Format:      apimodel.PropertyFormatEmail,
+		},
+		"website": {
+			Key:         "website",
+			RelationKey: "website",
+			Format:      apimodel.PropertyFormatUrl,
+		},
+		"phone": {
+			Key:         "phone",
+			RelationKey: "phone",
+			Format:      apimodel.PropertyFormatPhone,
+		},
+		"done": {
+			Key:         "done",
+			RelationKey: "done",
+			Format:      apimodel.PropertyFormatCheckbox,
+		},
+	}
+}
+
+func CreateTestParser(t *testing.T) *Parser {
+	mockService := mock_filter.NewMockApiService(t)
+	propertyMap := GetTestPropertyMap()
+
+	mockService.On("GetCachedProperties", mock.Anything).Return(propertyMap).Maybe()
+	mockService.On("ResolvePropertyApiKey", mock.Anything, mock.Anything).Return(
+		func(properties map[string]*apimodel.Property, key string) string {
+			if prop, exists := properties[key]; exists {
+				return prop.RelationKey
+			}
+			return ""
+		},
+		func(properties map[string]*apimodel.Property, key string) bool {
+			_, exists := properties[key]
+			return exists
+		},
+	).Maybe()
+
+	return NewParser(mockService)
+}
+
 func TestParser_ParseQueryParams(t *testing.T) {
 	tests := []struct {
 		name            string
@@ -35,12 +144,12 @@ func TestParser_ParseQueryParams(t *testing.T) {
 		expectedError   string
 	}{
 		{
-			name:        "simple filter - property equals value",
+			name:        "text property without explicit condition defaults to contains",
 			queryString: "name=test",
 			expectedFilters: []Filter{
 				{
 					PropertyKey: "name",
-					Condition:   model.BlockContentDataviewFilter_Equal,
+					Condition:   model.BlockContentDataviewFilter_Like,
 					Value:       "test",
 				},
 			},
@@ -200,12 +309,12 @@ func TestParser_ParseQueryParams(t *testing.T) {
 			},
 		},
 		{
-			name:        "multiple filters",
-			queryString: "name=test&status[ne]=archived&priority[in]=high,medium",
+			name:        "multiple filters with mixed types",
+			queryString: "name=test&status[ne]=archived&priority[in]=5,10",
 			expectedFilters: []Filter{
 				{
 					PropertyKey: "name",
-					Condition:   model.BlockContentDataviewFilter_Equal,
+					Condition:   model.BlockContentDataviewFilter_Like, // Text property defaults to contains
 					Value:       "test",
 				},
 				{
@@ -216,7 +325,7 @@ func TestParser_ParseQueryParams(t *testing.T) {
 				{
 					PropertyKey: "priority",
 					Condition:   model.BlockContentDataviewFilter_In,
-					Value:       []string{"high", "medium"},
+					Value:       []string{"5", "10"},
 				},
 			},
 		},
@@ -226,7 +335,7 @@ func TestParser_ParseQueryParams(t *testing.T) {
 			expectedFilters: []Filter{
 				{
 					PropertyKey: "title",
-					Condition:   model.BlockContentDataviewFilter_Equal,
+					Condition:   model.BlockContentDataviewFilter_Like, // Text property defaults to contains
 					Value:       "hello world",
 				},
 				{
@@ -242,8 +351,107 @@ func TestParser_ParseQueryParams(t *testing.T) {
 			expectedFilters: []Filter{
 				{
 					PropertyKey: "name",
-					Condition:   model.BlockContentDataviewFilter_Equal,
+					Condition:   model.BlockContentDataviewFilter_Like, // Text property defaults to contains
 					Value:       "test",
+				},
+			},
+		},
+		{
+			name:        "number property without explicit condition defaults to equal",
+			queryString: "age=25",
+			expectedFilters: []Filter{
+				{
+					PropertyKey: "age",
+					Condition:   model.BlockContentDataviewFilter_Equal,
+					Value:       "25",
+				},
+			},
+		},
+		{
+			name:        "unknown property defaults to equal",
+			queryString: "custom_field=value",
+			expectedFilters: []Filter{
+				{
+					PropertyKey: "custom_field",
+					Condition:   model.BlockContentDataviewFilter_Equal,
+					Value:       "value",
+				},
+			},
+		},
+		{
+			name:        "email property defaults to contains",
+			queryString: "email=@example.com",
+			expectedFilters: []Filter{
+				{
+					PropertyKey: "email",
+					Condition:   model.BlockContentDataviewFilter_Like,
+					Value:       "@example.com",
+				},
+			},
+		},
+		{
+			name:        "website property (url) defaults to contains",
+			queryString: "website=github",
+			expectedFilters: []Filter{
+				{
+					PropertyKey: "website",
+					Condition:   model.BlockContentDataviewFilter_Like,
+					Value:       "github",
+				},
+			},
+		},
+		{
+			name:        "phone property defaults to contains",
+			queryString: "phone=555",
+			expectedFilters: []Filter{
+				{
+					PropertyKey: "phone",
+					Condition:   model.BlockContentDataviewFilter_Like,
+					Value:       "555",
+				},
+			},
+		},
+		{
+			name:        "date property defaults to equal",
+			queryString: "created_date=2024-01-01",
+			expectedFilters: []Filter{
+				{
+					PropertyKey: "created_date",
+					Condition:   model.BlockContentDataviewFilter_Equal,
+					Value:       "2024-01-01",
+				},
+			},
+		},
+		{
+			name:        "select property defaults to equal",
+			queryString: "status=active",
+			expectedFilters: []Filter{
+				{
+					PropertyKey: "status",
+					Condition:   model.BlockContentDataviewFilter_Equal,
+					Value:       "active",
+				},
+			},
+		},
+		{
+			name:        "checkbox property defaults to equal",
+			queryString: "done=true",
+			expectedFilters: []Filter{
+				{
+					PropertyKey: "done",
+					Condition:   model.BlockContentDataviewFilter_Equal,
+					Value:       "true",
+				},
+			},
+		},
+		{
+			name:        "tags (multi-select) property defaults to equal",
+			queryString: "tags=important",
+			expectedFilters: []Filter{
+				{
+					PropertyKey: "tags",
+					Condition:   model.BlockContentDataviewFilter_Equal,
+					Value:       "important",
 				},
 			},
 		},
@@ -269,7 +477,7 @@ func TestParser_ParseQueryParams(t *testing.T) {
 			expectedFilters: []Filter{
 				{
 					PropertyKey: "name",
-					Condition:   model.BlockContentDataviewFilter_Equal,
+					Condition:   model.BlockContentDataviewFilter_Like,
 					Value:       "",
 				},
 			},
@@ -314,7 +522,7 @@ func TestParser_ParseQueryParams(t *testing.T) {
 				{
 					PropertyKey: "description",
 					Condition:   model.BlockContentDataviewFilter_Like,
-					Value:       "&= @#", // + is decoded as space in URL encoding
+					Value:       "&= @#",
 				},
 			},
 		},
@@ -347,7 +555,7 @@ func TestParser_ParseQueryParams(t *testing.T) {
 				{
 					PropertyKey: "priority",
 					Condition:   model.BlockContentDataviewFilter_Greater,
-					Value:       "5,10,15", // Treated as single string
+					Value:       "5,10,15",
 				},
 			},
 		},
@@ -390,14 +598,13 @@ func TestParser_ParseQueryParams(t *testing.T) {
 			},
 		},
 	}
-
-	parser := NewParser()
+	parser := CreateTestParser(t)
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			c := createMockContext(tt.queryString)
 
-			result, err := parser.ParseQueryParams(c)
+			result, err := parser.ParseQueryParams(c, "test-space")
 
 			if tt.expectedError != "" {
 				require.Error(t, err)
@@ -415,8 +622,8 @@ func TestParser_ParseQueryParams(t *testing.T) {
 				for _, expected := range tt.expectedFilters {
 					actual, exists := filterMap[expected.PropertyKey]
 					require.True(t, exists, "Filter for property %s not found", expected.PropertyKey)
-					assert.Equal(t, expected.Condition, actual.Condition)
-					assert.Equal(t, expected.Value, actual.Value)
+					assert.Equal(t, expected.Condition, actual.Condition, "Condition mismatch for property %s", expected.PropertyKey)
+					assert.Equal(t, expected.Value, actual.Value, "Value mismatch for property %s", expected.PropertyKey)
 				}
 			}
 		})
@@ -432,10 +639,10 @@ func TestParser_parseFilterKey(t *testing.T) {
 		expectedError     string
 	}{
 		{
-			name:              "simple key defaults to equal",
+			name:              "name key with spaceId defaults to contains",
 			key:               "name",
 			expectedProperty:  "name",
-			expectedCondition: model.BlockContentDataviewFilter_Equal,
+			expectedCondition: model.BlockContentDataviewFilter_Like,
 		},
 		{
 			name:              "key with equal condition",
@@ -486,11 +693,11 @@ func TestParser_parseFilterKey(t *testing.T) {
 		},
 	}
 
-	parser := NewParser()
+	parser := CreateTestParser(t)
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			property, condition, err := parser.parseFilterKey(tt.key)
+			property, condition, err := parser.parseFilterKey(tt.key, "test-space")
 
 			if tt.expectedError != "" {
 				require.Error(t, err)
@@ -580,7 +787,7 @@ func TestParser_parseFilterValue(t *testing.T) {
 		},
 	}
 
-	parser := NewParser()
+	parser := CreateTestParser(t)
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

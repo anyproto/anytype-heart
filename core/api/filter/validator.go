@@ -5,8 +5,23 @@ import (
 
 	apimodel "github.com/anyproto/anytype-heart/core/api/model"
 	"github.com/anyproto/anytype-heart/core/api/util"
+	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
+
+// getTopLevelAttributeAsProperty returns a synthetic property for top-level attributes
+func getTopLevelAttributeAsProperty(key string) *apimodel.Property {
+	switch key {
+	case bundle.RelationKeyName.String():
+		return &apimodel.Property{
+			Key:         key,
+			RelationKey: key,
+			Format:      apimodel.PropertyFormatText,
+		}
+	default:
+		return nil
+	}
+}
 
 type ApiService interface {
 	GetCachedProperties(spaceId string) map[string]*apimodel.Property
@@ -67,6 +82,11 @@ func (v *Validator) validateFilter(spaceId string, filter *Filter, propertyMap m
 
 // resolveProperty resolves a property by key and returns it or an error if not found
 func (v *Validator) resolveProperty(spaceId string, propertyKey string, propertyMap map[string]*apimodel.Property) (*apimodel.Property, error) {
+	// Check if it's a top-level attribute first
+	if prop := getTopLevelAttributeAsProperty(propertyKey); prop != nil {
+		return prop, nil
+	}
+
 	rk, found := v.apiService.ResolvePropertyApiKey(propertyMap, propertyKey)
 	if !found {
 		return nil, util.ErrBadInput(fmt.Sprintf("property %q not found", propertyKey))

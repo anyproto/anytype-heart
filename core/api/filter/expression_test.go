@@ -389,7 +389,7 @@ func TestBuildExpressionFilters(t *testing.T) {
 				Conditions: []apimodel.FilterItem{
 					{
 						WrappedFilterItem: apimodel.TextFilterItem{
-							PropertyKey: "name",
+							PropertyKey: "title",
 							Condition:   apimodel.FilterConditionGt, // Greater than is invalid for text
 							Text:        util.PtrString("test"),
 						},
@@ -398,14 +398,14 @@ func TestBuildExpressionFilters(t *testing.T) {
 			},
 			setupMock: func(m *mock_filter.MockApiService) {
 				propertyMap := map[string]*apimodel.Property{
-					"name": {
-						Key:         "name",
-						RelationKey: bundle.RelationKeyName.String(),
+					"title": {
+						Key:         "title",
+						RelationKey: "title",
 						Format:      apimodel.PropertyFormatText,
 					},
 				}
 				m.On("GetCachedProperties", spaceId).Return(propertyMap)
-				m.On("ResolvePropertyApiKey", propertyMap, "name").Return("name", true)
+				m.On("ResolvePropertyApiKey", propertyMap, "title").Return("title", true)
 			},
 			expectedError: "failed to build condition filter: bad input: condition \"gt\" is not valid for property type \"text\"",
 		},
@@ -470,6 +470,33 @@ func TestBuildExpressionFilters(t *testing.T) {
 			},
 			checkResult: func(t *testing.T, result *model.BlockContentDataviewFilter) {
 				assert.Nil(t, result)
+			},
+		},
+		{
+			name: "top-level attribute name filter",
+			expr: &apimodel.FilterExpression{
+				Conditions: []apimodel.FilterItem{
+					{
+						WrappedFilterItem: apimodel.TextFilterItem{
+							PropertyKey: "name",
+							Condition:   apimodel.FilterConditionContains,
+							Text:        util.PtrString("test"),
+						},
+					},
+				},
+			},
+			setupMock: func(m *mock_filter.MockApiService) {
+				// name is a top-level attribute, so it doesn't go through property resolution
+				propertyMap := map[string]*apimodel.Property{}
+				m.On("GetCachedProperties", spaceId).Return(propertyMap)
+				// No ResolvePropertyApiKey call for name since it's handled as top-level attribute
+				m.On("SanitizeAndValidatePropertyValue", spaceId, "name", "test", mock.Anything, propertyMap).Return("test", nil)
+			},
+			checkResult: func(t *testing.T, result *model.BlockContentDataviewFilter) {
+				require.NotNil(t, result)
+				assert.Equal(t, bundle.RelationKeyName.String(), result.RelationKey)
+				assert.Equal(t, model.BlockContentDataviewFilter_Like, result.Condition)
+				assert.Equal(t, pbtypes.String("test"), result.Value)
 			},
 		},
 	}

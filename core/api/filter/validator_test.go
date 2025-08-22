@@ -18,10 +18,10 @@ func TestValidator_ValidateFilters(t *testing.T) {
 	const testSpaceId = "test-space"
 
 	mockProperties := map[string]*apimodel.Property{
-		"name": {
-			Id:          "rel-name",
-			Key:         "name",
-			RelationKey: "name",
+		"title": {
+			Id:          "rel-title",
+			Key:         "title",
+			RelationKey: "title",
 			Format:      apimodel.PropertyFormatText,
 		},
 		"age": {
@@ -94,7 +94,7 @@ func TestValidator_ValidateFilters(t *testing.T) {
 			filters: &filter.ParsedFilters{
 				Filters: []filter.Filter{
 					{
-						PropertyKey: "name",
+						PropertyKey: "title",
 						Condition:   model.BlockContentDataviewFilter_Equal,
 						Value:       "test",
 					},
@@ -102,12 +102,40 @@ func TestValidator_ValidateFilters(t *testing.T) {
 			},
 			setupMock: func(m *mock_filter.MockApiService) {
 				m.On("GetCachedProperties", testSpaceId).Return(mockProperties)
-				m.On("ResolvePropertyApiKey", mockProperties, "name").Return("name", true)
+				m.On("ResolvePropertyApiKey", mockProperties, "title").Return("title", true)
+				m.On("SanitizeAndValidatePropertyValue",
+					testSpaceId,
+					"title",
+					"test",
+					mockProperties["title"],
+					mockProperties,
+				).Return("test", nil)
+			},
+			checkResult: func(t *testing.T, filters *filter.ParsedFilters) {
+				require.Len(t, filters.Filters, 1)
+				assert.Equal(t, "title", filters.Filters[0].PropertyKey)
+				assert.Equal(t, "test", filters.Filters[0].Value)
+			},
+		},
+		{
+			name: "top-level attribute name filter",
+			filters: &filter.ParsedFilters{
+				Filters: []filter.Filter{
+					{
+						PropertyKey: "name",
+						Condition:   model.BlockContentDataviewFilter_Like,
+						Value:       "test",
+					},
+				},
+			},
+			setupMock: func(m *mock_filter.MockApiService) {
+				m.On("GetCachedProperties", testSpaceId).Return(mockProperties)
+				// name is a top-level attribute, so ResolvePropertyApiKey is not called
 				m.On("SanitizeAndValidatePropertyValue",
 					testSpaceId,
 					"name",
 					"test",
-					mockProperties["name"],
+					mock.Anything,
 					mockProperties,
 				).Return("test", nil)
 			},
@@ -195,7 +223,7 @@ func TestValidator_ValidateFilters(t *testing.T) {
 			filters: &filter.ParsedFilters{
 				Filters: []filter.Filter{
 					{
-						PropertyKey: "name",
+						PropertyKey: "title",
 						Condition:   model.BlockContentDataviewFilter_Greater,
 						Value:       "test",
 					},
@@ -203,7 +231,7 @@ func TestValidator_ValidateFilters(t *testing.T) {
 			},
 			setupMock: func(m *mock_filter.MockApiService) {
 				m.On("GetCachedProperties", testSpaceId).Return(mockProperties)
-				m.On("ResolvePropertyApiKey", mockProperties, "name").Return("name", true)
+				m.On("ResolvePropertyApiKey", mockProperties, "title").Return("title", true)
 			},
 			expectedError: "invalid filter at index 0: bad input: condition \"gt\" is not valid for property type \"text\"",
 		},
@@ -236,7 +264,7 @@ func TestValidator_ValidateFilters(t *testing.T) {
 			filters: &filter.ParsedFilters{
 				Filters: []filter.Filter{
 					{
-						PropertyKey: "name",
+						PropertyKey: "title",
 						Condition:   model.BlockContentDataviewFilter_Empty,
 						Value:       true,
 					},
@@ -244,7 +272,7 @@ func TestValidator_ValidateFilters(t *testing.T) {
 			},
 			setupMock: func(m *mock_filter.MockApiService) {
 				m.On("GetCachedProperties", testSpaceId).Return(mockProperties)
-				m.On("ResolvePropertyApiKey", mockProperties, "name").Return("name", true)
+				m.On("ResolvePropertyApiKey", mockProperties, "title").Return("title", true)
 				// Empty condition doesn't call SanitizeAndValidatePropertyValue
 			},
 			checkResult: func(t *testing.T, filters *filter.ParsedFilters) {
@@ -311,7 +339,7 @@ func TestValidator_ValidateFilters(t *testing.T) {
 			filters: &filter.ParsedFilters{
 				Filters: []filter.Filter{
 					{
-						PropertyKey: "name",
+						PropertyKey: "title",
 						Condition:   model.BlockContentDataviewFilter_Equal,
 						Value:       "test",
 					},
@@ -325,12 +353,12 @@ func TestValidator_ValidateFilters(t *testing.T) {
 			setupMock: func(m *mock_filter.MockApiService) {
 				m.On("GetCachedProperties", testSpaceId).Return(mockProperties)
 				// First filter passes
-				m.On("ResolvePropertyApiKey", mockProperties, "name").Return("name", true)
+				m.On("ResolvePropertyApiKey", mockProperties, "title").Return("title", true)
 				m.On("SanitizeAndValidatePropertyValue",
 					testSpaceId,
-					"name",
+					"title",
 					"test",
-					mockProperties["name"],
+					mockProperties["title"],
 					mockProperties,
 				).Return("test", nil)
 				// Second filter fails

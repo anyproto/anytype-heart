@@ -35,10 +35,10 @@ func TestFilterIntegration(t *testing.T) {
 					filterMap[f.RelationKey] = f
 				}
 
-				// Check name filter
+				// Check name filter (text property defaults to contains)
 				nameFilter, ok := filterMap["name"]
 				require.True(t, ok, "name filter should exist")
-				assert.Equal(t, model.BlockContentDataviewFilter_Equal, nameFilter.Condition)
+				assert.Equal(t, model.BlockContentDataviewFilter_Like, nameFilter.Condition)
 				assert.NotNil(t, nameFilter.Value)
 
 				// Check status filter
@@ -122,14 +122,107 @@ func TestFilterIntegration(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			parser := filter.NewParser()
+			parser := filter.CreateTestParser(t)
 
 			req := httptest.NewRequest(http.MethodGet, "/?"+tt.queryString, nil)
 			w := httptest.NewRecorder()
 			c, _ := gin.CreateTestContext(w)
 			c.Request = req
 
-			parsedFilters, err := parser.ParseQueryParams(c)
+			parsedFilters, err := parser.ParseQueryParams(c, "test-space")
+			require.NoError(t, err)
+
+			filters := parsedFilters.ToDataviewFilters()
+
+			if tt.expectedFilters == 0 {
+				assert.Nil(t, filters)
+			} else {
+				assert.Len(t, filters, tt.expectedFilters)
+			}
+
+			if tt.checkFilter != nil {
+				tt.checkFilter(t, filters)
+			}
+		})
+	}
+}
+
+func TestSpacesEndpointIntegration(t *testing.T) {
+	// Test the /v1/spaces endpoint scenario where there's no spaceId
+	// and 'name' is a top-level attribute that defaults to contains
+	gin.SetMode(gin.TestMode)
+
+	tests := []struct {
+		name            string
+		queryString     string
+		spaceId         string
+		expectedFilters int
+		checkFilter     func(t *testing.T, filters []*model.BlockContentDataviewFilter)
+	}{
+		{
+			name:            "spaces endpoint with name filter defaults to contains",
+			queryString:     "name=test",
+			spaceId:         "", // No spaceId for spaces endpoint
+			expectedFilters: 1,
+			checkFilter: func(t *testing.T, filters []*model.BlockContentDataviewFilter) {
+				require.Len(t, filters, 1)
+
+				nameFilter := filters[0]
+				assert.Equal(t, "name", nameFilter.RelationKey)
+				assert.Equal(t, model.BlockContentDataviewFilter_Like, nameFilter.Condition)
+				assert.NotNil(t, nameFilter.Value)
+			},
+		},
+		{
+			name:            "spaces endpoint with explicit equal condition",
+			queryString:     "name[eq]=exact-space-name",
+			spaceId:         "", // No spaceId for spaces endpoint
+			expectedFilters: 1,
+			checkFilter: func(t *testing.T, filters []*model.BlockContentDataviewFilter) {
+				require.Len(t, filters, 1)
+
+				nameFilter := filters[0]
+				assert.Equal(t, "name", nameFilter.RelationKey)
+				assert.Equal(t, model.BlockContentDataviewFilter_Equal, nameFilter.Condition)
+				assert.NotNil(t, nameFilter.Value)
+			},
+		},
+		{
+			name:            "spaces endpoint with multiple filters",
+			queryString:     "name=test&archived=false",
+			spaceId:         "", // No spaceId for spaces endpoint
+			expectedFilters: 2,
+			checkFilter: func(t *testing.T, filters []*model.BlockContentDataviewFilter) {
+				require.Len(t, filters, 2)
+
+				filterMap := make(map[string]*model.BlockContentDataviewFilter)
+				for _, f := range filters {
+					filterMap[f.RelationKey] = f
+				}
+
+				// Name should default to contains
+				nameFilter, ok := filterMap["name"]
+				require.True(t, ok)
+				assert.Equal(t, model.BlockContentDataviewFilter_Like, nameFilter.Condition)
+
+				// Other properties default to equal
+				archivedFilter, ok := filterMap["archived"]
+				require.True(t, ok)
+				assert.Equal(t, model.BlockContentDataviewFilter_Equal, archivedFilter.Condition)
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			parser := filter.CreateTestParser(t)
+
+			req := httptest.NewRequest(http.MethodGet, "/?"+tt.queryString, nil)
+			w := httptest.NewRecorder()
+			c, _ := gin.CreateTestContext(w)
+			c.Request = req
+
+			parsedFilters, err := parser.ParseQueryParams(c, tt.spaceId)
 			require.NoError(t, err)
 
 			filters := parsedFilters.ToDataviewFilters()
@@ -149,7 +242,6 @@ func TestFilterIntegration(t *testing.T) {
 
 func TestFilterErrors(t *testing.T) {
 	gin.SetMode(gin.TestMode)
-	parser := filter.NewParser()
 
 	tests := []struct {
 		name          string
@@ -170,12 +262,14 @@ func TestFilterErrors(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			parser := filter.CreateTestParser(t)
+
 			req := httptest.NewRequest(http.MethodGet, "/?"+tt.queryString, nil)
 			w := httptest.NewRecorder()
 			c, _ := gin.CreateTestContext(w)
 			c.Request = req
 
-			_, err := parser.ParseQueryParams(c)
+			_, err := parser.ParseQueryParams(c, "test-space")
 			require.Error(t, err)
 			assert.Contains(t, err.Error(), tt.expectedError)
 		})

@@ -129,20 +129,19 @@ func ensureRateLimit(rate float64, burst int, isRateLimitDisabled bool) gin.Hand
 
 // ensureFilters is a middleware that ensures the filters are set in the context.
 func (srv *Server) ensureFilters() gin.HandlerFunc {
-	parser := filter.NewParser()
+	parser := filter.NewParser(srv.service)
 	validator := filter.NewValidator(srv.service)
 
 	return func(c *gin.Context) {
+		spaceId := c.Param("space_id")
+
 		// Parse filters from query parameters
-		parsedFilters, err := parser.ParseQueryParams(c)
+		parsedFilters, err := parser.ParseQueryParams(c, spaceId)
 		if err != nil {
 			apiErr := util.CodeToApiError(http.StatusBadRequest, err.Error())
 			c.AbortWithStatusJSON(http.StatusBadRequest, apiErr)
 			return
 		}
-
-		// Extract space ID from path if available
-		spaceId := c.Param("space_id")
 
 		// Validate filters if we have a space context
 		if spaceId != "" && parsedFilters != nil && len(parsedFilters.Filters) > 0 {
