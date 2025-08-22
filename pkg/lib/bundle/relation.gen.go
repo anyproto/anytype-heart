@@ -9,7 +9,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-const RelationChecksum = "356ec2b76fd69c30dbb73cf921d2760db78d6fa1b6fefcc26bb5cc44a32cf860"
+const RelationChecksum = "6655f55f0acf1e4436d55c33271d79db1264f90dff9482659cafd319c21488ac"
 const (
 	RelationKeyTag                                domain.RelationKey = "tag"
 	RelationKeyCamera                             domain.RelationKey = "camera"
@@ -162,7 +162,7 @@ const (
 	RelationKeyFileVariantOptions                 domain.RelationKey = "fileVariantOptions"
 	RelationKeyFileSourceChecksum                 domain.RelationKey = "fileSourceChecksum"
 	RelationKeySpaceOrder                         domain.RelationKey = "spaceOrder"
-	RelationKeyOptionOrder                        domain.RelationKey = "optionOrder"
+	RelationKeyRelationOptionOrder                domain.RelationKey = "relationOptionOrder"
 	RelationKeyIconName                           domain.RelationKey = "iconName"
 	RelationKeyRecommendedFeaturedRelations       domain.RelationKey = "recommendedFeaturedRelations"
 	RelationKeyRecommendedHiddenRelations         domain.RelationKey = "recommendedHiddenRelations"
@@ -1458,20 +1458,6 @@ var (
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
 		},
-		RelationKeyOptionOrder: {
-
-			DataSource:       model.Relation_details,
-			Description:      "Order of Relation option",
-			Format:           model.RelationFormat_longtext,
-			Hidden:           true,
-			Id:               "_broptionOrder",
-			Key:              "optionOrder",
-			MaxCount:         1,
-			Name:             "Option order",
-			ReadOnly:         true,
-			ReadOnlyRelation: true,
-			Scope:            model.Relation_type,
-		},
 		RelationKeyOrigin: {
 
 			DataSource:       model.Relation_details,
@@ -1774,6 +1760,20 @@ var (
 			Key:              "relationOptionColor",
 			MaxCount:         1,
 			Name:             "Relation option color",
+			ReadOnly:         true,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
+		RelationKeyRelationOptionOrder: {
+
+			DataSource:       model.Relation_details,
+			Description:      "Order of Relation option",
+			Format:           model.RelationFormat_longtext,
+			Hidden:           true,
+			Id:               "_brrelationOptionOrder",
+			Key:              "relationOptionOrder",
+			MaxCount:         1,
+			Name:             "Relation option order",
 			ReadOnly:         true,
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,

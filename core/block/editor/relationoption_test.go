@@ -32,7 +32,7 @@ func TestRelationOption_SetOrder(t *testing.T) {
 		assert.NoError(t, err)
 		assert.NotEmpty(t, orderId)
 
-		savedOrderId := ro.Details().GetString(bundle.RelationKeyOptionOrder)
+		savedOrderId := ro.Details().GetString(bundle.RelationKeyRelationOptionOrder)
 		assert.Equal(t, orderId, savedOrderId)
 
 		expectedMiddle := lx.Middle()
@@ -51,7 +51,7 @@ func TestRelationOption_SetOrder(t *testing.T) {
 		assert.NoError(t, err)
 		assert.NotEmpty(t, orderId)
 
-		savedOrderId := ro.Details().GetString(bundle.RelationKeyOptionOrder)
+		savedOrderId := ro.Details().GetString(bundle.RelationKeyRelationOptionOrder)
 		assert.Equal(t, orderId, savedOrderId)
 
 		expectedNext := lx.Next(previousOrderId)
@@ -63,7 +63,7 @@ func TestRelationOption_SetOrder(t *testing.T) {
 		ro := newTestRelationOption("test-relation-option")
 
 		st := ro.NewState()
-		st.SetDetail(bundle.RelationKeyOptionOrder, domain.String("initial-order"))
+		st.SetDetail(bundle.RelationKeyRelationOptionOrder, domain.String("initial-order"))
 		err := ro.Apply(st)
 		require.NoError(t, err)
 
@@ -76,7 +76,7 @@ func TestRelationOption_SetOrder(t *testing.T) {
 		assert.NoError(t, err)
 		assert.NotEmpty(t, orderId)
 
-		savedOrderId := ro.Details().GetString(bundle.RelationKeyOptionOrder)
+		savedOrderId := ro.Details().GetString(bundle.RelationKeyRelationOptionOrder)
 		assert.Equal(t, orderId, savedOrderId)
 		assert.NotEqual(t, "initial-order", savedOrderId)
 	})
@@ -89,7 +89,7 @@ func TestRelationOption_SetAfterOrder(t *testing.T) {
 
 		initialOrder := "A"
 		st := ro.NewState()
-		st.SetDetail(bundle.RelationKeyOptionOrder, domain.String(initialOrder))
+		st.SetDetail(bundle.RelationKeyRelationOptionOrder, domain.String(initialOrder))
 		err := ro.Apply(st)
 		require.NoError(t, err)
 
@@ -100,7 +100,7 @@ func TestRelationOption_SetAfterOrder(t *testing.T) {
 
 		// then
 		assert.NoError(t, err)
-		savedOrderId := ro.Details().GetString(bundle.RelationKeyOptionOrder)
+		savedOrderId := ro.Details().GetString(bundle.RelationKeyRelationOptionOrder)
 		expectedNext := lx.Next(targetOrderId)
 		assert.Equal(t, expectedNext, savedOrderId)
 	})
@@ -111,7 +111,7 @@ func TestRelationOption_SetAfterOrder(t *testing.T) {
 
 		initialOrder := "Z"
 		st := ro.NewState()
-		st.SetDetail(bundle.RelationKeyOptionOrder, domain.String(initialOrder))
+		st.SetDetail(bundle.RelationKeyRelationOptionOrder, domain.String(initialOrder))
 		err := ro.Apply(st)
 		require.NoError(t, err)
 
@@ -123,7 +123,7 @@ func TestRelationOption_SetAfterOrder(t *testing.T) {
 		// then
 		assert.NoError(t, err)
 
-		savedOrderId := ro.Details().GetString(bundle.RelationKeyOptionOrder)
+		savedOrderId := ro.Details().GetString(bundle.RelationKeyRelationOptionOrder)
 		assert.Equal(t, initialOrder, savedOrderId)
 	})
 
@@ -138,7 +138,7 @@ func TestRelationOption_SetAfterOrder(t *testing.T) {
 		// then
 		assert.NoError(t, err)
 
-		savedOrderId := ro.Details().GetString(bundle.RelationKeyOptionOrder)
+		savedOrderId := ro.Details().GetString(bundle.RelationKeyRelationOptionOrder)
 		expectedNext := lx.Next(targetOrderId)
 		assert.Equal(t, expectedNext, savedOrderId)
 	})
@@ -157,7 +157,7 @@ func TestRelationOption_SetBetweenOrders(t *testing.T) {
 
 		// then
 		assert.NoError(t, err)
-		savedOrderId := ro.Details().GetString(bundle.RelationKeyOptionOrder)
+		savedOrderId := ro.Details().GetString(bundle.RelationKeyRelationOptionOrder)
 		assert.NotEmpty(t, savedOrderId)
 		assert.True(t, savedOrderId > previousOrderId)
 		assert.True(t, savedOrderId < afterOrderId)
@@ -176,7 +176,7 @@ func TestRelationOption_SetBetweenOrders(t *testing.T) {
 		// then
 		assert.NoError(t, err)
 
-		savedOrderId := ro.Details().GetString(bundle.RelationKeyOptionOrder)
+		savedOrderId := ro.Details().GetString(bundle.RelationKeyRelationOptionOrder)
 		expectedPrev := lx.Prev(afterOrderId)
 		assert.Equal(t, expectedPrev, savedOrderId)
 		assert.True(t, savedOrderId < afterOrderId)
@@ -203,17 +203,17 @@ func TestRelationOption_UnsetOrder(t *testing.T) {
 		ro := newTestRelationOption("test-relation-option")
 
 		st := ro.NewState()
-		st.SetDetail(bundle.RelationKeyOptionOrder, domain.String("some-order"))
+		st.SetDetail(bundle.RelationKeyRelationOptionOrder, domain.String("some-order"))
 		err := ro.Apply(st)
 		require.NoError(t, err)
-		require.NotEmpty(t, ro.Details().GetString(bundle.RelationKeyOptionOrder))
+		require.NotEmpty(t, ro.Details().GetString(bundle.RelationKeyRelationOptionOrder))
 
 		// when
 		err = ro.UnsetOrder()
 
 		// then
 		assert.NoError(t, err)
-		savedOrderId := ro.Details().GetString(bundle.RelationKeyOptionOrder)
+		savedOrderId := ro.Details().GetString(bundle.RelationKeyRelationOptionOrder)
 		assert.Empty(t, savedOrderId)
 	})
 
@@ -221,14 +221,14 @@ func TestRelationOption_UnsetOrder(t *testing.T) {
 		// given
 		ro := newTestRelationOption("test-relation-option")
 
-		require.Empty(t, ro.Details().GetString(bundle.RelationKeyOptionOrder))
+		require.Empty(t, ro.Details().GetString(bundle.RelationKeyRelationOptionOrder))
 
 		// when
 		err := ro.UnsetOrder()
 
 		// then
 		assert.NoError(t, err)
-		savedOrderId := ro.Details().GetString(bundle.RelationKeyOptionOrder)
+		savedOrderId := ro.Details().GetString(bundle.RelationKeyRelationOptionOrder)
 		assert.Empty(t, savedOrderId)
 	})
 }

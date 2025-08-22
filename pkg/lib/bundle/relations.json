@@ -1555,9 +1555,9 @@
     "description": "Order of Relation option",
     "format": "longtext",
     "hidden": true,
-    "key": "optionOrder",
+    "key": "relationOptionOrder",
     "maxCount": 1,
-    "name": "Option order",
+    "name": "Relation option order",
     "readonly": true,
     "source": "details"
   },

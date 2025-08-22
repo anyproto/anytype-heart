@@ -76,16 +76,16 @@ func (ro *RelationOption) SetOrder(previousOrderId string) (string, error) {
 	} else {
 		orderId = lx.Next(previousOrderId)
 	}
-	st.SetDetail(bundle.RelationKeyOptionOrder, domain.String(orderId))
+	st.SetDetail(bundle.RelationKeyRelationOptionOrder, domain.String(orderId))
 	return orderId, ro.Apply(st)
 }
 
 func (ro *RelationOption) SetAfterOrder(orderId string) error {
 	st := ro.NewState()
-	currentOrderId := st.Details().GetString(bundle.RelationKeyOptionOrder)
+	currentOrderId := st.Details().GetString(bundle.RelationKeyRelationOptionOrder)
 	if orderId > currentOrderId {
 		currentOrderId = lx.Next(orderId)
-		st.SetDetail(bundle.RelationKeyOptionOrder, domain.String(currentOrderId))
+		st.SetDetail(bundle.RelationKeyRelationOptionOrder, domain.String(currentOrderId))
 		return ro.Apply(st)
 	}
 	return nil
@@ -107,16 +107,16 @@ func (ro *RelationOption) SetBetweenOrders(previousOrderId, afterOrderId string)
 	if err != nil {
 		return errors.Join(ErrLexidInsertionFailed, err)
 	}
-	st.SetDetail(bundle.RelationKeyOptionOrder, domain.String(before))
+	st.SetDetail(bundle.RelationKeyRelationOptionOrder, domain.String(before))
 	return ro.Apply(st)
 }
 
 func (ro *RelationOption) UnsetOrder() error {
 	st := ro.NewState()
-	st.RemoveDetail(bundle.RelationKeyOptionOrder)
+	st.RemoveDetail(bundle.RelationKeyRelationOptionOrder)
 	return ro.Apply(st)
 }
 
 func (ro *RelationOption) GetOrder() string {
-	return ro.Details().GetString(bundle.RelationKeyOptionOrder)
+	return ro.Details().GetString(bundle.RelationKeyRelationOptionOrder)
 }
