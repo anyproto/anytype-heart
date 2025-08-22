@@ -83,14 +83,7 @@ func (l *linkPreview) Fetch(ctx context.Context, fetchUrl string) (linkPreview m
 
 	if resp.StatusCode != http.StatusOK {
 		code := resp.StatusCode
-		errMsg := ""
-		if err != nil {
-			errMsg = err.Error()
-		}
-		metrics.Service.SendSampled(&metrics.LinkPreviewStatusEvent{
-			StatusCode: code,
-			ErrorMsg:   errMsg,
-		})
+		metrics.Service.SendSampled(&metrics.LinkPreviewStatusEvent{StatusCode: code})
 		statusClass := getStatusClass(code)
 		metrics.LinkPreviewStatusCounter.WithLabelValues(fmt.Sprintf("%d", code), statusClass).Inc()
 		return model.LinkPreview{}, nil, false, fmt.Errorf("invalid http code %d", code)

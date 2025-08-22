@@ -161,7 +161,6 @@ func (c *ChangeEvent) MarshalFastJson(arena *fastjson.Arena) anymetry.JsonEvent 
 type LinkPreviewStatusEvent struct {
 	baseInfo
 	StatusCode int
-	ErrorMsg   string
 }
 
 func (l *LinkPreviewStatusEvent) Key() string {
@@ -179,6 +178,5 @@ func (l *LinkPreviewStatusEvent) GetBackend() anymetry.MetricsBackend {
 func (l *LinkPreviewStatusEvent) MarshalFastJson(arena *fastjson.Arena) anymetry.JsonEvent {
 	event, properties := setupProperties(arena, "LinkPreviewStatusEvent")
 	properties.Set("statusCode", arena.NewNumberInt(l.StatusCode))
-	properties.Set("errorMsg", arena.NewString(l.ErrorMsg))
 	return event
 }
