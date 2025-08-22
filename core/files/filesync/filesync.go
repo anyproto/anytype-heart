@@ -2,7 +2,6 @@ package filesync
 
 import (
 	"context"
-	"fmt"
 	"io"
 	"net/http"
 	"sync"
@@ -23,7 +22,6 @@ import (
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/datastore/anystoreprovider"
 	"github.com/anyproto/anytype-heart/util/keyvaluestore"
-	"github.com/anyproto/anytype-heart/util/persistentqueue"
 )
 
 const CName = "filesync"
@@ -40,7 +38,6 @@ type FileSync interface {
 	OnStatusUpdated(StatusCallback)
 	CancelDeletion(objectId string, fileId domain.FullFileId) (err error)
 	DeleteFile(objectId string, fileId domain.FullFileId) (err error)
-	DeleteFileSynchronously(fileId domain.FullFileId) (err error)
 	UpdateNodeUsage(ctx context.Context) error
 	NodeUsage(ctx context.Context) (usage NodeUsage, err error)
 	SpaceStat(ctx context.Context, spaceId string) (ss SpaceStat, err error)
@@ -81,26 +78,13 @@ type fileSync struct {
 	eventSender     event.Sender
 	onStatusUpdated []StatusCallback
 
-	uploadingQueue        *persistentqueue.Queue[*QueueItem]
-	retryUploadingQueue   *persistentqueue.Queue[*QueueItem]
-	limitedUploadingQueue *persistentqueue.Queue[*QueueItem]
+	nodeUsageCache keyvaluestore.Store[NodeUsage]
 
-	deletionQueue      *persistentqueue.Queue[*deletionQueueItem]
-	retryDeletionQueue *persistentqueue.Queue[*deletionQueueItem]
-	statusUpdateQueue  *persistentqueue.Queue[*statusUpdateItem]
+	limitManager    *uploadLimitManager
+	requestsBatcher *requestsBatcher
+	requestsCh      chan blockPushManyRequest
 
-	blocksAvailabilityCache   keyvaluestore.Store[*blocksAvailabilityResponse]
-	isLimitReachedErrorLogged keyvaluestore.Store[bool]
-	nodeUsageCache            keyvaluestore.Store[NodeUsage]
-	pendingUploads            keyvaluestore.Store[*QueueItem]
-
-	pendingDeletionsLock sync.Mutex
-	pendingDeletions     map[string]struct{}
-
-	limitManager      *uploadLimitManager
-	uploadStatusIndex *uploadStatusIndex
-	requestsBatcher   *requestsBatcher
-	requestsCh        chan blockPushManyRequest
+	stateProcessor *stateProcessor
 
 	importEventsMutex sync.Mutex
 	importEvents      []*pb.Event
@@ -121,66 +105,14 @@ func (s *fileSync) Init(a *app.App) (err error) {
 	s.cfg = app.MustComponent[*config.Config](a)
 	s.limitManager = newLimitManager(s.rpcStore)
 
-	s.pendingDeletions = make(map[string]struct{})
+	s.stateProcessor = newStateProcessor(newFilesRepository())
 
 	provider := app.MustComponent[anystoreprovider.Provider](a)
 	db := provider.GetCommonDb()
+	_ = db
 
-	s.blocksAvailabilityCache, err = keyvaluestore.NewJson[*blocksAvailabilityResponse](provider.GetCommonDb(), "filesync/bytes_to_upload")
-	if err != nil {
-		return fmt.Errorf("init blocks availability cache: %w", err)
-	}
-	s.isLimitReachedErrorLogged, err = keyvaluestore.NewJson[bool](db, "filesync/limit_reached_error_logged")
-	if err != nil {
-		return fmt.Errorf("init limit reached error logged cache: %w", err)
-	}
 	s.nodeUsageCache = keyvaluestore.NewJsonFromCollection[NodeUsage](provider.GetSystemCollection())
 
-	uploadingQueueStorage, err := persistentqueue.NewAnystoreStorage(db, "filesync/uploading", makeQueueItem)
-	if err != nil {
-		return fmt.Errorf("init uploading queue storage: %w", err)
-	}
-	s.uploadingQueue = persistentqueue.New(uploadingQueueStorage, log.Logger, s.uploadingHandler, queueItemLess, persistentqueue.WithWorkersNumber(5))
-
-	retryUploadingQueueStorage, err := persistentqueue.NewAnystoreStorage(db, "filesync/retry_uploading", makeQueueItem)
-	if err != nil {
-		return fmt.Errorf("init retry uploading queue storage: %w", err)
-	}
-	// Retry queue should have the same handler as basic uploading queue
-	s.retryUploadingQueue = persistentqueue.New(retryUploadingQueueStorage, log.Logger, s.uploadingHandler, nil, persistentqueue.WithRetryPause(loopTimeout))
-
-	limitedUploadingQueueStorage, err := persistentqueue.NewAnystoreStorage(db, "filesync/limited_uploading", makeQueueItem)
-	if err != nil {
-		return fmt.Errorf("init retry uploading queue storage: %w", err)
-	}
-	s.limitedUploadingQueue = persistentqueue.New(limitedUploadingQueueStorage, log.Logger, s.retryingHandler, nil, persistentqueue.WithRetryPause(loopTimeout))
-
-	deletionQueueStorage, err := persistentqueue.NewAnystoreStorage(db, "filesync/deletion", makeDeletionQueueItem)
-	if err != nil {
-		return fmt.Errorf("init deletion queue storage: %w", err)
-	}
-	s.deletionQueue = persistentqueue.New(deletionQueueStorage, log.Logger, s.deletionHandler, nil)
-
-	retryDeletionQueueStorage, err := persistentqueue.NewAnystoreStorage(db, "filesync/retry_deletion", makeDeletionQueueItem)
-	if err != nil {
-		return fmt.Errorf("init retry deletion queue storage: %w", err)
-	}
-	s.retryDeletionQueue = persistentqueue.New(retryDeletionQueueStorage, log.Logger, s.retryDeletionHandler, nil, persistentqueue.WithRetryPause(loopTimeout))
-
-	statusUpdateQueueStorage, err := persistentqueue.NewAnystoreStorage(db, "filesync/status_update", makeStatusUpdateItem)
-	if err != nil {
-		return fmt.Errorf("init retry deletion queue storage: %w", err)
-	}
-	s.statusUpdateQueue = persistentqueue.New(statusUpdateQueueStorage, log.Logger, s.statusUpdateHandler, func(one, other *statusUpdateItem) bool {
-		return one.Timestamp < other.Timestamp
-	})
-
-	s.pendingUploads, err = keyvaluestore.NewJson[*QueueItem](db, "filesync/pending_uploads")
-	if err != nil {
-		return fmt.Errorf("init limit reached error logged cache: %w", err)
-	}
-
-	s.uploadStatusIndex = newUploadStatusIndex()
 	s.requestsCh = make(chan blockPushManyRequest, 10)
 	s.requestsBatcher = newRequestsBatcher(1024*1024+14, 100*time.Millisecond, s.requestsCh)
 
@@ -199,21 +131,10 @@ func (s *fileSync) Name() (name string) {
 	return CName
 }
 
-func makeQueueItem() *QueueItem {
-	return &QueueItem{}
-}
-
 func (s *fileSync) Run(ctx context.Context) (err error) {
 	if s.cfg.IsLocalOnlyMode() {
 		return
 	}
-
-	s.uploadingQueue.Run()
-	s.retryUploadingQueue.Run()
-	s.limitedUploadingQueue.Run()
-	s.deletionQueue.Run()
-	s.retryDeletionQueue.Run()
-	s.statusUpdateQueue.Run()
 
 	s.closeWg.Add(1)
 	go s.runNodeUsageUpdater()
@@ -238,32 +159,7 @@ func (s *fileSync) Close(ctx context.Context) error {
 		}
 	}()
 
-	if s.uploadingQueue != nil {
-		if err := s.uploadingQueue.Close(); err != nil {
-			log.Error("can't close uploading queue: %v", zap.Error(err))
-		}
-	}
-	if s.retryUploadingQueue != nil {
-		if err := s.retryUploadingQueue.Close(); err != nil {
-			log.Error("can't close retrying queue: %v", zap.Error(err))
-		}
-	}
-	if s.deletionQueue != nil {
-		if err := s.deletionQueue.Close(); err != nil {
-			log.Error("can't close deletion queue: %v", zap.Error(err))
-		}
-	}
-	if s.retryDeletionQueue != nil {
-		if err := s.retryDeletionQueue.Close(); err != nil {
-			log.Error("can't close retry deletion queue: %v", zap.Error(err))
-		}
-	}
-
 	s.closeWg.Wait()
 
 	return nil
-}
-
-func (s *fileSync) addToStatusUpdateQueue(it *statusUpdateItem) error {
-	return s.statusUpdateQueue.Add(it)
 }

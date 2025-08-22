@@ -2,15 +2,10 @@ package filesync
 
 import (
 	"context"
-	"fmt"
 	"time"
 
 	"github.com/ipfs/go-cid"
 	"go.uber.org/zap"
-
-	"github.com/anyproto/anytype-heart/core/domain"
-	"github.com/anyproto/anytype-heart/core/syncstatus/filesyncstatus"
-	"github.com/anyproto/anytype-heart/util/timeid"
 )
 
 func (s *fileSync) runUploader() {
@@ -29,68 +24,67 @@ func (s *fileSync) runUploader() {
 	}
 }
 
+func (s *fileSync) addToLimitedQueue(objectId string) {
+	s.stateProcessor.process(objectId, func(exists bool, info FileInfo) (ProcessAction, FileInfo, error) {
+		if !exists {
+			return ProcessActionNone, FileInfo{}, nil
+		}
+
+		return ProcessActionUpdate, info.ToLimitReached(), nil
+	})
+}
+
+func (s *fileSync) addToRetryUploadingQueue(objectId string) {
+	s.stateProcessor.process(objectId, func(exists bool, info FileInfo) (ProcessAction, FileInfo, error) {
+		if !exists {
+			return ProcessActionNone, FileInfo{}, nil
+		}
+
+		info.HandledAt = time.Now()
+		return ProcessActionUpdate, info, nil
+	})
+}
+
+func (s *fileSync) updateUploadedCids(objectId string, cids []cid.Cid) {
+	s.stateProcessor.process(objectId, func(exists bool, info FileInfo) (ProcessAction, FileInfo, error) {
+		if !exists {
+			return ProcessActionNone, FileInfo{}, nil
+		}
+		for _, c := range cids {
+			delete(info.CidsToUpload, c)
+		}
+		info.HandledAt = time.Now()
+		return ProcessActionUpdate, info, nil
+	})
+}
+
 func (s *fileSync) onBatchUploadError(ctx context.Context, req blockPushManyRequest, err error) {
 	if isNodeLimitReachedError(err) {
 		for _, fb := range req.req.FileBlocks {
 			objectId := req.fileIdToObjectId[fb.FileId]
-			err = s.addToLimitedUploadingQueue(ctx, &QueueItem{
-				SpaceId:     fb.SpaceId,
-				ObjectId:    objectId,
-				FileId:      domain.FileId(fb.FileId),
-				Timestamp:   float64(time.Now().UnixMilli()),
-				AddedByUser: false,
-				Imported:    false,
-			})
-			if err != nil {
-				log.Error("batch uploader: add to limited queue", zap.Error(err))
-			}
+			s.addToLimitedQueue(objectId)
 		}
 	}
 	if err != nil {
 		log.Error("add to file many:", zap.Error(err))
 		for _, fb := range req.req.FileBlocks {
 			objectId := req.fileIdToObjectId[fb.FileId]
-			err = s.addToRetryUploadingQueue(&QueueItem{
-				SpaceId:     fb.SpaceId,
-				ObjectId:    objectId,
-				FileId:      domain.FileId(fb.FileId),
-				Timestamp:   float64(time.Now().UnixMilli()),
-				AddedByUser: false,
-				Imported:    false,
-			})
-			if err != nil {
-				log.Error("batch uploader: add to retry queue", zap.Error(err))
-			}
+			s.addToRetryUploadingQueue(objectId)
 		}
 	}
 }
 
 func (s *fileSync) onBatchUploaded(ctx context.Context, req blockPushManyRequest) {
 	for _, fb := range req.req.FileBlocks {
+		cids := make([]cid.Cid, 0, len(fb.Blocks))
 		for _, b := range fb.Blocks {
 			c, err := cid.Cast(b.Cid)
 			if err != nil {
 				log.Error("failed to parse block cid", zap.Error(err))
-			} else {
-				s.uploadStatusIndex.remove(fb.FileId, c, func(fileObjectId string, fullFileId domain.FullFileId) error {
-					err := s.addToStatusUpdateQueue(&statusUpdateItem{
-						FileObjectId: fileObjectId,
-						FileId:       fullFileId.FileId.String(),
-						SpaceId:      fullFileId.SpaceId,
-						Timestamp:    timeid.NewNano(),
-						Status:       int(filesyncstatus.Synced),
-					})
-					if err != nil {
-						return fmt.Errorf("add to status update queue: %w", err)
-					}
-
-					err = s.pendingUploads.Delete(ctx, fileObjectId)
-					if err != nil {
-						return fmt.Errorf("delete pending uploads: %w", err)
-					}
-					return nil
-				})
 			}
+			cids = append(cids, c)
 		}
+		objectId := req.fileIdToObjectId[fb.FileId]
+		s.updateUploadedCids(objectId, cids)
 	}
 }
