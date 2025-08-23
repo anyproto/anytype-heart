@@ -51,6 +51,20 @@ func (mw *Middleware) WalletConvert(cctx context.Context, req *pb.RpcWalletConve
 	}
 }
 
+func (mw *Middleware) WalletExportBot(cctx context.Context, req *pb.RpcWalletExportBotRequest) *pb.RpcWalletExportBotResponse {
+	accountKey, err := mw.applicationService.WalletExportBot(req)
+	code := mapErrorCode(err,
+		errToCode(application.ErrBadInput, pb.RpcWalletExportBotResponseError_BAD_INPUT),
+	)
+	return &pb.RpcWalletExportBotResponse{
+		AccountKey: accountKey,
+		Error: &pb.RpcWalletExportBotResponseError{
+			Code:        code,
+			Description: getErrorDescription(err),
+		},
+	}
+}
+
 func (mw *Middleware) WalletCreateSession(cctx context.Context, req *pb.RpcWalletCreateSessionRequest) *pb.RpcWalletCreateSessionResponse {
 	token, accountId, err := mw.applicationService.CreateSession(req)
 	code := mapErrorCode(err,

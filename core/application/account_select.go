@@ -107,13 +107,13 @@ func (s *Service) start(
 	if lang != "" {
 		s.fulltextPrimaryLanguage = lang
 	}
-	if s.mnemonic == "" {
-		return nil, ErrNoMnemonicProvided
-	}
-	res, err := core.WalletAccountAt(s.mnemonic, 0)
+	
+	// Get derivation result based on wallet type
+	derivationResult, err := s.getDerivationResult()
 	if err != nil {
 		return nil, err
 	}
+	res := *derivationResult
 	var repoWasMissing bool
 	if _, err := os.Stat(filepath.Join(s.rootPath, id)); os.IsNotExist(err) {
 		repoWasMissing = true
