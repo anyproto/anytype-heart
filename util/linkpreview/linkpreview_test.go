@@ -205,6 +205,7 @@ func TestCheckPrivateLink(t *testing.T) {
 			{"both restrictive", "default-src 'none'; frame-ancestors 'none'", true},
 			{"normal CSP", "default-src 'self'; script-src 'unsafe-inline'", false},
 			{"case insensitive", "DEFAULT-SRC 'NONE'", true},
+			{"reach content", "image-src example.com sample.net 'self'; default-src 'none'", true},
 		}
 
 		for _, tc := range testCases {
@@ -238,6 +239,8 @@ func TestCheckPrivateLink(t *testing.T) {
 			{"noarchive should be allowed", "noarchive", false},
 			{"index allowed", "index, follow", false},
 			{"case insensitive none", "NONE", true},
+			{"robot name include directive option", "nonebot: all", false},
+			{"robot with name", "Verter: all, Bender: none", true},
 		}
 
 		for _, tc := range testCases {

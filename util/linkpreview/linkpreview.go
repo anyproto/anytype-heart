@@ -9,8 +9,8 @@ import (
 	"mime"
 	"net/http"
 	"path/filepath"
+	"slices"
 	"strings"
-	"unicode"
 	"unicode/utf8"
 
 	"github.com/anyproto/any-sync/app"
@@ -31,16 +31,21 @@ const (
 	// read no more than 10 mb
 	maxBytesToRead     = 10 * 1024 * 1024
 	maxDescriptionSize = 200
+
+	xRobotsTag       = "X-Robots-Tag"
+	xFrameOptsTag    = "X-Frame-Options"
+	cspTag           = "Content-Security-Policy"
+	noneSrcDirective = "'none'"
 )
 
 var (
 	ErrPrivateLink = fmt.Errorf("link is private and cannot be previewed")
 	log            = logging.Logger(CName)
 
-	privacyDirectives = map[string][]string{
-		"X-Robots-Tag":            {"none"},
-		"X-Frame-Options":         {"deny", "sameorigin"},
-		"Content-Security-Policy": {"default-src 'none'", "frame-ancestors 'none'"},
+	privacyDirectives = map[string]map[string]struct{}{
+		xRobotsTag:    {"none": {}},
+		xFrameOptsTag: {"deny": {}, "sameorigin": {}},
+		cspTag:        {"default-src": {}, "frame-ancestors": {}},
 	}
 )
 
@@ -236,49 +241,49 @@ func checkPrivateLink(resp *http.Response) error {
 		return fmt.Errorf("response is nil")
 	}
 
-	for header, directives := range privacyDirectives {
+	for header := range privacyDirectives {
 		value := strings.ToLower(resp.Header.Get(header))
 		if value == "" {
 			continue
 		}
-		for _, directive := range directives {
-			if containsDirective(value, directive) {
-				return errors.Join(ErrPrivateLink, fmt.Errorf("private link detected due to %s header: %s", header, directive))
-			}
+		if containsPrivateDirective(header, value) {
+			return errors.Join(ErrPrivateLink, fmt.Errorf("private link detected due to %s header: %s", header, value))
 		}
 	}
 
 	return nil
 }
 
-func containsDirective(header string, directive string) bool {
-	start := 0
-	for {
-		idx := strings.Index(header[start:], directive)
-		if idx == -1 {
-			return false
+func containsPrivateDirective(header string, value string) bool {
+	switch header {
+	// parsing tag according https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Content-Security-Policy#syntax
+	case cspTag:
+		directives := strings.Split(value, ";")
+		for _, directive := range directives {
+			parts := strings.Split(strings.TrimSpace(directive), " ")
+			if len(parts) < 2 {
+				continue
+			}
+			if _, found := privacyDirectives[cspTag][parts[0]]; found && slices.Contains(parts[1:], noneSrcDirective) {
+				return true
+			}
 		}
-
-		start += idx
-		end := start + len(directive)
-
-		// Check if it's a complete token (surrounded by separators or string boundaries)
-		startOk := start == 0 || isSeparator(rune(header[start-1]))
-		endOk := end == len(header) || isSeparator(rune(header[end]))
-
-		if startOk && endOk {
-			return true
+	// parsing tag according https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/X-Robots-Tag#syntax
+	case xRobotsTag:
+		directives := strings.Split(value, ",")
+		for _, directive := range directives {
+			parts := strings.Split(directive, ":")
+			parts = strings.Split(strings.TrimSpace(parts[len(parts)-1]), " ")
+			for _, part := range parts {
+				if _, found := privacyDirectives[xRobotsTag][strings.ToLower(part)]; found {
+					return true
+				}
+			}
 		}
-
-		start++
-		if start >= len(header) {
-			break
-		}
+	// parsing tag according https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/X-Frame-Options#syntax
+	case xFrameOptsTag:
+		_, found := privacyDirectives[xFrameOptsTag][strings.ToLower(value)]
+		return found
 	}
-
 	return false
-}
-
-func isSeparator(r rune) bool {
-	return unicode.IsSpace(r) || r == ',' || r == ';'
 }
