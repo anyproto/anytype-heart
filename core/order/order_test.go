@@ -10,6 +10,7 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/block/cache/mock_cache"
 	"github.com/anyproto/anytype-heart/core/block/editor"
+	"github.com/anyproto/anytype-heart/core/block/editor/order"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock/smarttest"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 )
@@ -31,7 +32,8 @@ func TestOrderSetter_rebuildIfNeeded(t *testing.T) {
 	t.Run("single new view", func(t *testing.T) {
 		// given
 		objGetter := mock_cache.NewMockObjectGetter(t)
-		mockSpaceView := &editor.SpaceView{SmartBlock: smarttest.New("view1")}
+		sb := smarttest.New("view1")
+		mockSpaceView := &editor.SpaceView{SmartBlock: sb, OrderSettable: order.NewOrderSettable(sb, bundle.RelationKeySpaceOrder)}
 		objGetter.EXPECT().GetObject(context.Background(), "view1").Return(mockSpaceView, nil)
 
 		o := &orderSetter{objectGetter: objGetter}
@@ -51,9 +53,12 @@ func TestOrderSetter_rebuildIfNeeded(t *testing.T) {
 	t.Run("multiple new views", func(t *testing.T) {
 		// given
 		objGetter := mock_cache.NewMockObjectGetter(t)
-		mockView1 := &editor.SpaceView{SmartBlock: smarttest.New("view1")}
-		mockView2 := &editor.SpaceView{SmartBlock: smarttest.New("view2")}
-		mockView3 := &editor.SpaceView{SmartBlock: smarttest.New("view3")}
+		sb1 := smarttest.New("view1")
+		mockView1 := &editor.SpaceView{SmartBlock: sb1, OrderSettable: order.NewOrderSettable(sb1, bundle.RelationKeySpaceOrder)}
+		sb2 := smarttest.New("view2")
+		mockView2 := &editor.SpaceView{SmartBlock: sb2, OrderSettable: order.NewOrderSettable(sb2, bundle.RelationKeySpaceOrder)}
+		sb3 := smarttest.New("view3")
+		mockView3 := &editor.SpaceView{SmartBlock: sb3, OrderSettable: order.NewOrderSettable(sb3, bundle.RelationKeySpaceOrder)}
 
 		objGetter.EXPECT().GetObject(context.Background(), "view1").Return(mockView1, nil)
 		objGetter.EXPECT().GetObject(context.Background(), "view2").Return(mockView2, nil)
@@ -78,8 +83,10 @@ func TestOrderSetter_rebuildIfNeeded(t *testing.T) {
 	t.Run("mix of existing and new views - simple", func(t *testing.T) {
 		// given
 		objGetter := mock_cache.NewMockObjectGetter(t)
-		mockView1 := &editor.SpaceView{SmartBlock: smarttest.New("view1")}
-		mockView3 := &editor.SpaceView{SmartBlock: smarttest.New("view3")}
+		sb1 := smarttest.New("view1")
+		mockView1 := &editor.SpaceView{SmartBlock: sb1, OrderSettable: order.NewOrderSettable(sb1, bundle.RelationKeySpaceOrder)}
+		sb3 := smarttest.New("view1")
+		mockView3 := &editor.SpaceView{SmartBlock: sb3, OrderSettable: order.NewOrderSettable(sb3, bundle.RelationKeySpaceOrder)}
 
 		// We expect view1 and view3 to be fetched to set their orders
 		objGetter.EXPECT().GetObject(context.Background(), mock.Anything).Return(mockView1, nil).Maybe()
@@ -130,7 +137,8 @@ func TestOrderSetter_rebuildIfNeeded(t *testing.T) {
 	t.Run("reorder needed", func(t *testing.T) {
 		// given
 		objGetter := mock_cache.NewMockObjectGetter(t)
-		mockView2 := &editor.SpaceView{SmartBlock: smarttest.New("view2")}
+		sb := smarttest.New("view2")
+		mockView2 := &editor.SpaceView{SmartBlock: sb, OrderSettable: order.NewOrderSettable(sb, bundle.RelationKeySpaceOrder)}
 
 		// Expect view2 to be fetched for reordering
 		objGetter.EXPECT().GetObject(context.Background(), mock.Anything).Return(mockView2, nil).Maybe()
@@ -158,9 +166,12 @@ func TestOrderSetter_rebuildIfNeeded(t *testing.T) {
 	t.Run("multiple new views pinned before first existing view", func(t *testing.T) {
 		// given
 		objGetter := mock_cache.NewMockObjectGetter(t)
-		mockView1 := &editor.SpaceView{SmartBlock: smarttest.New("view1")}
-		mockView2 := &editor.SpaceView{SmartBlock: smarttest.New("view2")}
-		mockView3 := &editor.SpaceView{SmartBlock: smarttest.New("view3")}
+		sb1 := smarttest.New("view1")
+		mockView1 := &editor.SpaceView{SmartBlock: sb1, OrderSettable: order.NewOrderSettable(sb1, bundle.RelationKeySpaceOrder)}
+		sb2 := smarttest.New("view2")
+		mockView2 := &editor.SpaceView{SmartBlock: sb2, OrderSettable: order.NewOrderSettable(sb2, bundle.RelationKeySpaceOrder)}
+		sb3 := smarttest.New("view3")
+		mockView3 := &editor.SpaceView{SmartBlock: sb3, OrderSettable: order.NewOrderSettable(sb3, bundle.RelationKeySpaceOrder)}
 
 		// Expect all new views to be fetched for lexid assignment
 		objGetter.EXPECT().GetObject(context.Background(), mock.Anything).Return(mockView1, nil).Maybe()
@@ -196,9 +207,12 @@ func TestOrderSetter_rebuildIfNeeded(t *testing.T) {
 	t.Run("reorder to first position", func(t *testing.T) {
 		// given
 		objGetter := mock_cache.NewMockObjectGetter(t)
-		mockView1 := &editor.SpaceView{SmartBlock: smarttest.New("view1")}
-		mockView2 := &editor.SpaceView{SmartBlock: smarttest.New("view2")}
-		mockView3 := &editor.SpaceView{SmartBlock: smarttest.New("view3")}
+		sb1 := smarttest.New("view1")
+		mockView1 := &editor.SpaceView{SmartBlock: sb1, OrderSettable: order.NewOrderSettable(sb1, bundle.RelationKeySpaceOrder)}
+		sb2 := smarttest.New("view2")
+		mockView2 := &editor.SpaceView{SmartBlock: sb2, OrderSettable: order.NewOrderSettable(sb2, bundle.RelationKeySpaceOrder)}
+		sb3 := smarttest.New("view3")
+		mockView3 := &editor.SpaceView{SmartBlock: sb3, OrderSettable: order.NewOrderSettable(sb3, bundle.RelationKeySpaceOrder)}
 
 		// Expect views to be fetched for reordering
 		objGetter.EXPECT().GetObject(context.Background(), mock.Anything).Return(mockView1, nil).Maybe()
@@ -235,7 +249,8 @@ func TestOrderSetter_UnsetOrder(t *testing.T) {
 	t.Run("unset order", func(t *testing.T) {
 		// given
 		objGetter := mock_cache.NewMockObjectGetter(t)
-		mockSpaceView := &editor.SpaceView{SmartBlock: smarttest.New("view1")}
+		sb1 := smarttest.New("view1")
+		mockSpaceView := &editor.SpaceView{SmartBlock: sb1, OrderSettable: order.NewOrderSettable(sb1, bundle.RelationKeySpaceOrder)}
 
 		// Pre-set an order
 		_, err := mockSpaceView.SetOrder("")
