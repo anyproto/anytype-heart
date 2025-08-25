@@ -1552,12 +1552,12 @@
     "source": "details"
   },
   {
-    "description": "Order of Relation option",
+    "description": "Lexicographic id for object ordering",
     "format": "longtext",
     "hidden": true,
-    "key": "relationOptionOrder",
+    "key": "orderId",
     "maxCount": 1,
-    "name": "Relation option order",
+    "name": "Order id",
     "readonly": true,
     "source": "details"
   },

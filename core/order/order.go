@@ -118,7 +118,7 @@ func (o *orderSetter) getCurrentOptionsOrder(spaceId string, relationKey domain.
 			Value:       domain.String(relationKey.String()),
 		},
 	}}, func(details *domain.Details) {
-		orderId := details.GetString(bundle.RelationKeyRelationOptionOrder)
+		orderId := details.GetString(bundle.RelationKeyOrderId)
 		optionIdToOrderId[details.GetString(bundle.RelationKeyId)] = orderId
 	})
 	if err != nil {

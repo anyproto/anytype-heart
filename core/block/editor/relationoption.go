@@ -32,7 +32,7 @@ func (f *ObjectFactory) newRelationOption(spaceId string, sb smartblock.SmartBlo
 		ChangeReceiver: sb.(source.ChangeReceiver),
 		AllOperations:  basic.NewBasic(sb, store, f.layoutConverter, f.fileObjectService),
 		IHistory:       basic.NewHistory(sb),
-		OrderSettable:  order.NewOrderSettable(sb, bundle.RelationKeyRelationOptionOrder),
+		OrderSettable:  order.NewOrderSettable(sb, bundle.RelationKeyOrderId),
 	}
 }
 
