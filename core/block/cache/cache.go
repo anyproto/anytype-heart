@@ -108,9 +108,9 @@ func DoContextFullID[t any](p ObjectGetter, ctx context.Context, id domain.FullI
 
 // DoState2 picks two blocks and perform an action on them. The order of locks is always the same for two ids.
 // It correctly handles the case when two ids are the same.
-func DoState2[t1, t2 any](s ObjectGetter, firstID, secondID string, f func(*state.State, *state.State, t1, t2) error) error {
+func DoState2[t1, t2 any](s ObjectGetter, ctx session.Context, firstID, secondID string, f func(*state.State, *state.State, t1, t2) error) error {
 	if firstID == secondID {
-		return DoState(s, firstID, func(st *state.State, b t1) error {
+		return DoStateCtx(s, ctx, firstID, func(st *state.State, b t1) error {
 			// Check that b satisfies t2
 			b2, ok := any(b).(t2)
 			if !ok {

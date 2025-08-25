@@ -9,7 +9,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-const RelationChecksum = "82683a0ef7e8215417c1c0163c2230cdd683ef24992356c2e9fed325b15500c5"
+const RelationChecksum = "9b43f16631418b7b6ab1160c46133e5f7df5b7c0b264b472766f4729f3970a0e"
 const (
 	RelationKeyTag                                domain.RelationKey = "tag"
 	RelationKeyCamera                             domain.RelationKey = "camera"
@@ -134,6 +134,7 @@ const (
 	RelationKeySpaceInvitePermissions             domain.RelationKey = "spaceInvitePermissions"
 	RelationKeyIdentity                           domain.RelationKey = "identity"
 	RelationKeyParticipantStatus                  domain.RelationKey = "participantStatus"
+	RelationKeyMyParticipantStatus                domain.RelationKey = "myParticipantStatus"
 	RelationKeyIdentityProfileLink                domain.RelationKey = "identityProfileLink"
 	RelationKeyProfileOwnerIdentity               domain.RelationKey = "profileOwnerIdentity"
 	RelationKeyTargetSpaceId                      domain.RelationKey = "targetSpaceId"
@@ -161,6 +162,7 @@ const (
 	RelationKeyFileVariantOptions                 domain.RelationKey = "fileVariantOptions"
 	RelationKeyFileSourceChecksum                 domain.RelationKey = "fileSourceChecksum"
 	RelationKeySpaceOrder                         domain.RelationKey = "spaceOrder"
+	RelationKeyOrderId                            domain.RelationKey = "orderId"
 	RelationKeyIconName                           domain.RelationKey = "iconName"
 	RelationKeyRecommendedFeaturedRelations       domain.RelationKey = "recommendedFeaturedRelations"
 	RelationKeyRecommendedHiddenRelations         domain.RelationKey = "recommendedHiddenRelations"
@@ -1414,6 +1416,20 @@ var (
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
 		},
+		RelationKeyMyParticipantStatus: {
+
+			DataSource:       model.Relation_local,
+			Description:      "Current account status in space. Possible values: models.ParticipantStatus",
+			Format:           model.RelationFormat_number,
+			Hidden:           true,
+			Id:               "_brmyParticipantStatus",
+			Key:              "myParticipantStatus",
+			MaxCount:         1,
+			Name:             "My participant status",
+			ReadOnly:         true,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
 		RelationKeyName: {
 
 			DataSource:       model.Relation_details,
@@ -1438,6 +1454,20 @@ var (
 			Key:              "oldAnytypeID",
 			MaxCount:         1,
 			Name:             "Old Anytype ID",
+			ReadOnly:         true,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
+		RelationKeyOrderId: {
+
+			DataSource:       model.Relation_details,
+			Description:      "Lexicographic id for object ordering",
+			Format:           model.RelationFormat_longtext,
+			Hidden:           true,
+			Id:               "_brorderId",
+			Key:              "orderId",
+			MaxCount:         1,
+			Name:             "Order id",
 			ReadOnly:         true,
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,

@@ -3646,6 +3646,32 @@ message Rpc {
             }
         }
 
+        message Option {
+            message SetOrder {
+                message Request {
+                    string spaceId = 1;
+                    string relationKey = 2;
+                    repeated string relationOptionOrder = 3; // result order of relation option ids
+                }
+
+                message Response {
+                    Error error = 1;
+                    repeated string relationOptionOrder = 2; // final order of relation option ids with their lexids
+
+                    message Error {
+                        Code code = 1;
+                        string description = 2;
+
+                        enum Code {
+                            NULL = 0;
+                            UNKNOWN_ERROR = 1;
+                            BAD_INPUT = 2;
+                        }
+                    }
+                }
+            }
+        }
+
         message ListWithValue {
             message Request {
                 string spaceId = 1;

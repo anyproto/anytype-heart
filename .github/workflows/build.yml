@@ -40,7 +40,7 @@ jobs:
         if: ${{ !startsWith(runner.name, 'mac-mini-runner-') }}
         uses: actions/setup-go@v4
         with:
-          go-version: 1.23.11
+          go-version: 1.24.0
           check-latest: true
 
       - name: Setup GO
@@ -92,12 +92,10 @@ jobs:
           git config --global url."https://${{ secrets.ANYTYPE_PAT }}@github.com/".insteadOf "https://github.com/"
 
       - name: Go mod download
-        run: |
-          go mod download
+        run: go mod download
 
       - name: install protoc
-        run: |
-          make setup-protoc
+        run: make setup-protoc
 
       - name: setup go
         run: |
