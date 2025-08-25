@@ -16,7 +16,7 @@ on:
         required: false
 
   schedule:
-    - cron: '17 17 * * *' # every day at 1am (UTC)
+    - cron: '20 17 * * *' # every day at 1am (UTC)
 
 
 # Define unified "effective" values for both triggers (workflow_dispatch & schedule)
