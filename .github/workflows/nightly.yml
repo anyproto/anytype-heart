@@ -23,7 +23,7 @@ on:
         description: 'Nightly builds base version (optional, default is stored in repo variables https://github.com/anyproto/anytype-heart/settings/variables/actions)'
         required: false
   schedule:
-    - cron: '0 22 * * *' # every day at 1am (UTC)
+    - cron: '18 22 * * *' # every day at 1am (UTC)
 
 
 permissions:
