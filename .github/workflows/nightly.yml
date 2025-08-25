@@ -16,13 +16,12 @@ on:
         required: false
 
   schedule:
-    - cron: '12 17 * * *' # every day at 1am (UTC)
+    - cron: '17 17 * * *' # every day at 1am (UTC)
 
 
 # Define unified "effective" values for both triggers (workflow_dispatch & schedule)
 env:
   # Use input if workflow was triggered manually, otherwise fallback to default
-  RUN_ON_RUNNER: ${{ github.event.inputs.run-on-runner || 'mac-mini-org-heart' }}
   NIGHTLY_BASE_VERSION: ${{ github.event.inputs.nightly-base-version || vars.NIGHTLY_BASE_VERSION }}
 
 
@@ -38,7 +37,7 @@ jobs:
 
   build:
     needs: wait_for_perftest
-    runs-on: ${{ env.RUN_ON_RUNNER }}
+    runs-on: ${{ github.event.inputs.run-on-runner || 'mac-mini-org-heart' }}
     steps:
       - name: Install Go
         if: ${{ !startsWith(runner.name, 'mac-mini-runner-') }}
