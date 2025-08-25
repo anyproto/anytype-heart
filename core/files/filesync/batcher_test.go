@@ -17,7 +17,7 @@ import (
 func TestBatcher(t *testing.T) {
 	t.Run("add file with large blocks", func(t *testing.T) {
 		maxBatchSize := 100
-		queue := make(chan *fileproto.BlockPushManyRequest, 100)
+		queue := make(chan blockPushManyRequest, 100)
 		b := newRequestsBatcher(maxBatchSize, 10*time.Millisecond, queue)
 		ctx, cancel := context.WithCancel(context.Background())
 		defer cancel()
@@ -28,7 +28,7 @@ func TestBatcher(t *testing.T) {
 		for i := range bs {
 			bs[i] = generateBlock(t, 100)
 		}
-		err := b.addFile("space1", "file1", bs)
+		err := b.addFile("space1", "file1", "object1", bs)
 		require.NoError(t, err)
 
 		timeout := time.NewTimer(10 * time.Millisecond)
@@ -45,7 +45,7 @@ func TestBatcher(t *testing.T) {
 
 	t.Run("add file with small blocks, enqueue batch in background", func(t *testing.T) {
 		maxBatchSize := 100
-		queue := make(chan *fileproto.BlockPushManyRequest, 100)
+		queue := make(chan blockPushManyRequest, 100)
 		b := newRequestsBatcher(maxBatchSize, 10*time.Millisecond, queue)
 		ctx, cancel := context.WithCancel(context.Background())
 		defer cancel()
@@ -56,7 +56,7 @@ func TestBatcher(t *testing.T) {
 		for i := range bs {
 			bs[i] = generateBlock(t, 10)
 		}
-		err := b.addFile("space1", "file1", bs)
+		err := b.addFile("space1", "file1", "object1", bs)
 		require.NoError(t, err)
 
 		timeout := time.NewTimer(20 * time.Millisecond)
@@ -100,7 +100,7 @@ func TestBatcher(t *testing.T) {
 		} {
 			t.Run(fmt.Sprintf("case %d", i+1), func(t *testing.T) {
 				maxBatchSize := 100
-				queue := make(chan *fileproto.BlockPushManyRequest, 100)
+				queue := make(chan blockPushManyRequest, 100)
 				b := newRequestsBatcher(maxBatchSize, 1*time.Millisecond, queue)
 
 				var wg sync.WaitGroup
@@ -113,7 +113,7 @@ func TestBatcher(t *testing.T) {
 						for i := range bs {
 							bs[i] = generateBlock(t, tc.bytesPerBlock)
 						}
-						err := b.addFile("space1", fmt.Sprintf("file%02d", i), bs)
+						err := b.addFile("space1", fmt.Sprintf("file%02d", i), "object1", bs)
 						require.NoError(t, err)
 					}()
 				}
@@ -132,13 +132,13 @@ func TestBatcher(t *testing.T) {
 	// TODO Large test with requests validation
 }
 
-func waitRequests(queue chan *fileproto.BlockPushManyRequest) []*fileproto.BlockPushManyRequest {
+func waitRequests(queue chan blockPushManyRequest) []*fileproto.BlockPushManyRequest {
 	timeout := time.NewTimer(30 * time.Millisecond)
 	var got []*fileproto.BlockPushManyRequest
 	for {
 		select {
 		case req := <-queue:
-			got = append(got, req)
+			got = append(got, req.req)
 		case <-timeout.C:
 			return got
 		}

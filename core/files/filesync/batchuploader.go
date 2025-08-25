@@ -60,7 +60,7 @@ func (s *fileSync) updateUploadedCids(objectId string, cids []cid.Cid) {
 		// If it was deleted, delete again to undo uploaded blocks
 		if info.State == FileStateDeleted {
 			err := s.rpcStore.DeleteFiles(s.loopCtx, info.SpaceId, info.FileId)
-			// Enqueue deletion if we can't delete right away
+			// Enqueue deletion if we can't delete it right away
 			if err != nil {
 				return ProcessActionUpdate, info.ToPendingDeletion(), err
 			}
