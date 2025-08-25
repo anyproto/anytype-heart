@@ -71,7 +71,7 @@ jobs:
 
           VERSION="nightly"
           echo "${{ secrets.STAGING_NODE_CONF }}" > ./core/anytype/config/nodes/custom.yml
-          echo BUILD_TAG_NETWORK=envnetworkcustom >> $GITHUB_ENV
+          echo BUILD_TAG_NETWORK=envproduction >> $GITHUB_ENV
 
           echo VERSION=${VERSION} >> $GITHUB_ENV
           echo GOPRIVATE=github.com/anyproto >> $GITHUB_ENV
