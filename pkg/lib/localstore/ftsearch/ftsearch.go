@@ -464,13 +464,13 @@ func (f *ftSearch) buildObjectQuery(qb *tantivy.QueryBuilder, query string) {
 
 	if containsChineseCharacters(query) {
 		qb.BooleanQuery(tantivy.Must, qb.NestedBuilder().
-			Query(tantivy.Should, fieldTitleZh, query, tantivy.PhrasePrefixQuery, 1.0).
+			Query(tantivy.Should, fieldTitleZh, query, tantivy.PhrasePrefixQuery, 5.0).
 			Query(tantivy.Should, fieldTextZh, query, tantivy.PhrasePrefixQuery, 1.0),
 			1.0,
 		)
 	} else {
 		qb.BooleanQuery(tantivy.Must, qb.NestedBuilder().
-			Query(tantivy.Should, fieldTitle, query, tantivy.PhrasePrefixQuery, 1.0).
+			Query(tantivy.Should, fieldTitle, query, tantivy.PhrasePrefixQuery, 5.0).
 			Query(tantivy.Should, fieldText, query, tantivy.PhrasePrefixQuery, 1.0),
 			1.0,
 		)
