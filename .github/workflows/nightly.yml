@@ -12,16 +12,25 @@ on:
           - mac-mini-org-heart
           - macos-14
       nightly-base-version:
-        description: 'Nightly builds base version'
-        required: true
-        default: '0.44.0'
+        description: 'Nightly builds base version (optional, overrides repository variable)'
+        required: false
+
   schedule:
-    - cron: '0 1 * * *' # every day at 1am (UTC)
+    - cron: '12 17 * * *' # every day at 1am (UTC)
+
+
+# Define unified "effective" values for both triggers (workflow_dispatch & schedule)
+env:
+  # Use input if workflow was triggered manually, otherwise fallback to default
+  RUN_ON_RUNNER: ${{ github.event.inputs.run-on-runner || 'mac-mini-org-heart' }}
+  NIGHTLY_BASE_VERSION: ${{ github.event.inputs.nightly-base-version || vars.NIGHTLY_BASE_VERSION }}
+
 
 permissions:
   actions: 'write'
   packages: 'write'
   contents: 'write'
+
 
 jobs:
   wait_for_perftest:
@@ -29,7 +38,7 @@ jobs:
 
   build:
     needs: wait_for_perftest
-    runs-on: ${{ github.event.inputs.run-on-runner }}
+    runs-on: ${{ env.RUN_ON_RUNNER }}
     steps:
       - name: Install Go
         if: ${{ !startsWith(runner.name, 'mac-mini-runner-') }}
@@ -125,7 +134,7 @@ jobs:
         id: nightly_info
         run: |
           TS=$(date -u +"%Y%m%d%H%M%S")
-          echo "version=v${{ github.event.inputs.nightly-base-version }}-nightly-${TS}" >> $GITHUB_OUTPUT
+          echo "version=v${NIGHTLY_BASE_VERSION}-nightly-${TS}" >> $GITHUB_OUTPUT
 
       - name: Release
         id: release
