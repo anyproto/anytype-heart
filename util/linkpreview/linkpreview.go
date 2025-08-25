@@ -3,11 +3,13 @@ package linkpreview
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"mime"
 	"net/http"
 	"path/filepath"
+	"slices"
 	"strings"
 	"unicode/utf8"
 
@@ -26,19 +28,30 @@ import (
 const (
 	CName       = "linkpreview"
 	utfEncoding = "utf-8"
+	// read no more than 10 mb
+	maxBytesToRead     = 10 * 1024 * 1024
+	maxDescriptionSize = 200
+
+	xRobotsTag       = "X-Robots-Tag"
+	xFrameOptsTag    = "X-Frame-Options"
+	cspTag           = "Content-Security-Policy"
+	noneSrcDirective = "'none'"
+)
+
+var (
+	ErrPrivateLink = fmt.Errorf("link is private and cannot be previewed")
+	log            = logging.Logger(CName)
+
+	privacyDirectives = map[string]map[string]struct{}{
+		xRobotsTag:    {"none": {}},
+		xFrameOptsTag: {"deny": {}, "sameorigin": {}},
+		cspTag:        {"default-src": {}, "frame-ancestors": {}},
+	}
 )
 
 func New() LinkPreview {
 	return &linkPreview{}
 }
-
-const (
-	// read no more than 10 mb
-	maxBytesToRead     = 10 * 1024 * 1024
-	maxDescriptionSize = 200
-)
-
-var log = logging.Logger("link-preview")
 
 type LinkPreview interface {
 	Fetch(ctx context.Context, url string) (linkPreview model.LinkPreview, responseBody []byte, isFile bool, err error)
@@ -68,6 +81,9 @@ func (l *linkPreview) Fetch(ctx context.Context, fetchUrl string) (linkPreview m
 	err = og.Fetch()
 	if err != nil {
 		if resp := rt.lastResponse; resp != nil && resp.StatusCode == http.StatusOK {
+			if err = checkPrivateLink(resp); err != nil {
+				return model.LinkPreview{}, nil, false, err
+			}
 			preview, isFile, err := l.makeNonHtml(fetchUrl, resp)
 			if err != nil {
 				return preview, nil, false, err
@@ -79,6 +95,9 @@ func (l *linkPreview) Fetch(ctx context.Context, fetchUrl string) (linkPreview m
 
 	if resp := rt.lastResponse; resp != nil && resp.StatusCode != http.StatusOK {
 		return model.LinkPreview{}, nil, false, fmt.Errorf("invalid http code %d", resp.StatusCode)
+	}
+	if err = checkPrivateLink(rt.lastResponse); err != nil {
+		return model.LinkPreview{}, nil, false, err
 	}
 	res := l.convertOGToInfo(fetchUrl, og)
 	if len(res.Description) == 0 {
@@ -215,4 +234,56 @@ func (l *limitReader) Read(p []byte) (n int, err error) {
 	}
 	l.nTotal += n
 	return
+}
+
+func checkPrivateLink(resp *http.Response) error {
+	if resp == nil {
+		return fmt.Errorf("response is nil")
+	}
+
+	for header := range privacyDirectives {
+		value := strings.ToLower(resp.Header.Get(header))
+		if value == "" {
+			continue
+		}
+		if containsPrivateDirective(header, value) {
+			return errors.Join(ErrPrivateLink, fmt.Errorf("private link detected due to %s header: %s", header, value))
+		}
+	}
+
+	return nil
+}
+
+func containsPrivateDirective(header string, value string) bool {
+	switch header {
+	// parsing tag according https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Content-Security-Policy#syntax
+	case cspTag:
+		directives := strings.Split(value, ";")
+		for _, directive := range directives {
+			parts := strings.Split(strings.TrimSpace(directive), " ")
+			if len(parts) < 2 {
+				continue
+			}
+			if _, found := privacyDirectives[cspTag][parts[0]]; found && slices.Contains(parts[1:], noneSrcDirective) {
+				return true
+			}
+		}
+	// parsing tag according https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/X-Robots-Tag#syntax
+	case xRobotsTag:
+		directives := strings.Split(value, ",")
+		for _, directive := range directives {
+			parts := strings.Split(directive, ":")
+			parts = strings.Split(strings.TrimSpace(parts[len(parts)-1]), " ")
+			for _, part := range parts {
+				if _, found := privacyDirectives[xRobotsTag][strings.ToLower(part)]; found {
+					return true
+				}
+			}
+		}
+	// parsing tag according https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/X-Frame-Options#syntax
+	case xFrameOptsTag:
+		_, found := privacyDirectives[xFrameOptsTag][strings.ToLower(value)]
+		return found
+	}
+	return false
 }
