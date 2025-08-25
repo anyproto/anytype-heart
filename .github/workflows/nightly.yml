@@ -11,11 +11,19 @@ on:
         options:
           - mac-mini-org-heart
           - macos-14
+      build-tag-network:
+        description: 'Network config to use'
+        required: true
+        default: 'envproduction'
+        type: choice
+        options:
+          - envproduction
+          - envnetworkcustom
       nightly-base-version:
-        description: 'Nightly builds base version (optional, overrides repository variable)'
+        description: 'Nightly builds base version (optional, default is stored in repo variables https://github.com/anyproto/anytype-heart/settings/variables/actions)'
         required: false
   schedule:
-    - cron: '40 17 * * *' # every day at 1am (UTC)
+    - cron: '0 22 * * *' # every day at 1am (UTC)
 
 
 permissions:
@@ -71,7 +79,7 @@ jobs:
 
           VERSION="nightly"
           echo "${{ secrets.STAGING_NODE_CONF }}" > ./core/anytype/config/nodes/custom.yml
-          echo BUILD_TAG_NETWORK=envproduction >> $GITHUB_ENV
+          echo BUILD_TAG_NETWORK=${{ github.event.inputs.build-tag-network || 'envproduction' }} >> $GITHUB_ENV
 
           echo VERSION=${VERSION} >> $GITHUB_ENV
           echo GOPRIVATE=github.com/anyproto >> $GITHUB_ENV
