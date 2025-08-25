@@ -30,6 +30,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/files/fileobject"
 	"github.com/anyproto/anytype-heart/core/files/fileuploader"
 	"github.com/anyproto/anytype-heart/core/files/reconciler"
+	"github.com/anyproto/anytype-heart/core/relationutils"
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/datastore/anystoreprovider"
@@ -81,6 +82,7 @@ type ObjectFactory struct {
 	chatRepositoryService   chatrepository.Service
 	chatSubscriptionService chatsubscription.Service
 	statService             debugstat.StatService
+	formatFetcher           relationutils.RelationFormatFetcher
 }
 
 func NewObjectFactory() *ObjectFactory {
@@ -119,6 +121,7 @@ func (f *ObjectFactory) Init(a *app.App) (err error) {
 	if err != nil {
 		f.statService = debugstat.NewNoOp()
 	}
+	f.formatFetcher = app.MustComponent[relationutils.RelationFormatFetcher](a)
 	return nil
 }
 
@@ -186,6 +189,7 @@ func (f *ObjectFactory) produceSmartblock(space smartblock.Space) (smartblock.Sm
 		f.indexer,
 		f.eventSender,
 		f.spaceIdResolver,
+		f.formatFetcher,
 	), store
 }
 

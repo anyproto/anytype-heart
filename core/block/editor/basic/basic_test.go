@@ -23,6 +23,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/files/fileobject/mock_fileobject"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 
@@ -609,7 +610,7 @@ func TestBasic_SetRelationKey(t *testing.T) {
 			AddBlock(simple.New(&model.Block{Id: "2", Content: &model.BlockContentOfRelation{
 				Relation: &model.BlockContentRelation{},
 			}}))
-		sb.AddRelationLinks(nil, "testRelKey")
+		sb.SetDetails(nil, []domain.Detail{{Key: "testRelKey", Value: domain.Null()}}, false)
 	}
 	t.Run("correct", func(t *testing.T) {
 		sb := smarttest.New("test")
@@ -661,7 +662,9 @@ func TestBasic_FeaturedRelationAdd(t *testing.T) {
 	s.AddBundledRelationLinks(bundle.RelationKeyDescription)
 	require.NoError(t, sb.Apply(s))
 
-	b := NewBasic(sb, nil, converter.NewLayoutConverter(), nil)
+	store := objectstore.NewStoreFixture(t)
+
+	b := NewBasic(sb, store.SpaceIndex("spc"), converter.NewLayoutConverter(), nil)
 	newRel := []string{bundle.RelationKeyDescription.String(), bundle.RelationKeyName.String()}
 	require.NoError(t, b.FeaturedRelationAdd(nil, newRel...))
 
@@ -683,42 +686,4 @@ func TestBasic_FeaturedRelationRemove(t *testing.T) {
 	res := sb.NewState()
 	assert.Equal(t, []string{bundle.RelationKeyName.String()}, res.Details().GetStringList(bundle.RelationKeyFeaturedRelations))
 	assert.Nil(t, res.PickParentOf(template.DescriptionBlockId))
-}
-
-func TestBasic_ReplaceLink(t *testing.T) {
-	var newId, oldId = "newId", "oldId"
-
-	sb := smarttest.New("test")
-	s := sb.NewState()
-	s.SetDetail("link", domain.String(oldId))
-	s.AddRelationLinks(&model.RelationLink{Key: "link", Format: model.RelationFormat_object})
-	template.WithDescription(s)
-	newBlocks := []simple.Block{
-		simple.New(&model.Block{Content: &model.BlockContentOfLink{
-			Link: &model.BlockContentLink{
-				TargetBlockId: oldId,
-			},
-		}}),
-		simple.New(&model.Block{Content: &model.BlockContentOfText{
-			Text: &model.BlockContentText{
-				Text: "123",
-				Marks: &model.BlockContentTextMarks{
-					Marks: []*model.BlockContentTextMark{&model.BlockContentTextMark{Type: model.BlockContentTextMark_Mention, Param: oldId}},
-				},
-			},
-		}}),
-	}
-	for _, nb := range newBlocks {
-		s.Add(nb)
-		require.NoError(t, s.InsertTo(s.RootId(), model.Block_Inner, nb.Model().Id))
-	}
-	require.NoError(t, sb.Apply(s))
-
-	b := NewBasic(sb, nil, converter.NewLayoutConverter(), nil)
-	require.NoError(t, b.ReplaceLink(oldId, newId))
-
-	res := sb.NewState()
-	assert.Equal(t, newId, res.Details().GetString("link"))
-	assert.Equal(t, newId, res.Pick(newBlocks[0].Model().Id).Model().GetLink().TargetBlockId)
-	assert.Equal(t, newId, res.Pick(newBlocks[1].Model().Id).Model().GetText().GetMarks().Marks[0].Param)
 }

@@ -22,7 +22,7 @@ func (sb *smartBlock) updateBackLinks(s *state.State) {
 }
 
 func (sb *smartBlock) injectLinksDetails(s *state.State) {
-	links := objectlink.DependentObjectIDs(s, sb.Space(), objectlink.Flags{
+	links := objectlink.DependentObjectIDs(s, sb.Space(), sb.formatFetcher, objectlink.Flags{
 		Blocks:                   true,
 		Details:                  true,
 		Relations:                sb.includeRelationObjectsAsDependents,
@@ -39,7 +39,7 @@ func (sb *smartBlock) injectLinksDetails(s *state.State) {
 }
 
 func (sb *smartBlock) injectMentions(s *state.State) {
-	mentions := objectlink.DependentObjectIDs(s, sb.Space(), objectlink.Flags{
+	mentions := objectlink.DependentObjectIDs(s, sb.Space(), sb.formatFetcher, objectlink.Flags{
 		Blocks:                   true,
 		Details:                  false,
 		Relations:                false,

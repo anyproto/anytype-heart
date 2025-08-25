@@ -53,10 +53,10 @@ func (sb *smartBlock) injectLocalDetails(s *state.State) error {
 
 	localDetailsFromStore := details.CopyOnlyKeys(keys...)
 	localDetailsFromStore.Delete(bundle.RelationKeyResolvedLayout)
-	s.InjectLocalDetails(localDetailsFromStore)
+	s.AddLocalDetails(localDetailsFromStore)
 	if p := s.ParentState(); p != nil && !hasPendingLocalDetails {
 		// inject for both current and parent state
-		p.InjectLocalDetails(localDetailsFromStore)
+		p.AddLocalDetails(localDetailsFromStore)
 	}
 
 	err = sb.injectCreationInfo(s)

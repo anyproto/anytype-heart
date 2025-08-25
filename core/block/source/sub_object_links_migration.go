@@ -12,6 +12,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	dataview2 "github.com/anyproto/anytype-heart/core/block/simple/dataview"
 	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/core/relationutils"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
@@ -31,23 +32,31 @@ type subObjectsAndProfileLinksMigration struct {
 	sbType           smartblock.SmartBlockType
 	space            Space
 	objectStore      spaceindex.Store
+	formatFetcher    relationutils.RelationFormatFetcher
 }
 
-func NewSubObjectsAndProfileLinksMigration(sbType smartblock.SmartBlockType, space Space, identityObjectID string, objectStore spaceindex.Store) *subObjectsAndProfileLinksMigration {
+func NewSubObjectsAndProfileLinksMigration(
+	sbType smartblock.SmartBlockType,
+	space Space,
+	identityObjectID string,
+	objectStore spaceindex.Store,
+	formatFetcher relationutils.RelationFormatFetcher,
+) *subObjectsAndProfileLinksMigration {
 	return &subObjectsAndProfileLinksMigration{
 		space:            space,
 		identityObjectID: identityObjectID,
 		sbType:           sbType,
 		objectStore:      objectStore,
+		formatFetcher:    formatFetcher,
 	}
 }
 
 func (m *subObjectsAndProfileLinksMigration) replaceLinksInDetails(s *state.State) {
-	for _, rel := range s.GetRelationLinks() {
-		if rel.Key == bundle.RelationKeyFeaturedRelations.String() {
+	for _, key := range s.AllRelationKeys() {
+		if key == bundle.RelationKeyFeaturedRelations {
 			continue
 		}
-		if rel.Key == bundle.RelationKeySourceObject.String() {
+		if key == bundle.RelationKeySourceObject {
 			// migrate broken sourceObject after v0.29.11
 			// todo: remove this
 			if s.UniqueKeyInternal() == "" {
@@ -69,13 +78,20 @@ func (m *subObjectsAndProfileLinksMigration) replaceLinksInDetails(s *state.Stat
 
 			continue
 		}
-		if m.canRelationContainObjectValues(rel.Format) {
-			rawValue := s.Details().Get(domain.RelationKey(rel.Key))
+
+		format, err := m.formatFetcher.GetRelationFormatByKey(m.space.Id(), key)
+		if err != nil {
+			// let's fall back to object relation format, so we don't miss all object ids in details
+			format = model.RelationFormat_object
+		}
+
+		if m.canRelationContainObjectValues(format) {
+			rawValue := s.Details().Get(key)
 
 			if oldId := rawValue.String(); oldId != "" {
 				newId := m.migrateId(oldId)
 				if oldId != newId {
-					s.SetDetail(domain.RelationKey(rel.Key), domain.String(newId))
+					s.SetDetail(key, domain.String(newId))
 				}
 			} else if ids := rawValue.StringList(); len(ids) > 0 {
 				changed := false
@@ -87,7 +103,7 @@ func (m *subObjectsAndProfileLinksMigration) replaceLinksInDetails(s *state.Stat
 					}
 				}
 				if changed {
-					s.SetDetail(domain.RelationKey(rel.Key), domain.StringList(ids))
+					s.SetDetail(key, domain.StringList(ids))
 				}
 			}
 		}

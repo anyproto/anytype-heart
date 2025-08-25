@@ -30,7 +30,7 @@ import (
 
 func TestReindexMarketplaceSpace(t *testing.T) {
 	spaceId := addr.AnytypeMarketplaceWorkspace
-	getMockSpace := func(fx *IndexerFixture) *clientspace.VirtualSpace {
+	getMockSpace := func(fx *fixture) *clientspace.VirtualSpace {
 		virtualSpace := clientspace.NewVirtualSpace(spaceId, clientspace.VirtualSpaceDeps{
 			Indexer: fx,
 		})
@@ -49,7 +49,7 @@ func TestReindexMarketplaceSpace(t *testing.T) {
 
 	t.Run("reindex missing object", func(t *testing.T) {
 		// given
-		indexerFx := NewIndexerFixture(t)
+		indexerFx := newFixture(t)
 		checksums := indexerFx.getLatestChecksums(true)
 		err := indexerFx.store.SaveChecksums(spaceId, &checksums)
 		assert.Nil(t, err)
@@ -67,7 +67,7 @@ func TestReindexMarketplaceSpace(t *testing.T) {
 
 	t.Run("do not reindex links in marketplace", func(t *testing.T) {
 		// given
-		fx := NewIndexerFixture(t)
+		fx := newFixture(t)
 
 		store := fx.store.SpaceIndex("space1")
 
@@ -109,7 +109,7 @@ func TestReindexMarketplaceSpace(t *testing.T) {
 
 	t.Run("full marketplace reindex on force flag update", func(t *testing.T) {
 		// given
-		fx := NewIndexerFixture(t)
+		fx := newFixture(t)
 		fx.objectStore.AddObjects(t, spaceId, []objectstore.TestObject{{
 			bundle.RelationKeyId:      domain.String("relationThatWillBeDeleted"),
 			bundle.RelationKeyName:    domain.String("Relation-That-Will-Be-Deleted"),
@@ -140,7 +140,7 @@ func TestIndexer_ReindexSpace_RemoveParticipants(t *testing.T) {
 		spaceId1 = "space1"
 		spaceId2 = "space2"
 	)
-	fx := NewIndexerFixture(t)
+	fx := newFixture(t)
 
 	fx.objectStore.AddObjects(t, spaceId1, []objectstore.TestObject{
 		{
@@ -220,7 +220,7 @@ func TestIndexer_ReindexSpace_EraseLinks(t *testing.T) {
 		spaceId1 = "space1"
 		spaceId2 = "space2"
 	)
-	fx := NewIndexerFixture(t)
+	fx := newFixture(t)
 
 	fx.sourceFx.EXPECT().IDsListerBySmartblockType(mock.Anything, mock.Anything).RunAndReturn(
 		func(_ source.Space, sbt coresb.SmartBlockType) (source.IDsLister, error) {
@@ -370,7 +370,7 @@ func TestReindex_addSyncRelations(t *testing.T) {
 	t.Run("addSyncRelations local only", func(t *testing.T) {
 		// given
 		const spaceId1 = "spaceId1"
-		fx := NewIndexerFixture(t)
+		fx := newFixture(t)
 
 		fx.objectStore.AddObjects(t, spaceId1, []objectstore.TestObject{
 			{
@@ -410,7 +410,7 @@ func TestReindex_addSyncRelations(t *testing.T) {
 	t.Run("addSyncRelations", func(t *testing.T) {
 		// given
 		const spaceId1 = "spaceId1"
-		fx := NewIndexerFixture(t)
+		fx := newFixture(t)
 
 		fx.objectStore.AddObjects(t, spaceId1, []objectstore.TestObject{
 			{
@@ -448,7 +448,7 @@ func TestReindex_addSyncRelations(t *testing.T) {
 	})
 }
 
-func (fx *IndexerFixture) queryDeletedObjectIds(t *testing.T, spaceId string) []string {
+func (fx *fixture) queryDeletedObjectIds(t *testing.T, spaceId string) []string {
 	ids, _, err := fx.objectStore.SpaceIndex(spaceId).QueryObjectIds(database.Query{
 		Filters: []database.FilterRequest{
 			{

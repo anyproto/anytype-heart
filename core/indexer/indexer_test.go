@@ -35,7 +35,7 @@ func TestIndexer(t *testing.T) {
 	} {
 		t.Run("index has not started - when hashes match and "+testCase.name, func(t *testing.T) {
 			// given
-			indexerFx := NewIndexerFixture(t)
+			indexerFx := newFixture(t)
 			smartTest := smarttest.New("objectId1")
 			smartTest.SetSpaceId("spaceId1")
 			smartTest.SetSpace(space)
@@ -62,7 +62,7 @@ func TestIndexer(t *testing.T) {
 
 		t.Run("index has started - when hashes don't match and key "+testCase.name, func(t *testing.T) {
 			// given
-			indexerFx := NewIndexerFixture(t)
+			indexerFx := newFixture(t)
 			smartTest := smarttest.New("objectId1")
 			smartTest.SetSpaceId("spaceId1")
 			smartTest.SetSpace(space)
@@ -90,7 +90,7 @@ func TestIndexer(t *testing.T) {
 
 	t.Run("index has started - when hashes match and options are not provided", func(t *testing.T) {
 		// given
-		indexerFx := NewIndexerFixture(t)
+		indexerFx := newFixture(t)
 		smartTest := smarttest.New("objectId1")
 		smartTest.SetSpaceId("spaceId1")
 		smartTest.SetSpace(space)
