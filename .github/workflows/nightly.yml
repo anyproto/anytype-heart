@@ -14,15 +14,8 @@ on:
       nightly-base-version:
         description: 'Nightly builds base version (optional, overrides repository variable)'
         required: false
-
   schedule:
-    - cron: '25 17 * * *' # every day at 1am (UTC)
-
-
-# Define unified "effective" values for both triggers (workflow_dispatch & schedule)
-env:
-  # Use input if workflow was triggered manually, otherwise fallback to default
-  NIGHTLY_BASE_VERSION: ${{ github.event.inputs.nightly-base-version || vars.NIGHTLY_BASE_VERSION }}
+    - cron: '40 17 * * *' # every day at 1am (UTC)
 
 
 permissions:
@@ -133,7 +126,7 @@ jobs:
         id: nightly_info
         run: |
           TS=$(date -u +"%Y%m%d%H%M%S")
-          echo "version=v${NIGHTLY_BASE_VERSION}-nightly-${TS}" >> $GITHUB_OUTPUT
+          echo "version=v${{ github.event.inputs.nightly-base-version || vars.NIGHTLY_BASE_VERSION }}-nightly-${TS}" >> $GITHUB_OUTPUT
 
       - name: Release
         id: release
