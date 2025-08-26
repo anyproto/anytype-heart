@@ -299,7 +299,7 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(history.New()).
 		Register(gateway.New()).
 		Register(export.New()).
-		Register(linkpreview.New()).
+		Register(linkpreview.NewWithCache()).
 		Register(unsplash.New()).
 		Register(debug.New()).
 		Register(syncsubscriptions.New()).
