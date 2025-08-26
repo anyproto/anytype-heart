@@ -364,7 +364,7 @@ func (s *sortedSub) iterateActive(f func(e *entry)) (reverse bool) {
 	return
 }
 
-// Compare implements sliplist.Comparable
+// Compare implements skiplist.Comparable
 func (s *sortedSub) Compare(lhs, rhs interface{}) (comp int) {
 	le := lhs.(*entry)
 	re := rhs.(*entry)

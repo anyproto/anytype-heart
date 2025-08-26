@@ -45,7 +45,7 @@ type SubscribeRequest struct {
 	Sorts   []database.SortRequest
 	Limit   int64
 	Offset  int64
-	// (required)  needed keys in details for return, for object fields mw will return (and subscribe) objects as dependent
+	// (required) necessary keys in details for return, for object fields mw will return (and subscribe) objects as dependent
 	Keys []string
 	// (optional) pagination: middleware will return results after given id
 	AfterId string
