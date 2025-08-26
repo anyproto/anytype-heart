@@ -33,11 +33,38 @@ permissions:
 
 
 jobs:
+  diff-check:
+    runs-on: ubuntu-latest
+    outputs:
+      changed: ${{ steps.diff_check.outputs.changed }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - run: git fetch --tags --force --prune
+      - id: diff_check
+        run: |
+          LAST_TAG=$(git describe --tags --match 'v*-nightly.*' --abbrev=0 2>/dev/null || echo "")
+          if [ -z "$LAST_TAG" ]; then
+            # no nightly tag found in history
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          elif git diff --quiet "${LAST_TAG}..HEAD"; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          fi
+      - name: debug
+        run: |
+          echo "changed: ${{ steps.diff_check.outputs.changed }}"
+
   wait_for_perftest:
     uses: ./.github/workflows/reusable_wait_for_perftest.yml
 
   build:
-    needs: wait_for_perftest
+    needs:
+      - diff-check
+      - wait_for_perftest
+    if: needs.diff-check.outputs.changed == 'true' # run only if there is a diff
     runs-on: ${{ github.event.inputs.run-on-runner || 'mac-mini-org-heart' }}
     steps:
       - name: Install Go
@@ -132,9 +159,20 @@ jobs:
 
       - name: Compute nightly version
         id: nightly_info
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }} # required for gh CLI to authenticate
         run: |
-          TS=$(date -u +"%Y%m%d%H%M%S")
-          echo "version=v${{ github.event.inputs.nightly-base-version || vars.NIGHTLY_BASE_VERSION }}-nightly-${TS}" >> $GITHUB_OUTPUT
+          set -euo pipefail
+          DATE=$(date -u +'%Y%m%d')
+          PREFIX="v${{ github.event.inputs.nightly-base-version || vars.NIGHTLY_BASE_VERSION }}-nightly.${DATE}"
+
+          # Get the number of existing tags for today
+          COUNT=$(gh api "/repos/${{ github.repository }}/git/matching-refs/tags/$PREFIX" --jq 'length')
+          N=$((COUNT + 1))
+
+          # Build the final version string
+          VERSION="${PREFIX}.${N}"
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
 
       - name: Release
         id: release
