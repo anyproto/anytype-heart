@@ -25,6 +25,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/chatobject"
 	"github.com/anyproto/anytype-heart/core/block/object/idresolver"
 	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/core/files/fileobject/filecache"
 	"github.com/anyproto/anytype-heart/core/session"
 	subscriptionservice "github.com/anyproto/anytype-heart/core/subscription"
 	"github.com/anyproto/anytype-heart/core/subscription/crossspacesub"
@@ -80,6 +81,7 @@ type service struct {
 	accountService          accountService
 	objectStore             objectstore.ObjectStore
 	chatSubscriptionService chatsubscription.Service
+	fileCacheService        filecache.Service
 
 	componentCtx       context.Context
 	componentCtxCancel context.CancelFunc
@@ -115,6 +117,7 @@ func (s *service) Init(a *app.App) error {
 	s.objectGetter = app.MustComponent[cache.ObjectWaitGetter](a)
 	s.chatSubscriptionService = app.MustComponent[chatsubscription.Service](a)
 	s.spaceIdResolver = app.MustComponent[idresolver.Resolver](a)
+	s.fileCacheService = app.MustComponent[filecache.Service](a)
 	return nil
 }
 
@@ -527,13 +530,17 @@ func (s *service) GetMessagesByIds(ctx context.Context, chatObjectId string, mes
 }
 
 func (s *service) SubscribeLastMessages(ctx context.Context, chatObjectId string, limit int, subId string) (*chatsubscription.SubscribeLastMessagesResponse, error) {
-	return s.chatSubscriptionService.SubscribeLastMessages(s.componentCtx, chatsubscription.SubscribeLastMessagesRequest{
+	resp, err := s.chatSubscriptionService.SubscribeLastMessages(s.componentCtx, chatsubscription.SubscribeLastMessagesRequest{
 		ChatObjectId:           chatObjectId,
 		SubId:                  subId,
 		Limit:                  limit,
 		WithDependencies:       false,
 		CouldUseSessionContext: true,
 	})
+	if err != nil {
+		return nil, err
+	}
+	return resp, nil
 }
 
 func (s *service) Unsubscribe(chatObjectId string, subId string) error {

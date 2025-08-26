@@ -21,6 +21,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/files"
 	"github.com/anyproto/anytype-heart/core/files/fileobject"
+	"github.com/anyproto/anytype-heart/core/files/fileobject/filecache"
 	"github.com/anyproto/anytype-heart/core/files/filestorage/rpcstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/util/constant"
@@ -51,6 +52,7 @@ type Gateway interface {
 type gateway struct {
 	fileService       files.Service
 	fileObjectService fileobject.Service
+	fileCacheService  filecache.Service
 	server            *http.Server
 	listener          net.Listener
 	handler           *http.ServeMux
@@ -81,6 +83,7 @@ func GatewayAddr() string {
 func (g *gateway) Init(a *app.App) (err error) {
 	g.fileService = app.MustComponent[files.Service](a)
 	g.fileObjectService = app.MustComponent[fileobject.Service](a)
+	g.fileCacheService = app.MustComponent[filecache.Service](a)
 	g.addr = GatewayAddr()
 	log.Debugf("gateway.Init: %s", g.addr)
 	return nil
@@ -315,10 +318,16 @@ func (g *gateway) getImage(ctx context.Context, r *http.Request) (*getImageReade
 		if err != nil {
 			return nil, fmt.Errorf("get image reader: %w", err)
 		}
+		res.spaceId = img.SpaceId()
 		return res, nil
 	}, retryOptions...)
 	if err != nil {
 		return nil, fmt.Errorf("get image reader: %w", err)
+	}
+
+	err = g.fileCacheService.CacheFile(r.Context(), result.spaceId, result.originalFileId)
+	if err != nil {
+		log.Errorf("add to cache queue: %s", err)
 	}
 
 	retryReader := newRetryReadSeeker(result.reader, retryOptions...)
@@ -330,9 +339,11 @@ func (g *gateway) getImage(ctx context.Context, r *http.Request) (*getImageReade
 }
 
 type getImageReaderResult struct {
-	file     files.File
-	reader   io.ReadSeeker
-	mimeType string
+	file           files.File
+	reader         io.ReadSeeker
+	mimeType       string
+	originalFileId domain.FileId
+	spaceId        string
 }
 
 type retryReadSeeker struct {
@@ -391,14 +402,21 @@ func (g *gateway) getImageReader(ctx context.Context, image files.Image, req *ht
 			return g.handleSVGFile(ctx, file)
 		}
 	}
+
+	orig, err := image.GetOriginalFile()
+	if err != nil {
+		return nil, fmt.Errorf("get original file: %w", err)
+	}
+
 	reader, err := file.Reader(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("get image reader: %w", err)
 	}
 	return &getImageReaderResult{
-		file:     file,
-		reader:   reader,
-		mimeType: file.MimeType(),
+		file:           file,
+		reader:         reader,
+		mimeType:       file.MimeType(),
+		originalFileId: orig.FileId(),
 	}, nil
 }
 
