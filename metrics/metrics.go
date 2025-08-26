@@ -49,8 +49,8 @@ var (
 	})
 	LinkPreviewStatusCounter = promauto.NewCounterVec(prometheus.CounterOpts{
 		Namespace: "anytype",
-		Subsystem: "linkpreview",
-		Name:      "http_status_total",
+		Subsystem: "mw",
+		Name:      "link_preview_non_ok_status_total",
 		Help:      "Total count of HTTP status codes from LinkPreview URL fetches",
 	}, []string{"status_code", "status_class"})
 )
