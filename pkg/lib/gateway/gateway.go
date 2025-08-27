@@ -325,9 +325,14 @@ func (g *gateway) getImage(ctx context.Context, r *http.Request) (*getImageReade
 		return nil, fmt.Errorf("get image reader: %w", err)
 	}
 
-	err = g.fileCacheService.CacheFile(r.Context(), result.spaceId, result.originalFileId)
-	if err != nil {
-		log.Errorf("add to cache queue: %s", err)
+	err = g.fileCacheService.CacheFile(
+		r.Context(),
+		result.spaceId,
+		result.originalFile.FileId(),
+		int(result.originalFile.Meta().Size),
+	)
+	if err != nil && !errors.Is(err, filecache.ErrFileIsTooLarge) {
+		log.Errorf("add to cache queue: %v", err)
 	}
 
 	retryReader := newRetryReadSeeker(result.reader, retryOptions...)
@@ -339,11 +344,11 @@ func (g *gateway) getImage(ctx context.Context, r *http.Request) (*getImageReade
 }
 
 type getImageReaderResult struct {
-	file           files.File
-	reader         io.ReadSeeker
-	mimeType       string
-	originalFileId domain.FileId
-	spaceId        string
+	file         files.File
+	reader       io.ReadSeeker
+	mimeType     string
+	originalFile files.File
+	spaceId      string
 }
 
 type retryReadSeeker struct {
@@ -413,10 +418,10 @@ func (g *gateway) getImageReader(ctx context.Context, image files.Image, req *ht
 		return nil, fmt.Errorf("get image reader: %w", err)
 	}
 	return &getImageReaderResult{
-		file:           file,
-		reader:         reader,
-		mimeType:       file.MimeType(),
-		originalFileId: orig.FileId(),
+		file:         file,
+		reader:       reader,
+		mimeType:     file.MimeType(),
+		originalFile: orig,
 	}, nil
 }
 

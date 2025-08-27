@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"sync"
+	"time"
 
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/commonfile/fileservice"
@@ -22,23 +23,35 @@ const CName = "core.filecache"
 
 var log = logging.Logger(CName).Desugar()
 
+var ErrFileIsTooLarge = errors.New("file is too large")
+
 type Service interface {
-	CacheFile(ctx context.Context, spaceId string, fileId domain.FileId) error
+	CacheFile(ctx context.Context, spaceId string, fileId domain.FileId, size int) error
 
 	app.ComponentRunnable
 }
 
 type service struct {
+	ctx       context.Context
+	ctxCancel context.CancelFunc
+
+	maxSize           int
+	requestBufferSize int
+	timeout           time.Duration
+	workersCount      int
+
 	fileObjectService fileobject.Service
 	dagService        ipld.DAGService
 
-	maxSize int
-	queue   *lruQueue[warmupTask]
+	queue *lruQueue[warmupTask]
 }
 
 func New() Service {
 	return &service{
-		maxSize: 10 * 1024 * 1024,
+		maxSize:           10 * 1024 * 1024,
+		requestBufferSize: 20,
+		timeout:           2 * time.Minute,
+		workersCount:      5,
 	}
 }
 
@@ -47,21 +60,31 @@ func (s *service) Name() string {
 }
 
 func (s *service) Init(a *app.App) error {
+	s.ctx, s.ctxCancel = context.WithCancel(context.Background())
 	commonFile := app.MustComponent[fileservice.FileService](a)
 
 	s.dagService = commonFile.DAGService()
 	s.fileObjectService = app.MustComponent[fileobject.Service](a)
 
-	s.queue = newLruQueue[warmupTask](50)
+	var err error
+	s.queue, err = newLruQueue[warmupTask](s.requestBufferSize)
+	if err != nil {
+		return fmt.Errorf("create queue: %w", err)
+	}
 	return nil
 }
 
 func (s *service) Run(ctx context.Context) error {
-	go s.runDownloader()
+	for range s.workersCount {
+		go s.runDownloader()
+	}
 	return nil
 }
 
 func (s *service) Close(ctx context.Context) error {
+	if s.ctxCancel != nil {
+		s.ctxCancel()
+	}
 	s.queue.close()
 	return nil
 }
@@ -99,8 +122,7 @@ func (s *service) cacheFile(ctx context.Context, spaceId string, rootCid cid.Cid
 			}
 			totalSize += int(size)
 			if totalSize > s.maxSize {
-				// TODO Remove cached data (store cached keys collector in context)
-				return fmt.Errorf("file is too big")
+				return ErrFileIsTooLarge
 			}
 			visited[node.Cid()] = struct{}{}
 		}
@@ -112,17 +134,22 @@ func (s *service) cacheFile(ctx context.Context, spaceId string, rootCid cid.Cid
 	return nil
 }
 
-func (s *service) CacheFile(ctx context.Context, spaceId string, fileId domain.FileId) error {
+func (s *service) CacheFile(ctx context.Context, spaceId string, fileId domain.FileId, size int) error {
+	if size > s.maxSize {
+		return ErrFileIsTooLarge
+	}
 	rootCid, err := fileId.Cid()
 	if err != nil {
 		return fmt.Errorf("parse cid: %w", err)
 	}
 
+	// Task will be canceled along with service context
+	taskCtx, _ := context.WithTimeout(s.ctx, 2*time.Minute)
+
 	s.queue.push(warmupTask{
 		spaceId: spaceId,
 		cid:     rootCid,
-		// TODO Decide how to add cache warm cancellation
-		ctx: context.Background(),
+		ctx:     taskCtx,
 	})
 
 	return err
@@ -147,11 +174,14 @@ type lruQueue[T any] struct {
 	currentIdx int
 }
 
-func newLruQueue[T any](maxSize int) *lruQueue[T] {
+func newLruQueue[T any](maxSize int) (*lruQueue[T], error) {
+	if maxSize <= 0 {
+		return nil, fmt.Errorf("max size must be > 0")
+	}
 	return &lruQueue[T]{
 		cond:  sync.Cond{L: &sync.Mutex{}},
 		tasks: make([]*T, maxSize),
-	}
+	}, nil
 }
 
 func (q *lruQueue[T]) push(task T) {

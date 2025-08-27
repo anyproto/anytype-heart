@@ -10,7 +10,8 @@ import (
 
 func TestQueue(t *testing.T) {
 	t.Run("simple", func(t *testing.T) {
-		q := newLruQueue[int](3)
+		q, err := newLruQueue[int](3)
+		require.NoError(t, err)
 
 		q.push(0)
 
@@ -20,7 +21,8 @@ func TestQueue(t *testing.T) {
 	})
 
 	t.Run("close queue", func(t *testing.T) {
-		q := newLruQueue[int](3)
+		q, err := newLruQueue[int](3)
+		require.NoError(t, err)
 
 		const n = 10
 		waiters := make(chan struct{}, n)
@@ -44,7 +46,8 @@ func TestQueue(t *testing.T) {
 	})
 
 	t.Run("drop old", func(t *testing.T) {
-		q := newLruQueue[int](3)
+		q, err := newLruQueue[int](3)
+		require.NoError(t, err)
 
 		for i := range 10 {
 			q.push(i)
@@ -64,7 +67,8 @@ func TestQueue(t *testing.T) {
 	t.Run("multiple consumers", func(t *testing.T) {
 		const n = 10
 
-		q := newLruQueue[int](n)
+		q, err := newLruQueue[int](n)
+		require.NoError(t, err)
 
 		for i := range n {
 			q.push(i)
