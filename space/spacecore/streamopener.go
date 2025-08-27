@@ -84,7 +84,7 @@ func (s *streamOpener) HandleMessage(peerCtx context.Context, peerId string, msg
 			return s.streamPool.RemoveTagsCtx(peerCtx, msg.SpaceIds...)
 		}
 	}
-	sp, err := s.spaceCore.Get(peerCtx, syncMsg.SpaceId())
+	sp, err := s.spaceCore.Pick(peerCtx, syncMsg.SpaceId())
 	if err != nil {
 		return
 	}

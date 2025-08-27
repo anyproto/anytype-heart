@@ -9,7 +9,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-const RelationChecksum = "82683a0ef7e8215417c1c0163c2230cdd683ef24992356c2e9fed325b15500c5"
+const RelationChecksum = "4e14a02496e8ccc15b9fe4287f48fcc5e3e4b157289e18554512da1b26fd4844"
 const (
 	RelationKeyTag                                domain.RelationKey = "tag"
 	RelationKeyCamera                             domain.RelationKey = "camera"
@@ -134,6 +134,7 @@ const (
 	RelationKeySpaceInvitePermissions             domain.RelationKey = "spaceInvitePermissions"
 	RelationKeyIdentity                           domain.RelationKey = "identity"
 	RelationKeyParticipantStatus                  domain.RelationKey = "participantStatus"
+	RelationKeyMyParticipantStatus                domain.RelationKey = "myParticipantStatus"
 	RelationKeyIdentityProfileLink                domain.RelationKey = "identityProfileLink"
 	RelationKeyProfileOwnerIdentity               domain.RelationKey = "profileOwnerIdentity"
 	RelationKeyTargetSpaceId                      domain.RelationKey = "targetSpaceId"
@@ -1411,6 +1412,20 @@ var (
 			Key:              "mood",
 			Name:             "Mood",
 			ReadOnly:         false,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
+		RelationKeyMyParticipantStatus: {
+
+			DataSource:       model.Relation_local,
+			Description:      "Current account status in space. Possible values: models.ParticipantStatus",
+			Format:           model.RelationFormat_number,
+			Hidden:           true,
+			Id:               "_brmyParticipantStatus",
+			Key:              "myParticipantStatus",
+			MaxCount:         1,
+			Name:             "My participant status",
+			ReadOnly:         true,
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
 		},

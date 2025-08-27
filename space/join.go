@@ -8,6 +8,7 @@ import (
 )
 
 func (s *service) Join(ctx context.Context, id, aclHeadId string) error {
+	// TODO: refactor using unidirectional model where we change/create space view and it asynchronously starts controller
 	s.mu.Lock()
 	waiter, exists := s.waiting[id]
 	if exists {
@@ -50,6 +51,7 @@ func (s *service) Join(ctx context.Context, id, aclHeadId string) error {
 }
 
 func (s *service) InviteJoin(ctx context.Context, id, aclHeadId string) error {
+	// TODO: refactor using unidirectional model where we change/create space view and it asynchronously starts controller
 	s.mu.Lock()
 	waiter, exists := s.waiting[id]
 	if exists {
