@@ -23,10 +23,8 @@ const CName = "core.filecache"
 
 var log = logging.Logger(CName).Desugar()
 
-var ErrFileIsTooLarge = errors.New("file is too large")
-
 type Service interface {
-	CacheFile(ctx context.Context, spaceId string, fileId domain.FileId, size int) error
+	CacheFile(ctx context.Context, spaceId string, fileId domain.FileId) error
 
 	app.ComponentRunnable
 }
@@ -35,7 +33,6 @@ type service struct {
 	ctx       context.Context
 	ctxCancel context.CancelFunc
 
-	maxSize           int
 	requestBufferSize int
 	timeout           time.Duration
 	workersCount      int
@@ -48,7 +45,6 @@ type service struct {
 
 func New() Service {
 	return &service{
-		maxSize:           10 * 1024 * 1024,
 		requestBufferSize: 20,
 		timeout:           2 * time.Minute,
 		workersCount:      5,
@@ -110,20 +106,11 @@ func (s *service) cacheFile(ctx context.Context, spaceId string, rootCid cid.Cid
 		return fmt.Errorf("get root node: %w", err)
 	}
 
-	var totalSize int
 	visited := map[cid.Cid]struct{}{}
 	walker := ipld.NewWalker(ctx, ipld.NewNavigableIPLDNode(rootNode, dagService))
 	err = walker.Iterate(func(navNode ipld.NavigableNode) error {
 		node := navNode.GetIPLDNode()
 		if _, ok := visited[node.Cid()]; !ok {
-			size, err := navNode.GetIPLDNode().Size()
-			if err != nil {
-				return fmt.Errorf("get size: %w", err)
-			}
-			totalSize += int(size)
-			if totalSize > s.maxSize {
-				return ErrFileIsTooLarge
-			}
 			visited[node.Cid()] = struct{}{}
 		}
 		return nil
@@ -134,10 +121,7 @@ func (s *service) cacheFile(ctx context.Context, spaceId string, rootCid cid.Cid
 	return nil
 }
 
-func (s *service) CacheFile(ctx context.Context, spaceId string, fileId domain.FileId, size int) error {
-	if size > s.maxSize {
-		return ErrFileIsTooLarge
-	}
+func (s *service) CacheFile(ctx context.Context, spaceId string, fileId domain.FileId) error {
 	rootCid, err := fileId.Cid()
 	if err != nil {
 		return fmt.Errorf("parse cid: %w", err)

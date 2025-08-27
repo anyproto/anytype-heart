@@ -253,6 +253,17 @@ func (g *gateway) getFile(ctx context.Context, r *http.Request) (files.File, io.
 		return nil, nil, fmt.Errorf("get reader: %w", err)
 	}
 
+	if strings.HasPrefix(file.MimeType(), "video") && file.Meta().Size < 20*1024*1024 {
+		err = g.fileCacheService.CacheFile(
+			r.Context(),
+			file.SpaceId(),
+			file.FileId(),
+		)
+		if err != nil {
+			log.Errorf("add to cache queue: %v", err)
+		}
+	}
+
 	return file, reader, err
 }
 
@@ -325,14 +336,15 @@ func (g *gateway) getImage(ctx context.Context, r *http.Request) (*getImageReade
 		return nil, fmt.Errorf("get image reader: %w", err)
 	}
 
-	err = g.fileCacheService.CacheFile(
-		r.Context(),
-		result.spaceId,
-		result.originalFile.FileId(),
-		int(result.originalFile.Meta().Size),
-	)
-	if err != nil && !errors.Is(err, filecache.ErrFileIsTooLarge) {
-		log.Errorf("add to cache queue: %v", err)
+	if result.originalFile.Meta().Size < 10*1024*1024 {
+		err = g.fileCacheService.CacheFile(
+			r.Context(),
+			result.spaceId,
+			result.originalFile.FileId(),
+		)
+		if err != nil {
+			log.Errorf("add to cache queue: %v", err)
+		}
 	}
 
 	retryReader := newRetryReadSeeker(result.reader, retryOptions...)
