@@ -9,7 +9,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-const RelationChecksum = "9b43f16631418b7b6ab1160c46133e5f7df5b7c0b264b472766f4729f3970a0e"
+const RelationChecksum = "f3410545898c59adb3d6c536ad3abc926c35c0185f10b5f6f8d0f867ec6264da"
 const (
 	RelationKeyTag                                domain.RelationKey = "tag"
 	RelationKeyCamera                             domain.RelationKey = "camera"
@@ -179,6 +179,7 @@ const (
 	RelationKeySpacePushNotificationKey           domain.RelationKey = "spacePushNotificationKey"
 	RelationKeySpacePushNotificationEncryptionKey domain.RelationKey = "spacePushNotificationEncryptionKey"
 	RelationKeySpaceJoinDate                      domain.RelationKey = "spaceJoinDate"
+	RelationKeyFileAvailableOffline               domain.RelationKey = "fileAvailableOffline"
 )
 
 var (
@@ -643,6 +644,20 @@ var (
 			Name:             "Featured Relations",
 			ObjectTypes:      []string{TypePrefix + "relation"},
 			ReadOnly:         false,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
+		RelationKeyFileAvailableOffline: {
+
+			DataSource:       model.Relation_local,
+			Description:      "Is file available offline",
+			Format:           model.RelationFormat_checkbox,
+			Hidden:           true,
+			Id:               "_brfileAvailableOffline",
+			Key:              "fileAvailableOffline",
+			MaxCount:         1,
+			Name:             "Is file available offline",
+			ReadOnly:         true,
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
 		},

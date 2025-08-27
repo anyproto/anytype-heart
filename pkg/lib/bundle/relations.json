@@ -1729,5 +1729,15 @@
     "readonly": true,
     "source": "derived",
     "includeTime": true
+  },
+  {
+    "description": "Is file available offline",
+    "format": "checkbox",
+    "hidden": true,
+    "key": "fileAvailableOffline",
+    "maxCount": 1,
+    "name": "Is file available offline",
+    "readonly": true,
+    "source": "local"
   }
 ]
