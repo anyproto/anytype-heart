@@ -15,7 +15,6 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/files/filehelper"
-	"github.com/anyproto/anytype-heart/core/files/fileobject"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 )
 
@@ -37,8 +36,7 @@ type service struct {
 	timeout           time.Duration
 	workersCount      int
 
-	fileObjectService fileobject.Service
-	dagService        ipld.DAGService
+	dagService ipld.DAGService
 
 	queue *lruQueue[warmupTask]
 }
@@ -60,7 +58,6 @@ func (s *service) Init(a *app.App) error {
 	commonFile := app.MustComponent[fileservice.FileService](a)
 
 	s.dagService = commonFile.DAGService()
-	s.fileObjectService = app.MustComponent[fileobject.Service](a)
 
 	var err error
 	s.queue, err = newLruQueue[warmupTask](s.requestBufferSize)
@@ -128,7 +125,8 @@ func (s *service) CacheFile(ctx context.Context, spaceId string, fileId domain.F
 	}
 
 	// Task will be canceled along with service context
-	taskCtx, _ := context.WithTimeout(s.ctx, 2*time.Minute)
+	// nolint: lostcancel
+	taskCtx, _ := context.WithTimeout(s.ctx, s.timeout)
 
 	s.queue.push(warmupTask{
 		spaceId: spaceId,
