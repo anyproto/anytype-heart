@@ -365,13 +365,13 @@ func (s *Service) CreateAndUploadFile(
 }
 
 func (s *Service) UploadFile(ctx context.Context, spaceId string, req FileUploadRequest) (objectId string, fileType model.BlockContentFileType, details *domain.Details, err error) {
-	objectId, _, fileType, details, err = s.uploadFileInternal(ctx, spaceId, req, false)
+	objectId, _, fileType, details, err = s.uploadFileInternal(ctx, spaceId, req)
 	return
 }
 
-// PreloadFile uploads file content without creating an object, returns fileId for later use
-func (s *Service) PreloadFile(ctx context.Context, spaceId string, req FileUploadRequest) (fileId string, fileType model.BlockContentFileType, err error) {
-	_, fileId, fileType, _, err = s.uploadFileInternal(ctx, spaceId, req, true)
+// PreloadFile uploads file content without creating an object, returns preloadId for later use
+func (s *Service) PreloadFile(ctx context.Context, spaceId string, req FileUploadRequest) (preloadId string, fileType model.BlockContentFileType, err error) {
+	_, preloadId, fileType, _, err = s.uploadFileInternal(ctx, spaceId, req)
 	return
 }
 
@@ -381,7 +381,7 @@ func (s *Service) CreateObjectFromPreloadedFile(ctx context.Context, spaceId str
 	upl := s.fileUploaderService.NewUploader(spaceId, req.ObjectOrigin)
 	upl.SetStyle(req.Style)
 	upl.SetAdditionalDetails(domain.NewDetailsFromProto(req.Details))
-	upl.SetPreloadedFileId(preloadFileId)
+	upl.SetPreloadId(preloadFileId)
 
 	if req.Type != model.BlockContentFile_None {
 		upl.SetType(req.Type)
@@ -398,7 +398,7 @@ func (s *Service) CreateObjectFromPreloadedFile(ctx context.Context, spaceId str
 	return res.FileObjectId, res.Type, res.FileObjectDetails, nil
 }
 
-func (s *Service) uploadFileInternal(ctx context.Context, spaceId string, req FileUploadRequest, preloadOnly bool) (objectId string, fileId string, fileType model.BlockContentFileType, details *domain.Details, err error) {
+func (s *Service) uploadFileInternal(ctx context.Context, spaceId string, req FileUploadRequest) (objectId string, preloadId string, fileType model.BlockContentFileType, details *domain.Details, err error) {
 	upl := s.fileUploaderService.NewUploader(spaceId, req.ObjectOrigin)
 	if req.DisableEncryption {
 		log.Errorf("DisableEncryption is deprecated and has no effect")
@@ -409,7 +409,6 @@ func (s *Service) uploadFileInternal(ctx context.Context, spaceId string, req Fi
 	}
 	upl.SetStyle(req.Style)
 	upl.SetAdditionalDetails(domain.NewDetailsFromProto(req.Details))
-	upl.SetPreloadOnly(preloadOnly)
 	if req.Type != model.BlockContentFile_None {
 		upl.SetType(req.Type)
 	}
@@ -421,12 +420,16 @@ func (s *Service) uploadFileInternal(ctx context.Context, spaceId string, req Fi
 	if req.ImageKind != model.ImageKind_Basic {
 		upl.SetImageKind(req.ImageKind)
 	}
+	if req.PreloadOnly {
+		preloadId, err = upl.Preload(ctx)
+		return "", preloadId, 0, nil, err
+	}
 	res := upl.Upload(ctx)
 	if res.Err != nil {
 		return "", "", 0, nil, res.Err
 	}
 
-	return res.FileObjectId, res.FileId, res.Type, res.FileObjectDetails, nil
+	return res.FileObjectId, "", res.Type, res.FileObjectDetails, nil
 }
 
 // DiscardPreloadedFile discards a preloaded file that won't be used
@@ -436,20 +439,34 @@ func (s *Service) DiscardPreloadedFile(ctx context.Context, spaceId string, file
 		SpaceId: spaceId,
 		FileId:  domain.FileId(fileId),
 	}
-	
+
 	// Check if a file object already exists
 	_, _, err := s.fileObjectService.GetObjectDetailsByFileId(fullFileId)
 	if err == nil {
 		// Object exists, don't discard the file as it's being used
 		return fmt.Errorf("cannot discard file: object already exists for this file")
 	}
-	
-	// Remove the file from storage using fileoffloader
+
+	// Try to get the preloaded result (fileId is the same as preloadId)
+	if preloadResult, ok := s.fileUploaderService.GetPreloadResult(fileId); ok {
+		// Discard the batch if it hasn't been committed yet
+		if preloadResult.Batch != nil {
+			if err := preloadResult.Batch.Discard(); err != nil {
+				return fmt.Errorf("failed to discard preloaded batch: %w", err)
+			}
+		}
+		// Remove the preload result from memory
+		s.fileUploaderService.RemovePreloadResult(fileId)
+		return nil
+	}
+
+	// If no preload result found, try to remove the file from storage using fileoffloader
+	// This handles the case where the file was already committed
 	_, err = s.fileOffloader.FileOffloadRaw(ctx, fullFileId)
 	if err != nil {
 		return fmt.Errorf("failed to discard preloaded file: %w", err)
 	}
-	
+
 	return nil
 }
 
