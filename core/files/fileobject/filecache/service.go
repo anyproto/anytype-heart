@@ -2,19 +2,15 @@ package filecache
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"sync"
 	"time"
 
 	"github.com/anyproto/any-sync/app"
-	"github.com/anyproto/any-sync/commonfile/fileservice"
-	"github.com/ipfs/go-cid"
-	ipld "github.com/ipfs/go-ipld-format"
 	"go.uber.org/zap"
 
 	"github.com/anyproto/anytype-heart/core/domain"
-	"github.com/anyproto/anytype-heart/core/files/filehelper"
+	"github.com/anyproto/anytype-heart/core/files/filedownloader"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 )
 
@@ -23,7 +19,7 @@ const CName = "core.filecache"
 var log = logging.Logger(CName).Desugar()
 
 type Service interface {
-	CacheFile(ctx context.Context, spaceId string, fileId domain.FileId) error
+	CacheFile(ctx context.Context, spaceId string, fileId domain.FileId)
 
 	app.ComponentRunnable
 }
@@ -32,11 +28,11 @@ type service struct {
 	ctx       context.Context
 	ctxCancel context.CancelFunc
 
+	fileDownloaderService filedownloader.Service
+
 	requestBufferSize int
 	timeout           time.Duration
 	workersCount      int
-
-	dagService ipld.DAGService
 
 	queue *lruQueue[warmupTask]
 }
@@ -55,9 +51,8 @@ func (s *service) Name() string {
 
 func (s *service) Init(a *app.App) error {
 	s.ctx, s.ctxCancel = context.WithCancel(context.Background())
-	commonFile := app.MustComponent[fileservice.FileService](a)
 
-	s.dagService = commonFile.DAGService()
+	s.fileDownloaderService = app.MustComponent[filedownloader.Service](a)
 
 	var err error
 	s.queue, err = newLruQueue[warmupTask](s.requestBufferSize)
@@ -89,61 +84,28 @@ func (s *service) runDownloader() {
 			return
 		}
 
-		err := s.cacheFile(task.ctx, task.spaceId, task.cid)
+		err := s.fileDownloaderService.DownloadToLocalStore(task.ctx, task.spaceId, task.cid)
 		if err != nil {
 			log.Error("cache file", zap.Error(err))
 		}
 	}
 }
 
-func (s *service) cacheFile(ctx context.Context, spaceId string, rootCid cid.Cid) error {
-	dagService := s.dagServiceForSpace(spaceId)
-	rootNode, err := dagService.Get(ctx, rootCid)
-	if err != nil {
-		return fmt.Errorf("get root node: %w", err)
-	}
-
-	visited := map[cid.Cid]struct{}{}
-	walker := ipld.NewWalker(ctx, ipld.NewNavigableIPLDNode(rootNode, dagService))
-	err = walker.Iterate(func(navNode ipld.NavigableNode) error {
-		node := navNode.GetIPLDNode()
-		if _, ok := visited[node.Cid()]; !ok {
-			visited[node.Cid()] = struct{}{}
-		}
-		return nil
-	})
-	if errors.Is(err, ipld.EndOfDag) {
-		return nil
-	}
-	return nil
-}
-
-func (s *service) CacheFile(ctx context.Context, spaceId string, fileId domain.FileId) error {
-	rootCid, err := fileId.Cid()
-	if err != nil {
-		return fmt.Errorf("parse cid: %w", err)
-	}
-
+func (s *service) CacheFile(ctx context.Context, spaceId string, fileId domain.FileId) {
 	// Task will be canceled along with service context
 	// nolint: lostcancel
 	taskCtx, _ := context.WithTimeout(s.ctx, s.timeout)
 
 	s.queue.push(warmupTask{
 		spaceId: spaceId,
-		cid:     rootCid,
+		cid:     fileId,
 		ctx:     taskCtx,
 	})
-
-	return err
-}
-
-func (s *service) dagServiceForSpace(spaceID string) ipld.DAGService {
-	return filehelper.NewDAGServiceWithSpaceID(spaceID, s.dagService)
 }
 
 type warmupTask struct {
 	spaceId string
-	cid     cid.Cid
+	cid     domain.FileId
 	ctx     context.Context
 }
 

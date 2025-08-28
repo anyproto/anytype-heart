@@ -2,15 +2,21 @@ package filedownloader
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"sync"
 
-	anystore "github.com/anyproto/any-store"
 	"github.com/anyproto/any-sync/app"
+	"github.com/anyproto/any-sync/commonfile/fileservice"
 	"github.com/cheggaaa/mb/v3"
+	"github.com/ipfs/go-cid"
+	ipld "github.com/ipfs/go-ipld-format"
 	"go.uber.org/zap"
 
+	"github.com/anyproto/anytype-heart/core/block/cache"
+	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/core/files/filehelper"
 	"github.com/anyproto/anytype-heart/core/subscription"
 	"github.com/anyproto/anytype-heart/core/subscription/crossspacesub"
 	"github.com/anyproto/anytype-heart/core/subscription/objectsubscription"
@@ -18,7 +24,6 @@ import (
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
-	"github.com/anyproto/anytype-heart/pkg/lib/datastore/anystoreprovider"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
@@ -29,6 +34,7 @@ var log = logging.Logger(CName).Desugar()
 
 type Service interface {
 	SetEnabled(enabled bool)
+	DownloadToLocalStore(ctx context.Context, spaceId string, cid domain.FileId) error
 	app.ComponentRunnable
 }
 
@@ -36,9 +42,9 @@ type service struct {
 	ctx       context.Context
 	ctxCancel context.CancelFunc
 
-	dbProvider           anystoreprovider.Provider
-	downloaded           anystore.Collection
+	dagService           ipld.DAGService
 	crossSpaceSubService crossspacesub.Service
+	objectGetter         cache.ObjectGetter
 
 	eventsQueue *mb.MB[*pb.EventMessage]
 
@@ -81,13 +87,47 @@ func (s *service) SetEnabled(enabled bool) {
 }
 
 func (s *service) Init(a *app.App) error {
-	s.dbProvider = app.MustComponent[anystoreprovider.Provider](a)
 	s.crossSpaceSubService = app.MustComponent[crossspacesub.Service](a)
+	s.objectGetter = app.MustComponent[cache.ObjectGetter](a)
+	commonFile := app.MustComponent[fileservice.FileService](a)
+	s.dagService = commonFile.DAGService()
 	return nil
 }
 
 func (s *service) Name() string {
 	return CName
+}
+
+func (s *service) DownloadToLocalStore(ctx context.Context, spaceId string, fileCid domain.FileId) error {
+	dagService := s.dagServiceForSpace(spaceId)
+
+	rootCid, err := cid.Parse(fileCid.String())
+	if err != nil {
+		return fmt.Errorf("parse cid: %w", err)
+	}
+
+	rootNode, err := dagService.Get(ctx, rootCid)
+	if err != nil {
+		return fmt.Errorf("get root node: %w", err)
+	}
+
+	visited := map[cid.Cid]struct{}{}
+	walker := ipld.NewWalker(ctx, ipld.NewNavigableIPLDNode(rootNode, dagService))
+	err = walker.Iterate(func(navNode ipld.NavigableNode) error {
+		node := navNode.GetIPLDNode()
+		if _, ok := visited[node.Cid()]; !ok {
+			visited[node.Cid()] = struct{}{}
+		}
+		return nil
+	})
+	if errors.Is(err, ipld.EndOfDag) {
+		return nil
+	}
+	return nil
+}
+
+func (s *service) dagServiceForSpace(spaceID string) ipld.DAGService {
+	return filehelper.NewDAGServiceWithSpaceID(spaceID, s.dagService)
 }
 
 func (s *service) Run(ctx context.Context) error {
@@ -97,16 +137,21 @@ func (s *service) Run(ctx context.Context) error {
 		go s.runDownloadWorker()
 	}
 
-	err := s.runSubscription()
-	if err != nil {
-		return fmt.Errorf("run subscription: %w", err)
-	}
+	go func() {
+		err := s.runSubscription()
+		if err != nil {
+			log.Error("run subscription", zap.Error(err))
+		}
+	}()
 
 	return nil
 }
 
 func (s *service) runSubscription() error {
+	s.lock.Lock()
 	s.eventsQueue = mb.New[*pb.EventMessage](0)
+	s.lock.Unlock()
+
 	resp, err := s.crossSpaceSubService.Subscribe(subscription.SubscribeRequest{
 		SubId:         CName,
 		InternalQueue: s.eventsQueue,
@@ -158,7 +203,8 @@ func (s *service) runSubscription() error {
 		s.addTaskCh <- task
 	}
 
-	objSub := objectsubscription.NewFromQueue(s.eventsQueue, objectsubscription.SubscriptionParams[downloadTask]{
+	s.lock.Lock()
+	s.filesSubscription = objectsubscription.NewFromQueue(s.eventsQueue, objectsubscription.SubscriptionParams[downloadTask]{
 		SetDetails: detailsToTask,
 		UpdateKeys: func(keyValues []objectsubscription.RelationKeyValue, curEntry downloadTask) (updatedEntry downloadTask) {
 			return curEntry
@@ -173,8 +219,9 @@ func (s *service) runSubscription() error {
 			s.removeTaskCh <- id
 		},
 	})
+	s.lock.Unlock()
 
-	err = objSub.Run()
+	err = s.filesSubscription.Run()
 	if err != nil {
 		return fmt.Errorf("run subscription: %w", err)
 	}
@@ -219,6 +266,21 @@ func (s *service) runDownloadWorker() {
 			return
 		}
 		fmt.Println("downloading", task.objectId)
+		err := s.DownloadToLocalStore(s.ctx, task.spaceId, task.fileId)
+		if err != nil {
+			log.Error("auto download file", zap.String("objectId", task.objectId), zap.Error(err))
+			continue
+		}
+		err = cache.Do(s.objectGetter, task.objectId, func(sb smartblock.SmartBlock) error {
+			st := sb.NewState()
+			localDetails := st.LocalDetails()
+			localDetails.SetBool(bundle.RelationKeyFileAvailableOffline, true)
+			return sb.Apply(st)
+		})
+		if err != nil {
+			log.Error("mark file as available offline", zap.String("objectId", task.objectId), zap.Error(err))
+		}
+		fmt.Println("downloaded", task.objectId)
 	}
 }
 
@@ -243,5 +305,6 @@ func (s *service) Close(ctx context.Context) error {
 	if err != nil {
 		log.Error("close events queue", zap.Error(err))
 	}
+	s.filesSubscription.Close()
 	return nil
 }
