@@ -446,6 +446,12 @@ func (s *spaceSubscriptions) subscribeForQuery(req SubscribeRequest, f *database
 		}
 	}
 
+	for _, sort := range req.Sorts {
+		if err := s.createSortSubscription(sort.RelationKey, sub); err != nil {
+			log.Errorf("failed to create sort child subscription: %s", err.Error())
+		}
+	}
+
 	var outputQueue *mb.MB[*pb.EventMessage]
 	if req.Internal {
 		output := newInternalSubOutput(req.InternalQueue)
@@ -510,6 +516,59 @@ func (s *spaceSubscriptions) subscribeForQuery(req SubscribeRequest, f *database
 		},
 		Output: outputQueue,
 	}, nil
+}
+
+func (s *spaceSubscriptions) createSortSubscription(relationKey domain.RelationKey, parent *sortedSub) error {
+	if relationKey == "" {
+		return nil
+	}
+
+	rel, err := s.objectStore.FetchRelationByKey(relationKey.String())
+	if err != nil {
+		return fmt.Errorf("failed to fetch relation from store")
+	}
+
+	switch rel.Format {
+	// TODO: add object format. Filters should be different. Maybe we should use backlinks?
+	case model.RelationFormat_tag, model.RelationFormat_status:
+		f, err := database.MakeFilters([]database.FilterRequest{
+			{
+				RelationKey: bundle.RelationKeyRelationKey,
+				Condition:   model.BlockContentDataviewFilter_Equal,
+				Value:       domain.String(rel.Key),
+			},
+			{
+				RelationKey: bundle.RelationKeyResolvedLayout,
+				Condition:   model.BlockContentDataviewFilter_Equal,
+				Value:       domain.Int64(model.ObjectType_relationOption),
+			},
+		}, s.objectStore)
+		if err != nil {
+			return fmt.Errorf("failed to make filter for sort subscription: %w", err)
+		}
+		childSub := s.newSortedSub(fmt.Sprintf("%s-sort-%s", parent.id, rel.Key), parent.spaceId, []domain.RelationKey{bundle.RelationKeyId, bundle.RelationKeyName, bundle.RelationKeyOrderId}, f, nil, 0, 0)
+		if err = initSubEntries(s.objectStore, &database.Filters{FilterObj: f}, childSub); err != nil {
+			return fmt.Errorf("failed to init sort subscription entries: %w", err)
+		}
+		parent.nested = append(parent.nested, childSub)
+		fillOrderIdsMap(relationKey, parent, childSub)
+		childSub.parent = parent
+		s.setSubscription(childSub.id, childSub)
+	}
+	return nil
+}
+
+func fillOrderIdsMap(key domain.RelationKey, parent, child *sortedSub) {
+	if parent.orderIdsMap == nil {
+		parent.orderIdsMap = make(map[domain.RelationKey]map[string]string, 1)
+	}
+	orderIdMap := make(map[string]string, len(child.entriesBeforeStarted))
+
+	child.iterateActive(func(e *entry) {
+		orderId := e.data.GetString(bundle.RelationKeyOrderId)
+		orderIdMap[e.id] = orderId
+	})
+	parent.orderIdsMap[key] = orderIdMap
 }
 
 func initSubEntries(objectStore spaceindex.Store, f *database.Filters, sub *sortedSub) error {

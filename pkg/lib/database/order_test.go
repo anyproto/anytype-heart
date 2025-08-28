@@ -517,10 +517,10 @@ func TestTagStatusOrder_Compare(t *testing.T) {
 			a := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{"k": domain.StringList([]string{"a"})})
 			b := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{"k": domain.StringList([]string{"a"})})
 			asc := &KeyOrder{arena: arena,
-				Key:            "k",
-				Type:           model.BlockContentDataviewSort_Asc,
-				relationFormat: relation,
-				Options:        map[string]string{"a": "a"},
+				Key:                "k",
+				Type:               model.BlockContentDataviewSort_Asc,
+				relationFormat:     relation,
+				optionsIdToOrderId: map[string]string{"a": "a"},
 			}
 			assertCompare(t, asc, a, b, 0)
 		})
@@ -532,7 +532,7 @@ func TestTagStatusOrder_Compare(t *testing.T) {
 				Key:            "k",
 				Type:           model.BlockContentDataviewSort_Asc,
 				relationFormat: relation,
-				Options: map[string]string{
+				optionsIdToOrderId: map[string]string{
 					"b": "a",
 					"a": "b",
 				},

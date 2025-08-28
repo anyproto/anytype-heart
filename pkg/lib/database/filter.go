@@ -222,13 +222,13 @@ func makeFilterByCondition(spaceID string, rawFilter FilterRequest, store Object
 		if err != nil {
 			return nil, ErrValueMustBeListSupporting
 		}
-		return newFilterOptionsEqual(&anyenc.Arena{}, rawFilter.RelationKey, list, optionsToMap(spaceID, rawFilter.RelationKey, store)), nil
+		return newFilterOptionsEqual(&anyenc.Arena{}, rawFilter.RelationKey, list, optionsToMap(rawFilter.RelationKey, store)), nil
 	case model.BlockContentDataviewFilter_NotExactIn:
 		list, err := wrapValueToStringList(rawFilter.Value)
 		if err != nil {
 			return nil, ErrValueMustBeListSupporting
 		}
-		return FilterNot{newFilterOptionsEqual(&anyenc.Arena{}, rawFilter.RelationKey, list, optionsToMap(spaceID, rawFilter.RelationKey, store))}, nil
+		return FilterNot{newFilterOptionsEqual(&anyenc.Arena{}, rawFilter.RelationKey, list, optionsToMap(rawFilter.RelationKey, store))}, nil
 	case model.BlockContentDataviewFilter_Exists:
 		return FilterExists{
 			Key: rawFilter.RelationKey,
@@ -803,7 +803,7 @@ func (exIn *FilterOptionsEqual) String() string {
 	return "{}"
 }
 
-func optionsToMap(spaceID string, key domain.RelationKey, store ObjectStore) map[string]string {
+func optionsToMap(key domain.RelationKey, store ObjectStore) map[string]string {
 	result := make(map[string]string)
 	options, err := store.ListRelationOptions(key)
 	if err != nil {
@@ -811,7 +811,7 @@ func optionsToMap(spaceID string, key domain.RelationKey, store ObjectStore) map
 		return result
 	}
 	for _, opt := range options {
-		result[opt.Id] = opt.Text
+		result[opt.Id] = opt.OrderId
 	}
 
 	return result

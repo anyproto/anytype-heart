@@ -6,6 +6,7 @@ import (
 	"github.com/huandu/skiplist"
 
 	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/spaceindex"
 )
@@ -42,6 +43,8 @@ type sortedSub struct {
 	keys   []domain.RelationKey
 	filter database.Filter
 	order  database.Order
+
+	orderIdsMap map[domain.RelationKey]map[string]string // key -> objectId -> orderId
 
 	afterId, beforeId string
 	limit, offset     int
@@ -148,9 +151,10 @@ func (s *sortedSub) init(entries []*entry) (err error) {
 }
 
 func (s *sortedSub) onChange(ctx *opCtx) {
+	s.updateOrderIds(ctx)
 	var changed bool
 	for _, e := range ctx.entries {
-		if !s.onEntryChange(ctx, e) {
+		if !s.onEntryChange(e) {
 			changed = true
 		}
 	}
@@ -209,18 +213,20 @@ func (s *sortedSub) onChange(ctx *opCtx) {
 			panic(err)
 		}
 
-		var idsForParentFilter []string
-		s.iterateActive(func(e *entry) {
-			idsForParentFilter = append(idsForParentFilter, e.id)
-		})
-		s.parentFilter.IDs = idsForParentFilter
+		if s.parentFilter != nil {
+			var idsForParentFilter []string
+			s.iterateActive(func(e *entry) {
+				idsForParentFilter = append(idsForParentFilter, e.id)
+			})
+			s.parentFilter.IDs = idsForParentFilter
+		}
 
 		ctx.entries = append(ctx.entries, parentEntries...)
 		s.parent.onChange(ctx)
 	}
 }
 
-func (s *sortedSub) onEntryChange(ctx *opCtx, e *entry) (noChange bool) {
+func (s *sortedSub) onEntryChange(e *entry) (noChange bool) {
 	newInSet := true
 	if s.filter != nil {
 		newInSet = s.filter.FilterObject(e.data)
@@ -373,7 +379,7 @@ func (s *sortedSub) Compare(lhs, rhs interface{}) (comp int) {
 		return 0
 	}
 	if s.order != nil {
-		comp = s.order.Compare(le.data, re.data)
+		comp = s.order.Compare(le.data, re.data, s.orderIdsMap)
 	}
 	// when order isn't set or equal - sort by id
 	if comp == 0 {
@@ -384,6 +390,21 @@ func (s *sortedSub) Compare(lhs, rhs interface{}) (comp int) {
 		}
 	}
 	return comp
+}
+
+func (s *sortedSub) updateOrderIds(ctx *opCtx) {
+	if s.orderIdsMap == nil {
+		return
+	}
+	for _, e := range ctx.entries {
+		key := e.data.GetString(bundle.RelationKeyRelationKey)
+		if key == "" {
+			continue
+		}
+		if _, exists := s.orderIdsMap[domain.RelationKey(key)]; exists {
+			s.orderIdsMap[domain.RelationKey(key)][e.id] = e.data.GetString(bundle.RelationKeyOrderId)
+		}
+	}
 }
 
 func (s *sortedSub) CalcScore(key interface{}) float64 {

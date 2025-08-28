@@ -171,7 +171,7 @@ type tagStatusSort struct {
 	relationKey string
 	reverse     bool
 	nulls       model.BlockContentDataviewSortEmptyType
-	idToName    map[string]string
+	idToOrderId map[string]string
 }
 
 func (s tagStatusSort) Fields() []query.SortField {
@@ -191,12 +191,12 @@ func (s tagStatusSort) AppendKey(tuple anyenc.Tuple, v *anyenc.Value) anyenc.Tup
 	var sortKey string
 	if val != nil && val.Type() == anyenc.TypeString {
 		id, _ := val.StringBytes()
-		sortKey = s.idToName[string(id)]
+		sortKey = s.idToOrderId[string(id)]
 	} else if val != nil && val.Type() == anyenc.TypeArray {
 		arr, _ := val.Array()
 		for _, it := range arr {
 			id, _ := it.StringBytes()
-			sortKey += s.idToName[string(id)]
+			sortKey += s.idToOrderId[string(id)]
 		}
 	}
 

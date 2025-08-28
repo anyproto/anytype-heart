@@ -15,7 +15,7 @@ import (
 )
 
 type Order interface {
-	Compare(a, b *domain.Details) int
+	Compare(a, b *domain.Details, orderIdsMap map[domain.RelationKey]map[string]string) int
 	AnystoreSort() query.Sort
 }
 
@@ -30,9 +30,9 @@ type ObjectStore interface {
 
 type SetOrder []Order
 
-func (so SetOrder) Compare(a, b *domain.Details) int {
+func (so SetOrder) Compare(a, b *domain.Details, orderIdsMap map[domain.RelationKey]map[string]string) int {
 	for _, o := range so {
-		if comp := o.Compare(a, b); comp != 0 {
+		if comp := o.Compare(a, b, orderIdsMap); comp != 0 {
 			return comp
 		}
 	}
@@ -51,18 +51,17 @@ func (so SetOrder) AnystoreSort() query.Sort {
 }
 
 type KeyOrder struct {
-	SpaceID         string
-	Key             domain.RelationKey
-	Type            model.BlockContentDataviewSortType
-	EmptyPlacement  model.BlockContentDataviewSortEmptyType
-	relationFormat  model.RelationFormat
-	IncludeTime     bool
-	Store           ObjectStore
-	Options         map[string]string
-	arena           *anyenc.Arena
-	collatorBuffer  *collate.Buffer
-	collator        *collate.Collator
-	disableCollator bool
+	Key                domain.RelationKey
+	Type               model.BlockContentDataviewSortType
+	EmptyPlacement     model.BlockContentDataviewSortEmptyType
+	relationFormat     model.RelationFormat
+	IncludeTime        bool
+	objectStore        ObjectStore
+	optionsIdToOrderId map[string]string
+	arena              *anyenc.Arena
+	collatorBuffer     *collate.Buffer
+	collator           *collate.Collator
+	disableCollator    bool
 }
 
 func (ko *KeyOrder) ensureCollator() {
@@ -72,13 +71,18 @@ func (ko *KeyOrder) ensureCollator() {
 	}
 }
 
-func (ko *KeyOrder) Compare(a, b *domain.Details) int {
+func (ko *KeyOrder) Compare(a, b *domain.Details, orderIdsMap map[domain.RelationKey]map[string]string) int {
 	av := a.Get(ko.Key)
 	bv := b.Get(ko.Key)
 
 	av, bv = ko.tryExtractSnippet(a, b, av, bv)
 	av, bv = ko.tryExtractDateTime(av, bv)
-	av, bv = ko.tryExtractTag(av, bv)
+
+	var orderIds map[string]string
+	if orderIdsMap != nil {
+		orderIds = orderIdsMap[ko.Key]
+	}
+	av, bv = ko.tryExtractTag(av, bv, orderIds)
 	av, bv = ko.tryExtractBool(av, bv)
 
 	comp := ko.tryCompareStrings(av, bv)
@@ -135,18 +139,18 @@ func (ko *KeyOrder) basicSort(valType anyenc.Type) query.Sort {
 }
 
 func (ko *KeyOrder) tagStatusSort() query.Sort {
-	if ko.Options == nil {
-		ko.Options = make(map[string]string)
+	if ko.optionsIdToOrderId == nil {
+		ko.optionsIdToOrderId = make(map[string]string)
 	}
-	if len(ko.Options) == 0 && ko.Store != nil {
-		ko.Options = optionsToMap(ko.SpaceID, ko.Key, ko.Store)
+	if len(ko.optionsIdToOrderId) == 0 && ko.objectStore != nil {
+		ko.optionsIdToOrderId = optionsToMap(ko.Key, ko.objectStore)
 	}
 	return tagStatusSort{
 		arena:       ko.arena,
 		relationKey: string(ko.Key),
 		reverse:     ko.Type == model.BlockContentDataviewSort_Desc,
 		nulls:       ko.EmptyPlacement,
-		idToName:    ko.Options,
+		idToOrderId: ko.optionsIdToOrderId,
 	}
 }
 
@@ -255,10 +259,10 @@ func (ko *KeyOrder) tryExtractBool(av domain.Value, bv domain.Value) (domain.Val
 	return av, bv
 }
 
-func (ko *KeyOrder) tryExtractTag(av domain.Value, bv domain.Value) (domain.Value, domain.Value) {
+func (ko *KeyOrder) tryExtractTag(av domain.Value, bv domain.Value, orderIdsMap map[string]string) (domain.Value, domain.Value) {
 	if ko.relationFormat == model.RelationFormat_tag || ko.relationFormat == model.RelationFormat_status {
-		av = ko.GetOptionValue(av)
-		bv = ko.GetOptionValue(bv)
+		av = ko.getOptionValue(av, orderIdsMap)
+		bv = ko.getOptionValue(bv, orderIdsMap)
 	}
 	return av, bv
 }
@@ -296,20 +300,16 @@ func getLayout(getter *domain.Details) model.ObjectTypeLayout {
 	return model.ObjectTypeLayout(int32(rawLayout))
 }
 
-func (ko *KeyOrder) GetOptionValue(value domain.Value) domain.Value {
-	if ko.Options == nil {
-		ko.Options = make(map[string]string)
+func (ko *KeyOrder) getOptionValue(value domain.Value, orderIdsMap map[string]string) domain.Value {
+	if orderIdsMap == nil {
+		orderIdsMap = optionsToMap(ko.Key, ko.objectStore)
 	}
-
-	if len(ko.Options) == 0 && ko.Store != nil {
-		ko.Options = optionsToMap(ko.SpaceID, ko.Key, ko.Store)
-	}
+	ko.optionsIdToOrderId = orderIdsMap
 
 	res := ""
-	for _, optID := range value.StringList() {
-		res += ko.Options[optID]
+	for _, objectId := range value.StringList() {
+		res += orderIdsMap[objectId]
 	}
-
 	return domain.String(res)
 }
 
@@ -378,7 +378,7 @@ func (co customOrder) getStringVal(val domain.Value) string {
 	return string(jsonVal.MarshalTo(co.buf))
 }
 
-func (co customOrder) Compare(a, b *domain.Details) int {
+func (co customOrder) Compare(a, b *domain.Details, orderIdsMap map[domain.RelationKey]map[string]string) int {
 
 	aID, okA := co.NeedOrderMap[co.getStringVal(a.Get(co.Key))]
 	bID, okB := co.NeedOrderMap[co.getStringVal(b.Get(co.Key))]
@@ -401,5 +401,5 @@ func (co customOrder) Compare(a, b *domain.Details) int {
 		return 1
 	}
 
-	return co.KeyOrd.Compare(a, b)
+	return co.KeyOrd.Compare(a, b, orderIdsMap)
 }
