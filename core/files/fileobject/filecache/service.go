@@ -38,7 +38,7 @@ type service struct {
 
 	dagService ipld.DAGService
 
-	queue *lruQueue[warmupTask]
+	queue *queue[warmupTask]
 }
 
 func New() Service {
@@ -60,9 +60,12 @@ func (s *service) Init(a *app.App) error {
 	s.dagService = commonFile.DAGService()
 
 	var err error
-	s.queue, err = newLruQueue[warmupTask](s.requestBufferSize)
+	s.queue, err = newQueue[warmupTask](s.requestBufferSize)
 	if err != nil {
 		return fmt.Errorf("create queue: %w", err)
+	}
+	s.queue.onCancel = func(task warmupTask) {
+		task.ctxCancel()
 	}
 	return nil
 }
@@ -124,14 +127,13 @@ func (s *service) CacheFile(ctx context.Context, spaceId string, fileId domain.F
 		return fmt.Errorf("parse cid: %w", err)
 	}
 
-	// Task will be canceled along with service context
-	// nolint: lostcancel
-	taskCtx, _ := context.WithTimeout(s.ctx, s.timeout)
+	taskCtx, taskCtxCancel := context.WithTimeout(s.ctx, s.timeout)
 
 	s.queue.push(warmupTask{
-		spaceId: spaceId,
-		cid:     rootCid,
-		ctx:     taskCtx,
+		spaceId:   spaceId,
+		cid:       rootCid,
+		ctx:       taskCtx,
+		ctxCancel: taskCtxCancel,
 	})
 
 	return err
@@ -142,13 +144,16 @@ func (s *service) dagServiceForSpace(spaceID string) ipld.DAGService {
 }
 
 type warmupTask struct {
-	spaceId string
-	cid     cid.Cid
-	ctx     context.Context
+	spaceId   string
+	cid       cid.Cid
+	ctx       context.Context
+	ctxCancel context.CancelFunc
 }
 
-type lruQueue[T any] struct {
+type queue[T any] struct {
 	cond sync.Cond
+
+	onCancel func(T)
 
 	closed bool
 	// tasks is LIFO circular buffer
@@ -156,19 +161,24 @@ type lruQueue[T any] struct {
 	currentIdx int
 }
 
-func newLruQueue[T any](maxSize int) (*lruQueue[T], error) {
+func newQueue[T any](maxSize int) (*queue[T], error) {
 	if maxSize <= 0 {
 		return nil, fmt.Errorf("max size must be > 0")
 	}
-	return &lruQueue[T]{
+	return &queue[T]{
 		cond:  sync.Cond{L: &sync.Mutex{}},
 		tasks: make([]*T, maxSize),
 	}, nil
 }
 
-func (q *lruQueue[T]) push(task T) {
+func (q *queue[T]) push(task T) {
 	q.cond.L.Lock()
 	defer q.cond.L.Unlock()
+
+	prevTask := q.tasks[q.currentIdx]
+	if prevTask != nil && q.onCancel != nil {
+		q.onCancel(*prevTask)
+	}
 
 	q.tasks[q.currentIdx] = &task
 	q.currentIdx++
@@ -179,7 +189,7 @@ func (q *lruQueue[T]) push(task T) {
 	q.cond.Signal()
 }
 
-func (q *lruQueue[T]) getNext() *T {
+func (q *queue[T]) getNext() *T {
 	q.cond.L.Lock()
 	for {
 		if q.closed {
@@ -196,7 +206,7 @@ func (q *lruQueue[T]) getNext() *T {
 	}
 }
 
-func (q *lruQueue[T]) pop() *T {
+func (q *queue[T]) pop() *T {
 	for range len(q.tasks) {
 		task := q.tasks[q.currentIdx]
 		// Remove from buffer
@@ -217,7 +227,7 @@ func (q *lruQueue[T]) pop() *T {
 	return nil
 }
 
-func (q *lruQueue[T]) close() {
+func (q *queue[T]) close() {
 	q.cond.L.Lock()
 	defer q.cond.L.Unlock()
 

@@ -336,7 +336,9 @@ func (g *gateway) getImage(ctx context.Context, r *http.Request) (*getImageReade
 		return nil, fmt.Errorf("get image reader: %w", err)
 	}
 
-	if result.originalFile.Meta().Size < 10*1024*1024 {
+	preloadOriginal := r.URL.Query().Has("preloadOriginal")
+
+	if preloadOriginal && result.originalFile.Meta().Size < 10*1024*1024 {
 		err = g.fileCacheService.CacheFile(
 			r.Context(),
 			result.spaceId,
@@ -397,15 +399,18 @@ func (g *gateway) getImageReader(ctx context.Context, image files.Image, req *ht
 	var file files.File
 	query := req.URL.Query()
 	wantWidthStr := query.Get("width")
+
+	orig, err := image.GetOriginalFile()
+	if err != nil {
+		return nil, fmt.Errorf("get original file: %w", err)
+	}
+
+	if filepath.Ext(orig.Name()) == constant.SvgExt {
+		return g.handleSVGFile(ctx, orig)
+	}
+
 	if wantWidthStr == "" {
-		var err error
-		file, err = image.GetOriginalFile()
-		if err != nil {
-			return nil, fmt.Errorf("get image file: %w", err)
-		}
-		if filepath.Ext(file.Name()) == constant.SvgExt {
-			return g.handleSVGFile(ctx, file)
-		}
+		file = orig
 	} else {
 		wantWidth, err := strconv.Atoi(wantWidthStr)
 		if err != nil {
@@ -415,14 +420,6 @@ func (g *gateway) getImageReader(ctx context.Context, image files.Image, req *ht
 		if err != nil {
 			return nil, fmt.Errorf("get image file: %w", err)
 		}
-		if filepath.Ext(file.Name()) == constant.SvgExt {
-			return g.handleSVGFile(ctx, file)
-		}
-	}
-
-	orig, err := image.GetOriginalFile()
-	if err != nil {
-		return nil, fmt.Errorf("get original file: %w", err)
 	}
 
 	reader, err := file.Reader(ctx)
@@ -443,9 +440,10 @@ func (g *gateway) handleSVGFile(ctx context.Context, file files.File) (*getImage
 		return nil, err
 	}
 	return &getImageReaderResult{
-		file:     file,
-		reader:   reader,
-		mimeType: mimeType,
+		file:         file,
+		reader:       reader,
+		mimeType:     mimeType,
+		originalFile: file,
 	}, nil
 }
 

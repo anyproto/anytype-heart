@@ -10,7 +10,7 @@ import (
 
 func TestQueue(t *testing.T) {
 	t.Run("simple", func(t *testing.T) {
-		q, err := newLruQueue[int](3)
+		q, err := newQueue[int](3)
 		require.NoError(t, err)
 
 		q.push(0)
@@ -21,7 +21,7 @@ func TestQueue(t *testing.T) {
 	})
 
 	t.Run("close queue", func(t *testing.T) {
-		q, err := newLruQueue[int](3)
+		q, err := newQueue[int](3)
 		require.NoError(t, err)
 
 		const n = 10
@@ -46,7 +46,7 @@ func TestQueue(t *testing.T) {
 	})
 
 	t.Run("drop old", func(t *testing.T) {
-		q, err := newLruQueue[int](3)
+		q, err := newQueue[int](3)
 		require.NoError(t, err)
 
 		for i := range 10 {
@@ -67,7 +67,7 @@ func TestQueue(t *testing.T) {
 	t.Run("multiple consumers", func(t *testing.T) {
 		const n = 10
 
-		q, err := newLruQueue[int](n)
+		q, err := newQueue[int](n)
 		require.NoError(t, err)
 
 		for i := range n {
