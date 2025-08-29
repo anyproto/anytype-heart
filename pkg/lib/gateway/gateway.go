@@ -253,7 +253,8 @@ func (g *gateway) getFile(ctx context.Context, r *http.Request) (files.File, io.
 		return nil, nil, fmt.Errorf("get reader: %w", err)
 	}
 
-	if strings.HasPrefix(file.MimeType(), "video") && file.Meta().Size < 20*1024*1024 {
+	preloadOriginal := r.URL.Query().Get("preloadOriginal") == "true"
+	if preloadOriginal && strings.HasPrefix(file.MimeType(), "video") && file.Meta().Size < 20*1024*1024 {
 		err = g.fileCacheService.CacheFile(
 			r.Context(),
 			file.SpaceId(),
@@ -336,8 +337,7 @@ func (g *gateway) getImage(ctx context.Context, r *http.Request) (*getImageReade
 		return nil, fmt.Errorf("get image reader: %w", err)
 	}
 
-	preloadOriginal := r.URL.Query().Has("preloadOriginal")
-
+	preloadOriginal := r.URL.Query().Get("preloadOriginal") == "true"
 	if preloadOriginal && result.originalFile.Meta().Size < 10*1024*1024 {
 		err = g.fileCacheService.CacheFile(
 			r.Context(),
