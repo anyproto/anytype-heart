@@ -34,7 +34,6 @@ const (
 	maxDescriptionSize = 200
 
 	xRobotsTag       = "X-Robots-Tag"
-	xFrameOptsTag    = "X-Frame-Options"
 	cspTag           = "Content-Security-Policy"
 	noneSrcDirective = "'none'"
 )
@@ -44,9 +43,8 @@ var (
 	log            = logging.Logger(CName)
 
 	privacyDirectives = map[string]map[string]struct{}{
-		xRobotsTag:    {"none": {}},
-		xFrameOptsTag: {"deny": {}, "sameorigin": {}},
-		cspTag:        {"default-src": {}, "frame-ancestors": {}},
+		xRobotsTag: {"none": {}},
+		cspTag:     {"default-src": {}, "frame-ancestors": {}},
 	}
 )
 
@@ -295,10 +293,6 @@ func containsPrivateDirective(header string, value string) bool {
 				}
 			}
 		}
-	// parsing tag according https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/X-Frame-Options#syntax
-	case xFrameOptsTag:
-		_, found := privacyDirectives[xFrameOptsTag][strings.ToLower(value)]
-		return found
 	}
 	return false
 }
