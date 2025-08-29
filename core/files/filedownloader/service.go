@@ -265,7 +265,6 @@ func (s *service) runDownloadWorker() {
 		if !ok {
 			return
 		}
-		fmt.Println("downloading", task.objectId)
 		err := s.DownloadToLocalStore(s.ctx, task.spaceId, task.fileId)
 		if err != nil {
 			log.Error("auto download file", zap.String("objectId", task.objectId), zap.Error(err))
@@ -280,7 +279,6 @@ func (s *service) runDownloadWorker() {
 		if err != nil {
 			log.Error("mark file as available offline", zap.String("objectId", task.objectId), zap.Error(err))
 		}
-		fmt.Println("downloaded", task.objectId)
 	}
 }
 

@@ -727,6 +727,10 @@
     - [Rpc.File.Reconcile.Request](#anytype-Rpc-File-Reconcile-Request)
     - [Rpc.File.Reconcile.Response](#anytype-Rpc-File-Reconcile-Response)
     - [Rpc.File.Reconcile.Response.Error](#anytype-Rpc-File-Reconcile-Response-Error)
+    - [Rpc.File.SetAutoDownload](#anytype-Rpc-File-SetAutoDownload)
+    - [Rpc.File.SetAutoDownload.Request](#anytype-Rpc-File-SetAutoDownload-Request)
+    - [Rpc.File.SetAutoDownload.Response](#anytype-Rpc-File-SetAutoDownload-Response)
+    - [Rpc.File.SetAutoDownload.Response.Error](#anytype-Rpc-File-SetAutoDownload-Response-Error)
     - [Rpc.File.SpaceOffload](#anytype-Rpc-File-SpaceOffload)
     - [Rpc.File.SpaceOffload.Request](#anytype-Rpc-File-SpaceOffload-Request)
     - [Rpc.File.SpaceOffload.Response](#anytype-Rpc-File-SpaceOffload-Response)
@@ -1559,6 +1563,7 @@
     - [Rpc.File.NodeUsage.Response.Error.Code](#anytype-Rpc-File-NodeUsage-Response-Error-Code)
     - [Rpc.File.Offload.Response.Error.Code](#anytype-Rpc-File-Offload-Response-Error-Code)
     - [Rpc.File.Reconcile.Response.Error.Code](#anytype-Rpc-File-Reconcile-Response-Error-Code)
+    - [Rpc.File.SetAutoDownload.Response.Error.Code](#anytype-Rpc-File-SetAutoDownload-Response-Error-Code)
     - [Rpc.File.SpaceOffload.Response.Error.Code](#anytype-Rpc-File-SpaceOffload-Response-Error-Code)
     - [Rpc.File.SpaceUsage.Response.Error.Code](#anytype-Rpc-File-SpaceUsage-Response-Error-Code)
     - [Rpc.File.Upload.Response.Error.Code](#anytype-Rpc-File-Upload-Response-Error-Code)
@@ -2296,6 +2301,7 @@
 | FileDrop | [Rpc.File.Drop.Request](#anytype-Rpc-File-Drop-Request) | [Rpc.File.Drop.Response](#anytype-Rpc-File-Drop-Response) |  |
 | FileSpaceUsage | [Rpc.File.SpaceUsage.Request](#anytype-Rpc-File-SpaceUsage-Request) | [Rpc.File.SpaceUsage.Response](#anytype-Rpc-File-SpaceUsage-Response) |  |
 | FileNodeUsage | [Rpc.File.NodeUsage.Request](#anytype-Rpc-File-NodeUsage-Request) | [Rpc.File.NodeUsage.Response](#anytype-Rpc-File-NodeUsage-Response) |  |
+| FileSetAutoDownload | [Rpc.File.SetAutoDownload.Request](#anytype-Rpc-File-SetAutoDownload-Request) | [Rpc.File.SetAutoDownload.Response](#anytype-Rpc-File-SetAutoDownload-Response) |  |
 | NavigationListObjects | [Rpc.Navigation.ListObjects.Request](#anytype-Rpc-Navigation-ListObjects-Request) | [Rpc.Navigation.ListObjects.Response](#anytype-Rpc-Navigation-ListObjects-Response) |  |
 | NavigationGetObjectInfoWithLinks | [Rpc.Navigation.GetObjectInfoWithLinks.Request](#anytype-Rpc-Navigation-GetObjectInfoWithLinks-Request) | [Rpc.Navigation.GetObjectInfoWithLinks.Response](#anytype-Rpc-Navigation-GetObjectInfoWithLinks-Response) |  |
 | TemplateCreateFromObject | [Rpc.Template.CreateFromObject.Request](#anytype-Rpc-Template-CreateFromObject-Request) | [Rpc.Template.CreateFromObject.Response](#anytype-Rpc-Template-CreateFromObject-Response) |  |
@@ -12957,6 +12963,62 @@ Get marks list in the selected range in text block.
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | code | [Rpc.File.Reconcile.Response.Error.Code](#anytype-Rpc-File-Reconcile-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-File-SetAutoDownload"></a>
+
+### Rpc.File.SetAutoDownload
+
+
+
+
+
+
+
+<a name="anytype-Rpc-File-SetAutoDownload-Request"></a>
+
+### Rpc.File.SetAutoDownload.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| enabled | [bool](#bool) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-File-SetAutoDownload-Response"></a>
+
+### Rpc.File.SetAutoDownload.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.File.SetAutoDownload.Response.Error](#anytype-Rpc-File-SetAutoDownload-Response-Error) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-File-SetAutoDownload-Response-Error"></a>
+
+### Rpc.File.SetAutoDownload.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.File.SetAutoDownload.Response.Error.Code](#anytype-Rpc-File-SetAutoDownload-Response-Error-Code) |  |  |
 | description | [string](#string) |  |  |
 
 
@@ -24888,6 +24950,19 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 <a name="anytype-Rpc-File-Reconcile-Response-Error-Code"></a>
 
 ### Rpc.File.Reconcile.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
+
+
+
+<a name="anytype-Rpc-File-SetAutoDownload-Response-Error-Code"></a>
+
+### Rpc.File.SetAutoDownload.Response.Error.Code
 
 
 | Name | Number | Description |
