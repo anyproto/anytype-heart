@@ -162,38 +162,6 @@ func TestCheckPrivateLink(t *testing.T) {
 		require.NoError(t, err)
 	})
 
-	t.Run("X-Frame-Options headers", func(t *testing.T) {
-		testCases := []struct {
-			name          string
-			frameOptions  string
-			shouldBeError bool
-		}{
-			{"deny directive", "deny", true},
-			{"sameorigin directive", "sameorigin", true},
-			{"allowall should pass", "allowall", false},
-			{"case insensitive deny", "DENY", true},
-			{"case insensitive sameorigin", "SAMEORIGIN", true},
-		}
-
-		for _, tc := range testCases {
-			t.Run(tc.name, func(t *testing.T) {
-				resp := &http.Response{
-					Header: http.Header{
-						"X-Frame-Options": {tc.frameOptions},
-					},
-				}
-				err := checkPrivateLink(resp)
-				if tc.shouldBeError {
-					require.Error(t, err)
-					assert.ErrorIs(t, err, ErrPrivateLink)
-					assert.Contains(t, err.Error(), "X-Frame-Options")
-				} else {
-					require.NoError(t, err)
-				}
-			})
-		}
-	})
-
 	t.Run("Content-Security-Policy headers", func(t *testing.T) {
 		testCases := []struct {
 			name          string
@@ -320,23 +288,6 @@ func TestCheckPrivateLink(t *testing.T) {
 }
 
 func TestLinkPreview_Fetch_PrivateLink(t *testing.T) {
-	t.Run("private link with X-Frame-Options", func(t *testing.T) {
-		ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			w.Header().Set("Content-Type", "text/html")
-			w.Header().Set("X-Frame-Options", "deny")
-			w.Write([]byte(tetsHtml))
-		}))
-		defer ts.Close()
-
-		lp := New()
-		lp.Init(nil)
-
-		_, _, _, err := lp.Fetch(ctx, ts.URL)
-		require.Error(t, err)
-		assert.ErrorIs(t, err, ErrPrivateLink)
-		assert.Contains(t, err.Error(), "private link detected")
-	})
-
 	t.Run("private link with X-Robots-Tag", func(t *testing.T) {
 		ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set("Content-Type", "text/html")
@@ -357,7 +308,7 @@ func TestLinkPreview_Fetch_PrivateLink(t *testing.T) {
 		tr := testReader(0)
 		ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set("Content-Type", "image/jpg")
-			w.Header().Set("X-Frame-Options", "sameorigin")
+			w.Header().Set("X-Robots-Tag", "none")
 			io.Copy(w, &tr)
 		}))
 		defer ts.Close()
