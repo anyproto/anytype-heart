@@ -24,6 +24,7 @@ type ObjectStore interface {
 	SpaceId() string
 	Query(q Query) (records []Record, err error)
 	QueryRaw(filters *Filters, limit int, offset int) ([]Record, error)
+	QueryIterate(q Query, proc func(details *domain.Details)) (err error)
 	GetRelationFormatByKey(key domain.RelationKey) (model.RelationFormat, error)
 	ListRelationOptions(relationKey domain.RelationKey) (options []*model.RelationOption, err error)
 }
@@ -51,17 +52,17 @@ func (so SetOrder) AnystoreSort() query.Sort {
 }
 
 type KeyOrder struct {
-	Key                domain.RelationKey
-	Type               model.BlockContentDataviewSortType
-	EmptyPlacement     model.BlockContentDataviewSortEmptyType
-	relationFormat     model.RelationFormat
-	IncludeTime        bool
-	objectStore        ObjectStore
-	optionsIdToOrderId map[string]string
-	arena              *anyenc.Arena
-	collatorBuffer     *collate.Buffer
-	collator           *collate.Collator
-	disableCollator    bool
+	Key             domain.RelationKey
+	Type            model.BlockContentDataviewSortType
+	EmptyPlacement  model.BlockContentDataviewSortEmptyType
+	relationFormat  model.RelationFormat
+	IncludeTime     bool
+	objectStore     ObjectStore
+	idToOrderId     map[string]string
+	arena           *anyenc.Arena
+	collatorBuffer  *collate.Buffer
+	collator        *collate.Collator
+	disableCollator bool
 }
 
 func (ko *KeyOrder) ensureCollator() {
@@ -82,7 +83,7 @@ func (ko *KeyOrder) Compare(a, b *domain.Details, orderIdsMap map[domain.Relatio
 	if orderIdsMap != nil {
 		orderIds = orderIdsMap[ko.Key]
 	}
-	av, bv = ko.tryExtractTag(av, bv, orderIds)
+	av, bv = ko.tryExtractObject(av, bv, orderIds)
 	av, bv = ko.tryExtractBool(av, bv)
 
 	comp := ko.tryCompareStrings(av, bv)
@@ -111,12 +112,10 @@ func (ko *KeyOrder) AnystoreSort() query.Sort {
 		} else {
 			return ko.dateOnlySort()
 		}
-	case model.RelationFormat_object, model.RelationFormat_file:
-		return ko.basicSort(anyenc.TypeString)
 	case model.RelationFormat_url, model.RelationFormat_email, model.RelationFormat_phone, model.RelationFormat_emoji:
 		return ko.basicSort(anyenc.TypeString)
-	case model.RelationFormat_tag, model.RelationFormat_status:
-		return ko.tagStatusSort()
+	case model.RelationFormat_tag, model.RelationFormat_status, model.RelationFormat_object, model.RelationFormat_file:
+		return ko.objectSort()
 	case model.RelationFormat_checkbox:
 		return ko.boolSort()
 	default:
@@ -138,19 +137,23 @@ func (ko *KeyOrder) basicSort(valType anyenc.Type) query.Sort {
 	}
 }
 
-func (ko *KeyOrder) tagStatusSort() query.Sort {
-	if ko.optionsIdToOrderId == nil {
-		ko.optionsIdToOrderId = make(map[string]string)
+func (ko *KeyOrder) objectSort() query.Sort {
+	if ko.idToOrderId == nil {
+		ko.idToOrderId = make(map[string]string)
 	}
-	if len(ko.optionsIdToOrderId) == 0 && ko.objectStore != nil {
-		ko.optionsIdToOrderId = optionsToMap(ko.Key, ko.objectStore)
+	if len(ko.idToOrderId) == 0 && ko.objectStore != nil {
+		if ko.relationFormat == model.RelationFormat_object || ko.relationFormat == model.RelationFormat_file {
+			ko.idToOrderId = objectsToMap(ko.Key, ko.objectStore)
+		} else {
+			ko.idToOrderId = optionsToMap(ko.Key, ko.objectStore)
+		}
 	}
-	return tagStatusSort{
+	return objectSort{
 		arena:       ko.arena,
 		relationKey: string(ko.Key),
 		reverse:     ko.Type == model.BlockContentDataviewSort_Desc,
 		nulls:       ko.EmptyPlacement,
-		idToOrderId: ko.optionsIdToOrderId,
+		idToOrderId: ko.idToOrderId,
 	}
 }
 
@@ -259,12 +262,29 @@ func (ko *KeyOrder) tryExtractBool(av domain.Value, bv domain.Value) (domain.Val
 	return av, bv
 }
 
-func (ko *KeyOrder) tryExtractTag(av domain.Value, bv domain.Value, orderIdsMap map[string]string) (domain.Value, domain.Value) {
-	if ko.relationFormat == model.RelationFormat_tag || ko.relationFormat == model.RelationFormat_status {
-		av = ko.getOptionValue(av, orderIdsMap)
-		bv = ko.getOptionValue(bv, orderIdsMap)
+func (ko *KeyOrder) tryExtractObject(av domain.Value, bv domain.Value, orderIdsMap map[string]string) (domain.Value, domain.Value) {
+	if !ko.isObjectKey() {
+		return av, bv
 	}
-	return av, bv
+
+	if orderIdsMap == nil {
+		if ko.relationFormat == model.RelationFormat_status || ko.relationFormat == model.RelationFormat_tag {
+			orderIdsMap = optionsToMap(ko.Key, ko.objectStore)
+		} else {
+			orderIdsMap = objectsToMap(ko.Key, ko.objectStore)
+		}
+	}
+	ko.idToOrderId = orderIdsMap
+
+	// orderId of an object list is a concatenation of orderIds
+	rawA, rawB := "", ""
+	for _, objectId := range av.StringList() {
+		rawA += ko.idToOrderId[objectId]
+	}
+	for _, objectId := range bv.StringList() {
+		rawB += ko.idToOrderId[objectId]
+	}
+	return domain.String(rawA), domain.String(rawB)
 }
 
 func (ko *KeyOrder) tryExtractDateTime(av domain.Value, bv domain.Value) (domain.Value, domain.Value) {
@@ -300,17 +320,11 @@ func getLayout(getter *domain.Details) model.ObjectTypeLayout {
 	return model.ObjectTypeLayout(int32(rawLayout))
 }
 
-func (ko *KeyOrder) getOptionValue(value domain.Value, orderIdsMap map[string]string) domain.Value {
-	if orderIdsMap == nil {
-		orderIdsMap = optionsToMap(ko.Key, ko.objectStore)
-	}
-	ko.optionsIdToOrderId = orderIdsMap
-
-	res := ""
-	for _, objectId := range value.StringList() {
-		res += orderIdsMap[objectId]
-	}
-	return domain.String(res)
+func (ko *KeyOrder) isObjectKey() bool {
+	return ko.relationFormat == model.RelationFormat_object ||
+		ko.relationFormat == model.RelationFormat_tag ||
+		ko.relationFormat == model.RelationFormat_status ||
+		ko.relationFormat == model.RelationFormat_file
 }
 
 func newCustomOrder(arena *anyenc.Arena, key domain.RelationKey, idsIndices map[string]int, keyOrd *KeyOrder) customOrder {

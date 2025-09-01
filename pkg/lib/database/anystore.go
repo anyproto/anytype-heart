@@ -166,7 +166,7 @@ func (s textSort) AppendKey(tuple anyenc.Tuple, v *anyenc.Value) anyenc.Tuple {
 	}
 }
 
-type tagStatusSort struct {
+type objectSort struct {
 	arena       *anyenc.Arena
 	relationKey string
 	reverse     bool
@@ -174,7 +174,7 @@ type tagStatusSort struct {
 	idToOrderId map[string]string
 }
 
-func (s tagStatusSort) Fields() []query.SortField {
+func (s objectSort) Fields() []query.SortField {
 	return []query.SortField{
 		{
 			Field: "",
@@ -182,7 +182,7 @@ func (s tagStatusSort) Fields() []query.SortField {
 	}
 }
 
-func (s tagStatusSort) AppendKey(tuple anyenc.Tuple, v *anyenc.Value) anyenc.Tuple {
+func (s objectSort) AppendKey(tuple anyenc.Tuple, v *anyenc.Value) anyenc.Tuple {
 	defer func() {
 		s.arena.Reset()
 	}()

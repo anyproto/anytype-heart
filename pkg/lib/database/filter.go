@@ -11,6 +11,7 @@ import (
 	"github.com/anyproto/any-store/query"
 	"github.com/anyproto/any-store/syncpool"
 	"github.com/samber/lo"
+	"golang.org/x/exp/maps"
 	"golang.org/x/exp/slices"
 
 	"github.com/anyproto/anytype-heart/core/domain"
@@ -815,6 +816,29 @@ func optionsToMap(key domain.RelationKey, store ObjectStore) map[string]string {
 	}
 
 	return result
+}
+
+// objectsToMap collects names of objects that present in details of any objects as a value of detail with key=key
+func objectsToMap(key domain.RelationKey, store ObjectStore) map[string]string {
+	names := make(map[string]string)
+	targetIds := make([]string, 0)
+
+	err := store.QueryIterate(Query{Filters: []FilterRequest{}}, func(details *domain.Details) {
+		names[details.GetString(bundle.RelationKeyId)] = details.GetString(bundle.RelationKeyName)
+		targetIds = append(targetIds, details.GetStringList(key)...)
+	})
+	if err != nil {
+		log.Warn("nil objectStore for getting options")
+		return nil
+	}
+
+	targetIds = lo.Uniq(targetIds)
+
+	maps.DeleteFunc(names, func(id, _ string) bool {
+		return !slices.Contains(targetIds, id)
+	})
+
+	return names
 }
 
 func makeFilterNestedIn(spaceID string, rawFilter FilterRequest, store ObjectStore, relationKey domain.RelationKey, nestedRelationKey domain.RelationKey) (Filter, error) {
