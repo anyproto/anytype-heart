@@ -1,19 +1,8 @@
 name: Nightly Builds
 
 on:
-  push:
-    branches:
-      - 'nightly*'
   workflow_dispatch:
     inputs:
-      channel:
-        description: electron.builder channel
-        required: true
-        default: alpha
-        type: choice
-        options:
-          - alpha
-          - beta
       run-on-runner:
         description: 'Specify the runner to use'
         required: true
@@ -22,19 +11,61 @@ on:
         options:
           - mac-mini-org-heart
           - macos-14
+      build-tag-network:
+        description: 'Network config to use'
+        required: true
+        default: 'envproduction'
+        type: choice
+        options:
+          - envproduction
+          - envnetworkcustom
+      nightly-base-version:
+        description: 'Nightly builds base version (optional, default is stored in repo variables https://github.com/anyproto/anytype-heart/settings/variables/actions)'
+        required: false
+  schedule:
+    - cron: '0 1 * * *' # every day at 1am (UTC)
+
 
 permissions:
   actions: 'write'
   packages: 'write'
   contents: 'write'
 
+
 jobs:
+  diff-check:
+    runs-on: ubuntu-latest
+    outputs:
+      changed: ${{ steps.diff_check.outputs.changed }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - run: git fetch --tags --force --prune
+      - id: diff_check
+        run: |
+          LAST_TAG=$(git describe --tags --match 'v*-nightly.*' --abbrev=0 2>/dev/null || echo "")
+          if [ -z "$LAST_TAG" ]; then
+            # no nightly tag found in history
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          elif git diff --quiet "${LAST_TAG}..HEAD"; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          fi
+      - name: debug
+        run: |
+          echo "changed: ${{ steps.diff_check.outputs.changed }}"
+
   wait_for_perftest:
     uses: ./.github/workflows/reusable_wait_for_perftest.yml
 
   build:
-    needs: wait_for_perftest
-    runs-on: ${{ github.event.inputs.run-on-runner }}
+    needs:
+      - diff-check
+      - wait_for_perftest
+    if: needs.diff-check.outputs.changed == 'true' # run only if there is a diff
+    runs-on: ${{ github.event.inputs.run-on-runner || 'mac-mini-org-heart' }}
     steps:
       - name: Install Go
         if: ${{ !startsWith(runner.name, 'mac-mini-runner-') }}
@@ -45,7 +76,10 @@ jobs:
 
       - name: Setup GO
         run: |
-          go version
+          echo "PATH=$PATH"
+          echo "which go: '$(which go)'"
+          echo "which go version: '$( $(which go) version )'"
+          echo "go version: '$(go version)'"
           echo GOPATH=$(go env GOPATH) >> $GITHUB_ENV
           echo GOBIN=$(go env GOPATH)/bin >> $GITHUB_ENV
           echo $(go env GOPATH)/bin >> $GITHUB_PATH
@@ -62,31 +96,6 @@ jobs:
         with:
           xcode-version: '16.2'
 
-      - name: Nightly mode env settings
-        shell: bash
-        run: |
-          # choice channel name {{
-          if [[ -z "${{ github.event.inputs.channel }}" ]]; then
-            # choice default value for channel from ref name
-            if echo "${{ github.ref_name }}" | grep -q "beta"; then
-              CHANNEL="beta"
-            else
-              CHANNEL="alpha"
-            fi
-          else
-            CHANNEL="${{github.event.inputs.channel}}"
-          fi
-          echo "CHANNEL=$CHANNEL" >> $GITHUB_ENV
-          # }}
-          # choice s3 bucket for publishing {{
-          if [[ "$CHANNEL" == "beta" ]]; then
-            S3_BUCKET="${{secrets.NIGHTLY_AWS_S3_BUCKET_BETA}}"
-          else
-            S3_BUCKET="${{secrets.NIGHTLY_AWS_S3_BUCKET}}"
-          fi
-          echo "S3_BUCKET=$S3_BUCKET" >> $GITHUB_ENV
-          # }}
-
       - name: Set env vars
         env:
           UNSPLASH_KEY: ${{ secrets.UNSPLASH_KEY }}
@@ -97,7 +106,7 @@ jobs:
 
           VERSION="nightly"
           echo "${{ secrets.STAGING_NODE_CONF }}" > ./core/anytype/config/nodes/custom.yml
-          echo BUILD_TAG_NETWORK=envnetworkcustom >> $GITHUB_ENV
+          echo BUILD_TAG_NETWORK=${{ github.event.inputs.build-tag-network || 'envproduction' }} >> $GITHUB_ENV
 
           echo VERSION=${VERSION} >> $GITHUB_ENV
           echo GOPRIVATE=github.com/anyproto >> $GITHUB_ENV
@@ -148,20 +157,77 @@ jobs:
       - name: Compile android lib
         run: make compile-android-lib
 
-      # upload release artifacts to s3 {{
-      - name: Install AWS CLI
+      - name: Compute nightly version
+        id: nightly_info
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }} # required for gh CLI to authenticate
         run: |
-          if ! which aws; then
-            brew install awscli
-          fi
-          aws --version
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v2
+          set -euo pipefail
+          DATE=$(date -u +'%Y%m%d')
+          PREFIX="v${{ github.event.inputs.nightly-base-version || vars.NIGHTLY_BASE_VERSION }}-nightly.${DATE}"
+
+          # Get the number of existing tags for today
+          COUNT=$(gh api "/repos/${{ github.repository }}/git/matching-refs/tags/$PREFIX" --jq 'length')
+          N=$((COUNT + 1))
+
+          # Build the final version string
+          VERSION="${PREFIX}.${N}"
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+
+      - name: Release
+        id: release
+        uses: softprops/action-gh-release@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          aws-access-key-id: ${{ secrets.NIGHTLY_AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.NIGHTLY_AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ secrets.NIGHTLY_AWS_REGION }}
-      - name: Upload build artifacts to S3
-        run: |
-          aws s3 cp .release/ s3://${{ env.S3_BUCKET }}/mw/ --recursive --acl public-read
-      # }}
+          tag_name: ${{ steps.nightly_info.outputs.version }} # create new tag
+          target_commitish: ${{ github.sha }}                 # set current commit for new tag
+          prerelease: true
+          make_latest: false
+          fail_on_unmatched_files: true
+          generate_release_notes: true
+          files: '.release/*'
+
+      - name: Get release info
+        id: release_info
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const release_id = Number(`${{ steps.release.outputs.id }}`);
+            const { data } = await github.rest.repos.getRelease({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              release_id
+            });
+            core.setOutput('body', data.body || '');
+            core.setOutput('html_url', data.html_url);
+            core.setOutput('tag_name', data.tag_name);
+
+      # FAILURE - send to alerts channel
+      - name: Notify Slack (failure → alerts)
+        if: ${{ failure() }}
+        uses: ravsamhq/notify-slack-action@v2
+        with:
+          status: ${{ job.status }}
+          notification_title: "❌ {workflow}"
+          message_format: "{emoji} *{job}* in *{workflow}* {status_message}"
+          footer: "Linked Repo <{repo_url}|{repo}> | <{run_url}|View Workflow Run>"
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_ALERT_WEBHOOK }}
+
+      # SUCCESS - send to builds channel
+      - name: Notify Slack (ok → builds)
+        if: ${{ success() }}
+        uses: ravsamhq/notify-slack-action@v2
+        with:
+          status: ${{ job.status }}
+          notification_title: "✅ {workflow}"
+          message_format: |
+            {emoji} *{job}* in *{workflow}* {status_message}
+            *Release:* <${{ steps.release_info.outputs.html_url }}|${{ steps.release_info.outputs.tag_name }}>
+            *Description:*
+            ${{ steps.release_info.outputs.body }}
+          footer: "Linked Repo <{repo_url}|{repo}> | <{run_url}|View Workflow Run>"
+
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_BUILD_WEBHOOK }}

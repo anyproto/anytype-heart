@@ -51,10 +51,6 @@ var relationRequiredRelations = append(typeAndRelationRequiredRelations,
 	bundle.RelationKeyRelationKey,
 )
 
-var relationOptionRequiredRelations = []domain.RelationKey{
-	bundle.RelationKeyApiObjectKey,
-}
-
 type Page struct {
 	smartblock.SmartBlock
 	basic.AllOperations
