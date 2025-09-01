@@ -2,7 +2,6 @@ package fileuploader
 
 import (
 	"context"
-	// "fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -193,101 +192,69 @@ func TestUploader_Upload(t *testing.T) {
 
 		assert.Equal(t, inputContent, string(gotContent))
 	})
-	// TODO: Re-enable after implementing new preload mechanism
-	/*
-	t.Run("preload file and reuse", func(t *testing.T) {
+	t.Run("preload file and discard", func(t *testing.T) {
 		fx := newFixture(t)
 		defer fx.tearDown()
 
 		// Step 1: Preload file without creating object
 		inputContent := "preloaded content for reuse"
-		res := fx.Uploader.
+		preloadedFileId, err := fx.Uploader.
 			SetBytes([]byte(inputContent)).
 			SetName("preloaded.txt").
-			SetPreloadOnly(true).
-			Upload(ctx)
-		
-		require.NoError(t, res.Err)
-		require.Empty(t, res.FileObjectId, "preload should not create object")
-		require.NotEmpty(t, res.FileId, "preload should return file ID")
-		preloadedFileId := res.FileId
+			Preload(ctx)
+
+		require.NoError(t, err)
+		require.NotEmpty(t, preloadedFileId, "preload should return file ID")
 
 		// Step 2: Verify we can create object from same preloaded file
-		// For simplicity, we're testing that the preloaded file can be accessed
-		fullId := domain.FullFileId{FileId: domain.FileId(preloadedFileId), SpaceId: "space1"}
-		variants, err := fx.fileService.GetFileVariants(ctx, fullId, res.EncryptionKeys)
-		require.NoError(t, err)
-		require.NotEmpty(t, variants, "preloaded file should have variants")
-		
-		// In a real scenario, a new uploader would use SetPreloadedFileId
-		// and the createObjectFromPreloadedFile method would handle object creation
-	})
-	*/
-	// TODO: Re-enable after implementing new preload mechanism
-	/*
-	t.Run("preload file only", func(t *testing.T) {
-		fx := newFixture(t)
-		defer fx.tearDown()
+		// Get the preloaded result to access encryption keys
+		preloadResult, ok := fx.service.GetPreloadResult(preloadedFileId)
+		require.True(t, ok, "should find preloaded result")
+		require.NotNil(t, preloadResult)
 
-		inputContent := "content to preload"
-		res := fx.Uploader.
-			SetBytes([]byte(inputContent)).
-			SetName("test-preload.txt").
-			SetPreloadOnly(true).
-			Upload(ctx)
-		
-		require.NoError(t, res.Err)
-		require.Empty(t, res.FileObjectId, "preload should not create object")
-		require.NotEmpty(t, res.FileId, "preload should return file ID")
-		
-		// Verify file was actually stored
-		fullId := domain.FullFileId{FileId: domain.FileId(res.FileId), SpaceId: "space1"}
-		variants, err := fx.fileService.GetFileVariants(ctx, fullId, res.EncryptionKeys)
-		require.NoError(t, err)
-		require.NotEmpty(t, variants)
-		
-		// Verify content
-		file, err := files.NewFile(fx.fileService, fullId, variants)
-		require.NoError(t, err)
-		reader, err := file.Reader(ctx)
-		require.NoError(t, err)
-		
-		gotContent, err := io.ReadAll(reader)
-		require.NoError(t, err)
-		assert.Equal(t, inputContent, string(gotContent))
+		require.NotNil(t, preloadResult.Batch)
+		err = preloadResult.Batch.Discard()
+		require.NoError(t, err, "discarding batch should succeed")
+
+		fx.service.RemovePreloadResult(preloadedFileId)
+		preloadResult, ok = fx.service.GetPreloadResult(preloadedFileId)
+		require.False(t, ok, "preload result should be removed")
+		require.Nil(t, preloadResult)
+		// upload using preloaded file
+		res := fx.Uploader.SetPreloadId(preloadedFileId).Upload(context.Background())
+		require.Error(t, res.Err)
 	})
-	*/
-	// TODO: Re-enable after implementing new preload mechanism
-	/*
 	t.Run("reuse existing object from preloaded file", func(t *testing.T) {
 		fx := newFixture(t)
 		defer fx.tearDown()
 
-		preloadedFileId := "existing-file-id"
-		existingObjectId := "existing-object-id"
-		existingDetails := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
-			bundle.RelationKeyFileId: domain.String(preloadedFileId),
-			bundle.RelationKeyName:    domain.String("existing.txt"),
-		})
+		// Step 1: Preload file without creating object
+		inputContent := "preloaded content for reuse2"
+		preloadedFileId, err := fx.Uploader.
+			SetBytes([]byte(inputContent)).
+			SetName("preloaded.txt").
+			Preload(ctx)
 
-		// Mock that object already exists
-		fx.fileObjectService.EXPECT().
-			GetObjectDetailsByFileId(domain.FullFileId{
-				SpaceId: "space1",
-				FileId:  domain.FileId(preloadedFileId),
-			}).
-			Return(existingObjectId, existingDetails, nil)
+		require.NoError(t, err)
+		require.NotEmpty(t, preloadedFileId, "preload should return file ID")
 
-		res := fx.Uploader.
-			SetPreloadedFileId(preloadedFileId).
-			Upload(ctx)
-		
+		// Step 2: Verify we can create object from same preloaded file
+		// Get the preloaded result to access encryption keys
+		preloadResult, ok := fx.service.GetPreloadResult(preloadedFileId)
+		require.True(t, ok, "should find preloaded result")
+		require.NotNil(t, preloadResult)
+		require.NotNil(t, preloadResult.Batch)
+
+		// Mock the file object creation
+		fileObjectId := fx.expectCreateObject()
+
+		// upload using preloaded file
+		res := fx.Uploader.SetPreloadId(preloadedFileId).Upload(context.Background())
 		require.NoError(t, res.Err)
-		assert.Equal(t, existingObjectId, res.FileObjectId)
-		assert.Equal(t, existingDetails, res.FileObjectDetails)
-		assert.Equal(t, preloadedFileId, res.FileId)
+		assert.Equal(t, res.Name, "preloaded.txt")
+		assert.Equal(t, res.FileObjectId, fileObjectId)
+		require.NotNil(t, res.FileObjectDetails)
 	})
-	*/
 	t.Run("upload svg image", func(t *testing.T) {
 		fx := newFixture(t)
 		defer fx.tearDown()
@@ -301,39 +268,27 @@ func TestUploader_Upload(t *testing.T) {
 		assert.Equal(t, res.Name, "test.svg")
 		assert.Equal(t, b.Model().GetFile().Name, "test.svg")
 	})
-	// TODO: Re-enable after implementing new preload mechanism
-	/*
 	t.Run("create object from preloaded file - simple", func(t *testing.T) {
 		fx := newFixture(t)
 		defer fx.tearDown()
 
 		// Test simple case: try to create object from non-existent preloaded file
 		preloadedFileId := "non-existent-file-id"
-		
-		// Mock that object doesn't exist yet
-		fx.fileObjectService.EXPECT().
-			GetObjectDetailsByFileId(domain.FullFileId{
-				SpaceId: "space1",
-				FileId:  domain.FileId(preloadedFileId),
-			}).
-			Return("", nil, fmt.Errorf("not found"))
 
 		// Try to create object from non-existent preloaded file
 		uploader := fx.service.NewUploader("space1", objectorigin.None())
 		createRes := uploader.
-			SetPreloadedFileId(preloadedFileId).
+			SetPreloadId(preloadedFileId).
 			SetType(model.BlockContentFile_File).
 			Upload(ctx)
-		
-		// Should fail because file keys don't exist
+
+		// Should fail because preload result doesn't exist
 		require.Error(t, createRes.Err)
-		require.Contains(t, createRes.Err.Error(), "get preloaded file keys")
+		require.Contains(t, createRes.Err.Error(), "no preload result found")
 	})
-	*/
 }
 
-func newFileServiceFixture(t *testing.T) files.Service {
-	blockStorage := filestorage.NewInMemory()
+func newFileServiceFixture(t *testing.T, blockStorage filestorage.FileStorage) files.Service {
 
 	rpcStore := rpcstore.NewInMemoryStore(1024)
 	rpcStoreService := rpcstore.NewInMemoryService(rpcStore)
@@ -377,15 +332,19 @@ func newFixture(t *testing.T) *uplFixture {
 		ctrl:   gomock.NewController(t),
 		picker: picker,
 	}
-	fx.fileService = newFileServiceFixture(t)
+
+	// Create a shared storage instance
+	sharedStorage := filestorage.NewInMemory()
+
+	fx.fileService = newFileServiceFixture(t, sharedStorage)
 	fx.fileObjectService = mock_fileobject.NewMockService(t)
-	
+
 	// Create object store once and reuse it for all uploaders from this service
 	objStore := objectstore.NewStoreFixture(t)
 
 	uploaderProvider := &service{
 		fileService:       fx.fileService,
-		fileStorage:       filestorage.NewInMemory(),
+		fileStorage:       sharedStorage,
 		tempDirProvider:   core.NewTempDirService(),
 		picker:            picker,
 		fileObjectService: fx.fileObjectService,

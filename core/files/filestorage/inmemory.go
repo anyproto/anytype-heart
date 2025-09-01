@@ -113,7 +113,11 @@ func (i *inMemBlockStore) IterateFiles(ctx context.Context, iterFunc func(fileId
 }
 
 func (i *inMemBlockStore) Batch(ctx context.Context) (Batch, error) {
-	return &inMemBatch{store: i, pending: make([]blocks.Block, 0), deletes: make([]cid.Cid, 0)}, nil
+	// For in-memory store, we don't need proxy since there's no remote store
+	// Just return the batch directly
+	batch := &inMemBatch{store: i, pending: make([]blocks.Block, 0), deletes: make([]cid.Cid, 0)}
+	// Wrap it to match the Batch interface
+	return batch, nil
 }
 
 // inMemBatch implements Batch for in-memory testing
