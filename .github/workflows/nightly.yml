@@ -148,7 +148,9 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITHUB_USER: ${{ github.actor }}
-          PUBLISH_GRADLE: 0
+          MAVEN_ARTIFACT_ID: 'anytype-heart-ios'
+          MAVEN_ARTIFACT_NAME: 'ios_framework.tar.gz'
+          PUBLISH_GRADLE: 1
         run: make compile-ios-lib
 
       - name: Make java protos
@@ -156,6 +158,15 @@ jobs:
 
       - name: Compile android lib
         run: make compile-android-lib
+
+      - name: Publish android lib to maven
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_USER: ${{ github.actor }}
+          MAVEN_ARTIFACT_ID: 'anytype-heart-android'
+          MAVEN_ARTIFACT_NAME: 'lib.aar'
+        run: |
+          gradle publish
 
       - name: Compute nightly version
         id: nightly_info
