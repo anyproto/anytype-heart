@@ -23,7 +23,7 @@ const CName = "core.filecache"
 var log = logging.Logger(CName).Desugar()
 
 type Service interface {
-	CacheFile(ctx context.Context, spaceId string, fileId domain.FileId) error
+	CacheFile(ctx context.Context, spaceId string, fileId domain.FileId, blocksLimit int) error
 
 	app.ComponentRunnable
 }
@@ -92,16 +92,16 @@ func (s *service) runDownloader() {
 			return
 		}
 
-		err := s.cacheFile(task.ctx, task.spaceId, task.cid)
+		err := s.cacheFile(task.ctx, task)
 		if err != nil {
 			log.Error("cache file", zap.Error(err))
 		}
 	}
 }
 
-func (s *service) cacheFile(ctx context.Context, spaceId string, rootCid cid.Cid) error {
-	dagService := s.dagServiceForSpace(spaceId)
-	rootNode, err := dagService.Get(ctx, rootCid)
+func (s *service) cacheFile(ctx context.Context, task *warmupTask) error {
+	dagService := s.dagServiceForSpace(task.spaceId)
+	rootNode, err := dagService.Get(ctx, task.cid)
 	if err != nil {
 		return fmt.Errorf("get root node: %w", err)
 	}
@@ -113,6 +113,9 @@ func (s *service) cacheFile(ctx context.Context, spaceId string, rootCid cid.Cid
 		if _, ok := visited[node.Cid()]; !ok {
 			visited[node.Cid()] = struct{}{}
 		}
+		if task.blocksLimit > 0 && len(visited) >= task.blocksLimit {
+			return ipld.EndOfDag
+		}
 		return nil
 	})
 	if errors.Is(err, ipld.EndOfDag) {
@@ -121,7 +124,7 @@ func (s *service) cacheFile(ctx context.Context, spaceId string, rootCid cid.Cid
 	return nil
 }
 
-func (s *service) CacheFile(ctx context.Context, spaceId string, fileId domain.FileId) error {
+func (s *service) CacheFile(ctx context.Context, spaceId string, fileId domain.FileId, blocksLimit int) error {
 	rootCid, err := fileId.Cid()
 	if err != nil {
 		return fmt.Errorf("parse cid: %w", err)
@@ -130,10 +133,11 @@ func (s *service) CacheFile(ctx context.Context, spaceId string, fileId domain.F
 	taskCtx, taskCtxCancel := context.WithTimeout(s.ctx, s.timeout)
 
 	s.queue.push(warmupTask{
-		spaceId:   spaceId,
-		cid:       rootCid,
-		ctx:       taskCtx,
-		ctxCancel: taskCtxCancel,
+		spaceId:     spaceId,
+		cid:         rootCid,
+		ctx:         taskCtx,
+		ctxCancel:   taskCtxCancel,
+		blocksLimit: blocksLimit,
 	})
 
 	return err
@@ -144,10 +148,11 @@ func (s *service) dagServiceForSpace(spaceID string) ipld.DAGService {
 }
 
 type warmupTask struct {
-	spaceId   string
-	cid       cid.Cid
-	ctx       context.Context
-	ctxCancel context.CancelFunc
+	spaceId     string
+	cid         cid.Cid
+	ctx         context.Context
+	ctxCancel   context.CancelFunc
+	blocksLimit int
 }
 
 type queue[T any] struct {

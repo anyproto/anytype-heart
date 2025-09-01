@@ -254,11 +254,12 @@ func (g *gateway) getFile(ctx context.Context, r *http.Request) (files.File, io.
 	}
 
 	preloadOriginal := r.URL.Query().Get("preloadOriginal") == "true"
-	if preloadOriginal && strings.HasPrefix(file.MimeType(), "video") && file.Meta().Size < 20*1024*1024 {
+	if preloadOriginal && strings.HasPrefix(file.MimeType(), "video") {
 		err = g.fileCacheService.CacheFile(
 			r.Context(),
 			file.SpaceId(),
 			file.FileId(),
+			10, // First 10 mb
 		)
 		if err != nil {
 			log.Errorf("add to cache queue: %v", err)
@@ -343,6 +344,7 @@ func (g *gateway) getImage(ctx context.Context, r *http.Request) (*getImageReade
 			r.Context(),
 			result.spaceId,
 			result.originalFile.FileId(),
+			0,
 		)
 		if err != nil {
 			log.Errorf("add to cache queue: %v", err)
