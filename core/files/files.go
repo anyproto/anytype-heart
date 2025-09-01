@@ -148,16 +148,7 @@ func (s *service) FileAdd(ctx context.Context, spaceId string, options ...AddOpt
 		}
 		return res, nil
 	}
-
-	// Use DAG service from FileHandler or default
-	var dagService ipld.DAGService
-	if opts.FileHandler != nil {
-		dagService = opts.FileHandler.DAGService()
-	} else {
-		dagService = s.dagServiceForSpace(ctx, spaceId)
-	}
-	
-	rootNode, keys, err := s.addFileRootNode(ctx, dagService, spaceId, addNodeResult.variant, addNodeResult.filePairNode, opts)
+	rootNode, keys, err := s.addFileRootNode(ctx, spaceId, addNodeResult.variant, addNodeResult.filePairNode, opts)
 	if err != nil {
 		addLock.Unlock()
 		return nil, err
@@ -221,7 +212,8 @@ func (s *service) newExistingFileResult(lock *sync.Mutex, fileId domain.FileId, 
 		- content
 	...
 */
-func (s *service) addFileRootNode(ctx context.Context, dagService ipld.DAGService, spaceID string, fileInfo *storage.FileInfo, fileNode ipld.Node, opts AddOptions) (ipld.Node, *storage.FileKeys, error) {
+func (s *service) addFileRootNode(ctx context.Context, spaceID string, fileInfo *storage.FileInfo, fileNode ipld.Node, opts AddOptions) (ipld.Node, *storage.FileKeys, error) {
+	dagService := s.dagServiceForSpace(spaceID, opts.FileHandler)
 	keys := &storage.FileKeys{KeysByPath: make(map[string]string)}
 	outer, err := uio.NewDirectory(dagService)
 	if err != nil {
@@ -428,14 +420,7 @@ func (s *service) addFileNode(ctx context.Context, spaceID string, mill m.Mill, 
 	}
 	fileInfo.MetaHash = metaNode.Cid().String()
 
-	// Use DAG service from FileHandler or default
-	var dagService ipld.DAGService
-	if conf.FileHandler != nil {
-		dagService = conf.FileHandler.DAGService()
-	} else {
-		dagService = s.dagServiceForSpace(ctx, spaceID)
-	}
-	
+	dagService := s.dagServiceForSpace(spaceID, conf.FileHandler)
 	pairNode, err := s.addFilePairNode(ctx, dagService, spaceID, fileInfo, conf)
 	if err != nil {
 		return nil, err
@@ -505,7 +490,7 @@ type dirEntry struct {
 }
 
 func (s *service) GetFileVariants(ctx context.Context, id domain.FullFileId, keys map[string]string) ([]*storage.FileInfo, error) {
-	dagService := s.dagServiceForSpace(ctx, id.SpaceId)
+	dagService := s.dagServiceForSpace(id.SpaceId, nil)
 	dirLinks, err := helpers.LinksAtCid(ctx, dagService, id.FileId.String())
 	if err != nil {
 		return nil, err

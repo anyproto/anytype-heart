@@ -24,7 +24,7 @@ func (s *service) ImageAdd(ctx context.Context, spaceId string, options ...AddOp
 	if err != nil {
 		return nil, err
 	}
-	
+
 	addLock := s.lockAddOperation(opts.checksum)
 
 	addNodesResult, err := s.addImageNodes(ctx, spaceId, opts)
@@ -45,15 +45,7 @@ func (s *service) ImageAdd(ctx context.Context, spaceId string, options ...AddOp
 		return nil, errors.New("no image variants")
 	}
 
-	// Use DAG service from FileHandler or default
-	var dagService ipld.DAGService
-	if opts.FileHandler != nil {
-		dagService = opts.FileHandler.DAGService()
-	} else {
-		dagService = s.dagServiceForSpace(ctx, spaceId)
-	}
-	
-	rootNode, keys, err := s.addImageRootNode(ctx, dagService, spaceId, addNodesResult.dirEntries, opts)
+	rootNode, keys, err := s.addImageRootNode(ctx, spaceId, addNodesResult.dirEntries, opts)
 	if err != nil {
 		addLock.Unlock()
 		return nil, err
@@ -159,7 +151,8 @@ func (s *service) addImageNodes(ctx context.Context, spaceID string, addOpts Add
 			- content
 	...
 */
-func (s *service) addImageRootNode(ctx context.Context, dagService ipld.DAGService, spaceID string, dirEntries []dirEntry, opts AddOptions) (ipld.Node, *storage.FileKeys, error) {
+func (s *service) addImageRootNode(ctx context.Context, spaceID string, dirEntries []dirEntry, opts AddOptions) (ipld.Node, *storage.FileKeys, error) {
+	dagService := s.dagServiceForSpace(spaceID, opts.FileHandler)
 	keys := &storage.FileKeys{KeysByPath: make(map[string]string)}
 
 	outer, err := uio.NewDirectory(dagService)

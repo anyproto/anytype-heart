@@ -141,20 +141,20 @@ func (b *inMemBatch) Delete(ctx context.Context, c cid.Cid) error {
 func (b *inMemBatch) Commit() error {
 	b.mu.Lock()
 	defer b.mu.Unlock()
-	
+
 	b.store.mu.Lock()
 	defer b.store.mu.Unlock()
-	
+
 	// Apply adds
 	for _, block := range b.pending {
 		b.store.data[block.Cid().KeyString()] = block
 	}
-	
+
 	// Apply deletes
 	for _, c := range b.deletes {
 		delete(b.store.data, c.KeyString())
 	}
-	
+
 	// Clear pending operations
 	b.pending = make([]blocks.Block, 0)
 	b.deletes = make([]cid.Cid, 0)
@@ -164,7 +164,7 @@ func (b *inMemBatch) Commit() error {
 func (b *inMemBatch) Discard() error {
 	b.mu.Lock()
 	defer b.mu.Unlock()
-	
+
 	// Clear pending operations without applying them
 	b.pending = make([]blocks.Block, 0)
 	b.deletes = make([]cid.Cid, 0)
@@ -189,7 +189,7 @@ func (b *inMemBatch) Get(ctx context.Context, k cid.Cid) (blocks.Block, error) {
 		}
 	}
 	b.mu.Unlock()
-	
+
 	// Fall back to store
 	return b.store.Get(ctx, k)
 }

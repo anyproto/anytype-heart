@@ -178,7 +178,7 @@ func (mw *Middleware) FileUpload(cctx context.Context, req *pb.RpcFileUploadRequ
 	if err != nil {
 		return response("", "", nil, pb.RpcFileUploadResponseError_UNKNOWN_ERROR, err)
 	}
-	
+
 	var detailsProto *types.Struct
 	if details != nil {
 		detailsProto = details.ToProto()
@@ -194,12 +194,12 @@ func (mw *Middleware) FileDiscardPreload(cctx context.Context, req *pb.RpcFileDi
 		}
 		return m
 	}
-	
+
 	// Discard preloaded file if it hasn't been used to create an object
 	err := mw.doBlockService(func(bs *block.Service) (err error) {
 		return bs.DiscardPreloadedFile(cctx, req.SpaceId, req.FileId)
 	})
-	
+
 	if err != nil {
 		return response(pb.RpcFileDiscardPreloadResponseError_UNKNOWN_ERROR, err)
 	}

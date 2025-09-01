@@ -17,12 +17,14 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/ipfs/helpers"
 )
 
-func (s *service) dagServiceForSpace(ctx context.Context, spaceID string) ipld.DAGService {
-	// Return the default DAG service wrapped with space ID
-	// Custom DAG services (like batched) are now passed explicitly via AddOptions
+// dagServiceForSpace returns a DAGService that is namespaced for the given spaceID.
+// if fileHandler is nil the default dagService is used
+func (s *service) dagServiceForSpace(spaceID string, customFileHandler *fileservice.FileHandler) ipld.DAGService {
+	if customFileHandler != nil {
+		return filehelper.NewDAGServiceWithSpaceID(spaceID, customFileHandler.DAGService())
+	}
 	return filehelper.NewDAGServiceWithSpaceID(spaceID, s.dagService)
 }
-
 
 func (s *service) addFileData(ctx context.Context, spaceID string, r io.Reader, fileHandler *fileservice.FileHandler) (ipld.Node, error) {
 	// Use custom FileHandler if provided, otherwise use default
@@ -34,14 +36,13 @@ func (s *service) addFileData(ctx context.Context, spaceID string, r io.Reader, 
 	return s.commonFile.AddFile(cctx, r)
 }
 
-
 func (s *service) getFile(ctx context.Context, spaceID string, c cid.Cid) (ufsio.ReadSeekCloser, error) {
 	cctx := fileblockstore.CtxWithSpaceId(ctx, spaceID)
 	return s.commonFile.GetFile(cctx, c)
 }
 
 func (s *service) dataAtPath(ctx context.Context, spaceID string, pth string) (cid.Cid, symmetric.ReadSeekCloser, error) {
-	dagService := s.dagServiceForSpace(ctx, spaceID)
+	dagService := s.dagServiceForSpace(spaceID, nil)
 	newPath, err := path.NewPath("/ipfs/" + pth)
 	if err != nil {
 		return cid.Undef, nil, fmt.Errorf("failed to resolve path %s: %w", pth, err)

@@ -293,7 +293,7 @@ func (b *flatStoreBatch) Commit() error {
 func (b *flatStoreBatch) Discard() error {
 	// Cast to DiscardableBatch from anyproto fork of flatfs
 	if discarder, ok := b.dsBatch.(flatfs.DiscardableBatch); ok {
-		return discarder.Discard()
+		return discarder.Discard(context.Background())
 	}
 	// Fallback: batch is discarded by not committing (garbage collection will clean up)
 	return nil
