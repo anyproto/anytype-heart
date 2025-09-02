@@ -107,7 +107,7 @@ func (s *idsSub) onChange(ctx *opCtx) {
 		s.ds.refillSubscription(ctx, s.depSub, s.getActiveEntries(), s.depKeys)
 	}
 
-	s.om.updateOrderOfParentSubs(ctx, s.id)
+	s.om.updateOrders(ctx, s.id)
 }
 
 func (s *idsSub) getActiveEntries() (res []*entry) {

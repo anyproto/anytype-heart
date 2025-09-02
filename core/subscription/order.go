@@ -130,7 +130,7 @@ func (om *orderManager) buildObjectOrderSub(relationKey domain.RelationKey, pare
 	return sub, nil
 }
 
-func (om *orderManager) updateOrderOfParentSubs(ctx *opCtx, orderSubId string) {
+func (om *orderManager) updateOrders(ctx *opCtx, orderSubId string) {
 	key, err := parseOrderSubId(orderSubId)
 	if err != nil {
 		return
@@ -163,6 +163,7 @@ func (om *orderManager) updateOrderOfParentSubs(ctx *opCtx, orderSubId string) {
 	}
 }
 
+// TODO: optimize algo
 func (om *orderManager) addObjectOrderIds(ctx *opCtx, relations ...model.RelationLink) {
 	var objectRelationKeys []domain.RelationKey
 	for _, relation := range relations {
@@ -210,7 +211,7 @@ func (om *orderManager) addObjectOrderIds(ctx *opCtx, relations ...model.Relatio
 	}
 }
 
-func (om *orderManager) closeOrderSubs(parentSubId string, relations ...model.RelationLink) {
+func (om *orderManager) closeSubs(parentSubId string, relations ...model.RelationLink) {
 	for _, relation := range relations {
 		key := domain.RelationKey(relation.GetKey())
 		parents := om.parents[key]

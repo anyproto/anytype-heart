@@ -223,7 +223,7 @@ func (s *sortedSub) onChange(ctx *opCtx) {
 		s.parent.onChange(ctx)
 	}
 
-	s.om.updateOrderOfParentSubs(ctx, s.id)
+	s.om.updateOrders(ctx, s.id)
 	// TODO: enable addObjectOrderIds call to add ids of new objects to idsSub
 	// if len(s.orderRelations) != 0 && hasChanges {
 	// 	s.om.addObjectOrderIds(ctx, s.orderRelations...)
@@ -424,6 +424,6 @@ func (s *sortedSub) close() {
 		child.close()
 	}
 	if len(s.orderRelations) != 0 {
-		s.om.closeOrderSubs(s.id, s.orderRelations...)
+		s.om.closeSubs(s.id, s.orderRelations...)
 	}
 }
