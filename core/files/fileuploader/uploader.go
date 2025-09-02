@@ -220,7 +220,6 @@ type uploader struct {
 	fileService          files.Service
 	fileStorage          filestorage.FileStorage
 	objectStore          objectstore.ObjectStore
-	uploaderService      *service
 	origin               objectorigin.ObjectOrigin
 	imageKind            model.ImageKind
 	additionalDetails    *domain.Details
