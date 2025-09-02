@@ -32,7 +32,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/files/filestorage"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/mill"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -53,9 +52,8 @@ type Service interface {
 
 // preloadEntry tracks the status of a preload operation and implements Process interface
 type preloadEntry struct {
-	id       string
-	fileName string
-	result   *files.AddResult
+	id     string
+	result *files.AddResult
 	err      error
 	done     chan struct{} // closed when preload is complete
 	state    pb.ModelProcessState
@@ -70,7 +68,6 @@ type service struct {
 	tempDirProvider   core.TempDirProvider
 	picker            cache.ObjectGetter
 	fileObjectService FileObjectService
-	objectStore       objectstore.ObjectStore
 	processService    process.Service
 
 	// Manage preloaded results
@@ -114,16 +111,17 @@ func (f *service) StartPreload(preloadId string, fileName string) *preloadEntry 
 	defer f.preloadMu.Unlock()
 
 	entry := &preloadEntry{
-		id:       preloadId,
-		fileName: fileName,
-		done:     make(chan struct{}),
+		id:   preloadId,
+		done: make(chan struct{}),
 		state:    pb.ModelProcess_Running,
 	}
 
 	entry.ctx, entry.cancel = context.WithCancel(f.ctx)
 
 	if f.processService != nil {
-		_ = f.processService.Add(entry)
+		if err := f.processService.Add(entry); err != nil {
+			log.Errorf("failed to add preload process: %v", err)
+		}
 	}
 	f.preloadEntries[preloadId] = entry
 	return entry
@@ -183,7 +181,6 @@ func (f *service) Init(a *app.App) error {
 	f.tempDirProvider = app.MustComponent[core.TempDirProvider](a)
 	f.picker = app.MustComponent[cache.ObjectGetter](a)
 	f.fileObjectService = app.MustComponent[FileObjectService](a)
-	f.objectStore = app.MustComponent[objectstore.ObjectStore](a)
 	// Process service is optional - tests may not provide it
 	if ps := a.Component(process.CName); ps != nil {
 		f.processService = ps.(process.Service)

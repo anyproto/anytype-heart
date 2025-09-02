@@ -394,16 +394,12 @@ func newFixture(t *testing.T) *uplFixture {
 	fx.fileService = newFileServiceFixture(t, sharedStorage)
 	fx.fileObjectService = mock_fileobject.NewMockService(t)
 
-	// Create object store once and reuse it for all uploaders from this service
-	objStore := objectstore.NewStoreFixture(t)
-
 	uploaderProvider := &service{
 		fileService:       fx.fileService,
 		fileStorage:       sharedStorage,
 		tempDirProvider:   core.NewTempDirService(),
 		picker:            picker,
 		fileObjectService: fx.fileObjectService,
-		objectStore:       objStore,
 		preloadEntries:    make(map[string]*preloadEntry),
 	}
 	uploaderProvider.ctx, uploaderProvider.ctxCancel = context.WithCancel(context.Background())

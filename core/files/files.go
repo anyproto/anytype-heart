@@ -114,7 +114,9 @@ type AddResult struct {
 // Commit transaction of adding a file
 func (r *AddResult) Commit() {
 	if r.Batch != nil {
-		_ = r.Batch.Commit()
+		if err := r.Batch.Commit(); err != nil {
+			log.Errorf("failed to commit batch: %v", err)
+		}
 	}
 	r.lock.Unlock()
 }
