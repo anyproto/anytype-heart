@@ -1936,6 +1936,7 @@
     - [Model.Process.Export](#anytype-Model-Process-Export)
     - [Model.Process.Import](#anytype-Model-Process-Import)
     - [Model.Process.Migration](#anytype-Model-Process-Migration)
+    - [Model.Process.PreloadFile](#anytype-Model-Process-PreloadFile)
     - [Model.Process.Progress](#anytype-Model-Process-Progress)
     - [Model.Process.SaveFile](#anytype-Model-Process-SaveFile)
     - [ResponseEvent](#anytype-ResponseEvent)
@@ -30562,6 +30563,7 @@ scenario: Precondition: user A and user B opened the same block
 | export | [Model.Process.Export](#anytype-Model-Process-Export) |  |  |
 | saveFile | [Model.Process.SaveFile](#anytype-Model-Process-SaveFile) |  |  |
 | migration | [Model.Process.Migration](#anytype-Model-Process-Migration) |  |  |
+| preloadFile | [Model.Process.PreloadFile](#anytype-Model-Process-PreloadFile) |  |  |
 | error | [string](#string) |  |  |
 
 
@@ -30602,6 +30604,16 @@ scenario: Precondition: user A and user B opened the same block
 <a name="anytype-Model-Process-Migration"></a>
 
 ### Model.Process.Migration
+
+
+
+
+
+
+
+<a name="anytype-Model-Process-PreloadFile"></a>
+
+### Model.Process.PreloadFile
 
 
 

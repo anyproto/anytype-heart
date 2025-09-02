@@ -21,7 +21,10 @@ import (
 	"github.com/gabriel-vasile/mimetype"
 	"github.com/globalsign/mgo/bson"
 
+	"github.com/google/uuid"
+
 	"github.com/anyproto/anytype-heart/core/block/cache"
+	"github.com/anyproto/anytype-heart/core/block/process"
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/block/simple/file"
 	"github.com/anyproto/anytype-heart/core/domain"
@@ -29,6 +32,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/files"
 	"github.com/anyproto/anytype-heart/core/files/fileobject/filemodels"
 	"github.com/anyproto/anytype-heart/core/files/filestorage"
+	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
@@ -49,11 +53,17 @@ type Service interface {
 	RemovePreloadResult(preloadId string)
 }
 
-// preloadEntry tracks the status of a preload operation
+// preloadEntry tracks the status of a preload operation and implements Process interface
 type preloadEntry struct {
-	result *files.AddResult
-	err    error
-	done   chan struct{} // closed when preload is complete
+	id       string
+	fileName string
+	result   *files.AddResult
+	err      error
+	done     chan struct{} // closed when preload is complete
+	state    pb.ModelProcessState
+	mu       sync.RWMutex
+	ctx      context.Context // wraps service ctx with process cancellation
+	cancel   context.CancelFunc
 }
 
 type service struct {
@@ -63,6 +73,7 @@ type service struct {
 	picker            cache.ObjectGetter
 	fileObjectService FileObjectService
 	objectStore       objectstore.ObjectStore
+	processService    process.Service
 
 	// Manage preloaded results
 	preloadMu      sync.RWMutex
@@ -93,19 +104,28 @@ func (f *service) NewUploader(spaceId string, origin objectorigin.ObjectOrigin) 
 }
 
 type preload interface {
-	StartPreload(preloadId string) *preloadEntry
+	StartPreload(preloadId string, fileName string) *preloadEntry
 	GetPreloadEntry(preloadId string) (*preloadEntry, bool)
 	CompletePreload(preloadId string, result *files.AddResult, err error)
 	GetPreloadResult(preloadId string) (*files.AddResult, bool)
 }
 
 // StartPreload creates a new preload entry for async processing
-func (f *service) StartPreload(preloadId string) *preloadEntry {
+func (f *service) StartPreload(preloadId string, fileName string) *preloadEntry {
 	f.preloadMu.Lock()
 	defer f.preloadMu.Unlock()
 
 	entry := &preloadEntry{
-		done: make(chan struct{}),
+		id:       uuid.New().String(),
+		fileName: fileName,
+		done:     make(chan struct{}),
+		state:    pb.ModelProcess_Running,
+	}
+
+	entry.ctx, entry.cancel = context.WithCancel(f.ctx)
+
+	if f.processService != nil {
+		_ = f.processService.Add(entry)
 	}
 	f.preloadEntries[preloadId] = entry
 	return entry
@@ -130,9 +150,7 @@ func (f *service) CompletePreload(preloadId string, result *files.AddResult, err
 	defer f.preloadMu.Unlock()
 
 	if entry, ok := f.preloadEntries[preloadId]; ok {
-		entry.result = result
-		entry.err = err
-		close(entry.done)
+		entry.complete(result, err)
 	}
 }
 
@@ -168,6 +186,10 @@ func (f *service) Init(a *app.App) error {
 	f.picker = app.MustComponent[cache.ObjectGetter](a)
 	f.fileObjectService = app.MustComponent[FileObjectService](a)
 	f.objectStore = app.MustComponent[objectstore.ObjectStore](a)
+	// Process service is optional - tests may not provide it
+	if ps := a.Component(process.CName); ps != nil {
+		f.processService = ps.(process.Service)
+	}
 	f.ctx, f.ctxCancel = context.WithCancel(context.Background())
 	return nil
 }
@@ -687,12 +709,18 @@ func (u *uploader) Preload(ctx context.Context) (preloadId string, err error) {
 	// Generate a random preloadId
 	preloadId = bson.NewObjectId().Hex()
 
+	// Get filename for process tracking
+	fileName := u.name
+	if fileName == "" {
+		fileName = "unknown"
+	}
+
 	// Start async preload
-	_ = u.preload.StartPreload(preloadId)
+	entry := u.preload.StartPreload(preloadId, fileName)
 
 	// Process file asynchronously
 	go func() {
-		addFile, err := u.addFile(ctx)
+		addFile, err := u.addFile(entry.ctx)
 		if err != nil {
 			log.Errorf("preload file: %v", err)
 		}
@@ -763,4 +791,46 @@ func (u *uploader) updateBlock() {
 			log.Warnf("upload file: can't update info: %v", err)
 		}
 	}
+}
+
+// Process interface implementation for preloadEntry
+
+func (e *preloadEntry) Id() string {
+	return e.id
+}
+
+func (e *preloadEntry) Cancel() error {
+	e.cancel()
+	return nil
+}
+
+func (e *preloadEntry) Info() pb.ModelProcess {
+	e.mu.RLock()
+	defer e.mu.RUnlock()
+
+	return pb.ModelProcess{
+		Id:    e.id,
+		State: e.state,
+		Message: &pb.ModelProcessMessageOfPreloadFile{
+			PreloadFile: &pb.ModelProcessPreloadFile{},
+		},
+	}
+}
+
+func (e *preloadEntry) Done() chan struct{} {
+	return e.done
+}
+
+func (e *preloadEntry) complete(result *files.AddResult, err error) {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+
+	e.result = result
+	e.err = err
+	if err != nil {
+		e.state = pb.ModelProcess_Error
+	} else {
+		e.state = pb.ModelProcess_Done
+	}
+	close(e.done)
 }
