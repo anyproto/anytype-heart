@@ -54,12 +54,12 @@ type Service interface {
 type preloadEntry struct {
 	id     string
 	result *files.AddResult
-	err      error
-	done     chan struct{} // closed when preload is complete
-	state    pb.ModelProcessState
-	mu       sync.RWMutex
-	ctx      context.Context // wraps service ctx with process cancellation
-	cancel   context.CancelFunc
+	err    error
+	done   chan struct{} // closed when preload is complete
+	state  pb.ModelProcessState
+	mu     sync.RWMutex
+	ctx    context.Context // wraps service ctx with process cancellation
+	cancel context.CancelFunc
 }
 
 type service struct {
@@ -111,9 +111,9 @@ func (f *service) StartPreload(preloadId string, fileName string) *preloadEntry 
 	defer f.preloadMu.Unlock()
 
 	entry := &preloadEntry{
-		id:   preloadId,
-		done: make(chan struct{}),
-		state:    pb.ModelProcess_Running,
+		id:    preloadId,
+		done:  make(chan struct{}),
+		state: pb.ModelProcess_Running,
 	}
 
 	entry.ctx, entry.cancel = context.WithCancel(f.ctx)
