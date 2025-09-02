@@ -6,9 +6,9 @@ import (
 	"github.com/huandu/skiplist"
 
 	"github.com/anyproto/anytype-heart/core/domain"
-	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/spaceindex"
+	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
 var (
@@ -29,6 +29,7 @@ func (s *spaceSubscriptions) newSortedSub(id string, spaceId string, keys []doma
 		limit:       limit,
 		offset:      offset,
 		objectStore: s.objectStore,
+		om:          s.om,
 	}
 	return sub
 }
@@ -40,11 +41,10 @@ type sortedSub struct {
 	started              bool
 	entriesBeforeStarted []*entry
 
-	keys   []domain.RelationKey
-	filter database.Filter
-	order  database.Order
-
-	orderIdsMap map[domain.RelationKey]map[string]string // key -> objectId -> orderId
+	keys           []domain.RelationKey
+	filter         database.Filter
+	order          database.Order
+	orderRelations []model.RelationLink
 
 	afterId, beforeId string
 	limit, offset     int
@@ -65,6 +65,7 @@ type sortedSub struct {
 
 	cache *cache
 	ds    *dependencyService
+	om    *orderManager
 
 	// for nested subscriptions
 	objectStore spaceindex.Store
@@ -151,7 +152,6 @@ func (s *sortedSub) init(entries []*entry) (err error) {
 }
 
 func (s *sortedSub) onChange(ctx *opCtx) {
-	s.updateOrderIds(ctx)
 	var changed bool
 	for _, e := range ctx.entries {
 		if !s.onEntryChange(e) {
@@ -213,17 +213,21 @@ func (s *sortedSub) onChange(ctx *opCtx) {
 			panic(err)
 		}
 
-		if s.parentFilter != nil {
-			var idsForParentFilter []string
-			s.iterateActive(func(e *entry) {
-				idsForParentFilter = append(idsForParentFilter, e.id)
-			})
-			s.parentFilter.IDs = idsForParentFilter
-		}
+		var idsForParentFilter []string
+		s.iterateActive(func(e *entry) {
+			idsForParentFilter = append(idsForParentFilter, e.id)
+		})
+		s.parentFilter.IDs = idsForParentFilter
 
 		ctx.entries = append(ctx.entries, parentEntries...)
 		s.parent.onChange(ctx)
 	}
+
+	s.om.updateOrderOfParentSubs(ctx, s.id)
+	// TODO: enable addObjectOrderIds call to add ids of new objects to idsSub
+	// if len(s.orderRelations) != 0 && hasChanges {
+	// 	s.om.addObjectOrderIds(ctx, s.orderRelations...)
+	// }
 }
 
 func (s *sortedSub) onEntryChange(e *entry) (noChange bool) {
@@ -379,7 +383,7 @@ func (s *sortedSub) Compare(lhs, rhs interface{}) (comp int) {
 		return 0
 	}
 	if s.order != nil {
-		comp = s.order.Compare(le.data, re.data, s.orderIdsMap)
+		comp = s.order.Compare(le.data, re.data, s.om.orders)
 	}
 	// when order isn't set or equal - sort by id
 	if comp == 0 {
@@ -390,21 +394,6 @@ func (s *sortedSub) Compare(lhs, rhs interface{}) (comp int) {
 		}
 	}
 	return comp
-}
-
-func (s *sortedSub) updateOrderIds(ctx *opCtx) {
-	if s.orderIdsMap == nil {
-		return
-	}
-	for _, e := range ctx.entries {
-		key := e.data.GetString(bundle.RelationKeyRelationKey)
-		if key == "" {
-			continue
-		}
-		if _, exists := s.orderIdsMap[domain.RelationKey(key)]; exists {
-			s.orderIdsMap[domain.RelationKey(key)][e.id] = e.data.GetString(bundle.RelationKeyOrderId)
-		}
-	}
 }
 
 func (s *sortedSub) CalcScore(key interface{}) float64 {
@@ -433,5 +422,8 @@ func (s *sortedSub) close() {
 	}
 	for _, child := range s.nested {
 		child.close()
+	}
+	if len(s.orderRelations) != 0 {
+		s.om.closeOrderSubs(s.id, s.orderRelations...)
 	}
 }

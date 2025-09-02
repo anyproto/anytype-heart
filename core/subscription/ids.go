@@ -10,6 +10,7 @@ func (s *spaceSubscriptions) newIdsSub(id string, spaceId string, keys []domain.
 		spaceId:  spaceId,
 		keys:     keys,
 		cache:    s.cache,
+		om:       s.om,
 		entryMap: make(map[string]*entry),
 	}
 	if !isDep {
@@ -34,6 +35,7 @@ type idsSub struct {
 
 	cache *cache
 	ds    *dependencyService
+	om    *orderManager
 }
 
 func (s *idsSub) init(entries []*entry) (err error) {
@@ -104,6 +106,8 @@ func (s *idsSub) onChange(ctx *opCtx) {
 	if changed && s.depSub != nil {
 		s.ds.refillSubscription(ctx, s.depSub, s.getActiveEntries(), s.depKeys)
 	}
+
+	s.om.updateOrderOfParentSubs(ctx, s.id)
 }
 
 func (s *idsSub) getActiveEntries() (res []*entry) {

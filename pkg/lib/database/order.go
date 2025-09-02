@@ -15,7 +15,7 @@ import (
 )
 
 type Order interface {
-	Compare(a, b *domain.Details, orderIdsMap map[domain.RelationKey]map[string]string) int
+	Compare(a, b *domain.Details, orderIdsMap OrderMap) int
 	AnystoreSort() query.Sort
 }
 
@@ -29,9 +29,11 @@ type ObjectStore interface {
 	ListRelationOptions(relationKey domain.RelationKey) (options []*model.RelationOption, err error)
 }
 
+type OrderMap map[domain.RelationKey]map[string]string // key -> objectId -> orderId
+
 type SetOrder []Order
 
-func (so SetOrder) Compare(a, b *domain.Details, orderIdsMap map[domain.RelationKey]map[string]string) int {
+func (so SetOrder) Compare(a, b *domain.Details, orderIdsMap OrderMap) int {
 	for _, o := range so {
 		if comp := o.Compare(a, b, orderIdsMap); comp != 0 {
 			return comp
@@ -72,7 +74,7 @@ func (ko *KeyOrder) ensureCollator() {
 	}
 }
 
-func (ko *KeyOrder) Compare(a, b *domain.Details, orderIdsMap map[domain.RelationKey]map[string]string) int {
+func (ko *KeyOrder) Compare(a, b *domain.Details, orderIdsMap OrderMap) int {
 	av := a.Get(ko.Key)
 	bv := b.Get(ko.Key)
 
@@ -392,7 +394,7 @@ func (co customOrder) getStringVal(val domain.Value) string {
 	return string(jsonVal.MarshalTo(co.buf))
 }
 
-func (co customOrder) Compare(a, b *domain.Details, orderIdsMap map[domain.RelationKey]map[string]string) int {
+func (co customOrder) Compare(a, b *domain.Details, orderIdsMap OrderMap) int {
 
 	aID, okA := co.NeedOrderMap[co.getStringVal(a.Get(co.Key))]
 	bID, okB := co.NeedOrderMap[co.getStringVal(b.Get(co.Key))]
