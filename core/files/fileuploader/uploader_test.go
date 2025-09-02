@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 
 	"github.com/anyproto/any-sync/accountservice/mock_accountservice"
 	"github.com/anyproto/any-sync/app"
@@ -286,6 +287,60 @@ func TestUploader_Upload(t *testing.T) {
 		require.Error(t, createRes.Err)
 		require.Contains(t, createRes.Err.Error(), "no preload result found")
 	})
+	
+	t.Run("async preload - immediate return and blocking upload", func(t *testing.T) {
+		fx := newFixture(t)
+		defer fx.tearDown()
+
+		// Create a large file content to simulate slow processing
+		largeContent := make([]byte, 1024*1024) // 1MB
+		for i := range largeContent {
+			largeContent[i] = byte(i % 256)
+		}
+
+		// Start preload - should return immediately
+		start := time.Now()
+		preloadedFileId, err := fx.Uploader.
+			SetBytes(largeContent).
+			SetName("large.bin").
+			Preload(ctx)
+		
+		require.NoError(t, err)
+		require.NotEmpty(t, preloadedFileId)
+		
+		// Preload should return almost immediately (< 100ms)
+		elapsed := time.Since(start)
+		require.Less(t, elapsed, 100*time.Millisecond, "Preload should return immediately")
+		
+		// Mock that object doesn't exist yet
+		fx.fileObjectService.EXPECT().
+			GetObjectDetailsByFileId(mock.Anything).
+			Return("", nil, filemodels.ErrObjectNotFound).Maybe()
+		
+		fx.fileObjectService.EXPECT().
+			Create(mock.Anything, mock.Anything, mock.Anything).
+			Return("object123", &domain.Details{}, nil).Maybe()
+		
+		// Now try to upload using the preloadId - this should block until preload completes
+		uploader := fx.service.NewUploader("space1", objectorigin.None())
+		createRes := uploader.
+			SetPreloadId(preloadedFileId).
+			SetType(model.BlockContentFile_File).
+			Upload(ctx)
+		
+		// Upload should succeed after waiting for preload
+		require.NoError(t, createRes.Err)
+		require.NotEmpty(t, createRes.FileObjectId)
+		
+		// Wait a bit to ensure async preload has completed
+		time.Sleep(100 * time.Millisecond)
+		
+		// Verify the preload result is available
+		result, ok := fx.service.GetPreloadResult(preloadedFileId)
+		require.True(t, ok, "preload result should be available")
+		require.NotNil(t, result)
+		require.Equal(t, int64(len(largeContent)), result.Size)
+	})
 }
 
 func newFileServiceFixture(t *testing.T, blockStorage filestorage.FileStorage) files.Service {
@@ -349,7 +404,7 @@ func newFixture(t *testing.T) *uplFixture {
 		picker:            picker,
 		fileObjectService: fx.fileObjectService,
 		objectStore:       objStore,
-		preloadResults:    make(map[string]*files.AddResult),
+		preloadEntries:    make(map[string]*preloadEntry),
 	}
 	fx.service = uploaderProvider
 	fx.Uploader = uploaderProvider.NewUploader("space1", objectorigin.None())

@@ -19,6 +19,7 @@ import (
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/commonfile/fileservice"
 	"github.com/gabriel-vasile/mimetype"
+	"github.com/globalsign/mgo/bson"
 
 	"github.com/anyproto/anytype-heart/core/block/cache"
 	"github.com/anyproto/anytype-heart/core/block/simple"
@@ -48,6 +49,14 @@ type Service interface {
 	RemovePreloadResult(preloadId string)
 }
 
+// preloadEntry tracks the status of a preload operation
+type preloadEntry struct {
+	result  *files.AddResult
+	err     error
+	done    chan struct{} // closed when preload is complete
+	started time.Time
+}
+
 type service struct {
 	fileService       files.Service
 	fileStorage       filestorage.FileStorage
@@ -58,12 +67,15 @@ type service struct {
 
 	// Manage preloaded results
 	preloadMu      sync.RWMutex
-	preloadResults map[string]*files.AddResult // preloadId -> AddResult
+	preloadEntries map[string]*preloadEntry // preloadId -> preloadEntry
+
+	ctx       context.Context
+	ctxCancel context.CancelFunc
 }
 
 func New() Service {
 	return &service{
-		preloadResults: make(map[string]*files.AddResult),
+		preloadEntries: make(map[string]*preloadEntry),
 	}
 }
 
@@ -78,35 +90,72 @@ func (f *service) NewUploader(spaceId string, origin objectorigin.ObjectOrigin) 
 		objectStore:       f.objectStore,
 		origin:            origin,
 		preload:           f,
+		serviceCtx:        f.ctx,
 	}
 }
 
 type preload interface {
-	SavePreloadResult(result *files.AddResult) (preloadId string, err error)
+	StartPreload(preloadId string) *preloadEntry
+	GetPreloadEntry(preloadId string) (*preloadEntry, bool)
+	CompletePreload(preloadId string, result *files.AddResult, err error)
 	GetPreloadResult(preloadId string) (*files.AddResult, bool)
 }
 
-// SavePreloadResult saves an AddResult for later use when preloadOnly is true
-func (f *service) SavePreloadResult(result *files.AddResult) (preloadId string, err error) {
+// StartPreload creates a new preload entry for async processing
+func (f *service) StartPreload(preloadId string) *preloadEntry {
 	f.preloadMu.Lock()
 	defer f.preloadMu.Unlock()
-	preloadId = result.FileId.String()
-	f.preloadResults[preloadId] = result
-	return preloadId, nil
+
+	entry := &preloadEntry{
+		done:    make(chan struct{}),
+		started: time.Now(),
+	}
+	f.preloadEntries[preloadId] = entry
+	return entry
 }
 
-func (f *service) GetPreloadResult(preloadId string) (*files.AddResult, bool) {
+// GetPreloadEntry returns a preload entry and waits if it's still in progress
+func (f *service) GetPreloadEntry(preloadId string) (*preloadEntry, bool) {
 	f.preloadMu.RLock()
-	defer f.preloadMu.RUnlock()
-	result, ok := f.preloadResults[preloadId]
-	return result, ok
+	entry, ok := f.preloadEntries[preloadId]
+	f.preloadMu.RUnlock()
+
+	if ok {
+		// Wait for preload to complete
+		<-entry.done
+	}
+	return entry, ok
+}
+
+// CompletePreload marks a preload operation as complete
+func (f *service) CompletePreload(preloadId string, result *files.AddResult, err error) {
+	f.preloadMu.Lock()
+	defer f.preloadMu.Unlock()
+
+	if entry, ok := f.preloadEntries[preloadId]; ok {
+		entry.result = result
+		entry.err = err
+		close(entry.done)
+	}
+}
+
+// GetPreloadResult returns the result of a preload operation (waits if in progress)
+func (f *service) GetPreloadResult(preloadId string) (*files.AddResult, bool) {
+	entry, ok := f.GetPreloadEntry(preloadId)
+	if !ok {
+		return nil, false
+	}
+	if entry.err != nil {
+		return nil, false
+	}
+	return entry.result, true
 }
 
 // RemovePreloadResult removes a preload result after it's been used
 func (f *service) RemovePreloadResult(preloadId string) {
 	f.preloadMu.Lock()
 	defer f.preloadMu.Unlock()
-	delete(f.preloadResults, preloadId)
+	delete(f.preloadEntries, preloadId)
 }
 
 const CName = "file-uploader"
@@ -122,6 +171,16 @@ func (f *service) Init(a *app.App) error {
 	f.picker = app.MustComponent[cache.ObjectGetter](a)
 	f.fileObjectService = app.MustComponent[FileObjectService](a)
 	f.objectStore = app.MustComponent[objectstore.ObjectStore](a)
+	f.ctx, f.ctxCancel = context.WithCancel(context.Background())
+	return nil
+}
+
+func (f *service) Run(_ context.Context) (err error) {
+	return nil
+}
+
+func (f *service) Close(_ context.Context) (err error) {
+	f.ctxCancel()
 	return nil
 }
 
@@ -225,6 +284,8 @@ type uploader struct {
 	additionalDetails    *domain.Details
 	customEncryptionKeys map[string]string
 	preloadId            string
+
+	serviceCtx context.Context // used to cancel async operations
 }
 
 type bufioSeekClose struct {
@@ -454,7 +515,7 @@ func (u *uploader) UploadAsync(ctx context.Context) (result chan UploadResult) {
 		u.block = u.block.Copy().(file.Block)
 	}
 	go func() {
-		res := u.Upload(ctx)
+		res := u.Upload(u.serviceCtx)
 		if res.Err != nil {
 			log.Errorf("upload async: %v", res.Err)
 		}
@@ -466,11 +527,15 @@ func (u *uploader) UploadAsync(ctx context.Context) (result chan UploadResult) {
 
 func (u *uploader) addFile(ctx context.Context) (addResult *files.AddResult, err error) {
 	if u.preloadId != "" {
-		preloaded, ok := u.preload.GetPreloadResult(u.preloadId)
+		// Wait for preload to complete if it's still in progress
+		entry, ok := u.preload.GetPreloadEntry(u.preloadId)
 		if !ok {
 			return nil, fmt.Errorf("no preload result found for id %s", u.preloadId)
 		}
-		return preloaded, nil
+		if entry.err != nil {
+			return nil, fmt.Errorf("preload failed: %w", entry.err)
+		}
+		return entry.result, nil
 	}
 	if u.getReader == nil {
 		err = fmt.Errorf("uploader: empty source for upload")
@@ -613,11 +678,35 @@ func (u *uploader) Preload(ctx context.Context) (preloadId string, err error) {
 	if u.preloadId != "" {
 		return "", fmt.Errorf("should not run Preload if preloadId is already set")
 	}
-	addFile, err := u.addFile(ctx)
-	if err != nil {
-		return "", err
+
+	// Validate that we can read the file
+	if u.getReader == nil {
+		return "", fmt.Errorf("uploader: empty source for upload")
 	}
-	return u.preload.SavePreloadResult(addFile)
+
+	// Quick validation - try to open the file
+	buf, err := u.getReader(ctx)
+	if err != nil {
+		return "", fmt.Errorf("cannot read file: %w", err)
+	}
+	buf.Close()
+
+	// Generate a random preloadId
+	preloadId = bson.NewObjectId().Hex()
+
+	// Start async preload
+	_ = u.preload.StartPreload(preloadId)
+
+	// Process file asynchronously
+	go func() {
+		addFile, err := u.addFile(ctx)
+		if err != nil {
+			log.Errorf("preload file: %v", err)
+		}
+		u.preload.CompletePreload(preloadId, addFile, err)
+	}()
+
+	return preloadId, nil
 }
 
 func (u *uploader) getOrCreateFileObject(ctx context.Context, addResult *files.AddResult) (string, *domain.Details, error) {
