@@ -66,7 +66,6 @@ type service struct {
 
 	lock              sync.Mutex
 	addOperationLocks map[string]*sync.Mutex
-
 }
 
 func New() Service {

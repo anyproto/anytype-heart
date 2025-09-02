@@ -19,8 +19,6 @@ import (
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/commonfile/fileservice"
 	"github.com/gabriel-vasile/mimetype"
-	"github.com/globalsign/mgo/bson"
-
 	"github.com/google/uuid"
 
 	"github.com/anyproto/anytype-heart/core/block/cache"
@@ -116,7 +114,7 @@ func (f *service) StartPreload(preloadId string, fileName string) *preloadEntry 
 	defer f.preloadMu.Unlock()
 
 	entry := &preloadEntry{
-		id:       uuid.New().String(),
+		id:       preloadId,
 		fileName: fileName,
 		done:     make(chan struct{}),
 		state:    pb.ModelProcess_Running,
@@ -707,7 +705,7 @@ func (u *uploader) Preload(ctx context.Context) (preloadId string, err error) {
 	buf.Close()
 
 	// Generate a random preloadId
-	preloadId = bson.NewObjectId().Hex()
+	preloadId = uuid.New().String()
 
 	// Get filename for process tracking
 	fileName := u.name
