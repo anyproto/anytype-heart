@@ -178,12 +178,9 @@ func (i *image) Details(ctx context.Context) (*domain.Details, error) {
 		return details, nil
 	}
 
-	if v := pbtypes.Get(largest.GetMeta(), "width"); v != nil {
-		details.SetFloat64(bundle.RelationKeyWidthInPixels, v.GetNumberValue())
-	}
-
-	if v := pbtypes.Get(largest.GetMeta(), "height"); v != nil {
-		details.SetFloat64(bundle.RelationKeyHeightInPixels, v.GetNumberValue())
+	if imageExif != nil {
+		details.SetFloat64(bundle.RelationKeyHeightInPixels, float64(imageExif.Height))
+		details.SetFloat64(bundle.RelationKeyWidthInPixels, float64(imageExif.Width))
 	}
 
 	if largest.Meta != nil {
