@@ -96,6 +96,23 @@ jobs:
         with:
           xcode-version: '16.2'
 
+      - name: Compute nightly version
+        id: nightly_info
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }} # required for gh CLI to authenticate
+        run: |
+          set -euo pipefail
+          DATE=$(date -u +'%Y%m%d')
+          PREFIX="v${{ github.event.inputs.nightly-base-version || vars.NIGHTLY_BASE_VERSION }}-nightly.${DATE}"
+
+          # Get the number of existing tags for today
+          COUNT=$(gh api "/repos/${{ github.repository }}/git/matching-refs/tags/$PREFIX" --jq 'length')
+          N=$((COUNT + 1))
+
+          # Build the final version string
+          VERSION="${PREFIX}.${N}"
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+
       - name: Set env vars
         env:
           UNSPLASH_KEY: ${{ secrets.UNSPLASH_KEY }}
@@ -104,13 +121,15 @@ jobs:
           GIT_SUMMARY=$(git describe --tags --always)
           echo "FLAGS=-X github.com/anyproto/anytype-heart/util/vcs.GitSummary=${GIT_SUMMARY} -X github.com/anyproto/anytype-heart/metrics.DefaultInHouseKey=${INHOUSE_KEY} -X github.com/anyproto/anytype-heart/util/unsplash.DefaultToken=${UNSPLASH_KEY}" >> $GITHUB_ENV
 
-          VERSION="nightly"
+          VERSION=${{ steps.nightly_info.outputs.version }}
           echo "${{ secrets.STAGING_NODE_CONF }}" > ./core/anytype/config/nodes/custom.yml
-          echo BUILD_TAG_NETWORK=${{ github.event.inputs.build-tag-network || 'envproduction' }} >> $GITHUB_ENV
 
           echo VERSION=${VERSION} >> $GITHUB_ENV
+          echo BUILD_TAG_NETWORK=${{ github.event.inputs.build-tag-network || 'envproduction' }} >> $GITHUB_ENV
+          echo MAVEN_ARTIFACT_VERSION=${VERSION} >> $GITHUB_ENV
           echo GOPRIVATE=github.com/anyproto >> $GITHUB_ENV
           echo $(pwd)/deps >> $GITHUB_PATH
+          echo "${GOBIN}" >> $GITHUB_PATH
           git config --global url."https://${{ secrets.ANYTYPE_PAT }}@github.com/".insteadOf "https://github.com/"
 
       - name: Go mod download
@@ -167,23 +186,6 @@ jobs:
           MAVEN_ARTIFACT_NAME: 'lib.aar'
         run: |
           gradle publish
-
-      - name: Compute nightly version
-        id: nightly_info
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }} # required for gh CLI to authenticate
-        run: |
-          set -euo pipefail
-          DATE=$(date -u +'%Y%m%d')
-          PREFIX="v${{ github.event.inputs.nightly-base-version || vars.NIGHTLY_BASE_VERSION }}-nightly.${DATE}"
-
-          # Get the number of existing tags for today
-          COUNT=$(gh api "/repos/${{ github.repository }}/git/matching-refs/tags/$PREFIX" --jq 'length')
-          N=$((COUNT + 1))
-
-          # Build the final version string
-          VERSION="${PREFIX}.${N}"
-          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
 
       - name: Release
         id: release
