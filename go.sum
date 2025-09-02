@@ -80,8 +80,8 @@ github.com/andybalholm/cascadia v1.3.3 h1:AG2YHrzJIm4BZ19iwJ/DAua6Btl3IwJX+VI4kk
 github.com/andybalholm/cascadia v1.3.3/go.mod h1:xNd9bqTn98Ln4DwST8/nG+H0yuB8Hmgu1YHNnWw0GeA=
 github.com/anyproto/any-store v0.3.3 h1:dNzR6YTXt5VaR1aPy4cWlvQ3ozpdO68ABZGA5SfWAPY=
 github.com/anyproto/any-store v0.3.3/go.mod h1:337LBJI+JsUsUS1qbKKmtReVhLHW1Mqn4KQux9aEE5A=
-github.com/anyproto/any-sync v0.9.8 h1:10zOcFkNi6veoGqbeRwBsQX9oKQKpAaruqAZtkpFqTU=
-github.com/anyproto/any-sync v0.9.8/go.mod h1:y4KYW2Yti9debLSWrJHblaLvC7k2QnehkcX2lgZ3+pc=
+github.com/anyproto/any-sync v0.9.9-0.20250902140308-af9b0e5aff5c h1:UaCPlphLfi/Ou1VokNm4jL3gyuaanr05i6UzJoBoXOc=
+github.com/anyproto/any-sync v0.9.9-0.20250902140308-af9b0e5aff5c/go.mod h1:y4KYW2Yti9debLSWrJHblaLvC7k2QnehkcX2lgZ3+pc=
 github.com/anyproto/anytype-publish-server/publishclient v0.0.0-20250716122732-cdcfe3a126bb h1:X1os44y0QWf1mYGj8BOoYKlXwY5xb94xTQIw1IIKJbY=
 github.com/anyproto/anytype-publish-server/publishclient v0.0.0-20250716122732-cdcfe3a126bb/go.mod h1:OzzODq4OigiRVD2lSOX1iHAoLcxhJDRbZb8n5PLG3WE=
 github.com/anyproto/anytype-push-server/pushclient v0.0.0-20250801122506-553f6c085a23 h1:jXAjKY4g9ec7lDtayIlzM9u0/b3xGS9YgGA6JtRhHfU=
@@ -90,6 +90,8 @@ github.com/anyproto/badger/v4 v4.2.1-0.20240110160636-80743fa3d580 h1:Ba80IlCCxk
 github.com/anyproto/badger/v4 v4.2.1-0.20240110160636-80743fa3d580/go.mod h1:T/uWAYxrXdaXw64ihI++9RMbKTCpKd/yE9+saARew7k=
 github.com/anyproto/go-chash v0.1.0 h1:I9meTPjXFRfXZHRJzjOHC/XF7Q5vzysKkiT/grsogXY=
 github.com/anyproto/go-chash v0.1.0/go.mod h1:0UjNQi3PDazP0fINpFYu6VKhuna+W/V+1vpXHAfNgLY=
+github.com/anyproto/go-ds-flatfs v0.0.0-20250828183910-d49f5b2d567f h1:OBqi9bWQiE0PydqLwh5kXDSQDO8lo7074PsLrfWfM2A=
+github.com/anyproto/go-ds-flatfs v0.0.0-20250828183910-d49f5b2d567f/go.mod h1:TtwE6xpVzRMpWDipS1FHEJYxB7YjGNEFZxUXOhTSGGk=
 github.com/anyproto/go-gelf v0.0.0-20210418191311-774bd5b016e7 h1:SyEu5uxZ5nKHEJ6TPKQqjM+T00SYi0MW1VaLzqZtZ9E=
 github.com/anyproto/go-gelf v0.0.0-20210418191311-774bd5b016e7/go.mod h1:N7kTiXo+LLnV94mHMr7Veos3I1SZ/ELcbkG8sZvcAPI=
 github.com/anyproto/go-log/v2 v2.1.2-0.20220721095711-bcf09ff293b2 h1:X8xiwPlNiSQs1HKguhZyHYs4XFQLWsj566bFsRjN7hM=
@@ -581,12 +583,10 @@ github.com/ipfs/go-block-format v0.2.2 h1:uecCTgRwDIXyZPgYspaLXoMiMmxQpSx2aq34eN
 github.com/ipfs/go-block-format v0.2.2/go.mod h1:vmuefuWU6b+9kIU0vZJgpiJt1yicQz9baHXE8qR+KB8=
 github.com/ipfs/go-cid v0.5.0 h1:goEKKhaGm0ul11IHA7I6p1GmKz8kEYniqFopaB5Otwg=
 github.com/ipfs/go-cid v0.5.0/go.mod h1:0L7vmeNXpQpUS9vt+yEARkJ8rOg43DF3iPgn4GIN0mk=
-github.com/ipfs/go-datastore v0.8.2 h1:Jy3wjqQR6sg/LhyY0NIePZC3Vux19nLtg7dx0TVqr6U=
-github.com/ipfs/go-datastore v0.8.2/go.mod h1:W+pI1NsUsz3tcsAACMtfC+IZdnQTnC/7VfPoJBQuts0=
+github.com/ipfs/go-datastore v0.8.3 h1:z391GsQyGKUIUof2tPoaZVeDknbt7fNHs6Gqjcw5Jo4=
+github.com/ipfs/go-datastore v0.8.3/go.mod h1:raxQ/CreIy9L6MxT71ItfMX12/ASN6EhXJoUFjICQ2M=
 github.com/ipfs/go-detect-race v0.0.1 h1:qX/xay2W3E4Q1U7d9lNs1sU9nvguX0a7319XbyQ6cOk=
 github.com/ipfs/go-detect-race v0.0.1/go.mod h1:8BNT7shDZPo99Q74BpGMK+4D8Mn4j46UU0LZ723meps=
-github.com/ipfs/go-ds-flatfs v0.5.5 h1:lkx5C99pFBMI7T1sYF7y3v7xIYekNVNMp/95Gm9Y3tY=
-github.com/ipfs/go-ds-flatfs v0.5.5/go.mod h1:bM7+m7KFUyv5dp3RBKTr3+OHgZ6h8ydCQkO7tjeO9Z4=
 github.com/ipfs/go-ipfs-delay v0.0.1 h1:r/UXYyRcddO6thwOnhiznIAiSvxMECGgtv35Xs1IeRQ=
 github.com/ipfs/go-ipfs-delay v0.0.1/go.mod h1:8SP1YXK1M1kXuc4KJZINY3TQQ03J2rwBG9QfXmbRPrw=
 github.com/ipfs/go-ipfs-pq v0.0.3 h1:YpoHVJB+jzK15mr/xsWC574tyDLkezVrDNeaalQBsTE=
