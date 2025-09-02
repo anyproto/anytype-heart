@@ -13182,8 +13182,8 @@ Get marks list in the selected range in text block.
 | details | [google.protobuf.Struct](#google-protobuf-Struct) |  | additional details for file object |
 | origin | [model.ObjectOrigin](#anytype-model-ObjectOrigin) |  |  |
 | imageKind | [model.ImageKind](#anytype-model-ImageKind) |  |  |
-| preloadOnly | [bool](#bool) |  | if true, only preload the file without creating object |
-| preloadFileId | [string](#string) |  | if set, reuse already preloaded file with this id |
+| preloadOnly | [bool](#bool) |  | if true, only async preload the file without creating object |
+| preloadFileId | [string](#string) |  | if set, reuse already preloaded file with this id. May block if async preload operation is not finished yet |
 
 
 

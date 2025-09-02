@@ -51,10 +51,9 @@ type Service interface {
 
 // preloadEntry tracks the status of a preload operation
 type preloadEntry struct {
-	result  *files.AddResult
-	err     error
-	done    chan struct{} // closed when preload is complete
-	started time.Time
+	result *files.AddResult
+	err    error
+	done   chan struct{} // closed when preload is complete
 }
 
 type service struct {
@@ -87,7 +86,6 @@ func (f *service) NewUploader(spaceId string, origin objectorigin.ObjectOrigin) 
 		fileStorage:       f.fileStorage,
 		tempDirProvider:   f.tempDirProvider,
 		fileObjectService: f.fileObjectService,
-		objectStore:       f.objectStore,
 		origin:            origin,
 		preload:           f,
 		serviceCtx:        f.ctx,
@@ -107,8 +105,7 @@ func (f *service) StartPreload(preloadId string) *preloadEntry {
 	defer f.preloadMu.Unlock()
 
 	entry := &preloadEntry{
-		done:    make(chan struct{}),
-		started: time.Now(),
+		done: make(chan struct{}),
 	}
 	f.preloadEntries[preloadId] = entry
 	return entry
@@ -278,7 +275,6 @@ type uploader struct {
 	tempDirProvider      core.TempDirProvider
 	fileService          files.Service
 	fileStorage          filestorage.FileStorage
-	objectStore          objectstore.ObjectStore
 	origin               objectorigin.ObjectOrigin
 	imageKind            model.ImageKind
 	additionalDetails    *domain.Details
@@ -627,9 +623,6 @@ func (u *uploader) addFile(ctx context.Context) (addResult *files.AddResult, err
 func (u *uploader) processAddedFile(ctx context.Context, addResult *files.AddResult) (result UploadResult) {
 	var err error
 	defer func() {
-		if u.preloadId != "" {
-			// u.preload.RemovePreloadResult(u.preloadId)
-		}
 		if err != nil {
 			result.Err = err
 			if u.block != nil {

@@ -3897,8 +3897,8 @@ message Rpc {
                 google.protobuf.Struct details = 7; // additional details for file object
                 anytype.model.ObjectOrigin origin = 8;
                 anytype.model.ImageKind imageKind = 9;
-                bool preloadOnly = 10; // if true, only preload the file without creating object
-                string preloadFileId = 11; // if set, reuse already preloaded file with this id
+                bool preloadOnly = 10; // if true, only async preload the file without creating object
+                string preloadFileId = 11; // if set, reuse already preloaded file with this id. May block if async preload operation is not finished yet
             }
 
             message Response {

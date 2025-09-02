@@ -2,6 +2,7 @@ package filestorage
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"strings"
@@ -49,7 +50,7 @@ func newFlatStore(path string, eventSender event.Sender, sendEventBatchTimeout t
 
 func (f *flatStore) Get(ctx context.Context, k cid.Cid) (blocks.Block, error) {
 	raw, err := f.ds.Get(ctx, flatStoreKey(k))
-	if err == datastore.ErrNotFound {
+	if errors.Is(err, datastore.ErrNotFound) {
 		return nil, &format.ErrNotFound{Cid: k}
 	}
 	if err != nil {
@@ -193,7 +194,7 @@ type flatStoreBatch struct {
 func (b *flatStoreBatch) Get(ctx context.Context, k cid.Cid) (blocks.Block, error) {
 	// The BatchReader interface from anyproto fork supports Get which checks temp then main
 	raw, err := b.dsBatch.Get(ctx, flatStoreKey(k))
-	if err == datastore.ErrNotFound {
+	if errors.Is(err, datastore.ErrNotFound) {
 		return nil, &format.ErrNotFound{Cid: k}
 	}
 	if err != nil {

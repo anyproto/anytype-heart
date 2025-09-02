@@ -67,8 +67,6 @@ type service struct {
 	lock              sync.Mutex
 	addOperationLocks map[string]*sync.Mutex
 
-	// Batch registry for preloading
-	batchMu sync.RWMutex
 }
 
 func New() Service {
@@ -117,7 +115,7 @@ type AddResult struct {
 // Commit transaction of adding a file
 func (r *AddResult) Commit() {
 	if r.Batch != nil {
-		r.Batch.Commit()
+		_ = r.Batch.Commit()
 	}
 	r.lock.Unlock()
 }
