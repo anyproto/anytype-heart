@@ -22,6 +22,7 @@ func TestSubscription_Add(t *testing.T) {
 			cache:   newCache(),
 			limit:   3,
 			afterId: "id3",
+			om:      newOrderManager(nil),
 		}
 		require.NoError(t, sub.init(genEntries(9, false)))
 		newEntries := []*entry{
@@ -69,6 +70,7 @@ func TestSubscription_Remove(t *testing.T) {
 			limit:   3,
 			afterId: "id3",
 			ds:      newDependencyService(&s),
+			om:      newOrderManager(&s),
 			filter: database.FilterNot{database.FilterEq{
 				Key:   "order",
 				Cond:  model.BlockContentDataviewFilter_Equal,
@@ -109,10 +111,11 @@ func TestSubscription_Change(t *testing.T) {
 			cache:   newCache(),
 			limit:   3,
 			afterId: "id3",
+			om:      newOrderManager(nil),
 		}
 		require.NoError(t, sub.init(genEntries(9, false)))
 		ctx := &opCtx{c: sub.cache}
-		ctx.entries = append(ctx.entries, newEntry("id4",  domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{"id": domain.String("id4"), "order": domain.Int64(6)})))
+		ctx.entries = append(ctx.entries, newEntry("id4", domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{"id": domain.String("id4"), "order": domain.Int64(6)})))
 		sub.onChange(ctx)
 		assertCtxPosition(t, ctx, "id5", "")
 		assertCtxChange(t, ctx, "id4")
