@@ -12,7 +12,7 @@ import (
 
 func (s *service) create(ctx context.Context, description *spaceinfo.SpaceDescription) (sp clientspace.Space, err error) {
 	var spaceType = space.SpaceType
-	if description.SpaceUxType == model.SpaceUxType_Chat {
+	if description != nil && description.SpaceUxType == model.SpaceUxType_Chat {
 		spaceType = space.ChatSpaceType
 	}
 	coreSpace, err := s.spaceCore.Create(ctx, spaceType, s.repKey, s.AccountMetadataPayload())
