@@ -42,6 +42,99 @@ func TestQueue(t *testing.T) {
 	assert.Equal(t, want, got)
 }
 
+func TestQueueGetNext(t *testing.T) {
+	t.Run("basic get next", func(t *testing.T) {
+		synctest.Run(func() {
+			store := &storage{files: make(map[string]FileInfo)}
+			q := newQueue(store)
+
+			go func() {
+				q.run()
+			}()
+			defer q.close()
+
+			q.release(FileInfo{
+				ObjectId:    "obj1",
+				State:       FileStateUploading,
+				ScheduledAt: time.Now().Add(time.Minute),
+			})
+
+			next := q.getNext(func(info FileInfo) bool {
+				return info.State == FileStateUploading
+			}, nil)
+			assert.Equal(t, "obj1", next.ObjectId)
+		})
+	})
+
+	t.Run("wait for item", func(t *testing.T) {
+		synctest.Run(func() {
+			store := &storage{files: make(map[string]FileInfo)}
+			q := newQueue(store)
+
+			go func() {
+				q.run()
+			}()
+			defer q.close()
+
+			go func() {
+				time.Sleep(10 * time.Minute)
+				q.release(FileInfo{
+					ObjectId:    "obj1",
+					State:       FileStateUploading,
+					ScheduledAt: time.Now().Add(time.Minute),
+				})
+			}()
+
+			next := q.getNext(func(info FileInfo) bool {
+				return info.State == FileStateUploading
+			}, nil)
+			assert.Equal(t, "obj1", next.ObjectId)
+		})
+	})
+
+	t.Run("get next in parallel", func(t *testing.T) {
+		synctest.Run(func() {
+			store := &storage{files: make(map[string]FileInfo)}
+			q := newQueue(store)
+
+			go func() {
+				q.run()
+			}()
+			defer q.close()
+
+			const n = 100
+
+			for i := range n {
+				q.release(FileInfo{
+					ObjectId: fmt.Sprintf("obj%d", i),
+					State:    FileStateUploading,
+				})
+			}
+
+			resultsCh := make(chan string, n)
+			for range n {
+				go func() {
+					next := q.getNext(func(info FileInfo) bool {
+						return info.State == FileStateUploading
+					}, nil)
+					resultsCh <- next.ObjectId
+				}()
+			}
+
+			var got []string
+			for range n {
+				got = append(got, <-resultsCh)
+			}
+
+			want := make([]string, n)
+			for i := range want {
+				want[i] = fmt.Sprintf("obj%d", i)
+			}
+			assert.ElementsMatch(t, want, got)
+		})
+	})
+}
+
 func TestQueueSchedule(t *testing.T) {
 	t.Run("basic schedule", func(t *testing.T) {
 		synctest.Run(func() {
@@ -59,7 +152,7 @@ func TestQueueSchedule(t *testing.T) {
 				ScheduledAt: time.Now().Add(time.Minute),
 			})
 
-			next := q.getNext(func(info FileInfo) bool {
+			next := q.getNextScheduled(func(info FileInfo) bool {
 				return info.State == FileStateUploading
 			}, func(info FileInfo) time.Time {
 				return info.ScheduledAt
@@ -87,7 +180,7 @@ func TestQueueSchedule(t *testing.T) {
 				})
 			}()
 
-			next := q.getNext(func(info FileInfo) bool {
+			next := q.getNextScheduled(func(info FileInfo) bool {
 				return info.State == FileStateUploading
 			}, func(info FileInfo) time.Time {
 				return info.ScheduledAt
@@ -120,7 +213,7 @@ func TestQueueSchedule(t *testing.T) {
 			// Lock obj1
 			q.get("obj1")
 
-			next := q.getNext(func(info FileInfo) bool {
+			next := q.getNextScheduled(func(info FileInfo) bool {
 				return info.State == FileStateUploading
 			}, func(info FileInfo) time.Time {
 				return info.ScheduledAt
@@ -152,7 +245,7 @@ func TestQueueSchedule(t *testing.T) {
 			resultsCh := make(chan string, n)
 			for range n {
 				go func() {
-					next := q.getNext(func(info FileInfo) bool {
+					next := q.getNextScheduled(func(info FileInfo) bool {
 						return info.State == FileStateUploading
 					}, func(info FileInfo) time.Time {
 						return info.ScheduledAt
@@ -205,7 +298,7 @@ func TestQueueSchedule(t *testing.T) {
 				})
 			}()
 
-			next := q.getNext(func(info FileInfo) bool {
+			next := q.getNextScheduled(func(info FileInfo) bool {
 				return info.State == FileStateUploading
 			}, func(info FileInfo) time.Time {
 				return info.ScheduledAt
@@ -246,7 +339,87 @@ func TestQueueSchedule(t *testing.T) {
 				})
 			}()
 
-			next := q.getNext(func(info FileInfo) bool {
+			next := q.getNextScheduled(func(info FileInfo) bool {
+				return info.State == FileStateUploading
+			}, func(info FileInfo) time.Time {
+				return info.ScheduledAt
+			})
+			assert.Equal(t, "obj2", next.ObjectId)
+		})
+	})
+}
+
+func TestComplex(t *testing.T) {
+	t.Run("get next but item is scheduled", func(t *testing.T) {
+		synctest.Run(func() {
+			store := &storage{files: make(map[string]FileInfo)}
+			q := newQueue(store)
+
+			go func() {
+				q.run()
+			}()
+			defer q.close()
+
+			q.release(FileInfo{
+				ObjectId:    "obj1",
+				State:       FileStateUploading,
+				ScheduledAt: time.Now().Add(time.Hour),
+			})
+
+			go func() {
+				time.Sleep(1 * time.Minute)
+				next := q.getNext(func(info FileInfo) bool {
+					return info.State == FileStateUploading
+				}, nil)
+				next.Imported = true
+				assert.Equal(t, "obj1", next.ObjectId)
+				q.release(next)
+			}()
+
+			next := q.getNextScheduled(func(info FileInfo) bool {
+				return info.State == FileStateUploading
+			}, func(info FileInfo) time.Time {
+				return info.ScheduledAt
+			})
+			assert.Equal(t, "obj1", next.ObjectId)
+			assert.True(t, next.Imported)
+		})
+	})
+
+	t.Run("get next, change item, schedule next", func(t *testing.T) {
+		synctest.Run(func() {
+			store := &storage{files: make(map[string]FileInfo)}
+			q := newQueue(store)
+
+			go func() {
+				q.run()
+			}()
+			defer q.close()
+
+			q.release(FileInfo{
+				ObjectId:    "obj1",
+				State:       FileStateUploading,
+				ScheduledAt: time.Now().Add(time.Hour),
+			})
+			q.release(FileInfo{
+				ObjectId:    "obj2",
+				State:       FileStateUploading,
+				ScheduledAt: time.Now().Add(2 * time.Hour),
+			})
+
+			go func() {
+				time.Sleep(1 * time.Minute)
+				next := q.getNext(func(info FileInfo) bool {
+					return info.State == FileStateUploading
+				}, func(info FileInfo) time.Time {
+					return info.ScheduledAt
+				})
+				next.State = FileStatePendingDeletion
+				assert.Equal(t, "obj1", next.ObjectId)
+				q.release(next)
+			}()
+
+			next := q.getNextScheduled(func(info FileInfo) bool {
 				return info.State == FileStateUploading
 			}, func(info FileInfo) time.Time {
 				return info.ScheduledAt
