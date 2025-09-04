@@ -481,6 +481,13 @@ func (a *aclService) Join(ctx context.Context, spaceId, networkId string, invite
 			InviteKey: inviteKey,
 			Metadata:  a.spaceService.AccountMetadataPayload(),
 		})
+		if errors.Is(err, coordinatorproto.ErrSpaceLimitReached) {
+			aclHeadId, err = a.joiningClient.InviteJoin(ctx, spaceId, list.InviteJoinPayload{
+				InviteKey:   inviteKey,
+				Metadata:    a.spaceService.AccountMetadataPayload(),
+				Permissions: list.AclPermissionsReader,
+			})
+		}
 		if err != nil {
 			return onJoinError(err)
 		}
