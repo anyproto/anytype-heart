@@ -226,7 +226,7 @@ jobs:
           message_format: "{emoji} *{job}* in *{workflow}* {status_message}"
           footer: "Linked Repo <{repo_url}|{repo}> | <{run_url}|View Workflow Run>"
         env:
-          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_ALERT_WEBHOOK }}
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL_ALERTS }}
 
       # SUCCESS - send to builds channel
       - name: Notify Slack (ok → builds)
@@ -243,4 +243,4 @@ jobs:
           footer: "Linked Repo <{repo_url}|{repo}> | <{run_url}|View Workflow Run>"
 
         env:
-          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_BUILD_WEBHOOK }}
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL_RELEASE_TRAIN }}
