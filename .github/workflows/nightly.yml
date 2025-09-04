@@ -118,7 +118,7 @@ jobs:
           UNSPLASH_KEY: ${{ secrets.UNSPLASH_KEY }}
           INHOUSE_KEY: ${{ secrets.INHOUSE_KEY }}
         run: |
-          GIT_SUMMARY=$(git describe --tags --always)
+          GIT_SUMMARY=${{ steps.nightly_info.outputs.version }}
           echo "FLAGS=-X github.com/anyproto/anytype-heart/util/vcs.GitSummary=${GIT_SUMMARY} -X github.com/anyproto/anytype-heart/metrics.DefaultInHouseKey=${INHOUSE_KEY} -X github.com/anyproto/anytype-heart/util/unsplash.DefaultToken=${UNSPLASH_KEY}" >> $GITHUB_ENV
 
           VERSION=${{ steps.nightly_info.outputs.version }}
