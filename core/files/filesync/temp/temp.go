@@ -230,9 +230,12 @@ func (q *queue) close() {
 }
 
 func (q *queue) handleGetNext(req getNextRequest) {
-	// TODO Skip locked rows
 	next, ok := q.store.query(func(info FileInfo) bool {
 		if _, ok := q.taskLocked[info.ObjectId]; ok {
+			return false
+		}
+		// TODO Different logic for just getNext item and for getNextScheduled
+		if _, ok := q.scheduled[info.ObjectId]; ok {
 			return false
 		}
 		return req.filter(info)
@@ -269,7 +272,7 @@ func (q *queue) scheduleItem(req getNextRequest, next FileInfo) {
 		request:    req,
 		responseCh: req.responseCh,
 	}
-	q.scheduled[req.requestId] = scheduled
+	q.scheduled[next.ObjectId] = scheduled
 
 	go func() {
 		defer timer.Stop()

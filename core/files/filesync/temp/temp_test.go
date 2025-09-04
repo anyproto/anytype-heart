@@ -1,6 +1,7 @@
 package temp
 
 import (
+	"fmt"
 	"sync"
 	"testing"
 	"testing/synctest"
@@ -125,6 +126,51 @@ func TestQueueSchedule(t *testing.T) {
 				return info.ScheduledAt
 			})
 			assert.Equal(t, "obj2", next.ObjectId)
+		})
+	})
+
+	t.Run("schedule in parallel", func(t *testing.T) {
+		synctest.Run(func() {
+			store := &storage{files: make(map[string]FileInfo)}
+			q := newQueue(store)
+
+			go func() {
+				q.run()
+			}()
+			defer q.close()
+
+			const n = 100
+
+			for i := range n {
+				q.release(FileInfo{
+					ObjectId:    fmt.Sprintf("obj%d", i),
+					State:       FileStateUploading,
+					ScheduledAt: time.Now().Add(time.Duration(i+1) * time.Minute),
+				})
+			}
+
+			resultsCh := make(chan string, n)
+			for range n {
+				go func() {
+					next := q.getNext(func(info FileInfo) bool {
+						return info.State == FileStateUploading
+					}, func(info FileInfo) time.Time {
+						return info.ScheduledAt
+					})
+					resultsCh <- next.ObjectId
+				}()
+			}
+
+			var got []string
+			for range n {
+				got = append(got, <-resultsCh)
+			}
+
+			want := make([]string, n)
+			for i := range want {
+				want[i] = fmt.Sprintf("obj%d", i)
+			}
+			assert.Equal(t, want, got)
 		})
 	})
 
