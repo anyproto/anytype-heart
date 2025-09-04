@@ -133,6 +133,43 @@ func TestQueueGetNext(t *testing.T) {
 			assert.ElementsMatch(t, want, got)
 		})
 	})
+
+	t.Run("get next one by one", func(t *testing.T) {
+		synctest.Run(func() {
+			store := &storage{files: make(map[string]FileInfo)}
+			q := newQueue(store)
+
+			go func() {
+				q.run()
+			}()
+			defer q.close()
+
+			const n = 100
+
+			for i := range n {
+				q.release(FileInfo{
+					ObjectId: fmt.Sprintf("obj%d", i),
+					State:    FileStateUploading,
+				})
+			}
+
+			got := make([]string, 0, n)
+			for range n {
+				next := q.getNext(func(info FileInfo) bool {
+					return info.State == FileStateUploading
+				}, nil)
+				next.State = FileStatePendingDeletion
+				got = append(got, next.ObjectId)
+				q.release(next)
+			}
+
+			want := make([]string, n)
+			for i := range want {
+				want[i] = fmt.Sprintf("obj%d", i)
+			}
+			assert.ElementsMatch(t, want, got)
+		})
+	})
 }
 
 func TestQueueSchedule(t *testing.T) {

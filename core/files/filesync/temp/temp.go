@@ -1,7 +1,6 @@
 package temp
 
 import (
-	"fmt"
 	"slices"
 	"sort"
 	"time"
@@ -127,6 +126,7 @@ func newQueue(store *storage) *queue {
 }
 
 func (q *queue) run() {
+	// TODO Think about deletion
 	for {
 		select {
 		case <-q.closeCh:
@@ -156,7 +156,6 @@ func (q *queue) run() {
 						q.handleGetNextScheduled(sch.request)
 					}
 				} else if sch.request.filter(req) && sch.request.scheduledAt(req).Before(sch.request.scheduledAt(sch.item)) {
-					fmt.Println("schedule earlier item")
 					close(sch.cancelTimerCh)
 					q.scheduleItem(sch.request, req)
 				}
@@ -181,7 +180,6 @@ func (q *queue) run() {
 							filtered = append(filtered, nextScheduled)
 						}
 					} else {
-						fmt.Println("sch waiter: item is no longer fit the filter, re-schedule")
 						q.handleGetNextScheduled(nextScheduled.request)
 					}
 				}
