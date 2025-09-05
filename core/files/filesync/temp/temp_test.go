@@ -11,8 +11,10 @@ import (
 )
 
 func TestQueue(t *testing.T) {
-	store := &storage{files: make(map[string]FileInfo)}
-	q := newQueue(store)
+	store := newStorage[FileInfo]()
+	q := newQueue(store, func(info FileInfo) string {
+		return info.ObjectId
+	})
 
 	go func() {
 		q.run()
@@ -45,8 +47,10 @@ func TestQueue(t *testing.T) {
 func TestQueueGetNext(t *testing.T) {
 	t.Run("basic get next", func(t *testing.T) {
 		synctest.Run(func() {
-			store := &storage{files: make(map[string]FileInfo)}
-			q := newQueue(store)
+			store := newStorage[FileInfo]()
+			q := newQueue(store, func(info FileInfo) string {
+				return info.ObjectId
+			})
 
 			go func() {
 				q.run()
@@ -68,8 +72,10 @@ func TestQueueGetNext(t *testing.T) {
 
 	t.Run("wait for item", func(t *testing.T) {
 		synctest.Run(func() {
-			store := &storage{files: make(map[string]FileInfo)}
-			q := newQueue(store)
+			store := newStorage[FileInfo]()
+			q := newQueue(store, func(info FileInfo) string {
+				return info.ObjectId
+			})
 
 			go func() {
 				q.run()
@@ -94,8 +100,10 @@ func TestQueueGetNext(t *testing.T) {
 
 	t.Run("get next in parallel", func(t *testing.T) {
 		synctest.Run(func() {
-			store := &storage{files: make(map[string]FileInfo)}
-			q := newQueue(store)
+			store := newStorage[FileInfo]()
+			q := newQueue(store, func(info FileInfo) string {
+				return info.ObjectId
+			})
 
 			go func() {
 				q.run()
@@ -136,8 +144,10 @@ func TestQueueGetNext(t *testing.T) {
 
 	t.Run("get next one by one", func(t *testing.T) {
 		synctest.Run(func() {
-			store := &storage{files: make(map[string]FileInfo)}
-			q := newQueue(store)
+			store := newStorage[FileInfo]()
+			q := newQueue(store, func(info FileInfo) string {
+				return info.ObjectId
+			})
 
 			go func() {
 				q.run()
@@ -175,8 +185,10 @@ func TestQueueGetNext(t *testing.T) {
 func TestQueueSchedule(t *testing.T) {
 	t.Run("basic schedule", func(t *testing.T) {
 		synctest.Run(func() {
-			store := &storage{files: make(map[string]FileInfo)}
-			q := newQueue(store)
+			store := newStorage[FileInfo]()
+			q := newQueue(store, func(info FileInfo) string {
+				return info.ObjectId
+			})
 
 			go func() {
 				q.run()
@@ -200,8 +212,10 @@ func TestQueueSchedule(t *testing.T) {
 
 	t.Run("wait for suitable item", func(t *testing.T) {
 		synctest.Run(func() {
-			store := &storage{files: make(map[string]FileInfo)}
-			q := newQueue(store)
+			store := newStorage[FileInfo]()
+			q := newQueue(store, func(info FileInfo) string {
+				return info.ObjectId
+			})
 
 			go func() {
 				q.run()
@@ -228,8 +242,10 @@ func TestQueueSchedule(t *testing.T) {
 
 	t.Run("skip locked", func(t *testing.T) {
 		synctest.Run(func() {
-			store := &storage{files: make(map[string]FileInfo)}
-			q := newQueue(store)
+			store := newStorage[FileInfo]()
+			q := newQueue(store, func(info FileInfo) string {
+				return info.ObjectId
+			})
 
 			go func() {
 				q.run()
@@ -261,8 +277,10 @@ func TestQueueSchedule(t *testing.T) {
 
 	t.Run("schedule in parallel", func(t *testing.T) {
 		synctest.Run(func() {
-			store := &storage{files: make(map[string]FileInfo)}
-			q := newQueue(store)
+			store := newStorage[FileInfo]()
+			q := newQueue(store, func(info FileInfo) string {
+				return info.ObjectId
+			})
 
 			go func() {
 				q.run()
@@ -306,8 +324,10 @@ func TestQueueSchedule(t *testing.T) {
 
 	t.Run("the second object became scheduled for earlier", func(t *testing.T) {
 		synctest.Run(func() {
-			store := &storage{files: make(map[string]FileInfo)}
-			q := newQueue(store)
+			store := newStorage[FileInfo]()
+			q := newQueue(store, func(info FileInfo) string {
+				return info.ObjectId
+			})
 
 			go func() {
 				q.run()
@@ -346,8 +366,10 @@ func TestQueueSchedule(t *testing.T) {
 
 	t.Run("re-schedule when changed in mid time", func(t *testing.T) {
 		synctest.Run(func() {
-			store := &storage{files: make(map[string]FileInfo)}
-			q := newQueue(store)
+			store := newStorage[FileInfo]()
+			q := newQueue(store, func(info FileInfo) string {
+				return info.ObjectId
+			})
 
 			go func() {
 				q.run()
@@ -389,8 +411,10 @@ func TestQueueSchedule(t *testing.T) {
 func TestComplex(t *testing.T) {
 	t.Run("get next but item is scheduled", func(t *testing.T) {
 		synctest.Run(func() {
-			store := &storage{files: make(map[string]FileInfo)}
-			q := newQueue(store)
+			store := newStorage[FileInfo]()
+			q := newQueue(store, func(info FileInfo) string {
+				return info.ObjectId
+			})
 
 			go func() {
 				q.run()
@@ -425,8 +449,10 @@ func TestComplex(t *testing.T) {
 
 	t.Run("get next, change item, schedule next", func(t *testing.T) {
 		synctest.Run(func() {
-			store := &storage{files: make(map[string]FileInfo)}
-			q := newQueue(store)
+			store := newStorage[FileInfo]()
+			q := newQueue(store, func(info FileInfo) string {
+				return info.ObjectId
+			})
 
 			go func() {
 				q.run()
