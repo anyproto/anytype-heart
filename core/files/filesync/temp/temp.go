@@ -54,6 +54,10 @@ func (s *storage[T]) set(objectId string, file T) {
 	s.files[objectId] = file
 }
 
+func (s *storage[T]) delete(objectId string) {
+	delete(s.files, objectId)
+}
+
 func (s *storage[T]) query(filter func(T) bool, schedulingOrder func(info T) time.Time) (T, bool) {
 	var res []T
 	for _, file := range s.files {
@@ -73,11 +77,12 @@ func (s *storage[T]) query(filter func(T) bool, schedulingOrder func(info T) tim
 
 type getByIdRequest[T any] struct {
 	objectId   string
-	responseCh chan getByIdResponse[T]
+	responseCh chan itemResponse[T]
 }
 
-type getByIdResponse[T any] struct {
-	info T
+type itemResponse[T any] struct {
+	item T
+	err  error
 }
 
 type getNextRequest[T any] struct {
@@ -86,7 +91,7 @@ type getNextRequest[T any] struct {
 	scheduledAt func(T) time.Time
 	orderBy     func(T) time.Time
 
-	responseCh chan getByIdResponse[T]
+	responseCh chan itemResponse[T]
 }
 
 type scheduledItem[T any] struct {
@@ -95,7 +100,21 @@ type scheduledItem[T any] struct {
 	item          T
 
 	request    getNextRequest[T]
-	responseCh chan getByIdResponse[T]
+	responseCh chan itemResponse[T]
+}
+
+type releaseAction int
+
+const (
+	releaseActionNone = releaseAction(iota)
+	releaseActionUpdate
+	releaseActionDelete
+)
+
+type releaseRequest[T any] struct {
+	objectId string
+	item     T
+	action   releaseAction
 }
 
 type queue[T any] struct {
@@ -107,10 +126,10 @@ type queue[T any] struct {
 	getByIdCh          chan getByIdRequest[T]
 	getNextCh          chan getNextRequest[T]
 	getNextScheduledCh chan getNextRequest[T]
-	releaseCh          chan T
+	releaseCh          chan releaseRequest[T]
 	scheduledCh        chan scheduledItem[T]
 
-	getByIdWaiters          map[string][]chan getByIdResponse[T]
+	getByIdWaiters          map[string][]chan itemResponse[T]
 	scheduledWaiters        map[string][]scheduledItem[T]
 	getNextWaiters          []getNextRequest[T]
 	getNextScheduledWaiters []getNextRequest[T]
@@ -127,8 +146,8 @@ func newQueue[T any](store *storage[T], getId func(T) string) *queue[T] {
 		getNextCh:          make(chan getNextRequest[T]),
 		getNextScheduledCh: make(chan getNextRequest[T]),
 		scheduledCh:        make(chan scheduledItem[T]),
-		releaseCh:          make(chan T),
-		getByIdWaiters:     make(map[string][]chan getByIdResponse[T]),
+		releaseCh:          make(chan releaseRequest[T]),
+		getByIdWaiters:     make(map[string][]chan itemResponse[T]),
 		taskLocked:         make(map[string]struct{}),
 		scheduled:          make(map[string]scheduledItem[T]),
 		scheduledWaiters:   map[string][]scheduledItem[T]{},
@@ -163,7 +182,7 @@ func (q *queue[T]) handleGetById(req getByIdRequest[T]) {
 		q.getByIdWaiters[req.objectId] = append(q.getByIdWaiters[req.objectId], req.responseCh)
 	} else {
 		q.taskLocked[req.objectId] = struct{}{}
-		req.responseCh <- getByIdResponse[T]{info: q.store.get(req.objectId)}
+		req.responseCh <- itemResponse[T]{item: q.store.get(req.objectId)}
 	}
 }
 
@@ -175,56 +194,57 @@ func (q *queue[T]) handleScheduledItem(req scheduledItem[T]) {
 		q.scheduledWaiters[id] = append(q.scheduledWaiters[id], req)
 	} else {
 		q.taskLocked[id] = struct{}{}
-		req.responseCh <- getByIdResponse[T]{info: q.store.get(id)}
+		req.responseCh <- itemResponse[T]{item: q.store.get(id)}
 	}
 }
 
-func (q *queue[T]) handleReleaseItem(req T) {
-	delete(q.taskLocked, q.getId(req))
-	q.store.set(q.getId(req), req)
+func (q *queue[T]) handleReleaseItem(req releaseRequest[T]) {
+	item := req.item
+	delete(q.taskLocked, q.getId(item))
+	q.store.set(q.getId(item), item)
 
 	for _, sch := range q.scheduled {
-		if q.getId(sch.item) == q.getId(req) {
+		if q.getId(sch.item) == q.getId(item) {
 			close(sch.cancelTimerCh)
-			if sch.request.filter(req) {
-				q.scheduleItem(sch.request, req)
+			if sch.request.filter(item) {
+				q.scheduleItem(sch.request, item)
 			} else {
 				q.handleGetNextScheduled(sch.request)
 			}
-		} else if sch.request.filter(req) && sch.request.scheduledAt(req).Before(sch.request.scheduledAt(sch.item)) {
+		} else if sch.request.filter(item) && sch.request.scheduledAt(item).Before(sch.request.scheduledAt(sch.item)) {
 			close(sch.cancelTimerCh)
-			q.scheduleItem(sch.request, req)
+			q.scheduleItem(sch.request, item)
 		}
 	}
 
 	var responded bool
-	waiters := q.getByIdWaiters[q.getId(req)]
+	waiters := q.getByIdWaiters[q.getId(item)]
 	if len(waiters) > 0 {
 		nextResponseCh := waiters[0]
 		waiters = waiters[1:]
-		q.taskLocked[q.getId(req)] = struct{}{}
-		nextResponseCh <- getByIdResponse[T]{info: req}
+		q.taskLocked[q.getId(item)] = struct{}{}
+		nextResponseCh <- itemResponse[T]{item: item}
 
 		responded = true
 
 		if len(waiters) == 0 {
-			delete(q.getByIdWaiters, q.getId(req))
+			delete(q.getByIdWaiters, q.getId(item))
 		} else {
-			q.getByIdWaiters[q.getId(req)] = waiters
+			q.getByIdWaiters[q.getId(item)] = waiters
 		}
 	}
 
-	scheduledWaiters := q.scheduledWaiters[q.getId(req)]
+	scheduledWaiters := q.scheduledWaiters[q.getId(item)]
 	if len(scheduledWaiters) > 0 {
 		filtered := scheduledWaiters[:0]
 		for _, nextScheduled := range scheduledWaiters {
 			// Still OK
-			if nextScheduled.request.filter(req) {
+			if nextScheduled.request.filter(item) {
 				if !responded {
 					scheduledWaiters = scheduledWaiters[1:]
-					q.taskLocked[q.getId(req)] = struct{}{}
+					q.taskLocked[q.getId(item)] = struct{}{}
 
-					nextScheduled.responseCh <- getByIdResponse[T]{info: req}
+					nextScheduled.responseCh <- itemResponse[T]{item: item}
 					responded = true
 				} else {
 					filtered = append(filtered, nextScheduled)
@@ -236,23 +256,25 @@ func (q *queue[T]) handleReleaseItem(req T) {
 
 		scheduledWaiters = filtered
 		if len(scheduledWaiters) == 0 {
-			delete(q.scheduledWaiters, q.getId(req))
+			delete(q.scheduledWaiters, q.getId(item))
 		} else {
-			q.scheduledWaiters[q.getId(req)] = scheduledWaiters
+			q.scheduledWaiters[q.getId(item)] = scheduledWaiters
 		}
 	}
 
 	for i, waiter := range q.getNextScheduledWaiters {
-		if waiter.filter(req) {
+		if waiter.filter(item) {
 			q.getNextScheduledWaiters = slices.Delete(q.getNextScheduledWaiters, i, i+1)
+			// TODO Handle item directly, now it's queried again
 			q.handleGetNextScheduled(waiter)
 			break
 		}
 	}
 
 	for i, waiter := range q.getNextWaiters {
-		if waiter.filter(req) {
+		if waiter.filter(item) {
 			q.getNextWaiters = slices.Delete(q.getNextWaiters, i, i+1)
+			// TODO Handle item directly
 			q.handleGetNext(waiter)
 			break
 		}
@@ -280,7 +302,7 @@ func (q *queue[T]) handleGetNextScheduled(req getNextRequest[T]) {
 
 	if req.scheduledAt(next).Before(time.Now()) {
 		q.taskLocked[q.getId(next)] = struct{}{}
-		req.responseCh <- getByIdResponse[T]{info: next}
+		req.responseCh <- itemResponse[T]{item: next}
 		return
 	}
 
@@ -300,7 +322,7 @@ func (q *queue[T]) handleGetNext(req getNextRequest[T]) {
 	}
 
 	q.taskLocked[q.getId(next)] = struct{}{}
-	req.responseCh <- getByIdResponse[T]{info: next}
+	req.responseCh <- itemResponse[T]{item: next}
 }
 
 func (q *queue[T]) scheduleItem(req getNextRequest[T], next T) {
@@ -329,7 +351,7 @@ func (q *queue[T]) scheduleItem(req getNextRequest[T], next T) {
 }
 
 func (q *queue[T]) get(objectId string) T {
-	responseCh := make(chan getByIdResponse[T], 1)
+	responseCh := make(chan itemResponse[T], 1)
 
 	q.getByIdCh <- getByIdRequest[T]{
 		objectId:   objectId,
@@ -337,11 +359,11 @@ func (q *queue[T]) get(objectId string) T {
 	}
 
 	task := <-responseCh
-	return task.info
+	return task.item
 }
 
 func (q *queue[T]) getNext(filter func(T) bool, orderBy func(T) time.Time) T {
-	responseCh := make(chan getByIdResponse[T], 1)
+	responseCh := make(chan itemResponse[T], 1)
 
 	if orderBy == nil {
 		orderBy = func(info T) time.Time {
@@ -356,11 +378,11 @@ func (q *queue[T]) getNext(filter func(T) bool, orderBy func(T) time.Time) T {
 	}
 
 	task := <-responseCh
-	return task.info
+	return task.item
 }
 
 func (q *queue[T]) getNextScheduled(filter func(T) bool, scheduledAt func(T) time.Time) T {
-	responseCh := make(chan getByIdResponse[T], 1)
+	responseCh := make(chan itemResponse[T], 1)
 
 	q.getNextScheduledCh <- getNextRequest[T]{
 		filter:      filter,
@@ -370,9 +392,12 @@ func (q *queue[T]) getNextScheduled(filter func(T) bool, scheduledAt func(T) tim
 	}
 
 	task := <-responseCh
-	return task.info
+	return task.item
 }
 
 func (q *queue[T]) release(task T) {
-	q.releaseCh <- task
+	q.releaseCh <- releaseRequest[T]{
+		action: releaseActionUpdate,
+		item:   task,
+	}
 }
