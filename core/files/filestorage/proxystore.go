@@ -24,18 +24,30 @@ func ContextWithDoNotCache(ctx context.Context) context.Context {
 	return context.WithValue(ctx, CtxDoNotCache, true)
 }
 
+// localStore interface defines the methods needed by proxyStore for local storage
+type localStore interface {
+	Get(ctx context.Context, k cid.Cid) (blocks.Block, error)
+	GetMany(ctx context.Context, ks []cid.Cid) <-chan blocks.Block
+	Add(ctx context.Context, bs []blocks.Block) error
+	Delete(ctx context.Context, k cid.Cid) error
+	ExistsCids(ctx context.Context, ks []cid.Cid) (exists []cid.Cid, err error)
+	PartitionByExistence(ctx context.Context, ks []cid.Cid) (exist []cid.Cid, notExist []cid.Cid, err error)
+	NotExistsBlocks(ctx context.Context, bs []blocks.Block) (notExists []blocks.Block, err error)
+	Close() error
+}
+
 type proxyStore struct {
-	localStore *flatStore
+	localStore localStore
 	origin     rpcstore.RpcStore
 
 	backgroundCtx    context.Context
 	backgroundCancel context.CancelFunc
 }
 
-func newProxyStore(localStore *flatStore, origin rpcstore.RpcStore) *proxyStore {
+func newProxyStore(local localStore, origin rpcstore.RpcStore) *proxyStore {
 	ctx, cancel := context.WithCancel(context.Background())
 	return &proxyStore{
-		localStore:       localStore,
+		localStore:       local,
 		origin:           origin,
 		backgroundCtx:    ctx,
 		backgroundCancel: cancel,
@@ -129,12 +141,15 @@ func (c *proxyStore) Delete(ctx context.Context, k cid.Cid) error {
 }
 
 func (c *proxyStore) ExistsCids(ctx context.Context, ks []cid.Cid) (exist []cid.Cid, err error) {
-	exist, _, err = c.localStore.PartitionByExistence(ctx, ks)
-	return
+	return c.localStore.ExistsCids(ctx, ks)
 }
 
 func (c *proxyStore) NotExistsBlocks(ctx context.Context, bs []blocks.Block) (notExists []blocks.Block, err error) {
 	return c.localStore.NotExistsBlocks(ctx, bs)
+}
+
+func (c *proxyStore) PartitionByExistence(ctx context.Context, ks []cid.Cid) (exist []cid.Cid, notExist []cid.Cid, err error) {
+	return c.localStore.PartitionByExistence(ctx, ks)
 }
 
 func (c *proxyStore) Close() error {

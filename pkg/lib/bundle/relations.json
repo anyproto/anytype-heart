@@ -1552,6 +1552,16 @@
     "source": "details"
   },
   {
+    "description": "Lexicographic id for object ordering",
+    "format": "longtext",
+    "hidden": true,
+    "key": "orderId",
+    "maxCount": 1,
+    "name": "Order id",
+    "readonly": true,
+    "source": "details"
+  },
+  {
     "description": "Choose icon for the type among custom Anytype icons",
     "format": "longtext",
     "hidden": true,

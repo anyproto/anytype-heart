@@ -3,11 +3,13 @@ package linkpreview
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"mime"
 	"net/http"
 	"path/filepath"
+	"slices"
 	"strings"
 	"unicode/utf8"
 
@@ -17,6 +19,7 @@ import (
 	"github.com/otiai10/opengraph/v2"
 	"golang.org/x/net/html/charset"
 
+	"github.com/anyproto/anytype-heart/metrics"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/text"
@@ -26,19 +29,28 @@ import (
 const (
 	CName       = "linkpreview"
 	utfEncoding = "utf-8"
+	// read no more than 10 mb
+	maxBytesToRead     = 10 * 1024 * 1024
+	maxDescriptionSize = 200
+
+	xRobotsTag       = "X-Robots-Tag"
+	cspTag           = "Content-Security-Policy"
+	noneSrcDirective = "'none'"
+)
+
+var (
+	ErrPrivateLink = fmt.Errorf("link is private and cannot be previewed")
+	log            = logging.Logger(CName)
+
+	privacyDirectives = map[string]map[string]struct{}{
+		xRobotsTag: {"none": {}},
+		cspTag:     {"default-src": {}, "frame-ancestors": {}},
+	}
 )
 
 func New() LinkPreview {
 	return &linkPreview{}
 }
-
-const (
-	// read no more than 10 mb
-	maxBytesToRead     = 10 * 1024 * 1024
-	maxDescriptionSize = 200
-)
-
-var log = logging.Logger("link-preview")
 
 type LinkPreview interface {
 	Fetch(ctx context.Context, url string) (linkPreview model.LinkPreview, responseBody []byte, isFile bool, err error)
@@ -59,37 +71,37 @@ func (l *linkPreview) Name() (name string) {
 }
 
 func (l *linkPreview) Fetch(ctx context.Context, fetchUrl string) (linkPreview model.LinkPreview, responseBody []byte, isFile bool, err error) {
-	rt := &proxyRoundTripper{RoundTripper: http.DefaultTransport}
-	client := &http.Client{Transport: rt}
-	og := opengraph.New(fetchUrl)
-	og.URL = fetchUrl
-	og.Intent.Context = ctx
-	og.Intent.HTTPClient = client
+	og, rt := buildOpenGraph(ctx, fetchUrl)
 	err = og.Fetch()
+
+	resp := rt.lastResponse
+	if resp == nil {
+		return model.LinkPreview{}, nil, false, fmt.Errorf("no response")
+	}
+
+	if errPrivate := checkPrivateLink(resp); errPrivate != nil {
+		return model.LinkPreview{}, nil, false, errPrivate
+	}
+
+	// og.Fetch could fail because of non "text/html" content. Let's try to parse file content
 	if err != nil {
-		if resp := rt.lastResponse; resp != nil && resp.StatusCode == http.StatusOK {
+		if resp.StatusCode == http.StatusOK {
 			preview, isFile, err := l.makeNonHtml(fetchUrl, resp)
 			if err != nil {
 				return preview, nil, false, err
 			}
 			return preview, rt.lastBody, isFile, nil
 		}
-		return model.LinkPreview{}, nil, false, err
-	}
-
-	if resp := rt.lastResponse; resp != nil && resp.StatusCode != http.StatusOK {
+		sendMetricsEvent(resp.StatusCode)
 		return model.LinkPreview{}, nil, false, fmt.Errorf("invalid http code %d", resp.StatusCode)
 	}
-	res := l.convertOGToInfo(fetchUrl, og)
-	if len(res.Description) == 0 {
-		res.Description = l.findContent(rt.lastBody)
+
+	if resp.StatusCode != http.StatusOK {
+		sendMetricsEvent(resp.StatusCode)
+		return model.LinkPreview{}, nil, false, fmt.Errorf("invalid http code %d", resp.StatusCode)
 	}
-	if !utf8.ValidString(res.Title) {
-		res.Title = ""
-	}
-	if !utf8.ValidString(res.Description) {
-		res.Description = ""
-	}
+
+	res := l.convertOGToInfo(fetchUrl, og, rt)
 	decodedResponse, err := decodeResponse(rt)
 	if err != nil {
 		log.Errorf("failed to decode request %s", err)
@@ -110,7 +122,7 @@ func decodeResponse(response *proxyRoundTripper) ([]byte, error) {
 	return decodedResponse, nil
 }
 
-func (l *linkPreview) convertOGToInfo(fetchUrl string, og *opengraph.OpenGraph) (i model.LinkPreview) {
+func (l *linkPreview) convertOGToInfo(fetchUrl string, og *opengraph.OpenGraph, rt *proxyRoundTripper) (i model.LinkPreview) {
 	og.ToAbs()
 	i = model.LinkPreview{
 		Url:         fetchUrl,
@@ -125,6 +137,16 @@ func (l *linkPreview) convertOGToInfo(fetchUrl string, og *opengraph.OpenGraph) 
 		if err == nil {
 			i.ImageUrl = url
 		}
+	}
+
+	if len(i.Description) == 0 {
+		i.Description = l.findContent(rt.lastBody)
+	}
+	if !utf8.ValidString(i.Title) {
+		i.Title = ""
+	}
+	if !utf8.ValidString(i.Description) {
+		i.Description = ""
 	}
 
 	return
@@ -183,6 +205,16 @@ func isContentFile(resp *http.Response, contentType, mimeType string) bool {
 		mimeType != ""
 }
 
+func buildOpenGraph(ctx context.Context, fetchUrl string) (og *opengraph.OpenGraph, rt *proxyRoundTripper) {
+	rt = &proxyRoundTripper{RoundTripper: http.DefaultTransport}
+	client := &http.Client{Transport: rt}
+	og = opengraph.New(fetchUrl)
+	og.URL = fetchUrl
+	og.Intent.Context = ctx
+	og.Intent.HTTPClient = client
+	return og, rt
+}
+
 type proxyRoundTripper struct {
 	http.RoundTripper
 	lastResponse *http.Response
@@ -215,4 +247,75 @@ func (l *limitReader) Read(p []byte) (n int, err error) {
 	}
 	l.nTotal += n
 	return
+}
+
+func checkPrivateLink(resp *http.Response) error {
+	if resp == nil {
+		return fmt.Errorf("response is nil")
+	}
+
+	for header := range privacyDirectives {
+		value := strings.ToLower(resp.Header.Get(header))
+		if value == "" {
+			continue
+		}
+		if containsPrivateDirective(header, value) {
+			return errors.Join(ErrPrivateLink, fmt.Errorf("private link detected due to %s header: %s", header, value))
+		}
+	}
+
+	return nil
+}
+
+func containsPrivateDirective(header string, value string) bool {
+	switch header {
+	// parsing tag according https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Content-Security-Policy#syntax
+	case cspTag:
+		directives := strings.Split(value, ";")
+		for _, directive := range directives {
+			parts := strings.Split(strings.TrimSpace(directive), " ")
+			if len(parts) < 2 {
+				continue
+			}
+			if _, found := privacyDirectives[cspTag][parts[0]]; found && slices.Contains(parts[1:], noneSrcDirective) {
+				return true
+			}
+		}
+	// parsing tag according https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/X-Robots-Tag#syntax
+	case xRobotsTag:
+		directives := strings.Split(value, ",")
+		for _, directive := range directives {
+			parts := strings.Split(directive, ":")
+			parts = strings.Split(strings.TrimSpace(parts[len(parts)-1]), " ")
+			for _, part := range parts {
+				if _, found := privacyDirectives[xRobotsTag][strings.ToLower(part)]; found {
+					return true
+				}
+			}
+		}
+	}
+	return false
+}
+
+func sendMetricsEvent(code int) {
+	metrics.Service.SendSampled(&metrics.LinkPreviewStatusEvent{StatusCode: code})
+	statusClass := getStatusClass(code)
+	metrics.LinkPreviewStatusCounter.WithLabelValues(fmt.Sprintf("%d", code), statusClass).Inc()
+}
+
+func getStatusClass(statusCode int) string {
+	switch {
+	case statusCode >= 100 && statusCode < 200:
+		return "1xx"
+	case statusCode >= 200 && statusCode < 300:
+		return "2xx"
+	case statusCode >= 300 && statusCode < 400:
+		return "3xx"
+	case statusCode >= 400 && statusCode < 500:
+		return "4xx"
+	case statusCode >= 500 && statusCode < 600:
+		return "5xx"
+	default:
+		return "unknown"
+	}
 }

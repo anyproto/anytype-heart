@@ -77,6 +77,64 @@ func (_c *MockFileStorage_Add_Call) RunAndReturn(run func(context.Context, []blo
 	return _c
 }
 
+// Batch provides a mock function with given fields: ctx
+func (_m *MockFileStorage) Batch(ctx context.Context) (filestorage.Batch, error) {
+	ret := _m.Called(ctx)
+
+	if len(ret) == 0 {
+		panic("no return value specified for Batch")
+	}
+
+	var r0 filestorage.Batch
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context) (filestorage.Batch, error)); ok {
+		return rf(ctx)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context) filestorage.Batch); ok {
+		r0 = rf(ctx)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(filestorage.Batch)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context) error); ok {
+		r1 = rf(ctx)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockFileStorage_Batch_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Batch'
+type MockFileStorage_Batch_Call struct {
+	*mock.Call
+}
+
+// Batch is a helper method to define mock.On call
+//   - ctx context.Context
+func (_e *MockFileStorage_Expecter) Batch(ctx interface{}) *MockFileStorage_Batch_Call {
+	return &MockFileStorage_Batch_Call{Call: _e.mock.On("Batch", ctx)}
+}
+
+func (_c *MockFileStorage_Batch_Call) Run(run func(ctx context.Context)) *MockFileStorage_Batch_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context))
+	})
+	return _c
+}
+
+func (_c *MockFileStorage_Batch_Call) Return(_a0 filestorage.Batch, _a1 error) *MockFileStorage_Batch_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockFileStorage_Batch_Call) RunAndReturn(run func(context.Context) (filestorage.Batch, error)) *MockFileStorage_Batch_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // Close provides a mock function with given fields: ctx
 func (_m *MockFileStorage) Close(ctx context.Context) error {
 	ret := _m.Called(ctx)
