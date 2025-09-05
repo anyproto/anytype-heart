@@ -129,8 +129,9 @@ type queue[T any] struct {
 	releaseCh          chan releaseRequest[T]
 	scheduledCh        chan scheduledItem[T]
 
-	getByIdWaiters          map[string][]chan itemResponse[T]
-	scheduledWaiters        map[string][]scheduledItem[T]
+	getByIdWaiters map[string][]chan itemResponse[T]
+	dueWaiters     map[string][]scheduledItem[T]
+
 	getNextWaiters          []getNextRequest[T]
 	getNextScheduledWaiters []getNextRequest[T]
 
@@ -150,7 +151,7 @@ func newQueue[T any](store *storage[T], getId func(T) string) *queue[T] {
 		getByIdWaiters:     make(map[string][]chan itemResponse[T]),
 		taskLocked:         make(map[string]struct{}),
 		scheduled:          make(map[string]scheduledItem[T]),
-		scheduledWaiters:   map[string][]scheduledItem[T]{},
+		dueWaiters:         map[string][]scheduledItem[T]{},
 		getId:              getId,
 	}
 }
@@ -191,7 +192,7 @@ func (q *queue[T]) handleScheduledItem(req scheduledItem[T]) {
 	delete(q.scheduled, req.request.requestId)
 	_, isLocked := q.taskLocked[id]
 	if isLocked {
-		q.scheduledWaiters[id] = append(q.scheduledWaiters[id], req)
+		q.dueWaiters[id] = append(q.dueWaiters[id], req)
 	} else {
 		q.taskLocked[id] = struct{}{}
 		req.responseCh <- itemResponse[T]{item: q.store.get(id)}
@@ -203,6 +204,60 @@ func (q *queue[T]) handleReleaseItem(req releaseRequest[T]) {
 	delete(q.taskLocked, q.getId(item))
 	q.store.set(q.getId(item), item)
 
+	q.checkInSchedule(item)
+
+	responded := q.checkGetByIdWaiters(item, false)
+	responded = q.checkDueWaiters(item, responded)
+	responded = q.checkNextScheduledWaiters(item, responded)
+	responded = q.checkGetNextWaiters(item, responded)
+}
+
+func (q *queue[T]) checkGetNextWaiters(item T, responded bool) bool {
+	if responded {
+		return responded
+	}
+	for i, waiter := range q.getNextWaiters {
+		if waiter.filter(item) {
+			q.getNextWaiters = slices.Delete(q.getNextWaiters, i, i+1)
+
+			q.taskLocked[q.getId(item)] = struct{}{}
+			waiter.responseCh <- itemResponse[T]{item: item}
+
+			return true
+		}
+	}
+	return responded
+}
+
+func (q *queue[T]) checkNextScheduledWaiters(item T, responded bool) bool {
+	if responded {
+		return responded
+	}
+
+	for i, waiter := range q.getNextScheduledWaiters {
+		if waiter.filter(item) && !q.isScheduled(item) {
+			q.getNextScheduledWaiters = slices.Delete(q.getNextScheduledWaiters, i, i+1)
+
+			// Respond immediately
+			if waiter.scheduledAt(item).Before(time.Now()) {
+				q.taskLocked[q.getId(item)] = struct{}{}
+				waiter.responseCh <- itemResponse[T]{item: item}
+				return true
+			}
+
+			// Schedule
+			q.scheduleItem(waiter, item)
+			break
+		}
+	}
+	return responded
+}
+
+// checkInSchedule checks multiple things for each item in the schedule:
+// 1. If the item was scheduled and still satisfies the filter, reschedule it
+// 2. If the item was scheduled and no longer satisfies the filter, cancel the timer and schedule the next item for the request
+// 3. If the item wasn't scheduled, but it's before the other scheduled item, schedule it instead
+func (q *queue[T]) checkInSchedule(item T) {
 	for _, sch := range q.scheduled {
 		if q.getId(sch.item) == q.getId(item) {
 			close(sch.cancelTimerCh)
@@ -211,13 +266,64 @@ func (q *queue[T]) handleReleaseItem(req releaseRequest[T]) {
 			} else {
 				q.handleGetNextScheduled(sch.request)
 			}
-		} else if sch.request.filter(item) && sch.request.scheduledAt(item).Before(sch.request.scheduledAt(sch.item)) {
+		} else if sch.request.filter(item) &&
+			sch.request.scheduledAt(item).Before(sch.request.scheduledAt(sch.item)) &&
+			!q.isScheduled(item) {
 			close(sch.cancelTimerCh)
 			q.scheduleItem(sch.request, item)
 		}
 	}
+}
 
-	var responded bool
+func (q *queue[T]) isScheduled(item T) bool {
+	_, ok := q.scheduled[q.getId(item)]
+	return ok
+}
+
+// checkDueWaiters checks that we can return the item to any waiter.
+// If the item no longer satisfies a filter for a given waiter, schedule a next item for the waiter's request
+func (q *queue[T]) checkDueWaiters(item T, responded bool) bool {
+	dueWaiters := q.dueWaiters[q.getId(item)]
+	if len(dueWaiters) == 0 {
+		return responded
+	}
+
+	filtered := dueWaiters[:0]
+	for _, waiter := range dueWaiters {
+		// Still OK
+		if waiter.request.filter(item) {
+			if !responded {
+				dueWaiters = dueWaiters[1:]
+
+				q.taskLocked[q.getId(item)] = struct{}{}
+				waiter.responseCh <- itemResponse[T]{item: item}
+
+				responded = true
+				continue
+			} else {
+				filtered = append(filtered, waiter)
+			}
+			// Item no longer satisfies filter
+		} else {
+			q.handleGetNextScheduled(waiter.request)
+		}
+	}
+
+	dueWaiters = filtered
+	if len(dueWaiters) == 0 {
+		delete(q.dueWaiters, q.getId(item))
+	} else {
+		q.dueWaiters[q.getId(item)] = dueWaiters
+	}
+
+	return responded
+}
+
+func (q *queue[T]) checkGetByIdWaiters(item T, responded bool) bool {
+	if responded {
+		return responded
+	}
+
 	waiters := q.getByIdWaiters[q.getId(item)]
 	if len(waiters) > 0 {
 		nextResponseCh := waiters[0]
@@ -233,52 +339,7 @@ func (q *queue[T]) handleReleaseItem(req releaseRequest[T]) {
 			q.getByIdWaiters[q.getId(item)] = waiters
 		}
 	}
-
-	scheduledWaiters := q.scheduledWaiters[q.getId(item)]
-	if len(scheduledWaiters) > 0 {
-		filtered := scheduledWaiters[:0]
-		for _, nextScheduled := range scheduledWaiters {
-			// Still OK
-			if nextScheduled.request.filter(item) {
-				if !responded {
-					scheduledWaiters = scheduledWaiters[1:]
-					q.taskLocked[q.getId(item)] = struct{}{}
-
-					nextScheduled.responseCh <- itemResponse[T]{item: item}
-					responded = true
-				} else {
-					filtered = append(filtered, nextScheduled)
-				}
-			} else {
-				q.handleGetNextScheduled(nextScheduled.request)
-			}
-		}
-
-		scheduledWaiters = filtered
-		if len(scheduledWaiters) == 0 {
-			delete(q.scheduledWaiters, q.getId(item))
-		} else {
-			q.scheduledWaiters[q.getId(item)] = scheduledWaiters
-		}
-	}
-
-	for i, waiter := range q.getNextScheduledWaiters {
-		if waiter.filter(item) {
-			q.getNextScheduledWaiters = slices.Delete(q.getNextScheduledWaiters, i, i+1)
-			// TODO Handle item directly, now it's queried again
-			q.handleGetNextScheduled(waiter)
-			break
-		}
-	}
-
-	for i, waiter := range q.getNextWaiters {
-		if waiter.filter(item) {
-			q.getNextWaiters = slices.Delete(q.getNextWaiters, i, i+1)
-			// TODO Handle item directly
-			q.handleGetNext(waiter)
-			break
-		}
-	}
+	return responded
 }
 
 func (q *queue[T]) close() {
