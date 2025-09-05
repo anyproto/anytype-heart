@@ -22,7 +22,7 @@ func TestSubscription_Add(t *testing.T) {
 			cache:   newCache(),
 			limit:   3,
 			afterId: "id3",
-			om:      newOrderManager(nil),
+			ds:      &dependencyService{orders: database.OrderMap{}},
 		}
 		require.NoError(t, sub.init(genEntries(9, false)))
 		newEntries := []*entry{
@@ -70,7 +70,6 @@ func TestSubscription_Remove(t *testing.T) {
 			limit:   3,
 			afterId: "id3",
 			ds:      newDependencyService(&s),
-			om:      newOrderManager(&s),
 			filter: database.FilterNot{database.FilterEq{
 				Key:   "order",
 				Cond:  model.BlockContentDataviewFilter_Equal,
@@ -111,7 +110,7 @@ func TestSubscription_Change(t *testing.T) {
 			cache:   newCache(),
 			limit:   3,
 			afterId: "id3",
-			om:      newOrderManager(nil),
+			ds:      &dependencyService{orders: database.OrderMap{}},
 		}
 		require.NoError(t, sub.init(genEntries(9, false)))
 		ctx := &opCtx{c: sub.cache}

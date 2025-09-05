@@ -117,6 +117,10 @@ func (gs *groupSub) getActiveRecords() (res []*domain.Details) {
 	return
 }
 
+func (gs *groupSub) getActiveEntries() (entries []*entry) {
+	return
+}
+
 func (gs *groupSub) hasDep() bool {
 	return false
 }

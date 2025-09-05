@@ -5,6 +5,7 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
+	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/slice"
 )
@@ -13,6 +14,8 @@ func newDependencyService(s *spaceSubscriptions) *dependencyService {
 	return &dependencyService{
 		s:                s,
 		isRelationObjMap: map[domain.RelationKey]bool{},
+		orders:           database.OrderMap{},
+		sorts:            map[string][]model.RelationLink{},
 	}
 }
 
@@ -20,14 +23,105 @@ type dependencyService struct {
 	s *spaceSubscriptions
 
 	isRelationObjMap map[domain.RelationKey]bool
+	orders           database.OrderMap               // key -> objectId -> orderId
+	sorts            map[string][]model.RelationLink // subId -> sortRelations
 }
 
-func (ds *dependencyService) makeSubscriptionByEntries(subId string, spaceId string, allEntries, activeEntries []*entry, keys, depKeys []domain.RelationKey, filterDepIds []string) *simpleSub {
-	depSub := ds.s.newSimpleSub(subId, spaceId, keys, true)
+func (ds *dependencyService) makeSubscriptionByEntries(subId string, allEntries, activeEntries []*entry, keys, depKeys []domain.RelationKey, filterDepIds []string) *simpleSub {
+	depSub := ds.s.newSimpleSub(subId, keys, true)
 	depSub.forceIds = filterDepIds
-	depEntries := ds.depEntriesByEntries(&opCtx{entries: allEntries, spaceId: spaceId}, ds.depIdsByEntries(activeEntries, depKeys, depSub.forceIds))
+	depEntries := ds.depEntriesByEntries(&opCtx{entries: allEntries}, ds.depIdsByEntries(activeEntries, depKeys, depSub.forceIds))
 	depSub.init(depEntries)
 	return depSub
+}
+
+func (ds *dependencyService) enregisterObjectSorts(subId string, entries []*entry, sorts []database.SortRequest) {
+	var sortRelations []model.RelationLink
+
+	for _, sort := range sorts {
+		if !ds.isRelationObject(sort.RelationKey) {
+			continue
+		}
+		sortRelations = append(sortRelations, model.RelationLink{Key: sort.RelationKey.String(), Format: sort.Format})
+	}
+
+	if len(sortRelations) != 0 {
+		ds.sorts[subId] = sortRelations
+		ds.updateOrders(subId, entries)
+	}
+}
+
+// updateOrders updates orderMap for sorting keys of subscription subId that have object format
+func (ds *dependencyService) updateOrders(subId string, entries []*entry) {
+	sortRelations, ok := ds.sorts[subId]
+	if !ok {
+		return
+	}
+
+	for _, sort := range sortRelations {
+		isTag := sort.Format == model.RelationFormat_status || sort.Format == model.RelationFormat_tag
+		key := domain.RelationKey(sort.Key)
+		if ds.orders[key] == nil {
+			ds.orders[key] = map[string]string{}
+		}
+		for _, e := range entries {
+			for _, depId := range e.data.WrapToStringList(key) {
+				orderId := ""
+				if sortEntry := ds.s.cache.Get(depId); sortEntry != nil {
+					if isTag {
+						orderId = sortEntry.data.GetString(bundle.RelationKeyOrderId)
+					} else {
+						orderId = sortEntry.data.GetString(bundle.RelationKeyName)
+					}
+				}
+				ds.orders[key][depId] = orderId
+			}
+		}
+	}
+}
+
+// reorderParentSubscription checks if orderId has changed
+func (ds *dependencyService) reorderParentSubscription(subId string, ctx *opCtx) {
+	parentSubId := strings.TrimSuffix(subId, "/dep")
+
+	sortRelations, ok := ds.sorts[parentSubId]
+	if !ok {
+		return
+	}
+
+	sub, ok := ds.s.getSubscription(parentSubId)
+	if !ok {
+		// TODO: log error here?
+		return
+	}
+
+	shouldReorderSub := false
+	for _, rel := range sortRelations {
+		orders := ds.orders[domain.RelationKey(rel.Key)]
+		orderKey := bundle.RelationKeyName
+		if rel.Format == model.RelationFormat_status || rel.Format == model.RelationFormat_tag {
+			orderKey = bundle.RelationKeyOrderId
+		}
+		for _, e := range ctx.entries {
+			currentOrderId, found := orders[e.id]
+			if !found {
+				continue
+			}
+			if currentOrderId != e.data.GetString(orderKey) {
+				shouldReorderSub = true
+				orders[e.id] = e.data.GetString(orderKey)
+			}
+		}
+		if shouldReorderSub {
+			ds.orders[domain.RelationKey(rel.Key)] = orders
+		}
+	}
+
+	if shouldReorderSub {
+		activeEntries := sub.getActiveEntries()
+		ctx.entries = append(ctx.entries, activeEntries...)
+		sub.onChange(ctx)
+	}
 }
 
 func (ds *dependencyService) refillSubscription(ctx *opCtx, sub *simpleSub, entries []*entry, depKeys []domain.RelationKey) {
@@ -96,7 +190,7 @@ var ignoredKeys = map[domain.RelationKey]struct{}{
 	bundle.RelationKeyFeaturedRelations: {}, // relation format for featuredRelations has mistakenly set to Object instead of shorttext
 }
 
-func (ds *dependencyService) isRelationObject(spaceId string, key domain.RelationKey) bool {
+func (ds *dependencyService) isRelationObject(key domain.RelationKey) bool {
 	if key == "" {
 		return false
 	}
@@ -120,9 +214,9 @@ func (ds *dependencyService) isRelationObject(spaceId string, key domain.Relatio
 	return isObj
 }
 
-func (ds *dependencyService) depKeys(spaceId string, keys []domain.RelationKey) (depKeys []domain.RelationKey) {
+func (ds *dependencyService) depKeys(keys []domain.RelationKey) (depKeys []domain.RelationKey) {
 	for _, key := range keys {
-		if ds.isRelationObject(spaceId, key) {
+		if ds.isRelationObject(key) {
 			depKeys = append(depKeys, key)
 		}
 	}

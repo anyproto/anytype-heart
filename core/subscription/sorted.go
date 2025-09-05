@@ -8,7 +8,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/spaceindex"
-	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
 var (
@@ -17,10 +16,9 @@ var (
 	ErrNoRecords = errors.New("no records with given offset")
 )
 
-func (s *spaceSubscriptions) newSortedSub(id string, spaceId string, keys []domain.RelationKey, filter database.Filter, order database.Order, limit, offset int) *sortedSub {
+func (s *spaceSubscriptions) newSortedSub(id string, keys []domain.RelationKey, filter database.Filter, order database.Order, limit, offset int) *sortedSub {
 	sub := &sortedSub{
 		id:          id,
-		spaceId:     spaceId,
 		keys:        keys,
 		filter:      filter,
 		order:       order,
@@ -29,22 +27,19 @@ func (s *spaceSubscriptions) newSortedSub(id string, spaceId string, keys []doma
 		limit:       limit,
 		offset:      offset,
 		objectStore: s.objectStore,
-		om:          s.om,
 	}
 	return sub
 }
 
 type sortedSub struct {
-	id      string
-	spaceId string
+	id string
 
 	started              bool
 	entriesBeforeStarted []*entry
 
-	keys           []domain.RelationKey
-	filter         database.Filter
-	order          database.Order
-	orderRelations []model.RelationLink
+	keys   []domain.RelationKey
+	filter database.Filter
+	order  database.Order
 
 	afterId, beforeId string
 	limit, offset     int
@@ -65,7 +60,6 @@ type sortedSub struct {
 
 	cache *cache
 	ds    *dependencyService
-	om    *orderManager
 
 	// for nested subscriptions
 	objectStore spaceindex.Store
@@ -143,9 +137,9 @@ func (s *sortedSub) init(entries []*entry) (err error) {
 	s.compCountBefore.total = s.skl.Len()
 
 	if s.ds != nil && !s.disableDep {
-		s.depKeys = s.ds.depKeys(s.spaceId, s.keys)
+		s.depKeys = s.ds.depKeys(s.keys)
 		if len(s.depKeys) > 0 || len(s.forceSubIds) > 0 {
-			s.depSub = s.ds.makeSubscriptionByEntries(s.id+"/dep", s.spaceId, entries, activeEntries, s.keys, s.depKeys, s.forceSubIds)
+			s.depSub = s.ds.makeSubscriptionByEntries(s.id+"/dep", entries, activeEntries, s.keys, s.depKeys, s.forceSubIds)
 		}
 	}
 	return nil
@@ -205,6 +199,7 @@ func (s *sortedSub) onChange(ctx *opCtx) {
 
 	if (wasAddOrRemove || hasChanges) && s.depSub != nil {
 		s.ds.refillSubscription(ctx, s.depSub, s.activeEntriesBuf, s.depKeys)
+		s.ds.updateOrders(s.id, s.activeEntriesBuf)
 	}
 
 	if s.parent != nil {
@@ -222,12 +217,6 @@ func (s *sortedSub) onChange(ctx *opCtx) {
 		ctx.entries = append(ctx.entries, parentEntries...)
 		s.parent.onChange(ctx)
 	}
-
-	s.om.updateOrders(ctx, s.id)
-	// TODO: enable addObjectOrderIds call to add ids of new objects to idsSub
-	// if len(s.orderRelations) != 0 && hasChanges {
-	// 	s.om.addObjectOrderIds(ctx, s.orderRelations...)
-	// }
 }
 
 func (s *sortedSub) onEntryChange(e *entry) (noChange bool) {
@@ -383,7 +372,7 @@ func (s *sortedSub) Compare(lhs, rhs interface{}) (comp int) {
 		return 0
 	}
 	if s.order != nil {
-		comp = s.order.Compare(le.data, re.data, s.om.orders)
+		comp = s.order.Compare(le.data, re.data, s.ds.orders)
 	}
 	// when order isn't set or equal - sort by id
 	if comp == 0 {
@@ -422,8 +411,5 @@ func (s *sortedSub) close() {
 	}
 	for _, child := range s.nested {
 		child.close()
-	}
-	if len(s.orderRelations) != 0 {
-		s.om.closeSubs(s.id, s.orderRelations...)
 	}
 }

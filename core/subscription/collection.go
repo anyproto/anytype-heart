@@ -176,6 +176,10 @@ func (c *collectionSub) getActiveRecords() (res []*domain.Details) {
 	return c.sortedSub.getActiveRecords()
 }
 
+func (c *collectionSub) getActiveEntries() []*entry {
+	return c.sortedSub.getActiveEntries()
+}
+
 func (c *collectionSub) hasDep() bool {
 	return c.sortedSub.hasDep()
 }
@@ -200,7 +204,7 @@ func (s *spaceSubscriptions) newCollectionSub(id string, spaceId string, collect
 		flt = database.FiltersAnd{obs, flt}
 	}
 
-	ssub := s.newSortedSub(id, spaceId, keys, flt, order, limit, offset)
+	ssub := s.newSortedSub(id, keys, flt, order, limit, offset)
 	ssub.disableDep = disableDepSub
 	if !ssub.disableDep {
 		ssub.forceSubIds = filterDepIds
