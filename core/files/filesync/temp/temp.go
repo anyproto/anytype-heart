@@ -188,6 +188,11 @@ func (q *queue[T]) handleGetById(req getByIdRequest[T]) {
 }
 
 func (q *queue[T]) handleScheduledItem(req scheduledItem[T]) {
+	// That means that the scheduling of the item was canceled
+	if !q.isScheduled(req.item) {
+		return
+	}
+
 	id := q.getId(req.item)
 	delete(q.scheduled, req.request.requestId)
 	_, isLocked := q.taskLocked[id]
@@ -261,15 +266,17 @@ func (q *queue[T]) checkInSchedule(item T) {
 	for _, sch := range q.scheduled {
 		if q.getId(sch.item) == q.getId(item) {
 			close(sch.cancelTimerCh)
+			delete(q.scheduled, q.getId(item))
+
 			if sch.request.filter(item) {
 				q.scheduleItem(sch.request, item)
 			} else {
 				q.handleGetNextScheduled(sch.request)
 			}
-		} else if sch.request.filter(item) &&
-			sch.request.scheduledAt(item).Before(sch.request.scheduledAt(sch.item)) &&
-			!q.isScheduled(item) {
+		} else if sch.request.filter(item) && sch.request.scheduledAt(item).Before(sch.request.scheduledAt(sch.item)) && !q.isScheduled(item) {
 			close(sch.cancelTimerCh)
+			delete(q.scheduled, q.getId(item))
+
 			q.scheduleItem(sch.request, item)
 		}
 	}
