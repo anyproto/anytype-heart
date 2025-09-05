@@ -141,108 +141,120 @@ func (q *queue[T]) run() {
 	for {
 		select {
 		case <-q.closeCh:
+			// TODO Close all waiters
 			return
 		case req := <-q.getByIdCh:
-			_, isLocked := q.taskLocked[req.objectId]
-			if isLocked {
-				q.getByIdWaiters[req.objectId] = append(q.getByIdWaiters[req.objectId], req.responseCh)
-			} else {
-				q.taskLocked[req.objectId] = struct{}{}
-				req.responseCh <- getByIdResponse[T]{info: q.store.get(req.objectId)}
-			}
+			q.handleGetById(req)
 		case req := <-q.getNextScheduledCh:
 			q.handleGetNextScheduled(req)
 		case req := <-q.getNextCh:
 			q.handleGetNext(req)
 		case req := <-q.releaseCh:
-			delete(q.taskLocked, q.getId(req))
-			q.store.set(q.getId(req), req)
-
-			for _, sch := range q.scheduled {
-				if q.getId(sch.item) == q.getId(req) {
-					close(sch.cancelTimerCh)
-					if sch.request.filter(req) {
-						q.scheduleItem(sch.request, req)
-					} else {
-						q.handleGetNextScheduled(sch.request)
-					}
-				} else if sch.request.filter(req) && sch.request.scheduledAt(req).Before(sch.request.scheduledAt(sch.item)) {
-					close(sch.cancelTimerCh)
-					q.scheduleItem(sch.request, req)
-				}
-			}
-
-			// Prioritize scheduled items
-			var responded bool
-			scheduledWaiters := q.scheduledWaiters[q.getId(req)]
-			if len(scheduledWaiters) > 0 {
-				filtered := scheduledWaiters[:0]
-
-				for _, nextScheduled := range scheduledWaiters {
-					// Still OK
-					if nextScheduled.request.filter(req) {
-						if !responded {
-							scheduledWaiters = scheduledWaiters[1:]
-							q.taskLocked[q.getId(req)] = struct{}{}
-
-							nextScheduled.responseCh <- getByIdResponse[T]{info: req}
-							responded = true
-						} else {
-							filtered = append(filtered, nextScheduled)
-						}
-					} else {
-						q.handleGetNextScheduled(nextScheduled.request)
-					}
-				}
-
-				scheduledWaiters = filtered
-				if len(scheduledWaiters) == 0 {
-					delete(q.scheduledWaiters, q.getId(req))
-				} else {
-					q.scheduledWaiters[q.getId(req)] = scheduledWaiters
-				}
-			}
-
-			waiters := q.getByIdWaiters[q.getId(req)]
-			if !responded && len(waiters) > 0 {
-				nextResponseCh := waiters[0]
-				waiters = waiters[1:]
-				q.taskLocked[q.getId(req)] = struct{}{}
-				nextResponseCh <- getByIdResponse[T]{info: req}
-
-				if len(waiters) == 0 {
-					delete(q.getByIdWaiters, q.getId(req))
-				} else {
-					q.getByIdWaiters[q.getId(req)] = waiters
-				}
-			}
-
-			for i, waiter := range q.getNextScheduledWaiters {
-				if waiter.filter(req) {
-					q.getNextScheduledWaiters = slices.Delete(q.getNextScheduledWaiters, i, i+1)
-					q.handleGetNextScheduled(waiter)
-					break
-				}
-			}
-
-			for i, waiter := range q.getNextWaiters {
-				if waiter.filter(req) {
-					q.getNextWaiters = slices.Delete(q.getNextWaiters, i, i+1)
-					q.handleGetNext(waiter)
-					break
-				}
-			}
-
+			q.handleReleaseItem(req)
 		case req := <-q.scheduledCh:
-			id := q.getId(req.item)
-			delete(q.scheduled, req.request.requestId)
-			_, isLocked := q.taskLocked[id]
-			if isLocked {
-				q.scheduledWaiters[id] = append(q.scheduledWaiters[id], req)
+			q.handleScheduledItem(req)
+		}
+	}
+}
+
+func (q *queue[T]) handleGetById(req getByIdRequest[T]) {
+	_, isLocked := q.taskLocked[req.objectId]
+	if isLocked {
+		q.getByIdWaiters[req.objectId] = append(q.getByIdWaiters[req.objectId], req.responseCh)
+	} else {
+		q.taskLocked[req.objectId] = struct{}{}
+		req.responseCh <- getByIdResponse[T]{info: q.store.get(req.objectId)}
+	}
+}
+
+func (q *queue[T]) handleScheduledItem(req scheduledItem[T]) {
+	id := q.getId(req.item)
+	delete(q.scheduled, req.request.requestId)
+	_, isLocked := q.taskLocked[id]
+	if isLocked {
+		q.scheduledWaiters[id] = append(q.scheduledWaiters[id], req)
+	} else {
+		q.taskLocked[id] = struct{}{}
+		req.responseCh <- getByIdResponse[T]{info: q.store.get(id)}
+	}
+}
+
+func (q *queue[T]) handleReleaseItem(req T) {
+	delete(q.taskLocked, q.getId(req))
+	q.store.set(q.getId(req), req)
+
+	for _, sch := range q.scheduled {
+		if q.getId(sch.item) == q.getId(req) {
+			close(sch.cancelTimerCh)
+			if sch.request.filter(req) {
+				q.scheduleItem(sch.request, req)
 			} else {
-				q.taskLocked[id] = struct{}{}
-				req.responseCh <- getByIdResponse[T]{info: q.store.get(id)}
+				q.handleGetNextScheduled(sch.request)
 			}
+		} else if sch.request.filter(req) && sch.request.scheduledAt(req).Before(sch.request.scheduledAt(sch.item)) {
+			close(sch.cancelTimerCh)
+			q.scheduleItem(sch.request, req)
+		}
+	}
+
+	var responded bool
+	waiters := q.getByIdWaiters[q.getId(req)]
+	if len(waiters) > 0 {
+		nextResponseCh := waiters[0]
+		waiters = waiters[1:]
+		q.taskLocked[q.getId(req)] = struct{}{}
+		nextResponseCh <- getByIdResponse[T]{info: req}
+
+		responded = true
+
+		if len(waiters) == 0 {
+			delete(q.getByIdWaiters, q.getId(req))
+		} else {
+			q.getByIdWaiters[q.getId(req)] = waiters
+		}
+	}
+
+	scheduledWaiters := q.scheduledWaiters[q.getId(req)]
+	if len(scheduledWaiters) > 0 {
+		filtered := scheduledWaiters[:0]
+		for _, nextScheduled := range scheduledWaiters {
+			// Still OK
+			if nextScheduled.request.filter(req) {
+				if !responded {
+					scheduledWaiters = scheduledWaiters[1:]
+					q.taskLocked[q.getId(req)] = struct{}{}
+
+					nextScheduled.responseCh <- getByIdResponse[T]{info: req}
+					responded = true
+				} else {
+					filtered = append(filtered, nextScheduled)
+				}
+			} else {
+				q.handleGetNextScheduled(nextScheduled.request)
+			}
+		}
+
+		scheduledWaiters = filtered
+		if len(scheduledWaiters) == 0 {
+			delete(q.scheduledWaiters, q.getId(req))
+		} else {
+			q.scheduledWaiters[q.getId(req)] = scheduledWaiters
+		}
+	}
+
+	for i, waiter := range q.getNextScheduledWaiters {
+		if waiter.filter(req) {
+			q.getNextScheduledWaiters = slices.Delete(q.getNextScheduledWaiters, i, i+1)
+			q.handleGetNextScheduled(waiter)
+			break
+		}
+	}
+
+	for i, waiter := range q.getNextWaiters {
+		if waiter.filter(req) {
+			q.getNextWaiters = slices.Delete(q.getNextWaiters, i, i+1)
+			q.handleGetNext(waiter)
+			break
 		}
 	}
 }
