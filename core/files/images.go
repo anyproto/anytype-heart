@@ -24,6 +24,7 @@ func (s *service) ImageAdd(ctx context.Context, spaceId string, options ...AddOp
 	if err != nil {
 		return nil, err
 	}
+
 	addLock := s.lockAddOperation(opts.checksum)
 
 	addNodesResult, err := s.addImageNodes(ctx, spaceId, opts)
@@ -44,7 +45,7 @@ func (s *service) ImageAdd(ctx context.Context, spaceId string, options ...AddOp
 		return nil, errors.New("no image variants")
 	}
 
-	rootNode, keys, err := s.addImageRootNode(ctx, spaceId, addNodesResult.dirEntries)
+	rootNode, keys, err := s.addImageRootNode(ctx, spaceId, addNodesResult.dirEntries, opts)
 	if err != nil {
 		addLock.Unlock()
 		return nil, err
@@ -115,6 +116,7 @@ func (s *service) addImageNodes(ctx context.Context, spaceID string, addOpts Add
 			Media:                "",
 			Name:                 addOpts.Name,
 			CustomEncryptionKeys: addOpts.CustomEncryptionKeys,
+			FileHandler:          addOpts.FileHandler,
 		}
 		err = s.normalizeOptions(opts)
 		if err != nil {
@@ -149,14 +151,20 @@ func (s *service) addImageNodes(ctx context.Context, spaceID string, addOpts Add
 			- content
 	...
 */
-func (s *service) addImageRootNode(ctx context.Context, spaceID string, dirEntries []dirEntry) (ipld.Node, *storage.FileKeys, error) {
-	dagService := s.dagServiceForSpace(spaceID)
+func (s *service) addImageRootNode(ctx context.Context, spaceID string, dirEntries []dirEntry, opts AddOptions) (ipld.Node, *storage.FileKeys, error) {
+	dagService := s.dagServiceForSpace(spaceID, opts.FileHandler)
 	keys := &storage.FileKeys{KeysByPath: make(map[string]string)}
 
-	outer := uio.NewDirectory(dagService)
+	outer, err := uio.NewDirectory(dagService)
+	if err != nil {
+		return nil, nil, err
+	}
 	outer.SetCidBuilder(cidBuilder)
 
-	inner := uio.NewDirectory(dagService)
+	inner, err := uio.NewDirectory(dagService)
+	if err != nil {
+		return nil, nil, err
+	}
 	inner.SetCidBuilder(cidBuilder)
 
 	for _, entry := range dirEntries {

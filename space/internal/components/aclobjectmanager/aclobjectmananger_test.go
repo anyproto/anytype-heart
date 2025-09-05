@@ -22,6 +22,7 @@ import (
 	"google.golang.org/protobuf/proto"
 	"storj.io/drpc"
 
+	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space/clientspace"
 	"github.com/anyproto/anytype-heart/space/clientspace/mock_clientspace"
 	"github.com/anyproto/anytype-heart/space/internal/components/aclnotifications/mock_aclnotifications"
@@ -47,7 +48,6 @@ func TestAclObjectManager(t *testing.T) {
 		fx := newFixture(t)
 		defer fx.finish(t)
 		fx.mockLoader.EXPECT().WaitLoad(mock.Anything).Return(fx.mockSpace, nil)
-		fx.mockParticipantWatcher.EXPECT().UpdateAccountParticipantFromProfile(mock.Anything, fx.mockSpace).Return(nil)
 		fx.mockSpace.EXPECT().CommonSpace().Return(fx.mockCommonSpace)
 		fx.mockSpace.EXPECT().Id().Return("spaceId")
 		fx.mockCommonSpace.EXPECT().Acl().AnyTimes().Return(acl)
@@ -60,6 +60,7 @@ func TestAclObjectManager(t *testing.T) {
 			})
 		fx.mockParticipantWatcher.EXPECT().WatchParticipant(mock.Anything, fx.mockSpace, mock.Anything).Return(nil)
 		fx.mockStatus.EXPECT().SetAclInfo(true, nil, nil, mock.Anything).Return(nil)
+		fx.mockStatus.EXPECT().SetMyParticipantStatus(mock.Anything).Return(nil)
 		fx.mockCommonSpace.EXPECT().Id().AnyTimes().Return("spaceId")
 		fx.mockStatus.EXPECT().GetLocalStatus().Return(spaceinfo.LocalStatusOk)
 		fx.mockAclNotification.EXPECT().AddRecords(acl, list.AclPermissionsOwner, "spaceId", spaceinfo.AccountStatusActive, spaceinfo.LocalStatusOk)
@@ -87,7 +88,6 @@ func TestAclObjectManager(t *testing.T) {
 		fx := newFixture(t)
 		defer fx.finish(t)
 		fx.mockLoader.EXPECT().WaitLoad(mock.Anything).Return(fx.mockSpace, nil)
-		fx.mockParticipantWatcher.EXPECT().UpdateAccountParticipantFromProfile(mock.Anything, fx.mockSpace).Return(nil)
 		fx.mockSpace.EXPECT().CommonSpace().Return(fx.mockCommonSpace)
 		fx.mockSpace.EXPECT().Id().Return("spaceId")
 		fx.mockCommonSpace.EXPECT().Acl().AnyTimes().Return(acl)
@@ -106,6 +106,7 @@ func TestAclObjectManager(t *testing.T) {
 			})
 		fx.mockParticipantWatcher.EXPECT().WatchParticipant(mock.Anything, fx.mockSpace, mock.Anything).Return(nil)
 		fx.mockStatus.EXPECT().SetAclInfo(false, mock.Anything, mock.Anything, mock.Anything).Return(nil)
+		fx.mockStatus.EXPECT().SetMyParticipantStatus(mock.Anything).Return(nil)
 		fx.mockCommonSpace.EXPECT().Id().AnyTimes().Return("spaceId")
 		fx.mockStatus.EXPECT().GetLocalStatus().Return(spaceinfo.LocalStatusOk)
 		fx.mockAclNotification.EXPECT().AddRecords(acl, list.AclPermissionsReader, "spaceId", spaceinfo.AccountStatusActive, spaceinfo.LocalStatusOk)
@@ -134,7 +135,6 @@ func TestAclObjectManager(t *testing.T) {
 		defer fx.finish(t)
 		fx.mockLoader.EXPECT().WaitLoad(mock.Anything).Return(fx.mockSpace, nil)
 		fx.mockStatus.EXPECT().SetOwner(a.ActualAccounts()["a"].Acl.AclState().Identity().Account(), mock.Anything).Return(nil)
-		fx.mockParticipantWatcher.EXPECT().UpdateAccountParticipantFromProfile(mock.Anything, fx.mockSpace).Return(nil)
 		fx.mockSpace.EXPECT().CommonSpace().Return(fx.mockCommonSpace)
 		fx.mockSpace.EXPECT().Id().Return("spaceId")
 		fx.mockCommonSpace.EXPECT().Acl().AnyTimes().Return(acl)
@@ -145,8 +145,9 @@ func TestAclObjectManager(t *testing.T) {
 				return nil
 			})
 		fx.mockParticipantWatcher.EXPECT().WatchParticipant(mock.Anything, fx.mockSpace, mock.Anything).Return(nil)
-		fx.mockStatus.EXPECT().SetPersistentStatus(spaceinfo.AccountStatusRemoving).Return(nil)
 		fx.mockStatus.EXPECT().SetAclInfo(false, mock.Anything, mock.Anything, mock.Anything).Return(nil)
+		fx.mockStatus.EXPECT().SetMyParticipantStatus(model.ParticipantStatus_Removed).Return(nil)
+		fx.mockStatus.EXPECT().SetPersistentStatus(spaceinfo.AccountStatusDeleted).Return(nil)
 		fx.mockCommonSpace.EXPECT().Id().AnyTimes().Return("spaceId")
 		fx.mockStatus.EXPECT().GetLocalStatus().Return(spaceinfo.LocalStatusOk)
 		fx.mockAclNotification.EXPECT().AddRecords(acl, list.AclPermissionsNone, "spaceId", spaceinfo.AccountStatusDeleted, spaceinfo.LocalStatusOk)

@@ -135,7 +135,6 @@ service ClientCommands {
     rpc ObjectListExport (anytype.Rpc.Object.ListExport.Request) returns (anytype.Rpc.Object.ListExport.Response);
     rpc ObjectExport (anytype.Rpc.Object.Export.Request) returns (anytype.Rpc.Object.Export.Response);
     rpc ObjectBookmarkFetch (anytype.Rpc.Object.BookmarkFetch.Request) returns (anytype.Rpc.Object.BookmarkFetch.Response);
-    rpc ObjectToBookmark (anytype.Rpc.Object.ToBookmark.Request) returns (anytype.Rpc.Object.ToBookmark.Response);
     rpc ObjectImport (anytype.Rpc.Object.Import.Request) returns (anytype.Rpc.Object.Import.Response);
     rpc ObjectImportList (anytype.Rpc.Object.ImportList.Request) returns (anytype.Rpc.Object.ImportList.Response);
     rpc ObjectImportNotionValidateToken (anytype.Rpc.Object.Import.Notion.ValidateToken.Request) returns (anytype.Rpc.Object.Import.Notion.ValidateToken.Response);
@@ -155,6 +154,7 @@ service ClientCommands {
     rpc ObjectCreateRelationOption (anytype.Rpc.Object.CreateRelationOption.Request) returns (anytype.Rpc.Object.CreateRelationOption.Response);
     rpc RelationListRemoveOption (anytype.Rpc.Relation.ListRemoveOption.Request) returns (anytype.Rpc.Relation.ListRemoveOption.Response);
     rpc RelationOptions (anytype.Rpc.Relation.Options.Request) returns (anytype.Rpc.Relation.Options.Response);
+    rpc RelationOptionSetOrder (anytype.Rpc.Relation.Option.SetOrder.Request) returns (anytype.Rpc.Relation.Option.SetOrder.Response);
     rpc RelationListWithValue (anytype.Rpc.Relation.ListWithValue.Request) returns (anytype.Rpc.Relation.ListWithValue.Response);
 
     // Object Relations
@@ -187,6 +187,7 @@ service ClientCommands {
     rpc FileListOffload (anytype.Rpc.File.ListOffload.Request) returns (anytype.Rpc.File.ListOffload.Response);
     rpc FileUpload (anytype.Rpc.File.Upload.Request) returns (anytype.Rpc.File.Upload.Response);
     rpc FileDownload (anytype.Rpc.File.Download.Request) returns (anytype.Rpc.File.Download.Response);
+    rpc FileDiscardPreload (anytype.Rpc.File.DiscardPreload.Request) returns (anytype.Rpc.File.DiscardPreload.Response);
     rpc FileDrop (anytype.Rpc.File.Drop.Request) returns (anytype.Rpc.File.Drop.Response);
     rpc FileSpaceUsage (anytype.Rpc.File.SpaceUsage.Request) returns (anytype.Rpc.File.SpaceUsage.Response);
     rpc FileNodeUsage (anytype.Rpc.File.NodeUsage.Request) returns (anytype.Rpc.File.NodeUsage.Response);
