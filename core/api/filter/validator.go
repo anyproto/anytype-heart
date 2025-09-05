@@ -12,7 +12,7 @@ import (
 // getTopLevelAttributeAsProperty returns a synthetic property for top-level attributes
 func getTopLevelAttributeAsProperty(key string) *apimodel.Property {
 	switch key {
-	case bundle.RelationKeyName.String():
+	case bundle.RelationKeyName.String(), bundle.RelationKeyGlobalName.String(), bundle.RelationKeySnippet.String():
 		return &apimodel.Property{
 			Key:         key,
 			RelationKey: key,
@@ -82,7 +82,7 @@ func (v *Validator) validateFilter(spaceId string, filter *Filter, propertyMap m
 
 // resolveProperty resolves a property by key and returns it or an error if not found
 func (v *Validator) resolveProperty(spaceId string, propertyKey string, propertyMap map[string]*apimodel.Property) (*apimodel.Property, error) {
-	// Check if it's a top-level attribute first
+	// Check top-level attributes first
 	if prop := getTopLevelAttributeAsProperty(propertyKey); prop != nil {
 		return prop, nil
 	}
@@ -112,7 +112,6 @@ func (v *Validator) convertAndValidateValue(spaceId string, filter *Filter, prop
 
 	value := filter.Value
 	if filter.Condition == model.BlockContentDataviewFilter_In || filter.Condition == model.BlockContentDataviewFilter_NotIn {
-		// Ensure value is an array for In/NotIn conditions
 		switch v := value.(type) {
 		case []string, []interface{}:
 			// Already an array, keep as-is

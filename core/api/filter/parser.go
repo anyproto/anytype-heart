@@ -14,9 +14,12 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-// topLevelTextAttributes defines top-level attributes that should default to contains for text search
-var topLevelTextAttributes = map[string]bool{
-	bundle.RelationKeyName.String(): true,
+// topLevelAttributes maps JSON field names to internal relation keys
+// These attributes default to "contains" search and don't require a spaceId
+var topLevelAttributes = map[string]string{
+	"name":        bundle.RelationKeyName.String(),
+	"global_name": bundle.RelationKeyGlobalName.String(),
+	"snippet":     bundle.RelationKeySnippet.String(),
 }
 
 type Parser struct {
@@ -49,7 +52,7 @@ func (p *Parser) ParseQueryParams(c *gin.Context, spaceId string) (*ParsedFilter
 			continue
 		}
 
-		property, condition, err := p.parseFilterKey(key, spaceId)
+		relationKey, condition, err := p.parseFilterKey(key, spaceId)
 		if err != nil {
 			return nil, util.ErrBadInput(fmt.Sprintf("invalid filter key %q: %s", key, err.Error()))
 		}
@@ -60,7 +63,7 @@ func (p *Parser) ParseQueryParams(c *gin.Context, spaceId string) (*ParsedFilter
 		}
 
 		filters = append(filters, Filter{
-			PropertyKey: property,
+			PropertyKey: relationKey,
 			Condition:   condition,
 			Value:       value,
 		})
@@ -69,10 +72,10 @@ func (p *Parser) ParseQueryParams(c *gin.Context, spaceId string) (*ParsedFilter
 	return &ParsedFilters{Filters: filters}, nil
 }
 
-// parseFilterKey extracts property name and condition from a filter key
-func (p *Parser) parseFilterKey(key string, spaceId string) (property string, condition model.BlockContentDataviewFilterCondition, err error) {
+// parseFilterKey extracts relation key and condition from a filter key (e.g., "name[eq]" -> "name", Equal)
+func (p *Parser) parseFilterKey(key string, spaceId string) (relationKey string, condition model.BlockContentDataviewFilterCondition, err error) {
 	if matches := conditionPattern.FindStringSubmatch(key); len(matches) == 3 {
-		property = matches[1]
+		relationKey = matches[1]
 		conditionStr := strings.ToLower(matches[2])
 
 		cond, ok := ToInternalCondition(apimodel.FilterCondition(conditionStr))
@@ -81,25 +84,34 @@ func (p *Parser) parseFilterKey(key string, spaceId string) (property string, co
 		}
 		condition = cond
 	} else {
-		property = key
-		condition = p.getDefaultCondition(property, spaceId)
+		relationKey = key
+		condition = p.getDefaultCondition(relationKey, spaceId)
 	}
 
-	if property == "" {
+	if relationKey == "" {
 		return "", 0, util.ErrBadInput("empty property name")
 	}
 
-	return property, condition, nil
+	// Resolve JSON field names to internal relation keys
+	if rk, ok := topLevelAttributes[relationKey]; ok {
+		relationKey = rk
+	} else if spaceId != "" {
+		propertyMap := p.apiService.GetCachedProperties(spaceId)
+		if rk, found := p.apiService.ResolvePropertyApiKey(propertyMap, relationKey); found {
+			relationKey = rk
+		}
+	}
+
+	return relationKey, condition, nil
 }
 
-// getDefaultCondition returns the appropriate default condition based on property type
+// getDefaultCondition returns the default condition for a property
 func (p *Parser) getDefaultCondition(propertyKey string, spaceId string) model.BlockContentDataviewFilterCondition {
-	// Check if it's a top-level text attribute (like name)
-	if topLevelTextAttributes[propertyKey] {
+	// Top-level attributes default to Contains
+	if _, isTopLevel := topLevelAttributes[propertyKey]; isTopLevel {
 		return model.BlockContentDataviewFilter_Like // Contains
 	}
 
-	// For other cases without spaceId, default to Equal
 	if spaceId == "" {
 		return model.BlockContentDataviewFilter_Equal
 	}
@@ -115,7 +127,7 @@ func (p *Parser) getDefaultCondition(propertyKey string, spaceId string) model.B
 		return model.BlockContentDataviewFilter_Equal
 	}
 
-	// For text-like properties, use Contains as default
+	// Text properties default to Contains, others to Equal
 	switch prop.Format {
 	case apimodel.PropertyFormatText, apimodel.PropertyFormatUrl,
 		apimodel.PropertyFormatEmail, apimodel.PropertyFormatPhone:
