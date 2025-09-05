@@ -35,8 +35,68 @@ func (ds *dependencyService) makeSubscriptionByEntries(subId string, allEntries,
 	return depSub
 }
 
+func (ds *dependencyService) refillSubscription(ctx *opCtx, sub *simpleSub, entries []*entry, depKeys []domain.RelationKey) {
+	depIds := ds.depIdsByEntries(entries, depKeys, sub.forceIds)
+	if !sub.isEqualIds(depIds) {
+		depEntries := ds.depEntriesByEntries(ctx, depIds)
+		sub.refill(ctx, depEntries)
+	}
+	return
+}
+
+func (ds *dependencyService) depIdsByEntries(entries []*entry, depKeys []domain.RelationKey, forceIds []string) (depIds []string) {
+	depIds = forceIds
+	for _, e := range entries {
+		for _, k := range depKeys {
+			for _, depId := range e.data.WrapToStringList(k) {
+				if depId != "" && slice.FindPos(depIds, depId) == -1 && depId != e.id {
+					depIds = append(depIds, depId)
+				}
+			}
+		}
+	}
+	return
+}
+
+func (ds *dependencyService) depEntriesByEntries(ctx *opCtx, depIds []string) (depEntries []*entry) {
+	if len(depIds) == 0 {
+		return
+	}
+	var missIds []string
+	for _, id := range depIds {
+		var e *entry
+
+		// priority: ctx.entries, cache, objectStore
+		if e = ctx.getEntry(id); e == nil {
+			if e = ds.s.cache.Get(id); e != nil {
+				e = e.Copy()
+			} else {
+				missIds = append(missIds, id)
+			}
+			if e != nil {
+				ctx.entries = append(ctx.entries, e)
+			}
+		}
+		if e != nil {
+			depEntries = append(depEntries, e)
+		}
+	}
+	if len(missIds) > 0 {
+		records, err := ds.s.objectStore.QueryByIds(missIds)
+		if err != nil {
+			log.Errorf("can't query by id: %v", err)
+		}
+		for _, r := range records {
+			e := newEntry(r.Details.GetString(bundle.RelationKeyId), r.Details)
+			ctx.entries = append(ctx.entries, e)
+			depEntries = append(depEntries, e)
+		}
+	}
+	return
+}
+
 func (ds *dependencyService) enregisterObjectSorts(subId string, entries []*entry, sorts []database.SortRequest) {
-	var sortRelations []model.RelationLink
+	sortRelations := make([]model.RelationLink, 0, len(sorts))
 
 	for _, sort := range sorts {
 		if !ds.isRelationObject(sort.RelationKey) {
@@ -122,66 +182,6 @@ func (ds *dependencyService) reorderParentSubscription(subId string, ctx *opCtx)
 		ctx.entries = append(ctx.entries, activeEntries...)
 		sub.onChange(ctx)
 	}
-}
-
-func (ds *dependencyService) refillSubscription(ctx *opCtx, sub *simpleSub, entries []*entry, depKeys []domain.RelationKey) {
-	depIds := ds.depIdsByEntries(entries, depKeys, sub.forceIds)
-	if !sub.isEqualIds(depIds) {
-		depEntries := ds.depEntriesByEntries(ctx, depIds)
-		sub.refill(ctx, depEntries)
-	}
-	return
-}
-
-func (ds *dependencyService) depIdsByEntries(entries []*entry, depKeys []domain.RelationKey, forceIds []string) (depIds []string) {
-	depIds = forceIds
-	for _, e := range entries {
-		for _, k := range depKeys {
-			for _, depId := range e.data.WrapToStringList(k) {
-				if depId != "" && slice.FindPos(depIds, depId) == -1 && depId != e.id {
-					depIds = append(depIds, depId)
-				}
-			}
-		}
-	}
-	return
-}
-
-func (ds *dependencyService) depEntriesByEntries(ctx *opCtx, depIds []string) (depEntries []*entry) {
-	if len(depIds) == 0 {
-		return
-	}
-	var missIds []string
-	for _, id := range depIds {
-		var e *entry
-
-		// priority: ctx.entries, cache, objectStore
-		if e = ctx.getEntry(id); e == nil {
-			if e = ds.s.cache.Get(id); e != nil {
-				e = e.Copy()
-			} else {
-				missIds = append(missIds, id)
-			}
-			if e != nil {
-				ctx.entries = append(ctx.entries, e)
-			}
-		}
-		if e != nil {
-			depEntries = append(depEntries, e)
-		}
-	}
-	if len(missIds) > 0 {
-		records, err := ds.s.objectStore.QueryByIds(missIds)
-		if err != nil {
-			log.Errorf("can't query by id: %v", err)
-		}
-		for _, r := range records {
-			e := newEntry(r.Details.GetString(bundle.RelationKeyId), r.Details)
-			ctx.entries = append(ctx.entries, e)
-			depEntries = append(depEntries, e)
-		}
-	}
-	return
 }
 
 var ignoredKeys = map[domain.RelationKey]struct{}{
