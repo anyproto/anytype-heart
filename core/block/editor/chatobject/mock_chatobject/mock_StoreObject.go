@@ -1655,21 +1655,31 @@ func (_c *MockStoreObject_MarkMessagesAsUnread_Call) RunAndReturn(run func(conte
 }
 
 // MarkReadMessages provides a mock function with given fields: ctx, req
-func (_m *MockStoreObject) MarkReadMessages(ctx context.Context, req chatobject.ReadMessagesRequest) error {
+func (_m *MockStoreObject) MarkReadMessages(ctx context.Context, req chatobject.ReadMessagesRequest) (int, error) {
 	ret := _m.Called(ctx, req)
 
 	if len(ret) == 0 {
 		panic("no return value specified for MarkReadMessages")
 	}
 
-	var r0 error
-	if rf, ok := ret.Get(0).(func(context.Context, chatobject.ReadMessagesRequest) error); ok {
+	var r0 int
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, chatobject.ReadMessagesRequest) (int, error)); ok {
+		return rf(ctx, req)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, chatobject.ReadMessagesRequest) int); ok {
 		r0 = rf(ctx, req)
 	} else {
-		r0 = ret.Error(0)
+		r0 = ret.Get(0).(int)
 	}
 
-	return r0
+	if rf, ok := ret.Get(1).(func(context.Context, chatobject.ReadMessagesRequest) error); ok {
+		r1 = rf(ctx, req)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
 }
 
 // MockStoreObject_MarkReadMessages_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'MarkReadMessages'
@@ -1691,12 +1701,12 @@ func (_c *MockStoreObject_MarkReadMessages_Call) Run(run func(ctx context.Contex
 	return _c
 }
 
-func (_c *MockStoreObject_MarkReadMessages_Call) Return(_a0 error) *MockStoreObject_MarkReadMessages_Call {
-	_c.Call.Return(_a0)
+func (_c *MockStoreObject_MarkReadMessages_Call) Return(markedCount int, err error) *MockStoreObject_MarkReadMessages_Call {
+	_c.Call.Return(markedCount, err)
 	return _c
 }
 
-func (_c *MockStoreObject_MarkReadMessages_Call) RunAndReturn(run func(context.Context, chatobject.ReadMessagesRequest) error) *MockStoreObject_MarkReadMessages_Call {
+func (_c *MockStoreObject_MarkReadMessages_Call) RunAndReturn(run func(context.Context, chatobject.ReadMessagesRequest) (int, error)) *MockStoreObject_MarkReadMessages_Call {
 	_c.Call.Return(run)
 	return _c
 }

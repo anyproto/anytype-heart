@@ -510,7 +510,17 @@ func buildExpectedTree(fileNameToObjectId map[string]string, provider *MockTempD
 					Type:  model.BlockContentTextMark_Bold,
 				},
 			}})),
-			blockbuilder.Bookmark(fileMdPath),
+			blockbuilder.Text("test1", blockbuilder.TextMarks(model.BlockContentTextMarks{Marks: []*model.BlockContentTextMark{
+				{
+					Range: &model.Range{From: 0, To: 5},
+					Type:  model.BlockContentTextMark_Link,
+					Param: fileMdPath,
+				},
+				{
+					Range: &model.Range{From: 0, To: 5},
+					Type:  model.BlockContentTextMark_Bold,
+				},
+			}})),
 			blockbuilder.Text("test2", blockbuilder.TextMarks(model.BlockContentTextMarks{Marks: []*model.BlockContentTextMark{
 				{
 					Range: &model.Range{From: 0, To: 5},
@@ -534,17 +544,7 @@ func buildExpectedTree(fileNameToObjectId map[string]string, provider *MockTempD
 					Type:  model.BlockContentTextMark_Bold,
 				},
 			}})),
-			blockbuilder.Text("test5", blockbuilder.TextMarks(model.BlockContentTextMarks{Marks: []*model.BlockContentTextMark{
-				{
-					Range: &model.Range{From: 0, To: 5},
-					Type:  model.BlockContentTextMark_Link,
-					Param: url,
-				},
-				{
-					Range: &model.Range{From: 0, To: 5},
-					Type:  model.BlockContentTextMark_Bold,
-				},
-			}})),
+			blockbuilder.Bookmark(url),
 			blockbuilder.Link(rootId),
 		))
 	return want

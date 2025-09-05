@@ -1275,6 +1275,16 @@
     "source": "details"
   },
   {
+    "description": "Current account status in space. Possible values: models.ParticipantStatus",
+    "format": "number",
+    "hidden": true,
+    "key": "myParticipantStatus",
+    "maxCount": 1,
+    "name": "My participant status",
+    "readonly": true,
+    "source": "local"
+  },
+  {
     "description": "Link to the profile attached to Anytype Identity",
     "format": "object",
     "hidden": true,
@@ -1538,6 +1548,16 @@
     "key": "spaceOrder",
     "maxCount": 1,
     "name": "Space order",
+    "readonly": true,
+    "source": "details"
+  },
+  {
+    "description": "Lexicographic id for object ordering",
+    "format": "longtext",
+    "hidden": true,
+    "key": "orderId",
+    "maxCount": 1,
+    "name": "Order id",
     "readonly": true,
     "source": "details"
   },

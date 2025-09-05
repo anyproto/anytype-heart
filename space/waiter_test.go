@@ -2,7 +2,6 @@ package space
 
 import (
 	"context"
-	"fmt"
 	"testing"
 	"time"
 
@@ -25,7 +24,7 @@ func TestWaiter_Wait(t *testing.T) {
 			exists:      []bool{true},
 		}
 		wtr := newSpaceWaiter(stub, ctx, retryDelay)
-		mockTechSpace.EXPECT().WaitViews().Return(nil)
+		mockTechSpace.EXPECT().TechSpaceId().Return("techSpaceId")
 		mockTechSpace.EXPECT().SpaceViewExists(ctx, "spaceId").Return(true, nil)
 		res, err := wtr.waitSpace(ctx, "spaceId")
 		require.NoError(t, err)
@@ -41,7 +40,7 @@ func TestWaiter_Wait(t *testing.T) {
 			exists:      []bool{false, false, true},
 		}
 		wtr := newSpaceWaiter(stub, ctx, retryDelay)
-		mockTechSpace.EXPECT().WaitViews().Return(nil)
+		mockTechSpace.EXPECT().TechSpaceId().Return("techSpaceId")
 		mockTechSpace.EXPECT().SpaceViewExists(ctx, "spaceId").Return(true, nil)
 		res, err := wtr.waitSpace(ctx, "spaceId")
 		require.NoError(t, err)
@@ -59,26 +58,13 @@ func TestWaiter_Wait(t *testing.T) {
 		}
 		cancelCtx, cancel := context.WithCancel(context.Background())
 		wtr := newSpaceWaiter(stub, cancelCtx, retryDelay)
-		mockTechSpace.EXPECT().WaitViews().Return(nil)
+		mockTechSpace.EXPECT().TechSpaceId().Return("techSpaceId")
 		mockTechSpace.EXPECT().SpaceViewExists(ctx, "spaceId").Return(true, nil)
 		cancel()
 		res, err := wtr.waitSpace(ctx, "spaceId")
 		require.Error(t, err)
 		require.Nil(t, res)
 		require.Equal(t, 1, stub.cntr)
-	})
-	t.Run("wait failed", func(t *testing.T) {
-		mockTechSpace := mock_techspace.NewMockTechSpace(t)
-		mockClientSpace := mock_clientspace.NewMockSpace(t)
-		retryDelay := time.Millisecond
-		stub := &waiterStub{
-			clientSpace: mockClientSpace,
-			techSpace:   mockTechSpace,
-		}
-		wtr := newSpaceWaiter(stub, ctx, retryDelay)
-		mockTechSpace.EXPECT().WaitViews().Return(fmt.Errorf("error"))
-		_, err := wtr.waitSpace(ctx, "spaceId")
-		require.Error(t, err)
 	})
 	t.Run("space view not exists", func(t *testing.T) {
 		mockTechSpace := mock_techspace.NewMockTechSpace(t)
@@ -89,9 +75,8 @@ func TestWaiter_Wait(t *testing.T) {
 			techSpace:   mockTechSpace,
 			exists:      []bool{true},
 		}
-		// cancelCtx, cancel := context.WithCancel(context.Background())
 		wtr := newSpaceWaiter(stub, ctx, retryDelay)
-		mockTechSpace.EXPECT().WaitViews().Return(nil)
+		mockTechSpace.EXPECT().TechSpaceId().Return("techSpaceId")
 		mockTechSpace.EXPECT().SpaceViewExists(ctx, "spaceId").Return(false, nil)
 		_, err := wtr.waitSpace(ctx, "spaceId")
 		require.Equal(t, ErrSpaceNotExists, err)

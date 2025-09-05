@@ -172,62 +172,71 @@ func TestService_FetchBookmarkContent(t *testing.T) {
 func TestGetFileNameFromURL(t *testing.T) {
 	tests := []struct {
 		name     string
-		url      string
+		baseUrl  string
+		fileUrl  string
 		filename string
 		want     string
 	}{
 		{
 			name:     "Valid URL with file extension, includes www",
-			url:      "https://www.example.com/path/image.png",
+			baseUrl:  "https://www.example.com/path/index.html",
+			fileUrl:  "https://www.example.com/assets/image.png",
 			filename: "myfile",
 			want:     "example_com_myfile.png",
 		},
 		{
 			name:     "Valid URL without file extension",
-			url:      "https://example.com/path/file",
+			baseUrl:  "https://example.com/path/index.html",
+			fileUrl:  "https://example.com/path/file",
 			filename: "myfile",
 			want:     "example_com_myfile",
 		},
 		{
 			name:     "Trailing slash, no explicit file name in path",
-			url:      "http://www.example.org/folder/",
+			baseUrl:  "http://www.example.org/folder/",
+			fileUrl:  "https://www.example.org/images/img1",
 			filename: "test",
 			want:     "example_org_test",
 		},
 		{
 			name:     "Invalid URL format",
-			url:      "vvv",
+			baseUrl:  "vvv",
+			fileUrl:  "https://www.example.org/images/img1",
 			filename: "file",
 			want:     "",
 		},
 		{
 			name:     "Empty path (no trailing slash)",
-			url:      "http://www.example.com",
+			baseUrl:  "http://www.example.com",
+			fileUrl:  "https://www.example.com/images/img1",
 			filename: "file",
 			want:     "example_com_file",
 		},
 		{
 			name:     "Complex domain without www",
-			url:      "https://sub.example.co.uk/path/report.pdf",
+			baseUrl:  "https://sub.example.co.uk/path/report_page.pdf",
+			fileUrl:  "https://sub.example.co.uk/archive/actual_report.pdf",
 			filename: "report",
 			want:     "sub_example_co_uk_report.pdf",
 		},
 		{
 			name:     "URL with query parameters (should ignore queries)",
-			url:      "https://www.testsite.com/path/subpath/file.txt?key=value",
+			baseUrl:  "https://www.testsite.com/path/subpath/file.txt?key=value",
+			fileUrl:  "https://www.testsite.com/path/subpath2/file.txt?key=value",
 			filename: "newfile",
 			want:     "testsite_com_newfile.txt",
 		},
 		{
 			name:     "URL ends with a dot-based extension in path but no file name",
-			url:      "https://www.example.net/path/.htaccess",
+			baseUrl:  "https://www.example.net/path/.htaccess",
+			fileUrl:  "https://www.example.net/path/.htaccess",
 			filename: "hidden",
 			want:     "example_net_hidden.htaccess",
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := getFileNameFromURL(tt.url, tt.filename)
+			got := getFileNameFromURL(tt.baseUrl, tt.fileUrl, tt.filename)
 			assert.Equal(t, tt.want, got, "Output filename should match the expected value")
 		})
 	}

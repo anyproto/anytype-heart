@@ -69,11 +69,7 @@ func (p *importProcessor) Execute(ctx context.Context) *ImportResponse {
 	}()
 
 	if p.request.Progress == nil {
-		p.setupProgressBar()
-	}
-
-	if p.deps.blockService != nil && !p.request.GetNoProgress() {
-		if err := p.deps.blockService.ProcessAdd(p.request.Progress); err != nil {
+		if err := p.setupProgressBar(); err != nil {
 			p.response.Err = fmt.Errorf("failed to add process: %w", err)
 			return p.response
 		}
@@ -87,7 +83,7 @@ func (p *importProcessor) Execute(ctx context.Context) *ImportResponse {
 	return p.handleBuiltinConverterImport(ctx)
 }
 
-func (p *importProcessor) setupProgressBar() {
+func (p *importProcessor) setupProgressBar() error {
 	var progressBarType pb.IsModelProcessMessage = &pb.ModelProcessMessageOfImport{
 		Import: &pb.ModelProcessImport{},
 	}
@@ -108,6 +104,11 @@ func (p *importProcessor) setupProgressBar() {
 	}
 
 	p.request.Progress = progress
+
+	if !p.request.GetNoProgress() {
+		return p.deps.blockService.ProcessAdd(p.request.Progress)
+	}
+	return nil
 }
 
 func (p *importProcessor) handleExternalImport(ctx context.Context) *ImportResponse {
@@ -461,11 +462,7 @@ func (p *importProcessor) sendImportFinishEvent() {
 
 func (p *importProcessor) ExecuteWebImport(ctx context.Context) (string, *domain.Details, error) {
 	if p.request.Progress == nil {
-		p.setupProgressBar()
-	}
-
-	if p.deps.blockService != nil {
-		if err := p.deps.blockService.ProcessAdd(p.request.Progress); err != nil {
+		if err := p.setupProgressBar(); err != nil {
 			return "", nil, fmt.Errorf("failed to add process: %w", err)
 		}
 	}
