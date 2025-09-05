@@ -13,7 +13,7 @@ type cacheManager struct {
 	// Caches organized by spaceId -> key -> object
 	// For properties: key can be id, relationKey, or apiObjectKey
 	// For types: key can be id, uniqueKey, or apiObjectKey
-	// For tags: key is just id
+	// For tags: key can be id, uniqueKey, or apiObjectKey
 	properties map[string]map[string]*apimodel.Property
 	types      map[string]map[string]*apimodel.Type
 	tags       map[string]map[string]*apimodel.Tag
@@ -87,6 +87,8 @@ func (c *cacheManager) cacheTag(spaceId string, tag *apimodel.Tag) {
 	}
 
 	c.tags[spaceId][tag.Id] = tag
+	c.tags[spaceId][tag.UniqueKey] = tag
+	c.tags[spaceId][tag.Key] = tag
 }
 
 func (c *cacheManager) getTags(spaceId string) map[string]*apimodel.Tag {
@@ -122,12 +124,14 @@ func (c *cacheManager) removeType(spaceId, id, uniqueKey, key string) {
 	}
 }
 
-func (c *cacheManager) removeTag(spaceId, id string) {
+func (c *cacheManager) removeTag(spaceId, id, uniqueKey, key string) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
 	if spaceCache, exists := c.tags[spaceId]; exists {
 		delete(spaceCache, id)
+		delete(spaceCache, uniqueKey)
+		delete(spaceCache, key)
 	}
 }
 

@@ -16,6 +16,7 @@ import (
 //
 //	@Summary		List objects
 //	@Description	Retrieves a paginated list of objects in the given space. The endpoint takes query parameters for pagination (offset and limit) and returns detailed data about each object including its ID, name, icon, type information, a snippet of the content (if applicable), layout, space ID, blocks and details. It is intended for building views where users can see all objects in a space at a glance.
+//	@Description	Supports dynamic filtering via query parameters (e.g., ?type=page, ?done=false, ?created_date[gte]=2024-01-01, ?tags[in]=urgent,important). For select/tag properties use tag keys, for object properties use object IDs. See FilterCondition enum for available conditions.
 //	@Id				list_objects
 //	@Tags			Objects
 //	@Produce		json
@@ -45,7 +46,7 @@ func ListObjectsHandler(s *service.Service) gin.HandlerFunc {
 		)
 
 		if code != http.StatusOK {
-			apiErr := util.CodeToAPIError(code, err.Error())
+			apiErr := util.CodeToApiError(code, err.Error())
 			c.JSON(code, apiErr)
 			return
 		}
@@ -87,7 +88,7 @@ func GetObjectHandler(s *service.Service) gin.HandlerFunc {
 		)
 
 		if code != http.StatusOK {
-			apiErr := util.CodeToAPIError(code, err.Error())
+			apiErr := util.CodeToApiError(code, err.Error())
 			c.JSON(code, apiErr)
 			return
 		}
@@ -120,7 +121,7 @@ func CreateObjectHandler(s *service.Service) gin.HandlerFunc {
 
 		request := apimodel.CreateObjectRequest{}
 		if err := c.BindJSON(&request); err != nil {
-			apiErr := util.CodeToAPIError(http.StatusBadRequest, err.Error())
+			apiErr := util.CodeToApiError(http.StatusBadRequest, err.Error())
 			c.JSON(http.StatusBadRequest, apiErr)
 			return
 		}
@@ -138,7 +139,7 @@ func CreateObjectHandler(s *service.Service) gin.HandlerFunc {
 		)
 
 		if code != http.StatusOK {
-			apiErr := util.CodeToAPIError(code, err.Error())
+			apiErr := util.CodeToApiError(code, err.Error())
 			c.JSON(code, apiErr)
 			return
 		}
@@ -175,7 +176,7 @@ func UpdateObjectHandler(s *service.Service) gin.HandlerFunc {
 
 		request := apimodel.UpdateObjectRequest{}
 		if err := c.BindJSON(&request); err != nil {
-			apiErr := util.CodeToAPIError(http.StatusBadRequest, err.Error())
+			apiErr := util.CodeToApiError(http.StatusBadRequest, err.Error())
 			c.JSON(http.StatusBadRequest, apiErr)
 			return
 		}
@@ -190,7 +191,7 @@ func UpdateObjectHandler(s *service.Service) gin.HandlerFunc {
 		)
 
 		if code != http.StatusOK {
-			apiErr := util.CodeToAPIError(code, err.Error())
+			apiErr := util.CodeToApiError(code, err.Error())
 			c.JSON(code, apiErr)
 			return
 		}
@@ -232,7 +233,7 @@ func DeleteObjectHandler(s *service.Service) gin.HandlerFunc {
 		)
 
 		if code != http.StatusOK {
-			apiErr := util.CodeToAPIError(code, err.Error())
+			apiErr := util.CodeToApiError(code, err.Error())
 			c.JSON(code, apiErr)
 			return
 		}

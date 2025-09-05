@@ -46,7 +46,7 @@ func TestEnsureAuthenticated(t *testing.T) {
 
 		// then
 		require.Equal(t, http.StatusUnauthorized, w.Code)
-		expectedJSON, err := json.Marshal(util.CodeToAPIError(http.StatusUnauthorized, ErrMissingAuthorizationHeader.Error()))
+		expectedJSON, err := json.Marshal(util.CodeToApiError(http.StatusUnauthorized, ErrMissingAuthorizationHeader.Error()))
 		require.NoError(t, err)
 		require.JSONEq(t, string(expectedJSON), w.Body.String())
 	})
@@ -67,7 +67,7 @@ func TestEnsureAuthenticated(t *testing.T) {
 
 		// then
 		require.Equal(t, http.StatusUnauthorized, w.Code)
-		expectedJSON, err := json.Marshal(util.CodeToAPIError(http.StatusUnauthorized, ErrInvalidAuthorizationHeader.Error()))
+		expectedJSON, err := json.Marshal(util.CodeToApiError(http.StatusUnauthorized, ErrInvalidAuthorizationHeader.Error()))
 		require.NoError(t, err)
 		require.JSONEq(t, string(expectedJSON), w.Body.String())
 	})
@@ -132,7 +132,7 @@ func TestEnsureAuthenticated(t *testing.T) {
 
 		// then
 		require.Equal(t, http.StatusUnauthorized, w.Code)
-		expectedJSON, err := json.Marshal(util.CodeToAPIError(http.StatusUnauthorized, ErrInvalidApiKey.Error()))
+		expectedJSON, err := json.Marshal(util.CodeToApiError(http.StatusUnauthorized, ErrInvalidApiKey.Error()))
 		require.NoError(t, err)
 		require.JSONEq(t, string(expectedJSON), w.Body.String())
 	})

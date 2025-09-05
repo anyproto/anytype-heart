@@ -37,7 +37,7 @@ func DisplayCodeHandler(s *service.Service) gin.HandlerFunc {
 			util.ErrToCode(service.ErrFailedCreateNewChallenge, http.StatusInternalServerError))
 
 		if code != http.StatusOK {
-			apiErr := util.CodeToAPIError(code, err.Error())
+			apiErr := util.CodeToApiError(code, err.Error())
 			c.JSON(code, apiErr)
 			return
 		}
@@ -76,7 +76,7 @@ func TokenHandler(s *service.Service) gin.HandlerFunc {
 		)
 
 		if errCode != http.StatusOK {
-			apiErr := util.CodeToAPIError(errCode, err.Error())
+			apiErr := util.CodeToApiError(errCode, err.Error())
 			c.JSON(errCode, apiErr)
 			return
 		}
@@ -103,7 +103,7 @@ func CreateChallengeHandler(s *service.Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var req apimodel.CreateChallengeRequest
 		if err := c.ShouldBindJSON(&req); err != nil {
-			apiErr := util.CodeToAPIError(http.StatusBadRequest, err.Error())
+			apiErr := util.CodeToApiError(http.StatusBadRequest, err.Error())
 			c.JSON(http.StatusBadRequest, apiErr)
 			return
 		}
@@ -115,7 +115,7 @@ func CreateChallengeHandler(s *service.Service) gin.HandlerFunc {
 		)
 
 		if code != http.StatusOK {
-			apiErr := util.CodeToAPIError(code, err.Error())
+			apiErr := util.CodeToApiError(code, err.Error())
 			c.JSON(code, apiErr)
 			return
 		}
@@ -142,7 +142,7 @@ func CreateApiKeyHandler(s *service.Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var req apimodel.CreateApiKeyRequest
 		if err := c.ShouldBindJSON(&req); err != nil {
-			apiErr := util.CodeToAPIError(http.StatusBadRequest, err.Error())
+			apiErr := util.CodeToApiError(http.StatusBadRequest, err.Error())
 			c.JSON(http.StatusBadRequest, apiErr)
 			return
 		}
@@ -154,7 +154,7 @@ func CreateApiKeyHandler(s *service.Service) gin.HandlerFunc {
 		)
 
 		if errCode != http.StatusOK {
-			apiErr := util.CodeToAPIError(errCode, err.Error())
+			apiErr := util.CodeToApiError(errCode, err.Error())
 			c.JSON(errCode, apiErr)
 			return
 		}

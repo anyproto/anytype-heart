@@ -11,13 +11,11 @@ import (
 	"github.com/gin-gonic/gin"
 
 	apicore "github.com/anyproto/anytype-heart/core/api/core"
+	"github.com/anyproto/anytype-heart/core/api/filter"
 	"github.com/anyproto/anytype-heart/core/api/util"
 	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/pb"
-	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
-	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 const ApiVersion = "2025-05-20"
@@ -43,13 +41,13 @@ func (srv *Server) ensureAuthenticated(mw apicore.ClientCommands) gin.HandlerFun
 	return func(c *gin.Context) {
 		authHeader := c.GetHeader("Authorization")
 		if authHeader == "" {
-			apiErr := util.CodeToAPIError(http.StatusUnauthorized, ErrMissingAuthorizationHeader.Error())
+			apiErr := util.CodeToApiError(http.StatusUnauthorized, ErrMissingAuthorizationHeader.Error())
 			c.AbortWithStatusJSON(http.StatusUnauthorized, apiErr)
 			return
 		}
 
 		if !strings.HasPrefix(authHeader, "Bearer ") {
-			apiErr := util.CodeToAPIError(http.StatusUnauthorized, ErrInvalidAuthorizationHeader.Error())
+			apiErr := util.CodeToApiError(http.StatusUnauthorized, ErrInvalidAuthorizationHeader.Error())
 			c.AbortWithStatusJSON(http.StatusUnauthorized, apiErr)
 			return
 		}
@@ -64,7 +62,7 @@ func (srv *Server) ensureAuthenticated(mw apicore.ClientCommands) gin.HandlerFun
 		if !exists {
 			response := mw.WalletCreateSession(context.Background(), &pb.RpcWalletCreateSessionRequest{Auth: &pb.RpcWalletCreateSessionRequestAuthOfAppKey{AppKey: key}})
 			if response.Error.Code != pb.RpcWalletCreateSessionResponseError_NULL {
-				apiErr := util.CodeToAPIError(http.StatusUnauthorized, ErrInvalidApiKey.Error())
+				apiErr := util.CodeToApiError(http.StatusUnauthorized, ErrInvalidApiKey.Error())
 				c.AbortWithStatusJSON(http.StatusUnauthorized, apiErr)
 				return
 			}
@@ -121,7 +119,7 @@ func ensureRateLimit(rate float64, burst int, isRateLimitDisabled bool) gin.Hand
 			return
 		}
 		if httpError := tollbooth.LimitByRequest(lmt, c.Writer, c.Request); httpError != nil {
-			apiErr := util.CodeToAPIError(httpError.StatusCode, httpError.Message)
+			apiErr := util.CodeToApiError(httpError.StatusCode, httpError.Message)
 			c.AbortWithStatusJSON(httpError.StatusCode, apiErr)
 			return
 		}
@@ -131,25 +129,31 @@ func ensureRateLimit(rate float64, burst int, isRateLimitDisabled bool) gin.Hand
 
 // ensureFilters is a middleware that ensures the filters are set in the context.
 func (srv *Server) ensureFilters() gin.HandlerFunc {
-	filterDefs := []struct {
-		Param       string
-		RelationKey string
-		Condition   model.BlockContentDataviewFilterCondition
-	}{
-		{bundle.RelationKeyName.String(), bundle.RelationKeyName.String(), model.BlockContentDataviewFilter_Like},
-	}
+	parser := filter.NewParser(srv.service)
+	validator := filter.NewValidator(srv.service)
 
 	return func(c *gin.Context) {
-		var filters []*model.BlockContentDataviewFilter
-		for _, def := range filterDefs {
-			if v := c.Query(def.Param); v != "" {
-				filters = append(filters, &model.BlockContentDataviewFilter{
-					RelationKey: def.RelationKey,
-					Condition:   def.Condition,
-					Value:       pbtypes.String(v),
-				})
+		spaceId := c.Param("space_id")
+
+		// Parse filters from query parameters
+		parsedFilters, err := parser.ParseQueryParams(c, spaceId)
+		if err != nil {
+			apiErr := util.CodeToApiError(http.StatusBadRequest, err.Error())
+			c.AbortWithStatusJSON(http.StatusBadRequest, apiErr)
+			return
+		}
+
+		// Validate filters if we have a space context
+		if spaceId != "" && parsedFilters != nil && len(parsedFilters.Filters) > 0 {
+			if err := validator.ValidateFilters(spaceId, parsedFilters); err != nil {
+				apiErr := util.CodeToApiError(http.StatusBadRequest, err.Error())
+				c.AbortWithStatusJSON(http.StatusBadRequest, apiErr)
+				return
 			}
 		}
+
+		// Convert to dataview filters and set in context
+		filters := parsedFilters.ToDataviewFilters()
 		c.Set("filters", filters)
 		c.Next()
 	}

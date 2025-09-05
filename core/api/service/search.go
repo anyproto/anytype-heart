@@ -8,6 +8,7 @@ import (
 
 	"github.com/gogo/protobuf/types"
 
+	"github.com/anyproto/anytype-heart/core/api/filter"
 	apimodel "github.com/anyproto/anytype-heart/core/api/model"
 	"github.com/anyproto/anytype-heart/core/api/pagination"
 	"github.com/anyproto/anytype-heart/core/api/util"
@@ -38,10 +39,24 @@ func (s *Service) GlobalSearch(ctx context.Context, request apimodel.SearchReque
 		templateFilter := s.prepareTemplateFilter()
 		typeFilters := s.prepareTypeFilters(request.Types, spaceId)
 		if len(request.Types) > 0 && len(typeFilters) == 0 {
-			// Skip spaces that don’t have any of the requested types
+			// Skip spaces that don't have any of the requested types
 			continue
 		}
-		filters := s.combineFilters(model.BlockContentDataviewFilter_And, baseFilters, templateFilter, queryFilters, typeFilters)
+
+		// Build expression filters if provided
+		var expressionFilters []*model.BlockContentDataviewFilter
+		if request.Filters != nil {
+			validator := filter.NewValidator(s)
+			advFilter, err := filter.BuildExpressionFilters(ctx, request.Filters, validator, spaceId)
+			if err != nil {
+				return nil, 0, false, fmt.Errorf("failed to build expression filters: %w", err)
+			}
+			if advFilter != nil {
+				expressionFilters = []*model.BlockContentDataviewFilter{advFilter}
+			}
+		}
+
+		filters := s.combineFilters(model.BlockContentDataviewFilter_And, baseFilters, templateFilter, queryFilters, typeFilters, expressionFilters)
 
 		objResp := s.mw.ObjectSearch(ctx, &pb.RpcObjectSearchRequest{
 			SpaceId: spaceId,
@@ -100,7 +115,21 @@ func (s *Service) Search(ctx context.Context, spaceId string, request apimodel.S
 		// No matching types in this space; return empty result
 		return nil, 0, false, nil
 	}
-	filters := s.combineFilters(model.BlockContentDataviewFilter_And, baseFilters, templateFilter, queryFilters, typeFilters)
+
+	// Build expression filters if provided
+	var expressionFilters []*model.BlockContentDataviewFilter
+	if request.Filters != nil {
+		validator := filter.NewValidator(s)
+		advFilter, err := filter.BuildExpressionFilters(ctx, request.Filters, validator, spaceId)
+		if err != nil {
+			return nil, 0, false, fmt.Errorf("failed to build expression filters: %w", err)
+		}
+		if advFilter != nil {
+			expressionFilters = []*model.BlockContentDataviewFilter{advFilter}
+		}
+	}
+
+	filters := s.combineFilters(model.BlockContentDataviewFilter_And, baseFilters, templateFilter, queryFilters, typeFilters, expressionFilters)
 	sorts, _ := s.prepareSorts(request.Sort)
 
 	resp := s.mw.ObjectSearch(ctx, &pb.RpcObjectSearchRequest{
