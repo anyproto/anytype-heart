@@ -803,9 +803,17 @@ func (e *preloadEntry) Info() pb.ModelProcess {
 	e.mu.RLock()
 	defer e.mu.RUnlock()
 
+	var done int64
+	if e.state == pb.ModelProcess_Done {
+		done = 1
+	}
 	return pb.ModelProcess{
 		Id:    e.id,
 		State: e.state,
+		Progress: &pb.ModelProcessProgress{
+			Total: 1,
+			Done:  done,
+		},
 		Message: &pb.ModelProcessMessageOfPreloadFile{
 			PreloadFile: &pb.ModelProcessPreloadFile{},
 		},
