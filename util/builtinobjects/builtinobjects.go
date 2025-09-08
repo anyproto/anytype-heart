@@ -4,6 +4,7 @@ import (
 	"archive/zip"
 	"context"
 	_ "embed"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -156,6 +157,26 @@ func (b *builtinObjects) CreateObjectsForUseCase(
 	return dashboardId, pb.RpcObjectImportUseCaseResponseError_NULL, nil
 }
 
+type manifest struct {
+	DashboardPagePath string `json:"dashboardPage"`
+}
+
+func readAiManifest(path string) (m manifest, err error) {
+	zipReader, err := zip.OpenReader(path)
+	if err != nil {
+		return
+	}
+	defer zipReader.Close()
+	f, err := zipReader.Open("manifest.json")
+	if err != nil {
+		return
+	}
+	defer f.Close()
+	dec := json.NewDecoder(f)
+	err = dec.Decode(&m)
+	return m, err
+}
+
 func (b *builtinObjects) CreateObjectsForExperience(ctx context.Context, spaceID, url, title string, isNewSpace, isAi bool) (err error) {
 	progress, err := b.setupProgress()
 	if err != nil {
@@ -212,30 +233,36 @@ func (b *builtinObjects) CreateObjectsForExperience(ctx context.Context, spaceID
 		removeFunc()
 	} else if importFormat == model.Import_Markdown {
 		// try to read manifest.json from archive
-		records, err := b.store.SpaceIndex(spaceID).QueryRaw(&database.Filters{FilterObj: database.FiltersAnd{
-			database.FilterLike{
-				Key:   bundle.RelationKeyName,
-				Value: "Getting Started",
-			},
-		}}, 1, 0)
-
+		manifestData, err := readAiManifest(path)
 		if err != nil {
 			log.Warnf("failed to read manifest file: %s", err)
-		} else if len(records) > 0 {
-			id := records[0].Details.GetString(bundle.RelationKeyId)
-			profile := &pb.Profile{
-				StartingPage:     id,
-				SpaceDashboardId: id,
-			}
-			spc, err := b.spaceService.Get(context.Background(), spaceID)
+		} else {
+			sourcePath := common.GetSourceFileHash(manifestData.DashboardPagePath)
+			records, err := b.store.SpaceIndex(spaceID).QueryRaw(&database.Filters{FilterObj: database.FiltersAnd{
+				database.FilterLike{
+					Key:   bundle.RelationKeySourceFilePath,
+					Value: sourcePath,
+				},
+			}}, 1, 0)
 			if err != nil {
-				log.Errorf("failed to get space: %w", err)
-				return err
+				log.Errorf("failed to query object by source path '%s': %v", sourcePath, err)
 			}
-			b.setHomePageIdToWorkspace(spc, id)
-			b.createWidgets(nil, spaceID, pb.RpcObjectImportUseCaseRequest_GET_STARTED, profile.StartingPage, model.BlockContentWidget_Link)
-
+			if len(records) > 0 {
+				id := records[0].Details.GetString(bundle.RelationKeyId)
+				profile := &pb.Profile{
+					StartingPage:     id,
+					SpaceDashboardId: id,
+				}
+				spc, err := b.spaceService.Get(context.Background(), spaceID)
+				if err != nil {
+					log.Errorf("failed to get space: %w", err)
+					return err
+				}
+				b.setHomePageIdToWorkspace(spc, id)
+				b.createWidgets(nil, spaceID, pb.RpcObjectImportUseCaseRequest_GET_STARTED, profile.StartingPage, model.BlockContentWidget_Link)
+			}
 		}
+
 		removeFunc()
 	}
 

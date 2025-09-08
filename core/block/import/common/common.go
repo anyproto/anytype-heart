@@ -3,6 +3,7 @@ package common
 import (
 	"crypto/sha256"
 	"encoding/hex"
+	"fmt"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -29,16 +30,19 @@ import (
 
 var log = logging.Logger("import")
 
+func GetSourceFileHash(sourcePath string) string {
+	h := sha256.Sum256([]byte(sourcePath))
+	return hex.EncodeToString(h[:])
+}
+
 func GetCommonDetails(sourcePath, name, emoji string, layout model.ObjectTypeLayout) *domain.Details {
 	creationTime, modTime := filetime.ExtractFileTimes(sourcePath)
 	if name == "" {
 		name = strings.TrimSuffix(filepath.Base(sourcePath), filepath.Ext(sourcePath))
 	}
-	h := sha256.Sum256([]byte(sourcePath))
-	hash := hex.EncodeToString(h[:])
 	details := domain.NewDetails()
 	details.SetString(bundle.RelationKeyName, name)
-	details.SetString(bundle.RelationKeySourceFilePath, hash)
+	details.SetString(bundle.RelationKeySourceFilePath, GetSourceFileHash(sourcePath))
 	details.SetString(bundle.RelationKeyIconEmoji, emoji)
 	details.SetInt64(bundle.RelationKeyCreatedDate, creationTime)
 	details.SetInt64(bundle.RelationKeyLastModifiedDate, modTime)
