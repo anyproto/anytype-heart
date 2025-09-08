@@ -141,21 +141,15 @@ func (ds *dependencyService) updateOrders(subId string, entries []*entry) {
 }
 
 // reorderParentSubscription checks if orderId has changed
-func (ds *dependencyService) reorderParentSubscription(subId string, ctx *opCtx) {
-	parentSubId := strings.TrimSuffix(subId, "/dep")
+func (ds *dependencyService) reorderParentSubscription(depSubId string, ctx *opCtx) {
+	parentSubId := strings.TrimSuffix(depSubId, "/dep")
 
-	sortRelations, ok := ds.sorts[parentSubId]
-	if !ok {
+	sortRelations, _ := ds.sorts[parentSubId]
+	if len(sortRelations) == 0 {
 		return
 	}
 
-	sub, ok := ds.s.getSubscription(parentSubId)
-	if !ok {
-		// TODO: log error here?
-		return
-	}
-
-	shouldReorderSub := false
+	reorderedKeys := make(map[string]struct{}, len(sortRelations))
 	for _, rel := range sortRelations {
 		orders := ds.orders[domain.RelationKey(rel.Key)]
 		orderKey := bundle.RelationKeyName
@@ -168,19 +162,31 @@ func (ds *dependencyService) reorderParentSubscription(subId string, ctx *opCtx)
 				continue
 			}
 			if currentOrderId != e.data.GetString(orderKey) {
-				shouldReorderSub = true
+				reorderedKeys[rel.Key] = struct{}{}
 				orders[e.id] = e.data.GetString(orderKey)
 			}
 		}
-		if shouldReorderSub {
-			ds.orders[domain.RelationKey(rel.Key)] = orders
-		}
+		ds.orders[domain.RelationKey(rel.Key)] = orders
 	}
 
-	if shouldReorderSub {
-		activeEntries := sub.getActiveEntries()
-		ctx.entries = append(ctx.entries, activeEntries...)
-		sub.onChange(ctx)
+	if len(reorderedKeys) == 0 {
+		return
+	}
+
+	for subId, sorts := range ds.sorts {
+		for _, rel := range sorts {
+			if _, found := reorderedKeys[rel.Key]; found {
+				sub, ok := ds.s.getSubscription(subId)
+				if !ok {
+					log.Errorf("failed to get subscription %s to reorder objects by key %s", subId, rel.Key)
+					break
+				}
+				activeEntries := sub.getActiveEntries()
+				ctx.entries = append(ctx.entries, activeEntries...)
+				sub.onChange(ctx)
+				break
+			}
+		}
 	}
 }
 
