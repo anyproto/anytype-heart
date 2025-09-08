@@ -263,19 +263,19 @@ func newFixture(t *testing.T, expectOldAccount func(t *testing.T, fx *fixture)) 
 
 type fixture struct {
 	*service
-	spaceId             string
-	a                   *app.App
-	config              *config.Config
-	factory             *mock_spacefactory.MockSpaceFactory
-	spaceCore           *mock_spacecore.MockSpaceCoreService
-	updater             *mock_space.MockcoordinatorStatusUpdater
-	notificationSender  *mock_space.MockNotificationSender
-	accountService      *accounttest.AccountTestService
-	coordClient         *mock_coordinatorclient.MockCoordinatorClient
-	ctrl                *gomock.Controller
-	techSpace           *mock_techspace.MockTechSpace
-	clientSpace         *mock_clientspace.MockSpace
-	objectStore         *objectstore.StoreFixture
+	spaceId            string
+	a                  *app.App
+	config             *config.Config
+	factory            *mock_spacefactory.MockSpaceFactory
+	spaceCore          *mock_spacecore.MockSpaceCoreService
+	updater            *mock_space.MockcoordinatorStatusUpdater
+	notificationSender *mock_space.MockNotificationSender
+	accountService     *accounttest.AccountTestService
+	coordClient        *mock_coordinatorclient.MockCoordinatorClient
+	ctrl               *gomock.Controller
+	techSpace          *mock_techspace.MockTechSpace
+	clientSpace        *mock_clientspace.MockSpace
+	objectStore        *objectstore.StoreFixture
 }
 
 type lwMock struct {
@@ -305,7 +305,7 @@ func (fx *fixture) expectRun(t *testing.T, expectOldAccount func(t *testing.T, f
 		prCtrl.EXPECT().SpaceId().Return(fx.spaceId)
 		commonSpace := mock_commonspace.NewMockSpace(fx.ctrl)
 		commonSpace.EXPECT().Id().Return(fx.spaceId).AnyTimes()
-		fx.spaceCore.EXPECT().Create(mock.Anything, mock.Anything, mock.Anything).Return(&spacecore.AnySpace{Space: commonSpace}, nil)
+		fx.spaceCore.EXPECT().Create(mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(&spacecore.AnySpace{Space: commonSpace}, nil)
 		fx.factory.EXPECT().CreateShareableSpace(mock.Anything, mock.Anything, mock.Anything).Return(prCtrl, nil)
 		lw := lwMock{clientSpace}
 		clientSpace.EXPECT().Id().Return(fx.spaceId)
@@ -390,7 +390,7 @@ func TestService_onSpaceStatusUpdated(t *testing.T) {
 			fx.factory.EXPECT().LoadAndSetTechSpace(mock.Anything).Return(&clientspace.TechSpace{TechSpace: fx.techSpace}, nil)
 			fx.techSpace.EXPECT().StartSync()
 		})
-		
+
 		done := make(chan struct{})
 		personalCtrl := mock_spacecontroller.NewMockSpaceController(t)
 		personalCtrl.EXPECT().SpaceId().Return(fx.spaceId).Maybe()
@@ -412,7 +412,7 @@ func TestService_onSpaceStatusUpdated(t *testing.T) {
 			fx.factory.EXPECT().LoadAndSetTechSpace(mock.Anything).Return(&clientspace.TechSpace{TechSpace: fx.techSpace}, nil)
 			fx.techSpace.EXPECT().StartSync()
 		})
-		
+
 		shareableSpaceId := "shareable.space.id"
 		done := make(chan struct{})
 		shareableCtrl := mock_spacecontroller.NewMockSpaceController(t)
@@ -435,7 +435,7 @@ func TestService_onSpaceStatusUpdated(t *testing.T) {
 			fx.factory.EXPECT().LoadAndSetTechSpace(mock.Anything).Return(&clientspace.TechSpace{TechSpace: fx.techSpace}, nil)
 			fx.techSpace.EXPECT().StartSync()
 		})
-		
+
 		streamableSpaceId := "streamable.space.id"
 		done := make(chan struct{})
 		streamableCtrl := mock_spacecontroller.NewMockSpaceController(t)
@@ -458,7 +458,7 @@ func TestService_onSpaceStatusUpdated(t *testing.T) {
 			fx.factory.EXPECT().LoadAndSetTechSpace(mock.Anything).Return(&clientspace.TechSpace{TechSpace: fx.techSpace}, nil)
 			fx.techSpace.EXPECT().StartSync()
 		})
-		
+
 		deletedSpaceId := "deleted.space.id"
 		done := make(chan struct{})
 		mockSpaceView := mock_techspace.NewMockSpaceView(t)
@@ -471,7 +471,7 @@ func TestService_onSpaceStatusUpdated(t *testing.T) {
 		})).Run(func(info spaceinfo.SpacePersistentInfo) {
 			close(done)
 		}).Return(nil)
-		
+
 		fx.notificationSender.EXPECT().CreateAndSend(mock.Anything).Return(nil)
 
 		fx.objectStore.AddObjects(t, fx.service.techSpaceId, []objectstore.TestObject{
@@ -509,7 +509,7 @@ func TestService_onSpaceStatusUpdated(t *testing.T) {
 			fx.factory.EXPECT().LoadAndSetTechSpace(mock.Anything).Return(&clientspace.TechSpace{TechSpace: fx.techSpace}, nil)
 			fx.techSpace.EXPECT().StartSync()
 		})
-		
+
 		errorSpaceId := "error.space.id"
 		fx.factory.EXPECT().NewShareableSpace(mock.Anything, errorSpaceId, mock.Anything).Return(nil, fmt.Errorf("factory error"))
 
@@ -525,7 +525,7 @@ func TestService_onSpaceStatusUpdated(t *testing.T) {
 			fx.factory.EXPECT().LoadAndSetTechSpace(mock.Anything).Return(&clientspace.TechSpace{TechSpace: fx.techSpace}, nil)
 			fx.techSpace.EXPECT().StartSync()
 		})
-		
+
 		updateErrorSpaceId := "update.error.space.id"
 		updateErrorCtrl := mock_spacecontroller.NewMockSpaceController(t)
 		updateErrorCtrl.EXPECT().SpaceId().Return(updateErrorSpaceId).Maybe()
@@ -545,7 +545,7 @@ func TestService_onSpaceStatusUpdated(t *testing.T) {
 			fx.factory.EXPECT().LoadAndSetTechSpace(mock.Anything).Return(&clientspace.TechSpace{TechSpace: fx.techSpace}, nil)
 			fx.techSpace.EXPECT().StartSync()
 		})
-		
+
 		fx.service.isClosing.Store(true)
 
 		fx.objectStore.AddObjects(t, fx.service.techSpaceId, []objectstore.TestObject{

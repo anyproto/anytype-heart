@@ -43,6 +43,7 @@ const (
 	CName         = "client.space.spacecore"
 	SpaceType     = "anytype.space"
 	TechSpaceType = "anytype.techspace"
+	ChatSpaceType = "anytype.chatspace"
 	ChangeType    = "anytype.object"
 )
 
@@ -66,7 +67,7 @@ type PoolManager interface {
 }
 
 type SpaceCoreService interface {
-	Create(ctx context.Context, replicationKey uint64, metadataPayload []byte) (*AnySpace, error)
+	Create(ctx context.Context, spaceType string, replicationKey uint64, metadataPayload []byte) (*AnySpace, error)
 	Derive(ctx context.Context, spaceType string) (space *AnySpace, err error)
 	DeriveID(ctx context.Context, spaceType string) (id string, err error)
 	Delete(ctx context.Context, spaceId string) (err error)
@@ -160,7 +161,7 @@ func (s *service) DeriveID(ctx context.Context, spaceType string) (id string, er
 	return s.commonSpace.DeriveId(ctx, payload)
 }
 
-func (s *service) Create(ctx context.Context, replicationKey uint64, metadataPayload []byte) (container *AnySpace, err error) {
+func (s *service) Create(ctx context.Context, spaceType string, replicationKey uint64, metadataPayload []byte) (container *AnySpace, err error) {
 	metadataPrivKey, _, err := crypto.GenerateRandomEd25519KeyPair()
 	if err != nil {
 		return nil, fmt.Errorf("generate metadata key: %w", err)
@@ -170,7 +171,7 @@ func (s *service) Create(ctx context.Context, replicationKey uint64, metadataPay
 		MasterKey:      s.wallet.GetMasterKey(),
 		ReadKey:        crypto.NewAES(),
 		MetadataKey:    metadataPrivKey,
-		SpaceType:      SpaceType,
+		SpaceType:      spaceType,
 		ReplicationKey: replicationKey,
 		Metadata:       metadataPayload,
 	}
