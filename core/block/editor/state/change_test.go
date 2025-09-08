@@ -222,24 +222,25 @@ func TestState_ChangesCreate_MoveAdd_Wrap(t *testing.T) {
 		"4":    simple.New(&model.Block{Id: "4"}),
 		"5":    simple.New(&model.Block{Id: "5"}),
 	})
-	dc := NewDocFromSnapshot("root", &pb.ChangeSnapshot{
+	dc, err := NewDocFromSnapshot("root", &pb.ChangeSnapshot{
 		Data: &model.SmartBlockSnapshotBase{
 			Blocks: d.Blocks(),
 		},
 	})
+	require.NoError(t, err)
 	s := d.NewState()
 
 	s.Add(simple.New(&model.Block{Id: "div", ChildrenIds: []string{"a", "b"}}))
 	s.Get("root").Model().ChildrenIds = []string{"div"}
 
-	_, _, err := ApplyState("", s, true)
+	_, _, err = ApplyState("", s, true)
 	require.NoError(t, err)
 	changes := d.(*State).GetChanges()
 	s2 := dc.NewState()
 	require.NoError(t, s2.ApplyChange(changes...))
 	_, _, err = ApplyState("", s2, true)
 	require.NoError(t, err)
-	assert.Equal(t, d.(*State).String(), dc.(*State).String())
+	assert.Equal(t, d.(*State).String(), dc.String())
 }
 
 func TestState_ChangesCreate_MoveAdd_Side(t *testing.T) {
@@ -253,30 +254,31 @@ func TestState_ChangesCreate_MoveAdd_Side(t *testing.T) {
 		"4":    simple.New(&model.Block{Id: "4"}),
 		"5":    simple.New(&model.Block{Id: "5"}),
 	})
-	dc := NewDocFromSnapshot("root", &pb.ChangeSnapshot{
+	dc, err := NewDocFromSnapshot("root", &pb.ChangeSnapshot{
 		Data: &model.SmartBlockSnapshotBase{
 			Blocks: d.Blocks(),
 		},
 	})
+	require.NoError(t, err)
 	s := d.NewState()
 
 	s.Unlink("4")
 	s.Unlink("5")
 	s.InsertTo("1", model.Block_Left, "4", "5")
 
-	_, _, err := ApplyState("", s, true)
+	_, _, err = ApplyState("", s, true)
 	require.NoError(t, err)
 	changes := d.(*State).GetChanges()
 	s2 := dc.NewState()
 	require.NoError(t, s2.ApplyChange(changes...))
 	_, _, err = ApplyState("", s2, true)
 	require.NoError(t, err)
-	assert.Equal(t, d.(*State).String(), dc.(*State).String())
+	assert.Equal(t, d.(*State).String(), dc.String())
 }
 
 func TestState_ChangesCreate_MoveAdd_Side_NewBlock(t *testing.T) {
 	makeState := func() *State {
-		return buildStateFromAST(
+		return buildStateFromAST(t,
 			Root(
 				ID("root"),
 				Children(
@@ -304,6 +306,7 @@ func TestState_ChangesCreate_MoveAdd_Side_NewBlock(t *testing.T) {
 		originalState := state.Copy()
 
 		wantState := buildStateFromAST(
+			t,
 			Root(
 				ID("root"),
 				Children(
@@ -328,6 +331,7 @@ func TestState_ChangesCreate_MoveAdd_Side_NewBlock(t *testing.T) {
 		originalState := state.Copy()
 
 		wantState := buildStateFromAST(
+			t,
 			Root(
 				ID("root"),
 				Children(
@@ -498,33 +502,35 @@ func TestState_ChangeDataviewOrder(t *testing.T) {
 			},
 		}}),
 	})
-	dc := NewDocFromSnapshot("root", &pb.ChangeSnapshot{
+	dc, err := NewDocFromSnapshot("root", &pb.ChangeSnapshot{
 		Data: &model.SmartBlockSnapshotBase{
 			Blocks: d.Blocks(),
 		},
 	})
+	require.NoError(t, err)
 	s := d.NewState()
 	s.Get("dv").(dataview.Block).SetViewOrder([]string{"3", "1", "2"})
 
-	_, _, err := ApplyState("", s, true)
+	_, _, err = ApplyState("", s, true)
 	require.NoError(t, err)
 	changes := d.(*State).GetChanges()
 	s2 := dc.NewState()
 	require.NoError(t, s2.ApplyChange(changes...))
 	_, _, err = ApplyState("", s2, true)
 	require.NoError(t, err)
-	assert.Equal(t, d.(*State).Pick("dv").Model().String(), dc.(*State).Pick("dv").Model().String())
+	assert.Equal(t, d.(*State).Pick("dv").Model().String(), dc.Pick("dv").Model().String())
 }
 
 func TestState_ChangeDataviewUnlink(t *testing.T) {
 	d := NewDoc("root", map[string]simple.Block{
 		"root": simple.New(&model.Block{Id: "root", ChildrenIds: []string{}}),
 	})
-	dc := NewDocFromSnapshot("root", &pb.ChangeSnapshot{
+	dc, err := NewDocFromSnapshot("root", &pb.ChangeSnapshot{
 		Data: &model.SmartBlockSnapshotBase{
 			Blocks: d.Blocks(),
 		},
 	})
+	require.NoError(t, err)
 	s := d.NewState()
 	s.Add(simple.New(&model.Block{Id: "dv", Content: &model.BlockContentOfDataview{
 		Dataview: &model.BlockContentDataview{
@@ -534,7 +540,7 @@ func TestState_ChangeDataviewUnlink(t *testing.T) {
 		},
 	}}))
 	s.InsertTo("root", model.Block_Inner, "dv")
-	_, _, err := ApplyState("", s, true)
+	_, _, err = ApplyState("", s, true)
 	changes := d.(*State).GetChanges()
 	s = d.NewState()
 	s.Unlink("dv")
@@ -549,19 +555,20 @@ func TestState_ChangeDataviewUnlink(t *testing.T) {
 
 	_, _, err = ApplyState("", s2, true)
 	require.NoError(t, err)
-	require.Nil(t, dc.(*State).Get("dv"))
-	require.Nil(t, dc.(*State).Pick("dv"))
+	require.Nil(t, dc.Get("dv"))
+	require.Nil(t, dc.Pick("dv"))
 }
 
 func TestState_ChangeDataviewRemoveAdd(t *testing.T) {
 	d := NewDoc("root", map[string]simple.Block{
 		"root": simple.New(&model.Block{Id: "root", ChildrenIds: []string{}}),
 	})
-	dc := NewDocFromSnapshot("root", &pb.ChangeSnapshot{
+	dc, err := NewDocFromSnapshot("root", &pb.ChangeSnapshot{
 		Data: &model.SmartBlockSnapshotBase{
 			Blocks: d.Blocks(),
 		},
 	})
+	require.NoError(t, err)
 	s := d.NewState()
 	s.Add(simple.New(&model.Block{Id: "dv", Content: &model.BlockContentOfDataview{
 		Dataview: &model.BlockContentDataview{
@@ -571,7 +578,7 @@ func TestState_ChangeDataviewRemoveAdd(t *testing.T) {
 		},
 	}}))
 	s.InsertTo("root", model.Block_Inner, "dv")
-	_, _, err := ApplyState("", s, true)
+	_, _, err = ApplyState("", s, true)
 	changes := d.(*State).GetChanges()
 	s = d.NewState()
 	s.Unlink("dv")
@@ -599,9 +606,9 @@ func TestState_ChangeDataviewRemoveAdd(t *testing.T) {
 
 	_, _, err = ApplyState("", s2, true)
 	require.NoError(t, err)
-	require.NotNil(t, dc.(*State).Get("dv"))
-	require.Len(t, dc.(*State).Get("dv").Model().GetDataview().Views, 1)
-	require.Equal(t, "2", dc.(*State).Get("dv").Model().GetDataview().Views[0].Id)
+	require.NotNil(t, dc.Get("dv"))
+	require.Len(t, dc.Get("dv").Model().GetDataview().Views, 1)
+	require.Equal(t, "2", dc.Get("dv").Model().GetDataview().Views[0].Id)
 }
 
 func TestState_ChangeDataviewRemoveMove(t *testing.T) {
@@ -820,12 +827,13 @@ func newRemoveChange(ids ...string) *pb.ChangeContent {
 }
 
 // copy if testutil.BuildStateFromAST because of cyclic import
-func buildStateFromAST(root *Block) *State {
-	st := NewDocFromSnapshot("", &pb.ChangeSnapshot{
+func buildStateFromAST(t *testing.T, root *Block) *State {
+	st, err := NewDocFromSnapshot("", &pb.ChangeSnapshot{
 		Data: &model.SmartBlockSnapshotBase{
 			Blocks: root.Build(),
 		},
-	}).(*State)
+	})
+	require.NoError(t, err)
 	ApplyState("", st, true)
 	return st.NewState()
 }

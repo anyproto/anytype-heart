@@ -94,12 +94,14 @@ func (oc *ObjectCreator) Create(dataObject *DataObject, sn *common.Snapshot) (*d
 	oc.setRootBlock(snapshot, newID)
 
 	oc.injectImportDetails(sn, origin)
-	st := state.NewDocFromSnapshot(newID, sn.Snapshot.ToProto()).(*state.State)
+	st, err := state.NewDocFromSnapshot(newID, sn.Snapshot.ToProto())
+	if err != nil {
+		return nil, "", fmt.Errorf("doc from snapshot: %w", err)
+	}
 	st.SetLocalDetail(bundle.RelationKeyLastModifiedDate, snapshot.Details.Get(bundle.RelationKeyLastModifiedDate))
 
 	var (
 		filesToDelete []string
-		err           error
 	)
 	defer func() {
 		// delete file in ipfs if there is error after creation
