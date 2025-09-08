@@ -25,7 +25,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/chatobject"
 	"github.com/anyproto/anytype-heart/core/block/object/idresolver"
 	"github.com/anyproto/anytype-heart/core/domain"
-	"github.com/anyproto/anytype-heart/core/files/fileobject/filecache"
 	"github.com/anyproto/anytype-heart/core/session"
 	subscriptionservice "github.com/anyproto/anytype-heart/core/subscription"
 	"github.com/anyproto/anytype-heart/core/subscription/crossspacesub"
@@ -81,7 +80,6 @@ type service struct {
 	accountService          accountService
 	objectStore             objectstore.ObjectStore
 	chatSubscriptionService chatsubscription.Service
-	fileCacheService        filecache.Service
 
 	componentCtx       context.Context
 	componentCtxCancel context.CancelFunc
@@ -117,7 +115,6 @@ func (s *service) Init(a *app.App) error {
 	s.objectGetter = app.MustComponent[cache.ObjectWaitGetter](a)
 	s.chatSubscriptionService = app.MustComponent[chatsubscription.Service](a)
 	s.spaceIdResolver = app.MustComponent[idresolver.Resolver](a)
-	s.fileCacheService = app.MustComponent[filecache.Service](a)
 	return nil
 }
 

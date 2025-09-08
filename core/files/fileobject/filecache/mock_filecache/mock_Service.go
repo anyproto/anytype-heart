@@ -25,17 +25,17 @@ func (_m *MockService) EXPECT() *MockService_Expecter {
 	return &MockService_Expecter{mock: &_m.Mock}
 }
 
-// CacheFile provides a mock function with given fields: ctx, spaceId, fileId
-func (_m *MockService) CacheFile(ctx context.Context, spaceId string, fileId domain.FileId) error {
-	ret := _m.Called(ctx, spaceId, fileId)
+// CacheFile provides a mock function with given fields: ctx, spaceId, fileId, blocksLimit
+func (_m *MockService) CacheFile(ctx context.Context, spaceId string, fileId domain.FileId, blocksLimit int) error {
+	ret := _m.Called(ctx, spaceId, fileId, blocksLimit)
 
 	if len(ret) == 0 {
 		panic("no return value specified for CacheFile")
 	}
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(context.Context, string, domain.FileId) error); ok {
-		r0 = rf(ctx, spaceId, fileId)
+	if rf, ok := ret.Get(0).(func(context.Context, string, domain.FileId, int) error); ok {
+		r0 = rf(ctx, spaceId, fileId, blocksLimit)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -52,13 +52,14 @@ type MockService_CacheFile_Call struct {
 //   - ctx context.Context
 //   - spaceId string
 //   - fileId domain.FileId
-func (_e *MockService_Expecter) CacheFile(ctx interface{}, spaceId interface{}, fileId interface{}) *MockService_CacheFile_Call {
-	return &MockService_CacheFile_Call{Call: _e.mock.On("CacheFile", ctx, spaceId, fileId)}
+//   - blocksLimit int
+func (_e *MockService_Expecter) CacheFile(ctx interface{}, spaceId interface{}, fileId interface{}, blocksLimit interface{}) *MockService_CacheFile_Call {
+	return &MockService_CacheFile_Call{Call: _e.mock.On("CacheFile", ctx, spaceId, fileId, blocksLimit)}
 }
 
-func (_c *MockService_CacheFile_Call) Run(run func(ctx context.Context, spaceId string, fileId domain.FileId)) *MockService_CacheFile_Call {
+func (_c *MockService_CacheFile_Call) Run(run func(ctx context.Context, spaceId string, fileId domain.FileId, blocksLimit int)) *MockService_CacheFile_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(string), args[2].(domain.FileId))
+		run(args[0].(context.Context), args[1].(string), args[2].(domain.FileId), args[3].(int))
 	})
 	return _c
 }
@@ -68,7 +69,7 @@ func (_c *MockService_CacheFile_Call) Return(_a0 error) *MockService_CacheFile_C
 	return _c
 }
 
-func (_c *MockService_CacheFile_Call) RunAndReturn(run func(context.Context, string, domain.FileId) error) *MockService_CacheFile_Call {
+func (_c *MockService_CacheFile_Call) RunAndReturn(run func(context.Context, string, domain.FileId, int) error) *MockService_CacheFile_Call {
 	_c.Call.Return(run)
 	return _c
 }
