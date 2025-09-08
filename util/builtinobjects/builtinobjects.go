@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"slices"
 	"strconv"
 	"sync"
 	"time"
@@ -20,7 +21,9 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/block/cache"
 	"github.com/anyproto/anytype-heart/core/block/detailservice"
+	"github.com/anyproto/anytype-heart/core/block/editor/dataview"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
+	"github.com/anyproto/anytype-heart/core/block/editor/template"
 	"github.com/anyproto/anytype-heart/core/block/editor/widget"
 	importer "github.com/anyproto/anytype-heart/core/block/import"
 	"github.com/anyproto/anytype-heart/core/block/import/common"
@@ -263,10 +266,124 @@ func (b *builtinObjects) CreateObjectsForExperience(ctx context.Context, spaceID
 			}
 		}
 
+		err = b.addTypesView(ctx, spaceID)
+		if err != nil {
+			log.Errorf("failed to add types view: %v", err)
+		}
 		removeFunc()
 	}
 
 	return importErr
+}
+
+func (b *builtinObjects) getTypeViewProperties(spaceID, typeID string) ([]*model.RelationLink, error) {
+	spaceIndex := b.store.SpaceIndex(spaceID)
+	details, err := spaceIndex.GetDetails(typeID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get type details: %w", err)
+	}
+	// Build relation links from recommended and featured relations
+	relationLinks := []*model.RelationLink{
+		{
+			Key:    bundle.RelationKeyName.String(),
+			Format: model.RelationFormat_longtext,
+		},
+	}
+
+	// Add featured relations
+	featuredRelations := details.GetStringList(bundle.RelationKeyRecommendedFeaturedRelations)
+	for _, relId := range featuredRelations {
+		// Get relation format from space index
+		if rel, err := spaceIndex.GetRelationById(relId); err == nil && rel != nil {
+			relationLinks = append(relationLinks, &model.RelationLink{
+				Key:    rel.Key,
+				Format: rel.Format,
+			})
+		}
+	}
+
+	// Add recommended relations
+	recommendedRelations := details.GetStringList(bundle.RelationKeyRecommendedRelations)
+	for _, relId := range recommendedRelations {
+		// Get relation format from space index
+		if rel, err := spaceIndex.GetRelationById(relId); err == nil && rel != nil {
+			relationLinks = append(relationLinks, &model.RelationLink{
+				Key:    rel.Key,
+				Format: rel.Format,
+			})
+		}
+	}
+
+	relationLinks = slices.DeleteFunc(relationLinks, func(rel *model.RelationLink) bool {
+		return rel.Key == bundle.RelationKeyType.String()
+	})
+	return relationLinks, nil
+}
+
+func (b *builtinObjects) addTypesView(ctx context.Context, spaceID string) error {
+	systemTypesUniqueKeys := make([]string, 0, len(bundle.SystemTypes))
+	for _, t := range bundle.SystemTypes {
+		systemTypesUniqueKeys = append(systemTypesUniqueKeys, t.URL())
+	}
+
+	records, err := b.store.SpaceIndex(spaceID).QueryRaw(&database.Filters{FilterObj: database.FiltersAnd{
+		database.FilterEq{
+			Key:   bundle.RelationKeyResolvedLayout,
+			Value: domain.Int64(model.ObjectType_objectType),
+		},
+		database.FilterNot{
+			database.FilterIn{
+				Key:   bundle.RelationKeyUniqueKey,
+				Value: domain.StringList(systemTypesUniqueKeys).WrapToList(),
+			},
+		},
+		// todo: later filter-out types in case they were not part of this import
+	}}, 0, 0)
+	if err != nil {
+		return fmt.Errorf("failed to query types: %w", err)
+	}
+	if len(records) == 0 {
+		return nil
+	}
+	spc, err := b.spaceService.Get(ctx, spaceID)
+	if err != nil {
+		return fmt.Errorf("failed to get space: %w", err)
+	}
+
+	for _, rec := range records {
+		uk, err := domain.UnmarshalUniqueKey(rec.Details.GetString(bundle.RelationKeyUniqueKey))
+		if err != nil {
+			log.Warnf("failed to unmarshal unique key '%s': %v", rec.Details.GetString(bundle.RelationKeyUniqueKey), err)
+			continue
+		}
+
+		typeId, err := spc.GetTypeIdByKey(ctx, domain.TypeKey(uk.InternalKey()))
+		if err != nil {
+			log.Warnf("failed to get type id by key '%s': %v", uk.InternalKey(), err)
+			continue
+		}
+		relationLinks, err := b.getTypeViewProperties(spaceID, typeId)
+		if err != nil {
+			log.Warnf("failed to get type view properties for type '%s': %v", typeId, err)
+			continue
+		}
+
+		err = cache.DoStateCtx(b.objectGetter, nil, typeId, func(s *state.State, sb dataview.Dataview) error {
+			dvBlock, err := sb.GetDataviewBlock(s, template.DataviewBlockId)
+			if err != nil {
+				return fmt.Errorf("failed to get dataview block: %w", err)
+			}
+
+			view := template.MakeDataviewView(false, relationLinks, model.BlockContentDataviewView_Table, addr.ObjectTypeAllTableViewId, "Grid")
+			dvBlock.AddView(view)
+			return nil
+		})
+		if err != nil {
+			log.Warnf("failed to add view to type '%s': %v", typeId, err)
+			continue
+		}
+	}
+	return nil
 }
 
 func (b *builtinObjects) provideNotification(spaceID string, progress process.Progress, err error, title string) *model.Notification {

@@ -3,7 +3,6 @@ package common
 import (
 	"crypto/sha256"
 	"encoding/hex"
-	"fmt"
 	"path/filepath"
 	"sort"
 	"strings"
