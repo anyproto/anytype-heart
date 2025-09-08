@@ -124,7 +124,9 @@ func (o *ObjectSubscription[T]) Run() error {
 }
 
 func (o *ObjectSubscription[T]) Close() {
-	o.cancel()
+	if o.cancel != nil {
+		o.cancel()
+	}
 	<-o.ch
 }
 
