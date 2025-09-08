@@ -198,8 +198,10 @@ func (b *builtinObjects) CreateObjectsForExperience(ctx context.Context, spaceID
 			if pErr := progress.Cancel(); pErr != nil {
 				log.Errorf("failed to cancel progress %s: %v", progress.Id(), pErr)
 			}
-			if notificationProgress, ok := progress.(process.Notificationable); ok {
-				notificationProgress.FinishWithNotification(b.provideNotification(spaceID, progress, err, title), err)
+			if !isAi {
+				if notificationProgress, ok := progress.(process.Notificationable); ok {
+					notificationProgress.FinishWithNotification(b.provideNotification(spaceID, progress, err, title), err)
+				}
 			}
 			if errors.Is(err, uri.ErrFilepathNotSupported) {
 				return fmt.Errorf("invalid path to file: '%s'", url)
@@ -216,9 +218,10 @@ func (b *builtinObjects) CreateObjectsForExperience(ctx context.Context, spaceID
 	importFormat := model.Import_Pb
 	if isAi {
 		importFormat = model.Import_Markdown
+		progress = nil
 	}
 	importErr := b.importArchive(ctx, spaceID, path, title, pb.RpcObjectImportRequestPbParams_SPACE, importFormat, progress, isNewSpace)
-	if notificationProgress, ok := progress.(process.Notificationable); ok {
+	if notificationProgress, ok := progress.(process.Notificationable); !isAi && ok {
 		notificationProgress.FinishWithNotification(b.provideNotification(spaceID, progress, importErr, title), importErr)
 	}
 
@@ -374,6 +377,10 @@ func (b *builtinObjects) addTypesView(ctx context.Context, spaceID string) error
 				return fmt.Errorf("failed to get dataview block: %w", err)
 			}
 
+			allView, err := dvBlock.GetView(addr.ObjectTypeAllViewId)
+			if err == nil {
+				allView.Name = "List"
+			}
 			view := template.MakeDataviewView(false, relationLinks, model.BlockContentDataviewView_Table, addr.ObjectTypeAllTableViewId, "Grid")
 			dvBlock.AddView(view)
 			return nil
@@ -459,7 +466,8 @@ func (b *builtinObjects) importArchive(
 	} else if importFormat == model.Import_Markdown {
 		params = &pb.RpcObjectImportRequestParamsOfMarkdownParams{
 			MarkdownParams: &pb.RpcObjectImportRequestMarkdownParams{
-				Path: []string{path},
+				Path:         []string{path},
+				NoCollection: true,
 			}}
 	} else {
 		return fmt.Errorf("unsupported import format: %s", importFormat)

@@ -93,7 +93,7 @@ func (m *Markdown) GetSnapshots(ctx context.Context, req *pb.RpcObjectImportRequ
 	if params.CreateDirectoryPages && len(allRootObjectsIds) == 1 {
 		rootObjectID = allRootObjectsIds[0]
 		widgetType = model.BlockContentWidget_Tree
-	} else {
+	} else if !params.NoCollection {
 		if params.CreateDirectoryPages {
 			log.Warnf("%d root pages found, creating collection", len(allRootObjectsIds))
 		}

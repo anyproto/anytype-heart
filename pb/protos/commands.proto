@@ -3054,6 +3054,7 @@ message Rpc {
                     repeated string path = 1;
                     bool createDirectoryPages = 2;
                     bool includePropertiesAsBlock = 3;
+                    bool noCollection = 4;
                 }
 
                 message BookmarksParams {
