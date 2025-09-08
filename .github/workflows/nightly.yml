@@ -96,21 +96,40 @@ jobs:
         with:
           xcode-version: '16.2'
 
+      - name: Compute nightly version
+        id: nightly_info
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }} # required for gh CLI to authenticate
+        run: |
+          set -euo pipefail
+          DATE=$(date -u +'%Y%m%d')
+          PREFIX="v${{ github.event.inputs.nightly-base-version || vars.NIGHTLY_BASE_VERSION }}-nightly.${DATE}"
+
+          # Get the number of existing tags for today
+          COUNT=$(gh api "/repos/${{ github.repository }}/git/matching-refs/tags/$PREFIX" --jq 'length')
+          N=$((COUNT + 1))
+
+          # Build the final version string
+          VERSION="${PREFIX}.${N}"
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+
       - name: Set env vars
         env:
           UNSPLASH_KEY: ${{ secrets.UNSPLASH_KEY }}
           INHOUSE_KEY: ${{ secrets.INHOUSE_KEY }}
         run: |
-          GIT_SUMMARY=$(git describe --tags --always)
+          GIT_SUMMARY=${{ steps.nightly_info.outputs.version }}
           echo "FLAGS=-X github.com/anyproto/anytype-heart/util/vcs.GitSummary=${GIT_SUMMARY} -X github.com/anyproto/anytype-heart/metrics.DefaultInHouseKey=${INHOUSE_KEY} -X github.com/anyproto/anytype-heart/util/unsplash.DefaultToken=${UNSPLASH_KEY}" >> $GITHUB_ENV
 
-          VERSION="nightly"
+          VERSION=${{ steps.nightly_info.outputs.version }}
           echo "${{ secrets.STAGING_NODE_CONF }}" > ./core/anytype/config/nodes/custom.yml
-          echo BUILD_TAG_NETWORK=${{ github.event.inputs.build-tag-network || 'envproduction' }} >> $GITHUB_ENV
 
           echo VERSION=${VERSION} >> $GITHUB_ENV
+          echo BUILD_TAG_NETWORK=${{ github.event.inputs.build-tag-network || 'envproduction' }} >> $GITHUB_ENV
+          echo MAVEN_ARTIFACT_VERSION=${VERSION} >> $GITHUB_ENV
           echo GOPRIVATE=github.com/anyproto >> $GITHUB_ENV
           echo $(pwd)/deps >> $GITHUB_PATH
+          echo "${GOBIN}" >> $GITHUB_PATH
           git config --global url."https://${{ secrets.ANYTYPE_PAT }}@github.com/".insteadOf "https://github.com/"
 
       - name: Go mod download
@@ -148,7 +167,9 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITHUB_USER: ${{ github.actor }}
-          PUBLISH_GRADLE: 0
+          MAVEN_ARTIFACT_ID: 'anytype-heart-ios'
+          MAVEN_ARTIFACT_NAME: 'ios_framework.tar.gz'
+          PUBLISH_GRADLE: 1
         run: make compile-ios-lib
 
       - name: Make java protos
@@ -157,22 +178,14 @@ jobs:
       - name: Compile android lib
         run: make compile-android-lib
 
-      - name: Compute nightly version
-        id: nightly_info
+      - name: Publish android lib to maven
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }} # required for gh CLI to authenticate
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_USER: ${{ github.actor }}
+          MAVEN_ARTIFACT_ID: 'anytype-heart-android'
+          MAVEN_ARTIFACT_NAME: 'lib.aar'
         run: |
-          set -euo pipefail
-          DATE=$(date -u +'%Y%m%d')
-          PREFIX="v${{ github.event.inputs.nightly-base-version || vars.NIGHTLY_BASE_VERSION }}-nightly.${DATE}"
-
-          # Get the number of existing tags for today
-          COUNT=$(gh api "/repos/${{ github.repository }}/git/matching-refs/tags/$PREFIX" --jq 'length')
-          N=$((COUNT + 1))
-
-          # Build the final version string
-          VERSION="${PREFIX}.${N}"
-          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+          gradle publish
 
       - name: Release
         id: release
@@ -213,7 +226,7 @@ jobs:
           message_format: "{emoji} *{job}* in *{workflow}* {status_message}"
           footer: "Linked Repo <{repo_url}|{repo}> | <{run_url}|View Workflow Run>"
         env:
-          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_ALERT_WEBHOOK }}
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL_ALERTS }}
 
       # SUCCESS - send to builds channel
       - name: Notify Slack (ok → builds)
@@ -230,4 +243,4 @@ jobs:
           footer: "Linked Repo <{repo_url}|{repo}> | <{run_url}|View Workflow Run>"
 
         env:
-          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_BUILD_WEBHOOK }}
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL_RELEASE_TRAIN }}

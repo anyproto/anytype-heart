@@ -1,8 +1,8 @@
 module github.com/anyproto/anytype-heart
 
-go 1.23.10
+go 1.24
 
-toolchain go1.24.0
+toolchain go1.24.3
 
 require (
 	github.com/JohannesKaufmann/html-to-markdown v1.4.0
@@ -10,7 +10,7 @@ require (
 	github.com/VividCortex/ewma v1.2.0
 	github.com/adrium/goheif v0.0.0-20230113233934-ca402e77a786
 	github.com/anyproto/any-store v0.3.3
-	github.com/anyproto/any-sync v0.9.8
+	github.com/anyproto/any-sync v0.9.9-0.20250902140308-af9b0e5aff5c
 	github.com/anyproto/anytype-publish-server/publishclient v0.0.0-20250716122732-cdcfe3a126bb
 	github.com/anyproto/anytype-push-server/pushclient v0.0.0-20250801122506-553f6c085a23
 	github.com/anyproto/go-chash v0.1.0
@@ -58,7 +58,7 @@ require (
 	github.com/ipfs/boxo v0.33.1
 	github.com/ipfs/go-block-format v0.2.2
 	github.com/ipfs/go-cid v0.5.0
-	github.com/ipfs/go-datastore v0.8.2
+	github.com/ipfs/go-datastore v0.8.3
 	github.com/ipfs/go-ds-flatfs v0.5.5
 	github.com/ipfs/go-ipld-format v0.6.2
 	github.com/ipfs/go-log v1.0.5
@@ -202,7 +202,7 @@ require (
 	github.com/ipfs/bbloom v0.0.4 // indirect
 	github.com/ipfs/go-bitfield v1.1.0 // indirect
 	github.com/ipfs/go-ipld-legacy v0.2.2 // indirect
-	github.com/ipfs/go-log/v2 v2.6.0 // indirect
+	github.com/ipfs/go-log/v2 v2.8.1 // indirect
 	github.com/ipfs/go-metrics-interface v0.3.0 // indirect
 	github.com/ipld/go-codec-dagpb v1.7.0 // indirect
 	github.com/ipld/go-ipld-prime v0.21.0 // indirect
@@ -294,6 +294,8 @@ require (
 	modernc.org/sqlite v1.38.0 // indirect
 	nhooyr.io/websocket v1.8.7 // indirect
 )
+
+replace github.com/ipfs/go-ds-flatfs => github.com/anyproto/go-ds-flatfs v0.0.0-20250828183910-d49f5b2d567f
 
 replace github.com/dgraph-io/badger/v4 => github.com/anyproto/badger/v4 v4.2.1-0.20240110160636-80743fa3d580
 

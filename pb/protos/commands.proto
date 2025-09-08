@@ -3924,13 +3924,35 @@ message Rpc {
                 google.protobuf.Struct details = 7; // additional details for file object
                 anytype.model.ObjectOrigin origin = 8;
                 anytype.model.ImageKind imageKind = 9;
+                bool preloadOnly = 10; // if true, only async preload the file without creating object
+                string preloadFileId = 11; // if set, reuse already preloaded file with this id. May block if async preload operation is not finished yet
             }
 
             message Response {
                 Error error = 1;
                 string objectId = 2;
                 google.protobuf.Struct details = 3;
+                string preloadFileId = 4; // returned when preloadOnly is true, can be passed back in subsequent requests
 
+                message Error {
+                    Code code = 1;
+                    string description = 2;
+
+                    enum Code {
+                        NULL = 0;
+                        UNKNOWN_ERROR = 1;
+                        BAD_INPUT = 2;
+                    }
+                }
+            }
+        }
+        message DiscardPreload {
+            message Request {
+                string fileId = 1;
+                string spaceId = 2;
+            }
+            message Response {
+                Error error = 1;
                 message Error {
                     Code code = 1;
                     string description = 2;

@@ -187,6 +187,7 @@ service ClientCommands {
     rpc FileListOffload (anytype.Rpc.File.ListOffload.Request) returns (anytype.Rpc.File.ListOffload.Response);
     rpc FileUpload (anytype.Rpc.File.Upload.Request) returns (anytype.Rpc.File.Upload.Response);
     rpc FileDownload (anytype.Rpc.File.Download.Request) returns (anytype.Rpc.File.Download.Response);
+    rpc FileDiscardPreload (anytype.Rpc.File.DiscardPreload.Request) returns (anytype.Rpc.File.DiscardPreload.Response);
     rpc FileDrop (anytype.Rpc.File.Drop.Request) returns (anytype.Rpc.File.Drop.Response);
     rpc FileSpaceUsage (anytype.Rpc.File.SpaceUsage.Request) returns (anytype.Rpc.File.SpaceUsage.Response);
     rpc FileNodeUsage (anytype.Rpc.File.NodeUsage.Request) returns (anytype.Rpc.File.NodeUsage.Response);

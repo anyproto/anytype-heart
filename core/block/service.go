@@ -34,6 +34,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/domain/objectorigin"
 	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/core/files/fileobject"
+	"github.com/anyproto/anytype-heart/core/files/fileoffloader"
 	"github.com/anyproto/anytype-heart/core/files/fileuploader"
 	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pb"
@@ -104,6 +105,7 @@ type Service struct {
 	detailsService       detailservice.Service
 
 	fileUploaderService fileuploader.Service
+	fileOffloader       fileoffloader.Service
 
 	predefinedObjectWasMissing bool
 	openedObjs                 *openedObjects
@@ -138,6 +140,7 @@ func (s *Service) Init(a *app.App) (err error) {
 	s.resolver = a.MustComponent(idresolver.CName).(idresolver.Resolver)
 	s.fileObjectService = app.MustComponent[fileobject.Service](a)
 	s.fileUploaderService = app.MustComponent[fileuploader.Service](a)
+	s.fileOffloader = app.MustComponent[fileoffloader.Service](a)
 	s.tempDirProvider = app.MustComponent[core.TempDirProvider](a)
 	s.builtinObjectService = app.MustComponent[builtinObjects](a)
 	s.detailsService = app.MustComponent[detailservice.Service](a)
