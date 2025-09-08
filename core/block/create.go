@@ -106,6 +106,11 @@ func (s *Service) CreateLinkToTheNewObject(
 	if err != nil {
 		return
 	}
+
+	if err = s.CreateTypeWidgetIfMissing(ctx, req.SpaceId, objectTypeKey); err != nil {
+		return
+	}
+
 	if req.ContextId == "" {
 		return
 	}

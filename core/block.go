@@ -61,14 +61,7 @@ func (mw *Middleware) BlockLinkCreateWithObject(cctx context.Context, req *pb.Rp
 	)
 	err := mw.doBlockService(func(bs *block.Service) (err error) {
 		id, targetId, objectDetails, err = bs.CreateLinkToTheNewObject(cctx, ctx, req)
-		if err != nil {
-			return err
-		}
-		typeKey, err := domain.GetTypeKeyFromRawUniqueKey(req.ObjectTypeUniqueKey)
-		if err != nil {
-			return err
-		}
-		return bs.CreateTypeWidgetIfMissing(cctx, req.SpaceId, typeKey)
+		return
 	})
 	if err != nil {
 		return response(pb.RpcBlockLinkCreateWithObjectResponseError_UNKNOWN_ERROR, "", "", nil, err)
