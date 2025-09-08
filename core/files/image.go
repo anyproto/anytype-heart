@@ -178,10 +178,15 @@ func (i *image) Details(ctx context.Context) (*domain.Details, error) {
 		return details, nil
 	}
 
-	if imageExif != nil {
-		details.SetFloat64(bundle.RelationKeyHeightInPixels, float64(imageExif.Height))
-		details.SetFloat64(bundle.RelationKeyWidthInPixels, float64(imageExif.Width))
+	width, height := imageExif.Width, imageExif.Height
+	if width == 0 || height == 0 {
+		// fallback to variant meta
+		// may happen in case of reused images failed to load offloaded exif
+		width = int(pbtypes.GetInt64(largest.Meta, "width"))
+		height = int(pbtypes.GetInt64(largest.Meta, "height"))
 	}
+	details.SetInt64(bundle.RelationKeyHeightInPixels, int64(height))
+	details.SetInt64(bundle.RelationKeyWidthInPixels, int64(width))
 
 	if largest.Meta != nil {
 		details.SetString(bundle.RelationKeyName, strings.TrimSuffix(largest.Name, filepath.Ext(largest.Name)))
