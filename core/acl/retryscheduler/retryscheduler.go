@@ -87,7 +87,7 @@ type RetryScheduler[T any] struct {
 	heap           itemHeap[T]
 	items          map[string]*Item[T] // for O(1) lookup
 	process        func(ctx context.Context, msg T) error
-	shouldRetry    func(err error) bool
+	shouldRetry    func(msg T, err error) bool
 	defaultTimeout time.Duration
 	maxTimeout     time.Duration
 	timeProvider   TimeProvider
@@ -107,7 +107,7 @@ type Config struct {
 
 func NewRetryScheduler[T any](
 	process func(ctx context.Context, msg T) error,
-	shouldRetry func(err error) bool,
+	shouldRetry func(msg T, err error) bool,
 	config Config,
 ) *RetryScheduler[T] {
 	ctx, cancel := context.WithCancel(context.Background())
@@ -254,7 +254,7 @@ func (q *RetryScheduler[T]) processNextItem() {
 	q.mu.Unlock()
 	// nolint: nestif
 	if err := q.process(q.ctx, item.Value); err != nil {
-		if q.shouldRetry(err) {
+		if q.shouldRetry(item.Value, err) {
 			originalTimeout := item.Timeout
 			if originalTimeout == 0 {
 				originalTimeout = q.defaultTimeout

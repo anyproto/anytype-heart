@@ -3,6 +3,8 @@
 package mock_idresolver
 
 import (
+	context "context"
+
 	app "github.com/anyproto/any-sync/app"
 
 	mock "github.com/stretchr/testify/mock"
@@ -19,6 +21,52 @@ type MockResolver_Expecter struct {
 
 func (_m *MockResolver) EXPECT() *MockResolver_Expecter {
 	return &MockResolver_Expecter{mock: &_m.Mock}
+}
+
+// Close provides a mock function with given fields: ctx
+func (_m *MockResolver) Close(ctx context.Context) error {
+	ret := _m.Called(ctx)
+
+	if len(ret) == 0 {
+		panic("no return value specified for Close")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context) error); ok {
+		r0 = rf(ctx)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// MockResolver_Close_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Close'
+type MockResolver_Close_Call struct {
+	*mock.Call
+}
+
+// Close is a helper method to define mock.On call
+//   - ctx context.Context
+func (_e *MockResolver_Expecter) Close(ctx interface{}) *MockResolver_Close_Call {
+	return &MockResolver_Close_Call{Call: _e.mock.On("Close", ctx)}
+}
+
+func (_c *MockResolver_Close_Call) Run(run func(ctx context.Context)) *MockResolver_Close_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context))
+	})
+	return _c
+}
+
+func (_c *MockResolver_Close_Call) Return(err error) *MockResolver_Close_Call {
+	_c.Call.Return(err)
+	return _c
+}
+
+func (_c *MockResolver_Close_Call) RunAndReturn(run func(context.Context) error) *MockResolver_Close_Call {
+	_c.Call.Return(run)
+	return _c
 }
 
 // Init provides a mock function with given fields: a
@@ -164,6 +212,109 @@ func (_c *MockResolver_ResolveSpaceID_Call) Return(_a0 string, _a1 error) *MockR
 }
 
 func (_c *MockResolver_ResolveSpaceID_Call) RunAndReturn(run func(string) (string, error)) *MockResolver_ResolveSpaceID_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// ResolveSpaceIdWithRetry provides a mock function with given fields: ctx, objectID
+func (_m *MockResolver) ResolveSpaceIdWithRetry(ctx context.Context, objectID string) (string, error) {
+	ret := _m.Called(ctx, objectID)
+
+	if len(ret) == 0 {
+		panic("no return value specified for ResolveSpaceIdWithRetry")
+	}
+
+	var r0 string
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, string) (string, error)); ok {
+		return rf(ctx, objectID)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, string) string); ok {
+		r0 = rf(ctx, objectID)
+	} else {
+		r0 = ret.Get(0).(string)
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, string) error); ok {
+		r1 = rf(ctx, objectID)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockResolver_ResolveSpaceIdWithRetry_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ResolveSpaceIdWithRetry'
+type MockResolver_ResolveSpaceIdWithRetry_Call struct {
+	*mock.Call
+}
+
+// ResolveSpaceIdWithRetry is a helper method to define mock.On call
+//   - ctx context.Context
+//   - objectID string
+func (_e *MockResolver_Expecter) ResolveSpaceIdWithRetry(ctx interface{}, objectID interface{}) *MockResolver_ResolveSpaceIdWithRetry_Call {
+	return &MockResolver_ResolveSpaceIdWithRetry_Call{Call: _e.mock.On("ResolveSpaceIdWithRetry", ctx, objectID)}
+}
+
+func (_c *MockResolver_ResolveSpaceIdWithRetry_Call) Run(run func(ctx context.Context, objectID string)) *MockResolver_ResolveSpaceIdWithRetry_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(string))
+	})
+	return _c
+}
+
+func (_c *MockResolver_ResolveSpaceIdWithRetry_Call) Return(_a0 string, _a1 error) *MockResolver_ResolveSpaceIdWithRetry_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockResolver_ResolveSpaceIdWithRetry_Call) RunAndReturn(run func(context.Context, string) (string, error)) *MockResolver_ResolveSpaceIdWithRetry_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// Run provides a mock function with given fields: ctx
+func (_m *MockResolver) Run(ctx context.Context) error {
+	ret := _m.Called(ctx)
+
+	if len(ret) == 0 {
+		panic("no return value specified for Run")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context) error); ok {
+		r0 = rf(ctx)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// MockResolver_Run_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Run'
+type MockResolver_Run_Call struct {
+	*mock.Call
+}
+
+// Run is a helper method to define mock.On call
+//   - ctx context.Context
+func (_e *MockResolver_Expecter) Run(ctx interface{}) *MockResolver_Run_Call {
+	return &MockResolver_Run_Call{Call: _e.mock.On("Run", ctx)}
+}
+
+func (_c *MockResolver_Run_Call) Run(run func(ctx context.Context)) *MockResolver_Run_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context))
+	})
+	return _c
+}
+
+func (_c *MockResolver_Run_Call) Return(err error) *MockResolver_Run_Call {
+	_c.Call.Return(err)
+	return _c
+}
+
+func (_c *MockResolver_Run_Call) RunAndReturn(run func(context.Context) error) *MockResolver_Run_Call {
 	_c.Call.Return(run)
 	return _c
 }

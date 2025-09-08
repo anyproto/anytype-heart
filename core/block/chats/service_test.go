@@ -32,7 +32,11 @@ const techSpaceId = "techSpaceId"
 type pushServiceDummy struct {
 }
 
-func (s *pushServiceDummy) Notify(ctx context.Context, spaceId string, topic []string, payload []byte) (err error) {
+func (s *pushServiceDummy) Notify(ctx context.Context, spaceId, groupId string, topic []string, payload []byte) (err error) {
+	return nil
+}
+
+func (s *pushServiceDummy) NotifyRead(ctx context.Context, spaceId, groupId string) (err error) {
 	return nil
 }
 
@@ -468,6 +472,21 @@ func TestApplyEmojiMarks(t *testing.T) {
 				},
 			},
 			want: "👍",
+		},
+		{
+			name: "with cyrillic symbol",
+			text: "ц ",
+			marks: []*model.BlockContentTextMark{
+				{
+					Type: model.BlockContentTextMark_Emoji,
+					Range: &model.Range{
+						From: 1,
+						To:   2,
+					},
+					Param: "👍",
+				},
+			},
+			want: "ц👍",
 		},
 		{
 			name: "multiple marks",

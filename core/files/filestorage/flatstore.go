@@ -2,6 +2,7 @@ package filestorage
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"strings"
@@ -49,7 +50,7 @@ func newFlatStore(path string, eventSender event.Sender, sendEventBatchTimeout t
 
 func (f *flatStore) Get(ctx context.Context, k cid.Cid) (blocks.Block, error) {
 	raw, err := f.ds.Get(ctx, flatStoreKey(k))
-	if err == datastore.ErrNotFound {
+	if errors.Is(err, datastore.ErrNotFound) {
 		return nil, &format.ErrNotFound{Cid: k}
 	}
 	if err != nil {
@@ -120,6 +121,19 @@ func (f *flatStore) PartitionByExistence(ctx context.Context, ks []cid.Cid) (exi
 	return
 }
 
+func (f *flatStore) ExistsCids(ctx context.Context, ks []cid.Cid) (exists []cid.Cid, err error) {
+	for _, k := range ks {
+		ok, err := f.ds.Has(ctx, flatStoreKey(k))
+		if err != nil {
+			return nil, err
+		}
+		if ok {
+			exists = append(exists, k)
+		}
+	}
+	return exists, nil
+}
+
 func (f *flatStore) NotExistsBlocks(ctx context.Context, bs []blocks.Block) (notExist []blocks.Block, err error) {
 	for _, b := range bs {
 		ok, err := f.ds.Has(ctx, flatStoreKey(b.Cid()))
@@ -153,6 +167,137 @@ func (f *flatStore) BlockAvailability(ctx context.Context, ks []cid.Cid) (availa
 
 func (f *flatStore) Close() error {
 	return f.ds.Close()
+}
+
+func (f *flatStore) Batch(ctx context.Context) (BlockStoreBatch, error) {
+	dsBatch, err := f.ds.Batch(ctx)
+	if err != nil {
+		return nil, err
+	}
+	// Cast to BatchReader which is implemented by the anyproto fork
+	batchReader, ok := dsBatch.(flatfs.BatchReader)
+	if !ok {
+		return nil, fmt.Errorf("batch does not implement BatchReader interface")
+	}
+	return &flatStoreBatch{
+		store:   f,
+		dsBatch: batchReader,
+	}, nil
+}
+
+type flatStoreBatch struct {
+	store   *flatStore
+	dsBatch flatfs.BatchReader
+}
+
+// Get reads from batch (checks temp dir first, then falls back to main dir via BatchReader)
+func (b *flatStoreBatch) Get(ctx context.Context, k cid.Cid) (blocks.Block, error) {
+	// The BatchReader interface from anyproto fork supports Get which checks temp then main
+	raw, err := b.dsBatch.Get(ctx, flatStoreKey(k))
+	if errors.Is(err, datastore.ErrNotFound) {
+		return nil, &format.ErrNotFound{Cid: k}
+	}
+	if err != nil {
+		return nil, err
+	}
+	return blocks.NewBlockWithCid(raw, k)
+}
+
+// GetMany reads multiple blocks from batch
+func (b *flatStoreBatch) GetMany(ctx context.Context, ks []cid.Cid) <-chan blocks.Block {
+	ch := make(chan blocks.Block)
+	go func() {
+		defer close(ch)
+		for _, k := range ks {
+			blk, err := b.Get(ctx, k)
+			if err == nil {
+				ch <- blk
+			}
+		}
+	}()
+	return ch
+}
+
+// Add adds blocks to the batch (writes to temp directory)
+func (b *flatStoreBatch) Add(ctx context.Context, bs []blocks.Block) error {
+	for _, block := range bs {
+		if err := b.dsBatch.Put(ctx, flatStoreKey(block.Cid()), block.RawData()); err != nil {
+			return fmt.Errorf("batch put %s: %w", flatStoreKey(block.Cid()), err)
+		}
+	}
+	return nil
+}
+
+// Delete deletes from the batch
+func (b *flatStoreBatch) Delete(ctx context.Context, c cid.Cid) error {
+	return b.dsBatch.Delete(context.Background(), flatStoreKey(c))
+}
+
+// ExistsCids checks if cids exist (in temp or main storage)
+func (b *flatStoreBatch) ExistsCids(ctx context.Context, ks []cid.Cid) (exists []cid.Cid, err error) {
+	for _, k := range ks {
+		// BatchReader.Has checks both temp and main directories
+		ok, err := b.dsBatch.Has(ctx, flatStoreKey(k))
+		if err != nil {
+			return nil, err
+		}
+		if ok {
+			exists = append(exists, k)
+		}
+	}
+	return exists, nil
+}
+
+// NotExistsBlocks returns blocks that don't exist (checks both temp and main)
+func (b *flatStoreBatch) NotExistsBlocks(ctx context.Context, bs []blocks.Block) (notExists []blocks.Block, err error) {
+	for _, block := range bs {
+		ok, err := b.dsBatch.Has(ctx, flatStoreKey(block.Cid()))
+		if err != nil {
+			return nil, err
+		}
+		if !ok {
+			notExists = append(notExists, block)
+		}
+	}
+	return notExists, nil
+}
+
+// PartitionByExistence partitions cids by existence (checks both temp and main)
+func (b *flatStoreBatch) PartitionByExistence(ctx context.Context, ks []cid.Cid) (exist []cid.Cid, notExist []cid.Cid, err error) {
+	for _, k := range ks {
+		ok, err := b.dsBatch.Has(ctx, flatStoreKey(k))
+		if err != nil {
+			return nil, nil, err
+		}
+		if ok {
+			exist = append(exist, k)
+		} else {
+			notExist = append(notExist, k)
+		}
+	}
+	return
+}
+
+// Close does nothing for batch (batch has its own lifecycle)
+func (b *flatStoreBatch) Close() error {
+	return nil
+}
+
+func (b *flatStoreBatch) Commit() error {
+	err := b.dsBatch.Commit(context.Background())
+	if err == nil {
+		b.store.sendLocalBytesUsageEvent(context.Background())
+	}
+	return err
+}
+
+func (b *flatStoreBatch) Discard() error {
+	// Cast to DiscardableBatch from anyproto fork of flatfs
+	if discarder, ok := b.dsBatch.(flatfs.DiscardableBatch); ok {
+		return discarder.Discard(context.Background())
+	}
+	// Fallback: batch is discarded by not committing (garbage collection will clean up)
+	return nil
 }
 
 type localBytesUsageEventSender struct {

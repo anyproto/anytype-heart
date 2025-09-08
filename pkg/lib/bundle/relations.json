@@ -1275,6 +1275,16 @@
     "source": "details"
   },
   {
+    "description": "Current account status in space. Possible values: models.ParticipantStatus",
+    "format": "number",
+    "hidden": true,
+    "key": "myParticipantStatus",
+    "maxCount": 1,
+    "name": "My participant status",
+    "readonly": true,
+    "source": "local"
+  },
+  {
     "description": "Link to the profile attached to Anytype Identity",
     "format": "object",
     "hidden": true,
@@ -1698,5 +1708,16 @@
     "name": "Push notifications encryption key",
     "readonly": true,
     "source": "local"
+  },
+  {
+    "description": "Space join date",
+    "format": "date",
+    "hidden": false,
+    "key": "spaceJoinDate",
+    "maxCount": 1,
+    "name": "Space join date",
+    "readonly": true,
+    "source": "derived",
+    "includeTime": true
   }
 ]

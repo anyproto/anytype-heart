@@ -9,7 +9,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-const RelationChecksum = "3fe5a1aa23d9f84c89d3946507fb29a57a322c15400875b3e4e44ee5e473180d"
+const RelationChecksum = "4e14a02496e8ccc15b9fe4287f48fcc5e3e4b157289e18554512da1b26fd4844"
 const (
 	RelationKeyTag                                domain.RelationKey = "tag"
 	RelationKeyCamera                             domain.RelationKey = "camera"
@@ -134,6 +134,7 @@ const (
 	RelationKeySpaceInvitePermissions             domain.RelationKey = "spaceInvitePermissions"
 	RelationKeyIdentity                           domain.RelationKey = "identity"
 	RelationKeyParticipantStatus                  domain.RelationKey = "participantStatus"
+	RelationKeyMyParticipantStatus                domain.RelationKey = "myParticipantStatus"
 	RelationKeyIdentityProfileLink                domain.RelationKey = "identityProfileLink"
 	RelationKeyProfileOwnerIdentity               domain.RelationKey = "profileOwnerIdentity"
 	RelationKeyTargetSpaceId                      domain.RelationKey = "targetSpaceId"
@@ -176,6 +177,7 @@ const (
 	RelationKeySpacePushNotificationMode          domain.RelationKey = "spacePushNotificationMode"
 	RelationKeySpacePushNotificationKey           domain.RelationKey = "spacePushNotificationKey"
 	RelationKeySpacePushNotificationEncryptionKey domain.RelationKey = "spacePushNotificationEncryptionKey"
+	RelationKeySpaceJoinDate                      domain.RelationKey = "spaceJoinDate"
 )
 
 var (
@@ -1413,6 +1415,20 @@ var (
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
 		},
+		RelationKeyMyParticipantStatus: {
+
+			DataSource:       model.Relation_local,
+			Description:      "Current account status in space. Possible values: models.ParticipantStatus",
+			Format:           model.RelationFormat_number,
+			Hidden:           true,
+			Id:               "_brmyParticipantStatus",
+			Key:              "myParticipantStatus",
+			MaxCount:         1,
+			Name:             "My participant status",
+			ReadOnly:         true,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
 		RelationKeyName: {
 
 			DataSource:       model.Relation_details,
@@ -2079,6 +2095,20 @@ var (
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
 		},
+		RelationKeySpaceJoinDate: {
+
+			DataSource:       model.Relation_derived,
+			Description:      "Space join date",
+			Format:           model.RelationFormat_date,
+			Id:               "_brspaceJoinDate",
+			IncludeTime:      true,
+			Key:              "spaceJoinDate",
+			MaxCount:         1,
+			Name:             "Space join date",
+			ReadOnly:         true,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
 		RelationKeySpaceLocalStatus: {
 
 			DataSource:       model.Relation_derived,
@@ -2351,7 +2381,7 @@ var (
 			Id:               "_brtimestamp",
 			Key:              "timestamp",
 			MaxCount:         1,
-			Name:             "Order",
+			Name:             "Timestamp",
 			ReadOnly:         true,
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,

@@ -8,6 +8,7 @@ import (
 	"github.com/anyproto/any-store/anyenc"
 
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+	textUtil "github.com/anyproto/anytype-heart/util/text"
 )
 
 type CounterType int
@@ -101,6 +102,30 @@ func (m *Message) MentionIdentities(ctx context.Context, repo MessagesGetter) ([
 		}
 	}
 	return mentions, nil
+}
+
+func (m *Message) Validate() error {
+	utf16text := textUtil.StrToUTF16(m.Message.Text)
+
+	for _, mark := range m.Message.Marks {
+		if mark.Range.From < 0 {
+			return fmt.Errorf("invalid range.from")
+		}
+		if mark.Range.To < 0 {
+			return fmt.Errorf("invalid range.to")
+		}
+		if mark.Range.From > mark.Range.To {
+			return fmt.Errorf("range.from should be less than range.to")
+		}
+		if int(mark.Range.From) >= len(utf16text) {
+			return fmt.Errorf("invalid range.from")
+		}
+		if int(mark.Range.To) > len(utf16text) {
+			return fmt.Errorf("invalid range.to")
+		}
+	}
+
+	return nil
 }
 
 func extractIdentity(participantId string) string {

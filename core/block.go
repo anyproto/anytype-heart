@@ -575,7 +575,7 @@ func (mw *Middleware) BlockListMoveToExistingObject(cctx context.Context, req *p
 		return m
 	}
 	err := mw.doBlockService(func(bs *block.Service) (err error) {
-		return bs.MoveBlocks(*req)
+		return bs.MoveBlocks(ctx, *req)
 	})
 	if err != nil {
 		return response(pb.RpcBlockListMoveToExistingObjectResponseError_UNKNOWN_ERROR, err)

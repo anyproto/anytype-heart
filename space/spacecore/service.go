@@ -14,6 +14,7 @@ import (
 	"github.com/anyproto/any-sync/commonspace/spacepayloads"
 
 	// nolint: misspell
+	"github.com/anyproto/any-sync/commonspace/clientspaceproto"
 	commonconfig "github.com/anyproto/any-sync/commonspace/config"
 	"github.com/anyproto/any-sync/commonspace/object/accountdata"
 	"github.com/anyproto/any-sync/commonspace/peermanager"
@@ -32,7 +33,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/object/treesyncer"
 	"github.com/anyproto/anytype-heart/core/syncstatus/objectsyncstatus"
 	"github.com/anyproto/anytype-heart/core/wallet"
-	"github.com/anyproto/anytype-heart/space/spacecore/clientspaceproto"
 	"github.com/anyproto/anytype-heart/space/spacecore/keyvalueobserver"
 	"github.com/anyproto/anytype-heart/space/spacecore/localdiscovery"
 	"github.com/anyproto/anytype-heart/space/spacecore/peerstore"

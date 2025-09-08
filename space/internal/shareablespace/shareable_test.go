@@ -11,6 +11,7 @@ import (
 	"github.com/anyproto/any-sync/util/crypto"
 	"github.com/stretchr/testify/require"
 
+	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space/internal/components/spacestatus"
 	"github.com/anyproto/anytype-heart/space/internal/spaceprocess/initial"
 	"github.com/anyproto/anytype-heart/space/internal/spaceprocess/mode"
@@ -193,7 +194,7 @@ func (s *spaceStatusStub) SetAccessType(status spaceinfo.AccessType) (err error)
 	return
 }
 
-func (s *spaceStatusStub) SetAclInfo(isAclEmpty bool, pushKey crypto.PrivKey, pushEncryptionKey crypto.SymKey) (err error) {
+func (s *spaceStatusStub) SetAclInfo(isAclEmpty bool, pushKey crypto.PrivKey, pushEncryptionKey crypto.SymKey, spaceJoinedDate int64) (err error) {
 	return
 }
 
@@ -201,9 +202,12 @@ func (s *spaceStatusStub) GetLatestAclHeadId() string {
 	return ""
 }
 
+func (s *spaceStatusStub) SetMyParticipantStatus(st model.ParticipantStatus) (err error) {
+	return nil
+}
+
 func (s *spaceStatusStub) GetSpaceView() techspace.SpaceView {
 	return nil
-
 }
 
 var _ spacestatus.SpaceStatus = (*spaceStatusStub)(nil)

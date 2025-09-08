@@ -252,7 +252,7 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(aclclient.NewAclJoiningClient()).
 		Register(virtualspaceservice.New()).
 		Register(spacecore.New()).
-		Register(idresolver.New()).
+		Register(idresolver.New(200*time.Millisecond, 2*time.Second)).
 		Register(device.New()).
 		Register(localdiscovery.New()).
 		Register(peermanager.New()).
@@ -276,7 +276,7 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(invitestore.New()).
 		Register(filesync.New()).
 		Register(reconciler.New()).
-		Register(fileobject.New(200*time.Millisecond, 2*time.Second)).
+		Register(fileobject.New()).
 		Register(inviteservice.New()).
 		Register(publish.New()).
 		Register(publishclient.New()).
