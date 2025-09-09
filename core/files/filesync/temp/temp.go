@@ -1,6 +1,8 @@
 package temp
 
 import (
+	"errors"
+	"fmt"
 	"slices"
 	"sort"
 	"time"
@@ -9,6 +11,8 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/domain"
 )
+
+var ErrNotFound = fmt.Errorf("not found")
 
 type FileState int
 
@@ -46,8 +50,12 @@ func newStorage[T any]() *storage[T] {
 	}
 }
 
-func (s *storage[T]) get(objectId string) T {
-	return s.files[objectId]
+func (s *storage[T]) get(objectId string) (T, error) {
+	v, ok := s.files[objectId]
+	if !ok {
+		return v, ErrNotFound
+	}
+	return v, nil
 }
 
 func (s *storage[T]) set(objectId string, file T) {
@@ -112,9 +120,10 @@ const (
 )
 
 type releaseRequest[T any] struct {
-	objectId string
-	item     T
-	action   releaseAction
+	objectId   string
+	item       T
+	action     releaseAction
+	responseCh chan error
 }
 
 type queue[T any] struct {
@@ -182,8 +191,10 @@ func (q *queue[T]) handleGetById(req getByIdRequest[T]) {
 	if isLocked {
 		q.getByIdWaiters[req.objectId] = append(q.getByIdWaiters[req.objectId], req.responseCh)
 	} else {
+		item, err := q.store.get(req.objectId)
+
 		q.taskLocked[req.objectId] = struct{}{}
-		req.responseCh <- itemResponse[T]{item: q.store.get(req.objectId)}
+		req.responseCh <- itemResponse[T]{item: item, err: err}
 	}
 }
 
@@ -199,13 +210,19 @@ func (q *queue[T]) handleScheduledItem(req scheduledItem[T]) {
 	if isLocked {
 		q.dueWaiters[id] = append(q.dueWaiters[id], req)
 	} else {
+		item, err := q.store.get(id)
+
 		q.taskLocked[id] = struct{}{}
-		req.responseCh <- itemResponse[T]{item: q.store.get(id)}
+		req.responseCh <- itemResponse[T]{item: item, err: err}
 	}
 }
 
 func (q *queue[T]) handleReleaseItem(req releaseRequest[T]) {
 	item := req.item
+	if _, ok := q.taskLocked[q.getId(item)]; !ok {
+		req.responseCh <- fmt.Errorf("item is not locked")
+		return
+	}
 	delete(q.taskLocked, q.getId(item))
 	q.store.set(q.getId(item), item)
 
@@ -215,6 +232,8 @@ func (q *queue[T]) handleReleaseItem(req releaseRequest[T]) {
 	responded = q.checkDueWaiters(item, responded)
 	responded = q.checkNextScheduledWaiters(item, responded)
 	responded = q.checkGetNextWaiters(item, responded)
+
+	req.responseCh <- nil
 }
 
 func (q *queue[T]) checkGetNextWaiters(item T, responded bool) bool {
@@ -418,7 +437,7 @@ func (q *queue[T]) scheduleItem(req getNextRequest[T], next T) {
 	}()
 }
 
-func (q *queue[T]) get(objectId string) T {
+func (q *queue[T]) GetById(objectId string) (T, error) {
 	responseCh := make(chan itemResponse[T], 1)
 
 	q.getByIdCh <- getByIdRequest[T]{
@@ -427,10 +446,10 @@ func (q *queue[T]) get(objectId string) T {
 	}
 
 	task := <-responseCh
-	return task.item
+	return task.item, task.err
 }
 
-func (q *queue[T]) getNext(filter func(T) bool, orderBy func(T) time.Time) T {
+func (q *queue[T]) GetNext(filter func(T) bool, orderBy func(T) time.Time) (T, error) {
 	responseCh := make(chan itemResponse[T], 1)
 
 	if orderBy == nil {
@@ -446,10 +465,10 @@ func (q *queue[T]) getNext(filter func(T) bool, orderBy func(T) time.Time) T {
 	}
 
 	task := <-responseCh
-	return task.item
+	return task.item, task.err
 }
 
-func (q *queue[T]) getNextScheduled(filter func(T) bool, scheduledAt func(T) time.Time) T {
+func (q *queue[T]) GetNextScheduled(filter func(T) bool, scheduledAt func(T) time.Time) (T, error) {
 	responseCh := make(chan itemResponse[T], 1)
 
 	q.getNextScheduledCh <- getNextRequest[T]{
@@ -460,12 +479,29 @@ func (q *queue[T]) getNextScheduled(filter func(T) bool, scheduledAt func(T) tim
 	}
 
 	task := <-responseCh
-	return task.item
+	return task.item, task.err
 }
 
-func (q *queue[T]) release(task T) {
-	q.releaseCh <- releaseRequest[T]{
-		action: releaseActionUpdate,
-		item:   task,
+func (q *queue[T]) Upsert(id string, modifier func(exists bool, prev T) T) error {
+	it, err := q.GetById(id)
+	if err != nil && !errors.Is(err, ErrNotFound) {
+		return err
 	}
+	exists := !errors.Is(err, ErrNotFound)
+
+	next := modifier(exists, it)
+
+	return q.Release(next)
+}
+
+func (q *queue[T]) Release(task T) error {
+	responseCh := make(chan error, 1)
+
+	q.releaseCh <- releaseRequest[T]{
+		action:     releaseActionUpdate,
+		item:       task,
+		responseCh: responseCh,
+	}
+
+	return <-responseCh
 }

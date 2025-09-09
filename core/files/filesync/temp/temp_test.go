@@ -8,7 +8,15 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
+
+func insertToQueue(t *testing.T, q *queue[FileInfo], it FileInfo) {
+	err := q.Upsert(it.ObjectId, func(exists bool, prev FileInfo) FileInfo {
+		return it
+	})
+	require.NoError(t, err)
+}
 
 func TestQueue(t *testing.T) {
 	store := newStorage[FileInfo]()
@@ -20,7 +28,7 @@ func TestQueue(t *testing.T) {
 		q.run()
 	}()
 
-	q.release(FileInfo{
+	insertToQueue(t, q, FileInfo{
 		ObjectId: "obj1",
 	})
 
@@ -29,9 +37,11 @@ func TestQueue(t *testing.T) {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			task := q.get("obj1")
+			task, err := q.GetById("obj1")
+			require.NoError(t, err)
 			task.BytesToUpload++
-			q.release(task)
+			err = q.Release(task)
+			require.NoError(t, err)
 		}()
 	}
 
@@ -40,7 +50,8 @@ func TestQueue(t *testing.T) {
 		ObjectId:      "obj1",
 		BytesToUpload: 100,
 	}
-	got := q.get("obj1")
+	got, err := q.GetById("obj1")
+	require.NoError(t, err)
 	assert.Equal(t, want, got)
 }
 
@@ -57,15 +68,16 @@ func TestQueueGetNext(t *testing.T) {
 			}()
 			defer q.close()
 
-			q.release(FileInfo{
+			insertToQueue(t, q, FileInfo{
 				ObjectId:    "obj1",
 				State:       FileStateUploading,
 				ScheduledAt: time.Now().Add(time.Minute),
 			})
 
-			next := q.getNext(func(info FileInfo) bool {
+			next, err := q.GetNext(func(info FileInfo) bool {
 				return info.State == FileStateUploading
 			}, nil)
+			require.NoError(t, err)
 			assert.Equal(t, "obj1", next.ObjectId)
 		})
 	})
@@ -84,16 +96,20 @@ func TestQueueGetNext(t *testing.T) {
 
 			go func() {
 				time.Sleep(10 * time.Minute)
-				q.release(FileInfo{
-					ObjectId:    "obj1",
-					State:       FileStateUploading,
-					ScheduledAt: time.Now().Add(time.Minute),
+				err := q.Upsert("obj1", func(exists bool, it FileInfo) FileInfo {
+					return FileInfo{
+						ObjectId:    "obj1",
+						State:       FileStateUploading,
+						ScheduledAt: time.Now().Add(time.Minute),
+					}
 				})
+				require.NoError(t, err)
 			}()
 
-			next := q.getNext(func(info FileInfo) bool {
+			next, err := q.GetNext(func(info FileInfo) bool {
 				return info.State == FileStateUploading
 			}, nil)
+			require.NoError(t, err)
 			assert.Equal(t, "obj1", next.ObjectId)
 		})
 	})
@@ -113,7 +129,7 @@ func TestQueueGetNext(t *testing.T) {
 			const n = 100
 
 			for i := range n {
-				q.release(FileInfo{
+				insertToQueue(t, q, FileInfo{
 					ObjectId: fmt.Sprintf("obj%d", i),
 					State:    FileStateUploading,
 				})
@@ -122,9 +138,10 @@ func TestQueueGetNext(t *testing.T) {
 			resultsCh := make(chan string, n)
 			for range n {
 				go func() {
-					next := q.getNext(func(info FileInfo) bool {
+					next, err := q.GetNext(func(info FileInfo) bool {
 						return info.State == FileStateUploading
 					}, nil)
+					require.NoError(t, err)
 					resultsCh <- next.ObjectId
 				}()
 			}
@@ -157,7 +174,7 @@ func TestQueueGetNext(t *testing.T) {
 			const n = 100
 
 			for i := range n {
-				q.release(FileInfo{
+				insertToQueue(t, q, FileInfo{
 					ObjectId: fmt.Sprintf("obj%d", i),
 					State:    FileStateUploading,
 				})
@@ -165,12 +182,15 @@ func TestQueueGetNext(t *testing.T) {
 
 			got := make([]string, 0, n)
 			for range n {
-				next := q.getNext(func(info FileInfo) bool {
+				next, err := q.GetNext(func(info FileInfo) bool {
 					return info.State == FileStateUploading
 				}, nil)
+				require.NoError(t, err)
+
 				next.State = FileStatePendingDeletion
 				got = append(got, next.ObjectId)
-				q.release(next)
+				err = q.Release(next)
+				require.NoError(t, err)
 			}
 
 			want := make([]string, n)
@@ -195,17 +215,18 @@ func TestQueueSchedule(t *testing.T) {
 			}()
 			defer q.close()
 
-			q.release(FileInfo{
+			insertToQueue(t, q, FileInfo{
 				ObjectId:    "obj1",
 				State:       FileStateUploading,
 				ScheduledAt: time.Now().Add(time.Minute),
 			})
 
-			next := q.getNextScheduled(func(info FileInfo) bool {
+			next, err := q.GetNextScheduled(func(info FileInfo) bool {
 				return info.State == FileStateUploading
 			}, func(info FileInfo) time.Time {
 				return info.ScheduledAt
 			})
+			require.NoError(t, err)
 			assert.Equal(t, "obj1", next.ObjectId)
 		})
 	})
@@ -224,18 +245,19 @@ func TestQueueSchedule(t *testing.T) {
 
 			go func() {
 				time.Sleep(10 * time.Minute)
-				q.release(FileInfo{
+				insertToQueue(t, q, FileInfo{
 					ObjectId:    "obj1",
 					State:       FileStateUploading,
 					ScheduledAt: time.Now().Add(time.Minute),
 				})
 			}()
 
-			next := q.getNextScheduled(func(info FileInfo) bool {
+			next, err := q.GetNextScheduled(func(info FileInfo) bool {
 				return info.State == FileStateUploading
 			}, func(info FileInfo) time.Time {
 				return info.ScheduledAt
 			})
+			require.NoError(t, err)
 			assert.Equal(t, "obj1", next.ObjectId)
 		})
 	})
@@ -252,25 +274,27 @@ func TestQueueSchedule(t *testing.T) {
 			}()
 			defer q.close()
 
-			q.release(FileInfo{
+			insertToQueue(t, q, FileInfo{
 				ObjectId:    "obj1",
 				State:       FileStateUploading,
 				ScheduledAt: time.Now().Add(time.Minute),
 			})
-			q.release(FileInfo{
+			insertToQueue(t, q, FileInfo{
 				ObjectId:    "obj2",
 				State:       FileStateUploading,
 				ScheduledAt: time.Now().Add(10 * time.Minute),
 			})
 
 			// Lock obj1
-			q.get("obj1")
+			_, err := q.GetById("obj1")
+			require.NoError(t, err)
 
-			next := q.getNextScheduled(func(info FileInfo) bool {
+			next, err := q.GetNextScheduled(func(info FileInfo) bool {
 				return info.State == FileStateUploading
 			}, func(info FileInfo) time.Time {
 				return info.ScheduledAt
 			})
+			require.NoError(t, err)
 			assert.Equal(t, "obj2", next.ObjectId)
 		})
 	})
@@ -290,7 +314,7 @@ func TestQueueSchedule(t *testing.T) {
 			const n = 100
 
 			for i := range n {
-				q.release(FileInfo{
+				insertToQueue(t, q, FileInfo{
 					ObjectId:    fmt.Sprintf("obj%d", i),
 					State:       FileStateUploading,
 					ScheduledAt: time.Now().Add(time.Duration(i+1) * time.Minute),
@@ -300,11 +324,12 @@ func TestQueueSchedule(t *testing.T) {
 			resultsCh := make(chan string, n)
 			for range n {
 				go func() {
-					next := q.getNextScheduled(func(info FileInfo) bool {
+					next, err := q.GetNextScheduled(func(info FileInfo) bool {
 						return info.State == FileStateUploading
 					}, func(info FileInfo) time.Time {
 						return info.ScheduledAt
 					})
+					require.NoError(t, err)
 					resultsCh <- next.ObjectId
 				}()
 			}
@@ -334,12 +359,12 @@ func TestQueueSchedule(t *testing.T) {
 			}()
 			defer q.close()
 
-			q.release(FileInfo{
+			insertToQueue(t, q, FileInfo{
 				ObjectId:    "obj1",
 				State:       FileStateUploading,
 				ScheduledAt: time.Now().Add(time.Minute),
 			})
-			q.release(FileInfo{
+			insertToQueue(t, q, FileInfo{
 				ObjectId:    "obj2",
 				State:       FileStateUploading,
 				ScheduledAt: time.Now().Add(time.Hour),
@@ -348,18 +373,19 @@ func TestQueueSchedule(t *testing.T) {
 			go func() {
 				time.Sleep(500 * time.Millisecond)
 
-				q.release(FileInfo{
+				insertToQueue(t, q, FileInfo{
 					ObjectId:    "obj2",
 					State:       FileStateUploading,
 					ScheduledAt: time.Now().Add(time.Millisecond),
 				})
 			}()
 
-			next := q.getNextScheduled(func(info FileInfo) bool {
+			next, err := q.GetNextScheduled(func(info FileInfo) bool {
 				return info.State == FileStateUploading
 			}, func(info FileInfo) time.Time {
 				return info.ScheduledAt
 			})
+			require.NoError(t, err)
 			assert.Equal(t, "obj2", next.ObjectId)
 		})
 	})
@@ -376,12 +402,12 @@ func TestQueueSchedule(t *testing.T) {
 			}()
 			defer q.close()
 
-			q.release(FileInfo{
+			insertToQueue(t, q, FileInfo{
 				ObjectId:    "obj1",
 				State:       FileStateUploading,
 				ScheduledAt: time.Now().Add(time.Minute),
 			})
-			q.release(FileInfo{
+			insertToQueue(t, q, FileInfo{
 				ObjectId:    "obj2",
 				State:       FileStateUploading,
 				ScheduledAt: time.Now().Add(time.Hour),
@@ -390,19 +416,22 @@ func TestQueueSchedule(t *testing.T) {
 			// Object1 was locked for 2 minutes and was changed, so it was no longer satisfied a filter.
 			// Object2 then should be scheduled next
 			go func() {
-				q.get("obj1")
+				_, err := q.GetById("obj1")
+				require.NoError(t, err)
 				time.Sleep(2 * time.Minute)
-				q.release(FileInfo{
+				err = q.Release(FileInfo{
 					ObjectId: "obj1",
 					State:    FileStateDeleted,
 				})
+				require.NoError(t, err)
 			}()
 
-			next := q.getNextScheduled(func(info FileInfo) bool {
+			next, err := q.GetNextScheduled(func(info FileInfo) bool {
 				return info.State == FileStateUploading
 			}, func(info FileInfo) time.Time {
 				return info.ScheduledAt
 			})
+			require.NoError(t, err)
 			assert.Equal(t, "obj2", next.ObjectId)
 		})
 	})
@@ -421,7 +450,7 @@ func TestComplex(t *testing.T) {
 			}()
 			defer q.close()
 
-			q.release(FileInfo{
+			insertToQueue(t, q, FileInfo{
 				ObjectId:    "obj1",
 				State:       FileStateUploading,
 				ScheduledAt: time.Now().Add(time.Hour),
@@ -429,19 +458,22 @@ func TestComplex(t *testing.T) {
 
 			go func() {
 				time.Sleep(1 * time.Minute)
-				next := q.getNext(func(info FileInfo) bool {
+				next, err := q.GetNext(func(info FileInfo) bool {
 					return info.State == FileStateUploading
 				}, nil)
+				require.NoError(t, err)
 				next.Imported = true
 				assert.Equal(t, "obj1", next.ObjectId)
-				q.release(next)
+				err = q.Release(next)
+				require.NoError(t, err)
 			}()
 
-			next := q.getNextScheduled(func(info FileInfo) bool {
+			next, err := q.GetNextScheduled(func(info FileInfo) bool {
 				return info.State == FileStateUploading
 			}, func(info FileInfo) time.Time {
 				return info.ScheduledAt
 			})
+			require.NoError(t, err)
 			assert.Equal(t, "obj1", next.ObjectId)
 			assert.True(t, next.Imported)
 		})
@@ -459,12 +491,12 @@ func TestComplex(t *testing.T) {
 			}()
 			defer q.close()
 
-			q.release(FileInfo{
+			insertToQueue(t, q, FileInfo{
 				ObjectId:    "obj1",
 				State:       FileStateUploading,
 				ScheduledAt: time.Now().Add(time.Hour),
 			})
-			q.release(FileInfo{
+			insertToQueue(t, q, FileInfo{
 				ObjectId:    "obj2",
 				State:       FileStateUploading,
 				ScheduledAt: time.Now().Add(2 * time.Hour),
@@ -472,21 +504,24 @@ func TestComplex(t *testing.T) {
 
 			go func() {
 				time.Sleep(1 * time.Minute)
-				next := q.getNext(func(info FileInfo) bool {
+				next, err := q.GetNext(func(info FileInfo) bool {
 					return info.State == FileStateUploading
 				}, func(info FileInfo) time.Time {
 					return info.ScheduledAt
 				})
+				require.NoError(t, err)
 				next.State = FileStatePendingDeletion
 				assert.Equal(t, "obj1", next.ObjectId)
-				q.release(next)
+				err = q.Release(next)
+				require.NoError(t, err)
 			}()
 
-			next := q.getNextScheduled(func(info FileInfo) bool {
+			next, err := q.GetNextScheduled(func(info FileInfo) bool {
 				return info.State == FileStateUploading
 			}, func(info FileInfo) time.Time {
 				return info.ScheduledAt
 			})
+			require.NoError(t, err)
 			assert.Equal(t, "obj2", next.ObjectId)
 		})
 	})
