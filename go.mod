@@ -9,7 +9,7 @@ require (
 	github.com/PuerkitoBio/goquery v1.10.2
 	github.com/VividCortex/ewma v1.2.0
 	github.com/adrium/goheif v0.0.0-20230113233934-ca402e77a786
-	github.com/anyproto/any-store v0.3.3
+	github.com/anyproto/any-store v0.3.5
 	github.com/anyproto/any-sync v0.9.9-0.20250902140308-af9b0e5aff5c
 	github.com/anyproto/anytype-publish-server/publishclient v0.0.0-20250716122732-cdcfe3a126bb
 	github.com/anyproto/anytype-push-server/pushclient v0.0.0-20250801122506-553f6c085a23
@@ -95,7 +95,7 @@ require (
 	github.com/shirou/gopsutil/v3 v3.24.5
 	github.com/srwiley/oksvg v0.0.0-20221011165216-be6e8873101c
 	github.com/srwiley/rasterx v0.0.0-20220730225603-2ab79fcdd4ef
-	github.com/stretchr/testify v1.10.0
+	github.com/stretchr/testify v1.11.1
 	github.com/swaggo/swag/v2 v2.0.0-rc4
 	github.com/uber/jaeger-client-go v2.30.0+incompatible
 	github.com/valyala/fastjson v1.6.4
