@@ -55,9 +55,7 @@ func MakeDataviewView(isCollection bool, relLinks []*model.RelationLink, viewLay
 		sorts = DefaultLastModifiedDateSort()
 	)
 
-	if len(relLinks) == 0 {
-		visibleRelations = defaultVisibleRelations
-	}
+	visibleRelations = defaultVisibleRelations
 
 	if isCollection {
 		sorts = defaultNameSort()
@@ -93,14 +91,13 @@ func MakeDataviewContent(isCollection bool, ot *model.ObjectType, relLinks []*mo
 		sorts = DefaultLastModifiedDateSort()
 	)
 
-	if len(relLinks) == 0 {
-		visibleRelations = defaultVisibleRelations
-	}
+	visibleRelations = defaultVisibleRelations
 
 	if isCollection {
 		sorts = defaultNameSort()
 	} else if relLinks != nil {
 		for _, relLink := range relLinks {
+
 			visibleRelations = append(visibleRelations, domain.RelationKey(relLink.Key))
 		}
 	} else if ot != nil {
