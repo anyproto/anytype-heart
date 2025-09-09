@@ -44,15 +44,7 @@ const (
 )
 
 var (
-	ErrRestricted             = errors.New("restricted")
-	ErrSystemBlockDelete      = errors.New("deletion of system block is prohibited")
-	ErrInternalRelationDelete = errors.New("deletion of internal relation is prohibited")
-
-	systemBlocks = map[string]struct{}{
-		HeaderLayoutID:      {},
-		TitleBlockID:        {},
-		FeaturedRelationsID: {},
-	}
+	ErrRestricted = errors.New("restricted")
 )
 
 type Doc interface {
@@ -619,9 +611,6 @@ func (s *State) apply(spaceId string, fast, one, withLayouts bool) (msgs []simpl
 	}
 	for id := range bm {
 		if _, ok := inUse[id]; !ok {
-			if _, isSystem := systemBlocks[id]; isSystem {
-				return nil, undo.Action{}, ErrSystemBlockDelete
-			}
 			toRemove = append(toRemove, id)
 		}
 	}
@@ -697,11 +686,6 @@ func (s *State) apply(spaceId string, fast, one, withLayouts bool) (msgs []simpl
 	if s.parent != nil && s.details != nil {
 		prev := s.parent.Details()
 		if diff, keysToUnset := domain.StructDiff(prev, s.details); diff != nil || len(keysToUnset) != 0 {
-			if slices.ContainsFunc(keysToUnset, func(key domain.RelationKey) bool {
-				return bundle.IsInternalRelation(key)
-			}) {
-				return nil, undo.Action{}, ErrInternalRelationDelete
-			}
 			action.Details = &undo.Details{Before: prev.Copy(), After: s.details.Copy()}
 			msgs = append(msgs, WrapEventMessages(false, StructDiffIntoEvents(s.SpaceID(), s.RootId(), diff, keysToUnset))...)
 			s.parent.details = s.details
@@ -733,11 +717,6 @@ func (s *State) apply(spaceId string, fast, one, withLayouts bool) (msgs []simpl
 	if s.parent != nil && s.localDetails != nil {
 		prev := s.parent.LocalDetails()
 		if diff, keysToUnset := domain.StructDiff(prev, s.localDetails); diff != nil || len(keysToUnset) != 0 {
-			if slices.ContainsFunc(keysToUnset, func(key domain.RelationKey) bool {
-				return bundle.IsInternalRelation(key)
-			}) {
-				return nil, undo.Action{}, ErrInternalRelationDelete
-			}
 			msgs = append(msgs, WrapEventMessages(true, StructDiffIntoEvents(spaceId, s.RootId(), diff, keysToUnset))...)
 			s.parent.localDetails = s.localDetails
 		} else if !s.localDetails.Equal(s.parent.localDetails) {
