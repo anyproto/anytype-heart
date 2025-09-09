@@ -362,8 +362,9 @@ func TestState_SetParent(t *testing.T) {
 	st := orig.Copy()
 
 	newState := NewDoc("root", nil).(*State)
-	newState.Add(simple.New(&model.Block{Id: "root", ChildrenIds: []string{"child"}, Content: &model.BlockContentOfSmartblock{Smartblock: &model.BlockContentSmartblock{}}}))
+	newState.Add(simple.New(&model.Block{Id: "root", ChildrenIds: []string{"child", "header"}, Content: &model.BlockContentOfSmartblock{Smartblock: &model.BlockContentSmartblock{}}}))
 	newState.Add(simple.New(&model.Block{Id: "child"}))
+	newState.Add(simple.New(&model.Block{Id: "header"}))
 	newState.SetObjectTypeKeys([]domain.TypeKey{"newOT1", "newOT2"})
 	newState.AddRelationLinks(&model.RelationLink{Format: model.RelationFormat_longtext, Key: "newOne"})
 	newState.AddRelationLinks(&model.RelationLink{Format: model.RelationFormat_longtext, Key: "newTwo"})

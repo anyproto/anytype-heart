@@ -305,6 +305,36 @@ func TestApplyState(t *testing.T) {
 			require.NoError(t, err)
 			assert.Len(t, msgs, 2)
 		})
+		t.Run("deletion of system blocks is prohibited", func(t *testing.T) {
+			d := NewDoc("root", map[string]simple.Block{
+				"root":              base.NewBase(&model.Block{Id: "root", ChildrenIds: []string{HeaderLayoutID}}),
+				HeaderLayoutID:      simple.New(&model.Block{Id: HeaderLayoutID, ChildrenIds: []string{TitleBlockID, DescriptionBlockID, FeaturedRelationsID}}),
+				TitleBlockID:        simple.New(&model.Block{Id: TitleBlockID}),
+				DescriptionBlockID:  simple.New(&model.Block{Id: DescriptionBlockID}),
+				FeaturedRelationsID: simple.New(&model.Block{Id: FeaturedRelationsID}),
+			})
+			s := d.NewState()
+			header := s.Get(HeaderLayoutID)
+			header.Model().ChildrenIds = []string{TitleBlockID, DescriptionBlockID}
+			s.Set(header)
+			_, _, err := ApplyState("", s, true)
+			assert.ErrorIs(t, err, ErrSystemBlockDelete)
+		})
+		t.Run("deletion of internal details is prohibited", func(t *testing.T) {
+			d := NewDoc("root", map[string]simple.Block{
+				"root": base.NewBase(&model.Block{Id: "root"}),
+			})
+			d.(*State).SetDetails(domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+				bundle.RelationKeyId:         domain.String("root"),
+				bundle.RelationKeyType:       domain.String("page"),
+				bundle.RelationKeySpaceId:    domain.String("spc"),
+				bundle.RelationKeyIsArchived: domain.Bool(false),
+			}))
+			s := d.NewState()
+			s.RemoveDetail(bundle.RelationKeyIsArchived)
+			_, _, err := ApplyState("", s, true)
+			assert.ErrorIs(t, err, ErrInternalRelationDelete)
+		})
 	})
 
 }
