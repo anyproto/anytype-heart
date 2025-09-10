@@ -234,7 +234,7 @@ jobs:
           message_format: |
             *Release:* <${{ needs.build.outputs.html_url }}|${{ needs.build.outputs.tag_name || 'none' }}>
             *Description:*
-            ${{ needs.changelog.outputs.body || 'no changes, build skipped' }}
+            ${{ needs.build.outputs.body || 'no changes, build skipped' }}
           footer: "Linked Repo <{repo_url}|{repo}> | <{run_url}|View Workflow Run>"
         env:
           SLACK_WEBHOOK_URL: ${{ (contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled')) && secrets.SLACK_WEBHOOK_URL_ALERTS || secrets.SLACK_WEBHOOK_URL_RELEASE_TRAIN }}
