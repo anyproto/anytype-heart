@@ -1,25 +1,46 @@
 package temp
 
 import (
+	"context"
 	"fmt"
+	"path/filepath"
 	"sync"
 	"testing"
 	"testing/synctest"
 	"time"
 
+	anystore "github.com/anyproto/any-store"
+	"github.com/anyproto/any-store/query"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
-func insertToQueue(t *testing.T, q *queue[FileInfo], it FileInfo) {
+func insertToQueue(t *testing.T, q *fixture, it FileInfo) {
 	err := q.Upsert(it.ObjectId, func(exists bool, prev FileInfo) FileInfo {
 		return it
 	})
 	require.NoError(t, err)
 }
 
-func TestQueue(t *testing.T) {
-	store := newStorage[FileInfo]()
+type fixture struct {
+	db anystore.DB
+	*queue[FileInfo]
+}
+
+func (fx *fixture) close() {
+	fx.queue.close()
+	fx.db.Close()
+}
+
+func newTestQueue(t *testing.T) *fixture {
+	ctx := context.Background()
+	db, err := anystore.Open(ctx, filepath.Join(t.TempDir(), "store.db"), nil)
+	require.NoError(t, err)
+
+	coll, err := db.Collection(ctx, "queue")
+	require.NoError(t, err)
+
+	store := newStorage[FileInfo](coll, marshalFileInfo, unmarshalFileInfo)
 	q := newQueue(store, func(info FileInfo) string {
 		return info.ObjectId
 	})
@@ -27,6 +48,16 @@ func TestQueue(t *testing.T) {
 	go func() {
 		q.run()
 	}()
+
+	return &fixture{
+		db:    db,
+		queue: q,
+	}
+}
+
+func TestQueue(t *testing.T) {
+	q := newTestQueue(t)
+	defer q.close()
 
 	insertToQueue(t, q, FileInfo{
 		ObjectId: "obj1",
@@ -58,14 +89,7 @@ func TestQueue(t *testing.T) {
 func TestQueueGetNext(t *testing.T) {
 	t.Run("basic get next", func(t *testing.T) {
 		synctest.Run(func() {
-			store := newStorage[FileInfo]()
-			q := newQueue(store, func(info FileInfo) string {
-				return info.ObjectId
-			})
-
-			go func() {
-				q.run()
-			}()
+			q := newTestQueue(t)
 			defer q.close()
 
 			insertToQueue(t, q, FileInfo{
@@ -74,9 +98,7 @@ func TestQueueGetNext(t *testing.T) {
 				ScheduledAt: time.Now().Add(time.Minute),
 			})
 
-			next, err := q.GetNext(func(info FileInfo) bool {
-				return info.State == FileStateUploading
-			}, nil)
+			next, err := q.GetNext(getNextRequestUploading())
 			require.NoError(t, err)
 			assert.Equal(t, "obj1", next.ObjectId)
 		})
@@ -84,14 +106,7 @@ func TestQueueGetNext(t *testing.T) {
 
 	t.Run("wait for item", func(t *testing.T) {
 		synctest.Run(func() {
-			store := newStorage[FileInfo]()
-			q := newQueue(store, func(info FileInfo) string {
-				return info.ObjectId
-			})
-
-			go func() {
-				q.run()
-			}()
+			q := newTestQueue(t)
 			defer q.close()
 
 			go func() {
@@ -106,9 +121,7 @@ func TestQueueGetNext(t *testing.T) {
 				require.NoError(t, err)
 			}()
 
-			next, err := q.GetNext(func(info FileInfo) bool {
-				return info.State == FileStateUploading
-			}, nil)
+			next, err := q.GetNext(getNextRequestUploading())
 			require.NoError(t, err)
 			assert.Equal(t, "obj1", next.ObjectId)
 		})
@@ -116,14 +129,7 @@ func TestQueueGetNext(t *testing.T) {
 
 	t.Run("get next in parallel", func(t *testing.T) {
 		synctest.Run(func() {
-			store := newStorage[FileInfo]()
-			q := newQueue(store, func(info FileInfo) string {
-				return info.ObjectId
-			})
-
-			go func() {
-				q.run()
-			}()
+			q := newTestQueue(t)
 			defer q.close()
 
 			const n = 100
@@ -138,9 +144,7 @@ func TestQueueGetNext(t *testing.T) {
 			resultsCh := make(chan string, n)
 			for range n {
 				go func() {
-					next, err := q.GetNext(func(info FileInfo) bool {
-						return info.State == FileStateUploading
-					}, nil)
+					next, err := q.GetNext(getNextRequestUploading())
 					require.NoError(t, err)
 					resultsCh <- next.ObjectId
 				}()
@@ -161,14 +165,7 @@ func TestQueueGetNext(t *testing.T) {
 
 	t.Run("get next one by one", func(t *testing.T) {
 		synctest.Run(func() {
-			store := newStorage[FileInfo]()
-			q := newQueue(store, func(info FileInfo) string {
-				return info.ObjectId
-			})
-
-			go func() {
-				q.run()
-			}()
+			q := newTestQueue(t)
 			defer q.close()
 
 			const n = 100
@@ -182,9 +179,7 @@ func TestQueueGetNext(t *testing.T) {
 
 			got := make([]string, 0, n)
 			for range n {
-				next, err := q.GetNext(func(info FileInfo) bool {
-					return info.State == FileStateUploading
-				}, nil)
+				next, err := q.GetNext(getNextRequestUploading())
 				require.NoError(t, err)
 
 				next.State = FileStatePendingDeletion
@@ -205,14 +200,7 @@ func TestQueueGetNext(t *testing.T) {
 func TestQueueSchedule(t *testing.T) {
 	t.Run("basic schedule", func(t *testing.T) {
 		synctest.Run(func() {
-			store := newStorage[FileInfo]()
-			q := newQueue(store, func(info FileInfo) string {
-				return info.ObjectId
-			})
-
-			go func() {
-				q.run()
-			}()
+			q := newTestQueue(t)
 			defer q.close()
 
 			insertToQueue(t, q, FileInfo{
@@ -221,11 +209,7 @@ func TestQueueSchedule(t *testing.T) {
 				ScheduledAt: time.Now().Add(time.Minute),
 			})
 
-			next, err := q.GetNextScheduled(func(info FileInfo) bool {
-				return info.State == FileStateUploading
-			}, func(info FileInfo) time.Time {
-				return info.ScheduledAt
-			})
+			next, err := q.GetNextScheduled(getNextScheduledRequestUploading())
 			require.NoError(t, err)
 			assert.Equal(t, "obj1", next.ObjectId)
 		})
@@ -233,14 +217,7 @@ func TestQueueSchedule(t *testing.T) {
 
 	t.Run("wait for suitable item", func(t *testing.T) {
 		synctest.Run(func() {
-			store := newStorage[FileInfo]()
-			q := newQueue(store, func(info FileInfo) string {
-				return info.ObjectId
-			})
-
-			go func() {
-				q.run()
-			}()
+			q := newTestQueue(t)
 			defer q.close()
 
 			go func() {
@@ -252,11 +229,7 @@ func TestQueueSchedule(t *testing.T) {
 				})
 			}()
 
-			next, err := q.GetNextScheduled(func(info FileInfo) bool {
-				return info.State == FileStateUploading
-			}, func(info FileInfo) time.Time {
-				return info.ScheduledAt
-			})
+			next, err := q.GetNextScheduled(getNextScheduledRequestUploading())
 			require.NoError(t, err)
 			assert.Equal(t, "obj1", next.ObjectId)
 		})
@@ -264,14 +237,7 @@ func TestQueueSchedule(t *testing.T) {
 
 	t.Run("skip locked", func(t *testing.T) {
 		synctest.Run(func() {
-			store := newStorage[FileInfo]()
-			q := newQueue(store, func(info FileInfo) string {
-				return info.ObjectId
-			})
-
-			go func() {
-				q.run()
-			}()
+			q := newTestQueue(t)
 			defer q.close()
 
 			insertToQueue(t, q, FileInfo{
@@ -289,11 +255,7 @@ func TestQueueSchedule(t *testing.T) {
 			_, err := q.GetById("obj1")
 			require.NoError(t, err)
 
-			next, err := q.GetNextScheduled(func(info FileInfo) bool {
-				return info.State == FileStateUploading
-			}, func(info FileInfo) time.Time {
-				return info.ScheduledAt
-			})
+			next, err := q.GetNextScheduled(getNextScheduledRequestUploading())
 			require.NoError(t, err)
 			assert.Equal(t, "obj2", next.ObjectId)
 		})
@@ -301,14 +263,7 @@ func TestQueueSchedule(t *testing.T) {
 
 	t.Run("schedule in parallel", func(t *testing.T) {
 		synctest.Run(func() {
-			store := newStorage[FileInfo]()
-			q := newQueue(store, func(info FileInfo) string {
-				return info.ObjectId
-			})
-
-			go func() {
-				q.run()
-			}()
+			q := newTestQueue(t)
 			defer q.close()
 
 			const n = 100
@@ -324,11 +279,7 @@ func TestQueueSchedule(t *testing.T) {
 			resultsCh := make(chan string, n)
 			for range n {
 				go func() {
-					next, err := q.GetNextScheduled(func(info FileInfo) bool {
-						return info.State == FileStateUploading
-					}, func(info FileInfo) time.Time {
-						return info.ScheduledAt
-					})
+					next, err := q.GetNextScheduled(getNextScheduledRequestUploading())
 					require.NoError(t, err)
 					resultsCh <- next.ObjectId
 				}()
@@ -349,14 +300,7 @@ func TestQueueSchedule(t *testing.T) {
 
 	t.Run("the second object became scheduled for earlier", func(t *testing.T) {
 		synctest.Run(func() {
-			store := newStorage[FileInfo]()
-			q := newQueue(store, func(info FileInfo) string {
-				return info.ObjectId
-			})
-
-			go func() {
-				q.run()
-			}()
+			q := newTestQueue(t)
 			defer q.close()
 
 			insertToQueue(t, q, FileInfo{
@@ -380,11 +324,7 @@ func TestQueueSchedule(t *testing.T) {
 				})
 			}()
 
-			next, err := q.GetNextScheduled(func(info FileInfo) bool {
-				return info.State == FileStateUploading
-			}, func(info FileInfo) time.Time {
-				return info.ScheduledAt
-			})
+			next, err := q.GetNextScheduled(getNextScheduledRequestUploading())
 			require.NoError(t, err)
 			assert.Equal(t, "obj2", next.ObjectId)
 		})
@@ -392,14 +332,7 @@ func TestQueueSchedule(t *testing.T) {
 
 	t.Run("re-schedule when changed in mid time", func(t *testing.T) {
 		synctest.Run(func() {
-			store := newStorage[FileInfo]()
-			q := newQueue(store, func(info FileInfo) string {
-				return info.ObjectId
-			})
-
-			go func() {
-				q.run()
-			}()
+			q := newTestQueue(t)
 			defer q.close()
 
 			insertToQueue(t, q, FileInfo{
@@ -426,11 +359,7 @@ func TestQueueSchedule(t *testing.T) {
 				require.NoError(t, err)
 			}()
 
-			next, err := q.GetNextScheduled(func(info FileInfo) bool {
-				return info.State == FileStateUploading
-			}, func(info FileInfo) time.Time {
-				return info.ScheduledAt
-			})
+			next, err := q.GetNextScheduled(getNextScheduledRequestUploading())
 			require.NoError(t, err)
 			assert.Equal(t, "obj2", next.ObjectId)
 		})
@@ -440,14 +369,7 @@ func TestQueueSchedule(t *testing.T) {
 func TestComplex(t *testing.T) {
 	t.Run("get next but item is scheduled", func(t *testing.T) {
 		synctest.Run(func() {
-			store := newStorage[FileInfo]()
-			q := newQueue(store, func(info FileInfo) string {
-				return info.ObjectId
-			})
-
-			go func() {
-				q.run()
-			}()
+			q := newTestQueue(t)
 			defer q.close()
 
 			insertToQueue(t, q, FileInfo{
@@ -458,9 +380,7 @@ func TestComplex(t *testing.T) {
 
 			go func() {
 				time.Sleep(1 * time.Minute)
-				next, err := q.GetNext(func(info FileInfo) bool {
-					return info.State == FileStateUploading
-				}, nil)
+				next, err := q.GetNext(getNextRequestUploading())
 				require.NoError(t, err)
 				next.Imported = true
 				assert.Equal(t, "obj1", next.ObjectId)
@@ -468,11 +388,7 @@ func TestComplex(t *testing.T) {
 				require.NoError(t, err)
 			}()
 
-			next, err := q.GetNextScheduled(func(info FileInfo) bool {
-				return info.State == FileStateUploading
-			}, func(info FileInfo) time.Time {
-				return info.ScheduledAt
-			})
+			next, err := q.GetNextScheduled(getNextScheduledRequestUploading())
 			require.NoError(t, err)
 			assert.Equal(t, "obj1", next.ObjectId)
 			assert.True(t, next.Imported)
@@ -481,14 +397,7 @@ func TestComplex(t *testing.T) {
 
 	t.Run("get next, change item, schedule next", func(t *testing.T) {
 		synctest.Run(func() {
-			store := newStorage[FileInfo]()
-			q := newQueue(store, func(info FileInfo) string {
-				return info.ObjectId
-			})
-
-			go func() {
-				q.run()
-			}()
+			q := newTestQueue(t)
 			defer q.close()
 
 			insertToQueue(t, q, FileInfo{
@@ -504,11 +413,7 @@ func TestComplex(t *testing.T) {
 
 			go func() {
 				time.Sleep(1 * time.Minute)
-				next, err := q.GetNext(func(info FileInfo) bool {
-					return info.State == FileStateUploading
-				}, func(info FileInfo) time.Time {
-					return info.ScheduledAt
-				})
+				next, err := q.GetNext(getNextRequestUploading())
 				require.NoError(t, err)
 				next.State = FileStatePendingDeletion
 				assert.Equal(t, "obj1", next.ObjectId)
@@ -516,13 +421,42 @@ func TestComplex(t *testing.T) {
 				require.NoError(t, err)
 			}()
 
-			next, err := q.GetNextScheduled(func(info FileInfo) bool {
-				return info.State == FileStateUploading
-			}, func(info FileInfo) time.Time {
-				return info.ScheduledAt
-			})
+			next, err := q.GetNextScheduled(getNextScheduledRequestUploading())
 			require.NoError(t, err)
 			assert.Equal(t, "obj2", next.ObjectId)
 		})
 	})
+}
+
+func getNextRequestUploading() GetNextRequest[FileInfo] {
+	return GetNextRequest[FileInfo]{
+		StoreFilter: query.Key{
+			Path:   []string{"state"},
+			Filter: query.NewComp(query.CompOpEq, int(FileStateUploading)),
+		},
+		StoreOrder: nil,
+		Filter: func(info FileInfo) bool {
+			return info.State == FileStateUploading
+		},
+	}
+}
+
+func getNextScheduledRequestUploading() GetNextScheduledRequest[FileInfo] {
+	return GetNextScheduledRequest[FileInfo]{
+		StoreFilter: query.Key{
+			Path:   []string{"state"},
+			Filter: query.NewComp(query.CompOpEq, int(FileStateUploading)),
+		},
+		StoreOrder: &query.SortField{
+			Field:   "scheduledAt",
+			Path:    []string{"scheduledAt"},
+			Reverse: false,
+		},
+		Filter: func(info FileInfo) bool {
+			return info.State == FileStateUploading
+		},
+		ScheduledAt: func(info FileInfo) time.Time {
+			return info.ScheduledAt
+		},
+	}
 }
