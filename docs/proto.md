@@ -16418,6 +16418,7 @@ DEPRECATED, GO-1926 |
 | path | [string](#string) | repeated |  |
 | createDirectoryPages | [bool](#bool) |  |  |
 | includePropertiesAsBlock | [bool](#bool) |  |  |
+| noCollection | [bool](#bool) |  |  |
 
 
 
@@ -16543,6 +16544,7 @@ DEPRECATED, GO-1926 |
 | url | [string](#string) |  |  |
 | title | [string](#string) |  |  |
 | isNewSpace | [bool](#bool) |  |  |
+| isAi | [bool](#bool) |  |  |
 
 
 
