@@ -105,7 +105,7 @@ require (
 	github.com/zeebo/blake3 v0.2.4
 	go.abhg.dev/goldmark/wikilink v0.6.0
 	go.uber.org/atomic v1.11.0
-	go.uber.org/mock v0.5.2
+	go.uber.org/mock v0.6.0
 	go.uber.org/multierr v1.11.0
 	go.uber.org/zap v1.27.0
 	golang.org/x/exp v0.0.0-20250819193227-8b4c13bb791b
