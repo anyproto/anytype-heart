@@ -311,13 +311,12 @@ func (s *fileSync) runUploader(ctx context.Context) {
 	// 1. Just try to upload Cids from CidsToUpload -> maybe more cleaner approach, because state machine will be described more thoughtfully.
 	// 2. Add to pending upload queue
 
-	s.processNextPendingUploadItem(ctx)
 	for {
 		select {
-		case <-ticker.C:
-			s.processNextPendingUploadItem(ctx)
 		case <-ctx.Done():
 			return
+		default:
+			s.processNextPendingUploadItem(ctx)
 		}
 	}
 }

@@ -46,7 +46,7 @@ func newTestQueue(t *testing.T) *fixture {
 	})
 
 	go func() {
-		q.run()
+		q.Run()
 	}()
 
 	return &fixture{

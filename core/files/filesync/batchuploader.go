@@ -41,6 +41,7 @@ func (s *fileSync) addToRetryUploadingQueue(objectId string) {
 			return ProcessActionNone, FileInfo{}, nil
 		}
 
+		info.State = FileStatePendingUpload
 		info.ScheduledAt = time.Now().Add(1 * time.Minute)
 		return ProcessActionUpdate, info, nil
 	})
@@ -81,8 +82,7 @@ func (s *fileSync) onBatchUploadError(ctx context.Context, req blockPushManyRequ
 			objectId := req.fileIdToObjectId[fb.FileId]
 			s.addToLimitedQueue(objectId)
 		}
-	}
-	if err != nil {
+	} else {
 		log.Error("add to file many:", zap.Error(err))
 		for _, fb := range req.req.FileBlocks {
 			objectId := req.fileIdToObjectId[fb.FileId]
@@ -93,15 +93,18 @@ func (s *fileSync) onBatchUploadError(ctx context.Context, req blockPushManyRequ
 
 func (s *fileSync) onBatchUploaded(ctx context.Context, req blockPushManyRequest) {
 	for _, fb := range req.req.FileBlocks {
-		cids := make([]cid.Cid, 0, len(fb.Blocks))
-		for _, b := range fb.Blocks {
-			c, err := cid.Cast(b.Cid)
-			if err != nil {
-				log.Error("failed to parse block cid", zap.Error(err))
-			}
-			cids = append(cids, c)
-		}
 		objectId := req.fileIdToObjectId[fb.FileId]
-		s.updateUploadedCids(objectId, cids)
+		s.addToRetryUploadingQueue(objectId)
+		continue
+		// cids := make([]cid.Cid, 0, len(fb.Blocks))
+		// for _, b := range fb.Blocks {
+		// 	c, err := cid.Cast(b.Cid)
+		// 	if err != nil {
+		// 		log.Error("failed to parse block cid", zap.Error(err))
+		// 	}
+		// 	cids = append(cids, c)
+		// }
+		// objectId := req.fileIdToObjectId[fb.FileId]
+		// s.updateUploadedCids(objectId, cids)
 	}
 }

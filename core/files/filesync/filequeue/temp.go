@@ -180,7 +180,7 @@ func NewQueue[T any](store *Storage[T], getId func(T) string) *Queue[T] {
 	}
 }
 
-func (q *Queue[T]) run() {
+func (q *Queue[T]) Run() {
 	// TODO Think about deletion
 	for {
 		select {

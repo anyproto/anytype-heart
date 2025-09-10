@@ -234,6 +234,7 @@ func (s *fileSync) uploadOrBindBlocks(ctx context.Context, fi FileInfo, fileBloc
 			return 0, fmt.Errorf("bind cids: %w", bindErr)
 		}
 		if len(blocksToUpload) == 0 {
+			// TODO Do status update more transparently, for example, return Synced bool. Do this to keep state of FileInfo in sync with filesyncstatus
 			err := s.updateStatus(fi, filesyncstatus.Synced)
 			if err != nil {
 				return 0, fmt.Errorf("add to status update queue: %w", err)

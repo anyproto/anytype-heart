@@ -322,9 +322,12 @@ func (s *service) Create(ctx context.Context, spaceId string, req filemodels.Cre
 		return "", nil, fmt.Errorf("create in space: %w", err)
 	}
 
-	err = s.addImageVariantsToQueue(req, id, space.Id())
+	added, err := s.addImageToSyncQueue(req, id, space.Id())
 	if err != nil {
 		return "", nil, fmt.Errorf("add image variants to sync queue: %w", err)
+	}
+	if added {
+		return id, object, nil
 	}
 
 	syncReq := filesync.AddFileRequest{
@@ -341,7 +344,7 @@ func (s *service) Create(ctx context.Context, spaceId string, req filemodels.Cre
 	return id, object, nil
 }
 
-func (s *service) addImageVariantsToQueue(req filemodels.CreateRequest, id string, spaceId string) error {
+func (s *service) addImageToSyncQueue(req filemodels.CreateRequest, id string, spaceId string) (bool, error) {
 	var imageVariants []imageVariant
 	for _, variant := range req.FileVariants {
 		if variant.Mill == mill.ImageResizeId {
@@ -350,6 +353,9 @@ func (s *service) addImageVariantsToQueue(req filemodels.CreateRequest, id strin
 				size:      variant.Size_,
 			})
 		}
+	}
+	if len(imageVariants) == 0 {
+		return false, nil
 	}
 	sort.Slice(imageVariants, func(i, j int) bool {
 		return imageVariants[i].size < imageVariants[j].size
@@ -366,9 +372,9 @@ func (s *service) addImageVariantsToQueue(req filemodels.CreateRequest, id strin
 		Variants:       variants,
 	})
 	if err != nil {
-		return fmt.Errorf("add image variant to sync queue: %w", err)
+		return false, fmt.Errorf("add image variant to sync queue: %w", err)
 	}
-	return nil
+	return true, nil
 }
 
 func (s *service) createInSpace(ctx context.Context, space clientspace.Space, req filemodels.CreateRequest) (id string, object *domain.Details, err error) {
