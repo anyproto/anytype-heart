@@ -50,9 +50,6 @@ const (
 
 type Message struct {
 	*model.ChatMessage
-
-	// CurrentUserMentioned is memoized result of IsCurrentUserMentioned
-	CurrentUserMentioned bool
 }
 
 type MessagesGetter interface {
@@ -225,7 +222,7 @@ func (m *Message) MarshalAnyenc(marshalTo *anyenc.Value, arena *anyenc.Arena) {
 	marshalTo.Set(ContentKey, content)
 	marshalTo.Set(ReadKey, arenaNewBool(arena, m.Read))
 	marshalTo.Set(MentionReadKey, arenaNewBool(arena, m.MentionRead))
-	marshalTo.Set(HasMentionKey, arenaNewBool(arena, m.CurrentUserMentioned))
+	marshalTo.Set(HasMentionKey, arenaNewBool(arena, m.HasMention))
 	marshalTo.Set(StateIdKey, arena.NewString(m.StateId))
 	marshalTo.Set(ReactionsKey, reactions)
 	marshalTo.Set(SyncedKey, arenaNewBool(arena, m.Synced))
@@ -255,8 +252,8 @@ func (m *messageUnmarshaller) toModel() (*Message, error) {
 			Attachments:      m.attachmentsToModel(),
 			Reactions:        m.reactionsToModel(),
 			Synced:           m.val.GetBool(SyncedKey),
+			HasMention:       m.val.GetBool(HasMentionKey),
 		},
-		CurrentUserMentioned: m.val.GetBool(HasMentionKey),
 	}, nil
 }
 
