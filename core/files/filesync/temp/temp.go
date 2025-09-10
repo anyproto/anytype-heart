@@ -503,7 +503,11 @@ func (q *queue[T]) handleGetNextScheduled(req getNextRequest[T]) {
 		return req.filter(info)
 	})
 	if errors.Is(err, ErrNoRows) {
-		q.getNextScheduledWaiters = append(q.getNextScheduledWaiters, req)
+		if req.subscribe {
+			q.getNextScheduledWaiters = append(q.getNextScheduledWaiters, req)
+		} else {
+			req.responseCh <- itemResponse[T]{err: ErrNoRows}
+		}
 		return
 	}
 	if err != nil {
@@ -528,7 +532,11 @@ func (q *queue[T]) handleGetNext(req getNextRequest[T]) {
 		return req.filter(info)
 	})
 	if errors.Is(err, ErrNoRows) {
-		q.getNextWaiters = append(q.getNextWaiters, req)
+		if req.subscribe {
+			q.getNextWaiters = append(q.getNextWaiters, req)
+		} else {
+			req.responseCh <- itemResponse[T]{err: ErrNoRows}
+		}
 		return
 	}
 	if err != nil {

@@ -104,6 +104,18 @@ func TestQueueGetNext(t *testing.T) {
 		})
 	})
 
+	t.Run("basic get next: no item, subscription disabled", func(t *testing.T) {
+		synctest.Run(func() {
+			q := newTestQueue(t)
+			defer q.close()
+
+			req := getNextRequestUploading()
+			req.Subscribe = false
+			_, err := q.GetNext(req)
+			require.ErrorIs(t, err, ErrNoRows)
+		})
+	})
+
 	t.Run("wait for item", func(t *testing.T) {
 		synctest.Run(func() {
 			q := newTestQueue(t)
@@ -212,6 +224,18 @@ func TestQueueSchedule(t *testing.T) {
 			next, err := q.GetNextScheduled(getNextScheduledRequestUploading())
 			require.NoError(t, err)
 			assert.Equal(t, "obj1", next.ObjectId)
+		})
+	})
+
+	t.Run("basic schedule: no items, no subscription", func(t *testing.T) {
+		synctest.Run(func() {
+			q := newTestQueue(t)
+			defer q.close()
+
+			req := getNextScheduledRequestUploading()
+			req.Subscribe = false
+			_, err := q.GetNextScheduled(req)
+			require.ErrorIs(t, err, ErrNoRows)
 		})
 	})
 
@@ -438,6 +462,7 @@ func getNextRequestUploading() GetNextRequest[FileInfo] {
 		Filter: func(info FileInfo) bool {
 			return info.State == FileStateUploading
 		},
+		Subscribe: true,
 	}
 }
 
@@ -458,5 +483,6 @@ func getNextScheduledRequestUploading() GetNextScheduledRequest[FileInfo] {
 		ScheduledAt: func(info FileInfo) time.Time {
 			return info.ScheduledAt
 		},
+		Subscribe: true,
 	}
 }
