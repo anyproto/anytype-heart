@@ -1,4 +1,4 @@
-package temp
+package filequeue
 
 import (
 	"context"
@@ -10,121 +10,23 @@ import (
 	anystore "github.com/anyproto/any-store"
 	"github.com/anyproto/any-store/anyenc"
 	"github.com/anyproto/any-store/query"
-	"github.com/ipfs/go-cid"
-
-	"github.com/anyproto/anytype-heart/core/domain"
 )
 
 var ErrNotFound = fmt.Errorf("not found")
 var ErrNoRows = fmt.Errorf("no rows")
 
-type FileState int
-
-const (
-	FileStatePendingUpload FileState = iota
-	FileStateUploading
-	FileStateLimited
-	FileStatePendingDeletion
-	FileStateDone
-	FileStateDeleted
-)
-
-type FileInfo struct {
-	FileId      domain.FileId
-	SpaceId     string
-	ObjectId    string
-	State       FileState
-	ScheduledAt time.Time
-	HandledAt   time.Time
-	Variants    []domain.FileId
-	AddedByUser bool
-	Imported    bool
-
-	BytesToUpload int
-	CidsToUpload  map[cid.Cid]struct{}
-}
-
-func marshalFileInfo(arena *anyenc.Arena, info FileInfo) *anyenc.Value {
-	obj := arena.NewObject()
-	obj.Set("fileId", arena.NewString(info.FileId.String()))
-	obj.Set("spaceId", arena.NewString(info.SpaceId))
-	obj.Set("id", arena.NewString(info.ObjectId))
-	obj.Set("state", arena.NewNumberInt(int(info.State)))
-	obj.Set("addedAt", arena.NewNumberInt(int(info.ScheduledAt.UTC().Unix())))
-	obj.Set("handledAt", arena.NewNumberInt(int(info.HandledAt.UTC().Unix())))
-	variants := arena.NewArray()
-	for i, variant := range info.Variants {
-		variants.SetArrayItem(i, arena.NewString(variant.String()))
-	}
-	obj.Set("variants", variants)
-	obj.Set("addedByUser", newBool(arena, info.AddedByUser))
-	obj.Set("imported", newBool(arena, info.Imported))
-	obj.Set("bytesToUpload", arena.NewNumberInt(info.BytesToUpload))
-	cidsToUpload := arena.NewArray()
-	var i int
-	for c := range info.CidsToUpload {
-		cidsToUpload.SetArrayItem(i, arena.NewString(c.String()))
-	}
-	obj.Set("cidsToUpload", cidsToUpload)
-	return obj
-}
-
-func newBool(arena *anyenc.Arena, val bool) *anyenc.Value {
-	if val {
-		return arena.NewTrue()
-	}
-	return arena.NewFalse()
-}
-
-func unmarshalFileInfo(doc *anyenc.Value) (FileInfo, error) {
-	rawVariants := doc.GetArray("variants")
-	var variants []domain.FileId
-	if len(rawVariants) > 0 {
-		variants = make([]domain.FileId, 0, len(rawVariants))
-		for _, v := range rawVariants {
-			variants = append(variants, domain.FileId(v.GetString()))
-		}
-	}
-	var cidsToUpload map[cid.Cid]struct{}
-	rawCidsToUpload := doc.GetArray("cidsToUpload")
-	if len(rawCidsToUpload) > 0 {
-		cidsToUpload = make(map[cid.Cid]struct{}, len(rawCidsToUpload))
-		for _, raw := range rawCidsToUpload {
-			c, err := cid.Parse(raw.GetString())
-			if err != nil {
-				return FileInfo{}, fmt.Errorf("parse cid: %w", err)
-			}
-			cidsToUpload[c] = struct{}{}
-		}
-	}
-	fileId := domain.FileId(doc.GetString("fileId"))
-	return FileInfo{
-		FileId:        fileId,
-		SpaceId:       doc.GetString("spaceId"),
-		ObjectId:      doc.GetString("id"),
-		State:         FileState(doc.GetInt("state")),
-		ScheduledAt:   time.Unix(int64(doc.GetInt("addedAt")), 0).UTC(),
-		HandledAt:     time.Unix(int64(doc.GetInt("handledAt")), 0).UTC(),
-		Variants:      variants,
-		AddedByUser:   doc.GetBool("addedByUser"),
-		Imported:      doc.GetBool("imported"),
-		BytesToUpload: doc.GetInt("bytesToUpload"),
-		CidsToUpload:  cidsToUpload,
-	}, nil
-}
-
 type marshalFunc[T any] func(arena *anyenc.Arena, val T) *anyenc.Value
 type unmarshalFunc[T any] func(v *anyenc.Value) (T, error)
 
-type storage[T any] struct {
+type Storage[T any] struct {
 	arena     *anyenc.Arena
 	coll      anystore.Collection
 	marshal   marshalFunc[T]
 	unmarshal unmarshalFunc[T]
 }
 
-func newStorage[T any](coll anystore.Collection, marshal marshalFunc[T], unmarshal unmarshalFunc[T]) *storage[T] {
-	return &storage[T]{
+func NewStorage[T any](coll anystore.Collection, marshal marshalFunc[T], unmarshal unmarshalFunc[T]) *Storage[T] {
+	return &Storage[T]{
 		arena:     &anyenc.Arena{},
 		coll:      coll,
 		marshal:   marshal,
@@ -132,7 +34,7 @@ func newStorage[T any](coll anystore.Collection, marshal marshalFunc[T], unmarsh
 	}
 }
 
-func (s *storage[T]) get(ctx context.Context, objectId string) (T, error) {
+func (s *Storage[T]) get(ctx context.Context, objectId string) (T, error) {
 	doc, err := s.coll.FindId(ctx, objectId)
 	if errors.Is(err, anystore.ErrDocNotFound) {
 		var defVal T
@@ -142,7 +44,7 @@ func (s *storage[T]) get(ctx context.Context, objectId string) (T, error) {
 	return s.unmarshal(doc.Value())
 }
 
-func (s *storage[T]) set(ctx context.Context, objectId string, file T) error {
+func (s *Storage[T]) set(ctx context.Context, objectId string, file T) error {
 	defer s.arena.Reset()
 
 	val := s.marshal(s.arena, file)
@@ -150,11 +52,11 @@ func (s *storage[T]) set(ctx context.Context, objectId string, file T) error {
 	return s.coll.UpsertOne(ctx, val)
 }
 
-func (s *storage[T]) delete(ctx context.Context, objectId string) error {
+func (s *Storage[T]) delete(ctx context.Context, objectId string) error {
 	return s.coll.DeleteId(ctx, objectId)
 }
 
-func (s *storage[T]) query(ctx context.Context, filter query.Filter, order query.Sort, inMemoryFilter func(T) bool) (T, error) {
+func (s *Storage[T]) query(ctx context.Context, filter query.Filter, order query.Sort, inMemoryFilter func(T) bool) (T, error) {
 	var defVal T
 
 	var sortArgs []any
@@ -233,11 +135,11 @@ type releaseRequest[T any] struct {
 	responseCh chan error
 }
 
-type queue[T any] struct {
+type Queue[T any] struct {
 	ctx       context.Context
 	ctxCancel context.CancelFunc
 
-	store *storage[T]
+	store *Storage[T]
 
 	getId func(T) string
 
@@ -258,9 +160,9 @@ type queue[T any] struct {
 	scheduled  map[string]scheduledItem[T]
 }
 
-func newQueue[T any](store *storage[T], getId func(T) string) *queue[T] {
+func NewQueue[T any](store *Storage[T], getId func(T) string) *Queue[T] {
 	ctx, ctxCancel := context.WithCancel(context.Background())
-	return &queue[T]{
+	return &Queue[T]{
 		ctx:                ctx,
 		ctxCancel:          ctxCancel,
 		store:              store,
@@ -278,7 +180,7 @@ func newQueue[T any](store *storage[T], getId func(T) string) *queue[T] {
 	}
 }
 
-func (q *queue[T]) run() {
+func (q *Queue[T]) run() {
 	// TODO Think about deletion
 	for {
 		select {
@@ -299,7 +201,7 @@ func (q *queue[T]) run() {
 	}
 }
 
-func (q *queue[T]) handleGetById(req getByIdRequest[T]) {
+func (q *Queue[T]) handleGetById(req getByIdRequest[T]) {
 	_, isLocked := q.taskLocked[req.objectId]
 	if isLocked {
 		q.getByIdWaiters[req.objectId] = append(q.getByIdWaiters[req.objectId], req.responseCh)
@@ -311,7 +213,7 @@ func (q *queue[T]) handleGetById(req getByIdRequest[T]) {
 	}
 }
 
-func (q *queue[T]) handleScheduledItem(req scheduledItem[T]) {
+func (q *Queue[T]) handleScheduledItem(req scheduledItem[T]) {
 	// That means that the scheduling of the item was canceled
 	if !q.isScheduled(req.item) {
 		return
@@ -330,7 +232,7 @@ func (q *queue[T]) handleScheduledItem(req scheduledItem[T]) {
 	}
 }
 
-func (q *queue[T]) handleReleaseItem(req releaseRequest[T]) {
+func (q *Queue[T]) handleReleaseItem(req releaseRequest[T]) {
 	item := req.item
 	if _, ok := q.taskLocked[q.getId(item)]; !ok {
 		req.responseCh <- fmt.Errorf("item is not locked")
@@ -353,7 +255,7 @@ func (q *queue[T]) handleReleaseItem(req releaseRequest[T]) {
 	req.responseCh <- nil
 }
 
-func (q *queue[T]) checkGetNextWaiters(item T, responded bool) bool {
+func (q *Queue[T]) checkGetNextWaiters(item T, responded bool) bool {
 	if responded {
 		return responded
 	}
@@ -370,7 +272,7 @@ func (q *queue[T]) checkGetNextWaiters(item T, responded bool) bool {
 	return responded
 }
 
-func (q *queue[T]) checkNextScheduledWaiters(item T, responded bool) bool {
+func (q *Queue[T]) checkNextScheduledWaiters(item T, responded bool) bool {
 	if responded {
 		return responded
 	}
@@ -398,7 +300,7 @@ func (q *queue[T]) checkNextScheduledWaiters(item T, responded bool) bool {
 // 1. If the item was scheduled and still satisfies the filter, reschedule it
 // 2. If the item was scheduled and no longer satisfies the filter, cancel the timer and schedule the next item for the request
 // 3. If the item wasn't scheduled, but it's before the other scheduled item, schedule it instead
-func (q *queue[T]) checkInSchedule(item T) {
+func (q *Queue[T]) checkInSchedule(item T) {
 	for _, sch := range q.scheduled {
 		if q.getId(sch.item) == q.getId(item) {
 			close(sch.cancelTimerCh)
@@ -418,14 +320,14 @@ func (q *queue[T]) checkInSchedule(item T) {
 	}
 }
 
-func (q *queue[T]) isScheduled(item T) bool {
+func (q *Queue[T]) isScheduled(item T) bool {
 	_, ok := q.scheduled[q.getId(item)]
 	return ok
 }
 
 // checkDueWaiters checks that we can return the item to any waiter.
 // If the item no longer satisfies a filter for a given waiter, schedule a next item for the waiter's request
-func (q *queue[T]) checkDueWaiters(item T, responded bool) bool {
+func (q *Queue[T]) checkDueWaiters(item T, responded bool) bool {
 	dueWaiters := q.dueWaiters[q.getId(item)]
 	if len(dueWaiters) == 0 {
 		return responded
@@ -462,7 +364,7 @@ func (q *queue[T]) checkDueWaiters(item T, responded bool) bool {
 	return responded
 }
 
-func (q *queue[T]) checkGetByIdWaiters(item T, responded bool) bool {
+func (q *Queue[T]) checkGetByIdWaiters(item T, responded bool) bool {
 	if responded {
 		return responded
 	}
@@ -485,14 +387,14 @@ func (q *queue[T]) checkGetByIdWaiters(item T, responded bool) bool {
 	return responded
 }
 
-func (q *queue[T]) close() {
+func (q *Queue[T]) close() {
 	if q.ctxCancel != nil {
 		q.ctxCancel()
 	}
 	close(q.closeCh)
 }
 
-func (q *queue[T]) handleGetNextScheduled(req getNextRequest[T]) {
+func (q *Queue[T]) handleGetNextScheduled(req getNextRequest[T]) {
 	next, err := q.store.query(q.ctx, req.storeFilter, req.storeOrder, func(info T) bool {
 		if _, ok := q.taskLocked[q.getId(info)]; ok {
 			return false
@@ -524,7 +426,7 @@ func (q *queue[T]) handleGetNextScheduled(req getNextRequest[T]) {
 	q.scheduleItem(req, next)
 }
 
-func (q *queue[T]) handleGetNext(req getNextRequest[T]) {
+func (q *Queue[T]) handleGetNext(req getNextRequest[T]) {
 	next, err := q.store.query(q.ctx, req.storeFilter, req.storeOrder, func(info T) bool {
 		if _, ok := q.taskLocked[q.getId(info)]; ok {
 			return false
@@ -548,7 +450,7 @@ func (q *queue[T]) handleGetNext(req getNextRequest[T]) {
 	req.responseCh <- itemResponse[T]{item: next}
 }
 
-func (q *queue[T]) scheduleItem(req getNextRequest[T], next T) {
+func (q *Queue[T]) scheduleItem(req getNextRequest[T], next T) {
 	timer := time.NewTimer(time.Until(req.scheduledAt(next)))
 	cancelTimerCh := make(chan struct{})
 	scheduled := scheduledItem[T]{
@@ -573,7 +475,7 @@ func (q *queue[T]) scheduleItem(req getNextRequest[T], next T) {
 	}()
 }
 
-func (q *queue[T]) GetById(objectId string) (T, error) {
+func (q *Queue[T]) GetById(objectId string) (T, error) {
 	responseCh := make(chan itemResponse[T], 1)
 
 	q.getByIdCh <- getByIdRequest[T]{
@@ -619,7 +521,7 @@ func (r GetNextScheduledRequest[T]) Validate() error {
 	return nil
 }
 
-func (q *queue[T]) GetNext(req GetNextRequest[T]) (T, error) {
+func (q *Queue[T]) GetNext(req GetNextRequest[T]) (T, error) {
 	err := req.Validate()
 	if err != nil {
 		var defVal T
@@ -640,7 +542,7 @@ func (q *queue[T]) GetNext(req GetNextRequest[T]) (T, error) {
 	return task.item, task.err
 }
 
-func (q *queue[T]) GetNextScheduled(req GetNextScheduledRequest[T]) (T, error) {
+func (q *Queue[T]) GetNextScheduled(req GetNextScheduledRequest[T]) (T, error) {
 	err := req.Validate()
 	if err != nil {
 		var defVal T
@@ -662,7 +564,7 @@ func (q *queue[T]) GetNextScheduled(req GetNextScheduledRequest[T]) (T, error) {
 	return task.item, task.err
 }
 
-func (q *queue[T]) Upsert(id string, modifier func(exists bool, prev T) T) error {
+func (q *Queue[T]) Upsert(id string, modifier func(exists bool, prev T) T) error {
 	it, err := q.GetById(id)
 	if err != nil && !errors.Is(err, ErrNotFound) {
 		return err
@@ -674,7 +576,7 @@ func (q *queue[T]) Upsert(id string, modifier func(exists bool, prev T) T) error
 	return q.Release(next)
 }
 
-func (q *queue[T]) Release(task T) error {
+func (q *Queue[T]) Release(task T) error {
 	responseCh := make(chan error, 1)
 
 	q.releaseCh <- releaseRequest[T]{

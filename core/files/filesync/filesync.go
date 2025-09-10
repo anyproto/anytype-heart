@@ -2,6 +2,7 @@ package filesync
 
 import (
 	"context"
+	"fmt"
 	"io"
 	"net/http"
 	"sync"
@@ -18,6 +19,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/core/files/filehelper"
 	rpcstore2 "github.com/anyproto/anytype-heart/core/files/filestorage/rpcstore"
+	"github.com/anyproto/anytype-heart/core/files/filesync/filequeue"
 	"github.com/anyproto/anytype-heart/core/syncstatus/filesyncstatus"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/datastore/anystoreprovider"
@@ -84,8 +86,7 @@ type fileSync struct {
 	requestsBatcher *requestsBatcher
 	requestsCh      chan blockPushManyRequest
 
-	filesRepository *filesRepository
-	stateProcessor  *stateProcessor
+	queue *filequeue.Queue[FileInfo]
 
 	importEventsMutex sync.Mutex
 	importEvents      []*pb.Event
@@ -106,12 +107,18 @@ func (s *fileSync) Init(a *app.App) (err error) {
 	s.cfg = app.MustComponent[*config.Config](a)
 	s.limitManager = newLimitManager(s.rpcStore)
 
-	s.filesRepository = newFilesRepository()
-	s.stateProcessor = newStateProcessor(s.filesRepository)
-
 	provider := app.MustComponent[anystoreprovider.Provider](a)
 	db := provider.GetCommonDb()
-	_ = db
+
+	queueColl, err := db.Collection(context.Background(), "filesync/queue")
+	if err != nil {
+		return fmt.Errorf("get queue collection: %w", err)
+	}
+
+	store := filequeue.NewStorage(queueColl, marshalFileInfo, unmarshalFileInfo)
+	s.queue = filequeue.NewQueue(store, func(info FileInfo) string {
+		return info.ObjectId
+	})
 
 	s.nodeUsageCache = keyvaluestore.NewJsonFromCollection[NodeUsage](provider.GetSystemCollection())
 

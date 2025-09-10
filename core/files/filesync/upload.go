@@ -49,14 +49,13 @@ func (req AddFileRequest) ToQueueItem(addedTime time.Time) (*QueueItem, error) {
 }
 
 func (s *fileSync) AddFile(req AddFileRequest) (err error) {
-	s.stateProcessor.process(req.FileObjectId, func(_ bool, _ FileInfo) (ProcessAction, FileInfo, error) {
+	return s.process(req.FileObjectId, func(_ bool, _ FileInfo) (ProcessAction, FileInfo, error) {
 		info := FileInfo{
 			FileId:        req.FileId.FileId,
 			SpaceId:       req.FileId.SpaceId,
 			ObjectId:      req.FileObjectId,
 			State:         FileStatePendingUpload,
-			AddedAt:       time.Now(),
-			HandledAt:     time.Time{},
+			ScheduledAt:   time.Now(),
 			Variants:      req.Variants,
 			AddedByUser:   req.UploadedByUser,
 			Imported:      req.Imported,
@@ -65,7 +64,6 @@ func (s *fileSync) AddFile(req AddFileRequest) (err error) {
 		}
 		return ProcessActionUpdate, info, nil
 	})
-	return nil
 }
 
 func (s *fileSync) SendImportEvents() {

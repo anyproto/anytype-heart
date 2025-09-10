@@ -2,15 +2,18 @@ package filesync
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"sync"
 	"time"
 
+	"github.com/anyproto/any-store/query"
 	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
 	"go.uber.org/zap"
 
 	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/core/files/filesync/filequeue"
 	"github.com/anyproto/anytype-heart/core/syncstatus/filesyncstatus"
 )
 
@@ -30,8 +33,7 @@ type FileInfo struct {
 	SpaceId     string
 	ObjectId    string
 	State       FileState
-	AddedAt     time.Time
-	HandledAt   time.Time
+	ScheduledAt time.Time
 	Variants    []domain.FileId
 	AddedByUser bool
 	Imported    bool
@@ -52,19 +54,16 @@ func (i FileInfo) Key() string {
 }
 
 func (i FileInfo) ToLimitReached() FileInfo {
-	i.HandledAt = time.Now()
 	i.State = FileStateLimited
 	return i
 }
 
 func (i FileInfo) ToUploading() FileInfo {
-	i.HandledAt = time.Now()
 	i.State = FileStateUploading
 	return i
 }
 
 func (i FileInfo) ToPendingDeletion() FileInfo {
-	i.HandledAt = time.Now()
 	i.State = FileStatePendingDeletion
 	return i
 }
@@ -176,7 +175,6 @@ func (s *fileSync) processFileUploading(ctx context.Context, it FileInfo) (FileI
 		return it, nil
 	}
 
-	it.HandledAt = time.Now()
 	return it, nil
 }
 
@@ -324,20 +322,51 @@ func (s *fileSync) runUploader(ctx context.Context) {
 	}
 }
 
-func (s *fileSync) processNextPendingUploadItem(ctx context.Context) {
-	next, ok := s.filesRepository.find(func(file FileInfo) bool {
-		return file.State == FileStatePendingUpload && time.Since(file.HandledAt) > time.Minute
+func (s *fileSync) processNextPendingUploadItem(ctx context.Context) error {
+	item, err := s.queue.GetNextScheduled(filequeue.GetNextScheduledRequest[FileInfo]{
+		Subscribe: true,
+		StoreFilter: query.Key{
+			Path:   []string{"state"},
+			Filter: query.NewComp(query.CompOpEq, int(FileStatePendingUpload)),
+		},
+		StoreOrder: &query.SortField{
+			Field:   "scheduledAt",
+			Path:    []string{"scheduledAt"},
+			Reverse: false,
+		},
+		Filter: func(info FileInfo) bool {
+			return info.State == FileStatePendingUpload
+		},
+		ScheduledAt: func(info FileInfo) time.Time {
+			return info.ScheduledAt
+		},
 	})
-
-	if ok {
-		s.stateProcessor.process(next.Key(), func(exists bool, info FileInfo) (ProcessAction, FileInfo, error) {
-			if info.State == FileStatePendingUpload {
-				next, err := s.processFilePendingUpload(ctx, info)
-				return ProcessActionUpdate, next, err
-			}
-			return ProcessActionNone, info, nil
-		})
+	if err != nil {
+		return fmt.Errorf("get next scheduled item: %w", err)
 	}
+
+	next, err := s.processFilePendingUpload(ctx, item)
+
+	releaseErr := s.queue.Release(next)
+
+	return errors.Join(releaseErr, err)
+}
+
+func (s *fileSync) process(id string, proc func(exists bool, info FileInfo) (ProcessAction, FileInfo, error)) error {
+	item, err := s.queue.GetById(id)
+	if err != nil && !errors.Is(err, filequeue.ErrNotFound) {
+		return fmt.Errorf("get item: %w", err)
+	}
+	exists := !errors.Is(err, filequeue.ErrNotFound)
+
+	act, next, err := proc(exists, item)
+	if err != nil {
+		return errors.Join(s.queue.Release(item), fmt.Errorf("process item: %w", err))
+	}
+
+	_ = act
+
+	return s.queue.Release(next)
 }
 
 // func (s *fileSync) runUploadingProcessor(ctx context.Context) {

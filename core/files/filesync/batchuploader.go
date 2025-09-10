@@ -26,7 +26,7 @@ func (s *fileSync) runBatchUploader() {
 }
 
 func (s *fileSync) addToLimitedQueue(objectId string) {
-	s.stateProcessor.process(objectId, func(exists bool, info FileInfo) (ProcessAction, FileInfo, error) {
+	s.process(objectId, func(exists bool, info FileInfo) (ProcessAction, FileInfo, error) {
 		if !exists {
 			return ProcessActionNone, FileInfo{}, nil
 		}
@@ -36,18 +36,18 @@ func (s *fileSync) addToLimitedQueue(objectId string) {
 }
 
 func (s *fileSync) addToRetryUploadingQueue(objectId string) {
-	s.stateProcessor.process(objectId, func(exists bool, info FileInfo) (ProcessAction, FileInfo, error) {
+	s.process(objectId, func(exists bool, info FileInfo) (ProcessAction, FileInfo, error) {
 		if !exists {
 			return ProcessActionNone, FileInfo{}, nil
 		}
 
-		info.HandledAt = time.Now()
+		info.ScheduledAt = time.Now().Add(1 * time.Minute)
 		return ProcessActionUpdate, info, nil
 	})
 }
 
 func (s *fileSync) updateUploadedCids(objectId string, cids []cid.Cid) {
-	s.stateProcessor.process(objectId, func(exists bool, info FileInfo) (ProcessAction, FileInfo, error) {
+	s.process(objectId, func(exists bool, info FileInfo) (ProcessAction, FileInfo, error) {
 		if !exists {
 			return ProcessActionNone, FileInfo{}, nil
 		}

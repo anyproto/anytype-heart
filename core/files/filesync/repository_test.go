@@ -179,7 +179,7 @@ func givenFileInfo() FileInfo {
 		SpaceId:       "space1",
 		ObjectId:      "object1",
 		State:         FileStateUploading,
-		AddedAt:       time.Date(2021, time.December, 31, 12, 55, 12, 0, time.UTC),
+		ScheduledAt:   time.Date(2021, time.December, 31, 12, 55, 12, 0, time.UTC),
 		HandledAt:     time.Date(2022, time.January, 1, 13, 56, 13, 0, time.UTC),
 		Variants:      []domain.FileId{"variant1", "variant2"},
 		AddedByUser:   true,

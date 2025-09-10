@@ -1,4 +1,4 @@
-package temp
+package filequeue
 
 import (
 	"context"
@@ -24,11 +24,11 @@ func insertToQueue(t *testing.T, q *fixture, it FileInfo) {
 
 type fixture struct {
 	db anystore.DB
-	*queue[FileInfo]
+	*Queue[FileInfo]
 }
 
 func (fx *fixture) close() {
-	fx.queue.close()
+	fx.Queue.close()
 	fx.db.Close()
 }
 
@@ -40,8 +40,8 @@ func newTestQueue(t *testing.T) *fixture {
 	coll, err := db.Collection(ctx, "queue")
 	require.NoError(t, err)
 
-	store := newStorage[FileInfo](coll, marshalFileInfo, unmarshalFileInfo)
-	q := newQueue(store, func(info FileInfo) string {
+	store := NewStorage[FileInfo](coll, marshalFileInfo, unmarshalFileInfo)
+	q := NewQueue(store, func(info FileInfo) string {
 		return info.ObjectId
 	})
 
@@ -51,7 +51,7 @@ func newTestQueue(t *testing.T) *fixture {
 
 	return &fixture{
 		db:    db,
-		queue: q,
+		Queue: q,
 	}
 }
 

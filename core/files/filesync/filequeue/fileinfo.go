@@ -1,4 +1,4 @@
-package filesync
+package filequeue
 
 import (
 	"fmt"
@@ -10,13 +10,40 @@ import (
 	"github.com/anyproto/anytype-heart/core/domain"
 )
 
+type FileState int
+
+const (
+	FileStatePendingUpload FileState = iota
+	FileStateUploading
+	FileStateLimited
+	FileStatePendingDeletion
+	FileStateDone
+	FileStateDeleted
+)
+
+type FileInfo struct {
+	FileId      domain.FileId
+	SpaceId     string
+	ObjectId    string
+	State       FileState
+	ScheduledAt time.Time
+	HandledAt   time.Time
+	Variants    []domain.FileId
+	AddedByUser bool
+	Imported    bool
+
+	BytesToUpload int
+	CidsToUpload  map[cid.Cid]struct{}
+}
+
 func marshalFileInfo(arena *anyenc.Arena, info FileInfo) *anyenc.Value {
 	obj := arena.NewObject()
 	obj.Set("fileId", arena.NewString(info.FileId.String()))
 	obj.Set("spaceId", arena.NewString(info.SpaceId))
 	obj.Set("id", arena.NewString(info.ObjectId))
 	obj.Set("state", arena.NewNumberInt(int(info.State)))
-	obj.Set("scheduledAt", arena.NewNumberInt(int(info.ScheduledAt.UTC().Unix())))
+	obj.Set("addedAt", arena.NewNumberInt(int(info.ScheduledAt.UTC().Unix())))
+	obj.Set("handledAt", arena.NewNumberInt(int(info.HandledAt.UTC().Unix())))
 	variants := arena.NewArray()
 	for i, variant := range info.Variants {
 		variants.SetArrayItem(i, arena.NewString(variant.String()))
@@ -43,28 +70,33 @@ func newBool(arena *anyenc.Arena, val bool) *anyenc.Value {
 
 func unmarshalFileInfo(doc *anyenc.Value) (FileInfo, error) {
 	rawVariants := doc.GetArray("variants")
-	variants := make([]domain.FileId, 0, len(rawVariants))
-	for _, v := range rawVariants {
-		variants = append(variants, domain.FileId(v.GetString()))
-	}
-	cidsToUpload := map[cid.Cid]struct{}{}
-	for _, raw := range doc.GetArray("cidsToUpload") {
-		c, err := cid.Parse(raw.GetString())
-		if err != nil {
-			return FileInfo{}, fmt.Errorf("parse cid: %w", err)
+	var variants []domain.FileId
+	if len(rawVariants) > 0 {
+		variants = make([]domain.FileId, 0, len(rawVariants))
+		for _, v := range rawVariants {
+			variants = append(variants, domain.FileId(v.GetString()))
 		}
-		cidsToUpload[c] = struct{}{}
+	}
+	var cidsToUpload map[cid.Cid]struct{}
+	rawCidsToUpload := doc.GetArray("cidsToUpload")
+	if len(rawCidsToUpload) > 0 {
+		cidsToUpload = make(map[cid.Cid]struct{}, len(rawCidsToUpload))
+		for _, raw := range rawCidsToUpload {
+			c, err := cid.Parse(raw.GetString())
+			if err != nil {
+				return FileInfo{}, fmt.Errorf("parse cid: %w", err)
+			}
+			cidsToUpload[c] = struct{}{}
+		}
 	}
 	fileId := domain.FileId(doc.GetString("fileId"))
-	if !fileId.Valid() {
-		return FileInfo{}, fmt.Errorf("invalid file id")
-	}
 	return FileInfo{
 		FileId:        fileId,
 		SpaceId:       doc.GetString("spaceId"),
 		ObjectId:      doc.GetString("id"),
 		State:         FileState(doc.GetInt("state")),
-		ScheduledAt:   time.Unix(int64(doc.GetInt("scheduledAt")), 0).UTC(),
+		ScheduledAt:   time.Unix(int64(doc.GetInt("addedAt")), 0).UTC(),
+		HandledAt:     time.Unix(int64(doc.GetInt("handledAt")), 0).UTC(),
 		Variants:      variants,
 		AddedByUser:   doc.GetBool("addedByUser"),
 		Imported:      doc.GetBool("imported"),
@@ -72,10 +104,3 @@ func unmarshalFileInfo(doc *anyenc.Value) (FileInfo, error) {
 		CidsToUpload:  cidsToUpload,
 	}, nil
 }
-
-/*
-queue behavior:
-	- get next item, handle it OR start timer to wait for it
-	- subscribe for all changes
-	- wait for next item's timer OR for subscription change
-*/
