@@ -21,6 +21,7 @@ import (
 	"go.uber.org/zap"
 	"golang.org/x/exp/slices"
 
+	"github.com/anyproto/anytype-heart/core/anytype/config"
 	"github.com/anyproto/anytype-heart/core/block/export"
 	"github.com/anyproto/anytype-heart/core/identity"
 	"github.com/anyproto/anytype-heart/core/inviteservice"
@@ -39,15 +40,6 @@ var (
 )
 
 const CName = "common.core.publishservice"
-
-const (
-	membershipLimit       = 6000 << 20
-	defaultLimit          = 10 << 20
-	inviteLinkUrlTemplate = "https://invite.any.coop/%s#%s"
-	memberUrlTemplate     = "https://%s.org"
-	defaultUrlTemplate    = "https://any.coop/%s"
-	indexFileName         = "index.json.gz"
-)
 
 var log = logger.NewNamed(CName)
 
@@ -95,6 +87,7 @@ type service struct {
 	inviteService        inviteservice.InviteService
 	objectStore          objectstore.ObjectStore
 	tempDirService       core.TempDirProvider
+	limitsConfig         config.PublishLimitsConfig
 }
 
 func New() Service {
@@ -109,6 +102,7 @@ func (s *service) Init(a *app.App) error {
 	s.inviteService = app.MustComponent[inviteservice.InviteService](a)
 	s.objectStore = app.MustComponent[objectstore.ObjectStore](a)
 	s.tempDirService = app.MustComponent[core.TempDirProvider](a)
+	s.limitsConfig = app.MustComponent[*config.Config](a).GetPublishLimits()
 	return nil
 }
 
@@ -226,7 +220,7 @@ func (s *service) applyInviteLink(ctx context.Context, spaceId string, snapshot 
 	if err != nil {
 		return err
 	}
-	snapshot.Meta.InviteLink = fmt.Sprintf(inviteLinkUrlTemplate, inviteInfo.InviteFileCid, inviteInfo.InviteFileKey)
+	snapshot.Meta.InviteLink = fmt.Sprintf(s.limitsConfig.InviteLinkUrlTemplate, inviteInfo.InviteFileCid, inviteInfo.InviteFileKey)
 	return nil
 }
 
@@ -329,7 +323,7 @@ func (s *service) createIndexFile(tempPublishDir string, uberSnapshot Publishing
 		return err
 	}
 
-	outputFile := filepath.Join(tempPublishDir, indexFileName)
+	outputFile := filepath.Join(tempPublishDir, s.limitsConfig.IndexFileName)
 	file, err := os.Create(outputFile)
 	if err != nil {
 		return err
@@ -401,9 +395,9 @@ func (s *service) evaluateDocumentVersion(ctx context.Context, spc clientspace.S
 
 func (s *service) getPublishLimit(globalName string) (int64, error) {
 	if globalName != "" {
-		return membershipLimit, nil
+		return s.limitsConfig.MembershipLimit, nil
 	}
-	return defaultLimit, nil
+	return s.limitsConfig.DefaultLimit, nil
 }
 
 func (s *service) Publish(ctx context.Context, spaceId, pageId, uri string, joinSpace bool) (res PublishResult, err error) {
@@ -424,9 +418,9 @@ func (s *service) Publish(ctx context.Context, spaceId, pageId, uri string, join
 func (s *service) makeUrl(uri, identity, globalName string) string {
 	var domain string
 	if globalName != "" {
-		domain = fmt.Sprintf(memberUrlTemplate, globalName)
+		domain = fmt.Sprintf(s.limitsConfig.MemberUrlTemplate, globalName)
 	} else {
-		domain = fmt.Sprintf(defaultUrlTemplate, identity)
+		domain = fmt.Sprintf(s.limitsConfig.DefaultUrlTemplate, identity)
 	}
 	url := fmt.Sprintf("%s/%s", domain, uri)
 	return url
