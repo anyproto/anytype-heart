@@ -103,7 +103,7 @@ func (o *orderSetter) getCurrentSpaceOrder() (map[string]string, error) {
 	viewIdToLexId := make(map[string]string)
 	err := o.store.SpaceIndex(techSpaceId).QueryIterate(database.Query{Filters: []database.FilterRequest{
 		{
-			RelationKey: bundle.RelationKeyLayout,
+			RelationKey: bundle.RelationKeyResolvedLayout,
 			Condition:   model.BlockContentDataviewFilter_Equal,
 			Value:       domain.Int64(model.ObjectType_spaceView),
 		},
