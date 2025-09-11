@@ -12,19 +12,26 @@ import (
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
+var (
+	internalRelationsMap  = makeInternalRelationsMap()
+	systemRelationsMap    = makeSystemRelationsMap()
+	internalTypesTypesMap = makeInternalTypesTypesMap()
+)
+
+func makeInternalRelationsMap() map[domain.RelationKey]struct{} {
+	res := make(map[domain.RelationKey]struct{}, len(RequiredInternalRelations))
+	for _, k := range RequiredInternalRelations {
+		res[k] = struct{}{}
+	}
+	return res
+}
+
 func makeSystemRelationsMap() map[domain.RelationKey]struct{} {
 	res := make(map[domain.RelationKey]struct{}, len(SystemRelations))
 	for _, k := range SystemRelations {
 		res[k] = struct{}{}
 	}
 	return res
-}
-
-var systemRelationsMap = makeSystemRelationsMap()
-
-func IsSystemRelation(relationKey domain.RelationKey) bool {
-	_, ok := systemRelationsMap[relationKey]
-	return ok
 }
 
 func makeInternalTypesTypesMap() map[domain.TypeKey]struct{} {
@@ -35,7 +42,15 @@ func makeInternalTypesTypesMap() map[domain.TypeKey]struct{} {
 	return res
 }
 
-var internalTypesTypesMap = makeInternalTypesTypesMap()
+func IsInternalRelation(relationKey domain.RelationKey) bool {
+	_, ok := internalRelationsMap[relationKey]
+	return ok
+}
+
+func IsSystemRelation(relationKey domain.RelationKey) bool {
+	_, ok := systemRelationsMap[relationKey]
+	return ok
+}
 
 func IsInternalType(typeKey domain.TypeKey) bool {
 	_, ok := internalTypesTypesMap[typeKey]

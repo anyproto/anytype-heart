@@ -9,7 +9,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-const RelationChecksum = "9b43f16631418b7b6ab1160c46133e5f7df5b7c0b264b472766f4729f3970a0e"
+const RelationChecksum = "9c072a50aa74db3e1109fbfe039add5b949c49dfc45f39b1f3705b2a812cb243"
 const (
 	RelationKeyTag                                domain.RelationKey = "tag"
 	RelationKeyCamera                             domain.RelationKey = "camera"
@@ -68,7 +68,6 @@ const (
 	RelationKeyExposure                           domain.RelationKey = "exposure"
 	RelationKeyTargetObjectType                   domain.RelationKey = "targetObjectType"
 	RelationKeyIsFavorite                         domain.RelationKey = "isFavorite"
-	RelationKeyWorkspaceId                        domain.RelationKey = "workspaceId"
 	RelationKeySpaceId                            domain.RelationKey = "spaceId"
 	RelationKeyAudioGenre                         domain.RelationKey = "audioGenre"
 	RelationKeyName                               domain.RelationKey = "name"
@@ -2466,21 +2465,6 @@ var (
 			MaxCount:         1,
 			Name:             "Width",
 			ReadOnly:         false,
-			ReadOnlyRelation: true,
-			Scope:            model.Relation_type,
-		},
-		RelationKeyWorkspaceId: {
-
-			DataSource:       model.Relation_local,
-			Description:      "Space object belongs to",
-			Format:           model.RelationFormat_object,
-			Hidden:           true,
-			Id:               "_brworkspaceId",
-			Key:              "workspaceId",
-			MaxCount:         1,
-			Name:             "Space",
-			ObjectTypes:      []string{TypePrefix + "space"},
-			ReadOnly:         true,
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
 		},
