@@ -42,9 +42,12 @@ var (
 	ErrPrivateLink = fmt.Errorf("link is private and cannot be previewed")
 	log            = logging.Logger(CName)
 
-	privacyDirectives = map[string]map[string]struct{}{
-		xRobotsTag: {"none": {}},
-		cspTag:     {"default-src": {}, "frame-ancestors": {}},
+	selfWildCards = map[string]struct{}{
+		"'self'": {},
+		"*":      {},
+		"data:":  {},
+		"blob:":  {},
+		"about:": {},
 	}
 )
 
@@ -79,8 +82,9 @@ func (l *linkPreview) Fetch(ctx context.Context, fetchUrl string) (linkPreview m
 		return model.LinkPreview{}, nil, false, fmt.Errorf("no response")
 	}
 
-	if errPrivate := checkPrivateLink(resp); errPrivate != nil {
-		return model.LinkPreview{}, nil, false, errPrivate
+	linksWhitelist, errCheck := checkResponseHeaders(resp)
+	if errCheck != nil {
+		return model.LinkPreview{}, nil, false, errCheck
 	}
 
 	// og.Fetch could fail because of non "text/html" content. Let's try to parse file content
@@ -102,6 +106,9 @@ func (l *linkPreview) Fetch(ctx context.Context, fetchUrl string) (linkPreview m
 	}
 
 	res := l.convertOGToInfo(fetchUrl, og, rt)
+	if err = checkLinksWhitelist(linksWhitelist, res); err != nil {
+		return model.LinkPreview{}, nil, false, err
+	}
 	decodedResponse, err := decodeResponse(rt)
 	if err != nil {
 		log.Errorf("failed to decode request %s", err)
@@ -249,52 +256,108 @@ func (l *limitReader) Read(p []byte) (n int, err error) {
 	return
 }
 
-func checkPrivateLink(resp *http.Response) error {
+func checkResponseHeaders(resp *http.Response) (linksWhitelist []string, err error) {
 	if resp == nil {
-		return fmt.Errorf("response is nil")
+		return nil, fmt.Errorf("response is nil")
 	}
 
-	for header := range privacyDirectives {
-		value := strings.ToLower(resp.Header.Get(header))
-		if value == "" {
-			continue
-		}
-		if containsPrivateDirective(header, value) {
-			return errors.Join(ErrPrivateLink, fmt.Errorf("private link detected due to %s header: %s", header, value))
+	xRobotsDirectives := resp.Header.Get(xRobotsTag)
+	if xRobotsDirectives != "" {
+		err = parseXRobotsTag(xRobotsDirectives)
+		if err != nil {
+			return nil, err
 		}
 	}
 
+	cspDirectives := resp.Header.Get(cspTag)
+	if cspDirectives != "" {
+		linksWhitelist, err = parseCSPTag(cspDirectives)
+	}
+
+	return
+}
+
+// parsing tag according https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Content-Security-Policy#syntax
+func parseXRobotsTag(value string) error {
+	directives := strings.Split(value, ",")
+	for _, directive := range directives {
+		parts := strings.Split(directive, ":")
+		parts = strings.Split(strings.TrimSpace(parts[len(parts)-1]), " ")
+		for _, part := range parts {
+			if strings.ToLower(part) == "none" {
+				return errors.Join(ErrPrivateLink, fmt.Errorf("private link detected due to %s header: %s", xRobotsTag, directive))
+			}
+		}
+	}
 	return nil
 }
 
-func containsPrivateDirective(header string, value string) bool {
-	switch header {
-	// parsing tag according https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Content-Security-Policy#syntax
-	case cspTag:
-		directives := strings.Split(value, ";")
-		for _, directive := range directives {
-			parts := strings.Split(strings.TrimSpace(directive), " ")
-			if len(parts) < 2 {
+// parsing tag according https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/X-Robots-Tag#syntax
+func parseCSPTag(value string) (linksWhitelist []string, err error) {
+	var isDefaultSrcNone, isImgSrcNone bool
+
+	for _, directive := range strings.Split(value, ";") {
+		directive = strings.ToLower(directive)
+		parts := strings.Split(strings.TrimSpace(directive), " ")
+		if len(parts) < 2 {
+			continue
+		}
+		switch parts[0] {
+		case "default-src":
+			if slices.Contains(parts[1:], noneSrcDirective) {
+				isDefaultSrcNone = true
 				continue
 			}
-			if _, found := privacyDirectives[cspTag][parts[0]]; found && slices.Contains(parts[1:], noneSrcDirective) {
-				return true
+			if len(linksWhitelist) == 0 {
+				linksWhitelist = parts[1:]
 			}
-		}
-	// parsing tag according https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/X-Robots-Tag#syntax
-	case xRobotsTag:
-		directives := strings.Split(value, ",")
-		for _, directive := range directives {
-			parts := strings.Split(directive, ":")
-			parts = strings.Split(strings.TrimSpace(parts[len(parts)-1]), " ")
-			for _, part := range parts {
-				if _, found := privacyDirectives[xRobotsTag][strings.ToLower(part)]; found {
-					return true
-				}
+		case "img-src":
+			linksWhitelist = parts[1:]
+			if slices.Contains(parts[1:], noneSrcDirective) {
+				isImgSrcNone = true
 			}
 		}
 	}
-	return false
+
+	if isImgSrcNone {
+		return nil, errors.Join(ErrPrivateLink, fmt.Errorf("private link detected due to %s header: img-src 'none'", cspTag))
+	}
+
+	if isDefaultSrcNone && len(linksWhitelist) == 0 {
+		return nil, errors.Join(ErrPrivateLink, fmt.Errorf("private link detected due to %s header: default-src 'none'", cspTag))
+	}
+	return linksWhitelist, nil
+}
+
+func checkLinksWhitelist(linksWhitelist []string, preview model.LinkPreview) error {
+	if len(linksWhitelist) == 0 {
+		return nil
+	}
+
+	if slices.ContainsFunc(linksWhitelist, func(item string) bool {
+		_, isWildCard := selfWildCards[item]
+		return isWildCard
+	}) {
+		url, err := uri.ParseURI(preview.Url)
+		if err != nil {
+			return fmt.Errorf("failed to parse url: %s", preview.Url)
+		}
+		linksWhitelist = append(linksWhitelist, url.Host)
+	}
+
+	for _, link := range []string{preview.ImageUrl, preview.FaviconUrl} {
+		if link == "" {
+			continue
+		}
+		url, err := uri.ParseURI(link)
+		if err != nil {
+			return fmt.Errorf("failed to parse image url: %s", link)
+		}
+		if !slices.Contains(linksWhitelist, url.Host) {
+			return errors.Join(ErrPrivateLink, fmt.Errorf("image url is not included in Content-Security-Policy list"))
+		}
+	}
+	return nil
 }
 
 func sendMetricsEvent(code int) {
