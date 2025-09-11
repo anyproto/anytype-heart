@@ -19,6 +19,14 @@ on:
         options:
           - envproduction
           - envnetworkcustom
+      run-diff-check:
+        description: 'Run diff-check?'
+        required: true
+        default: 'true'
+        type: choice
+        options:
+          - 'true'
+          - 'false'
       nightly-base-version:
         description: 'Nightly builds base version (optional, default is stored in repo variables https://github.com/anyproto/anytype-heart/settings/variables/actions)'
         required: false
@@ -44,13 +52,18 @@ jobs:
       - run: git fetch --tags --force --prune
       - id: diff_check
         run: |
-          LAST_TAG=$(git describe --tags --match 'v*-nightly.*' --abbrev=0 2>/dev/null || echo "")
-          if [ -z "$LAST_TAG" ]; then
-            # no nightly tag found in history
-            echo "changed=true" >> "$GITHUB_OUTPUT"
-          elif git diff --quiet "${LAST_TAG}..HEAD"; then
-            echo "changed=false" >> "$GITHUB_OUTPUT"
+          if [[ "${{ github.event.inputs.run-diff-check || 'true' }}" == "true" ]]; then
+            LAST_TAG=$(git describe --tags --match 'v*-nightly.*' --abbrev=0 2>/dev/null || echo "")
+            if [ -z "$LAST_TAG" ]; then
+              # no nightly tag found in history
+              echo "changed=true" >> "$GITHUB_OUTPUT"
+            elif git diff --quiet "${LAST_TAG}..HEAD"; then
+              echo "changed=false" >> "$GITHUB_OUTPUT"
+            else
+              echo "changed=true" >> "$GITHUB_OUTPUT"
+            fi
           else
+            # when disabled explicitly: always set changed=true
             echo "changed=true" >> "$GITHUB_OUTPUT"
           fi
       - name: debug
