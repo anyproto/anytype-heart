@@ -20,6 +20,7 @@ const CName = "core.order.setter"
 type OrderSetter interface {
 	SetSpaceViewOrder(spaceViewOrder []string) ([]string, error)
 	SetOptionsOrder(spaceId string, relationKey domain.RelationKey, order []string) ([]string, error)
+	SetObjectTypesOrder(spaceId string, objectIds []string) ([]string, error)
 	UnsetOrder(objectId string) error
 
 	app.Component
@@ -61,7 +62,7 @@ func (o *orderSetter) SetSpaceViewOrder(objectIds []string) ([]string, error) {
 	return o.rebuildIfNeeded(objectIds, existing)
 }
 
-// SetOptionsOrder sets the order for relation options of particular relation. It ensures all options in order have lexids.
+// SetOptionsOrder sets the order for relation options of the particular relation. It ensures all options in order have lexids.
 // order is the desired final order of all space views
 func (o *orderSetter) SetOptionsOrder(spaceId string, relationKey domain.RelationKey, objectIds []string) ([]string, error) {
 	if len(objectIds) == 0 {
@@ -69,6 +70,19 @@ func (o *orderSetter) SetOptionsOrder(spaceId string, relationKey domain.Relatio
 	}
 
 	existing, err := o.getCurrentOptionsOrder(spaceId, relationKey)
+	if err != nil {
+		return nil, err
+	}
+
+	return o.rebuildIfNeeded(objectIds, existing)
+}
+
+func (o *orderSetter) SetObjectTypesOrder(spaceId string, objectIds []string) ([]string, error) {
+	if len(objectIds) == 0 {
+		return nil, errors.New("empty objectIds")
+	}
+
+	existing, err := o.getCurrentTypesOrder(spaceId)
 	if err != nil {
 		return nil, err
 	}
@@ -108,7 +122,7 @@ func (o *orderSetter) getCurrentOptionsOrder(spaceId string, relationKey domain.
 	optionIdToOrderId := make(map[string]string)
 	err := o.store.SpaceIndex(spaceId).QueryIterate(database.Query{Filters: []database.FilterRequest{
 		{
-			RelationKey: bundle.RelationKeyLayout,
+			RelationKey: bundle.RelationKeyResolvedLayout,
 			Condition:   model.BlockContentDataviewFilter_Equal,
 			Value:       domain.Int64(model.ObjectType_relationOption),
 		},
@@ -126,6 +140,26 @@ func (o *orderSetter) getCurrentOptionsOrder(spaceId string, relationKey domain.
 	}
 
 	return optionIdToOrderId, nil
+}
+
+func (o *orderSetter) getCurrentTypesOrder(spaceId string) (map[string]string, error) {
+	objectIdToOrderId := make(map[string]string)
+	err := o.store.SpaceIndex(spaceId).QueryIterate(database.Query{Filters: []database.FilterRequest{
+		{
+			RelationKey: bundle.RelationKeyResolvedLayout,
+			Condition:   model.BlockContentDataviewFilter_Equal,
+			Value:       domain.Int64(model.ObjectType_objectType),
+		},
+	}}, func(details *domain.Details) {
+		id := details.GetString(bundle.RelationKeyId)
+		orderId := details.GetString(bundle.RelationKeyOrderId)
+		objectIdToOrderId[id] = orderId
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to get current space order: %w", err)
+	}
+
+	return objectIdToOrderId, nil
 }
 
 // rebuildIfNeeded processes the order in a single pass, updating lexids as needed

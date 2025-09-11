@@ -9,6 +9,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/dataview"
 	"github.com/anyproto/anytype-heart/core/block/editor/file"
 	"github.com/anyproto/anytype-heart/core/block/editor/layout"
+	"github.com/anyproto/anytype-heart/core/block/editor/order"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/editor/stext"
@@ -45,6 +46,7 @@ type ObjectType struct {
 	clipboard.Clipboard
 	source.ChangeReceiver
 	dataview.Dataview
+	order.OrderSettable
 
 	spaceIndex spaceindex.Store
 }
@@ -70,9 +72,9 @@ func (f *ObjectFactory) newObjectType(spaceId string, sb smartblock.SmartBlock) 
 			f.fileService,
 			f.fileObjectService,
 		),
-		Dataview: dataview.NewDataview(sb, store),
-
-		spaceIndex: store,
+		Dataview:      dataview.NewDataview(sb, store),
+		OrderSettable: order.NewOrderSettable(sb, bundle.RelationKeyOrderId),
+		spaceIndex:    store,
 	}
 }
 
