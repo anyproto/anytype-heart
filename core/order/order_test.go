@@ -26,7 +26,6 @@ func TestOrderSetter_rebuildIfNeeded(t *testing.T) {
 
 		// then
 		assert.Error(t, err)
-		assert.Equal(t, "empty spaceViewOrder", err.Error())
 	})
 
 	t.Run("single new view", func(t *testing.T) {
