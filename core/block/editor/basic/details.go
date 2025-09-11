@@ -24,15 +24,14 @@ import (
 var log = logging.Logger("anytype-mw-editor-basic")
 
 func (bs *basic) SetDetails(ctx session.Context, details []domain.Detail, showEvent bool) (err error) {
-	err = bs.UpdateDetails(ctx, func(current *domain.Details) (*domain.Details, error) {
+	if err = bs.UpdateDetails(ctx, func(current *domain.Details) (*domain.Details, error) {
 		return applyDetailUpdates(current, details), nil
-	})
-
-	if err == nil {
-		bs.discardOwnSetDetailsEvent(ctx, showEvent)
+	}); err != nil {
+		return err
 	}
 
-	return err
+	bs.discardOwnSetDetailsEvent(ctx, showEvent)
+	return nil
 }
 
 func (bs *basic) UpdateDetails(ctx session.Context, update func(current *domain.Details) (*domain.Details, error)) error {

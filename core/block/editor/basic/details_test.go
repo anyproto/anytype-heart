@@ -162,8 +162,8 @@ func TestBasic_UpdateDetails(t *testing.T) {
 		// then
 		assert.Error(t, err)
 		assert.Equal(t, "test object", f.sb.Details().GetString(bundle.RelationKeyName))
-		assert.Equal(t, "test description", f.sb.Details().GetString(bundle.RelationKeyDescription))
-		assert.Equal(t, int64(1234567890), f.sb.Details().GetInt64(bundle.RelationKeyCreatedDate))
+		assert.Equal(t, "Description", f.sb.Details().GetString(bundle.RelationKeyDescription))
+		assert.Equal(t, int64(1234567890), f.sb.LocalDetails().GetInt64(bundle.RelationKeyCreatedDate))
 	})
 }
 
