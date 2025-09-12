@@ -39,24 +39,28 @@ const (
 	cspTag     = "Content-Security-Policy"
 )
 
+type linkEntry struct {
+	genericTitles  []string
+	titleSelectors []string
+}
+
 var (
 	ErrPrivateLink = fmt.Errorf("link is private and cannot be previewed")
 	log            = logging.Logger(CName)
 
-	genericTitles = map[string][]string{
+	genericTitleCandidates = map[string]linkEntry{
 		"www.reddit.com": {
-			"Reddit - The heart of the internet",
-			"Reddit - Dive into anything",
-			"Reddit",
-		},
-	}
-
-	titleSelectors = map[string][]string{
-		"www.reddit.com": {
-			"h1[slot='title']",
-			"[data-test-id='post-content'] h3",
-			"shreddit-post h1",
-			"h1:contains('r/')",
+			genericTitles: []string{
+				"Reddit - The heart of the internet",
+				"Reddit - Dive into anything",
+				"Reddit",
+			},
+			titleSelectors: []string{
+				"h1[slot='title']",
+				"[data-test-id='post-content'] h3",
+				"shreddit-post h1",
+				"h1:contains('r/')",
+			},
 		},
 	}
 )
@@ -440,9 +444,13 @@ func replaceGenericTitle(preview *model.LinkPreview, htmlContent []byte) {
 
 	var selectors []string
 	isTitleGeneric := func() bool {
-		for _, genericTitle := range genericTitles[hostname] {
+		candidate, found := genericTitleCandidates[hostname]
+		if !found {
+			return false
+		}
+		for _, genericTitle := range candidate.genericTitles {
 			if strings.EqualFold(preview.Title, genericTitle) || strings.Contains(preview.Title, genericTitle) {
-				selectors = titleSelectors[hostname]
+				selectors = candidate.titleSelectors
 				return true
 			}
 		}
