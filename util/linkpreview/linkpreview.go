@@ -70,7 +70,7 @@ func New() LinkPreview {
 }
 
 type LinkPreview interface {
-	Fetch(ctx context.Context, url string) (linkPreview model.LinkPreview, responseBody []byte, isFile bool, err error)
+	Fetch(ctx context.Context, url string, withResponseBody bool) (linkPreview model.LinkPreview, responseBody []byte, isFile bool, err error)
 	app.Component
 }
 
@@ -87,7 +87,9 @@ func (l *linkPreview) Name() (name string) {
 	return CName
 }
 
-func (l *linkPreview) Fetch(ctx context.Context, fetchUrl string) (linkPreview model.LinkPreview, responseBody []byte, isFile bool, err error) {
+func (l *linkPreview) Fetch(
+	ctx context.Context, fetchUrl string, withResponseBody bool,
+) (linkPreview model.LinkPreview, responseBody []byte, isFile bool, err error) {
 	og, rt := buildOpenGraph(ctx, fetchUrl)
 	err = og.Fetch()
 
@@ -121,9 +123,13 @@ func (l *linkPreview) Fetch(ctx context.Context, fetchUrl string) (linkPreview m
 
 	res := l.convertOGToInfo(fetchUrl, og, rt)
 	applyCSPRules(cspRules, &res)
-	decodedResponse, err := decodeResponse(rt)
-	if err != nil {
-		log.Errorf("failed to decode request %s", err)
+
+	var decodedResponse []byte
+	if withResponseBody {
+		decodedResponse, err = decodeResponse(rt)
+		if err != nil {
+			log.Errorf("failed to decode request %s", err)
+		}
 	}
 	return res, decodedResponse, false, nil
 }

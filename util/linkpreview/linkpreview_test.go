@@ -23,7 +23,7 @@ func TestLinkPreview_Fetch(t *testing.T) {
 		lp := New()
 		lp.Init(nil)
 
-		info, _, isFile, err := lp.Fetch(ctx, ts.URL)
+		info, _, isFile, err := lp.Fetch(ctx, ts.URL, false)
 		require.NoError(t, err)
 		assert.False(t, isFile)
 		assert.Equal(t, model.LinkPreview{
@@ -42,7 +42,7 @@ func TestLinkPreview_Fetch(t *testing.T) {
 		lp := New()
 		lp.Init(nil)
 
-		info, _, isFile, err := lp.Fetch(ctx, ts.URL)
+		info, _, isFile, err := lp.Fetch(ctx, ts.URL, false)
 		require.NoError(t, err)
 		assert.Equal(t, model.LinkPreview{
 			Url:         ts.URL,
@@ -62,7 +62,7 @@ func TestLinkPreview_Fetch(t *testing.T) {
 		url := ts.URL + "/filename.jpg"
 		lp := New()
 		lp.Init(nil)
-		info, _, isFile, err := lp.Fetch(ctx, url)
+		info, _, isFile, err := lp.Fetch(ctx, url, false)
 		require.NoError(t, err)
 		assert.Equal(t, model.LinkPreview{
 			Url:        url,
@@ -295,7 +295,7 @@ func TestLinkPreview_Fetch_PrivateLink(t *testing.T) {
 		lp := New()
 		lp.Init(nil)
 
-		_, _, _, err := lp.Fetch(ctx, ts.URL)
+		_, _, _, err := lp.Fetch(ctx, ts.URL, false)
 		require.Error(t, err)
 		assert.ErrorIs(t, err, ErrPrivateLink)
 	})
@@ -312,7 +312,7 @@ func TestLinkPreview_Fetch_PrivateLink(t *testing.T) {
 		lp := New()
 		lp.Init(nil)
 
-		_, _, _, err := lp.Fetch(ctx, ts.URL+"/filename.jpg")
+		_, _, _, err := lp.Fetch(ctx, ts.URL+"/filename.jpg", false)
 		require.Error(t, err)
 		assert.ErrorIs(t, err, ErrPrivateLink)
 	})
@@ -328,7 +328,7 @@ func TestLinkPreview_Fetch_PrivateLink(t *testing.T) {
 		lp := New()
 		lp.Init(nil)
 
-		info, _, isFile, err := lp.Fetch(ctx, ts.URL)
+		info, _, isFile, err := lp.Fetch(ctx, ts.URL, false)
 		require.NoError(t, err)
 		assert.False(t, isFile)
 		assert.Equal(t, ts.URL, info.Url)
