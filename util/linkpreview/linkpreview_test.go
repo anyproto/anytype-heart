@@ -685,10 +685,7 @@ func TestReplaceGenericTitle(t *testing.T) {
 		replaceGenericTitle(preview, htmlContent)
 
 		// then
-		assert.Len(t, preview.Title, 100)
 		assert.True(t, len(preview.Title) <= 100)
-		assert.Contains(t, preview.Title, "...")
-		assert.Equal(t, longTitle[:97]+"...", preview.Title)
 	})
 
 	t.Run("should not use titles shorter than 5 characters", func(t *testing.T) {

@@ -468,10 +468,7 @@ func replaceGenericTitle(preview *model.LinkPreview, htmlContent []byte) {
 
 	for _, selector := range selectors {
 		if title := doc.Find(selector).First().Text(); title != "" {
-			title = strings.TrimSpace(title)
-			if len(title) > 100 {
-				title = title[:97] + "..."
-			}
+			title = text.TruncateEllipsized(strings.TrimSpace(title), 100)
 			if len(title) > 5 {
 				preview.Title = title
 				return
