@@ -34,22 +34,13 @@ const (
 	maxBytesToRead     = 10 * 1024 * 1024
 	maxDescriptionSize = 200
 
-	xRobotsTag       = "X-Robots-Tag"
-	cspTag           = "Content-Security-Policy"
-	noneSrcDirective = "'none'"
+	xRobotsTag = "X-Robots-Tag"
+	cspTag     = "Content-Security-Policy"
 )
 
 var (
 	ErrPrivateLink = fmt.Errorf("link is private and cannot be previewed")
 	log            = logging.Logger(CName)
-
-	selfWildCards = map[string]struct{}{
-		"'self'": {},
-		"*":      {},
-		"data:":  {},
-		"blob:":  {},
-		"about:": {},
-	}
 )
 
 func New() LinkPreview {
@@ -283,7 +274,7 @@ func parseXRobotsTag(value string) error {
 		parts = strings.Split(strings.TrimSpace(parts[len(parts)-1]), " ")
 		for _, part := range parts {
 			if strings.ToLower(part) == "none" {
-				return errors.Join(ErrPrivateLink, fmt.Errorf("private link detected due to %s header: %s", xRobotsTag, directive))
+				return errors.Join(ErrPrivateLink, fmt.Errorf("private link detected due to %s header", xRobotsTag))
 			}
 		}
 	}
@@ -328,7 +319,6 @@ func applyCSPRules(cspRules []string, preview *model.LinkPreview) {
 	if !validate(preview.FaviconUrl) {
 		preview.FaviconUrl = ""
 	}
-	return
 }
 
 func buildValidator(cspRules []string, originUrl string) (validate func(string) bool, err error) {
