@@ -692,7 +692,8 @@ func (d *dummyCollectionService) SubscribeForCollection(collectionID string, sub
 	return nil, nil, nil
 }
 
-func (d *dummyCollectionService) UnsubscribeFromCollection(collectionID string, subscriptionID string) {
+func (d *dummyCollectionService) UnsubscribeFromCollection(collectionID string, subscriptionID string) error {
+	return nil
 }
 
 func givenRequest() subscriptionservice.SubscribeRequest {

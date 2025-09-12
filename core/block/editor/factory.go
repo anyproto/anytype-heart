@@ -11,6 +11,7 @@ import (
 	"github.com/anyproto/any-sync/commonspace/object/tree/objecttree"
 
 	"github.com/anyproto/anytype-heart/core/anytype/config"
+	"github.com/anyproto/anytype-heart/core/block/backlinks"
 	"github.com/anyproto/anytype-heart/core/block/cache"
 	"github.com/anyproto/anytype-heart/core/block/chats/chatrepository"
 	"github.com/anyproto/anytype-heart/core/block/chats/chatsubscription"
@@ -81,6 +82,7 @@ type ObjectFactory struct {
 	chatRepositoryService   chatrepository.Service
 	chatSubscriptionService chatsubscription.Service
 	statService             debugstat.StatService
+	backlinksUpdater        backlinks.UpdateWatcher
 }
 
 func NewObjectFactory() *ObjectFactory {
@@ -116,6 +118,7 @@ func (f *ObjectFactory) Init(a *app.App) (err error) {
 	f.chatRepositoryService = app.MustComponent[chatrepository.Service](a)
 	f.chatSubscriptionService = app.MustComponent[chatsubscription.Service](a)
 	f.statService, err = app.GetComponent[debugstat.StatService](a)
+	f.backlinksUpdater = app.MustComponent[backlinks.UpdateWatcher](a)
 	if err != nil {
 		f.statService = debugstat.NewNoOp()
 	}

@@ -7,7 +7,7 @@ import (
 	"github.com/anyproto/any-sync/commonspace/spacestorage"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/basic"
-	"github.com/anyproto/anytype-heart/core/block/editor/collection"
+	"github.com/anyproto/anytype-heart/core/block/editor/blockcollection"
 	"github.com/anyproto/anytype-heart/core/block/editor/converter"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
@@ -27,7 +27,7 @@ var dashboardRequiredRelations = []domain.RelationKey{}
 type Dashboard struct {
 	smartblock.SmartBlock
 	basic.AllOperations
-	collection.Collection
+	blockcollection.Collection
 
 	objectStore spaceindex.Store
 }
@@ -36,7 +36,7 @@ func NewDashboard(sb smartblock.SmartBlock, objectStore spaceindex.Store, layout
 	return &Dashboard{
 		SmartBlock:    sb,
 		AllOperations: basic.NewBasic(sb, objectStore, layoutConverter, nil),
-		Collection:    collection.NewCollection(sb, objectStore),
+		Collection:    blockcollection.NewCollection(sb, objectStore),
 		objectStore:   objectStore,
 	}
 }

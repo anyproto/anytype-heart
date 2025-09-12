@@ -43,7 +43,8 @@ func (d *dummyCollectionService) SubscribeForCollection(collectionID string, sub
 	return nil, nil, nil
 }
 
-func (d *dummyCollectionService) UnsubscribeFromCollection(collectionID string, subscriptionID string) {
+func (d *dummyCollectionService) UnsubscribeFromCollection(collectionID string, subscriptionID string) error {
+	return nil
 }
 
 type aclUpdaterFixture struct {
@@ -63,7 +64,6 @@ type aclUpdaterFixture struct {
 func newAclUpdaterFixture(t *testing.T) *aclUpdaterFixture {
 	ctx := context.Background()
 	a := &app.App{}
-
 
 	var pubKeys []crypto.PubKey
 	for i := 0; i < 10; i++ {
@@ -393,13 +393,13 @@ func TestAclUpdater_SelfRemove(t *testing.T) {
 		// Add space view with status SpaceDeleted for a space we're not the creator of
 		fx.objectStore.AddObjects(t, fx.techSpaceId, []objectstore.TestObject{
 			{
-				bundle.RelationKeyId:                   domain.String(spaceViewId),
-				bundle.RelationKeyTargetSpaceId:        domain.String(spaceId),
-				bundle.RelationKeyCreator:              domain.String(creatorIdentity),
-				bundle.RelationKeyResolvedLayout:       domain.Int64(int64(model.ObjectType_spaceView)),
-				bundle.RelationKeySpaceRemoteStatus:    domain.Int64(int64(model.SpaceStatus_Ok)),
-				bundle.RelationKeySpaceAccountStatus:   domain.Int64(int64(model.SpaceStatus_SpaceDeleted)),
-				bundle.RelationKeyMyParticipantStatus:  domain.Int64(int64(model.ParticipantStatus_Active)),
+				bundle.RelationKeyId:                  domain.String(spaceViewId),
+				bundle.RelationKeyTargetSpaceId:       domain.String(spaceId),
+				bundle.RelationKeyCreator:             domain.String(creatorIdentity),
+				bundle.RelationKeyResolvedLayout:      domain.Int64(int64(model.ObjectType_spaceView)),
+				bundle.RelationKeySpaceRemoteStatus:   domain.Int64(int64(model.SpaceStatus_Ok)),
+				bundle.RelationKeySpaceAccountStatus:  domain.Int64(int64(model.SpaceStatus_SpaceDeleted)),
+				bundle.RelationKeyMyParticipantStatus: domain.Int64(int64(model.ParticipantStatus_Active)),
 			},
 		})
 
@@ -421,13 +421,13 @@ func TestAclUpdater_SelfRemove(t *testing.T) {
 		// Add space view with status SpaceDeleted for a space we created
 		fx.objectStore.AddObjects(t, fx.techSpaceId, []objectstore.TestObject{
 			{
-				bundle.RelationKeyId:                   domain.String(spaceViewId),
-				bundle.RelationKeyTargetSpaceId:        domain.String(spaceId),
-				bundle.RelationKeyCreator:              domain.String(ownParticipantId),
-				bundle.RelationKeyResolvedLayout:       domain.Int64(int64(model.ObjectType_spaceView)),
-				bundle.RelationKeySpaceRemoteStatus:    domain.Int64(int64(model.SpaceStatus_Ok)),
-				bundle.RelationKeySpaceAccountStatus:   domain.Int64(int64(model.SpaceStatus_SpaceDeleted)),
-				bundle.RelationKeyMyParticipantStatus:  domain.Int64(int64(model.ParticipantStatus_Active)),
+				bundle.RelationKeyId:                  domain.String(spaceViewId),
+				bundle.RelationKeyTargetSpaceId:       domain.String(spaceId),
+				bundle.RelationKeyCreator:             domain.String(ownParticipantId),
+				bundle.RelationKeyResolvedLayout:      domain.Int64(int64(model.ObjectType_spaceView)),
+				bundle.RelationKeySpaceRemoteStatus:   domain.Int64(int64(model.SpaceStatus_Ok)),
+				bundle.RelationKeySpaceAccountStatus:  domain.Int64(int64(model.SpaceStatus_SpaceDeleted)),
+				bundle.RelationKeyMyParticipantStatus: domain.Int64(int64(model.ParticipantStatus_Active)),
 			},
 		})
 
@@ -450,13 +450,13 @@ func TestAclUpdater_SelfRemove(t *testing.T) {
 		// Add space view with MyParticipantStatus as Removing
 		fx.objectStore.AddObjects(t, fx.techSpaceId, []objectstore.TestObject{
 			{
-				bundle.RelationKeyId:                   domain.String(spaceViewId),
-				bundle.RelationKeyTargetSpaceId:        domain.String(spaceId),
-				bundle.RelationKeyCreator:              domain.String(creatorIdentity),
-				bundle.RelationKeyResolvedLayout:       domain.Int64(int64(model.ObjectType_spaceView)),
-				bundle.RelationKeySpaceRemoteStatus:    domain.Int64(int64(model.SpaceStatus_Ok)),
-				bundle.RelationKeySpaceAccountStatus:   domain.Int64(int64(model.SpaceStatus_SpaceDeleted)),
-				bundle.RelationKeyMyParticipantStatus:  domain.Int64(int64(model.ParticipantStatus_Removing)),
+				bundle.RelationKeyId:                  domain.String(spaceViewId),
+				bundle.RelationKeyTargetSpaceId:       domain.String(spaceId),
+				bundle.RelationKeyCreator:             domain.String(creatorIdentity),
+				bundle.RelationKeyResolvedLayout:      domain.Int64(int64(model.ObjectType_spaceView)),
+				bundle.RelationKeySpaceRemoteStatus:   domain.Int64(int64(model.SpaceStatus_Ok)),
+				bundle.RelationKeySpaceAccountStatus:  domain.Int64(int64(model.SpaceStatus_SpaceDeleted)),
+				bundle.RelationKeyMyParticipantStatus: domain.Int64(int64(model.ParticipantStatus_Removing)),
 			},
 		})
 
@@ -479,13 +479,13 @@ func TestAclUpdater_SelfRemove(t *testing.T) {
 		// Add space view with SpaceAccountStatus as Active (not deleted)
 		fx.objectStore.AddObjects(t, fx.techSpaceId, []objectstore.TestObject{
 			{
-				bundle.RelationKeyId:                   domain.String(spaceViewId),
-				bundle.RelationKeyTargetSpaceId:        domain.String(spaceId),
-				bundle.RelationKeyCreator:              domain.String(creatorIdentity),
-				bundle.RelationKeyResolvedLayout:       domain.Int64(int64(model.ObjectType_spaceView)),
-				bundle.RelationKeySpaceRemoteStatus:    domain.Int64(int64(model.SpaceStatus_Ok)),
-				bundle.RelationKeySpaceAccountStatus:   domain.Int64(int64(model.SpaceStatus_SpaceActive)),
-				bundle.RelationKeyMyParticipantStatus:  domain.Int64(int64(model.ParticipantStatus_Active)),
+				bundle.RelationKeyId:                  domain.String(spaceViewId),
+				bundle.RelationKeyTargetSpaceId:       domain.String(spaceId),
+				bundle.RelationKeyCreator:             domain.String(creatorIdentity),
+				bundle.RelationKeyResolvedLayout:      domain.Int64(int64(model.ObjectType_spaceView)),
+				bundle.RelationKeySpaceRemoteStatus:   domain.Int64(int64(model.SpaceStatus_Ok)),
+				bundle.RelationKeySpaceAccountStatus:  domain.Int64(int64(model.SpaceStatus_SpaceActive)),
+				bundle.RelationKeyMyParticipantStatus: domain.Int64(int64(model.ParticipantStatus_Active)),
 			},
 		})
 
@@ -508,13 +508,13 @@ func TestAclUpdater_SelfRemove(t *testing.T) {
 		// First add space view with active status
 		fx.objectStore.AddObjects(t, fx.techSpaceId, []objectstore.TestObject{
 			{
-				bundle.RelationKeyId:                   domain.String(spaceViewId),
-				bundle.RelationKeyTargetSpaceId:        domain.String(spaceId),
-				bundle.RelationKeyCreator:              domain.String(creatorIdentity),
-				bundle.RelationKeyResolvedLayout:       domain.Int64(int64(model.ObjectType_spaceView)),
-				bundle.RelationKeySpaceRemoteStatus:    domain.Int64(int64(model.SpaceStatus_Ok)),
-				bundle.RelationKeySpaceAccountStatus:   domain.Int64(int64(model.SpaceStatus_SpaceActive)),
-				bundle.RelationKeyMyParticipantStatus:  domain.Int64(int64(model.ParticipantStatus_Active)),
+				bundle.RelationKeyId:                  domain.String(spaceViewId),
+				bundle.RelationKeyTargetSpaceId:       domain.String(spaceId),
+				bundle.RelationKeyCreator:             domain.String(creatorIdentity),
+				bundle.RelationKeyResolvedLayout:      domain.Int64(int64(model.ObjectType_spaceView)),
+				bundle.RelationKeySpaceRemoteStatus:   domain.Int64(int64(model.SpaceStatus_Ok)),
+				bundle.RelationKeySpaceAccountStatus:  domain.Int64(int64(model.SpaceStatus_SpaceActive)),
+				bundle.RelationKeyMyParticipantStatus: domain.Int64(int64(model.ParticipantStatus_Active)),
 			},
 		})
 
@@ -529,13 +529,13 @@ func TestAclUpdater_SelfRemove(t *testing.T) {
 		// Update to deleted status
 		fx.objectStore.AddObjects(t, fx.techSpaceId, []objectstore.TestObject{
 			{
-				bundle.RelationKeyId:                   domain.String(spaceViewId),
-				bundle.RelationKeyTargetSpaceId:        domain.String(spaceId),
-				bundle.RelationKeyCreator:              domain.String(creatorIdentity),
-				bundle.RelationKeyResolvedLayout:       domain.Int64(int64(model.ObjectType_spaceView)),
-				bundle.RelationKeySpaceRemoteStatus:    domain.Int64(int64(model.SpaceStatus_Ok)),
-				bundle.RelationKeySpaceAccountStatus:   domain.Int64(int64(model.SpaceStatus_SpaceDeleted)),
-				bundle.RelationKeyMyParticipantStatus:  domain.Int64(int64(model.ParticipantStatus_Active)),
+				bundle.RelationKeyId:                  domain.String(spaceViewId),
+				bundle.RelationKeyTargetSpaceId:       domain.String(spaceId),
+				bundle.RelationKeyCreator:             domain.String(creatorIdentity),
+				bundle.RelationKeyResolvedLayout:      domain.Int64(int64(model.ObjectType_spaceView)),
+				bundle.RelationKeySpaceRemoteStatus:   domain.Int64(int64(model.SpaceStatus_Ok)),
+				bundle.RelationKeySpaceAccountStatus:  domain.Int64(int64(model.SpaceStatus_SpaceDeleted)),
+				bundle.RelationKeyMyParticipantStatus: domain.Int64(int64(model.ParticipantStatus_Active)),
 			},
 		})
 
@@ -568,22 +568,22 @@ func TestAclUpdater_SelfRemove(t *testing.T) {
 		// Add two deleted space views
 		fx.objectStore.AddObjects(t, fx.techSpaceId, []objectstore.TestObject{
 			{
-				bundle.RelationKeyId:                   domain.String("spaceView1"),
-				bundle.RelationKeyTargetSpaceId:        domain.String(spaceId1),
-				bundle.RelationKeyCreator:              domain.String(creatorIdentity),
-				bundle.RelationKeyResolvedLayout:       domain.Int64(int64(model.ObjectType_spaceView)),
-				bundle.RelationKeySpaceRemoteStatus:    domain.Int64(int64(model.SpaceStatus_Ok)),
-				bundle.RelationKeySpaceAccountStatus:   domain.Int64(int64(model.SpaceStatus_SpaceDeleted)),
-				bundle.RelationKeyMyParticipantStatus:  domain.Int64(int64(model.ParticipantStatus_Active)),
+				bundle.RelationKeyId:                  domain.String("spaceView1"),
+				bundle.RelationKeyTargetSpaceId:       domain.String(spaceId1),
+				bundle.RelationKeyCreator:             domain.String(creatorIdentity),
+				bundle.RelationKeyResolvedLayout:      domain.Int64(int64(model.ObjectType_spaceView)),
+				bundle.RelationKeySpaceRemoteStatus:   domain.Int64(int64(model.SpaceStatus_Ok)),
+				bundle.RelationKeySpaceAccountStatus:  domain.Int64(int64(model.SpaceStatus_SpaceDeleted)),
+				bundle.RelationKeyMyParticipantStatus: domain.Int64(int64(model.ParticipantStatus_Active)),
 			},
 			{
-				bundle.RelationKeyId:                   domain.String("spaceView2"),
-				bundle.RelationKeyTargetSpaceId:        domain.String(spaceId2),
-				bundle.RelationKeyCreator:              domain.String(creatorIdentity),
-				bundle.RelationKeyResolvedLayout:       domain.Int64(int64(model.ObjectType_spaceView)),
-				bundle.RelationKeySpaceRemoteStatus:    domain.Int64(int64(model.SpaceStatus_Ok)),
-				bundle.RelationKeySpaceAccountStatus:   domain.Int64(int64(model.SpaceStatus_SpaceDeleted)),
-				bundle.RelationKeyMyParticipantStatus:  domain.Int64(int64(model.ParticipantStatus_Active)),
+				bundle.RelationKeyId:                  domain.String("spaceView2"),
+				bundle.RelationKeyTargetSpaceId:       domain.String(spaceId2),
+				bundle.RelationKeyCreator:             domain.String(creatorIdentity),
+				bundle.RelationKeyResolvedLayout:      domain.Int64(int64(model.ObjectType_spaceView)),
+				bundle.RelationKeySpaceRemoteStatus:   domain.Int64(int64(model.SpaceStatus_Ok)),
+				bundle.RelationKeySpaceAccountStatus:  domain.Int64(int64(model.SpaceStatus_SpaceDeleted)),
+				bundle.RelationKeyMyParticipantStatus: domain.Int64(int64(model.ParticipantStatus_Active)),
 			},
 		})
 
@@ -612,13 +612,13 @@ func TestAclUpdater_SelfRemove(t *testing.T) {
 		// Add deleted space view
 		fx.objectStore.AddObjects(t, fx.techSpaceId, []objectstore.TestObject{
 			{
-				bundle.RelationKeyId:                   domain.String(spaceViewId),
-				bundle.RelationKeyTargetSpaceId:        domain.String(spaceId),
-				bundle.RelationKeyCreator:              domain.String(creatorIdentity),
-				bundle.RelationKeyResolvedLayout:       domain.Int64(int64(model.ObjectType_spaceView)),
-				bundle.RelationKeySpaceRemoteStatus:    domain.Int64(int64(model.SpaceStatus_Ok)),
-				bundle.RelationKeySpaceAccountStatus:   domain.Int64(int64(model.SpaceStatus_SpaceDeleted)),
-				bundle.RelationKeyMyParticipantStatus:  domain.Int64(int64(model.ParticipantStatus_Active)),
+				bundle.RelationKeyId:                  domain.String(spaceViewId),
+				bundle.RelationKeyTargetSpaceId:       domain.String(spaceId),
+				bundle.RelationKeyCreator:             domain.String(creatorIdentity),
+				bundle.RelationKeyResolvedLayout:      domain.Int64(int64(model.ObjectType_spaceView)),
+				bundle.RelationKeySpaceRemoteStatus:   domain.Int64(int64(model.SpaceStatus_Ok)),
+				bundle.RelationKeySpaceAccountStatus:  domain.Int64(int64(model.SpaceStatus_SpaceDeleted)),
+				bundle.RelationKeyMyParticipantStatus: domain.Int64(int64(model.ParticipantStatus_Active)),
 			},
 		})
 
@@ -627,13 +627,13 @@ func TestAclUpdater_SelfRemove(t *testing.T) {
 		// Update participant status to Removed - should no longer match subscription filters
 		fx.objectStore.AddObjects(t, fx.techSpaceId, []objectstore.TestObject{
 			{
-				bundle.RelationKeyId:                   domain.String(spaceViewId),
-				bundle.RelationKeyTargetSpaceId:        domain.String(spaceId),
-				bundle.RelationKeyCreator:              domain.String(creatorIdentity),
-				bundle.RelationKeyResolvedLayout:       domain.Int64(int64(model.ObjectType_spaceView)),
-				bundle.RelationKeySpaceRemoteStatus:    domain.Int64(int64(model.SpaceStatus_Ok)),
-				bundle.RelationKeySpaceAccountStatus:   domain.Int64(int64(model.SpaceStatus_SpaceDeleted)),
-				bundle.RelationKeyMyParticipantStatus:  domain.Int64(int64(model.ParticipantStatus_Removed)),
+				bundle.RelationKeyId:                  domain.String(spaceViewId),
+				bundle.RelationKeyTargetSpaceId:       domain.String(spaceId),
+				bundle.RelationKeyCreator:             domain.String(creatorIdentity),
+				bundle.RelationKeyResolvedLayout:      domain.Int64(int64(model.ObjectType_spaceView)),
+				bundle.RelationKeySpaceRemoteStatus:   domain.Int64(int64(model.SpaceStatus_Ok)),
+				bundle.RelationKeySpaceAccountStatus:  domain.Int64(int64(model.SpaceStatus_SpaceDeleted)),
+				bundle.RelationKeyMyParticipantStatus: domain.Int64(int64(model.ParticipantStatus_Removed)),
 			},
 		})
 
@@ -664,13 +664,13 @@ func TestAclUpdater_SelfRemove(t *testing.T) {
 		// Add space view with status SpaceDeleted for a space we're not the creator of
 		fx.objectStore.AddObjects(t, fx.techSpaceId, []objectstore.TestObject{
 			{
-				bundle.RelationKeyId:                   domain.String(spaceViewId),
-				bundle.RelationKeyTargetSpaceId:        domain.String(spaceId),
-				bundle.RelationKeyCreator:              domain.String(creatorIdentity),
-				bundle.RelationKeyResolvedLayout:       domain.Int64(int64(model.ObjectType_spaceView)),
-				bundle.RelationKeySpaceRemoteStatus:    domain.Int64(int64(model.SpaceStatus_Ok)),
-				bundle.RelationKeySpaceAccountStatus:   domain.Int64(int64(model.SpaceStatus_SpaceDeleted)),
-				bundle.RelationKeyMyParticipantStatus:  domain.Int64(int64(model.ParticipantStatus_Active)),
+				bundle.RelationKeyId:                  domain.String(spaceViewId),
+				bundle.RelationKeyTargetSpaceId:       domain.String(spaceId),
+				bundle.RelationKeyCreator:             domain.String(creatorIdentity),
+				bundle.RelationKeyResolvedLayout:      domain.Int64(int64(model.ObjectType_spaceView)),
+				bundle.RelationKeySpaceRemoteStatus:   domain.Int64(int64(model.SpaceStatus_Ok)),
+				bundle.RelationKeySpaceAccountStatus:  domain.Int64(int64(model.SpaceStatus_SpaceDeleted)),
+				bundle.RelationKeyMyParticipantStatus: domain.Int64(int64(model.ParticipantStatus_Active)),
 			},
 		})
 

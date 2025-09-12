@@ -19,7 +19,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/cache"
 	"github.com/anyproto/anytype-heart/core/block/detailservice"
 	"github.com/anyproto/anytype-heart/core/block/editor/basic"
-	"github.com/anyproto/anytype-heart/core/block/editor/collection"
+	"github.com/anyproto/anytype-heart/core/block/editor/blockcollection"
 	"github.com/anyproto/anytype-heart/core/block/editor/file"
 	"github.com/anyproto/anytype-heart/core/block/editor/layout"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
@@ -516,7 +516,7 @@ func (s *Service) DeleteArchivedObject(id string) (err error) {
 		return fmt.Errorf("cannot delete archive object")
 	}
 	return cache.Do(s, spc.DerivedIDs().Archive, func(b smartblock.SmartBlock) error {
-		archive, ok := b.(collection.Collection)
+		archive, ok := b.(blockcollection.Collection)
 		if !ok {
 			return fmt.Errorf("unexpected archive block type: %T", b)
 		}
