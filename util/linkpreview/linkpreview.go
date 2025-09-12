@@ -8,8 +8,9 @@ import (
 	"io"
 	"mime"
 	"net/http"
+	"net/url"
 	"path/filepath"
-	"slices"
+	"regexp"
 	"strings"
 	"unicode/utf8"
 
@@ -33,19 +34,13 @@ const (
 	maxBytesToRead     = 10 * 1024 * 1024
 	maxDescriptionSize = 200
 
-	xRobotsTag       = "X-Robots-Tag"
-	cspTag           = "Content-Security-Policy"
-	noneSrcDirective = "'none'"
+	xRobotsTag = "X-Robots-Tag"
+	cspTag     = "Content-Security-Policy"
 )
 
 var (
 	ErrPrivateLink = fmt.Errorf("link is private and cannot be previewed")
 	log            = logging.Logger(CName)
-
-	privacyDirectives = map[string]map[string]struct{}{
-		xRobotsTag: {"none": {}},
-		cspTag:     {"default-src": {}, "frame-ancestors": {}},
-	}
 )
 
 func New() LinkPreview {
@@ -79,8 +74,9 @@ func (l *linkPreview) Fetch(ctx context.Context, fetchUrl string) (linkPreview m
 		return model.LinkPreview{}, nil, false, fmt.Errorf("no response")
 	}
 
-	if errPrivate := checkPrivateLink(resp); errPrivate != nil {
-		return model.LinkPreview{}, nil, false, errPrivate
+	cspRules, errCheck := checkResponseHeaders(resp)
+	if errCheck != nil {
+		return model.LinkPreview{}, nil, false, errCheck
 	}
 
 	// og.Fetch could fail because of non "text/html" content. Let's try to parse file content
@@ -102,6 +98,7 @@ func (l *linkPreview) Fetch(ctx context.Context, fetchUrl string) (linkPreview m
 	}
 
 	res := l.convertOGToInfo(fetchUrl, og, rt)
+	applyCSPRules(cspRules, &res)
 	decodedResponse, err := decodeResponse(rt)
 	if err != nil {
 		log.Errorf("failed to decode request %s", err)
@@ -249,52 +246,142 @@ func (l *limitReader) Read(p []byte) (n int, err error) {
 	return
 }
 
-func checkPrivateLink(resp *http.Response) error {
+func checkResponseHeaders(resp *http.Response) (cspRules []string, err error) {
 	if resp == nil {
-		return fmt.Errorf("response is nil")
+		return nil, fmt.Errorf("response is nil")
 	}
 
-	for header := range privacyDirectives {
-		value := strings.ToLower(resp.Header.Get(header))
-		if value == "" {
-			continue
-		}
-		if containsPrivateDirective(header, value) {
-			return errors.Join(ErrPrivateLink, fmt.Errorf("private link detected due to %s header: %s", header, value))
+	xRobotsDirectives := resp.Header.Get(xRobotsTag)
+	if xRobotsDirectives != "" {
+		err = parseXRobotsTag(xRobotsDirectives)
+		if err != nil {
+			return nil, err
 		}
 	}
 
+	cspDirectives := resp.Header.Get(cspTag)
+	if cspDirectives != "" {
+		cspRules = parseCSPTag(cspDirectives)
+	}
+	return
+}
+
+// parsing tag according https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/X-Robots-Tag#syntax
+func parseXRobotsTag(value string) error {
+	directives := strings.Split(value, ",")
+	for _, directive := range directives {
+		parts := strings.Split(directive, ":")
+		parts = strings.Split(strings.TrimSpace(parts[len(parts)-1]), " ")
+		for _, part := range parts {
+			if strings.ToLower(part) == "none" {
+				return errors.Join(ErrPrivateLink, fmt.Errorf("private link detected due to %s header", xRobotsTag))
+			}
+		}
+	}
 	return nil
 }
 
-func containsPrivateDirective(header string, value string) bool {
-	switch header {
-	// parsing tag according https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Content-Security-Policy#syntax
-	case cspTag:
-		directives := strings.Split(value, ";")
-		for _, directive := range directives {
-			parts := strings.Split(strings.TrimSpace(directive), " ")
-			if len(parts) < 2 {
-				continue
-			}
-			if _, found := privacyDirectives[cspTag][parts[0]]; found && slices.Contains(parts[1:], noneSrcDirective) {
-				return true
-			}
+// parsing tag according https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Content-Security-Policy#syntax
+func parseCSPTag(value string) (cspRules []string) {
+	for _, directive := range strings.Split(value, ";") {
+		directive = strings.ToLower(directive)
+		parts := strings.Split(strings.TrimSpace(directive), " ")
+		if len(parts) < 2 {
+			continue
 		}
-	// parsing tag according https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/X-Robots-Tag#syntax
-	case xRobotsTag:
-		directives := strings.Split(value, ",")
-		for _, directive := range directives {
-			parts := strings.Split(directive, ":")
-			parts = strings.Split(strings.TrimSpace(parts[len(parts)-1]), " ")
-			for _, part := range parts {
-				if _, found := privacyDirectives[xRobotsTag][strings.ToLower(part)]; found {
-					return true
-				}
+		switch parts[0] {
+		case "default-src":
+			if len(cspRules) == 0 {
+				cspRules = parts[1:]
 			}
+		case "img-src":
+			cspRules = parts[1:]
 		}
 	}
-	return false
+	return cspRules
+}
+
+func applyCSPRules(cspRules []string, preview *model.LinkPreview) {
+	if len(cspRules) == 0 {
+		return
+	}
+
+	validate, err := buildValidator(cspRules, preview.Url)
+	if err != nil {
+		log.Errorf("failed to validate CSP rules: %v", err)
+		return
+	}
+
+	if !validate(preview.ImageUrl) {
+		preview.ImageUrl = ""
+	}
+
+	if !validate(preview.FaviconUrl) {
+		preview.FaviconUrl = ""
+	}
+}
+
+func buildValidator(cspRules []string, originUrl string) (validate func(string) bool, err error) {
+	var (
+		allowedSchemes = make(map[string]bool)
+		hostPatterns   []string
+	)
+
+	originParsed, err := url.Parse(originUrl)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse origin URL: %w", err)
+	}
+
+	for _, rule := range cspRules {
+		rule = strings.TrimSpace(rule)
+		if rule == "" {
+			continue
+		}
+
+		switch {
+		case rule == "'self'":
+			hostPatterns = append(hostPatterns, regexp.QuoteMeta(originParsed.Host))
+		case rule == "*":
+			return func(string) bool { return true }, nil // wildcard
+		case rule == "'none'":
+			return func(string) bool { return false }, nil
+		case strings.HasSuffix(rule, ":"):
+			scheme := strings.TrimSuffix(rule, ":") // Scheme (data: blob: https:)
+			allowedSchemes[scheme] = true
+		case strings.HasPrefix(rule, "*."):
+			domain := strings.TrimPrefix(rule, "*.")
+			pattern := ".*\\." + regexp.QuoteMeta(domain)
+			hostPatterns = append(hostPatterns, pattern, regexp.QuoteMeta(domain))
+		default:
+			hostPatterns = append(hostPatterns, regexp.QuoteMeta(rule))
+		}
+	}
+
+	var hostRegex *regexp.Regexp
+	if len(hostPatterns) > 0 {
+		pattern := "^(" + strings.Join(hostPatterns, "|") + ")$"
+		hostRegex, err = regexp.Compile(pattern)
+		if err != nil {
+			return nil, fmt.Errorf("failed to compile host regex: %w", err)
+		}
+	}
+
+	return func(linkToValidate string) bool {
+		linkURL, err := url.Parse(linkToValidate)
+		if err != nil {
+			return false
+		}
+
+		if allowedSchemes[linkURL.Scheme] {
+			return true
+		}
+
+		if hostRegex != nil && hostRegex.MatchString(linkURL.Host) {
+			return true
+		}
+
+		return len(cspRules) == 0
+	}, nil
 }
 
 func sendMetricsEvent(code int) {
