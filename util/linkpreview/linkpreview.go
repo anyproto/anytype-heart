@@ -8,8 +8,9 @@ import (
 	"io"
 	"mime"
 	"net/http"
+	"net/url"
 	"path/filepath"
-	"slices"
+	"regexp"
 	"strings"
 	"unicode/utf8"
 
@@ -82,7 +83,7 @@ func (l *linkPreview) Fetch(ctx context.Context, fetchUrl string) (linkPreview m
 		return model.LinkPreview{}, nil, false, fmt.Errorf("no response")
 	}
 
-	linksWhitelist, errCheck := checkResponseHeaders(resp)
+	cspRules, errCheck := checkResponseHeaders(resp)
 	if errCheck != nil {
 		return model.LinkPreview{}, nil, false, errCheck
 	}
@@ -106,9 +107,7 @@ func (l *linkPreview) Fetch(ctx context.Context, fetchUrl string) (linkPreview m
 	}
 
 	res := l.convertOGToInfo(fetchUrl, og, rt)
-	if err = checkLinksWhitelist(linksWhitelist, res); err != nil {
-		return model.LinkPreview{}, nil, false, err
-	}
+	applyCSPRules(cspRules, &res)
 	decodedResponse, err := decodeResponse(rt)
 	if err != nil {
 		log.Errorf("failed to decode request %s", err)
@@ -256,7 +255,7 @@ func (l *limitReader) Read(p []byte) (n int, err error) {
 	return
 }
 
-func checkResponseHeaders(resp *http.Response) (linksWhitelist []string, err error) {
+func checkResponseHeaders(resp *http.Response) (cspRules []string, err error) {
 	if resp == nil {
 		return nil, fmt.Errorf("response is nil")
 	}
@@ -271,13 +270,12 @@ func checkResponseHeaders(resp *http.Response) (linksWhitelist []string, err err
 
 	cspDirectives := resp.Header.Get(cspTag)
 	if cspDirectives != "" {
-		linksWhitelist, err = parseCSPTag(cspDirectives)
+		cspRules = parseCSPTag(cspDirectives)
 	}
-
 	return
 }
 
-// parsing tag according https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Content-Security-Policy#syntax
+// parsing tag according https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/X-Robots-Tag#syntax
 func parseXRobotsTag(value string) error {
 	directives := strings.Split(value, ",")
 	for _, directive := range directives {
@@ -292,10 +290,8 @@ func parseXRobotsTag(value string) error {
 	return nil
 }
 
-// parsing tag according https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/X-Robots-Tag#syntax
-func parseCSPTag(value string) (linksWhitelist []string, err error) {
-	var isDefaultSrcNone, isImgSrcNone bool
-
+// parsing tag according https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Content-Security-Policy#syntax
+func parseCSPTag(value string) (cspRules []string) {
 	for _, directive := range strings.Split(value, ";") {
 		directive = strings.ToLower(directive)
 		parts := strings.Split(strings.TrimSpace(directive), " ")
@@ -304,60 +300,98 @@ func parseCSPTag(value string) (linksWhitelist []string, err error) {
 		}
 		switch parts[0] {
 		case "default-src":
-			if slices.Contains(parts[1:], noneSrcDirective) {
-				isDefaultSrcNone = true
-				continue
-			}
-			if len(linksWhitelist) == 0 {
-				linksWhitelist = parts[1:]
+			if len(cspRules) == 0 {
+				cspRules = parts[1:]
 			}
 		case "img-src":
-			linksWhitelist = parts[1:]
-			if slices.Contains(parts[1:], noneSrcDirective) {
-				isImgSrcNone = true
-			}
+			cspRules = parts[1:]
 		}
 	}
-
-	if isImgSrcNone {
-		return nil, errors.Join(ErrPrivateLink, fmt.Errorf("private link detected due to %s header: img-src 'none'", cspTag))
-	}
-
-	if isDefaultSrcNone && len(linksWhitelist) == 0 {
-		return nil, errors.Join(ErrPrivateLink, fmt.Errorf("private link detected due to %s header: default-src 'none'", cspTag))
-	}
-	return linksWhitelist, nil
+	return cspRules
 }
 
-func checkLinksWhitelist(linksWhitelist []string, preview model.LinkPreview) error {
-	if len(linksWhitelist) == 0 {
-		return nil
+func applyCSPRules(cspRules []string, preview *model.LinkPreview) {
+	if len(cspRules) == 0 {
+		return
 	}
 
-	if slices.ContainsFunc(linksWhitelist, func(item string) bool {
-		_, isWildCard := selfWildCards[item]
-		return isWildCard
-	}) {
-		url, err := uri.ParseURI(preview.Url)
-		if err != nil {
-			return fmt.Errorf("failed to parse url: %s", preview.Url)
-		}
-		linksWhitelist = append(linksWhitelist, url.Host)
+	validate, err := buildValidator(cspRules, preview.Url)
+	if err != nil {
+		log.Errorf("failed to validate CSP rules: %v", err)
+		return
 	}
 
-	for _, link := range []string{preview.ImageUrl, preview.FaviconUrl} {
-		if link == "" {
+	if !validate(preview.ImageUrl) {
+		preview.ImageUrl = ""
+	}
+
+	if !validate(preview.FaviconUrl) {
+		preview.FaviconUrl = ""
+	}
+	return
+}
+
+func buildValidator(cspRules []string, originUrl string) (validate func(string) bool, err error) {
+	var (
+		allowedSchemes = make(map[string]bool)
+		hostPatterns   []string
+	)
+
+	originParsed, err := url.Parse(originUrl)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse origin URL: %w", err)
+	}
+
+	for _, rule := range cspRules {
+		rule = strings.TrimSpace(rule)
+		if rule == "" {
 			continue
 		}
-		url, err := uri.ParseURI(link)
-		if err != nil {
-			return fmt.Errorf("failed to parse image url: %s", link)
-		}
-		if !slices.Contains(linksWhitelist, url.Host) {
-			return errors.Join(ErrPrivateLink, fmt.Errorf("image url is not included in Content-Security-Policy list"))
+
+		switch {
+		case rule == "'self'":
+			hostPatterns = append(hostPatterns, regexp.QuoteMeta(originParsed.Host))
+		case rule == "*":
+			return func(string) bool { return true }, nil // wildcard
+		case rule == "'none'":
+			return func(string) bool { return false }, nil
+		case strings.HasSuffix(rule, ":"):
+			scheme := strings.TrimSuffix(rule, ":") // Scheme (data: blob: https:)
+			allowedSchemes[scheme] = true
+		case strings.HasPrefix(rule, "*."):
+			domain := strings.TrimPrefix(rule, "*.")
+			pattern := ".*\\." + regexp.QuoteMeta(domain)
+			hostPatterns = append(hostPatterns, pattern, regexp.QuoteMeta(domain))
+		default:
+			hostPatterns = append(hostPatterns, regexp.QuoteMeta(rule))
 		}
 	}
-	return nil
+
+	var hostRegex *regexp.Regexp
+	if len(hostPatterns) > 0 {
+		pattern := "^(" + strings.Join(hostPatterns, "|") + ")$"
+		hostRegex, err = regexp.Compile(pattern)
+		if err != nil {
+			return nil, fmt.Errorf("failed to compile host regex: %w", err)
+		}
+	}
+
+	return func(linkToValidate string) bool {
+		linkURL, err := url.Parse(linkToValidate)
+		if err != nil {
+			return false
+		}
+
+		if allowedSchemes[linkURL.Scheme] {
+			return true
+		}
+
+		if hostRegex != nil && hostRegex.MatchString(linkURL.Host) {
+			return true
+		}
+
+		return len(cspRules) == 0
+	}, nil
 }
 
 func sendMetricsEvent(code int) {
