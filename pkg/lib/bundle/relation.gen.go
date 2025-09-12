@@ -9,7 +9,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-const RelationChecksum = "5692a6ffcd2adc49128912b9bfbb912b5c4c5bc1e25fe5c3602268019cae5310"
+const RelationChecksum = "921c75b76fdc2037f7c7c6f216ff9c1001de5cbe5abbbf0c03019ee185f93fcb"
 const (
 	RelationKeyTag                                domain.RelationKey = "tag"
 	RelationKeyCamera                             domain.RelationKey = "camera"
@@ -2463,6 +2463,7 @@ var (
 			DataSource:       model.Relation_details,
 			Description:      "Widget layout",
 			Format:           model.RelationFormat_number,
+			Hidden:           true,
 			Id:               "_brwidgetLayout",
 			Key:              "widgetLayout",
 			MaxCount:         1,
@@ -2476,6 +2477,7 @@ var (
 			DataSource:       model.Relation_details,
 			Description:      "Widget limit",
 			Format:           model.RelationFormat_number,
+			Hidden:           true,
 			Id:               "_brwidgetLimit",
 			Key:              "widgetLimit",
 			MaxCount:         1,
@@ -2489,6 +2491,7 @@ var (
 			DataSource:       model.Relation_details,
 			Description:      "Widget view ID",
 			Format:           model.RelationFormat_longtext,
+			Hidden:           true,
 			Id:               "_brwidgetViewId",
 			Key:              "widgetViewId",
 			MaxCount:         1,
