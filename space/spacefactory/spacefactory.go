@@ -168,7 +168,6 @@ func (s *spaceFactory) LoadAndSetTechSpace(ctx context.Context) (*clientspace.Te
 	if err != nil {
 		return nil, fmt.Errorf("build tech space: %w", err)
 	}
-
 	s.techSpace = ts
 	s.app = s.app.ChildApp()
 	s.app.Register(s.techSpace)
@@ -176,7 +175,10 @@ func (s *spaceFactory) LoadAndSetTechSpace(ctx context.Context) (*clientspace.Te
 	if err != nil {
 		return nil, fmt.Errorf("run tech space: %w", err)
 	}
-
+	err = s.indexer.ReindexSpace(ts)
+	if err != nil {
+		return nil, fmt.Errorf("reindex tech space: %w", err)
+	}
 	return ts, nil
 }
 
