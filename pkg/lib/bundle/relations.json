@@ -1716,5 +1716,32 @@
     "readonly": true,
     "source": "derived",
     "includeTime": true
+  },
+  {
+    "description": "Widget layout",
+    "format": "number",
+    "hidden": false,
+    "key": "widgetLayout",
+    "maxCount": 1,
+    "name": "Widget layout",
+    "source": "details"
+  },
+  {
+    "description": "Widget limit",
+    "format": "number",
+    "hidden": false,
+    "key": "widgetLimit",
+    "maxCount": 1,
+    "name": "Widget limit",
+    "source": "details"
+  },
+  {
+    "description": "Widget view ID",
+    "format": "longtext",
+    "hidden": false,
+    "key": "widgetViewId",
+    "maxCount": 1,
+    "name": "Widget view ID",
+    "source": "details"
   }
 ]
