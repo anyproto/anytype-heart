@@ -504,3 +504,357 @@ func TestCheckLinksWhitelist(t *testing.T) {
 		assert.NotEmpty(t, preview.FaviconUrl)
 	})
 }
+
+func TestReplaceGenericTitle(t *testing.T) {
+	t.Run("should not change title when empty HTML content", func(t *testing.T) {
+		// given
+		preview := &model.LinkPreview{
+			Url:   "https://www.reddit.com/r/golang/test",
+			Title: "Reddit - The heart of the internet",
+		}
+		var emptyHTML []byte
+
+		// when
+		replaceGenericTitle(preview, emptyHTML)
+
+		// then
+		assert.Equal(t, "Reddit - The heart of the internet", preview.Title)
+	})
+
+	t.Run("should not change title when not a tracked domain", func(t *testing.T) {
+		// given
+		preview := &model.LinkPreview{
+			Url:   "https://example.com/test",
+			Title: "Some Generic Title",
+		}
+		htmlContent := []byte(`<html><body><h1>Specific Title</h1></body></html>`)
+
+		// when
+		replaceGenericTitle(preview, htmlContent)
+
+		// then
+		assert.Equal(t, "Some Generic Title", preview.Title)
+	})
+
+	t.Run("should not change title when title is not generic", func(t *testing.T) {
+		// given
+		preview := &model.LinkPreview{
+			Url:   "https://www.reddit.com/r/golang/test",
+			Title: "Let's play tetris!",
+		}
+		htmlContent := []byte(`<html><body><h1 slot="title">Tetris is full of fun!</h1></body></html>`)
+
+		// when
+		replaceGenericTitle(preview, htmlContent)
+
+		// then
+		assert.Equal(t, "Let's play tetris!", preview.Title)
+	})
+
+	t.Run("should replace Reddit generic title with h1[slot='title']", func(t *testing.T) {
+		// given
+		preview := &model.LinkPreview{
+			Url:   "https://www.reddit.com/r/golang/comments/123/test",
+			Title: "Reddit - The heart of the internet",
+		}
+		htmlContent := []byte(`
+			<html>
+				<body>
+					<h1 slot="title">How to write better Go code</h1>
+					<div>Other content</div>
+				</body>
+			</html>
+		`)
+
+		// when
+		replaceGenericTitle(preview, htmlContent)
+
+		// then
+		assert.Equal(t, "How to write better Go code", preview.Title)
+	})
+
+	t.Run("should replace Reddit generic title with shreddit-post h1", func(t *testing.T) {
+		// given
+		preview := &model.LinkPreview{
+			Url:   "https://www.reddit.com/r/golang",
+			Title: "Reddit",
+		}
+		htmlContent := []byte(`
+			<html>
+				<body>
+					<shreddit-post>
+						<h1>Discussion: Go 1.21 Features</h1>
+					</shreddit-post>
+				</body>
+			</html>
+		`)
+
+		// when
+		replaceGenericTitle(preview, htmlContent)
+
+		// then
+		assert.Equal(t, "Discussion: Go 1.21 Features", preview.Title)
+	})
+
+	t.Run("should replace Reddit generic title with h1 containing 'r/'", func(t *testing.T) {
+		// given
+		preview := &model.LinkPreview{
+			Url:   "https://www.reddit.com/r/golang",
+			Title: "Reddit - The heart of the internet",
+		}
+		htmlContent := []byte(`
+			<html>
+				<body>
+					<h1>r/golang: The Go Programming Language</h1>
+					<h2>Other heading</h2>
+				</body>
+			</html>
+		`)
+
+		// when
+		replaceGenericTitle(preview, htmlContent)
+
+		// then
+		assert.Equal(t, "r/golang: The Go Programming Language", preview.Title)
+	})
+
+	t.Run("should use first matching selector", func(t *testing.T) {
+		// given
+		preview := &model.LinkPreview{
+			Url:   "https://www.reddit.com/test",
+			Title: "Reddit - The heart of the internet",
+		}
+		htmlContent := []byte(`
+			<html>
+				<body>
+					<h1 slot="title">First Title</h1>
+					<div data-test-id="post-content">
+						<h3>Second Title</h3>
+					</div>
+					<shreddit-post>
+						<h1>Third Title</h1>
+					</shreddit-post>
+				</body>
+			</html>
+		`)
+
+		// when
+		replaceGenericTitle(preview, htmlContent)
+
+		// then
+		assert.Equal(t, "First Title", preview.Title)
+	})
+
+	t.Run("should trim whitespace from extracted title", func(t *testing.T) {
+		// given
+		preview := &model.LinkPreview{
+			Url:   "https://www.reddit.com/test",
+			Title: "Reddit - Dive into anything",
+		}
+		htmlContent := []byte(`
+			<html>
+				<body>
+					<h1 slot="title">   Trimmed Title   </h1>
+				</body>
+			</html>
+		`)
+
+		// when
+		replaceGenericTitle(preview, htmlContent)
+
+		// then
+		assert.Equal(t, "Trimmed Title", preview.Title)
+	})
+
+	t.Run("should truncate long titles", func(t *testing.T) {
+		// given
+		preview := &model.LinkPreview{
+			Url:   "https://www.reddit.com/test",
+			Title: "Reddit - The heart of the internet",
+		}
+		longTitle := "This is a very long title that exceeds the maximum length limit of 100 characters and should be truncated"
+		htmlContent := []byte(`
+			<html>
+				<body>
+					<h1 slot="title">` + longTitle + `</h1>
+				</body>
+			</html>
+		`)
+
+		// when
+		replaceGenericTitle(preview, htmlContent)
+
+		// then
+		assert.Len(t, preview.Title, 100)
+		assert.True(t, len(preview.Title) <= 100)
+		assert.Contains(t, preview.Title, "...")
+		assert.Equal(t, longTitle[:97]+"...", preview.Title)
+	})
+
+	t.Run("should not use titles shorter than 5 characters", func(t *testing.T) {
+		// given
+		preview := &model.LinkPreview{
+			Url:   "https://www.reddit.com/test",
+			Title: "Reddit - The heart of the internet",
+		}
+		htmlContent := []byte(`
+			<html>
+				<body>
+					<h1 slot="title">    </h1>
+					<div data-test-id="post-content">
+						<h3>Hi</h3>
+					</div>
+					<shreddit-post>
+						<h1>Good Title</h1>
+					</shreddit-post>
+				</body>
+			</html>
+		`)
+
+		// when
+		replaceGenericTitle(preview, htmlContent)
+
+		// then
+		assert.Equal(t, "Good Title", preview.Title)
+	})
+
+	t.Run("should not change title if no valid replacement found", func(t *testing.T) {
+		// given
+		preview := &model.LinkPreview{
+			Url:   "https://www.reddit.com/test",
+			Title: "Reddit - The heart of the internet",
+		}
+		htmlContent := []byte(`
+			<html>
+				<body>
+					<h1 slot="title">   </h1>
+					<div data-test-id="post-content">
+						<h3></h3>
+					</div>
+					<div>No matching selectors here</div>
+				</body>
+			</html>
+		`)
+
+		// when
+		replaceGenericTitle(preview, htmlContent)
+
+		// then
+		assert.Equal(t, "Reddit - The heart of the internet", preview.Title)
+	})
+
+	t.Run("should handle malformed HTML gracefully", func(t *testing.T) {
+		// given
+		preview := &model.LinkPreview{
+			Url:   "https://www.reddit.com/test",
+			Title: "Reddit - The heart of the internet",
+		}
+		malformedHTML := []byte(`<html><body><h1 slot="title">Valid Title</h1><unclosed><tag></body></html>`)
+
+		// when
+		replaceGenericTitle(preview, malformedHTML)
+
+		// then
+		assert.Equal(t, "Valid Title", preview.Title)
+	})
+
+	t.Run("should handle invalid HTML gracefully", func(t *testing.T) {
+		// given
+		preview := &model.LinkPreview{
+			Url:   "https://www.reddit.com/test",
+			Title: "Reddit - The heart of the internet",
+		}
+		invalidHTML := []byte(`not html at all`)
+
+		// when
+		replaceGenericTitle(preview, invalidHTML)
+
+		// then
+		assert.Equal(t, "Reddit - The heart of the internet", preview.Title)
+	})
+
+	// Test case-insensitive matching
+	t.Run("should match generic title case-insensitively", func(t *testing.T) {
+		// given
+		preview := &model.LinkPreview{
+			Url:   "https://www.reddit.com/test",
+			Title: "REDDIT - THE HEART OF THE INTERNET",
+		}
+		htmlContent := []byte(`
+			<html>
+				<body>
+					<h1 slot="title">Actual Post Title</h1>
+				</body>
+			</html>
+		`)
+
+		// when
+		replaceGenericTitle(preview, htmlContent)
+
+		// then
+		assert.Equal(t, "Actual Post Title", preview.Title)
+	})
+
+	t.Run("should match partial generic title", func(t *testing.T) {
+		// given
+		preview := &model.LinkPreview{
+			Url:   "https://www.reddit.com/test",
+			Title: "Are you sure Reddit - The heart of the internet ?",
+		}
+		htmlContent := []byte(`
+			<html>
+				<body>
+					<h1 slot="title">Yes we are sure</h1>
+				</body>
+			</html>
+		`)
+
+		// when
+		replaceGenericTitle(preview, htmlContent)
+
+		// then
+		assert.Equal(t, "Yes we are sure", preview.Title)
+	})
+
+	t.Run("should not match similar domains", func(t *testing.T) {
+		// given
+		preview := &model.LinkPreview{
+			Url:   "https://notreddit.com/test",
+			Title: "Reddit - The heart of the internet",
+		}
+		htmlContent := []byte(`<html><body><h1 slot="title">Should Not Replace</h1></body></html>`)
+
+		// when
+		replaceGenericTitle(preview, htmlContent)
+
+		// then
+		assert.Equal(t, "Reddit - The heart of the internet", preview.Title)
+	})
+
+	t.Run("should handle empty title from HTML", func(t *testing.T) {
+		// given
+		preview := &model.LinkPreview{
+			Url:   "https://www.reddit.com/test",
+			Title: "Reddit - The heart of the internet",
+		}
+		htmlContent := []byte(`
+			<html>
+				<body>
+					<h1 slot="title"></h1>
+					<div data-test-id="post-content">
+						<h3>   </h3>
+					</div>
+					<shreddit-post>
+						<h1>Final Good Title</h1>
+					</shreddit-post>
+				</body>
+			</html>
+		`)
+
+		// when
+		replaceGenericTitle(preview, htmlContent)
+
+		// then
+		assert.Equal(t, "Final Good Title", preview.Title)
+	})
+}

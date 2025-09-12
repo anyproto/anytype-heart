@@ -14,6 +14,7 @@ import (
 	"strings"
 	"unicode/utf8"
 
+	"github.com/PuerkitoBio/goquery"
 	"github.com/anyproto/any-sync/app"
 	"github.com/go-shiori/go-readability"
 	"github.com/microcosm-cc/bluemonday"
@@ -41,6 +42,23 @@ const (
 var (
 	ErrPrivateLink = fmt.Errorf("link is private and cannot be previewed")
 	log            = logging.Logger(CName)
+
+	genericTitles = map[string][]string{
+		"www.reddit.com": {
+			"Reddit - The heart of the internet",
+			"Reddit - Dive into anything",
+			"Reddit",
+		},
+	}
+
+	titleSelectors = map[string][]string{
+		"www.reddit.com": {
+			"h1[slot='title']",
+			"[data-test-id='post-content'] h3",
+			"shreddit-post h1",
+			"h1:contains('r/')",
+		},
+	}
 )
 
 func New() LinkPreview {
@@ -128,6 +146,8 @@ func (l *linkPreview) convertOGToInfo(fetchUrl string, og *opengraph.OpenGraph, 
 		Type:        model.LinkPreview_Page,
 		FaviconUrl:  og.Favicon.URL,
 	}
+
+	replaceGenericTitle(&i, rt.lastBody)
 
 	if len(og.Image) != 0 {
 		url, err := uri.NormalizeURI(og.Image[0].URL)
@@ -404,5 +424,50 @@ func getStatusClass(statusCode int) string {
 		return "5xx"
 	default:
 		return "unknown"
+	}
+}
+
+func replaceGenericTitle(preview *model.LinkPreview, htmlContent []byte) {
+	if len(htmlContent) == 0 {
+		return
+	}
+
+	parsedURL, err := url.Parse(preview.Url)
+	if err != nil {
+		return
+	}
+	hostname := parsedURL.Hostname()
+
+	var selectors []string
+	isTitleGeneric := func() bool {
+		for _, genericTitle := range genericTitles[hostname] {
+			if strings.EqualFold(preview.Title, genericTitle) || strings.Contains(preview.Title, genericTitle) {
+				selectors = titleSelectors[hostname]
+				return true
+			}
+		}
+		return false
+	}
+
+	if !isTitleGeneric() {
+		return
+	}
+
+	doc, err := goquery.NewDocumentFromReader(bytes.NewReader(htmlContent))
+	if err != nil {
+		return
+	}
+
+	for _, selector := range selectors {
+		if title := doc.Find(selector).First().Text(); title != "" {
+			title = strings.TrimSpace(title)
+			if len(title) > 100 {
+				title = title[:97] + "..."
+			}
+			if len(title) > 5 {
+				preview.Title = title
+				return
+			}
+		}
 	}
 }
