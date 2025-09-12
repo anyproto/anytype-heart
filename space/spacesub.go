@@ -97,7 +97,7 @@ func newSpaceSubscription(
 				case bundle.RelationKeyLatestAclHeadId:
 					status.aclHeadId = kv.Value.String()
 				case bundle.RelationKeyGuestKey:
-					status.aclHeadId = kv.Value.String()
+					status.guestKey = kv.Value.String()
 				}
 			}
 			update(status)
