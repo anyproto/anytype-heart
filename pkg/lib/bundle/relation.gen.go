@@ -9,7 +9,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-const RelationChecksum = "9c072a50aa74db3e1109fbfe039add5b949c49dfc45f39b1f3705b2a812cb243"
+const RelationChecksum = "921c75b76fdc2037f7c7c6f216ff9c1001de5cbe5abbbf0c03019ee185f93fcb"
 const (
 	RelationKeyTag                                domain.RelationKey = "tag"
 	RelationKeyCamera                             domain.RelationKey = "camera"
@@ -178,6 +178,9 @@ const (
 	RelationKeySpacePushNotificationKey           domain.RelationKey = "spacePushNotificationKey"
 	RelationKeySpacePushNotificationEncryptionKey domain.RelationKey = "spacePushNotificationEncryptionKey"
 	RelationKeySpaceJoinDate                      domain.RelationKey = "spaceJoinDate"
+	RelationKeyWidgetLayout                       domain.RelationKey = "widgetLayout"
+	RelationKeyWidgetLimit                        domain.RelationKey = "widgetLimit"
+	RelationKeyWidgetViewId                       domain.RelationKey = "widgetViewId"
 )
 
 var (
@@ -2451,6 +2454,48 @@ var (
 			Key:              "url",
 			MaxCount:         1,
 			Name:             "URL",
+			ReadOnly:         false,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
+		RelationKeyWidgetLayout: {
+
+			DataSource:       model.Relation_details,
+			Description:      "Widget layout",
+			Format:           model.RelationFormat_number,
+			Hidden:           true,
+			Id:               "_brwidgetLayout",
+			Key:              "widgetLayout",
+			MaxCount:         1,
+			Name:             "Widget layout",
+			ReadOnly:         false,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
+		RelationKeyWidgetLimit: {
+
+			DataSource:       model.Relation_details,
+			Description:      "Widget limit",
+			Format:           model.RelationFormat_number,
+			Hidden:           true,
+			Id:               "_brwidgetLimit",
+			Key:              "widgetLimit",
+			MaxCount:         1,
+			Name:             "Widget limit",
+			ReadOnly:         false,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
+		RelationKeyWidgetViewId: {
+
+			DataSource:       model.Relation_details,
+			Description:      "Widget view ID",
+			Format:           model.RelationFormat_longtext,
+			Hidden:           true,
+			Id:               "_brwidgetViewId",
+			Key:              "widgetViewId",
+			MaxCount:         1,
+			Name:             "Widget view ID",
 			ReadOnly:         false,
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
