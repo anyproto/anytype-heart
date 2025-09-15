@@ -18,6 +18,7 @@ type component struct {
 }
 
 type Collection interface {
+	ListIdsFromCollection() []string
 	AddToCollection(ctx session.Context, req *pb.RpcObjectCollectionAddRequest) error
 	RemoveFromCollection(ctx session.Context, req *pb.RpcObjectCollectionRemoveRequest) error
 	ReorderCollection(ctx session.Context, req *pb.RpcObjectCollectionSortRequest) error
@@ -31,6 +32,10 @@ func New(sb smartblock.SmartBlock, backlinksUpdater backlinks.UpdateWatcher) Col
 		backlinksUpdater: backlinksUpdater,
 		subscriptions:    map[string]chan []string{},
 	}
+}
+
+func (c *component) ListIdsFromCollection() []string {
+	return c.NewState().GetStoreSlice(template.CollectionStoreKey)
 }
 
 func (c *component) AddToCollection(ctx session.Context, req *pb.RpcObjectCollectionAddRequest) error {
