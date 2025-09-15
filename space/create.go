@@ -3,10 +3,13 @@ package space
 import (
 	"context"
 
+	"github.com/anyproto/any-sync/util/crypto"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space/clientspace"
 	"github.com/anyproto/anytype-heart/space/internal/spaceprocess/loader"
 	space "github.com/anyproto/anytype-heart/space/spacecore"
+	"github.com/anyproto/anytype-heart/space/spacecore/storage/anystorage"
+
 	"github.com/anyproto/anytype-heart/space/spaceinfo"
 )
 
@@ -50,5 +53,16 @@ func (s *service) create(ctx context.Context, description *spaceinfo.SpaceDescri
 	s.spaceControllers[ctrl.SpaceId()] = ctrl
 	s.mu.Unlock()
 	s.updater.UpdateCoordinatorStatus()
+
+	// todo: use CreateAndSetOneToOneSpace
+	if bPriv, bPk, genErr := crypto.GenerateRandomEd25519KeyPair(); genErr == nil {
+		_ = bPriv // not used; only need public key
+		if spOne, derr := s.spaceCore.DeriveOneToOneSpace(ctx, bPk); derr == nil {
+			_ = spOne.Storage().(anystorage.ClientSpaceStorage).MarkSpaceCreated(ctx)
+			info := spaceinfo.NewSpacePersistentInfo(spOne.Id())
+			info.SetAccountStatus(spaceinfo.AccountStatusUnknown)
+			_ = s.techSpace.SpaceViewCreate(ctx, spOne.Id(), true, info, nil)
+		}
+	}
 	return
 }

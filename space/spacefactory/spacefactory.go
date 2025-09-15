@@ -286,6 +286,44 @@ func (s *spaceFactory) CreateMarketplaceSpace(ctx context.Context) (sp spacecont
 	return ctrl, err
 }
 
+func (s *spaceFactory) NewOneToOneSpace(ctx context.Context) (ctrl spacecontroller.SpaceController, err error) {
+	id, err := s.spaceCore.DeriveID(ctx, spacecore.OneToOneSpaceType)
+	fmt.Printf("-- %s\n", id)
+	if err != nil {
+		return nil, err
+	}
+	// ctrl, err = personalspace.NewSpaceController(ctx, id, metadata, s.app)
+	// if err != nil {
+	// 	return nil, err
+	// }
+	// err = ctrl.Start(ctx)
+	// return ctrl, err
+	return nil, nil
+}
+
+func (s *spaceFactory) CreateAndSetOneToOneSpace(ctx context.Context, bPk crypto.PubKey) (sp spacecontroller.SpaceController, err error) {
+    oneToOneSpace, err := s.spaceCore.DeriveOneToOneSpace(ctx, bPk)
+    if err != nil {
+        return
+    }
+    err = oneToOneSpace.Storage().(anystorage.ClientSpaceStorage).MarkSpaceCreated(ctx)
+    if err != nil {
+        return
+    }
+    id := oneToOneSpace.Id()
+    info := spaceinfo.NewSpacePersistentInfo(id)
+    info.SetAccountStatus(spaceinfo.AccountStatusUnknown)
+    if err := s.techSpace.SpaceViewCreate(ctx, id, true, info, nil); err != nil {
+        return nil, err
+    }
+    ctrl, err := shareablespace.NewSpaceController(id, info, s.app)
+    if err != nil {
+        return nil, err
+    }
+    err = ctrl.Start(ctx)
+    return ctrl, err
+}
+
 func (s *spaceFactory) Name() (name string) {
 	return CName
 }

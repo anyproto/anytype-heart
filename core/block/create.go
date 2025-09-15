@@ -93,6 +93,8 @@ func (s *Service) CreateLinkToTheNewObject(
 
 	objectTypeKey, err := domain.GetTypeKeyFromRawUniqueKey(req.ObjectTypeUniqueKey)
 	if err != nil {
+		// here
+		// ts sends objecttypeuniquekey ""
 		return "", "", nil, fmt.Errorf("get type key from raw unique key: %w", err)
 	}
 

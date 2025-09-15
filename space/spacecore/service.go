@@ -40,11 +40,12 @@ import (
 )
 
 const (
-	CName         = "client.space.spacecore"
-	SpaceType     = "anytype.space"
-	TechSpaceType = "anytype.techspace"
-	ChatSpaceType = "anytype.chatspace"
-	ChangeType    = "anytype.object"
+	CName             = "client.space.spacecore"
+	SpaceType         = "anytype.space"
+	TechSpaceType     = "anytype.techspace"
+	OneToOneSpaceType = "anytype.onetoone"
+	ChatSpaceType     = "anytype.chatspace"
+	ChangeType        = "anytype.object"
 )
 
 var log = logger.NewNamed(CName)
@@ -70,6 +71,7 @@ type SpaceCoreService interface {
 	Create(ctx context.Context, spaceType string, replicationKey uint64, metadataPayload []byte) (*AnySpace, error)
 	Derive(ctx context.Context, spaceType string) (space *AnySpace, err error)
 	DeriveID(ctx context.Context, spaceType string) (id string, err error)
+	DeriveOneToOneSpace(ctx context.Context, bPk crypto.PubKey) (space *AnySpace, err error)
 	Delete(ctx context.Context, spaceId string) (err error)
 	Get(ctx context.Context, id string) (*AnySpace, error)
 	Pick(ctx context.Context, id string) (*AnySpace, error)
@@ -143,6 +145,24 @@ func (s *service) Derive(ctx context.Context, spaceType string) (space *AnySpace
 	obj, err := s.spaceCache.Get(ctx, id)
 	if err != nil {
 		return
+	}
+	return obj.(*AnySpace), nil
+}
+
+func (s *service) DeriveOneToOneSpace(ctx context.Context, bPk crypto.PubKey) (space *AnySpace, err error) {
+	sharedSk, err := crypto.GenerateSharedKey(s.wallet.GetAccountPrivkey(), bPk)
+	payload := spacepayloads.SpaceDerivePayload{
+		SigningKey: sharedSk,
+		MasterKey:  sharedSk,
+		SpaceType:  OneToOneSpaceType,
+	}
+	id, err := s.commonSpace.DeriveSpace(ctx, payload)
+	if err != nil {
+		return nil, err
+	}
+	obj, err := s.spaceCache.Get(ctx, id)
+	if err != nil {
+		return nil, err
 	}
 	return obj.(*AnySpace), nil
 }
