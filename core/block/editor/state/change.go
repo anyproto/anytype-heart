@@ -40,7 +40,14 @@ func WithInternalKey(internalKey string) func(*snapshotOptions) {
 	}
 }
 
-func NewDocFromSnapshot(rootId string, snapshot *pb.ChangeSnapshot, opts ...SnapshotOption) Doc {
+func NewDocFromSnapshot(rootId string, snapshot *pb.ChangeSnapshot, opts ...SnapshotOption) (*State, error) {
+	if snapshot == nil {
+		return nil, fmt.Errorf("nil snapshot")
+	}
+	if snapshot.Data == nil {
+		return nil, fmt.Errorf("nil snapshot data")
+	}
+
 	sOpts := snapshotOptions{}
 	for _, opt := range opts {
 		opt(&sOpts)
@@ -99,7 +106,7 @@ func NewDocFromSnapshot(rootId string, snapshot *pb.ChangeSnapshot, opts ...Snap
 		}
 	}
 
-	return s
+	return s, nil
 }
 
 func (s *State) SetLastModified(ts int64, identityLink string) {

@@ -10,7 +10,7 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/block/cache"
 	"github.com/anyproto/anytype-heart/core/block/editor"
-	"github.com/anyproto/anytype-heart/core/block/editor/collection"
+	"github.com/anyproto/anytype-heart/core/block/editor/blockcollection"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/editor/widget"
@@ -180,7 +180,7 @@ func (s *service) objectLinksCollectionModify(collectionId string, objectId stri
 		return fmt.Errorf("can't add links collection to itself")
 	}
 	return cache.Do(s.objectGetter, collectionId, func(b smartblock.SmartBlock) error {
-		coll, ok := b.(collection.Collection)
+		coll, ok := b.(blockcollection.Collection)
 		if !ok {
 			return fmt.Errorf("unsupported sb block type: %T", b)
 		}
@@ -210,7 +210,7 @@ func (s *service) setIsArchivedForObjects(spaceId string, objectIds []string, is
 		return fmt.Errorf("get space: %w", err)
 	}
 	return cache.Do(s.objectGetter, spc.DerivedIDs().Archive, func(b smartblock.SmartBlock) error {
-		archive, ok := b.(collection.Collection)
+		archive, ok := b.(blockcollection.Collection)
 		if !ok {
 			return fmt.Errorf("unexpected archive block type: %T", b)
 		}
@@ -242,7 +242,7 @@ func (s *service) setIsArchivedForObjects(spaceId string, objectIds []string, is
 }
 
 func (s *service) modifyArchiveLinks(
-	coll collection.Collection, value bool, ids ...string,
+	coll blockcollection.Collection, value bool, ids ...string,
 ) (anySucceed bool, resultErr error) {
 	for _, id := range ids {
 		err := s.checkArchivedRestriction(value, id)

@@ -60,7 +60,7 @@ func (m *mdConverter) GetYAMLResolver() *YAMLPropertyResolver {
 	return m.yamlResolver
 }
 
-func (m *mdConverter) markdownToBlocks(importPath string, importSource source.Source, allErrors *common.ConvertError, createDirectoryPages bool) map[string]*FileInfo {
+func (m *mdConverter) markdownToBlocks(importPath string, importSource source.Source, allErrors *common.ConvertError, createDirectoryPages bool) *fileContainer {
 	files := m.processFiles(importPath, allErrors, importSource)
 
 	// Create directory pages if requested
@@ -73,13 +73,13 @@ func (m *mdConverter) markdownToBlocks(importPath string, importSource source.So
 	return files
 }
 
-func (m *mdConverter) processFiles(importPath string, allErrors *common.ConvertError, importSource source.Source) map[string]*FileInfo {
+func (m *mdConverter) processFiles(importPath string, allErrors *common.ConvertError, importSource source.Source) *fileContainer {
 	if importSource.CountFilesWithGivenExtensions([]string{".md"}) == 0 {
 		allErrors.Add(common.ErrorBySourceType(importSource))
 		return nil
 	}
 	fileInfo := m.getFileInfo(importSource, allErrors)
-	for name, file := range fileInfo {
+	for name, file := range fileInfo.byPath {
 		m.processBlocks(name, file, fileInfo, importSource)
 		for _, b := range file.ParsedBlocks {
 			m.processFileBlock(b, importSource, importPath, fileInfo)
@@ -88,10 +88,24 @@ func (m *mdConverter) processFiles(importPath string, allErrors *common.ConvertE
 	return fileInfo
 }
 
-func (m *mdConverter) getFileInfo(importSource source.Source, allErrors *common.ConvertError) map[string]*FileInfo {
-	fileInfo := make(map[string]*FileInfo, 0)
+type fileContainer struct {
+	byName map[string]*FileInfo
+	byPath map[string]*FileInfo
+}
+
+func (fc *fileContainer) setFile(path string, file *FileInfo) {
+	fc.byPath[path] = file
+	fc.byName[filepath.Base(path)] = file
+	fc.byName[filepath.Base(file.OriginalPath)] = file
+}
+
+func (m *mdConverter) getFileInfo(importSource source.Source, allErrors *common.ConvertError) *fileContainer {
+	fileInfo := &fileContainer{
+		byName: make(map[string]*FileInfo),
+		byPath: make(map[string]*FileInfo),
+	}
 	if iterateErr := importSource.Iterate(func(fileName string, fileReader io.ReadCloser) (isContinue bool) {
-		if err := m.fillFilesInfo(importSource, fileInfo, fileName, fileReader); err != nil {
+		if err := m.fillFilesInfo(importSource, fileInfo.byPath, fileName, fileReader); err != nil {
 			allErrors.Add(err)
 			if allErrors.ShouldAbortImport(0, model.Import_Markdown) {
 				return false
@@ -100,6 +114,11 @@ func (m *mdConverter) getFileInfo(importSource source.Source, allErrors *common.
 		return true
 	}); iterateErr != nil {
 		allErrors.Add(iterateErr)
+	}
+
+	for path, info := range fileInfo.byPath {
+		fileInfo.byName[filepath.Base(info.OriginalPath)] = info
+		fileInfo.byName[filepath.Base(path)] = info
 	}
 	return fileInfo
 }
@@ -114,14 +133,14 @@ func (m *mdConverter) fillFilesInfo(importSource source.Source, fileInfo map[str
 	return nil
 }
 
-func (m *mdConverter) processBlocks(shortPath string, file *FileInfo, files map[string]*FileInfo, importSource source.Source) {
+func (m *mdConverter) processBlocks(shortPath string, file *FileInfo, files *fileContainer, importSource source.Source) {
 	for _, block := range file.ParsedBlocks {
 		m.processTextBlock(block, files, importSource)
 	}
 	m.processLinkBlock(shortPath, file, files)
 }
 
-func (m *mdConverter) processTextBlock(block *model.Block, files map[string]*FileInfo, importSource source.Source) {
+func (m *mdConverter) processTextBlock(block *model.Block, files *fileContainer, importSource source.Source) {
 	txt := block.GetText()
 	if txt != nil && txt.Marks != nil {
 		if len(txt.Marks.Marks) == 1 && txt.Marks.Marks[0].Type == model.BlockContentTextMark_Link {
@@ -188,7 +207,7 @@ func findCommonPrefix(path1, path2 string) string {
 	return result
 }
 
-func (m *mdConverter) handleSingleMark(block *model.Block, files map[string]*FileInfo, importSource source.Source) {
+func (m *mdConverter) handleSingleMark(block *model.Block, files *fileContainer, importSource source.Source) {
 	txt := block.GetText()
 	link := normalizePath(txt.Marks.Marks[0].Param)
 
@@ -220,7 +239,7 @@ func (m *mdConverter) handleSingleMark(block *model.Block, files map[string]*Fil
 	}
 }
 
-func (m *mdConverter) handleMultipleMarks(block *model.Block, files map[string]*FileInfo, importSource source.Source) {
+func (m *mdConverter) handleMultipleMarks(block *model.Block, files *fileContainer, importSource source.Source) {
 	txt := block.GetText()
 	for _, mark := range txt.Marks.Marks {
 		if mark.Type == model.BlockContentTextMark_Link {
@@ -231,7 +250,7 @@ func (m *mdConverter) handleMultipleMarks(block *model.Block, files map[string]*
 	}
 }
 
-func (m *mdConverter) handleSingleLinkMark(block *model.Block, files map[string]*FileInfo, mark *model.BlockContentTextMark, txt *model.BlockContentText, importSource source.Source) bool {
+func (m *mdConverter) handleSingleLinkMark(block *model.Block, files *fileContainer, mark *model.BlockContentTextMark, txt *model.BlockContentText, importSource source.Source) bool {
 	isWholeLink := m.isWholeLineLink(txt.Text, mark)
 	link := normalizePath(mark.Param)
 	ext := filepath.Ext(link)
@@ -279,9 +298,9 @@ func (m *mdConverter) convertToAnytypeLinkBlock(block *model.Block, wholeLineLin
 	}
 }
 
-func (m *mdConverter) processCSVFileLink(block *model.Block, files map[string]*FileInfo, link string, wholeLineLink bool) {
+func (m *mdConverter) processCSVFileLink(block *model.Block, files *fileContainer, link string, wholeLineLink bool) {
 	csvDir := strings.TrimSuffix(link, ".csv")
-	for name, file := range files {
+	for name, file := range files.byPath {
 		// set HasInboundLinks for all CSV-origin md files
 		fileExt := filepath.Ext(name)
 		if filepath.Dir(name) == csvDir && strings.EqualFold(fileExt, ".md") {
@@ -289,15 +308,15 @@ func (m *mdConverter) processCSVFileLink(block *model.Block, files map[string]*F
 		}
 	}
 	m.convertToAnytypeLinkBlock(block, wholeLineLink)
-	files[link].HasInboundLinks = true
+	files.byPath[link].HasInboundLinks = true
 }
 
-func findFile(files map[string]*FileInfo, name string) *FileInfo {
+func findFile(files *fileContainer, name string) *FileInfo {
 	if name == "" {
 		return nil
 	}
 	// Check if the file exists in the map by its original path
-	if file, exists := files[name]; exists {
+	if file, exists := files.byPath[name]; exists {
 		return file
 	}
 	if strings.HasPrefix(name, "http://") || strings.HasPrefix(name, "https://") {
@@ -308,20 +327,16 @@ func findFile(files map[string]*FileInfo, name string) *FileInfo {
 	return findPathByBaseName(files, name)
 }
 
-func findPathByBaseName(files map[string]*FileInfo, name string) *FileInfo {
-	// todo: rewrite it in more effective way
-	// we should have some map by file name
+func findPathByBaseName(files *fileContainer, name string) *FileInfo {
 	name = filepath.Base(name)
-	for path, file := range files {
-		if filepath.Base(file.OriginalPath) == name || filepath.Base(path) == name {
-			return file
-		}
+	if file, exists := files.byName[name]; exists {
+		return file
 	}
 	log.Debugf("file %s not found in files map", name)
 	return nil
 }
 
-func (m *mdConverter) processFileBlock(block *model.Block, importedSource source.Source, importPath string, files map[string]*FileInfo) {
+func (m *mdConverter) processFileBlock(block *model.Block, importedSource source.Source, importPath string, files *fileContainer) {
 	if f := block.GetFile(); f != nil {
 		if block.Id == "" {
 			block.Id = bson.NewObjectId().Hex()
@@ -334,19 +349,22 @@ func (m *mdConverter) processFileBlock(block *model.Block, importedSource source
 				log.Errorf("failed to update file block, %v", err)
 			}
 		} else {
-			name = ""
+			// If it's a URL, preserve it; otherwise clear it
+			if !strings.HasPrefix(name, "http://") && !strings.HasPrefix(name, "https://") {
+				name = ""
+			}
 		}
 		block.GetFile().Name = name
 	}
 }
 
-func (m *mdConverter) processLinkBlock(shortPath string, file *FileInfo, files map[string]*FileInfo) {
+func (m *mdConverter) processLinkBlock(shortPath string, file *FileInfo, files *fileContainer) {
 	ext := filepath.Ext(shortPath)
 	if !strings.EqualFold(ext, ".csv") {
 		return
 	}
 	dependentFilesDir := strings.TrimSuffix(shortPath, ext)
-	for targetName, targetFile := range files {
+	for targetName, targetFile := range files.byPath {
 		fileExt := filepath.Ext(targetName)
 		if filepath.Dir(targetName) == dependentFilesDir && strings.EqualFold(fileExt, ".md") {
 			if !targetFile.HasInboundLinks {
@@ -454,7 +472,7 @@ func (m *mdConverter) getOriginalName(link string, importSource source.Source) s
 
 // createDirectoryPages creates a page for each directory level (including root) in the import
 // Each directory page contains block links to nested pages and subdirectories
-func (m *mdConverter) createDirectoryPages(importPath string, files map[string]*FileInfo) {
+func (m *mdConverter) createDirectoryPages(importPath string, files *fileContainer) {
 	rootPath := m.findRootPath(files)
 	dirStructure := m.buildDirectoryStructure(files, rootPath)
 
@@ -471,14 +489,14 @@ func (m *mdConverter) createDirectoryPages(importPath string, files map[string]*
 		}
 
 		dirPage := m.createDirectoryPage(dirPath, rootPath, children, files, dirStructure)
-		files[dirPath] = dirPage
+		files.setFile(dirPath, dirPage)
 	}
 }
 
 // findRootPath finds the common root directory of all files
-func (m *mdConverter) findRootPath(files map[string]*FileInfo) string {
+func (m *mdConverter) findRootPath(files *fileContainer) string {
 	var paths []string
-	for _, file := range files {
+	for _, file := range files.byPath {
 		paths = append(paths, filepath.Dir(file.OriginalPath))
 	}
 
@@ -498,7 +516,7 @@ func (m *mdConverter) findRootPath(files map[string]*FileInfo) string {
 }
 
 // buildDirectoryStructure creates a map of directory paths to their children
-func (m *mdConverter) buildDirectoryStructure(files map[string]*FileInfo, rootPath string) map[string][]string {
+func (m *mdConverter) buildDirectoryStructure(files *fileContainer, rootPath string) map[string][]string {
 	dirStructure := make(map[string][]string)
 	dirStructure[rootPath] = []string{}
 
@@ -506,7 +524,7 @@ func (m *mdConverter) buildDirectoryStructure(files map[string]*FileInfo, rootPa
 	commonPrefix := ""
 	if rootPath == "" && shouldCollapseRoot(m.findRootPath(files), files) {
 		// Find the common directory that we're collapsing
-		for _, file := range files {
+		for _, file := range files.byPath {
 			parts := strings.Split(file.OriginalPath, string(filepath.Separator))
 			if len(parts) > 0 && parts[0] != "" && parts[0] != "." {
 				commonPrefix = parts[0]
@@ -515,7 +533,7 @@ func (m *mdConverter) buildDirectoryStructure(files map[string]*FileInfo, rootPa
 		}
 	}
 
-	for filePath, file := range files {
+	for filePath, file := range files.byPath {
 		if !isMarkdownOrCSV(file.OriginalPath) {
 			continue
 		}
@@ -609,14 +627,14 @@ func (m *mdConverter) getParentDir(dir, rootPath string) string {
 }
 
 // shouldCollapseRoot checks if we should collapse a single root directory (common in zip files)
-func shouldCollapseRoot(rootPath string, files map[string]*FileInfo) bool {
+func shouldCollapseRoot(rootPath string, files *fileContainer) bool {
 	if rootPath == "" || filepath.IsAbs(rootPath) {
 		return false
 	}
 
 	// Check if all files share the same top-level directory
 	var commonDir string
-	for _, file := range files {
+	for _, file := range files.byPath {
 		parts := strings.Split(file.OriginalPath, string(filepath.Separator))
 		if len(parts) == 0 {
 			return false
@@ -643,7 +661,7 @@ func shouldSkipDirectory(dirPath, rootPath string) bool {
 }
 
 // createDirectoryPage creates a FileInfo for a directory page
-func (m *mdConverter) createDirectoryPage(dirPath, rootPath string, children []string, files map[string]*FileInfo, dirStructure map[string][]string) *FileInfo {
+func (m *mdConverter) createDirectoryPage(dirPath, rootPath string, children []string, files *fileContainer, dirStructure map[string][]string) *FileInfo {
 	displayName := m.getDirectoryDisplayName(dirPath, rootPath)
 	blocks := m.createChildLinks(children, files, dirStructure)
 
@@ -675,7 +693,7 @@ func (m *mdConverter) getDirectoryDisplayName(dirPath, rootPath string) string {
 }
 
 // createChildLinks creates block links for all children in a directory
-func (m *mdConverter) createChildLinks(children []string, files map[string]*FileInfo, dirStructure map[string][]string) []*model.Block {
+func (m *mdConverter) createChildLinks(children []string, files *fileContainer, dirStructure map[string][]string) []*model.Block {
 	// Sort children: directories first, then files
 	sortedChildren := m.sortChildren(children, dirStructure)
 
@@ -687,7 +705,7 @@ func (m *mdConverter) createChildLinks(children []string, files map[string]*File
 				continue
 			}
 			blocks = append(blocks, m.createDirectoryLink(childPath))
-		} else if file, exists := files[childPath]; exists {
+		} else if file, exists := files.byPath[childPath]; exists {
 			blocks = append(blocks, m.createFileLink(childPath, file))
 		}
 	}

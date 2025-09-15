@@ -1,7 +1,6 @@
 #https://linear.app/anytype/issue/GO-3985/make-performance-report-on-the-stand
 name: Perf tests
 
-
 on:
   workflow_dispatch:
     inputs:
@@ -9,26 +8,20 @@ on:
         description: 'Specify the runner to use on MacOS'
         required: true
         default: 'mac-mini-org-heart'
-      run-on-runner-win:
-        description: 'Specify the runner to use on Windows'
-        required: true
-        default: 'windows-perftests'
+      # run-on-runner-win:
+      #   description: 'Specify the runner to use on Windows'
+      #   required: true
+      #   default: 'windows-perftests'
       perf-test:
         description: 'Run perf test times'
         required: true
         default: '10'
   schedule:
     - cron: '0 1 * * *' # every day at 1am
-      filters:
-        branches:
-          include:
-            - 'main'
-
 
 permissions:
   actions: 'write'
   contents: 'write'
-
 
 jobs:
   wait_for_self_hosted_mac_mini:
@@ -120,163 +113,163 @@ jobs:
           footer: "Linked Repo <{repo_url}|{repo}>"
           message_format: "{emoji} *{job}* from *{workflow}* {status_message} in <{repo_url}|{repo}>"
         env:
-          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_ALERT_WEBHOOK }}
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL_ALERTS }}
 
-  perftests-windows:
-    timeout-minutes: 60
-    runs-on: 'windows-perftests'
-    steps:
-      - name: Install windows utils
-        run: C:\ProgramData\chocolatey\bin\choco install gzip mingw git -y
+  # perftests-windows:
+  #   timeout-minutes: 60
+  #   runs-on: 'windows-perftests'
+  #   steps:
+  #     - name: Install windows utils
+  #       run: C:\ProgramData\chocolatey\bin\choco install gzip mingw git -y
 
-      - name: Setup Go
-        uses: actions/setup-go@v5
-        with:
-          go-version: '1.23'
-          cache: false
+  #     - name: Setup Go
+  #       uses: actions/setup-go@v5
+  #       with:
+  #         go-version: '1.23'
+  #         cache: false
 
-      - name: Setup Go env
-        run: |
-          go version
-          echo GOPATH=$(go env GOPATH) >> $env:GITHUB_ENV
-          echo GOBIN=$(go env GOPATH)\bin >> $env:GITHUB_ENV
-          echo $(go env GOPATH)\bin >> $env:GITHUB_PATH
+  #     - name: Setup Go env
+  #       run: |
+  #         go version
+  #         echo GOPATH=$(go env GOPATH) >> $env:GITHUB_ENV
+  #         echo GOBIN=$(go env GOPATH)\bin >> $env:GITHUB_ENV
+  #         echo $(go env GOPATH)\bin >> $env:GITHUB_PATH
 
-      - name: Checkout
-        uses: actions/checkout@v4.2.2
+  #     - name: Checkout
+  #       uses: actions/checkout@v4.2.2
 
-      - name: Set env vars
-        env:
-          UNSPLASH_KEY: ${{ secrets.UNSPLASH_KEY }}
-          INHOUSE_KEY: ${{ secrets.INHOUSE_KEY }}
-        run: |
-          $GIT_SUMMARY = git describe --tags --always
-          echo "FLAGS=-X github.com/anyproto/anytype-heart/util/vcs.GitSummary=$GIT_SUMMARY -X github.com/anyproto/anytype-heart/metrics.DefaultInHouseKey=$env:INHOUSE_KEY -X github.com/anyproto/anytype-heart/util/unsplash.DefaultToken=$env:UNSPLASH_KEY" >> $env:GITHUB_ENV
-          if ($env:GITHUB_EVENT_NAME -eq "workflow_dispatch") {
-            $VERSION = ${{ github.event.inputs.alpha_version }}
-            if (-not $VERSION) {
-              $VERSION = git rev-parse --short HEAD
-            }
-          }
-          if (-not $VERSION) {
-            $VERSION = ($env:GITHUB_REF -split "/")[-1]
-          }
-          echo "VERSION=$VERSION" >> $env:GITHUB_ENV
-          echo "MAVEN_ARTIFACT_VERSION=$VERSION" >> $env:GITHUB_ENV
-          echo "GOPRIVATE=github.com/anyproto" >> $env:GITHUB_ENV
-          echo "$(Get-Location)\deps" >> $env:GITHUB_PATH
-          echo "$env:GOBIN" >> $env:GITHUB_PATH
-          git config --global url."https://${{ secrets.ANYTYPE_PAT }}@github.com/".insteadOf "https://github.com/"
+  #     - name: Set env vars
+  #       env:
+  #         UNSPLASH_KEY: ${{ secrets.UNSPLASH_KEY }}
+  #         INHOUSE_KEY: ${{ secrets.INHOUSE_KEY }}
+  #       run: |
+  #         $GIT_SUMMARY = git describe --tags --always
+  #         echo "FLAGS=-X github.com/anyproto/anytype-heart/util/vcs.GitSummary=$GIT_SUMMARY -X github.com/anyproto/anytype-heart/metrics.DefaultInHouseKey=$env:INHOUSE_KEY -X github.com/anyproto/anytype-heart/util/unsplash.DefaultToken=$env:UNSPLASH_KEY" >> $env:GITHUB_ENV
+  #         if ($env:GITHUB_EVENT_NAME -eq "workflow_dispatch") {
+  #           $VERSION = ${{ github.event.inputs.alpha_version }}
+  #           if (-not $VERSION) {
+  #             $VERSION = git rev-parse --short HEAD
+  #           }
+  #         }
+  #         if (-not $VERSION) {
+  #           $VERSION = ($env:GITHUB_REF -split "/")[-1]
+  #         }
+  #         echo "VERSION=$VERSION" >> $env:GITHUB_ENV
+  #         echo "MAVEN_ARTIFACT_VERSION=$VERSION" >> $env:GITHUB_ENV
+  #         echo "GOPRIVATE=github.com/anyproto" >> $env:GITHUB_ENV
+  #         echo "$(Get-Location)\deps" >> $env:GITHUB_PATH
+  #         echo "$env:GOBIN" >> $env:GITHUB_PATH
+  #         git config --global url."https://${{ secrets.ANYTYPE_PAT }}@github.com/".insteadOf "https://github.com/"
 
-      - name: Go mod download
-        run: |
-          go mod download
+  #     - name: Go mod download
+  #       run: |
+  #         go mod download
 
-      - name: Setup network config
-        env:
-          CUSTOM_NETWORK_FILE: ./core/anytype/config/nodes/custom.yml
-        run: |
-          if (-not $env:ANY_SYNC_NETWORK) {
-              echo "Using the default production Any Sync Network"
-          } elseif (-not (Test-Path $env:ANY_SYNC_NETWORK)) {
-              echo "Network configuration file not found at $env:ANY_SYNC_NETWORK"
-              exit 1
-          } else {
-              echo "Using Any Sync Network configuration at $env:ANY_SYNC_NETWORK"
-              Copy-Item -Path $env:ANY_SYNC_NETWORK -Destination $CUSTOM_NETWORK_FILE -Force
-          }
+  #     - name: Setup network config
+  #       env:
+  #         CUSTOM_NETWORK_FILE: ./core/anytype/config/nodes/custom.yml
+  #       run: |
+  #         if (-not $env:ANY_SYNC_NETWORK) {
+  #             echo "Using the default production Any Sync Network"
+  #         } elseif (-not (Test-Path $env:ANY_SYNC_NETWORK)) {
+  #             echo "Network configuration file not found at $env:ANY_SYNC_NETWORK"
+  #             exit 1
+  #         } else {
+  #             echo "Using Any Sync Network configuration at $env:ANY_SYNC_NETWORK"
+  #             Copy-Item -Path $env:ANY_SYNC_NETWORK -Destination $CUSTOM_NETWORK_FILE -Force
+  #         }
 
-      - name: Check and download tantivy
-        env:
-          TANTIVY_GO_PATH: ../tantivy-go
-          OUTPUT_DIR: deps/libs
-          REPO: anyproto/tantivy-go
-        run: |
-          $TANTIVY_VERSION = (Get-Content go.mod | Select-String "github.com/anyproto/tantivy-go" | ForEach-Object { ($_ -split " ")[1] }).Trim()
+  #     - name: Check and download tantivy
+  #       env:
+  #         TANTIVY_GO_PATH: ../tantivy-go
+  #         OUTPUT_DIR: deps/libs
+  #         REPO: anyproto/tantivy-go
+  #       run: |
+  #         $TANTIVY_VERSION = (Get-Content go.mod | Select-String "github.com/anyproto/tantivy-go" | ForEach-Object { ($_ -split " ")[1] }).Trim()
 
-          $TANTIVY_LIBS = @(
-            "windows-amd64.tar.gz"
-          )
+  #         $TANTIVY_LIBS = @(
+  #           "windows-amd64.tar.gz"
+  #         )
 
-          if (-not (Test-Path "$env:OUTPUT_DIR/.verified") -or (Get-Content "$env:OUTPUT_DIR/.verified").Trim() -ne $TANTIVY_VERSION) {
-            if (Test-Path "$env:OUTPUT_DIR") {
-              Remove-Item -Recurse -Force "$env:OUTPUT_DIR/*"
-            }
+  #         if (-not (Test-Path "$env:OUTPUT_DIR/.verified") -or (Get-Content "$env:OUTPUT_DIR/.verified").Trim() -ne $TANTIVY_VERSION) {
+  #           if (Test-Path "$env:OUTPUT_DIR") {
+  #             Remove-Item -Recurse -Force "$env:OUTPUT_DIR/*"
+  #           }
 
-            if (-not (Test-Path "$env:OUTPUT_DIR")) {
-              New-Item -ItemType Directory -Path "$env:OUTPUT_DIR" | Out-Null
-            }
+  #           if (-not (Test-Path "$env:OUTPUT_DIR")) {
+  #             New-Item -ItemType Directory -Path "$env:OUTPUT_DIR" | Out-Null
+  #           }
 
-            foreach ($lib in $TANTIVY_LIBS) {
-              $downloadUrl = "https://github.com/$env:REPO/releases/download/$TANTIVY_VERSION/$lib"
-              $localFilePath = "$env:OUTPUT_DIR/$lib"
-              Invoke-WebRequest -Uri $downloadUrl -OutFile $localFilePath
+  #           foreach ($lib in $TANTIVY_LIBS) {
+  #             $downloadUrl = "https://github.com/$env:REPO/releases/download/$TANTIVY_VERSION/$lib"
+  #             $localFilePath = "$env:OUTPUT_DIR/$lib"
+  #             Invoke-WebRequest -Uri $downloadUrl -OutFile $localFilePath
 
-              $extractDir = "$env:OUTPUT_DIR/$($lib -replace '.tar.gz', '')"
-              if (-not (Test-Path $extractDir)) {
-                New-Item -ItemType Directory -Path $extractDir | Out-Null
-              }
-              tar -C $extractDir -xvzf $localFilePath
-            }
+  #             $extractDir = "$env:OUTPUT_DIR/$($lib -replace '.tar.gz', '')"
+  #             if (-not (Test-Path $extractDir)) {
+  #               New-Item -ItemType Directory -Path $extractDir | Out-Null
+  #             }
+  #             tar -C $extractDir -xvzf $localFilePath
+  #           }
 
-            Get-ChildItem -Path "$env:OUTPUT_DIR" -Filter "*.tar.gz" | Remove-Item -Force
-            Set-Content -Path "$env:OUTPUT_DIR/.verified" -Value $TANTIVY_VERSION
-            echo "Tantivy libraries updated successfully."
-          } else {
-            echo "Tantivy libraries are up to date."
-          }
+  #           Get-ChildItem -Path "$env:OUTPUT_DIR" -Filter "*.tar.gz" | Remove-Item -Force
+  #           Set-Content -Path "$env:OUTPUT_DIR/.verified" -Value $TANTIVY_VERSION
+  #           echo "Tantivy libraries updated successfully."
+  #         } else {
+  #           echo "Tantivy libraries are up to date."
+  #         }
 
-      - name: Install grpcurl and govvv
-        run: |
-          go install github.com/fullstorydev/grpcurl/cmd/grpcurl@latest
-          go install github.com/ahmetb/govvv@v0.2.0
+  #     - name: Install grpcurl and govvv
+  #       run: |
+  #         go install github.com/fullstorydev/grpcurl/cmd/grpcurl@latest
+  #         go install github.com/ahmetb/govvv@v0.2.0
 
-      - name: Run perf tests
-        run: |
-          echo "Running perf tests in staging mode..."
-          if ($env:GITHUB_EVENT_NAME -eq "schedule") {
-              $RUN_COUNT = 10
-          } elseif ("${{ github.event.inputs.perf-test }}" -ne "") {
-              $RUN_COUNT = "${{ github.event.inputs.perf-test }}"
-          } else {
-              $RUN_COUNT = 10  # default value
-          }
-          echo "Current RUN_COUNT: $RUN_COUNT"
-          echo "Current Github event name: $env:GITHUB_EVENT_NAME"
-          Set-Content -Path config.json -Value $env:PERF_CONFIG_STAGING
-          (Get-Content config.json).Replace('"/Users/user1/account30000"', '"C:/Users/' + $env:USERNAME + '"') | Set-Content -Path config.json
-          Move-Item -Path .\.github\staging_fake.yml -Destination .\staging_fake.yml -Force
-          $PERF_CONFIG = ((Get-Location).Path -replace '\\', '/') + "/config.json"
-          Set-Location cmd\perfstand\account_create
-          $env:CGO_ENABLED = "1"
-          go run main.go $PERF_CONFIG $RUN_COUNT
-          Set-Location ..\account_select
-          go run main.go $PERF_CONFIG $RUN_COUNT
-          echo "Perf test with staging - done"
+  #     - name: Run perf tests
+  #       run: |
+  #         echo "Running perf tests in staging mode..."
+  #         if ($env:GITHUB_EVENT_NAME -eq "schedule") {
+  #             $RUN_COUNT = 10
+  #         } elseif ("${{ github.event.inputs.perf-test }}" -ne "") {
+  #             $RUN_COUNT = "${{ github.event.inputs.perf-test }}"
+  #         } else {
+  #             $RUN_COUNT = 10  # default value
+  #         }
+  #         echo "Current RUN_COUNT: $RUN_COUNT"
+  #         echo "Current Github event name: $env:GITHUB_EVENT_NAME"
+  #         Set-Content -Path config.json -Value $env:PERF_CONFIG_STAGING
+  #         (Get-Content config.json).Replace('"/Users/user1/account30000"', '"C:/Users/' + $env:USERNAME + '"') | Set-Content -Path config.json
+  #         Move-Item -Path .\.github\staging_fake.yml -Destination .\staging_fake.yml -Force
+  #         $PERF_CONFIG = ((Get-Location).Path -replace '\\', '/') + "/config.json"
+  #         Set-Location cmd\perfstand\account_create
+  #         $env:CGO_ENABLED = "1"
+  #         go run main.go $PERF_CONFIG $RUN_COUNT
+  #         Set-Location ..\account_select
+  #         go run main.go $PERF_CONFIG $RUN_COUNT
+  #         echo "Perf test with staging - done"
 
-          echo "Running perf tests in local mode..."
-          Set-Location (Resolve-Path "../../..")
-          Set-Content -Path config.json -Value $env:PERF_CONFIG_LOCAL
-          (Get-Content config.json).Replace('"/Users/user1/account30000"', '"C:/Users/' + $env:USERNAME + '"') | Set-Content -Path config.json
-          Set-Location cmd\perfstand\account_create
-          $env:CGO_ENABLED = "1"
-          go run main.go $PERF_CONFIG $RUN_COUNT
-          Set-Location ..\account_select
-          go run main.go $PERF_CONFIG $RUN_COUNT
-          echo "Perf test in local mode - done"
-        env:
-          PERF_CONFIG_STAGING: ${{ secrets.PERF_CONFIG_STAGING }}
-          PERF_CONFIG_LOCAL: ${{ secrets.PERF_CONFIG_LOCAL }}
-          CH_API_KEY: ${{ secrets.CH_PERF_API_KEY }}
+  #         echo "Running perf tests in local mode..."
+  #         Set-Location (Resolve-Path "../../..")
+  #         Set-Content -Path config.json -Value $env:PERF_CONFIG_LOCAL
+  #         (Get-Content config.json).Replace('"/Users/user1/account30000"', '"C:/Users/' + $env:USERNAME + '"') | Set-Content -Path config.json
+  #         Set-Location cmd\perfstand\account_create
+  #         $env:CGO_ENABLED = "1"
+  #         go run main.go $PERF_CONFIG $RUN_COUNT
+  #         Set-Location ..\account_select
+  #         go run main.go $PERF_CONFIG $RUN_COUNT
+  #         echo "Perf test in local mode - done"
+  #       env:
+  #         PERF_CONFIG_STAGING: ${{ secrets.PERF_CONFIG_STAGING }}
+  #         PERF_CONFIG_LOCAL: ${{ secrets.PERF_CONFIG_LOCAL }}
+  #         CH_API_KEY: ${{ secrets.CH_PERF_API_KEY }}
 
-      - name: Clean /tmp
-        run: |
-          echo "Clean workspaces in /Temp"
-          Get-ChildItem "C:/Users/$env:USERNAME/AppData/Local/Temp/" -Directory -Force | Where-Object { $_.Name -like "workspace*" } | ForEach-Object { Remove-Item $_.FullName -Recurse -Force -ErrorAction SilentlyContinue }
+  #     - name: Clean /tmp
+  #       run: |
+  #         echo "Clean workspaces in /Temp"
+  #         Get-ChildItem "C:/Users/$env:USERNAME/AppData/Local/Temp/" -Directory -Force | Where-Object { $_.Name -like "workspace*" } | ForEach-Object { Remove-Item $_.FullName -Recurse -Force -ErrorAction SilentlyContinue }
 
-      - name: Archive perf tests results
-        uses: actions/upload-artifact@v4
-        with:
-          name: traces-win
-          path: |
-            *.log
+  #     - name: Archive perf tests results
+  #       uses: actions/upload-artifact@v4
+  #       with:
+  #         name: traces-win
+  #         path: |
+  #           *.log

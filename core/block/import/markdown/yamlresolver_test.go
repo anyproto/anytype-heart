@@ -68,8 +68,10 @@ Content of document 3.`
 
 		h := &Markdown{
 			blockConverter: newMDConverter(&MockTempDir{}),
-			schemaImporter: NewSchemaImporter(), // No schemas loaded
 		}
+		// Create schema importer with no schemas loaded
+		si := NewSchemaImporter()
+		h.blockConverter.SetSchemaImporter(si)
 		p := process.NewNoOp()
 
 		// when

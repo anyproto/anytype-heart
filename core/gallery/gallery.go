@@ -79,13 +79,17 @@ func (s *service) Init(a *app.App) error {
 
 // whitelist maps allowed hosts to regular expressions of URL paths
 var whitelist = map[string]*regexp.Regexp{
-	"raw.githubusercontent.com": regexp.MustCompile(`^/anyproto.*`),
-	"github.com":                regexp.MustCompile(`^/anyproto.*`),
-	"community.anytype.io":      regexp.MustCompile(`.*`),
-	"anytype.io":                regexp.MustCompile(`.*`),
-	"gallery.any.coop":          regexp.MustCompile(`.*`),
-	"tools.gallery.any.coop":    regexp.MustCompile(`.*`),
-	"storage.gallery.any.coop":  regexp.MustCompile(`.*`),
+	"localhost":                                   regexp.MustCompile(`.*`),
+	"127.0.0.1":                                   regexp.MustCompile(`.*`),
+	"raw.githubusercontent.com":                   regexp.MustCompile(`^/anyproto.*`),
+	"github.com":                                  regexp.MustCompile(`^/anyproto.*`),
+	"community.anytype.io":                        regexp.MustCompile(`.*`),
+	"anytype.io":                                  regexp.MustCompile(`.*`),
+	"gallery.any.coop":                            regexp.MustCompile(`.*`),
+	"tools.gallery.any.coop":                      regexp.MustCompile(`.*`),
+	"storage.gallery.any.coop":                    regexp.MustCompile(`.*`),
+	"stage1-anytype-spark.anytype.io":             regexp.MustCompile(`.*`),
+	"stage1-anytype-spark.storage.googleapis.com": regexp.MustCompile(`.*`),
 }
 
 func (s *service) GetManifest(url string) (info *model.ManifestInfo, err error) {

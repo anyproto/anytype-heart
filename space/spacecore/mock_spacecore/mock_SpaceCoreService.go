@@ -118,9 +118,9 @@ func (_c *MockSpaceCoreService_CloseSpace_Call) RunAndReturn(run func(context.Co
 	return _c
 }
 
-// Create provides a mock function with given fields: ctx, replicationKey, metadataPayload
-func (_m *MockSpaceCoreService) Create(ctx context.Context, replicationKey uint64, metadataPayload []byte) (*spacecore.AnySpace, error) {
-	ret := _m.Called(ctx, replicationKey, metadataPayload)
+// Create provides a mock function with given fields: ctx, spaceType, replicationKey, metadataPayload
+func (_m *MockSpaceCoreService) Create(ctx context.Context, spaceType string, replicationKey uint64, metadataPayload []byte) (*spacecore.AnySpace, error) {
+	ret := _m.Called(ctx, spaceType, replicationKey, metadataPayload)
 
 	if len(ret) == 0 {
 		panic("no return value specified for Create")
@@ -128,19 +128,19 @@ func (_m *MockSpaceCoreService) Create(ctx context.Context, replicationKey uint6
 
 	var r0 *spacecore.AnySpace
 	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, uint64, []byte) (*spacecore.AnySpace, error)); ok {
-		return rf(ctx, replicationKey, metadataPayload)
+	if rf, ok := ret.Get(0).(func(context.Context, string, uint64, []byte) (*spacecore.AnySpace, error)); ok {
+		return rf(ctx, spaceType, replicationKey, metadataPayload)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context, uint64, []byte) *spacecore.AnySpace); ok {
-		r0 = rf(ctx, replicationKey, metadataPayload)
+	if rf, ok := ret.Get(0).(func(context.Context, string, uint64, []byte) *spacecore.AnySpace); ok {
+		r0 = rf(ctx, spaceType, replicationKey, metadataPayload)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(*spacecore.AnySpace)
 		}
 	}
 
-	if rf, ok := ret.Get(1).(func(context.Context, uint64, []byte) error); ok {
-		r1 = rf(ctx, replicationKey, metadataPayload)
+	if rf, ok := ret.Get(1).(func(context.Context, string, uint64, []byte) error); ok {
+		r1 = rf(ctx, spaceType, replicationKey, metadataPayload)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -155,15 +155,16 @@ type MockSpaceCoreService_Create_Call struct {
 
 // Create is a helper method to define mock.On call
 //   - ctx context.Context
+//   - spaceType string
 //   - replicationKey uint64
 //   - metadataPayload []byte
-func (_e *MockSpaceCoreService_Expecter) Create(ctx interface{}, replicationKey interface{}, metadataPayload interface{}) *MockSpaceCoreService_Create_Call {
-	return &MockSpaceCoreService_Create_Call{Call: _e.mock.On("Create", ctx, replicationKey, metadataPayload)}
+func (_e *MockSpaceCoreService_Expecter) Create(ctx interface{}, spaceType interface{}, replicationKey interface{}, metadataPayload interface{}) *MockSpaceCoreService_Create_Call {
+	return &MockSpaceCoreService_Create_Call{Call: _e.mock.On("Create", ctx, spaceType, replicationKey, metadataPayload)}
 }
 
-func (_c *MockSpaceCoreService_Create_Call) Run(run func(ctx context.Context, replicationKey uint64, metadataPayload []byte)) *MockSpaceCoreService_Create_Call {
+func (_c *MockSpaceCoreService_Create_Call) Run(run func(ctx context.Context, spaceType string, replicationKey uint64, metadataPayload []byte)) *MockSpaceCoreService_Create_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(uint64), args[2].([]byte))
+		run(args[0].(context.Context), args[1].(string), args[2].(uint64), args[3].([]byte))
 	})
 	return _c
 }
@@ -173,7 +174,7 @@ func (_c *MockSpaceCoreService_Create_Call) Return(_a0 *spacecore.AnySpace, _a1 
 	return _c
 }
 
-func (_c *MockSpaceCoreService_Create_Call) RunAndReturn(run func(context.Context, uint64, []byte) (*spacecore.AnySpace, error)) *MockSpaceCoreService_Create_Call {
+func (_c *MockSpaceCoreService_Create_Call) RunAndReturn(run func(context.Context, string, uint64, []byte) (*spacecore.AnySpace, error)) *MockSpaceCoreService_Create_Call {
 	_c.Call.Return(run)
 	return _c
 }

@@ -7,7 +7,7 @@ import (
 	"github.com/anyproto/any-sync/commonspace/object/tree/treestorage"
 	"github.com/anyproto/any-sync/commonspace/spacestorage"
 
-	"github.com/anyproto/anytype-heart/core/block/editor/collection"
+	"github.com/anyproto/anytype-heart/core/block/editor/blockcollection"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/editor/template"
@@ -26,7 +26,7 @@ var archiveRequiredRelations = []domain.RelationKey{}
 
 type Archive struct {
 	smartblock.SmartBlock
-	collection.Collection
+	blockcollection.Collection
 	objectStore            spaceindex.Store
 	autoWidgetWasInstalled bool
 }
@@ -37,7 +37,7 @@ func NewArchive(
 ) *Archive {
 	return &Archive{
 		SmartBlock:  sb,
-		Collection:  collection.NewCollection(sb, objectStore),
+		Collection:  blockcollection.NewCollection(sb, objectStore),
 		objectStore: objectStore,
 	}
 }

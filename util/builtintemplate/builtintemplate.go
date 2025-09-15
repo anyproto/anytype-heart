@@ -104,7 +104,10 @@ func (b *builtinTemplate) registerBuiltin(space clientspace.Space, rd io.ReadClo
 		}
 	}
 
-	st := state.NewDocFromSnapshot(id, snapshot).(*state.State)
+	st, err := state.NewDocFromSnapshot(id, snapshot)
+	if err != nil {
+		return fmt.Errorf("new state from snapshot: %w", err)
+	}
 	st.SetRootId(id)
 	st.SetLocalDetail(bundle.RelationKeyTemplateIsBundled, domain.Bool(true))
 	st.RemoveDetail(bundle.RelationKeyCreator, bundle.RelationKeyLastModifiedBy)

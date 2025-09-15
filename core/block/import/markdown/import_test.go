@@ -72,10 +72,10 @@ func TestMarkdown_GetSnapshots(t *testing.T) {
 		// Initialize Markdown properly with required components
 		h := &Markdown{
 			blockConverter: newMDConverter(&MockTempDir{}),
-			schemaImporter: NewSchemaImporter(),
 		}
 		// Set the schema importer in the block converter
-		h.blockConverter.SetSchemaImporter(h.schemaImporter)
+		si := NewSchemaImporter()
+		h.blockConverter.SetSchemaImporter(si)
 		p := process.NewNoOp()
 
 		// when
@@ -118,10 +118,10 @@ func TestMarkdown_GetSnapshots(t *testing.T) {
 		// Initialize Markdown properly with required components
 		h := &Markdown{
 			blockConverter: newMDConverter(&MockTempDir{}),
-			schemaImporter: NewSchemaImporter(),
 		}
 		// Set the schema importer in the block converter
-		h.blockConverter.SetSchemaImporter(h.schemaImporter)
+		si := NewSchemaImporter()
+		h.blockConverter.SetSchemaImporter(si)
 		p := process.NewNoOp()
 
 		// when
@@ -146,7 +146,6 @@ func TestMarkdown_GetSnapshots(t *testing.T) {
 		converter.SetSchemaImporter(schemaImporter)
 		h := &Markdown{
 			blockConverter: converter,
-			schemaImporter: schemaImporter,
 		}
 		p := process.NewNoOp()
 
@@ -189,10 +188,10 @@ func TestMarkdown_GetSnapshots(t *testing.T) {
 		// Initialize Markdown properly with required components
 		h := &Markdown{
 			blockConverter: newMDConverter(&MockTempDir{}),
-			schemaImporter: NewSchemaImporter(),
 		}
 		// Set the schema importer in the block converter
-		h.blockConverter.SetSchemaImporter(h.schemaImporter)
+		si := NewSchemaImporter()
+		h.blockConverter.SetSchemaImporter(si)
 		p := process.NewProgress(&pb.ModelProcessMessageOfImport{Import: &pb.ModelProcessImport{}})
 
 		// when
@@ -237,10 +236,10 @@ func TestMarkdown_GetSnapshots(t *testing.T) {
 		// Initialize Markdown properly with required components
 		h := &Markdown{
 			blockConverter: newMDConverter(&MockTempDir{}),
-			schemaImporter: NewSchemaImporter(),
 		}
 		// Set the schema importer in the block converter
-		h.blockConverter.SetSchemaImporter(h.schemaImporter)
+		si := NewSchemaImporter()
+		h.blockConverter.SetSchemaImporter(si)
 		p := process.NewProgress(&pb.ModelProcessMessageOfImport{Import: &pb.ModelProcessImport{}})
 
 		// when
@@ -278,10 +277,10 @@ func TestMarkdown_GetSnapshots(t *testing.T) {
 		// Initialize Markdown properly with required components
 		h := &Markdown{
 			blockConverter: newMDConverter(&MockTempDir{}),
-			schemaImporter: NewSchemaImporter(),
 		}
 		// Set the schema importer in the block converter
-		h.blockConverter.SetSchemaImporter(h.schemaImporter)
+		si := NewSchemaImporter()
+		h.blockConverter.SetSchemaImporter(si)
 		p := process.NewNoOp()
 
 		// when
@@ -581,7 +580,6 @@ This is the content of the test document.`
 
 		h := &Markdown{
 			blockConverter: newMDConverter(&MockTempDir{}),
-			schemaImporter: NewSchemaImporter(),
 		}
 		p := process.NewNoOp()
 
@@ -753,7 +751,6 @@ category: Work
 
 		h := &Markdown{
 			blockConverter: newMDConverter(&MockTempDir{}),
-			schemaImporter: NewSchemaImporter(),
 		}
 		p := process.NewNoOp()
 
@@ -877,8 +874,9 @@ This is document 2 content.`
 
 		// Create main document with object relations using file paths
 		mainContent := `---
+# yaml-language-server: $schema=task.schema.json
 title: Main Document
-type: Task
+Object type: Task
 related_docs:
   - ./project/doc1.md
   - ./project/doc2.md
@@ -895,13 +893,7 @@ This document references other documents.`
 		err = os.WriteFile(mainDocPath, []byte(mainContent), os.ModePerm)
 		assert.NoError(t, err)
 
-		// Create markdown importer with schema that defines object format relations
-		h := &Markdown{
-			blockConverter: newMDConverter(&MockTempDir{}),
-			schemaImporter: NewSchemaImporter(),
-		}
-
-		// Add schema with object format relations
+		// Add schema with object format relations to the test directory
 		schemaContent := `{
 			"$schema": "http://json-schema.org/draft-07/schema#",
 			"type": "object",
@@ -933,23 +925,17 @@ This document references other documents.`
 			}
 		}`
 
-		// Create a mock source with the schema
-		mockSource := &testMockSource{
-			files: map[string]string{
-				"schema.json": schemaContent,
-			},
-		}
-
-		// Load the schema
-		allErrors := common.NewError(pb.RpcObjectImportRequest_IGNORE_ERRORS)
-		err = h.schemaImporter.LoadSchemas(mockSource, allErrors)
+		// Write schema file to test directory so it gets loaded during import
+		schemaPath := filepath.Join(testDirectory, "task.schema.json")
+		err = os.WriteFile(schemaPath, []byte(schemaContent), os.ModePerm)
 		assert.NoError(t, err)
 
-		// Verify schema was loaded
-		assert.True(t, h.schemaImporter.HasSchemas())
-
-		// Set the schema importer in the block converter
-		h.blockConverter.SetSchemaImporter(h.schemaImporter)
+		// Create markdown importer
+		h := &Markdown{
+			blockConverter: newMDConverter(&MockTempDir{}),
+		}
+		si := NewSchemaImporter()
+		h.blockConverter.SetSchemaImporter(si)
 		p := process.NewNoOp()
 
 		// when
@@ -1048,9 +1034,9 @@ Main content`, doc1Path) // Include one absolute path
 
 		h := &Markdown{
 			blockConverter: newMDConverter(&MockTempDir{}),
-			schemaImporter: NewSchemaImporter(),
 		}
-		h.blockConverter.SetSchemaImporter(h.schemaImporter)
+		si := NewSchemaImporter()
+		h.blockConverter.SetSchemaImporter(si)
 		p := process.NewNoOp()
 
 		// when
@@ -1166,7 +1152,6 @@ This document is used for snapshot testing of YAML front matter import.`
 
 		h := &Markdown{
 			blockConverter: newMDConverter(&MockTempDir{}),
-			schemaImporter: NewSchemaImporter(),
 		}
 		p := process.NewNoOp()
 
@@ -1464,10 +1449,10 @@ This is a collection of important tasks.`
 
 		h := &Markdown{
 			blockConverter: newMDConverter(&MockTempDir{}),
-			schemaImporter: NewSchemaImporter(),
 		}
 		// Set the schema importer in the block converter
-		h.blockConverter.SetSchemaImporter(h.schemaImporter)
+		si := NewSchemaImporter()
+		h.blockConverter.SetSchemaImporter(si)
 		p := process.NewNoOp()
 
 		// when
@@ -1621,10 +1606,10 @@ Testing different path formats.`, task1Path)
 
 		h := &Markdown{
 			blockConverter: newMDConverter(&MockTempDir{}),
-			schemaImporter: NewSchemaImporter(),
 		}
 		// Set the schema importer in the block converter
-		h.blockConverter.SetSchemaImporter(h.schemaImporter)
+		si := NewSchemaImporter()
+		h.blockConverter.SetSchemaImporter(si)
 		p := process.NewNoOp()
 
 		// when
@@ -1696,9 +1681,9 @@ This is the document content.`
 
 		h := &Markdown{
 			blockConverter: newMDConverter(&MockTempDir{}),
-			schemaImporter: NewSchemaImporter(),
 		}
-		h.blockConverter.SetSchemaImporter(h.schemaImporter)
+		si := NewSchemaImporter()
+		h.blockConverter.SetSchemaImporter(si)
 		p := process.NewNoOp()
 
 		// when - with includePropertiesAsBlock = true
@@ -1812,9 +1797,9 @@ priority: high
 
 		h := &Markdown{
 			blockConverter: newMDConverter(&MockTempDir{}),
-			schemaImporter: NewSchemaImporter(),
 		}
-		h.blockConverter.SetSchemaImporter(h.schemaImporter)
+		si := NewSchemaImporter()
+		h.blockConverter.SetSchemaImporter(si)
 		p := process.NewNoOp()
 
 		// when - with includePropertiesAsBlock = false
@@ -1883,9 +1868,9 @@ func TestMarkdown_ProcessFiles_MultipleSelection(t *testing.T) {
 		// Test 1: Multiple files in same directory
 		h := &Markdown{
 			blockConverter: newMDConverter(&MockTempDir{}),
-			schemaImporter: NewSchemaImporter(),
 		}
-		h.blockConverter.SetSchemaImporter(h.schemaImporter)
+		si := NewSchemaImporter()
+		h.blockConverter.SetSchemaImporter(si)
 
 		req := &pb.RpcObjectImportRequest{
 			Params: &pb.RpcObjectImportRequestParamsOfMarkdownParams{
@@ -1931,9 +1916,9 @@ func TestMarkdown_ProcessFiles_MultipleSelection(t *testing.T) {
 
 		h := &Markdown{
 			blockConverter: newMDConverter(&MockTempDir{}),
-			schemaImporter: NewSchemaImporter(),
 		}
-		h.blockConverter.SetSchemaImporter(h.schemaImporter)
+		si := NewSchemaImporter()
+		h.blockConverter.SetSchemaImporter(si)
 
 		req := &pb.RpcObjectImportRequest{
 			Params: &pb.RpcObjectImportRequestParamsOfMarkdownParams{

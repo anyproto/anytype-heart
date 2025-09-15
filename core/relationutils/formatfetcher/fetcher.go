@@ -144,7 +144,7 @@ func (f *formatFetcher) buildSubscriptionParams(spaceId string) objectsubscripti
 				Format: format,
 			}
 		},
-		UpdateKey: func(relationKey string, relationValue domain.Value, curEntry model.RelationLink) (updatedEntry model.RelationLink) {
+		UpdateKeys: func(keyValues []objectsubscription.RelationKeyValue, curEntry model.RelationLink) (updatedEntry model.RelationLink) {
 			return curEntry
 		},
 		RemoveKeys: func(keys []string, curEntry model.RelationLink) (updatedEntry model.RelationLink) {
