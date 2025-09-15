@@ -213,28 +213,33 @@ func (s *service) unsubscribeFromMessagePreviews(subId string) error {
 }
 
 func (s *service) Run(ctx context.Context) error {
-	resp, err := s.crossSpaceSubService.Subscribe(subscriptionservice.SubscribeRequest{
-		SubId:             allChatsSubscriptionId,
-		InternalQueue:     s.chatObjectsSubQueue,
-		Keys:              []string{bundle.RelationKeyId.String(), bundle.RelationKeySpaceId.String()},
-		NoDepSubscription: true,
-		Filters: []database.FilterRequest{
-			{
-				RelationKey: bundle.RelationKeyLayout,
-				Condition:   model.BlockContentDataviewFilter_Equal,
-				Value:       domain.Int64(model.ObjectType_chatDerived),
+	s.lock.Lock()
+	go func() {
+		defer s.lock.Unlock()
+		resp, err := s.crossSpaceSubService.Subscribe(subscriptionservice.SubscribeRequest{
+			SubId:             allChatsSubscriptionId,
+			InternalQueue:     s.chatObjectsSubQueue,
+			Keys:              []string{bundle.RelationKeyId.String(), bundle.RelationKeySpaceId.String()},
+			NoDepSubscription: true,
+			Filters: []database.FilterRequest{
+				{
+					RelationKey: bundle.RelationKeyLayout,
+					Condition:   model.BlockContentDataviewFilter_Equal,
+					Value:       domain.Int64(model.ObjectType_chatDerived),
+				},
 			},
-		},
-	}, crossspacesub.NoOpPredicate())
-	if err != nil {
-		return fmt.Errorf("cross-space sub: %w", err)
-	}
+		}, crossspacesub.NoOpPredicate())
+		if err != nil {
+			log.Error("cross-space sub", zap.Error(err))
+			return
+		}
 
-	for _, rec := range resp.Records {
-		s.allChatObjectIds[rec.GetString(bundle.RelationKeyId)] = rec.GetString(bundle.RelationKeySpaceId)
-	}
+		for _, rec := range resp.Records {
+			s.allChatObjectIds[rec.GetString(bundle.RelationKeyId)] = rec.GetString(bundle.RelationKeySpaceId)
+		}
+		go s.monitorMessagePreviews()
+	}()
 
-	go s.monitorMessagePreviews()
 	return nil
 }
 

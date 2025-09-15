@@ -63,11 +63,13 @@ type spaceSyncStatus struct {
 	periodicCall   periodicsync.PeriodicSync
 	loopInterval   time.Duration
 	isLocal        bool
+	closeCh        chan struct{}
 }
 
 func NewSpaceSyncStatus() Updater {
 	return &spaceSyncStatus{
 		loopInterval: time.Second * 1,
+		closeCh:      make(chan struct{}),
 	}
 }
 
@@ -108,8 +110,14 @@ func (s *spaceSyncStatus) UpdateMissingIds(spaceId string, ids []string) {
 }
 
 func (s *spaceSyncStatus) Run(ctx context.Context) (err error) {
-	s.sendStartEvent(s.spaceIdGetter.AllSpaceIds())
-	s.periodicCall.Run()
+	go func() {
+		select {
+		case <-time.After(time.Second * 3):
+		case <-s.closeCh:
+		}
+		s.sendStartEvent(s.spaceIdGetter.AllSpaceIds())
+		s.periodicCall.Run()
+	}()
 	return
 }
 
@@ -250,6 +258,7 @@ func (s *spaceSyncStatus) updateSpaceSyncStatus(spaceId string) {
 }
 
 func (s *spaceSyncStatus) Close(ctx context.Context) (err error) {
+	close(s.closeCh)
 	s.periodicCall.Close()
 	return
 }
