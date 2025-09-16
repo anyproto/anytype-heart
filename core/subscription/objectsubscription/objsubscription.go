@@ -33,6 +33,9 @@ type SubscriptionParams[T any] struct {
 	OnAdded func(id string, entry T)
 	// OnRemove called when object is removed from subscription
 	OnRemoved func(id string, entry T)
+
+	// CustomFilter is an optional filter for objects that would be applied to subscription along with SubscribeRequest.Filters
+	CustomFilter func(details *domain.Details) bool
 }
 
 type ObjectSubscription[T any] struct {
@@ -48,13 +51,15 @@ type ObjectSubscription[T any] struct {
 
 	mx  sync.Mutex
 	sub map[string]T
+
+	keyToId map[string]string
 }
 
 var IdSubscriptionParams = SubscriptionParams[struct{}]{
 	SetDetails: func(t *domain.Details) (string, struct{}) {
 		return t.GetString(bundle.RelationKeyId), struct{}{}
 	},
-	UpdateKeys: func(keyValues []RelationKeyValue, s2 struct{}) struct{} {
+	UpdateKeys: func(keyValues []RelationKeyValue, s struct{}) struct{} {
 		return struct{}{}
 	},
 	RemoveKeys: func(strings []string, s struct{}) struct{} {
@@ -104,6 +109,7 @@ func (o *ObjectSubscription[T]) Run() error {
 
 	o.request.Internal = true
 	o.sub = map[string]T{}
+	o.keyToId = map[string]string{}
 	if o.service != nil {
 		resp, err := o.service.Search(o.request)
 		if err != nil {
@@ -114,7 +120,11 @@ func (o *ObjectSubscription[T]) Run() error {
 		}
 		for _, rec := range resp.Records {
 			id, data := o.params.SetDetails(rec)
+			if o.params.CustomFilter != nil && !o.params.CustomFilter(rec) {
+				continue
+			}
 			o.sub[id] = data
+			o.addKey(id, rec)
 		}
 		o.events = resp.Output
 	}
@@ -139,6 +149,17 @@ func (o *ObjectSubscription[T]) Len() int {
 func (o *ObjectSubscription[T]) Get(id string) (T, bool) {
 	o.mx.Lock()
 	defer o.mx.Unlock()
+	entry, ok := o.sub[id]
+	return entry, ok
+}
+
+func (o *ObjectSubscription[T]) GetByKey(key string) (T, bool) {
+	o.mx.Lock()
+	defer o.mx.Unlock()
+	id, ok := o.keyToId[key]
+	if !ok {
+		return *new(T), false
+	}
 	entry, ok := o.sub[id]
 	return entry, ok
 }
@@ -203,11 +224,16 @@ func (o *ObjectSubscription[T]) read() {
 				o.sub[v.ObjectDetailsUnset.Id] = curEntry
 			}
 		case *pb.EventMessageValueOfObjectDetailsSet:
-			_, newEntry := o.params.SetDetails(domain.NewDetailsFromProto(v.ObjectDetailsSet.Details))
+			details := domain.NewDetailsFromProto(v.ObjectDetailsSet.Details)
+			if o.params.CustomFilter != nil && !o.params.CustomFilter(details) {
+				return
+			}
+			_, newEntry := o.params.SetDetails(details)
 			if _, ok := o.sub[v.ObjectDetailsSet.Id]; !ok {
 				if o.params.OnAdded != nil {
 					o.params.OnAdded(v.ObjectDetailsSet.Id, newEntry)
 				}
+				o.addKey(v.ObjectDetailsSet.Id, details)
 			}
 			o.sub[v.ObjectDetailsSet.Id] = newEntry
 		}
@@ -218,5 +244,11 @@ func (o *ObjectSubscription[T]) read() {
 			return
 		}
 		readEvent(event)
+	}
+}
+
+func (o *ObjectSubscription[T]) addKey(id string, details *domain.Details) {
+	if key := details.GetString(bundle.RelationKeyRelationKey); key != "" {
+		o.keyToId[key] = id
 	}
 }
