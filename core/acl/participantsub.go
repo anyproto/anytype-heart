@@ -63,7 +63,7 @@ func (s *participantSub) Run(ctx context.Context) error {
 		NoDepSubscription: true,
 		Filters: []database.FilterRequest{
 			{
-				RelationKey: bundle.RelationKeyLayout,
+				RelationKey: bundle.RelationKeyResolvedLayout,
 				Condition:   model.BlockContentDataviewFilter_Equal,
 				Value:       domain.Int64(model.ObjectType_participant),
 			},
