@@ -119,7 +119,7 @@ func (f *formatFetcher) buildSubscriptionParams() objectsubscription.Subscriptio
 }
 
 func (f *formatFetcher) Close(_ context.Context) error {
-	var subIds []string
+	subIds := make([]string, 0, len(f.subs))
 	for spaceId, future := range f.subs {
 		sub, err := future.Wait()
 		if err != nil {

@@ -251,7 +251,7 @@ func (h *history) DiffVersions(req *pb.RpcHistoryDiffVersionsRequest) ([]*pb.Eve
 
 	objectView := &model.ObjectView{
 		RootId:  id.ObjectID,
-		Type:    model.SmartBlockType(sbType),
+		Type:    model.SmartBlockType(sbType), // nolint:gosec
 		Blocks:  currState.Blocks(),
 		Details: details,
 	}

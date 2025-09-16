@@ -85,27 +85,34 @@ func (m *subObjectsAndProfileLinksMigration) replaceLinksInDetails(s *state.Stat
 			format = model.RelationFormat_object
 		}
 
-		if m.canRelationContainObjectValues(format) {
-			rawValue := s.Details().Get(key)
+		if !m.canRelationContainObjectValues(format) {
+			continue
+		}
 
-			if oldId := rawValue.String(); oldId != "" {
-				newId := m.migrateId(oldId)
-				if oldId != newId {
-					s.SetDetail(key, domain.String(newId))
-				}
-			} else if ids := rawValue.StringList(); len(ids) > 0 {
-				changed := false
-				for i, oldId := range ids {
-					newId := m.migrateId(oldId)
-					if oldId != newId {
-						ids[i] = newId
-						changed = true
-					}
-				}
-				if changed {
-					s.SetDetail(key, domain.StringList(ids))
-				}
+		rawValue := s.Details().Get(key)
+		if oldId := rawValue.String(); oldId != "" {
+			newId := m.migrateId(oldId)
+			if oldId != newId {
+				s.SetDetail(key, domain.String(newId))
 			}
+			continue
+		}
+
+		ids := rawValue.StringList()
+		if len(ids) == 0 {
+			continue
+		}
+
+		changed := false
+		for i, oldId := range ids {
+			newId := m.migrateId(oldId)
+			if oldId != newId {
+				ids[i] = newId
+				changed = true
+			}
+		}
+		if changed {
+			s.SetDetail(key, domain.StringList(ids))
 		}
 	}
 }
