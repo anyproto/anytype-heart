@@ -6,14 +6,14 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space/clientspace"
 	"github.com/anyproto/anytype-heart/space/internal/spaceprocess/loader"
-	space "github.com/anyproto/anytype-heart/space/spacecore"
+	"github.com/anyproto/anytype-heart/space/spacedomain"
 	"github.com/anyproto/anytype-heart/space/spaceinfo"
 )
 
 func (s *service) create(ctx context.Context, description *spaceinfo.SpaceDescription) (sp clientspace.Space, err error) {
-	var spaceType = space.SpaceType
+	var spaceType = spacedomain.SpaceTypeRegular
 	if description != nil && description.SpaceUxType == model.SpaceUxType_Chat {
-		spaceType = space.ChatSpaceType
+		spaceType = spacedomain.SpaceTypeChat
 	}
 	coreSpace, err := s.spaceCore.Create(ctx, spaceType, s.repKey, s.AccountMetadataPayload())
 	if err != nil {

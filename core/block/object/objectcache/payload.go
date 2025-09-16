@@ -10,7 +10,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/domain"
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	"github.com/anyproto/anytype-heart/space/spacecore"
+	"github.com/anyproto/anytype-heart/space/spacedomain"
 )
 
 const ChangeType = "anytype.object"
@@ -29,7 +29,7 @@ func createChangePayload(sbType coresb.SmartBlockType, key domain.UniqueKey) (da
 
 func derivePayload(spaceId string, changePayload []byte) objecttree.ObjectTreeDerivePayload {
 	return objecttree.ObjectTreeDerivePayload{
-		ChangeType:    spacecore.ChangeType,
+		ChangeType:    spacedomain.ChangeType,
 		ChangePayload: changePayload,
 		SpaceId:       spaceId,
 		IsEncrypted:   true,
@@ -39,7 +39,7 @@ func derivePayload(spaceId string, changePayload []byte) objecttree.ObjectTreeDe
 func derivePersonalPayload(spaceId string, signKey crypto.PrivKey, changePayload []byte) objecttree.ObjectTreeCreatePayload {
 	return objecttree.ObjectTreeCreatePayload{
 		PrivKey:       signKey,
-		ChangeType:    spacecore.ChangeType,
+		ChangeType:    spacedomain.ChangeType,
 		ChangePayload: changePayload,
 		SpaceId:       spaceId,
 		IsEncrypted:   true,
@@ -53,7 +53,7 @@ func createPayload(spaceId string, signKey crypto.PrivKey, changePayload []byte,
 	}
 	return objecttree.ObjectTreeCreatePayload{
 		PrivKey:       signKey,
-		ChangeType:    spacecore.ChangeType,
+		ChangeType:    spacedomain.ChangeType,
 		ChangePayload: changePayload,
 		SpaceId:       spaceId,
 		IsEncrypted:   true,
