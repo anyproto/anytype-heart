@@ -244,6 +244,65 @@ func (_c *MockClientSpaceStorage_Close_Call) RunAndReturn(run func(context.Conte
 	return _c
 }
 
+// CreateStorageWithDeferredCreation provides a mock function with given fields: ctx, payload
+func (_m *MockClientSpaceStorage) CreateStorageWithDeferredCreation(ctx context.Context, payload treestorage.TreeStorageCreatePayload) (objecttree.Storage, error) {
+	ret := _m.Called(ctx, payload)
+
+	if len(ret) == 0 {
+		panic("no return value specified for CreateStorageWithDeferredCreation")
+	}
+
+	var r0 objecttree.Storage
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, treestorage.TreeStorageCreatePayload) (objecttree.Storage, error)); ok {
+		return rf(ctx, payload)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, treestorage.TreeStorageCreatePayload) objecttree.Storage); ok {
+		r0 = rf(ctx, payload)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(objecttree.Storage)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, treestorage.TreeStorageCreatePayload) error); ok {
+		r1 = rf(ctx, payload)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockClientSpaceStorage_CreateStorageWithDeferredCreation_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'CreateStorageWithDeferredCreation'
+type MockClientSpaceStorage_CreateStorageWithDeferredCreation_Call struct {
+	*mock.Call
+}
+
+// CreateStorageWithDeferredCreation is a helper method to define mock.On call
+//   - ctx context.Context
+//   - payload treestorage.TreeStorageCreatePayload
+func (_e *MockClientSpaceStorage_Expecter) CreateStorageWithDeferredCreation(ctx interface{}, payload interface{}) *MockClientSpaceStorage_CreateStorageWithDeferredCreation_Call {
+	return &MockClientSpaceStorage_CreateStorageWithDeferredCreation_Call{Call: _e.mock.On("CreateStorageWithDeferredCreation", ctx, payload)}
+}
+
+func (_c *MockClientSpaceStorage_CreateStorageWithDeferredCreation_Call) Run(run func(ctx context.Context, payload treestorage.TreeStorageCreatePayload)) *MockClientSpaceStorage_CreateStorageWithDeferredCreation_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(treestorage.TreeStorageCreatePayload))
+	})
+	return _c
+}
+
+func (_c *MockClientSpaceStorage_CreateStorageWithDeferredCreation_Call) Return(_a0 objecttree.Storage, _a1 error) *MockClientSpaceStorage_CreateStorageWithDeferredCreation_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockClientSpaceStorage_CreateStorageWithDeferredCreation_Call) RunAndReturn(run func(context.Context, treestorage.TreeStorageCreatePayload) (objecttree.Storage, error)) *MockClientSpaceStorage_CreateStorageWithDeferredCreation_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // CreateTreeStorage provides a mock function with given fields: ctx, payload
 func (_m *MockClientSpaceStorage) CreateTreeStorage(ctx context.Context, payload treestorage.TreeStorageCreatePayload) (objecttree.Storage, error) {
 	ret := _m.Called(ctx, payload)
