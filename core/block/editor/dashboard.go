@@ -108,7 +108,7 @@ func (p *Dashboard) updateObjects(info smartblock.ApplyInfo) (err error) {
 func (p *Dashboard) migrateToCollection(favoriteIds []string) error {
 	uk := domain.MustUniqueKey(coresb.SmartBlockTypePage, "old_pinned")
 
-	id, err := p.Space().DeriveObjectID(context.Background(), domain.MustUniqueKey(coresb.SmartBlockTypePage, "old_pinned"))
+	id, err := p.Space().DeriveObjectID(context.Background(), uk)
 	if err != nil {
 		return fmt.Errorf("derive object id: %w", err)
 	}
@@ -121,7 +121,7 @@ func (p *Dashboard) migrateToCollection(favoriteIds []string) error {
 	}
 
 	st := state.NewDocWithUniqueKey("", nil, uk).(*state.State)
-	st.SetDetailAndBundledRelation(bundle.RelationKeyName, domain.String("Old pinned"))
+	st.SetDetailAndBundledRelation(bundle.RelationKeyName, domain.String("Old Pinned"))
 	st.SetDetailAndBundledRelation(bundle.RelationKeyResolvedLayout, domain.Int64(int64(model.ObjectType_collection)))
 	blockContent := template.MakeDataviewContent(true, nil, nil, "")
 	template.InitTemplate(st, template.WithDataview(blockContent, false))
@@ -139,6 +139,9 @@ func (p *Dashboard) migrateToCollection(favoriteIds []string) error {
 
 func (p *Dashboard) addToMigratedCollection(collId string, favoriteIds []string) error {
 	return p.Space().Do(collId, func(sb smartblock.SmartBlock) error {
+		if sb.LocalDetails().GetBool(bundle.RelationKeyIsDeleted) {
+			return nil
+		}
 		coll, ok := sb.(collection.Collection)
 		if !ok {
 			return fmt.Errorf("object is not a collection")
