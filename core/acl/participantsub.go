@@ -75,6 +75,7 @@ func (s *participantSub) Run(ctx context.Context) error {
 		},
 	}, newSubPredicate(s.ownIdentity))
 	if err != nil {
+		close(s.waiter)
 		return fmt.Errorf("cross-space sub: %w", err)
 	}
 	for _, record := range resp.Records {
@@ -97,6 +98,7 @@ func (s *participantSub) Run(ctx context.Context) error {
 	return nil
 }
 
+// Close will deadlock if Run was not called before
 func (s *participantSub) Close() error {
 	s.cancel()
 	<-s.waiter
