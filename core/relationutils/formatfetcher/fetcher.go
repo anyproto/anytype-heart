@@ -55,7 +55,7 @@ func (f *formatFetcher) setupSub(spaceId string) (*objectsubscription.ObjectSubs
 	req := subscription.SubscribeRequest{
 		SpaceId:           spaceId,
 		SubId:             buildSubId(spaceId),
-		Keys:              []string{bundle.RelationKeyRelationKey.String(), bundle.RelationKeyRelationFormat.String()},
+		Keys:              []string{bundle.RelationKeyId.String(), bundle.RelationKeyRelationKey.String(), bundle.RelationKeyRelationFormat.String()},
 		NoDepSubscription: true,
 		Internal:          true,
 		Filters: []database.FilterRequest{{
