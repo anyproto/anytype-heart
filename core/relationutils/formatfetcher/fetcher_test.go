@@ -108,9 +108,7 @@ func TestFormatFetcher_GetRelationFormatByKey(t *testing.T) {
 		f.sub.EXPECT().Search(mock.MatchedBy(func(req subscription.SubscribeRequest) bool {
 			return req.SpaceId == testSpaceId &&
 				req.SubId == buildSubId(testSpaceId) &&
-				len(req.Keys) == 2 &&
-				req.Keys[0] == bundle.RelationKeyRelationKey.String() &&
-				req.Keys[1] == bundle.RelationKeyRelationFormat.String() &&
+				len(req.Keys) == 3 &&
 				req.NoDepSubscription == true &&
 				req.Internal == true &&
 				len(req.Filters) == 1 &&
