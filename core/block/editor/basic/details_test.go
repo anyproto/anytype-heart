@@ -140,31 +140,32 @@ func TestBasic_UpdateDetails(t *testing.T) {
 		assert.False(t, f.sb.HasRelation(f.sb.NewState(), bundle.RelationKeyTargetObjectType.String()))
 	})
 
-	t.Run("removal of internal relation should fail", func(t *testing.T) {
-		// given
-		f := newBasicFixture(t)
-
-		err := f.sb.SetDetails(nil, []domain.Detail{
-			{Key: bundle.RelationKeyName, Value: domain.String("test object")},
-			{Key: bundle.RelationKeyDescription, Value: domain.String("Description")},
-			{Key: bundle.RelationKeyCreatedDate, Value: domain.Int64(1234567890)},
-		}, false)
-		require.NoError(t, err)
-
-		// when
-		err = f.basic.UpdateDetails(nil, func(current *domain.Details) (*domain.Details, error) {
-			current.Delete(bundle.RelationKeyName)
-			current.Delete(bundle.RelationKeyDescription)
-			current.Delete(bundle.RelationKeyCreatedDate)
-			return current, nil
-		})
-
-		// then
-		assert.Error(t, err)
-		assert.Equal(t, "test object", f.sb.Details().GetString(bundle.RelationKeyName))
-		assert.Equal(t, "Description", f.sb.Details().GetString(bundle.RelationKeyDescription))
-		assert.Equal(t, int64(1234567890), f.sb.LocalDetails().GetInt64(bundle.RelationKeyCreatedDate))
-	})
+	// TODO: GO-6248 uncomment when deletion of internal relations will be excluded on all clients
+	// t.Run("removal of internal relation should fail", func(t *testing.T) {
+	// 	// given
+	// 	f := newBasicFixture(t)
+	//
+	// 	err := f.sb.SetDetails(nil, []domain.Detail{
+	// 		{Key: bundle.RelationKeyName, Value: domain.String("test object")},
+	// 		{Key: bundle.RelationKeyDescription, Value: domain.String("Description")},
+	// 		{Key: bundle.RelationKeyCreatedDate, Value: domain.Int64(1234567890)},
+	// 	}, false)
+	// 	require.NoError(t, err)
+	//
+	// 	// when
+	// 	err = f.basic.UpdateDetails(nil, func(current *domain.Details) (*domain.Details, error) {
+	// 		current.Delete(bundle.RelationKeyName)
+	// 		current.Delete(bundle.RelationKeyDescription)
+	// 		current.Delete(bundle.RelationKeyCreatedDate)
+	// 		return current, nil
+	// 	})
+	//
+	// 	// then
+	// 	assert.Error(t, err)
+	// 	assert.Equal(t, "test object", f.sb.Details().GetString(bundle.RelationKeyName))
+	// 	assert.Equal(t, "Description", f.sb.Details().GetString(bundle.RelationKeyDescription))
+	// 	assert.Equal(t, int64(1234567890), f.sb.LocalDetails().GetInt64(bundle.RelationKeyCreatedDate))
+	// })
 }
 
 func TestBasic_SetObjectTypesInState(t *testing.T) {
