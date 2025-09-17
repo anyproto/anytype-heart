@@ -100,7 +100,7 @@ func (s *Service) SplitBlock(ctx session.Context, req pb.RpcBlockSplitRequest) (
 
 func (s *Service) MergeBlock(ctx session.Context, req pb.RpcBlockMergeRequest) (err error) {
 	return cache.Do(s, req.ContextId, func(b stext.Text) error {
-		return b.Merge(ctx, req.FirstBlockId, req.SecondBlockId)
+		return b.Merge(ctx, req.Style, req.FirstBlockId, req.SecondBlockId)
 	})
 }
 

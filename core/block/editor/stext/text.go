@@ -28,7 +28,7 @@ var setTextApplyInterval = time.Second * 3
 type Text interface {
 	UpdateTextBlocks(ctx session.Context, ids []string, showEvent bool, apply func(t text.Block) error) error
 	Split(ctx session.Context, req pb.RpcBlockSplitRequest) (newId string, err error)
-	Merge(ctx session.Context, firstId, secondId string) (err error)
+	Merge(ctx session.Context, style model.BlockContentTextStyle, firstId, secondId string) (err error)
 	SetMark(ctx session.Context, mark *model.BlockContentTextMark, blockIds ...string) error
 	SetIcon(ctx session.Context, image, emoji string, blockIds ...string) error
 	SetText(ctx session.Context, req pb.RpcBlockTextSetTextRequest) (err error)
@@ -159,7 +159,7 @@ func (t *textImpl) Split(ctx session.Context, req pb.RpcBlockSplitRequest) (newI
 	return
 }
 
-func (t *textImpl) Merge(ctx session.Context, firstId, secondId string) (err error) {
+func (t *textImpl) Merge(ctx session.Context, style model.BlockContentTextStyle, firstId, secondId string) (err error) {
 	s := t.NewStateCtx(ctx)
 
 	// Don't merge blocks inside header block
@@ -177,9 +177,13 @@ func (t *textImpl) Merge(ctx session.Context, firstId, secondId string) (err err
 	}
 
 	var mergeOpts []text.MergeOption
-	// Don't set style for target block placed inside header block
+	// preserve style for target block placed inside header block
 	if s.IsParentOf(template.HeaderLayoutId, firstId) {
-		mergeOpts = append(mergeOpts, text.DontSetStyle())
+		firstStyle := first.Model().GetText().Style
+		mergeOpts = append(mergeOpts, text.WithForcedStyle(firstStyle))
+	}
+	if style != 0 {
+		mergeOpts = append(mergeOpts, text.WithForcedStyle(style))
 	}
 	if err = first.Merge(second, mergeOpts...); err != nil {
 		return

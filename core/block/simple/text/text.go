@@ -588,14 +588,16 @@ func (t *Text) SplitMarks(textRange *model.Range, newMarks []*model.BlockContent
 }
 
 type mergeOpts struct {
-	dontSetStyle bool
+	withStyle bool
+	style     model.BlockContentTextStyle
 }
 
 type MergeOption func(opts *mergeOpts)
 
-func DontSetStyle() MergeOption {
+func WithForcedStyle(style model.BlockContentTextStyle) MergeOption {
 	return func(opts *mergeOpts) {
-		opts.dontSetStyle = true
+		opts.withStyle = true
+		opts.style = style
 	}
 }
 
@@ -607,8 +609,12 @@ func (t *Text) Merge(b simple.Block, opts ...MergeOption) error {
 
 	text, ok := b.(*Text)
 
-	if !o.dontSetStyle && t.content != nil && t.content.Text == "" {
-		t.SetStyle(text.content.Style)
+	if t.content != nil {
+		if o.withStyle {
+			t.SetStyle(o.style)
+		} else {
+			t.SetStyle(text.content.Style)
+		}
 		t.BackgroundColor = text.BackgroundColor
 	}
 

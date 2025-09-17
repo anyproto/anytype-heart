@@ -189,9 +189,11 @@ func TestTextImpl_Merge(t *testing.T) {
 	t.Run("should merge two text blocks", func(t *testing.T) {
 		sb := smarttest.New("test")
 		tb1 := newTextBlock("1", "one")
+		tb1.Model().GetText().Style = model.BlockContentText_Checkbox
 		tb1.Model().ChildrenIds = []string{"ch1"}
 		tb2 := newTextBlock("2", "two")
 		tb2.Model().ChildrenIds = []string{"ch2"}
+		tb1.Model().GetText().Style = model.BlockContentText_Code
 		sb.AddBlock(simple.New(&model.Block{Id: "test", ChildrenIds: []string{"1", "2"}})).
 			AddBlock(tb1).
 			AddBlock(tb2).
@@ -200,7 +202,7 @@ func TestTextImpl_Merge(t *testing.T) {
 		sender := mock_event.NewMockSender(t)
 		tb := NewText(sb, nil, sender)
 
-		err := tb.Merge(nil, "1", "2")
+		err := tb.Merge(nil, model.BlockContentText_Callout, "1", "2")
 		require.NoError(t, err)
 
 		r := sb.NewState()
@@ -208,6 +210,7 @@ func TestTextImpl_Merge(t *testing.T) {
 		require.True(t, r.Exists("1"))
 
 		assert.Equal(t, "onetwo", r.Pick("1").Model().GetText().Text)
+		assert.Equal(t, model.BlockContentText_Callout, r.Pick("1").Model().GetText().Style)
 		assert.Equal(t, []string{"ch1", "ch2"}, r.Pick("1").Model().ChildrenIds)
 	})
 
@@ -226,7 +229,7 @@ func TestTextImpl_Merge(t *testing.T) {
 		sender := mock_event.NewMockSender(t)
 		tb := NewText(sb, nil, sender)
 
-		err := tb.Merge(nil, "1", "2")
+		err := tb.Merge(nil, 0, "1", "2")
 		require.NoError(t, err)
 
 		r := sb.NewState()
@@ -254,7 +257,7 @@ func TestTextImpl_Merge(t *testing.T) {
 		sender := mock_event.NewMockSender(t)
 		tb := NewText(sb, nil, sender)
 
-		err := tb.Merge(nil, "title", "123")
+		err := tb.Merge(nil, 0, "title", "123")
 		require.NoError(t, err)
 
 		r := sb.NewState()
