@@ -22,6 +22,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/object/idresolver/mock_idresolver"
 	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/core/relationutils/mock_relationutils"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
@@ -1194,6 +1195,14 @@ func newFixtureDiffVersions(t *testing.T,
 	treeBuilder := mock_objecttreebuilder.NewMockTreeBuilder(ctrl)
 	resolver := mock_idresolver.NewMockResolver(t)
 	resolver.EXPECT().ResolveSpaceID(mock.Anything).Return(spaceID, nil).Maybe()
+	fetcher := mock_relationutils.NewMockRelationFormatFetcher(t)
+	fetcher.EXPECT().GetRelationFormatByKey(mock.Anything, mock.Anything).RunAndReturn(func(_ string, key domain.RelationKey) (model.RelationFormat, error) {
+		rel, err := bundle.GetRelation(key)
+		if err != nil {
+			return 0, err
+		}
+		return rel.Format, nil
+	}).Maybe()
 	if len(currChanges) > 0 {
 		configureTreeBuilder(treeBuilder, objectId, currVersionId, spaceID, currChanges, space, spaceService)
 	}
@@ -1201,10 +1210,11 @@ func newFixtureDiffVersions(t *testing.T,
 		configureTreeBuilder(treeBuilder, objectId, prevVersionId, spaceID, prevChanges, space, spaceService)
 	}
 	history := &history{
-		objectStore:  objectstore.NewStoreFixture(t),
-		spaceService: spaceService,
-		heads:        map[string]string{},
-		resolver:     resolver,
+		objectStore:   objectstore.NewStoreFixture(t),
+		spaceService:  spaceService,
+		heads:         map[string]string{},
+		resolver:      resolver,
+		formatFetcher: fetcher,
 	}
 	return &historyFixture{
 		history:     history,
@@ -1243,10 +1253,20 @@ func newFixtureShow(t *testing.T, changes map[string][]*objecttree.Change, objec
 		return key.URL(), nil
 	})
 
+	fetcher := mock_relationutils.NewMockRelationFormatFetcher(t)
+	fetcher.EXPECT().GetRelationFormatByKey(mock.Anything, mock.Anything).RunAndReturn(func(_ string, key domain.RelationKey) (model.RelationFormat, error) {
+		rel, err := bundle.GetRelation(key)
+		if err != nil {
+			return 0, err
+		}
+		return rel.Format, nil
+	}).Maybe()
+
 	h := &history{
-		objectStore:  objectstore.NewStoreFixture(t),
-		spaceService: spaceService,
-		heads:        map[string]string{},
+		objectStore:   objectstore.NewStoreFixture(t),
+		spaceService:  spaceService,
+		heads:         map[string]string{},
+		formatFetcher: fetcher,
 	}
 	return &historyFixture{
 		history:     h,

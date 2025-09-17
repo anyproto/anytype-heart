@@ -80,9 +80,10 @@ var WithNoDuplicateLinks = func() StateTransformer {
 	}
 }
 
-var WithRelations = func(rels []domain.RelationKey) StateTransformer {
+var WithRelations = func(keys []domain.RelationKey) StateTransformer {
 	return func(s *state.State) {
-		s.AddBundledRelationLinks(rels...)
+		s.AddRelationKeys(keys...)
+		s.AddBundledRelationLinks(keys...)
 	}
 }
 
@@ -584,7 +585,7 @@ func makeRelationBlock(k string) *model.Block {
 }
 
 var WithBookmarkBlocks = func(s *state.State) {
-	if !s.HasRelation(bundle.RelationKeySource.String()) && s.HasRelation(bundle.RelationKeyUrl.String()) {
+	if !s.HasRelation(bundle.RelationKeySource) && s.HasRelation(bundle.RelationKeyUrl) {
 		url := s.Details().GetString(bundle.RelationKeyUrl)
 		s.SetDetailAndBundledRelation(bundle.RelationKeySource, domain.String(url))
 	}
@@ -598,7 +599,8 @@ var WithBookmarkBlocks = func(s *state.State) {
 	}
 
 	for _, k := range bookmarkRelationKeys {
-		if !s.HasRelation(k) {
+		if !s.HasRelation(domain.RelationKey(k)) {
+			s.AddRelationKeys(domain.RelationKey(k))
 			s.AddBundledRelationLinks(domain.RelationKey(k))
 		}
 	}

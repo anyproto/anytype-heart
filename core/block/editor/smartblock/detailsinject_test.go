@@ -215,9 +215,7 @@ func TestSmartBlock_injectCreationInfo(t *testing.T) {
 		// then
 		assert.NoError(t, err)
 		assert.Equal(t, creator, s.LocalDetails().GetString(bundle.RelationKeyCreator))
-		assert.NotNil(t, s.GetRelationLinks().Get(bundle.RelationKeyCreator.String()))
 		assert.Equal(t, creationDate, s.LocalDetails().GetInt64(bundle.RelationKeyCreatedDate))
-		assert.NotNil(t, s.GetRelationLinks().Get(bundle.RelationKeyCreatedDate.String()))
 	})
 
 	t.Run("failure on retrieving creation info from source", func(t *testing.T) {

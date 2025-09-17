@@ -125,6 +125,19 @@ func (d *GenericMap[K]) IterateSorted() iter.Seq2[K, Value] {
 	}
 }
 
+func (d *GenericMap[K]) IterateKeys() iter.Seq[K] {
+	return func(proc func(key K) bool) {
+		if d == nil {
+			return
+		}
+		for k := range d.data {
+			if !proc(k) {
+				return
+			}
+		}
+	}
+}
+
 func (d *GenericMap[K]) Get(key K) Value {
 	if d == nil {
 		return Value{}

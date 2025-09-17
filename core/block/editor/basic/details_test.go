@@ -74,13 +74,13 @@ func TestBasic_UpdateDetails(t *testing.T) {
 		value, found := f.sb.Details().TryString(bundle.RelationKeyAperture)
 		assert.True(t, found)
 		assert.Equal(t, "aperture", value)
-		assert.True(t, f.sb.HasRelation(f.sb.NewState(), bundle.RelationKeyAperture.String()))
+		assert.True(t, f.sb.NewState().HasRelation(bundle.RelationKeyAperture))
 
 		{
 			value, found := f.sb.Details().TryInt64(bundle.RelationKeyRelationMaxCount)
 			assert.True(t, found)
 			assert.Equal(t, int64(5), value)
-			assert.True(t, f.sb.HasRelation(f.sb.NewState(), bundle.RelationKeyRelationMaxCount.String()))
+			assert.True(t, f.sb.NewState().HasRelation(bundle.RelationKeyRelationMaxCount))
 		}
 	})
 
@@ -112,7 +112,7 @@ func TestBasic_UpdateDetails(t *testing.T) {
 		value, found := f.sb.Details().TryString(bundle.RelationKeySpaceDashboardId)
 		assert.True(t, found)
 		assert.Equal(t, "new123", value)
-		assert.True(t, f.sb.HasRelation(f.sb.NewState(), bundle.RelationKeySpaceDashboardId.String()))
+		assert.True(t, f.sb.NewState().HasRelation(bundle.RelationKeySpaceDashboardId))
 	})
 
 	t.Run("delete details", func(t *testing.T) {
@@ -136,7 +136,7 @@ func TestBasic_UpdateDetails(t *testing.T) {
 		value, found := f.sb.Details().TryString(bundle.RelationKeyTargetObjectType)
 		assert.False(t, found)
 		assert.Empty(t, value)
-		assert.False(t, f.sb.HasRelation(f.sb.NewState(), bundle.RelationKeyTargetObjectType.String()))
+		assert.False(t, f.sb.NewState().HasRelation(bundle.RelationKeyTargetObjectType))
 	})
 
 	// TODO: GO-6248 uncomment when deletion of internal relations will be excluded on all clients

@@ -291,7 +291,7 @@ func (s *service) TemplateCreateFromObject(ctx context.Context, id string) (temp
 		if b.Type() != coresb.SmartBlockTypePage {
 			return fmt.Errorf("can't make template from this object type: %s", model.SmartBlockType_name[int32(b.Type())])
 		}
-		st, err = buildTemplateStateFromObject(b)
+		st, err = s.buildTemplateStateFromObject(b)
 		objectTypeKeys = st.ObjectTypeKeys()
 		return err
 	}); err != nil {
@@ -442,7 +442,7 @@ func (s *service) updateTypeKey(spaceId string, st *state.State) (err error) {
 	return nil
 }
 
-func buildTemplateStateFromObject(sb smartblock.SmartBlock) (*state.State, error) {
+func (s *service) buildTemplateStateFromObject(sb smartblock.SmartBlock) (*state.State, error) {
 	st := sb.NewState().Copy()
 	st.SetLocalDetails(nil)
 	targetObjectTypeId, err := sb.Space().GetTypeIdByKey(context.Background(), st.ObjectTypeKey())
@@ -451,7 +451,14 @@ func buildTemplateStateFromObject(sb smartblock.SmartBlock) (*state.State, error
 	}
 	st.SetDetail(bundle.RelationKeyTargetObjectType, domain.String(targetObjectTypeId))
 	st.SetObjectTypeKeys([]domain.TypeKey{bundle.TypeKeyTemplate, st.ObjectTypeKey()})
-	for _, rel := range sb.Relations(st) {
+
+	allRelationKeys := sb.AllRelationKeys()
+	relations, err := s.store.SpaceIndex(sb.SpaceID()).FetchRelationByKeys(allRelationKeys...)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get relation models from store: %w", err)
+	}
+
+	for _, rel := range relations {
 		if rel.DataSource == model.Relation_details && !rel.Hidden {
 			st.RemoveDetail(domain.RelationKey(rel.Key))
 		}

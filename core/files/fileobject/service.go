@@ -26,6 +26,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/files/fileobject/filemodels"
 	"github.com/anyproto/anytype-heart/core/files/fileoffloader"
 	"github.com/anyproto/anytype-heart/core/files/filesync"
+	"github.com/anyproto/anytype-heart/core/relationutils"
 	"github.com/anyproto/anytype-heart/core/syncstatus/filesyncstatus"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
@@ -85,6 +86,7 @@ type service struct {
 	migrationQueue  *persistentqueue.Queue[*migrationItem]
 	accountService  accountService
 	objectArchiver  objectArchiver
+	formatFetcher   relationutils.RelationFormatFetcher
 
 	indexMigrationChan chan *indexMigrationItem
 
@@ -124,6 +126,7 @@ func (s *service) Init(a *app.App) error {
 	s.fileOffloader = app.MustComponent[fileoffloader.Service](a)
 	s.objectArchiver = app.MustComponent[objectArchiver](a)
 	s.accountService = app.MustComponent[accountService](a)
+	s.formatFetcher = app.MustComponent[relationutils.RelationFormatFetcher](a)
 
 	provider := app.MustComponent[anystoreprovider.Provider](a)
 
