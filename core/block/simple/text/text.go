@@ -608,19 +608,17 @@ func (t *Text) Merge(b simple.Block, opts ...MergeOption) error {
 	}
 
 	text, ok := b.(*Text)
-
-	if t.content != nil {
-		if o.withStyle {
-			t.SetStyle(o.style)
-		} else {
-			t.SetStyle(text.content.Style)
-		}
-		t.BackgroundColor = text.BackgroundColor
-	}
-
 	if !ok {
 		return fmt.Errorf("unexpected block type for merge: %T", b)
 	}
+
+	style := text.content.Style
+	if o.withStyle {
+		style = o.style
+	}
+	t.SetStyle(style)
+	t.BackgroundColor = text.BackgroundColor
+
 	curLen := int32(textutil.UTF16RuneCountString(t.content.Text))
 	t.content.Text += text.content.Text
 	for _, m := range text.content.Marks.Marks {
