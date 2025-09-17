@@ -83,6 +83,7 @@ type CreateObjectRequest struct {
 	InternalFlags []*model.InternalFlag
 	TemplateId    string
 	ObjectTypeKey domain.TypeKey
+	UniqueKey     domain.UniqueKey
 }
 
 // CreateObject is high-level method for creating new objects
@@ -169,6 +170,11 @@ func (s *service) createTemplate(
 	if err != nil {
 		return
 	}
+
+	if req.UniqueKey != nil {
+		createState.SetUniqueKeyInternal(req.UniqueKey.InternalKey())
+	}
+
 	return s.CreateSmartBlockFromStateInSpace(ctx, space, []domain.TypeKey{req.ObjectTypeKey}, createState)
 }
 
@@ -196,6 +202,7 @@ func (s *service) createCommonObject(
 	if err != nil {
 		return
 	}
+
 	return s.CreateSmartBlockFromStateInSpace(ctx, space, []domain.TypeKey{req.ObjectTypeKey}, createState)
 }
 

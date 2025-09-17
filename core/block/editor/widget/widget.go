@@ -16,15 +16,15 @@ import (
 )
 
 const (
-	DefaultWidgetFavorite    = "favorite"
-	DefaultWidgetSet         = "set"
-	DefaultWidgetRecent      = "recent"
-	DefaultWidgetCollection  = "collection"
-	DefaultWidgetBin         = "bin"
-	DefaultWidgetChat        = "chat"
-	DefaultWidgetAll         = "allObjects"
-	DefaultWidgetRecentOpen  = "recentOpen"
-	widgetWrapperBlockSuffix = "-wrapper" // in case blockId is specifically provided to avoid bad tree merges
+	DefaultWidgetFavorite       = "favorite"
+	DefaultWidgetSet            = "set"
+	DefaultWidgetRecentlyEdited = "recent"
+	DefaultWidgetCollection     = "collection"
+	DefaultWidgetBin            = "bin"
+	DefaultWidgetChat           = "chat"
+	DefaultWidgetAll            = "allObjects"
+	DefaultWidgetRecentlyOpened = "recentOpen"
+	widgetWrapperBlockSuffix    = "-wrapper" // in case blockId is specifically provided to avoid bad tree merges
 
 	DefaultWidgetFavoriteEventName = "Favorite"
 	DefaultWidgetBinEventName      = "Bin"
@@ -68,7 +68,7 @@ func FillImportFlags(link *model.BlockContentLink, widgetFlags *ImportWidgetFlag
 
 func IsPredefinedWidgetTargetId(targetID string) bool {
 	switch targetID {
-	case DefaultWidgetFavorite, DefaultWidgetSet, DefaultWidgetRecent, DefaultWidgetCollection:
+	case DefaultWidgetFavorite, DefaultWidgetSet, DefaultWidgetRecentlyEdited, DefaultWidgetCollection:
 		return true
 	default:
 		return false

@@ -3,20 +3,22 @@ package editor
 import (
 	"context"
 	"errors"
+	"fmt"
 	"slices"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/basic"
-	"github.com/anyproto/anytype-heart/core/block/editor/converter"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/editor/template"
 	"github.com/anyproto/anytype-heart/core/block/editor/widget"
 	"github.com/anyproto/anytype-heart/core/block/migration"
+	"github.com/anyproto/anytype-heart/core/block/object/objectcreator"
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
+	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/spaceindex"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -30,14 +32,16 @@ type WidgetObject struct {
 	basic.Updatable
 	widget.Widget
 	basic.DetailsSettable
+
+	spaceIndex    spaceindex.Store
+	objectCreator objectcreator.Service
 }
 
-func NewWidgetObject(
+func (f *ObjectFactory) newWidgetObject(
 	sb smartblock.SmartBlock,
 	objectStore spaceindex.Store,
-	layoutConverter converter.LayoutConverter,
 ) *WidgetObject {
-	bs := basic.NewBasic(sb, objectStore, layoutConverter, nil)
+	bs := basic.NewBasic(sb, objectStore, f.layoutConverter, nil)
 	return &WidgetObject{
 		SmartBlock:      sb,
 		Movable:         bs,
@@ -45,6 +49,8 @@ func NewWidgetObject(
 		DetailsSettable: bs,
 		IHistory:        basic.NewHistory(sb),
 		Widget:          widget.NewWidget(sb),
+		spaceIndex:      objectStore,
+		objectCreator:   f.objectCreator,
 	}
 }
 
@@ -53,10 +59,20 @@ func (w *WidgetObject) Init(ctx *smartblock.InitContext) (err error) {
 		return
 	}
 
+	var migrateBlockRecentlyEdited string
+	// var migrateBlockRecentlyOpened string
+
 	// cleanup broken
 	var removeIds []string
 	_ = ctx.State.Iterate(func(b simple.Block) (isContinue bool) {
 		if wc, ok := b.Model().Content.(*model.BlockContentOfLink); ok {
+			if wc.Link.TargetBlockId == widget.DefaultWidgetRecentlyEdited {
+				migrateBlockRecentlyEdited = b.Model().Id
+			}
+			if wc.Link.TargetBlockId == widget.DefaultWidgetRecentlyOpened {
+				// migrateBlockRecentlyOpened = b.Model().Id
+			}
+
 			if wc.Link.TargetBlockId == addr.MissingObject {
 				removeIds = append(removeIds, b.Model().Id)
 				return true
@@ -89,7 +105,37 @@ func (w *WidgetObject) Init(ctx *smartblock.InitContext) (err error) {
 	for _, id := range removeIds {
 		ctx.State.Unlink(id)
 	}
+
+	if migrateBlockRecentlyEdited != "" {
+		id, err := w.migrationCreateRecentlyEdited()
+		if err != nil {
+			fmt.Println("MIGRATE", err)
+		}
+		_ = id
+	}
+
 	return nil
+}
+
+func (w *WidgetObject) migrationCreateRecentlyEdited() (string, error) {
+	uk, err := domain.NewUniqueKey(coresb.SmartBlockTypePage, "recently_edited")
+	if err != nil {
+		return "", fmt.Errorf("new unique key: %w", err)
+	}
+
+	// TODO Fix view
+	id, _, err := w.objectCreator.CreateObject(context.Background(), w.SpaceID(), objectcreator.CreateObjectRequest{
+		Details: domain.NewDetails().
+			SetString(bundle.RelationKeyName, "Recently Edited").
+			SetStringList(bundle.RelationKeySetOf, []string{bundle.RelationKeyLastModifiedDate.String()}),
+		InternalFlags: nil,
+		ObjectTypeKey: bundle.TypeKeySet,
+		UniqueKey:     uk,
+	})
+
+	// TODO Ignore tree exists error and return derived id then
+
+	return id, err
 }
 
 func (w *WidgetObject) CreationStateMigration(ctx *smartblock.InitContext) migration.Migration {
