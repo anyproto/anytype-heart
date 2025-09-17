@@ -62,6 +62,7 @@ type spaceSyncStatus struct {
 	mx             sync.Mutex
 	periodicCall   periodicsync.PeriodicSync
 	loopInterval   time.Duration
+	startDelay     time.Duration // delay before starting sync, can be overridden in tests
 	isLocal        bool
 	closeCh        chan struct{}
 }
@@ -69,6 +70,7 @@ type spaceSyncStatus struct {
 func NewSpaceSyncStatus() Updater {
 	return &spaceSyncStatus{
 		loopInterval: time.Second * 1,
+		startDelay:   time.Second * 3,
 		closeCh:      make(chan struct{}),
 	}
 }
@@ -112,8 +114,9 @@ func (s *spaceSyncStatus) UpdateMissingIds(spaceId string, ids []string) {
 func (s *spaceSyncStatus) Run(ctx context.Context) (err error) {
 	go func() {
 		select {
-		case <-time.After(time.Second * 3):
+		case <-time.After(s.startDelay):
 		case <-s.closeCh:
+			return
 		}
 		s.sendStartEvent(s.spaceIdGetter.AllSpaceIds())
 		s.periodicCall.Run()

@@ -118,6 +118,8 @@ func newFixture(t *testing.T, beforeStart func(fx *fixture)) *fixture {
 		syncSubs:            syncsubscriptions.New(),
 		networkConfig:       networkConfig,
 	}
+	// Set startDelay to 0 for immediate execution in tests
+	fx.spaceSyncStatus.startDelay = 0
 
 	a.Register(fx.syncSubs).
 		Register(testutil.PrepareMock(ctx, a, networkConfig)).
@@ -130,6 +132,8 @@ func newFixture(t *testing.T, beforeStart func(fx *fixture)) *fixture {
 	beforeStart(fx)
 	err := a.Start(ctx)
 	require.NoError(t, err)
+	// Give the goroutine a moment to run
+	time.Sleep(10 * time.Millisecond)
 	return fx
 }
 
