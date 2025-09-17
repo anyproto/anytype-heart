@@ -369,12 +369,12 @@ func (s *treeSource) PushChange(params source.PushChangeParams) (id string, err 
 	}
 
 	addResult, err := s.ObjectTree.AddContent(context.Background(), objecttree.SignableChangeContent{
-		Data:        data,
-		Key:         s.ObjectTree.AclList().AclState().Key(),
-		IsSnapshot:  change.Snapshot != nil,
-		IsEncrypted: true,
-		DataType:    dataType,
-		Timestamp:   params.Time.Unix(),
+		Data:              data,
+		Key:               s.ObjectTree.AclList().AclState().Key(),
+		IsSnapshot:        change.Snapshot != nil,
+		ShouldBeEncrypted: true,
+		DataType:          dataType,
+		Timestamp:         params.Time.Unix(),
 	})
 	if err != nil {
 		return

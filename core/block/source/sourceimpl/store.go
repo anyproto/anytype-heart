@@ -279,11 +279,11 @@ func (s *store) PushStoreChange(ctx context.Context, params source.PushStoreChan
 	}
 
 	addResult, err := s.ObjectTree.AddContentWithValidator(ctx, objecttree.SignableChangeContent{
-		Data:        data,
-		Key:         s.ObjectTree.AclList().AclState().Key(),
-		IsEncrypted: true,
-		DataType:    dataType,
-		Timestamp:   params.Time.Unix(),
+		Data:              data,
+		Key:               s.ObjectTree.AclList().AclState().Key(),
+		ShouldBeEncrypted: true,
+		DataType:          dataType,
+		Timestamp:         params.Time.Unix(),
 	}, func(change objecttree.StorageChange) error {
 		err = tx.ApplyChangeSet(storestate.ChangeSet{
 			Id:        change.Id,
