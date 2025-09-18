@@ -153,19 +153,6 @@ func (s *service) migrateWidgets(widget smartblock.SmartBlock, migrateBlockRecen
 				},
 			}
 		})
-		// TODO Fix according to
-		/*
-					case J.Constant.widgetId.recentEdit: {
-				filters.push({ relationKey: 'lastModifiedDate', condition: I.FilterCondition.Greater, value: space.createdDate + 3 });
-				break;
-			};
-
-			case J.Constant.widgetId.recentOpen: {
-				filters.push({ relationKey: 'lastOpenedDate', condition: I.FilterCondition.Greater, value: 0 });
-				sorts.push({ relationKey: 'lastOpenedDate', type: I.SortType.Desc });
-				break;
-			};
-		*/
 		if err != nil {
 			log.Errorf("widget migration: failed to create Recently opened object: %v", err)
 			return
