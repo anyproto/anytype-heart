@@ -127,8 +127,8 @@ func (s *dsObjectStore) UpdatePendingLocalDetails(id string, proc func(details *
 		_ = txn.Rollback()
 	}()
 
-	var shouldDelete
-	_, err = s.pendingDetails.UpsertId(txn.Context(), id, query.ModifyFunc(func(arena *anyenc.Arena, val *anyenc.Value) (*anyenc.Value, bool, error) {
+	var shouldDelete bool
+	res, err := s.pendingDetails.UpsertId(txn.Context(), id, query.ModifyFunc(func(arena *anyenc.Arena, val *anyenc.Value) (*anyenc.Value, bool, error) {
 		currentDetails, err := domain.NewDetailsFromAnyEnc(val)
 		if err != nil {
 			return nil, false, fmt.Errorf("get old details: json to proto: %w", err)
@@ -139,10 +139,7 @@ func (s *dsObjectStore) UpdatePendingLocalDetails(id string, proc func(details *
 			return nil, false, fmt.Errorf("run a modifier: %w", err)
 		}
 		if newDetails == nil {
-			if currentDetails.Len() > 1 {
-				// we will call a delete outside of upsert
-				shouldDelete = true
-			}
+			shouldDelete = true
 			return val, false, nil
 		}
 		newDetails.SetString(bundle.RelationKeyId, id)
@@ -157,7 +154,7 @@ func (s *dsObjectStore) UpdatePendingLocalDetails(id string, proc func(details *
 	if err != nil {
 		return fmt.Errorf("upsert details: %w", err)
 	}
-	if shouldDelete {
+	if res.Matched > 0 && shouldDelete {
 		err = s.pendingDetails.DeleteId(txn.Context(), id)
 		if err != nil {
 			return fmt.Errorf("delete pending details: %w", err)

@@ -93,7 +93,7 @@ func (s *dsObjectStore) BatchProcessFullTextQueue(
 	spaceIds func() []string,
 	limit uint,
 	processIds func(objectIds []domain.FullID,
-) (succeedIds []domain.FullID, ftIndexSeq uint64, err error)) error {
+	) (succeedIds []domain.FullID, ftIndexSeq uint64, err error)) error {
 	for {
 		ids, err := s.ListIdsFromFullTextQueue(spaceIds(), limit)
 		if err != nil {
