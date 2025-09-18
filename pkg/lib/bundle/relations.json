@@ -1618,25 +1618,6 @@
     "source": "details"
   },
   {
-    "description": "Automatically generated widget. Used to avoid creating widget if was removed by user",
-    "format": "object",
-    "hidden": true,
-    "key": "autoWidgetTargets",
-    "maxCount": 0,
-    "name": "Auto Widget targets",
-    "readonly": false,
-    "source": "details"
-  },
-  {
-    "format": "checkbox",
-    "hidden": true,
-    "key": "autoWidgetDisabled",
-    "maxCount": 1,
-    "name": "Auto Widget disabled",
-    "readonly": false,
-    "source": "details"
-  },
-  {
     "description": "Name of Object type in plural form",
     "format": "longtext",
     "hidden": true,

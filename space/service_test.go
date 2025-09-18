@@ -40,6 +40,7 @@ import (
 	"github.com/anyproto/anytype-heart/space/mock_space"
 	"github.com/anyproto/anytype-heart/space/spacecore"
 	"github.com/anyproto/anytype-heart/space/spacecore/mock_spacecore"
+	"github.com/anyproto/anytype-heart/space/spacedomain"
 	"github.com/anyproto/anytype-heart/space/spacefactory/mock_spacefactory"
 	"github.com/anyproto/anytype-heart/space/spaceinfo"
 	"github.com/anyproto/anytype-heart/space/techspace"
@@ -287,8 +288,8 @@ func (l lwMock) WaitLoad(ctx context.Context) (sp clientspace.Space, err error) 
 }
 
 func (fx *fixture) expectRun(t *testing.T, expectOldAccount func(t *testing.T, fx *fixture)) {
-	fx.spaceCore.EXPECT().DeriveID(mock.Anything, spacecore.SpaceType).Return(fx.spaceId, nil).Times(1)
-	fx.spaceCore.EXPECT().DeriveID(mock.Anything, spacecore.TechSpaceType).Return("techSpaceId", nil).Times(1)
+	fx.spaceCore.EXPECT().DeriveID(mock.Anything, spacedomain.SpaceTypeRegular).Return(fx.spaceId, nil).Times(1)
+	fx.spaceCore.EXPECT().DeriveID(mock.Anything, spacedomain.SpaceTypeTech).Return("techSpaceId", nil).Times(1)
 	fx.updater.EXPECT().UpdateCoordinatorStatus()
 
 	clientSpace := mock_clientspace.NewMockSpace(t)

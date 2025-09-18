@@ -118,7 +118,7 @@ func (mw *Middleware) ObjectSetIsFavorite(_ context.Context, req *pb.RpcObjectSe
 		}
 		return m
 	}
-	err := mustService[detailservice.Service](mw).SetIsFavorite(req.ContextId, req.IsFavorite, true)
+	err := mustService[detailservice.Service](mw).SetIsFavorite(req.ContextId, req.IsFavorite)
 	if err != nil {
 		return response(pb.RpcObjectSetIsFavoriteResponseError_UNKNOWN_ERROR, err)
 	}

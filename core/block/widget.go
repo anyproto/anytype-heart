@@ -1,34 +1,16 @@
 package block
 
 import (
-	"context"
 	"fmt"
-	"slices"
 
 	"github.com/anyproto/anytype-heart/core/block/cache"
 	"github.com/anyproto/anytype-heart/core/block/editor/basic"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
-	"github.com/anyproto/anytype-heart/core/block/editor/state"
-	"github.com/anyproto/anytype-heart/core/block/editor/widget"
 	"github.com/anyproto/anytype-heart/core/block/simple"
-	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pb"
-	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
-	"github.com/anyproto/anytype-heart/pkg/lib/database"
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
-
-var skippedTypesForAutoWidget = []domain.TypeKey{
-	bundle.TypeKeyTemplate,
-	bundle.TypeKeyObjectType,
-	bundle.TypeKeyDate,
-	bundle.TypeKeyRelation,
-	bundle.TypeKeyRelationOption,
-	bundle.TypeKeyDashboard,
-	bundle.TypeKeyChatDerived,
-}
 
 func (s *Service) SetWidgetBlockTargetId(ctx session.Context, req *pb.RpcBlockWidgetSetTargetIdRequest) error {
 	return cache.Do(s, req.ContextId, func(b smartblock.SmartBlock) error {
@@ -79,116 +61,5 @@ func (s *Service) SetWidgetBlockViewId(ctx session.Context, req *pb.RpcBlockWidg
 			}
 			return nil
 		}, req.BlockId)
-	})
-}
-
-func (s *Service) CreateTypeWidgetIfMissing(ctx context.Context, spaceId string, key domain.TypeKey) error {
-	return s.CreateTypeWidgetsIfMissing(ctx, spaceId, []domain.TypeKey{key}, true)
-}
-
-func (s *Service) CreateTypeWidgetsIfMissing(ctx context.Context, spaceId string, keys []domain.TypeKey, checkFirstObject bool) error {
-	if len(keys) == 0 {
-		return nil
-	}
-
-	if spaceId == s.spaceService.TechSpaceId() {
-		return nil
-	}
-
-	space, err := s.spaceService.Get(ctx, spaceId)
-	if err != nil {
-		return err
-	}
-
-	widgetObjectId := space.DerivedIDs().Widgets
-	spaceIndex := s.objectStore.SpaceIndex(space.Id())
-	widgetDetails, err := spaceIndex.GetDetails(widgetObjectId)
-	if err == nil && widgetDetails.GetBool(bundle.RelationKeyAutoWidgetDisabled) {
-		return nil
-	}
-
-	// Get existing widget targets
-	var existingTargets []string
-	if err == nil {
-		existingTargets = widgetDetails.Get(bundle.RelationKeyAutoWidgetTargets).StringList()
-	}
-
-	// Filter out skipped types and already existing widgets
-	var typesToCreate []struct {
-		key    domain.TypeKey
-		typeId string
-	}
-
-	for _, key := range keys {
-		if slices.Contains(skippedTypesForAutoWidget, key) {
-			continue
-		}
-
-		typeId, err := space.GetTypeIdByKey(ctx, key)
-		if err != nil {
-			continue
-		}
-
-		if slices.Contains(existingTargets, typeId) {
-			// widget was created before
-			continue
-		}
-
-		// Check if this is the first object of this type (if enabled)
-		if checkFirstObject {
-			records, err := spaceIndex.QueryRaw(&database.Filters{FilterObj: database.FiltersAnd{
-				database.FilterEq{
-					Key:   bundle.RelationKeyType,
-					Cond:  model.BlockContentDataviewFilter_Equal,
-					Value: domain.String(typeId),
-				},
-				database.FilterEq{
-					Key:   bundle.RelationKeyIsHiddenDiscovery,
-					Cond:  model.BlockContentDataviewFilter_NotEqual,
-					Value: domain.Bool(true),
-				},
-				database.FilterEq{
-					Key:   bundle.RelationKeyOrigin,
-					Cond:  model.BlockContentDataviewFilter_NotEqual,
-					Value: domain.Int64(model.ObjectOrigin_usecase),
-				},
-			}}, 1, 1)
-			if err != nil {
-				log.Warnf("failed to query records for type '%s' in space '%s': %v", key, spaceId, err)
-			}
-			if len(records) > 0 {
-				// only create widget if this was the first object of this type created
-				continue
-			}
-		}
-
-		typesToCreate = append(typesToCreate, struct {
-			key    domain.TypeKey
-			typeId string
-		}{key: key, typeId: typeId})
-	}
-
-	if len(typesToCreate) == 0 {
-		return nil
-	}
-
-	// Create all widgets in a single transaction
-	return cache.DoState(s, widgetObjectId, func(st *state.State, w widget.Widget) error {
-		for _, t := range typesToCreate {
-			var targetName string
-			typeDetails, err := spaceIndex.GetDetails(t.typeId)
-			if err == nil {
-				targetName = typeDetails.Get(bundle.RelationKeyPluralName).String()
-				if targetName == "" {
-					targetName = typeDetails.Get(bundle.RelationKeyName).String()
-				}
-			}
-
-			if err := w.AddAutoWidget(st, t.typeId, t.key.String(), addr.ObjectTypeAllViewId, model.BlockContentWidget_View, targetName); err != nil {
-				log.Warnf("failed to add widget for type '%s': %v", t.key, err)
-				// Continue with other widgets even if one fails
-			}
-		}
-		return nil
 	})
 }

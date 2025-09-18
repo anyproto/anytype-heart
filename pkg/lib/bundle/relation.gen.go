@@ -9,7 +9,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-const RelationChecksum = "921c75b76fdc2037f7c7c6f216ff9c1001de5cbe5abbbf0c03019ee185f93fcb"
+const RelationChecksum = "37872b52c93c4d1f5ab406c94ba02c6079a7f0d56350e5ef1c75c62b478083cc"
 const (
 	RelationKeyTag                                domain.RelationKey = "tag"
 	RelationKeyCamera                             domain.RelationKey = "camera"
@@ -168,8 +168,6 @@ const (
 	RelationKeyRecommendedFileRelations           domain.RelationKey = "recommendedFileRelations"
 	RelationKeyDefaultViewType                    domain.RelationKey = "defaultViewType"
 	RelationKeyDefaultTypeId                      domain.RelationKey = "defaultTypeId"
-	RelationKeyAutoWidgetTargets                  domain.RelationKey = "autoWidgetTargets"
-	RelationKeyAutoWidgetDisabled                 domain.RelationKey = "autoWidgetDisabled"
 	RelationKeyPluralName                         domain.RelationKey = "pluralName"
 	RelationKeyHeaderRelationsLayout              domain.RelationKey = "headerRelationsLayout"
 	RelationKeyApiObjectKey                       domain.RelationKey = "apiObjectKey"
@@ -318,33 +316,6 @@ var (
 			ReadOnly:         false,
 			ReadOnlyRelation: true,
 			Revision:         1,
-			Scope:            model.Relation_type,
-		},
-		RelationKeyAutoWidgetDisabled: {
-
-			DataSource:       model.Relation_details,
-			Description:      "",
-			Format:           model.RelationFormat_checkbox,
-			Hidden:           true,
-			Id:               "_brautoWidgetDisabled",
-			Key:              "autoWidgetDisabled",
-			MaxCount:         1,
-			Name:             "Auto Widget disabled",
-			ReadOnly:         false,
-			ReadOnlyRelation: true,
-			Scope:            model.Relation_type,
-		},
-		RelationKeyAutoWidgetTargets: {
-
-			DataSource:       model.Relation_details,
-			Description:      "Automatically generated widget. Used to avoid creating widget if was removed by user",
-			Format:           model.RelationFormat_object,
-			Hidden:           true,
-			Id:               "_brautoWidgetTargets",
-			Key:              "autoWidgetTargets",
-			Name:             "Auto Widget targets",
-			ReadOnly:         false,
-			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
 		},
 		RelationKeyBacklinks: {

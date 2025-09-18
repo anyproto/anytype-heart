@@ -435,7 +435,6 @@ func (s *Service) SpaceInitChat(ctx context.Context, spaceId string) error {
 	if err != nil {
 		return fmt.Errorf("apply chatId to workspace: %w", err)
 	}
-
 	return nil
 }
 
