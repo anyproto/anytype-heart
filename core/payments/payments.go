@@ -120,7 +120,10 @@ type Service interface {
 	VerifyAppStoreReceipt(ctx context.Context, req *pb.RpcMembershipVerifyAppStoreReceiptRequest) (*pb.RpcMembershipVerifyAppStoreReceiptResponse, error)
 	CodeGetInfo(ctx context.Context, req *pb.RpcMembershipCodeGetInfoRequest) (*pb.RpcMembershipCodeGetInfoResponse, error)
 	CodeRedeem(ctx context.Context, req *pb.RpcMembershipCodeRedeemRequest) (*pb.RpcMembershipCodeRedeemResponse, error)
-	WebAuth(ctx context.Context, req *pb.RpcMembershipWebAuthRequest) (*pb.RpcMembershipWebAuthResponse, error)
+
+	V2WebAuth(ctx context.Context, req *pb.RpcMembershipV2WebAuthRequest) (*pb.RpcMembershipV2WebAuthResponse, error)
+	V2GetProducts(ctx context.Context, req *pb.RpcMembershipV2GetProductsRequest) (*pb.RpcMembershipV2GetProductsResponse, error)
+	V2GetStatus(ctx context.Context, req *pb.RpcMembershipV2GetStatusRequest) (*pb.RpcMembershipV2GetStatusResponse, error)
 
 	app.ComponentRunnable
 }
@@ -1116,7 +1119,7 @@ func (s *service) CodeRedeem(ctx context.Context, req *pb.RpcMembershipCodeRedee
 	}, nil
 }
 
-func (s *service) WebAuth(ctx context.Context, req *pb.RpcMembershipWebAuthRequest) (*pb.RpcMembershipWebAuthResponse, error) {
+func (s *service) V2WebAuth(ctx context.Context, req *pb.RpcMembershipV2WebAuthRequest) (*pb.RpcMembershipV2WebAuthResponse, error) {
 	webAuth := proto.Membership2_WebAuthRequest{}
 
 	res, err := s.ppclient2.WebAuth(ctx, &webAuth)
@@ -1124,12 +1127,32 @@ func (s *service) WebAuth(ctx context.Context, req *pb.RpcMembershipWebAuthReque
 		return nil, err
 	}
 
-	return &pb.RpcMembershipWebAuthResponse{
+	return &pb.RpcMembershipV2WebAuthResponse{
 		Jwt: res.Jwt,
 		Url: res.Url,
 
-		Error: &pb.RpcMembershipWebAuthResponseError{
-			Code: pb.RpcMembershipWebAuthResponseError_NULL,
+		Error: &pb.RpcMembershipV2WebAuthResponseError{
+			Code: pb.RpcMembershipV2WebAuthResponseError_NULL,
+		},
+	}, nil
+}
+
+func (s *service) V2GetProducts(ctx context.Context, req *pb.RpcMembershipV2GetProductsRequest) (*pb.RpcMembershipV2GetProductsResponse, error) {
+	// TODO: implement
+
+	return &pb.RpcMembershipV2GetProductsResponse{
+		Error: &pb.RpcMembershipV2GetProductsResponseError{
+			Code: pb.RpcMembershipV2GetProductsResponseError_NULL,
+		},
+	}, nil
+}
+
+func (s *service) V2GetStatus(ctx context.Context, req *pb.RpcMembershipV2GetStatusRequest) (*pb.RpcMembershipV2GetStatusResponse, error) {
+	// TODO: implement
+
+	return &pb.RpcMembershipV2GetStatusResponse{
+		Error: &pb.RpcMembershipV2GetStatusResponseError{
+			Code: pb.RpcMembershipV2GetStatusResponseError_NULL,
 		},
 	}, nil
 }

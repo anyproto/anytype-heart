@@ -8089,7 +8089,9 @@ message Rpc {
                 }
             }
         }
+    }
 
+    message MembershipV2 {
         message WebAuth {
             message Request {
 
@@ -8116,6 +8118,74 @@ message Rpc {
                         PAYMENT_NODE_ERROR = 4;
 
                         AUTH_BAD = 5;
+                    }
+                }
+            }
+        }
+
+        message GetProducts {
+            message Request {
+                // pass true to force the cache update
+                // by default this is false
+                bool noCache = 1;
+            }
+
+            message Response {
+                Error error = 1;
+
+                repeated anytype.model.MembershipV2.Product topLevelProducts = 2;
+
+                repeated anytype.model.MembershipV2.Product additionalProducts = 3;
+
+                message Error {
+                    Code code = 1;
+                    string description = 2;
+
+                    enum Code {
+                        NULL = 0;
+                        UNKNOWN_ERROR = 1;
+                        BAD_INPUT = 2;
+
+                        NOT_LOGGED_IN = 3;
+                        PAYMENT_NODE_ERROR = 4;
+
+                        AUTH_BAD = 5;
+
+                        CACHE_ERROR = 6;
+                        CAN_NOT_CONNECT = 7;
+                    }
+                }
+            }
+        }
+
+        message GetStatus {
+            message Request {
+                // pass true to force the cache update
+                // by default this is false
+                bool noCache = 1;
+            }
+
+            message Response {
+                Error error = 1;
+
+                anytype.model.MembershipV2.Data data = 2;
+
+                message Error {
+                    Code code = 1;
+                    string description = 2;
+
+                    enum Code {
+                        NULL = 0;
+                        UNKNOWN_ERROR = 1;
+                        BAD_INPUT = 2;
+
+                        NOT_LOGGED_IN = 3;
+                        PAYMENT_NODE_ERROR = 4;
+                        CACHE_ERROR = 5;
+
+                        MEMBERSHIP_NOT_FOUND = 6;
+                        MEMBERSHIP_WRONG_STATE = 7;
+                        CAN_NOT_CONNECT = 8;
                     }
                 }
             }

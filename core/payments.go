@@ -396,21 +396,67 @@ func (mw *Middleware) MembershipCodeRedeem(ctx context.Context, req *pb.RpcMembe
 	return out
 }
 
-func (mw *Middleware) MembershipWebAuth(ctx context.Context, req *pb.RpcMembershipWebAuthRequest) *pb.RpcMembershipWebAuthResponse {
+func (mw *Middleware) MembershipV2WebAuth(ctx context.Context, req *pb.RpcMembershipV2WebAuthRequest) *pb.RpcMembershipV2WebAuthResponse {
 	ps := mustService[payments.Service](mw)
-	out, err := ps.WebAuth(ctx, req)
+	out, err := ps.V2WebAuth(ctx, req)
 
 	if err != nil {
 		code := mapErrorCode(err,
-			errToCode(proto.ErrInvalidSignature, pb.RpcMembershipWebAuthResponseError_NOT_LOGGED_IN),
-			errToCode(proto.ErrEthAddressEmpty, pb.RpcMembershipWebAuthResponseError_NOT_LOGGED_IN),
-			errToCode(payments.ErrNoConnection, pb.RpcMembershipWebAuthResponseError_PAYMENT_NODE_ERROR),
-			errToCode(net.ErrUnableToConnect, pb.RpcMembershipWebAuthResponseError_PAYMENT_NODE_ERROR),
+			errToCode(proto.ErrInvalidSignature, pb.RpcMembershipV2WebAuthResponseError_NOT_LOGGED_IN),
+			errToCode(proto.ErrEthAddressEmpty, pb.RpcMembershipV2WebAuthResponseError_NOT_LOGGED_IN),
+			errToCode(payments.ErrNoConnection, pb.RpcMembershipV2WebAuthResponseError_PAYMENT_NODE_ERROR),
+			errToCode(net.ErrUnableToConnect, pb.RpcMembershipV2WebAuthResponseError_PAYMENT_NODE_ERROR),
 			// use special return pb.RpcMembershipWebAuthResponseError_AUTH_BAD
 		)
 
-		return &pb.RpcMembershipWebAuthResponse{
-			Error: &pb.RpcMembershipWebAuthResponseError{
+		return &pb.RpcMembershipV2WebAuthResponse{
+			Error: &pb.RpcMembershipV2WebAuthResponseError{
+				Code:        code,
+				Description: getErrorDescription(err),
+			},
+		}
+	}
+
+	return out
+}
+
+func (mw *Middleware) MembershipV2GetProducts(ctx context.Context, req *pb.RpcMembershipV2GetProductsRequest) *pb.RpcMembershipV2GetProductsResponse {
+	ps := mustService[payments.Service](mw)
+	out, err := ps.V2GetProducts(ctx, req)
+
+	if err != nil {
+		code := mapErrorCode(err,
+			errToCode(proto.ErrInvalidSignature, pb.RpcMembershipV2GetProductsResponseError_NOT_LOGGED_IN),
+			errToCode(proto.ErrEthAddressEmpty, pb.RpcMembershipV2GetProductsResponseError_NOT_LOGGED_IN),
+			errToCode(payments.ErrNoConnection, pb.RpcMembershipV2GetProductsResponseError_PAYMENT_NODE_ERROR),
+			errToCode(net.ErrUnableToConnect, pb.RpcMembershipV2GetProductsResponseError_PAYMENT_NODE_ERROR),
+		)
+
+		return &pb.RpcMembershipV2GetProductsResponse{
+			Error: &pb.RpcMembershipV2GetProductsResponseError{
+				Code:        code,
+				Description: getErrorDescription(err),
+			},
+		}
+	}
+
+	return out
+}
+
+func (mw *Middleware) MembershipV2GetStatus(ctx context.Context, req *pb.RpcMembershipV2GetStatusRequest) *pb.RpcMembershipV2GetStatusResponse {
+	ps := mustService[payments.Service](mw)
+	out, err := ps.V2GetStatus(ctx, req)
+
+	code := mapErrorCode(err,
+		errToCode(proto.ErrInvalidSignature, pb.RpcMembershipV2GetStatusResponseError_NOT_LOGGED_IN),
+		errToCode(proto.ErrEthAddressEmpty, pb.RpcMembershipV2GetStatusResponseError_NOT_LOGGED_IN),
+		errToCode(payments.ErrNoConnection, pb.RpcMembershipV2GetStatusResponseError_PAYMENT_NODE_ERROR),
+		errToCode(net.ErrUnableToConnect, pb.RpcMembershipV2GetStatusResponseError_PAYMENT_NODE_ERROR),
+	)
+
+	if err != nil {
+		return &pb.RpcMembershipV2GetStatusResponse{
+			Error: &pb.RpcMembershipV2GetStatusResponseError{
 				Code:        code,
 				Description: getErrorDescription(err),
 			},
