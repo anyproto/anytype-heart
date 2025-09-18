@@ -198,8 +198,7 @@ func (s *sortedSub) onChange(ctx *opCtx) {
 	}
 
 	if (wasAddOrRemove || hasChanges) && s.depSub != nil {
-		s.ds.refillSubscription(ctx, s.depSub, s.activeEntriesBuf, s.depKeys)
-		s.ds.updateOrders(s.id, s.activeEntriesBuf)
+		s.ds.refillSubscription(ctx, s.id, s.depSub, s.activeEntriesBuf, s.depKeys)
 	}
 
 	if s.parent != nil {

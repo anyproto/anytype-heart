@@ -101,8 +101,7 @@ func (s *idsSub) onChange(ctx *opCtx) {
 
 	if changed && s.depSub != nil {
 		activeEntries := s.getActiveEntries()
-		s.ds.refillSubscription(ctx, s.depSub, activeEntries, s.depKeys)
-		s.ds.updateOrders(s.id, activeEntries)
+		s.ds.refillSubscription(ctx, s.id, s.depSub, activeEntries, s.depKeys)
 	}
 }
 

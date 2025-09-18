@@ -489,7 +489,7 @@ func (s *spaceSubscriptions) subscribeForQuery(req SubscribeRequest, f *database
 	}
 
 	if len(req.Sorts) > 0 {
-		s.ds.enregisterObjectSorts(sub.id, entries, req.Sorts)
+		s.ds.enregisterObjectSorts(sub.id, req.Sorts)
 	}
 
 	prev, next := sub.counters()
@@ -552,7 +552,7 @@ func (s *spaceSubscriptions) subscribeForCollection(req SubscribeRequest, f *dat
 	prev, next := sub.counters()
 
 	if len(req.Sorts) > 0 {
-		s.ds.enregisterObjectSorts(sub.sortedSub.id, sub.sortedSub.getActiveEntries(), req.Sorts)
+		s.ds.enregisterObjectSorts(sub.sortedSub.id, req.Sorts)
 	}
 
 	var depRecords, subRecords []*domain.Details

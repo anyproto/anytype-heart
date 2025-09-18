@@ -60,6 +60,7 @@ func (s *simpleSub) isEqualIds(ids []string) bool {
 
 func (s *simpleSub) refill(ctx *opCtx, entries []*entry) {
 	var newSet = make(map[string]struct{})
+	var newAdded bool
 	for _, e := range entries {
 		if _, inSet := s.set[e.id]; inSet {
 			ctx.change = append(ctx.change, opChange{
@@ -74,6 +75,7 @@ func (s *simpleSub) refill(ctx *opCtx, entries []*entry) {
 				keys:  s.keys,
 				isAdd: true,
 			})
+			newAdded = true
 		}
 		newSet[e.id] = struct{}{}
 		e.SetSub(s.id, true, false)
@@ -88,6 +90,10 @@ func (s *simpleSub) refill(ctx *opCtx, entries []*entry) {
 		}
 	}
 	s.set = newSet
+
+	if s.isDep && newAdded {
+		s.ds.reorderParentSubscription(s.id, ctx)
+	}
 }
 
 func (s *simpleSub) counters() (prev, next int) {
@@ -109,8 +115,7 @@ func (s *simpleSub) onChange(ctx *opCtx) {
 	}
 	if changed && s.depSub != nil {
 		activeEntries := s.getActiveEntries()
-		s.ds.refillSubscription(ctx, s.depSub, activeEntries, s.depKeys)
-		s.ds.updateOrders(s.id, activeEntries)
+		s.ds.refillSubscription(ctx, s.id, s.depSub, activeEntries, s.depKeys)
 	}
 	if s.isDep {
 		s.ds.reorderParentSubscription(s.id, ctx)
