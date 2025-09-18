@@ -103,9 +103,10 @@ func AddIndexes(ctx context.Context, coll anystore.Collection, indexes []anystor
 	gotIndexes := coll.GetIndexes()
 	toCreate := indexes[:0]
 	var toDrop []string
-	for _, idx := range indexes {
+	for i, idx := range indexes {
 		if idx.Name == "" {
 			idx.Name = strings.Join(idx.Fields, ",")
+			indexes[i].Name = idx.Name
 		}
 		if !slices.ContainsFunc(gotIndexes, func(i anystore.Index) bool {
 			return i.Info().Name == idx.Name
