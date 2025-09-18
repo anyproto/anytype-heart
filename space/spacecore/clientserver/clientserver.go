@@ -83,6 +83,9 @@ func (s *clientServer) startServer(ctx context.Context) (err error) {
 	if err != nil {
 		return
 	}
+	if oldPort == s.port {
+		return nil
+	}
 	return s.storage.Set(ctx, anystoreprovider.SystemKeys.PortKey(), s.port)
 }
 

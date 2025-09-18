@@ -25,6 +25,9 @@ func (s *dsObjectStore) GetLastIndexedHeadsHash(ctx context.Context, id string) 
 
 func (s *dsObjectStore) SaveLastIndexedHeadsHash(ctx context.Context, id string, headsHash string) error {
 	_, err := s.headsState.UpsertId(ctx, id, query.ModifyFunc(func(arena *anyenc.Arena, val *anyenc.Value) (*anyenc.Value, bool, error) {
+		if val != nil && val.GetString(headsStateField) == headsHash {
+			return val, false, nil
+		}
 		val.Set(headsStateField, arena.NewString(headsHash))
 		return val, true, nil
 	}))
