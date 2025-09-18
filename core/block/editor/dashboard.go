@@ -1,26 +1,20 @@
 package editor
 
 import (
-	"context"
 	"errors"
-	"fmt"
-	"slices"
 
 	"github.com/anyproto/any-sync/commonspace/object/tree/treestorage"
 	"github.com/anyproto/any-sync/commonspace/spacestorage"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/basic"
 	"github.com/anyproto/anytype-heart/core/block/editor/blockcollection"
-	"github.com/anyproto/anytype-heart/core/block/editor/collection"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/editor/template"
 	"github.com/anyproto/anytype-heart/core/block/migration"
 	"github.com/anyproto/anytype-heart/core/block/object/objectcreator"
 	"github.com/anyproto/anytype-heart/core/domain"
-	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
-	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/spaceindex"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -91,11 +85,6 @@ func (p *Dashboard) updateObjects(info smartblock.ApplyInfo) (err error) {
 	}
 
 	go func() {
-		mErr := p.migrateToCollection(favoritedIds)
-		if mErr != nil {
-			log.Errorf("favorite: can't migrate to collection: %v", mErr)
-		}
-
 		uErr := p.updateInStore(favoritedIds)
 		if uErr != nil {
 			log.Errorf("favorite: can't update in store: %v", uErr)
@@ -103,64 +92,6 @@ func (p *Dashboard) updateObjects(info smartblock.ApplyInfo) (err error) {
 	}()
 
 	return nil
-}
-
-func (p *Dashboard) migrateToCollection(favoriteIds []string) error {
-	uk := domain.MustUniqueKey(coresb.SmartBlockTypePage, "old_pinned")
-
-	id, err := p.Space().DeriveObjectID(context.Background(), uk)
-	if err != nil {
-		return fmt.Errorf("derive object id: %w", err)
-	}
-
-	err = p.addToMigratedCollection(id, favoriteIds)
-	if err == nil {
-		return nil
-	} else if !errors.Is(err, treestorage.ErrUnknownTreeId) {
-		return fmt.Errorf("add to collection: %w", err)
-	}
-
-	st := state.NewDocWithUniqueKey("", nil, uk).(*state.State)
-	st.SetDetailAndBundledRelation(bundle.RelationKeyName, domain.String("Old Pinned"))
-	st.SetDetailAndBundledRelation(bundle.RelationKeyResolvedLayout, domain.Int64(int64(model.ObjectType_collection)))
-	blockContent := template.MakeDataviewContent(true, nil, nil, "")
-	template.InitTemplate(st, template.WithDataview(blockContent, false))
-
-	_, _, err = p.objectCreator.CreateSmartBlockFromState(context.Background(), p.SpaceID(), []domain.TypeKey{bundle.TypeKeyCollection}, st)
-	if err != nil {
-		return fmt.Errorf("create pinned collection: %w", err)
-	}
-	err = p.addToMigratedCollection(id, favoriteIds)
-	if err != nil {
-		return fmt.Errorf("add to collection after creating: %w", err)
-	}
-	return nil
-}
-
-func (p *Dashboard) addToMigratedCollection(collId string, favoriteIds []string) error {
-	return p.Space().Do(collId, func(sb smartblock.SmartBlock) error {
-		if sb.LocalDetails().GetBool(bundle.RelationKeyIsDeleted) {
-			return nil
-		}
-		coll, ok := sb.(collection.Collection)
-		if !ok {
-			return fmt.Errorf("object is not a collection")
-		}
-		ids := coll.ListIdsFromCollection()
-		var toAdd []string
-		for _, id := range favoriteIds {
-			if !slices.Contains(ids, id) {
-				toAdd = append(toAdd, id)
-			}
-		}
-		if len(toAdd) == 0 {
-			return nil
-		}
-		return coll.AddToCollection(nil, &pb.RpcObjectCollectionAddRequest{
-			AfterId:   "",
-			ObjectIds: toAdd,
-		})
-	})
 }
 
 func (p *Dashboard) updateInStore(favoritedIds []string) error {
