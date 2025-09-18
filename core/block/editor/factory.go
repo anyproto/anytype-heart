@@ -85,6 +85,7 @@ type ObjectFactory struct {
 	statService             debugstat.StatService
 	backlinksUpdater        backlinks.UpdateWatcher
 	objectCreator           objectcreator.Service
+	widgetsMigrator         widgetsMigrator
 }
 
 func NewObjectFactory() *ObjectFactory {
@@ -122,6 +123,7 @@ func (f *ObjectFactory) Init(a *app.App) (err error) {
 	f.statService, err = app.GetComponent[debugstat.StatService](a)
 	f.backlinksUpdater = app.MustComponent[backlinks.UpdateWatcher](a)
 	f.objectCreator = app.MustComponent[objectcreator.Service](a)
+	f.widgetsMigrator = app.MustComponent[widgetsMigrator](a)
 	if err != nil {
 		f.statService = debugstat.NewNoOp()
 	}
