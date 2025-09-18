@@ -191,7 +191,11 @@ func (s *messagesState) appendEventsTo(subId string, buf *eventsBuffer) {
 		entry.events = nil
 	}
 
-	buf.deleteIds = append(buf.deleteIds, s.deleteIds...)
+	for _, id := range s.deleteIds {
+		if !slices.Contains(buf.deleteIds, id) {
+			buf.deleteIds = append(buf.deleteIds, id)
+		}
+	}
 	s.deleteIds = nil
 }
 
