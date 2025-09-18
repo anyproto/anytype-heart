@@ -265,7 +265,7 @@ func (b *builtinObjects) CreateObjectsForExperience(ctx context.Context, spaceID
 					return err
 				}
 				b.setHomePageIdToWorkspace(spc, id)
-				b.createWidgets(nil, spaceID, pb.RpcObjectImportUseCaseRequest_GET_STARTED, profile.StartingPage, model.BlockContentWidget_Link)
+				b.createHomeWidget(nil, spaceID, pb.RpcObjectImportUseCaseRequest_GET_STARTED, profile.StartingPage, model.BlockContentWidget_Link)
 			}
 		}
 
@@ -439,7 +439,7 @@ func (b *builtinObjects) inject(ctx session.Context, spaceID string, useCase pb.
 	_ = b.handleHomePage(profile, spaceID, useCase == migrationUseCase)
 
 	// TODO: GO-2627 Widgets creation should be moved to importer
-	b.createWidgets(ctx, spaceID, useCase, startingPageId, model.BlockContentWidget_Tree)
+	b.createHomeWidget(ctx, spaceID, useCase, startingPageId, model.BlockContentWidget_Tree)
 
 	return
 }
@@ -598,22 +598,17 @@ func (b *builtinObjects) setHomePageIdToWorkspace(spc clientspace.Space, id stri
 	}
 }
 
-func (b *builtinObjects) typeHasObjects(spaceId, typeId string) (bool, error) {
-	records, err := b.store.SpaceIndex(spaceId).QueryRaw(&database.Filters{FilterObj: database.FiltersAnd{
-		database.FilterEq{
-			Key:   bundle.RelationKeyType,
-			Cond:  model.BlockContentDataviewFilter_Equal,
-			Value: domain.String(typeId),
-		},
-	}}, 1, 0)
-	if err != nil {
-		return false, err
+func (b *builtinObjects) createHomeWidget(
+	ctx session.Context,
+	spaceId string,
+	useCase pb.RpcObjectImportUseCaseRequestUseCase,
+	homePageId string,
+	widgetLayout model.BlockContentWidgetLayout,
+) {
+	if useCase != pb.RpcObjectImportUseCaseRequest_GET_STARTED || homePageId == "" {
+		return
 	}
 
-	return len(records) > 0, nil
-}
-
-func (b *builtinObjects) createWidgets(ctx session.Context, spaceId string, useCase pb.RpcObjectImportUseCaseRequestUseCase, homePageId string, widgetLayout model.BlockContentWidgetLayout) {
 	spc, err := b.spaceService.Get(context.Background(), spaceId)
 	if err != nil {
 		log.Errorf("failed to get space: %w", err)
@@ -621,55 +616,23 @@ func (b *builtinObjects) createWidgets(ctx session.Context, spaceId string, useC
 	}
 
 	widgetObjectID := spc.DerivedIDs().Widgets
-	var widgetTargetsToCreate []string
-	var homeWidget *pb.RpcBlockCreateWidgetRequest
-	if useCase == pb.RpcObjectImportUseCaseRequest_GET_STARTED && homePageId != "" {
-		homeWidget = &pb.RpcBlockCreateWidgetRequest{
-			ContextId:    widgetObjectID,
-			WidgetLayout: widgetLayout,
-			Position:     model.Block_InnerFirst,
-			TargetId:     widgetObjectID,
-			Block: &model.Block{
-				Content: &model.BlockContentOfLink{
-					Link: &model.BlockContentLink{
-						TargetBlockId: homePageId,
-					},
+	homeWidget := &pb.RpcBlockCreateWidgetRequest{
+		ContextId:    widgetObjectID,
+		WidgetLayout: widgetLayout,
+		Position:     model.Block_InnerFirst,
+		TargetId:     widgetObjectID,
+		Block: &model.Block{
+			Content: &model.BlockContentOfLink{
+				Link: &model.BlockContentLink{
+					TargetBlockId: homePageId,
 				},
 			},
-		}
+		},
 	}
 
-	pageTypeId, err := spc.GetTypeIdByKey(context.Background(), bundle.TypeKeyPage)
-	if err != nil {
-		log.Errorf("failed to get type id: %w", err)
-		return
-	}
-	taskTypeId, err := spc.GetTypeIdByKey(context.Background(), bundle.TypeKeyTask)
-	if err != nil {
-		log.Errorf("failed to get type id: %w", err)
-		return
-	}
-	for _, typeId := range []string{pageTypeId, taskTypeId} {
-		if has, err := b.typeHasObjects(spaceId, typeId); err != nil {
-			log.Warnf("failed to check if type '%s' has objects: %v", pageTypeId, err)
-		} else if has {
-			widgetTargetsToCreate = append(widgetTargetsToCreate, typeId)
-		}
-	}
-
-	if len(widgetTargetsToCreate) == 0 {
-		return
-	}
 	if err = cache.DoStateCtx(b.objectGetter, ctx, widgetObjectID, func(s *state.State, w widget.Widget) error {
-		if homeWidget != nil {
-			if _, err := w.CreateBlock(s, homeWidget); err != nil {
-				log.Errorf("failed to create widget for home page: %v", err)
-			}
-		}
-		for _, targetId := range widgetTargetsToCreate {
-			if err := w.AddAutoWidget(s, targetId, "", addr.ObjectTypeAllViewId, model.BlockContentWidget_View, ""); err != nil {
-				log.Errorf("failed to create widget block for type '%s': %v", targetId, err)
-			}
+		if _, err := w.CreateBlock(s, homeWidget); err != nil {
+			log.Errorf("failed to create widget for home page: %v", err)
 		}
 		return nil
 	}); err != nil {

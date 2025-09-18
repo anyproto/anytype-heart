@@ -13,8 +13,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/files/filespaceusage"
 	"github.com/anyproto/anytype-heart/core/files/reconciler"
 	"github.com/anyproto/anytype-heart/pb"
-	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
-	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
 func (mw *Middleware) FileDownload(cctx context.Context, req *pb.RpcFileDownloadRequest) *pb.RpcFileDownloadResponse {
@@ -133,47 +131,19 @@ func (mw *Middleware) FileUpload(cctx context.Context, req *pb.RpcFileUploadRequ
 		objectId      string
 		preloadFileId string
 		details       *domain.Details
-		fileType      model.BlockContentFileType
 	)
 	err := mw.doBlockService(func(bs *block.Service) (err error) {
 		dto := block.FileUploadRequest{RpcFileUploadRequest: *req, ObjectOrigin: objectorigin.ObjectOrigin{Origin: req.Origin}}
 		if req.PreloadOnly {
-			preloadFileId, fileType, err = bs.PreloadFile(cctx, req.SpaceId, dto)
+			preloadFileId, _, err = bs.PreloadFile(cctx, req.SpaceId, dto)
 		} else if req.PreloadFileId != "" {
 			// Reuse preloaded file
-			objectId, fileType, details, err = bs.CreateObjectFromPreloadedFile(cctx, req.SpaceId, req.PreloadFileId, dto)
+			objectId, _, details, err = bs.CreateObjectFromPreloadedFile(cctx, req.SpaceId, req.PreloadFileId, dto)
 		} else {
-			objectId, fileType, details, err = bs.UploadFile(cctx, req.SpaceId, dto)
+			objectId, _, details, err = bs.UploadFile(cctx, req.SpaceId, dto)
 		}
 		return
 	})
-
-	// Only create type widgets when actually creating objects, not during preload
-	if !req.PreloadOnly {
-		var typeKey domain.TypeKey
-		switch fileType {
-		case model.BlockContentFile_Audio:
-			typeKey = bundle.TypeKeyAudio
-		case model.BlockContentFile_Image:
-			typeKey = bundle.TypeKeyImage
-		case model.BlockContentFile_Video:
-			typeKey = bundle.TypeKeyVideo
-		case model.BlockContentFile_PDF, model.BlockContentFile_File:
-			typeKey = bundle.TypeKeyFile
-		default:
-
-		}
-		if typeKey != "" {
-			// do not create widget if type is not detected. Shouldn't happen, but just in case
-			err := mw.doBlockService(func(bs *block.Service) (err error) {
-				err = bs.CreateTypeWidgetIfMissing(cctx, req.SpaceId, typeKey)
-				return err
-			})
-			if err != nil {
-				return response(objectId, preloadFileId, nil, pb.RpcFileUploadResponseError_UNKNOWN_ERROR, err)
-			}
-		}
-	}
 
 	if err != nil {
 		return response("", "", nil, pb.RpcFileUploadResponseError_UNKNOWN_ERROR, err)
