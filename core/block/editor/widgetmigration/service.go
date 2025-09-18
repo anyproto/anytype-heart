@@ -265,9 +265,10 @@ func (s *service) migrateToCollection(widget smartblock.SmartBlock) (string, err
 	}
 
 	st := state.NewDocWithUniqueKey("", nil, uk).(*state.State)
-	st.SetDetailAndBundledRelation(bundle.RelationKeyName, domain.String("Old Pinned"))
+	st.SetDetailAndBundledRelation(bundle.RelationKeyName, domain.String("Old pinned"))
 	st.SetDetailAndBundledRelation(bundle.RelationKeyResolvedLayout, domain.Int64(int64(model.ObjectType_collection)))
 	blockContent := template.MakeDataviewContent(true, nil, nil, "")
+	blockContent.Dataview.Views[0].Sorts = []*model.BlockContentDataviewSort{}
 	template.InitTemplate(st, template.WithDataview(blockContent, false))
 
 	_, _, err = s.objectCreator.CreateSmartBlockFromState(context.Background(), widget.SpaceID(), []domain.TypeKey{bundle.TypeKeyCollection}, st)
