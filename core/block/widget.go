@@ -18,7 +18,6 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	"github.com/anyproto/anytype-heart/space/clientspace"
 )
 
 var skippedTypesForAutoWidget = []domain.TypeKey{
@@ -192,55 +191,4 @@ func (s *Service) CreateTypeWidgetsIfMissing(ctx context.Context, spaceId string
 		}
 		return nil
 	})
-}
-
-// autoInstallSpaceChatWidget automatically installs the chat widget in the space if it is not already installed.
-func (s *Service) autoInstallSpaceChatWidget(ctx context.Context, spc clientspace.Space) error {
-	widgetObjectId := spc.DerivedIDs().Widgets
-	widgetDetails, err := s.objectStore.SpaceIndex(spc.Id()).GetDetails(widgetObjectId)
-	if err != nil {
-		return err
-	}
-	keys := widgetDetails.Get(bundle.RelationKeyAutoWidgetTargets).StringList()
-	if slices.Contains(keys, widget.DefaultWidgetChat) {
-		return nil
-	}
-
-	info, err := s.accountService.GetSpaceInfo(ctx, spc.Id())
-	if err != nil {
-		return fmt.Errorf("get space info: %w", err)
-	}
-
-	var createWidget bool
-	err = cache.Do(s, info.SpaceViewId, func(sb smartblock.SmartBlock) error {
-		uxType := model.SpaceUxType(sb.Details().GetInt64(bundle.RelationKeySpaceUxType))
-		if uxType == model.SpaceUxType_Chat {
-			createWidget = true
-		}
-		return nil
-	})
-	if err != nil {
-		return fmt.Errorf("get space view: %w", err)
-	}
-	// Do not create widget in the current release
-	// Disable this logic in GO-6089
-	if !createWidget {
-		return nil
-	}
-
-	err = spc.DoCtx(ctx, widgetObjectId, func(sb smartblock.SmartBlock) error {
-		st := sb.NewState()
-		if w, ok := sb.(widget.Widget); ok {
-			// We rely on AddAutoWidget to check if the widget was already installed/removed before
-			err = w.AddAutoWidget(st, widget.DefaultWidgetChat, widget.DefaultWidgetChat, "", model.BlockContentWidget_Link, "")
-			if err != nil {
-				return err
-			}
-		}
-		return sb.Apply(st)
-	})
-	if err != nil {
-		return err
-	}
-	return nil
 }

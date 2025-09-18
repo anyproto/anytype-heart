@@ -436,11 +436,6 @@ func (s *Service) SpaceInitChat(ctx context.Context, spaceId string) error {
 		return fmt.Errorf("apply chatId to workspace: %w", err)
 	}
 
-	err = s.autoInstallSpaceChatWidget(ctx, spc)
-	if err != nil {
-		return fmt.Errorf("install chat widget: %w", err)
-	}
-
 	return nil
 }
 

@@ -21,7 +21,6 @@ const (
 	DefaultWidgetRecent      = "recent"
 	DefaultWidgetCollection  = "collection"
 	DefaultWidgetBin         = "bin"
-	DefaultWidgetChat        = "chat"
 	DefaultWidgetAll         = "allObjects"
 	DefaultWidgetRecentOpen  = "recentOpen"
 	widgetWrapperBlockSuffix = "-wrapper" // in case blockId is specifically provided to avoid bad tree merges
