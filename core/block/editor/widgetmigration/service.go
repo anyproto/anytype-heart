@@ -42,6 +42,7 @@ type Service interface {
 	app.ComponentRunnable
 
 	MigrateWidgets(objectId string) error
+	AddToOldPinnedCollection(space smartblock.Space, favoriteIds []string) error
 }
 
 type service struct {
@@ -300,7 +301,7 @@ func (s *service) migrateToCollection(widget smartblock.SmartBlock) (string, err
 		return "", fmt.Errorf("derive object id: %w", err)
 	}
 
-	err = s.addToMigratedCollection(widget, id, favoriteIds)
+	err = s.addToMigratedCollection(widget.Space(), id, favoriteIds)
 	if err == nil {
 		return id, nil
 	} else if !errors.Is(err, treestorage.ErrUnknownTreeId) {
@@ -318,15 +319,23 @@ func (s *service) migrateToCollection(widget smartblock.SmartBlock) (string, err
 	if err != nil {
 		return "", fmt.Errorf("create pinned collection: %w", err)
 	}
-	err = s.addToMigratedCollection(widget, id, favoriteIds)
+	err = s.addToMigratedCollection(widget.Space(), id, favoriteIds)
 	if err != nil {
 		return "", fmt.Errorf("add to collection after creating: %w", err)
 	}
 	return id, nil
 }
 
-func (s *service) addToMigratedCollection(widget smartblock.SmartBlock, collId string, favoriteIds []string) error {
-	return widget.Space().Do(collId, func(sb smartblock.SmartBlock) error {
+func (s *service) AddToOldPinnedCollection(space smartblock.Space, favoriteIds []string) error {
+	collId, err := space.DeriveObjectID(context.Background(), domain.MustUniqueKey(coresb.SmartBlockTypePage, internalKeyOldPinned))
+	if err != nil {
+		return fmt.Errorf("derive object id: %w", err)
+	}
+	return s.addToMigratedCollection(space, collId, favoriteIds)
+}
+
+func (s *service) addToMigratedCollection(space smartblock.Space, collId string, favoriteIds []string) error {
+	return space.Do(collId, func(sb smartblock.SmartBlock) error {
 		if sb.LocalDetails().GetBool(bundle.RelationKeyIsDeleted) {
 			return nil
 		}

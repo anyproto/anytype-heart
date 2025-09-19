@@ -23,6 +23,7 @@ import (
 
 type widgetsMigrator interface {
 	MigrateWidgets(objectId string) error
+	AddToOldPinnedCollection(space smartblock.Space, favoriteIds []string) error
 }
 
 type WidgetObject struct {
