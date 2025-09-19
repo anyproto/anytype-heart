@@ -52,7 +52,7 @@ func (s *streamOpener) OpenStream(ctx context.Context, p peer.Peer) (stream drpc
 			SpaceIds: spaceIds,
 			Action:   spacesyncproto.SpaceSubscriptionAction_Subscribe,
 		}
-		payload, merr := msg.Marshal()
+		payload, merr := msg.MarshalVT()
 		if merr != nil {
 			err = merr
 			return
@@ -74,7 +74,7 @@ func (s *streamOpener) HandleMessage(peerCtx context.Context, peerId string, msg
 	}
 	if syncMsg.SpaceId() == "" {
 		var msg = &spacesyncproto.SpaceSubscription{}
-		if err = msg.Unmarshal(syncMsg.Bytes); err != nil {
+		if err = msg.UnmarshalVT(syncMsg.Bytes); err != nil {
 			return
 		}
 		log.InfoCtx(peerCtx, "got subscription message", zap.Strings("spaceIds", msg.SpaceIds))
@@ -84,7 +84,7 @@ func (s *streamOpener) HandleMessage(peerCtx context.Context, peerId string, msg
 			return s.streamPool.RemoveTagsCtx(peerCtx, msg.SpaceIds...)
 		}
 	}
-	sp, err := s.spaceCore.Get(peerCtx, syncMsg.SpaceId())
+	sp, err := s.spaceCore.Pick(peerCtx, syncMsg.SpaceId())
 	if err != nil {
 		return
 	}

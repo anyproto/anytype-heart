@@ -11,6 +11,7 @@ import (
 	"github.com/anyproto/any-sync/app/logger"
 	"github.com/anyproto/any-sync/commonspace/spacesyncproto"
 	"github.com/anyproto/any-sync/net/streampool"
+	"go.uber.org/atomic"
 	"storj.io/drpc"
 
 	//nolint:misspell
@@ -46,10 +47,14 @@ type PeerToPeerStatus interface {
 }
 
 type clientPeerManager struct {
-	spaceId            string
-	responsibleNodeIds []string
-	p                  *provider
-	peerStore          peerstore.PeerStore
+	spaceId string
+
+	responsibleNodeIds        []string
+	responsibleNodeIdsUpdated atomic.Time
+	responsibleNodeIdsMu      sync.Mutex
+
+	p         *provider
+	peerStore peerstore.PeerStore
 
 	responsiblePeers          []peer.Peer
 	watchingPeers             map[string]struct{}
@@ -69,6 +74,7 @@ type clientPeerManager struct {
 
 func (n *clientPeerManager) Init(a *app.App) (err error) {
 	n.responsibleNodeIds = n.peerStore.ResponsibleNodeIds(n.spaceId)
+	n.responsibleNodeIdsUpdated.Store(time.Now())
 	n.ctx, n.ctxCancel = context.WithCancel(context.Background())
 	n.rebuildResponsiblePeers = make(chan struct{}, 1)
 	n.watchingPeers = make(map[string]struct{})
@@ -82,7 +88,7 @@ func (n *clientPeerManager) Init(a *app.App) (err error) {
 		SpaceIds: []string{n.spaceId},
 		Action:   spacesyncproto.SpaceSubscriptionAction_Subscribe,
 	}
-	payload, err := keepAliveMsg.Marshal()
+	payload, err := keepAliveMsg.MarshalVT()
 	if err != nil {
 		return
 	}
@@ -103,7 +109,7 @@ func (n *clientPeerManager) Run(ctx context.Context) (err error) {
 }
 
 func (n *clientPeerManager) GetNodePeers(ctx context.Context) (peers []peer.Peer, err error) {
-	p, err := n.p.pool.GetOneOf(ctx, n.responsibleNodeIds)
+	p, err := n.p.pool.GetOneOf(ctx, n.getNodeIds())
 	if err == nil {
 		peers = []peer.Peer{p}
 	}
@@ -175,7 +181,7 @@ func (n *clientPeerManager) getExactPeer(ctx context.Context, peerId string) (pe
 func (n *clientPeerManager) getStreamResponsiblePeers(ctx context.Context) (peers []peer.Peer, err error) {
 	var peerIds []string
 	// lookup in common pool for existing connection
-	p, nodeErr := n.p.pool.GetOneOf(ctx, n.responsibleNodeIds)
+	p, nodeErr := n.p.pool.GetOneOf(ctx, n.getNodeIds())
 	if nodeErr != nil {
 		log.Warn("failed to get responsible peer from common pool", zap.Error(nodeErr))
 	} else {
@@ -213,7 +219,7 @@ func (n *clientPeerManager) manageResponsiblePeers() {
 
 func (n *clientPeerManager) fetchResponsiblePeers() {
 	var peers []peer.Peer
-	p, err := n.p.pool.GetOneOf(n.ctx, n.responsibleNodeIds)
+	p, err := n.p.pool.GetOneOf(n.ctx, n.getNodeIds())
 	if err == nil {
 		peers = []peer.Peer{p}
 		n.nodeStatus.SetNodesStatus(n.spaceId, nodestatus.Online)
@@ -268,6 +274,17 @@ func (n *clientPeerManager) watchPeer(p peer.Peer) {
 	case <-n.ctx.Done():
 		return
 	}
+}
+
+func (n *clientPeerManager) getNodeIds() []string {
+	if len(n.responsibleNodeIds) != 0 && time.Since(n.responsibleNodeIdsUpdated.Load()) < time.Minute {
+		return n.responsibleNodeIds
+	}
+	n.responsibleNodeIdsMu.Lock()
+	defer n.responsibleNodeIdsMu.Unlock()
+	n.responsibleNodeIds = n.peerStore.ResponsibleNodeIds(n.spaceId)
+	n.responsibleNodeIdsUpdated.Store(time.Now())
+	return n.responsibleNodeIds
 }
 
 func (n *clientPeerManager) KeepAlive(ctx context.Context) {

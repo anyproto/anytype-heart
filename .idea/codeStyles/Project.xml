@@ -2,11 +2,18 @@
   <code_scheme name="Project" version="173">
     <GoCodeStyleSettings>
       <option name="ADD_LEADING_SPACE_TO_COMMENTS" value="true" />
+      <option name="IMPORT_SORTING" value="GOIMPORTS" />
       <option name="MOVE_ALL_IMPORTS_IN_ONE_DECLARATION" value="true" />
       <option name="MOVE_ALL_STDLIB_IMPORTS_IN_ONE_GROUP" value="true" />
       <option name="GROUP_STDLIB_IMPORTS" value="true" />
       <option name="CREATE_LOCAL_GROUP" value="true" />
       <option name="LOCAL_PACKAGE_PREFIXES" />
     </GoCodeStyleSettings>
+    <codeStyleSettings language="protobuf">
+      <indentOptions>
+        <option name="INDENT_SIZE" value="4" />
+        <option name="TAB_SIZE" value="4" />
+      </indentOptions>
+    </codeStyleSettings>
   </code_scheme>
 </component>

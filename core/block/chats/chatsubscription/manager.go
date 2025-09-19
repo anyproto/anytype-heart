@@ -36,6 +36,7 @@ type subscriptionManager struct {
 	identityCache *expirable.LRU[string, *domain.Details]
 	subscriptions map[string]*subscription
 
+	chatStateOrder   int64
 	chatState        *model.ChatState
 	needReloadState  bool
 	chatStateUpdated bool
@@ -124,7 +125,8 @@ func (s *subscriptionManager) GetChatState() *model.ChatState {
 
 func (s *subscriptionManager) UpdateChatState(updater func(*model.ChatState) *model.ChatState) {
 	s.chatState = updater(s.chatState)
-	s.chatState.Order++
+	s.chatStateOrder++
+	s.chatState.Order = s.chatStateOrder
 	s.chatStateUpdated = true
 }
 

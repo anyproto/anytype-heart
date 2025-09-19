@@ -447,13 +447,17 @@ func (p *Pb) shouldImportSnapshot(snapshot *common.Snapshot) bool {
 
 func (p *Pb) updateLinksToObjects(snapshots []*common.Snapshot) map[string]string {
 	oldToNewID := make(map[string]string, len(snapshots))
+	relationKeysToFormat := make(map[domain.RelationKey]int32, len(snapshots))
 	for _, snapshot := range snapshots {
 		id := snapshot.Snapshot.Data.Details.GetString(bundle.RelationKeyId)
 		oldToNewID[id] = snapshot.Id
+		if snapshot.Snapshot.SbType == smartblock.SmartBlockTypeRelation {
+			format := snapshot.Snapshot.Data.Details.GetInt64(bundle.RelationKeyRelationFormat)
+			relationKeysToFormat[domain.RelationKey(snapshot.Snapshot.Data.Key)] = int32(format)
+		}
 	}
 	for _, snapshot := range snapshots {
-		st := state.NewDocFromSnapshot("", snapshot.Snapshot.ToProto())
-		err := common.UpdateLinksToObjects(st.(*state.State), oldToNewID)
+		st, err := state.NewDocFromSnapshot("", snapshot.Snapshot.ToProto())
 		if err != nil {
 			p.errors.Add(err)
 			if p.errors.ShouldAbortImport(p.pathCount, model.Import_Pb) {
@@ -461,11 +465,19 @@ func (p *Pb) updateLinksToObjects(snapshots []*common.Snapshot) map[string]strin
 			}
 			continue
 		}
-		common.UpdateObjectIDsInRelations(st.(*state.State), oldToNewID)
+		err = common.UpdateLinksToObjects(st, oldToNewID)
+		if err != nil {
+			p.errors.Add(err)
+			if p.errors.ShouldAbortImport(p.pathCount, model.Import_Pb) {
+				return nil
+			}
+			continue
+		}
+		common.UpdateObjectIDsInRelations(st, oldToNewID, relationKeysToFormat)
 		// TODO Fix
 		// converter.UpdateObjectType(oldToNewID, st.(*state.State))
-		p.updateObjectsIDsInCollection(st.(*state.State), oldToNewID)
-		p.updateSnapshot(snapshot, st.(*state.State))
+		p.updateObjectsIDsInCollection(st, oldToNewID)
+		p.updateSnapshot(snapshot, st)
 	}
 	return oldToNewID
 }

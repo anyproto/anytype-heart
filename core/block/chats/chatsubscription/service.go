@@ -8,7 +8,9 @@ import (
 
 	"github.com/anyproto/any-sync/app"
 	"github.com/hashicorp/golang-lru/v2/expirable"
+	"go.uber.org/zap"
 
+	"github.com/anyproto/anytype-heart/core/block/cache"
 	"github.com/anyproto/anytype-heart/core/block/chats/chatmodel"
 	"github.com/anyproto/anytype-heart/core/block/chats/chatrepository"
 	"github.com/anyproto/anytype-heart/core/block/object/idresolver"
@@ -64,10 +66,10 @@ type service struct {
 	eventSender       event.Sender
 	repositoryService chatrepository.Service
 	accountService    AccountService
+	objectGetter      cache.ObjectWaitGetter
 
-	identityCache *expirable.LRU[string, *domain.Details]
-	lock          sync.Mutex
-	managers      map[string]*futures.Future[*subscriptionManager]
+	lock     sync.Mutex
+	managers map[string]*futures.Future[*subscriptionManager]
 }
 
 func New() Service {
@@ -84,7 +86,7 @@ func (s *service) Init(a *app.App) (err error) {
 	s.eventSender = app.MustComponent[event.Sender](a)
 	s.repositoryService = app.MustComponent[chatrepository.Service](a)
 	s.accountService = app.MustComponent[AccountService](a)
-	s.identityCache = expirable.NewLRU[string, *domain.Details](50, nil, time.Minute)
+	s.objectGetter = app.MustComponent[cache.ObjectWaitGetter](a)
 	return nil
 }
 
@@ -144,7 +146,7 @@ func (s *service) initManager(spaceId string, chatObjectId string) (*subscriptio
 		chatId:          chatObjectId,
 		myIdentity:      currentIdentity,
 		myParticipantId: currentParticipantId,
-		identityCache:   s.identityCache,
+		identityCache:   expirable.NewLRU[string, *domain.Details](50, nil, time.Minute),
 		subscriptions:   make(map[string]*subscription),
 		spaceIndex:      s.objectStore.SpaceIndex(spaceId),
 		eventSender:     s.eventSender,
@@ -181,7 +183,10 @@ func (s *service) SubscribeLastMessages(ctx context.Context, req SubscribeLastMe
 		return nil, fmt.Errorf("empty chat object id")
 	}
 
-	spaceId, err := s.spaceIdResolver.ResolveSpaceID(req.ChatObjectId)
+	ctx, cancel := context.WithTimeout(ctx, 1*time.Minute)
+	defer cancel()
+
+	spaceId, err := s.spaceIdResolver.ResolveSpaceIdWithRetry(ctx, req.ChatObjectId)
 	if err != nil {
 		return nil, fmt.Errorf("resolve space id: %w", err)
 	}
@@ -222,6 +227,15 @@ func (s *service) SubscribeLastMessages(ctx context.Context, req SubscribeLastMe
 			return nil, fmt.Errorf("get previous order id: %w", err)
 		}
 	}
+
+	// Warm up cache
+	go func() {
+		_, err = s.objectGetter.WaitAndGetObject(s.componentCtx, req.ChatObjectId)
+		if err != nil {
+			log.Error("load chat to cache", zap.String("chatObjectId", req.ChatObjectId), zap.Error(err))
+		}
+	}()
+
 	return &SubscribeLastMessagesResponse{
 		Messages:        messages,
 		ChatState:       mngr.GetChatState(),

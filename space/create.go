@@ -3,13 +3,19 @@ package space
 import (
 	"context"
 
+	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space/clientspace"
 	"github.com/anyproto/anytype-heart/space/internal/spaceprocess/loader"
+	space "github.com/anyproto/anytype-heart/space/spacecore"
 	"github.com/anyproto/anytype-heart/space/spaceinfo"
 )
 
 func (s *service) create(ctx context.Context, description *spaceinfo.SpaceDescription) (sp clientspace.Space, err error) {
-	coreSpace, err := s.spaceCore.Create(ctx, s.repKey, s.AccountMetadataPayload())
+	var spaceType = space.SpaceType
+	if description != nil && description.SpaceUxType == model.SpaceUxType_Chat {
+		spaceType = space.ChatSpaceType
+	}
+	coreSpace, err := s.spaceCore.Create(ctx, spaceType, s.repKey, s.AccountMetadataPayload())
 	if err != nil {
 		return nil, err
 	}

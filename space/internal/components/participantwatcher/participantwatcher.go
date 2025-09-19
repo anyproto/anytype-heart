@@ -28,7 +28,6 @@ var log = logger.NewNamed(CName)
 type ParticipantWatcher interface {
 	app.ComponentRunnable
 	WatchParticipant(ctx context.Context, space clientspace.Space, accState list.AccountState) error
-	UpdateAccountParticipantFromProfile(ctx context.Context, space clientspace.Space) error
 	UpdateParticipantFromAclState(ctx context.Context, space clientspace.Space, accState list.AccountState) error
 }
 
@@ -132,7 +131,7 @@ func getSymKey(metadata []byte) (crypto.SymKey, error) {
 		return nil, err
 	}
 	keyProto := &cryptoproto.Key{}
-	err = keyProto.Unmarshal(md.GetIdentity().GetProfileSymKey())
+	err = keyProto.UnmarshalVT(md.GetIdentity().GetProfileSymKey())
 	if err != nil {
 		return nil, err
 	}

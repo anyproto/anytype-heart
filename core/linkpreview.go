@@ -26,9 +26,12 @@ func (mw *Middleware) LinkPreview(cctx context.Context, req *pb.RpcLinkPreviewRe
 
 	data, _, _, err := mustService[linkpreview.LinkPreview](mw).Fetch(ctx, u.String())
 	if err != nil {
+		code := mapErrorCode(err,
+			errToCode(linkpreview.ErrPrivateLink, pb.RpcLinkPreviewResponseError_PRIVATE_LINK),
+		)
 		return &pb.RpcLinkPreviewResponse{
 			Error: &pb.RpcLinkPreviewResponseError{
-				Code:        pb.RpcLinkPreviewResponseError_UNKNOWN_ERROR,
+				Code:        code,
 				Description: getErrorDescription(err),
 			},
 		}

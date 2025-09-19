@@ -512,6 +512,27 @@ func (c *Config) GetPublishServer() publishclient.Config {
 	}
 }
 
+type PublishLimitsConfig struct {
+	MembershipLimit       int64
+	DefaultLimit          int64
+	InviteLinkUrlTemplate string
+	MemberUrlTemplate     string
+	DefaultUrlTemplate    string
+	IndexFileName         string
+}
+
+func (c *Config) GetPublishLimits() PublishLimitsConfig {
+
+	return PublishLimitsConfig{
+		MembershipLimit:       6000 << 20,
+		DefaultLimit:          10 << 20,
+		InviteLinkUrlTemplate: "https://invite.any.coop/%s#%s",
+		MemberUrlTemplate:     "https://%s.org",
+		DefaultUrlTemplate:    "https://any.coop/%s",
+		IndexFileName:         "index.json.gz",
+	}
+}
+
 func (c *Config) GetPushConfig() PushConfig {
 	pushPeerId := "12D3KooWMATrdteJNq2YvYhtq3RDeWxq6RVXDAr36MsGd5RJzXDn"
 	pushAddr := "anytype-push-server.anytype.io:443"

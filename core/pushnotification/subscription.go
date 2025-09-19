@@ -64,56 +64,62 @@ func newSpaceViewSubscription(service subscription.Service, techSpaceId string, 
 		},
 	}
 
-	objectSubscription := objectsubscription.New[spaceViewStatus](service, objectsubscription.SubscriptionParams[spaceViewStatus]{
-		Request: objectReq,
-		Extract: func(details *domain.Details) (string, spaceViewStatus) {
-			defer wakeUp()
-			spaceKeyBase64 := details.GetString(bundle.RelationKeySpacePushNotificationKey)
-			spaceKey, _ := decodePrivKey(spaceKeyBase64)
-			encKeyBase64 := details.GetString(bundle.RelationKeySpacePushNotificationEncryptionKey)
-			encKey, _ := decodeSymKey(encKeyBase64)
-			return details.GetString(bundle.RelationKeyId), spaceViewStatus{
-				spaceId:        details.GetString(bundle.RelationKeyTargetSpaceId),
-				spaceViewId:    details.GetString(bundle.RelationKeyId),
-				spaceKeyBase64: spaceKeyBase64,
-				spaceKey:       spaceKey,
-				encKeyBase64:   encKeyBase64,
-				encKey:         encKey,
-				mode:           pb.RpcPushNotificationSetSpaceModeMode(details.GetInt64(bundle.RelationKeySpacePushNotificationMode)),
-				creator:        details.GetString(bundle.RelationKeyCreator),
-			}
-		},
-		Update: func(key string, value domain.Value, status spaceViewStatus) spaceViewStatus {
-			defer wakeUp()
-			switch domain.RelationKey(key) {
-			case bundle.RelationKeySpacePushNotificationKey:
-				keyBase64 := value.String()
-				if status.spaceKeyBase64 != keyBase64 {
-					status.spaceKeyBase64 = keyBase64
-					status.spaceKey, _ = decodePrivKey(keyBase64)
+	objectSubscription := objectsubscription.New[spaceViewStatus](service,
+		objectReq,
+		objectsubscription.SubscriptionParams[spaceViewStatus]{
+			SetDetails: func(details *domain.Details) (string, spaceViewStatus) {
+				defer wakeUp()
+				spaceKeyBase64 := details.GetString(bundle.RelationKeySpacePushNotificationKey)
+				spaceKey, _ := decodePrivKey(spaceKeyBase64)
+				encKeyBase64 := details.GetString(bundle.RelationKeySpacePushNotificationEncryptionKey)
+				encKey, _ := decodeSymKey(encKeyBase64)
+				return details.GetString(bundle.RelationKeyId), spaceViewStatus{
+					spaceId:        details.GetString(bundle.RelationKeyTargetSpaceId),
+					spaceViewId:    details.GetString(bundle.RelationKeyId),
+					spaceKeyBase64: spaceKeyBase64,
+					spaceKey:       spaceKey,
+					encKeyBase64:   encKeyBase64,
+					encKey:         encKey,
+					mode:           pb.RpcPushNotificationSetSpaceModeMode(details.GetInt64(bundle.RelationKeySpacePushNotificationMode)),
+					creator:        details.GetString(bundle.RelationKeyCreator),
 				}
-			case bundle.RelationKeySpacePushNotificationEncryptionKey:
-				keyBase64 := value.String()
-				if status.encKeyBase64 != keyBase64 {
-					status.encKeyBase64 = keyBase64
-					status.encKey, _ = decodeSymKey(keyBase64)
+			},
+			UpdateKeys: func(keyValues []objectsubscription.RelationKeyValue, status spaceViewStatus) spaceViewStatus {
+				defer wakeUp()
+				for _, kv := range keyValues {
+					switch domain.RelationKey(kv.Key) {
+					case bundle.RelationKeySpacePushNotificationKey:
+						keyBase64 := kv.Value.String()
+						if status.spaceKeyBase64 != keyBase64 {
+							status.spaceKeyBase64 = keyBase64
+							// nolint: errcheck
+							status.spaceKey, _ = decodePrivKey(keyBase64)
+						}
+					case bundle.RelationKeySpacePushNotificationEncryptionKey:
+						keyBase64 := kv.Value.String()
+						if status.encKeyBase64 != keyBase64 {
+							status.encKeyBase64 = keyBase64
+							// nolint: errcheck
+							status.encKey, _ = decodeSymKey(keyBase64)
+						}
+					case bundle.RelationKeySpacePushNotificationMode:
+						// nolint: gosec
+						status.mode = pb.RpcPushNotificationSetSpaceModeMode(kv.Value.Int64())
+					case bundle.RelationKeyCreator:
+						status.creator = kv.Value.String()
+					}
 				}
-			case bundle.RelationKeySpacePushNotificationMode:
-				status.mode = pb.RpcPushNotificationSetSpaceModeMode(value.Int64())
-			case bundle.RelationKeyCreator:
-				status.creator = value.String()
-			}
-			return status
-		},
-		Unset: func(strings []string, status spaceViewStatus) spaceViewStatus {
-			for _, key := range strings {
-				if key == bundle.RelationKeySpacePushNotificationMode.String() {
-					status.mode = pb.RpcPushNotificationSetSpaceMode_All
+				return status
+			},
+			RemoveKeys: func(strings []string, status spaceViewStatus) spaceViewStatus {
+				for _, key := range strings {
+					if key == bundle.RelationKeySpacePushNotificationMode.String() {
+						status.mode = pb.RpcPushNotificationSetSpaceMode_All
+					}
 				}
-			}
-			return status
-		},
-	})
+				return status
+			},
+		})
 	if err := objectSubscription.Run(); err != nil {
 		return nil, err
 	}

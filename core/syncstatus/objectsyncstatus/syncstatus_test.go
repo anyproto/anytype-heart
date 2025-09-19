@@ -37,6 +37,7 @@ func Test_UseCases(t *testing.T) {
 	t.Run("HeadsChange then HeadsApply: responsible", func(t *testing.T) {
 		s := newFixture(t, "spaceId")
 		s.syncDetailsUpdater.EXPECT().UpdateDetails("id", domain.ObjectSyncStatusSyncing, "spaceId")
+		s.syncDetailsUpdater.EXPECT().UpdateDetails("id", domain.ObjectSyncStatusSynced, "spaceId")
 
 		s.HeadsChange("id", []string{"head1", "head2"})
 
@@ -49,7 +50,6 @@ func Test_UseCases(t *testing.T) {
 
 		assert.NotNil(t, s.treeHeads["id"])
 		assert.Equal(t, StatusSynced, s.treeHeads["id"].syncStatus)
-		assert.Equal(t, s.synced, []string{"id"})
 	})
 	t.Run("HeadsChange then HeadsApply: not responsible", func(t *testing.T) {
 		s := newFixture(t, "spaceId")
@@ -67,19 +67,18 @@ func Test_UseCases(t *testing.T) {
 		assert.NotNil(t, s.treeHeads["id"])
 		assert.Equal(t, StatusNotSynced, s.treeHeads["id"].syncStatus)
 		assert.Contains(t, s.tempSynced, "id")
-		assert.Nil(t, s.synced)
 	})
 	t.Run("ObjectReceive: responsible", func(t *testing.T) {
 		s := newFixture(t, "spaceId")
 		s.nodeConfService.EXPECT().NodeIds("spaceId").Return([]string{"peerId"})
+		s.syncDetailsUpdater.EXPECT().UpdateDetails("id", domain.ObjectSyncStatusSynced, "spaceId")
 
 		s.ObjectReceive("peerId", "id", []string{"head1", "head2"})
-
-		assert.Equal(t, s.synced, []string{"id"})
 	})
 	t.Run("ObjectReceive: not responsible, but then sync with responsible", func(t *testing.T) {
 		s := newFixture(t, "spaceId")
 		s.nodeConfService.EXPECT().NodeIds("spaceId").Return([]string{"peerId1"})
+		s.syncDetailsUpdater.EXPECT().UpdateDetails("id", domain.ObjectSyncStatusSynced, "spaceId")
 
 		s.ObjectReceive("peerId", "id", []string{"head1", "head2"})
 
@@ -88,8 +87,6 @@ func Test_UseCases(t *testing.T) {
 		s.nodeConfService.EXPECT().NodeIds("spaceId").Return([]string{"peerId1"})
 
 		s.RemoveAllExcept("peerId1", []string{})
-
-		assert.Equal(t, s.synced, []string{"id"})
 	})
 	t.Run("HeadsChange: settings object is changed", func(t *testing.T) {
 		s := newFixture(t, "spaceId")

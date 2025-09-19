@@ -9,11 +9,11 @@ func NewCalendar(t time.Time, loc *time.Location) Calendar {
 	if loc == nil {
 		loc = time.Now().Location()
 	}
-	return Calendar{t:t, loc: loc}
+	return Calendar{t: t, loc: loc}
 }
 
 type Calendar struct {
-	t time.Time
+	t   time.Time
 	loc *time.Location
 }
 
@@ -61,4 +61,14 @@ func (c *Calendar) MonthNumStart(monthNum int) time.Time {
 func (c *Calendar) MonthNumEnd(monthNum int) time.Time {
 	firstDay := c.MonthNumStart(monthNum)
 	return firstDay.AddDate(0, 1, 0).Add(time.Nanosecond * -1)
+}
+
+func (c *Calendar) YearNumStart(yearDelta int) time.Time {
+	needYear := c.t.Year() + yearDelta
+	return time.Date(needYear, time.January, 1, 0, 0, 0, 0, c.loc)
+}
+
+func (c *Calendar) YearNumEnd(yearDelta int) time.Time {
+	firstDay := c.YearNumStart(yearDelta)
+	return firstDay.AddDate(1, 0, 0).Add(time.Nanosecond * -1)
 }

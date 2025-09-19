@@ -8,6 +8,7 @@ import (
 	"github.com/anyproto/any-sync/util/crypto"
 
 	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space/spaceinfo"
 	"github.com/anyproto/anytype-heart/space/techspace"
 )
@@ -25,8 +26,9 @@ type SpaceStatus interface {
 	SetLocalStatus(status spaceinfo.LocalStatus) error
 	SetLocalInfo(info spaceinfo.SpaceLocalInfo) (err error)
 	SetAccessType(status spaceinfo.AccessType) (err error)
-	SetAclInfo(isAclEmpty bool, pushKey crypto.PrivKey, pushEncryptionKey crypto.SymKey) (err error)
+	SetAclInfo(isAclEmpty bool, pushKey crypto.PrivKey, pushEncryptionKey crypto.SymKey, joinedDate int64) (err error)
 	SetOwner(ownerIdentity string, createdDate int64) (err error)
+	SetMyParticipantStatus(status model.ParticipantStatus) (err error)
 	GetSpaceView() techspace.SpaceView
 }
 
@@ -147,6 +149,12 @@ func (s *spaceStatus) SetLocalInfo(info spaceinfo.SpaceLocalInfo) (err error) {
 	})
 }
 
+func (s *spaceStatus) SetMyParticipantStatus(status model.ParticipantStatus) (err error) {
+	return doSpaceView(s.spaceView, func(view techspace.SpaceView) error {
+		return view.SetMyParticipantStatus(status)
+	})
+}
+
 func (s *spaceStatus) SetPersistentInfo(info spaceinfo.SpacePersistentInfo) (err error) {
 	return doSpaceView(s.spaceView, func(view techspace.SpaceView) error {
 		return view.SetSpacePersistentInfo(info)
@@ -165,9 +173,9 @@ func (s *spaceStatus) SetAccessType(acc spaceinfo.AccessType) (err error) {
 	})
 }
 
-func (s *spaceStatus) SetAclInfo(isAclEmpty bool, pushKey crypto.PrivKey, pushEncryptionKey crypto.SymKey) (err error) {
+func (s *spaceStatus) SetAclInfo(isAclEmpty bool, pushKey crypto.PrivKey, pushEncryptionKey crypto.SymKey, joinedDate int64) (err error) {
 	return doSpaceView(s.spaceView, func(view techspace.SpaceView) error {
-		return view.SetAclInfo(isAclEmpty, pushKey, pushEncryptionKey)
+		return view.SetAclInfo(isAclEmpty, pushKey, pushEncryptionKey, joinedDate)
 	})
 }
 

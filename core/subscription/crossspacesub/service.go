@@ -75,6 +75,9 @@ func (s *service) Close(ctx context.Context) error {
 	s.lock.Lock()
 	err := s.subscriptionService.Unsubscribe(s.spaceViewsSubId)
 	s.lock.Unlock()
+	for subId := range s.subscriptions {
+		_ = s.Unsubscribe(subId)
+	}
 	return err
 }
 

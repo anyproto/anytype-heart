@@ -14,11 +14,12 @@ import (
 	"github.com/samber/lo"
 	"go.uber.org/zap"
 
+	"github.com/anyproto/anytype-heart/core/anytype/account"
 	bookmarksvc "github.com/anyproto/anytype-heart/core/block/bookmark"
 	"github.com/anyproto/anytype-heart/core/block/cache"
 	"github.com/anyproto/anytype-heart/core/block/detailservice"
 	"github.com/anyproto/anytype-heart/core/block/editor/basic"
-	"github.com/anyproto/anytype-heart/core/block/editor/collection"
+	"github.com/anyproto/anytype-heart/core/block/editor/blockcollection"
 	"github.com/anyproto/anytype-heart/core/block/editor/file"
 	"github.com/anyproto/anytype-heart/core/block/editor/layout"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
@@ -33,6 +34,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/domain/objectorigin"
 	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/core/files/fileobject"
+	"github.com/anyproto/anytype-heart/core/files/fileoffloader"
 	"github.com/anyproto/anytype-heart/core/files/fileuploader"
 	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pb"
@@ -88,6 +90,7 @@ func New() *Service {
 }
 
 type Service struct {
+	accountService       account.Service
 	eventSender          event.Sender
 	process              process.Service
 	objectStore          objectstore.ObjectStore
@@ -102,6 +105,7 @@ type Service struct {
 	detailsService       detailservice.Service
 
 	fileUploaderService fileuploader.Service
+	fileOffloader       fileoffloader.Service
 
 	predefinedObjectWasMissing bool
 	openedObjs                 *openedObjects
@@ -136,11 +140,11 @@ func (s *Service) Init(a *app.App) (err error) {
 	s.resolver = a.MustComponent(idresolver.CName).(idresolver.Resolver)
 	s.fileObjectService = app.MustComponent[fileobject.Service](a)
 	s.fileUploaderService = app.MustComponent[fileuploader.Service](a)
-
+	s.fileOffloader = app.MustComponent[fileoffloader.Service](a)
 	s.tempDirProvider = app.MustComponent[core.TempDirProvider](a)
-
 	s.builtinObjectService = app.MustComponent[builtinObjects](a)
 	s.detailsService = app.MustComponent[detailservice.Service](a)
+	s.accountService = app.MustComponent[account.Service](a)
 	return
 }
 
@@ -157,7 +161,7 @@ func (s *Service) GetObject(ctx context.Context, objectID string) (sb smartblock
 }
 
 func (s *Service) WaitAndGetObject(ctx context.Context, objectID string) (sb smartblock.SmartBlock, err error) {
-	spaceID, err := s.resolver.ResolveSpaceID(objectID)
+	spaceID, err := s.resolver.ResolveSpaceIdWithRetry(ctx, objectID)
 	if err != nil {
 		return nil, err
 	}
@@ -432,7 +436,12 @@ func (s *Service) SpaceInitChat(ctx context.Context, spaceId string) error {
 		return fmt.Errorf("apply chatId to workspace: %w", err)
 	}
 
-	return s.autoInstallSpaceChatWidget(ctx, spc)
+	err = s.autoInstallSpaceChatWidget(ctx, spc)
+	if err != nil {
+		return fmt.Errorf("install chat widget: %w", err)
+	}
+
+	return nil
 }
 
 func (s *Service) SelectWorkspace(req *pb.RpcWorkspaceSelectRequest) error {
@@ -507,7 +516,7 @@ func (s *Service) DeleteArchivedObject(id string) (err error) {
 		return fmt.Errorf("cannot delete archive object")
 	}
 	return cache.Do(s, spc.DerivedIDs().Archive, func(b smartblock.SmartBlock) error {
-		archive, ok := b.(collection.Collection)
+		archive, ok := b.(blockcollection.Collection)
 		if !ok {
 			return fmt.Errorf("unexpected archive block type: %T", b)
 		}
@@ -621,41 +630,6 @@ func (s *Service) ObjectBookmarkFetch(req pb.RpcObjectBookmarkFetchRequest) (err
 		}
 	}()
 	return nil
-}
-
-func (s *Service) ObjectToBookmark(ctx context.Context, id string, url string) (objectId string, err error) {
-	spaceID, err := s.resolver.ResolveSpaceID(id)
-	if err != nil {
-		return "", fmt.Errorf("resolve spaceID: %w", err)
-	}
-	req := objectcreator.CreateObjectRequest{
-		ObjectTypeKey: bundle.TypeKeyBookmark,
-		Details: domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
-			bundle.RelationKeySource: domain.String(url),
-		}),
-	}
-	objectId, _, err = s.objectCreator.CreateObject(ctx, spaceID, req)
-	if err != nil {
-		return
-	}
-
-	res, err := s.objectStore.SpaceIndex(spaceID).GetWithLinksInfoById(id)
-	if err != nil {
-		return
-	}
-	for _, il := range res.Links.Inbound {
-		if err = s.replaceLink(il.Id, id, objectId); err != nil {
-			return
-		}
-	}
-	err = s.DeleteObject(id)
-	if err != nil {
-		// intentionally do not return error here
-		log.Errorf("failed to delete object after conversion to bookmark: %s", err)
-		err = nil
-	}
-
-	return
 }
 
 func (s *Service) CreateObjectFromUrl(

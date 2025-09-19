@@ -10,7 +10,6 @@ import (
 	"github.com/anyproto/any-sync/accountservice/mock_accountservice"
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/commonfile/fileservice"
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
@@ -40,7 +39,6 @@ import (
 	"github.com/anyproto/anytype-heart/space/clientspace/mock_clientspace"
 	"github.com/anyproto/anytype-heart/space/mock_space"
 	"github.com/anyproto/anytype-heart/tests/testutil"
-	"github.com/anyproto/anytype-heart/util/mutex"
 )
 
 type fixture struct {
@@ -107,7 +105,7 @@ func newFixture(t *testing.T) *fixture {
 	spaceService.EXPECT().PersonalSpaceId().Return("personalSpaceId").Maybe()
 	spaceIdResolver := mock_idresolver.NewMockResolver(t)
 
-	svc := New(testResolveRetryDelay, testResolveRetryDelay)
+	svc := New()
 
 	ctx := context.Background()
 	ctrl := gomock.NewController(t)
@@ -222,69 +220,12 @@ func TestGetFileIdFromObjectWaitLoad(t *testing.T) {
 		require.Error(t, err)
 	})
 
-	t.Run("with not yet loaded object load object and when timed out expect return error", func(t *testing.T) {
-		fx := newFixture(t)
-
-		ctx, cancel := context.WithTimeout(context.Background(), 20*time.Millisecond)
-		defer cancel()
-
-		fx.spaceIdResolver.EXPECT().ResolveSpaceID(testFileObjectId).Return("", fmt.Errorf("not yet resolved"))
-
-		err := fx.DoFileWaitLoad(ctx, testFileObjectId, func(object fileobject.FileObject) error {
-			return nil
-		})
-		require.Error(t, err)
-		require.ErrorIs(t, err, context.DeadlineExceeded)
-	})
-
-	t.Run("with not yet loaded object load object and return it's file id", func(t *testing.T) {
-		fx := newFixture(t)
-
-		ctx := context.Background()
-		spaceId := "spaceId"
-		resolvedSpace := mutex.NewValue("")
-		resolvedSpaceErr := mutex.NewValue(fmt.Errorf("not yet resolved"))
-		fx.spaceIdResolver.EXPECT().ResolveSpaceID(testFileObjectId).RunAndReturn(func(_ string) (string, error) {
-			return resolvedSpace.Get(), resolvedSpaceErr.Get()
-		})
-
-		go func() {
-			time.Sleep(3 * testResolveRetryDelay)
-			resolvedSpace.Set(spaceId)
-			resolvedSpaceErr.Set(nil)
-		}()
-
-		space := mock_clientspace.NewMockSpace(t)
-		space.EXPECT().Do(testFileObjectId, mock.Anything).RunAndReturn(func(_ string, apply func(smartblock.SmartBlock) error) error {
-			sb := smarttest.New(testFileObjectId)
-			sb.SetSpaceId(spaceId)
-
-			st := sb.Doc.(*state.State)
-			st.SetDetailAndBundledRelation(bundle.RelationKeyFileId, domain.String(testFileId.String()))
-
-			return apply(fx.newTestFileObject(sb))
-		})
-
-		fx.spaceService.EXPECT().Get(ctx, spaceId).Return(space, nil)
-
-		var fullId domain.FullFileId
-		err := fx.DoFileWaitLoad(ctx, testFileObjectId, func(object fileobject.FileObject) error {
-			fullId = object.GetFullFileId()
-			return nil
-		})
-		require.NoError(t, err)
-		assert.Equal(t, domain.FullFileId{
-			SpaceId: spaceId,
-			FileId:  testFileId,
-		}, fullId)
-	})
-
 	t.Run("with loaded object without file id expect error", func(t *testing.T) {
 		fx := newFixture(t)
 
 		ctx := context.Background()
 		spaceId := "spaceId"
-		fx.spaceIdResolver.EXPECT().ResolveSpaceID(testFileObjectId).Return(spaceId, nil)
+		fx.spaceIdResolver.EXPECT().ResolveSpaceIdWithRetry(mock.Anything, testFileObjectId).Return(spaceId, nil)
 
 		space := mock_clientspace.NewMockSpace(t)
 		space.EXPECT().Do(testFileObjectId, mock.Anything).RunAndReturn(func(_ string, apply func(smartblock.SmartBlock) error) error {
