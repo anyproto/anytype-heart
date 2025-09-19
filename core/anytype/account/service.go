@@ -23,6 +23,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space"
 	"github.com/anyproto/anytype-heart/space/spacecore"
+	"github.com/anyproto/anytype-heart/space/spacedomain"
 	"github.com/anyproto/anytype-heart/space/techspace"
 	"github.com/anyproto/anytype-heart/util/metricsid"
 )
@@ -81,7 +82,7 @@ func (s *service) Init(a *app.App) (err error) {
 	s.config = app.MustComponent[*config.Config](a)
 	s.picker = app.MustComponent[cache.ObjectGetter](a)
 	s.objectStore = app.MustComponent[objectstore.ObjectStore](a)
-	s.personalSpaceId, err = s.spaceCore.DeriveID(context.Background(), spacecore.SpaceType)
+	s.personalSpaceId, err = s.spaceCore.DeriveID(context.Background(), spacedomain.SpaceTypeRegular)
 	return
 }
 

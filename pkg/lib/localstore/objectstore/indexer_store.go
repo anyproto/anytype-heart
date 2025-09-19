@@ -9,6 +9,7 @@ import (
 
 	anystore "github.com/anyproto/any-store"
 	"github.com/anyproto/any-store/anyenc"
+	"github.com/anyproto/any-store/anyenc/anyencutil"
 	"github.com/anyproto/any-store/query"
 
 	"github.com/anyproto/anytype-heart/core/domain"
@@ -73,7 +74,13 @@ func (s *dsObjectStore) AddToIndexQueue(ctx context.Context, ids ...domain.FullI
 		obj.Set(idKey, arena.NewString(id.ObjectID))
 		obj.Set(spaceIdKey, arena.NewString(id.SpaceID))
 		obj.Set(ftSequenceKey, arena.NewBinary(emptyBuffer))
-		err = s.fulltextQueue.UpsertOne(txn.Context(), obj)
+		_, err = s.fulltextQueue.UpsertId(txn.Context(), id.ObjectID, query.ModifyFunc(func(a *anyenc.Arena, v *anyenc.Value) (*anyenc.Value, bool, error) {
+			if anyencutil.Equal(v, obj) {
+				return v, false, nil
+			}
+
+			return obj, true, nil
+		}))
 		if err != nil {
 			return errors.Join(txn.Rollback(), fmt.Errorf("upsert: %w", err))
 		}
@@ -86,7 +93,7 @@ func (s *dsObjectStore) BatchProcessFullTextQueue(
 	spaceIds func() []string,
 	limit uint,
 	processIds func(objectIds []domain.FullID,
-) (succeedIds []domain.FullID, ftIndexSeq uint64, err error)) error {
+	) (succeedIds []domain.FullID, ftIndexSeq uint64, err error)) error {
 	for {
 		ids, err := s.ListIdsFromFullTextQueue(spaceIds(), limit)
 		if err != nil {
@@ -260,10 +267,16 @@ func (s *dsObjectStore) SaveChecksums(spaceId string, checksums *model.ObjectSto
 		s.arenaPool.Put(arena)
 	}()
 
-	it, err := keyValueItem(arena, spaceId, checksums)
-	if err != nil {
-		return err
-	}
-	err = s.indexerChecksums.UpsertOne(s.componentCtx, it)
+	_, err = s.indexerChecksums.UpsertId(s.componentCtx, spaceId, query.ModifyFunc(func(a *anyenc.Arena, v *anyenc.Value) (result *anyenc.Value, modified bool, err error) {
+		newVal, err := keyValueItem(a, spaceId, checksums)
+		if err != nil {
+			return nil, false, err
+		}
+
+		if anyencutil.Equal(newVal, v) {
+			return v, false, nil
+		}
+		return newVal, true, nil
+	}))
 	return err
 }

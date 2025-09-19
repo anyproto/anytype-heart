@@ -43,7 +43,7 @@ func (r *lazyObjectResolver) ResolveRelation(relationId string) (*domain.Details
 				Value:       domain.String(relationId),
 			},
 			{
-				RelationKey: bundle.RelationKeyLayout,
+				RelationKey: bundle.RelationKeyResolvedLayout,
 				Condition:   model.BlockContentDataviewFilter_Equal,
 				Value:       domain.Int64(int64(model.ObjectType_relation)),
 			},
@@ -80,7 +80,7 @@ func (r *lazyObjectResolver) GetRelationByKey(relationKey string) (*domain.Detai
 				Value:       domain.String(relationKey),
 			},
 			{
-				RelationKey: bundle.RelationKeyLayout,
+				RelationKey: bundle.RelationKeyResolvedLayout,
 				Condition:   model.BlockContentDataviewFilter_Equal,
 				Value:       domain.Int64(int64(model.ObjectType_relation)),
 			},
@@ -116,7 +116,7 @@ func (r *lazyObjectResolver) ResolveType(typeId string) (*domain.Details, error)
 				Value:       domain.String(typeId),
 			},
 			{
-				RelationKey: bundle.RelationKeyLayout,
+				RelationKey: bundle.RelationKeyResolvedLayout,
 				Condition:   model.BlockContentDataviewFilter_Equal,
 				Value:       domain.Int64(int64(model.ObjectType_objectType)),
 			},
@@ -146,7 +146,7 @@ func (r *lazyObjectResolver) ResolveRelationOptions(relationKey string) ([]*doma
 				Value:       domain.String(relationKey),
 			},
 			{
-				RelationKey: bundle.RelationKeyLayout,
+				RelationKey: bundle.RelationKeyResolvedLayout,
 				Condition:   model.BlockContentDataviewFilter_Equal,
 				Value:       domain.Int64(int64(model.ObjectType_relationOption)),
 			},

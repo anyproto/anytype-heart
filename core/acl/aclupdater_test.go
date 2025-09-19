@@ -162,7 +162,7 @@ func givenParticipantObject(spaceId string, identity string, status model.Partic
 		bundle.RelationKeyId:                domain.String(participantId),
 		bundle.RelationKeySpaceId:           domain.String(spaceId),
 		bundle.RelationKeyIdentity:          domain.String(identity),
-		bundle.RelationKeyLayout:            domain.Int64(int64(model.ObjectType_participant)),
+		bundle.RelationKeyResolvedLayout:    domain.Int64(int64(model.ObjectType_participant)),
 		bundle.RelationKeyParticipantStatus: domain.Int64(int64(status)),
 	}
 }

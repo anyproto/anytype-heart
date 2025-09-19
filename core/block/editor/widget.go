@@ -3,7 +3,6 @@ package editor
 import (
 	"context"
 	"errors"
-	"slices"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/basic"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
@@ -130,13 +129,6 @@ func replaceWidgetTarget(st *state.State, targetFrom string, targetTo string, vi
 				childBlock := st.Get(child.Model().Id)
 				if linkBlock, ok := childBlock.Model().Content.(*model.BlockContentOfLink); ok {
 					if linkBlock.Link.TargetBlockId == targetFrom {
-						targets := st.Details().Get(bundle.RelationKeyAutoWidgetTargets).StringList()
-						if slices.Contains(targets, targetTo) {
-							return false
-						}
-						targets = append(targets, targetTo)
-						st.SetDetail(bundle.RelationKeyAutoWidgetTargets, domain.StringList(targets))
-
 						linkBlock.Link.TargetBlockId = targetTo
 						wc.Widget.ViewId = viewId
 						wc.Widget.Layout = layout

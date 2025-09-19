@@ -330,15 +330,14 @@ func TestService_SetListIsFavorite(t *testing.T) {
 			{bundle.RelationKeyId: domain.String("obj2"), bundle.RelationKeySpaceId: domain.String(spaceId)},
 			{bundle.RelationKeyId: domain.String("obj3"), bundle.RelationKeySpaceId: domain.String(spaceId)},
 		}
-		homeId   = "home"
-		widgetId = "widget"
+		homeId = "home"
 	)
 
 	t.Run("all updates failed", func(t *testing.T) {
 		// given
 		fx := newFixture(t)
 		fx.store.AddObjects(t, spaceId, objects)
-		fx.space.EXPECT().DerivedIDs().Return(threads.DerivedSmartblockIds{Home: homeId, Widgets: widgetId})
+		fx.space.EXPECT().DerivedIDs().Return(threads.DerivedSmartblockIds{Home: homeId})
 		fx.getter.EXPECT().GetObject(mock.Anything, mock.Anything).RunAndReturn(func(_ context.Context, objectId string) (smartblock.SmartBlock, error) {
 			require.Equal(t, homeId, objectId)
 			return nil, fmt.Errorf("unexpected error")

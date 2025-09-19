@@ -167,7 +167,7 @@ func (s *Service) BeforeDelete(id domain.FullID, workspaceRemove func() error) e
 		b.ObjectCloseAllSessions()
 		st := b.NewState()
 		isFavorite := st.LocalDetails().GetBool(bundle.RelationKeyIsFavorite)
-		if err := s.detailsService.SetIsFavorite(id.ObjectID, isFavorite, false); err != nil {
+		if err := s.detailsService.SetIsFavorite(id.ObjectID, isFavorite); err != nil {
 			log.With("objectId", id).Errorf("failed to favorite object: %v", err)
 		}
 		b.SetIsDeleted()
