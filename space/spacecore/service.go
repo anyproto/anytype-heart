@@ -37,13 +37,11 @@ import (
 	"github.com/anyproto/anytype-heart/space/spacecore/localdiscovery"
 	"github.com/anyproto/anytype-heart/space/spacecore/peerstore"
 	"github.com/anyproto/anytype-heart/space/spacecore/storage"
+	"github.com/anyproto/anytype-heart/space/spacedomain"
 )
 
 const (
-	CName         = "client.space.spacecore"
-	SpaceType     = "anytype.space"
-	TechSpaceType = "anytype.techspace"
-	ChangeType    = "anytype.object"
+	CName = "client.space.spacecore"
 )
 
 var log = logger.NewNamed(CName)
@@ -66,9 +64,9 @@ type PoolManager interface {
 }
 
 type SpaceCoreService interface {
-	Create(ctx context.Context, replicationKey uint64, metadataPayload []byte) (*AnySpace, error)
-	Derive(ctx context.Context, spaceType string) (space *AnySpace, err error)
-	DeriveID(ctx context.Context, spaceType string) (id string, err error)
+	Create(ctx context.Context, spaceType spacedomain.SpaceType, replicationKey uint64, metadataPayload []byte) (*AnySpace, error)
+	Derive(ctx context.Context, spaceType spacedomain.SpaceType) (space *AnySpace, err error)
+	DeriveID(ctx context.Context, spaceType spacedomain.SpaceType) (id string, err error)
 	Delete(ctx context.Context, spaceId string) (err error)
 	Get(ctx context.Context, id string) (*AnySpace, error)
 	Pick(ctx context.Context, id string) (*AnySpace, error)
@@ -129,11 +127,11 @@ func (s *service) Run(ctx context.Context) (err error) {
 	return
 }
 
-func (s *service) Derive(ctx context.Context, spaceType string) (space *AnySpace, err error) {
+func (s *service) Derive(ctx context.Context, spaceType spacedomain.SpaceType) (space *AnySpace, err error) {
 	payload := spacepayloads.SpaceDerivePayload{
 		SigningKey: s.wallet.GetAccountPrivkey(),
 		MasterKey:  s.wallet.GetMasterKey(),
-		SpaceType:  spaceType,
+		SpaceType:  string(spaceType),
 	}
 	id, err := s.commonSpace.DeriveSpace(ctx, payload)
 	if err != nil {
@@ -151,16 +149,16 @@ func (s *service) CloseSpace(ctx context.Context, id string) error {
 	return err
 }
 
-func (s *service) DeriveID(ctx context.Context, spaceType string) (id string, err error) {
+func (s *service) DeriveID(ctx context.Context, spaceType spacedomain.SpaceType) (id string, err error) {
 	payload := spacepayloads.SpaceDerivePayload{
 		SigningKey: s.wallet.GetAccountPrivkey(),
 		MasterKey:  s.wallet.GetMasterKey(),
-		SpaceType:  spaceType,
+		SpaceType:  string(spaceType),
 	}
 	return s.commonSpace.DeriveId(ctx, payload)
 }
 
-func (s *service) Create(ctx context.Context, replicationKey uint64, metadataPayload []byte) (container *AnySpace, err error) {
+func (s *service) Create(ctx context.Context, spaceType spacedomain.SpaceType, replicationKey uint64, metadataPayload []byte) (container *AnySpace, err error) {
 	metadataPrivKey, _, err := crypto.GenerateRandomEd25519KeyPair()
 	if err != nil {
 		return nil, fmt.Errorf("generate metadata key: %w", err)
@@ -170,7 +168,7 @@ func (s *service) Create(ctx context.Context, replicationKey uint64, metadataPay
 		MasterKey:      s.wallet.GetMasterKey(),
 		ReadKey:        crypto.NewAES(),
 		MetadataKey:    metadataPrivKey,
-		SpaceType:      SpaceType,
+		SpaceType:      string(spaceType),
 		ReplicationKey: replicationKey,
 		Metadata:       metadataPayload,
 	}

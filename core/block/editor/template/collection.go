@@ -13,7 +13,10 @@ import (
 
 const (
 	CollectionStoreKey = "objects"
+	DefaultViewLayout  = model.BlockContentDataviewView_List
 	defaultViewName    = "All"
+	defaultWidth       = 200
+	defaultWidthShort  = 100
 )
 
 var (
@@ -46,12 +49,13 @@ var (
 	}
 )
 
-func MakeDataviewContent(isCollection bool, ot *model.ObjectType, relLinks []*model.RelationLink, forceViewId string) *model.BlockContentOfDataview {
+func MakeDataviewView(isCollection bool, relLinks []*model.RelationLink, viewLayout model.BlockContentDataviewViewType, forceViewId string, viewName string) model.BlockContentDataviewView {
+	var visibleRelations []domain.RelationKey
 	var (
-		defaultRelations = defaultCollectionRelations
-		visibleRelations = defaultVisibleRelations
-		sorts            = DefaultLastModifiedDateSort()
+		sorts = DefaultLastModifiedDateSort()
 	)
+
+	visibleRelations = defaultVisibleRelations
 
 	if isCollection {
 		sorts = defaultNameSort()
@@ -59,14 +63,48 @@ func MakeDataviewContent(isCollection bool, ot *model.ObjectType, relLinks []*mo
 		for _, relLink := range relLinks {
 			visibleRelations = append(visibleRelations, domain.RelationKey(relLink.Key))
 		}
-	} else if ot != nil {
-		defaultRelations = defaultDataviewRelations
-		relLinks = ot.RelationLinks
-	} else {
-		defaultRelations = defaultDataviewRelations
 	}
 
-	relationLinks, viewRelations := generateRelationLists(defaultRelations, relLinks, visibleRelations)
+	_, viewRelations := GenerateRelationLists(isCollection, relLinks, visibleRelations)
+	viewId := forceViewId
+	if viewId == "" {
+		viewId = bson.NewObjectId().Hex()
+	}
+
+	if viewName == "" {
+		viewName = defaultViewName
+	}
+	return model.BlockContentDataviewView{
+		Id:        viewId,
+		Type:      viewLayout,
+		Name:      viewName,
+		Sorts:     sorts,
+		Filters:   nil,
+		Relations: viewRelations,
+	}
+
+}
+
+func MakeDataviewContent(isCollection bool, ot *model.ObjectType, relLinks []*model.RelationLink, forceViewId string) *model.BlockContentOfDataview {
+	var visibleRelations []domain.RelationKey
+	var (
+		sorts = DefaultLastModifiedDateSort()
+	)
+
+	visibleRelations = defaultVisibleRelations
+
+	if isCollection {
+		sorts = defaultNameSort()
+	} else if relLinks != nil {
+		for _, relLink := range relLinks {
+
+			visibleRelations = append(visibleRelations, domain.RelationKey(relLink.Key))
+		}
+	} else if ot != nil {
+		relLinks = ot.RelationLinks
+	}
+
+	relationLinks, viewRelations := GenerateRelationLists(isCollection, relLinks, visibleRelations)
 	viewId := forceViewId
 	if viewId == "" {
 		viewId = bson.NewObjectId().Hex()
@@ -78,7 +116,7 @@ func MakeDataviewContent(isCollection bool, ot *model.ObjectType, relLinks []*mo
 			Views: []*model.BlockContentDataviewView{
 				{
 					Id:        viewId,
-					Type:      model.BlockContentDataviewView_List,
+					Type:      DefaultViewLayout,
 					Name:      defaultViewName,
 					Sorts:     sorts,
 					Filters:   nil,
@@ -89,8 +127,23 @@ func MakeDataviewContent(isCollection bool, ot *model.ObjectType, relLinks []*mo
 	}
 }
 
-func generateRelationLists(
-	defaultRelations []domain.RelationKey,
+func propertyWidth(format model.RelationFormat) int32 {
+	if slices.Contains([]model.RelationFormat{
+		model.RelationFormat_number,
+		model.RelationFormat_phone,
+		model.RelationFormat_email,
+		model.RelationFormat_tag,
+		model.RelationFormat_status,
+		model.RelationFormat_checkbox,
+		model.RelationFormat_url,
+	}, format) {
+		return defaultWidthShort
+	}
+	return defaultWidth
+}
+
+func GenerateRelationLists(
+	isCollection bool,
 	additionalRelations []*model.RelationLink,
 	visibleRelations []domain.RelationKey,
 ) (
@@ -101,6 +154,10 @@ func generateRelationLists(
 		return slices.Contains(visibleRelations, key)
 	}
 
+	defaultRelations := defaultDataviewRelations
+	if isCollection {
+		defaultRelations = defaultCollectionRelations
+	}
 	for _, relKey := range defaultRelations {
 		rel := bundle.MustGetRelation(relKey)
 		relationLinks = append(relationLinks, &model.RelationLink{
@@ -110,6 +167,7 @@ func generateRelationLists(
 		viewRelations = append(viewRelations, &model.BlockContentDataviewRelation{
 			Key:       rel.Key,
 			IsVisible: isVisible(relKey),
+			Width:     propertyWidth(rel.Format),
 		})
 	}
 
@@ -121,9 +179,11 @@ func generateRelationLists(
 			Format: relLink.Format,
 			Key:    relLink.Key,
 		})
+
 		viewRelations = append(viewRelations, &model.BlockContentDataviewRelation{
 			Key:       relLink.Key,
 			IsVisible: isVisible(domain.RelationKey(relLink.Key)),
+			Width:     propertyWidth(relLink.Format),
 		})
 	}
 	return relationLinks, viewRelations

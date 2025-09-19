@@ -37,7 +37,7 @@ func TestState_Add(t *testing.T) {
 
 func TestState_Snippet(t *testing.T) {
 	t.Run("snippet cut - when the content is too long", func(t *testing.T) {
-		givenState := buildStateFromAST(blockbuilder.Root(
+		givenState := buildStateFromAST(t, blockbuilder.Root(
 			blockbuilder.ID("root"),
 			blockbuilder.Children(
 				blockbuilder.Text(
@@ -56,7 +56,7 @@ func TestState_Snippet(t *testing.T) {
 	})
 
 	t.Run("snippet empty - when the style is title or description", func(t *testing.T) {
-		givenState := buildStateFromAST(blockbuilder.Root(
+		givenState := buildStateFromAST(t, blockbuilder.Root(
 			blockbuilder.ID("root"),
 			blockbuilder.Children(
 				blockbuilder.Text(
@@ -79,7 +79,7 @@ func TestState_Snippet(t *testing.T) {
 	})
 
 	t.Run("snippet empty - when the style is title or description", func(t *testing.T) {
-		givenState := buildStateFromAST(blockbuilder.Root(
+		givenState := buildStateFromAST(t, blockbuilder.Root(
 			blockbuilder.ID("root"),
 			blockbuilder.Children(
 				blockbuilder.Text(

@@ -11,6 +11,7 @@ import (
 	"github.com/anyproto/any-sync/commonspace/object/tree/objecttree"
 
 	"github.com/anyproto/anytype-heart/core/anytype/config"
+	"github.com/anyproto/anytype-heart/core/block/backlinks"
 	"github.com/anyproto/anytype-heart/core/block/cache"
 	"github.com/anyproto/anytype-heart/core/block/chats/chatrepository"
 	"github.com/anyproto/anytype-heart/core/block/chats/chatsubscription"
@@ -81,6 +82,8 @@ type ObjectFactory struct {
 	chatRepositoryService   chatrepository.Service
 	chatSubscriptionService chatsubscription.Service
 	statService             debugstat.StatService
+	backlinksUpdater        backlinks.UpdateWatcher
+	widgetsMigrator         widgetsMigrator
 }
 
 func NewObjectFactory() *ObjectFactory {
@@ -116,6 +119,8 @@ func (f *ObjectFactory) Init(a *app.App) (err error) {
 	f.chatRepositoryService = app.MustComponent[chatrepository.Service](a)
 	f.chatSubscriptionService = app.MustComponent[chatsubscription.Service](a)
 	f.statService, err = app.GetComponent[debugstat.StatService](a)
+	f.backlinksUpdater = app.MustComponent[backlinks.UpdateWatcher](a)
+	f.widgetsMigrator = app.MustComponent[widgetsMigrator](a)
 	if err != nil {
 		f.statService = debugstat.NewNoOp()
 	}
@@ -206,7 +211,7 @@ func (f *ObjectFactory) New(space smartblock.Space, sbType coresb.SmartBlockType
 	case coresb.SmartBlockTypeArchive:
 		return NewArchive(sb, spaceIndex), nil
 	case coresb.SmartBlockTypeHome:
-		return NewDashboard(sb, spaceIndex, f.layoutConverter), nil
+		return f.newDashboard(sb, spaceIndex), nil
 	case coresb.SmartBlockTypeProfilePage,
 		coresb.SmartBlockTypeAnytypeProfile:
 		return f.newProfile(space.Id(), sb), nil
@@ -222,7 +227,7 @@ func (f *ObjectFactory) New(space smartblock.Space, sbType coresb.SmartBlockType
 	case coresb.SmartBlockTypeMissingObject:
 		return NewMissingObject(sb), nil
 	case coresb.SmartBlockTypeWidget:
-		return NewWidgetObject(sb, spaceIndex, f.layoutConverter), nil
+		return f.newWidgetObject(sb, spaceIndex), nil
 	case coresb.SmartBlockTypeNotificationObject:
 		return NewNotificationObject(sb), nil
 	case coresb.SmartBlockTypeSubObject:

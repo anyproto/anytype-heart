@@ -600,19 +600,6 @@
     "source": "account"
   },
   {
-    "description": "Space object belongs to",
-    "format": "object",
-    "hidden": true,
-    "key": "workspaceId",
-    "maxCount": 1,
-    "name": "Space",
-    "objectTypes": [
-      "space"
-    ],
-    "readonly": true,
-    "source": "local"
-  },
-  {
     "description": "Space belongs to",
     "format": "object",
     "hidden": true,
@@ -1631,25 +1618,6 @@
     "source": "details"
   },
   {
-    "description": "Automatically generated widget. Used to avoid creating widget if was removed by user",
-    "format": "object",
-    "hidden": true,
-    "key": "autoWidgetTargets",
-    "maxCount": 0,
-    "name": "Auto Widget targets",
-    "readonly": false,
-    "source": "details"
-  },
-  {
-    "format": "checkbox",
-    "hidden": true,
-    "key": "autoWidgetDisabled",
-    "maxCount": 1,
-    "name": "Auto Widget disabled",
-    "readonly": false,
-    "source": "details"
-  },
-  {
     "description": "Name of Object type in plural form",
     "format": "longtext",
     "hidden": true,
@@ -1729,5 +1697,32 @@
     "readonly": true,
     "source": "derived",
     "includeTime": true
+  },
+  {
+    "description": "Widget layout",
+    "format": "number",
+    "hidden": true,
+    "key": "widgetLayout",
+    "maxCount": 1,
+    "name": "Widget layout",
+    "source": "details"
+  },
+  {
+    "description": "Widget limit",
+    "format": "number",
+    "hidden": true,
+    "key": "widgetLimit",
+    "maxCount": 1,
+    "name": "Widget limit",
+    "source": "details"
+  },
+  {
+    "description": "Widget view ID",
+    "format": "longtext",
+    "hidden": true,
+    "key": "widgetViewId",
+    "maxCount": 1,
+    "name": "Widget view ID",
+    "source": "details"
   }
 ]

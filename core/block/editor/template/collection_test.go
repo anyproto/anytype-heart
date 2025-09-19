@@ -72,7 +72,7 @@ func TestMakeDataviewContent(t *testing.T) {
 				{Key: bundle.RelationKeyAddedDate.String()},
 				{Key: bundle.RelationKeyLastUsedDate.String()},
 			},
-			expectedRelations: append(defaultCollectionRelations, []domain.RelationKey{
+			expectedRelations: append(defaultDataviewRelations, []domain.RelationKey{
 				bundle.RelationKeyAddedDate,
 				bundle.RelationKeyLastUsedDate,
 			}...),

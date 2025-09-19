@@ -94,12 +94,14 @@ func (oc *ObjectCreator) Create(dataObject *DataObject, sn *common.Snapshot) (*d
 	oc.setRootBlock(snapshot, newID)
 
 	oc.injectImportDetails(sn, origin)
-	st := state.NewDocFromSnapshot(newID, sn.Snapshot.ToProto()).(*state.State)
+	st, err := state.NewDocFromSnapshot(newID, sn.Snapshot.ToProto())
+	if err != nil {
+		return nil, "", fmt.Errorf("doc from snapshot: %w", err)
+	}
 	st.SetLocalDetail(bundle.RelationKeyLastModifiedDate, snapshot.Details.Get(bundle.RelationKeyLastModifiedDate))
 
 	var (
 		filesToDelete []string
-		err           error
 	)
 	defer func() {
 		// delete file in ipfs if there is error after creation
@@ -392,7 +394,7 @@ func (oc *ObjectCreator) resetState(newID string, st *state.State) *domain.Detai
 func (oc *ObjectCreator) setFavorite(snapshot *common.StateSnapshot, newID string) {
 	isFavorite := snapshot.Details.GetBool(bundle.RelationKeyIsFavorite)
 	if isFavorite {
-		err := oc.detailsService.SetIsFavorite(newID, true, false)
+		err := oc.detailsService.SetIsFavorite(newID, true)
 		if err != nil {
 			log.With(zap.String("object id", newID)).Errorf("failed to set isFavorite when importing object: %s", err)
 		}

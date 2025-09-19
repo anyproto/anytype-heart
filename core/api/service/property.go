@@ -44,7 +44,6 @@ var excludedSystemProperties = map[string]bool{
 	bundle.RelationKeyIsArchived.String():             true,
 	bundle.RelationKeyIsDeleted.String():              true,
 	bundle.RelationKeyIsHidden.String():               true,
-	bundle.RelationKeyWorkspaceId.String():            true,
 	bundle.RelationKeyInternalFlags.String():          true,
 	bundle.RelationKeyRestrictions.String():           true,
 	bundle.RelationKeyOrigin.String():                 true,

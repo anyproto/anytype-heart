@@ -1,6 +1,8 @@
 package pb
 
 import (
+	"fmt"
+
 	"github.com/samber/lo"
 
 	"github.com/anyproto/anytype-heart/core/block/collection"
@@ -37,7 +39,11 @@ func (s *SpaceImport) ProvideCollection(
 	)
 
 	if widgetSnapshot := snapshots.GetWidget(); widgetSnapshot != nil {
-		widgetFlags, rootObjects = s.getObjectsFromWidget(widgetSnapshot, oldToNewID)
+		var err error
+		widgetFlags, rootObjects, err = s.getObjectsFromWidget(widgetSnapshot, oldToNewID)
+		if err != nil {
+			return nil, fmt.Errorf("get objects from widget: %w", err)
+		}
 		objectsNotInWidget = lo.Filter(snapshots.List(), func(item *common.Snapshot, index int) bool {
 			return !lo.Contains(rootObjects, item.Id)
 		})
@@ -74,13 +80,16 @@ func (s *SpaceImport) objectShouldBeSkipped(item *common.Snapshot) bool {
 		item.Snapshot.SbType == smartblock.SmartBlockTypeRelationOption
 }
 
-func (s *SpaceImport) getObjectsFromWidget(widgetSnapshot *common.Snapshot, oldToNewID map[string]string) (widget.ImportWidgetFlags, []string) {
-	widgetState := state.NewDocFromSnapshot("", widgetSnapshot.Snapshot.ToProto()).(*state.State)
+func (s *SpaceImport) getObjectsFromWidget(widgetSnapshot *common.Snapshot, oldToNewID map[string]string) (widget.ImportWidgetFlags, []string, error) {
+	widgetState, err := state.NewDocFromSnapshot("", widgetSnapshot.Snapshot.ToProto())
+	if err != nil {
+		return widget.ImportWidgetFlags{}, nil, fmt.Errorf("doc from snapshot: %w", err)
+	}
 	var (
 		objectsInWidget     []string
 		objectTypesToImport widget.ImportWidgetFlags
 	)
-	err := widgetState.Iterate(func(b simple.Block) (isContinue bool) {
+	err = widgetState.Iterate(func(b simple.Block) (isContinue bool) {
 		if link := b.Model().GetLink(); link != nil && link.TargetBlockId != "" {
 			if builtinWidget := widget.FillImportFlags(link, &objectTypesToImport); builtinWidget {
 				return true
@@ -92,9 +101,9 @@ func (s *SpaceImport) getObjectsFromWidget(widgetSnapshot *common.Snapshot, oldT
 		return true
 	})
 	if err != nil {
-		return widget.ImportWidgetFlags{}, nil
+		return widget.ImportWidgetFlags{}, nil, nil
 	}
-	return objectTypesToImport, objectsInWidget
+	return objectTypesToImport, objectsInWidget, nil
 }
 
 func (s *SpaceImport) filterObjects(objectTypesToImport widget.ImportWidgetFlags, objectsNotInWidget []*common.Snapshot) []string {

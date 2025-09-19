@@ -19,3 +19,13 @@ endif
 	@mkdir -p $(CLIENT_DESKTOP_PATH)/dist/lib/json/generated
 	@cp pkg/lib/bundle/system*.json $(CLIENT_DESKTOP_PATH)/dist/lib/json/generated
 	@cp pkg/lib/bundle/internal*.json $(CLIENT_DESKTOP_PATH)/dist/lib/json/generated
+
+# Install only generated protos to anytype-ts (use CLIENT_DESKTOP_PATH=/path/to/anytype-ts to override)
+install-protos-ts: protos-js
+	@echo 'Installing generated protos to $(CLIENT_DESKTOP_PATH)...'
+	@mkdir -p $(CLIENT_DESKTOP_PATH)/dist/lib
+	@cp -r dist/js/pb/* $(CLIENT_DESKTOP_PATH)/dist/lib
+	@mkdir -p $(CLIENT_DESKTOP_PATH)/dist/lib/json/generated
+	@cp pkg/lib/bundle/system*.json $(CLIENT_DESKTOP_PATH)/dist/lib/json/generated
+	@cp pkg/lib/bundle/internal*.json $(CLIENT_DESKTOP_PATH)/dist/lib/json/generated
+	@echo 'Protos installed successfully to $(CLIENT_DESKTOP_PATH)'

@@ -20,6 +20,7 @@ const CName = "core.order.setter"
 type OrderSetter interface {
 	SetSpaceViewOrder(spaceViewOrder []string) ([]string, error)
 	SetOptionsOrder(spaceId string, relationKey domain.RelationKey, order []string) ([]string, error)
+	SetObjectTypesOrder(spaceId string, objectIds []string) ([]string, error)
 	UnsetOrder(objectId string) error
 
 	app.Component
@@ -48,9 +49,9 @@ func (o *orderSetter) Name() (name string) {
 
 // SetSpaceViewOrder sets the order for space views. It ensures all views in spaceViewOrder have lexids.
 // spaceViewOrder is the desired final order of all space views
-func (o *orderSetter) SetSpaceViewOrder(spaceViewOrder []string) ([]string, error) {
-	if len(spaceViewOrder) == 0 {
-		return nil, errors.New("empty spaceViewOrder")
+func (o *orderSetter) SetSpaceViewOrder(objectIds []string) ([]string, error) {
+	if len(objectIds) == 0 {
+		return nil, errors.New("empty objectIds")
 	}
 
 	existing, err := o.getCurrentSpaceOrder()
@@ -58,14 +59,14 @@ func (o *orderSetter) SetSpaceViewOrder(spaceViewOrder []string) ([]string, erro
 		return nil, err
 	}
 
-	return o.rebuildIfNeeded(spaceViewOrder, existing)
+	return o.rebuildIfNeeded(objectIds, existing)
 }
 
-// SetOptionsOrder sets the order for relation options of particular relation. It ensures all options in order have lexids.
+// SetOptionsOrder sets the order for relation options of the particular relation. It ensures all options in order have lexids.
 // order is the desired final order of all space views
-func (o *orderSetter) SetOptionsOrder(spaceId string, relationKey domain.RelationKey, order []string) ([]string, error) {
-	if len(order) == 0 {
-		return nil, errors.New("empty order")
+func (o *orderSetter) SetOptionsOrder(spaceId string, relationKey domain.RelationKey, objectIds []string) ([]string, error) {
+	if len(objectIds) == 0 {
+		return nil, errors.New("empty objectIds")
 	}
 
 	existing, err := o.getCurrentOptionsOrder(spaceId, relationKey)
@@ -73,7 +74,20 @@ func (o *orderSetter) SetOptionsOrder(spaceId string, relationKey domain.Relatio
 		return nil, err
 	}
 
-	return o.rebuildIfNeeded(order, existing)
+	return o.rebuildIfNeeded(objectIds, existing)
+}
+
+func (o *orderSetter) SetObjectTypesOrder(spaceId string, objectIds []string) ([]string, error) {
+	if len(objectIds) == 0 {
+		return nil, errors.New("empty objectIds")
+	}
+
+	existing, err := o.getCurrentTypesOrder(spaceId)
+	if err != nil {
+		return nil, err
+	}
+
+	return o.rebuildIfNeeded(objectIds, existing)
 }
 
 func (o *orderSetter) UnsetOrder(objectId string) error {
@@ -89,7 +103,7 @@ func (o *orderSetter) getCurrentSpaceOrder() (map[string]string, error) {
 	viewIdToLexId := make(map[string]string)
 	err := o.store.SpaceIndex(techSpaceId).QueryIterate(database.Query{Filters: []database.FilterRequest{
 		{
-			RelationKey: bundle.RelationKeyLayout,
+			RelationKey: bundle.RelationKeyResolvedLayout,
 			Condition:   model.BlockContentDataviewFilter_Equal,
 			Value:       domain.Int64(model.ObjectType_spaceView),
 		},
@@ -108,7 +122,7 @@ func (o *orderSetter) getCurrentOptionsOrder(spaceId string, relationKey domain.
 	optionIdToOrderId := make(map[string]string)
 	err := o.store.SpaceIndex(spaceId).QueryIterate(database.Query{Filters: []database.FilterRequest{
 		{
-			RelationKey: bundle.RelationKeyLayout,
+			RelationKey: bundle.RelationKeyResolvedLayout,
 			Condition:   model.BlockContentDataviewFilter_Equal,
 			Value:       domain.Int64(model.ObjectType_relationOption),
 		},
@@ -128,13 +142,33 @@ func (o *orderSetter) getCurrentOptionsOrder(spaceId string, relationKey domain.
 	return optionIdToOrderId, nil
 }
 
-// rebuildIfNeeded processes the order in a single pass, updating lexids as needed
-func (o *orderSetter) rebuildIfNeeded(order []string, existing map[string]string) ([]string, error) {
-	nextExisting := o.precalcNext(existing, order) // O(n)
-	prev := ""
-	out := make([]string, len(order))
+func (o *orderSetter) getCurrentTypesOrder(spaceId string) (map[string]string, error) {
+	objectIdToOrderId := make(map[string]string)
+	err := o.store.SpaceIndex(spaceId).QueryIterate(database.Query{Filters: []database.FilterRequest{
+		{
+			RelationKey: bundle.RelationKeyResolvedLayout,
+			Condition:   model.BlockContentDataviewFilter_Equal,
+			Value:       domain.Int64(model.ObjectType_objectType),
+		},
+	}}, func(details *domain.Details) {
+		id := details.GetString(bundle.RelationKeyId)
+		orderId := details.GetString(bundle.RelationKeyOrderId)
+		objectIdToOrderId[id] = orderId
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to get current space order: %w", err)
+	}
 
-	for i, id := range order {
+	return objectIdToOrderId, nil
+}
+
+// rebuildIfNeeded processes the order in a single pass, updating lexids as needed
+func (o *orderSetter) rebuildIfNeeded(objectIds []string, existing map[string]string) ([]string, error) {
+	nextExisting := o.precalcNext(existing, objectIds) // O(n)
+	prev := ""
+	out := make([]string, len(objectIds))
+
+	for i, id := range objectIds {
 		curr := existing[id]
 		next := nextExisting[i]
 
@@ -151,7 +185,7 @@ func (o *orderSetter) rebuildIfNeeded(order []string, existing map[string]string
 
 		if curr == "" {
 			// setRank failed → full rebuild
-			return o.rebuildAllLexIds(order)
+			return o.rebuildAllLexIds(objectIds)
 		}
 		out[i] = curr
 		prev = curr
@@ -210,11 +244,11 @@ func (o *orderSetter) precalcNext(existing map[string]string, order []string) []
 }
 
 // rebuildAllLexIds rebuilds all lexids from scratch
-func (o *orderSetter) rebuildAllLexIds(orderedObjectIds []string) ([]string, error) {
-	finalOrder := make([]string, len(orderedObjectIds))
+func (o *orderSetter) rebuildAllLexIds(objectIds []string) ([]string, error) {
+	finalOrder := make([]string, len(objectIds))
 
 	// Clear all existing lexids first
-	for _, objectId := range orderedObjectIds {
+	for _, objectId := range objectIds {
 		err := cache.Do[order.OrderSettable](o.objectGetter, objectId, func(os order.OrderSettable) error {
 			return os.UnsetOrder()
 		})
@@ -225,7 +259,7 @@ func (o *orderSetter) rebuildAllLexIds(orderedObjectIds []string) ([]string, err
 
 	// Now assign new lexids in order
 	previousLexId := ""
-	for i, objectId := range orderedObjectIds {
+	for i, objectId := range objectIds {
 		var newLexId string
 		err := cache.Do[order.OrderSettable](o.objectGetter, objectId, func(os order.OrderSettable) error {
 			var err error

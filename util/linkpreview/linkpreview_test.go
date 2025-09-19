@@ -144,10 +144,11 @@ const tetsHtmlWithoutDescription = `<html><head>
 Sed ut perspiciatis, unde omnis iste natus error sit voluptatem accusantium doloremque laudantium, totam rem aperiam eaque ipsa, quae ab illo inventore veritatis et quasi architecto beatae vitae dicta sunt, explicabo.
 </p></div></body></html>`
 
-func TestCheckPrivateLink(t *testing.T) {
+func TestCheckResponseHeaders(t *testing.T) {
 	t.Run("nil response", func(t *testing.T) {
-		err := checkPrivateLink(nil)
+		whitelist, err := checkResponseHeaders(nil)
 		require.Error(t, err)
+		assert.Empty(t, whitelist)
 		assert.Contains(t, err.Error(), "response is nil")
 	})
 
@@ -158,22 +159,24 @@ func TestCheckPrivateLink(t *testing.T) {
 				"Server":       {"nginx/1.18.0"},
 			},
 		}
-		err := checkPrivateLink(resp)
+		whitelist, err := checkResponseHeaders(resp)
 		require.NoError(t, err)
+		assert.Empty(t, whitelist)
 	})
 
 	t.Run("Content-Security-Policy headers", func(t *testing.T) {
 		testCases := []struct {
-			name          string
-			csp           string
-			shouldBeError bool
+			name  string
+			csp   string
+			rules []string
 		}{
-			{"default-src none", "default-src 'none'", true},
-			{"frame-ancestors none", "frame-ancestors 'none'", true},
-			{"both restrictive", "default-src 'none'; frame-ancestors 'none'", true},
-			{"normal CSP", "default-src 'self'; script-src 'unsafe-inline'", false},
-			{"case insensitive", "DEFAULT-SRC 'NONE'", true},
-			{"reach content", "image-src example.com sample.net 'self'; default-src 'none'", true},
+			{"default-src none", "default-src 'none'", []string{"'none'"}},
+			{"normal CSP", "default-src 'self'; script-src 'unsafe-inline'", []string{"'self'"}},
+			{"case insensitive", "DEFAULT-SRC 'NONE'", []string{"'none'"}},
+			{"reach content", "img-src example.com sample.net 'self'; default-src 'none'", []string{"example.com", "sample.net", "'self'"}},
+			{"img-src is preferable", "img-src example.com; default-src 'self'", []string{"example.com"}},
+			{"img-src is restrictive", "img-src 'none'; default-src 'self'", []string{"'none'"}},
+			{"only img-src", "img-src 'self'", []string{"'self'"}},
 		}
 
 		for _, tc := range testCases {
@@ -183,14 +186,9 @@ func TestCheckPrivateLink(t *testing.T) {
 						"Content-Security-Policy": {tc.csp},
 					},
 				}
-				err := checkPrivateLink(resp)
-				if tc.shouldBeError {
-					require.Error(t, err)
-					assert.ErrorIs(t, err, ErrPrivateLink)
-					assert.Contains(t, err.Error(), "Content-Security-Policy")
-				} else {
-					require.NoError(t, err)
-				}
+				cspRules, err := checkResponseHeaders(resp)
+				require.NoError(t, err)
+				assert.Equal(t, tc.rules, cspRules)
 			})
 		}
 	})
@@ -218,7 +216,7 @@ func TestCheckPrivateLink(t *testing.T) {
 						"X-Robots-Tag": {tc.robotsTag},
 					},
 				}
-				err := checkPrivateLink(resp)
+				_, err := checkResponseHeaders(resp)
 				if tc.shouldBeError {
 					require.Error(t, err)
 					assert.ErrorIs(t, err, ErrPrivateLink)
@@ -238,11 +236,9 @@ func TestCheckPrivateLink(t *testing.T) {
 				"X-Robots-Tag":            {"none"},
 			},
 		}
-		err := checkPrivateLink(resp)
+		_, err := checkResponseHeaders(resp)
 		require.Error(t, err)
 		assert.ErrorIs(t, err, ErrPrivateLink)
-		// Should detect the first privacy directive it encounters
-		assert.Contains(t, err.Error(), "private link detected")
 	})
 
 	t.Run("edge cases", func(t *testing.T) {
@@ -276,7 +272,7 @@ func TestCheckPrivateLink(t *testing.T) {
 		for _, tc := range testCases {
 			t.Run(tc.name, func(t *testing.T) {
 				resp := &http.Response{Header: tc.headers}
-				err := checkPrivateLink(resp)
+				_, err := checkResponseHeaders(resp)
 				if tc.wantErr {
 					require.Error(t, err)
 				} else {
@@ -337,5 +333,174 @@ func TestLinkPreview_Fetch_PrivateLink(t *testing.T) {
 		assert.False(t, isFile)
 		assert.Equal(t, ts.URL, info.Url)
 		assert.Equal(t, "Title", info.Title)
+	})
+}
+
+func TestCheckLinksWhitelist(t *testing.T) {
+	t.Run("empty whitelist should allow all", func(t *testing.T) {
+		// given
+		preview := &model.LinkPreview{
+			Url:        "https://example.com/page",
+			ImageUrl:   "https://cdn.example.com/image.jpg",
+			FaviconUrl: "https://static.example.com/favicon.ico",
+		}
+		var emptyWhitelist []string
+
+		// when
+		applyCSPRules(emptyWhitelist, preview)
+
+		// then
+		assert.NotEmpty(t, preview.ImageUrl)
+		assert.NotEmpty(t, preview.FaviconUrl)
+	})
+
+	t.Run("nil whitelist should allow all", func(t *testing.T) {
+		// given
+		preview := &model.LinkPreview{
+			Url:        "https://example.com/page",
+			ImageUrl:   "https://cdn.example.com/image.jpg",
+			FaviconUrl: "https://static.example.com/favicon.ico",
+		}
+
+		// when
+		applyCSPRules(nil, preview)
+
+		// then
+		assert.NotEmpty(t, preview.ImageUrl)
+		assert.NotEmpty(t, preview.FaviconUrl)
+	})
+
+	t.Run("'self' directive should expand to main URL host", func(t *testing.T) {
+		// given
+		preview := &model.LinkPreview{
+			Url:        "https://example.com/page",
+			ImageUrl:   "https://example.com/image.jpg",   // same host as main URL
+			FaviconUrl: "https://example.com/favicon.ico", // same host as main URL
+		}
+		whitelist := []string{"'self'"}
+
+		// when
+		applyCSPRules(whitelist, preview)
+
+		// then
+		assert.NotEmpty(t, preview.ImageUrl)
+		assert.NotEmpty(t, preview.FaviconUrl)
+	})
+
+	t.Run("'self' directive should reject different hosts", func(t *testing.T) {
+		// given
+		preview := &model.LinkPreview{
+			Url:        "https://example.com/page",
+			ImageUrl:   "https://cdn.example.com/image.jpg", // different host
+			FaviconUrl: "https://example.com/favicon.ico",   // same host
+		}
+		whitelist := []string{"'self'"}
+
+		// when
+		applyCSPRules(whitelist, preview)
+
+		// then
+		assert.Empty(t, preview.ImageUrl)
+		assert.NotEmpty(t, preview.FaviconUrl)
+	})
+
+	t.Run("explicit host whitelist should allow matching hosts", func(t *testing.T) {
+		// given
+		preview := &model.LinkPreview{
+			Url:        "https://example.com/page",
+			ImageUrl:   "https://cdn.example.com/image.jpg",
+			FaviconUrl: "https://static.example.com/favicon.ico",
+		}
+		whitelist := []string{"cdn.example.com", "static.example.com"}
+
+		// when
+		applyCSPRules(whitelist, preview)
+
+		// then
+		assert.NotEmpty(t, preview.ImageUrl)
+		assert.NotEmpty(t, preview.FaviconUrl)
+	})
+
+	t.Run("explicit host whitelist should reject non-matching hosts", func(t *testing.T) {
+		// given
+		preview := &model.LinkPreview{
+			Url:        "https://example.com/page",
+			ImageUrl:   "https://malicious.com/image.jpg",        // not in whitelist
+			FaviconUrl: "https://static.example.com/favicon.ico", // in whitelist
+		}
+		whitelist := []string{"static.example.com", "allowed.com"}
+
+		// when
+		applyCSPRules(whitelist, preview)
+
+		// then
+		assert.Empty(t, preview.ImageUrl)
+		assert.NotEmpty(t, preview.FaviconUrl)
+	})
+
+	t.Run("combined 'self' and explicit hosts", func(t *testing.T) {
+		// given
+		preview := &model.LinkPreview{
+			Url:        "https://example.com/page",
+			ImageUrl:   "https://example.com/image.jpg",       // matches 'self'
+			FaviconUrl: "https://cdn.trusted.com/favicon.ico", // matches explicit host
+		}
+		whitelist := []string{"'self'", "cdn.trusted.com"}
+
+		// when
+		applyCSPRules(whitelist, preview)
+
+		// then
+		assert.NotEmpty(t, preview.ImageUrl)
+		assert.NotEmpty(t, preview.FaviconUrl)
+	})
+
+	t.Run("mixed wildcard and specific domains", func(t *testing.T) {
+		// given
+		preview := &model.LinkPreview{
+			Url:        "https://example.com/page",
+			ImageUrl:   "https://example.com/image.jpg",
+			FaviconUrl: "https://specific.com/favicon.ico",
+		}
+		whitelist := []string{"*", "specific.com", "'self'"}
+
+		// when
+		applyCSPRules(whitelist, preview)
+
+		// then
+		assert.NotEmpty(t, preview.ImageUrl)
+		assert.NotEmpty(t, preview.FaviconUrl)
+	})
+
+	t.Run("template in whitelist", func(t *testing.T) {
+		// given
+		preview := &model.LinkPreview{
+			ImageUrl:   "https://img.example.com/image.jpg",
+			FaviconUrl: "https://fav.example.com/favicon.ico",
+		}
+		whitelist := []string{"*.example.com"}
+
+		// when
+		applyCSPRules(whitelist, preview)
+
+		// then
+		assert.NotEmpty(t, preview.ImageUrl)
+		assert.NotEmpty(t, preview.FaviconUrl)
+	})
+
+	t.Run("schema in whitelist", func(t *testing.T) {
+		// given
+		preview := &model.LinkPreview{
+			ImageUrl:   "https://img.example.com/image.jpg",
+			FaviconUrl: "https://fav.example.com/favicon.ico",
+		}
+		whitelist := []string{"https:"}
+
+		// when
+		applyCSPRules(whitelist, preview)
+
+		// then
+		assert.NotEmpty(t, preview.ImageUrl)
+		assert.NotEmpty(t, preview.FaviconUrl)
 	})
 }
