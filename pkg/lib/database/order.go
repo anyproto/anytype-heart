@@ -31,6 +31,26 @@ type ObjectStore interface {
 
 type OrderMap map[domain.RelationKey]map[string]string // key -> objectId -> orderId
 
+func (m OrderMap) Set(key domain.RelationKey, objectId, orderId string) {
+	if m == nil {
+		m = OrderMap{}
+	}
+	if m[key] == nil {
+		m[key] = make(map[string]string)
+	}
+	m[key][objectId] = orderId
+}
+
+func (m OrderMap) Get(key domain.RelationKey, objectId string) (string, bool) {
+	if m == nil {
+		return "", false
+	}
+	if m[key] == nil {
+		return "", false
+	}
+	return m[key][objectId], true
+}
+
 type SetOrder []Order
 
 func (so SetOrder) Compare(a, b *domain.Details, orderIdsMap OrderMap) int {

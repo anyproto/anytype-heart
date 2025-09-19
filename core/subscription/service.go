@@ -466,6 +466,10 @@ func (s *spaceSubscriptions) subscribeForQuery(req SubscribeRequest, f *database
 	entries = append(entries, sub.entriesBeforeStarted...)
 	sub.entriesBeforeStarted = nil
 
+	if len(req.Sorts) > 0 {
+		s.ds.enregisterObjectSorts(sub.id, req.Sorts)
+	}
+
 	if req.AsyncInit {
 		err := sub.init(nil)
 		if err != nil {
@@ -486,10 +490,6 @@ func (s *spaceSubscriptions) subscribeForQuery(req SubscribeRequest, f *database
 		if err != nil {
 			return nil, fmt.Errorf("init sub entries: %w", err)
 		}
-	}
-
-	if len(req.Sorts) > 0 {
-		s.ds.enregisterObjectSorts(sub.id, req.Sorts)
 	}
 
 	prev, next := sub.counters()
@@ -541,7 +541,7 @@ func queryEntries(objectStore spaceindex.Store, f *database.Filters) ([]*entry, 
 }
 
 func (s *spaceSubscriptions) subscribeForCollection(req SubscribeRequest, f *database.Filters, filterDepIds []string) (*SubscribeResponse, error) {
-	sub, err := s.newCollectionSub(req.SubId, req.SpaceId, req.CollectionId, slice.StringsInto[domain.RelationKey](req.Keys), filterDepIds, f.FilterObj, f.Order, int(req.Limit), int(req.Offset), req.NoDepSubscription)
+	sub, err := s.newCollectionSub(req, f, filterDepIds)
 	if err != nil {
 		return nil, err
 	}
@@ -550,10 +550,6 @@ func (s *spaceSubscriptions) subscribeForCollection(req SubscribeRequest, f *dat
 	}
 	s.setSubscription(sub.sortedSub.id, sub)
 	prev, next := sub.counters()
-
-	if len(req.Sorts) > 0 {
-		s.ds.enregisterObjectSorts(sub.sortedSub.id, req.Sorts)
-	}
 
 	var depRecords, subRecords []*domain.Details
 	subRecords = sub.getActiveRecords()
