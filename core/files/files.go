@@ -112,13 +112,27 @@ type AddResult struct {
 }
 
 // Commit transaction of adding a file
+// it's safe to call Commit multiple times(including in parallel) as impl has internal locking
 func (r *AddResult) Commit() {
 	if r.Batch != nil {
 		if err := r.Batch.Commit(); err != nil {
 			log.Errorf("failed to commit batch: %v", err)
 		}
 	}
-	r.lock.Unlock()
+}
+
+// Commit transaction of adding a file
+func (r *AddResult) Lock() {
+	if r.lock != nil {
+		r.lock.Lock()
+	}
+}
+
+// Unlock transaction of adding a file
+func (r *AddResult) Unlock() {
+	if r.lock != nil {
+		r.lock.Unlock()
+	}
 }
 
 func (s *service) FileAdd(ctx context.Context, spaceId string, options ...AddOption) (*AddResult, error) {
@@ -164,6 +178,7 @@ func (s *service) FileAdd(ctx context.Context, spaceId string, options ...AddOpt
 		return nil, fmt.Errorf("failed to save file keys: %w", err)
 	}
 
+	addLock.Unlock()
 	return &AddResult{
 		FileId:         fileId,
 		EncryptionKeys: &fileKeys,
