@@ -12,7 +12,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/editor/template"
 	"github.com/anyproto/anytype-heart/core/block/migration"
-	"github.com/anyproto/anytype-heart/core/block/object/objectcreator"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
@@ -29,7 +28,6 @@ type Dashboard struct {
 	basic.AllOperations
 	blockcollection.Collection
 
-	objectCreator   objectcreator.Service
 	widgetsMigrator widgetsMigrator
 	objectStore     spaceindex.Store
 }
@@ -40,7 +38,6 @@ func (f *ObjectFactory) newDashboard(sb smartblock.SmartBlock, objectStore space
 		AllOperations:   basic.NewBasic(sb, objectStore, f.layoutConverter, nil),
 		Collection:      blockcollection.NewCollection(sb, objectStore),
 		objectStore:     objectStore,
-		objectCreator:   f.objectCreator,
 		widgetsMigrator: f.widgetsMigrator,
 	}
 }

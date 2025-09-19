@@ -23,7 +23,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/migration"
 	"github.com/anyproto/anytype-heart/core/block/object/idresolver"
-	"github.com/anyproto/anytype-heart/core/block/object/objectcreator"
 	"github.com/anyproto/anytype-heart/core/block/process"
 	"github.com/anyproto/anytype-heart/core/block/source"
 	"github.com/anyproto/anytype-heart/core/domain"
@@ -84,7 +83,6 @@ type ObjectFactory struct {
 	chatSubscriptionService chatsubscription.Service
 	statService             debugstat.StatService
 	backlinksUpdater        backlinks.UpdateWatcher
-	objectCreator           objectcreator.Service
 	widgetsMigrator         widgetsMigrator
 }
 
@@ -122,7 +120,6 @@ func (f *ObjectFactory) Init(a *app.App) (err error) {
 	f.chatSubscriptionService = app.MustComponent[chatsubscription.Service](a)
 	f.statService, err = app.GetComponent[debugstat.StatService](a)
 	f.backlinksUpdater = app.MustComponent[backlinks.UpdateWatcher](a)
-	f.objectCreator = app.MustComponent[objectcreator.Service](a)
 	f.widgetsMigrator = app.MustComponent[widgetsMigrator](a)
 	if err != nil {
 		f.statService = debugstat.NewNoOp()
