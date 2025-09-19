@@ -11,13 +11,16 @@ import (
 )
 
 const (
-	DefaultWidgetFavorite    = "favorite"
-	DefaultWidgetSet         = "set"
-	DefaultWidgetRecent      = "recent"
-	DefaultWidgetCollection  = "collection"
-	DefaultWidgetAll         = "allObjects"
-	DefaultWidgetRecentOpen  = "recentOpen"
-	widgetWrapperBlockSuffix = "-wrapper" // in case blockId is specifically provided to avoid bad tree merges
+	DefaultWidgetFavorite       = "favorite"
+	DefaultWidgetSet            = "set"
+	DefaultWidgetRecentlyEdited = "recent"
+	DefaultWidgetCollection     = "collection"
+
+	DefaultWidgetAll            = "allObjects"
+	DefaultWidgetRecentlyOpened = "recentOpen"
+	widgetWrapperBlockSuffix    = "-wrapper" // in case blockId is specifically provided to avoid bad tree merges
+
+
 )
 
 var ErrWidgetAlreadyExists = fmt.Errorf("widget with specified id already exists")
@@ -54,7 +57,7 @@ func FillImportFlags(link *model.BlockContentLink, widgetFlags *ImportWidgetFlag
 
 func IsPredefinedWidgetTargetId(targetID string) bool {
 	switch targetID {
-	case DefaultWidgetFavorite, DefaultWidgetSet, DefaultWidgetRecent, DefaultWidgetCollection:
+	case DefaultWidgetFavorite, DefaultWidgetSet, DefaultWidgetRecentlyEdited, DefaultWidgetCollection:
 		return true
 	default:
 		return false

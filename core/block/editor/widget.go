@@ -5,7 +5,6 @@ import (
 	"errors"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/basic"
-	"github.com/anyproto/anytype-heart/core/block/editor/converter"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/editor/template"
@@ -21,6 +20,11 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
+type widgetsMigrator interface {
+	MigrateWidgets(objectId string) error
+	AddToOldPinnedCollection(space smartblock.Space, favoriteIds []string) error
+}
+
 type WidgetObject struct {
 	smartblock.SmartBlock
 	basic.IHistory
@@ -29,14 +33,15 @@ type WidgetObject struct {
 	basic.Updatable
 	widget.Widget
 	basic.DetailsSettable
+
+	widgetsMigrator widgetsMigrator
 }
 
-func NewWidgetObject(
+func (f *ObjectFactory) newWidgetObject(
 	sb smartblock.SmartBlock,
 	objectStore spaceindex.Store,
-	layoutConverter converter.LayoutConverter,
 ) *WidgetObject {
-	bs := basic.NewBasic(sb, objectStore, layoutConverter, nil)
+	bs := basic.NewBasic(sb, objectStore, f.layoutConverter, nil)
 	return &WidgetObject{
 		SmartBlock:      sb,
 		Movable:         bs,
@@ -44,6 +49,7 @@ func NewWidgetObject(
 		DetailsSettable: bs,
 		IHistory:        basic.NewHistory(sb),
 		Widget:          widget.NewWidget(sb),
+		widgetsMigrator: f.widgetsMigrator,
 	}
 }
 
@@ -88,6 +94,14 @@ func (w *WidgetObject) Init(ctx *smartblock.InitContext) (err error) {
 	for _, id := range removeIds {
 		ctx.State.Unlink(id)
 	}
+
+	go func() {
+		mErr := w.widgetsMigrator.MigrateWidgets(w.Id())
+		if mErr != nil {
+			log.Errorf("widget: migration: %s", mErr.Error())
+		}
+	}()
+
 	return nil
 }
 

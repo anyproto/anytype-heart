@@ -88,13 +88,8 @@ func (s *Service) CreateCollection(details *domain.Details, flags []*model.Inter
 
 	newState := state.NewDoc("", nil).NewState().SetDetails(details)
 
-	tmpls := []template.StateTransformer{}
-
 	blockContent := template.MakeDataviewContent(true, nil, nil, "")
-	tmpls = append(tmpls,
-		template.WithDataview(blockContent, false),
-	)
-	template.InitTemplate(newState, tmpls...)
+	template.InitTemplate(newState, template.WithDataview(blockContent, false))
 
 	return coresb.SmartBlockTypePage, newState.CombinedDetails(), newState, nil
 }

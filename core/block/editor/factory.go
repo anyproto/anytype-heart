@@ -83,6 +83,7 @@ type ObjectFactory struct {
 	chatSubscriptionService chatsubscription.Service
 	statService             debugstat.StatService
 	backlinksUpdater        backlinks.UpdateWatcher
+	widgetsMigrator         widgetsMigrator
 }
 
 func NewObjectFactory() *ObjectFactory {
@@ -119,6 +120,7 @@ func (f *ObjectFactory) Init(a *app.App) (err error) {
 	f.chatSubscriptionService = app.MustComponent[chatsubscription.Service](a)
 	f.statService, err = app.GetComponent[debugstat.StatService](a)
 	f.backlinksUpdater = app.MustComponent[backlinks.UpdateWatcher](a)
+	f.widgetsMigrator = app.MustComponent[widgetsMigrator](a)
 	if err != nil {
 		f.statService = debugstat.NewNoOp()
 	}
@@ -209,7 +211,7 @@ func (f *ObjectFactory) New(space smartblock.Space, sbType coresb.SmartBlockType
 	case coresb.SmartBlockTypeArchive:
 		return NewArchive(sb, spaceIndex), nil
 	case coresb.SmartBlockTypeHome:
-		return NewDashboard(sb, spaceIndex, f.layoutConverter), nil
+		return f.newDashboard(sb, spaceIndex), nil
 	case coresb.SmartBlockTypeProfilePage,
 		coresb.SmartBlockTypeAnytypeProfile:
 		return f.newProfile(space.Id(), sb), nil
@@ -225,7 +227,7 @@ func (f *ObjectFactory) New(space smartblock.Space, sbType coresb.SmartBlockType
 	case coresb.SmartBlockTypeMissingObject:
 		return NewMissingObject(sb), nil
 	case coresb.SmartBlockTypeWidget:
-		return NewWidgetObject(sb, spaceIndex, f.layoutConverter), nil
+		return f.newWidgetObject(sb, spaceIndex), nil
 	case coresb.SmartBlockTypeNotificationObject:
 		return NewNotificationObject(sb), nil
 	case coresb.SmartBlockTypeSubObject:

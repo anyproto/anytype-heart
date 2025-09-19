@@ -9,7 +9,7 @@ import (
 )
 
 func transformQuickOption(protoFilter FilterRequest) []FilterRequest {
-	if protoFilter.QuickOption == 0 && protoFilter.Format != model.RelationFormat_date {
+	if protoFilter.QuickOption == 0 || protoFilter.Format != model.RelationFormat_date {
 		return []FilterRequest{protoFilter}
 	}
 

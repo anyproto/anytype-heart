@@ -297,8 +297,8 @@ func isDefaultWidget(target string) bool {
 	return slices.Contains([]string{
 		widget.DefaultWidgetFavorite,
 		widget.DefaultWidgetSet,
-		widget.DefaultWidgetRecent,
-		widget.DefaultWidgetRecentOpen,
+		widget.DefaultWidgetRecentlyEdited,
+		widget.DefaultWidgetRecentlyOpened,
 		widget.DefaultWidgetCollection,
 	}, target)
 }
