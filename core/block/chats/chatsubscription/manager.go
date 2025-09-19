@@ -47,7 +47,6 @@ type subscriptionManager struct {
 
 type subscription struct {
 	id               string
-	limit            int
 	withDependencies bool
 
 	// couldUseSessionContext determines if client could receive events synchronously in API responses
@@ -71,7 +70,6 @@ func (s *subscriptionManager) subscribe(req SubscribeLastMessagesRequest, initia
 	s.subscriptions[req.SubId] = &subscription{
 		id:                     req.SubId,
 		withDependencies:       req.WithDependencies,
-		limit:                  req.Limit,
 		couldUseSessionContext: req.CouldUseSessionContext,
 		state:                  st,
 	}
