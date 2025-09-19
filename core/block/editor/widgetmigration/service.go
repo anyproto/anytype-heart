@@ -32,6 +32,10 @@ import (
 
 const CName = "core.block.editor.widgetmigration"
 
+const internalKeyRecentlyEdited = "recently_edited"
+const internalKeyRecentlyOpened = "recently_opened"
+const internalKeyOldPinned = "old_pinned"
+
 var log = logging.Logger(CName)
 
 type Service interface {
@@ -111,7 +115,7 @@ func (s *service) migrateWidgets(widget smartblock.SmartBlock, migrateBlockRecen
 	var needApply bool
 
 	if migrateBlockRecentlyEdited != "" {
-		id, err := s.migrationCreateQuery(s.componentCtx, widget, "Recently edited", "recently_edited", bundle.RelationKeyLastModifiedDate, func(view *model.BlockContentDataviewView) {
+		id, err := s.migrationCreateQuery(s.componentCtx, widget, "Recently edited", internalKeyRecentlyEdited, bundle.RelationKeyLastModifiedDate, func(view *model.BlockContentDataviewView) {
 			spaceViewId, err := s.spaceService.SpaceViewId(widget.SpaceID())
 			if err != nil {
 				log.Errorf("widget migration: failed to get space view id: %v", err)
@@ -129,7 +133,17 @@ func (s *service) migrateWidgets(widget smartblock.SmartBlock, migrateBlockRecen
 				{
 					RelationKey: bundle.RelationKeyLastModifiedDate.String(),
 					Condition:   model.BlockContentDataviewFilter_Greater,
-					Value:       pbtypes.Int64(spaceViewDetails.Get(bundle.RelationKeyCreatedDate).Int64() + 3),
+					Value:       pbtypes.Int64(spaceViewDetails.Get(bundle.RelationKeyCreatedDate).Int64() + 60),
+				},
+				{
+					RelationKey: bundle.RelationKeyResolvedLayout.String(),
+					Condition:   model.BlockContentDataviewFilter_NotIn,
+					Value:       pbtypes.IntList(int(model.ObjectType_relation), int(model.ObjectType_relationOption), int(model.ObjectType_dashboard), int(model.ObjectType_space), int(model.ObjectType_spaceView)),
+				},
+				{
+					RelationKey: "type.uniqueKey",
+					Condition:   model.BlockContentDataviewFilter_NotEqual,
+					Value:       pbtypes.String(bundle.TypeKeyTemplate.URL()),
 				},
 			}
 		})
@@ -144,14 +158,43 @@ func (s *service) migrateWidgets(widget smartblock.SmartBlock, migrateBlockRecen
 	}
 
 	if migrateBlockRecentlyOpened != "" {
-		id, err := s.migrationCreateQuery(s.componentCtx, widget, "Recently opened", "recently_opened", bundle.RelationKeyLastOpenedDate, func(view *model.BlockContentDataviewView) {
+
+		id, err := s.migrationCreateQuery(s.componentCtx, widget, "Recently opened", internalKeyRecentlyOpened, bundle.RelationKeyLastOpenedDate, func(view *model.BlockContentDataviewView) {
 			view.Filters = []*model.BlockContentDataviewFilter{
 				{
 					RelationKey: bundle.RelationKeyLastOpenedDate.String(),
 					Condition:   model.BlockContentDataviewFilter_Greater,
 					Value:       pbtypes.Int64(0),
 				},
+				{
+					RelationKey: bundle.RelationKeyResolvedLayout.String(),
+					Condition:   model.BlockContentDataviewFilter_NotIn,
+					Value:       pbtypes.IntList(int(model.ObjectType_relation), int(model.ObjectType_relationOption), int(model.ObjectType_dashboard), int(model.ObjectType_space), int(model.ObjectType_spaceView)),
+				},
+				{
+					RelationKey: "type.uniqueKey",
+					Condition:   model.BlockContentDataviewFilter_NotEqual,
+					Value:       pbtypes.String(bundle.TypeKeyTemplate.URL()),
+				},
 			}
+
+			var ignoreIds []string
+			recentlyOpenedId, err := widget.Space().DeriveObjectID(s.componentCtx, domain.MustUniqueKey(coresb.SmartBlockTypePage, internalKeyRecentlyOpened))
+			if err == nil {
+				ignoreIds = append(ignoreIds, recentlyOpenedId)
+			}
+			recentlyEditedId, err := widget.Space().DeriveObjectID(s.componentCtx, domain.MustUniqueKey(coresb.SmartBlockTypePage, internalKeyRecentlyEdited))
+			if err == nil {
+				ignoreIds = append(ignoreIds, recentlyEditedId)
+			}
+			if len(ignoreIds) > 0 {
+				view.Filters = append(view.Filters, &model.BlockContentDataviewFilter{
+					RelationKey: bundle.RelationKeyId.String(),
+					Condition:   model.BlockContentDataviewFilter_NotIn,
+					Value:       pbtypes.StringList(ignoreIds),
+				})
+			}
+
 		})
 		if err != nil {
 			log.Errorf("widget migration: failed to create Recently opened object: %v", err)
@@ -250,7 +293,7 @@ func (s *service) migrateToCollection(widget smartblock.SmartBlock) (string, err
 		return "", fmt.Errorf("get ids: %w", err)
 	}
 
-	uk := domain.MustUniqueKey(coresb.SmartBlockTypePage, "old_pinned")
+	uk := domain.MustUniqueKey(coresb.SmartBlockTypePage, internalKeyOldPinned)
 
 	id, err := widget.Space().DeriveObjectID(context.Background(), uk)
 	if err != nil {
