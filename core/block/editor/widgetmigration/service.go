@@ -43,6 +43,11 @@ type Service interface {
 
 	MigrateWidgets(objectId string) error
 	AddToOldPinnedCollection(space smartblock.Space, favoriteIds []string) error
+	FixConflicts(spaceId string) error
+}
+
+type deleter interface {
+	DeleteObjectByFullID(id domain.FullID) error
 }
 
 type service struct {
@@ -53,6 +58,7 @@ type service struct {
 	objectCreator objectcreator.Service
 	spaceService  space.Service
 	objectStore   objectstore.ObjectStore
+	deleter       deleter
 }
 
 func New() Service {
@@ -82,6 +88,47 @@ func (s *service) Init(a *app.App) error {
 	s.objectCreator = app.MustComponent[objectcreator.Service](a)
 	s.spaceService = app.MustComponent[space.Service](a)
 	s.objectStore = app.MustComponent[objectstore.ObjectStore](a)
+	s.deleter = app.MustComponent[deleter](a)
+	return nil
+}
+
+func (s *service) FixConflicts(spaceId string) error {
+	spc, err := s.spaceService.Get(s.componentCtx, spaceId)
+	if err != nil {
+		return fmt.Errorf("get space: %w", err)
+	}
+
+	for _, cs := range []struct {
+		uk domain.UniqueKey
+	}{
+		{
+			uk: domain.MustUniqueKey(coresb.SmartBlockTypePage, internalKeyOldPinned),
+		},
+		{
+			uk: domain.MustUniqueKey(coresb.SmartBlockTypePage, internalKeyRecentlyOpened),
+		},
+		{
+			uk: domain.MustUniqueKey(coresb.SmartBlockTypePage, internalKeyRecentlyEdited),
+		},
+	} {
+		go func() {
+			id, err := spc.DeriveObjectID(s.componentCtx, cs.uk)
+			if err != nil {
+				fmt.Println("DERIVE OBJECT ID", err)
+				return
+			}
+
+			err = s.deleter.DeleteObjectByFullID(domain.FullID{
+				ObjectID: id,
+				SpaceID:  spaceId,
+			})
+			if err != nil {
+				fmt.Println("DELETE OBJECT", err)
+				return
+			}
+			fmt.Println("DELETED", id, cs.uk.InternalKey(), id)
+		}()
+	}
 	return nil
 }
 
@@ -159,7 +206,6 @@ func (s *service) migrateWidgets(widget smartblock.SmartBlock, migrateBlockRecen
 	}
 
 	if migrateBlockRecentlyOpened != "" {
-
 		id, err := s.migrationCreateQuery(s.componentCtx, widget, "Recently opened", internalKeyRecentlyOpened, bundle.RelationKeyLastOpenedDate, func(view *model.BlockContentDataviewView) {
 			view.Filters = []*model.BlockContentDataviewFilter{
 				{
@@ -259,7 +305,13 @@ func (s *service) migrationCreateQuery(ctx context.Context, widget smartblock.Sm
 	}
 	updateView(view)
 
-	template.InitTemplate(st, template.WithDataview(blockContent, false))
+	templates := []template.StateTransformer{
+		template.WithEmpty,
+		template.WithFeaturedRelationsBlock,
+		template.WithTitle,
+		template.WithDataview(blockContent, false),
+	}
+	template.InitTemplate(st, templates...)
 
 	id, _, err := s.objectCreator.CreateSmartBlockFromState(ctx, widget.SpaceID(), []domain.TypeKey{bundle.TypeKeySet}, st)
 	if errors.Is(err, treestorage.ErrTreeExists) {
@@ -308,17 +360,11 @@ func (s *service) migrateToCollection(widget smartblock.SmartBlock) (string, err
 		return "", fmt.Errorf("add to collection: %w", err)
 	}
 
-	st := state.NewDocWithUniqueKey("", nil, uk).(*state.State)
-	st.SetDetailAndBundledRelation(bundle.RelationKeyName, domain.String("Old pinned"))
-	st.SetDetailAndBundledRelation(bundle.RelationKeyResolvedLayout, domain.Int64(int64(model.ObjectType_collection)))
-	blockContent := template.MakeDataviewContent(true, nil, nil, "")
-	blockContent.Dataview.Views[0].Sorts = []*model.BlockContentDataviewSort{}
-	template.InitTemplate(st, template.WithDataview(blockContent, false))
-
-	_, _, err = s.objectCreator.CreateSmartBlockFromState(context.Background(), widget.SpaceID(), []domain.TypeKey{bundle.TypeKeyCollection}, st)
+	err = s.createOldPinnedCollection(widget.SpaceID())
 	if err != nil {
-		return "", fmt.Errorf("create pinned collection: %w", err)
+		return "", fmt.Errorf("create old pinned collection: %w", err)
 	}
+
 	err = s.addToMigratedCollection(widget.Space(), id, favoriteIds)
 	if err != nil {
 		return "", fmt.Errorf("add to collection after creating: %w", err)
@@ -326,12 +372,44 @@ func (s *service) migrateToCollection(widget smartblock.SmartBlock) (string, err
 	return id, nil
 }
 
+func (s *service) createOldPinnedCollection(spaceId string) error {
+	uk := domain.MustUniqueKey(coresb.SmartBlockTypePage, internalKeyOldPinned)
+	st := state.NewDocWithUniqueKey("", nil, uk).(*state.State)
+	st.SetDetailAndBundledRelation(bundle.RelationKeyName, domain.String("Old pinned"))
+	st.SetDetailAndBundledRelation(bundle.RelationKeyResolvedLayout, domain.Int64(int64(model.ObjectType_collection)))
+	blockContent := template.MakeDataviewContent(true, nil, nil, "")
+	blockContent.Dataview.Views[0].Sorts = []*model.BlockContentDataviewSort{}
+
+	templates := []template.StateTransformer{
+		template.WithEmpty,
+		template.WithFeaturedRelationsBlock,
+		template.WithTitle,
+		template.WithDataview(blockContent, false),
+	}
+	template.InitTemplate(st, templates...)
+
+	_, _, err := s.objectCreator.CreateSmartBlockFromState(context.Background(), spaceId, []domain.TypeKey{bundle.TypeKeyCollection}, st)
+	if err != nil {
+		return fmt.Errorf("create pinned collection: %w", err)
+	}
+	return nil
+}
+
 func (s *service) AddToOldPinnedCollection(space smartblock.Space, favoriteIds []string) error {
 	collId, err := space.DeriveObjectID(context.Background(), domain.MustUniqueKey(coresb.SmartBlockTypePage, internalKeyOldPinned))
 	if err != nil {
+
 		return fmt.Errorf("derive object id: %w", err)
 	}
-	return s.addToMigratedCollection(space, collId, favoriteIds)
+	err = s.addToMigratedCollection(space, collId, favoriteIds)
+	if err != nil {
+		fmt.Println("ERROR ADDING TO COLLECTION", err)
+		err = s.createOldPinnedCollection(space.Id())
+		if err != nil {
+			return fmt.Errorf("create old pinned collection: %w", err)
+		}
+	}
+	return nil
 }
 
 func (s *service) addToMigratedCollection(space smartblock.Space, collId string, favoriteIds []string) error {

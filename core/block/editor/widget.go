@@ -23,6 +23,7 @@ import (
 type widgetsMigrator interface {
 	MigrateWidgets(objectId string) error
 	AddToOldPinnedCollection(space smartblock.Space, favoriteIds []string) error
+	FixConflicts(spaceId string) error
 }
 
 type WidgetObject struct {
@@ -95,12 +96,12 @@ func (w *WidgetObject) Init(ctx *smartblock.InitContext) (err error) {
 		ctx.State.Unlink(id)
 	}
 
-	go func() {
-		mErr := w.widgetsMigrator.MigrateWidgets(w.Id())
-		if mErr != nil {
-			log.Errorf("widget: migration: %s", mErr.Error())
-		}
-	}()
+	// go func() {
+	// 	mErr := w.widgetsMigrator.MigrateWidgets(w.Id())
+	// 	if mErr != nil {
+	// 		log.Errorf("widget: migration: %s", mErr.Error())
+	// 	}
+	// }()
 
 	return nil
 }

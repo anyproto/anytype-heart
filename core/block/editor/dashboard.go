@@ -2,6 +2,7 @@ package editor
 
 import (
 	"errors"
+	"fmt"
 
 	"github.com/anyproto/any-sync/commonspace/object/tree/treestorage"
 	"github.com/anyproto/any-sync/commonspace/spacestorage"
@@ -47,6 +48,12 @@ func (p *Dashboard) Init(ctx *smartblock.InitContext) (err error) {
 	if err = p.SmartBlock.Init(ctx); err != nil {
 		return
 	}
+	go func() {
+		mErr := p.widgetsMigrator.FixConflicts(p.SpaceID())
+		if mErr != nil {
+			fmt.Println("FIXER: ", p.SpaceID(), mErr)
+		}
+	}()
 	p.AddHook(p.updateObjects, smartblock.HookAfterApply)
 	return p.updateObjects(smartblock.ApplyInfo{})
 
@@ -88,10 +95,10 @@ func (p *Dashboard) updateObjects(info smartblock.ApplyInfo) (err error) {
 			log.Errorf("favorite: can't update in store: %v", uErr)
 		}
 
-		addErr := p.widgetsMigrator.AddToOldPinnedCollection(p.Space(), favoritedIds)
-		if addErr != nil {
-			log.Errorf("favorite: can't add to old pinned collection: %v", addErr)
-		}
+		// addErr := p.widgetsMigrator.AddToOldPinnedCollection(p.Space(), favoritedIds)
+		// if addErr != nil {
+		// 	log.Errorf("favorite: can't add to old pinned collection: %v", addErr)
+		// }
 	}()
 
 	return nil
