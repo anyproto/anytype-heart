@@ -19,7 +19,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/cache"
 	"github.com/anyproto/anytype-heart/core/block/detailservice"
 	"github.com/anyproto/anytype-heart/core/block/editor/basic"
-	"github.com/anyproto/anytype-heart/core/block/editor/collection"
+	"github.com/anyproto/anytype-heart/core/block/editor/blockcollection"
 	"github.com/anyproto/anytype-heart/core/block/editor/file"
 	"github.com/anyproto/anytype-heart/core/block/editor/layout"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
@@ -34,6 +34,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/domain/objectorigin"
 	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/core/files/fileobject"
+	"github.com/anyproto/anytype-heart/core/files/fileoffloader"
 	"github.com/anyproto/anytype-heart/core/files/fileuploader"
 	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pb"
@@ -104,6 +105,7 @@ type Service struct {
 	detailsService       detailservice.Service
 
 	fileUploaderService fileuploader.Service
+	fileOffloader       fileoffloader.Service
 
 	predefinedObjectWasMissing bool
 	openedObjs                 *openedObjects
@@ -138,6 +140,7 @@ func (s *Service) Init(a *app.App) (err error) {
 	s.resolver = a.MustComponent(idresolver.CName).(idresolver.Resolver)
 	s.fileObjectService = app.MustComponent[fileobject.Service](a)
 	s.fileUploaderService = app.MustComponent[fileuploader.Service](a)
+	s.fileOffloader = app.MustComponent[fileoffloader.Service](a)
 	s.tempDirProvider = app.MustComponent[core.TempDirProvider](a)
 	s.builtinObjectService = app.MustComponent[builtinObjects](a)
 	s.detailsService = app.MustComponent[detailservice.Service](a)
@@ -432,12 +435,6 @@ func (s *Service) SpaceInitChat(ctx context.Context, spaceId string) error {
 	if err != nil {
 		return fmt.Errorf("apply chatId to workspace: %w", err)
 	}
-
-	err = s.autoInstallSpaceChatWidget(ctx, spc)
-	if err != nil {
-		return fmt.Errorf("install chat widget: %w", err)
-	}
-
 	return nil
 }
 
@@ -513,7 +510,7 @@ func (s *Service) DeleteArchivedObject(id string) (err error) {
 		return fmt.Errorf("cannot delete archive object")
 	}
 	return cache.Do(s, spc.DerivedIDs().Archive, func(b smartblock.SmartBlock) error {
-		archive, ok := b.(collection.Collection)
+		archive, ok := b.(blockcollection.Collection)
 		if !ok {
 			return fmt.Errorf("unexpected archive block type: %T", b)
 		}

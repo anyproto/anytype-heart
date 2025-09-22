@@ -77,7 +77,7 @@ func (sb *smartBlock) getDetailsFromStore() (*domain.Details, error) {
 func (sb *smartBlock) appendPendingDetails(details *domain.Details) (resultDetails *domain.Details, hasPendingLocalDetails bool) {
 	// Consume pending details
 	err := sb.spaceIndex.UpdatePendingLocalDetails(sb.Id(), func(pending *domain.Details) (*domain.Details, error) {
-		if pending.Len() > 0 {
+		if pending.Len() > 1 { // more than just id
 			hasPendingLocalDetails = true
 		}
 		details = details.Merge(pending)

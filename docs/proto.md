@@ -701,6 +701,10 @@
     - [Rpc.Device.SetName.Response](#anytype-Rpc-Device-SetName-Response)
     - [Rpc.Device.SetName.Response.Error](#anytype-Rpc-Device-SetName-Response-Error)
     - [Rpc.File](#anytype-Rpc-File)
+    - [Rpc.File.DiscardPreload](#anytype-Rpc-File-DiscardPreload)
+    - [Rpc.File.DiscardPreload.Request](#anytype-Rpc-File-DiscardPreload-Request)
+    - [Rpc.File.DiscardPreload.Response](#anytype-Rpc-File-DiscardPreload-Response)
+    - [Rpc.File.DiscardPreload.Response.Error](#anytype-Rpc-File-DiscardPreload-Response-Error)
     - [Rpc.File.Download](#anytype-Rpc-File-Download)
     - [Rpc.File.Download.Request](#anytype-Rpc-File-Download-Request)
     - [Rpc.File.Download.Response](#anytype-Rpc-File-Download-Response)
@@ -1166,6 +1170,10 @@
     - [Rpc.ObjectType.ResolveLayoutConflicts.Request](#anytype-Rpc-ObjectType-ResolveLayoutConflicts-Request)
     - [Rpc.ObjectType.ResolveLayoutConflicts.Response](#anytype-Rpc-ObjectType-ResolveLayoutConflicts-Response)
     - [Rpc.ObjectType.ResolveLayoutConflicts.Response.Error](#anytype-Rpc-ObjectType-ResolveLayoutConflicts-Response-Error)
+    - [Rpc.ObjectType.SetOrder](#anytype-Rpc-ObjectType-SetOrder)
+    - [Rpc.ObjectType.SetOrder.Request](#anytype-Rpc-ObjectType-SetOrder-Request)
+    - [Rpc.ObjectType.SetOrder.Response](#anytype-Rpc-ObjectType-SetOrder-Response)
+    - [Rpc.ObjectType.SetOrder.Response.Error](#anytype-Rpc-ObjectType-SetOrder-Response-Error)
     - [Rpc.Process](#anytype-Rpc-Process)
     - [Rpc.Process.Cancel](#anytype-Rpc-Process-Cancel)
     - [Rpc.Process.Cancel.Request](#anytype-Rpc-Process-Cancel-Request)
@@ -1553,6 +1561,7 @@
     - [Rpc.Device.List.Response.Error.Code](#anytype-Rpc-Device-List-Response-Error-Code)
     - [Rpc.Device.NetworkState.Set.Response.Error.Code](#anytype-Rpc-Device-NetworkState-Set-Response-Error-Code)
     - [Rpc.Device.SetName.Response.Error.Code](#anytype-Rpc-Device-SetName-Response-Error-Code)
+    - [Rpc.File.DiscardPreload.Response.Error.Code](#anytype-Rpc-File-DiscardPreload-Response-Error-Code)
     - [Rpc.File.Download.Response.Error.Code](#anytype-Rpc-File-Download-Response-Error-Code)
     - [Rpc.File.Drop.Response.Error.Code](#anytype-Rpc-File-Drop-Response-Error-Code)
     - [Rpc.File.ListOffload.Response.Error.Code](#anytype-Rpc-File-ListOffload-Response-Error-Code)
@@ -1669,6 +1678,7 @@
     - [Rpc.ObjectType.Relation.Add.Response.Error.Code](#anytype-Rpc-ObjectType-Relation-Add-Response-Error-Code)
     - [Rpc.ObjectType.Relation.Remove.Response.Error.Code](#anytype-Rpc-ObjectType-Relation-Remove-Response-Error-Code)
     - [Rpc.ObjectType.ResolveLayoutConflicts.Response.Error.Code](#anytype-Rpc-ObjectType-ResolveLayoutConflicts-Response-Error-Code)
+    - [Rpc.ObjectType.SetOrder.Response.Error.Code](#anytype-Rpc-ObjectType-SetOrder-Response-Error-Code)
     - [Rpc.Process.Cancel.Response.Error.Code](#anytype-Rpc-Process-Cancel-Response-Error-Code)
     - [Rpc.Process.Subscribe.Response.Error.Code](#anytype-Rpc-Process-Subscribe-Response-Error-Code)
     - [Rpc.Process.Unsubscribe.Response.Error.Code](#anytype-Rpc-Process-Unsubscribe-Response-Error-Code)
@@ -1915,7 +1925,6 @@
     - [Event.Process.New](#anytype-Event-Process-New)
     - [Event.Process.Update](#anytype-Event-Process-Update)
     - [Event.Space](#anytype-Event-Space)
-    - [Event.Space.AutoWidgetAdded](#anytype-Event-Space-AutoWidgetAdded)
     - [Event.Space.SyncStatus](#anytype-Event-Space-SyncStatus)
     - [Event.Space.SyncStatus.Update](#anytype-Event-Space-SyncStatus-Update)
     - [Event.Status](#anytype-Event-Status)
@@ -1937,6 +1946,7 @@
     - [Model.Process.Export](#anytype-Model-Process-Export)
     - [Model.Process.Import](#anytype-Model-Process-Import)
     - [Model.Process.Migration](#anytype-Model-Process-Migration)
+    - [Model.Process.PreloadFile](#anytype-Model-Process-PreloadFile)
     - [Model.Process.Progress](#anytype-Model-Process-Progress)
     - [Model.Process.SaveFile](#anytype-Model-Process-SaveFile)
     - [ResponseEvent](#anytype-ResponseEvent)
@@ -2284,6 +2294,7 @@
 | ObjectTypeRecommendedFeaturedRelationsSet | [Rpc.ObjectType.Recommended.FeaturedRelationsSet.Request](#anytype-Rpc-ObjectType-Recommended-FeaturedRelationsSet-Request) | [Rpc.ObjectType.Recommended.FeaturedRelationsSet.Response](#anytype-Rpc-ObjectType-Recommended-FeaturedRelationsSet-Response) |  |
 | ObjectTypeListConflictingRelations | [Rpc.ObjectType.ListConflictingRelations.Request](#anytype-Rpc-ObjectType-ListConflictingRelations-Request) | [Rpc.ObjectType.ListConflictingRelations.Response](#anytype-Rpc-ObjectType-ListConflictingRelations-Response) |  |
 | ObjectTypeResolveLayoutConflicts | [Rpc.ObjectType.ResolveLayoutConflicts.Request](#anytype-Rpc-ObjectType-ResolveLayoutConflicts-Request) | [Rpc.ObjectType.ResolveLayoutConflicts.Response](#anytype-Rpc-ObjectType-ResolveLayoutConflicts-Response) |  |
+| ObjectTypeSetOrder | [Rpc.ObjectType.SetOrder.Request](#anytype-Rpc-ObjectType-SetOrder-Request) | [Rpc.ObjectType.SetOrder.Response](#anytype-Rpc-ObjectType-SetOrder-Response) |  |
 | HistoryShowVersion | [Rpc.History.ShowVersion.Request](#anytype-Rpc-History-ShowVersion-Request) | [Rpc.History.ShowVersion.Response](#anytype-Rpc-History-ShowVersion-Response) |  |
 | HistoryGetVersions | [Rpc.History.GetVersions.Request](#anytype-Rpc-History-GetVersions-Request) | [Rpc.History.GetVersions.Response](#anytype-Rpc-History-GetVersions-Response) |  |
 | HistorySetVersion | [Rpc.History.SetVersion.Request](#anytype-Rpc-History-SetVersion-Request) | [Rpc.History.SetVersion.Response](#anytype-Rpc-History-SetVersion-Response) |  |
@@ -2293,6 +2304,7 @@
 | FileListOffload | [Rpc.File.ListOffload.Request](#anytype-Rpc-File-ListOffload-Request) | [Rpc.File.ListOffload.Response](#anytype-Rpc-File-ListOffload-Response) |  |
 | FileUpload | [Rpc.File.Upload.Request](#anytype-Rpc-File-Upload-Request) | [Rpc.File.Upload.Response](#anytype-Rpc-File-Upload-Response) |  |
 | FileDownload | [Rpc.File.Download.Request](#anytype-Rpc-File-Download-Request) | [Rpc.File.Download.Response](#anytype-Rpc-File-Download-Response) |  |
+| FileDiscardPreload | [Rpc.File.DiscardPreload.Request](#anytype-Rpc-File-DiscardPreload-Request) | [Rpc.File.DiscardPreload.Response](#anytype-Rpc-File-DiscardPreload-Response) |  |
 | FileDrop | [Rpc.File.Drop.Request](#anytype-Rpc-File-Drop-Request) | [Rpc.File.Drop.Response](#anytype-Rpc-File-Drop-Response) |  |
 | FileSpaceUsage | [Rpc.File.SpaceUsage.Request](#anytype-Rpc-File-SpaceUsage-Request) | [Rpc.File.SpaceUsage.Response](#anytype-Rpc-File-SpaceUsage-Response) |  |
 | FileNodeUsage | [Rpc.File.NodeUsage.Request](#anytype-Rpc-File-NodeUsage-Request) | [Rpc.File.NodeUsage.Response](#anytype-Rpc-File-NodeUsage-Response) |  |
@@ -12587,6 +12599,63 @@ Get marks list in the selected range in text block.
 
 
 
+<a name="anytype-Rpc-File-DiscardPreload"></a>
+
+### Rpc.File.DiscardPreload
+
+
+
+
+
+
+
+<a name="anytype-Rpc-File-DiscardPreload-Request"></a>
+
+### Rpc.File.DiscardPreload.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| fileId | [string](#string) |  |  |
+| spaceId | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-File-DiscardPreload-Response"></a>
+
+### Rpc.File.DiscardPreload.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.File.DiscardPreload.Response.Error](#anytype-Rpc-File-DiscardPreload-Response-Error) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-File-DiscardPreload-Response-Error"></a>
+
+### Rpc.File.DiscardPreload.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.File.DiscardPreload.Response.Error.Code](#anytype-Rpc-File-DiscardPreload-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
 <a name="anytype-Rpc-File-Download"></a>
 
 ### Rpc.File.Download
@@ -13126,6 +13195,8 @@ Get marks list in the selected range in text block.
 | details | [google.protobuf.Struct](#google-protobuf-Struct) |  | additional details for file object |
 | origin | [model.ObjectOrigin](#anytype-model-ObjectOrigin) |  |  |
 | imageKind | [model.ImageKind](#anytype-model-ImageKind) |  |  |
+| preloadOnly | [bool](#bool) |  | if true, only async preload the file without creating object |
+| preloadFileId | [string](#string) |  | if set, reuse already preloaded file with this id. May block if async preload operation is not finished yet |
 
 
 
@@ -13143,6 +13214,7 @@ Get marks list in the selected range in text block.
 | error | [Rpc.File.Upload.Response.Error](#anytype-Rpc-File-Upload-Response-Error) |  |  |
 | objectId | [string](#string) |  |  |
 | details | [google.protobuf.Struct](#google-protobuf-Struct) |  |  |
+| preloadFileId | [string](#string) |  | returned when preloadOnly is true, can be passed back in subsequent requests |
 
 
 
@@ -16351,6 +16423,7 @@ DEPRECATED, GO-1926 |
 | path | [string](#string) | repeated |  |
 | createDirectoryPages | [bool](#bool) |  |  |
 | includePropertiesAsBlock | [bool](#bool) |  |  |
+| noCollection | [bool](#bool) |  |  |
 
 
 
@@ -16476,6 +16549,7 @@ DEPRECATED, GO-1926 |
 | url | [string](#string) |  |  |
 | title | [string](#string) |  |  |
 | isNewSpace | [bool](#bool) |  |  |
+| isAi | [bool](#bool) |  |  |
 
 
 
@@ -19405,6 +19479,64 @@ Available undo/redo operations
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | code | [Rpc.ObjectType.ResolveLayoutConflicts.Response.Error.Code](#anytype-Rpc-ObjectType-ResolveLayoutConflicts-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-ObjectType-SetOrder"></a>
+
+### Rpc.ObjectType.SetOrder
+
+
+
+
+
+
+
+<a name="anytype-Rpc-ObjectType-SetOrder-Request"></a>
+
+### Rpc.ObjectType.SetOrder.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| spaceId | [string](#string) |  |  |
+| typeIds | [string](#string) | repeated |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-ObjectType-SetOrder-Response"></a>
+
+### Rpc.ObjectType.SetOrder.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.ObjectType.SetOrder.Response.Error](#anytype-Rpc-ObjectType-SetOrder-Response-Error) |  |  |
+| orderIds | [string](#string) | repeated | final list of order ids |
+
+
+
+
+
+
+<a name="anytype-Rpc-ObjectType-SetOrder-Response-Error"></a>
+
+### Rpc.ObjectType.SetOrder.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.ObjectType.SetOrder.Response.Error.Code](#anytype-Rpc-ObjectType-SetOrder-Response-Error-Code) |  |  |
 | description | [string](#string) |  |  |
 
 
@@ -24818,6 +24950,19 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 
 
 
+<a name="anytype-Rpc-File-DiscardPreload-Response-Error-Code"></a>
+
+### Rpc.File.DiscardPreload.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
+
+
+
 <a name="anytype-Rpc-File-Download-Response-Error-Code"></a>
 
 ### Rpc.File.Download.Response.Error.Code
@@ -26440,6 +26585,19 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 <a name="anytype-Rpc-ObjectType-ResolveLayoutConflicts-Response-Error-Code"></a>
 
 ### Rpc.ObjectType.ResolveLayoutConflicts.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
+
+
+
+<a name="anytype-Rpc-ObjectType-SetOrder-Response-Error-Code"></a>
+
+### Rpc.ObjectType.SetOrder.Response.Error.Code
 
 
 | Name | Number | Description |
@@ -29815,7 +29973,6 @@ to its type.
 | payloadBroadcast | [Event.Payload.Broadcast](#anytype-Event-Payload-Broadcast) |  |  |
 | membershipUpdate | [Event.Membership.Update](#anytype-Event-Membership-Update) |  |  |
 | spaceSyncStatusUpdate | [Event.Space.SyncStatus.Update](#anytype-Event-Space-SyncStatus-Update) |  |  |
-| spaceAutoWidgetAdded | [Event.Space.AutoWidgetAdded](#anytype-Event-Space-AutoWidgetAdded) |  |  |
 | p2pStatusUpdate | [Event.P2PStatus.Update](#anytype-Event-P2PStatus-Update) |  |  |
 | importFinish | [Event.Import.Finish](#anytype-Event-Import-Finish) |  |  |
 | chatAdd | [Event.Chat.Add](#anytype-Event-Chat-Add) |  |  |
@@ -30287,23 +30444,6 @@ Removes document from subscription
 
 
 
-<a name="anytype-Event-Space-AutoWidgetAdded"></a>
-
-### Event.Space.AutoWidgetAdded
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| targetId | [string](#string) |  |  |
-| targetName | [string](#string) |  | pluralName (if exists) for types, fallback to |
-| widgetBlockId | [string](#string) |  | name. Special cases for &#34;bin&#34; and &#34;favorites&#34; |
-
-
-
-
-
-
 <a name="anytype-Event-Space-SyncStatus"></a>
 
 ### Event.Space.SyncStatus
@@ -30573,6 +30713,7 @@ scenario: Precondition: user A and user B opened the same block
 | export | [Model.Process.Export](#anytype-Model-Process-Export) |  |  |
 | saveFile | [Model.Process.SaveFile](#anytype-Model-Process-SaveFile) |  |  |
 | migration | [Model.Process.Migration](#anytype-Model-Process-Migration) |  |  |
+| preloadFile | [Model.Process.PreloadFile](#anytype-Model-Process-PreloadFile) |  |  |
 | error | [string](#string) |  |  |
 
 
@@ -30613,6 +30754,16 @@ scenario: Precondition: user A and user B opened the same block
 <a name="anytype-Model-Process-Migration"></a>
 
 ### Model.Process.Migration
+
+
+
+
+
+
+
+<a name="anytype-Model-Process-PreloadFile"></a>
+
+### Model.Process.PreloadFile
 
 
 
@@ -31758,6 +31909,7 @@ Used to decode block meta only, without the content itself
 | reactions | [ChatMessage.Reactions](#anytype-model-ChatMessage-Reactions) |  | Reactions to the message |
 | read | [bool](#bool) |  | Message read status |
 | mentionRead | [bool](#bool) |  |  |
+| hasMention | [bool](#bool) |  |  |
 | synced | [bool](#bool) |  |  |
 
 

@@ -282,6 +282,7 @@ func TestState_InsertTo(t *testing.T) {
 func Test_addChangesForSideMoving(t *testing.T) {
 	makeState := func() *State {
 		return buildStateFromAST(
+			t,
 			Root(
 				ID("root"),
 				Children(

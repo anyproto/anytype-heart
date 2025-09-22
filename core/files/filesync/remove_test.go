@@ -11,7 +11,7 @@ import (
 )
 
 func TestCancelDeletion(t *testing.T) {
-	s := newFixtureNotStarted(t, 100000000)
+	s := newFixture(t, 100000000)
 	err := s.Init(s.a)
 	require.NoError(t, err)
 

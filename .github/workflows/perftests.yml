@@ -113,7 +113,7 @@ jobs:
           footer: "Linked Repo <{repo_url}|{repo}>"
           message_format: "{emoji} *{job}* from *{workflow}* {status_message} in <{repo_url}|{repo}>"
         env:
-          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_ALERT_WEBHOOK }}
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL_ALERTS }}
 
   # perftests-windows:
   #   timeout-minutes: 60

@@ -12,6 +12,7 @@ const (
 	RelationKeyToIdPrefix          = "rel-" //
 	ObjectTypeKeyToIdPrefix        = "ot-"  //
 	ObjectTypeAllViewId            = "all"
+	ObjectTypeAllTableViewId       = "table" // used for types created during import and ai-onboarding
 
 	BundledRelationURLPrefix = "_br"
 

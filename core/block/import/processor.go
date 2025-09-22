@@ -166,8 +166,6 @@ func (p *importProcessor) handleBuiltinConverterImport(ctx context.Context) *Imp
 		return p.response
 	}
 
-	p.createTypeWidgets(response.TypesCreated)
-
 	if err := p.initConversionFields(response, allErrors); err != nil {
 		allErrors.Add(fmt.Errorf("failed to build import context: %w", err))
 		p.response.Err = allErrors.GetResultError(p.request.Type)
@@ -188,13 +186,6 @@ func (p *importProcessor) handleBuiltinConverterImport(ctx context.Context) *Imp
 	p.response.Err = resultErr
 
 	return p.response
-}
-
-func (p *importProcessor) createTypeWidgets(typeKeys []domain.TypeKey) {
-	err := p.deps.blockService.CreateTypeWidgetsIfMissing(context.Background(), p.request.SpaceId, typeKeys, true)
-	if err != nil {
-		log.Errorf("failed to create widget from root collection, error: %s", err.Error())
-	}
 }
 
 func (p *importProcessor) initConversionFields(converterResponse *common.Response, errors *common.ConvertError) error {
