@@ -90,7 +90,7 @@ func (a *aclObjectManager) StatType() string {
 func (a *aclObjectManager) UpdateAcl(aclList list.AclList) {
 	err := a.processAcl()
 	if err != nil {
-		log.Error("error processing acl", zap.Error(err))
+		log.Error("error processing acl foo", zap.Error(err))
 	}
 }
 
@@ -154,7 +154,7 @@ func (a *aclObjectManager) process() {
 	defer acl.RUnlock()
 	err := a.processAcl()
 	if err != nil {
-		log.Error("error processing acl", zap.Error(err))
+		log.Error("error processing acl bar", zap.Error(err))
 		return
 	}
 }
@@ -191,6 +191,7 @@ func (a *aclObjectManager) processAcl() (err error) {
 		}
 		return aclState.GetMetadata(key, true)
 	}
+	fmt.Printf("-- afterDecrypt.\n")
 	states := aclState.CurrentAccounts()
 	// for tests make sure that owner comes first
 	sortStates(states)
@@ -209,6 +210,7 @@ func (a *aclObjectManager) processAcl() (err error) {
 	}
 
 	statusAclHeadId := a.status.GetLatestAclHeadId()
+	fmt.Printf("-- statusAclHeadId: %s\n", statusAclHeadId)
 	upToDate = statusAclHeadId == "" || acl.HasHead(statusAclHeadId)
 	if a.guestKey != nil {
 		el, res := lo.Find(states, func(item list.AccountState) bool {
@@ -330,6 +332,7 @@ func decryptAll(states []list.AccountState, decrypt func(key crypto.PubKey) ([]b
 	for _, state := range states {
 		res, err := decrypt(state.PubKey)
 		if err != nil {
+			fmt.Printf("-- decryptErr: %#v\n", state)
 			return nil, err
 		}
 		state.RequestMetadata = res

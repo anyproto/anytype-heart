@@ -2,18 +2,41 @@ package space
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/anyproto/any-sync/util/crypto"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space/clientspace"
 	"github.com/anyproto/anytype-heart/space/internal/spaceprocess/loader"
 	space "github.com/anyproto/anytype-heart/space/spacecore"
-	"github.com/anyproto/anytype-heart/space/spacecore/storage/anystorage"
 
 	"github.com/anyproto/anytype-heart/space/spaceinfo"
 )
 
+func (s *service) createOneToOne(ctx context.Context, description *spaceinfo.SpaceDescription) (sp clientspace.Space, err error) {
+	log.Warn("-- createOneToOne")
+	_, bPk, err := crypto.GenerateRandomEd25519KeyPair()
+	if err != nil {
+		return
+	}
+
+	fmt.Printf("-- ctrl: \n")
+	ctrl, err := s.factory.CreateOneToOneSpace(ctx, bPk)
+	if err != nil {
+		return nil, err
+	}
+
+	fmt.Printf("-- ctrl wait load: \n")
+	sp, err = ctrl.Current().(loader.LoadWaiter).WaitLoad(ctx)
+	s.spaceControllers[ctrl.SpaceId()] = ctrl
+	// s.updater.UpdateCoordinatorStatus()
+
+	fmt.Printf("-- ctrl wait load ret: \n")
+	return
+
+}
 func (s *service) create(ctx context.Context, description *spaceinfo.SpaceDescription) (sp clientspace.Space, err error) {
+
 	var spaceType = space.SpaceType
 	if description != nil && description.SpaceUxType == model.SpaceUxType_Chat {
 		spaceType = space.ChatSpaceType
@@ -54,15 +77,5 @@ func (s *service) create(ctx context.Context, description *spaceinfo.SpaceDescri
 	s.mu.Unlock()
 	s.updater.UpdateCoordinatorStatus()
 
-	// todo: use CreateAndSetOneToOneSpace
-	if bPriv, bPk, genErr := crypto.GenerateRandomEd25519KeyPair(); genErr == nil {
-		_ = bPriv // not used; only need public key
-		if spOne, derr := s.spaceCore.DeriveOneToOneSpace(ctx, bPk); derr == nil {
-			_ = spOne.Storage().(anystorage.ClientSpaceStorage).MarkSpaceCreated(ctx)
-			info := spaceinfo.NewSpacePersistentInfo(spOne.Id())
-			info.SetAccountStatus(spaceinfo.AccountStatusUnknown)
-			_ = s.techSpace.SpaceViewCreate(ctx, spOne.Id(), true, info, nil)
-		}
-	}
 	return
 }

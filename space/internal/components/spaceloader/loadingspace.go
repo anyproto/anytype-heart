@@ -3,6 +3,7 @@ package spaceloader
 import (
 	"context"
 	"errors"
+	"fmt"
 	"sync"
 	"time"
 
@@ -70,6 +71,7 @@ func (ls *loadingSpace) setLoadErr(err error) {
 }
 
 func (ls *loadingSpace) loadRetry(ctx context.Context) {
+	fmt.Printf("load retry is called\n")
 	defer func() {
 		if err := ls.spaceServiceProvider.onLoad(ls.space, ls.getLoadErr()); err != nil {
 			log.WarnCtx(ctx, "space onLoad error", zap.Error(err), zap.Error(ls.getLoadErr()))
@@ -118,12 +120,16 @@ func (ls *loadingSpace) isNotRetryable(err error) bool {
 }
 
 func (ls *loadingSpace) load(ctx context.Context) (ok bool, err error) {
+	fmt.Printf("-- load is called\n")
 	sp, err := ls.spaceServiceProvider.open(ctx)
+
 	if err != nil {
+		fmt.Printf("load error: %w", err)
 		notRetryable := ls.isNotRetryable(err)
 		ls.logErrors(ctx, err, false, notRetryable)
 		return notRetryable, err
 	}
+	fmt.Printf("-- sp.Id(): %s\n", sp.Id())
 	err = sp.WaitMandatoryObjects(ctx)
 	if err != nil {
 		notRetryable := ls.isNotRetryable(err)

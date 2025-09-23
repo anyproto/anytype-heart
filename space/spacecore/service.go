@@ -17,6 +17,7 @@ import (
 	"github.com/anyproto/any-sync/commonspace/clientspaceproto"
 	commonconfig "github.com/anyproto/any-sync/commonspace/config"
 	"github.com/anyproto/any-sync/commonspace/object/accountdata"
+	"github.com/anyproto/any-sync/commonspace/object/acl/aclrecordproto"
 	"github.com/anyproto/any-sync/commonspace/peermanager"
 	"github.com/anyproto/any-sync/commonspace/spacestorage"
 	"github.com/anyproto/any-sync/commonspace/spacesyncproto"
@@ -71,7 +72,7 @@ type SpaceCoreService interface {
 	Create(ctx context.Context, spaceType string, replicationKey uint64, metadataPayload []byte) (*AnySpace, error)
 	Derive(ctx context.Context, spaceType string) (space *AnySpace, err error)
 	DeriveID(ctx context.Context, spaceType string) (id string, err error)
-	DeriveOneToOneSpace(ctx context.Context, bPk crypto.PubKey) (space *AnySpace, err error)
+	CreateOneToOneSpace(ctx context.Context, bPk crypto.PubKey) (space *AnySpace, err error)
 	Delete(ctx context.Context, spaceId string) (err error)
 	Get(ctx context.Context, id string) (*AnySpace, error)
 	Pick(ctx context.Context, id string) (*AnySpace, error)
@@ -149,17 +150,71 @@ func (s *service) Derive(ctx context.Context, spaceType string) (space *AnySpace
 	return obj.(*AnySpace), nil
 }
 
-func (s *service) DeriveOneToOneSpace(ctx context.Context, bPk crypto.PubKey) (space *AnySpace, err error) {
-	sharedSk, err := crypto.GenerateSharedKey(s.wallet.GetAccountPrivkey(), bPk)
-	payload := spacepayloads.SpaceDerivePayload{
-		SigningKey: sharedSk,
-		MasterKey:  sharedSk,
-		SpaceType:  OneToOneSpaceType,
-	}
-	id, err := s.commonSpace.DeriveSpace(ctx, payload)
+func (s *service) CreateOneToOneSpace(ctx context.Context, bPk crypto.PubKey) (space *AnySpace, err error) {
+	sharedSk, err := crypto.GenerateSharedKey(s.wallet.GetAccountPrivkey(), bPk, crypto.AnysyncOneToOneSpacePath)
 	if err != nil {
-		return nil, err
+		return
 	}
+
+	sharedKeyBytes, err := sharedSk.Raw()
+	if err != nil {
+		err = fmt.Errorf("CreateOneToOne: error getting sharedSk.Raw(): %w", err)
+		return
+	}
+
+	readKey, err := crypto.DeriveSymmetricKey(sharedKeyBytes, crypto.AnysyncReadOneToOneSpacePath)
+	if err != nil {
+		err = fmt.Errorf("CreateOneToOne: error deriving readKey(): %w", err)
+		return
+	}
+
+	metadata := []byte{}
+
+	metadataSharedKey, err := crypto.GenerateSharedKey(s.wallet.GetAccountPrivkey(), bPk, crypto.AnysyncMetadataOneToOnePath)
+	if err != nil {
+		err = fmt.Errorf("CeriveOneToOne: metadataSharedKey: %w", err)
+		return
+	}
+
+	writers := make([][]byte, 2)
+
+	// todo: should be sorted?
+	writers[0], err = s.wallet.GetAccountPrivkey().GetPublic().Marshall()
+	if err != nil {
+		err = fmt.Errorf("CreateOneToOne: failed to Marshal account pub key: %w", err)
+		return
+	}
+	writers[1], err = bPk.Marshall()
+	if err != nil {
+		err = fmt.Errorf("CreateOneToOne: failed to Marshal bPk: %w", err)
+		return
+	}
+
+	oneToOneInfo := aclrecordproto.AclOneToOneInfo{
+		Writers: writers,
+	}
+	oneToOneInfoBytes, err := oneToOneInfo.MarshalVT()
+	if err != nil {
+		err = fmt.Errorf("CreateOneToOneKeys: failed to Marshal oneToOneInfo: %w", err)
+		return
+	}
+
+	payload := spacepayloads.SpaceCreatePayload{
+		SpacePayload:   oneToOneInfoBytes,
+		SigningKey:     sharedSk,
+		MasterKey:      sharedSk,
+		ReadKey:        readKey,
+		MetadataKey:    metadataSharedKey,
+		SpaceType:      OneToOneSpaceType,
+		ReplicationKey: 254255, // todo
+		Metadata:       metadata,
+	}
+	id, err := s.commonSpace.CreateSpace(ctx, payload)
+	fmt.Printf("-- id: %s\n", id)
+	if err != nil {
+		return
+	}
+
 	obj, err := s.spaceCache.Get(ctx, id)
 	if err != nil {
 		return nil, err

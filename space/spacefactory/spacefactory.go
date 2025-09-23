@@ -37,6 +37,7 @@ type SpaceFactory interface {
 	CreateAndSetTechSpace(ctx context.Context) (*clientspace.TechSpace, error)
 	LoadAndSetTechSpace(ctx context.Context) (*clientspace.TechSpace, error)
 	CreateInvitingSpace(ctx context.Context, id, aclHeadId string) (sp spacecontroller.SpaceController, err error)
+	CreateOneToOneSpace(ctx context.Context, bPk crypto.PubKey) (sp spacecontroller.SpaceController, err error)
 }
 
 const CName = "client.space.spacefactory"
@@ -231,6 +232,7 @@ func (s *spaceFactory) CreateActiveSpace(ctx context.Context, id, aclHeadId stri
 	return ctrl, err
 }
 
+// creates regular shared space
 func (s *spaceFactory) CreateShareableSpace(ctx context.Context, id string, spaceDesc *spaceinfo.SpaceDescription) (sp spacecontroller.SpaceController, err error) {
 	coreSpace, err := s.spaceCore.Get(ctx, id)
 	if err != nil {
@@ -286,42 +288,27 @@ func (s *spaceFactory) CreateMarketplaceSpace(ctx context.Context) (sp spacecont
 	return ctrl, err
 }
 
-func (s *spaceFactory) NewOneToOneSpace(ctx context.Context) (ctrl spacecontroller.SpaceController, err error) {
-	id, err := s.spaceCore.DeriveID(ctx, spacecore.OneToOneSpaceType)
-	fmt.Printf("-- %s\n", id)
+func (s *spaceFactory) CreateOneToOneSpace(ctx context.Context, bPk crypto.PubKey) (sp spacecontroller.SpaceController, err error) {
+	oneToOneSpace, err := s.spaceCore.CreateOneToOneSpace(ctx, bPk)
+	if err != nil {
+		return
+	}
+	err = oneToOneSpace.Storage().(anystorage.ClientSpaceStorage).MarkSpaceCreated(ctx)
+	if err != nil {
+		return
+	}
+	id := oneToOneSpace.Id()
+	info := spaceinfo.NewSpacePersistentInfo(id)
+	info.SetAccountStatus(spaceinfo.AccountStatusUnknown)
+	if err := s.techSpace.SpaceViewCreate(ctx, id, true, info, nil); err != nil {
+		return nil, err
+	}
+	ctrl, err := shareablespace.NewSpaceController(id, info, s.app)
 	if err != nil {
 		return nil, err
 	}
-	// ctrl, err = personalspace.NewSpaceController(ctx, id, metadata, s.app)
-	// if err != nil {
-	// 	return nil, err
-	// }
-	// err = ctrl.Start(ctx)
-	// return ctrl, err
-	return nil, nil
-}
-
-func (s *spaceFactory) CreateAndSetOneToOneSpace(ctx context.Context, bPk crypto.PubKey) (sp spacecontroller.SpaceController, err error) {
-    oneToOneSpace, err := s.spaceCore.DeriveOneToOneSpace(ctx, bPk)
-    if err != nil {
-        return
-    }
-    err = oneToOneSpace.Storage().(anystorage.ClientSpaceStorage).MarkSpaceCreated(ctx)
-    if err != nil {
-        return
-    }
-    id := oneToOneSpace.Id()
-    info := spaceinfo.NewSpacePersistentInfo(id)
-    info.SetAccountStatus(spaceinfo.AccountStatusUnknown)
-    if err := s.techSpace.SpaceViewCreate(ctx, id, true, info, nil); err != nil {
-        return nil, err
-    }
-    ctrl, err := shareablespace.NewSpaceController(id, info, s.app)
-    if err != nil {
-        return nil, err
-    }
-    err = ctrl.Start(ctx)
-    return ctrl, err
+	err = ctrl.Start(ctx)
+	return ctrl, err
 }
 
 func (s *spaceFactory) Name() (name string) {

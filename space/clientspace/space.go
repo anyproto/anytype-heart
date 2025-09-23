@@ -148,6 +148,7 @@ func BuildSpace(ctx context.Context, deps SpaceDeps) (Space, error) {
 		return nil, fmt.Errorf("is space created: %w", err)
 	}
 	if isSpaceCreated {
+		fmt.Printf("-- CreateMandatoryObjects: %s\n", sp.Id())
 		err = sp.ObjectProvider.CreateMandatoryObjects(ctx, sp)
 		if err != nil {
 			return nil, fmt.Errorf("create mandatory objects: %w", err)

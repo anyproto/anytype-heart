@@ -312,7 +312,7 @@ func (s *service) Create(ctx context.Context, description *spaceinfo.SpaceDescri
 	if s.isClosing.Load() {
 		return nil, ErrSpaceIsClosing
 	}
-	return s.create(ctx, description)
+	return s.createOneToOne(ctx, description)
 }
 
 func (s *service) Wait(ctx context.Context, spaceId string) (sp clientspace.Space, err error) {
