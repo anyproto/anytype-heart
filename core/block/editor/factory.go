@@ -83,7 +83,6 @@ type ObjectFactory struct {
 	chatSubscriptionService chatsubscription.Service
 	statService             debugstat.StatService
 	backlinksUpdater        backlinks.UpdateWatcher
-	widgetsMigrator         widgetsMigrator
 }
 
 func NewObjectFactory() *ObjectFactory {
@@ -120,7 +119,6 @@ func (f *ObjectFactory) Init(a *app.App) (err error) {
 	f.chatSubscriptionService = app.MustComponent[chatsubscription.Service](a)
 	f.statService, err = app.GetComponent[debugstat.StatService](a)
 	f.backlinksUpdater = app.MustComponent[backlinks.UpdateWatcher](a)
-	f.widgetsMigrator = app.MustComponent[widgetsMigrator](a)
 	if err != nil {
 		f.statService = debugstat.NewNoOp()
 	}
