@@ -74,7 +74,7 @@ func (s *service) installRecommendedRelations(ctx context.Context, space clients
 	for i, key := range relationKeys {
 		bundledRelationIds[i] = key.BundledURL()
 	}
-	_, _, err := s.InstallBundledObjects(ctx, space, bundledRelationIds, false)
+	_, _, err := s.InstallBundledObjects(ctx, space, bundledRelationIds)
 	return err
 }
 
