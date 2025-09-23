@@ -86,6 +86,8 @@ func (s *service) Init(a *app.App) error {
 }
 
 func (s *service) MigrateWidgets(objectId string) error {
+	return nil
+
 	return cache.Do(s.objectGetter, objectId, func(sb smartblock.SmartBlock) error {
 		var migrateBlockRecentlyEdited string
 		var migrateBlockRecentlyOpened string
@@ -327,6 +329,8 @@ func (s *service) migrateToCollection(widget smartblock.SmartBlock) (string, err
 }
 
 func (s *service) AddToOldPinnedCollection(space smartblock.Space, favoriteIds []string) error {
+	return nil
+
 	collId, err := space.DeriveObjectID(context.Background(), domain.MustUniqueKey(coresb.SmartBlockTypePage, internalKeyOldPinned))
 	if err != nil {
 		return fmt.Errorf("derive object id: %w", err)
