@@ -434,7 +434,7 @@ func (b *builtinObjects) inject(ctx session.Context, spaceID string, useCase pb.
 		log.Warnf("failed to get profile object: %s", err)
 	}
 	widgets := b.getWidgets(profile, spaceID)
-	if len(widgets) != 0 {
+	if len(widgets) > 0 {
 		startingPageId = widgets[0].TargetObjectId
 	}
 
@@ -506,7 +506,7 @@ func (b *builtinObjects) getWidgets(profile *pb.Profile, spaceId string) []*pb.W
 
 		newID, err := b.getNewObjectID(spaceId, profile.StartingPage)
 		if err != nil {
-			log.Errorf("failed to get new id of home page object: %s", err)
+			log.Errorf("failed to get new id of home page object: %v", err)
 			return nil
 		}
 
@@ -519,7 +519,7 @@ func (b *builtinObjects) getWidgets(profile *pb.Profile, spaceId string) []*pb.W
 	for _, w := range profile.Widgets {
 		newID, err := b.getNewObjectID(spaceId, w.TargetObjectId)
 		if err != nil {
-			log.Errorf("failed to get new id of home page object: %s", err)
+			log.Errorf("failed to get new id of home page object: %v", err)
 			return nil
 		}
 		w.TargetObjectId = newID
