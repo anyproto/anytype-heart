@@ -16,6 +16,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/datastore/anystoreprovider"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/ftsearch"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
@@ -157,6 +158,11 @@ func (i *indexer) RemoveAclIndexes(spaceId string) (err error) {
 	return store.DeleteDetails(i.runCtx, ids)
 }
 
+func (i *indexer) isFulltextEnabled(space smartblock.Space) bool {
+	return i.techSpaceIdProvider.TechSpaceId() != space.Id() &&
+		space.Id() != addr.AnytypeMarketplaceWorkspace
+}
+
 func (i *indexer) Index(info smartblock.DocInfo, options ...smartblock.IndexOption) error {
 	i.lock.Lock()
 	spaceInd, ok := i.spaceIndexers[info.Space.Id()]
@@ -165,7 +171,7 @@ func (i *indexer) Index(info smartblock.DocInfo, options ...smartblock.IndexOpti
 			i.runCtx,
 			i.store.SpaceIndex(info.Space.Id()),
 			i.store,
-			i.techSpaceIdProvider.TechSpaceId() == info.Space.Id(),
+			i.isFulltextEnabled(info.Space),
 		)
 		i.spaceIndexers[info.Space.Id()] = spaceInd
 	}

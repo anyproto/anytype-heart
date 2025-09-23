@@ -35,10 +35,17 @@ func (s *dsObjectStore) FtQueueReconcileWithSeq(ctx context.Context, ftIndexSeq 
 		_ = txn.Rollback()
 	}()
 
-	res, err := s.fulltextQueue.Find(ftQueueFilterSeq(ftIndexSeq, query.CompOpGt)).Update(txn.Context(), query.ModifyFunc(func(arena *anyenc.Arena, val *anyenc.Value) (*anyenc.Value, bool, error) {
+	arena := s.arenaPool.Get()
+	defer func() {
+		arena.Reset()
+		s.arenaPool.Put(arena)
+	}()
+
+	res, err := s.fulltextQueue.Find(ftQueueFilterSeq(ftIndexSeq, query.CompOpGt, arena)).Update(txn.Context(), query.ModifyFunc(func(arena *anyenc.Arena, val *anyenc.Value) (*anyenc.Value, bool, error) {
 		val.Set(ftSequenceKey, arena.NewBinary(emptyBuffer))
 		return val, true, nil
 	}))
+
 	if err != nil {
 		return fmt.Errorf("create iterator: %w", err)
 	}
@@ -46,7 +53,7 @@ func (s *dsObjectStore) FtQueueReconcileWithSeq(ctx context.Context, ftIndexSeq 
 		log.With("seq", ftIndexSeq).Errorf("ft incosistency: found %d objects to reindex", res.Matched)
 	} else {
 		// no inconsistency found, we can safely delete all objects with state > 0
-		res, err := s.fulltextQueue.Find(ftQueueFilterSeq(0, query.CompOpGt)).Delete(txn.Context())
+		res, err := s.fulltextQueue.Find(ftQueueFilterSeq(0, query.CompOpGt, arena)).Delete(txn.Context())
 		if err != nil {
 			return fmt.Errorf("gc fulltext queue: %w", err)
 		} else if res.Matched > 0 {
@@ -123,9 +130,14 @@ func (s *dsObjectStore) ListIdsFromFullTextQueue(spaceIds []string, limit uint) 
 		return nil, fmt.Errorf("at least one space must be provided")
 	}
 
+	arena := s.arenaPool.Get()
+	defer func() {
+		arena.Reset()
+		s.arenaPool.Put(arena)
+	}()
 	filters := query.And{}
 	filters = append(filters, ftQueueFilterSpaceIds(spaceIds))
-	filters = append(filters, ftQueueFilterSeq(0, query.CompOpLte))
+	filters = append(filters, ftQueueFilterSeq(0, query.CompOpLte, arena))
 	iter, err := s.fulltextQueue.Find(filters).Limit(limit).Iter(s.componentCtx)
 	if err != nil {
 		return nil, fmt.Errorf("create iterator: %w", err)
@@ -162,15 +174,18 @@ func ftQueueFilterSpaceIds(spaceIds []string) query.Filter {
 }
 
 // ftQueueFilterSeq creates a filter for the fulltext queue based on sequence number
-func ftQueueFilterSeq(seq uint64, comp query.CompOp) query.Filter {
-	arena := &anyenc.Arena{}
-	buf := make([]byte, 8)
-	binary.BigEndian.PutUint64(buf, seq)
-
+func ftQueueFilterSeq(seq uint64, comp query.CompOp, arena *anyenc.Arena) query.Filter {
 	return query.Key{
 		Path:   []string{ftSequenceKey},
-		Filter: query.NewCompValue(comp, arena.NewBinary(buf)),
+		Filter: query.NewCompValue(comp, ftSeq(seq, arena)),
 	}
+}
+
+// ftSeq return anyenc binary value which is lexigraphically comparable
+func ftSeq(seq uint64, arena *anyenc.Arena) *anyenc.Value {
+	buf := make([]byte, 8)
+	binary.BigEndian.PutUint64(buf, seq)
+	return arena.NewBinary(buf)
 }
 
 func (s *dsObjectStore) FtQueueMarkAsIndexed(ids []domain.FullID, ftIndexSeq uint64) error {
