@@ -43,6 +43,8 @@ func GlobalSearchHandler(s *service.Service) gin.HandlerFunc {
 		objects, total, hasMore, err := s.GlobalSearch(c, request, offset, limit)
 		code := util.MapErrorCode(err,
 			util.ErrToCode(service.ErrFailedSearchObjects, http.StatusInternalServerError),
+			util.ErrToCode(service.ErrFailedGetAllSpaceIds, http.StatusInternalServerError),
+			util.ErrToCode(service.ErrFailedBuildFilters, http.StatusBadRequest),
 		)
 
 		if code != http.StatusOK {
@@ -89,6 +91,7 @@ func SearchHandler(s *service.Service) gin.HandlerFunc {
 		objects, total, hasMore, err := s.Search(c, spaceId, request, offset, limit)
 		code := util.MapErrorCode(err,
 			util.ErrToCode(service.ErrFailedSearchObjects, http.StatusInternalServerError),
+			util.ErrToCode(service.ErrFailedBuildFilters, http.StatusBadRequest),
 		)
 
 		if code != http.StatusOK {

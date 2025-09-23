@@ -125,6 +125,7 @@ func CreatePropertyHandler(s *service.Service) gin.HandlerFunc {
 		code := util.MapErrorCode(err,
 			util.ErrToCode(util.ErrBad, http.StatusBadRequest),
 			util.ErrToCode(service.ErrFailedCreateProperty, http.StatusInternalServerError),
+			util.ErrToCode(service.ErrFailedCreatePropertyTags, http.StatusInternalServerError),
 			util.ErrToCode(service.ErrFailedRetrieveProperty, http.StatusInternalServerError),
 		)
 

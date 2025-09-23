@@ -92,7 +92,7 @@ func (s *Service) GetObject(ctx context.Context, spaceId string, objectId string
 			return nil, ErrObjectDeleted
 		}
 
-		if resp.Error != nil && resp.Error.Code != pb.RpcObjectShowResponseError_NULL {
+		if resp.Error.Code != pb.RpcObjectShowResponseError_NULL {
 			return nil, ErrFailedRetrieveObject
 		}
 	}

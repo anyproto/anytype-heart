@@ -30,6 +30,7 @@ var (
 	ErrPropertyCannotBeUpdated  = errors.New("property cannot be updated")
 	ErrFailedUpdateProperty     = errors.New("failed to update property")
 	ErrFailedDeleteProperty     = errors.New("failed to delete property")
+	ErrFailedCreatePropertyTags = errors.New("property created but tag creation failed")
 )
 
 var excludedSystemProperties = map[string]bool{
@@ -178,7 +179,7 @@ func (s *Service) GetProperty(ctx context.Context, spaceId string, propertyId st
 			return nil, ErrPropertyDeleted
 		}
 
-		if resp.Error != nil && resp.Error.Code != pb.RpcObjectShowResponseError_NULL {
+		if resp.Error.Code != pb.RpcObjectShowResponseError_NULL {
 			return nil, ErrFailedRetrieveProperty
 		}
 	}
@@ -220,7 +221,7 @@ func (s *Service) CreateProperty(ctx context.Context, spaceId string, request ap
 	if len(request.Tags) > 0 && (request.Format == apimodel.PropertyFormatSelect || request.Format == apimodel.PropertyFormatMultiSelect) {
 		err := s.createTagsForProperty(ctx, spaceId, resp.ObjectId, request.Tags)
 		if err != nil {
-			return nil, fmt.Errorf("property created but tag creation failed: %w", err)
+			return nil, ErrFailedCreatePropertyTags
 		}
 	}
 

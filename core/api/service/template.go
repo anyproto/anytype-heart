@@ -93,7 +93,7 @@ func (s *Service) GetTemplate(ctx context.Context, spaceId string, _ string, tem
 			return nil, ErrTemplateDeleted
 		}
 
-		if resp.Error != nil && resp.Error.Code != pb.RpcObjectShowResponseError_NULL {
+		if resp.Error.Code != pb.RpcObjectShowResponseError_NULL {
 			return nil, ErrFailedRetrieveTemplate
 		}
 	}

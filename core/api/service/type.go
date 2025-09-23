@@ -102,7 +102,7 @@ func (s *Service) GetType(ctx context.Context, spaceId string, typeId string) (*
 			return nil, ErrTypeDeleted
 		}
 
-		if resp.Error != nil && resp.Error.Code != pb.RpcObjectShowResponseError_NULL {
+		if resp.Error.Code != pb.RpcObjectShowResponseError_NULL {
 			return nil, ErrFailedRetrieveType
 		}
 	}

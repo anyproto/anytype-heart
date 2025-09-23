@@ -64,15 +64,11 @@ func (s *Service) ListTags(ctx context.Context, spaceId string, propertyId strin
 		return nil, 0, false, ErrFailedRetrieveTags
 	}
 
-	if len(resp.Records) == 0 {
-		return nil, 0, false, nil
-	}
-
 	total = len(resp.Records)
 	paginatedTags, hasMore := pagination.Paginate(resp.Records, offset, limit)
 	tags = make([]*apimodel.Tag, 0, len(paginatedTags))
 
-	for _, record := range resp.Records {
+	for _, record := range paginatedTags {
 		tags = append(tags, s.getTagFromStruct(record))
 	}
 
@@ -95,7 +91,7 @@ func (s *Service) GetTag(ctx context.Context, spaceId string, propertyId string,
 			return nil, ErrTagDeleted
 		}
 
-		if resp.Error != nil && resp.Error.Code != pb.RpcObjectShowResponseError_NULL {
+		if resp.Error.Code != pb.RpcObjectShowResponseError_NULL {
 			return nil, ErrFailedRetrieveTag
 		}
 	}

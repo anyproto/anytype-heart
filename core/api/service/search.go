@@ -3,7 +3,6 @@ package service
 import (
 	"context"
 	"errors"
-	"fmt"
 	"sort"
 
 	"github.com/gogo/protobuf/types"
@@ -19,14 +18,16 @@ import (
 )
 
 var (
-	ErrFailedSearchObjects = errors.New("failed to retrieve objects from space")
+	ErrFailedSearchObjects  = errors.New("failed to retrieve objects from space")
+	ErrFailedGetAllSpaceIds = errors.New("failed to get all space ids")
+	ErrFailedBuildFilters   = errors.New("failed to build expression filters")
 )
 
 // GlobalSearch retrieves a paginated list of objects from all spaces that match the search parameters.
 func (s *Service) GlobalSearch(ctx context.Context, request apimodel.SearchRequest, offset int, limit int) (objects []apimodel.Object, total int, hasMore bool, err error) {
 	spaceIds, err := s.GetAllSpaceIds(ctx)
 	if err != nil {
-		return nil, 0, false, fmt.Errorf("failed to get all space Ids: %w", err)
+		return nil, 0, false, ErrFailedGetAllSpaceIds
 	}
 
 	baseFilters := s.prepareBaseFilters()
@@ -49,7 +50,7 @@ func (s *Service) GlobalSearch(ctx context.Context, request apimodel.SearchReque
 			validator := filter.NewValidator(s)
 			advFilter, err := filter.BuildExpressionFilters(ctx, request.Filters, validator, spaceId)
 			if err != nil {
-				return nil, 0, false, fmt.Errorf("failed to build expression filters: %w", err)
+				return nil, 0, false, ErrFailedBuildFilters
 			}
 			if advFilter != nil {
 				expressionFilters = []*model.BlockContentDataviewFilter{advFilter}
@@ -122,7 +123,7 @@ func (s *Service) Search(ctx context.Context, spaceId string, request apimodel.S
 		validator := filter.NewValidator(s)
 		advFilter, err := filter.BuildExpressionFilters(ctx, request.Filters, validator, spaceId)
 		if err != nil {
-			return nil, 0, false, fmt.Errorf("failed to build expression filters: %w", err)
+			return nil, 0, false, ErrFailedBuildFilters
 		}
 		if advFilter != nil {
 			expressionFilters = []*model.BlockContentDataviewFilter{advFilter}
