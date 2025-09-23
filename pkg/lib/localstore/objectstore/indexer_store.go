@@ -41,8 +41,9 @@ func (s *dsObjectStore) FtQueueReconcileWithSeq(ctx context.Context, ftIndexSeq 
 		s.arenaPool.Put(arena)
 	}()
 
+	emptyVal := arena.NewBinary(emptyBuffer)
 	res, err := s.fulltextQueue.Find(ftQueueFilterSeq(ftIndexSeq, query.CompOpGt, arena)).Update(txn.Context(), query.ModifyFunc(func(arena *anyenc.Arena, val *anyenc.Value) (*anyenc.Value, bool, error) {
-		val.Set(ftSequenceKey, arena.NewBinary(emptyBuffer))
+		val.Set(ftSequenceKey, emptyVal)
 		return val, true, nil
 	}))
 
@@ -96,11 +97,11 @@ func (s *dsObjectStore) AddToIndexQueue(ctx context.Context, ids ...domain.FullI
 }
 
 func (s *dsObjectStore) BatchProcessFullTextQueue(
-	ctx context.Context,
+	_ context.Context,
 	spaceIds func() []string,
 	limit uint,
 	processIds func(objectIds []domain.FullID,
-	) (succeedIds []domain.FullID, ftIndexSeq uint64, err error)) error {
+) (succeedIds []domain.FullID, ftIndexSeq uint64, err error)) error {
 	for {
 		ids, err := s.ListIdsFromFullTextQueue(spaceIds(), limit)
 		if err != nil {
