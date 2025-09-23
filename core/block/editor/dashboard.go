@@ -28,17 +28,15 @@ type Dashboard struct {
 	basic.AllOperations
 	blockcollection.Collection
 
-	widgetsMigrator widgetsMigrator
-	objectStore     spaceindex.Store
+	objectStore spaceindex.Store
 }
 
 func (f *ObjectFactory) newDashboard(sb smartblock.SmartBlock, objectStore spaceindex.Store) *Dashboard {
 	return &Dashboard{
-		SmartBlock:      sb,
-		AllOperations:   basic.NewBasic(sb, objectStore, f.layoutConverter, nil),
-		Collection:      blockcollection.NewCollection(sb, objectStore),
-		objectStore:     objectStore,
-		widgetsMigrator: f.widgetsMigrator,
+		SmartBlock:    sb,
+		AllOperations: basic.NewBasic(sb, objectStore, f.layoutConverter, nil),
+		Collection:    blockcollection.NewCollection(sb, objectStore),
+		objectStore:   objectStore,
 	}
 }
 
@@ -86,11 +84,6 @@ func (p *Dashboard) updateObjects(info smartblock.ApplyInfo) (err error) {
 		uErr := p.updateInStore(favoritedIds)
 		if uErr != nil {
 			log.Errorf("favorite: can't update in store: %v", uErr)
-		}
-
-		addErr := p.widgetsMigrator.AddToOldPinnedCollection(p.Space(), favoritedIds)
-		if addErr != nil {
-			log.Errorf("favorite: can't add to old pinned collection: %v", addErr)
 		}
 	}()
 
