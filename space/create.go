@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/anyproto/any-sync/util/crypto"
+	"github.com/anyproto/anytype-heart/core/anytype/config/loadenv"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space/clientspace"
 	"github.com/anyproto/anytype-heart/space/internal/spaceprocess/loader"
@@ -15,7 +16,14 @@ import (
 
 func (s *service) createOneToOne(ctx context.Context, description *spaceinfo.SpaceDescription) (sp clientspace.Space, err error) {
 	log.Warn("-- createOneToOne")
-	_, bPk, err := crypto.GenerateRandomEd25519KeyPair()
+
+	// id1: AASZXTchV87HnZU1yujiM74GF2unsez4MRPSjKmgU1Vtmiid
+	// id2: A5sAtJ6i4Z6465mtPff6m2xyN7SvmCWwBfcUCsR6zmoiNs1J
+
+	bobAccountAddress := loadenv.Get("BOB_ACCOUNT")
+	fmt.Printf("-- bob: %s\n", bobAccountAddress)
+
+	bPk, err := crypto.DecodeAccountAddress(bobAccountAddress)
 	if err != nil {
 		return
 	}

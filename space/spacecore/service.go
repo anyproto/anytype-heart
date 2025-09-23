@@ -1,9 +1,11 @@
 package spacecore
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
+	"sort"
 	"time"
 
 	"github.com/anyproto/any-sync/accountservice"
@@ -156,6 +158,7 @@ func (s *service) CreateOneToOneSpace(ctx context.Context, bPk crypto.PubKey) (s
 		return
 	}
 
+	fmt.Printf("-- sharedPk: %s\n", sharedSk.GetPublic().Account())
 	sharedKeyBytes, err := sharedSk.Raw()
 	if err != nil {
 		err = fmt.Errorf("CreateOneToOne: error getting sharedSk.Raw(): %w", err)
@@ -178,7 +181,6 @@ func (s *service) CreateOneToOneSpace(ctx context.Context, bPk crypto.PubKey) (s
 
 	writers := make([][]byte, 2)
 
-	// todo: should be sorted?
 	writers[0], err = s.wallet.GetAccountPrivkey().GetPublic().Marshall()
 	if err != nil {
 		err = fmt.Errorf("CreateOneToOne: failed to Marshal account pub key: %w", err)
@@ -189,6 +191,11 @@ func (s *service) CreateOneToOneSpace(ctx context.Context, bPk crypto.PubKey) (s
 		err = fmt.Errorf("CreateOneToOne: failed to Marshal bPk: %w", err)
 		return
 	}
+
+	// sort for idempotent spaceid creation
+	sort.Slice(writers, func(i, j int) bool {
+		return bytes.Compare(writers[i], writers[j]) < 0
+	})
 
 	oneToOneInfo := aclrecordproto.AclOneToOneInfo{
 		Writers: writers,
