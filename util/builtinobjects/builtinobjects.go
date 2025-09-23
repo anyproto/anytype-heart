@@ -635,7 +635,7 @@ func (b *builtinObjects) createWidgets(
 	}
 
 	widgetObjectID := spc.DerivedIDs().Widgets
-	var requests []*pb.RpcBlockCreateWidgetRequest
+	requests := make([]*pb.RpcBlockCreateWidgetRequest, 0, len(widgets))
 	for _, w := range widgets {
 		requests = append(requests, &pb.RpcBlockCreateWidgetRequest{
 			ContextId:    widgetObjectID,
