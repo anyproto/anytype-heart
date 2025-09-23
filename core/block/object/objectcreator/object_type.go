@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/anyproto/anytype-heart/core/block/editor/order"
+	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/relationutils"
@@ -52,7 +54,6 @@ func (s *service) createObjectType(ctx context.Context, space clientspace.Space,
 
 	object.SetString(bundle.RelationKeyId, id)
 	object.SetInt64(bundle.RelationKeyLayout, int64(model.ObjectType_objectType))
-	object.SetInt64(bundle.RelationKeyLastUsedDate, time.Now().Unix())
 
 	createState := state.NewDocWithUniqueKey("", nil, uniqueKey).(*state.State)
 	createState.SetDetails(object)
@@ -62,10 +63,13 @@ func (s *service) createObjectType(ctx context.Context, space clientspace.Space,
 		return "", nil, fmt.Errorf("create smartblock from state: %w", err)
 	}
 
-	installingObjectTypeKey := domain.TypeKey(uniqueKey.InternalKey())
-	err = s.createTemplatesForObjectType(space, installingObjectTypeKey)
-	if err != nil {
-		log.With("spaceID", space.Id(), "objectTypeKey", installingObjectTypeKey).Errorf("error while installing templates: %s", err)
+	typeKey := domain.TypeKey(uniqueKey.InternalKey())
+	if err = s.setOrderId(ctx, space, id); err != nil {
+		log.With("spaceID", space.Id(), "objectTypeKey", typeKey).Errorf("failed to set orderId: %v", err)
+	}
+
+	if err = s.createTemplatesForObjectType(space, typeKey); err != nil {
+		log.With("spaceID", space.Id(), "objectTypeKey", typeKey).Errorf("error while installing templates: %s", err)
 	}
 	return id, newDetails, nil
 }
@@ -151,4 +155,47 @@ func (s *service) listInstalledTemplatesForType(spc clientspace.Space, typeKey d
 		}
 	}
 	return existingTemplatesMap, nil
+}
+
+func (s *service) setOrderId(ctx context.Context, spc clientspace.Space, objectTypeId string) error {
+	records, err := s.objectStore.SpaceIndex(spc.Id()).Query(database.Query{
+		Filters: []database.FilterRequest{
+			{
+				RelationKey: bundle.RelationKeyResolvedLayout,
+				Condition:   model.BlockContentDataviewFilter_Equal,
+				Value:       domain.Int64(model.ObjectType_objectType),
+			},
+			{
+				RelationKey: bundle.RelationKeyOrderId,
+				Condition:   model.BlockContentDataviewFilter_NotEmpty,
+			},
+		},
+		Sorts: []database.SortRequest{{
+			RelationKey: bundle.RelationKeyOrderId,
+			Type:        model.BlockContentDataviewSort_Asc,
+			NoCollate:   true,
+		}},
+		Limit: 1,
+	})
+
+	if err != nil {
+		return fmt.Errorf("failed to query object types with orders: %w", err)
+	}
+
+	if len(records) == 0 {
+		return nil
+	}
+
+	smallestOrderId := records[0].Details.GetString(bundle.RelationKeyOrderId)
+	if smallestOrderId == "" {
+		return nil
+	}
+
+	return spc.DoCtx(ctx, objectTypeId, func(sb smartblock.SmartBlock) error {
+		os, ok := sb.(order.OrderSettable)
+		if !ok {
+			return fmt.Errorf("object does not implement order settable: %s", objectTypeId)
+		}
+		return os.SetBetweenOrders("", smallestOrderId)
+	})
 }
