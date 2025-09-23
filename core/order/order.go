@@ -195,38 +195,37 @@ func (o *orderSetter) rebuildIfNeeded(objectIds []string, existing map[string]st
 
 // setRank sets the lexid for a view, handling all positioning cases
 func (o *orderSetter) setRank(objectId, before, after string, isFirst bool) string {
-	var newID string
+	var newOrderId string
 	err := cache.Do[order.OrderSettable](o.objectGetter, objectId, func(os order.OrderSettable) error {
-		var e error
+		var err error
 		switch {
 		case isFirst && before == "" && after == "":
 			// First element with no constraints - add padding
-			newID, e = os.SetOrder("")
+			newOrderId, err = os.SetOrder("")
+
 		case before == "" && after == "":
 			// Not first, but no constraints
-			newID, e = os.SetOrder("")
+			newOrderId, err = os.SetOrder("")
+
 		case before == "" && after != "":
 			// Insert before the first existing element
-			e = os.SetBetweenOrders("", after)
+			newOrderId, err = os.SetBetweenOrders("", after)
+
 		case before != "" && after == "":
 			// Insert after the last element
-			newID, e = os.SetOrder(before)
+			newOrderId, err = os.SetOrder(before)
+
 		default:
 			// Insert between two elements
-			e = os.SetBetweenOrders(before, after)
+			newOrderId, err = os.SetBetweenOrders(before, after)
 		}
-
-		// Read the lexid from details if not returned directly
-		if e == nil && newID == "" {
-			newID = os.GetOrder()
-		}
-		return e
+		return err
 	})
 	if err != nil {
 		// Log error for debugging but return empty string to trigger rebuild
 		return ""
 	}
-	return newID
+	return newOrderId
 }
 
 // precalcNext builds a slice where next[i] is the lexid of the next
@@ -246,17 +245,6 @@ func (o *orderSetter) precalcNext(existing map[string]string, order []string) []
 // rebuildAllLexIds rebuilds all lexids from scratch
 func (o *orderSetter) rebuildAllLexIds(objectIds []string) ([]string, error) {
 	finalOrder := make([]string, len(objectIds))
-
-	// Clear all existing lexids first
-	for _, objectId := range objectIds {
-		err := cache.Do[order.OrderSettable](o.objectGetter, objectId, func(os order.OrderSettable) error {
-			return os.UnsetOrder()
-		})
-		if err != nil {
-			return nil, fmt.Errorf("failed to clear lexid for %s: %w", objectId, err)
-		}
-	}
-
 	// Now assign new lexids in order
 	previousLexId := ""
 	for i, objectId := range objectIds {
@@ -283,6 +271,5 @@ func (o *orderSetter) rebuildAllLexIds(objectIds []string) ([]string, error) {
 		finalOrder[i] = newLexId
 		previousLexId = newLexId
 	}
-
 	return finalOrder, nil
 }
