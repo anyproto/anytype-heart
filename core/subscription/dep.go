@@ -3,6 +3,8 @@ package subscription
 import (
 	"strings"
 
+	"github.com/samber/lo"
+
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
@@ -30,10 +32,10 @@ type dependencyService struct {
 }
 
 func (ds *dependencyService) makeSubscriptionByEntries(subId string, allEntries, activeEntries []*entry, keys, depKeys []domain.RelationKey, filterDepIds []string) *simpleSub {
-	depSub := ds.s.newSimpleSub(subId, keys, true)
+	depSubKeys := ds.depSubKeys(subId, keys)
+	depSub := ds.s.newSimpleSub(subId, depSubKeys, true)
 	depSub.forceIds = filterDepIds
 	parentSubId := strings.TrimSuffix(subId, "/dep")
-	// TODO: add sort keys to depKeys
 	depIds, sortDepIds := ds.depIdsByEntries(parentSubId, activeEntries, depKeys, depSub.forceIds)
 	depEntries := ds.depEntriesByEntries(&opCtx{entries: allEntries}, depIds)
 	ds.updateOrders(parentSubId, depEntries, sortDepIds)
@@ -226,6 +228,7 @@ func (ds *dependencyService) isRelationObject(key domain.RelationKey) bool {
 	return isObj
 }
 
+// depKeys returns keys of relations with object/tag format that could handle ids of dependent objects
 func (ds *dependencyService) depKeys(keys []domain.RelationKey) (depKeys []domain.RelationKey) {
 	for _, key := range keys {
 		if ds.isRelationObject(key) {
@@ -233,6 +236,19 @@ func (ds *dependencyService) depKeys(keys []domain.RelationKey) (depKeys []domai
 		}
 	}
 	return
+}
+
+// depSubKeys returns keys that will be analyzed in objects filtered by dependent subscription
+// TODO: maybe we need to exclude some keys from initial list (lastModifiedDate, syncDate)
+func (ds *dependencyService) depSubKeys(subId string, keys []domain.RelationKey) []domain.RelationKey {
+	sorts, found := ds.sorts[subId]
+	if !found {
+		return keys
+	}
+	for _, sort := range sorts {
+		keys = append(keys, sort.orderKey())
+	}
+	return lo.Uniq(keys)
 }
 
 type sortKey struct {
