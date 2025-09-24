@@ -233,7 +233,24 @@ func (t *InMemoryStore) DeleteFiles(ctx context.Context, spaceId string, fileIds
 }
 
 func (t *InMemoryStore) SpaceInfo(ctx context.Context, spaceId string) (*fileproto.SpaceInfoResponse, error) {
-	panic("not implemented")
+	t.mu.Lock()
+	defer t.mu.Unlock()
+
+	var spaceUsageBytes int
+	files := t.spaceFiles[spaceId]
+	for fileId := range files {
+		for cid := range t.files[fileId] {
+			spaceUsageBytes += len(t.store[cid].RawData())
+		}
+	}
+	return &fileproto.SpaceInfoResponse{
+		SpaceId:         spaceId,
+		SpaceUsageBytes: uint64(spaceUsageBytes),
+		TotalUsageBytes: uint64(t.getTotalUsage()),
+		FilesCount:      uint64(len(files)),
+		CidsCount:       uint64(len(t.spaceCids[spaceId])),
+		LimitBytes:      uint64(t.limit),
+	}, nil
 }
 
 func (t *InMemoryStore) SetLimit(limit int) {
