@@ -594,3 +594,54 @@ func TestRemoveBy(t *testing.T) {
 		t.Fatal("timeout")
 	}
 }
+
+func TestMultipleWorkers(t *testing.T) {
+	db := newAnystore(t)
+	log := logging.Logger("test")
+
+	storage, err := NewAnystoreStorage[*testItem](db, "test_queue", makeTestItem)
+	require.NoError(t, err)
+
+	handledItemsCh := make(chan *testItem)
+	q := New[*testItem](storage, log.Desugar(), func(ctx context.Context, item *testItem) (Action, error) {
+		handledItemsCh <- item
+		return ActionDone, nil
+	}, nil, WithWorkersNumber(10))
+	q.Run()
+
+	itemsCount := 20
+	for i := range itemsCount {
+		err = q.Add(&testItem{Id: fmt.Sprintf("%d", i)})
+		require.NoError(t, err)
+	}
+
+	timer := time.NewTimer(50 * time.Millisecond)
+	handled := make([]*testItem, 0, itemsCount)
+	for {
+		select {
+		case <-timer.C:
+			t.Fatal("timeout")
+		case it := <-handledItemsCh:
+			handled = append(handled, it)
+		}
+
+		if len(handled) == itemsCount {
+			break
+		}
+	}
+
+	wantIds := map[string]struct{}{}
+	for i := range itemsCount {
+		wantIds[fmt.Sprintf("%d", i)] = struct{}{}
+	}
+
+	gotIds := map[string]struct{}{}
+	for _, it := range handled {
+		gotIds[it.Id] = struct{}{}
+	}
+
+	assert.Equal(t, wantIds, gotIds)
+
+	err = q.Close()
+	require.NoError(t, err)
+}

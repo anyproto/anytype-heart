@@ -137,7 +137,7 @@ func (oc *ObjectCreator) Create(dataObject *DataObject, sn *common.Snapshot) (*d
 		// we widen typeKeys here to install bundled templates for imported object type
 		typeKeys = append(typeKeys, domain.TypeKey(st.UniqueKeyInternal()))
 	}
-	err = oc.installBundledRelationsAndTypes(ctx, spaceID, st.GetRelationLinks(), typeKeys, origin)
+	err = oc.installBundledRelationsAndTypes(ctx, spaceID, st.GetRelationLinks(), typeKeys)
 	if err != nil {
 		log.With("objectID", newID).Errorf("failed to install bundled relations and types: %s", err)
 	}
@@ -208,7 +208,6 @@ func (oc *ObjectCreator) installBundledRelationsAndTypes(
 	spaceID string,
 	links pbtypes.RelationLinks,
 	objectTypeKeys []domain.TypeKey,
-	origin objectorigin.ObjectOrigin,
 ) error {
 
 	idsToCheck := make([]string, 0, len(links)+len(objectTypeKeys))
@@ -233,7 +232,7 @@ func (oc *ObjectCreator) installBundledRelationsAndTypes(
 	if err != nil {
 		return fmt.Errorf("get space %s: %w", spaceID, err)
 	}
-	_, _, err = oc.objectCreator.InstallBundledObjects(ctx, spc, idsToCheck, origin.Origin == model.ObjectOrigin_usecase)
+	_, _, err = oc.objectCreator.InstallBundledObjects(ctx, spc, idsToCheck)
 	return err
 }
 
@@ -463,7 +462,7 @@ func (oc *ObjectCreator) updateLinksInCollections(st *state.State, oldIDtoNew ma
 	}
 }
 
-func (oc ObjectCreator) replaceInCollection(st *state.State, oldIDtoNew map[string]string) {
+func (oc *ObjectCreator) replaceInCollection(st *state.State, oldIDtoNew map[string]string) {
 	objectsInCollections := st.GetStoreSlice(template.CollectionStoreKey)
 	newObjs := make([]string, 0, len(objectsInCollections))
 	for _, id := range objectsInCollections {

@@ -18,7 +18,7 @@ type OrderSettable interface {
 	GetOrder() string
 	SetOrder(previousOrderId string) (string, error)
 	SetAfterOrder(orderId string) error
-	SetBetweenOrders(previousOrderId, afterOrderId string) error
+	SetBetweenOrders(previousOrderId, afterOrderId string) (string, error)
 	UnsetOrder() error
 }
 
@@ -58,24 +58,26 @@ func (s *orderSettable) SetAfterOrder(orderId string) error {
 	return nil
 }
 
-func (s *orderSettable) SetBetweenOrders(previousOrderId, afterOrderId string) error {
-	st := s.NewState()
-	var before string
-	var err error
-
-	if previousOrderId == "" {
+func (s *orderSettable) SetBetweenOrders(left, right string) (string, error) {
+	var (
+		between string
+		err     error
+	)
+	if left == "" {
 		// Insert before the first existing element
-		before = lx.Prev(afterOrderId)
+		between = lx.Prev(right)
 	} else {
 		// Insert between two existing elements
-		before, err = lx.NextBefore(previousOrderId, afterOrderId)
+		between, err = lx.NextBefore(left, right)
 	}
 
 	if err != nil {
-		return errors.Join(ErrLexidInsertionFailed, err)
+		return "", errors.Join(ErrLexidInsertionFailed, err)
 	}
-	st.SetDetail(s.orderKey, domain.String(before))
-	return s.Apply(st)
+
+	st := s.NewState()
+	st.SetDetail(s.orderKey, domain.String(between))
+	return between, s.Apply(st)
 }
 
 func (s *orderSettable) UnsetOrder() error {
@@ -86,4 +88,8 @@ func (s *orderSettable) UnsetOrder() error {
 
 func (s *orderSettable) GetOrder() string {
 	return s.Details().GetString(s.orderKey)
+}
+
+func GetSmallestOrder(currentSmallestOrder string) string {
+	return lx.Prev(currentSmallestOrder)
 }

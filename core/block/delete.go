@@ -35,6 +35,12 @@ func (s *Service) DeleteObjectByFullID(id domain.FullID) error {
 	if err != nil {
 		return err
 	}
+
+	entry, err := spc.Storage().HeadStorage().GetEntry(s.componentCtx, id.ObjectID)
+	if err != nil {
+		return fmt.Errorf("get head entry: %w", err)
+	}
+
 	switch sbType {
 	case coresb.SmartBlockTypeObjectType,
 		coresb.SmartBlockTypeRelation,
@@ -50,7 +56,11 @@ func (s *Service) DeleteObjectByFullID(id domain.FullID) error {
 		}
 		err = spc.DeleteTree(context.Background(), id.ObjectID)
 	default:
-		err = spc.DeleteTree(context.Background(), id.ObjectID)
+		if entry.IsDerived {
+			err = s.deleteDerivedObject(id, sbType, spc)
+		} else {
+			err = spc.DeleteTree(context.Background(), id.ObjectID)
+		}
 	}
 	if err != nil {
 		return err
