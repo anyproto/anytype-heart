@@ -102,7 +102,7 @@ func (o *orderSetter) SetObjectTypesOrder(spaceId string, objectIds []string) ([
 
 	move := func(id string, afterId string) {
 		afterIdx := slices.Index(previousIds, afterId)
-		if afterIdx == 0 {
+		if afterIdx == -1 {
 			if len(previousIds) == 1 {
 				newId := o.setRank(id, "", "", true)
 				existing[id] = newId
