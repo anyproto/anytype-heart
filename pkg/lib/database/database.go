@@ -265,11 +265,6 @@ func (b *queryBuilder) extractOrder(sorts []SortRequest) SetOrder {
 				format = sort.Format
 			}
 
-			disableCollator := sort.NoCollate
-			if sort.RelationKey == bundle.RelationKeyOrderId {
-				disableCollator = true
-			}
-
 			keyOrder := &KeyOrder{
 				SpaceID:         b.spaceId,
 				Key:             sort.RelationKey,
@@ -280,7 +275,11 @@ func (b *queryBuilder) extractOrder(sorts []SortRequest) SetOrder {
 				Store:           b.objectStore,
 				arena:           b.arena,
 				collatorBuffer:  b.collatorBuffer,
-				disableCollator: disableCollator,
+				disableCollator: sort.NoCollate,
+			}
+
+			if keyOrder.Key == bundle.RelationKeyOrderId || keyOrder.Key == bundle.RelationKeySpaceOrder {
+				keyOrder.disableCollator = true
 			}
 			order = b.appendCustomOrder(sort, order, keyOrder)
 		}
