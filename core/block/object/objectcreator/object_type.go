@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/order"
-	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/relationutils"
@@ -55,6 +54,10 @@ func (s *service) createObjectType(ctx context.Context, space clientspace.Space,
 	object.SetString(bundle.RelationKeyId, id)
 	object.SetInt64(bundle.RelationKeyLayout, int64(model.ObjectType_objectType))
 
+	if err = s.setOrderId(object, space); err != nil {
+		log.With("spaceID", space.Id()).Errorf("failed to set orderId: %v", err)
+	}
+
 	createState := state.NewDocWithUniqueKey("", nil, uniqueKey).(*state.State)
 	createState.SetDetails(object)
 	setOriginalCreatedTimestamp(createState, details)
@@ -64,9 +67,6 @@ func (s *service) createObjectType(ctx context.Context, space clientspace.Space,
 	}
 
 	typeKey := domain.TypeKey(uniqueKey.InternalKey())
-	if err = s.setOrderId(ctx, space, id); err != nil {
-		log.With("spaceID", space.Id(), "objectTypeKey", typeKey).Errorf("failed to set orderId: %v", err)
-	}
 
 	if err = s.createTemplatesForObjectType(space, typeKey); err != nil {
 		log.With("spaceID", space.Id(), "objectTypeKey", typeKey).Errorf("error while installing templates: %s", err)
@@ -157,7 +157,7 @@ func (s *service) listInstalledTemplatesForType(spc clientspace.Space, typeKey d
 	return existingTemplatesMap, nil
 }
 
-func (s *service) setOrderId(ctx context.Context, spc clientspace.Space, objectTypeId string) error {
+func (s *service) setOrderId(details *domain.Details, spc clientspace.Space) error {
 	records, err := s.objectStore.SpaceIndex(spc.Id()).Query(database.Query{
 		Filters: []database.FilterRequest{
 			{
@@ -191,11 +191,6 @@ func (s *service) setOrderId(ctx context.Context, spc clientspace.Space, objectT
 		return nil
 	}
 
-	return spc.DoCtx(ctx, objectTypeId, func(sb smartblock.SmartBlock) error {
-		os, ok := sb.(order.OrderSettable)
-		if !ok {
-			return fmt.Errorf("object does not implement order settable: %s", objectTypeId)
-		}
-		return os.SetBetweenOrders("", smallestOrderId)
-	})
+	details.SetString(bundle.RelationKeyOrderId, order.GetSmallestOrder(smallestOrderId))
+	return nil
 }
