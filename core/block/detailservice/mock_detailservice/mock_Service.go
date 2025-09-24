@@ -665,17 +665,17 @@ func (_c *MockService_SetIsArchived_Call) RunAndReturn(run func(string, bool) er
 	return _c
 }
 
-// SetIsFavorite provides a mock function with given fields: objectId, isFavorite, createWidget
-func (_m *MockService) SetIsFavorite(objectId string, isFavorite bool, createWidget bool) error {
-	ret := _m.Called(objectId, isFavorite, createWidget)
+// SetIsFavorite provides a mock function with given fields: objectId, isFavorite
+func (_m *MockService) SetIsFavorite(objectId string, isFavorite bool) error {
+	ret := _m.Called(objectId, isFavorite)
 
 	if len(ret) == 0 {
 		panic("no return value specified for SetIsFavorite")
 	}
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(string, bool, bool) error); ok {
-		r0 = rf(objectId, isFavorite, createWidget)
+	if rf, ok := ret.Get(0).(func(string, bool) error); ok {
+		r0 = rf(objectId, isFavorite)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -691,14 +691,13 @@ type MockService_SetIsFavorite_Call struct {
 // SetIsFavorite is a helper method to define mock.On call
 //   - objectId string
 //   - isFavorite bool
-//   - createWidget bool
-func (_e *MockService_Expecter) SetIsFavorite(objectId interface{}, isFavorite interface{}, createWidget interface{}) *MockService_SetIsFavorite_Call {
-	return &MockService_SetIsFavorite_Call{Call: _e.mock.On("SetIsFavorite", objectId, isFavorite, createWidget)}
+func (_e *MockService_Expecter) SetIsFavorite(objectId interface{}, isFavorite interface{}) *MockService_SetIsFavorite_Call {
+	return &MockService_SetIsFavorite_Call{Call: _e.mock.On("SetIsFavorite", objectId, isFavorite)}
 }
 
-func (_c *MockService_SetIsFavorite_Call) Run(run func(objectId string, isFavorite bool, createWidget bool)) *MockService_SetIsFavorite_Call {
+func (_c *MockService_SetIsFavorite_Call) Run(run func(objectId string, isFavorite bool)) *MockService_SetIsFavorite_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(string), args[1].(bool), args[2].(bool))
+		run(args[0].(string), args[1].(bool))
 	})
 	return _c
 }
@@ -708,7 +707,7 @@ func (_c *MockService_SetIsFavorite_Call) Return(_a0 error) *MockService_SetIsFa
 	return _c
 }
 
-func (_c *MockService_SetIsFavorite_Call) RunAndReturn(run func(string, bool, bool) error) *MockService_SetIsFavorite_Call {
+func (_c *MockService_SetIsFavorite_Call) RunAndReturn(run func(string, bool) error) *MockService_SetIsFavorite_Call {
 	_c.Call.Return(run)
 	return _c
 }

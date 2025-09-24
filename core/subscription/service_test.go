@@ -544,7 +544,7 @@ func TestService_Search(t *testing.T) {
 		collectionID := "id"
 		subscriptionID := "subId"
 		fx.collectionService.EXPECT().SubscribeForCollection(collectionID, subscriptionID).Return(nil, nil, nil)
-		fx.collectionService.EXPECT().UnsubscribeFromCollection(collectionID, subscriptionID).Return()
+		fx.collectionService.EXPECT().UnsubscribeFromCollection(collectionID, subscriptionID).Return(nil)
 		var resp, err = fx.Search(SubscribeRequest{
 			SpaceId:      testSpaceId,
 			SubId:        subscriptionID,
@@ -566,7 +566,7 @@ func TestService_Search(t *testing.T) {
 		subscriptionID := "subId"
 
 		fx.collectionService.EXPECT().SubscribeForCollection(collectionID, subscriptionID).Return([]string{"1", "2"}, nil, nil)
-		fx.collectionService.EXPECT().UnsubscribeFromCollection(collectionID, subscriptionID).Return()
+		fx.collectionService.EXPECT().UnsubscribeFromCollection(collectionID, subscriptionID).Return(nil)
 
 		fx.store.AddObjects(t, testSpaceId, []spaceindex.TestObject{
 			{
@@ -614,7 +614,7 @@ func TestService_Search(t *testing.T) {
 		subscriptionID := "subId"
 
 		fx.collectionService.EXPECT().SubscribeForCollection(collectionID, subscriptionID).Return([]string{"1", "2", "3"}, nil, nil)
-		fx.collectionService.EXPECT().UnsubscribeFromCollection(collectionID, subscriptionID).Return()
+		fx.collectionService.EXPECT().UnsubscribeFromCollection(collectionID, subscriptionID).Return(nil)
 
 		fx.store.AddObjects(t, testSpaceId, []spaceindex.TestObject{
 			{
@@ -673,7 +673,7 @@ func TestService_Search(t *testing.T) {
 		subscriptionID := "subId"
 
 		fx.collectionService.EXPECT().SubscribeForCollection(collectionID, subscriptionID).Return([]string{"1", "2", "3"}, nil, nil)
-		fx.collectionService.EXPECT().UnsubscribeFromCollection(collectionID, subscriptionID).Return()
+		fx.collectionService.EXPECT().UnsubscribeFromCollection(collectionID, subscriptionID).Return(nil)
 
 		fx.store.AddObjects(t, testSpaceId, []spaceindex.TestObject{
 			{
@@ -725,7 +725,7 @@ func TestService_Search(t *testing.T) {
 		testRelationKey := domain.RelationKey("link_to_object")
 
 		fx.collectionService.EXPECT().SubscribeForCollection(collectionID, subscriptionID).Return([]string{"1"}, nil, nil)
-		fx.collectionService.EXPECT().UnsubscribeFromCollection(collectionID, subscriptionID).Return()
+		fx.collectionService.EXPECT().UnsubscribeFromCollection(collectionID, subscriptionID).Return(nil)
 
 		fx.store.AddObjects(t, testSpaceId, []spaceindex.TestObject{
 			{
@@ -777,7 +777,7 @@ func TestService_Search(t *testing.T) {
 		testRelationKey := domain.RelationKey("link_to_object")
 
 		fx.collectionService.EXPECT().SubscribeForCollection(collectionID, subscriptionID).Return([]string{"1"}, nil, nil)
-		fx.collectionService.EXPECT().UnsubscribeFromCollection(collectionID, subscriptionID).Return()
+		fx.collectionService.EXPECT().UnsubscribeFromCollection(collectionID, subscriptionID).Return(nil)
 
 		fx.store.AddObjects(t, testSpaceId, []spaceindex.TestObject{
 			{
@@ -835,7 +835,7 @@ func TestService_Search(t *testing.T) {
 		subscriptionID := "subId"
 
 		fx.collectionService.EXPECT().SubscribeForCollection(collectionID, subscriptionID).Return([]string{"1", "2", "3"}, nil, nil)
-		fx.collectionService.EXPECT().UnsubscribeFromCollection(collectionID, subscriptionID).Return()
+		fx.collectionService.EXPECT().UnsubscribeFromCollection(collectionID, subscriptionID).Return(nil)
 
 		fx.store.AddObjects(t, testSpaceId, []spaceindex.TestObject{
 			{
@@ -915,7 +915,7 @@ func TestService_Search(t *testing.T) {
 		collectionID := "collectionId"
 
 		fx.collectionService.EXPECT().SubscribeForCollection(collectionID, subID).Return([]string{"1"}, nil, nil).Times(1)
-		fx.collectionService.EXPECT().UnsubscribeFromCollection(collectionID, subID).Return().Times(1)
+		fx.collectionService.EXPECT().UnsubscribeFromCollection(collectionID, subID).Return(nil).Times(1)
 
 		defer fx.a.Close(context.Background())
 		defer fx.ctrl.Finish()
@@ -990,7 +990,7 @@ func TestService_Search(t *testing.T) {
 		collectionID := "collectionId"
 
 		fx.collectionService.EXPECT().SubscribeForCollection(collectionID, subID).Return([]string{"1"}, nil, nil).Times(1)
-		fx.collectionService.EXPECT().UnsubscribeFromCollection(collectionID, subID).Return().Times(1)
+		fx.collectionService.EXPECT().UnsubscribeFromCollection(collectionID, subID).Return(nil).Times(1)
 
 		defer fx.a.Close(context.Background())
 		defer fx.ctrl.Finish()

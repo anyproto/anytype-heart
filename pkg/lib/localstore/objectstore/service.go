@@ -16,6 +16,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/datastore/anystoreprovider"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/ftsearch"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/anystorehelper"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/spaceindex"
@@ -341,10 +342,10 @@ func collectCrossSpace[T any](s *dsObjectStore, proc func(store spaceindex.Store
 	return result, nil
 }
 
-func iterateCrossSpaceWithoutTech(s *dsObjectStore, proc func(store spaceindex.Store) error) error {
+func iterateSpacesForFulltext(s *dsObjectStore, proc func(store spaceindex.Store) error) error {
 	stores := s.listStores()
 	for _, store := range stores {
-		if store.SpaceId() == s.techSpaceId {
+		if store.SpaceId() == s.techSpaceId || store.SpaceId() == addr.AnytypeMarketplaceWorkspace {
 			continue
 		}
 		err := store.Init()
@@ -380,7 +381,7 @@ func (s *dsObjectStore) EnqueueAllForFulltextIndexing(ctx context.Context) error
 	const maxErrorsToLog = 5
 	var loggedErrors int
 
-	err = iterateCrossSpaceWithoutTech(s, func(store spaceindex.Store) error {
+	err = iterateSpacesForFulltext(s, func(store spaceindex.Store) error {
 		err := store.IterateAll(func(doc *anyenc.Value) error {
 			id := doc.GetString(idKey)
 			spaceId := doc.GetString(spaceIdKey)

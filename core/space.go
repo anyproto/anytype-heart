@@ -12,7 +12,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/inviteservice"
-	"github.com/anyproto/anytype-heart/core/spaceview"
+	"github.com/anyproto/anytype-heart/core/order"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space"
@@ -382,8 +382,8 @@ func (mw *Middleware) SpaceSetOrder(_ context.Context, request *pb.RpcSpaceSetOr
 		}
 		return m
 	}
-	orderService := app.MustComponent[spaceview.OrderSetter](mw.applicationService.GetApp())
-	finalOrder, err := orderService.SetOrder(request.GetSpaceViewOrder())
+	orderService := app.MustComponent[order.OrderSetter](mw.applicationService.GetApp())
+	finalOrder, err := orderService.SetSpaceViewOrder(request.GetSpaceViewOrder())
 	if err != nil {
 		return response(pb.RpcSpaceSetOrderResponseError_UNKNOWN_ERROR, err, nil)
 	}
@@ -398,7 +398,7 @@ func (mw *Middleware) SpaceUnsetOrder(_ context.Context, request *pb.RpcSpaceUns
 		}
 		return m
 	}
-	orderService := app.MustComponent[spaceview.OrderSetter](mw.applicationService.GetApp())
+	orderService := app.MustComponent[order.OrderSetter](mw.applicationService.GetApp())
 	err := orderService.UnsetOrder(request.SpaceViewId)
 	if err != nil {
 		return response(pb.RpcSpaceUnsetOrderResponseError_UNKNOWN_ERROR, err)

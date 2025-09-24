@@ -9,6 +9,7 @@ import (
 	"github.com/anyproto/any-sync/commonfile/fileproto/fileprotoerr"
 	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
+	format "github.com/ipfs/go-ipld-format"
 
 	"github.com/anyproto/anytype-heart/core/domain"
 )
@@ -108,6 +109,144 @@ func (i *inMemBlockStore) LocalDiskUsage(ctx context.Context) (uint64, error) {
 }
 
 func (i *inMemBlockStore) IterateFiles(ctx context.Context, iterFunc func(fileId domain.FullFileId)) error {
+	return nil
+}
+
+func (i *inMemBlockStore) Batch(ctx context.Context) (Batch, error) {
+	// For in-memory store, we don't need proxy since there's no remote store
+	// Just return the batch directly
+	batch := &inMemBatch{store: i, pending: make([]blocks.Block, 0), deletes: make([]cid.Cid, 0)}
+	// Wrap it to match the Batch interface
+	return batch, nil
+}
+
+// inMemBatch implements Batch for in-memory testing
+type inMemBatch struct {
+	store   *inMemBlockStore
+	pending []blocks.Block
+	deletes []cid.Cid
+	mu      sync.Mutex
+}
+
+func (b *inMemBatch) Add(ctx context.Context, bs []blocks.Block) error {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	b.pending = append(b.pending, bs...)
+	return nil
+}
+
+func (b *inMemBatch) Delete(ctx context.Context, c cid.Cid) error {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	b.deletes = append(b.deletes, c)
+	return nil
+}
+
+func (b *inMemBatch) Commit() error {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+
+	b.store.mu.Lock()
+	defer b.store.mu.Unlock()
+
+	// Apply adds
+	for _, block := range b.pending {
+		b.store.data[block.Cid().KeyString()] = block
+	}
+
+	// Apply deletes
+	for _, c := range b.deletes {
+		delete(b.store.data, c.KeyString())
+	}
+
+	// Clear pending operations
+	b.pending = make([]blocks.Block, 0)
+	b.deletes = make([]cid.Cid, 0)
+	return nil
+}
+
+func (b *inMemBatch) Discard() error {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+
+	// Clear pending operations without applying them
+	b.pending = make([]blocks.Block, 0)
+	b.deletes = make([]cid.Cid, 0)
+	return nil
+}
+
+// Get implements BlockStore interface for batch
+func (b *inMemBatch) Get(ctx context.Context, k cid.Cid) (blocks.Block, error) {
+	// First check pending blocks
+	b.mu.Lock()
+	for _, block := range b.pending {
+		if block.Cid().Equals(k) {
+			b.mu.Unlock()
+			return block, nil
+		}
+	}
+	// Check if it's in deletes
+	for _, c := range b.deletes {
+		if c.Equals(k) {
+			b.mu.Unlock()
+			return nil, format.ErrNotFound{Cid: k}
+		}
+	}
+	b.mu.Unlock()
+
+	// Fall back to store
+	return b.store.Get(ctx, k)
+}
+
+// GetMany implements BlockStore interface for batch
+func (b *inMemBatch) GetMany(ctx context.Context, ks []cid.Cid) <-chan blocks.Block {
+	ch := make(chan blocks.Block)
+	go func() {
+		defer close(ch)
+		for _, k := range ks {
+			blk, err := b.Get(ctx, k)
+			if err == nil {
+				ch <- blk
+			}
+		}
+	}()
+	return ch
+}
+
+// ExistsCids implements BlockStoreLocal interface for batch
+func (b *inMemBatch) ExistsCids(ctx context.Context, ks []cid.Cid) (exists []cid.Cid, err error) {
+	for _, k := range ks {
+		if _, err := b.Get(ctx, k); err == nil {
+			exists = append(exists, k)
+		}
+	}
+	return exists, nil
+}
+
+// NotExistsBlocks implements BlockStoreLocal interface for batch
+func (b *inMemBatch) NotExistsBlocks(ctx context.Context, bs []blocks.Block) (notExists []blocks.Block, err error) {
+	for _, block := range bs {
+		if _, err := b.Get(ctx, block.Cid()); err != nil {
+			notExists = append(notExists, block)
+		}
+	}
+	return notExists, nil
+}
+
+// PartitionByExistence implements localStore interface for batch
+func (b *inMemBatch) PartitionByExistence(ctx context.Context, ks []cid.Cid) (exist []cid.Cid, notExist []cid.Cid, err error) {
+	for _, k := range ks {
+		if _, err := b.Get(ctx, k); err == nil {
+			exist = append(exist, k)
+		} else {
+			notExist = append(notExist, k)
+		}
+	}
+	return exist, notExist, nil
+}
+
+// Close implements localStore interface for batch
+func (b *inMemBatch) Close() error {
 	return nil
 }
 

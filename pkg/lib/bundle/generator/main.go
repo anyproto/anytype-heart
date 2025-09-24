@@ -147,7 +147,7 @@ func excludeInternalRelations(allSystemKeys []domain.RelationKey) []domain.Relat
 
 func exitOnError(err error) {
 	if err != nil {
-		_, _ = fmt.Fprintf(os.Stderr, err.Error())
+		_, _ = fmt.Fprintf(os.Stderr, "%s", err.Error())
 		os.Exit(1)
 	}
 }

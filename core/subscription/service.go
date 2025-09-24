@@ -98,7 +98,7 @@ type subscription interface {
 
 type CollectionService interface {
 	SubscribeForCollection(collectionID string, subscriptionID string) ([]string, <-chan []string, error)
-	UnsubscribeFromCollection(collectionID string, subscriptionID string)
+	UnsubscribeFromCollection(collectionID string, subscriptionID string) error
 }
 
 type service struct {
