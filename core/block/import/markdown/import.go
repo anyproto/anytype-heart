@@ -648,7 +648,6 @@ func (m *Markdown) createSnapshots(
 						SbType: smartblock.SmartBlockTypeObjectType,
 						Data: &common.StateSnapshot{
 							Details:       objectTypeDetails,
-							RelationLinks: bundledRelationLinks(objectTypeDetails),
 							ObjectTypes:   []string{bundle.TypeKeyObjectType.String()},
 							Key:           typeKey,
 						},
@@ -671,7 +670,6 @@ func (m *Markdown) createSnapshots(
 					SbType: smartblock.SmartBlockTypeRelation,
 					Data: &common.StateSnapshot{
 						Details:       relationDetails,
-						RelationLinks: bundledRelationLinks(relationDetails),
 						ObjectTypes:   []string{bundle.TypeKeyRelation.String()},
 						Key:           prop.Key,
 					},
@@ -689,7 +687,6 @@ func (m *Markdown) createSnapshots(
 					Details:       details,
 					ObjectTypes:   []string{bundle.TypeKeyRelation.String()},
 					Key:           bundle.TypeKeyObjectType.String(),
-					RelationLinks: bundledRelationLinks(details),
 				},
 			},
 		})
@@ -707,7 +704,6 @@ func (m *Markdown) createSnapshots(
 					SbType: smartblock.SmartBlockTypeObjectType,
 					Data: &common.StateSnapshot{
 						Details:       objectTypeDetails,
-						RelationLinks: bundledRelationLinks(objectTypeDetails),
 						ObjectTypes:   []string{bundle.TypeKeyObjectType.String()},
 						Key:           typeKey,
 					},
@@ -864,7 +860,6 @@ func (m *Markdown) createSnapshots(
 			Blocks:        blocks,
 			Details:       details[name],
 			ObjectTypes:   []string{objectTypeKey},
-			RelationLinks: relationLinks,
 		}
 
 		// Add collection store if this is a collection

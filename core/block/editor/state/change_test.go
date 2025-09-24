@@ -12,7 +12,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/simple/dataview"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pb"
-	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 
@@ -354,15 +353,12 @@ func TestState_SetParent(t *testing.T) {
 	orig.Add(simple.New(&model.Block{Id: "root", ChildrenIds: []string{"header"}, Content: &model.BlockContentOfSmartblock{Smartblock: &model.BlockContentSmartblock{}}}))
 	orig.Add(simple.New(&model.Block{Id: "header"}))
 	orig.SetObjectTypeKey("orig")
-	orig.AddRelationLinks(&model.RelationLink{Format: model.RelationFormat_longtext, Key: "one"})
 	st := orig.Copy()
 
 	newState := NewDoc("root", nil).(*State)
 	newState.Add(simple.New(&model.Block{Id: "root", ChildrenIds: []string{"child"}, Content: &model.BlockContentOfSmartblock{Smartblock: &model.BlockContentSmartblock{}}}))
 	newState.Add(simple.New(&model.Block{Id: "child"}))
 	newState.SetObjectTypeKeys([]domain.TypeKey{"newOT1", "newOT2"})
-	newState.AddRelationLinks(&model.RelationLink{Format: model.RelationFormat_longtext, Key: "newOne"})
-	newState.AddRelationLinks(&model.RelationLink{Format: model.RelationFormat_longtext, Key: "newTwo"})
 
 	ns := newState.Copy()
 
@@ -684,82 +680,6 @@ func Test_ApplyChange(t *testing.T) {
 			},
 		}))
 		assert.Equal(t, &types.Struct{Fields: map[string]*types.Value{}}, s.Store())
-	})
-}
-
-func TestRelationChanges(t *testing.T) {
-	a := NewDoc("root", nil).(*State)
-	a.relationLinks = []*model.RelationLink{{Key: "1"}, {Key: "2"}, {Key: "3"}}
-	ac := a.Copy()
-	b := a.NewState()
-	b.relationLinks = []*model.RelationLink{{Key: "3"}, {Key: "4"}, {Key: "5"}}
-	_, _, err := ApplyState("", b, false)
-	require.NoError(t, err)
-	chs := a.GetChanges()
-	require.NoError(t, ac.ApplyChange(chs...))
-	require.Equal(t, a.relationLinks, ac.relationLinks)
-}
-
-func TestLocalRelationChanges(t *testing.T) {
-	t.Run("local relation added", func(t *testing.T) {
-		// given
-		a := NewDoc("root", nil).(*State)
-		a.relationLinks = []*model.RelationLink{}
-		b := a.NewState()
-		b.relationLinks = []*model.RelationLink{{Key: bundle.RelationKeySyncStatus.String(), Format: model.RelationFormat_number}}
-
-		// when
-		_, _, err := ApplyState("", b, false)
-		require.NoError(t, err)
-		chs := a.GetChanges()
-
-		// then
-		require.Len(t, chs, 0)
-	})
-	t.Run("local relation removed", func(t *testing.T) {
-		// given
-		a := NewDoc("root", nil).(*State)
-		a.relationLinks = []*model.RelationLink{{Key: bundle.RelationKeySyncStatus.String(), Format: model.RelationFormat_number}}
-		b := a.NewState()
-		b.relationLinks = []*model.RelationLink{}
-
-		// when
-		_, _, err := ApplyState("", b, false)
-		require.NoError(t, err)
-		chs := a.GetChanges()
-
-		// then
-		require.Len(t, chs, 0)
-	})
-	t.Run("derived relation added", func(t *testing.T) {
-		// given
-		a := NewDoc("root", nil).(*State)
-		a.relationLinks = []*model.RelationLink{}
-		b := a.NewState()
-		b.relationLinks = []*model.RelationLink{{Key: bundle.RelationKeySpaceId.String(), Format: model.RelationFormat_longtext}}
-
-		// when
-		_, _, err := ApplyState("", b, false)
-		require.NoError(t, err)
-		chs := a.GetChanges()
-
-		// then
-		require.Len(t, chs, 0)
-	})
-	t.Run("derived relation removed", func(t *testing.T) {
-		// given
-		a := NewDoc("root", nil).(*State)
-		a.relationLinks = []*model.RelationLink{{Key: bundle.RelationKeySpaceId.String(), Format: model.RelationFormat_longtext}}
-		b := a.NewState()
-		b.relationLinks = []*model.RelationLink{}
-
-		// when
-		_, _, err := ApplyState("", b, false)
-		require.NoError(t, err)
-		chs := a.GetChanges()
-
-		// then
-		require.Len(t, chs, 0)
 	})
 }
 

@@ -205,10 +205,11 @@ func TestMigrateIds(t *testing.T) {
 				bb.ID(objectId),
 			),
 		)
-		st.SetDetailAndBundledRelation(bundle.RelationKeyIconImage, domain.StringList([]string{fileId.String()}))
+		st.SetDetail(bundle.RelationKeyIconImage, domain.StringList([]string{fileId.String()}))
 
 		space := mock_clientspace.NewMockSpace(t)
 		space.EXPECT().IsPersonal().Return(true)
+		space.EXPECT().Id().Return("spaceId2")
 
 		fx.objectStore.AddObjects(t, "spaceId2", []objectstore.TestObject{
 			{
@@ -226,7 +227,7 @@ func TestMigrateIds(t *testing.T) {
 				bb.ID(objectId),
 			),
 		)
-		wantState.SetDetailAndBundledRelation(bundle.RelationKeyIconImage, domain.StringList([]string{fileId.String()}))
+		wantState.SetDetail(bundle.RelationKeyIconImage, domain.StringList([]string{fileId.String()}))
 
 		bb.AssertTreesEqual(t, wantState.Blocks(), st.Blocks())
 		assert.Equal(t, wantState.Details(), st.Details())
@@ -252,12 +253,13 @@ func TestMigrateIds(t *testing.T) {
 		)
 
 		// Relation format: file
-		st.SetDetailAndBundledRelation(bundle.RelationKeyIconImage, domain.StringList([]string{fileId.String()}))
+		st.SetDetail(bundle.RelationKeyIconImage, domain.StringList([]string{fileId.String()}))
 		// Relation format: object
-		st.SetDetailAndBundledRelation(bundle.RelationKeyAssignee, domain.StringList([]string{fileId.String()}))
+		st.SetDetail(bundle.RelationKeyAssignee, domain.StringList([]string{fileId.String()}))
 
 		space := mock_clientspace.NewMockSpace(t)
 		space.EXPECT().IsPersonal().Return(true)
+		space.EXPECT().Id().Return("space")
 		space.EXPECT().DeriveObjectIdWithAccountSignature(mock.Anything, mock.Anything).Return(expectedFileObjectId, nil)
 
 		fx.MigrateFileIdsInBlocks(st, space)
@@ -272,8 +274,8 @@ func TestMigrateIds(t *testing.T) {
 				),
 			),
 		)
-		wantState.SetDetailAndBundledRelation(bundle.RelationKeyIconImage, domain.StringList([]string{expectedFileObjectId}))
-		wantState.SetDetailAndBundledRelation(bundle.RelationKeyAssignee, domain.StringList([]string{expectedFileObjectId}))
+		wantState.SetDetail(bundle.RelationKeyIconImage, domain.StringList([]string{expectedFileObjectId}))
+		wantState.SetDetail(bundle.RelationKeyAssignee, domain.StringList([]string{expectedFileObjectId}))
 
 		bb.AssertTreesEqual(t, wantState.Blocks(), st.Blocks())
 		assert.Equal(t, wantState.Details(), st.Details())

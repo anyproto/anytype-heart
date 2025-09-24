@@ -28,12 +28,12 @@ func NewSpacePersistentInfoFromState(st state.Doc) SpacePersistentInfo {
 }
 
 func (s *SpacePersistentInfo) UpdateDetails(st *state.State) *SpacePersistentInfo {
-	st.SetDetailAndBundledRelation(bundle.RelationKeyTargetSpaceId, domain.String(s.SpaceID))
+	st.SetDetail(bundle.RelationKeyTargetSpaceId, domain.String(s.SpaceID))
 	if s.AccountStatus != nil {
-		st.SetDetailAndBundledRelation(bundle.RelationKeySpaceAccountStatus, domain.Int64(*s.AccountStatus))
+		st.SetDetail(bundle.RelationKeySpaceAccountStatus, domain.Int64(*s.AccountStatus))
 	}
 	if s.AclHeadId != "" {
-		st.SetDetailAndBundledRelation(bundle.RelationKeyLatestAclHeadId, domain.String(s.AclHeadId))
+		st.SetDetail(bundle.RelationKeyLatestAclHeadId, domain.String(s.AclHeadId))
 	}
 	if s.EncodedKey != "" {
 		st.SetDetail(bundle.RelationKeyGuestKey, domain.String(s.EncodedKey))

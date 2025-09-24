@@ -136,9 +136,9 @@ func (s *SpaceView) SetSpaceLocalInfo(info spaceinfo.SpaceLocalInfo) (err error)
 func (s *SpaceView) SetOwner(ownerId string, createdDate int64) (err error) {
 	st := s.NewState()
 	if createdDate != 0 {
-		st.SetDetailAndBundledRelation(bundle.RelationKeyCreatedDate, domain.Int64(createdDate))
+		st.SetDetail(bundle.RelationKeyCreatedDate, domain.Int64(createdDate))
 	}
-	st.SetDetailAndBundledRelation(bundle.RelationKeyCreator, domain.String(ownerId))
+	st.SetDetail(bundle.RelationKeyCreator, domain.String(ownerId))
 	return s.Apply(st)
 }
 
@@ -150,9 +150,9 @@ func (s *SpaceView) SetMyParticipantStatus(status model.ParticipantStatus) (err 
 
 func (s *SpaceView) SetAclInfo(isAclEmpty bool, pushKey crypto.PrivKey, pushEncKey crypto.SymKey, joinedDate int64) error {
 	st := s.NewState()
-	st.SetDetailAndBundledRelation(bundle.RelationKeyIsAclShared, domain.Bool(!isAclEmpty))
+	st.SetDetail(bundle.RelationKeyIsAclShared, domain.Bool(!isAclEmpty))
 
-	st.SetDetailAndBundledRelation(bundle.RelationKeySpaceJoinDate, domain.Int64(joinedDate))
+	st.SetDetail(bundle.RelationKeySpaceJoinDate, domain.Int64(joinedDate))
 
 	if pushKey != nil {
 		pushKeyBinary, err := pushKey.Marshall()
@@ -160,7 +160,7 @@ func (s *SpaceView) SetAclInfo(isAclEmpty bool, pushKey crypto.PrivKey, pushEncK
 			return err
 		}
 		pushKeyString := base64.StdEncoding.EncodeToString(pushKeyBinary)
-		st.SetDetailAndBundledRelation(bundle.RelationKeySpacePushNotificationKey, domain.String(pushKeyString))
+		st.SetDetail(bundle.RelationKeySpacePushNotificationKey, domain.String(pushKeyString))
 	}
 
 	if pushEncKey != nil {
@@ -169,7 +169,7 @@ func (s *SpaceView) SetAclInfo(isAclEmpty bool, pushKey crypto.PrivKey, pushEncK
 			return err
 		}
 		pushEncString := base64.StdEncoding.EncodeToString(pushEncBinary)
-		st.SetDetailAndBundledRelation(bundle.RelationKeySpacePushNotificationEncryptionKey, domain.String(pushEncString))
+		st.SetDetail(bundle.RelationKeySpacePushNotificationEncryptionKey, domain.String(pushEncString))
 	}
 
 	s.updateAccessType(st)
@@ -196,7 +196,7 @@ func (s *SpaceView) SetAccessType(acc spaceinfo.AccessType) (err error) {
 	if prev == spaceinfo.AccessTypePersonal {
 		return nil
 	}
-	st.SetDetailAndBundledRelation(bundle.RelationKeySpaceAccessType, domain.Int64(acc))
+	st.SetDetail(bundle.RelationKeySpaceAccessType, domain.Int64(acc))
 	return s.Apply(st)
 }
 
@@ -208,13 +208,13 @@ func (s *SpaceView) SetSpacePersistentInfo(info spaceinfo.SpacePersistentInfo) (
 
 func (s *SpaceView) SetSharedSpacesLimit(limit int) (err error) {
 	st := s.NewState()
-	st.SetDetailAndBundledRelation(bundle.RelationKeySharedSpacesLimit, domain.Int64(limit))
+	st.SetDetail(bundle.RelationKeySharedSpacesLimit, domain.Int64(limit))
 	return s.Apply(st)
 }
 
 func (s *SpaceView) SetPushNotificationMode(ctx session.Context, mode pb.RpcPushNotificationSetSpaceModeMode) (err error) {
 	st := s.NewStateCtx(ctx)
-	st.SetDetailAndBundledRelation(bundle.RelationKeySpacePushNotificationMode, domain.Int64(mode))
+	st.SetDetail(bundle.RelationKeySpacePushNotificationMode, domain.Int64(mode))
 	return s.Apply(st)
 }
 
@@ -303,7 +303,7 @@ func (s *SpaceView) SetSpaceData(details *domain.Details) error {
 				continue
 			}
 			changed = true
-			st.SetDetailAndBundledRelation(k, v)
+			st.SetDetail(k, v)
 		}
 	}
 
@@ -373,5 +373,5 @@ func (s *SpaceView) SetBetweenViews(prevViewOrderId, afterViewOrderId string) er
 }
 
 func stateSetAccessType(st *state.State, accessType spaceinfo.AccessType) {
-	st.SetDetailAndBundledRelation(bundle.RelationKeySpaceAccessType, domain.Int64(accessType))
+	st.SetDetail(bundle.RelationKeySpaceAccessType, domain.Int64(accessType))
 }
