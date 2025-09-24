@@ -6,7 +6,6 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/anyproto/anytype-heart/core/domain"
-	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
 func TestSimpleSub_Changes(t *testing.T) {
@@ -15,7 +14,7 @@ func TestSimpleSub_Changes(t *testing.T) {
 			keys:  []domain.RelationKey{"id", "order"},
 			cache: newCache(),
 			isDep: true,
-			ds:    &dependencyService{sorts: map[string][]model.RelationLink{}},
+			ds:    &dependencyService{sorts: sortsMap{}},
 		}
 		require.NoError(t, sub.init(genEntries(10, false)))
 		ctx := &opCtx{c: sub.cache}
@@ -28,7 +27,7 @@ func TestSimpleSub_Changes(t *testing.T) {
 			keys:  []domain.RelationKey{"id", "order"},
 			cache: newCache(),
 			isDep: true,
-			ds:    &dependencyService{sorts: map[string][]model.RelationLink{}},
+			ds:    &dependencyService{sorts: sortsMap{}},
 		}
 		require.NoError(t, sub.init(genEntries(10, false)))
 		ctx := &opCtx{c: sub.cache}
