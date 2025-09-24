@@ -3,6 +3,8 @@ package order
 import (
 	"errors"
 	"fmt"
+	"slices"
+	"sort"
 
 	"github.com/anyproto/any-sync/app"
 
@@ -13,6 +15,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+	"github.com/anyproto/anytype-heart/util/slice"
 )
 
 const CName = "core.order.setter"
@@ -87,7 +90,57 @@ func (o *orderSetter) SetObjectTypesOrder(spaceId string, objectIds []string) ([
 		return nil, err
 	}
 
-	return o.rebuildIfNeeded(objectIds, existing)
+	previousIds := slices.Clone(objectIds)
+	sort.Slice(previousIds, func(i, j int) bool {
+		orderI, orderJ := existing[previousIds[i]], existing[previousIds[j]]
+		return orderI < orderJ
+	})
+
+	reassigned := make(map[string]string)
+
+	res := slice.Diff(previousIds, objectIds, slice.StringIdentity, func(s string, s2 string) bool {
+		return s == s2
+	})
+	for _, ch := range res {
+		if mv := ch.Move(); mv != nil {
+			afterId := mv.AfterID
+			for _, id := range mv.IDs {
+				afterIdx := slices.Index(previousIds, afterId)
+				if afterIdx == 0 {
+					if len(previousIds) == 1 {
+						newId := o.setRank(id, "", "", true)
+						reassigned[id] = newId
+					} else {
+						next := existing[previousIds[1]]
+						newId := o.setRank(id, "", next, true)
+						reassigned[id] = newId
+					}
+				} else if afterIdx == len(previousIds)-1 {
+					last := existing[previousIds[len(previousIds)-1]]
+					newId := o.setRank(id, last, "", true)
+					reassigned[id] = newId
+				} else {
+					left := existing[previousIds[afterIdx]]
+					right := existing[previousIds[afterIdx+1]]
+					newId := o.setRank(id, left, right, false)
+					reassigned[id] = newId
+				}
+			}
+		}
+	}
+
+	newOrderIds := make([]string, len(objectIds))
+	for i, id := range objectIds {
+		if newId, ok := reassigned[id]; ok {
+			newOrderIds[i] = newId
+		} else {
+			newOrderIds[i] = existing[id]
+		}
+	}
+
+	return newOrderIds, nil
+
+	// return o.rebuildIfNeeded(objectIds, existing)
 }
 
 func (o *orderSetter) UnsetOrder(objectId string) error {
@@ -232,12 +285,10 @@ func (o *orderSetter) setRank(objectId, before, after string, isFirst bool) stri
 // element *to the right* that already has a rank.
 func (o *orderSetter) precalcNext(existing map[string]string, order []string) []string {
 	res := make([]string, len(order))
-	next := ""
-	for i := len(order) - 1; i >= 0; i-- {
-		res[i] = next
-		if lex := existing[order[i]]; lex != "" {
-			next = lex
-		}
+
+	for i := 0; i < len(order)-1; i++ {
+		next := order[i+1]
+		res[i] = existing[next]
 	}
 	return res
 }
