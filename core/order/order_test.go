@@ -238,8 +238,7 @@ func TestOrderSetter_rebuildIfNeeded(t *testing.T) {
 		assert.True(t, lexids[0] < lexids[1], "view3 should be before view1")
 		assert.True(t, lexids[1] < lexids[2], "view1 should be before view2")
 
-		// view3 should now be first and have a different lexid from its original
-		assert.NotEqual(t, "MMMM0003", lexids[0], "view3 should have a new lexid (not its original)")
+		assert.Equal(t, "MMMM0003", lexids[0], "view3 should have the original order id")
 		// The fix works correctly - view3 is properly ordered before view1 and view2
 	})
 }

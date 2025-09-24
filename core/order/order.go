@@ -3,8 +3,6 @@ package order
 import (
 	"errors"
 	"fmt"
-	"slices"
-	"sort"
 
 	"github.com/anyproto/any-sync/app"
 
@@ -15,7 +13,6 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	"github.com/anyproto/anytype-heart/util/slice"
 )
 
 const CName = "core.order.setter"
@@ -90,66 +87,7 @@ func (o *orderSetter) SetObjectTypesOrder(spaceId string, objectIds []string) ([
 		return nil, err
 	}
 
-	previousIds := slices.Clone(objectIds)
-	sort.Slice(previousIds, func(i, j int) bool {
-		orderI, orderJ := existing[previousIds[i]], existing[previousIds[j]]
-		return orderI < orderJ
-	})
-
-	res := slice.Diff(previousIds, objectIds, slice.StringIdentity, func(s string, s2 string) bool {
-		return s == s2
-	})
-
-	move := func(id string, afterId string) {
-		afterIdx := slices.Index(previousIds, afterId)
-		if afterIdx == -1 {
-			if len(previousIds) == 1 {
-				newId := o.setRank(id, "", "", true)
-				existing[id] = newId
-			} else {
-				next := existing[previousIds[1]]
-				newId := o.setRank(id, "", next, true)
-				existing[id] = newId
-			}
-		} else if afterIdx == len(previousIds)-1 {
-			last := existing[previousIds[len(previousIds)-1]]
-			newId := o.setRank(id, last, "", true)
-			existing[id] = newId
-		} else {
-			left := existing[previousIds[afterIdx]]
-			right := existing[previousIds[afterIdx+1]]
-			newId := o.setRank(id, left, right, false)
-			existing[id] = newId
-		}
-	}
-
-	for _, ch := range res {
-		// if add := ch.Add(); add != nil {
-		// 	afterId := add.AfterID
-		// 	for _, id := range add.Items {
-		// 		move(id, afterId)
-		// 		afterIdx := slices.Index(previousIds, afterId)
-		// 		previousIds = slices.Insert(previousIds, afterIdx+1, id)
-		// 		afterId = id
-		// 	}
-		// }
-		if mv := ch.Move(); mv != nil {
-			afterId := mv.AfterID
-			for _, id := range mv.IDs {
-				move(id, afterId)
-				afterId = id
-			}
-		}
-	}
-
-	newOrderIds := make([]string, len(objectIds))
-	for i, id := range objectIds {
-		newOrderIds[i] = existing[id]
-	}
-
-	return newOrderIds, nil
-
-	// return o.rebuildIfNeeded(objectIds, existing)
+	return o.rebuildIfNeeded(objectIds, existing)
 }
 
 func (o *orderSetter) UnsetOrder(objectId string) error {
@@ -226,7 +164,7 @@ func (o *orderSetter) getCurrentTypesOrder(spaceId string) (map[string]string, e
 
 // rebuildIfNeeded processes the order in a single pass, updating lexids as needed
 func (o *orderSetter) rebuildIfNeeded(objectIds []string, existing map[string]string) ([]string, error) {
-	nextExisting := o.precalcNext(existing, objectIds) // O(n)
+	nextExisting := o.precalcNext(existing, objectIds)
 	prev := ""
 	out := make([]string, len(objectIds))
 
@@ -234,14 +172,17 @@ func (o *orderSetter) rebuildIfNeeded(objectIds []string, existing map[string]st
 		curr := existing[id]
 		next := nextExisting[i]
 
-		switch {
-		case curr != "" && (prev == "" || curr > prev) && (next == "" || curr < next):
-			// rank already valid - no change needed
+		if curr != "" && curr > prev {
+			// Current lexid is valid - keep it
 			out[i] = curr
-		case i == 0:
+		} else if i == 0 {
 			curr = o.setRank(id, "", next, true)
-		default:
-			// Insert between prev and next
+		} else {
+			// When inserting, check if next is valid relative to prev
+			// If prev >= next, ignore next (treat as unbounded)
+			if next != "" && prev >= next {
+				next = ""
+			}
 			curr = o.setRank(id, prev, next, false)
 		}
 
@@ -294,10 +235,12 @@ func (o *orderSetter) setRank(objectId, before, after string, isFirst bool) stri
 // element *to the right* that already has a rank.
 func (o *orderSetter) precalcNext(existing map[string]string, order []string) []string {
 	res := make([]string, len(order))
-
-	for i := 0; i < len(order)-1; i++ {
-		next := order[i+1]
-		res[i] = existing[next]
+	next := ""
+	for i := len(order) - 1; i >= 0; i-- {
+		res[i] = next
+		if lex := existing[order[i]]; lex != "" {
+			next = lex
+		}
 	}
 	return res
 }
