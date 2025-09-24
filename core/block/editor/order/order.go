@@ -58,20 +58,17 @@ func (s *orderSettable) SetAfterOrder(orderId string) error {
 	return nil
 }
 
-func (s *orderSettable) SetBetweenOrders(orderA, orderB string) (string, error) {
-
-	if orderA > orderB {
-		orderA, orderB = orderB, orderA
-	}
-
-	var between string
-	var err error
-	if orderA == "" {
+func (s *orderSettable) SetBetweenOrders(left, right string) (string, error) {
+	var (
+		between string
+		err     error
+	)
+	if left == "" {
 		// Insert before the first existing element
-		between = lx.Prev(orderB)
+		between = lx.Prev(right)
 	} else {
 		// Insert between two existing elements
-		between, err = lx.NextBefore(orderA, orderB)
+		between, err = lx.NextBefore(left, right)
 	}
 
 	if err != nil {

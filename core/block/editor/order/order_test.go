@@ -164,25 +164,6 @@ func TestRelationOption_SetBetweenOrders(t *testing.T) {
 		assert.True(t, savedOrderId < afterOrderId)
 	})
 
-	t.Run("sets order between two existing orders: the first order is greater than the second", func(t *testing.T) {
-		// given
-		obj := newTestObject("test-relation-option")
-
-		previousOrderId := "Z"
-		afterOrderId := "A"
-
-		// when
-		got, err := obj.SetBetweenOrders(previousOrderId, afterOrderId)
-
-		// then
-		assert.NoError(t, err)
-		savedOrderId := obj.Details().GetString(orderKey)
-		assert.Equal(t, got, savedOrderId)
-		assert.NotEmpty(t, savedOrderId)
-		assert.True(t, savedOrderId < previousOrderId)
-		assert.True(t, savedOrderId > afterOrderId)
-	})
-
 	t.Run("sets order before first element when previous order is empty", func(t *testing.T) {
 		// given
 		obj := newTestObject("test-relation-option")
@@ -201,26 +182,6 @@ func TestRelationOption_SetBetweenOrders(t *testing.T) {
 		expectedPrev := lx.Prev(afterOrderId)
 		assert.Equal(t, expectedPrev, savedOrderId)
 		assert.True(t, savedOrderId < afterOrderId)
-	})
-
-	t.Run("sets order between an empty order and non-empty", func(t *testing.T) {
-		// given
-		obj := newTestObject("test-relation-option")
-
-		previousOrderId := "M"
-		afterOrderId := ""
-
-		// when
-		got, err := obj.SetBetweenOrders(previousOrderId, afterOrderId)
-
-		// then
-		assert.NoError(t, err)
-
-		savedOrderId := obj.Details().GetString(orderKey)
-		assert.Equal(t, got, savedOrderId)
-		expectedPrev := lx.Prev(previousOrderId)
-		assert.Equal(t, expectedPrev, savedOrderId)
-		assert.True(t, savedOrderId < previousOrderId)
 	})
 
 	t.Run("returns error when lexid insertion fails", func(t *testing.T) {
