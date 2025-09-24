@@ -96,46 +96,55 @@ func (o *orderSetter) SetObjectTypesOrder(spaceId string, objectIds []string) ([
 		return orderI < orderJ
 	})
 
-	reassigned := make(map[string]string)
-
 	res := slice.Diff(previousIds, objectIds, slice.StringIdentity, func(s string, s2 string) bool {
 		return s == s2
 	})
+
+	move := func(id string, afterId string) {
+		afterIdx := slices.Index(previousIds, afterId)
+		if afterIdx == 0 {
+			if len(previousIds) == 1 {
+				newId := o.setRank(id, "", "", true)
+				existing[id] = newId
+			} else {
+				next := existing[previousIds[1]]
+				newId := o.setRank(id, "", next, true)
+				existing[id] = newId
+			}
+		} else if afterIdx == len(previousIds)-1 {
+			last := existing[previousIds[len(previousIds)-1]]
+			newId := o.setRank(id, last, "", true)
+			existing[id] = newId
+		} else {
+			left := existing[previousIds[afterIdx]]
+			right := existing[previousIds[afterIdx+1]]
+			newId := o.setRank(id, left, right, false)
+			existing[id] = newId
+		}
+	}
+
 	for _, ch := range res {
+		// if add := ch.Add(); add != nil {
+		// 	afterId := add.AfterID
+		// 	for _, id := range add.Items {
+		// 		move(id, afterId)
+		// 		afterIdx := slices.Index(previousIds, afterId)
+		// 		previousIds = slices.Insert(previousIds, afterIdx+1, id)
+		// 		afterId = id
+		// 	}
+		// }
 		if mv := ch.Move(); mv != nil {
 			afterId := mv.AfterID
 			for _, id := range mv.IDs {
-				afterIdx := slices.Index(previousIds, afterId)
-				if afterIdx == 0 {
-					if len(previousIds) == 1 {
-						newId := o.setRank(id, "", "", true)
-						reassigned[id] = newId
-					} else {
-						next := existing[previousIds[1]]
-						newId := o.setRank(id, "", next, true)
-						reassigned[id] = newId
-					}
-				} else if afterIdx == len(previousIds)-1 {
-					last := existing[previousIds[len(previousIds)-1]]
-					newId := o.setRank(id, last, "", true)
-					reassigned[id] = newId
-				} else {
-					left := existing[previousIds[afterIdx]]
-					right := existing[previousIds[afterIdx+1]]
-					newId := o.setRank(id, left, right, false)
-					reassigned[id] = newId
-				}
+				move(id, afterId)
+				afterId = id
 			}
 		}
 	}
 
 	newOrderIds := make([]string, len(objectIds))
 	for i, id := range objectIds {
-		if newId, ok := reassigned[id]; ok {
-			newOrderIds[i] = newId
-		} else {
-			newOrderIds[i] = existing[id]
-		}
+		newOrderIds[i] = existing[id]
 	}
 
 	return newOrderIds, nil
