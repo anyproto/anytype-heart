@@ -172,14 +172,17 @@ func (o *orderSetter) rebuildIfNeeded(objectIds []string, existing map[string]st
 		curr := existing[id]
 		next := nextExisting[i]
 
-		switch {
-		case curr != "" && (prev == "" || curr > prev) && (next == "" || curr < next):
-			// rank already valid - no change needed
+		if curr != "" && curr > prev {
+			// Current lexid is valid - keep it
 			out[i] = curr
-		case i == 0:
+		} else if i == 0 {
 			curr = o.setRank(id, "", next, true)
-		default:
-			// Insert between prev and next
+		} else {
+			// When inserting, check if next is valid relative to prev
+			// If prev >= next, ignore next (treat as unbounded)
+			if next != "" && prev >= next {
+				next = ""
+			}
 			curr = o.setRank(id, prev, next, false)
 		}
 
