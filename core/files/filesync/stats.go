@@ -103,7 +103,7 @@ func (s *fileSync) precacheNodeUsage() {
 	// Init cache with default limits
 	if !ok || err != nil {
 		err = s.nodeUsageCache.Set(context.Background(), "node_usage", NodeUsage{
-			AccountBytesLimit: 1024 * 1024 * 1024, // 1 GB
+			AccountBytesLimit: 100 * 1024 * 1024, // 100 MB
 		})
 		if err != nil {
 			log.Error("can't set default limits", zap.Error(err))

@@ -89,3 +89,7 @@ func (s *orderSettable) UnsetOrder() error {
 func (s *orderSettable) GetOrder() string {
 	return s.Details().GetString(s.orderKey)
 }
+
+func GetSmallestOrder(currentSmallestOrder string) string {
+	return lx.Prev(currentSmallestOrder)
+}

@@ -39,7 +39,10 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 )
 
-var log = logging.Logger("anytype-mw-editor")
+var (
+	log                         = logging.Logger("anytype-mw-editor")
+	ErrUnexpectedSmartblockType = errors.New("unexpected smartblock type")
+)
 
 type ObjectDeleter interface {
 	DeleteObjectByFullID(id domain.FullID) (err error)
@@ -247,6 +250,6 @@ func (f *ObjectFactory) New(space smartblock.Space, sbType coresb.SmartBlockType
 		}
 		return accountobject.New(sb, f.accountService.Keys(), spaceIndex, f.layoutConverter, f.fileObjectService, db, f.config), nil
 	default:
-		return nil, fmt.Errorf("unexpected smartblock type: %v", sbType)
+		return nil, fmt.Errorf("%w: %v", ErrUnexpectedSmartblockType, sbType)
 	}
 }
