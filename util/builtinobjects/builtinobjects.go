@@ -265,7 +265,7 @@ func (b *builtinObjects) CreateObjectsForExperience(ctx context.Context, spaceID
 					Layout:         model.BlockContentWidget_Link,
 					TargetObjectId: id,
 				}}
-				b.createWidgets(nil, spaceID, pb.RpcObjectImportUseCaseRequest_GET_STARTED, widgets)
+				b.createWidgets(nil, spaceID, widgets)
 			}
 		}
 
@@ -442,7 +442,7 @@ func (b *builtinObjects) inject(ctx session.Context, spaceID string, useCase pb.
 	_ = b.handleHomePage(profile, spaceID, useCase == migrationUseCase)
 
 	// TODO: GO-2627 Widgets creation should be moved to importer
-	b.createWidgets(ctx, spaceID, useCase, widgets)
+	b.createWidgets(ctx, spaceID, widgets)
 
 	return
 }
@@ -618,13 +618,8 @@ func (b *builtinObjects) setHomePageIdToWorkspace(spc clientspace.Space, id stri
 	}
 }
 
-func (b *builtinObjects) createWidgets(
-	ctx session.Context,
-	spaceId string,
-	useCase pb.RpcObjectImportUseCaseRequestUseCase,
-	widgets []*pb.WidgetBlock,
-) {
-	if useCase != pb.RpcObjectImportUseCaseRequest_GET_STARTED || len(widgets) == 0 {
+func (b *builtinObjects) createWidgets(ctx session.Context, spaceId string, widgets []*pb.WidgetBlock) {
+	if len(widgets) == 0 {
 		return
 	}
 
@@ -662,8 +657,7 @@ func (b *builtinObjects) createWidgets(
 
 		return nil
 	}); err != nil {
-		log.Errorf("failed to create widget blocks for useCase '%s': %v",
-			pb.RpcObjectImportUseCaseRequestUseCase_name[int32(useCase)], err)
+		log.Errorf("failed to create widget blocks: %v", err)
 	}
 }
 
