@@ -26,7 +26,7 @@ func TestRelationOption_SetOrder(t *testing.T) {
 		obj := newTestObject("test-relation-option")
 
 		// when
-		orderId, err := obj.SetOrder("")
+		orderId, err := obj.SetNextOrder("")
 
 		// then
 		assert.NoError(t, err)
@@ -45,7 +45,7 @@ func TestRelationOption_SetOrder(t *testing.T) {
 		previousOrderId := "prev-order-id"
 
 		// when
-		orderId, err := obj.SetOrder(previousOrderId)
+		orderId, err := obj.SetNextOrder(previousOrderId)
 
 		// then
 		assert.NoError(t, err)
@@ -70,7 +70,7 @@ func TestRelationOption_SetOrder(t *testing.T) {
 		previousOrderId := "new-prev-order"
 
 		// when
-		orderId, err := obj.SetOrder(previousOrderId)
+		orderId, err := obj.SetNextOrder(previousOrderId)
 
 		// then
 		assert.NoError(t, err)
@@ -241,7 +241,7 @@ func TestRelationOption_OrderOperationsIntegration(t *testing.T) {
 		obj := newTestObject("test-relation-option")
 
 		// Test 1: Set initial order
-		orderId1, err := obj.SetOrder("")
+		orderId1, err := obj.SetNextOrder("")
 		require.NoError(t, err)
 		assert.Equal(t, orderId1, obj.GetOrder())
 

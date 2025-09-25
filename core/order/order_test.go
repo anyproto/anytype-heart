@@ -3,8 +3,10 @@ package order
 import (
 	"context"
 	"fmt"
+	"sort"
 	"testing"
 
+	"github.com/samber/lo"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -17,6 +19,88 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock/smarttest"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 )
+
+func TestReorder(t *testing.T) {
+	for _, tc := range []struct {
+		name             string
+		originalOrderIds map[string]string
+		objectIds        []string
+	}{
+		{
+			name: "no changes",
+			originalOrderIds: map[string]string{
+				"obj1": "aaaaaa",
+				"obj2": "bbbbbb",
+				"obj3": "cccccc",
+			},
+			objectIds: []string{"obj1", "obj2", "obj3"},
+		},
+		{
+			name: "drag to the first position #1",
+			originalOrderIds: map[string]string{
+				"obj1": "aaaaaa",
+				"obj2": "bbbbbb",
+				"obj3": "cccccc",
+			},
+			objectIds: []string{"obj2", "obj1", "obj3"},
+		},
+		{
+			name: "drag to the first position #2",
+			originalOrderIds: map[string]string{
+				"obj1": "aaaaaa",
+				"obj2": "bbbbbb",
+				"obj3": "cccccc",
+			},
+			objectIds: []string{"obj3", "obj1", "obj2"},
+		},
+		{
+			name: "drag to the last position #3",
+			originalOrderIds: map[string]string{
+				"obj1": "aaaaaa",
+				"obj2": "bbbbbb",
+				"obj3": "cccccc",
+			},
+			objectIds: []string{"obj2", "obj3", "obj1"},
+		},
+		{
+			name: "client sends an incomplete list",
+			originalOrderIds: map[string]string{
+				"obj1": "aaa",
+				"obj2": "bbb",
+				"obj3": "ccc",
+				"obj4": "ddd",
+				"obj5": "eee",
+			},
+			objectIds: []string{"obj3", "obj1", "obj2"},
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			s := &orderSetter{}
+			gotNewOrder, gotOps, err := s.reorder(tc.objectIds, tc.originalOrderIds)
+			require.NoError(t, err)
+
+			t.Log(gotOps)
+			_ = gotOps
+
+			gotObjectIdsWithOrder := make([]idAndOrderId, len(gotNewOrder))
+			for i := range gotObjectIdsWithOrder {
+				gotObjectIdsWithOrder[i] = idAndOrderId{
+					id:      tc.objectIds[i],
+					orderId: gotNewOrder[i],
+				}
+			}
+			sort.Slice(gotObjectIdsWithOrder, func(i, j int) bool {
+				return gotObjectIdsWithOrder[i].orderId < gotObjectIdsWithOrder[j].orderId
+			})
+
+			gotObjectIds := lo.Map(gotObjectIdsWithOrder, func(x idAndOrderId, _ int) string {
+				return x.id
+			})
+
+			assert.Equal(t, tc.objectIds, gotObjectIds)
+		})
+	}
+}
 
 // orderSettableWrapper wraps OrderSettable to intercept SetBetweenOrders calls
 type orderSettableWrapper struct {
@@ -272,7 +356,7 @@ func TestOrderSetter_UnsetOrder(t *testing.T) {
 		mockSpaceView := &editor.SpaceView{SmartBlock: sb1, OrderSettable: order.NewOrderSettable(sb1, bundle.RelationKeySpaceOrder)}
 
 		// Pre-set an order
-		_, err := mockSpaceView.SetOrder("")
+		_, err := mockSpaceView.SetNextOrder("")
 		require.NoError(t, err)
 		assert.NotEmpty(t, mockSpaceView.Details().GetString(bundle.RelationKeySpaceOrder))
 
@@ -784,7 +868,7 @@ func TestOrderSetter_OptimalReorderingWithFix(t *testing.T) {
 			onSetOrder: func(prev string) (string, error) {
 				bMethodName = "SetOrder"
 				bPrevValue = prev
-				return origB.SetOrder(prev)
+				return origB.SetNextOrder(prev)
 			},
 		}
 		mockViewB.OrderSettable = wrapperB
@@ -929,7 +1013,7 @@ func TestOrderSetter_OptimalReorderingWithFix(t *testing.T) {
 				onSetOrder: func(prev string) (string, error) {
 					call := fmt.Sprintf("%s.SetOrder(%q)", id, prev)
 					methodCalls = append(methodCalls, call)
-					return orig.SetOrder(prev)
+					return orig.SetNextOrder(prev)
 				},
 			}
 			return view
@@ -1096,11 +1180,11 @@ type orderSettableWithBothMethods struct {
 	onSetBetweenOrders func(before, after string) (string, error)
 }
 
-func (w *orderSettableWithBothMethods) SetOrder(prev string) (string, error) {
+func (w *orderSettableWithBothMethods) SetNextOrder(prev string) (string, error) {
 	if w.onSetOrder != nil {
 		return w.onSetOrder(prev)
 	}
-	return w.OrderSettable.SetOrder(prev)
+	return w.OrderSettable.SetNextOrder(prev)
 }
 
 func (w *orderSettableWithBothMethods) SetBetweenOrders(before, after string) (string, error) {

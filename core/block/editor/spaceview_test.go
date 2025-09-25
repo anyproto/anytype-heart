@@ -217,7 +217,7 @@ func TestSpaceView_SetOrder(t *testing.T) {
 
 		// when
 		prevViewOrderId := ""
-		order, err := fx.SetOrder(prevViewOrderId)
+		order, err := fx.SetNextOrder(prevViewOrderId)
 
 		// then
 		require.NoError(t, err)
@@ -232,7 +232,7 @@ func TestSpaceView_SetOrder(t *testing.T) {
 
 		// when
 		prevViewOrderId := "previous"
-		order, err := fx.SetOrder(prevViewOrderId)
+		order, err := fx.SetNextOrder(prevViewOrderId)
 
 		// then
 		require.NoError(t, err)

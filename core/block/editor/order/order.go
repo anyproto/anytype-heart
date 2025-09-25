@@ -16,7 +16,8 @@ var (
 
 type OrderSettable interface {
 	GetOrder() string
-	SetOrder(previousOrderId string) (string, error)
+	SetOrder(orderId string) error
+	SetNextOrder(previousOrderId string) (string, error)
 	SetAfterOrder(orderId string) error
 	SetBetweenOrders(previousOrderId, afterOrderId string) (string, error)
 	UnsetOrder() error
@@ -34,7 +35,13 @@ type orderSettable struct {
 	orderKey domain.RelationKey
 }
 
-func (s *orderSettable) SetOrder(previousOrderId string) (string, error) {
+func (s *orderSettable) SetOrder(orderId string) error {
+	st := s.NewState()
+	st.SetDetail(s.orderKey, domain.String(orderId))
+	return s.Apply(st)
+}
+
+func (s *orderSettable) SetNextOrder(previousOrderId string) (string, error) {
 	st := s.NewState()
 	var newOrderId string
 	if previousOrderId == "" {
