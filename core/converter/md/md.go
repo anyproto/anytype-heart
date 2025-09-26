@@ -591,9 +591,11 @@ func (h *MD) renderText(buf writer, in *renderState, b *model.Block) {
 		buf.WriteString("   \n\n")
 		h.renderChildren(buf, in, b)
 	case model.BlockContentText_Code:
-		buf.WriteString("```\n")
-		buf.WriteString(strings.ReplaceAll(text.Text, "```", "\\`\\`\\`"))
-		buf.WriteString("\n```\n")
+		buf.WriteString("```\n") // nolint:errcheck
+		txt := strings.ReplaceAll(text.Text, "```", "\\`\\`\\`")
+		txt = strings.ReplaceAll(txt, "\n", "\n"+in.indent)
+		buf.WriteString(in.indent + txt)            // nolint:errcheck
+		buf.WriteString("\n" + in.indent + "```\n") // nolint:errcheck
 		h.renderChildren(buf, in, b)
 	case model.BlockContentText_Checkbox:
 		if text.Checked {
