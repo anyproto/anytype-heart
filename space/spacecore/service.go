@@ -158,26 +158,7 @@ func (s *service) CreateOneToOneSpace(ctx context.Context, bPk crypto.PubKey) (s
 		return
 	}
 
-	fmt.Printf("-- sharedPk: %s\n", sharedSk.GetPublic().Account())
-	sharedKeyBytes, err := sharedSk.Raw()
-	if err != nil {
-		err = fmt.Errorf("CreateOneToOne: error getting sharedSk.Raw(): %w", err)
-		return
-	}
-
-	readKey, err := crypto.DeriveSymmetricKey(sharedKeyBytes, crypto.AnysyncReadOneToOneSpacePath)
-	if err != nil {
-		err = fmt.Errorf("CreateOneToOne: error deriving readKey(): %w", err)
-		return
-	}
-
-	metadata := []byte{}
-
-	metadataSharedKey, err := crypto.GenerateSharedKey(s.wallet.GetAccountPrivkey(), bPk, crypto.AnysyncMetadataOneToOnePath)
-	if err != nil {
-		err = fmt.Errorf("CeriveOneToOne: metadataSharedKey: %w", err)
-		return
-	}
+	fmt.Printf("-- payload sharedPk: %s\n", sharedSk.GetPublic().Account())
 
 	writers := make([][]byte, 2)
 
@@ -206,17 +187,14 @@ func (s *service) CreateOneToOneSpace(ctx context.Context, bPk crypto.PubKey) (s
 		return
 	}
 
-	payload := spacepayloads.SpaceCreatePayload{
-		SpacePayload:   oneToOneInfoBytes,
-		SigningKey:     sharedSk,
-		MasterKey:      sharedSk,
-		ReadKey:        readKey,
-		MetadataKey:    metadataSharedKey,
-		SpaceType:      OneToOneSpaceType,
-		ReplicationKey: 254255, // todo
-		Metadata:       metadata,
+	payload := spacepayloads.SpaceDerivePayload{
+		SpacePayload: oneToOneInfoBytes,
+		SigningKey:   sharedSk,
+		MasterKey:    sharedSk,
+		SpaceType:    OneToOneSpaceType,
 	}
-	id, err := s.commonSpace.CreateSpace(ctx, payload)
+	fmt.Printf("-- DeriveOneToOneSpace, SignKey acc: %s\n", sharedSk.GetPublic().Account())
+	id, err := s.commonSpace.DeriveOneToOneSpace(ctx, payload)
 	fmt.Printf("-- id: %s\n", id)
 	if err != nil {
 		return
