@@ -93,17 +93,7 @@ func (o *orderSetter) SetObjectTypesOrder(spaceId string, objectIds []string) ([
 		return nil, err
 	}
 
-	newOrder, ops, err := o.reorder(objectIds, existing)
-	if err != nil {
-		return nil, fmt.Errorf("recalculate order: %w", err)
-	}
-
-	err = o.applyReorder(ops)
-	if err != nil {
-		return nil, fmt.Errorf("apply reorder: %w", err)
-	}
-
-	return newOrder, nil
+	return o.rebuildIfNeeded(objectIds, existing)
 }
 
 func (o *orderSetter) UnsetOrder(objectId string) error {
@@ -195,18 +185,17 @@ func (o *orderSetter) reorder(objectIds []string, originalOrderIds map[string]st
 		objectIdsSet[id] = struct{}{}
 	}
 
-	originalIds := calculateOriginalIds(originalOrderIds)
-	var remapIds bool
+	originalIds := getAllOriginalIds(originalOrderIds)
+	// If a client sent a subset of the original list, we need to calculate the full list
+	var needFullList bool
 	for _, id := range originalIds {
 		if _, ok := objectIdsSet[id]; !ok {
-			remapIds = true
+			needFullList = true
 		}
 	}
-	if remapIds {
+	if needFullList {
 		objectIds = calculateFullList(objectIds, originalIds, originalOrderIds)
 	}
-
-	// TODO Remap ids using Diff
 
 	nextExisting := o.precalcNext(originalOrderIds, objectIds)
 	prev := ""
@@ -225,7 +214,7 @@ func (o *orderSetter) reorder(objectIds []string, originalOrderIds map[string]st
 		} else if i == 0 {
 			curr, err = o.getNewOrderId(id, "", next, true)
 			if err != nil {
-				curr = ""
+				return o.rebuildAllLexIds(objectIds, inputObjectIds)
 			}
 			ops = append(ops, reorderOp{id: id, newOrderId: curr})
 		} else {
@@ -236,7 +225,7 @@ func (o *orderSetter) reorder(objectIds []string, originalOrderIds map[string]st
 			}
 			curr, err = o.getNewOrderId(id, prev, next, false)
 			if err != nil {
-				curr = ""
+				return o.rebuildAllLexIds(objectIds, inputObjectIds)
 			}
 			ops = append(ops, reorderOp{id: id, newOrderId: curr})
 		}
@@ -251,7 +240,7 @@ func (o *orderSetter) reorder(objectIds []string, originalOrderIds map[string]st
 	return outList, ops, nil
 }
 
-func calculateOriginalIds(originalOrderIds map[string]string) []string {
+func getAllOriginalIds(originalOrderIds map[string]string) []string {
 	listWithOrder := make([]idAndOrderId, 0, len(originalOrderIds))
 	for id, orderId := range originalOrderIds {
 		listWithOrder = append(listWithOrder, idAndOrderId{id: id, orderId: orderId})
@@ -264,7 +253,7 @@ func calculateOriginalIds(originalOrderIds map[string]string) []string {
 	})
 }
 
-func calculateOriginalOrder(objectIds []string, originalOrderIds map[string]string) []string {
+func getIdsInOriginalOrder(objectIds []string, originalOrderIds map[string]string) []string {
 	listWithOrder := make([]idAndOrderId, 0, len(originalOrderIds))
 	for _, id := range objectIds {
 		listWithOrder = append(listWithOrder, idAndOrderId{id: id, orderId: originalOrderIds[id]})
@@ -278,7 +267,7 @@ func calculateOriginalOrder(objectIds []string, originalOrderIds map[string]stri
 }
 
 func calculateFullList(objectIds []string, fullOriginalIds []string, originalOrderIds map[string]string) []string {
-	originalIds := calculateOriginalOrder(objectIds, originalOrderIds)
+	originalIds := getIdsInOriginalOrder(objectIds, originalOrderIds)
 	ops := slice.Diff(originalIds, objectIds, func(s string) string {
 		return s
 	}, func(s string, s2 string) bool {
@@ -301,66 +290,43 @@ func (o *orderSetter) applyReorder(ops []reorderOp) error {
 
 // rebuildIfNeeded processes the order in a single pass, updating lexids as needed
 func (o *orderSetter) rebuildIfNeeded(objectIds []string, existing map[string]string) ([]string, error) {
-	nextExisting := o.precalcNext(existing, objectIds)
-	prev := ""
-	out := make([]string, len(objectIds))
-
-	for i, id := range objectIds {
-		curr := existing[id]
-		next := nextExisting[i]
-
-		if curr != "" && curr > prev {
-			// Current lexid is valid - keep it
-			out[i] = curr
-		} else if i == 0 {
-			curr = o.setRank(id, "", next, true)
-			fmt.Println("set rank first", id, curr)
-		} else {
-			// When inserting, check if next is valid relative to prev
-			// If prev >= next, ignore next (treat as unbounded)
-			if next != "" && prev >= next {
-				next = ""
-			}
-			curr = o.setRank(id, prev, next, false)
-			fmt.Println("set rank between", id, prev, curr, next)
-		}
-
-		if curr == "" {
-			fmt.Println("rebuild")
-			// setRank failed → full rebuild
-			return o.rebuildAllLexIds(objectIds)
-		}
-		out[i] = curr
-		prev = curr
+	newOrder, ops, err := o.reorder(objectIds, existing)
+	if err != nil {
+		return nil, fmt.Errorf("recalculate order: %w", err)
 	}
-	return out, nil
+
+	err = o.applyReorder(ops)
+	if err != nil {
+		return nil, fmt.Errorf("apply reorder: %w", err)
+	}
+	return newOrder, nil
 }
 
 func (o *orderSetter) getNewOrderId(id string, before string, after string, isFirst bool) (string, error) {
 	switch {
 	case isFirst && before == "" && after == "":
 		// First element with no constraints - add padding
-		return o.setOrder(""), nil
+		return o.getNextOrderId(""), nil
 
 	case before == "" && after == "":
 		// Not first, but no constraints
-		return o.setOrder(""), nil
+		return o.getNextOrderId(""), nil
 
 	case before == "" && after != "":
 		// Insert before the first existing element
-		return o.setBetween("", after)
+		return o.getInBetweenOrderId("", after)
 
 	case before != "" && after == "":
 		// Insert after the last element
-		return o.setOrder(before), nil
+		return o.getNextOrderId(before), nil
 
 	default:
 		// Insert between two elements
-		return o.setBetween(before, after)
+		return o.getInBetweenOrderId(before, after)
 	}
 }
 
-func (o *orderSetter) setOrder(previousOrderId string) string {
+func (o *orderSetter) getNextOrderId(previousOrderId string) string {
 	if previousOrderId == "" {
 		// For the first element, use a lexid with huge padding
 		return lx.Middle()
@@ -369,7 +335,7 @@ func (o *orderSetter) setOrder(previousOrderId string) string {
 	}
 }
 
-func (o *orderSetter) setBetween(left string, right string) (string, error) {
+func (o *orderSetter) getInBetweenOrderId(left string, right string) (string, error) {
 	if left == "" {
 		// Insert before the first existing element
 		return lx.Prev(right), nil
@@ -429,33 +395,19 @@ func (o *orderSetter) precalcNext(existing map[string]string, order []string) []
 }
 
 // rebuildAllLexIds rebuilds all lexids from scratch
-func (o *orderSetter) rebuildAllLexIds(objectIds []string) ([]string, error) {
-	finalOrder := make([]string, len(objectIds))
-	// Now assign new lexids in order
+func (o *orderSetter) rebuildAllLexIds(objectIds []string, inputObjectIds []string) ([]string, []reorderOp, error) {
+	ops := make([]reorderOp, len(objectIds))
+	opsSet := map[string]string{}
 	previousLexId := ""
 	for i, objectId := range objectIds {
-		var newLexId string
-		err := cache.Do[order.OrderSettable](o.objectGetter, objectId, func(os order.OrderSettable) error {
-			var err error
-			if i == 0 {
-				// First element with padding
-				newLexId, err = os.SetNextOrder("")
-			} else {
-				// Subsequent elements
-				newLexId, err = os.SetNextOrder(previousLexId)
-			}
-			if err == nil && newLexId == "" {
-				newLexId = os.GetOrder()
-			}
-			return err
-		})
-
-		if err != nil {
-			return nil, fmt.Errorf("failed to set lexid for object %s at position %d: %w", objectId, i, err)
-		}
-
-		finalOrder[i] = newLexId
+		newLexId := o.getNextOrderId(previousLexId)
+		ops[i] = reorderOp{id: objectId, newOrderId: newLexId}
+		opsSet[objectId] = newLexId
 		previousLexId = newLexId
 	}
-	return finalOrder, nil
+	finalOrder := make([]string, len(inputObjectIds))
+	for i, id := range inputObjectIds {
+		finalOrder[i] = opsSet[id]
+	}
+	return finalOrder, ops, nil
 }
