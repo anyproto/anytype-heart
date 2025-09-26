@@ -355,41 +355,6 @@ func (o *orderSetter) getInBetweenOrderId(left string, right string) (string, er
 	}
 }
 
-// setRank sets the lexid for a view, handling all positioning cases
-func (o *orderSetter) setRank(objectId, before, after string, isFirst bool) string {
-	var newOrderId string
-	err := cache.Do[order.OrderSettable](o.objectGetter, objectId, func(os order.OrderSettable) error {
-		var err error
-		switch {
-		case isFirst && before == "" && after == "":
-			// First element with no constraints - add padding
-			newOrderId, err = os.SetNextOrder("")
-
-		case before == "" && after == "":
-			// Not first, but no constraints
-			newOrderId, err = os.SetNextOrder("")
-
-		case before == "" && after != "":
-			// Insert before the first existing element
-			newOrderId, err = os.SetBetweenOrders("", after)
-
-		case before != "" && after == "":
-			// Insert after the last element
-			newOrderId, err = os.SetNextOrder(before)
-
-		default:
-			// Insert between two elements
-			newOrderId, err = os.SetBetweenOrders(before, after)
-		}
-		return err
-	})
-	if err != nil {
-		// Log error for debugging but return empty string to trigger rebuild
-		return ""
-	}
-	return newOrderId
-}
-
 // precalcNext builds a slice where next[i] is the lexid of the next
 // element *to the right* that already has a rank.
 func (o *orderSetter) precalcNext(existing map[string]string, order []string) []string {

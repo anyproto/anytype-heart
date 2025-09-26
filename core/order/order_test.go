@@ -477,7 +477,7 @@ func TestOrderSetter_UnsetOrder(t *testing.T) {
 		mockSpaceView := &editor.SpaceView{SmartBlock: sb1, OrderSettable: order.NewOrderSettable(sb1, bundle.RelationKeySpaceOrder)}
 
 		// Pre-set an order
-		_, err := mockSpaceView.SetNextOrder("")
+		err := mockSpaceView.SetOrder("aaaaaaaaaa")
 		require.NoError(t, err)
 		assert.NotEmpty(t, mockSpaceView.Details().GetString(bundle.RelationKeySpaceOrder))
 
