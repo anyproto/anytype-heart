@@ -711,7 +711,7 @@ func (l FilterAllIn) AnystoreFilter() query.Filter {
 	return query.And(conds)
 }
 
-func newFilterOptionsEqual(arena *anyenc.Arena, key domain.RelationKey, value []string, options map[string]string) *FilterOptionsEqual {
+func newFilterOptionsEqual(arena *anyenc.Arena, key domain.RelationKey, value []string, options map[string]*domain.Details) *FilterOptionsEqual {
 	f := &FilterOptionsEqual{
 		arena:   arena,
 		Key:     key,
@@ -727,7 +727,7 @@ type FilterOptionsEqual struct {
 
 	Key     domain.RelationKey
 	Value   []string
-	Options map[string]string
+	Options map[string]*domain.Details
 
 	// valueFilter is precompiled filter without key selector
 	valueFilter query.Filter
@@ -804,27 +804,30 @@ func (exIn *FilterOptionsEqual) String() string {
 	return "{}"
 }
 
-func optionsToMap(key domain.RelationKey, store ObjectStore) map[string]string {
-	result := make(map[string]string)
+func optionsToMap(key domain.RelationKey, store ObjectStore) map[string]*domain.Details {
+	result := make(map[string]*domain.Details)
 	options, err := store.ListRelationOptions(key)
 	if err != nil {
 		log.Warn("nil objectStore for getting options")
 		return result
 	}
 	for _, opt := range options {
-		result[opt.Id] = opt.OrderId
+		result[opt.Id] = domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+			bundle.RelationKeyName:    domain.String(opt.Text),
+			bundle.RelationKeyOrderId: domain.String(opt.OrderId),
+		})
 	}
 
 	return result
 }
 
 // objectsToMap collects names of objects that present in details of any objects as a value of detail with key=key
-func objectsToMap(key domain.RelationKey, store ObjectStore) map[string]string {
-	names := make(map[string]string)
+func objectsToMap(key domain.RelationKey, store ObjectStore) map[string]*domain.Details {
+	names := make(map[string]*domain.Details)
 	targetIds := make([]string, 0)
 
 	err := store.QueryIterate(Query{Filters: []FilterRequest{}}, func(details *domain.Details) {
-		names[details.GetString(bundle.RelationKeyId)] = details.GetString(bundle.RelationKeyName)
+		names[details.GetString(bundle.RelationKeyId)] = details.CopyOnlyKeys(bundle.RelationKeyName)
 		targetIds = append(targetIds, details.GetStringList(key)...)
 	})
 	if err != nil {
@@ -834,7 +837,7 @@ func objectsToMap(key domain.RelationKey, store ObjectStore) map[string]string {
 
 	targetIds = lo.Uniq(targetIds)
 
-	maps.DeleteFunc(names, func(id, _ string) bool {
+	maps.DeleteFunc(names, func(id string, _ *domain.Details) bool {
 		return !slices.Contains(targetIds, id)
 	})
 

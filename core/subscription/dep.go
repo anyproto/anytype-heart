@@ -16,7 +16,7 @@ func newDependencyService(s *spaceSubscriptions) *dependencyService {
 	return &dependencyService{
 		s:                s,
 		isRelationObjMap: map[domain.RelationKey]bool{},
-		orders:           database.OrderMap{},
+		orders:           &database.OrderStore{},
 		sorts:            sortsMap{},
 		depOrderObjects:  map[string]map[string]struct{}{},
 	}
@@ -26,7 +26,7 @@ type dependencyService struct {
 	s *spaceSubscriptions
 
 	isRelationObjMap map[domain.RelationKey]bool
-	orders           database.OrderMap              // key -> objectId -> orderId
+	orders           *database.OrderStore           // key -> objectId -> orderId
 	sorts            sortsMap                       // subId -> sortRelationKeys
 	depOrderObjects  map[string]map[string]struct{} // objectId -> subIds
 }
@@ -139,11 +139,8 @@ func (ds *dependencyService) updateOrders(subId string, entries []*entry, sortDe
 	ctx := opCtx{entries: entries}
 	for sort, depIds := range sortDepIds {
 		for _, depId := range depIds {
-			orderId := ""
-			if sortEntry := ctx.getEntry(depId); sortEntry != nil {
-				orderId = sortEntry.data.GetString(sort.orderKey())
-			}
-			ds.orders.Set(sort.key, depId, orderId)
+			sortEntry := ctx.getEntry(depId)
+			ds.orders.Set(sort.key, depId, sortEntry.data)
 			if ds.depOrderObjects[depId] == nil {
 				ds.depOrderObjects[depId] = map[string]struct{}{}
 			}
@@ -164,13 +161,8 @@ func (ds *dependencyService) reorderParentSubscription(depSubId string, ctx *opC
 	updatedDepObjects := make([]string, 0)
 	for _, e := range ctx.entries {
 		for _, key := range sortKeys {
-			currentOrderId, found := ds.orders.Get(key.key, e.id)
-			if !found {
-				continue
-			}
-			if currentOrderId != e.data.GetString(key.orderKey()) {
+			if ds.orders.Update(key.key, e.id, e.data) {
 				updatedDepObjects = append(updatedDepObjects, e.id)
-				ds.orders.Set(key.key, e.id, e.data.GetString(key.orderKey()))
 			}
 		}
 	}
@@ -187,14 +179,12 @@ func (ds *dependencyService) reorderParentSubscription(depSubId string, ctx *opC
 	}
 
 	for subId := range subsToUpdate {
-		sub, ok := ds.s.getSubscription(subId)
+		sub, ok := ds.s.getSortableSubscription(subId)
 		if !ok {
 			log.Errorf("failed to get subscription %s to reorder objects", subId)
 			continue
 		}
-		activeEntries := sub.getActiveEntries()
-		ctx.entries = append(ctx.entries, activeEntries...)
-		sub.onChange(ctx)
+		sub.resetSort(ctx)
 	}
 }
 

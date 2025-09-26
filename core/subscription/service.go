@@ -91,10 +91,14 @@ type subscription interface {
 	counters() (prev, next int)
 	onChange(ctx *opCtx)
 	getActiveRecords() (res []*domain.Details)
-	getActiveEntries() (entries []*entry)
 	hasDep() bool
 	getDep() subscription
 	close()
+}
+
+type sortableSubscription interface {
+	subscription
+	resetSort(ctx *opCtx)
 }
 
 type CollectionService interface {
@@ -338,6 +342,15 @@ func (s *spaceSubscriptions) Run() (err error) {
 func (s *spaceSubscriptions) getSubscription(id string) (subscription, bool) {
 	sub, ok := s.subscriptions[id]
 	return sub, ok
+}
+
+func (s *spaceSubscriptions) getSortableSubscription(id string) (sortableSubscription, bool) {
+	sub, ok := s.subscriptions[id]
+	if !ok {
+		return nil, false
+	}
+	sortableSub, ok := sub.(sortableSubscription)
+	return sortableSub, ok
 }
 
 func (s *spaceSubscriptions) setSubscription(id string, sub subscription) {

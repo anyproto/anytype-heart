@@ -13,8 +13,8 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-func assertCompare(t *testing.T, order Order, a *domain.Details, b *domain.Details, ordersMap map[domain.RelationKey]map[string]string, expected int) {
-	assert.Equal(t, expected, order.Compare(a, b, ordersMap))
+func assertCompare(t *testing.T, order Order, a *domain.Details, b *domain.Details, orders *OrderStore, expected int) {
+	assert.Equal(t, expected, order.Compare(a, b, orders))
 	arena := &anyenc.Arena{}
 	aValue := a.ToAnyEnc(arena)
 	bValue := b.ToAnyEnc(arena)
@@ -521,7 +521,6 @@ func TestTagStatusOrder_Compare(t *testing.T) {
 				Type:           model.BlockContentDataviewSort_Asc,
 				relationFormat: relation,
 				objectStore:    &stubSpaceObjectStore{},
-				idToOrderId:    map[string]string{"a": "a"},
 			}
 			assertCompare(t, asc, a, b, nil, 0)
 		})
@@ -534,14 +533,13 @@ func TestTagStatusOrder_Compare(t *testing.T) {
 				Type:           model.BlockContentDataviewSort_Asc,
 				relationFormat: relation,
 				objectStore:    &stubSpaceObjectStore{},
-				idToOrderId: map[string]string{
-					"b": "a",
-					"a": "b",
-				},
 			}
-			assertCompare(t, asc, a, b, map[domain.RelationKey]map[string]string{
-				"k": {"b": "a", "a": "b"},
-			}, -1)
+			assertCompare(t, asc, a, b, &OrderStore{data: map[domain.RelationKey]map[string]*domain.Details{
+				"k": {
+					"b": domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{"name": domain.String("a")}),
+					"a": domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{"name": domain.String("b")}),
+				},
+			}}, -1)
 		})
 	}
 }

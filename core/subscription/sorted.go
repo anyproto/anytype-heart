@@ -260,6 +260,36 @@ func (s *sortedSub) onEntryChange(e *entry) (noChange bool) {
 	panic("subscription: check algo")
 }
 
+func (s *sortedSub) resetSort(ctx *opCtx) {
+	entries := s.getActiveEntries()
+	s.skl.Init()
+	for _, e := range entries {
+		s.skl.Set(e, nil)
+	}
+
+	defer s.diff.reset()
+	s.activeEntriesBuf = s.activeEntriesBuf[:0]
+	if s.iterateActive(func(e *entry) {
+		s.diff.fillAfter(e.id)
+		if s.depSub != nil {
+			s.activeEntriesBuf = append(s.activeEntriesBuf, e)
+		}
+	}) {
+		s.diff.reverse()
+	}
+
+	s.compCountAfter.subId = s.id
+	s.compCountAfter.prevCount, s.compCountAfter.nextCount = s.counters()
+	s.compCountAfter.total = s.skl.Len()
+
+	if s.compCountAfter != s.compCountBefore {
+		ctx.counters = append(ctx.counters, s.compCountAfter)
+		s.compCountBefore = s.compCountAfter
+	}
+
+	s.diff.diff(ctx, s.id, s.keys)
+}
+
 func (s *sortedSub) counters() (prev, next int) {
 	if s.beforeEl == nil && s.afterEl == nil && s.limit <= 0 {
 		// no pagination - no counters
