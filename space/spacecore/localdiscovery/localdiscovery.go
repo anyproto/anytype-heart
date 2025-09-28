@@ -208,7 +208,7 @@ func (l *localDiscovery) startServer() (err error) {
 	for _, ip := range ipv4 {
 		l.ipv4 = append(l.ipv4, ip.String())
 	}
-	log.Debug("starting mdns server", zap.Strings("ips", l.ipv4), zap.Int("port", l.port), zap.String("peerId", l.peerId))
+	log.Info("starting mdns server", zap.Strings("ips", l.ipv4), zap.Int("port", l.port), zap.String("peerId", l.peerId))
 	l.server, err = zeroconf.RegisterProxy(
 		l.peerId,
 		serviceName,
@@ -218,7 +218,7 @@ func (l *localDiscovery) startServer() (err error) {
 		l.ipv4, // do not include ipv6 addresses, because they are disabled
 		nil,
 		l.interfacesAddrs.NetInterfaces(),
-		zeroconf.TTL(3600),                            // big ttl because we don't have re-broadcasting
+		zeroconf.TTL(3600), // big ttl because we don't have re-broadcasting
 		zeroconf.ServerSelectIPTraffic(zeroconf.IPv4), // disable ipv6 for now
 		zeroconf.WriteTimeout(time.Second*3),
 	)
