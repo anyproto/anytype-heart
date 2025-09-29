@@ -24,24 +24,25 @@ func (s *Service) WalletCreate(req *pb.RpcWalletCreateRequest) (string, error) {
 		return "", errors.Join(ErrFailedToCreateLocalRepo, err)
 	}
 
+	// Generate new mnemonic
 	mnemonic, err := core.WalletGenerateMnemonic(wordCount)
 	if err != nil {
 		return "", err
 	}
 
-	if err = s.setMnemonic(mnemonic); err != nil {
-		return "", fmt.Errorf("set mnemonic: %w", err)
+	// Derive and store keys for mnemonic
+	derivationResult, err := core.WalletAccountAt(mnemonic, 0)
+	if err != nil {
+		return "", fmt.Errorf("derive from mnemonic: %w", err)
 	}
-	return mnemonic, nil
-}
-
-func (s *Service) setMnemonic(mnemonic string) error {
-	s.mnemonic = mnemonic
-	// TODO: I guess we can use any random bytes here
+	s.derivedKeys = &derivationResult
+	
+	// Set session signing key
 	buf := make([]byte, 64)
 	if _, err := rand.Read(buf); err != nil {
-		return err
+		return "", err
 	}
 	s.sessionSigningKey = buf
-	return nil
+	
+	return mnemonic, nil
 }

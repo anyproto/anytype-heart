@@ -13,7 +13,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/anytype"
 	"github.com/anyproto/anytype-heart/core/anytype/config"
 	"github.com/anyproto/anytype-heart/pb"
-	"github.com/anyproto/anytype-heart/pkg/lib/core"
 )
 
 var (
@@ -38,9 +37,8 @@ func (s *Service) AccountMigrateCancel(ctx context.Context, req *pb.RpcAccountMi
 }
 
 func (s *Service) migrate(ctx context.Context, id, lang string) error {
-	res, err := core.WalletAccountAt(s.mnemonic, 0)
-	if err != nil {
-		return err
+	if s.derivedKeys == nil {
+		return errors.New("wallet not initialized")
 	}
 	if _, err := os.Stat(filepath.Join(s.rootPath, id)); err != nil {
 		if os.IsNotExist(err) {
@@ -53,12 +51,12 @@ func (s *Service) migrate(ctx context.Context, id, lang string) error {
 	cfg.DisableNetworkIdCheck = true
 	comps := []app.Component{
 		cfg,
-		anytype.BootstrapWallet(s.rootPath, res, lang),
+		anytype.BootstrapWallet(s.rootPath, *s.derivedKeys, lang),
 		s.eventSender,
 	}
 	a := &app.App{}
 	anytype.BootstrapMigration(a, comps...)
-	err = a.Start(ctx)
+	err := a.Start(ctx)
 	if err != nil {
 		return err
 	}
