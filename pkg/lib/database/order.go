@@ -41,7 +41,11 @@ type OrderMap struct {
 }
 
 func NewOrderMap(data map[string]*domain.Details) *OrderMap {
-	return &OrderMap{data: data}
+	m := &OrderMap{data: data}
+	for id := range m.data {
+		m.setFullOrderId(id)
+	}
+	return m
 }
 
 func (m *OrderMap) FullOrderId(ids ...string) string {
@@ -59,8 +63,8 @@ func (m *OrderMap) FullOrderId(ids ...string) string {
 	return result
 }
 
-// UpdateWithDetails update orderIds/names only for objects that exist in map
-func (m *OrderMap) UpdateWithDetails(details []*domain.Details) (anyUpdated bool) {
+// Update updates orders only for objects that exist in OrderMap
+func (m *OrderMap) Update(details []*domain.Details) (anyUpdated bool) {
 	if m == nil || len(m.data) == 0 {
 		return false
 	}
@@ -69,7 +73,7 @@ func (m *OrderMap) UpdateWithDetails(details []*domain.Details) (anyUpdated bool
 		updated := false
 		existingDetails, found := m.data[id]
 		if !found {
-			return false
+			continue
 		}
 
 		orderId := det.GetString(bundle.RelationKeyOrderId)
@@ -92,23 +96,35 @@ func (m *OrderMap) UpdateWithDetails(details []*domain.Details) (anyUpdated bool
 	return anyUpdated
 }
 
-func (m *OrderMap) Update(store ObjectStore, ids ...string) {
+// SetOrders sets order for ids that do not present in OrderMap
+func (m *OrderMap) SetOrders(store ObjectStore, ids ...string) {
 	if store == nil {
+		return
+	}
+
+	if m == nil || m.data == nil {
+		m.data = make(map[string]*domain.Details, len(ids))
+	}
+
+	idsToSet := make([]string, 0, len(ids))
+	for _, id := range ids {
+		if _, found := m.data[id]; !found {
+			idsToSet = append(idsToSet, id)
+		}
+	}
+
+	if len(idsToSet) == 0 {
 		return
 	}
 
 	records, err := store.Query(Query{Filters: []FilterRequest{{
 		RelationKey: bundle.RelationKeyId,
 		Condition:   model.BlockContentDataviewFilter_In,
-		Value:       domain.StringList(ids),
+		Value:       domain.StringList(idsToSet),
 	}}})
 	if err != nil {
 		log.Errorf("failed to query records to update orders: %v", err)
 		return
-	}
-
-	if m == nil || m.data == nil {
-		m.data = make(map[string]*domain.Details, len(records))
 	}
 
 	for _, record := range records {
@@ -236,7 +252,7 @@ func (ko *KeyOrder) AnystoreSort() query.Sort {
 }
 
 func (ko *KeyOrder) Update(depDetails []*domain.Details) (updated bool) {
-	return ko.orderMap.UpdateWithDetails(depDetails)
+	return ko.orderMap.Update(depDetails)
 }
 
 func (ko *KeyOrder) basicSort(valType anyenc.Type) query.Sort {
@@ -385,7 +401,7 @@ func (ko *KeyOrder) tryExtractObject(av domain.Value, bv domain.Value) (domain.V
 	aList := av.StringList()
 	bList := bv.StringList()
 
-	ko.orderMap.Update(ko.objectStore, slices.Concat(aList, bList)...)
+	ko.orderMap.SetOrders(ko.objectStore, slices.Concat(aList, bList)...)
 
 	av = domain.String(ko.orderMap.FullOrderId(aList...))
 	bv = domain.String(ko.orderMap.FullOrderId(bList...))
