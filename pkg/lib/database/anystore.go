@@ -7,7 +7,6 @@ import (
 	"github.com/anyproto/any-store/query"
 	"golang.org/x/text/collate"
 
-	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	time_util "github.com/anyproto/anytype-heart/util/time"
@@ -172,7 +171,7 @@ type objectSort struct {
 	relationKey string
 	reverse     bool
 	nulls       model.BlockContentDataviewSortEmptyType
-	orders      *OrderStore
+	orders      *OrderMap
 }
 
 func (s objectSort) Fields() []query.SortField {
@@ -192,7 +191,7 @@ func (s objectSort) AppendKey(tuple anyenc.Tuple, v *anyenc.Value) anyenc.Tuple 
 	var sortKey string
 	if val != nil && val.Type() == anyenc.TypeString {
 		id, _ := val.StringBytes()
-		sortKey = s.orders.FullOrderId(domain.RelationKey(s.relationKey), string(id))
+		sortKey = s.orders.FullOrderId(string(id))
 	} else if val != nil && val.Type() == anyenc.TypeArray {
 		arr, _ := val.Array()
 		var ids []string
@@ -200,7 +199,7 @@ func (s objectSort) AppendKey(tuple anyenc.Tuple, v *anyenc.Value) anyenc.Tuple 
 			id, _ := it.StringBytes()
 			ids = append(ids, string(id))
 		}
-		sortKey = s.orders.FullOrderId(domain.RelationKey(s.relationKey), ids...)
+		sortKey = s.orders.FullOrderId(ids...)
 	}
 
 	if sortKey == "" {

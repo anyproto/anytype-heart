@@ -98,7 +98,7 @@ type subscription interface {
 
 type sortableSubscription interface {
 	subscription
-	resetSort(ctx *opCtx)
+	reorder(ctx *opCtx, depDetails []*domain.Details)
 }
 
 type CollectionService interface {

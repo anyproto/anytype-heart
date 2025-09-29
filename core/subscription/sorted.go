@@ -233,7 +233,7 @@ func (s *sortedSub) onEntryChange(e *entry) (noChange bool) {
 	}
 
 	curr := s.cache.Get(e.id)
-	curInSet := curr != nil
+	curInSet := curr.IsInSub(s.id)
 	// nothing
 	if !curInSet && !newInSet {
 		return true
@@ -260,7 +260,11 @@ func (s *sortedSub) onEntryChange(e *entry) (noChange bool) {
 	panic("subscription: check algo")
 }
 
-func (s *sortedSub) resetSort(ctx *opCtx) {
+func (s *sortedSub) reorder(ctx *opCtx, depDetails []*domain.Details) {
+	if !s.order.Update(depDetails) {
+		return
+	}
+
 	entries := s.getActiveEntries()
 	s.skl.Init()
 	for _, e := range entries {
@@ -401,7 +405,7 @@ func (s *sortedSub) Compare(lhs, rhs interface{}) (comp int) {
 		return 0
 	}
 	if s.order != nil {
-		comp = s.order.Compare(le.data, re.data, s.ds.orders)
+		comp = s.order.Compare(le.data, re.data)
 	}
 	// when order isn't set or equal - sort by id
 	if comp == 0 {

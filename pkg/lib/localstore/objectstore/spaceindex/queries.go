@@ -260,8 +260,7 @@ func (s *dsObjectStore) QueryFromFulltext(results []database.FulltextResult, par
 	}
 	if params.Order != nil {
 		sort.Slice(records, func(i, j int) bool {
-			// TODO: do we need orderIdsMap here?
-			return params.Order.Compare(records[i].Details, records[j].Details, nil) == -1
+			return params.Order.Compare(records[i].Details, records[j].Details) == -1
 		})
 	}
 	if limit > 0 {

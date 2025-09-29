@@ -16,7 +16,6 @@ func newDependencyService(s *spaceSubscriptions) *dependencyService {
 	return &dependencyService{
 		s:                s,
 		isRelationObjMap: map[domain.RelationKey]bool{},
-		orders:           &database.OrderStore{},
 		sorts:            sortsMap{},
 		depOrderObjects:  map[string]map[string]struct{}{},
 	}
@@ -26,7 +25,6 @@ type dependencyService struct {
 	s *spaceSubscriptions
 
 	isRelationObjMap map[domain.RelationKey]bool
-	orders           *database.OrderStore           // key -> objectId -> orderId
 	sorts            sortsMap                       // subId -> sortRelationKeys
 	depOrderObjects  map[string]map[string]struct{} // objectId -> subIds
 }
@@ -36,18 +34,16 @@ func (ds *dependencyService) makeSubscriptionByEntries(subId string, allEntries,
 	depSub := ds.s.newSimpleSub(subId, depSubKeys, true)
 	depSub.forceIds = filterDepIds
 	parentSubId := strings.TrimSuffix(subId, "/dep")
-	depIds, sortDepIds := ds.depIdsByEntries(parentSubId, activeEntries, depKeys, depSub.forceIds)
+	depIds := ds.depIdsByEntries(parentSubId, activeEntries, depKeys, depSub.forceIds)
 	depEntries := ds.depEntriesByEntries(&opCtx{entries: allEntries}, depIds)
-	ds.updateOrders(parentSubId, depEntries, sortDepIds)
 	depSub.init(depEntries)
 	return depSub
 }
 
 func (ds *dependencyService) refillSubscription(ctx *opCtx, subId string, depSub *simpleSub, entries []*entry, depKeys []domain.RelationKey) {
-	depIds, sortDepIds := ds.depIdsByEntries(subId, entries, depKeys, depSub.forceIds)
+	depIds := ds.depIdsByEntries(subId, entries, depKeys, depSub.forceIds)
 	if !depSub.isEqualIds(depIds) {
 		depEntries := ds.depEntriesByEntries(ctx, depIds)
-		ds.updateOrders(subId, depEntries, sortDepIds)
 		depSub.refill(ctx, depEntries)
 	}
 	return
@@ -55,22 +51,21 @@ func (ds *dependencyService) refillSubscription(ctx *opCtx, subId string, depSub
 
 func (ds *dependencyService) depIdsByEntries(
 	subId string, entries []*entry, depKeys []domain.RelationKey, forceIds []string,
-) (depIds []string, sortDepIds map[sortKey][]string) {
+) (depIds []string) {
 	depIds = forceIds
-	sortDepIds = make(map[sortKey][]string, len(ds.sorts[subId]))
 	for _, e := range entries {
 		for _, k := range depKeys {
-			sk, isSortKey := ds.sorts.getSortKey(subId, k)
-			if isSortKey && sortDepIds[sk] == nil {
-				sortDepIds[sk] = make([]string, 0)
-			}
+			_, isSortKey := ds.sorts.getSortKey(subId, k)
 			for _, depId := range e.data.WrapToStringList(k) {
 				if depId != "" {
 					if slice.FindPos(depIds, depId) == -1 && depId != e.id {
 						depIds = append(depIds, depId)
 					}
-					if isSortKey && slice.FindPos(sortDepIds[sk], depId) == -1 {
-						sortDepIds[sk] = append(sortDepIds[sk], depId)
+					if isSortKey {
+						if ds.depOrderObjects[depId] == nil {
+							ds.depOrderObjects[depId] = map[string]struct{}{}
+						}
+						ds.depOrderObjects[depId][subId] = struct{}{}
 					}
 				}
 			}
@@ -134,58 +129,29 @@ func (ds *dependencyService) enregisterObjectSorts(subId string, sorts []databas
 	}
 }
 
-// updateOrders updates orderMap for sorting keys of subscription subId that have object format
-func (ds *dependencyService) updateOrders(subId string, entries []*entry, sortDepIds map[sortKey][]string) {
-	ctx := opCtx{entries: entries}
-	for sort, depIds := range sortDepIds {
-		for _, depId := range depIds {
-			sortEntry := ctx.getEntry(depId)
-			ds.orders.Set(sort.key, depId, sortEntry.data)
-			if ds.depOrderObjects[depId] == nil {
-				ds.depOrderObjects[depId] = map[string]struct{}{}
-			}
-			ds.depOrderObjects[depId][subId] = struct{}{}
-		}
-	}
-}
-
-// reorderParentSubscription checks if orderId has changed
+// reorderParentSubscription collects changed dep objects and triggers parent sub reorder
 func (ds *dependencyService) reorderParentSubscription(depSubId string, ctx *opCtx) {
 	parentSubId := strings.TrimSuffix(depSubId, "/dep")
 
-	sortKeys := ds.sorts[parentSubId]
-	if len(sortKeys) == 0 {
-		return
-	}
-
-	updatedDepObjects := make([]string, 0)
+	updatedDepObjects := make([]*domain.Details, 0)
 	for _, e := range ctx.entries {
-		for _, key := range sortKeys {
-			if ds.orders.Update(key.key, e.id, e.data) {
-				updatedDepObjects = append(updatedDepObjects, e.id)
+		if subIds, isDepOrderObject := ds.depOrderObjects[e.id]; isDepOrderObject {
+			if _, found := subIds[parentSubId]; found {
+				updatedDepObjects = append(updatedDepObjects, e.data)
 			}
 		}
 	}
 
-	subsToUpdate := make(map[string]struct{})
-	for _, objectId := range updatedDepObjects {
-		for subId := range ds.depOrderObjects[objectId] {
-			subsToUpdate[subId] = struct{}{}
-		}
-	}
-
-	if len(subsToUpdate) == 0 {
+	if len(updatedDepObjects) == 0 {
 		return
 	}
 
-	for subId := range subsToUpdate {
-		sub, ok := ds.s.getSortableSubscription(subId)
-		if !ok {
-			log.Errorf("failed to get subscription %s to reorder objects", subId)
-			continue
-		}
-		sub.resetSort(ctx)
+	sub, ok := ds.s.getSortableSubscription(parentSubId)
+	if !ok {
+		log.Errorf("failed to get subscription %s to reorder objects", parentSubId)
+		return
 	}
+	sub.reorder(ctx, updatedDepObjects)
 }
 
 var ignoredKeys = map[domain.RelationKey]struct{}{
