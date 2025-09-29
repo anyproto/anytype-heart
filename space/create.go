@@ -6,11 +6,9 @@ import (
 
 	"github.com/anyproto/any-sync/util/crypto"
 	"github.com/anyproto/anytype-heart/core/anytype/config/loadenv"
-	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space/clientspace"
 	"github.com/anyproto/anytype-heart/space/internal/spaceprocess/loader"
-	space "github.com/anyproto/anytype-heart/space/spacecore"
-
+	"github.com/anyproto/anytype-heart/space/spacedomain"
 	"github.com/anyproto/anytype-heart/space/spaceinfo"
 )
 
@@ -37,18 +35,16 @@ func (s *service) createOneToOne(ctx context.Context, description *spaceinfo.Spa
 	fmt.Printf("-- ctrl wait load: \n")
 	sp, err = ctrl.Current().(loader.LoadWaiter).WaitLoad(ctx)
 	s.spaceControllers[ctrl.SpaceId()] = ctrl
-	// s.updater.UpdateCoordinatorStatus()
+
+	s.updater.UpdateCoordinatorStatus()
 
 	fmt.Printf("-- ctrl wait load ret: \n")
 	return
 
 }
-func (s *service) create(ctx context.Context, description *spaceinfo.SpaceDescription) (sp clientspace.Space, err error) {
 
-	var spaceType = space.SpaceType
-	if description != nil && description.SpaceUxType == model.SpaceUxType_Chat {
-		spaceType = space.ChatSpaceType
-	}
+func (s *service) create(ctx context.Context, description *spaceinfo.SpaceDescription) (sp clientspace.Space, err error) {
+	var spaceType = spacedomain.SpaceTypeRegular
 	coreSpace, err := s.spaceCore.Create(ctx, spaceType, s.repKey, s.AccountMetadataPayload())
 	if err != nil {
 		return nil, err
@@ -84,6 +80,5 @@ func (s *service) create(ctx context.Context, description *spaceinfo.SpaceDescri
 	s.spaceControllers[ctrl.SpaceId()] = ctrl
 	s.mu.Unlock()
 	s.updater.UpdateCoordinatorStatus()
-
 	return
 }

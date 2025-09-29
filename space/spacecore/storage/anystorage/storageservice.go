@@ -14,7 +14,10 @@ import (
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/app/logger"
 	"github.com/anyproto/any-sync/commonspace/spacestorage"
+	"github.com/anyproto/any-sync/commonspace/spacesyncproto"
 	"golang.org/x/exp/maps"
+
+	"github.com/anyproto/anytype-heart/space/spacedomain"
 )
 
 // nolint: unused
@@ -114,6 +117,9 @@ func (s *storageService) SpaceExists(id string) bool {
 }
 
 func (s *storageService) CreateSpaceStorage(ctx context.Context, payload spacestorage.SpaceStorageCreatePayload) (spacestorage.SpaceStorage, error) {
+	if err := validateSpaceHeader(payload.SpaceHeaderWithId); err != nil {
+		return nil, err
+	}
 	db, err := s.createDb(ctx, payload.SpaceHeaderWithId.Id)
 	if err != nil {
 		return nil, err
@@ -146,4 +152,27 @@ func (s *storageService) anyStoreConfig() *anystore.Config {
 		StalledConnectionsPanicOnClose:    time.Second * 45,
 		StalledConnectionsDetectorEnabled: true,
 	}
+}
+
+func validateSpaceHeader(headerWithId *spacesyncproto.RawSpaceHeaderWithId) error {
+	var rawHeader = &spacesyncproto.RawSpaceHeader{}
+	if err := rawHeader.UnmarshalVT(headerWithId.RawHeader); err != nil {
+		return err
+	}
+
+	var header = &spacesyncproto.SpaceHeader{}
+	if err := header.UnmarshalVT(rawHeader.SpaceHeader); err != nil {
+		return err
+	}
+
+	switch spacedomain.SpaceType(header.SpaceType) {
+	case "":
+	case spacedomain.SpaceTypeTech:
+	case spacedomain.SpaceTypeRegular:
+	case spacedomain.SpaceTypeChat:
+	case spacedomain.SpaceTypeOneToOne:
+	default:
+		return fmt.Errorf("%w: type: %v", spacedomain.ErrUnexpectedSpaceType, header.SpaceType)
+	}
+	return nil
 }

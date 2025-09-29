@@ -153,11 +153,12 @@ func TestRelationOption_SetBetweenOrders(t *testing.T) {
 		afterOrderId := "Z"
 
 		// when
-		err := obj.SetBetweenOrders(previousOrderId, afterOrderId)
+		got, err := obj.SetBetweenOrders(previousOrderId, afterOrderId)
 
 		// then
 		assert.NoError(t, err)
 		savedOrderId := obj.Details().GetString(orderKey)
+		assert.Equal(t, got, savedOrderId)
 		assert.NotEmpty(t, savedOrderId)
 		assert.True(t, savedOrderId > previousOrderId)
 		assert.True(t, savedOrderId < afterOrderId)
@@ -171,12 +172,13 @@ func TestRelationOption_SetBetweenOrders(t *testing.T) {
 		afterOrderId := "M"
 
 		// when
-		err := obj.SetBetweenOrders(previousOrderId, afterOrderId)
+		got, err := obj.SetBetweenOrders(previousOrderId, afterOrderId)
 
 		// then
 		assert.NoError(t, err)
 
 		savedOrderId := obj.Details().GetString(orderKey)
+		assert.Equal(t, got, savedOrderId)
 		expectedPrev := lx.Prev(afterOrderId)
 		assert.Equal(t, expectedPrev, savedOrderId)
 		assert.True(t, savedOrderId < afterOrderId)
@@ -189,7 +191,7 @@ func TestRelationOption_SetBetweenOrders(t *testing.T) {
 		afterOrderId := "A"
 
 		// when
-		err := obj.SetBetweenOrders(previousOrderId, afterOrderId)
+		_, err := obj.SetBetweenOrders(previousOrderId, afterOrderId)
 
 		// then
 		assert.Error(t, err)
@@ -250,7 +252,7 @@ func TestRelationOption_OrderOperationsIntegration(t *testing.T) {
 		assert.True(t, newOrder > "A")
 
 		// Test 3: Set order between two orders
-		err = obj.SetBetweenOrders("B", "Z")
+		_, err = obj.SetBetweenOrders("B", "Z")
 		require.NoError(t, err)
 		betweenOrder := obj.GetOrder()
 		assert.True(t, betweenOrder > "B" && betweenOrder < "Z")

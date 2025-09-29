@@ -365,7 +365,7 @@ func (s *Service) SpaceInstallBundledObject(
 	if err != nil {
 		return "", nil, fmt.Errorf("get space: %w", err)
 	}
-	ids, details, err := s.objectCreator.InstallBundledObjects(ctx, spc, []string{sourceObjectId}, false)
+	ids, details, err := s.objectCreator.InstallBundledObjects(ctx, spc, []string{sourceObjectId})
 	if err != nil {
 		return "", nil, err
 	}
@@ -385,7 +385,7 @@ func (s *Service) SpaceInstallBundledObjects(
 	if err != nil {
 		return nil, nil, fmt.Errorf("get space: %w", err)
 	}
-	return s.objectCreator.InstallBundledObjects(ctx, spc, sourceObjectIds, false)
+	return s.objectCreator.InstallBundledObjects(ctx, spc, sourceObjectIds)
 }
 
 func (s *Service) SpaceInitChat(ctx context.Context, spaceId string) error {
@@ -435,12 +435,6 @@ func (s *Service) SpaceInitChat(ctx context.Context, spaceId string) error {
 	if err != nil {
 		return fmt.Errorf("apply chatId to workspace: %w", err)
 	}
-
-	err = s.autoInstallSpaceChatWidget(ctx, spc)
-	if err != nil {
-		return fmt.Errorf("install chat widget: %w", err)
-	}
-
 	return nil
 }
 

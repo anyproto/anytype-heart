@@ -6,6 +6,7 @@ import (
 
 	anystore "github.com/anyproto/any-store"
 	"github.com/anyproto/any-store/anyenc"
+	"github.com/anyproto/any-store/anyenc/anyencutil"
 	"github.com/anyproto/any-store/query"
 	"github.com/anyproto/any-sync/commonspace/headsync/headstorage"
 	"github.com/anyproto/any-sync/commonspace/object/tree/objecttree"
@@ -123,6 +124,9 @@ func (r *clientStorage) modifyState(ctx context.Context, isCreated bool) error {
 		val = arena.NewFalse()
 	}
 	mod := query.ModifyFunc(func(a *anyenc.Arena, v *anyenc.Value) (result *anyenc.Value, modified bool, err error) {
+		if anyencutil.Equal(v.Get(createdKey), val) {
+			return v, false, nil
+		}
 		v.Set(createdKey, val)
 		return v, true, nil
 	})

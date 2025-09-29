@@ -3,6 +3,7 @@ package sourceimpl
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"math/rand"
 	"sync"
@@ -49,6 +50,8 @@ var (
 	log = logging.Logger("anytype-mw-source")
 
 	bytesPool = sync.Pool{New: func() any { return make([]byte, poolSize) }}
+
+	ErrSpaceWithoutTreeBuilder = errors.New("space doesn't have tree builder")
 )
 
 func MarshalChange(change *pb.Change) (result []byte, dataType string, err error) {
@@ -137,7 +140,7 @@ type SourceIdEndodedDetails interface {
 func (s *service) newTreeSource(ctx context.Context, space source.Space, id string, buildOpts objecttreebuilder.BuildTreeOpts) (source.Source, error) {
 	treeBuilder := space.TreeBuilder()
 	if treeBuilder == nil {
-		return nil, fmt.Errorf("space doesn't have tree builder")
+		return nil, ErrSpaceWithoutTreeBuilder
 	}
 	ot, err := space.TreeBuilder().BuildTree(ctx, id, buildOpts)
 	if err != nil {
@@ -369,12 +372,12 @@ func (s *treeSource) PushChange(params source.PushChangeParams) (id string, err 
 	}
 
 	addResult, err := s.ObjectTree.AddContent(context.Background(), objecttree.SignableChangeContent{
-		Data:        data,
-		Key:         s.ObjectTree.AclList().AclState().Key(),
-		IsSnapshot:  change.Snapshot != nil,
-		IsEncrypted: true,
-		DataType:    dataType,
-		Timestamp:   params.Time.Unix(),
+		Data:              data,
+		Key:               s.ObjectTree.AclList().AclState().Key(),
+		IsSnapshot:        change.Snapshot != nil,
+		ShouldBeEncrypted: true,
+		DataType:          dataType,
+		Timestamp:         params.Time.Unix(),
 	})
 	if err != nil {
 		return

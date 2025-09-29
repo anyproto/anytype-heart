@@ -1925,7 +1925,6 @@
     - [Event.Process.New](#anytype-Event-Process-New)
     - [Event.Process.Update](#anytype-Event-Process-Update)
     - [Event.Space](#anytype-Event-Space)
-    - [Event.Space.AutoWidgetAdded](#anytype-Event-Space-AutoWidgetAdded)
     - [Event.Space.SyncStatus](#anytype-Event-Space-SyncStatus)
     - [Event.Space.SyncStatus.Update](#anytype-Event-Space-SyncStatus-Update)
     - [Event.Status](#anytype-Event-Status)
@@ -1963,6 +1962,7 @@
 - [pb/protos/snapshot.proto](#pb_protos_snapshot-proto)
     - [Profile](#anytype-Profile)
     - [SnapshotWithType](#anytype-SnapshotWithType)
+    - [WidgetBlock](#anytype-WidgetBlock)
   
 - [pkg/lib/pb/model/protos/localstore.proto](#pkg_lib_pb_model_protos_localstore-proto)
     - [ObjectDetails](#anytype-model-ObjectDetails)
@@ -29974,7 +29974,6 @@ to its type.
 | payloadBroadcast | [Event.Payload.Broadcast](#anytype-Event-Payload-Broadcast) |  |  |
 | membershipUpdate | [Event.Membership.Update](#anytype-Event-Membership-Update) |  |  |
 | spaceSyncStatusUpdate | [Event.Space.SyncStatus.Update](#anytype-Event-Space-SyncStatus-Update) |  |  |
-| spaceAutoWidgetAdded | [Event.Space.AutoWidgetAdded](#anytype-Event-Space-AutoWidgetAdded) |  |  |
 | p2pStatusUpdate | [Event.P2PStatus.Update](#anytype-Event-P2PStatus-Update) |  |  |
 | importFinish | [Event.Import.Finish](#anytype-Event-Import-Finish) |  |  |
 | chatAdd | [Event.Chat.Add](#anytype-Event-Chat-Add) |  |  |
@@ -30440,23 +30439,6 @@ Removes document from subscription
 
 ### Event.Space
 
-
-
-
-
-
-
-<a name="anytype-Event-Space-AutoWidgetAdded"></a>
-
-### Event.Space.AutoWidgetAdded
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| targetId | [string](#string) |  |  |
-| targetName | [string](#string) |  | pluralName (if exists) for types, fallback to |
-| widgetBlockId | [string](#string) |  | name. Special cases for &#34;bin&#34; and &#34;favorites&#34; |
 
 
 
@@ -30967,7 +30949,8 @@ scenario: Precondition: user A and user B opened the same block
 | spaceDashboardId | [string](#string) |  |  |
 | profileId | [string](#string) |  |  |
 | analyticsId | [string](#string) |  |  |
-| startingPage | [string](#string) |  |  |
+| startingPage | [string](#string) |  | deprecated |
+| widgets | [WidgetBlock](#anytype-WidgetBlock) | repeated |  |
 
 
 
@@ -30984,6 +30967,23 @@ scenario: Precondition: user A and user B opened the same block
 | ----- | ---- | ----- | ----------- |
 | sbType | [model.SmartBlockType](#anytype-model-SmartBlockType) |  |  |
 | snapshot | [Change.Snapshot](#anytype-Change-Snapshot) |  |  |
+
+
+
+
+
+
+<a name="anytype-WidgetBlock"></a>
+
+### WidgetBlock
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| layout | [model.Block.Content.Widget.Layout](#anytype-model-Block-Content-Widget-Layout) |  |  |
+| targetObjectId | [string](#string) |  |  |
+| objectLimit | [int32](#int32) |  |  |
 
 
 
