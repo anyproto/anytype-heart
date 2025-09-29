@@ -588,14 +588,16 @@ func (t *Text) SplitMarks(textRange *model.Range, newMarks []*model.BlockContent
 }
 
 type mergeOpts struct {
-	dontSetStyle bool
+	withStyle bool
+	style     model.BlockContentTextStyle
 }
 
 type MergeOption func(opts *mergeOpts)
 
-func DontSetStyle() MergeOption {
+func WithForcedStyle(style model.BlockContentTextStyle) MergeOption {
 	return func(opts *mergeOpts) {
-		opts.dontSetStyle = true
+		opts.withStyle = true
+		opts.style = style
 	}
 }
 
@@ -606,15 +608,17 @@ func (t *Text) Merge(b simple.Block, opts ...MergeOption) error {
 	}
 
 	text, ok := b.(*Text)
-
-	if !o.dontSetStyle && t.content != nil && t.content.Text == "" {
-		t.SetStyle(text.content.Style)
-		t.BackgroundColor = text.BackgroundColor
-	}
-
 	if !ok {
 		return fmt.Errorf("unexpected block type for merge: %T", b)
 	}
+
+	style := text.content.Style
+	if o.withStyle {
+		style = o.style
+	}
+	t.SetStyle(style)
+	t.BackgroundColor = text.BackgroundColor
+
 	curLen := int32(textutil.UTF16RuneCountString(t.content.Text))
 	t.content.Text += text.content.Text
 	for _, m := range text.content.Marks.Marks {

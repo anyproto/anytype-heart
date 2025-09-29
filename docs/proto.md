@@ -5795,6 +5795,7 @@ Makes blocks copy by given ids and paste it to shown place
 | contextId | [string](#string) |  |  |
 | firstBlockId | [string](#string) |  |  |
 | secondBlockId | [string](#string) |  |  |
+| style | [model.Block.Content.Text.Style](#anytype-model-Block-Content-Text-Style) |  |  |
 
 
 

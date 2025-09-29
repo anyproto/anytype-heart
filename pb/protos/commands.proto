@@ -4637,6 +4637,7 @@ message Rpc {
                 string contextId = 1;
                 string firstBlockId = 2;
                 string secondBlockId = 3;
+                anytype.model.Block.Content.Text.Style style = 4;
             }
 
             message Response {
