@@ -49,7 +49,7 @@ func (s *dsObjectStore) DeleteObject(id string) error {
 	newDetails.SetBool(bundle.RelationKeyIsDeleted, true)
 
 	// do not completely remove object details, so we can distinguish links to deleted and not-yet-loaded objects
-	err = s.UpdateObjectDetails(txn.Context(), id, newDetails)
+	err = s.UpdateObjectDetails(txn.Context(), id, newDetails, nil)
 	if err != nil {
 		return fmt.Errorf("delete: update details: %w", err)
 	}

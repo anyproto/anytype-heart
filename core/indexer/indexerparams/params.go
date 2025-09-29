@@ -18,8 +18,12 @@ func NewIndexBatch(id string) *IndexBatch {
 	}
 }
 
-func (b *IndexBatch) Wait() {
-	<-b.done
+func (b *IndexBatch) Id() string {
+	return b.id
+}
+
+func (b *IndexBatch) Wait() chan struct{} {
+	return b.done
 }
 
 func (b *IndexBatch) Done() {

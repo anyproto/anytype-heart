@@ -146,7 +146,7 @@ func (fx *StoreFixture) AddObjects(t testing.TB, spaceId string, objects []space
 	for _, obj := range objects {
 		id := obj[bundle.RelationKeyId].String()
 		require.NotEmpty(t, id)
-		err := store.UpdateObjectDetails(context.Background(), id, makeDetails(obj))
+		err := store.UpdateObjectDetails(context.Background(), id, makeDetails(obj), nil)
 		require.NoError(t, err)
 	}
 }

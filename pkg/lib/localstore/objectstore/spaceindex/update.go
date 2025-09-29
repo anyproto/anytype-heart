@@ -9,13 +9,14 @@ import (
 	"github.com/anyproto/any-store/query"
 
 	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/core/indexer/indexerparams"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 	"github.com/anyproto/anytype-heart/util/slice"
 )
 
-func (s *dsObjectStore) UpdateObjectDetails(ctx context.Context, id string, details *domain.Details) error {
+func (s *dsObjectStore) UpdateObjectDetails(ctx context.Context, id string, details *domain.Details, batch *indexerparams.IndexBatch) error {
 	if details == nil || details.Len() == 0 {
 		return fmt.Errorf("empty details")
 	}
@@ -41,7 +42,7 @@ func (s *dsObjectStore) UpdateObjectDetails(ctx context.Context, id string, deta
 		return newVal, true, nil
 	}))
 	if isModified {
-		s.sendUpdatesToSubscriptions(id, details)
+		s.sendUpdatesToSubscriptions(id, details, batch)
 	}
 
 	if err != nil {
@@ -51,13 +52,13 @@ func (s *dsObjectStore) UpdateObjectDetails(ctx context.Context, id string, deta
 	return nil
 }
 
-func (s *dsObjectStore) SubscribeForAll(callback func(rec database.Record)) {
+func (s *dsObjectStore) SubscribeForAll(callback func(rec database.Record, batch *indexerparams.IndexBatch)) {
 	s.lock.Lock()
 	s.onChangeCallback = callback
 	s.lock.Unlock()
 }
 
-func (s *dsObjectStore) sendUpdatesToSubscriptions(id string, details *domain.Details) {
+func (s *dsObjectStore) sendUpdatesToSubscriptions(id string, details *domain.Details, batch *indexerparams.IndexBatch) {
 	detCopy := details.Copy()
 	detCopy.SetString(bundle.RelationKeyId, id)
 	s.lock.RLock()
@@ -65,7 +66,7 @@ func (s *dsObjectStore) sendUpdatesToSubscriptions(id string, details *domain.De
 	if s.onChangeCallback != nil {
 		s.onChangeCallback(database.Record{
 			Details: detCopy,
-		})
+		}, batch)
 	}
 	for _, sub := range s.subscriptions {
 		_ = sub.PublishAsync(id, detCopy)
@@ -205,7 +206,7 @@ func (s *dsObjectStore) ModifyObjectDetails(id string, proc func(details *domain
 		if len(diff) == 0 {
 			return nil, false, nil
 		}
-		s.sendUpdatesToSubscriptions(id, newDetails)
+		s.sendUpdatesToSubscriptions(id, newDetails, nil)
 		return jsonVal, true, nil
 	}))
 

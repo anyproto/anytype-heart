@@ -7,6 +7,7 @@ import (
 	"github.com/anyproto/any-store/anyenc"
 
 	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/core/indexer/indexerparams"
 	"github.com/anyproto/anytype-heart/core/relationutils"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -83,7 +84,7 @@ func (s *invalidStore) ListIds() ([]string, error) {
 	return nil, s.err
 }
 
-func (s *invalidStore) UpdateObjectDetails(ctx context.Context, id string, details *domain.Details) error {
+func (s *invalidStore) UpdateObjectDetails(ctx context.Context, id string, details *domain.Details, batch *indexerparams.IndexBatch) error {
 	return s.err
 }
 
@@ -199,7 +200,7 @@ func (s *invalidStore) WriteTx(ctx context.Context) (anystore.WriteTx, error) {
 	return nil, s.err
 }
 
-func (s *invalidStore) SubscribeForAll(callback func(rec database.Record)) {
+func (s *invalidStore) SubscribeForAll(callback func(rec database.Record, batch *indexerparams.IndexBatch)) {
 
 }
 

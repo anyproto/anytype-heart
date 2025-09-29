@@ -11,7 +11,9 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/block/cache"
 	"github.com/anyproto/anytype-heart/core/block/editor/order"
+	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/core/indexer/indexerparams"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
@@ -287,14 +289,18 @@ func calculateFullList(objectIds []string, fullOriginalIds []string, originalOrd
 }
 
 func (o *orderSetter) applyReorder(ops []reorderOp) error {
+	batch := indexerparams.NewIndexBatch("test")
 	for _, op := range ops {
-		err := cache.Do[order.OrderSettable](o.objectGetter, op.id, func(os order.OrderSettable) error {
-			return os.SetOrder(op.newOrderId)
+		err := cache.Do(o.objectGetter, op.id, func(s smartblock.SmartBlock) error {
+			st := s.NewState()
+			st.SetDetail(bundle.RelationKeyOrderId, domain.String(op.newOrderId))
+			return s.Apply(st, smartblock.WithIndexerBatch(batch))
 		})
 		if err != nil {
 			return fmt.Errorf("failed to set order for object %s: %w", op.id, err)
 		}
 	}
+	batch.Done()
 	return nil
 }
 

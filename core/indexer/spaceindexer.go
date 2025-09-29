@@ -167,7 +167,7 @@ func (i *spaceIndexer) index(ctx context.Context, info smartblock.DocInfo, optio
 	}
 
 	if indexDetails {
-		if err := i.spaceIndex.UpdateObjectDetails(ctx, info.Id, details); err != nil {
+		if err := i.spaceIndex.UpdateObjectDetails(ctx, info.Id, details, opts.Batch); err != nil {
 			hasError = true
 			log.With("objectID", info.Id).Errorf("can't update object store: %v", err)
 		} else if lastIndexedHash == headHashToIndex {

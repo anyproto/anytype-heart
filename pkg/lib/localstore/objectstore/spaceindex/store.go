@@ -10,6 +10,7 @@ import (
 	"github.com/anyproto/any-store/anyenc"
 
 	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/core/indexer/indexerparams"
 	"github.com/anyproto/anytype-heart/core/relationutils"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
@@ -50,8 +51,8 @@ type Store interface {
 
 	// UpdateObjectDetails updates existing object or create if not missing. Should be used in order to amend existing indexes based on prev/new value
 	// set discardLocalDetailsChanges to true in case the caller doesn't have local details in the State
-	UpdateObjectDetails(ctx context.Context, id string, details *domain.Details) error
-	SubscribeForAll(callback func(rec database.Record))
+	UpdateObjectDetails(ctx context.Context, id string, details *domain.Details, batch *indexerparams.IndexBatch) error
+	SubscribeForAll(callback func(rec database.Record, batch *indexerparams.IndexBatch))
 	UpdateObjectLinks(ctx context.Context, id string, links []string) error
 	UpdatePendingLocalDetails(id string, proc func(details *domain.Details) (*domain.Details, error)) error
 	ModifyObjectDetails(id string, proc func(details *domain.Details) (*domain.Details, bool, error)) error
@@ -126,7 +127,7 @@ type dsObjectStore struct {
 	// State
 	lock             sync.RWMutex
 	subscriptions    []database.Subscription
-	onChangeCallback func(rec database.Record)
+	onChangeCallback func(rec database.Record, batch *indexerparams.IndexBatch)
 	dbLockRemove     func() error
 }
 

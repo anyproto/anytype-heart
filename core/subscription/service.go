@@ -16,6 +16,7 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/event"
+	"github.com/anyproto/anytype-heart/core/indexer/indexerparams"
 	"github.com/anyproto/anytype-heart/core/kanban"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
@@ -285,6 +286,8 @@ func (s *service) getSpaceSubscriptions(spaceId string) (*spaceSubscriptions, er
 			eventSender:       s.eventSender,
 			ctxBuf:            &opCtx{spaceId: spaceId, c: cache},
 			arenaPool:         s.arenaPool,
+			clientBatches:     map[string]*clientBatch{},
+			batchedRecords:    map[string]string{},
 		}
 		spaceSubs.ds = newDependencyService(spaceSubs)
 		spaceSubs.initDebugger()
@@ -297,12 +300,21 @@ func (s *service) getSpaceSubscriptions(spaceId string) (*spaceSubscriptions, er
 	return spaceSubs, nil
 }
 
+type clientBatch struct {
+	batch   *indexerparams.IndexBatch
+	records map[string]database.Record
+}
+
 type spaceSubscriptions struct {
 	subscriptionKeys []string
 	subscriptions    map[string]subscription
 
 	customOutput map[string]*internalSubOutput
 	recBatch     *mb.MB[database.Record]
+
+	batchLock      sync.Mutex
+	clientBatches  map[string]*clientBatch
+	batchedRecords map[string]string
 
 	// Deps
 	objectStore       spaceindex.Store
@@ -324,8 +336,51 @@ type spaceSubscriptions struct {
 func (s *spaceSubscriptions) Run() (err error) {
 	s.ctx, s.cancelCtx = context.WithCancel(context.Background())
 	var batchErr error
-	s.objectStore.SubscribeForAll(func(rec database.Record) {
-		batchErr = s.recBatch.Add(s.ctx, rec)
+	s.objectStore.SubscribeForAll(func(rec database.Record, batch *indexerparams.IndexBatch) {
+		id := rec.Details.GetString(bundle.RelationKeyId)
+		var batched bool
+		s.batchLock.Lock()
+		// Object is already in some batch
+		if batchId, ok := s.batchedRecords[id]; ok {
+			batched = true
+			s.clientBatches[batchId].records[id] = rec
+		} else if batch != nil {
+			batched = true
+			clBatch, ok := s.clientBatches[batch.Id()]
+			if ok {
+				clBatch.records[id] = rec
+			} else {
+				clBatch = &clientBatch{
+					batch: batch,
+					records: map[string]database.Record{
+						id: rec,
+					},
+				}
+				s.clientBatches[batch.Id()] = clBatch
+
+				go func() {
+					select {
+					case <-s.ctx.Done():
+						return
+					case <-batch.Wait():
+						s.batchLock.Lock()
+						defer s.batchLock.Unlock()
+						recs := make([]database.Record, 0, len(clBatch.records))
+						for _, r := range clBatch.records {
+							recs = append(recs, r)
+							delete(s.batchedRecords, r.Details.GetString(bundle.RelationKeyId))
+						}
+						delete(s.clientBatches, batch.Id())
+						batchErr = s.recBatch.Add(s.ctx, recs...)
+					}
+				}()
+			}
+		}
+		s.batchLock.Unlock()
+
+		if !batched {
+			batchErr = s.recBatch.Add(s.ctx, rec)
+		}
 	})
 	if batchErr != nil {
 		return batchErr

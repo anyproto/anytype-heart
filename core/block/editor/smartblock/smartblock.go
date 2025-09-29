@@ -64,6 +64,7 @@ type applyOptions struct {
 	ignoreNoPermissions     bool
 	notPushChanges          bool
 	allowApplyWithEmptyTree bool
+	indexerBatch            *indexerparams.IndexBatch
 }
 
 func newApplyOptions() applyOptions {
@@ -121,6 +122,12 @@ func NotPushChanges(o *applyOptions) {
 
 func AllowApplyWithEmptyTree(o *applyOptions) {
 	o.allowApplyWithEmptyTree = true
+}
+
+func WithIndexerBatch(batch *indexerparams.IndexBatch) ApplyFlag {
+	return func(o *applyOptions) {
+		o.indexerBatch = batch
+	}
 }
 
 type Hook int
@@ -762,10 +769,10 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 	if applyOpts.skipIfNoChanges && len(changes) == 0 && !migrationVersionUpdated {
 		if hasDetailsMsgs(msgs) {
 			// means we have only local details changed, so lets index but skip full text
-			sb.runIndexer(st, indexerparams.SkipFullTextIfHeadsNotChanged)
+			sb.runIndexer(st, applyOpts.indexerBatch, indexerparams.SkipFullTextIfHeadsNotChanged)
 		} else {
 			// we may skip indexing in case we are sure that we have previously indexed the same version of object
-			sb.runIndexer(st, indexerparams.SkipIfHeadsNotChanged)
+			sb.runIndexer(st, applyOpts.indexerBatch, indexerparams.SkipIfHeadsNotChanged)
 		}
 		return nil
 	}
@@ -834,9 +841,9 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 	if changeId == "" && len(msgs) == 0 {
 		// means we probably don't have any actual change being made
 		// in case the heads are not changed, we may skip indexing
-		sb.runIndexer(st, indexerparams.SkipIfHeadsNotChanged)
+		sb.runIndexer(st, applyOpts.indexerBatch, indexerparams.SkipIfHeadsNotChanged)
 	} else {
-		sb.runIndexer(st)
+		sb.runIndexer(st, applyOpts.indexerBatch)
 	}
 
 	if applyOpts.sendEvent {
@@ -1005,7 +1012,7 @@ func (sb *smartBlock) StateAppend(f func(d state.Doc) (s *state.State, changes [
 	if hasDepIds(sb.GetRelationLinks(), &act) || isBacklinksChanged(msgs) {
 		sb.CheckSubscriptions()
 	}
-	sb.runIndexer(s)
+	sb.runIndexer(s, nil)
 	var parentDetails *domain.Details
 	if s.ParentState() != nil {
 		parentDetails = s.ParentState().Details()
@@ -1052,7 +1059,7 @@ func (sb *smartBlock) StateRebuild(d state.Doc) (err error) {
 	}
 	sb.storeFileKeys(d)
 	sb.CheckSubscriptions()
-	sb.runIndexer(sb.Doc.(*state.State))
+	sb.runIndexer(sb.Doc.(*state.State), nil)
 	applyInfo := ApplyInfo{State: sb.Doc.(*state.State), Events: msgs, Changes: d.(*state.State).GetChanges()}
 	sb.execHooks(HookAfterApply, applyInfo)
 	err = sb.execHooks(HookOnStateRebuild, applyInfo)
@@ -1286,8 +1293,9 @@ func (sb *smartBlock) getDocInfo(st *state.State) DocInfo {
 	}
 }
 
-func (sb *smartBlock) runIndexer(s *state.State, opts ...indexerparams.IndexOption) {
+func (sb *smartBlock) runIndexer(s *state.State, batch *indexerparams.IndexBatch, opts ...indexerparams.IndexOption) {
 	docInfo := sb.getDocInfo(s)
+	opts = append(opts, indexerparams.WithIndexBatch(batch))
 	if err := sb.indexer.Index(docInfo, opts...); err != nil {
 		log.Errorf("index object %s error: %s", sb.Id(), err)
 	}
