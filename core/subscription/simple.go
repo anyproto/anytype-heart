@@ -108,8 +108,7 @@ func (s *simpleSub) onChange(ctx *opCtx) {
 		}
 	}
 	if changed && s.depSub != nil {
-		activeEntries := s.getActiveEntries()
-		s.ds.refillSubscription(ctx, s.id, s.depSub, activeEntries, s.depKeys)
+		s.ds.refillSubscription(ctx, s.id, s.depSub, s.getActiveEntries(), s.depKeys)
 	}
 	if s.isDep {
 		s.ds.reorderParentSubscription(s.id, ctx)

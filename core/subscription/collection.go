@@ -176,10 +176,6 @@ func (c *collectionSub) getActiveRecords() (res []*domain.Details) {
 	return c.sortedSub.getActiveRecords()
 }
 
-func (c *collectionSub) getActiveEntries() []*entry {
-	return c.sortedSub.getActiveEntries()
-}
-
 func (c *collectionSub) hasDep() bool {
 	return c.sortedSub.hasDep()
 }
