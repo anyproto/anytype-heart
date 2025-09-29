@@ -7,6 +7,8 @@ import (
 
 	app "github.com/anyproto/any-sync/app"
 
+	indexerparams "github.com/anyproto/anytype-heart/core/indexer/indexerparams"
+
 	mock "github.com/stretchr/testify/mock"
 )
 
@@ -70,7 +72,7 @@ func (_c *MockIndexer_Close_Call) RunAndReturn(run func(context.Context) error) 
 }
 
 // Index provides a mock function with given fields: info, options
-func (_m *MockIndexer) Index(info DocInfo, options ...IndexOption) error {
+func (_m *MockIndexer) Index(info DocInfo, options ...indexerparams.IndexOption) error {
 	_va := make([]interface{}, len(options))
 	for _i := range options {
 		_va[_i] = options[_i]
@@ -85,7 +87,7 @@ func (_m *MockIndexer) Index(info DocInfo, options ...IndexOption) error {
 	}
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(DocInfo, ...IndexOption) error); ok {
+	if rf, ok := ret.Get(0).(func(DocInfo, ...indexerparams.IndexOption) error); ok {
 		r0 = rf(info, options...)
 	} else {
 		r0 = ret.Error(0)
@@ -101,18 +103,18 @@ type MockIndexer_Index_Call struct {
 
 // Index is a helper method to define mock.On call
 //   - info DocInfo
-//   - options ...IndexOption
+//   - options ...indexerparams.IndexOption
 func (_e *MockIndexer_Expecter) Index(info interface{}, options ...interface{}) *MockIndexer_Index_Call {
 	return &MockIndexer_Index_Call{Call: _e.mock.On("Index",
 		append([]interface{}{info}, options...)...)}
 }
 
-func (_c *MockIndexer_Index_Call) Run(run func(info DocInfo, options ...IndexOption)) *MockIndexer_Index_Call {
+func (_c *MockIndexer_Index_Call) Run(run func(info DocInfo, options ...indexerparams.IndexOption)) *MockIndexer_Index_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		variadicArgs := make([]IndexOption, len(args)-1)
+		variadicArgs := make([]indexerparams.IndexOption, len(args)-1)
 		for i, a := range args[1:] {
 			if a != nil {
-				variadicArgs[i] = a.(IndexOption)
+				variadicArgs[i] = a.(indexerparams.IndexOption)
 			}
 		}
 		run(args[0].(DocInfo), variadicArgs...)
@@ -125,7 +127,7 @@ func (_c *MockIndexer_Index_Call) Return(_a0 error) *MockIndexer_Index_Call {
 	return _c
 }
 
-func (_c *MockIndexer_Index_Call) RunAndReturn(run func(DocInfo, ...IndexOption) error) *MockIndexer_Index_Call {
+func (_c *MockIndexer_Index_Call) RunAndReturn(run func(DocInfo, ...indexerparams.IndexOption) error) *MockIndexer_Index_Call {
 	_c.Call.Return(run)
 	return _c
 }

@@ -13,6 +13,7 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/core/indexer/indexerparams"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/spaceindex"
 )
@@ -43,7 +44,7 @@ func (i *spaceIndexer) close() error {
 
 type indexTask struct {
 	info    smartblock.DocInfo
-	options []smartblock.IndexOption
+	options []indexerparams.IndexOption
 	done    chan error
 }
 
@@ -96,7 +97,7 @@ func (i *spaceIndexer) indexBatch(tasks []indexTask) (err error) {
 	return
 }
 
-func (i *spaceIndexer) Index(info smartblock.DocInfo, options ...smartblock.IndexOption) error {
+func (i *spaceIndexer) Index(info smartblock.DocInfo, options ...indexerparams.IndexOption) error {
 	done := make(chan error)
 	if err := i.batcher.Add(i.runCtx, indexTask{
 		info:    info,
@@ -113,9 +114,9 @@ func (i *spaceIndexer) Index(info smartblock.DocInfo, options ...smartblock.Inde
 	}
 }
 
-func (i *spaceIndexer) index(ctx context.Context, info smartblock.DocInfo, options ...smartblock.IndexOption) error {
+func (i *spaceIndexer) index(ctx context.Context, info smartblock.DocInfo, options ...indexerparams.IndexOption) error {
 	// options are stored in smartblock pkg because of cyclic dependency :(
-	opts := &smartblock.IndexOptions{}
+	opts := &indexerparams.IndexOptions{}
 	for _, o := range options {
 		o(opts)
 	}

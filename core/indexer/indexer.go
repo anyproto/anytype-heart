@@ -13,6 +13,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/source"
 	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/core/indexer/indexerparams"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/datastore/anystoreprovider"
@@ -40,7 +41,7 @@ type Indexer interface {
 	ReindexMarketplaceSpace(space clientspace.Space) error
 	ReindexSpace(space clientspace.Space) error
 	RemoveIndexes(spaceId string) (err error)
-	Index(info smartblock.DocInfo, options ...smartblock.IndexOption) error
+	Index(info smartblock.DocInfo, options ...indexerparams.IndexOption) error
 	app.ComponentRunnable
 }
 
@@ -163,7 +164,7 @@ func (i *indexer) isFulltextEnabled(space smartblock.Space) bool {
 		space.Id() != addr.AnytypeMarketplaceWorkspace
 }
 
-func (i *indexer) Index(info smartblock.DocInfo, options ...smartblock.IndexOption) error {
+func (i *indexer) Index(info smartblock.DocInfo, options ...indexerparams.IndexOption) error {
 	i.lock.Lock()
 	spaceInd, ok := i.spaceIndexers[info.Space.Id()]
 	if !ok {

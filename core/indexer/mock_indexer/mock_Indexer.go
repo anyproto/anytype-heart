@@ -8,6 +8,8 @@ import (
 	app "github.com/anyproto/any-sync/app"
 	clientspace "github.com/anyproto/anytype-heart/space/clientspace"
 
+	indexerparams "github.com/anyproto/anytype-heart/core/indexer/indexerparams"
+
 	mock "github.com/stretchr/testify/mock"
 
 	smartblock "github.com/anyproto/anytype-heart/core/block/editor/smartblock"
@@ -105,7 +107,7 @@ func (_c *MockIndexer_ForceFTIndex_Call) RunAndReturn(run func()) *MockIndexer_F
 }
 
 // Index provides a mock function with given fields: info, options
-func (_m *MockIndexer) Index(info smartblock.DocInfo, options ...smartblock.IndexOption) error {
+func (_m *MockIndexer) Index(info smartblock.DocInfo, options ...indexerparams.IndexOption) error {
 	_va := make([]interface{}, len(options))
 	for _i := range options {
 		_va[_i] = options[_i]
@@ -120,7 +122,7 @@ func (_m *MockIndexer) Index(info smartblock.DocInfo, options ...smartblock.Inde
 	}
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(smartblock.DocInfo, ...smartblock.IndexOption) error); ok {
+	if rf, ok := ret.Get(0).(func(smartblock.DocInfo, ...indexerparams.IndexOption) error); ok {
 		r0 = rf(info, options...)
 	} else {
 		r0 = ret.Error(0)
@@ -136,18 +138,18 @@ type MockIndexer_Index_Call struct {
 
 // Index is a helper method to define mock.On call
 //   - info smartblock.DocInfo
-//   - options ...smartblock.IndexOption
+//   - options ...indexerparams.IndexOption
 func (_e *MockIndexer_Expecter) Index(info interface{}, options ...interface{}) *MockIndexer_Index_Call {
 	return &MockIndexer_Index_Call{Call: _e.mock.On("Index",
 		append([]interface{}{info}, options...)...)}
 }
 
-func (_c *MockIndexer_Index_Call) Run(run func(info smartblock.DocInfo, options ...smartblock.IndexOption)) *MockIndexer_Index_Call {
+func (_c *MockIndexer_Index_Call) Run(run func(info smartblock.DocInfo, options ...indexerparams.IndexOption)) *MockIndexer_Index_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		variadicArgs := make([]smartblock.IndexOption, len(args)-1)
+		variadicArgs := make([]indexerparams.IndexOption, len(args)-1)
 		for i, a := range args[1:] {
 			if a != nil {
-				variadicArgs[i] = a.(smartblock.IndexOption)
+				variadicArgs[i] = a.(indexerparams.IndexOption)
 			}
 		}
 		run(args[0].(smartblock.DocInfo), variadicArgs...)
@@ -160,7 +162,7 @@ func (_c *MockIndexer_Index_Call) Return(_a0 error) *MockIndexer_Index_Call {
 	return _c
 }
 
-func (_c *MockIndexer_Index_Call) RunAndReturn(run func(smartblock.DocInfo, ...smartblock.IndexOption) error) *MockIndexer_Index_Call {
+func (_c *MockIndexer_Index_Call) RunAndReturn(run func(smartblock.DocInfo, ...indexerparams.IndexOption) error) *MockIndexer_Index_Call {
 	_c.Call.Return(run)
 	return _c
 }

@@ -28,6 +28,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/undo"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/event"
+	"github.com/anyproto/anytype-heart/core/indexer/indexerparams"
 	"github.com/anyproto/anytype-heart/core/relationutils"
 	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pb"
@@ -46,26 +47,81 @@ import (
 	"github.com/anyproto/anytype-heart/util/slice"
 )
 
-type ApplyFlag int
-
 var (
 	ErrSimpleBlockNotFound                         = errors.New("simple block not found")
 	ErrCantInitExistingSmartblockWithNonEmptyState = errors.New("can't init existing smartblock with non-empty state")
 	ErrApplyOnEmptyTreeDisallowed                  = errors.New("apply on empty tree disallowed")
 )
 
-const (
-	NoHistory ApplyFlag = iota
-	NoEvent
-	NoRestrictions
-	NoHooks
-	DoSnapshot
-	SkipIfNoChanges
-	KeepInternalFlags
-	IgnoreNoPermissions
-	NotPushChanges // Used only for read-only actions like InitObject or OpenObject
-	AllowApplyWithEmptyTree
-)
+type applyOptions struct {
+	sendEvent               bool
+	addHistory              bool
+	doSnapshot              bool
+	checkRestrictions       bool
+	hooks                   bool
+	skipIfNoChanges         bool
+	keepInternalFlags       bool
+	ignoreNoPermissions     bool
+	notPushChanges          bool
+	allowApplyWithEmptyTree bool
+}
+
+func newApplyOptions() applyOptions {
+	return applyOptions{
+		sendEvent:               true,
+		addHistory:              true,
+		doSnapshot:              false,
+		checkRestrictions:       true,
+		hooks:                   true,
+		skipIfNoChanges:         false,
+		keepInternalFlags:       false,
+		ignoreNoPermissions:     false,
+		notPushChanges:          false,
+		allowApplyWithEmptyTree: false,
+	}
+}
+
+type ApplyFlag func(o *applyOptions)
+
+func NoHistory(o *applyOptions) {
+	o.addHistory = false
+}
+
+func NoEvent(o *applyOptions) {
+	o.sendEvent = false
+}
+
+func DoSnapshot(o *applyOptions) {
+	o.doSnapshot = true
+}
+
+func NoRestrictions(o *applyOptions) {
+	o.checkRestrictions = false
+}
+
+func NoHooks(o *applyOptions) {
+	o.hooks = false
+}
+
+func SkipIfNoChanges(o *applyOptions) {
+	o.skipIfNoChanges = true
+}
+
+func KeepInternalFlags(o *applyOptions) {
+	o.keepInternalFlags = true
+}
+
+func IgnoreNoPermissions(o *applyOptions) {
+	o.ignoreNoPermissions = true
+}
+
+func NotPushChanges(o *applyOptions) {
+	o.notPushChanges = true
+}
+
+func AllowApplyWithEmptyTree(o *applyOptions) {
+	o.allowApplyWithEmptyTree = true
+}
 
 type Hook int
 
@@ -218,7 +274,7 @@ type Locker interface {
 }
 
 type Indexer interface {
-	Index(info DocInfo, options ...IndexOption) error
+	Index(info DocInfo, options ...indexerparams.IndexOption) error
 	app.ComponentRunnable
 }
 
@@ -629,46 +685,16 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 	if sb.IsDeleted() {
 		return domain.ErrObjectIsDeleted
 	}
-	var (
-		sendEvent               = true
-		addHistory              = true
-		doSnapshot              = false
-		checkRestrictions       = true
-		hooks                   = true
-		skipIfNoChanges         = false
-		keepInternalFlags       = false
-		ignoreNoPermissions     = false
-		notPushChanges          = false
-		allowApplyWithEmptyTree = false
-	)
-	for _, f := range flags {
-		switch f {
-		case NoEvent:
-			sendEvent = false
-		case NoHistory:
-			addHistory = false
-		case DoSnapshot:
-			doSnapshot = true
-		case NoRestrictions:
-			checkRestrictions = false
-		case NoHooks:
-			hooks = false
-		case SkipIfNoChanges:
-			skipIfNoChanges = true
-		case KeepInternalFlags:
-			keepInternalFlags = true
-		case IgnoreNoPermissions:
-			ignoreNoPermissions = true
-		case NotPushChanges:
-			notPushChanges = true
-		case AllowApplyWithEmptyTree:
-			allowApplyWithEmptyTree = true
-		}
+
+	applyOpts := newApplyOptions()
+	for _, flag := range flags {
+		flag(&applyOpts)
 	}
+
 	if sb.ObjectTree != nil &&
 		len(sb.ObjectTree.Heads()) == 1 &&
 		sb.ObjectTree.Heads()[0] == sb.ObjectTree.Id() &&
-		!allowApplyWithEmptyTree &&
+		!applyOpts.allowApplyWithEmptyTree &&
 		sb.Type() != smartblock.SmartBlockTypeChatDerivedObject &&
 		sb.Type() != smartblock.SmartBlockTypeAccountObject {
 		// protection for applying migrations on empty tree
@@ -681,12 +707,12 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 	sb.injectDerivedDetails(s, sb.SpaceID(), sb.Type())
 	sb.resolveLayout(s)
 
-	if hooks {
+	if applyOpts.hooks {
 		if err = sb.execHooks(HookBeforeApply, ApplyInfo{State: s}); err != nil {
 			return nil
 		}
 	}
-	if checkRestrictions && s.ParentState() != nil {
+	if applyOpts.checkRestrictions && s.ParentState() != nil {
 		if err = s.ParentState().CheckRestrictions(); err != nil {
 			return
 		}
@@ -707,7 +733,7 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 		}
 	}
 
-	if !keepInternalFlags {
+	if !applyOpts.keepInternalFlags {
 		removeInternalFlags(s)
 	}
 
@@ -733,18 +759,18 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 
 	changes := st.GetChanges()
 	var changeId string
-	if skipIfNoChanges && len(changes) == 0 && !migrationVersionUpdated {
+	if applyOpts.skipIfNoChanges && len(changes) == 0 && !migrationVersionUpdated {
 		if hasDetailsMsgs(msgs) {
 			// means we have only local details changed, so lets index but skip full text
-			sb.runIndexer(st, SkipFullTextIfHeadsNotChanged)
+			sb.runIndexer(st, indexerparams.SkipFullTextIfHeadsNotChanged)
 		} else {
 			// we may skip indexing in case we are sure that we have previously indexed the same version of object
-			sb.runIndexer(st, SkipIfHeadsNotChanged)
+			sb.runIndexer(st, indexerparams.SkipIfHeadsNotChanged)
 		}
 		return nil
 	}
 	pushChange := func() error {
-		if notPushChanges {
+		if applyOpts.notPushChanges {
 			return nil
 		}
 		if !sb.source.ReadOnly() {
@@ -766,11 +792,11 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 			State:             st,
 			Changes:           changes,
 			FileChangedHashes: getChangedFileHashes(s, fileDetailsKeysFiltered, act),
-			DoSnapshot:        doSnapshot,
+			DoSnapshot:        applyOpts.doSnapshot,
 		}
 		changeId, err = sb.source.PushChange(pushChangeParams)
 		// For read-only mode
-		if errors.Is(err, list.ErrInsufficientPermissions) && ignoreNoPermissions {
+		if errors.Is(err, list.ErrInsufficientPermissions) && applyOpts.ignoreNoPermissions {
 			return nil
 		}
 		if err != nil {
@@ -784,14 +810,14 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 	}
 
 	if !act.IsEmpty() {
-		if len(changes) == 0 && !doSnapshot {
+		if len(changes) == 0 && !applyOpts.doSnapshot {
 			log.With("sbType", sb.Type().String()).Errorf("apply 0 changes %s: %v", st.RootId(), anonymize.Events(msgsToEvents(msgs)))
 		}
 		err = pushChange()
 		if err != nil {
 			return err
 		}
-		if sb.undo != nil && addHistory {
+		if sb.undo != nil && applyOpts.addHistory {
 			if !sb.source.ReadOnly() {
 				act.Group = s.GroupId()
 				sb.undo.Add(act)
@@ -808,12 +834,12 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 	if changeId == "" && len(msgs) == 0 {
 		// means we probably don't have any actual change being made
 		// in case the heads are not changed, we may skip indexing
-		sb.runIndexer(st, SkipIfHeadsNotChanged)
+		sb.runIndexer(st, indexerparams.SkipIfHeadsNotChanged)
 	} else {
 		sb.runIndexer(st)
 	}
 
-	if sendEvent {
+	if applyOpts.sendEvent {
 		events := msgsToEvents(msgs)
 		if ctx := s.Context(); ctx != nil {
 			ctx.SetMessages(sb.Id(), events)
@@ -828,7 +854,7 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 	if hasDepIds(sb.GetRelationLinks(), &act) {
 		sb.CheckSubscriptions()
 	}
-	if hooks {
+	if applyOpts.hooks {
 		var parentDetails *domain.Details
 		if act.Details != nil {
 			parentDetails = act.Details.Before
@@ -1260,7 +1286,7 @@ func (sb *smartBlock) getDocInfo(st *state.State) DocInfo {
 	}
 }
 
-func (sb *smartBlock) runIndexer(s *state.State, opts ...IndexOption) {
+func (sb *smartBlock) runIndexer(s *state.State, opts ...indexerparams.IndexOption) {
 	docInfo := sb.getDocInfo(s)
 	if err := sb.indexer.Index(docInfo, opts...); err != nil {
 		log.Errorf("index object %s error: %s", sb.Id(), err)
@@ -1342,21 +1368,6 @@ func hasDetailsMsgs(msgs []simple.EventMessage) bool {
 		}
 	}
 	return false
-}
-
-type IndexOptions struct {
-	SkipIfHeadsNotChanged         bool
-	SkipFullTextIfHeadsNotChanged bool
-}
-
-type IndexOption func(*IndexOptions)
-
-func SkipIfHeadsNotChanged(o *IndexOptions) {
-	o.SkipIfHeadsNotChanged = true
-}
-
-func SkipFullTextIfHeadsNotChanged(o *IndexOptions) {
-	o.SkipFullTextIfHeadsNotChanged = true
 }
 
 type InitFunc = func(id string) *InitContext
