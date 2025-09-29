@@ -62,18 +62,34 @@ func newCrossSpaceSubscription(subId string, request subscriptionservice.Subscri
 		SubId:    subId,
 		Counters: &pb.EventObjectSubscriptionCounters{},
 	}
-	for _, spaceId := range initialSpaceIds {
-		resp, err := s.addSpace(spaceId, false)
-		if err != nil {
-			return nil, nil, fmt.Errorf("add space: %w", err)
-		}
-		aggregatedResp.Records = append(aggregatedResp.Records, resp.Records...)
-		aggregatedResp.Dependencies = append(aggregatedResp.Dependencies, resp.Dependencies...)
-		aggregatedResp.Counters.Total += resp.Counters.Total
 
-		s.updateTotalCount(resp.SubId, resp.Counters.Total)
+	var wg sync.WaitGroup
+	var resErr error
+
+	for _, spaceId := range initialSpaceIds {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+
+			resp, err := s.subscribe(spaceId, false)
+			if err != nil {
+				resErr = err
+				return
+			}
+
+			s.lock.Lock()
+			s.perSpaceSubscriptions[spaceId] = resp.SubId
+			aggregatedResp.Records = append(aggregatedResp.Records, resp.Records...)
+			aggregatedResp.Dependencies = append(aggregatedResp.Dependencies, resp.Dependencies...)
+			aggregatedResp.Counters.Total += resp.Counters.Total
+			s.lock.Unlock()
+
+			s.updateTotalCount(resp.SubId, resp.Counters.Total)
+		}()
 	}
-	return s, aggregatedResp, nil
+	wg.Wait()
+
+	return s, aggregatedResp, resErr
 }
 
 func (s *crossSpaceSubscription) run(internalQueue *mb.MB[*pb.EventMessage]) {
@@ -158,6 +174,16 @@ func (s *crossSpaceSubscription) addSpace(spaceId string, asyncInit bool) (*subs
 		return nil, nil
 	}
 
+	resp, err := s.subscribe(spaceId, asyncInit)
+	if err != nil {
+		return nil, err
+	}
+
+	s.perSpaceSubscriptions[spaceId] = resp.SubId
+	return resp, nil
+}
+
+func (s *crossSpaceSubscription) subscribe(spaceId string, asyncInit bool) (*subscriptionservice.SubscribeResponse, error) {
 	req := s.request
 	// Will be generated automatically
 	req.SubId = ""
@@ -166,12 +192,7 @@ func (s *crossSpaceSubscription) addSpace(spaceId string, asyncInit bool) (*subs
 	req.SpaceId = spaceId
 	req.AsyncInit = asyncInit
 
-	resp, err := s.subscriptionService.Search(req)
-	if err != nil {
-		return nil, err
-	}
-	s.perSpaceSubscriptions[spaceId] = resp.SubId
-	return resp, nil
+	return s.subscriptionService.Search(req)
 }
 
 func (s *crossSpaceSubscription) RemoveSpace(spaceId string) {
