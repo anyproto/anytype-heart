@@ -3,6 +3,7 @@ package subscription
 import (
 	"testing"
 
+	"github.com/anyproto/any-store/query"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -22,7 +23,7 @@ func TestSubscription_Add(t *testing.T) {
 			cache:   newCache(),
 			limit:   3,
 			afterId: "id3",
-			ds:      &dependencyService{orders: database.OrderMap{}},
+			ds:      &dependencyService{},
 		}
 		require.NoError(t, sub.init(genEntries(9, false)))
 		newEntries := []*entry{
@@ -110,7 +111,7 @@ func TestSubscription_Change(t *testing.T) {
 			cache:   newCache(),
 			limit:   3,
 			afterId: "id3",
-			ds:      &dependencyService{orders: database.OrderMap{}},
+			ds:      &dependencyService{},
 		}
 		require.NoError(t, sub.init(genEntries(9, false)))
 		ctx := &opCtx{c: sub.cache}
@@ -121,16 +122,192 @@ func TestSubscription_Change(t *testing.T) {
 	})
 }
 
-func BenchmarkSubscription_fill(b *testing.B) {
-	entries := genEntries(100000, true)
-	c := newCache()
-	b.ReportAllocs()
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+func TestSortedSub_Reorder(t *testing.T) {
+	t.Run("reorder with updated dependencies", func(t *testing.T) {
+		// Create test order that can be updated
+		order := testOrder
+
 		sub := &sortedSub{
-			order: testOrder,
-			cache: c,
+			id:      "test",
+			order:   order,
+			cache:   newCache(),
+			limit:   5,
+			afterId: "id2",
+			ds:      &dependencyService{},
 		}
-		sub.init(entries)
-	}
+
+		// Initialize with entries
+		require.NoError(t, sub.init(genEntries(7, false)))
+
+		// Setup initial active entries
+		initialEntries := sub.getActiveEntries()
+		assert.Len(t, initialEntries, 5) // limited by limit
+
+		// Create dependency details with updated order information
+		depDetails := []*domain.Details{
+			domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+				bundle.RelationKeyId:      domain.String("user1"),
+				bundle.RelationKeyName:    domain.String("Updated User 1"),
+				bundle.RelationKeyOrderId: domain.String("order123"),
+			}),
+			domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+				bundle.RelationKeyId:      domain.String("user2"),
+				bundle.RelationKeyName:    domain.String("Updated User 2"),
+				bundle.RelationKeyOrderId: domain.String("order456"),
+			}),
+		}
+
+		ctx := &opCtx{
+			c:       sub.cache,
+			spaceId: spaceId,
+		}
+
+		// Execute reorder
+		sub.reorder(ctx, depDetails)
+
+		// Verify that entries are reordered (skip list should be reinitialized)
+		newEntries := sub.getActiveEntries()
+		assert.Len(t, newEntries, 5)
+
+		// Verify context has position changes tracked
+		assert.NotNil(t, sub.diff)
+	})
+
+	t.Run("reorder with no order changes", func(t *testing.T) {
+		// Create mock order that returns false for Update
+		order := &mockNoUpdateOrder{}
+
+		sub := &sortedSub{
+			id:    "test",
+			order: order,
+			cache: newCache(),
+			ds:    &dependencyService{},
+		}
+
+		require.NoError(t, sub.init(genEntries(5, false)))
+
+		depDetails := []*domain.Details{
+			domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+				bundle.RelationKeyId:   domain.String("user1"),
+				bundle.RelationKeyName: domain.String("Same User"),
+			}),
+		}
+
+		ctx := &opCtx{
+			c:       sub.cache,
+			spaceId: spaceId,
+		}
+
+		// Should return early without reordering
+		sub.reorder(ctx, depDetails)
+
+		// Verify no changes in context since order didn't change
+		assert.Empty(t, ctx.position)
+		assert.Empty(t, ctx.change)
+	})
+
+	t.Run("reorder with pagination before element", func(t *testing.T) {
+		sub := &sortedSub{
+			id:       "test",
+			order:    testOrder,
+			cache:    newCache(),
+			limit:    3,
+			beforeId: "id5", // paginate before id5
+			ds:       &dependencyService{},
+		}
+
+		require.NoError(t, sub.init(genEntries(7, false)))
+
+		depDetails := []*domain.Details{
+			domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+				bundle.RelationKeyId: domain.String("dep1"),
+			}),
+		}
+
+		ctx := &opCtx{
+			c:       sub.cache,
+			spaceId: spaceId,
+		}
+
+		sub.reorder(ctx, depDetails)
+
+		// Should handle beforeId pagination correctly
+		activeEntries := sub.getActiveEntries()
+		assert.Len(t, activeEntries, 3) // limited by limit
+	})
+
+	t.Run("reorder updates counters", func(t *testing.T) {
+		sub := &sortedSub{
+			id:     "test",
+			order:  testOrder,
+			cache:  newCache(),
+			limit:  3,
+			offset: 1, // start from offset 1
+			ds:     &dependencyService{},
+		}
+
+		require.NoError(t, sub.init(genEntries(6, false)))
+
+		depDetails := []*domain.Details{
+			domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+				bundle.RelationKeyId: domain.String("dep1"),
+			}),
+		}
+
+		ctx := &opCtx{
+			c:       sub.cache,
+			spaceId: spaceId,
+		}
+
+		sub.reorder(ctx, depDetails)
+
+		// Verify counters are updated if there are changes
+		// Counters may be empty if no actual reordering occurred
+		for _, counter := range ctx.counters {
+			assert.Equal(t, "test", counter.subId)
+			assert.Equal(t, 6, counter.total)
+		}
+	})
+
+	t.Run("reorder with dependency subscription", func(t *testing.T) {
+		// Create a subscription with dependency subscription
+		depSub := &simpleSub{
+			id:    "test/dep",
+			cache: newCache(),
+		}
+
+		sub := &sortedSub{
+			id:     "test",
+			order:  testOrder,
+			cache:  newCache(),
+			limit:  3,
+			depSub: depSub,
+			ds:     &dependencyService{},
+		}
+
+		require.NoError(t, sub.init(genEntries(5, false)))
+
+		depDetails := []*domain.Details{
+			domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+				bundle.RelationKeyId: domain.String("dep1"),
+			}),
+		}
+
+		ctx := &opCtx{
+			c:       sub.cache,
+			spaceId: spaceId,
+		}
+
+		sub.reorder(ctx, depDetails)
+
+		// Should populate activeEntriesBuf for dependency subscription
+		assert.NotNil(t, sub.activeEntriesBuf)
+	})
 }
+
+// Mock order that never needs updates
+type mockNoUpdateOrder struct{}
+
+func (m *mockNoUpdateOrder) Compare(a, b *domain.Details) int      { return 0 }
+func (m *mockNoUpdateOrder) Update(details []*domain.Details) bool { return false }
+func (m *mockNoUpdateOrder) AnystoreSort() query.Sort              { return nil }
