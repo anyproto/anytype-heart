@@ -272,6 +272,7 @@ func (b *queryBuilder) extractOrder(sorts []SortRequest) SetOrder {
 				IncludeTime:     isIncludeTime(sorts, sort),
 				relationFormat:  format,
 				objectStore:     b.objectStore,
+				orderMap:        NewOrderMap(nil),
 				arena:           b.arena,
 				collatorBuffer:  b.collatorBuffer,
 				disableCollator: sort.NoCollate,

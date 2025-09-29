@@ -193,6 +193,10 @@ func (c *collectionSub) close() {
 	c.sortedSub.close()
 }
 
+func (c *collectionSub) reorder(ctx *opCtx, depDetails []*domain.Details) {
+	c.sortedSub.reorder(ctx, depDetails)
+}
+
 func (s *spaceSubscriptions) newCollectionSub(req SubscribeRequest, f *database.Filters, filterDepIds []string) (*collectionSub, error) {
 	obs, err := s.newCollectionObserver(req.SpaceId, req.CollectionId, req.SubId)
 	if err != nil {

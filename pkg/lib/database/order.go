@@ -102,7 +102,7 @@ func (m *OrderMap) SetOrders(store ObjectStore, ids ...string) {
 		return
 	}
 
-	if m == nil || m.data == nil {
+	if m.data == nil {
 		m.data = make(map[string]*domain.Details, len(ids))
 	}
 
