@@ -42,7 +42,6 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space"
-	"github.com/anyproto/anytype-heart/space/clientspace"
 	"github.com/anyproto/anytype-heart/util/anyerror"
 	"github.com/anyproto/anytype-heart/util/constant"
 	"github.com/anyproto/anytype-heart/util/uri"
@@ -235,7 +234,7 @@ func (b *builtinObjects) CreateObjectsForExperience(ctx context.Context, spaceID
 			log.Warnf("failed to profile object: %s", err)
 		}
 		// TODO: GO-2627 Home page handling should be moved to importer
-		b.handleHomePage(profile, spaceID, false)
+		b.setWorkspaceSettings(profile, spaceID, false)
 		removeFunc()
 	} else if importFormat == model.Import_Markdown {
 		// try to read manifest.json from archive
@@ -255,12 +254,11 @@ func (b *builtinObjects) CreateObjectsForExperience(ctx context.Context, spaceID
 			}
 			if len(records) > 0 {
 				id := records[0].Details.GetString(bundle.RelationKeyId)
-				spc, err := b.spaceService.Get(context.Background(), spaceID)
-				if err != nil {
-					log.Errorf("failed to get space: %w", err)
-					return err
+				if err = b.detailsService.SetSpaceInfo(spaceID, domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+					bundle.RelationKeySpaceDashboardId: domain.String(id),
+				})); err != nil {
+					log.Errorf("Failed to set SpaceDashboardId relation to Account object: %s", err)
 				}
-				b.setHomePageIdToWorkspace(spc, id)
 				widgets := []*pb.WidgetBlock{{
 					Layout:         model.BlockContentWidget_Link,
 					TargetObjectId: id,
@@ -439,7 +437,7 @@ func (b *builtinObjects) inject(ctx session.Context, spaceID string, useCase pb.
 	}
 
 	// TODO: GO-2627 Home page handling should be moved to importer
-	_ = b.handleHomePage(profile, spaceID, useCase == migrationUseCase)
+	_ = b.setWorkspaceSettings(profile, spaceID, true)
 
 	// TODO: GO-2627 Widgets creation should be moved to importer
 	b.createWidgets(ctx, spaceID, widgets)
@@ -528,22 +526,12 @@ func (b *builtinObjects) getWidgets(profile *pb.Profile, spaceId string) []*pb.W
 	return profile.Widgets
 }
 
-func (b *builtinObjects) handleHomePage(profile *pb.Profile, spaceId string, isMigration bool) (dashboardId string) {
-	var oldID string
-	if !isMigration {
-		oldID = profile.SpaceDashboardId
-		if oldID == "" {
-			oldID = defaultDashboardId
-		}
-	} else if profile != nil {
+func (b *builtinObjects) setWorkspaceSettings(profile *pb.Profile, spaceId string, isBundle bool) (dashboardId string) {
+	newID, oldID := defaultDashboardId, defaultDashboardId
+	if profile != nil && profile.SpaceDashboardId != "" {
 		oldID = profile.SpaceDashboardId
 	}
 
-	if oldID == "" {
-		oldID = defaultDashboardId
-	}
-
-	var newID string
 	if oldID != defaultDashboardId {
 		var err error
 		newID, err = b.getNewObjectID(spaceId, oldID)
@@ -552,18 +540,31 @@ func (b *builtinObjects) handleHomePage(profile *pb.Profile, spaceId string, isM
 		} else {
 			newID = defaultDashboardId
 		}
-	} else {
-		newID = defaultDashboardId
-	}
-
-	spc, err := b.spaceService.Get(context.Background(), spaceId)
-	if err != nil {
-		log.Errorf("failed to get space: %w", err)
-		return
 	}
 	dashboardId = newID
-	b.setHomePageIdToWorkspace(spc, newID)
 
+	details := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+		bundle.RelationKeySpaceDashboardId: domain.String(dashboardId),
+	})
+
+	if profile != nil && isBundle {
+		if profile.Name != "" {
+			details.SetString(bundle.RelationKeyName, profile.Name)
+		}
+
+		if profile.Avatar != "" {
+			var err error
+			newID, err = b.getNewAvatarID(spaceId, profile.Avatar)
+			if err != nil {
+				log.Errorf("failed to get new id of workspace icon object: %s", err)
+			} else {
+				details.SetString(bundle.RelationKeyIconImage, newID)
+			}
+		}
+	}
+	if err := b.detailsService.SetSpaceInfo(spaceId, details); err != nil {
+		log.Errorf("Failed to set SpaceDashboardId relation to Account object: %s", err)
+	}
 	return
 }
 
@@ -602,20 +603,6 @@ func (b *builtinObjects) getProfile(path string) (profile *pb.Profile, err error
 		return nil, err
 	}
 	return profile, nil
-}
-
-func (b *builtinObjects) setHomePageIdToWorkspace(spc clientspace.Space, id string) {
-	if err := b.detailsService.SetDetails(nil,
-		spc.DerivedIDs().Workspace,
-		[]domain.Detail{
-			{
-				Key:   bundle.RelationKeySpaceDashboardId,
-				Value: domain.StringList([]string{id}),
-			},
-		},
-	); err != nil {
-		log.Errorf("Failed to set SpaceDashboardId relation to Account object: %s", err)
-	}
 }
 
 func (b *builtinObjects) createWidgets(ctx session.Context, spaceId string, widgets []*pb.WidgetBlock) {
@@ -676,6 +663,30 @@ func (b *builtinObjects) getNewObjectID(spaceID string, oldID string) (id string
 	}
 	if len(ids) == 0 {
 		return "", fmt.Errorf("no object with oldAnytypeId = '%s' in space '%s' found", oldID, spaceID)
+	}
+	return ids[0], nil
+}
+
+func (b *builtinObjects) getNewAvatarID(spaceID string, name string) (id string, err error) {
+	var ids []string
+	if ids, _, err = b.store.SpaceIndex(spaceID).QueryObjectIds(database.Query{
+		Filters: []database.FilterRequest{
+			{
+				Condition:   model.BlockContentDataviewFilter_Equal,
+				RelationKey: bundle.RelationKeyName,
+				Value:       domain.String(name),
+			},
+			{
+				Condition:   model.BlockContentDataviewFilter_Equal,
+				RelationKey: bundle.RelationKeyResolvedLayout,
+				Value:       domain.Int64(model.ObjectType_image),
+			},
+		},
+	}); err != nil {
+		return "", err
+	}
+	if len(ids) == 0 {
+		return "", fmt.Errorf("no image with name = '%s' in space '%s' found", name, spaceID)
 	}
 	return ids[0], nil
 }
