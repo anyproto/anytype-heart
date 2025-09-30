@@ -68,24 +68,28 @@ var getStartedZip []byte
 //go:embed data/migration_dashboard.zip
 var migrationDashboardZip []byte
 
-//go:embed data/empty.zip
-var emptyZip []byte
-
 //go:embed data/get_started_mobile.zip
 var getStartedMobileZip []byte
 
-//go:embed data/empty_mobile.zip
-var emptyMobileZip []byte
+//go:embed data/chat_space.zip
+var chatSpaceZip []byte
+
+//go:embed data/data_space_desktop.zip
+var dataSpaceDesktopZip []byte
+
+//go:embed data/data_space_mobile.zip
+var dataSpaceMobileZip []byte
 
 var (
 	log = logging.Logger("anytype-mw-builtinobjects")
 
 	archives = map[pb.RpcObjectImportUseCaseRequestUseCase][]byte{
 		pb.RpcObjectImportUseCaseRequest_GET_STARTED:        getStartedZip,
+		pb.RpcObjectImportUseCaseRequest_DATA_SPACE:         dataSpaceDesktopZip,
 		pb.RpcObjectImportUseCaseRequest_GUIDE_ONLY:         startGuideZip,
-		pb.RpcObjectImportUseCaseRequest_EMPTY:              emptyZip,
 		pb.RpcObjectImportUseCaseRequest_GET_STARTED_MOBILE: getStartedMobileZip,
-		pb.RpcObjectImportUseCaseRequest_EMPTY_MOBILE:       emptyMobileZip,
+		pb.RpcObjectImportUseCaseRequest_CHAT_SPACE:         chatSpaceZip,
+		pb.RpcObjectImportUseCaseRequest_DATA_SPACE_MOBILE:  dataSpaceMobileZip,
 	}
 )
 
