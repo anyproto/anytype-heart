@@ -261,7 +261,7 @@ func (s *sortedSub) onEntryChange(e *entry) (noChange bool) {
 }
 
 func (s *sortedSub) reorder(ctx *opCtx, depDetails []*domain.Details) {
-	if !s.order.Update(depDetails) {
+	if !s.order.UpdateOrderMap(depDetails) {
 		return
 	}
 

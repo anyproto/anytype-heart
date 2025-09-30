@@ -18,7 +18,7 @@ import (
 type Order interface {
 	Compare(a, b *domain.Details) int
 	AnystoreSort() query.Sort
-	Update(depDetails []*domain.Details) (updated bool)
+	UpdateOrderMap(depDetails []*domain.Details) (updated bool)
 }
 
 // ObjectStore interface is used to enrich filters
@@ -177,9 +177,9 @@ func (so SetOrder) AnystoreSort() query.Sort {
 	return sorts
 }
 
-func (so SetOrder) Update(depDetails []*domain.Details) (updated bool) {
+func (so SetOrder) UpdateOrderMap(depDetails []*domain.Details) (updated bool) {
 	for _, o := range so {
-		updated = o.Update(depDetails) || updated
+		updated = o.UpdateOrderMap(depDetails) || updated
 	}
 	return updated
 }
@@ -251,7 +251,7 @@ func (ko *KeyOrder) AnystoreSort() query.Sort {
 	}
 }
 
-func (ko *KeyOrder) Update(depDetails []*domain.Details) (updated bool) {
+func (ko *KeyOrder) UpdateOrderMap(depDetails []*domain.Details) (updated bool) {
 	return ko.orderMap.Update(depDetails)
 }
 
@@ -500,8 +500,8 @@ func (co customOrder) AnystoreSort() query.Sort {
 	return co
 }
 
-func (co customOrder) Update(depDetails []*domain.Details) bool {
-	return co.KeyOrd.Update(depDetails)
+func (co customOrder) UpdateOrderMap(depDetails []*domain.Details) bool {
+	return co.KeyOrd.UpdateOrderMap(depDetails)
 }
 
 func (co customOrder) getStringVal(val domain.Value) string {

@@ -308,6 +308,6 @@ func TestSortedSub_Reorder(t *testing.T) {
 // Mock order that never needs updates
 type mockNoUpdateOrder struct{}
 
-func (m *mockNoUpdateOrder) Compare(a, b *domain.Details) int      { return 0 }
-func (m *mockNoUpdateOrder) Update(details []*domain.Details) bool { return false }
-func (m *mockNoUpdateOrder) AnystoreSort() query.Sort              { return nil }
+func (m *mockNoUpdateOrder) Compare(_, _ *domain.Details) int        { return 0 }
+func (m *mockNoUpdateOrder) UpdateOrderMap(_ []*domain.Details) bool { return false }
+func (m *mockNoUpdateOrder) AnystoreSort() query.Sort                { return nil }
