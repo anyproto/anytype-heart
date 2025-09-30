@@ -85,8 +85,13 @@ func (ot *ObjectType) Init(ctx *smartblock.InitContext) (err error) {
 		return
 	}
 
-	ot.AddHook(ot.syncLayoutForObjectsAndTemplates, smartblock.HookAfterApply)
-	return nil
+	ot.AddHook(ot.syncLayoutHook, smartblock.HookAfterApply)
+
+	oldLayout := layout.NewLayoutStateFromDetails(domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+		bundle.RelationKeyRecommendedLayout: domain.Int64(model.ObjectType_basic),
+	}))
+	newLayout := layout.NewLayoutStateFromDetails(ot.Details().CopyOnlyKeys(bundle.RelationKeyRecommendedLayout))
+	return ot.syncLayoutForObjectsAndTemplates(oldLayout, newLayout, false)
 }
 
 func (ot *ObjectType) CreationStateMigration(ctx *smartblock.InitContext) migration.Migration {
@@ -193,11 +198,15 @@ func removeDescriptionMigration(s *state.State) {
 	s.RemoveDetail(bundle.RelationKeyDescription)
 }
 
-func (ot *ObjectType) syncLayoutForObjectsAndTemplates(info smartblock.ApplyInfo) error {
+func (ot *ObjectType) syncLayoutForObjectsAndTemplates(oldLayout, newLayout layout.LayoutState, applyOtherObjects bool) error {
 	syncer := layout.NewSyncer(ot.Id(), ot.Space(), ot.spaceIndex)
+	return syncer.SyncLayoutWithType(oldLayout, newLayout, false, applyOtherObjects, true)
+}
+
+func (ot *ObjectType) syncLayoutHook(info smartblock.ApplyInfo) error {
 	newLayout := layout.NewLayoutStateFromEvents(info.Events)
 	oldLayout := layout.NewLayoutStateFromDetails(info.ParentDetails)
-	return syncer.SyncLayoutWithType(oldLayout, newLayout, false, info.ApplyOtherObjects, true)
+	return ot.syncLayoutForObjectsAndTemplates(oldLayout, newLayout, info.ApplyOtherObjects)
 }
 
 func (ot *ObjectType) dataviewTemplates() []template.StateTransformer {

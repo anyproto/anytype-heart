@@ -404,8 +404,7 @@ func TestRunFullTextIndexer(t *testing.T) {
 					blockbuilder.ID("blockId1"),
 				),
 			)))
-		// With optimization, objects already in queue won't be re-added, so GetObject won't be called
-		// indexerFx.pickerFx.EXPECT().GetObject(mock.Anything, objectId).Return(smartTest, nil).Once()
+		indexerFx.pickerFx.EXPECT().GetObject(mock.Anything, objectId).Return(smartTest, nil).Once()
 		indexerFx.store.AddToIndexQueue(context.Background(), domain.FullID{ObjectID: objectId, SpaceID: "spaceId1"})
 
 	}

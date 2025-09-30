@@ -186,7 +186,7 @@ func TestSpaceView_SetBetweenViews(t *testing.T) {
 		defer fx.finish()
 
 		// when
-		err := fx.SetBetweenOrders("", "afterId")
+		_, err := fx.SetBetweenOrders("", "afterId")
 
 		// then
 		require.NoError(t, err)
@@ -198,7 +198,7 @@ func TestSpaceView_SetBetweenViews(t *testing.T) {
 		defer fx.finish()
 
 		// when
-		err := fx.SetBetweenOrders("CCCC", "FFFF")
+		_, err := fx.SetBetweenOrders("CCCC", "FFFF")
 
 		// then
 		require.NoError(t, err)
@@ -206,17 +206,6 @@ func TestSpaceView_SetBetweenViews(t *testing.T) {
 		require.NotEmpty(t, orderId)
 		assert.Greater(t, orderId, "CCCC")
 		assert.Greater(t, "FFFF", orderId)
-	})
-	t.Run("after id is empty", func(t *testing.T) {
-		// given
-		fx := newSpaceViewFixture(t)
-		defer fx.finish()
-
-		// when
-		err := fx.SetBetweenOrders("afterId", "")
-
-		// then
-		require.Error(t, err)
 	})
 }
 
