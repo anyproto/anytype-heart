@@ -492,3 +492,83 @@ func TestOrderSetter_UnsetOrder(t *testing.T) {
 		assert.Empty(t, mockSpaceView.Details().GetString(bundle.RelationKeySpaceOrder))
 	})
 }
+
+func TestCalculateFullList(t *testing.T) {
+	for _, tc := range []struct {
+		name            string
+		ids             []string
+		fullOriginalIds []string
+		orders          map[string]string
+		want            []string
+	}{
+		{
+			name:            "everything is empty",
+			ids:             []string{},
+			fullOriginalIds: []string{},
+			orders:          map[string]string{},
+			want:            []string{},
+		},
+		{
+			name:            "ids is empty",
+			ids:             []string{},
+			fullOriginalIds: []string{"a", "b", "c"},
+			orders: map[string]string{
+				"a": "a",
+				"b": "b",
+				"c": "c",
+			},
+			want: []string{"a", "b", "c"},
+		},
+		{
+			name:            "insert to the front",
+			ids:             []string{"b", "a"},
+			fullOriginalIds: []string{"a", "b", "c"},
+			orders: map[string]string{
+				"a": "a",
+				"b": "b",
+				"c": "c",
+			},
+			want: []string{"b", "a", "c"},
+		},
+		{
+			name:            "insert to the back",
+			ids:             []string{"c", "b"},
+			fullOriginalIds: []string{"a", "b", "c"},
+			orders: map[string]string{
+				"a": "a",
+				"b": "b",
+				"c": "c",
+			},
+			want: []string{"a", "c", "b"},
+		},
+		{
+			name:            "insert inside the list",
+			ids:             []string{"c", "b"},
+			fullOriginalIds: []string{"a", "b", "c", "d"},
+			orders: map[string]string{
+				"a": "a",
+				"b": "b",
+				"c": "c",
+				"d": "d",
+			},
+			want: []string{"a", "c", "b", "d"},
+		},
+		{
+			name:            "complex",
+			ids:             []string{"c", "a", "b"},
+			fullOriginalIds: []string{"a", "b", "c", "d"},
+			orders: map[string]string{
+				"a": "a",
+				"b": "b",
+				"c": "c",
+				"d": "d",
+			},
+			want: []string{"c", "a", "b", "d"},
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			got := calculateFullList(tc.ids, tc.fullOriginalIds, tc.orders)
+			assert.Equal(t, tc.want, got)
+		})
+	}
+}

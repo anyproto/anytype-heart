@@ -3,6 +3,7 @@ package order
 import (
 	"errors"
 	"fmt"
+	"slices"
 	"sort"
 
 	"github.com/anyproto/any-sync/app"
@@ -214,7 +215,7 @@ func (o *orderSetter) reorder(objectIds []string, originalOrderIds map[string]st
 			// Current lexid is valid - keep it
 			out[id] = curr
 		} else if i == 0 {
-			curr, err = o.getNewOrderId(id, "", next, true)
+			curr, err = o.getNewOrderId("", next, true)
 			if err != nil {
 				return o.rebuildAllLexIds(objectIds, inputObjectIds)
 			}
@@ -225,7 +226,7 @@ func (o *orderSetter) reorder(objectIds []string, originalOrderIds map[string]st
 			if next != "" && prev >= next {
 				next = ""
 			}
-			curr, err = o.getNewOrderId(id, prev, next, false)
+			curr, err = o.getNewOrderId(prev, next, false)
 			if err != nil {
 				return o.rebuildAllLexIds(objectIds, inputObjectIds)
 			}
@@ -256,7 +257,7 @@ func getAllOriginalIds(originalOrderIds map[string]string) []string {
 }
 
 func getIdsInOriginalOrder(objectIds []string, originalOrderIds map[string]string) []string {
-	listWithOrder := make([]idAndOrderId, 0, len(originalOrderIds))
+	listWithOrder := make([]idAndOrderId, 0, len(objectIds))
 	for _, id := range objectIds {
 		listWithOrder = append(listWithOrder, idAndOrderId{id: id, orderId: originalOrderIds[id]})
 	}
@@ -283,6 +284,19 @@ func calculateFullList(objectIds []string, fullOriginalIds []string, originalOrd
 	}, func(s string, s2 string) bool {
 		return s < s2
 	})
+
+	for _, ch := range ops {
+		if mv := ch.Move(); mv != nil {
+			// Substitute an empty AfterId with the previous element in the original list, if any
+			if mv.AfterID == "" {
+				origIdx := slices.Index(fullOriginalIds, originalIds[0])
+				if origIdx > 0 {
+					mv.AfterID = fullOriginalIds[origIdx-1]
+				}
+			}
+		}
+	}
+
 	return slice.ApplyChanges(fullOriginalIds, ops, slice.StringIdentity)
 }
 
@@ -312,7 +326,7 @@ func (o *orderSetter) rebuildIfNeeded(objectIds []string, existing map[string]st
 	return newOrder, nil
 }
 
-func (o *orderSetter) getNewOrderId(id string, before string, after string, isFirst bool) (string, error) {
+func (o *orderSetter) getNewOrderId(before string, after string, isFirst bool) (string, error) {
 	switch {
 	case isFirst && before == "" && after == "":
 		// First element with no constraints - add padding
