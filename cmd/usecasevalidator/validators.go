@@ -150,7 +150,9 @@ func validateDetails(s *pb.SnapshotWithType, info *useCaseInfo, fixConfig FixCon
 					isUpdateNeeded = true
 					continue
 				}
-				if !fixConfig.DeleteInvalidDetailValues {
+				if fixConfig.DeleteInvalidDetailValues {
+					isUpdateNeeded = true
+				} else {
 					err = multierror.Append(err, fmt.Errorf("failed to find target id for detail '%s: %s' of object %s", k, val, id))
 				}
 			} else {
