@@ -1,8 +1,6 @@
 package order
 
 import (
-	"errors"
-
 	"github.com/anyproto/lexid"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
@@ -10,8 +8,7 @@ import (
 )
 
 var (
-	ErrLexidInsertionFailed = errors.New("lexid insertion failed")
-	lx                      = lexid.Must(lexid.CharsBase64, 4, 4000)
+	LexId = lexid.Must(lexid.CharsBase64, 4, 4000)
 )
 
 type OrderSettable interface {
@@ -49,5 +46,5 @@ func (s *orderSettable) GetOrder() string {
 }
 
 func GetSmallestOrder(currentSmallestOrder string) string {
-	return lx.Prev(currentSmallestOrder)
+	return LexId.Prev(currentSmallestOrder)
 }

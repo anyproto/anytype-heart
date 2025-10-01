@@ -7,7 +7,6 @@ import (
 	"sort"
 
 	"github.com/anyproto/any-sync/app"
-	"github.com/anyproto/lexid"
 	"github.com/samber/lo"
 
 	"github.com/anyproto/anytype-heart/core/block/cache"
@@ -21,8 +20,6 @@ import (
 )
 
 const CName = "core.order.setter"
-
-var lx = lexid.Must(lexid.CharsBase64, 4, 4000)
 
 type OrderSetter interface {
 	SetSpaceViewOrder(spaceViewOrder []string) ([]string, error)
@@ -353,19 +350,19 @@ func (o *orderSetter) getNewOrderId(before string, after string, isFirst bool) (
 func (o *orderSetter) getNextOrderId(previousOrderId string) string {
 	if previousOrderId == "" {
 		// For the first element, use a lexid with huge padding
-		return lx.Middle()
+		return order.LexId.Middle()
 	} else {
-		return lx.Next(previousOrderId)
+		return order.LexId.Next(previousOrderId)
 	}
 }
 
 func (o *orderSetter) getInBetweenOrderId(left string, right string) (string, error) {
 	if left == "" {
 		// Insert before the first existing element
-		return lx.Prev(right), nil
+		return order.LexId.Prev(right), nil
 	} else {
 		// Insert between two existing elements
-		return lx.NextBefore(left, right)
+		return order.LexId.NextBefore(left, right)
 	}
 }
 
