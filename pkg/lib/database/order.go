@@ -398,8 +398,8 @@ func (ko *KeyOrder) tryExtractObject(av domain.Value, bv domain.Value) (domain.V
 		return av, bv
 	}
 
-	aList := av.StringList()
-	bList := bv.StringList()
+	aList, _ := av.TryWrapToStringList()
+	bList, _ := bv.TryWrapToStringList()
 
 	ko.orderMap.SetOrders(ko.objectStore, slices.Concat(aList, bList)...)
 
