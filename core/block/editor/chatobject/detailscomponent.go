@@ -17,6 +17,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/spaceindex"
 )
 
 const detailsDocumentId = "details"
@@ -29,13 +30,20 @@ type detailsComponent struct {
 	storeSource            source.Store
 	storeState             *storestate.StoreState
 	sb                     smartblock.SmartBlock
+	spaceIndex             spaceindex.Store
 }
 
-func (c *detailsComponent) init() {
+func (c *detailsComponent) init(st *state.State) error {
 	c.allowedRelationKeysSet = map[domain.RelationKey]struct{}{}
 	for _, key := range c.allowedRelationKeys {
 		c.allowedRelationKeysSet[key] = struct{}{}
 	}
+
+	err := c.setDetailsFromAnystore(c.componentCtx, st)
+	if err != nil {
+		return fmt.Errorf("set details from anystore: %w", err)
+	}
+	return nil
 }
 
 func (c *detailsComponent) onPushOrdinaryChange(params source.PushChangeParams) (id string, err error) {
@@ -88,15 +96,12 @@ func (c *detailsComponent) setDetailsFromAnystore(ctx context.Context, st *state
 	if err != nil {
 		return fmt.Errorf("parse details: %w", err)
 	}
-	details.Delete(bundle.RelationKeyId)
-	details.Delete("_o")
-	details = details.CopyOnlyKeys(c.allowedRelationKeys...)
-
-	localDetails := st.LocalDetails()
-	combined := details.Merge(localDetails)
-
-	st.SetDetails(combined)
-
+	for _, key := range c.allowedRelationKeys {
+		v, ok := details.TryGet(key)
+		if ok {
+			st.ParentState().SetDetailAndBundledRelation(key, v)
+		}
+	}
 	return nil
 }
 

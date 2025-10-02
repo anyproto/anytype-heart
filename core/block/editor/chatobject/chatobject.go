@@ -88,6 +88,7 @@ type storeObject struct {
 	repository              chatrepository.Repository
 	detailsComponent        *detailsComponent
 	statService             debugstat.StatService
+	spaceIndex              spaceindex.Store
 
 	arenaPool          *anyenc.ArenaPool
 	componentCtx       context.Context
@@ -146,7 +147,7 @@ func New(
 	crdtDb anystore.DB,
 	repositoryService chatrepository.Service,
 	chatSubscriptionService chatsubscription.Service,
-	spaceObjects spaceindex.Store,
+	spaceIndex spaceindex.Store,
 	layoutConverter converter.LayoutConverter,
 	fileObjectService fileobject.Service,
 	statService debugstat.StatService,
@@ -163,7 +164,7 @@ func New(
 		componentCtx:            ctx,
 		componentCtxCancel:      cancel,
 		chatSubscriptionService: chatSubscriptionService,
-		DetailsSettable:         basic.NewBasic(sb, spaceObjects, layoutConverter, fileObjectService),
+		DetailsSettable:         basic.NewBasic(sb, spaceIndex, layoutConverter, fileObjectService),
 	}
 }
 
@@ -244,9 +245,7 @@ func (s *storeObject) Init(ctx *smartblock.InitContext) error {
 		sb:                  s.SmartBlock,
 		allowedRelationKeys: []domain.RelationKey{bundle.RelationKeyName},
 	}
-	s.detailsComponent.init()
-
-	err = s.detailsComponent.setDetailsFromAnystore(ctx.Ctx, ctx.State)
+	err = s.detailsComponent.init(ctx.State)
 	if err != nil {
 		return fmt.Errorf("init details: %w", err)
 	}
