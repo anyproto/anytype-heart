@@ -1,11 +1,9 @@
 package spacecore
 
 import (
-	"bytes"
 	"context"
 	"errors"
 	"fmt"
-	"sort"
 	"time"
 
 	"github.com/anyproto/any-sync/accountservice"
@@ -19,7 +17,6 @@ import (
 	"github.com/anyproto/any-sync/commonspace/clientspaceproto"
 	commonconfig "github.com/anyproto/any-sync/commonspace/config"
 	"github.com/anyproto/any-sync/commonspace/object/accountdata"
-	"github.com/anyproto/any-sync/commonspace/object/acl/aclrecordproto"
 	"github.com/anyproto/any-sync/commonspace/peermanager"
 	"github.com/anyproto/any-sync/commonspace/spacestorage"
 	"github.com/anyproto/any-sync/commonspace/spacesyncproto"
@@ -148,49 +145,7 @@ func (s *service) Derive(ctx context.Context, spaceType spacedomain.SpaceType) (
 }
 
 func (s *service) CreateOneToOneSpace(ctx context.Context, bPk crypto.PubKey) (space *AnySpace, err error) {
-	sharedSk, err := crypto.GenerateSharedKey(s.wallet.GetAccountPrivkey(), bPk, crypto.AnysyncOneToOneSpacePath)
-	if err != nil {
-		return
-	}
-
-	fmt.Printf("-- payload sharedPk: %s\n", sharedSk.GetPublic().Account())
-
-	writers := make([][]byte, 2)
-
-	writers[0], err = s.wallet.GetAccountPrivkey().GetPublic().Marshall()
-	if err != nil {
-		err = fmt.Errorf("CreateOneToOne: failed to Marshal account pub key: %w", err)
-		return
-	}
-	writers[1], err = bPk.Marshall()
-	if err != nil {
-		err = fmt.Errorf("CreateOneToOne: failed to Marshal bPk: %w", err)
-		return
-	}
-
-	// sort for idempotent spaceid creation
-	sort.Slice(writers, func(i, j int) bool {
-		return bytes.Compare(writers[i], writers[j]) < 0
-	})
-
-	oneToOneInfo := aclrecordproto.AclOneToOneInfo{
-		Writers: writers,
-	}
-	oneToOneInfoBytes, err := oneToOneInfo.MarshalVT()
-	if err != nil {
-		err = fmt.Errorf("CreateOneToOneKeys: failed to Marshal oneToOneInfo: %w", err)
-		return
-	}
-
-	payload := spacepayloads.SpaceDerivePayload{
-		SpacePayload: oneToOneInfoBytes,
-		SigningKey:   sharedSk,
-		MasterKey:    sharedSk,
-		SpaceType:    string(spacedomain.SpaceTypeOneToOne),
-	}
-	fmt.Printf("-- DeriveOneToOneSpace, SignKey acc: %s\n", sharedSk.GetPublic().Account())
-	id, err := s.commonSpace.DeriveOneToOneSpace(ctx, payload)
-	fmt.Printf("-- id: %s\n", id)
+	id, err := s.commonSpace.DeriveOneToOneSpace(ctx, s.wallet.GetAccountPrivkey(), bPk)
 	if err != nil {
 		return
 	}
