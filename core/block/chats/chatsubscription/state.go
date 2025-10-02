@@ -34,6 +34,8 @@ type messagesState struct {
 	messages      *skiplist.SkipList
 	messagesByIds map[string]*stateEntry
 
+	outOfWindowEvents map[string]*stateEntry
+
 	deleteIds []string
 }
 
@@ -64,8 +66,9 @@ func (s *messagesState) CalcScore(key interface{}) float64 {
 
 func newMessagesState(msgs []*chatmodel.Message, limit int) *messagesState {
 	s := &messagesState{
-		messagesByIds: make(map[string]*stateEntry),
-		limit:         limit,
+		messagesByIds:     make(map[string]*stateEntry),
+		outOfWindowEvents: make(map[string]*stateEntry),
+		limit:             limit,
 	}
 	s.messages = skiplist.New(s)
 	for _, msg := range msgs {
@@ -119,6 +122,11 @@ func (s *messagesState) applyUpdate(msgId string, msg *model.ChatMessage) {
 	if ok {
 		prev.msg = msg
 		prev.events = append(prev.events, eventActionUpdate)
+	} else {
+		s.updateOutOfWindowEvent(msgId, func(entry *stateEntry) {
+			entry.msg = msg
+			entry.events = append(entry.events, eventActionUpdate)
+		})
 	}
 }
 
@@ -147,6 +155,24 @@ func (s *messagesState) applyUpdateReactions(msgId string, msg *model.ChatMessag
 	if ok {
 		prev.msg.Reactions = msg.Reactions
 		prev.events = append(prev.events, eventActionUpdateReactions)
+	} else {
+		s.updateOutOfWindowEvent(msgId, func(entry *stateEntry) {
+			entry.msg.Reactions = msg.Reactions
+			entry.events = append(entry.events, eventActionUpdateReactions)
+		})
+	}
+}
+
+func (s *messagesState) updateOutOfWindowEvent(msgId string, modifier func(entry *stateEntry)) {
+	prev, ok := s.outOfWindowEvents[msgId]
+	if ok {
+		modifier(prev)
+	} else {
+		prev = &stateEntry{
+			msg: &model.ChatMessage{Id: msgId},
+		}
+		modifier(prev)
+		s.outOfWindowEvents[msgId] = prev
 	}
 }
 
@@ -165,14 +191,7 @@ func (s *messagesState) appendEventsTo(subId string, buf *eventsBuffer) {
 		buf.subIds = append(buf.subIds, subId)
 	}
 
-	var elems int
-	for it := s.messages.Front(); it != nil; it = it.Next() {
-		entry := it.Value.(*stateEntry)
-		if len(entry.events) == 0 {
-			continue
-		}
-
-		elems++
+	processEntry := func(entry *stateEntry) {
 		prev, ok := buf.eventsByMsgId[entry.msg.Id]
 		if !ok {
 			prev = &eventsPerMessage{
@@ -189,6 +208,19 @@ func (s *messagesState) appendEventsTo(subId string, buf *eventsBuffer) {
 		}
 
 		entry.events = nil
+	}
+
+	for it := s.messages.Front(); it != nil; it = it.Next() {
+		entry := it.Value.(*stateEntry)
+		if len(entry.events) == 0 {
+			continue
+		}
+		processEntry(entry)
+	}
+
+	for msgId, e := range s.outOfWindowEvents {
+		processEntry(e)
+		delete(s.outOfWindowEvents, msgId)
 	}
 
 	for _, id := range s.deleteIds {
