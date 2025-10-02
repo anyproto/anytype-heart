@@ -63,7 +63,7 @@ func (o *orderSetter) SetSpaceViewOrder(objectIds []string) ([]string, error) {
 		return nil, err
 	}
 
-	return o.rebuildIfNeeded(objectIds, existing)
+	return o.rebuildIfNeeded(objectIds, existing, false)
 }
 
 // SetOptionsOrder sets the order for relation options of the particular relation. It ensures all options in order have lexids.
@@ -78,7 +78,7 @@ func (o *orderSetter) SetOptionsOrder(spaceId string, relationKey domain.Relatio
 		return nil, err
 	}
 
-	return o.rebuildIfNeeded(objectIds, existing)
+	return o.rebuildIfNeeded(objectIds, existing, false)
 }
 
 func (o *orderSetter) SetObjectTypesOrder(spaceId string, objectIds []string) ([]string, error) {
@@ -91,7 +91,7 @@ func (o *orderSetter) SetObjectTypesOrder(spaceId string, objectIds []string) ([
 		return nil, err
 	}
 
-	return o.rebuildIfNeeded(objectIds, existing)
+	return o.rebuildIfNeeded(objectIds, existing, true)
 }
 
 func (o *orderSetter) UnsetOrder(objectId string) error {
@@ -176,7 +176,7 @@ type idAndOrderId struct {
 	orderId string
 }
 
-func (o *orderSetter) reorder(objectIds []string, originalOrderIds map[string]string) ([]string, []reorderOp, error) {
+func (o *orderSetter) reorder(objectIds []string, originalOrderIds map[string]string, needFullList bool) ([]string, []reorderOp, error) {
 	// Save the original list
 	inputObjectIds := objectIds
 
@@ -186,13 +186,6 @@ func (o *orderSetter) reorder(objectIds []string, originalOrderIds map[string]st
 	}
 
 	originalIds := getAllOriginalIds(originalOrderIds)
-	// If a client sent a subset of the original list, we need to calculate the full list
-	var needFullList bool
-	for _, id := range originalIds {
-		if _, ok := objectIdsSet[id]; !ok {
-			needFullList = true
-		}
-	}
 	if needFullList {
 		objectIds = calculateFullList(objectIds, originalIds, originalOrderIds)
 	}
@@ -310,8 +303,8 @@ func (o *orderSetter) applyReorder(ops []reorderOp) error {
 }
 
 // rebuildIfNeeded processes the order in a single pass, updating lexids as needed
-func (o *orderSetter) rebuildIfNeeded(objectIds []string, existing map[string]string) ([]string, error) {
-	newOrder, ops, err := o.reorder(objectIds, existing)
+func (o *orderSetter) rebuildIfNeeded(objectIds []string, existing map[string]string, needFullList bool) ([]string, error) {
+	newOrder, ops, err := o.reorder(objectIds, existing, needFullList)
 	if err != nil {
 		return nil, fmt.Errorf("recalculate order: %w", err)
 	}
