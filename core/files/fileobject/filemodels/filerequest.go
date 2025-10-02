@@ -9,10 +9,13 @@ import (
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/domain/objectorigin"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
+	"github.com/anyproto/anytype-heart/pkg/lib/mill/schema"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/storage"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
+
+const OriginalImagePath = "/0/" + schema.LinkImageOriginal + "/"
 
 type CreateRequest struct {
 	FileId            domain.FileId
@@ -80,6 +83,8 @@ func GetFileInfosFromDetails(details *domain.Details) ([]*storage.FileInfo, erro
 	keysList := details.GetStringList(bundle.RelationKeyFileVariantKeys)
 	optsList := details.GetStringList(bundle.RelationKeyFileVariantOptions)
 	widthList := details.GetInt64List(bundle.RelationKeyFileVariantWidths)
+	orignalWidth := details.GetInt64(bundle.RelationKeyWidthInPixels)
+	orignalHeight := details.GetInt64(bundle.RelationKeyHeightInPixels)
 
 	if len(variantsList) != len(checksumList) {
 		return nil, fmt.Errorf("checksum list mismatch")
@@ -107,14 +112,20 @@ func GetFileInfosFromDetails(details *domain.Details) ([]*storage.FileInfo, erro
 
 	for i, variantId := range variantsList {
 		var meta *types.Struct
-		if widthList[i] > 0 {
+		if pathList[i] == OriginalImagePath && orignalWidth > 0 && orignalHeight > 0 {
+			meta = &types.Struct{
+				Fields: map[string]*types.Value{
+					"width":  pbtypes.Int64(orignalWidth),
+					"height": pbtypes.Int64(orignalHeight),
+				},
+			}
+		} else if widthList[i] > 0 {
 			meta = &types.Struct{
 				Fields: map[string]*types.Value{
 					"width": pbtypes.Int64(widthList[i]),
 				},
 			}
 		}
-
 		info := &storage.FileInfo{
 			Name:   name,
 			Size_:  details.GetInt64(bundle.RelationKeySizeInBytes),

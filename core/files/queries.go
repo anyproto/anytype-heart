@@ -9,6 +9,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/storage"
+	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 type existingFile struct {
@@ -53,6 +54,18 @@ func (s *service) getFileVariantBySourceChecksum(mill string, sourceChecksum str
 	}
 
 	variants, err := filemodels.GetFileInfosFromDetails(recs[0].Details)
+	for _, info := range variants {
+		if info.Path == filemodels.OriginalImagePath {
+			if pbtypes.GetInt64(info.Meta, "height") == 0 {
+				// we had a bug when we were not saving height for reused images
+				// as it is a rare case lets make it simple and just avoid reusing this files
+				return nil, fmt.Errorf("not reusing file without height")
+			} else {
+				break
+			}
+		}
+	}
+
 	if err != nil {
 		return nil, fmt.Errorf("get file info from details: %w", err)
 	}
