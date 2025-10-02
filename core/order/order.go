@@ -187,7 +187,16 @@ func (o *orderSetter) reorder(objectIds []string, originalOrderIds map[string]st
 
 	originalIds := getAllOriginalIds(originalOrderIds)
 	if needFullList {
-		objectIds = calculateFullList(objectIds, originalIds, originalOrderIds)
+		var anyMissing bool
+		for _, id := range originalIds {
+			if _, ok := objectIdsSet[id]; !ok {
+				anyMissing = true
+				break
+			}
+		}
+		if anyMissing {
+			objectIds = calculateFullList(objectIds, originalIds, originalOrderIds)
+		}
 	}
 
 	nextExisting := o.precalcNext(originalOrderIds, objectIds)
