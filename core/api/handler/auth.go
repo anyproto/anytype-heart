@@ -37,7 +37,7 @@ func DisplayCodeHandler(s *service.Service) gin.HandlerFunc {
 			util.ErrToCode(service.ErrFailedCreateNewChallenge, http.StatusInternalServerError))
 
 		if code != http.StatusOK {
-			apiErr := util.CodeToAPIError(code, err.Error())
+			apiErr := util.CodeToApiError(code, err.Error())
 			c.JSON(code, apiErr)
 			return
 		}
@@ -76,7 +76,7 @@ func TokenHandler(s *service.Service) gin.HandlerFunc {
 		)
 
 		if errCode != http.StatusOK {
-			apiErr := util.CodeToAPIError(errCode, err.Error())
+			apiErr := util.CodeToApiError(errCode, err.Error())
 			c.JSON(errCode, apiErr)
 			return
 		}
@@ -101,20 +101,21 @@ func TokenHandler(s *service.Service) gin.HandlerFunc {
 //	@Router			/v1/auth/challenges [post]
 func CreateChallengeHandler(s *service.Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		request := apimodel.CreateChallengeRequest{}
-		if err := c.ShouldBindJSON(&request); err != nil {
-			apiErr := util.CodeToAPIError(http.StatusBadRequest, err.Error())
+		var req apimodel.CreateChallengeRequest
+		if err := c.ShouldBindJSON(&req); err != nil {
+			apiErr := util.CodeToApiError(http.StatusBadRequest, err.Error())
 			c.JSON(http.StatusBadRequest, apiErr)
 			return
 		}
 
-		challengeId, err := s.CreateChallenge(c.Request.Context(), request.AppName)
+		challengeId, err := s.CreateChallenge(c.Request.Context(), req.AppName)
 		code := util.MapErrorCode(err,
 			util.ErrToCode(service.ErrMissingAppName, http.StatusBadRequest),
-			util.ErrToCode(service.ErrFailedCreateNewChallenge, http.StatusInternalServerError))
+			util.ErrToCode(service.ErrFailedCreateNewChallenge, http.StatusInternalServerError),
+		)
 
 		if code != http.StatusOK {
-			apiErr := util.CodeToAPIError(code, err.Error())
+			apiErr := util.CodeToApiError(code, err.Error())
 			c.JSON(code, apiErr)
 			return
 		}
@@ -139,21 +140,21 @@ func CreateChallengeHandler(s *service.Service) gin.HandlerFunc {
 //	@Router			/v1/auth/api_keys [post]
 func CreateApiKeyHandler(s *service.Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		request := apimodel.CreateApiKeyRequest{}
-		if err := c.ShouldBindJSON(&request); err != nil {
-			apiErr := util.CodeToAPIError(http.StatusBadRequest, err.Error())
+		var req apimodel.CreateApiKeyRequest
+		if err := c.ShouldBindJSON(&req); err != nil {
+			apiErr := util.CodeToApiError(http.StatusBadRequest, err.Error())
 			c.JSON(http.StatusBadRequest, apiErr)
 			return
 		}
 
-		apiKey, err := s.SolveChallenge(c.Request.Context(), request.ChallengeId, request.Code)
+		apiKey, err := s.SolveChallenge(c.Request.Context(), req.ChallengeId, req.Code)
 		errCode := util.MapErrorCode(err,
 			util.ErrToCode(util.ErrBad, http.StatusBadRequest),
 			util.ErrToCode(service.ErrFailedAuthenticate, http.StatusInternalServerError),
 		)
 
 		if errCode != http.StatusOK {
-			apiErr := util.CodeToAPIError(errCode, err.Error())
+			apiErr := util.CodeToApiError(errCode, err.Error())
 			c.JSON(errCode, apiErr)
 			return
 		}

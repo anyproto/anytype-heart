@@ -35,7 +35,7 @@ func GlobalSearchHandler(s *service.Service) gin.HandlerFunc {
 
 		request := apimodel.SearchRequest{}
 		if err := c.BindJSON(&request); err != nil {
-			apiErr := util.CodeToAPIError(http.StatusBadRequest, err.Error())
+			apiErr := util.CodeToApiError(http.StatusBadRequest, err.Error())
 			c.JSON(http.StatusBadRequest, apiErr)
 			return
 		}
@@ -43,10 +43,12 @@ func GlobalSearchHandler(s *service.Service) gin.HandlerFunc {
 		objects, total, hasMore, err := s.GlobalSearch(c, request, offset, limit)
 		code := util.MapErrorCode(err,
 			util.ErrToCode(service.ErrFailedSearchObjects, http.StatusInternalServerError),
+			util.ErrToCode(service.ErrFailedGetAllSpaceIds, http.StatusInternalServerError),
+			util.ErrToCode(service.ErrFailedBuildFilters, http.StatusBadRequest),
 		)
 
 		if code != http.StatusOK {
-			apiErr := util.CodeToAPIError(code, err.Error())
+			apiErr := util.CodeToApiError(code, err.Error())
 			c.JSON(code, apiErr)
 			return
 		}
@@ -75,24 +77,25 @@ func GlobalSearchHandler(s *service.Service) gin.HandlerFunc {
 //	@Router			/v1/spaces/{space_id}/search [post]
 func SearchHandler(s *service.Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		spaceID := c.Param("space_id")
+		spaceId := c.Param("space_id")
 		offset := c.GetInt("offset")
 		limit := c.GetInt("limit")
 
 		request := apimodel.SearchRequest{}
 		if err := c.BindJSON(&request); err != nil {
-			apiErr := util.CodeToAPIError(http.StatusBadRequest, err.Error())
+			apiErr := util.CodeToApiError(http.StatusBadRequest, err.Error())
 			c.JSON(http.StatusBadRequest, apiErr)
 			return
 		}
 
-		objects, total, hasMore, err := s.Search(c, spaceID, request, offset, limit)
+		objects, total, hasMore, err := s.Search(c, spaceId, request, offset, limit)
 		code := util.MapErrorCode(err,
 			util.ErrToCode(service.ErrFailedSearchObjects, http.StatusInternalServerError),
+			util.ErrToCode(service.ErrFailedBuildFilters, http.StatusBadRequest),
 		)
 
 		if code != http.StatusOK {
-			apiErr := util.CodeToAPIError(code, err.Error())
+			apiErr := util.CodeToApiError(code, err.Error())
 			c.JSON(code, apiErr)
 			return
 		}

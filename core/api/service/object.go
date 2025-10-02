@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"errors"
+	"fmt"
 
 	"github.com/gogo/protobuf/types"
 
@@ -22,7 +23,6 @@ var (
 	ErrFailedRetrieveObject      = errors.New("failed to retrieve object")
 	ErrFailedExportMarkdown      = errors.New("failed to export markdown")
 	ErrFailedRetrieveObjects     = errors.New("failed to retrieve list of objects")
-	ErrFailedRetrievePropertyMap = errors.New("failed to retrieve property  map")
 	ErrFailedCreateObject        = errors.New("failed to create object")
 	ErrFailedSetPropertyFeatured = errors.New("failed to set property featured")
 	ErrFailedCreateBookmark      = errors.New("failed to fetch bookmark")
@@ -33,32 +33,32 @@ var (
 )
 
 // ListObjects retrieves a paginated list of objects in a specific space.
-func (s *Service) ListObjects(ctx context.Context, spaceId string, offset int, limit int) (objects []apimodel.Object, total int, hasMore bool, err error) {
+func (s *Service) ListObjects(ctx context.Context, spaceId string, additionalFilters []*model.BlockContentDataviewFilter, offset int, limit int) (objects []apimodel.Object, total int, hasMore bool, err error) {
+	filters := append([]*model.BlockContentDataviewFilter{
+		{
+			RelationKey: bundle.RelationKeyResolvedLayout.String(),
+			Condition:   model.BlockContentDataviewFilter_In,
+			Value:       pbtypes.IntList(util.LayoutsToIntArgs(util.ObjectLayouts)...),
+		},
+		{
+			RelationKey: "type.uniqueKey",
+			Condition:   model.BlockContentDataviewFilter_NotEqual,
+			Value:       pbtypes.String("ot-template"),
+		},
+		{
+			RelationKey: bundle.RelationKeyIsHidden.String(),
+			Condition:   model.BlockContentDataviewFilter_NotEqual,
+			Value:       pbtypes.Bool(true),
+		},
+	}, additionalFilters...)
+
 	resp := s.mw.ObjectSearch(ctx, &pb.RpcObjectSearchRequest{
 		SpaceId: spaceId,
-		Filters: []*model.BlockContentDataviewFilter{
-			{
-				RelationKey: bundle.RelationKeyResolvedLayout.String(),
-				Condition:   model.BlockContentDataviewFilter_In,
-				Value:       pbtypes.IntList(util.LayoutsToIntArgs(util.ObjectLayouts)...),
-			},
-			{
-				RelationKey: "type.uniqueKey",
-				Condition:   model.BlockContentDataviewFilter_NotEqual,
-				Value:       pbtypes.String("ot-template"),
-			},
-			{
-				RelationKey: bundle.RelationKeyIsHidden.String(),
-				Condition:   model.BlockContentDataviewFilter_NotEqual,
-				Value:       pbtypes.Bool(true),
-			},
-		},
+		Filters: filters,
 		Sorts: []*model.BlockContentDataviewSort{{
-			RelationKey:    bundle.RelationKeyLastModifiedDate.String(),
-			Type:           model.BlockContentDataviewSort_Desc,
-			Format:         model.RelationFormat_longtext,
-			IncludeTime:    true,
-			EmptyPlacement: model.BlockContentDataviewSort_NotSpecified,
+			RelationKey: bundle.RelationKeyLastModifiedDate.String(),
+			Type:        model.BlockContentDataviewSort_Desc,
+			IncludeTime: true,
 		}},
 	})
 
@@ -70,28 +70,14 @@ func (s *Service) ListObjects(ctx context.Context, spaceId string, offset int, l
 	paginatedObjects, hasMore := pagination.Paginate(resp.Records, offset, limit)
 	objects = make([]apimodel.Object, 0, len(paginatedObjects))
 
-	// pre-fetch properties, types and tags to fill the objects
-	propertyMap, err := s.getPropertyMapFromStore(ctx, spaceId, true)
-	if err != nil {
-		return nil, 0, false, err
-	}
-	typeMap, err := s.getTypeMapFromStore(ctx, spaceId, propertyMap, false)
-	if err != nil {
-		return nil, 0, false, err
-	}
-	tagMap, err := s.getTagMapFromStore(ctx, spaceId)
-	if err != nil {
-		return nil, 0, false, err
-	}
-
 	for _, record := range paginatedObjects {
-		objects = append(objects, s.getObjectFromStruct(record, propertyMap, typeMap, tagMap))
+		objects = append(objects, s.getObjectFromStruct(record))
 	}
 	return objects, total, hasMore, nil
 }
 
 // GetObject retrieves a single object by its ID in a specific space.
-func (s *Service) GetObject(ctx context.Context, spaceId string, objectId string) (apimodel.ObjectWithBody, error) {
+func (s *Service) GetObject(ctx context.Context, spaceId string, objectId string) (*apimodel.ObjectWithBody, error) {
 	resp := s.mw.ObjectShow(ctx, &pb.RpcObjectShowRequest{
 		SpaceId:  spaceId,
 		ObjectId: objectId,
@@ -99,58 +85,38 @@ func (s *Service) GetObject(ctx context.Context, spaceId string, objectId string
 
 	if resp.Error != nil {
 		if resp.Error.Code == pb.RpcObjectShowResponseError_NOT_FOUND {
-			return apimodel.ObjectWithBody{}, ErrObjectNotFound
+			return nil, ErrObjectNotFound
 		}
 
 		if resp.Error.Code == pb.RpcObjectShowResponseError_OBJECT_DELETED {
-			return apimodel.ObjectWithBody{}, ErrObjectDeleted
+			return nil, ErrObjectDeleted
 		}
 
-		if resp.Error != nil && resp.Error.Code != pb.RpcObjectShowResponseError_NULL {
-			return apimodel.ObjectWithBody{}, ErrFailedRetrieveObject
+		if resp.Error.Code != pb.RpcObjectShowResponseError_NULL {
+			return nil, ErrFailedRetrieveObject
 		}
 	}
 
-	propertyMap, err := s.getPropertyMapFromStore(ctx, spaceId, true)
+	layout := model.ObjectTypeLayout(resp.ObjectView.Details[0].Details.Fields[bundle.RelationKeyResolvedLayout.String()].GetNumberValue())
+	markdown, err := s.getMarkdownExport(ctx, spaceId, objectId, layout)
 	if err != nil {
-		return apimodel.ObjectWithBody{}, err
-	}
-	typeMap, err := s.getTypeMapFromStore(ctx, spaceId, propertyMap, false)
-	if err != nil {
-		return apimodel.ObjectWithBody{}, err
-	}
-	tagMap, err := s.getTagMapFromStore(ctx, spaceId)
-	if err != nil {
-		return apimodel.ObjectWithBody{}, err
+		return nil, err
 	}
 
-	markdown, err := s.getMarkdownExport(ctx, spaceId, objectId, model.ObjectTypeLayout(resp.ObjectView.Details[0].Details.Fields[bundle.RelationKeyResolvedLayout.String()].GetNumberValue()))
-	if err != nil {
-		return apimodel.ObjectWithBody{}, err
-	}
-
-	return s.getObjectWithBlocksFromStruct(resp.ObjectView.Details[0].Details, markdown, propertyMap, typeMap, tagMap), nil
+	return s.getObjectWithBlocksFromStruct(resp.ObjectView.Details[0].Details, markdown), nil
 }
 
 // CreateObject creates a new object in a specific space.
-func (s *Service) CreateObject(ctx context.Context, spaceId string, request apimodel.CreateObjectRequest) (apimodel.ObjectWithBody, error) {
+func (s *Service) CreateObject(ctx context.Context, spaceId string, request apimodel.CreateObjectRequest) (*apimodel.ObjectWithBody, error) {
 	details, err := s.buildObjectDetails(ctx, spaceId, request)
 	if err != nil {
-		return apimodel.ObjectWithBody{}, err
+		return nil, err
 	}
 
-	propertyMap, err := s.getPropertyMapFromStore(ctx, spaceId, true)
-	if err != nil {
-		return apimodel.ObjectWithBody{}, err
-	}
-	typeMap, err := s.getTypeMapFromStore(ctx, spaceId, propertyMap, true)
-	if err != nil {
-		return apimodel.ObjectWithBody{}, err
-	}
-	request.TypeKey = s.ResolveTypeApiKey(typeMap, request.TypeKey)
+	typeUk := s.ResolveTypeApiKey(spaceId, request.TypeKey)
 
 	var objectId string
-	if request.TypeKey == "ot-bookmark" {
+	if typeUk == "ot-bookmark" {
 		resp := s.mw.ObjectCreateBookmark(ctx, &pb.RpcObjectCreateBookmarkRequest{
 			Details:    details,
 			SpaceId:    spaceId,
@@ -158,7 +124,7 @@ func (s *Service) CreateObject(ctx context.Context, spaceId string, request apim
 		})
 
 		if resp.Error != nil && resp.Error.Code != pb.RpcObjectCreateBookmarkResponseError_NULL {
-			return apimodel.ObjectWithBody{}, ErrFailedCreateBookmark
+			return nil, ErrFailedCreateBookmark
 		}
 		objectId = resp.ObjectId
 	} else {
@@ -166,11 +132,11 @@ func (s *Service) CreateObject(ctx context.Context, spaceId string, request apim
 			Details:             details,
 			TemplateId:          request.TemplateId,
 			SpaceId:             spaceId,
-			ObjectTypeUniqueKey: request.TypeKey,
+			ObjectTypeUniqueKey: typeUk,
 		})
 
 		if resp.Error != nil && resp.Error.Code != pb.RpcObjectCreateResponseError_NULL {
-			return apimodel.ObjectWithBody{}, ErrFailedCreateObject
+			return nil, ErrFailedCreateObject
 		}
 		objectId = resp.ObjectId
 	}
@@ -190,42 +156,9 @@ func (s *Service) CreateObject(ctx context.Context, spaceId string, request apim
 
 	// First call BlockCreate at top, then BlockPaste to paste the body
 	if request.Body != "" {
-		blockCreateResp := s.mw.BlockCreate(ctx, &pb.RpcBlockCreateRequest{
-			ContextId: objectId,
-			TargetId:  "",
-			Block: &model.Block{
-				Id:              "",
-				BackgroundColor: "",
-				Align:           model.Block_AlignLeft,
-				VerticalAlign:   model.Block_VerticalAlignTop,
-				Content: &model.BlockContentOfText{
-					Text: &model.BlockContentText{
-						Text:      "",
-						Style:     model.BlockContentText_Paragraph,
-						Checked:   false,
-						Color:     "",
-						IconEmoji: "",
-						IconImage: "",
-					},
-				},
-			},
-			Position: model.Block_Bottom,
-		})
-
-		if blockCreateResp.Error.Code != pb.RpcBlockCreateResponseError_NULL {
+		if err := s.createAndPasteBody(ctx, spaceId, objectId, request.Body); err != nil {
 			object, _ := s.GetObject(ctx, spaceId, objectId) // nolint:errcheck
-			return object, ErrFailedCreateBlock
-		}
-
-		blockPasteResp := s.mw.BlockPaste(ctx, &pb.RpcBlockPasteRequest{
-			ContextId:      objectId,
-			FocusedBlockId: blockCreateResp.BlockId,
-			TextSlot:       request.Body,
-		})
-
-		if blockPasteResp.Error.Code != pb.RpcBlockPasteResponseError_NULL {
-			object, _ := s.GetObject(ctx, spaceId, objectId) // nolint:errcheck
-			return object, ErrFailedPasteBody
+			return object, err
 		}
 	}
 
@@ -233,15 +166,26 @@ func (s *Service) CreateObject(ctx context.Context, spaceId string, request apim
 }
 
 // UpdateObject updates an existing object in a specific space.
-func (s *Service) UpdateObject(ctx context.Context, spaceId string, objectId string, request apimodel.UpdateObjectRequest) (apimodel.ObjectWithBody, error) {
+func (s *Service) UpdateObject(ctx context.Context, spaceId string, objectId string, request apimodel.UpdateObjectRequest) (*apimodel.ObjectWithBody, error) {
 	_, err := s.GetObject(ctx, spaceId, objectId)
 	if err != nil {
-		return apimodel.ObjectWithBody{}, err
+		return nil, err
+	}
+
+	if request.TypeKey != nil {
+		typeUk := s.ResolveTypeApiKey(spaceId, *request.TypeKey)
+		typeResp := s.mw.ObjectSetObjectType(ctx, &pb.RpcObjectSetObjectTypeRequest{
+			ContextId:           objectId,
+			ObjectTypeUniqueKey: typeUk,
+		})
+		if typeResp.Error != nil && typeResp.Error.Code != pb.RpcObjectSetObjectTypeResponseError_NULL {
+			return nil, util.ErrBadInput(fmt.Sprintf("failed to update object, invalid type key: %q", *request.TypeKey))
+		}
 	}
 
 	details, err := s.buildUpdatedObjectDetails(ctx, spaceId, request)
 	if err != nil {
-		return apimodel.ObjectWithBody{}, err
+		return nil, err
 	}
 
 	resp := s.mw.ObjectSetDetails(ctx, &pb.RpcObjectSetDetailsRequest{
@@ -250,17 +194,17 @@ func (s *Service) UpdateObject(ctx context.Context, spaceId string, objectId str
 	})
 
 	if resp.Error != nil && resp.Error.Code != pb.RpcObjectSetDetailsResponseError_NULL {
-		return apimodel.ObjectWithBody{}, ErrFailedUpdateObject
+		return nil, ErrFailedUpdateObject
 	}
 
 	return s.GetObject(ctx, spaceId, objectId)
 }
 
 // DeleteObject deletes an existing object in a specific space.
-func (s *Service) DeleteObject(ctx context.Context, spaceId string, objectId string) (apimodel.ObjectWithBody, error) {
+func (s *Service) DeleteObject(ctx context.Context, spaceId string, objectId string) (*apimodel.ObjectWithBody, error) {
 	object, err := s.GetObject(ctx, spaceId, objectId)
 	if err != nil {
-		return apimodel.ObjectWithBody{}, err
+		return nil, err
 	}
 
 	resp := s.mw.ObjectSetIsArchived(ctx, &pb.RpcObjectSetIsArchivedRequest{
@@ -269,7 +213,7 @@ func (s *Service) DeleteObject(ctx context.Context, spaceId string, objectId str
 	})
 
 	if resp.Error != nil && resp.Error.Code != pb.RpcObjectSetIsArchivedResponseError_NULL {
-		return apimodel.ObjectWithBody{}, ErrFailedDeleteObject
+		return nil, ErrFailedDeleteObject
 	}
 
 	return object, nil
@@ -343,7 +287,7 @@ func (s *Service) processIconFields(spaceId string, icon apimodel.Icon, isType b
 			return nil, util.ErrBadInput("icon name and color are not supported for object")
 		}
 	case apimodel.EmojiIcon:
-		if len(e.Emoji) > 0 && !IsEmoji(e.Emoji) {
+		if len(e.Emoji) > 0 && !isEmoji(e.Emoji) {
 			return nil, util.ErrBadInput("icon emoji is not valid")
 		}
 		iconFields[bundle.RelationKeyIconEmoji.String()] = pbtypes.String(e.Emoji)
@@ -375,7 +319,7 @@ func (s *Service) processIconFields(spaceId string, icon apimodel.Icon, isType b
 // 				Style:   model.BlockContentTextStyle_name[int32(content.Text.Style)],
 // 				Checked: content.Text.Checked,
 // 				Color:   content.Text.Color,
-// 				Icon:    GetIcon(s.gatewayUrl, content.Text.IconEmoji, content.Text.IconImage, "", 0),
+// 				Icon:    getIcon(s.gatewayUrl, content.Text.IconEmoji, content.Text.IconImage, "", 0),
 // 			}
 // 		case *model.BlockContentOfFile:
 // 			file = &apimodel.File{
@@ -416,35 +360,41 @@ func (s *Service) processIconFields(spaceId string, icon apimodel.Icon, isType b
 // }
 
 // getObjectFromStruct creates an Object without blocks from the details.
-func (s *Service) getObjectFromStruct(details *types.Struct, propertyMap map[string]*apimodel.Property, typeMap map[string]*apimodel.Type, tagMap map[string]apimodel.Tag) apimodel.Object {
+func (s *Service) getObjectFromStruct(details *types.Struct) apimodel.Object {
+	spaceId := details.Fields[bundle.RelationKeySpaceId.String()].GetStringValue()
+	typeMap := s.cache.getTypes(spaceId)
+
 	return apimodel.Object{
 		Object:     "object",
 		Id:         details.Fields[bundle.RelationKeyId.String()].GetStringValue(),
 		Name:       details.Fields[bundle.RelationKeyName.String()].GetStringValue(),
-		Icon:       GetIcon(s.gatewayUrl, details.GetFields()[bundle.RelationKeyIconEmoji.String()].GetStringValue(), details.GetFields()[bundle.RelationKeyIconImage.String()].GetStringValue(), details.GetFields()[bundle.RelationKeyIconName.String()].GetStringValue(), details.GetFields()[bundle.RelationKeyIconOption.String()].GetNumberValue()),
+		Icon:       getIcon(s.gatewayUrl, details.Fields[bundle.RelationKeyIconEmoji.String()].GetStringValue(), details.Fields[bundle.RelationKeyIconImage.String()].GetStringValue(), details.Fields[bundle.RelationKeyIconName.String()].GetStringValue(), details.Fields[bundle.RelationKeyIconOption.String()].GetNumberValue()),
 		Archived:   details.Fields[bundle.RelationKeyIsArchived.String()].GetBoolValue(),
-		SpaceId:    details.Fields[bundle.RelationKeySpaceId.String()].GetStringValue(),
+		SpaceId:    spaceId,
 		Snippet:    details.Fields[bundle.RelationKeySnippet.String()].GetStringValue(),
 		Layout:     s.otLayoutToObjectLayout(model.ObjectTypeLayout(details.Fields[bundle.RelationKeyResolvedLayout.String()].GetNumberValue())),
-		Type:       s.getTypeFromMap(details, typeMap),
-		Properties: s.getPropertiesFromStruct(details, propertyMap, tagMap),
+		Type:       typeMap[details.Fields[bundle.RelationKeyType.String()].GetStringValue()],
+		Properties: s.getPropertiesFromStruct(details),
 	}
 }
 
 // getObjectWithBlocksFromStruct creates an ObjectWithBody from the details.
-func (s *Service) getObjectWithBlocksFromStruct(details *types.Struct, markdown string, propertyMap map[string]*apimodel.Property, typeMap map[string]*apimodel.Type, tagMap map[string]apimodel.Tag) apimodel.ObjectWithBody {
-	return apimodel.ObjectWithBody{
+func (s *Service) getObjectWithBlocksFromStruct(details *types.Struct, markdown string) *apimodel.ObjectWithBody {
+	spaceId := details.Fields[bundle.RelationKeySpaceId.String()].GetStringValue()
+	typeMap := s.cache.getTypes(spaceId)
+
+	return &apimodel.ObjectWithBody{
 		Object:     "object",
 		Id:         details.Fields[bundle.RelationKeyId.String()].GetStringValue(),
 		Name:       details.Fields[bundle.RelationKeyName.String()].GetStringValue(),
-		Icon:       GetIcon(s.gatewayUrl, details.Fields[bundle.RelationKeyIconEmoji.String()].GetStringValue(), details.Fields[bundle.RelationKeyIconImage.String()].GetStringValue(), details.Fields[bundle.RelationKeyIconName.String()].GetStringValue(), details.Fields[bundle.RelationKeyIconOption.String()].GetNumberValue()),
+		Icon:       getIcon(s.gatewayUrl, details.Fields[bundle.RelationKeyIconEmoji.String()].GetStringValue(), details.Fields[bundle.RelationKeyIconImage.String()].GetStringValue(), details.Fields[bundle.RelationKeyIconName.String()].GetStringValue(), details.Fields[bundle.RelationKeyIconOption.String()].GetNumberValue()),
 		Archived:   details.Fields[bundle.RelationKeyIsArchived.String()].GetBoolValue(),
-		SpaceId:    details.Fields[bundle.RelationKeySpaceId.String()].GetStringValue(),
+		SpaceId:    spaceId,
 		Snippet:    details.Fields[bundle.RelationKeySnippet.String()].GetStringValue(),
 		Layout:     s.otLayoutToObjectLayout(model.ObjectTypeLayout(details.Fields[bundle.RelationKeyResolvedLayout.String()].GetNumberValue())),
-		Type:       s.getTypeFromMap(details, typeMap),
-		Properties: s.getPropertiesFromStruct(details, propertyMap, tagMap),
-		Markdown:   &markdown,
+		Type:       typeMap[details.Fields[bundle.RelationKeyType.String()].GetStringValue()],
+		Properties: s.getPropertiesFromStruct(details),
+		Markdown:   markdown,
 	}
 }
 
@@ -476,4 +426,35 @@ func structToDetails(details *types.Struct) []*model.Detail {
 		})
 	}
 	return detailList
+}
+
+// createAndPasteBody creates a text block and pastes the body content into it.
+func (s *Service) createAndPasteBody(ctx context.Context, spaceId string, objectId string, body string) error {
+	blockCreateResp := s.mw.BlockCreate(ctx, &pb.RpcBlockCreateRequest{
+		ContextId: objectId,
+		TargetId:  "",
+		Block: &model.Block{
+			Id:            "",
+			Align:         model.Block_AlignLeft,
+			VerticalAlign: model.Block_VerticalAlignTop,
+			Content:       &model.BlockContentOfText{Text: &model.BlockContentText{}},
+		},
+		Position: model.Block_Bottom,
+	})
+
+	if blockCreateResp.Error.Code != pb.RpcBlockCreateResponseError_NULL {
+		return ErrFailedCreateBlock
+	}
+
+	blockPasteResp := s.mw.BlockPaste(ctx, &pb.RpcBlockPasteRequest{
+		ContextId:      objectId,
+		FocusedBlockId: blockCreateResp.BlockId,
+		TextSlot:       body,
+	})
+
+	if blockPasteResp.Error.Code != pb.RpcBlockPasteResponseError_NULL {
+		return ErrFailedPasteBody
+	}
+
+	return nil
 }

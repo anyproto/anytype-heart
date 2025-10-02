@@ -76,8 +76,8 @@ func NewIdSubscription(subService subscription.Service, req subscription.Subscri
 	return New(subService, req, IdSubscriptionParams)
 }
 
-func NewIdSubscriptionFromQueue(queue *mb.MB[*pb.EventMessage]) *ObjectSubscription[struct{}] {
-	return NewFromQueue(queue, IdSubscriptionParams)
+func NewIdSubscriptionFromQueue(queue *mb.MB[*pb.EventMessage], initialRecords []*domain.Details) *ObjectSubscription[struct{}] {
+	return NewFromQueue(queue, IdSubscriptionParams, initialRecords)
 }
 
 func New[T any](subService subscription.Service, req subscription.SubscribeRequest, params SubscriptionParams[T]) *ObjectSubscription[T] {
@@ -93,15 +93,27 @@ func New[T any](subService subscription.Service, req subscription.SubscribeReque
 	}
 }
 
-func NewFromQueue[T any](queue *mb.MB[*pb.EventMessage], params SubscriptionParams[T]) *ObjectSubscription[T] {
+// NewFromQueue creates an ObjectSubscription from an event queue with optional initial records.
+// Use this when AsyncInit isn't available (e.g., with crossspacesub) and you need to track
+// existing objects that were returned by the initial subscription response.
+// Without initialRecords, the subscription will only track objects that appear after Run() is called.
+func NewFromQueue[T any](queue *mb.MB[*pb.EventMessage], params SubscriptionParams[T], initialRecords []*domain.Details) *ObjectSubscription[T] {
 	ctx, cancel := context.WithCancel(context.Background())
-	return &ObjectSubscription[T]{
+	o := &ObjectSubscription[T]{
 		events: queue,
 		ch:     make(chan struct{}),
 		params: params,
 		ctx:    ctx,
 		cancel: cancel,
 	}
+	if len(initialRecords) > 0 {
+		o.sub = make(map[string]T)
+		for _, rec := range initialRecords {
+			id, data := params.SetDetails(rec)
+			o.sub[id] = data
+		}
+	}
+	return o
 }
 
 func (o *ObjectSubscription[T]) Run() error {
@@ -134,7 +146,9 @@ func (o *ObjectSubscription[T]) Run() error {
 	}
 
 	o.request.Internal = true
-	o.sub = map[string]T{}
+	if o.sub == nil {
+		o.sub = map[string]T{}
+	}
 	if o.service != nil {
 		resp, err := o.service.Search(o.request)
 		if err != nil {

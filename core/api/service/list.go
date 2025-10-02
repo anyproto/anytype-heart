@@ -9,6 +9,7 @@ import (
 
 	"github.com/anyproto/anytype-heart/pb"
 
+	"github.com/anyproto/anytype-heart/core/api/filter"
 	apimodel "github.com/anyproto/anytype-heart/core/api/model"
 	"github.com/anyproto/anytype-heart/core/api/pagination"
 	"github.com/anyproto/anytype-heart/core/api/util"
@@ -59,11 +60,15 @@ func (s *Service) GetListViews(ctx context.Context, spaceId string, listId strin
 		for _, view := range content.Dataview.Views {
 			var filters []apimodel.Filter
 			for _, f := range view.Filters {
+				if f.Condition == model.BlockContentDataviewFilter_None {
+					continue
+				}
+				apiCond, _ := filter.ToApiCondition(f.Condition)
 				filters = append(filters, apimodel.Filter{
 					Id:          f.Id,
 					PropertyKey: f.RelationKey,
 					Format:      RelationFormatToPropertyFormat[f.Format],
-					Condition:   strcase.ToSnake(model.BlockContentDataviewFilterCondition_name[int32(f.Condition)]),
+					Condition:   apiCond,
 					Value:       f.Value.GetStringValue(),
 				})
 			}
@@ -95,7 +100,7 @@ func (s *Service) GetListViews(ctx context.Context, spaceId string, listId strin
 }
 
 // GetObjectsInList retrieves objects in a list
-func (s *Service) GetObjectsInList(ctx context.Context, spaceId string, listId string, viewId string, offset, limit int) ([]apimodel.Object, int, bool, error) {
+func (s *Service) GetObjectsInList(ctx context.Context, spaceId string, listId string, viewId string, additionalFilters []*model.BlockContentDataviewFilter, offset, limit int) ([]apimodel.Object, int, bool, error) {
 	resp := s.mw.ObjectShow(ctx, &pb.RpcObjectShowRequest{
 		SpaceId:  spaceId,
 		ObjectId: listId,
@@ -140,6 +145,8 @@ func (s *Service) GetObjectsInList(ctx context.Context, spaceId string, listId s
 	default:
 		return nil, 0, false, ErrFailedGetListDataview
 	}
+
+	filters = append(filters, additionalFilters...)
 
 	var typeDetail *types.Struct
 	for _, detail := range resp.ObjectView.Details {
@@ -197,21 +204,9 @@ func (s *Service) GetObjectsInList(ctx context.Context, spaceId string, listId s
 	total := int(searchResp.Counters.Total)
 	hasMore := searchResp.Counters.Total > int64(offset+limit)
 
-	propertyMap, err := s.getPropertyMapFromStore(ctx, spaceId, true)
-	if err != nil {
-		return nil, 0, false, err
-	}
-	typeMap, err := s.getTypeMapFromStore(ctx, spaceId, propertyMap, false)
-	if err != nil {
-		return nil, 0, false, err
-	}
-	tagMap, err := s.getTagMapFromStore(ctx, spaceId)
-	if err != nil {
-		return nil, 0, false, err
-	}
 	objects := make([]apimodel.Object, 0, len(searchResp.Records))
 	for _, record := range searchResp.Records {
-		objects = append(objects, s.getObjectFromStruct(record, propertyMap, typeMap, tagMap))
+		objects = append(objects, s.getObjectFromStruct(record))
 	}
 
 	return objects, total, hasMore, nil

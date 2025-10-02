@@ -9,12 +9,14 @@ import (
 	"github.com/anyproto/anytype-heart/core/api/pagination"
 	"github.com/anyproto/anytype-heart/core/api/service"
 	"github.com/anyproto/anytype-heart/core/api/util"
+	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
 // ListTemplatesHandler retrieves a list of templates for a type in a space
 //
 //	@Summary		List templates
 //	@Description	This endpoint returns a paginated list of templates that are associated with a specific type within a space. Templates provide pre‑configured structures for creating new objects. Each template record contains its identifier, name, and icon, so that clients can offer users a selection of templates when creating objects.
+//	@Description	Supports dynamic filtering via query parameters (e.g., ?name[contains]=invoice, ?is_default=true). See FilterCondition enum for available conditions.
 //	@Id				list_templates
 //	@Tags			Templates
 //	@Produce		json
@@ -35,7 +37,10 @@ func ListTemplatesHandler(s *service.Service) gin.HandlerFunc {
 		offset := c.GetInt("offset")
 		limit := c.GetInt("limit")
 
-		templates, total, hasMore, err := s.ListTemplates(c.Request.Context(), spaceId, typeId, offset, limit)
+		filtersAny, _ := c.Get("filters")
+		filters := filtersAny.([]*model.BlockContentDataviewFilter)
+
+		templates, total, hasMore, err := s.ListTemplates(c.Request.Context(), spaceId, typeId, filters, offset, limit)
 		code := util.MapErrorCode(err,
 			util.ErrToCode(service.ErrFailedRetrieveTemplateType, http.StatusInternalServerError),
 			util.ErrToCode(service.ErrTemplateTypeNotFound, http.StatusInternalServerError),
@@ -44,7 +49,7 @@ func ListTemplatesHandler(s *service.Service) gin.HandlerFunc {
 		)
 
 		if code != http.StatusOK {
-			apiErr := util.CodeToAPIError(code, err.Error())
+			apiErr := util.CodeToApiError(code, err.Error())
 			c.JSON(code, apiErr)
 			return
 		}
@@ -86,11 +91,11 @@ func GetTemplateHandler(s *service.Service) gin.HandlerFunc {
 		)
 
 		if code != http.StatusOK {
-			apiErr := util.CodeToAPIError(code, err.Error())
+			apiErr := util.CodeToApiError(code, err.Error())
 			c.JSON(code, apiErr)
 			return
 		}
 
-		c.JSON(http.StatusOK, apimodel.TemplateResponse{Template: template})
+		c.JSON(http.StatusOK, apimodel.TemplateResponse{Template: *template})
 	}
 }

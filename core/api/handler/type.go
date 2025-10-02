@@ -9,12 +9,14 @@ import (
 	"github.com/anyproto/anytype-heart/core/api/pagination"
 	"github.com/anyproto/anytype-heart/core/api/service"
 	"github.com/anyproto/anytype-heart/core/api/util"
+	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
 // ListTypesHandler retrieves a list of types in a space
 //
 //	@Summary		List types
-//	@Description	This endpoint retrieves a paginated list of types (e.g. 'Page', 'Note', 'Task') available within the specified space. Each type’s record includes its unique identifier, type key, display name, icon, and layout. While a type's id is truly unique, a type's key can be the same across spaces for known types, e.g. 'page' for 'Page'. Clients use this information when offering choices for object creation or for filtering objects by type through search.
+//	@Description	This endpoint retrieves a paginated list of types (e.g. 'Page', 'Note', 'Task') available within the specified space. Each type's record includes its unique identifier, type key, display name, icon, and layout. While a type's id is truly unique, a type's key can be the same across spaces for known types, e.g. 'page' for 'Page'. Clients use this information when offering choices for object creation or for filtering objects by type through search.
+//	@Description	Supports dynamic filtering via query parameters (e.g., ?key=page, ?name[contains]=task, ?layout[ne]=note). See FilterCondition enum for available conditions.
 //	@Id				list_types
 //	@Tags			Types
 //	@Produce		json
@@ -33,13 +35,16 @@ func ListTypesHandler(s *service.Service) gin.HandlerFunc {
 		offset := c.GetInt("offset")
 		limit := c.GetInt("limit")
 
-		types, total, hasMore, err := s.ListTypes(c.Request.Context(), spaceId, offset, limit)
+		filtersAny, _ := c.Get("filters")
+		filters := filtersAny.([]*model.BlockContentDataviewFilter)
+
+		types, total, hasMore, err := s.ListTypes(c.Request.Context(), spaceId, filters, offset, limit)
 		code := util.MapErrorCode(err,
 			util.ErrToCode(service.ErrFailedRetrieveTypes, http.StatusInternalServerError),
 		)
 
 		if code != http.StatusOK {
-			apiErr := util.CodeToAPIError(code, err.Error())
+			apiErr := util.CodeToApiError(code, err.Error())
 			c.JSON(code, apiErr)
 			return
 		}
@@ -78,12 +83,12 @@ func GetTypeHandler(s *service.Service) gin.HandlerFunc {
 		)
 
 		if code != http.StatusOK {
-			apiErr := util.CodeToAPIError(code, err.Error())
+			apiErr := util.CodeToApiError(code, err.Error())
 			c.JSON(code, apiErr)
 			return
 		}
 
-		c.JSON(http.StatusOK, apimodel.TypeResponse{Type: object})
+		c.JSON(http.StatusOK, apimodel.TypeResponse{Type: *object})
 	}
 }
 
@@ -111,7 +116,7 @@ func CreateTypeHandler(s *service.Service) gin.HandlerFunc {
 
 		request := apimodel.CreateTypeRequest{}
 		if err := c.BindJSON(&request); err != nil {
-			apiErr := util.CodeToAPIError(http.StatusBadRequest, err.Error())
+			apiErr := util.CodeToApiError(http.StatusBadRequest, err.Error())
 			c.JSON(http.StatusBadRequest, apiErr)
 			return
 		}
@@ -124,12 +129,12 @@ func CreateTypeHandler(s *service.Service) gin.HandlerFunc {
 		)
 
 		if code != http.StatusOK {
-			apiErr := util.CodeToAPIError(code, err.Error())
+			apiErr := util.CodeToApiError(code, err.Error())
 			c.JSON(code, apiErr)
 			return
 		}
 
-		c.JSON(http.StatusCreated, apimodel.TypeResponse{Type: object})
+		c.JSON(http.StatusCreated, apimodel.TypeResponse{Type: *object})
 	}
 }
 
@@ -161,7 +166,7 @@ func UpdateTypeHandler(s *service.Service) gin.HandlerFunc {
 
 		request := apimodel.UpdateTypeRequest{}
 		if err := c.BindJSON(&request); err != nil {
-			apiErr := util.CodeToAPIError(http.StatusBadRequest, err.Error())
+			apiErr := util.CodeToApiError(http.StatusBadRequest, err.Error())
 			c.JSON(http.StatusBadRequest, apiErr)
 			return
 		}
@@ -176,12 +181,12 @@ func UpdateTypeHandler(s *service.Service) gin.HandlerFunc {
 		)
 
 		if code != http.StatusOK {
-			apiErr := util.CodeToAPIError(code, err.Error())
+			apiErr := util.CodeToApiError(code, err.Error())
 			c.JSON(code, apiErr)
 			return
 		}
 
-		c.JSON(http.StatusOK, apimodel.TypeResponse{Type: object})
+		c.JSON(http.StatusOK, apimodel.TypeResponse{Type: *object})
 	}
 }
 
@@ -218,11 +223,11 @@ func DeleteTypeHandler(s *service.Service) gin.HandlerFunc {
 		)
 
 		if code != http.StatusOK {
-			apiErr := util.CodeToAPIError(code, err.Error())
+			apiErr := util.CodeToApiError(code, err.Error())
 			c.JSON(code, apiErr)
 			return
 		}
 
-		c.JSON(http.StatusOK, apimodel.TypeResponse{Type: object})
+		c.JSON(http.StatusOK, apimodel.TypeResponse{Type: *object})
 	}
 }
