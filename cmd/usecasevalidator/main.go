@@ -18,6 +18,7 @@ import (
 	"github.com/gogo/protobuf/types"
 	"github.com/hashicorp/go-multierror"
 	"github.com/samber/lo"
+	"gopkg.in/yaml.v3"
 
 	"github.com/anyproto/anytype-heart/core/block/export"
 	"github.com/anyproto/anytype-heart/core/domain"
@@ -31,10 +32,6 @@ import (
 )
 
 type (
-	relationWithFormat interface {
-		GetFormat() model.RelationFormat
-	}
-
 	objectInfo struct {
 		Type, Name string
 		SbType     smartblock.SmartBlockType
@@ -42,7 +39,7 @@ type (
 
 	customInfo struct {
 		isUsed         bool
-		id             string
+		id, name       string
 		relationFormat model.RelationFormat
 	}
 
@@ -63,21 +60,48 @@ type (
 
 		useCase string
 	}
-
-	cliFlags struct {
-		analytics, validate, creator   bool
-		list, removeRelations, exclude bool
-		collectCustomUsageInfo         bool
-		path, rules, spaceDashboardId  string
-	}
 )
+
+type Config struct {
+	Validate    ValidationConfig `yaml:"validate"`
+	Fix         FixConfig        `yaml:"fix"`
+	Path        string           `yaml:"path"`
+	Out         string           `yaml:"out"`
+	ListObjects bool             `yaml:"list"`
+}
+
+type ValidationConfig struct {
+	Enabled                bool `yaml:"enabled"`
+	InsertCreator          bool `yaml:"insert_creator"`
+	InsertAnalytics        bool `yaml:"insert_analytics"`
+	RemoveAccountRelations bool `yaml:"remove_account_relations"`
+}
+
+type FixConfig struct {
+	HomeObjectId                 string `yaml:"home_object_id"`
+	SkipInvalidObjects           bool   `yaml:"skip_invalid_objects"`
+	DeleteInvalidDetails         bool   `yaml:"delete_invalid_details"`
+	DeleteInvalidDetailValues    bool   `yaml:"delete_invalid_detail_values"`
+	DeleteInvalidRelationBlocks  bool   `yaml:"delete_invalid_relation_blocks"`
+	DeleteInvalidCollectionItems bool   `yaml:"delete_invalid_collection_items"`
+	SkipInvalidTypes             bool   `yaml:"skip_invalid_types"`
+	RulesPath                    string `yaml:"rules_path"`
+}
 
 func (i customInfo) GetFormat() model.RelationFormat {
 	return i.relationFormat
 }
 
-func (f cliFlags) isUpdateNeeded() bool {
-	return f.analytics || f.creator || f.removeRelations || f.exclude || f.rules != ""
+func (vc *ValidationConfig) isUpdateNeeded() bool {
+	return vc.RemoveAccountRelations || vc.InsertAnalytics || vc.InsertCreator
+}
+
+func (fc *FixConfig) isUpdateNeeded() bool {
+	return fc.DeleteInvalidDetails || fc.DeleteInvalidDetailValues || fc.DeleteInvalidRelationBlocks || fc.SkipInvalidTypes || fc.SkipInvalidObjects || fc.RulesPath != ""
+}
+
+func (c *Config) isUpdateNeeded() bool {
+	return c.Fix.isUpdateNeeded() || c.Validate.isUpdateNeeded()
 }
 
 var (
@@ -93,23 +117,51 @@ func main() {
 	}
 }
 
+func loadConfig(path string) (*Config, error) {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return nil, err
+	}
+	var cfg Config
+	if err := yaml.Unmarshal(data, &cfg); err != nil {
+		return nil, err
+	}
+	return &cfg, nil
+}
+
 func run() error {
-	flags, err := getFlags()
+	var configPath string
+	configFlag := flag.NewFlagSet("config", flag.ExitOnError)
+	configFlag.StringVar(&configPath, "config", "", "path to YAML config file")
+	err := configFlag.Parse(os.Args[1:2])
 	if err != nil {
 		return err
 	}
-	fileName := filepath.Base(flags.path)
-	pathToNewZip := strings.TrimSuffix(flags.path, filepath.Ext(fileName)) + "_new.zip"
 
-	if flags.rules != "" {
-		if err = readRules(flags.rules); err != nil {
+	config, err := loadConfig(configPath)
+	if err != nil {
+		return fmt.Errorf("loading config: %w", err)
+	}
+
+	if err = parseFlags(config); err != nil {
+		return err
+	}
+
+	fileName := filepath.Base(config.Path)
+	pathToNewZip := config.Out
+	if pathToNewZip == "" {
+		pathToNewZip = strings.TrimSuffix(config.Path, filepath.Ext(fileName)) + "_new.zip"
+	}
+
+	if config.Fix.RulesPath != "" {
+		if err = readRules(config.Fix.RulesPath); err != nil {
 			return err
 		}
 	}
 
-	r, err := zip.OpenReader(flags.path)
+	r, err := zip.OpenReader(config.Path)
 	if err != nil {
-		return fmt.Errorf("cannot open zip file %s: %w", flags.path, err)
+		return fmt.Errorf("cannot open zip file %s: %w", config.Path, err)
 	}
 	defer r.Close()
 
@@ -121,7 +173,7 @@ func run() error {
 		fmt.Println("profile file does not present in archive")
 	}
 
-	updateNeeded := flags.isUpdateNeeded()
+	updateNeeded := config.isUpdateNeeded()
 	var writer *zip.Writer
 
 	if updateNeeded {
@@ -135,14 +187,10 @@ func run() error {
 		defer writer.Close()
 	}
 
-	err = processFiles(info, writer, flags)
+	err = processFiles(info, writer, config)
 
-	if flags.list {
+	if config.ListObjects {
 		listObjects(info)
-	}
-
-	if flags.collectCustomUsageInfo {
-		printCustomObjectsUsageInfo(info)
 	}
 
 	if err != nil {
@@ -165,36 +213,29 @@ func run() error {
 	return nil
 }
 
-func getFlags() (*cliFlags, error) {
-	path := flag.String("path", "", "Path to zip archive")
-	creator := flag.Bool("creator", false, "Set Anytype profile to LastModifiedDate and Creator")
-	list := flag.Bool("list", false, "List all objects in archive")
-	valid := flag.Bool("validate", false, "Perform validation upon all objects")
-	removeRels := flag.Bool("r", false, "Remove account related relations")
-	analytics := flag.Bool("a", false, "Insert analytics context and original id")
-	rules := flag.String("rules", "", "Path to file with processing rules")
-	exclude := flag.Bool("exclude", false, "Exclude objects that did not pass validation")
-	custom := flag.Bool("c", false, "Collect usage information about custom types and relations")
-	spaceDashboardId := flag.String("s", "", "Id of object to be set as Space Dashboard")
+func parseFlags(config *Config) error {
+	flags := flag.NewFlagSet("flags", flag.ExitOnError)
+	flags.StringVar(&config.Path, "path", config.Path, "Path to input zip archive")
+	flags.StringVar(&config.Out, "out", config.Out, "Path to output zip archive")
+	flags.BoolVar(&config.ListObjects, "list", config.ListObjects, "List all objects in archive")
 
-	flag.Parse()
+	flags.BoolVar(&config.Validate.Enabled, "validate", config.Validate.Enabled, "Perform validation upon all objects")
+	flags.BoolVar(&config.Validate.RemoveAccountRelations, "r", config.Validate.RemoveAccountRelations, "Remove account related relations")
+	flags.BoolVar(&config.Validate.InsertAnalytics, "a", config.Validate.InsertAnalytics, "Insert analytics context and original id")
+	flags.BoolVar(&config.Validate.InsertCreator, "creator", config.Validate.InsertCreator, "Set Anytype profile to LastModifiedDate and Creator")
 
-	if *path == "" {
-		return nil, fmt.Errorf("path to zip archive should be specified")
+	flags.StringVar(&config.Fix.HomeObjectId, "home_object", config.Fix.HomeObjectId, "Force home object id")
+	flags.StringVar(&config.Fix.RulesPath, "rules", config.Fix.RulesPath, "Path to file with processing rules")
+
+	err := flags.Parse(os.Args[2:])
+	if err != nil {
+		return fmt.Errorf("cannot parse flags: %w", err)
 	}
 
-	return &cliFlags{
-		analytics:              *analytics,
-		list:                   *list,
-		removeRelations:        *removeRels,
-		validate:               *valid,
-		path:                   *path,
-		creator:                *creator,
-		rules:                  *rules,
-		exclude:                *exclude,
-		collectCustomUsageInfo: *custom,
-		spaceDashboardId:       *spaceDashboardId,
-	}, nil
+	if config.Path == "" {
+		return fmt.Errorf("path to zip archive should be specified")
+	}
+	return nil
 }
 
 func collectUseCaseInfo(files []*zip.File, fileName string) (info *useCaseInfo, err error) {
@@ -237,9 +278,10 @@ func collectUseCaseInfo(files []*zip.File, fileName string) (info *useCaseInfo, 
 
 		id := pbtypes.GetString(snapshot.Snapshot.Data.Details, bundle.RelationKeyId.String())
 		name := pbtypes.GetString(snapshot.Snapshot.Data.Details, bundle.RelationKeyName.String())
+		tk := strings.TrimPrefix(snapshot.Snapshot.Data.ObjectTypes[0], addr.ObjectTypeKeyToIdPrefix)
 
 		info.objects[id] = objectInfo{
-			Type:   pbtypes.GetString(snapshot.Snapshot.Data.Details, bundle.RelationKeyType.String()),
+			Type:   tk,
 			Name:   name,
 			SbType: smartblock.SmartBlockType(snapshot.SbType),
 		}
@@ -253,28 +295,28 @@ func collectUseCaseInfo(files []*zip.File, fileName string) (info *useCaseInfo, 
 			info.relations[id] = domain.RelationKey(key)
 			format := pbtypes.GetInt64(snapshot.Snapshot.Data.Details, bundle.RelationKeyRelationFormat.String())
 			if !bundle.HasRelation(domain.RelationKey(key)) {
-				info.customTypesAndRelations[key] = customInfo{id: id, isUsed: false, relationFormat: model.RelationFormat(format)}
+				info.customTypesAndRelations[key] = customInfo{id: id, isUsed: false, relationFormat: model.RelationFormat(format), name: name}
 			}
 		case model.SmartBlockType_STType:
 			uk := pbtypes.GetString(snapshot.Snapshot.Data.Details, bundle.RelationKeyUniqueKey.String())
 			key := strings.TrimPrefix(uk, addr.ObjectTypeKeyToIdPrefix)
 			info.types[id] = domain.TypeKey(key)
 			if !bundle.HasObjectTypeByKey(domain.TypeKey(key)) {
-				info.customTypesAndRelations[key] = customInfo{id: id, isUsed: false}
+				info.customTypesAndRelations[key] = customInfo{id: id, isUsed: false, name: name}
 			}
 		case model.SmartBlockType_SubObject:
 			if strings.HasPrefix(id, addr.ObjectTypeKeyToIdPrefix) {
 				key := strings.TrimPrefix(id, addr.ObjectTypeKeyToIdPrefix)
 				info.types[id] = domain.TypeKey(key)
 				if !bundle.HasObjectTypeByKey(domain.TypeKey(key)) {
-					info.customTypesAndRelations[key] = customInfo{id: id, isUsed: false}
+					info.customTypesAndRelations[key] = customInfo{id: id, isUsed: false, name: name}
 				}
 			} else if strings.HasPrefix(id, addr.RelationKeyToIdPrefix) {
 				key := strings.TrimPrefix(id, addr.RelationKeyToIdPrefix)
 				info.relations[id] = domain.RelationKey(key)
 				format := pbtypes.GetInt64(snapshot.Snapshot.Data.Details, bundle.RelationKeyRelationFormat.String())
 				if !bundle.HasRelation(domain.RelationKey(key)) {
-					info.customTypesAndRelations[key] = customInfo{id: id, isUsed: false, relationFormat: model.RelationFormat(format)}
+					info.customTypesAndRelations[key] = customInfo{id: id, isUsed: false, relationFormat: model.RelationFormat(format), name: name}
 				}
 			}
 		case model.SmartBlockType_Template:
@@ -301,14 +343,14 @@ func readData(f *zip.File) ([]byte, error) {
 	return data, nil
 }
 
-func processFiles(info *useCaseInfo, zw *zip.Writer, flags *cliFlags) error {
+func processFiles(info *useCaseInfo, zw *zip.Writer, config *Config) error {
 	var (
 		incorrectFileFound bool
-		writeNewFile       = flags.isUpdateNeeded()
+		writeNewFile       = config.isUpdateNeeded()
 	)
 
 	if info.profile != nil {
-		data, err := processProfile(info, flags.spaceDashboardId)
+		data, err := processProfile(info, config.Fix.HomeObjectId)
 		if err != nil {
 			return err
 		}
@@ -328,9 +370,9 @@ func processFiles(info *useCaseInfo, zw *zip.Writer, flags *cliFlags) error {
 	}
 
 	for name, sn := range info.snapshots {
-		newData, err := processSnapshot(sn, info, flags)
+		newData, err := processSnapshot(sn, info, config)
 		if err != nil {
-			if !(flags.exclude && errors.Is(err, errValidationFailed)) {
+			if !(config.Fix.SkipInvalidObjects && errors.Is(err, errValidationFailed)) {
 				// just do not include object that failed validation
 				incorrectFileFound = true
 			}
@@ -366,25 +408,25 @@ func saveDataToZip(zw *zip.Writer, fileName string, data []byte) error {
 	return nil
 }
 
-func processSnapshot(s *pb.SnapshotWithType, info *useCaseInfo, flags *cliFlags) ([]byte, error) {
-	if flags.analytics {
+func processSnapshot(s *pb.SnapshotWithType, info *useCaseInfo, config *Config) ([]byte, error) {
+	if config.Validate.InsertAnalytics {
 		insertAnalyticsData(s.Snapshot, info)
 	}
 
-	if flags.removeRelations {
+	if config.Validate.RemoveAccountRelations {
 		removeAccountRelatedDetails(s.Snapshot)
 	}
 
-	if flags.creator {
+	if config.Validate.InsertCreator {
 		insertCreatorInfo(s.Snapshot)
 	}
 
-	if flags.rules != "" {
+	if config.Fix.RulesPath != "" {
 		processRules(s.Snapshot)
 	}
 
-	if flags.validate {
-		if err := validate(s, info); err != nil {
+	if config.Validate.Enabled {
+		if err := validate(s, info, config.Fix); err != nil {
 			if errors.Is(err, errSkipObject) {
 				// some validators register errors mentioning that object can be excluded
 				return nil, nil
@@ -394,9 +436,7 @@ func processSnapshot(s *pb.SnapshotWithType, info *useCaseInfo, flags *cliFlags)
 		}
 	}
 
-	if flags.collectCustomUsageInfo {
-		collectCustomObjectsUsageInfo(s, info)
-	}
+	collectCustomObjectsUsageInfo(s, info)
 
 	if s.SbType == model.SmartBlockType_AccountOld {
 		return s.Snapshot.Marshal()
@@ -440,11 +480,11 @@ func extractSnapshotAndType(data []byte, name string) (s *pb.SnapshotWithType, e
 	return s, nil
 }
 
-func validate(snapshot *pb.SnapshotWithType, info *useCaseInfo) (err error) {
+func validate(snapshot *pb.SnapshotWithType, info *useCaseInfo, fixConfig FixConfig) (err error) {
 	isValid := true
 	id := pbtypes.GetString(snapshot.Snapshot.Data.Details, bundle.RelationKeyId.String())
 	for _, v := range validators {
-		if e := v(snapshot, info); e != nil {
+		if e := v(snapshot, info, fixConfig); e != nil {
 			if errors.Is(e, errSkipObject) {
 				return errSkipObject
 			}
@@ -521,6 +561,11 @@ func processProfile(info *useCaseInfo, spaceDashboardId string) ([]byte, error) 
 		return profile.Marshal()
 	}
 
+	if spaceDashboardId == "" {
+		profile.SpaceDashboardId = "lastOpened"
+		return profile.Marshal()
+	}
+
 	fmt.Println("spaceDashboardId = " + profile.SpaceDashboardId)
 	if _, found := info.objects[profile.SpaceDashboardId]; !found && !slices.Contains([]string{"lastOpened"}, profile.SpaceDashboardId) {
 		err := fmt.Errorf("failed to find Space Dashboard object '%s' among provided", profile.SpaceDashboardId)
@@ -543,11 +588,7 @@ func listObjects(info *useCaseInfo) {
 		}, obj.SbType) {
 			continue
 		}
-		key, found := info.types[obj.Type]
-		if !found {
-			fmt.Printf("type '%s' is not found in the archive\n", obj.Type)
-		}
-		fmt.Printf("%s:\t%24s - %24s - %s\n", id[len(id)-4:], obj.SbType.String(), key, obj.Name)
+		fmt.Printf("%s:\t%24s - %24s - %s\n", id[len(id)-4:], obj.SbType.String(), obj.Type, obj.Name)
 	}
 
 	fmt.Println("\n- Types:")
@@ -584,6 +625,7 @@ func listObjects(info *useCaseInfo) {
 		obj := info.objects[id]
 		fmt.Printf("%s:\t%32s\n", id[len(id)-4:], obj.Name)
 	}
+	printCustomObjectsUsageInfo(info)
 }
 
 func isPlainFile(name string) bool {
