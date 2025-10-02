@@ -180,23 +180,10 @@ func (o *orderSetter) reorder(objectIds []string, originalOrderIds map[string]st
 	// Save the original list
 	inputObjectIds := objectIds
 
-	objectIdsSet := make(map[string]struct{})
-	for _, id := range objectIds {
-		objectIdsSet[id] = struct{}{}
-	}
-
 	originalIds := getAllOriginalIds(originalOrderIds)
 	if needFullList {
-		var anyMissing bool
-		for _, id := range originalIds {
-			if _, ok := objectIdsSet[id]; !ok {
-				anyMissing = true
-				break
-			}
-		}
-		if anyMissing {
-			objectIds = calculateFullList(objectIds, originalIds, originalOrderIds)
-		}
+		objectIds = calculateFullList(objectIds, originalIds, originalOrderIds)
+
 	}
 
 	nextExisting := o.precalcNext(originalOrderIds, objectIds)
@@ -277,6 +264,21 @@ func getIdsInOriginalOrder(objectIds []string, originalOrderIds map[string]strin
 // - We compare [1 3 5] with [3 1 5] and get a change "move 1 after 3"
 // - Apply this change and get the list: [2 3 1 4 5]
 func calculateFullList(objectIds []string, fullOriginalIds []string, originalOrderIds map[string]string) []string {
+	objectIdsSet := make(map[string]struct{})
+	for _, id := range objectIds {
+		objectIdsSet[id] = struct{}{}
+	}
+
+	var anyMissing bool
+	for _, id := range fullOriginalIds {
+		if _, ok := objectIdsSet[id]; !ok {
+			anyMissing = true
+			break
+		}
+	}
+	if !anyMissing {
+		return objectIds
+	}
 	originalIds := getIdsInOriginalOrder(objectIds, originalOrderIds)
 	ops := slice.Diff(originalIds, objectIds, func(s string) string {
 		return s
