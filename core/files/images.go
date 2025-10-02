@@ -68,6 +68,7 @@ func (s *service) ImageAdd(ctx context.Context, spaceId string, options ...AddOp
 	}
 
 	entry := dirEntries[0]
+	addLock.Unlock()
 	return &AddResult{
 		FileId:         fileId,
 		MIME:           entry.fileInfo.Media,
