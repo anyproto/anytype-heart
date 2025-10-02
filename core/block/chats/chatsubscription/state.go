@@ -210,13 +210,11 @@ func (s *messagesState) appendEventsTo(subId string, buf *eventsBuffer) {
 		entry.events = nil
 	}
 
-	var elems int
 	for it := s.messages.Front(); it != nil; it = it.Next() {
 		entry := it.Value.(*stateEntry)
 		if len(entry.events) == 0 {
 			continue
 		}
-		elems++
 		processEntry(entry)
 	}
 
