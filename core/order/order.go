@@ -269,16 +269,10 @@ func calculateFullList(objectIds []string, fullOriginalIds []string, originalOrd
 		objectIdsSet[id] = struct{}{}
 	}
 
-	var anyMissing bool
-	for _, id := range fullOriginalIds {
-		if _, ok := objectIdsSet[id]; !ok {
-			anyMissing = true
-			break
-		}
-	}
-	if !anyMissing {
+	if !HasItemNotInSet(fullOriginalIds, objectIdsSet) {
 		return objectIds
 	}
+
 	originalIds := getIdsInOriginalOrder(objectIds, originalOrderIds)
 	ops := slice.Diff(originalIds, objectIds, func(s string) string {
 		return s
