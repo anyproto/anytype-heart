@@ -6,6 +6,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/subscription"
 	"github.com/anyproto/anytype-heart/core/subscription/objectsubscription"
+	"github.com/anyproto/anytype-heart/core/syncstatus/filesyncstatus"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -13,9 +14,10 @@ import (
 )
 
 type syncingObjects struct {
-	objectSubscription *objectsubscription.ObjectSubscription[struct{}]
-	service            subscription.Service
-	spaceId            string
+	objectSubscription       *objectsubscription.ObjectSubscription[struct{}]
+	limitedFilesSubscription *objectsubscription.ObjectSubscription[struct{}]
+	service                  subscription.Service
+	spaceId                  string
 }
 
 func newSyncingObjects(spaceId string, service subscription.Service) *syncingObjects {
@@ -42,6 +44,11 @@ func (s *syncingObjects) Run() error {
 					int64(domain.ObjectSyncStatusError),
 				}),
 			},
+			{
+				RelationKey: bundle.RelationKeySyncError,
+				Condition:   model.BlockContentDataviewFilter_NotEqual,
+				Value:       domain.Int64(domain.SyncErrorOversized),
+			},
 		},
 	}
 	s.objectSubscription = objectsubscription.NewIdSubscription(s.service, objectReq)
@@ -49,15 +56,45 @@ func (s *syncingObjects) Run() error {
 	if errObjects != nil {
 		return fmt.Errorf("error running syncing objects: %w", errObjects)
 	}
+
+	filesReq := subscription.SubscribeRequest{
+		SpaceId:           s.spaceId,
+		SubId:             fmt.Sprintf("spacestatus.notSyncedFiles.%s", s.spaceId),
+		Internal:          true,
+		NoDepSubscription: true,
+		Keys:              []string{bundle.RelationKeyId.String()},
+		Filters: []database.FilterRequest{
+			{
+				RelationKey: bundle.RelationKeyFileBackupStatus,
+				Condition:   model.BlockContentDataviewFilter_Equal,
+				Value:       domain.Int64(filesyncstatus.Limited),
+			},
+			{
+				RelationKey: bundle.RelationKeyResolvedLayout,
+				Condition:   model.BlockContentDataviewFilter_In,
+				Value:       domain.Int64List(domain.FileLayouts),
+			},
+		},
+	}
+	s.limitedFilesSubscription = objectsubscription.NewIdSubscription(s.service, filesReq)
+	err := s.limitedFilesSubscription.Run()
+	if err != nil {
+		return fmt.Errorf("run not synced files sub: %w", err)
+	}
 	return nil
 }
 
 func (s *syncingObjects) Close() {
 	s.objectSubscription.Close()
+	s.limitedFilesSubscription.Close()
 }
 
 func (s *syncingObjects) GetObjectSubscription() *objectsubscription.ObjectSubscription[struct{}] {
 	return s.objectSubscription
+}
+
+func (s *syncingObjects) LimitedFilesCount() int {
+	return s.limitedFilesSubscription.Len()
 }
 
 func (s *syncingObjects) SyncingObjectsCount(missing []string) int {

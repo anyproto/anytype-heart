@@ -4,6 +4,7 @@ import (
 	"context"
 	"sync/atomic"
 	"testing"
+	"time"
 
 	"github.com/anyproto/any-sync/accountservice/mock_accountservice"
 	"github.com/anyproto/any-sync/app"
@@ -152,6 +153,15 @@ func TestLocalDiscovery_readAnswers(t *testing.T) {
 		notifier := NewMockNotifier(t)
 		accountKeys, err := accountdata.NewRandom()
 		assert.Nil(t, err)
+
+		expectedPeer := DiscoveredPeer{
+			PeerId: accountKeys.PeerId,
+		}
+		var called = make(chan struct{})
+		notifier.EXPECT().PeerDiscovered(mock.Anything, expectedPeer, mock.Anything).Run(func(ctx context.Context, peer DiscoveredPeer, own OwnAddresses) {
+			close(called)
+		})
+
 		notifier.EXPECT().PeerDiscovered(mock.Anything, DiscoveredPeer{
 			PeerId: accountKeys.PeerId,
 		}, mock.Anything).Return()
@@ -168,9 +178,10 @@ func TestLocalDiscovery_readAnswers(t *testing.T) {
 		}()
 		ld.readAnswers(peerUpdate)
 
-		// then
-		notifier.AssertCalled(t, "PeerDiscovered", mock.Anything, DiscoveredPeer{
-			PeerId: accountKeys.PeerId,
-		}, mock.Anything)
+		select {
+		case <-called:
+		case <-time.After(5 * time.Second):
+			t.Errorf("peer discovery did not call peer update")
+		}
 	})
 }

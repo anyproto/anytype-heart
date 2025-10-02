@@ -3,12 +3,14 @@ package persistentqueue
 import (
 	"context"
 	"fmt"
+	"path/filepath"
+	"strings"
 	"sync/atomic"
 	"testing"
 	"time"
 
+	anystore "github.com/anyproto/any-store"
 	"github.com/cheggaaa/mb/v3"
-	"github.com/dgraph-io/badger/v4"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -33,28 +35,36 @@ func makeTestItem() *testItem {
 	return &testItem{}
 }
 
-func newInMemoryBadger(t *testing.T) *badger.DB {
-	db, err := badger.Open(badger.DefaultOptions("").WithInMemory(true).WithLoggingLevel(badger.ERROR))
+func newAnystore(t *testing.T) anystore.DB {
+	path := filepath.Join(t.TempDir(), "test.db")
+
+	db, err := anystore.Open(context.Background(), path, nil)
 	require.NoError(t, err)
+
+	t.Cleanup(func() {
+		db.Close()
+	})
+
 	return db
 }
 
 func runTestQueue(t *testing.T, handlerFunc HandlerFunc[*testItem]) *Queue[*testItem] {
-	db := newInMemoryBadger(t)
-	q := newTestQueueWithDb(db, handlerFunc)
+	db := newAnystore(t)
+	q := newTestQueueWithDb(t, db, handlerFunc)
 	q.Run()
 	t.Cleanup(func() {
 		q.Close()
-		db.Close()
 	})
 	return q
 }
 
-func newTestQueueWithDb(db *badger.DB, handlerFunc HandlerFunc[*testItem]) *Queue[*testItem] {
+func newTestQueueWithDb(t *testing.T, db anystore.DB, handlerFunc HandlerFunc[*testItem]) *Queue[*testItem] {
 	log := logging.Logger("test")
 
-	storage := NewBadgerStorage[*testItem](db, []byte("test_queue/"), makeTestItem)
-	q := New[*testItem](storage, log.Desugar(), handlerFunc)
+	storage, err := NewAnystoreStorage[*testItem](db, "test_queue", makeTestItem)
+	require.NoError(t, err)
+
+	q := New[*testItem](storage, log.Desugar(), handlerFunc, nil)
 	return q
 }
 
@@ -79,9 +89,9 @@ func testAdd(t *testing.T, errFromHandler error) {
 	})
 
 	t.Run("add to not started queue, then start", func(t *testing.T) {
-		db := newInMemoryBadger(t)
+		db := newAnystore(t)
 
-		q := newTestQueueWithDb(db, func(ctx context.Context, item *testItem) (Action, error) {
+		q := newTestQueueWithDb(t, db, func(ctx context.Context, item *testItem) (Action, error) {
 			return ActionDone, errFromHandler
 		})
 
@@ -111,12 +121,12 @@ func testAdd(t *testing.T, errFromHandler error) {
 	})
 
 	t.Run("add to not started queue, close, then create new queue and start", func(t *testing.T) {
-		db := newInMemoryBadger(t)
+		db := newAnystore(t)
 
 		const numItems = 10
 
 		t.Run("with the first instance of queue, add to not started queue", func(t *testing.T) {
-			q := newTestQueueWithDb(db, func(ctx context.Context, item *testItem) (Action, error) {
+			q := newTestQueueWithDb(t, db, func(ctx context.Context, item *testItem) (Action, error) {
 				return ActionDone, errFromHandler
 			})
 
@@ -132,7 +142,7 @@ func testAdd(t *testing.T, errFromHandler error) {
 
 		t.Run("with the second instance of queue, run queue and handle previously added items", func(t *testing.T) {
 			var numItemsHandled int64
-			q := newTestQueueWithDb(db, func(ctx context.Context, item *testItem) (Action, error) {
+			q := newTestQueueWithDb(t, db, func(ctx context.Context, item *testItem) (Action, error) {
 				atomic.AddInt64(&numItemsHandled, 1)
 				return ActionDone, nil
 			})
@@ -233,9 +243,9 @@ func testAdd(t *testing.T, errFromHandler error) {
 }
 
 func TestRestore(t *testing.T) {
-	db := newInMemoryBadger(t)
+	db := newAnystore(t)
 
-	q := newTestQueueWithDb(db, func(ctx context.Context, item *testItem) (Action, error) {
+	q := newTestQueueWithDb(t, db, func(ctx context.Context, item *testItem) (Action, error) {
 		time.Sleep(10 * time.Millisecond)
 		return ActionRetry, nil
 	})
@@ -252,7 +262,7 @@ func TestRestore(t *testing.T) {
 	require.NoError(t, err)
 
 	keysQueue := mb.New[string](0)
-	q = newTestQueueWithDb(db, func(ctx context.Context, item *testItem) (Action, error) {
+	q = newTestQueueWithDb(t, db, func(ctx context.Context, item *testItem) (Action, error) {
 		err := keysQueue.Add(ctx, item.Key())
 		require.NoError(t, err)
 		return ActionDone, nil
@@ -307,8 +317,8 @@ func TestRemove(t *testing.T) {
 	})
 
 	t.Run("remove long processing item", func(t *testing.T) {
-		db := newInMemoryBadger(t)
-		q := newTestQueueWithDb(db, func(ctx context.Context, item *testItem) (Action, error) {
+		db := newAnystore(t)
+		q := newTestQueueWithDb(t, db, func(ctx context.Context, item *testItem) (Action, error) {
 			select {
 			case <-ctx.Done():
 				return ActionDone, nil
@@ -337,7 +347,7 @@ func TestRemove(t *testing.T) {
 
 		t.Run("restore only one item", func(t *testing.T) {
 			done := make(chan struct{})
-			q = newTestQueueWithDb(db, func(ctx context.Context, item *testItem) (Action, error) {
+			q = newTestQueueWithDb(t, db, func(ctx context.Context, item *testItem) (Action, error) {
 				assert.Equal(t, &testItem{Id: "2", Timestamp: 2, Data: "data2"}, item)
 				close(done)
 				return ActionDone, nil
@@ -359,16 +369,17 @@ func TestRemove(t *testing.T) {
 
 func TestWithHandlerTickPeriod(t *testing.T) {
 	t.Run("pause on ActionRetry", func(t *testing.T) {
-		db := newInMemoryBadger(t)
+		db := newAnystore(t)
 		log := logging.Logger("test")
-		storage := NewBadgerStorage[*testItem](db, []byte("test_queue/"), makeTestItem)
+		storage, err := NewAnystoreStorage[*testItem](db, "test_queue", makeTestItem)
+		require.NoError(t, err)
 
 		tickerPeriod := 50 * time.Millisecond
 		q := New[*testItem](storage, log.Desugar(), func(ctx context.Context, item *testItem) (Action, error) {
 			return ActionRetry, nil
-		}, WithRetryPause(tickerPeriod))
+		}, nil, WithRetryPause(tickerPeriod))
 
-		err := q.Add(&testItem{Id: "1", Timestamp: 1, Data: "data1"})
+		err = q.Add(&testItem{Id: "1", Timestamp: 1, Data: "data1"})
 		require.NoError(t, err)
 		err = q.Add(&testItem{Id: "2", Timestamp: 2, Data: "data2"})
 		require.NoError(t, err)
@@ -383,16 +394,18 @@ func TestWithHandlerTickPeriod(t *testing.T) {
 	})
 
 	t.Run("do not pause on ActionDone", func(t *testing.T) {
-		db := newInMemoryBadger(t)
+		db := newAnystore(t)
 		log := logging.Logger("test")
-		storage := NewBadgerStorage[*testItem](db, []byte("test_queue/"), makeTestItem)
+
+		storage, err := NewAnystoreStorage[*testItem](db, "test_queue", makeTestItem)
+		require.NoError(t, err)
 
 		tickerPeriod := 50 * time.Millisecond
 		q := New[*testItem](storage, log.Desugar(), func(ctx context.Context, item *testItem) (Action, error) {
 			return ActionDone, nil
-		}, WithRetryPause(tickerPeriod))
+		}, nil, WithRetryPause(tickerPeriod))
 
-		err := q.Add(&testItem{Id: "1", Timestamp: 1, Data: "data1"})
+		err = q.Add(&testItem{Id: "1", Timestamp: 1, Data: "data1"})
 		require.NoError(t, err)
 		err = q.Add(&testItem{Id: "2", Timestamp: 2, Data: "data2"})
 		require.NoError(t, err)
@@ -412,26 +425,28 @@ type testContextKeyType string
 const testContextKey testContextKeyType = "testKey"
 
 func TestWithContext(t *testing.T) {
-	db := newInMemoryBadger(t)
+	db := newAnystore(t)
 	log := logging.Logger("test")
 	testRootCtx := context.WithValue(context.Background(), testContextKey, "testValue")
 
 	wait := make(chan struct{})
-	storage := NewBadgerStorage[*testItem](db, []byte("test_queue/"), makeTestItem)
+	storage, err := NewAnystoreStorage[*testItem](db, "test_queue", makeTestItem)
+	require.NoError(t, err)
+
 	q := New[*testItem](storage, log.Desugar(), func(ctx context.Context, item *testItem) (Action, error) {
 		val, ok := ctx.Value(testContextKey).(string)
 		assert.True(t, ok)
 		assert.Equal(t, "testValue", val)
 		close(wait)
 		return ActionDone, nil
-	}, WithContext(testRootCtx))
+	}, nil, WithContext(testRootCtx))
 	q.Run()
 	t.Cleanup(func() {
 		q.Close()
 		db.Close()
 	})
 
-	err := q.Add(&testItem{Id: "1", Timestamp: 1, Data: "data1"})
+	err = q.Add(&testItem{Id: "1", Timestamp: 1, Data: "data1"})
 	require.NoError(t, err)
 
 	<-wait
@@ -457,8 +472,8 @@ func TestHandleNext(t *testing.T) {
 		testCase := func(t *testing.T, action Action) {
 			t.Run(fmt.Sprintf("action: %s", action), func(t *testing.T) {
 				var q *Queue[*testItem]
-				db := newInMemoryBadger(t)
-				q = newTestQueueWithDb(db, func(ctx context.Context, item *testItem) (Action, error) {
+				db := newAnystore(t)
+				q = newTestQueueWithDb(t, db, func(ctx context.Context, item *testItem) (Action, error) {
 					err := q.Remove(item.Key())
 					require.NoError(t, err)
 					return action, nil
@@ -483,9 +498,9 @@ func TestHandleNext(t *testing.T) {
 			testCase := func(t *testing.T, action Action) {
 				t.Run(fmt.Sprintf("action: %s", action), func(t *testing.T) {
 					var q *Queue[*testItem]
-					db := newInMemoryBadger(t)
+					db := newAnystore(t)
 
-					q = newTestQueueWithDb(db, func(ctx context.Context, item *testItem) (Action, error) {
+					q = newTestQueueWithDb(t, db, func(ctx context.Context, item *testItem) (Action, error) {
 						return action, nil
 					})
 
@@ -512,10 +527,10 @@ func TestHandleNext(t *testing.T) {
 			testCase := func(t *testing.T, action Action) {
 				t.Run(fmt.Sprintf("action: %s", action), func(t *testing.T) {
 					var q *Queue[*testItem]
-					db := newInMemoryBadger(t)
+					db := newAnystore(t)
 
 					var waitCh chan struct{}
-					q = newTestQueueWithDb(db, func(ctx context.Context, item *testItem) (Action, error) {
+					q = newTestQueueWithDb(t, db, func(ctx context.Context, item *testItem) (Action, error) {
 						var err error
 						waitCh, err = q.RemoveWait(item.Key())
 						require.NoError(t, err)
@@ -544,4 +559,89 @@ func TestHandleNext(t *testing.T) {
 		})
 	})
 
+}
+
+func TestRemoveBy(t *testing.T) {
+	db := newAnystore(t)
+	processed := make(chan *testItem)
+	q := newTestQueueWithDb(t, db, func(ctx context.Context, item *testItem) (Action, error) {
+		select {
+		case processed <- item:
+			return ActionDone, nil
+		case <-ctx.Done():
+			return ActionDone, nil
+		}
+	})
+
+	err := q.Add(&testItem{Id: "1", Timestamp: 1, Data: "data1"})
+	require.NoError(t, err)
+	err = q.Add(&testItem{Id: "1/a", Timestamp: 1, Data: "data1"})
+	require.NoError(t, err)
+	err = q.Add(&testItem{Id: "2", Timestamp: 1, Data: "data1"})
+	require.NoError(t, err)
+
+	err = q.RemoveBy(func(key string) bool {
+		return strings.HasPrefix(key, "1")
+	})
+	require.NoError(t, err)
+
+	q.Run()
+
+	select {
+	case got := <-processed:
+		assert.Equal(t, "2", got.Id)
+	case <-time.After(100 * time.Millisecond):
+		t.Fatal("timeout")
+	}
+}
+
+func TestMultipleWorkers(t *testing.T) {
+	db := newAnystore(t)
+	log := logging.Logger("test")
+
+	storage, err := NewAnystoreStorage[*testItem](db, "test_queue", makeTestItem)
+	require.NoError(t, err)
+
+	handledItemsCh := make(chan *testItem)
+	q := New[*testItem](storage, log.Desugar(), func(ctx context.Context, item *testItem) (Action, error) {
+		handledItemsCh <- item
+		return ActionDone, nil
+	}, nil, WithWorkersNumber(10))
+	q.Run()
+
+	itemsCount := 20
+	for i := range itemsCount {
+		err = q.Add(&testItem{Id: fmt.Sprintf("%d", i)})
+		require.NoError(t, err)
+	}
+
+	timer := time.NewTimer(50 * time.Millisecond)
+	handled := make([]*testItem, 0, itemsCount)
+	for {
+		select {
+		case <-timer.C:
+			t.Fatal("timeout")
+		case it := <-handledItemsCh:
+			handled = append(handled, it)
+		}
+
+		if len(handled) == itemsCount {
+			break
+		}
+	}
+
+	wantIds := map[string]struct{}{}
+	for i := range itemsCount {
+		wantIds[fmt.Sprintf("%d", i)] = struct{}{}
+	}
+
+	gotIds := map[string]struct{}{}
+	for _, it := range handled {
+		gotIds[it.Id] = struct{}{}
+	}
+
+	assert.Equal(t, wantIds, gotIds)
+
+	err = q.Close()
+	require.NoError(t, err)
 }

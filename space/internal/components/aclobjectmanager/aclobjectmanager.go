@@ -16,7 +16,7 @@ import (
 	"github.com/samber/lo"
 	"go.uber.org/zap"
 
-	"github.com/anyproto/anytype-heart/core/block/chats/chatpush"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/space/clientspace"
 	"github.com/anyproto/anytype-heart/space/internal/components/aclnotifications"
 	"github.com/anyproto/anytype-heart/space/internal/components/participantwatcher"
@@ -40,28 +40,21 @@ func New(ownerMetadata []byte, guestKey crypto.PrivKey) AclObjectManager {
 	}
 }
 
-type pushNotificationService interface {
-	CreateSpace(ctx context.Context, spaceId string) (err error)
-	SubscribeToTopics(ctx context.Context, spaceId string, topics []string)
-	BroadcastKeyUpdate(spaceId string, aclState *list.AclState) error
-}
-
 type aclObjectManager struct {
-	ctx                     context.Context
-	cancel                  context.CancelFunc
-	wait                    chan struct{}
-	waitLoad                chan struct{}
-	sp                      clientspace.Space
-	loadErr                 error
-	spaceLoader             spaceloader.SpaceLoader
-	status                  spacestatus.SpaceStatus
-	statService             debugstat.StatService
-	started                 bool
-	notificationService     aclnotifications.AclNotification
-	spaceLoaderListener     SpaceLoaderListener
-	participantWatcher      participantwatcher.ParticipantWatcher
-	accountService          accountservice.Service
-	pushNotificationService pushNotificationService
+	ctx                 context.Context
+	cancel              context.CancelFunc
+	wait                chan struct{}
+	waitLoad            chan struct{}
+	sp                  clientspace.Space
+	loadErr             error
+	spaceLoader         spaceloader.SpaceLoader
+	status              spacestatus.SpaceStatus
+	statService         debugstat.StatService
+	started             bool
+	notificationService aclnotifications.AclNotification
+	spaceLoaderListener SpaceLoaderListener
+	participantWatcher  participantwatcher.ParticipantWatcher
+	accountService      accountservice.Service
 
 	ownerMetadata []byte
 	lastIndexed   string
@@ -115,7 +108,6 @@ func (a *aclObjectManager) Init(ap *app.App) (err error) {
 	a.statService.AddProvider(a)
 	a.waitLoad = make(chan struct{})
 	a.wait = make(chan struct{})
-	a.pushNotificationService = app.MustComponent[pushNotificationService](ap)
 	return nil
 }
 
@@ -154,17 +146,13 @@ func (a *aclObjectManager) process() {
 		return
 	}
 	a.spaceLoaderListener.OnSpaceLoad(a.sp.Id())
-	err := a.participantWatcher.UpdateAccountParticipantFromProfile(a.ctx, a.sp)
-	if err != nil {
-		log.Error("init my identity", zap.Error(err))
-	}
 
 	common := a.sp.CommonSpace()
 	acl := common.Acl()
 	acl.SetAclUpdater(a)
 	acl.RLock()
 	defer acl.RUnlock()
-	err = a.processAcl()
+	err := a.processAcl()
 	if err != nil {
 		log.Error("error processing acl", zap.Error(err))
 		return
@@ -244,57 +232,89 @@ func (a *aclObjectManager) processAcl() (err error) {
 	if err != nil {
 		return
 	}
-	err = a.status.SetAclIsEmpty(aclState.IsEmpty())
+
+	var (
+		isEmpty    = aclState.IsEmpty()
+		pushKey    crypto.PrivKey
+		pushEncKey crypto.SymKey
+		dErr       error
+	)
+	if !isEmpty {
+		firstMetadataKey, fkErr := aclState.FirstMetadataKey()
+		if fkErr == nil {
+			if pushKey, dErr = pushDeriveSpaceKey(firstMetadataKey); dErr != nil {
+				log.Warn("failed to derive push key", zap.Error(fkErr))
+			}
+		} else {
+			log.Warn("get firstMetadataKey", zap.Error(fkErr))
+		}
+
+		curReadKey, rErr := aclState.CurrentReadKey()
+		if rErr == nil {
+			if pushEncKey, dErr = pushDeriveSymmetricKey(curReadKey); dErr != nil {
+				log.Warn("failed to derive push sum key", zap.Error(dErr))
+			}
+		} else {
+			log.Warn("get currentReadKey", zap.Error(fkErr))
+		}
+	}
+
+	joinedDate, err := a.findJoinedDate(acl)
+	if err != nil {
+		return
+	}
+
+	err = a.status.SetAclInfo(isEmpty, pushKey, pushEncKey, joinedDate)
 	if err != nil {
 		return
 	}
 	a.mx.Lock()
 	defer a.mx.Unlock()
 	a.lastIndexed = acl.Head().Id
-
-	err = a.pushNotificationService.BroadcastKeyUpdate(common.Id(), aclState)
-	if err != nil {
-		return fmt.Errorf("broadcast key update: %w", err)
-	}
-
-	err = a.subscribeToPushNotifications(acl)
-	if err != nil {
-		log.Error("subscribe to push notifications", zap.Error(err))
-	}
-
 	return nil
 }
 
-func (a *aclObjectManager) subscribeToPushNotifications(acl syncacl.SyncAcl) error {
-	aclState := acl.AclState()
-	currentIdentity := aclState.AccountKey().GetPublic()
-
-	var needToSubscribe bool
-	if aclState.Permissions(currentIdentity).IsOwner() {
-		// Only if user shared this space
-		if len(aclState.Invites()) > 0 {
-			err := a.pushNotificationService.CreateSpace(a.ctx, a.sp.Id())
-			if err != nil {
-				return fmt.Errorf("create space: %w", err)
-			}
-			needToSubscribe = true
+func (a *aclObjectManager) findJoinedDate(acl syncacl.SyncAcl) (int64, error) {
+	currentIdentity := a.accountService.Account().SignKey.GetPublic()
+	joinedAclRecordId := acl.Head().Id
+	for _, accState := range acl.AclState().CurrentAccounts() {
+		if !accState.PubKey.Equals(currentIdentity) {
+			continue
 		}
-	} else {
-		needToSubscribe = true
-	}
+		// Find the first record in which the user has got permissions since the last join
+		// Example:
+		// We have acl: [ 1:noPermissions, 2:reader, 3:noPermission, 4:reader, 5:writer ]
+		// Record with id=4 is one that we need
+		for i := len(accState.PermissionChanges) - 1; i >= 0; i-- {
+			permChange := accState.PermissionChanges[i]
 
-	if needToSubscribe {
-		a.pushNotificationService.SubscribeToTopics(a.ctx, a.sp.Id(), []string{chatpush.ChatsTopicName})
+			if permChange.Permission.NoPermissions() {
+				break
+			} else {
+				joinedAclRecordId = permChange.RecordId
+			}
+		}
+		break
 	}
-	return nil
+	joinedRecord, err := acl.Get(joinedAclRecordId)
+	if err != nil {
+		return 0, fmt.Errorf("get joined acl record: %w", err)
+	}
+	return joinedRecord.Timestamp, nil
 }
 
 func (a *aclObjectManager) processStates(states []list.AccountState, upToDate bool, myIdentity crypto.PubKey) (err error) {
 	for _, state := range states {
-		if state.Permissions.NoPermissions() && state.PubKey.Equals(myIdentity) && upToDate {
-			return a.status.SetPersistentStatus(spaceinfo.AccountStatusRemoving)
+		if state.PubKey.Equals(myIdentity) {
+			err = a.status.SetMyParticipantStatus(domain.ConvertAclStatus(state.Status))
+			if err != nil {
+				log.Warn("failed to set my participant status", zap.Error(err))
+			}
+			if state.Permissions.NoPermissions() && upToDate {
+				return a.status.SetPersistentStatus(spaceinfo.AccountStatusDeleted)
+			}
 		}
-		err := a.participantWatcher.UpdateParticipantFromAclState(a.ctx, a.sp, state)
+		err = a.participantWatcher.UpdateParticipantFromAclState(a.ctx, a.sp, state)
 		if err != nil {
 			return err
 		}

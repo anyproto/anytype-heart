@@ -13,6 +13,32 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
+var layoutPerSmartBlockType = map[smartblock.SmartBlockType]model.ObjectTypeLayout{
+	smartblock.SmartBlockTypeRelation:           model.ObjectType_relation,
+	smartblock.SmartBlockTypeBundledRelation:    model.ObjectType_relation,
+	smartblock.SmartBlockTypeObjectType:         model.ObjectType_objectType,
+	smartblock.SmartBlockTypeBundledObjectType:  model.ObjectType_objectType,
+	smartblock.SmartBlockTypeRelationOption:     model.ObjectType_relationOption,
+	smartblock.SmartBlockTypeSpaceView:          model.ObjectType_spaceView,
+	smartblock.SmartBlockTypeParticipant:        model.ObjectType_participant,
+	smartblock.SmartBlockTypeFile:               model.ObjectType_file, // deprecated
+	smartblock.SmartBlockTypeDate:               model.ObjectType_date,
+	smartblock.SmartBlockTypeChatDerivedObject:  model.ObjectType_chatDerived,
+	smartblock.SmartBlockTypeChatObject:         model.ObjectType_chat, // deprecated
+	smartblock.SmartBlockTypeWidget:             model.ObjectType_dashboard,
+	smartblock.SmartBlockTypeWorkspace:          model.ObjectType_dashboard,
+	smartblock.SmartBlockTypeArchive:            model.ObjectType_dashboard,
+	smartblock.SmartBlockTypeHome:               model.ObjectType_dashboard,
+	smartblock.SmartBlockTypeAccountObject:      model.ObjectType_profile,
+	smartblock.SmartBlockTypeAnytypeProfile:     model.ObjectType_profile,
+	smartblock.SmartBlockTypeIdentity:           model.ObjectType_profile,
+	smartblock.SmartBlockTypeProfilePage:        model.ObjectType_profile,
+	smartblock.SmartBlockTypeAccountOld:         model.ObjectType_profile, // deprecated
+	smartblock.SmartBlockTypeMissingObject:      model.ObjectType_missingObject,
+	smartblock.SmartBlockTypeNotificationObject: model.ObjectType_notification,
+	smartblock.SmartBlockTypeDevicesObject:      model.ObjectType_devices,
+}
+
 func (sb *smartBlock) injectLocalDetails(s *state.State) error {
 	details, err := sb.getDetailsFromStore()
 	if err != nil {
@@ -51,7 +77,7 @@ func (sb *smartBlock) getDetailsFromStore() (*domain.Details, error) {
 func (sb *smartBlock) appendPendingDetails(details *domain.Details) (resultDetails *domain.Details, hasPendingLocalDetails bool) {
 	// Consume pending details
 	err := sb.spaceIndex.UpdatePendingLocalDetails(sb.Id(), func(pending *domain.Details) (*domain.Details, error) {
-		if pending.Len() > 0 {
+		if pending.Len() > 1 { // more than just id
 			hasPendingLocalDetails = true
 		}
 		details = details.Merge(pending)
@@ -137,7 +163,7 @@ func (sb *smartBlock) injectDerivedDetails(s *state.State, spaceID string, sbt s
 	}
 
 	if info := s.GetFileInfo(); info.FileId != "" {
-		err := sb.fileStore.AddFileKeys(domain.FileEncryptionKeys{
+		err := sb.objectStore.AddFileKeys(domain.FileEncryptionKeys{
 			FileId:         info.FileId,
 			EncryptionKeys: info.EncryptionKeys,
 		})
@@ -220,17 +246,9 @@ func (sb *smartBlock) deriveChatId(s *state.State) error {
 }
 
 // resolveLayout adds resolvedLayout to local details of object. Priority:
-// layout > recommendedLayout from type > current resolvedLayout > basic (fallback)
+// layout restricted by sbType > layout > recommendedLayout from type > current resolvedLayout > basic (fallback)
 // resolveLayout also converts object from Note, i.e. adds Name and Title to state
 func (sb *smartBlock) resolveLayout(s *state.State) {
-	if sb.Type() != smartblock.SmartBlockTypePage {
-		layout := s.Details().Get(bundle.RelationKeyLayout)
-		if layout.Ok() {
-			s.SetDetailAndBundledRelation(bundle.RelationKeyResolvedLayout, layout)
-		}
-		return
-	}
-
 	if s.Details() == nil && s.LocalDetails() == nil {
 		return
 	}
@@ -239,7 +257,14 @@ func (sb *smartBlock) resolveLayout(s *state.State) {
 		currentValue  = s.LocalDetails().Get(bundle.RelationKeyResolvedLayout)
 		newValue      domain.Value
 		fallbackValue = domain.Int64(int64(model.ObjectType_basic))
+
+		sbTypeLayoutValue, hasStrictLayout = layoutPerSmartBlockType[sb.Type()]
 	)
+
+	if hasStrictLayout {
+		s.SetDetailAndBundledRelation(bundle.RelationKeyResolvedLayout, domain.Int64(int64(sbTypeLayoutValue)))
+		return
+	}
 
 	if !currentValue.Ok() && layoutValue.Ok() {
 		// we don't have resolvedLayout in local details, but we have layout
@@ -250,6 +275,9 @@ func (sb *smartBlock) resolveLayout(s *state.State) {
 		if bt, err := bundle.GetType(s.ObjectTypeKeys()[len(s.ObjectTypeKeys())-1]); err == nil {
 			fallbackValue = domain.Int64(int64(bt.Layout))
 		}
+	} else if sb.Type() == smartblock.SmartBlockTypeFileObject {
+		// for file object we use file layout
+		fallbackValue = domain.Int64(int64(model.ObjectType_file))
 	}
 
 	typeDetails, err := sb.getTypeDetails(s)

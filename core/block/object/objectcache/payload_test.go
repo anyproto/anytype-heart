@@ -9,10 +9,9 @@ import (
 	"github.com/anyproto/any-sync/commonspace/object/tree/objecttree"
 	"github.com/anyproto/any-sync/commonspace/object/tree/treechangeproto"
 	"github.com/anyproto/any-sync/util/crypto"
-	"github.com/gogo/protobuf/proto"
 	"github.com/stretchr/testify/require"
 
-	spaceservice "github.com/anyproto/anytype-heart/space/spacecore"
+	"github.com/anyproto/anytype-heart/space/spacedomain"
 )
 
 func Test_Payloads(t *testing.T) {
@@ -29,11 +28,11 @@ func Test_Payloads(t *testing.T) {
 		ch, err := builder.Unmarshall(root, true)
 		require.NoError(t, err)
 		rootModel := &treechangeproto.TreeChangeInfo{}
-		err = proto.Unmarshal(ch.Data, rootModel)
+		err = rootModel.UnmarshalVT(ch.Data)
 		require.NoError(t, err)
 
 		require.Equal(t, rootModel.ChangePayload, changePayload)
-		require.Equal(t, rootModel.ChangeType, spaceservice.ChangeType)
+		require.Equal(t, rootModel.ChangeType, spacedomain.ChangeType)
 		require.Equal(t, ch.Timestamp, timestamp)
 	}
 
@@ -51,8 +50,8 @@ func Test_Payloads(t *testing.T) {
 		// checking that created roots are not equal
 		require.NotEqual(t, firstRoot, secondRoot)
 
-		checkRoot(firstRoot, changePayload, spaceservice.ChangeType, timestamp)
-		checkRoot(secondRoot, changePayload, spaceservice.ChangeType, timestamp)
+		checkRoot(firstRoot, changePayload, spacedomain.ChangeType, timestamp)
+		checkRoot(secondRoot, changePayload, spacedomain.ChangeType, timestamp)
 	})
 
 	t.Run("test derive payload", func(t *testing.T) {
@@ -66,6 +65,6 @@ func Test_Payloads(t *testing.T) {
 
 		// checking that derived roots are equal
 		require.Equal(t, firstRoot, secondRoot)
-		checkRoot(firstRoot, changePayload, spaceservice.ChangeType, 0)
+		checkRoot(firstRoot, changePayload, spacedomain.ChangeType, 0)
 	})
 }

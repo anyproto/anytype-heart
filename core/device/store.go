@@ -1,18 +1,16 @@
 package device
 
 import (
-	"github.com/dgraph-io/badger/v4"
+	"context"
+	"errors"
+	"fmt"
+
+	anystore "github.com/anyproto/any-store"
 	"github.com/gogo/protobuf/proto"
-	ds "github.com/ipfs/go-datastore"
 
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	"github.com/anyproto/anytype-heart/util/badgerhelper"
+	"github.com/anyproto/anytype-heart/util/keyvaluestore"
 )
-
-const devicesInfo = "devices"
-
-var deviceInfo = ds.NewKey("/" + devicesInfo + "/info")
 
 type Store interface {
 	SaveDevice(device *model.DeviceInfo) error
@@ -21,80 +19,70 @@ type Store interface {
 }
 
 type deviceStore struct {
-	db *badger.DB
+	db keyvaluestore.Store[*model.DeviceInfo]
 }
 
-func NewStore(db *badger.DB) Store {
-	return &deviceStore{db: db}
+func NewStore(db anystore.DB) (Store, error) {
+	kv, err := keyvaluestore.New(db, "devices", func(info *model.DeviceInfo) ([]byte, error) {
+		return info.Marshal()
+	}, func(raw []byte) (*model.DeviceInfo, error) {
+		v := &model.DeviceInfo{}
+		return v, proto.Unmarshal(raw, v)
+	})
+	if err != nil {
+		return nil, fmt.Errorf("init store: %w", err)
+	}
+	return &deviceStore{db: kv}, nil
 }
 
 func (n *deviceStore) SaveDevice(device *model.DeviceInfo) error {
-	return n.db.Update(func(txn *badger.Txn) error {
-		_, err := txn.Get(deviceInfo.ChildString(device.Id).Bytes())
-		if err != nil && !badgerhelper.IsNotFound(err) {
-			return err
+	tx, err := n.db.WriteTx(context.Background())
+	if err != nil {
+		return fmt.Errorf("create write tx: %w", err)
+	}
+	defer tx.Rollback()
+
+	ok, err := n.db.Has(tx.Context(), device.Id)
+	if err != nil {
+		return fmt.Errorf("has: %w", err)
+	}
+
+	if !ok {
+		err = n.db.Set(tx.Context(), device.Id, device)
+		if err != nil {
+			return fmt.Errorf("set: %w", err)
 		}
-		if badgerhelper.IsNotFound(err) {
-			infoRaw, err := device.Marshal()
-			if err != nil {
-				return err
-			}
-			return txn.Set(deviceInfo.ChildString(device.Id).Bytes(), infoRaw)
-		}
-		return nil
-	})
+	}
+	return tx.Commit()
 }
 
 func (n *deviceStore) ListDevices() ([]*model.DeviceInfo, error) {
-	return badgerhelper.ViewTxnWithResult(n.db, func(txn *badger.Txn) ([]*model.DeviceInfo, error) {
-		keys := localstore.GetKeys(txn, deviceInfo.String(), 0)
-		devicesIds, err := localstore.GetLeavesFromResults(keys)
-		if err != nil {
-			return nil, err
-		}
-		deviceInfos := make([]*model.DeviceInfo, 0, len(devicesIds))
-		for _, id := range devicesIds {
-			info := deviceInfo.ChildString(id)
-			device, err := badgerhelper.GetValueTxn(txn, info.Bytes(), unmarshalDeviceInfo)
-			if badgerhelper.IsNotFound(err) {
-				continue
-			}
-			deviceInfos = append(deviceInfos, device)
-		}
-		return deviceInfos, nil
-	})
+	return n.db.ListAllValues(context.Background())
 }
 
 func (n *deviceStore) UpdateDeviceName(id, name string) error {
-	return n.db.Update(func(txn *badger.Txn) error {
-		item, err := txn.Get(deviceInfo.ChildString(id).Bytes())
-		if err != nil && !badgerhelper.IsNotFound(err) {
-			return err
-		}
-		var info *model.DeviceInfo
-		if badgerhelper.IsNotFound(err) {
-			info = &model.DeviceInfo{
-				Id:   id,
-				Name: name,
-			}
-		} else {
-			if err = item.Value(func(val []byte) error {
-				info, err = unmarshalDeviceInfo(val)
-				return err
-			}); err != nil {
-				return err
-			}
-			info.Name = name
-		}
-		infoRaw, err := info.Marshal()
-		if err != nil {
-			return err
-		}
-		return txn.Set(deviceInfo.ChildString(id).Bytes(), infoRaw)
-	})
-}
+	tx, err := n.db.WriteTx(context.Background())
+	if err != nil {
+		return fmt.Errorf("create write tx: %w", err)
+	}
+	defer tx.Rollback()
 
-func unmarshalDeviceInfo(raw []byte) (*model.DeviceInfo, error) {
-	v := &model.DeviceInfo{}
-	return v, proto.Unmarshal(raw, v)
+	info, err := n.db.Get(tx.Context(), id)
+	if errors.Is(err, anystore.ErrDocNotFound) {
+		info = &model.DeviceInfo{
+			Id:   id,
+			Name: name,
+		}
+	} else if err != nil {
+		return fmt.Errorf("get device: %w", err)
+	} else {
+		info.Name = name
+	}
+
+	err = n.db.Set(tx.Context(), id, info)
+	if err != nil {
+		return fmt.Errorf("set: %w", err)
+	}
+
+	return tx.Commit()
 }

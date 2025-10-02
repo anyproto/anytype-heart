@@ -7,7 +7,6 @@ import (
 	"testing"
 
 	"github.com/anyproto/any-sync/app"
-	"github.com/anyproto/any-sync/commonspace/object/tree/treechangeproto"
 	"github.com/anyproto/any-sync/commonspace/object/tree/treestorage"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -15,7 +14,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/import/common/objectid/mock_objectid"
 	"github.com/anyproto/anytype-heart/core/block/import/web/parsers/mock_parsers"
 	"github.com/anyproto/anytype-heart/core/block/process"
-	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/core/files/filesync/mock_filesync"
 	"github.com/anyproto/anytype-heart/space/mock_space"
 
 	"github.com/anyproto/anytype-heart/core/block/import/common"
@@ -26,10 +25,8 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/import/web/parsers"
 	"github.com/anyproto/anytype-heart/core/domain/objectorigin"
 	"github.com/anyproto/anytype-heart/core/event/mock_event"
-	"github.com/anyproto/anytype-heart/core/filestorage/filesync/mock_filesync"
 	"github.com/anyproto/anytype-heart/core/notifications/mock_notifications"
 	"github.com/anyproto/anytype-heart/pb"
-	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/tests/testutil"
@@ -37,7 +34,9 @@ import (
 
 func Test_ImportSuccess(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
-		i := Import{}
+		i := Import{
+			deps: &Dependencies{},
+		}
 
 		converter := mock_common.NewMockConverter(t)
 		converter.EXPECT().GetSnapshots(mock.Anything, mock.Anything, mock.Anything).Return(&common.Response{Snapshots: []*common.Snapshot{{
@@ -56,21 +55,21 @@ func Test_ImportSuccess(t *testing.T) {
 				},
 			},
 			Id: "bafybbbbruo3kqubijrbhr24zonagbz3ksxbrutwjjoczf37axdsusu4a"}}}, nil).Times(1)
-		i.converters = make(map[string]common.Converter, 0)
-		i.converters["Notion"] = converter
+		i.deps.converters = make(map[string]common.Converter, 0)
+		i.deps.converters["Notion"] = converter
 		creator := mock_objectcreator.NewMockService(t)
 		creator.EXPECT().Create(mock.Anything, mock.Anything).Return(nil, "", nil).Times(1)
-		i.oc = creator
+		i.deps.objectCreator = creator
 
 		idGetter := mock_objectid.NewMockIdAndKeyProvider(t)
 		idGetter.EXPECT().GetInternalKey(mock.Anything).Return("").Times(1)
 		idGetter.EXPECT().GetIDAndPayload(mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return("id", treestorage.TreeStorageCreatePayload{}, nil).Times(1)
-		i.idProvider = idGetter
+		i.deps.idProvider = idGetter
 
 		fileSync := mock_filesync.NewMockFileSync(t)
 		fileSync.EXPECT().SendImportEvents().Return().Times(1)
 		fileSync.EXPECT().ClearImportEvents().Return().Times(1)
-		i.fileSync = fileSync
+		i.deps.fileSync = fileSync
 
 		importRequest := &ImportRequest{
 			&pb.RpcObjectImportRequest{
@@ -79,6 +78,7 @@ func Test_ImportSuccess(t *testing.T) {
 				Type:                  0,
 				Mode:                  0,
 				SpaceId:               "space1",
+				NoProgress:            true,
 			}, objectorigin.Import(model.Import_Notion),
 			nil,
 			false,
@@ -90,7 +90,7 @@ func Test_ImportSuccess(t *testing.T) {
 	})
 	t.Run("success with notification", func(t *testing.T) {
 		// given
-		i := Import{}
+		i := Import{deps: &Dependencies{}}
 
 		converter := mock_common.NewMockConverter(t)
 		converter.EXPECT().GetSnapshots(mock.Anything, mock.Anything, mock.Anything).Return(&common.Response{Snapshots: []*common.Snapshot{{
@@ -109,21 +109,21 @@ func Test_ImportSuccess(t *testing.T) {
 				},
 			},
 			Id: "bafybbbbruo3kqubijrbhr24zonagbz3ksxbrutwjjoczf37axdsusu4a"}}}, nil).Times(1)
-		i.converters = make(map[string]common.Converter, 0)
-		i.converters["Notion"] = converter
+		i.deps.converters = make(map[string]common.Converter, 0)
+		i.deps.converters["Notion"] = converter
 		creator := mock_objectcreator.NewMockService(t)
 		creator.EXPECT().Create(mock.Anything, mock.Anything).Return(nil, "", nil).Times(1)
-		i.oc = creator
+		i.deps.objectCreator = creator
 
 		idGetter := mock_objectid.NewMockIdAndKeyProvider(t)
 		idGetter.EXPECT().GetInternalKey(mock.Anything).Return("").Times(1)
 		idGetter.EXPECT().GetIDAndPayload(mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return("id", treestorage.TreeStorageCreatePayload{}, nil).Times(1)
-		i.idProvider = idGetter
+		i.deps.idProvider = idGetter
 
 		fileSync := mock_filesync.NewMockFileSync(t)
 		fileSync.EXPECT().SendImportEvents().Return().Times(1)
 		fileSync.EXPECT().ClearImportEvents().Return().Times(1)
-		i.fileSync = fileSync
+		i.deps.fileSync = fileSync
 
 		notificationsService := mock_notifications.NewMockNotifications(t)
 
@@ -171,22 +171,22 @@ func setupProcessService(t *testing.T, notificationProcess process.Progress) {
 }
 
 func Test_ImportErrorFromConverter(t *testing.T) {
-	i := Import{}
+	i := Import{deps: &Dependencies{}}
 
 	converter := mock_common.NewMockConverter(t)
 	e := common.NewError(0)
 	e.Add(fmt.Errorf("converter error"))
 	converter.EXPECT().GetSnapshots(mock.Anything, mock.Anything, mock.Anything).Return(nil, e).Times(1)
-	i.converters = make(map[string]common.Converter, 0)
-	i.converters["Notion"] = converter
+	i.deps.converters = make(map[string]common.Converter, 0)
+	i.deps.converters["Notion"] = converter
 	creator := mock_objectcreator.NewMockService(t)
-	i.oc = creator
+	i.deps.objectCreator = creator
 	idGetter := mock_objectid.NewMockIdAndKeyProvider(t)
-	i.idProvider = idGetter
+	i.deps.idProvider = idGetter
 
 	fileSync := mock_filesync.NewMockFileSync(t)
 	fileSync.EXPECT().ClearImportEvents().Return().Times(1)
-	i.fileSync = fileSync
+	i.deps.fileSync = fileSync
 
 	importRequest := &ImportRequest{
 		&pb.RpcObjectImportRequest{
@@ -195,6 +195,7 @@ func Test_ImportErrorFromConverter(t *testing.T) {
 			Type:                  0,
 			Mode:                  0,
 			SpaceId:               "space1",
+			NoProgress:            true,
 		},
 		objectorigin.Import(model.Import_Notion),
 		nil,
@@ -209,7 +210,7 @@ func Test_ImportErrorFromConverter(t *testing.T) {
 }
 
 func Test_ImportErrorFromObjectCreator(t *testing.T) {
-	i := Import{}
+	i := Import{deps: &Dependencies{}}
 
 	converter := mock_common.NewMockConverter(t)
 	converter.EXPECT().GetSnapshots(mock.Anything, mock.Anything, mock.Anything).Return(&common.Response{Snapshots: []*common.Snapshot{{
@@ -229,20 +230,20 @@ func Test_ImportErrorFromObjectCreator(t *testing.T) {
 			SbType: smartblock.SmartBlockTypePage,
 		},
 		Id: "bafybbbbruo3kqubijrbhr24zonagbz3ksxbrutwjjoczf37axdsusu4a"}}}, nil).Times(1)
-	i.converters = make(map[string]common.Converter, 0)
-	i.converters["Notion"] = converter
+	i.deps.converters = make(map[string]common.Converter, 0)
+	i.deps.converters["Notion"] = converter
 	creator := mock_objectcreator.NewMockService(t)
 	//nolint:lll
 	creator.EXPECT().Create(mock.Anything, mock.Anything).Return(nil, "", errors.New("creator error")).Times(1)
-	i.oc = creator
+	i.deps.objectCreator = creator
 	idGetter := mock_objectid.NewMockIdAndKeyProvider(t)
 	idGetter.EXPECT().GetIDAndPayload(mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return("id", treestorage.TreeStorageCreatePayload{}, nil).Times(1)
 	idGetter.EXPECT().GetInternalKey(mock.Anything).Return("").Times(1)
-	i.idProvider = idGetter
+	i.deps.idProvider = idGetter
 
 	fileSync := mock_filesync.NewMockFileSync(t)
 	fileSync.EXPECT().ClearImportEvents().Return().Times(1)
-	i.fileSync = fileSync
+	i.deps.fileSync = fileSync
 
 	request := &ImportRequest{
 		&pb.RpcObjectImportRequest{
@@ -251,6 +252,7 @@ func Test_ImportErrorFromObjectCreator(t *testing.T) {
 			Type:                  0,
 			Mode:                  0,
 			SpaceId:               "space1",
+			NoProgress:            true,
 		}, objectorigin.Import(model.Import_Notion),
 		nil,
 		false,
@@ -264,7 +266,7 @@ func Test_ImportErrorFromObjectCreator(t *testing.T) {
 }
 
 func Test_ImportIgnoreErrorMode(t *testing.T) {
-	i := Import{}
+	i := Import{deps: &Dependencies{}}
 
 	converter := mock_common.NewMockConverter(t)
 	e := common.NewError(0)
@@ -285,19 +287,19 @@ func Test_ImportIgnoreErrorMode(t *testing.T) {
 			SbType: smartblock.SmartBlockTypePage,
 		},
 		Id: "bafybbbbruo3kqubijrbhr24zonagbz3ksxbrutwjjoczf37axdsusu4a"}}}, e).Times(1)
-	i.converters = make(map[string]common.Converter, 0)
-	i.converters["Notion"] = converter
+	i.deps.converters = make(map[string]common.Converter, 0)
+	i.deps.converters["Notion"] = converter
 	creator := mock_objectcreator.NewMockService(t)
 	creator.EXPECT().Create(mock.Anything, mock.Anything).Return(nil, "", nil).Times(1)
-	i.oc = creator
+	i.deps.objectCreator = creator
 	idGetter := mock_objectid.NewMockIdAndKeyProvider(t)
 	idGetter.EXPECT().GetInternalKey(mock.Anything).Return("").Times(1)
 	idGetter.EXPECT().GetIDAndPayload(mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return("id", treestorage.TreeStorageCreatePayload{}, nil).Times(1)
-	i.idProvider = idGetter
+	i.deps.idProvider = idGetter
 
 	fileSync := mock_filesync.NewMockFileSync(t)
 	fileSync.EXPECT().ClearImportEvents().Return().Times(1)
-	i.fileSync = fileSync
+	i.deps.fileSync = fileSync
 
 	importRequest := &ImportRequest{
 		&pb.RpcObjectImportRequest{
@@ -306,6 +308,7 @@ func Test_ImportIgnoreErrorMode(t *testing.T) {
 			Type:                  0,
 			Mode:                  1,
 			SpaceId:               "space1",
+			NoProgress:            true,
 		},
 		objectorigin.Import(model.Import_Notion),
 		nil,
@@ -320,7 +323,7 @@ func Test_ImportIgnoreErrorMode(t *testing.T) {
 }
 
 func Test_ImportIgnoreErrorModeWithTwoErrorsPerFile(t *testing.T) {
-	i := Import{}
+	i := Import{deps: &Dependencies{}}
 
 	converter := mock_common.NewMockConverter(t)
 	e := common.NewError(0)
@@ -342,20 +345,20 @@ func Test_ImportIgnoreErrorModeWithTwoErrorsPerFile(t *testing.T) {
 			SbType: smartblock.SmartBlockTypePage,
 		},
 		Id: "bafybbbbruo3kqubijrbhr24zonagbz3ksxbrutwjjoczf37axdsusu4a"}}}, e).Times(1)
-	i.converters = make(map[string]common.Converter, 0)
-	i.converters["Notion"] = converter
+	i.deps.converters = make(map[string]common.Converter, 0)
+	i.deps.converters["Notion"] = converter
 	creator := mock_objectcreator.NewMockService(t)
 	//nolint:lll
 	creator.EXPECT().Create(mock.Anything, mock.Anything).Return(nil, "", errors.New("creator error")).Times(1)
-	i.oc = creator
+	i.deps.objectCreator = creator
 	idGetter := mock_objectid.NewMockIdAndKeyProvider(t)
 	idGetter.EXPECT().GetInternalKey(mock.Anything).Return("").Times(1)
 	idGetter.EXPECT().GetIDAndPayload(mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return("id", treestorage.TreeStorageCreatePayload{}, nil).Times(1)
-	i.idProvider = idGetter
+	i.deps.idProvider = idGetter
 
 	fileSync := mock_filesync.NewMockFileSync(t)
 	fileSync.EXPECT().ClearImportEvents().Return().Times(1)
-	i.fileSync = fileSync
+	i.deps.fileSync = fileSync
 
 	importRequest := &ImportRequest{
 		&pb.RpcObjectImportRequest{
@@ -364,6 +367,7 @@ func Test_ImportIgnoreErrorModeWithTwoErrorsPerFile(t *testing.T) {
 			Type:                  0,
 			Mode:                  1,
 			SpaceId:               "space1",
+			NoProgress:            true,
 		}, objectorigin.Import(model.Import_Notion),
 		nil,
 		false,
@@ -376,22 +380,22 @@ func Test_ImportIgnoreErrorModeWithTwoErrorsPerFile(t *testing.T) {
 }
 
 func Test_ImportExternalPlugin(t *testing.T) {
-	i := Import{}
+	i := Import{deps: &Dependencies{}}
 
-	i.converters = make(map[string]common.Converter, 0)
+	i.deps.converters = make(map[string]common.Converter, 0)
 
 	creator := mock_objectcreator.NewMockService(t)
 	creator.EXPECT().Create(mock.Anything, mock.Anything).Return(nil, "", nil).Times(1)
-	i.oc = creator
+	i.deps.objectCreator = creator
 	idGetter := mock_objectid.NewMockIdAndKeyProvider(t)
 	idGetter.EXPECT().GetInternalKey(mock.Anything).Return("").Times(1)
 	idGetter.EXPECT().GetIDAndPayload(mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return("id", treestorage.TreeStorageCreatePayload{}, nil).Times(1)
-	i.idProvider = idGetter
+	i.deps.idProvider = idGetter
 
 	fileSync := mock_filesync.NewMockFileSync(t)
 	fileSync.EXPECT().SendImportEvents().Return().Times(1)
 	fileSync.EXPECT().ClearImportEvents().Return().Times(1)
-	i.fileSync = fileSync
+	i.deps.fileSync = fileSync
 
 	snapshots := make([]*pb.RpcObjectImportRequestSnapshot, 0)
 	snapshots = append(snapshots, &pb.RpcObjectImportRequestSnapshot{
@@ -422,6 +426,7 @@ func Test_ImportExternalPlugin(t *testing.T) {
 			Type:                  model.Import_External,
 			Mode:                  2,
 			SpaceId:               "space1",
+			NoProgress:            true,
 		}, objectorigin.Import(model.Import_Notion),
 		nil,
 		false,
@@ -433,18 +438,18 @@ func Test_ImportExternalPlugin(t *testing.T) {
 }
 
 func Test_ImportExternalPluginError(t *testing.T) {
-	i := Import{}
+	i := Import{deps: &Dependencies{}}
 
-	i.converters = make(map[string]common.Converter, 0)
+	i.deps.converters = make(map[string]common.Converter, 0)
 
 	creator := mock_objectcreator.NewMockService(t)
-	i.oc = creator
+	i.deps.objectCreator = creator
 	idGetter := mock_objectid.NewMockIdAndKeyProvider(t)
-	i.idProvider = idGetter
+	i.deps.idProvider = idGetter
 
 	fileSync := mock_filesync.NewMockFileSync(t)
 	fileSync.EXPECT().ClearImportEvents().Return().Times(1)
-	i.fileSync = fileSync
+	i.deps.fileSync = fileSync
 
 	importRequest := &ImportRequest{
 		&pb.RpcObjectImportRequest{
@@ -454,6 +459,7 @@ func Test_ImportExternalPluginError(t *testing.T) {
 			Type:                  model.Import_External,
 			Mode:                  2,
 			SpaceId:               "space1",
+			NoProgress:            true,
 		},
 		objectorigin.Import(model.Import_Notion),
 		nil,
@@ -466,13 +472,13 @@ func Test_ImportExternalPluginError(t *testing.T) {
 }
 
 func Test_ListImports(t *testing.T) {
-	i := Import{}
-	i.converters = make(map[string]common.Converter, 0)
-	i.converters["Notion"] = pbc.New(nil, nil, nil)
+	i := Import{deps: &Dependencies{}}
+	i.deps.converters = make(map[string]common.Converter, 0)
+	i.deps.converters["Notion"] = pbc.New(nil, nil, nil)
 	creator := mock_objectcreator.NewMockService(t)
-	i.oc = creator
+	i.deps.objectCreator = creator
 	idGetter := mock_objectid.NewMockIdAndKeyProvider(t)
-	i.idProvider = idGetter
+	i.deps.idProvider = idGetter
 	res, err := i.ListImports(&pb.RpcObjectImportListRequest{})
 
 	assert.Nil(t, err)
@@ -482,13 +488,13 @@ func Test_ListImports(t *testing.T) {
 }
 
 func Test_ImportWebNoParser(t *testing.T) {
-	i := Import{}
-	i.converters = make(map[string]common.Converter, 0)
-	i.converters[web.Name] = web.NewConverter()
+	i := Import{deps: &Dependencies{}}
+	i.deps.converters = make(map[string]common.Converter, 0)
+	i.deps.converters[web.Name] = web.NewConverter()
 
 	creator := mock_objectcreator.NewMockService(t)
-	i.oc = creator
-	i.idProvider = mock_objectid.NewMockIdAndKeyProvider(t)
+	i.deps.objectCreator = creator
+	i.deps.idProvider = mock_objectid.NewMockIdAndKeyProvider(t)
 	_, _, err := i.ImportWeb(context.Background(), &ImportRequest{
 		RpcObjectImportRequest: &pb.RpcObjectImportRequest{
 			Params:                &pb.RpcObjectImportRequestParamsOfBookmarksParams{BookmarksParams: &pb.RpcObjectImportRequestBookmarksParams{Url: "http://example.com"}},
@@ -502,13 +508,13 @@ func Test_ImportWebNoParser(t *testing.T) {
 }
 
 func Test_ImportWebFailedToParse(t *testing.T) {
-	i := Import{}
+	i := Import{deps: &Dependencies{}}
 
-	i.converters = make(map[string]common.Converter, 0)
-	i.converters[web.Name] = web.NewConverter()
+	i.deps.converters = make(map[string]common.Converter, 0)
+	i.deps.converters[web.Name] = web.NewConverter()
 	creator := mock_objectcreator.NewMockService(t)
-	i.oc = creator
-	i.idProvider = mock_objectid.NewMockIdAndKeyProvider(t)
+	i.deps.objectCreator = creator
+	i.deps.idProvider = mock_objectid.NewMockIdAndKeyProvider(t)
 	parser := mock_parsers.NewMockParser(t)
 	parser.EXPECT().MatchUrl("http://example.com").Return(true).Times(1)
 	parser.EXPECT().ParseUrl("http://example.com").Return(nil, errors.New("failed")).Times(1)
@@ -531,20 +537,20 @@ func Test_ImportWebFailedToParse(t *testing.T) {
 }
 
 func Test_ImportWebSuccess(t *testing.T) {
-	i := Import{}
+	i := Import{deps: &Dependencies{}}
 	parsers.Parsers = []parsers.RegisterParser{}
 
-	i.converters = make(map[string]common.Converter, 0)
+	i.deps.converters = make(map[string]common.Converter, 0)
 
-	i.converters[web.Name] = web.NewConverter()
+	i.deps.converters[web.Name] = web.NewConverter()
 
 	creator := mock_objectcreator.NewMockService(t)
 	creator.EXPECT().Create(mock.Anything, mock.Anything).Return(nil, "", nil).Times(1)
-	i.oc = creator
+	i.deps.objectCreator = creator
 	idGetter := mock_objectid.NewMockIdAndKeyProvider(t)
 	idGetter.EXPECT().GetInternalKey(mock.Anything).Return("").Times(1)
 	idGetter.EXPECT().GetIDAndPayload(mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return("id", treestorage.TreeStorageCreatePayload{}, nil).Times(1)
-	i.idProvider = idGetter
+	i.deps.idProvider = idGetter
 	parser := mock_parsers.NewMockParser(t)
 	parser.EXPECT().MatchUrl("http://example.com").Return(true).Times(1)
 	parser.EXPECT().ParseUrl("http://example.com").Return(&common.StateSnapshot{Blocks: []*model.Block{&model.Block{
@@ -574,20 +580,20 @@ func Test_ImportWebSuccess(t *testing.T) {
 }
 
 func Test_ImportWebFailedToCreateObject(t *testing.T) {
-	i := Import{}
+	i := Import{deps: &Dependencies{}}
 	parsers.Parsers = []parsers.RegisterParser{}
 
-	i.converters = make(map[string]common.Converter, 0)
-	i.converters[web.Name] = web.NewConverter()
+	i.deps.converters = make(map[string]common.Converter, 0)
+	i.deps.converters[web.Name] = web.NewConverter()
 
 	creator := mock_objectcreator.NewMockService(t)
 	//nolint:lll
 	creator.EXPECT().Create(mock.Anything, mock.Anything).Return(nil, "", errors.New("error")).Times(1)
-	i.oc = creator
+	i.deps.objectCreator = creator
 	idGetter := mock_objectid.NewMockIdAndKeyProvider(t)
 	idGetter.EXPECT().GetInternalKey(mock.Anything).Return("").Times(1)
 	idGetter.EXPECT().GetIDAndPayload(mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return("id", treestorage.TreeStorageCreatePayload{}, nil).Times(1)
-	i.idProvider = idGetter
+	i.deps.idProvider = idGetter
 	parser := mock_parsers.NewMockParser(t)
 	parser.EXPECT().MatchUrl("http://example.com").Return(true).Times(1)
 	parser.EXPECT().ParseUrl("http://example.com").Return(&common.StateSnapshot{Blocks: []*model.Block{&model.Block{
@@ -618,16 +624,16 @@ func Test_ImportWebFailedToCreateObject(t *testing.T) {
 }
 
 func Test_ImportCancelError(t *testing.T) {
-	i := Import{}
+	i := Import{deps: &Dependencies{}}
 	converter := mock_common.NewMockConverter(t)
 	e := common.NewCancelError(fmt.Errorf("converter error"))
 	converter.EXPECT().GetSnapshots(mock.Anything, mock.Anything, mock.Anything).Return(&common.Response{Snapshots: nil}, e).Times(1)
-	i.converters = make(map[string]common.Converter, 0)
-	i.converters["Notion"] = converter
+	i.deps.converters = make(map[string]common.Converter, 0)
+	i.deps.converters["Notion"] = converter
 
 	fileSync := mock_filesync.NewMockFileSync(t)
 	fileSync.EXPECT().ClearImportEvents().Return().Times(1)
-	i.fileSync = fileSync
+	i.deps.fileSync = fileSync
 
 	res := i.Import(context.Background(), &ImportRequest{
 		&pb.RpcObjectImportRequest{
@@ -636,6 +642,7 @@ func Test_ImportCancelError(t *testing.T) {
 			Type:                  0,
 			Mode:                  pb.RpcObjectImportRequest_IGNORE_ERRORS,
 			SpaceId:               "space1",
+			NoProgress:            true,
 		},
 		objectorigin.Import(model.Import_Notion),
 		nil,
@@ -648,16 +655,16 @@ func Test_ImportCancelError(t *testing.T) {
 }
 
 func Test_ImportNoObjectToImportError(t *testing.T) {
-	i := Import{}
+	i := Import{deps: &Dependencies{}}
 	converter := mock_common.NewMockConverter(t)
 	e := common.NewFromError(common.ErrNoObjectInIntegration, pb.RpcObjectImportRequest_IGNORE_ERRORS)
 	converter.EXPECT().GetSnapshots(mock.Anything, mock.Anything, mock.Anything).Return(&common.Response{Snapshots: nil}, e).Times(1)
-	i.converters = make(map[string]common.Converter, 0)
-	i.converters["Notion"] = converter
+	i.deps.converters = make(map[string]common.Converter, 0)
+	i.deps.converters["Notion"] = converter
 
 	fileSync := mock_filesync.NewMockFileSync(t)
 	fileSync.EXPECT().ClearImportEvents().Return().Times(1)
-	i.fileSync = fileSync
+	i.deps.fileSync = fileSync
 
 	importRequest := &ImportRequest{
 		&pb.RpcObjectImportRequest{
@@ -666,6 +673,7 @@ func Test_ImportNoObjectToImportError(t *testing.T) {
 			Type:                  0,
 			Mode:                  pb.RpcObjectImportRequest_IGNORE_ERRORS,
 			SpaceId:               "space1",
+			NoProgress:            true,
 		},
 		objectorigin.Import(model.Import_Notion),
 		nil,
@@ -679,7 +687,7 @@ func Test_ImportNoObjectToImportError(t *testing.T) {
 }
 
 func Test_ImportNoObjectToImportErrorModeAllOrNothing(t *testing.T) {
-	i := Import{}
+	i := Import{deps: &Dependencies{}}
 	converter := mock_common.NewMockConverter(t)
 	e := common.NewFromError(common.ErrNoObjectInIntegration, pb.RpcObjectImportRequest_ALL_OR_NOTHING)
 	converter.EXPECT().GetSnapshots(mock.Anything, mock.Anything, mock.Anything).Return(&common.Response{Snapshots: []*common.Snapshot{{
@@ -698,12 +706,12 @@ func Test_ImportNoObjectToImportErrorModeAllOrNothing(t *testing.T) {
 			},
 		},
 		Id: "bafybbbbruo3kqubijrbhr24zonagbz3ksxbrutwjjoczf37axdsusu4a"}}}, e).Times(1)
-	i.converters = make(map[string]common.Converter, 0)
-	i.converters["Notion"] = converter
+	i.deps.converters = make(map[string]common.Converter, 0)
+	i.deps.converters["Notion"] = converter
 
 	fileSync := mock_filesync.NewMockFileSync(t)
 	fileSync.EXPECT().ClearImportEvents().Return().Times(1)
-	i.fileSync = fileSync
+	i.deps.fileSync = fileSync
 
 	importRequest := &ImportRequest{
 		&pb.RpcObjectImportRequest{
@@ -712,6 +720,7 @@ func Test_ImportNoObjectToImportErrorModeAllOrNothing(t *testing.T) {
 			Type:                  0,
 			Mode:                  pb.RpcObjectImportRequest_ALL_OR_NOTHING,
 			SpaceId:               "space1",
+			NoProgress:            true,
 		},
 		objectorigin.Import(model.Import_Notion),
 		nil,
@@ -725,7 +734,7 @@ func Test_ImportNoObjectToImportErrorModeAllOrNothing(t *testing.T) {
 }
 
 func Test_ImportNoObjectToImportErrorIgnoreErrorsMode(t *testing.T) {
-	i := Import{}
+	i := Import{deps: &Dependencies{}}
 	e := common.NewFromError(common.ErrNoObjectInIntegration, pb.RpcObjectImportRequest_IGNORE_ERRORS)
 	converter := mock_common.NewMockConverter(t)
 	converter.EXPECT().GetSnapshots(mock.Anything, mock.Anything, mock.Anything).Return(&common.Response{Snapshots: []*common.Snapshot{{
@@ -745,20 +754,20 @@ func Test_ImportNoObjectToImportErrorIgnoreErrorsMode(t *testing.T) {
 			SbType: smartblock.SmartBlockTypePage,
 		},
 		Id: "bafybbbbruo3kqubijrbhr24zonagbz3ksxbrutwjjoczf37axdsusu4a"}}}, e).Times(1)
-	i.converters = make(map[string]common.Converter, 0)
-	i.converters["Notion"] = converter
+	i.deps.converters = make(map[string]common.Converter, 0)
+	i.deps.converters["Notion"] = converter
 	creator := mock_objectcreator.NewMockService(t)
 	//nolint:lll
 	creator.EXPECT().Create(mock.Anything, mock.Anything).Return(nil, "", nil).Times(1)
-	i.oc = creator
+	i.deps.objectCreator = creator
 	idGetter := mock_objectid.NewMockIdAndKeyProvider(t)
 	idGetter.EXPECT().GetInternalKey(mock.Anything).Return("").Times(1)
 	idGetter.EXPECT().GetIDAndPayload(mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return("id", treestorage.TreeStorageCreatePayload{}, nil).Times(1)
-	i.idProvider = idGetter
+	i.deps.idProvider = idGetter
 
 	fileSync := mock_filesync.NewMockFileSync(t)
 	fileSync.EXPECT().ClearImportEvents().Return().Times(1)
-	i.fileSync = fileSync
+	i.deps.fileSync = fileSync
 
 	importRequest := &ImportRequest{
 		&pb.RpcObjectImportRequest{
@@ -767,6 +776,7 @@ func Test_ImportNoObjectToImportErrorIgnoreErrorsMode(t *testing.T) {
 			Type:                  0,
 			Mode:                  pb.RpcObjectImportRequest_IGNORE_ERRORS,
 			SpaceId:               "space1",
+			NoProgress:            true,
 		},
 		objectorigin.Import(model.Import_Notion),
 		nil,
@@ -780,7 +790,7 @@ func Test_ImportNoObjectToImportErrorIgnoreErrorsMode(t *testing.T) {
 }
 
 func Test_ImportErrLimitExceeded(t *testing.T) {
-	i := Import{}
+	i := Import{deps: &Dependencies{}}
 	converter := mock_common.NewMockConverter(t)
 	e := common.NewFromError(common.ErrCsvLimitExceeded, pb.RpcObjectImportRequest_ALL_OR_NOTHING)
 	converter.EXPECT().GetSnapshots(mock.Anything, mock.Anything, mock.Anything).Return(&common.Response{Snapshots: []*common.Snapshot{{
@@ -800,12 +810,12 @@ func Test_ImportErrLimitExceeded(t *testing.T) {
 			SbType: smartblock.SmartBlockTypePage,
 		},
 		Id: "bafybbbbruo3kqubijrbhr24zonagbz3ksxbrutwjjoczf37axdsusu4a"}}}, e).Times(1)
-	i.converters = make(map[string]common.Converter, 0)
-	i.converters["Notion"] = converter
+	i.deps.converters = make(map[string]common.Converter, 0)
+	i.deps.converters["Notion"] = converter
 
 	fileSync := mock_filesync.NewMockFileSync(t)
 	fileSync.EXPECT().ClearImportEvents().Return().Times(1)
-	i.fileSync = fileSync
+	i.deps.fileSync = fileSync
 
 	importRequest := &ImportRequest{
 		&pb.RpcObjectImportRequest{
@@ -814,6 +824,7 @@ func Test_ImportErrLimitExceeded(t *testing.T) {
 			Type:                  0,
 			Mode:                  pb.RpcObjectImportRequest_ALL_OR_NOTHING,
 			SpaceId:               "space1",
+			NoProgress:            true,
 		},
 		objectorigin.Import(model.Import_Notion),
 		nil,
@@ -827,7 +838,7 @@ func Test_ImportErrLimitExceeded(t *testing.T) {
 }
 
 func Test_ImportErrLimitExceededIgnoreErrorMode(t *testing.T) {
-	i := Import{}
+	i := Import{deps: &Dependencies{}}
 	converter := mock_common.NewMockConverter(t)
 	e := common.NewFromError(common.ErrCsvLimitExceeded, pb.RpcObjectImportRequest_ALL_OR_NOTHING)
 	converter.EXPECT().GetSnapshots(mock.Anything, mock.Anything, mock.Anything).Return(&common.Response{Snapshots: []*common.Snapshot{{
@@ -847,12 +858,12 @@ func Test_ImportErrLimitExceededIgnoreErrorMode(t *testing.T) {
 			SbType: smartblock.SmartBlockTypePage,
 		},
 		Id: "bafybbbbruo3kqubijrbhr24zonagbz3ksxbrutwjjoczf37axdsusu4a"}}}, e).Times(1)
-	i.converters = make(map[string]common.Converter, 0)
-	i.converters["Notion"] = converter
+	i.deps.converters = make(map[string]common.Converter, 0)
+	i.deps.converters["Notion"] = converter
 
 	fileSync := mock_filesync.NewMockFileSync(t)
 	fileSync.EXPECT().ClearImportEvents().Return().Times(1)
-	i.fileSync = fileSync
+	i.deps.fileSync = fileSync
 
 	importRequest := &ImportRequest{
 		&pb.RpcObjectImportRequest{
@@ -861,6 +872,7 @@ func Test_ImportErrLimitExceededIgnoreErrorMode(t *testing.T) {
 			Type:                  0,
 			Mode:                  pb.RpcObjectImportRequest_IGNORE_ERRORS,
 			SpaceId:               "space1",
+			NoProgress:            true,
 		},
 		objectorigin.Import(model.Import_Notion),
 		nil,
@@ -873,80 +885,15 @@ func Test_ImportErrLimitExceededIgnoreErrorMode(t *testing.T) {
 	assert.True(t, errors.Is(res.Err, common.ErrCsvLimitExceeded))
 }
 
-func TestImport_replaceRelationKeyWithNew(t *testing.T) {
-	t.Run("no matching relation id in oldIDToNew map", func(t *testing.T) {
-		// given
-		i := Import{}
-		option := &common.Snapshot{
-			Snapshot: &common.SnapshotModel{
-				Data: &common.StateSnapshot{
-					Details: domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
-						bundle.RelationKeyRelationKey: domain.String("key"),
-					}),
-				},
-				SbType: smartblock.SmartBlockTypeSubObject,
-			},
-		}
-		oldIDToNew := make(map[string]string, 0)
-
-		// when
-		i.replaceRelationKeyWithNew(option, oldIDToNew)
-
-		// then
-		assert.Equal(t, "key", option.Snapshot.Data.Details.GetString(bundle.RelationKeyRelationKey))
-	})
-	t.Run("oldIDToNew map have relation id", func(t *testing.T) {
-		// given
-		i := Import{}
-		option := &common.Snapshot{
-			Snapshot: &common.SnapshotModel{
-				Data: &common.StateSnapshot{
-					Details: domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
-						bundle.RelationKeyRelationKey: domain.String("key"),
-					}),
-				},
-				SbType: smartblock.SmartBlockTypeSubObject,
-			},
-		}
-		oldIDToNew := map[string]string{"key": "newkey"}
-
-		// when
-		i.replaceRelationKeyWithNew(option, oldIDToNew)
-
-		// then
-		assert.Equal(t, "newkey", option.Snapshot.Data.Details.GetString(bundle.RelationKeyRelationKey))
-	})
-
-	t.Run("no details", func(t *testing.T) {
-		// given
-		i := Import{}
-		option := &common.Snapshot{
-			Snapshot: &common.SnapshotModel{
-				Data: &common.StateSnapshot{
-					Details: nil,
-				},
-				SbType: smartblock.SmartBlockTypeSubObject,
-			},
-		}
-		oldIDToNew := map[string]string{"rel-key": "rel-newkey"}
-
-		// when
-		i.replaceRelationKeyWithNew(option, oldIDToNew)
-
-		// then
-		assert.Nil(t, option.Snapshot.Data.Details)
-	})
-}
-
 func Test_ImportRootCollectionInResponse(t *testing.T) {
 	t.Run("return root collection id in case of error", func(t *testing.T) {
 		// given
-		i := Import{}
+		i := Import{deps: &Dependencies{}}
 		expectedRootCollectionID := "id"
 		originalRootCollectionID := "rootCollectionId"
 
 		converter := mock_common.NewMockConverter(t)
-		converter.EXPECT().GetSnapshots(mock.Anything, mock.Anything, mock.Anything).Return(&common.Response{RootCollectionID: originalRootCollectionID,
+		converter.EXPECT().GetSnapshots(mock.Anything, mock.Anything, mock.Anything).Return(&common.Response{RootObjectID: originalRootCollectionID,
 			Snapshots: []*common.Snapshot{
 				{
 					Snapshot: &common.SnapshotModel{
@@ -957,24 +904,24 @@ func Test_ImportRootCollectionInResponse(t *testing.T) {
 				},
 			},
 		}, nil).Times(1)
-		i.converters = make(map[string]common.Converter, 0)
-		i.converters["Notion"] = converter
+		i.deps.converters = make(map[string]common.Converter, 0)
+		i.deps.converters["Notion"] = converter
 		creator := mock_objectcreator.NewMockService(t)
 		creator.EXPECT().Create(mock.Anything, mock.Anything).Return(nil, "", nil).Times(1)
-		i.oc = creator
+		i.deps.objectCreator = creator
 
 		idGetter := mock_objectid.NewMockIdAndKeyProvider(t)
 		idGetter.EXPECT().GetInternalKey(mock.Anything).Return("").Times(1)
 		idGetter.EXPECT().GetIDAndPayload(mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(expectedRootCollectionID, treestorage.TreeStorageCreatePayload{}, nil).Times(1)
-		i.idProvider = idGetter
+		i.deps.idProvider = idGetter
 
 		fileSync := mock_filesync.NewMockFileSync(t)
 		fileSync.EXPECT().SendImportEvents().Return().Times(1)
 		fileSync.EXPECT().ClearImportEvents().Return().Times(1)
-		i.fileSync = fileSync
+		i.deps.fileSync = fileSync
 		mockSpaceService := mock_space.NewMockService(t)
-		mockSpaceService.EXPECT().Get(nil, "space1").Return(nil, fmt.Errorf("not found"))
-		i.spaceService = mockSpaceService
+		mockSpaceService.EXPECT().Get(mock.Anything, "space1").Return(nil, fmt.Errorf("not found"))
+		i.deps.spaceService = mockSpaceService
 
 		// when
 		importRequest := &ImportRequest{
@@ -984,6 +931,7 @@ func Test_ImportRootCollectionInResponse(t *testing.T) {
 				Type:                  0,
 				Mode:                  0,
 				SpaceId:               "space1",
+				NoProgress:            true,
 			},
 			objectorigin.Import(model.Import_Notion),
 			nil,
@@ -1000,13 +948,13 @@ func Test_ImportRootCollectionInResponse(t *testing.T) {
 
 	t.Run("return empty root collection id in case of error", func(t *testing.T) {
 		// given
-		i := Import{}
+		i := Import{deps: &Dependencies{}}
 		expectedRootCollectionId := ""
 		originalRootCollectionId := "rootCollectionId"
 		creatorError := errors.New("creator error")
 
 		converter := mock_common.NewMockConverter(t)
-		converter.EXPECT().GetSnapshots(mock.Anything, mock.Anything, mock.Anything).Return(&common.Response{RootCollectionID: originalRootCollectionId,
+		converter.EXPECT().GetSnapshots(mock.Anything, mock.Anything, mock.Anything).Return(&common.Response{RootObjectID: originalRootCollectionId,
 			Snapshots: []*common.Snapshot{
 				{
 					Snapshot: &common.SnapshotModel{
@@ -1017,21 +965,21 @@ func Test_ImportRootCollectionInResponse(t *testing.T) {
 				},
 			},
 		}, nil).Times(1)
-		i.converters = make(map[string]common.Converter, 0)
-		i.converters["Notion"] = converter
+		i.deps.converters = make(map[string]common.Converter, 0)
+		i.deps.converters["Notion"] = converter
 
 		creator := mock_objectcreator.NewMockService(t)
 		creator.EXPECT().Create(mock.Anything, mock.Anything).Return(nil, "", creatorError).Times(1)
-		i.oc = creator
+		i.deps.objectCreator = creator
 
 		idGetter := mock_objectid.NewMockIdAndKeyProvider(t)
 		idGetter.EXPECT().GetInternalKey(mock.Anything).Return("").Times(1)
 		idGetter.EXPECT().GetIDAndPayload(mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return("id", treestorage.TreeStorageCreatePayload{}, nil).Times(1)
-		i.idProvider = idGetter
+		i.deps.idProvider = idGetter
 
 		fileSync := mock_filesync.NewMockFileSync(t)
 		fileSync.EXPECT().ClearImportEvents().Return().Times(1)
-		i.fileSync = fileSync
+		i.deps.fileSync = fileSync
 
 		// when
 		importRequest := &ImportRequest{
@@ -1041,6 +989,7 @@ func Test_ImportRootCollectionInResponse(t *testing.T) {
 				Type:                  0,
 				Mode:                  0,
 				SpaceId:               "space1",
+				NoProgress:            true,
 			},
 			objectorigin.Import(model.Import_Notion),
 			nil,
@@ -1056,13 +1005,13 @@ func Test_ImportRootCollectionInResponse(t *testing.T) {
 
 	t.Run("return empty root collection id in case of error from import converter", func(t *testing.T) {
 		// given
-		i := Import{}
+		i := Import{deps: &Dependencies{}}
 		expectedRootCollectionId := ""
 		originalRootCollectionId := "rootCollectionId"
 		converterError := common.NewFromError(errors.New("converter error"), pb.RpcObjectImportRequest_ALL_OR_NOTHING)
 
 		converter := mock_common.NewMockConverter(t)
-		converter.EXPECT().GetSnapshots(mock.Anything, mock.Anything, mock.Anything).Return(&common.Response{RootCollectionID: originalRootCollectionId,
+		converter.EXPECT().GetSnapshots(mock.Anything, mock.Anything, mock.Anything).Return(&common.Response{RootObjectID: originalRootCollectionId,
 			Snapshots: []*common.Snapshot{
 				{
 					Snapshot: &common.SnapshotModel{
@@ -1072,12 +1021,12 @@ func Test_ImportRootCollectionInResponse(t *testing.T) {
 				},
 			},
 		}, converterError).Times(1)
-		i.converters = make(map[string]common.Converter, 0)
-		i.converters["Notion"] = converter
+		i.deps.converters = make(map[string]common.Converter, 0)
+		i.deps.converters["Notion"] = converter
 
 		fileSync := mock_filesync.NewMockFileSync(t)
 		fileSync.EXPECT().ClearImportEvents().Return().Times(1)
-		i.fileSync = fileSync
+		i.deps.fileSync = fileSync
 
 		// when
 		importRequest := &ImportRequest{
@@ -1087,6 +1036,7 @@ func Test_ImportRootCollectionInResponse(t *testing.T) {
 				Type:                  0,
 				Mode:                  0,
 				SpaceId:               "space1",
+				NoProgress:            true,
 			},
 			objectorigin.Import(model.Import_Notion),
 			nil,
@@ -1102,13 +1052,13 @@ func Test_ImportRootCollectionInResponse(t *testing.T) {
 
 	t.Run("return empty root collection id in case of error with Ignore_Error mode", func(t *testing.T) {
 		// given
-		i := Import{}
+		i := Import{deps: &Dependencies{}}
 		expectedRootCollectionId := ""
 		originalRootCollectionId := "rootCollectionId"
 		converterError := common.NewFromError(errors.New("converter error"), pb.RpcObjectImportRequest_ALL_OR_NOTHING)
 
 		converter := mock_common.NewMockConverter(t)
-		converter.EXPECT().GetSnapshots(mock.Anything, mock.Anything, mock.Anything).Return(&common.Response{RootCollectionID: originalRootCollectionId,
+		converter.EXPECT().GetSnapshots(mock.Anything, mock.Anything, mock.Anything).Return(&common.Response{RootObjectID: originalRootCollectionId,
 			Snapshots: []*common.Snapshot{
 				{
 					Snapshot: &common.SnapshotModel{
@@ -1119,21 +1069,21 @@ func Test_ImportRootCollectionInResponse(t *testing.T) {
 				},
 			},
 		}, converterError).Times(1)
-		i.converters = make(map[string]common.Converter, 0)
-		i.converters["Notion"] = converter
+		i.deps.converters = make(map[string]common.Converter, 0)
+		i.deps.converters["Notion"] = converter
 
 		creator := mock_objectcreator.NewMockService(t)
 		creator.EXPECT().Create(mock.Anything, mock.Anything).Return(nil, "", nil).Times(1)
-		i.oc = creator
+		i.deps.objectCreator = creator
 
 		idGetter := mock_objectid.NewMockIdAndKeyProvider(t)
 		idGetter.EXPECT().GetInternalKey(mock.Anything).Return("").Times(1)
 		idGetter.EXPECT().GetIDAndPayload(mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return("id", treestorage.TreeStorageCreatePayload{}, nil).Times(1)
-		i.idProvider = idGetter
+		i.deps.idProvider = idGetter
 
 		fileSync := mock_filesync.NewMockFileSync(t)
 		fileSync.EXPECT().ClearImportEvents().Return().Times(1)
-		i.fileSync = fileSync
+		i.deps.fileSync = fileSync
 
 		// when
 		importRequest := &ImportRequest{
@@ -1143,6 +1093,7 @@ func Test_ImportRootCollectionInResponse(t *testing.T) {
 				Type:                  0,
 				Mode:                  pb.RpcObjectImportRequest_IGNORE_ERRORS,
 				SpaceId:               "space1",
+				NoProgress:            true,
 			}, objectorigin.Import(model.Import_Notion), nil, false, true,
 		}
 		res := i.Import(context.Background(), importRequest)
@@ -1150,116 +1101,5 @@ func Test_ImportRootCollectionInResponse(t *testing.T) {
 		// then
 		assert.NotNil(t, res.Err)
 		assert.Equal(t, expectedRootCollectionId, res.RootCollectionId)
-	})
-}
-
-func Test_getObjectId(t *testing.T) {
-	t.Run("get object new id", func(t *testing.T) {
-		// given
-		i := Import{}
-		oldIDToNew := make(map[string]string, 0)
-		createPayloads := make(map[string]treestorage.TreeStorageCreatePayload, 0)
-		sn := &common.Snapshot{
-			Id: "oldId",
-			Snapshot: &common.SnapshotModel{
-				Data: &common.StateSnapshot{},
-			},
-		}
-		idGetter := mock_objectid.NewMockIdAndKeyProvider(t)
-		idGetter.EXPECT().GetInternalKey(mock.Anything).Return("").Times(1)
-		idGetter.EXPECT().GetIDAndPayload(context.Background(), "spaceId", sn, mock.Anything, false, objectorigin.Import(model.Import_Pb)).Return("newId", treestorage.TreeStorageCreatePayload{}, nil).Times(1)
-		i.idProvider = idGetter
-
-		// when
-		err := i.getObjectID(context.Background(), "spaceId", sn, createPayloads, oldIDToNew, false, objectorigin.Import(model.Import_Pb))
-
-		// then
-		assert.Nil(t, err)
-		assert.Equal(t, "newId", oldIDToNew["oldId"])
-	})
-	t.Run("get object new id and new key", func(t *testing.T) {
-		// given
-		i := Import{}
-		oldIDToNew := make(map[string]string, 0)
-		createPayloads := make(map[string]treestorage.TreeStorageCreatePayload, 0)
-		sn := &common.Snapshot{
-			Id: "oldId",
-			Snapshot: &common.SnapshotModel{
-				Data: &common.StateSnapshot{
-					Key: "key",
-				},
-			},
-		}
-		idGetter := mock_objectid.NewMockIdAndKeyProvider(t)
-		idGetter.EXPECT().GetInternalKey(mock.Anything).Return("newKey").Times(1)
-		idGetter.EXPECT().GetIDAndPayload(context.Background(), "spaceId", sn, mock.Anything, false, objectorigin.Import(model.Import_Pb)).Return("newId", treestorage.TreeStorageCreatePayload{}, nil).Times(1)
-		i.idProvider = idGetter
-
-		// when
-		err := i.getObjectID(context.Background(), "spaceId", sn, createPayloads, oldIDToNew, false, objectorigin.Import(model.Import_Pb))
-
-		// then
-		assert.Nil(t, err)
-		assert.Equal(t, "newId", oldIDToNew["oldId"])
-		assert.Equal(t, "newKey", oldIDToNew["key"])
-	})
-	t.Run("get object new id and new key", func(t *testing.T) {
-		// given
-		i := Import{}
-		oldIDToNew := make(map[string]string, 0)
-		createPayloads := make(map[string]treestorage.TreeStorageCreatePayload, 0)
-		sn := &common.Snapshot{
-			Id: "oldId",
-			Snapshot: &common.SnapshotModel{
-				Data: &common.StateSnapshot{
-					Details: domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
-						bundle.RelationKeyUniqueKey: domain.String("key"),
-					}),
-				},
-			},
-		}
-		idGetter := mock_objectid.NewMockIdAndKeyProvider(t)
-		idGetter.EXPECT().GetInternalKey(mock.Anything).Return("newKey").Times(1)
-		idGetter.EXPECT().GetIDAndPayload(context.Background(), "spaceId", sn, mock.Anything, false, objectorigin.Import(model.Import_Pb)).Return("newId", treestorage.TreeStorageCreatePayload{}, nil).Times(1)
-		i.idProvider = idGetter
-
-		// when
-		err := i.getObjectID(context.Background(), "spaceId", sn, createPayloads, oldIDToNew, false, objectorigin.Import(model.Import_Pb))
-
-		// then
-		assert.Nil(t, err)
-		assert.Equal(t, "newId", oldIDToNew["oldId"])
-		assert.Equal(t, "newKey", oldIDToNew["key"])
-	})
-	t.Run("don't add create payload", func(t *testing.T) {
-		// given
-		i := Import{}
-		oldIDToNew := make(map[string]string, 0)
-		createPayloads := make(map[string]treestorage.TreeStorageCreatePayload, 0)
-		sn := &common.Snapshot{
-			Id: "oldId",
-			Snapshot: &common.SnapshotModel{
-				Data: &common.StateSnapshot{
-					Details: domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
-						bundle.RelationKeyUniqueKey: domain.String("key"),
-					}),
-				},
-			},
-		}
-		idGetter := mock_objectid.NewMockIdAndKeyProvider(t)
-		idGetter.EXPECT().GetInternalKey(mock.Anything).Return("newKey").Times(1)
-		idGetter.EXPECT().GetIDAndPayload(context.Background(), "spaceId", sn, mock.Anything, false, objectorigin.Import(model.Import_Pb)).Return("newId", treestorage.TreeStorageCreatePayload{
-			RootRawChange: &treechangeproto.RawTreeChangeWithId{},
-		}, nil).Times(1)
-		i.idProvider = idGetter
-
-		// when
-		err := i.getObjectID(context.Background(), "spaceId", sn, createPayloads, oldIDToNew, false, objectorigin.Import(model.Import_Pb))
-
-		// then
-		assert.Nil(t, err)
-		assert.Equal(t, "newId", oldIDToNew["oldId"])
-		assert.Equal(t, "newKey", oldIDToNew["key"])
-		assert.NotNil(t, createPayloads["newId"])
 	})
 }

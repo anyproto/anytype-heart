@@ -11,6 +11,7 @@ import (
 	"github.com/anyproto/any-sync/app/ocache"
 	"github.com/cheggaaa/mb/v3"
 
+	"github.com/anyproto/anytype-heart/core/block/editor/components"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/syncstatus/detailsupdater/helper"
@@ -27,6 +28,8 @@ import (
 var log = logging.Logger(CName)
 
 const CName = "core.syncstatus.objectsyncstatus.updater"
+
+const batchTime = 500 * time.Millisecond
 
 type syncStatusDetails struct {
 	objectId string
@@ -56,7 +59,7 @@ type syncStatusUpdater struct {
 	syncSubscriptions syncsubscriptions.SyncSubscriptions
 
 	entries map[string]*syncStatusDetails
-	mx      sync.Mutex
+	lock    sync.Mutex
 
 	finish chan struct{}
 }
@@ -107,31 +110,44 @@ func (u *syncStatusUpdater) UpdateDetails(objectId string, status domain.ObjectS
 }
 
 func (u *syncStatusUpdater) addToQueue(details *syncStatusDetails) error {
-	u.mx.Lock()
+	u.lock.Lock()
+	_, ok := u.entries[details.objectId]
 	u.entries[details.objectId] = details
-	u.mx.Unlock()
-	return u.batcher.TryAdd(details.objectId)
+	u.lock.Unlock()
+	if !ok {
+		return u.batcher.TryAdd(details.objectId)
+	}
+	return nil
 }
 
 func (u *syncStatusUpdater) processEvents() {
 	defer close(u.finish)
 
 	for {
-		objectId, err := u.batcher.WaitOne(u.ctx)
+		objectIds, err := u.batcher.Wait(u.ctx)
 		if err != nil {
 			return
 		}
-		u.updateSpecificObject(objectId)
+		now := time.Now()
+		for _, objectId := range objectIds {
+			u.updateSpecificObject(objectId)
+		}
+
+		sleepDuration := batchTime - time.Since(now)
+		if sleepDuration <= 0 {
+			continue
+		}
+		time.Sleep(sleepDuration)
 	}
 }
 
 func (u *syncStatusUpdater) updateSpecificObject(objectId string) {
-	u.mx.Lock()
-	objectStatus := u.entries[objectId]
+	u.lock.Lock()
+	objectStatus, ok := u.entries[objectId]
 	delete(u.entries, objectId)
-	u.mx.Unlock()
+	u.lock.Unlock()
 
-	if objectStatus != nil {
+	if ok {
 		err := u.updateObjectDetails(objectStatus, objectId)
 		if err != nil {
 			log.Errorf("failed to update details %s", err)
@@ -198,6 +214,12 @@ func (u *syncStatusUpdater) updateObjectDetails(syncStatusDetails *syncStatusDet
 			if details == nil {
 				details = domain.NewDetails()
 			}
+
+			// Force updating via cache
+			if details.GetInt64(bundle.RelationKeyResolvedLayout) == int64(model.ObjectType_chatDerived) {
+				return nil, false, ocache.ErrExists
+			}
+
 			// todo: make the checks consistent here and in setSyncDetails
 			if !u.isLayoutSuitableForSyncRelations(details) {
 				return details, false, nil
@@ -223,6 +245,10 @@ func (u *syncStatusUpdater) updateObjectDetails(syncStatusDetails *syncStatusDet
 }
 
 func (u *syncStatusUpdater) setSyncDetails(sb smartblock.SmartBlock, status domain.ObjectSyncStatus, syncError domain.SyncError) error {
+	if comp, ok := sb.(components.SyncStatusHandler); ok {
+		comp.HandleSyncStatusUpdate(sb.Tree().Heads(), status, syncError)
+	}
+
 	if !slices.Contains(helper.SyncRelationsSmartblockTypes(), sb.Type()) {
 		if sb.LocalDetails().Has(bundle.RelationKeySyncStatus) {
 			// do cleanup because of previous sync relations indexation problem

@@ -498,6 +498,9 @@ message Block {
                     NextMonth = 9;
                     NumberOfDaysAgo = 10;
                     NumberOfDaysNow = 11;
+                    LastYear = 12;
+                    CurrentYear = 13;
+                    NextYear = 14;
                 }
             }
 
@@ -577,6 +580,8 @@ message Block {
                 Graphviz = 20;
                 Sketchfab = 21;
                 Image = 22;
+                Drawio = 23;
+                Spotify = 24;
             }
         }
 
@@ -811,6 +816,10 @@ message ObjectType {
         chat = 21; // deprecated
         chatDerived = 22;
         tag = 23;
+
+        notification = 24;
+        missingObject = 25;
+        devices = 26;
     }
 }
 
@@ -1039,9 +1048,10 @@ enum SpaceAccessType {
 }
 
 enum SpaceUxType {
-    Chat = 0; // chat-first UX
+    None = 0; // old value for chat, deprecated
     Data = 1; // objects-first UX
     Stream = 2; // stream UX (chat with limited amount of owners)
+    Chat = 3; // chat UX
 }
 
 message Metadata {
@@ -1178,6 +1188,7 @@ message Import {
         Html = 4;
         Txt = 5;
         Csv = 6;
+        Obsidian = 7; // Markdown with obsidian improvements
     }
 
     enum ErrorCode {
@@ -1262,7 +1273,7 @@ enum SpaceShareableStatus {
 }
 
 message ManifestInfo {
-    string schema = 1;
+    string schema = 1 [json_name="$schema"];
     string id = 2;
     string name = 3;
     string author = 4;
@@ -1412,6 +1423,7 @@ message ChatState {
     UnreadState messages = 1; // unread messages
     UnreadState mentions = 2; // unread mentions
     string lastStateId = 3; // reflects the state of the chat db at the moment of sending response/event that includes this state
+    int64 order = 4; // Order is serial number of this state. Client should apply chat state only if its order is greater than previously saved order
 }
 
 message ChatMessage {
@@ -1430,6 +1442,8 @@ message ChatMessage {
     Reactions reactions = 8;  // Reactions to the message
     bool read = 10; // Message read status
     bool mentionRead = 12;
+    bool hasMention = 14;
+    bool synced = 13;
     message MessageContent {
         string text = 1;      // The text content of the message part
         Block.Content.Text.Style style = 2;    // The style/type of the message part
@@ -1454,4 +1468,18 @@ message ChatMessage {
             repeated string ids = 1; // List of user IDs
         }
     }
+}
+
+enum SyncStatus {
+    SyncStatusSynced  = 0;
+    SyncStatusSyncing = 1;
+    SyncStatusError   = 2;
+    SyncStatusQueued  = 3;
+}
+
+enum SyncError {
+    SyncErrorNull                = 0;
+    SyncErrorIncompatibleVersion = 2;
+    SyncErrorNetworkError        = 3;
+    SyncErrorOversized           = 4;
 }

@@ -2,6 +2,7 @@ package editor
 
 import (
 	"testing"
+	"time"
 
 	"github.com/anyproto/any-sync/commonspace/object/tree/objecttree/mock_objecttree"
 	"github.com/anyproto/any-sync/commonspace/object/tree/treechangeproto"
@@ -9,6 +10,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 
+	"github.com/anyproto/anytype-heart/core/block/editor/order"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock/smarttest"
 	"github.com/anyproto/anytype-heart/core/block/migration"
@@ -31,7 +33,7 @@ func TestSpaceView_AccessType(t *testing.T) {
 		err = fx.SetAccessType(spaceinfo.AccessTypePrivate)
 		require.NoError(t, err)
 		require.Equal(t, spaceinfo.AccessTypePersonal, fx.getAccessType())
-		err = fx.SetAclIsEmpty(false)
+		err = fx.SetAclInfo(false, nil, nil, time.Now().Unix())
 		require.NoError(t, err)
 		require.Equal(t, spaceinfo.AccessTypePersonal, fx.getAccessType())
 		info := spaceinfo.NewSpaceLocalInfo("spaceId")
@@ -52,7 +54,7 @@ func TestSpaceView_AccessType(t *testing.T) {
 		err = fx.SetAccessType(spaceinfo.AccessTypePrivate)
 		require.NoError(t, err)
 		require.Equal(t, spaceinfo.AccessTypePrivate, fx.getAccessType())
-		err = fx.SetAclIsEmpty(false)
+		err = fx.SetAclInfo(false, nil, nil, time.Now().Unix())
 		require.NoError(t, err)
 		require.Equal(t, spaceinfo.AccessTypeShared, fx.getAccessType())
 		info := spaceinfo.NewSpaceLocalInfo("spaceId")
@@ -60,7 +62,7 @@ func TestSpaceView_AccessType(t *testing.T) {
 		err = fx.SetSpaceLocalInfo(info)
 		require.NoError(t, err)
 		require.Equal(t, spaceinfo.AccessTypeShared, fx.getAccessType())
-		err = fx.SetAclIsEmpty(true)
+		err = fx.SetAclInfo(true, nil, nil, time.Now().Unix())
 		require.NoError(t, err)
 		require.Equal(t, spaceinfo.AccessTypePrivate, fx.getAccessType())
 		info.SetShareableStatus(spaceinfo.ShareableStatusShareable)
@@ -128,14 +130,14 @@ func TestSpaceView_SetOwner(t *testing.T) {
 	require.Equal(t, int64(125), fx.CombinedDetails().GetInt64(bundle.RelationKeyCreatedDate))
 }
 
-func TestSpaceView_SetAfterGivenView(t *testing.T) {
+func TestSpaceView_SetAfterOrder(t *testing.T) {
 	t.Run("set view after given id", func(t *testing.T) {
 		// given
 		fx := newSpaceViewFixture(t)
 		defer fx.finish()
 
 		// when
-		err := fx.SetAfterGivenView("viewOrderId")
+		err := fx.SetAfterOrder("viewOrderId")
 
 		// then
 		require.NoError(t, err)
@@ -151,7 +153,7 @@ func TestSpaceView_SetAfterGivenView(t *testing.T) {
 		require.NoError(t, err)
 
 		// when
-		err = fx.SetAfterGivenView("viewOrderId")
+		err = fx.SetAfterOrder("viewOrderId")
 
 		// then
 		require.NoError(t, err)
@@ -168,7 +170,7 @@ func TestSpaceView_SetAfterGivenView(t *testing.T) {
 		require.NoError(t, err)
 
 		// when
-		err = fx.SetAfterGivenView("spaceViewOrderId")
+		err = fx.SetAfterOrder("spaceViewOrderId")
 
 		// then
 		require.NoError(t, err)
@@ -184,7 +186,7 @@ func TestSpaceView_SetBetweenViews(t *testing.T) {
 		defer fx.finish()
 
 		// when
-		err := fx.SetBetweenViews("", "afterId")
+		_, err := fx.SetBetweenOrders("", "afterId")
 
 		// then
 		require.NoError(t, err)
@@ -194,27 +196,16 @@ func TestSpaceView_SetBetweenViews(t *testing.T) {
 		// given
 		fx := newSpaceViewFixture(t)
 		defer fx.finish()
-		firstSpaceView := lx.Next("")
-		secondSpaceView := lx.Next(firstSpaceView)
-		thirdSpaceView := lx.Next(secondSpaceView)
 
 		// when
-		err := fx.SetBetweenViews(secondSpaceView, thirdSpaceView)
+		_, err := fx.SetBetweenOrders("CCCC", "FFFF")
 
 		// then
 		require.NoError(t, err)
-		assert.NotEmpty(t, fx.Details().GetString(bundle.RelationKeySpaceOrder))
-	})
-	t.Run("after id is empty", func(t *testing.T) {
-		// given
-		fx := newSpaceViewFixture(t)
-		defer fx.finish()
-
-		// when
-		err := fx.SetBetweenViews("afterId", "")
-
-		// then
-		require.Error(t, err)
+		orderId := fx.Details().GetString(bundle.RelationKeySpaceOrder)
+		require.NotEmpty(t, orderId)
+		assert.Greater(t, orderId, "CCCC")
+		assert.Greater(t, "FFFF", orderId)
 	})
 }
 
@@ -267,9 +258,10 @@ func (s *spaceServiceStub) OnWorkspaceChanged(spaceId string, details *domain.De
 func NewSpaceViewTest(t *testing.T, targetSpaceId string, tree *mock_objecttree.MockObjectTree) (*SpaceView, error) {
 	sb := smarttest.NewWithTree("root", tree)
 	a := &SpaceView{
-		SmartBlock:   sb,
-		spaceService: &spaceServiceStub{},
-		log:          log,
+		SmartBlock:    sb,
+		OrderSettable: order.NewOrderSettable(sb, bundle.RelationKeySpaceOrder),
+		spaceService:  &spaceServiceStub{},
+		log:           log,
 	}
 
 	initCtx := &smartblock.InitContext{

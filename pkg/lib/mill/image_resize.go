@@ -14,7 +14,6 @@ import (
 	"strings"
 
 	"github.com/dsoprea/go-exif/v3"
-	jpegstructure "github.com/dsoprea/go-jpeg-image-structure/v2"
 	"github.com/kovidgoyal/imaging"
 
 	"github.com/anyproto/anytype-heart/pkg/lib/mill/ico"
@@ -143,11 +142,25 @@ func (m *ImageResize) Mill(r io.ReadSeeker, name string) (*Result, error) {
 func (m *ImageResize) resizeJPEG(imgConfig *image.Config, r io.ReadSeeker) (*Result, error) {
 	width, err := strconv.Atoi(m.Opts.Width)
 	if err != nil {
-		return nil, fmt.Errorf("invalid width: " + m.Opts.Width)
+		return nil, fmt.Errorf("invalid width: %s", m.Opts.Width)
 	}
+
+	// Handle original
+	if width == 0 {
+		// here is an optimization
+		// lets return the original picture in case it has not been resized or normalized
+		return &Result{
+			File: noopCloser(r),
+			Meta: map[string]interface{}{
+				"width":  imgConfig.Width,
+				"height": imgConfig.Height,
+			},
+		}, nil
+	}
+
 	quality, err := strconv.Atoi(m.Opts.Quality)
 	if err != nil {
-		return nil, fmt.Errorf("invalid quality: " + m.Opts.Quality)
+		return nil, fmt.Errorf("invalid quality: %s", m.Opts.Quality)
 	}
 
 	var exifData []byte
@@ -191,23 +204,6 @@ func (m *ImageResize) resizeJPEG(imgConfig *image.Config, r io.ReadSeeker) (*Res
 		width, height = imgConfig.Width, imgConfig.Height
 	}
 
-	if orientation <= 1 && width == imgConfig.Width {
-		var r2 io.ReadSeekCloser
-		r2, err = patchReaderRemoveExif(r)
-		if err != nil {
-			return nil, err
-		}
-		// here is an optimization
-		// lets return the original picture in case it has not been resized or normalized
-		return &Result{
-			File: noopCloser(r2),
-			Meta: map[string]interface{}{
-				"width":  imgConfig.Width,
-				"height": imgConfig.Height,
-			},
-		}, nil
-	}
-
 	if img == nil {
 		if img, err = jpeg.Decode(r); err != nil {
 			return nil, err
@@ -243,7 +239,7 @@ func (m *ImageResize) resizePNG(imgConfig *image.Config, r io.ReadSeeker) (*Resu
 	var height int
 	width, err := strconv.Atoi(m.Opts.Width)
 	if err != nil {
-		return nil, fmt.Errorf("invalid width: " + m.Opts.Width)
+		return nil, fmt.Errorf("invalid width: %s", m.Opts.Width)
 	}
 
 	if imgConfig.Width <= width || width == 0 {
@@ -295,7 +291,7 @@ func (m *ImageResize) resizePNG(imgConfig *image.Config, r io.ReadSeeker) (*Resu
 func (m *ImageResize) resizeGIF(imgConfig *image.Config, r io.ReadSeeker) (*Result, error) {
 	width, err := strconv.Atoi(m.Opts.Width)
 	if err != nil {
-		return nil, fmt.Errorf("invalid width: " + m.Opts.Width)
+		return nil, fmt.Errorf("invalid width: %s", m.Opts.Width)
 	}
 
 	if imgConfig.Width <= width || width == 0 {
@@ -360,7 +356,7 @@ func (m *ImageResize) resizeTIFF(imgConfig *image.Config, r io.ReadSeeker) (*Res
 	var height int
 	width, err := strconv.Atoi(m.Opts.Width)
 	if err != nil {
-		return nil, fmt.Errorf("invalid width: " + m.Opts.Width)
+		return nil, fmt.Errorf("invalid width: %s", m.Opts.Width)
 	}
 
 	resized := imaging.Resize(img, width, 0, imaging.Lanczos)
@@ -368,7 +364,7 @@ func (m *ImageResize) resizeTIFF(imgConfig *image.Config, r io.ReadSeeker) (*Res
 
 	quality, err := strconv.Atoi(m.Opts.Quality)
 	if err != nil {
-		return nil, fmt.Errorf("invalid quality: " + m.Opts.Quality)
+		return nil, fmt.Errorf("invalid quality: %s", m.Opts.Quality)
 	}
 
 	buf := pool.Get()
@@ -453,35 +449,4 @@ func imageToPaletted(img image.Image) *image.Paletted {
 	pm := image.NewPaletted(b, palette.Plan9)
 	draw.FloydSteinberg.Draw(pm, b, img, image.ZP)
 	return pm
-}
-
-func patchReaderRemoveExif(r io.ReadSeeker) (io.ReadSeekCloser, error) {
-	jmp := jpegstructure.NewJpegMediaParser()
-	size, err := r.Seek(0, io.SeekEnd)
-	if err != nil {
-		return nil, err
-	}
-	_, _ = r.Seek(0, io.SeekStart)
-
-	buff := pool.Get()
-	defer func() {
-		_ = buff.Close()
-	}()
-	intfc, err := jmp.Parse(r, int(size))
-	if err != nil {
-		return nil, fmt.Errorf("failed to open file to read exif: %w", err)
-	}
-	sl := intfc.(*jpegstructure.SegmentList)
-
-	_, err = sl.DropExif()
-	if err != nil {
-		return nil, err
-	}
-
-	err = sl.Write(buff)
-	if err != nil {
-		return nil, err
-	}
-
-	return buff.GetReadSeekCloser()
 }

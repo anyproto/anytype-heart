@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/anyproto/any-store/anyenc"
+	"github.com/anyproto/any-store/syncpool"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -19,7 +20,8 @@ func assertFilter(t *testing.T, f Filter, obj *domain.Details, expected bool) {
 	anystoreFilter := f.AnystoreFilter()
 	arena := &anyenc.Arena{}
 	val := obj.ToAnyEnc(arena)
-	result := anystoreFilter.Ok(val)
+	docBuf := &syncpool.DocBuffer{}
+	result := anystoreFilter.Ok(val, docBuf)
 	assert.Equal(t, expected, result)
 }
 
@@ -61,6 +63,7 @@ func TestEq_FilterObject(t *testing.T) {
 			eq := FilterEq{Key: "k", Value: domain.Float64(2), Cond: model.BlockContentDataviewFilter_Greater}
 			g := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{"k": domain.Float64(1)})
 			assertFilter(t, eq, g, false)
+
 		})
 	})
 	t.Run("gte", func(t *testing.T) {
@@ -818,6 +821,7 @@ func TestMakeFilters(t *testing.T) {
 					{
 						RelationKey: "key2",
 						Condition:   model.BlockContentDataviewFilter_Equal,
+						Format:      model.RelationFormat_date,
 						Value:       domain.Int64(time.Now().Unix()),
 						QuickOption: model.BlockContentDataviewFilter_CurrentMonth,
 					},
@@ -998,7 +1002,7 @@ func TestFilterDate(t *testing.T) {
 		require.NoError(t, err)
 
 		obj1 := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{bundle.RelationKeyCreatedDate: domain.Int64(now.Add(-time.Hour * 24).Unix())})
-		obj2 := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{bundle.RelationKeyCreatedDate: domain.Int64(now.Add(time.Hour).Unix())})
+		obj2 := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{bundle.RelationKeyCreatedDate: domain.Int64(now.Unix())})
 		obj3 := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{bundle.RelationKeyCreatedDate: domain.Int64(now.Add(24 * time.Hour).Unix())})
 		assertFilter(t, f, obj1, false)
 		assertFilter(t, f, obj2, true)

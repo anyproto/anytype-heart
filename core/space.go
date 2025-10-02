@@ -12,26 +12,19 @@ import (
 	"github.com/anyproto/anytype-heart/core/block"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/inviteservice"
-	"github.com/anyproto/anytype-heart/core/spaceview"
+	"github.com/anyproto/anytype-heart/core/order"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space"
+	"github.com/anyproto/anytype-heart/space/techspace"
 	"github.com/anyproto/anytype-heart/util/encode"
 )
 
 func (mw *Middleware) SpaceDelete(cctx context.Context, req *pb.RpcSpaceDeleteRequest) *pb.RpcSpaceDeleteResponse {
 	spaceService := mustService[space.Service](mw)
-	aclService := mustService[acl.AclService](mw)
-	err := aclService.Leave(cctx, req.SpaceId)
-	if err == nil {
-		err = spaceService.Delete(cctx, req.SpaceId)
-	}
+	err := spaceService.Delete(cctx, req.SpaceId)
 	code := mapErrorCode(err,
-		errToCode(space.ErrSpaceDeleted, pb.RpcSpaceDeleteResponseError_SPACE_IS_DELETED),
-		errToCode(space.ErrSpaceNotExists, pb.RpcSpaceDeleteResponseError_NO_SUCH_SPACE),
-		errToCode(acl.ErrAclRequestFailed, pb.RpcSpaceDeleteResponseError_REQUEST_FAILED),
-		errToCode(acl.ErrLimitReached, pb.RpcSpaceDeleteResponseError_LIMIT_REACHED),
-		errToCode(acl.ErrNotShareable, pb.RpcSpaceDeleteResponseError_NOT_SHAREABLE),
+		errToCode(techspace.ErrSpaceViewNotExists, pb.RpcSpaceDeleteResponseError_SPACE_IS_DELETED),
 	)
 	return &pb.RpcSpaceDeleteResponse{
 		Error: &pb.RpcSpaceDeleteResponseError{
@@ -382,19 +375,19 @@ func (mw *Middleware) SpaceLeaveApprove(cctx context.Context, req *pb.RpcSpaceLe
 }
 
 func (mw *Middleware) SpaceSetOrder(_ context.Context, request *pb.RpcSpaceSetOrderRequest) *pb.RpcSpaceSetOrderResponse {
-	response := func(code pb.RpcSpaceSetOrderResponseErrorCode, err error) *pb.RpcSpaceSetOrderResponse {
-		m := &pb.RpcSpaceSetOrderResponse{Error: &pb.RpcSpaceSetOrderResponseError{Code: code}}
+	response := func(code pb.RpcSpaceSetOrderResponseErrorCode, err error, finalOrder []string) *pb.RpcSpaceSetOrderResponse {
+		m := &pb.RpcSpaceSetOrderResponse{Error: &pb.RpcSpaceSetOrderResponseError{Code: code}, SpaceViewOrder: finalOrder}
 		if err != nil {
 			m.Error.Description = getErrorDescription(err)
 		}
 		return m
 	}
-	orderService := app.MustComponent[spaceview.OrderSetter](mw.applicationService.GetApp())
-	err := orderService.SetOrder(request.SpaceViewId, request.GetSpaceViewOrder())
+	orderService := app.MustComponent[order.OrderSetter](mw.applicationService.GetApp())
+	finalOrder, err := orderService.SetSpaceViewOrder(request.GetSpaceViewOrder())
 	if err != nil {
-		return response(pb.RpcSpaceSetOrderResponseError_UNKNOWN_ERROR, err)
+		return response(pb.RpcSpaceSetOrderResponseError_UNKNOWN_ERROR, err, nil)
 	}
-	return response(pb.RpcSpaceSetOrderResponseError_NULL, nil)
+	return response(pb.RpcSpaceSetOrderResponseError_NULL, nil, finalOrder)
 }
 
 func (mw *Middleware) SpaceUnsetOrder(_ context.Context, request *pb.RpcSpaceUnsetOrderRequest) *pb.RpcSpaceUnsetOrderResponse {
@@ -405,7 +398,7 @@ func (mw *Middleware) SpaceUnsetOrder(_ context.Context, request *pb.RpcSpaceUns
 		}
 		return m
 	}
-	orderService := app.MustComponent[spaceview.OrderSetter](mw.applicationService.GetApp())
+	orderService := app.MustComponent[order.OrderSetter](mw.applicationService.GetApp())
 	err := orderService.UnsetOrder(request.SpaceViewId)
 	if err != nil {
 		return response(pb.RpcSpaceUnsetOrderResponseError_UNKNOWN_ERROR, err)

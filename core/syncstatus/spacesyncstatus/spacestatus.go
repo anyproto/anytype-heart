@@ -12,7 +12,7 @@ import (
 	"github.com/samber/lo"
 
 	"github.com/anyproto/anytype-heart/core/event"
-	"github.com/anyproto/anytype-heart/core/files"
+	"github.com/anyproto/anytype-heart/core/files/filespaceusage"
 	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/core/syncstatus/nodestatus"
 	"github.com/anyproto/anytype-heart/core/syncstatus/syncsubscriptions"
@@ -33,7 +33,7 @@ type Updater interface {
 
 type NodeUsage interface {
 	app.Component
-	GetNodeUsage(ctx context.Context) (*files.NodeUsageResponse, error)
+	GetNodeUsage(ctx context.Context) (*filespaceusage.NodeUsageResponse, error)
 }
 
 type SpaceIdGetter interface {
@@ -62,12 +62,16 @@ type spaceSyncStatus struct {
 	mx             sync.Mutex
 	periodicCall   periodicsync.PeriodicSync
 	loopInterval   time.Duration
+	startDelay     time.Duration // delay before starting sync, can be overridden in tests
 	isLocal        bool
+	closeCh        chan struct{}
 }
 
 func NewSpaceSyncStatus() Updater {
 	return &spaceSyncStatus{
 		loopInterval: time.Second * 1,
+		startDelay:   time.Second * 3,
+		closeCh:      make(chan struct{}),
 	}
 }
 
@@ -108,8 +112,15 @@ func (s *spaceSyncStatus) UpdateMissingIds(spaceId string, ids []string) {
 }
 
 func (s *spaceSyncStatus) Run(ctx context.Context) (err error) {
-	s.sendStartEvent(s.spaceIdGetter.AllSpaceIds())
-	s.periodicCall.Run()
+	go func() {
+		select {
+		case <-time.After(s.startDelay):
+		case <-s.closeCh:
+			return
+		}
+		s.sendStartEvent(s.spaceIdGetter.AllSpaceIds())
+		s.periodicCall.Run()
+	}()
 	return
 }
 
@@ -144,6 +155,7 @@ func (s *spaceSyncStatus) sendEventToSession(spaceId, token string) {
 		connectionStatus:    s.nodeStatus.GetNodeStatus(spaceId),
 		compatibility:       s.nodeConf.NetworkCompatibilityStatus(),
 		objectsSyncingCount: s.getObjectSyncingObjectsCount(spaceId, s.getMissingIds(spaceId)),
+		notSyncedFilesCount: s.getNotSyncedFilesCount(spaceId),
 	}
 	s.eventSender.SendToSession(token, event.NewEventSingleMessage(spaceId, &pb.EventMessageValueOfSpaceSyncStatusUpdate{
 		SpaceSyncStatusUpdate: s.makeSyncEvent(spaceId, params),
@@ -171,7 +183,8 @@ func eventsEqual(a, b pb.EventSpaceSyncStatusUpdate) bool {
 		a.Status == b.Status &&
 		a.Network == b.Network &&
 		a.Error == b.Error &&
-		a.SyncingObjectsCounter == b.SyncingObjectsCounter
+		a.SyncingObjectsCounter == b.SyncingObjectsCounter &&
+		a.NotSyncedFilesCounter == b.NotSyncedFilesCounter
 }
 
 func (s *spaceSyncStatus) broadcast(event *pb.Event) {
@@ -205,10 +218,19 @@ func (s *spaceSyncStatus) Refresh(spaceId string) {
 func (s *spaceSyncStatus) getObjectSyncingObjectsCount(spaceId string, missingObjects []string) int {
 	curSub, err := s.subs.GetSubscription(spaceId)
 	if err != nil {
-		log.Errorf("failed to get subscription: %s", err)
+		log.Errorf("failed to get subscription: %v", err)
 		return 0
 	}
 	return curSub.SyncingObjectsCount(missingObjects)
+}
+
+func (s *spaceSyncStatus) getNotSyncedFilesCount(spaceId string) int {
+	curSub, err := s.subs.GetSubscription(spaceId)
+	if err != nil {
+		log.Errorf("get not synced files count: failed to get subscription: %v", err)
+		return 0
+	}
+	return curSub.LimitedFilesCount()
 }
 
 func (s *spaceSyncStatus) getBytesLeftPercentage(spaceId string) float64 {
@@ -231,6 +253,7 @@ func (s *spaceSyncStatus) updateSpaceSyncStatus(spaceId string) {
 		connectionStatus:    s.nodeStatus.GetNodeStatus(spaceId),
 		compatibility:       s.nodeConf.NetworkCompatibilityStatus(),
 		objectsSyncingCount: s.getObjectSyncingObjectsCount(spaceId, missingObjects),
+		notSyncedFilesCount: s.getNotSyncedFilesCount(spaceId),
 	}
 	s.broadcast(event.NewEventSingleMessage(spaceId, &pb.EventMessageValueOfSpaceSyncStatusUpdate{
 		SpaceSyncStatusUpdate: s.makeSyncEvent(spaceId, params),
@@ -238,6 +261,7 @@ func (s *spaceSyncStatus) updateSpaceSyncStatus(spaceId string) {
 }
 
 func (s *spaceSyncStatus) Close(ctx context.Context) (err error) {
+	close(s.closeCh)
 	s.periodicCall.Close()
 	return
 }
@@ -247,6 +271,7 @@ type syncParams struct {
 	connectionStatus    nodestatus.ConnectionStatus
 	compatibility       nodeconf.NetworkCompatibilityStatus
 	objectsSyncingCount int
+	notSyncedFilesCount int
 }
 
 func (s *spaceSyncStatus) makeSyncEvent(spaceId string, params syncParams) *pb.EventSpaceSyncStatusUpdate {
@@ -277,6 +302,7 @@ func (s *spaceSyncStatus) makeSyncEvent(spaceId string, params syncParams) *pb.E
 		Network:               mapNetworkMode(s.networkConfig.GetNetworkMode()),
 		Error:                 err,
 		SyncingObjectsCounter: syncingObjectsCount,
+		NotSyncedFilesCounter: int64(params.notSyncedFilesCount),
 	}
 }
 

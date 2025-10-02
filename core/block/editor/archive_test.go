@@ -5,7 +5,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/anyproto/anytype-heart/core/block/editor/collection"
+	"github.com/anyproto/anytype-heart/core/block/editor/blockcollection"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock/smarttest"
 	"github.com/anyproto/anytype-heart/core/block/migration"
@@ -17,7 +17,7 @@ func NewArchiveTest(t *testing.T) (*Archive, error) {
 	objectStore := spaceindex.NewStoreFixture(t)
 	a := &Archive{
 		SmartBlock:  sb,
-		Collection:  collection.NewCollection(sb, objectStore),
+		Collection:  blockcollection.NewCollection(sb, objectStore),
 		objectStore: objectStore,
 	}
 
@@ -80,7 +80,7 @@ func TestArchive_UnArchive(t *testing.T) {
 		require.NoError(t, err)
 
 		require.NoError(t, a.AddObject("1"))
-		require.EqualError(t, a.RemoveObject("2"), collection.ErrObjectNotFound.Error())
+		require.EqualError(t, a.RemoveObject("2"), blockcollection.ErrObjectNotFound.Error())
 
 		s := a.NewState()
 		chIds := s.Get(s.RootId()).Model().ChildrenIds

@@ -215,8 +215,10 @@ func (c *Config) initFromFileAndEnv(repoPath string) error {
 	if !c.DisableFileConfig {
 		var confRequired ConfigRequired
 		err := GetFileConfig(c.GetConfigPath(), &confRequired)
-		if err != nil {
-			return fmt.Errorf("failed to get config from file: %w", err)
+		if err != nil && errors.Is(err, ErrInvalidConfigFormat) {
+			log.Errorf("config file init: %v", err)
+		} else if err != nil {
+			return err
 		}
 
 		writeConfig := func() error {
@@ -462,9 +464,10 @@ func (c *Config) GetYamux() yamux.Config {
 
 func (c *Config) GetQuic() quic.Config {
 	return quic.Config{
-		ListenAddrs:     []string{},
-		WriteTimeoutSec: 10,
-		DialTimeoutSec:  10,
+		ListenAddrs:       []string{},
+		WriteTimeoutSec:   10,
+		InitialPacketSize: 1200,
+		DialTimeoutSec:    10,
 	}
 }
 
@@ -490,7 +493,7 @@ func (c *Config) GetNetworkMode() pb.RpcAccountNetworkMode {
 
 func (c *Config) GetPublishServer() publishclient.Config {
 	publishPeerId := "12D3KooWEQPgbxGPvkny8kikS3zqfziM7JsQBnJHXHL9ByCcATs7"
-	publishAddr := "anytype-publish-server.anytype.io:4940"
+	publishAddr := "anytype-publish-server.anytype.io:443"
 
 	if peerId := os.Getenv("ANYTYPE_PUBLISH_PEERID"); peerId != "" {
 		if addr := os.Getenv("ANYTYPE_PUBLISH_ADDRESS"); addr != "" {
@@ -509,9 +512,30 @@ func (c *Config) GetPublishServer() publishclient.Config {
 	}
 }
 
+type PublishLimitsConfig struct {
+	MembershipLimit       int64
+	DefaultLimit          int64
+	InviteLinkUrlTemplate string
+	MemberUrlTemplate     string
+	DefaultUrlTemplate    string
+	IndexFileName         string
+}
+
+func (c *Config) GetPublishLimits() PublishLimitsConfig {
+
+	return PublishLimitsConfig{
+		MembershipLimit:       6000 << 20,
+		DefaultLimit:          10 << 20,
+		InviteLinkUrlTemplate: "https://invite.any.coop/%s#%s",
+		MemberUrlTemplate:     "https://%s.org",
+		DefaultUrlTemplate:    "https://any.coop/%s",
+		IndexFileName:         "index.json.gz",
+	}
+}
+
 func (c *Config) GetPushConfig() PushConfig {
 	pushPeerId := "12D3KooWMATrdteJNq2YvYhtq3RDeWxq6RVXDAr36MsGd5RJzXDn"
-	pushAddr := "anytype-push-server.anytype.io:4941"
+	pushAddr := "anytype-push-server.anytype.io:443"
 
 	if peerId := os.Getenv("ANYTYPE_PUSH_PEERID"); peerId != "" {
 		if addr := os.Getenv("ANYTYPE_PUSH_ADDRESS"); addr != "" {

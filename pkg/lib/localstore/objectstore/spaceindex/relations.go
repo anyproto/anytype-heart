@@ -40,17 +40,11 @@ func (s *dsObjectStore) FetchRelationByKey(key string) (relation *relationutils.
 	if err != nil {
 		return nil, err
 	}
-	q := database.Query{
-		Filters: []database.FilterRequest{
-			{
-				Condition:   model.BlockContentDataviewFilter_Equal,
-				RelationKey: bundle.RelationKeyUniqueKey,
-				Value:       domain.String(uk.Marshal()),
-			},
-		},
-	}
-
-	records, err := s.Query(q)
+	records, err := s.QueryRaw(&database.Filters{FilterObj: database.FilterEq{
+		Key:   bundle.RelationKeyUniqueKey,
+		Cond:  model.BlockContentDataviewFilter_Equal,
+		Value: domain.String(uk.Marshal()),
+	}}, 1, 0)
 	if err != nil {
 		return
 	}
@@ -75,6 +69,9 @@ func (s *dsObjectStore) FetchRelationByKeys(keys ...domain.RelationKey) (relatio
 			return nil, err
 		}
 		uks = append(uks, uk.Marshal())
+	}
+	if len(uks) == 0 {
+		return
 	}
 	records, err := s.Query(database.Query{
 		Filters: []database.FilterRequest{

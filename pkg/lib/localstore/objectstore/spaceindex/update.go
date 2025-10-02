@@ -2,21 +2,15 @@ package spaceindex
 
 import (
 	"context"
-	"errors"
 	"fmt"
 
-	anystore "github.com/anyproto/any-store"
 	"github.com/anyproto/any-store/anyenc"
 	"github.com/anyproto/any-store/anyenc/anyencutil"
 	"github.com/anyproto/any-store/query"
-	"github.com/dgraph-io/badger/v4"
-	"github.com/gogo/protobuf/proto"
 
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
-	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	"github.com/anyproto/anytype-heart/util/badgerhelper"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 	"github.com/anyproto/anytype-heart/util/slice"
 )
@@ -103,19 +97,6 @@ func (s *dsObjectStore) closeAndRemoveSubscription(subscription database.Subscri
 	}
 }
 
-func (s *dsObjectStore) migrateLocalDetails(objectId string, details *domain.Details) bool {
-	existingLocalDetails, err := s.oldStore.GetLocalDetails(objectId)
-	if err != nil || existingLocalDetails == nil {
-		return false
-	}
-	for k, v := range existingLocalDetails.Fields {
-		if ok := details.Has(domain.RelationKey(k)); !ok {
-			details.SetProtoValue(domain.RelationKey(k), v)
-		}
-	}
-	return true
-}
-
 func (s *dsObjectStore) UpdateObjectLinks(ctx context.Context, id string, links []string) error {
 	added, removed, err := s.updateObjectLinks(ctx, id, links)
 	if err != nil {
@@ -127,7 +108,7 @@ func (s *dsObjectStore) UpdateObjectLinks(ctx context.Context, id string, links 
 	return nil
 }
 
-func (s *dsObjectStore) UpdatePendingLocalDetails(id string, proc func(details *domain.Details) (*domain.Details, error)) error {
+func (s *dsObjectStore) UpdatePendingLocalDetails(id string, proc func(details *domain.Details) (newDetails *domain.Details, err error)) error {
 	if proc == nil {
 		return nil
 	}
@@ -141,54 +122,49 @@ func (s *dsObjectStore) UpdatePendingLocalDetails(id string, proc func(details *
 	if err != nil {
 		return fmt.Errorf("write txn: %w", err)
 	}
-	rollback := func(err error) error {
-		return errors.Join(txn.Rollback(), err)
-	}
 
-	var inputDetails *domain.Details
-	doc, err := s.pendingDetails.FindId(txn.Context(), id)
-	if errors.Is(err, anystore.ErrDocNotFound) {
-		inputDetails = domain.NewDetails()
-	} else if err != nil {
-		return rollback(fmt.Errorf("find details: %w", err))
-	} else {
-		inputDetails, err = domain.NewDetailsFromAnyEnc(doc.Value())
+	defer func() {
+		_ = txn.Rollback()
+	}()
+
+	var shouldDelete bool
+	res, err := s.pendingDetails.UpsertId(txn.Context(), id, query.ModifyFunc(func(arena *anyenc.Arena, val *anyenc.Value) (*anyenc.Value, bool, error) {
+		currentDetails, err := domain.NewDetailsFromAnyEnc(val)
 		if err != nil {
-			return rollback(fmt.Errorf("json to proto: %w", err))
+			return nil, false, fmt.Errorf("get old details: json to proto: %w", err)
 		}
-	}
 
-	migrated := s.migrateLocalDetails(id, inputDetails)
+		newDetails, err := proc(currentDetails)
+		if err != nil {
+			return nil, false, fmt.Errorf("run a modifier: %w", err)
+		}
+		if newDetails == nil {
+			shouldDelete = true
+			return val, false, nil
+		}
+		newDetails.SetString(bundle.RelationKeyId, id)
 
-	newDetails, err := proc(inputDetails)
+		newVal := newDetails.ToAnyEnc(arena)
+		if anyencutil.Equal(val, newVal) {
+			return val, false, nil
+		}
+		return newVal, true, nil
+	}))
+
 	if err != nil {
-		return rollback(fmt.Errorf("run a modifier: %w", err))
+		return fmt.Errorf("upsert details: %w", err)
 	}
-	if newDetails == nil {
+	if res.Matched > 0 && shouldDelete {
 		err = s.pendingDetails.DeleteId(txn.Context(), id)
-		if err != nil && !errors.Is(err, anystore.ErrDocNotFound) {
-			return rollback(fmt.Errorf("delete details: %w", err))
+		if err != nil {
+			return fmt.Errorf("delete pending details: %w", err)
 		}
-		return txn.Commit()
 	}
-	newDetails.SetString(bundle.RelationKeyId, id)
-	jsonVal := newDetails.ToAnyEnc(arena)
-	err = s.pendingDetails.UpsertOne(txn.Context(), jsonVal)
-	if err != nil {
-		return rollback(fmt.Errorf("upsert details: %w", err))
-	}
-
 	err = txn.Commit()
 	if err != nil {
 		return fmt.Errorf("commit txn: %w", err)
 	}
 
-	if migrated {
-		err = s.oldStore.DeleteDetails(id)
-		if err != nil {
-			log.With("error", err, "objectId", id).Warn("failed to delete local details from old store")
-		}
-	}
 	return nil
 }
 
@@ -239,18 +215,13 @@ func (s *dsObjectStore) ModifyObjectDetails(id string, proc func(details *domain
 	return nil
 }
 
-func (s *dsObjectStore) getPendingLocalDetails(txn *badger.Txn, key []byte) (*model.ObjectDetails, error) {
-	return badgerhelper.GetValueTxn(txn, key, func(raw []byte) (*model.ObjectDetails, error) {
-		var res model.ObjectDetails
-		err := proto.Unmarshal(raw, &res)
-		return &res, err
-	})
-}
-
 func (s *dsObjectStore) updateObjectLinks(ctx context.Context, id string, links []string) (added []string, removed []string, err error) {
 	_, err = s.links.UpsertId(ctx, id, query.ModifyFunc(func(arena *anyenc.Arena, val *anyenc.Value) (*anyenc.Value, bool, error) {
 		prev := anyEncArrayToStrings(val.GetArray(linkOutboundField))
 		removed, added = slice.DifferenceRemovedAdded(prev, links)
+		if len(added) == 0 && len(removed) == 0 {
+			return val, false, nil
+		}
 		val.Set(linkOutboundField, stringsToJsonArray(arena, links))
 		return val, len(added)+len(removed) > 0, nil
 	}))

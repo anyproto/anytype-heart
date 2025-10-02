@@ -3,10 +3,12 @@ package chatmodel
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/anyproto/any-store/anyenc"
 
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+	textUtil "github.com/anyproto/anytype-heart/util/text"
 )
 
 type CounterType int
@@ -43,13 +45,11 @@ const (
 	HasMentionKey  = "hasMention"
 	StateIdKey     = "stateId"
 	OrderKey       = "_o"
+	SyncedKey      = "synced"
 )
 
 type Message struct {
 	*model.ChatMessage
-
-	// CurrentUserMentioned is memoized result of IsCurrentUserMentioned
-	CurrentUserMentioned bool
 }
 
 type MessagesGetter interface {
@@ -77,6 +77,71 @@ func (m *Message) IsCurrentUserMentioned(ctx context.Context, myParticipantId st
 	}
 
 	return false, nil
+}
+
+func (m *Message) MentionIdentities(ctx context.Context, repo MessagesGetter) ([]string, error) {
+	var mentions []string
+	for _, mark := range m.Message.Marks {
+		if mark.Type == model.BlockContentTextMark_Mention {
+			if identity := extractIdentity(mark.Param); identity != "" {
+				mentions = append(mentions, identity)
+			}
+		}
+	}
+	if m.ReplyToMessageId != "" {
+		msgs, err := repo.GetMessagesByIds(ctx, []string{m.ReplyToMessageId})
+		if err != nil {
+			return nil, fmt.Errorf("get messages by id: %w", err)
+		}
+		if len(msgs) == 1 {
+			msg := msgs[0]
+			mentions = append(mentions, msg.Creator)
+		}
+	}
+	return mentions, nil
+}
+
+func (m *Message) Validate() error {
+	utf16text := textUtil.StrToUTF16(m.Message.Text)
+
+	for _, mark := range m.Message.Marks {
+		if mark.Range.From < 0 {
+			return fmt.Errorf("invalid range.from")
+		}
+		if mark.Range.To < 0 {
+			return fmt.Errorf("invalid range.to")
+		}
+		if mark.Range.From > mark.Range.To {
+			return fmt.Errorf("range.from should be less than range.to")
+		}
+		if int(mark.Range.From) >= len(utf16text) {
+			return fmt.Errorf("invalid range.from")
+		}
+		if int(mark.Range.To) > len(utf16text) {
+			return fmt.Errorf("invalid range.to")
+		}
+	}
+
+	for _, att := range m.Attachments {
+		if att.Target == "" {
+			return fmt.Errorf("attachment target is empty")
+		}
+		switch att.Type {
+		case model.ChatMessageAttachment_FILE,
+			model.ChatMessageAttachment_IMAGE,
+			model.ChatMessageAttachment_LINK:
+			continue
+		default:
+			return fmt.Errorf("unknown attachment type: %v", att.Type)
+		}
+	}
+
+	return nil
+}
+
+func extractIdentity(participantId string) string {
+	idx := strings.LastIndex(participantId, "_")
+	return participantId[idx+1:]
 }
 
 func UnmarshalMessage(val *anyenc.Value) (*Message, error) {
@@ -143,11 +208,14 @@ func (m *Message) MarshalAnyenc(marshalTo *anyenc.Value, arena *anyenc.Arena) {
 	message.Set("marks", marks)
 
 	attachments := arena.NewObject()
-	for i, inAttachment := range m.Attachments {
+	for _, inAttachment := range m.Attachments {
+		if inAttachment.Target == "" {
+			// we should catch this earlier on Validate()
+			continue
+		}
 		attachment := arena.NewObject()
 		attachment.Set("type", arena.NewNumberInt(int(inAttachment.Type)))
 		attachments.Set(inAttachment.Target, attachment)
-		attachments.SetArrayItem(i, attachment)
 	}
 
 	content := arena.NewObject()
@@ -171,9 +239,10 @@ func (m *Message) MarshalAnyenc(marshalTo *anyenc.Value, arena *anyenc.Arena) {
 	marshalTo.Set(ContentKey, content)
 	marshalTo.Set(ReadKey, arenaNewBool(arena, m.Read))
 	marshalTo.Set(MentionReadKey, arenaNewBool(arena, m.MentionRead))
-	marshalTo.Set(HasMentionKey, arenaNewBool(arena, m.CurrentUserMentioned))
+	marshalTo.Set(HasMentionKey, arenaNewBool(arena, m.HasMention))
 	marshalTo.Set(StateIdKey, arena.NewString(m.StateId))
 	marshalTo.Set(ReactionsKey, reactions)
+	marshalTo.Set(SyncedKey, arenaNewBool(arena, m.Synced))
 }
 
 func arenaNewBool(a *anyenc.Arena, value bool) *anyenc.Value {
@@ -199,8 +268,9 @@ func (m *messageUnmarshaller) toModel() (*Message, error) {
 			MentionRead:      m.val.GetBool(MentionReadKey),
 			Attachments:      m.attachmentsToModel(),
 			Reactions:        m.reactionsToModel(),
+			Synced:           m.val.GetBool(SyncedKey),
+			HasMention:       m.val.GetBool(HasMentionKey),
 		},
-		CurrentUserMentioned: m.val.GetBool(HasMentionKey),
 	}, nil
 }
 

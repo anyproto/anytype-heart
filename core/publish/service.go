@@ -21,11 +21,13 @@ import (
 	"go.uber.org/zap"
 	"golang.org/x/exp/slices"
 
+	"github.com/anyproto/anytype-heart/core/anytype/config"
 	"github.com/anyproto/anytype-heart/core/block/export"
 	"github.com/anyproto/anytype-heart/core/identity"
 	"github.com/anyproto/anytype-heart/core/inviteservice"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
+	"github.com/anyproto/anytype-heart/pkg/lib/core"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space"
@@ -39,18 +41,10 @@ var (
 
 const CName = "common.core.publishservice"
 
-const (
-	membershipLimit       = 100 << 20
-	defaultLimit          = 10 << 20
-	inviteLinkUrlTemplate = "https://invite.any.coop/%s#%s"
-	memberUrlTemplate     = "https://%s.org"
-	defaultUrlTemplate    = "https://any.coop/%s"
-	indexFileName         = "index.json.gz"
-)
-
 var log = logger.NewNamed(CName)
 
 var ErrLimitExceeded = errors.New("limit exceeded")
+var ErrUrlAlreadyTaken = errors.New("url is already taken by another page")
 
 type PublishResult struct {
 	Url string
@@ -92,6 +86,8 @@ type service struct {
 	identityService      identity.Service
 	inviteService        inviteservice.InviteService
 	objectStore          objectstore.ObjectStore
+	tempDirService       core.TempDirProvider
+	limitsConfig         config.PublishLimitsConfig
 }
 
 func New() Service {
@@ -105,6 +101,8 @@ func (s *service) Init(a *app.App) error {
 	s.identityService = app.MustComponent[identity.Service](a)
 	s.inviteService = app.MustComponent[inviteservice.InviteService](a)
 	s.objectStore = app.MustComponent[objectstore.ObjectStore](a)
+	s.tempDirService = app.MustComponent[core.TempDirProvider](a)
+	s.limitsConfig = app.MustComponent[*config.Config](a).GetPublishLimits()
 	return nil
 }
 
@@ -125,7 +123,7 @@ func uniqName() string {
 }
 
 func (s *service) exportToDir(ctx context.Context, spaceId, pageId string, includeSpaceInfo bool) (dirEntries []fs.DirEntry, exportPath string, err error) {
-	tempDir := os.TempDir()
+	tempDir := s.tempDirService.TempDir()
 	exportPath, _, err = s.exportService.Export(ctx, pb.RpcObjectListExportRequest{
 		SpaceId:          spaceId,
 		Format:           model.Export_Protobuf,
@@ -170,7 +168,8 @@ func (s *service) publishToPublishServer(ctx context.Context, spaceId, pageId, u
 	if err != nil {
 		return err
 	}
-	tempPublishDir := filepath.Join(os.TempDir(), uniqName())
+
+	tempPublishDir := filepath.Join(s.tempDirService.TempDir(), uniqName())
 	defer os.RemoveAll(tempPublishDir)
 
 	if err := os.MkdirAll(tempPublishDir, 0777); err != nil {
@@ -221,7 +220,7 @@ func (s *service) applyInviteLink(ctx context.Context, spaceId string, snapshot 
 	if err != nil {
 		return err
 	}
-	snapshot.Meta.InviteLink = fmt.Sprintf(inviteLinkUrlTemplate, inviteInfo.InviteFileCid, inviteInfo.InviteFileKey)
+	snapshot.Meta.InviteLink = fmt.Sprintf(s.limitsConfig.InviteLinkUrlTemplate, inviteInfo.InviteFileCid, inviteInfo.InviteFileKey)
 	return nil
 }
 
@@ -324,7 +323,7 @@ func (s *service) createIndexFile(tempPublishDir string, uberSnapshot Publishing
 		return err
 	}
 
-	outputFile := filepath.Join(tempPublishDir, indexFileName)
+	outputFile := filepath.Join(tempPublishDir, s.limitsConfig.IndexFileName)
 	file, err := os.Create(outputFile)
 	if err != nil {
 		return err
@@ -362,6 +361,10 @@ func (s *service) publishToServer(ctx context.Context, spaceId, pageId, uri, ver
 
 	uploadUrl, err := s.publishClientService.Publish(ctx, publishReq)
 	if err != nil {
+		if errors.Is(err, publishapi.ErrUriNotUnique) {
+			return ErrUrlAlreadyTaken
+		}
+
 		return err
 	}
 
@@ -392,9 +395,9 @@ func (s *service) evaluateDocumentVersion(ctx context.Context, spc clientspace.S
 
 func (s *service) getPublishLimit(globalName string) (int64, error) {
 	if globalName != "" {
-		return membershipLimit, nil
+		return s.limitsConfig.MembershipLimit, nil
 	}
-	return defaultLimit, nil
+	return s.limitsConfig.DefaultLimit, nil
 }
 
 func (s *service) Publish(ctx context.Context, spaceId, pageId, uri string, joinSpace bool) (res PublishResult, err error) {
@@ -415,9 +418,9 @@ func (s *service) Publish(ctx context.Context, spaceId, pageId, uri string, join
 func (s *service) makeUrl(uri, identity, globalName string) string {
 	var domain string
 	if globalName != "" {
-		domain = fmt.Sprintf(memberUrlTemplate, globalName)
+		domain = fmt.Sprintf(s.limitsConfig.MemberUrlTemplate, globalName)
 	} else {
-		domain = fmt.Sprintf(defaultUrlTemplate, identity)
+		domain = fmt.Sprintf(s.limitsConfig.DefaultUrlTemplate, identity)
 	}
 	url := fmt.Sprintf("%s/%s", domain, uri)
 	return url
@@ -446,7 +449,7 @@ func (s *service) PublishList(ctx context.Context, spaceId string) ([]*pb.RpcPub
 			Status:    pb.RpcPublishingPublishStatus(publish.Status),
 			Version:   publish.Version,
 			Timestamp: publish.Timestamp,
-			Size_:     publish.Size_,
+			Size_:     publish.Size,
 			JoinSpace: version.JoinSpace,
 			Details:   details,
 		})
@@ -490,7 +493,7 @@ func (s *service) ResolveUri(ctx context.Context, uri string) (*pb.RpcPublishing
 		Status:    pb.RpcPublishingPublishStatus(publish.Status),
 		Version:   publish.Version,
 		Timestamp: publish.Timestamp,
-		Size_:     publish.Size_,
+		Size_:     publish.Size,
 		JoinSpace: version.JoinSpace,
 	}, nil
 }
@@ -508,7 +511,7 @@ func (s *service) GetStatus(ctx context.Context, spaceId string, objectId string
 		Status:    pb.RpcPublishingPublishStatus(status.Status),
 		Version:   status.Version,
 		Timestamp: status.Timestamp,
-		Size_:     status.Size_,
+		Size_:     status.Size,
 		JoinSpace: version.JoinSpace,
 	}, nil
 }

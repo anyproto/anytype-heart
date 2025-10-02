@@ -3,8 +3,16 @@
 package mock_techspace
 
 import (
+	crypto "github.com/anyproto/any-sync/util/crypto"
 	domain "github.com/anyproto/anytype-heart/core/domain"
+
 	mock "github.com/stretchr/testify/mock"
+
+	model "github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+
+	pb "github.com/anyproto/anytype-heart/pb"
+
+	session "github.com/anyproto/anytype-heart/core/session"
 
 	spaceinfo "github.com/anyproto/anytype-heart/space/spaceinfo"
 )
@@ -280,17 +288,17 @@ func (_c *MockSpaceView_SetAccessType_Call) RunAndReturn(run func(spaceinfo.Acce
 	return _c
 }
 
-// SetAclIsEmpty provides a mock function with given fields: isEmpty
-func (_m *MockSpaceView) SetAclIsEmpty(isEmpty bool) error {
-	ret := _m.Called(isEmpty)
+// SetAclInfo provides a mock function with given fields: empty, pushKey, pushEncKey, joinedDate
+func (_m *MockSpaceView) SetAclInfo(empty bool, pushKey crypto.PrivKey, pushEncKey crypto.SymKey, joinedDate int64) error {
+	ret := _m.Called(empty, pushKey, pushEncKey, joinedDate)
 
 	if len(ret) == 0 {
-		panic("no return value specified for SetAclIsEmpty")
+		panic("no return value specified for SetAclInfo")
 	}
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(bool) error); ok {
-		r0 = rf(isEmpty)
+	if rf, ok := ret.Get(0).(func(bool, crypto.PrivKey, crypto.SymKey, int64) error); ok {
+		r0 = rf(empty, pushKey, pushEncKey, joinedDate)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -298,30 +306,79 @@ func (_m *MockSpaceView) SetAclIsEmpty(isEmpty bool) error {
 	return r0
 }
 
-// MockSpaceView_SetAclIsEmpty_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'SetAclIsEmpty'
-type MockSpaceView_SetAclIsEmpty_Call struct {
+// MockSpaceView_SetAclInfo_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'SetAclInfo'
+type MockSpaceView_SetAclInfo_Call struct {
 	*mock.Call
 }
 
-// SetAclIsEmpty is a helper method to define mock.On call
-//   - isEmpty bool
-func (_e *MockSpaceView_Expecter) SetAclIsEmpty(isEmpty interface{}) *MockSpaceView_SetAclIsEmpty_Call {
-	return &MockSpaceView_SetAclIsEmpty_Call{Call: _e.mock.On("SetAclIsEmpty", isEmpty)}
+// SetAclInfo is a helper method to define mock.On call
+//   - empty bool
+//   - pushKey crypto.PrivKey
+//   - pushEncKey crypto.SymKey
+//   - joinedDate int64
+func (_e *MockSpaceView_Expecter) SetAclInfo(empty interface{}, pushKey interface{}, pushEncKey interface{}, joinedDate interface{}) *MockSpaceView_SetAclInfo_Call {
+	return &MockSpaceView_SetAclInfo_Call{Call: _e.mock.On("SetAclInfo", empty, pushKey, pushEncKey, joinedDate)}
 }
 
-func (_c *MockSpaceView_SetAclIsEmpty_Call) Run(run func(isEmpty bool)) *MockSpaceView_SetAclIsEmpty_Call {
+func (_c *MockSpaceView_SetAclInfo_Call) Run(run func(empty bool, pushKey crypto.PrivKey, pushEncKey crypto.SymKey, joinedDate int64)) *MockSpaceView_SetAclInfo_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(bool))
+		run(args[0].(bool), args[1].(crypto.PrivKey), args[2].(crypto.SymKey), args[3].(int64))
 	})
 	return _c
 }
 
-func (_c *MockSpaceView_SetAclIsEmpty_Call) Return(err error) *MockSpaceView_SetAclIsEmpty_Call {
+func (_c *MockSpaceView_SetAclInfo_Call) Return(err error) *MockSpaceView_SetAclInfo_Call {
 	_c.Call.Return(err)
 	return _c
 }
 
-func (_c *MockSpaceView_SetAclIsEmpty_Call) RunAndReturn(run func(bool) error) *MockSpaceView_SetAclIsEmpty_Call {
+func (_c *MockSpaceView_SetAclInfo_Call) RunAndReturn(run func(bool, crypto.PrivKey, crypto.SymKey, int64) error) *MockSpaceView_SetAclInfo_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// SetMyParticipantStatus provides a mock function with given fields: status
+func (_m *MockSpaceView) SetMyParticipantStatus(status model.ParticipantStatus) error {
+	ret := _m.Called(status)
+
+	if len(ret) == 0 {
+		panic("no return value specified for SetMyParticipantStatus")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(model.ParticipantStatus) error); ok {
+		r0 = rf(status)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// MockSpaceView_SetMyParticipantStatus_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'SetMyParticipantStatus'
+type MockSpaceView_SetMyParticipantStatus_Call struct {
+	*mock.Call
+}
+
+// SetMyParticipantStatus is a helper method to define mock.On call
+//   - status model.ParticipantStatus
+func (_e *MockSpaceView_Expecter) SetMyParticipantStatus(status interface{}) *MockSpaceView_SetMyParticipantStatus_Call {
+	return &MockSpaceView_SetMyParticipantStatus_Call{Call: _e.mock.On("SetMyParticipantStatus", status)}
+}
+
+func (_c *MockSpaceView_SetMyParticipantStatus_Call) Run(run func(status model.ParticipantStatus)) *MockSpaceView_SetMyParticipantStatus_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(model.ParticipantStatus))
+	})
+	return _c
+}
+
+func (_c *MockSpaceView_SetMyParticipantStatus_Call) Return(_a0 error) *MockSpaceView_SetMyParticipantStatus_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockSpaceView_SetMyParticipantStatus_Call) RunAndReturn(run func(model.ParticipantStatus) error) *MockSpaceView_SetMyParticipantStatus_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -369,6 +426,53 @@ func (_c *MockSpaceView_SetOwner_Call) Return(err error) *MockSpaceView_SetOwner
 }
 
 func (_c *MockSpaceView_SetOwner_Call) RunAndReturn(run func(string, int64) error) *MockSpaceView_SetOwner_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// SetPushNotificationMode provides a mock function with given fields: ctx, mode
+func (_m *MockSpaceView) SetPushNotificationMode(ctx session.Context, mode pb.RpcPushNotificationSetSpaceModeMode) error {
+	ret := _m.Called(ctx, mode)
+
+	if len(ret) == 0 {
+		panic("no return value specified for SetPushNotificationMode")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(session.Context, pb.RpcPushNotificationSetSpaceModeMode) error); ok {
+		r0 = rf(ctx, mode)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// MockSpaceView_SetPushNotificationMode_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'SetPushNotificationMode'
+type MockSpaceView_SetPushNotificationMode_Call struct {
+	*mock.Call
+}
+
+// SetPushNotificationMode is a helper method to define mock.On call
+//   - ctx session.Context
+//   - mode pb.RpcPushNotificationSetSpaceModeMode
+func (_e *MockSpaceView_Expecter) SetPushNotificationMode(ctx interface{}, mode interface{}) *MockSpaceView_SetPushNotificationMode_Call {
+	return &MockSpaceView_SetPushNotificationMode_Call{Call: _e.mock.On("SetPushNotificationMode", ctx, mode)}
+}
+
+func (_c *MockSpaceView_SetPushNotificationMode_Call) Run(run func(ctx session.Context, mode pb.RpcPushNotificationSetSpaceModeMode)) *MockSpaceView_SetPushNotificationMode_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(session.Context), args[1].(pb.RpcPushNotificationSetSpaceModeMode))
+	})
+	return _c
+}
+
+func (_c *MockSpaceView_SetPushNotificationMode_Call) Return(err error) *MockSpaceView_SetPushNotificationMode_Call {
+	_c.Call.Return(err)
+	return _c
+}
+
+func (_c *MockSpaceView_SetPushNotificationMode_Call) RunAndReturn(run func(session.Context, pb.RpcPushNotificationSetSpaceModeMode) error) *MockSpaceView_SetPushNotificationMode_Call {
 	_c.Call.Return(run)
 	return _c
 }

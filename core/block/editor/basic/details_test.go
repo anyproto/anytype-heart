@@ -138,6 +138,33 @@ func TestBasic_UpdateDetails(t *testing.T) {
 		assert.Empty(t, value)
 		assert.False(t, f.sb.HasRelation(f.sb.NewState(), bundle.RelationKeyTargetObjectType.String()))
 	})
+
+	// TODO: GO-6248 uncomment when deletion of internal relations will be excluded on all clients
+	// t.Run("removal of internal relation should fail", func(t *testing.T) {
+	// 	// given
+	// 	f := newBasicFixture(t)
+	//
+	// 	err := f.sb.SetDetails(nil, []domain.Detail{
+	// 		{Key: bundle.RelationKeyName, Value: domain.String("test object")},
+	// 		{Key: bundle.RelationKeyDescription, Value: domain.String("Description")},
+	// 		{Key: bundle.RelationKeyCreatedDate, Value: domain.Int64(1234567890)},
+	// 	}, false)
+	// 	require.NoError(t, err)
+	//
+	// 	// when
+	// 	err = f.basic.UpdateDetails(nil, func(current *domain.Details) (*domain.Details, error) {
+	// 		current.Delete(bundle.RelationKeyName)
+	// 		current.Delete(bundle.RelationKeyDescription)
+	// 		current.Delete(bundle.RelationKeyCreatedDate)
+	// 		return current, nil
+	// 	})
+	//
+	// 	// then
+	// 	assert.Error(t, err)
+	// 	assert.Equal(t, "test object", f.sb.Details().GetString(bundle.RelationKeyName))
+	// 	assert.Equal(t, "Description", f.sb.Details().GetString(bundle.RelationKeyDescription))
+	// 	assert.Equal(t, int64(1234567890), f.sb.LocalDetails().GetInt64(bundle.RelationKeyCreatedDate))
+	// })
 }
 
 func TestBasic_SetObjectTypesInState(t *testing.T) {
@@ -223,5 +250,32 @@ func TestBasic_SetObjectTypesInState(t *testing.T) {
 
 		// then
 		assert.Error(t, err)
+	})
+
+	t.Run("layout settings should be removed", func(t *testing.T) {
+		// given
+		f := newBasicFixture(t)
+
+		f.store.AddObjects(t, []objectstore.TestObject{{
+			bundle.RelationKeySpaceId:   domain.String(spaceId),
+			bundle.RelationKeyId:        domain.String(bundle.TypeKeyPage.URL()),
+			bundle.RelationKeyUniqueKey: domain.String(bundle.TypeKeyPage.URL()),
+		}})
+
+		s := f.sb.NewState()
+		s.SetDetail(bundle.RelationKeyLayout, domain.Int64(model.ObjectType_todo))
+		s.SetDetail(bundle.RelationKeyLayoutAlign, domain.Int64(model.Block_AlignRight))
+		s.SetDetail(bundle.RelationKeyFeaturedRelations, domain.StringList([]string{
+			bundle.RelationKeyDescription.String(), bundle.RelationKeyTag.String(),
+		}))
+
+		// when
+		err := f.basic.SetObjectTypesInState(s, []domain.TypeKey{bundle.TypeKeyPage}, false)
+
+		// then
+		assert.NoError(t, err)
+		assert.False(t, s.Details().Has(bundle.RelationKeyLayout))
+		assert.False(t, s.Details().Has(bundle.RelationKeyLayoutAlign))
+		assert.Len(t, s.Details().GetStringList(bundle.RelationKeyFeaturedRelations), 1)
 	})
 }

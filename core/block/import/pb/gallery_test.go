@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/editor/template"
@@ -27,7 +28,7 @@ func TestGalleryImport_ProvideCollection(t *testing.T) {
 		collection, err := collectionProvider.ProvideCollection(nil, nil, params, false)
 
 		// then
-		assert.Nil(t, err)
+		assert.NoError(t, err)
 		assert.Len(t, collection, 1)
 		assert.NotContains(t, widgetCollectionPattern, collection[0].FileName)
 	})
@@ -40,7 +41,7 @@ func TestGalleryImport_ProvideCollection(t *testing.T) {
 		collection, err := collectionProvider.ProvideCollection(nil, nil, params, false)
 
 		// then
-		assert.Nil(t, err)
+		assert.NoError(t, err)
 		assert.Len(t, collection, 1)
 		assert.Equal(t, rootCollectionName, collection[0].FileName)
 	})
@@ -53,7 +54,7 @@ func TestGalleryImport_ProvideCollection(t *testing.T) {
 		collection, err := collectionProvider.ProvideCollection(nil, nil, params, false)
 
 		// then
-		assert.Nil(t, err)
+		assert.NoError(t, err)
 		assert.Len(t, collection, 1)
 		assert.Equal(t, "test", collection[0].FileName)
 	})
@@ -135,7 +136,7 @@ func TestGalleryImport_ProvideCollection(t *testing.T) {
 		collection, err := p.ProvideCollection(snapshotList, nil, params, false)
 
 		// then
-		assert.Nil(t, err)
+		assert.NoError(t, err)
 		assert.Len(t, collection, 1)
 		assert.NotContains(t, widgetCollectionPattern, collection[0].FileName)
 	})
@@ -207,15 +208,17 @@ func TestGalleryImport_ProvideCollection(t *testing.T) {
 		collection, err := p.ProvideCollection(snapshotList, nil, params, false)
 
 		// then
-		assert.Nil(t, err)
+		assert.NoError(t, err)
 		assert.Len(t, collection, 2)
-		rootCollectionState := state.NewDocFromSnapshot("", collection[0].Snapshot.ToProto()).(*state.State)
+		rootCollectionState, err := state.NewDocFromSnapshot("", collection[0].Snapshot.ToProto())
+		require.NoError(t, err)
 		objectsInCollection := rootCollectionState.GetStoreSlice(template.CollectionStoreKey)
 		assert.Len(t, objectsInCollection, 1)
 		assert.Equal(t, objectsInCollection[0], "oldObjectInWidget")
 		assert.False(t, rootCollectionState.Details().GetBool(bundle.RelationKeyIsFavorite))
 
-		rootCollectionState = state.NewDocFromSnapshot("", collection[1].Snapshot.ToProto()).(*state.State)
+		rootCollectionState, err = state.NewDocFromSnapshot("", collection[1].Snapshot.ToProto())
+		require.NoError(t, err)
 		objectsInCollection = rootCollectionState.GetStoreSlice(template.CollectionStoreKey)
 		assert.Len(t, objectsInCollection, 3)
 		assert.Equal(t, objectsInCollection[0], "id1")
@@ -243,7 +246,7 @@ func TestGalleryImport_ProvideCollection(t *testing.T) {
 		collection, err := p.ProvideCollection(snapshotList, nil, params, false)
 
 		// then
-		assert.Nil(t, err)
+		assert.NoError(t, err)
 		assert.Len(t, collection, 1)
 		assert.NotContains(t, widgetCollectionPattern, collection[0].FileName)
 
@@ -257,7 +260,7 @@ func TestGalleryImport_ProvideCollection(t *testing.T) {
 		collection, err := p.ProvideCollection(nil, nil, params, false)
 
 		// then
-		assert.Nil(t, err)
+		assert.NoError(t, err)
 		assert.Len(t, collection, 1)
 		assert.Empty(t, collection[0].Snapshot.Data.Details.GetString(bundle.RelationKeyIconImage))
 	})
@@ -282,7 +285,7 @@ func TestGalleryImport_ProvideCollection(t *testing.T) {
 		collection, err := p.ProvideCollection(snapshotList, nil, params, false)
 
 		// then
-		assert.Nil(t, err)
+		assert.NoError(t, err)
 		assert.Len(t, collection, 1)
 		assert.Empty(t, collection[0].Snapshot.Data.Details.GetString(bundle.RelationKeyIconImage))
 	})
@@ -309,7 +312,7 @@ func TestGalleryImport_ProvideCollection(t *testing.T) {
 		collection, err := p.ProvideCollection(snapshotList, nil, params, false)
 
 		// then
-		assert.Nil(t, err)
+		assert.NoError(t, err)
 		assert.Len(t, collection, 1)
 		assert.Equal(t, "icon", collection[0].Snapshot.Data.Details.GetString(bundle.RelationKeyIconImage))
 	})
@@ -322,7 +325,7 @@ func TestGalleryImport_ProvideCollection(t *testing.T) {
 		collection, err := p.ProvideCollection(nil, nil, params, true)
 
 		// then
-		assert.Nil(t, err)
+		assert.NoError(t, err)
 		assert.Nil(t, collection)
 	})
 
@@ -356,7 +359,7 @@ func TestGalleryImport_ProvideCollection(t *testing.T) {
 		collection, err := p.ProvideCollection(snapshotList, nil, params, false)
 
 		// then
-		assert.Nil(t, err)
+		assert.NoError(t, err)
 		assert.Len(t, collection, 1)
 		assert.NotContains(t, widgetCollectionPattern, collection[0].FileName)
 	})

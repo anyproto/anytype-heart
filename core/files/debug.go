@@ -14,7 +14,6 @@ import (
 )
 
 func (s *service) DebugRouter(r chi.Router) {
-	r.Get("/queue", debug.JSONHandler(s.fileSync.DebugQueue))
 	r.Get("/tree/{rootID}", debug.PlaintextHandler(s.printTree))
 }
 

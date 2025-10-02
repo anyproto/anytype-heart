@@ -1,86 +1,107 @@
+version: "2"
 run:
-  timeout:  15m
-  # didn't run linter on tests
+  go: "1.23"
   tests: false
-  # don't check generated protobuf files
-  go: '1.23'
-
-issues:
-  exclude-generated: disable
-  exclude-dirs:
-    - pkg/lib/pb
-    - pb
-  exclude-files:
-    - '.*_test.go'
-    - 'mock*'
-    - 'testMock/*'
-    - 'clientlibrary/service/service.pb.go'
-
-linters-settings:
-  unused:
-    field-writes-are-uses: false
-  errcheck:
-    check-blank: true
-  errchkjson:
-    report-no-exported: true
-  goimports:
-    local-prefixes: github.com/anyproto/anytype-heart
-  funlen:
-    lines: 120
-    statements: 100
-  gocritic:
-    disabled-checks:
-      - ifElseChain
-  misspell:
-    locale: US
-    ignore-words:
-      - commonspace
-  errorlint:
-    errorf: true
-    errorf-multi: true
-    asserts: false
-    comparison: true
-  revive:
-    rules:
-      - name: var-naming
-        severity: warning
-        disabled: true
-  gosec:
-    excludes:
-      - G602
-      - G108
-  tagliatelle:
-    case:
-      use-field-name: true
-      rules:
-        json: snake
-
 linters:
-  disable-all: true
+  default: none
   enable:
+    - errcheck
+    - errorlint
+    - funlen
     - gocritic
-    - gofmt
-    - goimports
     - gosec
+    - govet
     - importas
     - ineffassign
     - misspell
     - nestif
     - prealloc
     - revive
-    - unused
-    - errcheck
-    - funlen
-    - gosimple
-    - govet
-    - unconvert
-    - errorlint
+    - staticcheck
     - tagliatelle
-
-severity:
-  default-severity: error
-  rules:
-      - severity: warning
+    - unconvert
+    - unused
+  settings:
+    errcheck:
+      check-blank: true
+    errchkjson:
+      report-no-exported: true
+    errorlint:
+      errorf: true
+      errorf-multi: true
+      asserts: false
+      comparison: true
+    funlen:
+      lines: 120
+      statements: 100
+    gocritic:
+      disabled-checks:
+        - ifElseChain
+    gosec:
+      excludes:
+        - G602
+        - G108
+    misspell:
+      locale: US
+      ignore-rules:
+        - commonspace
+    revive:
+      rules:
+        - name: var-naming
+          severity: warning
+          disabled: true
+    tagliatelle:
+      case:
+        rules:
+          json: snake
+        use-field-name: true
+    unused:
+      field-writes-are-uses: false
+  exclusions:
+    rules:
+      - path-except: core/api
         linters:
-          - errcheck
-          - gosimple
+          - tagliatelle
+    generated: disable
+    presets:
+      - comments
+      - common-false-positives
+      - legacy
+      - std-error-handling
+    paths:
+      - .*_test.go
+      - mock*
+      - testMock/*
+      - clientlibrary/service/service.pb.go
+      - pkg/lib/pb
+      - pb
+      - third_party$
+      - builtin$
+      - examples$
+severity:
+  default: error
+  rules:
+    - linters:
+        - errcheck
+        - staticcheck
+      severity: warning
+formatters:
+  enable:
+    - gofmt
+    - goimports
+  settings:
+    goimports:
+      local-prefixes:
+        - github.com/anyproto/anytype-heart
+  exclusions:
+    generated: disable
+    paths:
+      - .*_test.go
+      - mock*
+      - testMock/*
+      - clientlibrary/service/service.pb.go
+      - pkg/lib/pb
+      - pb
+      - third_party$
+      - builtin$
+      - examples$

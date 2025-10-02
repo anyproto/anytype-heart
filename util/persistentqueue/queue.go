@@ -9,7 +9,6 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/cheggaaa/mb/v3"
 	"go.uber.org/zap"
 )
 
@@ -57,14 +56,15 @@ type Queue[T Item] struct {
 	storage Storage[T]
 	logger  *zap.Logger
 
-	batcher      *mb.MB[T]
+	messageQueue messageQueue[T]
 	handler      HandlerFunc[T]
 	options      options
+	workersCh    chan struct{}
 	handledItems uint32
 
 	lock sync.Mutex
 	// set is used to keep track of queued items. If item has been added to queue and removed without processing
-	// it will be still in batcher, so we need a separate variable to track removed items
+	// it will be still in messageQueue, so we need a separate variable to track removed items
 	set map[string]struct{}
 
 	currentProcessingKey *string
@@ -74,10 +74,11 @@ type Queue[T Item] struct {
 	ctxCancel context.CancelFunc
 
 	isStarted bool
-	closedCh  chan struct{}
+	closeWg   sync.WaitGroup
 }
 
 type options struct {
+	workers            int
 	retryPauseDuration time.Duration
 	ctx                context.Context
 }
@@ -97,29 +98,50 @@ func WithContext(ctx context.Context) Option {
 	}
 }
 
+func WithWorkersNumber(workers int) Option {
+	return func(o *options) {
+		if workers < 1 {
+			workers = 1
+		}
+		o.workers = workers
+	}
+}
+
+// New creates new queue backed by specified storage. If priorityQueueLessFunc is provided, use priority queue as underlying message queue
 func New[T Item](
 	storage Storage[T],
 	logger *zap.Logger,
 	handler HandlerFunc[T],
+	priorityQueueLessFunc func(one, other T) bool,
 	opts ...Option,
 ) *Queue[T] {
 	q := &Queue[T]{
-		storage:  storage,
-		logger:   logger,
-		batcher:  mb.New[T](0),
-		handler:  handler,
-		set:      make(map[string]struct{}),
-		options:  options{},
-		closedCh: make(chan struct{}),
+		storage: storage,
+		logger:  logger,
+		handler: handler,
+		set:     make(map[string]struct{}),
+		options: options{
+			workers: 1,
+		},
 	}
 	for _, opt := range opts {
 		opt(&q.options)
+	}
+	if q.options.workers > 1 {
+		q.workersCh = make(chan struct{}, q.options.workers)
 	}
 	rootCtx := context.Background()
 	if q.options.ctx != nil {
 		rootCtx = q.options.ctx
 	}
 	q.ctx, q.ctxCancel = context.WithCancel(rootCtx)
+
+	if priorityQueueLessFunc != nil {
+		q.messageQueue = newPriorityMessageQueue[T](priorityQueueLessFunc)
+	} else {
+		q.messageQueue = newSimpleMessageQueue[T](q.ctx)
+	}
+
 	err := q.restore()
 	if err != nil {
 		q.logger.Error("can't restore queue", zap.Error(err))
@@ -136,12 +158,15 @@ func (q *Queue[T]) Run() {
 	}
 	q.isStarted = true
 
-	go q.loop()
+	q.closeWg.Add(q.options.workers)
+	for range q.options.workers {
+		go q.loop()
+	}
 }
 
 func (q *Queue[T]) loop() {
 	defer func() {
-		close(q.closedCh)
+		q.closeWg.Done()
 	}()
 
 	for {
@@ -150,6 +175,7 @@ func (q *Queue[T]) loop() {
 			return
 		default:
 		}
+
 		err := q.handleNext()
 		if errors.Is(err, context.Canceled) {
 			return
@@ -161,11 +187,10 @@ func (q *Queue[T]) loop() {
 			q.logger.Error("handle next", zap.Error(err))
 		}
 	}
-
 }
 
 func (q *Queue[T]) handleNext() error {
-	it, err := q.batcher.WaitOne(q.ctx)
+	it, err := q.messageQueue.waitOne()
 	if err != nil {
 		return fmt.Errorf("wait one: %w", err)
 	}
@@ -188,7 +213,7 @@ func (q *Queue[T]) handleNext() error {
 		// So just notify waiters that the item has been processed
 		q.notifyWaiters()
 		q.lock.Unlock()
-		addErr := q.batcher.Add(q.ctx, it)
+		addErr := q.messageQueue.add(it)
 		if addErr != nil {
 			return fmt.Errorf("add to queue: %w", addErr)
 		}
@@ -212,9 +237,7 @@ func (q *Queue[T]) restore() error {
 		return fmt.Errorf("list items from storage: %w", err)
 	}
 
-	sortItems(items)
-
-	err = q.batcher.Add(q.ctx, items...)
+	err = q.messageQueue.initWith(items)
 	if err != nil {
 		return fmt.Errorf("add to queue: %w", err)
 	}
@@ -224,35 +247,18 @@ func (q *Queue[T]) restore() error {
 	return nil
 }
 
-func sortItems[T Item](items []T) {
-	if len(items) == 0 {
-		return
-	}
-	var itemIface Item = items[0]
-	if _, ok := itemIface.(OrderedItem); ok {
-		sort.Slice(items, func(i, j int) bool {
-			var left Item = items[i]
-			var right Item = items[j]
-			return left.(OrderedItem).Less(right.(OrderedItem))
-		})
-	}
-}
-
 // Close stops queue processing and waits for the last in-process item to be processed
 func (q *Queue[T]) Close() error {
 	q.ctxCancel()
-	err := q.batcher.Close()
-	if err != nil {
-		q.logger.Error("close batcher", zap.Error(err))
-	}
+	err := q.messageQueue.close()
 	q.lock.Lock()
 	isStarted := q.isStarted
 	q.lock.Unlock()
 
 	if isStarted {
-		<-q.closedCh
+		q.closeWg.Wait()
 	}
-	return nil
+	return errors.Join(err, q.storage.Close())
 }
 
 // Add item to If item with the same key already in queue, input item will be ignored
@@ -270,7 +276,7 @@ func (q *Queue[T]) Add(item T) error {
 	q.set[item.Key()] = struct{}{}
 	q.lock.Unlock()
 
-	err = q.batcher.Add(q.ctx, item)
+	err = q.messageQueue.add(item)
 	if err != nil {
 		return err
 	}
@@ -325,8 +331,39 @@ func (q *Queue[T]) Remove(key string) error {
 	}
 	q.lock.Lock()
 	defer q.lock.Unlock()
+	err = q.removeKey(key)
+	if err != nil {
+		return fmt.Errorf("remove key: %w", err)
+	}
+	return nil
+}
+
+// RemoveBy removes items that satisfy given predicate
+func (q *Queue[T]) RemoveBy(predicate func(key string) bool) error {
+	err := q.checkClosed()
+	if err != nil {
+		return err
+	}
+	q.lock.Lock()
+	defer q.lock.Unlock()
+	for key := range q.set {
+		if predicate(key) {
+			err = q.removeKey(key)
+			if err != nil {
+				return fmt.Errorf("remove key: %w", err)
+			}
+		}
+	}
+	return nil
+}
+
+func (q *Queue[T]) removeKey(key string) error {
+	err := q.storage.Delete(key)
+	if err != nil {
+		return err
+	}
 	delete(q.set, key)
-	return q.storage.Delete(key)
+	return nil
 }
 
 func (q *Queue[T]) RemoveWait(key string) (chan struct{}, error) {

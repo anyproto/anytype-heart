@@ -277,6 +277,10 @@ func (b *queryBuilder) extractOrder(sorts []SortRequest) SetOrder {
 				collatorBuffer:  b.collatorBuffer,
 				disableCollator: sort.NoCollate,
 			}
+
+			if keyOrder.Key == bundle.RelationKeyOrderId || keyOrder.Key == bundle.RelationKeySpaceOrder {
+				keyOrder.disableCollator = true
+			}
 			order = b.appendCustomOrder(sort, order, keyOrder)
 		}
 		return order

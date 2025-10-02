@@ -28,7 +28,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space/clientspace/mock_clientspace"
 	"github.com/anyproto/anytype-heart/space/mock_space"
-	"github.com/anyproto/anytype-heart/space/spacecore"
+	"github.com/anyproto/anytype-heart/space/spacedomain"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
@@ -59,16 +59,16 @@ func (h historyStub) Header() *treechangeproto.RawTreeChangeWithId {
 	}
 	createChange := &treechangeproto.RootChange{
 		ChangePayload: objectChangeRaw,
-		ChangeType:    spacecore.ChangeType,
+		ChangeType:    spacedomain.ChangeType,
 	}
-	createChangeRaw, err := createChange.Marshal()
+	createChangeRaw, err := createChange.MarshalVT()
 	if err != nil {
 		return nil
 	}
 	rootChange := &treechangeproto.RawTreeChange{
 		Payload: createChangeRaw,
 	}
-	rootChangeBytes, err := rootChange.Marshal()
+	rootChangeBytes, err := rootChange.MarshalVT()
 	if err != nil {
 		return nil
 	}

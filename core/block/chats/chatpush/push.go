@@ -14,10 +14,16 @@ type Payload struct {
 }
 
 type NewMessagePayload struct {
-	ChatId         string `json:"chatId"`
-	MsgId          string `json:"msgId"`
-	SpaceName      string `json:"spaceName"`
-	SenderName     string `json:"senderName"`
-	Text           string `json:"text"`
-	HasAttachments bool   `json:"hasAttachments"`
+	ChatId         string        `json:"chatId"`
+	MsgId          string        `json:"msgId"`
+	SpaceName      string        `json:"spaceName"`
+	SenderName     string        `json:"senderName"`
+	Text           string        `json:"text"`
+	HasAttachments bool          `json:"hasAttachments"`
+	Attachments    []*Attachment `json:"attachments"`
+}
+
+type Attachment struct {
+	// Layout is resolvedLayout from object details
+	Layout int `json:"layout"`
 }

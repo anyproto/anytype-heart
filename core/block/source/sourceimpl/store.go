@@ -46,6 +46,41 @@ type store struct {
 	diffManagers map[string]*diffManager
 }
 
+type DiffManagerStats struct {
+	DiffManagerName string   `json:"diffManagerName"`
+	SeenHeads       []string `json:"seenHeads"`
+	AllChanges      []string `json:"allChanges"`
+	AllChangesCount int      `json:"allChangesCount"`
+}
+
+type StoreStat struct {
+	DiffManagers []DiffManagerStats `json:"diffManagers"`
+}
+
+func (s *store) ProvideStat() any {
+	stats := make([]DiffManagerStats, 0, len(s.diffManagers))
+	for name, manager := range s.diffManagers {
+		ids := manager.diffManager.GetIds()
+		stats = append(stats, DiffManagerStats{
+			DiffManagerName: name,
+			SeenHeads:       manager.diffManager.SeenHeads(),
+			AllChanges:      ids[0:min(len(ids), 1000)],
+			AllChangesCount: len(ids),
+		})
+	}
+	return StoreStat{
+		DiffManagers: stats,
+	}
+}
+
+func (s *store) StatId() string {
+	return s.Id()
+}
+
+func (s *store) StatType() string {
+	return "source.store"
+}
+
 type diffManager struct {
 	diffManager *objecttree.DiffManager
 	onRemove    func(removed []string)
@@ -191,6 +226,9 @@ func (s *store) ReadStoreDoc(ctx context.Context, storeState *storestate.StoreSt
 	if err != nil {
 		return
 	}
+	defer func() {
+		_ = tx.Rollback()
+	}()
 	// checking if we have any data in the store regarding the tree (i.e. if tree is first arrived or created)
 	allIsNew := false
 	if _, err := tx.GetOrder(s.id); err != nil {
@@ -203,7 +241,7 @@ func (s *store) ReadStoreDoc(ctx context.Context, storeState *storestate.StoreSt
 		hook:     params.ReadStoreTreeHook,
 	}
 	if err = applier.Apply(); err != nil {
-		return errors.Join(tx.Rollback(), err)
+		return err
 	}
 	err = tx.Commit()
 	if err != nil {
@@ -229,24 +267,23 @@ func (s *store) PushStoreChange(ctx context.Context, params source.PushStoreChan
 	if err != nil {
 		return "", fmt.Errorf("new tx: %w", err)
 	}
-	rollback := func(err error) error {
-		return errors.Join(tx.Rollback(), err)
-	}
-
+	defer func() {
+		_ = tx.Rollback()
+	}()
 	change := &pb.StoreChange{
 		ChangeSet: params.Changes,
 	}
 	data, dataType, err := MarshalStoreChange(change)
 	if err != nil {
-		return "", rollback(fmt.Errorf("marshal change: %w", err))
+		return "", fmt.Errorf("marshal change: %w", err)
 	}
 
 	addResult, err := s.ObjectTree.AddContentWithValidator(ctx, objecttree.SignableChangeContent{
-		Data:        data,
-		Key:         s.ObjectTree.AclList().AclState().Key(),
-		IsEncrypted: true,
-		DataType:    dataType,
-		Timestamp:   params.Time.Unix(),
+		Data:              data,
+		Key:               s.ObjectTree.AclList().AclState().Key(),
+		ShouldBeEncrypted: true,
+		DataType:          dataType,
+		Timestamp:         params.Time.Unix(),
 	}, func(change objecttree.StorageChange) error {
 		err = tx.ApplyChangeSet(storestate.ChangeSet{
 			Id:        change.Id,
@@ -261,11 +298,11 @@ func (s *store) PushStoreChange(ctx context.Context, params source.PushStoreChan
 		return nil
 	})
 	if err != nil {
-		return "", rollback(fmt.Errorf("add content: %w", err))
+		return "", fmt.Errorf("add content: %w", err)
 	}
 
 	if len(addResult.Added) == 0 {
-		return "", rollback(fmt.Errorf("add changes list is empty"))
+		return "", fmt.Errorf("add changes list is empty")
 	}
 	changeId = addResult.Added[0].Id
 	err = tx.Commit()

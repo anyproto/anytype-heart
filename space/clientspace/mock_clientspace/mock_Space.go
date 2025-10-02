@@ -1561,6 +1561,52 @@ func (_c *MockSpace_LoadObjectsIgnoreErrs_Call) RunAndReturn(run func(context.Co
 	return _c
 }
 
+// RefreshObjects provides a mock function with given fields: objectIds
+func (_m *MockSpace) RefreshObjects(objectIds []string) error {
+	ret := _m.Called(objectIds)
+
+	if len(ret) == 0 {
+		panic("no return value specified for RefreshObjects")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func([]string) error); ok {
+		r0 = rf(objectIds)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// MockSpace_RefreshObjects_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'RefreshObjects'
+type MockSpace_RefreshObjects_Call struct {
+	*mock.Call
+}
+
+// RefreshObjects is a helper method to define mock.On call
+//   - objectIds []string
+func (_e *MockSpace_Expecter) RefreshObjects(objectIds interface{}) *MockSpace_RefreshObjects_Call {
+	return &MockSpace_RefreshObjects_Call{Call: _e.mock.On("RefreshObjects", objectIds)}
+}
+
+func (_c *MockSpace_RefreshObjects_Call) Run(run func(objectIds []string)) *MockSpace_RefreshObjects_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].([]string))
+	})
+	return _c
+}
+
+func (_c *MockSpace_RefreshObjects_Call) Return(err error) *MockSpace_RefreshObjects_Call {
+	_c.Call.Return(err)
+	return _c
+}
+
+func (_c *MockSpace_RefreshObjects_Call) RunAndReturn(run func([]string) error) *MockSpace_RefreshObjects_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // Remove provides a mock function with given fields: ctx, objectID
 func (_m *MockSpace) Remove(ctx context.Context, objectID string) error {
 	ret := _m.Called(ctx, objectID)

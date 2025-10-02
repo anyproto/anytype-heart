@@ -87,6 +87,7 @@ service ClientCommands {
     // Object
     // ***
     rpc ObjectOpen (anytype.Rpc.Object.Open.Request) returns (anytype.Rpc.Object.Open.Response);
+    rpc ObjectRefresh (anytype.Rpc.Object.Refresh.Request) returns (anytype.Rpc.Object.Refresh.Response);
     rpc ObjectClose (anytype.Rpc.Object.Close.Request) returns (anytype.Rpc.Object.Close.Response);
     rpc ObjectShow (anytype.Rpc.Object.Show.Request) returns (anytype.Rpc.Object.Show.Response);
 
@@ -134,7 +135,6 @@ service ClientCommands {
     rpc ObjectListExport (anytype.Rpc.Object.ListExport.Request) returns (anytype.Rpc.Object.ListExport.Response);
     rpc ObjectExport (anytype.Rpc.Object.Export.Request) returns (anytype.Rpc.Object.Export.Response);
     rpc ObjectBookmarkFetch (anytype.Rpc.Object.BookmarkFetch.Request) returns (anytype.Rpc.Object.BookmarkFetch.Response);
-    rpc ObjectToBookmark (anytype.Rpc.Object.ToBookmark.Request) returns (anytype.Rpc.Object.ToBookmark.Response);
     rpc ObjectImport (anytype.Rpc.Object.Import.Request) returns (anytype.Rpc.Object.Import.Response);
     rpc ObjectImportList (anytype.Rpc.Object.ImportList.Request) returns (anytype.Rpc.Object.ImportList.Response);
     rpc ObjectImportNotionValidateToken (anytype.Rpc.Object.Import.Notion.ValidateToken.Request) returns (anytype.Rpc.Object.Import.Notion.ValidateToken.Response);
@@ -154,6 +154,7 @@ service ClientCommands {
     rpc ObjectCreateRelationOption (anytype.Rpc.Object.CreateRelationOption.Request) returns (anytype.Rpc.Object.CreateRelationOption.Response);
     rpc RelationListRemoveOption (anytype.Rpc.Relation.ListRemoveOption.Request) returns (anytype.Rpc.Relation.ListRemoveOption.Response);
     rpc RelationOptions (anytype.Rpc.Relation.Options.Request) returns (anytype.Rpc.Relation.Options.Response);
+    rpc RelationOptionSetOrder (anytype.Rpc.Relation.Option.SetOrder.Request) returns (anytype.Rpc.Relation.Option.SetOrder.Response);
     rpc RelationListWithValue (anytype.Rpc.Relation.ListWithValue.Request) returns (anytype.Rpc.Relation.ListWithValue.Response);
 
     // Object Relations
@@ -173,6 +174,7 @@ service ClientCommands {
     rpc ObjectTypeRecommendedFeaturedRelationsSet (anytype.Rpc.ObjectType.Recommended.FeaturedRelationsSet.Request) returns (anytype.Rpc.ObjectType.Recommended.FeaturedRelationsSet.Response);
     rpc ObjectTypeListConflictingRelations (anytype.Rpc.ObjectType.ListConflictingRelations.Request) returns (anytype.Rpc.ObjectType.ListConflictingRelations.Response);
     rpc ObjectTypeResolveLayoutConflicts (anytype.Rpc.ObjectType.ResolveLayoutConflicts.Request) returns (anytype.Rpc.ObjectType.ResolveLayoutConflicts.Response);
+    rpc ObjectTypeSetOrder (anytype.Rpc.ObjectType.SetOrder.Request) returns (anytype.Rpc.ObjectType.SetOrder.Response);
 
     rpc HistoryShowVersion (anytype.Rpc.History.ShowVersion.Request) returns (anytype.Rpc.History.ShowVersion.Response);
     rpc HistoryGetVersions (anytype.Rpc.History.GetVersions.Request) returns (anytype.Rpc.History.GetVersions.Response);
@@ -186,6 +188,7 @@ service ClientCommands {
     rpc FileListOffload (anytype.Rpc.File.ListOffload.Request) returns (anytype.Rpc.File.ListOffload.Response);
     rpc FileUpload (anytype.Rpc.File.Upload.Request) returns (anytype.Rpc.File.Upload.Response);
     rpc FileDownload (anytype.Rpc.File.Download.Request) returns (anytype.Rpc.File.Download.Response);
+    rpc FileDiscardPreload (anytype.Rpc.File.DiscardPreload.Request) returns (anytype.Rpc.File.DiscardPreload.Response);
     rpc FileDrop (anytype.Rpc.File.Drop.Request) returns (anytype.Rpc.File.Drop.Response);
     rpc FileSpaceUsage (anytype.Rpc.File.SpaceUsage.Request) returns (anytype.Rpc.File.SpaceUsage.Response);
     rpc FileNodeUsage (anytype.Rpc.File.NodeUsage.Request) returns (anytype.Rpc.File.NodeUsage.Response);
@@ -379,6 +382,8 @@ service ClientCommands {
     rpc MembershipFinalize (anytype.Rpc.Membership.Finalize.Request) returns (anytype.Rpc.Membership.Finalize.Response);
     rpc MembershipGetTiers (anytype.Rpc.Membership.GetTiers.Request) returns (anytype.Rpc.Membership.GetTiers.Response);
     rpc MembershipVerifyAppStoreReceipt (anytype.Rpc.Membership.VerifyAppStoreReceipt.Request) returns (anytype.Rpc.Membership.VerifyAppStoreReceipt.Response);
+    rpc MembershipCodeGetInfo (anytype.Rpc.Membership.CodeGetInfo.Request) returns (anytype.Rpc.Membership.CodeGetInfo.Response);
+    rpc MembershipCodeRedeem (anytype.Rpc.Membership.CodeRedeem.Request) returns (anytype.Rpc.Membership.CodeRedeem.Response);
 
     // Name Service:
     // ***
@@ -418,4 +423,5 @@ service ClientCommands {
 
     // Push
     rpc PushNotificationRegisterToken(anytype.Rpc.PushNotification.RegisterToken.Request) returns (anytype.Rpc.PushNotification.RegisterToken.Response);
+    rpc PushNotificationSetSpaceMode(anytype.Rpc.PushNotification.SetSpaceMode.Request) returns (anytype.Rpc.PushNotification.SetSpaceMode.Response);
 }

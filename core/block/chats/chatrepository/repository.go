@@ -15,6 +15,7 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/block/chats/chatmodel"
 	"github.com/anyproto/anytype-heart/core/block/object/idresolver"
+	"github.com/anyproto/anytype-heart/pkg/lib/datastore/anystoreprovider"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -41,6 +42,7 @@ type service struct {
 	componentCtxCancel context.CancelFunc
 
 	objectStore     objectstore.ObjectStore
+	dbProvider      anystoreprovider.Provider
 	spaceIdResolver idresolver.Resolver
 	arenaPool       *anyenc.ArenaPool
 }
@@ -65,8 +67,8 @@ func (s *service) Close(ctx context.Context) error {
 func (s *service) Init(a *app.App) (err error) {
 	s.componentCtx, s.componentCtxCancel = context.WithCancel(context.Background())
 
-	s.objectStore = app.MustComponent[objectstore.ObjectStore](a)
 	s.spaceIdResolver = app.MustComponent[idresolver.Resolver](a)
+	s.dbProvider = app.MustComponent[anystoreprovider.Provider](a)
 	return nil
 }
 
@@ -80,8 +82,7 @@ func (s *service) Repository(chatObjectId string) (Repository, error) {
 		return nil, fmt.Errorf("resolve space id: %w", err)
 	}
 
-	crdtDbGetter := s.objectStore.GetCrdtDb(spaceId)
-	crdtDb, err := crdtDbGetter.Wait()
+	crdtDb, err := s.dbProvider.GetCrdtDb(spaceId).Wait()
 	if err != nil {
 		return nil, fmt.Errorf("get crdt db: %w", err)
 	}
@@ -107,6 +108,7 @@ func (s *service) Repository(chatObjectId string) (Repository, error) {
 type Repository interface {
 	WriteTx(ctx context.Context) (anystore.WriteTx, error)
 	ReadTx(ctx context.Context) (anystore.ReadTx, error)
+	AddTestMessage(ctx context.Context, msg *chatmodel.Message) error
 	GetLastStateId(ctx context.Context) (string, error)
 	GetPrevOrderId(ctx context.Context, orderId string) (string, error)
 	LoadChatState(ctx context.Context) (*model.ChatState, error)
@@ -119,11 +121,27 @@ type Repository interface {
 	HasMyReaction(ctx context.Context, myIdentity string, messageId string, emoji string) (bool, error)
 	GetMessagesByIds(ctx context.Context, messageIds []string) ([]*chatmodel.Message, error)
 	GetLastMessages(ctx context.Context, limit uint) ([]*chatmodel.Message, error)
+	SetSyncedFlag(ctx context.Context, chatObjectId string, msgIds []string, value bool) []string
 }
 
 type repository struct {
 	collection anystore.Collection
 	arenaPool  *anyenc.ArenaPool
+}
+
+func (s *repository) AddTestMessage(ctx context.Context, msg *chatmodel.Message) error {
+	arena := s.arenaPool.Get()
+	arena.Reset()
+	defer s.arenaPool.Put(arena)
+
+	val := arena.NewObject()
+	msg.MarshalAnyenc(val, arena)
+
+	orderObj := arena.NewObject()
+	orderObj.Set("id", arena.NewString(msg.OrderId))
+	val.Set(chatmodel.OrderKey, orderObj)
+
+	return s.collection.Insert(ctx, val)
 }
 
 func (s *repository) WriteTx(ctx context.Context) (anystore.WriteTx, error) {
@@ -351,6 +369,36 @@ func (r *repository) SetReadFlag(ctx context.Context, chatObjectId string, msgId
 		}
 		if err != nil {
 			log.Error("markReadMessages: update message", zap.Error(err), zap.String("changeId", id), zap.String("chatObjectId", chatObjectId))
+			continue
+		}
+		if res.Modified > 0 {
+			idsModified = append(idsModified, id)
+		}
+	}
+	return idsModified
+}
+
+func (r *repository) SetSyncedFlag(ctx context.Context, chatObjectId string, msgIds []string, value bool) []string {
+	var idsModified []string
+	for _, id := range msgIds {
+		if id == chatObjectId {
+			// skip tree root
+			continue
+		}
+		res, err := r.collection.UpdateId(ctx, id, query.ModifyFunc(func(a *anyenc.Arena, v *anyenc.Value) (result *anyenc.Value, modified bool, err error) {
+			oldValue := v.GetBool(chatmodel.SyncedKey)
+			if oldValue != value {
+				v.Set(chatmodel.SyncedKey, arenaNewBool(a, value))
+				return v, true, nil
+			}
+			return v, false, nil
+		}))
+		// Not all changes are messages, skip them
+		if errors.Is(err, anystore.ErrDocNotFound) {
+			continue
+		}
+		if err != nil {
+			log.Error("set synced flag: update message", zap.Error(err), zap.String("changeId", id), zap.String("chatObjectId", chatObjectId))
 			continue
 		}
 		if res.Modified > 0 {

@@ -1,23 +1,32 @@
 package device
 
 import (
+	"context"
+	"path/filepath"
 	"testing"
 
+	anystore "github.com/anyproto/any-store"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
-	"github.com/anyproto/anytype-heart/pkg/lib/datastore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
+
+func newTestAnystore(t *testing.T) anystore.DB {
+	db, err := anystore.Open(context.Background(), filepath.Join(t.TempDir(), "test.db"), nil)
+	require.NoError(t, err)
+	t.Cleanup(func() {
+		require.NoError(t, db.Close())
+	})
+	return db
+}
 
 func TestDeviceStore_SaveDevice(t *testing.T) {
 	t.Run("device exist: not save it again", func(t *testing.T) {
 		// given
-		memory, err := datastore.NewInMemory()
-		assert.Nil(t, err)
-		storage, err := memory.LocalStorage()
-		assert.Nil(t, err)
+		store, err := NewStore(newTestAnystore(t))
+		require.NoError(t, err)
 
-		store := NewStore(storage)
 		testInfo1 := &model.DeviceInfo{Id: "test", Name: "test"}
 		testInfo2 := &model.DeviceInfo{Id: "test", Name: "test"}
 		err = store.SaveDevice(testInfo1)
@@ -35,12 +44,8 @@ func TestDeviceStore_SaveDevice(t *testing.T) {
 
 	t.Run("device not exist: save it", func(t *testing.T) {
 		// given
-		memory, err := datastore.NewInMemory()
-		assert.Nil(t, err)
-		storage, err := memory.LocalStorage()
-		assert.Nil(t, err)
-
-		store := NewStore(storage)
+		store, err := NewStore(newTestAnystore(t))
+		require.NoError(t, err)
 		testInfo1 := &model.DeviceInfo{Id: "test", Name: "test"}
 
 		// when
@@ -57,12 +62,8 @@ func TestDeviceStore_SaveDevice(t *testing.T) {
 func TestDeviceStore_ListDevices(t *testing.T) {
 	t.Run("list devices: no devices", func(t *testing.T) {
 		// given
-		memory, err := datastore.NewInMemory()
-		assert.Nil(t, err)
-		storage, err := memory.LocalStorage()
-		assert.Nil(t, err)
-
-		store := NewStore(storage)
+		store, err := NewStore(newTestAnystore(t))
+		require.NoError(t, err)
 
 		// when
 		devices, err := store.ListDevices()
@@ -73,12 +74,9 @@ func TestDeviceStore_ListDevices(t *testing.T) {
 	})
 	t.Run("list devices: 2 devices", func(t *testing.T) {
 		// given
-		memory, err := datastore.NewInMemory()
-		assert.Nil(t, err)
-		storage, err := memory.LocalStorage()
-		assert.Nil(t, err)
+		store, err := NewStore(newTestAnystore(t))
+		require.NoError(t, err)
 
-		store := NewStore(storage)
 		testInfo1 := &model.DeviceInfo{Id: "test", Name: "test"}
 		testInfo2 := &model.DeviceInfo{Id: "test1", Name: "test"}
 		err = store.SaveDevice(testInfo1)
@@ -98,12 +96,8 @@ func TestDeviceStore_ListDevices(t *testing.T) {
 func TestDeviceStore_UpdateDeviceName(t *testing.T) {
 	t.Run("update device: device not exist - save it", func(t *testing.T) {
 		// given
-		memory, err := datastore.NewInMemory()
-		assert.Nil(t, err)
-		storage, err := memory.LocalStorage()
-		assert.Nil(t, err)
-
-		store := NewStore(storage)
+		store, err := NewStore(newTestAnystore(t))
+		require.NoError(t, err)
 
 		// when
 		err = store.UpdateDeviceName("id", "test")
@@ -120,12 +114,8 @@ func TestDeviceStore_UpdateDeviceName(t *testing.T) {
 	})
 	t.Run("update device: device exists - update it", func(t *testing.T) {
 		// given
-		memory, err := datastore.NewInMemory()
-		assert.Nil(t, err)
-		storage, err := memory.LocalStorage()
-		assert.Nil(t, err)
-
-		store := NewStore(storage)
+		store, err := NewStore(newTestAnystore(t))
+		require.NoError(t, err)
 		testInfo1 := &model.DeviceInfo{Id: "id", Name: "test"}
 		err = store.SaveDevice(testInfo1)
 		assert.Nil(t, err)

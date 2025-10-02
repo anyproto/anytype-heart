@@ -9,10 +9,19 @@ import (
 	"github.com/cheggaaa/mb/v3"
 	"go.uber.org/zap"
 
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/event"
 	subscriptionservice "github.com/anyproto/anytype-heart/core/subscription"
 	"github.com/anyproto/anytype-heart/pb"
 )
+
+type Predicate func(details *domain.Details) bool
+
+func NoOpPredicate() Predicate {
+	return func(details *domain.Details) bool {
+		return true
+	}
+}
 
 type crossSpaceSubscription struct {
 	subId string
@@ -21,6 +30,8 @@ type crossSpaceSubscription struct {
 
 	eventSender         event.Sender
 	subscriptionService subscriptionservice.Service
+
+	spacePredicate Predicate
 
 	ctx       context.Context
 	ctxCancel context.CancelFunc
@@ -33,7 +44,7 @@ type crossSpaceSubscription struct {
 	totalCounts map[string]int64
 }
 
-func newCrossSpaceSubscription(subId string, request subscriptionservice.SubscribeRequest, eventSender event.Sender, subscriptionService subscriptionservice.Service, initialSpaceIds []string) (*crossSpaceSubscription, *subscriptionservice.SubscribeResponse, error) {
+func newCrossSpaceSubscription(subId string, request subscriptionservice.SubscribeRequest, eventSender event.Sender, subscriptionService subscriptionservice.Service, initialSpaceIds []string, predicate Predicate) (*crossSpaceSubscription, *subscriptionservice.SubscribeResponse, error) {
 	ctx, ctxCancel := context.WithCancel(context.Background())
 	s := &crossSpaceSubscription{
 		ctx:                   ctx,
@@ -41,6 +52,7 @@ func newCrossSpaceSubscription(subId string, request subscriptionservice.Subscri
 		subId:                 subId,
 		request:               request,
 		eventSender:           eventSender,
+		spacePredicate:        predicate,
 		subscriptionService:   subscriptionService,
 		perSpaceSubscriptions: make(map[string]string),
 		totalCounts:           map[string]int64{},
@@ -92,9 +104,6 @@ func (s *crossSpaceSubscription) run(internalQueue *mb.MB[*pb.EventMessage]) {
 }
 
 func (s *crossSpaceSubscription) patchEvent(msg *pb.EventMessage) {
-	// Remove spaceId as it's the cross space subscription
-	msg.SpaceId = ""
-
 	matcher := subscriptionservice.EventMatcher{
 		OnAdd: func(spaceId string, add *pb.EventObjectSubscriptionAdd) {
 			add.SubId = s.subId
@@ -182,7 +191,7 @@ func (s *crossSpaceSubscription) removeSpace(spaceId string) error {
 			return err
 		}
 		for _, id := range ids {
-			err = s.queue.Add(s.ctx, event.NewMessage("", &pb.EventMessageValueOfSubscriptionRemove{
+			err = s.queue.Add(s.ctx, event.NewMessage(spaceId, &pb.EventMessageValueOfSubscriptionRemove{
 				SubscriptionRemove: &pb.EventObjectSubscriptionRemove{
 					SubId: s.subId,
 					Id:    id,
@@ -195,7 +204,7 @@ func (s *crossSpaceSubscription) removeSpace(spaceId string) error {
 		}
 
 		total := s.removeTotalCount(subId)
-		err = s.queue.Add(s.ctx, event.NewMessage("", &pb.EventMessageValueOfSubscriptionCounters{
+		err = s.queue.Add(s.ctx, event.NewMessage(spaceId, &pb.EventMessageValueOfSubscriptionCounters{
 			SubscriptionCounters: &pb.EventObjectSubscriptionCounters{
 				SubId: subId,
 				Total: total,

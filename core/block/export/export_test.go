@@ -4,18 +4,22 @@ import (
 	"archive/zip"
 	"context"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/anyproto/any-sync/app"
 	"github.com/gogo/protobuf/jsonpb"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/require"
 
 	"github.com/anyproto/anytype-heart/core/block/cache/mock_cache"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock/smarttest"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
+	"github.com/anyproto/anytype-heart/core/block/editor/template"
 	"github.com/anyproto/anytype-heart/core/block/process"
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/converter/pbjson"
@@ -188,7 +192,7 @@ func TestExport_Export(t *testing.T) {
 			{
 				bundle.RelationKeyId:                   domain.String(objectTypeId),
 				bundle.RelationKeyUniqueKey:            domain.String(objectTypeUniqueKey.Marshal()),
-				bundle.RelationKeyLayout:               domain.Int64(int64(model.ObjectType_objectType)),
+				bundle.RelationKeyResolvedLayout:       domain.Int64(int64(model.ObjectType_objectType)),
 				bundle.RelationKeyRecommendedRelations: domain.StringList([]string{addr.MissingObject}),
 				bundle.RelationKeySpaceId:              domain.String(spaceId),
 			},
@@ -377,12 +381,12 @@ func TestExport_Export(t *testing.T) {
 
 		storeFixture.AddObjects(t, spaceId, []spaceindex.TestObject{
 			{
-				bundle.RelationKeyId:          domain.String(link),
-				bundle.RelationKeyType:        domain.String(objectTypeId),
-				bundle.RelationKeySpaceId:     domain.String(spaceId),
-				bundle.RelationKeyDescription: domain.String("description"),
-				bundle.RelationKeyLayout:      domain.Int64(model.ObjectType_set),
-				bundle.RelationKeyCamera:      domain.String("test"),
+				bundle.RelationKeyId:             domain.String(link),
+				bundle.RelationKeyType:           domain.String(objectTypeId),
+				bundle.RelationKeySpaceId:        domain.String(spaceId),
+				bundle.RelationKeyDescription:    domain.String("description"),
+				bundle.RelationKeyResolvedLayout: domain.Int64(model.ObjectType_set),
+				bundle.RelationKeyCamera:         domain.String("test"),
 			},
 			{
 				bundle.RelationKeyId:      domain.String(objectId),
@@ -392,7 +396,7 @@ func TestExport_Export(t *testing.T) {
 			{
 				bundle.RelationKeyId:                   domain.String(objectTypeId),
 				bundle.RelationKeyUniqueKey:            domain.String(objectTypeUniqueKey.Marshal()),
-				bundle.RelationKeyLayout:               domain.Int64(int64(model.ObjectType_objectType)),
+				bundle.RelationKeyResolvedLayout:       domain.Int64(int64(model.ObjectType_objectType)),
 				bundle.RelationKeyRecommendedRelations: domain.StringList([]string{addr.MissingObject}),
 				bundle.RelationKeySpaceId:              domain.String(spaceId),
 				bundle.RelationKeyType:                 domain.String(objectTypeId),
@@ -434,12 +438,12 @@ func TestExport_Export(t *testing.T) {
 
 		linkObject := smarttest.New(link)
 		linkObjectDoc := linkObject.NewState().SetDetails(domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
-			bundle.RelationKeyId:          domain.String(link),
-			bundle.RelationKeyType:        domain.String(objectTypeId),
-			bundle.RelationKeySpaceId:     domain.String(spaceId),
-			bundle.RelationKeyDescription: domain.String("description"),
-			bundle.RelationKeyLayout:      domain.Int64(model.ObjectType_set),
-			bundle.RelationKeyCamera:      domain.String("test"),
+			bundle.RelationKeyId:             domain.String(link),
+			bundle.RelationKeyType:           domain.String(objectTypeId),
+			bundle.RelationKeySpaceId:        domain.String(spaceId),
+			bundle.RelationKeyDescription:    domain.String("description"),
+			bundle.RelationKeyResolvedLayout: domain.Int64(model.ObjectType_set),
+			bundle.RelationKeyCamera:         domain.String("test"),
 		}))
 		linkObjectDoc.AddRelationLinks(&model.RelationLink{
 			Key:    bundle.RelationKeyId.String(),
@@ -570,7 +574,7 @@ func TestExport_Export(t *testing.T) {
 			{
 				bundle.RelationKeyId:                   domain.String(objectTypeId),
 				bundle.RelationKeyUniqueKey:            domain.String(objectTypeUniqueKey.Marshal()),
-				bundle.RelationKeyLayout:               domain.Int64(int64(model.ObjectType_objectType)),
+				bundle.RelationKeyResolvedLayout:       domain.Int64(int64(model.ObjectType_objectType)),
 				bundle.RelationKeyRecommendedRelations: domain.StringList([]string{addr.MissingObject}),
 				bundle.RelationKeySpaceId:              domain.String(spaceId),
 				bundle.RelationKeyType:                 domain.String(objectTypeId),
@@ -714,7 +718,7 @@ func TestExport_Export(t *testing.T) {
 			{
 				bundle.RelationKeyId:                   domain.String(objectTypeId),
 				bundle.RelationKeyUniqueKey:            domain.String(objectTypeUniqueKey.Marshal()),
-				bundle.RelationKeyLayout:               domain.Int64(int64(model.ObjectType_objectType)),
+				bundle.RelationKeyResolvedLayout:       domain.Int64(int64(model.ObjectType_objectType)),
 				bundle.RelationKeyRecommendedRelations: domain.StringList([]string{addr.MissingObject}),
 				bundle.RelationKeySpaceId:              domain.String(spaceId),
 				bundle.RelationKeyType:                 domain.String(objectTypeId),
@@ -2127,18 +2131,18 @@ func Test_docsForExport(t *testing.T) {
 				bundle.RelationKeyType:             domain.String(templateType),
 			},
 			{
-				bundle.RelationKeyId:        domain.String(objectTypeKey),
-				bundle.RelationKeyUniqueKey: domain.String(objectTypeUniqueKey.Marshal()),
-				bundle.RelationKeyLayout:    domain.Int64(int64(model.ObjectType_objectType)),
-				bundle.RelationKeySpaceId:   domain.String(spaceId),
-				bundle.RelationKeyType:      domain.String(objectTypeKey),
+				bundle.RelationKeyId:             domain.String(objectTypeKey),
+				bundle.RelationKeyUniqueKey:      domain.String(objectTypeUniqueKey.Marshal()),
+				bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_objectType)),
+				bundle.RelationKeySpaceId:        domain.String(spaceId),
+				bundle.RelationKeyType:           domain.String(objectTypeKey),
 			},
 			{
-				bundle.RelationKeyId:        domain.String(templateType),
-				bundle.RelationKeyUniqueKey: domain.String(templateObjectTypeUniqueKey.Marshal()),
-				bundle.RelationKeyLayout:    domain.Int64(int64(model.ObjectType_objectType)),
-				bundle.RelationKeySpaceId:   domain.String(spaceId),
-				bundle.RelationKeyType:      domain.String(objectTypeKey),
+				bundle.RelationKeyId:             domain.String(templateType),
+				bundle.RelationKeyUniqueKey:      domain.String(templateObjectTypeUniqueKey.Marshal()),
+				bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_objectType)),
+				bundle.RelationKeySpaceId:        domain.String(spaceId),
+				bundle.RelationKeyType:           domain.String(objectTypeKey),
 			},
 		})
 
@@ -2549,18 +2553,18 @@ func Test_docsForExport(t *testing.T) {
 
 		storeFixture.AddObjects(t, spaceId, []objectstore.TestObject{
 			{
-				bundle.RelationKeyId:      domain.String(id),
-				bundle.RelationKeyName:    domain.String("name"),
-				bundle.RelationKeySpaceId: domain.String(spaceId),
-				bundle.RelationKeyType:    domain.String(objectTypeId),
-				bundle.RelationKeyLayout:  domain.Int64(int64(model.ObjectType_collection)),
+				bundle.RelationKeyId:             domain.String(id),
+				bundle.RelationKeyName:           domain.String("name"),
+				bundle.RelationKeySpaceId:        domain.String(spaceId),
+				bundle.RelationKeyType:           domain.String(objectTypeId),
+				bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_collection)),
 			},
 			{
-				bundle.RelationKeyId:        domain.String(objectTypeId),
-				bundle.RelationKeyUniqueKey: domain.String(objectTypeUniqueKey.Marshal()),
-				bundle.RelationKeyLayout:    domain.Int64(int64(model.ObjectType_objectType)),
-				bundle.RelationKeySpaceId:   domain.String(spaceId),
-				bundle.RelationKeyType:      domain.String(objectTypeId),
+				bundle.RelationKeyId:             domain.String(objectTypeId),
+				bundle.RelationKeyUniqueKey:      domain.String(objectTypeUniqueKey.Marshal()),
+				bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_objectType)),
+				bundle.RelationKeySpaceId:        domain.String(spaceId),
+				bundle.RelationKeyType:           domain.String(objectTypeId),
 			},
 		})
 
@@ -2654,11 +2658,11 @@ func Test_docsForExport(t *testing.T) {
 				bundle.RelationKeyType:    domain.String(objectTypeId),
 			},
 			{
-				bundle.RelationKeyId:        domain.String(objectTypeId),
-				bundle.RelationKeyUniqueKey: domain.String(objectTypeUniqueKey.Marshal()),
-				bundle.RelationKeyLayout:    domain.Int64(int64(model.ObjectType_objectType)),
-				bundle.RelationKeySpaceId:   domain.String(spaceId),
-				bundle.RelationKeyType:      domain.String(objectTypeId),
+				bundle.RelationKeyId:             domain.String(objectTypeId),
+				bundle.RelationKeyUniqueKey:      domain.String(objectTypeUniqueKey.Marshal()),
+				bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_objectType)),
+				bundle.RelationKeySpaceId:        domain.String(spaceId),
+				bundle.RelationKeyType:           domain.String(objectTypeId),
 			},
 		})
 
@@ -2840,5 +2844,327 @@ func Test_queryObjectsFromStoreByIds(t *testing.T) {
 		// then
 		assert.Nil(t, err)
 		assert.Len(t, records, 2000)
+	})
+}
+
+func TestExport_CollectionFilterMissing(t *testing.T) {
+	t.Run("collection with non-existing objects", func(t *testing.T) {
+		storeFixture := objectstore.NewStoreFixture(t)
+
+		collectionId := "collection1"
+		existingObjectId := "object1"
+		missingObjectId := "object2"
+		deletedObjectId := "object3"
+
+		storeFixture.AddObjects(t, spaceId, []spaceindex.TestObject{
+			{
+				bundle.RelationKeyId:             domain.String(collectionId),
+				bundle.RelationKeyType:           domain.String(bundle.TypeKeyCollection),
+				bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_collection)),
+				bundle.RelationKeySpaceId:        domain.String(spaceId),
+			},
+			{
+				bundle.RelationKeyId:      domain.String(existingObjectId),
+				bundle.RelationKeyType:    domain.String(bundle.TypeKeyPage),
+				bundle.RelationKeySpaceId: domain.String(spaceId),
+			},
+			{
+				bundle.RelationKeyId:        domain.String(deletedObjectId),
+				bundle.RelationKeyType:      domain.String(bundle.TypeKeyPage),
+				bundle.RelationKeySpaceId:   domain.String(spaceId),
+				bundle.RelationKeyIsDeleted: domain.Bool(true),
+			},
+		})
+
+		e := &export{objectStore: storeFixture}
+		expCtx := newExportContext(e, pb.RpcObjectListExportRequest{
+			SpaceId: spaceId,
+			Format:  model.Export_Protobuf,
+		})
+
+		collectionDetails, _ := storeFixture.GetDetails(spaceId, collectionId)
+		existingObjectDetails, _ := storeFixture.GetDetails(spaceId, existingObjectId)
+		expCtx.docs = map[string]*Doc{
+			collectionId:     {Details: collectionDetails},
+			existingObjectId: {Details: existingObjectDetails},
+		}
+
+		collectionState := state.NewDoc(collectionId, map[string]simple.Block{
+			collectionId: simple.New(&model.Block{Id: collectionId}),
+		}).(*state.State)
+		collectionState.SetDetails(domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+			bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_collection)),
+		}))
+		collectionState.UpdateStoreSlice(template.CollectionStoreKey, []string{existingObjectId, missingObjectId, deletedObjectId})
+
+		originalIds := collectionState.GetStoreSlice(template.CollectionStoreKey)
+		assert.Len(t, originalIds, 3)
+
+		expCtx.collectionFilterMissing(collectionState)
+
+		processedIds := collectionState.GetStoreSlice(template.CollectionStoreKey)
+		assert.Len(t, processedIds, 1)
+		assert.Equal(t, []string{existingObjectId}, processedIds)
+	})
+
+	t.Run("collection with all existing objects", func(t *testing.T) {
+		storeFixture := objectstore.NewStoreFixture(t)
+
+		collectionId := "collection1"
+		object1Id := "object1"
+		object2Id := "object2"
+
+		storeFixture.AddObjects(t, spaceId, []spaceindex.TestObject{
+			{
+				bundle.RelationKeyId:             domain.String(collectionId),
+				bundle.RelationKeyType:           domain.String(bundle.TypeKeyCollection),
+				bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_collection)),
+				bundle.RelationKeySpaceId:        domain.String(spaceId),
+			},
+			{
+				bundle.RelationKeyId:      domain.String(object1Id),
+				bundle.RelationKeyType:    domain.String(bundle.TypeKeyPage),
+				bundle.RelationKeySpaceId: domain.String(spaceId),
+			},
+			{
+				bundle.RelationKeyId:      domain.String(object2Id),
+				bundle.RelationKeyType:    domain.String(bundle.TypeKeyPage),
+				bundle.RelationKeySpaceId: domain.String(spaceId),
+			},
+		})
+
+		e := &export{objectStore: storeFixture}
+		expCtx := newExportContext(e, pb.RpcObjectListExportRequest{
+			SpaceId: spaceId,
+			Format:  model.Export_Protobuf,
+		})
+
+		collectionDetails, _ := storeFixture.GetDetails(spaceId, collectionId)
+		object1Details, _ := storeFixture.GetDetails(spaceId, object1Id)
+		object2Details, _ := storeFixture.GetDetails(spaceId, object2Id)
+		expCtx.docs = map[string]*Doc{
+			collectionId: {Details: collectionDetails},
+			object1Id:    {Details: object1Details},
+			object2Id:    {Details: object2Details},
+		}
+
+		collectionState := state.NewDoc(collectionId, map[string]simple.Block{
+			collectionId: simple.New(&model.Block{Id: collectionId}),
+		}).(*state.State)
+		collectionState.SetDetails(domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+			bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_collection)),
+		}))
+		collectionState.UpdateStoreSlice(template.CollectionStoreKey, []string{object1Id, object2Id})
+
+		originalIds := collectionState.GetStoreSlice(template.CollectionStoreKey)
+		assert.Len(t, originalIds, 2)
+
+		expCtx.collectionFilterMissing(collectionState)
+
+		processedIds := collectionState.GetStoreSlice(template.CollectionStoreKey)
+		assert.Len(t, processedIds, 2)
+		assert.Equal(t, []string{object1Id, object2Id}, processedIds)
+	})
+
+	t.Run("empty collection", func(t *testing.T) {
+		storeFixture := objectstore.NewStoreFixture(t)
+
+		collectionId := "collection1"
+
+		storeFixture.AddObjects(t, spaceId, []spaceindex.TestObject{
+			{
+				bundle.RelationKeyId:             domain.String(collectionId),
+				bundle.RelationKeyType:           domain.String(bundle.TypeKeyCollection),
+				bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_collection)),
+				bundle.RelationKeySpaceId:        domain.String(spaceId),
+			},
+		})
+
+		e := &export{objectStore: storeFixture}
+		expCtx := newExportContext(e, pb.RpcObjectListExportRequest{
+			SpaceId: spaceId,
+			Format:  model.Export_Protobuf,
+		})
+
+		collectionDetails, _ := storeFixture.GetDetails(spaceId, collectionId)
+		expCtx.docs = map[string]*Doc{
+			collectionId: {Details: collectionDetails},
+		}
+
+		collectionState := state.NewDoc(collectionId, map[string]simple.Block{
+			collectionId: simple.New(&model.Block{Id: collectionId}),
+		}).(*state.State)
+		collectionState.SetDetails(domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+			bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_collection)),
+		}))
+		collectionState.UpdateStoreSlice(template.CollectionStoreKey, []string{})
+
+		originalIds := collectionState.GetStoreSlice(template.CollectionStoreKey)
+		assert.Len(t, originalIds, 0)
+
+		expCtx.collectionFilterMissing(collectionState)
+
+		processedIds := collectionState.GetStoreSlice(template.CollectionStoreKey)
+		assert.Len(t, processedIds, 0)
+		assert.Equal(t, []string{}, processedIds)
+	})
+}
+
+func TestExport_ExportCollectionWithNonExistingObjects(t *testing.T) {
+	t.Run("export collection with missing objects filters them out", func(t *testing.T) {
+		storeFixture := objectstore.NewStoreFixture(t)
+		collectionId := "collection1"
+		existingObject1 := "object1"
+		existingObject2 := "object2"
+		missingObject := "missingObject"
+
+		storeFixture.AddObjects(t, spaceId, []spaceindex.TestObject{
+			{
+				bundle.RelationKeyId:             domain.String(collectionId),
+				bundle.RelationKeyType:           domain.String(bundle.TypeKeyCollection),
+				bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_collection)),
+				bundle.RelationKeySpaceId:        domain.String(spaceId),
+			},
+			{
+				bundle.RelationKeyId:      domain.String(existingObject1),
+				bundle.RelationKeyType:    domain.String(bundle.TypeKeyPage),
+				bundle.RelationKeySpaceId: domain.String(spaceId),
+			},
+			{
+				bundle.RelationKeyId:      domain.String(existingObject2),
+				bundle.RelationKeyType:    domain.String(bundle.TypeKeyPage),
+				bundle.RelationKeySpaceId: domain.String(spaceId),
+			},
+		})
+
+		objectGetter := mock_cache.NewMockObjectGetter(t)
+
+		collectionBlock := smarttest.New(collectionId)
+		collectionDoc := collectionBlock.NewState()
+		collectionDoc.SetDetails(domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+			bundle.RelationKeyId:             domain.String(collectionId),
+			bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_collection)),
+			bundle.RelationKeyType:           domain.String(bundle.TypeKeyCollection),
+		}))
+		collectionDoc.UpdateStoreSlice(template.CollectionStoreKey, []string{existingObject1, missingObject, existingObject2})
+		collectionBlock.Doc = collectionDoc
+
+		object1Block := smarttest.New(existingObject1)
+		object1Doc := object1Block.NewState()
+		object1Doc.SetDetails(domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+			bundle.RelationKeyId:   domain.String(existingObject1),
+			bundle.RelationKeyType: domain.String(bundle.TypeKeyPage),
+		}))
+		object1Block.Doc = object1Doc
+
+		object2Block := smarttest.New(existingObject2)
+		object2Doc := object2Block.NewState()
+		object2Doc.SetDetails(domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+			bundle.RelationKeyId:   domain.String(existingObject2),
+			bundle.RelationKeyType: domain.String(bundle.TypeKeyPage),
+		}))
+		object2Block.Doc = object2Doc
+
+		objectGetter.EXPECT().GetObject(mock.Anything, mock.Anything).Return(collectionBlock, nil).Maybe()
+		objectGetter.EXPECT().GetObject(mock.Anything, mock.Anything).Return(object1Block, nil).Maybe()
+		objectGetter.EXPECT().GetObject(mock.Anything, mock.Anything).Return(object2Block, nil).Maybe()
+		objectGetter.EXPECT().GetObject(mock.Anything, mock.Anything).Return(nil, fmt.Errorf("not found")).Maybe()
+
+		sbtProvider := mock_typeprovider.NewMockSmartBlockTypeProvider(t)
+		sbtProvider.EXPECT().Type(mock.Anything, mock.Anything).Return(smartblock.SmartBlockTypePage, nil).Maybe()
+		sbtProvider.EXPECT().Type(mock.Anything, mock.Anything).Return(smartblock.SmartBlockTypePage, nil).Maybe()
+		sbtProvider.EXPECT().Type(mock.Anything, mock.Anything).Return(smartblock.SmartBlockTypePage, nil).Maybe()
+
+		syncService := mock_notifications.NewMockNotifications(t)
+		notificationSend := make(chan struct{})
+		syncService.EXPECT().CreateAndSend(mock.Anything).RunAndReturn(func(notification *model.Notification) error {
+			close(notificationSend)
+			return nil
+		})
+
+		a := &app.App{}
+		mockSender := mock_event.NewMockSender(t)
+		mockSender.EXPECT().Broadcast(mock.Anything).Return()
+		a.Register(testutil.PrepareMock(context.Background(), a, mockSender))
+
+		service := process.New()
+		err := service.Init(a)
+		assert.Nil(t, err)
+
+		e := &export{
+			objectStore:         storeFixture,
+			picker:              objectGetter,
+			sbtProvider:         sbtProvider,
+			notificationService: syncService,
+			processService:      service,
+		}
+
+		path, succeed, err := e.Export(context.Background(), pb.RpcObjectListExportRequest{
+			SpaceId:       spaceId,
+			Path:          t.TempDir(),
+			Format:        model.Export_Protobuf,
+			ObjectIds:     []string{collectionId},
+			Zip:           true,
+			IncludeNested: true,
+			IncludeFiles:  false,
+			IsJson:        true,
+		})
+
+		<-notificationSend
+		assert.NoError(t, err)
+		assert.NotEmpty(t, path)
+		assert.Equal(t, 3, int(succeed))
+
+		reader, err := zip.OpenReader(path)
+		require.NoError(t, err)
+		defer reader.Close()
+
+		var collectionFile *zip.File
+		expectedPath := filepath.Join("objects", collectionId+".pb.json")
+
+		for _, f := range reader.File {
+			if f.Name == expectedPath {
+				collectionFile = f
+				break
+			}
+		}
+		require.NotNil(t, collectionFile, "Collection file not found in export")
+
+		rc, err := collectionFile.Open()
+		require.NoError(t, err)
+		defer rc.Close()
+
+		data, err := io.ReadAll(rc)
+		require.NoError(t, err)
+
+		var snapshotWithType pb.SnapshotWithType
+		unmarshaler := &jsonpb.Unmarshaler{AllowUnknownFields: true}
+		err = unmarshaler.Unmarshal(strings.NewReader(string(data)), &snapshotWithType)
+		require.NoError(t, err)
+
+		var collectionObjects []string
+
+		snapshot := snapshotWithType.GetSnapshot()
+		require.NotNil(t, snapshot, "Snapshot should not be nil")
+
+		collections := snapshot.GetData().GetCollections()
+		require.NotNil(t, collections, "Collections should not be nil")
+
+		if objectsField := collections.GetFields()[template.CollectionStoreKey]; objectsField != nil {
+			if objectsList := objectsField.GetListValue(); objectsList != nil {
+				for _, obj := range objectsList.GetValues() {
+					if objStr := obj.GetStringValue(); objStr != "" {
+						collectionObjects = append(collectionObjects, objStr)
+					}
+				}
+			}
+		}
+
+		assert.Len(t, collectionObjects, 2, "Collection should contain exactly 2 objects (missing object filtered out)")
+		assert.Contains(t, collectionObjects, existingObject1, "Collection should contain existing object 1")
+		assert.Contains(t, collectionObjects, existingObject2, "Collection should contain existing object 2")
+		assert.NotContains(t, collectionObjects, missingObject, "Collection should not contain missing object")
+
+		os.Remove(path)
 	})
 }

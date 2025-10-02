@@ -9,12 +9,10 @@ import (
 	"github.com/anyproto/anytype-heart/core/block"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/domain/objectorigin"
-	"github.com/anyproto/anytype-heart/core/files"
 	"github.com/anyproto/anytype-heart/core/files/fileoffloader"
+	"github.com/anyproto/anytype-heart/core/files/filespaceusage"
 	"github.com/anyproto/anytype-heart/core/files/reconciler"
 	"github.com/anyproto/anytype-heart/pb"
-	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
-	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
 func (mw *Middleware) FileDownload(cctx context.Context, req *pb.RpcFileDownloadRequest) *pb.RpcFileDownloadResponse {
@@ -122,54 +120,60 @@ func (mw *Middleware) FileSpaceOffload(cctx context.Context, req *pb.RpcFileSpac
 }
 
 func (mw *Middleware) FileUpload(cctx context.Context, req *pb.RpcFileUploadRequest) *pb.RpcFileUploadResponse {
-	response := func(objectId string, details *types.Struct, code pb.RpcFileUploadResponseErrorCode, err error) *pb.RpcFileUploadResponse {
-		m := &pb.RpcFileUploadResponse{Error: &pb.RpcFileUploadResponseError{Code: code}, ObjectId: objectId, Details: details}
+	response := func(objectId string, preloadFileId string, details *types.Struct, code pb.RpcFileUploadResponseErrorCode, err error) *pb.RpcFileUploadResponse {
+		m := &pb.RpcFileUploadResponse{Error: &pb.RpcFileUploadResponseError{Code: code}, ObjectId: objectId, PreloadFileId: preloadFileId, Details: details}
 		if err != nil {
 			m.Error.Description = getErrorDescription(err)
 		}
 		return m
 	}
 	var (
-		objectId string
-		details  *domain.Details
-		fileType model.BlockContentFileType
+		objectId      string
+		preloadFileId string
+		details       *domain.Details
 	)
 	err := mw.doBlockService(func(bs *block.Service) (err error) {
 		dto := block.FileUploadRequest{RpcFileUploadRequest: *req, ObjectOrigin: objectorigin.ObjectOrigin{Origin: req.Origin}}
-		objectId, fileType, details, err = bs.UploadFile(cctx, req.SpaceId, dto)
+		if req.PreloadOnly {
+			preloadFileId, _, err = bs.PreloadFile(cctx, req.SpaceId, dto)
+		} else if req.PreloadFileId != "" {
+			// Reuse preloaded file
+			objectId, _, details, err = bs.CreateObjectFromPreloadedFile(cctx, req.SpaceId, req.PreloadFileId, dto)
+		} else {
+			objectId, _, details, err = bs.UploadFile(cctx, req.SpaceId, dto)
+		}
 		return
 	})
 
-	if req.CreateTypeWidgetIfMissing {
-		var typeKey domain.TypeKey
-		switch fileType {
-		case model.BlockContentFile_Audio:
-			typeKey = bundle.TypeKeyAudio
-		case model.BlockContentFile_Image:
-			typeKey = bundle.TypeKeyImage
-		case model.BlockContentFile_Video:
-			typeKey = bundle.TypeKeyVideo
-		case model.BlockContentFile_PDF, model.BlockContentFile_File:
-			typeKey = bundle.TypeKeyFile
-		default:
-
-		}
-		if typeKey != "" {
-			// do not create widget if type is not detected. Shouldn't happen, but just in case
-			err := mw.doBlockService(func(bs *block.Service) (err error) {
-				err = bs.CreateTypeWidgetIfMissing(cctx, req.SpaceId, typeKey)
-				return err
-			})
-			if err != nil {
-				return response(objectId, nil, pb.RpcFileUploadResponseError_UNKNOWN_ERROR, err)
-			}
-		}
+	if err != nil {
+		return response("", "", nil, pb.RpcFileUploadResponseError_UNKNOWN_ERROR, err)
 	}
+
+	var detailsProto *types.Struct
+	if details != nil {
+		detailsProto = details.ToProto()
+	}
+	return response(objectId, preloadFileId, detailsProto, pb.RpcFileUploadResponseError_NULL, nil)
+}
+
+func (mw *Middleware) FileDiscardPreload(cctx context.Context, req *pb.RpcFileDiscardPreloadRequest) *pb.RpcFileDiscardPreloadResponse {
+	response := func(code pb.RpcFileDiscardPreloadResponseErrorCode, err error) *pb.RpcFileDiscardPreloadResponse {
+		m := &pb.RpcFileDiscardPreloadResponse{Error: &pb.RpcFileDiscardPreloadResponseError{Code: code}}
+		if err != nil {
+			m.Error.Description = getErrorDescription(err)
+		}
+		return m
+	}
+
+	// Discard preloaded file if it hasn't been used to create an object
+	err := mw.doBlockService(func(bs *block.Service) (err error) {
+		return bs.DiscardPreloadedFile(cctx, req.SpaceId, req.FileId)
+	})
 
 	if err != nil {
-		return response("", nil, pb.RpcFileUploadResponseError_UNKNOWN_ERROR, err)
+		return response(pb.RpcFileDiscardPreloadResponseError_UNKNOWN_ERROR, err)
 	}
-	return response(objectId, details.ToProto(), pb.RpcFileUploadResponseError_NULL, nil)
+	return response(pb.RpcFileDiscardPreloadResponseError_NULL, nil)
 }
 
 func (mw *Middleware) FileSpaceUsage(cctx context.Context, req *pb.RpcFileSpaceUsageRequest) *pb.RpcFileSpaceUsageResponse {
@@ -185,7 +189,7 @@ func (mw *Middleware) FileSpaceUsage(cctx context.Context, req *pb.RpcFileSpaceU
 		return m
 	}
 
-	usage, err := mustService[files.Service](mw).GetSpaceUsage(cctx, req.SpaceId)
+	usage, err := mustService[filespaceusage.Service](mw).GetSpaceUsage(cctx, req.SpaceId)
 	if err != nil {
 		return response(pb.RpcFileSpaceUsageResponseError_UNKNOWN_ERROR, err, nil)
 	}
@@ -193,7 +197,7 @@ func (mw *Middleware) FileSpaceUsage(cctx context.Context, req *pb.RpcFileSpaceU
 }
 
 func (mw *Middleware) FileNodeUsage(ctx context.Context, req *pb.RpcFileNodeUsageRequest) *pb.RpcFileNodeUsageResponse {
-	usage, err := mustService[files.Service](mw).GetNodeUsage(ctx)
+	usage, err := mustService[filespaceusage.Service](mw).GetNodeUsage(ctx)
 	code := mapErrorCode[pb.RpcFileNodeUsageResponseErrorCode](err)
 	resp := &pb.RpcFileNodeUsageResponse{
 		Error: &pb.RpcFileNodeUsageResponseError{

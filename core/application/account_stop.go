@@ -5,6 +5,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"runtime"
 	"time"
 
 	"github.com/anyproto/any-sync/app"
@@ -13,6 +14,7 @@ import (
 	"gopkg.in/yaml.v3"
 
 	"github.com/anyproto/anytype-heart/core/anytype/config"
+	"github.com/anyproto/anytype-heart/core/pushnotification"
 	walletComp "github.com/anyproto/anytype-heart/core/wallet"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/util/anyerror"
@@ -52,6 +54,15 @@ func (s *Service) AccountStop(req *pb.RpcAccountStopRequest) error {
 
 	if s.app == nil {
 		return ErrApplicationIsNotRunning
+	}
+
+	// try to revoke push notification token for mobile clients
+	if runtime.GOOS == "android" || runtime.GOOS == "ios" {
+		if pushService := s.app.Component(pushnotification.CName).(pushnotification.Service); pushService != nil {
+			go func() {
+				_ = pushService.RevokeToken(context.Background())
+			}()
+		}
 	}
 
 	if req.RemoveData {

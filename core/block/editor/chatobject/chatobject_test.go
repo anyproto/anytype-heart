@@ -2,11 +2,11 @@ package chatobject
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"testing"
 
 	"github.com/anyproto/any-sync/app"
+	"github.com/anyproto/any-sync/app/debugstat"
 	"github.com/anyproto/any-sync/commonspace/object/accountdata"
 	"github.com/anyproto/any-sync/util/crypto"
 	"github.com/globalsign/mgo/bson"
@@ -14,6 +14,7 @@ import (
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
+	"github.com/anyproto/anytype-heart/core/block/cache/mock_cache"
 	"github.com/anyproto/anytype-heart/core/block/chats/chatmodel"
 	"github.com/anyproto/anytype-heart/core/block/chats/chatrepository"
 	"github.com/anyproto/anytype-heart/core/block/chats/chatsubscription"
@@ -27,6 +28,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/event/mock_event"
 	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pb"
+	"github.com/anyproto/anytype-heart/pkg/lib/datastore/anystoreprovider"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/spaceindex"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -89,6 +91,7 @@ func newFixture(t *testing.T) *fixture {
 
 	idResolver := mock_idresolver.NewMockResolver(t)
 	idResolver.EXPECT().ResolveSpaceID(mock.Anything).Return(testSpaceId, nil).Maybe()
+	idResolver.EXPECT().ResolveSpaceIdWithRetry(mock.Anything, mock.Anything).Return(testSpaceId, nil).Maybe()
 
 	accountService := &accountServiceStub{accountId: testCreator}
 
@@ -102,19 +105,27 @@ func newFixture(t *testing.T) *fixture {
 	repo := chatrepository.New()
 	subscriptions := chatsubscription.New()
 
+	provider, err := anystoreprovider.NewInPath(t.TempDir())
+	require.NoError(t, err)
+
+	objectGetter := mock_cache.NewMockObjectWaitGetterComponent(t)
+	objectGetter.EXPECT().WaitAndGetObject(mock.Anything, mock.Anything).Return(nil, nil).Maybe()
+
 	a.Register(accountService)
 	a.Register(testutil.PrepareMock(ctx, a, eventSender))
 	a.Register(testutil.PrepareMock(ctx, a, idResolver))
+	a.Register(testutil.PrepareMock(ctx, a, objectGetter))
 	a.Register(objectStore)
 	a.Register(repo)
 	a.Register(subscriptions)
+	a.Register(provider)
 
-	err := a.Start(ctx)
+	err = a.Start(ctx)
 	require.NoError(t, err)
-	db, err := objectStore.GetCrdtDb(testSpaceId).Wait()
+	db, err := provider.GetCrdtDb(testSpaceId).Wait()
 	require.NoError(t, err)
 
-	object := New(sb, accountService, db, repo, subscriptions)
+	object := New(sb, accountService, db, repo, subscriptions, debugstat.NewNoOp())
 	rawObject := object.(*storeObject)
 
 	fx := &fixture{
@@ -189,7 +200,14 @@ func TestAddMessage(t *testing.T) {
 		sessionCtx := session.NewContext()
 
 		fx := newFixture(t)
-		fx.eventSender.EXPECT().BroadcastToOtherSessions(mock.Anything, mock.Anything).Return().Maybe()
+		fx.eventSender.EXPECT().BroadcastToOtherSessions(sessionCtx.ID(), mock.Anything).Return().Maybe()
+
+		_, err := fx.chatSubscriptionService.SubscribeLastMessages(ctx, chatsubscription.SubscribeLastMessagesRequest{
+			ChatObjectId:           fx.Id(),
+			SubId:                  "sub",
+			CouldUseSessionContext: true,
+		})
+		require.NoError(t, err)
 
 		inputMessage := givenComplexMessage()
 		messageId, err := fx.AddMessage(ctx, sessionCtx, inputMessage)
@@ -214,7 +232,14 @@ func TestAddMessage(t *testing.T) {
 		sessionCtx := session.NewContext()
 
 		fx := newFixture(t)
-		fx.eventSender.EXPECT().BroadcastToOtherSessions(mock.Anything, mock.Anything).Return()
+		fx.eventSender.EXPECT().BroadcastToOtherSessions(sessionCtx.ID(), mock.Anything).Return().Maybe()
+
+		_, err := fx.chatSubscriptionService.SubscribeLastMessages(ctx, chatsubscription.SubscribeLastMessagesRequest{
+			ChatObjectId:           fx.Id(),
+			SubId:                  "sub",
+			CouldUseSessionContext: true,
+		})
+		require.NoError(t, err)
 
 		// Force all messages as not read
 		fx.chatHandler.forceNotRead = true
@@ -287,13 +312,11 @@ func TestGetMessages(t *testing.T) {
 
 func TestGetMessagesByIds(t *testing.T) {
 	ctx := context.Background()
-	sessionCtx := session.NewContext()
 
 	fx := newFixture(t)
-	fx.eventSender.EXPECT().BroadcastToOtherSessions(mock.Anything, mock.Anything).Return()
 
 	inputMessage := givenComplexMessage()
-	messageId, err := fx.AddMessage(ctx, sessionCtx, inputMessage)
+	messageId, err := fx.AddMessage(ctx, nil, inputMessage)
 	require.NoError(t, err)
 
 	messages, err := fx.GetMessagesByIds(ctx, []string{messageId, "wrongId"})
@@ -392,14 +415,21 @@ func TestToggleReaction(t *testing.T) {
 	editedMessage.Message.Text = "edited text!"
 
 	t.Run("can toggle own reactions", func(t *testing.T) {
-		err = fx.ToggleMessageReaction(ctx, messageId, "👻")
+		added, err := fx.ToggleMessageReaction(ctx, messageId, "👻")
 		require.NoError(t, err)
-		err = fx.ToggleMessageReaction(ctx, messageId, "🐻")
+		assert.True(t, added)
+
+		added, err = fx.ToggleMessageReaction(ctx, messageId, "🐻")
 		require.NoError(t, err)
-		err = fx.ToggleMessageReaction(ctx, messageId, "👺")
+		assert.True(t, added)
+
+		added, err = fx.ToggleMessageReaction(ctx, messageId, "👺")
 		require.NoError(t, err)
-		err = fx.ToggleMessageReaction(ctx, messageId, "👺")
+		assert.True(t, added)
+
+		added, err = fx.ToggleMessageReaction(ctx, messageId, "👺")
 		require.NoError(t, err)
+		assert.False(t, added)
 	})
 
 	anotherPerson := "anotherPerson"
@@ -407,14 +437,16 @@ func TestToggleReaction(t *testing.T) {
 	t.Run("can't toggle someone else's reactions", func(t *testing.T) {
 		fx.sourceCreator = testCreator
 		fx.accountServiceStub.accountId = anotherPerson
-		err = fx.ToggleMessageReaction(ctx, messageId, "🐻")
+		added, err := fx.ToggleMessageReaction(ctx, messageId, "🐻")
 		require.Error(t, err)
+		assert.False(t, added)
 	})
 	t.Run("can toggle reactions on someone else's messages", func(t *testing.T) {
 		fx.sourceCreator = anotherPerson
 		fx.accountServiceStub.accountId = anotherPerson
-		err = fx.ToggleMessageReaction(ctx, messageId, "🐻")
+		added, err := fx.ToggleMessageReaction(ctx, messageId, "🐻")
 		require.NoError(t, err)
+		assert.True(t, added)
 	})
 
 	messagesResp, err := fx.GetMessages(ctx, chatrepository.GetMessagesRequest{})
@@ -465,6 +497,9 @@ func (fx *fixture) applyToStore(ctx context.Context, params source.PushStoreChan
 	if err != nil {
 		return "", fmt.Errorf("new tx: %w", err)
 	}
+	defer func() {
+		_ = tx.Rollback()
+	}()
 	order := fx.generateOrderId(tx)
 	err = tx.ApplyChangeSet(storestate.ChangeSet{
 		Id:        changeId,
@@ -474,7 +509,7 @@ func (fx *fixture) applyToStore(ctx context.Context, params source.PushStoreChan
 		Timestamp: params.Time.Unix(),
 	})
 	if err != nil {
-		return "", errors.Join(tx.Rollback(), fmt.Errorf("apply change set: %w", err))
+		return "", fmt.Errorf("apply change set: %w", err)
 	}
 	err = tx.Commit()
 	if err != nil {

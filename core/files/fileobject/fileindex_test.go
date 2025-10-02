@@ -1,11 +1,15 @@
 package fileobject
 
 import (
+	"bytes"
 	"context"
 	"fmt"
+	"io"
 	"testing"
 
+	"github.com/gogo/protobuf/types"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
 	"github.com/anyproto/anytype-heart/core/domain"
@@ -15,6 +19,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/mill"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/storage"
+	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 type indexerFixture struct {
@@ -26,6 +31,10 @@ type indexerFixture struct {
 func newIndexerFixture(t *testing.T) *indexerFixture {
 	objectStore := objectstore.NewStoreFixture(t)
 	fileService := mock_files.NewMockService(t)
+
+	// For trying to read metadata from files
+	buf := newNopCloserWrapper(bytes.NewReader(nil))
+	fileService.EXPECT().GetContentReader(mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(buf, nil).Maybe()
 
 	svc := &service{
 		objectStore:    objectStore,
@@ -41,35 +50,40 @@ func newIndexerFixture(t *testing.T) *indexerFixture {
 	}
 }
 
+type nopCloserWrapper struct {
+	io.Closer
+	io.ReadSeeker
+}
+
+func newNopCloserWrapper(r io.ReadSeeker) *nopCloserWrapper {
+	return &nopCloserWrapper{
+		ReadSeeker: r,
+		Closer:     io.NopCloser(r),
+	}
+}
+
 func TestIndexer_buildDetails(t *testing.T) {
 	t.Run("with file", func(t *testing.T) {
-		for _, typeKey := range []domain.TypeKey{
-			bundle.TypeKeyFile,
-			bundle.TypeKeyAudio,
-			bundle.TypeKeyVideo,
+		for _, tc := range []struct {
+			mimeType string
+			wantType domain.TypeKey
+		}{
+			{mimeType: "application/pdf", wantType: bundle.TypeKeyFile},
+			{mimeType: "audio/mpeg", wantType: bundle.TypeKeyAudio},
+			{mimeType: "video/mp4", wantType: bundle.TypeKeyVideo},
 		} {
-			t.Run(fmt.Sprintf("with type %s", typeKey), func(t *testing.T) {
+			t.Run(fmt.Sprintf("with mime type %s", tc.mimeType), func(t *testing.T) {
 				fx := newIndexerFixture(t)
+
 				id := domain.FullFileId{
 					SpaceId: "space1",
 					FileId:  testFileId,
 				}
 				ctx := context.Background()
 
-				file := mock_files.NewMockFile(t)
-				file.EXPECT().Info().Return(&storage.FileInfo{
-					Mill:  mill.BlobId,
-					Media: "text",
-				})
-				file.EXPECT().Details(ctx).Return(domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
-					bundle.RelationKeyName: domain.String("name"),
-				},
-				), typeKey, nil)
-				fx.fileService.EXPECT().FileByHash(ctx, id).Return(file, nil)
-
-				details, gotTypeKey, err := fx.buildDetails(ctx, id)
+				details, gotTypeKey, err := fx.buildDetails(ctx, id, givenFileInfos(tc.mimeType))
 				require.NoError(t, err)
-				assert.Equal(t, typeKey, gotTypeKey)
+				assert.Equal(t, tc.wantType, gotTypeKey)
 				assert.Equal(t, "name", details.GetString(bundle.RelationKeyName))
 				assert.Equal(t, int64(model.FileIndexingStatus_Indexed), details.GetInt64(bundle.RelationKeyFileIndexingStatus))
 			})
@@ -83,21 +97,7 @@ func TestIndexer_buildDetails(t *testing.T) {
 		}
 		ctx := context.Background()
 
-		file := mock_files.NewMockFile(t)
-		file.EXPECT().Info().Return(&storage.FileInfo{
-			Mill:  mill.ImageResizeId,
-			Media: "image/jpeg",
-		})
-
-		image := mock_files.NewMockImage(t)
-		image.EXPECT().Details(ctx).Return(domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
-			bundle.RelationKeyName: domain.String("name"),
-		},
-		), nil)
-		fx.fileService.EXPECT().FileByHash(ctx, id).Return(file, nil)
-		fx.fileService.EXPECT().ImageByHash(ctx, id).Return(image, nil)
-
-		details, gotTypeKey, err := fx.buildDetails(ctx, id)
+		details, gotTypeKey, err := fx.buildDetails(ctx, id, givenImageInfos())
 		require.NoError(t, err)
 		assert.Equal(t, bundle.TypeKeyImage, gotTypeKey)
 		assert.Equal(t, "name", details.GetString(bundle.RelationKeyName))
@@ -118,18 +118,7 @@ func TestIndexer_buildDetails(t *testing.T) {
 				}
 				ctx := context.Background()
 
-				file := mock_files.NewMockFile(t)
-				file.EXPECT().Info().Return(&storage.FileInfo{
-					Mill:  mill.BlobId,
-					Media: "image/jpeg",
-				})
-				file.EXPECT().Details(ctx).Return(domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
-					bundle.RelationKeyName: domain.String("name"),
-				},
-				), typeKey, nil)
-				fx.fileService.EXPECT().FileByHash(ctx, id).Return(file, nil)
-
-				details, gotTypeKey, err := fx.buildDetails(ctx, id)
+				details, gotTypeKey, err := fx.buildDetails(ctx, id, givenFileInfos("image/jpeg"))
 				require.NoError(t, err)
 				assert.Equal(t, bundle.TypeKeyImage, gotTypeKey)
 				assert.Equal(t, "name", details.GetString(bundle.RelationKeyName))
@@ -240,4 +229,35 @@ func TestIndexer_addFromObjectStore(t *testing.T) {
 
 		assert.ElementsMatch(t, want, got)
 	})
+}
+
+func givenImageInfos() []*storage.FileInfo {
+	return []*storage.FileInfo{
+		{
+			Name:  "name",
+			Media: "image/jpeg",
+			Mill:  mill.ImageExifId,
+		},
+		{
+			Name:  "name",
+			Media: "image/jpeg",
+			Mill:  mill.ImageResizeId,
+			Meta: &types.Struct{
+				Fields: map[string]*types.Value{
+					"width":  pbtypes.Int64(640),
+					"height": pbtypes.Int64(480),
+				},
+			},
+		},
+	}
+}
+
+func givenFileInfos(mimeType string) []*storage.FileInfo {
+	return []*storage.FileInfo{
+		{
+			Name:  "name",
+			Media: mimeType,
+			Mill:  mill.BlobId,
+		},
+	}
 }

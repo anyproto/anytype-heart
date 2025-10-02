@@ -6,17 +6,18 @@ import (
 	"fmt"
 	"sync"
 
+	anystore "github.com/anyproto/any-store"
 	"github.com/anyproto/any-sync/app"
 	"go.uber.org/zap"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/domain"
-	"github.com/anyproto/anytype-heart/core/filestorage"
-	"github.com/anyproto/anytype-heart/core/filestorage/filesync"
+	"github.com/anyproto/anytype-heart/core/files/filestorage"
+	"github.com/anyproto/anytype-heart/core/files/filesync"
 	"github.com/anyproto/anytype-heart/core/syncstatus/filesyncstatus"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
-	"github.com/anyproto/anytype-heart/pkg/lib/datastore"
+	"github.com/anyproto/anytype-heart/pkg/lib/datastore/anystoreprovider"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -25,8 +26,7 @@ import (
 )
 
 const (
-	CName             = "core.files.reconciler"
-	isStartedStoreKey = "value"
+	CName = "core.files.reconciler"
 )
 
 var log = logging.Logger(CName).Desugar()
@@ -75,25 +75,30 @@ func (r *reconciler) Init(a *app.App) error {
 
 	r.fileSync.OnUploaded(r.markAsReconciled)
 
-	dbProvider := app.MustComponent[datastore.Datastore](a)
-	db, err := dbProvider.LocalStorage()
-	if err != nil {
-		return fmt.Errorf("get badger: %w", err)
-	}
+	provider := app.MustComponent[anystoreprovider.Provider](a)
+	db := provider.GetCommonDb()
 
-	r.isStartedStore = keyvaluestore.NewJson[bool](db, []byte("file_reconciler/is_started"))
-	r.deletedFiles = keyvaluestore.New(db, []byte("file_reconciler/deleted_files"), func(_ struct{}) ([]byte, error) {
+	var err error
+	r.deletedFiles, err = keyvaluestore.New(db, "file_reconciler/deleted_files", func(_ struct{}) ([]byte, error) {
 		return []byte(""), nil
 	}, func(data []byte) (struct{}, error) {
 		return struct{}{}, nil
 	})
-	r.rebindQueue = persistentqueue.New(persistentqueue.NewBadgerStorage(db, []byte("queue/file_reconciler/rebind"), makeQueueItem), log, r.rebindHandler)
+
+	rebindQueueStore, err := persistentqueue.NewAnystoreStorage(db, "queue/file_reconciler/rebind", makeQueueItem)
+	if err != nil {
+		return fmt.Errorf("init rebindQueueStore: %w", err)
+	}
+	r.rebindQueue = persistentqueue.New(rebindQueueStore, log, r.rebindHandler, nil)
+
+	r.isStartedStore = keyvaluestore.NewJsonFromCollection[bool](provider.GetSystemCollection())
+
 	return nil
 }
 
 func (r *reconciler) Run(ctx context.Context) error {
-	isStarted, err := r.isStartedStore.Get(isStartedStoreKey)
-	if err != nil && !errors.Is(err, keyvaluestore.ErrNotFound) {
+	isStarted, err := r.isStartedStore.Get(context.Background(), anystoreprovider.SystemKeys.FileReconcilerStarted())
+	if err != nil && !errors.Is(err, anystore.ErrDocNotFound) {
 		log.Error("get isStarted", zap.Error(err))
 	}
 	r.lock.Lock()
@@ -105,7 +110,7 @@ func (r *reconciler) Run(ctx context.Context) error {
 }
 
 func (r *reconciler) Start(ctx context.Context) error {
-	err := r.isStartedStore.Set(isStartedStoreKey, true)
+	err := r.isStartedStore.Set(context.Background(), anystoreprovider.SystemKeys.FileReconcilerStarted(), true)
 	if err != nil {
 		return fmt.Errorf("set isStarted: %w", err)
 	}
@@ -150,7 +155,7 @@ func (r *reconciler) needToRebind(details *domain.Details) (bool, error) {
 		return false, nil
 	}
 	fileId := domain.FileId(details.GetString(bundle.RelationKeyFileId))
-	return r.deletedFiles.Has(fileId.String())
+	return r.deletedFiles.Has(context.Background(), fileId.String())
 }
 
 func (r *reconciler) rebindHandler(ctx context.Context, item *queueItem) (persistentqueue.Action, error) {
@@ -160,7 +165,15 @@ func (r *reconciler) rebindHandler(ctx context.Context, item *queueItem) (persis
 	}
 
 	log.Warn("add to queue", zap.String("objectId", item.ObjectId), zap.String("fileId", item.FileId.FileId.String()))
-	err = r.fileSync.AddFile(item.ObjectId, item.FileId, false, false)
+	req := filesync.AddFileRequest{
+		FileObjectId:        item.ObjectId,
+		FileId:              item.FileId,
+		UploadedByUser:      false,
+		Imported:            false,
+		PrioritizeVariantId: "",
+		Score:               0,
+	}
+	err = r.fileSync.AddFile(req)
 	if err != nil {
 		return persistentqueue.ActionRetry, fmt.Errorf("upload file: %w", err)
 	}
@@ -172,7 +185,7 @@ func (r *reconciler) markAsReconciled(fileObjectId string, fileId domain.FullFil
 	if !r.isRunning() {
 		return nil
 	}
-	return r.deletedFiles.Delete(fileId.FileId.String())
+	return r.deletedFiles.Delete(context.Background(), fileId.FileId.String())
 }
 
 func (r *reconciler) reconcileRemoteStorage(ctx context.Context) error {
@@ -208,7 +221,7 @@ func (r *reconciler) reconcileRemoteStorage(ctx context.Context) error {
 			if err != nil {
 				log.Error("add to deletion queue", zap.String("fileId", fileId.FileId.String()), zap.Error(err))
 			}
-			err = r.deletedFiles.Set(fileId.FileId.String(), struct{}{})
+			err = r.deletedFiles.Set(context.Background(), fileId.FileId.String(), struct{}{})
 			if err != nil {
 				log.Error("add to deleted files", zap.String("fileId", fileId.FileId.String()), zap.Error(err))
 			}

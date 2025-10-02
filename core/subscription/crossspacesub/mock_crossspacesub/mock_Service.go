@@ -7,6 +7,8 @@ import (
 
 	app "github.com/anyproto/any-sync/app"
 
+	crossspacesub "github.com/anyproto/anytype-heart/core/subscription/crossspacesub"
+
 	mock "github.com/stretchr/testify/mock"
 
 	subscription "github.com/anyproto/anytype-heart/core/subscription"
@@ -208,9 +210,9 @@ func (_c *MockService_Run_Call) RunAndReturn(run func(context.Context) error) *M
 	return _c
 }
 
-// Subscribe provides a mock function with given fields: req
-func (_m *MockService) Subscribe(req subscription.SubscribeRequest) (*subscription.SubscribeResponse, error) {
-	ret := _m.Called(req)
+// Subscribe provides a mock function with given fields: req, predicate
+func (_m *MockService) Subscribe(req subscription.SubscribeRequest, predicate crossspacesub.Predicate) (*subscription.SubscribeResponse, error) {
+	ret := _m.Called(req, predicate)
 
 	if len(ret) == 0 {
 		panic("no return value specified for Subscribe")
@@ -218,19 +220,19 @@ func (_m *MockService) Subscribe(req subscription.SubscribeRequest) (*subscripti
 
 	var r0 *subscription.SubscribeResponse
 	var r1 error
-	if rf, ok := ret.Get(0).(func(subscription.SubscribeRequest) (*subscription.SubscribeResponse, error)); ok {
-		return rf(req)
+	if rf, ok := ret.Get(0).(func(subscription.SubscribeRequest, crossspacesub.Predicate) (*subscription.SubscribeResponse, error)); ok {
+		return rf(req, predicate)
 	}
-	if rf, ok := ret.Get(0).(func(subscription.SubscribeRequest) *subscription.SubscribeResponse); ok {
-		r0 = rf(req)
+	if rf, ok := ret.Get(0).(func(subscription.SubscribeRequest, crossspacesub.Predicate) *subscription.SubscribeResponse); ok {
+		r0 = rf(req, predicate)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(*subscription.SubscribeResponse)
 		}
 	}
 
-	if rf, ok := ret.Get(1).(func(subscription.SubscribeRequest) error); ok {
-		r1 = rf(req)
+	if rf, ok := ret.Get(1).(func(subscription.SubscribeRequest, crossspacesub.Predicate) error); ok {
+		r1 = rf(req, predicate)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -245,23 +247,24 @@ type MockService_Subscribe_Call struct {
 
 // Subscribe is a helper method to define mock.On call
 //   - req subscription.SubscribeRequest
-func (_e *MockService_Expecter) Subscribe(req interface{}) *MockService_Subscribe_Call {
-	return &MockService_Subscribe_Call{Call: _e.mock.On("Subscribe", req)}
+//   - predicate crossspacesub.Predicate
+func (_e *MockService_Expecter) Subscribe(req interface{}, predicate interface{}) *MockService_Subscribe_Call {
+	return &MockService_Subscribe_Call{Call: _e.mock.On("Subscribe", req, predicate)}
 }
 
-func (_c *MockService_Subscribe_Call) Run(run func(req subscription.SubscribeRequest)) *MockService_Subscribe_Call {
+func (_c *MockService_Subscribe_Call) Run(run func(req subscription.SubscribeRequest, predicate crossspacesub.Predicate)) *MockService_Subscribe_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(subscription.SubscribeRequest))
+		run(args[0].(subscription.SubscribeRequest), args[1].(crossspacesub.Predicate))
 	})
 	return _c
 }
 
-func (_c *MockService_Subscribe_Call) Return(resp *subscription.SubscribeResponse, err error) *MockService_Subscribe_Call {
-	_c.Call.Return(resp, err)
+func (_c *MockService_Subscribe_Call) Return(_a0 *subscription.SubscribeResponse, _a1 error) *MockService_Subscribe_Call {
+	_c.Call.Return(_a0, _a1)
 	return _c
 }
 
-func (_c *MockService_Subscribe_Call) RunAndReturn(run func(subscription.SubscribeRequest) (*subscription.SubscribeResponse, error)) *MockService_Subscribe_Call {
+func (_c *MockService_Subscribe_Call) RunAndReturn(run func(subscription.SubscribeRequest, crossspacesub.Predicate) (*subscription.SubscribeResponse, error)) *MockService_Subscribe_Call {
 	_c.Call.Return(run)
 	return _c
 }

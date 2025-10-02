@@ -22,7 +22,7 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/anytype/config"
 	"github.com/anyproto/anytype-heart/core/event/mock_event"
-	"github.com/anyproto/anytype-heart/core/filestorage/filesync/mock_filesync"
+	"github.com/anyproto/anytype-heart/core/files/filesync/mock_filesync"
 	"github.com/anyproto/anytype-heart/core/nameservice/mock_nameservice"
 	"github.com/anyproto/anytype-heart/core/payments/cache"
 	"github.com/anyproto/anytype-heart/core/payments/cache/mock_cache"
@@ -102,7 +102,7 @@ func newFixture(t *testing.T) *fixture {
 
 	fx.wallet.EXPECT().Account().Return(&ak).Maybe()
 	fx.wallet.EXPECT().GetAccountPrivkey().Return(decodedSignKey).Maybe()
-	fx.wallet.EXPECT().RepoPath().Return("repo/path")
+	fx.wallet.EXPECT().RepoPath().Return(t.TempDir())
 
 	fx.eventSender.EXPECT().Broadcast(mock.AnythingOfType("*pb.Event")).Maybe()
 
@@ -471,7 +471,7 @@ func TestGetStatus(t *testing.T) {
 			return nil
 		})
 		// this should not be called because server returned Explorer tier
-		//fx.cache.EXPECT().CacheEnable().Return(nil)
+		// fx.cache.EXPECT().CacheEnable().Return(nil)
 
 		fx.expectLimitsUpdated()
 
@@ -529,7 +529,7 @@ func TestGetStatus(t *testing.T) {
 		})
 
 		// tier was not changed
-		//fx.expectLimitsUpdated()
+		// fx.expectLimitsUpdated()
 
 		// Call the function being tested
 		resp, err := fx.GetSubscriptionStatus(ctx, &pb.RpcMembershipGetStatusRequest{})
@@ -581,7 +581,7 @@ func TestGetStatus(t *testing.T) {
 		fx.cache.EXPECT().CacheGet().Return(&psgsr, nil, nil)
 
 		// tier was not changed
-		//fx.expectLimitsUpdated()
+		// fx.expectLimitsUpdated()
 
 		// Call the function being tested
 		resp, err := fx.GetSubscriptionStatus(ctx, &pb.RpcMembershipGetStatusRequest{})
@@ -633,7 +633,7 @@ func TestGetStatus(t *testing.T) {
 		fx.cache.EXPECT().CacheGet().Return(&psgsr, nil, nil)
 
 		// tier was not changed
-		//fx.expectLimitsUpdated()
+		// fx.expectLimitsUpdated()
 
 		// Call the function being tested
 		resp, err := fx.GetSubscriptionStatus(ctx, &pb.RpcMembershipGetStatusRequest{})
@@ -689,7 +689,7 @@ func TestGetStatus(t *testing.T) {
 			return errors.New("can not write to cache!")
 		})
 		// this should not be called because server returned Explorer tier
-		//fx.cache.EXPECT().CacheEnable().Return(nil)
+		// fx.cache.EXPECT().CacheEnable().Return(nil)
 
 		fx.expectLimitsUpdated()
 
@@ -903,7 +903,7 @@ func TestGetStatus(t *testing.T) {
 			return nil
 		})
 		// this should not be called because server returned Explorer tier
-		//fx.cache.EXPECT().CacheEnable().Return(nil)
+		// fx.cache.EXPECT().CacheEnable().Return(nil)
 
 		fx.expectLimitsUpdated()
 
@@ -1286,7 +1286,7 @@ func TestGetTiers(t *testing.T) {
 		}).MinTimes(1)
 
 		// this should not be called because server returned Explorer tier
-		//fx.cache.EXPECT().CacheEnable().Return(nil)
+		// fx.cache.EXPECT().CacheEnable().Return(nil)
 
 		fx.expectLimitsUpdated()
 
@@ -1689,5 +1689,75 @@ func TestVerifyAppStoreReceipt(t *testing.T) {
 		// then
 		assert.NoError(t, err)
 		assert.Equal(t, pb.RpcMembershipVerifyAppStoreReceiptResponseErrorCode(0), resp.Error.Code)
+	})
+}
+
+func TestCodeGetInfo(t *testing.T) {
+	t.Run("should get code info successfully", func(t *testing.T) {
+		// Given
+		fx := newFixture(t)
+		defer fx.finish(t)
+
+		code := "TEST-CODE-123"
+		expectedTier := uint32(psp.SubscriptionTier_TierBuilder1Year)
+
+		// Mock PP client response
+		fx.ppclient.EXPECT().
+			CodeGetInfo(gomock.Any(), gomock.Any()).
+			Return(&psp.CodeGetInfoResponse{
+				Tier: expectedTier,
+			}, nil)
+
+		// mock GetAccountEthAddress
+		fx.wallet.EXPECT().GetAccountEthAddress().Return(common.HexToAddress("0x55DCad916750C19C4Ec69D65Ff0317767B36cE90")).Once()
+
+		fx.ppclient.EXPECT().GetSubscriptionStatus(gomock.Any(), gomock.Any()).DoAndReturn(func(ctx interface{}, in *psp.GetSubscriptionRequestSigned) (*psp.GetSubscriptionResponse, error) {
+			return &psp.GetSubscriptionResponse{
+				Tier: expectedTier,
+			}, nil
+		}).MinTimes(1)
+
+		fx.cache.EXPECT().CacheSet(mock.AnythingOfType("*pb.RpcMembershipGetStatusResponse"), mock.AnythingOfType("*pb.RpcMembershipGetTiersResponse")).RunAndReturn(func(in *pb.RpcMembershipGetStatusResponse, tiers *pb.RpcMembershipGetTiersResponse) (err error) {
+			return nil
+		})
+
+		fx.expectLimitsUpdated()
+
+		// When
+		resp, err := fx.CodeGetInfo(context.Background(), &pb.RpcMembershipCodeGetInfoRequest{
+			Code: code,
+		})
+
+		// Then
+		require.NoError(t, err)
+		require.NotNil(t, resp)
+		assert.Equal(t, expectedTier, resp.RequestedTier)
+		assert.Equal(t, pb.RpcMembershipCodeGetInfoResponseError_NULL, resp.Error.Code)
+	})
+
+	t.Run("should return error if code is not found", func(t *testing.T) {
+		// Given
+		fx := newFixture(t)
+		defer fx.finish(t)
+
+		code := "TEST-CODE-123"
+
+		// Mock PP client response
+		fx.ppclient.EXPECT().
+			CodeGetInfo(gomock.Any(), gomock.Any()).
+			Return(&psp.CodeGetInfoResponse{
+				Tier: 0,
+			}, psp.ErrCodeNotFound)
+
+		fx.wallet.EXPECT().GetAccountEthAddress().Return(common.HexToAddress("0x55DCad916750C19C4Ec69D65Ff0317767B36cE90")).Once()
+
+		// When
+		resp, err := fx.CodeGetInfo(context.Background(), &pb.RpcMembershipCodeGetInfoRequest{
+			Code: code,
+		})
+
+		// Then
+		require.Equal(t, psp.ErrCodeNotFound, err)
+		require.Nil(t, resp)
 	})
 }
