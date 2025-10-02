@@ -33,6 +33,7 @@ func TestGetImage_SVG(t *testing.T) {
 
 		image := mock_files.NewMockImage(t)
 		image.EXPECT().GetOriginalFile().Return(file, nil)
+		image.EXPECT().SpaceId().Return("space1")
 
 		fx.fileObjectService.EXPECT().GetImageData(mock.Anything, mock.Anything).Return(image, nil)
 
