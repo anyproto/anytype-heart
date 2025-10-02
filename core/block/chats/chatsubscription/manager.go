@@ -179,6 +179,10 @@ func (s *subscriptionManager) Flush() {
 		s.chatStateUpdated = false
 	}
 
+	if len(events) == 0 {
+		return
+	}
+
 	var syncSubIds []string
 	var asyncSubIds []string
 	for _, sub := range s.subscriptions {
