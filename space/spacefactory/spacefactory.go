@@ -20,6 +20,7 @@ import (
 	"github.com/anyproto/anytype-heart/space/spacecore"
 	"github.com/anyproto/anytype-heart/space/spacecore/storage"
 	"github.com/anyproto/anytype-heart/space/spacecore/storage/anystorage"
+	"github.com/anyproto/anytype-heart/space/spacedomain"
 	"github.com/anyproto/anytype-heart/space/spaceinfo"
 	"github.com/anyproto/anytype-heart/space/techspace"
 )
@@ -65,7 +66,7 @@ func (s *spaceFactory) Init(a *app.App) (err error) {
 	s.indexer = app.MustComponent[dependencies.SpaceIndexer](a)
 	s.installer = app.MustComponent[dependencies.BundledObjectsInstaller](a)
 	s.storageService = app.MustComponent[storage.ClientStorage](a)
-	s.personalSpaceId, err = s.spaceCore.DeriveID(context.Background(), spacecore.SpaceType)
+	s.personalSpaceId, err = s.spaceCore.DeriveID(context.Background(), spacedomain.SpaceTypeRegular)
 	if err != nil {
 		return
 	}
@@ -73,7 +74,7 @@ func (s *spaceFactory) Init(a *app.App) (err error) {
 }
 
 func (s *spaceFactory) CreatePersonalSpace(ctx context.Context, metadata []byte) (sp spacecontroller.SpaceController, err error) {
-	coreSpace, err := s.spaceCore.Derive(ctx, spacecore.SpaceType)
+	coreSpace, err := s.spaceCore.Derive(ctx, spacedomain.SpaceTypeRegular)
 	if err != nil {
 		return
 	}
@@ -98,7 +99,7 @@ func (s *spaceFactory) CreatePersonalSpace(ctx context.Context, metadata []byte)
 }
 
 func (s *spaceFactory) NewPersonalSpace(ctx context.Context, metadata []byte) (ctrl spacecontroller.SpaceController, err error) {
-	id, err := s.spaceCore.DeriveID(ctx, spacecore.SpaceType)
+	id, err := s.spaceCore.DeriveID(ctx, spacedomain.SpaceTypeRegular)
 	if err != nil {
 		return nil, err
 	}
@@ -112,7 +113,7 @@ func (s *spaceFactory) NewPersonalSpace(ctx context.Context, metadata []byte) (c
 
 func (s *spaceFactory) CreateAndSetTechSpace(ctx context.Context) (*clientspace.TechSpace, error) {
 	techSpace := techspace.New()
-	techCoreSpace, err := s.spaceCore.Derive(ctx, spacecore.TechSpaceType)
+	techCoreSpace, err := s.spaceCore.Derive(ctx, spacedomain.SpaceTypeTech)
 	if err != nil {
 		return nil, fmt.Errorf("derive tech space: %w", err)
 	}
@@ -145,7 +146,7 @@ func (s *spaceFactory) CreateAndSetTechSpace(ctx context.Context) (*clientspace.
 
 func (s *spaceFactory) LoadAndSetTechSpace(ctx context.Context) (*clientspace.TechSpace, error) {
 	techSpace := techspace.New()
-	id, err := s.spaceCore.DeriveID(ctx, spacecore.TechSpaceType)
+	id, err := s.spaceCore.DeriveID(ctx, spacedomain.SpaceTypeTech)
 	if err != nil {
 		return nil, fmt.Errorf("derive tech space id: %w", err)
 	}
@@ -168,7 +169,6 @@ func (s *spaceFactory) LoadAndSetTechSpace(ctx context.Context) (*clientspace.Te
 	if err != nil {
 		return nil, fmt.Errorf("build tech space: %w", err)
 	}
-
 	s.techSpace = ts
 	s.app = s.app.ChildApp()
 	s.app.Register(s.techSpace)
@@ -176,7 +176,10 @@ func (s *spaceFactory) LoadAndSetTechSpace(ctx context.Context) (*clientspace.Te
 	if err != nil {
 		return nil, fmt.Errorf("run tech space: %w", err)
 	}
-
+	err = s.indexer.ReindexSpace(ts)
+	if err != nil {
+		return nil, fmt.Errorf("reindex tech space: %w", err)
+	}
 	return ts, nil
 }
 

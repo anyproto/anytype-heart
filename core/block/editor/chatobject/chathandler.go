@@ -78,7 +78,7 @@ func (d *ChatHandler) BeforeCreate(ctx context.Context, ch storestate.ChangeOp) 
 	if err != nil {
 		return fmt.Errorf("check if current user is mentioned: %w", err)
 	}
-	msg.CurrentUserMentioned = isMentioned
+	msg.HasMention = isMentioned
 	msg.OrderId = ch.Change.Order
 
 	prevOrderId, err := d.repository.GetPrevOrderId(ctx, ch.Change.Order)

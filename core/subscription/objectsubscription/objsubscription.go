@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"sync"
+	"sync/atomic"
 
 	"github.com/cheggaaa/mb/v3"
 
@@ -35,6 +36,14 @@ type SubscriptionParams[T any] struct {
 	OnRemoved func(id string, entry T)
 }
 
+type subState int32
+
+const (
+	stateNew subState = iota
+	stateRunning
+	stateClosed
+)
+
 type ObjectSubscription[T any] struct {
 	request    subscription.SubscribeRequest
 	service    subscription.Service
@@ -46,8 +55,9 @@ type ObjectSubscription[T any] struct {
 
 	params SubscriptionParams[T]
 
-	mx  sync.Mutex
-	sub map[string]T
+	state atomic.Int32
+	mx    sync.Mutex
+	sub   map[string]T
 }
 
 var IdSubscriptionParams = SubscriptionParams[struct{}]{
@@ -71,34 +81,55 @@ func NewIdSubscriptionFromQueue(queue *mb.MB[*pb.EventMessage]) *ObjectSubscript
 }
 
 func New[T any](subService subscription.Service, req subscription.SubscribeRequest, params SubscriptionParams[T]) *ObjectSubscription[T] {
+	ctx, cancel := context.WithCancel(context.Background())
 	return &ObjectSubscription[T]{
 		request:    req,
 		service:    subService,
 		filterKeys: make(map[string]struct{}),
 		ch:         make(chan struct{}),
 		params:     params,
+		ctx:        ctx,
+		cancel:     cancel,
 	}
 }
 
 func NewFromQueue[T any](queue *mb.MB[*pb.EventMessage], params SubscriptionParams[T]) *ObjectSubscription[T] {
+	ctx, cancel := context.WithCancel(context.Background())
 	return &ObjectSubscription[T]{
 		events: queue,
 		ch:     make(chan struct{}),
 		params: params,
+		ctx:    ctx,
+		cancel: cancel,
 	}
 }
 
 func (o *ObjectSubscription[T]) Run() error {
+	if !o.state.CompareAndSwap(int32(stateNew), int32(stateRunning)) {
+		switch subState(o.state.Load()) {
+		case stateRunning:
+			return fmt.Errorf("already running")
+		case stateClosed:
+			return fmt.Errorf("already closed")
+		default:
+			return fmt.Errorf("invalid state")
+		}
+	}
+
 	if o.service == nil && o.events == nil {
+		close(o.ch)
 		return fmt.Errorf("subscription created with nil event queue")
 	}
 	if o.params.SetDetails == nil {
+		close(o.ch)
 		return fmt.Errorf("SetDetails function not set")
 	}
 	if o.params.UpdateKeys == nil {
+		close(o.ch)
 		return fmt.Errorf("UpdateKeys function not set")
 	}
 	if o.params.RemoveKeys == nil {
+		close(o.ch)
 		return fmt.Errorf("RemoveKeys function not set")
 	}
 
@@ -107,6 +138,7 @@ func (o *ObjectSubscription[T]) Run() error {
 	if o.service != nil {
 		resp, err := o.service.Search(o.request)
 		if err != nil {
+			close(o.ch)
 			return err
 		}
 		for _, key := range o.request.Keys {
@@ -118,14 +150,15 @@ func (o *ObjectSubscription[T]) Run() error {
 		}
 		o.events = resp.Output
 	}
-	o.ctx, o.cancel = context.WithCancel(context.Background())
 	go o.read()
 	return nil
 }
 
 func (o *ObjectSubscription[T]) Close() {
-	o.cancel()
-	<-o.ch
+	if o.state.Swap(int32(stateClosed)) == int32(stateRunning) {
+		o.cancel()
+		<-o.ch
+	}
 }
 
 func (o *ObjectSubscription[T]) Len() int {

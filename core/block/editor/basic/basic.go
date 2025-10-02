@@ -311,6 +311,9 @@ func (bs *basic) Move(srcState, destState *state.State, targetBlockId string, po
 }
 
 func (bs *basic) Replace(ctx session.Context, id string, block *model.Block) (newId string, err error) {
+	if state.IsRequiredBlockId(id) {
+		return "", fmt.Errorf("can not replace required block")
+	}
 	s := bs.NewStateCtx(ctx)
 	if block.GetContent() == nil {
 		err = fmt.Errorf("no block content")

@@ -125,7 +125,7 @@ func TestService_FetchBookmarkContent(t *testing.T) {
 	t.Run("link to html page - create blocks", func(t *testing.T) {
 		// given
 		preview := mock_linkpreview.NewMockLinkPreview(t)
-		preview.EXPECT().Fetch(mock.Anything, "http://test.com").Return(model.LinkPreview{}, []byte(testHtml), false, nil)
+		preview.EXPECT().Fetch(mock.Anything, "http://test.com", true).Return(model.LinkPreview{}, []byte(testHtml), false, nil)
 
 		s := &service{linkPreview: preview}
 
@@ -139,7 +139,7 @@ func TestService_FetchBookmarkContent(t *testing.T) {
 	t.Run("link to file - create one block with file", func(t *testing.T) {
 		// given
 		preview := mock_linkpreview.NewMockLinkPreview(t)
-		preview.EXPECT().Fetch(mock.Anything, "http://test.com").Return(model.LinkPreview{}, nil, true, nil)
+		preview.EXPECT().Fetch(mock.Anything, "http://test.com", true).Return(model.LinkPreview{}, nil, true, nil)
 
 		s := &service{linkPreview: preview}
 
@@ -155,7 +155,7 @@ func TestService_FetchBookmarkContent(t *testing.T) {
 	t.Run("link to file - create one block with file, image is base64", func(t *testing.T) {
 		// given
 		preview := mock_linkpreview.NewMockLinkPreview(t)
-		preview.EXPECT().Fetch(mock.Anything, "http://test.com").Return(model.LinkPreview{}, []byte(testHtmlBase64), false, nil)
+		preview.EXPECT().Fetch(mock.Anything, "http://test.com", true).Return(model.LinkPreview{}, []byte(testHtmlBase64), false, nil)
 
 		s := &service{linkPreview: preview}
 

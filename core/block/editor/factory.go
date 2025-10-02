@@ -11,6 +11,7 @@ import (
 	"github.com/anyproto/any-sync/commonspace/object/tree/objecttree"
 
 	"github.com/anyproto/anytype-heart/core/anytype/config"
+	"github.com/anyproto/anytype-heart/core/block/backlinks"
 	"github.com/anyproto/anytype-heart/core/block/cache"
 	"github.com/anyproto/anytype-heart/core/block/chats/chatrepository"
 	"github.com/anyproto/anytype-heart/core/block/chats/chatsubscription"
@@ -38,7 +39,10 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 )
 
-var log = logging.Logger("anytype-mw-editor")
+var (
+	log                         = logging.Logger("anytype-mw-editor")
+	ErrUnexpectedSmartblockType = errors.New("unexpected smartblock type")
+)
 
 type ObjectDeleter interface {
 	DeleteObjectByFullID(id domain.FullID) (err error)
@@ -81,6 +85,7 @@ type ObjectFactory struct {
 	chatRepositoryService   chatrepository.Service
 	chatSubscriptionService chatsubscription.Service
 	statService             debugstat.StatService
+	backlinksUpdater        backlinks.UpdateWatcher
 }
 
 func NewObjectFactory() *ObjectFactory {
@@ -116,6 +121,7 @@ func (f *ObjectFactory) Init(a *app.App) (err error) {
 	f.chatRepositoryService = app.MustComponent[chatrepository.Service](a)
 	f.chatSubscriptionService = app.MustComponent[chatsubscription.Service](a)
 	f.statService, err = app.GetComponent[debugstat.StatService](a)
+	f.backlinksUpdater = app.MustComponent[backlinks.UpdateWatcher](a)
 	if err != nil {
 		f.statService = debugstat.NewNoOp()
 	}
@@ -197,15 +203,16 @@ func (f *ObjectFactory) New(space smartblock.Space, sbType coresb.SmartBlockType
 		coresb.SmartBlockTypeBundledRelation,
 		coresb.SmartBlockTypeBundledObjectType,
 		coresb.SmartBlockTypeRelation,
-		coresb.SmartBlockTypeRelationOption,
 		coresb.SmartBlockTypeChatObject:
 		return f.newPage(space.Id(), sb), nil
 	case coresb.SmartBlockTypeObjectType:
 		return f.newObjectType(space.Id(), sb), nil
+	case coresb.SmartBlockTypeRelationOption:
+		return f.newRelationOption(space.Id(), sb), nil
 	case coresb.SmartBlockTypeArchive:
 		return NewArchive(sb, spaceIndex), nil
 	case coresb.SmartBlockTypeHome:
-		return NewDashboard(sb, spaceIndex, f.layoutConverter), nil
+		return f.newDashboard(sb, spaceIndex), nil
 	case coresb.SmartBlockTypeProfilePage,
 		coresb.SmartBlockTypeAnytypeProfile:
 		return f.newProfile(space.Id(), sb), nil
@@ -221,7 +228,7 @@ func (f *ObjectFactory) New(space smartblock.Space, sbType coresb.SmartBlockType
 	case coresb.SmartBlockTypeMissingObject:
 		return NewMissingObject(sb), nil
 	case coresb.SmartBlockTypeWidget:
-		return NewWidgetObject(sb, spaceIndex, f.layoutConverter), nil
+		return f.newWidgetObject(sb, spaceIndex), nil
 	case coresb.SmartBlockTypeNotificationObject:
 		return NewNotificationObject(sb), nil
 	case coresb.SmartBlockTypeSubObject:
@@ -243,6 +250,6 @@ func (f *ObjectFactory) New(space smartblock.Space, sbType coresb.SmartBlockType
 		}
 		return accountobject.New(sb, f.accountService.Keys(), spaceIndex, f.layoutConverter, f.fileObjectService, db, f.config), nil
 	default:
-		return nil, fmt.Errorf("unexpected smartblock type: %v", sbType)
+		return nil, fmt.Errorf("%w: %v", ErrUnexpectedSmartblockType, sbType)
 	}
 }
