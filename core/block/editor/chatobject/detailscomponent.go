@@ -8,6 +8,8 @@ import (
 
 	anystore "github.com/anyproto/any-store"
 	"github.com/anyproto/any-store/anyenc"
+	"golang.org/x/exp/slices"
+
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/editor/storestate"
@@ -15,17 +17,25 @@ import (
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
-	"golang.org/x/exp/slices"
 )
 
 const detailsDocumentId = "details"
 
 type detailsComponent struct {
-	componentCtx   context.Context
-	collectionName string
-	storeSource    source.Store
-	storeState     *storestate.StoreState
-	sb             smartblock.SmartBlock
+	componentCtx           context.Context
+	collectionName         string
+	allowedRelationKeys    []domain.RelationKey
+	allowedRelationKeysSet map[domain.RelationKey]struct{}
+	storeSource            source.Store
+	storeState             *storestate.StoreState
+	sb                     smartblock.SmartBlock
+}
+
+func (c *detailsComponent) init() {
+	c.allowedRelationKeysSet = map[domain.RelationKey]struct{}{}
+	for _, key := range c.allowedRelationKeys {
+		c.allowedRelationKeysSet[key] = struct{}{}
+	}
 }
 
 func (c *detailsComponent) onPushOrdinaryChange(params source.PushChangeParams) (id string, err error) {
@@ -35,6 +45,9 @@ func (c *detailsComponent) onPushOrdinaryChange(params source.PushChangeParams) 
 		set := ch.GetDetailsSet()
 		if set != nil && set.Key != "" {
 			key := domain.RelationKey(set.Key)
+			if _, ok := c.allowedRelationKeysSet[key]; !ok {
+				continue
+			}
 			if slices.Contains(bundle.LocalAndDerivedRelationKeys, key) {
 				continue
 			}
@@ -76,6 +89,8 @@ func (c *detailsComponent) setDetailsFromAnystore(ctx context.Context, st *state
 		return fmt.Errorf("parse details: %w", err)
 	}
 	details.Delete(bundle.RelationKeyId)
+	details.Delete("_o")
+	details = details.CopyOnlyKeys(c.allowedRelationKeys...)
 
 	localDetails := st.LocalDetails()
 	combined := details.Merge(localDetails)

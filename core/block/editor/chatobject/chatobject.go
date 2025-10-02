@@ -28,6 +28,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/files/fileobject"
 	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pb"
+	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/spaceindex"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -236,12 +237,15 @@ func (s *storeObject) Init(ctx *smartblock.InitContext) error {
 	}
 
 	s.detailsComponent = &detailsComponent{
-		componentCtx:   s.componentCtx,
-		collectionName: "editor",
-		storeSource:    storeSource,
-		storeState:     stateStore,
-		sb:             s.SmartBlock,
+		componentCtx:        s.componentCtx,
+		collectionName:      "editor",
+		storeSource:         storeSource,
+		storeState:          stateStore,
+		sb:                  s.SmartBlock,
+		allowedRelationKeys: []domain.RelationKey{bundle.RelationKeyName},
 	}
+	s.detailsComponent.init()
+
 	err = s.detailsComponent.setDetailsFromAnystore(ctx.Ctx, ctx.State)
 	if err != nil {
 		return fmt.Errorf("init details: %w", err)
