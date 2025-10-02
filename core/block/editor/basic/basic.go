@@ -2,6 +2,7 @@ package basic
 
 import (
 	"fmt"
+	"slices"
 
 	"github.com/samber/lo"
 
@@ -273,6 +274,9 @@ func (bs *basic) Move(srcState, destState *state.State, targetBlockId string, po
 		if b := srcState.Pick(id); b != nil {
 			if replacementCandidate == nil {
 				replacementCandidate = srcState.Get(id)
+			}
+			if slices.Contains(b.Model().ChildrenIds, targetBlockId) {
+				return fmt.Errorf("can not move block to its child")
 			}
 			srcState.Unlink(id)
 		}
