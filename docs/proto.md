@@ -33774,7 +33774,7 @@ Look https://github.com/golang/protobuf/issues/1135 for more information.
 | spaceView | 18 |  |
 | participant | 19 |  |
 | pdf | 20 |  |
-| chat | 21 | deprecated |
+| chatDeprecated | 21 | deprecated |
 | chatDerived | 22 |  |
 | tag | 23 |  |
 | notification | 24 |  |
@@ -33933,7 +33933,7 @@ RelationFormat describes how the underlying data is stored in the google.protobu
 | FileObject | 533 |  |
 | NotificationObject | 535 |  |
 | DevicesObject | 536 |  |
-| ChatObject | 537 | Container for any-store based chats |
+| ChatObjectDeprecated | 537 | DEPRECATED Container for any-store based chats |
 | ChatDerivedObject | 544 | Any-store based object for chat |
 | AccountObject | 545 | Container for account data in tech space |
 
