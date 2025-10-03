@@ -184,7 +184,7 @@ func (s *service) setOrderId(details *domain.Details, spc clientspace.Space) {
 	}
 
 	var smallestOrderId string
-	if len(records) != 0 {
+	if len(records) > 0 {
 		smallestOrderId = records[0].Details.GetString(bundle.RelationKeyOrderId)
 	}
 
