@@ -11,7 +11,6 @@ import (
 	"github.com/anyproto/any-store/query"
 	"github.com/anyproto/any-store/syncpool"
 	"github.com/samber/lo"
-	"golang.org/x/exp/maps"
 	"golang.org/x/exp/slices"
 
 	"github.com/anyproto/anytype-heart/core/domain"
@@ -808,7 +807,7 @@ func optionsToMap(key domain.RelationKey, store ObjectStore) map[string]*domain.
 	result := make(map[string]*domain.Details)
 	options, err := store.ListRelationOptions(key)
 	if err != nil {
-		log.Warn("nil objectStore for getting options")
+		log.Warnf("failed to get relation options from store: %v", err)
 		return result
 	}
 	for _, opt := range options {
@@ -826,20 +825,32 @@ func objectsToMap(key domain.RelationKey, store ObjectStore) map[string]*domain.
 	names := make(map[string]*domain.Details)
 	targetIds := make([]string, 0)
 
-	err := store.QueryIterate(Query{Filters: []FilterRequest{}}, func(details *domain.Details) {
-		names[details.GetString(bundle.RelationKeyId)] = details.CopyOnlyKeys(bundle.RelationKeyName)
+	err := store.QueryIterate(Query{Filters: []FilterRequest{{
+		RelationKey: key,
+		Condition:   model.BlockContentDataviewFilter_NotEmpty,
+	}}}, func(details *domain.Details) {
 		targetIds = append(targetIds, details.GetStringList(key)...)
 	})
+
 	if err != nil {
-		log.Warn("nil objectStore for getting options")
+		log.Warnf("failed to get objects from store: %v", err)
 		return nil
 	}
 
 	targetIds = lo.Uniq(targetIds)
 
-	maps.DeleteFunc(names, func(id string, _ *domain.Details) bool {
-		return !slices.Contains(targetIds, id)
+	err = store.QueryIterate(Query{Filters: []FilterRequest{{
+		RelationKey: bundle.RelationKeyId,
+		Condition:   model.BlockContentDataviewFilter_In,
+		Value:       domain.StringList(targetIds),
+	}}}, func(details *domain.Details) {
+		names[details.GetString(bundle.RelationKeyId)] = details.CopyOnlyKeys(bundle.RelationKeyName)
 	})
+
+	if err != nil {
+		log.Warnf("failed to iterate over objects in store: %v", err)
+		return nil
+	}
 
 	return names
 }
