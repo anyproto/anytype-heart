@@ -12,24 +12,24 @@ type SmartBlockType uint64
 const (
 	SmartBlockTypeAccountOld = SmartBlockType(model.SmartBlockType_AccountOld)
 
-	SmartBlockTypePage              = SmartBlockType(model.SmartBlockType_Page)
-	SmartBlockTypeProfilePage       = SmartBlockType(model.SmartBlockType_ProfilePage)
-	SmartBlockTypeHome              = SmartBlockType(model.SmartBlockType_Home)
-	SmartBlockTypeArchive           = SmartBlockType(model.SmartBlockType_Archive)
-	SmartBlockTypeFile              = SmartBlockType(model.SmartBlockType_File) // Deprecated
-	SmartBlockTypeFileObject        = SmartBlockType(model.SmartBlockType_FileObject)
-	SmartBlockTypeTemplate          = SmartBlockType(model.SmartBlockType_Template)
-	SmartBlockTypeBundledTemplate   = SmartBlockType(model.SmartBlockType_BundledTemplate)
-	SmartBlockTypeBundledRelation   = SmartBlockType(model.SmartBlockType_BundledRelation)
-	SmartBlockTypeSubObject         = SmartBlockType(model.SmartBlockType_SubObject)
-	SmartBlockTypeBundledObjectType = SmartBlockType(model.SmartBlockType_BundledObjectType)
-	SmartBlockTypeParticipant       = SmartBlockType(model.SmartBlockType_Participant)
-	SmartBlockTypeAnytypeProfile    = SmartBlockType(model.SmartBlockType_AnytypeProfile)
-	SmartBlockTypeDate              = SmartBlockType(model.SmartBlockType_Date)
-	SmartBlockTypeIdentity          = SmartBlockType(model.SmartBlockType_Identity)
-	SmartBlockTypeChatObject        = SmartBlockType(model.SmartBlockType_ChatObject)        // deprecated. Container for any-store based chats
-	SmartBlockTypeChatDerivedObject = SmartBlockType(model.SmartBlockType_ChatDerivedObject) // Any-store based object for chat
-	SmartBlockTypeAccountObject     = SmartBlockType(model.SmartBlockType_AccountObject)
+	SmartBlockTypePage                 = SmartBlockType(model.SmartBlockType_Page)
+	SmartBlockTypeProfilePage          = SmartBlockType(model.SmartBlockType_ProfilePage)
+	SmartBlockTypeHome                 = SmartBlockType(model.SmartBlockType_Home)
+	SmartBlockTypeArchive              = SmartBlockType(model.SmartBlockType_Archive)
+	SmartBlockTypeFile                 = SmartBlockType(model.SmartBlockType_File) // Deprecated
+	SmartBlockTypeFileObject           = SmartBlockType(model.SmartBlockType_FileObject)
+	SmartBlockTypeTemplate             = SmartBlockType(model.SmartBlockType_Template)
+	SmartBlockTypeBundledTemplate      = SmartBlockType(model.SmartBlockType_BundledTemplate)
+	SmartBlockTypeBundledRelation      = SmartBlockType(model.SmartBlockType_BundledRelation)
+	SmartBlockTypeSubObject            = SmartBlockType(model.SmartBlockType_SubObject)
+	SmartBlockTypeBundledObjectType    = SmartBlockType(model.SmartBlockType_BundledObjectType)
+	SmartBlockTypeParticipant          = SmartBlockType(model.SmartBlockType_Participant)
+	SmartBlockTypeAnytypeProfile       = SmartBlockType(model.SmartBlockType_AnytypeProfile)
+	SmartBlockTypeDate                 = SmartBlockType(model.SmartBlockType_Date)
+	SmartBlockTypeIdentity             = SmartBlockType(model.SmartBlockType_Identity)
+	SmartBlockTypeChatObjectDeprecated = SmartBlockType(model.SmartBlockType_ChatObjectDeprecated) // deprecated. Container for any-store based chats
+	SmartBlockTypeChatDerivedObject    = SmartBlockType(model.SmartBlockType_ChatDerivedObject)    // Any-store based object for chat
+	SmartBlockTypeAccountObject        = SmartBlockType(model.SmartBlockType_AccountObject)
 
 	SmartBlockTypeWorkspace      = SmartBlockType(model.SmartBlockType_Workspace)
 	SmartBlockTypeWidget         = SmartBlockType(model.SmartBlockType_Widget)
@@ -78,7 +78,7 @@ func (sbt SmartBlockType) Indexable() (fulltext, details, outgoingLinks bool) {
 		return false, true, false
 	case SmartBlockTypeWorkspace,
 		SmartBlockTypeAccountObject,
-		SmartBlockTypeChatObject,
+		SmartBlockTypeChatObjectDeprecated,
 		SmartBlockTypeChatDerivedObject,
 		SmartBlockTypeSpaceView:
 		return false, true, true
