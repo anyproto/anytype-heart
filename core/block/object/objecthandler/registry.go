@@ -46,7 +46,7 @@ type filesHandler struct {
 }
 
 func (f *filesHandler) CollectLastModifiedInfo(change *objecttree.Change) {
-	if change.Timestamp < f.lastModified {
+	if change.Timestamp <= f.lastModified {
 		return
 	}
 
