@@ -871,6 +871,7 @@ message Relation {
         string color = 3; // stored
         // 4 is reserved for old relation format
         string relationKey = 5; // stored
+        string orderId = 6; // lexicographic id of relation option for ordering
     }
 
     enum Scope {

@@ -266,13 +266,13 @@ func (b *queryBuilder) extractOrder(sorts []SortRequest) SetOrder {
 			}
 
 			keyOrder := &KeyOrder{
-				SpaceID:         b.spaceId,
 				Key:             sort.RelationKey,
 				Type:            sort.Type,
 				EmptyPlacement:  sort.EmptyPlacement,
 				IncludeTime:     isIncludeTime(sorts, sort),
 				relationFormat:  format,
-				Store:           b.objectStore,
+				objectStore:     b.objectStore,
+				orderMap:        NewOrderMap(nil),
 				arena:           b.arena,
 				collatorBuffer:  b.collatorBuffer,
 				disableCollator: sort.NoCollate,

@@ -16,10 +16,9 @@ var (
 	ErrNoRecords = errors.New("no records with given offset")
 )
 
-func (s *spaceSubscriptions) newSortedSub(id string, spaceId string, keys []domain.RelationKey, filter database.Filter, order database.Order, limit, offset int) *sortedSub {
+func (s *spaceSubscriptions) newSortedSub(id string, keys []domain.RelationKey, filter database.Filter, order database.Order, limit, offset int) *sortedSub {
 	sub := &sortedSub{
 		id:          id,
-		spaceId:     spaceId,
 		keys:        keys,
 		filter:      filter,
 		order:       order,
@@ -33,8 +32,7 @@ func (s *spaceSubscriptions) newSortedSub(id string, spaceId string, keys []doma
 }
 
 type sortedSub struct {
-	id      string
-	spaceId string
+	id string
 
 	started              bool
 	entriesBeforeStarted []*entry
@@ -139,9 +137,9 @@ func (s *sortedSub) init(entries []*entry) (err error) {
 	s.compCountBefore.total = s.skl.Len()
 
 	if s.ds != nil && !s.disableDep {
-		s.depKeys = s.ds.depKeys(s.spaceId, s.keys)
+		s.depKeys = s.ds.depKeys(s.keys)
 		if len(s.depKeys) > 0 || len(s.forceSubIds) > 0 {
-			s.depSub = s.ds.makeSubscriptionByEntries(s.id+"/dep", s.spaceId, entries, activeEntries, s.keys, s.depKeys, s.forceSubIds)
+			s.depSub = s.ds.makeSubscriptionByEntries(s.id+"/dep", entries, activeEntries, s.keys, s.depKeys, s.forceSubIds)
 		}
 	}
 	return nil
@@ -150,7 +148,7 @@ func (s *sortedSub) init(entries []*entry) (err error) {
 func (s *sortedSub) onChange(ctx *opCtx) {
 	var changed bool
 	for _, e := range ctx.entries {
-		if !s.onEntryChange(ctx, e) {
+		if !s.onEntryChange(e) {
 			changed = true
 		}
 	}
@@ -200,7 +198,7 @@ func (s *sortedSub) onChange(ctx *opCtx) {
 	}
 
 	if (wasAddOrRemove || hasChanges) && s.depSub != nil {
-		s.ds.refillSubscription(ctx, s.depSub, s.activeEntriesBuf, s.depKeys)
+		s.ds.refillSubscription(ctx, s.id, s.depSub, s.activeEntriesBuf, s.depKeys)
 	}
 
 	if s.parent != nil {
@@ -220,7 +218,7 @@ func (s *sortedSub) onChange(ctx *opCtx) {
 	}
 }
 
-func (s *sortedSub) onEntryChange(ctx *opCtx, e *entry) (noChange bool) {
+func (s *sortedSub) onEntryChange(e *entry) (noChange bool) {
 	newInSet := true
 	if s.filter != nil {
 		newInSet = s.filter.FilterObject(e.data)
@@ -235,7 +233,7 @@ func (s *sortedSub) onEntryChange(ctx *opCtx, e *entry) (noChange bool) {
 	}
 
 	curr := s.cache.Get(e.id)
-	curInSet := curr != nil
+	curInSet := curr.IsInSub(s.id)
 	// nothing
 	if !curInSet && !newInSet {
 		return true
@@ -260,6 +258,40 @@ func (s *sortedSub) onEntryChange(ctx *opCtx, e *entry) (noChange bool) {
 		return
 	}
 	panic("subscription: check algo")
+}
+
+func (s *sortedSub) reorder(ctx *opCtx, depDetails []*domain.Details) {
+	if !s.order.UpdateOrderMap(depDetails) {
+		return
+	}
+
+	entries := s.getActiveEntries()
+	s.skl.Init()
+	for _, e := range entries {
+		s.skl.Set(e, nil)
+	}
+
+	defer s.diff.reset()
+	s.activeEntriesBuf = s.activeEntriesBuf[:0]
+	if s.iterateActive(func(e *entry) {
+		s.diff.fillAfter(e.id)
+		if s.depSub != nil {
+			s.activeEntriesBuf = append(s.activeEntriesBuf, e)
+		}
+	}) {
+		s.diff.reverse()
+	}
+
+	s.compCountAfter.subId = s.id
+	s.compCountAfter.prevCount, s.compCountAfter.nextCount = s.counters()
+	s.compCountAfter.total = s.skl.Len()
+
+	if s.compCountAfter != s.compCountBefore {
+		ctx.counters = append(ctx.counters, s.compCountAfter)
+		s.compCountBefore = s.compCountAfter
+	}
+
+	s.diff.diff(ctx, s.id, s.keys)
 }
 
 func (s *sortedSub) counters() (prev, next int) {
@@ -364,7 +396,7 @@ func (s *sortedSub) iterateActive(f func(e *entry)) (reverse bool) {
 	return
 }
 
-// Compare implements sliplist.Comparable
+// Compare implements skiplist.Comparable
 func (s *sortedSub) Compare(lhs, rhs interface{}) (comp int) {
 	le := lhs.(*entry)
 	re := rhs.(*entry)

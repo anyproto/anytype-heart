@@ -13,6 +13,7 @@ func OptionFromDetails(det *domain.Details) *Option {
 			Text:        det.GetString(bundle.RelationKeyName),
 			Color:       det.GetString(bundle.RelationKeyRelationOptionColor),
 			RelationKey: det.GetString(bundle.RelationKeyRelationKey),
+			OrderId:     det.GetString(bundle.RelationKeyOrderId),
 		},
 	}
 }

@@ -1,6 +1,7 @@
 package database
 
 import (
+	"slices"
 	"time"
 
 	"github.com/anyproto/any-store/anyenc"
@@ -17,6 +18,7 @@ import (
 type Order interface {
 	Compare(a, b *domain.Details) int
 	AnystoreSort() query.Sort
+	UpdateOrderMap(depDetails []*domain.Details) (updated bool)
 }
 
 // ObjectStore interface is used to enrich filters
@@ -24,8 +26,133 @@ type ObjectStore interface {
 	SpaceId() string
 	Query(q Query) (records []Record, err error)
 	QueryRaw(filters *Filters, limit int, offset int) ([]Record, error)
+	QueryIterate(q Query, proc func(details *domain.Details)) (err error)
 	GetRelationFormatByKey(key domain.RelationKey) (model.RelationFormat, error)
 	ListRelationOptions(relationKey domain.RelationKey) (options []*model.RelationOption, err error)
+}
+
+const (
+	fullOrderId     = domain.RelationKey("fullOrderId")
+	smallestOrderId = "AAAA" // smallest as lexid.Must(lexid.CharsBase64, 4, 4000) is used to form orderIds
+)
+
+type OrderMap struct {
+	data map[string]*domain.Details // objectId -> orderId
+}
+
+func NewOrderMap(data map[string]*domain.Details) *OrderMap {
+	m := &OrderMap{data: data}
+	for id := range m.data {
+		m.setFullOrderId(id)
+	}
+	return m
+}
+
+func (m *OrderMap) FullOrderId(ids ...string) string {
+	if m == nil || len(m.data) == 0 {
+		return ""
+	}
+
+	var result string
+	for _, id := range ids {
+		if details, ok := m.data[id]; ok {
+			result += details.GetString(fullOrderId)
+		}
+	}
+
+	return result
+}
+
+// Update updates orders only for objects that exist in OrderMap
+func (m *OrderMap) Update(details []*domain.Details) (anyUpdated bool) {
+	if m == nil || len(m.data) == 0 {
+		return false
+	}
+	for _, det := range details {
+		id := det.GetString(bundle.RelationKeyId)
+		updated := false
+		existingDetails, found := m.data[id]
+		if !found {
+			continue
+		}
+
+		orderId := det.GetString(bundle.RelationKeyOrderId)
+		if existingDetails.GetString(bundle.RelationKeyOrderId) != orderId {
+			updated = true
+			existingDetails.SetString(bundle.RelationKeyOrderId, orderId)
+		}
+
+		name := det.GetString(bundle.RelationKeyName)
+		if existingDetails.GetString(bundle.RelationKeyName) != name {
+			updated = true
+			existingDetails.SetString(bundle.RelationKeyName, name)
+		}
+
+		if updated {
+			m.setFullOrderId(id)
+			anyUpdated = true
+		}
+	}
+	return anyUpdated
+}
+
+// SetOrders sets order for ids that do not present in OrderMap
+func (m *OrderMap) SetOrders(store ObjectStore, ids ...string) {
+	if store == nil {
+		return
+	}
+
+	if m.data == nil {
+		m.data = make(map[string]*domain.Details, len(ids))
+	}
+
+	idsToSet := make([]string, 0, len(ids))
+	for _, id := range ids {
+		if _, found := m.data[id]; !found {
+			idsToSet = append(idsToSet, id)
+		}
+	}
+
+	if len(idsToSet) == 0 {
+		return
+	}
+
+	records, err := store.Query(Query{Filters: []FilterRequest{{
+		RelationKey: bundle.RelationKeyId,
+		Condition:   model.BlockContentDataviewFilter_In,
+		Value:       domain.StringList(idsToSet),
+	}}})
+	if err != nil {
+		log.Errorf("failed to query records to update orders: %v", err)
+		return
+	}
+
+	for _, record := range records {
+		info := record.Details.CopyOnlyKeys(bundle.RelationKeyOrderId, bundle.RelationKeyName)
+		id := record.Details.GetString(bundle.RelationKeyId)
+		m.data[id] = info
+		m.setFullOrderId(id)
+	}
+}
+
+func (m *OrderMap) Empty() bool {
+	return m == nil || len(m.data) == 0
+}
+
+func (m *OrderMap) setFullOrderId(objectId string) {
+	if m == nil || m.data == nil {
+		return
+	}
+	details, ok := m.data[objectId]
+	if !ok {
+		return
+	}
+	orderId := details.GetString(bundle.RelationKeyOrderId)
+	if orderId == "" {
+		orderId = smallestOrderId
+	}
+	name := details.GetString(bundle.RelationKeyName)
+	details.SetString(fullOrderId, orderId+name)
 }
 
 type SetOrder []Order
@@ -50,15 +177,21 @@ func (so SetOrder) AnystoreSort() query.Sort {
 	return sorts
 }
 
+func (so SetOrder) UpdateOrderMap(depDetails []*domain.Details) (updated bool) {
+	for _, o := range so {
+		updated = o.UpdateOrderMap(depDetails) || updated
+	}
+	return updated
+}
+
 type KeyOrder struct {
-	SpaceID         string
 	Key             domain.RelationKey
 	Type            model.BlockContentDataviewSortType
 	EmptyPlacement  model.BlockContentDataviewSortEmptyType
 	relationFormat  model.RelationFormat
 	IncludeTime     bool
-	Store           ObjectStore
-	Options         map[string]string
+	objectStore     ObjectStore
+	orderMap        *OrderMap
 	arena           *anyenc.Arena
 	collatorBuffer  *collate.Buffer
 	collator        *collate.Collator
@@ -78,7 +211,7 @@ func (ko *KeyOrder) Compare(a, b *domain.Details) int {
 
 	av, bv = ko.tryExtractSnippet(a, b, av, bv)
 	av, bv = ko.tryExtractDateTime(av, bv)
-	av, bv = ko.tryExtractTag(av, bv)
+	av, bv = ko.tryExtractObject(av, bv)
 	av, bv = ko.tryExtractBool(av, bv)
 
 	comp := ko.tryCompareStrings(av, bv)
@@ -107,17 +240,19 @@ func (ko *KeyOrder) AnystoreSort() query.Sort {
 		} else {
 			return ko.dateOnlySort()
 		}
-	case model.RelationFormat_object, model.RelationFormat_file:
-		return ko.basicSort(anyenc.TypeString)
 	case model.RelationFormat_url, model.RelationFormat_email, model.RelationFormat_phone, model.RelationFormat_emoji:
 		return ko.basicSort(anyenc.TypeString)
-	case model.RelationFormat_tag, model.RelationFormat_status:
-		return ko.tagStatusSort()
+	case model.RelationFormat_tag, model.RelationFormat_status, model.RelationFormat_object, model.RelationFormat_file:
+		return ko.objectSort()
 	case model.RelationFormat_checkbox:
 		return ko.boolSort()
 	default:
 		return ko.basicSort(anyenc.TypeString)
 	}
+}
+
+func (ko *KeyOrder) UpdateOrderMap(depDetails []*domain.Details) (updated bool) {
+	return ko.orderMap.Update(depDetails)
 }
 
 func (ko *KeyOrder) basicSort(valType anyenc.Type) query.Sort {
@@ -134,19 +269,22 @@ func (ko *KeyOrder) basicSort(valType anyenc.Type) query.Sort {
 	}
 }
 
-func (ko *KeyOrder) tagStatusSort() query.Sort {
-	if ko.Options == nil {
-		ko.Options = make(map[string]string)
+func (ko *KeyOrder) objectSort() query.Sort {
+	if ko.orderMap.Empty() && ko.objectStore != nil {
+		var data map[string]*domain.Details
+		if ko.relationFormat == model.RelationFormat_status || ko.relationFormat == model.RelationFormat_tag {
+			data = optionsToMap(ko.Key, ko.objectStore)
+		} else {
+			data = objectsToMap(ko.Key, ko.objectStore)
+		}
+		ko.orderMap = NewOrderMap(data)
 	}
-	if len(ko.Options) == 0 && ko.Store != nil {
-		ko.Options = optionsToMap(ko.SpaceID, ko.Key, ko.Store)
-	}
-	return tagStatusSort{
+	return objectSort{
 		arena:       ko.arena,
 		relationKey: string(ko.Key),
 		reverse:     ko.Type == model.BlockContentDataviewSort_Desc,
 		nulls:       ko.EmptyPlacement,
-		idToName:    ko.Options,
+		orders:      ko.orderMap,
 	}
 }
 
@@ -255,11 +393,18 @@ func (ko *KeyOrder) tryExtractBool(av domain.Value, bv domain.Value) (domain.Val
 	return av, bv
 }
 
-func (ko *KeyOrder) tryExtractTag(av domain.Value, bv domain.Value) (domain.Value, domain.Value) {
-	if ko.relationFormat == model.RelationFormat_tag || ko.relationFormat == model.RelationFormat_status {
-		av = ko.GetOptionValue(av)
-		bv = ko.GetOptionValue(bv)
+func (ko *KeyOrder) tryExtractObject(av domain.Value, bv domain.Value) (domain.Value, domain.Value) {
+	if !ko.isObjectKey() {
+		return av, bv
 	}
+
+	aList, _ := av.TryWrapToStringList()
+	bList, _ := bv.TryWrapToStringList()
+
+	ko.orderMap.SetOrders(ko.objectStore, slices.Concat(aList, bList)...)
+
+	av = domain.String(ko.orderMap.FullOrderId(aList...))
+	bv = domain.String(ko.orderMap.FullOrderId(bList...))
 	return av, bv
 }
 
@@ -296,21 +441,11 @@ func getLayout(getter *domain.Details) model.ObjectTypeLayout {
 	return model.ObjectTypeLayout(int32(rawLayout))
 }
 
-func (ko *KeyOrder) GetOptionValue(value domain.Value) domain.Value {
-	if ko.Options == nil {
-		ko.Options = make(map[string]string)
-	}
-
-	if len(ko.Options) == 0 && ko.Store != nil {
-		ko.Options = optionsToMap(ko.SpaceID, ko.Key, ko.Store)
-	}
-
-	res := ""
-	for _, optID := range value.StringList() {
-		res += ko.Options[optID]
-	}
-
-	return domain.String(res)
+func (ko *KeyOrder) isObjectKey() bool {
+	return ko.relationFormat == model.RelationFormat_object ||
+		ko.relationFormat == model.RelationFormat_tag ||
+		ko.relationFormat == model.RelationFormat_status ||
+		ko.relationFormat == model.RelationFormat_file
 }
 
 func newCustomOrder(arena *anyenc.Arena, key domain.RelationKey, idsIndices map[string]int, keyOrd *KeyOrder) customOrder {
@@ -363,6 +498,10 @@ func (co customOrder) Fields() []query.SortField {
 
 func (co customOrder) AnystoreSort() query.Sort {
 	return co
+}
+
+func (co customOrder) UpdateOrderMap(depDetails []*domain.Details) bool {
+	return co.KeyOrd.UpdateOrderMap(depDetails)
 }
 
 func (co customOrder) getStringVal(val domain.Value) string {
