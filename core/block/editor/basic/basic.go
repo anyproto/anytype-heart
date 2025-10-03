@@ -276,7 +276,7 @@ func (bs *basic) Move(srcState, destState *state.State, targetBlockId string, po
 				replacementCandidate = srcState.Get(id)
 			}
 			if slices.Contains(b.Model().ChildrenIds, targetBlockId) {
-				return fmt.Errorf("can not move block to its child")
+				return fmt.Errorf("cannot move block to its child")
 			}
 			srcState.Unlink(id)
 		}
