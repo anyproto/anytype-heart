@@ -147,10 +147,9 @@ func (s *sortedSub) init(entries []*entry) (err error) {
 
 func (s *sortedSub) onChange(ctx *opCtx) {
 	var changed bool
+	// this code updates Skip List,
 	for _, e := range ctx.entries {
-		if !s.onEntryChange(e) {
-			changed = true
-		}
+		changed = changed || s.onEntryChange(e)
 	}
 	if !changed || !s.started {
 		return
@@ -218,7 +217,7 @@ func (s *sortedSub) onChange(ctx *opCtx) {
 	}
 }
 
-func (s *sortedSub) onEntryChange(e *entry) (noChange bool) {
+func (s *sortedSub) onEntryChange(e *entry) (changed bool) {
 	newInSet := true
 	if s.filter != nil {
 		newInSet = s.filter.FilterObject(e.data)
@@ -229,33 +228,33 @@ func (s *sortedSub) onEntryChange(e *entry) (noChange bool) {
 		if newInSet {
 			s.entriesBeforeStarted = append(s.entriesBeforeStarted, e)
 		}
-		return true
+		return
 	}
 
 	curr := s.cache.Get(e.id)
 	curInSet := curr.IsInSub(s.id)
 	// nothing
 	if !curInSet && !newInSet {
-		return true
+		return
 	}
 	// remove
 	if curInSet && !newInSet {
 		s.skl.Remove(curr)
 		e.RemoveSubId(s.id)
-		return
+		return true
 	}
 	// add
 	if !curInSet && newInSet {
 		s.skl.Set(e, nil)
 		e.SetSub(s.id, false, false)
-		return
+		return true
 	}
 	// change
 	if curInSet && newInSet {
 		s.skl.Remove(curr)
 		s.skl.Set(e, nil)
 		e.SetSub(s.id, false, false)
-		return
+		return true
 	}
 	panic("subscription: check algo")
 }

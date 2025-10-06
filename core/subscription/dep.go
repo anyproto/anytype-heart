@@ -1,9 +1,8 @@
 package subscription
 
 import (
+	"slices"
 	"strings"
-
-	"github.com/samber/lo"
 
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
@@ -55,7 +54,7 @@ func (ds *dependencyService) depIdsByEntries(
 	depIds = forceIds
 	for _, e := range entries {
 		for _, k := range depKeys {
-			_, isSortKey := ds.sorts.getSortKey(subId, k)
+			isSortKey := ds.sorts.isSortKey(subId, k)
 			for _, depId := range e.data.WrapToStringList(k) {
 				if depId != "" {
 					if slice.FindPos(depIds, depId) == -1 && depId != e.id {
@@ -111,21 +110,12 @@ func (ds *dependencyService) depEntriesByEntries(ctx *opCtx, depIds []string) (d
 	return
 }
 
-func (ds *dependencyService) enregisterObjectSorts(subId string, sorts []database.SortRequest) {
-	sortRelations := make([]sortKey, 0, len(sorts))
-
+func (ds *dependencyService) registerObjectSorts(subId string, sorts []database.SortRequest) {
 	for _, sort := range sorts {
 		if !ds.isRelationObject(sort.RelationKey) {
 			continue
 		}
-		sortRelations = append(sortRelations, sortKey{
-			key:   sort.RelationKey,
-			isTag: sort.Format == model.RelationFormat_tag || sort.Format == model.RelationFormat_status,
-		})
-	}
-
-	if len(sortRelations) != 0 {
-		ds.sorts[subId] = sortRelations
+		ds.sorts.setSortKey(subId, sort.RelationKey, sort.Format)
 	}
 }
 
@@ -197,40 +187,59 @@ func (ds *dependencyService) depKeys(keys []domain.RelationKey) (depKeys []domai
 // depSubKeys returns keys that will be analyzed in objects filtered by dependent subscription
 // TODO: maybe we need to exclude some keys from initial list (lastModifiedDate, syncDate)
 func (ds *dependencyService) depSubKeys(subId string, keys []domain.RelationKey) []domain.RelationKey {
-	sorts, found := ds.sorts[subId]
-	if !found {
-		return keys
-	}
-	for _, sort := range sorts {
-		keys = append(keys, sort.orderKey())
-	}
-	return lo.Uniq(keys)
-}
-
-type sortKey struct {
-	key   domain.RelationKey
-	isTag bool
-}
-
-func (k sortKey) orderKey() domain.RelationKey {
-	if k.isTag {
-		return bundle.RelationKeyOrderId
-	}
-	return bundle.RelationKeyName
-}
-
-type sortsMap map[string][]sortKey // subId -> sortRelationKeys
-
-func (m sortsMap) getSortKey(subId string, key domain.RelationKey) (sortKey, bool) {
-	keys, ok := m[subId]
-	if !ok {
-		return sortKey{}, false
-	}
-
-	for _, k := range keys {
-		if k.key == key {
-			return k, true
+	for _, key := range ds.sorts.getOrderKeys(subId) {
+		if !slices.Contains(keys, key) {
+			keys = append(keys, key)
 		}
 	}
-	return sortKey{}, false
+	return keys
+}
+
+type sortsMap map[string]map[domain.RelationKey]bool // subId -> sortRelationKeys -> isTag
+
+func (m sortsMap) isSortKey(subId string, key domain.RelationKey) bool {
+	keys, ok := m[subId]
+	if !ok {
+		return false
+	}
+
+	_, ok = keys[key]
+	return ok
+}
+
+func (m sortsMap) setSortKey(subId string, key domain.RelationKey, format model.RelationFormat) {
+	if _, ok := m[subId]; !ok {
+		m[subId] = make(map[domain.RelationKey]bool)
+	}
+	m[subId][key] = format == model.RelationFormat_tag || format == model.RelationFormat_status
+}
+
+func (m sortsMap) getOrderKeys(subId string) (orderKeys []domain.RelationKey) {
+	keys, ok := m[subId]
+	if !ok {
+		return nil
+	}
+
+	var hasName, hasOrderId bool
+	for _, isTag := range keys {
+		if isTag {
+			if hasName {
+				return []domain.RelationKey{bundle.RelationKeyOrderId, bundle.RelationKeyName}
+			}
+			hasOrderId = true
+		} else {
+			if hasOrderId {
+				return []domain.RelationKey{bundle.RelationKeyOrderId, bundle.RelationKeyName}
+			}
+			hasName = true
+		}
+	}
+
+	if hasName {
+		return []domain.RelationKey{bundle.RelationKeyName}
+	}
+	if hasOrderId {
+		return []domain.RelationKey{bundle.RelationKeyOrderId}
+	}
+	return nil
 }

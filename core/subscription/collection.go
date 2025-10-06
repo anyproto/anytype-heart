@@ -224,7 +224,7 @@ func (s *spaceSubscriptions) newCollectionSub(req SubscribeRequest, f *database.
 	}
 
 	if req.Sorts != nil {
-		s.ds.enregisterObjectSorts(ssub.id, req.Sorts)
+		s.ds.registerObjectSorts(ssub.id, req.Sorts)
 	}
 
 	if err = ssub.init(filtered); err != nil {

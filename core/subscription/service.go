@@ -480,7 +480,7 @@ func (s *spaceSubscriptions) subscribeForQuery(req SubscribeRequest, f *database
 	sub.entriesBeforeStarted = nil
 
 	if len(req.Sorts) > 0 {
-		s.ds.enregisterObjectSorts(sub.id, req.Sorts)
+		s.ds.registerObjectSorts(sub.id, req.Sorts)
 	}
 
 	if req.AsyncInit {

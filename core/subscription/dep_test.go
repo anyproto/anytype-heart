@@ -317,7 +317,7 @@ func TestDependencyService_EnregisterObjectSorts(t *testing.T) {
 			{RelationKey: "name", Type: model.BlockContentDataviewSort_Asc, Format: model.RelationFormat_shorttext}, // non-object relation
 		}
 
-		fx.ds.enregisterObjectSorts("sub1", sorts)
+		fx.ds.registerObjectSorts("sub1", sorts)
 
 		// Verify that only object-format relations are registered
 		assert.Contains(t, fx.ds.sorts, "sub1")
@@ -348,7 +348,7 @@ func TestDependencyService_EnregisterObjectSorts(t *testing.T) {
 			{RelationKey: "description", Type: model.BlockContentDataviewSort_Asc},
 		}
 
-		fx.ds.enregisterObjectSorts("sub1", sorts)
+		fx.ds.registerObjectSorts("sub1", sorts)
 
 		// Should not register any sorts for non-object relations
 		assert.NotContains(t, fx.ds.sorts, "sub1")
@@ -359,7 +359,7 @@ func TestDependencyService_EnregisterObjectSorts(t *testing.T) {
 
 		var sorts []database.SortRequest
 
-		fx.ds.enregisterObjectSorts("sub1", sorts)
+		fx.ds.registerObjectSorts("sub1", sorts)
 
 		// Should not register empty sorts
 		assert.NotContains(t, fx.ds.sorts, "sub1")
