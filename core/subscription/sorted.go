@@ -2,6 +2,7 @@ package subscription
 
 import (
 	"errors"
+	"fmt"
 
 	"github.com/huandu/skiplist"
 
@@ -85,44 +86,9 @@ func (s *sortedSub) init(entries []*entry) (err error) {
 		e.SetSub(s.id, false, false)
 		s.skl.Set(e, nil)
 	}
-	if s.afterId != "" {
-		e := s.cache.Get(s.afterId)
-		if e == nil {
-			err = ErrAfterId
-			return
-		}
-		s.afterEl = s.skl.Get(e)
-		if s.afterEl == nil {
-			err = ErrAfterId
-			return
-		}
-	} else if s.beforeId != "" {
-		e := s.cache.Get(s.beforeId)
-		if e == nil {
-			err = ErrBeforeId
-			return
-		}
-		s.beforeEl = s.skl.Get(e)
-		if s.beforeEl == nil {
-			err = ErrBeforeId
-			return
-		}
-	} else if s.offset > 0 {
-		el := s.skl.Front()
-		i := 0
-		for el != nil {
-			i++
-			if i == s.offset {
-				s.afterId = el.Key().(*entry).id
-				s.afterEl = el
-				break
-			}
-			el = el.Next()
-		}
-		if s.afterEl == nil {
-			err = ErrNoRecords
-			return
-		}
+
+	if err = s.setBeforeAndAfterElements(); err != nil {
+		return
 	}
 
 	activeEntries := s.getActiveEntries()
@@ -145,60 +111,61 @@ func (s *sortedSub) init(entries []*entry) (err error) {
 	return nil
 }
 
+func (s *sortedSub) setBeforeAndAfterElements() error {
+	if s.afterId != "" {
+		e := s.cache.Get(s.afterId)
+		if e == nil {
+			return ErrAfterId
+		}
+		s.afterEl = s.skl.Get(e)
+		if s.afterEl == nil {
+			return ErrAfterId
+		}
+		return nil
+	}
+
+	if s.beforeId != "" {
+		e := s.cache.Get(s.beforeId)
+		if e == nil {
+			return ErrBeforeId
+		}
+		s.beforeEl = s.skl.Get(e)
+		if s.beforeEl == nil {
+			return ErrBeforeId
+		}
+		return nil
+	}
+
+	if s.offset > 0 {
+		el := s.skl.Front()
+		i := 0
+		for el != nil {
+			i++
+			if i == s.offset {
+				s.afterId = el.Key().(*entry).id
+				s.afterEl = el
+				break
+			}
+			el = el.Next()
+		}
+		if s.afterEl == nil {
+			return ErrNoRecords
+		}
+	}
+
+	return nil
+}
+
 func (s *sortedSub) onChange(ctx *opCtx) {
 	var changed bool
-	// this code updates Skip List,
 	for _, e := range ctx.entries {
-		changed = changed || s.onEntryChange(e)
+		changed = s.onEntryChange(e) || changed
 	}
 	if !changed || !s.started {
 		return
 	}
-	defer s.diff.reset()
-	s.activeEntriesBuf = s.activeEntriesBuf[:0]
-	if s.iterateActive(func(e *entry) {
-		s.diff.fillAfter(e.id)
-		if s.depSub != nil {
-			s.activeEntriesBuf = append(s.activeEntriesBuf, e)
-		}
-	}) {
-		s.diff.reverse()
-	}
 
-	s.compCountAfter.subId = s.id
-	s.compCountAfter.prevCount, s.compCountAfter.nextCount = s.counters()
-	s.compCountAfter.total = s.skl.Len()
-
-	if s.compCountAfter != s.compCountBefore {
-		ctx.counters = append(ctx.counters, s.compCountAfter)
-		s.compCountBefore = s.compCountAfter
-	}
-
-	wasAddOrRemove, added, removed := s.diff.diff(ctx, s.id, s.keys)
-	s.ds.depEntriesByEntries(ctx, added)
-
-	hasChanges := false
-	for _, e := range ctx.entries {
-		if _, ok := s.diff.afterIdsM[e.id]; ok {
-			e.SetSub(s.id, true, false)
-			ctx.change = append(ctx.change, opChange{
-				id:    e.id,
-				subId: s.id,
-				keys:  s.keys,
-			})
-			hasChanges = true
-		}
-	}
-
-	for _, id := range removed {
-		if e := s.cache.Get(id); e != nil {
-			e.SetSub(s.id, false, false)
-		}
-	}
-
-	if (wasAddOrRemove || hasChanges) && s.depSub != nil {
-		s.ds.refillSubscription(ctx, s.id, s.depSub, s.activeEntriesBuf, s.depKeys)
-	}
+	s.onSklChange(ctx)
 
 	if s.parent != nil {
 		parentEntries, err := queryEntries(s.objectStore, &database.Filters{FilterObj: s.parent.filter})
@@ -259,17 +226,7 @@ func (s *sortedSub) onEntryChange(e *entry) (changed bool) {
 	panic("subscription: check algo")
 }
 
-func (s *sortedSub) reorder(ctx *opCtx, depDetails []*domain.Details) {
-	if !s.order.UpdateOrderMap(depDetails) {
-		return
-	}
-
-	entries := s.getActiveEntries()
-	s.skl.Init()
-	for _, e := range entries {
-		s.skl.Set(e, nil)
-	}
-
+func (s *sortedSub) onSklChange(ctx *opCtx) {
 	defer s.diff.reset()
 	s.activeEntriesBuf = s.activeEntriesBuf[:0]
 	if s.iterateActive(func(e *entry) {
@@ -290,7 +247,53 @@ func (s *sortedSub) reorder(ctx *opCtx, depDetails []*domain.Details) {
 		s.compCountBefore = s.compCountAfter
 	}
 
-	s.diff.diff(ctx, s.id, s.keys)
+	wasAddOrRemove, added, removed := s.diff.diff(ctx, s.id, s.keys)
+	s.ds.depEntriesByEntries(ctx, added)
+
+	hasChanges := false
+	for _, e := range ctx.entries {
+		if _, ok := s.diff.afterIdsM[e.id]; ok {
+			e.SetSub(s.id, true, false)
+			ctx.change = append(ctx.change, opChange{
+				id:    e.id,
+				subId: s.id,
+				keys:  s.keys,
+			})
+			hasChanges = true
+		}
+	}
+
+	for _, id := range removed {
+		if e := s.cache.Get(id); e != nil {
+			e.SetSub(s.id, false, false)
+		}
+	}
+
+	if (wasAddOrRemove || hasChanges) && s.depSub != nil {
+		s.ds.refillSubscription(ctx, s.id, s.depSub, s.activeEntriesBuf, s.depKeys)
+	}
+}
+
+func (s *sortedSub) reorder(ctx *opCtx, depDetails []*domain.Details) {
+	if !s.order.UpdateOrderMap(depDetails) {
+		return
+	}
+
+	entries := make([]*entry, 0, s.skl.Len())
+	for el := s.skl.Front(); el != nil; el = el.Next() {
+		entries = append(entries, el.Key().(*entry))
+	}
+
+	s.skl.Init()
+	for _, e := range entries {
+		s.skl.Set(e, nil)
+	}
+	s.afterId = ""
+	if err := s.setBeforeAndAfterElements(); err != nil {
+		panic(fmt.Errorf("failed to set before and after elements: %w", err))
+	}
+
+	s.onSklChange(ctx)
 }
 
 func (s *sortedSub) counters() (prev, next int) {

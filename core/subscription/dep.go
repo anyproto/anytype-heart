@@ -61,10 +61,7 @@ func (ds *dependencyService) depIdsByEntries(
 						depIds = append(depIds, depId)
 					}
 					if isSortKey {
-						if ds.depOrderObjects[depId] == nil {
-							ds.depOrderObjects[depId] = map[string]struct{}{}
-						}
-						ds.depOrderObjects[depId][subId] = struct{}{}
+						ds.addDepOrderObject(depId, subId)
 					}
 				}
 			}
@@ -108,6 +105,13 @@ func (ds *dependencyService) depEntriesByEntries(ctx *opCtx, depIds []string) (d
 		}
 	}
 	return
+}
+
+func (ds *dependencyService) addDepOrderObject(dependentObjectId, subId string) {
+	if ds.depOrderObjects[dependentObjectId] == nil {
+		ds.depOrderObjects[dependentObjectId] = map[string]struct{}{}
+	}
+	ds.depOrderObjects[dependentObjectId][subId] = struct{}{}
 }
 
 func (ds *dependencyService) registerObjectSorts(subId string, sorts []database.SortRequest) {

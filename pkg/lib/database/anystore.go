@@ -7,6 +7,7 @@ import (
 	"github.com/anyproto/any-store/query"
 	"golang.org/x/text/collate"
 
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	time_util "github.com/anyproto/anytype-heart/util/time"
@@ -169,6 +170,7 @@ func (s textSort) AppendKey(tuple anyenc.Tuple, v *anyenc.Value) anyenc.Tuple {
 type objectSort struct {
 	arena       *anyenc.Arena
 	relationKey string
+	sortKeys    []domain.RelationKey
 	reverse     bool
 	nulls       model.BlockContentDataviewSortEmptyType
 	orders      *OrderMap
@@ -188,10 +190,12 @@ func (s objectSort) AppendKey(tuple anyenc.Tuple, v *anyenc.Value) anyenc.Tuple 
 	}()
 
 	val := v.Get(s.relationKey)
-	var sortKey string
+	sortKeys := make([]string, len(s.sortKeys))
 	if val != nil && val.Type() == anyenc.TypeString {
 		id, _ := val.StringBytes()
-		sortKey = s.orders.FullOrderId(string(id))
+		for _, key := range s.sortKeys {
+			sortKeys = append(sortKeys, s.orders.BuildOrderByKey(key, string(id)))
+		}
 	} else if val != nil && val.Type() == anyenc.TypeArray {
 		arr, _ := val.Array()
 		var ids []string
@@ -199,22 +203,29 @@ func (s objectSort) AppendKey(tuple anyenc.Tuple, v *anyenc.Value) anyenc.Tuple 
 			id, _ := it.StringBytes()
 			ids = append(ids, string(id))
 		}
-		sortKey = s.orders.FullOrderId(ids...)
-	}
-
-	if sortKey == "" {
-		if s.nulls == model.BlockContentDataviewSort_Start {
-			return tuple.Append(s.arena.NewNull())
-		} else if s.nulls == model.BlockContentDataviewSort_End {
-			return tuple.AppendInverted(s.arena.NewNull())
+		for _, key := range s.sortKeys {
+			sortKeys = append(sortKeys, s.orders.BuildOrderByKey(key, ids...))
 		}
 	}
 
-	if s.reverse {
-		return tuple.AppendInverted(s.arena.NewString(sortKey))
-	} else {
-		return tuple.Append(s.arena.NewString(sortKey))
+	for _, key := range sortKeys {
+		if key == "" {
+			if s.nulls == model.BlockContentDataviewSort_Start {
+				tuple = tuple.Append(s.arena.NewNull())
+			} else if s.nulls == model.BlockContentDataviewSort_End {
+				tuple = tuple.AppendInverted(s.arena.NewNull())
+			}
+			continue
+		}
+
+		if s.reverse {
+			tuple = tuple.AppendInverted(s.arena.NewString(key))
+		} else {
+			tuple = tuple.Append(s.arena.NewString(key))
+		}
 	}
+
+	return tuple
 }
 
 type boolSort struct {

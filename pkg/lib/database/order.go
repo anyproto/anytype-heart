@@ -31,24 +31,15 @@ type ObjectStore interface {
 	ListRelationOptions(relationKey domain.RelationKey) (options []*model.RelationOption, err error)
 }
 
-const (
-	fullOrderId     = domain.RelationKey("fullOrderId")
-	smallestOrderId = "AAAA" // smallest as lexid.Must(lexid.CharsBase64, 4, 4000) is used to form orderIds
-)
-
 type OrderMap struct {
 	data map[string]*domain.Details // objectId -> orderId
 }
 
 func NewOrderMap(data map[string]*domain.Details) *OrderMap {
-	m := &OrderMap{data: data}
-	for id := range m.data {
-		m.setFullOrderId(id)
-	}
-	return m
+	return &OrderMap{data: data}
 }
 
-func (m *OrderMap) FullOrderId(ids ...string) string {
+func (m *OrderMap) BuildOrderByKey(key domain.RelationKey, ids ...string) string {
 	if m == nil || len(m.data) == 0 {
 		return ""
 	}
@@ -56,7 +47,7 @@ func (m *OrderMap) FullOrderId(ids ...string) string {
 	var result string
 	for _, id := range ids {
 		if details, ok := m.data[id]; ok {
-			result += details.GetString(fullOrderId)
+			result += details.GetString(key)
 		}
 	}
 
@@ -89,7 +80,6 @@ func (m *OrderMap) Update(details []*domain.Details) (anyUpdated bool) {
 		}
 
 		if updated {
-			m.setFullOrderId(id)
 			anyUpdated = true
 		}
 	}
@@ -131,28 +121,11 @@ func (m *OrderMap) SetOrders(store ObjectStore, ids ...string) {
 		info := record.Details.CopyOnlyKeys(bundle.RelationKeyOrderId, bundle.RelationKeyName)
 		id := record.Details.GetString(bundle.RelationKeyId)
 		m.data[id] = info
-		m.setFullOrderId(id)
 	}
 }
 
 func (m *OrderMap) Empty() bool {
 	return m == nil || len(m.data) == 0
-}
-
-func (m *OrderMap) setFullOrderId(objectId string) {
-	if m == nil || m.data == nil {
-		return
-	}
-	details, ok := m.data[objectId]
-	if !ok {
-		return
-	}
-	orderId := details.GetString(bundle.RelationKeyOrderId)
-	if orderId == "" {
-		orderId = smallestOrderId
-	}
-	name := details.GetString(bundle.RelationKeyName)
-	details.SetString(fullOrderId, orderId+name)
 }
 
 type SetOrder []Order
@@ -192,10 +165,37 @@ type KeyOrder struct {
 	IncludeTime     bool
 	objectStore     ObjectStore
 	orderMap        *OrderMap
+	objectSortKeys  []domain.RelationKey
 	arena           *anyenc.Arena
 	collatorBuffer  *collate.Buffer
 	collator        *collate.Collator
 	disableCollator bool
+}
+
+func NewKeyOrder(store ObjectStore, arena *anyenc.Arena, collatorBuffer *collate.Buffer, sort SortRequest) *KeyOrder {
+	sortKeys := make([]domain.RelationKey, 0, 2)
+	format, err := store.GetRelationFormatByKey(sort.RelationKey)
+	if err != nil {
+		format = sort.Format
+	}
+	switch format {
+	case model.RelationFormat_tag, model.RelationFormat_status:
+		sortKeys = append(sortKeys, bundle.RelationKeyOrderId, bundle.RelationKeyName)
+	case model.RelationFormat_file, model.RelationFormat_object:
+		sortKeys = append(sortKeys, bundle.RelationKeyName)
+	}
+	return &KeyOrder{
+		Key:             sort.RelationKey,
+		Type:            sort.Type,
+		EmptyPlacement:  sort.EmptyPlacement,
+		relationFormat:  format,
+		objectStore:     store,
+		orderMap:        NewOrderMap(nil),
+		objectSortKeys:  sortKeys,
+		arena:           arena,
+		collatorBuffer:  collatorBuffer,
+		disableCollator: sort.NoCollate,
+	}
 }
 
 func (ko *KeyOrder) ensureCollator() {
@@ -282,6 +282,7 @@ func (ko *KeyOrder) objectSort() query.Sort {
 	return objectSort{
 		arena:       ko.arena,
 		relationKey: string(ko.Key),
+		sortKeys:    ko.objectSortKeys,
 		reverse:     ko.Type == model.BlockContentDataviewSort_Desc,
 		nulls:       ko.EmptyPlacement,
 		orders:      ko.orderMap,
@@ -403,8 +404,13 @@ func (ko *KeyOrder) tryExtractObject(av domain.Value, bv domain.Value) (domain.V
 
 	ko.orderMap.SetOrders(ko.objectStore, slices.Concat(aList, bList)...)
 
-	av = domain.String(ko.orderMap.FullOrderId(aList...))
-	bv = domain.String(ko.orderMap.FullOrderId(bList...))
+	for _, key := range ko.objectSortKeys {
+		orderA := ko.orderMap.BuildOrderByKey(key, aList...)
+		orderB := ko.orderMap.BuildOrderByKey(key, bList...)
+		if orderA != orderB {
+			return domain.String(orderA), domain.String(orderB)
+		}
+	}
 	return av, bv
 }
 

@@ -115,10 +115,10 @@ func (s *simpleSub) onChange(ctx *opCtx) {
 	}
 }
 
-func (s *simpleSub) getActiveEntries() (res []*entry) {
+func (s *simpleSub) getActiveEntries() []*entry {
 	s.activeEntriesBuf = s.activeEntriesBuf[:0]
 	for id := range s.set {
-		res = append(res, s.cache.Get(id))
+		s.activeEntriesBuf = append(s.activeEntriesBuf, s.cache.Get(id))
 	}
 	return s.activeEntriesBuf
 }

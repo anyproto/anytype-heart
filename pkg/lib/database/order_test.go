@@ -535,6 +535,7 @@ func TestTagStatusOrder_Compare(t *testing.T) {
 				Type:           model.BlockContentDataviewSort_Asc,
 				relationFormat: relation,
 				objectStore:    &stubSpaceObjectStore{},
+				objectSortKeys: []domain.RelationKey{bundle.RelationKeyOrderId, bundle.RelationKeyName},
 				orderMap: NewOrderMap(map[string]*domain.Details{
 					"b": domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{"name": domain.String("a")}),
 					"a": domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{"name": domain.String("b")}),
@@ -582,16 +583,17 @@ func TestIncludeTime_Compare(t *testing.T) {
 
 }
 
-func TestOrderMap_FullOrderId(t *testing.T) {
+func TestOrderMap_BuildOrderByKey(t *testing.T) {
+	key := domain.RelationKey("key")
 	t.Run("nil OrderMap", func(t *testing.T) {
 		var om *OrderMap
-		result := om.FullOrderId("id1", "id2")
+		result := om.BuildOrderByKey(key, "id1", "id2")
 		assert.Equal(t, "", result)
 	})
 
 	t.Run("empty data", func(t *testing.T) {
 		om := &OrderMap{data: make(map[string]*domain.Details)}
-		result := om.FullOrderId("id1", "id2")
+		result := om.BuildOrderByKey(key, "id1", "id2")
 		assert.Equal(t, "", result)
 	})
 
@@ -599,11 +601,11 @@ func TestOrderMap_FullOrderId(t *testing.T) {
 		om := &OrderMap{
 			data: map[string]*domain.Details{
 				"id1": domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
-					fullOrderId: domain.String("BBBBTag A"),
+					key: domain.String("BBBBTag A"),
 				}),
 			},
 		}
-		result := om.FullOrderId("id1")
+		result := om.BuildOrderByKey(key, "id1")
 		assert.Equal(t, "BBBBTag A", result)
 	})
 
@@ -611,14 +613,14 @@ func TestOrderMap_FullOrderId(t *testing.T) {
 		om := &OrderMap{
 			data: map[string]*domain.Details{
 				"id1": domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
-					fullOrderId: domain.String("BBBBTag A"),
+					key: domain.String("BBBBTag A"),
 				}),
 				"id2": domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
-					fullOrderId: domain.String("CCCCTag B"),
+					key: domain.String("CCCCTag B"),
 				}),
 			},
 		}
-		result := om.FullOrderId("id1", "id2")
+		result := om.BuildOrderByKey(key, "id1", "id2")
 		assert.Equal(t, "BBBBTag ACCCCTag B", result)
 	})
 
@@ -626,11 +628,11 @@ func TestOrderMap_FullOrderId(t *testing.T) {
 		om := &OrderMap{
 			data: map[string]*domain.Details{
 				"id1": domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
-					fullOrderId: domain.String("BBBBTag A"),
+					key: domain.String("BBBBTag A"),
 				}),
 			},
 		}
-		result := om.FullOrderId("id1", "nonexistent", "id1")
+		result := om.BuildOrderByKey(key, "id1", "nonexistent", "id1")
 		assert.Equal(t, "BBBBTag ABBBBTag A", result)
 	})
 
@@ -638,12 +640,25 @@ func TestOrderMap_FullOrderId(t *testing.T) {
 		om := &OrderMap{
 			data: map[string]*domain.Details{
 				"id1": domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
-					fullOrderId: domain.String("BBBBTag A"),
+					key: domain.String("BBBBTag A"),
 				}),
 			},
 		}
-		result := om.FullOrderId()
+		result := om.BuildOrderByKey(key)
 		assert.Equal(t, "", result)
+	})
+
+	t.Run("not existing key", func(t *testing.T) {
+		om := &OrderMap{
+			data: map[string]*domain.Details{
+				"id1": domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+					key: domain.String("BBBBTag A"),
+				}),
+			},
+		}
+		result := om.BuildOrderByKey("not_existing_key", "id1")
+		assert.Equal(t, "", result)
+
 	})
 }
 
@@ -678,7 +693,6 @@ func TestOrderMap_Update(t *testing.T) {
 		original := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
 			bundle.RelationKeyName:    domain.String("Original Name"),
 			bundle.RelationKeyOrderId: domain.String("BBBB"),
-			fullOrderId:               domain.String("BBBBOriginal Name"),
 		})
 		om := &OrderMap{
 			data: map[string]*domain.Details{
@@ -697,14 +711,12 @@ func TestOrderMap_Update(t *testing.T) {
 		updated := om.Update(details)
 		assert.True(t, updated)
 		assert.Equal(t, "CCCC", original.GetString(bundle.RelationKeyOrderId))
-		assert.Equal(t, "CCCCOriginal Name", original.GetString(fullOrderId))
 	})
 
 	t.Run("update existing object with new name", func(t *testing.T) {
 		original := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
 			bundle.RelationKeyName:    domain.String("Original Name"),
 			bundle.RelationKeyOrderId: domain.String("BBBB"),
-			fullOrderId:               domain.String("BBBBOriginal Name"),
 		})
 		om := &OrderMap{
 			data: map[string]*domain.Details{
@@ -723,14 +735,12 @@ func TestOrderMap_Update(t *testing.T) {
 		updated := om.Update(details)
 		assert.True(t, updated)
 		assert.Equal(t, "Updated Name", original.GetString(bundle.RelationKeyName))
-		assert.Equal(t, "BBBBUpdated Name", original.GetString(fullOrderId))
 	})
 
 	t.Run("update existing object with no changes", func(t *testing.T) {
 		original := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
 			bundle.RelationKeyName:    domain.String("Same Name"),
 			bundle.RelationKeyOrderId: domain.String("BBBB"),
-			fullOrderId:               domain.String("BBBBSame Name"),
 		})
 		om := &OrderMap{
 			data: map[string]*domain.Details{
@@ -748,7 +758,6 @@ func TestOrderMap_Update(t *testing.T) {
 
 		updated := om.Update(details)
 		assert.False(t, updated)
-		assert.Equal(t, "BBBBSame Name", original.GetString(fullOrderId))
 	})
 
 	t.Run("update non-existing object", func(t *testing.T) {
@@ -938,73 +947,6 @@ func TestOrderMap_SetOrders(t *testing.T) {
 
 		assert.Empty(t, om.data)
 		store.AssertExpectations(t)
-	})
-}
-
-func TestOrderMap_setFullOrderId(t *testing.T) {
-	t.Run("nil OrderMap", func(t *testing.T) {
-		var om *OrderMap
-		// Should not panic
-		om.setFullOrderId("id1")
-	})
-
-	t.Run("nil data", func(t *testing.T) {
-		om := &OrderMap{}
-		// Should not panic
-		om.setFullOrderId("id1")
-	})
-
-	t.Run("object not found", func(t *testing.T) {
-		om := &OrderMap{data: make(map[string]*domain.Details)}
-		// Should not panic
-		om.setFullOrderId("nonexistent")
-	})
-
-	t.Run("with orderId", func(t *testing.T) {
-		details := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
-			bundle.RelationKeyName:    domain.String("Test Tag"),
-			bundle.RelationKeyOrderId: domain.String("BBBB"),
-		})
-		om := &OrderMap{
-			data: map[string]*domain.Details{
-				"id1": details,
-			},
-		}
-
-		om.setFullOrderId("id1")
-
-		assert.Equal(t, "BBBBTest Tag", details.GetString(fullOrderId))
-	})
-
-	t.Run("without orderId", func(t *testing.T) {
-		details := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
-			bundle.RelationKeyName: domain.String("Test Tag"),
-		})
-		om := &OrderMap{
-			data: map[string]*domain.Details{
-				"id1": details,
-			},
-		}
-
-		om.setFullOrderId("id1")
-
-		assert.Equal(t, "AAAATest Tag", details.GetString(fullOrderId))
-	})
-
-	t.Run("empty orderId", func(t *testing.T) {
-		details := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
-			bundle.RelationKeyName:    domain.String("Test Tag"),
-			bundle.RelationKeyOrderId: domain.String(""),
-		})
-		om := &OrderMap{
-			data: map[string]*domain.Details{
-				"id1": details,
-			},
-		}
-
-		om.setFullOrderId("id1")
-
-		assert.Equal(t, "AAAATest Tag", details.GetString(fullOrderId))
 	})
 }
 

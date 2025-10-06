@@ -325,17 +325,14 @@ func TestDependencyService_EnregisterObjectSorts(t *testing.T) {
 
 		// Verify sortKey properties
 		sortKeys := fx.ds.sorts["sub1"]
-		for _, key := range sortKeys {
-			switch key.key {
+		for key, isTag := range sortKeys {
+			switch key {
 			case "status":
-				assert.True(t, key.isTag)
-				assert.Equal(t, bundle.RelationKeyOrderId, key.orderKey())
+				assert.True(t, isTag)
 			case "tag":
-				assert.True(t, key.isTag)
-				assert.Equal(t, bundle.RelationKeyOrderId, key.orderKey())
+				assert.True(t, isTag)
 			case "assignee":
-				assert.False(t, key.isTag)
-				assert.Equal(t, bundle.RelationKeyName, key.orderKey())
+				assert.False(t, isTag)
 			}
 		}
 	})
@@ -371,9 +368,9 @@ func TestDependencyService_DepIdsByEntries(t *testing.T) {
 		fx := newSSFixture(t)
 
 		// Setup sorts to track dependencies
-		fx.ds.sorts["sub1"] = []sortKey{
-			{key: "assignee", isTag: false},
-			{key: "status", isTag: true},
+		fx.ds.sorts["sub1"] = map[domain.RelationKey]bool{
+			"assignee": false,
+			"status":   true,
 		}
 
 		entries := []*entry{
@@ -418,7 +415,7 @@ func TestDependencyService_DepIdsByEntries(t *testing.T) {
 	t.Run("ignore self-references and duplicates", func(t *testing.T) {
 		fx := newSSFixture(t)
 
-		fx.ds.sorts["sub1"] = []sortKey{{key: "assignee", isTag: false}}
+		fx.ds.sorts["sub1"] = map[domain.RelationKey]bool{"assignee": false}
 
 		entries := []*entry{
 			{
