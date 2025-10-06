@@ -320,7 +320,7 @@ func (s *service) flushAllDbs(idleDuration, flushTimeout time.Duration, mode any
 		wg.Add(1)
 		go func(db anystore.DB) {
 			defer wg.Done()
-			ctx, cancel := context.WithTimeout(context.TODO(), flushTimeout)
+			ctx, cancel := context.WithTimeout(s.componentCtx, flushTimeout)
 			defer cancel()
 			err := db.Flush(ctx, idleDuration, mode)
 			if err != nil {
