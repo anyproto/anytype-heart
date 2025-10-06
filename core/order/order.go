@@ -255,6 +255,16 @@ func getIdsInOriginalOrder(objectIds []string, originalOrderIds map[string]strin
 	})
 }
 
+func hasItemNotInSet[T comparable](items []T, set map[T]struct{}) bool {
+	for _, id := range items {
+		if _, ok := set[id]; !ok {
+			return true
+		}
+	}
+
+	return false
+}
+
 // calculateFullList return the full list of ids, that a client is expected. To do it, we
 // compare a list of ids provided by the client with the corresponding part of the full list of ids.
 // Then we apply changes to the original full list.
@@ -269,7 +279,7 @@ func calculateFullList(objectIds []string, fullOriginalIds []string, originalOrd
 		objectIdsSet[id] = struct{}{}
 	}
 
-	if !HasItemNotInSet(fullOriginalIds, objectIdsSet) {
+	if !hasItemNotInSet(fullOriginalIds, objectIdsSet) {
 		return objectIds
 	}
 
