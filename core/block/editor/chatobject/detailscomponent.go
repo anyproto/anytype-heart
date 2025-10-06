@@ -23,20 +23,20 @@ import (
 const detailsDocumentId = "details"
 
 type detailsComponent struct {
-	componentCtx           context.Context
-	collectionName         string
-	allowedRelationKeys    []domain.RelationKey
-	allowedRelationKeysSet map[domain.RelationKey]struct{}
-	storeSource            source.Store
-	storeState             *storestate.StoreState
-	sb                     smartblock.SmartBlock
-	spaceIndex             spaceindex.Store
+	componentCtx          context.Context
+	collectionName        string
+	deniedRelationKeys    []domain.RelationKey
+	deniedRelationKeysSet map[domain.RelationKey]struct{}
+	storeSource           source.Store
+	storeState            *storestate.StoreState
+	sb                    smartblock.SmartBlock
+	spaceIndex            spaceindex.Store
 }
 
 func (c *detailsComponent) init(st *state.State) error {
-	c.allowedRelationKeysSet = map[domain.RelationKey]struct{}{}
-	for _, key := range c.allowedRelationKeys {
-		c.allowedRelationKeysSet[key] = struct{}{}
+	c.deniedRelationKeysSet = map[domain.RelationKey]struct{}{}
+	for _, key := range c.deniedRelationKeys {
+		c.deniedRelationKeysSet[key] = struct{}{}
 	}
 
 	err := c.setDetailsFromAnystore(c.componentCtx, st)
@@ -53,7 +53,7 @@ func (c *detailsComponent) onPushOrdinaryChange(params source.PushChangeParams) 
 		set := ch.GetDetailsSet()
 		if set != nil && set.Key != "" {
 			key := domain.RelationKey(set.Key)
-			if _, ok := c.allowedRelationKeysSet[key]; !ok {
+			if _, ok := c.deniedRelationKeysSet[key]; ok {
 				continue
 			}
 			if slices.Contains(bundle.LocalAndDerivedRelationKeys, key) {
@@ -96,11 +96,18 @@ func (c *detailsComponent) setDetailsFromAnystore(ctx context.Context, st *state
 	if err != nil {
 		return fmt.Errorf("parse details: %w", err)
 	}
-	for _, key := range c.allowedRelationKeys {
-		v, ok := details.TryGet(key)
-		if ok {
-			st.ParentState().SetDetailAndBundledRelation(key, v)
+	for key, v := range details.Iterate() {
+		// Ignore orders key
+		if key == "_o" {
+			continue
 		}
+		if _, ok := c.deniedRelationKeysSet[key]; ok {
+			continue
+		}
+		if slices.Contains(bundle.LocalAndDerivedRelationKeys, key) {
+			continue
+		}
+		st.ParentState().SetDetail(key, v)
 	}
 	return nil
 }

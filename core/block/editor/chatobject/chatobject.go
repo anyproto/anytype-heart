@@ -238,12 +238,12 @@ func (s *storeObject) Init(ctx *smartblock.InitContext) error {
 	}
 
 	s.detailsComponent = &detailsComponent{
-		componentCtx:        s.componentCtx,
-		collectionName:      "editor",
-		storeSource:         storeSource,
-		storeState:          stateStore,
-		sb:                  s.SmartBlock,
-		allowedRelationKeys: []domain.RelationKey{bundle.RelationKeyName},
+		componentCtx:       s.componentCtx,
+		collectionName:     "editor",
+		storeSource:        storeSource,
+		storeState:         stateStore,
+		sb:                 s.SmartBlock,
+		deniedRelationKeys: []domain.RelationKey{bundle.RelationKeyInternalFlags},
 	}
 	err = s.detailsComponent.init(ctx.State)
 	if err != nil {
