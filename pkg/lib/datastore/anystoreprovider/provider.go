@@ -169,7 +169,7 @@ func openDatabaseWithReinit(ctx context.Context, config *anystore.Config, path s
 	db, err := anystore.Open(ctx, path, config)
 	if err != nil {
 		code, isCorrupted := anystorehelper.IsCorruptedError(err)
-		getLogger(err, code).Error("failed to open anystore, reinit db")
+		getLogger(err, code).With(zap.Bool("isCorrupted", isCorrupted)).Error("failed to open anystore")
 		if isCorrupted {
 			removeErr := anystorehelper.RemoveSqliteFiles(path)
 			if removeErr != nil {
@@ -182,6 +182,7 @@ func openDatabaseWithReinit(ctx context.Context, config *anystore.Config, path s
 				getLogger(err, code).Error("failed to open anystore again")
 				return nil, err
 			}
+			return db, nil
 		}
 		return nil, err
 	}
