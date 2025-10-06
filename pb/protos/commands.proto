@@ -7744,6 +7744,10 @@ message Rpc {
                 // 1. Membership.GetStatus() -> anytype.model.Membership.userEmail field
                 // 2. Ask user from the UI
                 string userEmail = 5;
+
+                // pass <true> here if you want to buy monthly version of some tier
+                // will be ignored if the tier has no yearly/monthly switch
+                bool isMonthly = 6;
             }
 
             message Response {
@@ -7973,6 +7977,11 @@ message Rpc {
                 bool noCache = 1;
 
                 string locale = 2;
+
+                // version of membership 
+                // 1.x for old versions (default)
+                // 2.0 for version 2
+                string version = 3;
             }
 
             message Response {

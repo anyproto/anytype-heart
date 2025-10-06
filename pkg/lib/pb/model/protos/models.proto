@@ -1394,6 +1394,10 @@ message MembershipTierData {
 
     // "limited offer" or somehing like that
     string offer = 19;
+
+// version 2 only fields (specify version in GetTiersRequest request first):
+    // if the tier is yearly (periodType above is PeriodTypeYears) - then also we provide a monthly price here
+    uint32 priceStripeUsdCentsMonthly = 21;
 }
 
 enum DeviceNetworkType {
