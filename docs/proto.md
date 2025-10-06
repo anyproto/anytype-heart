@@ -32294,6 +32294,7 @@ Used to decode block meta only, without the content itself
 | nsNameType | [NameserviceNameType](#anytype-model-NameserviceNameType) |  |  |
 | userEmail | [string](#string) |  | if the email was verified by the user or set during the checkout - it will be here |
 | subscribeToNewsletter | [bool](#bool) |  |  |
+| isMonthly | [bool](#bool) |  | for tiers that offer yearly/monthly switch |
 
 
 

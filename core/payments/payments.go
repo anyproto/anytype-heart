@@ -605,6 +605,8 @@ func (s *service) RegisterPaymentRequest(ctx context.Context, req *pb.RpcMembers
 		RequestedAnyName: nameservice.NsNameToFullName(req.NsName, req.NsNameType),
 
 		UserEmail: req.UserEmail,
+
+		IsMonthly: req.IsMonthly,
 	}
 
 	payload, err := bsr.MarshalVT()
@@ -894,6 +896,8 @@ func (s *service) getAllTiers(ctx context.Context, req *pb.RpcMembershipGetTiers
 
 		// WARNING: we will save to cache data for THIS locale and payment method!!!
 		Locale: req.Locale,
+
+		Version: req.Version,
 	}
 
 	payload, err := bsr.MarshalVT()
@@ -948,13 +952,14 @@ func (s *service) getAllTiers(ctx context.Context, req *pb.RpcMembershipGetTiers
 			AnyNameMinLength:      tier.AnyNameMinLength,
 			ColorStr:              tier.ColorStr,
 			// platform-specific fields:
-			StripeProductId:  tier.StripeProductId,
-			StripeManageUrl:  tier.StripeManageUrl,
-			IosProductId:     tier.IosProductId,
-			IosManageUrl:     tier.IosManageUrl,
-			AndroidProductId: tier.AndroidProductId,
-			AndroidManageUrl: tier.AndroidManageUrl,
-			Offer:            tier.Offer,
+			StripeProductId:            tier.StripeProductId,
+			StripeManageUrl:            tier.StripeManageUrl,
+			IosProductId:               tier.IosProductId,
+			IosManageUrl:               tier.IosManageUrl,
+			AndroidProductId:           tier.AndroidProductId,
+			AndroidManageUrl:           tier.AndroidManageUrl,
+			Offer:                      tier.Offer,
+			PriceStripeUsdCentsMonthly: tier.PriceStripeUsdCentsMonthly,
 		}
 
 		// copy all features

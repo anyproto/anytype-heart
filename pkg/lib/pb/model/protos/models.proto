@@ -1343,6 +1343,8 @@ message Membership {
     // if the email was verified by the user or set during the checkout - it will be here
     string userEmail = 9;
     bool subscribeToNewsletter = 10;
+    // for tiers that offer yearly/monthly switch
+    bool isMonthly = 11;
 }
 
 message MembershipTierData {
