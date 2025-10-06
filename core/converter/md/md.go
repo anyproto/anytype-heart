@@ -91,7 +91,7 @@ func (h *MD) Convert(sbType model.SmartBlockType) (result []byte) {
 		model.SmartBlockType_STRelationOption,
 		model.SmartBlockType_Participant,
 		model.SmartBlockType_SpaceView,
-		model.SmartBlockType_ChatObject,
+		model.SmartBlockType_ChatObjectDeprecated,
 		model.SmartBlockType_ChatDerivedObject:
 		return nil
 	}
