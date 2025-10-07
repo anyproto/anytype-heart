@@ -7,6 +7,9 @@ import (
 )
 
 // cacheManager handles thread-safe caching of properties, types, and tags per space
+// NOTE: Current implementation copies maps on read to prevent concurrent access issues.
+// For better performance (especially with many entries), we might consider implementing
+// copy-on-write using atomic.Value to make reads lock- and copy-free.
 type cacheManager struct {
 	mu sync.RWMutex
 
@@ -46,7 +49,12 @@ func (c *cacheManager) getProperties(spaceId string) map[string]*apimodel.Proper
 	defer c.mu.RUnlock()
 
 	if spaceCache, exists := c.properties[spaceId]; exists {
-		return spaceCache
+		// Return a copy to prevent concurrent map read/write after lock is released
+		copy := make(map[string]*apimodel.Property, len(spaceCache))
+		for k, v := range spaceCache {
+			copy[k] = v
+		}
+		return copy
 	}
 
 	return make(map[string]*apimodel.Property)
@@ -71,7 +79,12 @@ func (c *cacheManager) getTypes(spaceId string) map[string]*apimodel.Type {
 	defer c.mu.RUnlock()
 
 	if spaceCache, exists := c.types[spaceId]; exists {
-		return spaceCache
+		// Return a copy to prevent concurrent map read/write after lock is released
+		copy := make(map[string]*apimodel.Type, len(spaceCache))
+		for k, v := range spaceCache {
+			copy[k] = v
+		}
+		return copy
 	}
 
 	return make(map[string]*apimodel.Type)
@@ -96,7 +109,12 @@ func (c *cacheManager) getTags(spaceId string) map[string]*apimodel.Tag {
 	defer c.mu.RUnlock()
 
 	if spaceCache, exists := c.tags[spaceId]; exists {
-		return spaceCache
+		// Return a copy to prevent concurrent map read/write after lock is released
+		copy := make(map[string]*apimodel.Tag, len(spaceCache))
+		for k, v := range spaceCache {
+			copy[k] = v
+		}
+		return copy
 	}
 
 	return make(map[string]*apimodel.Tag)
