@@ -2,7 +2,6 @@ package subscription
 
 import (
 	"errors"
-	"fmt"
 
 	"github.com/huandu/skiplist"
 
@@ -290,7 +289,7 @@ func (s *sortedSub) reorder(ctx *opCtx, depDetails []*domain.Details) {
 	}
 	s.afterId = ""
 	if err := s.setBeforeAndAfterElements(); err != nil {
-		panic(fmt.Errorf("failed to set before and after elements: %w", err))
+		log.Errorf("failed to set before and after elements: %v", err)
 	}
 
 	s.onSklChange(ctx)

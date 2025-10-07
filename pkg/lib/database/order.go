@@ -2,6 +2,7 @@ package database
 
 import (
 	"slices"
+	"strings"
 	"time"
 
 	"github.com/anyproto/any-store/anyenc"
@@ -39,19 +40,19 @@ func NewOrderMap(data map[string]*domain.Details) *OrderMap {
 	return &OrderMap{data: data}
 }
 
+// TODO: should we sort by first value or in some other way?
 func (m *OrderMap) BuildOrderByKey(key domain.RelationKey, ids ...string) string {
 	if m == nil || len(m.data) == 0 {
 		return ""
 	}
 
-	var result string
+	var builder strings.Builder
 	for _, id := range ids {
 		if details, ok := m.data[id]; ok {
-			result += details.GetString(key)
+			builder.WriteString(details.GetString(key))
 		}
 	}
-
-	return result
+	return builder.String()
 }
 
 // Update updates orders only for objects that exist in OrderMap
@@ -87,9 +88,9 @@ func (m *OrderMap) Update(details []*domain.Details) (anyUpdated bool) {
 }
 
 // SetOrders sets order for ids that do not present in OrderMap
-func (m *OrderMap) SetOrders(store ObjectStore, ids ...string) {
+func (m *OrderMap) SetOrders(store ObjectStore, ids ...string) error {
 	if store == nil {
-		return
+		return nil
 	}
 
 	if m.data == nil {
@@ -104,7 +105,7 @@ func (m *OrderMap) SetOrders(store ObjectStore, ids ...string) {
 	}
 
 	if len(idsToSet) == 0 {
-		return
+		return nil
 	}
 
 	records, err := store.Query(Query{Filters: []FilterRequest{{
@@ -113,8 +114,7 @@ func (m *OrderMap) SetOrders(store ObjectStore, ids ...string) {
 		Value:       domain.StringList(idsToSet),
 	}}})
 	if err != nil {
-		log.Errorf("failed to query records to update orders: %v", err)
-		return
+		return err
 	}
 
 	for _, record := range records {
@@ -122,6 +122,7 @@ func (m *OrderMap) SetOrders(store ObjectStore, ids ...string) {
 		id := record.Details.GetString(bundle.RelationKeyId)
 		m.data[id] = info
 	}
+	return nil
 }
 
 func (m *OrderMap) Empty() bool {
@@ -402,7 +403,9 @@ func (ko *KeyOrder) tryExtractObject(av domain.Value, bv domain.Value) (domain.V
 	aList, _ := av.TryWrapToStringList()
 	bList, _ := bv.TryWrapToStringList()
 
-	ko.orderMap.SetOrders(ko.objectStore, slices.Concat(aList, bList)...)
+	if err := ko.orderMap.SetOrders(ko.objectStore, slices.Concat(aList, bList)...); err != nil {
+		log.Errorf("failed to update absent orders: %v", err)
+	}
 
 	for _, key := range ko.objectSortKeys {
 		orderA := ko.orderMap.BuildOrderByKey(key, aList...)

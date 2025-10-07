@@ -227,18 +227,15 @@ func (m sortsMap) getOrderKeys(subId string) (orderKeys []domain.RelationKey) {
 	var hasName, hasOrderId bool
 	for _, isTag := range keys {
 		if isTag {
-			if hasName {
-				return []domain.RelationKey{bundle.RelationKeyOrderId, bundle.RelationKeyName}
-			}
 			hasOrderId = true
 		} else {
-			if hasOrderId {
-				return []domain.RelationKey{bundle.RelationKeyOrderId, bundle.RelationKeyName}
-			}
 			hasName = true
 		}
 	}
 
+	if hasName && hasOrderId {
+		return []domain.RelationKey{bundle.RelationKeyOrderId, bundle.RelationKeyName}
+	}
 	if hasName {
 		return []domain.RelationKey{bundle.RelationKeyName}
 	}

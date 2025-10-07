@@ -856,8 +856,9 @@ func (m *mockObjectStore) ListRelationOptions(relationKey domain.RelationKey) (o
 func TestOrderMap_SetOrders(t *testing.T) {
 	t.Run("nil store", func(t *testing.T) {
 		om := &OrderMap{data: make(map[string]*domain.Details)}
-		om.SetOrders(nil, "id1", "id2")
+		err := om.SetOrders(nil, "id1", "id2")
 		assert.Empty(t, om.data)
+		assert.NoError(t, err)
 	})
 
 	t.Run("nil data initialized", func(t *testing.T) {
@@ -876,8 +877,9 @@ func TestOrderMap_SetOrders(t *testing.T) {
 
 		store.On("Query", mock.AnythingOfType("Query")).Return(records, nil)
 
-		om.SetOrders(store, "id1")
+		err := om.SetOrders(store, "id1")
 
+		assert.NoError(t, err)
 		assert.Len(t, om.data, 1)
 		assert.Contains(t, om.data, "id1")
 		assert.Equal(t, "Tag A", om.data["id1"].GetString(bundle.RelationKeyName))
@@ -908,8 +910,9 @@ func TestOrderMap_SetOrders(t *testing.T) {
 
 		store.On("Query", mock.AnythingOfType("Query")).Return(records, nil)
 
-		om.SetOrders(store, "id1", "id2") // id1 exists, id2 is new
+		err := om.SetOrders(store, "id1", "id2") // id1 exists, id2 is new
 
+		assert.NoError(t, err)
 		assert.Len(t, om.data, 2)
 		assert.Equal(t, existing, om.data["id1"]) // Should be unchanged
 		assert.Equal(t, "New Tag", om.data["id2"].GetString(bundle.RelationKeyName))
@@ -931,8 +934,9 @@ func TestOrderMap_SetOrders(t *testing.T) {
 		store := &mockObjectStore{}
 		// Should not call Query since all ids exist
 
-		om.SetOrders(store, "id1", "id2")
+		err := om.SetOrders(store, "id1", "id2")
 
+		assert.NoError(t, err)
 		assert.Len(t, om.data, 2)
 		store.AssertNotCalled(t, "Query")
 	})
@@ -943,8 +947,9 @@ func TestOrderMap_SetOrders(t *testing.T) {
 
 		store.On("Query", mock.AnythingOfType("Query")).Return([]Record{}, assert.AnError)
 
-		om.SetOrders(store, "id1")
+		err := om.SetOrders(store, "id1")
 
+		assert.Error(t, err)
 		assert.Empty(t, om.data)
 		store.AssertExpectations(t)
 	})
