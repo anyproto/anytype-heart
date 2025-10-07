@@ -2399,6 +2399,10 @@
           },
           "object": {
             "description": "The data model of the object",
+            "enum": [
+              "space",
+              "chat"
+            ],
             "example": "space",
             "type": "string"
           }

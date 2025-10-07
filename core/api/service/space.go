@@ -225,12 +225,13 @@ func (s *Service) getSpaceInfo(ctx context.Context, spaceId string) (space apimo
 		return apimodel.Space{}, ErrFailedOpenSpace
 	}
 
+	spaceUxType := s.spaceUxTypeToSpaceType(model.SpaceUxType(spaceResp.ObjectView.Details[0].Details.Fields[bundle.RelationKeySpaceUxType.String()].GetNumberValue()))
 	name := spaceResp.ObjectView.Details[0].Details.Fields[bundle.RelationKeyName.String()].GetStringValue()
 	icon := getIcon(s.gatewayUrl, "", spaceResp.ObjectView.Details[0].Details.Fields[bundle.RelationKeyIconImage.String()].GetStringValue(), "", 0)
 	description := spaceResp.ObjectView.Details[0].Details.Fields[bundle.RelationKeyDescription.String()].GetStringValue()
 
 	return apimodel.Space{
-		Object:      "space",
+		Object:      spaceUxType,
 		Id:          spaceId,
 		Name:        name,
 		Icon:        icon,
@@ -271,4 +272,13 @@ func (s *Service) GetAllSpaceIds(ctx context.Context) ([]string, error) {
 	}
 
 	return spaceIds, nil
+}
+
+func (s *Service) spaceUxTypeToSpaceType(uxType model.SpaceUxType) string {
+	switch uxType {
+	case model.SpaceUxType_Chat:
+		return "chat"
+	default:
+		return "space"
+	}
 }

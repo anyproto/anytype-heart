@@ -15,7 +15,7 @@ type UpdateSpaceRequest struct {
 }
 
 type Space struct {
-	Object      string `json:"object" example:"space"`                                                                 // The data model of the object
+	Object      string `json:"object" enums:"space,chat" example:"space"`                                              // The data model of the object
 	Id          string `json:"id" example:"bafyreigyfkt6rbv24sbv5aq2hko3bhmv5xxlf22b4bypdu6j7hnphm3psq.23me69r569oi1"` // The id of the space
 	Name        string `json:"name" example:"My Space"`                                                                // The name of the space
 	Icon        *Icon  `json:"icon" oneOf:"EmojiIcon,FileIcon,NamedIcon" extensions:"nullable"`                        // The icon of the space, or null if the space has no icon
