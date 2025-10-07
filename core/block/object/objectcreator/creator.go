@@ -48,7 +48,7 @@ type Service interface {
 	CreateSmartBlockFromStateInSpace(ctx context.Context, space clientspace.Space, objectTypeKeys []domain.TypeKey, createState *state.State) (id string, newDetails *domain.Details, err error)
 	AddChatDerivedObject(ctx context.Context, space clientspace.Space, chatObjectId string) (chatId string, err error)
 
-	InstallBundledObjects(ctx context.Context, space clientspace.Space, sourceObjectIds []string, isNewSpace bool) (ids []string, objects []*domain.Details, err error)
+	InstallBundledObjects(ctx context.Context, space clientspace.Space, sourceObjectIds []string) (ids []string, objects []*domain.Details, err error)
 	app.Component
 }
 

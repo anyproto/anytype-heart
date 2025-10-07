@@ -208,7 +208,7 @@ func (l *localDiscovery) startServer() (err error) {
 	for _, ip := range ipv4 {
 		l.ipv4 = append(l.ipv4, ip.String())
 	}
-	log.Debug("starting mdns server", zap.Strings("ips", l.ipv4), zap.Int("port", l.port), zap.String("peerId", l.peerId))
+	log.Info("starting mdns server", zap.Strings("ips", l.ipv4), zap.Int("port", l.port), zap.String("peerId", l.peerId))
 	l.server, err = zeroconf.RegisterProxy(
 		l.peerId,
 		serviceName,
@@ -252,8 +252,7 @@ func (l *localDiscovery) readAnswers(ch chan *zeroconf.ServiceEntry) {
 		log.Debug("discovered peer", zap.Strings("addrs", portAddrs), zap.String("peerId", peer.PeerId))
 		if l.notifier != nil {
 			// explicitly use componentCtx, instead of queryCtx here, because we don't want to interrupt the peer connection if we refreshed interfaces and restarted service
-			// todo: consider to do in goroutine, so we can try to connect multiple peers at once
-			l.notifier.PeerDiscovered(l.componentCtx, peer, OwnAddresses{
+			go l.notifier.PeerDiscovered(l.componentCtx, peer, OwnAddresses{
 				Addrs: l.ipv4,
 				Port:  l.port,
 			})

@@ -20,11 +20,6 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-type widgetsMigrator interface {
-	MigrateWidgets(objectId string) error
-	AddToOldPinnedCollection(space smartblock.Space, favoriteIds []string) error
-}
-
 type WidgetObject struct {
 	smartblock.SmartBlock
 	basic.IHistory
@@ -33,8 +28,6 @@ type WidgetObject struct {
 	basic.Updatable
 	widget.Widget
 	basic.DetailsSettable
-
-	widgetsMigrator widgetsMigrator
 }
 
 func (f *ObjectFactory) newWidgetObject(
@@ -49,7 +42,6 @@ func (f *ObjectFactory) newWidgetObject(
 		DetailsSettable: bs,
 		IHistory:        basic.NewHistory(sb),
 		Widget:          widget.NewWidget(sb),
-		widgetsMigrator: f.widgetsMigrator,
 	}
 }
 
@@ -94,13 +86,6 @@ func (w *WidgetObject) Init(ctx *smartblock.InitContext) (err error) {
 	for _, id := range removeIds {
 		ctx.State.Unlink(id)
 	}
-
-	go func() {
-		mErr := w.widgetsMigrator.MigrateWidgets(w.Id())
-		if mErr != nil {
-			log.Errorf("widget: migration: %s", mErr.Error())
-		}
-	}()
 
 	return nil
 }
