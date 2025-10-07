@@ -145,7 +145,7 @@ func (s *Service) CreateSpace(ctx context.Context, request apimodel.CreateSpaceR
 				bundle.RelationKeySpaceDashboardId.String(): pbtypes.String("lastOpened"),
 			},
 		},
-		UseCase:  pb.RpcObjectImportUseCaseRequest_GET_STARTED,
+		UseCase:  pb.RpcObjectImportUseCaseRequest_DATA_SPACE,
 		WithChat: true,
 	})
 
