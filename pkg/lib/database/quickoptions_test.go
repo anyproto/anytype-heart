@@ -564,7 +564,7 @@ func TestQuickOption(t *testing.T) {
 		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			filters := transformQuickOption(tc.inputFilter)
+			filters := transformDateFilter(tc.inputFilter)
 			assert.Len(t, filters, len(tc.expectedFilters))
 			for i, f := range filters {
 				assert.Equal(t, tc.expectedFilters[i].Condition, f.Condition)
