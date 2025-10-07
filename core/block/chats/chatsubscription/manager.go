@@ -133,10 +133,6 @@ func (s *subscriptionManager) ForceSendingChatState() {
 
 // Flush is called after committing changes
 func (s *subscriptionManager) Flush() {
-	if !s.canSend() {
-		return
-	}
-
 	// Reload ChatState after commit
 	if s.needReloadState {
 		s.UpdateChatState(func(state *model.ChatState) *model.ChatState {
@@ -148,6 +144,10 @@ func (s *subscriptionManager) Flush() {
 			return newState
 		})
 		s.needReloadState = false
+	}
+
+	if !s.canSend() {
+		return
 	}
 
 	buf := &eventsBuffer{
@@ -314,6 +314,9 @@ func (s *subscriptionManager) updateMessageRead(ids []string, read bool) {
 		} else {
 			state.Messages.Counter += int32(len(ids))
 		}
+		if state.Messages.Counter < 0 {
+			state.Messages.Counter = 0
+		}
 		return state
 	})
 
@@ -336,6 +339,9 @@ func (s *subscriptionManager) updateMentionRead(ids []string, read bool) {
 			state.Mentions.Counter -= int32(len(ids))
 		} else {
 			state.Mentions.Counter += int32(len(ids))
+		}
+		if state.Mentions.Counter < 0 {
+			state.Mentions.Counter = 0
 		}
 		return state
 	})
