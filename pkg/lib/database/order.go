@@ -40,7 +40,6 @@ func NewOrderMap(data map[string]*domain.Details) *OrderMap {
 	return &OrderMap{data: data}
 }
 
-// TODO: should we sort by first value or in some other way?
 func (m *OrderMap) BuildOrderByKey(key domain.RelationKey, ids ...string) string {
 	if m == nil || len(m.data) == 0 {
 		return ""
