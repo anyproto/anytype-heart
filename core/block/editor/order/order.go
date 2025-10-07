@@ -46,5 +46,8 @@ func (s *orderSettable) GetOrder() string {
 }
 
 func GetSmallestOrder(currentSmallestOrder string) string {
+	if currentSmallestOrder == "" {
+		return LexId.Middle()
+	}
 	return LexId.Prev(currentSmallestOrder)
 }
