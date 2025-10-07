@@ -114,7 +114,7 @@ require (
 	golang.org/x/oauth2 v0.30.0
 	golang.org/x/sys v0.36.0
 	golang.org/x/text v0.29.0
-	google.golang.org/grpc v1.73.0
+	google.golang.org/grpc v1.76.0
 	google.golang.org/protobuf v1.36.9
 	gopkg.in/Graylog2/go-gelf.v2 v2.0.0-20180125164251-1832d8546a9f
 	gopkg.in/natefinch/lumberjack.v2 v2.2.1
@@ -188,7 +188,7 @@ require (
 	github.com/gogs/chardet v0.0.0-20211120154057-b7413eaefb8f // indirect
 	github.com/golang/freetype v0.0.0-20170609003504-e2365dfdc4a0 // indirect
 	github.com/golang/geo v0.0.0-20210211234256-740aa86cb551 // indirect
-	github.com/golang/glog v1.2.4 // indirect
+	github.com/golang/glog v1.2.5 // indirect
 	github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da // indirect
 	github.com/golang/protobuf v1.5.4 // indirect
 	github.com/google/flatbuffers v1.12.1 // indirect
@@ -288,8 +288,8 @@ require (
 	golang.org/x/term v0.35.0 // indirect
 	golang.org/x/time v0.13.0 // indirect
 	golang.org/x/tools v0.37.0 // indirect
-	google.golang.org/genproto/googleapis/api v0.0.0-20250603155806-513f23925822 // indirect
-	google.golang.org/genproto/googleapis/rpc v0.0.0-20250603155806-513f23925822 // indirect
+	google.golang.org/genproto/googleapis/api v0.0.0-20250804133106-a7a43d27e69b // indirect
+	google.golang.org/genproto/googleapis/rpc v0.0.0-20250804133106-a7a43d27e69b // indirect
 	gopkg.in/ini.v1 v1.67.0 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	lukechampine.com/blake3 v1.4.1 // indirect
