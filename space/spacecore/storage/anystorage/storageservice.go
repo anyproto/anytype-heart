@@ -151,6 +151,12 @@ func (s *storageService) anyStoreConfig() *anystore.Config {
 
 		StalledConnectionsPanicOnClose:    time.Second * 45,
 		StalledConnectionsDetectorEnabled: true,
+		Durability: anystore.DurabilityConfig{
+			AutoFlush: true,
+			IdleAfter: time.Second * 20,
+			FlushMode: anystore.FlushModeCheckpointPassive,
+			Sentinel:  true,
+		},
 	}
 }
 

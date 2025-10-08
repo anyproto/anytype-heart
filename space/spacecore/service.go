@@ -4,14 +4,18 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"sync"
+	"sync/atomic"
 	"time"
 
+	anystore "github.com/anyproto/any-store"
 	"github.com/anyproto/any-sync/accountservice"
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/app/logger"
 	"github.com/anyproto/any-sync/app/ocache"
 	"github.com/anyproto/any-sync/commonspace"
 	"github.com/anyproto/any-sync/commonspace/spacepayloads"
+	"go.uber.org/zap"
 
 	// nolint: misspell
 	"github.com/anyproto/any-sync/commonspace/clientspaceproto"
@@ -31,6 +35,7 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/anytype/config"
 	"github.com/anyproto/anytype-heart/core/block/object/treesyncer"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/syncstatus/objectsyncstatus"
 	"github.com/anyproto/anytype-heart/core/wallet"
 	"github.com/anyproto/anytype-heart/space/spacecore/keyvalueobserver"
@@ -89,9 +94,15 @@ type service struct {
 	peerStore            peerstore.PeerStore
 	peerService          peerservice.PeerService
 	poolManager          PoolManager
+
+	dbsAreFlushing     atomic.Bool
+	componentCtx       context.Context
+	componentCtxCancel context.CancelFunc
 }
 
 func (s *service) Init(a *app.App) (err error) {
+	s.componentCtx, s.componentCtxCancel = context.WithCancel(context.Background())
+
 	conf := a.MustComponent(config.CName).(*config.Config)
 	s.conf = conf.GetSpace()
 	s.accountKeys = a.MustComponent(accountservice.CName).(accountservice.Service).Account()
@@ -263,6 +274,7 @@ func (s *service) loadSpace(ctx context.Context, id string) (value ocache.Object
 		deps.AccountService = &customAccountService{acc}
 	}
 	cc, err := s.commonSpace.NewSpace(ctx, id, deps)
+
 	if err != nil {
 		return
 	}
@@ -285,5 +297,49 @@ func (s *service) getOpenedSpaceIds() (ids []string) {
 }
 
 func (s *service) Close(ctx context.Context) (err error) {
+	s.componentCtxCancel()
 	return s.spaceCache.Close()
+}
+
+func (s *service) StateChange(state int) {
+	switch domain.CompState(state) {
+	case domain.CompStateAppClosingInitiated:
+		// because we are closing db components at the end we need to do the best effort flush here
+		// this will also speed up the actual close because sqlite will have less to flush
+		// if we miss here some pending writes(due to 0 idleDuration) sqlite will flush them later when we close last connection
+		s.flushAllDbs(0, 3*time.Second, anystore.FlushModeCheckpointPassive)
+	case domain.CompStateAppWentBackground:
+		// when app goes to background(or hibernat on desktop) we need to be fast, but make sure we wait and have extended timeout in case of slow device and a huge WAL
+		s.flushAllDbs(time.Millisecond*50, 10*time.Second, anystore.FlushModeCheckpointPassive)
+	}
+}
+
+func (s *service) flushAllDbs(idleDuration, flushTimeout time.Duration, mode anystore.FlushMode) {
+	if !s.dbsAreFlushing.CompareAndSwap(false, true) {
+		return
+	}
+	defer s.dbsAreFlushing.Store(false)
+
+	var dbs []anystore.DB
+	s.spaceCache.ForEach(func(v ocache.Object) (isContinue bool) {
+		if space, ok := v.(commonspace.Space); ok {
+			dbs = append(dbs, space.Storage().AnyStore())
+		}
+		return true
+	})
+
+	wg := sync.WaitGroup{}
+	for _, db := range dbs {
+		wg.Add(1)
+		go func(db anystore.DB) {
+			defer wg.Done()
+			ctx, cancel := context.WithTimeout(s.componentCtx, flushTimeout)
+			defer cancel()
+			err := db.Flush(ctx, idleDuration, mode)
+			if err != nil {
+				log.With(zap.Error(err)).Error("failed to flush db")
+			}
+		}(db)
+	}
+	wg.Wait()
 }
