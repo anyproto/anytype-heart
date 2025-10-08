@@ -232,12 +232,6 @@ func (p *Page) CreationStateMigration(ctx *smartblock.InitContext) migration.Mig
 					template.WithTitle,
 					template.WithLayout(layout),
 				)
-			case model.ObjectType_chat:
-				templates = append(templates,
-					template.WithTitle,
-					template.WithBlockChat,
-					template.WithLayout(layout),
-				)
 			case model.ObjectType_chatDerived:
 				templates = append(templates,
 					template.WithLayout(layout),

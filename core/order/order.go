@@ -180,23 +180,10 @@ func (o *orderSetter) reorder(objectIds []string, originalOrderIds map[string]st
 	// Save the original list
 	inputObjectIds := objectIds
 
-	objectIdsSet := make(map[string]struct{})
-	for _, id := range objectIds {
-		objectIdsSet[id] = struct{}{}
-	}
-
 	originalIds := getAllOriginalIds(originalOrderIds)
 	if needFullList {
-		var anyMissing bool
-		for _, id := range originalIds {
-			if _, ok := objectIdsSet[id]; !ok {
-				anyMissing = true
-				break
-			}
-		}
-		if anyMissing {
-			objectIds = calculateFullList(objectIds, originalIds, originalOrderIds)
-		}
+		objectIds = calculateFullList(objectIds, originalIds, originalOrderIds)
+
 	}
 
 	nextExisting := o.precalcNext(originalOrderIds, objectIds)
@@ -268,6 +255,16 @@ func getIdsInOriginalOrder(objectIds []string, originalOrderIds map[string]strin
 	})
 }
 
+func hasItemNotInSet[T comparable](items []T, set map[T]struct{}) bool {
+	for _, id := range items {
+		if _, ok := set[id]; !ok {
+			return true
+		}
+	}
+
+	return false
+}
+
 // calculateFullList return the full list of ids, that a client is expected. To do it, we
 // compare a list of ids provided by the client with the corresponding part of the full list of ids.
 // Then we apply changes to the original full list.
@@ -277,6 +274,15 @@ func getIdsInOriginalOrder(objectIds []string, originalOrderIds map[string]strin
 // - We compare [1 3 5] with [3 1 5] and get a change "move 1 after 3"
 // - Apply this change and get the list: [2 3 1 4 5]
 func calculateFullList(objectIds []string, fullOriginalIds []string, originalOrderIds map[string]string) []string {
+	objectIdsSet := make(map[string]struct{})
+	for _, id := range objectIds {
+		objectIdsSet[id] = struct{}{}
+	}
+
+	if !hasItemNotInSet(fullOriginalIds, objectIdsSet) {
+		return objectIds
+	}
+
 	originalIds := getIdsInOriginalOrder(objectIds, originalOrderIds)
 	ops := slice.Diff(originalIds, objectIds, func(s string) string {
 		return s
