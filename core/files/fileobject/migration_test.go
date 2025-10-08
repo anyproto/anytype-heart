@@ -160,6 +160,41 @@ func (fx *fixture) waitFileUploaded(t *testing.T, spaceId string, fileId domain.
 }
 
 func TestMigrateIds(t *testing.T) {
+	t.Run("do not migrate empty file ids", func(t *testing.T) {
+		fx := newFixture(t)
+
+		fileId := ""
+		st := testutil.BuildStateFromAST(
+			bb.Root(
+				bb.ID("root"),
+				bb.Children(bb.File("", bb.FileHash(fileId))),
+			),
+		)
+
+		space := mock_clientspace.NewMockSpace(t)
+		space.EXPECT().IsPersonal().Return(true)
+
+		fx.MigrateFileIdsInBlocks(st, space)
+	})
+
+	t.Run("do not migrate object itself", func(t *testing.T) {
+		fx := newFixture(t)
+
+		objectId := "objectId"
+		fileId := objectId
+		st := testutil.BuildStateFromAST(
+			bb.Root(
+				bb.ID(objectId),
+				bb.Children(bb.File("", bb.FileHash(fileId))),
+			),
+		)
+
+		space := mock_clientspace.NewMockSpace(t)
+		space.EXPECT().IsPersonal().Return(true)
+
+		fx.MigrateFileIdsInBlocks(st, space)
+	})
+
 	t.Run("do not migrate already migrated file: migrated objectId has different CID format", func(t *testing.T) {
 		fx := newFixture(t)
 
@@ -183,6 +218,7 @@ func TestMigrateIds(t *testing.T) {
 			},
 		})
 
+		fx.MigrateFileIdsInBlocks(st, space)
 		fx.MigrateFileIdsInDetails(st, space)
 
 		wantState := testutil.BuildStateFromAST(
@@ -202,9 +238,18 @@ func TestMigrateIds(t *testing.T) {
 		spaceId := "spaceId"
 		addedFile := testAddFile(t, fx, spaceId)
 
+		objectId := "objectId"
 		fileId := addedFile.FileId
 		expectedFileObjectId := "fileObjectId"
-		st := state.NewDoc("", nil).(*state.State)
+		st := testutil.BuildStateFromAST(
+			bb.Root(
+				bb.ID(objectId),
+				bb.Children(
+					bb.File("", bb.FileHash(fileId.String())),
+					bb.Text("sample text", bb.TextIconImage(fileId.String())),
+				),
+			),
+		)
 
 		// Relation format: file
 		st.SetDetailAndBundledRelation(bundle.RelationKeyIconImage, domain.StringList([]string{fileId.String()}))
@@ -215,12 +260,22 @@ func TestMigrateIds(t *testing.T) {
 		space.EXPECT().IsPersonal().Return(true)
 		space.EXPECT().DeriveObjectIdWithAccountSignature(mock.Anything, mock.Anything).Return(expectedFileObjectId, nil)
 
+		fx.MigrateFileIdsInBlocks(st, space)
 		fx.MigrateFileIdsInDetails(st, space)
 
-		wantState := state.NewDoc("", nil).(*state.State)
+		wantState := testutil.BuildStateFromAST(
+			bb.Root(
+				bb.ID(objectId),
+				bb.Children(
+					bb.File(expectedFileObjectId, bb.FileHash(fileId.String())),
+					bb.Text("sample text", bb.TextIconImage(expectedFileObjectId)),
+				),
+			),
+		)
 		wantState.SetDetailAndBundledRelation(bundle.RelationKeyIconImage, domain.StringList([]string{expectedFileObjectId}))
 		wantState.SetDetailAndBundledRelation(bundle.RelationKeyAssignee, domain.StringList([]string{expectedFileObjectId}))
 
+		bb.AssertTreesEqual(t, wantState.Blocks(), st.Blocks())
 		assert.Equal(t, wantState.Details(), st.Details())
 	})
 }
