@@ -230,6 +230,7 @@ func (a *aclObjectManager) processAcl() (err error) {
 			return item.PubKey.Account() != a.guestKey.GetPublic().Account()
 		})
 	}
+	// TODO: onetoone: this errors on WatchParticipants in
 	err = a.processStates(states, upToDate, aclState.Identity())
 	if err != nil {
 		return
