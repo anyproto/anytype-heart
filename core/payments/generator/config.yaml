@@ -1,0 +1,47 @@
+# Configuration for code generation
+conversions:
+  - name: convertTierData
+    source:
+      package: github.com/anyproto/any-sync/paymentservice/paymentserviceproto
+      type: TierData
+      alias: proto
+    target:
+      package: github.com/anyproto/anytype-heart/pkg/lib/pb/model
+      type: MembershipTierData
+    imports:
+      - path: github.com/anyproto/any-sync/paymentservice/paymentserviceproto
+        alias: proto
+      - path: github.com/anyproto/anytype-heart/pkg/lib/pb/model
+    mappings:
+      # Most fields auto-map by name
+      # Special cases:
+      PeriodType:
+        transform: "model.MembershipTierDataPeriodType(src.PeriodType)"
+      Features:
+        custom: |
+          out.Features = make([]string, len(src.Features))
+          for i, feature := range src.Features {
+            out.Features[i] = feature.Description
+          }
+
+  - name: convertMembershipData
+    source:
+      package: github.com/anyproto/any-sync/paymentservice/paymentserviceproto
+      type: GetSubscriptionResponse
+      alias: proto
+    target:
+      package: github.com/anyproto/anytype-heart/pkg/lib/pb/model
+      type: Membership
+    imports:
+      - path: github.com/anyproto/any-sync/paymentservice/paymentserviceproto
+        alias: proto
+      - path: github.com/anyproto/anytype-heart/core/nameservice
+      - path: github.com/anyproto/anytype-heart/pkg/lib/pb/model
+    mappings:
+      PaymentMethod:
+        transform: "PaymentMethodToModel(src.PaymentMethod)"
+      Status:
+        transform: "model.MembershipStatus(src.Status)"
+      NsName:
+        custom: |
+          out.NsName, out.NsNameType = nameservice.FullNameToNsName(src.RequestedAnyName)

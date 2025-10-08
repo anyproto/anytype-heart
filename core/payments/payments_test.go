@@ -129,789 +129,135 @@ func (fx *fixture) finish(t *testing.T) {
 	assert.NoError(t, fx.a.Close(ctx))
 }
 
+// TestGetSubscriptionStatus tests the cache-only RPC method
 func TestGetStatus(t *testing.T) {
-	t.Run("return default if no cache and GetSubscriptionStatus returns error", func(t *testing.T) {
+	t.Run("return default if cache is empty (cache-only RPC)", func(t *testing.T) {
 		fx := newFixture(t)
 		defer fx.finish(t)
 
-		fx.ppclient.EXPECT().GetSubscriptionStatus(gomock.Any(), gomock.Any()).DoAndReturn(func(ctx interface{}, in *psp.GetSubscriptionRequestSigned) (*psp.GetSubscriptionResponse, error) {
-			return nil, errors.New("test error")
-		}).MinTimes(1)
-
-		fx.cache.EXPECT().IsCacheExpired().Return(false)
-		fx.cache.EXPECT().IsCacheDisabled().Return(false)
+		// RPC method only calls CacheGet() and returns empty status if cache is empty
 		fx.cache.EXPECT().CacheGet().Return(nil, nil, cache.ErrCacheDbError)
-		fx.cache.EXPECT().CacheSet(mock.AnythingOfType("*pb.RpcMembershipGetStatusResponse"), mock.AnythingOfType("*pb.RpcMembershipGetTiersResponse")).RunAndReturn(func(in *pb.RpcMembershipGetStatusResponse, tiers *pb.RpcMembershipGetTiersResponse) (err error) {
-			return nil
-		})
 
-		// changing from NO CACHE -> default "Unknown" tier
-		fx.expectLimitsUpdated()
-
-		// Call the function being tested
 		resp, err := fx.GetSubscriptionStatus(ctx, &pb.RpcMembershipGetStatusRequest{})
 		assert.NoError(t, err)
-
 		assert.Equal(t, uint32(psp.SubscriptionTier_TierUnknown), resp.Data.Tier)
 		assert.Equal(t, model.Membership_StatusUnknown, resp.Data.Status)
 	})
 
-	t.Run("return default if no cache and GetSubscriptionStatus returns error, NoCache is passed", func(t *testing.T) {
+	t.Run("NoCache flag is ignored (cache-only RPC)", func(t *testing.T) {
 		fx := newFixture(t)
 		defer fx.finish(t)
 
-		fx.ppclient.EXPECT().GetSubscriptionStatus(gomock.Any(), gomock.Any()).DoAndReturn(func(ctx interface{}, in *psp.GetSubscriptionRequestSigned) (*psp.GetSubscriptionResponse, error) {
-			return nil, errors.New("test error")
-		}).MinTimes(1)
-
-		fx.cache.EXPECT().IsCacheExpired().Return(false)
-		fx.cache.EXPECT().IsCacheDisabled().Return(false)
 		fx.cache.EXPECT().CacheGet().Return(nil, nil, cache.ErrCacheDbError)
-		fx.cache.EXPECT().CacheSet(mock.AnythingOfType("*pb.RpcMembershipGetStatusResponse"), mock.AnythingOfType("*pb.RpcMembershipGetTiersResponse")).RunAndReturn(func(in *pb.RpcMembershipGetStatusResponse, tiers *pb.RpcMembershipGetTiersResponse) (err error) {
-			return nil
-		})
 
-		// changing from NO CACHE -> default "Unknown" tier
-		fx.expectLimitsUpdated()
-
-		// Call the function being tested
-		resp, err := fx.GetSubscriptionStatus(ctx, &pb.RpcMembershipGetStatusRequest{
-			// / >>> here:
-			NoCache: true,
-		})
+		resp, err := fx.GetSubscriptionStatus(ctx, &pb.RpcMembershipGetStatusRequest{NoCache: true})
 		assert.NoError(t, err)
-
 		assert.Equal(t, uint32(psp.SubscriptionTier_TierUnknown), resp.Data.Tier)
-		assert.Equal(t, model.Membership_StatusUnknown, resp.Data.Status)
 	})
 
-	t.Run("return prev values if ErrCacheExpired and GetSubscriptionStatus returns error", func(t *testing.T) {
+	t.Run("returns cached values (cache-only RPC)", func(t *testing.T) {
 		fx := newFixture(t)
 		defer fx.finish(t)
 
-		fx.ppclient.EXPECT().GetSubscriptionStatus(gomock.Any(), gomock.Any()).DoAndReturn(func(ctx interface{}, in *psp.GetSubscriptionRequestSigned) (*psp.GetSubscriptionResponse, error) {
-			return nil, errors.New("test error")
-		}).MinTimes(1)
-
-		sr := psp.GetSubscriptionResponse{
-			Tier:             uint32(psp.SubscriptionTier_TierExplorer),
-			Status:           psp.SubscriptionStatus_StatusActive,
-			DateStarted:      uint64(timeNow.Unix()),
-			DateEnds:         uint64(subsExpire.Unix()),
-			IsAutoRenew:      true,
-			PaymentMethod:    psp.PaymentMethod_MethodCrypto,
-			RequestedAnyName: "something.any",
-		}
-
-		psgsr := pb.RpcMembershipGetStatusResponse{
-			Error: &pb.RpcMembershipGetStatusResponseError{
-				Code: pb.RpcMembershipGetStatusResponseError_NULL,
-			},
-			Data: &model.Membership{
-				Tier:          uint32(sr.Tier),
-				Status:        model.MembershipStatus(sr.Status),
-				DateStarted:   sr.DateStarted,
-				DateEnds:      sr.DateEnds,
-				IsAutoRenew:   sr.IsAutoRenew,
-				PaymentMethod: PaymentMethodToModel(sr.PaymentMethod),
-				NsName:        "something",
-				NsNameType:    model.NameserviceNameType_AnyName,
-			},
-		}
-
-		fx.cache.EXPECT().IsCacheExpired().Return(true)
-		fx.cache.EXPECT().IsCacheDisabled().Return(false)
-		fx.cache.EXPECT().CacheGet().Return(&psgsr, nil, nil)
-
-		// Call the function being tested
-		resp, err := fx.GetSubscriptionStatus(ctx, &pb.RpcMembershipGetStatusRequest{})
-		assert.NoError(t, err)
-
-		assert.Equal(t, uint32(psp.SubscriptionTier_TierExplorer), resp.Data.Tier)
-		assert.Equal(t, model.Membership_StatusActive, resp.Data.Status)
-	})
-
-	t.Run("return prev values if ErrCacheExpired, GetSubscriptionStatus returns error, and if NoCache flag is passed", func(t *testing.T) {
-		fx := newFixture(t)
-		defer fx.finish(t)
-
-		fx.ppclient.EXPECT().GetSubscriptionStatus(gomock.Any(), gomock.Any()).DoAndReturn(func(ctx interface{}, in *psp.GetSubscriptionRequestSigned) (*psp.GetSubscriptionResponse, error) {
-			return nil, errors.New("test error")
-		}).MinTimes(1)
-
-		sr := psp.GetSubscriptionResponse{
-			Tier:             uint32(psp.SubscriptionTier_TierExplorer),
-			Status:           psp.SubscriptionStatus_StatusActive,
-			DateStarted:      uint64(timeNow.Unix()),
-			DateEnds:         uint64(subsExpire.Unix()),
-			IsAutoRenew:      true,
-			PaymentMethod:    psp.PaymentMethod_MethodCrypto,
-			RequestedAnyName: "something.any",
-		}
-
-		psgsr := pb.RpcMembershipGetStatusResponse{
-			Error: &pb.RpcMembershipGetStatusResponseError{
-				Code: pb.RpcMembershipGetStatusResponseError_NULL,
-			},
-			Data: &model.Membership{
-				Tier:          uint32(sr.Tier),
-				Status:        model.MembershipStatus(sr.Status),
-				DateStarted:   sr.DateStarted,
-				DateEnds:      sr.DateEnds,
-				IsAutoRenew:   sr.IsAutoRenew,
-				PaymentMethod: PaymentMethodToModel(sr.PaymentMethod),
-				NsName:        "something",
-				NsNameType:    model.NameserviceNameType_AnyName,
-			},
-		}
-
-		// in case of cache.ErrCacheExpired this should always return objects
-		fx.cache.EXPECT().IsCacheExpired().Return(true)
-		fx.cache.EXPECT().IsCacheDisabled().Return(false)
-		fx.cache.EXPECT().CacheGet().Return(&psgsr, nil, nil)
-
-		// Call the function being tested
-		req := pb.RpcMembershipGetStatusRequest{
-			// / >>> here:
-			NoCache: true,
-		}
-		resp, err := fx.GetSubscriptionStatus(ctx, &req)
-		assert.NoError(t, err)
-
-		assert.Equal(t, uint32(psp.SubscriptionTier_TierExplorer), resp.Data.Tier)
-		assert.Equal(t, model.Membership_StatusActive, resp.Data.Status)
-	})
-
-	t.Run("success if NoCache flag is passed, but no connectivity", func(t *testing.T) {
-		fx := newFixture(t)
-		defer fx.finish(t)
-
-		fx.ppclient.EXPECT().GetSubscriptionStatus(gomock.Any(), gomock.Any()).DoAndReturn(func(ctx interface{}, in *psp.GetSubscriptionRequestSigned) (*psp.GetSubscriptionResponse, error) {
-			// >>> here
-			return nil, ErrNoConnection
-		}).MinTimes(1)
-
-		psgsr := pb.RpcMembershipGetStatusResponse{
+		cachedStatus := pb.RpcMembershipGetStatusResponse{
+			Error: &pb.RpcMembershipGetStatusResponseError{Code: pb.RpcMembershipGetStatusResponseError_NULL},
 			Data: &model.Membership{
 				Tier:          uint32(psp.SubscriptionTier_TierExplorer),
 				Status:        model.Membership_StatusActive,
-				DateStarted:   uint64(timeNow.Unix()),
-				DateEnds:      uint64(subsExpire.Unix()),
-				IsAutoRenew:   true,
 				PaymentMethod: model.Membership_MethodCrypto,
-				NsName:        "something",
-				NsNameType:    model.NameserviceNameType_AnyName,
 			},
 		}
+
+		fx.cache.EXPECT().CacheGet().Return(&cachedStatus, nil, nil)
+
+		resp, err := fx.GetSubscriptionStatus(ctx, &pb.RpcMembershipGetStatusRequest{})
+		assert.NoError(t, err)
+		assert.Equal(t, uint32(psp.SubscriptionTier_TierExplorer), resp.Data.Tier)
+		assert.Equal(t, model.Membership_StatusActive, resp.Data.Status)
+	})
+}
+
+// TestRefreshSubscriptionStatusBackground tests the background network fetching
+func TestRefreshSubscriptionStatusBackground(t *testing.T) {
+	t.Run("network success - updates cache and triggers limits update", func(t *testing.T) {
+		fx := newFixture(t)
+		defer fx.finish(t)
+
+		// Old cache is empty
+		fx.cache.EXPECT().CacheGet().Return(nil, nil, cache.ErrCacheDbError)
 		fx.cache.EXPECT().IsCacheExpired().Return(false)
-		fx.cache.EXPECT().IsCacheDisabled().Return(false)
-		fx.cache.EXPECT().CacheGet().Return(&psgsr, nil, nil)
 
-		// Call the function being tested
-		req := pb.RpcMembershipGetStatusRequest{
-			// / >>> here:
-			NoCache: true,
-		}
-		resp, err := fx.GetSubscriptionStatus(ctx, &req)
-		assert.NoError(t, err)
-
-		assert.Equal(t, uint32(psp.SubscriptionTier_TierExplorer), resp.Data.Tier)
-		assert.Equal(t, model.Membership_StatusActive, resp.Data.Status)
-	})
-
-	t.Run("return from cache, if cache expired and GetSubscriptionStatus returns error, and default tiers", func(t *testing.T) {
-		fx := newFixture(t)
-		defer fx.finish(t)
-
-		sr := psp.GetSubscriptionResponse{
+		// Network call succeeds
+		networkStatus := &psp.GetSubscriptionResponse{
 			Tier:             uint32(psp.SubscriptionTier_TierExplorer),
 			Status:           psp.SubscriptionStatus_StatusActive,
 			DateStarted:      uint64(timeNow.Unix()),
 			DateEnds:         uint64(subsExpire.Unix()),
 			IsAutoRenew:      true,
 			PaymentMethod:    psp.PaymentMethod_MethodCrypto,
-			RequestedAnyName: "something.any",
+			RequestedAnyName: "alice.any",
 		}
+		fx.ppclient.EXPECT().GetSubscriptionStatus(gomock.Any(), gomock.Any()).Return(networkStatus, nil)
 
-		psgsr := pb.RpcMembershipGetStatusResponse{
-			Error: &pb.RpcMembershipGetStatusResponseError{
-				Code: pb.RpcMembershipGetStatusResponseError_NULL,
-			},
-			Data: &model.Membership{
-				Tier:          uint32(sr.Tier),
-				Status:        model.MembershipStatus(sr.Status),
-				DateStarted:   sr.DateStarted,
-				DateEnds:      sr.DateEnds,
-				IsAutoRenew:   sr.IsAutoRenew,
-				PaymentMethod: PaymentMethodToModel(sr.PaymentMethod),
-				NsName:        "something",
-				NsNameType:    model.NameserviceNameType_AnyName,
-			},
-		}
+		// Cache should be updated
+		fx.cache.EXPECT().CacheSet(mock.AnythingOfType("*pb.RpcMembershipGetStatusResponse"), mock.Anything).Return(nil)
 
-		tgr := pb.RpcMembershipGetTiersResponse{
-			Tiers: []*model.MembershipTierData{
-				{
-					Id:          1,
-					Name:        "Explorer",
-					Description: "Explorer tier",
-				},
-			},
-		}
-
-		fx.ppclient.EXPECT().GetSubscriptionStatus(gomock.Any(), gomock.Any()).DoAndReturn(func(ctx interface{}, in *psp.GetSubscriptionRequestSigned) (*psp.GetSubscriptionResponse, error) {
-			return nil, errors.New("no internet")
-		}).MinTimes(1)
-
-		fx.cache.EXPECT().IsCacheExpired().Return(true)
-		fx.cache.EXPECT().IsCacheDisabled().Return(false)
-		fx.cache.EXPECT().CacheGet().Return(&psgsr, &tgr, nil)
-
-		// Call the function being tested
-		resp, err := fx.GetSubscriptionStatus(ctx, &pb.RpcMembershipGetStatusRequest{})
-		assert.NoError(t, err)
-
-		assert.Equal(t, uint32(psp.SubscriptionTier_TierExplorer), resp.Data.Tier)
-		assert.Equal(t, model.Membership_StatusActive, resp.Data.Status)
-	})
-
-	t.Run("success if no cache, GetSubscriptionStatus returns error and data", func(t *testing.T) {
-		fx := newFixture(t)
-		defer fx.finish(t)
-
-		sr := psp.GetSubscriptionResponse{
-			Tier:             uint32(psp.SubscriptionTier_TierExplorer),
-			Status:           psp.SubscriptionStatus_StatusActive,
-			DateStarted:      uint64(timeNow.Unix()),
-			DateEnds:         uint64(subsExpire.Unix()),
-			IsAutoRenew:      true,
-			PaymentMethod:    psp.PaymentMethod_MethodCrypto,
-			RequestedAnyName: "something.any",
-		}
-
-		psgsr := pb.RpcMembershipGetStatusResponse{
-			Error: &pb.RpcMembershipGetStatusResponseError{
-				Code: pb.RpcMembershipGetStatusResponseError_NULL,
-			},
-			Data: &model.Membership{
-				Tier:          uint32(sr.Tier),
-				Status:        model.MembershipStatus(sr.Status),
-				DateStarted:   sr.DateStarted,
-				DateEnds:      sr.DateEnds,
-				IsAutoRenew:   sr.IsAutoRenew,
-				PaymentMethod: PaymentMethodToModel(sr.PaymentMethod),
-				NsName:        "something",
-				NsNameType:    model.NameserviceNameType_AnyName,
-			},
-		}
-
-		tgr := pb.RpcMembershipGetTiersResponse{
-			Tiers: []*model.MembershipTierData{
-				{
-					// see here
-					Id:          2,
-					Name:        "TIER2",
-					Description: "TIER2 tier",
-				},
-			},
-		}
-
-		fx.ppclient.EXPECT().GetSubscriptionStatus(gomock.Any(), gomock.Any()).DoAndReturn(func(ctx interface{}, in *psp.GetSubscriptionRequestSigned) (*psp.GetSubscriptionResponse, error) {
-			return nil, errors.New("no internet")
-		}).MinTimes(1)
-
-		fx.cache.EXPECT().IsCacheExpired().Return(true)
-		fx.cache.EXPECT().IsCacheDisabled().Return(false)
-		fx.cache.EXPECT().CacheGet().Return(&psgsr, &tgr, nil)
-
-		// Call the function being tested
-		resp, err := fx.GetSubscriptionStatus(ctx, &pb.RpcMembershipGetStatusRequest{})
-		assert.NoError(t, err)
-
-		assert.Equal(t, uint32(psp.SubscriptionTier_TierExplorer), resp.Data.Tier)
-		assert.Equal(t, model.Membership_StatusActive, resp.Data.Status)
-	})
-
-	t.Run("success if cache is expired and GetSubscriptionStatus returns no error", func(t *testing.T) {
-		fx := newFixture(t)
-		defer fx.finish(t)
-
-		sr := psp.GetSubscriptionResponse{
-			Tier:             uint32(psp.SubscriptionTier_TierExplorer),
-			Status:           psp.SubscriptionStatus_StatusActive,
-			DateStarted:      uint64(timeNow.Unix()),
-			DateEnds:         uint64(subsExpire.Unix()),
-			IsAutoRenew:      true,
-			PaymentMethod:    psp.PaymentMethod_MethodCrypto,
-			RequestedAnyName: "something.any",
-		}
-
-		psgsr := pb.RpcMembershipGetStatusResponse{
-			Data: &model.Membership{
-				// >>> here: different tier returned by cache!
-				Tier:          uint32(psp.SubscriptionTier_TierBuilder1WeekTEST),
-				Status:        model.MembershipStatus(sr.Status),
-				DateStarted:   sr.DateStarted,
-				DateEnds:      sr.DateEnds,
-				IsAutoRenew:   sr.IsAutoRenew,
-				PaymentMethod: PaymentMethodToModel(sr.PaymentMethod),
-				NsName:        "something",
-				NsNameType:    model.NameserviceNameType_AnyName,
-			},
-		}
-
-		fx.ppclient.EXPECT().GetSubscriptionStatus(gomock.Any(), gomock.Any()).DoAndReturn(func(ctx interface{}, in *psp.GetSubscriptionRequestSigned) (*psp.GetSubscriptionResponse, error) {
-			return &sr, nil
-		}).MinTimes(1)
-
-		fx.cache.EXPECT().IsCacheExpired().Return(true)
-		fx.cache.EXPECT().IsCacheDisabled().Return(false)
-		fx.cache.EXPECT().CacheGet().Return(&psgsr, nil, nil)
-		fx.cache.EXPECT().CacheSet(mock.AnythingOfType("*pb.RpcMembershipGetStatusResponse"), mock.AnythingOfType("*pb.RpcMembershipGetTiersResponse")).RunAndReturn(func(in *pb.RpcMembershipGetStatusResponse, tiers *pb.RpcMembershipGetTiersResponse) (err error) {
-			return nil
-		})
-		// this should not be called because server returned Explorer tier
-		// fx.cache.EXPECT().CacheEnable().Return(nil)
-
+		// Limits should be updated because status changed
 		fx.expectLimitsUpdated()
 
-		// Call the function being tested
-		resp, err := fx.GetSubscriptionStatus(ctx, &pb.RpcMembershipGetStatusRequest{})
+		// Call background refresh
+		err := fx.service.refreshSubscriptionStatusBackground(ctx)
 		assert.NoError(t, err)
-
-		// the tier should be as returned by GetSubscriptionStatus, not from cache
-		assert.Equal(t, uint32(psp.SubscriptionTier_TierExplorer), resp.Data.Tier)
-		assert.Equal(t, model.Membership_StatusActive, resp.Data.Status)
-		assert.Equal(t, sr.DateStarted, resp.Data.DateStarted)
-		assert.Equal(t, sr.DateEnds, resp.Data.DateEnds)
-		assert.Equal(t, true, resp.Data.IsAutoRenew)
-		assert.Equal(t, model.Membership_MethodCrypto, resp.Data.PaymentMethod)
-		assert.Equal(t, "something", resp.Data.NsName)
 	})
 
-	t.Run("success if cache is disabled and GetSubscriptionStatus returns no error", func(t *testing.T) {
+	t.Run("network error with cache - uses cached data", func(t *testing.T) {
 		fx := newFixture(t)
 		defer fx.finish(t)
 
-		sr := psp.GetSubscriptionResponse{
-			Tier:             uint32(psp.SubscriptionTier_TierExplorer),
-			Status:           psp.SubscriptionStatus_StatusActive,
-			DateStarted:      uint64(timeNow.Unix()),
-			DateEnds:         uint64(subsExpire.Unix()),
-			IsAutoRenew:      true,
-			PaymentMethod:    psp.PaymentMethod_MethodCrypto,
-			RequestedAnyName: "something.any",
-		}
-
-		psgsr := pb.RpcMembershipGetStatusResponse{
+		// Cache has data
+		cachedStatus := &pb.RpcMembershipGetStatusResponse{
+			Error: &pb.RpcMembershipGetStatusResponseError{Code: pb.RpcMembershipGetStatusResponseError_NULL},
 			Data: &model.Membership{
-				// same tier returned by cache here
-				Tier:          uint32(sr.Tier),
-				Status:        model.MembershipStatus(sr.Status),
-				DateStarted:   sr.DateStarted,
-				DateEnds:      sr.DateEnds,
-				IsAutoRenew:   sr.IsAutoRenew,
-				PaymentMethod: PaymentMethodToModel(sr.PaymentMethod),
-				NsName:        "something",
-				NsNameType:    model.NameserviceNameType_AnyName,
+				Tier:   uint32(psp.SubscriptionTier_TierExplorer),
+				Status: model.Membership_StatusActive,
 			},
 		}
-
-		fx.ppclient.EXPECT().GetSubscriptionStatus(gomock.Any(), gomock.Any()).DoAndReturn(func(ctx interface{}, in *psp.GetSubscriptionRequestSigned) (*psp.GetSubscriptionResponse, error) {
-			return &sr, nil
-		}).MinTimes(1)
-
+		fx.cache.EXPECT().CacheGet().Return(cachedStatus, nil, nil)
 		fx.cache.EXPECT().IsCacheExpired().Return(false)
-		fx.cache.EXPECT().IsCacheDisabled().Return(true)
-		fx.cache.EXPECT().CacheGet().Return(&psgsr, nil, nil)
-		fx.cache.EXPECT().CacheSet(mock.AnythingOfType("*pb.RpcMembershipGetStatusResponse"), mock.AnythingOfType("*pb.RpcMembershipGetTiersResponse")).RunAndReturn(func(in *pb.RpcMembershipGetStatusResponse, tiers *pb.RpcMembershipGetTiersResponse) (err error) {
-			return nil
-		})
 
-		// tier was not changed
-		// fx.expectLimitsUpdated()
+		// Network call fails
+		fx.ppclient.EXPECT().GetSubscriptionStatus(gomock.Any(), gomock.Any()).Return(nil, errors.New("network error"))
 
-		// Call the function being tested
-		resp, err := fx.GetSubscriptionStatus(ctx, &pb.RpcMembershipGetStatusRequest{})
-		assert.NoError(t, err)
+		// Should NOT update cache or limits (using cached data)
 
-		assert.Equal(t, uint32(psp.SubscriptionTier_TierExplorer), resp.Data.Tier)
-		assert.Equal(t, model.Membership_StatusActive, resp.Data.Status)
-		assert.Equal(t, sr.DateStarted, resp.Data.DateStarted)
-		assert.Equal(t, sr.DateEnds, resp.Data.DateEnds)
-		assert.Equal(t, true, resp.Data.IsAutoRenew)
-		assert.Equal(t, model.Membership_MethodCrypto, resp.Data.PaymentMethod)
-		assert.Equal(t, "something", resp.Data.NsName)
+		// Call background refresh
+		err := fx.service.refreshSubscriptionStatusBackground(ctx)
+		assert.NoError(t, err) // No error - gracefully uses cache
 	})
 
-	t.Run("success if cache was disabled and GetSubscriptionStatus returns error", func(t *testing.T) {
+	t.Run("network error with no cache - creates empty status", func(t *testing.T) {
 		fx := newFixture(t)
 		defer fx.finish(t)
 
-		sr := psp.GetSubscriptionResponse{
-			Tier:             uint32(psp.SubscriptionTier_TierExplorer),
-			Status:           psp.SubscriptionStatus_StatusActive,
-			DateStarted:      uint64(timeNow.Unix()),
-			DateEnds:         uint64(subsExpire.Unix()),
-			IsAutoRenew:      true,
-			PaymentMethod:    psp.PaymentMethod_MethodCrypto,
-			RequestedAnyName: "something.any",
-		}
-
-		psgsr := pb.RpcMembershipGetStatusResponse{
-			Data: &model.Membership{
-				// same tier returned by cache here
-				Tier:          uint32(sr.Tier),
-				Status:        model.MembershipStatus(sr.Status),
-				DateStarted:   sr.DateStarted,
-				DateEnds:      sr.DateEnds,
-				IsAutoRenew:   sr.IsAutoRenew,
-				PaymentMethod: PaymentMethodToModel(sr.PaymentMethod),
-				NsName:        "something",
-				NsNameType:    model.NameserviceNameType_AnyName,
-			},
-		}
-
-		fx.ppclient.EXPECT().GetSubscriptionStatus(gomock.Any(), gomock.Any()).DoAndReturn(func(ctx interface{}, in *psp.GetSubscriptionRequestSigned) (*psp.GetSubscriptionResponse, error) {
-			return nil, errors.New("no internet")
-		}).MinTimes(1)
-
+		// Cache is empty
+		fx.cache.EXPECT().CacheGet().Return(nil, nil, cache.ErrCacheDbError)
 		fx.cache.EXPECT().IsCacheExpired().Return(false)
-		fx.cache.EXPECT().IsCacheDisabled().Return(true)
-		fx.cache.EXPECT().CacheGet().Return(&psgsr, nil, nil)
 
-		// tier was not changed
-		// fx.expectLimitsUpdated()
+		// Network call fails
+		fx.ppclient.EXPECT().GetSubscriptionStatus(gomock.Any(), gomock.Any()).Return(nil, errors.New("network error"))
 
-		// Call the function being tested
-		resp, err := fx.GetSubscriptionStatus(ctx, &pb.RpcMembershipGetStatusRequest{})
-		assert.NoError(t, err)
+		// Should save empty status to cache
+		fx.cache.EXPECT().CacheSet(mock.AnythingOfType("*pb.RpcMembershipGetStatusResponse"), mock.Anything).Return(nil)
 
-		assert.Equal(t, uint32(psp.SubscriptionTier_TierExplorer), resp.Data.Tier)
-		assert.Equal(t, model.Membership_StatusActive, resp.Data.Status)
-		assert.Equal(t, sr.DateStarted, resp.Data.DateStarted)
-		assert.Equal(t, sr.DateEnds, resp.Data.DateEnds)
-		assert.Equal(t, true, resp.Data.IsAutoRenew)
-		assert.Equal(t, model.Membership_MethodCrypto, resp.Data.PaymentMethod)
-		assert.Equal(t, "something", resp.Data.NsName)
-	})
-
-	t.Run("success if cache was expired and GetSubscriptionStatus returns error", func(t *testing.T) {
-		fx := newFixture(t)
-		defer fx.finish(t)
-
-		sr := psp.GetSubscriptionResponse{
-			Tier:             uint32(psp.SubscriptionTier_TierExplorer),
-			Status:           psp.SubscriptionStatus_StatusActive,
-			DateStarted:      uint64(timeNow.Unix()),
-			DateEnds:         uint64(subsExpire.Unix()),
-			IsAutoRenew:      true,
-			PaymentMethod:    psp.PaymentMethod_MethodCrypto,
-			RequestedAnyName: "something.any",
-		}
-
-		psgsr := pb.RpcMembershipGetStatusResponse{
-			Data: &model.Membership{
-				// same tier returned by cache here
-				Tier:          uint32(sr.Tier),
-				Status:        model.MembershipStatus(sr.Status),
-				DateStarted:   sr.DateStarted,
-				DateEnds:      sr.DateEnds,
-				IsAutoRenew:   sr.IsAutoRenew,
-				PaymentMethod: PaymentMethodToModel(sr.PaymentMethod),
-				NsName:        "something",
-				NsNameType:    model.NameserviceNameType_AnyName,
-			},
-		}
-
-		fx.ppclient.EXPECT().GetSubscriptionStatus(gomock.Any(), gomock.Any()).DoAndReturn(func(ctx interface{}, in *psp.GetSubscriptionRequestSigned) (*psp.GetSubscriptionResponse, error) {
-			return nil, errors.New("no internet")
-		}).MinTimes(1)
-
-		fx.cache.EXPECT().IsCacheExpired().Return(true)
-		fx.cache.EXPECT().IsCacheDisabled().Return(false)
-		fx.cache.EXPECT().CacheGet().Return(&psgsr, nil, nil)
-
-		// tier was not changed
-		// fx.expectLimitsUpdated()
-
-		// Call the function being tested
-		resp, err := fx.GetSubscriptionStatus(ctx, &pb.RpcMembershipGetStatusRequest{})
-		assert.NoError(t, err)
-
-		assert.Equal(t, uint32(psp.SubscriptionTier_TierExplorer), resp.Data.Tier)
-		assert.Equal(t, model.Membership_StatusActive, resp.Data.Status)
-		assert.Equal(t, sr.DateStarted, resp.Data.DateStarted)
-		assert.Equal(t, sr.DateEnds, resp.Data.DateEnds)
-		assert.Equal(t, true, resp.Data.IsAutoRenew)
-		assert.Equal(t, model.Membership_MethodCrypto, resp.Data.PaymentMethod)
-		assert.Equal(t, "something", resp.Data.NsName)
-	})
-
-	t.Run("do not fail if no cache, GetSubscriptionStatus returns no error, but can not save to cache", func(t *testing.T) {
-		fx := newFixture(t)
-		defer fx.finish(t)
-
-		sr := psp.GetSubscriptionResponse{
-			Tier:             uint32(psp.SubscriptionTier_TierExplorer),
-			Status:           psp.SubscriptionStatus_StatusActive,
-			DateStarted:      uint64(timeNow.Unix()),
-			DateEnds:         uint64(subsExpire.Unix()),
-			IsAutoRenew:      true,
-			PaymentMethod:    psp.PaymentMethod_MethodCrypto,
-			RequestedAnyName: "something.any",
-		}
-
-		psgsr := pb.RpcMembershipGetStatusResponse{
-			Error: &pb.RpcMembershipGetStatusResponseError{
-				Code: pb.RpcMembershipGetStatusResponseError_NULL,
-			},
-			Data: &model.Membership{
-				Tier:          uint32(sr.Tier),
-				Status:        model.MembershipStatus(sr.Status),
-				DateStarted:   sr.DateStarted,
-				DateEnds:      sr.DateEnds,
-				IsAutoRenew:   sr.IsAutoRenew,
-				PaymentMethod: PaymentMethodToModel(sr.PaymentMethod),
-				NsName:        "something",
-				NsNameType:    model.NameserviceNameType_AnyName,
-			},
-		}
-
-		fx.ppclient.EXPECT().GetSubscriptionStatus(gomock.Any(), gomock.Any()).DoAndReturn(func(ctx interface{}, in *psp.GetSubscriptionRequestSigned) (*psp.GetSubscriptionResponse, error) {
-			return &sr, nil
-		}).MinTimes(1)
-
-		fx.cache.EXPECT().IsCacheExpired().Return(true)
-		fx.cache.EXPECT().IsCacheDisabled().Return(false)
-		fx.cache.EXPECT().CacheGet().Return(&psgsr, nil, nil)
-		fx.cache.EXPECT().CacheSet(mock.AnythingOfType("*pb.RpcMembershipGetStatusResponse"), mock.AnythingOfType("*pb.RpcMembershipGetTiersResponse")).RunAndReturn(func(in *pb.RpcMembershipGetStatusResponse, tiers *pb.RpcMembershipGetTiersResponse) (err error) {
-			return errors.New("can not write to cache!")
-		})
-		// this should not be called because server returned Explorer tier
-		// fx.cache.EXPECT().CacheEnable().Return(nil)
-
+		// Limits updated because we went from no cache to empty status
 		fx.expectLimitsUpdated()
 
-		// Call the function being tested
-		_, err := fx.GetSubscriptionStatus(ctx, &pb.RpcMembershipGetStatusRequest{})
-		assert.NoError(t, err)
-
-		// resp object is nil in case of error
-		// assert.Equal(t, pb.RpcPaymentsSubscriptionGetStatusResponseErrorCode(pb.RpcPaymentsSubscriptionGetStatusResponseError_UNKNOWN_ERROR), resp.Error.Code)
-		// assert.Equal(t, "can not write to cache!", resp.Error.Description)
-	})
-
-	t.Run("success if in cache", func(t *testing.T) {
-		fx := newFixture(t)
-		defer fx.finish(t)
-
-		psgsr := pb.RpcMembershipGetStatusResponse{
-			Data: &model.Membership{
-				Tier:          uint32(psp.SubscriptionTier_TierExplorer),
-				Status:        model.Membership_StatusActive,
-				DateStarted:   uint64(timeNow.Unix()),
-				DateEnds:      uint64(subsExpire.Unix()),
-				IsAutoRenew:   true,
-				PaymentMethod: model.Membership_MethodCrypto,
-				NsName:        "something",
-				NsNameType:    model.NameserviceNameType_AnyName,
-			},
-		}
-
-		fx.cache.EXPECT().IsCacheExpired().Return(false)
-		fx.cache.EXPECT().IsCacheDisabled().Return(false)
-		// HERE>>>
-		fx.cache.EXPECT().CacheGet().Return(&psgsr, nil, nil)
-
-		// Call the function being tested
-		resp, err := fx.GetSubscriptionStatus(ctx, &pb.RpcMembershipGetStatusRequest{})
-		assert.NoError(t, err)
-
-		assert.Equal(t, uint32(psp.SubscriptionTier_TierExplorer), resp.Data.Tier)
-		assert.Equal(t, model.Membership_StatusActive, resp.Data.Status)
-	})
-
-	t.Run("if GetSubscriptionStatus returns active tier and it expires in 5 days -> cache it for 5 days", func(t *testing.T) {
-		fx := newFixture(t)
-		defer fx.finish(t)
-
-		var subsExpire5 time.Time = timeNow.Add(365 * 24 * time.Hour)
-
-		sr := psp.GetSubscriptionResponse{
-			Tier:             uint32(psp.SubscriptionTier_TierExplorer),
-			Status:           psp.SubscriptionStatus_StatusActive,
-			DateStarted:      uint64(timeNow.Unix()),
-			DateEnds:         uint64(subsExpire5.Unix()),
-			IsAutoRenew:      false,
-			PaymentMethod:    psp.PaymentMethod_MethodCard,
-			RequestedAnyName: "",
-		}
-
-		psgsr := pb.RpcMembershipGetStatusResponse{
-			Error: &pb.RpcMembershipGetStatusResponseError{
-				Code: pb.RpcMembershipGetStatusResponseError_NULL,
-			},
-			Data: &model.Membership{
-				Tier:          uint32(sr.Tier),
-				Status:        model.MembershipStatus(sr.Status),
-				DateStarted:   sr.DateStarted,
-				DateEnds:      sr.DateEnds,
-				IsAutoRenew:   sr.IsAutoRenew,
-				PaymentMethod: PaymentMethodToModel(sr.PaymentMethod),
-				NsName:        "",
-				NsNameType:    model.NameserviceNameType_AnyName,
-			},
-		}
-
-		fx.ppclient.EXPECT().GetSubscriptionStatus(gomock.Any(), gomock.Any()).DoAndReturn(func(ctx interface{}, in *psp.GetSubscriptionRequestSigned) (*psp.GetSubscriptionResponse, error) {
-			return &sr, nil
-		}).MinTimes(1)
-
-		fx.cache.EXPECT().IsCacheExpired().Return(true)
-		fx.cache.EXPECT().IsCacheDisabled().Return(false)
-
-		fx.cache.EXPECT().CacheGet().Return(nil, nil, nil)
-		fx.cache.EXPECT().CacheSet(&psgsr, mock.AnythingOfType("*pb.RpcMembershipGetTiersResponse")).RunAndReturn(func(in *pb.RpcMembershipGetStatusResponse, tiers *pb.RpcMembershipGetTiersResponse) (err error) {
-			return nil
-		})
-
-		// because cache was expired before!
-		fx.expectLimitsUpdated()
-
-		// Call the function being tested
-		resp, err := fx.GetSubscriptionStatus(ctx, &pb.RpcMembershipGetStatusRequest{})
-		assert.NoError(t, err)
-
-		assert.Equal(t, uint32(psp.SubscriptionTier_TierExplorer), resp.Data.Tier)
-		assert.Equal(t, model.Membership_StatusActive, resp.Data.Status)
-	})
-
-	t.Run("if cache was disabled and tier has changed -> save, and enable cache back", func(t *testing.T) {
-		fx := newFixture(t)
-		defer fx.finish(t)
-
-		var subsExpire5 time.Time = timeNow.Add(365 * 24 * time.Hour)
-
-		// this is from PP node (new status)
-		sr := psp.GetSubscriptionResponse{
-			Tier:             uint32(psp.SubscriptionTier_TierBuilder1Year),
-			Status:           psp.SubscriptionStatus_StatusActive,
-			DateStarted:      uint64(timeNow.Unix()),
-			DateEnds:         uint64(subsExpire5.Unix()),
-			IsAutoRenew:      false,
-			PaymentMethod:    psp.PaymentMethod_MethodCard,
-			RequestedAnyName: "",
-		}
-
-		// this is from DB
-		psgsr := pb.RpcMembershipGetStatusResponse{
-			Error: &pb.RpcMembershipGetStatusResponseError{
-				Code: pb.RpcMembershipGetStatusResponseError_NULL,
-			},
-			Data: &model.Membership{
-				Tier:          uint32(psp.SubscriptionTier_TierExplorer),
-				Status:        model.MembershipStatus(sr.Status),
-				DateStarted:   sr.DateStarted,
-				DateEnds:      sr.DateEnds,
-				IsAutoRenew:   sr.IsAutoRenew,
-				PaymentMethod: PaymentMethodToModel(sr.PaymentMethod),
-				NsName:        "",
-				NsNameType:    model.NameserviceNameType_AnyName,
-			},
-		}
-
-		psgsr2 := pb.RpcMembershipGetStatusResponse{
-			Error: &pb.RpcMembershipGetStatusResponseError{
-				Code: pb.RpcMembershipGetStatusResponseError_NULL,
-			},
-			Data: &model.Membership{
-				Tier:          uint32(psp.SubscriptionTier_TierBuilder1Year),
-				Status:        model.MembershipStatus(sr.Status),
-				DateStarted:   sr.DateStarted,
-				DateEnds:      sr.DateEnds,
-				IsAutoRenew:   sr.IsAutoRenew,
-				PaymentMethod: PaymentMethodToModel(sr.PaymentMethod),
-				NsName:        "",
-				NsNameType:    model.NameserviceNameType_AnyName,
-			},
-		}
-
-		fx.ppclient.EXPECT().GetSubscriptionStatus(gomock.Any(), gomock.Any()).DoAndReturn(func(ctx interface{}, in *psp.GetSubscriptionRequestSigned) (*psp.GetSubscriptionResponse, error) {
-			return &sr, nil
-		}).MinTimes(1)
-
-		fx.cache.EXPECT().IsCacheExpired().Return(false)
-		fx.cache.EXPECT().IsCacheDisabled().Return(true)
-		fx.cache.EXPECT().CacheGet().Return(&psgsr, nil, nil)
-		fx.cache.EXPECT().CacheSet(&psgsr2, mock.AnythingOfType("*pb.RpcMembershipGetTiersResponse")).RunAndReturn(func(in *pb.RpcMembershipGetStatusResponse, tiers *pb.RpcMembershipGetTiersResponse) (err error) {
-			return nil
-		})
-
-		// this should be called
-		fx.cache.EXPECT().CacheEnable().Return(nil).Maybe()
-
-		fx.expectLimitsUpdated()
-
-		// Call the function being tested
-		resp, err := fx.GetSubscriptionStatus(ctx, &pb.RpcMembershipGetStatusRequest{})
-		assert.NoError(t, err)
-
-		assert.Equal(t, uint32(psp.SubscriptionTier_TierBuilder1Year), resp.Data.Tier)
-		assert.Equal(t, model.Membership_StatusActive, resp.Data.Status)
-	})
-
-	t.Run("cache has error saved, GetSubscriptionStatus returns no error", func(t *testing.T) {
-		fx := newFixture(t)
-		defer fx.finish(t)
-
-		sr := psp.GetSubscriptionResponse{
-			Tier:             uint32(psp.SubscriptionTier_TierExplorer),
-			Status:           psp.SubscriptionStatus_StatusActive,
-			DateStarted:      uint64(timeNow.Unix()),
-			DateEnds:         uint64(subsExpire.Unix()),
-			IsAutoRenew:      true,
-			PaymentMethod:    psp.PaymentMethod_MethodCrypto,
-			RequestedAnyName: "something.any",
-		}
-
-		psgsr := pb.RpcMembershipGetStatusResponse{
-			Error: &pb.RpcMembershipGetStatusResponseError{
-				// >> here:
-				Code: pb.RpcMembershipGetStatusResponseError_PAYMENT_NODE_ERROR,
-			},
-			Data: &model.Membership{
-				Tier:          uint32(sr.Tier),
-				Status:        model.MembershipStatus(sr.Status),
-				DateStarted:   sr.DateStarted,
-				DateEnds:      sr.DateEnds,
-				IsAutoRenew:   sr.IsAutoRenew,
-				PaymentMethod: PaymentMethodToModel(sr.PaymentMethod),
-				NsName:        "something",
-				NsNameType:    model.NameserviceNameType_AnyName,
-			},
-		}
-
-		fx.ppclient.EXPECT().GetSubscriptionStatus(gomock.Any(), gomock.Any()).DoAndReturn(func(ctx interface{}, in *psp.GetSubscriptionRequestSigned) (*psp.GetSubscriptionResponse, error) {
-			return &sr, nil
-		}).MinTimes(1)
-
-		fx.cache.EXPECT().IsCacheExpired().Return(false)
-		fx.cache.EXPECT().IsCacheDisabled().Return(false)
-		fx.cache.EXPECT().CacheGet().Return(&psgsr, nil, nil)
-		fx.cache.EXPECT().CacheSet(mock.AnythingOfType("*pb.RpcMembershipGetStatusResponse"), mock.AnythingOfType("*pb.RpcMembershipGetTiersResponse")).RunAndReturn(func(in *pb.RpcMembershipGetStatusResponse, tiers *pb.RpcMembershipGetTiersResponse) (err error) {
-			return nil
-		})
-		// this should not be called because server returned Explorer tier
-		// fx.cache.EXPECT().CacheEnable().Return(nil)
-
-		fx.expectLimitsUpdated()
-
-		// Call the function being tested
-		_, err := fx.GetSubscriptionStatus(ctx, &pb.RpcMembershipGetStatusRequest{})
+		// Call background refresh
+		err := fx.service.refreshSubscriptionStatusBackground(ctx)
 		assert.NoError(t, err)
 	})
 }
+
 
 func (fx *fixture) expectLimitsUpdated() {
 	fx.multiplayerLimitsUpdater.EXPECT().UpdateCoordinatorStatus().Return()
@@ -1155,407 +501,37 @@ func TestFinalizeSubscription(t *testing.T) {
 }
 
 func TestGetTiers(t *testing.T) {
-	t.Run("do not fail if no cache, pp client returned error", func(t *testing.T) {
+	t.Run("return empty if cache is empty (cache-only RPC)", func(t *testing.T) {
 		fx := newFixture(t)
 		defer fx.finish(t)
 
-		fx.ppclient.EXPECT().GetAllTiers(gomock.Any(), gomock.Any()).DoAndReturn(func(ctx interface{}, in interface{}) (*psp.GetTiersResponse, error) {
-			return nil, errors.New("test error")
-		}).MinTimes(1)
-
-		fx.cache.EXPECT().IsCacheDisabled().Return(false)
-		fx.cache.EXPECT().IsCacheExpired().Return(false)
-		fx.cache.EXPECT().CacheGet().Return(nil, nil, nil)
-		fx.cache.EXPECT().CacheSet(mock.AnythingOfType("*pb.RpcMembershipGetStatusResponse"), mock.AnythingOfType("*pb.RpcMembershipGetTiersResponse")).RunAndReturn(func(in *pb.RpcMembershipGetStatusResponse, tiers *pb.RpcMembershipGetTiersResponse) (err error) {
-			return nil
-		})
-		fx.ppclient.EXPECT().GetSubscriptionStatus(gomock.Any(), gomock.Any()).DoAndReturn(func(ctx interface{}, in *psp.GetSubscriptionRequestSigned) (*psp.GetSubscriptionResponse, error) {
-			return &psp.GetSubscriptionResponse{
-				Tier:             uint32(psp.SubscriptionTier_TierExplorer),
-				Status:           psp.SubscriptionStatus_StatusActive,
-				DateStarted:      uint64(timeNow.Unix()),
-				DateEnds:         uint64(subsExpire.Unix()),
-				IsAutoRenew:      true,
-				PaymentMethod:    psp.PaymentMethod_MethodCrypto,
-				RequestedAnyName: "something.any",
-			}, nil
-		}).MinTimes(1)
-
-		fx.expectLimitsUpdated()
-
-		req := pb.RpcMembershipGetTiersRequest{
-			NoCache: false,
-			Locale:  "en_US",
-		}
-		out, err := fx.GetTiers(ctx, &req)
-		assert.NoError(t, err)
-		assert.Equal(t, 0, len(out.Tiers))
-	})
-
-	t.Run("success if no cache, empty response", func(t *testing.T) {
-		fx := newFixture(t)
-		defer fx.finish(t)
-
-		fx.cache.EXPECT().IsCacheExpired().Return(false)
-		fx.cache.EXPECT().IsCacheDisabled().Return(false)
+		// RPC method only calls CacheGet() and returns empty tiers if cache is empty
 		fx.cache.EXPECT().CacheGet().Return(nil, nil, cache.ErrCacheDbError)
-		fx.cache.EXPECT().CacheSet(mock.AnythingOfType("*pb.RpcMembershipGetStatusResponse"), mock.AnythingOfType("*pb.RpcMembershipGetTiersResponse")).RunAndReturn(func(in *pb.RpcMembershipGetStatusResponse, tiers *pb.RpcMembershipGetTiersResponse) (err error) {
-			return nil
-		})
 
-		fx.ppclient.EXPECT().GetAllTiers(gomock.Any(), gomock.Any()).DoAndReturn(func(ctx interface{}, in interface{}) (*psp.GetTiersResponse, error) {
-			return &psp.GetTiersResponse{}, nil
-		}).MinTimes(1)
-
-		fx.ppclient.EXPECT().GetSubscriptionStatus(gomock.Any(), gomock.Any()).DoAndReturn(func(ctx interface{}, in *psp.GetSubscriptionRequestSigned) (*psp.GetSubscriptionResponse, error) {
-			return &psp.GetSubscriptionResponse{
-				Tier:             uint32(psp.SubscriptionTier_TierExplorer),
-				Status:           psp.SubscriptionStatus_StatusActive,
-				DateStarted:      uint64(timeNow.Unix()),
-				DateEnds:         uint64(subsExpire.Unix()),
-				IsAutoRenew:      true,
-				PaymentMethod:    psp.PaymentMethod_MethodCrypto,
-				RequestedAnyName: "something.any",
-			}, nil
-		}).MinTimes(1)
-
-		fx.expectLimitsUpdated()
-
-		req := pb.RpcMembershipGetTiersRequest{
-			NoCache: true,
-			Locale:  "en_US",
-		}
-		_, err := fx.GetTiers(ctx, &req)
+		resp, err := fx.GetTiers(ctx, &pb.RpcMembershipGetTiersRequest{})
 		assert.NoError(t, err)
+		assert.Empty(t, resp.Tiers)
 	})
 
-	t.Run("success if no cache, response", func(t *testing.T) {
+	t.Run("returns cached tiers (cache-only RPC)", func(t *testing.T) {
 		fx := newFixture(t)
 		defer fx.finish(t)
 
-		fx.cache.EXPECT().IsCacheExpired().Return(false)
-		fx.cache.EXPECT().IsCacheDisabled().Return(false)
-
-		fx.cache.EXPECT().CacheGet().Return(nil, nil, cache.ErrCacheDbError)
-		fx.cache.EXPECT().CacheSet(mock.AnythingOfType("*pb.RpcMembershipGetStatusResponse"), mock.AnythingOfType("*pb.RpcMembershipGetTiersResponse")).RunAndReturn(func(in *pb.RpcMembershipGetStatusResponse, tiers *pb.RpcMembershipGetTiersResponse) (err error) {
-			return nil
-		})
-
-		fx.ppclient.EXPECT().GetAllTiers(gomock.Any(), gomock.Any()).DoAndReturn(func(ctx interface{}, in interface{}) (*psp.GetTiersResponse, error) {
-			out := &psp.GetTiersResponse{
-
-				Tiers: []*psp.TierData{
-					{
-						Id:           1,
-						Name:         "Explorer",
-						Description:  "Explorer tier",
-						IsActive:     true,
-						IsHiddenTier: false,
-						// []*Feature
-						Features: []*psp.Feature{
-							{
-								Description: "special support",
-							},
-							{
-								Description: "storage GBs",
-							},
-						},
-						AndroidProductId: "id_android_sub_explorer",
-						AndroidManageUrl: "android_explorer_tier.url",
-						IosProductId:     "Membership.Tiers.Explorer",
-						IosManageUrl:     "ios_explorer_tier.url",
-						StripeProductId:  "explorer_tier",
-						StripeManageUrl:  "explorer_tier.com",
-					},
-				},
-			}
-
-			return out, nil
-		}).MinTimes(1)
-
-		fx.ppclient.EXPECT().GetSubscriptionStatus(gomock.Any(), gomock.Any()).DoAndReturn(func(ctx interface{}, in *psp.GetSubscriptionRequestSigned) (*psp.GetSubscriptionResponse, error) {
-			return &psp.GetSubscriptionResponse{
-				Tier:             uint32(psp.SubscriptionTier_TierExplorer),
-				Status:           psp.SubscriptionStatus_StatusActive,
-				DateStarted:      uint64(timeNow.Unix()),
-				DateEnds:         uint64(subsExpire.Unix()),
-				IsAutoRenew:      true,
-				PaymentMethod:    psp.PaymentMethod_MethodCrypto,
-				RequestedAnyName: "something.any",
-			}, nil
-		}).MinTimes(1)
-
-		// this should not be called because server returned Explorer tier
-		// fx.cache.EXPECT().CacheEnable().Return(nil)
-
-		fx.expectLimitsUpdated()
-
-		req := pb.RpcMembershipGetTiersRequest{
-			NoCache: false,
-			Locale:  "en_US",
-		}
-		out, err := fx.GetTiers(ctx, &req)
-		assert.NoError(t, err)
-		assert.Equal(t, 1, len(out.Tiers))
-
-		assert.Equal(t, uint32(1), out.Tiers[0].Id)
-		assert.Equal(t, "Explorer", out.Tiers[0].Name)
-		assert.Equal(t, "Explorer tier", out.Tiers[0].Description)
-		// should be converted to array
-		assert.Equal(t, 2, len(out.Tiers[0].Features))
-		assert.Equal(t, "special support", out.Tiers[0].Features[0])
-		assert.Equal(t, "id_android_sub_explorer", out.Tiers[0].AndroidProductId)
-		assert.Equal(t, "android_explorer_tier.url", out.Tiers[0].AndroidManageUrl)
-		assert.Equal(t, "Membership.Tiers.Explorer", out.Tiers[0].IosProductId)
-		assert.Equal(t, "ios_explorer_tier.url", out.Tiers[0].IosManageUrl)
-		assert.Equal(t, "explorer_tier", out.Tiers[0].StripeProductId)
-		assert.Equal(t, "explorer_tier.com", out.Tiers[0].StripeManageUrl)
-	})
-
-	t.Run("success if status is in cache", func(t *testing.T) {
-		fx := newFixture(t)
-		defer fx.finish(t)
-
-		sr := psp.GetSubscriptionResponse{
-			Tier:             uint32(psp.SubscriptionTier_TierExplorer),
-			Status:           psp.SubscriptionStatus_StatusActive,
-			DateStarted:      uint64(timeNow.Unix()),
-			DateEnds:         uint64(subsExpire.Unix()),
-			IsAutoRenew:      true,
-			PaymentMethod:    psp.PaymentMethod_MethodCrypto,
-			RequestedAnyName: "something.any",
-		}
-
-		psgsr := pb.RpcMembershipGetStatusResponse{
-			Data: &model.Membership{
-				Tier:          uint32(sr.Tier),
-				Status:        model.MembershipStatus(sr.Status),
-				DateStarted:   sr.DateStarted,
-				DateEnds:      sr.DateEnds,
-				IsAutoRenew:   sr.IsAutoRenew,
-				PaymentMethod: PaymentMethodToModel(sr.PaymentMethod),
-				NsName:        "something",
-				NsNameType:    model.NameserviceNameType_AnyName,
-			},
-		}
-
-		fx.cache.EXPECT().IsCacheExpired().Return(false)
-		fx.cache.EXPECT().IsCacheDisabled().Return(false)
-		fx.cache.EXPECT().CacheGet().Return(&psgsr, nil, nil)
-		fx.cache.EXPECT().CacheSet(mock.AnythingOfType("*pb.RpcMembershipGetStatusResponse"), mock.AnythingOfType("*pb.RpcMembershipGetTiersResponse")).RunAndReturn(func(in *pb.RpcMembershipGetStatusResponse, tiers *pb.RpcMembershipGetTiersResponse) (err error) {
-			return nil
-		})
-
-		fx.ppclient.EXPECT().GetAllTiers(gomock.Any(), gomock.Any()).DoAndReturn(func(ctx interface{}, in interface{}) (*psp.GetTiersResponse, error) {
-			return &psp.GetTiersResponse{
-
-				Tiers: []*psp.TierData{
-					{
-						Id:           1,
-						Name:         "Explorer",
-						Description:  "Explorer tier",
-						IsActive:     true,
-						IsHiddenTier: false,
-					},
-				},
-			}, nil
-		}).MinTimes(1)
-
-		req := pb.RpcMembershipGetTiersRequest{
-			NoCache: false,
-			Locale:  "en_US",
-		}
-		out, err := fx.GetTiers(ctx, &req)
-		assert.NoError(t, err)
-		assert.Equal(t, 1, len(out.Tiers))
-
-		assert.Equal(t, uint32(1), out.Tiers[0].Id)
-		assert.Equal(t, "Explorer", out.Tiers[0].Name)
-		assert.Equal(t, "Explorer tier", out.Tiers[0].Description)
-	})
-
-	t.Run("success if full status is in cache", func(t *testing.T) {
-		fx := newFixture(t)
-		defer fx.finish(t)
-
-		sr := psp.GetSubscriptionResponse{
-			Tier:             uint32(psp.SubscriptionTier_TierExplorer),
-			Status:           psp.SubscriptionStatus_StatusActive,
-			DateStarted:      uint64(timeNow.Unix()),
-			DateEnds:         uint64(subsExpire.Unix()),
-			IsAutoRenew:      true,
-			PaymentMethod:    psp.PaymentMethod_MethodCrypto,
-			RequestedAnyName: "something.any",
-		}
-
-		psgsr := pb.RpcMembershipGetStatusResponse{
-			Data: &model.Membership{
-				Tier:          uint32(sr.Tier),
-				Status:        model.MembershipStatus(sr.Status),
-				DateStarted:   sr.DateStarted,
-				DateEnds:      sr.DateEnds,
-				IsAutoRenew:   sr.IsAutoRenew,
-				PaymentMethod: PaymentMethodToModel(sr.PaymentMethod),
-				NsName:        "something",
-				NsNameType:    model.NameserviceNameType_AnyName,
-			},
-		}
-
-		tgr := pb.RpcMembershipGetTiersResponse{
+		cachedTiers := &pb.RpcMembershipGetTiersResponse{
 			Tiers: []*model.MembershipTierData{
-				{
-					Id:          1,
-					Name:        "Explorer",
-					Description: "Explorer tier",
-				},
+				{Id: 1, Name: "Explorer"},
+				{Id: 2, Name: "Builder"},
 			},
 		}
-		fx.cache.EXPECT().IsCacheExpired().Return(false)
-		fx.cache.EXPECT().IsCacheDisabled().Return(false)
-		fx.cache.EXPECT().CacheGet().Return(&psgsr, &tgr, nil)
+		fx.cache.EXPECT().CacheGet().Return(nil, cachedTiers, nil)
 
-		req := pb.RpcMembershipGetTiersRequest{
-			NoCache: false,
-			Locale:  "en_US",
-		}
-		out, err := fx.GetTiers(ctx, &req)
+		resp, err := fx.GetTiers(ctx, &pb.RpcMembershipGetTiersRequest{})
 		assert.NoError(t, err)
-		assert.Equal(t, 1, len(out.Tiers))
-
-		assert.Equal(t, uint32(1), out.Tiers[0].Id)
-		assert.Equal(t, "Explorer", out.Tiers[0].Name)
-		assert.Equal(t, "Explorer tier", out.Tiers[0].Description)
-	})
-
-	t.Run("success if full status is in cache and higher then Explorer", func(t *testing.T) {
-		fx := newFixture(t)
-		defer fx.finish(t)
-
-		sr := psp.GetSubscriptionResponse{
-			Tier:             uint32(psp.SubscriptionTier_TierBuilder1Year),
-			Status:           psp.SubscriptionStatus_StatusActive,
-			DateStarted:      uint64(timeNow.Unix()),
-			DateEnds:         uint64(subsExpire.Unix()),
-			IsAutoRenew:      true,
-			PaymentMethod:    psp.PaymentMethod_MethodCrypto,
-			RequestedAnyName: "something.any",
-		}
-		/*
-			fx.ppclient.EXPECT().GetSubscriptionStatus(gomock.Any(), gomock.Any()).DoAndReturn(func(ctx interface{}, in *psp.GetSubscriptionRequestSigned) (*psp.GetSubscriptionResponse, error) {
-				return &sr, nil
-			}).MinTimes(1)
-		*/
-
-		psgsr := pb.RpcMembershipGetStatusResponse{
-			Data: &model.Membership{
-				Tier:          uint32(sr.Tier),
-				Status:        model.MembershipStatus(sr.Status),
-				DateStarted:   sr.DateStarted,
-				DateEnds:      sr.DateEnds,
-				IsAutoRenew:   sr.IsAutoRenew,
-				PaymentMethod: PaymentMethodToModel(sr.PaymentMethod),
-				NsName:        "something",
-				NsNameType:    model.NameserviceNameType_AnyName,
-			},
-		}
-
-		tgr := pb.RpcMembershipGetTiersResponse{
-			Tiers: []*model.MembershipTierData{
-				{
-					Id:          1,
-					Name:        "Explorer",
-					Description: "Explorer tier",
-				},
-				{
-					Id:          2,
-					Name:        "Builder",
-					Description: "Builder tier",
-				},
-				{
-					Id:          3,
-					Name:        "Special",
-					Description: "Special tier",
-				},
-			},
-		}
-		fx.cache.EXPECT().IsCacheExpired().Return(false)
-		fx.cache.EXPECT().IsCacheDisabled().Return(false)
-		fx.cache.EXPECT().CacheGet().Return(&psgsr, &tgr, nil)
-
-		req := pb.RpcMembershipGetTiersRequest{
-			NoCache: false,
-			Locale:  "en_US",
-		}
-		out, err := fx.GetTiers(ctx, &req)
-		assert.NoError(t, err)
-		assert.Equal(t, 2, len(out.Tiers))
-
-		assert.Equal(t, uint32(2), out.Tiers[0].Id)
-		assert.Equal(t, "Builder", out.Tiers[0].Name)
-		assert.Equal(t, "Builder tier", out.Tiers[0].Description)
-	})
-
-	t.Run("success if full status is in cache and higher then Explorer, no status cache", func(t *testing.T) {
-		fx := newFixture(t)
-		defer fx.finish(t)
-
-		sr := psp.GetSubscriptionResponse{
-			Tier:             uint32(psp.SubscriptionTier_TierBuilder1Year),
-			Status:           psp.SubscriptionStatus_StatusActive,
-			DateStarted:      uint64(timeNow.Unix()),
-			DateEnds:         uint64(subsExpire.Unix()),
-			IsAutoRenew:      true,
-			PaymentMethod:    psp.PaymentMethod_MethodCrypto,
-			RequestedAnyName: "something.any",
-		}
-		fx.ppclient.EXPECT().GetSubscriptionStatus(gomock.Any(), gomock.Any()).DoAndReturn(func(ctx interface{}, in *psp.GetSubscriptionRequestSigned) (*psp.GetSubscriptionResponse, error) {
-			return &sr, nil
-		}).MinTimes(1)
-
-		tgr := pb.RpcMembershipGetTiersResponse{
-			Tiers: []*model.MembershipTierData{
-				{
-					Id:          1,
-					Name:        "Explorer",
-					Description: "Explorer tier",
-				},
-				{
-					Id:          2,
-					Name:        "Builder",
-					Description: "Builder tier",
-				},
-				{
-					Id:          3,
-					Name:        "Special",
-					Description: "Special tier",
-				},
-			},
-		}
-		fx.cache.EXPECT().IsCacheExpired().Return(false)
-		fx.cache.EXPECT().IsCacheDisabled().Return(false)
-
-		fx.cache.EXPECT().CacheGet().Return(nil, &tgr, nil)
-		// should call it to save status
-		fx.cache.EXPECT().CacheSet(mock.AnythingOfType("*pb.RpcMembershipGetStatusResponse"), mock.AnythingOfType("*pb.RpcMembershipGetTiersResponse")).RunAndReturn(func(in *pb.RpcMembershipGetStatusResponse, tiers *pb.RpcMembershipGetTiersResponse) (err error) {
-			return nil
-		})
-		fx.cache.EXPECT().CacheEnable().Return(nil)
-
-		fx.expectLimitsUpdated()
-
-		req := pb.RpcMembershipGetTiersRequest{
-			NoCache: false,
-			Locale:  "en_US",
-		}
-		out, err := fx.GetTiers(ctx, &req)
-		assert.NoError(t, err)
-		assert.Equal(t, 2, len(out.Tiers))
-
-		assert.Equal(t, uint32(2), out.Tiers[0].Id)
-		assert.Equal(t, "Builder", out.Tiers[0].Name)
-		assert.Equal(t, "Builder tier", out.Tiers[0].Description)
+		assert.Len(t, resp.Tiers, 2)
+		assert.Equal(t, "Explorer", resp.Tiers[0].Name)
 	})
 }
+
 
 func TestIsNameValid(t *testing.T) {
 	t.Run("validation error", func(t *testing.T) {
@@ -1701,27 +677,18 @@ func TestCodeGetInfo(t *testing.T) {
 		code := "TEST-CODE-123"
 		expectedTier := uint32(psp.SubscriptionTier_TierBuilder1Year)
 
-		// Mock PP client response
+		// Mock PP client response for CodeGetInfo
 		fx.ppclient.EXPECT().
 			CodeGetInfo(gomock.Any(), gomock.Any()).
 			Return(&psp.CodeGetInfoResponse{
 				Tier: expectedTier,
 			}, nil)
 
-		// mock GetAccountEthAddress
 		fx.wallet.EXPECT().GetAccountEthAddress().Return(common.HexToAddress("0x55DCad916750C19C4Ec69D65Ff0317767B36cE90")).Once()
 
-		fx.ppclient.EXPECT().GetSubscriptionStatus(gomock.Any(), gomock.Any()).DoAndReturn(func(ctx interface{}, in *psp.GetSubscriptionRequestSigned) (*psp.GetSubscriptionResponse, error) {
-			return &psp.GetSubscriptionResponse{
-				Tier: expectedTier,
-			}, nil
-		}).MinTimes(1)
-
-		fx.cache.EXPECT().CacheSet(mock.AnythingOfType("*pb.RpcMembershipGetStatusResponse"), mock.AnythingOfType("*pb.RpcMembershipGetTiersResponse")).RunAndReturn(func(in *pb.RpcMembershipGetStatusResponse, tiers *pb.RpcMembershipGetTiersResponse) (err error) {
-			return nil
-		})
-
-		fx.expectLimitsUpdated()
+		// CodeGetInfo internally calls GetSubscriptionStatus which is now cache-only
+		// It will just return from cache or empty status (no network call)
+		fx.cache.EXPECT().CacheGet().Return(nil, nil, cache.ErrCacheDbError)
 
 		// When
 		resp, err := fx.CodeGetInfo(context.Background(), &pb.RpcMembershipCodeGetInfoRequest{
