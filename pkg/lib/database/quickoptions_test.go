@@ -71,6 +71,7 @@ func TestQuickOption(t *testing.T) {
 		{
 			name: "today",
 			inputFilter: FilterRequest{
+				Format:      model.RelationFormat_date,
 				QuickOption: model.BlockContentDataviewFilter_Today,
 				RelationKey: relationKey,
 				Condition:   model.BlockContentDataviewFilter_Equal,
@@ -83,6 +84,7 @@ func TestQuickOption(t *testing.T) {
 			name: "strictly before today",
 			inputFilter: FilterRequest{
 				QuickOption: model.BlockContentDataviewFilter_Today,
+				Format:      model.RelationFormat_date,
 				RelationKey: relationKey,
 				Condition:   model.BlockContentDataviewFilter_Less,
 			},
@@ -92,6 +94,7 @@ func TestQuickOption(t *testing.T) {
 			inputFilter: FilterRequest{
 				QuickOption: model.BlockContentDataviewFilter_Today,
 				RelationKey: relationKey,
+				Format:      model.RelationFormat_date,
 				Condition:   model.BlockContentDataviewFilter_LessOrEqual,
 			},
 			expectedFilters: []FilterRequest{{Condition: model.BlockContentDataviewFilter_LessOrEqual, Value: domain.Int64(calculateDayEnd(now, 0))}},
@@ -100,6 +103,7 @@ func TestQuickOption(t *testing.T) {
 			inputFilter: FilterRequest{
 				QuickOption: model.BlockContentDataviewFilter_Today,
 				RelationKey: relationKey,
+				Format:      model.RelationFormat_date,
 				Condition:   model.BlockContentDataviewFilter_Greater,
 			},
 			expectedFilters: []FilterRequest{{Condition: model.BlockContentDataviewFilter_Greater, Value: domain.Int64(calculateDayEnd(now, 0))}},
@@ -108,6 +112,7 @@ func TestQuickOption(t *testing.T) {
 			inputFilter: FilterRequest{
 				QuickOption: model.BlockContentDataviewFilter_Today,
 				RelationKey: relationKey,
+				Format:      model.RelationFormat_date,
 				Condition:   model.BlockContentDataviewFilter_GreaterOrEqual,
 			},
 			expectedFilters: []FilterRequest{{Condition: model.BlockContentDataviewFilter_GreaterOrEqual, Value: domain.Int64(calculateDayStart(now, 0))}},
@@ -119,6 +124,7 @@ func TestQuickOption(t *testing.T) {
 			inputFilter: FilterRequest{
 				QuickOption: model.BlockContentDataviewFilter_Yesterday,
 				RelationKey: relationKey,
+				Format:      model.RelationFormat_date,
 				Condition:   model.BlockContentDataviewFilter_In,
 			},
 			expectedFilters: []FilterRequest{
@@ -130,6 +136,7 @@ func TestQuickOption(t *testing.T) {
 			inputFilter: FilterRequest{
 				QuickOption: model.BlockContentDataviewFilter_Yesterday,
 				RelationKey: relationKey,
+				Format:      model.RelationFormat_date,
 				Condition:   model.BlockContentDataviewFilter_GreaterOrEqual,
 			},
 			expectedFilters: []FilterRequest{{Condition: model.BlockContentDataviewFilter_GreaterOrEqual, Value: domain.Int64(calculateDayStart(now, -1))}},
@@ -141,6 +148,7 @@ func TestQuickOption(t *testing.T) {
 			inputFilter: FilterRequest{
 				QuickOption: model.BlockContentDataviewFilter_Tomorrow,
 				RelationKey: relationKey,
+				Format:      model.RelationFormat_date,
 				Condition:   model.BlockContentDataviewFilter_In,
 			},
 			expectedFilters: []FilterRequest{
@@ -152,6 +160,7 @@ func TestQuickOption(t *testing.T) {
 			inputFilter: FilterRequest{
 				QuickOption: model.BlockContentDataviewFilter_Tomorrow,
 				RelationKey: relationKey,
+				Format:      model.RelationFormat_date,
 				Condition:   model.BlockContentDataviewFilter_Greater,
 			},
 			expectedFilters: []FilterRequest{{Condition: model.BlockContentDataviewFilter_Greater, Value: domain.Int64(calculateDayEnd(now, 1))}},
@@ -163,6 +172,7 @@ func TestQuickOption(t *testing.T) {
 			inputFilter: FilterRequest{
 				QuickOption: model.BlockContentDataviewFilter_CurrentWeek,
 				RelationKey: relationKey,
+				Format:      model.RelationFormat_date,
 				Condition:   model.BlockContentDataviewFilter_Equal,
 			},
 			expectedFilters: []FilterRequest{
@@ -174,6 +184,7 @@ func TestQuickOption(t *testing.T) {
 			inputFilter: FilterRequest{
 				QuickOption: model.BlockContentDataviewFilter_CurrentWeek,
 				RelationKey: relationKey,
+				Format:      model.RelationFormat_date,
 				Condition:   model.BlockContentDataviewFilter_Less,
 			},
 			expectedFilters: []FilterRequest{{Condition: model.BlockContentDataviewFilter_Less, Value: domain.Int64(calculateWeekStart(now, 0))}},
@@ -185,6 +196,7 @@ func TestQuickOption(t *testing.T) {
 			inputFilter: FilterRequest{
 				QuickOption: model.BlockContentDataviewFilter_LastWeek,
 				RelationKey: relationKey,
+				Format:      model.RelationFormat_date,
 				Condition:   model.BlockContentDataviewFilter_LessOrEqual,
 			},
 			expectedFilters: []FilterRequest{
@@ -195,6 +207,7 @@ func TestQuickOption(t *testing.T) {
 			inputFilter: FilterRequest{
 				QuickOption: model.BlockContentDataviewFilter_LastWeek,
 				RelationKey: relationKey,
+				Format:      model.RelationFormat_date,
 				Condition:   model.BlockContentDataviewFilter_Greater,
 			},
 			expectedFilters: []FilterRequest{{Condition: model.BlockContentDataviewFilter_Greater, Value: domain.Int64(calculateWeekEnd(now, -1))}},
@@ -203,6 +216,7 @@ func TestQuickOption(t *testing.T) {
 			inputFilter: FilterRequest{
 				QuickOption: model.BlockContentDataviewFilter_LastWeek,
 				RelationKey: relationKey,
+				Format:      model.RelationFormat_date,
 				Condition:   model.BlockContentDataviewFilter_Less,
 			},
 			expectedFilters: []FilterRequest{{Condition: model.BlockContentDataviewFilter_Less, Value: domain.Int64(calculateWeekStart(now, -1))}},
@@ -214,6 +228,7 @@ func TestQuickOption(t *testing.T) {
 			inputFilter: FilterRequest{
 				QuickOption: model.BlockContentDataviewFilter_NextWeek,
 				RelationKey: relationKey,
+				Format:      model.RelationFormat_date,
 				Condition:   model.BlockContentDataviewFilter_In,
 			},
 			expectedFilters: []FilterRequest{
@@ -225,6 +240,7 @@ func TestQuickOption(t *testing.T) {
 			inputFilter: FilterRequest{
 				QuickOption: model.BlockContentDataviewFilter_NextWeek,
 				RelationKey: relationKey,
+				Format:      model.RelationFormat_date,
 				Condition:   model.BlockContentDataviewFilter_GreaterOrEqual,
 			},
 			expectedFilters: []FilterRequest{{Condition: model.BlockContentDataviewFilter_GreaterOrEqual, Value: domain.Int64(calculateWeekStart(now, 1))}},
@@ -236,6 +252,7 @@ func TestQuickOption(t *testing.T) {
 			inputFilter: FilterRequest{
 				QuickOption: model.BlockContentDataviewFilter_CurrentMonth,
 				RelationKey: relationKey,
+				Format:      model.RelationFormat_date,
 				Condition:   model.BlockContentDataviewFilter_Equal,
 			},
 			expectedFilters: []FilterRequest{
@@ -247,6 +264,7 @@ func TestQuickOption(t *testing.T) {
 			inputFilter: FilterRequest{
 				QuickOption: model.BlockContentDataviewFilter_CurrentMonth,
 				RelationKey: relationKey,
+				Format:      model.RelationFormat_date,
 				Condition:   model.BlockContentDataviewFilter_GreaterOrEqual,
 			},
 			expectedFilters: []FilterRequest{{Condition: model.BlockContentDataviewFilter_GreaterOrEqual, Value: domain.Int64(calculateMonthStart(now, 0))}},
@@ -258,6 +276,7 @@ func TestQuickOption(t *testing.T) {
 			inputFilter: FilterRequest{
 				QuickOption: model.BlockContentDataviewFilter_LastMonth,
 				RelationKey: relationKey,
+				Format:      model.RelationFormat_date,
 				Condition:   model.BlockContentDataviewFilter_In,
 			},
 			expectedFilters: []FilterRequest{
@@ -269,6 +288,7 @@ func TestQuickOption(t *testing.T) {
 			inputFilter: FilterRequest{
 				QuickOption: model.BlockContentDataviewFilter_LastMonth,
 				RelationKey: relationKey,
+				Format:      model.RelationFormat_date,
 				Condition:   model.BlockContentDataviewFilter_Less,
 			},
 			expectedFilters: []FilterRequest{{Condition: model.BlockContentDataviewFilter_Less, Value: domain.Int64(calculateMonthStart(now, -1))}},
@@ -280,6 +300,7 @@ func TestQuickOption(t *testing.T) {
 			inputFilter: FilterRequest{
 				QuickOption: model.BlockContentDataviewFilter_NextMonth,
 				RelationKey: relationKey,
+				Format:      model.RelationFormat_date,
 				Condition:   model.BlockContentDataviewFilter_Equal,
 			},
 			expectedFilters: []FilterRequest{
@@ -291,6 +312,7 @@ func TestQuickOption(t *testing.T) {
 			inputFilter: FilterRequest{
 				QuickOption: model.BlockContentDataviewFilter_NextMonth,
 				RelationKey: relationKey,
+				Format:      model.RelationFormat_date,
 				Condition:   model.BlockContentDataviewFilter_Greater,
 			},
 			expectedFilters: []FilterRequest{{Condition: model.BlockContentDataviewFilter_Greater, Value: domain.Int64(calculateMonthEnd(now, 1))}},
@@ -302,6 +324,7 @@ func TestQuickOption(t *testing.T) {
 			inputFilter: FilterRequest{
 				QuickOption: model.BlockContentDataviewFilter_LastYear,
 				RelationKey: relationKey,
+				Format:      model.RelationFormat_date,
 				Condition:   model.BlockContentDataviewFilter_Equal,
 			},
 			expectedFilters: []FilterRequest{
@@ -313,6 +336,7 @@ func TestQuickOption(t *testing.T) {
 			inputFilter: FilterRequest{
 				QuickOption: model.BlockContentDataviewFilter_LastYear,
 				RelationKey: relationKey,
+				Format:      model.RelationFormat_date,
 				Condition:   model.BlockContentDataviewFilter_Less,
 			},
 			expectedFilters: []FilterRequest{{Condition: model.BlockContentDataviewFilter_Less, Value: domain.Int64(calculateYearStart(now, -1))}},
@@ -321,6 +345,7 @@ func TestQuickOption(t *testing.T) {
 			inputFilter: FilterRequest{
 				QuickOption: model.BlockContentDataviewFilter_LastYear,
 				RelationKey: relationKey,
+				Format:      model.RelationFormat_date,
 				Condition:   model.BlockContentDataviewFilter_LessOrEqual,
 			},
 			expectedFilters: []FilterRequest{{Condition: model.BlockContentDataviewFilter_LessOrEqual, Value: domain.Int64(calculateYearEnd(now, -1))}},
@@ -329,6 +354,7 @@ func TestQuickOption(t *testing.T) {
 			inputFilter: FilterRequest{
 				QuickOption: model.BlockContentDataviewFilter_LastYear,
 				RelationKey: relationKey,
+				Format:      model.RelationFormat_date,
 				Condition:   model.BlockContentDataviewFilter_Greater,
 			},
 			expectedFilters: []FilterRequest{{Condition: model.BlockContentDataviewFilter_Greater, Value: domain.Int64(calculateYearEnd(now, -1))}},
@@ -337,6 +363,7 @@ func TestQuickOption(t *testing.T) {
 			inputFilter: FilterRequest{
 				QuickOption: model.BlockContentDataviewFilter_LastYear,
 				RelationKey: relationKey,
+				Format:      model.RelationFormat_date,
 				Condition:   model.BlockContentDataviewFilter_GreaterOrEqual,
 			},
 			expectedFilters: []FilterRequest{{Condition: model.BlockContentDataviewFilter_GreaterOrEqual, Value: domain.Int64(calculateYearStart(now, -1))}},
@@ -348,6 +375,7 @@ func TestQuickOption(t *testing.T) {
 			inputFilter: FilterRequest{
 				QuickOption: model.BlockContentDataviewFilter_CurrentYear,
 				RelationKey: relationKey,
+				Format:      model.RelationFormat_date,
 				Condition:   model.BlockContentDataviewFilter_Equal,
 			},
 			expectedFilters: []FilterRequest{
@@ -359,6 +387,7 @@ func TestQuickOption(t *testing.T) {
 			inputFilter: FilterRequest{
 				QuickOption: model.BlockContentDataviewFilter_CurrentYear,
 				RelationKey: relationKey,
+				Format:      model.RelationFormat_date,
 				Condition:   model.BlockContentDataviewFilter_Less,
 			},
 			expectedFilters: []FilterRequest{{Condition: model.BlockContentDataviewFilter_Less, Value: domain.Int64(calculateYearStart(now, 0))}},
@@ -367,6 +396,7 @@ func TestQuickOption(t *testing.T) {
 			inputFilter: FilterRequest{
 				QuickOption: model.BlockContentDataviewFilter_CurrentYear,
 				RelationKey: relationKey,
+				Format:      model.RelationFormat_date,
 				Condition:   model.BlockContentDataviewFilter_LessOrEqual,
 			},
 			expectedFilters: []FilterRequest{{Condition: model.BlockContentDataviewFilter_LessOrEqual, Value: domain.Int64(calculateYearEnd(now, 0))}},
@@ -375,6 +405,7 @@ func TestQuickOption(t *testing.T) {
 			inputFilter: FilterRequest{
 				QuickOption: model.BlockContentDataviewFilter_CurrentYear,
 				RelationKey: relationKey,
+				Format:      model.RelationFormat_date,
 				Condition:   model.BlockContentDataviewFilter_Greater,
 			},
 			expectedFilters: []FilterRequest{{Condition: model.BlockContentDataviewFilter_Greater, Value: domain.Int64(calculateYearEnd(now, 0))}},
@@ -383,6 +414,7 @@ func TestQuickOption(t *testing.T) {
 			inputFilter: FilterRequest{
 				QuickOption: model.BlockContentDataviewFilter_CurrentYear,
 				RelationKey: relationKey,
+				Format:      model.RelationFormat_date,
 				Condition:   model.BlockContentDataviewFilter_GreaterOrEqual,
 			},
 			expectedFilters: []FilterRequest{{Condition: model.BlockContentDataviewFilter_GreaterOrEqual, Value: domain.Int64(calculateYearStart(now, 0))}},
@@ -394,6 +426,7 @@ func TestQuickOption(t *testing.T) {
 			inputFilter: FilterRequest{
 				QuickOption: model.BlockContentDataviewFilter_NextYear,
 				RelationKey: relationKey,
+				Format:      model.RelationFormat_date,
 				Condition:   model.BlockContentDataviewFilter_Equal,
 			},
 			expectedFilters: []FilterRequest{
@@ -405,6 +438,7 @@ func TestQuickOption(t *testing.T) {
 			inputFilter: FilterRequest{
 				QuickOption: model.BlockContentDataviewFilter_NextYear,
 				RelationKey: relationKey,
+				Format:      model.RelationFormat_date,
 				Condition:   model.BlockContentDataviewFilter_Less,
 			},
 			expectedFilters: []FilterRequest{{Condition: model.BlockContentDataviewFilter_Less, Value: domain.Int64(calculateYearStart(now, 1))}},
@@ -413,6 +447,7 @@ func TestQuickOption(t *testing.T) {
 			inputFilter: FilterRequest{
 				QuickOption: model.BlockContentDataviewFilter_NextYear,
 				RelationKey: relationKey,
+				Format:      model.RelationFormat_date,
 				Condition:   model.BlockContentDataviewFilter_LessOrEqual,
 			},
 			expectedFilters: []FilterRequest{{Condition: model.BlockContentDataviewFilter_LessOrEqual, Value: domain.Int64(calculateYearEnd(now, 1))}},
@@ -421,6 +456,7 @@ func TestQuickOption(t *testing.T) {
 			inputFilter: FilterRequest{
 				QuickOption: model.BlockContentDataviewFilter_NextYear,
 				RelationKey: relationKey,
+				Format:      model.RelationFormat_date,
 				Condition:   model.BlockContentDataviewFilter_Greater,
 			},
 			expectedFilters: []FilterRequest{{Condition: model.BlockContentDataviewFilter_Greater, Value: domain.Int64(calculateYearEnd(now, 1))}},
@@ -429,6 +465,7 @@ func TestQuickOption(t *testing.T) {
 			inputFilter: FilterRequest{
 				QuickOption: model.BlockContentDataviewFilter_NextYear,
 				RelationKey: relationKey,
+				Format:      model.RelationFormat_date,
 				Condition:   model.BlockContentDataviewFilter_GreaterOrEqual,
 			},
 			expectedFilters: []FilterRequest{{Condition: model.BlockContentDataviewFilter_GreaterOrEqual, Value: domain.Int64(calculateYearStart(now, 1))}},
@@ -440,6 +477,7 @@ func TestQuickOption(t *testing.T) {
 			inputFilter: FilterRequest{
 				QuickOption: model.BlockContentDataviewFilter_NumberOfDaysAgo,
 				RelationKey: relationKey,
+				Format:      model.RelationFormat_date,
 				Condition:   model.BlockContentDataviewFilter_Equal,
 				Value:       domain.Int64(6),
 			},
@@ -452,6 +490,7 @@ func TestQuickOption(t *testing.T) {
 			inputFilter: FilterRequest{
 				QuickOption: model.BlockContentDataviewFilter_NumberOfDaysAgo,
 				RelationKey: relationKey,
+				Format:      model.RelationFormat_date,
 				Condition:   model.BlockContentDataviewFilter_LessOrEqual,
 				Value:       domain.Int64(3),
 			},
@@ -461,6 +500,7 @@ func TestQuickOption(t *testing.T) {
 			inputFilter: FilterRequest{
 				QuickOption: model.BlockContentDataviewFilter_NumberOfDaysAgo,
 				RelationKey: relationKey,
+				Format:      model.RelationFormat_date,
 				Condition:   model.BlockContentDataviewFilter_Less,
 				Value:       domain.Int64(4),
 			},
@@ -470,6 +510,7 @@ func TestQuickOption(t *testing.T) {
 			inputFilter: FilterRequest{
 				QuickOption: model.BlockContentDataviewFilter_NumberOfDaysAgo,
 				RelationKey: relationKey,
+				Format:      model.RelationFormat_date,
 				Condition:   model.BlockContentDataviewFilter_GreaterOrEqual,
 				Value:       domain.Int64(10),
 			},
@@ -482,6 +523,7 @@ func TestQuickOption(t *testing.T) {
 			inputFilter: FilterRequest{
 				QuickOption: model.BlockContentDataviewFilter_NumberOfDaysNow,
 				RelationKey: relationKey,
+				Format:      model.RelationFormat_date,
 				Condition:   model.BlockContentDataviewFilter_In,
 				Value:       domain.Int64(3),
 			},
@@ -494,6 +536,7 @@ func TestQuickOption(t *testing.T) {
 			inputFilter: FilterRequest{
 				QuickOption: model.BlockContentDataviewFilter_NumberOfDaysNow,
 				RelationKey: relationKey,
+				Format:      model.RelationFormat_date,
 				Condition:   model.BlockContentDataviewFilter_GreaterOrEqual,
 				Value:       domain.Int64(12),
 			},
@@ -503,6 +546,7 @@ func TestQuickOption(t *testing.T) {
 			inputFilter: FilterRequest{
 				QuickOption: model.BlockContentDataviewFilter_NumberOfDaysNow,
 				RelationKey: relationKey,
+				Format:      model.RelationFormat_date,
 				Condition:   model.BlockContentDataviewFilter_Greater,
 				Value:       domain.Int64(100),
 			},
@@ -512,6 +556,7 @@ func TestQuickOption(t *testing.T) {
 			inputFilter: FilterRequest{
 				QuickOption: model.BlockContentDataviewFilter_NumberOfDaysNow,
 				RelationKey: relationKey,
+				Format:      model.RelationFormat_date,
 				Condition:   model.BlockContentDataviewFilter_LessOrEqual,
 				Value:       domain.Int64(7),
 			},
@@ -519,7 +564,7 @@ func TestQuickOption(t *testing.T) {
 		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			filters := transformQuickOption(tc.inputFilter)
+			filters := transformDateFilter(tc.inputFilter)
 			assert.Len(t, filters, len(tc.expectedFilters))
 			for i, f := range filters {
 				assert.Equal(t, tc.expectedFilters[i].Condition, f.Condition)

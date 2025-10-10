@@ -22,6 +22,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space/spacecore"
 	"github.com/anyproto/anytype-heart/space/spacecore/storage/anystorage"
+	"github.com/anyproto/anytype-heart/space/spacedomain"
 	"github.com/anyproto/anytype-heart/util/keyvaluestore"
 )
 
@@ -212,7 +213,7 @@ func (p *provider) setType(id string, tp smartblock.SmartBlockType) (err error) 
 }
 
 func GetTypeAndKeyFromRootChange(root *treechangeproto.RootChange) (sbt smartblock.SmartBlockType, key string, err error) {
-	if root.ChangeType != spacecore.ChangeType {
+	if root.ChangeType != spacedomain.ChangeType {
 		err = ErrUnknownChangeType
 		return 0, "", err
 	}

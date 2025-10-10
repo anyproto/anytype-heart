@@ -5,11 +5,13 @@ import (
 
 	"github.com/anyproto/anytype-heart/space/clientspace"
 	"github.com/anyproto/anytype-heart/space/internal/spaceprocess/loader"
+	"github.com/anyproto/anytype-heart/space/spacedomain"
 	"github.com/anyproto/anytype-heart/space/spaceinfo"
 )
 
 func (s *service) create(ctx context.Context, description *spaceinfo.SpaceDescription) (sp clientspace.Space, err error) {
-	coreSpace, err := s.spaceCore.Create(ctx, s.repKey, s.AccountMetadataPayload())
+	var spaceType = spacedomain.SpaceTypeRegular
+	coreSpace, err := s.spaceCore.Create(ctx, spaceType, s.repKey, s.AccountMetadataPayload())
 	if err != nil {
 		return nil, err
 	}

@@ -75,7 +75,7 @@ type spaceIndexer interface {
 }
 
 type bundledObjectsInstaller interface {
-	InstallBundledObjects(ctx context.Context, spc Space, ids []string, isNewSpace bool) ([]string, []*domain.Details, error)
+	InstallBundledObjects(ctx context.Context, spc Space, ids []string) ([]string, []*domain.Details, error)
 
 	BundledObjectsIdsToInstall(ctx context.Context, spc Space, sourceObjectIds []string) (ids domain.BundledObjectIds, err error)
 }
@@ -157,7 +157,7 @@ func BuildSpace(ctx context.Context, deps SpaceDeps) (Space, error) {
 			return nil, fmt.Errorf("unmark space created: %w", err)
 		}
 		ids := getBundledObjectsToInstall()
-		if _, _, err = sp.installer.InstallBundledObjects(ctx, sp, ids, true); err != nil {
+		if _, _, err = sp.installer.InstallBundledObjects(ctx, sp, ids); err != nil {
 			return nil, fmt.Errorf("install bundled objects: %w", err)
 		}
 	}

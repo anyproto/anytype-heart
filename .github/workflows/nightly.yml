@@ -19,6 +19,14 @@ on:
         options:
           - envproduction
           - envnetworkcustom
+      run-diff-check:
+        description: 'Run diff-check?'
+        required: true
+        default: 'true'
+        type: choice
+        options:
+          - 'true'
+          - 'false'
       nightly-base-version:
         description: 'Nightly builds base version (optional, default is stored in repo variables https://github.com/anyproto/anytype-heart/settings/variables/actions)'
         required: false
@@ -33,12 +41,48 @@ permissions:
 
 
 jobs:
+  diff-check:
+    runs-on: ubuntu-latest
+    outputs:
+      changed: ${{ steps.diff_check.outputs.changed }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - run: git fetch --tags --force --prune
+      - id: diff_check
+        run: |
+          if [[ "${{ github.event.inputs.run-diff-check || 'true' }}" == "true" ]]; then
+            LAST_TAG=$(git describe --tags --match 'v*-nightly.*' --abbrev=0 2>/dev/null || echo "")
+            if [ -z "$LAST_TAG" ]; then
+              # no nightly tag found in history
+              echo "changed=true" >> "$GITHUB_OUTPUT"
+            elif git diff --quiet "${LAST_TAG}..HEAD"; then
+              echo "changed=false" >> "$GITHUB_OUTPUT"
+            else
+              echo "changed=true" >> "$GITHUB_OUTPUT"
+            fi
+          else
+            # when disabled explicitly: always set changed=true
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          fi
+      - name: debug
+        run: |
+          echo "changed: ${{ steps.diff_check.outputs.changed }}"
+
   wait_for_perftest:
     uses: ./.github/workflows/reusable_wait_for_perftest.yml
 
   build:
-    needs: wait_for_perftest
+    needs:
+      - diff-check
+      - wait_for_perftest
+    if: needs.diff-check.outputs.changed == 'true' # run only if there is a diff
     runs-on: ${{ github.event.inputs.run-on-runner || 'mac-mini-org-heart' }}
+    outputs:
+      body: ${{ steps.release_info.outputs.body }}
+      html_url: ${{ steps.release_info.outputs.html_url }}
+      tag_name: ${{ steps.release_info.outputs.tag_name }}
     steps:
       - name: Install Go
         if: ${{ !startsWith(runner.name, 'mac-mini-runner-') }}
@@ -69,21 +113,40 @@ jobs:
         with:
           xcode-version: '16.2'
 
+      - name: Compute nightly version
+        id: nightly_info
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }} # required for gh CLI to authenticate
+        run: |
+          set -euo pipefail
+          DATE=$(date -u +'%Y%m%d')
+          PREFIX="v${{ github.event.inputs.nightly-base-version || vars.NIGHTLY_BASE_VERSION }}-nightly.${DATE}"
+
+          # Get the number of existing tags for today
+          COUNT=$(gh api "/repos/${{ github.repository }}/git/matching-refs/tags/$PREFIX" --jq 'length')
+          N=$((COUNT + 1))
+
+          # Build the final version string
+          VERSION="${PREFIX}.${N}"
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+
       - name: Set env vars
         env:
           UNSPLASH_KEY: ${{ secrets.UNSPLASH_KEY }}
           INHOUSE_KEY: ${{ secrets.INHOUSE_KEY }}
         run: |
-          GIT_SUMMARY=$(git describe --tags --always)
+          GIT_SUMMARY=${{ steps.nightly_info.outputs.version }}
           echo "FLAGS=-X github.com/anyproto/anytype-heart/util/vcs.GitSummary=${GIT_SUMMARY} -X github.com/anyproto/anytype-heart/metrics.DefaultInHouseKey=${INHOUSE_KEY} -X github.com/anyproto/anytype-heart/util/unsplash.DefaultToken=${UNSPLASH_KEY}" >> $GITHUB_ENV
 
-          VERSION="nightly"
+          VERSION=${{ steps.nightly_info.outputs.version }}
           echo "${{ secrets.STAGING_NODE_CONF }}" > ./core/anytype/config/nodes/custom.yml
-          echo BUILD_TAG_NETWORK=${{ github.event.inputs.build-tag-network || 'envproduction' }} >> $GITHUB_ENV
 
           echo VERSION=${VERSION} >> $GITHUB_ENV
+          echo BUILD_TAG_NETWORK=${{ github.event.inputs.build-tag-network || 'envproduction' }} >> $GITHUB_ENV
+          echo MAVEN_ARTIFACT_VERSION=${VERSION} >> $GITHUB_ENV
           echo GOPRIVATE=github.com/anyproto >> $GITHUB_ENV
           echo $(pwd)/deps >> $GITHUB_PATH
+          echo "${GOBIN}" >> $GITHUB_PATH
           git config --global url."https://${{ secrets.ANYTYPE_PAT }}@github.com/".insteadOf "https://github.com/"
 
       - name: Go mod download
@@ -121,7 +184,9 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITHUB_USER: ${{ github.actor }}
-          PUBLISH_GRADLE: 0
+          MAVEN_ARTIFACT_ID: 'anytype-heart-ios'
+          MAVEN_ARTIFACT_NAME: 'ios_framework.tar.gz'
+          PUBLISH_GRADLE: 1
         run: make compile-ios-lib
 
       - name: Make java protos
@@ -130,11 +195,14 @@ jobs:
       - name: Compile android lib
         run: make compile-android-lib
 
-      - name: Compute nightly version
-        id: nightly_info
+      - name: Publish android lib to maven
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_USER: ${{ github.actor }}
+          MAVEN_ARTIFACT_ID: 'anytype-heart-android'
+          MAVEN_ARTIFACT_NAME: 'lib.aar'
         run: |
-          TS=$(date -u +"%Y%m%d%H%M%S")
-          echo "version=v${{ github.event.inputs.nightly-base-version || vars.NIGHTLY_BASE_VERSION }}-nightly-${TS}" >> $GITHUB_OUTPUT
+          gradle publish
 
       - name: Release
         id: release
@@ -165,31 +233,21 @@ jobs:
             core.setOutput('html_url', data.html_url);
             core.setOutput('tag_name', data.tag_name);
 
-      # FAILURE - send to alerts channel
-      - name: Notify Slack (failure → alerts)
-        if: ${{ failure() }}
+  notify:
+    needs:
+      - build
+    if: ${{ always() }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Notify Slack (workflow result)
         uses: ravsamhq/notify-slack-action@v2
         with:
-          status: ${{ job.status }}
-          notification_title: "❌ {workflow}"
-          message_format: "{emoji} *{job}* in *{workflow}* {status_message}"
-          footer: "Linked Repo <{repo_url}|{repo}> | <{run_url}|View Workflow Run>"
-        env:
-          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_ALERT_WEBHOOK }}
-
-      # SUCCESS - send to builds channel
-      - name: Notify Slack (ok → builds)
-        if: ${{ success() }}
-        uses: ravsamhq/notify-slack-action@v2
-        with:
-          status: ${{ job.status }}
-          notification_title: "✅ {workflow}"
+          status: ${{ (contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled')) && 'failure' || 'success' }}
+          notification_title: "${{ (contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled')) && '❌' || '✅' }} {workflow} {repo}"
           message_format: |
-            {emoji} *{job}* in *{workflow}* {status_message}
-            *Release:* <${{ steps.release_info.outputs.html_url }}|${{ steps.release_info.outputs.tag_name }}>
+            *Release:* <${{ needs.build.outputs.html_url }}|${{ needs.build.outputs.tag_name || 'none' }}>
             *Description:*
-            ${{ steps.release_info.outputs.body }}
+            ${{ needs.build.outputs.body || 'no changes, build skipped' }}
           footer: "Linked Repo <{repo_url}|{repo}> | <{run_url}|View Workflow Run>"
-
         env:
-          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_BUILD_WEBHOOK }}
+          SLACK_WEBHOOK_URL: ${{ (contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled')) && secrets.SLACK_WEBHOOK_URL_ALERTS || secrets.SLACK_WEBHOOK_URL_RELEASE_TRAIN }}

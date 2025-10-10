@@ -108,6 +108,7 @@ func (s *service) Repository(chatObjectId string) (Repository, error) {
 type Repository interface {
 	WriteTx(ctx context.Context) (anystore.WriteTx, error)
 	ReadTx(ctx context.Context) (anystore.ReadTx, error)
+	AddTestMessage(ctx context.Context, msg *chatmodel.Message) error
 	GetLastStateId(ctx context.Context) (string, error)
 	GetPrevOrderId(ctx context.Context, orderId string) (string, error)
 	LoadChatState(ctx context.Context) (*model.ChatState, error)
@@ -126,6 +127,21 @@ type Repository interface {
 type repository struct {
 	collection anystore.Collection
 	arenaPool  *anyenc.ArenaPool
+}
+
+func (s *repository) AddTestMessage(ctx context.Context, msg *chatmodel.Message) error {
+	arena := s.arenaPool.Get()
+	arena.Reset()
+	defer s.arenaPool.Put(arena)
+
+	val := arena.NewObject()
+	msg.MarshalAnyenc(val, arena)
+
+	orderObj := arena.NewObject()
+	orderObj.Set("id", arena.NewString(msg.OrderId))
+	val.Set(chatmodel.OrderKey, orderObj)
+
+	return s.collection.Insert(ctx, val)
 }
 
 func (s *repository) WriteTx(ctx context.Context) (anystore.WriteTx, error) {

@@ -62,6 +62,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/debug"
 	"github.com/anyproto/anytype-heart/core/debug/profiler"
 	"github.com/anyproto/anytype-heart/core/device"
+	"github.com/anyproto/anytype-heart/core/durability"
 	"github.com/anyproto/anytype-heart/core/files"
 	"github.com/anyproto/anytype-heart/core/files/fileacl"
 	"github.com/anyproto/anytype-heart/core/files/filedownloader"
@@ -303,7 +304,7 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(history.New()).
 		Register(gateway.New()).
 		Register(export.New()).
-		Register(linkpreview.New()).
+		Register(linkpreview.NewWithCache()).
 		Register(unsplash.New()).
 		Register(debug.New()).
 		Register(syncsubscriptions.New()).
@@ -332,7 +333,8 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(order.New()).
 		Register(api.New()).
 		Register(pushclient.New()).
-		Register(pushnotification.New())
+		Register(pushnotification.New()).
+		Register(durability.New()) // leave it the last one
 }
 
 func MiddlewareVersion() string {

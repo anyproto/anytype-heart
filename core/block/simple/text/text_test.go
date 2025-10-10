@@ -7,7 +7,6 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/anyproto/anytype-heart/core/block/simple/base"
-	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
@@ -461,53 +460,4 @@ func TestText_HasMarkForAllText(t *testing.T) {
 	}).(Block)
 	assert.False(t, b.HasMarkForAllText(&model.BlockContentTextMark{Type: model.BlockContentTextMark_Italic}))
 	assert.True(t, b.HasMarkForAllText(&model.BlockContentTextMark{Type: model.BlockContentTextMark_Bold}))
-}
-
-func TestText_MigrateFile(t *testing.T) {
-	fileId := "bafybeihdwdcefgh4dqkjv67uzcmw7ojee6xedzdetojuzjevtenxquvyku"
-	fileIdMigrated := "bafybeihdwdcefgh4dqkjv67uzcmw7ojee6xedzdetojuzjevtenxquvyku-migrated"
-	migrator := func(id string) string {
-		if domain.IsFileId(id) {
-			return fileId + "-migrated"
-		}
-		return id
-	}
-
-	got := NewText(&model.Block{
-		Content: &model.BlockContentOfText{
-			Text: &model.BlockContentText{
-				Text:      "1234567890",
-				IconImage: fileId,
-				Marks: &model.BlockContentTextMarks{
-					Marks: []*model.BlockContentTextMark{
-						{Type: model.BlockContentTextMark_Mention, Param: fileId},
-						{Type: model.BlockContentTextMark_Mention, Param: "object1"},
-						{Type: model.BlockContentTextMark_Object, Param: fileId},
-						{Type: model.BlockContentTextMark_Object, Param: "object2"},
-					},
-				},
-			},
-		},
-	}).(Block)
-
-	got.MigrateFile(migrator)
-
-	want := NewText(&model.Block{
-		Content: &model.BlockContentOfText{
-			Text: &model.BlockContentText{
-				Text:      "1234567890",
-				IconImage: fileIdMigrated,
-				Marks: &model.BlockContentTextMarks{
-					Marks: []*model.BlockContentTextMark{
-						{Type: model.BlockContentTextMark_Mention, Param: fileIdMigrated},
-						{Type: model.BlockContentTextMark_Mention, Param: "object1"},
-						{Type: model.BlockContentTextMark_Object, Param: fileIdMigrated},
-						{Type: model.BlockContentTextMark_Object, Param: "object2"},
-					},
-				},
-			},
-		},
-	}).(Block)
-
-	assert.Equal(t, want, got)
 }

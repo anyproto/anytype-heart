@@ -1,14 +1,12 @@
 package collection
 
 import (
-	"sync"
-
 	"github.com/anyproto/any-sync/app"
 	"github.com/samber/lo"
 
-	"github.com/anyproto/anytype-heart/core/block/backlinks"
 	"github.com/anyproto/anytype-heart/core/block/cache"
 	"github.com/anyproto/anytype-heart/core/block/editor/basic"
+	"github.com/anyproto/anytype-heart/core/block/editor/collection"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/editor/template"
@@ -21,30 +19,22 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/internalflag"
-	"github.com/anyproto/anytype-heart/util/slice"
 )
 
 var log = logging.Logger("collection-service")
 
 type Service struct {
-	lock             *sync.RWMutex
-	collections      map[string]map[string]chan []string
-	picker           cache.ObjectGetter
-	objectStore      objectstore.ObjectStore
-	backlinksUpdater backlinks.UpdateWatcher
+	picker      cache.ObjectGetter
+	objectStore objectstore.ObjectStore
 }
 
 func New() *Service {
-	return &Service{
-		lock:        &sync.RWMutex{},
-		collections: map[string]map[string]chan []string{},
-	}
+	return &Service{}
 }
 
 func (s *Service) Init(a *app.App) (err error) {
 	s.picker = app.MustComponent[cache.ObjectGetter](a)
 	s.objectStore = app.MustComponent[objectstore.ObjectStore](a)
-	s.backlinksUpdater = app.MustComponent[backlinks.UpdateWatcher](a)
 	return nil
 }
 
@@ -57,147 +47,40 @@ func (s *Service) CollectionType() string {
 }
 
 func (s *Service) Add(ctx session.Context, req *pb.RpcObjectCollectionAddRequest) error {
-	var toAdd []string
-	err := s.updateCollection(ctx, req.ContextId, func(col []string) []string {
-		toAdd = slice.Difference(req.ObjectIds, col)
-		pos := slice.FindPos(col, req.AfterId)
-		if pos >= 0 {
-			col = slice.Insert(col, pos+1, toAdd...)
-		} else {
-			col = append(toAdd, col...)
-		}
-		return col
+	return cache.Do[collection.Collection](s.picker, req.ContextId, func(coll collection.Collection) error {
+		return coll.AddToCollection(ctx, req)
 	})
-	if err != nil {
-		return err
-	}
-
-	// we update backlinks of objects added to collection synchronously to avoid object rerender after backlinks accumulation interval
-	if len(toAdd) != 0 {
-		s.backlinksUpdater.FlushUpdates()
-	}
-
-	return nil
 }
 
 func (s *Service) Remove(ctx session.Context, req *pb.RpcObjectCollectionRemoveRequest) error {
-	return s.updateCollection(ctx, req.ContextId, func(col []string) []string {
-		col = slice.Filter(col, func(id string) bool {
-			return slice.FindPos(req.ObjectIds, id) == -1
-		})
-		return col
+	return cache.Do[collection.Collection](s.picker, req.ContextId, func(coll collection.Collection) error {
+		return coll.RemoveFromCollection(ctx, req)
 	})
 }
 
 func (s *Service) Sort(ctx session.Context, req *pb.RpcObjectCollectionSortRequest) error {
-	return s.updateCollection(ctx, req.ContextId, func(col []string) []string {
-		exist := map[string]struct{}{}
-		for _, id := range col {
-			exist[id] = struct{}{}
-		}
-		col = col[:0]
-		for _, id := range req.ObjectIds {
-			// Reorder only existing objects
-			if _, ok := exist[id]; ok {
-				col = append(col, id)
-			}
-		}
-		return col
+	return cache.Do[collection.Collection](s.picker, req.ContextId, func(coll collection.Collection) error {
+		return coll.ReorderCollection(ctx, req)
 	})
 }
 
-func (s *Service) updateCollection(ctx session.Context, contextID string, modifier func(src []string) []string) error {
-	return cache.DoStateCtx(s.picker, ctx, contextID, func(st *state.State, sb smartblock.SmartBlock) error {
-		s.collectionAddHookOnce(sb)
-		lst := st.GetStoreSlice(template.CollectionStoreKey)
-		lst = modifier(lst)
-		st.UpdateStoreSlice(template.CollectionStoreKey, lst)
-		// TODO why we're adding empty list of flags?
-		flags := internalflag.Set{}
-		flags.AddToState(st)
-		return nil
-	}, smartblock.KeepInternalFlags)
-}
-
-func (s *Service) collectionAddHookOnce(sb smartblock.SmartBlock) {
-	sb.AddHookOnce("collection", func(info smartblock.ApplyInfo) (err error) {
-		for _, ch := range info.Changes {
-			if upd := ch.GetStoreSliceUpdate(); upd != nil && upd.Key == template.CollectionStoreKey {
-				s.broadcast(sb.Id(), info.State.GetStoreSlice(template.CollectionStoreKey))
-				return nil
-			}
-		}
-		return nil
-	}, smartblock.HookAfterApply)
-}
-
-func (s *Service) broadcast(collectionID string, objectIDs []string) {
-	s.lock.RLock()
-	defer s.lock.RUnlock()
-
-	for _, ch := range s.collections[collectionID] {
-		ch <- objectIDs
-	}
-}
-
-type Subscription struct {
-	objectsCh chan []string
-	closeCh   chan struct{}
-}
-
-func (s *Subscription) Chan() <-chan []string {
-	return s.objectsCh
-}
-
-func (s *Subscription) Close() {
-	close(s.closeCh)
-}
-
 func (s *Service) SubscribeForCollection(collectionID string, subscriptionID string) ([]string, <-chan []string, error) {
-	var initialObjectIDs []string
+	var initialIds []string
+	var ch <-chan []string
 
-	err := cache.DoState(s.picker, collectionID, func(st *state.State, sb smartblock.SmartBlock) error {
-		s.collectionAddHookOnce(sb)
-
-		initialObjectIDs = st.GetStoreSlice(template.CollectionStoreKey)
-		return nil
-	}, smartblock.KeepInternalFlags)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	s.lock.Lock()
-	defer s.lock.Unlock()
-
-	col, ok := s.collections[collectionID]
-	if !ok {
-		col = map[string]chan []string{}
-		s.collections[collectionID] = col
-	}
-
-	ch, ok := col[subscriptionID]
-	if !ok {
-		ch = make(chan []string)
-		col[subscriptionID] = ch
-	}
-
-	return initialObjectIDs, ch, err
+	err := cache.Do[collection.Collection](s.picker, collectionID, func(coll collection.Collection) error {
+		var err error
+		initialIds, ch, err = coll.SubscribeForCollection(subscriptionID)
+		return err
+	})
+	return initialIds, ch, err
 }
 
-func (s *Service) UnsubscribeFromCollection(collectionID string, subscriptionID string) {
-	s.lock.Lock()
-	defer s.lock.Unlock()
-
-	col, ok := s.collections[collectionID]
-	if !ok {
-		return
-	}
-
-	ch, ok := col[subscriptionID]
-	if ok {
-		close(ch)
-		delete(col, subscriptionID)
-	}
+func (s *Service) UnsubscribeFromCollection(collectionID string, subscriptionID string) error {
+	return cache.Do[collection.Collection](s.picker, collectionID, func(coll collection.Collection) error {
+		coll.UnsubscribeFromCollection(subscriptionID)
+		return nil
+	})
 }
 
 func (s *Service) CreateCollection(details *domain.Details, flags []*model.InternalFlag) (coresb.SmartBlockType, *domain.Details, *state.State, error) {
@@ -205,13 +88,8 @@ func (s *Service) CreateCollection(details *domain.Details, flags []*model.Inter
 
 	newState := state.NewDoc("", nil).NewState().SetDetails(details)
 
-	tmpls := []template.StateTransformer{}
-
 	blockContent := template.MakeDataviewContent(true, nil, nil, "")
-	tmpls = append(tmpls,
-		template.WithDataview(blockContent, false),
-	)
-	template.InitTemplate(newState, tmpls...)
+	template.InitTemplate(newState, template.WithDataview(blockContent, false))
 
 	return coresb.SmartBlockTypePage, newState.CombinedDetails(), newState, nil
 }

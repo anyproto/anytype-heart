@@ -405,9 +405,9 @@ func (_c *MockService_Init_Call) RunAndReturn(run func(*app.App) error) *MockSer
 	return _c
 }
 
-// InstallBundledObjects provides a mock function with given fields: ctx, space, sourceObjectIds, isNewSpace
-func (_m *MockService) InstallBundledObjects(ctx context.Context, space clientspace.Space, sourceObjectIds []string, isNewSpace bool) ([]string, []*domain.Details, error) {
-	ret := _m.Called(ctx, space, sourceObjectIds, isNewSpace)
+// InstallBundledObjects provides a mock function with given fields: ctx, space, sourceObjectIds
+func (_m *MockService) InstallBundledObjects(ctx context.Context, space clientspace.Space, sourceObjectIds []string) ([]string, []*domain.Details, error) {
+	ret := _m.Called(ctx, space, sourceObjectIds)
 
 	if len(ret) == 0 {
 		panic("no return value specified for InstallBundledObjects")
@@ -416,27 +416,27 @@ func (_m *MockService) InstallBundledObjects(ctx context.Context, space clientsp
 	var r0 []string
 	var r1 []*domain.Details
 	var r2 error
-	if rf, ok := ret.Get(0).(func(context.Context, clientspace.Space, []string, bool) ([]string, []*domain.Details, error)); ok {
-		return rf(ctx, space, sourceObjectIds, isNewSpace)
+	if rf, ok := ret.Get(0).(func(context.Context, clientspace.Space, []string) ([]string, []*domain.Details, error)); ok {
+		return rf(ctx, space, sourceObjectIds)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context, clientspace.Space, []string, bool) []string); ok {
-		r0 = rf(ctx, space, sourceObjectIds, isNewSpace)
+	if rf, ok := ret.Get(0).(func(context.Context, clientspace.Space, []string) []string); ok {
+		r0 = rf(ctx, space, sourceObjectIds)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).([]string)
 		}
 	}
 
-	if rf, ok := ret.Get(1).(func(context.Context, clientspace.Space, []string, bool) []*domain.Details); ok {
-		r1 = rf(ctx, space, sourceObjectIds, isNewSpace)
+	if rf, ok := ret.Get(1).(func(context.Context, clientspace.Space, []string) []*domain.Details); ok {
+		r1 = rf(ctx, space, sourceObjectIds)
 	} else {
 		if ret.Get(1) != nil {
 			r1 = ret.Get(1).([]*domain.Details)
 		}
 	}
 
-	if rf, ok := ret.Get(2).(func(context.Context, clientspace.Space, []string, bool) error); ok {
-		r2 = rf(ctx, space, sourceObjectIds, isNewSpace)
+	if rf, ok := ret.Get(2).(func(context.Context, clientspace.Space, []string) error); ok {
+		r2 = rf(ctx, space, sourceObjectIds)
 	} else {
 		r2 = ret.Error(2)
 	}
@@ -453,14 +453,13 @@ type MockService_InstallBundledObjects_Call struct {
 //   - ctx context.Context
 //   - space clientspace.Space
 //   - sourceObjectIds []string
-//   - isNewSpace bool
-func (_e *MockService_Expecter) InstallBundledObjects(ctx interface{}, space interface{}, sourceObjectIds interface{}, isNewSpace interface{}) *MockService_InstallBundledObjects_Call {
-	return &MockService_InstallBundledObjects_Call{Call: _e.mock.On("InstallBundledObjects", ctx, space, sourceObjectIds, isNewSpace)}
+func (_e *MockService_Expecter) InstallBundledObjects(ctx interface{}, space interface{}, sourceObjectIds interface{}) *MockService_InstallBundledObjects_Call {
+	return &MockService_InstallBundledObjects_Call{Call: _e.mock.On("InstallBundledObjects", ctx, space, sourceObjectIds)}
 }
 
-func (_c *MockService_InstallBundledObjects_Call) Run(run func(ctx context.Context, space clientspace.Space, sourceObjectIds []string, isNewSpace bool)) *MockService_InstallBundledObjects_Call {
+func (_c *MockService_InstallBundledObjects_Call) Run(run func(ctx context.Context, space clientspace.Space, sourceObjectIds []string)) *MockService_InstallBundledObjects_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(clientspace.Space), args[2].([]string), args[3].(bool))
+		run(args[0].(context.Context), args[1].(clientspace.Space), args[2].([]string))
 	})
 	return _c
 }
@@ -470,7 +469,7 @@ func (_c *MockService_InstallBundledObjects_Call) Return(ids []string, objects [
 	return _c
 }
 
-func (_c *MockService_InstallBundledObjects_Call) RunAndReturn(run func(context.Context, clientspace.Space, []string, bool) ([]string, []*domain.Details, error)) *MockService_InstallBundledObjects_Call {
+func (_c *MockService_InstallBundledObjects_Call) RunAndReturn(run func(context.Context, clientspace.Space, []string) ([]string, []*domain.Details, error)) *MockService_InstallBundledObjects_Call {
 	_c.Call.Return(run)
 	return _c
 }

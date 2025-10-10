@@ -25,7 +25,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/chatobject"
 	"github.com/anyproto/anytype-heart/core/block/object/idresolver"
 	"github.com/anyproto/anytype-heart/core/domain"
-	"github.com/anyproto/anytype-heart/core/files/fileobject/filecache"
+	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/core/session"
 	subscriptionservice "github.com/anyproto/anytype-heart/core/subscription"
 	"github.com/anyproto/anytype-heart/core/subscription/crossspacesub"
@@ -81,7 +81,7 @@ type service struct {
 	accountService          accountService
 	objectStore             objectstore.ObjectStore
 	chatSubscriptionService chatsubscription.Service
-	fileCacheService        filecache.Service
+	eventSender             event.Sender
 
 	componentCtx       context.Context
 	componentCtxCancel context.CancelFunc
@@ -117,7 +117,7 @@ func (s *service) Init(a *app.App) error {
 	s.objectGetter = app.MustComponent[cache.ObjectWaitGetter](a)
 	s.chatSubscriptionService = app.MustComponent[chatsubscription.Service](a)
 	s.spaceIdResolver = app.MustComponent[idresolver.Resolver](a)
-	s.fileCacheService = app.MustComponent[filecache.Service](a)
+	s.eventSender = app.MustComponent[event.Sender](a)
 	return nil
 }
 
@@ -216,28 +216,33 @@ func (s *service) unsubscribeFromMessagePreviews(subId string) error {
 }
 
 func (s *service) Run(ctx context.Context) error {
-	resp, err := s.crossSpaceSubService.Subscribe(subscriptionservice.SubscribeRequest{
-		SubId:             allChatsSubscriptionId,
-		InternalQueue:     s.chatObjectsSubQueue,
-		Keys:              []string{bundle.RelationKeyId.String(), bundle.RelationKeySpaceId.String()},
-		NoDepSubscription: true,
-		Filters: []database.FilterRequest{
-			{
-				RelationKey: bundle.RelationKeyLayout,
-				Condition:   model.BlockContentDataviewFilter_Equal,
-				Value:       domain.Int64(model.ObjectType_chatDerived),
+	s.lock.Lock()
+	go func() {
+		defer s.lock.Unlock()
+		resp, err := s.crossSpaceSubService.Subscribe(subscriptionservice.SubscribeRequest{
+			SubId:             allChatsSubscriptionId,
+			InternalQueue:     s.chatObjectsSubQueue,
+			Keys:              []string{bundle.RelationKeyId.String(), bundle.RelationKeySpaceId.String()},
+			NoDepSubscription: true,
+			Filters: []database.FilterRequest{
+				{
+					RelationKey: bundle.RelationKeyResolvedLayout,
+					Condition:   model.BlockContentDataviewFilter_Equal,
+					Value:       domain.Int64(model.ObjectType_chatDerived),
+				},
 			},
-		},
-	}, crossspacesub.NoOpPredicate())
-	if err != nil {
-		return fmt.Errorf("cross-space sub: %w", err)
-	}
+		}, crossspacesub.NoOpPredicate())
+		if err != nil {
+			log.Error("cross-space sub", zap.Error(err))
+			return
+		}
 
-	for _, rec := range resp.Records {
-		s.allChatObjectIds[rec.GetString(bundle.RelationKeyId)] = rec.GetString(bundle.RelationKeySpaceId)
-	}
+		for _, rec := range resp.Records {
+			s.allChatObjectIds[rec.GetString(bundle.RelationKeyId)] = rec.GetString(bundle.RelationKeySpaceId)
+		}
+		go s.monitorMessagePreviews()
+	}()
 
-	go s.monitorMessagePreviews()
 	return nil
 }
 
@@ -324,11 +329,27 @@ func (s *service) onChatAddedAsync(chatObjectId string, subId string) error {
 	mngr.Lock()
 	defer mngr.Unlock()
 
+	events := make([]*pb.EventMessage, 0, 2)
 	if len(resp.Messages) > 0 {
-		mngr.Add(resp.PreviousOrderId, resp.Messages[0])
+		msg := resp.Messages[0]
+		events = append(events, event.NewMessage(spaceId, &pb.EventMessageValueOfChatAdd{
+			ChatAdd: &pb.EventChatAdd{
+				Id:           msg.Id,
+				OrderId:      msg.OrderId,
+				AfterOrderId: resp.PreviousOrderId,
+				Message:      msg.ChatMessage,
+				SubIds:       []string{subId},
+			},
+		}))
 	}
-	mngr.ForceSendingChatState()
-	mngr.Flush()
+	events = append(events, event.NewMessage(spaceId, &pb.EventMessageValueOfChatStateUpdate{ChatStateUpdate: &pb.EventChatUpdateState{
+		State:  mngr.GetChatState(),
+		SubIds: []string{subId},
+	}}))
+	s.eventSender.Broadcast(&pb.Event{
+		Messages:  events,
+		ContextId: chatObjectId,
+	})
 
 	return nil
 }
@@ -530,17 +551,13 @@ func (s *service) GetMessagesByIds(ctx context.Context, chatObjectId string, mes
 }
 
 func (s *service) SubscribeLastMessages(ctx context.Context, chatObjectId string, limit int, subId string) (*chatsubscription.SubscribeLastMessagesResponse, error) {
-	resp, err := s.chatSubscriptionService.SubscribeLastMessages(s.componentCtx, chatsubscription.SubscribeLastMessagesRequest{
+	return s.chatSubscriptionService.SubscribeLastMessages(s.componentCtx, chatsubscription.SubscribeLastMessagesRequest{
 		ChatObjectId:           chatObjectId,
 		SubId:                  subId,
 		Limit:                  limit,
 		WithDependencies:       false,
 		CouldUseSessionContext: true,
 	})
-	if err != nil {
-		return nil, err
-	}
-	return resp, nil
 }
 
 func (s *service) Unsubscribe(chatObjectId string, subId string) error {

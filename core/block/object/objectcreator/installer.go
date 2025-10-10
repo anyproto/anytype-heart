@@ -9,7 +9,6 @@ import (
 	"github.com/anyproto/any-sync/commonspace/object/tree/treestorage"
 	"go.uber.org/zap"
 
-	"github.com/anyproto/anytype-heart/core/block/editor/lastused"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/relationutils"
@@ -67,7 +66,6 @@ func (s *service) InstallBundledObjects(
 	ctx context.Context,
 	space clientspace.Space,
 	sourceObjectIds []string,
-	isNewSpace bool,
 ) (ids []string, objects []*domain.Details, err error) {
 	if space.IsReadOnly() {
 		return
@@ -92,7 +90,7 @@ func (s *service) InstallBundledObjects(
 		if _, ok := existingObjectMap[sourceObjectId]; ok {
 			continue
 		}
-		installingDetails, err := s.prepareDetailsForInstallingObject(ctx, marketplaceSpace, space, sourceObjectId, isNewSpace)
+		installingDetails, err := s.prepareDetailsForInstallingObject(ctx, marketplaceSpace, space, sourceObjectId)
 		if err != nil {
 			return nil, nil, fmt.Errorf("prepare details for installing object: %w", err)
 		}
@@ -204,7 +202,7 @@ func (s *service) reinstallObject(
 		isArchived     = currentDetails.GetBool(bundle.RelationKeyIsArchived)
 	)
 
-	installingDetails, err := s.prepareDetailsForInstallingObject(ctx, sourceSpace, space, sourceObjectId, false)
+	installingDetails, err := s.prepareDetailsForInstallingObject(ctx, sourceSpace, space, sourceObjectId)
 	if err != nil {
 		return "", "", nil, fmt.Errorf("prepare details for installing object: %w", err)
 	}
@@ -239,7 +237,6 @@ func (s *service) prepareDetailsForInstallingObject(
 	ctx context.Context,
 	sourceSpace, spc clientspace.Space,
 	sourceObjectId string,
-	isNewSpace bool,
 ) (*domain.Details, error) {
 	var details *domain.Details
 	err := sourceSpace.Do(sourceObjectId, func(b smartblock.SmartBlock) error {
@@ -256,10 +253,6 @@ func (s *service) prepareDetailsForInstallingObject(
 	details.SetString(bundle.RelationKeySourceObject, sourceId)
 	details.SetBool(bundle.RelationKeyIsReadonly, false)
 	details.SetInt64(bundle.RelationKeyCreatedDate, time.Now().Unix())
-
-	if isNewSpace {
-		lastused.SetLastUsedDateForInitialObjectType(sourceId, details)
-	}
 
 	uk, err := domain.UnmarshalUniqueKey(details.GetString(bundle.RelationKeyUniqueKey))
 	if err != nil {
@@ -278,7 +271,7 @@ func (s *service) prepareDetailsForInstallingObject(
 			for j, key := range relationKeys {
 				bundledRelationIds[j] = key.BundledURL()
 			}
-			if _, _, err = s.InstallBundledObjects(ctx, spc, bundledRelationIds, isNewSpace); err != nil {
+			if _, _, err = s.InstallBundledObjects(ctx, spc, bundledRelationIds); err != nil {
 				return nil, fmt.Errorf("install recommended relations: %w", err)
 			}
 		}

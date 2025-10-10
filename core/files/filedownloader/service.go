@@ -180,6 +180,7 @@ func (s *service) runSubscription() error {
 		Keys: []string{
 			bundle.RelationKeyId.String(),
 			bundle.RelationKeyFileId.String(),
+			bundle.RelationKeySpaceId.String(),
 		},
 		NoDepSubscription: true,
 	}, crossspacesub.NoOpPredicate())

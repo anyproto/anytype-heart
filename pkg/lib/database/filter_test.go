@@ -63,6 +63,7 @@ func TestEq_FilterObject(t *testing.T) {
 			eq := FilterEq{Key: "k", Value: domain.Float64(2), Cond: model.BlockContentDataviewFilter_Greater}
 			g := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{"k": domain.Float64(1)})
 			assertFilter(t, eq, g, false)
+
 		})
 	})
 	t.Run("gte", func(t *testing.T) {
@@ -820,6 +821,7 @@ func TestMakeFilters(t *testing.T) {
 					{
 						RelationKey: "key2",
 						Condition:   model.BlockContentDataviewFilter_Equal,
+						Format:      model.RelationFormat_date,
 						Value:       domain.Int64(time.Now().Unix()),
 						QuickOption: model.BlockContentDataviewFilter_CurrentMonth,
 					},
@@ -987,7 +989,7 @@ func TestFilterHasPrefix_FilterObject(t *testing.T) {
 }
 
 func TestFilterDate(t *testing.T) {
-	t.Run("filter by date only", func(t *testing.T) {
+	t.Run("filter by date without time", func(t *testing.T) {
 		store := &stubSpaceObjectStore{}
 
 		now := time.Unix(1736332001, 0).UTC()
@@ -1001,9 +1003,33 @@ func TestFilterDate(t *testing.T) {
 
 		obj1 := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{bundle.RelationKeyCreatedDate: domain.Int64(now.Add(-time.Hour * 24).Unix())})
 		obj2 := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{bundle.RelationKeyCreatedDate: domain.Int64(now.Add(time.Hour).Unix())})
-		obj3 := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{bundle.RelationKeyCreatedDate: domain.Int64(now.Add(24 * time.Hour).Unix())})
+		obj3 := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{bundle.RelationKeyCreatedDate: domain.Int64(now.Unix())})
+		obj4 := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{bundle.RelationKeyCreatedDate: domain.Int64(now.Add(24 * time.Hour).Unix())})
 		assertFilter(t, f, obj1, false)
 		assertFilter(t, f, obj2, true)
-		assertFilter(t, f, obj3, false)
+		assertFilter(t, f, obj3, true)
+		assertFilter(t, f, obj4, false)
+	})
+	t.Run("filter by date with time", func(t *testing.T) {
+		store := &stubSpaceObjectStore{}
+
+		now := time.Unix(1736332001, 0).UTC()
+		f, err := MakeFilter("spaceId", FilterRequest{
+			RelationKey: bundle.RelationKeyCreatedDate,
+			Format:      model.RelationFormat_date,
+			Condition:   model.BlockContentDataviewFilter_Equal,
+			Value:       domain.Int64(now.Unix()),
+			IncludeTime: true,
+		}, store)
+		require.NoError(t, err)
+
+		obj1 := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{bundle.RelationKeyCreatedDate: domain.Int64(now.Add(-time.Hour * 24).Unix())})
+		obj2 := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{bundle.RelationKeyCreatedDate: domain.Int64(now.Add(time.Hour).Unix())})
+		obj3 := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{bundle.RelationKeyCreatedDate: domain.Int64(now.Unix())})
+		obj4 := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{bundle.RelationKeyCreatedDate: domain.Int64(now.Add(24 * time.Hour).Unix())})
+		assertFilter(t, f, obj1, false)
+		assertFilter(t, f, obj2, false)
+		assertFilter(t, f, obj3, true)
+		assertFilter(t, f, obj4, false)
 	})
 }

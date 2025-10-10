@@ -2,6 +2,7 @@ package basic
 
 import (
 	"fmt"
+	"slices"
 
 	"github.com/samber/lo"
 
@@ -274,6 +275,9 @@ func (bs *basic) Move(srcState, destState *state.State, targetBlockId string, po
 			if replacementCandidate == nil {
 				replacementCandidate = srcState.Get(id)
 			}
+			if slices.Contains(b.Model().ChildrenIds, targetBlockId) {
+				return fmt.Errorf("cannot move block to its child")
+			}
 			srcState.Unlink(id)
 		}
 	}
@@ -311,6 +315,9 @@ func (bs *basic) Move(srcState, destState *state.State, targetBlockId string, po
 }
 
 func (bs *basic) Replace(ctx session.Context, id string, block *model.Block) (newId string, err error) {
+	if state.IsRequiredBlockId(id) {
+		return "", fmt.Errorf("can not replace required block")
+	}
 	s := bs.NewStateCtx(ctx)
 	if block.GetContent() == nil {
 		err = fmt.Errorf("no block content")
