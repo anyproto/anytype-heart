@@ -1724,5 +1724,15 @@
     "maxCount": 1,
     "name": "Widget view ID",
     "source": "details"
+  },
+  {
+    "description": "Is this the main chat",
+    "format": "checkbox",
+    "hidden": true,
+    "key": "isMainChat",
+    "maxCount": 1,
+    "name": "Is main chat",
+    "readonly": true,
+    "source": "derived"
   }
 ]
