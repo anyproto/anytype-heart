@@ -2,6 +2,8 @@ package database
 
 import (
 	"bytes"
+	"fmt"
+	"math/rand"
 	"testing"
 	"time"
 
@@ -585,16 +587,17 @@ func TestIncludeTime_Compare(t *testing.T) {
 
 func TestOrderMap_BuildOrderByKey(t *testing.T) {
 	key := domain.RelationKey("key")
+	buf := make([]byte, 0)
 	t.Run("nil OrderMap", func(t *testing.T) {
 		var om *OrderMap
-		result := om.BuildOrderByKey(key, "id1", "id2")
-		assert.Equal(t, "", result)
+		result := om.BuildOrderByKey(key, buf, "id1", "id2")
+		assert.Equal(t, "", string(result))
 	})
 
 	t.Run("empty data", func(t *testing.T) {
 		om := &OrderMap{data: make(map[string]*domain.Details)}
-		result := om.BuildOrderByKey(key, "id1", "id2")
-		assert.Equal(t, "", result)
+		result := om.BuildOrderByKey(key, buf, "id1", "id2")
+		assert.Equal(t, "", string(result))
 	})
 
 	t.Run("single existing id", func(t *testing.T) {
@@ -605,8 +608,8 @@ func TestOrderMap_BuildOrderByKey(t *testing.T) {
 				}),
 			},
 		}
-		result := om.BuildOrderByKey(key, "id1")
-		assert.Equal(t, "BBBBTag A", result)
+		result := om.BuildOrderByKey(key, buf, "id1")
+		assert.Equal(t, "BBBBTag A", string(result))
 	})
 
 	t.Run("multiple existing ids", func(t *testing.T) {
@@ -620,8 +623,8 @@ func TestOrderMap_BuildOrderByKey(t *testing.T) {
 				}),
 			},
 		}
-		result := om.BuildOrderByKey(key, "id1", "id2")
-		assert.Equal(t, "BBBBTag ACCCCTag B", result)
+		result := om.BuildOrderByKey(key, buf, "id1", "id2")
+		assert.Equal(t, "BBBBTag ACCCCTag B", string(result))
 	})
 
 	t.Run("mixed existing and non-existing ids", func(t *testing.T) {
@@ -632,8 +635,8 @@ func TestOrderMap_BuildOrderByKey(t *testing.T) {
 				}),
 			},
 		}
-		result := om.BuildOrderByKey(key, "id1", "nonexistent", "id1")
-		assert.Equal(t, "BBBBTag ABBBBTag A", result)
+		result := om.BuildOrderByKey(key, buf, "id1", "nonexistent", "id1")
+		assert.Equal(t, "BBBBTag ABBBBTag A", string(result))
 	})
 
 	t.Run("no ids provided", func(t *testing.T) {
@@ -644,8 +647,8 @@ func TestOrderMap_BuildOrderByKey(t *testing.T) {
 				}),
 			},
 		}
-		result := om.BuildOrderByKey(key)
-		assert.Equal(t, "", result)
+		result := om.BuildOrderByKey(key, buf)
+		assert.Equal(t, "", string(result))
 	})
 
 	t.Run("not existing key", func(t *testing.T) {
@@ -656,10 +659,38 @@ func TestOrderMap_BuildOrderByKey(t *testing.T) {
 				}),
 			},
 		}
-		result := om.BuildOrderByKey("not_existing_key", "id1")
-		assert.Equal(t, "", result)
-
+		result := om.BuildOrderByKey("not_existing_key", buf, "id1")
+		assert.Equal(t, "", string(result))
 	})
+}
+
+func BenchmarkOrderMap_BuildOrderByKey(b *testing.B) {
+	var (
+		key  = domain.RelationKey("key")
+		data = make(map[string]*domain.Details, 100)
+		ids  = make([]string, 100)
+	)
+
+	for i := 0; i < 100; i++ {
+		ids[i] = fmt.Sprintf("id%d", i)
+		data[ids[i]] = domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+			key: domain.String(fmt.Sprintf("%d", rand.Int63())),
+		})
+	}
+	om := NewOrderMap(data)
+
+	buf := make([]byte, 0, 0) // предварительная аллокация
+
+	rng := rand.New(rand.NewSource(42)) // локальный генератор
+	swap := func(i, j int) { ids[i], ids[j] = ids[j], ids[i] }
+
+	b.ReportAllocs()
+	b.ResetTimer()
+
+	for i := 0; i < b.N; i++ {
+		rng.Shuffle(100, swap)
+		buf = om.BuildOrderByKey(key, buf, ids...)
+	}
 }
 
 func TestOrderMap_Update(t *testing.T) {

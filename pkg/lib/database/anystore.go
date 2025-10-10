@@ -168,12 +168,13 @@ func (s textSort) AppendKey(tuple anyenc.Tuple, v *anyenc.Value) anyenc.Tuple {
 }
 
 type objectSort struct {
-	arena       *anyenc.Arena
-	relationKey string
-	sortKeys    []domain.RelationKey
-	reverse     bool
-	nulls       model.BlockContentDataviewSortEmptyType
-	orders      *OrderMap
+	arena          *anyenc.Arena
+	relationKey    string
+	sortKeys       []domain.RelationKey
+	reverse        bool
+	nulls          model.BlockContentDataviewSortEmptyType
+	orders         *OrderMap
+	sortKeysBuffer [][]byte
 }
 
 func (s objectSort) Fields() []query.SortField {
@@ -190,11 +191,10 @@ func (s objectSort) AppendKey(tuple anyenc.Tuple, v *anyenc.Value) anyenc.Tuple 
 	}()
 
 	val := v.Get(s.relationKey)
-	sortKeys := make([]string, len(s.sortKeys))
 	if val != nil && val.Type() == anyenc.TypeString {
 		id, _ := val.StringBytes()
-		for _, key := range s.sortKeys {
-			sortKeys = append(sortKeys, s.orders.BuildOrderByKey(key, string(id)))
+		for i, key := range s.sortKeys {
+			s.sortKeysBuffer[i] = s.orders.BuildOrderByKey(key, s.sortKeysBuffer[i], string(id))
 		}
 	} else if val != nil && val.Type() == anyenc.TypeArray {
 		arr, _ := val.Array()
@@ -203,13 +203,13 @@ func (s objectSort) AppendKey(tuple anyenc.Tuple, v *anyenc.Value) anyenc.Tuple 
 			id, _ := it.StringBytes()
 			ids = append(ids, string(id))
 		}
-		for _, key := range s.sortKeys {
-			sortKeys = append(sortKeys, s.orders.BuildOrderByKey(key, ids...))
+		for i, key := range s.sortKeys {
+			s.sortKeysBuffer[i] = s.orders.BuildOrderByKey(key, s.sortKeysBuffer[i], ids...)
 		}
 	}
 
-	for _, key := range sortKeys {
-		if key == "" {
+	for _, key := range s.sortKeysBuffer {
+		if len(key) == 0 {
 			if s.nulls == model.BlockContentDataviewSort_Start {
 				tuple = tuple.Append(s.arena.NewNull())
 			} else if s.nulls == model.BlockContentDataviewSort_End {
@@ -219,9 +219,9 @@ func (s objectSort) AppendKey(tuple anyenc.Tuple, v *anyenc.Value) anyenc.Tuple 
 		}
 
 		if s.reverse {
-			tuple = tuple.AppendInverted(s.arena.NewString(key))
+			tuple = tuple.AppendInverted(s.arena.NewString(string(key)))
 		} else {
-			tuple = tuple.Append(s.arena.NewString(key))
+			tuple = tuple.Append(s.arena.NewString(string(key)))
 		}
 	}
 

@@ -2,7 +2,6 @@ package database
 
 import (
 	"slices"
-	"strings"
 	"time"
 
 	"github.com/anyproto/any-store/anyenc"
@@ -33,25 +32,28 @@ type ObjectStore interface {
 }
 
 type OrderMap struct {
-	data map[string]*domain.Details // objectId -> orderId
+	data map[string]*domain.Details // objectId -> { orderId + name }
 }
 
 func NewOrderMap(data map[string]*domain.Details) *OrderMap {
 	return &OrderMap{data: data}
 }
 
-func (m *OrderMap) BuildOrderByKey(key domain.RelationKey, ids ...string) string {
+func (m *OrderMap) BuildOrderByKey(key domain.RelationKey, buf []byte, ids ...string) []byte {
 	if m == nil || len(m.data) == 0 {
-		return ""
+		return buf[:0]
 	}
 
-	var builder strings.Builder
+	buf = buf[:0]
+
 	for _, id := range ids {
 		if details, ok := m.data[id]; ok {
-			builder.WriteString(details.GetString(key))
+			str := details.GetString(key)
+			buf = append(buf, str...)
 		}
 	}
-	return builder.String()
+
+	return buf
 }
 
 // Update updates orders only for objects that exist in OrderMap
@@ -158,15 +160,19 @@ func (so SetOrder) UpdateOrderMap(depDetails []*domain.Details) (updated bool) {
 }
 
 type KeyOrder struct {
-	Key             domain.RelationKey
-	Type            model.BlockContentDataviewSortType
-	EmptyPlacement  model.BlockContentDataviewSortEmptyType
-	relationFormat  model.RelationFormat
-	IncludeTime     bool
+	Key            domain.RelationKey
+	Type           model.BlockContentDataviewSortType
+	EmptyPlacement model.BlockContentDataviewSortEmptyType
+	relationFormat model.RelationFormat
+	IncludeTime    bool
+
 	objectStore     ObjectStore
 	orderMap        *OrderMap
+	orderMapBufferA []byte
+	orderMapBufferB []byte
 	objectSortKeys  []domain.RelationKey
 	arena           *anyenc.Arena
+
 	collatorBuffer  *collate.Buffer
 	collator        *collate.Collator
 	disableCollator bool
@@ -191,6 +197,8 @@ func NewKeyOrder(store ObjectStore, arena *anyenc.Arena, collatorBuffer *collate
 		relationFormat:  format,
 		objectStore:     store,
 		orderMap:        NewOrderMap(nil),
+		orderMapBufferA: make([]byte, 0),
+		orderMapBufferB: make([]byte, 0),
 		objectSortKeys:  sortKeys,
 		arena:           arena,
 		collatorBuffer:  collatorBuffer,
@@ -279,13 +287,18 @@ func (ko *KeyOrder) objectSort() query.Sort {
 		}
 		ko.orderMap = NewOrderMap(data)
 	}
+	buffer := make([][]byte, len(ko.objectSortKeys))
+	for i := range ko.objectSortKeys {
+		buffer[i] = make([]byte, 0)
+	}
 	return objectSort{
-		arena:       ko.arena,
-		relationKey: string(ko.Key),
-		sortKeys:    ko.objectSortKeys,
-		reverse:     ko.Type == model.BlockContentDataviewSort_Desc,
-		nulls:       ko.EmptyPlacement,
-		orders:      ko.orderMap,
+		arena:          ko.arena,
+		relationKey:    string(ko.Key),
+		sortKeys:       ko.objectSortKeys,
+		reverse:        ko.Type == model.BlockContentDataviewSort_Desc,
+		nulls:          ko.EmptyPlacement,
+		orders:         ko.orderMap,
+		sortKeysBuffer: buffer,
 	}
 }
 
@@ -407,10 +420,10 @@ func (ko *KeyOrder) tryExtractObject(av domain.Value, bv domain.Value) (domain.V
 	}
 
 	for _, key := range ko.objectSortKeys {
-		orderA := ko.orderMap.BuildOrderByKey(key, aList...)
-		orderB := ko.orderMap.BuildOrderByKey(key, bList...)
-		if orderA != orderB {
-			return domain.String(orderA), domain.String(orderB)
+		ko.orderMapBufferA = ko.orderMap.BuildOrderByKey(key, ko.orderMapBufferA, aList...)
+		ko.orderMapBufferB = ko.orderMap.BuildOrderByKey(key, ko.orderMapBufferB, bList...)
+		if string(ko.orderMapBufferA) != string(ko.orderMapBufferB) {
+			return domain.String(string(ko.orderMapBufferA)), domain.String(string(ko.orderMapBufferB))
 		}
 	}
 	return av, bv
