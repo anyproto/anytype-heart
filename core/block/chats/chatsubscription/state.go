@@ -64,6 +64,7 @@ func (s *messagesState) CalcScore(key interface{}) float64 {
 	return 0
 }
 
+// newMessagesState creates new messages state. Be careful not to reuse input messages as this function consumes them.
 func newMessagesState(msgs []*chatmodel.Message, limit int) *messagesState {
 	s := &messagesState{
 		messagesByIds:     make(map[string]*stateEntry),

@@ -65,7 +65,11 @@ func (s *subscriptionManager) Unlock() {
 
 // subscribe subscribes to messagesMap. It returns true if there was no subscriptionManager with provided id
 func (s *subscriptionManager) subscribe(req SubscribeLastMessagesRequest, initialMessages []*chatmodel.Message) {
-	st := newMessagesState(initialMessages, req.Limit)
+	cloned := make([]*chatmodel.Message, 0, len(initialMessages))
+	for _, msg := range initialMessages {
+		cloned = append(cloned, msg.Clone())
+	}
+	st := newMessagesState(cloned, req.Limit)
 
 	s.subscriptions[req.SubId] = &subscription{
 		id:                     req.SubId,
