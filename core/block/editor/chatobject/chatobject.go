@@ -253,7 +253,6 @@ func (s *storeObject) Init(ctx *smartblock.InitContext) error {
 			ctx.State.SetDetail(key, val)
 		}
 		setDetail(bundle.RelationKeyName, domain.String("General"))
-		setDetail(bundle.RelationKeyIsHidden, domain.Bool(true))
 		setDetail(bundle.RelationKeyIsMainChat, domain.Bool(true))
 	}
 	err = s.detailsComponent.init(ctx.State)
