@@ -11,7 +11,9 @@ import (
 	"github.com/anyproto/any-sync/commonfile/fileservice"
 	"github.com/anyproto/any-sync/commonspace"
 	"github.com/anyproto/any-sync/commonspace/acl/aclclient"
+
 	"github.com/anyproto/any-sync/coordinator/nodeconfsource"
+	"github.com/anyproto/any-sync/coordinator/subscribeclient"
 	"github.com/anyproto/any-sync/metric"
 	"github.com/anyproto/any-sync/net/peerservice"
 	"github.com/anyproto/any-sync/net/pool"
@@ -109,6 +111,7 @@ import (
 	"github.com/anyproto/anytype-heart/space"
 	"github.com/anyproto/anytype-heart/space/coordinatorclient"
 	"github.com/anyproto/anytype-heart/space/deletioncontroller"
+	"github.com/anyproto/anytype-heart/space/inboxclient"
 	"github.com/anyproto/anytype-heart/space/spacecore"
 	"github.com/anyproto/anytype-heart/space/spacecore/clientserver"
 	"github.com/anyproto/anytype-heart/space/spacecore/credentialprovider"
@@ -328,7 +331,10 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(order.New()).
 		Register(api.New()).
 		Register(pushclient.New()).
-		Register(pushnotification.New())
+		Register(pushnotification.New()).
+		Register(subscribeclient.New()).
+		Register(inboxclient.New())
+
 }
 
 func MiddlewareVersion() string {

@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/anyproto/any-sync/coordinator/coordinatorproto"
 	"github.com/anyproto/any-sync/util/crypto"
 	"github.com/anyproto/anytype-heart/core/anytype/config/loadenv"
 	"github.com/anyproto/anytype-heart/space/clientspace"
@@ -19,6 +20,11 @@ func (s *service) createOneToOne(ctx context.Context, description *spaceinfo.Spa
 	// id2: A5sAtJ6i4Z6465mtPff6m2xyN7SvmCWwBfcUCsR6zmoiNs1J
 
 	bobAccountAddress := loadenv.Get("BOB_ACCOUNT")
+	bobPk, err := crypto.DecodeAccountAddress(bobAccountAddress)
+	if err != nil {
+		return
+	}
+
 	fmt.Printf("-- bob: %s\n", bobAccountAddress)
 
 	bPk, err := crypto.DecodeAccountAddress(bobAccountAddress)
@@ -37,6 +43,22 @@ func (s *service) createOneToOne(ctx context.Context, description *spaceinfo.Spa
 	s.spaceControllers[ctrl.SpaceId()] = ctrl
 
 	s.updater.UpdateCoordinatorStatus()
+
+	// inbox
+	msg := &coordinatorproto.InboxMessage{
+		PacketType: coordinatorproto.InboxPacketType_Default,
+		Packet: &coordinatorproto.InboxPacket{
+			KeyType:          coordinatorproto.InboxKeyType_ed25519,
+			ReceiverIdentity: bobAccountAddress,
+			Payload: &coordinatorproto.InboxPayload{
+				PayloadType: coordinatorproto.InboxPayloadType_InboxPayloadSpaceInvite,
+			},
+		},
+	}
+
+	// - InboxAddMessage for bob
+	log.Info("--inbox: add message")
+	s.inboxClient.InboxAddMessage(ctx, bobPk, msg)
 
 	fmt.Printf("-- ctrl wait load ret: \n")
 	return

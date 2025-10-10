@@ -14,6 +14,7 @@ import (
 	"github.com/anyproto/any-sync/app/logger"
 	"github.com/anyproto/any-sync/commonspace/object/tree/treechangeproto"
 	"github.com/anyproto/any-sync/commonspace/spacesyncproto"
+	"github.com/anyproto/any-sync/coordinator/inboxclient"
 	"github.com/anyproto/any-sync/util/crypto"
 	"github.com/ipfs/go-cid"
 	"go.uber.org/zap"
@@ -101,6 +102,7 @@ type service struct {
 	spaceCore           spacecore.SpaceCoreService
 	aclJoiner           AclJoiner
 	accountService      accountservice.Service
+	inboxClient         inboxclient.InboxClient
 	config              *config.Config
 	notificationService NotificationSender
 	updater             coordinatorStatusUpdater
@@ -152,6 +154,7 @@ func (s *service) Init(a *app.App) (err error) {
 	s.notificationService = app.MustComponent[NotificationSender](a)
 	s.spaceNameGetter = app.MustComponent[objectstore.SpaceNameGetter](a)
 	s.spaceLoaderListener = app.MustComponent[aclobjectmanager.SpaceLoaderListener](a)
+	s.inboxClient = app.MustComponent[inboxclient.InboxClient](a)
 	s.waiting = make(map[string]controllerWaiter)
 	s.techSpaceReady = make(chan struct{})
 	s.personalSpaceId, err = s.spaceCore.DeriveID(context.Background(), spacedomain.SpaceTypeRegular)
