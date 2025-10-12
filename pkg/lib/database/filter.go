@@ -823,13 +823,15 @@ func optionsToMap(key domain.RelationKey, store ObjectStore) map[string]*domain.
 // objectsToMap collects names of objects that present in details of any objects as a value of detail with key=key
 func objectsToMap(key domain.RelationKey, store ObjectStore) map[string]*domain.Details {
 	names := make(map[string]*domain.Details)
-	targetIds := make([]string, 0)
+	targetIdsMap := make(map[string]struct{}, 0)
 
 	err := store.QueryIterate(Query{Filters: []FilterRequest{{
 		RelationKey: key,
 		Condition:   model.BlockContentDataviewFilter_NotEmpty,
 	}}}, func(details *domain.Details) {
-		targetIds = append(targetIds, details.GetStringList(key)...)
+		for _, id := range details.GetStringList(key) {
+			targetIdsMap[id] = struct{}{}
+		}
 	})
 
 	if err != nil {
@@ -837,7 +839,10 @@ func objectsToMap(key domain.RelationKey, store ObjectStore) map[string]*domain.
 		return nil
 	}
 
-	targetIds = lo.Uniq(targetIds)
+	targetIds := make([]string, 0, len(targetIdsMap))
+	for id := range targetIdsMap {
+		targetIds = append(targetIds, id)
+	}
 
 	err = store.QueryIterate(Query{Filters: []FilterRequest{{
 		RelationKey: bundle.RelationKeyId,
