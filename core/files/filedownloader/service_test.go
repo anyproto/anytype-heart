@@ -1,7 +1,6 @@
 package filedownloader
 
 import (
-	"context"
 	"fmt"
 	"sync"
 	"testing"
@@ -13,20 +12,20 @@ import (
 )
 
 type fixture struct {
-	*service
+	*downloader
 }
 
 func newFixture(t *testing.T) *fixture {
-	s := New()
+	s := New().(*service)
 	return &fixture{
-		service: s.(*service),
+		downloader: s.newDownloader(),
 	}
 }
 
 func TestManger(t *testing.T) {
 	t.Run("get one task", func(t *testing.T) {
 		fx := newFixture(t)
-		defer fx.Close(context.Background())
+		defer fx.stop()
 
 		go fx.runManager()
 
