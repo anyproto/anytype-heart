@@ -9,7 +9,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-const RelationChecksum = "37872b52c93c4d1f5ab406c94ba02c6079a7f0d56350e5ef1c75c62b478083cc"
+const RelationChecksum = "56053eaf15a74368d28cddbc6132d794f1607ecfc74aeee88c4797ecd8b6f1f7"
 const (
 	RelationKeyTag                                domain.RelationKey = "tag"
 	RelationKeyCamera                             domain.RelationKey = "camera"
@@ -179,6 +179,7 @@ const (
 	RelationKeyWidgetLayout                       domain.RelationKey = "widgetLayout"
 	RelationKeyWidgetLimit                        domain.RelationKey = "widgetLimit"
 	RelationKeyWidgetViewId                       domain.RelationKey = "widgetViewId"
+	RelationKeyIsMainChat                         domain.RelationKey = "isMainChat"
 )
 
 var (
@@ -1148,6 +1149,20 @@ var (
 			MaxCount:         1,
 			Name:             "Highlighted",
 			ReadOnly:         false,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
+		RelationKeyIsMainChat: {
+
+			DataSource:       model.Relation_derived,
+			Description:      "Is this the main chat",
+			Format:           model.RelationFormat_checkbox,
+			Hidden:           true,
+			Id:               "_brisMainChat",
+			Key:              "isMainChat",
+			MaxCount:         1,
+			Name:             "Is main chat",
+			ReadOnly:         true,
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
 		},
