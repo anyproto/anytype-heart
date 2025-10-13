@@ -677,12 +677,13 @@ func BenchmarkOrderMap_BuildOrderByKey(b *testing.B) {
 			key: domain.String(fmt.Sprintf("%d", rand.Int63())),
 		})
 	}
-	om := NewOrderMap(data)
 
-	buf := make([]byte, 0, 0) // предварительная аллокация
-
-	rng := rand.New(rand.NewSource(42)) // локальный генератор
-	swap := func(i, j int) { ids[i], ids[j] = ids[j], ids[i] }
+	var (
+		om   = NewOrderMap(data)
+		buf  = make([]byte, 0)
+		rng  = rand.New(rand.NewSource(132211))
+		swap = func(i, j int) { ids[i], ids[j] = ids[j], ids[i] }
+	)
 
 	b.ReportAllocs()
 	b.ResetTimer()
