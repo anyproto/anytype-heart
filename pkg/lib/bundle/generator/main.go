@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/samber/lo"
@@ -75,7 +76,12 @@ type Layout struct {
 }
 
 func main() {
-	err := generateRelations()
+	rootPath, err := os.Getwd()
+	exitOnError(err)
+	if strings.HasSuffix(rootPath, "bundle") {
+		err = os.Chdir(filepath.Join("..", "..", ".."))
+	}
+	err = generateRelations()
 	exitOnError(err)
 
 	err = generateTypes()

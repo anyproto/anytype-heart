@@ -19,6 +19,63 @@ jobs:
   wait_for_perftest:
     uses: ./.github/workflows/reusable_wait_for_perftest.yml
 
+  codegen-check:
+    if: github.event_name == 'push'
+    needs: wait_for_perftest
+    runs-on: ${{ vars.RUNNER_TEST }}
+    env:
+      GOPRIVATE: github.com/anyproto
+    steps:
+      - name: Install Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: 1.22
+          cache: false
+          check-latest: true
+      - name: Configure git
+        run: git config --global url.https://${{ secrets.ANYTYPE_PAT }}@github.com/.insteadOf https://github.com/
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Setup environment
+        run: |
+          echo GOPATH=$(go env GOPATH) >> $GITHUB_ENV
+          echo GOBIN=$(go env GOPATH)/bin >> $GITHUB_ENV
+          echo $(go env GOPATH)/bin >> $GITHUB_PATH
+          echo $(pwd)/deps >> $GITHUB_PATH
+          echo $(pwd)/deps/protoc/bin >> $GITHUB_PATH
+      - name: Prepare code generation toolchain
+        run: |
+          go mod download
+          go build -o deps/goderive github.com/awalterschulze/goderive
+          go build -o deps/protoc-gen-gogofaster github.com/gogo/protobuf/protoc-gen-gogofaster
+          go build -o deps/protoc-gen-gogofast github.com/gogo/protobuf/protoc-gen-gogofast
+          go build -o deps/protoc-gen-doc github.com/pseudomuto/protoc-gen-doc/cmd/protoc-gen-doc
+      - name: Run make generate
+        id: codegen
+        run: |
+          make generate
+          if ! git diff --quiet; then
+            git status --short
+            git diff > codegen.patch
+            echo "has_changes=true" >> $GITHUB_OUTPUT
+          else
+            echo "has_changes=false" >> $GITHUB_OUTPUT
+          fi
+      - name: Upload codegen patch
+        if: steps.codegen.outputs.has_changes == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: codegen-diff
+          path: codegen.patch
+          if-no-files-found: error
+      - name: Fail when generated files are stale
+        if: steps.codegen.outputs.has_changes == 'true'
+        run: |
+          echo "::error::Generated files are out of date. Run 'make generate' locally and commit the results."
+          exit 1
+
   unit-test:
     needs: wait_for_perftest
     runs-on: ${{ vars.RUNNER_TEST }}

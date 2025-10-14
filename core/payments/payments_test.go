@@ -217,6 +217,23 @@ func TestFetchAndUpdateMembership(t *testing.T) {
 		assert.Equal(t, uint32(psp.SubscriptionTier_TierUnknown), membership.Tier)
 		assert.Equal(t, model.Membership_StatusUnknown, membership.Status)
 	})
+
+	t.Run("cache fresh and not forced skips network fetch", func(t *testing.T) {
+		fx := newFixture(t)
+		defer fx.finish(t)
+
+		cachedMembership := &model.Membership{
+			Tier:   uint32(psp.SubscriptionTier_TierBuilder1Year),
+			Status: model.Membership_StatusActive,
+		}
+		expiration := time.Now().Add(10 * time.Minute)
+		fx.cache.EXPECT().CacheGet().Return(cachedMembership, nil, expiration, nil)
+
+		changed, _, membership, err := fx.service.fetchAndUpdate(ctx, false, false, true)
+		assert.NoError(t, err)
+		assert.False(t, changed)
+		assert.Equal(t, cachedMembership, membership)
+	})
 }
 
 func (fx *fixture) expectLimitsUpdated() {
