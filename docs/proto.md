@@ -23228,8 +23228,8 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 
 | Name | Number | Description |
 | ---- | ------ | ----------- |
-| BACKGROUND | 0 |  |
-| FOREGROUND | 1 |  |
+| BACKGROUND | 0 | went to background on mobile, hibernated on desktop |
+| FOREGROUND | 1 | went to foreground on mobile, woke from hibernation on desktop |
 
 
 
@@ -32801,6 +32801,7 @@ deprecated, to be removed |
 | relationKey | [string](#string) |  | 4 is reserved for old relation format
 
 stored |
+| orderId | [string](#string) |  | lexicographic id of relation option for ordering |
 
 
 

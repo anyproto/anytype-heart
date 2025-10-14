@@ -245,10 +245,21 @@ func (s *storeObject) Init(ctx *smartblock.InitContext) error {
 		sb:                 s.SmartBlock,
 		deniedRelationKeys: []domain.RelationKey{bundle.RelationKeyInternalFlags},
 	}
+	spaceChatId := s.Space().DerivedIDs().SpaceChat
+	if s.Id() == spaceChatId {
+		setDetail := func(key domain.RelationKey, val domain.Value) {
+			// Set property both in parent and in the current state to avoid pushing a change
+			ctx.State.ParentState().SetDetail(key, val)
+			ctx.State.SetDetail(key, val)
+		}
+		setDetail(bundle.RelationKeyName, domain.String("General"))
+		setDetail(bundle.RelationKeyIsMainChat, domain.Bool(true))
+	}
 	err = s.detailsComponent.init(ctx.State)
 	if err != nil {
 		return fmt.Errorf("init details: %w", err)
 	}
+
 	storeSource.SetPushChangeHook(s.detailsComponent.onPushOrdinaryChange)
 
 	s.AnystoreDebug = anystoredebug.New(s.SmartBlock, stateStore)

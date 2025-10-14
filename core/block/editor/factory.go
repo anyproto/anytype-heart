@@ -52,6 +52,7 @@ type accountService interface {
 	AccountID() string
 	PersonalSpaceID() string
 	MyParticipantId(spaceId string) string
+	GetAccountObjectId() (string, error)
 	Keys() *accountdata.AccountKeys
 }
 
