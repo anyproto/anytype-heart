@@ -728,6 +728,40 @@ func (_c *MockService_InitEmptyFileState_Call) RunAndReturn(run func(*state.Stat
 	return _c
 }
 
+// MigrateFileIdsInBlocks provides a mock function with given fields: st, spc
+func (_m *MockService) MigrateFileIdsInBlocks(st *state.State, spc source.Space) {
+	_m.Called(st, spc)
+}
+
+// MockService_MigrateFileIdsInBlocks_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'MigrateFileIdsInBlocks'
+type MockService_MigrateFileIdsInBlocks_Call struct {
+	*mock.Call
+}
+
+// MigrateFileIdsInBlocks is a helper method to define mock.On call
+//   - st *state.State
+//   - spc source.Space
+func (_e *MockService_Expecter) MigrateFileIdsInBlocks(st interface{}, spc interface{}) *MockService_MigrateFileIdsInBlocks_Call {
+	return &MockService_MigrateFileIdsInBlocks_Call{Call: _e.mock.On("MigrateFileIdsInBlocks", st, spc)}
+}
+
+func (_c *MockService_MigrateFileIdsInBlocks_Call) Run(run func(st *state.State, spc source.Space)) *MockService_MigrateFileIdsInBlocks_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(*state.State), args[1].(source.Space))
+	})
+	return _c
+}
+
+func (_c *MockService_MigrateFileIdsInBlocks_Call) Return() *MockService_MigrateFileIdsInBlocks_Call {
+	_c.Call.Return()
+	return _c
+}
+
+func (_c *MockService_MigrateFileIdsInBlocks_Call) RunAndReturn(run func(*state.State, source.Space)) *MockService_MigrateFileIdsInBlocks_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // MigrateFileIdsInDetails provides a mock function with given fields: st, spc
 func (_m *MockService) MigrateFileIdsInDetails(st *state.State, spc source.Space) {
 	_m.Called(st, spc)
