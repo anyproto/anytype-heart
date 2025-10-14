@@ -364,8 +364,8 @@ func TestService_ObjectTypeListConflictingRelations(t *testing.T) {
 
 func generateRelationTestObject(key domain.RelationKey) objectstore.TestObject {
 	return objectstore.TestObject{
-		bundle.RelationKeyId:          domain.String(key.URL()),
-		bundle.RelationKeyRelationKey: domain.String(key.String()),
-		bundle.RelationKeyLayout:      domain.Int64(model.ObjectType_relation),
+		bundle.RelationKeyId:              domain.String(key.URL()),
+		bundle.RelationKeyRelationKey:     domain.String(key.String()),
+		bundle.RelationKeyResolvedLayout:  domain.Int64(model.ObjectType_relation),
 	}
 }

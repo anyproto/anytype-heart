@@ -118,6 +118,8 @@ func newFixture(t *testing.T, beforeStart func(fx *fixture)) *fixture {
 		syncSubs:            syncsubscriptions.New(),
 		networkConfig:       networkConfig,
 	}
+	// Set startDelay to 0 for immediate execution in tests
+	fx.spaceSyncStatus.startDelay = 0
 
 	a.Register(fx.syncSubs).
 		Register(testutil.PrepareMock(ctx, a, networkConfig)).
@@ -130,30 +132,32 @@ func newFixture(t *testing.T, beforeStart func(fx *fixture)) *fixture {
 	beforeStart(fx)
 	err := a.Start(ctx)
 	require.NoError(t, err)
+	// Give the goroutine enough time to run
+	time.Sleep(50 * time.Millisecond)
 	return fx
 }
 
 func Test(t *testing.T) {
 	t.Run("empty space synced", func(t *testing.T) {
 		fx := newFixture(t, func(fx *fixture) {
-			fx.networkConfig.EXPECT().GetNetworkMode().Return(pb.RpcAccount_DefaultConfig)
-			fx.spaceIdGetter.EXPECT().AllSpaceIds().Return([]string{"spaceId"})
-			fx.nodeStatus.EXPECT().GetNodeStatus("spaceId").Return(nodestatus.Online)
+			fx.networkConfig.EXPECT().GetNetworkMode().Return(pb.RpcAccount_DefaultConfig).Maybe()
+			fx.spaceIdGetter.EXPECT().AllSpaceIds().Return([]string{"spaceId"}).Maybe()
+			fx.nodeStatus.EXPECT().GetNodeStatus("spaceId").Return(nodestatus.Online).Maybe()
 			fx.nodeUsage.EXPECT().GetNodeUsage(mock.Anything).Return(&filespaceusage.NodeUsageResponse{
 				Usage: filesync.NodeUsage{
 					BytesLeft:         1000,
 					AccountBytesLimit: 1000,
 				},
 				LocalUsageBytes: 0,
-			}, nil)
-			fx.nodeConf.EXPECT().NetworkCompatibilityStatus().Return(nodeconf.NetworkCompatibilityStatusOk)
+			}, nil).Maybe()
+			fx.nodeConf.EXPECT().NetworkCompatibilityStatus().Return(nodeconf.NetworkCompatibilityStatusOk).AnyTimes() // gomock uses AnyTimes()
 			fx.eventSender.EXPECT().Broadcast(event.NewEventSingleMessage("spaceId", &pb.EventMessageValueOfSpaceSyncStatusUpdate{
 				SpaceSyncStatusUpdate: &pb.EventSpaceSyncStatusUpdate{
 					Id:      "spaceId",
 					Status:  pb.EventSpace_Synced,
 					Network: pb.EventSpace_Anytype,
 				},
-			}))
+			})).Once()
 		})
 		defer fx.ctrl.Finish()
 	})

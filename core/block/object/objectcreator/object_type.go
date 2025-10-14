@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/anyproto/anytype-heart/core/block/editor/order"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/relationutils"
@@ -55,6 +56,12 @@ func (s *service) createObjectType(ctx context.Context, space clientspace.Space,
 	object.SetString(bundle.RelationKeyId, id)
 	object.SetInt64(bundle.RelationKeyLayout, int64(model.ObjectType_objectType))
 
+	typeKey := domain.TypeKey(uniqueKey.InternalKey())
+
+	if !bundle.HasObjectTypeByKey(typeKey) {
+		s.setOrderId(object, space)
+	}
+
 	createState := state.NewDocWithUniqueKey("", nil, uniqueKey).(*state.State)
 	createState.SetDetails(object)
 	setOriginalCreatedTimestamp(createState, details)
@@ -63,10 +70,8 @@ func (s *service) createObjectType(ctx context.Context, space clientspace.Space,
 		return "", nil, fmt.Errorf("create smartblock from state: %w", err)
 	}
 
-	installingObjectTypeKey := domain.TypeKey(uniqueKey.InternalKey())
-	err = s.createTemplatesForObjectType(space, installingObjectTypeKey)
-	if err != nil {
-		log.With("spaceID", space.Id(), "objectTypeKey", installingObjectTypeKey).Errorf("error while installing templates: %s", err)
+	if err = s.createTemplatesForObjectType(space, typeKey); err != nil {
+		log.With("spaceID", space.Id(), "objectTypeKey", typeKey).Errorf("error while installing templates: %s", err)
 	}
 	return id, newDetails, nil
 }
@@ -76,7 +81,7 @@ func (s *service) installRecommendedRelations(ctx context.Context, space clients
 	for i, key := range relationKeys {
 		bundledRelationIds[i] = key.BundledURL()
 	}
-	_, _, err := s.InstallBundledObjects(ctx, space, bundledRelationIds, false)
+	_, _, err := s.InstallBundledObjects(ctx, space, bundledRelationIds)
 	return err
 }
 
@@ -152,4 +157,38 @@ func (s *service) listInstalledTemplatesForType(spc clientspace.Space, typeKey d
 		}
 	}
 	return existingTemplatesMap, nil
+}
+
+func (s *service) setOrderId(details *domain.Details, spc clientspace.Space) {
+	records, err := s.objectStore.SpaceIndex(spc.Id()).Query(database.Query{
+		Filters: []database.FilterRequest{
+			{
+				RelationKey: bundle.RelationKeyResolvedLayout,
+				Condition:   model.BlockContentDataviewFilter_Equal,
+				Value:       domain.Int64(model.ObjectType_objectType),
+			},
+			{
+				RelationKey: bundle.RelationKeyOrderId,
+				Condition:   model.BlockContentDataviewFilter_NotEmpty,
+			},
+		},
+		Sorts: []database.SortRequest{{
+			RelationKey: bundle.RelationKeyOrderId,
+			Type:        model.BlockContentDataviewSort_Asc,
+			NoCollate:   true,
+		}},
+		Limit: 1,
+	})
+
+	if err != nil {
+		log.With("spaceID", spc.Id()).Errorf("failed to query object types with orders to set orderId to new type: %v", err)
+		return
+	}
+
+	var smallestOrderId string
+	if len(records) > 0 {
+		smallestOrderId = records[0].Details.GetString(bundle.RelationKeyOrderId)
+	}
+
+	details.SetString(bundle.RelationKeyOrderId, order.GetSmallestOrder(smallestOrderId))
 }

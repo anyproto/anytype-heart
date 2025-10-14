@@ -4,14 +4,18 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"sync"
+	"sync/atomic"
 	"time"
 
+	anystore "github.com/anyproto/any-store"
 	"github.com/anyproto/any-sync/accountservice"
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/app/logger"
 	"github.com/anyproto/any-sync/app/ocache"
 	"github.com/anyproto/any-sync/commonspace"
 	"github.com/anyproto/any-sync/commonspace/spacepayloads"
+	"go.uber.org/zap"
 
 	// nolint: misspell
 	"github.com/anyproto/any-sync/commonspace/clientspaceproto"
@@ -37,13 +41,11 @@ import (
 	"github.com/anyproto/anytype-heart/space/spacecore/localdiscovery"
 	"github.com/anyproto/anytype-heart/space/spacecore/peerstore"
 	"github.com/anyproto/anytype-heart/space/spacecore/storage"
+	"github.com/anyproto/anytype-heart/space/spacedomain"
 )
 
 const (
-	CName         = "client.space.spacecore"
-	SpaceType     = "anytype.space"
-	TechSpaceType = "anytype.techspace"
-	ChangeType    = "anytype.object"
+	CName = "client.space.spacecore"
 )
 
 var log = logger.NewNamed(CName)
@@ -66,9 +68,9 @@ type PoolManager interface {
 }
 
 type SpaceCoreService interface {
-	Create(ctx context.Context, replicationKey uint64, metadataPayload []byte) (*AnySpace, error)
-	Derive(ctx context.Context, spaceType string) (space *AnySpace, err error)
-	DeriveID(ctx context.Context, spaceType string) (id string, err error)
+	Create(ctx context.Context, spaceType spacedomain.SpaceType, replicationKey uint64, metadataPayload []byte) (*AnySpace, error)
+	Derive(ctx context.Context, spaceType spacedomain.SpaceType) (space *AnySpace, err error)
+	DeriveID(ctx context.Context, spaceType spacedomain.SpaceType) (id string, err error)
 	Delete(ctx context.Context, spaceId string) (err error)
 	Get(ctx context.Context, id string) (*AnySpace, error)
 	Pick(ctx context.Context, id string) (*AnySpace, error)
@@ -91,9 +93,15 @@ type service struct {
 	peerStore            peerstore.PeerStore
 	peerService          peerservice.PeerService
 	poolManager          PoolManager
+
+	dbsAreFlushing     atomic.Bool
+	componentCtx       context.Context
+	componentCtxCancel context.CancelFunc
 }
 
 func (s *service) Init(a *app.App) (err error) {
+	s.componentCtx, s.componentCtxCancel = context.WithCancel(context.Background())
+
 	conf := a.MustComponent(config.CName).(*config.Config)
 	s.conf = conf.GetSpace()
 	s.accountKeys = a.MustComponent(accountservice.CName).(accountservice.Service).Account()
@@ -129,11 +137,11 @@ func (s *service) Run(ctx context.Context) (err error) {
 	return
 }
 
-func (s *service) Derive(ctx context.Context, spaceType string) (space *AnySpace, err error) {
+func (s *service) Derive(ctx context.Context, spaceType spacedomain.SpaceType) (space *AnySpace, err error) {
 	payload := spacepayloads.SpaceDerivePayload{
 		SigningKey: s.wallet.GetAccountPrivkey(),
 		MasterKey:  s.wallet.GetMasterKey(),
-		SpaceType:  spaceType,
+		SpaceType:  string(spaceType),
 	}
 	id, err := s.commonSpace.DeriveSpace(ctx, payload)
 	if err != nil {
@@ -151,16 +159,16 @@ func (s *service) CloseSpace(ctx context.Context, id string) error {
 	return err
 }
 
-func (s *service) DeriveID(ctx context.Context, spaceType string) (id string, err error) {
+func (s *service) DeriveID(ctx context.Context, spaceType spacedomain.SpaceType) (id string, err error) {
 	payload := spacepayloads.SpaceDerivePayload{
 		SigningKey: s.wallet.GetAccountPrivkey(),
 		MasterKey:  s.wallet.GetMasterKey(),
-		SpaceType:  spaceType,
+		SpaceType:  string(spaceType),
 	}
 	return s.commonSpace.DeriveId(ctx, payload)
 }
 
-func (s *service) Create(ctx context.Context, replicationKey uint64, metadataPayload []byte) (container *AnySpace, err error) {
+func (s *service) Create(ctx context.Context, spaceType spacedomain.SpaceType, replicationKey uint64, metadataPayload []byte) (container *AnySpace, err error) {
 	metadataPrivKey, _, err := crypto.GenerateRandomEd25519KeyPair()
 	if err != nil {
 		return nil, fmt.Errorf("generate metadata key: %w", err)
@@ -170,7 +178,7 @@ func (s *service) Create(ctx context.Context, replicationKey uint64, metadataPay
 		MasterKey:      s.wallet.GetMasterKey(),
 		ReadKey:        crypto.NewAES(),
 		MetadataKey:    metadataPrivKey,
-		SpaceType:      SpaceType,
+		SpaceType:      string(spaceType),
 		ReplicationKey: replicationKey,
 		Metadata:       metadataPayload,
 	}
@@ -252,6 +260,7 @@ func (s *service) loadSpace(ctx context.Context, id string) (value ocache.Object
 		deps.AccountService = &customAccountService{acc}
 	}
 	cc, err := s.commonSpace.NewSpace(ctx, id, deps)
+
 	if err != nil {
 		return
 	}
@@ -274,5 +283,40 @@ func (s *service) getOpenedSpaceIds() (ids []string) {
 }
 
 func (s *service) Close(ctx context.Context) (err error) {
+	s.componentCtxCancel()
 	return s.spaceCache.Close()
+}
+
+func (s *service) Flush(timeout time.Duration, waitPending bool) {
+	if !s.dbsAreFlushing.CompareAndSwap(false, true) {
+		return
+	}
+	defer s.dbsAreFlushing.Store(false)
+
+	var dbs []anystore.DB
+	s.spaceCache.ForEach(func(v ocache.Object) (isContinue bool) {
+		if space, ok := v.(commonspace.Space); ok {
+			dbs = append(dbs, space.Storage().AnyStore())
+		}
+		return true
+	})
+	var idleDuration time.Duration
+	if waitPending {
+		idleDuration = time.Millisecond * 50
+	}
+
+	wg := sync.WaitGroup{}
+	for _, db := range dbs {
+		wg.Add(1)
+		go func(db anystore.DB) {
+			defer wg.Done()
+			ctx, cancel := context.WithTimeout(s.componentCtx, timeout)
+			defer cancel()
+			err := db.Flush(ctx, idleDuration, anystore.FlushModeCheckpointPassive)
+			if err != nil {
+				log.With(zap.Error(err)).Error("failed to flush db")
+			}
+		}(db)
+	}
+	wg.Wait()
 }

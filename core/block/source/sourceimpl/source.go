@@ -3,6 +3,7 @@ package sourceimpl
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"math/rand"
 	"sync"
@@ -49,6 +50,8 @@ var (
 	log = logging.Logger("anytype-mw-source")
 
 	bytesPool = sync.Pool{New: func() any { return make([]byte, poolSize) }}
+
+	ErrSpaceWithoutTreeBuilder = errors.New("space doesn't have tree builder")
 )
 
 func MarshalChange(change *pb.Change) (result []byte, dataType string, err error) {
@@ -137,7 +140,7 @@ type SourceIdEndodedDetails interface {
 func (s *service) newTreeSource(ctx context.Context, space source.Space, id string, buildOpts objecttreebuilder.BuildTreeOpts) (source.Source, error) {
 	treeBuilder := space.TreeBuilder()
 	if treeBuilder == nil {
-		return nil, fmt.Errorf("space doesn't have tree builder")
+		return nil, ErrSpaceWithoutTreeBuilder
 	}
 	ot, err := space.TreeBuilder().BuildTree(ctx, id, buildOpts)
 	if err != nil {
@@ -369,12 +372,12 @@ func (s *treeSource) PushChange(params source.PushChangeParams) (id string, err 
 	}
 
 	addResult, err := s.ObjectTree.AddContent(context.Background(), objecttree.SignableChangeContent{
-		Data:        data,
-		Key:         s.ObjectTree.AclList().AclState().Key(),
-		IsSnapshot:  change.Snapshot != nil,
-		IsEncrypted: true,
-		DataType:    dataType,
-		Timestamp:   params.Time.Unix(),
+		Data:              data,
+		Key:               s.ObjectTree.AclList().AclState().Key(),
+		IsSnapshot:        change.Snapshot != nil,
+		ShouldBeEncrypted: true,
+		DataType:          dataType,
+		Timestamp:         params.Time.Unix(),
 	})
 	if err != nil {
 		return
@@ -562,15 +565,14 @@ func cleanUpChange(objectId string, change *objecttree.Change, model *pb.Change)
 
 func BuildState(spaceId string, initState *state.State, ot objecttree.ReadableObjectTree, applyState bool) (st *state.State, appliedContent []*pb.ChangeContent, changesAppliedSinceSnapshot int, err error) {
 	var (
-		startId    string
-		lastChange *objecttree.Change
-		count      int
+		startId string
+		count   int
 	)
 	// if the state has no first change
 	if initState == nil {
 		startId = ot.Root().Id
 	} else {
-		st = newState(st, initState)
+		st = initState
 		startId = st.ChangeId()
 	}
 
@@ -580,31 +582,30 @@ func BuildState(spaceId string, initState *state.State, ot objecttree.ReadableOb
 		return
 	}
 
-	smartblockHandler := objecthandler.GetSmartblockHandler(sbt)
+	sbHandler := objecthandler.GetSmartblockHandler(sbt)
 
+	var iterErr error
 	var lastMigrationVersion uint32
 	err = ot.IterateFrom(startId, NewUnmarshalTreeChange(),
 		func(change *objecttree.Change) bool {
 			count++
 
-			// that means that we are starting from tree root
+			// that means that we are starting from the tree root
 			if change.Id == ot.Id() {
 				if st != nil {
 					st = st.NewState()
 				} else if uniqueKeyInternalKey != "" {
-					st = newState(st, state.NewDocWithInternalKey(ot.Id(), nil, uniqueKeyInternalKey).(*state.State))
+					st = state.NewDocWithInternalKey(ot.Id(), nil, uniqueKeyInternalKey).(*state.State)
 				} else {
-					st = newState(st, state.NewDoc(ot.Id(), nil).(*state.State))
+					st = state.NewDoc(ot.Id(), nil).(*state.State)
 				}
 				st.SetChangeId(change.Id)
 				return true
 			}
 
-			model := change.Model.(*pb.Change)
+			sbHandler.CollectLastModifiedInfo(change)
 
-			if !smartblockHandler.SkipChangeToSetLastModifiedDate(model) {
-				lastChange = change
-			}
+			model := change.Model.(*pb.Change)
 
 			if model.Version > lastMigrationVersion {
 				lastMigrationVersion = model.Version
@@ -612,9 +613,12 @@ func BuildState(spaceId string, initState *state.State, ot objecttree.ReadableOb
 			if startId == change.Id {
 				if st == nil {
 					changesAppliedSinceSnapshot = 0
-					st = newState(st, state.NewDocFromSnapshot(ot.Id(), model.Snapshot, state.WithChangeId(startId), state.WithInternalKey(uniqueKeyInternalKey)).(*state.State))
+					st, iterErr = state.NewDocFromSnapshot(ot.Id(), model.Snapshot, state.WithChangeId(startId), state.WithInternalKey(uniqueKeyInternalKey))
+					if iterErr != nil {
+						return false
+					}
 				} else {
-					st = newState(st, st.NewState())
+					st = st.NewState()
 				}
 				return true
 			}
@@ -636,6 +640,10 @@ func BuildState(spaceId string, initState *state.State, ot objecttree.ReadableOb
 	if err != nil {
 		return
 	}
+	if iterErr != nil {
+		err = fmt.Errorf("iter: %w", iterErr)
+		return
+	}
 	if applyState {
 		_, _, err = state.ApplyStateFastOne(spaceId, st)
 		if err != nil {
@@ -643,14 +651,10 @@ func BuildState(spaceId string, initState *state.State, ot objecttree.ReadableOb
 		}
 	}
 
-	if lastChange != nil && !st.IsTheHeaderChange() {
-		st.SetLastModified(lastChange.Timestamp, domain.NewParticipantId(spaceId, lastChange.Identity.Account()))
+	if !st.IsTheHeaderChange() {
+		ts, accountId := sbHandler.GetLastModifiedInfo()
+		st.SetLastModified(ts, domain.NewParticipantId(spaceId, accountId))
 	}
 	st.SetMigrationVersion(lastMigrationVersion)
 	return
-}
-
-func newState(st *state.State, toAssign *state.State) *state.State {
-	st = toAssign
-	return st
 }

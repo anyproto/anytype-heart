@@ -23,7 +23,7 @@ func TestLinkPreview_Fetch(t *testing.T) {
 		lp := New()
 		lp.Init(nil)
 
-		info, _, isFile, err := lp.Fetch(ctx, ts.URL)
+		info, _, isFile, err := lp.Fetch(ctx, ts.URL, false)
 		require.NoError(t, err)
 		assert.False(t, isFile)
 		assert.Equal(t, model.LinkPreview{
@@ -42,7 +42,7 @@ func TestLinkPreview_Fetch(t *testing.T) {
 		lp := New()
 		lp.Init(nil)
 
-		info, _, isFile, err := lp.Fetch(ctx, ts.URL)
+		info, _, isFile, err := lp.Fetch(ctx, ts.URL, false)
 		require.NoError(t, err)
 		assert.Equal(t, model.LinkPreview{
 			Url:         ts.URL,
@@ -62,7 +62,7 @@ func TestLinkPreview_Fetch(t *testing.T) {
 		url := ts.URL + "/filename.jpg"
 		lp := New()
 		lp.Init(nil)
-		info, _, isFile, err := lp.Fetch(ctx, url)
+		info, _, isFile, err := lp.Fetch(ctx, url, false)
 		require.NoError(t, err)
 		assert.Equal(t, model.LinkPreview{
 			Url:        url,
@@ -144,10 +144,11 @@ const tetsHtmlWithoutDescription = `<html><head>
 Sed ut perspiciatis, unde omnis iste natus error sit voluptatem accusantium doloremque laudantium, totam rem aperiam eaque ipsa, quae ab illo inventore veritatis et quasi architecto beatae vitae dicta sunt, explicabo.
 </p></div></body></html>`
 
-func TestCheckPrivateLink(t *testing.T) {
+func TestCheckResponseHeaders(t *testing.T) {
 	t.Run("nil response", func(t *testing.T) {
-		err := checkPrivateLink(nil)
+		whitelist, err := checkResponseHeaders(nil)
 		require.Error(t, err)
+		assert.Empty(t, whitelist)
 		assert.Contains(t, err.Error(), "response is nil")
 	})
 
@@ -158,22 +159,24 @@ func TestCheckPrivateLink(t *testing.T) {
 				"Server":       {"nginx/1.18.0"},
 			},
 		}
-		err := checkPrivateLink(resp)
+		whitelist, err := checkResponseHeaders(resp)
 		require.NoError(t, err)
+		assert.Empty(t, whitelist)
 	})
 
 	t.Run("Content-Security-Policy headers", func(t *testing.T) {
 		testCases := []struct {
-			name          string
-			csp           string
-			shouldBeError bool
+			name  string
+			csp   string
+			rules []string
 		}{
-			{"default-src none", "default-src 'none'", true},
-			{"frame-ancestors none", "frame-ancestors 'none'", true},
-			{"both restrictive", "default-src 'none'; frame-ancestors 'none'", true},
-			{"normal CSP", "default-src 'self'; script-src 'unsafe-inline'", false},
-			{"case insensitive", "DEFAULT-SRC 'NONE'", true},
-			{"reach content", "image-src example.com sample.net 'self'; default-src 'none'", true},
+			{"default-src none", "default-src 'none'", []string{"'none'"}},
+			{"normal CSP", "default-src 'self'; script-src 'unsafe-inline'", []string{"'self'"}},
+			{"case insensitive", "DEFAULT-SRC 'NONE'", []string{"'none'"}},
+			{"reach content", "img-src example.com sample.net 'self'; default-src 'none'", []string{"example.com", "sample.net", "'self'"}},
+			{"img-src is preferable", "img-src example.com; default-src 'self'", []string{"example.com"}},
+			{"img-src is restrictive", "img-src 'none'; default-src 'self'", []string{"'none'"}},
+			{"only img-src", "img-src 'self'", []string{"'self'"}},
 		}
 
 		for _, tc := range testCases {
@@ -183,14 +186,9 @@ func TestCheckPrivateLink(t *testing.T) {
 						"Content-Security-Policy": {tc.csp},
 					},
 				}
-				err := checkPrivateLink(resp)
-				if tc.shouldBeError {
-					require.Error(t, err)
-					assert.ErrorIs(t, err, ErrPrivateLink)
-					assert.Contains(t, err.Error(), "Content-Security-Policy")
-				} else {
-					require.NoError(t, err)
-				}
+				cspRules, err := checkResponseHeaders(resp)
+				require.NoError(t, err)
+				assert.Equal(t, tc.rules, cspRules)
 			})
 		}
 	})
@@ -218,7 +216,7 @@ func TestCheckPrivateLink(t *testing.T) {
 						"X-Robots-Tag": {tc.robotsTag},
 					},
 				}
-				err := checkPrivateLink(resp)
+				_, err := checkResponseHeaders(resp)
 				if tc.shouldBeError {
 					require.Error(t, err)
 					assert.ErrorIs(t, err, ErrPrivateLink)
@@ -238,11 +236,9 @@ func TestCheckPrivateLink(t *testing.T) {
 				"X-Robots-Tag":            {"none"},
 			},
 		}
-		err := checkPrivateLink(resp)
+		_, err := checkResponseHeaders(resp)
 		require.Error(t, err)
 		assert.ErrorIs(t, err, ErrPrivateLink)
-		// Should detect the first privacy directive it encounters
-		assert.Contains(t, err.Error(), "private link detected")
 	})
 
 	t.Run("edge cases", func(t *testing.T) {
@@ -276,7 +272,7 @@ func TestCheckPrivateLink(t *testing.T) {
 		for _, tc := range testCases {
 			t.Run(tc.name, func(t *testing.T) {
 				resp := &http.Response{Header: tc.headers}
-				err := checkPrivateLink(resp)
+				_, err := checkResponseHeaders(resp)
 				if tc.wantErr {
 					require.Error(t, err)
 				} else {
@@ -299,7 +295,7 @@ func TestLinkPreview_Fetch_PrivateLink(t *testing.T) {
 		lp := New()
 		lp.Init(nil)
 
-		_, _, _, err := lp.Fetch(ctx, ts.URL)
+		_, _, _, err := lp.Fetch(ctx, ts.URL, false)
 		require.Error(t, err)
 		assert.ErrorIs(t, err, ErrPrivateLink)
 	})
@@ -316,7 +312,7 @@ func TestLinkPreview_Fetch_PrivateLink(t *testing.T) {
 		lp := New()
 		lp.Init(nil)
 
-		_, _, _, err := lp.Fetch(ctx, ts.URL+"/filename.jpg")
+		_, _, _, err := lp.Fetch(ctx, ts.URL+"/filename.jpg", false)
 		require.Error(t, err)
 		assert.ErrorIs(t, err, ErrPrivateLink)
 	})
@@ -332,10 +328,530 @@ func TestLinkPreview_Fetch_PrivateLink(t *testing.T) {
 		lp := New()
 		lp.Init(nil)
 
-		info, _, isFile, err := lp.Fetch(ctx, ts.URL)
+		info, _, isFile, err := lp.Fetch(ctx, ts.URL, false)
 		require.NoError(t, err)
 		assert.False(t, isFile)
 		assert.Equal(t, ts.URL, info.Url)
 		assert.Equal(t, "Title", info.Title)
+	})
+}
+
+func TestCheckLinksWhitelist(t *testing.T) {
+	t.Run("empty whitelist should allow all", func(t *testing.T) {
+		// given
+		preview := &model.LinkPreview{
+			Url:        "https://example.com/page",
+			ImageUrl:   "https://cdn.example.com/image.jpg",
+			FaviconUrl: "https://static.example.com/favicon.ico",
+		}
+		var emptyWhitelist []string
+
+		// when
+		applyCSPRules(emptyWhitelist, preview)
+
+		// then
+		assert.NotEmpty(t, preview.ImageUrl)
+		assert.NotEmpty(t, preview.FaviconUrl)
+	})
+
+	t.Run("nil whitelist should allow all", func(t *testing.T) {
+		// given
+		preview := &model.LinkPreview{
+			Url:        "https://example.com/page",
+			ImageUrl:   "https://cdn.example.com/image.jpg",
+			FaviconUrl: "https://static.example.com/favicon.ico",
+		}
+
+		// when
+		applyCSPRules(nil, preview)
+
+		// then
+		assert.NotEmpty(t, preview.ImageUrl)
+		assert.NotEmpty(t, preview.FaviconUrl)
+	})
+
+	t.Run("'self' directive should expand to main URL host", func(t *testing.T) {
+		// given
+		preview := &model.LinkPreview{
+			Url:        "https://example.com/page",
+			ImageUrl:   "https://example.com/image.jpg",   // same host as main URL
+			FaviconUrl: "https://example.com/favicon.ico", // same host as main URL
+		}
+		whitelist := []string{"'self'"}
+
+		// when
+		applyCSPRules(whitelist, preview)
+
+		// then
+		assert.NotEmpty(t, preview.ImageUrl)
+		assert.NotEmpty(t, preview.FaviconUrl)
+	})
+
+	t.Run("'self' directive should reject different hosts", func(t *testing.T) {
+		// given
+		preview := &model.LinkPreview{
+			Url:        "https://example.com/page",
+			ImageUrl:   "https://cdn.example.com/image.jpg", // different host
+			FaviconUrl: "https://example.com/favicon.ico",   // same host
+		}
+		whitelist := []string{"'self'"}
+
+		// when
+		applyCSPRules(whitelist, preview)
+
+		// then
+		assert.Empty(t, preview.ImageUrl)
+		assert.NotEmpty(t, preview.FaviconUrl)
+	})
+
+	t.Run("explicit host whitelist should allow matching hosts", func(t *testing.T) {
+		// given
+		preview := &model.LinkPreview{
+			Url:        "https://example.com/page",
+			ImageUrl:   "https://cdn.example.com/image.jpg",
+			FaviconUrl: "https://static.example.com/favicon.ico",
+		}
+		whitelist := []string{"cdn.example.com", "static.example.com"}
+
+		// when
+		applyCSPRules(whitelist, preview)
+
+		// then
+		assert.NotEmpty(t, preview.ImageUrl)
+		assert.NotEmpty(t, preview.FaviconUrl)
+	})
+
+	t.Run("explicit host whitelist should reject non-matching hosts", func(t *testing.T) {
+		// given
+		preview := &model.LinkPreview{
+			Url:        "https://example.com/page",
+			ImageUrl:   "https://malicious.com/image.jpg",        // not in whitelist
+			FaviconUrl: "https://static.example.com/favicon.ico", // in whitelist
+		}
+		whitelist := []string{"static.example.com", "allowed.com"}
+
+		// when
+		applyCSPRules(whitelist, preview)
+
+		// then
+		assert.Empty(t, preview.ImageUrl)
+		assert.NotEmpty(t, preview.FaviconUrl)
+	})
+
+	t.Run("combined 'self' and explicit hosts", func(t *testing.T) {
+		// given
+		preview := &model.LinkPreview{
+			Url:        "https://example.com/page",
+			ImageUrl:   "https://example.com/image.jpg",       // matches 'self'
+			FaviconUrl: "https://cdn.trusted.com/favicon.ico", // matches explicit host
+		}
+		whitelist := []string{"'self'", "cdn.trusted.com"}
+
+		// when
+		applyCSPRules(whitelist, preview)
+
+		// then
+		assert.NotEmpty(t, preview.ImageUrl)
+		assert.NotEmpty(t, preview.FaviconUrl)
+	})
+
+	t.Run("mixed wildcard and specific domains", func(t *testing.T) {
+		// given
+		preview := &model.LinkPreview{
+			Url:        "https://example.com/page",
+			ImageUrl:   "https://example.com/image.jpg",
+			FaviconUrl: "https://specific.com/favicon.ico",
+		}
+		whitelist := []string{"*", "specific.com", "'self'"}
+
+		// when
+		applyCSPRules(whitelist, preview)
+
+		// then
+		assert.NotEmpty(t, preview.ImageUrl)
+		assert.NotEmpty(t, preview.FaviconUrl)
+	})
+
+	t.Run("template in whitelist", func(t *testing.T) {
+		// given
+		preview := &model.LinkPreview{
+			ImageUrl:   "https://img.example.com/image.jpg",
+			FaviconUrl: "https://fav.example.com/favicon.ico",
+		}
+		whitelist := []string{"*.example.com"}
+
+		// when
+		applyCSPRules(whitelist, preview)
+
+		// then
+		assert.NotEmpty(t, preview.ImageUrl)
+		assert.NotEmpty(t, preview.FaviconUrl)
+	})
+
+	t.Run("schema in whitelist", func(t *testing.T) {
+		// given
+		preview := &model.LinkPreview{
+			ImageUrl:   "https://img.example.com/image.jpg",
+			FaviconUrl: "https://fav.example.com/favicon.ico",
+		}
+		whitelist := []string{"https:"}
+
+		// when
+		applyCSPRules(whitelist, preview)
+
+		// then
+		assert.NotEmpty(t, preview.ImageUrl)
+		assert.NotEmpty(t, preview.FaviconUrl)
+	})
+}
+
+func TestReplaceGenericTitle(t *testing.T) {
+	t.Run("should not change title when empty HTML content", func(t *testing.T) {
+		// given
+		preview := &model.LinkPreview{
+			Url:   "https://www.reddit.com/r/golang/test",
+			Title: "Reddit - The heart of the internet",
+		}
+		var emptyHTML []byte
+
+		// when
+		replaceGenericTitle(preview, emptyHTML)
+
+		// then
+		assert.Equal(t, "Reddit - The heart of the internet", preview.Title)
+	})
+
+	t.Run("should not change title when not a tracked domain", func(t *testing.T) {
+		// given
+		preview := &model.LinkPreview{
+			Url:   "https://example.com/test",
+			Title: "Some Generic Title",
+		}
+		htmlContent := []byte(`<html><body><h1>Specific Title</h1></body></html>`)
+
+		// when
+		replaceGenericTitle(preview, htmlContent)
+
+		// then
+		assert.Equal(t, "Some Generic Title", preview.Title)
+	})
+
+	t.Run("should not change title when title is not generic", func(t *testing.T) {
+		// given
+		preview := &model.LinkPreview{
+			Url:   "https://www.reddit.com/r/golang/test",
+			Title: "Let's play tetris!",
+		}
+		htmlContent := []byte(`<html><body><h1 slot="title">Tetris is full of fun!</h1></body></html>`)
+
+		// when
+		replaceGenericTitle(preview, htmlContent)
+
+		// then
+		assert.Equal(t, "Let's play tetris!", preview.Title)
+	})
+
+	t.Run("should replace Reddit generic title with h1[slot='title']", func(t *testing.T) {
+		// given
+		preview := &model.LinkPreview{
+			Url:   "https://www.reddit.com/r/golang/comments/123/test",
+			Title: "Reddit - The heart of the internet",
+		}
+		htmlContent := []byte(`
+			<html>
+				<body>
+					<h1 slot="title">How to write better Go code</h1>
+					<div>Other content</div>
+				</body>
+			</html>
+		`)
+
+		// when
+		replaceGenericTitle(preview, htmlContent)
+
+		// then
+		assert.Equal(t, "How to write better Go code", preview.Title)
+	})
+
+	t.Run("should replace Reddit generic title with shreddit-post h1", func(t *testing.T) {
+		// given
+		preview := &model.LinkPreview{
+			Url:   "https://www.reddit.com/r/golang",
+			Title: "Reddit",
+		}
+		htmlContent := []byte(`
+			<html>
+				<body>
+					<shreddit-post>
+						<h1>Discussion: Go 1.21 Features</h1>
+					</shreddit-post>
+				</body>
+			</html>
+		`)
+
+		// when
+		replaceGenericTitle(preview, htmlContent)
+
+		// then
+		assert.Equal(t, "Discussion: Go 1.21 Features", preview.Title)
+	})
+
+	t.Run("should replace Reddit generic title with h1 containing 'r/'", func(t *testing.T) {
+		// given
+		preview := &model.LinkPreview{
+			Url:   "https://www.reddit.com/r/golang",
+			Title: "Reddit - The heart of the internet",
+		}
+		htmlContent := []byte(`
+			<html>
+				<body>
+					<h1>r/golang: The Go Programming Language</h1>
+					<h2>Other heading</h2>
+				</body>
+			</html>
+		`)
+
+		// when
+		replaceGenericTitle(preview, htmlContent)
+
+		// then
+		assert.Equal(t, "r/golang: The Go Programming Language", preview.Title)
+	})
+
+	t.Run("should use first matching selector", func(t *testing.T) {
+		// given
+		preview := &model.LinkPreview{
+			Url:   "https://www.reddit.com/test",
+			Title: "Reddit - The heart of the internet",
+		}
+		htmlContent := []byte(`
+			<html>
+				<body>
+					<h1 slot="title">First Title</h1>
+					<div data-test-id="post-content">
+						<h3>Second Title</h3>
+					</div>
+					<shreddit-post>
+						<h1>Third Title</h1>
+					</shreddit-post>
+				</body>
+			</html>
+		`)
+
+		// when
+		replaceGenericTitle(preview, htmlContent)
+
+		// then
+		assert.Equal(t, "First Title", preview.Title)
+	})
+
+	t.Run("should trim whitespace from extracted title", func(t *testing.T) {
+		// given
+		preview := &model.LinkPreview{
+			Url:   "https://www.reddit.com/test",
+			Title: "Reddit - Dive into anything",
+		}
+		htmlContent := []byte(`
+			<html>
+				<body>
+					<h1 slot="title">   Trimmed Title   </h1>
+				</body>
+			</html>
+		`)
+
+		// when
+		replaceGenericTitle(preview, htmlContent)
+
+		// then
+		assert.Equal(t, "Trimmed Title", preview.Title)
+	})
+
+	t.Run("should truncate long titles", func(t *testing.T) {
+		// given
+		preview := &model.LinkPreview{
+			Url:   "https://www.reddit.com/test",
+			Title: "Reddit - The heart of the internet",
+		}
+		longTitle := "This is a very long title that exceeds the maximum length limit of 100 characters and should be truncated"
+		htmlContent := []byte(`
+			<html>
+				<body>
+					<h1 slot="title">` + longTitle + `</h1>
+				</body>
+			</html>
+		`)
+
+		// when
+		replaceGenericTitle(preview, htmlContent)
+
+		// then
+		assert.True(t, len(preview.Title) <= 100)
+	})
+
+	t.Run("should not use titles shorter than 5 characters", func(t *testing.T) {
+		// given
+		preview := &model.LinkPreview{
+			Url:   "https://www.reddit.com/test",
+			Title: "Reddit - The heart of the internet",
+		}
+		htmlContent := []byte(`
+			<html>
+				<body>
+					<h1 slot="title">    </h1>
+					<div data-test-id="post-content">
+						<h3>Hi</h3>
+					</div>
+					<shreddit-post>
+						<h1>Good Title</h1>
+					</shreddit-post>
+				</body>
+			</html>
+		`)
+
+		// when
+		replaceGenericTitle(preview, htmlContent)
+
+		// then
+		assert.Equal(t, "Good Title", preview.Title)
+	})
+
+	t.Run("should not change title if no valid replacement found", func(t *testing.T) {
+		// given
+		preview := &model.LinkPreview{
+			Url:   "https://www.reddit.com/test",
+			Title: "Reddit - The heart of the internet",
+		}
+		htmlContent := []byte(`
+			<html>
+				<body>
+					<h1 slot="title">   </h1>
+					<div data-test-id="post-content">
+						<h3></h3>
+					</div>
+					<div>No matching selectors here</div>
+				</body>
+			</html>
+		`)
+
+		// when
+		replaceGenericTitle(preview, htmlContent)
+
+		// then
+		assert.Equal(t, "Reddit - The heart of the internet", preview.Title)
+	})
+
+	t.Run("should handle malformed HTML gracefully", func(t *testing.T) {
+		// given
+		preview := &model.LinkPreview{
+			Url:   "https://www.reddit.com/test",
+			Title: "Reddit - The heart of the internet",
+		}
+		malformedHTML := []byte(`<html><body><h1 slot="title">Valid Title</h1><unclosed><tag></body></html>`)
+
+		// when
+		replaceGenericTitle(preview, malformedHTML)
+
+		// then
+		assert.Equal(t, "Valid Title", preview.Title)
+	})
+
+	t.Run("should handle invalid HTML gracefully", func(t *testing.T) {
+		// given
+		preview := &model.LinkPreview{
+			Url:   "https://www.reddit.com/test",
+			Title: "Reddit - The heart of the internet",
+		}
+		invalidHTML := []byte(`not html at all`)
+
+		// when
+		replaceGenericTitle(preview, invalidHTML)
+
+		// then
+		assert.Equal(t, "Reddit - The heart of the internet", preview.Title)
+	})
+
+	// Test case-insensitive matching
+	t.Run("should match generic title case-insensitively", func(t *testing.T) {
+		// given
+		preview := &model.LinkPreview{
+			Url:   "https://www.reddit.com/test",
+			Title: "REDDIT - THE HEART OF THE INTERNET",
+		}
+		htmlContent := []byte(`
+			<html>
+				<body>
+					<h1 slot="title">Actual Post Title</h1>
+				</body>
+			</html>
+		`)
+
+		// when
+		replaceGenericTitle(preview, htmlContent)
+
+		// then
+		assert.Equal(t, "Actual Post Title", preview.Title)
+	})
+
+	t.Run("should match partial generic title", func(t *testing.T) {
+		// given
+		preview := &model.LinkPreview{
+			Url:   "https://www.reddit.com/test",
+			Title: "Are you sure Reddit - The heart of the internet ?",
+		}
+		htmlContent := []byte(`
+			<html>
+				<body>
+					<h1 slot="title">Yes we are sure</h1>
+				</body>
+			</html>
+		`)
+
+		// when
+		replaceGenericTitle(preview, htmlContent)
+
+		// then
+		assert.Equal(t, "Yes we are sure", preview.Title)
+	})
+
+	t.Run("should not match similar domains", func(t *testing.T) {
+		// given
+		preview := &model.LinkPreview{
+			Url:   "https://notreddit.com/test",
+			Title: "Reddit - The heart of the internet",
+		}
+		htmlContent := []byte(`<html><body><h1 slot="title">Should Not Replace</h1></body></html>`)
+
+		// when
+		replaceGenericTitle(preview, htmlContent)
+
+		// then
+		assert.Equal(t, "Reddit - The heart of the internet", preview.Title)
+	})
+
+	t.Run("should handle empty title from HTML", func(t *testing.T) {
+		// given
+		preview := &model.LinkPreview{
+			Url:   "https://www.reddit.com/test",
+			Title: "Reddit - The heart of the internet",
+		}
+		htmlContent := []byte(`
+			<html>
+				<body>
+					<h1 slot="title"></h1>
+					<div data-test-id="post-content">
+						<h3>   </h3>
+					</div>
+					<shreddit-post>
+						<h1>Final Good Title</h1>
+					</shreddit-post>
+				</body>
+			</html>
+		`)
+
+		// when
+		replaceGenericTitle(preview, htmlContent)
+
+		// then
+		assert.Equal(t, "Final Good Title", preview.Title)
 	})
 }

@@ -5,6 +5,8 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"slices"
+	"strings"
 	"time"
 
 	anystore "github.com/anyproto/any-store"
@@ -34,6 +36,37 @@ func (u NodeUsage) GetSpaceUsage(spaceId string) SpaceStat {
 		TotalBytesUsage:   u.TotalBytesUsage,
 		AccountBytesLimit: u.AccountBytesLimit,
 	}
+}
+
+// Equal assume that Spaces slice is sorted by SpaceId
+func (a NodeUsage) Equal(b NodeUsage) bool {
+	if a.AccountBytesLimit != b.AccountBytesLimit ||
+		a.TotalBytesUsage != b.TotalBytesUsage ||
+		a.TotalCidsCount != b.TotalCidsCount ||
+		a.BytesLeft != b.BytesLeft {
+		return false
+	}
+
+	if len(a.Spaces) != len(b.Spaces) {
+		return false
+	}
+
+	for i := range a.Spaces {
+		if !a.Spaces[i].Equal(b.Spaces[i]) {
+			return false
+		}
+	}
+
+	return true
+}
+
+func (a SpaceStat) Equal(b SpaceStat) bool {
+	return a.SpaceId == b.SpaceId &&
+		a.FileCount == b.FileCount &&
+		a.CidsCount == b.CidsCount &&
+		a.TotalBytesUsage == b.TotalBytesUsage &&
+		a.SpaceBytesUsage == b.SpaceBytesUsage &&
+		a.AccountBytesLimit == b.AccountBytesLimit
 }
 
 type SpaceStat struct {
@@ -103,7 +136,7 @@ func (s *fileSync) precacheNodeUsage() {
 	// Init cache with default limits
 	if !ok || err != nil {
 		err = s.nodeUsageCache.Set(context.Background(), "node_usage", NodeUsage{
-			AccountBytesLimit: 1024 * 1024 * 1024, // 1 GB
+			AccountBytesLimit: 100 * 1024 * 1024, // 100 MB
 		})
 		if err != nil {
 			log.Error("can't set default limits", zap.Error(err))
@@ -167,6 +200,9 @@ func (s *fileSync) getAndUpdateNodeUsage(ctx context.Context) (NodeUsage, error)
 			AccountBytesLimit: int(space.LimitBytes),
 		})
 	}
+	slices.SortFunc(spaces, func(a, b SpaceStat) int {
+		return strings.Compare(a.SpaceId, b.SpaceId)
+	})
 	left := uint64(0)
 	if info.LimitBytes > info.TotalUsageBytes {
 		left = info.LimitBytes - info.TotalUsageBytes
@@ -177,6 +213,10 @@ func (s *fileSync) getAndUpdateNodeUsage(ctx context.Context) (NodeUsage, error)
 		TotalBytesUsage:   int(info.TotalUsageBytes),
 		BytesLeft:         left,
 		Spaces:            spaces,
+	}
+
+	if prevUsage.Equal(usage) {
+		return usage, nil
 	}
 	err = s.nodeUsageCache.Set(context.Background(), anystoreprovider.SystemKeys.NodeUsage(), usage)
 	if err != nil {

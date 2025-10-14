@@ -171,3 +171,18 @@ func (mw *Middleware) ObjectTypeResolveLayoutConflicts(_ context.Context, req *p
 		},
 	}
 }
+
+func (mw *Middleware) ObjectTypeSetOrder(cctx context.Context, req *pb.RpcObjectTypeSetOrderRequest) *pb.RpcObjectTypeSetOrderResponse {
+	orderService := mustService[order.OrderSetter](mw)
+	orderIds, err := orderService.SetObjectTypesOrder(req.SpaceId, req.TypeIds)
+
+	code := mapErrorCode[pb.RpcObjectTypeSetOrderResponseErrorCode](err)
+
+	return &pb.RpcObjectTypeSetOrderResponse{
+		OrderIds: orderIds,
+		Error: &pb.RpcObjectTypeSetOrderResponseError{
+			Code:        code,
+			Description: getErrorDescription(err),
+		},
+	}
+}

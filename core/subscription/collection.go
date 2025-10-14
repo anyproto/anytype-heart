@@ -189,19 +189,23 @@ func (c *collectionSub) close() {
 	c.sortedSub.close()
 }
 
-func (s *spaceSubscriptions) newCollectionSub(id string, spaceId string, collectionID string, keys []domain.RelationKey, filterDepIds []string, flt database.Filter, order database.Order, limit, offset int, disableDepSub bool) (*collectionSub, error) {
-	obs, err := s.newCollectionObserver(spaceId, collectionID, id)
+func (c *collectionSub) reorder(ctx *opCtx, depDetails []*domain.Details) {
+	c.sortedSub.reorder(ctx, depDetails)
+}
+
+func (s *spaceSubscriptions) newCollectionSub(req SubscribeRequest, f *database.Filters, filterDepIds []string) (*collectionSub, error) {
+	obs, err := s.newCollectionObserver(req.SpaceId, req.CollectionId, req.SubId)
 	if err != nil {
 		return nil, err
 	}
-	if flt == nil {
-		flt = obs
+	if f.FilterObj == nil {
+		f.FilterObj = obs
 	} else {
-		flt = database.FiltersAnd{obs, flt}
+		f.FilterObj = database.FiltersAnd{obs, f.FilterObj}
 	}
 
-	ssub := s.newSortedSub(id, spaceId, keys, flt, order, limit, offset)
-	ssub.disableDep = disableDepSub
+	ssub := s.newSortedSub(req.SubId, slice.StringsInto[domain.RelationKey](req.Keys), f.FilterObj, f.Order, int(req.Limit), int(req.Offset))
+	ssub.disableDep = req.NoDepSubscription
 	if !ssub.disableDep {
 		ssub.forceSubIds = filterDepIds
 	}
@@ -214,11 +218,16 @@ func (s *spaceSubscriptions) newCollectionSub(id string, spaceId string, collect
 	entries := obs.listEntries()
 	filtered := entries[:0]
 	for _, e := range entries {
-		if flt.FilterObject(e.data) {
+		if f.FilterObj.FilterObject(e.data) {
 			filtered = append(filtered, e)
 		}
 	}
-	if err := ssub.init(filtered); err != nil {
+
+	if req.Sorts != nil {
+		s.ds.registerObjectSorts(ssub.id, req.Sorts)
+	}
+
+	if err = ssub.init(filtered); err != nil {
 		return nil, err
 	}
 	return sub, nil
