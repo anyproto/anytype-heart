@@ -38,7 +38,7 @@ type SpaceFactory interface {
 	CreateAndSetTechSpace(ctx context.Context) (*clientspace.TechSpace, error)
 	LoadAndSetTechSpace(ctx context.Context) (*clientspace.TechSpace, error)
 	CreateInvitingSpace(ctx context.Context, id, aclHeadId string) (sp spacecontroller.SpaceController, err error)
-	CreateOneToOneSpace(ctx context.Context, bPk crypto.PubKey) (sp spacecontroller.SpaceController, err error)
+	CreateOneToOneSpace(ctx context.Context, id string) (sp spacecontroller.SpaceController, err error)
 }
 
 const CName = "client.space.spacefactory"
@@ -289,16 +289,17 @@ func (s *spaceFactory) CreateMarketplaceSpace(ctx context.Context) (sp spacecont
 	return ctrl, err
 }
 
-func (s *spaceFactory) CreateOneToOneSpace(ctx context.Context, bPk crypto.PubKey) (sp spacecontroller.SpaceController, err error) {
-	oneToOneSpace, err := s.spaceCore.CreateOneToOneSpace(ctx, bPk)
+func (s *spaceFactory) CreateOneToOneSpace(ctx context.Context, id string) (sp spacecontroller.SpaceController, err error) {
+	oneToOneSpace, err := s.spaceCore.Get(ctx, id)
 	if err != nil {
 		return
 	}
+
 	err = oneToOneSpace.Storage().(anystorage.ClientSpaceStorage).MarkSpaceCreated(ctx)
 	if err != nil {
 		return
 	}
-	id := oneToOneSpace.Id()
+
 	info := spaceinfo.NewSpacePersistentInfo(id)
 	info.SetAccountStatus(spaceinfo.AccountStatusUnknown)
 	if err := s.techSpace.SpaceViewCreate(ctx, id, true, info, nil); err != nil {

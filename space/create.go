@@ -16,15 +16,7 @@ import (
 func (s *service) createOneToOne(ctx context.Context, description *spaceinfo.SpaceDescription) (sp clientspace.Space, err error) {
 	log.Warn("-- createOneToOne")
 
-	// id1: AASZXTchV87HnZU1yujiM74GF2unsez4MRPSjKmgU1Vtmiid
-	// id2: A5sAtJ6i4Z6465mtPff6m2xyN7SvmCWwBfcUCsR6zmoiNs1J
-
 	bobAccountAddress := loadenv.Get("BOB_ACCOUNT")
-	bobPk, err := crypto.DecodeAccountAddress(bobAccountAddress)
-	if err != nil {
-		return
-	}
-
 	fmt.Printf("-- bob: %s\n", bobAccountAddress)
 
 	bPk, err := crypto.DecodeAccountAddress(bobAccountAddress)
@@ -32,15 +24,42 @@ func (s *service) createOneToOne(ctx context.Context, description *spaceinfo.Spa
 		return
 	}
 
-	fmt.Printf("-- ctrl: \n")
-	ctrl, err := s.factory.CreateOneToOneSpace(ctx, bPk)
+	coreSpace, err := s.spaceCore.CreateOneToOneSpace(ctx, bPk)
 	if err != nil {
+		return
+	}
+	s.mu.Lock()
+	wait := make(chan struct{})
+	s.waiting[coreSpace.Id()] = controllerWaiter{
+		wait: wait,
+	}
+	s.mu.Unlock()
+
+	ctrl, err := s.factory.CreateOneToOneSpace(ctx, coreSpace.Id())
+	if err != nil {
+		s.mu.Lock()
+		close(wait)
+		s.waiting[coreSpace.Id()] = controllerWaiter{
+			wait: wait,
+			err:  err,
+		}
+		s.mu.Unlock()
 		return nil, err
 	}
 
-	fmt.Printf("-- ctrl wait load: \n")
 	sp, err = ctrl.Current().(loader.LoadWaiter).WaitLoad(ctx)
+	s.mu.Lock()
+	close(wait)
+	if err != nil {
+		s.waiting[coreSpace.Id()] = controllerWaiter{
+			wait: wait,
+			err:  err,
+		}
+		s.mu.Unlock()
+		return nil, err
+	}
 	s.spaceControllers[ctrl.SpaceId()] = ctrl
+	s.mu.Unlock()
 
 	s.updater.UpdateCoordinatorStatus()
 
@@ -58,7 +77,7 @@ func (s *service) createOneToOne(ctx context.Context, description *spaceinfo.Spa
 
 	// - InboxAddMessage for bob
 	log.Info("--inbox: add message")
-	s.inboxClient.InboxAddMessage(ctx, bobPk, msg)
+	s.inboxClient.InboxAddMessage(ctx, bPk, msg)
 
 	fmt.Printf("-- ctrl wait load ret: \n")
 	return
