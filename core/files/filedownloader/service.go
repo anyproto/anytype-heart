@@ -10,7 +10,9 @@ import (
 	"github.com/anyproto/any-sync/commonfile/fileservice"
 	"github.com/ipfs/go-cid"
 	ipld "github.com/ipfs/go-ipld-format"
+	"go.uber.org/zap"
 
+	"github.com/anyproto/anytype-heart/core/anytype/config"
 	"github.com/anyproto/anytype-heart/core/block/cache"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/files/filehelper"
@@ -23,7 +25,7 @@ const CName = "core.files.filedownloader"
 var log = logging.Logger(CName).Desugar()
 
 type Service interface {
-	SetEnabled(enabled bool)
+	SetEnabled(enabled bool) error
 	DownloadToLocalStore(ctx context.Context, spaceId string, cid domain.FileId) error
 	app.ComponentRunnable
 }
@@ -35,6 +37,7 @@ type service struct {
 	dagService           ipld.DAGService
 	crossSpaceSubService crossspacesub.Service
 	objectGetter         cache.ObjectGetter
+	config               *config.Config
 
 	lock       sync.Mutex
 	downloader *downloader
@@ -48,7 +51,7 @@ func New() Service {
 	}
 }
 
-func (s *service) SetEnabled(enabled bool) {
+func (s *service) SetEnabled(enabled bool) error {
 	s.lock.Lock()
 	defer s.lock.Unlock()
 
@@ -63,6 +66,14 @@ func (s *service) SetEnabled(enabled bool) {
 			s.downloader = nil
 		}
 	}
+
+	// Write to the config file only if it's changed
+	if s.config.AutoDownloadFiles != enabled {
+		cfgPart := config.ConfigAutoDownloadFiles{}
+		cfgPart.AutoDownloadFiles = enabled
+		return config.WriteJsonConfig(s.config.GetConfigPath(), cfgPart)
+	}
+	return nil
 }
 
 func (s *service) Init(a *app.App) error {
@@ -70,11 +81,27 @@ func (s *service) Init(a *app.App) error {
 	s.objectGetter = app.MustComponent[cache.ObjectGetter](a)
 	commonFile := app.MustComponent[fileservice.FileService](a)
 	s.dagService = commonFile.DAGService()
+	s.config = app.MustComponent[*config.Config](a)
 	return nil
 }
 
 func (s *service) Name() string {
 	return CName
+}
+
+func (s *service) Run(ctx context.Context) error {
+	err := s.SetEnabled(s.config.AutoDownloadFiles)
+	if err != nil {
+		log.Error("set enabled", zap.Error(err))
+	}
+	return nil
+}
+
+func (s *service) Close(ctx context.Context) error {
+	if s.ctxCancel != nil {
+		s.ctxCancel()
+	}
+	return nil
 }
 
 func (s *service) DownloadToLocalStore(ctx context.Context, spaceId string, fileCid domain.FileId) error {
@@ -107,17 +134,6 @@ func (s *service) DownloadToLocalStore(ctx context.Context, spaceId string, file
 
 func (s *service) dagServiceForSpace(spaceID string) ipld.DAGService {
 	return filehelper.NewDAGServiceWithSpaceID(spaceID, s.dagService)
-}
-
-func (s *service) Run(ctx context.Context) error {
-	return nil
-}
-
-func (s *service) Close(ctx context.Context) error {
-	if s.ctxCancel != nil {
-		s.ctxCancel()
-	}
-	return nil
 }
 
 func (s *service) newDownloader() *downloader {

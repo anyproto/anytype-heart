@@ -62,10 +62,16 @@ type ConfigRequired struct {
 	CustomFileStorePath string `json:",omitempty"`
 	LegacyFileStorePath string `json:",omitempty"`
 	NetworkId           string `json:""` // in case this account was at least once connected to the network on this device, this field will be set to the network id
+	AutoDownloadFiles   bool   `json:",omitempty"`
+}
+
+type ConfigAutoDownloadFiles struct {
+	AutoDownloadFiles bool
 }
 
 type Config struct {
 	ConfigRequired `json:",inline"`
+
 	NewAccount     bool   `ignored:"true"` // set to true if a new account is creating. This option controls whether mw should wait for the existing data to arrive before creating the new log
 	AutoJoinStream string `ignored:"true"` // contains the invite of the stream space to automatically join
 
