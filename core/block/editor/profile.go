@@ -67,6 +67,11 @@ func (p *Profile) Init(ctx *smartblock.InitContext) (err error) {
 	if err = p.SmartBlock.Init(ctx); err != nil {
 		return
 	}
+
+	if !ctx.IsNewObject {
+		migrateFilesToObjects(p, p.fileObjectService)(ctx.State)
+	}
+
 	return nil
 }
 

@@ -16,10 +16,9 @@ var (
 	ErrNoRecords = errors.New("no records with given offset")
 )
 
-func (s *spaceSubscriptions) newSortedSub(id string, spaceId string, keys []domain.RelationKey, filter database.Filter, order database.Order, limit, offset int) *sortedSub {
+func (s *spaceSubscriptions) newSortedSub(id string, keys []domain.RelationKey, filter database.Filter, order database.Order, limit, offset int) *sortedSub {
 	sub := &sortedSub{
 		id:          id,
-		spaceId:     spaceId,
 		keys:        keys,
 		filter:      filter,
 		order:       order,
@@ -33,8 +32,7 @@ func (s *spaceSubscriptions) newSortedSub(id string, spaceId string, keys []doma
 }
 
 type sortedSub struct {
-	id      string
-	spaceId string
+	id string
 
 	started              bool
 	entriesBeforeStarted []*entry
@@ -87,44 +85,9 @@ func (s *sortedSub) init(entries []*entry) (err error) {
 		e.SetSub(s.id, false, false)
 		s.skl.Set(e, nil)
 	}
-	if s.afterId != "" {
-		e := s.cache.Get(s.afterId)
-		if e == nil {
-			err = ErrAfterId
-			return
-		}
-		s.afterEl = s.skl.Get(e)
-		if s.afterEl == nil {
-			err = ErrAfterId
-			return
-		}
-	} else if s.beforeId != "" {
-		e := s.cache.Get(s.beforeId)
-		if e == nil {
-			err = ErrBeforeId
-			return
-		}
-		s.beforeEl = s.skl.Get(e)
-		if s.beforeEl == nil {
-			err = ErrBeforeId
-			return
-		}
-	} else if s.offset > 0 {
-		el := s.skl.Front()
-		i := 0
-		for el != nil {
-			i++
-			if i == s.offset {
-				s.afterId = el.Key().(*entry).id
-				s.afterEl = el
-				break
-			}
-			el = el.Next()
-		}
-		if s.afterEl == nil {
-			err = ErrNoRecords
-			return
-		}
+
+	if err = s.setBeforeAndAfterElements(); err != nil {
+		return
 	}
 
 	activeEntries := s.getActiveEntries()
@@ -139,24 +102,130 @@ func (s *sortedSub) init(entries []*entry) (err error) {
 	s.compCountBefore.total = s.skl.Len()
 
 	if s.ds != nil && !s.disableDep {
-		s.depKeys = s.ds.depKeys(s.spaceId, s.keys)
+		s.depKeys = s.ds.depKeys(s.keys)
 		if len(s.depKeys) > 0 || len(s.forceSubIds) > 0 {
-			s.depSub = s.ds.makeSubscriptionByEntries(s.id+"/dep", s.spaceId, entries, activeEntries, s.keys, s.depKeys, s.forceSubIds)
+			s.depSub = s.ds.makeSubscriptionByEntries(s.id+"/dep", entries, activeEntries, s.keys, s.depKeys, s.forceSubIds)
 		}
 	}
+	return nil
+}
+
+func (s *sortedSub) setBeforeAndAfterElements() error {
+	if s.afterId != "" {
+		e := s.cache.Get(s.afterId)
+		if e == nil {
+			return ErrAfterId
+		}
+		s.afterEl = s.skl.Get(e)
+		if s.afterEl == nil {
+			return ErrAfterId
+		}
+		return nil
+	}
+
+	if s.beforeId != "" {
+		e := s.cache.Get(s.beforeId)
+		if e == nil {
+			return ErrBeforeId
+		}
+		s.beforeEl = s.skl.Get(e)
+		if s.beforeEl == nil {
+			return ErrBeforeId
+		}
+		return nil
+	}
+
+	if s.offset > 0 {
+		el := s.skl.Front()
+		i := 0
+		for el != nil {
+			i++
+			if i == s.offset {
+				s.afterId = el.Key().(*entry).id
+				s.afterEl = el
+				break
+			}
+			el = el.Next()
+		}
+		if s.afterEl == nil {
+			return ErrNoRecords
+		}
+	}
+
 	return nil
 }
 
 func (s *sortedSub) onChange(ctx *opCtx) {
 	var changed bool
 	for _, e := range ctx.entries {
-		if !s.onEntryChange(ctx, e) {
-			changed = true
-		}
+		changed = s.onEntryChange(e) || changed
 	}
 	if !changed || !s.started {
 		return
 	}
+
+	s.onSklChange(ctx)
+
+	if s.parent != nil {
+		parentEntries, err := queryEntries(s.objectStore, &database.Filters{FilterObj: s.parent.filter})
+		if err != nil {
+			panic(err)
+		}
+
+		var idsForParentFilter []string
+		s.iterateActive(func(e *entry) {
+			idsForParentFilter = append(idsForParentFilter, e.id)
+		})
+		s.parentFilter.IDs = idsForParentFilter
+
+		ctx.entries = append(ctx.entries, parentEntries...)
+		s.parent.onChange(ctx)
+	}
+}
+
+func (s *sortedSub) onEntryChange(e *entry) (changed bool) {
+	newInSet := true
+	if s.filter != nil {
+		newInSet = s.filter.FilterObject(e.data)
+	}
+
+	// Accumulate all objects observed before subscription is started
+	if !s.started {
+		if newInSet {
+			s.entriesBeforeStarted = append(s.entriesBeforeStarted, e)
+		}
+		return
+	}
+
+	curr := s.cache.Get(e.id)
+	curInSet := curr.IsInSub(s.id)
+	// nothing
+	if !curInSet && !newInSet {
+		return
+	}
+	// remove
+	if curInSet && !newInSet {
+		s.skl.Remove(curr)
+		e.RemoveSubId(s.id)
+		return true
+	}
+	// add
+	if !curInSet && newInSet {
+		s.skl.Set(e, nil)
+		e.SetSub(s.id, false, false)
+		return true
+	}
+	// change
+	if curInSet && newInSet {
+		s.skl.Remove(curr)
+		s.skl.Set(e, nil)
+		e.SetSub(s.id, false, false)
+		return true
+	}
+	panic("subscription: check algo")
+}
+
+func (s *sortedSub) onSklChange(ctx *opCtx) {
 	defer s.diff.reset()
 	s.activeEntriesBuf = s.activeEntriesBuf[:0]
 	if s.iterateActive(func(e *entry) {
@@ -200,66 +269,30 @@ func (s *sortedSub) onChange(ctx *opCtx) {
 	}
 
 	if (wasAddOrRemove || hasChanges) && s.depSub != nil {
-		s.ds.refillSubscription(ctx, s.depSub, s.activeEntriesBuf, s.depKeys)
-	}
-
-	if s.parent != nil {
-		parentEntries, err := queryEntries(s.objectStore, &database.Filters{FilterObj: s.parent.filter})
-		if err != nil {
-			panic(err)
-		}
-
-		var idsForParentFilter []string
-		s.iterateActive(func(e *entry) {
-			idsForParentFilter = append(idsForParentFilter, e.id)
-		})
-		s.parentFilter.IDs = idsForParentFilter
-
-		ctx.entries = append(ctx.entries, parentEntries...)
-		s.parent.onChange(ctx)
+		s.ds.refillSubscription(ctx, s.id, s.depSub, s.activeEntriesBuf, s.depKeys)
 	}
 }
 
-func (s *sortedSub) onEntryChange(ctx *opCtx, e *entry) (noChange bool) {
-	newInSet := true
-	if s.filter != nil {
-		newInSet = s.filter.FilterObject(e.data)
+func (s *sortedSub) reorder(ctx *opCtx, depDetails []*domain.Details) {
+	if !s.order.UpdateOrderMap(depDetails) {
+		return
 	}
 
-	// Accumulate all objects observed before subscription is started
-	if !s.started {
-		if newInSet {
-			s.entriesBeforeStarted = append(s.entriesBeforeStarted, e)
-		}
-		return true
+	entries := make([]*entry, 0, s.skl.Len())
+	for el := s.skl.Front(); el != nil; el = el.Next() {
+		entries = append(entries, el.Key().(*entry))
 	}
 
-	curr := s.cache.Get(e.id)
-	curInSet := curr != nil
-	// nothing
-	if !curInSet && !newInSet {
-		return true
-	}
-	// remove
-	if curInSet && !newInSet {
-		s.skl.Remove(curr)
-		e.RemoveSubId(s.id)
-		return
-	}
-	// add
-	if !curInSet && newInSet {
+	s.skl.Init()
+	for _, e := range entries {
 		s.skl.Set(e, nil)
-		e.SetSub(s.id, false, false)
-		return
 	}
-	// change
-	if curInSet && newInSet {
-		s.skl.Remove(curr)
-		s.skl.Set(e, nil)
-		e.SetSub(s.id, false, false)
-		return
+	s.afterId = ""
+	if err := s.setBeforeAndAfterElements(); err != nil {
+		log.Errorf("failed to set before and after elements: %v", err)
 	}
-	panic("subscription: check algo")
+
+	s.onSklChange(ctx)
 }
 
 func (s *sortedSub) counters() (prev, next int) {
@@ -364,7 +397,7 @@ func (s *sortedSub) iterateActive(f func(e *entry)) (reverse bool) {
 	return
 }
 
-// Compare implements sliplist.Comparable
+// Compare implements skiplist.Comparable
 func (s *sortedSub) Compare(lhs, rhs interface{}) (comp int) {
 	le := lhs.(*entry)
 	re := rhs.(*entry)

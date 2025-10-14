@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/anyproto/any-store/anyenc"
+	"github.com/gogo/protobuf/proto"
 
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	textUtil "github.com/anyproto/anytype-heart/util/text"
@@ -50,6 +51,12 @@ const (
 
 type Message struct {
 	*model.ChatMessage
+}
+
+func (m *Message) Clone() *Message {
+	return &Message{
+		ChatMessage: proto.Clone(m.ChatMessage).(*model.ChatMessage),
+	}
 }
 
 type MessagesGetter interface {

@@ -32818,6 +32818,7 @@ deprecated, to be removed |
 | relationKey | [string](#string) |  | 4 is reserved for old relation format
 
 stored |
+| orderId | [string](#string) |  | lexicographic id of relation option for ordering |
 
 
 
