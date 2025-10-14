@@ -210,9 +210,10 @@ func (s objectSort) AppendKey(tuple anyenc.Tuple, v *anyenc.Value) anyenc.Tuple 
 
 	for _, key := range s.sortKeysBuffer {
 		if len(key) == 0 {
-			if s.nulls == model.BlockContentDataviewSort_Start {
+			switch s.nulls {
+			case model.BlockContentDataviewSort_Start:
 				tuple = tuple.Append(s.arena.NewNull())
-			} else if s.nulls == model.BlockContentDataviewSort_End {
+			case model.BlockContentDataviewSort_End:
 				tuple = tuple.AppendInverted(s.arena.NewNull())
 			}
 			continue
