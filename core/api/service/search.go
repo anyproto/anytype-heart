@@ -3,11 +3,11 @@ package service
 import (
 	"context"
 	"errors"
-	"fmt"
 	"sort"
 
 	"github.com/gogo/protobuf/types"
 
+	"github.com/anyproto/anytype-heart/core/api/filter"
 	apimodel "github.com/anyproto/anytype-heart/core/api/model"
 	"github.com/anyproto/anytype-heart/core/api/pagination"
 	"github.com/anyproto/anytype-heart/core/api/util"
@@ -18,14 +18,16 @@ import (
 )
 
 var (
-	ErrFailedSearchObjects = errors.New("failed to retrieve objects from space")
+	ErrFailedSearchObjects  = errors.New("failed to retrieve objects from space")
+	ErrFailedGetAllSpaceIds = errors.New("failed to get all space ids")
+	ErrFailedBuildFilters   = errors.New("failed to build expression filters")
 )
 
 // GlobalSearch retrieves a paginated list of objects from all spaces that match the search parameters.
 func (s *Service) GlobalSearch(ctx context.Context, request apimodel.SearchRequest, offset int, limit int) (objects []apimodel.Object, total int, hasMore bool, err error) {
 	spaceIds, err := s.GetAllSpaceIds(ctx)
 	if err != nil {
-		return nil, 0, false, fmt.Errorf("failed to get all space Ids: %w", err)
+		return nil, 0, false, ErrFailedGetAllSpaceIds
 	}
 
 	baseFilters := s.prepareBaseFilters()
@@ -38,10 +40,24 @@ func (s *Service) GlobalSearch(ctx context.Context, request apimodel.SearchReque
 		templateFilter := s.prepareTemplateFilter()
 		typeFilters := s.prepareTypeFilters(request.Types, spaceId)
 		if len(request.Types) > 0 && len(typeFilters) == 0 {
-			// Skip spaces that don’t have any of the requested types
+			// Skip spaces that don't have any of the requested types
 			continue
 		}
-		filters := s.combineFilters(model.BlockContentDataviewFilter_And, baseFilters, templateFilter, queryFilters, typeFilters)
+
+		// Build expression filters if provided
+		var expressionFilters []*model.BlockContentDataviewFilter
+		if request.Filters != nil {
+			validator := filter.NewValidator(s)
+			advFilter, err := filter.BuildExpressionFilters(ctx, request.Filters, validator, spaceId)
+			if err != nil {
+				return nil, 0, false, ErrFailedBuildFilters
+			}
+			if advFilter != nil {
+				expressionFilters = []*model.BlockContentDataviewFilter{advFilter}
+			}
+		}
+
+		filters := s.combineFilters(model.BlockContentDataviewFilter_And, baseFilters, templateFilter, queryFilters, typeFilters, expressionFilters)
 
 		objResp := s.mw.ObjectSearch(ctx, &pb.RpcObjectSearchRequest{
 			SpaceId: spaceId,
@@ -100,7 +116,21 @@ func (s *Service) Search(ctx context.Context, spaceId string, request apimodel.S
 		// No matching types in this space; return empty result
 		return nil, 0, false, nil
 	}
-	filters := s.combineFilters(model.BlockContentDataviewFilter_And, baseFilters, templateFilter, queryFilters, typeFilters)
+
+	// Build expression filters if provided
+	var expressionFilters []*model.BlockContentDataviewFilter
+	if request.Filters != nil {
+		validator := filter.NewValidator(s)
+		advFilter, err := filter.BuildExpressionFilters(ctx, request.Filters, validator, spaceId)
+		if err != nil {
+			return nil, 0, false, ErrFailedBuildFilters
+		}
+		if advFilter != nil {
+			expressionFilters = []*model.BlockContentDataviewFilter{advFilter}
+		}
+	}
+
+	filters := s.combineFilters(model.BlockContentDataviewFilter_And, baseFilters, templateFilter, queryFilters, typeFilters, expressionFilters)
 	sorts, _ := s.prepareSorts(request.Sort)
 
 	resp := s.mw.ObjectSearch(ctx, &pb.RpcObjectSearchRequest{
@@ -239,21 +269,19 @@ func (s *Service) prepareTypeFilters(types []string, spaceId string) []*model.Bl
 // prepareSorts returns a sort filter based on the given sort parameters
 func (s *Service) prepareSorts(sort apimodel.SortOptions) (sorts []*model.BlockContentDataviewSort, criterionToSortAfter string) {
 	primarySort := &model.BlockContentDataviewSort{
-		RelationKey:    s.getSortRelationKey(sort.PropertyKey),
-		Type:           s.getSortDirection(sort.Direction),
-		Format:         s.getSortFormat(sort.PropertyKey),
-		IncludeTime:    true,
-		EmptyPlacement: model.BlockContentDataviewSort_NotSpecified,
+		RelationKey: s.getSortRelationKey(sort.PropertyKey),
+		Type:        s.getSortDirection(sort.Direction),
+		Format:      s.getSortFormat(sort.PropertyKey),
+		IncludeTime: true,
 	}
 
 	// last_opened_date possibly is empty, wherefore we sort by last_modified_date as a secondary criterion
 	if primarySort.RelationKey == bundle.RelationKeyLastOpenedDate.String() {
 		secondarySort := &model.BlockContentDataviewSort{
-			RelationKey:    bundle.RelationKeyLastModifiedDate.String(),
-			Type:           s.getSortDirection(sort.Direction),
-			Format:         model.RelationFormat_date,
-			IncludeTime:    true,
-			EmptyPlacement: model.BlockContentDataviewSort_NotSpecified,
+			RelationKey: bundle.RelationKeyLastModifiedDate.String(),
+			Type:        s.getSortDirection(sort.Direction),
+			Format:      model.RelationFormat_date,
+			IncludeTime: true,
 		}
 		return []*model.BlockContentDataviewSort{primarySort, secondarySort}, primarySort.RelationKey
 	}

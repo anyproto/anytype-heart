@@ -9,6 +9,7 @@ import (
 	"github.com/gogo/protobuf/types"
 
 	apimodel "github.com/anyproto/anytype-heart/core/api/model"
+	"github.com/anyproto/anytype-heart/core/api/util"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -50,9 +51,13 @@ func TestSpaceService_ListSpaces(t *testing.T) {
 					EmptyPlacement: model.BlockContentDataviewSort_End,
 				},
 				{
+					RelationKey: bundle.RelationKeySpaceJoinDate.String(),
+					Type:        model.BlockContentDataviewSort_Desc,
+					IncludeTime: true,
+				},
+				{
 					RelationKey: bundle.RelationKeyCreatedDate.String(),
 					Type:        model.BlockContentDataviewSort_Desc,
-					Format:      model.RelationFormat_longtext,
 					IncludeTime: true,
 				},
 			},
@@ -92,7 +97,6 @@ func TestSpaceService_ListSpaces(t *testing.T) {
 						Details: &types.Struct{
 							Fields: map[string]*types.Value{
 								bundle.RelationKeyName.String():        pbtypes.String("Another Workspace"),
-								bundle.RelationKeyIconEmoji.String():   pbtypes.String(""),
 								bundle.RelationKeyIconImage.String():   pbtypes.String(iconImage),
 								bundle.RelationKeyDescription.String(): pbtypes.String("desc1"),
 							},
@@ -122,8 +126,7 @@ func TestSpaceService_ListSpaces(t *testing.T) {
 						Details: &types.Struct{
 							Fields: map[string]*types.Value{
 								bundle.RelationKeyName.String():        pbtypes.String("My Workspace"),
-								bundle.RelationKeyIconEmoji.String():   pbtypes.String("🚀"),
-								bundle.RelationKeyIconImage.String():   pbtypes.String(""),
+								bundle.RelationKeyIconImage.String():   pbtypes.String(iconImage),
 								bundle.RelationKeyDescription.String(): pbtypes.String("desc2"),
 							},
 						},
@@ -150,9 +153,9 @@ func TestSpaceService_ListSpaces(t *testing.T) {
 		require.Equal(t, "my-space-id", spaces[1].Id)
 		require.Equal(t, "desc2", spaces[1].Description)
 		require.Equal(t, &apimodel.Icon{
-			WrappedIcon: apimodel.EmojiIcon{
-				Format: apimodel.IconFormatEmoji,
-				Emoji:  "🚀",
+			WrappedIcon: apimodel.FileIcon{
+				Format: apimodel.IconFormatFile,
+				File:   gatewayUrl + "/image/" + iconImage,
 			},
 		}, spaces[1].Icon)
 		require.Equal(t, "gateway-url-2", spaces[1].GatewayUrl)
@@ -272,8 +275,7 @@ func TestSpaceService_GetSpace(t *testing.T) {
 						Details: &types.Struct{
 							Fields: map[string]*types.Value{
 								bundle.RelationKeyName.String():        pbtypes.String("My Workspace"),
-								bundle.RelationKeyIconEmoji.String():   pbtypes.String("🚀"),
-								bundle.RelationKeyIconImage.String():   pbtypes.String(""),
+								bundle.RelationKeyIconImage.String():   pbtypes.String(iconImage),
 								bundle.RelationKeyDescription.String(): pbtypes.String("A description"),
 							},
 						},
@@ -291,9 +293,9 @@ func TestSpaceService_GetSpace(t *testing.T) {
 		require.Equal(t, "My Workspace", space.Name)
 		require.Equal(t, "space-id", space.Id)
 		require.Equal(t, &apimodel.Icon{
-			WrappedIcon: apimodel.EmojiIcon{
-				Format: apimodel.IconFormatEmoji,
-				Emoji:  "🚀",
+			WrappedIcon: apimodel.FileIcon{
+				Format: apimodel.IconFormatFile,
+				File:   gatewayUrl + "/image/" + iconImage,
 			},
 		}, space.Icon)
 		require.Equal(t, "gateway-url", space.GatewayUrl)
@@ -426,8 +428,7 @@ func TestSpaceService_CreateSpace(t *testing.T) {
 						Details: &types.Struct{
 							Fields: map[string]*types.Value{
 								bundle.RelationKeyName.String():        pbtypes.String("New Space"),
-								bundle.RelationKeyIconEmoji.String():   pbtypes.String("🚀"),
-								bundle.RelationKeyIconImage.String():   pbtypes.String(""),
+								bundle.RelationKeyIconImage.String():   pbtypes.String(iconImage),
 								bundle.RelationKeyDescription.String(): pbtypes.String("A new space"),
 							},
 						},
@@ -437,7 +438,7 @@ func TestSpaceService_CreateSpace(t *testing.T) {
 		}, nil).Once()
 
 		// when
-		space, err := fx.service.CreateSpace(nil, apimodel.CreateSpaceRequest{Name: apimodel.StringPtr("New Space"), Description: apimodel.StringPtr("A new space")})
+		space, err := fx.service.CreateSpace(nil, apimodel.CreateSpaceRequest{Name: util.PtrString("New Space"), Description: util.PtrString("A new space")})
 
 		// then
 		require.NoError(t, err)
@@ -445,9 +446,9 @@ func TestSpaceService_CreateSpace(t *testing.T) {
 		require.Equal(t, "New Space", space.Name)
 		require.Equal(t, "A new space", space.Description)
 		require.Equal(t, &apimodel.Icon{
-			WrappedIcon: apimodel.EmojiIcon{
-				Format: apimodel.IconFormatEmoji,
-				Emoji:  "🚀",
+			WrappedIcon: apimodel.FileIcon{
+				Format: apimodel.IconFormatFile,
+				File:   gatewayUrl + "/image/" + iconImage,
 			},
 		}, space.Icon)
 	})
@@ -461,7 +462,7 @@ func TestSpaceService_CreateSpace(t *testing.T) {
 			}).Once()
 
 		// when
-		space, err := fx.service.CreateSpace(nil, apimodel.CreateSpaceRequest{Name: apimodel.StringPtr("New Space")})
+		space, err := fx.service.CreateSpace(nil, apimodel.CreateSpaceRequest{Name: util.PtrString("New Space")})
 
 		// then
 		require.ErrorIs(t, err, ErrFailedCreateSpace)

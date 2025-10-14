@@ -186,6 +186,7 @@ func (s *Service) subscribeToCrossSpaceTags() error {
 		Keys: []string{
 			bundle.RelationKeyId.String(),
 			bundle.RelationKeyUniqueKey.String(),
+			bundle.RelationKeyApiObjectKey.String(),
 			bundle.RelationKeyName.String(),
 			bundle.RelationKeyRelationOptionColor.String(),
 			bundle.RelationKeySpaceId.String(),
@@ -234,8 +235,10 @@ func (s *Service) createPropertySubscriptionParams() objectsubscription.Subscrip
 				spaceId: spaceId,
 			}
 		},
-		UpdateKey: func(relationKey string, relationValue domain.Value, curEntry *propertyWithSpace) *propertyWithSpace {
-			curEntry.details.Set(domain.RelationKey(relationKey), relationValue)
+		UpdateKeys: func(keyValues []objectsubscription.RelationKeyValue, curEntry *propertyWithSpace) *propertyWithSpace {
+			for _, kv := range keyValues {
+				curEntry.details.Set(domain.RelationKey(kv.Key), kv.Value)
+			}
 			_, _, prop := s.getPropertyFromStruct(curEntry.details.ToProto())
 			s.cache.cacheProperty(curEntry.spaceId, prop)
 			return curEntry
@@ -273,8 +276,10 @@ func (s *Service) createTypeSubscriptionParams() objectsubscription.Subscription
 				spaceId: spaceId,
 			}
 		},
-		UpdateKey: func(relationKey string, relationValue domain.Value, curEntry *typeWithSpace) *typeWithSpace {
-			curEntry.details.Set(domain.RelationKey(relationKey), relationValue)
+		UpdateKeys: func(keyValues []objectsubscription.RelationKeyValue, curEntry *typeWithSpace) *typeWithSpace {
+			for _, kv := range keyValues {
+				curEntry.details.Set(domain.RelationKey(kv.Key), kv.Value)
+			}
 			propertyMap := s.cache.getProperties(curEntry.spaceId)
 			_, _, t := s.getTypeFromStruct(curEntry.details.ToProto(), propertyMap)
 			s.cache.cacheType(curEntry.spaceId, t)
@@ -314,8 +319,10 @@ func (s *Service) createTagSubscriptionParams() objectsubscription.SubscriptionP
 				spaceId: spaceId,
 			}
 		},
-		UpdateKey: func(relationKey string, relationValue domain.Value, curEntry *tagWithSpace) *tagWithSpace {
-			curEntry.details.Set(domain.RelationKey(relationKey), relationValue)
+		UpdateKeys: func(keyValues []objectsubscription.RelationKeyValue, curEntry *tagWithSpace) *tagWithSpace {
+			for _, kv := range keyValues {
+				curEntry.details.Set(domain.RelationKey(kv.Key), kv.Value)
+			}
 			tag := s.getTagFromStruct(curEntry.details.ToProto())
 			s.cache.cacheTag(curEntry.spaceId, tag)
 			return curEntry
@@ -329,7 +336,8 @@ func (s *Service) createTagSubscriptionParams() objectsubscription.SubscriptionP
 			return curEntry
 		},
 		OnRemoved: func(id string, entry *tagWithSpace) {
-			s.cache.removeTag(entry.spaceId, id)
+			tag := s.getTagFromStruct(entry.details.ToProto())
+			s.cache.removeTag(entry.spaceId, tag.Id, tag.UniqueKey, tag.Key)
 		},
 	}
 }

@@ -4,26 +4,24 @@ import (
 	"github.com/anyproto/anytype-heart/core/domain"
 )
 
-func (s *spaceSubscriptions) newSimpleSub(id string, spaceId string, keys []domain.RelationKey, isDep bool) *simpleSub {
+func (s *spaceSubscriptions) newSimpleSub(id string, keys []domain.RelationKey, isDep bool) *simpleSub {
 	sub := &simpleSub{
-		id:      id,
-		spaceId: spaceId,
-		keys:    keys,
-		cache:   s.cache,
-	}
-	if !isDep {
-		sub.ds = s.ds
+		id:    id,
+		keys:  keys,
+		cache: s.cache,
+		ds:    s.ds,
+		isDep: isDep,
 	}
 	return sub
 }
 
 type simpleSub struct {
 	id       string
-	spaceId  string
 	set      map[string]struct{}
 	keys     []domain.RelationKey
 	forceIds []string
 
+	isDep            bool
 	depKeys          []domain.RelationKey
 	depSub           *simpleSub
 	activeEntriesBuf []*entry
@@ -39,10 +37,10 @@ func (s *simpleSub) init(entries []*entry) (err error) {
 		s.set[e.id] = struct{}{}
 		e.SetSub(s.id, true, true)
 	}
-	if s.ds != nil {
-		s.depKeys = s.ds.depKeys(s.spaceId, s.keys)
+	if !s.isDep {
+		s.depKeys = s.ds.depKeys(s.keys)
 		if len(s.depKeys) > 0 {
-			s.depSub = s.ds.makeSubscriptionByEntries(s.id+"/dep", s.spaceId, entries, s.getActiveEntries(), s.keys, s.depKeys, nil)
+			s.depSub = s.ds.makeSubscriptionByEntries(s.id+"/dep", entries, s.getActiveEntries(), s.keys, s.depKeys, nil)
 		}
 	}
 	return
@@ -110,14 +108,17 @@ func (s *simpleSub) onChange(ctx *opCtx) {
 		}
 	}
 	if changed && s.depSub != nil {
-		s.ds.refillSubscription(ctx, s.depSub, s.getActiveEntries(), s.depKeys)
+		s.ds.refillSubscription(ctx, s.id, s.depSub, s.getActiveEntries(), s.depKeys)
+	}
+	if s.isDep {
+		s.ds.reorderParentSubscription(s.id, ctx)
 	}
 }
 
-func (s *simpleSub) getActiveEntries() (res []*entry) {
+func (s *simpleSub) getActiveEntries() []*entry {
 	s.activeEntriesBuf = s.activeEntriesBuf[:0]
 	for id := range s.set {
-		res = append(res, s.cache.Get(id))
+		s.activeEntriesBuf = append(s.activeEntriesBuf, s.cache.Get(id))
 	}
 	return s.activeEntriesBuf
 }

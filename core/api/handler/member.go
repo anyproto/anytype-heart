@@ -15,7 +15,8 @@ import (
 // ListMembersHandler retrieves a list of members in a space
 //
 //	@Summary		List members
-//	@Description	Returns a paginated list of members belonging to the specified space. Each member record includes the member’s profile ID, name, icon (which may be derived from an emoji or image), network identity, global name, status (e.g. joining, active) and role (e.g. Viewer, Editor, Owner). This endpoint supports collaborative features by allowing clients to show who is in a space and manage access rights.
+//	@Description	Returns a paginated list of members belonging to the specified space. Each member record includes the member's profile ID, name, icon (which may be derived from an emoji or image), network identity, global name, status (e.g. joining, active) and role (e.g. Viewer, Editor, Owner). This endpoint supports collaborative features by allowing clients to show who is in a space and manage access rights.
+//	@Description	Supports dynamic filtering via query parameters (e.g., ?status=active, ?role[ne]=viewer, ?name[contains]=john). See FilterCondition enum for available conditions.
 //	@Id				list_members
 //	@Tags			Members
 //	@Produce		json
@@ -43,7 +44,7 @@ func ListMembersHandler(s *service.Service) gin.HandlerFunc {
 		)
 
 		if code != http.StatusOK {
-			apiErr := util.CodeToAPIError(code, err.Error())
+			apiErr := util.CodeToApiError(code, err.Error())
 			c.JSON(code, apiErr)
 			return
 		}
@@ -80,7 +81,7 @@ func GetMemberHandler(s *service.Service) gin.HandlerFunc {
 		)
 
 		if code != http.StatusOK {
-			apiErr := util.CodeToAPIError(code, err.Error())
+			apiErr := util.CodeToApiError(code, err.Error())
 			c.JSON(code, apiErr)
 			return
 		}
@@ -117,7 +118,7 @@ func UpdateMemberHandler(s *SpaceService) gin.HandlerFunc {
 
 		var req UpdateMemberRequest
 		if err := c.BindJSON(&req); err != nil {
-			apiErr := util.CodeToAPIError(http.StatusBadRequest, err.Error())
+			apiErr := util.CodeToApiError(http.StatusBadRequest, err.Error())
 			c.AbortWithStatusJSON(http.StatusBadRequest, apiErr)
 		}
 
@@ -130,7 +131,7 @@ func UpdateMemberHandler(s *SpaceService) gin.HandlerFunc {
 		)
 
 		if code != http.StatusOK {
-			apiErr := util.CodeToAPIError(code, err.Error())
+			apiErr := util.CodeToApiError(code, err.Error())
 			c.JSON(code, apiErr)
 			return
 		}

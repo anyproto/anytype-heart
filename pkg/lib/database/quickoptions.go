@@ -8,8 +8,12 @@ import (
 	timeutil "github.com/anyproto/anytype-heart/util/time"
 )
 
-func transformQuickOption(protoFilter FilterRequest) []FilterRequest {
-	if protoFilter.QuickOption == 0 && protoFilter.Format != model.RelationFormat_date {
+func transformDateFilter(protoFilter FilterRequest) []FilterRequest {
+	if protoFilter.Format != model.RelationFormat_date {
+		return []FilterRequest{protoFilter}
+	}
+	// we should transform date filters in case QuickOption is selected or IncludeTime = false
+	if protoFilter.QuickOption == 0 && protoFilter.IncludeTime {
 		return []FilterRequest{protoFilter}
 	}
 

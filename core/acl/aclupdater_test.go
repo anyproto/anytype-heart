@@ -43,7 +43,8 @@ func (d *dummyCollectionService) SubscribeForCollection(collectionID string, sub
 	return nil, nil, nil
 }
 
-func (d *dummyCollectionService) UnsubscribeFromCollection(collectionID string, subscriptionID string) {
+func (d *dummyCollectionService) UnsubscribeFromCollection(collectionID string, subscriptionID string) error {
+	return nil
 }
 
 type aclUpdaterFixture struct {
@@ -64,8 +65,6 @@ func newAclUpdaterFixture(t *testing.T) *aclUpdaterFixture {
 	ctx := context.Background()
 	a := &app.App{}
 
-	eventQueue := mb.New[*pb.EventMessage](0)
-
 	var pubKeys []crypto.PubKey
 	for i := 0; i < 10; i++ {
 		_, pubKey, err := crypto.GenerateRandomEd25519KeyPair()
@@ -82,6 +81,7 @@ func newAclUpdaterFixture(t *testing.T) *aclUpdaterFixture {
 		spaceIds = append(spaceIds, fmt.Sprintf("space%d.%d", i, i))
 	}
 
+	eventQueue := mb.New[*pb.EventMessage](0)
 	kanbanService := mock_kanban.NewMockService(t)
 	eventSender := mock_event.NewMockSender(t)
 	eventSender.EXPECT().Broadcast(mock.Anything).Run(func(e *pb.Event) {
@@ -110,10 +110,12 @@ func newAclUpdaterFixture(t *testing.T) *aclUpdaterFixture {
 
 	remover := mock_acl.NewMockparticipantRemover(t)
 
-	updater := newAclUpdater(
+	updater, _ := newAclUpdater(
 		"test-updater",
 		testOwnIdentity,
 		crossSpaceSub,
+		subscriptionService,
+		techSpaceId,
 		remover,
 		100*time.Millisecond,
 		1*time.Second,
@@ -160,7 +162,7 @@ func givenParticipantObject(spaceId string, identity string, status model.Partic
 		bundle.RelationKeyId:                domain.String(participantId),
 		bundle.RelationKeySpaceId:           domain.String(spaceId),
 		bundle.RelationKeyIdentity:          domain.String(identity),
-		bundle.RelationKeyLayout:            domain.Int64(int64(model.ObjectType_participant)),
+		bundle.RelationKeyResolvedLayout:    domain.Int64(int64(model.ObjectType_participant)),
 		bundle.RelationKeyParticipantStatus: domain.Int64(int64(status)),
 	}
 }
@@ -366,6 +368,313 @@ func TestAclUpdater_Run(t *testing.T) {
 		})
 
 		<-spaceDone
+	})
+}
+
+func TestAclUpdater_SelfRemove(t *testing.T) {
+	t.Run("triggers self removal when space is deleted for non-creator", func(t *testing.T) {
+		fx := newAclUpdaterFixture(t)
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+
+		spaceId := fx.spaceIds[0]
+		creatorIdentity := fx.pubKeys[2].Account()
+		spaceViewId := "spaceView1"
+
+		done := make(chan struct{})
+		fx.remover.EXPECT().Leave(mock.Anything, spaceId).
+			Run(func(ctx context.Context, spaceId string) {
+				close(done)
+			}).Return(nil).Once()
+
+		err := fx.Run(ctx)
+		require.NoError(t, err)
+
+		// Add space view with status SpaceDeleted for a space we're not the creator of
+		fx.objectStore.AddObjects(t, fx.techSpaceId, []objectstore.TestObject{
+			{
+				bundle.RelationKeyId:                  domain.String(spaceViewId),
+				bundle.RelationKeyTargetSpaceId:       domain.String(spaceId),
+				bundle.RelationKeyCreator:             domain.String(creatorIdentity),
+				bundle.RelationKeyResolvedLayout:      domain.Int64(int64(model.ObjectType_spaceView)),
+				bundle.RelationKeySpaceRemoteStatus:   domain.Int64(int64(model.SpaceStatus_Ok)),
+				bundle.RelationKeySpaceAccountStatus:  domain.Int64(int64(model.SpaceStatus_SpaceDeleted)),
+				bundle.RelationKeyMyParticipantStatus: domain.Int64(int64(model.ParticipantStatus_Active)),
+			},
+		})
+
+		<-done
+	})
+
+	t.Run("does not trigger for spaces we created", func(t *testing.T) {
+		fx := newAclUpdaterFixture(t)
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+
+		spaceId := fx.spaceIds[0]
+		spaceViewId := "spaceView1"
+		ownParticipantId := domain.NewParticipantId(fx.techSpaceId, fx.testOwnIdentity)
+
+		err := fx.Run(ctx)
+		require.NoError(t, err)
+
+		// Add space view with status SpaceDeleted for a space we created
+		fx.objectStore.AddObjects(t, fx.techSpaceId, []objectstore.TestObject{
+			{
+				bundle.RelationKeyId:                  domain.String(spaceViewId),
+				bundle.RelationKeyTargetSpaceId:       domain.String(spaceId),
+				bundle.RelationKeyCreator:             domain.String(ownParticipantId),
+				bundle.RelationKeyResolvedLayout:      domain.Int64(int64(model.ObjectType_spaceView)),
+				bundle.RelationKeySpaceRemoteStatus:   domain.Int64(int64(model.SpaceStatus_Ok)),
+				bundle.RelationKeySpaceAccountStatus:  domain.Int64(int64(model.SpaceStatus_SpaceDeleted)),
+				bundle.RelationKeyMyParticipantStatus: domain.Int64(int64(model.ParticipantStatus_Active)),
+			},
+		})
+
+		// Wait to ensure no call is made
+		time.Sleep(200 * time.Millisecond)
+	})
+
+	t.Run("does not trigger if already removing", func(t *testing.T) {
+		fx := newAclUpdaterFixture(t)
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+
+		spaceId := fx.spaceIds[0]
+		creatorIdentity := fx.pubKeys[2].Account()
+		spaceViewId := "spaceView1"
+
+		err := fx.Run(ctx)
+		require.NoError(t, err)
+
+		// Add space view with MyParticipantStatus as Removing
+		fx.objectStore.AddObjects(t, fx.techSpaceId, []objectstore.TestObject{
+			{
+				bundle.RelationKeyId:                  domain.String(spaceViewId),
+				bundle.RelationKeyTargetSpaceId:       domain.String(spaceId),
+				bundle.RelationKeyCreator:             domain.String(creatorIdentity),
+				bundle.RelationKeyResolvedLayout:      domain.Int64(int64(model.ObjectType_spaceView)),
+				bundle.RelationKeySpaceRemoteStatus:   domain.Int64(int64(model.SpaceStatus_Ok)),
+				bundle.RelationKeySpaceAccountStatus:  domain.Int64(int64(model.SpaceStatus_SpaceDeleted)),
+				bundle.RelationKeyMyParticipantStatus: domain.Int64(int64(model.ParticipantStatus_Removing)),
+			},
+		})
+
+		// Wait to ensure no call is made
+		time.Sleep(200 * time.Millisecond)
+	})
+
+	t.Run("does not trigger if space is not deleted", func(t *testing.T) {
+		fx := newAclUpdaterFixture(t)
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+
+		spaceId := fx.spaceIds[0]
+		creatorIdentity := fx.pubKeys[2].Account()
+		spaceViewId := "spaceView1"
+
+		err := fx.Run(ctx)
+		require.NoError(t, err)
+
+		// Add space view with SpaceAccountStatus as Active (not deleted)
+		fx.objectStore.AddObjects(t, fx.techSpaceId, []objectstore.TestObject{
+			{
+				bundle.RelationKeyId:                  domain.String(spaceViewId),
+				bundle.RelationKeyTargetSpaceId:       domain.String(spaceId),
+				bundle.RelationKeyCreator:             domain.String(creatorIdentity),
+				bundle.RelationKeyResolvedLayout:      domain.Int64(int64(model.ObjectType_spaceView)),
+				bundle.RelationKeySpaceRemoteStatus:   domain.Int64(int64(model.SpaceStatus_Ok)),
+				bundle.RelationKeySpaceAccountStatus:  domain.Int64(int64(model.SpaceStatus_SpaceActive)),
+				bundle.RelationKeyMyParticipantStatus: domain.Int64(int64(model.ParticipantStatus_Active)),
+			},
+		})
+
+		// Wait to ensure no call is made
+		time.Sleep(200 * time.Millisecond)
+	})
+
+	t.Run("handles status change to deleted", func(t *testing.T) {
+		fx := newAclUpdaterFixture(t)
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+
+		spaceId := fx.spaceIds[0]
+		creatorIdentity := fx.pubKeys[2].Account()
+		spaceViewId := "spaceView1"
+
+		err := fx.Run(ctx)
+		require.NoError(t, err)
+
+		// First add space view with active status
+		fx.objectStore.AddObjects(t, fx.techSpaceId, []objectstore.TestObject{
+			{
+				bundle.RelationKeyId:                  domain.String(spaceViewId),
+				bundle.RelationKeyTargetSpaceId:       domain.String(spaceId),
+				bundle.RelationKeyCreator:             domain.String(creatorIdentity),
+				bundle.RelationKeyResolvedLayout:      domain.Int64(int64(model.ObjectType_spaceView)),
+				bundle.RelationKeySpaceRemoteStatus:   domain.Int64(int64(model.SpaceStatus_Ok)),
+				bundle.RelationKeySpaceAccountStatus:  domain.Int64(int64(model.SpaceStatus_SpaceActive)),
+				bundle.RelationKeyMyParticipantStatus: domain.Int64(int64(model.ParticipantStatus_Active)),
+			},
+		})
+
+		time.Sleep(100 * time.Millisecond)
+
+		done := make(chan struct{})
+		fx.remover.EXPECT().Leave(mock.Anything, spaceId).
+			Run(func(ctx context.Context, spaceId string) {
+				close(done)
+			}).Return(nil).Once()
+
+		// Update to deleted status
+		fx.objectStore.AddObjects(t, fx.techSpaceId, []objectstore.TestObject{
+			{
+				bundle.RelationKeyId:                  domain.String(spaceViewId),
+				bundle.RelationKeyTargetSpaceId:       domain.String(spaceId),
+				bundle.RelationKeyCreator:             domain.String(creatorIdentity),
+				bundle.RelationKeyResolvedLayout:      domain.Int64(int64(model.ObjectType_spaceView)),
+				bundle.RelationKeySpaceRemoteStatus:   domain.Int64(int64(model.SpaceStatus_Ok)),
+				bundle.RelationKeySpaceAccountStatus:  domain.Int64(int64(model.SpaceStatus_SpaceDeleted)),
+				bundle.RelationKeyMyParticipantStatus: domain.Int64(int64(model.ParticipantStatus_Active)),
+			},
+		})
+
+		<-done
+	})
+
+	t.Run("handles multiple deleted spaces", func(t *testing.T) {
+		fx := newAclUpdaterFixture(t)
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+
+		spaceId1 := fx.spaceIds[0]
+		spaceId2 := fx.spaceIds[1]
+		creatorIdentity := fx.pubKeys[2].Account()
+
+		done1 := make(chan struct{})
+		done2 := make(chan struct{})
+		fx.remover.EXPECT().Leave(mock.Anything, spaceId1).
+			Run(func(ctx context.Context, spaceId string) {
+				close(done1)
+			}).Return(nil).Once()
+		fx.remover.EXPECT().Leave(mock.Anything, spaceId2).
+			Run(func(ctx context.Context, spaceId string) {
+				close(done2)
+			}).Return(nil).Once()
+
+		err := fx.Run(ctx)
+		require.NoError(t, err)
+
+		// Add two deleted space views
+		fx.objectStore.AddObjects(t, fx.techSpaceId, []objectstore.TestObject{
+			{
+				bundle.RelationKeyId:                  domain.String("spaceView1"),
+				bundle.RelationKeyTargetSpaceId:       domain.String(spaceId1),
+				bundle.RelationKeyCreator:             domain.String(creatorIdentity),
+				bundle.RelationKeyResolvedLayout:      domain.Int64(int64(model.ObjectType_spaceView)),
+				bundle.RelationKeySpaceRemoteStatus:   domain.Int64(int64(model.SpaceStatus_Ok)),
+				bundle.RelationKeySpaceAccountStatus:  domain.Int64(int64(model.SpaceStatus_SpaceDeleted)),
+				bundle.RelationKeyMyParticipantStatus: domain.Int64(int64(model.ParticipantStatus_Active)),
+			},
+			{
+				bundle.RelationKeyId:                  domain.String("spaceView2"),
+				bundle.RelationKeyTargetSpaceId:       domain.String(spaceId2),
+				bundle.RelationKeyCreator:             domain.String(creatorIdentity),
+				bundle.RelationKeyResolvedLayout:      domain.Int64(int64(model.ObjectType_spaceView)),
+				bundle.RelationKeySpaceRemoteStatus:   domain.Int64(int64(model.SpaceStatus_Ok)),
+				bundle.RelationKeySpaceAccountStatus:  domain.Int64(int64(model.SpaceStatus_SpaceDeleted)),
+				bundle.RelationKeyMyParticipantStatus: domain.Int64(int64(model.ParticipantStatus_Active)),
+			},
+		})
+
+		<-done1
+		<-done2
+	})
+
+	t.Run("stops triggering when participant status changes to removed", func(t *testing.T) {
+		fx := newAclUpdaterFixture(t)
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+
+		spaceId := fx.spaceIds[0]
+		creatorIdentity := fx.pubKeys[2].Account()
+		spaceViewId := "spaceView1"
+
+		done := make(chan struct{})
+		fx.remover.EXPECT().Leave(mock.Anything, spaceId).
+			Run(func(ctx context.Context, spaceId string) {
+				close(done)
+			}).Return(nil).Once()
+
+		err := fx.Run(ctx)
+		require.NoError(t, err)
+
+		// Add deleted space view
+		fx.objectStore.AddObjects(t, fx.techSpaceId, []objectstore.TestObject{
+			{
+				bundle.RelationKeyId:                  domain.String(spaceViewId),
+				bundle.RelationKeyTargetSpaceId:       domain.String(spaceId),
+				bundle.RelationKeyCreator:             domain.String(creatorIdentity),
+				bundle.RelationKeyResolvedLayout:      domain.Int64(int64(model.ObjectType_spaceView)),
+				bundle.RelationKeySpaceRemoteStatus:   domain.Int64(int64(model.SpaceStatus_Ok)),
+				bundle.RelationKeySpaceAccountStatus:  domain.Int64(int64(model.SpaceStatus_SpaceDeleted)),
+				bundle.RelationKeyMyParticipantStatus: domain.Int64(int64(model.ParticipantStatus_Active)),
+			},
+		})
+
+		<-done
+
+		// Update participant status to Removed - should no longer match subscription filters
+		fx.objectStore.AddObjects(t, fx.techSpaceId, []objectstore.TestObject{
+			{
+				bundle.RelationKeyId:                  domain.String(spaceViewId),
+				bundle.RelationKeyTargetSpaceId:       domain.String(spaceId),
+				bundle.RelationKeyCreator:             domain.String(creatorIdentity),
+				bundle.RelationKeyResolvedLayout:      domain.Int64(int64(model.ObjectType_spaceView)),
+				bundle.RelationKeySpaceRemoteStatus:   domain.Int64(int64(model.SpaceStatus_Ok)),
+				bundle.RelationKeySpaceAccountStatus:  domain.Int64(int64(model.SpaceStatus_SpaceDeleted)),
+				bundle.RelationKeyMyParticipantStatus: domain.Int64(int64(model.ParticipantStatus_Removed)),
+			},
+		})
+
+		// Wait to ensure no additional calls are made
+		time.Sleep(200 * time.Millisecond)
+	})
+
+	t.Run("retries on leave failure and succeeds", func(t *testing.T) {
+		fx := newAclUpdaterFixture(t)
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+
+		spaceId := fx.spaceIds[0]
+		creatorIdentity := fx.pubKeys[2].Account()
+		spaceViewId := "spaceView1"
+
+		retryDone := make(chan struct{})
+		fx.remover.EXPECT().Leave(mock.Anything, spaceId).
+			Return(assert.AnError).Once()
+		fx.remover.EXPECT().Leave(mock.Anything, spaceId).
+			Run(func(ctx context.Context, spaceId string) {
+				close(retryDone)
+			}).Return(nil).Once()
+
+		err := fx.Run(ctx)
+		require.NoError(t, err)
+
+		// Add space view with status SpaceDeleted for a space we're not the creator of
+		fx.objectStore.AddObjects(t, fx.techSpaceId, []objectstore.TestObject{
+			{
+				bundle.RelationKeyId:                  domain.String(spaceViewId),
+				bundle.RelationKeyTargetSpaceId:       domain.String(spaceId),
+				bundle.RelationKeyCreator:             domain.String(creatorIdentity),
+				bundle.RelationKeyResolvedLayout:      domain.Int64(int64(model.ObjectType_spaceView)),
+				bundle.RelationKeySpaceRemoteStatus:   domain.Int64(int64(model.SpaceStatus_Ok)),
+				bundle.RelationKeySpaceAccountStatus:  domain.Int64(int64(model.SpaceStatus_SpaceDeleted)),
+				bundle.RelationKeyMyParticipantStatus: domain.Int64(int64(model.ParticipantStatus_Active)),
+			},
+		})
+
+		<-retryDone
 	})
 }
 

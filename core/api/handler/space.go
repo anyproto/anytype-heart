@@ -15,7 +15,8 @@ import (
 // ListSpacesHandler retrieves a list of spaces
 //
 //	@Summary		List spaces
-//	@Description	Retrieves a paginated list of all spaces that are accessible by the authenticated user. Each space record contains detailed information such as the space ID, name, icon (derived either from an emoji or image URL), and additional metadata. This endpoint is key to displaying a user’s workspaces.
+//	@Description	Retrieves a paginated list of all spaces that are accessible by the authenticated user. Each space record contains detailed information such as the space ID, name, icon (derived either from an emoji or image URL), and additional metadata. This endpoint is key to displaying a user's workspaces.
+//	@Description	Supports dynamic filtering via query parameters (e.g., ?name[contains]=project, ?is_archived=false). See FilterCondition enum for available conditions.
 //	@Id				list_spaces
 //	@Tags			Spaces
 //	@Produce		json
@@ -43,7 +44,7 @@ func ListSpacesHandler(s *service.Service) gin.HandlerFunc {
 		)
 
 		if code != http.StatusOK {
-			apiErr := util.CodeToAPIError(code, err.Error())
+			apiErr := util.CodeToApiError(code, err.Error())
 			c.JSON(code, apiErr)
 			return
 		}
@@ -79,7 +80,7 @@ func GetSpaceHandler(s *service.Service) gin.HandlerFunc {
 		)
 
 		if code != http.StatusOK {
-			apiErr := util.CodeToAPIError(code, err.Error())
+			apiErr := util.CodeToApiError(code, err.Error())
 			c.JSON(code, apiErr)
 			return
 		}
@@ -109,7 +110,7 @@ func CreateSpaceHandler(s *service.Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var req apimodel.CreateSpaceRequest
 		if err := c.BindJSON(&req); err != nil {
-			apiErr := util.CodeToAPIError(http.StatusBadRequest, err.Error())
+			apiErr := util.CodeToApiError(http.StatusBadRequest, err.Error())
 			c.JSON(http.StatusBadRequest, apiErr)
 			return
 		}
@@ -123,7 +124,7 @@ func CreateSpaceHandler(s *service.Service) gin.HandlerFunc {
 		)
 
 		if code != http.StatusOK {
-			apiErr := util.CodeToAPIError(code, err.Error())
+			apiErr := util.CodeToApiError(code, err.Error())
 			c.JSON(code, apiErr)
 			return
 		}
@@ -158,7 +159,7 @@ func UpdateSpaceHandler(s *service.Service) gin.HandlerFunc {
 
 		var req apimodel.UpdateSpaceRequest
 		if err := c.BindJSON(&req); err != nil {
-			apiErr := util.CodeToAPIError(http.StatusBadRequest, err.Error())
+			apiErr := util.CodeToApiError(http.StatusBadRequest, err.Error())
 			c.JSON(http.StatusBadRequest, apiErr)
 			return
 		}
@@ -172,7 +173,7 @@ func UpdateSpaceHandler(s *service.Service) gin.HandlerFunc {
 		)
 
 		if code != http.StatusOK {
-			apiErr := util.CodeToAPIError(code, err.Error())
+			apiErr := util.CodeToApiError(code, err.Error())
 			c.JSON(code, apiErr)
 			return
 		}

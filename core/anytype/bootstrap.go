@@ -62,6 +62,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/debug"
 	"github.com/anyproto/anytype-heart/core/debug/profiler"
 	"github.com/anyproto/anytype-heart/core/device"
+	"github.com/anyproto/anytype-heart/core/durability"
 	"github.com/anyproto/anytype-heart/core/files"
 	"github.com/anyproto/anytype-heart/core/files/fileacl"
 	"github.com/anyproto/anytype-heart/core/files/fileobject"
@@ -81,6 +82,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/kanban"
 	"github.com/anyproto/anytype-heart/core/nameservice"
 	"github.com/anyproto/anytype-heart/core/notifications"
+	"github.com/anyproto/anytype-heart/core/order"
 	"github.com/anyproto/anytype-heart/core/payments"
 	paymentscache "github.com/anyproto/anytype-heart/core/payments/cache"
 	"github.com/anyproto/anytype-heart/core/payments/emailcollector"
@@ -89,7 +91,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/pushnotification"
 	"github.com/anyproto/anytype-heart/core/pushnotification/pushclient"
 	"github.com/anyproto/anytype-heart/core/session"
-	"github.com/anyproto/anytype-heart/core/spaceview"
 	"github.com/anyproto/anytype-heart/core/subscription"
 	"github.com/anyproto/anytype-heart/core/subscription/crossspacesub"
 	"github.com/anyproto/anytype-heart/core/syncstatus"
@@ -299,7 +300,7 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(history.New()).
 		Register(gateway.New()).
 		Register(export.New()).
-		Register(linkpreview.New()).
+		Register(linkpreview.NewWithCache()).
 		Register(unsplash.New()).
 		Register(debug.New()).
 		Register(syncsubscriptions.New()).
@@ -325,10 +326,11 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(paymentscache.New()).
 		Register(emailcollector.New()).
 		Register(peerstatus.New()).
-		Register(spaceview.New()).
+		Register(order.New()).
 		Register(api.New()).
 		Register(pushclient.New()).
-		Register(pushnotification.New())
+		Register(pushnotification.New()).
+		Register(durability.New()) // leave it the last one
 }
 
 func MiddlewareVersion() string {

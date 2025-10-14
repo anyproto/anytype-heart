@@ -169,6 +169,55 @@ func (_c *MockClientCommands_BlockCreate_Call) RunAndReturn(run func(context.Con
 	return _c
 }
 
+// BlockListDelete provides a mock function with given fields: _a0, _a1
+func (_m *MockClientCommands) BlockListDelete(_a0 context.Context, _a1 *pb.RpcBlockListDeleteRequest) *pb.RpcBlockListDeleteResponse {
+	ret := _m.Called(_a0, _a1)
+
+	if len(ret) == 0 {
+		panic("no return value specified for BlockListDelete")
+	}
+
+	var r0 *pb.RpcBlockListDeleteResponse
+	if rf, ok := ret.Get(0).(func(context.Context, *pb.RpcBlockListDeleteRequest) *pb.RpcBlockListDeleteResponse); ok {
+		r0 = rf(_a0, _a1)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*pb.RpcBlockListDeleteResponse)
+		}
+	}
+
+	return r0
+}
+
+// MockClientCommands_BlockListDelete_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'BlockListDelete'
+type MockClientCommands_BlockListDelete_Call struct {
+	*mock.Call
+}
+
+// BlockListDelete is a helper method to define mock.On call
+//   - _a0 context.Context
+//   - _a1 *pb.RpcBlockListDeleteRequest
+func (_e *MockClientCommands_Expecter) BlockListDelete(_a0 interface{}, _a1 interface{}) *MockClientCommands_BlockListDelete_Call {
+	return &MockClientCommands_BlockListDelete_Call{Call: _e.mock.On("BlockListDelete", _a0, _a1)}
+}
+
+func (_c *MockClientCommands_BlockListDelete_Call) Run(run func(_a0 context.Context, _a1 *pb.RpcBlockListDeleteRequest)) *MockClientCommands_BlockListDelete_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(*pb.RpcBlockListDeleteRequest))
+	})
+	return _c
+}
+
+func (_c *MockClientCommands_BlockListDelete_Call) Return(_a0 *pb.RpcBlockListDeleteResponse) *MockClientCommands_BlockListDelete_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockClientCommands_BlockListDelete_Call) RunAndReturn(run func(context.Context, *pb.RpcBlockListDeleteRequest) *pb.RpcBlockListDeleteResponse) *MockClientCommands_BlockListDelete_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // BlockPaste provides a mock function with given fields: _a0, _a1
 func (_m *MockClientCommands) BlockPaste(_a0 context.Context, _a1 *pb.RpcBlockPasteRequest) *pb.RpcBlockPasteResponse {
 	ret := _m.Called(_a0, _a1)

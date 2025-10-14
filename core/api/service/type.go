@@ -102,7 +102,7 @@ func (s *Service) GetType(ctx context.Context, spaceId string, typeId string) (*
 			return nil, ErrTypeDeleted
 		}
 
-		if resp.Error != nil && resp.Error.Code != pb.RpcObjectShowResponseError_NULL {
+		if resp.Error.Code != pb.RpcObjectShowResponseError_NULL {
 			return nil, ErrFailedRetrieveType
 		}
 	}
@@ -346,8 +346,9 @@ func (s *Service) buildRelationIds(ctx context.Context, spaceId string, props []
 	relationIds := make([]string, 0, len(props))
 
 	for _, propLink := range props {
-		rk := s.ResolvePropertyApiKey(propertyMap, propLink.Key)
-		if propDef, exists := propertyMap[rk]; exists {
+		rk, found := s.ResolvePropertyApiKey(propertyMap, propLink.Key)
+		if found {
+			propDef := propertyMap[rk]
 			relationIds = append(relationIds, propDef.Id)
 			continue
 		}

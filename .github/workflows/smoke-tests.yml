@@ -22,7 +22,8 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version: '1.23.11'
+          go-version: '1.24'
+          check-latest: true
 
       - name: Clone anytype-heart with specified branch
         uses: actions/checkout@v4

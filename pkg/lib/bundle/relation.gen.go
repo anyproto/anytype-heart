@@ -9,7 +9,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-const RelationChecksum = "82683a0ef7e8215417c1c0163c2230cdd683ef24992356c2e9fed325b15500c5"
+const RelationChecksum = "56053eaf15a74368d28cddbc6132d794f1607ecfc74aeee88c4797ecd8b6f1f7"
 const (
 	RelationKeyTag                                domain.RelationKey = "tag"
 	RelationKeyCamera                             domain.RelationKey = "camera"
@@ -68,7 +68,6 @@ const (
 	RelationKeyExposure                           domain.RelationKey = "exposure"
 	RelationKeyTargetObjectType                   domain.RelationKey = "targetObjectType"
 	RelationKeyIsFavorite                         domain.RelationKey = "isFavorite"
-	RelationKeyWorkspaceId                        domain.RelationKey = "workspaceId"
 	RelationKeySpaceId                            domain.RelationKey = "spaceId"
 	RelationKeyAudioGenre                         domain.RelationKey = "audioGenre"
 	RelationKeyName                               domain.RelationKey = "name"
@@ -134,6 +133,7 @@ const (
 	RelationKeySpaceInvitePermissions             domain.RelationKey = "spaceInvitePermissions"
 	RelationKeyIdentity                           domain.RelationKey = "identity"
 	RelationKeyParticipantStatus                  domain.RelationKey = "participantStatus"
+	RelationKeyMyParticipantStatus                domain.RelationKey = "myParticipantStatus"
 	RelationKeyIdentityProfileLink                domain.RelationKey = "identityProfileLink"
 	RelationKeyProfileOwnerIdentity               domain.RelationKey = "profileOwnerIdentity"
 	RelationKeyTargetSpaceId                      domain.RelationKey = "targetSpaceId"
@@ -161,14 +161,13 @@ const (
 	RelationKeyFileVariantOptions                 domain.RelationKey = "fileVariantOptions"
 	RelationKeyFileSourceChecksum                 domain.RelationKey = "fileSourceChecksum"
 	RelationKeySpaceOrder                         domain.RelationKey = "spaceOrder"
+	RelationKeyOrderId                            domain.RelationKey = "orderId"
 	RelationKeyIconName                           domain.RelationKey = "iconName"
 	RelationKeyRecommendedFeaturedRelations       domain.RelationKey = "recommendedFeaturedRelations"
 	RelationKeyRecommendedHiddenRelations         domain.RelationKey = "recommendedHiddenRelations"
 	RelationKeyRecommendedFileRelations           domain.RelationKey = "recommendedFileRelations"
 	RelationKeyDefaultViewType                    domain.RelationKey = "defaultViewType"
 	RelationKeyDefaultTypeId                      domain.RelationKey = "defaultTypeId"
-	RelationKeyAutoWidgetTargets                  domain.RelationKey = "autoWidgetTargets"
-	RelationKeyAutoWidgetDisabled                 domain.RelationKey = "autoWidgetDisabled"
 	RelationKeyPluralName                         domain.RelationKey = "pluralName"
 	RelationKeyHeaderRelationsLayout              domain.RelationKey = "headerRelationsLayout"
 	RelationKeyApiObjectKey                       domain.RelationKey = "apiObjectKey"
@@ -177,6 +176,10 @@ const (
 	RelationKeySpacePushNotificationKey           domain.RelationKey = "spacePushNotificationKey"
 	RelationKeySpacePushNotificationEncryptionKey domain.RelationKey = "spacePushNotificationEncryptionKey"
 	RelationKeySpaceJoinDate                      domain.RelationKey = "spaceJoinDate"
+	RelationKeyWidgetLayout                       domain.RelationKey = "widgetLayout"
+	RelationKeyWidgetLimit                        domain.RelationKey = "widgetLimit"
+	RelationKeyWidgetViewId                       domain.RelationKey = "widgetViewId"
+	RelationKeyIsMainChat                         domain.RelationKey = "isMainChat"
 )
 
 var (
@@ -314,33 +317,6 @@ var (
 			ReadOnly:         false,
 			ReadOnlyRelation: true,
 			Revision:         1,
-			Scope:            model.Relation_type,
-		},
-		RelationKeyAutoWidgetDisabled: {
-
-			DataSource:       model.Relation_details,
-			Description:      "",
-			Format:           model.RelationFormat_checkbox,
-			Hidden:           true,
-			Id:               "_brautoWidgetDisabled",
-			Key:              "autoWidgetDisabled",
-			MaxCount:         1,
-			Name:             "Auto Widget disabled",
-			ReadOnly:         false,
-			ReadOnlyRelation: true,
-			Scope:            model.Relation_type,
-		},
-		RelationKeyAutoWidgetTargets: {
-
-			DataSource:       model.Relation_details,
-			Description:      "Automatically generated widget. Used to avoid creating widget if was removed by user",
-			Format:           model.RelationFormat_object,
-			Hidden:           true,
-			Id:               "_brautoWidgetTargets",
-			Key:              "autoWidgetTargets",
-			Name:             "Auto Widget targets",
-			ReadOnly:         false,
-			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
 		},
 		RelationKeyBacklinks: {
@@ -1176,6 +1152,20 @@ var (
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
 		},
+		RelationKeyIsMainChat: {
+
+			DataSource:       model.Relation_derived,
+			Description:      "Is this the main chat",
+			Format:           model.RelationFormat_checkbox,
+			Hidden:           true,
+			Id:               "_brisMainChat",
+			Key:              "isMainChat",
+			MaxCount:         1,
+			Name:             "Is main chat",
+			ReadOnly:         true,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
 		RelationKeyIsReadonly: {
 
 			DataSource:       model.Relation_derived,
@@ -1414,6 +1404,20 @@ var (
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
 		},
+		RelationKeyMyParticipantStatus: {
+
+			DataSource:       model.Relation_local,
+			Description:      "Current account status in space. Possible values: models.ParticipantStatus",
+			Format:           model.RelationFormat_number,
+			Hidden:           true,
+			Id:               "_brmyParticipantStatus",
+			Key:              "myParticipantStatus",
+			MaxCount:         1,
+			Name:             "My participant status",
+			ReadOnly:         true,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
 		RelationKeyName: {
 
 			DataSource:       model.Relation_details,
@@ -1438,6 +1442,20 @@ var (
 			Key:              "oldAnytypeID",
 			MaxCount:         1,
 			Name:             "Old Anytype ID",
+			ReadOnly:         true,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
+		RelationKeyOrderId: {
+
+			DataSource:       model.Relation_details,
+			Description:      "Lexicographic id for object ordering",
+			Format:           model.RelationFormat_longtext,
+			Hidden:           true,
+			Id:               "_brorderId",
+			Key:              "orderId",
+			MaxCount:         1,
+			Name:             "Order id",
 			ReadOnly:         true,
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
@@ -2426,6 +2444,48 @@ var (
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
 		},
+		RelationKeyWidgetLayout: {
+
+			DataSource:       model.Relation_details,
+			Description:      "Widget layout",
+			Format:           model.RelationFormat_number,
+			Hidden:           true,
+			Id:               "_brwidgetLayout",
+			Key:              "widgetLayout",
+			MaxCount:         1,
+			Name:             "Widget layout",
+			ReadOnly:         false,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
+		RelationKeyWidgetLimit: {
+
+			DataSource:       model.Relation_details,
+			Description:      "Widget limit",
+			Format:           model.RelationFormat_number,
+			Hidden:           true,
+			Id:               "_brwidgetLimit",
+			Key:              "widgetLimit",
+			MaxCount:         1,
+			Name:             "Widget limit",
+			ReadOnly:         false,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
+		RelationKeyWidgetViewId: {
+
+			DataSource:       model.Relation_details,
+			Description:      "Widget view ID",
+			Format:           model.RelationFormat_longtext,
+			Hidden:           true,
+			Id:               "_brwidgetViewId",
+			Key:              "widgetViewId",
+			MaxCount:         1,
+			Name:             "Widget view ID",
+			ReadOnly:         false,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
 		RelationKeyWidthInPixels: {
 
 			DataSource:       model.Relation_details,
@@ -2436,21 +2496,6 @@ var (
 			MaxCount:         1,
 			Name:             "Width",
 			ReadOnly:         false,
-			ReadOnlyRelation: true,
-			Scope:            model.Relation_type,
-		},
-		RelationKeyWorkspaceId: {
-
-			DataSource:       model.Relation_local,
-			Description:      "Space object belongs to",
-			Format:           model.RelationFormat_object,
-			Hidden:           true,
-			Id:               "_brworkspaceId",
-			Key:              "workspaceId",
-			MaxCount:         1,
-			Name:             "Space",
-			ObjectTypes:      []string{TypePrefix + "space"},
-			ReadOnly:         true,
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
 		},

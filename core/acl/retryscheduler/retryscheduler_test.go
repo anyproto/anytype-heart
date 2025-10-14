@@ -156,7 +156,7 @@ func TestRetryScheduler_BasicOperation(t *testing.T) {
 		return nil
 	}
 
-	evaluate := func(err error) bool {
+	evaluate := func(msg testMessage, err error) bool {
 		return false
 	}
 
@@ -206,7 +206,7 @@ func TestRetryScheduler_UpdateExisting(t *testing.T) {
 		return nil
 	}
 
-	evaluate := func(err error) bool {
+	evaluate := func(msg testMessage, err error) bool {
 		return false
 	}
 
@@ -248,7 +248,7 @@ func TestRetryScheduler_RemoveUpdate(t *testing.T) {
 		return nil
 	}
 
-	evaluate := func(err error) bool {
+	evaluate := func(msg testMessage, err error) bool {
 		return false
 	}
 
@@ -306,7 +306,7 @@ func TestRetryScheduler_RetryWithBackoff(t *testing.T) {
 		return nil
 	}
 
-	evaluate := func(err error) bool {
+	evaluate := func(msg testMessage, err error) bool {
 		return errors.Is(err, retryError)
 	}
 
@@ -366,7 +366,7 @@ func TestRetryScheduler_MaxTimeout(t *testing.T) {
 		return errors.New("always fail")
 	}
 
-	evaluate := func(err error) bool {
+	evaluate := func(msg testMessage, err error) bool {
 		mu.Lock()
 		attempts := len(attemptTimes)
 		mu.Unlock()
@@ -421,7 +421,7 @@ func TestRetryScheduler_ZeroTimeout(t *testing.T) {
 		return nil
 	}
 
-	evaluate := func(err error) bool {
+	evaluate := func(msg testMessage, err error) bool {
 		return false
 	}
 
@@ -457,7 +457,7 @@ func TestRetryScheduler_ConcurrentOperations(t *testing.T) {
 		return nil
 	}
 
-	evaluate := func(err error) bool {
+	evaluate := func(msg testMessage, err error) bool {
 		return false
 	}
 
@@ -517,7 +517,7 @@ func TestRetryScheduler_CloseWhileProcessing(t *testing.T) {
 		return nil
 	}
 
-	evaluate := func(err error) bool {
+	evaluate := func(msg testMessage, err error) bool {
 		return false
 	}
 
@@ -563,7 +563,7 @@ func TestRetryScheduler_ImmediateProcessing(t *testing.T) {
 		return nil
 	}
 
-	evaluate := func(err error) bool {
+	evaluate := func(msg testMessage, err error) bool {
 		return false
 	}
 
@@ -599,7 +599,7 @@ func TestRetryScheduler_TimerReuse(t *testing.T) {
 		return nil
 	}
 
-	evaluate := func(err error) bool {
+	evaluate := func(msg testMessage, err error) bool {
 		return false
 	}
 

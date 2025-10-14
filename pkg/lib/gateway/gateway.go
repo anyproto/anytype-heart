@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strconv"
 	"strings"
 	"sync"
@@ -35,7 +36,10 @@ const (
 	requestLimit   = 32
 )
 
-var log = logging.Logger("anytype-gateway")
+var (
+	log      = logging.Logger("anytype-gateway")
+	isMobile = runtime.GOOS == "ios" || runtime.GOOS == "android"
+)
 
 func New() Gateway {
 	return new(gateway)
@@ -130,10 +134,26 @@ func (g *gateway) Addr() string {
 }
 
 func (g *gateway) StateChange(state int) {
+	// Desktop: gateway runs continuously, mobile: start/stop on foreground/background
+	if !isMobile {
+		if domain.CompState(state) == domain.CompStateAppClosingInitiated {
+			// Stop pending file requests for faster shutdown
+			if err := g.stopServer(); err != nil {
+				log.Errorf("err gateway close: %+v", err)
+			}
+		}
+		return
+	}
+
 	switch domain.CompState(state) {
 	case domain.CompStateAppWentForeground:
 		g.startServer()
-	case domain.CompStateAppWentBackground, domain.CompStateAppClosingInitiated:
+	case domain.CompStateAppWentBackground:
+		if err := g.stopServer(); err != nil {
+			log.Errorf("err gateway close: %+v", err)
+		}
+	case domain.CompStateAppClosingInitiated:
+		// Stop pending file requests for faster shutdown
 		if err := g.stopServer(); err != nil {
 			log.Errorf("err gateway close: %+v", err)
 		}

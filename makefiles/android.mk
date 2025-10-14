@@ -20,13 +20,12 @@ install-dev-android: setup-go build-android
 	@$(eval hash := $$(shell shasum -b dist/android/lib.aar | cut -d' ' -f1))
 	@echo "Version hash: ${hash}"
 	# Update the gradle file with the new version
+ifeq ($(shell uname),Darwin)
 	@sed -i '' "s/version = '.*'/version = '${hash}'/g" $(CLIENT_ANDROID_PATH)/libs/build.gradle
-	@cat $(CLIENT_ANDROID_PATH)/libs/build.gradle
-
 	@sed -i '' "s/middlewareVersion = \".*\"/middlewareVersion = \"${hash}\"/" $(CLIENT_ANDROID_PATH)/gradle/libs.versions.toml
+else
+	@sed -i "s/version = '.*'/version = '${hash}'/g" $(CLIENT_ANDROID_PATH)/libs/build.gradle
+	@sed -i "s/middlewareVersion = \".*\"/middlewareVersion = \"${hash}\"/" $(CLIENT_ANDROID_PATH)/gradle/libs.versions.toml
+endif
+	@cat $(CLIENT_ANDROID_PATH)/libs/build.gradle
 	@cat $(CLIENT_ANDROID_PATH)/gradle/libs.versions.toml
-
-	# Print the updated gradle file (for verification)
-	@cd $(CLIENT_ANDROID_PATH) && make setup_local_mw
-	@cd $(CLIENT_ANDROID_PATH) && make normalize_mw_imports
-	@cd $(CLIENT_ANDROID_PATH) && make clean_protos

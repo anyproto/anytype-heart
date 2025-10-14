@@ -252,6 +252,9 @@ packages:
       EventService:
       CrossSpaceSubscriptionService:
       ClientCommands:
+  github.com/anyproto/anytype-heart/core/api/filter:
+    interfaces:
+      ApiService:
   github.com/anyproto/anytype-heart/core/block/template:
     interfaces:
       Service:

@@ -43,6 +43,7 @@ type fixture struct {
 	lock                  sync.Mutex
 	events                []*pb.Event
 	eventsToOtherSessions map[string][]*pb.Event
+	repo                  chatrepository.Service
 }
 
 const (
@@ -86,6 +87,7 @@ func newFixture(t *testing.T) *fixture {
 	fx := &fixture{
 		Service:               New(),
 		eventsToOtherSessions: make(map[string][]*pb.Event),
+		repo:                  repo,
 	}
 	eventSender.EXPECT().Broadcast(mock.Anything).Run(func(ev *pb.Event) {
 		fx.lock.Lock()
@@ -117,6 +119,18 @@ func TestFlush(t *testing.T) {
 		mngr, err := fx.GetManager(testSpaceId, chatId)
 		require.NoError(t, err)
 
+		// Setup
+		repo, err := fx.repo.Repository(chatId)
+		require.NoError(t, err)
+		err = repo.AddTestMessage(ctx, givenSimpleMessage("msg2", "world!", "o2"))
+		require.NoError(t, err)
+		err = repo.AddTestMessage(ctx, givenSimpleMessage("msg3", "with reactions", "o3"))
+		require.NoError(t, err)
+		err = repo.AddTestMessage(ctx, givenSimpleMessage("msg4", "text", "o4"))
+		require.NoError(t, err)
+		err = repo.AddTestMessage(ctx, givenSimpleMessage("msg5", "text", "o5"))
+		require.NoError(t, err)
+
 		_, err = fx.SubscribeLastMessages(ctx, SubscribeLastMessagesRequest{
 			ChatObjectId:           chatId,
 			SubId:                  "sync",
@@ -127,9 +141,9 @@ func TestFlush(t *testing.T) {
 			SubId:        "async",
 		})
 
-		message := givenSimpleMessage("msg1", "hello!")
-		updatedMessage := givenSimpleMessage("msg2", "world!")
-		messageWithReactions := givenComplexMessage("msg3", "with reactions")
+		message := givenSimpleMessage("msg1", "hello!", "o1")
+		updatedMessage := givenSimpleMessage("msg2", "world!", "o2")
+		messageWithReactions := givenComplexMessage("msg3", "with reactions", "o3")
 
 		mngr.SetSessionContext(sessionCtx)
 		mngr.Add("prevOrder1", message)
@@ -143,6 +157,9 @@ func TestFlush(t *testing.T) {
 		mngr.ReadMessages("oldestOrderId", []string{"msg5"}, chatmodel.CounterTypeMessage)
 		mngr.ReadMessages("oldestOrderId", []string{"msg5"}, chatmodel.CounterTypeMention)
 		mngr.Flush()
+		t.Run("flush again, expect no extra events", func(t *testing.T) {
+			mngr.Flush()
+		})
 
 		generateWantEvents := func(subId string) []*pb.Event {
 			return []*pb.Event{
@@ -189,17 +206,6 @@ func TestFlush(t *testing.T) {
 						},
 						{
 							SpaceId: testSpaceId,
-							Value: &pb.EventMessageValueOfChatDelete{
-								ChatDelete: &pb.EventChatDelete{
-									Id: "msg4",
-									SubIds: []string{
-										subId,
-									},
-								},
-							},
-						},
-						{
-							SpaceId: testSpaceId,
 							Value: &pb.EventMessageValueOfChatUpdateMessageReadStatus{
 								ChatUpdateMessageReadStatus: &pb.EventChatUpdateMessageReadStatus{
 									Ids:    []string{"msg5"},
@@ -216,6 +222,17 @@ func TestFlush(t *testing.T) {
 								ChatUpdateMentionReadStatus: &pb.EventChatUpdateMentionReadStatus{
 									Ids:    []string{"msg5"},
 									IsRead: true,
+									SubIds: []string{
+										subId,
+									},
+								},
+							},
+						},
+						{
+							SpaceId: testSpaceId,
+							Value: &pb.EventMessageValueOfChatDelete{
+								ChatDelete: &pb.EventChatDelete{
+									Id: "msg4",
 									SubIds: []string{
 										subId,
 									},
@@ -249,11 +266,100 @@ func TestFlush(t *testing.T) {
 	})
 }
 
-func givenSimpleMessage(id string, text string) *chatmodel.Message {
+func TestOutOfWindowEvents(t *testing.T) {
+	t.Run("update full", func(t *testing.T) {
+		fx := newFixture(t)
+		ctx := context.Background()
+
+		chatId := "chatId1"
+		subId := "subId1"
+
+		mngr, err := fx.GetManager(testSpaceId, chatId)
+		require.NoError(t, err)
+
+		_, err = fx.SubscribeLastMessages(ctx, SubscribeLastMessagesRequest{
+			ChatObjectId: chatId,
+			SubId:        subId,
+		})
+
+		updatedMessage := givenComplexMessage("msg1", "with reactions", "o1")
+		mngr.UpdateFull(updatedMessage)
+		mngr.Flush()
+		t.Run("flush again, expect no extra events", func(t *testing.T) {
+			mngr.Flush()
+		})
+
+		want := []*pb.Event{
+			{
+				ContextId: chatId,
+				Messages: []*pb.EventMessage{
+					{
+						SpaceId: testSpaceId,
+						Value: &pb.EventMessageValueOfChatUpdate{
+							ChatUpdate: &pb.EventChatUpdate{
+								Id: "msg1",
+								SubIds: []string{
+									subId,
+								},
+								Message: updatedMessage.ChatMessage,
+							},
+						},
+					},
+				},
+			},
+		}
+		assert.Equal(t, want, fx.events)
+	})
+
+	t.Run("update reactions", func(t *testing.T) {
+		fx := newFixture(t)
+		ctx := context.Background()
+
+		chatId := "chatId1"
+		subId := "subId1"
+
+		mngr, err := fx.GetManager(testSpaceId, chatId)
+		require.NoError(t, err)
+
+		_, err = fx.SubscribeLastMessages(ctx, SubscribeLastMessagesRequest{
+			ChatObjectId: chatId,
+			SubId:        subId,
+		})
+
+		mngr.UpdateReactions(givenComplexMessage("msg1", "", "o1"))
+		mngr.Flush()
+		t.Run("flush again, expect no extra events", func(t *testing.T) {
+			mngr.Flush()
+		})
+
+		want := []*pb.Event{
+			{
+				ContextId: chatId,
+				Messages: []*pb.EventMessage{
+					{
+						SpaceId: testSpaceId,
+						Value: &pb.EventMessageValueOfChatUpdateReactions{
+							ChatUpdateReactions: &pb.EventChatUpdateReactions{
+								Id: "msg1",
+								SubIds: []string{
+									subId,
+								},
+								Reactions: givenReactions(),
+							},
+						},
+					},
+				},
+			},
+		}
+		assert.Equal(t, want, fx.events)
+	})
+}
+
+func givenSimpleMessage(id string, text string, orderId string) *chatmodel.Message {
 	return &chatmodel.Message{
 		ChatMessage: &model.ChatMessage{
 			Id:          id,
-			OrderId:     "order1",
+			OrderId:     orderId,
 			Creator:     testCreator,
 			Read:        true,
 			MentionRead: true,
@@ -264,11 +370,11 @@ func givenSimpleMessage(id string, text string) *chatmodel.Message {
 		},
 	}
 }
-func givenComplexMessage(id string, text string) *chatmodel.Message {
+func givenComplexMessage(id string, text string, orderId string) *chatmodel.Message {
 	return &chatmodel.Message{
 		ChatMessage: &model.ChatMessage{
 			Id:               id,
-			OrderId:          "order2",
+			OrderId:          orderId,
 			Creator:          testCreator,
 			Read:             true,
 			MentionRead:      true,

@@ -7,13 +7,16 @@ import (
 )
 
 // cacheManager handles thread-safe caching of properties, types, and tags per space
+// NOTE: Current implementation copies maps on read to prevent concurrent access issues.
+// For better performance (especially with many entries), we might consider implementing
+// copy-on-write using atomic.Value to make reads lock- and copy-free.
 type cacheManager struct {
 	mu sync.RWMutex
 
 	// Caches organized by spaceId -> key -> object
 	// For properties: key can be id, relationKey, or apiObjectKey
 	// For types: key can be id, uniqueKey, or apiObjectKey
-	// For tags: key is just id
+	// For tags: key can be id, uniqueKey, or apiObjectKey
 	properties map[string]map[string]*apimodel.Property
 	types      map[string]map[string]*apimodel.Type
 	tags       map[string]map[string]*apimodel.Tag
@@ -46,7 +49,12 @@ func (c *cacheManager) getProperties(spaceId string) map[string]*apimodel.Proper
 	defer c.mu.RUnlock()
 
 	if spaceCache, exists := c.properties[spaceId]; exists {
-		return spaceCache
+		// Return a copy to prevent concurrent map read/write after lock is released
+		copy := make(map[string]*apimodel.Property, len(spaceCache))
+		for k, v := range spaceCache {
+			copy[k] = v
+		}
+		return copy
 	}
 
 	return make(map[string]*apimodel.Property)
@@ -71,7 +79,12 @@ func (c *cacheManager) getTypes(spaceId string) map[string]*apimodel.Type {
 	defer c.mu.RUnlock()
 
 	if spaceCache, exists := c.types[spaceId]; exists {
-		return spaceCache
+		// Return a copy to prevent concurrent map read/write after lock is released
+		copy := make(map[string]*apimodel.Type, len(spaceCache))
+		for k, v := range spaceCache {
+			copy[k] = v
+		}
+		return copy
 	}
 
 	return make(map[string]*apimodel.Type)
@@ -87,6 +100,8 @@ func (c *cacheManager) cacheTag(spaceId string, tag *apimodel.Tag) {
 	}
 
 	c.tags[spaceId][tag.Id] = tag
+	c.tags[spaceId][tag.UniqueKey] = tag
+	c.tags[spaceId][tag.Key] = tag
 }
 
 func (c *cacheManager) getTags(spaceId string) map[string]*apimodel.Tag {
@@ -94,7 +109,12 @@ func (c *cacheManager) getTags(spaceId string) map[string]*apimodel.Tag {
 	defer c.mu.RUnlock()
 
 	if spaceCache, exists := c.tags[spaceId]; exists {
-		return spaceCache
+		// Return a copy to prevent concurrent map read/write after lock is released
+		copy := make(map[string]*apimodel.Tag, len(spaceCache))
+		for k, v := range spaceCache {
+			copy[k] = v
+		}
+		return copy
 	}
 
 	return make(map[string]*apimodel.Tag)
@@ -122,12 +142,14 @@ func (c *cacheManager) removeType(spaceId, id, uniqueKey, key string) {
 	}
 }
 
-func (c *cacheManager) removeTag(spaceId, id string) {
+func (c *cacheManager) removeTag(spaceId, id, uniqueKey, key string) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
 	if spaceCache, exists := c.tags[spaceId]; exists {
 		delete(spaceCache, id)
+		delete(spaceCache, uniqueKey)
+		delete(spaceCache, key)
 	}
 }
 

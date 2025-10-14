@@ -1,7 +1,7 @@
 {
   "components": {
     "schemas": {
-      "apimodel.AddObjectsToListRequest": {
+      "AddObjectsToListRequest": {
         "properties": {
           "objects": {
             "description": "The list of object IDs to add to the list",
@@ -17,7 +17,25 @@
         },
         "type": "object"
       },
-      "apimodel.CheckboxPropertyLinkValue": {
+      "CheckboxFilterItem": {
+        "properties": {
+          "checkbox": {
+            "description": "The checkbox value to filter by",
+            "example": true,
+            "type": "boolean"
+          },
+          "condition": {
+            "$ref": "#/components/schemas/FilterCondition"
+          },
+          "property_key": {
+            "description": "The property key to filter on",
+            "example": "done",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "CheckboxPropertyLinkValue": {
         "properties": {
           "checkbox": {
             "description": "The checkbox value of the property",
@@ -31,7 +49,7 @@
         },
         "type": "object"
       },
-      "apimodel.CheckboxPropertyValue": {
+      "CheckboxPropertyValue": {
         "properties": {
           "checkbox": {
             "description": "The checkbox value of the property",
@@ -39,7 +57,7 @@
             "type": "boolean"
           },
           "format": {
-            "$ref": "#/components/schemas/apimodel.PropertyFormat"
+            "$ref": "#/components/schemas/PropertyFormat"
           },
           "id": {
             "description": "The id of the property",
@@ -64,7 +82,7 @@
         },
         "type": "object"
       },
-      "apimodel.Color": {
+      "Color": {
         "description": "The color of the icon",
         "enum": [
           "grey",
@@ -93,7 +111,7 @@
           "ColorLime"
         ]
       },
-      "apimodel.CreateApiKeyRequest": {
+      "CreateApiKeyRequest": {
         "properties": {
           "challenge_id": {
             "description": "The challenge id associated with the previously displayed code",
@@ -108,7 +126,7 @@
         },
         "type": "object"
       },
-      "apimodel.CreateApiKeyResponse": {
+      "CreateApiKeyResponse": {
         "properties": {
           "api_key": {
             "description": "The api key used to authenticate requests",
@@ -118,7 +136,7 @@
         },
         "type": "object"
       },
-      "apimodel.CreateChallengeRequest": {
+      "CreateChallengeRequest": {
         "properties": {
           "app_name": {
             "description": "The name of the app that is requesting the challenge",
@@ -128,7 +146,7 @@
         },
         "type": "object"
       },
-      "apimodel.CreateChallengeResponse": {
+      "CreateChallengeResponse": {
         "properties": {
           "challenge_id": {
             "description": "The challenge id associated with the displayed code and needed to solve the challenge for api_key",
@@ -138,7 +156,7 @@
         },
         "type": "object"
       },
-      "apimodel.CreateObjectRequest": {
+      "CreateObjectRequest": {
         "properties": {
           "body": {
             "description": "The body of the object",
@@ -146,7 +164,7 @@
             "type": "string"
           },
           "icon": {
-            "$ref": "#/components/schemas/apimodel.Icon"
+            "$ref": "#/components/schemas/Icon"
           },
           "name": {
             "description": "The name of the object",
@@ -154,9 +172,9 @@
             "type": "string"
           },
           "properties": {
-            "description": "⚠ Warning: Properties are experimental and may change in the next update. ⚠ The properties to set on the object; see ListTypes or GetType endpoints for linked properties",
+            "description": "The properties to set on the object; see ListTypes or GetType endpoints for linked properties",
             "items": {
-              "$ref": "#/components/schemas/apimodel.PropertyLinkWithValue"
+              "$ref": "#/components/schemas/PropertyLinkWithValue"
             },
             "type": "array",
             "uniqueItems": false
@@ -177,10 +195,10 @@
         ],
         "type": "object"
       },
-      "apimodel.CreatePropertyRequest": {
+      "CreatePropertyRequest": {
         "properties": {
           "format": {
-            "$ref": "#/components/schemas/apimodel.PropertyFormat"
+            "$ref": "#/components/schemas/PropertyFormat"
           },
           "key": {
             "description": "The key of the property; should always be snake_case, otherwise it will be converted to snake_case",
@@ -195,7 +213,7 @@
           "tags": {
             "description": "Tags to create for select/multi_select properties",
             "items": {
-              "$ref": "#/components/schemas/apimodel.CreateTagRequest"
+              "$ref": "#/components/schemas/CreateTagRequest"
             },
             "type": "array",
             "uniqueItems": false
@@ -207,7 +225,7 @@
         ],
         "type": "object"
       },
-      "apimodel.CreateSpaceRequest": {
+      "CreateSpaceRequest": {
         "properties": {
           "description": {
             "description": "The description of the space",
@@ -225,10 +243,15 @@
         ],
         "type": "object"
       },
-      "apimodel.CreateTagRequest": {
+      "CreateTagRequest": {
         "properties": {
           "color": {
-            "$ref": "#/components/schemas/apimodel.Color"
+            "$ref": "#/components/schemas/Color"
+          },
+          "key": {
+            "description": "The optional custom key for the tag",
+            "example": "in_progress",
+            "type": "string"
           },
           "name": {
             "description": "The name of the tag",
@@ -242,10 +265,10 @@
         ],
         "type": "object"
       },
-      "apimodel.CreateTypeRequest": {
+      "CreateTypeRequest": {
         "properties": {
           "icon": {
-            "$ref": "#/components/schemas/apimodel.Icon"
+            "$ref": "#/components/schemas/Icon"
           },
           "key": {
             "description": "The key of the type; should always be snake_case, otherwise it will be converted to snake_case",
@@ -253,7 +276,7 @@
             "type": "string"
           },
           "layout": {
-            "$ref": "#/components/schemas/apimodel.TypeLayout"
+            "$ref": "#/components/schemas/TypeLayout"
           },
           "name": {
             "description": "The name of the type",
@@ -266,9 +289,9 @@
             "type": "string"
           },
           "properties": {
-            "description": "⚠ Warning: Properties are experimental and may change in the next update. ⚠ The properties linked to the type",
+            "description": "The properties linked to the type",
             "items": {
-              "$ref": "#/components/schemas/apimodel.PropertyLink"
+              "$ref": "#/components/schemas/PropertyLink"
             },
             "type": "array",
             "uniqueItems": false
@@ -281,7 +304,25 @@
         ],
         "type": "object"
       },
-      "apimodel.DatePropertyLinkValue": {
+      "DateFilterItem": {
+        "properties": {
+          "condition": {
+            "$ref": "#/components/schemas/FilterCondition"
+          },
+          "date": {
+            "description": "The date value to filter by. Accepts dates in RFC3339 format (2006-01-02T15:04:05Z) or date-only format (2006-01-02)",
+            "example": "2006-01-02T15:04:05Z",
+            "type": "string"
+          },
+          "property_key": {
+            "description": "The property key to filter on",
+            "example": "last_modified_date",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "DatePropertyLinkValue": {
         "properties": {
           "date": {
             "description": "The date value of the property. Accepts dates in RFC3339 format (2006-01-02T15:04:05Z) or date-only format (2006-01-02)",
@@ -295,7 +336,7 @@
         },
         "type": "object"
       },
-      "apimodel.DatePropertyValue": {
+      "DatePropertyValue": {
         "properties": {
           "date": {
             "description": "The date value of the property. Returns dates in RFC3339 format (2006-01-02T15:04:05Z)",
@@ -303,7 +344,7 @@
             "type": "string"
           },
           "format": {
-            "$ref": "#/components/schemas/apimodel.PropertyFormat"
+            "$ref": "#/components/schemas/PropertyFormat"
           },
           "id": {
             "description": "The id of the property",
@@ -328,7 +369,25 @@
         },
         "type": "object"
       },
-      "apimodel.EmailPropertyLinkValue": {
+      "EmailFilterItem": {
+        "properties": {
+          "condition": {
+            "$ref": "#/components/schemas/FilterCondition"
+          },
+          "email": {
+            "description": "The email value to filter by",
+            "example": "example@example.com",
+            "type": "string"
+          },
+          "property_key": {
+            "description": "The property key to filter on",
+            "example": "email",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "EmailPropertyLinkValue": {
         "properties": {
           "email": {
             "description": "The email value of the property",
@@ -342,7 +401,7 @@
         },
         "type": "object"
       },
-      "apimodel.EmailPropertyValue": {
+      "EmailPropertyValue": {
         "properties": {
           "email": {
             "description": "The email value of the property",
@@ -350,7 +409,7 @@
             "type": "string"
           },
           "format": {
-            "$ref": "#/components/schemas/apimodel.PropertyFormat"
+            "$ref": "#/components/schemas/PropertyFormat"
           },
           "id": {
             "description": "The id of the property",
@@ -375,7 +434,7 @@
         },
         "type": "object"
       },
-      "apimodel.EmojiIcon": {
+      "EmojiIcon": {
         "properties": {
           "emoji": {
             "description": "The emoji of the icon",
@@ -383,12 +442,25 @@
             "type": "string"
           },
           "format": {
-            "$ref": "#/components/schemas/apimodel.IconFormat"
+            "$ref": "#/components/schemas/IconFormat"
           }
         },
         "type": "object"
       },
-      "apimodel.File": {
+      "EmptyFilterItem": {
+        "properties": {
+          "condition": {
+            "$ref": "#/components/schemas/FilterCondition"
+          },
+          "property_key": {
+            "description": "The property key to filter on",
+            "example": "description",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "File": {
         "description": "The file object",
         "properties": {
           "id": {
@@ -418,7 +490,7 @@
           "properties": {
             "description": "The properties of the file",
             "items": {
-              "$ref": "#/components/schemas/apimodel.PropertyWithValue"
+              "$ref": "#/components/schemas/PropertyWithValue"
             },
             "type": "array",
             "uniqueItems": false
@@ -429,7 +501,7 @@
             "type": "string"
           },
           "type": {
-            "$ref": "#/components/schemas/apimodel.Type"
+            "$ref": "#/components/schemas/Type"
           },
           "url": {
             "description": "The URL to access/download the file content via the gateway",
@@ -439,7 +511,7 @@
         },
         "type": "object"
       },
-      "apimodel.FileIcon": {
+      "FileIcon": {
         "properties": {
           "file": {
             "description": "The file of the icon",
@@ -447,20 +519,44 @@
             "type": "string"
           },
           "format": {
-            "$ref": "#/components/schemas/apimodel.IconFormat"
+            "$ref": "#/components/schemas/IconFormat"
           }
         },
         "type": "object"
       },
-      "apimodel.FileResponse": {
+      "FileResponse": {
         "properties": {
           "file": {
-            "$ref": "#/components/schemas/apimodel.File"
+            "$ref": "#/components/schemas/File"
           }
         },
         "type": "object"
       },
-      "apimodel.FilesPropertyLinkValue": {
+      "FilesFilterItem": {
+        "properties": {
+          "condition": {
+            "$ref": "#/components/schemas/FilterCondition"
+          },
+          "files": {
+            "description": "File IDs for contains condition",
+            "example": [
+              "bafyreie6n5l5nkbjal37su54cha4coy7qzuhrnajluzv5qd5jvtsrxkequ"
+            ],
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "uniqueItems": false
+          },
+          "property_key": {
+            "description": "The property key to filter on",
+            "example": "files",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "FilesPropertyLinkValue": {
         "properties": {
           "files": {
             "description": "The file ids of the property",
@@ -480,7 +576,7 @@
         },
         "type": "object"
       },
-      "apimodel.FilesPropertyValue": {
+      "FilesPropertyValue": {
         "properties": {
           "files": {
             "description": "The file values of the property",
@@ -494,7 +590,7 @@
             "uniqueItems": false
           },
           "format": {
-            "$ref": "#/components/schemas/apimodel.PropertyFormat"
+            "$ref": "#/components/schemas/PropertyFormat"
           },
           "id": {
             "description": "The id of the property",
@@ -519,34 +615,13 @@
         },
         "type": "object"
       },
-      "apimodel.Filter": {
+      "Filter": {
         "properties": {
           "condition": {
-            "description": "The filter condition",
-            "enum": [
-              "equal",
-              "not_equal",
-              "greater",
-              "less",
-              "greater_or_equal",
-              "less_or_equal",
-              "like",
-              "not_like",
-              "in",
-              "not_in",
-              "empty",
-              "not_empty",
-              "all_in",
-              "not_all_in",
-              "exact_in",
-              "not_exact_in",
-              "exists"
-            ],
-            "example": "contains",
-            "type": "string"
+            "$ref": "#/components/schemas/FilterCondition"
           },
           "format": {
-            "$ref": "#/components/schemas/apimodel.PropertyFormat"
+            "$ref": "#/components/schemas/PropertyFormat"
           },
           "id": {
             "description": "The id of the filter",
@@ -566,23 +641,140 @@
         },
         "type": "object"
       },
-      "apimodel.Icon": {
-        "description": "The icon of the type, or null if the type has no icon",
-        "nullable": true,
+      "FilterCondition": {
+        "description": "The filter condition",
+        "enum": [
+          "empty",
+          "nempty"
+        ],
+        "example": "empty",
+        "type": "string",
+        "x-enum-comments": {
+          "FilterConditionAll": "Contains all specified values",
+          "FilterConditionContains": "Contains substring",
+          "FilterConditionEmpty": "Property value is empty",
+          "FilterConditionEq": "Equal to value",
+          "FilterConditionGt": "Greater than value",
+          "FilterConditionGte": "Greater than or equal to value",
+          "FilterConditionIn": "Value is in the specified array",
+          "FilterConditionLt": "Less than value",
+          "FilterConditionLte": "Less than or equal to value",
+          "FilterConditionNContains": "Does not contain substring",
+          "FilterConditionNEmpty": "Property value is not empty",
+          "FilterConditionNe": "Not equal to value",
+          "FilterConditionNin": "Value is not in the specified array"
+        },
+        "x-enum-varnames": [
+          "FilterConditionEq",
+          "FilterConditionNe",
+          "FilterConditionGt",
+          "FilterConditionGte",
+          "FilterConditionLt",
+          "FilterConditionLte",
+          "FilterConditionContains",
+          "FilterConditionNContains",
+          "FilterConditionIn",
+          "FilterConditionNin",
+          "FilterConditionAll",
+          "FilterConditionEmpty",
+          "FilterConditionNEmpty"
+        ]
+      },
+      "FilterExpression": {
+        "description": "Expression filter with nested AND/OR conditions",
+        "properties": {
+          "conditions": {
+            "description": "List of format-specific filter conditions",
+            "items": {
+              "$ref": "#/components/schemas/FilterItem"
+            },
+            "type": "array",
+            "uniqueItems": false
+          },
+          "filters": {
+            "description": "Nested filter expressions for complex logic",
+            "items": {
+              "$ref": "#/components/schemas/FilterExpression"
+            },
+            "type": "array",
+            "uniqueItems": false
+          },
+          "operator": {
+            "$ref": "#/components/schemas/FilterOperator"
+          }
+        },
+        "type": "object"
+      },
+      "FilterItem": {
         "oneOf": [
           {
-            "$ref": "#/components/schemas/apimodel.EmojiIcon"
+            "$ref": "#/components/schemas/TextFilterItem"
           },
           {
-            "$ref": "#/components/schemas/apimodel.FileIcon"
+            "$ref": "#/components/schemas/NumberFilterItem"
           },
           {
-            "$ref": "#/components/schemas/apimodel.NamedIcon"
+            "$ref": "#/components/schemas/SelectFilterItem"
+          },
+          {
+            "$ref": "#/components/schemas/MultiSelectFilterItem"
+          },
+          {
+            "$ref": "#/components/schemas/DateFilterItem"
+          },
+          {
+            "$ref": "#/components/schemas/CheckboxFilterItem"
+          },
+          {
+            "$ref": "#/components/schemas/FilesFilterItem"
+          },
+          {
+            "$ref": "#/components/schemas/UrlFilterItem"
+          },
+          {
+            "$ref": "#/components/schemas/EmailFilterItem"
+          },
+          {
+            "$ref": "#/components/schemas/PhoneFilterItem"
+          },
+          {
+            "$ref": "#/components/schemas/ObjectsFilterItem"
+          },
+          {
+            "$ref": "#/components/schemas/EmptyFilterItem"
           }
         ],
         "type": "object"
       },
-      "apimodel.IconFormat": {
+      "FilterOperator": {
+        "description": "Logical operator for combining filters (and, or)",
+        "enum": [
+          "and",
+          "or"
+        ],
+        "type": "string",
+        "x-enum-varnames": [
+          "FilterOperatorAnd",
+          "FilterOperatorOr"
+        ]
+      },
+      "Icon": {
+        "description": "The icon of the type, or null if the type has no icon",
+        "nullable": true,
+        "oneOf": [
+          {
+            "$ref": "#/components/schemas/EmojiIcon"
+          },
+          {
+            "$ref": "#/components/schemas/FileIcon"
+          },
+          {
+            "$ref": "#/components/schemas/NamedIcon"
+          }
+        ],
+        "type": "object"
+      },
+      "IconFormat": {
         "description": "The format of the icon",
         "enum": [
           "emoji",
@@ -596,7 +788,7 @@
           "IconFormatIcon"
         ]
       },
-      "apimodel.IconName": {
+      "IconName": {
         "description": "The name of the icon",
         "enum": [
           "accessibility",
@@ -1385,7 +1577,7 @@
           "IconNameWoman"
         ]
       },
-      "apimodel.Member": {
+      "Member": {
         "description": "The member",
         "properties": {
           "global_name": {
@@ -1394,7 +1586,7 @@
             "type": "string"
           },
           "icon": {
-            "$ref": "#/components/schemas/apimodel.Icon"
+            "$ref": "#/components/schemas/Icon"
           },
           "id": {
             "description": "The profile object id of the member",
@@ -1443,15 +1635,40 @@
         },
         "type": "object"
       },
-      "apimodel.MemberResponse": {
+      "MemberResponse": {
         "properties": {
           "member": {
-            "$ref": "#/components/schemas/apimodel.Member"
+            "$ref": "#/components/schemas/Member"
           }
         },
         "type": "object"
       },
-      "apimodel.MultiSelectPropertyLinkValue": {
+      "MultiSelectFilterItem": {
+        "properties": {
+          "condition": {
+            "$ref": "#/components/schemas/FilterCondition"
+          },
+          "multi_select": {
+            "description": "The tag IDs to filter by",
+            "example": [
+              "bafyreiaixlnaefu3ci22zdenjhsdlyaeeoyjrsid5qhfeejzlccijbj7sq",
+              "bafyreie6n5l5nkbjal37su54cha4coy7qzuhrnajluzv5qd5jvtsrxkequ"
+            ],
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "uniqueItems": false
+          },
+          "property_key": {
+            "description": "The property key to filter on",
+            "example": "tag",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "MultiSelectPropertyLinkValue": {
         "properties": {
           "key": {
             "example": "tag",
@@ -1472,10 +1689,10 @@
         },
         "type": "object"
       },
-      "apimodel.MultiSelectPropertyValue": {
+      "MultiSelectPropertyValue": {
         "properties": {
           "format": {
-            "$ref": "#/components/schemas/apimodel.PropertyFormat"
+            "$ref": "#/components/schemas/PropertyFormat"
           },
           "id": {
             "description": "The id of the property",
@@ -1490,7 +1707,7 @@
           "multi_select": {
             "description": "The selected tag values of the property",
             "items": {
-              "$ref": "#/components/schemas/apimodel.Tag"
+              "$ref": "#/components/schemas/Tag"
             },
             "type": "array",
             "uniqueItems": false
@@ -1508,21 +1725,39 @@
         },
         "type": "object"
       },
-      "apimodel.NamedIcon": {
+      "NamedIcon": {
         "properties": {
           "color": {
-            "$ref": "#/components/schemas/apimodel.Color"
+            "$ref": "#/components/schemas/Color"
           },
           "format": {
-            "$ref": "#/components/schemas/apimodel.IconFormat"
+            "$ref": "#/components/schemas/IconFormat"
           },
           "name": {
-            "$ref": "#/components/schemas/apimodel.IconName"
+            "$ref": "#/components/schemas/IconName"
           }
         },
         "type": "object"
       },
-      "apimodel.NumberPropertyLinkValue": {
+      "NumberFilterItem": {
+        "properties": {
+          "condition": {
+            "$ref": "#/components/schemas/FilterCondition"
+          },
+          "number": {
+            "description": "The number value to filter by",
+            "example": 42,
+            "type": "number"
+          },
+          "property_key": {
+            "description": "The property key to filter on",
+            "example": "height",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "NumberPropertyLinkValue": {
         "properties": {
           "key": {
             "example": "height",
@@ -1536,10 +1771,10 @@
         },
         "type": "object"
       },
-      "apimodel.NumberPropertyValue": {
+      "NumberPropertyValue": {
         "properties": {
           "format": {
-            "$ref": "#/components/schemas/apimodel.PropertyFormat"
+            "$ref": "#/components/schemas/PropertyFormat"
           },
           "id": {
             "description": "The id of the property",
@@ -1569,7 +1804,7 @@
         },
         "type": "object"
       },
-      "apimodel.Object": {
+      "Object": {
         "properties": {
           "archived": {
             "description": "Whether the object is archived",
@@ -1577,7 +1812,7 @@
             "type": "boolean"
           },
           "icon": {
-            "$ref": "#/components/schemas/apimodel.Icon"
+            "$ref": "#/components/schemas/Icon"
           },
           "id": {
             "description": "The id of the object",
@@ -1585,7 +1820,7 @@
             "type": "string"
           },
           "layout": {
-            "$ref": "#/components/schemas/apimodel.ObjectLayout"
+            "$ref": "#/components/schemas/ObjectLayout"
           },
           "name": {
             "description": "The name of the object",
@@ -1600,7 +1835,7 @@
           "properties": {
             "description": "The properties of the object",
             "items": {
-              "$ref": "#/components/schemas/apimodel.PropertyWithValue"
+              "$ref": "#/components/schemas/PropertyWithValue"
             },
             "type": "array",
             "uniqueItems": false
@@ -1616,12 +1851,12 @@
             "type": "string"
           },
           "type": {
-            "$ref": "#/components/schemas/apimodel.Type"
+            "$ref": "#/components/schemas/Type"
           }
         },
         "type": "object"
       },
-      "apimodel.ObjectLayout": {
+      "ObjectLayout": {
         "description": "The layout of the type",
         "example": "basic",
         "type": "string",
@@ -1638,15 +1873,15 @@
           "ObjectLayoutFile"
         ]
       },
-      "apimodel.ObjectResponse": {
+      "ObjectResponse": {
         "properties": {
           "object": {
-            "$ref": "#/components/schemas/apimodel.ObjectWithBody"
+            "$ref": "#/components/schemas/ObjectWithBody"
           }
         },
         "type": "object"
       },
-      "apimodel.ObjectWithBody": {
+      "ObjectWithBody": {
         "description": "The object",
         "properties": {
           "archived": {
@@ -1655,7 +1890,7 @@
             "type": "boolean"
           },
           "icon": {
-            "$ref": "#/components/schemas/apimodel.Icon"
+            "$ref": "#/components/schemas/Icon"
           },
           "id": {
             "description": "The id of the object",
@@ -1697,7 +1932,7 @@
           "properties": {
             "description": "The properties of the object",
             "items": {
-              "$ref": "#/components/schemas/apimodel.PropertyWithValue"
+              "$ref": "#/components/schemas/PropertyWithValue"
             },
             "type": "array",
             "uniqueItems": false
@@ -1713,12 +1948,36 @@
             "type": "string"
           },
           "type": {
-            "$ref": "#/components/schemas/apimodel.Type"
+            "$ref": "#/components/schemas/Type"
           }
         },
         "type": "object"
       },
-      "apimodel.ObjectsPropertyLinkValue": {
+      "ObjectsFilterItem": {
+        "properties": {
+          "condition": {
+            "$ref": "#/components/schemas/FilterCondition"
+          },
+          "objects": {
+            "description": "Object Ids to filter by",
+            "example": [
+              "bafyreie6n5l5nkbjal37su54cha4coy7qzuhrnajluzv5qd5jvtsrxkequ"
+            ],
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "uniqueItems": false
+          },
+          "property_key": {
+            "description": "The property key to filter on",
+            "example": "creator",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "ObjectsPropertyLinkValue": {
         "properties": {
           "key": {
             "example": "creator",
@@ -1738,10 +1997,10 @@
         },
         "type": "object"
       },
-      "apimodel.ObjectsPropertyValue": {
+      "ObjectsPropertyValue": {
         "properties": {
           "format": {
-            "$ref": "#/components/schemas/apimodel.PropertyFormat"
+            "$ref": "#/components/schemas/PropertyFormat"
           },
           "id": {
             "description": "The id of the property",
@@ -1777,7 +2036,25 @@
         },
         "type": "object"
       },
-      "apimodel.PhonePropertyLinkValue": {
+      "PhoneFilterItem": {
+        "properties": {
+          "condition": {
+            "$ref": "#/components/schemas/FilterCondition"
+          },
+          "phone": {
+            "description": "The phone value to filter by",
+            "example": "+1234567890",
+            "type": "string"
+          },
+          "property_key": {
+            "description": "The property key to filter on",
+            "example": "phone",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "PhonePropertyLinkValue": {
         "properties": {
           "key": {
             "example": "phone",
@@ -1791,10 +2068,10 @@
         },
         "type": "object"
       },
-      "apimodel.PhonePropertyValue": {
+      "PhonePropertyValue": {
         "properties": {
           "format": {
-            "$ref": "#/components/schemas/apimodel.PropertyFormat"
+            "$ref": "#/components/schemas/PropertyFormat"
           },
           "id": {
             "description": "The id of the property",
@@ -1824,11 +2101,11 @@
         },
         "type": "object"
       },
-      "apimodel.Property": {
+      "Property": {
         "description": "The property",
         "properties": {
           "format": {
-            "$ref": "#/components/schemas/apimodel.PropertyFormat"
+            "$ref": "#/components/schemas/PropertyFormat"
           },
           "id": {
             "description": "The id of the property",
@@ -1853,7 +2130,7 @@
         },
         "type": "object"
       },
-      "apimodel.PropertyFormat": {
+      "PropertyFormat": {
         "description": "The format of the property",
         "enum": [
           "text",
@@ -1883,10 +2160,10 @@
           "PropertyFormatObjects"
         ]
       },
-      "apimodel.PropertyLink": {
+      "PropertyLink": {
         "properties": {
           "format": {
-            "$ref": "#/components/schemas/apimodel.PropertyFormat"
+            "$ref": "#/components/schemas/PropertyFormat"
           },
           "key": {
             "description": "The key of the property",
@@ -1906,99 +2183,102 @@
         ],
         "type": "object"
       },
-      "apimodel.PropertyLinkWithValue": {
+      "PropertyLinkWithValue": {
         "oneOf": [
           {
-            "$ref": "#/components/schemas/apimodel.TextPropertyLinkValue"
+            "$ref": "#/components/schemas/TextPropertyLinkValue"
           },
           {
-            "$ref": "#/components/schemas/apimodel.NumberPropertyLinkValue"
+            "$ref": "#/components/schemas/NumberPropertyLinkValue"
           },
           {
-            "$ref": "#/components/schemas/apimodel.SelectPropertyLinkValue"
+            "$ref": "#/components/schemas/SelectPropertyLinkValue"
           },
           {
-            "$ref": "#/components/schemas/apimodel.MultiSelectPropertyLinkValue"
+            "$ref": "#/components/schemas/MultiSelectPropertyLinkValue"
           },
           {
-            "$ref": "#/components/schemas/apimodel.DatePropertyLinkValue"
+            "$ref": "#/components/schemas/DatePropertyLinkValue"
           },
           {
-            "$ref": "#/components/schemas/apimodel.FilesPropertyLinkValue"
+            "$ref": "#/components/schemas/FilesPropertyLinkValue"
           },
           {
-            "$ref": "#/components/schemas/apimodel.CheckboxPropertyLinkValue"
+            "$ref": "#/components/schemas/CheckboxPropertyLinkValue"
           },
           {
-            "$ref": "#/components/schemas/apimodel.URLPropertyLinkValue"
+            "$ref": "#/components/schemas/UrlPropertyLinkValue"
           },
           {
-            "$ref": "#/components/schemas/apimodel.EmailPropertyLinkValue"
+            "$ref": "#/components/schemas/EmailPropertyLinkValue"
           },
           {
-            "$ref": "#/components/schemas/apimodel.PhonePropertyLinkValue"
+            "$ref": "#/components/schemas/PhonePropertyLinkValue"
           },
           {
-            "$ref": "#/components/schemas/apimodel.ObjectsPropertyLinkValue"
+            "$ref": "#/components/schemas/ObjectsPropertyLinkValue"
           }
         ],
         "type": "object"
       },
-      "apimodel.PropertyResponse": {
+      "PropertyResponse": {
         "properties": {
           "property": {
-            "$ref": "#/components/schemas/apimodel.Property"
+            "$ref": "#/components/schemas/Property"
           }
         },
         "type": "object"
       },
-      "apimodel.PropertyWithValue": {
+      "PropertyWithValue": {
         "oneOf": [
           {
-            "$ref": "#/components/schemas/apimodel.TextPropertyValue"
+            "$ref": "#/components/schemas/TextPropertyValue"
           },
           {
-            "$ref": "#/components/schemas/apimodel.NumberPropertyValue"
+            "$ref": "#/components/schemas/NumberPropertyValue"
           },
           {
-            "$ref": "#/components/schemas/apimodel.SelectPropertyValue"
+            "$ref": "#/components/schemas/SelectPropertyValue"
           },
           {
-            "$ref": "#/components/schemas/apimodel.MultiSelectPropertyValue"
+            "$ref": "#/components/schemas/MultiSelectPropertyValue"
           },
           {
-            "$ref": "#/components/schemas/apimodel.DatePropertyValue"
+            "$ref": "#/components/schemas/DatePropertyValue"
           },
           {
-            "$ref": "#/components/schemas/apimodel.FilesPropertyValue"
+            "$ref": "#/components/schemas/FilesPropertyValue"
           },
           {
-            "$ref": "#/components/schemas/apimodel.CheckboxPropertyValue"
+            "$ref": "#/components/schemas/CheckboxPropertyValue"
           },
           {
-            "$ref": "#/components/schemas/apimodel.URLPropertyValue"
+            "$ref": "#/components/schemas/UrlPropertyValue"
           },
           {
-            "$ref": "#/components/schemas/apimodel.EmailPropertyValue"
+            "$ref": "#/components/schemas/EmailPropertyValue"
           },
           {
-            "$ref": "#/components/schemas/apimodel.PhonePropertyValue"
+            "$ref": "#/components/schemas/PhonePropertyValue"
           },
           {
-            "$ref": "#/components/schemas/apimodel.ObjectsPropertyValue"
+            "$ref": "#/components/schemas/ObjectsPropertyValue"
           }
         ],
         "type": "object"
       },
-      "apimodel.SearchRequest": {
+      "SearchRequest": {
         "properties": {
+          "filters": {
+            "$ref": "#/components/schemas/FilterExpression"
+          },
           "query": {
             "description": "The text to search within object names and content; use types field for type filtering",
             "example": "test",
             "type": "string"
           },
           "sort": {
-            "$ref": "#/components/schemas/apimodel.SortOptions"
+            "$ref": "#/components/schemas/SortOptions"
           },
           "types": {
             "description": "The types of objects to include in results (e.g., \"page\", \"task\", \"bookmark\"); see ListTypes endpoint for valid values",
@@ -2016,7 +2296,25 @@
         },
         "type": "object"
       },
-      "apimodel.SelectPropertyLinkValue": {
+      "SelectFilterItem": {
+        "properties": {
+          "condition": {
+            "$ref": "#/components/schemas/FilterCondition"
+          },
+          "property_key": {
+            "description": "The property key to filter on",
+            "example": "status",
+            "type": "string"
+          },
+          "select": {
+            "description": "Tag Id - for eq/ne conditions (single selection)",
+            "example": "tag_id",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "SelectPropertyLinkValue": {
         "properties": {
           "key": {
             "example": "status",
@@ -2030,10 +2328,10 @@
         },
         "type": "object"
       },
-      "apimodel.SelectPropertyValue": {
+      "SelectPropertyValue": {
         "properties": {
           "format": {
-            "$ref": "#/components/schemas/apimodel.PropertyFormat"
+            "$ref": "#/components/schemas/PropertyFormat"
           },
           "id": {
             "description": "The id of the property",
@@ -2056,15 +2354,15 @@
             "type": "string"
           },
           "select": {
-            "$ref": "#/components/schemas/apimodel.Tag"
+            "$ref": "#/components/schemas/Tag"
           }
         },
         "type": "object"
       },
-      "apimodel.Sort": {
+      "Sort": {
         "properties": {
           "format": {
-            "$ref": "#/components/schemas/apimodel.PropertyFormat"
+            "$ref": "#/components/schemas/PropertyFormat"
           },
           "id": {
             "description": "The id of the sort",
@@ -2089,7 +2387,7 @@
         },
         "type": "object"
       },
-      "apimodel.SortDirection": {
+      "SortDirection": {
         "default": "desc",
         "description": "The direction to sort the search results by",
         "enum": [
@@ -2102,19 +2400,19 @@
           "Desc"
         ]
       },
-      "apimodel.SortOptions": {
+      "SortOptions": {
         "description": "The sorting options for the search results",
         "properties": {
           "direction": {
-            "$ref": "#/components/schemas/apimodel.SortDirection"
+            "$ref": "#/components/schemas/SortDirection"
           },
           "property_key": {
-            "$ref": "#/components/schemas/apimodel.SortProperty"
+            "$ref": "#/components/schemas/SortProperty"
           }
         },
         "type": "object"
       },
-      "apimodel.SortProperty": {
+      "SortProperty": {
         "default": "last_modified_date",
         "description": "The key of the property to sort the search results by",
         "enum": [
@@ -2131,7 +2429,7 @@
           "Name"
         ]
       },
-      "apimodel.Space": {
+      "Space": {
         "description": "The space",
         "properties": {
           "description": {
@@ -2145,7 +2443,7 @@
             "type": "string"
           },
           "icon": {
-            "$ref": "#/components/schemas/apimodel.Icon"
+            "$ref": "#/components/schemas/Icon"
           },
           "id": {
             "description": "The id of the space",
@@ -2164,25 +2462,29 @@
           },
           "object": {
             "description": "The data model of the object",
+            "enum": [
+              "space",
+              "chat"
+            ],
             "example": "space",
             "type": "string"
           }
         },
         "type": "object"
       },
-      "apimodel.SpaceResponse": {
+      "SpaceResponse": {
         "properties": {
           "space": {
-            "$ref": "#/components/schemas/apimodel.Space"
+            "$ref": "#/components/schemas/Space"
           }
         },
         "type": "object"
       },
-      "apimodel.Tag": {
+      "Tag": {
         "description": "The selected tag value of the property",
         "properties": {
           "color": {
-            "$ref": "#/components/schemas/apimodel.Color"
+            "$ref": "#/components/schemas/Color"
           },
           "id": {
             "description": "The id of the tag",
@@ -2207,23 +2509,41 @@
         },
         "type": "object"
       },
-      "apimodel.TagResponse": {
+      "TagResponse": {
         "properties": {
           "tag": {
-            "$ref": "#/components/schemas/apimodel.Tag"
+            "$ref": "#/components/schemas/Tag"
           }
         },
         "type": "object"
       },
-      "apimodel.TemplateResponse": {
+      "TemplateResponse": {
         "properties": {
           "template": {
-            "$ref": "#/components/schemas/apimodel.ObjectWithBody"
+            "$ref": "#/components/schemas/ObjectWithBody"
           }
         },
         "type": "object"
       },
-      "apimodel.TextPropertyLinkValue": {
+      "TextFilterItem": {
+        "properties": {
+          "condition": {
+            "$ref": "#/components/schemas/FilterCondition"
+          },
+          "property_key": {
+            "description": "The property key to filter on",
+            "example": "description",
+            "type": "string"
+          },
+          "text": {
+            "description": "The text value to filter by",
+            "example": "Some text...",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "TextPropertyLinkValue": {
         "properties": {
           "key": {
             "example": "description",
@@ -2237,10 +2557,10 @@
         },
         "type": "object"
       },
-      "apimodel.TextPropertyValue": {
+      "TextPropertyValue": {
         "properties": {
           "format": {
-            "$ref": "#/components/schemas/apimodel.PropertyFormat"
+            "$ref": "#/components/schemas/PropertyFormat"
           },
           "id": {
             "description": "The id of the property",
@@ -2270,7 +2590,7 @@
         },
         "type": "object"
       },
-      "apimodel.Type": {
+      "Type": {
         "description": "The type of the file, or null if the type has been deleted",
         "nullable": true,
         "properties": {
@@ -2280,7 +2600,7 @@
             "type": "boolean"
           },
           "icon": {
-            "$ref": "#/components/schemas/apimodel.Icon"
+            "$ref": "#/components/schemas/Icon"
           },
           "id": {
             "description": "The id of the type (which is unique across spaces)",
@@ -2293,7 +2613,7 @@
             "type": "string"
           },
           "layout": {
-            "$ref": "#/components/schemas/apimodel.ObjectLayout"
+            "$ref": "#/components/schemas/ObjectLayout"
           },
           "name": {
             "description": "The name of the type",
@@ -2313,7 +2633,7 @@
           "properties": {
             "description": "The properties linked to the type",
             "items": {
-              "$ref": "#/components/schemas/apimodel.Property"
+              "$ref": "#/components/schemas/Property"
             },
             "type": "array",
             "uniqueItems": false
@@ -2321,7 +2641,7 @@
         },
         "type": "object"
       },
-      "apimodel.TypeLayout": {
+      "TypeLayout": {
         "description": "The layout of the type",
         "enum": [
           "basic",
@@ -2337,15 +2657,149 @@
           "TypeLayoutNote"
         ]
       },
-      "apimodel.TypeResponse": {
+      "TypeResponse": {
         "properties": {
           "type": {
-            "$ref": "#/components/schemas/apimodel.Type"
+            "$ref": "#/components/schemas/Type"
           }
         },
         "type": "object"
       },
-      "apimodel.URLPropertyLinkValue": {
+      "UpdateObjectRequest": {
+        "properties": {
+          "icon": {
+            "$ref": "#/components/schemas/Icon"
+          },
+          "markdown": {
+            "description": "The updated body of the object",
+            "example": "This is the updated body of the object. Markdown syntax is supported here.",
+            "type": "string"
+          },
+          "name": {
+            "description": "The name of the object",
+            "example": "My object",
+            "type": "string"
+          },
+          "properties": {
+            "description": "The properties to set for the object; see ListTypes or GetType endpoints for linked properties",
+            "items": {
+              "$ref": "#/components/schemas/PropertyLinkWithValue"
+            },
+            "type": "array",
+            "uniqueItems": false
+          },
+          "type_key": {
+            "description": "The key of the type of object to set",
+            "example": "page",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "UpdatePropertyRequest": {
+        "properties": {
+          "key": {
+            "description": "The key to set for the property; ; should always be snake_case, otherwise it will be converted to snake_case",
+            "example": "some_user_defined_property_key",
+            "type": "string"
+          },
+          "name": {
+            "description": "The name to set for the property",
+            "example": "Last modified date",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "type": "object"
+      },
+      "UpdateSpaceRequest": {
+        "properties": {
+          "description": {
+            "description": "The description of the space",
+            "example": "The local-first wiki",
+            "type": "string"
+          },
+          "name": {
+            "description": "The name of the space",
+            "example": "New Space",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "UpdateTagRequest": {
+        "properties": {
+          "color": {
+            "$ref": "#/components/schemas/Color"
+          },
+          "key": {
+            "description": "The key to set for the tag",
+            "example": "in_progress",
+            "type": "string"
+          },
+          "name": {
+            "description": "The name to set for the tag",
+            "example": "In progress",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "UpdateTypeRequest": {
+        "properties": {
+          "icon": {
+            "$ref": "#/components/schemas/Icon"
+          },
+          "key": {
+            "description": "The key to set for the type; should always be snake_case, otherwise it will be converted to snake_case",
+            "example": "some_user_defined_type_key",
+            "type": "string"
+          },
+          "layout": {
+            "$ref": "#/components/schemas/TypeLayout"
+          },
+          "name": {
+            "description": "The name to set for the type",
+            "example": "Page",
+            "type": "string"
+          },
+          "plural_name": {
+            "description": "The plural name to set for the type",
+            "example": "Pages",
+            "type": "string"
+          },
+          "properties": {
+            "description": "The properties to set for the type",
+            "items": {
+              "$ref": "#/components/schemas/PropertyLink"
+            },
+            "type": "array",
+            "uniqueItems": false
+          }
+        },
+        "type": "object"
+      },
+      "UrlFilterItem": {
+        "properties": {
+          "condition": {
+            "$ref": "#/components/schemas/FilterCondition"
+          },
+          "property_key": {
+            "description": "The property key to filter on",
+            "example": "source",
+            "type": "string"
+          },
+          "url": {
+            "description": "The Url value to filter by",
+            "example": "https://example.com",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "UrlPropertyLinkValue": {
         "properties": {
           "key": {
             "example": "source",
@@ -2359,10 +2813,10 @@
         },
         "type": "object"
       },
-      "apimodel.URLPropertyValue": {
+      "UrlPropertyValue": {
         "properties": {
           "format": {
-            "$ref": "#/components/schemas/apimodel.PropertyFormat"
+            "$ref": "#/components/schemas/PropertyFormat"
           },
           "id": {
             "description": "The id of the property",
@@ -2392,118 +2846,12 @@
         },
         "type": "object"
       },
-      "apimodel.UpdateObjectRequest": {
-        "properties": {
-          "icon": {
-            "$ref": "#/components/schemas/apimodel.Icon"
-          },
-          "name": {
-            "description": "The name of the object",
-            "example": "My object",
-            "type": "string"
-          },
-          "properties": {
-            "description": "⚠ Warning: Properties are experimental and may change in the next update. ⚠ The properties to set for the object; see ListTypes or GetType endpoints for linked properties",
-            "items": {
-              "$ref": "#/components/schemas/apimodel.PropertyLinkWithValue"
-            },
-            "type": "array",
-            "uniqueItems": false
-          },
-          "type_key": {
-            "description": "The key of the type of object to set",
-            "example": "page",
-            "type": "string"
-          }
-        },
-        "type": "object"
-      },
-      "apimodel.UpdatePropertyRequest": {
-        "properties": {
-          "key": {
-            "description": "The key to set for the property; ; should always be snake_case, otherwise it will be converted to snake_case",
-            "example": "some_user_defined_property_key",
-            "type": "string"
-          },
-          "name": {
-            "description": "The name to set for the property",
-            "example": "Last modified date",
-            "type": "string"
-          }
-        },
-        "required": [
-          "name"
-        ],
-        "type": "object"
-      },
-      "apimodel.UpdateSpaceRequest": {
-        "properties": {
-          "description": {
-            "description": "The description of the space",
-            "example": "The local-first wiki",
-            "type": "string"
-          },
-          "name": {
-            "description": "The name of the space",
-            "example": "New Space",
-            "type": "string"
-          }
-        },
-        "type": "object"
-      },
-      "apimodel.UpdateTagRequest": {
-        "properties": {
-          "color": {
-            "$ref": "#/components/schemas/apimodel.Color"
-          },
-          "name": {
-            "description": "The name to set for the tag",
-            "example": "In progress",
-            "type": "string"
-          }
-        },
-        "type": "object"
-      },
-      "apimodel.UpdateTypeRequest": {
-        "properties": {
-          "icon": {
-            "$ref": "#/components/schemas/apimodel.Icon"
-          },
-          "key": {
-            "description": "The key to set for the type; should always be snake_case, otherwise it will be converted to snake_case",
-            "example": "some_user_defined_type_key",
-            "type": "string"
-          },
-          "layout": {
-            "$ref": "#/components/schemas/apimodel.TypeLayout"
-          },
-          "name": {
-            "description": "The name to set for the type",
-            "example": "Page",
-            "type": "string"
-          },
-          "plural_name": {
-            "description": "The plural name to set for the type",
-            "example": "Pages",
-            "type": "string"
-          },
-          "properties": {
-            "description": "⚠ Warning: Properties are experimental and may change in the next update. ⚠ The properties to set for the type",
-            "items": {
-              "$ref": "#/components/schemas/apimodel.PropertyLink"
-            },
-            "type": "array",
-            "uniqueItems": false
-          }
-        },
-        "type": "object"
-      },
-      "apimodel.View": {
+      "View": {
         "properties": {
           "filters": {
             "description": "The list of filters",
             "items": {
-              "$ref": "#/components/schemas/apimodel.Filter"
+              "$ref": "#/components/schemas/Filter"
             },
             "type": "array",
             "uniqueItems": false
@@ -2530,7 +2878,7 @@
           "sorts": {
             "description": "The list of sorts",
             "items": {
-              "$ref": "#/components/schemas/apimodel.Sort"
+              "$ref": "#/components/schemas/Sort"
             },
             "type": "array",
             "uniqueItems": false
@@ -2538,135 +2886,135 @@
         },
         "type": "object"
       },
-      "pagination.PaginatedResponse-apimodel_File": {
+      "PaginatedResponse-File": {
         "properties": {
           "data": {
             "description": "The list of items in the current result set",
             "items": {
-              "$ref": "#/components/schemas/apimodel.File"
+              "$ref": "#/components/schemas/File"
             },
             "type": "array",
             "uniqueItems": false
           },
           "pagination": {
-            "$ref": "#/components/schemas/pagination.PaginationMeta"
+            "$ref": "#/components/schemas/PaginationMeta"
           }
         },
         "type": "object"
       },
-      "pagination.PaginatedResponse-apimodel_Member": {
+      "PaginatedResponse-Member": {
         "properties": {
           "data": {
             "description": "The list of items in the current result set",
             "items": {
-              "$ref": "#/components/schemas/apimodel.Member"
+              "$ref": "#/components/schemas/Member"
             },
             "type": "array",
             "uniqueItems": false
           },
           "pagination": {
-            "$ref": "#/components/schemas/pagination.PaginationMeta"
+            "$ref": "#/components/schemas/PaginationMeta"
           }
         },
         "type": "object"
       },
-      "pagination.PaginatedResponse-apimodel_Object": {
+      "PaginatedResponse-Object": {
         "properties": {
           "data": {
             "description": "The list of items in the current result set",
             "items": {
-              "$ref": "#/components/schemas/apimodel.Object"
+              "$ref": "#/components/schemas/Object"
             },
             "type": "array",
             "uniqueItems": false
           },
           "pagination": {
-            "$ref": "#/components/schemas/pagination.PaginationMeta"
+            "$ref": "#/components/schemas/PaginationMeta"
           }
         },
         "type": "object"
       },
-      "pagination.PaginatedResponse-apimodel_Property": {
+      "PaginatedResponse-Property": {
         "properties": {
           "data": {
             "description": "The list of items in the current result set",
             "items": {
-              "$ref": "#/components/schemas/apimodel.Property"
+              "$ref": "#/components/schemas/Property"
             },
             "type": "array",
             "uniqueItems": false
           },
           "pagination": {
-            "$ref": "#/components/schemas/pagination.PaginationMeta"
+            "$ref": "#/components/schemas/PaginationMeta"
           }
         },
         "type": "object"
       },
-      "pagination.PaginatedResponse-apimodel_Space": {
+      "PaginatedResponse-Space": {
         "properties": {
           "data": {
             "description": "The list of items in the current result set",
             "items": {
-              "$ref": "#/components/schemas/apimodel.Space"
+              "$ref": "#/components/schemas/Space"
             },
             "type": "array",
             "uniqueItems": false
           },
           "pagination": {
-            "$ref": "#/components/schemas/pagination.PaginationMeta"
+            "$ref": "#/components/schemas/PaginationMeta"
           }
         },
         "type": "object"
       },
-      "pagination.PaginatedResponse-apimodel_Tag": {
+      "PaginatedResponse-Tag": {
         "properties": {
           "data": {
             "description": "The list of items in the current result set",
             "items": {
-              "$ref": "#/components/schemas/apimodel.Tag"
+              "$ref": "#/components/schemas/Tag"
             },
             "type": "array",
             "uniqueItems": false
           },
           "pagination": {
-            "$ref": "#/components/schemas/pagination.PaginationMeta"
+            "$ref": "#/components/schemas/PaginationMeta"
           }
         },
         "type": "object"
       },
-      "pagination.PaginatedResponse-apimodel_Type": {
+      "PaginatedResponse-Type": {
         "properties": {
           "data": {
             "description": "The list of items in the current result set",
             "items": {
-              "$ref": "#/components/schemas/apimodel.Type"
+              "$ref": "#/components/schemas/Type"
             },
             "type": "array",
             "uniqueItems": false
           },
           "pagination": {
-            "$ref": "#/components/schemas/pagination.PaginationMeta"
+            "$ref": "#/components/schemas/PaginationMeta"
           }
         },
         "type": "object"
       },
-      "pagination.PaginatedResponse-apimodel_View": {
+      "PaginatedResponse-View": {
         "properties": {
           "data": {
             "description": "The list of items in the current result set",
             "items": {
-              "$ref": "#/components/schemas/apimodel.View"
+              "$ref": "#/components/schemas/View"
             },
             "type": "array",
             "uniqueItems": false
           },
           "pagination": {
-            "$ref": "#/components/schemas/pagination.PaginationMeta"
+            "$ref": "#/components/schemas/PaginationMeta"
           }
         },
         "type": "object"
       },
-      "pagination.PaginationMeta": {
+      "PaginationMeta": {
         "description": "The pagination metadata for the response",
         "properties": {
           "has_more": {
@@ -2692,7 +3040,7 @@
         },
         "type": "object"
       },
-      "util.ForbiddenError": {
+      "ForbiddenError": {
         "properties": {
           "code": {
             "example": "forbidden",
@@ -2713,7 +3061,7 @@
         },
         "type": "object"
       },
-      "util.GoneError": {
+      "GoneError": {
         "properties": {
           "code": {
             "example": "resource_gone",
@@ -2734,7 +3082,7 @@
         },
         "type": "object"
       },
-      "util.NotFoundError": {
+      "NotFoundError": {
         "properties": {
           "code": {
             "example": "object_not_found",
@@ -2755,7 +3103,7 @@
         },
         "type": "object"
       },
-      "util.RateLimitError": {
+      "RateLimitError": {
         "properties": {
           "code": {
             "example": "rate_limit_exceeded",
@@ -2776,7 +3124,7 @@
         },
         "type": "object"
       },
-      "util.ServerError": {
+      "ServerError": {
         "properties": {
           "code": {
             "example": "internal_server_error",
@@ -2797,7 +3145,7 @@
         },
         "type": "object"
       },
-      "util.UnauthorizedError": {
+      "UnauthorizedError": {
         "properties": {
           "code": {
             "example": "unauthorized",
@@ -2818,7 +3166,7 @@
         },
         "type": "object"
       },
-      "util.ValidationError": {
+      "ValidationError": {
         "properties": {
           "code": {
             "example": "bad_request",
@@ -2888,7 +3236,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/apimodel.CreateApiKeyRequest"
+                "$ref": "#/components/schemas/CreateApiKeyRequest"
               }
             }
           },
@@ -2900,7 +3248,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/apimodel.CreateApiKeyResponse"
+                  "$ref": "#/components/schemas/CreateApiKeyResponse"
                 }
               }
             },
@@ -2910,7 +3258,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/util.ValidationError"
+                  "$ref": "#/components/schemas/ValidationError"
                 }
               }
             },
@@ -2920,7 +3268,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/util.ServerError"
+                  "$ref": "#/components/schemas/ServerError"
                 }
               }
             },
@@ -2953,7 +3301,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/apimodel.CreateChallengeRequest"
+                "$ref": "#/components/schemas/CreateChallengeRequest"
               }
             }
           },
@@ -2965,7 +3313,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/apimodel.CreateChallengeResponse"
+                  "$ref": "#/components/schemas/CreateChallengeResponse"
                 }
               }
             },
@@ -2975,7 +3323,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/util.ValidationError"
+                  "$ref": "#/components/schemas/ValidationError"
                 }
               }
             },
@@ -2985,7 +3333,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/util.ServerError"
+                  "$ref": "#/components/schemas/ServerError"
                 }
               }
             },
@@ -3037,7 +3385,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/apimodel.SearchRequest"
+                "$ref": "#/components/schemas/SearchRequest"
               }
             }
           },
@@ -3049,7 +3397,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/pagination.PaginatedResponse-apimodel_Object"
+                  "$ref": "#/components/schemas/PaginatedResponse-Object"
                 }
               }
             },
@@ -3059,7 +3407,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/util.UnauthorizedError"
+                  "$ref": "#/components/schemas/UnauthorizedError"
                 }
               }
             },
@@ -3069,7 +3417,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/util.ServerError"
+                  "$ref": "#/components/schemas/ServerError"
                 }
               }
             },
@@ -3089,7 +3437,7 @@
     },
     "/v1/spaces": {
       "get": {
-        "description": "Retrieves a paginated list of all spaces that are accessible by the authenticated user. Each space record contains detailed information such as the space ID, name, icon (derived either from an emoji or image URL), and additional metadata. This endpoint is key to displaying a user’s workspaces.",
+        "description": "Retrieves a paginated list of all spaces that are accessible by the authenticated user. Each space record contains detailed information such as the space ID, name, icon (derived either from an emoji or image URL), and additional metadata. This endpoint is key to displaying a user's workspaces.\nSupports dynamic filtering via query parameters (e.g., ?name[contains]=project, ?is_archived=false). See FilterCondition enum for available conditions.",
         "operationId": "list_spaces",
         "parameters": [
           {
@@ -3127,7 +3475,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/pagination.PaginatedResponse-apimodel_Space"
+                  "$ref": "#/components/schemas/PaginatedResponse-Space"
                 }
               }
             },
@@ -3137,7 +3485,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/util.UnauthorizedError"
+                  "$ref": "#/components/schemas/UnauthorizedError"
                 }
               }
             },
@@ -3147,7 +3495,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/util.ServerError"
+                  "$ref": "#/components/schemas/ServerError"
                 }
               }
             },
@@ -3183,7 +3531,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/apimodel.CreateSpaceRequest"
+                "$ref": "#/components/schemas/CreateSpaceRequest"
               }
             }
           },
@@ -3195,7 +3543,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/apimodel.SpaceResponse"
+                  "$ref": "#/components/schemas/SpaceResponse"
                 }
               }
             },
@@ -3205,7 +3553,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/util.ValidationError"
+                  "$ref": "#/components/schemas/ValidationError"
                 }
               }
             },
@@ -3215,7 +3563,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/util.UnauthorizedError"
+                  "$ref": "#/components/schemas/UnauthorizedError"
                 }
               }
             },
@@ -3225,7 +3573,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/util.RateLimitError"
+                  "$ref": "#/components/schemas/RateLimitError"
                 }
               }
             },
@@ -3235,7 +3583,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/util.ServerError"
+                  "$ref": "#/components/schemas/ServerError"
                 }
               }
             },
@@ -3283,7 +3631,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/apimodel.SpaceResponse"
+                  "$ref": "#/components/schemas/SpaceResponse"
                 }
               }
             },
@@ -3293,7 +3641,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/util.UnauthorizedError"
+                  "$ref": "#/components/schemas/UnauthorizedError"
                 }
               }
             },
@@ -3303,7 +3651,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/util.NotFoundError"
+                  "$ref": "#/components/schemas/NotFoundError"
                 }
               }
             },
@@ -3313,7 +3661,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/util.ServerError"
+                  "$ref": "#/components/schemas/ServerError"
                 }
               }
             },
@@ -3358,7 +3706,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/apimodel.UpdateSpaceRequest"
+                "$ref": "#/components/schemas/UpdateSpaceRequest"
               }
             }
           },
@@ -3370,7 +3718,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/apimodel.SpaceResponse"
+                  "$ref": "#/components/schemas/SpaceResponse"
                 }
               }
             },
@@ -3380,7 +3728,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/util.ValidationError"
+                  "$ref": "#/components/schemas/ValidationError"
                 }
               }
             },
@@ -3390,7 +3738,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/util.UnauthorizedError"
+                  "$ref": "#/components/schemas/UnauthorizedError"
                 }
               }
             },
@@ -3400,7 +3748,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/util.ForbiddenError"
+                  "$ref": "#/components/schemas/ForbiddenError"
                 }
               }
             },
@@ -3410,7 +3758,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/util.NotFoundError"
+                  "$ref": "#/components/schemas/NotFoundError"
                 }
               }
             },
@@ -3420,7 +3768,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/util.RateLimitError"
+                  "$ref": "#/components/schemas/RateLimitError"
                 }
               }
             },
@@ -3430,7 +3778,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/util.ServerError"
+                  "$ref": "#/components/schemas/ServerError"
                 }
               }
             },
@@ -3505,7 +3853,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/pagination.PaginatedResponse-apimodel_File"
+                  "$ref": "#/components/schemas/PaginatedResponse-File"
                 }
               }
             },
@@ -3515,7 +3863,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/util.UnauthorizedError"
+                  "$ref": "#/components/schemas/UnauthorizedError"
                 }
               }
             },
@@ -3525,7 +3873,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/util.ServerError"
+                  "$ref": "#/components/schemas/ServerError"
                 }
               }
             },
@@ -3582,7 +3930,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/apimodel.FileResponse"
+                  "$ref": "#/components/schemas/FileResponse"
                 }
               }
             },
@@ -3592,7 +3940,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/util.UnauthorizedError"
+                  "$ref": "#/components/schemas/UnauthorizedError"
                 }
               }
             },
@@ -3602,7 +3950,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/util.NotFoundError"
+                  "$ref": "#/components/schemas/NotFoundError"
                 }
               }
             },
@@ -3612,7 +3960,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/util.ServerError"
+                  "$ref": "#/components/schemas/ServerError"
                 }
               }
             },
@@ -3668,7 +4016,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/apimodel.AddObjectsToListRequest"
+                "$ref": "#/components/schemas/AddObjectsToListRequest"
               }
             }
           },
@@ -3690,7 +4038,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/util.ValidationError"
+                  "$ref": "#/components/schemas/ValidationError"
                 }
               }
             },
@@ -3700,7 +4048,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/util.UnauthorizedError"
+                  "$ref": "#/components/schemas/UnauthorizedError"
                 }
               }
             },
@@ -3710,7 +4058,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/util.NotFoundError"
+                  "$ref": "#/components/schemas/NotFoundError"
                 }
               }
             },
@@ -3720,7 +4068,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/util.RateLimitError"
+                  "$ref": "#/components/schemas/RateLimitError"
                 }
               }
             },
@@ -3730,7 +4078,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/util.ServerError"
+                  "$ref": "#/components/schemas/ServerError"
                 }
               }
             },
@@ -3806,7 +4154,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/util.ValidationError"
+                  "$ref": "#/components/schemas/ValidationError"
                 }
               }
             },
@@ -3816,7 +4164,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/util.UnauthorizedError"
+                  "$ref": "#/components/schemas/UnauthorizedError"
                 }
               }
             },
@@ -3826,7 +4174,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/util.NotFoundError"
+                  "$ref": "#/components/schemas/NotFoundError"
                 }
               }
             },
@@ -3836,7 +4184,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/util.RateLimitError"
+                  "$ref": "#/components/schemas/RateLimitError"
                 }
               }
             },
@@ -3846,7 +4194,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/util.ServerError"
+                  "$ref": "#/components/schemas/ServerError"
                 }
               }
             },
@@ -3920,7 +4268,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/pagination.PaginatedResponse-apimodel_View"
+                  "$ref": "#/components/schemas/PaginatedResponse-View"
                 }
               }
             },
@@ -3930,7 +4278,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/util.UnauthorizedError"
+                  "$ref": "#/components/schemas/UnauthorizedError"
                 }
               }
             },
@@ -3940,7 +4288,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/util.NotFoundError"
+                  "$ref": "#/components/schemas/NotFoundError"
                 }
               }
             },
@@ -3950,7 +4298,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/util.ServerError"
+                  "$ref": "#/components/schemas/ServerError"
                 }
               }
             },
@@ -3970,7 +4318,7 @@
     },
     "/v1/spaces/{space_id}/lists/{list_id}/views/{view_id}/objects": {
       "get": {
-        "description": "Returns a paginated list of objects associated with a specific list (query or collection) within a space. When a view ID is provided, the objects are filtered and sorted according to the view's configuration. If no view ID is specified, all list objects are returned without filtering and sorting. This endpoint helps clients to manage grouped objects (for example, tasks within a list) by returning information for each item of the list.",
+        "description": "Returns a paginated list of objects associated with a specific list (query or collection) within a space. When a view ID is provided, the objects are filtered and sorted according to the view's configuration. If no view ID is specified, all list objects are returned without filtering and sorting. This endpoint helps clients to manage grouped objects (for example, tasks within a list) by returning information for each item of the list.\nSupports dynamic filtering via query parameters (e.g., ?type=page, ?done=false, ?created_date[gte]=2024-01-01, ?tags[in]=urgent,important). For select/tag properties use tag keys, for object properties use object IDs. See FilterCondition enum for available conditions.",
         "operationId": "get_list_objects",
         "parameters": [
           {
@@ -4033,7 +4381,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/pagination.PaginatedResponse-apimodel_Object"
+                  "$ref": "#/components/schemas/PaginatedResponse-Object"
                 }
               }
             },
@@ -4043,7 +4391,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/util.UnauthorizedError"
+                  "$ref": "#/components/schemas/UnauthorizedError"
                 }
               }
             },
@@ -4053,7 +4401,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/util.NotFoundError"
+                  "$ref": "#/components/schemas/NotFoundError"
                 }
               }
             },
@@ -4063,7 +4411,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/util.ServerError"
+                  "$ref": "#/components/schemas/ServerError"
                 }
               }
             },
@@ -4083,7 +4431,7 @@
     },
     "/v1/spaces/{space_id}/members": {
       "get": {
-        "description": "Returns a paginated list of members belonging to the specified space. Each member record includes the member’s profile ID, name, icon (which may be derived from an emoji or image), network identity, global name, status (e.g. joining, active) and role (e.g. Viewer, Editor, Owner). This endpoint supports collaborative features by allowing clients to show who is in a space and manage access rights.",
+        "description": "Returns a paginated list of members belonging to the specified space. Each member record includes the member's profile ID, name, icon (which may be derived from an emoji or image), network identity, global name, status (e.g. joining, active) and role (e.g. Viewer, Editor, Owner). This endpoint supports collaborative features by allowing clients to show who is in a space and manage access rights.\nSupports dynamic filtering via query parameters (e.g., ?status=active, ?role[ne]=viewer, ?name[contains]=john). See FilterCondition enum for available conditions.",
         "operationId": "list_members",
         "parameters": [
           {
@@ -4130,7 +4478,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/pagination.PaginatedResponse-apimodel_Member"
+                  "$ref": "#/components/schemas/PaginatedResponse-Member"
                 }
               }
             },
@@ -4140,7 +4488,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/util.UnauthorizedError"
+                  "$ref": "#/components/schemas/UnauthorizedError"
                 }
               }
             },
@@ -4150,7 +4498,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/util.ServerError"
+                  "$ref": "#/components/schemas/ServerError"
                 }
               }
             },
@@ -4207,7 +4555,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/apimodel.MemberResponse"
+                  "$ref": "#/components/schemas/MemberResponse"
                 }
               }
             },
@@ -4217,7 +4565,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/util.UnauthorizedError"
+                  "$ref": "#/components/schemas/UnauthorizedError"
                 }
               }
             },
@@ -4227,7 +4575,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/util.NotFoundError"
+                  "$ref": "#/components/schemas/NotFoundError"
                 }
               }
             },
@@ -4237,7 +4585,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/util.ServerError"
+                  "$ref": "#/components/schemas/ServerError"
                 }
               }
             },
@@ -4257,7 +4605,7 @@
     },
     "/v1/spaces/{space_id}/objects": {
       "get": {
-        "description": "Retrieves a paginated list of objects in the given space. The endpoint takes query parameters for pagination (offset and limit) and returns detailed data about each object including its ID, name, icon, type information, a snippet of the content (if applicable), layout, space ID, blocks and details. It is intended for building views where users can see all objects in a space at a glance.",
+        "description": "Retrieves a paginated list of objects in the given space. The endpoint takes query parameters for pagination (offset and limit) and returns detailed data about each object including its ID, name, icon, type information, a snippet of the content (if applicable), layout, space ID, blocks and details. It is intended for building views where users can see all objects in a space at a glance.\nSupports dynamic filtering via query parameters (e.g., ?type=page, ?done=false, ?created_date[gte]=2024-01-01, ?tags[in]=urgent,important). For select/tag properties use tag keys, for object properties use object IDs. See FilterCondition enum for available conditions.",
         "operationId": "list_objects",
         "parameters": [
           {
@@ -4304,7 +4652,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/pagination.PaginatedResponse-apimodel_Object"
+                  "$ref": "#/components/schemas/PaginatedResponse-Object"
                 }
               }
             },
@@ -4314,7 +4662,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/util.UnauthorizedError"
+                  "$ref": "#/components/schemas/UnauthorizedError"
                 }
               }
             },
@@ -4324,7 +4672,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/util.ServerError"
+                  "$ref": "#/components/schemas/ServerError"
                 }
               }
             },
@@ -4369,7 +4717,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/apimodel.CreateObjectRequest"
+                "$ref": "#/components/schemas/CreateObjectRequest"
               }
             }
           },
@@ -4381,7 +4729,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/apimodel.ObjectResponse"
+                  "$ref": "#/components/schemas/ObjectResponse"
                 }
               }
             },
@@ -4391,7 +4739,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/util.ValidationError"
+                  "$ref": "#/components/schemas/ValidationError"
                 }
               }
             },
@@ -4401,7 +4749,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/util.UnauthorizedError"
+                  "$ref": "#/components/schemas/UnauthorizedError"
                 }
               }
             },
@@ -4411,7 +4759,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/util.RateLimitError"
+                  "$ref": "#/components/schemas/RateLimitError"
                 }
               }
             },
@@ -4421,7 +4769,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/util.ServerError"
+                  "$ref": "#/components/schemas/ServerError"
                 }
               }
             },
@@ -4478,7 +4826,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/apimodel.ObjectResponse"
+                  "$ref": "#/components/schemas/ObjectResponse"
                 }
               }
             },
@@ -4488,7 +4836,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/util.UnauthorizedError"
+                  "$ref": "#/components/schemas/UnauthorizedError"
                 }
               }
             },
@@ -4498,7 +4846,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/util.ForbiddenError"
+                  "$ref": "#/components/schemas/ForbiddenError"
                 }
               }
             },
@@ -4508,7 +4856,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/util.NotFoundError"
+                  "$ref": "#/components/schemas/NotFoundError"
                 }
               }
             },
@@ -4518,7 +4866,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/util.GoneError"
+                  "$ref": "#/components/schemas/GoneError"
                 }
               }
             },
@@ -4528,7 +4876,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/util.RateLimitError"
+                  "$ref": "#/components/schemas/RateLimitError"
                 }
               }
             },
@@ -4538,7 +4886,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/util.ServerError"
+                  "$ref": "#/components/schemas/ServerError"
                 }
               }
             },
@@ -4605,7 +4953,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/apimodel.ObjectResponse"
+                  "$ref": "#/components/schemas/ObjectResponse"
                 }
               }
             },
@@ -4615,7 +4963,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/util.UnauthorizedError"
+                  "$ref": "#/components/schemas/UnauthorizedError"
                 }
               }
             },
@@ -4625,7 +4973,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/util.NotFoundError"
+                  "$ref": "#/components/schemas/NotFoundError"
                 }
               }
             },
@@ -4635,7 +4983,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/util.GoneError"
+                  "$ref": "#/components/schemas/GoneError"
                 }
               }
             },
@@ -4645,7 +4993,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/util.ServerError"
+                  "$ref": "#/components/schemas/ServerError"
                 }
               }
             },
@@ -4699,7 +5047,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/apimodel.UpdateObjectRequest"
+                "$ref": "#/components/schemas/UpdateObjectRequest"
               }
             }
           },
@@ -4711,7 +5059,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/apimodel.ObjectResponse"
+                  "$ref": "#/components/schemas/ObjectResponse"
                 }
               }
             },
@@ -4721,7 +5069,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/util.ValidationError"
+                  "$ref": "#/components/schemas/ValidationError"
                 }
               }
             },
@@ -4731,7 +5079,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/util.UnauthorizedError"
+                  "$ref": "#/components/schemas/UnauthorizedError"
                 }
               }
             },
@@ -4741,7 +5089,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/util.NotFoundError"
+                  "$ref": "#/components/schemas/NotFoundError"
                 }
               }
             },
@@ -4751,7 +5099,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/util.GoneError"
+                  "$ref": "#/components/schemas/GoneError"
                 }
               }
             },
@@ -4761,7 +5109,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/util.RateLimitError"
+                  "$ref": "#/components/schemas/RateLimitError"
                 }
               }
             },
@@ -4771,7 +5119,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/util.ServerError"
+                  "$ref": "#/components/schemas/ServerError"
                 }
               }
             },
@@ -4791,7 +5139,7 @@
     },
     "/v1/spaces/{space_id}/properties": {
       "get": {
-        "description": "⚠ Warning: Properties are experimental and may change in the next update. ⚠ Retrieves a paginated list of properties available within a specific space. Each property record includes its unique identifier, name and format. This information is essential for clients to understand the available properties for filtering or creating objects.",
+        "description": "Retrieves a paginated list of properties available within a specific space. Each property record includes its unique identifier, name and format. This information is essential for clients to understand the available properties for filtering or creating objects.\nSupports dynamic filtering via query parameters (e.g., ?format=text, ?name[contains]=date, ?key[ne]=custom_prop). See FilterCondition enum for available conditions.",
         "operationId": "list_properties",
         "parameters": [
           {
@@ -4838,7 +5186,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/pagination.PaginatedResponse-apimodel_Property"
+                  "$ref": "#/components/schemas/PaginatedResponse-Property"
                 }
               }
             },
@@ -4848,7 +5196,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/util.UnauthorizedError"
+                  "$ref": "#/components/schemas/UnauthorizedError"
                 }
               }
             },
@@ -4858,7 +5206,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/util.ServerError"
+                  "$ref": "#/components/schemas/ServerError"
                 }
               }
             },
@@ -4876,7 +5224,7 @@
         ]
       },
       "post": {
-        "description": "⚠ Warning: Properties are experimental and may change in the next update. ⚠ Creates a new property in the specified space using a JSON payload. The creation process is subject to rate limiting. The payload must include property details such as the name and format. The endpoint then returns the full property data, ready for further interactions.",
+        "description": "Creates a new property in the specified space using a JSON payload. The creation process is subject to rate limiting. The payload must include property details such as the name and format. The endpoint then returns the full property data, ready for further interactions.",
         "operationId": "create_property",
         "parameters": [
           {
@@ -4903,7 +5251,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/apimodel.CreatePropertyRequest"
+                "$ref": "#/components/schemas/CreatePropertyRequest"
               }
             }
           },
@@ -4915,7 +5263,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/apimodel.PropertyResponse"
+                  "$ref": "#/components/schemas/PropertyResponse"
                 }
               }
             },
@@ -4925,7 +5273,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/util.ValidationError"
+                  "$ref": "#/components/schemas/ValidationError"
                 }
               }
             },
@@ -4935,7 +5283,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/util.UnauthorizedError"
+                  "$ref": "#/components/schemas/UnauthorizedError"
                 }
               }
             },
@@ -4945,7 +5293,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/util.RateLimitError"
+                  "$ref": "#/components/schemas/RateLimitError"
                 }
               }
             },
@@ -4955,7 +5303,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/util.ServerError"
+                  "$ref": "#/components/schemas/ServerError"
                 }
               }
             },
@@ -4975,7 +5323,7 @@
     },
     "/v1/spaces/{space_id}/properties/{property_id}": {
       "delete": {
-        "description": "⚠ Warning: Properties are experimental and may change in the next update. ⚠ This endpoint “deletes” a property by marking it as archived. The deletion process is performed safely and is subject to rate limiting. It returns the property’s details after it has been archived. Proper error handling is in place for situations such as when the property isn’t found or the deletion cannot be performed because of permission issues.",
+        "description": "This endpoint \"deletes\" a property by marking it as archived. The deletion process is performed safely and is subject to rate limiting. It returns the property’s details after it has been archived. Proper error handling is in place for situations such as when the property isn’t found or the deletion cannot be performed because of permission issues.",
         "operationId": "delete_property",
         "parameters": [
           {
@@ -5012,7 +5360,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/apimodel.PropertyResponse"
+                  "$ref": "#/components/schemas/PropertyResponse"
                 }
               }
             },
@@ -5022,7 +5370,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/util.UnauthorizedError"
+                  "$ref": "#/components/schemas/UnauthorizedError"
                 }
               }
             },
@@ -5032,7 +5380,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/util.ForbiddenError"
+                  "$ref": "#/components/schemas/ForbiddenError"
                 }
               }
             },
@@ -5042,7 +5390,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/util.NotFoundError"
+                  "$ref": "#/components/schemas/NotFoundError"
                 }
               }
             },
@@ -5052,7 +5400,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/util.GoneError"
+                  "$ref": "#/components/schemas/GoneError"
                 }
               }
             },
@@ -5062,7 +5410,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/util.RateLimitError"
+                  "$ref": "#/components/schemas/RateLimitError"
                 }
               }
             },
@@ -5072,7 +5420,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/util.ServerError"
+                  "$ref": "#/components/schemas/ServerError"
                 }
               }
             },
@@ -5090,7 +5438,7 @@
         ]
       },
       "get": {
-        "description": "⚠ Warning: Properties are experimental and may change in the next update. ⚠ Fetches detailed information about one specific property by its ID. This includes the property’s unique identifier, name and format. This detailed view assists clients in showing property options to users and in guiding the user interface (such as displaying appropriate input fields or selection options).",
+        "description": "Fetches detailed information about one specific property by its ID. This includes the property’s unique identifier, name and format. This detailed view assists clients in showing property options to users and in guiding the user interface (such as displaying appropriate input fields or selection options).",
         "operationId": "get_property",
         "parameters": [
           {
@@ -5127,7 +5475,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/apimodel.PropertyResponse"
+                  "$ref": "#/components/schemas/PropertyResponse"
                 }
               }
             },
@@ -5137,7 +5485,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/util.UnauthorizedError"
+                  "$ref": "#/components/schemas/UnauthorizedError"
                 }
               }
             },
@@ -5147,7 +5495,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/util.NotFoundError"
+                  "$ref": "#/components/schemas/NotFoundError"
                 }
               }
             },
@@ -5157,7 +5505,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/util.GoneError"
+                  "$ref": "#/components/schemas/GoneError"
                 }
               }
             },
@@ -5167,7 +5515,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/util.ServerError"
+                  "$ref": "#/components/schemas/ServerError"
                 }
               }
             },
@@ -5185,7 +5533,7 @@
         ]
       },
       "patch": {
-        "description": "⚠ Warning: Properties are experimental and may change in the next update. ⚠ This endpoint updates an existing property in the specified space using a JSON payload. The update process is subject to rate limiting. The payload must include the name to be updated. The endpoint then returns the full property data, ready for further interactions.",
+        "description": "This endpoint updates an existing property in the specified space using a JSON payload. The update process is subject to rate limiting. The payload must include the name to be updated. The endpoint then returns the full property data, ready for further interactions.",
         "operationId": "update_property",
         "parameters": [
           {
@@ -5221,7 +5569,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/apimodel.UpdatePropertyRequest"
+                "$ref": "#/components/schemas/UpdatePropertyRequest"
               }
             }
           },
@@ -5233,7 +5581,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/apimodel.PropertyResponse"
+                  "$ref": "#/components/schemas/PropertyResponse"
                 }
               }
             },
@@ -5243,7 +5591,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/util.ValidationError"
+                  "$ref": "#/components/schemas/ValidationError"
                 }
               }
             },
@@ -5253,7 +5601,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/util.UnauthorizedError"
+                  "$ref": "#/components/schemas/UnauthorizedError"
                 }
               }
             },
@@ -5263,7 +5611,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/util.ForbiddenError"
+                  "$ref": "#/components/schemas/ForbiddenError"
                 }
               }
             },
@@ -5273,7 +5621,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/util.NotFoundError"
+                  "$ref": "#/components/schemas/NotFoundError"
                 }
               }
             },
@@ -5283,7 +5631,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/util.GoneError"
+                  "$ref": "#/components/schemas/GoneError"
                 }
               }
             },
@@ -5293,7 +5641,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/util.RateLimitError"
+                  "$ref": "#/components/schemas/RateLimitError"
                 }
               }
             },
@@ -5303,7 +5651,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/util.ServerError"
+                  "$ref": "#/components/schemas/ServerError"
                 }
               }
             },
@@ -5323,7 +5671,7 @@
     },
     "/v1/spaces/{space_id}/properties/{property_id}/tags": {
       "get": {
-        "description": "This endpoint retrieves a paginated list of tags available for a specific property within a space. Each tag record includes its unique identifier, name, and color. This information is essential for clients to display select or multi-select options to users when they are creating or editing objects. The endpoint also supports pagination through offset and limit parameters.",
+        "description": "This endpoint retrieves a paginated list of tags available for a specific property within a space. Each tag record includes its unique identifier, name, and color. This information is essential for clients to display select or multi-select options to users when they are creating or editing objects. The endpoint also supports pagination through offset and limit parameters.\nSupports dynamic filtering via query parameters (e.g., ?name[contains]=urgent, ?color=red, ?key[ne]=archived). See FilterCondition enum for available conditions.",
         "operationId": "list_tags",
         "parameters": [
           {
@@ -5360,7 +5708,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/pagination.PaginatedResponse-apimodel_Tag"
+                  "$ref": "#/components/schemas/PaginatedResponse-Tag"
                 }
               }
             },
@@ -5370,7 +5718,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/util.UnauthorizedError"
+                  "$ref": "#/components/schemas/UnauthorizedError"
                 }
               }
             },
@@ -5380,7 +5728,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/util.NotFoundError"
+                  "$ref": "#/components/schemas/NotFoundError"
                 }
               }
             },
@@ -5390,7 +5738,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/util.ServerError"
+                  "$ref": "#/components/schemas/ServerError"
                 }
               }
             },
@@ -5444,7 +5792,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/apimodel.CreateTagRequest"
+                "$ref": "#/components/schemas/CreateTagRequest"
               }
             }
           },
@@ -5456,7 +5804,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/apimodel.TagResponse"
+                  "$ref": "#/components/schemas/TagResponse"
                 }
               }
             },
@@ -5466,7 +5814,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/util.ValidationError"
+                  "$ref": "#/components/schemas/ValidationError"
                 }
               }
             },
@@ -5476,7 +5824,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/util.UnauthorizedError"
+                  "$ref": "#/components/schemas/UnauthorizedError"
                 }
               }
             },
@@ -5486,7 +5834,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/util.RateLimitError"
+                  "$ref": "#/components/schemas/RateLimitError"
                 }
               }
             },
@@ -5496,7 +5844,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/util.ServerError"
+                  "$ref": "#/components/schemas/ServerError"
                 }
               }
             },
@@ -5562,7 +5910,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/apimodel.TagResponse"
+                  "$ref": "#/components/schemas/TagResponse"
                 }
               }
             },
@@ -5572,7 +5920,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/util.UnauthorizedError"
+                  "$ref": "#/components/schemas/UnauthorizedError"
                 }
               }
             },
@@ -5582,7 +5930,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/util.ForbiddenError"
+                  "$ref": "#/components/schemas/ForbiddenError"
                 }
               }
             },
@@ -5592,7 +5940,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/util.NotFoundError"
+                  "$ref": "#/components/schemas/NotFoundError"
                 }
               }
             },
@@ -5602,7 +5950,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/util.GoneError"
+                  "$ref": "#/components/schemas/GoneError"
                 }
               }
             },
@@ -5612,7 +5960,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/util.RateLimitError"
+                  "$ref": "#/components/schemas/RateLimitError"
                 }
               }
             },
@@ -5622,7 +5970,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/util.ServerError"
+                  "$ref": "#/components/schemas/ServerError"
                 }
               }
             },
@@ -5686,7 +6034,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/apimodel.TagResponse"
+                  "$ref": "#/components/schemas/TagResponse"
                 }
               }
             },
@@ -5696,7 +6044,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/util.UnauthorizedError"
+                  "$ref": "#/components/schemas/UnauthorizedError"
                 }
               }
             },
@@ -5706,7 +6054,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/util.NotFoundError"
+                  "$ref": "#/components/schemas/NotFoundError"
                 }
               }
             },
@@ -5716,7 +6064,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/util.GoneError"
+                  "$ref": "#/components/schemas/GoneError"
                 }
               }
             },
@@ -5726,7 +6074,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/util.ServerError"
+                  "$ref": "#/components/schemas/ServerError"
                 }
               }
             },
@@ -5789,7 +6137,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/apimodel.UpdateTagRequest"
+                "$ref": "#/components/schemas/UpdateTagRequest"
               }
             }
           },
@@ -5801,7 +6149,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/apimodel.TagResponse"
+                  "$ref": "#/components/schemas/TagResponse"
                 }
               }
             },
@@ -5811,7 +6159,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/util.ValidationError"
+                  "$ref": "#/components/schemas/ValidationError"
                 }
               }
             },
@@ -5821,7 +6169,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/util.UnauthorizedError"
+                  "$ref": "#/components/schemas/UnauthorizedError"
                 }
               }
             },
@@ -5831,7 +6179,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/util.ForbiddenError"
+                  "$ref": "#/components/schemas/ForbiddenError"
                 }
               }
             },
@@ -5841,7 +6189,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/util.NotFoundError"
+                  "$ref": "#/components/schemas/NotFoundError"
                 }
               }
             },
@@ -5851,7 +6199,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/util.GoneError"
+                  "$ref": "#/components/schemas/GoneError"
                 }
               }
             },
@@ -5861,7 +6209,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/util.RateLimitError"
+                  "$ref": "#/components/schemas/RateLimitError"
                 }
               }
             },
@@ -5871,7 +6219,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/util.ServerError"
+                  "$ref": "#/components/schemas/ServerError"
                 }
               }
             },
@@ -5937,7 +6285,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/apimodel.SearchRequest"
+                "$ref": "#/components/schemas/SearchRequest"
               }
             }
           },
@@ -5949,7 +6297,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/pagination.PaginatedResponse-apimodel_Object"
+                  "$ref": "#/components/schemas/PaginatedResponse-Object"
                 }
               }
             },
@@ -5959,7 +6307,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/util.UnauthorizedError"
+                  "$ref": "#/components/schemas/UnauthorizedError"
                 }
               }
             },
@@ -5969,7 +6317,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/util.ServerError"
+                  "$ref": "#/components/schemas/ServerError"
                 }
               }
             },
@@ -5989,7 +6337,7 @@
     },
     "/v1/spaces/{space_id}/types": {
       "get": {
-        "description": "This endpoint retrieves a paginated list of types (e.g. 'Page', 'Note', 'Task') available within the specified space. Each type’s record includes its unique identifier, type key, display name, icon, and layout. While a type's id is truly unique, a type's key can be the same across spaces for known types, e.g. 'page' for 'Page'. Clients use this information when offering choices for object creation or for filtering objects by type through search.",
+        "description": "This endpoint retrieves a paginated list of types (e.g. 'Page', 'Note', 'Task') available within the specified space. Each type's record includes its unique identifier, type key, display name, icon, and layout. While a type's id is truly unique, a type's key can be the same across spaces for known types, e.g. 'page' for 'Page'. Clients use this information when offering choices for object creation or for filtering objects by type through search.\nSupports dynamic filtering via query parameters (e.g., ?key=page, ?name[contains]=task, ?layout[ne]=note). See FilterCondition enum for available conditions.",
         "operationId": "list_types",
         "parameters": [
           {
@@ -6036,7 +6384,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/pagination.PaginatedResponse-apimodel_Type"
+                  "$ref": "#/components/schemas/PaginatedResponse-Type"
                 }
               }
             },
@@ -6046,7 +6394,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/util.UnauthorizedError"
+                  "$ref": "#/components/schemas/UnauthorizedError"
                 }
               }
             },
@@ -6056,7 +6404,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/util.ServerError"
+                  "$ref": "#/components/schemas/ServerError"
                 }
               }
             },
@@ -6101,7 +6449,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/apimodel.CreateTypeRequest"
+                "$ref": "#/components/schemas/CreateTypeRequest"
               }
             }
           },
@@ -6113,7 +6461,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/apimodel.TypeResponse"
+                  "$ref": "#/components/schemas/TypeResponse"
                 }
               }
             },
@@ -6123,7 +6471,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/util.ValidationError"
+                  "$ref": "#/components/schemas/ValidationError"
                 }
               }
             },
@@ -6133,7 +6481,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/util.UnauthorizedError"
+                  "$ref": "#/components/schemas/UnauthorizedError"
                 }
               }
             },
@@ -6143,7 +6491,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/util.RateLimitError"
+                  "$ref": "#/components/schemas/RateLimitError"
                 }
               }
             },
@@ -6153,7 +6501,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/util.ServerError"
+                  "$ref": "#/components/schemas/ServerError"
                 }
               }
             },
@@ -6210,7 +6558,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/apimodel.TypeResponse"
+                  "$ref": "#/components/schemas/TypeResponse"
                 }
               }
             },
@@ -6220,7 +6568,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/util.UnauthorizedError"
+                  "$ref": "#/components/schemas/UnauthorizedError"
                 }
               }
             },
@@ -6230,7 +6578,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/util.ForbiddenError"
+                  "$ref": "#/components/schemas/ForbiddenError"
                 }
               }
             },
@@ -6240,7 +6588,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/util.NotFoundError"
+                  "$ref": "#/components/schemas/NotFoundError"
                 }
               }
             },
@@ -6250,7 +6598,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/util.GoneError"
+                  "$ref": "#/components/schemas/GoneError"
                 }
               }
             },
@@ -6260,7 +6608,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/util.RateLimitError"
+                  "$ref": "#/components/schemas/RateLimitError"
                 }
               }
             },
@@ -6270,7 +6618,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/util.ServerError"
+                  "$ref": "#/components/schemas/ServerError"
                 }
               }
             },
@@ -6325,7 +6673,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/apimodel.TypeResponse"
+                  "$ref": "#/components/schemas/TypeResponse"
                 }
               }
             },
@@ -6335,7 +6683,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/util.UnauthorizedError"
+                  "$ref": "#/components/schemas/UnauthorizedError"
                 }
               }
             },
@@ -6345,7 +6693,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/util.NotFoundError"
+                  "$ref": "#/components/schemas/NotFoundError"
                 }
               }
             },
@@ -6355,7 +6703,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/util.GoneError"
+                  "$ref": "#/components/schemas/GoneError"
                 }
               }
             },
@@ -6365,7 +6713,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/util.ServerError"
+                  "$ref": "#/components/schemas/ServerError"
                 }
               }
             },
@@ -6419,7 +6767,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/apimodel.UpdateTypeRequest"
+                "$ref": "#/components/schemas/UpdateTypeRequest"
               }
             }
           },
@@ -6431,7 +6779,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/apimodel.TypeResponse"
+                  "$ref": "#/components/schemas/TypeResponse"
                 }
               }
             },
@@ -6441,7 +6789,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/util.ValidationError"
+                  "$ref": "#/components/schemas/ValidationError"
                 }
               }
             },
@@ -6451,7 +6799,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/util.UnauthorizedError"
+                  "$ref": "#/components/schemas/UnauthorizedError"
                 }
               }
             },
@@ -6461,7 +6809,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/util.NotFoundError"
+                  "$ref": "#/components/schemas/NotFoundError"
                 }
               }
             },
@@ -6471,7 +6819,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/util.GoneError"
+                  "$ref": "#/components/schemas/GoneError"
                 }
               }
             },
@@ -6481,7 +6829,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/util.RateLimitError"
+                  "$ref": "#/components/schemas/RateLimitError"
                 }
               }
             },
@@ -6491,7 +6839,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/util.ServerError"
+                  "$ref": "#/components/schemas/ServerError"
                 }
               }
             },
@@ -6511,7 +6859,7 @@
     },
     "/v1/spaces/{space_id}/types/{type_id}/templates": {
       "get": {
-        "description": "This endpoint returns a paginated list of templates that are associated with a specific type within a space. Templates provide pre‑configured structures for creating new objects. Each template record contains its identifier, name, and icon, so that clients can offer users a selection of templates when creating objects.",
+        "description": "This endpoint returns a paginated list of templates that are associated with a specific type within a space. Templates provide pre‑configured structures for creating new objects. Each template record contains its identifier, name, and icon, so that clients can offer users a selection of templates when creating objects.\nSupports dynamic filtering via query parameters (e.g., ?name[contains]=invoice, ?is_default=true). See FilterCondition enum for available conditions.",
         "operationId": "list_templates",
         "parameters": [
           {
@@ -6567,7 +6915,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/pagination.PaginatedResponse-apimodel_Object"
+                  "$ref": "#/components/schemas/PaginatedResponse-Object"
                 }
               }
             },
@@ -6577,7 +6925,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/util.UnauthorizedError"
+                  "$ref": "#/components/schemas/UnauthorizedError"
                 }
               }
             },
@@ -6587,7 +6935,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/util.ServerError"
+                  "$ref": "#/components/schemas/ServerError"
                 }
               }
             },
@@ -6653,7 +7001,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/apimodel.TemplateResponse"
+                  "$ref": "#/components/schemas/TemplateResponse"
                 }
               }
             },
@@ -6663,7 +7011,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/util.UnauthorizedError"
+                  "$ref": "#/components/schemas/UnauthorizedError"
                 }
               }
             },
@@ -6673,7 +7021,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/util.NotFoundError"
+                  "$ref": "#/components/schemas/NotFoundError"
                 }
               }
             },
@@ -6683,7 +7031,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/util.GoneError"
+                  "$ref": "#/components/schemas/GoneError"
                 }
               }
             },
@@ -6693,7 +7041,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/util.ServerError"
+                  "$ref": "#/components/schemas/ServerError"
                 }
               }
             },

@@ -16,6 +16,7 @@ import (
 //
 //	@Summary		List tags
 //	@Description	This endpoint retrieves a paginated list of tags available for a specific property within a space. Each tag record includes its unique identifier, name, and color. This information is essential for clients to display select or multi-select options to users when they are creating or editing objects. The endpoint also supports pagination through offset and limit parameters.
+//	@Description	Supports dynamic filtering via query parameters (e.g., ?name[contains]=urgent, ?color=red, ?key[ne]=archived). See FilterCondition enum for available conditions.
 //	@Id				list_tags
 //	@Tags			Tags
 //	@Produce		json
@@ -45,7 +46,7 @@ func ListTagsHandler(s *service.Service) gin.HandlerFunc {
 		)
 
 		if code != http.StatusOK {
-			apiErr := util.CodeToAPIError(code, err.Error())
+			apiErr := util.CodeToApiError(code, err.Error())
 			c.JSON(code, apiErr)
 			return
 		}
@@ -86,7 +87,7 @@ func GetTagHandler(s *service.Service) gin.HandlerFunc {
 		)
 
 		if code != http.StatusOK {
-			apiErr := util.CodeToAPIError(code, err.Error())
+			apiErr := util.CodeToApiError(code, err.Error())
 			c.JSON(code, apiErr)
 			return
 		}
@@ -121,7 +122,7 @@ func CreateTagHandler(s *service.Service) gin.HandlerFunc {
 
 		request := apimodel.CreateTagRequest{}
 		if err := c.BindJSON(&request); err != nil {
-			apiErr := util.CodeToAPIError(http.StatusBadRequest, err.Error())
+			apiErr := util.CodeToApiError(http.StatusBadRequest, err.Error())
 			c.JSON(http.StatusBadRequest, apiErr)
 			return
 		}
@@ -134,7 +135,7 @@ func CreateTagHandler(s *service.Service) gin.HandlerFunc {
 		)
 
 		if code != http.StatusOK {
-			apiErr := util.CodeToAPIError(code, err.Error())
+			apiErr := util.CodeToApiError(code, err.Error())
 			c.JSON(code, apiErr)
 			return
 		}
@@ -174,7 +175,7 @@ func UpdateTagHandler(s *service.Service) gin.HandlerFunc {
 
 		request := apimodel.UpdateTagRequest{}
 		if err := c.BindJSON(&request); err != nil {
-			apiErr := util.CodeToAPIError(http.StatusBadRequest, err.Error())
+			apiErr := util.CodeToApiError(http.StatusBadRequest, err.Error())
 			c.JSON(http.StatusBadRequest, apiErr)
 			return
 		}
@@ -189,7 +190,7 @@ func UpdateTagHandler(s *service.Service) gin.HandlerFunc {
 		)
 
 		if code != http.StatusOK {
-			apiErr := util.CodeToAPIError(code, err.Error())
+			apiErr := util.CodeToApiError(code, err.Error())
 			c.JSON(code, apiErr)
 			return
 		}
@@ -233,7 +234,7 @@ func DeleteTagHandler(s *service.Service) gin.HandlerFunc {
 		)
 
 		if code != http.StatusOK {
-			apiErr := util.CodeToAPIError(code, err.Error())
+			apiErr := util.CodeToApiError(code, err.Error())
 			c.JSON(code, apiErr)
 			return
 		}

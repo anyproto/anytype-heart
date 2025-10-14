@@ -101,11 +101,10 @@ func TestSearchService_GlobalSearch(t *testing.T) {
 				},
 			},
 			Sorts: []*model.BlockContentDataviewSort{{
-				RelationKey:    bundle.RelationKeyLastModifiedDate.String(),
-				Type:           model.BlockContentDataviewSort_Desc,
-				Format:         model.RelationFormat_date,
-				IncludeTime:    true,
-				EmptyPlacement: model.BlockContentDataviewSort_NotSpecified,
+				RelationKey: bundle.RelationKeyLastModifiedDate.String(),
+				Type:        model.BlockContentDataviewSort_Desc,
+				Format:      model.RelationFormat_date,
+				IncludeTime: true,
 			}},
 			Limit: int32(offset + limit),
 		}).Return(&pb.RpcObjectSearchResponse{
@@ -277,11 +276,10 @@ func TestSearchService_Search(t *testing.T) {
 				},
 			},
 			Sorts: []*model.BlockContentDataviewSort{{
-				RelationKey:    bundle.RelationKeyLastModifiedDate.String(),
-				Type:           model.BlockContentDataviewSort_Desc,
-				Format:         model.RelationFormat_date,
-				IncludeTime:    true,
-				EmptyPlacement: model.BlockContentDataviewSort_NotSpecified,
+				RelationKey: bundle.RelationKeyLastModifiedDate.String(),
+				Type:        model.BlockContentDataviewSort_Desc,
+				Format:      model.RelationFormat_date,
+				IncludeTime: true,
 			}},
 		}).Return(&pb.RpcObjectSearchResponse{
 			Records: []*types.Struct{

@@ -488,7 +488,6 @@ func removeAccountRelatedDetails(s *pb.ChangeSnapshot) {
 			bundle.RelationKeyLinks.String(),
 			bundle.RelationKeyBacklinks.String(),
 			bundle.RelationKeyMentions.String(),
-			bundle.RelationKeyWorkspaceId.String(),
 			bundle.RelationKeyIdentityProfileLink.String(),
 			bundle.RelationKeyAddedDate.String(),
 			bundle.RelationKeySyncDate.String(),

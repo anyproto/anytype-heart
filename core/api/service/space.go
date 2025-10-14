@@ -61,9 +61,13 @@ func (s *Service) ListSpaces(ctx context.Context, additionalFilters []*model.Blo
 				EmptyPlacement: model.BlockContentDataviewSort_End,
 			},
 			{
+				RelationKey: bundle.RelationKeySpaceJoinDate.String(),
+				Type:        model.BlockContentDataviewSort_Desc,
+				IncludeTime: true,
+			},
+			{
 				RelationKey: bundle.RelationKeyCreatedDate.String(),
 				Type:        model.BlockContentDataviewSort_Desc,
-				Format:      model.RelationFormat_longtext,
 				IncludeTime: true,
 			},
 		},
@@ -141,7 +145,7 @@ func (s *Service) CreateSpace(ctx context.Context, request apimodel.CreateSpaceR
 				bundle.RelationKeySpaceDashboardId.String(): pbtypes.String("lastOpened"),
 			},
 		},
-		UseCase:  pb.RpcObjectImportUseCaseRequest_GET_STARTED,
+		UseCase:  pb.RpcObjectImportUseCaseRequest_DATA_SPACE,
 		WithChat: true,
 	})
 
@@ -221,12 +225,13 @@ func (s *Service) getSpaceInfo(ctx context.Context, spaceId string) (space apimo
 		return apimodel.Space{}, ErrFailedOpenSpace
 	}
 
+	spaceUxType := s.spaceUxTypeToSpaceType(model.SpaceUxType(spaceResp.ObjectView.Details[0].Details.Fields[bundle.RelationKeySpaceUxType.String()].GetNumberValue()))
 	name := spaceResp.ObjectView.Details[0].Details.Fields[bundle.RelationKeyName.String()].GetStringValue()
-	icon := getIcon(s.gatewayUrl, spaceResp.ObjectView.Details[0].Details.Fields[bundle.RelationKeyIconEmoji.String()].GetStringValue(), spaceResp.ObjectView.Details[0].Details.Fields[bundle.RelationKeyIconImage.String()].GetStringValue(), "", 0)
+	icon := getIcon(s.gatewayUrl, "", spaceResp.ObjectView.Details[0].Details.Fields[bundle.RelationKeyIconImage.String()].GetStringValue(), "", 0)
 	description := spaceResp.ObjectView.Details[0].Details.Fields[bundle.RelationKeyDescription.String()].GetStringValue()
 
 	return apimodel.Space{
-		Object:      "space",
+		Object:      spaceUxType,
 		Id:          spaceId,
 		Name:        name,
 		Icon:        icon,
@@ -267,4 +272,13 @@ func (s *Service) GetAllSpaceIds(ctx context.Context) ([]string, error) {
 	}
 
 	return spaceIds, nil
+}
+
+func (s *Service) spaceUxTypeToSpaceType(uxType model.SpaceUxType) string {
+	switch uxType {
+	case model.SpaceUxType_Chat:
+		return "chat"
+	default:
+		return "space"
+	}
 }

@@ -69,12 +69,10 @@ func (p *importProcessor) Execute(ctx context.Context) *ImportResponse {
 	}()
 
 	if p.request.Progress == nil {
-		p.setupProgressBar()
-	}
-
-	if p.deps.blockService != nil && !p.request.GetNoProgress() {
-		// do not error in case progress is already set up
-		_ = p.deps.blockService.ProcessAdd(p.request.Progress) // nolint:errcheck
+		if err := p.setupProgressBar(); err != nil {
+			p.response.Err = fmt.Errorf("failed to add process: %w", err)
+			return p.response
+		}
 	}
 
 	p.response.ProcessId = p.request.Progress.Id()
@@ -85,7 +83,7 @@ func (p *importProcessor) Execute(ctx context.Context) *ImportResponse {
 	return p.handleBuiltinConverterImport(ctx)
 }
 
-func (p *importProcessor) setupProgressBar() {
+func (p *importProcessor) setupProgressBar() error {
 	var progressBarType pb.IsModelProcessMessage = &pb.ModelProcessMessageOfImport{
 		Import: &pb.ModelProcessImport{},
 	}
@@ -106,6 +104,11 @@ func (p *importProcessor) setupProgressBar() {
 	}
 
 	p.request.Progress = progress
+
+	if !p.request.GetNoProgress() {
+		return p.deps.blockService.ProcessAdd(p.request.Progress)
+	}
+	return nil
 }
 
 func (p *importProcessor) handleExternalImport(ctx context.Context) *ImportResponse {
@@ -163,8 +166,6 @@ func (p *importProcessor) handleBuiltinConverterImport(ctx context.Context) *Imp
 		return p.response
 	}
 
-	p.createTypeWidgets(response.TypesCreated)
-
 	if err := p.initConversionFields(response, allErrors); err != nil {
 		allErrors.Add(fmt.Errorf("failed to build import context: %w", err))
 		p.response.Err = allErrors.GetResultError(p.request.Type)
@@ -185,13 +186,6 @@ func (p *importProcessor) handleBuiltinConverterImport(ctx context.Context) *Imp
 	p.response.Err = resultErr
 
 	return p.response
-}
-
-func (p *importProcessor) createTypeWidgets(typeKeys []domain.TypeKey) {
-	err := p.deps.blockService.CreateTypeWidgetsIfMissing(context.Background(), p.request.SpaceId, typeKeys, true)
-	if err != nil {
-		log.Errorf("failed to create widget from root collection, error: %s", err.Error())
-	}
 }
 
 func (p *importProcessor) initConversionFields(converterResponse *common.Response, errors *common.ConvertError) error {
@@ -459,11 +453,7 @@ func (p *importProcessor) sendImportFinishEvent() {
 
 func (p *importProcessor) ExecuteWebImport(ctx context.Context) (string, *domain.Details, error) {
 	if p.request.Progress == nil {
-		p.setupProgressBar()
-	}
-
-	if p.deps.blockService != nil {
-		if err := p.deps.blockService.ProcessAdd(p.request.Progress); err != nil {
+		if err := p.setupProgressBar(); err != nil {
 			return "", nil, fmt.Errorf("failed to add process: %w", err)
 		}
 	}
