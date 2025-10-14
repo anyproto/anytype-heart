@@ -187,6 +187,7 @@ func UpdateObjectHandler(s *service.Service) gin.HandlerFunc {
 			util.ErrToCode(service.ErrObjectNotFound, http.StatusNotFound),
 			util.ErrToCode(service.ErrObjectDeleted, http.StatusGone),
 			util.ErrToCode(service.ErrFailedUpdateObject, http.StatusInternalServerError),
+			util.ErrToCode(service.ErrFailedReplaceBlocks, http.StatusInternalServerError),
 			util.ErrToCode(service.ErrFailedRetrieveObject, http.StatusInternalServerError),
 		)
 

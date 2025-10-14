@@ -29,6 +29,7 @@ var (
 	ErrFailedCreateBlock         = errors.New("failed to create block")
 	ErrFailedPasteBody           = errors.New("failed to paste body")
 	ErrFailedUpdateObject        = errors.New("failed to update object")
+	ErrFailedReplaceBlocks       = errors.New("failed to replace blocks")
 	ErrFailedDeleteObject        = errors.New("failed to delete object")
 )
 
@@ -195,6 +196,42 @@ func (s *Service) UpdateObject(ctx context.Context, spaceId string, objectId str
 
 	if resp.Error != nil && resp.Error.Code != pb.RpcObjectSetDetailsResponseError_NULL {
 		return nil, ErrFailedUpdateObject
+	}
+
+	if request.Markdown != nil {
+		showResp := s.mw.ObjectShow(ctx, &pb.RpcObjectShowRequest{
+			SpaceId:  spaceId,
+			ObjectId: objectId,
+		})
+
+		if showResp.Error != nil && showResp.Error.Code != pb.RpcObjectShowResponseError_NULL {
+			return nil, ErrFailedRetrieveObject
+		}
+
+		allRootChildrenExceptHeader := make([]string, 0, len(showResp.ObjectView.Blocks[0].ChildrenIds))
+		for _, childId := range showResp.ObjectView.Blocks[0].ChildrenIds {
+			if childId != "header" {
+				allRootChildrenExceptHeader = append(allRootChildrenExceptHeader, childId)
+			}
+		}
+
+		if len(allRootChildrenExceptHeader) > 0 {
+			deleteResp := s.mw.BlockListDelete(ctx, &pb.RpcBlockListDeleteRequest{
+				ContextId: objectId,
+				BlockIds:  allRootChildrenExceptHeader,
+			})
+
+			if deleteResp.Error != nil && deleteResp.Error.Code != pb.RpcBlockListDeleteResponseError_NULL {
+				return nil, ErrFailedReplaceBlocks
+			}
+		}
+
+		if *request.Markdown != "" {
+			if err := s.createAndPasteBody(ctx, spaceId, objectId, *request.Markdown); err != nil {
+				object, _ := s.GetObject(ctx, spaceId, objectId) // nolint:errcheck
+				return object, err
+			}
+		}
 	}
 
 	return s.GetObject(ctx, spaceId, objectId)
@@ -411,7 +448,22 @@ func (s *Service) getMarkdownExport(ctx context.Context, spaceId string, objectI
 			return "", ErrFailedExportMarkdown
 		}
 
-		return resp.Result, nil
+		markdown := resp.Result
+
+		if len(markdown) > 0 && markdown[0] == '#' {
+			for i := 0; i < len(markdown); i++ {
+				if markdown[i] == '\n' {
+					if i+1 < len(markdown) && markdown[i+1] == '\n' {
+						markdown = markdown[i+2:]
+					} else {
+						markdown = markdown[i+1:]
+					}
+					break
+				}
+			}
+		}
+
+		return markdown, nil
 	}
 	return "", nil
 }

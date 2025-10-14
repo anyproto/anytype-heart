@@ -2629,6 +2629,11 @@
           "icon": {
             "$ref": "#/components/schemas/Icon"
           },
+          "markdown": {
+            "description": "The updated body of the object",
+            "example": "This is the updated body of the object. Markdown syntax is supported here.",
+            "type": "string"
+          },
           "name": {
             "description": "The name of the object",
             "example": "My object",
