@@ -8,9 +8,13 @@ import (
 	"os"
 	"path/filepath"
 	"sync"
+	"sync/atomic"
+	"time"
 
 	anystore "github.com/anyproto/any-store"
 	"github.com/anyproto/any-sync/app"
+	"go.uber.org/zap"
+	"zombiezen.com/go/sqlite"
 
 	"github.com/anyproto/anytype-heart/core/wallet"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/anystorehelper"
@@ -71,7 +75,7 @@ type provider struct {
 	objectStorePath string
 	anyStoreConfig  *anystore.Config
 
-	commonDb           *dbWithFileLock
+	commonDb           anystore.DB
 	commonDbLockRemove func() error
 	systemCollection   anystore.Collection
 
@@ -79,29 +83,18 @@ type provider struct {
 	crdtDbs       map[string]*AnystoreGetter
 
 	spaceIndexDbsLock sync.Mutex
-	spaceIndexDbs     map[string]*dbWithFileLock
+	spaceIndexDbs     map[string]anystore.DB
 
 	componentCtx       context.Context
 	componentCtxCancel context.CancelFunc
-}
 
-type dbWithFileLock struct {
-	db         anystore.DB
-	lockRemove func() error
-}
-
-func (db *dbWithFileLock) Close(ctx context.Context) error {
-	return errors.Join(
-		db.db.Checkpoint(context.Background(), true),
-		db.db.Close(),
-		db.lockRemove(),
-	)
+	dbsAreFlushing atomic.Bool
 }
 
 func New() Provider {
 	return &provider{
 		crdtDbs:        map[string]*AnystoreGetter{},
-		spaceIndexDbs:  map[string]*dbWithFileLock{},
+		spaceIndexDbs:  map[string]anystore.DB{},
 		anyStoreConfig: &anystore.Config{},
 	}
 }
@@ -144,12 +137,12 @@ func (s *provider) initInPath(repoPath string) error {
 		return err
 	}
 
-	s.commonDb, err = openDatabase(context.Background(), s.getAnyStoreConfig(), filepath.Join(s.objectStorePath, "objects.db"))
+	s.commonDb, err = openDatabaseWithReinit(context.Background(), s.getAnyStoreConfig(), filepath.Join(s.objectStorePath, "objects.db"))
 	if err != nil {
 		return fmt.Errorf("open db: %w", err)
 	}
 
-	s.systemCollection, err = s.commonDb.db.Collection(s.componentCtx, "system")
+	s.systemCollection, err = s.commonDb.Collection(s.componentCtx, "system")
 	if err != nil {
 		return fmt.Errorf("init system collection: %w", err)
 	}
@@ -161,20 +154,53 @@ func (s *provider) Run(ctx context.Context) error {
 	return nil
 }
 
-func openDatabase(ctx context.Context, config *anystore.Config, path string) (*dbWithFileLock, error) {
+func getLogger(err error, code sqlite.ResultCode) *zap.Logger {
+	return log.With(zap.Error(err), zap.String("code", code.String()), zap.String("desc", code.Message()))
+}
+
+// openDatabaseWithReinit tries to open anystore database, if it fails with corruption error it removes the files and tries to open again
+func openDatabaseWithReinit(ctx context.Context, config *anystore.Config, path string) (anystore.DB, error) {
 	err := ensureDirExists(filepath.Dir(path))
 	if err != nil {
 		return nil, fmt.Errorf("ensure dir exists: %w", err)
 	}
 
-	db, lockRemove, err := anystorehelper.OpenDatabaseWithLockCheck(ctx, path, config)
+	start := time.Now()
+	db, err := anystore.Open(ctx, path, config)
 	if err != nil {
-		return nil, fmt.Errorf("open database: %w", err)
+		code, isCorrupted := anystorehelper.IsCorruptedError(err)
+		getLogger(err, code).With(zap.Bool("isCorrupted", isCorrupted)).With(zap.Int64("tookMs", time.Since(start).Milliseconds())).Error("failed to open anystore")
+		if isCorrupted {
+			removeErr := anystorehelper.RemoveSqliteFiles(path)
+			if removeErr != nil {
+				log.Error("failed to remove sqlite files", zap.Error(removeErr))
+				return nil, removeErr
+			}
+			db, err = anystore.Open(ctx, path, config)
+			if err != nil {
+				code, _ = anystorehelper.IsCorruptedError(err)
+				getLogger(err, code).Error("failed to open anystore again")
+				return nil, err
+			}
+			return db, nil
+		}
+		return nil, err
+	} else if time.Since(start) > time.Second {
+		// only log for not-corrupted opens
+		ctxStat, cancel := context.WithTimeout(ctx, time.Second*2)
+		defer cancel()
+
+		logger := log.With(zap.String("db", filepath.Base(path))).With(zap.Int64("tookMs", time.Since(start).Milliseconds()))
+		stat, err := db.Stats(ctxStat)
+		if err != nil {
+			logger = logger.With(zap.Error(err))
+		} else {
+			logger = logger.With(anystorehelper.DbStatToZapFields(stat)...)
+		}
+		logger.Warn("objectstore db open took too long")
 	}
-	return &dbWithFileLock{
-		db:         db,
-		lockRemove: lockRemove,
-	}, nil
+
+	return db, nil
 }
 
 func (s *provider) setDefaultConfig() {
@@ -189,7 +215,7 @@ func (s *provider) setDefaultConfig() {
 }
 
 func (s *provider) GetCommonDb() anystore.DB {
-	return s.commonDb.db
+	return s.commonDb
 }
 
 func (s *provider) GetSystemCollection() anystore.Collection {
@@ -202,17 +228,17 @@ func (s *provider) GetSpaceIndexDb(spaceId string) (anystore.DB, error) {
 
 	db, ok := s.spaceIndexDbs[spaceId]
 	if ok {
-		return db.db, nil
+		return db, nil
 	}
 
-	db, err := openDatabase(s.componentCtx, s.getAnyStoreConfig(), filepath.Join(s.objectStorePath, spaceId, "objects.db"))
+	db, err := openDatabaseWithReinit(s.componentCtx, s.getAnyStoreConfig(), filepath.Join(s.objectStorePath, spaceId, "objects.db"))
 	if err != nil {
 		return nil, fmt.Errorf("open db: %w", err)
 	}
 
 	s.spaceIndexDbs[spaceId] = db
 
-	return db.db, nil
+	return db, nil
 }
 
 type AnystoreGetter struct {
@@ -222,10 +248,10 @@ type AnystoreGetter struct {
 	spaceId         string
 
 	lock sync.Mutex
-	db   *dbWithFileLock
+	db   anystore.DB
 }
 
-func (g *AnystoreGetter) get() *dbWithFileLock {
+func (g *AnystoreGetter) get() anystore.DB {
 	g.lock.Lock()
 	defer g.lock.Unlock()
 
@@ -237,18 +263,18 @@ func (g *AnystoreGetter) Wait() (anystore.DB, error) {
 	defer g.lock.Unlock()
 
 	if g.db != nil {
-		return g.db.db, nil
+		return g.db, nil
 	}
 
 	path := filepath.Join(g.objectStorePath, g.spaceId, "crdt.db")
-	db, err := openDatabase(g.ctx, g.config, path)
+	db, err := openDatabaseWithReinit(g.ctx, g.config, path)
 	if err != nil {
 		return nil, fmt.Errorf("open: %w", err)
 	}
 
 	g.db = db
 
-	return db.db, nil
+	return db, nil
 }
 
 func (s *provider) GetCrdtDb(spaceId string) *AnystoreGetter {
@@ -276,6 +302,12 @@ func (s *provider) getAnyStoreConfig() *anystore.Config {
 		ReadConnections:         s.anyStoreConfig.ReadConnections,
 		SQLiteConnectionOptions: maps.Clone(s.anyStoreConfig.SQLiteConnectionOptions),
 		SyncPoolElementMaxSize:  s.anyStoreConfig.SyncPoolElementMaxSize,
+		Durability: anystore.DurabilityConfig{
+			AutoFlush: true,
+			IdleAfter: time.Second * 20,
+			FlushMode: anystore.FlushModeCheckpointPassive,
+			Sentinel:  true,
+		},
 	}
 }
 
@@ -284,30 +316,30 @@ func (s *provider) Close(ctx context.Context) error {
 
 	s.componentCtxCancel()
 	if s.commonDb != nil {
-		err = errors.Join(err, s.commonDb.Close(ctx))
+		err = errors.Join(err, s.commonDb.Close())
 	}
 
 	s.spaceIndexDbsLock.Lock()
 	// close in parallel
 	closeChan := make(chan error, len(s.spaceIndexDbs))
 	for spaceId, store := range s.spaceIndexDbs {
-		go func(spaceId string, store *dbWithFileLock) {
-			closeChan <- store.Close(ctx)
+		go func(spaceId string, store anystore.DB) {
+			closeChan <- store.Close()
 		}(spaceId, store)
 	}
 	for i := 0; i < len(s.spaceIndexDbs); i++ {
 		err = errors.Join(err, <-closeChan)
 	}
-	s.spaceIndexDbs = map[string]*dbWithFileLock{}
+	s.spaceIndexDbs = map[string]anystore.DB{}
 	s.spaceIndexDbsLock.Unlock()
 
 	s.crtdStoreLock.Lock()
 	closeChan = make(chan error, len(s.crdtDbs))
 	for spaceId, store := range s.crdtDbs {
 		db := store.get()
-		go func(spaceId string, db *dbWithFileLock) {
+		go func(spaceId string, db anystore.DB) {
 			if db != nil {
-				closeChan <- db.Close(ctx)
+				closeChan <- db.Close()
 			}
 		}(spaceId, db)
 	}
@@ -332,6 +364,47 @@ func (s *provider) ListSpaceIdsFromFilesystem() ([]string, error) {
 		}
 	}
 	return spaceIds, err
+}
+
+func (s *provider) Flush(timeout time.Duration, waitPending bool) {
+	if !s.dbsAreFlushing.CompareAndSwap(false, true) {
+		return
+	}
+	var idleDuration time.Duration
+	if waitPending {
+		idleDuration = time.Millisecond * 30
+	}
+	defer s.dbsAreFlushing.Store(false)
+	s.spaceIndexDbsLock.Lock()
+	s.crtdStoreLock.Lock()
+	var dbs = make([]anystore.DB, 0, len(s.spaceIndexDbs)+len(s.crdtDbs)+1)
+	for _, db := range s.spaceIndexDbs {
+		dbs = append(dbs, db)
+	}
+	for _, getter := range s.crdtDbs {
+		db := getter.get()
+		if db != nil {
+			dbs = append(dbs, db)
+		}
+	}
+	s.spaceIndexDbsLock.Unlock()
+	s.crtdStoreLock.Unlock()
+	wg := sync.WaitGroup{}
+
+	dbs = append(dbs, s.commonDb)
+	for _, db := range dbs {
+		wg.Add(1)
+		go func(db anystore.DB) {
+			defer wg.Done()
+			ctx, cancel := context.WithTimeout(s.componentCtx, timeout)
+			defer cancel()
+			err := db.Flush(ctx, idleDuration, anystore.FlushModeCheckpointPassive)
+			if err != nil {
+				log.With(zap.Error(err)).Error("failed to flush db")
+			}
+		}(db)
+	}
+	wg.Wait()
 }
 
 func ensureDirExists(dir string) error {

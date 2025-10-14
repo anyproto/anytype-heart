@@ -23228,8 +23228,8 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 
 | Name | Number | Description |
 | ---- | ------ | ----------- |
-| BACKGROUND | 0 |  |
-| FOREGROUND | 1 |  |
+| BACKGROUND | 0 | went to background on mobile, hibernated on desktop |
+| FOREGROUND | 1 | went to foreground on mobile, woke from hibernation on desktop |
 
 
 
@@ -25977,10 +25977,11 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | ---- | ------ | ----------- |
 | NONE | 0 |  |
 | GET_STARTED | 1 |  |
-| EMPTY | 2 |  |
+| DATA_SPACE | 2 |  |
 | GUIDE_ONLY | 3 | only the guide without other tables |
 | GET_STARTED_MOBILE | 4 |  |
-| EMPTY_MOBILE | 5 |  |
+| CHAT_SPACE | 5 |  |
+| DATA_SPACE_MOBILE | 6 |  |
 
 
 
@@ -33775,7 +33776,7 @@ Look https://github.com/golang/protobuf/issues/1135 for more information.
 | spaceView | 18 |  |
 | participant | 19 |  |
 | pdf | 20 |  |
-| chat | 21 | deprecated |
+| chatDeprecated | 21 | deprecated |
 | chatDerived | 22 |  |
 | tag | 23 |  |
 | notification | 24 |  |
@@ -33934,7 +33935,7 @@ RelationFormat describes how the underlying data is stored in the google.protobu
 | FileObject | 533 |  |
 | NotificationObject | 535 |  |
 | DevicesObject | 536 |  |
-| ChatObject | 537 | Container for any-store based chats |
+| ChatObjectDeprecated | 537 | DEPRECATED Container for any-store based chats |
 | ChatDerivedObject | 544 | Any-store based object for chat |
 | AccountObject | 545 | Container for account data in tech space |
 

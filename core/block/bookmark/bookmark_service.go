@@ -245,7 +245,7 @@ func (s *service) ContentUpdaters(spaceID string, url string, parseBlock bool) (
 
 	updaters := make(chan func(contentBookmark *bookmark.ObjectContent), 1)
 
-	data, body, isFile, err := s.linkPreview.Fetch(ctx, url)
+	data, body, isFile, err := s.linkPreview.Fetch(ctx, url, true)
 	if err != nil {
 		updaters <- func(c *bookmark.ObjectContent) {
 			if c.BookmarkContent == nil {

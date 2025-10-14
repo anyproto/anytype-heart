@@ -44,12 +44,18 @@ func (s *service) Name() (name string) {
 }
 
 func (s *service) GetInfoForFileSharing(fileObjectId string) (cid string, encryptionKeys []*model.FileEncryptionKey, err error) {
-	fileId, err := s.fileObjectService.GetFileIdFromObject(fileObjectId)
-	if err != nil {
-		return "", nil, fmt.Errorf("get file id from object: %w", err)
+	var fileId domain.FileId
+	if domain.IsFileId(fileObjectId) {
+		fileId = domain.FileId(fileObjectId)
+	} else {
+		fullFileId, err := s.fileObjectService.GetFileIdFromObject(fileObjectId)
+		if err != nil {
+			return "", nil, fmt.Errorf("get file id from object: %w", err)
+		}
+		fileId = fullFileId.FileId
 	}
-	cid = fileId.FileId.String()
-	keys, err := s.objectStore.GetFileKeys(fileId.FileId)
+	cid = fileId.String()
+	keys, err := s.objectStore.GetFileKeys(fileId)
 	if err != nil {
 		return "", nil, fmt.Errorf("get file keys: %w", err)
 	}

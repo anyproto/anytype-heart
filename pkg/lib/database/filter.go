@@ -70,7 +70,7 @@ func makeFilter(spaceID string, rawFilter FilterRequest, store ObjectStore) (Fil
 	if rawFilter.Condition == model.BlockContentDataviewFilter_None {
 		return nil, nil
 	}
-	rawFilters := transformQuickOption(rawFilter)
+	rawFilters := transformDateFilter(rawFilter)
 
 	if len(rawFilters) == 1 {
 		return makeFilterByCondition(spaceID, rawFilters[0], store)
