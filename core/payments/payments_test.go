@@ -708,7 +708,7 @@ func TestRefreshControllerForceStopsAfterChange(t *testing.T) {
 		return false, nil
 	}
 
-	rc := newRefreshController(ctx, fetch, 50*time.Millisecond)
+	rc := newRefreshController(ctx, fetch, 50*time.Millisecond, 5*time.Millisecond)
 	rc.interval = 200 * time.Millisecond
 	rc.forceInterval = 5 * time.Millisecond
 	rc.Start()
