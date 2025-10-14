@@ -207,10 +207,10 @@ func (s *service) SubscribeLastMessages(ctx context.Context, req SubscribeLastMe
 
 	messages, err := mngr.repository.GetLastMessages(txn.Context(), uint(req.Limit))
 	if err != nil {
-		return nil, fmt.Errorf("query messages: %w", err)
+		return nil, fmt.Errorf("query messagesMap: %w", err)
 	}
 
-	mngr.subscribe(req)
+	mngr.subscribe(req, messages)
 
 	depsPerMessage := map[string][]*domain.Details{}
 	if req.WithDependencies {

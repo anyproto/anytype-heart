@@ -3,6 +3,7 @@ package editor
 import (
 	"testing"
 
+	"github.com/anyproto/any-sync/commonspace/object/accountdata"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -193,6 +194,28 @@ func newStoreFixture(t *testing.T) *spaceindex.StoreFixture {
 	return store
 }
 
+type accountServiceStub struct{}
+
+func (a accountServiceStub) AccountID() string {
+	return ""
+}
+
+func (a accountServiceStub) PersonalSpaceID() string {
+	return ""
+}
+
+func (a accountServiceStub) MyParticipantId(spaceId string) string {
+	return "myId"
+}
+
+func (a accountServiceStub) Keys() *accountdata.AccountKeys {
+	return nil
+}
+
+func (a accountServiceStub) GetAccountObjectId() (string, error) {
+	return "accObjId", nil
+}
+
 func newParticipantTest(t *testing.T) (*participant, error) {
 	sb := smarttest.New("root")
 	store := newStoreFixture(t)
@@ -201,6 +224,7 @@ func newParticipantTest(t *testing.T) (*participant, error) {
 		SmartBlock:       sb,
 		DetailsUpdatable: basicComponent,
 		objectStore:      store,
+		accountService:   accountServiceStub{},
 	}
 
 	initCtx := &smartblock.InitContext{

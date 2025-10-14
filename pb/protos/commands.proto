@@ -44,8 +44,8 @@ message Rpc {
                 DeviceState deviceState = 1;
 
                 enum DeviceState {
-                    BACKGROUND = 0;
-                    FOREGROUND = 1;
+                    BACKGROUND = 0; // went to background on mobile, hibernated on desktop
+                    FOREGROUND = 1; // went to foreground on mobile, woke from hibernation on desktop
                 }
             }
 
@@ -2349,7 +2349,7 @@ message Rpc {
 
         message CrossSpaceSearchUnsubscribe {
             message Request {
-                   string subId = 1;
+                string subId = 1;
             }
 
             message Response {
@@ -3054,6 +3054,7 @@ message Rpc {
                     repeated string path = 1;
                     bool createDirectoryPages = 2;
                     bool includePropertiesAsBlock = 3;
+                    bool noCollection = 4;
                 }
 
                 message BookmarksParams {
@@ -3193,10 +3194,11 @@ message Rpc {
                 enum UseCase {
                     NONE = 0;
                     GET_STARTED = 1;
-                    EMPTY = 2;
+                    DATA_SPACE = 2;
                     GUIDE_ONLY = 3; // only the guide without other tables
                     GET_STARTED_MOBILE = 4;
-                    EMPTY_MOBILE = 5;
+                    CHAT_SPACE = 5;
+                    DATA_SPACE_MOBILE = 6;
                 }
             }
 
@@ -3224,6 +3226,7 @@ message Rpc {
                 string url = 2;
                 string title = 3;
                 bool isNewSpace = 4;
+                bool isAi = 5;
             }
 
             message Response {
@@ -3585,6 +3588,30 @@ message Rpc {
 
             message Response {
                 Error error = 1;
+
+                message Error {
+                    Code code = 1;
+                    string description = 2;
+
+                    enum Code {
+                        NULL = 0;
+                        UNKNOWN_ERROR = 1;
+                        BAD_INPUT = 2;
+                    }
+                }
+            }
+        }
+
+
+        message SetOrder {
+            message Request {
+                string spaceId = 1;
+                repeated string typeIds = 2;
+            }
+
+            message Response {
+                Error error = 1;
+                repeated string orderIds = 2; // final list of order ids
 
                 message Error {
                     Code code = 1;

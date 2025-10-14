@@ -457,8 +457,7 @@ func (p *Pb) updateLinksToObjects(snapshots []*common.Snapshot) map[string]strin
 		}
 	}
 	for _, snapshot := range snapshots {
-		st := state.NewDocFromSnapshot("", snapshot.Snapshot.ToProto())
-		err := common.UpdateLinksToObjects(st.(*state.State), oldToNewID)
+		st, err := state.NewDocFromSnapshot("", snapshot.Snapshot.ToProto())
 		if err != nil {
 			p.errors.Add(err)
 			if p.errors.ShouldAbortImport(p.pathCount, model.Import_Pb) {
@@ -466,11 +465,19 @@ func (p *Pb) updateLinksToObjects(snapshots []*common.Snapshot) map[string]strin
 			}
 			continue
 		}
-		common.UpdateObjectIDsInRelations(st.(*state.State), oldToNewID, relationKeysToFormat)
+		err = common.UpdateLinksToObjects(st, oldToNewID)
+		if err != nil {
+			p.errors.Add(err)
+			if p.errors.ShouldAbortImport(p.pathCount, model.Import_Pb) {
+				return nil
+			}
+			continue
+		}
+		common.UpdateObjectIDsInRelations(st, oldToNewID, relationKeysToFormat)
 		// TODO Fix
 		// converter.UpdateObjectType(oldToNewID, st.(*state.State))
-		p.updateObjectsIDsInCollection(st.(*state.State), oldToNewID)
-		p.updateSnapshot(snapshot, st.(*state.State))
+		p.updateObjectsIDsInCollection(st, oldToNewID)
+		p.updateSnapshot(snapshot, st)
 	}
 	return oldToNewID
 }

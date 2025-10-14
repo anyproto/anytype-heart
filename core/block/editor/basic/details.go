@@ -23,73 +23,71 @@ import (
 
 var log = logging.Logger("anytype-mw-editor-basic")
 
+var errInternalRelationDeletion = errors.New("deletion of internal relation is prohibited")
+
 func (bs *basic) SetDetails(ctx session.Context, details []domain.Detail, showEvent bool) (err error) {
-	_, err = bs.setDetails(ctx, details, showEvent)
-	return err
+	if err = bs.UpdateDetails(ctx, func(current *domain.Details) (*domain.Details, error) {
+		return applyDetailUpdates(current, details), nil
+	}); err != nil {
+		return err
+	}
+
+	bs.discardOwnSetDetailsEvent(ctx, showEvent)
+	return nil
 }
 
-func (bs *basic) setDetails(ctx session.Context, details []domain.Detail, showEvent bool) (updatedKeys []domain.RelationKey, err error) {
+func (bs *basic) UpdateDetails(ctx session.Context, update func(current *domain.Details) (*domain.Details, error)) error {
+	if update == nil {
+		return fmt.Errorf("update function is nil")
+	}
 	s := bs.NewStateCtx(ctx)
 
-	var updates []domain.Detail
-	// Collect updates handling special cases. These cases could update details themselves, so we
-	// have to apply changes later
-	updates, updatedKeys = bs.collectDetailUpdates(details, s)
-	newDetails := applyDetailUpdates(s.CombinedDetails(), updates)
+	oldDetails := s.CombinedDetails()
+	oldDetailsCopy := oldDetails.Copy()
+
+	newDetails, err := update(oldDetailsCopy)
+	if err != nil {
+		return err
+	}
+
+	diff, removedKeys := domain.StructDiff(oldDetails, newDetails)
+	if err = bs.validateUpdates(s, diff, removedKeys); err != nil {
+		if !errors.Is(err, errInternalRelationDeletion) {
+			return err
+		}
+		// TODO: GO-6248 analyze logs after release and remove logging
+		log.With("objectId", bs.Id()).With("keys", removedKeys).Error(err)
+	}
+
 	s.SetDetails(newDetails)
+	if err = bs.addRelationLinks(s, newDetails.Keys()...); err != nil {
+		return err
+	}
 
 	flags := internalflag.NewFromState(s.ParentState())
 	flags.Remove(model.InternalFlag_editorDeleteEmpty)
 	flags.AddToState(s)
 
-	if err = bs.Apply(s, smartblock.NoRestrictions, smartblock.KeepInternalFlags); err != nil {
-		return nil, err
-	}
-
-	bs.discardOwnSetDetailsEvent(ctx, showEvent)
-	return updatedKeys, nil
+	return bs.Apply(s, smartblock.NoRestrictions, smartblock.KeepInternalFlags)
 }
 
-func (bs *basic) UpdateDetails(ctx session.Context, update func(current *domain.Details) (*domain.Details, error)) (err error) {
-	_, _, err = bs.updateDetails(ctx, update)
-	return err
-}
-
-func (bs *basic) updateDetails(ctx session.Context, update func(current *domain.Details) (*domain.Details, error)) (oldDetails *domain.Details, newDetails *domain.Details, err error) {
-	if update == nil {
-		return nil, nil, fmt.Errorf("update function is nil")
-	}
-	s := bs.NewStateCtx(ctx)
-
-	oldDetails = s.CombinedDetails()
-	oldDetailsCopy := oldDetails.Copy()
-
-	newDetails, err = update(oldDetailsCopy)
-	if err != nil {
-		return
-	}
-	s.SetDetails(newDetails)
-
-	if err = bs.addRelationLinks(s, newDetails.Keys()...); err != nil {
-		return nil, nil, err
-	}
-
-	return oldDetails, newDetails, bs.Apply(s)
-}
-
-func (bs *basic) collectDetailUpdates(details []domain.Detail, s *state.State) ([]domain.Detail, []domain.RelationKey) {
-	updates := make([]domain.Detail, 0, len(details))
-	keys := make([]domain.RelationKey, 0, len(details))
-	for _, detail := range details {
-		update, err := bs.createDetailUpdate(s, detail)
-		if err == nil {
-			updates = append(updates, update)
-			keys = append(keys, update.Key)
-		} else {
-			log.Errorf("can't set detail %s: %s", detail.Key, err)
+func (bs *basic) validateUpdates(st *state.State, diff *domain.Details, removedKeys []domain.RelationKey) error {
+	for key, value := range diff.Iterate() {
+		if value.Ok() {
+			if err := bs.validateSpecialCases(st, domain.Detail{Key: key, Value: value}); err != nil {
+				return fmt.Errorf("special case: %w", err)
+			}
+			if err := bs.validateDetailFormat(key, value); err != nil {
+				return fmt.Errorf("failed to validate relation: %w", err)
+			}
 		}
 	}
-	return updates, keys
+
+	if slices.ContainsFunc(removedKeys, bundle.IsInternalRelation) {
+		return errInternalRelationDeletion
+	}
+
+	return nil
 }
 
 func applyDetailUpdates(oldDetails *domain.Details, updates []domain.Detail) *domain.Details {
@@ -107,26 +105,7 @@ func applyDetailUpdates(oldDetails *domain.Details, updates []domain.Detail) *do
 	return newDetails
 }
 
-// TODO make no sense?
-func (bs *basic) createDetailUpdate(st *state.State, detail domain.Detail) (domain.Detail, error) {
-	if detail.Value.Ok() {
-		if err := bs.setDetailSpecialCases(st, detail); err != nil {
-			return domain.Detail{}, fmt.Errorf("special case: %w", err)
-		}
-		if err := bs.addRelationLink(st, detail.Key); err != nil {
-			return domain.Detail{}, err
-		}
-		if err := bs.validateDetailFormat(bs.SpaceID(), detail.Key, detail.Value); err != nil {
-			return domain.Detail{}, fmt.Errorf("failed to validate relation: %w", err)
-		}
-	}
-	return domain.Detail{
-		Key:   detail.Key,
-		Value: detail.Value,
-	}, nil
-}
-
-func (bs *basic) validateDetailFormat(spaceID string, key domain.RelationKey, v domain.Value) error {
+func (bs *basic) validateDetailFormat(key domain.RelationKey, v domain.Value) error {
 	if !v.Ok() {
 		return fmt.Errorf("invalid value")
 	}
@@ -256,7 +235,7 @@ func (bs *basic) validateOptions(rel *relationutils.Relation, v []string) error 
 	return nil
 }
 
-func (bs *basic) setDetailSpecialCases(st *state.State, detail domain.Detail) error {
+func (bs *basic) validateSpecialCases(st *state.State, detail domain.Detail) error {
 	if detail.Key == bundle.RelationKeyType {
 		return fmt.Errorf("can't change object type directly: %w", domain.ErrValidationFailed)
 	}

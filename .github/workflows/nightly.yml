@@ -19,6 +19,14 @@ on:
         options:
           - envproduction
           - envnetworkcustom
+      run-diff-check:
+        description: 'Run diff-check?'
+        required: true
+        default: 'true'
+        type: choice
+        options:
+          - 'true'
+          - 'false'
       nightly-base-version:
         description: 'Nightly builds base version (optional, default is stored in repo variables https://github.com/anyproto/anytype-heart/settings/variables/actions)'
         required: false
@@ -44,13 +52,18 @@ jobs:
       - run: git fetch --tags --force --prune
       - id: diff_check
         run: |
-          LAST_TAG=$(git describe --tags --match 'v*-nightly.*' --abbrev=0 2>/dev/null || echo "")
-          if [ -z "$LAST_TAG" ]; then
-            # no nightly tag found in history
-            echo "changed=true" >> "$GITHUB_OUTPUT"
-          elif git diff --quiet "${LAST_TAG}..HEAD"; then
-            echo "changed=false" >> "$GITHUB_OUTPUT"
+          if [[ "${{ github.event.inputs.run-diff-check || 'true' }}" == "true" ]]; then
+            LAST_TAG=$(git describe --tags --match 'v*-nightly.*' --abbrev=0 2>/dev/null || echo "")
+            if [ -z "$LAST_TAG" ]; then
+              # no nightly tag found in history
+              echo "changed=true" >> "$GITHUB_OUTPUT"
+            elif git diff --quiet "${LAST_TAG}..HEAD"; then
+              echo "changed=false" >> "$GITHUB_OUTPUT"
+            else
+              echo "changed=true" >> "$GITHUB_OUTPUT"
+            fi
           else
+            # when disabled explicitly: always set changed=true
             echo "changed=true" >> "$GITHUB_OUTPUT"
           fi
       - name: debug
@@ -66,12 +79,16 @@ jobs:
       - wait_for_perftest
     if: needs.diff-check.outputs.changed == 'true' # run only if there is a diff
     runs-on: ${{ github.event.inputs.run-on-runner || 'mac-mini-org-heart' }}
+    outputs:
+      body: ${{ steps.release_info.outputs.body }}
+      html_url: ${{ steps.release_info.outputs.html_url }}
+      tag_name: ${{ steps.release_info.outputs.tag_name }}
     steps:
       - name: Install Go
         if: ${{ !startsWith(runner.name, 'mac-mini-runner-') }}
         uses: actions/setup-go@v4
         with:
-          go-version: 1.24.0
+          go-version: '1.24'
           check-latest: true
 
       - name: Setup GO
@@ -216,31 +233,29 @@ jobs:
             core.setOutput('html_url', data.html_url);
             core.setOutput('tag_name', data.tag_name);
 
-      # FAILURE - send to alerts channel
-      - name: Notify Slack (failure → alerts)
-        if: ${{ failure() }}
-        uses: ravsamhq/notify-slack-action@v2
-        with:
-          status: ${{ job.status }}
-          notification_title: "❌ {workflow}"
-          message_format: "{emoji} *{job}* in *{workflow}* {status_message}"
-          footer: "Linked Repo <{repo_url}|{repo}> | <{run_url}|View Workflow Run>"
-        env:
-          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL_ALERTS }}
+  notify:
+    needs:
+      - build
+    if: ${{ always() }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger Nightly Builds workflow in repo anyproto/anytype-ts
+        run: |
+          curl -X POST \
+            -H "Accept: application/vnd.github+json" \
+            -H "Authorization: Bearer ${{ secrets.ANYTYPE_TS_TRIGGER_TOKEN }}" \
+            https://api.github.com/repos/anyproto/anytype-ts/actions/workflows/nightly.yml/dispatches \
+            -d '{"ref":"develop","inputs":{"run-diff-check":"false"}}'
 
-      # SUCCESS - send to builds channel
-      - name: Notify Slack (ok → builds)
-        if: ${{ success() }}
+      - name: Notify Slack (workflow result)
         uses: ravsamhq/notify-slack-action@v2
         with:
-          status: ${{ job.status }}
-          notification_title: "✅ {workflow}"
+          status: ${{ (contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled')) && 'failure' || 'success' }}
+          notification_title: "${{ (contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled')) && '❌' || '✅' }} {workflow} {repo}"
           message_format: |
-            {emoji} *{job}* in *{workflow}* {status_message}
-            *Release:* <${{ steps.release_info.outputs.html_url }}|${{ steps.release_info.outputs.tag_name }}>
+            *Release:* <${{ needs.build.outputs.html_url }}|${{ needs.build.outputs.tag_name || 'none' }}>
             *Description:*
-            ${{ steps.release_info.outputs.body }}
+            ${{ needs.build.outputs.body || 'no changes, build skipped' }}
           footer: "Linked Repo <{repo_url}|{repo}> | <{run_url}|View Workflow Run>"
-
         env:
-          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL_RELEASE_TRAIN }}
+          SLACK_WEBHOOK_URL: ${{ (contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled')) && secrets.SLACK_WEBHOOK_URL_ALERTS || secrets.SLACK_WEBHOOK_URL_RELEASE_TRAIN }}
