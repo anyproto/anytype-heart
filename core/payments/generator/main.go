@@ -3,13 +3,15 @@ package main
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 	"reflect"
 	"strings"
 	"text/template"
 
 	proto "github.com/anyproto/any-sync/paymentservice/paymentserviceproto"
-	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"gopkg.in/yaml.v3"
+
+	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
 type Config struct {
@@ -49,7 +51,8 @@ func main() {
 
 func run() error {
 	// Read config
-	configData, err := os.ReadFile("core/payments/generator/config.yaml")
+	fmt.Println(os.Getwd())
+	configData, err := os.ReadFile(filepath.Join("generator", "config.yaml"))
 	if err != nil {
 		return fmt.Errorf("failed to read config: %w", err)
 	}
@@ -88,10 +91,10 @@ func generateConversion(conv Conversion) error {
 func getType(typeName string) reflect.Type {
 	// Map type names to actual types
 	typeMap := map[string]reflect.Type{
-		"TierData":               reflect.TypeOf(&proto.TierData{}).Elem(),
-		"MembershipTierData":     reflect.TypeOf(&model.MembershipTierData{}).Elem(),
+		"TierData":                reflect.TypeOf(&proto.TierData{}).Elem(),
+		"MembershipTierData":      reflect.TypeOf(&model.MembershipTierData{}).Elem(),
 		"GetSubscriptionResponse": reflect.TypeOf(&proto.GetSubscriptionResponse{}).Elem(),
-		"Membership":             reflect.TypeOf(&model.Membership{}).Elem(),
+		"Membership":              reflect.TypeOf(&model.Membership{}).Elem(),
 	}
 	return typeMap[typeName]
 }
@@ -233,7 +236,7 @@ func {{.Name}}(src *proto.{{.SourceType}}) *model.{{.TargetType}} {
 		Imports:     imports,
 	}
 
-	outputPath := fmt.Sprintf("core/payments/%s_gen.go", conv.Name)
+	outputPath := fmt.Sprintf("./%s_gen.go", conv.Name)
 	f, err := os.Create(outputPath)
 	if err != nil {
 		return err

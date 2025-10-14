@@ -9,6 +9,7 @@ import (
 	"github.com/anyproto/any-sync/paymentservice/paymentserviceproto"
 
 	"github.com/anyproto/anytype-heart/pb"
+	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
 var (
@@ -75,4 +76,16 @@ func convertMembershipStatus(status *paymentserviceproto.GetSubscriptionResponse
 			Code: pb.RpcMembershipGetStatusResponseError_NULL,
 		},
 	}
+}
+
+func tiersAreEqual(a []*model.MembershipTierData, b []*model.MembershipTierData) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for i := range a {
+		if !a[i].Equal(b[i]) {
+			return false
+		}
+	}
+	return true
 }
