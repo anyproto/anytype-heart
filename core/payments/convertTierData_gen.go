@@ -41,10 +41,8 @@ func convertTierData(src *proto.TierData) *model.MembershipTierData {
 	
 	out.AndroidProductId = src.AndroidProductId
 	
-	out.AndroidManageUrl = src.AndroidManageUrl
-	
 	out.Offer = src.Offer
-	
+
 	// Features - custom mapping
 	out.Features = make([]string, len(src.Features))
 for i, feature := range src.Features {
