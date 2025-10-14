@@ -177,7 +177,7 @@ func (s *service) Init(a *app.App) (err error) {
 		changed, _, _, err := s.fetchAndUpdate(fetchCtx, forceFetch, true, true)
 		return changed, err
 	}
-	s.refreshCtrl = newRefreshController(s.componentCtx, fetchFn, time.Second*time.Duration(refreshIntervalSecs))
+	s.refreshCtrl = newRefreshController(s.componentCtx, fetchFn, time.Second*time.Duration(refreshIntervalSecs), forceRefreshInterval)
 	return nil
 }
 

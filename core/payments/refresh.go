@@ -7,9 +7,14 @@ import (
 	"go.uber.org/zap"
 )
 
-func newRefreshController(parent context.Context, fetch func(ctx context.Context, forceFetch bool) (bool, error), interval time.Duration) *refreshController {
+const defaultRefreshInterval = time.Minute
+
+func newRefreshController(parent context.Context, fetch func(ctx context.Context, forceFetch bool) (bool, error), interval, forceInterval time.Duration) *refreshController {
 	if interval <= 0 {
-		interval = time.Minute
+		interval = defaultRefreshInterval
+	}
+	if forceInterval <= 0 {
+		forceInterval = defaultRefreshInterval
 	}
 	ctx, cancel := context.WithCancel(parent)
 	return &refreshController{
@@ -17,7 +22,7 @@ func newRefreshController(parent context.Context, fetch func(ctx context.Context
 		cancel:        cancel,
 		fetch:         fetch,
 		interval:      interval,
-		forceInterval: forceRefreshInterval,
+		forceInterval: forceInterval,
 		forceCh:       make(chan time.Duration),
 		closeCh:       make(chan struct{}),
 		now:           time.Now,
@@ -40,7 +45,7 @@ func (rc *refreshController) Stop() {
 }
 
 func (rc *refreshController) Force(duration time.Duration) {
-	if rc == nil {
+	if rc.fetch == nil {
 		return
 	}
 	if duration <= 0 {
@@ -55,7 +60,9 @@ func (rc *refreshController) Force(duration time.Duration) {
 
 func (rc *refreshController) loop() {
 	defer close(rc.closeCh)
-
+	if rc.fetch == nil {
+		return
+	}
 	timer := time.NewTimer(0)
 	defer timer.Stop()
 
@@ -81,10 +88,6 @@ func (rc *refreshController) loop() {
 				resetTimer(timer, 0)
 			}
 		case <-timerC:
-			if rc.fetch == nil {
-				resetTimer(timer, rc.interval)
-				continue
-			}
 			changed, err := rc.fetch(rc.ctx, forceActive)
 			if err != nil {
 				log.Warn("membership refresh: fetch failed", zap.Error(err), zap.Bool("force", forceActive))
