@@ -37,11 +37,6 @@ type Import struct {
 	Alias string `yaml:"alias"`
 }
 
-type FieldMapping struct {
-	Transform string `yaml:"transform"`
-	Custom    string `yaml:"custom"`
-}
-
 func main() {
 	if err := run(); err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
@@ -51,7 +46,6 @@ func main() {
 
 func run() error {
 	// Read config
-	fmt.Println(os.Getwd())
 	configData, err := os.ReadFile(filepath.Join("generator", "config.yaml"))
 	if err != nil {
 		return fmt.Errorf("failed to read config: %w", err)
