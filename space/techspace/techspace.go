@@ -86,6 +86,8 @@ type SpaceView interface {
 	SetSharedSpacesLimit(limits int) (err error)
 	GetSharedSpacesLimit() (limits int)
 	SetPushNotificationMode(ctx session.Context, mode pb.RpcPushNotificationSetSpaceModeMode) (err error)
+	AddPushNotificationMuteIds(ctx session.Context, muteIds []string) (err error)
+	AddPushNotificationMentionIds(ctx session.Context, mentionIds []string) (err error)
 }
 
 func New() TechSpace {
