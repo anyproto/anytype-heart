@@ -356,8 +356,8 @@ func (g *gateway) getImage(ctx context.Context, r *http.Request) (*getImageReade
 	}
 
 	preloadOriginal := r.URL.Query().Get("preloadOriginal") == "true"
-	if preloadOriginal && result.originalFile != nil  && result.originalFile.Meta().Size < 10*1024*1024 {
-		err = g.fileCacheService.CacheFile(
+	if preloadOriginal && result.originalFile != nil && result.originalFile.Meta().Size < 10*1024*1024 {
+		g.fileCacheService.CacheFile(
 			r.Context(),
 			result.spaceId,
 			result.originalFile.FileId(),

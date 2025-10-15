@@ -94,7 +94,7 @@ func (s *service) runDownloader() {
 	}
 }
 
-func (s *service) CacheFile(ctx context.Context, spaceId string, fileId domain.FileId) {
+func (s *service) CacheFile(ctx context.Context, spaceId string, fileId domain.FileId, blocksLimit int) {
 	// Task will be canceled along with service context
 	// nolint: lostcancel
 	taskCtx, _ := context.WithTimeout(s.ctx, s.timeout)
@@ -103,7 +103,6 @@ func (s *service) CacheFile(ctx context.Context, spaceId string, fileId domain.F
 		spaceId:     spaceId,
 		cid:         fileId,
 		ctx:         taskCtx,
-		ctxCancel:   taskCtxCancel,
 		blocksLimit: blocksLimit,
 	})
 }
