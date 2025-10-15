@@ -51,7 +51,7 @@ const (
 	ForceReindexDeletedObjectsCounter int32 = 1
 
 	ForceReindexParticipantsCounter int32 = 1
-	ForceReindexChatsCounter        int32 = 3
+	ForceReindexChatsCounter        int32 = 4
 )
 
 type allDeletedIdsProvider interface {
