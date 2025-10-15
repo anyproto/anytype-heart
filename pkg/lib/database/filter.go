@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"regexp"
 	"strings"
+	"time"
 
 	"github.com/anyproto/any-store/anyenc"
 	"github.com/anyproto/any-store/query"
@@ -70,7 +71,7 @@ func makeFilter(spaceID string, rawFilter FilterRequest, store ObjectStore) (Fil
 	if rawFilter.Condition == model.BlockContentDataviewFilter_None {
 		return nil, nil
 	}
-	rawFilters := transformDateFilter(rawFilter)
+	rawFilters := transformDateFilter(rawFilter, time.Now())
 
 	if len(rawFilters) == 1 {
 		return makeFilterByCondition(spaceID, rawFilters[0], store)

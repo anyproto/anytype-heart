@@ -4,7 +4,7 @@ import (
 	"context"
 
 	"github.com/anyproto/any-sync/app"
-	"github.com/hashicorp/golang-lru/v2/simplelru"
+	lru "github.com/hashicorp/golang-lru/v2"
 
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
@@ -19,12 +19,12 @@ func NewWithCache() LinkPreview {
 
 type cache struct {
 	lp    LinkPreview
-	cache simplelru.LRUCache[string, model.LinkPreview]
+	cache *lru.Cache[string, model.LinkPreview]
 }
 
 func (c *cache) Init(_ *app.App) (err error) {
 	c.lp = New()
-	c.cache, err = simplelru.NewLRU[string, model.LinkPreview](maxCacheEntries, nil)
+	c.cache, err = lru.New[string, model.LinkPreview](maxCacheEntries)
 	return
 }
 
