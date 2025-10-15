@@ -8,6 +8,7 @@ import (
 
 	"github.com/anyproto/any-sync/paymentservice/paymentserviceproto"
 
+	"github.com/anyproto/anytype-heart/core/nameservice"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
@@ -88,4 +89,45 @@ func tiersAreEqual(a []*model.MembershipTierData, b []*model.MembershipTierData)
 		}
 	}
 	return true
+}
+
+func convertTierData(src *paymentserviceproto.TierData) *model.MembershipTierData {
+	out := &model.MembershipTierData{}
+	out.Id = src.Id
+	out.Name = src.Name
+	out.Description = src.Description
+	out.IsTest = src.IsTest
+	out.PeriodType = model.MembershipTierDataPeriodType(src.PeriodType)
+	out.PeriodValue = src.PeriodValue
+	out.PriceStripeUsdCents = src.PriceStripeUsdCents
+	out.AnyNamesCountIncluded = src.AnyNamesCountIncluded
+	out.AnyNameMinLength = src.AnyNameMinLength
+	out.ColorStr = src.ColorStr
+	out.StripeProductId = src.StripeProductId
+	out.StripeManageUrl = src.StripeManageUrl
+	out.IosProductId = src.IosProductId
+	out.IosManageUrl = src.IosManageUrl
+	out.AndroidProductId = src.AndroidProductId
+	out.AndroidManageUrl = src.AndroidManageUrl
+	out.Offer = src.Offer
+	out.Features = make([]string, len(src.Features))
+	for i, feature := range src.Features {
+		out.Features[i] = feature.Description
+	}
+
+	return out
+}
+
+func convertMembershipData(src *paymentserviceproto.GetSubscriptionResponse) *model.Membership {
+	out := &model.Membership{}
+	out.Tier = src.Tier
+	out.Status = model.MembershipStatus(src.Status)
+	out.DateStarted = src.DateStarted
+	out.DateEnds = src.DateEnds
+	out.IsAutoRenew = src.IsAutoRenew
+	out.PaymentMethod = PaymentMethodToModel(src.PaymentMethod)
+	out.UserEmail = src.UserEmail
+	out.SubscribeToNewsletter = src.SubscribeToNewsletter
+	out.NsName, out.NsNameType = nameservice.FullNameToNsName(src.RequestedAnyName)
+	return out
 }
