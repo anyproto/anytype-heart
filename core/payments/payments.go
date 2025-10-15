@@ -1,7 +1,5 @@
 package payments
 
-//go:generate go run ./generator
-
 import (
 	"context"
 	"errors"
