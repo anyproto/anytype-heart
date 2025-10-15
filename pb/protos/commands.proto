@@ -4110,6 +4110,7 @@ message Rpc {
         message SetAutoDownload {
             message Request {
               bool enabled = 1;
+              bool wifi_only = 2;
             }
             message Response {
                 Error error = 1;

@@ -58,15 +58,18 @@ type FileConfig interface {
 }
 
 type ConfigRequired struct {
-	HostAddr            string `json:",omitempty"`
-	CustomFileStorePath string `json:",omitempty"`
-	LegacyFileStorePath string `json:",omitempty"`
-	NetworkId           string `json:""` // in case this account was at least once connected to the network on this device, this field will be set to the network id
-	AutoDownloadFiles   bool   `json:",omitempty"`
+	HostAddr               string `json:",omitempty"`
+	CustomFileStorePath    string `json:",omitempty"`
+	LegacyFileStorePath    string `json:",omitempty"`
+	NetworkId              string `json:""` // in case this account was at least once connected to the network on this device, this field will be set to the network id
+	AutoDownloadFiles      bool   `json:",omitempty"`
+	AutoDownloadOnWifiOnly bool   `json:",omitempty"`
 }
 
+// Use separate structure as trick for legacy config management
 type ConfigAutoDownloadFiles struct {
-	AutoDownloadFiles bool
+	AutoDownloadFiles      bool
+	AutoDownloadOnWifiOnly bool
 }
 
 type Config struct {

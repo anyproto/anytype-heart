@@ -13059,6 +13059,7 @@ Get marks list in the selected range in text block.
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | enabled | [bool](#bool) |  |  |
+| wifi_only | [bool](#bool) |  |  |
 
 
 

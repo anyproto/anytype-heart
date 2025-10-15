@@ -14,10 +14,12 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/anytype/config"
 	"github.com/anyproto/anytype-heart/core/block/cache"
+	"github.com/anyproto/anytype-heart/core/device"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/files/filehelper"
 	"github.com/anyproto/anytype-heart/core/subscription/crossspacesub"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
+	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
 const CName = "core.files.filedownloader"
@@ -25,7 +27,7 @@ const CName = "core.files.filedownloader"
 var log = logging.Logger(CName).Desugar()
 
 type Service interface {
-	SetEnabled(enabled bool) error
+	SetEnabled(enabled bool, wifiOnly bool) error
 	DownloadToLocalStore(ctx context.Context, spaceId string, cid domain.FileId) error
 	app.ComponentRunnable
 }
@@ -38,8 +40,11 @@ type service struct {
 	crossSpaceSubService crossspacesub.Service
 	objectGetter         cache.ObjectGetter
 	config               *config.Config
+	networkState         device.NetworkState
 
 	lock       sync.Mutex
+	isEnabled  bool
+	wifiOnly   bool
 	downloader *downloader
 }
 
@@ -51,29 +56,57 @@ func New() Service {
 	}
 }
 
-func (s *service) SetEnabled(enabled bool) error {
+func (s *service) SetEnabled(enabled bool, wifiOnly bool) error {
+	s.setEnabled(enabled, wifiOnly)
+
+	// Write to the config file only if it's changed
+	if s.config.AutoDownloadFiles != enabled || s.config.AutoDownloadOnWifiOnly != wifiOnly {
+		cfgPart := config.ConfigAutoDownloadFiles{}
+		cfgPart.AutoDownloadFiles = enabled
+		cfgPart.AutoDownloadOnWifiOnly = wifiOnly
+		return config.WriteJsonConfig(s.config.GetConfigPath(), cfgPart)
+	}
+	return nil
+}
+
+func (s *service) setEnabled(enabled bool, wifiOnly bool) {
 	s.lock.Lock()
 	defer s.lock.Unlock()
 
+	s.isEnabled = enabled
+	s.wifiOnly = wifiOnly
 	if enabled {
 		if s.downloader == nil {
 			s.downloader = s.newDownloader()
 			s.downloader.start()
 		}
-	} else {
-		if s.downloader != nil {
-			s.downloader.stop()
-			s.downloader = nil
+	} else if s.downloader != nil {
+		s.downloader.stop()
+		s.downloader = nil
+	}
+}
+
+func (s *service) networkStateChanged(networkState model.DeviceNetworkType) {
+	s.lock.Lock()
+	isEnabled := s.isEnabled
+	wifiOnly := s.wifiOnly
+	s.lock.Unlock()
+
+	if isEnabled {
+		if wifiOnly {
+			if networkState == model.DeviceNetworkType_WIFI {
+				s.setEnabled(true, wifiOnly)
+			} else {
+				s.setEnabled(false, wifiOnly)
+			}
+		} else {
+			s.setEnabled(true, wifiOnly)
 		}
 	}
+}
 
-	// Write to the config file only if it's changed
-	if s.config.AutoDownloadFiles != enabled {
-		cfgPart := config.ConfigAutoDownloadFiles{}
-		cfgPart.AutoDownloadFiles = enabled
-		return config.WriteJsonConfig(s.config.GetConfigPath(), cfgPart)
-	}
-	return nil
+func (s *service) Name() string {
+	return CName
 }
 
 func (s *service) Init(a *app.App) error {
@@ -82,15 +115,13 @@ func (s *service) Init(a *app.App) error {
 	commonFile := app.MustComponent[fileservice.FileService](a)
 	s.dagService = commonFile.DAGService()
 	s.config = app.MustComponent[*config.Config](a)
+	s.networkState = app.MustComponent[device.NetworkState](a)
+	s.networkState.RegisterHook(s.networkStateChanged)
 	return nil
 }
 
-func (s *service) Name() string {
-	return CName
-}
-
 func (s *service) Run(ctx context.Context) error {
-	err := s.SetEnabled(s.config.AutoDownloadFiles)
+	err := s.SetEnabled(s.config.AutoDownloadFiles, s.config.AutoDownloadFiles)
 	if err != nil {
 		log.Error("set enabled", zap.Error(err))
 	}
@@ -134,22 +165,4 @@ func (s *service) DownloadToLocalStore(ctx context.Context, spaceId string, file
 
 func (s *service) dagServiceForSpace(spaceID string) ipld.DAGService {
 	return filehelper.NewDAGServiceWithSpaceID(spaceID, s.dagService)
-}
-
-func (s *service) newDownloader() *downloader {
-	ctx, ctxCancel := context.WithCancel(s.ctx)
-	return &downloader{
-		ctx:                  ctx,
-		ctxCancel:            ctxCancel,
-		crossSpaceSubService: s.crossSpaceSubService,
-		objectGetter:         s.objectGetter,
-		handleTask: func(ctx context.Context, t downloadTask) error {
-			return s.DownloadToLocalStore(ctx, t.spaceId, t.fileId)
-		},
-		requestTaskCh: make(chan chan downloadTask),
-		addTaskCh:     make(chan downloadTask),
-		removeTaskCh:  make(chan string),
-		lock:          sync.Mutex{},
-		tasks:         map[string]downloadTask{},
-	}
 }

@@ -353,7 +353,7 @@ func (g *gateway) getImage(ctx context.Context, r *http.Request) (*getImageReade
 		return nil, fmt.Errorf("get image reader: %w", err)
 	}
 
-	if result.originalFile.Meta().Size < 10*1024*1024 {
+	if result.originalFile != nil && result.originalFile.Meta().Size < 10*1024*1024 {
 		g.fileCacheService.CacheFile(
 			r.Context(),
 			result.spaceId,

@@ -48,6 +48,24 @@ type downloader struct {
 	tasks map[string]downloadTask
 }
 
+func (s *service) newDownloader() *downloader {
+	ctx, ctxCancel := context.WithCancel(s.ctx)
+	return &downloader{
+		ctx:                  ctx,
+		ctxCancel:            ctxCancel,
+		crossSpaceSubService: s.crossSpaceSubService,
+		objectGetter:         s.objectGetter,
+		handleTask: func(ctx context.Context, t downloadTask) error {
+			return s.DownloadToLocalStore(ctx, t.spaceId, t.fileId)
+		},
+		requestTaskCh: make(chan chan downloadTask),
+		addTaskCh:     make(chan downloadTask),
+		removeTaskCh:  make(chan string),
+		lock:          sync.Mutex{},
+		tasks:         map[string]downloadTask{},
+	}
+}
+
 func (s *downloader) close() {
 	s.lock.Lock()
 	defer s.lock.Unlock()

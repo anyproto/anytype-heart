@@ -243,6 +243,14 @@ func (mw *Middleware) FileReconcile(ctx context.Context, req *pb.RpcFileReconcil
 }
 
 func (mw *Middleware) FileSetAutoDownload(ctx context.Context, req *pb.RpcFileSetAutoDownloadRequest) *pb.RpcFileSetAutoDownloadResponse {
-	mustService[filedownloader.Service](mw).SetEnabled(req.Enabled)
+	err := mustService[filedownloader.Service](mw).SetEnabled(req.Enabled, req.WifiOnly)
+	if err != nil {
+		return &pb.RpcFileSetAutoDownloadResponse{
+			Error: &pb.RpcFileSetAutoDownloadResponseError{
+				Code:        mapErrorCode[pb.RpcFileSetAutoDownloadResponseErrorCode](err),
+				Description: getErrorDescription(err),
+			},
+		}
+	}
 	return &pb.RpcFileSetAutoDownloadResponse{}
 }
