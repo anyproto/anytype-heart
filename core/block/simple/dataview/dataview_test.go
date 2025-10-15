@@ -6,6 +6,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
@@ -46,6 +47,90 @@ func TestDataview_FillSmartIds(t *testing.T) {
 		assert.Contains(t, ids, obj3)
 		assert.Len(t, ids, 3)
 	})
+}
+
+func TestDataview_MigrateFile(t *testing.T) {
+	fileId := "bafybeihdwdcefgh4dqkjv67uzcmw7ojee6xedzdetojuzjevtenxquvyku"
+	fileIdMigrated := "bafybeihdwdcefgh4dqkjv67uzcmw7ojee6xedzdetojuzjevtenxquvyku-migrated"
+	migrator := func(id string) string {
+		if domain.IsFileId(id) {
+			return fileId + "-migrated"
+		}
+		return id
+	}
+	dv := Dataview{content: &model.BlockContentDataview{
+		Views: []*model.BlockContentDataviewView{{
+			Filters: []*model.BlockContentDataviewFilter{
+				{
+					Format: model.RelationFormat_object,
+					Value:  pbtypes.StringList([]string{"object1", "object2"}),
+				},
+				{
+					Format: model.RelationFormat_object,
+					Value:  pbtypes.StringList([]string{fileId, "object2"}),
+				},
+				{
+					Format: model.RelationFormat_object,
+					Value:  pbtypes.String("object3"),
+				},
+				{
+					Format: model.RelationFormat_longtext,
+					Value:  pbtypes.String("hello"),
+				},
+				{
+					Format: model.RelationFormat_object,
+					Value:  pbtypes.String(fileId),
+				},
+				{
+					Format: model.RelationFormat_file,
+					Value:  pbtypes.String(fileId),
+				},
+				{
+					Format: model.RelationFormat_file,
+					Value:  pbtypes.String("object3"),
+				},
+			},
+		}},
+	}}
+
+	dv.MigrateFile(migrator)
+
+	want := Dataview{content: &model.BlockContentDataview{
+		Views: []*model.BlockContentDataviewView{{
+			Filters: []*model.BlockContentDataviewFilter{
+				{
+					Format: model.RelationFormat_object,
+					Value:  pbtypes.StringList([]string{"object1", "object2"}),
+				},
+				{
+					Format: model.RelationFormat_object,
+					Value:  pbtypes.StringList([]string{fileIdMigrated, "object2"}),
+				},
+				{
+					Format: model.RelationFormat_object,
+					Value:  pbtypes.String("object3"),
+				},
+				{
+					Format: model.RelationFormat_longtext,
+					Value:  pbtypes.String("hello"),
+				},
+				{
+					Format: model.RelationFormat_object,
+					Value:  pbtypes.String(fileIdMigrated),
+				},
+				{
+					Format: model.RelationFormat_file,
+					Value:  pbtypes.String(fileIdMigrated),
+				},
+				{
+					Format: model.RelationFormat_file,
+					Value:  pbtypes.String("object3"),
+				},
+			},
+		}},
+	}}
+
+	assert.Equal(t, want, dv)
 }
 
 func TestDataview_DeleteRelations(t *testing.T) {

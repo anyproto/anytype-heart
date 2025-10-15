@@ -15,8 +15,10 @@ import (
 	"github.com/anyproto/any-sync/app/logger"
 	"github.com/anyproto/any-sync/commonspace/spacestorage"
 	"github.com/anyproto/any-sync/commonspace/spacesyncproto"
+	"go.uber.org/zap"
 	"golang.org/x/exp/maps"
 
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/anystorehelper"
 	"github.com/anyproto/anytype-heart/space/spacedomain"
 )
 
@@ -94,9 +96,25 @@ func (s *storageService) Name() (name string) {
 }
 
 func (s *storageService) WaitSpaceStorage(ctx context.Context, id string) (spacestorage.SpaceStorage, error) {
+	start := time.Now()
 	db, err := s.openDb(ctx, id)
 	if err != nil {
+		code, isCorrupted := anystorehelper.IsCorruptedError(err)
+		log.With(zap.Bool("isCorrupted", isCorrupted), zap.String("code", code.String()), zap.Error(err)).Error("failed to open spacestore")
 		return nil, err
+	}
+	if time.Since(start) > time.Second {
+		ctxStat, cancel := context.WithTimeout(ctx, time.Second*2)
+		defer cancel()
+
+		logger := log.With(zap.String("spaceId", id)).With(zap.Int64("tookMs", time.Since(start).Milliseconds()))
+		stat, err := db.Stats(ctxStat)
+		if err != nil {
+			logger = logger.With(zap.Error(err))
+		} else {
+			logger = logger.With(anystorehelper.DbStatToZapFields(stat)...)
+		}
+		logger.Warn("spacestore db open took too long")
 	}
 	st, err := spacestorage.New(ctx, id, db)
 	if err != nil {
@@ -151,6 +169,12 @@ func (s *storageService) anyStoreConfig() *anystore.Config {
 
 		StalledConnectionsPanicOnClose:    time.Second * 45,
 		StalledConnectionsDetectorEnabled: true,
+		Durability: anystore.DurabilityConfig{
+			AutoFlush: true,
+			IdleAfter: time.Second * 20,
+			FlushMode: anystore.FlushModeCheckpointPassive,
+			Sentinel:  true,
+		},
 	}
 }
 

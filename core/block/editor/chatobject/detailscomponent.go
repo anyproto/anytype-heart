@@ -107,7 +107,7 @@ func (c *detailsComponent) setDetailsFromAnystore(ctx context.Context, st *state
 		if slices.Contains(bundle.LocalAndDerivedRelationKeys, key) {
 			continue
 		}
-		st.ParentState().SetDetail(key, v)
+		st.SetDetail(key, v)
 	}
 	return nil
 }
