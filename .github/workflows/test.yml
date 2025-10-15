@@ -65,6 +65,7 @@ jobs:
         id: codegen
         run: |
           make setup
+          make setup-protoc
           make generate
           if ! git diff --quiet; then
             git status --short
