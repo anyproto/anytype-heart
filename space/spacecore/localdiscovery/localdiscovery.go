@@ -6,6 +6,7 @@ package localdiscovery
 import (
 	"context"
 	"fmt"
+	"slices"
 	"sync"
 	"time"
 
@@ -218,7 +219,7 @@ func (l *localDiscovery) startServer() (err error) {
 		l.ipv4, // do not include ipv6 addresses, because they are disabled
 		nil,
 		l.interfacesAddrs.NetInterfaces(),
-		zeroconf.TTL(3600), // big ttl because we don't have re-broadcasting
+		zeroconf.TTL(3600),                            // big ttl because we don't have re-broadcasting
 		zeroconf.ServerSelectIPTraffic(zeroconf.IPv4), // disable ipv6 for now
 		zeroconf.WriteTimeout(time.Second*3),
 	)
@@ -241,6 +242,7 @@ func (l *localDiscovery) readAnswers(ch chan *zeroconf.ServiceEntry) {
 			continue
 		}
 		var portAddrs []string
+		l.m.Lock()
 		l.interfacesAddrs.SortIPsLikeInterfaces(entry.AddrIPv4)
 		for _, a := range entry.AddrIPv4 {
 			portAddrs = append(portAddrs, fmt.Sprintf("%s:%d", a.String(), entry.Port))
@@ -251,12 +253,14 @@ func (l *localDiscovery) readAnswers(ch chan *zeroconf.ServiceEntry) {
 		}
 		log.Debug("discovered peer", zap.Strings("addrs", portAddrs), zap.String("peerId", peer.PeerId))
 		if l.notifier != nil {
+			addrs := slices.Clone(l.ipv4)
 			// explicitly use componentCtx, instead of queryCtx here, because we don't want to interrupt the peer connection if we refreshed interfaces and restarted service
 			go l.notifier.PeerDiscovered(l.componentCtx, peer, OwnAddresses{
-				Addrs: l.ipv4,
+				Addrs: addrs,
 				Port:  l.port,
 			})
 		}
+		l.m.Unlock()
 	}
 }
 
