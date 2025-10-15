@@ -3,6 +3,7 @@ package payments
 import (
 	"context"
 	"errors"
+	"fmt"
 	"time"
 	"unicode/utf8"
 
@@ -29,10 +30,10 @@ const CName = "payments"
 
 var log = logging.Logger(CName)
 
-const (
+var (
 	refreshIntervalSecs  = 60
-	networkTimeout       = 60 * time.Second
 	forceRefreshInterval = 10 * time.Second
+	networkTimeout       = 60 * time.Second
 )
 
 var (
@@ -53,6 +54,7 @@ var paymentMethodMap = map[proto.PaymentMethod]model.MembershipPaymentMethod{
 	proto.PaymentMethod_MethodCrypto:      model.Membership_MethodCrypto,
 	proto.PaymentMethod_MethodAppleInapp:  model.Membership_MethodInappApple,
 	proto.PaymentMethod_MethodGoogleInapp: model.Membership_MethodInappGoogle,
+	proto.PaymentMethod_MethodNone:        model.Membership_MethodNone,
 }
 
 func PaymentMethodToModel(method proto.PaymentMethod) model.MembershipPaymentMethod {
@@ -169,22 +171,25 @@ func (s *service) Init(a *app.App) (err error) {
 	s.fileLimitsUpdater = app.MustComponent[filesync.FileSync](a)
 	s.getSubscriptionLimiter = make(chan struct{}, 1)
 	s.componentCtx, s.componentCtxCancel = context.WithCancel(context.Background())
+
+	return nil
+}
+
+func (s *service) Run(ctx context.Context) (err error) {
+	// skip running loop if called from tests
+	if s.refreshCtrl != nil {
+		return nil
+	}
+
 	fetchFn := func(baseCtx context.Context, forceFetch bool) (bool, error) {
 		fetchCtx, cancel := context.WithTimeout(baseCtx, networkTimeout)
 		defer cancel()
 		changed, _, _, err := s.fetchAndUpdate(fetchCtx, forceFetch, true, true)
 		return changed, err
 	}
-	s.refreshCtrl = newRefreshController(s.componentCtx, fetchFn, time.Second*time.Duration(refreshIntervalSecs), forceRefreshInterval)
-	return nil
-}
 
-func (s *service) Run(ctx context.Context) (err error) {
-	// skip running loop if called from tests
-	val := ctx.Value("dontRunPeriodicGetStatus")
-	if val != nil && val.(bool) {
-		return nil
-	}
+	s.refreshCtrl = newRefreshController(s.componentCtx, fetchFn, time.Second*time.Duration(refreshIntervalSecs), forceRefreshInterval)
+
 	s.refreshCtrl.Start()
 	return nil
 }
@@ -200,6 +205,9 @@ func (s *service) Close(_ context.Context) (err error) {
 
 // forceRefresh performs more aggressive fetching of subscription status and tiers.
 func (s *service) forceRefresh(duration time.Duration) {
+	if s.refreshCtrl == nil {
+		return
+	}
 	s.refreshCtrl.Force(duration)
 }
 
@@ -214,7 +222,7 @@ func (s *service) fetchAndUpdate(ctx context.Context, forceIfNotExpired, fetchTi
 	if cacheErr != nil {
 		log.Debug("periodic refresh: can not get from cache", zap.Error(cacheErr))
 	}
-	if !forceIfNotExpired && cacheExpirationTime.Before(time.Now()) {
+	if !forceIfNotExpired && cacheExpirationTime.After(time.Now()) {
 		return false, cachedTiers, cachedStatus, nil
 	}
 	var errs []error
@@ -228,6 +236,8 @@ func (s *service) fetchAndUpdate(ctx context.Context, forceIfNotExpired, fetchTi
 			errs = append(errs, fetchErr)
 		} else {
 			if !tiersAreEqual(cachedTiers, fetchedTiers) {
+				fmt.Printf("%+v\n", fetchedTiers)
+				fmt.Printf("%+v\n", cachedTiers)
 				log.Warn("background refresh tiers: tiers have changed, sending event")
 				s.sendTiersUpdateEvent(fetchedTiers)
 				changed = true
@@ -651,13 +661,7 @@ func (s *service) GetPortalLink(ctx context.Context, req *pb.RpcMembershipGetPor
 		Code: pb.RpcMembershipGetPortalLinkUrlResponseError_NULL,
 	}
 
-	// 2 - disable cache for 30 minutes
-	log.Debug("disabling cache for 30 minutes after portal link was received")
-	err = s.cache.CacheClear()
-	if err != nil {
-		log.Warn("can not disable cache", zap.Error(err))
-		// return nil, errors.Wrap(ErrCacheProblem, err.Error())
-	}
+	go s.forceRefresh(30 * time.Minute)
 
 	return &out, nil
 }

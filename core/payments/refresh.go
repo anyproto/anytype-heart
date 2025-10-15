@@ -7,15 +7,7 @@ import (
 	"go.uber.org/zap"
 )
 
-const defaultRefreshInterval = time.Minute
-
 func newRefreshController(parent context.Context, fetch func(ctx context.Context, forceFetch bool) (bool, error), interval, forceInterval time.Duration) *refreshController {
-	if interval <= 0 {
-		interval = defaultRefreshInterval
-	}
-	if forceInterval <= 0 {
-		forceInterval = defaultRefreshInterval
-	}
 	ctx, cancel := context.WithCancel(parent)
 	return &refreshController{
 		ctx:           ctx,
@@ -63,9 +55,14 @@ func (rc *refreshController) loop() {
 	if rc.fetch == nil {
 		return
 	}
-	timer := time.NewTimer(0)
-	defer timer.Stop()
 
+	timer := time.NewTimer(0)
+	if rc.interval <= 0 {
+		<-timer.C
+		timer.Stop()
+	} else {
+		defer timer.Stop()
+	}
 	forceActive := false
 	forceDeadline := time.Time{}
 
@@ -104,7 +101,9 @@ func (rc *refreshController) loop() {
 			if forceActive {
 				resetTimer(timer, rc.forceInterval)
 			} else {
-				resetTimer(timer, rc.interval)
+				if rc.interval > 0 {
+					resetTimer(timer, rc.interval)
+				}
 			}
 		}
 	}

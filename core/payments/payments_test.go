@@ -103,8 +103,7 @@ func newFixture(t *testing.T) *fixture {
 
 	fx.eventSender.EXPECT().Broadcast(mock.AnythingOfType("*pb.Event")).Maybe()
 
-	ctx = context.WithValue(ctx, "dontRunPeriodicGetStatus", true)
-
+	refreshIntervalSecs = 0
 	fx.a.Register(fx.service).
 		Register(testutil.PrepareMock(ctx, fx.a, fx.cache)).
 		Register(testutil.PrepareMock(ctx, fx.a, fx.ppclient)).
@@ -290,9 +289,15 @@ func TestRegisterPaymentRequest(t *testing.T) {
 			NsNameType:    model.NameserviceNameType_AnyName,
 		}
 
-		// Call the function being tested
+		// force refresh after RegisterPaymentRequest
+		fx.cache.EXPECT().CacheGet().Return(&model.Membership{}, []*model.MembershipTierData{{}}, time.Now().Add(time.Hour), nil)
+		// despite of being not expired, we refresh
+		fx.ppclient.EXPECT().GetAllTiers(gomock.Any(), gomock.Any()).Return(&psp.GetTiersResponse{Tiers: []*psp.TierData{{}}}, nil)
+		fx.ppclient.EXPECT().GetSubscriptionStatus(gomock.Any(), gomock.Any()).Return(&psp.GetSubscriptionResponse{PaymentMethod: psp.PaymentMethod_MethodNone}, nil)
+
 		resp, err := fx.RegisterPaymentRequest(ctx, req)
 		assert.NoError(t, err)
+		time.Sleep(time.Millisecond * 50)
 		assert.Equal(t, "https://xxxx.com", resp.PaymentUrl)
 		assert.Equal(t, "killbillingid", resp.BillingId)
 	})
@@ -327,11 +332,17 @@ func TestGetPortalURL(t *testing.T) {
 
 		// Create a test request
 		req := &pb.RpcMembershipGetPortalLinkUrlRequest{}
+		// force refresh after RegisterPaymentRequest
+		fx.cache.EXPECT().CacheGet().Return(&model.Membership{}, []*model.MembershipTierData{{}}, time.Now().Add(time.Hour), nil)
+		// despite of being not expired, we refresh
+		fx.ppclient.EXPECT().GetAllTiers(gomock.Any(), gomock.Any()).Return(&psp.GetTiersResponse{Tiers: []*psp.TierData{{}}}, nil)
+		fx.ppclient.EXPECT().GetSubscriptionStatus(gomock.Any(), gomock.Any()).Return(&psp.GetSubscriptionResponse{PaymentMethod: psp.PaymentMethod_MethodNone}, nil)
 
 		// Call the function being tested
 		resp, err := fx.GetPortalLink(ctx, req)
 		assert.NoError(t, err)
 		assert.Equal(t, "https://xxxx.com", resp.PortalUrl)
+		time.Sleep(time.Millisecond * 50)
 	})
 }
 
@@ -463,9 +474,16 @@ func TestFinalizeSubscription(t *testing.T) {
 		// Create a test request
 		req := &pb.RpcMembershipFinalizeRequest{}
 
+		// force refresh after FinalizeSubscription
+		fx.cache.EXPECT().CacheGet().Return(&model.Membership{}, []*model.MembershipTierData{{}}, time.Now().Add(time.Hour), nil)
+		// despite of being not expired, we refresh
+		fx.ppclient.EXPECT().GetAllTiers(gomock.Any(), gomock.Any()).Return(&psp.GetTiersResponse{Tiers: []*psp.TierData{{}}}, nil)
+		fx.ppclient.EXPECT().GetSubscriptionStatus(gomock.Any(), gomock.Any()).Return(&psp.GetSubscriptionResponse{PaymentMethod: psp.PaymentMethod_MethodNone}, nil)
+
 		// Call the function being tested
 		_, err := fx.FinalizeSubscription(ctx, req)
 		assert.NoError(t, err)
+		time.Sleep(time.Millisecond * 50)
 	})
 }
 
@@ -639,6 +657,7 @@ func TestCodeGetInfo(t *testing.T) {
 		// Given
 		fx := newFixture(t)
 		defer fx.finish(t)
+		refreshIntervalSecs = 0
 
 		code := "TEST-CODE-123"
 		expectedTier := uint32(psp.SubscriptionTier_TierBuilder1Year)
@@ -656,6 +675,7 @@ func TestCodeGetInfo(t *testing.T) {
 		// It will just return from cache or empty status (no network call)
 		fx.cache.EXPECT().CacheGet().Return(nil, nil, time.Time{}, cache.ErrCacheDbError)
 
+		fx.ppclient.EXPECT().GetSubscriptionStatus(gomock.Any(), gomock.Any()).Return(nil, nil)
 		// When
 		resp, err := fx.CodeGetInfo(context.Background(), &pb.RpcMembershipCodeGetInfoRequest{
 			Code: code,

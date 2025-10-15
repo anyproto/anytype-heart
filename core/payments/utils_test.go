@@ -154,8 +154,13 @@ func assertAllExportedFieldsNonZeroAndInJSON(t *testing.T, val any, allowedZero 
 		structField, ok := typ.FieldByName(fieldName)
 		require.Truef(t, ok, "field %s metadata missing", fieldName)
 
-		if allowedZero == nil || !containsField(allowedZero, fieldName) {
+		isAllowedZero := containsField(allowedZero, fieldName)
+
+		if !isAllowedZero {
 			require.Falsef(t, fieldValue.IsZero(), "field %s should not be zero", fieldName)
+		} else {
+			// Skip JSON assertion for fields explicitly allowed to be zero (e.g. omitempty tags).
+			continue
 		}
 
 		jsonKey := structField.Tag.Get("json")

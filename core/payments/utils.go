@@ -9,7 +9,6 @@ import (
 	"github.com/anyproto/any-sync/paymentservice/paymentserviceproto"
 
 	"github.com/anyproto/anytype-heart/core/nameservice"
-	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
@@ -70,15 +69,6 @@ func normalizeAnyName(name string) (string, error) {
 	return name, nil
 }
 
-func convertMembershipStatus(status *paymentserviceproto.GetSubscriptionResponse) pb.RpcMembershipGetStatusResponse {
-	return pb.RpcMembershipGetStatusResponse{
-		Data: convertMembershipData(status),
-		Error: &pb.RpcMembershipGetStatusResponseError{
-			Code: pb.RpcMembershipGetStatusResponseError_NULL,
-		},
-	}
-}
-
 func tiersAreEqual(a []*model.MembershipTierData, b []*model.MembershipTierData) bool {
 	if len(a) != len(b) {
 		return false
@@ -92,6 +82,9 @@ func tiersAreEqual(a []*model.MembershipTierData, b []*model.MembershipTierData)
 }
 
 func convertTierData(src *paymentserviceproto.TierData) *model.MembershipTierData {
+	if src == nil {
+		return nil
+	}
 	out := &model.MembershipTierData{}
 	out.Id = src.Id
 	out.Name = src.Name
@@ -110,15 +103,19 @@ func convertTierData(src *paymentserviceproto.TierData) *model.MembershipTierDat
 	out.AndroidProductId = src.AndroidProductId
 	out.AndroidManageUrl = src.AndroidManageUrl
 	out.Offer = src.Offer
-	out.Features = make([]string, len(src.Features))
-	for i, feature := range src.Features {
-		out.Features[i] = feature.Description
+	if src.Features != nil {
+		out.Features = make([]string, len(src.Features))
+		for i, feature := range src.Features {
+			out.Features[i] = feature.Description
+		}
 	}
-
 	return out
 }
 
 func convertMembershipData(src *paymentserviceproto.GetSubscriptionResponse) *model.Membership {
+	if src == nil {
+		return nil
+	}
 	out := &model.Membership{}
 	out.Tier = src.Tier
 	out.Status = model.MembershipStatus(src.Status)
