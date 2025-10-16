@@ -247,69 +247,7 @@ func (r *filesRepository) delete(key string) {
 	delete(r.files, key)
 }
 
-type stateProcessor struct {
-	filesRepository *filesRepository
-	lock            sync.Mutex
-	processing      map[string]*sync.Mutex
-}
-
-func newStateProcessor(repo *filesRepository) *stateProcessor {
-	return &stateProcessor{
-		filesRepository: repo,
-		processing:      make(map[string]*sync.Mutex),
-	}
-}
-
-func (q *stateProcessor) isProcessing(key string) bool {
-	_, ok := q.processing[key]
-	return ok
-}
-
-func (q *stateProcessor) process(key string, proc func(exists bool, info FileInfo) (ProcessAction, FileInfo, error)) {
-	q.lock.Lock()
-	procLock, ok := q.processing[key]
-	if !ok {
-		procLock = &sync.Mutex{}
-		q.processing[key] = procLock
-		procLock.Lock()
-	}
-	q.lock.Unlock()
-
-	if ok {
-		procLock.Lock()
-	}
-	defer procLock.Unlock()
-
-	q.lock.Lock()
-	fi, exists := q.filesRepository.get(key)
-	q.lock.Unlock()
-
-	// Critical section
-
-	action, next, err := proc(exists, fi)
-	if err != nil {
-		log.Error("process item", zap.String("key", key), zap.Error(err))
-	}
-
-	q.lock.Lock()
-	switch action {
-	case ProcessActionNone:
-	case ProcessActionUpdate:
-		q.filesRepository.put(key, next)
-	case ProcessActionDelete:
-		q.filesRepository.delete(key)
-	}
-	delete(q.processing, key)
-	q.lock.Unlock()
-}
-
 func (s *fileSync) runUploader(ctx context.Context) {
-	ticker := time.NewTicker(time.Millisecond * 500)
-	defer ticker.Stop()
-
-	// TODO Decide what to do with items with Uploading status. There are at least two variants:
-	// 1. Just try to upload Cids from CidsToUpload -> maybe more cleaner approach, because state machine will be described more thoughtfully.
-	// 2. Add to pending upload queue
 
 	for {
 		select {
@@ -322,7 +260,7 @@ func (s *fileSync) runUploader(ctx context.Context) {
 }
 
 func (s *fileSync) processNextPendingUploadItem(ctx context.Context) error {
-	item, err := s.queue.GetNextScheduled(filequeue.GetNextScheduledRequest[FileInfo]{
+	item, err := s.queue.GetNextScheduled(ctx, filequeue.GetNextScheduledRequest[FileInfo]{
 		Subscribe: true,
 		StoreFilter: query.Key{
 			Path:   []string{"state"},
@@ -349,6 +287,66 @@ func (s *fileSync) processNextPendingUploadItem(ctx context.Context) error {
 	releaseErr := s.queue.Release(next)
 
 	return errors.Join(releaseErr, err)
+}
+
+func (s *fileSync) uploadLimited(ctx context.Context) (bool, error) {
+	limitUpdated := make(chan int)
+	nextCtx, nextCtxCancel := context.WithCancel(ctx)
+
+	go func() {
+		defer nextCtxCancel()
+
+		select {
+		case <-limitUpdated:
+		case <-ctx.Done():
+		}
+	}()
+
+	item, err := s.queue.GetNextScheduled(nextCtx, filequeue.GetNextScheduledRequest[FileInfo]{
+		Subscribe: true,
+		StoreFilter: query.Key{
+			Path:   []string{"state"},
+			Filter: query.NewComp(query.CompOpEq, int(FileStatePendingUpload)),
+		},
+		StoreOrder: &query.SortField{
+			Field:   "scheduledAt",
+			Path:    []string{"scheduledAt"},
+			Reverse: false,
+		},
+		Filter: func(info FileInfo) bool {
+			return info.State == FileStateLimited
+		},
+		ScheduledAt: func(info FileInfo) time.Time {
+			return info.ScheduledAt
+		},
+	})
+
+	var retry bool
+	if errors.Is(err, context.Canceled) {
+		select {
+		case <-ctx.Done():
+			return false, err
+		default:
+		}
+
+		select {
+		case <-nextCtx.Done():
+			retry = true
+		default:
+		}
+	}
+	if retry {
+		return true, nil
+	}
+	if err != nil {
+		return false, fmt.Errorf("get next scheduled item: %w", err)
+	}
+
+	next, err := s.processFilePendingUpload(ctx, item)
+
+	releaseErr := s.queue.Release(next)
+
+	return false, errors.Join(releaseErr, err)
 }
 
 func (s *fileSync) process(id string, proc func(exists bool, info FileInfo) (ProcessAction, FileInfo, error)) error {
