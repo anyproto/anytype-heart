@@ -10,6 +10,7 @@ import (
 	anystore "github.com/anyproto/any-store"
 	"github.com/anyproto/any-store/anyenc"
 	"github.com/anyproto/any-store/query"
+	"github.com/globalsign/mgo/bson"
 )
 
 var ErrNotFound = fmt.Errorf("not found")
@@ -102,6 +103,8 @@ type itemResponse[T any] struct {
 }
 
 type getNextRequest[T any] struct {
+	id          string
+	ctx         context.Context
 	subscribe   bool
 	storeFilter query.Filter
 	storeOrder  query.Sort
@@ -143,12 +146,15 @@ type Queue[T any] struct {
 
 	getId func(T) string
 
+	// TODO Comment each field
+
 	closeCh            chan struct{}
 	getByIdCh          chan getByIdRequest[T]
 	getNextCh          chan getNextRequest[T]
 	getNextScheduledCh chan getNextRequest[T]
 	releaseCh          chan releaseRequest[T]
 	scheduledCh        chan scheduledItem[T]
+	cancelRequestCh    chan string
 
 	getByIdWaiters map[string][]chan itemResponse[T]
 	dueWaiters     map[string][]scheduledItem[T]
@@ -175,6 +181,7 @@ func NewQueue[T any](store *Storage[T], getId func(T) string) *Queue[T] {
 		getByIdWaiters:     make(map[string][]chan itemResponse[T]),
 		taskLocked:         make(map[string]struct{}),
 		scheduled:          make(map[string]scheduledItem[T]),
+		cancelRequestCh:    make(chan string),
 		dueWaiters:         map[string][]scheduledItem[T]{},
 		getId:              getId,
 	}
@@ -197,6 +204,8 @@ func (q *Queue[T]) Run() {
 			q.handleReleaseItem(req)
 		case req := <-q.scheduledCh:
 			q.handleScheduledItem(req)
+		case req := <-q.cancelRequestCh:
+			q.handleCancelRequest(req)
 		}
 	}
 }
@@ -387,6 +396,44 @@ func (q *Queue[T]) checkGetByIdWaiters(item T, responded bool) bool {
 	return responded
 }
 
+func (q *Queue[T]) handleCancelRequest(id string) {
+	findAndCancel := func(waiters []getNextRequest[T]) []getNextRequest[T] {
+		for i, w := range waiters {
+			if w.id == id {
+				w.responseCh <- itemResponse[T]{
+					err: context.Canceled,
+				}
+				waiters = slices.Delete(waiters, i, i+1)
+				return waiters
+			}
+		}
+		return waiters
+	}
+
+	q.getNextWaiters = findAndCancel(q.getNextWaiters)
+	q.getNextScheduledWaiters = findAndCancel(q.getNextScheduledWaiters)
+
+	for schId, it := range q.scheduled {
+		if it.request.id == id {
+			delete(q.scheduled, schId)
+			break
+		}
+	}
+
+	checkInDueWaiters := func() {
+		for itemId, scheduled := range q.dueWaiters {
+			for i, it := range scheduled {
+				if it.request.id == id {
+					scheduled = slices.Delete(scheduled, i, i+1)
+					q.dueWaiters[itemId] = scheduled
+					return
+				}
+			}
+		}
+	}
+	checkInDueWaiters()
+}
+
 func (q *Queue[T]) close() {
 	if q.ctxCancel != nil {
 		q.ctxCancel()
@@ -407,6 +454,14 @@ func (q *Queue[T]) handleGetNextScheduled(req getNextRequest[T]) {
 	if errors.Is(err, ErrNoRows) {
 		if req.subscribe {
 			q.getNextScheduledWaiters = append(q.getNextScheduledWaiters, req)
+			go func() {
+				select {
+				case <-req.ctx.Done():
+					q.cancelRequestCh <- req.id
+				case <-q.ctx.Done():
+					return
+				}
+			}()
 		} else {
 			req.responseCh <- itemResponse[T]{err: ErrNoRows}
 		}
@@ -436,6 +491,14 @@ func (q *Queue[T]) handleGetNext(req getNextRequest[T]) {
 	if errors.Is(err, ErrNoRows) {
 		if req.subscribe {
 			q.getNextWaiters = append(q.getNextWaiters, req)
+			go func() {
+				select {
+				case <-req.ctx.Done():
+					q.cancelRequestCh <- req.id
+				case <-q.ctx.Done():
+					return
+				}
+			}()
 		} else {
 			req.responseCh <- itemResponse[T]{err: ErrNoRows}
 		}
@@ -469,6 +532,8 @@ func (q *Queue[T]) scheduleItem(req getNextRequest[T], next T) {
 		select {
 		case <-timer.C:
 			q.scheduledCh <- scheduled
+		case <-req.ctx.Done():
+			q.cancelRequestCh <- req.id
 		case <-cancelTimerCh:
 			return
 		}
@@ -521,7 +586,7 @@ func (r GetNextScheduledRequest[T]) Validate() error {
 	return nil
 }
 
-func (q *Queue[T]) GetNext(req GetNextRequest[T]) (T, error) {
+func (q *Queue[T]) GetNext(ctx context.Context, req GetNextRequest[T]) (T, error) {
 	err := req.Validate()
 	if err != nil {
 		var defVal T
@@ -530,6 +595,8 @@ func (q *Queue[T]) GetNext(req GetNextRequest[T]) (T, error) {
 	responseCh := make(chan itemResponse[T], 1)
 
 	q.getNextCh <- getNextRequest[T]{
+		id:          bson.NewObjectId().Hex(),
+		ctx:         ctx,
 		subscribe:   req.Subscribe,
 		storeFilter: req.StoreFilter,
 		storeOrder:  req.StoreOrder,
@@ -542,7 +609,7 @@ func (q *Queue[T]) GetNext(req GetNextRequest[T]) (T, error) {
 	return task.item, task.err
 }
 
-func (q *Queue[T]) GetNextScheduled(req GetNextScheduledRequest[T]) (T, error) {
+func (q *Queue[T]) GetNextScheduled(ctx context.Context, req GetNextScheduledRequest[T]) (T, error) {
 	err := req.Validate()
 	if err != nil {
 		var defVal T
@@ -551,6 +618,8 @@ func (q *Queue[T]) GetNextScheduled(req GetNextScheduledRequest[T]) (T, error) {
 	responseCh := make(chan itemResponse[T], 1)
 
 	q.getNextScheduledCh <- getNextRequest[T]{
+		id:          bson.NewObjectId().Hex(),
+		ctx:         ctx,
 		subscribe:   req.Subscribe,
 		storeFilter: req.StoreFilter,
 		storeOrder:  req.StoreOrder,

@@ -91,6 +91,7 @@ func TestQueueGetNext(t *testing.T) {
 		synctest.Run(func() {
 			q := newTestQueue(t)
 			defer q.close()
+			ctx := context.Background()
 
 			insertToQueue(t, q, FileInfo{
 				ObjectId:    "obj1",
@@ -98,7 +99,7 @@ func TestQueueGetNext(t *testing.T) {
 				ScheduledAt: time.Now().Add(time.Minute),
 			})
 
-			next, err := q.GetNext(getNextRequestUploading())
+			next, err := q.GetNext(ctx, getNextRequestUploading())
 			require.NoError(t, err)
 			assert.Equal(t, "obj1", next.ObjectId)
 		})
@@ -108,10 +109,11 @@ func TestQueueGetNext(t *testing.T) {
 		synctest.Run(func() {
 			q := newTestQueue(t)
 			defer q.close()
+			ctx := context.Background()
 
 			req := getNextRequestUploading()
 			req.Subscribe = false
-			_, err := q.GetNext(req)
+			_, err := q.GetNext(ctx, req)
 			require.ErrorIs(t, err, ErrNoRows)
 		})
 	})
@@ -120,6 +122,7 @@ func TestQueueGetNext(t *testing.T) {
 		synctest.Run(func() {
 			q := newTestQueue(t)
 			defer q.close()
+			ctx := context.Background()
 
 			go func() {
 				time.Sleep(10 * time.Minute)
@@ -133,7 +136,7 @@ func TestQueueGetNext(t *testing.T) {
 				require.NoError(t, err)
 			}()
 
-			next, err := q.GetNext(getNextRequestUploading())
+			next, err := q.GetNext(ctx, getNextRequestUploading())
 			require.NoError(t, err)
 			assert.Equal(t, "obj1", next.ObjectId)
 		})
@@ -143,6 +146,7 @@ func TestQueueGetNext(t *testing.T) {
 		synctest.Run(func() {
 			q := newTestQueue(t)
 			defer q.close()
+			ctx := context.Background()
 
 			const n = 100
 
@@ -156,7 +160,7 @@ func TestQueueGetNext(t *testing.T) {
 			resultsCh := make(chan string, n)
 			for range n {
 				go func() {
-					next, err := q.GetNext(getNextRequestUploading())
+					next, err := q.GetNext(ctx, getNextRequestUploading())
 					require.NoError(t, err)
 					resultsCh <- next.ObjectId
 				}()
@@ -179,6 +183,7 @@ func TestQueueGetNext(t *testing.T) {
 		synctest.Run(func() {
 			q := newTestQueue(t)
 			defer q.close()
+			ctx := context.Background()
 
 			const n = 100
 
@@ -191,7 +196,7 @@ func TestQueueGetNext(t *testing.T) {
 
 			got := make([]string, 0, n)
 			for range n {
-				next, err := q.GetNext(getNextRequestUploading())
+				next, err := q.GetNext(ctx, getNextRequestUploading())
 				require.NoError(t, err)
 
 				next.State = FileStatePendingDeletion
@@ -207,6 +212,21 @@ func TestQueueGetNext(t *testing.T) {
 			assert.ElementsMatch(t, want, got)
 		})
 	})
+
+	t.Run("cancel get next", func(t *testing.T) {
+		synctest.Run(func() {
+			q := newTestQueue(t)
+			defer q.close()
+			ctx, cancel := context.WithCancel(context.Background())
+
+			go func() {
+				time.Sleep(10 * time.Second)
+				cancel()
+			}()
+			_, err := q.GetNext(ctx, getNextRequestUploading())
+			require.Error(t, err, context.Canceled)
+		})
+	})
 }
 
 func TestQueueSchedule(t *testing.T) {
@@ -214,6 +234,7 @@ func TestQueueSchedule(t *testing.T) {
 		synctest.Run(func() {
 			q := newTestQueue(t)
 			defer q.close()
+			ctx := context.Background()
 
 			insertToQueue(t, q, FileInfo{
 				ObjectId:    "obj1",
@@ -221,7 +242,7 @@ func TestQueueSchedule(t *testing.T) {
 				ScheduledAt: time.Now().Add(time.Minute),
 			})
 
-			next, err := q.GetNextScheduled(getNextScheduledRequestUploading())
+			next, err := q.GetNextScheduled(ctx, getNextScheduledRequestUploading())
 			require.NoError(t, err)
 			assert.Equal(t, "obj1", next.ObjectId)
 		})
@@ -231,10 +252,11 @@ func TestQueueSchedule(t *testing.T) {
 		synctest.Run(func() {
 			q := newTestQueue(t)
 			defer q.close()
+			ctx := context.Background()
 
 			req := getNextScheduledRequestUploading()
 			req.Subscribe = false
-			_, err := q.GetNextScheduled(req)
+			_, err := q.GetNextScheduled(ctx, req)
 			require.ErrorIs(t, err, ErrNoRows)
 		})
 	})
@@ -243,6 +265,7 @@ func TestQueueSchedule(t *testing.T) {
 		synctest.Run(func() {
 			q := newTestQueue(t)
 			defer q.close()
+			ctx := context.Background()
 
 			go func() {
 				time.Sleep(10 * time.Minute)
@@ -253,7 +276,7 @@ func TestQueueSchedule(t *testing.T) {
 				})
 			}()
 
-			next, err := q.GetNextScheduled(getNextScheduledRequestUploading())
+			next, err := q.GetNextScheduled(ctx, getNextScheduledRequestUploading())
 			require.NoError(t, err)
 			assert.Equal(t, "obj1", next.ObjectId)
 		})
@@ -263,6 +286,7 @@ func TestQueueSchedule(t *testing.T) {
 		synctest.Run(func() {
 			q := newTestQueue(t)
 			defer q.close()
+			ctx := context.Background()
 
 			insertToQueue(t, q, FileInfo{
 				ObjectId:    "obj1",
@@ -279,7 +303,7 @@ func TestQueueSchedule(t *testing.T) {
 			_, err := q.GetById("obj1")
 			require.NoError(t, err)
 
-			next, err := q.GetNextScheduled(getNextScheduledRequestUploading())
+			next, err := q.GetNextScheduled(ctx, getNextScheduledRequestUploading())
 			require.NoError(t, err)
 			assert.Equal(t, "obj2", next.ObjectId)
 		})
@@ -289,6 +313,7 @@ func TestQueueSchedule(t *testing.T) {
 		synctest.Run(func() {
 			q := newTestQueue(t)
 			defer q.close()
+			ctx := context.Background()
 
 			const n = 100
 
@@ -303,7 +328,7 @@ func TestQueueSchedule(t *testing.T) {
 			resultsCh := make(chan string, n)
 			for range n {
 				go func() {
-					next, err := q.GetNextScheduled(getNextScheduledRequestUploading())
+					next, err := q.GetNextScheduled(ctx, getNextScheduledRequestUploading())
 					require.NoError(t, err)
 					resultsCh <- next.ObjectId
 				}()
@@ -326,6 +351,7 @@ func TestQueueSchedule(t *testing.T) {
 		synctest.Run(func() {
 			q := newTestQueue(t)
 			defer q.close()
+			ctx := context.Background()
 
 			insertToQueue(t, q, FileInfo{
 				ObjectId:    "obj1",
@@ -348,7 +374,7 @@ func TestQueueSchedule(t *testing.T) {
 				})
 			}()
 
-			next, err := q.GetNextScheduled(getNextScheduledRequestUploading())
+			next, err := q.GetNextScheduled(ctx, getNextScheduledRequestUploading())
 			require.NoError(t, err)
 			assert.Equal(t, "obj2", next.ObjectId)
 		})
@@ -358,6 +384,7 @@ func TestQueueSchedule(t *testing.T) {
 		synctest.Run(func() {
 			q := newTestQueue(t)
 			defer q.close()
+			ctx := context.Background()
 
 			insertToQueue(t, q, FileInfo{
 				ObjectId:    "obj1",
@@ -383,9 +410,25 @@ func TestQueueSchedule(t *testing.T) {
 				require.NoError(t, err)
 			}()
 
-			next, err := q.GetNextScheduled(getNextScheduledRequestUploading())
+			next, err := q.GetNextScheduled(ctx, getNextScheduledRequestUploading())
 			require.NoError(t, err)
 			assert.Equal(t, "obj2", next.ObjectId)
+		})
+	})
+
+	t.Run("cancel scheduled", func(t *testing.T) {
+		synctest.Run(func() {
+			q := newTestQueue(t)
+			defer q.close()
+			ctx, cancel := context.WithCancel(context.Background())
+
+			go func() {
+				time.Sleep(10 * time.Second)
+				cancel()
+			}()
+
+			_, err := q.GetNextScheduled(ctx, getNextScheduledRequestUploading())
+			require.Error(t, err, context.Canceled)
 		})
 	})
 }
@@ -395,6 +438,7 @@ func TestComplex(t *testing.T) {
 		synctest.Run(func() {
 			q := newTestQueue(t)
 			defer q.close()
+			ctx := context.Background()
 
 			insertToQueue(t, q, FileInfo{
 				ObjectId:    "obj1",
@@ -404,7 +448,7 @@ func TestComplex(t *testing.T) {
 
 			go func() {
 				time.Sleep(1 * time.Minute)
-				next, err := q.GetNext(getNextRequestUploading())
+				next, err := q.GetNext(ctx, getNextRequestUploading())
 				require.NoError(t, err)
 				next.Imported = true
 				assert.Equal(t, "obj1", next.ObjectId)
@@ -412,7 +456,7 @@ func TestComplex(t *testing.T) {
 				require.NoError(t, err)
 			}()
 
-			next, err := q.GetNextScheduled(getNextScheduledRequestUploading())
+			next, err := q.GetNextScheduled(ctx, getNextScheduledRequestUploading())
 			require.NoError(t, err)
 			assert.Equal(t, "obj1", next.ObjectId)
 			assert.True(t, next.Imported)
@@ -423,6 +467,7 @@ func TestComplex(t *testing.T) {
 		synctest.Run(func() {
 			q := newTestQueue(t)
 			defer q.close()
+			ctx := context.Background()
 
 			insertToQueue(t, q, FileInfo{
 				ObjectId:    "obj1",
@@ -437,7 +482,7 @@ func TestComplex(t *testing.T) {
 
 			go func() {
 				time.Sleep(1 * time.Minute)
-				next, err := q.GetNext(getNextRequestUploading())
+				next, err := q.GetNext(ctx, getNextRequestUploading())
 				require.NoError(t, err)
 				next.State = FileStatePendingDeletion
 				assert.Equal(t, "obj1", next.ObjectId)
@@ -445,7 +490,7 @@ func TestComplex(t *testing.T) {
 				require.NoError(t, err)
 			}()
 
-			next, err := q.GetNextScheduled(getNextScheduledRequestUploading())
+			next, err := q.GetNextScheduled(ctx, getNextScheduledRequestUploading())
 			require.NoError(t, err)
 			assert.Equal(t, "obj2", next.ObjectId)
 		})
