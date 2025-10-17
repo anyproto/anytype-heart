@@ -67,7 +67,7 @@ func (rc *refreshController) loop() {
 	forceDeadline := time.Time{}
 
 	for {
-		var timerC <-chan time.Time = timer.C
+		var timerC = timer.C
 		select {
 		case <-rc.ctx.Done():
 			return
@@ -100,10 +100,8 @@ func (rc *refreshController) loop() {
 			}
 			if forceActive {
 				resetTimer(timer, rc.forceInterval)
-			} else {
-				if rc.interval > 0 {
-					resetTimer(timer, rc.interval)
-				}
+			} else if rc.interval > 0 {
+				resetTimer(timer, rc.interval)
 			}
 		}
 	}
