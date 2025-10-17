@@ -240,13 +240,19 @@ func (s *storeObject) Init(ctx *smartblock.InitContext) error {
 		collectionName:     editorCollectionName,
 		storeSource:        storeSource,
 		storeState:         stateStore,
+		spaceIndex:         s.spaceIndex,
 		sb:                 s.SmartBlock,
 		deniedRelationKeys: []domain.RelationKey{bundle.RelationKeyInternalFlags},
 	}
 	spaceChatId := s.Space().DerivedIDs().SpaceChat
 	if s.Id() == spaceChatId {
-		ctx.State.SetDetail(bundle.RelationKeyName, domain.String("General"))
-		ctx.State.SetDetail(bundle.RelationKeyIsMainChat, domain.Bool(true))
+		setDetail := func(key domain.RelationKey, val domain.Value) {
+			// Set property both in parent and in the current state to avoid pushing a change
+			ctx.State.ParentState().SetDetail(key, val)
+			ctx.State.SetDetail(key, val)
+		}
+		setDetail(bundle.RelationKeyName, domain.String("General"))
+		setDetail(bundle.RelationKeyIsMainChat, domain.Bool(true))
 	}
 	err = s.detailsComponent.init(ctx.State)
 	if err != nil {
@@ -260,7 +266,7 @@ func (s *storeObject) Init(ctx *smartblock.InitContext) error {
 	s.seenHeadsCollector = newTreeSeenHeadsCollector(s.Tree())
 	s.statService.AddProvider(s)
 
-	return s.SmartBlock.Apply(ctx.State, smartblock.NotPushChanges, smartblock.NoHistory)
+	return nil
 }
 
 func (s *storeObject) onUpdate() {
