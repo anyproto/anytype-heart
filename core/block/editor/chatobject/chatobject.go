@@ -260,7 +260,7 @@ func (s *storeObject) Init(ctx *smartblock.InitContext) error {
 	s.seenHeadsCollector = newTreeSeenHeadsCollector(s.Tree())
 	s.statService.AddProvider(s)
 
-	return s.SmartBlock.Apply(ctx.State, smartblock.NotPushChanges, smartblock.NoHistory, smartblock.SkipIfNoChanges)
+	return s.SmartBlock.Apply(ctx.State, smartblock.NotPushChanges, smartblock.NoHistory)
 }
 
 func (s *storeObject) onUpdate() {
