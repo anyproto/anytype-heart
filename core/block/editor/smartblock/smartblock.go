@@ -1079,12 +1079,10 @@ func (sb *smartBlock) hasDepIds(act *undo.Action) bool {
 
 		for k, after := range act.Details.After.Iterate() {
 			format, err := sb.formatFetcher.GetRelationFormatByKey(sb.SpaceID(), k)
-			if err == nil && (format == model.RelationFormat_status ||
-				format == model.RelationFormat_tag ||
-				format == model.RelationFormat_object ||
-				format == model.RelationFormat_file ||
-				isCoverId(k)) {
-
+			if err != nil {
+				continue
+			}
+			if isObjectFormat(format) || isCoverId(k) {
 				before := act.Details.Before.Get(k)
 				// Check that value is actually changed
 				if !before.Ok() || !before.Equal(after) {
@@ -1120,6 +1118,13 @@ func (sb *smartBlock) hasDepIds(act *undo.Action) bool {
 // CoverId can be either a file, a gradient, an icon, or a color
 func isCoverId(key domain.RelationKey) bool {
 	return key == bundle.RelationKeyCoverId
+}
+
+func isObjectFormat(format model.RelationFormat) bool {
+	return format == model.RelationFormat_status ||
+		format == model.RelationFormat_tag ||
+		format == model.RelationFormat_object ||
+		format == model.RelationFormat_file
 }
 
 func getChangedFileHashes(s *state.State, fileDetailKeys []domain.RelationKey, act undo.Action) (hashes []string) {

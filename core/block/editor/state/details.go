@@ -68,14 +68,14 @@ func (s *State) FileRelationKeys(fetcher relationutils.RelationFormatFetcher) []
 
 func (s *State) iterateKeys() iter.Seq[domain.RelationKey] {
 	return func(yield func(domain.RelationKey) bool) {
-		for _, seq := range []iter.Seq[domain.RelationKey]{
-			s.Details().IterateKeys(),
-			s.LocalDetails().IterateKeys(),
-		} {
-			for key := range seq {
-				if !yield(key) {
-					return
-				}
+		for key := range s.Details().IterateKeys() {
+			if !yield(key) {
+				return
+			}
+		}
+		for key := range s.LocalDetails().IterateKeys() {
+			if !yield(key) {
+				return
 			}
 		}
 	}

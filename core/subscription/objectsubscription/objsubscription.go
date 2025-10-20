@@ -158,7 +158,8 @@ func (o *ObjectSubscription[T]) GetByKey(key string) (T, bool) {
 	defer o.mx.Unlock()
 	id, ok := o.keyToId[key]
 	if !ok {
-		return *new(T), false
+		var defValue T
+		return defValue, false
 	}
 	entry, ok := o.sub[id]
 	return entry, ok
