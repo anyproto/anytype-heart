@@ -1842,6 +1842,10 @@ func (s *State) UniqueKeyInternal() string {
 	return s.uniqueKeyInternal
 }
 
+func (s *State) SetUniqueKeyInternal(key string) {
+	s.uniqueKeyInternal = key
+}
+
 func (s *State) OriginalCreatedTimestamp() int64 {
 	return s.originalCreatedTimestamp
 }

@@ -40,7 +40,10 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 )
 
-var log = logging.Logger("anytype-mw-editor")
+var (
+	log                         = logging.Logger("anytype-mw-editor")
+	ErrUnexpectedSmartblockType = errors.New("unexpected smartblock type")
+)
 
 type ObjectDeleter interface {
 	DeleteObjectByFullID(id domain.FullID) (err error)
@@ -50,6 +53,7 @@ type accountService interface {
 	AccountID() string
 	PersonalSpaceID() string
 	MyParticipantId(spaceId string) string
+	GetAccountObjectId() (string, error)
 	Keys() *accountdata.AccountKeys
 }
 
@@ -203,8 +207,7 @@ func (f *ObjectFactory) New(space smartblock.Space, sbType coresb.SmartBlockType
 		coresb.SmartBlockTypeDate,
 		coresb.SmartBlockTypeBundledRelation,
 		coresb.SmartBlockTypeBundledObjectType,
-		coresb.SmartBlockTypeRelation,
-		coresb.SmartBlockTypeChatObject:
+		coresb.SmartBlockTypeRelation:
 		return f.newPage(space.Id(), sb), nil
 	case coresb.SmartBlockTypeObjectType:
 		return f.newObjectType(space.Id(), sb), nil
@@ -213,7 +216,7 @@ func (f *ObjectFactory) New(space smartblock.Space, sbType coresb.SmartBlockType
 	case coresb.SmartBlockTypeArchive:
 		return NewArchive(sb, spaceIndex), nil
 	case coresb.SmartBlockTypeHome:
-		return NewDashboard(sb, spaceIndex, f.layoutConverter), nil
+		return f.newDashboard(sb, spaceIndex), nil
 	case coresb.SmartBlockTypeProfilePage,
 		coresb.SmartBlockTypeAnytypeProfile:
 		return f.newProfile(space.Id(), sb), nil
@@ -229,7 +232,7 @@ func (f *ObjectFactory) New(space smartblock.Space, sbType coresb.SmartBlockType
 	case coresb.SmartBlockTypeMissingObject:
 		return NewMissingObject(sb), nil
 	case coresb.SmartBlockTypeWidget:
-		return NewWidgetObject(sb, spaceIndex, f.layoutConverter), nil
+		return f.newWidgetObject(sb, spaceIndex), nil
 	case coresb.SmartBlockTypeNotificationObject:
 		return NewNotificationObject(sb), nil
 	case coresb.SmartBlockTypeSubObject:
@@ -243,7 +246,7 @@ func (f *ObjectFactory) New(space smartblock.Space, sbType coresb.SmartBlockType
 		if err != nil {
 			return nil, fmt.Errorf("get crdt db: %w", err)
 		}
-		return chatobject.New(sb, f.accountService, crdtDb, f.chatRepositoryService, f.chatSubscriptionService, f.statService), nil
+		return chatobject.New(sb, f.accountService, crdtDb, f.chatRepositoryService, f.chatSubscriptionService, spaceIndex, f.layoutConverter, f.fileObjectService, f.statService), nil
 	case coresb.SmartBlockTypeAccountObject:
 		db, err := f.dbProvider.GetCrdtDb(space.Id()).Wait()
 		if err != nil {
@@ -251,6 +254,6 @@ func (f *ObjectFactory) New(space smartblock.Space, sbType coresb.SmartBlockType
 		}
 		return accountobject.New(sb, f.accountService.Keys(), spaceIndex, f.layoutConverter, f.fileObjectService, db, f.config), nil
 	default:
-		return nil, fmt.Errorf("unexpected smartblock type: %v", sbType)
+		return nil, fmt.Errorf("%w: %v", ErrUnexpectedSmartblockType, sbType)
 	}
 }

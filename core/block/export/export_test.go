@@ -269,12 +269,12 @@ func TestExport_Export(t *testing.T) {
 
 		fx.store.AddObjects(t, spaceId, []spaceindex.TestObject{
 			{
-				bundle.RelationKeyId:          domain.String(link),
-				bundle.RelationKeyType:        domain.String(objectTypeId),
-				bundle.RelationKeySpaceId:     domain.String(spaceId),
-				bundle.RelationKeyDescription: domain.String("description"),
-				bundle.RelationKeyLayout:      domain.Int64(model.ObjectType_set),
-				bundle.RelationKeyCamera:      domain.String("test"),
+				bundle.RelationKeyId:             domain.String(link),
+				bundle.RelationKeyType:           domain.String(objectTypeId),
+				bundle.RelationKeySpaceId:        domain.String(spaceId),
+				bundle.RelationKeyDescription:    domain.String("description"),
+				bundle.RelationKeyResolvedLayout: domain.Int64(model.ObjectType_set),
+				bundle.RelationKeyCamera:         domain.String("test"),
 			},
 			prepareTestObjectForStore(objectId, objectTypeId),
 			prepareTestObjectTypeForStore(t, objectTypeId, nil),

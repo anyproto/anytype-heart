@@ -140,7 +140,7 @@ func (oc *ObjectCreator) Create(dataObject *DataObject, sn *common.Snapshot) (*d
 		// we widen typeKeys here to install bundled templates for imported object type
 		typeKeys = append(typeKeys, domain.TypeKey(st.UniqueKeyInternal()))
 	}
-	err = oc.installBundledRelationsAndTypes(ctx, spaceID, st.AllRelationKeys(), typeKeys, origin)
+	err = oc.installBundledRelationsAndTypes(ctx, spaceID, st.AllRelationKeys(), typeKeys)
 	if err != nil {
 		log.With("objectID", newID).Errorf("failed to install bundled relations and types: %s", err)
 	}
@@ -211,7 +211,6 @@ func (oc *ObjectCreator) installBundledRelationsAndTypes(
 	spaceID string,
 	relationKeys []domain.RelationKey,
 	objectTypeKeys []domain.TypeKey,
-	origin objectorigin.ObjectOrigin,
 ) error {
 
 	idsToCheck := make([]string, 0, len(relationKeys)+len(objectTypeKeys))
@@ -236,7 +235,7 @@ func (oc *ObjectCreator) installBundledRelationsAndTypes(
 	if err != nil {
 		return fmt.Errorf("get space %s: %w", spaceID, err)
 	}
-	_, _, err = oc.objectCreator.InstallBundledObjects(ctx, spc, idsToCheck, origin.Origin == model.ObjectOrigin_usecase)
+	_, _, err = oc.objectCreator.InstallBundledObjects(ctx, spc, idsToCheck)
 	return err
 }
 
@@ -397,7 +396,7 @@ func (oc *ObjectCreator) resetState(newID string, st *state.State) *domain.Detai
 func (oc *ObjectCreator) setFavorite(snapshot *common.StateSnapshot, newID string) {
 	isFavorite := snapshot.Details.GetBool(bundle.RelationKeyIsFavorite)
 	if isFavorite {
-		err := oc.detailsService.SetIsFavorite(newID, true, false)
+		err := oc.detailsService.SetIsFavorite(newID, true)
 		if err != nil {
 			log.With(zap.String("object id", newID)).Errorf("failed to set isFavorite when importing object: %s", err)
 		}

@@ -9,7 +9,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-const RelationChecksum = "921c75b76fdc2037f7c7c6f216ff9c1001de5cbe5abbbf0c03019ee185f93fcb"
+const RelationChecksum = "56053eaf15a74368d28cddbc6132d794f1607ecfc74aeee88c4797ecd8b6f1f7"
 const (
 	RelationKeyTag                                domain.RelationKey = "tag"
 	RelationKeyCamera                             domain.RelationKey = "camera"
@@ -168,8 +168,6 @@ const (
 	RelationKeyRecommendedFileRelations           domain.RelationKey = "recommendedFileRelations"
 	RelationKeyDefaultViewType                    domain.RelationKey = "defaultViewType"
 	RelationKeyDefaultTypeId                      domain.RelationKey = "defaultTypeId"
-	RelationKeyAutoWidgetTargets                  domain.RelationKey = "autoWidgetTargets"
-	RelationKeyAutoWidgetDisabled                 domain.RelationKey = "autoWidgetDisabled"
 	RelationKeyPluralName                         domain.RelationKey = "pluralName"
 	RelationKeyHeaderRelationsLayout              domain.RelationKey = "headerRelationsLayout"
 	RelationKeyApiObjectKey                       domain.RelationKey = "apiObjectKey"
@@ -181,6 +179,7 @@ const (
 	RelationKeyWidgetLayout                       domain.RelationKey = "widgetLayout"
 	RelationKeyWidgetLimit                        domain.RelationKey = "widgetLimit"
 	RelationKeyWidgetViewId                       domain.RelationKey = "widgetViewId"
+	RelationKeyIsMainChat                         domain.RelationKey = "isMainChat"
 )
 
 var (
@@ -318,33 +317,6 @@ var (
 			ReadOnly:         false,
 			ReadOnlyRelation: true,
 			Revision:         1,
-			Scope:            model.Relation_type,
-		},
-		RelationKeyAutoWidgetDisabled: {
-
-			DataSource:       model.Relation_details,
-			Description:      "",
-			Format:           model.RelationFormat_checkbox,
-			Hidden:           true,
-			Id:               "_brautoWidgetDisabled",
-			Key:              "autoWidgetDisabled",
-			MaxCount:         1,
-			Name:             "Auto Widget disabled",
-			ReadOnly:         false,
-			ReadOnlyRelation: true,
-			Scope:            model.Relation_type,
-		},
-		RelationKeyAutoWidgetTargets: {
-
-			DataSource:       model.Relation_details,
-			Description:      "Automatically generated widget. Used to avoid creating widget if was removed by user",
-			Format:           model.RelationFormat_object,
-			Hidden:           true,
-			Id:               "_brautoWidgetTargets",
-			Key:              "autoWidgetTargets",
-			Name:             "Auto Widget targets",
-			ReadOnly:         false,
-			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
 		},
 		RelationKeyBacklinks: {
@@ -1177,6 +1149,20 @@ var (
 			MaxCount:         1,
 			Name:             "Highlighted",
 			ReadOnly:         false,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
+		RelationKeyIsMainChat: {
+
+			DataSource:       model.Relation_derived,
+			Description:      "Is this the main chat",
+			Format:           model.RelationFormat_checkbox,
+			Hidden:           true,
+			Id:               "_brisMainChat",
+			Key:              "isMainChat",
+			MaxCount:         1,
+			Name:             "Is main chat",
+			ReadOnly:         true,
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
 		},

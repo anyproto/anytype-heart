@@ -163,7 +163,9 @@ func (s *State) GetAndUnsetFileKeys() (keys []pb.ChangeFileKeys) {
 func (s *State) ApplyChangeIgnoreErr(changes ...*pb.ChangeContent) {
 	for _, ch := range changes {
 		if err := s.applyChange(ch); err != nil {
-			log.With("objectID", s.RootId()).Warnf("error while applying change %T: %v; ignore", ch.Value, err)
+			if ch.GetBlockCreate() == nil && ch.GetBlockMove() == nil {
+				log.With("objectID", s.RootId()).Warnf("error while applying change %T: %v; ignore", ch.Value, err)
+			}
 		}
 	}
 	return

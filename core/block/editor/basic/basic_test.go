@@ -358,6 +358,16 @@ func TestBasic_Move(t *testing.T) {
 		require.NoError(t, sb.Apply(st))
 		assert.Len(t, sb.NewState().Pick("test").Model().ChildrenIds, 2)
 	})
+	t.Run("moving blocks to its children is prohibited", func(t *testing.T) {
+		sb := smarttest.New("test")
+		sb.AddBlock(simple.New(&model.Block{Id: "test", ChildrenIds: []string{"1"}})).
+			AddBlock(newTextBlock("1", "", []string{"2"})).
+			AddBlock(newTextBlock("2", "one", nil))
+		b := NewBasic(sb, nil, converter.NewLayoutConverter(), nil)
+		st := sb.NewState()
+		err := b.Move(st, nil, "2", model.Block_InnerFirst, []string{"1"})
+		require.Error(t, err)
+	})
 }
 
 func TestBasic_MoveTableBlocks(t *testing.T) {

@@ -97,7 +97,7 @@ func TestService_ObjectRestrictionsById(t *testing.T) {
 	})
 
 	t.Run("chat should have edit and duplication restrictions", func(t *testing.T) {
-		assert.ErrorIs(t, GetRestrictions(givenRestrictionHolder(smartblock.SmartBlockTypeChatObject, bundle.TypeKeyChat)).Object.Check(
+		assert.ErrorIs(t, GetRestrictions(givenRestrictionHolder(smartblock.SmartBlockTypeChatDerivedObject, bundle.TypeKeyChatDerived)).Object.Check(
 			dup...,
 		), ErrRestricted)
 	})

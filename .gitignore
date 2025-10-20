@@ -21,3 +21,4 @@ build
 /.direnv/
 /.envrc
 *.swp
+doc/dependency_decisions.yml

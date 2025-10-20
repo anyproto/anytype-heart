@@ -90,11 +90,12 @@ func TestSubscription(t *testing.T) {
 		edited := givenComplexMessage()
 		edited.Message.Text = "edited text"
 
-		err = fx.EditMessage(ctx, resp.Messages[0].Id, edited)
+		// Use index 1 because the message with index 0 is deleted from the subscription state after adding another message due to limit of 5
+		err = fx.EditMessage(ctx, resp.Messages[1].Id, edited)
 		require.NoError(t, err)
 		require.Len(t, fx.events, 1)
 
-		message, err := fx.GetMessageById(ctx, resp.Messages[0].Id)
+		message, err := fx.GetMessageById(ctx, resp.Messages[1].Id)
 		require.NoError(t, err)
 
 		wantEvents := []*pb.EventMessage{
@@ -102,7 +103,7 @@ func TestSubscription(t *testing.T) {
 				SpaceId: testSpaceId,
 				Value: &pb.EventMessageValueOfChatUpdate{
 					ChatUpdate: &pb.EventChatUpdate{
-						Id:      resp.Messages[0].Id,
+						Id:      resp.Messages[1].Id,
 						Message: message.ChatMessage,
 						SubIds:  []string{"subId"},
 					},
@@ -115,7 +116,8 @@ func TestSubscription(t *testing.T) {
 	t.Run("toggle message reaction", func(t *testing.T) {
 		fx.events = nil
 
-		added, err := fx.ToggleMessageReaction(ctx, resp.Messages[0].Id, "👍")
+		// Use index 1 because the message with index 0 is deleted from the subscription state after adding another message due to limit of 5
+		added, err := fx.ToggleMessageReaction(ctx, resp.Messages[1].Id, "👍")
 		require.NoError(t, err)
 		require.Len(t, fx.events, 1)
 		assert.True(t, added)
@@ -125,7 +127,7 @@ func TestSubscription(t *testing.T) {
 				SpaceId: testSpaceId,
 				Value: &pb.EventMessageValueOfChatUpdateReactions{
 					ChatUpdateReactions: &pb.EventChatUpdateReactions{
-						Id: resp.Messages[0].Id,
+						Id: resp.Messages[1].Id,
 						Reactions: &model.ChatMessageReactions{
 							Reactions: map[string]*model.ChatMessageReactionsIdentityList{
 								"👍": {
