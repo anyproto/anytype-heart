@@ -133,15 +133,14 @@ func TestSpaceTopicsCollection(t *testing.T) {
 		req := tc.MakeApiRequest()
 		require.NotNil(t, req)
 		assert.True(t, slices.ContainsFunc(req.Topics, func(t *pushapi.Topic) bool {
-			return strings.HasSuffix(t.Topic, "ch2/my")
+			return strings.HasSuffix(t.Topic, sha256hex("ch2")+"/my")
 		}), "mention not found")
 		assert.False(t, slices.ContainsFunc(req.Topics, func(t *pushapi.Topic) bool {
-			return strings.Contains(t.Topic, "ch1")
+			return strings.Contains(t.Topic, sha256hex("ch1"))
 		}), "muted found")
 		assert.True(t, slices.ContainsFunc(req.Topics, func(t *pushapi.Topic) bool {
-			return strings.HasSuffix(t.Topic, "ch3")
+			return strings.HasSuffix(t.Topic, sha256hex("ch3"))
 		}), "ch3 not found")
-
 	})
 }
 

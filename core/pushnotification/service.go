@@ -358,6 +358,7 @@ func (s *service) monitorChatIds() {
 			if !slices.Contains(chatIds, add.Id) {
 				chatIds = append(chatIds, add.Id)
 				s.chatIds[spaceId] = chatIds
+				s.wakeUp()
 			}
 		},
 		OnRemove: func(spaceId string, remove *pb.EventObjectSubscriptionRemove) {

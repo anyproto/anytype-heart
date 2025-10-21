@@ -95,9 +95,9 @@ func (c *spaceTopicsCollection) SetSpaceViewStatus(status *spaceViewStatus, chat
 				continue
 			}
 			if slices.Contains(status.mentionIds, chatId) {
-				c.localTopics = append(c.localTopics, makeTopic(ChatsTopicName, chatId, c.identity))
+				c.localTopics = append(c.localTopics, makeTopic(ChatsTopicName, sha256hex(chatId), c.identity))
 			} else {
-				c.localTopics = append(c.localTopics, makeTopic(ChatsTopicName, chatId))
+				c.localTopics = append(c.localTopics, makeTopic(ChatsTopicName, sha256hex(chatId)))
 			}
 		}
 	}
@@ -190,4 +190,9 @@ func (c *spaceTopicsCollection) MakeTopics(spaceId string, topics []string) (*pu
 		})
 	}
 	return res, nil
+}
+
+func sha256hex(id string) string {
+	hash := sha256.Sum256([]byte(id))
+	return hex.EncodeToString(hash[:])
 }
