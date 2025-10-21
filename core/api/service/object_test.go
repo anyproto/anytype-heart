@@ -319,7 +319,6 @@ func TestObjectService_CreateObject(t *testing.T) {
 			TemplateId:          mockedTemplateId,
 			SpaceId:             mockedSpaceId,
 			ObjectTypeUniqueKey: "ot-" + mockedTypeKey,
-			WithChat:            false,
 		}).Return(&pb.RpcObjectCreateResponse{
 			ObjectId: mockedNewObjectId,
 			Details: &types.Struct{

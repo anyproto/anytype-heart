@@ -143,10 +143,9 @@ func (s *Service) CreateSpace(ctx context.Context, request apimodel.CreateSpaceR
 				bundle.RelationKeyName.String():             pbtypes.String(s.sanitizedString(*request.Name)),
 				bundle.RelationKeyIconOption.String():       pbtypes.Float64(float64(iconOption.Int64())),
 				bundle.RelationKeySpaceDashboardId.String(): pbtypes.String("lastOpened"),
+				bundle.RelationKeySpaceUxType.String():      pbtypes.Float64(float64(model.SpaceUxType_Data)),
 			},
 		},
-		UseCase:  pb.RpcObjectImportUseCaseRequest_DATA_SPACE,
-		WithChat: true,
 	})
 
 	if resp.Error != nil && resp.Error.Code != pb.RpcWorkspaceCreateResponseError_NULL {
