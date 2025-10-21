@@ -21,6 +21,7 @@ setup-go: setup-network-config check-tantivy-version
 	@echo 'Setting up go modules...'
 	@go mod download
 	@go install github.com/ahmetb/govvv@v0.2.0
+	@go build -o deps github.com/awalterschulze/goderive
 
 setup-gomobile:
 	go build -o deps golang.org/x/mobile/cmd/gomobile

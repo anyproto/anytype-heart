@@ -1,5 +1,7 @@
 package bundle
 
+//go:generate go run ./generator
+
 import (
 	"fmt"
 	"strings"
