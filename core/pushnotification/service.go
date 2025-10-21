@@ -25,7 +25,6 @@ import (
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space"
 )
@@ -60,7 +59,6 @@ type service struct {
 	wallet                  wallet.Wallet
 	config                  *config.Config
 	spaceService            space.Service
-	objectStore             objectstore.ObjectStore
 	subscriptions           subscription.Service
 	crossSpaceSubscriptions crossspacesub.Service
 
@@ -94,7 +92,6 @@ func (s *service) Init(a *app.App) (err error) {
 	s.spaceService = app.MustComponent[space.Service](a)
 	s.subscriptions = app.MustComponent[subscription.Service](a)
 	s.crossSpaceSubscriptions = app.MustComponent[crossspacesub.Service](a)
-	s.objectStore = app.MustComponent[objectstore.ObjectStore](a)
 	s.notifyQueue = mb.New[PushNotification](0)
 	s.chatIdsQueue = mb.New[*pb.EventMessage](0)
 

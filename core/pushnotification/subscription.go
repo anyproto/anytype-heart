@@ -111,6 +111,7 @@ func newSpaceViewSubscription(service subscription.Service, techSpaceId string, 
 					case bundle.RelationKeyCreator:
 						status.creator = kv.Value.String()
 					case bundle.RelationKeySpaceAccountStatus:
+						// nolint: gosec
 						status.status = model.SpaceStatus(kv.Value.Int64())
 					}
 				}
