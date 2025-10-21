@@ -123,6 +123,13 @@ type SpaceDescription struct {
 	Name        string
 	IconImage   string
 	SpaceUxType model.SpaceUxType
+	// it doesn't look good if we pass whole participant here
+	// we should to create a contact in contact book first
+	// create component "Contact book" which does a cross space request
+	// or just take from identity repo without new component
+	// 1. from cross space
+	// 2. if not found, identityrepo
+	OneToOneParticipantIdentity string
 }
 
 func (s *SpaceDescription) UpdateDetails(st *state.State) {

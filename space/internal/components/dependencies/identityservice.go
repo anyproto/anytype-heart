@@ -19,5 +19,5 @@ type IdentityService interface {
 	// UnregisterIdentitiesInSpace removes all identity observers in the space
 	UnregisterIdentitiesInSpace(spaceId string)
 
-	WaitProfile(ctx context.Context, identity string) *model.IdentityProfile
+	WaitProfile(ctx context.Context, identity string) *domain.IdentityProfileWithKey
 }

@@ -47,7 +47,7 @@ type Service interface {
 	UnregisterIdentity(spaceId string, identity string)
 	// UnregisterIdentitiesInSpace removes all identity observers in the space
 	UnregisterIdentitiesInSpace(spaceId string)
-
+	WaitProfile(ctx context.Context, identity string) *domain.IdentityProfileWithKey
 	app.ComponentRunnable
 }
 
@@ -159,10 +159,13 @@ func (s *service) UpdateOwnGlobalName(myIdentityGlobalName string) {
 	s.ownProfileSubscription.updateGlobalName(myIdentityGlobalName)
 }
 
-func (s *service) WaitProfile(ctx context.Context, identity string) *model.IdentityProfile {
+func (s *service) WaitProfile(ctx context.Context, identity string) *domain.IdentityProfileWithKey {
 	profile := s.getProfileFromCache(identity)
 	if profile != nil {
-		return profile
+		return &domain.IdentityProfileWithKey{
+			IdentityProfile:    profile,
+			RequestMetadataKey: s.identityEncryptionKeys[identity],
+		}
 	}
 	ticker := time.NewTicker(time.Second)
 	defer ticker.Stop()
@@ -175,7 +178,10 @@ func (s *service) WaitProfile(ctx context.Context, identity string) *model.Ident
 		case <-ticker.C:
 			profile = s.getProfileFromCache(identity)
 			if profile != nil {
-				return profile
+				return &domain.IdentityProfileWithKey{
+					IdentityProfile:    profile,
+					RequestMetadataKey: s.identityEncryptionKeys[identity],
+				}
 			}
 		}
 	}

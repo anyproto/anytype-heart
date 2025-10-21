@@ -2,6 +2,7 @@ package spacefactory
 
 import (
 	"context"
+	"encoding/base64"
 	"errors"
 	"fmt"
 
@@ -38,7 +39,7 @@ type SpaceFactory interface {
 	CreateAndSetTechSpace(ctx context.Context) (*clientspace.TechSpace, error)
 	LoadAndSetTechSpace(ctx context.Context) (*clientspace.TechSpace, error)
 	CreateInvitingSpace(ctx context.Context, id, aclHeadId string) (sp spacecontroller.SpaceController, err error)
-	CreateOneToOneSpace(ctx context.Context, id string) (sp spacecontroller.SpaceController, err error)
+	CreateOneToOneSpace(ctx context.Context, id string, participantData spaceinfo.OneToOneParticipantData) (sp spacecontroller.SpaceController, err error)
 }
 
 const CName = "client.space.spacefactory"
@@ -289,7 +290,7 @@ func (s *spaceFactory) CreateMarketplaceSpace(ctx context.Context) (sp spacecont
 	return ctrl, err
 }
 
-func (s *spaceFactory) CreateOneToOneSpace(ctx context.Context, id string) (sp spacecontroller.SpaceController, err error) {
+func (s *spaceFactory) CreateOneToOneSpace(ctx context.Context, id string, participantData spaceinfo.OneToOneParticipantData) (sp spacecontroller.SpaceController, err error) {
 	oneToOneSpace, err := s.spaceCore.Get(ctx, id)
 	if err != nil {
 		return
@@ -301,10 +302,20 @@ func (s *spaceFactory) CreateOneToOneSpace(ctx context.Context, id string) (sp s
 	}
 
 	info := spaceinfo.NewSpacePersistentInfo(id)
+
+	info.OneToOneIdentity = participantData.Identity.Account()
+	requestMetadataBytes, err := participantData.RequestMetadataKey.Marshall()
+	if err != nil {
+		return
+	}
+	// TODO: try to expose key.UnmarshallAESKeyString/String
+	requestMetadataStr := base64.StdEncoding.EncodeToString(requestMetadataBytes)
+	info.OneToOneRequestMetadata = requestMetadataStr
 	info.SetAccountStatus(spaceinfo.AccountStatusUnknown)
 	if err := s.techSpace.SpaceViewCreate(ctx, id, true, info, nil); err != nil {
 		return nil, err
 	}
+	// controller runs aclObjectManager which does processacl(get acl from storage and create aclState)
 	ctrl, err := shareablespace.NewSpaceController(id, info, s.app)
 	if err != nil {
 		return nil, err

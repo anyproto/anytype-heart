@@ -33998,6 +33998,7 @@ RelationFormat describes how the underlying data is stored in the google.protobu
 | Data | 1 | objects-first UX |
 | Stream | 2 | stream UX (chat with limited amount of owners) |
 | Chat | 3 | chat UX |
+| OneToOne | 4 | onetoone UX (space with chat and immutable ACL between two participants) |
 
 
 

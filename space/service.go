@@ -27,6 +27,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space/clientspace"
 	"github.com/anyproto/anytype-heart/space/internal/components/aclobjectmanager"
+	"github.com/anyproto/anytype-heart/space/internal/components/dependencies"
 	"github.com/anyproto/anytype-heart/space/internal/personalspace"
 	"github.com/anyproto/anytype-heart/space/internal/spacecontroller"
 	"github.com/anyproto/anytype-heart/space/spacecore"
@@ -103,6 +104,7 @@ type service struct {
 	aclJoiner           AclJoiner
 	accountService      accountservice.Service
 	inboxClient         inboxclient.InboxClient
+	identityService     dependencies.IdentityService
 	config              *config.Config
 	notificationService NotificationSender
 	updater             coordinatorStatusUpdater
@@ -155,6 +157,7 @@ func (s *service) Init(a *app.App) (err error) {
 	s.spaceNameGetter = app.MustComponent[objectstore.SpaceNameGetter](a)
 	s.spaceLoaderListener = app.MustComponent[aclobjectmanager.SpaceLoaderListener](a)
 	s.inboxClient = app.MustComponent[inboxclient.InboxClient](a)
+	s.identityService = app.MustComponent[dependencies.IdentityService](a)
 	s.waiting = make(map[string]controllerWaiter)
 	s.techSpaceReady = make(chan struct{})
 	s.personalSpaceId, err = s.spaceCore.DeriveID(context.Background(), spacedomain.SpaceTypeRegular)
@@ -316,7 +319,12 @@ func (s *service) Create(ctx context.Context, description *spaceinfo.SpaceDescri
 	if s.isClosing.Load() {
 		return nil, ErrSpaceIsClosing
 	}
+	// if description.SpaceUxType == model.SpaceUxType_OneToOne {
 	return s.createOneToOne(ctx, description)
+	// }
+
+	// return s.create(ctx, description)
+
 }
 
 func (s *service) Wait(ctx context.Context, spaceId string) (sp clientspace.Space, err error) {

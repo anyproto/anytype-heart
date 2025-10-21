@@ -56,6 +56,7 @@ type Space interface {
 
 	IsReadOnly() bool
 	IsPersonal() bool
+	IsOneToOne() bool
 	GetAclIdentity() crypto.PubKey
 
 	KeyValueService() keyvalueservice.Service
@@ -429,4 +430,8 @@ func (s *space) RefreshObjects(objectIds []string) (err error) {
 
 func (s *space) IsReadOnly() bool {
 	return !s.CommonSpace().Acl().AclState().Permissions(s.aclIdentity).CanWrite()
+}
+
+func (s *space) IsOneToOne() bool {
+	return s.CommonSpace().Acl().AclState().IsOneToOne()
 }

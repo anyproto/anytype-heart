@@ -9,7 +9,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-const RelationChecksum = "37872b52c93c4d1f5ab406c94ba02c6079a7f0d56350e5ef1c75c62b478083cc"
+const RelationChecksum = "70d0d68d7e81b9a0e861d0e0c61f3958aa9b764dc5c661ac0db60a683d8e7025"
 const (
 	RelationKeyTag                                domain.RelationKey = "tag"
 	RelationKeyCamera                             domain.RelationKey = "camera"
@@ -162,6 +162,8 @@ const (
 	RelationKeyFileSourceChecksum                 domain.RelationKey = "fileSourceChecksum"
 	RelationKeySpaceOrder                         domain.RelationKey = "spaceOrder"
 	RelationKeyOrderId                            domain.RelationKey = "orderId"
+	RelationKeyOneToOneIdentity                   domain.RelationKey = "oneToOneIdentity"
+	RelationKeyOneToOneRequestMetadata            domain.RelationKey = "oneToOneRequestMetadata"
 	RelationKeyIconName                           domain.RelationKey = "iconName"
 	RelationKeyRecommendedFeaturedRelations       domain.RelationKey = "recommendedFeaturedRelations"
 	RelationKeyRecommendedHiddenRelations         domain.RelationKey = "recommendedHiddenRelations"
@@ -1428,6 +1430,34 @@ var (
 			MaxCount:         1,
 			Name:             "Old Anytype ID",
 			ReadOnly:         true,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
+		RelationKeyOneToOneIdentity: {
+
+			DataSource:       model.Relation_details,
+			Description:      "OneToOne (second) participant identity",
+			Format:           model.RelationFormat_longtext,
+			Hidden:           true,
+			Id:               "_broneToOneIdentity",
+			Key:              "oneToOneIdentity",
+			MaxCount:         1,
+			Name:             "oneToOneIdentity",
+			ReadOnly:         false,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
+		RelationKeyOneToOneRequestMetadata: {
+
+			DataSource:       model.Relation_details,
+			Description:      "OneToOne (second) participant RequestMetadata (key)",
+			Format:           model.RelationFormat_longtext,
+			Hidden:           true,
+			Id:               "_broneToOneRequestMetadata",
+			Key:              "oneToOneRequestMetadata",
+			MaxCount:         1,
+			Name:             "oneToOneRequestMetadata",
+			ReadOnly:         false,
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
 		},

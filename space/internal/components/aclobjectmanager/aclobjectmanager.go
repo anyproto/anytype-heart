@@ -2,6 +2,7 @@ package aclobjectmanager
 
 import (
 	"context"
+	"encoding/base64"
 	"fmt"
 	"slices"
 	"sync"
@@ -17,12 +18,18 @@ import (
 	"go.uber.org/zap"
 
 	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
+	"github.com/anyproto/anytype-heart/pkg/lib/database"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
+	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space/clientspace"
 	"github.com/anyproto/anytype-heart/space/internal/components/aclnotifications"
+	"github.com/anyproto/anytype-heart/space/internal/components/dependencies"
 	"github.com/anyproto/anytype-heart/space/internal/components/participantwatcher"
 	"github.com/anyproto/anytype-heart/space/internal/components/spaceloader"
 	"github.com/anyproto/anytype-heart/space/internal/components/spacestatus"
 	"github.com/anyproto/anytype-heart/space/spaceinfo"
+	"github.com/anyproto/anytype-heart/space/techspace"
 )
 
 const CName = "common.components.aclobjectmanager"
@@ -52,6 +59,9 @@ type aclObjectManager struct {
 	statService         debugstat.StatService
 	started             bool
 	notificationService aclnotifications.AclNotification
+	objectStore         objectstore.ObjectStore
+	techSpace           techspace.TechSpace
+	identityService     dependencies.IdentityService
 	spaceLoaderListener SpaceLoaderListener
 	participantWatcher  participantwatcher.ParticipantWatcher
 	accountService      accountservice.Service
@@ -100,6 +110,9 @@ func (a *aclObjectManager) Init(ap *app.App) (err error) {
 	a.accountService = app.MustComponent[accountservice.Service](ap)
 	a.participantWatcher = app.MustComponent[participantwatcher.ParticipantWatcher](ap)
 	a.notificationService = app.MustComponent[aclnotifications.AclNotification](ap)
+	a.objectStore = app.MustComponent[objectstore.ObjectStore](ap)
+	a.techSpace = app.MustComponent[techspace.TechSpace](ap)
+	a.identityService = app.MustComponent[dependencies.IdentityService](ap)
 	a.spaceLoaderListener = app.MustComponent[SpaceLoaderListener](ap)
 	a.statService, _ = ap.Component(debugstat.CName).(debugstat.StatService)
 	if a.statService == nil {
@@ -185,21 +198,29 @@ func (a *aclObjectManager) processAcl() (err error) {
 		return
 	}
 	a.mx.Unlock()
-	decrypt := func(key crypto.PubKey) ([]byte, error) {
-		if a.ownerMetadata != nil && a.guestKey == nil {
-			return a.ownerMetadata, nil
-		}
-		return aclState.GetMetadata(key, true)
-	}
-	fmt.Printf("-- afterDecrypt.\n")
+
 	states := aclState.CurrentAccounts()
 	// for tests make sure that owner comes first
 	sortStates(states)
-	// decrypt all metadata
-	states, err = decryptAll(states, decrypt)
-	if err != nil {
-		return
+
+	// TODO: instead of ifs everywhere, move it to separate processOneToOneAcl
+	if !aclState.IsOneToOne() {
+		decrypt := func(key crypto.PubKey) ([]byte, error) {
+			if a.ownerMetadata != nil && a.guestKey == nil {
+				return a.ownerMetadata, nil
+			}
+
+			return aclState.GetMetadata(key, true)
+		}
+
+		// decrypt all metadata
+		states, err = decryptAll(states, decrypt)
+		if err != nil {
+			return
+		}
+
 	}
+
 	for _, st := range states {
 		if st.Permissions.IsOwner() {
 			err = a.status.SetOwner(st.PubKey.Account(), createdDate)
@@ -210,7 +231,6 @@ func (a *aclObjectManager) processAcl() (err error) {
 	}
 
 	statusAclHeadId := a.status.GetLatestAclHeadId()
-	fmt.Printf("-- statusAclHeadId: %s\n", statusAclHeadId)
 	upToDate = statusAclHeadId == "" || acl.HasHead(statusAclHeadId)
 	if a.guestKey != nil {
 		el, res := lo.Find(states, func(item list.AccountState) bool {
@@ -230,8 +250,13 @@ func (a *aclObjectManager) processAcl() (err error) {
 			return item.PubKey.Account() != a.guestKey.GetPublic().Account()
 		})
 	}
-	// TODO: onetoone: this errors on WatchParticipants in
-	err = a.processStates(states, upToDate, aclState.Identity())
+
+	if aclState.IsOneToOne() {
+		err = a.processOneToOneStates(states, upToDate, aclState.Identity())
+	} else {
+		err = a.processStates(states, upToDate, aclState.Identity())
+	}
+
 	if err != nil {
 		return
 	}
@@ -306,7 +331,88 @@ func (a *aclObjectManager) findJoinedDate(acl syncacl.SyncAcl) (int64, error) {
 	return joinedRecord.Timestamp, nil
 }
 
+func (a *aclObjectManager) processOneToOneStates(states []list.AccountState, upToDate bool, myIdentity crypto.PubKey) (err error) {
+	// TODO: put RequestMetadata here from spaceview
+	fmt.Printf("-- processStates for onetoone\n")
+
+	// TODO: do it in the first if
+	fmt.Printf("-- quering spaceview: %s, techspaceid: %s\n", a.sp.Id(), a.techSpace.TechSpaceId())
+	records, err := a.objectStore.SpaceIndex(a.techSpace.TechSpaceId()).Query(database.Query{
+		// -- aclstate onetoone techspace records:: []database.Record(nil)
+		// aclstate onetoone: techspace has more than one record: 0
+		// panic: runtime error: index out of range [0] with length 0
+		// TODO:
+		// check techspace via any-store-cli
+		Filters: []database.FilterRequest{
+			{
+				RelationKey: bundle.RelationKeyTargetSpaceId,
+				Condition:   model.BlockContentDataviewFilter_Equal,
+				Value:       domain.String(a.sp.Id()),
+			},
+			{
+				RelationKey: bundle.RelationKeyResolvedLayout,
+				Condition:   model.BlockContentDataviewFilter_Equal,
+				Value:       domain.Int64(int64(model.ObjectType_spaceView)),
+			},
+		},
+	})
+	fmt.Printf("-- aclstate onetoone techspace records:: %#v\n", records)
+	if err != nil {
+		return fmt.Errorf("onetoone states: failed to query type object: %w", err)
+	}
+	if len(records) != 1 {
+		fmt.Printf("aclstate onetoone: techspace has more than one record: %d\n", len(records))
+	}
+	requestMetadataStr := records[0].Details.GetString(bundle.RelationKeyOneToOneRequestMetadata)
+	fmt.Printf("-- onetone requestMetadata:: %s\n", requestMetadataStr)
+
+	myPubKey := a.accountService.Account().SignKey.GetPublic()
+	for _, st := range states {
+		// if my, than my requestmetadata,
+		// otherwise from spaceview (for bob)
+		if st.PubKey.Equals(myPubKey) {
+			// my request metadata..? how to get it?
+			// maybe also from identity repo?
+			// TODO: i put this case into WatchParticipant because they can handle it identityService
+			//       we can add identityService here as well to have it in one place
+
+		} else {
+			// otherwise it is bob:
+			requestMetadataBytes, rerr := base64.StdEncoding.DecodeString(requestMetadataStr)
+			if rerr != nil {
+				return fmt.Errorf("failed to decode bob onetoone RequestMetadata: %w", rerr)
+			}
+
+			st.RequestMetadata = requestMetadataBytes
+		}
+	}
+	//
+	for _, state := range states {
+		if state.PubKey.Equals(myIdentity) {
+			err = a.status.SetMyParticipantStatus(domain.ConvertAclStatus(state.Status))
+			if err != nil {
+				log.Warn("failed to set my participant status", zap.Error(err))
+			}
+			if state.Permissions.NoPermissions() && upToDate {
+				return a.status.SetPersistentStatus(spaceinfo.AccountStatusDeleted)
+			}
+		}
+		err = a.participantWatcher.UpdateParticipantFromAclState(a.ctx, a.sp, state)
+		if err != nil {
+			return err
+		}
+		err = a.participantWatcher.WatchParticipant(a.ctx, a.sp, state)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 func (a *aclObjectManager) processStates(states []list.AccountState, upToDate bool, myIdentity crypto.PubKey) (err error) {
+	// if onetoneinfo != nil
+
+	// else
 	for _, state := range states {
 		if state.PubKey.Equals(myIdentity) {
 			err = a.status.SetMyParticipantStatus(domain.ConvertAclStatus(state.Status))

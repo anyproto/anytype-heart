@@ -14,9 +14,14 @@ import (
 )
 
 func (s *service) createOneToOne(ctx context.Context, description *spaceinfo.SpaceDescription) (sp clientspace.Space, err error) {
-	log.Warn("-- createOneToOne")
+	var bobAccountAddress string
+	if description.OneToOneParticipantIdentity != "" {
+		bobAccountAddress = description.OneToOneParticipantIdentity
+	} else {
+		// for testing
+		bobAccountAddress = loadenv.Get("BOB_ACCOUNT")
+	}
 
-	bobAccountAddress := loadenv.Get("BOB_ACCOUNT")
 	fmt.Printf("-- bob: %s\n", bobAccountAddress)
 
 	bPk, err := crypto.DecodeAccountAddress(bobAccountAddress)
@@ -35,7 +40,12 @@ func (s *service) createOneToOne(ctx context.Context, description *spaceinfo.Spa
 	}
 	s.mu.Unlock()
 
-	ctrl, err := s.factory.CreateOneToOneSpace(ctx, coreSpace.Id())
+	bobProfile := s.identityService.WaitProfile(ctx, bobAccountAddress)
+	participantData := spaceinfo.OneToOneParticipantData{
+		Identity:           bPk,
+		RequestMetadataKey: bobProfile.RequestMetadataKey,
+	}
+	ctrl, err := s.factory.CreateOneToOneSpace(ctx, coreSpace.Id(), participantData)
 	if err != nil {
 		s.mu.Lock()
 		close(wait)
@@ -75,11 +85,7 @@ func (s *service) createOneToOne(ctx context.Context, description *spaceinfo.Spa
 		},
 	}
 
-	// - InboxAddMessage for bob
-	log.Info("--inbox: add message")
 	s.inboxClient.InboxAddMessage(ctx, bPk, msg)
-
-	fmt.Printf("-- ctrl wait load ret: \n")
 	return
 
 }

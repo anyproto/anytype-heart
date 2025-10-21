@@ -4,6 +4,7 @@ import (
 	"context"
 	"sync"
 
+	"github.com/anyproto/any-sync/accountservice"
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/app/logger"
 	"github.com/anyproto/any-sync/commonspace/object/acl/aclrecordproto"
@@ -41,6 +42,7 @@ var _ ParticipantWatcher = (*participantWatcher)(nil)
 
 type participantWatcher struct {
 	identityService   dependencies.IdentityService
+	accountService    accountservice.Service
 	status            spacestatus.SpaceStatus
 	mx                sync.Mutex
 	addedParticipants map[string]struct{}
@@ -57,14 +59,36 @@ func (p *participantWatcher) WatchParticipant(ctx context.Context, space clients
 	defer p.mx.Unlock()
 	// TODO: onetoone: we need to put sym key from both parties here, somehow
 	// most likely, it should come with qrcode info
-	key, err := getSymKey(state.RequestMetadata)
-	if err != nil {
-		return
-	}
+
 	accKey := state.PubKey.Account()
 	if _, exists := p.addedParticipants[state.PubKey.Account()]; exists {
 		return
 	}
+	var key crypto.SymKey
+
+	if space.IsOneToOne() {
+		myPubKey := p.accountService.Account().SignKey.GetPublic()
+		// in case of onetoone, we need to register bob identity
+		// but myIdentiy already exists
+		if state.PubKey.Equals(myPubKey) {
+			idWithProfileKey := p.identityService.WaitProfile(ctx, myPubKey.Account())
+			key = idWithProfileKey.RequestMetadataKey
+		} else {
+			// otherwise we already got it in aclobjectmanager.processOneToOneStates()
+			key, err = crypto.UnmarshallAESKeyProto(state.RequestMetadata)
+			if err != nil {
+				return
+			}
+
+		}
+	} else {
+		key, err = getSymKey(state.RequestMetadata)
+		if err != nil {
+			return
+		}
+
+	}
+
 	err = p.identityService.RegisterIdentity(space.Id(), state.PubKey.Account(), key, func(identity string, profile *model.IdentityProfile) {
 		err := p.updateParticipantFromIdentity(ctx, space, identity, profile)
 		if err != nil {
@@ -82,6 +106,7 @@ func (p *participantWatcher) WatchParticipant(ctx context.Context, space clients
 func (p *participantWatcher) Init(a *app.App) (err error) {
 	p.identityService = app.MustComponent[dependencies.IdentityService](a)
 	p.status = app.MustComponent[spacestatus.SpaceStatus](a)
+	p.accountService = app.MustComponent[accountservice.Service](a)
 	return nil
 }
 
