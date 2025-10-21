@@ -271,7 +271,18 @@ func (s *storeObject) onUpdate() {
 
 	s.subscription.Lock()
 	defer s.subscription.Unlock()
+
 	s.subscription.Flush()
+
+	last, ok := s.subscription.GetLastMessage()
+	if ok {
+		st := s.NewState()
+		st.SetDetailAndBundledRelation(bundle.RelationKeyLastMessageDate, domain.Int64(last.CreatedAt))
+		err = s.Apply(st, smartblock.NotPushChanges)
+		if err != nil {
+			log.Error("onUpdate: update last message date", zap.Error(err))
+		}
+	}
 }
 
 func (s *storeObject) GetMessageById(ctx context.Context, id string) (*chatmodel.Message, error) {

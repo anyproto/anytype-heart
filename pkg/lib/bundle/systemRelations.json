@@ -101,5 +101,6 @@
   "defaultViewType",
   "defaultTypeId",
   "resolvedLayout",
-  "pluralName"
+  "pluralName",
+  "lastMessageDate"
 ]
