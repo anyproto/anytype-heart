@@ -57,9 +57,6 @@ func New() ParticipantWatcher {
 func (p *participantWatcher) WatchParticipant(ctx context.Context, space clientspace.Space, state list.AccountState) (err error) {
 	p.mx.Lock()
 	defer p.mx.Unlock()
-	// TODO: onetoone: we need to put sym key from both parties here, somehow
-	// most likely, it should come with qrcode info
-
 	accKey := state.PubKey.Account()
 	if _, exists := p.addedParticipants[state.PubKey.Account()]; exists {
 		return

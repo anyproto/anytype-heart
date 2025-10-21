@@ -367,7 +367,8 @@ func (a *aclObjectManager) processOneToOneStates(states []list.AccountState, upT
 	fmt.Printf("-- onetone requestMetadata:: %s\n", requestMetadataStr)
 
 	myPubKey := a.accountService.Account().SignKey.GetPublic()
-	for _, st := range states {
+	for i := range states {
+		st := &states[i]
 		// if my, than my requestmetadata,
 		// otherwise from spaceview (for bob)
 		if st.PubKey.Equals(myPubKey) {
@@ -382,11 +383,10 @@ func (a *aclObjectManager) processOneToOneStates(states []list.AccountState, upT
 			if rerr != nil {
 				return fmt.Errorf("failed to decode bob onetoone RequestMetadata: %w", rerr)
 			}
-
 			st.RequestMetadata = requestMetadataBytes
 		}
 	}
-	//
+
 	for _, state := range states {
 		if state.PubKey.Equals(myIdentity) {
 			err = a.status.SetMyParticipantStatus(domain.ConvertAclStatus(state.Status))
