@@ -65,10 +65,6 @@ func (srv *Server) NewRouter(mw apicore.ClientCommands, eventService apicore.Eve
 	// Auth routes (no authentication required)
 	authGroup := router.Group("/v1")
 	{
-		// TO BE DEPRECATED
-		authGroup.POST("/auth/display_code", handler.DisplayCodeHandler(srv.service))
-		authGroup.POST("/auth/token", handler.TokenHandler(srv.service))
-		// UPDATED ROUTES
 		authGroup.POST("/auth/challenges", handler.CreateChallengeHandler(srv.service))
 		authGroup.POST("/auth/api_keys", handler.CreateApiKeyHandler(srv.service))
 	}
