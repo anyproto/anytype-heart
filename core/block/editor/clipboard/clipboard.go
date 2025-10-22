@@ -454,7 +454,6 @@ func (cb *clipboard) pasteAny(
 			missingRelationKeys = append(missingRelationKeys, domain.RelationKey(r.Key))
 		}
 	}
-	s.AddRelationKeys(missingRelationKeys...)
 
 	// TODO: GO-4284 remove
 	if len(missingRelationKeys) > 0 {

@@ -159,16 +159,6 @@ func (s *State) SetLocalDetail(key domain.RelationKey, value domain.Value) {
 	s.localDetails.Set(key, value)
 }
 
-// AddRelationKeys adds details with null value, if no detail corresponding to key was presented
-func (s *State) AddRelationKeys(keys ...domain.RelationKey) {
-	for _, key := range keys {
-		if s.HasRelation(key) {
-			continue
-		}
-		s.SetDetail(key, domain.Null())
-	}
-}
-
 // details removers
 
 func (s *State) RemoveRelation(keys ...domain.RelationKey) {

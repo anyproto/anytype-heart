@@ -206,37 +206,3 @@ func TestState_AllRelationKeys(t *testing.T) {
 		assert.Len(t, keys, 5)
 	})
 }
-
-func TestState_AddRelationKeys(t *testing.T) {
-	t.Run("add new keys", func(t *testing.T) {
-		// given
-		st := NewDoc("root", nil).NewState()
-		st.AddDetails(domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
-			// details
-			bundle.RelationKeyCoverType: domain.Int64(1),
-			bundle.RelationKeyName:      domain.String("name"),
-			bundle.RelationKeyAssignee:  domain.String("assignee"),
-			// local details
-			bundle.RelationKeyResolvedLayout: domain.Int64(model.ObjectType_todo),
-			bundle.RelationKeyType:           domain.String(bundle.TypeKeyTask.URL()),
-		}))
-		require.Equal(t, 3, st.details.Len())
-		require.Equal(t, 2, st.localDetails.Len())
-
-		// when
-		st.AddRelationKeys(
-			bundle.RelationKeyPicture, // new detail
-			bundle.RelationKeyName,    // existing detail
-			bundle.RelationKeySpaceId, // new local detail
-			bundle.RelationKeyType,    // existing local detail
-		)
-
-		// then
-		assert.Equal(t, 4, st.details.Len())
-		assert.Equal(t, 3, st.localDetails.Len())
-		assert.Equal(t, domain.Null(), st.details.Get(bundle.RelationKeyPicture))
-		assert.Equal(t, domain.String("name"), st.details.Get(bundle.RelationKeyName))
-		assert.Equal(t, domain.Null(), st.localDetails.Get(bundle.RelationKeySpaceId))
-		assert.Equal(t, domain.Int64(model.ObjectType_todo), st.localDetails.Get(bundle.RelationKeyResolvedLayout))
-	})
-}

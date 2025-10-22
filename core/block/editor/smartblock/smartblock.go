@@ -327,16 +327,14 @@ func (sb *smartBlock) Init(ctx *InitContext) (err error) {
 		ctx.State.SetParent(sb.Doc.(*state.State))
 	}
 
+	// TODO: GO-4284 remove
 	injectRequiredRelationLinks := func(s *state.State) {
 		s.AddBundledRelationLinks(bundle.RequiredInternalRelations...)
 		s.AddBundledRelationLinks(ctx.RequiredInternalRelationKeys...)
-		s.AddRelationKeys(bundle.RequiredInternalRelations...)
-		s.AddRelationKeys(ctx.RequiredInternalRelationKeys...)
 	}
 	injectRequiredRelationLinks(ctx.State)
 	injectRequiredRelationLinks(ctx.State.ParentState())
 
-	ctx.State.AddRelationKeys(ctx.RelationKeys...)
 	// TODO: GO-4284 remove
 	if err = sb.AddRelationLinksToState(ctx.State, ctx.RelationKeys...); err != nil {
 		return

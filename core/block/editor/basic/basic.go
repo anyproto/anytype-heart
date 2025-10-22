@@ -426,7 +426,6 @@ func (bs *basic) AddRelationAndSet(ctx session.Context, req pb.RpcBlockRelationA
 	} else {
 		return fmt.Errorf("unexpected block type: %T (want relation)", b)
 	}
-	s.AddRelationKeys(domain.RelationKey(rel.Key))
 	s.AddRelationLinks(rel.RelationLink())
 	return bs.Apply(s)
 }
@@ -446,7 +445,6 @@ func (bs *basic) FeaturedRelationAdd(ctx session.Context, relations ...string) (
 			frc = append(frc, r)
 			key := domain.RelationKey(r)
 			if !s.HasRelation(key) {
-				s.AddRelationKeys(key)
 				// TODO: GO-4284 remove
 				err = bs.addRelationLink(s, key)
 				if err != nil {
