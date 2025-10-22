@@ -32312,6 +32312,7 @@ Used to decode block meta only, without the content itself
 | userEmail | [string](#string) |  | if the email was verified by the user or set during the checkout - it will be here |
 | subscribeToNewsletter | [bool](#bool) |  |  |
 | isMonthly | [bool](#bool) |  | for tiers that offer yearly/monthly switch |
+| teamOwner | [string](#string) |  |  |
 
 
 
@@ -32345,6 +32346,8 @@ Used to decode block meta only, without the content itself
 | androidManageUrl | [string](#string) |  |  |
 | offer | [string](#string) |  | &#34;limited offer&#34; or somehing like that |
 | priceStripeUsdCentsMonthly | [uint32](#uint32) |  | version 2 only fields (specify version in GetTiersRequest request first): if the tier is yearly (periodType above is PeriodTypeYears) - then also we provide a monthly price here |
+| isIntroPlan | [bool](#bool) |  |  |
+| isUpgradeable | [bool](#bool) |  |  |
 
 
 

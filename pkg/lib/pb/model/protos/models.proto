@@ -1346,6 +1346,8 @@ message Membership {
     bool subscribeToNewsletter = 10;
     // for tiers that offer yearly/monthly switch
     bool isMonthly = 11;
+
+    string teamOwner = 12;
 }
 
 message MembershipTierData {
@@ -1401,6 +1403,10 @@ message MembershipTierData {
 // version 2 only fields (specify version in GetTiersRequest request first):
     // if the tier is yearly (periodType above is PeriodTypeYears) - then also we provide a monthly price here
     uint32 priceStripeUsdCentsMonthly = 21;
+
+    bool isIntroPlan = 22;
+
+    bool isUpgradeable = 23;
 }
 
 enum DeviceNetworkType {
