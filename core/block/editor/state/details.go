@@ -165,7 +165,6 @@ func (s *State) AddRelationKeys(keys ...domain.RelationKey) {
 		if s.HasRelation(key) {
 			continue
 		}
-		s.SetDetail(key, domain.Null())
 	}
 }
 
