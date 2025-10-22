@@ -40,10 +40,8 @@ func TestParticipant_ModifyProfileDetails(t *testing.T) {
 	details.Set(bundle.RelationKeyIdentityProfileLink, domain.String("profile"))
 	details.Delete(bundle.RelationKeyId)
 	participantDetails := fx.CombinedDetails()
-	participantRelationLinks := fx.GetRelationLinks()
 	for key, _ := range details.Iterate() {
 		require.True(t, details.Get(key).Equal(participantDetails.Get(key)))
-		require.True(t, participantRelationLinks.Has(key.String()))
 	}
 }
 
@@ -73,10 +71,8 @@ func TestParticipant_ModifyParticipantAclState(t *testing.T) {
 		bundle.RelationKeyIsHiddenDiscovery:      domain.Bool(false),
 	})
 	participantDetails := fx.CombinedDetails()
-	participantRelationLinks := fx.GetRelationLinks()
 	for key, _ := range details.Iterate() {
 		require.True(t, details.Get(key).Equal(participantDetails.Get(key)))
-		require.True(t, participantRelationLinks.Has(key.String()))
 	}
 }
 
@@ -103,10 +99,8 @@ func TestParticipant_ModifyIdentityDetails(t *testing.T) {
 		bundle.RelationKeyGlobalName:  domain.String("global"),
 	})
 	participantDetails := fx.CombinedDetails()
-	participantRelationLinks := fx.GetRelationLinks()
 	for key, _ := range details.Iterate() {
 		require.True(t, details.Get(key).Equal(participantDetails.Get(key)))
-		require.True(t, participantRelationLinks.Has(key.String()))
 	}
 }
 

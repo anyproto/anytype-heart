@@ -249,6 +249,7 @@ func (bs *basic) validateSpecialCases(st *state.State, detail domain.Detail) err
 	return nil
 }
 
+// TODO: GO-4284 remove
 func (bs *basic) addRelationLink(st *state.State, relationKey domain.RelationKey) error {
 	relLink, err := bs.objectStore.GetRelationLink(relationKey.String())
 	if err != nil || relLink == nil {

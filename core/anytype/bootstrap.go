@@ -90,6 +90,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/publish"
 	"github.com/anyproto/anytype-heart/core/pushnotification"
 	"github.com/anyproto/anytype-heart/core/pushnotification/pushclient"
+	"github.com/anyproto/anytype-heart/core/relationutils/formatfetcher"
 	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/core/subscription"
 	"github.com/anyproto/anytype-heart/core/subscription/crossspacesub"
@@ -229,6 +230,7 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(collection.New()).
 		Register(subscription.New()).
 		Register(crossspacesub.New()).
+		Register(formatfetcher.New()).
 		Register(nodeconfsource.New()).
 		Register(nodeconfstore.New()).
 		Register(nodeconf.New()).
