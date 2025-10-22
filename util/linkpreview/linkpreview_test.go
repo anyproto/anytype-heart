@@ -8,6 +8,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/microcosm-cc/bluemonday"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -854,4 +855,9 @@ func TestReplaceGenericTitle(t *testing.T) {
 		// then
 		assert.Equal(t, "Final Good Title", preview.Title)
 	})
+}
+
+func TestBlue(t *testing.T) {
+	p := bluemonday.NewPolicy()
+	assert.NotNilf(t, p, "bluemonday.Policy")
 }
