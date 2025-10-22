@@ -399,7 +399,8 @@ func (s *service) fetchTiers(ctx context.Context) ([]*model.MembershipTierData, 
 	// Make network request
 	bsr := proto.GetTiersRequest{
 		OwnerAnyId: s.wallet.Account().SignKey.GetPublic().Account(),
-		Locale:     "", // Use default locale for background refresh
+		Locale:     "",    // Use default locale for background refresh
+		Version:    "2.0", // Use default (new) version
 	}
 
 	payload, err := bsr.MarshalVT()

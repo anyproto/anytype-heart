@@ -128,5 +128,6 @@ func convertMembershipData(src *paymentserviceproto.GetSubscriptionResponse) *mo
 	out.UserEmail = src.UserEmail
 	out.SubscribeToNewsletter = src.SubscribeToNewsletter
 	out.NsName, out.NsNameType = nameservice.FullNameToNsName(src.RequestedAnyName)
+	out.IsMonthly = src.IsMonthly
 	return out
 }
