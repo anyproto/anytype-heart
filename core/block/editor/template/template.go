@@ -80,9 +80,9 @@ var WithNoDuplicateLinks = func() StateTransformer {
 	}
 }
 
+// TODO: GO-4284 remove
 var WithRelations = func(keys []domain.RelationKey) StateTransformer {
 	return func(s *state.State) {
-		s.AddRelationKeys(keys...)
 		s.AddBundledRelationLinks(keys...)
 	}
 }
@@ -600,7 +600,7 @@ var WithBookmarkBlocks = func(s *state.State) {
 
 	for _, k := range bookmarkRelationKeys {
 		if !s.HasRelation(domain.RelationKey(k)) {
-			s.AddRelationKeys(domain.RelationKey(k))
+			// TODO: GO-4284 remove
 			s.AddBundledRelationLinks(domain.RelationKey(k))
 		}
 	}

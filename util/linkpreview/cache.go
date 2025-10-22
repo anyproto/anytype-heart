@@ -22,8 +22,12 @@ type cache struct {
 	cache *lru.Cache[string, model.LinkPreview]
 }
 
-func (c *cache) Init(_ *app.App) (err error) {
+func (c *cache) Init(a *app.App) (err error) {
 	c.lp = New()
+	err = c.lp.Init(a)
+	if err != nil {
+		return
+	}
 	c.cache, err = lru.New[string, model.LinkPreview](maxCacheEntries)
 	return
 }
