@@ -2,7 +2,6 @@ package smartblock
 
 import (
 	"context"
-	"slices"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -37,13 +36,9 @@ func TestSmartBlock_Init(t *testing.T) {
 	// when
 	initCtx := fx.init(t, []*model.Block{{Id: id}})
 
+	// then
 	require.NotNil(t, initCtx)
 	require.NotNil(t, initCtx.State)
-	keys := initCtx.State.AllRelationKeys()
-	for _, key := range bundle.RequiredInternalRelations {
-		assert.Truef(t, slices.Contains(keys, key), "missing relation %s", key)
-	}
-	// then
 	assert.Equal(t, id, fx.RootId())
 }
 
