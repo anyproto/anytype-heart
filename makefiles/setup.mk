@@ -33,13 +33,4 @@ setup-protoc-go:
 	go build -o deps github.com/gogo/protobuf/protoc-gen-gogofast
 	go build -o deps github.com/pseudomuto/protoc-gen-doc/cmd/protoc-gen-doc
 
-setup-protoc-jsweb:
-	@echo 'Installing grpc-web plugin...'
-	@rm -rf deps/grpc-web
-	@git clone --depth 1 --branch 1.4.2 http://github.com/grpc/grpc-web deps/grpc-web
-	git apply ./clientlibrary/jsaddon/grpcweb_mac.patch
-	@[ -d "/opt/homebrew" ] && PREFIX="/opt/homebrew" $(MAKE) -C deps/grpc-web plugin || $(MAKE) -C deps/grpc-web plugin
-	mv deps/grpc-web/javascript/net/grpc/web/generator/protoc-gen-grpc-web deps/protoc-gen-grpc-web
-	@rm -rf deps/grpc-web
-
-setup-protoc: setup-protoc-go setup-protoc-jsweb
+setup-protoc: setup-protoc-go
