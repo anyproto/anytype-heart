@@ -84,3 +84,24 @@ func (mw *Middleware) PushNotificationAddMentionIds(cctx context.Context, req *p
 	}
 	return response(pb.RpcPushNotificationAddMentionIdsResponseError_NULL, nil)
 }
+
+func (mw *Middleware) PushNotificationAddAllIds(cctx context.Context, req *pb.RpcPushNotificationAddAllIdsRequest) *pb.RpcPushNotificationAddAllIdsResponse {
+	ctx := mw.newContext(cctx)
+	response := func(code pb.RpcPushNotificationAddAllIdsResponseErrorCode, err error) *pb.RpcPushNotificationAddAllIdsResponse {
+		m := &pb.RpcPushNotificationAddAllIdsResponse{
+			Error: &pb.RpcPushNotificationAddAllIdsResponseError{Code: code},
+			Event: mw.getResponseEvent(ctx),
+		}
+		if err != nil {
+			m.Error.Description = getErrorDescription(err)
+		}
+		return m
+	}
+	err := mustService[space.Service](mw).TechSpace().DoSpaceView(cctx, req.SpaceId, func(spaceView techspace.SpaceView) error {
+		return spaceView.AddPushNotificationAllIds(ctx, req.ChatIds)
+	})
+	if err != nil {
+		return response(pb.RpcPushNotificationAddAllIdsResponseError_UNKNOWN_ERROR, err)
+	}
+	return response(pb.RpcPushNotificationAddAllIdsResponseError_NULL, nil)
+}

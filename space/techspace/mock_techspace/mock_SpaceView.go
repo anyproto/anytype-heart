@@ -30,6 +30,53 @@ func (_m *MockSpaceView) EXPECT() *MockSpaceView_Expecter {
 	return &MockSpaceView_Expecter{mock: &_m.Mock}
 }
 
+// AddPushNotificationAllIds provides a mock function with given fields: ctx, allIds
+func (_m *MockSpaceView) AddPushNotificationAllIds(ctx session.Context, allIds []string) error {
+	ret := _m.Called(ctx, allIds)
+
+	if len(ret) == 0 {
+		panic("no return value specified for AddPushNotificationAllIds")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(session.Context, []string) error); ok {
+		r0 = rf(ctx, allIds)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// MockSpaceView_AddPushNotificationAllIds_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'AddPushNotificationAllIds'
+type MockSpaceView_AddPushNotificationAllIds_Call struct {
+	*mock.Call
+}
+
+// AddPushNotificationAllIds is a helper method to define mock.On call
+//   - ctx session.Context
+//   - allIds []string
+func (_e *MockSpaceView_Expecter) AddPushNotificationAllIds(ctx interface{}, allIds interface{}) *MockSpaceView_AddPushNotificationAllIds_Call {
+	return &MockSpaceView_AddPushNotificationAllIds_Call{Call: _e.mock.On("AddPushNotificationAllIds", ctx, allIds)}
+}
+
+func (_c *MockSpaceView_AddPushNotificationAllIds_Call) Run(run func(ctx session.Context, allIds []string)) *MockSpaceView_AddPushNotificationAllIds_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(session.Context), args[1].([]string))
+	})
+	return _c
+}
+
+func (_c *MockSpaceView_AddPushNotificationAllIds_Call) Return(_a0 error) *MockSpaceView_AddPushNotificationAllIds_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockSpaceView_AddPushNotificationAllIds_Call) RunAndReturn(run func(session.Context, []string) error) *MockSpaceView_AddPushNotificationAllIds_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // AddPushNotificationMentionIds provides a mock function with given fields: ctx, mentionIds
 func (_m *MockSpaceView) AddPushNotificationMentionIds(ctx session.Context, mentionIds []string) error {
 	ret := _m.Called(ctx, mentionIds)
