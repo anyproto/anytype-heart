@@ -11,6 +11,7 @@ import (
 
 	"github.com/anyproto/any-sync/util/crypto"
 	"github.com/anyproto/anytype-push-server/pushclient/pushapi"
+	"go.uber.org/zap"
 
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -111,7 +112,11 @@ func (c *spaceTopicsCollection) deleteSpace(status spaceViewStatus) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	delete(c.statuses, status.spaceId)
-	rawSpaceKey, _ := status.spaceKey.GetPublic().Raw()
+	rawSpaceKey, err := status.spaceKey.GetPublic().Raw()
+	if err != nil {
+		log.Error("get raw space key", zap.Error(err))
+		return
+	}
 	c.remoteTopics = slices.DeleteFunc(c.remoteTopics, func(topic *pushapi.Topic) bool {
 		return bytes.Equal(topic.SpaceKey, rawSpaceKey)
 	})
