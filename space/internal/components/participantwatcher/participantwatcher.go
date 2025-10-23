@@ -2,6 +2,8 @@ package participantwatcher
 
 import (
 	"context"
+	"encoding/base64"
+	"fmt"
 	"sync"
 
 	"github.com/anyproto/any-sync/accountservice"
@@ -15,11 +17,15 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
+	"github.com/anyproto/anytype-heart/pkg/lib/database"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space/clientspace"
 	"github.com/anyproto/anytype-heart/space/internal/components/dependencies"
 	"github.com/anyproto/anytype-heart/space/internal/components/spacestatus"
 	"github.com/anyproto/anytype-heart/space/spaceinfo"
+	"github.com/anyproto/anytype-heart/space/techspace"
 )
 
 const CName = "common.components.participantwatcher"
@@ -43,6 +49,8 @@ var _ ParticipantWatcher = (*participantWatcher)(nil)
 type participantWatcher struct {
 	identityService   dependencies.IdentityService
 	accountService    accountservice.Service
+	objectStore       objectstore.ObjectStore
+	techSpace         techspace.TechSpace
 	status            spacestatus.SpaceStatus
 	mx                sync.Mutex
 	addedParticipants map[string]struct{}
@@ -54,6 +62,55 @@ func New() ParticipantWatcher {
 	}
 }
 
+func (p *participantWatcher) getOneToOneParticipantKey(space clientspace.Space) (crypto.SymKey, error) {
+	records, err := p.objectStore.SpaceIndex(p.techSpace.TechSpaceId()).Query(database.Query{
+		Filters: []database.FilterRequest{
+			{
+				RelationKey: bundle.RelationKeyTargetSpaceId,
+				Condition:   model.BlockContentDataviewFilter_Equal,
+				Value:       domain.String(space.Id()),
+			},
+			{
+				RelationKey: bundle.RelationKeyResolvedLayout,
+				Condition:   model.BlockContentDataviewFilter_Equal,
+				Value:       domain.Int64(int64(model.ObjectType_spaceView)),
+			},
+		},
+	})
+	if err != nil {
+		return nil, fmt.Errorf("onetoone: failed to query type object: %w", err)
+	}
+	if len(records) != 1 {
+		log.Error("onetoone: techspace has more than one record (we take the first)", zap.Int("recodrs", len(records)))
+	}
+	requestMetadataStr := records[0].Details.GetString(bundle.RelationKeyOneToOneRequestMetadata)
+	requestMetadataBytes, rerr := base64.StdEncoding.DecodeString(requestMetadataStr)
+	if rerr != nil {
+		return nil, fmt.Errorf("failed to decode bob onetoone RequestMetadata: %w", rerr)
+	}
+	key, err := crypto.UnmarshallAESKeyProto(requestMetadataBytes)
+	if err != nil {
+		return nil, fmt.Errorf("onetoone: failed to unmarshal requestMetadataBytes")
+	}
+
+	return key, nil
+}
+
+func (p *participantWatcher) getOneToOneKey(ctx context.Context, space clientspace.Space, state list.AccountState) (key crypto.SymKey, err error) {
+	myPubKey := p.accountService.Account().SignKey.GetPublic()
+	// it is either me or bob: we don't call WatchParticipant with owner state in aclobjectmanager
+	if state.PubKey.Equals(myPubKey) {
+		idWithProfileKey := p.identityService.WaitProfile(ctx, myPubKey.Account())
+		key = idWithProfileKey.RequestMetadataKey
+	} else {
+		key, err = p.getOneToOneParticipantKey(space)
+		if err != nil {
+			return
+		}
+	}
+	return
+
+}
 func (p *participantWatcher) WatchParticipant(ctx context.Context, space clientspace.Space, state list.AccountState) (err error) {
 	p.mx.Lock()
 	defer p.mx.Unlock()
@@ -64,26 +121,12 @@ func (p *participantWatcher) WatchParticipant(ctx context.Context, space clients
 	var key crypto.SymKey
 
 	if space.IsOneToOne() {
-		myPubKey := p.accountService.Account().SignKey.GetPublic()
-		// in case of onetoone, we need to register bob identity
-		// but myIdentiy already exists
-		if state.PubKey.Equals(myPubKey) {
-			idWithProfileKey := p.identityService.WaitProfile(ctx, myPubKey.Account())
-			key = idWithProfileKey.RequestMetadataKey
-		} else {
-			// otherwise we already got it in aclobjectmanager.processOneToOneStates()
-			key, err = crypto.UnmarshallAESKeyProto(state.RequestMetadata)
-			if err != nil {
-				return
-			}
-
-		}
+		key, err = p.getOneToOneKey(ctx, space, state)
 	} else {
 		key, err = getSymKey(state.RequestMetadata)
 		if err != nil {
 			return
 		}
-
 	}
 
 	err = p.identityService.RegisterIdentity(space.Id(), state.PubKey.Account(), key, func(identity string, profile *model.IdentityProfile) {
@@ -91,8 +134,7 @@ func (p *participantWatcher) WatchParticipant(ctx context.Context, space clients
 		if err != nil {
 			log.Error("error updating participant from identity", zap.Error(err))
 		}
-	},
-	)
+	})
 	if err != nil {
 		return err
 	}
@@ -104,6 +146,8 @@ func (p *participantWatcher) Init(a *app.App) (err error) {
 	p.identityService = app.MustComponent[dependencies.IdentityService](a)
 	p.status = app.MustComponent[spacestatus.SpaceStatus](a)
 	p.accountService = app.MustComponent[accountservice.Service](a)
+	p.objectStore = app.MustComponent[objectstore.ObjectStore](a)
+	p.techSpace = app.MustComponent[techspace.TechSpace](a)
 	return nil
 }
 
