@@ -228,7 +228,12 @@ func TestState_DepSmartIdsLinksAndRelations(t *testing.T) {
 		},
 	}
 	stateWithLinks.AddRelationLinks(relations...)
-	stateWithLinks.AddRelationKeys("relation1", "relation2", "relation3", "relation4")
+	stateWithLinks.AddDetails(domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+		"relation1": domain.String("image_with_cute_kitten"),
+		"relation2": domain.String("Important"),
+		"relation3": domain.String("TODO"),
+		"relation4": domain.String("Project"),
+	}))
 	fetcher := setupFetcher(t, relations)
 
 	t.Run("blocks option is turned on: get ids from blocks", func(t *testing.T) {

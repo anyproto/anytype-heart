@@ -9,7 +9,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-const RelationChecksum = "157932868aef38043362e0dc0a6394ac2600e2c5ce543e8005ea71095604a95c"
+const RelationChecksum = "1f3b466c03353a0e37849fad6575932d1053d7f0036aadd23819cff563cb2e4f"
 const (
 	RelationKeyTag                                   domain.RelationKey = "tag"
 	RelationKeyCamera                                domain.RelationKey = "camera"
@@ -182,6 +182,8 @@ const (
 	RelationKeyWidgetLimit                           domain.RelationKey = "widgetLimit"
 	RelationKeyWidgetViewId                          domain.RelationKey = "widgetViewId"
 	RelationKeyIsMainChat                            domain.RelationKey = "isMainChat"
+	RelationKeyLastMessageDate                       domain.RelationKey = "lastMessageDate"
+	RelationKeyFileAvailableOffline                  domain.RelationKey = "fileAvailableOffline"
 )
 
 var (
@@ -619,6 +621,20 @@ var (
 			Name:             "Featured Relations",
 			ObjectTypes:      []string{TypePrefix + "relation"},
 			ReadOnly:         false,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
+		RelationKeyFileAvailableOffline: {
+
+			DataSource:       model.Relation_local,
+			Description:      "Is file available offline",
+			Format:           model.RelationFormat_checkbox,
+			Hidden:           true,
+			Id:               "_brfileAvailableOffline",
+			Key:              "fileAvailableOffline",
+			MaxCount:         1,
+			Name:             "Is file available offline",
+			ReadOnly:         true,
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
 		},
@@ -1206,6 +1222,20 @@ var (
 			Key:              "lastChangeId",
 			MaxCount:         1,
 			Name:             "Last change ID of the object",
+			ReadOnly:         true,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
+		RelationKeyLastMessageDate: {
+
+			DataSource:       model.Relation_derived,
+			Description:      "Date of the last message in a chat",
+			Format:           model.RelationFormat_date,
+			Id:               "_brlastMessageDate",
+			IncludeTime:      true,
+			Key:              "lastMessageDate",
+			MaxCount:         1,
+			Name:             "Last message date",
 			ReadOnly:         true,
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,

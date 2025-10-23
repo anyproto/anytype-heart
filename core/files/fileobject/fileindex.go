@@ -273,7 +273,6 @@ func (ind *indexer) injectMetadataToState(ctx context.Context, st *state.State, 
 		keys = append(keys, k)
 	}
 	st.AddBundledRelationLinks(keys...)
-	st.AddRelationKeys(keys...)
 
 	details = prevDetails.Merge(details)
 	st.SetDetails(details)
