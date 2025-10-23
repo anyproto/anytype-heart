@@ -16,7 +16,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/anyproto/anytype-heart/core/files"
-	"github.com/anyproto/anytype-heart/core/files/fileobject/filecache/mock_filecache"
+	"github.com/anyproto/anytype-heart/core/files/filedownloader/mock_filedownloader"
 	"github.com/anyproto/anytype-heart/core/files/fileobject/mock_fileobject"
 	"github.com/anyproto/anytype-heart/core/files/mock_files"
 	"github.com/anyproto/anytype-heart/tests/testutil"
@@ -91,13 +91,13 @@ func newFixture(t *testing.T) *fixture {
 
 	fileService := mock_files.NewMockService(t)
 	fileObjectService := mock_fileobject.NewMockService(t)
-	fileCache := mock_filecache.NewMockService(t)
+	fileDownloader := mock_filedownloader.NewMockService(t)
 	gw := New().(*gateway)
 
 	ctx := context.Background()
 	a.Register(testutil.PrepareMock(ctx, a, fileService))
 	a.Register(testutil.PrepareMock(ctx, a, fileObjectService))
-	a.Register(testutil.PrepareMock(ctx, a, fileCache))
+	a.Register(testutil.PrepareMock(ctx, a, fileDownloader))
 	a.Register(gw)
 	err := a.Start(ctx)
 	assert.NoError(t, err)

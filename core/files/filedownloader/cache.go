@@ -1,4 +1,4 @@
-package filecache
+package filedownloader
 
 import (
 	"context"
@@ -6,29 +6,15 @@ import (
 	"sync"
 	"time"
 
-	"github.com/anyproto/any-sync/app"
 	"go.uber.org/zap"
 
 	"github.com/anyproto/anytype-heart/core/domain"
-	"github.com/anyproto/anytype-heart/core/files/filedownloader"
-	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 )
 
-const CName = "core.filecache"
+type cacheWarmer struct {
+	ctx context.Context
 
-var log = logging.Logger(CName).Desugar()
-
-type Service interface {
-	CacheFile(ctx context.Context, spaceId string, fileId domain.FileId, blocksLimit int)
-
-	app.ComponentRunnable
-}
-
-type service struct {
-	ctx       context.Context
-	ctxCancel context.CancelFunc
-
-	fileDownloaderService filedownloader.Service
+	downloadFn func(ctx context.Context, spaceId string, cid domain.FileId) error
 
 	requestBufferSize int
 	timeout           time.Duration
@@ -37,64 +23,52 @@ type service struct {
 	queue *queue[warmupTask]
 }
 
-func New() Service {
-	return &service{
+func newCacheWarmer(ctx context.Context, downloadFn func(ctx context.Context, spaceId string, cid domain.FileId) error) (*cacheWarmer, error) {
+	w := &cacheWarmer{
+		ctx:               ctx,
+		downloadFn:        downloadFn,
 		requestBufferSize: 20,
 		timeout:           2 * time.Minute,
 		workersCount:      5,
 	}
-}
-
-func (s *service) Name() string {
-	return CName
-}
-
-func (s *service) Init(a *app.App) error {
-	s.ctx, s.ctxCancel = context.WithCancel(context.Background())
-
-	s.fileDownloaderService = app.MustComponent[filedownloader.Service](a)
-
-	var err error
-	s.queue, err = newQueue[warmupTask](s.requestBufferSize)
+	queue, err := newQueue[warmupTask](w.requestBufferSize)
 	if err != nil {
-		return fmt.Errorf("create queue: %w", err)
+		return nil, fmt.Errorf("create queue: %w", err)
 	}
-	s.queue.onCancel = func(task warmupTask) {
+	queue.onCancel = func(task warmupTask) {
 		task.ctxCancel()
 	}
-	return nil
+
+	return w, nil
 }
 
-func (s *service) Run(ctx context.Context) error {
+func (s *cacheWarmer) Run(ctx context.Context) error {
 	for range s.workersCount {
 		go s.runDownloader()
 	}
 	return nil
 }
 
-func (s *service) Close(ctx context.Context) error {
-	if s.ctxCancel != nil {
-		s.ctxCancel()
-	}
+func (s *cacheWarmer) Close(ctx context.Context) error {
 	s.queue.close()
 	return nil
 }
 
-func (s *service) runDownloader() {
+func (s *cacheWarmer) runDownloader() {
 	for {
 		task := s.queue.getNext()
 		if task == nil {
 			return
 		}
 
-		err := s.fileDownloaderService.DownloadToLocalStore(task.ctx, task.spaceId, task.cid)
+		err := s.downloadFn(task.ctx, task.spaceId, task.cid)
 		if err != nil {
 			log.Error("cache file", zap.Error(err))
 		}
 	}
 }
 
-func (s *service) CacheFile(ctx context.Context, spaceId string, fileId domain.FileId, blocksLimit int) {
+func (s *cacheWarmer) CacheFile(ctx context.Context, spaceId string, fileId domain.FileId, blocksLimit int) {
 	// Task will be canceled along with service context
 	// nolint: lostcancel
 	taskCtx, _ := context.WithTimeout(s.ctx, s.timeout)
@@ -118,12 +92,14 @@ type warmupTask struct {
 type queue[T any] struct {
 	cond sync.Cond
 
-	onCancel func(T)
-
 	closed bool
 	// tasks is LIFO circular buffer
-	tasks      []*T
+	tasks []*T
+	// currentIdx points at the current position in the circular buffer
 	currentIdx int
+
+	// onCancel is called when a task is removed from the circular buffer
+	onCancel func(T)
 }
 
 func newQueue[T any](maxSize int) (*queue[T], error) {

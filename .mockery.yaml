@@ -154,7 +154,7 @@ packages:
   github.com/anyproto/anytype-heart/core/files/fileobject:
     interfaces:
       Service:
-  github.com/anyproto/anytype-heart/core/files/fileobject/filecache:
+  github.com/anyproto/anytype-heart/core/files/filedownloader:
     interfaces:
       Service:
   github.com/anyproto/anytype-heart/core/files:

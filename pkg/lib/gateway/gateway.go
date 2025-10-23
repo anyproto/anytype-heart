@@ -21,8 +21,8 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/files"
+	"github.com/anyproto/anytype-heart/core/files/filedownloader"
 	"github.com/anyproto/anytype-heart/core/files/fileobject"
-	"github.com/anyproto/anytype-heart/core/files/fileobject/filecache"
 	"github.com/anyproto/anytype-heart/core/files/filestorage/rpcstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/util/constant"
@@ -56,7 +56,7 @@ type Gateway interface {
 type gateway struct {
 	fileService       files.Service
 	fileObjectService fileobject.Service
-	fileCacheService  filecache.Service
+	fileDownloader    filedownloader.Service
 	server            *http.Server
 	listener          net.Listener
 	handler           *http.ServeMux
@@ -87,7 +87,7 @@ func GatewayAddr() string {
 func (g *gateway) Init(a *app.App) (err error) {
 	g.fileService = app.MustComponent[files.Service](a)
 	g.fileObjectService = app.MustComponent[fileobject.Service](a)
-	g.fileCacheService = app.MustComponent[filecache.Service](a)
+	g.fileDownloader = app.MustComponent[filedownloader.Service](a)
 	g.addr = GatewayAddr()
 	log.Debugf("gateway.Init: %s", g.addr)
 	return nil
@@ -275,7 +275,7 @@ func (g *gateway) getFile(ctx context.Context, r *http.Request) (files.File, io.
 
 	preloadOriginal := r.URL.Query().Get("preloadOriginal") == "true"
 	if preloadOriginal && strings.HasPrefix(file.MimeType(), "video") {
-		g.fileCacheService.CacheFile(
+		g.fileDownloader.CacheFile(
 			r.Context(),
 			file.SpaceId(),
 			file.FileId(),
@@ -357,7 +357,7 @@ func (g *gateway) getImage(ctx context.Context, r *http.Request) (*getImageReade
 
 	preloadOriginal := r.URL.Query().Get("preloadOriginal") == "true"
 	if preloadOriginal && result.originalFile != nil && result.originalFile.Meta().Size < 10*1024*1024 {
-		g.fileCacheService.CacheFile(
+		g.fileDownloader.CacheFile(
 			r.Context(),
 			result.spaceId,
 			result.originalFile.FileId(),

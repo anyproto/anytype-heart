@@ -28,6 +28,7 @@ var log = logging.Logger(CName).Desugar()
 
 type Service interface {
 	SetEnabled(enabled bool, wifiOnly bool) error
+	CacheFile(ctx context.Context, spaceId string, fileId domain.FileId, blocksLimit int)
 	DownloadToLocalStore(ctx context.Context, spaceId string, cid domain.FileId) error
 	app.ComponentRunnable
 }
@@ -41,6 +42,7 @@ type service struct {
 	objectGetter         cache.ObjectGetter
 	config               *config.Config
 	networkState         device.NetworkState
+	cacheWarmer          *cacheWarmer
 
 	lock       sync.Mutex
 	isEnabled  bool
@@ -54,6 +56,42 @@ func New() Service {
 		ctx:       ctx,
 		ctxCancel: ctxCancel,
 	}
+}
+
+func (s *service) Name() string {
+	return CName
+}
+
+func (s *service) Init(a *app.App) error {
+	s.crossSpaceSubService = app.MustComponent[crossspacesub.Service](a)
+	s.objectGetter = app.MustComponent[cache.ObjectGetter](a)
+	commonFile := app.MustComponent[fileservice.FileService](a)
+	s.dagService = commonFile.DAGService()
+	s.config = app.MustComponent[*config.Config](a)
+	s.networkState = app.MustComponent[device.NetworkState](a)
+	s.networkState.RegisterHook(s.networkStateChanged)
+
+	var err error
+	s.cacheWarmer, err = newCacheWarmer(s.ctx, s.DownloadToLocalStore)
+	if err != nil {
+		return fmt.Errorf("new cache warmer: %w", err)
+	}
+	return nil
+}
+
+func (s *service) Run(ctx context.Context) error {
+	err := s.SetEnabled(s.config.AutoDownloadFiles, s.config.AutoDownloadFiles)
+	if err != nil {
+		log.Error("set enabled", zap.Error(err))
+	}
+	return nil
+}
+
+func (s *service) Close(ctx context.Context) error {
+	if s.ctxCancel != nil {
+		s.ctxCancel()
+	}
+	return nil
 }
 
 func (s *service) SetEnabled(enabled bool, wifiOnly bool) error {
@@ -86,6 +124,10 @@ func (s *service) setEnabled(enabled bool, wifiOnly bool) {
 	}
 }
 
+func (s *service) CacheFile(ctx context.Context, spaceId string, fileId domain.FileId, blocksLimit int) {
+	s.cacheWarmer.CacheFile(ctx, spaceId, fileId, blocksLimit)
+}
+
 func (s *service) networkStateChanged(networkState model.DeviceNetworkType) {
 	s.lock.Lock()
 	isEnabled := s.isEnabled
@@ -103,36 +145,6 @@ func (s *service) networkStateChanged(networkState model.DeviceNetworkType) {
 			s.setEnabled(true, wifiOnly)
 		}
 	}
-}
-
-func (s *service) Name() string {
-	return CName
-}
-
-func (s *service) Init(a *app.App) error {
-	s.crossSpaceSubService = app.MustComponent[crossspacesub.Service](a)
-	s.objectGetter = app.MustComponent[cache.ObjectGetter](a)
-	commonFile := app.MustComponent[fileservice.FileService](a)
-	s.dagService = commonFile.DAGService()
-	s.config = app.MustComponent[*config.Config](a)
-	s.networkState = app.MustComponent[device.NetworkState](a)
-	s.networkState.RegisterHook(s.networkStateChanged)
-	return nil
-}
-
-func (s *service) Run(ctx context.Context) error {
-	err := s.SetEnabled(s.config.AutoDownloadFiles, s.config.AutoDownloadFiles)
-	if err != nil {
-		log.Error("set enabled", zap.Error(err))
-	}
-	return nil
-}
-
-func (s *service) Close(ctx context.Context) error {
-	if s.ctxCancel != nil {
-		s.ctxCancel()
-	}
-	return nil
 }
 
 func (s *service) DownloadToLocalStore(ctx context.Context, spaceId string, fileCid domain.FileId) error {
