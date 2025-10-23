@@ -440,7 +440,18 @@ func (s *service) sendPushNotification(ctx context.Context, spaceId, chatObjectI
 		return
 	}
 
-	topics := append(mentions, chatpush.ChatsTopicName)
+	// Expected topics:
+	// 1. chats
+	// 2. chats/sha256(<chatObjectId>)
+	// 3. chats/sha256(<chatObjectId>)/<mentionIdentity>
+	// 4. <mentionIdentity>
+	topics := make([]string, 0, (len(mentions)*2)+2)
+	topics = append(topics, chatpush.ChatsTopicName)
+	topics = append(topics, chatpush.ChatsTopicName+"/"+pushGroupId(chatObjectId))
+	for _, mention := range mentions {
+		topics = append(topics, mention)
+		topics = append(topics, chatpush.ChatsTopicName+"/"+pushGroupId(chatObjectId)+"/"+mention)
+	}
 	err = s.pushService.Notify(s.componentCtx, spaceId, pushGroupId(chatObjectId), topics, jsonPayload)
 	if err != nil {
 		err = fmt.Errorf("pushService.Notify: %w", err)

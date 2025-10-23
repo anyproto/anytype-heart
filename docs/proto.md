@@ -1214,6 +1214,14 @@
     - [Rpc.Publishing.ResolveUri.Response](#anytype-Rpc-Publishing-ResolveUri-Response)
     - [Rpc.Publishing.ResolveUri.Response.Error](#anytype-Rpc-Publishing-ResolveUri-Response-Error)
     - [Rpc.PushNotification](#anytype-Rpc-PushNotification)
+    - [Rpc.PushNotification.AddMentionIds](#anytype-Rpc-PushNotification-AddMentionIds)
+    - [Rpc.PushNotification.AddMentionIds.Request](#anytype-Rpc-PushNotification-AddMentionIds-Request)
+    - [Rpc.PushNotification.AddMentionIds.Response](#anytype-Rpc-PushNotification-AddMentionIds-Response)
+    - [Rpc.PushNotification.AddMentionIds.Response.Error](#anytype-Rpc-PushNotification-AddMentionIds-Response-Error)
+    - [Rpc.PushNotification.AddMuteIds](#anytype-Rpc-PushNotification-AddMuteIds)
+    - [Rpc.PushNotification.AddMuteIds.Request](#anytype-Rpc-PushNotification-AddMuteIds-Request)
+    - [Rpc.PushNotification.AddMuteIds.Response](#anytype-Rpc-PushNotification-AddMuteIds-Response)
+    - [Rpc.PushNotification.AddMuteIds.Response.Error](#anytype-Rpc-PushNotification-AddMuteIds-Response-Error)
     - [Rpc.PushNotification.RegisterToken](#anytype-Rpc-PushNotification-RegisterToken)
     - [Rpc.PushNotification.RegisterToken.Request](#anytype-Rpc-PushNotification-RegisterToken-Request)
     - [Rpc.PushNotification.RegisterToken.Response](#anytype-Rpc-PushNotification-RegisterToken-Response)
@@ -1693,6 +1701,8 @@
     - [Rpc.Publishing.PublishStatus](#anytype-Rpc-Publishing-PublishStatus)
     - [Rpc.Publishing.Remove.Response.Error.Code](#anytype-Rpc-Publishing-Remove-Response-Error-Code)
     - [Rpc.Publishing.ResolveUri.Response.Error.Code](#anytype-Rpc-Publishing-ResolveUri-Response-Error-Code)
+    - [Rpc.PushNotification.AddMentionIds.Response.Error.Code](#anytype-Rpc-PushNotification-AddMentionIds-Response-Error-Code)
+    - [Rpc.PushNotification.AddMuteIds.Response.Error.Code](#anytype-Rpc-PushNotification-AddMuteIds-Response-Error-Code)
     - [Rpc.PushNotification.RegisterToken.Platform](#anytype-Rpc-PushNotification-RegisterToken-Platform)
     - [Rpc.PushNotification.RegisterToken.Response.Error.Code](#anytype-Rpc-PushNotification-RegisterToken-Response-Error-Code)
     - [Rpc.PushNotification.SetSpaceMode.Mode](#anytype-Rpc-PushNotification-SetSpaceMode-Mode)
@@ -2478,6 +2488,8 @@
 | AIObjectCreateFromUrl | [Rpc.AI.ObjectCreateFromUrl.Request](#anytype-Rpc-AI-ObjectCreateFromUrl-Request) | [Rpc.AI.ObjectCreateFromUrl.Response](#anytype-Rpc-AI-ObjectCreateFromUrl-Response) |  |
 | PushNotificationRegisterToken | [Rpc.PushNotification.RegisterToken.Request](#anytype-Rpc-PushNotification-RegisterToken-Request) | [Rpc.PushNotification.RegisterToken.Response](#anytype-Rpc-PushNotification-RegisterToken-Response) | Push |
 | PushNotificationSetSpaceMode | [Rpc.PushNotification.SetSpaceMode.Request](#anytype-Rpc-PushNotification-SetSpaceMode-Request) | [Rpc.PushNotification.SetSpaceMode.Response](#anytype-Rpc-PushNotification-SetSpaceMode-Response) |  |
+| PushNotificationAddMuteIds | [Rpc.PushNotification.AddMuteIds.Request](#anytype-Rpc-PushNotification-AddMuteIds-Request) | [Rpc.PushNotification.AddMuteIds.Response](#anytype-Rpc-PushNotification-AddMuteIds-Response) |  |
+| PushNotificationAddMentionIds | [Rpc.PushNotification.AddMentionIds.Request](#anytype-Rpc-PushNotification-AddMentionIds-Request) | [Rpc.PushNotification.AddMentionIds.Response](#anytype-Rpc-PushNotification-AddMentionIds-Response) |  |
 
  
 
@@ -20109,6 +20121,122 @@ Available undo/redo operations
 
 
 
+<a name="anytype-Rpc-PushNotification-AddMentionIds"></a>
+
+### Rpc.PushNotification.AddMentionIds
+
+
+
+
+
+
+
+<a name="anytype-Rpc-PushNotification-AddMentionIds-Request"></a>
+
+### Rpc.PushNotification.AddMentionIds.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| spaceId | [string](#string) |  |  |
+| chatIds | [string](#string) | repeated |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-PushNotification-AddMentionIds-Response"></a>
+
+### Rpc.PushNotification.AddMentionIds.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.PushNotification.AddMentionIds.Response.Error](#anytype-Rpc-PushNotification-AddMentionIds-Response-Error) |  |  |
+| event | [ResponseEvent](#anytype-ResponseEvent) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-PushNotification-AddMentionIds-Response-Error"></a>
+
+### Rpc.PushNotification.AddMentionIds.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.PushNotification.AddMentionIds.Response.Error.Code](#anytype-Rpc-PushNotification-AddMentionIds-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-PushNotification-AddMuteIds"></a>
+
+### Rpc.PushNotification.AddMuteIds
+
+
+
+
+
+
+
+<a name="anytype-Rpc-PushNotification-AddMuteIds-Request"></a>
+
+### Rpc.PushNotification.AddMuteIds.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| spaceId | [string](#string) |  |  |
+| chatIds | [string](#string) | repeated |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-PushNotification-AddMuteIds-Response"></a>
+
+### Rpc.PushNotification.AddMuteIds.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.PushNotification.AddMuteIds.Response.Error](#anytype-Rpc-PushNotification-AddMuteIds-Response-Error) |  |  |
+| event | [ResponseEvent](#anytype-ResponseEvent) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-PushNotification-AddMuteIds-Response-Error"></a>
+
+### Rpc.PushNotification.AddMuteIds.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.PushNotification.AddMuteIds.Response.Error.Code](#anytype-Rpc-PushNotification-AddMuteIds-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
 <a name="anytype-Rpc-PushNotification-RegisterToken"></a>
 
 ### Rpc.PushNotification.RegisterToken
@@ -20201,6 +20329,7 @@ Available undo/redo operations
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | error | [Rpc.PushNotification.SetSpaceMode.Response.Error](#anytype-Rpc-PushNotification-SetSpaceMode-Response-Error) |  |  |
+| event | [ResponseEvent](#anytype-ResponseEvent) |  |  |
 
 
 
@@ -26813,6 +26942,32 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 
 
 
+<a name="anytype-Rpc-PushNotification-AddMentionIds-Response-Error-Code"></a>
+
+### Rpc.PushNotification.AddMentionIds.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
+
+
+
+<a name="anytype-Rpc-PushNotification-AddMuteIds-Response-Error-Code"></a>
+
+### Rpc.PushNotification.AddMuteIds.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
+
+
+
 <a name="anytype-Rpc-PushNotification-RegisterToken-Platform"></a>
 
 ### Rpc.PushNotification.RegisterToken.Platform
@@ -26848,6 +27003,7 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | All | 0 |  |
 | Mentions | 1 |  |
 | Nothing | 2 |  |
+| Custom | 3 |  |
 
 
 

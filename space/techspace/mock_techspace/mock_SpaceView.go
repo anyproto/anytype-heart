@@ -30,6 +30,100 @@ func (_m *MockSpaceView) EXPECT() *MockSpaceView_Expecter {
 	return &MockSpaceView_Expecter{mock: &_m.Mock}
 }
 
+// AddPushNotificationMentionIds provides a mock function with given fields: ctx, mentionIds
+func (_m *MockSpaceView) AddPushNotificationMentionIds(ctx session.Context, mentionIds []string) error {
+	ret := _m.Called(ctx, mentionIds)
+
+	if len(ret) == 0 {
+		panic("no return value specified for AddPushNotificationMentionIds")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(session.Context, []string) error); ok {
+		r0 = rf(ctx, mentionIds)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// MockSpaceView_AddPushNotificationMentionIds_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'AddPushNotificationMentionIds'
+type MockSpaceView_AddPushNotificationMentionIds_Call struct {
+	*mock.Call
+}
+
+// AddPushNotificationMentionIds is a helper method to define mock.On call
+//   - ctx session.Context
+//   - mentionIds []string
+func (_e *MockSpaceView_Expecter) AddPushNotificationMentionIds(ctx interface{}, mentionIds interface{}) *MockSpaceView_AddPushNotificationMentionIds_Call {
+	return &MockSpaceView_AddPushNotificationMentionIds_Call{Call: _e.mock.On("AddPushNotificationMentionIds", ctx, mentionIds)}
+}
+
+func (_c *MockSpaceView_AddPushNotificationMentionIds_Call) Run(run func(ctx session.Context, mentionIds []string)) *MockSpaceView_AddPushNotificationMentionIds_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(session.Context), args[1].([]string))
+	})
+	return _c
+}
+
+func (_c *MockSpaceView_AddPushNotificationMentionIds_Call) Return(err error) *MockSpaceView_AddPushNotificationMentionIds_Call {
+	_c.Call.Return(err)
+	return _c
+}
+
+func (_c *MockSpaceView_AddPushNotificationMentionIds_Call) RunAndReturn(run func(session.Context, []string) error) *MockSpaceView_AddPushNotificationMentionIds_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// AddPushNotificationMuteIds provides a mock function with given fields: ctx, muteIds
+func (_m *MockSpaceView) AddPushNotificationMuteIds(ctx session.Context, muteIds []string) error {
+	ret := _m.Called(ctx, muteIds)
+
+	if len(ret) == 0 {
+		panic("no return value specified for AddPushNotificationMuteIds")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(session.Context, []string) error); ok {
+		r0 = rf(ctx, muteIds)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// MockSpaceView_AddPushNotificationMuteIds_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'AddPushNotificationMuteIds'
+type MockSpaceView_AddPushNotificationMuteIds_Call struct {
+	*mock.Call
+}
+
+// AddPushNotificationMuteIds is a helper method to define mock.On call
+//   - ctx session.Context
+//   - muteIds []string
+func (_e *MockSpaceView_Expecter) AddPushNotificationMuteIds(ctx interface{}, muteIds interface{}) *MockSpaceView_AddPushNotificationMuteIds_Call {
+	return &MockSpaceView_AddPushNotificationMuteIds_Call{Call: _e.mock.On("AddPushNotificationMuteIds", ctx, muteIds)}
+}
+
+func (_c *MockSpaceView_AddPushNotificationMuteIds_Call) Run(run func(ctx session.Context, muteIds []string)) *MockSpaceView_AddPushNotificationMuteIds_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(session.Context), args[1].([]string))
+	})
+	return _c
+}
+
+func (_c *MockSpaceView_AddPushNotificationMuteIds_Call) Return(err error) *MockSpaceView_AddPushNotificationMuteIds_Call {
+	_c.Call.Return(err)
+	return _c
+}
+
+func (_c *MockSpaceView_AddPushNotificationMuteIds_Call) RunAndReturn(run func(session.Context, []string) error) *MockSpaceView_AddPushNotificationMuteIds_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // GetLocalInfo provides a mock function with given fields:
 func (_m *MockSpaceView) GetLocalInfo() spaceinfo.SpaceLocalInfo {
 	ret := _m.Called()
