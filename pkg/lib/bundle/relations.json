@@ -1726,6 +1726,27 @@
     "source": "details"
   },
   {
+    "description": "Is this the main chat",
+    "format": "checkbox",
+    "hidden": true,
+    "key": "isMainChat",
+    "maxCount": 1,
+    "name": "Is main chat",
+    "readonly": true,
+    "source": "derived"
+  },
+  {
+    "description": "Date of the last message in a chat",
+    "format": "date",
+    "hidden": false,
+    "key": "lastMessageDate",
+    "maxCount": 1,
+    "name": "Last message date",
+    "readonly": true,
+    "source": "derived",
+    "includeTime": true
+  },
+  {
     "description": "Is file available offline",
     "format": "checkbox",
     "hidden": true,

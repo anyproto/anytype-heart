@@ -7,6 +7,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/anyproto/anytype-heart/core/block/simple/base"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
@@ -330,6 +331,67 @@ func TestText_Merge(t *testing.T) {
 		assert.Equal(t, mergeTo.content.Style, model.BlockContentText_Header1)
 		assert.Equal(t, mergeTo.BackgroundColor, "grey")
 	})
+
+	t.Run("preserve style of block with text", func(t *testing.T) {
+		// given
+		mergeTo := NewText(&model.Block{
+			Content: &model.BlockContentOfText{
+				Text: &model.BlockContentText{
+					Text: "Two",
+				},
+			},
+		}).(*Text)
+
+		mergeFrom := NewText(&model.Block{
+			Content: &model.BlockContentOfText{
+				Text: &model.BlockContentText{
+					Text:  "One",
+					Style: model.BlockContentText_Header1,
+				},
+			},
+		}).(*Text)
+		mergeFrom.BackgroundColor = "grey"
+
+		// when
+		err := mergeTo.Merge(mergeFrom)
+
+		// then
+		require.NoError(t, err)
+		assert.Equal(t, model.BlockContentText_Paragraph, mergeTo.content.Style)
+		assert.Empty(t, mergeTo.BackgroundColor)
+		assert.Equal(t, "TwoOne", mergeTo.content.Text)
+	})
+
+	t.Run("preserve style != 0", func(t *testing.T) {
+		// given
+		mergeTo := NewText(&model.Block{
+			Content: &model.BlockContentOfText{
+				Text: &model.BlockContentText{
+					Text:  "",
+					Style: model.BlockContentText_Numbered,
+				},
+			},
+		}).(*Text)
+
+		mergeFrom := NewText(&model.Block{
+			Content: &model.BlockContentOfText{
+				Text: &model.BlockContentText{
+					Text:  "One",
+					Style: model.BlockContentText_Header1,
+				},
+			},
+		}).(*Text)
+		mergeFrom.BackgroundColor = "grey"
+
+		// when
+		err := mergeTo.Merge(mergeFrom)
+
+		// then
+		require.NoError(t, err)
+		assert.Equal(t, model.BlockContentText_Numbered, mergeTo.content.Style)
+		assert.Empty(t, mergeTo.BackgroundColor)
+		assert.Equal(t, "One", mergeTo.content.Text)
+	})
 }
 
 func TestText_SetMarkForAllText(t *testing.T) {
@@ -460,4 +522,53 @@ func TestText_HasMarkForAllText(t *testing.T) {
 	}).(Block)
 	assert.False(t, b.HasMarkForAllText(&model.BlockContentTextMark{Type: model.BlockContentTextMark_Italic}))
 	assert.True(t, b.HasMarkForAllText(&model.BlockContentTextMark{Type: model.BlockContentTextMark_Bold}))
+}
+
+func TestText_MigrateFile(t *testing.T) {
+	fileId := "bafybeihdwdcefgh4dqkjv67uzcmw7ojee6xedzdetojuzjevtenxquvyku"
+	fileIdMigrated := "bafybeihdwdcefgh4dqkjv67uzcmw7ojee6xedzdetojuzjevtenxquvyku-migrated"
+	migrator := func(id string) string {
+		if domain.IsFileId(id) {
+			return fileId + "-migrated"
+		}
+		return id
+	}
+
+	got := NewText(&model.Block{
+		Content: &model.BlockContentOfText{
+			Text: &model.BlockContentText{
+				Text:      "1234567890",
+				IconImage: fileId,
+				Marks: &model.BlockContentTextMarks{
+					Marks: []*model.BlockContentTextMark{
+						{Type: model.BlockContentTextMark_Mention, Param: fileId},
+						{Type: model.BlockContentTextMark_Mention, Param: "object1"},
+						{Type: model.BlockContentTextMark_Object, Param: fileId},
+						{Type: model.BlockContentTextMark_Object, Param: "object2"},
+					},
+				},
+			},
+		},
+	}).(Block)
+
+	got.MigrateFile(migrator)
+
+	want := NewText(&model.Block{
+		Content: &model.BlockContentOfText{
+			Text: &model.BlockContentText{
+				Text:      "1234567890",
+				IconImage: fileIdMigrated,
+				Marks: &model.BlockContentTextMarks{
+					Marks: []*model.BlockContentTextMark{
+						{Type: model.BlockContentTextMark_Mention, Param: fileIdMigrated},
+						{Type: model.BlockContentTextMark_Mention, Param: "object1"},
+						{Type: model.BlockContentTextMark_Object, Param: fileIdMigrated},
+						{Type: model.BlockContentTextMark_Object, Param: "object2"},
+					},
+				},
+			},
+		},
+	}).(Block)
+
+	assert.Equal(t, want, got)
 }

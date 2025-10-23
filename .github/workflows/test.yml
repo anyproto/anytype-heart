@@ -28,7 +28,7 @@ jobs:
       - name: Install Go
         uses: actions/setup-go@v5
         with:
-          go-version: 1.22
+          go-version: '1.24'
           cache: false
           check-latest: true
       - name: git config
@@ -56,11 +56,37 @@ jobs:
           gem install license_finder
           license_finder inherited_decisions add open/decisions.yml
           GOEXPERIMENT=rangefunc license_finder --enabled-package-managers gomodules
+          rm -rf open
       - name: Generate mocks
         run: |
           make download-tantivy-all
           go install go.uber.org/mock/mockgen@v0.5.0
           CGO_ENABLED=1 CGO_CFLAGS="-Wno-deprecated-declarations -Wno-deprecated-non-prototype -Wno-xor-used-as-pow" go generate ./...
+      - name: Run make generate
+        id: codegen
+        run: |
+          make setup
+          make setup-protoc
+          make generate
+          if ! git diff --quiet; then
+            git status --short
+            git diff > codegen.patch
+            echo "has_changes=true" >> $GITHUB_OUTPUT
+          else
+            echo "has_changes=false" >> $GITHUB_OUTPUT
+          fi
+      - name: Upload codegen patch
+        if: steps.codegen.outputs.has_changes == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: codegen-diff
+          path: codegen.patch
+          if-no-files-found: error
+      - name: Fail when generated files are stale
+        if: steps.codegen.outputs.has_changes == 'true'
+        run: |
+          echo "::error::Generated files are out of date. Run 'make generate' locally and commit the results."
+          exit 1
       - name: Go test
         env:
           prometheus_username: ${{ secrets.PROMETHEUS_USERNAME }}
@@ -90,6 +116,7 @@ jobs:
           
           COVERAGE=$(go tool cover -func coverage.out | grep total | awk '{print substr($3, 1, length($3)-1)}')
           echo "coverage_middleware $COVERAGE" | curl --data-binary @- --user "$prometheus_username:$prometheus_password" https://pushgateway.anytype.io/metrics/job/tech_quality
+
       - name: Publish Test Report
         uses: mikepenz/action-junit-report@v2
         with:

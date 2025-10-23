@@ -274,6 +274,9 @@ func (a *aclService) RevokeInvite(ctx context.Context, spaceId string) error {
 }
 
 func (a *aclService) ChangePermissions(ctx context.Context, spaceId string, perms []AccountPermissions) error {
+	if len(perms) == 0 {
+		return fmt.Errorf("%w: empty permissions", ErrIncorrectPermissions)
+	}
 	sp, err := a.spaceService.Get(ctx, spaceId)
 	if err != nil {
 		return convertedOrSpaceErr(err)

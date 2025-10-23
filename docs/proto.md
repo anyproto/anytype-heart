@@ -1896,6 +1896,7 @@
     - [Event.Import](#anytype-Event-Import)
     - [Event.Import.Finish](#anytype-Event-Import-Finish)
     - [Event.Membership](#anytype-Event-Membership)
+    - [Event.Membership.TiersUpdate](#anytype-Event-Membership-TiersUpdate)
     - [Event.Membership.Update](#anytype-Event-Membership-Update)
     - [Event.Message](#anytype-Event-Message)
     - [Event.Notification](#anytype-Event-Notification)
@@ -29958,6 +29959,21 @@ to its type.
 
 
 
+<a name="anytype-Event-Membership-TiersUpdate"></a>
+
+### Event.Membership.TiersUpdate
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| tiers | [model.MembershipTierData](#anytype-model-MembershipTierData) | repeated |  |
+
+
+
+
+
+
 <a name="anytype-Event-Membership-Update"></a>
 
 ### Event.Membership.Update
@@ -30050,6 +30066,7 @@ to its type.
 | notificationUpdate | [Event.Notification.Update](#anytype-Event-Notification-Update) |  |  |
 | payloadBroadcast | [Event.Payload.Broadcast](#anytype-Event-Payload-Broadcast) |  |  |
 | membershipUpdate | [Event.Membership.Update](#anytype-Event-Membership-Update) |  |  |
+| membershipTiersUpdate | [Event.Membership.TiersUpdate](#anytype-Event-Membership-TiersUpdate) |  |  |
 | spaceSyncStatusUpdate | [Event.Space.SyncStatus.Update](#anytype-Event-Space-SyncStatus-Update) |  |  |
 | p2pStatusUpdate | [Event.P2PStatus.Update](#anytype-Event-P2PStatus-Update) |  |  |
 | importFinish | [Event.Import.Finish](#anytype-Event-Import-Finish) |  |  |
@@ -32877,6 +32894,7 @@ deprecated, to be removed |
 | relationKey | [string](#string) |  | 4 is reserved for old relation format
 
 stored |
+| orderId | [string](#string) |  | lexicographic id of relation option for ordering |
 
 
 

@@ -17,6 +17,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/source"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/event/mock_event"
+	"github.com/anyproto/anytype-heart/core/relationutils/mock_relationutils"
 	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
@@ -35,13 +36,9 @@ func TestSmartBlock_Init(t *testing.T) {
 	// when
 	initCtx := fx.init(t, []*model.Block{{Id: id}})
 
+	// then
 	require.NotNil(t, initCtx)
 	require.NotNil(t, initCtx.State)
-	links := initCtx.State.GetRelationLinks()
-	for _, key := range bundle.RequiredInternalRelations {
-		assert.Truef(t, links.Has(key.String()), "missing relation %s", key)
-	}
-	// then
 	assert.Equal(t, id, fx.RootId())
 }
 
@@ -194,12 +191,22 @@ func newFixture(id string, t *testing.T) *fixture {
 	spaceIdResolver := mock_idresolver.NewMockResolver(t)
 
 	space := NewMockSpace(t)
+	space.EXPECT().Id().Return(testSpaceId).Maybe()
 
 	indexer := NewMockIndexer(t)
 
 	sender := mock_event.NewMockSender(t)
 
-	sb := New(space, "", spaceIndex, objectStore, indexer, sender, spaceIdResolver).(*smartBlock)
+	fetcher := mock_relationutils.NewMockRelationFormatFetcher(t)
+	fetcher.EXPECT().GetRelationFormatByKey(mock.Anything, mock.Anything).RunAndReturn(func(_ string, key domain.RelationKey) (model.RelationFormat, error) {
+		rel, err := bundle.GetRelation(key)
+		if err != nil {
+			return 0, err
+		}
+		return rel.Format, nil
+	}).Maybe()
+
+	sb := New(space, "", spaceIndex, objectStore, indexer, sender, spaceIdResolver, fetcher).(*smartBlock)
 	source := &sourceStub{
 		id:      id,
 		spaceId: "space1",

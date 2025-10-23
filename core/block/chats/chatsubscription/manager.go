@@ -65,7 +65,11 @@ func (s *subscriptionManager) Unlock() {
 
 // subscribe subscribes to messagesMap. It returns true if there was no subscriptionManager with provided id
 func (s *subscriptionManager) subscribe(req SubscribeLastMessagesRequest, initialMessages []*chatmodel.Message) {
-	st := newMessagesState(initialMessages, req.Limit)
+	cloned := make([]*chatmodel.Message, 0, len(initialMessages))
+	for _, msg := range initialMessages {
+		cloned = append(cloned, msg.Clone())
+	}
+	st := newMessagesState(cloned, req.Limit)
 
 	s.subscriptions[req.SubId] = &subscription{
 		id:                     req.SubId,
@@ -129,6 +133,18 @@ func (s *subscriptionManager) UpdateChatState(updater func(*model.ChatState) *mo
 
 func (s *subscriptionManager) ForceSendingChatState() {
 	s.chatStateUpdated = true
+}
+
+func (s *subscriptionManager) GetLastMessage() (*model.ChatMessage, bool) {
+	// get the last message from any subscription. It works because we don't have offsets for subscriptions, so
+	// it's guaranteed for the last message in a subscription to be the last message in a set of all messages.
+	for _, sub := range s.subscriptions {
+		last := sub.state.messages.Back()
+		if last != nil {
+			return last.Value.(*stateEntry).msg, true
+		}
+	}
+	return nil, false
 }
 
 // Flush is called after committing changes

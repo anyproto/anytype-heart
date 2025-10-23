@@ -267,3 +267,6 @@ packages:
     interfaces:
       Service:
       Manager:
+  github.com/anyproto/anytype-heart/core/relationutils:
+    interfaces:
+      RelationFormatFetcher:

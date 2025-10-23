@@ -230,6 +230,13 @@ func (f *File) FillFileHashes(hashes []string) []string {
 	return hashes
 }
 
+func (f *File) MigrateFile(migrateFunc func(oldHash string) (newHash string)) {
+	if f.content.TargetObjectId != "" {
+		return
+	}
+	f.content.TargetObjectId = migrateFunc(f.content.Hash)
+}
+
 func (f *File) FillSmartIds(ids []string) []string {
 	if f.content.TargetObjectId != "" {
 		return append(ids, f.content.TargetObjectId)
