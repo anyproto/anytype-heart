@@ -97,6 +97,7 @@ func (s *Service) debugGetObject(req *http.Request) (debugObject, error) {
 
 func (s *Service) debugTree(req *http.Request) (debugTree, error) {
 	id := chi.URLParam(req, "id")
+	isStoreChange := req.URL.Query().Has("store")
 
 	result := debugTree{
 		Id: id,
@@ -106,7 +107,13 @@ func (s *Service) debugTree(req *http.Request) (debugTree, error) {
 		if err != nil {
 			return err
 		}
-		return ot.IterateRoot(sourceimpl.UnmarshalChange, func(change *objecttree.Change) bool {
+		return ot.IterateRoot(func(treeChange *objecttree.Change, data []byte) (result any, err error) {
+			if isStoreChange {
+				return sourceimpl.UnmarshalStoreChange(treeChange, data)
+			} else {
+				return sourceimpl.UnmarshalChange(treeChange, data)
+			}
+		}, func(change *objecttree.Change) bool {
 			change.Next = nil
 			change.Previous = nil
 			raw, err := json.Marshal(change)

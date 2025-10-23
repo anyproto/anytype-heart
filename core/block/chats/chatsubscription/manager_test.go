@@ -355,6 +355,51 @@ func TestOutOfWindowEvents(t *testing.T) {
 	})
 }
 
+func TestGetLastMessage(t *testing.T) {
+	fx := newFixture(t)
+	ctx := context.Background()
+
+	chatId := "chatId1"
+	subId := "subId1"
+
+	mngr, err := fx.GetManager(testSpaceId, chatId)
+	require.NoError(t, err)
+
+	t.Run("with no subscriptions", func(t *testing.T) {
+		_, ok := mngr.GetLastMessage()
+		assert.False(t, ok)
+	})
+
+	_, err = fx.SubscribeLastMessages(ctx, SubscribeLastMessagesRequest{
+		ChatObjectId: chatId,
+		SubId:        subId,
+	})
+	require.NoError(t, err)
+
+	t.Run("with no messages", func(t *testing.T) {
+		_, ok := mngr.GetLastMessage()
+		assert.False(t, ok)
+	})
+
+	msg := givenComplexMessage("msg1", "text", "o1")
+	mngr.Add("", msg)
+
+	t.Run("with only one message", func(t *testing.T) {
+		got, ok := mngr.GetLastMessage()
+		assert.True(t, ok)
+		assert.Equal(t, msg.ChatMessage, got)
+	})
+
+	msg2 := givenComplexMessage("msg2", "text 2", "o2")
+	mngr.Add("o1", msg2)
+
+	t.Run("with multiple messages", func(t *testing.T) {
+		got, ok := mngr.GetLastMessage()
+		assert.True(t, ok)
+		assert.Equal(t, msg2.ChatMessage, got)
+	})
+}
+
 func givenSimpleMessage(id string, text string, orderId string) *chatmodel.Message {
 	return &chatmodel.Message{
 		ChatMessage: &model.ChatMessage{

@@ -9,7 +9,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-const RelationChecksum = "56053eaf15a74368d28cddbc6132d794f1607ecfc74aeee88c4797ecd8b6f1f7"
+const RelationChecksum = "a4a7ddd9af709ccab189ad76f2ad99491a7c1180dda2f9ba37df91db4d9a2eda"
 const (
 	RelationKeyTag                                domain.RelationKey = "tag"
 	RelationKeyCamera                             domain.RelationKey = "camera"
@@ -180,6 +180,7 @@ const (
 	RelationKeyWidgetLimit                        domain.RelationKey = "widgetLimit"
 	RelationKeyWidgetViewId                       domain.RelationKey = "widgetViewId"
 	RelationKeyIsMainChat                         domain.RelationKey = "isMainChat"
+	RelationKeyLastMessageDate                    domain.RelationKey = "lastMessageDate"
 )
 
 var (
@@ -1204,6 +1205,20 @@ var (
 			Key:              "lastChangeId",
 			MaxCount:         1,
 			Name:             "Last change ID of the object",
+			ReadOnly:         true,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
+		RelationKeyLastMessageDate: {
+
+			DataSource:       model.Relation_derived,
+			Description:      "Date of the last message in a chat",
+			Format:           model.RelationFormat_date,
+			Id:               "_brlastMessageDate",
+			IncludeTime:      true,
+			Key:              "lastMessageDate",
+			MaxCount:         1,
+			Name:             "Last message date",
 			ReadOnly:         true,
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,

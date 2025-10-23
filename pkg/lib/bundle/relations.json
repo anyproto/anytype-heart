@@ -1734,5 +1734,16 @@
     "name": "Is main chat",
     "readonly": true,
     "source": "derived"
+  },
+  {
+    "description": "Date of the last message in a chat",
+    "format": "date",
+    "hidden": false,
+    "key": "lastMessageDate",
+    "maxCount": 1,
+    "name": "Last message date",
+    "readonly": true,
+    "source": "derived",
+    "includeTime": true
   }
 ]
