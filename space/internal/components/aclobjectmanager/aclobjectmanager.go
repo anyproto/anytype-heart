@@ -17,15 +17,12 @@ import (
 	"go.uber.org/zap"
 
 	"github.com/anyproto/anytype-heart/core/domain"
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/space/clientspace"
 	"github.com/anyproto/anytype-heart/space/internal/components/aclnotifications"
-	"github.com/anyproto/anytype-heart/space/internal/components/dependencies"
 	"github.com/anyproto/anytype-heart/space/internal/components/participantwatcher"
 	"github.com/anyproto/anytype-heart/space/internal/components/spaceloader"
 	"github.com/anyproto/anytype-heart/space/internal/components/spacestatus"
 	"github.com/anyproto/anytype-heart/space/spaceinfo"
-	"github.com/anyproto/anytype-heart/space/techspace"
 )
 
 const CName = "common.components.aclobjectmanager"
@@ -55,9 +52,6 @@ type aclObjectManager struct {
 	statService         debugstat.StatService
 	started             bool
 	notificationService aclnotifications.AclNotification
-	objectStore         objectstore.ObjectStore
-	techSpace           techspace.TechSpace
-	identityService     dependencies.IdentityService
 	spaceLoaderListener SpaceLoaderListener
 	participantWatcher  participantwatcher.ParticipantWatcher
 	accountService      accountservice.Service
@@ -106,9 +100,6 @@ func (a *aclObjectManager) Init(ap *app.App) (err error) {
 	a.accountService = app.MustComponent[accountservice.Service](ap)
 	a.participantWatcher = app.MustComponent[participantwatcher.ParticipantWatcher](ap)
 	a.notificationService = app.MustComponent[aclnotifications.AclNotification](ap)
-	a.objectStore = app.MustComponent[objectstore.ObjectStore](ap)
-	a.techSpace = app.MustComponent[techspace.TechSpace](ap)
-	a.identityService = app.MustComponent[dependencies.IdentityService](ap)
 	a.spaceLoaderListener = app.MustComponent[SpaceLoaderListener](ap)
 	a.statService, _ = ap.Component(debugstat.CName).(debugstat.StatService)
 	if a.statService == nil {
