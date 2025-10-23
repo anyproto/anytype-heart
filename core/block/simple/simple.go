@@ -40,6 +40,10 @@ type FileHashes interface {
 	FillFileHashes(hashes []string) []string // DEPRECATED, use only for migration and backward compatibility purposes
 }
 
+type FileMigrator interface {
+	MigrateFile(replacer func(oldHash string) (newHash string))
+}
+
 type DetailsService interface {
 	Details() *domain.Details
 	SetDetail(key domain.RelationKey, value domain.Value)

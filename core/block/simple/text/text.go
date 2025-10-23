@@ -62,6 +62,7 @@ type Block interface {
 	FillSmartIds(ids []string) []string
 	HasSmartIds() bool
 	ApplyEvent(e *pb.EventBlockSetText) error
+	MigrateFile(migrateFunc func(oldHash string) (newHash string))
 
 	IsEmpty() bool
 }
@@ -174,6 +175,13 @@ func (t *Text) FillFileHashes(hashes []string) []string {
 		return append(hashes, h)
 	}
 	return hashes
+}
+
+func (t *Text) MigrateFile(migrateFunc func(oldHash string) (newHash string)) {
+	if t.content.IconImage != "" {
+		t.content.IconImage = migrateFunc(t.content.IconImage)
+	}
+	t.ReplaceLinkIds(migrateFunc)
 }
 
 func (t *Text) IterateLinkedFiles(iter func(id string)) {
@@ -599,7 +607,7 @@ func (t *Text) Merge(b simple.Block, opts ...MergeOption) error {
 
 	text, ok := b.(*Text)
 
-	if !o.dontSetStyle && t.content != nil && t.content.Text == "" {
+	if !o.dontSetStyle && t.content != nil && t.content.Text == "" && t.content.Style == 0 {
 		t.SetStyle(text.content.Style)
 		t.BackgroundColor = text.BackgroundColor
 	}

@@ -38,6 +38,7 @@ func (u NodeUsage) GetSpaceUsage(spaceId string) SpaceStat {
 	}
 }
 
+// Equal assume that Spaces slice is sorted by SpaceId
 func (a NodeUsage) Equal(b NodeUsage) bool {
 	if a.AccountBytesLimit != b.AccountBytesLimit ||
 		a.TotalBytesUsage != b.TotalBytesUsage ||

@@ -64,6 +64,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/debug"
 	"github.com/anyproto/anytype-heart/core/debug/profiler"
 	"github.com/anyproto/anytype-heart/core/device"
+	"github.com/anyproto/anytype-heart/core/durability"
 	"github.com/anyproto/anytype-heart/core/files"
 	"github.com/anyproto/anytype-heart/core/files/fileacl"
 	"github.com/anyproto/anytype-heart/core/files/fileobject"
@@ -91,6 +92,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/publish"
 	"github.com/anyproto/anytype-heart/core/pushnotification"
 	"github.com/anyproto/anytype-heart/core/pushnotification/pushclient"
+	"github.com/anyproto/anytype-heart/core/relationutils/formatfetcher"
 	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/core/subscription"
 	"github.com/anyproto/anytype-heart/core/subscription/crossspacesub"
@@ -231,6 +233,7 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(collection.New()).
 		Register(subscription.New()).
 		Register(crossspacesub.New()).
+		Register(formatfetcher.New()).
 		Register(nodeconfsource.New()).
 		Register(nodeconfstore.New()).
 		Register(nodeconf.New()).
@@ -333,8 +336,8 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(pushclient.New()).
 		Register(pushnotification.New()).
 		Register(subscribeclient.New()).
-		Register(inboxclient.New())
-
+		Register(inboxclient.New()).
+		Register(durability.New()) // leave it the last one
 }
 
 func MiddlewareVersion() string {

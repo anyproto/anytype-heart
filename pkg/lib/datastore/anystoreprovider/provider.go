@@ -16,7 +16,6 @@ import (
 	"go.uber.org/zap"
 	"zombiezen.com/go/sqlite"
 
-	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/wallet"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/anystorehelper"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
@@ -166,10 +165,11 @@ func openDatabaseWithReinit(ctx context.Context, config *anystore.Config, path s
 		return nil, fmt.Errorf("ensure dir exists: %w", err)
 	}
 
+	start := time.Now()
 	db, err := anystore.Open(ctx, path, config)
 	if err != nil {
 		code, isCorrupted := anystorehelper.IsCorruptedError(err)
-		getLogger(err, code).With(zap.Bool("isCorrupted", isCorrupted)).Error("failed to open anystore")
+		getLogger(err, code).With(zap.Bool("isCorrupted", isCorrupted)).With(zap.Int64("tookMs", time.Since(start).Milliseconds())).Error("failed to open anystore")
 		if isCorrupted {
 			removeErr := anystorehelper.RemoveSqliteFiles(path)
 			if removeErr != nil {
@@ -185,6 +185,19 @@ func openDatabaseWithReinit(ctx context.Context, config *anystore.Config, path s
 			return db, nil
 		}
 		return nil, err
+	} else if time.Since(start) > time.Second {
+		// only log for not-corrupted opens
+		ctxStat, cancel := context.WithTimeout(ctx, time.Second*2)
+		defer cancel()
+
+		logger := log.With(zap.String("db", filepath.Base(path))).With(zap.Int64("tookMs", time.Since(start).Milliseconds()))
+		stat, err := db.Stats(ctxStat)
+		if err != nil {
+			logger = logger.With(zap.Error(err))
+		} else {
+			logger = logger.With(anystorehelper.DbStatToZapFields(stat)...)
+		}
+		logger.Warn("objectstore db open took too long")
 	}
 
 	return db, nil
@@ -353,22 +366,13 @@ func (s *provider) ListSpaceIdsFromFilesystem() ([]string, error) {
 	return spaceIds, err
 }
 
-func (s *provider) StateChange(state int) {
-	switch domain.CompState(state) {
-	case domain.CompStateAppClosingInitiated:
-		// because we are closing db components at the end we need to do the best effort flush here
-		// this will also speed up the actual close because sqlite will have less to flush
-		// if we miss here some pending writes(due to 0 idleDuration) sqlite will flush them later when we close last connection
-		s.flushAllDbs(0, 3*time.Second, anystore.FlushModeCheckpointPassive)
-	case domain.CompStateAppWentBackground:
-		// when app goes to background(or hibernat on desktop) we need to be fast, but make sure we wait and have extended timeout in case of slow device and a huge WAL
-		s.flushAllDbs(time.Millisecond*50, 10*time.Second, anystore.FlushModeCheckpointPassive)
-	}
-}
-
-func (s *provider) flushAllDbs(idleDuration, flushTimeout time.Duration, mode anystore.FlushMode) {
+func (s *provider) Flush(timeout time.Duration, waitPending bool) {
 	if !s.dbsAreFlushing.CompareAndSwap(false, true) {
 		return
+	}
+	var idleDuration time.Duration
+	if waitPending {
+		idleDuration = time.Millisecond * 30
 	}
 	defer s.dbsAreFlushing.Store(false)
 	s.spaceIndexDbsLock.Lock()
@@ -392,9 +396,9 @@ func (s *provider) flushAllDbs(idleDuration, flushTimeout time.Duration, mode an
 		wg.Add(1)
 		go func(db anystore.DB) {
 			defer wg.Done()
-			ctx, cancel := context.WithTimeout(s.componentCtx, flushTimeout)
+			ctx, cancel := context.WithTimeout(s.componentCtx, timeout)
 			defer cancel()
-			err := db.Flush(ctx, idleDuration, mode)
+			err := db.Flush(ctx, idleDuration, anystore.FlushModeCheckpointPassive)
 			if err != nil {
 				log.With(zap.Error(err)).Error("failed to flush db")
 			}

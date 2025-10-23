@@ -36,9 +36,7 @@ import (
 
 const (
 	CollectionName        = "chats"
-	descOrder             = "-_o.id"
-	ascOrder              = "_o.id"
-	descStateId           = "-stateId"
+	editorCollectionName  = "editor"
 	diffManagerMessages   = "messages"
 	diffManagerMentions   = "mentions"
 	diffManagerSyncStatus = "syncStatus"
@@ -220,7 +218,7 @@ func (s *storeObject) Init(ctx *smartblock.InitContext) error {
 		myParticipantId: myParticipantId,
 	}
 
-	stateStore, err := storestate.New(ctx.Ctx, s.Id(), s.crdtDb, s.chatHandler, storestate.DefaultHandler{Name: "editor", ModifyMode: storestate.ModifyModeUpsert})
+	stateStore, err := storestate.New(ctx.Ctx, s.Id(), s.crdtDb, s.chatHandler, storestate.DefaultHandler{Name: editorCollectionName, ModifyMode: storestate.ModifyModeUpsert})
 	if err != nil {
 		return fmt.Errorf("create state store: %w", err)
 	}
@@ -239,16 +237,28 @@ func (s *storeObject) Init(ctx *smartblock.InitContext) error {
 
 	s.detailsComponent = &detailsComponent{
 		componentCtx:       s.componentCtx,
-		collectionName:     "editor",
+		collectionName:     editorCollectionName,
 		storeSource:        storeSource,
 		storeState:         stateStore,
+		spaceIndex:         s.spaceIndex,
 		sb:                 s.SmartBlock,
 		deniedRelationKeys: []domain.RelationKey{bundle.RelationKeyInternalFlags},
+	}
+	spaceChatId := s.Space().DerivedIDs().SpaceChat
+	if s.Id() == spaceChatId {
+		setDetail := func(key domain.RelationKey, val domain.Value) {
+			// Set property both in parent and in the current state to avoid pushing a change
+			ctx.State.ParentState().SetDetail(key, val)
+			ctx.State.SetDetail(key, val)
+		}
+		setDetail(bundle.RelationKeyName, domain.String("General"))
+		setDetail(bundle.RelationKeyIsMainChat, domain.Bool(true))
 	}
 	err = s.detailsComponent.init(ctx.State)
 	if err != nil {
 		return fmt.Errorf("init details: %w", err)
 	}
+
 	storeSource.SetPushChangeHook(s.detailsComponent.onPushOrdinaryChange)
 
 	s.AnystoreDebug = anystoredebug.New(s.SmartBlock, stateStore)

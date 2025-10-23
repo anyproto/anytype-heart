@@ -9,7 +9,6 @@ import (
 	"github.com/anyproto/any-sync/paymentservice/paymentserviceproto"
 
 	"github.com/anyproto/anytype-heart/core/nameservice"
-	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
@@ -70,23 +69,62 @@ func normalizeAnyName(name string) (string, error) {
 	return name, nil
 }
 
-func convertMembershipStatus(status *paymentserviceproto.GetSubscriptionResponse) pb.RpcMembershipGetStatusResponse {
-	out := pb.RpcMembershipGetStatusResponse{
-		Data: &model.Membership{},
-		Error: &pb.RpcMembershipGetStatusResponseError{
-			Code: pb.RpcMembershipGetStatusResponseError_NULL,
-		},
+func tiersAreEqual(a []*model.MembershipTierData, b []*model.MembershipTierData) bool {
+	if len(a) != len(b) {
+		return false
 	}
+	for i := range a {
+		if !a[i].Equal(b[i]) {
+			return false
+		}
+	}
+	return true
+}
 
-	out.Data.Tier = status.Tier
-	out.Data.Status = model.MembershipStatus(status.Status)
-	out.Data.DateStarted = status.DateStarted
-	out.Data.DateEnds = status.DateEnds
-	out.Data.IsAutoRenew = status.IsAutoRenew
-	out.Data.PaymentMethod = PaymentMethodToModel(status.PaymentMethod)
-	out.Data.NsName, out.Data.NsNameType = nameservice.FullNameToNsName(status.RequestedAnyName)
-	out.Data.UserEmail = status.UserEmail
-	out.Data.SubscribeToNewsletter = status.SubscribeToNewsletter
+func convertTierData(src *paymentserviceproto.TierData) *model.MembershipTierData {
+	if src == nil {
+		return nil
+	}
+	out := &model.MembershipTierData{}
+	out.Id = src.Id
+	out.Name = src.Name
+	out.Description = src.Description
+	out.IsTest = src.IsTest
+	out.PeriodType = model.MembershipTierDataPeriodType(src.PeriodType)
+	out.PeriodValue = src.PeriodValue
+	out.PriceStripeUsdCents = src.PriceStripeUsdCents
+	out.AnyNamesCountIncluded = src.AnyNamesCountIncluded
+	out.AnyNameMinLength = src.AnyNameMinLength
+	out.ColorStr = src.ColorStr
+	out.StripeProductId = src.StripeProductId
+	out.StripeManageUrl = src.StripeManageUrl
+	out.IosProductId = src.IosProductId
+	out.IosManageUrl = src.IosManageUrl
+	out.AndroidProductId = src.AndroidProductId
+	out.AndroidManageUrl = src.AndroidManageUrl
+	out.Offer = src.Offer
+	if src.Features != nil {
+		out.Features = make([]string, len(src.Features))
+		for i, feature := range src.Features {
+			out.Features[i] = feature.Description
+		}
+	}
+	return out
+}
 
+func convertMembershipData(src *paymentserviceproto.GetSubscriptionResponse) *model.Membership {
+	if src == nil {
+		return nil
+	}
+	out := &model.Membership{}
+	out.Tier = src.Tier
+	out.Status = model.MembershipStatus(src.Status)
+	out.DateStarted = src.DateStarted
+	out.DateEnds = src.DateEnds
+	out.IsAutoRenew = src.IsAutoRenew
+	out.PaymentMethod = PaymentMethodToModel(src.PaymentMethod)
+	out.UserEmail = src.UserEmail
+	out.SubscribeToNewsletter = src.SubscribeToNewsletter
+	out.NsName, out.NsNameType = nameservice.FullNameToNsName(src.RequestedAnyName)
 	return out
 }
