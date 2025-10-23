@@ -192,6 +192,7 @@ service ClientCommands {
     rpc FileDrop (anytype.Rpc.File.Drop.Request) returns (anytype.Rpc.File.Drop.Response);
     rpc FileSpaceUsage (anytype.Rpc.File.SpaceUsage.Request) returns (anytype.Rpc.File.SpaceUsage.Response);
     rpc FileNodeUsage (anytype.Rpc.File.NodeUsage.Request) returns (anytype.Rpc.File.NodeUsage.Response);
+    rpc FileSetAutoDownload (anytype.Rpc.File.SetAutoDownload.Request) returns (anytype.Rpc.File.SetAutoDownload.Response);
 
     rpc NavigationListObjects (anytype.Rpc.Navigation.ListObjects.Request) returns (anytype.Rpc.Navigation.ListObjects.Response);
     rpc NavigationGetObjectInfoWithLinks (anytype.Rpc.Navigation.GetObjectInfoWithLinks.Request) returns (anytype.Rpc.Navigation.GetObjectInfoWithLinks.Response);

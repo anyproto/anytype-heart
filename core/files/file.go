@@ -19,6 +19,7 @@ import (
 )
 
 type File interface {
+	SpaceId() string
 	FileId() domain.FileId
 	Meta() *FileMeta
 	Reader(ctx context.Context) (io.ReadSeeker, error) // getNode(details.FileVariants[idx])
@@ -147,6 +148,10 @@ func (f *file) Meta() *FileMeta {
 
 func (f *file) FileId() domain.FileId {
 	return f.fileId
+}
+
+func (f *file) SpaceId() string {
+	return f.spaceID
 }
 
 func (f *file) Reader(ctx context.Context) (io.ReadSeeker, error) {
