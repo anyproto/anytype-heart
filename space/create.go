@@ -74,13 +74,17 @@ func (s *service) createOneToOne(ctx context.Context, description *spaceinfo.Spa
 	s.updater.UpdateCoordinatorStatus()
 
 	// TODO: inbox
+	// 1. wrap identity and request metadata key to payload
+	// 2. change spaceinvite to onetoone request
+	// 3. auto accept inbox
+	// 4. don't send inbox if space already exists
 	msg := &coordinatorproto.InboxMessage{
 		PacketType: coordinatorproto.InboxPacketType_Default,
 		Packet: &coordinatorproto.InboxPacket{
 			KeyType:          coordinatorproto.InboxKeyType_ed25519,
 			ReceiverIdentity: bobAccountAddress,
 			Payload: &coordinatorproto.InboxPayload{
-				PayloadType: coordinatorproto.InboxPayloadType_InboxPayloadSpaceInvite,
+				PayloadType: coordinatorproto.InboxPayloadType_InboxPayloadOneToOneInvite,
 			},
 		},
 	}
