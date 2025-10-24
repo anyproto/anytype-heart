@@ -23,7 +23,10 @@ func deriveEqualMembershipTierData(this, that *MembershipTierData) bool {
 			this.IosManageUrl == that.IosManageUrl &&
 			this.AndroidProductId == that.AndroidProductId &&
 			this.AndroidManageUrl == that.AndroidManageUrl &&
-			this.Offer == that.Offer
+			this.Offer == that.Offer &&
+			this.PriceStripeUsdCentsMonthly == that.PriceStripeUsdCentsMonthly &&
+			this.IsIntroPlan == that.IsIntroPlan &&
+			this.IsUpgradeable == that.IsUpgradeable
 }
 
 // deriveEqualMembership returns whether this and that are equal.
@@ -39,7 +42,9 @@ func deriveEqualMembership(this, that *Membership) bool {
 			this.NsName == that.NsName &&
 			this.NsNameType == that.NsNameType &&
 			this.UserEmail == that.UserEmail &&
-			this.SubscribeToNewsletter == that.SubscribeToNewsletter
+			this.SubscribeToNewsletter == that.SubscribeToNewsletter &&
+			this.IsMonthly == that.IsMonthly &&
+			this.TeamOwner == that.TeamOwner
 }
 
 // deriveEqual returns whether this and that are equal.
