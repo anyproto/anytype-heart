@@ -1243,6 +1243,7 @@ message IdentityProfile {
     repeated FileEncryptionKey iconEncryptionKeys = 4;
     string description = 5;
     string globalName = 6;
+    bytes requestMetadataKey = 7;
 }
 
 message FileInfo {

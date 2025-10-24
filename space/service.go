@@ -14,8 +14,8 @@ import (
 	"github.com/anyproto/any-sync/app/logger"
 	"github.com/anyproto/any-sync/commonspace/object/tree/treechangeproto"
 	"github.com/anyproto/any-sync/commonspace/spacesyncproto"
-	"github.com/anyproto/any-sync/coordinator/inboxclient"
 	"github.com/anyproto/any-sync/util/crypto"
+	"github.com/anyproto/anytype-heart/space/inboxclient"
 	"github.com/ipfs/go-cid"
 	"go.uber.org/zap"
 
@@ -320,7 +320,7 @@ func (s *service) Create(ctx context.Context, description *spaceinfo.SpaceDescri
 		return nil, ErrSpaceIsClosing
 	}
 	// if description.SpaceUxType == model.SpaceUxType_OneToOne {
-	return s.createOneToOne(ctx, description)
+	return s.createOneToOneSendInbox(ctx, description)
 	// }
 
 	// return s.create(ctx, description)

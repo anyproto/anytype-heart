@@ -47,7 +47,7 @@ type Service interface {
 	UnregisterIdentity(spaceId string, identity string)
 	// UnregisterIdentitiesInSpace removes all identity observers in the space
 	UnregisterIdentitiesInSpace(spaceId string)
-	WaitProfile(ctx context.Context, identity string) *domain.IdentityProfileWithKey
+	WaitProfile(ctx context.Context, identity string) *model.IdentityProfile
 	app.ComponentRunnable
 }
 
@@ -159,13 +159,21 @@ func (s *service) UpdateOwnGlobalName(myIdentityGlobalName string) {
 	s.ownProfileSubscription.updateGlobalName(myIdentityGlobalName)
 }
 
-func (s *service) WaitProfile(ctx context.Context, identity string) *domain.IdentityProfileWithKey {
+func (s *service) WaitProfile(ctx context.Context, identity string) *model.IdentityProfile {
 	profile := s.getProfileFromCache(identity)
 	if profile != nil {
-		return &domain.IdentityProfileWithKey{
-			IdentityProfile:    profile,
-			RequestMetadataKey: s.identityEncryptionKeys[identity],
+		// TODO: move this out from wait profile;
+		// dont marshal/unmarshal everywhere
+		key, ok := s.identityEncryptionKeys[identity]
+		if !ok {
+			return profile
 		}
+		keyBytes, err := key.Marshall()
+		if err != nil {
+			return profile
+		}
+		profile.RequestMetadataKey = keyBytes
+		return profile
 	}
 	ticker := time.NewTicker(time.Second)
 	defer ticker.Stop()
@@ -178,10 +186,16 @@ func (s *service) WaitProfile(ctx context.Context, identity string) *domain.Iden
 		case <-ticker.C:
 			profile = s.getProfileFromCache(identity)
 			if profile != nil {
-				return &domain.IdentityProfileWithKey{
-					IdentityProfile:    profile,
-					RequestMetadataKey: s.identityEncryptionKeys[identity],
+				key, ok := s.identityEncryptionKeys[identity]
+				if !ok {
+					return profile
 				}
+				keyBytes, err := key.Marshall()
+				if err != nil {
+					return profile
+				}
+				profile.RequestMetadataKey = keyBytes
+				return profile
 			}
 		}
 	}

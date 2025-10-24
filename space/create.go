@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/anyproto/any-sync/coordinator/coordinatorproto"
 	"github.com/anyproto/any-sync/util/crypto"
 	"github.com/anyproto/anytype-heart/core/anytype/config/loadenv"
 	"github.com/anyproto/anytype-heart/space/clientspace"
@@ -13,6 +12,25 @@ import (
 	"github.com/anyproto/anytype-heart/space/spaceinfo"
 )
 
+// for initiator (e.g. from ui avatar, qrcode)
+func (s *service) createOneToOneSendInbox(ctx context.Context, description *spaceinfo.SpaceDescription) (sp clientspace.Space, err error) {
+	sp, err = s.createOneToOne(ctx, description)
+	if err != nil {
+		return
+	}
+	var bobAccountAddress string
+	if description.OneToOneParticipantIdentity != "" {
+		bobAccountAddress = description.OneToOneParticipantIdentity
+	} else {
+		// for testing
+		bobAccountAddress = loadenv.Get("BOB_ACCOUNT")
+	}
+	idProfile := s.identityService.WaitProfile(ctx, bobAccountAddress)
+	err = s.inboxClient.SendOneToOneInvite(ctx, idProfile)
+	return
+}
+
+// for acceptor (e.g. inbox message)
 func (s *service) createOneToOne(ctx context.Context, description *spaceinfo.SpaceDescription) (sp clientspace.Space, err error) {
 	var bobAccountAddress string
 	if description.OneToOneParticipantIdentity != "" {
@@ -29,6 +47,7 @@ func (s *service) createOneToOne(ctx context.Context, description *spaceinfo.Spa
 		return
 	}
 
+	// TODO: add space type to space view to diffirentiate between onetoone/nononetoone
 	coreSpace, err := s.spaceCore.CreateOneToOneSpace(ctx, bPk)
 	if err != nil {
 		return
@@ -41,9 +60,14 @@ func (s *service) createOneToOne(ctx context.Context, description *spaceinfo.Spa
 	s.mu.Unlock()
 
 	bobProfile := s.identityService.WaitProfile(ctx, bobAccountAddress)
+	bobKey, err := crypto.UnmarshallAESKeyProto(bobProfile.RequestMetadataKey)
+	if err != nil {
+		return
+	}
+
 	participantData := spaceinfo.OneToOneParticipantData{
 		Identity:           bPk,
-		RequestMetadataKey: bobProfile.RequestMetadataKey,
+		RequestMetadataKey: bobKey,
 	}
 	ctrl, err := s.factory.CreateOneToOneSpace(ctx, coreSpace.Id(), participantData)
 	if err != nil {
@@ -73,25 +97,7 @@ func (s *service) createOneToOne(ctx context.Context, description *spaceinfo.Spa
 
 	s.updater.UpdateCoordinatorStatus()
 
-	// TODO: inbox
-	// 1. wrap identity and request metadata key to payload
-	// 2. change spaceinvite to onetoone request
-	// 3. auto accept inbox
-	// 4. don't send inbox if space already exists
-	msg := &coordinatorproto.InboxMessage{
-		PacketType: coordinatorproto.InboxPacketType_Default,
-		Packet: &coordinatorproto.InboxPacket{
-			KeyType:          coordinatorproto.InboxKeyType_ed25519,
-			ReceiverIdentity: bobAccountAddress,
-			Payload: &coordinatorproto.InboxPayload{
-				PayloadType: coordinatorproto.InboxPayloadType_InboxPayloadOneToOneInvite,
-			},
-		},
-	}
-
-	s.inboxClient.InboxAddMessage(ctx, bPk, msg)
 	return
-
 }
 
 func (s *service) create(ctx context.Context, description *spaceinfo.SpaceDescription) (sp clientspace.Space, err error) {

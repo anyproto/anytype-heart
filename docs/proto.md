@@ -32158,6 +32158,7 @@ Used to decode block meta only, without the content itself
 | iconEncryptionKeys | [FileEncryptionKey](#anytype-model-FileEncryptionKey) | repeated |  |
 | description | [string](#string) |  |  |
 | globalName | [string](#string) |  |  |
+| requestMetadataKey | [bytes](#bytes) |  |  |
 
 
 

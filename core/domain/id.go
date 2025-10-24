@@ -4,9 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"strings"
-
-	"github.com/anyproto/any-sync/util/crypto"
-	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
 type FullID struct {
@@ -46,9 +43,4 @@ func ParseLongId(id string) (FullID, error) {
 	}
 	// TODO: support spaceId in long ids
 	return FullID{ObjectID: id}, nil
-}
-
-type IdentityProfileWithKey struct {
-	*model.IdentityProfile
-	RequestMetadataKey crypto.SymKey
 }

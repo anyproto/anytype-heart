@@ -101,8 +101,11 @@ func (p *participantWatcher) getOneToOneKey(ctx context.Context, space clientspa
 	myPubKey := p.accountService.Account().SignKey.GetPublic()
 	// it is either me or bob: we don't call WatchParticipant with owner state in aclobjectmanager
 	if state.PubKey.Equals(myPubKey) {
-		idWithProfileKey := p.identityService.WaitProfile(ctx, myPubKey.Account())
-		key = idWithProfileKey.RequestMetadataKey
+		idProfile := p.identityService.WaitProfile(ctx, myPubKey.Account())
+		key, err = crypto.UnmarshallAESKeyProto(idProfile.RequestMetadataKey)
+		if err != nil {
+			return
+		}
 	} else {
 		key, err = p.getOneToOneParticipantKey(space)
 		if err != nil {
