@@ -46,6 +46,10 @@ type spaceViewStub struct {
 	data *domain.Details
 }
 
+func (s *spaceViewStub) AddPushNotificationAllIds(ctx session.Context, allIds []string) error {
+	return nil
+}
+
 func (s *spaceViewStub) AddPushNotificationMuteIds(ctx session.Context, muteIds []string) (err error) {
 	return
 }
