@@ -60,6 +60,8 @@ func TestConvertTierData_JSONCoverage(t *testing.T) {
 		AndroidManageUrl:           "https://android.example/manage",
 		Offer:                      "Launch offer",
 		PriceStripeUsdCentsMonthly: 1499,
+		IsIntroPlan:                true,
+		IsUpgradeable:              true,
 	}
 
 	actual := convertTierData(src)
@@ -88,6 +90,8 @@ func TestConvertTierData_JSONCoverage(t *testing.T) {
 		AndroidManageUrl:           src.AndroidManageUrl,
 		Offer:                      src.Offer,
 		PriceStripeUsdCentsMonthly: src.PriceStripeUsdCentsMonthly,
+		IsIntroPlan:                src.IsIntroPlan,
+		IsUpgradeable:              src.IsUpgradeable,
 	}
 
 	require.Equal(t, expected, actual)
@@ -107,6 +111,7 @@ func TestConvertMembershipData_JSONCoverage(t *testing.T) {
 		UserEmail:             "member@example.com",
 		SubscribeToNewsletter: true,
 		IsMonthly:             true,
+		TeamOwner:             "team-owner.any",
 	}
 
 	actual := convertMembershipData(src)
@@ -126,6 +131,7 @@ func TestConvertMembershipData_JSONCoverage(t *testing.T) {
 		UserEmail:             src.UserEmail,
 		SubscribeToNewsletter: src.SubscribeToNewsletter,
 		IsMonthly:             src.IsMonthly,
+		TeamOwner:             src.TeamOwner,
 	}
 
 	require.Equal(t, expected, actual)
