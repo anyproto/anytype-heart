@@ -73,7 +73,7 @@ func (s *service) createOneToOne(ctx context.Context, description *spaceinfo.Spa
 
 	s.updater.UpdateCoordinatorStatus()
 
-	// inbox
+	// TODO: inbox
 	msg := &coordinatorproto.InboxMessage{
 		PacketType: coordinatorproto.InboxPacketType_Default,
 		Packet: &coordinatorproto.InboxPacket{

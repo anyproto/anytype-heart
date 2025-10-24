@@ -343,7 +343,6 @@ func decryptAll(states []list.AccountState, decrypt func(key crypto.PubKey) ([]b
 	for _, state := range states {
 		res, err := decrypt(state.PubKey)
 		if err != nil {
-			fmt.Printf("-- decryptErr: %#v\n", state)
 			return nil, err
 		}
 		state.RequestMetadata = res

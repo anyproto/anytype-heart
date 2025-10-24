@@ -86,7 +86,6 @@ func (b *spaceBuilder) BuildSpace(ctx context.Context, disableRemoteLoad bool) (
 	if b.customAccountKey != nil {
 		ctx = context.WithValue(ctx, spacecore.OptsKey, spacecore.Opts{SignKey: b.customAccountKey})
 	}
-	fmt.Printf("-- spaceCore.Get(): %s\n", b.status.SpaceId())
 	coreSpace, err := b.spaceCore.Get(ctx, b.status.SpaceId())
 	if err != nil {
 		return nil, err

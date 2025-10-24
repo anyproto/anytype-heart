@@ -80,9 +80,10 @@ func (p *participantWatcher) getOneToOneParticipantKey(space clientspace.Space) 
 	if err != nil {
 		return nil, fmt.Errorf("onetoone: failed to query type object: %w", err)
 	}
-	if len(records) != 1 {
-		log.Error("onetoone: techspace has more than one record (we take the first)", zap.Int("recodrs", len(records)))
+	if len(records) == 0 {
+		return nil, fmt.Errorf("onetoone: failed to query spaceview")
 	}
+
 	requestMetadataStr := records[0].Details.GetString(bundle.RelationKeyOneToOneRequestMetadata)
 	requestMetadataBytes, rerr := base64.StdEncoding.DecodeString(requestMetadataStr)
 	if rerr != nil {
@@ -124,9 +125,9 @@ func (p *participantWatcher) WatchParticipant(ctx context.Context, space clients
 		key, err = p.getOneToOneKey(ctx, space, state)
 	} else {
 		key, err = getSymKey(state.RequestMetadata)
-		if err != nil {
-			return
-		}
+	}
+	if err != nil {
+		return
 	}
 
 	err = p.identityService.RegisterIdentity(space.Id(), state.PubKey.Account(), key, func(identity string, profile *model.IdentityProfile) {

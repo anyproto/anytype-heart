@@ -190,7 +190,6 @@ func (o *objectProvider) CreateMandatoryObjects(ctx context.Context, space smart
 		if err != nil {
 			return err
 		}
-		log.Warn("-- DeriveTreeObject spaceId: ", zap.String("spaceid", o.spaceId))
 		_, err = o.cache.DeriveTreeObject(ctx, objectcache.TreeDerivationParams{
 			Key: uk,
 			InitFunc: func(id string) *smartblock.InitContext {
