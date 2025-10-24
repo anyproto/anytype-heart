@@ -9,6 +9,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/dataview"
 	"github.com/anyproto/anytype-heart/core/block/editor/file"
 	"github.com/anyproto/anytype-heart/core/block/editor/layout"
+	"github.com/anyproto/anytype-heart/core/block/editor/order"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/editor/stext"
@@ -45,6 +46,7 @@ type ObjectType struct {
 	clipboard.Clipboard
 	source.ChangeReceiver
 	dataview.Dataview
+	order.OrderSettable
 
 	spaceIndex spaceindex.Store
 }
@@ -70,9 +72,9 @@ func (f *ObjectFactory) newObjectType(spaceId string, sb smartblock.SmartBlock) 
 			f.fileService,
 			f.fileObjectService,
 		),
-		Dataview: dataview.NewDataview(sb, store),
-
-		spaceIndex: store,
+		Dataview:      dataview.NewDataview(sb, store),
+		OrderSettable: order.NewOrderSettable(sb, bundle.RelationKeyOrderId),
+		spaceIndex:    store,
 	}
 }
 
@@ -83,8 +85,13 @@ func (ot *ObjectType) Init(ctx *smartblock.InitContext) (err error) {
 		return
 	}
 
-	ot.AddHook(ot.syncLayoutForObjectsAndTemplates, smartblock.HookAfterApply)
-	return nil
+	ot.AddHook(ot.syncLayoutHook, smartblock.HookAfterApply)
+
+	oldLayout := layout.NewLayoutStateFromDetails(domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+		bundle.RelationKeyRecommendedLayout: domain.Int64(model.ObjectType_basic),
+	}))
+	newLayout := layout.NewLayoutStateFromDetails(ot.Details().CopyOnlyKeys(bundle.RelationKeyRecommendedLayout))
+	return ot.syncLayoutForObjectsAndTemplates(oldLayout, newLayout, false)
 }
 
 func (ot *ObjectType) CreationStateMigration(ctx *smartblock.InitContext) migration.Migration {
@@ -137,7 +144,7 @@ func (ot *ObjectType) featuredRelationsMigration(s *state.State) {
 		return
 	}
 
-	if s.HasRelation(bundle.RelationKeyRecommendedFeaturedRelations.String()) {
+	if s.HasRelation(bundle.RelationKeyRecommendedFeaturedRelations) {
 		return
 	}
 
@@ -191,33 +198,74 @@ func removeDescriptionMigration(s *state.State) {
 	s.RemoveDetail(bundle.RelationKeyDescription)
 }
 
-func (ot *ObjectType) syncLayoutForObjectsAndTemplates(info smartblock.ApplyInfo) error {
+func (ot *ObjectType) syncLayoutForObjectsAndTemplates(oldLayout, newLayout layout.LayoutState, applyOtherObjects bool) error {
 	syncer := layout.NewSyncer(ot.Id(), ot.Space(), ot.spaceIndex)
+	return syncer.SyncLayoutWithType(oldLayout, newLayout, false, applyOtherObjects, true)
+}
+
+func (ot *ObjectType) syncLayoutHook(info smartblock.ApplyInfo) error {
 	newLayout := layout.NewLayoutStateFromEvents(info.Events)
 	oldLayout := layout.NewLayoutStateFromDetails(info.ParentDetails)
-	return syncer.SyncLayoutWithType(oldLayout, newLayout, false, info.ApplyOtherObjects, true)
+	return ot.syncLayoutForObjectsAndTemplates(oldLayout, newLayout, info.ApplyOtherObjects)
 }
 
 func (ot *ObjectType) dataviewTemplates() []template.StateTransformer {
-	details := ot.Details()
-	name := details.GetString(bundle.RelationKeyName)
-	key := details.GetString(bundle.RelationKeyUniqueKey)
-
-	dvContent := template.MakeDataviewContent(false, &model.ObjectType{
-		Url:  ot.Id(),
-		Name: name,
-		// todo: add RelationLinks, because they are not indexed at this moment :(
-		Key: key,
-	}, []*model.RelationLink{
-		{
-			Key:    bundle.RelationKeyName.String(),
-			Format: model.RelationFormat_longtext,
-		},
-	}, addr.ObjectTypeAllViewId)
-
-	dvContent.Dataview.TargetObjectId = ot.Id()
 	return []template.StateTransformer{
-		template.WithDataviewIDIfNotExists(state.DataviewBlockID, dvContent, false),
+		func(s *state.State) {
+			if s.Exists(state.DataviewBlockID) {
+				return
+			}
+			details := s.Details()
+			name := details.GetString(bundle.RelationKeyName)
+			key := details.GetString(bundle.RelationKeyUniqueKey)
+
+			// Build relation links from recommended and featured relations
+			relationLinks := []*model.RelationLink{
+				{
+					Key:    bundle.RelationKeyName.String(),
+					Format: model.RelationFormat_longtext,
+				},
+			}
+
+			// Add featured relations
+			featuredRelations := details.GetStringList(bundle.RelationKeyRecommendedFeaturedRelations)
+			for _, relId := range featuredRelations {
+				// Get relation format from space index
+				if rel, err := ot.spaceIndex.GetRelationById(relId); err == nil && rel != nil {
+					relationLinks = append(relationLinks, &model.RelationLink{
+						Key:    rel.Key,
+						Format: rel.Format,
+					})
+				}
+			}
+
+			// Add recommended relations
+			recommendedRelations := details.GetStringList(bundle.RelationKeyRecommendedRelations)
+			for _, relId := range recommendedRelations {
+				// Get relation format from space index
+				if rel, err := ot.spaceIndex.GetRelationById(relId); err == nil && rel != nil {
+					relationLinks = append(relationLinks, &model.RelationLink{
+						Key:    rel.Key,
+						Format: rel.Format,
+					})
+				}
+			}
+
+			relationLinks = slices.DeleteFunc(relationLinks, func(rel *model.RelationLink) bool {
+				return rel.Key == bundle.RelationKeyType.String()
+			})
+
+			dvContent := template.MakeDataviewContent(false, &model.ObjectType{
+				Url:           ot.Id(),
+				Name:          name,
+				Key:           key,
+				RelationLinks: relationLinks,
+			}, relationLinks, addr.ObjectTypeAllViewId)
+
+			dvContent.Dataview.TargetObjectId = ot.Id()
+
+			template.WithDataviewIDIfNotExists(state.DataviewBlockID, dvContent, false)(s)
+		},
 		template.WithForcedDetail(bundle.RelationKeySetOf, domain.StringList([]string{ot.Id()})),
 	}
 }

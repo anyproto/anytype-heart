@@ -18,6 +18,7 @@ import (
 	"github.com/anyproto/any-sync/nodeconf"
 	"github.com/anyproto/any-sync/util/crypto"
 	"github.com/ipfs/go-cid"
+	"go.uber.org/zap"
 
 	"github.com/anyproto/anytype-heart/core/anytype/account"
 	"github.com/anyproto/anytype-heart/core/domain"
@@ -91,6 +92,9 @@ type aclService struct {
 	recordVerifier   recordverifier.AcceptorVerifier
 	updater          *aclUpdater
 	getter           *aclGetter
+
+	ctx       context.Context
+	ctxCancel context.CancelFunc
 }
 
 func (a *aclService) Init(ap *app.App) (err error) {
@@ -117,19 +121,28 @@ func (a *aclService) Init(ap *app.App) (err error) {
 	if err != nil {
 		return err
 	}
+
+	a.ctx, a.ctxCancel = context.WithCancel(context.Background())
 	a.recordVerifier = recordverifier.New()
 	return nil
 }
 
-func (a *aclService) Run(ctx context.Context) (err error) {
+func (a *aclService) Run(_ context.Context) (err error) {
 	if a.updater != nil {
-		return a.updater.Run(ctx)
+		go func() {
+			err = a.updater.Run(a.ctx)
+			if err != nil {
+				log.With(zap.Error(err)).Error("acl updater run error")
+			}
+		}()
 	}
 	return nil
 }
 
 func (a *aclService) Close(ctx context.Context) (err error) {
+	a.ctxCancel()
 	if a.updater != nil {
+		// Close always waiting for Run to finish under the hood
 		return a.updater.Close()
 	}
 	return nil
@@ -261,6 +274,9 @@ func (a *aclService) RevokeInvite(ctx context.Context, spaceId string) error {
 }
 
 func (a *aclService) ChangePermissions(ctx context.Context, spaceId string, perms []AccountPermissions) error {
+	if len(perms) == 0 {
+		return fmt.Errorf("%w: empty permissions", ErrIncorrectPermissions)
+	}
 	sp, err := a.spaceService.Get(ctx, spaceId)
 	if err != nil {
 		return convertedOrSpaceErr(err)
@@ -481,6 +497,13 @@ func (a *aclService) Join(ctx context.Context, spaceId, networkId string, invite
 			InviteKey: inviteKey,
 			Metadata:  a.spaceService.AccountMetadataPayload(),
 		})
+		if errors.Is(err, coordinatorproto.ErrSpaceLimitReached) {
+			aclHeadId, err = a.joiningClient.InviteJoin(ctx, spaceId, list.InviteJoinPayload{
+				InviteKey:   inviteKey,
+				Metadata:    a.spaceService.AccountMetadataPayload(),
+				Permissions: list.AclPermissionsReader,
+			})
+		}
 		if err != nil {
 			return onJoinError(err)
 		}

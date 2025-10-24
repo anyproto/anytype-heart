@@ -47,6 +47,12 @@ var (
 		Name:      "details_index_heads_not_changed",
 		Help:      "Details head not changed optimization",
 	})
+	LinkPreviewStatusCounter = promauto.NewCounterVec(prometheus.CounterOpts{
+		Namespace: "anytype",
+		Subsystem: "mw",
+		Name:      "link_preview_non_ok_status_total",
+		Help:      "Total count of HTTP status codes from LinkPreview URL fetches",
+	}, []string{"status_code", "status_class"})
 )
 
 func registerPrometheusExpvars() {

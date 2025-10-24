@@ -420,7 +420,7 @@ func (mw *Middleware) ObjectRelationDelete(cctx context.Context, req *pb.RpcObje
 		return m
 	}
 	err := mw.doBlockService(func(bs *block.Service) (err error) {
-		return bs.RemoveExtraRelations(ctx, req.ContextId, req.RelationKeys)
+		return bs.RemoveRelations(ctx, req.ContextId, req.RelationKeys)
 	})
 	if err != nil {
 		return response(pb.RpcObjectRelationDeleteResponseError_BAD_INPUT, err)
@@ -705,7 +705,7 @@ func (mw *Middleware) ObjectImportExperience(ctx context.Context, req *pb.RpcObj
 	}
 
 	objCreator := mustService[builtinobjects.BuiltinObjects](mw)
-	err := objCreator.CreateObjectsForExperience(ctx, req.SpaceId, req.Url, req.Title, req.IsNewSpace)
+	err := objCreator.CreateObjectsForExperience(ctx, req.SpaceId, req.Url, req.Title, req.IsNewSpace, req.IsAi)
 	return response(common.GetGalleryResponseCode(err), err)
 }
 

@@ -138,6 +138,8 @@ func newFixture(t *testing.T) *fixture {
 	}, nil)
 	fx.mockJoiningClient.EXPECT().AclGetRecords(ctx, mock.Anything, mock.Anything).Return(nil, fmt.Errorf("no acl found")).AnyTimes()
 	require.NoError(t, fx.a.Start(ctx))
+	// Give async goroutines time to start
+	time.Sleep(10 * time.Millisecond)
 	fx.aclService.recordVerifier = recordverifier.NewValidateFull()
 	return fx
 }

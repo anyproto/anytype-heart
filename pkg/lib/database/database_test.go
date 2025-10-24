@@ -59,6 +59,13 @@ func (s *stubSpaceObjectStore) ListRelationOptions(relationKey domain.RelationKe
 	return nil, nil
 }
 
+func (s *stubSpaceObjectStore) QueryIterate(q Query, proc func(record *domain.Details)) error {
+	for _, record := range s.queryRawResult {
+		proc(record.Details)
+	}
+	return nil
+}
+
 func newTestQueryBuilder(t *testing.T) queryBuilder {
 	objectStore := &stubSpaceObjectStore{}
 	return queryBuilder{

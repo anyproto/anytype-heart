@@ -25,6 +25,7 @@ import (
 	"golang.org/x/sys/unix"
 
 	"github.com/anyproto/anytype-heart/core/anytype/account/mock_account"
+	"github.com/anyproto/anytype-heart/core/anytype/config"
 	"github.com/anyproto/anytype-heart/core/block/cache/mock_cache"
 	"github.com/anyproto/anytype-heart/core/block/editor/fileobject"
 	"github.com/anyproto/anytype-heart/core/block/editor/fileobject/mock_fileobject"
@@ -41,6 +42,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/inviteservice"
 	"github.com/anyproto/anytype-heart/core/inviteservice/mock_inviteservice"
 	"github.com/anyproto/anytype-heart/core/notifications/mock_notifications"
+	"github.com/anyproto/anytype-heart/core/relationutils/mock_relationutils"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
@@ -118,7 +120,7 @@ func (m *mockPublishClient) UploadDir(ctx context.Context, uploadUrl, dir string
 }
 
 func (m *mockPublishClient) checkIndexFile(path string, info os.FileInfo) {
-	assert.Equal(m.t, info.Name(), indexFileName)
+	assert.Equal(m.t, info.Name(), testLimitsConfig.IndexFileName)
 	file, err := os.Open(path)
 	assert.NoError(m.t, err)
 	defer file.Close()
@@ -139,6 +141,15 @@ func (m *mockPublishClient) checkIndexFile(path string, info os.FileInfo) {
 	}
 }
 
+var testLimitsConfig = config.PublishLimitsConfig{
+	MembershipLimit:       12 << 20,
+	DefaultLimit:          10 << 20,
+	InviteLinkUrlTemplate: "https://invite.any.coop/%s#%s",
+	MemberUrlTemplate:     "https://%s.org",
+	DefaultUrlTemplate:    "https://any.coop/%s",
+	IndexFileName:         "index.json.gz",
+}
+
 func TestPublish(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
 		// given
@@ -149,7 +160,7 @@ func TestPublish(t *testing.T) {
 
 		objectTypeId := "customObjectType"
 		expectedUri := "test"
-		expected := fmt.Sprintf(defaultUrlTemplate, id) + "/" + expectedUri
+		expected := fmt.Sprintf(testLimitsConfig.DefaultUrlTemplate, id) + "/" + expectedUri
 		publishClient := &mockPublishClient{
 			t:              t,
 			expectedUrl:    expected,
@@ -173,6 +184,7 @@ func TestPublish(t *testing.T) {
 			publishClientService: publishClient,
 			identityService:      identityService,
 			tempDirService:       core.NewTempDirService(),
+			limitsConfig:         testLimitsConfig,
 		}
 
 		// when
@@ -195,11 +207,11 @@ func TestPublish(t *testing.T) {
 
 		objectTypeId := "customObjectType"
 		expectedUri := "test"
-		expected := fmt.Sprintf(defaultUrlTemplate, id) + "/" + expectedUri
+		expected := fmt.Sprintf(testLimitsConfig.DefaultUrlTemplate, id) + "/" + expectedUri
 
 		inviteFileCid := "inviteFileCid"
 		inviteFileKey := "inviteFileKey"
-		expectedInvite := fmt.Sprintf(inviteLinkUrlTemplate, inviteFileCid, inviteFileKey)
+		expectedInvite := fmt.Sprintf(testLimitsConfig.InviteLinkUrlTemplate, inviteFileCid, inviteFileKey)
 		publishClient := &mockPublishClient{
 			t:              t,
 			expectedUrl:    expected,
@@ -230,6 +242,7 @@ func TestPublish(t *testing.T) {
 			identityService:      identityService,
 			inviteService:        inviteService,
 			tempDirService:       core.NewTempDirService(),
+			limitsConfig:         testLimitsConfig,
 		}
 
 		// when
@@ -251,7 +264,7 @@ func TestPublish(t *testing.T) {
 
 		objectTypeId := "customObjectType"
 		expectedUri := "test"
-		expected := fmt.Sprintf(defaultUrlTemplate, id) + "/" + expectedUri
+		expected := fmt.Sprintf(testLimitsConfig.DefaultUrlTemplate, id) + "/" + expectedUri
 
 		publishClient := &mockPublishClient{
 			t:              t,
@@ -280,6 +293,7 @@ func TestPublish(t *testing.T) {
 			identityService:      identityService,
 			inviteService:        inviteService,
 			tempDirService:       core.NewTempDirService(),
+			limitsConfig:         testLimitsConfig,
 		}
 
 		// when
@@ -307,11 +321,11 @@ func TestPublish(t *testing.T) {
 		identityService.EXPECT().GetMyProfileDetails(context.Background()).Return("identity", nil, domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
 			bundle.RelationKeyGlobalName: domain.String(globalName),
 		}))
-		expectedUrl := fmt.Sprintf(memberUrlTemplate, globalName) + "/" + expectedUri
+		expectedUrl := fmt.Sprintf(testLimitsConfig.MemberUrlTemplate, globalName) + "/" + expectedUri
 
 		inviteFileCid := "inviteFileCid"
 		inviteFileKey := "inviteFileKey"
-		expectedInvite := fmt.Sprintf(inviteLinkUrlTemplate, inviteFileCid, inviteFileKey)
+		expectedInvite := fmt.Sprintf(testLimitsConfig.InviteLinkUrlTemplate, inviteFileCid, inviteFileKey)
 
 		publishClient := &mockPublishClient{
 			t:              t,
@@ -340,6 +354,7 @@ func TestPublish(t *testing.T) {
 			identityService:      identityService,
 			inviteService:        inviteService,
 			tempDirService:       core.NewTempDirService(),
+			limitsConfig:         testLimitsConfig,
 		}
 
 		// when
@@ -388,6 +403,7 @@ func TestPublish(t *testing.T) {
 			publishClientService: publishClient,
 			identityService:      identityService,
 			tempDirService:       core.NewTempDirService(),
+			limitsConfig:         testLimitsConfig,
 		}
 
 		// when
@@ -411,11 +427,11 @@ func TestPublish(t *testing.T) {
 		space := mock_clientspace.NewMockSpace(t)
 		space.EXPECT().DerivedIDs().Return(threads.DerivedSmartblockIds{Workspace: workspaceId}).Maybe()
 		space.EXPECT().IsPersonal().Return(isPersonal).Maybe()
+		space.EXPECT().Id().Return(spaceId).Maybe()
 		spaceService.EXPECT().Get(context.Background(), spaceId).Return(space, nil)
 
 		expectedUri := "test"
-		testFile := "test"
-		err = createTestFile(testFile, membershipLimit+1)
+		testFile, err := createTestFile(testLimitsConfig.MembershipLimit + 1)
 		assert.NoError(t, err)
 
 		objectTypeId := "customObjectType"
@@ -443,6 +459,7 @@ func TestPublish(t *testing.T) {
 			identityService: identityService,
 			inviteService:   inviteService,
 			tempDirService:  core.NewTempDirService(),
+			limitsConfig:    testLimitsConfig,
 		}
 
 		// when
@@ -463,11 +480,11 @@ func TestPublish(t *testing.T) {
 		space := mock_clientspace.NewMockSpace(t)
 		space.EXPECT().DerivedIDs().Return(threads.DerivedSmartblockIds{Workspace: workspaceId}).Maybe()
 		space.EXPECT().IsPersonal().Return(isPersonal).Maybe()
+		space.EXPECT().Id().Return(spaceId).Maybe()
 		spaceService.EXPECT().Get(context.Background(), spaceId).Return(space, nil)
 
 		expectedUri := "test"
-		testFile := "test"
-		err = createTestFile(testFile, defaultLimit+1)
+		testFile, err := createTestFile(testLimitsConfig.DefaultLimit + 1)
 		assert.NoError(t, err)
 
 		objectTypeId := "customObjectType"
@@ -492,6 +509,7 @@ func TestPublish(t *testing.T) {
 			identityService: identityService,
 			inviteService:   inviteService,
 			tempDirService:  core.NewTempDirService(),
+			limitsConfig:    testLimitsConfig,
 		}
 
 		// when
@@ -521,6 +539,7 @@ func TestService_GetStatus(t *testing.T) {
 		svc := &service{
 			publishClientService: publishClientService,
 			tempDirService:       core.NewTempDirService(),
+			limitsConfig:         testLimitsConfig,
 		}
 
 		// when
@@ -557,6 +576,7 @@ func TestService_PublishingList(t *testing.T) {
 			objectStore:          objectstore.NewStoreFixture(t),
 			publishClientService: publishClientService,
 			tempDirService:       core.NewTempDirService(),
+			limitsConfig:         testLimitsConfig,
 		}
 
 		// when
@@ -616,6 +636,7 @@ func TestService_PublishingList(t *testing.T) {
 			publishClientService: publishClientService,
 			objectStore:          storeFixture,
 			tempDirService:       core.NewTempDirService(),
+			limitsConfig:         testLimitsConfig,
 		}
 
 		// when
@@ -681,6 +702,7 @@ func TestService_PublishingList(t *testing.T) {
 			publishClientService: publishClientService,
 			objectStore:          storeFixture,
 			tempDirService:       core.NewTempDirService(),
+			limitsConfig:         testLimitsConfig,
 		}
 
 		// when
@@ -724,6 +746,7 @@ func prepareSpaceService(t *testing.T, isPersonal bool, includeSpaceInfo bool) (
 	st.EXPECT().TreeStorage(mock.Anything, mock.Anything).Return(mockSt, nil).Maybe()
 	mockSt.EXPECT().Heads(gomock.Any()).Return([]string{"heads"}, nil).AnyTimes()
 	space.EXPECT().Storage().Return(st).Maybe()
+	space.EXPECT().Id().Return(spaceId).Maybe()
 	if includeSpaceInfo && !isPersonal {
 		space.EXPECT().DerivedIDs().Return(threads.DerivedSmartblockIds{Workspace: workspaceId})
 	}
@@ -811,6 +834,15 @@ func prepareExporter(t *testing.T, objectTypeId string, spaceService *mock_space
 	objectGetter.EXPECT().GetObject(context.Background(), objectId).Return(smartBlockTest, nil)
 	objectGetter.EXPECT().GetObject(context.Background(), objectTypeId).Return(objectType, nil)
 
+	fetcher := mock_relationutils.NewMockRelationFormatFetcher(t)
+	fetcher.EXPECT().GetRelationFormatByKey(mock.Anything, mock.Anything).RunAndReturn(func(_ string, key domain.RelationKey) (model.RelationFormat, error) {
+		rel, err := bundle.GetRelation(key)
+		if err != nil {
+			return 0, err
+		}
+		return rel.Format, nil
+	}).Maybe()
+
 	a := &app.App{}
 	mockSender := mock_event.NewMockSender(t)
 	a.Register(storeFixture)
@@ -822,6 +854,7 @@ func prepareExporter(t *testing.T, objectTypeId string, spaceService *mock_space
 	a.Register(testutil.PrepareMock(context.Background(), a, mock_files.NewMockService(t)))
 	a.Register(testutil.PrepareMock(context.Background(), a, mock_account.NewMockService(t)))
 	a.Register(testutil.PrepareMock(context.Background(), a, mock_notifications.NewMockNotifications(t)))
+	a.Register(testutil.PrepareMock(context.Background(), a, fetcher))
 
 	exp := export.New()
 	err = exp.Init(a)
@@ -951,6 +984,15 @@ func prepareExporterWithFile(t *testing.T, objectTypeId string, spaceService *mo
 	objectGetter.EXPECT().GetObject(context.Background(), fileId).Return(file, nil)
 	objectGetter.EXPECT().GetObject(context.Background(), workspaceId).Return(workspaceTest, nil)
 
+	fetcher := mock_relationutils.NewMockRelationFormatFetcher(t)
+	fetcher.EXPECT().GetRelationFormatByKey(mock.Anything, mock.Anything).RunAndReturn(func(_ string, key domain.RelationKey) (model.RelationFormat, error) {
+		rel, err := bundle.GetRelation(key)
+		if err != nil {
+			return 0, err
+		}
+		return rel.Format, nil
+	})
+
 	a := &app.App{}
 	mockSender := mock_event.NewMockSender(t)
 	ctx := context.Background()
@@ -963,6 +1005,7 @@ func prepareExporterWithFile(t *testing.T, objectTypeId string, spaceService *mo
 	a.Register(testutil.PrepareMock(ctx, a, mock_account.NewMockService(t)))
 	a.Register(testutil.PrepareMock(ctx, a, mock_notifications.NewMockNotifications(t)))
 	a.Register(testutil.PrepareMock(ctx, a, fileService))
+	a.Register(testutil.PrepareMock(ctx, a, fetcher))
 
 	exp := export.New()
 	err = exp.Init(a)
@@ -970,10 +1013,11 @@ func prepareExporterWithFile(t *testing.T, objectTypeId string, spaceService *mo
 	return exp
 }
 
-func createTestFile(fileName string, size int64) error {
-	file, err := os.Create(fileName)
+func createTestFile(size int64) (fileName string, err error) {
+	file, err := os.CreateTemp(os.TempDir(), "test")
+	fileName = file.Name()
 	if err != nil {
-		return err
+		return "", err
 	}
 	bufferSize := int64(4 * 1024)
 	buffer := make([]byte, bufferSize)
@@ -982,7 +1026,7 @@ func createTestFile(fileName string, size int64) error {
 	for written < size {
 		_, err := rand.Read(buffer)
 		if err != nil {
-			return err
+			return "", err
 		}
 		toWrite := bufferSize
 		if written+bufferSize > size {
@@ -990,13 +1034,13 @@ func createTestFile(fileName string, size int64) error {
 		}
 		n, err := file.Write(buffer[:toWrite])
 		if err != nil {
-			return err
+			return "", err
 		}
 		written += int64(n)
 	}
 	file.Sync()
 	file.Close()
-	return nil
+	return
 }
 
 func createStore(ctx context.Context, t testing.TB) anystore.DB {

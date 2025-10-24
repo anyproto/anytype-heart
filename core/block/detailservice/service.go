@@ -44,7 +44,7 @@ type Service interface {
 	SetSpaceInfo(spaceId string, details *domain.Details) error
 	SetWorkspaceDashboardId(ctx session.Context, workspaceId string, id string) (setId string, err error)
 
-	SetIsFavorite(objectId string, isFavorite, createWidget bool) error
+	SetIsFavorite(objectId string, isFavorite bool) error
 	SetIsArchived(objectId string, isArchived bool) error
 	SetListIsFavorite(objectIds []string, isFavorite bool) error
 	SetListIsArchived(objectIds []string, isArchived bool) error

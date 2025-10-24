@@ -7,10 +7,10 @@ import (
 	"time"
 
 	"github.com/anyproto/any-sync/util/crypto"
-	"github.com/anyproto/lexid"
 	"github.com/gogo/protobuf/proto"
 	"golang.org/x/exp/slices"
 
+	"github.com/anyproto/anytype-heart/core/block/editor/order"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/editor/template"
@@ -28,9 +28,6 @@ import (
 var spaceViewLog = logging.Logger("core.block.editor.spaceview")
 
 var ErrIncorrectSpaceInfo = errors.New("space info is incorrect")
-var ErrLexidInsertionFailed = errors.New("lexid insertion failed")
-
-var lx = lexid.Must(lexid.CharsBase64, 4, 4000)
 
 // required relations for spaceview beside the bundle.RequiredInternalRelations
 var spaceViewRequiredRelations = []domain.RelationKey{
@@ -57,6 +54,7 @@ type spaceService interface {
 // SpaceView is a wrapper around smartblock.SmartBlock that indicates the current space state
 type SpaceView struct {
 	smartblock.SmartBlock
+	order.OrderSettable
 	spaceService      spaceService
 	fileObjectService fileobject.Service
 	log               *logging.Sugared
@@ -66,6 +64,7 @@ type SpaceView struct {
 func (f *ObjectFactory) newSpaceView(sb smartblock.SmartBlock) *SpaceView {
 	return &SpaceView{
 		SmartBlock:        sb,
+		OrderSettable:     order.NewOrderSettable(sb, bundle.RelationKeySpaceOrder),
 		spaceService:      f.spaceService,
 		log:               spaceViewLog,
 		fileObjectService: f.fileObjectService,
@@ -173,6 +172,86 @@ func (s *SpaceView) SetAclInfo(isAclEmpty bool, pushKey crypto.PrivKey, pushEncK
 	}
 
 	s.updateAccessType(st)
+	return s.Apply(st)
+}
+
+func (s *SpaceView) AddPushNotificationMuteIds(ctx session.Context, muteIds []string) (err error) {
+	st := s.NewStateCtx(ctx)
+	details := st.Details()
+	currentMentionIds := details.GetStringList(bundle.RelationKeySpacePushNotificationCustomMentionIds)
+	var filteredMentionsIds = currentMentionIds[:0]
+	for _, id := range currentMentionIds {
+		if !slices.Contains(muteIds, id) {
+			filteredMentionsIds = append(filteredMentionsIds, id)
+		}
+	}
+	if len(filteredMentionsIds) != len(currentMentionIds) {
+		st.SetDetail(bundle.RelationKeySpacePushNotificationCustomMentionIds, domain.StringList(filteredMentionsIds))
+	}
+
+	currentMuteIds := details.GetStringList(bundle.RelationKeySpacePushNotificationCustomMuteIds)
+	for _, id := range muteIds {
+		if !slices.Contains(currentMuteIds, id) {
+			currentMuteIds = append(currentMuteIds, id)
+		}
+	}
+	st.SetDetail(bundle.RelationKeySpacePushNotificationCustomMuteIds, domain.StringList(currentMuteIds))
+
+	st.SetDetail(bundle.RelationKeySpacePushNotificationMode, domain.Int64(pb.RpcPushNotificationSetSpaceMode_Custom))
+	return s.Apply(st)
+}
+
+func (s *SpaceView) AddPushNotificationMentionIds(ctx session.Context, mentionIds []string) (err error) {
+	st := s.NewStateCtx(ctx)
+	details := st.Details()
+	currentMuteIds := details.GetStringList(bundle.RelationKeySpacePushNotificationCustomMuteIds)
+	var filteredMuteIds = currentMuteIds[:0]
+	for _, id := range currentMuteIds {
+		if !slices.Contains(mentionIds, id) {
+			filteredMuteIds = append(filteredMuteIds, id)
+		}
+	}
+	if len(filteredMuteIds) != len(currentMuteIds) {
+		st.SetDetail(bundle.RelationKeySpacePushNotificationCustomMuteIds, domain.StringList(filteredMuteIds))
+	}
+	currentMentionIds := details.GetStringList(bundle.RelationKeySpacePushNotificationCustomMentionIds)
+	for _, id := range mentionIds {
+		if !slices.Contains(currentMentionIds, id) {
+			currentMentionIds = append(currentMentionIds, id)
+		}
+	}
+	st.SetDetail(bundle.RelationKeySpacePushNotificationCustomMentionIds, domain.StringList(currentMentionIds))
+
+	st.SetDetail(bundle.RelationKeySpacePushNotificationMode, domain.Int64(pb.RpcPushNotificationSetSpaceMode_Custom))
+	return s.Apply(st)
+}
+
+func (s *SpaceView) AddPushNotificationAllIds(ctx session.Context, allIds []string) (err error) {
+	st := s.NewStateCtx(ctx)
+	details := st.Details()
+	currentMuteIds := details.GetStringList(bundle.RelationKeySpacePushNotificationCustomMuteIds)
+	var filteredMuteIds = currentMuteIds[:0]
+	for _, id := range currentMuteIds {
+		if !slices.Contains(allIds, id) {
+			filteredMuteIds = append(filteredMuteIds, id)
+		}
+	}
+	if len(filteredMuteIds) != len(currentMuteIds) {
+		st.SetDetail(bundle.RelationKeySpacePushNotificationCustomMuteIds, domain.StringList(filteredMuteIds))
+	}
+
+	currentMentionIds := details.GetStringList(bundle.RelationKeySpacePushNotificationCustomMentionIds)
+	var filteredMentionIds = currentMentionIds[:0]
+	for _, id := range currentMentionIds {
+		if !slices.Contains(allIds, id) {
+			filteredMentionIds = append(filteredMentionIds, id)
+		}
+	}
+	if len(filteredMentionIds) != len(currentMentionIds) {
+		st.SetDetail(bundle.RelationKeySpacePushNotificationCustomMentionIds, domain.StringList(filteredMentionIds))
+	}
+
+	st.SetDetail(bundle.RelationKeySpacePushNotificationMode, domain.Int64(pb.RpcPushNotificationSetSpaceMode_Custom))
 	return s.Apply(st)
 }
 
@@ -326,50 +405,6 @@ func (s *SpaceView) UpdateLastOpenedDate() error {
 	st := s.NewState()
 	st.SetLocalDetail(bundle.RelationKeyLastOpenedDate, domain.Int64(time.Now().Unix()))
 	return s.Apply(st, smartblock.NoHistory, smartblock.NoEvent, smartblock.SkipIfNoChanges, smartblock.KeepInternalFlags)
-}
-
-func (s *SpaceView) SetOrder(prevViewOrderId string) (string, error) {
-	st := s.NewState()
-	var spaceOrderId string
-	if prevViewOrderId == "" {
-		// For the first element, use a lexid with huge padding
-		spaceOrderId = lx.Middle()
-	} else {
-		spaceOrderId = lx.Next(prevViewOrderId)
-	}
-	st.SetDetail(bundle.RelationKeySpaceOrder, domain.String(spaceOrderId))
-	return spaceOrderId, s.Apply(st)
-}
-
-func (s *SpaceView) SetAfterGivenView(viewOrderId string) error {
-	st := s.NewState()
-	spaceOrderId := st.Details().GetString(bundle.RelationKeySpaceOrder)
-	if viewOrderId > spaceOrderId {
-		spaceOrderId = lx.Next(viewOrderId)
-		st.SetDetail(bundle.RelationKeySpaceOrder, domain.String(spaceOrderId))
-		return s.Apply(st)
-	}
-	return nil
-}
-
-func (s *SpaceView) SetBetweenViews(prevViewOrderId, afterViewOrderId string) error {
-	st := s.NewState()
-	var before string
-	var err error
-
-	if prevViewOrderId == "" {
-		// Insert before the first existing element
-		before = lx.Prev(afterViewOrderId)
-	} else {
-		// Insert between two existing elements
-		before, err = lx.NextBefore(prevViewOrderId, afterViewOrderId)
-	}
-
-	if err != nil {
-		return errors.Join(ErrLexidInsertionFailed, err)
-	}
-	st.SetDetail(bundle.RelationKeySpaceOrder, domain.String(before))
-	return s.Apply(st)
 }
 
 func stateSetAccessType(st *state.State, accessType spaceinfo.AccessType) {

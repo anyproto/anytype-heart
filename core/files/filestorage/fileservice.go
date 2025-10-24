@@ -33,6 +33,10 @@ func New() FileStorage {
 	return &fileStorage{}
 }
 
+// Batch provides batch operations with temp directory support
+// Reads check both temp and main directories, writes go to temp until committed
+type Batch = BlockStoreBatch
+
 type FileStorage interface {
 	fileblockstore.BlockStoreLocal
 	app.ComponentRunnable
@@ -40,11 +44,13 @@ type FileStorage interface {
 	NewLocalStoreGarbageCollector() LocalStoreGarbageCollector
 	LocalDiskUsage(ctx context.Context) (uint64, error)
 	IterateFiles(ctx context.Context, iterFunc func(fileId domain.FullFileId)) error
+	Batch(ctx context.Context) (Batch, error)
 }
 
 type fileStorage struct {
-	proxy   *proxyStore
-	handler *rpcHandler
+	proxy      *proxyStore
+	handler    *rpcHandler
+	localStore *flatStore // Keep reference to the actual flatStore for batch creation
 
 	cfg        *config.Config
 	flatfsPath string
@@ -90,6 +96,7 @@ func (f *fileStorage) Run(ctx context.Context) (err error) {
 		return fmt.Errorf("flatstore: %w", err)
 	}
 	f.handler.store = localStore
+	f.localStore = localStore // Store reference for batch creation
 
 	ps := newProxyStore(localStore, f.rpcStore.NewStore())
 	f.proxy = ps
@@ -101,7 +108,7 @@ func (f *fileStorage) IterateFiles(ctx context.Context, iterFunc func(fileId dom
 }
 
 func (f *fileStorage) LocalDiskUsage(ctx context.Context) (uint64, error) {
-	return f.proxy.localStore.ds.DiskUsage(ctx)
+	return f.localStore.ds.DiskUsage(ctx)
 }
 
 func (f *fileStorage) Get(ctx context.Context, k cid.Cid) (b blocks.Block, err error) {
@@ -129,7 +136,7 @@ func (f *fileStorage) NotExistsBlocks(ctx context.Context, bs []blocks.Block) (n
 }
 
 func (f *fileStorage) NewLocalStoreGarbageCollector() LocalStoreGarbageCollector {
-	return newFlatStoreGarbageCollector(f.proxy.localStore)
+	return newFlatStoreGarbageCollector(f.localStore)
 }
 
 func (f *fileStorage) Close(ctx context.Context) (err error) {
@@ -137,4 +144,12 @@ func (f *fileStorage) Close(ctx context.Context) (err error) {
 		return f.proxy.Close()
 	}
 	return nil
+}
+
+func (f *fileStorage) Batch(ctx context.Context) (Batch, error) {
+	if f.localStore == nil || f.proxy == nil {
+		return nil, fmt.Errorf("storage not initialized")
+	}
+	// Create a new batch proxy with its own proxyStore that supports temp directory reads
+	return newBatchProxy(f.localStore, f.proxy.origin)
 }

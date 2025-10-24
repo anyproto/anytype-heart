@@ -259,10 +259,9 @@ func provideObjectSnapshot(st *state.State, details *domain.Details) *common.Sna
 		Snapshot: &common.SnapshotModel{
 			SbType: smartblock.SmartBlockTypePage,
 			Data: &common.StateSnapshot{
-				Blocks:        st.Blocks(),
-				Details:       details,
-				RelationLinks: st.GetRelationLinks(),
-				ObjectTypes:   []string{bundle.TypeKeyPage.String()},
+				Blocks:      st.Blocks(),
+				Details:     details,
+				ObjectTypes: []string{bundle.TypeKeyPage.String()},
 			},
 		},
 	}
@@ -287,11 +286,10 @@ func (c *CollectionStrategy) getCollectionSnapshot(details *domain.Details, st *
 
 func (c *CollectionStrategy) provideCollectionSnapshots(details *domain.Details, st *state.State, p string) *common.Snapshot {
 	sn := &common.StateSnapshot{
-		Blocks:        st.Blocks(),
-		Details:       details,
-		ObjectTypes:   []string{bundle.TypeKeyCollection.String()},
-		Collections:   st.Store(),
-		RelationLinks: st.GetRelationLinks(),
+		Blocks:      st.Blocks(),
+		Details:     details,
+		ObjectTypes: []string{bundle.TypeKeyCollection.String()},
+		Collections: st.Store(),
 	}
 
 	snapshot := &common.Snapshot{

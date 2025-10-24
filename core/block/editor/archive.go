@@ -2,19 +2,16 @@ package editor
 
 import (
 	"errors"
-	"slices"
 
 	"github.com/anyproto/any-sync/commonspace/object/tree/treestorage"
 	"github.com/anyproto/any-sync/commonspace/spacestorage"
 
-	"github.com/anyproto/anytype-heart/core/block/editor/collection"
+	"github.com/anyproto/anytype-heart/core/block/editor/blockcollection"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/editor/template"
-	"github.com/anyproto/anytype-heart/core/block/editor/widget"
 	"github.com/anyproto/anytype-heart/core/block/migration"
 	"github.com/anyproto/anytype-heart/core/domain"
-	"github.com/anyproto/anytype-heart/core/relationutils"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/spaceindex"
@@ -27,9 +24,8 @@ var archiveRequiredRelations = []domain.RelationKey{}
 
 type Archive struct {
 	smartblock.SmartBlock
-	collection.Collection
-	objectStore            spaceindex.Store
-	autoWidgetWasInstalled bool
+	blockcollection.Collection
+	objectStore spaceindex.Store
 }
 
 func NewArchive(
@@ -38,7 +34,7 @@ func NewArchive(
 ) *Archive {
 	return &Archive{
 		SmartBlock:  sb,
-		Collection:  collection.NewCollection(sb, objectStore),
+		Collection:  blockcollection.NewCollection(sb, objectStore),
 		objectStore: objectStore,
 	}
 }
@@ -76,47 +72,6 @@ func (p *Archive) StateMigrations() migration.Migrations {
 	}})
 }
 
-func (p *Archive) Relations(_ *state.State) relationutils.Relations {
-	return nil
-}
-
-// autoInstallBinWidget installs bin widget for the existing users if it was not added/removed before and the user has archived objects
-func (p *Archive) autoInstallBinWidget() error {
-	if p.autoWidgetWasInstalled {
-		return nil
-	}
-	widgetObjectId := p.Space().DerivedIDs().Widgets
-	widgetDetails, err := p.objectStore.GetDetails(widgetObjectId)
-	if err != nil {
-		return err
-	}
-	if widgetDetails.GetBool(bundle.RelationKeyAutoWidgetDisabled) {
-		return nil
-	}
-	keys := widgetDetails.Get(bundle.RelationKeyAutoWidgetTargets).StringList()
-	if slices.Contains(keys, widget.DefaultWidgetBin) {
-		// cache to avoid unnecessary objectstore requests
-		p.autoWidgetWasInstalled = true
-		return nil
-	}
-	err = p.Space().Do(widgetObjectId, func(sb smartblock.SmartBlock) error {
-		st := sb.NewState()
-		if w, ok := sb.(widget.Widget); ok {
-			// We rely on AddAutoWidget to check if the widget was already installed/removed before
-			err = w.AddAutoWidget(st, widget.DefaultWidgetBin, widget.DefaultWidgetBin, "", model.BlockContentWidget_Link, widget.DefaultWidgetBinEventName)
-			if err != nil {
-				return err
-			}
-		}
-		return sb.Apply(st)
-	})
-	if err != nil {
-		return err
-	}
-	p.autoWidgetWasInstalled = true
-	return nil
-}
-
 func (p *Archive) updateObjects(_ smartblock.ApplyInfo) (err error) {
 	archivedIds, err := p.GetIds()
 	if err != nil {
@@ -128,12 +83,6 @@ func (p *Archive) updateObjects(_ smartblock.ApplyInfo) (err error) {
 			log.Errorf("archive: can't update in store: %v", uErr)
 		}
 	}()
-	if len(archivedIds) > 0 {
-		err = p.autoInstallBinWidget()
-		if err != nil {
-			log.Errorf("archive: can't install auto widget: %v", err)
-		}
-	}
 	return nil
 }
 

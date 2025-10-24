@@ -376,7 +376,11 @@ func (c *client) checkConnectivity(ctx context.Context) (err error) {
 }
 
 func (c *client) TryClose(objectTTL time.Duration) (bool, error) {
-	if time.Now().Sub(c.stat.lastUsage) < objectTTL {
+	c.mu.Lock()
+	lifeTime := time.Now().Sub(c.stat.lastUsage)
+	c.mu.Unlock()
+
+	if lifeTime < objectTTL {
 		return false, nil
 	}
 	return true, c.Close()

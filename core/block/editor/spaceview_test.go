@@ -10,10 +10,12 @@ import (
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 
+	"github.com/anyproto/anytype-heart/core/block/editor/order"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock/smarttest"
 	"github.com/anyproto/anytype-heart/core/block/migration"
 	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space/spaceinfo"
@@ -129,127 +131,46 @@ func TestSpaceView_SetOwner(t *testing.T) {
 	require.Equal(t, int64(125), fx.CombinedDetails().GetInt64(bundle.RelationKeyCreatedDate))
 }
 
-func TestSpaceView_SetAfterGivenView(t *testing.T) {
-	t.Run("set view after given id", func(t *testing.T) {
-		// given
-		fx := newSpaceViewFixture(t)
-		defer fx.finish()
-
-		// when
-		err := fx.SetAfterGivenView("viewOrderId")
-
-		// then
-		require.NoError(t, err)
-		assert.NotEmpty(t, fx.Details().GetString(bundle.RelationKeySpaceOrder))
-	})
-	t.Run("set view after given id, order exist", func(t *testing.T) {
-		// given
-		fx := newSpaceViewFixture(t)
-		defer fx.finish()
-		state := fx.NewState()
-		state.SetDetail(bundle.RelationKeySpaceOrder, domain.String("spaceViewOrderId"))
-		err := fx.Apply(state)
-		require.NoError(t, err)
-
-		// when
-		err = fx.SetAfterGivenView("viewOrderId")
-
-		// then
-		require.NoError(t, err)
-		assert.NotEqual(t, "spaceViewOrderId", fx.Details().GetString(bundle.RelationKeySpaceOrder))
-		assert.True(t, fx.Details().GetString(bundle.RelationKeySpaceOrder) > "viewOrderId")
-	})
-	t.Run("set view after given id, order exist, but already less than given view", func(t *testing.T) {
-		// given
-		fx := newSpaceViewFixture(t)
-		defer fx.finish()
-		state := fx.NewState()
-		state.SetDetail(bundle.RelationKeySpaceOrder, domain.String("viewOrderId"))
-		err := fx.Apply(state)
-		require.NoError(t, err)
-
-		// when
-		err = fx.SetAfterGivenView("spaceViewOrderId")
-
-		// then
-		require.NoError(t, err)
-		assert.Equal(t, "viewOrderId", fx.Details().GetString(bundle.RelationKeySpaceOrder))
-		assert.True(t, fx.Details().GetString(bundle.RelationKeySpaceOrder) > "spaceViewOrderId")
-	})
+func TestSpaceView_AddPushNotificationMuteIds(t *testing.T) {
+	fx := newSpaceViewFixture(t)
+	defer fx.finish()
+	err := fx.SetPushNotificationMode(nil, pb.RpcPushNotificationSetSpaceMode_Mentions)
+	require.NoError(t, err)
+	err = fx.AddPushNotificationMentionIds(nil, []string{"id1", "id3"})
+	require.NoError(t, err)
+	err = fx.AddPushNotificationMuteIds(nil, []string{"id1", "id2", "id1"})
+	require.NoError(t, err)
+	assert.Equal(t, []string{"id1", "id2"}, fx.Details().GetStringList(bundle.RelationKeySpacePushNotificationCustomMuteIds))
+	assert.Equal(t, []string{"id3"}, fx.Details().GetStringList(bundle.RelationKeySpacePushNotificationCustomMentionIds))
+	assert.Equal(t, int64(pb.RpcPushNotificationSetSpaceMode_Custom), fx.CombinedDetails().GetInt64(bundle.RelationKeySpacePushNotificationMode))
 }
 
-func TestSpaceView_SetBetweenViews(t *testing.T) {
-	t.Run("set view in the beginning", func(t *testing.T) {
-		// given
-		fx := newSpaceViewFixture(t)
-		defer fx.finish()
-
-		// when
-		err := fx.SetBetweenViews("", "afterId")
-
-		// then
-		require.NoError(t, err)
-		assert.NotEmpty(t, fx.Details().GetString(bundle.RelationKeySpaceOrder))
-	})
-	t.Run("set view between", func(t *testing.T) {
-		// given
-		fx := newSpaceViewFixture(t)
-		defer fx.finish()
-		firstSpaceView := lx.Next("")
-		secondSpaceView := lx.Next(firstSpaceView)
-		thirdSpaceView := lx.Next(secondSpaceView)
-
-		// when
-		err := fx.SetBetweenViews(secondSpaceView, thirdSpaceView)
-
-		// then
-		require.NoError(t, err)
-		assert.NotEmpty(t, fx.Details().GetString(bundle.RelationKeySpaceOrder))
-	})
-	t.Run("after id is empty", func(t *testing.T) {
-		// given
-		fx := newSpaceViewFixture(t)
-		defer fx.finish()
-
-		// when
-		err := fx.SetBetweenViews("afterId", "")
-
-		// then
-		require.Error(t, err)
-	})
+func TestSpaceView_AddPushNotificationMentionIds(t *testing.T) {
+	fx := newSpaceViewFixture(t)
+	defer fx.finish()
+	err := fx.SetPushNotificationMode(nil, pb.RpcPushNotificationSetSpaceMode_Mentions)
+	require.NoError(t, err)
+	err = fx.AddPushNotificationMuteIds(nil, []string{"id1", "id3"})
+	require.NoError(t, err)
+	err = fx.AddPushNotificationMentionIds(nil, []string{"id1", "id2", "id1"})
+	require.NoError(t, err)
+	assert.Equal(t, []string{"id1", "id2"}, fx.Details().GetStringList(bundle.RelationKeySpacePushNotificationCustomMentionIds))
+	assert.Equal(t, []string{"id3"}, fx.Details().GetStringList(bundle.RelationKeySpacePushNotificationCustomMuteIds))
+	assert.Equal(t, int64(pb.RpcPushNotificationSetSpaceMode_Custom), fx.CombinedDetails().GetInt64(bundle.RelationKeySpacePushNotificationMode))
 }
 
-func TestSpaceView_SetOrder(t *testing.T) {
-	t.Run("set order", func(t *testing.T) {
-		// given
-		fx := newSpaceViewFixture(t)
-		defer fx.finish()
-
-		// when
-		prevViewOrderId := ""
-		order, err := fx.SetOrder(prevViewOrderId)
-
-		// then
-		require.NoError(t, err)
-		assert.NotEmpty(t, fx.Details().GetString(bundle.RelationKeySpaceOrder))
-		assert.Equal(t, order, fx.Details().GetString(bundle.RelationKeySpaceOrder))
-		assert.True(t, fx.Details().GetString(bundle.RelationKeySpaceOrder) > prevViewOrderId)
-	})
-	t.Run("set order, previous id not empty", func(t *testing.T) {
-		// given
-		fx := newSpaceViewFixture(t)
-		defer fx.finish()
-
-		// when
-		prevViewOrderId := "previous"
-		order, err := fx.SetOrder(prevViewOrderId)
-
-		// then
-		require.NoError(t, err)
-		assert.NotEmpty(t, fx.Details().GetString(bundle.RelationKeySpaceOrder))
-		assert.Equal(t, order, fx.Details().GetString(bundle.RelationKeySpaceOrder))
-		assert.True(t, fx.Details().GetString(bundle.RelationKeySpaceOrder) > prevViewOrderId)
-	})
+func TestSpaceView_AddPushNotificationAllIds(t *testing.T) {
+	fx := newSpaceViewFixture(t)
+	defer fx.finish()
+	err := fx.AddPushNotificationMuteIds(nil, []string{"id3"})
+	require.NoError(t, err)
+	err = fx.AddPushNotificationMentionIds(nil, []string{"id1", "id2", "id1"})
+	require.NoError(t, err)
+	err = fx.AddPushNotificationAllIds(nil, []string{"id1", "id3", "id4"})
+	require.NoError(t, err)
+	assert.Equal(t, []string{"id2"}, fx.Details().GetStringList(bundle.RelationKeySpacePushNotificationCustomMentionIds))
+	assert.Equal(t, []string{}, fx.Details().GetStringList(bundle.RelationKeySpacePushNotificationCustomMuteIds))
+	assert.Equal(t, int64(pb.RpcPushNotificationSetSpaceMode_Custom), fx.CombinedDetails().GetInt64(bundle.RelationKeySpacePushNotificationMode))
 }
 
 type spaceServiceStub struct {
@@ -268,9 +189,10 @@ func (s *spaceServiceStub) OnWorkspaceChanged(spaceId string, details *domain.De
 func NewSpaceViewTest(t *testing.T, targetSpaceId string, tree *mock_objecttree.MockObjectTree) (*SpaceView, error) {
 	sb := smarttest.NewWithTree("root", tree)
 	a := &SpaceView{
-		SmartBlock:   sb,
-		spaceService: &spaceServiceStub{},
-		log:          log,
+		SmartBlock:    sb,
+		OrderSettable: order.NewOrderSettable(sb, bundle.RelationKeySpaceOrder),
+		spaceService:  &spaceServiceStub{},
+		log:           log,
 	}
 
 	initCtx := &smartblock.InitContext{

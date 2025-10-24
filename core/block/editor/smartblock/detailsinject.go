@@ -14,29 +14,29 @@ import (
 )
 
 var layoutPerSmartBlockType = map[smartblock.SmartBlockType]model.ObjectTypeLayout{
-	smartblock.SmartBlockTypeRelation:           model.ObjectType_relation,
-	smartblock.SmartBlockTypeBundledRelation:    model.ObjectType_relation,
-	smartblock.SmartBlockTypeObjectType:         model.ObjectType_objectType,
-	smartblock.SmartBlockTypeBundledObjectType:  model.ObjectType_objectType,
-	smartblock.SmartBlockTypeRelationOption:     model.ObjectType_relationOption,
-	smartblock.SmartBlockTypeSpaceView:          model.ObjectType_spaceView,
-	smartblock.SmartBlockTypeParticipant:        model.ObjectType_participant,
-	smartblock.SmartBlockTypeFile:               model.ObjectType_file, // deprecated
-	smartblock.SmartBlockTypeDate:               model.ObjectType_date,
-	smartblock.SmartBlockTypeChatDerivedObject:  model.ObjectType_chatDerived,
-	smartblock.SmartBlockTypeChatObject:         model.ObjectType_chat, // deprecated
-	smartblock.SmartBlockTypeWidget:             model.ObjectType_dashboard,
-	smartblock.SmartBlockTypeWorkspace:          model.ObjectType_dashboard,
-	smartblock.SmartBlockTypeArchive:            model.ObjectType_dashboard,
-	smartblock.SmartBlockTypeHome:               model.ObjectType_dashboard,
-	smartblock.SmartBlockTypeAccountObject:      model.ObjectType_profile,
-	smartblock.SmartBlockTypeAnytypeProfile:     model.ObjectType_profile,
-	smartblock.SmartBlockTypeIdentity:           model.ObjectType_profile,
-	smartblock.SmartBlockTypeProfilePage:        model.ObjectType_profile,
-	smartblock.SmartBlockTypeAccountOld:         model.ObjectType_profile, // deprecated
-	smartblock.SmartBlockTypeMissingObject:      model.ObjectType_missingObject,
-	smartblock.SmartBlockTypeNotificationObject: model.ObjectType_notification,
-	smartblock.SmartBlockTypeDevicesObject:      model.ObjectType_devices,
+	smartblock.SmartBlockTypeRelation:             model.ObjectType_relation,
+	smartblock.SmartBlockTypeBundledRelation:      model.ObjectType_relation,
+	smartblock.SmartBlockTypeObjectType:           model.ObjectType_objectType,
+	smartblock.SmartBlockTypeBundledObjectType:    model.ObjectType_objectType,
+	smartblock.SmartBlockTypeRelationOption:       model.ObjectType_relationOption,
+	smartblock.SmartBlockTypeSpaceView:            model.ObjectType_spaceView,
+	smartblock.SmartBlockTypeParticipant:          model.ObjectType_participant,
+	smartblock.SmartBlockTypeFile:                 model.ObjectType_file, // deprecated
+	smartblock.SmartBlockTypeDate:                 model.ObjectType_date,
+	smartblock.SmartBlockTypeChatDerivedObject:    model.ObjectType_chatDerived,
+	smartblock.SmartBlockTypeChatObjectDeprecated: model.ObjectType_chatDeprecated, // deprecated
+	smartblock.SmartBlockTypeWidget:               model.ObjectType_dashboard,
+	smartblock.SmartBlockTypeWorkspace:            model.ObjectType_dashboard,
+	smartblock.SmartBlockTypeArchive:              model.ObjectType_dashboard,
+	smartblock.SmartBlockTypeHome:                 model.ObjectType_dashboard,
+	smartblock.SmartBlockTypeAccountObject:        model.ObjectType_profile,
+	smartblock.SmartBlockTypeAnytypeProfile:       model.ObjectType_profile,
+	smartblock.SmartBlockTypeIdentity:             model.ObjectType_profile,
+	smartblock.SmartBlockTypeProfilePage:          model.ObjectType_profile,
+	smartblock.SmartBlockTypeAccountOld:           model.ObjectType_profile, // deprecated
+	smartblock.SmartBlockTypeMissingObject:        model.ObjectType_missingObject,
+	smartblock.SmartBlockTypeNotificationObject:   model.ObjectType_notification,
+	smartblock.SmartBlockTypeDevicesObject:        model.ObjectType_devices,
 }
 
 func (sb *smartBlock) injectLocalDetails(s *state.State) error {
@@ -53,10 +53,10 @@ func (sb *smartBlock) injectLocalDetails(s *state.State) error {
 
 	localDetailsFromStore := details.CopyOnlyKeys(keys...)
 	localDetailsFromStore.Delete(bundle.RelationKeyResolvedLayout)
-	s.InjectLocalDetails(localDetailsFromStore)
+	s.AddLocalDetails(localDetailsFromStore)
 	if p := s.ParentState(); p != nil && !hasPendingLocalDetails {
 		// inject for both current and parent state
-		p.InjectLocalDetails(localDetailsFromStore)
+		p.AddLocalDetails(localDetailsFromStore)
 	}
 
 	err = sb.injectCreationInfo(s)
@@ -77,7 +77,7 @@ func (sb *smartBlock) getDetailsFromStore() (*domain.Details, error) {
 func (sb *smartBlock) appendPendingDetails(details *domain.Details) (resultDetails *domain.Details, hasPendingLocalDetails bool) {
 	// Consume pending details
 	err := sb.spaceIndex.UpdatePendingLocalDetails(sb.Id(), func(pending *domain.Details) (*domain.Details, error) {
-		if pending.Len() > 0 {
+		if pending.Len() > 1 { // more than just id
 			hasPendingLocalDetails = true
 		}
 		details = details.Merge(pending)
