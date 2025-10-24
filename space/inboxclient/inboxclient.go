@@ -2,7 +2,6 @@ package inboxclient
 
 import (
 	"context"
-	"fmt"
 	"sync"
 
 	"github.com/anyproto/any-sync/app"
@@ -62,10 +61,9 @@ func (s *inboxclient) fetchMessages() []*coordinatorproto.InboxMessage {
 	defer s.mu.Unlock()
 
 fetch:
-	log.Debug("--inbox: fethching messages", zap.String("offset", s.offset))
 	msgs, hasMore, err := s.InboxFetch(context.TODO(), s.offset)
 	if err != nil {
-		log.Error("--inbox: fetching after notify err", zap.Error(err))
+		log.Error("inbox: fetch error", zap.Error(err))
 	}
 	if len(msgs) != 0 {
 		// assuming that msgs are sorted
@@ -74,7 +72,7 @@ fetch:
 			encrypted := msg.Packet.Payload.Body
 			body, err := s.wallet.Account().SignKey.Decrypt(encrypted)
 			if err != nil {
-				log.Error("--inbox: error decrypting body", zap.Error(err))
+				log.Error("inbox: error decrypting body", zap.Error(err))
 			}
 			msg.Packet.Payload.Body = body
 		}
@@ -82,17 +80,14 @@ fetch:
 	if hasMore {
 		goto fetch
 	}
-	log.Debug("--inbox: final:", zap.String("offset", s.offset))
 
 	return msgs
-
 }
 
 func (s *inboxclient) ReceiveNotify(event *coordinatorproto.NotifySubscribeEvent) {
-	log.Debug("--inbox: got notify event", zap.String("event", fmt.Sprintf("%#v", event)))
 	messages := s.fetchMessages()
 	if len(messages) == 0 {
-		log.Info("--inbox: ReceiveNotify: msgs len == 0")
+		log.Warn("inbox: ReceiveNotify: msgs len == 0")
 	}
 	for _, msg := range messages {
 		log.Info("--inbox: got a message", zap.String("body", string(msg.Packet.Payload.Body)))
