@@ -8,7 +8,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/anyproto/any-store/query"
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/app/logger"
 	"github.com/anyproto/any-sync/commonfile/fileservice"
@@ -150,29 +149,6 @@ func (s *fileSync) Run(ctx context.Context) (err error) {
 		s.queue.Run()
 	}()
 
-	for {
-		item, err := s.queue.GetNext(filequeue.GetNextRequest[FileInfo]{
-			StoreFilter: query.Key{
-				Path:   []string{"state"},
-				Filter: query.NewComp(query.CompOpEq, int(FileStateUploading)),
-			},
-			StoreOrder: &query.SortField{
-				Field:   "scheduledAt",
-				Path:    []string{"scheduledAt"},
-				Reverse: false,
-			},
-			Filter: func(info FileInfo) bool {
-				return info.State == FileStateUploading
-			},
-		})
-		fmt.Println(item)
-		if err != nil {
-			break
-		}
-		item.State = FileStatePendingUpload
-		s.queue.Release(item)
-	}
-
 	s.closeWg.Add(1)
 	go s.runNodeUsageUpdater()
 	go s.requestsBatcher.run(s.loopCtx)
@@ -191,6 +167,7 @@ func (s *fileSync) Close(ctx context.Context) error {
 	if s.loopCancel != nil {
 		s.loopCancel()
 	}
+	s.queue.Close()
 	// Don't wait
 	go func() {
 		if closer, ok := s.rpcStore.(io.Closer); ok {

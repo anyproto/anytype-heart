@@ -489,7 +489,7 @@ func (q *Queue[T]) handleCancelRequest(id string) {
 	checkInDueWaiters()
 }
 
-func (q *Queue[T]) close() {
+func (q *Queue[T]) Close() {
 	if q.ctxCancel != nil {
 		q.ctxCancel()
 	}
