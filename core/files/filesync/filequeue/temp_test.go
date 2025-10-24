@@ -497,6 +497,45 @@ func TestComplex(t *testing.T) {
 	})
 }
 
+func TestClose(t *testing.T) {
+	synctest.Run(func() {
+		q := newTestQueue(t)
+		ctx := context.Background()
+		var wg sync.WaitGroup
+
+		sendRequests := func() {
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
+				_, err := q.GetNext(ctx, getNextRequestUploading())
+				assert.Error(t, ErrClosed, err)
+			}()
+
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
+				_, err := q.GetNextScheduled(ctx, getNextScheduledRequestUploading())
+				assert.Error(t, ErrClosed, err)
+			}()
+
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
+				_, err := q.GetById("obj10")
+				assert.Error(t, ErrClosed, err)
+			}()
+		}
+
+		sendRequests()
+		q.close()
+		wg.Wait()
+
+		// Send to closed queue
+		sendRequests()
+		wg.Wait()
+	})
+}
+
 func getNextRequestUploading() GetNextRequest[FileInfo] {
 	return GetNextRequest[FileInfo]{
 		StoreFilter: query.Key{
