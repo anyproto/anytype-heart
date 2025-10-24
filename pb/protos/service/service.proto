@@ -192,6 +192,7 @@ service ClientCommands {
     rpc FileDrop (anytype.Rpc.File.Drop.Request) returns (anytype.Rpc.File.Drop.Response);
     rpc FileSpaceUsage (anytype.Rpc.File.SpaceUsage.Request) returns (anytype.Rpc.File.SpaceUsage.Response);
     rpc FileNodeUsage (anytype.Rpc.File.NodeUsage.Request) returns (anytype.Rpc.File.NodeUsage.Response);
+    rpc FileSetAutoDownload (anytype.Rpc.File.SetAutoDownload.Request) returns (anytype.Rpc.File.SetAutoDownload.Response);
 
     rpc NavigationListObjects (anytype.Rpc.Navigation.ListObjects.Request) returns (anytype.Rpc.Navigation.ListObjects.Response);
     rpc NavigationGetObjectInfoWithLinks (anytype.Rpc.Navigation.GetObjectInfoWithLinks.Request) returns (anytype.Rpc.Navigation.GetObjectInfoWithLinks.Response);
@@ -424,4 +425,7 @@ service ClientCommands {
     // Push
     rpc PushNotificationRegisterToken(anytype.Rpc.PushNotification.RegisterToken.Request) returns (anytype.Rpc.PushNotification.RegisterToken.Response);
     rpc PushNotificationSetSpaceMode(anytype.Rpc.PushNotification.SetSpaceMode.Request) returns (anytype.Rpc.PushNotification.SetSpaceMode.Response);
+    rpc PushNotificationAddMuteIds(anytype.Rpc.PushNotification.AddMuteIds.Request) returns (anytype.Rpc.PushNotification.AddMuteIds.Response);
+    rpc PushNotificationAddMentionIds(anytype.Rpc.PushNotification.AddMentionIds.Request) returns (anytype.Rpc.PushNotification.AddMentionIds.Response);
+    rpc PushNotificationAddAllIds(anytype.Rpc.PushNotification.AddAllIds.Request) returns (anytype.Rpc.PushNotification.AddAllIds.Response);
 }

@@ -32,6 +32,7 @@ type Manager interface {
 
 	IsActive() bool
 	GetChatState() *model.ChatState
+	GetLastMessage() (*model.ChatMessage, bool)
 	SetSessionContext(ctx session.Context)
 	UpdateReactions(message *chatmodel.Message)
 	UpdateFull(message *chatmodel.Message)

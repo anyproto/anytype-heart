@@ -23,14 +23,17 @@ func (mw *Middleware) PushNotificationRegisterToken(cctx context.Context, req *p
 }
 
 func (mw *Middleware) PushNotificationSetSpaceMode(cctx context.Context, req *pb.RpcPushNotificationSetSpaceModeRequest) *pb.RpcPushNotificationSetSpaceModeResponse {
+	ctx := mw.newContext(cctx)
 	response := func(code pb.RpcPushNotificationSetSpaceModeResponseErrorCode, err error) *pb.RpcPushNotificationSetSpaceModeResponse {
-		m := &pb.RpcPushNotificationSetSpaceModeResponse{Error: &pb.RpcPushNotificationSetSpaceModeResponseError{Code: code}}
+		m := &pb.RpcPushNotificationSetSpaceModeResponse{
+			Error: &pb.RpcPushNotificationSetSpaceModeResponseError{Code: code},
+			Event: mw.getResponseEvent(ctx),
+		}
 		if err != nil {
 			m.Error.Description = getErrorDescription(err)
 		}
 		return m
 	}
-	ctx := mw.newContext(cctx)
 	err := mustService[space.Service](mw).TechSpace().DoSpaceView(cctx, req.SpaceId, func(spaceView techspace.SpaceView) error {
 		return spaceView.SetPushNotificationMode(ctx, req.Mode)
 	})
@@ -38,4 +41,67 @@ func (mw *Middleware) PushNotificationSetSpaceMode(cctx context.Context, req *pb
 		return response(pb.RpcPushNotificationSetSpaceModeResponseError_UNKNOWN_ERROR, err)
 	}
 	return response(pb.RpcPushNotificationSetSpaceModeResponseError_NULL, nil)
+}
+
+func (mw *Middleware) PushNotificationAddMuteIds(cctx context.Context, req *pb.RpcPushNotificationAddMuteIdsRequest) *pb.RpcPushNotificationAddMuteIdsResponse {
+	ctx := mw.newContext(cctx)
+	response := func(code pb.RpcPushNotificationAddMuteIdsResponseErrorCode, err error) *pb.RpcPushNotificationAddMuteIdsResponse {
+		m := &pb.RpcPushNotificationAddMuteIdsResponse{
+			Error: &pb.RpcPushNotificationAddMuteIdsResponseError{Code: code},
+			Event: mw.getResponseEvent(ctx),
+		}
+		if err != nil {
+			m.Error.Description = getErrorDescription(err)
+		}
+		return m
+	}
+	err := mustService[space.Service](mw).TechSpace().DoSpaceView(cctx, req.SpaceId, func(spaceView techspace.SpaceView) error {
+		return spaceView.AddPushNotificationMuteIds(ctx, req.ChatIds)
+	})
+	if err != nil {
+		return response(pb.RpcPushNotificationAddMuteIdsResponseError_UNKNOWN_ERROR, err)
+	}
+	return response(pb.RpcPushNotificationAddMuteIdsResponseError_NULL, nil)
+}
+
+func (mw *Middleware) PushNotificationAddMentionIds(cctx context.Context, req *pb.RpcPushNotificationAddMentionIdsRequest) *pb.RpcPushNotificationAddMentionIdsResponse {
+	ctx := mw.newContext(cctx)
+	response := func(code pb.RpcPushNotificationAddMentionIdsResponseErrorCode, err error) *pb.RpcPushNotificationAddMentionIdsResponse {
+		m := &pb.RpcPushNotificationAddMentionIdsResponse{
+			Error: &pb.RpcPushNotificationAddMentionIdsResponseError{Code: code},
+			Event: mw.getResponseEvent(ctx),
+		}
+		if err != nil {
+			m.Error.Description = getErrorDescription(err)
+		}
+		return m
+	}
+	err := mustService[space.Service](mw).TechSpace().DoSpaceView(cctx, req.SpaceId, func(spaceView techspace.SpaceView) error {
+		return spaceView.AddPushNotificationMentionIds(ctx, req.ChatIds)
+	})
+	if err != nil {
+		return response(pb.RpcPushNotificationAddMentionIdsResponseError_UNKNOWN_ERROR, err)
+	}
+	return response(pb.RpcPushNotificationAddMentionIdsResponseError_NULL, nil)
+}
+
+func (mw *Middleware) PushNotificationAddAllIds(cctx context.Context, req *pb.RpcPushNotificationAddAllIdsRequest) *pb.RpcPushNotificationAddAllIdsResponse {
+	ctx := mw.newContext(cctx)
+	response := func(code pb.RpcPushNotificationAddAllIdsResponseErrorCode, err error) *pb.RpcPushNotificationAddAllIdsResponse {
+		m := &pb.RpcPushNotificationAddAllIdsResponse{
+			Error: &pb.RpcPushNotificationAddAllIdsResponseError{Code: code},
+			Event: mw.getResponseEvent(ctx),
+		}
+		if err != nil {
+			m.Error.Description = getErrorDescription(err)
+		}
+		return m
+	}
+	err := mustService[space.Service](mw).TechSpace().DoSpaceView(cctx, req.SpaceId, func(spaceView techspace.SpaceView) error {
+		return spaceView.AddPushNotificationAllIds(ctx, req.ChatIds)
+	})
+	if err != nil {
+		return response(pb.RpcPushNotificationAddAllIdsResponseError_UNKNOWN_ERROR, err)
+	}
+	return response(pb.RpcPushNotificationAddAllIdsResponseError_NULL, nil)
 }

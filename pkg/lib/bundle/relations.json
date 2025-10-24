@@ -1658,12 +1658,32 @@
     "source": "details"
   },
   {
-    "description": "Push notification mode - mute/all/mentions (see model.SpacePushNotificationMode)",
+    "description": "Push notification mode - mute/all/mentions/custom (see model.SpacePushNotificationMode)",
     "format": "number",
     "hidden": true,
     "key": "spacePushNotificationMode",
     "maxCount": 1,
-    "name": "Push topics",
+    "name": "Push notification mode",
+    "readonly": false,
+    "source": "details"
+  },
+  {
+    "description": "Push notification custom muted ids",
+    "format": "longtext",
+    "hidden": true,
+    "key": "spacePushNotificationCustomMuteIds",
+    "maxCount": 0,
+    "name": "Push muted ids",
+    "readonly": false,
+    "source": "details"
+  },
+  {
+    "description": "Push notification custom mention ids",
+    "format": "longtext",
+    "hidden": true,
+    "key": "spacePushNotificationCustomMentionIds",
+    "maxCount": 0,
+    "name": "Push mentions ids",
     "readonly": false,
     "source": "details"
   },
@@ -1734,5 +1754,26 @@
     "name": "Is main chat",
     "readonly": true,
     "source": "derived"
+  },
+  {
+    "description": "Date of the last message in a chat",
+    "format": "date",
+    "hidden": false,
+    "key": "lastMessageDate",
+    "maxCount": 1,
+    "name": "Last message date",
+    "readonly": true,
+    "source": "derived",
+    "includeTime": true
+  },
+  {
+    "description": "Is file available offline",
+    "format": "checkbox",
+    "hidden": true,
+    "key": "fileAvailableOffline",
+    "maxCount": 1,
+    "name": "Is file available offline",
+    "readonly": true,
+    "source": "local"
   }
 ]

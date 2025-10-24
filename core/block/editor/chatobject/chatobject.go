@@ -36,7 +36,7 @@ import (
 
 const (
 	CollectionName        = "chats"
-	editorCollectionName  = "editor"
+	EditorCollectionName  = "editor"
 	diffManagerMessages   = "messages"
 	diffManagerMentions   = "mentions"
 	diffManagerSyncStatus = "syncStatus"
@@ -218,7 +218,7 @@ func (s *storeObject) Init(ctx *smartblock.InitContext) error {
 		myParticipantId: myParticipantId,
 	}
 
-	stateStore, err := storestate.New(ctx.Ctx, s.Id(), s.crdtDb, s.chatHandler, storestate.DefaultHandler{Name: editorCollectionName, ModifyMode: storestate.ModifyModeUpsert})
+	stateStore, err := storestate.New(ctx.Ctx, s.Id(), s.crdtDb, s.chatHandler, storestate.DefaultHandler{Name: EditorCollectionName, ModifyMode: storestate.ModifyModeUpsert})
 	if err != nil {
 		return fmt.Errorf("create state store: %w", err)
 	}
@@ -237,7 +237,7 @@ func (s *storeObject) Init(ctx *smartblock.InitContext) error {
 
 	s.detailsComponent = &detailsComponent{
 		componentCtx:       s.componentCtx,
-		collectionName:     editorCollectionName,
+		collectionName:     EditorCollectionName,
 		storeSource:        storeSource,
 		storeState:         stateStore,
 		spaceIndex:         s.spaceIndex,
@@ -277,7 +277,18 @@ func (s *storeObject) onUpdate() {
 
 	s.subscription.Lock()
 	defer s.subscription.Unlock()
+
 	s.subscription.Flush()
+
+	last, ok := s.subscription.GetLastMessage()
+	if ok {
+		st := s.NewState()
+		st.SetDetailAndBundledRelation(bundle.RelationKeyLastMessageDate, domain.Int64(last.CreatedAt))
+		err = s.Apply(st, smartblock.NotPushChanges)
+		if err != nil {
+			log.Error("onUpdate: update last message date", zap.Error(err))
+		}
+	}
 }
 
 func (s *storeObject) GetMessageById(ctx context.Context, id string) (*chatmodel.Message, error) {
