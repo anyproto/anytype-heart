@@ -12,12 +12,17 @@ make download-tantivy-all-force
 ```
 
 #### Mac
-As of 16.01.23 last protobuf version (21.12) broke the JS plugin support, so you can use the v3 branch:
-Make sure you've removed protobuf
+
+Make sure you install a recent version of protobuf. Some older versions had
+plugin compatibility issues
+(*as of 16.01.23 last protobuf version (21.12) broke the JS plugin support.*).
+[This protobuf-javascript issue](https://github.com/protocolbuffers/protobuf-javascript/issues/127)
+tracks the history and workarounds for the compatibility issues.
+
+Luckily, plugins now work when installed as separate packages alongside protobuf:
+
 ```
-brew remove protobuf --ignore-dependencies
-brew install protobuf@3
-brew link --force --overwrite protobuf@3
+brew install protobuf protoc-gen-js protoc-gen-grpc-web
 ```
 
 To generate Swift protobuf:
