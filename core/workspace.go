@@ -51,7 +51,7 @@ func (mw *Middleware) WorkspaceCreate(cctx context.Context, req *pb.RpcWorkspace
 				return errors.New("space ux type cannot be None")
 			}
 		}
-		if spaceUxType == model.SpaceUxType_Chat {
+		if spaceUxType == model.SpaceUxType_Chat || spaceUxType == model.SpaceUxType_OneToOne {
 			// todo: as soon as it will be released for all users, we need to make it async inside the space init
 			err = bs.SpaceInitChat(cctx, spaceId)
 			if err != nil {

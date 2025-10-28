@@ -2,6 +2,7 @@ package inboxclient
 
 import (
 	"context"
+	"fmt"
 	"sync"
 
 	"github.com/anyproto/any-sync/app"
@@ -21,6 +22,7 @@ var log = logger.NewNamed(CName)
 type InboxClient interface {
 	ic.InboxClient
 	SendOneToOneInvite(ctx context.Context, id *model.IdentityProfile) error
+	SetReceiverByType(payloadType coordinatorproto.InboxPayloadType, handler func(*coordinatorproto.InboxPacket) error) error
 }
 
 func New() InboxClient {
@@ -34,6 +36,10 @@ type inboxclient struct {
 	mu     sync.Mutex
 	offset string
 	wallet wallet.Wallet
+
+	// TODO: add mb que for each reciever type
+	rmu       sync.Mutex
+	receivers map[int32]func(*coordinatorproto.InboxPacket) error
 }
 
 func (s *inboxclient) Init(a *app.App) (err error) {
@@ -42,12 +48,28 @@ func (s *inboxclient) Init(a *app.App) (err error) {
 		return
 	}
 	s.wallet = app.MustComponent[wallet.Wallet](a)
+	s.receivers = make(map[int32]func(*coordinatorproto.InboxPacket) error)
 	err = s.SetMessageReceiver(s.ReceiveNotify)
 	if err != nil {
 		return
 	}
 
 	return
+}
+
+// 1. CreateInbox in Alice client;
+// 2. Open bob client, it should fetch the inbox and onetone will be created automatically
+func (s *inboxclient) SetReceiverByType(payloadType coordinatorproto.InboxPayloadType, handler func(*coordinatorproto.InboxPacket) error) error {
+	s.rmu.Lock()
+	defer s.rmu.Unlock()
+
+	payloadTypeStr := coordinatorproto.InboxPayloadType_name[int32(payloadType)]
+	if handler == nil {
+		return fmt.Errorf("inbox: error registering receiver for type %s: handler must be a function but got nil", payloadTypeStr)
+	}
+	s.receivers[int32(payloadType)] = handler
+	log.Info("inbox: registered receiver", zap.String("payloadType", payloadTypeStr))
+	return nil
 }
 
 func (s *inboxclient) Name() (name string) {
@@ -98,22 +120,19 @@ func (s *inboxclient) ReceiveNotify(event *coordinatorproto.NotifySubscribeEvent
 	}
 	for _, msg := range messages {
 		log.Warn("inbox: got a message", zap.String("type", coordinatorproto.InboxPayloadType_name[int32(msg.Packet.Payload.PayloadType)]))
-		// TODO: verify signature?
-		switch msg.Packet.Payload.PayloadType {
-		case coordinatorproto.InboxPayloadType_InboxPayloadOneToOneInvite:
-			s.processOneToOneInvite(msg.Packet.Payload.Body)
-		default:
+		// TODO: verify signature
+		if handler, ok := s.receivers[int32(msg.Packet.Payload.PayloadType)]; ok {
+			herr := handler(msg.Packet)
+			if herr != nil {
+				log.Error("inbox: error while processing receiver handler", zap.Int("type", int(msg.Packet.Payload.PayloadType)))
+			}
+		} else {
 			log.Warn("inbox: don't know how to process PayloadType", zap.Int("type", int(msg.Packet.Payload.PayloadType)))
 		}
 	}
-
 }
 
 func (s *inboxclient) Close(_ context.Context) (err error) {
-	return nil
-}
-
-func (s *inboxclient) processOneToOneInvite(inboxBody []byte) (err error) {
 	return nil
 }
 
@@ -127,7 +146,11 @@ func (s *inboxclient) SendOneToOneInvite(ctx context.Context, idWithProfileKey *
 	// 1. put whole identity profile
 	// 2. try to get this from WaitProfile or register this incoming identity
 	// 3. createOneToOne(bPk)
-	var body []byte
+	body, err := idWithProfileKey.Marshal()
+	if err != nil {
+		return
+	}
+
 	msg := &coordinatorproto.InboxMessage{
 		PacketType: coordinatorproto.InboxPacketType_Default,
 		Packet: &coordinatorproto.InboxPacket{

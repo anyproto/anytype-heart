@@ -53,6 +53,7 @@ func (s *Service) CreateWorkspace(ctx context.Context, req *pb.RpcWorkspaceCreat
 		Name:        pbtypes.GetString(req.Details, bundle.RelationKeyName.String()),
 		IconImage:   pbtypes.GetString(req.Details, bundle.RelationKeyIconImage.String()),
 		SpaceUxType: model.SpaceUxType(pbtypes.GetInt64(req.Details, bundle.RelationKeySpaceUxType.String())),
+		// TODO: OneToOneParticipantIdentity
 	}
 	newSpace, err := s.spaceService.Create(ctx, spaceDescription)
 	if err != nil {
@@ -73,6 +74,7 @@ func (s *Service) CreateWorkspace(ctx context.Context, req *pb.RpcWorkspaceCreat
 	if err != nil {
 		return "", "", fmt.Errorf("set details for space %s: %w", newSpace.Id(), err)
 	}
+	// use case is still chat for onetoone (chat is derived IIRC)
 	startingPageId, _, err = s.builtinObjectService.CreateObjectsForUseCase(nil, newSpace.Id(), req.UseCase)
 	if err != nil {
 		return "", "", fmt.Errorf("import use-case: %w", err)
@@ -93,8 +95,6 @@ func (s *Service) CreateLinkToTheNewObject(
 
 	objectTypeKey, err := domain.GetTypeKeyFromRawUniqueKey(req.ObjectTypeUniqueKey)
 	if err != nil {
-		// here
-		// ts sends objecttypeuniquekey ""
 		return "", "", nil, fmt.Errorf("get type key from raw unique key: %w", err)
 	}
 

@@ -159,6 +159,7 @@ func (s *service) UpdateOwnGlobalName(myIdentityGlobalName string) {
 	s.ownProfileSubscription.updateGlobalName(myIdentityGlobalName)
 }
 
+// TODO: use WaitProfile with timeout for onetoone
 func (s *service) WaitProfile(ctx context.Context, identity string) *model.IdentityProfile {
 	profile := s.getProfileFromCache(identity)
 	if profile != nil {

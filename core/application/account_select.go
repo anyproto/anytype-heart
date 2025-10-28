@@ -3,6 +3,7 @@ package application
 import (
 	"context"
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -11,16 +12,24 @@ import (
 
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/commonspace/spacesyncproto"
+	"github.com/anyproto/any-sync/coordinator/coordinatorproto"
 	"github.com/anyproto/any-sync/net/secureservice/handshake"
+	"github.com/gogo/protobuf/proto"
+	"github.com/gogo/protobuf/types"
+	"go.uber.org/zap"
 
 	"github.com/anyproto/anytype-heart/core/anytype"
 	"github.com/anyproto/anytype-heart/core/anytype/account"
+	"github.com/anyproto/anytype-heart/core/block"
 	walletComp "github.com/anyproto/anytype-heart/core/wallet"
 	"github.com/anyproto/anytype-heart/metrics"
 	"github.com/anyproto/anytype-heart/pb"
+	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space"
+	"github.com/anyproto/anytype-heart/space/inboxclient"
+	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 // we cannot check the constant error from badger because they hardcoded it there
@@ -186,5 +195,62 @@ func (s *Service) start(
 
 	acc := &model.Account{Id: id}
 	acc.Info, err = app.MustComponent[account.Service](s.app).GetInfo(ctx)
+
+	inboxClient := app.MustComponent[inboxclient.InboxClient](s.app)
+	err = inboxClient.SetReceiverByType(coordinatorproto.InboxPayloadType_InboxPayloadOneToOneInvite, s.processOneToOneInvite)
+	if err != nil {
+		log.Error("failed to init inbox receiver", zap.Error(err))
+		return nil, err
+	}
+
 	return acc, err
+}
+
+func (s *Service) processOneToOneInvite(packet *coordinatorproto.InboxPacket) (err error) {
+	inboxBody := packet.Payload.Body
+	bs := s.app.MustComponent(block.CName).(*block.Service)
+
+	if inboxBody == nil {
+		return fmt.Errorf("processOneToOneInvite: got nil body")
+	}
+
+	var idWithProfileKey model.IdentityProfile
+	err = proto.Unmarshal(inboxBody, &idWithProfileKey)
+	if err != nil {
+		return
+	}
+	log.Debug("creating onetoone space from inbox.. ")
+
+	req := &pb.RpcWorkspaceCreateRequest{
+		Details: &types.Struct{
+			Fields: map[string]*types.Value{
+				bundle.RelationKeySpaceUxType.String():      pbtypes.Float64(float64(model.SpaceUxType_OneToOne)),
+				bundle.RelationKeyName.String():             pbtypes.String(idWithProfileKey.Name),
+				bundle.RelationKeyIconOption.String():       pbtypes.Float64(float64(5)),
+				bundle.RelationKeySpaceDashboardId.String(): pbtypes.String("lastOpened"),
+				bundle.RelationKeyOneToOneIdentity.String(): pbtypes.String(idWithProfileKey.Identity),
+			},
+		},
+		UseCase:  pb.RpcObjectImportUseCaseRequest_CHAT_SPACE,
+		WithChat: true,
+	}
+
+	spaceId, _, err := bs.CreateWorkspace(context.TODO(), req)
+	if err != nil {
+		return
+	}
+	err = bs.SpaceInitChat(context.TODO(), spaceId)
+	if err != nil {
+		log.With("error", err).Warn("failed to init space level chat")
+	}
+
+	log.Debug("created onetoone space from inbox", zap.String("spaceId", spaceId))
+
+	// TODO: RegisterParticipant
+	// TODO: cyclic deps. we can create a third service, or, pass processOneToOneInvite from space service.
+	// or, register notifiers for each type..?
+	// s.spaceService.Create
+	// createOneToOne
+
+	return err
 }

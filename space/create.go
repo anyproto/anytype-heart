@@ -2,10 +2,10 @@ package space
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/anyproto/any-sync/util/crypto"
 	"github.com/anyproto/anytype-heart/core/anytype/config/loadenv"
+	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space/clientspace"
 	"github.com/anyproto/anytype-heart/space/internal/spaceprocess/loader"
 	"github.com/anyproto/anytype-heart/space/spacedomain"
@@ -13,11 +13,7 @@ import (
 )
 
 // for initiator (e.g. from ui avatar, qrcode)
-func (s *service) createOneToOneSendInbox(ctx context.Context, description *spaceinfo.SpaceDescription) (sp clientspace.Space, err error) {
-	sp, err = s.createOneToOne(ctx, description)
-	if err != nil {
-		return
-	}
+func (s *service) CreateOneToOneSendInbox(ctx context.Context, description *spaceinfo.SpaceDescription) (sp clientspace.Space, err error) {
 	var bobAccountAddress string
 	if description.OneToOneParticipantIdentity != "" {
 		bobAccountAddress = description.OneToOneParticipantIdentity
@@ -25,24 +21,21 @@ func (s *service) createOneToOneSendInbox(ctx context.Context, description *spac
 		// for testing
 		bobAccountAddress = loadenv.Get("BOB_ACCOUNT")
 	}
-	idProfile := s.identityService.WaitProfile(ctx, bobAccountAddress)
-	err = s.inboxClient.SendOneToOneInvite(ctx, idProfile)
+	bobProfile := s.identityService.WaitProfile(ctx, bobAccountAddress)
+	sp, err = s.CreateOneToOne(ctx, description, bobProfile)
+	if err != nil {
+		return
+	}
+
+	// add que to inbox, if no connection, put into que
+	// otherwise space
+	err = s.inboxClient.SendOneToOneInvite(ctx, bobProfile)
 	return
 }
 
 // for acceptor (e.g. inbox message)
-func (s *service) createOneToOne(ctx context.Context, description *spaceinfo.SpaceDescription) (sp clientspace.Space, err error) {
-	var bobAccountAddress string
-	if description.OneToOneParticipantIdentity != "" {
-		bobAccountAddress = description.OneToOneParticipantIdentity
-	} else {
-		// for testing
-		bobAccountAddress = loadenv.Get("BOB_ACCOUNT")
-	}
-
-	fmt.Printf("-- bob: %s\n", bobAccountAddress)
-
-	bPk, err := crypto.DecodeAccountAddress(bobAccountAddress)
+func (s *service) CreateOneToOne(ctx context.Context, description *spaceinfo.SpaceDescription, bobProfile *model.IdentityProfile) (sp clientspace.Space, err error) {
+	bPk, err := crypto.DecodeAccountAddress(bobProfile.Identity)
 	if err != nil {
 		return
 	}
@@ -59,7 +52,7 @@ func (s *service) createOneToOne(ctx context.Context, description *spaceinfo.Spa
 	}
 	s.mu.Unlock()
 
-	bobProfile := s.identityService.WaitProfile(ctx, bobAccountAddress)
+	// TODO: register participant, otherwise WaitProfile will hang
 	bobKey, err := crypto.UnmarshallAESKeyProto(bobProfile.RequestMetadataKey)
 	if err != nil {
 		return
