@@ -21,6 +21,7 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/files"
+	"github.com/anyproto/anytype-heart/core/files/filedownloader"
 	"github.com/anyproto/anytype-heart/core/files/fileobject"
 	"github.com/anyproto/anytype-heart/core/files/filestorage/rpcstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
@@ -55,6 +56,7 @@ type Gateway interface {
 type gateway struct {
 	fileService       files.Service
 	fileObjectService fileobject.Service
+	fileDownloader    filedownloader.Service
 	server            *http.Server
 	listener          net.Listener
 	handler           *http.ServeMux
@@ -85,6 +87,7 @@ func GatewayAddr() string {
 func (g *gateway) Init(a *app.App) (err error) {
 	g.fileService = app.MustComponent[files.Service](a)
 	g.fileObjectService = app.MustComponent[fileobject.Service](a)
+	g.fileDownloader = app.MustComponent[filedownloader.Service](a)
 	g.addr = GatewayAddr()
 	log.Debugf("gateway.Init: %s", g.addr)
 	return nil
@@ -270,6 +273,16 @@ func (g *gateway) getFile(ctx context.Context, r *http.Request) (files.File, io.
 		return nil, nil, fmt.Errorf("get reader: %w", err)
 	}
 
+	preloadOriginal := r.URL.Query().Get("preloadOriginal") == "true"
+	if preloadOriginal && strings.HasPrefix(file.MimeType(), "video") {
+		g.fileDownloader.CacheFile(
+			r.Context(),
+			file.SpaceId(),
+			file.FileId(),
+			10, // First 10 mb
+		)
+	}
+
 	return file, reader, err
 }
 
@@ -335,10 +348,21 @@ func (g *gateway) getImage(ctx context.Context, r *http.Request) (*getImageReade
 		if err != nil {
 			return nil, fmt.Errorf("get image reader: %w", err)
 		}
+		res.spaceId = img.SpaceId()
 		return res, nil
 	}, retryOptions...)
 	if err != nil {
 		return nil, fmt.Errorf("get image reader: %w", err)
+	}
+
+	preloadOriginal := r.URL.Query().Get("preloadOriginal") == "true"
+	if preloadOriginal && result.originalFile != nil && result.originalFile.Meta().Size < 10*1024*1024 {
+		g.fileDownloader.CacheFile(
+			r.Context(),
+			result.spaceId,
+			result.originalFile.FileId(),
+			0,
+		)
 	}
 
 	retryReader := newRetryReadSeeker(result.reader, retryOptions...)
@@ -350,9 +374,11 @@ func (g *gateway) getImage(ctx context.Context, r *http.Request) (*getImageReade
 }
 
 type getImageReaderResult struct {
-	file     files.File
-	reader   io.ReadSeeker
-	mimeType string
+	file         files.File
+	reader       io.ReadSeeker
+	mimeType     string
+	originalFile files.File
+	spaceId      string
 }
 
 type retryReadSeeker struct {
@@ -389,15 +415,18 @@ func (g *gateway) getImageReader(ctx context.Context, image files.Image, req *ht
 	var file files.File
 	query := req.URL.Query()
 	wantWidthStr := query.Get("width")
+
+	orig, err := image.GetOriginalFile()
+	if err != nil {
+		return nil, fmt.Errorf("get original file: %w", err)
+	}
+
+	if filepath.Ext(orig.Name()) == constant.SvgExt {
+		return g.handleSVGFile(ctx, orig)
+	}
+
 	if wantWidthStr == "" {
-		var err error
-		file, err = image.GetOriginalFile()
-		if err != nil {
-			return nil, fmt.Errorf("get image file: %w", err)
-		}
-		if filepath.Ext(file.Name()) == constant.SvgExt {
-			return g.handleSVGFile(ctx, file)
-		}
+		file = orig
 	} else {
 		wantWidth, err := strconv.Atoi(wantWidthStr)
 		if err != nil {
@@ -407,18 +436,17 @@ func (g *gateway) getImageReader(ctx context.Context, image files.Image, req *ht
 		if err != nil {
 			return nil, fmt.Errorf("get image file: %w", err)
 		}
-		if filepath.Ext(file.Name()) == constant.SvgExt {
-			return g.handleSVGFile(ctx, file)
-		}
 	}
+
 	reader, err := file.Reader(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("get image reader: %w", err)
 	}
 	return &getImageReaderResult{
-		file:     file,
-		reader:   reader,
-		mimeType: file.MimeType(),
+		file:         file,
+		reader:       reader,
+		mimeType:     file.MimeType(),
+		originalFile: orig,
 	}, nil
 }
 
@@ -428,9 +456,10 @@ func (g *gateway) handleSVGFile(ctx context.Context, file files.File) (*getImage
 		return nil, err
 	}
 	return &getImageReaderResult{
-		file:     file,
-		reader:   reader,
-		mimeType: mimeType,
+		file:         file,
+		reader:       reader,
+		mimeType:     mimeType,
+		originalFile: file,
 	}, nil
 }
 

@@ -496,34 +496,19 @@
     "revision": 3
   },
   {
-    "id": "chat",
-    "name": "Chat [deprecated]",
-    "types": [
-      "ChatObject"
-    ],
-    "iconColor": 7,
-    "iconName": "chatbubble",
-    "hidden": true,
-    "layout": "chat",
-    "relations": [
-      "tag"
-    ],
-    "revision": 2
-  },
-  {
     "id": "chatDerived",
-    "name": "Chat Derived Object",
-    "pluralName": "Chat Derived Objects",
+    "name": "Chat",
+    "pluralName": "Chats",
     "types": [
       "ChatDerivedObject"
     ],
     "iconColor": 7,
     "iconName": "chatbubble",
-    "hidden": true,
+    "hidden": false,
     "layout": "chatDerived",
     "relations": [
       "tag"
     ],
-    "revision": 4
+    "revision": 7
   }
 ]

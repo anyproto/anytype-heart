@@ -45,7 +45,7 @@ type SubscribeRequest struct {
 	Sorts   []database.SortRequest
 	Limit   int64
 	Offset  int64
-	// (required)  needed keys in details for return, for object fields mw will return (and subscribe) objects as dependent
+	// (required) necessary keys in details for return, for object fields mw will return (and subscribe) objects as dependent
 	Keys []string
 	// (optional) pagination: middleware will return results after given id
 	AfterId string
@@ -94,6 +94,11 @@ type subscription interface {
 	hasDep() bool
 	getDep() subscription
 	close()
+}
+
+type sortableSubscription interface {
+	subscription
+	reorder(ctx *opCtx, depDetails []*domain.Details)
 }
 
 type CollectionService interface {
@@ -339,6 +344,15 @@ func (s *spaceSubscriptions) getSubscription(id string) (subscription, bool) {
 	return sub, ok
 }
 
+func (s *spaceSubscriptions) getSortableSubscription(id string) (sortableSubscription, bool) {
+	sub, ok := s.subscriptions[id]
+	if !ok {
+		return nil, false
+	}
+	sortableSub, ok := sub.(sortableSubscription)
+	return sortableSub, ok
+}
+
 func (s *spaceSubscriptions) setSubscription(id string, sub subscription) {
 	s.subscriptions[id] = sub
 	if !slices.Contains(s.subscriptionKeys, id) {
@@ -380,7 +394,7 @@ func (s *spaceSubscriptions) Search(req SubscribeRequest) (*SubscribeResponse, e
 	}
 
 	if len(req.Source) > 0 {
-		sourceFilter, err := s.filtersFromSource(req.SpaceId, req.Source)
+		sourceFilter, err := s.filtersFromSource(req.Source)
 		if err != nil {
 			return nil, fmt.Errorf("can't make filter from source: %w", err)
 		}
@@ -394,7 +408,7 @@ func (s *spaceSubscriptions) Search(req SubscribeRequest) (*SubscribeResponse, e
 	s.m.Lock()
 	defer s.m.Unlock()
 
-	filterDepIds := s.depIdsFromFilter(req.SpaceId, req.Filters)
+	filterDepIds := s.depIdsFromFilter(req.Filters)
 	if existing, ok := s.getSubscription(req.SubId); ok {
 		s.deleteSubscription(req.SubId)
 		existing.close()
@@ -413,7 +427,7 @@ func (s *spaceSubscriptions) Search(req SubscribeRequest) (*SubscribeResponse, e
 }
 
 func (s *spaceSubscriptions) subscribeForQuery(req SubscribeRequest, f *database.Filters, queryEntries func() ([]*entry, error), filterDepIds []string) (*SubscribeResponse, error) {
-	sub := s.newSortedSub(req.SubId, req.SpaceId, slice.StringsInto[domain.RelationKey](req.Keys), f.FilterObj, f.Order, int(req.Limit), int(req.Offset))
+	sub := s.newSortedSub(req.SubId, slice.StringsInto[domain.RelationKey](req.Keys), f.FilterObj, f.Order, int(req.Limit), int(req.Offset))
 	if req.NoDepSubscription {
 		sub.disableDep = true
 	} else {
@@ -429,7 +443,7 @@ func (s *spaceSubscriptions) subscribeForQuery(req SubscribeRequest, f *database
 			nestedCount++
 			f, ok := nestedFilter.(*database.FilterNestedIn)
 			if ok {
-				childSub := s.newSortedSub(req.SubId+fmt.Sprintf("-nested-%d", nestedCount), req.SpaceId, []domain.RelationKey{bundle.RelationKeyId}, f.FilterForNestedObjects, nil, 0, 0)
+				childSub := s.newSortedSub(req.SubId+fmt.Sprintf("-nested-%d", nestedCount), []domain.RelationKey{bundle.RelationKeyId}, f.FilterForNestedObjects, nil, 0, 0)
 				err := initSubEntries(s.objectStore, &database.Filters{FilterObj: f.FilterForNestedObjects}, childSub)
 				if err != nil {
 					return fmt.Errorf("init nested sub %s entries: %w", childSub.id, err)
@@ -464,6 +478,10 @@ func (s *spaceSubscriptions) subscribeForQuery(req SubscribeRequest, f *database
 	s.m.Lock()
 	entries = append(entries, sub.entriesBeforeStarted...)
 	sub.entriesBeforeStarted = nil
+
+	if len(req.Sorts) > 0 {
+		s.ds.registerObjectSorts(sub.id, req.Sorts)
+	}
 
 	if req.AsyncInit {
 		err := sub.init(nil)
@@ -536,7 +554,7 @@ func queryEntries(objectStore spaceindex.Store, f *database.Filters) ([]*entry, 
 }
 
 func (s *spaceSubscriptions) subscribeForCollection(req SubscribeRequest, f *database.Filters, filterDepIds []string) (*SubscribeResponse, error) {
-	sub, err := s.newCollectionSub(req.SubId, req.SpaceId, req.CollectionId, slice.StringsInto[domain.RelationKey](req.Keys), filterDepIds, f.FilterObj, f.Order, int(req.Limit), int(req.Offset), req.NoDepSubscription)
+	sub, err := s.newCollectionSub(req, f, filterDepIds)
 	if err != nil {
 		return nil, err
 	}
@@ -582,7 +600,7 @@ func (s *spaceSubscriptions) SubscribeIdsReq(req pb.RpcObjectSubscribeIdsRequest
 	}
 
 	s.m.Lock()
-	sub := s.newIdsSub(req.SubId, req.SpaceId, slice.StringsInto[domain.RelationKey](req.Keys), req.NoDepSubscription)
+	sub := s.newIdsSub(req.SubId, slice.StringsInto[domain.RelationKey](req.Keys), req.NoDepSubscription)
 	sub.addIds(req.Ids)
 	s.m.Unlock()
 
@@ -649,7 +667,7 @@ func (s *spaceSubscriptions) SubscribeGroups(req SubscribeGroupsRequest) (*pb.Rp
 	}
 
 	if len(req.Source) > 0 {
-		sourceFilter, err := s.filtersFromSource(req.SpaceId, req.Source)
+		sourceFilter, err := s.filtersFromSource(req.Source)
 		if err != nil {
 			return nil, fmt.Errorf("can't make filter from source: %w", err)
 		}
@@ -892,7 +910,7 @@ func (s *spaceSubscriptions) onChangeWithinContext(entries []*entry, proc func(c
 	return dur
 }
 
-func (s *spaceSubscriptions) filtersFromSource(spaceId string, sources []string) (database.Filter, error) {
+func (s *spaceSubscriptions) filtersFromSource(sources []string) (database.Filter, error) {
 	var relTypeFilter database.FiltersOr
 	var (
 		relKeys        []string
@@ -938,9 +956,9 @@ func (s *spaceSubscriptions) filtersFromSource(spaceId string, sources []string)
 	return relTypeFilter, nil
 }
 
-func (s *spaceSubscriptions) depIdsFromFilter(spaceId string, filters []database.FilterRequest) (depIds []string) {
+func (s *spaceSubscriptions) depIdsFromFilter(filters []database.FilterRequest) (depIds []string) {
 	for _, f := range filters {
-		if s.ds.isRelationObject(spaceId, f.RelationKey) {
+		if s.ds.isRelationObject(f.RelationKey) {
 			for _, id := range f.Value.StringList() {
 				if slice.FindPos(depIds, id) == -1 && id != "" {
 					depIds = append(depIds, id)

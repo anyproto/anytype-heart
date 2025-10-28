@@ -58,7 +58,7 @@ func calculateYearEnd(base time.Time, yearsOffset int) int64 {
 func TestQuickOption(t *testing.T) {
 	var (
 		relationKey = bundle.RelationKeyCreatedDate
-		now         = time.Now()
+		now         = time.Date(2007, 2, 15, 12, 30, 10, 0, time.UTC)
 	)
 
 	// Test uses methods which account for daylight saving time
@@ -564,7 +564,7 @@ func TestQuickOption(t *testing.T) {
 		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			filters := transformQuickOption(tc.inputFilter)
+			filters := transformDateFilter(tc.inputFilter, now)
 			assert.Len(t, filters, len(tc.expectedFilters))
 			for i, f := range filters {
 				assert.Equal(t, tc.expectedFilters[i].Condition, f.Condition)

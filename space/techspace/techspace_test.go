@@ -46,6 +46,18 @@ type spaceViewStub struct {
 	data *domain.Details
 }
 
+func (s *spaceViewStub) AddPushNotificationAllIds(ctx session.Context, allIds []string) error {
+	return nil
+}
+
+func (s *spaceViewStub) AddPushNotificationMuteIds(ctx session.Context, muteIds []string) (err error) {
+	return
+}
+
+func (s *spaceViewStub) AddPushNotificationMentionIds(ctx session.Context, mentionIds []string) (err error) {
+	return
+}
+
 func (s *spaceViewStub) SetMyParticipantStatus(status model.ParticipantStatus) error {
 	panic("unimplemented")
 }
@@ -258,7 +270,6 @@ func TestTechSpace_TechSpaceId(t *testing.T) {
 	defer fx.finish(t)
 	assert.Equal(t, testTechSpaceId, fx.TechSpaceId())
 }
-
 
 type fixture struct {
 	TechSpace

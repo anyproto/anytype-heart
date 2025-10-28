@@ -31,6 +31,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/files/fileobject"
 	"github.com/anyproto/anytype-heart/core/files/fileuploader"
 	"github.com/anyproto/anytype-heart/core/files/reconciler"
+	"github.com/anyproto/anytype-heart/core/relationutils"
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/datastore/anystoreprovider"
@@ -52,6 +53,7 @@ type accountService interface {
 	AccountID() string
 	PersonalSpaceID() string
 	MyParticipantId(spaceId string) string
+	GetAccountObjectId() (string, error)
 	Keys() *accountdata.AccountKeys
 }
 
@@ -86,6 +88,7 @@ type ObjectFactory struct {
 	chatSubscriptionService chatsubscription.Service
 	statService             debugstat.StatService
 	backlinksUpdater        backlinks.UpdateWatcher
+	formatFetcher           relationutils.RelationFormatFetcher
 }
 
 func NewObjectFactory() *ObjectFactory {
@@ -125,6 +128,7 @@ func (f *ObjectFactory) Init(a *app.App) (err error) {
 	if err != nil {
 		f.statService = debugstat.NewNoOp()
 	}
+	f.formatFetcher = app.MustComponent[relationutils.RelationFormatFetcher](a)
 	return nil
 }
 
@@ -192,6 +196,7 @@ func (f *ObjectFactory) produceSmartblock(space smartblock.Space) (smartblock.Sm
 		f.indexer,
 		f.eventSender,
 		f.spaceIdResolver,
+		f.formatFetcher,
 	), store
 }
 
@@ -202,8 +207,7 @@ func (f *ObjectFactory) New(space smartblock.Space, sbType coresb.SmartBlockType
 		coresb.SmartBlockTypeDate,
 		coresb.SmartBlockTypeBundledRelation,
 		coresb.SmartBlockTypeBundledObjectType,
-		coresb.SmartBlockTypeRelation,
-		coresb.SmartBlockTypeChatObject:
+		coresb.SmartBlockTypeRelation:
 		return f.newPage(space.Id(), sb), nil
 	case coresb.SmartBlockTypeObjectType:
 		return f.newObjectType(space.Id(), sb), nil
@@ -242,7 +246,7 @@ func (f *ObjectFactory) New(space smartblock.Space, sbType coresb.SmartBlockType
 		if err != nil {
 			return nil, fmt.Errorf("get crdt db: %w", err)
 		}
-		return chatobject.New(sb, f.accountService, crdtDb, f.chatRepositoryService, f.chatSubscriptionService, f.statService), nil
+		return chatobject.New(sb, f.accountService, crdtDb, f.chatRepositoryService, f.chatSubscriptionService, spaceIndex, f.layoutConverter, f.fileObjectService, f.statService), nil
 	case coresb.SmartBlockTypeAccountObject:
 		db, err := f.dbProvider.GetCrdtDb(space.Id()).Wait()
 		if err != nil {
