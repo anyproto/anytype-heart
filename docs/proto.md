@@ -2184,7 +2184,6 @@
 | AccountLocalLinkRevokeApp | [Rpc.Account.LocalLink.RevokeApp.Request](#anytype-Rpc-Account-LocalLink-RevokeApp-Request) | [Rpc.Account.LocalLink.RevokeApp.Response](#anytype-Rpc-Account-LocalLink-RevokeApp-Response) |  |
 | WalletCreateSession | [Rpc.Wallet.CreateSession.Request](#anytype-Rpc-Wallet-CreateSession-Request) | [Rpc.Wallet.CreateSession.Response](#anytype-Rpc-Wallet-CreateSession-Response) |  |
 | WalletCloseSession | [Rpc.Wallet.CloseSession.Request](#anytype-Rpc-Wallet-CloseSession-Request) | [Rpc.Wallet.CloseSession.Response](#anytype-Rpc-Wallet-CloseSession-Response) |  |
-| WalletExportBot | [Rpc.Wallet.ExportBot.Request](#anytype-Rpc-Wallet-ExportBot-Request) | [Rpc.Wallet.ExportBot.Response](#anytype-Rpc-Wallet-ExportBot-Response) |  |
 | WorkspaceCreate | [Rpc.Workspace.Create.Request](#anytype-Rpc-Workspace-Create-Request) | [Rpc.Workspace.Create.Response](#anytype-Rpc-Workspace-Create-Response) | Workspace *** |
 | WorkspaceOpen | [Rpc.Workspace.Open.Request](#anytype-Rpc-Workspace-Open-Request) | [Rpc.Workspace.Open.Response](#anytype-Rpc-Workspace-Open-Response) |  |
 | WorkspaceObjectAdd | [Rpc.Workspace.Object.Add.Request](#anytype-Rpc-Workspace-Object-Add-Request) | [Rpc.Workspace.Object.Add.Response](#anytype-Rpc-Workspace-Object-Add-Response) |  |
@@ -21971,6 +21970,7 @@ Middleware-to-front-end response, that can contain mnemonic of a created account
 | ----- | ---- | ----- | ----------- |
 | error | [Rpc.Wallet.Create.Response.Error](#anytype-Rpc-Wallet-Create-Response-Error) |  |  |
 | mnemonic | [string](#string) |  | Mnemonic of a new account (sequence of words, divided by spaces) |
+| accountKey | [string](#string) |  |  |
 
 
 
@@ -22012,8 +22012,9 @@ Middleware-to-front-end response, that can contain mnemonic of a created account
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | mnemonic | [string](#string) |  | cold auth |
-| appKey | [string](#string) |  | persistent app key, that can be used to restore session |
+| appKey | [string](#string) |  | persistent app key, that can be used to restore session. Used for Local JSON API |
 | token | [string](#string) |  | token from the previous session |
+| accountKey | [string](#string) |  | private key of specific account |
 
 
 

@@ -4,6 +4,8 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/anyproto/any-sync/util/crypto"
+
 	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/core/session"
 	walletComp "github.com/anyproto/anytype-heart/core/wallet"
@@ -17,6 +19,7 @@ func (s *Service) CreateSession(req *pb.RpcWalletCreateSessionRequest) (token st
 	mnemonic := req.GetMnemonic()
 	appKey := req.GetAppKey()
 	providedToken := req.GetToken()
+	accountKey := req.GetAccountKey()
 
 	if appKey != "" {
 		app := s.GetApp()
@@ -52,19 +55,29 @@ func (s *Service) CreateSession(req *pb.RpcWalletCreateSessionRequest) (token st
 		token, err = s.sessions.StartSession(s.sessionSigningKey, scope) // nolint:gosec
 		return token, "", err
 	}
-	// Verify mnemonic by deriving keys and comparing with stored keys
-	if s.derivedKeys == nil {
-		return "", "", errors.Join(ErrBadInput, fmt.Errorf("wallet not initialized"))
+
+	var derived crypto.DerivationResult
+
+	if accountKey != "" {
+		derived, err = core.WalletDeriveFromAccountMasterNode(accountKey)
+		if err != nil {
+			return "", "", errors.Join(ErrBadInput, fmt.Errorf("invalid account key: %w", err))
+		}
+	} else {
+		// Verify mnemonic by deriving keys and comparing with stored keys
+		if s.derivedKeys == nil {
+			return "", "", errors.Join(ErrBadInput, fmt.Errorf("wallet not initialized"))
+		}
+
+		// Derive keys from provided mnemonic to verify it's correct
+		derived, err = core.WalletAccountAt(mnemonic, 0)
+		if err != nil {
+			return "", "", errors.Join(ErrBadInput, fmt.Errorf("invalid mnemonic"))
+		}
 	}
-	
-	// Derive keys from provided mnemonic to verify it's correct
-	derivedFromMnemonic, err := core.WalletAccountAt(mnemonic, 0)
-	if err != nil {
-		return "", "", errors.Join(ErrBadInput, fmt.Errorf("invalid mnemonic"))
-	}
-	
+
 	// Compare account IDs to verify mnemonic matches
-	if derivedFromMnemonic.Identity.GetPublic().Account() != s.derivedKeys.Identity.GetPublic().Account() {
+	if derived.Identity.GetPublic().Account() != s.derivedKeys.Identity.GetPublic().Account() {
 		return "", "", errors.Join(ErrBadInput, fmt.Errorf("incorrect mnemonic"))
 	}
 	token, err = s.sessions.StartSession(s.sessionSigningKey, model.AccountAuth_Full)

@@ -23,7 +23,6 @@ service ClientCommands {
 
     rpc WalletCreateSession (anytype.Rpc.Wallet.CreateSession.Request) returns (anytype.Rpc.Wallet.CreateSession.Response);
     rpc WalletCloseSession (anytype.Rpc.Wallet.CloseSession.Request) returns (anytype.Rpc.Wallet.CloseSession.Response);
-    rpc WalletExportBot (anytype.Rpc.Wallet.ExportBot.Request) returns (anytype.Rpc.Wallet.ExportBot.Response);
 
     // Workspace
     // ***

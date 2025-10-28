@@ -18,7 +18,7 @@ func (s *Service) WalletRecover(req *pb.RpcWalletRecoverRequest) error {
 	if req.Mnemonic != "" && req.AccountKey != "" {
 		return errors.Join(ErrBadInput, fmt.Errorf("cannot provide both mnemonic and accountKey"))
 	}
-	
+
 	if req.Mnemonic == "" && req.AccountKey == "" {
 		return errors.Join(ErrBadInput, fmt.Errorf("either mnemonic or accountKey must be provided"))
 	}
@@ -31,21 +31,21 @@ func (s *Service) WalletRecover(req *pb.RpcWalletRecoverRequest) error {
 	// Handle accountKey recovery
 	if req.AccountKey != "" {
 		// Derive keys from the provided account key
-		derivationResult, err := core.WalletDeriveFromAccountKey(req.AccountKey)
+		derivationResult, err := core.WalletDeriveFromAccountMasterNode(req.AccountKey)
 		if err != nil {
 			return errors.Join(ErrBadInput, fmt.Errorf("invalid account key: %w", err))
 		}
-		
+
 		// Store the derived keys
 		s.derivedKeys = &derivationResult
-		
+
 		// Set session signing key
 		buf := make([]byte, 64)
 		if _, err := rand.Read(buf); err != nil {
 			return err
 		}
 		s.sessionSigningKey = buf
-		
+
 		s.rootPath = req.RootPath
 		s.fulltextPrimaryLanguage = req.FulltextPrimaryLanguage
 		return nil
@@ -57,17 +57,17 @@ func (s *Service) WalletRecover(req *pb.RpcWalletRecoverRequest) error {
 	if err != nil {
 		return errors.Join(ErrBadInput, err)
 	}
-	
+
 	// Store the derived keys
 	s.derivedKeys = &derivationResult
-	
+
 	// Set session signing key
 	buf := make([]byte, 64)
 	if _, err := rand.Read(buf); err != nil {
 		return err
 	}
 	s.sessionSigningKey = buf
-	
+
 	s.rootPath = req.RootPath
 	s.fulltextPrimaryLanguage = req.FulltextPrimaryLanguage
 	return nil
