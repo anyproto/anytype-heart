@@ -410,12 +410,6 @@ func TestKeyOrder_Compare(t *testing.T) {
 		ko := &KeyOrder{arena: arena, Key: bundle.RelationKeyDone, Type: model.BlockContentDataviewSort_Asc, relationFormat: model.RelationFormat_checkbox}
 		assertCompare(t, ko, a, b, 0)
 	})
-	// t.Run("compare_object_empty", func(t *testing.T) {
-	// 	a := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{bundle.RelationKeyDone: domain.Bool(true)})
-	// 	b := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{bundle.RelationKeyDone: domain.Bool(true)})
-	// 	ko := &KeyOrder{arena: arena, Key: bundle.RelationKeyDone, Type: model.BlockContentDataviewSort_Asc, relationFormat: model.RelationFormat_checkbox}
-	// 	assertCompare(t, ko, a, b, 0)
-	// })
 }
 
 func TestKeyUnicodeOrder_Compare(t *testing.T) {
