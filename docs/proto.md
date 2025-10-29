@@ -2059,6 +2059,7 @@
     - [MembershipV2](#anytype-model-MembershipV2)
     - [MembershipV2.Amount](#anytype-model-MembershipV2-Amount)
     - [MembershipV2.Data](#anytype-model-MembershipV2-Data)
+    - [MembershipV2.Features](#anytype-model-MembershipV2-Features)
     - [MembershipV2.Invoice](#anytype-model-MembershipV2-Invoice)
     - [MembershipV2.Product](#anytype-model-MembershipV2-Product)
     - [MembershipV2.ProductStatus](#anytype-model-MembershipV2-ProductStatus)
@@ -14759,8 +14760,7 @@ need a correct code that was sent to the user when calling GetVerificationEmail
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | error | [Rpc.MembershipV2.WebAuth.Response.Error](#anytype-Rpc-MembershipV2-WebAuth-Response-Error) |  |  |
-| jwt | [string](#string) |  |  |
-| url | [string](#string) |  | optional |
+| urlWithJwt | [string](#string) |  |  |
 
 
 
@@ -32606,8 +32606,8 @@ Used to decode block meta only, without the content itself
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| currency | [string](#string) |  |  |
-| amountCents | [int64](#int64) |  | $0.01 = 1 $1.00 = 100 negative amounts |
+| currency | [string](#string) |  | ISO 4217 currency code |
+| amountCents | [int64](#int64) |  | $0.01 = 1 $1.00 = 100 also supports negative amounts! some invoices can have negatice amount (refund) |
 
 
 
@@ -32624,6 +32624,27 @@ Used to decode block meta only, without the content itself
 | ----- | ---- | ----- | ----------- |
 | products | [MembershipV2.PurchasedProduct](#anytype-model-MembershipV2-PurchasedProduct) | repeated |  |
 | nextInvoice | [MembershipV2.Invoice](#anytype-model-MembershipV2-Invoice) |  |  |
+
+
+
+
+
+
+<a name="anytype-model-MembershipV2-Features"></a>
+
+### MembershipV2.Features
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| storageBytes | [uint64](#uint64) |  |  |
+| spaceReaders | [uint64](#uint64) |  |  |
+| spaceWriters | [uint64](#uint64) |  |  |
+| sharedSpaces | [uint64](#uint64) |  |  |
+| teamSeats | [uint64](#uint64) |  |  |
+| anyNameCount | [uint32](#uint32) |  |  |
+| anyNameMinLen | [uint32](#uint32) |  |  |
 
 
 
@@ -32654,16 +32675,15 @@ Used to decode block meta only, without the content itself
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| id | [string](#string) |  | this is a unique Payment Node ID adding 2 same products to a cart means we will have 2 items with same ID |
-| isAttachToSpace | [bool](#bool) |  | is it a product that should be attached to a space |
-| isPackage | [bool](#bool) |  | the price of a Package may not be equal to the sum of all underlying products |
-| name | [string](#string) |  | localized |
+| id | [string](#string) |  |  |
+| name | [string](#string) |  |  |
 | description | [string](#string) |  |  |
+| isTopLevel | [bool](#bool) |  |  |
+| isHidden | [bool](#bool) |  |  |
 | pricesYearly | [MembershipV2.Amount](#anytype-model-MembershipV2-Amount) | repeated |  |
 | pricesMonthly | [MembershipV2.Amount](#anytype-model-MembershipV2-Amount) | repeated |  |
-| features | [string](#string) | repeated | localized strings for the features |
-| colorStr | [string](#string) |  | green, blue, red, purple, custom |
-| offer | [string](#string) |  | &#34;limited offer&#34; |
+| colorStr | [string](#string) |  | green, blue, red, purple, custom, etc |
+| features | [MembershipV2.Features](#anytype-model-MembershipV2-Features) |  |  |
 
 
 
@@ -32679,9 +32699,6 @@ Used to decode block meta only, without the content itself
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | status | [MembershipV2.ProductStatus.Status](#anytype-model-MembershipV2-ProductStatus-Status) |  |  |
-| spaceAttachedTo | [string](#string) |  |  |
-| isNeedsAttachmentToSpace | [bool](#bool) |  |  |
-| isRenewalEnabled | [bool](#bool) |  |  |
 
 
 

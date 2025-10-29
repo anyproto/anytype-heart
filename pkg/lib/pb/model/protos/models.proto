@@ -1413,21 +1413,30 @@ message MembershipV2 {
         Amount total = 2;
     }
 
+    message Features {
+        uint64 storageBytes = 1;
+        uint64 spaceReaders = 2;
+        uint64 spaceWriters = 3;
+        uint64 sharedSpaces = 4;
+        uint64 teamSeats = 5;
+        uint32 anyNameCount = 6;
+        uint32 anyNameMinLen = 7; 
+    }
+
     message Product {
-        // this is a unique Payment Node ID
-        // adding 2 same products to a cart means we will have 2 items with same ID
         string id = 1;
-        bool isTopLevel = 2;
-        string name = 3;
-        string description = 4;
-        // do not show to user by default 
+        string name = 2;
+        string description = 3;
+
+        bool isTopLevel = 4;
         bool isHidden = 5;
         repeated Amount pricesYearly = 6;
         repeated Amount pricesMonthly = 7;
-        // localized strings for the features
-        repeated string features = 8;
+
         // green, blue, red, purple, custom, etc
-        string colorStr = 9;
+        string colorStr = 8;
+
+        Features features = 9;
     }
 
     message PurchaseInfo {
