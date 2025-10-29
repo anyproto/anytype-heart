@@ -262,10 +262,6 @@ func (b *queryBuilder) extractOrder(sorts []SortRequest) SetOrder {
 		for _, sort := range sorts {
 			keyOrder := NewKeyOrder(b.objectStore, b.arena, b.collatorBuffer, sort)
 			keyOrder.IncludeTime = isIncludeTime(sorts, sort)
-
-			if keyOrder.Key == bundle.RelationKeyOrderId || keyOrder.Key == bundle.RelationKeySpaceOrder {
-				keyOrder.disableCollator = true
-			}
 			order = b.appendCustomOrder(sort, order, keyOrder)
 		}
 		return order

@@ -169,6 +169,8 @@ func (s textSort) AppendKey(tuple anyenc.Tuple, v *anyenc.Value) anyenc.Tuple {
 
 type objectSort struct {
 	arena          *anyenc.Arena
+	collatorBuffer *collate.Buffer
+	collator       *collate.Collator
 	relationKey    string
 	sortKeys       []domain.RelationKey
 	reverse        bool
@@ -188,42 +190,50 @@ func (s objectSort) Fields() []query.SortField {
 func (s objectSort) AppendKey(tuple anyenc.Tuple, v *anyenc.Value) anyenc.Tuple {
 	defer func() {
 		s.arena.Reset()
+		s.collatorBuffer.Reset()
+		for i := range s.sortKeysBuffer {
+			s.sortKeysBuffer[i] = s.sortKeysBuffer[i][:0]
+		}
 	}()
 
 	val := v.Get(s.relationKey)
-	if val != nil && val.Type() == anyenc.TypeString {
-		id, _ := val.StringBytes()
-		for i, key := range s.sortKeys {
-			s.sortKeysBuffer[i] = s.orders.BuildOrderByKey(key, s.sortKeysBuffer[i], string(id))
-		}
-	} else if val != nil && val.Type() == anyenc.TypeArray {
+	var listLen int
+	if val != nil && val.Type() == anyenc.TypeArray {
 		arr, _ := val.Array()
 		var ids []string
 		for _, it := range arr {
 			id, _ := it.StringBytes()
 			ids = append(ids, string(id))
 		}
+		listLen = len(ids)
 		for i, key := range s.sortKeys {
 			s.sortKeysBuffer[i] = s.orders.BuildOrderByKey(key, s.sortKeysBuffer[i], ids...)
+			if key != bundle.RelationKeyOrderId && s.collator != nil {
+				s.sortKeysBuffer[i] = s.collator.Key(s.collatorBuffer, s.sortKeysBuffer[i])
+			}
+		}
+	} else {
+		switch s.nulls {
+		case model.BlockContentDataviewSort_Start:
+			return tuple.Append(s.arena.NewNull())
+		case model.BlockContentDataviewSort_End:
+			return tuple.AppendInverted(s.arena.NewNull())
 		}
 	}
 
 	for _, key := range s.sortKeysBuffer {
-		if len(key) == 0 {
-			switch s.nulls {
-			case model.BlockContentDataviewSort_Start:
-				tuple = tuple.Append(s.arena.NewNull())
-			case model.BlockContentDataviewSort_End:
-				tuple = tuple.AppendInverted(s.arena.NewNull())
-			}
-			continue
-		}
-
 		if s.reverse {
-			tuple = tuple.AppendInverted(s.arena.NewString(string(key)))
+			tuple = tuple.AppendInverted(s.arena.NewStringBytes(key))
 		} else {
-			tuple = tuple.Append(s.arena.NewString(string(key)))
+			tuple = tuple.Append(s.arena.NewStringBytes(key))
 		}
+	}
+
+	// a hack for multiple untitled objects
+	if s.reverse {
+		tuple = tuple.AppendInverted(s.arena.NewNumberInt(listLen))
+	} else {
+		tuple = tuple.Append(s.arena.NewNumberInt(listLen))
 	}
 
 	return tuple

@@ -184,12 +184,19 @@ func NewKeyOrder(store ObjectStore, arena *anyenc.Arena, collatorBuffer *collate
 	if err != nil {
 		format = sort.Format
 	}
+
 	switch format {
 	case model.RelationFormat_tag, model.RelationFormat_status:
 		sortKeys = append(sortKeys, bundle.RelationKeyOrderId, bundle.RelationKeyName)
 	case model.RelationFormat_file, model.RelationFormat_object:
 		sortKeys = append(sortKeys, bundle.RelationKeyName)
 	}
+
+	disableCollator := sort.NoCollate
+	if sort.RelationKey == bundle.RelationKeyOrderId || sort.RelationKey == bundle.RelationKeySpaceOrder {
+		disableCollator = true
+	}
+
 	return &KeyOrder{
 		Key:             sort.RelationKey,
 		Type:            sort.Type,
@@ -202,7 +209,7 @@ func NewKeyOrder(store ObjectStore, arena *anyenc.Arena, collatorBuffer *collate
 		objectSortKeys:  sortKeys,
 		arena:           arena,
 		collatorBuffer:  collatorBuffer,
-		disableCollator: sort.NoCollate,
+		disableCollator: disableCollator,
 	}
 }
 
@@ -213,24 +220,26 @@ func (ko *KeyOrder) ensureCollator() {
 	}
 }
 
-func (ko *KeyOrder) Compare(a, b *domain.Details) int {
+func (ko *KeyOrder) Compare(a, b *domain.Details) (comp int) {
 	av := a.Get(ko.Key)
 	bv := b.Get(ko.Key)
 
-	av, bv = ko.tryExtractSnippet(a, b, av, bv)
-	av, bv = ko.tryExtractDateTime(av, bv)
-	av, bv = ko.tryExtractObject(av, bv)
-	av, bv = ko.tryExtractBool(av, bv)
-
-	comp := ko.tryCompareStrings(av, bv)
-	if comp == 0 {
-		comp = av.Compare(bv)
+	switch ko.relationFormat {
+	case model.RelationFormat_checkbox:
+		return ko.compareBool(av, bv)
+	case model.RelationFormat_date:
+		return ko.compareDates(av, bv)
+	case model.RelationFormat_number:
+		return ko.compareNumbers(av, bv)
+	case model.RelationFormat_shorttext, model.RelationFormat_longtext:
+		av = ko.trySubstituteSnippet(a, av)
+		bv = ko.trySubstituteSnippet(b, bv)
+		return ko.compareStrings(av, bv)
+	case model.RelationFormat_object, model.RelationFormat_file, model.RelationFormat_tag, model.RelationFormat_status:
+		return ko.compareObjectValues(av, bv)
+	default:
+		return ko.compareStrings(av, bv)
 	}
-	comp = ko.tryAdjustEmptyPositions(av, bv, comp)
-	if ko.Type == model.BlockContentDataviewSort_Desc {
-		comp = -comp
-	}
-	return comp
 }
 
 func (ko *KeyOrder) AnystoreSort() query.Sort {
@@ -291,8 +300,11 @@ func (ko *KeyOrder) objectSort() query.Sort {
 	for i := range ko.objectSortKeys {
 		buffer[i] = make([]byte, 0)
 	}
+	ko.ensureCollator()
 	return objectSort{
 		arena:          ko.arena,
+		collator:       ko.collator,
+		collatorBuffer: ko.collatorBuffer,
 		relationKey:    string(ko.Key),
 		sortKeys:       ko.objectSortKeys,
 		reverse:        ko.Type == model.BlockContentDataviewSort_Desc,
@@ -341,79 +353,56 @@ func (ko *KeyOrder) boolSort() query.Sort {
 	}
 }
 
-func (ko *KeyOrder) tryAdjustEmptyPositions(av domain.Value, bv domain.Value, comp int) int {
-	if ko.EmptyPlacement == model.BlockContentDataviewSort_NotSpecified {
+func (ko *KeyOrder) compareStrings(av domain.Value, bv domain.Value) int {
+	aStr, okA := av.TryString()
+	bStr, okB := bv.TryString()
+
+	aEmpty := !okA || aStr == ""
+	bEmpty := !okB || bStr == ""
+
+	comp, ok := ko.tryCompareEmptyValues(aEmpty, bEmpty)
+	if ok {
 		return comp
 	}
-	aNull := !av.Ok()
-	bNull := !bv.Ok()
-	if aNull && bNull {
-		comp = 0
-	} else if aNull {
-		comp = 1
-	} else if bNull {
-		comp = -1
+
+	if ko.disableCollator {
+		comp = av.Compare(bv)
 	} else {
-		return comp
-	}
-
-	comp = ko.tryFlipComp(comp)
-	return comp
-}
-
-func (ko *KeyOrder) tryCompareStrings(av domain.Value, bv domain.Value) int {
-	comp := 0
-	aStringVal, aString := av.TryString()
-	bStringVal, bString := bv.TryString()
-	if ko.isSpecialSortOfEmptyValuesNeed(av, bv, aString, bString) {
-		if aStringVal == "" && bStringVal != "" {
-			comp = 1
-		} else if aStringVal != "" && bStringVal == "" {
-			comp = -1
-		}
-	}
-	if aString && bString && comp == 0 && !ko.disableCollator {
 		ko.ensureCollator()
-		comp = ko.collator.CompareString(aStringVal, bStringVal)
+		comp = ko.collator.CompareString(aStr, bStr)
 	}
-	if aStringVal == "" || bStringVal == "" {
-		comp = ko.tryFlipComp(comp)
-	}
-	return comp
-}
 
-func (ko *KeyOrder) tryFlipComp(comp int) int {
-	if ko.Type == model.BlockContentDataviewSort_Desc && ko.EmptyPlacement == model.BlockContentDataviewSort_End ||
-		ko.Type == model.BlockContentDataviewSort_Asc && ko.EmptyPlacement == model.BlockContentDataviewSort_Start {
+	if ko.Type == model.BlockContentDataviewSort_Desc {
 		comp = -comp
 	}
 	return comp
 }
 
-func (ko *KeyOrder) isSpecialSortOfEmptyValuesNeed(av domain.Value, bv domain.Value, aString bool, bString bool) bool {
-	return (ko.EmptyPlacement != model.BlockContentDataviewSort_NotSpecified) &&
-		(aString || !av.Ok()) && (bString || !bv.Ok())
+func (ko *KeyOrder) compareBool(av domain.Value, bv domain.Value) int {
+	if !av.Ok() {
+		av = domain.Bool(false)
+	}
+	if !bv.Ok() {
+		bv = domain.Bool(false)
+	}
+	comp := av.Compare(bv)
+	if ko.Type == model.BlockContentDataviewSort_Desc {
+		comp = -comp
+	}
+	return comp
 }
 
-func (ko *KeyOrder) tryExtractBool(av domain.Value, bv domain.Value) (domain.Value, domain.Value) {
-	if ko.relationFormat == model.RelationFormat_checkbox {
-		if !av.Ok() {
-			av = domain.Bool(false)
-		}
-		if !bv.Ok() {
-			bv = domain.Bool(false)
-		}
-	}
-	return av, bv
-}
+func (ko *KeyOrder) compareObjectValues(av domain.Value, bv domain.Value) int {
+	aList, okA := av.TryWrapToStringList()
+	bList, okB := bv.TryWrapToStringList()
 
-func (ko *KeyOrder) tryExtractObject(av domain.Value, bv domain.Value) (domain.Value, domain.Value) {
-	if !ko.isObjectKey() {
-		return av, bv
-	}
+	aEmpty := !okA || len(aList) == 0
+	bEmpty := !okB || len(bList) == 0
 
-	aList, _ := av.TryWrapToStringList()
-	bList, _ := bv.TryWrapToStringList()
+	comp, ok := ko.tryCompareEmptyValues(aEmpty, bEmpty)
+	if ok {
+		return comp
+	}
 
 	if err := ko.orderMap.SetOrders(ko.objectStore, slices.Concat(aList, bList)...); err != nil {
 		log.Errorf("failed to update absent orders: %v", err)
@@ -423,50 +412,93 @@ func (ko *KeyOrder) tryExtractObject(av domain.Value, bv domain.Value) (domain.V
 		ko.orderMapBufferA = ko.orderMap.BuildOrderByKey(key, ko.orderMapBufferA, aList...)
 		ko.orderMapBufferB = ko.orderMap.BuildOrderByKey(key, ko.orderMapBufferB, bList...)
 		if string(ko.orderMapBufferA) != string(ko.orderMapBufferB) {
-			return domain.String(string(ko.orderMapBufferA)), domain.String(string(ko.orderMapBufferB))
+			if key == bundle.RelationKeyOrderId || ko.disableCollator {
+				comp = domain.String(string(ko.orderMapBufferA)).Compare(domain.String(string(ko.orderMapBufferB)))
+				break
+			}
+			ko.ensureCollator()
+			comp = ko.collator.CompareString(string(ko.orderMapBufferA), string(ko.orderMapBufferB))
+			break
 		}
 	}
-	return av, bv
-}
 
-func (ko *KeyOrder) tryExtractDateTime(av domain.Value, bv domain.Value) (domain.Value, domain.Value) {
-	if ko.relationFormat == model.RelationFormat_date && !ko.IncludeTime {
-		if v, ok := av.TryFloat64(); ok {
-			av = domain.Int64(timeutil.CutToDay(time.Unix(int64(v), 0)).Unix())
-		}
-		if v, ok := bv.TryFloat64(); ok {
-			bv = domain.Int64(timeutil.CutToDay(time.Unix(int64(v), 0)).Unix())
+	// if we cannot order by orderIds or names, let's try order by number of objects in detail value
+	if comp == 0 {
+		if len(aList) < len(bList) {
+			comp = -1
+		} else if len(aList) > len(bList) {
+			comp = 1
 		}
 	}
-	return av, bv
+
+	if ko.Type == model.BlockContentDataviewSort_Desc {
+		comp = -comp
+	}
+	return comp
 }
 
-func (ko *KeyOrder) tryExtractSnippet(a *domain.Details, b *domain.Details, av domain.Value, bv domain.Value) (domain.Value, domain.Value) {
-	av = ko.trySubstituteSnippet(a, av)
-	bv = ko.trySubstituteSnippet(b, bv)
-	return av, bv
+func (ko *KeyOrder) compareDates(av domain.Value, bv domain.Value) int {
+	if !ko.IncludeTime {
+		if v, ok := av.TryInt64(); ok {
+			av = domain.Int64(timeutil.CutToDay(time.Unix(v, 0)).Unix())
+		}
+		if v, ok := bv.TryInt64(); ok {
+			bv = domain.Int64(timeutil.CutToDay(time.Unix(v, 0)).Unix())
+		}
+	}
+	return ko.compareNumbers(av, bv)
 }
 
-func (ko *KeyOrder) trySubstituteSnippet(getter *domain.Details, value domain.Value) domain.Value {
-	if ko.Key == bundle.RelationKeyName && getLayout(getter) == model.ObjectType_note {
-		_, ok := getter.TryString(bundle.RelationKeyName)
-		if !ok {
-			return getter.Get(bundle.RelationKeySnippet)
+func (ko *KeyOrder) compareNumbers(av domain.Value, bv domain.Value) int {
+	_, okA := av.TryInt64()
+	_, okB := bv.TryInt64()
+
+	comp, ok := ko.tryCompareEmptyValues(!okA, !okB)
+	if ok {
+		return comp
+	}
+
+	comp = av.Compare(bv)
+	if ko.Type == model.BlockContentDataviewSort_Desc {
+		comp = -comp
+	}
+	return comp
+}
+
+func (ko *KeyOrder) tryCompareEmptyValues(aIsEmpty, bIsEmpty bool) (int, bool) {
+	if aIsEmpty && bIsEmpty {
+		return 0, true
+	}
+
+	if ko.EmptyPlacement != model.BlockContentDataviewSort_NotSpecified {
+		if aIsEmpty {
+			if ko.EmptyPlacement == model.BlockContentDataviewSort_Start {
+				return -1, true // A=null < B
+			} else {
+				return 1, true //  B < A=null
+			}
+		}
+
+		if bIsEmpty {
+			if ko.EmptyPlacement == model.BlockContentDataviewSort_Start {
+				return 1, true //  B=null < A
+			} else {
+				return -1, true // A < B=null
+			}
+		}
+	}
+
+	return 0, false
+}
+
+func (ko *KeyOrder) trySubstituteSnippet(details *domain.Details, value domain.Value) domain.Value {
+	rawLayout := details.GetInt64(bundle.RelationKeyResolvedLayout)
+	if ko.Key == bundle.RelationKeyName && model.ObjectTypeLayout(rawLayout) == model.ObjectType_note {
+		if _, ok := details.TryString(bundle.RelationKeyName); !ok {
+			return details.Get(bundle.RelationKeySnippet)
 		}
 	}
 	return value
-}
-
-func getLayout(getter *domain.Details) model.ObjectTypeLayout {
-	rawLayout := getter.GetInt64(bundle.RelationKeyResolvedLayout)
-	return model.ObjectTypeLayout(int32(rawLayout))
-}
-
-func (ko *KeyOrder) isObjectKey() bool {
-	return ko.relationFormat == model.RelationFormat_object ||
-		ko.relationFormat == model.RelationFormat_tag ||
-		ko.relationFormat == model.RelationFormat_status ||
-		ko.relationFormat == model.RelationFormat_file
 }
 
 func newCustomOrder(arena *anyenc.Arena, key domain.RelationKey, idsIndices map[string]int, keyOrd *KeyOrder) customOrder {
