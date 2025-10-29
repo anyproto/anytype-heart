@@ -21,7 +21,7 @@ var log = logger.NewNamed(CName)
 
 type InboxClient interface {
 	ic.InboxClient
-	SendOneToOneInvite(ctx context.Context, id *model.IdentityProfile) error
+	SendOneToOneInvite(ctx context.Context, id *model.IdentityProfileWithKey) error
 	SetReceiverByType(payloadType coordinatorproto.InboxPayloadType, handler func(*coordinatorproto.InboxPacket) error) error
 }
 
@@ -39,7 +39,7 @@ type inboxclient struct {
 
 	// TODO: add mb que for each reciever type
 	rmu       sync.Mutex
-	receivers map[int32]func(*coordinatorproto.InboxPacket) error
+	receivers map[coordinatorproto.InboxPayloadType]func(*coordinatorproto.InboxPacket) error
 }
 
 func (s *inboxclient) Init(a *app.App) (err error) {
@@ -48,7 +48,7 @@ func (s *inboxclient) Init(a *app.App) (err error) {
 		return
 	}
 	s.wallet = app.MustComponent[wallet.Wallet](a)
-	s.receivers = make(map[int32]func(*coordinatorproto.InboxPacket) error)
+	s.receivers = make(map[coordinatorproto.InboxPayloadType]func(*coordinatorproto.InboxPacket) error)
 	err = s.SetMessageReceiver(s.ReceiveNotify)
 	if err != nil {
 		return
@@ -67,7 +67,7 @@ func (s *inboxclient) SetReceiverByType(payloadType coordinatorproto.InboxPayloa
 	if handler == nil {
 		return fmt.Errorf("inbox: error registering receiver for type %s: handler must be a function but got nil", payloadTypeStr)
 	}
-	s.receivers[int32(payloadType)] = handler
+	s.receivers[payloadType] = handler
 	log.Info("inbox: registered receiver", zap.String("payloadType", payloadTypeStr))
 	return nil
 }
@@ -88,29 +88,37 @@ func (s *inboxclient) Run(ctx context.Context) error {
 func (s *inboxclient) fetchMessages() []*coordinatorproto.InboxMessage {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	all := make([]*coordinatorproto.InboxMessage, 0)
 
-fetch:
-	msgs, hasMore, err := s.InboxFetch(context.TODO(), s.offset)
-	if err != nil {
-		log.Error("inbox: fetch error", zap.Error(err))
-	}
-	if len(msgs) != 0 {
-		// assuming that msgs are sorted
-		s.offset = msgs[len(msgs)-1].Id
-		for _, msg := range msgs {
-			encrypted := msg.Packet.Payload.Body
-			body, err := s.wallet.Account().SignKey.Decrypt(encrypted)
-			if err != nil {
-				log.Error("inbox: error decrypting body", zap.Error(err))
+	for {
+		msgs, hasMore, err := s.InboxFetch(context.TODO(), s.offset)
+		if err != nil {
+			log.Error("inbox: fetch error", zap.Error(err))
+			break
+		}
+
+		if len(msgs) > 0 {
+			s.offset = msgs[len(msgs)-1].Id
+
+			for i := range msgs {
+				encrypted := msgs[i].Packet.Payload.Body
+				body, err := s.wallet.Account().SignKey.Decrypt(encrypted)
+				if err != nil {
+					log.Error("inbox: error decrypting body", zap.Error(err))
+					continue
+				}
+				msgs[i].Packet.Payload.Body = body
 			}
-			msg.Packet.Payload.Body = body
+
+			all = append(all, msgs...)
+		}
+
+		if !hasMore {
+			break
 		}
 	}
-	if hasMore {
-		goto fetch
-	}
 
-	return msgs
+	return all
 }
 
 func (s *inboxclient) ReceiveNotify(event *coordinatorproto.NotifySubscribeEvent) {
@@ -120,8 +128,8 @@ func (s *inboxclient) ReceiveNotify(event *coordinatorproto.NotifySubscribeEvent
 	}
 	for _, msg := range messages {
 		log.Warn("inbox: got a message", zap.String("type", coordinatorproto.InboxPayloadType_name[int32(msg.Packet.Payload.PayloadType)]))
-		// TODO: verify signature
-		if handler, ok := s.receivers[int32(msg.Packet.Payload.PayloadType)]; ok {
+		// TODO: verify signature (coordinator does it too but still)
+		if handler, ok := s.receivers[msg.Packet.Payload.PayloadType]; ok {
 			herr := handler(msg.Packet)
 			if herr != nil {
 				log.Error("inbox: error while processing receiver handler", zap.Int("type", int(msg.Packet.Payload.PayloadType)))
@@ -136,13 +144,13 @@ func (s *inboxclient) Close(_ context.Context) (err error) {
 	return nil
 }
 
-// TODO: inbox
+// TODO: move to somewhere, e.g. onetoone service
 // 1. wrap identity and request metadata key to payload
 // 2. change spaceinvite to onetoone request
 // 3. auto accept inbox
 // 4. don't send inbox if space already exists (check spaceveiw)
 // 5. on inbox accept, skip creation if space exist
-func (s *inboxclient) SendOneToOneInvite(ctx context.Context, idWithProfileKey *model.IdentityProfile) (err error) {
+func (s *inboxclient) SendOneToOneInvite(ctx context.Context, idWithProfileKey *model.IdentityProfileWithKey) (err error) {
 	// 1. put whole identity profile
 	// 2. try to get this from WaitProfile or register this incoming identity
 	// 3. createOneToOne(bPk)
@@ -155,7 +163,7 @@ func (s *inboxclient) SendOneToOneInvite(ctx context.Context, idWithProfileKey *
 		PacketType: coordinatorproto.InboxPacketType_Default,
 		Packet: &coordinatorproto.InboxPacket{
 			KeyType:          coordinatorproto.InboxKeyType_ed25519,
-			ReceiverIdentity: idWithProfileKey.Identity,
+			ReceiverIdentity: idWithProfileKey.IdentityProfile.Identity,
 			Payload: &coordinatorproto.InboxPayload{
 				Body:        body,
 				PayloadType: coordinatorproto.InboxPayloadType_InboxPayloadOneToOneInvite,
@@ -163,11 +171,10 @@ func (s *inboxclient) SendOneToOneInvite(ctx context.Context, idWithProfileKey *
 		},
 	}
 
-	bPk, err := crypto.DecodeAccountAddress(idWithProfileKey.Identity)
+	participantPubKey, err := crypto.DecodeAccountAddress(idWithProfileKey.IdentityProfile.Identity)
 	if err != nil {
 		return
 	}
 
-	return s.InboxAddMessage(ctx, bPk, msg)
-
+	return s.InboxAddMessage(ctx, participantPubKey, msg)
 }

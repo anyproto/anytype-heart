@@ -20,4 +20,6 @@ type IdentityService interface {
 	UnregisterIdentitiesInSpace(spaceId string)
 
 	WaitProfile(ctx context.Context, identity string) *model.IdentityProfile
+	WaitProfileWithKey(ctx context.Context, identity string) (*model.IdentityProfileWithKey, error)
+	GetMetadataKey(identity string) (crypto.SymKey, error)
 }

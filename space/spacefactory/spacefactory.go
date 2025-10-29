@@ -303,13 +303,8 @@ func (s *spaceFactory) CreateOneToOneSpace(ctx context.Context, id string, parti
 
 	info := spaceinfo.NewSpacePersistentInfo(id)
 
-	info.OneToOneIdentity = participantData.Identity.Account()
-	requestMetadataBytes, err := participantData.RequestMetadataKey.Marshall()
-	if err != nil {
-		return
-	}
-	// TODO: try to expose key.UnmarshallAESKeyString/String
-	requestMetadataStr := base64.StdEncoding.EncodeToString(requestMetadataBytes)
+	info.OneToOneIdentity = participantData.Identity
+	requestMetadataStr := base64.StdEncoding.EncodeToString(participantData.RequestMetadataKey)
 	info.OneToOneRequestMetadata = requestMetadataStr
 	info.SetAccountStatus(spaceinfo.AccountStatusUnknown)
 	if err := s.techSpace.SpaceViewCreate(ctx, id, true, info, nil); err != nil {

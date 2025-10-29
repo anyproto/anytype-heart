@@ -2032,6 +2032,7 @@
     - [FileEncryptionKey](#anytype-model-FileEncryptionKey)
     - [FileInfo](#anytype-model-FileInfo)
     - [IdentityProfile](#anytype-model-IdentityProfile)
+    - [IdentityProfileWithKey](#anytype-model-IdentityProfileWithKey)
     - [Import](#anytype-model-Import)
     - [InternalFlag](#anytype-model-InternalFlag)
     - [Invite](#anytype-model-Invite)
@@ -32158,7 +32159,22 @@ Used to decode block meta only, without the content itself
 | iconEncryptionKeys | [FileEncryptionKey](#anytype-model-FileEncryptionKey) | repeated |  |
 | description | [string](#string) |  |  |
 | globalName | [string](#string) |  |  |
-| requestMetadataKey | [bytes](#bytes) |  |  |
+
+
+
+
+
+
+<a name="anytype-model-IdentityProfileWithKey"></a>
+
+### IdentityProfileWithKey
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| identityProfile | [IdentityProfile](#anytype-model-IdentityProfile) |  |  |
+| requestMetadata | [bytes](#bytes) |  |  |
 
 
 

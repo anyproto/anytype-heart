@@ -81,7 +81,7 @@ func MustUniqueKey(sbt smartblock.SmartBlockType, key string) UniqueKey {
 func UnmarshalUniqueKey(raw string) (UniqueKey, error) {
 	parts := strings.Split(raw, uniqueKeySeparator)
 	if raw == "" || len(parts) > 2 {
-		return nil, errors.New(fmt.Sprintf("invalid key format: %s", raw))
+		return nil, errors.New("uniquekey: invalid key format")
 	}
 
 	// UniqueKey can be without second component, for example, unique key for Workspace object

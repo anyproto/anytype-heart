@@ -90,7 +90,7 @@ func (a *aclObjectManager) StatType() string {
 func (a *aclObjectManager) UpdateAcl(aclList list.AclList) {
 	err := a.processAcl()
 	if err != nil {
-		log.Error("UpdateAcl(): error processing acl", zap.Error(err))
+		log.Error("UpdateAcl: error processing acl", zap.Error(err))
 	}
 }
 

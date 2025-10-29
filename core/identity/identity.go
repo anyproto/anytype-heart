@@ -48,6 +48,8 @@ type Service interface {
 	// UnregisterIdentitiesInSpace removes all identity observers in the space
 	UnregisterIdentitiesInSpace(spaceId string)
 	WaitProfile(ctx context.Context, identity string) *model.IdentityProfile
+	WaitProfileWithKey(ctx context.Context, identity string) (*model.IdentityProfileWithKey, error)
+	GetMetadataKey(identity string) (crypto.SymKey, error)
 	app.ComponentRunnable
 }
 
@@ -159,21 +161,9 @@ func (s *service) UpdateOwnGlobalName(myIdentityGlobalName string) {
 	s.ownProfileSubscription.updateGlobalName(myIdentityGlobalName)
 }
 
-// TODO: use WaitProfile with timeout for onetoone
 func (s *service) WaitProfile(ctx context.Context, identity string) *model.IdentityProfile {
 	profile := s.getProfileFromCache(identity)
 	if profile != nil {
-		// TODO: move this out from wait profile;
-		// dont marshal/unmarshal everywhere
-		key, ok := s.identityEncryptionKeys[identity]
-		if !ok {
-			return profile
-		}
-		keyBytes, err := key.Marshall()
-		if err != nil {
-			return profile
-		}
-		profile.RequestMetadataKey = keyBytes
 		return profile
 	}
 	ticker := time.NewTicker(time.Second)
@@ -187,19 +177,39 @@ func (s *service) WaitProfile(ctx context.Context, identity string) *model.Ident
 		case <-ticker.C:
 			profile = s.getProfileFromCache(identity)
 			if profile != nil {
-				key, ok := s.identityEncryptionKeys[identity]
-				if !ok {
-					return profile
-				}
-				keyBytes, err := key.Marshall()
-				if err != nil {
-					return profile
-				}
-				profile.RequestMetadataKey = keyBytes
 				return profile
 			}
 		}
 	}
+}
+func (s *service) GetMetadataKey(identity string) (crypto.SymKey, error) {
+	key, ok := s.identityEncryptionKeys[identity]
+	if !ok {
+		return nil, fmt.Errorf("identityEncryptionKey doesnt exist for identity")
+	}
+	return key, nil
+}
+
+// TODO: use WaitProfile with timeout for onetoone
+func (s *service) WaitProfileWithKey(ctx context.Context, identity string) (*model.IdentityProfileWithKey, error) {
+	profile := s.WaitProfile(ctx, identity)
+	if profile == nil {
+		return nil, fmt.Errorf("wait profile: got nil profile")
+	}
+	key, err := s.GetMetadataKey(identity)
+	if err != nil {
+		return nil, err
+	}
+
+	keyBytes, err := key.Marshall()
+	if err != nil {
+		return nil, err
+	}
+
+	return &model.IdentityProfileWithKey{
+		IdentityProfile: profile,
+		RequestMetadata: keyBytes,
+	}, nil
 }
 
 func (s *service) getProfileFromCache(identity string) *model.IdentityProfile {

@@ -21,7 +21,11 @@ func (s *service) CreateOneToOneSendInbox(ctx context.Context, description *spac
 		// for testing
 		bobAccountAddress = loadenv.Get("BOB_ACCOUNT")
 	}
-	bobProfile := s.identityService.WaitProfile(ctx, bobAccountAddress)
+	bobProfile, err := s.identityService.WaitProfileWithKey(ctx, bobAccountAddress)
+	if err != nil {
+		return
+	}
+
 	sp, err = s.CreateOneToOne(ctx, description, bobProfile)
 	if err != nil {
 		return
@@ -34,13 +38,12 @@ func (s *service) CreateOneToOneSendInbox(ctx context.Context, description *spac
 }
 
 // for acceptor (e.g. inbox message)
-func (s *service) CreateOneToOne(ctx context.Context, description *spaceinfo.SpaceDescription, bobProfile *model.IdentityProfile) (sp clientspace.Space, err error) {
-	bPk, err := crypto.DecodeAccountAddress(bobProfile.Identity)
+func (s *service) CreateOneToOne(ctx context.Context, description *spaceinfo.SpaceDescription, bobProfile *model.IdentityProfileWithKey) (sp clientspace.Space, err error) {
+	bPk, err := crypto.DecodeAccountAddress(bobProfile.IdentityProfile.Identity)
 	if err != nil {
 		return
 	}
 
-	// TODO: add space type to space view to diffirentiate between onetoone/nononetoone
 	coreSpace, err := s.spaceCore.CreateOneToOneSpace(ctx, bPk)
 	if err != nil {
 		return
@@ -53,14 +56,9 @@ func (s *service) CreateOneToOne(ctx context.Context, description *spaceinfo.Spa
 	s.mu.Unlock()
 
 	// TODO: register participant, otherwise WaitProfile will hang
-	bobKey, err := crypto.UnmarshallAESKeyProto(bobProfile.RequestMetadataKey)
-	if err != nil {
-		return
-	}
-
 	participantData := spaceinfo.OneToOneParticipantData{
-		Identity:           bPk,
-		RequestMetadataKey: bobKey,
+		Identity:           bobProfile.IdentityProfile.Identity,
+		RequestMetadataKey: bobProfile.RequestMetadata,
 	}
 	ctrl, err := s.factory.CreateOneToOneSpace(ctx, coreSpace.Id(), participantData)
 	if err != nil {
