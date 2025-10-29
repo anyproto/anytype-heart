@@ -8092,7 +8092,7 @@ message Rpc {
     }
 
     message MembershipV2 {
-        message WebAuth {
+        message GetPortalLink {
             message Request {
 
             }

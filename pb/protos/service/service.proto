@@ -385,10 +385,11 @@ service ClientCommands {
     rpc MembershipCodeGetInfo (anytype.Rpc.Membership.CodeGetInfo.Request) returns (anytype.Rpc.Membership.CodeGetInfo.Response);
     rpc MembershipCodeRedeem (anytype.Rpc.Membership.CodeRedeem.Request) returns (anytype.Rpc.Membership.CodeRedeem.Response);
     
-    rpc MembershipV2WebAuth (anytype.Rpc.MembershipV2.WebAuth.Request) returns (anytype.Rpc.MembershipV2.WebAuth.Response);
+    // enumerate all available for purchase products
     rpc MembershipV2GetProducts(anytype.Rpc.MembershipV2.GetProducts.Request) returns (anytype.Rpc.MembershipV2.GetProducts.Response);
     rpc MembershipV2GetStatus(anytype.Rpc.MembershipV2.GetStatus.Request) returns (anytype.Rpc.MembershipV2.GetStatus.Response);
-
+    rpc MembershipV2GetPortalLink (anytype.Rpc.MembershipV2.GetPortalLink.Request) returns (anytype.Rpc.MembershipV2.GetPortalLink.Response);
+    
     // Name Service:
     // ***
     // hello.any -> data
