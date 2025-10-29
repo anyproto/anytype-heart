@@ -1415,10 +1415,10 @@ message MembershipV2 {
 
     message Features {
         uint64 storageBytes = 1;
-        uint64 spaceReaders = 2;
-        uint64 spaceWriters = 3;
-        uint64 sharedSpaces = 4;
-        uint64 teamSeats = 5;
+        uint32 spaceReaders = 2;
+        uint32 spaceWriters = 3;
+        uint32 sharedSpaces = 4;
+        uint32 teamSeats = 5;
         uint32 anyNameCount = 6;
         uint32 anyNameMinLen = 7; 
     }

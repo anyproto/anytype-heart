@@ -838,6 +838,10 @@
     - [Rpc.Membership.VerifyEmailCode.Response](#anytype-Rpc-Membership-VerifyEmailCode-Response)
     - [Rpc.Membership.VerifyEmailCode.Response.Error](#anytype-Rpc-Membership-VerifyEmailCode-Response-Error)
     - [Rpc.MembershipV2](#anytype-Rpc-MembershipV2)
+    - [Rpc.MembershipV2.GetPortalLink](#anytype-Rpc-MembershipV2-GetPortalLink)
+    - [Rpc.MembershipV2.GetPortalLink.Request](#anytype-Rpc-MembershipV2-GetPortalLink-Request)
+    - [Rpc.MembershipV2.GetPortalLink.Response](#anytype-Rpc-MembershipV2-GetPortalLink-Response)
+    - [Rpc.MembershipV2.GetPortalLink.Response.Error](#anytype-Rpc-MembershipV2-GetPortalLink-Response-Error)
     - [Rpc.MembershipV2.GetProducts](#anytype-Rpc-MembershipV2-GetProducts)
     - [Rpc.MembershipV2.GetProducts.Request](#anytype-Rpc-MembershipV2-GetProducts-Request)
     - [Rpc.MembershipV2.GetProducts.Response](#anytype-Rpc-MembershipV2-GetProducts-Response)
@@ -846,10 +850,6 @@
     - [Rpc.MembershipV2.GetStatus.Request](#anytype-Rpc-MembershipV2-GetStatus-Request)
     - [Rpc.MembershipV2.GetStatus.Response](#anytype-Rpc-MembershipV2-GetStatus-Response)
     - [Rpc.MembershipV2.GetStatus.Response.Error](#anytype-Rpc-MembershipV2-GetStatus-Response-Error)
-    - [Rpc.MembershipV2.WebAuth](#anytype-Rpc-MembershipV2-WebAuth)
-    - [Rpc.MembershipV2.WebAuth.Request](#anytype-Rpc-MembershipV2-WebAuth-Request)
-    - [Rpc.MembershipV2.WebAuth.Response](#anytype-Rpc-MembershipV2-WebAuth-Response)
-    - [Rpc.MembershipV2.WebAuth.Response.Error](#anytype-Rpc-MembershipV2-WebAuth-Response-Error)
     - [Rpc.NameService](#anytype-Rpc-NameService)
     - [Rpc.NameService.ResolveAnyId](#anytype-Rpc-NameService-ResolveAnyId)
     - [Rpc.NameService.ResolveAnyId.Request](#anytype-Rpc-NameService-ResolveAnyId-Request)
@@ -1607,9 +1607,9 @@
     - [Rpc.Membership.RegisterPaymentRequest.Response.Error.Code](#anytype-Rpc-Membership-RegisterPaymentRequest-Response-Error-Code)
     - [Rpc.Membership.VerifyAppStoreReceipt.Response.Error.Code](#anytype-Rpc-Membership-VerifyAppStoreReceipt-Response-Error-Code)
     - [Rpc.Membership.VerifyEmailCode.Response.Error.Code](#anytype-Rpc-Membership-VerifyEmailCode-Response-Error-Code)
+    - [Rpc.MembershipV2.GetPortalLink.Response.Error.Code](#anytype-Rpc-MembershipV2-GetPortalLink-Response-Error-Code)
     - [Rpc.MembershipV2.GetProducts.Response.Error.Code](#anytype-Rpc-MembershipV2-GetProducts-Response-Error-Code)
     - [Rpc.MembershipV2.GetStatus.Response.Error.Code](#anytype-Rpc-MembershipV2-GetStatus-Response-Error-Code)
-    - [Rpc.MembershipV2.WebAuth.Response.Error.Code](#anytype-Rpc-MembershipV2-WebAuth-Response-Error-Code)
     - [Rpc.NameService.ResolveAnyId.Response.Error.Code](#anytype-Rpc-NameService-ResolveAnyId-Response-Error-Code)
     - [Rpc.NameService.ResolveName.Response.Error.Code](#anytype-Rpc-NameService-ResolveName-Response-Error-Code)
     - [Rpc.NameService.ResolveSpaceId.Response.Error.Code](#anytype-Rpc-NameService-ResolveSpaceId-Response-Error-Code)
@@ -2470,9 +2470,9 @@
 | MembershipVerifyAppStoreReceipt | [Rpc.Membership.VerifyAppStoreReceipt.Request](#anytype-Rpc-Membership-VerifyAppStoreReceipt-Request) | [Rpc.Membership.VerifyAppStoreReceipt.Response](#anytype-Rpc-Membership-VerifyAppStoreReceipt-Response) |  |
 | MembershipCodeGetInfo | [Rpc.Membership.CodeGetInfo.Request](#anytype-Rpc-Membership-CodeGetInfo-Request) | [Rpc.Membership.CodeGetInfo.Response](#anytype-Rpc-Membership-CodeGetInfo-Response) |  |
 | MembershipCodeRedeem | [Rpc.Membership.CodeRedeem.Request](#anytype-Rpc-Membership-CodeRedeem-Request) | [Rpc.Membership.CodeRedeem.Response](#anytype-Rpc-Membership-CodeRedeem-Response) |  |
-| MembershipV2WebAuth | [Rpc.MembershipV2.WebAuth.Request](#anytype-Rpc-MembershipV2-WebAuth-Request) | [Rpc.MembershipV2.WebAuth.Response](#anytype-Rpc-MembershipV2-WebAuth-Response) |  |
-| MembershipV2GetProducts | [Rpc.MembershipV2.GetProducts.Request](#anytype-Rpc-MembershipV2-GetProducts-Request) | [Rpc.MembershipV2.GetProducts.Response](#anytype-Rpc-MembershipV2-GetProducts-Response) |  |
+| MembershipV2GetProducts | [Rpc.MembershipV2.GetProducts.Request](#anytype-Rpc-MembershipV2-GetProducts-Request) | [Rpc.MembershipV2.GetProducts.Response](#anytype-Rpc-MembershipV2-GetProducts-Response) | enumerate all available for purchase products |
 | MembershipV2GetStatus | [Rpc.MembershipV2.GetStatus.Request](#anytype-Rpc-MembershipV2-GetStatus-Request) | [Rpc.MembershipV2.GetStatus.Response](#anytype-Rpc-MembershipV2-GetStatus-Response) |  |
+| MembershipV2GetPortalLink | [Rpc.MembershipV2.GetPortalLink.Request](#anytype-Rpc-MembershipV2-GetPortalLink-Request) | [Rpc.MembershipV2.GetPortalLink.Response](#anytype-Rpc-MembershipV2-GetPortalLink-Response) |  |
 | NameServiceUserAccountGet | [Rpc.NameService.UserAccount.Get.Request](#anytype-Rpc-NameService-UserAccount-Get-Request) | [Rpc.NameService.UserAccount.Get.Response](#anytype-Rpc-NameService-UserAccount-Get-Response) | Name Service: *** hello.any -&gt; data |
 | NameServiceResolveName | [Rpc.NameService.ResolveName.Request](#anytype-Rpc-NameService-ResolveName-Request) | [Rpc.NameService.ResolveName.Response](#anytype-Rpc-NameService-ResolveName-Response) |  |
 | NameServiceResolveAnyId | [Rpc.NameService.ResolveAnyId.Request](#anytype-Rpc-NameService-ResolveAnyId-Request) | [Rpc.NameService.ResolveAnyId.Response](#anytype-Rpc-NameService-ResolveAnyId-Response) | 12D3KooWA8EXV3KjBxEU5EnsPfneLx84vMWAtTBQBeyooN82KSuS -&gt; hello.any |
@@ -14616,6 +14616,58 @@ need a correct code that was sent to the user when calling GetVerificationEmail
 
 
 
+<a name="anytype-Rpc-MembershipV2-GetPortalLink"></a>
+
+### Rpc.MembershipV2.GetPortalLink
+
+
+
+
+
+
+
+<a name="anytype-Rpc-MembershipV2-GetPortalLink-Request"></a>
+
+### Rpc.MembershipV2.GetPortalLink.Request
+
+
+
+
+
+
+
+<a name="anytype-Rpc-MembershipV2-GetPortalLink-Response"></a>
+
+### Rpc.MembershipV2.GetPortalLink.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.MembershipV2.GetPortalLink.Response.Error](#anytype-Rpc-MembershipV2-GetPortalLink-Response-Error) |  |  |
+| urlWithJwt | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-MembershipV2-GetPortalLink-Response-Error"></a>
+
+### Rpc.MembershipV2.GetPortalLink.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.MembershipV2.GetPortalLink.Response.Error.Code](#anytype-Rpc-MembershipV2-GetPortalLink-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
 <a name="anytype-Rpc-MembershipV2-GetProducts"></a>
 
 ### Rpc.MembershipV2.GetProducts
@@ -14650,8 +14702,7 @@ need a correct code that was sent to the user when calling GetVerificationEmail
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | error | [Rpc.MembershipV2.GetProducts.Response.Error](#anytype-Rpc-MembershipV2-GetProducts-Response-Error) |  |  |
-| topLevelProducts | [model.MembershipV2.Product](#anytype-model-MembershipV2-Product) | repeated |  |
-| additionalProducts | [model.MembershipV2.Product](#anytype-model-MembershipV2-Product) | repeated |  |
+| products | [model.MembershipV2.Product](#anytype-model-MembershipV2-Product) | repeated |  |
 
 
 
@@ -14724,58 +14775,6 @@ need a correct code that was sent to the user when calling GetVerificationEmail
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | code | [Rpc.MembershipV2.GetStatus.Response.Error.Code](#anytype-Rpc-MembershipV2-GetStatus-Response-Error-Code) |  |  |
-| description | [string](#string) |  |  |
-
-
-
-
-
-
-<a name="anytype-Rpc-MembershipV2-WebAuth"></a>
-
-### Rpc.MembershipV2.WebAuth
-
-
-
-
-
-
-
-<a name="anytype-Rpc-MembershipV2-WebAuth-Request"></a>
-
-### Rpc.MembershipV2.WebAuth.Request
-
-
-
-
-
-
-
-<a name="anytype-Rpc-MembershipV2-WebAuth-Response"></a>
-
-### Rpc.MembershipV2.WebAuth.Response
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| error | [Rpc.MembershipV2.WebAuth.Response.Error](#anytype-Rpc-MembershipV2-WebAuth-Response-Error) |  |  |
-| urlWithJwt | [string](#string) |  |  |
-
-
-
-
-
-
-<a name="anytype-Rpc-MembershipV2-WebAuth-Response-Error"></a>
-
-### Rpc.MembershipV2.WebAuth.Response.Error
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| code | [Rpc.MembershipV2.WebAuth.Response.Error.Code](#anytype-Rpc-MembershipV2-WebAuth-Response-Error-Code) |  |  |
 | description | [string](#string) |  |  |
 
 
@@ -25673,6 +25672,22 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 
 
 
+<a name="anytype-Rpc-MembershipV2-GetPortalLink-Response-Error-Code"></a>
+
+### Rpc.MembershipV2.GetPortalLink.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
+| NOT_LOGGED_IN | 3 |  |
+| PAYMENT_NODE_ERROR | 4 |  |
+| AUTH_BAD | 5 |  |
+
+
+
 <a name="anytype-Rpc-MembershipV2-GetProducts-Response-Error-Code"></a>
 
 ### Rpc.MembershipV2.GetProducts.Response.Error.Code
@@ -25707,22 +25722,6 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | MEMBERSHIP_NOT_FOUND | 6 |  |
 | MEMBERSHIP_WRONG_STATE | 7 |  |
 | CAN_NOT_CONNECT | 8 |  |
-
-
-
-<a name="anytype-Rpc-MembershipV2-WebAuth-Response-Error-Code"></a>
-
-### Rpc.MembershipV2.WebAuth.Response.Error.Code
-
-
-| Name | Number | Description |
-| ---- | ------ | ----------- |
-| NULL | 0 |  |
-| UNKNOWN_ERROR | 1 |  |
-| BAD_INPUT | 2 |  |
-| NOT_LOGGED_IN | 3 |  |
-| PAYMENT_NODE_ERROR | 4 |  |
-| AUTH_BAD | 5 |  |
 
 
 
@@ -32639,10 +32638,10 @@ Used to decode block meta only, without the content itself
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | storageBytes | [uint64](#uint64) |  |  |
-| spaceReaders | [uint64](#uint64) |  |  |
-| spaceWriters | [uint64](#uint64) |  |  |
-| sharedSpaces | [uint64](#uint64) |  |  |
-| teamSeats | [uint64](#uint64) |  |  |
+| spaceReaders | [uint32](#uint32) |  |  |
+| spaceWriters | [uint32](#uint32) |  |  |
+| sharedSpaces | [uint32](#uint32) |  |  |
+| teamSeats | [uint32](#uint32) |  |  |
 | anyNameCount | [uint32](#uint32) |  |  |
 | anyNameMinLen | [uint32](#uint32) |  |  |
 

@@ -8092,7 +8092,7 @@ message Rpc {
     }
 
     message MembershipV2 {
-        message WebAuth {
+        message GetPortalLink {
             message Request {
 
             }
@@ -8130,9 +8130,7 @@ message Rpc {
             message Response {
                 Error error = 1;
 
-                repeated anytype.model.MembershipV2.Product topLevelProducts = 2;
-
-                repeated anytype.model.MembershipV2.Product additionalProducts = 3;
+                repeated anytype.model.MembershipV2.Product products = 2;
 
                 message Error {
                     Code code = 1;
