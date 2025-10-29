@@ -365,8 +365,8 @@ func (q *Queue[T]) checkNextScheduledWaiters(item T, responded bool) bool {
 // 2. If the item was scheduled and no longer satisfies the filter, cancel the timer and schedule the next item for the request
 // 3. If the item wasn't scheduled, but it's before the other scheduled item, schedule it instead
 func (q *Queue[T]) checkInSchedule(item T) {
-	for _, sch := range q.scheduled {
-		if q.getId(sch.item) == q.getId(item) {
+	for id, sch := range q.scheduled {
+		if id == q.getId(item) {
 			close(sch.cancelTimerCh)
 			delete(q.scheduled, q.getId(item))
 
@@ -375,9 +375,10 @@ func (q *Queue[T]) checkInSchedule(item T) {
 			} else {
 				q.handleGetNextScheduled(sch.request)
 			}
+
 		} else if sch.request.filter(item) && sch.request.scheduledAt(item).Before(sch.request.scheduledAt(sch.item)) && !q.isScheduled(item) {
 			close(sch.cancelTimerCh)
-			delete(q.scheduled, q.getId(item))
+			delete(q.scheduled, id)
 
 			q.scheduleItem(sch.request, item)
 		}
