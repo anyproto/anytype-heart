@@ -13,8 +13,7 @@ make download-tantivy-all-force
 
 #### Mac
 
-Make sure you install a recent version of protobuf. Some older versions had
-plugin compatibility issues
+Make sure you install a recent version of protobuf. Some older versions had plugin compatibility issues
 (*as of 16.01.23 last protobuf version (21.12) broke the JS plugin support.*).
 [This protobuf-javascript issue](https://github.com/protocolbuffers/protobuf-javascript/issues/127)
 tracks the history and workarounds for the compatibility issues.
@@ -23,6 +22,34 @@ Luckily, plugins now work when installed as separate packages alongside protobuf
 
 ```
 brew install protobuf protoc-gen-js protoc-gen-grpc-web
+```
+
+Once installed, check to make sure you have up to date versions:
+
+```
+which -s protoc
+which -s protoc-gen-js
+which -s protoc-gen-grpc-web
+```
+
+The expected versions are
+
+- `protoc` >= 33.0.0
+- `protoc-gen-js` >= 4.0.0
+- `protoc-gen-grpc-web` >= 2.0.2
+
+which means your output should look something like this:
+
+```
+/opt/homebrew/bin/protoc -> /opt/homebrew/Cellar/protobuf/33.0/bin/protoc-33.0.0
+/opt/homebrew/bin/protoc-gen-js -> /opt/homebrew/Cellar/protoc-gen-js/4.0.0/bin/protoc-gen-js
+/opt/homebrew/bin/protoc-gen-grpc-web -> /opt/homebrew/Cellar/protoc-gen-grpc-web/2.0.2/bin/protoc-gen-grpc-web
+```
+
+If any of your versions are outdated, make sure to relink them:
+
+```
+brew link --overwrite protobuf protoc-gen-js protoc-gen-grpc-web
 ```
 
 To generate Swift protobuf:
