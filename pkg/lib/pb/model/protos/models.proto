@@ -1398,10 +1398,13 @@ message MembershipTierData {
 
 message MembershipV2 {
     message Amount {
+        // ISO 4217 currency code
         string currency = 1;
+
         // $0.01 = 1
         // $1.00 = 100
-        // negative amounts
+        // also supports negative amounts! 
+        // some invoices can have negatice amount (refund)
         int64 amountCents = 2;
     }
 
@@ -1414,21 +1417,17 @@ message MembershipV2 {
         // this is a unique Payment Node ID
         // adding 2 same products to a cart means we will have 2 items with same ID
         string id = 1;
-        // is it a product that should be attached to a space
-        bool isAttachToSpace = 2;
-        // the price of a Package may not be equal to the sum of all underlying products
-        bool isPackage = 3;
-        // localized
-        string name = 4;
-        string description = 5; 
+        bool isTopLevel = 2;
+        string name = 3;
+        string description = 4;
+        // do not show to user by default 
+        bool isHidden = 5;
         repeated Amount pricesYearly = 6;
         repeated Amount pricesMonthly = 7;
         // localized strings for the features
         repeated string features = 8;
-        // green, blue, red, purple, custom
+        // green, blue, red, purple, custom, etc
         string colorStr = 9;
-        // "limited offer"
-        string offer = 10;
     }
 
     message PurchaseInfo {
@@ -1447,9 +1446,6 @@ message MembershipV2 {
             StatusPendingRequiresFinalization = 3;
         }
         Status status = 1;
-        string spaceAttachedTo = 2;
-        bool isNeedsAttachmentToSpace = 3;
-        bool isRenewalEnabled = 4;
     }
 
     message PurchasedProduct {
