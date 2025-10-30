@@ -36,7 +36,7 @@ import (
 
 const (
 	CollectionName        = "chats"
-	editorCollectionName  = "editor"
+	EditorCollectionName  = "editor"
 	diffManagerMessages   = "messages"
 	diffManagerMentions   = "mentions"
 	diffManagerSyncStatus = "syncStatus"
@@ -218,7 +218,7 @@ func (s *storeObject) Init(ctx *smartblock.InitContext) error {
 		myParticipantId: myParticipantId,
 	}
 
-	stateStore, err := storestate.New(ctx.Ctx, s.Id(), s.crdtDb, s.chatHandler, storestate.DefaultHandler{Name: editorCollectionName, ModifyMode: storestate.ModifyModeUpsert})
+	stateStore, err := storestate.New(ctx.Ctx, s.Id(), s.crdtDb, s.chatHandler, storestate.DefaultHandler{Name: EditorCollectionName, ModifyMode: storestate.ModifyModeUpsert})
 	if err != nil {
 		return fmt.Errorf("create state store: %w", err)
 	}
@@ -237,16 +237,22 @@ func (s *storeObject) Init(ctx *smartblock.InitContext) error {
 
 	s.detailsComponent = &detailsComponent{
 		componentCtx:       s.componentCtx,
-		collectionName:     editorCollectionName,
+		collectionName:     EditorCollectionName,
 		storeSource:        storeSource,
 		storeState:         stateStore,
+		spaceIndex:         s.spaceIndex,
 		sb:                 s.SmartBlock,
 		deniedRelationKeys: []domain.RelationKey{bundle.RelationKeyInternalFlags},
 	}
 	spaceChatId := s.Space().DerivedIDs().SpaceChat
 	if s.Id() == spaceChatId {
-		ctx.State.SetDetail(bundle.RelationKeyName, domain.String("General"))
-		ctx.State.SetDetail(bundle.RelationKeyIsMainChat, domain.Bool(true))
+		setDetail := func(key domain.RelationKey, val domain.Value) {
+			// Set property both in parent and in the current state to avoid pushing a change
+			ctx.State.ParentState().SetDetail(key, val)
+			ctx.State.SetDetail(key, val)
+		}
+		setDetail(bundle.RelationKeyName, domain.String("General"))
+		setDetail(bundle.RelationKeyIsMainChat, domain.Bool(true))
 	}
 	err = s.detailsComponent.init(ctx.State)
 	if err != nil {
@@ -260,7 +266,7 @@ func (s *storeObject) Init(ctx *smartblock.InitContext) error {
 	s.seenHeadsCollector = newTreeSeenHeadsCollector(s.Tree())
 	s.statService.AddProvider(s)
 
-	return s.SmartBlock.Apply(ctx.State, smartblock.NotPushChanges, smartblock.NoHistory, smartblock.SkipIfNoChanges)
+	return nil
 }
 
 func (s *storeObject) onUpdate() {
@@ -271,7 +277,18 @@ func (s *storeObject) onUpdate() {
 
 	s.subscription.Lock()
 	defer s.subscription.Unlock()
+
 	s.subscription.Flush()
+
+	last, ok := s.subscription.GetLastMessage()
+	if ok {
+		st := s.NewState()
+		st.SetDetailAndBundledRelation(bundle.RelationKeyLastMessageDate, domain.Int64(last.CreatedAt))
+		err = s.Apply(st, smartblock.NotPushChanges)
+		if err != nil {
+			log.Error("onUpdate: update last message date", zap.Error(err))
+		}
+	}
 }
 
 func (s *storeObject) GetMessageById(ctx context.Context, id string) (*chatmodel.Message, error) {

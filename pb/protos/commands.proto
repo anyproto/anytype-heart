@@ -4106,6 +4106,26 @@ message Rpc {
                 }
             }
         }
+
+        message SetAutoDownload {
+            message Request {
+              bool enabled = 1;
+              bool wifi_only = 2;
+            }
+            message Response {
+                Error error = 1;
+                message Error {
+                    Code code = 1;
+                    string description = 2;
+
+                    enum Code {
+                        NULL = 0;
+                        UNKNOWN_ERROR = 1;
+                        BAD_INPUT = 2;
+                    }
+                }
+            }
+        }
     }
 
     message Navigation {
@@ -8786,11 +8806,12 @@ message Rpc {
                 All = 0;
                 Mentions = 1;
                 Nothing = 2;
+                Custom = 3;
             }
 
             message Response {
                 Error error = 1;
-
+                ResponseEvent event = 2;
                 message Error {
                     Code code = 1;
                     string description = 2;
@@ -8803,6 +8824,70 @@ message Rpc {
                 }
             }
         }
+
+        message AddMuteIds {
+            message Request {
+                string spaceId = 1;
+                repeated string chatIds = 2;
+            }
+            message Response {
+                Error error = 1;
+                ResponseEvent event = 2;
+                message Error {
+                    Code code = 1;
+                    string description = 2;
+
+                    enum Code {
+                        NULL = 0;
+                        UNKNOWN_ERROR = 1;
+                        BAD_INPUT = 2;
+                    }
+                }
+            }
+        }
+
+        message AddMentionIds {
+            message Request {
+                string spaceId = 1;
+                repeated string chatIds = 2;
+            }
+            message Response {
+                Error error = 1;
+                ResponseEvent event = 2;
+                message Error {
+                    Code code = 1;
+                    string description = 2;
+
+                    enum Code {
+                        NULL = 0;
+                        UNKNOWN_ERROR = 1;
+                        BAD_INPUT = 2;
+                    }
+                }
+            }
+        }
+
+        message AddAllIds {
+            message Request {
+                string spaceId = 1;
+                repeated string chatIds = 2;
+            }
+            message Response {
+                Error error = 1;
+                ResponseEvent event = 2;
+                message Error {
+                    Code code = 1;
+                    string description = 2;
+
+                    enum Code {
+                        NULL = 0;
+                        UNKNOWN_ERROR = 1;
+                        BAD_INPUT = 2;
+                    }
+                }
+            }
+        }
+
     }
 }
 

@@ -39,7 +39,7 @@ func (c *detailsComponent) init(st *state.State) error {
 		c.deniedRelationKeysSet[key] = struct{}{}
 	}
 
-	err := c.setDetailsFromAnystore(c.componentCtx, st)
+	err := c.setDetailsFromAnystore(c.componentCtx, st, true)
 	if err != nil {
 		return fmt.Errorf("set details from anystore: %w", err)
 	}
@@ -79,7 +79,7 @@ func (c *detailsComponent) onPushOrdinaryChange(params source.PushChangeParams) 
 	})
 }
 
-func (c *detailsComponent) setDetailsFromAnystore(ctx context.Context, st *state.State) error {
+func (c *detailsComponent) setDetailsFromAnystore(ctx context.Context, st *state.State, applyToParentState bool) error {
 	coll, err := c.storeState.Collection(ctx, c.collectionName)
 	if err != nil {
 		return fmt.Errorf("get collection: %w", err)
@@ -107,7 +107,11 @@ func (c *detailsComponent) setDetailsFromAnystore(ctx context.Context, st *state
 		if slices.Contains(bundle.LocalAndDerivedRelationKeys, key) {
 			continue
 		}
-		st.SetDetail(key, v)
+		if applyToParentState {
+			st.ParentState().SetDetail(key, v)
+		} else {
+			st.SetDetail(key, v)
+		}
 	}
 	return nil
 }
@@ -115,7 +119,7 @@ func (c *detailsComponent) setDetailsFromAnystore(ctx context.Context, st *state
 func (c *detailsComponent) onAnystoreUpdated(ctx context.Context) error {
 	c.sb.(source.ChangeReceiver).StateAppend(func(d state.Doc) (*state.State, []*pb.ChangeContent, error) {
 		st := d.NewState()
-		err := c.setDetailsFromAnystore(ctx, st)
+		err := c.setDetailsFromAnystore(ctx, st, false)
 		if err != nil {
 			return nil, nil, fmt.Errorf("set details from anystore: %w", err)
 		}

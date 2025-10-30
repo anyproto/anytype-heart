@@ -267,25 +267,26 @@ func (i *indexer) prepareSearchDocument(ctx context.Context, id domain.FullID) (
 			return nil
 		}
 
-		for _, rel := range sb.GetRelationLinks() {
-			if rel.Format != model.RelationFormat_shorttext && rel.Format != model.RelationFormat_longtext {
+		for _, key := range sb.AllRelationKeys() {
+			format, err := i.formatFetcher.GetRelationFormatByKey(id.SpaceID, key)
+			if err == nil && format != model.RelationFormat_shorttext && format != model.RelationFormat_longtext {
 				continue
 			}
-			val := sb.Details().GetString(domain.RelationKey(rel.Key))
+			val := sb.Details().GetString(key)
 			if val == "" {
-				val = sb.LocalDetails().GetString(domain.RelationKey(rel.Key))
+				val = sb.LocalDetails().GetString(key)
 				if val == "" {
 					continue
 				}
 			}
 			// skip readonly and hidden system relations
-			if bundledRel, err := bundle.PickRelation(domain.RelationKey(rel.Key)); err == nil {
+			if bundledRel, err := bundle.PickRelation(key); err == nil {
 				layout, _ := sb.Layout()
 				skip := bundledRel.ReadOnly || bundledRel.Hidden
-				if isName(rel) {
+				if isName(key) {
 					skip = false
 				}
-				if layout == model.ObjectType_note && rel.Key == bundle.RelationKeySnippet.String() {
+				if layout == model.ObjectType_note && key == bundle.RelationKeySnippet {
 					// index snippet only for notes, so we will be able to do fast prefix queries
 					skip = false
 				}
@@ -296,12 +297,12 @@ func (i *indexer) prepareSearchDocument(ctx context.Context, id domain.FullID) (
 			}
 
 			doc := ftsearch.SearchDoc{
-				Id:      domain.NewObjectPathWithRelation(id.ObjectID, rel.Key).String(),
+				Id:      domain.NewObjectPathWithRelation(id.ObjectID, key.String()).String(),
 				SpaceId: sb.SpaceID(),
 				Text:    val,
 			}
 
-			if isName(rel) {
+			if isName(key) {
 				layout, layoutValid := sb.Layout()
 				if layoutValid {
 					if _, contains := filesLayouts[layout]; !contains {
@@ -363,8 +364,8 @@ func (i *indexer) prepareSearchDocument(ctx context.Context, id domain.FullID) (
 	return docs, nil
 }
 
-func isName(rel *model.RelationLink) bool {
-	return rel.Key == bundle.RelationKeyName.String() || rel.Key == bundle.RelationKeyPluralName.String()
+func isName(key domain.RelationKey) bool {
+	return key == bundle.RelationKeyName || key == bundle.RelationKeyPluralName
 }
 
 func (i *indexer) ftInit() error {

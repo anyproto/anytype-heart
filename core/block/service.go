@@ -715,12 +715,6 @@ func (s *Service) updateBookmarkContentWithUserDetails(userDetails, objectDetail
 	return shouldUpdate
 }
 
-func (s *Service) replaceLink(id, oldId, newId string) error {
-	return cache.Do(s, id, func(b basic.CommonOperations) error {
-		return b.ReplaceLink(oldId, newId)
-	})
-}
-
 func (s *Service) GetLogFields() []zap.Field {
 	var fields []zap.Field
 	if s.predefinedObjectWasMissing {
