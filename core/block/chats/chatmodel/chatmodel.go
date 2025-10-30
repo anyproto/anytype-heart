@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/anyproto/any-store/anyenc"
+	"github.com/gogo/protobuf/proto"
 
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	textUtil "github.com/anyproto/anytype-heart/util/text"
@@ -50,6 +51,12 @@ const (
 
 type Message struct {
 	*model.ChatMessage
+}
+
+func (m *Message) Clone() *Message {
+	return &Message{
+		ChatMessage: proto.Clone(m.ChatMessage).(*model.ChatMessage),
+	}
 }
 
 type MessagesGetter interface {
@@ -119,6 +126,20 @@ func (m *Message) Validate() error {
 		}
 		if int(mark.Range.To) > len(utf16text) {
 			return fmt.Errorf("invalid range.to")
+		}
+	}
+
+	for _, att := range m.Attachments {
+		if att.Target == "" {
+			return fmt.Errorf("attachment target is empty")
+		}
+		switch att.Type {
+		case model.ChatMessageAttachment_FILE,
+			model.ChatMessageAttachment_IMAGE,
+			model.ChatMessageAttachment_LINK:
+			continue
+		default:
+			return fmt.Errorf("unknown attachment type: %v", att.Type)
 		}
 	}
 
@@ -194,11 +215,14 @@ func (m *Message) MarshalAnyenc(marshalTo *anyenc.Value, arena *anyenc.Arena) {
 	message.Set("marks", marks)
 
 	attachments := arena.NewObject()
-	for i, inAttachment := range m.Attachments {
+	for _, inAttachment := range m.Attachments {
+		if inAttachment.Target == "" {
+			// we should catch this earlier on Validate()
+			continue
+		}
 		attachment := arena.NewObject()
 		attachment.Set("type", arena.NewNumberInt(int(inAttachment.Type)))
 		attachments.Set(inAttachment.Target, attachment)
-		attachments.SetArrayItem(i, attachment)
 	}
 
 	content := arena.NewObject()

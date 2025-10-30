@@ -8,12 +8,16 @@ import (
 	timeutil "github.com/anyproto/anytype-heart/util/time"
 )
 
-func transformQuickOption(protoFilter FilterRequest) []FilterRequest {
-	if protoFilter.QuickOption == 0 && protoFilter.Format != model.RelationFormat_date {
+func transformDateFilter(protoFilter FilterRequest, now time.Time) []FilterRequest {
+	if protoFilter.Format != model.RelationFormat_date {
+		return []FilterRequest{protoFilter}
+	}
+	// we should transform date filters in case QuickOption is selected or IncludeTime = false
+	if protoFilter.QuickOption == 0 && protoFilter.IncludeTime {
 		return []FilterRequest{protoFilter}
 	}
 
-	from, to := getDateRange(protoFilter, time.Now())
+	from, to := getDateRange(protoFilter, now)
 	switch protoFilter.Condition {
 	case model.BlockContentDataviewFilter_Equal, model.BlockContentDataviewFilter_In:
 		return []FilterRequest{{
@@ -39,7 +43,7 @@ func transformQuickOption(protoFilter FilterRequest) []FilterRequest {
 }
 
 func getDateRange(f FilterRequest, now time.Time) (from, to time.Time) {
-	calendar := timeutil.NewCalendar(now, nil)
+	calendar := timeutil.NewCalendar(now, now.Location())
 	switch f.QuickOption {
 	case model.BlockContentDataviewFilter_Yesterday:
 		return calendar.DayNumStart(-1), calendar.DayNumEnd(-1)

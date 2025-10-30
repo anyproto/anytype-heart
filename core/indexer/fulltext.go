@@ -8,19 +8,23 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/anyproto/any-sync/commonspace/object/tree/treestorage"
 	"github.com/anyproto/any-sync/commonspace/spacestorage"
 	"github.com/samber/lo"
 	"golang.org/x/exp/slices"
 
 	"github.com/anyproto/anytype-heart/core/block/cache"
+	"github.com/anyproto/anytype-heart/core/block/editor"
 	smartblock2 "github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/block/simple/text"
+	"github.com/anyproto/anytype-heart/core/block/source/sourceimpl"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/metrics"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/ftsearch"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+	"github.com/anyproto/anytype-heart/space"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 	"github.com/anyproto/anytype-heart/util/slice"
 )
@@ -133,6 +137,10 @@ func (i *indexer) runFullTextIndexer(ctx context.Context) error {
 					return nil, 0, err
 				}
 				if !errors.Is(err, domain.ErrObjectNotFound) &&
+					!errors.Is(err, space.ErrSpaceNotExists) &&
+					!errors.Is(err, treestorage.ErrUnknownTreeId) &&
+					!errors.Is(err, sourceimpl.ErrSpaceWithoutTreeBuilder) && // rare error because of marketplace
+					!errors.Is(err, editor.ErrUnexpectedSmartblockType) && // this version doesn't support some new smartblocktype
 					!errors.Is(err, spacestorage.ErrTreeStorageAlreadyDeleted) {
 					// some error that doesn't mean object is no longer exists
 					log.With("id", objectId).Errorf("prepare document for full-text indexing: %s", err)

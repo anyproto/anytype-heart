@@ -14,6 +14,7 @@ import (
 	"strings"
 	"unicode/utf8"
 
+	"github.com/PuerkitoBio/goquery"
 	"github.com/anyproto/any-sync/app"
 	"github.com/go-shiori/go-readability"
 	"github.com/microcosm-cc/bluemonday"
@@ -38,9 +39,30 @@ const (
 	cspTag     = "Content-Security-Policy"
 )
 
+type linkEntry struct {
+	genericTitles  []string
+	titleSelectors []string
+}
+
 var (
 	ErrPrivateLink = fmt.Errorf("link is private and cannot be previewed")
 	log            = logging.Logger(CName)
+
+	genericTitleCandidates = map[string]linkEntry{
+		"www.reddit.com": {
+			genericTitles: []string{
+				"Reddit - The heart of the internet",
+				"Reddit - Dive into anything",
+				"Reddit",
+			},
+			titleSelectors: []string{
+				"h1[slot='title']",
+				"[data-test-id='post-content'] h3",
+				"shreddit-post h1",
+				"h1:contains('r/')",
+			},
+		},
+	}
 )
 
 func New() LinkPreview {
@@ -48,7 +70,7 @@ func New() LinkPreview {
 }
 
 type LinkPreview interface {
-	Fetch(ctx context.Context, url string) (linkPreview model.LinkPreview, responseBody []byte, isFile bool, err error)
+	Fetch(ctx context.Context, url string, withResponseBody bool) (linkPreview model.LinkPreview, responseBody []byte, isFile bool, err error)
 	app.Component
 }
 
@@ -65,7 +87,9 @@ func (l *linkPreview) Name() (name string) {
 	return CName
 }
 
-func (l *linkPreview) Fetch(ctx context.Context, fetchUrl string) (linkPreview model.LinkPreview, responseBody []byte, isFile bool, err error) {
+func (l *linkPreview) Fetch(
+	ctx context.Context, fetchUrl string, withResponseBody bool,
+) (linkPreview model.LinkPreview, responseBody []byte, isFile bool, err error) {
 	og, rt := buildOpenGraph(ctx, fetchUrl)
 	err = og.Fetch()
 
@@ -99,9 +123,13 @@ func (l *linkPreview) Fetch(ctx context.Context, fetchUrl string) (linkPreview m
 
 	res := l.convertOGToInfo(fetchUrl, og, rt)
 	applyCSPRules(cspRules, &res)
-	decodedResponse, err := decodeResponse(rt)
-	if err != nil {
-		log.Errorf("failed to decode request %s", err)
+
+	var decodedResponse []byte
+	if withResponseBody {
+		decodedResponse, err = decodeResponse(rt)
+		if err != nil {
+			log.Errorf("failed to decode request %s", err)
+		}
 	}
 	return res, decodedResponse, false, nil
 }
@@ -128,6 +156,8 @@ func (l *linkPreview) convertOGToInfo(fetchUrl string, og *opengraph.OpenGraph, 
 		Type:        model.LinkPreview_Page,
 		FaviconUrl:  og.Favicon.URL,
 	}
+
+	replaceGenericTitle(&i, rt.lastBody)
 
 	if len(og.Image) != 0 {
 		url, err := uri.NormalizeURI(og.Image[0].URL)
@@ -404,5 +434,51 @@ func getStatusClass(statusCode int) string {
 		return "5xx"
 	default:
 		return "unknown"
+	}
+}
+
+func replaceGenericTitle(preview *model.LinkPreview, htmlContent []byte) {
+	if len(htmlContent) == 0 {
+		return
+	}
+
+	parsedURL, err := url.Parse(preview.Url)
+	if err != nil {
+		return
+	}
+	hostname := parsedURL.Hostname()
+
+	var selectors []string
+	isTitleGeneric := func() bool {
+		candidate, found := genericTitleCandidates[hostname]
+		if !found {
+			return false
+		}
+		for _, genericTitle := range candidate.genericTitles {
+			if strings.EqualFold(preview.Title, genericTitle) || strings.Contains(preview.Title, genericTitle) {
+				selectors = candidate.titleSelectors
+				return true
+			}
+		}
+		return false
+	}
+
+	if !isTitleGeneric() {
+		return
+	}
+
+	doc, err := goquery.NewDocumentFromReader(bytes.NewReader(htmlContent))
+	if err != nil {
+		return
+	}
+
+	for _, selector := range selectors {
+		if title := doc.Find(selector).First().Text(); title != "" {
+			title = text.TruncateEllipsized(strings.TrimSpace(title), 100)
+			if len(title) > 5 {
+				preview.Title = title
+				return
+			}
+		}
 	}
 }

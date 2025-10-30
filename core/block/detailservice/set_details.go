@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"slices"
 
 	"go.uber.org/zap"
 
@@ -12,15 +11,12 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor"
 	"github.com/anyproto/anytype-heart/core/block/editor/blockcollection"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
-	"github.com/anyproto/anytype-heart/core/block/editor/state"
-	"github.com/anyproto/anytype-heart/core/block/editor/widget"
 	"github.com/anyproto/anytype-heart/core/block/restriction"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	"github.com/anyproto/anytype-heart/space/clientspace"
 	"github.com/anyproto/anytype-heart/util/slice"
 )
 
@@ -62,7 +58,7 @@ func (s *service) SetWorkspaceDashboardId(ctx session.Context, workspaceId strin
 	return id, err
 }
 
-func (s *service) SetIsFavorite(objectId string, isFavorite, createWidget bool) error {
+func (s *service) SetIsFavorite(objectId string, isFavorite bool) error {
 	spaceID, err := s.resolver.ResolveSpaceID(objectId)
 	if err != nil {
 		return fmt.Errorf("resolve spaceID: %w", err)
@@ -74,14 +70,6 @@ func (s *service) SetIsFavorite(objectId string, isFavorite, createWidget bool) 
 	if err = s.objectLinksCollectionModify(spc.DerivedIDs().Home, objectId, isFavorite); err != nil {
 		return err
 	}
-
-	if createWidget && isFavorite {
-		err = s.createFavoriteWidget(spc)
-		if err != nil {
-			log.Error("failed to create favorite widget", zap.Error(err))
-		}
-	}
-
 	return nil
 }
 
@@ -119,9 +107,9 @@ func (s *service) SetListIsFavorite(objectIds []string, isFavorite bool) error {
 			return err
 		}
 
-		for i, id := range ids {
+		for _, id := range ids {
 			// TODO Set list of ids at once
-			err := s.SetIsFavorite(id, isFavorite, i == 0)
+			err := s.SetIsFavorite(id, isFavorite)
 			if err != nil {
 				log.Error("failed to favorite object", zap.String("objectId", id), zap.Error(err))
 				resultError = errors.Join(resultError, err)
@@ -260,23 +248,4 @@ func (s *service) modifyArchiveLinks(
 		anySucceed = true
 	}
 	return
-}
-
-func (s *service) createFavoriteWidget(spc clientspace.Space) error {
-	widgetObjectId := spc.DerivedIDs().Widgets
-	widgetDetails, err := s.store.SpaceIndex(spc.Id()).GetDetails(widgetObjectId)
-	if err != nil {
-		return fmt.Errorf("get widget details: %w", err)
-	}
-	if widgetDetails.GetBool(bundle.RelationKeyAutoWidgetDisabled) {
-		return nil
-	}
-	targetIds := widgetDetails.GetStringList(bundle.RelationKeyAutoWidgetTargets)
-	if slices.Contains(targetIds, widget.DefaultWidgetFavorite) {
-		return nil
-	}
-
-	return cache.DoState(s.objectGetter, widgetObjectId, func(st *state.State, w widget.Widget) (err error) {
-		return w.AddAutoWidget(st, widget.DefaultWidgetFavorite, widget.DefaultWidgetFavorite, "", model.BlockContentWidget_CompactList, widget.DefaultWidgetFavoriteEventName)
-	})
 }

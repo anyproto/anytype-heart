@@ -170,7 +170,7 @@ func TestUpdatePendingLocalDetails(t *testing.T) {
 		require.NoError(t, err)
 
 		err = s.UpdatePendingLocalDetails("id1", func(details *domain.Details) (*domain.Details, error) {
-			assert.Equal(t, domain.NewDetails(), details)
+			assert.Equal(t, domain.NewDetails().SetString("id", "id1"), details)
 			return nil, nil
 		})
 		require.NoError(t, err)

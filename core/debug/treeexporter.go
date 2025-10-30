@@ -60,10 +60,6 @@ func (e *treeExporter) Export(ctx context.Context, path string, tree objecttree.
 	if err != nil {
 		return
 	}
-	err = anyStore.Checkpoint(ctx, true)
-	if err != nil {
-		return
-	}
 	logBuf := bytes.NewBuffer(nil)
 	e.log = stdlog.New(io.MultiWriter(logBuf, os.Stderr), "", stdlog.LstdFlags)
 	e.log.Printf("exported tree for a %v", time.Since(st))

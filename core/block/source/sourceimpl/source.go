@@ -3,6 +3,7 @@ package sourceimpl
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"math/rand"
 	"sync"
@@ -49,6 +50,8 @@ var (
 	log = logging.Logger("anytype-mw-source")
 
 	bytesPool = sync.Pool{New: func() any { return make([]byte, poolSize) }}
+
+	ErrSpaceWithoutTreeBuilder = errors.New("space doesn't have tree builder")
 )
 
 func MarshalChange(change *pb.Change) (result []byte, dataType string, err error) {
@@ -137,7 +140,7 @@ type SourceIdEndodedDetails interface {
 func (s *service) newTreeSource(ctx context.Context, space source.Space, id string, buildOpts objecttreebuilder.BuildTreeOpts) (source.Source, error) {
 	treeBuilder := space.TreeBuilder()
 	if treeBuilder == nil {
-		return nil, fmt.Errorf("space doesn't have tree builder")
+		return nil, ErrSpaceWithoutTreeBuilder
 	}
 	ot, err := space.TreeBuilder().BuildTree(ctx, id, buildOpts)
 	if err != nil {
@@ -562,9 +565,8 @@ func cleanUpChange(objectId string, change *objecttree.Change, model *pb.Change)
 
 func BuildState(spaceId string, initState *state.State, ot objecttree.ReadableObjectTree, applyState bool) (st *state.State, appliedContent []*pb.ChangeContent, changesAppliedSinceSnapshot int, err error) {
 	var (
-		startId    string
-		lastChange *objecttree.Change
-		count      int
+		startId string
+		count   int
 	)
 	// if the state has no first change
 	if initState == nil {
@@ -580,7 +582,7 @@ func BuildState(spaceId string, initState *state.State, ot objecttree.ReadableOb
 		return
 	}
 
-	smartblockHandler := objecthandler.GetSmartblockHandler(sbt)
+	sbHandler := objecthandler.GetSmartblockHandler(sbt)
 
 	var iterErr error
 	var lastMigrationVersion uint32
@@ -601,11 +603,9 @@ func BuildState(spaceId string, initState *state.State, ot objecttree.ReadableOb
 				return true
 			}
 
-			model := change.Model.(*pb.Change)
+			sbHandler.CollectLastModifiedInfo(change)
 
-			if !smartblockHandler.SkipChangeToSetLastModifiedDate(model) {
-				lastChange = change
-			}
+			model := change.Model.(*pb.Change)
 
 			if model.Version > lastMigrationVersion {
 				lastMigrationVersion = model.Version
@@ -651,8 +651,9 @@ func BuildState(spaceId string, initState *state.State, ot objecttree.ReadableOb
 		}
 	}
 
-	if lastChange != nil && !st.IsTheHeaderChange() {
-		st.SetLastModified(lastChange.Timestamp, domain.NewParticipantId(spaceId, lastChange.Identity.Account()))
+	if !st.IsTheHeaderChange() {
+		ts, accountId := sbHandler.GetLastModifiedInfo()
+		st.SetLastModified(ts, domain.NewParticipantId(spaceId, accountId))
 	}
 	st.SetMigrationVersion(lastMigrationVersion)
 	return
