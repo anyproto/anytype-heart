@@ -262,3 +262,190 @@ func difference(fullSet map[string]struct{}, subset map[string]struct{}) map[str
 	}
 	return result
 }
+
+func TestProductFieldParity(t *testing.T) {
+	compareStructFields(t,
+		reflect.TypeOf(paymentserviceproto.MembershipV2_Product{}),
+		reflect.TypeOf(model.MembershipV2Product{}),
+		nil,
+		nil,
+	)
+}
+
+func TestConvertProductData_JSONCoverage(t *testing.T) {
+	src := &paymentserviceproto.MembershipV2_Product{
+		Id:            "prod_123",
+		Name:          "Plus",
+		Description:   "Best value",
+		IsTopLevel:    true,
+		IsHidden:      true,
+		PricesYearly:  []*paymentserviceproto.MembershipV2_Amount{{Currency: "USD", AmountCents: 4800}, {Currency: "EUR", AmountCents: 4500}},
+		PricesMonthly: []*paymentserviceproto.MembershipV2_Amount{{Currency: "USD", AmountCents: 500}, {Currency: "EUR", AmountCents: 450}},
+		ColorStr:      "blue",
+		Offer:         "intro",
+		Features: &paymentserviceproto.MembershipV2_Features{
+			StorageBytes:  100 * 1024 * 1024,
+			SpaceReaders:  10,
+			SpaceWriters:  5,
+			SharedSpaces:  20,
+			TeamSeats:     3,
+			AnyNameCount:  1,
+			AnyNameMinLen: 9,
+		},
+	}
+
+	actual := convertProductData(src)
+	require.NotNil(t, actual)
+
+	expected := &model.MembershipV2Product{
+		Id:          src.Id,
+		Name:        src.Name,
+		Description: src.Description,
+		IsTopLevel:  src.IsTopLevel,
+		IsHidden:    src.IsHidden,
+		ColorStr:    src.ColorStr,
+		Offer:       src.Offer,
+		PricesYearly: []*model.MembershipV2Amount{
+			{Currency: src.PricesYearly[0].Currency, AmountCents: src.PricesYearly[0].AmountCents},
+			{Currency: src.PricesYearly[1].Currency, AmountCents: src.PricesYearly[1].AmountCents},
+		},
+		PricesMonthly: []*model.MembershipV2Amount{
+			{Currency: src.PricesMonthly[0].Currency, AmountCents: src.PricesMonthly[0].AmountCents},
+			{Currency: src.PricesMonthly[1].Currency, AmountCents: src.PricesMonthly[1].AmountCents},
+		},
+		Features: &model.MembershipV2Features{
+			StorageBytes:  src.Features.StorageBytes,
+			SpaceReaders:  src.Features.SpaceReaders,
+			SpaceWriters:  src.Features.SpaceWriters,
+			SharedSpaces:  src.Features.SharedSpaces,
+			TeamSeats:     src.Features.TeamSeats,
+			AnyNameCount:  src.Features.AnyNameCount,
+			AnyNameMinLen: src.Features.AnyNameMinLen,
+		},
+	}
+
+	require.Equal(t, expected, actual)
+
+	assertAllExportedFieldsNonZeroAndInJSON(t, actual, nil)
+}
+
+func TestPurchasedProductFieldParity(t *testing.T) {
+	compareStructFields(t,
+		reflect.TypeOf(paymentserviceproto.MembershipV2_PurchasedProduct{}),
+		reflect.TypeOf(model.MembershipV2PurchasedProduct{}),
+		nil,
+		nil,
+	)
+}
+
+func TestConvertPurchasedProductData_JSONCoverage(t *testing.T) {
+	src := &paymentserviceproto.MembershipV2_PurchasedProduct{
+		Product: &paymentserviceproto.MembershipV2_Product{
+			Id:           "prod_123",
+			Name:         "Plus",
+			Description:  "Best value",
+			IsTopLevel:   true,
+			IsHidden:     true,
+			PricesYearly: []*paymentserviceproto.MembershipV2_Amount{{Currency: "USD", AmountCents: 4800}},
+			PricesMonthly: []*paymentserviceproto.MembershipV2_Amount{
+				{Currency: "USD", AmountCents: 500},
+			},
+			ColorStr: "blue",
+			Offer:    "intro",
+			Features: &paymentserviceproto.MembershipV2_Features{
+				StorageBytes:  100 * 1024 * 1024,
+				SpaceReaders:  10,
+				SpaceWriters:  5,
+				SharedSpaces:  20,
+				TeamSeats:     3,
+				AnyNameCount:  1,
+				AnyNameMinLen: 9,
+			},
+		},
+		PurchaseInfo: &paymentserviceproto.MembershipV2_PurchaseInfo{
+			DateStarted: 1_700_000_000,
+			DateEnds:    1_800_000_000,
+			IsAutoRenew: true,
+			IsYearly:    true,
+		},
+		ProductStatus: &paymentserviceproto.MembershipV2_ProductStatus{
+			Status: paymentserviceproto.MembershipV2_ProductStatus_StatusActive,
+		},
+	}
+
+	actual := convertPurchasedProductData(src)
+	require.NotNil(t, actual)
+
+	expected := &model.MembershipV2PurchasedProduct{
+		Product: &model.MembershipV2Product{
+			Id:          src.Product.Id,
+			Name:        src.Product.Name,
+			Description: src.Product.Description,
+			IsTopLevel:  src.Product.IsTopLevel,
+			IsHidden:    src.Product.IsHidden,
+			ColorStr:    src.Product.ColorStr,
+			Offer:       src.Product.Offer,
+			PricesYearly: []*model.MembershipV2Amount{
+				{Currency: src.Product.PricesYearly[0].Currency, AmountCents: src.Product.PricesYearly[0].AmountCents},
+			},
+			PricesMonthly: []*model.MembershipV2Amount{
+				{Currency: src.Product.PricesMonthly[0].Currency, AmountCents: src.Product.PricesMonthly[0].AmountCents},
+			},
+			Features: &model.MembershipV2Features{
+				StorageBytes:  src.Product.Features.StorageBytes,
+				SpaceReaders:  src.Product.Features.SpaceReaders,
+				SpaceWriters:  src.Product.Features.SpaceWriters,
+				SharedSpaces:  src.Product.Features.SharedSpaces,
+				TeamSeats:     src.Product.Features.TeamSeats,
+				AnyNameCount:  src.Product.Features.AnyNameCount,
+				AnyNameMinLen: src.Product.Features.AnyNameMinLen,
+			},
+		},
+		PurchaseInfo: &model.MembershipV2PurchaseInfo{
+			DateStarted: src.PurchaseInfo.DateStarted,
+			DateEnds:    src.PurchaseInfo.DateEnds,
+			IsAutoRenew: src.PurchaseInfo.IsAutoRenew,
+			IsYearly:    src.PurchaseInfo.IsYearly,
+		},
+		ProductStatus: &model.MembershipV2ProductStatus{
+			Status: model.MembershipV2ProductStatusStatus(src.ProductStatus.Status),
+		},
+	}
+
+	require.Equal(t, expected, actual)
+	assertAllExportedFieldsNonZeroAndInJSON(t, actual, nil)
+}
+
+/*
+func TestInvoiceFieldParity(t *testing.T) {
+	// NOTE: this should fail due to [Status Id] mismatch
+	// (as expected)
+	compareStructFields(t,
+		reflect.TypeOf(paymentserviceproto.MembershipV2_Invoice{}),
+		reflect.TypeOf(model.MembershipV2Invoice{}),
+		nil,
+		nil,
+	)
+}
+*/
+
+func TestConvertInvoiceData_JSONCoverage(t *testing.T) {
+	src := &paymentserviceproto.MembershipV2_Invoice{
+		Date:  1_750_000_000,
+		Total: &paymentserviceproto.MembershipV2_Amount{Currency: "USD", AmountCents: 9600},
+	}
+
+	actual := convertInvoiceData(src)
+	require.NotNil(t, actual)
+
+	expected := &model.MembershipV2Invoice{
+		Date: src.Date,
+		Total: &model.MembershipV2Amount{
+			Currency:    src.Total.Currency,
+			AmountCents: src.Total.AmountCents,
+		},
+	}
+
+	require.Equal(t, expected, actual)
+	assertAllExportedFieldsNonZeroAndInJSON(t, actual, nil)
+}

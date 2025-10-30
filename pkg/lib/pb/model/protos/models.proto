@@ -1448,8 +1448,9 @@ message MembershipV2 {
 
         // green, blue, red, purple, custom, etc
         string colorStr = 8;
+        string offer = 9;
 
-        Features features = 9;
+        Features features = 10;
     }
 
     message PurchaseInfo {

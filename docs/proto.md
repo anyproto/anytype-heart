@@ -33016,6 +33016,7 @@ Used to decode block meta only, without the content itself
 | pricesYearly | [MembershipV2.Amount](#anytype-model-MembershipV2-Amount) | repeated |  |
 | pricesMonthly | [MembershipV2.Amount](#anytype-model-MembershipV2-Amount) | repeated |  |
 | colorStr | [string](#string) |  | green, blue, red, purple, custom, etc |
+| offer | [string](#string) |  |  |
 | features | [MembershipV2.Features](#anytype-model-MembershipV2-Features) |  |  |
 
 

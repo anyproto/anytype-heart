@@ -134,3 +134,96 @@ func convertMembershipData(src *paymentserviceproto.GetSubscriptionResponse) *mo
 	out.TeamOwner = src.TeamOwner
 	return out
 }
+
+func convertAmountData(src *paymentserviceproto.MembershipV2_Amount) *model.MembershipV2Amount {
+	if src == nil {
+		return nil
+	}
+	out := &model.MembershipV2Amount{}
+	out.Currency = src.Currency
+	out.AmountCents = src.AmountCents
+	return out
+}
+
+func convertProductData(src *paymentserviceproto.MembershipV2_Product) *model.MembershipV2Product {
+	if src == nil {
+		return nil
+	}
+	out := &model.MembershipV2Product{}
+	out.Id = src.Id
+	out.Name = src.Name
+	out.Description = src.Description
+	out.IsTopLevel = src.IsTopLevel
+	out.IsHidden = src.IsHidden
+	out.ColorStr = src.ColorStr
+	out.Offer = src.Offer
+
+	out.PricesYearly = make([]*model.MembershipV2Amount, len(src.PricesYearly))
+	for i, price := range src.PricesYearly {
+		out.PricesYearly[i] = convertAmountData(price)
+	}
+	out.PricesMonthly = make([]*model.MembershipV2Amount, len(src.PricesMonthly))
+	for i, price := range src.PricesMonthly {
+		out.PricesMonthly[i] = convertAmountData(price)
+	}
+
+	if src.Features != nil {
+		out.Features = &model.MembershipV2Features{}
+
+		out.Features.StorageBytes = src.Features.StorageBytes
+		out.Features.SpaceReaders = src.Features.SpaceReaders
+		out.Features.SpaceWriters = src.Features.SpaceWriters
+		out.Features.SharedSpaces = src.Features.SharedSpaces
+		out.Features.TeamSeats = src.Features.TeamSeats
+		out.Features.AnyNameCount = src.Features.AnyNameCount
+		out.Features.AnyNameMinLen = src.Features.AnyNameMinLen
+	}
+	return out
+}
+
+func convertPurchaseInfoData(src *paymentserviceproto.MembershipV2_PurchaseInfo) *model.MembershipV2PurchaseInfo {
+	if src == nil {
+		return nil
+	}
+	out := &model.MembershipV2PurchaseInfo{}
+	out.DateStarted = src.DateStarted
+	out.DateEnds = src.DateEnds
+	out.IsAutoRenew = src.IsAutoRenew
+	out.IsYearly = src.IsYearly
+	return out
+}
+
+func convertProductStatusData(src *paymentserviceproto.MembershipV2_ProductStatus) *model.MembershipV2ProductStatus {
+	if src == nil {
+		return nil
+	}
+	out := &model.MembershipV2ProductStatus{}
+	// 1-1 conversion
+	out.Status = model.MembershipV2ProductStatusStatus(src.Status)
+	return out
+}
+
+func convertPurchasedProductData(src *paymentserviceproto.MembershipV2_PurchasedProduct) *model.MembershipV2PurchasedProduct {
+	if src == nil {
+		return nil
+	}
+	out := &model.MembershipV2PurchasedProduct{}
+	out.Product = convertProductData(src.Product)
+	out.PurchaseInfo = convertPurchaseInfoData(src.PurchaseInfo)
+	out.ProductStatus = convertProductStatusData(src.ProductStatus)
+	return out
+}
+
+func convertInvoiceData(src *paymentserviceproto.MembershipV2_Invoice) *model.MembershipV2Invoice {
+	if src == nil {
+		return nil
+	}
+	out := &model.MembershipV2Invoice{}
+	out.Date = src.Date
+	if src.Total != nil {
+		out.Total = &model.MembershipV2Amount{}
+		out.Total.Currency = src.Total.Currency
+		out.Total.AmountCents = src.Total.AmountCents
+	}
+	return out
+}

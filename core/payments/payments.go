@@ -1006,9 +1006,22 @@ func (s *service) V2GetPortalLink(ctx context.Context, req *pb.RpcMembershipV2Ge
 }
 
 func (s *service) V2GetProducts(ctx context.Context, req *pb.RpcMembershipV2GetProductsRequest) (*pb.RpcMembershipV2GetProductsResponse, error) {
-	// TODO: implement
+	productsReq := proto.MembershipV2_GetProductsRequest{}
+
+	// TODO: no caching for now, just a direct call to the payment node
+	products, err := s.ppclient2.GetProducts(ctx, &productsReq)
+	if err != nil {
+		return nil, err
+	}
+
+	productsModel := make([]*model.MembershipV2Product, len(products.Products))
+	for i, product := range products.Products {
+		productsModel[i] = convertProductData(product)
+	}
 
 	return &pb.RpcMembershipV2GetProductsResponse{
+		Products: productsModel,
+
 		Error: &pb.RpcMembershipV2GetProductsResponseError{
 			Code: pb.RpcMembershipV2GetProductsResponseError_NULL,
 		},
@@ -1016,9 +1029,28 @@ func (s *service) V2GetProducts(ctx context.Context, req *pb.RpcMembershipV2GetP
 }
 
 func (s *service) V2GetStatus(ctx context.Context, req *pb.RpcMembershipV2GetStatusRequest) (*pb.RpcMembershipV2GetStatusResponse, error) {
-	// TODO: implement
+	in := proto.MembershipV2_GetStatusRequest{}
+
+	// TODO: no caching for now, just a direct call to the payment node
+	out, err := s.ppclient2.GetStatus(ctx, &in)
+	if err != nil {
+		return nil, err
+	}
+
+	// convert Products
+	productsModel := make([]*model.MembershipV2PurchasedProduct, len(out.Products))
+	for i, product := range out.Products {
+		productsModel[i] = convertPurchasedProductData(product)
+	}
+
+	// convert NextInvoice
+	nextInvoiceModel := convertInvoiceData(out.NextInvoice)
 
 	return &pb.RpcMembershipV2GetStatusResponse{
+		Data: &model.MembershipV2Data{
+			Products:    productsModel,
+			NextInvoice: nextInvoiceModel,
+		},
 		Error: &pb.RpcMembershipV2GetStatusResponseError{
 			Code: pb.RpcMembershipV2GetStatusResponseError_NULL,
 		},
