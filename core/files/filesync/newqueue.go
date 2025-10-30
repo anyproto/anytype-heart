@@ -319,6 +319,8 @@ func (s *fileSync) process(id string, proc func(exists bool, info FileInfo) (Fil
 		return errors.Join(s.queue.Release(item), fmt.Errorf("process item: %w", err))
 	}
 
+	fmt.Printf("PROCESS %#v -> %#v\n", item, next)
+
 	return s.queue.Release(next)
 }
 

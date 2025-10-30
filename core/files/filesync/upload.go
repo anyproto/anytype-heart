@@ -2,7 +2,6 @@ package filesync
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"strings"
@@ -29,23 +28,6 @@ type AddFileRequest struct {
 	Imported       bool
 
 	Variants []domain.FileId
-}
-
-func (req AddFileRequest) ToQueueItem(addedTime time.Time) (*QueueItem, error) {
-	it := &QueueItem{
-		ObjectId:    req.FileObjectId,
-		SpaceId:     req.FileId.SpaceId,
-		FileId:      req.FileId.FileId,
-		AddedByUser: req.UploadedByUser,
-		Imported:    req.Imported,
-		Timestamp:   float64(addedTime.UnixMilli()),
-		Variants:    req.Variants,
-	}
-	err := it.Validate()
-	if err != nil {
-		return nil, fmt.Errorf("validate: %w", err)
-	}
-	return it, nil
 }
 
 func (s *fileSync) AddFile(req AddFileRequest) (err error) {
@@ -120,44 +102,6 @@ type blocksAvailabilityResponse struct {
 
 func (r *blocksAvailabilityResponse) totalBytesToUpload() int {
 	return r.bytesToUpload + r.bytesToBind
-}
-
-type blocksAvailabilityResponseJson struct {
-	BytesToUpload int
-	BytesToBind   int
-	CidsToUpload  []string
-}
-
-var _ json.Marshaler = &blocksAvailabilityResponse{}
-
-func (r *blocksAvailabilityResponse) MarshalJSON() ([]byte, error) {
-	wrapper := blocksAvailabilityResponseJson{
-		BytesToUpload: r.bytesToUpload,
-		BytesToBind:   r.bytesToBind,
-	}
-	for c := range r.cidsToUpload {
-		wrapper.CidsToUpload = append(wrapper.CidsToUpload, c.String())
-	}
-	return json.Marshal(wrapper)
-}
-
-func (r *blocksAvailabilityResponse) UnmarshalJSON(data []byte) error {
-	var wrapper blocksAvailabilityResponseJson
-	err := json.Unmarshal(data, &wrapper)
-	if err != nil {
-		return err
-	}
-	r.bytesToUpload = wrapper.BytesToUpload
-	r.bytesToBind = wrapper.BytesToBind
-	r.cidsToUpload = map[cid.Cid]struct{}{}
-	for _, rawCid := range wrapper.CidsToUpload {
-		cid, err := cid.Parse(rawCid)
-		if err != nil {
-			return err
-		}
-		r.cidsToUpload[cid] = struct{}{}
-	}
-	return nil
 }
 
 func (s *fileSync) checkBlocksAvailability(ctx context.Context, fileObjectId string, spaceId string, fileId domain.FileId) (*blocksAvailabilityResponse, error) {
