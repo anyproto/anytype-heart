@@ -323,21 +323,23 @@ func (ko *KeyOrder) tryCompareEmptyValues(aIsEmpty, bIsEmpty bool) (int, bool) {
 		return 0, true
 	}
 
-	if ko.EmptyPlacement != model.BlockContentDataviewSort_NotSpecified {
-		if aIsEmpty {
-			if ko.EmptyPlacement == model.BlockContentDataviewSort_Start {
-				return -1, true // A=null < B
-			} else {
-				return 1, true //  B < A=null
-			}
-		}
+	if ko.EmptyPlacement == model.BlockContentDataviewSort_NotSpecified {
+		return 0, false
+	}
 
-		if bIsEmpty {
-			if ko.EmptyPlacement == model.BlockContentDataviewSort_Start {
-				return 1, true //  B=null < A
-			} else {
-				return -1, true // A < B=null
-			}
+	if aIsEmpty {
+		if ko.EmptyPlacement == model.BlockContentDataviewSort_Start {
+			return -1, true // A=null < B
+		} else {
+			return 1, true //  B < A=null
+		}
+	}
+
+	if bIsEmpty {
+		if ko.EmptyPlacement == model.BlockContentDataviewSort_Start {
+			return 1, true //  B=null < A
+		} else {
+			return -1, true // A < B=null
 		}
 	}
 
@@ -346,7 +348,7 @@ func (ko *KeyOrder) tryCompareEmptyValues(aIsEmpty, bIsEmpty bool) (int, bool) {
 
 func (ko *KeyOrder) trySubstituteSnippet(details *domain.Details, value domain.Value) domain.Value {
 	rawLayout := details.GetInt64(bundle.RelationKeyResolvedLayout)
-	if ko.Key == bundle.RelationKeyName && model.ObjectTypeLayout(rawLayout) == model.ObjectType_note {
+	if ko.Key == bundle.RelationKeyName && model.ObjectTypeLayout(rawLayout) == model.ObjectType_note { // nolint:gosec
 		if _, ok := details.TryString(bundle.RelationKeyName); !ok {
 			return details.Get(bundle.RelationKeySnippet)
 		}
