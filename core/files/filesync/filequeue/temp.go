@@ -93,6 +93,29 @@ func (s *Storage[T]) query(ctx context.Context, filter query.Filter, order query
 	return defVal, ErrNoRows
 }
 
+func (s *Storage[T]) listAll(ctx context.Context) ([]T, error) {
+	iter, err := s.coll.Find(nil).Iter(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("iter: %w", err)
+	}
+	defer iter.Close()
+
+	var res []T
+	for iter.Next() {
+		doc, err := iter.Doc()
+		if err != nil {
+			return nil, fmt.Errorf("read doc: %w", err)
+		}
+
+		val, err := s.unmarshal(doc.Value())
+		if err != nil {
+			return nil, fmt.Errorf("unmarshal: %w", err)
+		}
+		res = append(res, val)
+	}
+	return res, nil
+}
+
 type getByIdRequest[T any] struct {
 	objectId   string
 	responseCh chan itemResponse[T]
@@ -736,4 +759,8 @@ func (q *Queue[T]) Release(task T) error {
 	case <-q.closedCh:
 		return ErrClosed
 	}
+}
+
+func (q *Queue[T]) List() ([]T, error) {
+	return q.store.listAll(q.ctx)
 }

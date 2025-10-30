@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"sync"
 	"time"
 
 	"github.com/anyproto/any-store/query"
@@ -194,59 +193,6 @@ func (s *fileSync) processFilePendingDeletion(ctx context.Context, fi FileInfo) 
 	return fi.ToDeleted(), nil
 }
 
-type ProcessAction int
-
-const (
-	ProcessActionNone = ProcessAction(iota)
-	ProcessActionUpdate
-	ProcessActionDelete
-)
-
-type filesRepository struct {
-	lock  sync.Mutex
-	files map[string]FileInfo
-}
-
-func newFilesRepository() *filesRepository {
-	return &filesRepository{
-		files: make(map[string]FileInfo),
-	}
-}
-
-func (r *filesRepository) get(key string) (FileInfo, bool) {
-	r.lock.Lock()
-	defer r.lock.Unlock()
-
-	v, ok := r.files[key]
-	return v, ok
-}
-
-func (r *filesRepository) find(pred func(file FileInfo) bool) (FileInfo, bool) {
-	r.lock.Lock()
-	defer r.lock.Unlock()
-
-	for _, file := range r.files {
-		if pred(file) {
-			return file, true
-		}
-	}
-	return FileInfo{}, false
-}
-
-func (r *filesRepository) put(key string, file FileInfo) {
-	r.lock.Lock()
-	defer r.lock.Unlock()
-
-	r.files[key] = file
-}
-
-func (r *filesRepository) delete(key string) {
-	r.lock.Lock()
-	defer r.lock.Unlock()
-
-	delete(r.files, key)
-}
-
 func (s *fileSync) runUploader(ctx context.Context) {
 
 	for {
@@ -257,6 +203,18 @@ func (s *fileSync) runUploader(ctx context.Context) {
 			s.processNextPendingUploadItem(ctx)
 		}
 	}
+}
+
+func (s *fileSync) printQueue() error {
+	items, err := s.queue.List()
+	if err != nil {
+		return err
+	}
+
+	for _, item := range items {
+		fmt.Printf("%#v\n", item)
+	}
+	return nil
 }
 
 func (s *fileSync) processNextPendingUploadItem(ctx context.Context) error {
@@ -349,19 +307,17 @@ func (s *fileSync) uploadLimited(ctx context.Context) (bool, error) {
 	return false, errors.Join(releaseErr, err)
 }
 
-func (s *fileSync) process(id string, proc func(exists bool, info FileInfo) (ProcessAction, FileInfo, error)) error {
+func (s *fileSync) process(id string, proc func(exists bool, info FileInfo) (FileInfo, error)) error {
 	item, err := s.queue.GetById(id)
 	if err != nil && !errors.Is(err, filequeue.ErrNotFound) {
 		return fmt.Errorf("get item: %w", err)
 	}
 	exists := !errors.Is(err, filequeue.ErrNotFound)
 
-	act, next, err := proc(exists, item)
+	next, err := proc(exists, item)
 	if err != nil {
 		return errors.Join(s.queue.Release(item), fmt.Errorf("process item: %w", err))
 	}
-
-	_ = act
 
 	return s.queue.Release(next)
 }

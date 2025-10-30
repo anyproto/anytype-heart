@@ -25,37 +25,38 @@ func (s *fileSync) runBatchUploader() {
 	}
 }
 
-func (s *fileSync) addToLimitedQueue(objectId string) {
-	s.process(objectId, func(exists bool, info FileInfo) (ProcessAction, FileInfo, error) {
+func (s *fileSync) addToLimitedQueue(objectId string) error {
+	return s.process(objectId, func(exists bool, info FileInfo) (FileInfo, error) {
 		if !exists {
-			return ProcessActionNone, FileInfo{}, nil
+			return FileInfo{}, nil
 		}
 
-		return ProcessActionUpdate, info.ToLimitReached(), nil
+		return info.ToLimitReached(), nil
 	})
 }
 
-func (s *fileSync) addToRetryUploadingQueue(objectId string) {
-	s.process(objectId, func(exists bool, info FileInfo) (ProcessAction, FileInfo, error) {
+func (s *fileSync) addToRetryUploadingQueue(objectId string) error {
+	return s.process(objectId, func(exists bool, info FileInfo) (FileInfo, error) {
 		if !exists {
-			return ProcessActionNone, FileInfo{}, nil
+			return FileInfo{}, nil
 		}
 
 		info.State = FileStatePendingUpload
+		// TODO add jitter
 		info.ScheduledAt = time.Now().Add(1 * time.Minute)
-		return ProcessActionUpdate, info, nil
+		return info, nil
 	})
 }
 
-func (s *fileSync) updateUploadedCids(objectId string, cids []cid.Cid) {
-	s.process(objectId, func(exists bool, info FileInfo) (ProcessAction, FileInfo, error) {
+func (s *fileSync) updateUploadedCids(objectId string, cids []cid.Cid) error {
+	return s.process(objectId, func(exists bool, info FileInfo) (FileInfo, error) {
 		if !exists {
-			return ProcessActionNone, FileInfo{}, nil
+			return FileInfo{}, nil
 		}
 
 		// If deletion is pending, it will be deleted soon
 		if info.State == FileStatePendingDeletion {
-			return ProcessActionNone, FileInfo{}, nil
+			return FileInfo{}, nil
 		}
 
 		// If it was deleted, delete again to undo uploaded blocks
@@ -63,16 +64,16 @@ func (s *fileSync) updateUploadedCids(objectId string, cids []cid.Cid) {
 			err := s.rpcStore.DeleteFiles(s.loopCtx, info.SpaceId, info.FileId)
 			// Enqueue deletion if we can't delete it right away
 			if err != nil {
-				return ProcessActionUpdate, info.ToPendingDeletion(), err
+				return info.ToPendingDeletion(), err
 			}
-			return ProcessActionNone, info, nil
+			return info, nil
 		}
 
 		for _, c := range cids {
 			delete(info.CidsToUpload, c)
 		}
 		next, err := s.processFileUploading(s.loopCtx, info)
-		return ProcessActionUpdate, next, err
+		return next, err
 	})
 }
 
@@ -80,31 +81,37 @@ func (s *fileSync) onBatchUploadError(ctx context.Context, req blockPushManyRequ
 	if isNodeLimitReachedError(err) {
 		for _, fb := range req.req.FileBlocks {
 			objectId := req.fileIdToObjectId[fb.FileId]
-			s.addToLimitedQueue(objectId)
+			err := s.addToLimitedQueue(objectId)
+			if err != nil {
+				log.Error("handle batch upload error: add to limited queue", zap.Error(err))
+			}
 		}
 	} else {
 		log.Error("add to file many:", zap.Error(err))
 		for _, fb := range req.req.FileBlocks {
 			objectId := req.fileIdToObjectId[fb.FileId]
-			s.addToRetryUploadingQueue(objectId)
+			err := s.addToRetryUploadingQueue(objectId)
+			if err != nil {
+				log.Error("handle batch upload error: add to retry queue", zap.Error(err))
+			}
 		}
 	}
 }
 
 func (s *fileSync) onBatchUploaded(ctx context.Context, req blockPushManyRequest) {
 	for _, fb := range req.req.FileBlocks {
+		cids := make([]cid.Cid, 0, len(fb.Blocks))
+		for _, b := range fb.Blocks {
+			c, err := cid.Cast(b.Cid)
+			if err != nil {
+				log.Error("failed to parse block cid", zap.Error(err))
+			}
+			cids = append(cids, c)
+		}
 		objectId := req.fileIdToObjectId[fb.FileId]
-		s.addToRetryUploadingQueue(objectId)
-		continue
-		// cids := make([]cid.Cid, 0, len(fb.Blocks))
-		// for _, b := range fb.Blocks {
-		// 	c, err := cid.Cast(b.Cid)
-		// 	if err != nil {
-		// 		log.Error("failed to parse block cid", zap.Error(err))
-		// 	}
-		// 	cids = append(cids, c)
-		// }
-		// objectId := req.fileIdToObjectId[fb.FileId]
-		// s.updateUploadedCids(objectId, cids)
+		err := s.updateUploadedCids(objectId, cids)
+		if err != nil {
+			log.Error("handle batch upload: update uploaded cids", zap.Error(err))
+		}
 	}
 }

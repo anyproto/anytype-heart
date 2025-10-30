@@ -49,7 +49,7 @@ func (req AddFileRequest) ToQueueItem(addedTime time.Time) (*QueueItem, error) {
 }
 
 func (s *fileSync) AddFile(req AddFileRequest) (err error) {
-	return s.process(req.FileObjectId, func(_ bool, _ FileInfo) (ProcessAction, FileInfo, error) {
+	return s.process(req.FileObjectId, func(_ bool, _ FileInfo) (FileInfo, error) {
 		info := FileInfo{
 			FileId:        req.FileId.FileId,
 			SpaceId:       req.FileId.SpaceId,
@@ -62,7 +62,7 @@ func (s *fileSync) AddFile(req AddFileRequest) (err error) {
 			BytesToUpload: 0,
 			CidsToUpload:  map[cid.Cid]struct{}{},
 		}
-		return ProcessActionUpdate, info, nil
+		return info, nil
 	})
 }
 
