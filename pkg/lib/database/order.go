@@ -1,7 +1,7 @@
 package database
 
 import (
-	"slices"
+	"bytes"
 	"time"
 
 	"github.com/anyproto/any-store/anyenc"
@@ -29,105 +29,6 @@ type ObjectStore interface {
 	QueryIterate(q Query, proc func(details *domain.Details)) (err error)
 	GetRelationFormatByKey(key domain.RelationKey) (model.RelationFormat, error)
 	ListRelationOptions(relationKey domain.RelationKey) (options []*model.RelationOption, err error)
-}
-
-type OrderMap struct {
-	data map[string]*domain.Details // objectId -> { orderId + name }
-}
-
-func NewOrderMap(data map[string]*domain.Details) *OrderMap {
-	return &OrderMap{data: data}
-}
-
-func (m *OrderMap) BuildOrderByKey(key domain.RelationKey, buf []byte, ids ...string) []byte {
-	if m == nil || len(m.data) == 0 {
-		return buf[:0]
-	}
-
-	buf = buf[:0]
-
-	for _, id := range ids {
-		if details, ok := m.data[id]; ok {
-			str := details.GetString(key)
-			buf = append(buf, str...)
-		}
-	}
-
-	return buf
-}
-
-// Update updates orders only for objects that exist in OrderMap
-func (m *OrderMap) Update(details []*domain.Details) (anyUpdated bool) {
-	if m == nil || len(m.data) == 0 {
-		return false
-	}
-	for _, det := range details {
-		id := det.GetString(bundle.RelationKeyId)
-		updated := false
-		existingDetails, found := m.data[id]
-		if !found {
-			continue
-		}
-
-		orderId := det.GetString(bundle.RelationKeyOrderId)
-		if existingDetails.GetString(bundle.RelationKeyOrderId) != orderId {
-			updated = true
-			existingDetails.SetString(bundle.RelationKeyOrderId, orderId)
-		}
-
-		name := det.GetString(bundle.RelationKeyName)
-		if existingDetails.GetString(bundle.RelationKeyName) != name {
-			updated = true
-			existingDetails.SetString(bundle.RelationKeyName, name)
-		}
-
-		if updated {
-			anyUpdated = true
-		}
-	}
-	return anyUpdated
-}
-
-// SetOrders sets order for ids that do not present in OrderMap
-func (m *OrderMap) SetOrders(store ObjectStore, ids ...string) error {
-	if store == nil {
-		return nil
-	}
-
-	if m.data == nil {
-		m.data = make(map[string]*domain.Details, len(ids))
-	}
-
-	idsToSet := make([]string, 0, len(ids))
-	for _, id := range ids {
-		if _, found := m.data[id]; !found {
-			idsToSet = append(idsToSet, id)
-		}
-	}
-
-	if len(idsToSet) == 0 {
-		return nil
-	}
-
-	records, err := store.Query(Query{Filters: []FilterRequest{{
-		RelationKey: bundle.RelationKeyId,
-		Condition:   model.BlockContentDataviewFilter_In,
-		Value:       domain.StringList(idsToSet),
-	}}})
-	if err != nil {
-		return err
-	}
-
-	for _, record := range records {
-		info := record.Details.CopyOnlyKeys(bundle.RelationKeyOrderId, bundle.RelationKeyName)
-		id := record.Details.GetString(bundle.RelationKeyId)
-		m.data[id] = info
-	}
-	return nil
-}
-
-func (m *OrderMap) Empty() bool {
-	return m == nil || len(m.data) == 0
 }
 
 type SetOrder []Order
@@ -166,11 +67,9 @@ type KeyOrder struct {
 	relationFormat model.RelationFormat
 	IncludeTime    bool
 
-	objectStore     ObjectStore
 	orderMap        *OrderMap
 	orderMapBufferA []byte
 	orderMapBufferB []byte
-	objectSortKeys  []domain.RelationKey
 	arena           *anyenc.Arena
 
 	collatorBuffer  *collate.Buffer
@@ -179,22 +78,9 @@ type KeyOrder struct {
 }
 
 func NewKeyOrder(store ObjectStore, arena *anyenc.Arena, collatorBuffer *collate.Buffer, sort SortRequest) *KeyOrder {
-	sortKeys := make([]domain.RelationKey, 0, 2)
 	format, err := store.GetRelationFormatByKey(sort.RelationKey)
 	if err != nil {
 		format = sort.Format
-	}
-
-	switch format {
-	case model.RelationFormat_tag, model.RelationFormat_status:
-		sortKeys = append(sortKeys, bundle.RelationKeyOrderId, bundle.RelationKeyName)
-	case model.RelationFormat_file, model.RelationFormat_object:
-		sortKeys = append(sortKeys, bundle.RelationKeyName)
-	}
-
-	disableCollator := sort.NoCollate
-	if sort.RelationKey == bundle.RelationKeyOrderId || sort.RelationKey == bundle.RelationKeySpaceOrder {
-		disableCollator = true
 	}
 
 	return &KeyOrder{
@@ -202,14 +88,12 @@ func NewKeyOrder(store ObjectStore, arena *anyenc.Arena, collatorBuffer *collate
 		Type:            sort.Type,
 		EmptyPlacement:  sort.EmptyPlacement,
 		relationFormat:  format,
-		objectStore:     store,
-		orderMap:        NewOrderMap(nil),
+		orderMap:        BuildOrderMap(store, sort.RelationKey, format, collatorBuffer),
 		orderMapBufferA: make([]byte, 0),
 		orderMapBufferB: make([]byte, 0),
-		objectSortKeys:  sortKeys,
 		arena:           arena,
 		collatorBuffer:  collatorBuffer,
-		disableCollator: disableCollator,
+		disableCollator: sort.NoCollate || sort.RelationKey == bundle.RelationKeyOrderId || sort.RelationKey == bundle.RelationKeySpaceOrder,
 	}
 }
 
@@ -287,30 +171,13 @@ func (ko *KeyOrder) basicSort(valType anyenc.Type) query.Sort {
 }
 
 func (ko *KeyOrder) objectSort() query.Sort {
-	if ko.orderMap.Empty() && ko.objectStore != nil {
-		var data map[string]*domain.Details
-		if ko.relationFormat == model.RelationFormat_status || ko.relationFormat == model.RelationFormat_tag {
-			data = optionsToMap(ko.Key, ko.objectStore)
-		} else {
-			data = objectsToMap(ko.Key, ko.objectStore)
-		}
-		ko.orderMap = NewOrderMap(data)
-	}
-	buffer := make([][]byte, len(ko.objectSortKeys))
-	for i := range ko.objectSortKeys {
-		buffer[i] = make([]byte, 0)
-	}
-	ko.ensureCollator()
 	return objectSort{
-		arena:          ko.arena,
-		collator:       ko.collator,
-		collatorBuffer: ko.collatorBuffer,
-		relationKey:    string(ko.Key),
-		sortKeys:       ko.objectSortKeys,
-		reverse:        ko.Type == model.BlockContentDataviewSort_Desc,
-		nulls:          ko.EmptyPlacement,
-		orders:         ko.orderMap,
-		sortKeysBuffer: buffer,
+		arena:       ko.arena,
+		relationKey: string(ko.Key),
+		reverse:     ko.Type == model.BlockContentDataviewSort_Desc,
+		nulls:       ko.EmptyPlacement,
+		orders:      ko.orderMap,
+		keyBuffer:   make([]byte, 0),
 	}
 }
 
@@ -404,23 +271,9 @@ func (ko *KeyOrder) compareObjectValues(av domain.Value, bv domain.Value) int {
 		return comp
 	}
 
-	if err := ko.orderMap.SetOrders(ko.objectStore, slices.Concat(aList, bList)...); err != nil {
-		log.Errorf("failed to update absent orders: %v", err)
-	}
-
-	for _, key := range ko.objectSortKeys {
-		ko.orderMapBufferA = ko.orderMap.BuildOrderByKey(key, ko.orderMapBufferA, aList...)
-		ko.orderMapBufferB = ko.orderMap.BuildOrderByKey(key, ko.orderMapBufferB, bList...)
-		if string(ko.orderMapBufferA) != string(ko.orderMapBufferB) {
-			if key == bundle.RelationKeyOrderId || ko.disableCollator {
-				comp = domain.String(string(ko.orderMapBufferA)).Compare(domain.String(string(ko.orderMapBufferB)))
-				break
-			}
-			ko.ensureCollator()
-			comp = ko.collator.CompareString(string(ko.orderMapBufferA), string(ko.orderMapBufferB))
-			break
-		}
-	}
+	ko.orderMapBufferA = ko.orderMap.BuildOrder(ko.orderMapBufferA, aList...)
+	ko.orderMapBufferB = ko.orderMap.BuildOrder(ko.orderMapBufferB, bList...)
+	comp = bytes.Compare(ko.orderMapBufferA, ko.orderMapBufferB)
 
 	// if we cannot order by orderIds or names, let's try order by number of objects in detail value
 	if comp == 0 {

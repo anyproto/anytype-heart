@@ -38,7 +38,9 @@ func (s *service) createRelationOption(ctx context.Context, space clientspace.Sp
 	object = details.Copy()
 	object.SetString(bundle.RelationKeyUniqueKey, uniqueKey.Marshal())
 	object.SetInt64(bundle.RelationKeyLayout, int64(model.ObjectType_relationOption))
-	s.setOptionOrderId(object, space)
+	if err = s.setOptionOrderId(object, space); err != nil {
+		log.With("spaceID", space.Id()).Errorf("failed to to set orderId to new relation option: %v", err)
+	}
 
 	var objectKey string
 	if !wasGenerated {
@@ -56,7 +58,7 @@ func (s *service) createRelationOption(ctx context.Context, space clientspace.Sp
 	return s.CreateSmartBlockFromStateInSpace(ctx, space, []domain.TypeKey{bundle.TypeKeyRelationOption}, createState)
 }
 
-func (s *service) setOptionOrderId(details *domain.Details, spc clientspace.Space) {
+func (s *service) setOptionOrderId(details *domain.Details, spc clientspace.Space) error {
 	records, err := s.objectStore.SpaceIndex(spc.Id()).Query(database.Query{
 		Filters: []database.FilterRequest{
 			{
@@ -83,12 +85,12 @@ func (s *service) setOptionOrderId(details *domain.Details, spc clientspace.Spac
 	})
 
 	if err != nil {
-		log.With("spaceID", spc.Id()).Errorf("failed to query object types with orders to set orderId to new type: %v", err)
-		return
+		return fmt.Errorf("failed to query relation options with orders: %w", err)
 	}
 
 	if len(records) > 0 {
 		smallestOrderId := records[0].Details.GetString(bundle.RelationKeyOrderId)
 		details.SetString(bundle.RelationKeyOrderId, order.GetSmallestOrder(smallestOrderId))
 	}
+	return nil
 }

@@ -7,7 +7,6 @@ import (
 	"github.com/anyproto/any-store/query"
 	"golang.org/x/text/collate"
 
-	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	time_util "github.com/anyproto/anytype-heart/util/time"
@@ -168,15 +167,12 @@ func (s textSort) AppendKey(tuple anyenc.Tuple, v *anyenc.Value) anyenc.Tuple {
 }
 
 type objectSort struct {
-	arena          *anyenc.Arena
-	collatorBuffer *collate.Buffer
-	collator       *collate.Collator
-	relationKey    string
-	sortKeys       []domain.RelationKey
-	reverse        bool
-	nulls          model.BlockContentDataviewSortEmptyType
-	orders         *OrderMap
-	sortKeysBuffer [][]byte
+	arena       *anyenc.Arena
+	relationKey string
+	reverse     bool
+	nulls       model.BlockContentDataviewSortEmptyType
+	orders      *OrderMap
+	keyBuffer   []byte
 }
 
 func (s objectSort) Fields() []query.SortField {
@@ -190,10 +186,7 @@ func (s objectSort) Fields() []query.SortField {
 func (s objectSort) AppendKey(tuple anyenc.Tuple, v *anyenc.Value) anyenc.Tuple {
 	defer func() {
 		s.arena.Reset()
-		s.collatorBuffer.Reset()
-		for i := range s.sortKeysBuffer {
-			s.sortKeysBuffer[i] = s.sortKeysBuffer[i][:0]
-		}
+		s.keyBuffer = s.keyBuffer[:0]
 	}()
 
 	val := v.Get(s.relationKey)
@@ -206,12 +199,7 @@ func (s objectSort) AppendKey(tuple anyenc.Tuple, v *anyenc.Value) anyenc.Tuple 
 			ids = append(ids, string(id))
 		}
 		listLen = len(ids)
-		for i, key := range s.sortKeys {
-			s.sortKeysBuffer[i] = s.orders.BuildOrderByKey(key, s.sortKeysBuffer[i], ids...)
-			if key != bundle.RelationKeyOrderId && s.collator != nil {
-				s.sortKeysBuffer[i] = s.collator.Key(s.collatorBuffer, s.sortKeysBuffer[i])
-			}
-		}
+		s.keyBuffer = s.orders.BuildOrder(s.keyBuffer, ids...)
 	} else {
 		switch s.nulls {
 		case model.BlockContentDataviewSort_Start:
@@ -221,19 +209,12 @@ func (s objectSort) AppendKey(tuple anyenc.Tuple, v *anyenc.Value) anyenc.Tuple 
 		}
 	}
 
-	for _, key := range s.sortKeysBuffer {
-		if s.reverse {
-			tuple = tuple.AppendInverted(s.arena.NewStringBytes(key))
-		} else {
-			tuple = tuple.Append(s.arena.NewStringBytes(key))
-		}
-	}
-
-	// a hack for multiple untitled objects
 	if s.reverse {
-		tuple = tuple.AppendInverted(s.arena.NewNumberInt(listLen))
+		tuple = tuple.AppendInverted(s.arena.NewStringBytes(s.keyBuffer))
+		tuple = tuple.AppendInverted(s.arena.NewNumberInt(listLen)) // a hack for multiple untitled objects
 	} else {
-		tuple = tuple.Append(s.arena.NewNumberInt(listLen))
+		tuple = tuple.Append(s.arena.NewStringBytes(s.keyBuffer))
+		tuple = tuple.Append(s.arena.NewNumberInt(listLen)) // a hack for multiple untitled objects
 	}
 
 	return tuple

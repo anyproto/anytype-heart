@@ -2,14 +2,11 @@ package database
 
 import (
 	"bytes"
-	"fmt"
-	"math/rand"
 	"testing"
 	"time"
 
 	"github.com/anyproto/any-store/anyenc"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/mock"
 	"golang.org/x/text/collate"
 
 	"github.com/anyproto/anytype-heart/core/domain"
@@ -524,8 +521,7 @@ func TestTagStatusOrder_Compare(t *testing.T) {
 				Key:            "k",
 				Type:           model.BlockContentDataviewSort_Asc,
 				relationFormat: relation,
-				objectStore:    &stubSpaceObjectStore{},
-				orderMap:       NewOrderMap(nil),
+				orderMap:       &OrderMap{data: map[string]*domain.Details{}},
 			}
 			assertCompare(t, asc, a, b, 0)
 		})
@@ -537,12 +533,15 @@ func TestTagStatusOrder_Compare(t *testing.T) {
 				Key:            "k",
 				Type:           model.BlockContentDataviewSort_Asc,
 				relationFormat: relation,
-				objectStore:    &stubSpaceObjectStore{},
-				objectSortKeys: []domain.RelationKey{bundle.RelationKeyOrderId, bundle.RelationKeyName},
-				orderMap: NewOrderMap(map[string]*domain.Details{
-					"b": domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{"name": domain.String("a")}),
-					"a": domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{"name": domain.String("b")}),
-				}),
+				orderMap: &OrderMap{
+					store:          &stubSpaceObjectStore{},
+					collatorBuffer: &collate.Buffer{},
+					sortKeys:       []domain.RelationKey{bundle.RelationKeyOrderId, bundle.RelationKeyName},
+					data: map[string]*domain.Details{
+						"b": domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{"name": domain.String("a")}),
+						"a": domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{"name": domain.String("b")}),
+					},
+				},
 			}
 			assertCompare(t, asc, a, b, -1)
 		})
@@ -554,12 +553,15 @@ func TestTagStatusOrder_Compare(t *testing.T) {
 				Key:            "k",
 				Type:           model.BlockContentDataviewSort_Asc,
 				relationFormat: relation,
-				objectStore:    &stubSpaceObjectStore{},
-				objectSortKeys: []domain.RelationKey{bundle.RelationKeyOrderId, bundle.RelationKeyName},
-				orderMap: NewOrderMap(map[string]*domain.Details{
-					"a": domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{"orderId": domain.String("V_Sx")}),
-					"b": domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{"orderId": domain.String("VZTT")}),
-				}),
+				orderMap: &OrderMap{
+					store:          &stubSpaceObjectStore{},
+					collatorBuffer: &collate.Buffer{},
+					sortKeys:       []domain.RelationKey{bundle.RelationKeyOrderId, bundle.RelationKeyName},
+					data: map[string]*domain.Details{
+						"a": domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{"orderId": domain.String("V_Sx")}),
+						"b": domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{"orderId": domain.String("VZTT")}),
+					},
+				},
 			}
 			assertCompare(t, desc, a, b, 1)
 		})
@@ -571,12 +573,15 @@ func TestTagStatusOrder_Compare(t *testing.T) {
 				Key:            "k",
 				Type:           model.BlockContentDataviewSort_Asc,
 				relationFormat: relation,
-				objectStore:    &stubSpaceObjectStore{},
-				objectSortKeys: []domain.RelationKey{bundle.RelationKeyOrderId, bundle.RelationKeyName},
-				orderMap: NewOrderMap(map[string]*domain.Details{
-					"b": domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{"orderId": domain.String("VYTy")}),
-					"a": domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{"orderId": domain.String("VZTT")}),
-				}),
+				orderMap: &OrderMap{
+					store:          &stubSpaceObjectStore{},
+					collatorBuffer: &collate.Buffer{},
+					sortKeys:       []domain.RelationKey{bundle.RelationKeyOrderId, bundle.RelationKeyName},
+					data: map[string]*domain.Details{
+						"b": domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{"orderId": domain.String("VYTy")}),
+						"a": domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{"orderId": domain.String("VZTT")}),
+					},
+				},
 			}
 			assertCompare(t, asc, a, b, -1)
 		})
@@ -618,513 +623,6 @@ func TestIncludeTime_Compare(t *testing.T) {
 		assertCompare(t, asc, a, b, -1)
 	})
 
-}
-
-func TestOrderMap_BuildOrderByKey(t *testing.T) {
-	key := domain.RelationKey("key")
-	buf := make([]byte, 0)
-	t.Run("nil OrderMap", func(t *testing.T) {
-		var om *OrderMap
-		result := om.BuildOrderByKey(key, buf, "id1", "id2")
-		assert.Equal(t, "", string(result))
-	})
-
-	t.Run("empty data", func(t *testing.T) {
-		om := &OrderMap{data: make(map[string]*domain.Details)}
-		result := om.BuildOrderByKey(key, buf, "id1", "id2")
-		assert.Equal(t, "", string(result))
-	})
-
-	t.Run("single existing id", func(t *testing.T) {
-		om := &OrderMap{
-			data: map[string]*domain.Details{
-				"id1": domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
-					key: domain.String("BBBBTag A"),
-				}),
-			},
-		}
-		result := om.BuildOrderByKey(key, buf, "id1")
-		assert.Equal(t, "BBBBTag A", string(result))
-	})
-
-	t.Run("multiple existing ids", func(t *testing.T) {
-		om := &OrderMap{
-			data: map[string]*domain.Details{
-				"id1": domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
-					key: domain.String("BBBBTag A"),
-				}),
-				"id2": domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
-					key: domain.String("CCCCTag B"),
-				}),
-			},
-		}
-		result := om.BuildOrderByKey(key, buf, "id1", "id2")
-		assert.Equal(t, "BBBBTag ACCCCTag B", string(result))
-	})
-
-	t.Run("mixed existing and non-existing ids", func(t *testing.T) {
-		om := &OrderMap{
-			data: map[string]*domain.Details{
-				"id1": domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
-					key: domain.String("BBBBTag A"),
-				}),
-			},
-		}
-		result := om.BuildOrderByKey(key, buf, "id1", "nonexistent", "id1")
-		assert.Equal(t, "BBBBTag ABBBBTag A", string(result))
-	})
-
-	t.Run("no ids provided", func(t *testing.T) {
-		om := &OrderMap{
-			data: map[string]*domain.Details{
-				"id1": domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
-					key: domain.String("BBBBTag A"),
-				}),
-			},
-		}
-		result := om.BuildOrderByKey(key, buf)
-		assert.Equal(t, "", string(result))
-	})
-
-	t.Run("not existing key", func(t *testing.T) {
-		om := &OrderMap{
-			data: map[string]*domain.Details{
-				"id1": domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
-					key: domain.String("BBBBTag A"),
-				}),
-			},
-		}
-		result := om.BuildOrderByKey("not_existing_key", buf, "id1")
-		assert.Equal(t, "", string(result))
-	})
-}
-
-func BenchmarkOrderMap_BuildOrderByKey(b *testing.B) {
-	var (
-		key  = domain.RelationKey("key")
-		data = make(map[string]*domain.Details, 100)
-		ids  = make([]string, 100)
-	)
-
-	for i := 0; i < 100; i++ {
-		ids[i] = fmt.Sprintf("id%d", i)
-		data[ids[i]] = domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
-			key: domain.String(fmt.Sprintf("%d", rand.Int63())),
-		})
-	}
-
-	var (
-		om   = NewOrderMap(data)
-		buf  = make([]byte, 0)
-		rng  = rand.New(rand.NewSource(132211))
-		swap = func(i, j int) { ids[i], ids[j] = ids[j], ids[i] }
-	)
-
-	b.ReportAllocs()
-	b.ResetTimer()
-
-	for i := 0; i < b.N; i++ {
-		rng.Shuffle(100, swap)
-		buf = om.BuildOrderByKey(key, buf, ids...)
-	}
-}
-
-func TestOrderMap_Update(t *testing.T) {
-	t.Run("nil OrderMap", func(t *testing.T) {
-		var om *OrderMap
-		details := []*domain.Details{
-			domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
-				bundle.RelationKeyId:      domain.String("id1"),
-				bundle.RelationKeyName:    domain.String("Updated Name"),
-				bundle.RelationKeyOrderId: domain.String("DDDD"),
-			}),
-		}
-		updated := om.Update(details)
-		assert.False(t, updated)
-	})
-
-	t.Run("empty data", func(t *testing.T) {
-		om := &OrderMap{data: make(map[string]*domain.Details)}
-		details := []*domain.Details{
-			domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
-				bundle.RelationKeyId:      domain.String("id1"),
-				bundle.RelationKeyName:    domain.String("Updated Name"),
-				bundle.RelationKeyOrderId: domain.String("DDDD"),
-			}),
-		}
-		updated := om.Update(details)
-		assert.False(t, updated)
-	})
-
-	t.Run("update existing object with new orderId", func(t *testing.T) {
-		original := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
-			bundle.RelationKeyName:    domain.String("Original Name"),
-			bundle.RelationKeyOrderId: domain.String("BBBB"),
-		})
-		om := &OrderMap{
-			data: map[string]*domain.Details{
-				"id1": original,
-			},
-		}
-
-		details := []*domain.Details{
-			domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
-				bundle.RelationKeyId:      domain.String("id1"),
-				bundle.RelationKeyName:    domain.String("Original Name"),
-				bundle.RelationKeyOrderId: domain.String("CCCC"),
-			}),
-		}
-
-		updated := om.Update(details)
-		assert.True(t, updated)
-		assert.Equal(t, "CCCC", original.GetString(bundle.RelationKeyOrderId))
-	})
-
-	t.Run("update existing object with new name", func(t *testing.T) {
-		original := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
-			bundle.RelationKeyName:    domain.String("Original Name"),
-			bundle.RelationKeyOrderId: domain.String("BBBB"),
-		})
-		om := &OrderMap{
-			data: map[string]*domain.Details{
-				"id1": original,
-			},
-		}
-
-		details := []*domain.Details{
-			domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
-				bundle.RelationKeyId:      domain.String("id1"),
-				bundle.RelationKeyName:    domain.String("Updated Name"),
-				bundle.RelationKeyOrderId: domain.String("BBBB"),
-			}),
-		}
-
-		updated := om.Update(details)
-		assert.True(t, updated)
-		assert.Equal(t, "Updated Name", original.GetString(bundle.RelationKeyName))
-	})
-
-	t.Run("update existing object with no changes", func(t *testing.T) {
-		original := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
-			bundle.RelationKeyName:    domain.String("Same Name"),
-			bundle.RelationKeyOrderId: domain.String("BBBB"),
-		})
-		om := &OrderMap{
-			data: map[string]*domain.Details{
-				"id1": original,
-			},
-		}
-
-		details := []*domain.Details{
-			domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
-				bundle.RelationKeyId:      domain.String("id1"),
-				bundle.RelationKeyName:    domain.String("Same Name"),
-				bundle.RelationKeyOrderId: domain.String("BBBB"),
-			}),
-		}
-
-		updated := om.Update(details)
-		assert.False(t, updated)
-	})
-
-	t.Run("update non-existing object", func(t *testing.T) {
-		om := &OrderMap{
-			data: map[string]*domain.Details{
-				"id1": domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
-					bundle.RelationKeyName: domain.String("Existing"),
-				}),
-			},
-		}
-
-		details := []*domain.Details{
-			domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
-				bundle.RelationKeyId:   domain.String("id2"),
-				bundle.RelationKeyName: domain.String("Non-existing"),
-			}),
-		}
-
-		updated := om.Update(details)
-		assert.False(t, updated)
-		assert.Len(t, om.data, 1) // Should still have only the original object
-	})
-
-	t.Run("update multiple objects", func(t *testing.T) {
-		obj1 := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
-			bundle.RelationKeyName:    domain.String("Name1"),
-			bundle.RelationKeyOrderId: domain.String("BBBB"),
-		})
-		obj2 := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
-			bundle.RelationKeyName:    domain.String("Name2"),
-			bundle.RelationKeyOrderId: domain.String("CCCC"),
-		})
-
-		om := &OrderMap{
-			data: map[string]*domain.Details{
-				"id1": obj1,
-				"id2": obj2,
-			},
-		}
-
-		details := []*domain.Details{
-			domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
-				bundle.RelationKeyId:      domain.String("id1"),
-				bundle.RelationKeyName:    domain.String("Updated Name1"),
-				bundle.RelationKeyOrderId: domain.String("BBBB"),
-			}),
-			domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
-				bundle.RelationKeyId:      domain.String("id2"),
-				bundle.RelationKeyName:    domain.String("Name2"),
-				bundle.RelationKeyOrderId: domain.String("DDDD"),
-			}),
-		}
-
-		updated := om.Update(details)
-		assert.True(t, updated)
-		assert.Equal(t, "Updated Name1", obj1.GetString(bundle.RelationKeyName))
-		assert.Equal(t, "DDDD", obj2.GetString(bundle.RelationKeyOrderId))
-	})
-}
-
-// Mock ObjectStore for testing
-type mockObjectStore struct {
-	mock.Mock
-}
-
-func (m *mockObjectStore) SpaceId() string {
-	args := m.Called()
-	return args.String(0)
-}
-
-func (m *mockObjectStore) Query(q Query) (records []Record, err error) {
-	args := m.Called(q)
-	return args.Get(0).([]Record), args.Error(1)
-}
-
-func (m *mockObjectStore) QueryRaw(filters *Filters, limit int, offset int) ([]Record, error) {
-	args := m.Called(filters, limit, offset)
-	return args.Get(0).([]Record), args.Error(1)
-}
-
-func (m *mockObjectStore) QueryIterate(q Query, proc func(details *domain.Details)) (err error) {
-	args := m.Called(q, mock.Anything)
-	return args.Error(0)
-}
-
-func (m *mockObjectStore) GetRelationFormatByKey(key domain.RelationKey) (model.RelationFormat, error) {
-	args := m.Called(key)
-	return args.Get(0).(model.RelationFormat), args.Error(1)
-}
-
-func (m *mockObjectStore) ListRelationOptions(relationKey domain.RelationKey) (options []*model.RelationOption, err error) {
-	args := m.Called(relationKey)
-	return args.Get(0).([]*model.RelationOption), args.Error(1)
-}
-
-func TestOrderMap_SetOrders(t *testing.T) {
-	t.Run("nil store", func(t *testing.T) {
-		om := &OrderMap{data: make(map[string]*domain.Details)}
-		err := om.SetOrders(nil, "id1", "id2")
-		assert.Empty(t, om.data)
-		assert.NoError(t, err)
-	})
-
-	t.Run("nil data initialized", func(t *testing.T) {
-		om := &OrderMap{}
-		store := &mockObjectStore{}
-
-		records := []Record{
-			{
-				Details: domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
-					bundle.RelationKeyId:      domain.String("id1"),
-					bundle.RelationKeyName:    domain.String("Tag A"),
-					bundle.RelationKeyOrderId: domain.String("BBBB"),
-				}),
-			},
-		}
-
-		store.On("Query", mock.AnythingOfType("Query")).Return(records, nil)
-
-		err := om.SetOrders(store, "id1")
-
-		assert.NoError(t, err)
-		assert.Len(t, om.data, 1)
-		assert.Contains(t, om.data, "id1")
-		assert.Equal(t, "Tag A", om.data["id1"].GetString(bundle.RelationKeyName))
-		assert.Equal(t, "BBBB", om.data["id1"].GetString(bundle.RelationKeyOrderId))
-		store.AssertExpectations(t)
-	})
-
-	t.Run("some ids already exist", func(t *testing.T) {
-		existing := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
-			bundle.RelationKeyName: domain.String("Existing"),
-		})
-		om := &OrderMap{
-			data: map[string]*domain.Details{
-				"id1": existing,
-			},
-		}
-
-		store := &mockObjectStore{}
-		records := []Record{
-			{
-				Details: domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
-					bundle.RelationKeyId:      domain.String("id2"),
-					bundle.RelationKeyName:    domain.String("New Tag"),
-					bundle.RelationKeyOrderId: domain.String("CCCC"),
-				}),
-			},
-		}
-
-		store.On("Query", mock.AnythingOfType("Query")).Return(records, nil)
-
-		err := om.SetOrders(store, "id1", "id2") // id1 exists, id2 is new
-
-		assert.NoError(t, err)
-		assert.Len(t, om.data, 2)
-		assert.Equal(t, existing, om.data["id1"]) // Should be unchanged
-		assert.Equal(t, "New Tag", om.data["id2"].GetString(bundle.RelationKeyName))
-		store.AssertExpectations(t)
-	})
-
-	t.Run("all ids already exist", func(t *testing.T) {
-		om := &OrderMap{
-			data: map[string]*domain.Details{
-				"id1": domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
-					bundle.RelationKeyName: domain.String("Existing1"),
-				}),
-				"id2": domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
-					bundle.RelationKeyName: domain.String("Existing2"),
-				}),
-			},
-		}
-
-		store := &mockObjectStore{}
-		// Should not call Query since all ids exist
-
-		err := om.SetOrders(store, "id1", "id2")
-
-		assert.NoError(t, err)
-		assert.Len(t, om.data, 2)
-		store.AssertNotCalled(t, "Query")
-	})
-
-	t.Run("query error", func(t *testing.T) {
-		om := &OrderMap{data: make(map[string]*domain.Details)}
-		store := &mockObjectStore{}
-
-		store.On("Query", mock.AnythingOfType("Query")).Return([]Record{}, assert.AnError)
-
-		err := om.SetOrders(store, "id1")
-
-		assert.Error(t, err)
-		assert.Empty(t, om.data)
-		store.AssertExpectations(t)
-	})
-}
-
-func TestOptionsToMap(t *testing.T) {
-	t.Run("store returns options", func(t *testing.T) {
-		store := &mockObjectStore{}
-		options := []*model.RelationOption{
-			{
-				Id:      "opt1",
-				Text:    "Option 1",
-				OrderId: "BBBB",
-			},
-			{
-				Id:      "opt2",
-				Text:    "Option 2",
-				OrderId: "CCCC",
-			},
-			{
-				Id:   "opt3",
-				Text: "Option 3",
-				// No OrderId
-			},
-		}
-
-		store.On("ListRelationOptions", domain.RelationKey("status")).Return(options, nil)
-
-		result := optionsToMap("status", store)
-
-		assert.Len(t, result, 3)
-		assert.Equal(t, "Option 1", result["opt1"].GetString(bundle.RelationKeyName))
-		assert.Equal(t, "BBBB", result["opt1"].GetString(bundle.RelationKeyOrderId))
-		assert.Equal(t, "Option 2", result["opt2"].GetString(bundle.RelationKeyName))
-		assert.Equal(t, "CCCC", result["opt2"].GetString(bundle.RelationKeyOrderId))
-		assert.Equal(t, "Option 3", result["opt3"].GetString(bundle.RelationKeyName))
-		assert.Equal(t, "", result["opt3"].GetString(bundle.RelationKeyOrderId))
-
-		store.AssertExpectations(t)
-	})
-
-	t.Run("store returns error", func(t *testing.T) {
-		store := &mockObjectStore{}
-		store.On("ListRelationOptions", domain.RelationKey("status")).Return([]*model.RelationOption{}, assert.AnError)
-
-		result := optionsToMap("status", store)
-
-		assert.Empty(t, result)
-		store.AssertExpectations(t)
-	})
-
-	t.Run("empty options", func(t *testing.T) {
-		store := &mockObjectStore{}
-		store.On("ListRelationOptions", domain.RelationKey("status")).Return([]*model.RelationOption{}, nil)
-
-		result := optionsToMap("status", store)
-
-		assert.Empty(t, result)
-		store.AssertExpectations(t)
-	})
-}
-
-func TestObjectsToMap(t *testing.T) {
-	t.Run("successful query with filtering", func(t *testing.T) {
-		store := &mockObjectStore{}
-
-		// For this test, we'll mock the function to return no error, indicating success
-		// The actual filtering logic is tested in the real implementation
-		store.On("QueryIterate", mock.AnythingOfType("Query"), mock.Anything).Return(nil)
-
-		result := objectsToMap("tags", store)
-
-		// Since we can't easily simulate the callback with the new type signature,
-		// we'll just verify the function doesn't crash and returns empty result
-		assert.NotNil(t, result)
-		store.AssertExpectations(t)
-	})
-
-	t.Run("query error", func(t *testing.T) {
-		store := &mockObjectStore{}
-		store.On("QueryIterate", mock.AnythingOfType("Query"), mock.Anything).Return(assert.AnError)
-
-		result := objectsToMap("tags", store)
-
-		assert.Nil(t, result)
-		store.AssertExpectations(t)
-	})
-
-	t.Run("no objects found", func(t *testing.T) {
-		store := &mockObjectStore{}
-		store.On("QueryIterate", mock.AnythingOfType("Query"), mock.Anything).Return(nil)
-
-		result := objectsToMap("tags", store)
-
-		assert.Empty(t, result)
-		store.AssertExpectations(t)
-	})
-
-	t.Run("objects with empty relations", func(t *testing.T) {
-		store := &mockObjectStore{}
-
-		store.On("QueryIterate", mock.AnythingOfType("Query"), mock.Anything).Return(nil)
-
-		result := objectsToMap("tags", store)
-
-		assert.Empty(t, result) // No objects should remain since no relations exist
-		store.AssertExpectations(t)
-	})
 }
 
 func TestKeyOrder_Compare_byDate(t *testing.T) {
@@ -1227,9 +725,7 @@ func TestKeyOrder_Compare_byDate(t *testing.T) {
 func TestKeyOrder_Compare_byTag(t *testing.T) {
 	key := bundle.RelationKeyTag
 
-	om := NewOrderMap(map[string]*domain.Details{
-		// note that lexigraphically VzVz < vAvA because 'V' < 'v', however, collator states that VzVz > vAvA, so
-		// correct orders are: [first < second] AND [vava < vzvz]
+	data := map[string]*domain.Details{
 		"first": domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
 			bundle.RelationKeyName:    domain.String("First"),
 			bundle.RelationKeyOrderId: domain.String("VzVz"),
@@ -1268,7 +764,13 @@ func TestKeyOrder_Compare_byTag(t *testing.T) {
 		"nullOrderId": domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
 			bundle.RelationKeyOrderId: domain.Null(),
 		}),
-	})
+	}
+
+	om := &OrderMap{
+		store:    &stubSpaceObjectStore{},
+		sortKeys: []domain.RelationKey{bundle.RelationKeyOrderId, bundle.RelationKeyName},
+		data:     data,
+	}
 
 	ko := NewKeyOrder(&stubSpaceObjectStore{}, &anyenc.Arena{}, &collate.Buffer{}, SortRequest{RelationKey: key})
 	ko.orderMap = om
@@ -1331,7 +833,6 @@ func TestKeyOrder_Compare_byTag(t *testing.T) {
 		assertCompare(t, ko, empty1, empty3, -1)           // [""] < ["","",""] because of list length
 		assertCompare(t, ko, empty3, forth, -1)            // ["", "", ""] < ["forth"] because names concats: "" < "Forth"
 		assertCompare(t, ko, forth, vavaVZVZ, -1)          // "Forth" < "vAvAVzVz"
-		assertCompare(t, ko, vavaVZVZ, vzvzEmpty, -1)      // "vAvAVzVz" < "VzVz"
 		assertCompare(t, ko, vzvzEmpty, firstSecond, -1)   // ["vzvz", "empty"] < ["first", "second"] because orderIds: "" < "VzVzvAvA"
 		assertCompare(t, ko, firstSecond, secondThird, -1) // ["first", "second"] < ["second", "third"] <== "VzVzvAvA" < "vAvAxAxA"
 		assertCompare(t, ko, secondThird, third, -1)       // ["second", "third"] < ["third"] <= "vAvAxAxA" < "xAxA"
@@ -1347,7 +848,6 @@ func TestKeyOrder_Compare_byTag(t *testing.T) {
 		assertCompare(t, ko, empty1, empty3, -1)           // [""] < ["","",""] because of list length
 		assertCompare(t, ko, empty3, forth, -1)            // ["", "", ""] < ["forth"] because names concats: "" < "Forth"
 		assertCompare(t, ko, forth, vavaVZVZ, -1)          // "Forth" < "vAvAVzVz"
-		assertCompare(t, ko, vavaVZVZ, vzvzEmpty, -1)      // "vAvAVzVz" < "VzVz"
 		assertCompare(t, ko, vzvzEmpty, firstSecond, -1)   // ["vzvz", "empty"] < ["first", "second"] because orderIds: "" < "VzVzvAvA"
 		assertCompare(t, ko, firstSecond, secondThird, -1) // ["first", "second"] < ["second", "third"] <== "VzVzvAvA" < "vAvAxAxA"
 		assertCompare(t, ko, secondThird, third, -1)       // ["second", "third"] < ["third"] <= "vAvAxAxA" < "xAxA"
@@ -1362,7 +862,6 @@ func TestKeyOrder_Compare_byTag(t *testing.T) {
 		assertCompare(t, ko, empty1, empty3, +1)
 		assertCompare(t, ko, empty3, forth, +1)
 		assertCompare(t, ko, forth, vavaVZVZ, +1)
-		assertCompare(t, ko, vavaVZVZ, vzvzEmpty, +1)
 		assertCompare(t, ko, vzvzEmpty, firstSecond, +1)
 		assertCompare(t, ko, firstSecond, secondThird, +1)
 		assertCompare(t, ko, secondThird, third, +1)
@@ -1376,7 +875,6 @@ func TestKeyOrder_Compare_byTag(t *testing.T) {
 		assertCompare(t, ko, empty1, empty3, +1)
 		assertCompare(t, ko, empty3, forth, +1)
 		assertCompare(t, ko, forth, vavaVZVZ, +1)
-		assertCompare(t, ko, vavaVZVZ, vzvzEmpty, +1)
 		assertCompare(t, ko, vzvzEmpty, firstSecond, +1)
 		assertCompare(t, ko, firstSecond, secondThird, +1)
 		assertCompare(t, ko, secondThird, third, +1)
