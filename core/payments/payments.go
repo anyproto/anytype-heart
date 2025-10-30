@@ -119,7 +119,7 @@ type Service interface {
 	CodeGetInfo(ctx context.Context, req *pb.RpcMembershipCodeGetInfoRequest) (*pb.RpcMembershipCodeGetInfoResponse, error)
 	CodeRedeem(ctx context.Context, req *pb.RpcMembershipCodeRedeemRequest) (*pb.RpcMembershipCodeRedeemResponse, error)
 
-	V2WebAuth(ctx context.Context, req *pb.RpcMembershipV2WebAuthRequest) (*pb.RpcMembershipV2WebAuthResponse, error)
+	V2GetPortalLink(ctx context.Context, req *pb.RpcMembershipV2GetPortalLinkRequest) (*pb.RpcMembershipV2GetPortalLinkResponse, error)
 	V2GetProducts(ctx context.Context, req *pb.RpcMembershipV2GetProductsRequest) (*pb.RpcMembershipV2GetProductsResponse, error)
 	V2GetStatus(ctx context.Context, req *pb.RpcMembershipV2GetStatusRequest) (*pb.RpcMembershipV2GetStatusResponse, error)
 
@@ -134,7 +134,7 @@ type service struct {
 	cfg       *config.Config
 	cache     cache.CacheService
 	ppclient  ppclient.AnyPpClientService
-	ppclient2 ppclient2.AnyPpClientService2
+	ppclient2 ppclient2.AnyPpClientServiceV2
 
 	wallet                 wallet.Wallet
 	getSubscriptionLimiter chan struct{}
@@ -170,7 +170,7 @@ func (s *service) Init(a *app.App) (err error) {
 	s.cache = app.MustComponent[cache.CacheService](a)
 	s.emailCollector = app.MustComponent[emailcollector.EmailCollector](a)
 	s.ppclient = app.MustComponent[ppclient.AnyPpClientService](a)
-	s.ppclient2 = app.MustComponent[ppclient2.AnyPpClientService2](a)
+	s.ppclient2 = app.MustComponent[ppclient2.AnyPpClientServiceV2](a)
 	s.wallet = app.MustComponent[wallet.Wallet](a)
 	s.ns = app.MustComponent[nameservice.Service](a)
 	s.eventSender = app.MustComponent[event.Sender](a)
@@ -407,7 +407,8 @@ func (s *service) fetchTiers(ctx context.Context) ([]*model.MembershipTierData, 
 	// Make network request
 	bsr := proto.GetTiersRequest{
 		OwnerAnyId: s.wallet.Account().SignKey.GetPublic().Account(),
-		Locale:     "", // Use default locale for background refresh
+		Locale:     "",    // Use default locale for background refresh
+		Version:    "2.0", // Use default (new) version
 	}
 
 	payload, err := bsr.MarshalVT()
@@ -595,6 +596,8 @@ func (s *service) RegisterPaymentRequest(ctx context.Context, req *pb.RpcMembers
 		RequestedAnyName: nameservice.NsNameToFullName(req.NsName, req.NsNameType),
 
 		UserEmail: req.UserEmail,
+
+		IsMonthly: req.IsMonthly,
 	}
 
 	payload, err := bsr.MarshalVT()
@@ -985,20 +988,19 @@ func (s *service) CodeRedeem(ctx context.Context, req *pb.RpcMembershipCodeRedee
 	}, nil
 }
 
-func (s *service) V2WebAuth(ctx context.Context, req *pb.RpcMembershipV2WebAuthRequest) (*pb.RpcMembershipV2WebAuthResponse, error) {
-	webAuth := proto.Membership2_WebAuthRequest{}
+func (s *service) V2GetPortalLink(ctx context.Context, req *pb.RpcMembershipV2GetPortalLinkRequest) (*pb.RpcMembershipV2GetPortalLinkResponse, error) {
+	webAuth := proto.MembershipV2_WebAuthRequest{}
 
 	res, err := s.ppclient2.WebAuth(ctx, &webAuth)
 	if err != nil {
 		return nil, err
 	}
 
-	return &pb.RpcMembershipV2WebAuthResponse{
-		Jwt: res.Jwt,
-		Url: res.Url,
+	return &pb.RpcMembershipV2GetPortalLinkResponse{
+		UrlWithJwt: res.Url,
 
-		Error: &pb.RpcMembershipV2WebAuthResponseError{
-			Code: pb.RpcMembershipV2WebAuthResponseError_NULL,
+		Error: &pb.RpcMembershipV2GetPortalLinkResponseError{
+			Code: pb.RpcMembershipV2GetPortalLinkResponseError_NULL,
 		},
 	}, nil
 }

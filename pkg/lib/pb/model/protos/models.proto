@@ -1344,6 +1344,10 @@ message Membership {
     // if the email was verified by the user or set during the checkout - it will be here
     string userEmail = 9;
     bool subscribeToNewsletter = 10;
+    // for tiers that offer yearly/monthly switch
+    bool isMonthly = 11;
+
+    string teamOwner = 12;
 }
 
 message MembershipTierData {
@@ -1395,6 +1399,14 @@ message MembershipTierData {
 
     // "limited offer" or somehing like that
     string offer = 19;
+
+// version 2 only fields (specify version in GetTiersRequest request first):
+    // if the tier is yearly (periodType above is PeriodTypeYears) - then also we provide a monthly price here
+    uint32 priceStripeUsdCentsMonthly = 21;
+
+    bool isIntroPlan = 22;
+
+    bool isUpgradeable = 23;
 }
 
 message MembershipV2 {

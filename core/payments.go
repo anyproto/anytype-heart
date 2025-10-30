@@ -396,21 +396,20 @@ func (mw *Middleware) MembershipCodeRedeem(ctx context.Context, req *pb.RpcMembe
 	return out
 }
 
-func (mw *Middleware) MembershipV2WebAuth(ctx context.Context, req *pb.RpcMembershipV2WebAuthRequest) *pb.RpcMembershipV2WebAuthResponse {
+func (mw *Middleware) MembershipV2GetPortalLink(ctx context.Context, req *pb.RpcMembershipV2GetPortalLinkRequest) *pb.RpcMembershipV2GetPortalLinkResponse {
 	ps := mustService[payments.Service](mw)
-	out, err := ps.V2WebAuth(ctx, req)
+	out, err := ps.V2GetPortalLink(ctx, req)
 
 	if err != nil {
 		code := mapErrorCode(err,
-			errToCode(proto.ErrInvalidSignature, pb.RpcMembershipV2WebAuthResponseError_NOT_LOGGED_IN),
-			errToCode(proto.ErrEthAddressEmpty, pb.RpcMembershipV2WebAuthResponseError_NOT_LOGGED_IN),
-			errToCode(payments.ErrNoConnection, pb.RpcMembershipV2WebAuthResponseError_PAYMENT_NODE_ERROR),
-			errToCode(net.ErrUnableToConnect, pb.RpcMembershipV2WebAuthResponseError_PAYMENT_NODE_ERROR),
-			// use special return pb.RpcMembershipWebAuthResponseError_AUTH_BAD
+			errToCode(proto.ErrInvalidSignature, pb.RpcMembershipV2GetPortalLinkResponseError_NOT_LOGGED_IN),
+			errToCode(proto.ErrEthAddressEmpty, pb.RpcMembershipV2GetPortalLinkResponseError_NOT_LOGGED_IN),
+			errToCode(payments.ErrNoConnection, pb.RpcMembershipV2GetPortalLinkResponseError_PAYMENT_NODE_ERROR),
+			errToCode(net.ErrUnableToConnect, pb.RpcMembershipV2GetPortalLinkResponseError_PAYMENT_NODE_ERROR),
 		)
 
-		return &pb.RpcMembershipV2WebAuthResponse{
-			Error: &pb.RpcMembershipV2WebAuthResponseError{
+		return &pb.RpcMembershipV2GetPortalLinkResponse{
+			Error: &pb.RpcMembershipV2GetPortalLinkResponseError{
 				Code:        code,
 				Description: getErrorDescription(err),
 			},
