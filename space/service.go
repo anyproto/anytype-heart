@@ -15,12 +15,13 @@ import (
 	"github.com/anyproto/any-sync/commonspace/object/tree/treechangeproto"
 	"github.com/anyproto/any-sync/commonspace/spacesyncproto"
 	"github.com/anyproto/any-sync/util/crypto"
-	"github.com/anyproto/anytype-heart/space/inboxclient"
+	"github.com/anyproto/anytype-heart/core/inboxclient"
 	"github.com/ipfs/go-cid"
 	"go.uber.org/zap"
 
 	"github.com/anyproto/anytype-heart/core/anytype/config"
 	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/core/onetoone"
 	"github.com/anyproto/anytype-heart/core/subscription"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
@@ -104,6 +105,7 @@ type service struct {
 	aclJoiner           AclJoiner
 	accountService      accountservice.Service
 	inboxClient         inboxclient.InboxClient
+	onetoone            onetoone.Service
 	identityService     dependencies.IdentityService
 	config              *config.Config
 	notificationService NotificationSender

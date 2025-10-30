@@ -21,6 +21,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/anytype"
 	"github.com/anyproto/anytype-heart/core/anytype/account"
 	"github.com/anyproto/anytype-heart/core/block"
+	"github.com/anyproto/anytype-heart/core/inboxclient"
 	walletComp "github.com/anyproto/anytype-heart/core/wallet"
 	"github.com/anyproto/anytype-heart/metrics"
 	"github.com/anyproto/anytype-heart/pb"
@@ -28,7 +29,6 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space"
-	"github.com/anyproto/anytype-heart/space/inboxclient"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
@@ -235,6 +235,7 @@ func (s *Service) processOneToOneInvite(packet *coordinatorproto.InboxPacket) (e
 		WithChat: true,
 	}
 
+	//TODO: lol, you forgot to put RegisterIdentity()
 	spaceId, _, err := bs.CreateWorkspace(context.TODO(), req)
 	if err != nil {
 		return

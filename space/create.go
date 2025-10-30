@@ -33,7 +33,7 @@ func (s *service) CreateOneToOneSendInbox(ctx context.Context, description *spac
 
 	// add que to inbox, if no connection, put into que
 	// otherwise space
-	err = s.inboxClient.SendOneToOneInvite(ctx, bobProfile)
+	err = s.onetoone.SendOneToOneInvite(ctx, bobProfile)
 	return
 }
 
