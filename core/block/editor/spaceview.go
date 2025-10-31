@@ -197,7 +197,6 @@ func (s *SpaceView) AddPushNotificationMuteIds(ctx session.Context, muteIds []st
 	}
 	st.SetDetail(bundle.RelationKeySpacePushNotificationCustomMuteIds, domain.StringList(currentMuteIds))
 
-	st.SetDetail(bundle.RelationKeySpacePushNotificationMode, domain.Int64(pb.RpcPushNotificationSetSpaceMode_Custom))
 	return s.Apply(st)
 }
 
@@ -221,12 +220,10 @@ func (s *SpaceView) AddPushNotificationMentionIds(ctx session.Context, mentionId
 		}
 	}
 	st.SetDetail(bundle.RelationKeySpacePushNotificationCustomMentionIds, domain.StringList(currentMentionIds))
-
-	st.SetDetail(bundle.RelationKeySpacePushNotificationMode, domain.Int64(pb.RpcPushNotificationSetSpaceMode_Custom))
 	return s.Apply(st)
 }
 
-func (s *SpaceView) AddPushNotificationAllIds(ctx session.Context, allIds []string) (err error) {
+func (s *SpaceView) ResetPushNotificationIds(ctx session.Context, allIds []string) (err error) {
 	st := s.NewStateCtx(ctx)
 	details := st.Details()
 	currentMuteIds := details.GetStringList(bundle.RelationKeySpacePushNotificationCustomMuteIds)
@@ -251,7 +248,6 @@ func (s *SpaceView) AddPushNotificationAllIds(ctx session.Context, allIds []stri
 		st.SetDetail(bundle.RelationKeySpacePushNotificationCustomMentionIds, domain.StringList(filteredMentionIds))
 	}
 
-	st.SetDetail(bundle.RelationKeySpacePushNotificationMode, domain.Int64(pb.RpcPushNotificationSetSpaceMode_Custom))
 	return s.Apply(st)
 }
 

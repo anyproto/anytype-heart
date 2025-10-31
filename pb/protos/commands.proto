@@ -8710,7 +8710,6 @@ message Rpc {
                 All = 0;
                 Mentions = 1;
                 Nothing = 2;
-                Custom = 3;
             }
 
             message Response {
@@ -8771,7 +8770,7 @@ message Rpc {
             }
         }
 
-        message AddAllIds {
+        message ResetIds {
             message Request {
                 string spaceId = 1;
                 repeated string chatIds = 2;

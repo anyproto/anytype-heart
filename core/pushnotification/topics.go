@@ -85,19 +85,23 @@ func (c *spaceTopicsCollection) SetSpaceViewStatus(status *spaceViewStatus, chat
 		}
 	}
 
-	switch status.mode {
-	case pb.RpcPushNotificationSetSpaceMode_All:
-		c.localTopics = append(c.localTopics, makeTopic(ChatsTopicName), makeTopic(c.identity))
-	case pb.RpcPushNotificationSetSpaceMode_Mentions:
-		c.localTopics = append(c.localTopics, makeTopic(c.identity))
-	case pb.RpcPushNotificationSetSpaceMode_Custom:
+	hasCustomIds := len(status.muteIds) > 0 || len(status.mentionIds) > 0
+	if !hasCustomIds {
+		// there are no custom ids, so we can use common topics
+		switch status.mode {
+		case pb.RpcPushNotificationSetSpaceMode_All:
+			c.localTopics = append(c.localTopics, makeTopic(ChatsTopicName), makeTopic(c.identity))
+		case pb.RpcPushNotificationSetSpaceMode_Mentions:
+			c.localTopics = append(c.localTopics, makeTopic(c.identity))
+		}
+	} else if status.mode != pb.RpcPushNotificationSetSpaceMode_Nothing {
 		for _, chatId := range chatIds {
 			if slices.Contains(status.muteIds, chatId) {
 				continue
 			}
 			if slices.Contains(status.mentionIds, chatId) {
 				c.localTopics = append(c.localTopics, makeTopic(ChatsTopicName, sha256hex(chatId), c.identity))
-			} else {
+			} else if status.mode == pb.RpcPushNotificationSetSpaceMode_All {
 				c.localTopics = append(c.localTopics, makeTopic(ChatsTopicName, sha256hex(chatId)))
 			}
 		}

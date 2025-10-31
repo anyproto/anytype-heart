@@ -166,7 +166,7 @@ func TestSpaceView_AddPushNotificationAllIds(t *testing.T) {
 	require.NoError(t, err)
 	err = fx.AddPushNotificationMentionIds(nil, []string{"id1", "id2", "id1"})
 	require.NoError(t, err)
-	err = fx.AddPushNotificationAllIds(nil, []string{"id1", "id3", "id4"})
+	err = fx.ResetPushNotificationIds(nil, []string{"id1", "id3", "id4"})
 	require.NoError(t, err)
 	assert.Equal(t, []string{"id2"}, fx.Details().GetStringList(bundle.RelationKeySpacePushNotificationCustomMentionIds))
 	assert.Equal(t, []string{}, fx.Details().GetStringList(bundle.RelationKeySpacePushNotificationCustomMuteIds))

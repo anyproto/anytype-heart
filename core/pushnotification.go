@@ -85,11 +85,11 @@ func (mw *Middleware) PushNotificationAddMentionIds(cctx context.Context, req *p
 	return response(pb.RpcPushNotificationAddMentionIdsResponseError_NULL, nil)
 }
 
-func (mw *Middleware) PushNotificationAddAllIds(cctx context.Context, req *pb.RpcPushNotificationAddAllIdsRequest) *pb.RpcPushNotificationAddAllIdsResponse {
+func (mw *Middleware) PushNotificationResetIds(cctx context.Context, req *pb.RpcPushNotificationResetIdsRequest) *pb.RpcPushNotificationResetIdsResponse {
 	ctx := mw.newContext(cctx)
-	response := func(code pb.RpcPushNotificationAddAllIdsResponseErrorCode, err error) *pb.RpcPushNotificationAddAllIdsResponse {
-		m := &pb.RpcPushNotificationAddAllIdsResponse{
-			Error: &pb.RpcPushNotificationAddAllIdsResponseError{Code: code},
+	response := func(code pb.RpcPushNotificationResetIdsResponseErrorCode, err error) *pb.RpcPushNotificationResetIdsResponse {
+		m := &pb.RpcPushNotificationResetIdsResponse{
+			Error: &pb.RpcPushNotificationResetIdsResponseError{Code: code},
 			Event: mw.getResponseEvent(ctx),
 		}
 		if err != nil {
@@ -98,10 +98,10 @@ func (mw *Middleware) PushNotificationAddAllIds(cctx context.Context, req *pb.Rp
 		return m
 	}
 	err := mustService[space.Service](mw).TechSpace().DoSpaceView(cctx, req.SpaceId, func(spaceView techspace.SpaceView) error {
-		return spaceView.AddPushNotificationAllIds(ctx, req.ChatIds)
+		return spaceView.ResetPushNotificationIds(ctx, req.ChatIds)
 	})
 	if err != nil {
-		return response(pb.RpcPushNotificationAddAllIdsResponseError_UNKNOWN_ERROR, err)
+		return response(pb.RpcPushNotificationResetIdsResponseError_UNKNOWN_ERROR, err)
 	}
-	return response(pb.RpcPushNotificationAddAllIdsResponseError_NULL, nil)
+	return response(pb.RpcPushNotificationResetIdsResponseError_NULL, nil)
 }
