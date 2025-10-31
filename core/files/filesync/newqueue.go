@@ -194,13 +194,29 @@ func (s *fileSync) processFilePendingDeletion(ctx context.Context, fi FileInfo) 
 }
 
 func (s *fileSync) runUploader(ctx context.Context) {
-
 	for {
 		select {
 		case <-ctx.Done():
 			return
 		default:
-			s.processNextPendingUploadItem(ctx)
+			err := s.processNextPendingUploadItem(ctx, FileStatePendingUpload)
+			if err != nil {
+				log.Error("process next pending upload item", zap.Error(err))
+			}
+		}
+	}
+}
+
+func (s *fileSync) runLimitedUploader(ctx context.Context) {
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		default:
+			err := s.processNextPendingUploadItem(ctx, FileStateLimited)
+			if err != nil {
+				log.Error("process next limited upload item", zap.Error(err))
+			}
 		}
 	}
 }
@@ -217,12 +233,12 @@ func (s *fileSync) printQueue() error {
 	return nil
 }
 
-func (s *fileSync) processNextPendingUploadItem(ctx context.Context) error {
+func (s *fileSync) processNextPendingUploadItem(ctx context.Context, state FileState) error {
 	item, err := s.queue.GetNextScheduled(ctx, filequeue.GetNextScheduledRequest[FileInfo]{
 		Subscribe: true,
 		StoreFilter: query.Key{
 			Path:   []string{"state"},
-			Filter: query.NewComp(query.CompOpEq, int(FileStatePendingUpload)),
+			Filter: query.NewComp(query.CompOpEq, int(state)),
 		},
 		StoreOrder: &query.SortField{
 			Field:   "scheduledAt",
@@ -230,7 +246,7 @@ func (s *fileSync) processNextPendingUploadItem(ctx context.Context) error {
 			Reverse: false,
 		},
 		Filter: func(info FileInfo) bool {
-			return info.State == FileStatePendingUpload
+			return info.State == state
 		},
 		ScheduledAt: func(info FileInfo) time.Time {
 			return info.ScheduledAt
@@ -245,6 +261,70 @@ func (s *fileSync) processNextPendingUploadItem(ctx context.Context) error {
 	releaseErr := s.queue.Release(next)
 
 	return errors.Join(releaseErr, err)
+}
+
+type limitUpdate struct {
+	spaceId string
+	limit   int
+}
+
+// TODO Space limits
+// - create subscription for all active spaces
+// - on init: get usage and limits from node OR from cache if we're offline
+// - on every N minutes: get the most recent usage and limits from node AND cache it
+// - on request to upload: update limits if TTL is due
+// - every action sends an update message to all subscribers
+
+func (s *fileSync) processLimited(ctx context.Context) error {
+	// limitUpdated should receive signals on:
+	// - when application is started
+	// - when someone tries to upload a file for the first time or after NOT limited error and sees limits updates
+	// - when background process updates limits
+	limitUpdated := make(chan limitUpdate)
+
+	for update := range limitUpdated {
+		item, err := s.queue.GetNextScheduled(ctx, filequeue.GetNextScheduledRequest[FileInfo]{
+			Subscribe: false, // Do not subscribe, just return error if no rows found
+			StoreFilter: query.And{
+				query.Key{
+					Path:   []string{"state"},
+					Filter: query.NewComp(query.CompOpEq, int(FileStateLimited)),
+				},
+				query.Key{
+					Path:   []string{"spaceId"},
+					Filter: query.NewComp(query.CompOpEq, update.spaceId),
+				},
+			},
+			StoreOrder: &query.SortField{
+				Field:   "scheduledAt",
+				Path:    []string{"scheduledAt"},
+				Reverse: false,
+			},
+			Filter: func(info FileInfo) bool {
+				return info.State == FileStateLimited && info.SpaceId == update.spaceId
+			},
+			ScheduledAt: func(info FileInfo) time.Time {
+				return info.ScheduledAt
+			},
+		})
+		if errors.Is(err, filequeue.ErrNoRows) {
+			continue
+		}
+		if errors.Is(err, context.Canceled) {
+			return err
+		}
+		if err != nil {
+			log.Error("process limited item", zap.Error(err))
+		}
+
+		next, err := s.processFilePendingUpload(ctx, item)
+
+		releaseErr := s.queue.Release(next)
+
+		return errors.Join(releaseErr, err)
+	}
+
+	return nil
 }
 
 func (s *fileSync) uploadLimited(ctx context.Context) (bool, error) {
@@ -323,35 +403,3 @@ func (s *fileSync) process(id string, proc func(exists bool, info FileInfo) (Fil
 
 	return s.queue.Release(next)
 }
-
-// func (s *fileSync) runUploadingProcessor(ctx context.Context) {
-//
-// 	ticker := time.NewTicker(time.Millisecond * 500)
-// 	defer ticker.Stop()
-//
-// 	s.processNextPendingUploadItem(ctx)
-// 	for {
-// 		select {
-// 		case <-ticker.C:
-// 			s.processNextPendingUploadItem(ctx)
-// 		case <-ctx.Done():
-// 			return
-// 		}
-// 	}
-// }
-//
-// func (s *fileSync) processNextUploadingItem(ctx context.Context) {
-// 	next, ok := s.filesRepository.find(func(file FileInfo) bool {
-// 		return file.State == FileStateUploading && time.Since(file.HandledAt) > time.Minute
-// 	})
-//
-// 	if ok {
-// 		s.stateProcessor.process(next.Key(), func(exists bool, info FileInfo) (ProcessAction, FileInfo, error) {
-// 			if info.State == FileStatePendingUpload {
-// 				next, err := s.processFilePendingUpload(ctx, info)
-// 				return ProcessActionUpdate, next, err
-// 			}
-// 			return ProcessActionNone, info, nil
-// 		})
-// 	}
-// }
