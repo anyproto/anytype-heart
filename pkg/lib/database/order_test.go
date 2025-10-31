@@ -37,9 +37,9 @@ func TestTextSort(t *testing.T) {
 			bundle.RelationKeySnippet:        domain.String("b"),
 			bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_note)),
 		})
-		asc := &KeyOrder{arena: arena, Key: bundle.RelationKeyName, Type: model.BlockContentDataviewSort_Asc, relationFormat: model.RelationFormat_shorttext}
+		asc := &keyOrder{arena: arena, key: bundle.RelationKeyName, sortType: model.BlockContentDataviewSort_Asc, relationFormat: model.RelationFormat_shorttext}
 		assertCompare(t, asc, a, b, 1)
-		desc := &KeyOrder{arena: arena, Key: bundle.RelationKeyName, Type: model.BlockContentDataviewSort_Desc, relationFormat: model.RelationFormat_shorttext}
+		desc := &keyOrder{arena: arena, key: bundle.RelationKeyName, sortType: model.BlockContentDataviewSort_Desc, relationFormat: model.RelationFormat_shorttext}
 		assertCompare(t, desc, a, b, -1)
 	})
 	t.Run("note layout, empty name", func(t *testing.T) {
@@ -51,9 +51,9 @@ func TestTextSort(t *testing.T) {
 				bundle.RelationKeySnippet:        domain.String("b"),
 				bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_note)),
 			})
-			asc := &KeyOrder{arena: arena, Key: bundle.RelationKeyName, Type: model.BlockContentDataviewSort_Asc, relationFormat: model.RelationFormat_shorttext}
+			asc := &keyOrder{arena: arena, key: bundle.RelationKeyName, sortType: model.BlockContentDataviewSort_Asc, relationFormat: model.RelationFormat_shorttext}
 			assertCompare(t, asc, a, b, -1)
-			desc := &KeyOrder{arena: arena, Key: bundle.RelationKeyName, Type: model.BlockContentDataviewSort_Desc, relationFormat: model.RelationFormat_shorttext}
+			desc := &keyOrder{arena: arena, key: bundle.RelationKeyName, sortType: model.BlockContentDataviewSort_Desc, relationFormat: model.RelationFormat_shorttext}
 			assertCompare(t, desc, a, b, 1)
 		})
 		t.Run("one with name, one with snippet, equal", func(t *testing.T) {
@@ -64,9 +64,9 @@ func TestTextSort(t *testing.T) {
 				bundle.RelationKeySnippet:        domain.String("a"),
 				bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_note)),
 			})
-			asc := &KeyOrder{arena: arena, Key: bundle.RelationKeyName, Type: model.BlockContentDataviewSort_Asc, relationFormat: model.RelationFormat_shorttext}
+			asc := &keyOrder{arena: arena, key: bundle.RelationKeyName, sortType: model.BlockContentDataviewSort_Asc, relationFormat: model.RelationFormat_shorttext}
 			assertCompare(t, asc, a, b, 0)
-			desc := &KeyOrder{arena: arena, Key: bundle.RelationKeyName, Type: model.BlockContentDataviewSort_Desc, relationFormat: model.RelationFormat_shorttext}
+			desc := &keyOrder{arena: arena, key: bundle.RelationKeyName, sortType: model.BlockContentDataviewSort_Desc, relationFormat: model.RelationFormat_shorttext}
 			assertCompare(t, desc, a, b, 0)
 		})
 	})
@@ -77,97 +77,97 @@ func TestKeyOrder_Compare(t *testing.T) {
 	t.Run("eq", func(t *testing.T) {
 		a := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{"k": domain.String("a")})
 		b := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{"k": domain.String("a")})
-		asc := &KeyOrder{arena: arena, Key: "k", Type: model.BlockContentDataviewSort_Asc, relationFormat: model.RelationFormat_shorttext}
+		asc := &keyOrder{arena: arena, key: "k", sortType: model.BlockContentDataviewSort_Asc, relationFormat: model.RelationFormat_shorttext}
 		assertCompare(t, asc, a, b, 0)
 	})
 	t.Run("asc", func(t *testing.T) {
 		a := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{"k": domain.String("a")})
 		b := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{"k": domain.String("b")})
-		asc := &KeyOrder{arena: arena, Key: "k", Type: model.BlockContentDataviewSort_Asc, relationFormat: model.RelationFormat_shorttext}
+		asc := &keyOrder{arena: arena, key: "k", sortType: model.BlockContentDataviewSort_Asc, relationFormat: model.RelationFormat_shorttext}
 		assertCompare(t, asc, a, b, -1)
 	})
 
 	t.Run("desc_float", func(t *testing.T) {
 		a := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{"k": domain.Float64(1)})
 		b := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{"k": domain.Float64(2)})
-		asc := &KeyOrder{arena: arena, Key: "k", Type: model.BlockContentDataviewSort_Desc, EmptyPlacement: model.BlockContentDataviewSort_End, relationFormat: model.RelationFormat_number}
+		asc := &keyOrder{arena: arena, key: "k", sortType: model.BlockContentDataviewSort_Desc, emptyPlacement: model.BlockContentDataviewSort_End, relationFormat: model.RelationFormat_number}
 		assertCompare(t, asc, a, b, 1)
 	})
 
 	t.Run("asc_float", func(t *testing.T) {
 		a := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{"k": domain.Float64(1)})
 		b := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{"k": domain.Float64(2)})
-		asc := &KeyOrder{arena: arena, Key: "k", Type: model.BlockContentDataviewSort_Asc, EmptyPlacement: model.BlockContentDataviewSort_Start, relationFormat: model.RelationFormat_number}
+		asc := &keyOrder{arena: arena, key: "k", sortType: model.BlockContentDataviewSort_Asc, emptyPlacement: model.BlockContentDataviewSort_Start, relationFormat: model.RelationFormat_number}
 		assertCompare(t, asc, a, b, -1)
 	})
 
 	t.Run("asc_emptylast", func(t *testing.T) {
 		a := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{"k": domain.String("a")})
 		b := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{"k": domain.String("")})
-		asc := &KeyOrder{arena: arena, Key: "k", Type: model.BlockContentDataviewSort_Asc, EmptyPlacement: model.BlockContentDataviewSort_End, relationFormat: model.RelationFormat_shorttext}
+		asc := &keyOrder{arena: arena, key: "k", sortType: model.BlockContentDataviewSort_Asc, emptyPlacement: model.BlockContentDataviewSort_End, relationFormat: model.RelationFormat_shorttext}
 		assertCompare(t, asc, a, b, -1)
 	})
 
 	t.Run("asc_emptylast_float", func(t *testing.T) {
 		a := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{"k": domain.Float64(1)})
 		b := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{})
-		asc := &KeyOrder{arena: arena, Key: "k", Type: model.BlockContentDataviewSort_Asc, EmptyPlacement: model.BlockContentDataviewSort_End, relationFormat: model.RelationFormat_number}
+		asc := &keyOrder{arena: arena, key: "k", sortType: model.BlockContentDataviewSort_Asc, emptyPlacement: model.BlockContentDataviewSort_End, relationFormat: model.RelationFormat_number}
 		assertCompare(t, asc, a, b, -1)
 	})
 
 	t.Run("asc_emptylast_str", func(t *testing.T) {
 		a := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{"k": domain.String("a")})
 		b := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{"k": domain.String("")})
-		asc := &KeyOrder{arena: arena, Key: "k", Type: model.BlockContentDataviewSort_Asc, EmptyPlacement: model.BlockContentDataviewSort_End, relationFormat: model.RelationFormat_shorttext}
+		asc := &keyOrder{arena: arena, key: "k", sortType: model.BlockContentDataviewSort_Asc, emptyPlacement: model.BlockContentDataviewSort_End, relationFormat: model.RelationFormat_shorttext}
 		assertCompare(t, asc, a, b, -1)
 	})
 
 	t.Run("desc_emptylast_str", func(t *testing.T) {
 		a := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{"k": domain.String("a")})
 		b := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{"k": domain.String("")})
-		asc := &KeyOrder{arena: arena, Key: "k", Type: model.BlockContentDataviewSort_Desc, EmptyPlacement: model.BlockContentDataviewSort_End, relationFormat: model.RelationFormat_shorttext}
+		asc := &keyOrder{arena: arena, key: "k", sortType: model.BlockContentDataviewSort_Desc, emptyPlacement: model.BlockContentDataviewSort_End, relationFormat: model.RelationFormat_shorttext}
 		assertCompare(t, asc, a, b, -1)
 	})
 
 	t.Run("asc_emptyfirst_str", func(t *testing.T) {
 		a := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{"k": domain.String("a")})
 		b := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{"k": domain.String("")})
-		asc := &KeyOrder{arena: arena, Key: "k", Type: model.BlockContentDataviewSort_Asc, EmptyPlacement: model.BlockContentDataviewSort_Start, relationFormat: model.RelationFormat_shorttext}
+		asc := &keyOrder{arena: arena, key: "k", sortType: model.BlockContentDataviewSort_Asc, emptyPlacement: model.BlockContentDataviewSort_Start, relationFormat: model.RelationFormat_shorttext}
 		assertCompare(t, asc, a, b, 1)
 	})
 
 	t.Run("desc_emptyfirst_str", func(t *testing.T) {
 		a := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{"k": domain.String("a")})
 		b := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{"k": domain.String("")})
-		asc := &KeyOrder{arena: arena, Key: "k", Type: model.BlockContentDataviewSort_Desc, EmptyPlacement: model.BlockContentDataviewSort_Start, relationFormat: model.RelationFormat_shorttext}
+		asc := &keyOrder{arena: arena, key: "k", sortType: model.BlockContentDataviewSort_Desc, emptyPlacement: model.BlockContentDataviewSort_Start, relationFormat: model.RelationFormat_shorttext}
 		assertCompare(t, asc, a, b, 1)
 	})
 
 	t.Run("asc_str_end", func(t *testing.T) {
 		a := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{"k": domain.String("a")})
 		b := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{"k": domain.String("b")})
-		asc := &KeyOrder{arena: arena, Key: "k", Type: model.BlockContentDataviewSort_Asc, EmptyPlacement: model.BlockContentDataviewSort_End, relationFormat: model.RelationFormat_shorttext}
+		asc := &keyOrder{arena: arena, key: "k", sortType: model.BlockContentDataviewSort_Asc, emptyPlacement: model.BlockContentDataviewSort_End, relationFormat: model.RelationFormat_shorttext}
 		assertCompare(t, asc, a, b, -1)
 	})
 
 	t.Run("desc_str_end", func(t *testing.T) {
 		a := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{"k": domain.String("a")})
 		b := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{"k": domain.String("b")})
-		asc := &KeyOrder{arena: arena, Key: "k", Type: model.BlockContentDataviewSort_Desc, EmptyPlacement: model.BlockContentDataviewSort_End, relationFormat: model.RelationFormat_shorttext}
+		asc := &keyOrder{arena: arena, key: "k", sortType: model.BlockContentDataviewSort_Desc, emptyPlacement: model.BlockContentDataviewSort_End, relationFormat: model.RelationFormat_shorttext}
 		assertCompare(t, asc, a, b, 1)
 	})
 
 	t.Run("asc_str_start", func(t *testing.T) {
 		a := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{"k": domain.String("a")})
 		b := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{"k": domain.String("b")})
-		asc := &KeyOrder{arena: arena, Key: "k", Type: model.BlockContentDataviewSort_Asc, EmptyPlacement: model.BlockContentDataviewSort_Start, relationFormat: model.RelationFormat_shorttext}
+		asc := &keyOrder{arena: arena, key: "k", sortType: model.BlockContentDataviewSort_Asc, emptyPlacement: model.BlockContentDataviewSort_Start, relationFormat: model.RelationFormat_shorttext}
 		assertCompare(t, asc, a, b, -1)
 	})
 
 	t.Run("desc_str_start", func(t *testing.T) {
 		a := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{"k": domain.String("a")})
 		b := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{"k": domain.String("b")})
-		asc := &KeyOrder{arena: arena, Key: "k", Type: model.BlockContentDataviewSort_Desc, EmptyPlacement: model.BlockContentDataviewSort_Start, relationFormat: model.RelationFormat_shorttext}
+		asc := &keyOrder{arena: arena, key: "k", sortType: model.BlockContentDataviewSort_Desc, emptyPlacement: model.BlockContentDataviewSort_Start, relationFormat: model.RelationFormat_shorttext}
 		assertCompare(t, asc, a, b, 1)
 	})
 
@@ -179,11 +179,11 @@ func TestKeyOrder_Compare(t *testing.T) {
 
 		a := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{"k": domain.Int64(date1.Unix())})
 		b := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{"k": domain.Int64(date2.Unix())})
-		asc := &KeyOrder{arena: arena,
-			Key:            "k",
-			Type:           model.BlockContentDataviewSort_Asc,
-			EmptyPlacement: model.BlockContentDataviewSort_End,
-			IncludeTime:    false,
+		asc := &keyOrder{arena: arena,
+			key:            "k",
+			sortType:       model.BlockContentDataviewSort_Asc,
+			emptyPlacement: model.BlockContentDataviewSort_End,
+			includeTime:    false,
 			relationFormat: model.RelationFormat_date,
 		}
 		assertCompare(t, asc, a, b, 0)
@@ -192,11 +192,11 @@ func TestKeyOrder_Compare(t *testing.T) {
 	t.Run("asc_date_end_empty", func(t *testing.T) {
 		a := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{"k": domain.Int64(date.Unix())})
 		b := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{})
-		asc := &KeyOrder{arena: arena,
-			Key:            "k",
-			Type:           model.BlockContentDataviewSort_Asc,
-			EmptyPlacement: model.BlockContentDataviewSort_End,
-			IncludeTime:    false,
+		asc := &keyOrder{arena: arena,
+			key:            "k",
+			sortType:       model.BlockContentDataviewSort_Asc,
+			emptyPlacement: model.BlockContentDataviewSort_End,
+			includeTime:    false,
 			relationFormat: model.RelationFormat_date,
 		}
 		assertCompare(t, asc, a, b, -1)
@@ -205,11 +205,11 @@ func TestKeyOrder_Compare(t *testing.T) {
 	t.Run("desc_date_end_empty", func(t *testing.T) {
 		a := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{"k": domain.Int64(date.Unix())})
 		b := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{})
-		asc := &KeyOrder{arena: arena,
-			Key:            "k",
-			Type:           model.BlockContentDataviewSort_Desc,
-			EmptyPlacement: model.BlockContentDataviewSort_End,
-			IncludeTime:    false,
+		asc := &keyOrder{arena: arena,
+			key:            "k",
+			sortType:       model.BlockContentDataviewSort_Desc,
+			emptyPlacement: model.BlockContentDataviewSort_End,
+			includeTime:    false,
 			relationFormat: model.RelationFormat_date,
 		}
 		assertCompare(t, asc, a, b, -1)
@@ -218,11 +218,11 @@ func TestKeyOrder_Compare(t *testing.T) {
 	t.Run("asc_date_start_empty", func(t *testing.T) {
 		a := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{"k": domain.Int64(date.Unix())})
 		b := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{"k": domain.Null()})
-		asc := &KeyOrder{arena: arena,
-			Key:            "k",
-			Type:           model.BlockContentDataviewSort_Asc,
-			EmptyPlacement: model.BlockContentDataviewSort_Start,
-			IncludeTime:    false,
+		asc := &keyOrder{arena: arena,
+			key:            "k",
+			sortType:       model.BlockContentDataviewSort_Asc,
+			emptyPlacement: model.BlockContentDataviewSort_Start,
+			includeTime:    false,
 			relationFormat: model.RelationFormat_date,
 		}
 		assertCompare(t, asc, a, b, 1)
@@ -231,11 +231,11 @@ func TestKeyOrder_Compare(t *testing.T) {
 	t.Run("desc_date_start", func(t *testing.T) {
 		a := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{"k": domain.Int64(date.Unix())})
 		b := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{})
-		asc := &KeyOrder{arena: arena,
-			Key:            "k",
-			Type:           model.BlockContentDataviewSort_Desc,
-			EmptyPlacement: model.BlockContentDataviewSort_Start,
-			IncludeTime:    false,
+		asc := &keyOrder{arena: arena,
+			key:            "k",
+			sortType:       model.BlockContentDataviewSort_Desc,
+			emptyPlacement: model.BlockContentDataviewSort_Start,
+			includeTime:    false,
 			relationFormat: model.RelationFormat_date,
 		}
 		assertCompare(t, asc, a, b, 1)
@@ -244,11 +244,11 @@ func TestKeyOrder_Compare(t *testing.T) {
 	t.Run("desc_date_start key not exists", func(t *testing.T) {
 		a := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{"k": domain.Int64(date.Unix())})
 		b := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{})
-		asc := &KeyOrder{arena: arena,
-			Key:            "k",
-			Type:           model.BlockContentDataviewSort_Desc,
-			EmptyPlacement: model.BlockContentDataviewSort_Start,
-			IncludeTime:    false,
+		asc := &keyOrder{arena: arena,
+			key:            "k",
+			sortType:       model.BlockContentDataviewSort_Desc,
+			emptyPlacement: model.BlockContentDataviewSort_Start,
+			includeTime:    false,
 			relationFormat: model.RelationFormat_date,
 		}
 		assertCompare(t, asc, a, b, 1)
@@ -257,11 +257,11 @@ func TestKeyOrder_Compare(t *testing.T) {
 	t.Run("desc_date", func(t *testing.T) {
 		a := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{"k": domain.Int64(date.Unix())})
 		b := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{"k": domain.Int64(time.Now().Unix())})
-		asc := &KeyOrder{arena: arena,
-			Key:            "k",
-			Type:           model.BlockContentDataviewSort_Desc,
-			EmptyPlacement: model.BlockContentDataviewSort_Start,
-			IncludeTime:    false,
+		asc := &keyOrder{arena: arena,
+			key:            "k",
+			sortType:       model.BlockContentDataviewSort_Desc,
+			emptyPlacement: model.BlockContentDataviewSort_Start,
+			includeTime:    false,
 			relationFormat: model.RelationFormat_date,
 		}
 		assertCompare(t, asc, a, b, 1)
@@ -270,141 +270,141 @@ func TestKeyOrder_Compare(t *testing.T) {
 	t.Run("asc_nil_emptylast", func(t *testing.T) {
 		a := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{"k": domain.String("a")})
 		b := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{})
-		asc := &KeyOrder{arena: arena, Key: "k", Type: model.BlockContentDataviewSort_Asc, EmptyPlacement: model.BlockContentDataviewSort_End, relationFormat: model.RelationFormat_shorttext}
+		asc := &keyOrder{arena: arena, key: "k", sortType: model.BlockContentDataviewSort_Asc, emptyPlacement: model.BlockContentDataviewSort_End, relationFormat: model.RelationFormat_shorttext}
 		assertCompare(t, asc, a, b, -1)
 	})
 
 	t.Run("asc_nil_emptylast_float", func(t *testing.T) {
 		a := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{"k": domain.Float64(1)})
 		b := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{})
-		asc := &KeyOrder{arena: arena, Key: "k", Type: model.BlockContentDataviewSort_Asc, EmptyPlacement: model.BlockContentDataviewSort_End, relationFormat: model.RelationFormat_number}
+		asc := &keyOrder{arena: arena, key: "k", sortType: model.BlockContentDataviewSort_Asc, emptyPlacement: model.BlockContentDataviewSort_End, relationFormat: model.RelationFormat_number}
 		assertCompare(t, asc, a, b, -1)
 	})
 
 	t.Run("desc_nil_emptylast", func(t *testing.T) {
 		a := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{"k": domain.String("a")})
 		b := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{})
-		asc := &KeyOrder{arena: arena, Key: "k", Type: model.BlockContentDataviewSort_Desc, EmptyPlacement: model.BlockContentDataviewSort_End, relationFormat: model.RelationFormat_shorttext}
+		asc := &keyOrder{arena: arena, key: "k", sortType: model.BlockContentDataviewSort_Desc, emptyPlacement: model.BlockContentDataviewSort_End, relationFormat: model.RelationFormat_shorttext}
 		assertCompare(t, asc, a, b, -1)
 	})
 
 	t.Run("desc_nil_emptylast_float", func(t *testing.T) {
 		a := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{"k": domain.Float64(1)})
 		b := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{"k": domain.Null()})
-		asc := &KeyOrder{arena: arena, Key: "k", Type: model.BlockContentDataviewSort_Desc, EmptyPlacement: model.BlockContentDataviewSort_End, relationFormat: model.RelationFormat_number}
+		asc := &keyOrder{arena: arena, key: "k", sortType: model.BlockContentDataviewSort_Desc, emptyPlacement: model.BlockContentDataviewSort_End, relationFormat: model.RelationFormat_number}
 		assertCompare(t, asc, a, b, -1)
 	})
 
 	t.Run("desc_nil_emptylast_float", func(t *testing.T) {
 		a := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{"k": domain.Float64(1)})
 		b := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{"k": domain.Null()})
-		asc := &KeyOrder{arena: arena, Key: "k", Type: model.BlockContentDataviewSort_Desc, EmptyPlacement: model.BlockContentDataviewSort_End, relationFormat: model.RelationFormat_number}
+		asc := &keyOrder{arena: arena, key: "k", sortType: model.BlockContentDataviewSort_Desc, emptyPlacement: model.BlockContentDataviewSort_End, relationFormat: model.RelationFormat_number}
 		assertCompare(t, asc, a, b, -1)
 	})
 
 	t.Run("asc_nil_emptyfirst", func(t *testing.T) {
 		a := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{"k": domain.String("a")})
 		b := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{"k": domain.Null()})
-		asc := &KeyOrder{arena: arena, Key: "k", Type: model.BlockContentDataviewSort_Asc, EmptyPlacement: model.BlockContentDataviewSort_Start, relationFormat: model.RelationFormat_shorttext}
+		asc := &keyOrder{arena: arena, key: "k", sortType: model.BlockContentDataviewSort_Asc, emptyPlacement: model.BlockContentDataviewSort_Start, relationFormat: model.RelationFormat_shorttext}
 		assertCompare(t, asc, a, b, 1)
 	})
 
 	t.Run("asc_nil_emptyfirst_float", func(t *testing.T) {
 		a := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{"k": domain.Float64(1)})
 		b := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{"k": domain.Null()})
-		asc := &KeyOrder{arena: arena, Key: "k", Type: model.BlockContentDataviewSort_Asc, EmptyPlacement: model.BlockContentDataviewSort_Start, relationFormat: model.RelationFormat_number}
+		asc := &keyOrder{arena: arena, key: "k", sortType: model.BlockContentDataviewSort_Asc, emptyPlacement: model.BlockContentDataviewSort_Start, relationFormat: model.RelationFormat_number}
 		assertCompare(t, asc, a, b, 1)
 	})
 
 	t.Run("desc_nil_emptyfirst", func(t *testing.T) {
 		a := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{"k": domain.String("a")})
 		b := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{})
-		asc := &KeyOrder{arena: arena, Key: "k", Type: model.BlockContentDataviewSort_Desc, EmptyPlacement: model.BlockContentDataviewSort_Start, relationFormat: model.RelationFormat_shorttext}
+		asc := &keyOrder{arena: arena, key: "k", sortType: model.BlockContentDataviewSort_Desc, emptyPlacement: model.BlockContentDataviewSort_Start, relationFormat: model.RelationFormat_shorttext}
 		assertCompare(t, asc, a, b, 1)
 	})
 
 	t.Run("desc_nil_emptyfirst_float", func(t *testing.T) {
 		a := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{"k": domain.Float64(1)})
 		b := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{})
-		asc := &KeyOrder{arena: arena, Key: "k", Type: model.BlockContentDataviewSort_Desc, EmptyPlacement: model.BlockContentDataviewSort_Start, relationFormat: model.RelationFormat_number}
+		asc := &keyOrder{arena: arena, key: "k", sortType: model.BlockContentDataviewSort_Desc, emptyPlacement: model.BlockContentDataviewSort_Start, relationFormat: model.RelationFormat_number}
 		assertCompare(t, asc, a, b, 1)
 	})
 
 	t.Run("desc emptyfirst key not exist", func(t *testing.T) {
 		a := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{"k": domain.Float64(1)})
 		b := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{})
-		asc := &KeyOrder{arena: arena, Key: "k", Type: model.BlockContentDataviewSort_Desc, EmptyPlacement: model.BlockContentDataviewSort_Start, relationFormat: model.RelationFormat_number}
+		asc := &keyOrder{arena: arena, key: "k", sortType: model.BlockContentDataviewSort_Desc, emptyPlacement: model.BlockContentDataviewSort_Start, relationFormat: model.RelationFormat_number}
 		assertCompare(t, asc, a, b, 1)
 	})
 
 	t.Run("asc_nil", func(t *testing.T) {
 		a := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{"k": domain.Null()})
 		b := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{"k": domain.Float64(0)})
-		asc := &KeyOrder{arena: arena, Key: "k", Type: model.BlockContentDataviewSort_Asc, relationFormat: model.RelationFormat_number}
+		asc := &keyOrder{arena: arena, key: "k", sortType: model.BlockContentDataviewSort_Asc, relationFormat: model.RelationFormat_number}
 		assertCompare(t, asc, a, b, -1)
 	})
 
 	t.Run("asc_notspecified", func(t *testing.T) {
 		a := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{"k": domain.String("a")})
 		b := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{"k": domain.String("")})
-		asc := &KeyOrder{arena: arena, Key: "k", Type: model.BlockContentDataviewSort_Asc, relationFormat: model.RelationFormat_shorttext}
+		asc := &keyOrder{arena: arena, key: "k", sortType: model.BlockContentDataviewSort_Asc, relationFormat: model.RelationFormat_shorttext}
 		assertCompare(t, asc, a, b, 1)
 	})
 
 	t.Run("asc_notspecified", func(t *testing.T) {
 		a := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{"k": domain.Float64(1)})
 		b := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{"k": domain.Float64(0)})
-		asc := &KeyOrder{arena: arena, Key: "k", Type: model.BlockContentDataviewSort_Asc, relationFormat: model.RelationFormat_number}
+		asc := &keyOrder{arena: arena, key: "k", sortType: model.BlockContentDataviewSort_Asc, relationFormat: model.RelationFormat_number}
 		assertCompare(t, asc, a, b, 1)
 	})
 
 	t.Run("desc_notspecified", func(t *testing.T) {
 		a := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{"k": domain.String("a")})
 		b := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{"k": domain.String("b")})
-		asc := &KeyOrder{arena: arena, Key: "k", Type: model.BlockContentDataviewSort_Desc, relationFormat: model.RelationFormat_shorttext}
+		asc := &keyOrder{arena: arena, key: "k", sortType: model.BlockContentDataviewSort_Desc, relationFormat: model.RelationFormat_shorttext}
 		assertCompare(t, asc, a, b, 1)
 	})
 
 	t.Run("desc_notspecified_float", func(t *testing.T) {
 		a := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{"k": domain.Float64(0)})
 		b := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{"k": domain.Float64(1)})
-		asc := &KeyOrder{arena: arena, Key: "k", Type: model.BlockContentDataviewSort_Desc, relationFormat: model.RelationFormat_number}
+		asc := &keyOrder{arena: arena, key: "k", sortType: model.BlockContentDataviewSort_Desc, relationFormat: model.RelationFormat_number}
 		assertCompare(t, asc, a, b, 1)
 	})
 	t.Run("disable_collate", func(t *testing.T) {
 		a := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{bundle.RelationKeySpaceOrder: domain.String("--UK")})
 		b := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{bundle.RelationKeySpaceOrder: domain.String("--jc")})
-		ko := &KeyOrder{disableCollator: true, arena: arena, Key: bundle.RelationKeySpaceOrder, Type: model.BlockContentDataviewSort_Asc, relationFormat: model.RelationFormat_shorttext}
+		ko := &keyOrder{disableCollator: true, arena: arena, key: bundle.RelationKeySpaceOrder, sortType: model.BlockContentDataviewSort_Asc, relationFormat: model.RelationFormat_shorttext}
 		assertCompare(t, ko, a, b, -1)
 	})
 	t.Run("compare_bool_false_null", func(t *testing.T) {
 		a := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{bundle.RelationKeyDone: domain.Bool(false)})
 		b := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{})
-		ko := &KeyOrder{arena: arena, Key: bundle.RelationKeyDone, Type: model.BlockContentDataviewSort_Asc, relationFormat: model.RelationFormat_checkbox}
+		ko := &keyOrder{arena: arena, key: bundle.RelationKeyDone, sortType: model.BlockContentDataviewSort_Asc, relationFormat: model.RelationFormat_checkbox}
 		assertCompare(t, ko, a, b, 0)
 	})
 	t.Run("compare_bool_true_null", func(t *testing.T) {
 		a := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{bundle.RelationKeyDone: domain.Bool(true)})
 		b := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{})
-		ko := &KeyOrder{arena: arena, Key: bundle.RelationKeyDone, Type: model.BlockContentDataviewSort_Asc, relationFormat: model.RelationFormat_checkbox}
+		ko := &keyOrder{arena: arena, key: bundle.RelationKeyDone, sortType: model.BlockContentDataviewSort_Asc, relationFormat: model.RelationFormat_checkbox}
 		assertCompare(t, ko, a, b, 1)
 	})
 	t.Run("compare_bool_true_null_desc", func(t *testing.T) {
 		a := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{bundle.RelationKeyDone: domain.Bool(true)})
 		b := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{})
-		ko := &KeyOrder{arena: arena, Key: bundle.RelationKeyDone, Type: model.BlockContentDataviewSort_Desc, relationFormat: model.RelationFormat_checkbox}
+		ko := &keyOrder{arena: arena, key: bundle.RelationKeyDone, sortType: model.BlockContentDataviewSort_Desc, relationFormat: model.RelationFormat_checkbox}
 		assertCompare(t, ko, a, b, -1)
 	})
 	t.Run("compare_bool_true_false", func(t *testing.T) {
 		a := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{bundle.RelationKeyDone: domain.Bool(true)})
 		b := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{bundle.RelationKeyDone: domain.Bool(false)})
-		ko := &KeyOrder{arena: arena, Key: bundle.RelationKeyDone, Type: model.BlockContentDataviewSort_Asc, relationFormat: model.RelationFormat_checkbox}
+		ko := &keyOrder{arena: arena, key: bundle.RelationKeyDone, sortType: model.BlockContentDataviewSort_Asc, relationFormat: model.RelationFormat_checkbox}
 		assertCompare(t, ko, a, b, 1)
 	})
 	t.Run("compare_bool_true_true", func(t *testing.T) {
 		a := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{bundle.RelationKeyDone: domain.Bool(true)})
 		b := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{bundle.RelationKeyDone: domain.Bool(true)})
-		ko := &KeyOrder{arena: arena, Key: bundle.RelationKeyDone, Type: model.BlockContentDataviewSort_Asc, relationFormat: model.RelationFormat_checkbox}
+		ko := &keyOrder{arena: arena, key: bundle.RelationKeyDone, sortType: model.BlockContentDataviewSort_Asc, relationFormat: model.RelationFormat_checkbox}
 		assertCompare(t, ko, a, b, 0)
 	})
 }
@@ -414,23 +414,23 @@ func TestKeyUnicodeOrder_Compare(t *testing.T) {
 	t.Run("asc", func(t *testing.T) {
 		a := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{"k": domain.String("Єгипет")})
 		b := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{"k": domain.String("Японія")})
-		asc := &KeyOrder{arena: arena, Key: "k", Type: model.BlockContentDataviewSort_Asc, relationFormat: model.RelationFormat_shorttext}
+		asc := &keyOrder{arena: arena, key: "k", sortType: model.BlockContentDataviewSort_Asc, relationFormat: model.RelationFormat_shorttext}
 		assertCompare(t, asc, a, b, -1)
 	})
 
 	t.Run("dsc", func(t *testing.T) {
 		a := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{"k": domain.String("Ürkmez")})
 		b := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{"k": domain.String("Zurich")})
-		asc := &KeyOrder{arena: arena, Key: "k", Type: model.BlockContentDataviewSort_Desc, relationFormat: model.RelationFormat_shorttext}
+		asc := &keyOrder{arena: arena, key: "k", sortType: model.BlockContentDataviewSort_Desc, relationFormat: model.RelationFormat_shorttext}
 		assertCompare(t, asc, a, b, 1)
 	})
 }
 
 func TestSetOrder_Compare(t *testing.T) {
 	arena := &anyenc.Arena{}
-	so := SetOrder{
-		&KeyOrder{arena: arena, Key: "a", Type: model.BlockContentDataviewSort_Asc, relationFormat: model.RelationFormat_shorttext},
-		&KeyOrder{arena: arena, Key: "b", Type: model.BlockContentDataviewSort_Desc, relationFormat: model.RelationFormat_shorttext},
+	so := setOrder{
+		&keyOrder{arena: arena, key: "a", sortType: model.BlockContentDataviewSort_Asc, relationFormat: model.RelationFormat_shorttext},
+		&keyOrder{arena: arena, key: "b", sortType: model.BlockContentDataviewSort_Desc, relationFormat: model.RelationFormat_shorttext},
 	}
 	t.Run("eq", func(t *testing.T) {
 		a := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{"a": domain.String("a"), "b": domain.String("b")})
@@ -460,7 +460,7 @@ func TestCustomOrder_Compare(t *testing.T) {
 		string(a.NewString("a").MarshalTo(nil)): 3,
 	}
 	arena := &anyenc.Arena{}
-	co := newCustomOrder(arena, "ID", idxIndices, &KeyOrder{arena: arena, Key: "ID", Type: model.BlockContentDataviewSort_Asc, relationFormat: model.RelationFormat_shorttext})
+	co := newCustomOrder(arena, "ID", idxIndices, &keyOrder{arena: arena, key: "ID", sortType: model.BlockContentDataviewSort_Asc, relationFormat: model.RelationFormat_shorttext})
 
 	t.Run("gt", func(t *testing.T) {
 		a := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{"ID": domain.String("c")})
@@ -517,9 +517,9 @@ func TestTagStatusOrder_Compare(t *testing.T) {
 		t.Run("eq", func(t *testing.T) {
 			a := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{"k": domain.StringList([]string{"a"})})
 			b := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{"k": domain.StringList([]string{"a"})})
-			asc := &KeyOrder{arena: arena,
-				Key:            "k",
-				Type:           model.BlockContentDataviewSort_Asc,
+			asc := &keyOrder{arena: arena,
+				key:            "k",
+				sortType:       model.BlockContentDataviewSort_Asc,
 				relationFormat: relation,
 				orderMap:       &OrderMap{data: map[string]*domain.Details{}},
 			}
@@ -529,9 +529,9 @@ func TestTagStatusOrder_Compare(t *testing.T) {
 		t.Run("asc by name", func(t *testing.T) {
 			a := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{"k": domain.StringList([]string{"b"})})
 			b := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{"k": domain.StringList([]string{"a"})})
-			asc := &KeyOrder{arena: arena,
-				Key:            "k",
-				Type:           model.BlockContentDataviewSort_Asc,
+			asc := &keyOrder{arena: arena,
+				key:            "k",
+				sortType:       model.BlockContentDataviewSort_Asc,
 				relationFormat: relation,
 				orderMap: &OrderMap{
 					store:          &stubSpaceObjectStore{},
@@ -549,9 +549,9 @@ func TestTagStatusOrder_Compare(t *testing.T) {
 		t.Run("desc by orderId", func(t *testing.T) {
 			a := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{"k": domain.StringList([]string{"a"})})
 			b := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{"k": domain.StringList([]string{"b"})})
-			desc := &KeyOrder{arena: arena,
-				Key:            "k",
-				Type:           model.BlockContentDataviewSort_Asc,
+			desc := &keyOrder{arena: arena,
+				key:            "k",
+				sortType:       model.BlockContentDataviewSort_Asc,
 				relationFormat: relation,
 				orderMap: &OrderMap{
 					store:          &stubSpaceObjectStore{},
@@ -569,9 +569,9 @@ func TestTagStatusOrder_Compare(t *testing.T) {
 		t.Run("asc by orderId", func(t *testing.T) {
 			a := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{"k": domain.StringList([]string{"b"})})
 			b := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{"k": domain.StringList([]string{"a"})})
-			asc := &KeyOrder{arena: arena,
-				Key:            "k",
-				Type:           model.BlockContentDataviewSort_Asc,
+			asc := &keyOrder{arena: arena,
+				key:            "k",
+				sortType:       model.BlockContentDataviewSort_Asc,
 				relationFormat: relation,
 				orderMap: &OrderMap{
 					store:          &stubSpaceObjectStore{},
@@ -594,32 +594,32 @@ func TestIncludeTime_Compare(t *testing.T) {
 	t.Run("date only eq", func(t *testing.T) {
 		a := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{"k": domain.Int64(date.Add(time.Second * 5).Unix())})
 		b := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{"k": domain.Int64(date.Add(time.Second * 10).Unix())})
-		asc := &KeyOrder{arena: arena, Key: "k", Type: model.BlockContentDataviewSort_Asc,
-			IncludeTime: false, relationFormat: model.RelationFormat_date}
+		asc := &keyOrder{arena: arena, key: "k", sortType: model.BlockContentDataviewSort_Asc,
+			includeTime: false, relationFormat: model.RelationFormat_date}
 		assertCompare(t, asc, a, b, 0)
 	})
 
 	t.Run("only date lt", func(t *testing.T) {
 		a := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{"k": domain.Int64(date.Unix())})
 		b := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{"k": domain.Int64(date.Add(time.Hour * 24).Unix())})
-		asc := &KeyOrder{arena: arena, Key: "k", Type: model.BlockContentDataviewSort_Asc,
-			IncludeTime: false, relationFormat: model.RelationFormat_date}
+		asc := &keyOrder{arena: arena, key: "k", sortType: model.BlockContentDataviewSort_Asc,
+			includeTime: false, relationFormat: model.RelationFormat_date}
 		assertCompare(t, asc, a, b, -1)
 	})
 
 	t.Run("date includeTime eq", func(t *testing.T) {
 		a := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{"k": domain.Int64(date.Add(time.Second * 10).Unix())})
 		b := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{"k": domain.Int64(date.Add(time.Second * 10).Unix())})
-		asc := &KeyOrder{arena: arena, Key: "k", Type: model.BlockContentDataviewSort_Asc,
-			IncludeTime: true, relationFormat: model.RelationFormat_date}
+		asc := &keyOrder{arena: arena, key: "k", sortType: model.BlockContentDataviewSort_Asc,
+			includeTime: true, relationFormat: model.RelationFormat_date}
 		assertCompare(t, asc, a, b, 0)
 	})
 
 	t.Run("date includeTime lt", func(t *testing.T) {
 		a := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{"k": domain.Int64(date.Add(time.Second * 5).Unix())})
 		b := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{"k": domain.Int64(date.Add(time.Second * 10).Unix())})
-		asc := &KeyOrder{arena: arena, Key: "k", Type: model.BlockContentDataviewSort_Asc,
-			IncludeTime: true, relationFormat: model.RelationFormat_date}
+		asc := &keyOrder{arena: arena, key: "k", sortType: model.BlockContentDataviewSort_Asc,
+			includeTime: true, relationFormat: model.RelationFormat_date}
 		assertCompare(t, asc, a, b, -1)
 	})
 
@@ -637,15 +637,15 @@ func TestKeyOrder_Compare_byDate(t *testing.T) {
 
 	arena := &anyenc.Arena{}
 
-	ko := &KeyOrder{arena: arena,
-		Key:            key,
-		IncludeTime:    true,
+	ko := &keyOrder{arena: arena,
+		key:            key,
+		includeTime:    true,
 		relationFormat: model.RelationFormat_date,
 	}
 
 	t.Run("ascending, empties at the bottom", func(t *testing.T) {
-		ko.Type = model.BlockContentDataviewSort_Asc
-		ko.EmptyPlacement = model.BlockContentDataviewSort_End
+		ko.sortType = model.BlockContentDataviewSort_Asc
+		ko.emptyPlacement = model.BlockContentDataviewSort_End
 
 		// we expect the following order: [a, b, c, d] OR [a, b, d, c] ~ [1917, 2025, nulls]
 		assert.Equal(t, -1, ko.Compare(a, b)) // a < b
@@ -657,8 +657,8 @@ func TestKeyOrder_Compare_byDate(t *testing.T) {
 	})
 
 	t.Run("descending, empties at the bottom", func(t *testing.T) {
-		ko.Type = model.BlockContentDataviewSort_Desc
-		ko.EmptyPlacement = model.BlockContentDataviewSort_End
+		ko.sortType = model.BlockContentDataviewSort_Desc
+		ko.emptyPlacement = model.BlockContentDataviewSort_End
 
 		// we expect the following order: [b, a, c, d] OR [b, a, d, c] ~ [2025, 1917, nulls]
 		assert.Equal(t, +1, ko.Compare(a, b)) // b < a
@@ -670,8 +670,8 @@ func TestKeyOrder_Compare_byDate(t *testing.T) {
 	})
 
 	t.Run("ascending, empties at the top", func(t *testing.T) {
-		ko.Type = model.BlockContentDataviewSort_Asc
-		ko.EmptyPlacement = model.BlockContentDataviewSort_Start
+		ko.sortType = model.BlockContentDataviewSort_Asc
+		ko.emptyPlacement = model.BlockContentDataviewSort_Start
 
 		// we expect the following order: [c, d, a, b] OR [d, c, a, b] ~ [nulls, 1917, 2025]
 		assert.Equal(t, -1, ko.Compare(a, b)) // a < b
@@ -683,8 +683,8 @@ func TestKeyOrder_Compare_byDate(t *testing.T) {
 	})
 
 	t.Run("descending, empties at the top", func(t *testing.T) {
-		ko.Type = model.BlockContentDataviewSort_Desc
-		ko.EmptyPlacement = model.BlockContentDataviewSort_Start
+		ko.sortType = model.BlockContentDataviewSort_Desc
+		ko.emptyPlacement = model.BlockContentDataviewSort_Start
 
 		// we expect the following order: [c, d, b, a] OR [d, c, b, a] ~ [nulls, 2025, 1917]
 		assert.Equal(t, +1, ko.Compare(a, b)) // b < a
@@ -696,8 +696,8 @@ func TestKeyOrder_Compare_byDate(t *testing.T) {
 	})
 
 	t.Run("ascending, empties position not specified", func(t *testing.T) {
-		ko.Type = model.BlockContentDataviewSort_Asc
-		ko.EmptyPlacement = model.BlockContentDataviewSort_NotSpecified
+		ko.sortType = model.BlockContentDataviewSort_Asc
+		ko.emptyPlacement = model.BlockContentDataviewSort_NotSpecified
 
 		// we expect the following order: [c, d, a, b] OR [d, c, a, b] ~ [nulls, 1917, 2025]
 		assert.Equal(t, -1, ko.Compare(a, b)) // a < b
@@ -709,8 +709,8 @@ func TestKeyOrder_Compare_byDate(t *testing.T) {
 	})
 
 	t.Run("descending, empties position not specified", func(t *testing.T) {
-		ko.Type = model.BlockContentDataviewSort_Desc
-		ko.EmptyPlacement = model.BlockContentDataviewSort_NotSpecified
+		ko.sortType = model.BlockContentDataviewSort_Desc
+		ko.emptyPlacement = model.BlockContentDataviewSort_NotSpecified
 
 		// we expect the following order: [b, a, c, d] OR [b, a, d, c] ~ [2025, 1917, nulls]
 		assert.Equal(t, +1, ko.Compare(a, b)) // b < a
@@ -772,7 +772,7 @@ func TestKeyOrder_Compare_byTag(t *testing.T) {
 		data:     data,
 	}
 
-	ko := NewKeyOrder(&stubSpaceObjectStore{}, &anyenc.Arena{}, &collate.Buffer{}, SortRequest{RelationKey: key})
+	ko := NewKeyOrder(&stubSpaceObjectStore{}, &anyenc.Arena{}, &collate.Buffer{}, SortRequest{RelationKey: key}).(*keyOrder)
 	ko.orderMap = om
 
 	t.Run("all objects that handle empty details are identical", func(t *testing.T) {
@@ -782,8 +782,8 @@ func TestKeyOrder_Compare_byTag(t *testing.T) {
 		d := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{key: domain.StringList([]string{})})
 
 		for i := 0; i < 6; i++ {
-			ko.Type = model.BlockContentDataviewSortType(i / 3)
-			ko.EmptyPlacement = model.BlockContentDataviewSortEmptyType(i % 3)
+			ko.sortType = model.BlockContentDataviewSortType(i / 3)
+			ko.emptyPlacement = model.BlockContentDataviewSortEmptyType(i % 3)
 			assertCompare(t, ko, a, b, 0)
 			assertCompare(t, ko, c, d, 0)
 		}
@@ -801,8 +801,8 @@ func TestKeyOrder_Compare_byTag(t *testing.T) {
 		h := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{key: domain.StringList([]string{"nullName", "empty", "nullOrderId"})})
 
 		for i := 0; i < 6; i++ {
-			ko.Type = model.BlockContentDataviewSortType(i / 3)
-			ko.EmptyPlacement = model.BlockContentDataviewSortEmptyType(i % 3)
+			ko.sortType = model.BlockContentDataviewSortType(i / 3)
+			ko.emptyPlacement = model.BlockContentDataviewSortEmptyType(i % 3)
 
 			assertCompare(t, ko, a, b, 0)
 			assertCompare(t, ko, b, c, 0)
@@ -826,8 +826,8 @@ func TestKeyOrder_Compare_byTag(t *testing.T) {
 	empty3 := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{key: domain.StringList([]string{"empty", "empty", "empty"})})
 
 	t.Run("ascending, empties at the bottom", func(t *testing.T) {
-		ko.Type = model.BlockContentDataviewSort_Asc
-		ko.EmptyPlacement = model.BlockContentDataviewSort_End
+		ko.sortType = model.BlockContentDataviewSort_Asc
+		ko.emptyPlacement = model.BlockContentDataviewSort_End
 
 		// we expect the following order: [oneEmpty, empty3, forth, vavaVZVZ, vzvzEmpty, firstSecond, secondThird, third, null]
 		assertCompare(t, ko, empty1, empty3, -1)           // [""] < ["","",""] because of list length
@@ -840,8 +840,8 @@ func TestKeyOrder_Compare_byTag(t *testing.T) {
 	})
 
 	t.Run("ascending, empties at the top", func(t *testing.T) {
-		ko.Type = model.BlockContentDataviewSort_Asc
-		ko.EmptyPlacement = model.BlockContentDataviewSort_Start
+		ko.sortType = model.BlockContentDataviewSort_Asc
+		ko.emptyPlacement = model.BlockContentDataviewSort_Start
 
 		// we expect the following order: [null, oneEmpty, empty3, forth, vavaVZVZ, vzvzEmpty, firstSecond, secondThird, third]
 		assertCompare(t, ko, null, empty1, -1)             // null < [""] because of Start EmptyPlacement policy + Asc
@@ -854,8 +854,8 @@ func TestKeyOrder_Compare_byTag(t *testing.T) {
 	})
 
 	t.Run("descending, empties at the bottom", func(t *testing.T) {
-		ko.Type = model.BlockContentDataviewSort_Desc
-		ko.EmptyPlacement = model.BlockContentDataviewSort_End
+		ko.sortType = model.BlockContentDataviewSort_Desc
+		ko.emptyPlacement = model.BlockContentDataviewSort_End
 
 		// we expect the back order of the previous test case
 		assertCompare(t, ko, null, empty1, +1)
@@ -868,8 +868,8 @@ func TestKeyOrder_Compare_byTag(t *testing.T) {
 	})
 
 	t.Run("descending, empties at the top", func(t *testing.T) {
-		ko.Type = model.BlockContentDataviewSort_Desc
-		ko.EmptyPlacement = model.BlockContentDataviewSort_Start
+		ko.sortType = model.BlockContentDataviewSort_Desc
+		ko.emptyPlacement = model.BlockContentDataviewSort_Start
 
 		// we expect the back order of the first test case
 		assertCompare(t, ko, empty1, empty3, +1)

@@ -127,14 +127,14 @@ func testDoNotIncludeTimeWhenSingleNotDateSort(t *testing.T) {
 	assertNotIncludeTime(t, order)
 }
 
-func assertIncludeTime(t *testing.T, order SetOrder) {
-	assert.IsType(t, order[0], &KeyOrder{})
-	assert.Equal(t, order[0].(*KeyOrder).IncludeTime, true)
+func assertIncludeTime(t *testing.T, order setOrder) {
+	assert.IsType(t, order[0], &keyOrder{})
+	assert.Equal(t, order[0].(*keyOrder).includeTime, true)
 }
 
-func assertNotIncludeTime(t *testing.T, order SetOrder) {
-	assert.IsType(t, order[0], &KeyOrder{})
-	assert.Equal(t, order[0].(*KeyOrder).IncludeTime, false)
+func assertNotIncludeTime(t *testing.T, order setOrder) {
+	assert.IsType(t, order[0], &keyOrder{})
+	assert.Equal(t, order[0].(*keyOrder).includeTime, false)
 }
 
 func givenSingleDateSort() []SortRequest {
