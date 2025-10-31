@@ -182,6 +182,11 @@ func getObjectRestrictions(rh RestrictionHolder) (r ObjectRestrictions) {
 			r = ObjectRestrictions{}
 		}
 	}
+
+	if rh.LocalDetails().GetBool(bundle.RelationKeyIsArchived) {
+		return objRestrictAll.Copy()
+	}
+
 	return
 }
 

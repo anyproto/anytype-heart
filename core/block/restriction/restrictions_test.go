@@ -14,9 +14,10 @@ import (
 const noLayout = -1
 
 type restrictionHolder struct {
-	sbType    smartblock.SmartBlockType
-	uniqueKey domain.UniqueKey
-	layout    model.ObjectTypeLayout
+	sbType       smartblock.SmartBlockType
+	uniqueKey    domain.UniqueKey
+	layout       model.ObjectTypeLayout
+	localDetails *domain.Details
 }
 
 func (rh *restrictionHolder) Type() smartblock.SmartBlockType {
@@ -29,6 +30,10 @@ func (rh *restrictionHolder) Layout() (model.ObjectTypeLayout, bool) {
 
 func (rh *restrictionHolder) UniqueKey() domain.UniqueKey {
 	return rh.uniqueKey
+}
+
+func (rh *restrictionHolder) LocalDetails() *domain.Details {
+	return rh.localDetails
 }
 
 func givenObjectType(typeKey domain.TypeKey) RestrictionHolder {
