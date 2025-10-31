@@ -182,6 +182,7 @@ func (m *OrderMap) collectOptionOrders(key domain.RelationKey) {
 
 func (m *OrderMap) getName(details *domain.Details) string {
 	name := details.GetString(bundle.RelationKeyName)
+	// nolint:gosec
 	if name == "" && model.ObjectTypeLayout(details.GetInt64(bundle.RelationKeyResolvedLayout)) == model.ObjectType_note {
 		name = details.GetString(bundle.RelationKeySnippet)
 	}
