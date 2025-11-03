@@ -33,6 +33,8 @@ func TestDatabase(t *testing.T) {
 
 type stubSpaceObjectStore struct {
 	queryRawResult []Record
+	options        []*model.RelationOption
+	iterate        func(q Query, proc func(record *domain.Details)) error
 }
 
 func (s *stubSpaceObjectStore) SpaceId() string {
@@ -40,7 +42,7 @@ func (s *stubSpaceObjectStore) SpaceId() string {
 }
 
 func (s *stubSpaceObjectStore) Query(q Query) (records []Record, err error) {
-	return nil, nil
+	return s.queryRawResult, nil
 }
 
 func (s *stubSpaceObjectStore) QueryRaw(filters *Filters, limit int, offset int) ([]Record, error) {
@@ -56,10 +58,13 @@ func (s *stubSpaceObjectStore) GetRelationFormatByKey(key domain.RelationKey) (m
 }
 
 func (s *stubSpaceObjectStore) ListRelationOptions(relationKey domain.RelationKey) (options []*model.RelationOption, err error) {
-	return nil, nil
+	return s.options, nil
 }
 
 func (s *stubSpaceObjectStore) QueryIterate(q Query, proc func(record *domain.Details)) error {
+	if s.iterate != nil {
+		return s.iterate(q, proc)
+	}
 	for _, record := range s.queryRawResult {
 		proc(record.Details)
 	}
@@ -122,14 +127,14 @@ func testDoNotIncludeTimeWhenSingleNotDateSort(t *testing.T) {
 	assertNotIncludeTime(t, order)
 }
 
-func assertIncludeTime(t *testing.T, order SetOrder) {
-	assert.IsType(t, order[0], &KeyOrder{})
-	assert.Equal(t, order[0].(*KeyOrder).IncludeTime, true)
+func assertIncludeTime(t *testing.T, order setOrder) {
+	assert.IsType(t, order[0], &keyOrder{})
+	assert.Equal(t, order[0].(*keyOrder).includeTime, true)
 }
 
-func assertNotIncludeTime(t *testing.T, order SetOrder) {
-	assert.IsType(t, order[0], &KeyOrder{})
-	assert.Equal(t, order[0].(*KeyOrder).IncludeTime, false)
+func assertNotIncludeTime(t *testing.T, order setOrder) {
+	assert.IsType(t, order[0], &keyOrder{})
+	assert.Equal(t, order[0].(*keyOrder).includeTime, false)
 }
 
 func givenSingleDateSort() []SortRequest {
