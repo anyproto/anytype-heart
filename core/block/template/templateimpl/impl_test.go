@@ -126,28 +126,25 @@ func TestService_CreateTemplateStateWithDetails(t *testing.T) {
 		assert.Equal(t, st.Get(template.TitleBlockId).Model().GetText().Text, templateName)
 	})
 
-	for templateIndex, templateName := range []string{templateName, "", blankTemplateId} {
-		for addedDetail, expected := range map[string][]string{
-			"custom": {"custom", "custom", "custom"},
-			"":       {templateName, "", ""},
-		} {
-			t.Run(fmt.Sprintf("custom page name and description - "+
-				"when template is %s and target detail is %s", templateName, addedDetail), func(t *testing.T) {
+	for _, nameToAdd := range []string{"custom", ""} {
+		for _, nameInTemplate := range []string{templateName, "", blankTemplateId} {
+			t.Run(fmt.Sprintf("must apply custom page name and description - "+
+				"when template is %s and target detail is %s", nameInTemplate, nameToAdd), func(t *testing.T) {
 				// given
-				tmpl := newTemplateTest(templateName, "")
+				tmpl := newTemplateTest(nameInTemplate, "")
 				s := service{picker: &testPicker{sb: tmpl}, converter: converter.NewLayoutConverter()}
 				details := domain.NewDetails()
-				details.Set(bundle.RelationKeyName, domain.String(addedDetail))
-				details.Set(bundle.RelationKeyDescription, domain.String(addedDetail))
+				details.Set(bundle.RelationKeyName, domain.String(nameToAdd))
+				details.Set(bundle.RelationKeyDescription, domain.String(nameToAdd))
 
 				// when
-				st, err := s.CreateTemplateStateWithDetails(templateSvc.CreateTemplateRequest{TemplateId: templateName, Details: details})
+				st, err := s.CreateTemplateStateWithDetails(templateSvc.CreateTemplateRequest{TemplateId: nameInTemplate, Details: details})
 
 				// then
 				assert.NoError(t, err)
-				assert.Equal(t, expected[templateIndex], st.Details().GetString(bundle.RelationKeyName))
-				assert.Equal(t, expected[templateIndex], st.Details().GetString(bundle.RelationKeyDescription))
-				assert.Equal(t, expected[templateIndex], st.Get(template.TitleBlockId).Model().GetText().Text)
+				assert.Equal(t, nameToAdd, st.Details().GetString(bundle.RelationKeyName))
+				assert.Equal(t, nameToAdd, st.Details().GetString(bundle.RelationKeyDescription))
+				assert.Equal(t, nameToAdd, st.Get(template.TitleBlockId).Model().GetText().Text)
 			})
 		}
 	}
