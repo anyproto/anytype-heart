@@ -390,7 +390,9 @@ service ClientCommands {
     rpc MembershipV2GetProducts(anytype.Rpc.MembershipV2.GetProducts.Request) returns (anytype.Rpc.MembershipV2.GetProducts.Response);
     rpc MembershipV2GetStatus(anytype.Rpc.MembershipV2.GetStatus.Request) returns (anytype.Rpc.MembershipV2.GetStatus.Response);
     rpc MembershipV2GetPortalLink (anytype.Rpc.MembershipV2.GetPortalLink.Request) returns (anytype.Rpc.MembershipV2.GetPortalLink.Response);
-    
+    rpc MembershipV2AnyNameIsValid(anytype.Rpc.MembershipV2.AnyNameIsValid.Request) returns (anytype.Rpc.MembershipV2.AnyNameIsValid.Response);
+    rpc MembershipV2AnyNameAllocate(anytype.Rpc.MembershipV2.AnyNameAllocate.Request) returns (anytype.Rpc.MembershipV2.AnyNameAllocate.Response);
+
     // Name Service:
     // ***
     // hello.any -> data

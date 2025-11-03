@@ -1483,7 +1483,7 @@ message MembershipV2 {
             StatusUnknown = 0;
             StatusPending = 1;
             StatusActive = 2;
-            StatusPendingRequiresFinalization = 3;
+            StatusPendingRequiresAnyNameAllocation = 3;
         }
         Status status = 1;
     }

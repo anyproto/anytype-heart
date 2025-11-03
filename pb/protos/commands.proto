@@ -8215,6 +8215,85 @@ message Rpc {
                 }
             }
         }
+
+        /**
+        * Check if the requested name is valid and vacant for the requested tier
+        * before requesting a payment link and paying
+        */
+        message AnyNameIsValid {
+            message Request {
+                string nsName = 1;
+
+                anytype.model.NameserviceNameType nsNameType = 2;
+            }
+
+            message Response {
+                Error error = 1;
+
+                message Error {
+                    Code code = 1;
+                    string description = 2;
+
+                    enum Code {
+                        NULL = 0;
+                        UNKNOWN_ERROR = 1;
+                        BAD_INPUT = 2;
+
+                        TOO_SHORT = 3;
+                        TOO_LONG = 4;
+                        HAS_INVALID_CHARS = 5;
+
+                        // if nothing bought
+                        ACCOUNT_FEATURES_NO_NAME = 6;
+
+                        NOT_LOGGED_IN = 8;
+                        PAYMENT_NODE_ERROR = 9;
+                        CACHE_ERROR = 10;
+                        // for some probable future use (if needed)
+                        CAN_NOT_RESERVE = 11;
+                        CAN_NOT_CONNECT = 12;
+                        // Same as if NameService.ResolveName returned that name is already
+                        // occupied by some user
+                        NAME_IS_RESERVED = 13;
+                    }
+                }
+            }
+        }
+
+        message AnyNameAllocate {
+            message Request {
+                // PP node will register that name on behalf of the user
+                string nsName = 1;
+
+                anytype.model.NameserviceNameType nsNameType = 2;
+            }
+
+            message Response {
+                Error error = 1;
+
+                message Error {
+                    Code code = 1;
+                    string description = 2;
+
+                    enum Code {
+                        NULL = 0;
+                        UNKNOWN_ERROR = 1;
+                        BAD_INPUT = 2;
+
+                        NOT_LOGGED_IN = 3;
+                        PAYMENT_NODE_ERROR = 4;
+                        CACHE_ERROR = 5;
+
+                        MEMBERSHIP_NOT_FOUND = 6;
+                        MEMBERSHIP_WRONG_STATE = 7;
+
+                        BAD_ANYNAME = 8;
+
+                        CAN_NOT_CONNECT = 9;
+                    }
+                }
+            }
+        }
     }
 
     message NameService {

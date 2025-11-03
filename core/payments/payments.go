@@ -122,6 +122,8 @@ type Service interface {
 	V2GetPortalLink(ctx context.Context, req *pb.RpcMembershipV2GetPortalLinkRequest) (*pb.RpcMembershipV2GetPortalLinkResponse, error)
 	V2GetProducts(ctx context.Context, req *pb.RpcMembershipV2GetProductsRequest) (*pb.RpcMembershipV2GetProductsResponse, error)
 	V2GetStatus(ctx context.Context, req *pb.RpcMembershipV2GetStatusRequest) (*pb.RpcMembershipV2GetStatusResponse, error)
+	V2AnyNameIsValid(ctx context.Context, req *pb.RpcMembershipV2AnyNameIsValidRequest) (*pb.RpcMembershipV2AnyNameIsValidResponse, error)
+	V2AnyNameAllocate(ctx context.Context, req *pb.RpcMembershipV2AnyNameAllocateRequest) (*pb.RpcMembershipV2AnyNameAllocateResponse, error)
 
 	app.ComponentRunnable
 }
@@ -1055,4 +1057,111 @@ func (s *service) V2GetStatus(ctx context.Context, req *pb.RpcMembershipV2GetSta
 			Code: pb.RpcMembershipV2GetStatusResponseError_NULL,
 		},
 	}, nil
+}
+
+func (s *service) v2CheckIfNameAvailInNS(ctx context.Context, req *pb.RpcMembershipV2AnyNameIsValidRequest) (*pb.RpcMembershipV2AnyNameIsValidResponse, error) {
+	// check in the NameService if name is vacant (remote call #2)
+	nsreq := pb.RpcNameServiceResolveNameRequest{
+		NsName:     req.NsName,
+		NsNameType: req.NsNameType,
+	}
+	nsout, err := s.ns.NameServiceResolveName(ctx, &nsreq)
+	if err != nil {
+		return nil, err
+	}
+	if !nsout.Available {
+		return nil, ErrNameIsAlreadyReserved
+	}
+
+	return &pb.RpcMembershipV2AnyNameIsValidResponse{
+		Error: &pb.RpcMembershipV2AnyNameIsValidResponseError{
+			Code:        pb.RpcMembershipV2AnyNameIsValidResponseError_NULL,
+			Description: "",
+		},
+	}, nil
+}
+
+func (s *service) V2AnyNameIsValid(ctx context.Context, req *pb.RpcMembershipV2AnyNameIsValidRequest) (*pb.RpcMembershipV2AnyNameIsValidResponse, error) {
+	var code proto.MembershipV2_AnyNameIsValidResponse_Code
+	var desc string
+
+	out := pb.RpcMembershipV2AnyNameIsValidResponse{
+		Error: &pb.RpcMembershipV2AnyNameIsValidResponseError{
+			Code: pb.RpcMembershipV2AnyNameIsValidResponseError_NULL,
+		},
+	}
+
+	// 1 - send request to PP node and ask her please
+	invr := proto.MembershipV2_AnyNameIsValidRequest{
+		RequestedAnyName: nameservice.NsNameToFullName(req.NsName, req.NsNameType),
+	}
+
+	resp, err := s.ppclient2.AnyNameIsValid(ctx, &invr)
+	if err != nil {
+		return nil, err
+	}
+
+	if resp.Code == proto.MembershipV2_AnyNameIsValidResponse_Valid {
+		// no error, now check if vacant in NS
+		return s.v2CheckIfNameAvailInNS(ctx, req)
+	}
+
+	out.Error = &pb.RpcMembershipV2AnyNameIsValidResponseError{}
+	code = resp.Code
+	desc = resp.Description
+
+	if code == proto.MembershipV2_AnyNameIsValidResponse_Valid {
+		// no error, now check if vacant in NS
+		return s.v2CheckIfNameAvailInNS(ctx, req)
+	}
+
+	// 2 - convert code to error
+	switch code {
+	case proto.MembershipV2_AnyNameIsValidResponse_NoDotAny:
+		out.Error.Code = pb.RpcMembershipV2AnyNameIsValidResponseError_BAD_INPUT
+		out.Error.Description = "No .any at the end of the name"
+	case proto.MembershipV2_AnyNameIsValidResponse_TooShort:
+		out.Error.Code = pb.RpcMembershipV2AnyNameIsValidResponseError_TOO_SHORT
+		out.Error.Description = "Name is too short"
+	case proto.MembershipV2_AnyNameIsValidResponse_TooLong:
+		out.Error.Code = pb.RpcMembershipV2AnyNameIsValidResponseError_TOO_LONG
+		out.Error.Description = "Name is too long"
+	case proto.MembershipV2_AnyNameIsValidResponse_HasInvalidChars:
+		out.Error.Code = pb.RpcMembershipV2AnyNameIsValidResponseError_HAS_INVALID_CHARS
+		out.Error.Description = "Name has invalid characters"
+	case proto.MembershipV2_AnyNameIsValidResponse_AccountHasNoName:
+		out.Error.Code = pb.RpcMembershipV2AnyNameIsValidResponseError_ACCOUNT_FEATURES_NO_NAME
+		out.Error.Description = "Account does not have any name enabled"
+	default:
+		out.Error.Code = pb.RpcMembershipV2AnyNameIsValidResponseError_UNKNOWN_ERROR
+		out.Error.Description = "Unknown error"
+	}
+
+	out.Error.Description = desc
+	return &out, nil
+}
+
+func (s *service) V2AnyNameAllocate(ctx context.Context, req *pb.RpcMembershipV2AnyNameAllocateRequest) (*pb.RpcMembershipV2AnyNameAllocateResponse, error) {
+	// 1 - send request
+	anar := proto.MembershipV2_AnyNameAllocateRequest{
+		RequestedAnyName: nameservice.NsNameToFullName(req.NsName, req.NsNameType),
+	}
+
+	// empty return or error
+	_, err := s.ppclient2.AnyNameAllocate(ctx, &anar)
+	if err != nil {
+		return nil, err
+	}
+
+	// TODO:
+	// 2 - clear cache
+	// go s.forceRefresh(30 * time.Minute)
+
+	// return out
+	var out pb.RpcMembershipV2AnyNameAllocateResponse
+	out.Error = &pb.RpcMembershipV2AnyNameAllocateResponseError{
+		Code: pb.RpcMembershipV2AnyNameAllocateResponseError_NULL,
+	}
+
+	return &out, nil
 }

@@ -464,3 +464,69 @@ func (mw *Middleware) MembershipV2GetStatus(ctx context.Context, req *pb.RpcMemb
 
 	return out
 }
+
+func (mw *Middleware) MembershipV2AnyNameIsValid(ctx context.Context, req *pb.RpcMembershipV2AnyNameIsValidRequest) *pb.RpcMembershipV2AnyNameIsValidResponse {
+	ps := mustService[payments.Service](mw)
+	out, err := ps.V2AnyNameIsValid(ctx, req)
+
+	// 1 - check the validity first (remote call #1)
+	// out will already contain validation Error
+	// but if something bad has happened we need to process other errors here too:
+	if err != nil {
+		code := mapErrorCode(err,
+			errToCode(proto.ErrInvalidSignature, pb.RpcMembershipV2AnyNameIsValidResponseError_NOT_LOGGED_IN),
+			errToCode(proto.ErrEthAddressEmpty, pb.RpcMembershipV2AnyNameIsValidResponseError_NOT_LOGGED_IN),
+			errToCode(payments.ErrNoConnection, pb.RpcMembershipV2AnyNameIsValidResponseError_CAN_NOT_CONNECT),
+			errToCode(payments.ErrCacheProblem, pb.RpcMembershipV2AnyNameIsValidResponseError_CACHE_ERROR),
+			errToCode(payments.ErrNameIsAlreadyReserved, pb.RpcMembershipV2AnyNameIsValidResponseError_NAME_IS_RESERVED),
+
+			errToCode(net.ErrUnableToConnect, pb.RpcMembershipV2AnyNameIsValidResponseError_CAN_NOT_CONNECT),
+		)
+
+		// if client doesn't handle that error - let it show unlocalized string at least
+		errStr := getErrorDescription(err)
+		if code == pb.RpcMembershipV2AnyNameIsValidResponseError_CAN_NOT_CONNECT {
+			errStr = "please connect to the internet"
+		}
+
+		return &pb.RpcMembershipV2AnyNameIsValidResponse{
+			Error: &pb.RpcMembershipV2AnyNameIsValidResponseError{
+				Code:        code,
+				Description: errStr,
+			},
+		}
+	}
+
+	return out
+}
+
+func (mw *Middleware) MembershipV2AnyNameAllocate(ctx context.Context, req *pb.RpcMembershipV2AnyNameAllocateRequest) *pb.RpcMembershipV2AnyNameAllocateResponse {
+	ps := mustService[payments.Service](mw)
+	out, err := ps.V2AnyNameAllocate(ctx, req)
+
+	if err != nil {
+		code := mapErrorCode(err,
+			errToCode(proto.ErrInvalidSignature, pb.RpcMembershipV2AnyNameAllocateResponseError_NOT_LOGGED_IN),
+			errToCode(proto.ErrEthAddressEmpty, pb.RpcMembershipV2AnyNameAllocateResponseError_NOT_LOGGED_IN),
+			errToCode(payments.ErrNoConnection, pb.RpcMembershipV2AnyNameAllocateResponseError_CAN_NOT_CONNECT),
+			errToCode(payments.ErrCacheProblem, pb.RpcMembershipV2AnyNameAllocateResponseError_CACHE_ERROR),
+
+			errToCode(net.ErrUnableToConnect, pb.RpcMembershipV2AnyNameAllocateResponseError_CAN_NOT_CONNECT),
+		)
+
+		// if client doesn't handle that error - let it show unlocalized string at least
+		errStr := getErrorDescription(err)
+		if code == pb.RpcMembershipV2AnyNameAllocateResponseError_CAN_NOT_CONNECT {
+			errStr = "please connect to the internet"
+		}
+
+		return &pb.RpcMembershipV2AnyNameAllocateResponse{
+			Error: &pb.RpcMembershipV2AnyNameAllocateResponseError{
+				Code:        code,
+				Description: errStr,
+			},
+		}
+	}
+
+	return out
+}

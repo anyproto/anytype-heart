@@ -842,6 +842,14 @@
     - [Rpc.Membership.VerifyEmailCode.Response](#anytype-Rpc-Membership-VerifyEmailCode-Response)
     - [Rpc.Membership.VerifyEmailCode.Response.Error](#anytype-Rpc-Membership-VerifyEmailCode-Response-Error)
     - [Rpc.MembershipV2](#anytype-Rpc-MembershipV2)
+    - [Rpc.MembershipV2.AnyNameAllocate](#anytype-Rpc-MembershipV2-AnyNameAllocate)
+    - [Rpc.MembershipV2.AnyNameAllocate.Request](#anytype-Rpc-MembershipV2-AnyNameAllocate-Request)
+    - [Rpc.MembershipV2.AnyNameAllocate.Response](#anytype-Rpc-MembershipV2-AnyNameAllocate-Response)
+    - [Rpc.MembershipV2.AnyNameAllocate.Response.Error](#anytype-Rpc-MembershipV2-AnyNameAllocate-Response-Error)
+    - [Rpc.MembershipV2.AnyNameIsValid](#anytype-Rpc-MembershipV2-AnyNameIsValid)
+    - [Rpc.MembershipV2.AnyNameIsValid.Request](#anytype-Rpc-MembershipV2-AnyNameIsValid-Request)
+    - [Rpc.MembershipV2.AnyNameIsValid.Response](#anytype-Rpc-MembershipV2-AnyNameIsValid-Response)
+    - [Rpc.MembershipV2.AnyNameIsValid.Response.Error](#anytype-Rpc-MembershipV2-AnyNameIsValid-Response-Error)
     - [Rpc.MembershipV2.GetPortalLink](#anytype-Rpc-MembershipV2-GetPortalLink)
     - [Rpc.MembershipV2.GetPortalLink.Request](#anytype-Rpc-MembershipV2-GetPortalLink-Request)
     - [Rpc.MembershipV2.GetPortalLink.Response](#anytype-Rpc-MembershipV2-GetPortalLink-Response)
@@ -1624,6 +1632,8 @@
     - [Rpc.Membership.RegisterPaymentRequest.Response.Error.Code](#anytype-Rpc-Membership-RegisterPaymentRequest-Response-Error-Code)
     - [Rpc.Membership.VerifyAppStoreReceipt.Response.Error.Code](#anytype-Rpc-Membership-VerifyAppStoreReceipt-Response-Error-Code)
     - [Rpc.Membership.VerifyEmailCode.Response.Error.Code](#anytype-Rpc-Membership-VerifyEmailCode-Response-Error-Code)
+    - [Rpc.MembershipV2.AnyNameAllocate.Response.Error.Code](#anytype-Rpc-MembershipV2-AnyNameAllocate-Response-Error-Code)
+    - [Rpc.MembershipV2.AnyNameIsValid.Response.Error.Code](#anytype-Rpc-MembershipV2-AnyNameIsValid-Response-Error-Code)
     - [Rpc.MembershipV2.GetPortalLink.Response.Error.Code](#anytype-Rpc-MembershipV2-GetPortalLink-Response-Error-Code)
     - [Rpc.MembershipV2.GetProducts.Response.Error.Code](#anytype-Rpc-MembershipV2-GetProducts-Response-Error-Code)
     - [Rpc.MembershipV2.GetStatus.Response.Error.Code](#anytype-Rpc-MembershipV2-GetStatus-Response-Error-Code)
@@ -2495,6 +2505,8 @@
 | MembershipV2GetProducts | [Rpc.MembershipV2.GetProducts.Request](#anytype-Rpc-MembershipV2-GetProducts-Request) | [Rpc.MembershipV2.GetProducts.Response](#anytype-Rpc-MembershipV2-GetProducts-Response) | enumerate all available for purchase products |
 | MembershipV2GetStatus | [Rpc.MembershipV2.GetStatus.Request](#anytype-Rpc-MembershipV2-GetStatus-Request) | [Rpc.MembershipV2.GetStatus.Response](#anytype-Rpc-MembershipV2-GetStatus-Response) |  |
 | MembershipV2GetPortalLink | [Rpc.MembershipV2.GetPortalLink.Request](#anytype-Rpc-MembershipV2-GetPortalLink-Request) | [Rpc.MembershipV2.GetPortalLink.Response](#anytype-Rpc-MembershipV2-GetPortalLink-Response) |  |
+| MembershipV2AnyNameIsValid | [Rpc.MembershipV2.AnyNameIsValid.Request](#anytype-Rpc-MembershipV2-AnyNameIsValid-Request) | [Rpc.MembershipV2.AnyNameIsValid.Response](#anytype-Rpc-MembershipV2-AnyNameIsValid-Response) |  |
+| MembershipV2AnyNameAllocate | [Rpc.MembershipV2.AnyNameAllocate.Request](#anytype-Rpc-MembershipV2-AnyNameAllocate-Request) | [Rpc.MembershipV2.AnyNameAllocate.Response](#anytype-Rpc-MembershipV2-AnyNameAllocate-Response) |  |
 | NameServiceUserAccountGet | [Rpc.NameService.UserAccount.Get.Request](#anytype-Rpc-NameService-UserAccount-Get-Request) | [Rpc.NameService.UserAccount.Get.Response](#anytype-Rpc-NameService-UserAccount-Get-Response) | Name Service: *** hello.any -&gt; data |
 | NameServiceResolveName | [Rpc.NameService.ResolveName.Request](#anytype-Rpc-NameService-ResolveName-Request) | [Rpc.NameService.ResolveName.Response](#anytype-Rpc-NameService-ResolveName-Response) |  |
 | NameServiceResolveAnyId | [Rpc.NameService.ResolveAnyId.Request](#anytype-Rpc-NameService-ResolveAnyId-Request) | [Rpc.NameService.ResolveAnyId.Response](#anytype-Rpc-NameService-ResolveAnyId-Response) | 12D3KooWA8EXV3KjBxEU5EnsPfneLx84vMWAtTBQBeyooN82KSuS -&gt; hello.any |
@@ -14700,6 +14712,121 @@ need a correct code that was sent to the user when calling GetVerificationEmail
 
 
 
+<a name="anytype-Rpc-MembershipV2-AnyNameAllocate"></a>
+
+### Rpc.MembershipV2.AnyNameAllocate
+
+
+
+
+
+
+
+<a name="anytype-Rpc-MembershipV2-AnyNameAllocate-Request"></a>
+
+### Rpc.MembershipV2.AnyNameAllocate.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| nsName | [string](#string) |  | PP node will register that name on behalf of the user |
+| nsNameType | [model.NameserviceNameType](#anytype-model-NameserviceNameType) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-MembershipV2-AnyNameAllocate-Response"></a>
+
+### Rpc.MembershipV2.AnyNameAllocate.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.MembershipV2.AnyNameAllocate.Response.Error](#anytype-Rpc-MembershipV2-AnyNameAllocate-Response-Error) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-MembershipV2-AnyNameAllocate-Response-Error"></a>
+
+### Rpc.MembershipV2.AnyNameAllocate.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.MembershipV2.AnyNameAllocate.Response.Error.Code](#anytype-Rpc-MembershipV2-AnyNameAllocate-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-MembershipV2-AnyNameIsValid"></a>
+
+### Rpc.MembershipV2.AnyNameIsValid
+Check if the requested name is valid and vacant for the requested tier
+before requesting a payment link and paying
+
+
+
+
+
+
+<a name="anytype-Rpc-MembershipV2-AnyNameIsValid-Request"></a>
+
+### Rpc.MembershipV2.AnyNameIsValid.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| nsName | [string](#string) |  |  |
+| nsNameType | [model.NameserviceNameType](#anytype-model-NameserviceNameType) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-MembershipV2-AnyNameIsValid-Response"></a>
+
+### Rpc.MembershipV2.AnyNameIsValid.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.MembershipV2.AnyNameIsValid.Response.Error](#anytype-Rpc-MembershipV2-AnyNameIsValid-Response-Error) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-MembershipV2-AnyNameIsValid-Response-Error"></a>
+
+### Rpc.MembershipV2.AnyNameIsValid.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.MembershipV2.AnyNameIsValid.Response.Error.Code](#anytype-Rpc-MembershipV2-AnyNameIsValid-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
 <a name="anytype-Rpc-MembershipV2-GetPortalLink"></a>
 
 ### Rpc.MembershipV2.GetPortalLink
@@ -25944,6 +26071,49 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 
 
 
+<a name="anytype-Rpc-MembershipV2-AnyNameAllocate-Response-Error-Code"></a>
+
+### Rpc.MembershipV2.AnyNameAllocate.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
+| NOT_LOGGED_IN | 3 |  |
+| PAYMENT_NODE_ERROR | 4 |  |
+| CACHE_ERROR | 5 |  |
+| MEMBERSHIP_NOT_FOUND | 6 |  |
+| MEMBERSHIP_WRONG_STATE | 7 |  |
+| BAD_ANYNAME | 8 |  |
+| CAN_NOT_CONNECT | 9 |  |
+
+
+
+<a name="anytype-Rpc-MembershipV2-AnyNameIsValid-Response-Error-Code"></a>
+
+### Rpc.MembershipV2.AnyNameIsValid.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
+| TOO_SHORT | 3 |  |
+| TOO_LONG | 4 |  |
+| HAS_INVALID_CHARS | 5 |  |
+| ACCOUNT_FEATURES_NO_NAME | 6 | if nothing bought |
+| NOT_LOGGED_IN | 8 |  |
+| PAYMENT_NODE_ERROR | 9 |  |
+| CACHE_ERROR | 10 |  |
+| CAN_NOT_RESERVE | 11 | for some probable future use (if needed) |
+| CAN_NOT_CONNECT | 12 |  |
+| NAME_IS_RESERVED | 13 | Same as if NameService.ResolveName returned that name is already occupied by some user |
+
+
+
 <a name="anytype-Rpc-MembershipV2-GetPortalLink-Response-Error-Code"></a>
 
 ### Rpc.MembershipV2.GetPortalLink.Response.Error.Code
@@ -34439,7 +34609,7 @@ Look https://github.com/golang/protobuf/issues/1135 for more information.
 | StatusUnknown | 0 |  |
 | StatusPending | 1 |  |
 | StatusActive | 2 |  |
-| StatusPendingRequiresFinalization | 3 |  |
+| StatusPendingRequiresAnyNameAllocation | 3 |  |
 
 
 
