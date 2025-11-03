@@ -10,13 +10,10 @@ import (
 	"github.com/anyproto/any-sync/coordinator/coordinatorproto"
 	"github.com/anyproto/any-sync/util/crypto"
 	"github.com/anyproto/anytype-heart/core/inboxclient"
-	"github.com/anyproto/anytype-heart/pb"
-	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
+	"github.com/anyproto/anytype-heart/space/spaceinfo"
 
 	"github.com/gogo/protobuf/proto"
-	"github.com/gogo/protobuf/types"
 	"go.uber.org/zap"
 )
 
@@ -28,6 +25,10 @@ var (
 	ErrSomeError = errors.New("some error")
 )
 
+type IdentityService interface {
+	AddIdentityProfile(identityProfile *model.IdentityProfile, key crypto.SymKey) error
+}
+
 func New() Service {
 	return new(onetoone)
 }
@@ -38,16 +39,18 @@ type Service interface {
 }
 
 type BlockService interface {
-	CreateWorkspace(ctx context.Context, req *pb.RpcWorkspaceCreateRequest) (spaceID string, startingPageId string, err error)
+	CreateOneToOneFromInbox(ctx context.Context, spaceDescription *spaceinfo.SpaceDescription, bobProfile *model.IdentityProfileWithKey) (err error)
 	SpaceInitChat(ctx context.Context, spaceId string) error
 }
 type onetoone struct {
-	inboxClient  inboxclient.InboxClient
-	blockService BlockService
+	inboxClient     inboxclient.InboxClient
+	identityService IdentityService
+	blockService    BlockService
 }
 
 func (s *onetoone) Init(a *app.App) (err error) {
 	s.blockService = app.MustComponent[BlockService](a)
+	s.identityService = app.MustComponent[IdentityService](a)
 	s.inboxClient = app.MustComponent[inboxclient.InboxClient](a)
 	err = s.inboxClient.SetReceiverByType(coordinatorproto.InboxPayloadType_InboxPayloadOneToOneInvite, s.processOneToOneInvite)
 	if err != nil {
@@ -65,38 +68,36 @@ func (s *onetoone) processOneToOneInvite(packet *coordinatorproto.InboxPacket) (
 		return fmt.Errorf("processOneToOneInvite: got nil body")
 	}
 
-	var idWithProfileKey model.IdentityProfile
-	err = proto.Unmarshal(inboxBody, &idWithProfileKey)
+	var identityProfileWithKey model.IdentityProfileWithKey
+	err = proto.Unmarshal(inboxBody, &identityProfileWithKey)
 	if err != nil {
 		return
 	}
 	log.Debug("creating onetoone space from inbox.. ")
 
-	req := &pb.RpcWorkspaceCreateRequest{
-		Details: &types.Struct{
-			Fields: map[string]*types.Value{
-				bundle.RelationKeySpaceUxType.String():      pbtypes.Float64(float64(model.SpaceUxType_OneToOne)),
-				bundle.RelationKeyName.String():             pbtypes.String(idWithProfileKey.Name),
-				bundle.RelationKeyIconOption.String():       pbtypes.Float64(float64(5)),
-				bundle.RelationKeySpaceDashboardId.String(): pbtypes.String("lastOpened"),
-				bundle.RelationKeyOneToOneIdentity.String(): pbtypes.String(idWithProfileKey.Identity),
-			},
-		},
-		UseCase:  pb.RpcObjectImportUseCaseRequest_CHAT_SPACE,
-		WithChat: true,
-	}
-
-	//TODO: lol, you forgot to put RegisterIdentity()
-	spaceId, _, err := s.blockService.CreateWorkspace(context.TODO(), req)
+	key, err := crypto.UnmarshallAESKeyProto(identityProfileWithKey.RequestMetadata)
 	if err != nil {
 		return
 	}
-	err = s.blockService.SpaceInitChat(context.TODO(), spaceId)
+
+	// TODO: send encrypted rawProfile in inbox, with key?
+	err = s.identityService.AddIdentityProfile(identityProfileWithKey.IdentityProfile, key)
 	if err != nil {
-		log.Warn("failed to init space level chat")
+		return
 	}
 
-	log.Debug("created onetoone space from inbox", zap.String("spaceId", spaceId))
+	spaceDescription := &spaceinfo.SpaceDescription{
+		Name:        identityProfileWithKey.IdentityProfile.Name,
+		SpaceUxType: model.SpaceUxType_OneToOne,
+		// TODO: OneToOneParticipantIdentity
+	}
+
+	err = s.blockService.CreateOneToOneFromInbox(context.TODO(), spaceDescription, &identityProfileWithKey)
+	if err != nil {
+		return fmt.Errorf("processOneToOneInvite error: %s", err.Error())
+	}
+
+	log.Debug("created onetoone space from inbox")
 
 	// TODO: RegisterParticipant
 	// TODO: cyclic deps. we can create a third service, or, pass processOneToOneInvite from space service.

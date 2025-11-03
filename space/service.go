@@ -63,6 +63,7 @@ func New() Service {
 
 type Service interface {
 	Create(ctx context.Context, description *spaceinfo.SpaceDescription) (space clientspace.Space, err error)
+	CreateOneToOne(ctx context.Context, description *spaceinfo.SpaceDescription, bobProfile *model.IdentityProfileWithKey) (sp clientspace.Space, err error)
 	Join(ctx context.Context, id, aclHeadId string) error
 	InviteJoin(ctx context.Context, id, aclHeadId string) error
 	CancelLeave(ctx context.Context, id string) (err error)
@@ -157,6 +158,7 @@ func (s *service) Init(a *app.App) (err error) {
 	s.spaceNameGetter = app.MustComponent[objectstore.SpaceNameGetter](a)
 	s.spaceLoaderListener = app.MustComponent[aclobjectmanager.SpaceLoaderListener](a)
 	s.identityService = app.MustComponent[dependencies.IdentityService](a)
+	s.onetoone = app.MustComponent[onetoone.Service](a)
 	s.waiting = make(map[string]controllerWaiter)
 	s.techSpaceReady = make(chan struct{})
 	s.personalSpaceId, err = s.spaceCore.DeriveID(context.Background(), spacedomain.SpaceTypeRegular)

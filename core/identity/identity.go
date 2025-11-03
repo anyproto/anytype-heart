@@ -50,6 +50,7 @@ type Service interface {
 	WaitProfile(ctx context.Context, identity string) *model.IdentityProfile
 	WaitProfileWithKey(ctx context.Context, identity string) (*model.IdentityProfileWithKey, error)
 	GetMetadataKey(identity string) (crypto.SymKey, error)
+	AddIdentityProfile(identityProfile *model.IdentityProfile, key crypto.SymKey) error
 	app.ComponentRunnable
 }
 
@@ -364,6 +365,39 @@ func (s *service) broadcastIdentityProfile(identityData *identityrepoproto.DataW
 	}
 
 	return nil
+}
+
+// Put identity profile to cache from external place (e.g. from onetoone inbox)
+func (s *service) AddIdentityProfile(identityProfile *model.IdentityProfile, key crypto.SymKey) error {
+	identityProfileBytes, err := identityProfile.Marshal()
+	if err != nil {
+		return err
+	}
+
+	encryptedIdentityProfileBytes, err := key.Encrypt(identityProfileBytes)
+	if err != nil {
+		return err
+	}
+
+	data := []*identityrepoproto.Data{
+		{
+			Kind: identityRepoDataKind,
+			Data: encryptedIdentityProfileBytes,
+			// Signature: ..? idk, probably identity signature, what else
+		},
+	}
+	identityData := identityrepoproto.DataWithIdentity{
+		Identity: identityProfile.Identity,
+		Data:     data,
+	}
+
+	rawProfile, err := identityData.MarshalVT()
+	if err != nil {
+		return err
+	}
+
+	return s.identityProfileCacheStore.Set(context.Background(), identityProfile.Identity, rawProfile)
+
 }
 
 func (s *service) broadcastMyIdentityProfile(identityProfile *model.IdentityProfile) {

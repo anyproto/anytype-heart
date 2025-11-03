@@ -129,7 +129,7 @@ func (s *inboxclient) ReceiveNotify(event *coordinatorproto.NotifySubscribeEvent
 		if handler, ok := s.receivers[msg.Packet.Payload.PayloadType]; ok {
 			herr := handler(msg.Packet)
 			if herr != nil {
-				log.Error("inbox: error while processing receiver handler", zap.Int("type", int(msg.Packet.Payload.PayloadType)))
+				log.Error("inbox: error while processing receiver handler", zap.String("type", coordinatorproto.InboxPayloadType_name[int32(msg.Packet.Payload.PayloadType)]), zap.Error(herr))
 			}
 		} else {
 			log.Warn("inbox: don't know how to process PayloadType", zap.Int("type", int(msg.Packet.Payload.PayloadType)))

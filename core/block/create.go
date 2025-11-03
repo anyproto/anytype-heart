@@ -17,6 +17,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space/spaceinfo"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
+	"github.com/gogo/protobuf/types"
 )
 
 func (s *Service) ObjectDuplicate(ctx context.Context, id string) (objectID string, err error) {
@@ -46,6 +47,54 @@ func (s *Service) ObjectDuplicate(ctx context.Context, id string) (objectID stri
 		return
 	}
 	return
+}
+
+func (s *Service) CreateOneToOneFromInbox(ctx context.Context, spaceDescription *spaceinfo.SpaceDescription, identityProfileWithKey *model.IdentityProfileWithKey) (err error) {
+	newSpace, err := s.spaceService.CreateOneToOne(ctx, spaceDescription, identityProfileWithKey)
+	if err != nil {
+		return fmt.Errorf("error creating space: %w", err)
+	}
+	predefinedObjectIDs := newSpace.DerivedIDs()
+
+	req := &pb.RpcWorkspaceCreateRequest{
+		Details: &types.Struct{
+			Fields: map[string]*types.Value{
+				bundle.RelationKeySpaceUxType.String():      pbtypes.Float64(float64(model.SpaceUxType_OneToOne)),
+				bundle.RelationKeyName.String():             pbtypes.String(identityProfileWithKey.IdentityProfile.Name),
+				bundle.RelationKeyIconOption.String():       pbtypes.Float64(float64(5)),
+				bundle.RelationKeySpaceDashboardId.String(): pbtypes.String("lastOpened"),
+				bundle.RelationKeyOneToOneIdentity.String(): pbtypes.String(identityProfileWithKey.IdentityProfile.Identity),
+			},
+		},
+		UseCase:  pb.RpcObjectImportUseCaseRequest_CHAT_SPACE,
+		WithChat: true,
+	}
+
+	err = cache.Do(s, predefinedObjectIDs.Workspace, func(b basic.DetailsSettable) error {
+		details := make([]domain.Detail, 0, len(req.Details.GetFields()))
+		for k, v := range req.Details.GetFields() {
+			details = append(details, domain.Detail{
+				Key:   domain.RelationKey(k),
+				Value: domain.ValueFromProto(v),
+			})
+		}
+		return b.SetDetails(nil, details, true)
+	})
+	if err != nil {
+		return fmt.Errorf("set details for space %s: %w", newSpace.Id(), err)
+	}
+	// use case is still chat for onetoone (chat is derived IIRC)
+	_, _, err = s.builtinObjectService.CreateObjectsForUseCase(nil, newSpace.Id(), req.UseCase)
+	if err != nil {
+		return fmt.Errorf("import use-case: %w", err)
+	}
+
+	err = s.SpaceInitChat(ctx, newSpace.Id())
+	if err != nil {
+		log.Warn("failed to init space level chat")
+	}
+
+	return err
 }
 
 func (s *Service) CreateWorkspace(ctx context.Context, req *pb.RpcWorkspaceCreateRequest) (spaceID string, startingPageId string, err error) {

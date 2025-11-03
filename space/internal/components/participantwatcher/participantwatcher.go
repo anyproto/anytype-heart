@@ -133,7 +133,7 @@ func (p *participantWatcher) WatchParticipant(ctx context.Context, space clients
 	}
 
 	err = p.identityService.RegisterIdentity(space.Id(), state.PubKey.Account(), key, func(identity string, profile *model.IdentityProfile) {
-		err := p.updateParticipantFromIdentity(ctx, space, identity, profile)
+		err := p.updateParticipantFromIdentity(space, identity, profile)
 		if err != nil {
 			log.Error("error updating participant from identity", zap.Error(err))
 		}
@@ -184,7 +184,7 @@ func (p *participantWatcher) UpdateParticipantFromAclState(ctx context.Context, 
 	})
 }
 
-func (p *participantWatcher) updateParticipantFromIdentity(ctx context.Context, space clientspace.Space, identity string, profile *model.IdentityProfile) (err error) {
+func (p *participantWatcher) updateParticipantFromIdentity(space clientspace.Space, identity string, profile *model.IdentityProfile) (err error) {
 	id := domain.NewParticipantId(space.Id(), identity)
 	return space.Do(id, func(sb smartblock.SmartBlock) error {
 		return sb.(participant).ModifyIdentityDetails(profile)
