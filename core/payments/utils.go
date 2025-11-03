@@ -155,6 +155,8 @@ func convertProductData(src *paymentserviceproto.MembershipV2_Product) *model.Me
 	out.Description = src.Description
 	out.IsTopLevel = src.IsTopLevel
 	out.IsHidden = src.IsHidden
+	out.IsIntro = src.IsIntro
+	out.IsUpgradeable = src.IsUpgradeable
 	out.ColorStr = src.ColorStr
 	out.Offer = src.Offer
 

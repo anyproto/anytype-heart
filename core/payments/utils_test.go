@@ -279,6 +279,8 @@ func TestConvertProductData_JSONCoverage(t *testing.T) {
 		Description:   "Best value",
 		IsTopLevel:    true,
 		IsHidden:      true,
+		IsIntro:       true,
+		IsUpgradeable: true,
 		PricesYearly:  []*paymentserviceproto.MembershipV2_Amount{{Currency: "USD", AmountCents: 4800}, {Currency: "EUR", AmountCents: 4500}},
 		PricesMonthly: []*paymentserviceproto.MembershipV2_Amount{{Currency: "USD", AmountCents: 500}, {Currency: "EUR", AmountCents: 450}},
 		ColorStr:      "blue",
@@ -298,13 +300,15 @@ func TestConvertProductData_JSONCoverage(t *testing.T) {
 	require.NotNil(t, actual)
 
 	expected := &model.MembershipV2Product{
-		Id:          src.Id,
-		Name:        src.Name,
-		Description: src.Description,
-		IsTopLevel:  src.IsTopLevel,
-		IsHidden:    src.IsHidden,
-		ColorStr:    src.ColorStr,
-		Offer:       src.Offer,
+		Id:            src.Id,
+		Name:          src.Name,
+		Description:   src.Description,
+		IsTopLevel:    src.IsTopLevel,
+		IsHidden:      src.IsHidden,
+		IsIntro:       src.IsIntro,
+		IsUpgradeable: src.IsUpgradeable,
+		ColorStr:      src.ColorStr,
+		Offer:         src.Offer,
 		PricesYearly: []*model.MembershipV2Amount{
 			{Currency: src.PricesYearly[0].Currency, AmountCents: src.PricesYearly[0].AmountCents},
 			{Currency: src.PricesYearly[1].Currency, AmountCents: src.PricesYearly[1].AmountCents},

@@ -8877,7 +8877,6 @@ func (m *EventBlockDataviewViewUpdateFilterMove) GetIds() []string {
 
 type EventBlockDataviewViewUpdateRelation struct {
 	// Types that are valid to be assigned to Operation:
-	//
 	//	*EventBlockDataviewViewUpdateRelationOperationOfAdd
 	//	*EventBlockDataviewViewUpdateRelationOperationOfRemove
 	//	*EventBlockDataviewViewUpdateRelationOperationOfUpdate

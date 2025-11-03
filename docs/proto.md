@@ -33013,6 +33013,12 @@ Used to decode block meta only, without the content itself
 | description | [string](#string) |  |  |
 | isTopLevel | [bool](#bool) |  |  |
 | isHidden | [bool](#bool) |  |  |
+| isIntro | [bool](#bool) |  | isIntro flag can be used as follows:
+
+1. if current user&#39;s top level product has isIntro flag -&gt; then you&#39;d rather show a FULL list of all products to enable upgrading from CURRENT product 2. but if current user&#39;s top level product has no isIntro flag -&gt; then it means that this plan was aquired and user need to control it. then show &#34;second screen&#34; to control that product instead |
+| isUpgradeable | [bool](#bool) |  | isUpgradeable can be used as follows:
+
+if current user&#39;s top level product has isUpgradeable flag -&gt; show incentives to buy something else |
 | pricesYearly | [MembershipV2.Amount](#anytype-model-MembershipV2-Amount) | repeated |  |
 | pricesMonthly | [MembershipV2.Amount](#anytype-model-MembershipV2-Amount) | repeated |  |
 | colorStr | [string](#string) |  | green, blue, red, purple, custom, etc |
