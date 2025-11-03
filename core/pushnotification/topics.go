@@ -85,25 +85,32 @@ func (c *spaceTopicsCollection) SetSpaceViewStatus(status *spaceViewStatus, chat
 		}
 	}
 
-	hasCustomIds := len(status.muteIds) > 0 || len(status.mentionIds) > 0
+	hasCustomIds := len(status.muteIds) > 0 || len(status.mentionIds) > 0 || len(status.allIds) > 0
 	if !hasCustomIds {
 		// there are no custom ids, so we can use common topics
 		switch status.mode {
-		case pb.RpcPushNotificationSetSpaceMode_All:
+		case pb.RpcPushNotification_All:
 			c.localTopics = append(c.localTopics, makeTopic(ChatsTopicName), makeTopic(c.identity))
-		case pb.RpcPushNotificationSetSpaceMode_Mentions:
+		case pb.RpcPushNotification_Mentions:
 			c.localTopics = append(c.localTopics, makeTopic(c.identity))
 		}
-	} else if status.mode != pb.RpcPushNotificationSetSpaceMode_Nothing {
+	} else {
 		for _, chatId := range chatIds {
 			if slices.Contains(status.muteIds, chatId) {
 				continue
-			}
-			if slices.Contains(status.mentionIds, chatId) {
+			} else if slices.Contains(status.mentionIds, chatId) {
 				c.localTopics = append(c.localTopics, makeTopic(ChatsTopicName, sha256hex(chatId), c.identity))
-			} else if status.mode == pb.RpcPushNotificationSetSpaceMode_All {
+			} else if slices.Contains(status.allIds, chatId) {
 				c.localTopics = append(c.localTopics, makeTopic(ChatsTopicName, sha256hex(chatId)))
+			} else {
+				switch status.mode {
+				case pb.RpcPushNotification_All:
+					c.localTopics = append(c.localTopics, makeTopic(ChatsTopicName, sha256hex(chatId)))
+				case pb.RpcPushNotification_Mentions:
+					c.localTopics = append(c.localTopics, makeTopic(ChatsTopicName, sha256hex(chatId), c.identity))
+				}
 			}
+
 		}
 	}
 
