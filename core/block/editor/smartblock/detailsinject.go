@@ -6,6 +6,7 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/editor/template"
+	"github.com/anyproto/anytype-heart/core/block/restriction"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/syncstatus/filesyncstatus"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
@@ -355,4 +356,20 @@ func (sb *smartBlock) getTypeDetails(s *state.State) (*domain.Details, error) {
 		return nil, fmt.Errorf("failed to query object %s: %w", typeObjectId, err)
 	}
 	return records[0].Details, nil
+}
+
+func (sb *smartBlock) setRestrictionsDetail(s *state.State) {
+	currentRestrictions := restriction.NewObjectRestrictionsFromValue(s.LocalDetails().Get(bundle.RelationKeyRestrictions))
+	if currentRestrictions.Equal(sb.Restrictions().Object) {
+		return
+	}
+
+	s.SetLocalDetail(bundle.RelationKeyRestrictions, sb.Restrictions().Object.ToValue())
+
+	if sb.Restrictions().Object.Check(model.Restrictions_Details) != nil &&
+		sb.Restrictions().Object.Check(model.Restrictions_Blocks) != nil {
+		s.SetDetailAndBundledRelation(bundle.RelationKeyIsReadonly, domain.Bool(true))
+	} else if s.LocalDetails().GetBool(bundle.RelationKeyIsReadonly) {
+		s.SetDetailAndBundledRelation(bundle.RelationKeyIsReadonly, domain.Bool(false))
+	}
 }

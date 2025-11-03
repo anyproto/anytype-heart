@@ -14,6 +14,7 @@ type RestrictionHolder interface {
 	Type() smartblock.SmartBlockType
 	Layout() (model.ObjectTypeLayout, bool)
 	UniqueKey() domain.UniqueKey
+	LocalDetails() *domain.Details
 }
 
 func GetRestrictions(rh RestrictionHolder) (r Restrictions) {
