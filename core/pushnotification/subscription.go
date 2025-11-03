@@ -81,8 +81,9 @@ func newSpaceViewSubscription(service subscription.Service, techSpaceId string, 
 					spaceKey:       spaceKey,
 					encKeyBase64:   encKeyBase64,
 					encKey:         encKey,
-					mode:           pb.RpcPushNotificationMode(details.GetInt64(bundle.RelationKeySpacePushNotificationMode)),
-					creator:        details.GetString(bundle.RelationKeyCreator),
+					// nolint: gosec
+					mode:    pb.RpcPushNotificationMode(details.GetInt64(bundle.RelationKeySpacePushNotificationMode)),
+					creator: details.GetString(bundle.RelationKeyCreator),
 				}
 			},
 			UpdateKeys: func(keyValues []objectsubscription.RelationKeyValue, status spaceViewStatus) spaceViewStatus {

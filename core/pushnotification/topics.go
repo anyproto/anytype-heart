@@ -86,6 +86,7 @@ func (c *spaceTopicsCollection) SetSpaceViewStatus(status *spaceViewStatus, chat
 	}
 
 	hasCustomIds := len(status.muteIds) > 0 || len(status.mentionIds) > 0 || len(status.allIds) > 0
+	// nolint: nestif
 	if !hasCustomIds {
 		// there are no custom ids, so we can use common topics
 		switch status.mode {
