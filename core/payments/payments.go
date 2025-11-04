@@ -1145,6 +1145,7 @@ func (s *service) V2AnyNameAllocate(ctx context.Context, req *pb.RpcMembershipV2
 	// 1 - send request
 	anar := proto.MembershipV2_AnyNameAllocateRequest{
 		RequestedAnyName: nameservice.NsNameToFullName(req.NsName, req.NsNameType),
+		OwnerEthAddress:  s.wallet.GetAccountEthAddress().Hex(),
 	}
 
 	// empty return or error

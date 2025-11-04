@@ -88,6 +88,8 @@ github.com/anyproto/any-sync v0.10.6-0.20251103140907-c3f724760c3a h1:x7NQ6QA9X7
 github.com/anyproto/any-sync v0.10.6-0.20251103140907-c3f724760c3a/go.mod h1:/0OVu/L9RQcbwuj44IRjfGQnvL2dxRj8XRLTjQN8r9E=
 github.com/anyproto/any-sync v0.10.6-0.20251103192025-db53ed2201d3 h1:yNeJkv+J2k5VZKrlcA87/pyy2nDKkz3VVMJOiBnwRGY=
 github.com/anyproto/any-sync v0.10.6-0.20251103192025-db53ed2201d3/go.mod h1:/0OVu/L9RQcbwuj44IRjfGQnvL2dxRj8XRLTjQN8r9E=
+github.com/anyproto/any-sync v0.10.6-0.20251104095453-66bbfdfff4bf h1:3IzDleK1wJwWi7CT6thjFnUoh4MBBXO54JIq9d2Nfoc=
+github.com/anyproto/any-sync v0.10.6-0.20251104095453-66bbfdfff4bf/go.mod h1:/0OVu/L9RQcbwuj44IRjfGQnvL2dxRj8XRLTjQN8r9E=
 github.com/anyproto/anytype-publish-server/publishclient v0.0.0-20250716122732-cdcfe3a126bb h1:X1os44y0QWf1mYGj8BOoYKlXwY5xb94xTQIw1IIKJbY=
 github.com/anyproto/anytype-publish-server/publishclient v0.0.0-20250716122732-cdcfe3a126bb/go.mod h1:OzzODq4OigiRVD2lSOX1iHAoLcxhJDRbZb8n5PLG3WE=
 github.com/anyproto/anytype-push-server/pushclient v0.0.0-20250801122506-553f6c085a23 h1:jXAjKY4g9ec7lDtayIlzM9u0/b3xGS9YgGA6JtRhHfU=
