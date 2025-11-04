@@ -356,7 +356,7 @@ func (sb *smartBlock) getTypeDetails(s *state.State) (*domain.Details, error) {
 
 	records, err := sb.objectStore.SpaceIndex(sb.SpaceID()).QueryByIds([]string{typeObjectId})
 	if err != nil || len(records) != 1 {
-		return nil, fmt.Errorf("failed to query object %s: %v", typeObjectId, err)
+		return nil, fmt.Errorf("failed to query object %s: %w", typeObjectId, err)
 	}
 	return records[0].Details, nil
 }
