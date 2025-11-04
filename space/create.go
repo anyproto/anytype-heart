@@ -2,9 +2,9 @@ package space
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/anyproto/any-sync/util/crypto"
-	"github.com/anyproto/anytype-heart/core/anytype/config/loadenv"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space/clientspace"
 	"github.com/anyproto/anytype-heart/space/internal/spaceprocess/loader"
@@ -14,14 +14,10 @@ import (
 
 // for initiator (e.g. from ui avatar, qrcode)
 func (s *service) CreateOneToOneSendInbox(ctx context.Context, description *spaceinfo.SpaceDescription) (sp clientspace.Space, err error) {
-	var bobAccountAddress string
-	if description.OneToOneParticipantIdentity != "" {
-		bobAccountAddress = description.OneToOneParticipantIdentity
-	} else {
-		// for testing
-		bobAccountAddress = loadenv.Get("BOB_ACCOUNT")
+	if description.OneToOneIdentity == "" {
+		return nil, fmt.Errorf("create onetoone: details, OneToOneIdentity is missing")
 	}
-	bobProfile, err := s.identityService.WaitProfileWithKey(ctx, bobAccountAddress)
+	bobProfile, err := s.identityService.WaitProfileWithKey(ctx, description.OneToOneIdentity)
 	if err != nil {
 		return
 	}
@@ -32,8 +28,14 @@ func (s *service) CreateOneToOneSendInbox(ctx context.Context, description *spac
 	}
 
 	// add que to inbox, if no connection, put into que
-	// otherwise space
-	err = s.onetoone.SendOneToOneInvite(ctx, bobProfile)
+	// otherwise space never be possible to recreate in case of connection issue
+	myIdentity := s.accountService.Account().SignKey.GetPublic().Account()
+	myProfile, err := s.identityService.WaitProfileWithKey(ctx, myIdentity)
+	if err != nil {
+		return
+	}
+
+	err = s.onetoone.SendOneToOneInvite(ctx, bobProfile.IdentityProfile.Identity, myProfile)
 	return
 }
 

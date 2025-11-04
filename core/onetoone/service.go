@@ -35,7 +35,7 @@ func New() Service {
 
 type Service interface {
 	app.ComponentRunnable
-	SendOneToOneInvite(ctx context.Context, idWithProfileKey *model.IdentityProfileWithKey) (err error)
+	SendOneToOneInvite(ctx context.Context, receiverIdentity string, myProfile *model.IdentityProfileWithKey) (err error)
 }
 
 type BlockService interface {
@@ -73,7 +73,7 @@ func (s *onetoone) processOneToOneInvite(packet *coordinatorproto.InboxPacket) (
 	if err != nil {
 		return
 	}
-	log.Debug("creating onetoone space from inbox.. ")
+	log.Warn("creating onetoone space from inbox.. ")
 
 	key, err := crypto.UnmarshallAESKeyProto(identityProfileWithKey.RequestMetadata)
 	if err != nil {
@@ -87,17 +87,18 @@ func (s *onetoone) processOneToOneInvite(packet *coordinatorproto.InboxPacket) (
 	}
 
 	spaceDescription := &spaceinfo.SpaceDescription{
-		Name:        identityProfileWithKey.IdentityProfile.Name,
-		SpaceUxType: model.SpaceUxType_OneToOne,
-		// TODO: OneToOneParticipantIdentity
+		Name:             identityProfileWithKey.IdentityProfile.Name,
+		SpaceUxType:      model.SpaceUxType_OneToOne,
+		OneToOneIdentity: identityProfileWithKey.IdentityProfile.Identity,
 	}
 
 	err = s.blockService.CreateOneToOneFromInbox(context.TODO(), spaceDescription, &identityProfileWithKey)
 	if err != nil {
+		log.Error("create onetoone space from inbox", zap.Error(err))
 		return fmt.Errorf("processOneToOneInvite error: %s", err.Error())
 	}
 
-	log.Debug("created onetoone space from inbox")
+	log.Warn("created onetoone space from inbox")
 
 	// TODO: RegisterParticipant
 	// TODO: cyclic deps. we can create a third service, or, pass processOneToOneInvite from space service.
@@ -124,11 +125,11 @@ func (s *onetoone) Close(_ context.Context) (err error) {
 // 3. auto accept inbox
 // 4. don't send inbox if space already exists (check spaceveiw)
 // 5. on inbox accept, skip creation if space exist
-func (s *onetoone) SendOneToOneInvite(ctx context.Context, idWithProfileKey *model.IdentityProfileWithKey) (err error) {
+func (s *onetoone) SendOneToOneInvite(ctx context.Context, receiverIdentity string, myProfile *model.IdentityProfileWithKey) (err error) {
 	// 1. put whole identity profile
 	// 2. try to get this from WaitProfile or register this incoming identity
 	// 3. createOneToOne(bPk)
-	body, err := idWithProfileKey.Marshal()
+	body, err := myProfile.Marshal()
 	if err != nil {
 		return
 	}
@@ -137,7 +138,7 @@ func (s *onetoone) SendOneToOneInvite(ctx context.Context, idWithProfileKey *mod
 		PacketType: coordinatorproto.InboxPacketType_Default,
 		Packet: &coordinatorproto.InboxPacket{
 			KeyType:          coordinatorproto.InboxKeyType_ed25519,
-			ReceiverIdentity: idWithProfileKey.IdentityProfile.Identity,
+			ReceiverIdentity: receiverIdentity,
 			Payload: &coordinatorproto.InboxPayload{
 				Body:        body,
 				PayloadType: coordinatorproto.InboxPayloadType_InboxPayloadOneToOneInvite,
@@ -145,10 +146,10 @@ func (s *onetoone) SendOneToOneInvite(ctx context.Context, idWithProfileKey *mod
 		},
 	}
 
-	participantPubKey, err := crypto.DecodeAccountAddress(idWithProfileKey.IdentityProfile.Identity)
+	receiverPubKey, err := crypto.DecodeAccountAddress(receiverIdentity)
 	if err != nil {
 		return
 	}
 
-	return s.inboxClient.InboxAddMessage(ctx, participantPubKey, msg)
+	return s.inboxClient.InboxAddMessage(ctx, receiverPubKey, msg)
 }

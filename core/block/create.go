@@ -99,9 +99,10 @@ func (s *Service) CreateOneToOneFromInbox(ctx context.Context, spaceDescription 
 
 func (s *Service) CreateWorkspace(ctx context.Context, req *pb.RpcWorkspaceCreateRequest) (spaceID string, startingPageId string, err error) {
 	spaceDescription := &spaceinfo.SpaceDescription{
-		Name:        pbtypes.GetString(req.Details, bundle.RelationKeyName.String()),
-		IconImage:   pbtypes.GetString(req.Details, bundle.RelationKeyIconImage.String()),
-		SpaceUxType: model.SpaceUxType(pbtypes.GetInt64(req.Details, bundle.RelationKeySpaceUxType.String())),
+		Name:             pbtypes.GetString(req.Details, bundle.RelationKeyName.String()),
+		IconImage:        pbtypes.GetString(req.Details, bundle.RelationKeyIconImage.String()),
+		SpaceUxType:      model.SpaceUxType(pbtypes.GetInt64(req.Details, bundle.RelationKeySpaceUxType.String())),
+		OneToOneIdentity: pbtypes.GetString(req.Details, bundle.RelationKeyOneToOneIdentity.String()),
 		// TODO: OneToOneParticipantIdentity
 	}
 	newSpace, err := s.spaceService.Create(ctx, spaceDescription)
