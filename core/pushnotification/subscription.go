@@ -17,7 +17,7 @@ import (
 type spaceViewStatus struct {
 	spaceId        string
 	spaceViewId    string
-	mode           pb.RpcPushNotificationSetSpaceModeMode
+	mode           pb.RpcPushNotificationMode
 	spaceKeyBase64 string
 	spaceKey       crypto.PrivKey
 	encKeyBase64   string
@@ -25,6 +25,7 @@ type spaceViewStatus struct {
 	creator        string
 	muteIds        []string
 	mentionIds     []string
+	allIds         []string
 	status         model.SpaceStatus
 }
 
@@ -41,8 +42,9 @@ func newSpaceViewSubscription(service subscription.Service, techSpaceId string, 
 			bundle.RelationKeySpacePushNotificationEncryptionKey.String(),
 			bundle.RelationKeySpacePushNotificationMode.String(),
 			bundle.RelationKeySpaceAccountStatus.String(),
-			bundle.RelationKeySpacePushNotificationCustomMuteIds.String(),
-			bundle.RelationKeySpacePushNotificationCustomMentionIds.String(),
+			bundle.RelationKeySpacePushNotificationForceMuteIds.String(),
+			bundle.RelationKeySpacePushNotificationForceMentionIds.String(),
+			bundle.RelationKeySpacePushNotificationForceAllIds.String(),
 			bundle.RelationKeyCreator.String(),
 		},
 		Filters: []database.FilterRequest{
@@ -79,8 +81,9 @@ func newSpaceViewSubscription(service subscription.Service, techSpaceId string, 
 					spaceKey:       spaceKey,
 					encKeyBase64:   encKeyBase64,
 					encKey:         encKey,
-					mode:           pb.RpcPushNotificationSetSpaceModeMode(details.GetInt64(bundle.RelationKeySpacePushNotificationMode)),
-					creator:        details.GetString(bundle.RelationKeyCreator),
+					// nolint: gosec
+					mode:    pb.RpcPushNotificationMode(details.GetInt64(bundle.RelationKeySpacePushNotificationMode)),
+					creator: details.GetString(bundle.RelationKeyCreator),
 				}
 			},
 			UpdateKeys: func(keyValues []objectsubscription.RelationKeyValue, status spaceViewStatus) spaceViewStatus {
@@ -103,11 +106,13 @@ func newSpaceViewSubscription(service subscription.Service, techSpaceId string, 
 						}
 					case bundle.RelationKeySpacePushNotificationMode:
 						// nolint: gosec
-						status.mode = pb.RpcPushNotificationSetSpaceModeMode(kv.Value.Int64())
-					case bundle.RelationKeySpacePushNotificationCustomMuteIds:
+						status.mode = pb.RpcPushNotificationMode(kv.Value.Int64())
+					case bundle.RelationKeySpacePushNotificationForceMuteIds:
 						status.muteIds = kv.Value.StringList()
-					case bundle.RelationKeySpacePushNotificationCustomMentionIds:
+					case bundle.RelationKeySpacePushNotificationForceMentionIds:
 						status.mentionIds = kv.Value.StringList()
+					case bundle.RelationKeySpacePushNotificationForceAllIds:
+						status.allIds = kv.Value.StringList()
 					case bundle.RelationKeyCreator:
 						status.creator = kv.Value.String()
 					case bundle.RelationKeySpaceAccountStatus:
@@ -120,11 +125,13 @@ func newSpaceViewSubscription(service subscription.Service, techSpaceId string, 
 			RemoveKeys: func(strings []string, status spaceViewStatus) spaceViewStatus {
 				for _, key := range strings {
 					if key == bundle.RelationKeySpacePushNotificationMode.String() {
-						status.mode = pb.RpcPushNotificationSetSpaceMode_All
-					} else if key == bundle.RelationKeySpacePushNotificationCustomMuteIds.String() {
+						status.mode = pb.RpcPushNotification_All
+					} else if key == bundle.RelationKeySpacePushNotificationForceMuteIds.String() {
 						status.muteIds = nil
-					} else if key == bundle.RelationKeySpacePushNotificationCustomMentionIds.String() {
+					} else if key == bundle.RelationKeySpacePushNotificationForceMentionIds.String() {
 						status.mentionIds = nil
+					} else if key == bundle.RelationKeySpacePushNotificationForceAllIds.String() {
+						status.allIds = nil
 					}
 				}
 				return status
