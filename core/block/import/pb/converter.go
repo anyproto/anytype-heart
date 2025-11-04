@@ -496,7 +496,8 @@ func (p *Pb) updateDetails(snapshots []*common.Snapshot) {
 			key != bundle.RelationKeyIsArchived &&
 			key != bundle.RelationKeyCreatedDate &&
 			key != bundle.RelationKeyLastModifiedDate &&
-			key != bundle.RelationKeyId
+			key != bundle.RelationKeyId &&
+			key != bundle.RelationKeyResolvedLayout
 	})
 
 	for _, snapshot := range snapshots {
