@@ -66,7 +66,8 @@ func makeDetailsSet(id string) *pb.EventMessage {
 		ObjectDetailsSet: &pb.EventObjectDetailsSet{
 			Id: id,
 			Details: domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
-				"key1": domain.String("value1"),
+				bundle.RelationKeyId: domain.String(id),
+				"key1":               domain.String("value1"),
 			}).ToProto(),
 		},
 	})
