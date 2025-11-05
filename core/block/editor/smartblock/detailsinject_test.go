@@ -359,19 +359,6 @@ func TestResolveLayout(t *testing.T) {
 		// then
 		assert.Equal(t, int64(model.ObjectType_profile), st.LocalDetails().GetInt64(bundle.RelationKeyResolvedLayout))
 	})
-	t.Run("failed to query type object -> fallback to basic", func(t *testing.T) {
-		// given
-		fx := newFixture(id, t)
-
-		st := state.NewDoc("id", nil).NewState()
-		st.SetLocalDetail(bundle.RelationKeyType, domain.String(bundle.TypeKeyNote.URL()))
-
-		// when
-		fx.resolveLayout(st)
-
-		// then
-		assert.Equal(t, int64(model.ObjectType_basic), st.LocalDetails().GetInt64(bundle.RelationKeyResolvedLayout))
-	})
 	t.Run("layout for template is resolved from target type", func(t *testing.T) {
 		// given
 		fx := newFixture(id, t)
@@ -458,5 +445,63 @@ func TestResolveLayout(t *testing.T) {
 
 		// then
 		assert.Equal(t, int64(model.ObjectType_profile), st.LocalDetails().GetInt64(bundle.RelationKeyResolvedLayout))
+	})
+}
+
+func TestGetFallbackLayout(t *testing.T) {
+	const id = "id"
+	t.Run("fallback to layout of bundle type", func(t *testing.T) {
+		// given
+		fx := newFixture(id, t)
+
+		st := state.NewDoc(id, nil).NewState()
+		st.SetObjectTypeKey(bundle.TypeKeyTask)
+
+		// when
+		v := fx.getFallbackLayoutValue(st)
+
+		// then
+		assert.Equal(t, domain.Int64(int64(model.ObjectType_todo)), v)
+	})
+	t.Run("fallback to file if sbType=file", func(t *testing.T) {
+		// given
+		fx := newFixture(id, t)
+		fx.source.sbType = smartblock.SmartBlockTypeFileObject
+
+		st := state.NewDoc(id, nil).NewState()
+
+		// when
+		v := fx.getFallbackLayoutValue(st)
+
+		// then
+		assert.Equal(t, domain.Int64(int64(model.ObjectType_file)), v)
+	})
+	t.Run("fallback to basic if title exists", func(t *testing.T) {
+		// given
+		fx := newFixture(id, t)
+
+		st := state.NewDoc(id, map[string]simple.Block{
+			id:                   simple.New(&model.Block{Id: id, ChildrenIds: []string{state.HeaderLayoutID}}),
+			state.HeaderLayoutID: simple.New(&model.Block{Id: state.HeaderLayoutID, ChildrenIds: []string{state.TitleBlockID}}),
+			state.TitleBlockID:   simple.New(&model.Block{Id: state.TitleBlockID}),
+		}).NewState()
+
+		// when
+		v := fx.getFallbackLayoutValue(st)
+
+		// then
+		assert.Equal(t, domain.Int64(int64(model.ObjectType_basic)), v)
+	})
+	t.Run("fallback to note if no title presented", func(t *testing.T) {
+		// given
+		fx := newFixture(id, t)
+
+		st := state.NewDoc(id, nil).NewState()
+
+		// when
+		v := fx.getFallbackLayoutValue(st)
+
+		// then
+		assert.Equal(t, domain.Int64(int64(model.ObjectType_note)), v)
 	})
 }

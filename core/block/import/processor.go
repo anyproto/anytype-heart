@@ -289,25 +289,24 @@ func (p *importProcessor) processSnapshot(ctx context.Context, snapshot *common.
 	if payload.RootRawChange != nil && !isBundled {
 		p.createPayloads[id] = payload
 	}
-	return p.extractInternalKey(snapshot)
+	p.extractInternalKey(snapshot)
+	return
 }
 
-func (p *importProcessor) extractInternalKey(snapshot *common.Snapshot) error {
-	newUniqueKey := p.deps.idProvider.GetInternalKey(snapshot.Snapshot.SbType)
-	if newUniqueKey == "" {
-		return nil
-	}
-
+func (p *importProcessor) extractInternalKey(snapshot *common.Snapshot) {
 	oldUniqueKey := snapshot.Snapshot.Data.Details.GetString(bundle.RelationKeyUniqueKey)
 	if oldUniqueKey == "" {
 		oldUniqueKey = snapshot.Snapshot.Data.Key
 	}
 
+	newUniqueKey := p.deps.idProvider.GetInternalKey(snapshot.Snapshot.SbType)
+	if newUniqueKey == "" {
+		newUniqueKey = oldUniqueKey
+	}
+
 	if oldUniqueKey != "" {
 		p.oldIDToNew[oldUniqueKey] = newUniqueKey
 	}
-
-	return nil
 }
 
 func (p *importProcessor) preloadFileKeys(snapshot *common.Snapshot) error {
