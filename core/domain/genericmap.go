@@ -5,6 +5,7 @@ import (
 	"sort"
 
 	"github.com/anyproto/any-store/anyenc"
+	"github.com/gogo/protobuf/jsonpb"
 	"github.com/gogo/protobuf/types"
 	"golang.org/x/exp/slices"
 )
@@ -304,6 +305,13 @@ func (d *GenericMap[K]) Merge(other *GenericMap[K]) *GenericMap[K] {
 		res.Set(k, v)
 	}
 	return res
+}
+
+func (d *GenericMap[K]) MarshalJSON() ([]byte, error) {
+	proto := d.ToProto()
+	m := &jsonpb.Marshaler{}
+	out, err := m.MarshalToString(proto)
+	return []byte(out), err
 }
 
 func (d *GenericMap[K]) ToProto() *types.Struct {

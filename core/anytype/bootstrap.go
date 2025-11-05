@@ -61,6 +61,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/configfetcher"
 	"github.com/anyproto/anytype-heart/core/debug"
 	"github.com/anyproto/anytype-heart/core/debug/profiler"
+	"github.com/anyproto/anytype-heart/core/debug/tools"
 	"github.com/anyproto/anytype-heart/core/device"
 	"github.com/anyproto/anytype-heart/core/durability"
 	"github.com/anyproto/anytype-heart/core/files"
@@ -334,6 +335,7 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(api.New()).
 		Register(pushclient.New()).
 		Register(pushnotification.New()).
+		Register(tools.New()).
 		Register(durability.New()) // leave it the last one
 }
 
