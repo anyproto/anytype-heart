@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/anyproto/anytype-heart/core/files/filestorage/rpcstore"
-	"github.com/anyproto/anytype-heart/util/futures"
 )
 
 const spaceUsageTTL = 60 * time.Second
@@ -27,13 +26,13 @@ type spaceUsage struct {
 	updatedAt      time.Time
 }
 
-func newSpaceUsage(ctx context.Context, spaceId string, rpcStore rpcstore.RpcStore) (*spaceUsage, error) {
+func newSpaceUsage(spaceId string, rpcStore rpcstore.RpcStore) *spaceUsage {
 	s := &spaceUsage{
 		spaceId:  spaceId,
 		rpcStore: rpcStore,
 		files:    make(map[string]allocatedFile),
 	}
-	return s, s.update(ctx)
+	return s
 }
 
 func (s *spaceUsage) getLimit() int {
@@ -120,6 +119,13 @@ func (s *spaceUsage) markFileUploaded(key string) {
 	}
 }
 
+func (s *spaceUsage) Update(ctx context.Context) error {
+	s.lock.Lock()
+	defer s.lock.Unlock()
+
+	return s.update(ctx)
+}
+
 func (s *spaceUsage) update(ctx context.Context) error {
 	info, err := s.rpcStore.SpaceInfo(ctx, s.spaceId)
 	if err != nil {
@@ -134,42 +140,4 @@ func (s *spaceUsage) update(ctx context.Context) error {
 
 type allocatedFile struct {
 	size int
-}
-
-type uploadLimitManager struct {
-	rpcStore rpcstore.RpcStore
-
-	lock   sync.Mutex
-	spaces map[string]*futures.Future[*spaceUsage]
-}
-
-func newLimitManager(rpcStore rpcstore.RpcStore) *uploadLimitManager {
-	return &uploadLimitManager{
-		rpcStore: rpcStore,
-		spaces:   make(map[string]*futures.Future[*spaceUsage]),
-	}
-}
-
-func (m *uploadLimitManager) getSpace(ctx context.Context, spaceId string) (*spaceUsage, error) {
-	space, err := m.getSpaceFuture(ctx, spaceId).Wait()
-	if err != nil {
-		return nil, err
-	}
-	return space, nil
-}
-
-func (m *uploadLimitManager) getSpaceFuture(ctx context.Context, spaceId string) *futures.Future[*spaceUsage] {
-	m.lock.Lock()
-	space, ok := m.spaces[spaceId]
-	if ok {
-		m.lock.Unlock()
-		return space
-	} else {
-		space = futures.New[*spaceUsage]()
-		m.spaces[spaceId] = space
-		m.lock.Unlock()
-
-		space.Resolve(newSpaceUsage(ctx, spaceId, m.rpcStore))
-		return space
-	}
 }

@@ -20,9 +20,11 @@ import (
 	"github.com/anyproto/anytype-heart/core/files/filehelper"
 	rpcstore2 "github.com/anyproto/anytype-heart/core/files/filestorage/rpcstore"
 	"github.com/anyproto/anytype-heart/core/files/filesync/filequeue"
+	"github.com/anyproto/anytype-heart/core/subscription"
 	"github.com/anyproto/anytype-heart/core/syncstatus/filesyncstatus"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/datastore/anystoreprovider"
+	"github.com/anyproto/anytype-heart/space"
 	"github.com/anyproto/anytype-heart/util/keyvaluestore"
 )
 
@@ -82,7 +84,7 @@ type fileSync struct {
 
 	nodeUsageCache keyvaluestore.Store[NodeUsage]
 
-	limitManager    *uploadLimitManager
+	limitManager    *spaceUsageManager
 	requestsBatcher *requestsBatcher
 	requestsCh      chan blockPushManyRequest
 
@@ -105,7 +107,12 @@ func (s *fileSync) Init(a *app.App) (err error) {
 	s.dagService = app.MustComponent[fileservice.FileService](a).DAGService()
 	s.eventSender = app.MustComponent[event.Sender](a)
 	s.cfg = app.MustComponent[*config.Config](a)
-	s.limitManager = newLimitManager(s.rpcStore)
+	techSpaceId := app.MustComponent[space.Service](a).TechSpaceId()
+	s.limitManager = newSpaceUsageManager(app.MustComponent[subscription.Service](a), s.rpcStore, techSpaceId)
+	err = s.limitManager.init()
+	if err != nil {
+		return fmt.Errorf("init limitManager: %w", err)
+	}
 
 	provider := app.MustComponent[anystoreprovider.Provider](a)
 	db := provider.GetCommonDb()
