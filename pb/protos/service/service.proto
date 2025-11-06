@@ -392,6 +392,8 @@ service ClientCommands {
     rpc MembershipV2GetPortalLink (anytype.Rpc.MembershipV2.GetPortalLink.Request) returns (anytype.Rpc.MembershipV2.GetPortalLink.Response);
     rpc MembershipV2AnyNameIsValid(anytype.Rpc.MembershipV2.AnyNameIsValid.Request) returns (anytype.Rpc.MembershipV2.AnyNameIsValid.Response);
     rpc MembershipV2AnyNameAllocate(anytype.Rpc.MembershipV2.AnyNameAllocate.Request) returns (anytype.Rpc.MembershipV2.AnyNameAllocate.Response);
+    rpc MembershipV2CartGet(anytype.Rpc.MembershipV2.CartGet.Request) returns (anytype.Rpc.MembershipV2.CartGet.Response);
+    rpc MembershipV2CartUpdate(anytype.Rpc.MembershipV2.CartUpdate.Request) returns (anytype.Rpc.MembershipV2.CartUpdate.Response);
 
     // Name Service:
     // ***

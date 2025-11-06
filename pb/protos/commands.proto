@@ -8294,6 +8294,55 @@ message Rpc {
                 }
             }
         }
+
+        message CartGet {
+            message Request {
+                
+            }
+
+            message Response {
+                Error error = 1;
+
+                anytype.model.MembershipV2.Cart cart = 2;
+
+                message Error {
+                    Code code = 1;
+                    string description = 2;
+
+                    enum Code {
+                        NULL = 0;
+                        UNKNOWN_ERROR = 1;
+                        BAD_INPUT = 2; 
+                        CAN_NOT_CONNECT = 3;                  
+                    }
+                }
+            }
+        }
+
+	    message CartUpdate {
+            message Request {
+                repeated anytype.model.MembershipV2.CartProduct products = 1;
+            }
+
+            message Response {
+                Error error = 1;
+
+                anytype.model.MembershipV2.Cart cart = 2;
+
+                message Error {
+                    Code code = 1;
+                    string description = 2;
+
+                    enum Code {
+                        NULL = 0;
+                        UNKNOWN_ERROR = 1;
+                        BAD_INPUT = 2;
+                        CAN_NOT_CONNECT = 3;
+                        BAD_PRODUCT = 4;                        
+                    }
+                }
+            }
+        }
     }
 
     message NameService {

@@ -530,3 +530,49 @@ func (mw *Middleware) MembershipV2AnyNameAllocate(ctx context.Context, req *pb.R
 
 	return out
 }
+
+func (mw *Middleware) MembershipV2CartGet(ctx context.Context, req *pb.RpcMembershipV2CartGetRequest) *pb.RpcMembershipV2CartGetResponse {
+	ps := mustService[payments.Service](mw)
+	out, err := ps.V2CartGet(ctx, req)
+
+	if err != nil {
+		code := mapErrorCode(err,
+			errToCode(proto.ErrInvalidSignature, pb.RpcMembershipV2CartGetResponseError_UNKNOWN_ERROR),
+			errToCode(proto.ErrEthAddressEmpty, pb.RpcMembershipV2CartGetResponseError_BAD_INPUT),
+			errToCode(payments.ErrNoConnection, pb.RpcMembershipV2CartGetResponseError_CAN_NOT_CONNECT),
+			errToCode(net.ErrUnableToConnect, pb.RpcMembershipV2CartGetResponseError_CAN_NOT_CONNECT),
+		)
+
+		return &pb.RpcMembershipV2CartGetResponse{
+			Error: &pb.RpcMembershipV2CartGetResponseError{
+				Code:        code,
+				Description: getErrorDescription(err),
+			},
+		}
+	}
+
+	return out
+}
+
+func (mw *Middleware) MembershipV2CartUpdate(ctx context.Context, req *pb.RpcMembershipV2CartUpdateRequest) *pb.RpcMembershipV2CartUpdateResponse {
+	ps := mustService[payments.Service](mw)
+	out, err := ps.V2CartUpdate(ctx, req)
+
+	if err != nil {
+		code := mapErrorCode(err,
+			errToCode(proto.ErrInvalidSignature, pb.RpcMembershipV2CartUpdateResponseError_UNKNOWN_ERROR),
+			errToCode(proto.ErrEthAddressEmpty, pb.RpcMembershipV2CartUpdateResponseError_BAD_INPUT),
+			errToCode(payments.ErrNoConnection, pb.RpcMembershipV2CartUpdateResponseError_CAN_NOT_CONNECT),
+			errToCode(net.ErrUnableToConnect, pb.RpcMembershipV2CartUpdateResponseError_CAN_NOT_CONNECT),
+		)
+
+		return &pb.RpcMembershipV2CartUpdateResponse{
+			Error: &pb.RpcMembershipV2CartUpdateResponseError{
+				Code:        code,
+				Description: getErrorDescription(err),
+			},
+		}
+	}
+
+	return out
+}

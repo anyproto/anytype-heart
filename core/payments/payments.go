@@ -124,7 +124,8 @@ type Service interface {
 	V2GetStatus(ctx context.Context, req *pb.RpcMembershipV2GetStatusRequest) (*pb.RpcMembershipV2GetStatusResponse, error)
 	V2AnyNameIsValid(ctx context.Context, req *pb.RpcMembershipV2AnyNameIsValidRequest) (*pb.RpcMembershipV2AnyNameIsValidResponse, error)
 	V2AnyNameAllocate(ctx context.Context, req *pb.RpcMembershipV2AnyNameAllocateRequest) (*pb.RpcMembershipV2AnyNameAllocateResponse, error)
-
+	V2CartGet(ctx context.Context, req *pb.RpcMembershipV2CartGetRequest) (*pb.RpcMembershipV2CartGetResponse, error)
+	V2CartUpdate(ctx context.Context, req *pb.RpcMembershipV2CartUpdateRequest) (*pb.RpcMembershipV2CartUpdateResponse, error)
 	app.ComponentRunnable
 }
 
@@ -1165,4 +1166,45 @@ func (s *service) V2AnyNameAllocate(ctx context.Context, req *pb.RpcMembershipV2
 	}
 
 	return &out, nil
+}
+
+func (s *service) V2CartGet(ctx context.Context, req *pb.RpcMembershipV2CartGetRequest) (*pb.RpcMembershipV2CartGetResponse, error) {
+	cartReq := proto.MembershipV2_StoreCartGetRequest{}
+
+	cart, err := s.ppclient2.StoreCartGet(ctx, &cartReq)
+	if err != nil {
+		return nil, err
+	}
+
+	cartModel := convertCartData(cart)
+	return &pb.RpcMembershipV2CartGetResponse{
+		Cart: cartModel,
+		Error: &pb.RpcMembershipV2CartGetResponseError{
+			Code: pb.RpcMembershipV2CartGetResponseError_NULL,
+		},
+	}, nil
+}
+
+func (s *service) V2CartUpdate(ctx context.Context, req *pb.RpcMembershipV2CartUpdateRequest) (*pb.RpcMembershipV2CartUpdateResponse, error) {
+	products := make([]*proto.MembershipV2_CartProduct, len(req.Products))
+	for i, product := range req.Products {
+		products[i] = convertCartProductDataToProto(product)
+	}
+
+	cartReq := proto.MembershipV2_StoreCartUpdateRequest{
+		Products: products,
+
+		OwnerEthAddress: s.wallet.GetAccountEthAddress().Hex(),
+	}
+
+	_, err := s.ppclient2.StoreCartUpdate(ctx, &cartReq)
+	if err != nil {
+		return nil, err
+	}
+
+	return &pb.RpcMembershipV2CartUpdateResponse{
+		Error: &pb.RpcMembershipV2CartUpdateResponseError{
+			Code: pb.RpcMembershipV2CartUpdateResponseError_NULL,
+		},
+	}, nil
 }

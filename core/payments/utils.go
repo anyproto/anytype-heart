@@ -229,3 +229,53 @@ func convertInvoiceData(src *paymentserviceproto.MembershipV2_Invoice) *model.Me
 	}
 	return out
 }
+
+func convertCartData(src *paymentserviceproto.MembershipV2_StoreCartGetResponse) *model.MembershipV2Cart {
+	if src == nil {
+		return nil
+	}
+	out := &model.MembershipV2Cart{}
+	out.Products = make([]*model.MembershipV2CartProduct, len(src.Cart.Products))
+	for i, product := range src.Cart.Products {
+		out.Products[i] = convertCartProductData(product)
+	}
+	out.Total = convertAmountData(src.Cart.Total)
+	out.TotalNextInvoice = convertAmountData(src.Cart.TotalNextInvoice)
+	out.NextInvoiceDate = src.Cart.NextInvoiceDate
+	return out
+}
+
+func convertCartProductData(src *paymentserviceproto.MembershipV2_CartProduct) *model.MembershipV2CartProduct {
+	if src == nil {
+		return nil
+	}
+	out := &model.MembershipV2CartProduct{}
+	out.Product = convertProductData(src.Product)
+	out.IsYearly = src.IsYearly
+	out.Remove = src.Remove
+	return out
+}
+
+func convertCartProductDataToProto(src *model.MembershipV2CartProduct) *paymentserviceproto.MembershipV2_CartProduct {
+	if src == nil {
+		return nil
+	}
+	out := &paymentserviceproto.MembershipV2_CartProduct{}
+	out.Product = convertProductDataToProto(src.Product)
+	out.IsYearly = src.IsYearly
+	out.Remove = src.Remove
+	return out
+}
+
+func convertProductDataToProto(src *model.MembershipV2Product) *paymentserviceproto.MembershipV2_Product {
+	if src == nil {
+		return nil
+	}
+	out := &paymentserviceproto.MembershipV2_Product{}
+
+	// convert only Id of the product and that's it
+	// no need to pass other fields of the product to the proto
+	out.Id = src.Id
+
+	return out
+}

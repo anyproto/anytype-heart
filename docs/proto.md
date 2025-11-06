@@ -850,6 +850,14 @@
     - [Rpc.MembershipV2.AnyNameIsValid.Request](#anytype-Rpc-MembershipV2-AnyNameIsValid-Request)
     - [Rpc.MembershipV2.AnyNameIsValid.Response](#anytype-Rpc-MembershipV2-AnyNameIsValid-Response)
     - [Rpc.MembershipV2.AnyNameIsValid.Response.Error](#anytype-Rpc-MembershipV2-AnyNameIsValid-Response-Error)
+    - [Rpc.MembershipV2.CartGet](#anytype-Rpc-MembershipV2-CartGet)
+    - [Rpc.MembershipV2.CartGet.Request](#anytype-Rpc-MembershipV2-CartGet-Request)
+    - [Rpc.MembershipV2.CartGet.Response](#anytype-Rpc-MembershipV2-CartGet-Response)
+    - [Rpc.MembershipV2.CartGet.Response.Error](#anytype-Rpc-MembershipV2-CartGet-Response-Error)
+    - [Rpc.MembershipV2.CartUpdate](#anytype-Rpc-MembershipV2-CartUpdate)
+    - [Rpc.MembershipV2.CartUpdate.Request](#anytype-Rpc-MembershipV2-CartUpdate-Request)
+    - [Rpc.MembershipV2.CartUpdate.Response](#anytype-Rpc-MembershipV2-CartUpdate-Response)
+    - [Rpc.MembershipV2.CartUpdate.Response.Error](#anytype-Rpc-MembershipV2-CartUpdate-Response-Error)
     - [Rpc.MembershipV2.GetPortalLink](#anytype-Rpc-MembershipV2-GetPortalLink)
     - [Rpc.MembershipV2.GetPortalLink.Request](#anytype-Rpc-MembershipV2-GetPortalLink-Request)
     - [Rpc.MembershipV2.GetPortalLink.Response](#anytype-Rpc-MembershipV2-GetPortalLink-Response)
@@ -1634,6 +1642,8 @@
     - [Rpc.Membership.VerifyEmailCode.Response.Error.Code](#anytype-Rpc-Membership-VerifyEmailCode-Response-Error-Code)
     - [Rpc.MembershipV2.AnyNameAllocate.Response.Error.Code](#anytype-Rpc-MembershipV2-AnyNameAllocate-Response-Error-Code)
     - [Rpc.MembershipV2.AnyNameIsValid.Response.Error.Code](#anytype-Rpc-MembershipV2-AnyNameIsValid-Response-Error-Code)
+    - [Rpc.MembershipV2.CartGet.Response.Error.Code](#anytype-Rpc-MembershipV2-CartGet-Response-Error-Code)
+    - [Rpc.MembershipV2.CartUpdate.Response.Error.Code](#anytype-Rpc-MembershipV2-CartUpdate-Response-Error-Code)
     - [Rpc.MembershipV2.GetPortalLink.Response.Error.Code](#anytype-Rpc-MembershipV2-GetPortalLink-Response-Error-Code)
     - [Rpc.MembershipV2.GetProducts.Response.Error.Code](#anytype-Rpc-MembershipV2-GetProducts-Response-Error-Code)
     - [Rpc.MembershipV2.GetStatus.Response.Error.Code](#anytype-Rpc-MembershipV2-GetStatus-Response-Error-Code)
@@ -2089,6 +2099,8 @@
     - [MembershipTierData](#anytype-model-MembershipTierData)
     - [MembershipV2](#anytype-model-MembershipV2)
     - [MembershipV2.Amount](#anytype-model-MembershipV2-Amount)
+    - [MembershipV2.Cart](#anytype-model-MembershipV2-Cart)
+    - [MembershipV2.CartProduct](#anytype-model-MembershipV2-CartProduct)
     - [MembershipV2.Data](#anytype-model-MembershipV2-Data)
     - [MembershipV2.Features](#anytype-model-MembershipV2-Features)
     - [MembershipV2.Invoice](#anytype-model-MembershipV2-Invoice)
@@ -2507,6 +2519,8 @@
 | MembershipV2GetPortalLink | [Rpc.MembershipV2.GetPortalLink.Request](#anytype-Rpc-MembershipV2-GetPortalLink-Request) | [Rpc.MembershipV2.GetPortalLink.Response](#anytype-Rpc-MembershipV2-GetPortalLink-Response) |  |
 | MembershipV2AnyNameIsValid | [Rpc.MembershipV2.AnyNameIsValid.Request](#anytype-Rpc-MembershipV2-AnyNameIsValid-Request) | [Rpc.MembershipV2.AnyNameIsValid.Response](#anytype-Rpc-MembershipV2-AnyNameIsValid-Response) |  |
 | MembershipV2AnyNameAllocate | [Rpc.MembershipV2.AnyNameAllocate.Request](#anytype-Rpc-MembershipV2-AnyNameAllocate-Request) | [Rpc.MembershipV2.AnyNameAllocate.Response](#anytype-Rpc-MembershipV2-AnyNameAllocate-Response) |  |
+| MembershipV2CartGet | [Rpc.MembershipV2.CartGet.Request](#anytype-Rpc-MembershipV2-CartGet-Request) | [Rpc.MembershipV2.CartGet.Response](#anytype-Rpc-MembershipV2-CartGet-Response) |  |
+| MembershipV2CartUpdate | [Rpc.MembershipV2.CartUpdate.Request](#anytype-Rpc-MembershipV2-CartUpdate-Request) | [Rpc.MembershipV2.CartUpdate.Response](#anytype-Rpc-MembershipV2-CartUpdate-Response) |  |
 | NameServiceUserAccountGet | [Rpc.NameService.UserAccount.Get.Request](#anytype-Rpc-NameService-UserAccount-Get-Request) | [Rpc.NameService.UserAccount.Get.Response](#anytype-Rpc-NameService-UserAccount-Get-Response) | Name Service: *** hello.any -&gt; data |
 | NameServiceResolveName | [Rpc.NameService.ResolveName.Request](#anytype-Rpc-NameService-ResolveName-Request) | [Rpc.NameService.ResolveName.Response](#anytype-Rpc-NameService-ResolveName-Response) |  |
 | NameServiceResolveAnyId | [Rpc.NameService.ResolveAnyId.Request](#anytype-Rpc-NameService-ResolveAnyId-Request) | [Rpc.NameService.ResolveAnyId.Response](#anytype-Rpc-NameService-ResolveAnyId-Response) | 12D3KooWA8EXV3KjBxEU5EnsPfneLx84vMWAtTBQBeyooN82KSuS -&gt; hello.any |
@@ -14827,6 +14841,115 @@ before requesting a payment link and paying
 
 
 
+<a name="anytype-Rpc-MembershipV2-CartGet"></a>
+
+### Rpc.MembershipV2.CartGet
+
+
+
+
+
+
+
+<a name="anytype-Rpc-MembershipV2-CartGet-Request"></a>
+
+### Rpc.MembershipV2.CartGet.Request
+
+
+
+
+
+
+
+<a name="anytype-Rpc-MembershipV2-CartGet-Response"></a>
+
+### Rpc.MembershipV2.CartGet.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.MembershipV2.CartGet.Response.Error](#anytype-Rpc-MembershipV2-CartGet-Response-Error) |  |  |
+| cart | [model.MembershipV2.Cart](#anytype-model-MembershipV2-Cart) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-MembershipV2-CartGet-Response-Error"></a>
+
+### Rpc.MembershipV2.CartGet.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.MembershipV2.CartGet.Response.Error.Code](#anytype-Rpc-MembershipV2-CartGet-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-MembershipV2-CartUpdate"></a>
+
+### Rpc.MembershipV2.CartUpdate
+
+
+
+
+
+
+
+<a name="anytype-Rpc-MembershipV2-CartUpdate-Request"></a>
+
+### Rpc.MembershipV2.CartUpdate.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| products | [model.MembershipV2.CartProduct](#anytype-model-MembershipV2-CartProduct) | repeated |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-MembershipV2-CartUpdate-Response"></a>
+
+### Rpc.MembershipV2.CartUpdate.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.MembershipV2.CartUpdate.Response.Error](#anytype-Rpc-MembershipV2-CartUpdate-Response-Error) |  |  |
+| cart | [model.MembershipV2.Cart](#anytype-model-MembershipV2-Cart) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-MembershipV2-CartUpdate-Response-Error"></a>
+
+### Rpc.MembershipV2.CartUpdate.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.MembershipV2.CartUpdate.Response.Error.Code](#anytype-Rpc-MembershipV2-CartUpdate-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
 <a name="anytype-Rpc-MembershipV2-GetPortalLink"></a>
 
 ### Rpc.MembershipV2.GetPortalLink
@@ -26114,6 +26237,35 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 
 
 
+<a name="anytype-Rpc-MembershipV2-CartGet-Response-Error-Code"></a>
+
+### Rpc.MembershipV2.CartGet.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
+| CAN_NOT_CONNECT | 3 |  |
+
+
+
+<a name="anytype-Rpc-MembershipV2-CartUpdate-Response-Error-Code"></a>
+
+### Rpc.MembershipV2.CartUpdate.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
+| CAN_NOT_CONNECT | 3 |  |
+| BAD_PRODUCT | 4 |  |
+
+
+
 <a name="anytype-Rpc-MembershipV2-GetPortalLink-Response-Error-Code"></a>
 
 ### Rpc.MembershipV2.GetPortalLink.Response.Error.Code
@@ -33111,6 +33263,41 @@ Used to decode block meta only, without the content itself
 | ----- | ---- | ----- | ----------- |
 | currency | [string](#string) |  | ISO 4217 currency code |
 | amountCents | [int64](#int64) |  | $0.01 = 1 $1.00 = 100 also supports negative amounts! some invoices can have negatice amount (refund) |
+
+
+
+
+
+
+<a name="anytype-model-MembershipV2-Cart"></a>
+
+### MembershipV2.Cart
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| products | [MembershipV2.CartProduct](#anytype-model-MembershipV2-CartProduct) | repeated | if you add Nx the same product - it will be Nx in the &#39;products&#39; array, i.e: each product instance has a unique index |
+| total | [MembershipV2.Amount](#anytype-model-MembershipV2-Amount) |  | total amount of the cart (including discounts, etc) |
+| totalNextInvoice | [MembershipV2.Amount](#anytype-model-MembershipV2-Amount) |  | in case you are paying in the middle of the period (for existing customers) the next invoice amount will also be generated |
+| nextInvoiceDate | [uint64](#uint64) |  |  |
+
+
+
+
+
+
+<a name="anytype-model-MembershipV2-CartProduct"></a>
+
+### MembershipV2.CartProduct
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| product | [MembershipV2.Product](#anytype-model-MembershipV2-Product) |  |  |
+| isYearly | [bool](#bool) |  | otherwise - monthly |
+| remove | [bool](#bool) |  | set to true if you want to remove this item from the customer it&#39;s like setting -1 to some product |
 
 
 

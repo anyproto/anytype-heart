@@ -1494,6 +1494,28 @@ message MembershipV2 {
         ProductStatus productStatus = 3;
     }
 
+    message CartProduct {
+        Product product = 1;    
+        // otherwise - monthly
+        bool isYearly = 2;
+        // set to true if you want to remove this item from the customer
+        // it's like setting -1 to some product
+        bool remove = 3;
+    }
+
+    message Cart {
+        // if you add Nx the same product - it will be Nx in the 'products' array, i.e:
+        // each product instance has a unique index
+        repeated CartProduct products = 1;
+        // total amount of the cart (including discounts, etc)
+        Amount total = 2;
+
+        // in case you are paying in the middle of the period (for existing customers)
+        // the next invoice amount will also be generated
+        Amount totalNextInvoice = 3;
+        uint64 nextInvoiceDate = 4;
+    }
+
     message Data {
         repeated PurchasedProduct products = 1;
         Invoice nextInvoice = 2;
