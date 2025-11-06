@@ -17,7 +17,6 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/event"
-	"github.com/anyproto/anytype-heart/core/syncstatus/filesyncstatus"
 	"github.com/anyproto/anytype-heart/pb"
 )
 
@@ -31,18 +30,20 @@ type AddFileRequest struct {
 }
 
 func (s *fileSync) AddFile(req AddFileRequest) (err error) {
-	return s.process(req.FileObjectId, func(_ bool, _ FileInfo) (FileInfo, error) {
-		info := FileInfo{
-			FileId:        req.FileId.FileId,
-			SpaceId:       req.FileId.SpaceId,
-			ObjectId:      req.FileObjectId,
-			State:         FileStatePendingUpload,
-			ScheduledAt:   time.Now(),
-			Variants:      req.Variants,
-			AddedByUser:   req.UploadedByUser,
-			Imported:      req.Imported,
-			BytesToUpload: 0,
-			CidsToUpload:  map[cid.Cid]struct{}{},
+	return s.process(req.FileObjectId, func(exists bool, info FileInfo) (FileInfo, error) {
+		// if exists {
+		// 	return info, nil
+		// }
+		info = FileInfo{
+			FileId:      req.FileId.FileId,
+			SpaceId:     req.FileId.SpaceId,
+			ObjectId:    req.FileObjectId,
+			State:       FileStatePendingUpload,
+			ScheduledAt: time.Now(),
+			Variants:    req.Variants,
+			AddedByUser: req.UploadedByUser,
+			Imported:    req.Imported,
+			CidsToBind:  map[cid.Cid]struct{}{},
 		}
 		return info, nil
 	})
@@ -95,24 +96,26 @@ func (s *fileSync) addImportEvent(spaceID string) {
 }
 
 type blocksAvailabilityResponse struct {
-	bytesToUpload int
-	bytesToBind   int
-	cidsToUpload  map[cid.Cid]struct{}
+	bytesToUploadOrBind int
+	cidsToBind          map[cid.Cid]struct{}
 }
 
-func (r *blocksAvailabilityResponse) totalBytesToUpload() int {
-	return r.bytesToUpload + r.bytesToBind
-}
-
-func (s *fileSync) checkBlocksAvailability(ctx context.Context, fileObjectId string, spaceId string, fileId domain.FileId) (*blocksAvailabilityResponse, error) {
-	response := blocksAvailabilityResponse{
-		cidsToUpload: map[cid.Cid]struct{}{},
+func (s *fileSync) checkBlocksAvailability(ctx context.Context, info FileInfo) (*blocksAvailabilityResponse, error) {
+	if info.BytesToUploadOrBind > 0 || len(info.CidsToBind) > 0 {
+		return &blocksAvailabilityResponse{
+			bytesToUploadOrBind: info.BytesToUploadOrBind,
+			cidsToBind:          info.CidsToBind,
+		}, nil
 	}
-	err := s.walkFileBlocks(ctx, spaceId, fileId, nil, func(fileBlocks []blocks.Block) error {
+
+	response := blocksAvailabilityResponse{
+		cidsToBind: map[cid.Cid]struct{}{},
+	}
+	err := s.walkFileBlocks(ctx, info.SpaceId, info.FileId, nil, func(fileBlocks []blocks.Block) error {
 		fileCids := lo.Map(fileBlocks, func(b blocks.Block, _ int) cid.Cid {
 			return b.Cid()
 		})
-		availabilities, err := s.rpcStore.CheckAvailability(ctx, spaceId, fileCids)
+		availabilities, err := s.rpcStore.CheckAvailability(ctx, info.SpaceId, fileCids)
 		if err != nil {
 			return fmt.Errorf("check availability: %w", err)
 		}
@@ -137,15 +140,15 @@ func (s *fileSync) checkBlocksAvailability(ctx context.Context, fileObjectId str
 				if err != nil {
 					return err
 				}
-				response.bytesToUpload += len(b.RawData())
-				response.cidsToUpload[blockCid] = struct{}{}
+				response.bytesToUploadOrBind += len(b.RawData())
 			} else if availability.Status == fileproto.AvailabilityStatus_Exists {
 				// Block exists in node, but not in user's space
 				b, err := getBlock()
 				if err != nil {
 					return err
 				}
-				response.bytesToBind += len(b.RawData())
+				response.cidsToBind[blockCid] = struct{}{}
+				response.bytesToUploadOrBind += len(b.RawData())
 			}
 		}
 		return nil
@@ -156,7 +159,7 @@ func (s *fileSync) checkBlocksAvailability(ctx context.Context, fileObjectId str
 	return &response, nil
 }
 
-func (s *fileSync) uploadOrBindBlocks(ctx context.Context, fi FileInfo, fileBlocks []blocks.Block, needToUpload map[cid.Cid]struct{}) (int, error) {
+func (s *fileSync) uploadOrBindBlocks(ctx context.Context, fi FileInfo, fileBlocks []blocks.Block, needToBind map[cid.Cid]struct{}) (int, error) {
 	var (
 		bytesToUpload  int
 		blocksToUpload []blocks.Block
@@ -165,24 +168,17 @@ func (s *fileSync) uploadOrBindBlocks(ctx context.Context, fi FileInfo, fileBloc
 
 	for _, b := range fileBlocks {
 		blockCid := b.Cid()
-		if _, ok := needToUpload[blockCid]; ok {
+		if _, ok := needToBind[blockCid]; ok {
+			cidsToBind = append(cidsToBind, blockCid)
+		} else {
 			blocksToUpload = append(blocksToUpload, b)
 			bytesToUpload += len(b.RawData())
-		} else {
-			cidsToBind = append(cidsToBind, blockCid)
 		}
 	}
 
 	if len(cidsToBind) > 0 {
 		if bindErr := s.rpcStore.BindCids(ctx, fi.SpaceId, fi.FileId, cidsToBind); bindErr != nil {
 			return 0, fmt.Errorf("bind cids: %w", bindErr)
-		}
-		if len(blocksToUpload) == 0 {
-			// TODO Do status update more transparently, for example, return Synced bool. Do this to keep state of FileInfo in sync with filesyncstatus
-			err := s.updateStatus(fi, filesyncstatus.Synced)
-			if err != nil {
-				return 0, fmt.Errorf("add to status update queue: %w", err)
-			}
 		}
 	}
 

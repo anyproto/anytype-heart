@@ -267,7 +267,7 @@ package filesync
 // 	resp := &blocksAvailabilityResponse{
 // 		bytesToUpload: 123,
 // 		bytesToBind:   234,
-// 		cidsToUpload: map[cid.Cid]struct{}{
+// 		cidsToBind: map[cid.Cid]struct{}{
 // 			cid.MustParse("bafybeihdwdcefgh4dqkjv67uzcmw7ojee6xedzdetojuzjevtenxquvyku"): {},
 // 		},
 // 	}

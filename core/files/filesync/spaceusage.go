@@ -22,6 +22,14 @@ type updateMessage struct {
 	usage   int
 }
 
+func (m updateMessage) freeSpace() int {
+	free := m.limit - m.usage
+	if free < 0 {
+		free = 0
+	}
+	return free
+}
+
 type spaceUsageManager struct {
 	ctx       context.Context
 	ctxCancel context.CancelFunc
@@ -70,7 +78,26 @@ func (m *spaceUsageManager) init() error {
 	}, objectsubscription.SubscriptionParams[*spaceUsage]{
 		SetDetails: func(details *domain.Details) (id string, entry *spaceUsage) {
 			spaceId := details.GetString(bundle.RelationKeyTargetSpaceId)
-			usage := newSpaceUsage(spaceId, m.rpcStore, m.updateCh)
+
+			// Fan-in updates from per-space channels. It guarantees receiving an update for each space.
+			// Remember, that updates for one space is throttled, so if we use single channel for updates
+			// we will lose some updates.
+			updateCh := make(chan updateMessage, 1)
+			go func() {
+				for {
+					select {
+					case <-m.ctx.Done():
+						return
+					case update := <-updateCh:
+						select {
+						case <-m.ctx.Done():
+							return
+						case m.updateCh <- update:
+						}
+					}
+				}
+			}()
+			usage := newSpaceUsage(spaceId, m.rpcStore, updateCh)
 			return spaceId, usage
 		},
 		UpdateKeys: func(keyValues []objectsubscription.RelationKeyValue, curEntry *spaceUsage) (updatedEntry *spaceUsage) {

@@ -185,7 +185,7 @@ func givenFileInfo() FileInfo {
 		AddedByUser:   true,
 		Imported:      true,
 		BytesToUpload: 123,
-		CidsToUpload: map[cid.Cid]struct{}{
+		CidsToBind: map[cid.Cid]struct{}{
 			cid.MustParse(testFileId.String()): {},
 		},
 	}

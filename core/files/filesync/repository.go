@@ -24,13 +24,13 @@ func marshalFileInfo(arena *anyenc.Arena, info FileInfo) *anyenc.Value {
 	obj.Set("variants", variants)
 	obj.Set("addedByUser", newBool(arena, info.AddedByUser))
 	obj.Set("imported", newBool(arena, info.Imported))
-	obj.Set("bytesToUpload", arena.NewNumberInt(info.BytesToUpload))
+	obj.Set("bytesToUploadOrBind", arena.NewNumberInt(info.BytesToUploadOrBind))
 	cidsToUpload := arena.NewArray()
 	var i int
-	for c := range info.CidsToUpload {
+	for c := range info.CidsToBind {
 		cidsToUpload.SetArrayItem(i, arena.NewString(c.String()))
 	}
-	obj.Set("cidsToUpload", cidsToUpload)
+	obj.Set("cidsToBind", cidsToUpload)
 	return obj
 }
 
@@ -48,7 +48,7 @@ func unmarshalFileInfo(doc *anyenc.Value) (FileInfo, error) {
 		variants = append(variants, domain.FileId(v.GetString()))
 	}
 	cidsToUpload := map[cid.Cid]struct{}{}
-	for _, raw := range doc.GetArray("cidsToUpload") {
+	for _, raw := range doc.GetArray("cidsToBind") {
 		c, err := cid.Parse(raw.GetString())
 		if err != nil {
 			return FileInfo{}, fmt.Errorf("parse cid: %w", err)
@@ -60,22 +60,15 @@ func unmarshalFileInfo(doc *anyenc.Value) (FileInfo, error) {
 		return FileInfo{}, fmt.Errorf("invalid file id")
 	}
 	return FileInfo{
-		FileId:        fileId,
-		SpaceId:       doc.GetString("spaceId"),
-		ObjectId:      doc.GetString("id"),
-		State:         FileState(doc.GetInt("state")),
-		ScheduledAt:   time.Unix(int64(doc.GetInt("scheduledAt")), 0).UTC(),
-		Variants:      variants,
-		AddedByUser:   doc.GetBool("addedByUser"),
-		Imported:      doc.GetBool("imported"),
-		BytesToUpload: doc.GetInt("bytesToUpload"),
-		CidsToUpload:  cidsToUpload,
+		FileId:              fileId,
+		SpaceId:             doc.GetString("spaceId"),
+		ObjectId:            doc.GetString("id"),
+		State:               FileState(doc.GetInt("state")),
+		ScheduledAt:         time.Unix(int64(doc.GetInt("scheduledAt")), 0).UTC(),
+		Variants:            variants,
+		AddedByUser:         doc.GetBool("addedByUser"),
+		Imported:            doc.GetBool("imported"),
+		BytesToUploadOrBind: doc.GetInt("bytesToUploadOrBind"),
+		CidsToBind:          cidsToUpload,
 	}, nil
 }
-
-/*
-queue behavior:
-	- get next item, handle it OR start timer to wait for it
-	- subscribe for all changes
-	- wait for next item's timer OR for subscription change
-*/

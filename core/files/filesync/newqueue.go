@@ -37,8 +37,8 @@ type FileInfo struct {
 	AddedByUser bool
 	Imported    bool
 
-	BytesToUpload int
-	CidsToUpload  map[cid.Cid]struct{}
+	BytesToUploadOrBind int
+	CidsToBind          map[cid.Cid]struct{}
 }
 
 func (i FileInfo) FullFileId() domain.FullFileId {
@@ -78,20 +78,20 @@ func (i FileInfo) ToDeleted() FileInfo {
 }
 
 func (s *fileSync) processFilePendingUpload(ctx context.Context, it FileInfo) (FileInfo, error) {
-	blocksAvailability, err := s.checkBlocksAvailability(ctx, it.ObjectId, it.SpaceId, it.FileId)
+	blocksAvailability, err := s.checkBlocksAvailability(ctx, it)
 	if err != nil {
 		return it, fmt.Errorf("check blocks availability: %w", err)
 	}
 
-	it.BytesToUpload = blocksAvailability.bytesToUpload
-	it.CidsToUpload = blocksAvailability.cidsToUpload
+	it.BytesToUploadOrBind = blocksAvailability.bytesToUploadOrBind
+	it.CidsToBind = blocksAvailability.cidsToBind
 
 	spaceLimits, err := s.limitManager.getSpace(ctx, it.SpaceId)
 	if err != nil {
 		return it, fmt.Errorf("get space limits: %w", err)
 	}
 
-	allocateErr := spaceLimits.allocateFile(ctx, it.Key(), blocksAvailability.totalBytesToUpload())
+	allocateErr := spaceLimits.allocateFile(ctx, it.Key(), blocksAvailability.bytesToUploadOrBind)
 	// TODO De-allocate if error is occurred
 	if allocateErr != nil {
 		it = it.ToLimitReached()
@@ -104,21 +104,19 @@ func (s *fileSync) processFilePendingUpload(ctx context.Context, it FileInfo) (F
 	}
 
 	if it.ObjectId != "" {
-
 		err = s.updateStatus(it, filesyncstatus.Syncing)
 		if isObjectDeletedError(err) {
 			return it.ToPendingDeletion(), nil
 		}
 	}
 
-	// TODO Move to uploading handler?
-	var totalBytesUploaded int
+	var totalBytesToUpload int
 	err = s.walkFileBlocks(ctx, it.SpaceId, it.FileId, it.Variants, func(fileBlocks []blocks.Block) error {
-		bytesToUpload, err := s.uploadOrBindBlocks(ctx, it, fileBlocks, blocksAvailability.cidsToUpload)
+		bytesToUpload, err := s.uploadOrBindBlocks(ctx, it, fileBlocks, blocksAvailability.cidsToBind)
 		if err != nil {
 			return fmt.Errorf("select blocks to upload: %w", err)
 		}
-		totalBytesUploaded += bytesToUpload
+		totalBytesToUpload += bytesToUpload
 		return nil
 	})
 
@@ -133,6 +131,15 @@ func (s *fileSync) processFilePendingUpload(ctx context.Context, it FileInfo) (F
 			return it, nil
 		}
 		return it, fmt.Errorf("walk file blocks: %w", err)
+	}
+
+	// Means that we only had to bind blocks
+	if totalBytesToUpload == 0 {
+		err := s.updateStatus(it, filesyncstatus.Synced)
+		if err != nil {
+			return it, fmt.Errorf("add to status update queue: %w", err)
+		}
+		return it.ToDone(), nil
 	}
 
 	return it.ToUploading(), nil
@@ -160,7 +167,7 @@ func (s *fileSync) handleLimitReached(ctx context.Context, it FileInfo) error {
 }
 
 func (s *fileSync) processFileUploading(ctx context.Context, it FileInfo) (FileInfo, error) {
-	if len(it.CidsToUpload) == 0 {
+	if len(it.CidsToBind) == 0 {
 		space, err := s.limitManager.getSpace(ctx, it.SpaceId)
 		if err != nil {
 			return it, fmt.Errorf("get space limits: %w", err)
@@ -295,6 +302,10 @@ func (s *fileSync) processLimited(ctx context.Context) error {
 					Path:   []string{"spaceId"},
 					Filter: query.NewComp(query.CompOpEq, update.spaceId),
 				},
+				query.Key{
+					Path:   []string{"bytesToUploadOrBind"},
+					Filter: query.NewComp(query.CompOpLte, update.freeSpace()),
+				},
 			},
 			StoreOrder: &query.SortField{
 				Field:   "scheduledAt",
@@ -302,7 +313,7 @@ func (s *fileSync) processLimited(ctx context.Context) error {
 				Reverse: false,
 			},
 			Filter: func(info FileInfo) bool {
-				return info.State == FileStateLimited && info.SpaceId == update.spaceId
+				return info.State == FileStateLimited && info.SpaceId == update.spaceId && info.BytesToUploadOrBind <= update.freeSpace()
 			},
 			ScheduledAt: func(info FileInfo) time.Time {
 				return info.ScheduledAt

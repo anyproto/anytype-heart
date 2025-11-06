@@ -16,22 +16,27 @@ func (s *fileSync) runBatchUploader() {
 		case req := <-s.requestsCh:
 
 			err := s.rpcStore.AddToFileMany(s.loopCtx, req.req)
-			if err != nil {
-				s.onBatchUploadError(s.loopCtx, req, err)
-			} else {
-				s.onBatchUploaded(s.loopCtx, req)
-			}
+			go func() {
+				if err != nil {
+					s.onBatchUploadError(s.loopCtx, req, err)
+				} else {
+					s.onBatchUploaded(s.loopCtx, req)
+				}
+			}()
 		}
 	}
 }
 
 func (s *fileSync) addToLimitedQueue(objectId string) error {
-	// TODO Delete file and clean uploaded blocks
 	return s.process(objectId, func(exists bool, info FileInfo) (FileInfo, error) {
 		if !exists {
 			return FileInfo{}, nil
 		}
 
+		err := s.handleLimitReached(s.loopCtx, info)
+		if err != nil {
+			return FileInfo{}, err
+		}
 		return info.ToLimitReached(), nil
 	})
 }
@@ -71,7 +76,7 @@ func (s *fileSync) updateUploadedCids(objectId string, cids []cid.Cid) error {
 		}
 
 		for _, c := range cids {
-			delete(info.CidsToUpload, c)
+			delete(info.CidsToBind, c)
 		}
 		next, err := s.processFileUploading(s.loopCtx, info)
 		return next, err
