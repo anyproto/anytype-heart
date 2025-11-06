@@ -131,46 +131,48 @@ func TestSpaceView_SetOwner(t *testing.T) {
 	require.Equal(t, int64(125), fx.CombinedDetails().GetInt64(bundle.RelationKeyCreatedDate))
 }
 
-func TestSpaceView_AddPushNotificationMuteIds(t *testing.T) {
+func TestSpaceView_SetPushNotificationMode(t *testing.T) {
 	fx := newSpaceViewFixture(t)
 	defer fx.finish()
-	err := fx.SetPushNotificationMode(nil, pb.RpcPushNotificationSetSpaceMode_Mentions)
+	err := fx.SetPushNotificationMode(nil, pb.RpcPushNotification_Mentions)
 	require.NoError(t, err)
-	err = fx.AddPushNotificationMentionIds(nil, []string{"id1", "id3"})
-	require.NoError(t, err)
-	err = fx.AddPushNotificationMuteIds(nil, []string{"id1", "id2", "id1"})
-	require.NoError(t, err)
-	assert.Equal(t, []string{"id1", "id2"}, fx.Details().GetStringList(bundle.RelationKeySpacePushNotificationCustomMuteIds))
-	assert.Equal(t, []string{"id3"}, fx.Details().GetStringList(bundle.RelationKeySpacePushNotificationCustomMentionIds))
-	assert.Equal(t, int64(pb.RpcPushNotificationSetSpaceMode_Custom), fx.CombinedDetails().GetInt64(bundle.RelationKeySpacePushNotificationMode))
+	assert.Equal(t, int64(pb.RpcPushNotification_Mentions), fx.Details().GetInt64(bundle.RelationKeySpacePushNotificationMode))
 }
 
-func TestSpaceView_AddPushNotificationMentionIds(t *testing.T) {
+func TestSpaceView_SetPushNotificationForceModeIds(t *testing.T) {
 	fx := newSpaceViewFixture(t)
 	defer fx.finish()
-	err := fx.SetPushNotificationMode(nil, pb.RpcPushNotificationSetSpaceMode_Mentions)
+	assert.Error(t, fx.SetPushNotificationForceModeIds(nil, []string{"id1", "id2"}, -1))
+	err := fx.SetPushNotificationForceModeIds(nil, []string{"id1", "id2"}, pb.RpcPushNotification_Nothing)
 	require.NoError(t, err)
-	err = fx.AddPushNotificationMuteIds(nil, []string{"id1", "id3"})
+	err = fx.SetPushNotificationForceModeIds(nil, []string{"id2", "id3"}, pb.RpcPushNotification_Mentions)
 	require.NoError(t, err)
-	err = fx.AddPushNotificationMentionIds(nil, []string{"id1", "id2", "id1"})
+	err = fx.SetPushNotificationForceModeIds(nil, []string{"id3", "id4"}, pb.RpcPushNotification_All)
 	require.NoError(t, err)
-	assert.Equal(t, []string{"id1", "id2"}, fx.Details().GetStringList(bundle.RelationKeySpacePushNotificationCustomMentionIds))
-	assert.Equal(t, []string{"id3"}, fx.Details().GetStringList(bundle.RelationKeySpacePushNotificationCustomMuteIds))
-	assert.Equal(t, int64(pb.RpcPushNotificationSetSpaceMode_Custom), fx.CombinedDetails().GetInt64(bundle.RelationKeySpacePushNotificationMode))
+
+	mutedIds := fx.Details().GetStringList(bundle.RelationKeySpacePushNotificationForceMuteIds)
+	assert.Equal(t, []string{"id1"}, mutedIds)
+	mentionedIds := fx.Details().GetStringList(bundle.RelationKeySpacePushNotificationForceMentionIds)
+	assert.Equal(t, []string{"id2"}, mentionedIds)
+	allIds := fx.Details().GetStringList(bundle.RelationKeySpacePushNotificationForceAllIds)
+	assert.Equal(t, []string{"id3", "id4"}, allIds)
+	assert.Equal(t, int64(pb.RpcPushNotification_All), fx.CombinedDetails().GetInt64(bundle.RelationKeySpacePushNotificationMode))
 }
 
-func TestSpaceView_AddPushNotificationAllIds(t *testing.T) {
+func TestSpaceView_ResetPushNotificationIds(t *testing.T) {
 	fx := newSpaceViewFixture(t)
 	defer fx.finish()
-	err := fx.AddPushNotificationMuteIds(nil, []string{"id3"})
+	err := fx.SetPushNotificationForceModeIds(nil, []string{"id1"}, pb.RpcPushNotification_Mentions)
 	require.NoError(t, err)
-	err = fx.AddPushNotificationMentionIds(nil, []string{"id1", "id2", "id1"})
+	err = fx.SetPushNotificationForceModeIds(nil, []string{"id2"}, pb.RpcPushNotification_All)
 	require.NoError(t, err)
-	err = fx.AddPushNotificationAllIds(nil, []string{"id1", "id3", "id4"})
+	err = fx.SetPushNotificationForceModeIds(nil, []string{"id3"}, pb.RpcPushNotification_Nothing)
 	require.NoError(t, err)
-	assert.Equal(t, []string{"id2"}, fx.Details().GetStringList(bundle.RelationKeySpacePushNotificationCustomMentionIds))
-	assert.Equal(t, []string{}, fx.Details().GetStringList(bundle.RelationKeySpacePushNotificationCustomMuteIds))
-	assert.Equal(t, int64(pb.RpcPushNotificationSetSpaceMode_Custom), fx.CombinedDetails().GetInt64(bundle.RelationKeySpacePushNotificationMode))
+	err = fx.ResetPushNotificationIds(nil, []string{"id1", "id2", "id3"})
+	require.NoError(t, err)
+	assert.Empty(t, fx.Details().GetStringList(bundle.RelationKeySpacePushNotificationForceMuteIds))
+	assert.Empty(t, fx.Details().GetStringList(bundle.RelationKeySpacePushNotificationForceMentionIds))
+	assert.Empty(t, fx.Details().GetStringList(bundle.RelationKeySpacePushNotificationForceAllIds))
 }
 
 type spaceServiceStub struct {
