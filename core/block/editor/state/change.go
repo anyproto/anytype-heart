@@ -40,7 +40,14 @@ func WithInternalKey(internalKey string) func(*snapshotOptions) {
 	}
 }
 
-func NewDocFromSnapshot(rootId string, snapshot *pb.ChangeSnapshot, opts ...SnapshotOption) Doc {
+func NewDocFromSnapshot(rootId string, snapshot *pb.ChangeSnapshot, opts ...SnapshotOption) (*State, error) {
+	if snapshot == nil {
+		return nil, fmt.Errorf("nil snapshot")
+	}
+	if snapshot.Data == nil {
+		return nil, fmt.Errorf("nil snapshot data")
+	}
+
 	sOpts := snapshotOptions{}
 	for _, opt := range opts {
 		opt(&sOpts)
@@ -91,7 +98,7 @@ func NewDocFromSnapshot(rootId string, snapshot *pb.ChangeSnapshot, opts ...Snap
 
 	if s.store != nil {
 		for collName, coll := range s.store.Fields {
-			if c := coll.GetStructValue(); s != nil {
+			if c := coll.GetStructValue(); c != nil {
 				for k := range c.GetFields() {
 					s.setStoreChangeId(collName+addr.SubObjectCollectionIdSeparator+k, s.changeId)
 				}
@@ -99,7 +106,7 @@ func NewDocFromSnapshot(rootId string, snapshot *pb.ChangeSnapshot, opts ...Snap
 		}
 	}
 
-	return s
+	return s, nil
 }
 
 func (s *State) SetLastModified(ts int64, identityLink string) {
@@ -156,7 +163,9 @@ func (s *State) GetAndUnsetFileKeys() (keys []pb.ChangeFileKeys) {
 func (s *State) ApplyChangeIgnoreErr(changes ...*pb.ChangeContent) {
 	for _, ch := range changes {
 		if err := s.applyChange(ch); err != nil {
-			log.With("objectID", s.RootId()).Warnf("error while applying change %T: %v; ignore", ch.Value, err)
+			if ch.GetBlockCreate() == nil && ch.GetBlockMove() == nil {
+				log.With("objectID", s.RootId()).Warnf("error while applying change %T: %v; ignore", ch.Value, err)
+			}
 		}
 	}
 	return
@@ -270,7 +279,7 @@ func (s *State) changeBlockDetailsUnset(unset *pb.ChangeDetailsUnset) error {
 }
 
 func (s *State) changeRelationAdd(add *pb.ChangeRelationAdd) error {
-	rl := s.GetRelationLinks()
+	rl := s.getRelationLinks()
 	for _, r := range add.RelationLinks {
 		if !rl.Has(r.Key) {
 			rl = rl.Append(r)

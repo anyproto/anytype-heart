@@ -23,6 +23,7 @@ import (
 	mh "github.com/multiformats/go-multihash"
 
 	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/core/files/filestorage"
 	"github.com/anyproto/anytype-heart/pkg/lib/crypto/symmetric"
 	"github.com/anyproto/anytype-heart/pkg/lib/crypto/symmetric/cfb"
 	"github.com/anyproto/anytype-heart/pkg/lib/ipfs/helpers"
@@ -104,11 +105,19 @@ type AddResult struct {
 	MIME           string
 	Size           int64
 
+	// Batch is set when file was uploaded with a batch (for preloading)
+	Batch filestorage.Batch
+
 	lock *sync.Mutex
 }
 
 // Commit transaction of adding a file
 func (r *AddResult) Commit() {
+	if r.Batch != nil {
+		if err := r.Batch.Commit(); err != nil {
+			log.Errorf("failed to commit batch: %v", err)
+		}
+	}
 	r.lock.Unlock()
 }
 
@@ -138,8 +147,7 @@ func (s *service) FileAdd(ctx context.Context, spaceId string, options ...AddOpt
 		}
 		return res, nil
 	}
-
-	rootNode, keys, err := s.addFileRootNode(ctx, spaceId, addNodeResult.variant, addNodeResult.filePairNode)
+	rootNode, keys, err := s.addFileRootNode(ctx, spaceId, addNodeResult.variant, addNodeResult.filePairNode, opts)
 	if err != nil {
 		addLock.Unlock()
 		return nil, err
@@ -203,13 +211,16 @@ func (s *service) newExistingFileResult(lock *sync.Mutex, fileId domain.FileId, 
 		- content
 	...
 */
-func (s *service) addFileRootNode(ctx context.Context, spaceID string, fileInfo *storage.FileInfo, fileNode ipld.Node) (ipld.Node, *storage.FileKeys, error) {
-	dagService := s.dagServiceForSpace(spaceID)
+func (s *service) addFileRootNode(ctx context.Context, spaceID string, fileInfo *storage.FileInfo, fileNode ipld.Node, opts AddOptions) (ipld.Node, *storage.FileKeys, error) {
+	dagService := s.dagServiceForSpace(spaceID, opts.FileHandler)
 	keys := &storage.FileKeys{KeysByPath: make(map[string]string)}
-	outer := uio.NewDirectory(dagService)
+	outer, err := uio.NewDirectory(dagService)
+	if err != nil {
+		return nil, nil, err
+	}
 	outer.SetCidBuilder(cidBuilder)
 
-	err := helpers.AddLinkToDirectory(ctx, dagService, outer, schema.LinkFile, fileNode.Cid().String())
+	err = helpers.AddLinkToDirectory(ctx, dagService, outer, schema.LinkFile, fileNode.Cid().String())
 	if err != nil {
 		return nil, nil, err
 	}
@@ -386,7 +397,7 @@ func (s *service) addFileNode(ctx context.Context, spaceID string, mill m.Mill, 
 
 	fileInfo.Key = key.String()
 
-	contentNode, err := s.addFileData(ctx, spaceID, contentReader)
+	contentNode, err := s.addFileData(ctx, spaceID, contentReader, conf.FileHandler)
 	if err != nil {
 		return nil, err
 	}
@@ -402,13 +413,14 @@ func (s *service) addFileNode(ctx context.Context, spaceID string, mill m.Mill, 
 		return nil, err
 	}
 
-	metaNode, err := s.addFileData(ctx, spaceID, metaReader)
+	metaNode, err := s.addFileData(ctx, spaceID, metaReader, conf.FileHandler)
 	if err != nil {
 		return nil, err
 	}
 	fileInfo.MetaHash = metaNode.Cid().String()
 
-	pairNode, err := s.addFilePairNode(ctx, spaceID, fileInfo)
+	dagService := s.dagServiceForSpace(spaceID, conf.FileHandler)
+	pairNode, err := s.addFilePairNode(ctx, dagService, spaceID, fileInfo, conf)
 	if err != nil {
 		return nil, err
 	}
@@ -439,16 +451,18 @@ func getOrGenerateSymmetricKey(linkName string, opts AddOptions) (symmetric.Key,
 	- meta
 	- content
 */
-func (s *service) addFilePairNode(ctx context.Context, spaceID string, file *storage.FileInfo) (ipld.Node, error) {
-	dagService := s.dagServiceForSpace(spaceID)
-	pair := uio.NewDirectory(dagService)
+func (s *service) addFilePairNode(ctx context.Context, dagService ipld.DAGService, spaceID string, file *storage.FileInfo, opts AddOptions) (ipld.Node, error) {
+	pair, err := uio.NewDirectory(dagService)
+	if err != nil {
+		return nil, err
+	}
 	pair.SetCidBuilder(cidBuilder)
 
 	if file.MetaHash == "" {
 		return nil, fmt.Errorf("metaHash is empty")
 	}
 
-	err := helpers.AddLinkToDirectory(ctx, dagService, pair, MetaLinkName, file.MetaHash)
+	err = helpers.AddLinkToDirectory(ctx, dagService, pair, MetaLinkName, file.MetaHash)
 	if err != nil {
 		return nil, fmt.Errorf("add meta link: %w", err)
 	}
@@ -475,7 +489,7 @@ type dirEntry struct {
 }
 
 func (s *service) GetFileVariants(ctx context.Context, id domain.FullFileId, keys map[string]string) ([]*storage.FileInfo, error) {
-	dagService := s.dagServiceForSpace(id.SpaceId)
+	dagService := s.dagServiceForSpace(id.SpaceId, nil)
 	dirLinks, err := helpers.LinksAtCid(ctx, dagService, id.FileId.String())
 	if err != nil {
 		return nil, err

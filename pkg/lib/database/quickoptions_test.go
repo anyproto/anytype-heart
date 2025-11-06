@@ -47,10 +47,18 @@ func calculateWeekEnd(base time.Time, weeksOffset int) int64 {
 	return time.Date(sunday.Year(), sunday.Month(), sunday.Day(), 23, 59, 59, 0, sunday.Location()).Unix()
 }
 
+func calculateYearStart(base time.Time, yearsOffset int) int64 {
+	return time.Date(base.Year()+yearsOffset, 1, 1, 0, 0, 0, 0, base.Location()).Unix()
+}
+
+func calculateYearEnd(base time.Time, yearsOffset int) int64 {
+	return time.Date(base.Year()+yearsOffset, 12, 31, 23, 59, 59, 0, base.Location()).Unix()
+}
+
 func TestQuickOption(t *testing.T) {
 	var (
 		relationKey = bundle.RelationKeyCreatedDate
-		now         = time.Now()
+		now         = time.Date(2007, 2, 15, 12, 30, 10, 0, time.UTC)
 	)
 
 	// Test uses methods which account for daylight saving time
@@ -61,319 +69,502 @@ func TestQuickOption(t *testing.T) {
 	}{
 		// today
 		{
-			"today",
-			FilterRequest{
+			name: "today",
+			inputFilter: FilterRequest{
+				Format:      model.RelationFormat_date,
 				QuickOption: model.BlockContentDataviewFilter_Today,
 				RelationKey: relationKey,
 				Condition:   model.BlockContentDataviewFilter_Equal,
 			},
-			[]FilterRequest{
+			expectedFilters: []FilterRequest{
 				{Condition: model.BlockContentDataviewFilter_LessOrEqual, Value: domain.Int64(calculateDayEnd(now, 0))},
 				{Condition: model.BlockContentDataviewFilter_GreaterOrEqual, Value: domain.Int64(calculateDayStart(now, 0))},
 			},
 		}, {
-			"strictly before today",
-			FilterRequest{
+			name: "strictly before today",
+			inputFilter: FilterRequest{
 				QuickOption: model.BlockContentDataviewFilter_Today,
+				Format:      model.RelationFormat_date,
 				RelationKey: relationKey,
 				Condition:   model.BlockContentDataviewFilter_Less,
 			},
-			[]FilterRequest{{Condition: model.BlockContentDataviewFilter_Less, Value: domain.Int64(calculateDayStart(now, 0))}},
+			expectedFilters: []FilterRequest{{Condition: model.BlockContentDataviewFilter_Less, Value: domain.Int64(calculateDayStart(now, 0))}},
 		}, {
-			"today or before",
-			FilterRequest{
+			name: "today or before",
+			inputFilter: FilterRequest{
 				QuickOption: model.BlockContentDataviewFilter_Today,
 				RelationKey: relationKey,
+				Format:      model.RelationFormat_date,
 				Condition:   model.BlockContentDataviewFilter_LessOrEqual,
 			},
-			[]FilterRequest{{Condition: model.BlockContentDataviewFilter_LessOrEqual, Value: domain.Int64(calculateDayEnd(now, 0))}},
+			expectedFilters: []FilterRequest{{Condition: model.BlockContentDataviewFilter_LessOrEqual, Value: domain.Int64(calculateDayEnd(now, 0))}},
 		}, {
-			"strictly after today",
-			FilterRequest{
+			name: "strictly after today",
+			inputFilter: FilterRequest{
 				QuickOption: model.BlockContentDataviewFilter_Today,
 				RelationKey: relationKey,
+				Format:      model.RelationFormat_date,
 				Condition:   model.BlockContentDataviewFilter_Greater,
 			},
-			[]FilterRequest{{Condition: model.BlockContentDataviewFilter_Greater, Value: domain.Int64(calculateDayEnd(now, 0))}},
+			expectedFilters: []FilterRequest{{Condition: model.BlockContentDataviewFilter_Greater, Value: domain.Int64(calculateDayEnd(now, 0))}},
 		}, {
-			"today or after",
-			FilterRequest{
+			name: "today or after",
+			inputFilter: FilterRequest{
 				QuickOption: model.BlockContentDataviewFilter_Today,
 				RelationKey: relationKey,
+				Format:      model.RelationFormat_date,
 				Condition:   model.BlockContentDataviewFilter_GreaterOrEqual,
 			},
-			[]FilterRequest{{Condition: model.BlockContentDataviewFilter_GreaterOrEqual, Value: domain.Int64(calculateDayStart(now, 0))}},
+			expectedFilters: []FilterRequest{{Condition: model.BlockContentDataviewFilter_GreaterOrEqual, Value: domain.Int64(calculateDayStart(now, 0))}},
 		},
 
 		// yesterday
 		{
-			"yesterday",
-			FilterRequest{
+			name: "yesterday",
+			inputFilter: FilterRequest{
 				QuickOption: model.BlockContentDataviewFilter_Yesterday,
 				RelationKey: relationKey,
+				Format:      model.RelationFormat_date,
 				Condition:   model.BlockContentDataviewFilter_In,
 			},
-			[]FilterRequest{
+			expectedFilters: []FilterRequest{
 				{Condition: model.BlockContentDataviewFilter_LessOrEqual, Value: domain.Int64(calculateDayEnd(now, -1))},
 				{Condition: model.BlockContentDataviewFilter_GreaterOrEqual, Value: domain.Int64(calculateDayStart(now, -1))},
 			},
 		}, {
-			"yesterday or after",
-			FilterRequest{
+			name: "yesterday or after",
+			inputFilter: FilterRequest{
 				QuickOption: model.BlockContentDataviewFilter_Yesterday,
 				RelationKey: relationKey,
+				Format:      model.RelationFormat_date,
 				Condition:   model.BlockContentDataviewFilter_GreaterOrEqual,
 			},
-			[]FilterRequest{{Condition: model.BlockContentDataviewFilter_GreaterOrEqual, Value: domain.Int64(calculateDayStart(now, -1))}},
+			expectedFilters: []FilterRequest{{Condition: model.BlockContentDataviewFilter_GreaterOrEqual, Value: domain.Int64(calculateDayStart(now, -1))}},
 		},
 
 		// tomorrow
 		{
-			"tomorrow",
-			FilterRequest{
+			name: "tomorrow",
+			inputFilter: FilterRequest{
 				QuickOption: model.BlockContentDataviewFilter_Tomorrow,
 				RelationKey: relationKey,
+				Format:      model.RelationFormat_date,
 				Condition:   model.BlockContentDataviewFilter_In,
 			},
-			[]FilterRequest{
+			expectedFilters: []FilterRequest{
 				{Condition: model.BlockContentDataviewFilter_LessOrEqual, Value: domain.Int64(calculateDayEnd(now, 1))},
 				{Condition: model.BlockContentDataviewFilter_GreaterOrEqual, Value: domain.Int64(calculateDayStart(now, 1))},
 			},
 		}, {
-			"strictly after tomorrow",
-			FilterRequest{
+			name: "strictly after tomorrow",
+			inputFilter: FilterRequest{
 				QuickOption: model.BlockContentDataviewFilter_Tomorrow,
 				RelationKey: relationKey,
+				Format:      model.RelationFormat_date,
 				Condition:   model.BlockContentDataviewFilter_Greater,
 			},
-			[]FilterRequest{{Condition: model.BlockContentDataviewFilter_Greater, Value: domain.Int64(calculateDayEnd(now, 1))}},
+			expectedFilters: []FilterRequest{{Condition: model.BlockContentDataviewFilter_Greater, Value: domain.Int64(calculateDayEnd(now, 1))}},
 		},
 
 		// this week
 		{
-			"current week",
-			FilterRequest{
+			name: "current week",
+			inputFilter: FilterRequest{
 				QuickOption: model.BlockContentDataviewFilter_CurrentWeek,
 				RelationKey: relationKey,
+				Format:      model.RelationFormat_date,
 				Condition:   model.BlockContentDataviewFilter_Equal,
 			},
-			[]FilterRequest{
+			expectedFilters: []FilterRequest{
 				{Condition: model.BlockContentDataviewFilter_LessOrEqual, Value: domain.Int64(calculateWeekEnd(now, 0))},
 				{Condition: model.BlockContentDataviewFilter_GreaterOrEqual, Value: domain.Int64(calculateWeekStart(now, 0))},
 			},
 		}, {
-			"strictly before this week",
-			FilterRequest{
+			name: "strictly before this week",
+			inputFilter: FilterRequest{
 				QuickOption: model.BlockContentDataviewFilter_CurrentWeek,
 				RelationKey: relationKey,
+				Format:      model.RelationFormat_date,
 				Condition:   model.BlockContentDataviewFilter_Less,
 			},
-			[]FilterRequest{{Condition: model.BlockContentDataviewFilter_Less, Value: domain.Int64(calculateWeekStart(now, 0))}},
+			expectedFilters: []FilterRequest{{Condition: model.BlockContentDataviewFilter_Less, Value: domain.Int64(calculateWeekStart(now, 0))}},
 		},
 
 		// previous week
 		{
-			"previous week and before",
-			FilterRequest{
+			name: "previous week and before",
+			inputFilter: FilterRequest{
 				QuickOption: model.BlockContentDataviewFilter_LastWeek,
 				RelationKey: relationKey,
+				Format:      model.RelationFormat_date,
 				Condition:   model.BlockContentDataviewFilter_LessOrEqual,
 			},
-			[]FilterRequest{
+			expectedFilters: []FilterRequest{
 				{Condition: model.BlockContentDataviewFilter_LessOrEqual, Value: domain.Int64(calculateWeekEnd(now, -1))},
 			},
 		}, {
-			"strictly after previous week",
-			FilterRequest{
+			name: "strictly after previous week",
+			inputFilter: FilterRequest{
 				QuickOption: model.BlockContentDataviewFilter_LastWeek,
 				RelationKey: relationKey,
+				Format:      model.RelationFormat_date,
 				Condition:   model.BlockContentDataviewFilter_Greater,
 			},
-			[]FilterRequest{{Condition: model.BlockContentDataviewFilter_Greater, Value: domain.Int64(calculateWeekEnd(now, -1))}},
+			expectedFilters: []FilterRequest{{Condition: model.BlockContentDataviewFilter_Greater, Value: domain.Int64(calculateWeekEnd(now, -1))}},
 		}, {
-			"strictly before previous week",
-			FilterRequest{
+			name: "strictly before previous week",
+			inputFilter: FilterRequest{
 				QuickOption: model.BlockContentDataviewFilter_LastWeek,
 				RelationKey: relationKey,
+				Format:      model.RelationFormat_date,
 				Condition:   model.BlockContentDataviewFilter_Less,
 			},
-			[]FilterRequest{{Condition: model.BlockContentDataviewFilter_Less, Value: domain.Int64(calculateWeekStart(now, -1))}},
+			expectedFilters: []FilterRequest{{Condition: model.BlockContentDataviewFilter_Less, Value: domain.Int64(calculateWeekStart(now, -1))}},
 		},
 
 		// next week
 		{
-			"next week",
-			FilterRequest{
+			name: "next week",
+			inputFilter: FilterRequest{
 				QuickOption: model.BlockContentDataviewFilter_NextWeek,
 				RelationKey: relationKey,
+				Format:      model.RelationFormat_date,
 				Condition:   model.BlockContentDataviewFilter_In,
 			},
-			[]FilterRequest{
+			expectedFilters: []FilterRequest{
 				{Condition: model.BlockContentDataviewFilter_LessOrEqual, Value: domain.Int64(calculateWeekEnd(now, 1))},
 				{Condition: model.BlockContentDataviewFilter_GreaterOrEqual, Value: domain.Int64(calculateWeekStart(now, 1))},
 			},
 		}, {
-			"next week and after",
-			FilterRequest{
+			name: "next week and after",
+			inputFilter: FilterRequest{
 				QuickOption: model.BlockContentDataviewFilter_NextWeek,
 				RelationKey: relationKey,
+				Format:      model.RelationFormat_date,
 				Condition:   model.BlockContentDataviewFilter_GreaterOrEqual,
 			},
-			[]FilterRequest{{Condition: model.BlockContentDataviewFilter_GreaterOrEqual, Value: domain.Int64(calculateWeekStart(now, 1))}},
+			expectedFilters: []FilterRequest{{Condition: model.BlockContentDataviewFilter_GreaterOrEqual, Value: domain.Int64(calculateWeekStart(now, 1))}},
 		},
 
 		// this month
 		{
-			"current month",
-			FilterRequest{
+			name: "current month",
+			inputFilter: FilterRequest{
 				QuickOption: model.BlockContentDataviewFilter_CurrentMonth,
 				RelationKey: relationKey,
+				Format:      model.RelationFormat_date,
 				Condition:   model.BlockContentDataviewFilter_Equal,
 			},
-			[]FilterRequest{
+			expectedFilters: []FilterRequest{
 				{Condition: model.BlockContentDataviewFilter_LessOrEqual, Value: domain.Int64(calculateMonthEnd(now, 0))},
 				{Condition: model.BlockContentDataviewFilter_GreaterOrEqual, Value: domain.Int64(calculateMonthStart(now, 0))},
 			},
 		}, {
-			"this month and later",
-			FilterRequest{
+			name: "this month and later",
+			inputFilter: FilterRequest{
 				QuickOption: model.BlockContentDataviewFilter_CurrentMonth,
 				RelationKey: relationKey,
+				Format:      model.RelationFormat_date,
 				Condition:   model.BlockContentDataviewFilter_GreaterOrEqual,
 			},
-			[]FilterRequest{{Condition: model.BlockContentDataviewFilter_GreaterOrEqual, Value: domain.Int64(calculateMonthStart(now, 0))}},
+			expectedFilters: []FilterRequest{{Condition: model.BlockContentDataviewFilter_GreaterOrEqual, Value: domain.Int64(calculateMonthStart(now, 0))}},
 		},
 
 		// previous month
 		{
-			"previous month",
-			FilterRequest{
+			name: "previous month",
+			inputFilter: FilterRequest{
 				QuickOption: model.BlockContentDataviewFilter_LastMonth,
 				RelationKey: relationKey,
+				Format:      model.RelationFormat_date,
 				Condition:   model.BlockContentDataviewFilter_In,
 			},
-			[]FilterRequest{
+			expectedFilters: []FilterRequest{
 				{Condition: model.BlockContentDataviewFilter_LessOrEqual, Value: domain.Int64(calculateMonthEnd(now, -1))},
 				{Condition: model.BlockContentDataviewFilter_GreaterOrEqual, Value: domain.Int64(calculateMonthStart(now, -1))},
 			},
 		}, {
-			"strictly before previous month",
-			FilterRequest{
+			name: "strictly before previous month",
+			inputFilter: FilterRequest{
 				QuickOption: model.BlockContentDataviewFilter_LastMonth,
 				RelationKey: relationKey,
+				Format:      model.RelationFormat_date,
 				Condition:   model.BlockContentDataviewFilter_Less,
 			},
-			[]FilterRequest{{Condition: model.BlockContentDataviewFilter_Less, Value: domain.Int64(calculateMonthStart(now, -1))}},
+			expectedFilters: []FilterRequest{{Condition: model.BlockContentDataviewFilter_Less, Value: domain.Int64(calculateMonthStart(now, -1))}},
 		},
 
 		// next month
 		{
-			"next month",
-			FilterRequest{
+			name: "next month",
+			inputFilter: FilterRequest{
 				QuickOption: model.BlockContentDataviewFilter_NextMonth,
 				RelationKey: relationKey,
+				Format:      model.RelationFormat_date,
 				Condition:   model.BlockContentDataviewFilter_Equal,
 			},
-			[]FilterRequest{
+			expectedFilters: []FilterRequest{
 				{Condition: model.BlockContentDataviewFilter_LessOrEqual, Value: domain.Int64(calculateMonthEnd(now, 1))},
 				{Condition: model.BlockContentDataviewFilter_GreaterOrEqual, Value: domain.Int64(calculateMonthStart(now, 1))},
 			},
 		}, {
-			"strictly after next month",
-			FilterRequest{
+			name: "strictly after next month",
+			inputFilter: FilterRequest{
 				QuickOption: model.BlockContentDataviewFilter_NextMonth,
 				RelationKey: relationKey,
+				Format:      model.RelationFormat_date,
 				Condition:   model.BlockContentDataviewFilter_Greater,
 			},
-			[]FilterRequest{{Condition: model.BlockContentDataviewFilter_Greater, Value: domain.Int64(calculateMonthEnd(now, 1))}},
+			expectedFilters: []FilterRequest{{Condition: model.BlockContentDataviewFilter_Greater, Value: domain.Int64(calculateMonthEnd(now, 1))}},
+		},
+
+		// last year
+		{
+			name: "last year",
+			inputFilter: FilterRequest{
+				QuickOption: model.BlockContentDataviewFilter_LastYear,
+				RelationKey: relationKey,
+				Format:      model.RelationFormat_date,
+				Condition:   model.BlockContentDataviewFilter_Equal,
+			},
+			expectedFilters: []FilterRequest{
+				{Condition: model.BlockContentDataviewFilter_LessOrEqual, Value: domain.Int64(calculateYearEnd(now, -1))},
+				{Condition: model.BlockContentDataviewFilter_GreaterOrEqual, Value: domain.Int64(calculateYearStart(now, -1))},
+			},
+		}, {
+			name: "strictly before last year",
+			inputFilter: FilterRequest{
+				QuickOption: model.BlockContentDataviewFilter_LastYear,
+				RelationKey: relationKey,
+				Format:      model.RelationFormat_date,
+				Condition:   model.BlockContentDataviewFilter_Less,
+			},
+			expectedFilters: []FilterRequest{{Condition: model.BlockContentDataviewFilter_Less, Value: domain.Int64(calculateYearStart(now, -1))}},
+		}, {
+			name: "last year or before",
+			inputFilter: FilterRequest{
+				QuickOption: model.BlockContentDataviewFilter_LastYear,
+				RelationKey: relationKey,
+				Format:      model.RelationFormat_date,
+				Condition:   model.BlockContentDataviewFilter_LessOrEqual,
+			},
+			expectedFilters: []FilterRequest{{Condition: model.BlockContentDataviewFilter_LessOrEqual, Value: domain.Int64(calculateYearEnd(now, -1))}},
+		}, {
+			name: "strictly after last year",
+			inputFilter: FilterRequest{
+				QuickOption: model.BlockContentDataviewFilter_LastYear,
+				RelationKey: relationKey,
+				Format:      model.RelationFormat_date,
+				Condition:   model.BlockContentDataviewFilter_Greater,
+			},
+			expectedFilters: []FilterRequest{{Condition: model.BlockContentDataviewFilter_Greater, Value: domain.Int64(calculateYearEnd(now, -1))}},
+		}, {
+			name: "last year or after",
+			inputFilter: FilterRequest{
+				QuickOption: model.BlockContentDataviewFilter_LastYear,
+				RelationKey: relationKey,
+				Format:      model.RelationFormat_date,
+				Condition:   model.BlockContentDataviewFilter_GreaterOrEqual,
+			},
+			expectedFilters: []FilterRequest{{Condition: model.BlockContentDataviewFilter_GreaterOrEqual, Value: domain.Int64(calculateYearStart(now, -1))}},
+		},
+
+		// current year
+		{
+			name: "current year",
+			inputFilter: FilterRequest{
+				QuickOption: model.BlockContentDataviewFilter_CurrentYear,
+				RelationKey: relationKey,
+				Format:      model.RelationFormat_date,
+				Condition:   model.BlockContentDataviewFilter_Equal,
+			},
+			expectedFilters: []FilterRequest{
+				{Condition: model.BlockContentDataviewFilter_LessOrEqual, Value: domain.Int64(calculateYearEnd(now, 0))},
+				{Condition: model.BlockContentDataviewFilter_GreaterOrEqual, Value: domain.Int64(calculateYearStart(now, 0))},
+			},
+		}, {
+			name: "strictly before current year",
+			inputFilter: FilterRequest{
+				QuickOption: model.BlockContentDataviewFilter_CurrentYear,
+				RelationKey: relationKey,
+				Format:      model.RelationFormat_date,
+				Condition:   model.BlockContentDataviewFilter_Less,
+			},
+			expectedFilters: []FilterRequest{{Condition: model.BlockContentDataviewFilter_Less, Value: domain.Int64(calculateYearStart(now, 0))}},
+		}, {
+			name: "current year or before",
+			inputFilter: FilterRequest{
+				QuickOption: model.BlockContentDataviewFilter_CurrentYear,
+				RelationKey: relationKey,
+				Format:      model.RelationFormat_date,
+				Condition:   model.BlockContentDataviewFilter_LessOrEqual,
+			},
+			expectedFilters: []FilterRequest{{Condition: model.BlockContentDataviewFilter_LessOrEqual, Value: domain.Int64(calculateYearEnd(now, 0))}},
+		}, {
+			name: "strictly after current year",
+			inputFilter: FilterRequest{
+				QuickOption: model.BlockContentDataviewFilter_CurrentYear,
+				RelationKey: relationKey,
+				Format:      model.RelationFormat_date,
+				Condition:   model.BlockContentDataviewFilter_Greater,
+			},
+			expectedFilters: []FilterRequest{{Condition: model.BlockContentDataviewFilter_Greater, Value: domain.Int64(calculateYearEnd(now, 0))}},
+		}, {
+			name: "current year or after",
+			inputFilter: FilterRequest{
+				QuickOption: model.BlockContentDataviewFilter_CurrentYear,
+				RelationKey: relationKey,
+				Format:      model.RelationFormat_date,
+				Condition:   model.BlockContentDataviewFilter_GreaterOrEqual,
+			},
+			expectedFilters: []FilterRequest{{Condition: model.BlockContentDataviewFilter_GreaterOrEqual, Value: domain.Int64(calculateYearStart(now, 0))}},
+		},
+
+		// next year
+		{
+			name: "next year",
+			inputFilter: FilterRequest{
+				QuickOption: model.BlockContentDataviewFilter_NextYear,
+				RelationKey: relationKey,
+				Format:      model.RelationFormat_date,
+				Condition:   model.BlockContentDataviewFilter_Equal,
+			},
+			expectedFilters: []FilterRequest{
+				{Condition: model.BlockContentDataviewFilter_LessOrEqual, Value: domain.Int64(calculateYearEnd(now, 1))},
+				{Condition: model.BlockContentDataviewFilter_GreaterOrEqual, Value: domain.Int64(calculateYearStart(now, 1))},
+			},
+		}, {
+			name: "strictly before next year",
+			inputFilter: FilterRequest{
+				QuickOption: model.BlockContentDataviewFilter_NextYear,
+				RelationKey: relationKey,
+				Format:      model.RelationFormat_date,
+				Condition:   model.BlockContentDataviewFilter_Less,
+			},
+			expectedFilters: []FilterRequest{{Condition: model.BlockContentDataviewFilter_Less, Value: domain.Int64(calculateYearStart(now, 1))}},
+		}, {
+			name: "next year or before",
+			inputFilter: FilterRequest{
+				QuickOption: model.BlockContentDataviewFilter_NextYear,
+				RelationKey: relationKey,
+				Format:      model.RelationFormat_date,
+				Condition:   model.BlockContentDataviewFilter_LessOrEqual,
+			},
+			expectedFilters: []FilterRequest{{Condition: model.BlockContentDataviewFilter_LessOrEqual, Value: domain.Int64(calculateYearEnd(now, 1))}},
+		}, {
+			name: "strictly after next year",
+			inputFilter: FilterRequest{
+				QuickOption: model.BlockContentDataviewFilter_NextYear,
+				RelationKey: relationKey,
+				Format:      model.RelationFormat_date,
+				Condition:   model.BlockContentDataviewFilter_Greater,
+			},
+			expectedFilters: []FilterRequest{{Condition: model.BlockContentDataviewFilter_Greater, Value: domain.Int64(calculateYearEnd(now, 1))}},
+		}, {
+			name: "next year or after",
+			inputFilter: FilterRequest{
+				QuickOption: model.BlockContentDataviewFilter_NextYear,
+				RelationKey: relationKey,
+				Format:      model.RelationFormat_date,
+				Condition:   model.BlockContentDataviewFilter_GreaterOrEqual,
+			},
+			expectedFilters: []FilterRequest{{Condition: model.BlockContentDataviewFilter_GreaterOrEqual, Value: domain.Int64(calculateYearStart(now, 1))}},
 		},
 
 		// number of days ago
 		{
-			"6 days ago",
-			FilterRequest{
+			name: "6 days ago",
+			inputFilter: FilterRequest{
 				QuickOption: model.BlockContentDataviewFilter_NumberOfDaysAgo,
 				RelationKey: relationKey,
+				Format:      model.RelationFormat_date,
 				Condition:   model.BlockContentDataviewFilter_Equal,
 				Value:       domain.Int64(6),
 			},
-			[]FilterRequest{
+			expectedFilters: []FilterRequest{
 				{Condition: model.BlockContentDataviewFilter_LessOrEqual, Value: domain.Int64(calculateDayEnd(now, -6))},
 				{Condition: model.BlockContentDataviewFilter_GreaterOrEqual, Value: domain.Int64(calculateDayStart(now, -6))},
 			},
 		}, {
-			"3 days ago or more",
-			FilterRequest{
+			name: "3 days ago or more",
+			inputFilter: FilterRequest{
 				QuickOption: model.BlockContentDataviewFilter_NumberOfDaysAgo,
 				RelationKey: relationKey,
+				Format:      model.RelationFormat_date,
 				Condition:   model.BlockContentDataviewFilter_LessOrEqual,
 				Value:       domain.Int64(3),
 			},
-			[]FilterRequest{{Condition: model.BlockContentDataviewFilter_LessOrEqual, Value: domain.Int64(calculateDayEnd(now, -3))}},
+			expectedFilters: []FilterRequest{{Condition: model.BlockContentDataviewFilter_LessOrEqual, Value: domain.Int64(calculateDayEnd(now, -3))}},
 		}, {
-			"more than 4 days ago",
-			FilterRequest{
+			name: "more than 4 days ago",
+			inputFilter: FilterRequest{
 				QuickOption: model.BlockContentDataviewFilter_NumberOfDaysAgo,
 				RelationKey: relationKey,
+				Format:      model.RelationFormat_date,
 				Condition:   model.BlockContentDataviewFilter_Less,
 				Value:       domain.Int64(4),
 			},
-			[]FilterRequest{{Condition: model.BlockContentDataviewFilter_Less, Value: domain.Int64(calculateDayStart(now, -4))}},
+			expectedFilters: []FilterRequest{{Condition: model.BlockContentDataviewFilter_Less, Value: domain.Int64(calculateDayStart(now, -4))}},
 		}, {
-			"10 days ago and after",
-			FilterRequest{
+			name: "10 days ago and after",
+			inputFilter: FilterRequest{
 				QuickOption: model.BlockContentDataviewFilter_NumberOfDaysAgo,
 				RelationKey: relationKey,
+				Format:      model.RelationFormat_date,
 				Condition:   model.BlockContentDataviewFilter_GreaterOrEqual,
 				Value:       domain.Int64(10),
 			},
-			[]FilterRequest{{Condition: model.BlockContentDataviewFilter_GreaterOrEqual, Value: domain.Int64(calculateDayStart(now, -10))}},
+			expectedFilters: []FilterRequest{{Condition: model.BlockContentDataviewFilter_GreaterOrEqual, Value: domain.Int64(calculateDayStart(now, -10))}},
 		},
 
 		// number of days after
 		{
-			"in a day 3 days after",
-			FilterRequest{
+			name: "in a day 3 days after",
+			inputFilter: FilterRequest{
 				QuickOption: model.BlockContentDataviewFilter_NumberOfDaysNow,
 				RelationKey: relationKey,
+				Format:      model.RelationFormat_date,
 				Condition:   model.BlockContentDataviewFilter_In,
 				Value:       domain.Int64(3),
 			},
-			[]FilterRequest{
+			expectedFilters: []FilterRequest{
 				{Condition: model.BlockContentDataviewFilter_LessOrEqual, Value: domain.Int64(calculateDayEnd(now, 3))},
 				{Condition: model.BlockContentDataviewFilter_GreaterOrEqual, Value: domain.Int64(calculateDayStart(now, 3))},
 			},
 		}, {
-			"in 12 days and after",
-			FilterRequest{
+			name: "in 12 days and after",
+			inputFilter: FilterRequest{
 				QuickOption: model.BlockContentDataviewFilter_NumberOfDaysNow,
 				RelationKey: relationKey,
+				Format:      model.RelationFormat_date,
 				Condition:   model.BlockContentDataviewFilter_GreaterOrEqual,
 				Value:       domain.Int64(12),
 			},
-			[]FilterRequest{{Condition: model.BlockContentDataviewFilter_GreaterOrEqual, Value: domain.Int64(calculateDayStart(now, 12))}},
+			expectedFilters: []FilterRequest{{Condition: model.BlockContentDataviewFilter_GreaterOrEqual, Value: domain.Int64(calculateDayStart(now, 12))}},
 		}, {
-			"more than 100 days after",
-			FilterRequest{
+			name: "more than 100 days after",
+			inputFilter: FilterRequest{
 				QuickOption: model.BlockContentDataviewFilter_NumberOfDaysNow,
 				RelationKey: relationKey,
+				Format:      model.RelationFormat_date,
 				Condition:   model.BlockContentDataviewFilter_Greater,
 				Value:       domain.Int64(100),
 			},
-			[]FilterRequest{{Condition: model.BlockContentDataviewFilter_Greater, Value: domain.Int64(calculateDayEnd(now, 100))}},
+			expectedFilters: []FilterRequest{{Condition: model.BlockContentDataviewFilter_Greater, Value: domain.Int64(calculateDayEnd(now, 100))}},
 		}, {
-			"before next 7 days",
-			FilterRequest{
+			name: "before next 7 days",
+			inputFilter: FilterRequest{
 				QuickOption: model.BlockContentDataviewFilter_NumberOfDaysNow,
 				RelationKey: relationKey,
+				Format:      model.RelationFormat_date,
 				Condition:   model.BlockContentDataviewFilter_LessOrEqual,
 				Value:       domain.Int64(7),
 			},
-			[]FilterRequest{{Condition: model.BlockContentDataviewFilter_LessOrEqual, Value: domain.Int64(calculateDayEnd(now, 7))}},
+			expectedFilters: []FilterRequest{{Condition: model.BlockContentDataviewFilter_LessOrEqual, Value: domain.Int64(calculateDayEnd(now, 7))}},
 		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			filters := transformQuickOption(tc.inputFilter)
+			filters := transformDateFilter(tc.inputFilter, now)
 			assert.Len(t, filters, len(tc.expectedFilters))
 			for i, f := range filters {
 				assert.Equal(t, tc.expectedFilters[i].Condition, f.Condition)

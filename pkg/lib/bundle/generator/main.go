@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/samber/lo"
@@ -75,7 +76,13 @@ type Layout struct {
 }
 
 func main() {
-	err := generateRelations()
+	rootPath, err := os.Getwd()
+	exitOnError(err)
+	if strings.HasSuffix(rootPath, "bundle") {
+		err = os.Chdir(filepath.Join("..", "..", ".."))
+		exitOnError(err)
+	}
+	err = generateRelations()
 	exitOnError(err)
 
 	err = generateTypes()
@@ -147,7 +154,7 @@ func excludeInternalRelations(allSystemKeys []domain.RelationKey) []domain.Relat
 
 func exitOnError(err error) {
 	if err != nil {
-		_, _ = fmt.Fprintf(os.Stderr, err.Error())
+		_, _ = fmt.Fprintf(os.Stderr, "%s", err.Error())
 		os.Exit(1)
 	}
 }

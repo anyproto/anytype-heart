@@ -3,7 +3,6 @@ package templateimpl
 import (
 	"context"
 	"fmt"
-	"strconv"
 	"testing"
 	"time"
 
@@ -127,28 +126,25 @@ func TestService_CreateTemplateStateWithDetails(t *testing.T) {
 		assert.Equal(t, st.Get(template.TitleBlockId).Model().GetText().Text, templateName)
 	})
 
-	for templateIndex, templateName := range []string{templateName, "", blankTemplateId} {
-		for addedDetail, expected := range map[string][]string{
-			"custom": {"custom", "custom", "custom"},
-			"":       {templateName, "", ""},
-		} {
-			t.Run(fmt.Sprintf("custom page name and description - "+
-				"when template is %s and target detail is %s", templateName, addedDetail), func(t *testing.T) {
+	for _, nameToAdd := range []string{"custom", ""} {
+		for _, nameInTemplate := range []string{templateName, "", blankTemplateId} {
+			t.Run(fmt.Sprintf("must apply custom page name and description - "+
+				"when template is %s and target detail is %s", nameInTemplate, nameToAdd), func(t *testing.T) {
 				// given
-				tmpl := newTemplateTest(templateName, "")
+				tmpl := newTemplateTest(nameInTemplate, "")
 				s := service{picker: &testPicker{sb: tmpl}, converter: converter.NewLayoutConverter()}
 				details := domain.NewDetails()
-				details.Set(bundle.RelationKeyName, domain.String(addedDetail))
-				details.Set(bundle.RelationKeyDescription, domain.String(addedDetail))
+				details.Set(bundle.RelationKeyName, domain.String(nameToAdd))
+				details.Set(bundle.RelationKeyDescription, domain.String(nameToAdd))
 
 				// when
-				st, err := s.CreateTemplateStateWithDetails(templateSvc.CreateTemplateRequest{TemplateId: templateName, Details: details})
+				st, err := s.CreateTemplateStateWithDetails(templateSvc.CreateTemplateRequest{TemplateId: nameInTemplate, Details: details})
 
 				// then
 				assert.NoError(t, err)
-				assert.Equal(t, expected[templateIndex], st.Details().GetString(bundle.RelationKeyName))
-				assert.Equal(t, expected[templateIndex], st.Details().GetString(bundle.RelationKeyDescription))
-				assert.Equal(t, expected[templateIndex], st.Get(template.TitleBlockId).Model().GetText().Text)
+				assert.Equal(t, nameToAdd, st.Details().GetString(bundle.RelationKeyName))
+				assert.Equal(t, nameToAdd, st.Details().GetString(bundle.RelationKeyDescription))
+				assert.Equal(t, nameToAdd, st.Get(template.TitleBlockId).Model().GetText().Text)
 			})
 		}
 	}
@@ -381,49 +377,6 @@ func assertLayoutBlocks(t *testing.T, st *state.State, layout model.ObjectTypeLa
 	}
 }
 
-func TestExtractTargetDetails(t *testing.T) {
-	for _, testCase := range []struct {
-		Key                        domain.RelationKey
-		OriginValue, TemplateValue domain.Value
-		OriginLeft                 bool
-	}{
-		{Key: bundle.RelationKeyLayout, OriginValue: domain.Int64(0), TemplateValue: domain.Int64(1), OriginLeft: false},
-		{Key: bundle.RelationKeyLayout, OriginValue: domain.Int64(5), TemplateValue: domain.Int64(0), OriginLeft: false},
-		{Key: bundle.RelationKeyLayout, OriginValue: domain.Int64(3), TemplateValue: domain.Int64(3), OriginLeft: false},
-		{Key: bundle.RelationKeySourceObject, OriginValue: domain.String(""), TemplateValue: domain.String("s1"), OriginLeft: false},
-		{Key: bundle.RelationKeySourceObject, OriginValue: domain.String("s2"), TemplateValue: domain.String(""), OriginLeft: true},
-		{Key: bundle.RelationKeySourceObject, OriginValue: domain.String("s0"), TemplateValue: domain.String("s3"), OriginLeft: false},
-		{Key: bundle.RelationKeyName, OriginValue: domain.String("orig"), TemplateValue: domain.String(""), OriginLeft: true},
-		{Key: bundle.RelationKeyName, OriginValue: domain.String(""), TemplateValue: domain.String("tmpl"), OriginLeft: false},
-		{Key: bundle.RelationKeyName, OriginValue: domain.String("orig"), TemplateValue: domain.String("tmpl"), OriginLeft: true},
-		{Key: bundle.RelationKeyDescription, OriginValue: domain.String("orig"), TemplateValue: domain.String(""), OriginLeft: true},
-		{Key: bundle.RelationKeyDescription, OriginValue: domain.String(""), TemplateValue: domain.String("tmpl"), OriginLeft: false},
-		{Key: bundle.RelationKeyDescription, OriginValue: domain.String("orig"), TemplateValue: domain.String("tmpl"), OriginLeft: true},
-		{Key: bundle.RelationKeyCoverId, OriginValue: domain.String("old"), TemplateValue: domain.String(""), OriginLeft: true},
-		{Key: bundle.RelationKeyCoverId, OriginValue: domain.String(""), TemplateValue: domain.String("new"), OriginLeft: false},
-		{Key: bundle.RelationKeyCoverId, OriginValue: domain.String("old"), TemplateValue: domain.String("new"), OriginLeft: false},
-	} {
-		t.Run("merge details: key = "+testCase.Key.String()+", origin = "+testCase.OriginValue.String()+
-			", template = "+testCase.TemplateValue.String()+". Should origin be left:"+strconv.FormatBool(testCase.OriginLeft),
-			func(t *testing.T) {
-				// given
-				originDetails := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{testCase.Key: testCase.OriginValue})
-				templateDetails := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{testCase.Key: testCase.TemplateValue})
-
-				// when
-				targetDetails := extractTargetDetails(originDetails, templateDetails)
-
-				// then
-				value, found := targetDetails.TryGet(testCase.Key)
-				assert.Equal(t, found, testCase.OriginLeft)
-				if found {
-					assert.True(t, testCase.OriginValue.Equal(value))
-				}
-			},
-		)
-	}
-}
-
 func TestBuildTemplateStateFromObject(t *testing.T) {
 	t.Run("building state for new template", func(t *testing.T) {
 		// given
@@ -439,9 +392,14 @@ func TestBuildTemplateStateFromObject(t *testing.T) {
 		sp := mock_clientspace.NewMockSpace(t)
 		sp.EXPECT().GetTypeIdByKey(mock.Anything, mock.Anything).Times(1).Return(bundle.TypeKeyNote.String(), nil)
 		obj.SetSpace(sp)
+		obj.SetSpaceId("space1")
+
+		s := service{
+			store: objectstore.NewStoreFixture(t),
+		}
 
 		// when
-		st, err := buildTemplateStateFromObject(obj)
+		st, err := s.buildTemplateStateFromObject(obj)
 
 		// then
 		assert.NoError(t, err)
@@ -449,5 +407,99 @@ func TestBuildTemplateStateFromObject(t *testing.T) {
 		assert.Equal(t, []domain.TypeKey{bundle.TypeKeyTemplate, bundle.TypeKeyNote}, st.ObjectTypeKeys())
 		assert.Equal(t, bundle.TypeKeyNote.String(), st.Details().GetString(bundle.RelationKeyTargetObjectType))
 		assert.Nil(t, st.LocalDetails())
+	})
+}
+
+func TestService_collectOriginalDetails(t *testing.T) {
+	const (
+		spaceId          = "space1"
+		sourceTemplateId = "template1"
+		templateName     = "My Template"
+		customObjectName = "Custom Name"
+		coverIdValue     = "Sunset"
+	)
+
+	t.Run("removes Layout, SourceObject and empty values", func(t *testing.T) {
+		// given
+		store := objectstore.NewStoreFixture(t)
+		s := service{store: store}
+
+		st := state.NewDoc("test", nil).NewState()
+		st.SetDetail(bundle.RelationKeyName, domain.String(customObjectName))
+		st.SetDetail(bundle.RelationKeyDescription, domain.String(""))
+		st.SetDetail(bundle.RelationKeyIconEmoji, domain.String(""))
+		st.SetDetail(bundle.RelationKeyCoverId, domain.String(coverIdValue))
+		st.SetDetail(bundle.RelationKeySourceObject, domain.String(sourceTemplateId))
+		st.SetDetail(bundle.RelationKeyLayout, domain.Int64(int64(model.ObjectType_basic)))
+
+		// when
+		result := s.collectOriginalDetails(spaceId, st)
+
+		// then
+		assert.Equal(t, customObjectName, result.GetString(bundle.RelationKeyName))
+		assert.False(t, result.Has(bundle.RelationKeyDescription), "empty description should be removed")
+		assert.False(t, result.Has(bundle.RelationKeyIconEmoji), "empty icon should be removed")
+		assert.Equal(t, coverIdValue, result.GetString(bundle.RelationKeyCoverId))
+		assert.False(t, result.Has(bundle.RelationKeySourceObject), "SourceObject should be removed")
+		assert.False(t, result.Has(bundle.RelationKeyLayout), "Layout should be removed")
+	})
+
+	t.Run("removes name when it matches previous template name", func(t *testing.T) {
+		// given
+		store := objectstore.NewStoreFixture(t)
+		store.AddObjects(t, spaceId, []objectstore.TestObject{
+			{
+				bundle.RelationKeyId:   domain.String(sourceTemplateId),
+				bundle.RelationKeyName: domain.String(templateName),
+			},
+		})
+		s := service{store: store}
+
+		st := state.NewDoc("test", nil).NewState()
+		st.SetDetail(bundle.RelationKeyName, domain.String(templateName))
+		st.SetDetail(bundle.RelationKeySourceObject, domain.String(sourceTemplateId))
+
+		// when
+		result := s.collectOriginalDetails(spaceId, st)
+
+		// then
+		assert.False(t, result.Has(bundle.RelationKeyName), "Name should be removed when it matches template name")
+		assert.False(t, result.Has(bundle.RelationKeySourceObject), "SourceObject should always be removed")
+	})
+
+	t.Run("keeps name when it differs from previous template name", func(t *testing.T) {
+		// given
+		store := objectstore.NewStoreFixture(t)
+		store.AddObjects(t, spaceId, []objectstore.TestObject{
+			{
+				bundle.RelationKeyId:   domain.String(sourceTemplateId),
+				bundle.RelationKeyName: domain.String(templateName),
+			},
+		})
+		s := service{store: store}
+
+		st := state.NewDoc("test", nil).NewState()
+		st.SetDetail(bundle.RelationKeyName, domain.String(customObjectName))
+
+		// when
+		result := s.collectOriginalDetails(spaceId, st)
+
+		// then
+		assert.Equal(t, customObjectName, result.GetString(bundle.RelationKeyName))
+	})
+
+	t.Run("keeps name when sourceObject is empty", func(t *testing.T) {
+		// given
+		store := objectstore.NewStoreFixture(t)
+		s := service{store: store}
+
+		st := state.NewDoc("test", nil).NewState()
+		st.SetDetail(bundle.RelationKeyName, domain.String(customObjectName))
+
+		// when
+		result := s.collectOriginalDetails(spaceId, st)
+
+		// then
+		assert.Equal(t, customObjectName, result.GetString(bundle.RelationKeyName))
 	})
 }

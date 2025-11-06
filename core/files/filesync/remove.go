@@ -62,7 +62,6 @@ func (s *fileSync) deletionHandler(ctx context.Context, it *deletionQueueItem) (
 		}
 		return persistentqueue.ActionDone, fmt.Errorf("remove file: %w", err)
 	}
-	s.updateSpaceUsageInformation(fileId.SpaceId)
 	err = s.removeFromDeletionQueues(it)
 	if err != nil {
 		log.Error("remove from deletion queues", zap.String("fileId", it.FileId.String()), zap.Error(err))
@@ -82,7 +81,6 @@ func (s *fileSync) retryDeletionHandler(ctx context.Context, it *deletionQueueIt
 	if err != nil {
 		return persistentqueue.ActionRetry, fmt.Errorf("remove file: %w", err)
 	}
-	s.updateSpaceUsageInformation(fileId.SpaceId)
 	err = s.removeFromDeletionQueues(it)
 	if err != nil {
 		log.Error("remove from deletion queues", zap.String("fileId", it.FileId.String()), zap.Error(err))
@@ -98,7 +96,6 @@ func (s *fileSync) DeleteFileSynchronously(fileId domain.FullFileId) (err error)
 	if err != nil {
 		return fmt.Errorf("remove file: %w", err)
 	}
-	s.updateSpaceUsageInformation(fileId.SpaceId)
 	return
 }
 

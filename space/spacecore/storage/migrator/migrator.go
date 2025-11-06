@@ -17,7 +17,6 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/block/process"
 	"github.com/anyproto/anytype-heart/pb"
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/anystorehelper"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/spaceresolverstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/space/spacecore/oldstorage"
@@ -273,14 +272,13 @@ func (m *migrator) doObjectStoreDb(ctx context.Context, proc func(db anystore.DB
 		return fmt.Errorf("ensure dir exists: %w", err)
 	}
 
-	store, lockRemove, err := anystorehelper.OpenDatabaseWithLockCheck(ctx, filepath.Join(m.objectStorePath, "objects.db"), m.anyStoreConfig)
+	db, err := anystore.Open(ctx, filepath.Join(m.objectStorePath, "objects.db"), m.anyStoreConfig)
 	if err != nil {
 		return fmt.Errorf("open database: %w", err)
 	}
 
-	err = proc(store)
-
-	return errors.Join(err, store.Close(), lockRemove())
+	err = proc(db)
+	return errors.Join(err, db.Close())
 }
 
 func ensureDirExists(dir string) error {

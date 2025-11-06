@@ -24,10 +24,6 @@ import (
 
 	pb "github.com/anyproto/anytype-heart/pb"
 
-	pbtypes "github.com/anyproto/anytype-heart/util/pbtypes"
-
-	relationutils "github.com/anyproto/anytype-heart/core/relationutils"
-
 	restriction "github.com/anyproto/anytype-heart/core/block/restriction"
 
 	session "github.com/anyproto/anytype-heart/core/session"
@@ -268,6 +264,53 @@ func (_c *MockStoreObject_AddRelationLinksToState_Call) Return(err error) *MockS
 }
 
 func (_c *MockStoreObject_AddRelationLinksToState_Call) RunAndReturn(run func(*state.State, ...domain.RelationKey) error) *MockStoreObject_AddRelationLinksToState_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// AllRelationKeys provides a mock function with given fields:
+func (_m *MockStoreObject) AllRelationKeys() []domain.RelationKey {
+	ret := _m.Called()
+
+	if len(ret) == 0 {
+		panic("no return value specified for AllRelationKeys")
+	}
+
+	var r0 []domain.RelationKey
+	if rf, ok := ret.Get(0).(func() []domain.RelationKey); ok {
+		r0 = rf()
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]domain.RelationKey)
+		}
+	}
+
+	return r0
+}
+
+// MockStoreObject_AllRelationKeys_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'AllRelationKeys'
+type MockStoreObject_AllRelationKeys_Call struct {
+	*mock.Call
+}
+
+// AllRelationKeys is a helper method to define mock.On call
+func (_e *MockStoreObject_Expecter) AllRelationKeys() *MockStoreObject_AllRelationKeys_Call {
+	return &MockStoreObject_AllRelationKeys_Call{Call: _e.mock.On("AllRelationKeys")}
+}
+
+func (_c *MockStoreObject_AllRelationKeys_Call) Run(run func()) *MockStoreObject_AllRelationKeys_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *MockStoreObject_AllRelationKeys_Call) Return(_a0 []domain.RelationKey) *MockStoreObject_AllRelationKeys_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockStoreObject_AllRelationKeys_Call) RunAndReturn(run func() []domain.RelationKey) *MockStoreObject_AllRelationKeys_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -1069,53 +1112,6 @@ func (_c *MockStoreObject_GetMessagesByIds_Call) RunAndReturn(run func(context.C
 	return _c
 }
 
-// GetRelationLinks provides a mock function with given fields:
-func (_m *MockStoreObject) GetRelationLinks() pbtypes.RelationLinks {
-	ret := _m.Called()
-
-	if len(ret) == 0 {
-		panic("no return value specified for GetRelationLinks")
-	}
-
-	var r0 pbtypes.RelationLinks
-	if rf, ok := ret.Get(0).(func() pbtypes.RelationLinks); ok {
-		r0 = rf()
-	} else {
-		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(pbtypes.RelationLinks)
-		}
-	}
-
-	return r0
-}
-
-// MockStoreObject_GetRelationLinks_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetRelationLinks'
-type MockStoreObject_GetRelationLinks_Call struct {
-	*mock.Call
-}
-
-// GetRelationLinks is a helper method to define mock.On call
-func (_e *MockStoreObject_Expecter) GetRelationLinks() *MockStoreObject_GetRelationLinks_Call {
-	return &MockStoreObject_GetRelationLinks_Call{Call: _e.mock.On("GetRelationLinks")}
-}
-
-func (_c *MockStoreObject_GetRelationLinks_Call) Run(run func()) *MockStoreObject_GetRelationLinks_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		run()
-	})
-	return _c
-}
-
-func (_c *MockStoreObject_GetRelationLinks_Call) Return(_a0 pbtypes.RelationLinks) *MockStoreObject_GetRelationLinks_Call {
-	_c.Call.Return(_a0)
-	return _c
-}
-
-func (_c *MockStoreObject_GetRelationLinks_Call) RunAndReturn(run func() pbtypes.RelationLinks) *MockStoreObject_GetRelationLinks_Call {
-	_c.Call.Return(run)
-	return _c
-}
-
 // HandleSyncStatusUpdate provides a mock function with given fields: heads, status, syncError
 func (_m *MockStoreObject) HandleSyncStatusUpdate(heads []string, status domain.ObjectSyncStatus, syncError domain.SyncError) {
 	_m.Called(heads, status, syncError)
@@ -1147,53 +1143,6 @@ func (_c *MockStoreObject_HandleSyncStatusUpdate_Call) Return() *MockStoreObject
 }
 
 func (_c *MockStoreObject_HandleSyncStatusUpdate_Call) RunAndReturn(run func([]string, domain.ObjectSyncStatus, domain.SyncError)) *MockStoreObject_HandleSyncStatusUpdate_Call {
-	_c.Call.Return(run)
-	return _c
-}
-
-// HasRelation provides a mock function with given fields: s, relationKey
-func (_m *MockStoreObject) HasRelation(s *state.State, relationKey string) bool {
-	ret := _m.Called(s, relationKey)
-
-	if len(ret) == 0 {
-		panic("no return value specified for HasRelation")
-	}
-
-	var r0 bool
-	if rf, ok := ret.Get(0).(func(*state.State, string) bool); ok {
-		r0 = rf(s, relationKey)
-	} else {
-		r0 = ret.Get(0).(bool)
-	}
-
-	return r0
-}
-
-// MockStoreObject_HasRelation_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'HasRelation'
-type MockStoreObject_HasRelation_Call struct {
-	*mock.Call
-}
-
-// HasRelation is a helper method to define mock.On call
-//   - s *state.State
-//   - relationKey string
-func (_e *MockStoreObject_Expecter) HasRelation(s interface{}, relationKey interface{}) *MockStoreObject_HasRelation_Call {
-	return &MockStoreObject_HasRelation_Call{Call: _e.mock.On("HasRelation", s, relationKey)}
-}
-
-func (_c *MockStoreObject_HasRelation_Call) Run(run func(s *state.State, relationKey string)) *MockStoreObject_HasRelation_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(*state.State), args[1].(string))
-	})
-	return _c
-}
-
-func (_c *MockStoreObject_HasRelation_Call) Return(_a0 bool) *MockStoreObject_HasRelation_Call {
-	_c.Call.Return(_a0)
-	return _c
-}
-
-func (_c *MockStoreObject_HasRelation_Call) RunAndReturn(run func(*state.State, string) bool) *MockStoreObject_HasRelation_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -1655,21 +1604,31 @@ func (_c *MockStoreObject_MarkMessagesAsUnread_Call) RunAndReturn(run func(conte
 }
 
 // MarkReadMessages provides a mock function with given fields: ctx, req
-func (_m *MockStoreObject) MarkReadMessages(ctx context.Context, req chatobject.ReadMessagesRequest) error {
+func (_m *MockStoreObject) MarkReadMessages(ctx context.Context, req chatobject.ReadMessagesRequest) (int, error) {
 	ret := _m.Called(ctx, req)
 
 	if len(ret) == 0 {
 		panic("no return value specified for MarkReadMessages")
 	}
 
-	var r0 error
-	if rf, ok := ret.Get(0).(func(context.Context, chatobject.ReadMessagesRequest) error); ok {
+	var r0 int
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, chatobject.ReadMessagesRequest) (int, error)); ok {
+		return rf(ctx, req)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, chatobject.ReadMessagesRequest) int); ok {
 		r0 = rf(ctx, req)
 	} else {
-		r0 = ret.Error(0)
+		r0 = ret.Get(0).(int)
 	}
 
-	return r0
+	if rf, ok := ret.Get(1).(func(context.Context, chatobject.ReadMessagesRequest) error); ok {
+		r1 = rf(ctx, req)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
 }
 
 // MockStoreObject_MarkReadMessages_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'MarkReadMessages'
@@ -1691,12 +1650,12 @@ func (_c *MockStoreObject_MarkReadMessages_Call) Run(run func(ctx context.Contex
 	return _c
 }
 
-func (_c *MockStoreObject_MarkReadMessages_Call) Return(_a0 error) *MockStoreObject_MarkReadMessages_Call {
-	_c.Call.Return(_a0)
+func (_c *MockStoreObject_MarkReadMessages_Call) Return(markedCount int, err error) *MockStoreObject_MarkReadMessages_Call {
+	_c.Call.Return(markedCount, err)
 	return _c
 }
 
-func (_c *MockStoreObject_MarkReadMessages_Call) RunAndReturn(run func(context.Context, chatobject.ReadMessagesRequest) error) *MockStoreObject_MarkReadMessages_Call {
+func (_c *MockStoreObject_MarkReadMessages_Call) RunAndReturn(run func(context.Context, chatobject.ReadMessagesRequest) (int, error)) *MockStoreObject_MarkReadMessages_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -2034,60 +1993,12 @@ func (_c *MockStoreObject_RegisterSession_Call) RunAndReturn(run func(session.Co
 	return _c
 }
 
-// Relations provides a mock function with given fields: s
-func (_m *MockStoreObject) Relations(s *state.State) relationutils.Relations {
-	ret := _m.Called(s)
-
-	if len(ret) == 0 {
-		panic("no return value specified for Relations")
-	}
-
-	var r0 relationutils.Relations
-	if rf, ok := ret.Get(0).(func(*state.State) relationutils.Relations); ok {
-		r0 = rf(s)
-	} else {
-		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(relationutils.Relations)
-		}
-	}
-
-	return r0
-}
-
-// MockStoreObject_Relations_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Relations'
-type MockStoreObject_Relations_Call struct {
-	*mock.Call
-}
-
-// Relations is a helper method to define mock.On call
-//   - s *state.State
-func (_e *MockStoreObject_Expecter) Relations(s interface{}) *MockStoreObject_Relations_Call {
-	return &MockStoreObject_Relations_Call{Call: _e.mock.On("Relations", s)}
-}
-
-func (_c *MockStoreObject_Relations_Call) Run(run func(s *state.State)) *MockStoreObject_Relations_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(*state.State))
-	})
-	return _c
-}
-
-func (_c *MockStoreObject_Relations_Call) Return(_a0 relationutils.Relations) *MockStoreObject_Relations_Call {
-	_c.Call.Return(_a0)
-	return _c
-}
-
-func (_c *MockStoreObject_Relations_Call) RunAndReturn(run func(*state.State) relationutils.Relations) *MockStoreObject_Relations_Call {
-	_c.Call.Return(run)
-	return _c
-}
-
-// RemoveExtraRelations provides a mock function with given fields: ctx, relationKeys
-func (_m *MockStoreObject) RemoveExtraRelations(ctx session.Context, relationKeys []domain.RelationKey) error {
+// RemoveRelations provides a mock function with given fields: ctx, relationKeys
+func (_m *MockStoreObject) RemoveRelations(ctx session.Context, relationKeys []domain.RelationKey) error {
 	ret := _m.Called(ctx, relationKeys)
 
 	if len(ret) == 0 {
-		panic("no return value specified for RemoveExtraRelations")
+		panic("no return value specified for RemoveRelations")
 	}
 
 	var r0 error
@@ -2100,31 +2011,31 @@ func (_m *MockStoreObject) RemoveExtraRelations(ctx session.Context, relationKey
 	return r0
 }
 
-// MockStoreObject_RemoveExtraRelations_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'RemoveExtraRelations'
-type MockStoreObject_RemoveExtraRelations_Call struct {
+// MockStoreObject_RemoveRelations_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'RemoveRelations'
+type MockStoreObject_RemoveRelations_Call struct {
 	*mock.Call
 }
 
-// RemoveExtraRelations is a helper method to define mock.On call
+// RemoveRelations is a helper method to define mock.On call
 //   - ctx session.Context
 //   - relationKeys []domain.RelationKey
-func (_e *MockStoreObject_Expecter) RemoveExtraRelations(ctx interface{}, relationKeys interface{}) *MockStoreObject_RemoveExtraRelations_Call {
-	return &MockStoreObject_RemoveExtraRelations_Call{Call: _e.mock.On("RemoveExtraRelations", ctx, relationKeys)}
+func (_e *MockStoreObject_Expecter) RemoveRelations(ctx interface{}, relationKeys interface{}) *MockStoreObject_RemoveRelations_Call {
+	return &MockStoreObject_RemoveRelations_Call{Call: _e.mock.On("RemoveRelations", ctx, relationKeys)}
 }
 
-func (_c *MockStoreObject_RemoveExtraRelations_Call) Run(run func(ctx session.Context, relationKeys []domain.RelationKey)) *MockStoreObject_RemoveExtraRelations_Call {
+func (_c *MockStoreObject_RemoveRelations_Call) Run(run func(ctx session.Context, relationKeys []domain.RelationKey)) *MockStoreObject_RemoveRelations_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		run(args[0].(session.Context), args[1].([]domain.RelationKey))
 	})
 	return _c
 }
 
-func (_c *MockStoreObject_RemoveExtraRelations_Call) Return(err error) *MockStoreObject_RemoveExtraRelations_Call {
+func (_c *MockStoreObject_RemoveRelations_Call) Return(err error) *MockStoreObject_RemoveRelations_Call {
 	_c.Call.Return(err)
 	return _c
 }
 
-func (_c *MockStoreObject_RemoveExtraRelations_Call) RunAndReturn(run func(session.Context, []domain.RelationKey) error) *MockStoreObject_RemoveExtraRelations_Call {
+func (_c *MockStoreObject_RemoveRelations_Call) RunAndReturn(run func(session.Context, []domain.RelationKey) error) *MockStoreObject_RemoveRelations_Call {
 	_c.Call.Return(run)
 	return _c
 }

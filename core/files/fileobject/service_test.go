@@ -10,7 +10,6 @@ import (
 	"github.com/anyproto/any-sync/accountservice/mock_accountservice"
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/commonfile/fileservice"
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
@@ -30,17 +29,18 @@ import (
 	"github.com/anyproto/anytype-heart/core/files/filestorage"
 	"github.com/anyproto/anytype-heart/core/files/filestorage/rpcstore"
 	"github.com/anyproto/anytype-heart/core/files/filesync"
+	"github.com/anyproto/anytype-heart/core/relationutils/mock_relationutils"
 	wallet2 "github.com/anyproto/anytype-heart/core/wallet"
 	"github.com/anyproto/anytype-heart/core/wallet/mock_wallet"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/datastore/anystoreprovider"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
+	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space/clientspace"
 	"github.com/anyproto/anytype-heart/space/clientspace/mock_clientspace"
 	"github.com/anyproto/anytype-heart/space/mock_space"
 	"github.com/anyproto/anytype-heart/tests/testutil"
-	"github.com/anyproto/anytype-heart/util/mutex"
 )
 
 type fixture struct {
@@ -107,13 +107,22 @@ func newFixture(t *testing.T) *fixture {
 	spaceService.EXPECT().PersonalSpaceId().Return("personalSpaceId").Maybe()
 	spaceIdResolver := mock_idresolver.NewMockResolver(t)
 
-	svc := New(testResolveRetryDelay, testResolveRetryDelay)
+	svc := New()
 
 	ctx := context.Background()
 	ctrl := gomock.NewController(t)
 	wallet := mock_wallet.NewMockWallet(t)
 	wallet.EXPECT().Name().Return(wallet2.CName)
 	wallet.EXPECT().RepoPath().Return(t.TempDir())
+
+	fetcher := mock_relationutils.NewMockRelationFormatFetcher(t)
+	fetcher.EXPECT().GetRelationFormatByKey(mock.Anything, mock.Anything).RunAndReturn(func(_ string, key domain.RelationKey) (model.RelationFormat, error) {
+		rel, err := bundle.GetRelation(key)
+		if err != nil {
+			return 0, err
+		}
+		return rel.Format, nil
+	}).Maybe()
 
 	a := new(app.App)
 	a.Register(&dummyConfig{})
@@ -135,6 +144,7 @@ func newFixture(t *testing.T) *fixture {
 	a.Register(testutil.PrepareMock(ctx, a, wallet))
 	a.Register(&config.Config{DisableFileConfig: true, NetworkMode: pb.RpcAccount_DefaultConfig, PeferYamuxTransport: true})
 	a.Register(&dummyObjectArchiver{})
+	a.Register(testutil.PrepareMock(ctx, a, fetcher))
 
 	err := a.Start(ctx)
 	require.NoError(t, err)
@@ -222,69 +232,12 @@ func TestGetFileIdFromObjectWaitLoad(t *testing.T) {
 		require.Error(t, err)
 	})
 
-	t.Run("with not yet loaded object load object and when timed out expect return error", func(t *testing.T) {
-		fx := newFixture(t)
-
-		ctx, cancel := context.WithTimeout(context.Background(), 20*time.Millisecond)
-		defer cancel()
-
-		fx.spaceIdResolver.EXPECT().ResolveSpaceID(testFileObjectId).Return("", fmt.Errorf("not yet resolved"))
-
-		err := fx.DoFileWaitLoad(ctx, testFileObjectId, func(object fileobject.FileObject) error {
-			return nil
-		})
-		require.Error(t, err)
-		require.ErrorIs(t, err, context.DeadlineExceeded)
-	})
-
-	t.Run("with not yet loaded object load object and return it's file id", func(t *testing.T) {
-		fx := newFixture(t)
-
-		ctx := context.Background()
-		spaceId := "spaceId"
-		resolvedSpace := mutex.NewValue("")
-		resolvedSpaceErr := mutex.NewValue(fmt.Errorf("not yet resolved"))
-		fx.spaceIdResolver.EXPECT().ResolveSpaceID(testFileObjectId).RunAndReturn(func(_ string) (string, error) {
-			return resolvedSpace.Get(), resolvedSpaceErr.Get()
-		})
-
-		go func() {
-			time.Sleep(3 * testResolveRetryDelay)
-			resolvedSpace.Set(spaceId)
-			resolvedSpaceErr.Set(nil)
-		}()
-
-		space := mock_clientspace.NewMockSpace(t)
-		space.EXPECT().Do(testFileObjectId, mock.Anything).RunAndReturn(func(_ string, apply func(smartblock.SmartBlock) error) error {
-			sb := smarttest.New(testFileObjectId)
-			sb.SetSpaceId(spaceId)
-
-			st := sb.Doc.(*state.State)
-			st.SetDetailAndBundledRelation(bundle.RelationKeyFileId, domain.String(testFileId.String()))
-
-			return apply(fx.newTestFileObject(sb))
-		})
-
-		fx.spaceService.EXPECT().Get(ctx, spaceId).Return(space, nil)
-
-		var fullId domain.FullFileId
-		err := fx.DoFileWaitLoad(ctx, testFileObjectId, func(object fileobject.FileObject) error {
-			fullId = object.GetFullFileId()
-			return nil
-		})
-		require.NoError(t, err)
-		assert.Equal(t, domain.FullFileId{
-			SpaceId: spaceId,
-			FileId:  testFileId,
-		}, fullId)
-	})
-
 	t.Run("with loaded object without file id expect error", func(t *testing.T) {
 		fx := newFixture(t)
 
 		ctx := context.Background()
 		spaceId := "spaceId"
-		fx.spaceIdResolver.EXPECT().ResolveSpaceID(testFileObjectId).Return(spaceId, nil)
+		fx.spaceIdResolver.EXPECT().ResolveSpaceIdWithRetry(mock.Anything, testFileObjectId).Return(spaceId, nil)
 
 		space := mock_clientspace.NewMockSpace(t)
 		space.EXPECT().Do(testFileObjectId, mock.Anything).RunAndReturn(func(_ string, apply func(smartblock.SmartBlock) error) error {

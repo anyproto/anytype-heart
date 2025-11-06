@@ -32,6 +32,7 @@ type Manager interface {
 
 	IsActive() bool
 	GetChatState() *model.ChatState
+	GetLastMessage() (*model.ChatMessage, bool)
 	SetSessionContext(ctx session.Context)
 	UpdateReactions(message *chatmodel.Message)
 	UpdateFull(message *chatmodel.Message)
@@ -68,9 +69,8 @@ type service struct {
 	accountService    AccountService
 	objectGetter      cache.ObjectWaitGetter
 
-	identityCache *expirable.LRU[string, *domain.Details]
-	lock          sync.Mutex
-	managers      map[string]*futures.Future[*subscriptionManager]
+	lock     sync.Mutex
+	managers map[string]*futures.Future[*subscriptionManager]
 }
 
 func New() Service {
@@ -87,7 +87,6 @@ func (s *service) Init(a *app.App) (err error) {
 	s.eventSender = app.MustComponent[event.Sender](a)
 	s.repositoryService = app.MustComponent[chatrepository.Service](a)
 	s.accountService = app.MustComponent[AccountService](a)
-	s.identityCache = expirable.NewLRU[string, *domain.Details](50, nil, time.Minute)
 	s.objectGetter = app.MustComponent[cache.ObjectWaitGetter](a)
 	return nil
 }
@@ -148,7 +147,7 @@ func (s *service) initManager(spaceId string, chatObjectId string) (*subscriptio
 		chatId:          chatObjectId,
 		myIdentity:      currentIdentity,
 		myParticipantId: currentParticipantId,
-		identityCache:   s.identityCache,
+		identityCache:   expirable.NewLRU[string, *domain.Details](50, nil, time.Minute),
 		subscriptions:   make(map[string]*subscription),
 		spaceIndex:      s.objectStore.SpaceIndex(spaceId),
 		eventSender:     s.eventSender,
@@ -185,7 +184,10 @@ func (s *service) SubscribeLastMessages(ctx context.Context, req SubscribeLastMe
 		return nil, fmt.Errorf("empty chat object id")
 	}
 
-	spaceId, err := s.spaceIdResolver.ResolveSpaceID(req.ChatObjectId)
+	ctx, cancel := context.WithTimeout(ctx, 1*time.Minute)
+	defer cancel()
+
+	spaceId, err := s.spaceIdResolver.ResolveSpaceIdWithRetry(ctx, req.ChatObjectId)
 	if err != nil {
 		return nil, fmt.Errorf("resolve space id: %w", err)
 	}
@@ -206,10 +208,10 @@ func (s *service) SubscribeLastMessages(ctx context.Context, req SubscribeLastMe
 
 	messages, err := mngr.repository.GetLastMessages(txn.Context(), uint(req.Limit))
 	if err != nil {
-		return nil, fmt.Errorf("query messages: %w", err)
+		return nil, fmt.Errorf("query messagesMap: %w", err)
 	}
 
-	mngr.subscribe(req)
+	mngr.subscribe(req, messages)
 
 	depsPerMessage := map[string][]*domain.Details{}
 	if req.WithDependencies {
@@ -229,7 +231,7 @@ func (s *service) SubscribeLastMessages(ctx context.Context, req SubscribeLastMe
 
 	// Warm up cache
 	go func() {
-		_, err = s.objectGetter.WaitAndGetObject(ctx, req.ChatObjectId)
+		_, err = s.objectGetter.WaitAndGetObject(s.componentCtx, req.ChatObjectId)
 		if err != nil {
 			log.Error("load chat to cache", zap.String("chatObjectId", req.ChatObjectId), zap.Error(err))
 		}

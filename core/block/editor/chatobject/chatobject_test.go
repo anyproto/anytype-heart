@@ -91,6 +91,7 @@ func newFixture(t *testing.T) *fixture {
 
 	idResolver := mock_idresolver.NewMockResolver(t)
 	idResolver.EXPECT().ResolveSpaceID(mock.Anything).Return(testSpaceId, nil).Maybe()
+	idResolver.EXPECT().ResolveSpaceIdWithRetry(mock.Anything, mock.Anything).Return(testSpaceId, nil).Maybe()
 
 	accountService := &accountServiceStub{accountId: testCreator}
 
@@ -124,7 +125,7 @@ func newFixture(t *testing.T) *fixture {
 	db, err := provider.GetCrdtDb(testSpaceId).Wait()
 	require.NoError(t, err)
 
-	object := New(sb, accountService, db, repo, subscriptions, debugstat.NewNoOp())
+	object := New(sb, accountService, db, repo, subscriptions, nil, nil, nil, debugstat.NewNoOp())
 	rawObject := object.(*storeObject)
 
 	fx := &fixture{
@@ -145,6 +146,7 @@ func newFixture(t *testing.T) *fixture {
 	source.EXPECT().SpaceID().Return(testSpaceId)
 	source.EXPECT().ReadStoreDoc(ctx, mock.Anything, mock.Anything).Return(nil)
 	source.EXPECT().PushStoreChange(mock.Anything, mock.Anything).RunAndReturn(fx.applyToStore).Maybe()
+	source.EXPECT().SetPushChangeHook(mock.Anything)
 
 	onSeenHooks := map[string]func([]string){}
 	source.EXPECT().RegisterDiffManager(mock.Anything, mock.Anything).Run(func(name string, hook func([]string)) {

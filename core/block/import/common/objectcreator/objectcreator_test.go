@@ -19,6 +19,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/object/objectcreator"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/domain/objectorigin"
+	"github.com/anyproto/anytype-heart/core/relationutils/mock_relationutils"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -42,7 +43,7 @@ func TestObjectCreator_Create(t *testing.T) {
 		importedSpaceIdParticipantId := domain.NewParticipantId(importedSpaceId, identity)
 
 		oldToNew := map[string]string{importedSpaceIdParticipantId: participantId}
-		dataObject := NewDataObject(context.Background(), oldToNew, nil, objectorigin.Import(model.Import_Pb), spaceID)
+		dataObject := NewDataObject(context.Background(), oldToNew, nil, nil, objectorigin.Import(model.Import_Pb), spaceID)
 		sn := &common.Snapshot{
 			Id: importedSpaceIdParticipantId,
 			Snapshot: &common.SnapshotModel{
@@ -78,7 +79,16 @@ func TestObjectCreator_Create(t *testing.T) {
 			participantId: testParticipant,
 		})
 
-		service := New(detailsService, nil, nil, nil, mockService, objectcreator.NewCreator(), getter)
+		fetcher := mock_relationutils.NewMockRelationFormatFetcher(t)
+		fetcher.EXPECT().GetRelationFormatByKey(mock.Anything, mock.Anything).RunAndReturn(func(_ string, key domain.RelationKey) (model.RelationFormat, error) {
+			rel, err := bundle.GetRelation(key)
+			if err != nil {
+				return 0, err
+			}
+			return rel.Format, nil
+		}).Maybe()
+
+		service := New(detailsService, nil, nil, nil, mockService, objectcreator.NewCreator(), getter, fetcher)
 
 		// when
 		create, id, err := service.Create(dataObject, sn)
@@ -104,7 +114,7 @@ func TestObjectCreator_updateKeys(t *testing.T) {
 			Key: "oldKey",
 		})
 		// when
-		oc.updateKeys(doc, oldToNew)
+		oc.updateKeys(doc, oldToNew, nil)
 
 		// then
 		assert.False(t, doc.Details().Has("oldKey"))
@@ -119,7 +129,7 @@ func TestObjectCreator_updateKeys(t *testing.T) {
 		doc.SetObjectTypeKey("oldKey")
 
 		// when
-		oc.updateKeys(doc, oldToNew)
+		oc.updateKeys(doc, oldToNew, nil)
 
 		// then
 		assert.Equal(t, domain.TypeKey("newKey"), doc.ObjectTypeKey())
@@ -131,7 +141,7 @@ func TestObjectCreator_updateKeys(t *testing.T) {
 		doc := state.NewDoc("oldId", nil).(*state.State)
 
 		// when
-		oc.updateKeys(doc, oldToNew)
+		oc.updateKeys(doc, oldToNew, nil)
 
 		// then
 		assert.False(t, doc.Details().Has("newKey"))
@@ -149,7 +159,7 @@ func TestObjectCreator_updateKeys(t *testing.T) {
 			Key: "key",
 		})
 		// when
-		oc.updateKeys(doc, oldToNew)
+		oc.updateKeys(doc, oldToNew, nil)
 
 		// then
 		assert.Equal(t, "test", doc.Details().GetString("key"))

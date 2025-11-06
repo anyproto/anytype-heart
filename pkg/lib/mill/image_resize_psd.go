@@ -20,7 +20,7 @@ func (m *ImageResize) resizePSD(imgConfig *image.Config, r io.ReadSeeker) (res *
 	var height int
 	width, err := strconv.Atoi(m.Opts.Width)
 	if err != nil {
-		return nil, fmt.Errorf("invalid width: " + m.Opts.Width)
+		return nil, fmt.Errorf("invalid width: %s", m.Opts.Width)
 	}
 
 	resized := imaging.Resize(img.Picker, width, 0, imaging.Lanczos)
@@ -28,7 +28,7 @@ func (m *ImageResize) resizePSD(imgConfig *image.Config, r io.ReadSeeker) (res *
 
 	quality, err := strconv.Atoi(m.Opts.Quality)
 	if err != nil {
-		return nil, fmt.Errorf("invalid quality: " + m.Opts.Quality)
+		return nil, fmt.Errorf("invalid quality: %s", m.Opts.Quality)
 	}
 
 	buf := pool.Get()

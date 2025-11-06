@@ -29,6 +29,8 @@ var log = logging.Logger(CName)
 
 const CName = "core.syncstatus.objectsyncstatus.updater"
 
+const batchTime = 500 * time.Millisecond
+
 type syncStatusDetails struct {
 	objectId string
 	status   domain.ObjectSyncStatus
@@ -57,7 +59,7 @@ type syncStatusUpdater struct {
 	syncSubscriptions syncsubscriptions.SyncSubscriptions
 
 	entries map[string]*syncStatusDetails
-	mx      sync.Mutex
+	lock    sync.Mutex
 
 	finish chan struct{}
 }
@@ -108,31 +110,44 @@ func (u *syncStatusUpdater) UpdateDetails(objectId string, status domain.ObjectS
 }
 
 func (u *syncStatusUpdater) addToQueue(details *syncStatusDetails) error {
-	u.mx.Lock()
+	u.lock.Lock()
+	_, ok := u.entries[details.objectId]
 	u.entries[details.objectId] = details
-	u.mx.Unlock()
-	return u.batcher.TryAdd(details.objectId)
+	u.lock.Unlock()
+	if !ok {
+		return u.batcher.TryAdd(details.objectId)
+	}
+	return nil
 }
 
 func (u *syncStatusUpdater) processEvents() {
 	defer close(u.finish)
 
 	for {
-		objectId, err := u.batcher.WaitOne(u.ctx)
+		objectIds, err := u.batcher.Wait(u.ctx)
 		if err != nil {
 			return
 		}
-		u.updateSpecificObject(objectId)
+		now := time.Now()
+		for _, objectId := range objectIds {
+			u.updateSpecificObject(objectId)
+		}
+
+		sleepDuration := batchTime - time.Since(now)
+		if sleepDuration <= 0 {
+			continue
+		}
+		time.Sleep(sleepDuration)
 	}
 }
 
 func (u *syncStatusUpdater) updateSpecificObject(objectId string) {
-	u.mx.Lock()
-	objectStatus := u.entries[objectId]
+	u.lock.Lock()
+	objectStatus, ok := u.entries[objectId]
 	delete(u.entries, objectId)
-	u.mx.Unlock()
+	u.lock.Unlock()
 
-	if objectStatus != nil {
+	if ok {
 		err := u.updateObjectDetails(objectStatus, objectId)
 		if err != nil {
 			log.Errorf("failed to update details %s", err)
@@ -275,7 +290,7 @@ var suitableLayouts = map[model.ObjectTypeLayout]struct{}{
 	model.ObjectType_audio:          {},
 	model.ObjectType_video:          {},
 	model.ObjectType_pdf:            {},
-	model.ObjectType_chat:           {},
+	model.ObjectType_chatDeprecated: {},
 	model.ObjectType_spaceView:      {},
 	model.ObjectType_chatDerived:    {},
 }

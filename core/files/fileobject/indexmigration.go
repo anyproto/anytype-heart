@@ -2,6 +2,7 @@ package fileobject
 
 import (
 	"fmt"
+	"time"
 
 	"go.uber.org/zap"
 
@@ -18,17 +19,22 @@ type indexMigrationItem struct {
 }
 
 func (s *service) startIndexMigration() error {
-	toMigrate, err := s.listNonIndexedFiles()
-	if err != nil {
-		return fmt.Errorf("list non-indexed files: %w", err)
-	}
-
-	if len(toMigrate) == 0 {
-		return nil
-	}
-
 	// Producer
 	go func() {
+		select {
+		case <-s.componentCtx.Done():
+		case <-time.After(time.Second * 3):
+		}
+		toMigrate, err := s.listNonIndexedFiles()
+		if err != nil {
+			log.Error("list non indexed files", zap.Error(err))
+			return
+		}
+
+		if len(toMigrate) == 0 {
+			return
+		}
+
 		for _, item := range toMigrate {
 			it := &indexMigrationItem{
 				Id:      item.Details.GetString(bundle.RelationKeyId),

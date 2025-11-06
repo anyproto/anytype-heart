@@ -142,7 +142,7 @@ func (m *ImageResize) Mill(r io.ReadSeeker, name string) (*Result, error) {
 func (m *ImageResize) resizeJPEG(imgConfig *image.Config, r io.ReadSeeker) (*Result, error) {
 	width, err := strconv.Atoi(m.Opts.Width)
 	if err != nil {
-		return nil, fmt.Errorf("invalid width: " + m.Opts.Width)
+		return nil, fmt.Errorf("invalid width: %s", m.Opts.Width)
 	}
 
 	// Handle original
@@ -160,7 +160,7 @@ func (m *ImageResize) resizeJPEG(imgConfig *image.Config, r io.ReadSeeker) (*Res
 
 	quality, err := strconv.Atoi(m.Opts.Quality)
 	if err != nil {
-		return nil, fmt.Errorf("invalid quality: " + m.Opts.Quality)
+		return nil, fmt.Errorf("invalid quality: %s", m.Opts.Quality)
 	}
 
 	var exifData []byte
@@ -239,7 +239,7 @@ func (m *ImageResize) resizePNG(imgConfig *image.Config, r io.ReadSeeker) (*Resu
 	var height int
 	width, err := strconv.Atoi(m.Opts.Width)
 	if err != nil {
-		return nil, fmt.Errorf("invalid width: " + m.Opts.Width)
+		return nil, fmt.Errorf("invalid width: %s", m.Opts.Width)
 	}
 
 	if imgConfig.Width <= width || width == 0 {
@@ -291,7 +291,7 @@ func (m *ImageResize) resizePNG(imgConfig *image.Config, r io.ReadSeeker) (*Resu
 func (m *ImageResize) resizeGIF(imgConfig *image.Config, r io.ReadSeeker) (*Result, error) {
 	width, err := strconv.Atoi(m.Opts.Width)
 	if err != nil {
-		return nil, fmt.Errorf("invalid width: " + m.Opts.Width)
+		return nil, fmt.Errorf("invalid width: %s", m.Opts.Width)
 	}
 
 	if imgConfig.Width <= width || width == 0 {
@@ -356,7 +356,7 @@ func (m *ImageResize) resizeTIFF(imgConfig *image.Config, r io.ReadSeeker) (*Res
 	var height int
 	width, err := strconv.Atoi(m.Opts.Width)
 	if err != nil {
-		return nil, fmt.Errorf("invalid width: " + m.Opts.Width)
+		return nil, fmt.Errorf("invalid width: %s", m.Opts.Width)
 	}
 
 	resized := imaging.Resize(img, width, 0, imaging.Lanczos)
@@ -364,7 +364,7 @@ func (m *ImageResize) resizeTIFF(imgConfig *image.Config, r io.ReadSeeker) (*Res
 
 	quality, err := strconv.Atoi(m.Opts.Quality)
 	if err != nil {
-		return nil, fmt.Errorf("invalid quality: " + m.Opts.Quality)
+		return nil, fmt.Errorf("invalid quality: %s", m.Opts.Quality)
 	}
 
 	buf := pool.Get()

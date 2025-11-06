@@ -22,23 +22,25 @@ import (
 )
 
 type spaceIndexer struct {
-	runCtx           context.Context
-	spaceIndex       spaceindex.Store
-	objectStore      objectstore.ObjectStore
+	runCtx          context.Context
+	spaceIndex      spaceindex.Store
+	objectStore     objectstore.ObjectStore
 	contextMigration migration.ContextMigrationService
-	batcher          *mb.MB[indexTask]
+	batcher         *mb.MB[indexTask]
+	fulltextEnabled bool
 	isTechSpace      bool
 
 	startedAt time.Time
 	lastIndex atomic.Time
 }
 
-func newSpaceIndexer(runCtx context.Context, spaceIndex spaceindex.Store, objectStore objectstore.ObjectStore, contextMigration migration.ContextMigrationService, isTechSpace bool) *spaceIndexer {
+func newSpaceIndexer(runCtx context.Context, spaceIndex spaceindex.Store, objectStore objectstore.ObjectStore, fulltextEnabled bool, contextMigration migration.ContextMigrationService, isTechSpace bool)) *spaceIndexer {
 	ind := &spaceIndexer{
-		runCtx:           runCtx,
-		spaceIndex:       spaceIndex,
-		objectStore:      objectStore,
-		batcher:          mb.New[indexTask](100),
+		runCtx:          runCtx,
+		spaceIndex:      spaceIndex,
+		objectStore:     objectStore,
+		batcher:         mb.New[indexTask](100),
+		fulltextEnabled: fulltextEnabled,
 		contextMigration: contextMigration,
 		isTechSpace:      isTechSpace,
 	}
@@ -241,7 +243,8 @@ func (i *spaceIndexer) index(ctx context.Context, info smartblock.DocInfo, optio
 		if !(opts.SkipFullTextIfHeadsNotChanged && lastIndexedHash == headHashToIndex) {
 			// Use component's context because ctx from parameter contains transaction
 			fulltext, _, _ := info.SmartblockType.Indexable()
-			if fulltext && !i.isTechSpace {
+
+			if fulltext && i.fulltextEnabled {
 				if err := i.objectStore.AddToIndexQueue(i.runCtx, domain.FullID{ObjectID: info.Id, SpaceID: info.Space.Id()}); err != nil {
 					log.With("objectID", info.Id).Errorf("can't add id to index queue: %v", err)
 				}

@@ -2,10 +2,8 @@ package spaceindex
 
 import (
 	"context"
-	"errors"
 	"fmt"
 
-	anystore "github.com/anyproto/any-store"
 	"github.com/anyproto/any-store/anyenc"
 	"github.com/anyproto/any-store/anyenc/anyencutil"
 	"github.com/anyproto/any-store/query"
@@ -109,7 +107,6 @@ func (s *dsObjectStore) UpdateObjectLinks(ctx context.Context, id string, links 
 
 	return nil
 }
-
 func (s *dsObjectStore) UpdateObjectLinksDetailed(ctx context.Context, id string, outgoingLinks []OutgoingLink) error {
 	// Extract simple links for compatibility
 	links := make([]string, 0, len(outgoingLinks))
@@ -129,7 +126,7 @@ func (s *dsObjectStore) UpdateObjectLinksDetailed(ctx context.Context, id string
 	return nil
 }
 
-func (s *dsObjectStore) UpdatePendingLocalDetails(id string, proc func(details *domain.Details) (*domain.Details, error)) error {
+func (s *dsObjectStore) UpdatePendingLocalDetails(id string, proc func(details *domain.Details) (newDetails *domain.Details, err error)) error {
 	if proc == nil {
 		return nil
 	}
@@ -148,37 +145,39 @@ func (s *dsObjectStore) UpdatePendingLocalDetails(id string, proc func(details *
 		_ = txn.Rollback()
 	}()
 
-	var inputDetails *domain.Details
-	doc, err := s.pendingDetails.FindId(txn.Context(), id)
-	if errors.Is(err, anystore.ErrDocNotFound) {
-		inputDetails = domain.NewDetails()
-	} else if err != nil {
-		return fmt.Errorf("find details: %w", err)
-	} else {
-		inputDetails, err = domain.NewDetailsFromAnyEnc(doc.Value())
+	var shouldDelete bool
+	res, err := s.pendingDetails.UpsertId(txn.Context(), id, query.ModifyFunc(func(arena *anyenc.Arena, val *anyenc.Value) (*anyenc.Value, bool, error) {
+		currentDetails, err := domain.NewDetailsFromAnyEnc(val)
 		if err != nil {
-			return fmt.Errorf("json to proto: %w", err)
+			return nil, false, fmt.Errorf("get old details: json to proto: %w", err)
 		}
-	}
 
-	newDetails, err := proc(inputDetails)
-	if err != nil {
-		return fmt.Errorf("run a modifier: %w", err)
-	}
-	if newDetails == nil {
-		err = s.pendingDetails.DeleteId(txn.Context(), id)
-		if err != nil && !errors.Is(err, anystore.ErrDocNotFound) {
-			return fmt.Errorf("delete details: %w", err)
+		newDetails, err := proc(currentDetails)
+		if err != nil {
+			return nil, false, fmt.Errorf("run a modifier: %w", err)
 		}
-		return txn.Commit()
-	}
-	newDetails.SetString(bundle.RelationKeyId, id)
-	jsonVal := newDetails.ToAnyEnc(arena)
-	err = s.pendingDetails.UpsertOne(txn.Context(), jsonVal)
+		if newDetails == nil {
+			shouldDelete = true
+			return val, false, nil
+		}
+		newDetails.SetString(bundle.RelationKeyId, id)
+
+		newVal := newDetails.ToAnyEnc(arena)
+		if anyencutil.Equal(val, newVal) {
+			return val, false, nil
+		}
+		return newVal, true, nil
+	}))
+
 	if err != nil {
 		return fmt.Errorf("upsert details: %w", err)
 	}
-
+	if res.Matched > 0 && shouldDelete {
+		err = s.pendingDetails.DeleteId(txn.Context(), id)
+		if err != nil {
+			return fmt.Errorf("delete pending details: %w", err)
+		}
+	}
 	err = txn.Commit()
 	if err != nil {
 		return fmt.Errorf("commit txn: %w", err)
@@ -238,6 +237,9 @@ func (s *dsObjectStore) updateObjectLinks(ctx context.Context, id string, links 
 	_, err = s.links.UpsertId(ctx, id, query.ModifyFunc(func(arena *anyenc.Arena, val *anyenc.Value) (*anyenc.Value, bool, error) {
 		prev := anyEncArrayToStrings(val.GetArray(linkOutboundField))
 		removed, added = slice.DifferenceRemovedAdded(prev, links)
+		if len(added) == 0 && len(removed) == 0 {
+			return val, false, nil
+		}
 		val.Set(linkOutboundField, stringsToJsonArray(arena, links))
 		return val, len(added)+len(removed) > 0, nil
 	}))

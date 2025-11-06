@@ -179,6 +179,189 @@ func TestMD_Convert(t *testing.T) {
 		exp := "Test ⛰️   \n"
 		assert.Equal(t, exp, string(res))
 	})
+
+	t.Run("test code block rendering", func(t *testing.T) {
+		s := newState(&model.Block{
+			Content: &model.BlockContentOfText{
+				Text: &model.BlockContentText{
+					Text:  "function hello() {\n  console.log('Hello World');\n}",
+					Style: model.BlockContentText_Code,
+				},
+			},
+		})
+		c := NewMDConverter(s, nil, false)
+		res := c.Convert(model.SmartBlockType_Page)
+		exp := "```\nfunction hello() {\n  console.log('Hello World');\n}\n```\n"
+		assert.Equal(t, exp, string(res))
+	})
+
+	t.Run("test code block with indentation", func(t *testing.T) {
+		// Create a nested structure: list item containing code block
+		listBlock := &model.Block{
+			Id:          "list1",
+			ChildrenIds: []string{"code1"},
+			Content: &model.BlockContentOfText{
+				Text: &model.BlockContentText{
+					Text:  "List item with code:",
+					Style: model.BlockContentText_Marked,
+				},
+			},
+		}
+		codeBlock := &model.Block{
+			Id: "code1",
+			Content: &model.BlockContentOfText{
+				Text: &model.BlockContentText{
+					Text:  "function test() {\n  return 42;\n}",
+					Style: model.BlockContentText_Code,
+				},
+			},
+		}
+
+		blocks := map[string]simple.Block{
+			"root":  simple.New(&model.Block{Id: "root", ChildrenIds: []string{"list1"}}),
+			"list1": simple.New(listBlock),
+			"code1": simple.New(codeBlock),
+		}
+		s := state.NewDoc("root", blocks).(*state.State)
+
+		c := NewMDConverter(s, nil, false)
+		res := c.Convert(model.SmartBlockType_Page)
+
+		// Expected: list item followed by indented code block
+		exp := "- List item with code:   \n    ```\n    function test() {\n      return 42;\n    }\n    ```\n"
+		assert.Equal(t, exp, string(res))
+	})
+
+	t.Run("test code block with deeper indentation", func(t *testing.T) {
+		// Create deeply nested structure: numbered list -> bullet list -> code block
+		numberedBlock := &model.Block{
+			Id:          "num1",
+			ChildrenIds: []string{"bullet1"},
+			Content: &model.BlockContentOfText{
+				Text: &model.BlockContentText{
+					Text:  "Numbered item",
+					Style: model.BlockContentText_Numbered,
+				},
+			},
+		}
+		bulletBlock := &model.Block{
+			Id:          "bullet1",
+			ChildrenIds: []string{"code1"},
+			Content: &model.BlockContentOfText{
+				Text: &model.BlockContentText{
+					Text:  "Bullet item",
+					Style: model.BlockContentText_Marked,
+				},
+			},
+		}
+		codeBlock := &model.Block{
+			Id: "code1",
+			Content: &model.BlockContentOfText{
+				Text: &model.BlockContentText{
+					Text:  "const x = 1;\nconst y = 2;",
+					Style: model.BlockContentText_Code,
+				},
+			},
+		}
+
+		blocks := map[string]simple.Block{
+			"root":    simple.New(&model.Block{Id: "root", ChildrenIds: []string{"num1"}}),
+			"num1":    simple.New(numberedBlock),
+			"bullet1": simple.New(bulletBlock),
+			"code1":   simple.New(codeBlock),
+		}
+		s := state.NewDoc("root", blocks).(*state.State)
+
+		c := NewMDConverter(s, nil, false)
+		res := c.Convert(model.SmartBlockType_Page)
+
+		// Expected: numbered list with nested bullet list and deeply indented code block
+		exp := "1. Numbered item   \n    - Bullet item   \n        ```\n        const x = 1;\n        const y = 2;\n        ```\n"
+		assert.Equal(t, exp, string(res))
+	})
+
+	t.Run("test code block with escaped backticks", func(t *testing.T) {
+		s := newState(&model.Block{
+			Content: &model.BlockContentOfText{
+				Text: &model.BlockContentText{
+					Text:  "console.log(`template string`);\nconst code = '```';\nconsole.log(code);",
+					Style: model.BlockContentText_Code,
+				},
+			},
+		})
+		c := NewMDConverter(s, nil, false)
+		res := c.Convert(model.SmartBlockType_Page)
+
+		// Backticks in code should be escaped
+		exp := "```\nconsole.log(`template string`);\nconst code = '\\`\\`\\`';\nconsole.log(code);\n```\n"
+		assert.Equal(t, exp, string(res))
+	})
+
+	t.Run("test code block under header with indentation", func(t *testing.T) {
+		headerBlock := &model.Block{
+			Id:          "header1",
+			ChildrenIds: []string{"code1"},
+			Content: &model.BlockContentOfText{
+				Text: &model.BlockContentText{
+					Text:  "Code Example",
+					Style: model.BlockContentText_Header2,
+				},
+			},
+		}
+		codeBlock := &model.Block{
+			Id: "code1",
+			Content: &model.BlockContentOfText{
+				Text: &model.BlockContentText{
+					Text:  "# This is a comment\nprint('Hello')",
+					Style: model.BlockContentText_Code,
+				},
+			},
+		}
+
+		blocks := map[string]simple.Block{
+			"root":    simple.New(&model.Block{Id: "root", ChildrenIds: []string{"header1"}}),
+			"header1": simple.New(headerBlock),
+			"code1":   simple.New(codeBlock),
+		}
+		s := state.NewDoc("root", blocks).(*state.State)
+
+		c := NewMDConverter(s, nil, false)
+		res := c.Convert(model.SmartBlockType_Page)
+
+		// Code block under header should be indented with 4 spaces
+		exp := "## Code Example   \n    ```\n    # This is a comment\n    print('Hello')\n    ```\n"
+		assert.Equal(t, exp, string(res))
+	})
+
+	t.Run("test empty code block", func(t *testing.T) {
+		s := newState(&model.Block{
+			Content: &model.BlockContentOfText{
+				Text: &model.BlockContentText{
+					Text:  "",
+					Style: model.BlockContentText_Code,
+				},
+			},
+		})
+		c := NewMDConverter(s, nil, false)
+		res := c.Convert(model.SmartBlockType_Page)
+		exp := "```\n\n```\n"
+		assert.Equal(t, exp, string(res))
+	})
+
+	t.Run("test code block with only newlines", func(t *testing.T) {
+		s := newState(&model.Block{
+			Content: &model.BlockContentOfText{
+				Text: &model.BlockContentText{
+					Text:  "\n\n\n",
+					Style: model.BlockContentText_Code,
+				},
+			},
+		})
+		c := NewMDConverter(s, nil, false)
+		res := c.Convert(model.SmartBlockType_Page)
+		exp := "```\n\n\n\n\n```\n"
+		assert.Equal(t, exp, string(res))
+	})
 }
 
 // testFileNamer implements FileNamer interface

@@ -4,12 +4,14 @@ import (
 	"archive/zip"
 	"context"
 	_ "embed"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
 	"net/http"
 	"os"
 	"path/filepath"
+	"slices"
 	"strconv"
 	"sync"
 	"time"
@@ -19,7 +21,9 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/block/cache"
 	"github.com/anyproto/anytype-heart/core/block/detailservice"
+	"github.com/anyproto/anytype-heart/core/block/editor/dataview"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
+	"github.com/anyproto/anytype-heart/core/block/editor/template"
 	"github.com/anyproto/anytype-heart/core/block/editor/widget"
 	importer "github.com/anyproto/anytype-heart/core/block/import"
 	"github.com/anyproto/anytype-heart/core/block/import/common"
@@ -38,7 +42,6 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space"
-	"github.com/anyproto/anytype-heart/space/clientspace"
 	"github.com/anyproto/anytype-heart/util/anyerror"
 	"github.com/anyproto/anytype-heart/util/constant"
 	"github.com/anyproto/anytype-heart/util/uri"
@@ -48,7 +51,6 @@ const (
 	CName            = "builtinobjects"
 	injectionTimeout = 30 * time.Second
 
-	migrationUseCase   = -1
 	defaultDashboardId = "lastOpened"
 
 	contentLengthHeader        = "Content-Length"
@@ -65,33 +67,37 @@ var getStartedZip []byte
 //go:embed data/migration_dashboard.zip
 var migrationDashboardZip []byte
 
-//go:embed data/empty.zip
-var emptyZip []byte
-
 //go:embed data/get_started_mobile.zip
 var getStartedMobileZip []byte
 
-//go:embed data/empty_mobile.zip
-var emptyMobileZip []byte
+//go:embed data/chat_space.zip
+var chatSpaceZip []byte
+
+//go:embed data/data_space_desktop.zip
+var dataSpaceDesktopZip []byte
+
+//go:embed data/data_space_mobile.zip
+var dataSpaceMobileZip []byte
 
 var (
 	log = logging.Logger("anytype-mw-builtinobjects")
 
 	archives = map[pb.RpcObjectImportUseCaseRequestUseCase][]byte{
 		pb.RpcObjectImportUseCaseRequest_GET_STARTED:        getStartedZip,
+		pb.RpcObjectImportUseCaseRequest_DATA_SPACE:         dataSpaceDesktopZip,
 		pb.RpcObjectImportUseCaseRequest_GUIDE_ONLY:         startGuideZip,
-		pb.RpcObjectImportUseCaseRequest_EMPTY:              emptyZip,
 		pb.RpcObjectImportUseCaseRequest_GET_STARTED_MOBILE: getStartedMobileZip,
-		pb.RpcObjectImportUseCaseRequest_EMPTY_MOBILE:       emptyMobileZip,
+		pb.RpcObjectImportUseCaseRequest_CHAT_SPACE:         chatSpaceZip,
+		pb.RpcObjectImportUseCaseRequest_DATA_SPACE_MOBILE:  dataSpaceMobileZip,
 	}
 )
 
 type BuiltinObjects interface {
 	app.Component
 
-	CreateObjectsForUseCase(ctx session.Context, spaceID string, req pb.RpcObjectImportUseCaseRequestUseCase) (dashboardId string, code pb.RpcObjectImportUseCaseResponseErrorCode, err error)
-	CreateObjectsForExperience(ctx context.Context, spaceID, url, title string, newSpace bool) (err error)
-	InjectMigrationDashboard(spaceID string) error
+	CreateObjectsForUseCase(ctx session.Context, spaceId string, req pb.RpcObjectImportUseCaseRequestUseCase) (dashboardId string, code pb.RpcObjectImportUseCaseResponseErrorCode, err error)
+	CreateObjectsForExperience(ctx context.Context, spaceId, url, title string, newSpace, isAi bool) (err error)
+	InjectMigrationDashboard(spaceId string) error
 }
 
 type builtinObjects struct {
@@ -127,7 +133,7 @@ func (b *builtinObjects) Name() (name string) {
 
 func (b *builtinObjects) CreateObjectsForUseCase(
 	ctx session.Context,
-	spaceID string,
+	spaceId string,
 	useCase pb.RpcObjectImportUseCaseRequestUseCase,
 ) (dashboardId string, code pb.RpcObjectImportUseCaseResponseErrorCode, err error) {
 	if useCase == pb.RpcObjectImportUseCaseRequest_NONE {
@@ -142,7 +148,7 @@ func (b *builtinObjects) CreateObjectsForUseCase(
 			fmt.Errorf("failed to import builtinObjects: invalid Use Case value: %v", useCase)
 	}
 
-	if dashboardId, err = b.inject(ctx, spaceID, useCase, archive); err != nil {
+	if dashboardId, err = b.inject(ctx, spaceId, archive); err != nil {
 		return "", pb.RpcObjectImportUseCaseResponseError_UNKNOWN_ERROR,
 			fmt.Errorf("failed to import builtinObjects for Use Case %s: %w",
 				pb.RpcObjectImportUseCaseRequestUseCase_name[int32(useCase)], err)
@@ -156,7 +162,27 @@ func (b *builtinObjects) CreateObjectsForUseCase(
 	return dashboardId, pb.RpcObjectImportUseCaseResponseError_NULL, nil
 }
 
-func (b *builtinObjects) CreateObjectsForExperience(ctx context.Context, spaceID, url, title string, isNewSpace bool) (err error) {
+type manifest struct {
+	DashboardPagePath string `json:"dashboardPage"`
+}
+
+func readAiManifest(path string) (m manifest, err error) {
+	zipReader, err := zip.OpenReader(path)
+	if err != nil {
+		return
+	}
+	defer zipReader.Close()
+	f, err := zipReader.Open("manifest.json")
+	if err != nil {
+		return
+	}
+	defer f.Close()
+	dec := json.NewDecoder(f)
+	err = dec.Decode(&m)
+	return m, err
+}
+
+func (b *builtinObjects) CreateObjectsForExperience(ctx context.Context, spaceId, url, title string, isNewSpace, isAi bool) (err error) {
 	progress, err := b.setupProgress()
 	if err != nil {
 		return err
@@ -174,8 +200,10 @@ func (b *builtinObjects) CreateObjectsForExperience(ctx context.Context, spaceID
 			if pErr := progress.Cancel(); pErr != nil {
 				log.Errorf("failed to cancel progress %s: %v", progress.Id(), pErr)
 			}
-			if notificationProgress, ok := progress.(process.Notificationable); ok {
-				notificationProgress.FinishWithNotification(b.provideNotification(spaceID, progress, err, title), err)
+			if !isAi {
+				if notificationProgress, ok := progress.(process.Notificationable); ok {
+					notificationProgress.FinishWithNotification(b.provideNotification(spaceId, progress, err, title), err)
+				}
 			}
 			if errors.Is(err, uri.ErrFilepathNotSupported) {
 				return fmt.Errorf("invalid path to file: '%s'", url)
@@ -189,52 +217,205 @@ func (b *builtinObjects) CreateObjectsForExperience(ctx context.Context, spaceID
 		}
 	}
 
-	importErr := b.importArchive(ctx, spaceID, path, title, pb.RpcObjectImportRequestPbParams_EXPERIENCE, progress, isNewSpace)
-	if notificationProgress, ok := progress.(process.Notificationable); ok {
-		notificationProgress.FinishWithNotification(b.provideNotification(spaceID, progress, importErr, title), importErr)
+	importFormat := model.Import_Pb
+	if isAi {
+		importFormat = model.Import_Markdown
+		progress = nil
+	}
+	importErr := b.importArchive(ctx, spaceId, path, title, pb.RpcObjectImportRequestPbParams_SPACE, importFormat, progress)
+	if notificationProgress, ok := progress.(process.Notificationable); !isAi && ok {
+		notificationProgress.FinishWithNotification(b.provideNotification(spaceId, progress, importErr, title), importErr)
 	}
 
 	if importErr != nil {
 		log.Errorf("failed to send notification: %v", importErr)
 	}
 
-	if isNewSpace {
+	if isNewSpace && importFormat == model.Import_Pb {
 		profile, err := b.getProfile(path)
 		if err != nil {
-			log.Warnf("failed to profile object: %s", err)
+			log.Warnf("failed to get profile object: %v", err)
 		}
 		// TODO: GO-2627 Home page handling should be moved to importer
-		b.handleHomePage(profile, spaceID, false)
+		b.setWorkspaceSettings(profile, spaceId, false)
 		removeFunc()
-	} else {
+	} else if importFormat == model.Import_Markdown {
+		// try to read manifest.json from archive
+		manifestData, err := readAiManifest(path)
+		if err != nil {
+			log.Warnf("failed to read manifest file: %v", err)
+		} else {
+			sourcePath := common.GetSourceFileHash(manifestData.DashboardPagePath)
+			records, err := b.store.SpaceIndex(spaceId).QueryRaw(&database.Filters{FilterObj: database.FiltersAnd{
+				database.FilterLike{
+					Key:   bundle.RelationKeySourceFilePath,
+					Value: sourcePath,
+				},
+			}}, 1, 0)
+			if err != nil {
+				log.Errorf("failed to query object by source path '%s': %v", sourcePath, err)
+			}
+			if len(records) > 0 {
+				id := records[0].Details.GetString(bundle.RelationKeyId)
+				if err = b.detailsService.SetSpaceInfo(spaceId, domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+					bundle.RelationKeySpaceDashboardId: domain.String(id),
+				})); err != nil {
+					log.Errorf("failed to set spaceDashboardId to workspace: %v", err)
+				}
+				widgets := []*pb.WidgetBlock{{
+					Layout:         model.BlockContentWidget_Link,
+					TargetObjectId: id,
+				}}
+				b.createWidgets(nil, spaceId, widgets)
+			}
+		}
+
+		err = b.addTypesView(ctx, spaceId)
+		if err != nil {
+			log.Errorf("failed to add types view: %v", err)
+		}
 		removeFunc()
 	}
 
 	return importErr
 }
 
-func (b *builtinObjects) provideNotification(spaceID string, progress process.Progress, err error, title string) *model.Notification {
-	spaceName := b.store.GetSpaceName(spaceID)
+func (b *builtinObjects) getTypeViewProperties(spaceId, typeId string) ([]*model.RelationLink, error) {
+	spaceIndex := b.store.SpaceIndex(spaceId)
+	details, err := spaceIndex.GetDetails(typeId)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get type details: %w", err)
+	}
+	// Build relation links from recommended and featured relations
+	relationLinks := []*model.RelationLink{
+		{
+			Key:    bundle.RelationKeyName.String(),
+			Format: model.RelationFormat_longtext,
+		},
+	}
+
+	// Add featured relations
+	featuredRelations := details.GetStringList(bundle.RelationKeyRecommendedFeaturedRelations)
+	for _, relId := range featuredRelations {
+		// Get relation format from space index
+		if rel, err := spaceIndex.GetRelationById(relId); err == nil && rel != nil {
+			relationLinks = append(relationLinks, &model.RelationLink{
+				Key:    rel.Key,
+				Format: rel.Format,
+			})
+		}
+	}
+
+	// Add recommended relations
+	recommendedRelations := details.GetStringList(bundle.RelationKeyRecommendedRelations)
+	for _, relId := range recommendedRelations {
+		// Get relation format from space index
+		if rel, err := spaceIndex.GetRelationById(relId); err == nil && rel != nil {
+			relationLinks = append(relationLinks, &model.RelationLink{
+				Key:    rel.Key,
+				Format: rel.Format,
+			})
+		}
+	}
+
+	relationLinks = slices.DeleteFunc(relationLinks, func(rel *model.RelationLink) bool {
+		return rel.Key == bundle.RelationKeyType.String()
+	})
+	return relationLinks, nil
+}
+
+func (b *builtinObjects) addTypesView(ctx context.Context, spaceId string) error {
+	systemTypesUniqueKeys := make([]string, 0, len(bundle.SystemTypes))
+	for _, t := range bundle.SystemTypes {
+		systemTypesUniqueKeys = append(systemTypesUniqueKeys, t.URL())
+	}
+
+	records, err := b.store.SpaceIndex(spaceId).QueryRaw(&database.Filters{FilterObj: database.FiltersAnd{
+		database.FilterEq{
+			Key:   bundle.RelationKeyResolvedLayout,
+			Value: domain.Int64(model.ObjectType_objectType),
+		},
+		database.FilterNot{
+			database.FilterIn{
+				Key:   bundle.RelationKeyUniqueKey,
+				Value: domain.StringList(systemTypesUniqueKeys).WrapToList(),
+			},
+		},
+		// todo: later filter-out types in case they were not part of this import
+	}}, 0, 0)
+	if err != nil {
+		return fmt.Errorf("failed to query types: %w", err)
+	}
+	if len(records) == 0 {
+		return nil
+	}
+	spc, err := b.spaceService.Get(ctx, spaceId)
+	if err != nil {
+		return fmt.Errorf("failed to get space: %w", err)
+	}
+
+	for _, rec := range records {
+		uk, err := domain.UnmarshalUniqueKey(rec.Details.GetString(bundle.RelationKeyUniqueKey))
+		if err != nil {
+			log.Warnf("failed to unmarshal unique key '%s': %v", rec.Details.GetString(bundle.RelationKeyUniqueKey), err)
+			continue
+		}
+
+		typeId, err := spc.GetTypeIdByKey(ctx, domain.TypeKey(uk.InternalKey()))
+		if err != nil {
+			log.Warnf("failed to get type id by key '%s': %v", uk.InternalKey(), err)
+			continue
+		}
+		relationLinks, err := b.getTypeViewProperties(spaceId, typeId)
+		if err != nil {
+			log.Warnf("failed to get type view properties for type '%s': %v", typeId, err)
+			continue
+		}
+
+		err = cache.DoStateCtx(b.objectGetter, nil, typeId, func(s *state.State, sb dataview.Dataview) error {
+			dvBlock, err := sb.GetDataviewBlock(s, template.DataviewBlockId)
+			if err != nil {
+				return fmt.Errorf("failed to get dataview block: %w", err)
+			}
+
+			allView, err := dvBlock.GetView(addr.ObjectTypeAllViewId)
+			if err == nil {
+				allView.Name = "List"
+			}
+			view := template.MakeDataviewView(false, relationLinks, model.BlockContentDataviewView_Table, addr.ObjectTypeAllTableViewId, "Grid")
+			dvBlock.AddView(view)
+			return nil
+		})
+		if err != nil {
+			log.Warnf("failed to add view to type '%s': %v", typeId, err)
+			continue
+		}
+	}
+	return nil
+}
+
+func (b *builtinObjects) provideNotification(spaceId string, progress process.Progress, err error, title string) *model.Notification {
+	spaceName := b.store.GetSpaceName(spaceId)
 	return &model.Notification{
 		Status:  model.Notification_Created,
 		IsLocal: true,
-		Space:   spaceID,
+		Space:   spaceId,
 		Payload: &model.NotificationPayloadOfGalleryImport{GalleryImport: &model.NotificationGalleryImport{
 			ProcessId: progress.Id(),
 			ErrorCode: common.GetImportNotificationErrorCode(err),
-			SpaceId:   spaceID,
+			SpaceId:   spaceId,
 			Name:      title,
 			SpaceName: spaceName,
 		}},
 	}
 }
 
-func (b *builtinObjects) InjectMigrationDashboard(spaceID string) error {
-	_, err := b.inject(nil, spaceID, migrationUseCase, migrationDashboardZip)
+func (b *builtinObjects) InjectMigrationDashboard(spaceId string) error {
+	_, err := b.inject(nil, spaceId, migrationDashboardZip)
 	return err
 }
 
-func (b *builtinObjects) inject(ctx session.Context, spaceID string, useCase pb.RpcObjectImportUseCaseRequestUseCase, archive []byte) (startingPageId string, err error) {
+func (b *builtinObjects) inject(ctx session.Context, spaceId string, archive []byte) (startingPageId string, err error) {
 	path := filepath.Join(b.tempDirService.TempDir(), time.Now().Format("tmp.20060102.150405.99")+".zip")
 	if err = os.WriteFile(path, archive, 0644); err != nil {
 		return "", fmt.Errorf("failed to save use case archive to temporary file: %w", err)
@@ -245,49 +426,65 @@ func (b *builtinObjects) inject(ctx session.Context, spaceID string, useCase pb.
 		}
 	}()
 
-	if err = b.importArchive(context.Background(), spaceID, path, "", pb.RpcObjectImportRequestPbParams_SPACE, nil, false); err != nil {
+	if err = b.importArchive(context.Background(), spaceId, path, "", pb.RpcObjectImportRequestPbParams_SPACE, model.Import_Pb, nil); err != nil {
 		return "", err
 	}
 
 	profile, err := b.getProfile(path)
 	if err != nil {
-		log.Warnf("failed to get profile object: %s", err)
+		log.Warnf("failed to get profile object: %v", err)
 	}
-	startingPageId = b.getStartingPage(profile, spaceID)
+	widgets := b.getWidgets(profile, spaceId)
+	if len(widgets) > 0 {
+		startingPageId = widgets[0].TargetObjectId
+	}
 
 	// TODO: GO-2627 Home page handling should be moved to importer
-	_ = b.handleHomePage(profile, spaceID, useCase == migrationUseCase)
+	_ = b.setWorkspaceSettings(profile, spaceId, true)
 
 	// TODO: GO-2627 Widgets creation should be moved to importer
-	b.createWidgets(ctx, spaceID, useCase, startingPageId)
+	b.createWidgets(ctx, spaceId, widgets)
 
 	return
 }
 
 func (b *builtinObjects) importArchive(
 	ctx context.Context,
-	spaceID, path, title string,
+	spaceId, path, title string,
 	importType pb.RpcObjectImportRequestPbParamsType,
+	importFormat model.ImportType,
 	progress process.Progress,
-	isNewSpace bool,
 ) (err error) {
 	origin := objectorigin.Usecase()
+
+	var params pb.IsRpcObjectImportRequestParams
+	if importFormat == model.Import_Pb {
+		params = &pb.RpcObjectImportRequestParamsOfPbParams{
+			PbParams: &pb.RpcObjectImportRequestPbParams{
+				Path:            []string{path},
+				NoCollection:    true,
+				CollectionTitle: title,
+				ImportType:      importType,
+			}}
+	} else if importFormat == model.Import_Markdown {
+		params = &pb.RpcObjectImportRequestParamsOfMarkdownParams{
+			MarkdownParams: &pb.RpcObjectImportRequestMarkdownParams{
+				Path:         []string{path},
+				NoCollection: true,
+			}}
+	} else {
+		return fmt.Errorf("unsupported import format: %s", importFormat)
+	}
 	importRequest := &importer.ImportRequest{
 		RpcObjectImportRequest: &pb.RpcObjectImportRequest{
-			SpaceId:               spaceID,
+			SpaceId:               spaceId,
 			UpdateExistingObjects: true,
-			Type:                  model.Import_Pb,
+			Type:                  importFormat,
 			Mode:                  pb.RpcObjectImportRequest_ALL_OR_NOTHING,
 			NoProgress:            progress == nil,
-			IsMigration:           false,
-			Params: &pb.RpcObjectImportRequestParamsOfPbParams{
-				PbParams: &pb.RpcObjectImportRequestPbParams{
-					Path:            []string{path},
-					NoCollection:    true,
-					CollectionTitle: title,
-					ImportType:      importType,
-				}},
-			IsNewSpace: isNewSpace,
+			IsMigration:           true,
+			Params:                params,
+			IsNewSpace:            true,
 		},
 		Origin:   origin,
 		Progress: progress,
@@ -298,65 +495,86 @@ func (b *builtinObjects) importArchive(
 	return res.Err
 }
 
-func (b *builtinObjects) getStartingPage(profile *pb.Profile, spaceId string) string {
+func (b *builtinObjects) getWidgets(profile *pb.Profile, spaceId string) []*pb.WidgetBlock {
 	if profile == nil {
-		return ""
-	}
-	if profile.StartingPage == "" {
-		return ""
-	}
-	newID, err := b.getNewObjectID(spaceId, profile.StartingPage)
-	if err != nil {
-		log.Errorf("failed to get new id of home page object: %s", err)
-		return ""
+		return nil
 	}
 
-	return newID
+	if len(profile.Widgets) == 0 {
+		if profile.StartingPage == "" {
+			return nil
+		}
+
+		newId, err := b.getNewObjectId(spaceId, profile.StartingPage)
+		if err != nil {
+			log.Errorf("failed to get new id of home page object: %v", err)
+			return nil
+		}
+
+		return []*pb.WidgetBlock{{
+			Layout:         model.BlockContentWidget_Tree,
+			TargetObjectId: newId,
+		}}
+	}
+
+	for _, w := range profile.Widgets {
+		newId, err := b.getNewObjectId(spaceId, w.TargetObjectId)
+		if err != nil {
+			log.Errorf("failed to get new id of home page object: %v", err)
+			return nil
+		}
+		w.TargetObjectId = newId
+	}
+
+	return profile.Widgets
 }
 
-func (b *builtinObjects) handleHomePage(profile *pb.Profile, spaceId string, isMigration bool) (dashboardId string) {
-	var oldID string
-	if !isMigration {
-		oldID = profile.SpaceDashboardId
-		if oldID == "" {
-			oldID = defaultDashboardId
-		}
-	} else if profile != nil {
-		oldID = profile.SpaceDashboardId
+func (b *builtinObjects) setWorkspaceSettings(profile *pb.Profile, spaceId string, isBundle bool) (dashboardId string) {
+	newId, oldId := defaultDashboardId, defaultDashboardId
+	if profile != nil && profile.SpaceDashboardId != "" {
+		oldId = profile.SpaceDashboardId
 	}
 
-	if oldID == "" {
-		oldID = defaultDashboardId
-	}
-
-	var newID string
-	if oldID != defaultDashboardId {
+	if oldId != defaultDashboardId {
 		var err error
-		newID, err = b.getNewObjectID(spaceId, oldID)
+		newId, err = b.getNewObjectId(spaceId, oldId)
 		if err != nil {
-			log.Errorf("failed to get new id of home page object: %s", err)
+			log.Errorf("failed to get new id of home page object: %v", err)
 		} else {
-			newID = defaultDashboardId
+			newId = defaultDashboardId
 		}
-	} else {
-		newID = defaultDashboardId
 	}
+	dashboardId = newId
 
-	spc, err := b.spaceService.Get(context.Background(), spaceId)
-	if err != nil {
-		log.Errorf("failed to get space: %w", err)
-		return
+	details := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+		bundle.RelationKeySpaceDashboardId: domain.String(dashboardId),
+	})
+
+	if profile != nil && isBundle {
+		if profile.Name != "" {
+			details.SetString(bundle.RelationKeyName, profile.Name)
+		}
+
+		if profile.Avatar != "" {
+			var err error
+			newId, err = b.getNewAvatarId(spaceId, profile.Avatar)
+			if err != nil {
+				log.Errorf("failed to get new id of workspace icon object: %v", err)
+			} else {
+				details.SetString(bundle.RelationKeyIconImage, newId)
+			}
+		}
 	}
-	dashboardId = newID
-	b.setHomePageIdToWorkspace(spc, newID)
-
+	if err := b.detailsService.SetSpaceInfo(spaceId, details); err != nil {
+		log.Errorf("failed to set spaceDashboardId to workspace: %v", err)
+	}
 	return
 }
 
 func (b *builtinObjects) getProfile(path string) (profile *pb.Profile, err error) {
 	zipReader, err := zip.OpenReader(path)
 	if err != nil {
-		log.Errorf("cannot open zip file %s: %w", path, err)
+		log.Errorf("cannot open zip file %s: %v", path, err)
 		return
 	}
 	defer zipReader.Close()
@@ -390,114 +608,89 @@ func (b *builtinObjects) getProfile(path string) (profile *pb.Profile, err error
 	return profile, nil
 }
 
-func (b *builtinObjects) setHomePageIdToWorkspace(spc clientspace.Space, id string) {
-	if err := b.detailsService.SetDetails(nil,
-		spc.DerivedIDs().Workspace,
-		[]domain.Detail{
-			{
-				Key:   bundle.RelationKeySpaceDashboardId,
-				Value: domain.StringList([]string{id}),
-			},
-		},
-	); err != nil {
-		log.Errorf("Failed to set SpaceDashboardId relation to Account object: %s", err)
-	}
-}
-
-func (b *builtinObjects) typeHasObjects(spaceId, typeId string) (bool, error) {
-	records, err := b.store.SpaceIndex(spaceId).QueryRaw(&database.Filters{FilterObj: database.FiltersAnd{
-		database.FilterEq{
-			Key:   bundle.RelationKeyType,
-			Cond:  model.BlockContentDataviewFilter_Equal,
-			Value: domain.String(typeId),
-		},
-	}}, 1, 0)
-	if err != nil {
-		return false, err
+func (b *builtinObjects) createWidgets(ctx session.Context, spaceId string, widgets []*pb.WidgetBlock) {
+	if len(widgets) == 0 {
+		return
 	}
 
-	return len(records) > 0, nil
-}
-
-func (b *builtinObjects) createWidgets(ctx session.Context, spaceId string, useCase pb.RpcObjectImportUseCaseRequestUseCase, homePageId string) {
 	spc, err := b.spaceService.Get(context.Background(), spaceId)
 	if err != nil {
 		log.Errorf("failed to get space: %w", err)
 		return
 	}
 
-	widgetObjectID := spc.DerivedIDs().Widgets
-	var widgetTargetsToCreate []string
-	var homeWidget *pb.RpcBlockCreateWidgetRequest
-	if useCase == pb.RpcObjectImportUseCaseRequest_GET_STARTED && homePageId != "" {
-		homeWidget = &pb.RpcBlockCreateWidgetRequest{
-			ContextId:    widgetObjectID,
-			WidgetLayout: model.BlockContentWidget_Tree,
-			Position:     model.Block_Bottom,
+	widgetObjectId := spc.DerivedIDs().Widgets
+	requests := make([]*pb.RpcBlockCreateWidgetRequest, 0, len(widgets))
+	for _, w := range widgets {
+		requests = append(requests, &pb.RpcBlockCreateWidgetRequest{
+			ContextId:    widgetObjectId,
+			WidgetLayout: w.Layout,
+			Position:     model.Block_Inner,
+			TargetId:     widgetObjectId,
+			ObjectLimit:  w.ObjectLimit,
 			Block: &model.Block{
 				Content: &model.BlockContentOfLink{
 					Link: &model.BlockContentLink{
-						TargetBlockId: homePageId,
+						TargetBlockId: w.TargetObjectId,
 					},
 				},
 			},
-		}
+		})
 	}
 
-	pageTypeId, err := spc.GetTypeIdByKey(context.Background(), bundle.TypeKeyPage)
-	if err != nil {
-		log.Errorf("failed to get type id: %w", err)
-		return
-	}
-	taskTypeId, err := spc.GetTypeIdByKey(context.Background(), bundle.TypeKeyTask)
-	if err != nil {
-		log.Errorf("failed to get type id: %w", err)
-		return
-	}
-	for _, typeId := range []string{pageTypeId, taskTypeId} {
-		if has, err := b.typeHasObjects(spaceId, typeId); err != nil {
-			log.Warnf("failed to check if type '%s' has objects: %v", pageTypeId, err)
-		} else if has {
-			widgetTargetsToCreate = append(widgetTargetsToCreate, typeId)
-		}
-	}
-
-	if len(widgetTargetsToCreate) == 0 {
-		return
-	}
-	if err = cache.DoStateCtx(b.objectGetter, ctx, widgetObjectID, func(s *state.State, w widget.Widget) error {
-		if homeWidget != nil {
-			if _, err := w.CreateBlock(s, homeWidget); err != nil {
+	if err = cache.DoStateCtx(b.objectGetter, ctx, widgetObjectId, func(s *state.State, w widget.Widget) error {
+		for _, req := range requests {
+			if _, err := w.CreateBlock(s, req); err != nil {
 				log.Errorf("failed to create widget for home page: %v", err)
 			}
 		}
-		for _, targetId := range widgetTargetsToCreate {
-			if err := w.AddAutoWidget(s, targetId, "", addr.ObjectTypeAllViewId, model.BlockContentWidget_View, ""); err != nil {
-				log.Errorf("failed to create widget block for type '%s': %v", targetId, err)
-			}
-		}
+
 		return nil
 	}); err != nil {
-		log.Errorf("failed to create widget blocks for useCase '%s': %v",
-			pb.RpcObjectImportUseCaseRequestUseCase_name[int32(useCase)], err)
+		log.Errorf("failed to create widget blocks: %v", err)
 	}
 }
 
-func (b *builtinObjects) getNewObjectID(spaceID string, oldID string) (id string, err error) {
+func (b *builtinObjects) getNewObjectId(spaceId string, oldId string) (id string, err error) {
 	var ids []string
-	if ids, _, err = b.store.SpaceIndex(spaceID).QueryObjectIds(database.Query{
+	if ids, _, err = b.store.SpaceIndex(spaceId).QueryObjectIds(database.Query{
 		Filters: []database.FilterRequest{
 			{
 				Condition:   model.BlockContentDataviewFilter_Equal,
 				RelationKey: bundle.RelationKeyOldAnytypeID,
-				Value:       domain.String(oldID),
+				Value:       domain.String(oldId),
 			},
 		},
 	}); err != nil {
 		return "", err
 	}
 	if len(ids) == 0 {
-		return "", fmt.Errorf("no object with oldAnytypeId = '%s' in space '%s' found", oldID, spaceID)
+		return "", fmt.Errorf("no object with oldAnytypeId = '%s' in space '%s' found", oldId, spaceId)
+	}
+	return ids[0], nil
+}
+
+func (b *builtinObjects) getNewAvatarId(spaceId string, name string) (id string, err error) {
+	var ids []string
+	if ids, _, err = b.store.SpaceIndex(spaceId).QueryObjectIds(database.Query{
+		Filters: []database.FilterRequest{
+			{
+				Condition:   model.BlockContentDataviewFilter_Equal,
+				RelationKey: bundle.RelationKeyName,
+				Value:       domain.String(name),
+			},
+			{
+				Condition:   model.BlockContentDataviewFilter_Equal,
+				RelationKey: bundle.RelationKeyResolvedLayout,
+				Value:       domain.Int64(model.ObjectType_image),
+			},
+		},
+		Limit: 1,
+	}); err != nil {
+		return "", err
+	}
+	if len(ids) == 0 {
+		return "", fmt.Errorf("failed to find image for workspace icon")
 	}
 	return ids[0], nil
 }

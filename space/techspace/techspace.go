@@ -14,7 +14,6 @@ import (
 	"github.com/anyproto/any-sync/commonspace/object/tree/treestorage"
 	"github.com/anyproto/any-sync/net/peer"
 	"github.com/anyproto/any-sync/util/crypto"
-	"go.uber.org/zap"
 
 	editorsb "github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
@@ -24,6 +23,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
+	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space/spaceinfo"
 )
 
@@ -57,9 +57,8 @@ type TechSpace interface {
 	Run(techCoreSpace commonspace.Space, objectCache objectcache.Cache, create bool) (err error)
 	Close(ctx context.Context) (err error)
 
-	WakeUpViews()
-	WaitViews() error
 	TechSpaceId() string
+	StartSync()
 	DoSpaceView(ctx context.Context, spaceID string, apply func(spaceView SpaceView) error) (err error)
 	DoAccountObject(ctx context.Context, apply func(accountObject AccountObject) error) (err error)
 	SpaceViewCreate(ctx context.Context, spaceId string, force bool, info spaceinfo.SpacePersistentInfo, desc *spaceinfo.SpaceDescription) (err error)
@@ -82,10 +81,13 @@ type SpaceView interface {
 	SetAclInfo(empty bool, pushKey crypto.PrivKey, pushEncKey crypto.SymKey, joinedDate int64) (err error)
 	SetOwner(ownerId string, createdDate int64) (err error)
 	SetSpacePersistentInfo(info spaceinfo.SpacePersistentInfo) error
+	SetMyParticipantStatus(status model.ParticipantStatus) error
 	GetSpaceDescription() (data spaceinfo.SpaceDescription)
 	SetSharedSpacesLimit(limits int) (err error)
 	GetSharedSpacesLimit() (limits int)
-	SetPushNotificationMode(ctx session.Context, mode pb.RpcPushNotificationSetSpaceModeMode) (err error)
+	SetPushNotificationMode(ctx session.Context, mode pb.RpcPushNotificationMode) (err error)
+	SetPushNotificationForceModeIds(ctx session.Context, chatIds []string, mode pb.RpcPushNotificationMode) (err error)
+	ResetPushNotificationIds(ctx session.Context, allIds []string) error
 }
 
 func New() TechSpace {
@@ -133,50 +135,8 @@ func (s *techSpace) Run(techCoreSpace commonspace.Space, objectCache objectcache
 	return s.accountObjectCreate(s.ctx)
 }
 
-func (s *techSpace) WakeUpViews() {
-	s.mu.Lock()
-	if s.isClosed || s.idsWokenUp != nil {
-		s.mu.Unlock()
-		return
-	}
-	s.idsWokenUp = make(chan struct{})
-	s.mu.Unlock()
-	go func() {
-		defer close(s.idsWokenUp)
-		s.wakeUpViews()
-	}()
-}
-
-func (s *techSpace) WaitViews() error {
-	s.mu.Lock()
-	idsWokenUp := s.idsWokenUp
-	s.mu.Unlock()
-	if idsWokenUp != nil {
-		select {
-		case <-idsWokenUp:
-			return nil
-		case <-s.ctx.Done():
-			return s.ctx.Err()
-		}
-	} else {
-		return ErrNotStarted
-	}
-}
-
-func (s *techSpace) wakeUpViews() {
-	for _, id := range s.techCore.StoredIds() {
-		select {
-		case <-s.ctx.Done():
-			return
-		default:
-		}
-
-		if _, err := s.objectCache.GetObject(s.ctx, id); err != nil {
-			log.Warn("wakeUp views: get object error", zap.String("objectId", id), zap.Error(err))
-		}
-	}
+func (s *techSpace) StartSync() {
 	s.techCore.TreeSyncer().StartSync()
-	return
 }
 
 func (s *techSpace) TechSpaceId() string {

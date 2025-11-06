@@ -44,7 +44,7 @@ const (
 	CName    = "fts"
 	ftsDir   = "fts"
 	ftsDir2  = "fts_tantivy"
-	ftsVer   = "15"
+	ftsVer   = "16"
 	docLimit = 10000
 
 	fieldTitle   = "Title"

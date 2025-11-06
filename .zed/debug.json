@@ -17,5 +17,26 @@
       "CXX": "/usr/bin/c++",
       "CGO_CFLAGS": "-Wno-deprecated-declarations -Wno-deprecated-non-prototype -Wno-xor-used-as-pow"
     }
+  },
+  {
+    "label": "Debug gRPC Server Custom",
+    "adapter": "Delve",
+    "request": "launch",
+    "mode": "debug",
+    "program": "./cmd/grpcserver",
+    "buildFlags": [
+      "-tags=nomutexdeadlockdetector,noauth,nographviz,appdebug,envnetworkcustom"
+    ],
+    "env": {
+      "ANYDEBUG": ":6061",
+      "ANYPROF": ":6060",
+      "ANYTYPE_GATEWAY_ADDR": "127.0.0.1:31006",
+      "ANYTYPE_GRPC_ADDR": "127.0.0.1:31007",
+      "ANYTYPE_GRPCWEB_ADDR": "127.0.0.1:31008",
+      "ANYTYPE_API_DEBUG": "1",
+      "CC": "/usr/bin/cc",
+      "CXX": "/usr/bin/c++",
+      "CGO_CFLAGS": "-Wno-deprecated-declarations -Wno-deprecated-non-prototype -Wno-xor-used-as-pow"
+    }
   }
 ]

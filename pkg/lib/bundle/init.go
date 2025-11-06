@@ -1,5 +1,7 @@
 package bundle
 
+//go:generate go run ./generator
+
 import (
 	"fmt"
 	"strings"
@@ -7,11 +9,24 @@ import (
 	"golang.org/x/exp/slices"
 
 	"github.com/anyproto/anytype-heart/core/domain"
-	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
+
+var (
+	internalRelationsMap  = makeInternalRelationsMap()
+	systemRelationsMap    = makeSystemRelationsMap()
+	internalTypesTypesMap = makeInternalTypesTypesMap()
+)
+
+func makeInternalRelationsMap() map[domain.RelationKey]struct{} {
+	res := make(map[domain.RelationKey]struct{}, len(RequiredInternalRelations))
+	for _, k := range RequiredInternalRelations {
+		res[k] = struct{}{}
+	}
+	return res
+}
 
 func makeSystemRelationsMap() map[domain.RelationKey]struct{} {
 	res := make(map[domain.RelationKey]struct{}, len(SystemRelations))
@@ -19,13 +34,6 @@ func makeSystemRelationsMap() map[domain.RelationKey]struct{} {
 		res[k] = struct{}{}
 	}
 	return res
-}
-
-var systemRelationsMap = makeSystemRelationsMap()
-
-func IsSystemRelation(relationKey domain.RelationKey) bool {
-	_, ok := systemRelationsMap[relationKey]
-	return ok
 }
 
 func makeInternalTypesTypesMap() map[domain.TypeKey]struct{} {
@@ -36,23 +44,22 @@ func makeInternalTypesTypesMap() map[domain.TypeKey]struct{} {
 	return res
 }
 
-var internalTypesTypesMap = makeInternalTypesTypesMap()
+func IsInternalRelation(relationKey domain.RelationKey) bool {
+	_, ok := internalRelationsMap[relationKey]
+	return ok
+}
+
+func IsSystemRelation(relationKey domain.RelationKey) bool {
+	_, ok := systemRelationsMap[relationKey]
+	return ok
+}
 
 func IsInternalType(typeKey domain.TypeKey) bool {
 	_, ok := internalTypesTypesMap[typeKey]
 	return ok
 }
 
-var DefaultObjectTypePerSmartblockType = map[coresb.SmartBlockType]domain.TypeKey{
-	coresb.SmartBlockTypePage:        TypeKeyPage,
-	coresb.SmartBlockTypeProfilePage: TypeKeyProfile,
-	coresb.SmartBlockTypeHome:        TypeKeyDashboard,
-	coresb.SmartBlockTypeTemplate:    TypeKeyTemplate,
-	coresb.SmartBlockTypeWidget:      TypeKeyDashboard,
-	coresb.SmartBlockTypeObjectType:  TypeKeyObjectType,
-	coresb.SmartBlockTypeRelation:    TypeKeyRelation,
-	coresb.SmartBlockTypeSpaceView:   TypeKeySpace,
-}
+var typeKeyByName = make(map[string]domain.TypeKey)
 
 // filled in init
 var LocalRelationsKeys []domain.RelationKey   // stored only in localstore
@@ -71,6 +78,9 @@ func init() {
 	}
 	LocalAndDerivedRelationKeys = slices.Clone(DerivedRelationsKeys)
 	LocalAndDerivedRelationKeys = append(LocalAndDerivedRelationKeys, LocalRelationsKeys...)
+	for key, t := range types {
+		typeKeyByName[strings.ToLower(t.Name)] = key
+	}
 }
 
 func HasObjectTypeID(id string) bool {
@@ -95,6 +105,13 @@ func GetTypeByUrl(u string) (*model.ObjectType, error) {
 	}
 
 	return nil, ErrNotFound
+}
+
+func GetTypeKeyByName(name string) (domain.TypeKey, error) {
+	if tk, exists := typeKeyByName[strings.ToLower(name)]; exists {
+		return tk, nil
+	}
+	return "", fmt.Errorf("type with name %s not found", name)
 }
 
 func GetType(tk domain.TypeKey) (*model.ObjectType, error) {

@@ -4,6 +4,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/basic"
 	"github.com/anyproto/anytype-heart/core/block/editor/bookmark"
 	"github.com/anyproto/anytype-heart/core/block/editor/clipboard"
+	"github.com/anyproto/anytype-heart/core/block/editor/collection"
 	"github.com/anyproto/anytype-heart/core/block/editor/dataview"
 	"github.com/anyproto/anytype-heart/core/block/editor/file"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
@@ -51,10 +52,6 @@ var relationRequiredRelations = append(typeAndRelationRequiredRelations,
 	bundle.RelationKeyRelationKey,
 )
 
-var relationOptionRequiredRelations = []domain.RelationKey{
-	bundle.RelationKeyApiObjectKey,
-}
-
 type Page struct {
 	smartblock.SmartBlock
 	basic.AllOperations
@@ -64,6 +61,7 @@ type Page struct {
 	clipboard.Clipboard
 	bookmark.Bookmark
 	source.ChangeReceiver
+	collection.Collection
 
 	dataview.Dataview
 	table.TableEditor
@@ -95,9 +93,11 @@ func (f *ObjectFactory) newPage(spaceId string, sb smartblock.SmartBlock) *Page 
 			f.fileService,
 			f.fileObjectService,
 		),
-		Bookmark:          bookmark.NewBookmark(sb, f.bookmarkService),
-		Dataview:          dataview.NewDataview(sb, store),
-		TableEditor:       table.NewEditor(sb),
+		Bookmark:    bookmark.NewBookmark(sb, f.bookmarkService),
+		Dataview:    dataview.NewDataview(sb, store),
+		TableEditor: table.NewEditor(sb),
+		Collection:  collection.New(sb, f.backlinksUpdater),
+
 		objectStore:       store,
 		fileObjectService: f.fileObjectService,
 		objectDeleter:     f.objectDeleter,
@@ -234,12 +234,6 @@ func (p *Page) CreationStateMigration(ctx *smartblock.InitContext) migration.Mig
 			case model.ObjectType_relation:
 				templates = append(templates,
 					template.WithTitle,
-					template.WithLayout(layout),
-				)
-			case model.ObjectType_chat:
-				templates = append(templates,
-					template.WithTitle,
-					template.WithBlockChat,
 					template.WithLayout(layout),
 				)
 			case model.ObjectType_chatDerived:

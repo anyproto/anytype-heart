@@ -37,7 +37,7 @@ func TestState_Add(t *testing.T) {
 
 func TestState_Snippet(t *testing.T) {
 	t.Run("snippet cut - when the content is too long", func(t *testing.T) {
-		givenState := buildStateFromAST(blockbuilder.Root(
+		givenState := buildStateFromAST(t, blockbuilder.Root(
 			blockbuilder.ID("root"),
 			blockbuilder.Children(
 				blockbuilder.Text(
@@ -56,7 +56,7 @@ func TestState_Snippet(t *testing.T) {
 	})
 
 	t.Run("snippet empty - when the style is title or description", func(t *testing.T) {
-		givenState := buildStateFromAST(blockbuilder.Root(
+		givenState := buildStateFromAST(t, blockbuilder.Root(
 			blockbuilder.ID("root"),
 			blockbuilder.Children(
 				blockbuilder.Text(
@@ -79,7 +79,7 @@ func TestState_Snippet(t *testing.T) {
 	})
 
 	t.Run("snippet empty - when the style is title or description", func(t *testing.T) {
-		givenState := buildStateFromAST(blockbuilder.Root(
+		givenState := buildStateFromAST(t, blockbuilder.Root(
 			blockbuilder.ID("root"),
 			blockbuilder.Children(
 				blockbuilder.Text(
@@ -2194,7 +2194,7 @@ func TestState_ApplyChangeIgnoreErrRelationAdd(t *testing.T) {
 		st.ApplyChangeIgnoreErr(change)
 
 		// then
-		assert.Contains(t, st.GetRelationLinks(), &model.RelationLink{Key: "relation1", Format: model.RelationFormat_longtext})
+		assert.Contains(t, st.relationLinks, &model.RelationLink{Key: "relation1", Format: model.RelationFormat_longtext})
 	})
 
 	t.Run("apply RelationAdd change: add already existing relation - no changes", func(t *testing.T) {
@@ -2214,7 +2214,7 @@ func TestState_ApplyChangeIgnoreErrRelationAdd(t *testing.T) {
 		st.ApplyChangeIgnoreErr(change)
 
 		// then
-		assert.Contains(t, st.GetRelationLinks(), &model.RelationLink{Key: "relation1", Format: model.RelationFormat_longtext})
+		assert.Contains(t, st.relationLinks, &model.RelationLink{Key: "relation1", Format: model.RelationFormat_longtext})
 	})
 }
 
@@ -2237,7 +2237,7 @@ func TestState_ApplyChangeIgnoreErrRelationRemove(t *testing.T) {
 				Format: model.RelationFormat_shorttext,
 			},
 		}...)
-		originLength := len(st.GetRelationLinks())
+		originLength := len(st.relationLinks)
 		change := &pb.ChangeContent{Value: &pb.ChangeContentValueOfRelationRemove{
 			RelationRemove: &pb.ChangeRelationRemove{
 				RelationKey: []string{"relation1", "relation2"},
@@ -2248,7 +2248,7 @@ func TestState_ApplyChangeIgnoreErrRelationRemove(t *testing.T) {
 		st.ApplyChangeIgnoreErr(change)
 
 		// then
-		assert.Len(t, st.GetRelationLinks(), originLength-2)
+		assert.Len(t, st.relationLinks, originLength-2)
 	})
 }
 
@@ -2815,119 +2815,6 @@ func TestAddBundledRealtionLinks(t *testing.T) {
 	})
 }
 
-func TestState_FileRelationKeys(t *testing.T) {
-	t.Run("no file relations", func(t *testing.T) {
-		// given
-		s := &State{}
-
-		// when
-		keys := s.FileRelationKeys()
-
-		// then
-		assert.Empty(t, keys)
-	})
-	t.Run("there are file relations", func(t *testing.T) {
-		// given
-		s := &State{
-			relationLinks: pbtypes.RelationLinks{
-				{Format: model.RelationFormat_file, Key: "fileKey1"},
-				{Format: model.RelationFormat_file, Key: "fileKey2"},
-			},
-		}
-
-		// when
-		keys := s.FileRelationKeys()
-
-		// then
-		expectedKeys := []domain.RelationKey{"fileKey1", "fileKey2"}
-		assert.ElementsMatch(t, keys, expectedKeys)
-	})
-	t.Run("duplicated file relations", func(t *testing.T) {
-		// given
-		s := &State{
-			relationLinks: pbtypes.RelationLinks{
-				{Format: model.RelationFormat_file, Key: "fileKey1"},
-				{Format: model.RelationFormat_file, Key: "fileKey1"},
-			},
-		}
-
-		// when
-		keys := s.FileRelationKeys()
-
-		// then
-		expectedKeys := []domain.RelationKey{"fileKey1"}
-		assert.ElementsMatch(t, keys, expectedKeys)
-	})
-	t.Run("coverId relation", func(t *testing.T) {
-		// given
-		s := &State{
-			relationLinks: pbtypes.RelationLinks{
-				{Key: bundle.RelationKeyCoverId.String()},
-			},
-			details: domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
-				bundle.RelationKeyCoverType: domain.Int64(1),
-			}),
-		}
-
-		// when
-		keys := s.FileRelationKeys()
-
-		// then
-		expectedKeys := []domain.RelationKey{bundle.RelationKeyCoverId}
-		assert.ElementsMatch(t, keys, expectedKeys)
-	})
-	t.Run("mixed relations", func(t *testing.T) {
-		// given
-		s := &State{
-			relationLinks: pbtypes.RelationLinks{
-				{Format: model.RelationFormat_file, Key: "fileKey1"},
-				{Key: bundle.RelationKeyCoverId.String()},
-			},
-			details: domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
-				bundle.RelationKeyCoverType: domain.Int64(4),
-			}),
-		}
-
-		// when
-		keys := s.FileRelationKeys()
-
-		// then
-		expectedKeys := []domain.RelationKey{"fileKey1", bundle.RelationKeyCoverId}
-		assert.ElementsMatch(t, keys, expectedKeys, "Expected both file keys and cover ID")
-	})
-	t.Run("coverType not in details", func(t *testing.T) {
-		// given
-		s := &State{
-			relationLinks: pbtypes.RelationLinks{
-				{Key: bundle.RelationKeyCoverId.String()},
-			},
-		}
-
-		// when
-		keys := s.FileRelationKeys()
-
-		// then
-		assert.Empty(t, keys)
-	})
-	t.Run("unsplash cover", func(t *testing.T) {
-		// given
-		s := &State{
-			relationLinks: pbtypes.RelationLinks{
-				{Key: bundle.RelationKeyCoverId.String()},
-			},
-			details: domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
-				bundle.RelationKeyCoverType: domain.Int64(5),
-			}),
-		}
-
-		// when
-		keys := s.FileRelationKeys()
-
-		// then
-		assert.Len(t, keys, 1)
-	})
-}
-
 func TestState_AddRelationLinks(t *testing.T) {
 	t.Run("add new link", func(t *testing.T) {
 		// given
@@ -2941,7 +2828,7 @@ func TestState_AddRelationLinks(t *testing.T) {
 		s.AddRelationLinks(newLink)
 
 		// then
-		assert.True(t, s.GetRelationLinks().Has("newLink"))
+		assert.True(t, s.relationLinks.Has("newLink"))
 	})
 	t.Run("add existing link", func(t *testing.T) {
 		// given
@@ -2956,8 +2843,8 @@ func TestState_AddRelationLinks(t *testing.T) {
 		s.AddRelationLinks(newLink)
 
 		// then
-		assert.True(t, s.GetRelationLinks().Has("existingLink"))
-		assert.Len(t, s.GetRelationLinks(), 1)
+		assert.True(t, s.relationLinks.Has("existingLink"))
+		assert.Len(t, s.relationLinks, 1)
 	})
 }
 

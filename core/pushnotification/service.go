@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"slices"
 	"sync"
 	"time"
 
@@ -15,11 +16,16 @@ import (
 	"go.uber.org/zap"
 
 	"github.com/anyproto/anytype-heart/core/anytype/config"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/pushnotification/pushclient"
 	"github.com/anyproto/anytype-heart/core/subscription"
+	"github.com/anyproto/anytype-heart/core/subscription/crossspacesub"
 	"github.com/anyproto/anytype-heart/core/subscription/objectsubscription"
 	"github.com/anyproto/anytype-heart/core/wallet"
 	"github.com/anyproto/anytype-heart/pb"
+	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
+	"github.com/anyproto/anytype-heart/pkg/lib/database"
+	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space"
 )
 
@@ -31,7 +37,8 @@ type Service interface {
 	app.ComponentRunnable
 	RegisterToken(req *pb.RpcPushNotificationRegisterTokenRequest)
 	RevokeToken(background context.Context) (err error)
-	Notify(ctx context.Context, spaceId string, topic []string, payload []byte) (err error)
+	Notify(ctx context.Context, spaceId, groupId string, topic []string, payload []byte) (err error)
+	NotifyRead(ctx context.Context, spaceId, groupId string) (err error)
 }
 
 func New() Service {
@@ -40,33 +47,38 @@ func New() Service {
 
 type PushNotification struct {
 	SpaceId  string
+	GroupId  string
 	Topics   []string
 	Payload  []byte
 	Deadline time.Time
+	Silent   bool
 }
 
 type service struct {
-	pushClient           pushclient.Client
-	wallet               wallet.Wallet
-	config               *config.Config
-	spaceService         space.Service
-	subscriptionsService subscription.Service
+	pushClient              pushclient.Client
+	wallet                  wallet.Wallet
+	config                  *config.Config
+	spaceService            space.Service
+	subscriptions           subscription.Service
+	crossSpaceSubscriptions crossspacesub.Service
 
 	spaceViewSubscription *objectsubscription.ObjectSubscription[spaceViewStatus]
+	token                 string
+	chatIds               map[string][]string
 
-	token    string
 	platform pushapi.Platform
 
 	isTokenRegistered bool
 
-	topics *spaceTopicsCollection
-
+	topics       *spaceTopicsCollection
 	notifyQueue  *mb.MB[PushNotification]
-	mu           sync.Mutex
-	runCtx       context.Context
-	runCtxCancel context.CancelFunc
+	chatIdsQueue *mb.MB[*pb.EventMessage]
 
-	wakeUpCh chan struct{}
+	mu     sync.Mutex
+	runCtx context.Context
+
+	runCtxCancel context.CancelFunc
+	wakeUpCh     chan struct{}
 }
 
 func (s *service) Name() (name string) {
@@ -78,8 +90,11 @@ func (s *service) Init(a *app.App) (err error) {
 	s.pushClient = app.MustComponent[pushclient.Client](a)
 	s.wallet = app.MustComponent[wallet.Wallet](a)
 	s.spaceService = app.MustComponent[space.Service](a)
-	s.subscriptionsService = app.MustComponent[subscription.Service](a)
+	s.subscriptions = app.MustComponent[subscription.Service](a)
+	s.crossSpaceSubscriptions = app.MustComponent[crossspacesub.Service](a)
 	s.notifyQueue = mb.New[PushNotification](0)
+	s.chatIdsQueue = mb.New[*pb.EventMessage](0)
+
 	s.topics = newSpaceTopicsCollection(s.wallet.Account().SignKey.GetPublic().Account())
 	s.wakeUpCh = make(chan struct{}, 1)
 	return
@@ -90,7 +105,10 @@ func (s *service) Run(_ context.Context) (err error) {
 		return nil
 	}
 	s.runCtx, s.runCtxCancel = context.WithCancel(context.Background())
-	if s.spaceViewSubscription, err = newSpaceViewSubscription(s.subscriptionsService, s.spaceService.TechSpaceId(), s.wakeUp); err != nil {
+	if s.spaceViewSubscription, err = newSpaceViewSubscription(s.subscriptions, s.spaceService.TechSpaceId(), s.wakeUp); err != nil {
+		return err
+	}
+	if err = s.runChatIdsSubscription(); err != nil {
 		return err
 	}
 	go s.run()
@@ -163,11 +181,21 @@ func (s *service) createSpace(ctx context.Context, spaceKey crypto.PrivKey) (err
 	return err
 }
 
-func (s *service) Notify(ctx context.Context, spaceId string, topic []string, payload []byte) (err error) {
+func (s *service) Notify(ctx context.Context, spaceId, groupId string, topic []string, payload []byte) (err error) {
 	return s.notifyQueue.Add(ctx, PushNotification{
 		SpaceId: spaceId,
+		GroupId: groupId,
 		Topics:  topic,
 		Payload: payload,
+	})
+}
+
+func (s *service) NotifyRead(ctx context.Context, spaceId, groupId string) (err error) {
+	return s.notifyQueue.Add(ctx, PushNotification{
+		SpaceId: spaceId,
+		GroupId: groupId,
+		Topics:  []string{s.wallet.Account().SignKey.GetPublic().Account()},
+		Silent:  true,
 	})
 }
 
@@ -192,6 +220,19 @@ func (s *service) notify(ctx context.Context, message PushNotification) (err err
 	err = s.pushClient.Notify(ctx, &pushapi.NotifyRequest{
 		Topics:  topics,
 		Message: p,
+		GroupId: message.GroupId,
+	})
+	return err
+}
+
+func (s *service) notifySilent(ctx context.Context, message PushNotification) (err error) {
+	topics, err := s.topics.MakeTopics(message.SpaceId, message.Topics)
+	if err != nil {
+		return fmt.Errorf("make topics: %w", err)
+	}
+	err = s.pushClient.NotifySilent(ctx, &pushapi.NotifyRequest{
+		Topics:  topics,
+		GroupId: message.GroupId,
 	})
 	return err
 }
@@ -202,8 +243,14 @@ func (s *service) sendNotificationsLoop() {
 		if err != nil {
 			return
 		}
+		var f func(ctx context.Context, message PushNotification) error
+		if message.Silent {
+			f = s.notifySilent
+		} else {
+			f = s.notify
+		}
 		for range 6 {
-			if err := s.notify(s.runCtx, message); err != nil {
+			if err := f(s.runCtx, message); err != nil {
 				if errors.Is(err, pushapi.ErrNoValidTopics) {
 					break
 				}
@@ -236,10 +283,12 @@ func (s *service) registerToken() (err error) {
 
 func (s *service) syncSubscriptions() (err error) {
 	s.topics.ResetLocal()
+	s.mu.Lock()
 	s.spaceViewSubscription.Iterate(func(id string, data spaceViewStatus) bool {
-		s.topics.SetSpaceViewStatus(&data)
+		s.topics.SetSpaceViewStatus(&data, s.chatIds[data.spaceId])
 		return true
 	})
+	s.mu.Unlock()
 
 	// create spaces
 	spacesToCreate := s.topics.SpaceKeysToCreate()
@@ -260,11 +309,76 @@ func (s *service) syncSubscriptions() (err error) {
 			Topics: topicsReq,
 		}); err != nil {
 			return fmt.Errorf("subscribe: %w", err)
-		} else {
-			s.topics.Flush()
 		}
+		s.topics.Flush()
 	}
 	return
+}
+
+func (s *service) runChatIdsSubscription() (err error) {
+	resp, err := s.crossSpaceSubscriptions.Subscribe(subscription.SubscribeRequest{
+		SubId:             CName,
+		InternalQueue:     s.chatIdsQueue,
+		Keys:              []string{bundle.RelationKeyId.String(), bundle.RelationKeySpaceId.String(), bundle.RelationKeyIdentity.String()},
+		NoDepSubscription: true,
+		Filters: []database.FilterRequest{
+			{
+				RelationKey: bundle.RelationKeyResolvedLayout,
+				Condition:   model.BlockContentDataviewFilter_Equal,
+				Value:       domain.Int64(int64(model.ObjectType_chatDerived)),
+			},
+		},
+	}, func(d *domain.Details) bool {
+		return d.GetString(bundle.RelationKeySpaceId) != s.spaceService.TechSpaceId()
+	})
+	if err != nil {
+		return err
+	}
+	s.chatIds = make(map[string][]string)
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	for _, chatDet := range resp.Records {
+		chatId := chatDet.GetString(bundle.RelationKeyId)
+		spaceId := chatDet.GetString(bundle.RelationKeySpaceId)
+		s.chatIds[spaceId] = append(s.chatIds[spaceId], chatId)
+	}
+	go s.monitorChatIds()
+	return
+}
+
+func (s *service) monitorChatIds() {
+	matcher := subscription.EventMatcher{
+		OnAdd: func(spaceId string, add *pb.EventObjectSubscriptionAdd) {
+			s.mu.Lock()
+			defer s.mu.Unlock()
+			chatIds := s.chatIds[spaceId]
+			if !slices.Contains(chatIds, add.Id) {
+				chatIds = append(chatIds, add.Id)
+				s.chatIds[spaceId] = chatIds
+				s.wakeUp()
+			}
+		},
+		OnRemove: func(spaceId string, remove *pb.EventObjectSubscriptionRemove) {
+			s.mu.Lock()
+			defer s.mu.Unlock()
+			chatIds := s.chatIds[spaceId]
+			chatIds = slices.DeleteFunc(chatIds, func(id string) bool {
+				return id == remove.Id
+			})
+			s.chatIds[spaceId] = chatIds
+		},
+	}
+	for {
+		msg, err := s.chatIdsQueue.WaitOne(s.runCtx)
+		if errors.Is(err, mb.ErrClosed) {
+			return
+		}
+		if err != nil {
+			log.Error("wait message", zap.Error(err))
+			return
+		}
+		matcher.Match(msg)
+	}
 }
 
 func (s *service) RevokeToken(ctx context.Context) (err error) {

@@ -75,10 +75,13 @@ func (s *service) Close(ctx context.Context) error {
 	s.lock.Lock()
 	err := s.subscriptionService.Unsubscribe(s.spaceViewsSubId)
 	s.lock.Unlock()
+	for subId := range s.subscriptions {
+		_ = s.Unsubscribe(subId)
+	}
 	return err
 }
 
-func (s *service) Subscribe(req subscriptionservice.SubscribeRequest, predicate Predicate) (*subscriptionservice.SubscribeResponse, error) {
+func (s *service) Subscribe(req subscriptionservice.SubscribeRequest, spaceViewPredicate Predicate) (*subscriptionservice.SubscribeResponse, error) {
 	if !req.NoDepSubscription {
 		return nil, fmt.Errorf("dependency subscription is not yet supported")
 	}
@@ -105,13 +108,13 @@ func (s *service) Subscribe(req subscriptionservice.SubscribeRequest, predicate 
 	defer s.lock.Unlock()
 	var initialIds []string
 	for spaceViewId, details := range s.spaceViewDetails {
-		if predicate(details) {
+		if spaceViewPredicate(details) {
 			if targetSpaceId, ok := s.spaceViewTargetIds[spaceViewId]; ok {
 				initialIds = append(initialIds, targetSpaceId)
 			}
 		}
 	}
-	spaceSub, resp, err := newCrossSpaceSubscription(req.SubId, req, s.eventSender, s.subscriptionService, initialIds, predicate)
+	spaceSub, resp, err := newCrossSpaceSubscription(req.SubId, req, s.eventSender, s.subscriptionService, initialIds, spaceViewPredicate)
 	if err != nil {
 		return nil, fmt.Errorf("new cross space subscription: %w", err)
 	}

@@ -29,7 +29,6 @@ var relationsEdgesSkipList = []domain.RelationKey{
 	bundle.RelationKeySetOf,
 	bundle.RelationKeyCreator,
 	bundle.RelationKeyLastModifiedBy,
-	bundle.RelationKeyWorkspaceId,
 	bundle.RelationKeyIconImage,
 	bundle.RelationKeyCoverId,
 	bundle.RelationKeyBacklinks,

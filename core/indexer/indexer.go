@@ -13,10 +13,12 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/source"
 	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/core/relationutils"
 	"github.com/anyproto/anytype-heart/core/files/migration"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/datastore/anystoreprovider"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/ftsearch"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
@@ -49,13 +51,14 @@ type Hasher interface {
 }
 
 type indexer struct {
-	dbProvider              anystoreprovider.Provider
-	store                   objectstore.ObjectStore
-	source                  source.Service
-	picker                  cache.CachedObjectGetter
-	ftsearch                ftsearch.FTSearch
+	dbProvider           anystoreprovider.Provider
+	store                objectstore.ObjectStore
+	source               source.Service
+	picker               cache.CachedObjectGetter
+	formatFetcher        relationutils.RelationFormatFetcher
 	contextMigrationService migration.ContextMigrationService
-	ftsearchLastIndexSeq    uint64
+	ftsearch             ftsearch.FTSearch
+	ftsearchLastIndexSeq uint64
 
 	runCtx          context.Context
 	runCtxCancel    context.CancelFunc
@@ -87,6 +90,7 @@ func (i *indexer) Init(a *app.App) (err error) {
 	i.spaceIndexers = map[string]*spaceIndexer{}
 	i.techSpaceIdProvider = app.MustComponent[objectstore.TechSpaceIdProvider](a)
 	i.dbProvider = app.MustComponent[anystoreprovider.Provider](a)
+	i.formatFetcher = app.MustComponent[relationutils.RelationFormatFetcher](a)
 	i.contextMigrationService = app.MustComponent[migration.ContextMigrationService](a)
 	return
 }
@@ -160,6 +164,11 @@ func (i *indexer) RemoveAclIndexes(spaceId string) (err error) {
 	return store.DeleteDetails(i.runCtx, ids)
 }
 
+func (i *indexer) isFulltextEnabled(space smartblock.Space) bool {
+	return i.techSpaceIdProvider.TechSpaceId() != space.Id() &&
+		space.Id() != addr.AnytypeMarketplaceWorkspace
+}
+
 func (i *indexer) Index(info smartblock.DocInfo, options ...smartblock.IndexOption) error {
 	i.lock.Lock()
 	spaceInd, ok := i.spaceIndexers[info.Space.Id()]
@@ -168,6 +177,7 @@ func (i *indexer) Index(info smartblock.DocInfo, options ...smartblock.IndexOpti
 			i.runCtx,
 			i.store.SpaceIndex(info.Space.Id()),
 			i.store,
+			i.isFulltextEnabled(info.Space),
 			i.contextMigrationService,
 			i.techSpaceIdProvider.TechSpaceId() == info.Space.Id(),
 		)

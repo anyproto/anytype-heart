@@ -62,12 +62,16 @@ type spaceSyncStatus struct {
 	mx             sync.Mutex
 	periodicCall   periodicsync.PeriodicSync
 	loopInterval   time.Duration
+	startDelay     time.Duration // delay before starting sync, can be overridden in tests
 	isLocal        bool
+	closeCh        chan struct{}
 }
 
 func NewSpaceSyncStatus() Updater {
 	return &spaceSyncStatus{
 		loopInterval: time.Second * 1,
+		startDelay:   time.Second * 3,
+		closeCh:      make(chan struct{}),
 	}
 }
 
@@ -108,8 +112,15 @@ func (s *spaceSyncStatus) UpdateMissingIds(spaceId string, ids []string) {
 }
 
 func (s *spaceSyncStatus) Run(ctx context.Context) (err error) {
-	s.sendStartEvent(s.spaceIdGetter.AllSpaceIds())
-	s.periodicCall.Run()
+	go func() {
+		select {
+		case <-time.After(s.startDelay):
+		case <-s.closeCh:
+			return
+		}
+		s.sendStartEvent(s.spaceIdGetter.AllSpaceIds())
+		s.periodicCall.Run()
+	}()
 	return
 }
 
@@ -219,7 +230,7 @@ func (s *spaceSyncStatus) getNotSyncedFilesCount(spaceId string) int {
 		log.Errorf("get not synced files count: failed to get subscription: %v", err)
 		return 0
 	}
-	return curSub.NotSyncedFilesCount()
+	return curSub.LimitedFilesCount()
 }
 
 func (s *spaceSyncStatus) getBytesLeftPercentage(spaceId string) float64 {
@@ -250,6 +261,7 @@ func (s *spaceSyncStatus) updateSpaceSyncStatus(spaceId string) {
 }
 
 func (s *spaceSyncStatus) Close(ctx context.Context) (err error) {
+	close(s.closeCh)
 	s.periodicCall.Close()
 	return
 }
