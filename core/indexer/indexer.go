@@ -13,6 +13,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/source"
 	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/core/files/migration"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/datastore/anystoreprovider"
@@ -48,12 +49,13 @@ type Hasher interface {
 }
 
 type indexer struct {
-	dbProvider           anystoreprovider.Provider
-	store                objectstore.ObjectStore
-	source               source.Service
-	picker               cache.CachedObjectGetter
-	ftsearch             ftsearch.FTSearch
-	ftsearchLastIndexSeq uint64
+	dbProvider              anystoreprovider.Provider
+	store                   objectstore.ObjectStore
+	source                  source.Service
+	picker                  cache.CachedObjectGetter
+	ftsearch                ftsearch.FTSearch
+	contextMigrationService migration.ContextMigrationService
+	ftsearchLastIndexSeq    uint64
 
 	runCtx          context.Context
 	runCtxCancel    context.CancelFunc
@@ -85,6 +87,7 @@ func (i *indexer) Init(a *app.App) (err error) {
 	i.spaceIndexers = map[string]*spaceIndexer{}
 	i.techSpaceIdProvider = app.MustComponent[objectstore.TechSpaceIdProvider](a)
 	i.dbProvider = app.MustComponent[anystoreprovider.Provider](a)
+	i.contextMigrationService = app.MustComponent[migration.ContextMigrationService](a)
 	return
 }
 
@@ -165,6 +168,7 @@ func (i *indexer) Index(info smartblock.DocInfo, options ...smartblock.IndexOpti
 			i.runCtx,
 			i.store.SpaceIndex(info.Space.Id()),
 			i.store,
+			i.contextMigrationService,
 			i.techSpaceIdProvider.TechSpaceId() == info.Space.Id(),
 		)
 		i.spaceIndexers[info.Space.Id()] = spaceInd

@@ -65,13 +65,13 @@ type File interface {
 }
 
 type FileSource struct {
-	Path            string
-	Url             string // nolint:revive
-	Bytes           []byte
-	Name            string
-	GroupID         string
-	Origin          objectorigin.ObjectOrigin
-	ImageKind       model.ImageKind
+	Path             string
+	Url              string // nolint:revive
+	Bytes            []byte
+	Name             string
+	GroupID          string
+	Origin           objectorigin.ObjectOrigin
+	ImageKind        model.ImageKind
 	CreatedInContext string
 	CreatedInBlockId string
 }

@@ -39,6 +39,9 @@ type UploadRequest struct {
 	pb.RpcBlockUploadRequest
 	ObjectOrigin objectorigin.ObjectOrigin
 	ImageKind    model.ImageKind
+	// CreatedInBlockId is the block ID where the file was created (e.g., where it was pasted)
+	// This is different from BlockId which is the file block's own ID
+	CreatedInBlockId string
 }
 
 type BookmarkFetchRequest struct {
@@ -341,6 +344,12 @@ func (s *Service) UploadBlockFile(
 	ctx session.Context, req UploadRequest, groupID string, isSync bool,
 ) (fileObjectId string, err error) {
 	err = cache.Do(s, req.ContextId, func(b file.File) error {
+		// Use the CreatedInBlockId if provided (e.g., from paste operations)
+		// Otherwise fall back to req.BlockId for backward compatibility
+		createdInBlockId := req.CreatedInBlockId
+		if createdInBlockId == "" {
+			createdInBlockId = req.BlockId
+		}
 		fileObjectId, err = b.Upload(ctx, req.BlockId, file.FileSource{
 			Path:             req.FilePath,
 			Url:              req.Url,
@@ -349,7 +358,7 @@ func (s *Service) UploadBlockFile(
 			Origin:           req.ObjectOrigin,
 			ImageKind:        req.ImageKind,
 			CreatedInContext: req.ContextId,
-			CreatedInBlockId: req.BlockId,
+			CreatedInBlockId: createdInBlockId,
 		}, isSync)
 		return err
 	})

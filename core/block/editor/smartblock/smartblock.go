@@ -193,6 +193,16 @@ type DocInfo struct {
 	Details *domain.Details
 
 	SmartblockType smartblock.SmartBlockType
+
+	// OutgoingLinks contains detailed information about links from this object
+	OutgoingLinks []OutgoingLink
+}
+
+// OutgoingLink represents a link from this object to another object
+type OutgoingLink struct {
+	TargetID      string // ID of the target object
+	SourceBlockID string // Block ID where the link originates (empty for relation links)
+	RelationKey   string // Relation key (empty for block links)
 }
 
 // TODO Maybe create constructor? Don't want to forget required fields
@@ -1272,6 +1282,9 @@ func (sb *smartBlock) getDocInfo(st *state.State) DocInfo {
 			heads = []string{lastChangeId}
 		}
 	}
+	// Collect outgoing links with source information
+	outgoingLinks := sb.collectOutgoingLinks(st)
+
 	return DocInfo{
 		Id:             sb.Id(),
 		Space:          sb.Space(),
@@ -1281,6 +1294,7 @@ func (sb *smartBlock) getDocInfo(st *state.State) DocInfo {
 		Details:        sb.CombinedDetails(),
 		Type:           sb.ObjectTypeKey(),
 		SmartblockType: sb.Type(),
+		OutgoingLinks:  outgoingLinks,
 	}
 }
 
@@ -1399,6 +1413,100 @@ func getRemovedLinks(linksBefore, linksAfter []string) []string {
 		}
 	}
 	return removed
+}
+
+// collectOutgoingLinks collects all outgoing links from blocks and relations with their source information
+func (sb *smartBlock) collectOutgoingLinks(st *state.State) []OutgoingLink {
+	var outgoingLinks []OutgoingLink
+	linkSet := make(map[string]bool) // To avoid duplicates
+
+	// Collect links from blocks
+	st.Iterate(func(b simple.Block) (isContinue bool) {
+		blockModel := b.Model()
+		if blockModel == nil {
+			return true
+		}
+
+		// Extract links based on block content type
+		if link := blockModel.GetLink(); link != nil && link.TargetBlockId != "" && !linkSet[link.TargetBlockId] {
+			linkSet[link.TargetBlockId] = true
+			outgoingLinks = append(outgoingLinks, OutgoingLink{
+				TargetID:      link.TargetBlockId,
+				SourceBlockID: blockModel.Id,
+			})
+		}
+
+		if file := blockModel.GetFile(); file != nil && file.TargetObjectId != "" && !linkSet[file.TargetObjectId] {
+			linkSet[file.TargetObjectId] = true
+			outgoingLinks = append(outgoingLinks, OutgoingLink{
+				TargetID:      file.TargetObjectId,
+				SourceBlockID: blockModel.Id,
+			})
+		}
+
+		if text := blockModel.GetText(); text != nil && text.Marks != nil {
+			// Extract mentions from text marks
+			for _, mark := range text.Marks.Marks {
+				if mark.Type == model.BlockContentTextMark_Mention && mark.Param != "" && !linkSet[mark.Param] {
+					linkSet[mark.Param] = true
+					outgoingLinks = append(outgoingLinks, OutgoingLink{
+						TargetID:      mark.Param,
+						SourceBlockID: blockModel.Id,
+					})
+				}
+			}
+		}
+
+		return true
+	})
+
+	// Collect links from object relations
+	details := st.CombinedDetails()
+	if details != nil {
+		for _, rel := range st.GetRelationLinks() {
+			// Only process object relations
+			if rel.Format != model.RelationFormat_object && rel.Format != model.RelationFormat_file {
+				continue
+			}
+
+			if rel.Key == bundle.RelationKeyId.String() ||
+				rel.Key == bundle.RelationKeyLinks.String() ||
+				rel.Key == bundle.RelationKeyBacklinks.String() ||
+				rel.Key == bundle.RelationKeyCreator.String() ||
+				rel.Key == bundle.RelationKeyLastModifiedBy.String() ||
+				rel.Key == bundle.RelationKeyType.String() || // always skip type because it was processed before
+				rel.Key == bundle.RelationKeyFeaturedRelations.String() {
+				continue
+			}
+
+			// Get the value from details
+			value := details.Get(domain.RelationKey(rel.Key))
+			if !value.Ok() {
+				continue
+			}
+
+			// Extract target IDs based on value type
+			var targetIds []string
+			if str := value.String(); str != "" {
+				targetIds = []string{str}
+			} else if list := value.StringList(); len(list) > 0 {
+				targetIds = list
+			}
+
+			// Add outgoing links for each target
+			for _, targetId := range targetIds {
+				if targetId != "" && !linkSet[targetId] {
+					linkSet[targetId] = true
+					outgoingLinks = append(outgoingLinks, OutgoingLink{
+						TargetID:    targetId,
+						RelationKey: rel.Key,
+					})
+				}
+			}
+		}
+	}
+
+	return outgoingLinks
 }
 
 // performFileGC runs the file garbage collector for removed links

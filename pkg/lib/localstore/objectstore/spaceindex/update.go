@@ -110,6 +110,25 @@ func (s *dsObjectStore) UpdateObjectLinks(ctx context.Context, id string, links 
 	return nil
 }
 
+func (s *dsObjectStore) UpdateObjectLinksDetailed(ctx context.Context, id string, outgoingLinks []OutgoingLink) error {
+	// Extract simple links for compatibility
+	links := make([]string, 0, len(outgoingLinks))
+	linkMap := make(map[string][]OutgoingLink)
+	for _, link := range outgoingLinks {
+		links = append(links, link.TargetID)
+		linkMap[link.TargetID] = append(linkMap[link.TargetID], link)
+	}
+
+	added, removed, err := s.updateObjectLinksDetailed(ctx, id, outgoingLinks)
+	if err != nil {
+		return err
+	}
+
+	s.subManager.updateObjectLinks(domain.FullID{SpaceID: s.SpaceId(), ObjectID: id}, added, removed)
+
+	return nil
+}
+
 func (s *dsObjectStore) UpdatePendingLocalDetails(id string, proc func(details *domain.Details) (*domain.Details, error)) error {
 	if proc == nil {
 		return nil
@@ -239,4 +258,40 @@ func anyEncArrayToStrings(arr []*anyenc.Value) []string {
 		res = append(res, string(v.GetStringBytes()))
 	}
 	return res
+}
+
+func (s *dsObjectStore) updateObjectLinksDetailed(ctx context.Context, id string, outgoingLinks []OutgoingLink) (added []string, removed []string, err error) {
+	_, err = s.links.UpsertId(ctx, id, query.ModifyFunc(func(arena *anyenc.Arena, val *anyenc.Value) (*anyenc.Value, bool, error) {
+		// Get previous simple links for diff calculation
+		prev := anyEncArrayToStrings(val.GetArray(linkOutboundField))
+
+		// Create target ID list for diff
+		current := make([]string, 0, len(outgoingLinks))
+		for _, link := range outgoingLinks {
+			current = append(current, link.TargetID)
+		}
+
+		removed, added = slice.DifferenceRemovedAdded(prev, current)
+
+		// Store simple links for backward compatibility
+		val.Set(linkOutboundField, stringsToJsonArray(arena, current))
+
+		// Store detailed link information
+		detailedLinks := arena.NewArray()
+		for i, link := range outgoingLinks {
+			linkObj := arena.NewObject()
+			linkObj.Set(linkTargetField, arena.NewString(link.TargetID))
+			if link.BlockID != "" {
+				linkObj.Set(linkBlockField, arena.NewString(link.BlockID))
+			}
+			if link.RelationKey != "" {
+				linkObj.Set(linkRelationField, arena.NewString(link.RelationKey))
+			}
+			detailedLinks.SetArrayItem(i, linkObj)
+		}
+		val.Set(linkDetailedField, detailedLinks)
+
+		return val, len(added)+len(removed) > 0, nil
+	}))
+	return
 }

@@ -28,6 +28,13 @@ var (
 	ErrNotAnObject    = fmt.Errorf("not an object")
 )
 
+// OutgoingLink represents a link from this object to another object
+type OutgoingLink struct {
+	TargetID    string // ID of the target object
+	BlockID     string // Block ID where the link originates (empty for relation links)
+	RelationKey string // Relation key (empty for block links)
+}
+
 type Store interface {
 	SpaceId() string
 	Close() error
@@ -52,7 +59,9 @@ type Store interface {
 	// set discardLocalDetailsChanges to true in case the caller doesn't have local details in the State
 	UpdateObjectDetails(ctx context.Context, id string, details *domain.Details) error
 	SubscribeForAll(callback func(rec database.Record))
+	// UpdaeObjectLinks is deprecated, use UpdateObjectLinksDetailed instead
 	UpdateObjectLinks(ctx context.Context, id string, links []string) error
+	UpdateObjectLinksDetailed(ctx context.Context, id string, outgoingLinks []OutgoingLink) error
 	UpdatePendingLocalDetails(id string, proc func(details *domain.Details) (*domain.Details, error)) error
 	ModifyObjectDetails(id string, proc func(details *domain.Details) (*domain.Details, bool, error)) error
 
@@ -66,6 +75,7 @@ type Store interface {
 
 	GetInboundLinksById(id string) ([]string, error)
 	GetOutboundLinksById(id string) ([]string, error)
+	GetOutboundLinksDetailedById(id string) ([]OutgoingLink, error)
 	GetWithLinksInfoById(id string) (*model.ObjectInfoWithLinks, error)
 
 	SetActiveView(objectId, blockId, viewId string) error

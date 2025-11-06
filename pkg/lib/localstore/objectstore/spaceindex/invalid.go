@@ -91,6 +91,10 @@ func (s *invalidStore) UpdateObjectLinks(ctx context.Context, id string, links [
 	return s.err
 }
 
+func (s *invalidStore) UpdateObjectLinksDetailed(ctx context.Context, id string, outgoingLinks []OutgoingLink) error {
+	return s.err
+}
+
 func (s *invalidStore) UpdatePendingLocalDetails(id string, proc func(details *domain.Details) (*domain.Details, error)) error {
 	return s.err
 }
@@ -128,6 +132,10 @@ func (s *invalidStore) GetInboundLinksById(id string) ([]string, error) {
 }
 
 func (s *invalidStore) GetOutboundLinksById(id string) ([]string, error) {
+	return nil, s.err
+}
+
+func (s *invalidStore) GetOutboundLinksDetailedById(id string) ([]OutgoingLink, error) {
 	return nil, s.err
 }
 

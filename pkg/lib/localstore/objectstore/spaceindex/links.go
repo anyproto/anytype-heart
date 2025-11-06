@@ -11,7 +11,13 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-const linkOutboundField = "o"
+const (
+	linkOutboundField = "o"
+	linkDetailedField = "od" // outgoing detailed
+	linkTargetField   = "t"  // target id
+	linkBlockField    = "b"  // block id
+	linkRelationField = "r"  // relation key
+)
 
 func (s *dsObjectStore) GetWithLinksInfoById(id string) (*model.ObjectInfoWithLinks, error) {
 	txn, err := s.links.ReadTx(s.componentCtx)
@@ -74,6 +80,10 @@ func (s *dsObjectStore) GetInboundLinksById(id string) ([]string, error) {
 	return s.findInboundLinks(s.componentCtx, id)
 }
 
+func (s *dsObjectStore) GetOutboundLinksDetailedById(id string) ([]OutgoingLink, error) {
+	return s.findOutboundLinksDetailed(s.componentCtx, id)
+}
+
 // Find to which IDs specified one has outbound links.
 func (s *dsObjectStore) findOutboundLinks(ctx context.Context, id string) ([]string, error) {
 	doc, err := s.links.FindId(ctx, id)
@@ -105,6 +115,41 @@ func (s *dsObjectStore) findInboundLinks(ctx context.Context, id string) ([]stri
 			return nil, fmt.Errorf("get doc: %w", err)
 		}
 		links = append(links, string(doc.Value().GetStringBytes("id")))
+	}
+	return links, nil
+}
+
+// Find detailed outgoing links with source information
+func (s *dsObjectStore) findOutboundLinksDetailed(ctx context.Context, id string) ([]OutgoingLink, error) {
+	doc, err := s.links.FindId(ctx, id)
+	if errors.Is(err, anystore.ErrDocNotFound) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+
+	// Try to get detailed links first
+	detailedLinksArr := doc.Value().GetArray(linkDetailedField)
+	if len(detailedLinksArr) > 0 {
+		var links []OutgoingLink
+		for _, linkVal := range detailedLinksArr {
+			link := OutgoingLink{
+				TargetID:    string(linkVal.GetStringBytes(linkTargetField)),
+				BlockID:     string(linkVal.GetStringBytes(linkBlockField)),
+				RelationKey: string(linkVal.GetStringBytes(linkRelationField)),
+			}
+			links = append(links, link)
+		}
+		return links, nil
+	}
+
+	// Fallback to simple links if detailed links not available
+	arr := doc.Value().GetArray(linkOutboundField)
+	targetIds := anyEncArrayToStrings(arr)
+	var links []OutgoingLink
+	for _, targetId := range targetIds {
+		links = append(links, OutgoingLink{TargetID: targetId})
 	}
 	return links, nil
 }

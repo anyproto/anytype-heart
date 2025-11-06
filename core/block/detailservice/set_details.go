@@ -101,7 +101,7 @@ func (s *service) SetIsArchived(objectId string, isArchived bool) error {
 	if err := s.checkArchivedRestriction(isArchived, objectId); err != nil {
 		return err
 	}
-	
+
 	// If archiving (not unarchiving), run file GC on all linked files
 	if isArchived && s.fileGC != nil {
 		// Get object's outgoing links before archiving
@@ -128,7 +128,7 @@ func (s *service) SetIsArchived(objectId string, isArchived bool) error {
 			}
 		}
 	}
-	
+
 	return s.objectLinksCollectionModify(spc.DerivedIDs().Archive, objectId, isArchived)
 }
 
@@ -238,7 +238,7 @@ func (s *service) setIsArchivedForObjects(spaceId string, objectIds []string, is
 	if err != nil {
 		return fmt.Errorf("get space: %w", err)
 	}
-	
+
 	// If archiving, run file GC for all objects being archived
 	if isArchived && s.fileGC != nil && len(objectIds) > 0 {
 		idx := s.store.SpaceIndex(spaceId)
@@ -272,7 +272,7 @@ func (s *service) setIsArchivedForObjects(spaceId string, objectIds []string, is
 			}
 		}
 	}
-	
+
 	return cache.Do(s.objectGetter, spc.DerivedIDs().Archive, func(b smartblock.SmartBlock) error {
 		archive, ok := b.(collection.Collection)
 		if !ok {
