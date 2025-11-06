@@ -84,6 +84,8 @@ type fileSync struct {
 	isLimitReachedErrorLogged keyvaluestore.Store[bool]
 	nodeUsageCache            keyvaluestore.Store[NodeUsage]
 
+	limitManager *uploadLimitManager
+
 	importEventsMutex sync.Mutex
 	importEvents      []*pb.Event
 	cfg               *config.Config
@@ -101,6 +103,7 @@ func (s *fileSync) Init(a *app.App) (err error) {
 	s.dagService = app.MustComponent[fileservice.FileService](a).DAGService()
 	s.eventSender = app.MustComponent[event.Sender](a)
 	s.cfg = app.MustComponent[*config.Config](a)
+	s.limitManager = newLimitManager(s.rpcStore)
 
 	provider := app.MustComponent[anystoreprovider.Provider](a)
 	db := provider.GetCommonDb()
@@ -119,7 +122,7 @@ func (s *fileSync) Init(a *app.App) (err error) {
 	if err != nil {
 		return fmt.Errorf("init uploading queue storage: %w", err)
 	}
-	s.uploadingQueue = persistentqueue.New(uploadingQueueStorage, log.Logger, s.uploadingHandler, queueItemLess)
+	s.uploadingQueue = persistentqueue.New(uploadingQueueStorage, log.Logger, s.uploadingHandler, queueItemLess, persistentqueue.WithWorkersNumber(5))
 
 	retryUploadingQueueStorage, err := persistentqueue.NewAnystoreStorage(db, "filesync/retry_uploading", makeQueueItem)
 	if err != nil {

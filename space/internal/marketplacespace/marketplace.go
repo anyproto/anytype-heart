@@ -18,6 +18,7 @@ import (
 	"github.com/anyproto/anytype-heart/space/virtualspaceservice"
 )
 
+// TODO: GO-6259 MarketplaceSpace is deprecated and no longer used on clients. We need to get rid of code that installs types/relations from marketplace space and remove it
 func NewSpaceController(a *app.App, personalSpaceId string) spacecontroller.SpaceController {
 	return &spaceController{
 		app:             a,
@@ -47,15 +48,12 @@ func (s *spaceController) Start(context.Context) (err error) {
 			RelationPrefix:  addr.BundledRelationURLPrefix,
 		})
 	vsService := app.MustComponent[virtualspaceservice.VirtualSpaceService](s.app)
-	bsService := app.MustComponent[dependencies.BuiltinTemplateService](s.app)
+	// bsService := app.MustComponent[dependencies.BuiltinTemplateService](s.app)
 	err = vsService.RegisterVirtualSpace(addr.AnytypeMarketplaceWorkspace)
 	if err != nil {
 		return fmt.Errorf("register virtual space: %w", err)
 	}
-	err = bsService.RegisterBuiltinTemplates(s.vs)
-	if err != nil {
-		return fmt.Errorf("register builtin templates: %w", err)
-	}
+
 	return err
 }
 

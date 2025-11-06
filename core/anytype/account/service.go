@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"path/filepath"
+	"sync"
 	"time"
 
 	"github.com/anyproto/any-sync/accountservice"
@@ -23,6 +24,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space"
 	"github.com/anyproto/anytype-heart/space/spacecore"
+	"github.com/anyproto/anytype-heart/space/spacedomain"
 	"github.com/anyproto/anytype-heart/space/techspace"
 	"github.com/anyproto/anytype-heart/util/metricsid"
 )
@@ -37,6 +39,7 @@ var log = logging.Logger(CName)
 
 type Service interface {
 	app.Component
+	GetAccountObjectId() (string, error)
 	GetInfo(ctx context.Context) (*model.AccountInfo, error)
 	GetSpaceInfo(ctx context.Context, spaceId string) (*model.AccountInfo, error)
 	Delete(ctx context.Context) (toBeDeleted int64, err error)
@@ -64,6 +67,9 @@ type service struct {
 
 	picker          cache.ObjectGetter
 	personalSpaceId string
+
+	accountObjectIdLock sync.Mutex
+	accountObjectId     string
 }
 
 func New() Service {
@@ -81,7 +87,7 @@ func (s *service) Init(a *app.App) (err error) {
 	s.config = app.MustComponent[*config.Config](a)
 	s.picker = app.MustComponent[cache.ObjectGetter](a)
 	s.objectStore = app.MustComponent[objectstore.ObjectStore](a)
-	s.personalSpaceId, err = s.spaceCore.DeriveID(context.Background(), spacecore.SpaceType)
+	s.personalSpaceId, err = s.spaceCore.DeriveID(context.Background(), spacedomain.SpaceTypeRegular)
 	return
 }
 
@@ -117,11 +123,25 @@ func (s *service) Name() (name string) {
 	return CName
 }
 
-func (s *service) GetInfo(ctx context.Context) (*model.AccountInfo, error) {
-	accountId, err := s.spaceService.TechSpace().AccountObjectId()
-	if err != nil {
-		return nil, fmt.Errorf("failed to get account id: %w", err)
+func (s *service) GetAccountObjectId() (string, error) {
+	s.accountObjectIdLock.Lock()
+	defer s.accountObjectIdLock.Unlock()
+	if s.accountObjectId == "" {
+		id, err := s.spaceService.TechSpace().AccountObjectId()
+		if err != nil {
+			return "", err
+		}
+		s.accountObjectId = id
 	}
+	return s.accountObjectId, nil
+}
+
+func (s *service) GetInfo(ctx context.Context) (*model.AccountInfo, error) {
+	accountId, err := s.GetAccountObjectId()
+	if err != nil {
+		return nil, fmt.Errorf("get account object id: %w", err)
+	}
+
 	deviceKey := s.wallet.GetDevicePrivkey()
 	deviceId := deviceKey.GetPublic().PeerId()
 

@@ -134,10 +134,6 @@ func validateDetails(s *pb.SnapshotWithType, info *useCaseInfo, fixConfig FixCon
 				continue
 			}
 
-			if k == bundle.RelationKeyAutoWidgetTargets.String() && val == "bin" {
-				continue
-			}
-
 			_, found := info.objects[val]
 			if !found {
 				if isBrokenTemplate(k, val) {
@@ -338,8 +334,8 @@ func isDefaultWidget(target string) bool {
 	return slices.Contains([]string{
 		widget.DefaultWidgetFavorite,
 		widget.DefaultWidgetSet,
-		widget.DefaultWidgetRecent,
-		widget.DefaultWidgetRecentOpen,
+		widget.DefaultWidgetRecentlyEdited,
+		widget.DefaultWidgetRecentlyOpened,
 		widget.DefaultWidgetCollection,
 	}, target)
 }

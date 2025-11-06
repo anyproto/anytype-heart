@@ -203,6 +203,63 @@ func (_c *MockManager_GetChatState_Call) RunAndReturn(run func() *model.ChatStat
 	return _c
 }
 
+// GetLastMessage provides a mock function with given fields:
+func (_m *MockManager) GetLastMessage() (*model.ChatMessage, bool) {
+	ret := _m.Called()
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetLastMessage")
+	}
+
+	var r0 *model.ChatMessage
+	var r1 bool
+	if rf, ok := ret.Get(0).(func() (*model.ChatMessage, bool)); ok {
+		return rf()
+	}
+	if rf, ok := ret.Get(0).(func() *model.ChatMessage); ok {
+		r0 = rf()
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*model.ChatMessage)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func() bool); ok {
+		r1 = rf()
+	} else {
+		r1 = ret.Get(1).(bool)
+	}
+
+	return r0, r1
+}
+
+// MockManager_GetLastMessage_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetLastMessage'
+type MockManager_GetLastMessage_Call struct {
+	*mock.Call
+}
+
+// GetLastMessage is a helper method to define mock.On call
+func (_e *MockManager_Expecter) GetLastMessage() *MockManager_GetLastMessage_Call {
+	return &MockManager_GetLastMessage_Call{Call: _e.mock.On("GetLastMessage")}
+}
+
+func (_c *MockManager_GetLastMessage_Call) Run(run func()) *MockManager_GetLastMessage_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *MockManager_GetLastMessage_Call) Return(_a0 *model.ChatMessage, _a1 bool) *MockManager_GetLastMessage_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockManager_GetLastMessage_Call) RunAndReturn(run func() (*model.ChatMessage, bool)) *MockManager_GetLastMessage_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // IsActive provides a mock function with given fields:
 func (_m *MockManager) IsActive() bool {
 	ret := _m.Called()

@@ -308,6 +308,18 @@ func MergeUniqBy[T comparable](s1, s2 []T, equal func(v1, v2 T) bool) (result []
 	return result
 }
 
+// ContainsBySeq searches for value v1 using iterator over sequence seq
+func ContainsBySeq[T comparable](seq iter.Seq[T], v1 T) (found bool) {
+	seq(func(v2 T) bool {
+		if v1 == v2 {
+			found = true
+			return false
+		}
+		return true
+	})
+	return
+}
+
 // DeleteOrApplyFunc deletes elements that satisfy del predicate, otherwise apply func
 func DeleteOrApplyFunc[S ~[]E, E any](s S, del func(E) bool, apply func(E) E) S {
 	i := 0

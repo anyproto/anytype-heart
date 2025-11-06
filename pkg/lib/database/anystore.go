@@ -166,15 +166,16 @@ func (s textSort) AppendKey(tuple anyenc.Tuple, v *anyenc.Value) anyenc.Tuple {
 	}
 }
 
-type tagStatusSort struct {
+type objectSort struct {
 	arena       *anyenc.Arena
 	relationKey string
 	reverse     bool
 	nulls       model.BlockContentDataviewSortEmptyType
-	idToName    map[string]string
+	orders      *OrderMap
+	keyBuffer   []byte
 }
 
-func (s tagStatusSort) Fields() []query.SortField {
+func (s objectSort) Fields() []query.SortField {
 	return []query.SortField{
 		{
 			Field: "",
@@ -182,37 +183,41 @@ func (s tagStatusSort) Fields() []query.SortField {
 	}
 }
 
-func (s tagStatusSort) AppendKey(tuple anyenc.Tuple, v *anyenc.Value) anyenc.Tuple {
+func (s objectSort) AppendKey(tuple anyenc.Tuple, v *anyenc.Value) anyenc.Tuple {
 	defer func() {
 		s.arena.Reset()
+		s.keyBuffer = s.keyBuffer[:0]
 	}()
 
 	val := v.Get(s.relationKey)
-	var sortKey string
-	if val != nil && val.Type() == anyenc.TypeString {
-		id, _ := val.StringBytes()
-		sortKey = s.idToName[string(id)]
-	} else if val != nil && val.Type() == anyenc.TypeArray {
+	var listLen int
+	if val != nil && val.Type() == anyenc.TypeArray {
 		arr, _ := val.Array()
+		var ids []string
 		for _, it := range arr {
 			id, _ := it.StringBytes()
-			sortKey += s.idToName[string(id)]
+			ids = append(ids, string(id))
 		}
-	}
-
-	if sortKey == "" {
-		if s.nulls == model.BlockContentDataviewSort_Start {
+		listLen = len(ids)
+		s.keyBuffer = s.orders.BuildOrder(s.keyBuffer, ids...)
+	} else {
+		switch s.nulls {
+		case model.BlockContentDataviewSort_Start:
 			return tuple.Append(s.arena.NewNull())
-		} else if s.nulls == model.BlockContentDataviewSort_End {
+		case model.BlockContentDataviewSort_End:
 			return tuple.AppendInverted(s.arena.NewNull())
 		}
 	}
 
 	if s.reverse {
-		return tuple.AppendInverted(s.arena.NewString(sortKey))
+		tuple = tuple.AppendInverted(s.arena.NewStringBytes(s.keyBuffer))
+		tuple = tuple.AppendInverted(s.arena.NewNumberInt(listLen)) // a hack for multiple untitled objects
 	} else {
-		return tuple.Append(s.arena.NewString(sortKey))
+		tuple = tuple.Append(s.arena.NewStringBytes(s.keyBuffer))
+		tuple = tuple.Append(s.arena.NewNumberInt(listLen)) // a hack for multiple untitled objects
 	}
+
+	return tuple
 }
 
 type boolSort struct {

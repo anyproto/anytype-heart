@@ -21,6 +21,7 @@ import (
 
 type Image interface {
 	FileId() domain.FileId
+	SpaceId() string
 	Details(ctx context.Context) (*domain.Details, error)
 	GetFileForWidth(wantWidth int) (File, error)
 	GetOriginalFile() (File, error)
@@ -126,6 +127,10 @@ func (i *image) GetOriginalFile() (File, error) {
 	}, nil
 }
 
+func (i *image) SpaceId() string {
+	return i.spaceID
+}
+
 func (i *image) FileId() domain.FileId {
 	return i.fileId
 }
@@ -178,13 +183,15 @@ func (i *image) Details(ctx context.Context) (*domain.Details, error) {
 		return details, nil
 	}
 
-	if v := pbtypes.Get(largest.GetMeta(), "width"); v != nil {
-		details.SetFloat64(bundle.RelationKeyWidthInPixels, v.GetNumberValue())
+	width, height := imageExif.Width, imageExif.Height
+	if width == 0 || height == 0 {
+		// fallback to variant meta
+		// may happen in case of reused images failed to load offloaded exif
+		width = int(pbtypes.GetInt64(largest.Meta, "width"))
+		height = int(pbtypes.GetInt64(largest.Meta, "height"))
 	}
-
-	if v := pbtypes.Get(largest.GetMeta(), "height"); v != nil {
-		details.SetFloat64(bundle.RelationKeyHeightInPixels, v.GetNumberValue())
-	}
+	details.SetInt64(bundle.RelationKeyHeightInPixels, int64(height))
+	details.SetInt64(bundle.RelationKeyWidthInPixels, int64(width))
 
 	if largest.Meta != nil {
 		details.SetString(bundle.RelationKeyName, strings.TrimSuffix(largest.Name, filepath.Ext(largest.Name)))

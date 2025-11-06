@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"sync"
+	"sync/atomic"
 
 	"github.com/cheggaaa/mb/v3"
 
@@ -33,7 +34,18 @@ type SubscriptionParams[T any] struct {
 	OnAdded func(id string, entry T)
 	// OnRemove called when object is removed from subscription
 	OnRemoved func(id string, entry T)
+
+	// CustomFilter is an optional filter for objects that would be applied to subscription along with SubscribeRequest.Filters
+	CustomFilter func(details *domain.Details) bool
 }
+
+type subState int32
+
+const (
+	stateNew subState = iota
+	stateRunning
+	stateClosed
+)
 
 type ObjectSubscription[T any] struct {
 	request    subscription.SubscribeRequest
@@ -46,15 +58,18 @@ type ObjectSubscription[T any] struct {
 
 	params SubscriptionParams[T]
 
-	mx  sync.Mutex
-	sub map[string]T
+	state atomic.Int32
+	mx    sync.Mutex
+	sub   map[string]T
+
+	keyToId map[string]string
 }
 
 var IdSubscriptionParams = SubscriptionParams[struct{}]{
 	SetDetails: func(t *domain.Details) (string, struct{}) {
 		return t.GetString(bundle.RelationKeyId), struct{}{}
 	},
-	UpdateKeys: func(keyValues []RelationKeyValue, s2 struct{}) struct{} {
+	UpdateKeys: func(keyValues []RelationKeyValue, s struct{}) struct{} {
 		return struct{}{}
 	},
 	RemoveKeys: func(strings []string, s struct{}) struct{} {
@@ -71,42 +86,65 @@ func NewIdSubscriptionFromQueue(queue *mb.MB[*pb.EventMessage]) *ObjectSubscript
 }
 
 func New[T any](subService subscription.Service, req subscription.SubscribeRequest, params SubscriptionParams[T]) *ObjectSubscription[T] {
+	ctx, cancel := context.WithCancel(context.Background())
 	return &ObjectSubscription[T]{
 		request:    req,
 		service:    subService,
 		filterKeys: make(map[string]struct{}),
 		ch:         make(chan struct{}),
 		params:     params,
+		ctx:        ctx,
+		cancel:     cancel,
 	}
 }
 
 func NewFromQueue[T any](queue *mb.MB[*pb.EventMessage], params SubscriptionParams[T]) *ObjectSubscription[T] {
+	ctx, cancel := context.WithCancel(context.Background())
 	return &ObjectSubscription[T]{
 		events: queue,
 		ch:     make(chan struct{}),
 		params: params,
+		ctx:    ctx,
+		cancel: cancel,
 	}
 }
 
 func (o *ObjectSubscription[T]) Run() error {
+	if !o.state.CompareAndSwap(int32(stateNew), int32(stateRunning)) {
+		switch subState(o.state.Load()) {
+		case stateRunning:
+			return fmt.Errorf("already running")
+		case stateClosed:
+			return fmt.Errorf("already closed")
+		default:
+			return fmt.Errorf("invalid state")
+		}
+	}
+
 	if o.service == nil && o.events == nil {
+		close(o.ch)
 		return fmt.Errorf("subscription created with nil event queue")
 	}
 	if o.params.SetDetails == nil {
+		close(o.ch)
 		return fmt.Errorf("SetDetails function not set")
 	}
 	if o.params.UpdateKeys == nil {
+		close(o.ch)
 		return fmt.Errorf("UpdateKeys function not set")
 	}
 	if o.params.RemoveKeys == nil {
+		close(o.ch)
 		return fmt.Errorf("RemoveKeys function not set")
 	}
 
 	o.request.Internal = true
 	o.sub = map[string]T{}
+	o.keyToId = map[string]string{}
 	if o.service != nil {
 		resp, err := o.service.Search(o.request)
 		if err != nil {
+			close(o.ch)
 			return err
 		}
 		for _, key := range o.request.Keys {
@@ -114,20 +152,23 @@ func (o *ObjectSubscription[T]) Run() error {
 		}
 		for _, rec := range resp.Records {
 			id, data := o.params.SetDetails(rec)
+			if o.params.CustomFilter != nil && !o.params.CustomFilter(rec) {
+				continue
+			}
 			o.sub[id] = data
+			o.addKey(id, rec)
 		}
 		o.events = resp.Output
 	}
-	o.ctx, o.cancel = context.WithCancel(context.Background())
 	go o.read()
 	return nil
 }
 
 func (o *ObjectSubscription[T]) Close() {
-	if o.cancel != nil {
+	if o.state.Swap(int32(stateClosed)) == int32(stateRunning) {
 		o.cancel()
+		<-o.ch
 	}
-	<-o.ch
 }
 
 func (o *ObjectSubscription[T]) Len() int {
@@ -139,6 +180,18 @@ func (o *ObjectSubscription[T]) Len() int {
 func (o *ObjectSubscription[T]) Get(id string) (T, bool) {
 	o.mx.Lock()
 	defer o.mx.Unlock()
+	entry, ok := o.sub[id]
+	return entry, ok
+}
+
+func (o *ObjectSubscription[T]) GetByKey(key string) (T, bool) {
+	o.mx.Lock()
+	defer o.mx.Unlock()
+	id, ok := o.keyToId[key]
+	if !ok {
+		var defValue T
+		return defValue, false
+	}
 	entry, ok := o.sub[id]
 	return entry, ok
 }
@@ -203,11 +256,16 @@ func (o *ObjectSubscription[T]) read() {
 				o.sub[v.ObjectDetailsUnset.Id] = curEntry
 			}
 		case *pb.EventMessageValueOfObjectDetailsSet:
-			_, newEntry := o.params.SetDetails(domain.NewDetailsFromProto(v.ObjectDetailsSet.Details))
+			details := domain.NewDetailsFromProto(v.ObjectDetailsSet.Details)
+			if o.params.CustomFilter != nil && !o.params.CustomFilter(details) {
+				return
+			}
+			_, newEntry := o.params.SetDetails(details)
 			if _, ok := o.sub[v.ObjectDetailsSet.Id]; !ok {
 				if o.params.OnAdded != nil {
 					o.params.OnAdded(v.ObjectDetailsSet.Id, newEntry)
 				}
+				o.addKey(v.ObjectDetailsSet.Id, details)
 			}
 			o.sub[v.ObjectDetailsSet.Id] = newEntry
 		}
@@ -218,5 +276,11 @@ func (o *ObjectSubscription[T]) read() {
 			return
 		}
 		readEvent(event)
+	}
+}
+
+func (o *ObjectSubscription[T]) addKey(id string, details *domain.Details) {
+	if key := details.GetString(bundle.RelationKeyRelationKey); key != "" {
+		o.keyToId[key] = id
 	}
 }

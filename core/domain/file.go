@@ -12,6 +12,10 @@ func (id FileId) String() string {
 	return string(id)
 }
 
+func (id FileId) Cid() (cid.Cid, error) {
+	return cid.Parse(string(id))
+}
+
 func (id FileId) Valid() bool {
 	return IsFileId(string(id))
 }
