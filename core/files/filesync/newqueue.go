@@ -111,6 +111,7 @@ func (s *fileSync) processFilePendingUpload(ctx context.Context, it FileInfo) (F
 		}
 	}
 
+	// TODO Move to uploading handler?
 	var totalBytesUploaded int
 	err = s.walkFileBlocks(ctx, it.SpaceId, it.FileId, it.Variants, func(fileBlocks []blocks.Block) error {
 		bytesToUpload, err := s.uploadOrBindBlocks(ctx, it, fileBlocks, blocksAvailability.cidsToUpload)
@@ -213,7 +214,7 @@ func (s *fileSync) runLimitedUploader(ctx context.Context) {
 		case <-ctx.Done():
 			return
 		default:
-			err := s.processNextPendingUploadItem(ctx, FileStateLimited)
+			err := s.processLimited(ctx)
 			if err != nil {
 				log.Error("process next limited upload item", zap.Error(err))
 			}
@@ -276,13 +277,13 @@ type limitUpdate struct {
 // - every action sends an update message to all subscribers
 
 func (s *fileSync) processLimited(ctx context.Context) error {
-	// limitUpdated should receive signals on:
+	// updateCh should receive signals on:
 	// - when application is started
 	// - when someone tries to upload a file for the first time or after NOT limited error and sees limits updates
 	// - when background process updates limits
-	limitUpdated := make(chan limitUpdate)
 
-	for update := range limitUpdated {
+	for update := range s.limitManager.updateCh {
+		fmt.Println("UPDATE", update)
 		item, err := s.queue.GetNextScheduled(ctx, filequeue.GetNextScheduledRequest[FileInfo]{
 			Subscribe: false, // Do not subscribe, just return error if no rows found
 			StoreFilter: query.And{

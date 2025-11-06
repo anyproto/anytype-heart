@@ -169,6 +169,8 @@ func (s *fileSync) Run(ctx context.Context) (err error) {
 		go s.runUploader(s.loopCtx)
 	}
 
+	go s.runLimitedUploader(s.loopCtx)
+
 	go s.runDeleter()
 
 	return

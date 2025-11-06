@@ -46,6 +46,7 @@ func (s *fileSync) walkFileBlocks(ctx context.Context, spaceId string, fileId do
 }
 
 func (s *fileSync) walkDAG(ctx context.Context, spaceId string, fileId domain.FileId, priorityBranches []domain.FileId, visit func(node ipld.Node) error) error {
+	// TODO Only local data
 	dagService := s.dagServiceForSpace(spaceId)
 
 	visited := map[cid.Cid]struct{}{}

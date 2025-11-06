@@ -17,6 +17,7 @@ type spaceUsage struct {
 	spaceId string
 	lock    sync.Mutex
 
+	updateCh chan<- updateMessage
 	rpcStore rpcstore.RpcStore
 
 	limit          int
@@ -26,10 +27,11 @@ type spaceUsage struct {
 	updatedAt      time.Time
 }
 
-func newSpaceUsage(spaceId string, rpcStore rpcstore.RpcStore) *spaceUsage {
+func newSpaceUsage(spaceId string, rpcStore rpcstore.RpcStore, updateCh chan<- updateMessage) *spaceUsage {
 	s := &spaceUsage{
 		spaceId:  spaceId,
 		rpcStore: rpcStore,
+		updateCh: updateCh,
 		files:    make(map[string]allocatedFile),
 	}
 	return s
@@ -135,6 +137,16 @@ func (s *spaceUsage) update(ctx context.Context) error {
 	s.limit = int(info.LimitBytes)
 	s.usageFromNode = int(info.SpaceUsageBytes)
 
+	msg := updateMessage{
+		spaceId: s.spaceId,
+		limit:   s.limit,
+		usage:   s.usageFromNode,
+	}
+
+	select {
+	case s.updateCh <- msg:
+	default:
+	}
 	return nil
 }
 

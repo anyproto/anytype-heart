@@ -17,6 +17,9 @@ import (
 )
 
 type updateMessage struct {
+	spaceId string
+	limit   int
+	usage   int
 }
 
 type spaceUsageManager struct {
@@ -39,7 +42,9 @@ func newSpaceUsageManager(subscriptionService subscription.Service, rpcStore rpc
 		techSpaceId:         techSpaceId,
 		subscriptionService: subscriptionService,
 		rpcStore:            rpcStore,
-		updateCh:            make(chan updateMessage),
+
+		// Use buffered channel of size 1 to always receive at least one update signal
+		updateCh: make(chan updateMessage, 1),
 	}
 }
 
@@ -65,7 +70,7 @@ func (m *spaceUsageManager) init() error {
 	}, objectsubscription.SubscriptionParams[*spaceUsage]{
 		SetDetails: func(details *domain.Details) (id string, entry *spaceUsage) {
 			spaceId := details.GetString(bundle.RelationKeyTargetSpaceId)
-			usage := newSpaceUsage(spaceId, m.rpcStore)
+			usage := newSpaceUsage(spaceId, m.rpcStore, m.updateCh)
 			return spaceId, usage
 		},
 		UpdateKeys: func(keyValues []objectsubscription.RelationKeyValue, curEntry *spaceUsage) (updatedEntry *spaceUsage) {
@@ -85,7 +90,11 @@ func (m *spaceUsageManager) init() error {
 	sub.Iterate(func(id string, usage *spaceUsage) bool {
 		errGroup.Go(func() error {
 			// TODO Add timeout and cache
-			return usage.Update(m.ctx)
+			err := usage.Update(m.ctx)
+			if err != nil {
+				return err
+			}
+			return nil
 		})
 		return true
 	})

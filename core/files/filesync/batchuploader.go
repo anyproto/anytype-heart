@@ -26,6 +26,7 @@ func (s *fileSync) runBatchUploader() {
 }
 
 func (s *fileSync) addToLimitedQueue(objectId string) error {
+	// TODO Delete file and clean uploaded blocks
 	return s.process(objectId, func(exists bool, info FileInfo) (FileInfo, error) {
 		if !exists {
 			return FileInfo{}, nil
