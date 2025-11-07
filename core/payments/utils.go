@@ -255,27 +255,3 @@ func convertCartProductData(src *paymentserviceproto.MembershipV2_CartProduct) *
 	out.Remove = src.Remove
 	return out
 }
-
-func convertCartProductDataToProto(src *model.MembershipV2CartProduct) *paymentserviceproto.MembershipV2_CartProduct {
-	if src == nil {
-		return nil
-	}
-	out := &paymentserviceproto.MembershipV2_CartProduct{}
-	out.Product = convertProductDataToProto(src.Product)
-	out.IsYearly = src.IsYearly
-	out.Remove = src.Remove
-	return out
-}
-
-func convertProductDataToProto(src *model.MembershipV2Product) *paymentserviceproto.MembershipV2_Product {
-	if src == nil {
-		return nil
-	}
-	out := &paymentserviceproto.MembershipV2_Product{}
-
-	// convert only Id of the product and that's it
-	// no need to pass other fields of the product to the proto
-	out.Id = src.Id
-
-	return out
-}

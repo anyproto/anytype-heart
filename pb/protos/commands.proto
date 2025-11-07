@@ -8321,7 +8321,9 @@ message Rpc {
 
 	    message CartUpdate {
             message Request {
-                repeated anytype.model.MembershipV2.CartProduct products = 1;
+                repeated string productIds = 1;
+
+                bool isYearly = 2;
             }
 
             message Response {

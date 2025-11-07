@@ -14905,7 +14905,8 @@ before requesting a payment link and paying
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| products | [model.MembershipV2.CartProduct](#anytype-model-MembershipV2-CartProduct) | repeated |  |
+| productIds | [string](#string) | repeated |  |
+| isYearly | [bool](#bool) |  |  |
 
 
 

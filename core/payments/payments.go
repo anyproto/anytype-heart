@@ -1186,9 +1186,18 @@ func (s *service) V2CartGet(ctx context.Context, req *pb.RpcMembershipV2CartGetR
 }
 
 func (s *service) V2CartUpdate(ctx context.Context, req *pb.RpcMembershipV2CartUpdateRequest) (*pb.RpcMembershipV2CartUpdateResponse, error) {
-	products := make([]*proto.MembershipV2_CartProduct, len(req.Products))
-	for i, product := range req.Products {
-		products[i] = convertCartProductDataToProto(product)
+	products := make([]*proto.MembershipV2_CartProduct, len(req.ProductIds))
+	for i, productId := range req.ProductIds {
+		products[i] = &proto.MembershipV2_CartProduct{
+			Product: &proto.MembershipV2_Product{
+				// specify only the ID of the product
+				Id: productId,
+			},
+			IsYearly: req.IsYearly,
+
+			// add to cart
+			Remove: false,
+		}
 	}
 
 	cartReq := proto.MembershipV2_StoreCartUpdateRequest{
