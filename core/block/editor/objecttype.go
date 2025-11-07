@@ -4,6 +4,8 @@ import (
 	"context"
 	"slices"
 
+	"github.com/globalsign/mgo/bson"
+
 	"github.com/anyproto/anytype-heart/core/block/editor/basic"
 	"github.com/anyproto/anytype-heart/core/block/editor/clipboard"
 	"github.com/anyproto/anytype-heart/core/block/editor/dataview"
@@ -261,6 +263,22 @@ func (ot *ObjectType) dataviewTemplates() []template.StateTransformer {
 				Key:           key,
 				RelationLinks: relationLinks,
 			}, relationLinks, addr.ObjectTypeAllViewId)
+
+			// Special case for chat type
+			if s.UniqueKeyInternal() == bundle.TypeKeyChatDerived.String() {
+				if len(dvContent.Dataview.Views) > 0 {
+					view := dvContent.Dataview.Views[0]
+					view.Sorts = []*model.BlockContentDataviewSort{
+						{
+							RelationKey: bundle.RelationKeyLastMessageDate.String(),
+							Type:        model.BlockContentDataviewSort_Desc,
+							Format:      model.RelationFormat_date,
+							IncludeTime: true,
+							Id:          bson.NewObjectId().Hex(),
+						},
+					}
+				}
+			}
 
 			dvContent.Dataview.TargetObjectId = ot.Id()
 
