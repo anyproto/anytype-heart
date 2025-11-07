@@ -169,9 +169,9 @@ func TestExport_Export(t *testing.T) {
 			fileNames[file.Name] = true
 		}
 
-		objectPath := filepath.Join(objectsDirectory, objectId+".pb.json")
+		objectPath := filepath.Join(ObjectsDirectory, objectId+".pb.json")
 		assert.True(t, fileNames[objectPath])
-		typePath := filepath.Join(typesDirectory, objectTypeId+".pb.json")
+		typePath := filepath.Join(TypesDirectory, objectTypeId+".pb.json")
 		assert.True(t, fileNames[typePath])
 	})
 	t.Run("export success no progress", func(t *testing.T) {
@@ -338,7 +338,7 @@ func TestExport_Export(t *testing.T) {
 			fileNames[file.Name] = true
 		}
 
-		objectPath := filepath.Join(objectsDirectory, link+".pb.json")
+		objectPath := filepath.Join(ObjectsDirectory, link+".pb.json")
 		assert.True(t, fileNames[objectPath])
 
 		file, err := os.Open(objectPath)
@@ -412,7 +412,7 @@ func TestExport_Export(t *testing.T) {
 			fileNames[file.Name] = true
 		}
 
-		objectPath := filepath.Join(objectsDirectory, link1+".pb.json")
+		objectPath := filepath.Join(ObjectsDirectory, link1+".pb.json")
 		assert.True(t, fileNames[objectPath])
 	})
 	t.Run("export without backlinks", func(t *testing.T) {
@@ -466,7 +466,7 @@ func TestExport_Export(t *testing.T) {
 			fileNames[file.Name] = true
 		}
 
-		objectPath := filepath.Join(objectsDirectory, link1+".pb.json")
+		objectPath := filepath.Join(ObjectsDirectory, link1+".pb.json")
 		assert.False(t, fileNames[objectPath])
 	})
 	t.Run("export with space", func(t *testing.T) {
@@ -527,7 +527,7 @@ func TestExport_Export(t *testing.T) {
 			fileNames[file.Name] = true
 		}
 
-		objectPath := filepath.Join(objectsDirectory, workspaceId+".pb.json")
+		objectPath := filepath.Join(ObjectsDirectory, workspaceId+".pb.json")
 		assert.True(t, fileNames[objectPath])
 	})
 }
@@ -1404,28 +1404,28 @@ func Test_provideFileName(t *testing.T) {
 		fileName := makeFileName("docId", spaceId, pbjson.NewConverter(nil).Ext(), nil, smartblock.SmartBlockTypeRelation)
 
 		// then
-		assert.Equal(t, relationsDirectory+string(filepath.Separator)+"docId.pb.json", fileName)
+		assert.Equal(t, RelationsDirectory+string(filepath.Separator)+"docId.pb.json", fileName)
 	})
 	t.Run("file dir for relation option", func(t *testing.T) {
 		// when
 		fileName := makeFileName("docId", spaceId, pbjson.NewConverter(nil).Ext(), nil, smartblock.SmartBlockTypeRelationOption)
 
 		// then
-		assert.Equal(t, relationsOptionsDirectory+string(filepath.Separator)+"docId.pb.json", fileName)
+		assert.Equal(t, RelationsOptionsDirectory+string(filepath.Separator)+"docId.pb.json", fileName)
 	})
 	t.Run("file dir for types", func(t *testing.T) {
 		// when
 		fileName := makeFileName("docId", spaceId, pbjson.NewConverter(nil).Ext(), nil, smartblock.SmartBlockTypeObjectType)
 
 		// then
-		assert.Equal(t, typesDirectory+string(filepath.Separator)+"docId.pb.json", fileName)
+		assert.Equal(t, TypesDirectory+string(filepath.Separator)+"docId.pb.json", fileName)
 	})
 	t.Run("file dir for objects", func(t *testing.T) {
 		// when
 		fileName := makeFileName("docId", spaceId, pbjson.NewConverter(nil).Ext(), nil, smartblock.SmartBlockTypePage)
 
 		// then
-		assert.Equal(t, objectsDirectory+string(filepath.Separator)+"docId.pb.json", fileName)
+		assert.Equal(t, ObjectsDirectory+string(filepath.Separator)+"docId.pb.json", fileName)
 	})
 	t.Run("file dir for files objects", func(t *testing.T) {
 		// when

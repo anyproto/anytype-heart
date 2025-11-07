@@ -2,6 +2,7 @@ package slice
 
 import (
 	"hash/fnv"
+	"iter"
 	"math/rand"
 	"sort"
 	"strings"
