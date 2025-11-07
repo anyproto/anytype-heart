@@ -32,12 +32,12 @@ const (
 	CollChangeOrders = "_change_orders"
 )
 
-func New(ctx context.Context, id string, db anystore.DB, handlers ...Handler) (state *StoreState, err error) {
+func New(ctx context.Context, id string, db anystore.DB, handlers ...Handler) (*StoreState, error) {
 	if len(handlers) == 0 {
 		return nil, fmt.Errorf("should be at least one handler")
 	}
 
-	state = &StoreState{
+	state := &StoreState{
 		id:       id,
 		handlers: map[string]Handler{},
 		arena:    &anyenc.Arena{},
@@ -56,23 +56,17 @@ func New(ctx context.Context, id string, db anystore.DB, handlers ...Handler) (s
 	if err != nil {
 		return nil, err
 	}
+	defer tx.Rollback()
 
-	defer func() {
-		if err != nil {
-			if state.collChangeOrders != nil {
-				_ = state.collChangeOrders.Close()
-				// TODO: close all collections (maybe need to do smth like db.CollectionsPrefix)
-			}
-			_ = tx.Rollback()
-		} else {
-			err = tx.Commit()
-		}
-	}()
-
-	if err = state.init(tx.Context()); err != nil {
-		return
+	if err := state.init(tx.Context()); err != nil {
+		return nil, fmt.Errorf("init: %w", err)
 	}
-	return
+
+	err = tx.Commit()
+	if err != nil {
+		return nil, fmt.Errorf("commit: %w", err)
+	}
+	return state, nil
 }
 
 type ChangeSet struct {

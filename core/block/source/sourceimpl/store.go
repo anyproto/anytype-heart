@@ -227,9 +227,8 @@ func (s *store) ReadStoreDoc(ctx context.Context, storeState *storestate.StoreSt
 	if err != nil {
 		return
 	}
-	defer func() {
-		_ = tx.Rollback()
-	}()
+	defer tx.Rollback()
+
 	// checking if we have any data in the store regarding the tree (i.e. if tree is first arrived or created)
 	allIsNew := false
 	if _, err := tx.GetOrder(s.id); err != nil {
@@ -268,9 +267,8 @@ func (s *store) PushStoreChange(ctx context.Context, params source.PushStoreChan
 	if err != nil {
 		return "", fmt.Errorf("new tx: %w", err)
 	}
-	defer func() {
-		_ = tx.Rollback()
-	}()
+	defer tx.Rollback()
+
 	change := &pb.StoreChange{
 		ChangeSet: params.Changes,
 	}

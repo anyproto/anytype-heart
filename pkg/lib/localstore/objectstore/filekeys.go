@@ -2,7 +2,6 @@ package objectstore
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 
 	"github.com/anyproto/any-store/anyenc"
@@ -27,15 +26,15 @@ func (s *dsObjectStore) AddFileKeys(fileKeys ...domain.FileEncryptionKeys) error
 	if err != nil {
 		return fmt.Errorf("start transaction: %w", err)
 	}
-	defer txn.Commit()
+	defer txn.Rollback()
 
 	for _, fk := range fileKeys {
 		err = s.fileKeys.Set(txn.Context(), fk.FileId.String(), fk.EncryptionKeys)
 		if err != nil {
-			return errors.Join(txn.Rollback(), fmt.Errorf("set: %w", err))
+			return fmt.Errorf("set: %w", err)
 		}
 	}
-	return err
+	return txn.Commit()
 }
 
 func (s *dsObjectStore) GetFileKeys(fileId domain.FileId) (map[string]string, error) {
