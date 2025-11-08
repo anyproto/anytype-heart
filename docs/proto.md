@@ -1944,6 +1944,9 @@
     - [Event.Membership](#anytype-Event-Membership)
     - [Event.Membership.TiersUpdate](#anytype-Event-Membership-TiersUpdate)
     - [Event.Membership.Update](#anytype-Event-Membership-Update)
+    - [Event.MembershipV2](#anytype-Event-MembershipV2)
+    - [Event.MembershipV2.ProductsUpdate](#anytype-Event-MembershipV2-ProductsUpdate)
+    - [Event.MembershipV2.Update](#anytype-Event-MembershipV2-Update)
     - [Event.Message](#anytype-Event-Message)
     - [Event.Notification](#anytype-Event-Notification)
     - [Event.Notification.Send](#anytype-Event-Notification-Send)
@@ -30728,6 +30731,46 @@ to its type.
 
 
 
+<a name="anytype-Event-MembershipV2"></a>
+
+### Event.MembershipV2
+
+
+
+
+
+
+
+<a name="anytype-Event-MembershipV2-ProductsUpdate"></a>
+
+### Event.MembershipV2.ProductsUpdate
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| products | [model.MembershipV2.Product](#anytype-model-MembershipV2-Product) | repeated |  |
+
+
+
+
+
+
+<a name="anytype-Event-MembershipV2-Update"></a>
+
+### Event.MembershipV2.Update
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| data | [model.MembershipV2.Data](#anytype-model-MembershipV2-Data) |  |  |
+
+
+
+
+
+
 <a name="anytype-Event-Message"></a>
 
 ### Event.Message
@@ -30819,6 +30862,8 @@ received to update per-message mention read status (if needed |
 | chatUpdateMessageSyncStatus | [Event.Chat.UpdateMessageSyncStatus](#anytype-Event-Chat-UpdateMessageSyncStatus) |  | to highlight the unread mentions in the UI) |
 | chatDelete | [Event.Chat.Delete](#anytype-Event-Chat-Delete) |  |  |
 | chatStateUpdate | [Event.Chat.UpdateState](#anytype-Event-Chat-UpdateState) |  | in case new unread messages received or chat state changed |
+| membershipV2Update | [Event.MembershipV2.Update](#anytype-Event-MembershipV2-Update) |  |  |
+| membershipV2ProductsUpdate | [Event.MembershipV2.ProductsUpdate](#anytype-Event-MembershipV2-ProductsUpdate) |  |  |
 
 
 

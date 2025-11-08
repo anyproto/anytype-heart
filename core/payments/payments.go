@@ -1217,3 +1217,19 @@ func (s *service) V2CartUpdate(ctx context.Context, req *pb.RpcMembershipV2CartU
 		},
 	}, nil
 }
+
+func (s *service) sendMembershipV2UpdateEvent(membership *model.MembershipV2Data) {
+	s.eventSender.Broadcast(event.NewEventSingleMessage("", &pb.EventMessageValueOfMembershipV2Update{
+		MembershipV2Update: &pb.EventMembershipV2Update{
+			Data: membership,
+		},
+	}))
+}
+
+func (s *service) sendMembershipV2ProductsUpdateEvent(products []*model.MembershipV2Product) {
+	s.eventSender.Broadcast(event.NewEventSingleMessage("", &pb.EventMessageValueOfMembershipV2ProductsUpdate{
+		MembershipV2ProductsUpdate: &pb.EventMembershipV2ProductsUpdate{
+			Products: products,
+		},
+	}))
+}
