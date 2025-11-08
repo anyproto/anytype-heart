@@ -42,6 +42,24 @@ func deriveEqualMembership(this, that *Membership) bool {
 			this.SubscribeToNewsletter == that.SubscribeToNewsletter
 }
 
+// deriveEqualMembershipV2Product returns whether this and that are equal.
+func deriveEqualMembershipV2Product(this, that *MembershipV2Product) bool {
+	return (this == nil && that == nil) ||
+		this != nil && that != nil &&
+			this.Id == that.Id &&
+			this.Name == that.Name &&
+			this.Description == that.Description &&
+			this.IsTopLevel == that.IsTopLevel &&
+			this.IsHidden == that.IsHidden &&
+			this.IsIntro == that.IsIntro &&
+			this.IsUpgradeable == that.IsUpgradeable &&
+			deriveEqualMembershipV2AmountSlice(this.PricesYearly, that.PricesYearly) &&
+			deriveEqualMembershipV2AmountSlice(this.PricesMonthly, that.PricesMonthly) &&
+			this.ColorStr == that.ColorStr &&
+			this.Offer == that.Offer &&
+			deriveEqualMembershipV2Features(this.Features, that.Features)
+}
+
 // deriveEqual returns whether this and that are equal.
 func deriveEqual(this, that []string) bool {
 	if this == nil || that == nil {
@@ -56,4 +74,41 @@ func deriveEqual(this, that []string) bool {
 		}
 	}
 	return true
+}
+
+// deriveEqualMembershipV2AmountSlice returns whether this and that slices are equal.
+func deriveEqualMembershipV2AmountSlice(this, that []*MembershipV2Amount) bool {
+	if this == nil || that == nil {
+		return this == nil && that == nil
+	}
+	if len(this) != len(that) {
+		return false
+	}
+	for i := 0; i < len(this); i++ {
+		if !deriveEqualMembershipV2Amount(this[i], that[i]) {
+			return false
+		}
+	}
+	return true
+}
+
+// deriveEqualMembershipV2Amount returns whether this and that are equal.
+func deriveEqualMembershipV2Amount(this, that *MembershipV2Amount) bool {
+	return (this == nil && that == nil) ||
+		this != nil && that != nil &&
+			this.Currency == that.Currency &&
+			this.AmountCents == that.AmountCents
+}
+
+// deriveEqualMembershipV2Features returns whether this and that are equal.
+func deriveEqualMembershipV2Features(this, that *MembershipV2Features) bool {
+	return (this == nil && that == nil) ||
+		this != nil && that != nil &&
+			this.StorageBytes == that.StorageBytes &&
+			this.SpaceReaders == that.SpaceReaders &&
+			this.SpaceWriters == that.SpaceWriters &&
+			this.SharedSpaces == that.SharedSpaces &&
+			this.TeamSeats == that.TeamSeats &&
+			this.AnyNameCount == that.AnyNameCount &&
+			this.AnyNameMinLen == that.AnyNameMinLen
 }

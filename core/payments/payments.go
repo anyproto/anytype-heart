@@ -35,6 +35,7 @@ var (
 	refreshIntervalSecs  = 60
 	forceRefreshInterval = 10 * time.Second
 	networkTimeout       = 60 * time.Second
+	networkTimeout2      = 90 * time.Second
 )
 
 var (
@@ -148,6 +149,7 @@ type service struct {
 	componentCtxCancel     context.CancelFunc
 
 	refreshCtrl              *refreshController
+	refreshCtrlV2            *refreshController
 	multiplayerLimitsUpdater deletioncontroller.DeletionController
 	fileLimitsUpdater        filesync.FileSync
 	emailCollector           emailcollector.EmailCollector
@@ -200,8 +202,18 @@ func (s *service) Run(ctx context.Context) (err error) {
 	}
 
 	s.refreshCtrl = newRefreshController(s.componentCtx, fetchFn, time.Second*time.Duration(refreshIntervalSecs), forceRefreshInterval)
-
 	s.refreshCtrl.Start()
+
+	fetchFnV2 := func(baseCtx context.Context, forceFetch bool) (bool, error) {
+		fetchCtx, cancel := context.WithTimeout(baseCtx, networkTimeout2)
+		defer cancel()
+		changed, _, _, err := s.fetchAndUpdateV2(fetchCtx, forceFetch, true, true)
+		return changed, err
+	}
+
+	s.refreshCtrlV2 = newRefreshController(s.componentCtx, fetchFnV2, time.Second*time.Duration(refreshIntervalSecs), forceRefreshInterval)
+	s.refreshCtrlV2.Start()
+
 	return nil
 }
 
@@ -209,6 +221,10 @@ func (s *service) Close(_ context.Context) (err error) {
 	if s.refreshCtrl != nil {
 		s.refreshCtrl.Stop()
 		s.refreshCtrl = nil
+	}
+	if s.refreshCtrlV2 != nil {
+		s.refreshCtrlV2.Stop()
+		s.refreshCtrlV2 = nil
 	}
 	s.componentCtxCancel()
 	return nil
@@ -220,6 +236,14 @@ func (s *service) forceRefresh(duration time.Duration) {
 		return
 	}
 	s.refreshCtrl.Force(duration)
+}
+
+// forceRefreshV2 performs more aggressive fetching of V2 subscription status.
+func (s *service) forceRefreshV2(duration time.Duration) {
+	if s.refreshCtrlV2 == nil {
+		return
+	}
+	s.refreshCtrlV2.Force(duration)
 }
 
 func (s *service) fetchAndUpdate(ctx context.Context, forceIfNotExpired, fetchTiers, fetchMembership bool) (changed bool, tiers []*model.MembershipTierData, membership *model.Membership, err error) {
@@ -289,6 +313,92 @@ func (s *service) fetchAndUpdate(ctx context.Context, forceIfNotExpired, fetchTi
 	}
 	if tiers == nil {
 		tiers = []*model.MembershipTierData{}
+	}
+
+	if len(errs) > 0 {
+		err = errors.Join(errs...)
+	}
+
+	return
+}
+
+func (s *service) fetchAndUpdateV2(ctx context.Context, forceIfNotExpired, fetchMembership, fetchProducts bool) (changed bool, membership *model.MembershipV2Data, products []*model.MembershipV2Product, err error) {
+	// skip running loop if we are on a custom network or in local-only mode
+	if s.cfg.GetNetworkMode() != pb.RpcAccount_DefaultConfig {
+		// do not trace to log to prevent spamming
+		return false, nil, nil, nil
+	}
+
+	cachedData, cacheExpirationTime, cacheErr := s.cache.CacheV2Get()
+	cachedProducts, _, productsCacheErr := s.cache.CacheV2ProductsGet()
+	if cacheErr != nil {
+		log.Debug("periodic refresh: can not get V2 membership status from cache", zap.Error(cacheErr))
+	}
+	if productsCacheErr != nil {
+		log.Debug("periodic refresh: can not get V2 products from cache", zap.Error(productsCacheErr))
+	}
+	if !forceIfNotExpired && cacheExpirationTime.After(time.Now()) {
+		return false, cachedData, cachedProducts, nil
+	}
+	var errs []error
+	membership = cachedData
+	products = cachedProducts
+
+	if fetchProducts {
+		fetchedProducts, fetchErr := s.fetchV2Products(ctx)
+		if fetchErr != nil {
+			log.Warn("periodic refresh: V2 products update failed", zap.Error(fetchErr))
+			errs = append(errs, fetchErr)
+		} else {
+			if !productsV2Equal(cachedProducts, fetchedProducts) {
+				log.Warn("background refresh V2 products: products have changed, sending event")
+				s.sendMembershipV2ProductsUpdateEvent(fetchedProducts)
+				changed = true
+			}
+			products = fetchedProducts
+		}
+	}
+
+	if fetchMembership {
+		fetchedMembership, fetchErr := s.fetchV2Membership(ctx)
+		if fetchErr != nil {
+			log.Warn("periodic refresh: V2 subscription status update failed", zap.Error(fetchErr))
+			errs = append(errs, fetchErr)
+		} else {
+			// Compare V2 data - check if Products or NextInvoice changed
+			if !MembershipV2DataEqual(cachedData, fetchedMembership) {
+				log.Warn("background refresh V2 membership: membership has changed, sending event")
+				s.sendMembershipV2UpdateEvent(fetchedMembership)
+				changed = true
+			}
+			membership = fetchedMembership
+		}
+	}
+
+	if changed {
+		if membership != nil {
+			if cacheSetErr := s.cache.CacheV2Set(membership); cacheSetErr != nil {
+				log.Warn("periodic refresh: can not set V2 membership status to cache", zap.Error(cacheSetErr))
+			}
+		}
+		if products != nil {
+			if productsCacheSetErr := s.cache.CacheV2ProductsSet(products); productsCacheSetErr != nil {
+				log.Warn("periodic refresh: can not set V2 products to cache", zap.Error(productsCacheSetErr))
+			}
+		}
+		if limitsErr := s.updateLimits(ctx); limitsErr != nil {
+			log.Warn("periodic refresh: limits update failed", zap.Error(limitsErr))
+		}
+	}
+
+	if membership == nil {
+		membership = &model.MembershipV2Data{
+			Products:    []*model.MembershipV2PurchasedProduct{},
+			NextInvoice: nil,
+		}
+	}
+	if products == nil {
+		products = []*model.MembershipV2Product{}
 	}
 
 	if len(errs) > 0 {
@@ -403,6 +513,62 @@ func (s *service) fetchMembership(ctx context.Context) (*model.Membership, error
 	}
 
 	return convertMembershipData(status), nil
+}
+
+// fetchV2Membership performs network refresh of V2 membership status
+func (s *service) fetchV2Membership(ctx context.Context) (*model.MembershipV2Data, error) {
+	// Acquire limiter to prevent concurrent requests
+	select {
+	case <-ctx.Done():
+		return nil, ctx.Err()
+	case s.getSubscriptionLimiter <- struct{}{}:
+		defer func() {
+			<-s.getSubscriptionLimiter
+		}()
+	}
+
+	// Make network request to PP node
+	in := proto.MembershipV2_GetStatusRequest{}
+
+	log.Debug("background refresh: fetching V2 subscription status from PP node")
+	out, err := s.ppclient2.GetStatus(ctx, &in)
+
+	// On network error, return error
+	if err != nil {
+		return nil, err
+	}
+
+	// convert Products
+	productsModel := make([]*model.MembershipV2PurchasedProduct, len(out.Products))
+	for i, product := range out.Products {
+		productsModel[i] = convertPurchasedProductData(product)
+	}
+
+	// convert NextInvoice
+	nextInvoiceModel := convertInvoiceData(out.NextInvoice)
+
+	return &model.MembershipV2Data{
+		Products:    productsModel,
+		NextInvoice: nextInvoiceModel,
+	}, nil
+}
+
+// fetchV2Products performs network fetch of V2 products data
+func (s *service) fetchV2Products(ctx context.Context) ([]*model.MembershipV2Product, error) {
+	// Make network request
+	productsReq := proto.MembershipV2_GetProductsRequest{}
+
+	log.Debug("background refresh: fetching V2 products from PP node")
+	products, err := s.ppclient2.GetProducts(ctx, &productsReq)
+	if err != nil {
+		return nil, err
+	}
+
+	modelProducts := make([]*model.MembershipV2Product, len(products.Products))
+	for i, product := range products.Products {
+		modelProducts[i] = convertProductData(product)
+	}
+	return modelProducts, nil
 }
 
 // fetchTiersBackground performs network fetch of tiers data
@@ -1009,55 +1175,60 @@ func (s *service) V2GetPortalLink(ctx context.Context, req *pb.RpcMembershipV2Ge
 }
 
 func (s *service) V2GetProducts(ctx context.Context, req *pb.RpcMembershipV2GetProductsRequest) (*pb.RpcMembershipV2GetProductsResponse, error) {
-	productsReq := proto.MembershipV2_GetProductsRequest{}
-
-	// TODO: no caching for now, just a direct call to the payment node
-	products, err := s.ppclient2.GetProducts(ctx, &productsReq)
+	// Get all products from cache (including background refresh if needed)
+	products, err := s.getAllV2Products(ctx, req)
 	if err != nil {
 		return nil, err
 	}
 
-	productsModel := make([]*model.MembershipV2Product, len(products.Products))
-	for i, product := range products.Products {
-		productsModel[i] = convertProductData(product)
-	}
-
 	return &pb.RpcMembershipV2GetProductsResponse{
-		Products: productsModel,
-
+		Products: products,
 		Error: &pb.RpcMembershipV2GetProductsResponseError{
 			Code: pb.RpcMembershipV2GetProductsResponseError_NULL,
 		},
 	}, nil
 }
 
-func (s *service) V2GetStatus(ctx context.Context, req *pb.RpcMembershipV2GetStatusRequest) (*pb.RpcMembershipV2GetStatusResponse, error) {
-	in := proto.MembershipV2_GetStatusRequest{}
-
-	// TODO: no caching for now, just a direct call to the payment node
-	out, err := s.ppclient2.GetStatus(ctx, &in)
+// getAllV2Products returns products from cache ONLY
+// This method NEVER makes network calls and returns immediately
+// Background refresh happens via refreshSubscriptionStatusBackground()
+func (s *service) getAllV2Products(ctx context.Context, req *pb.RpcMembershipV2GetProductsRequest) ([]*model.MembershipV2Product, error) {
+	_, _, products, err := s.fetchAndUpdateV2(ctx, req.NoCache, false, req.NoCache)
 	if err != nil {
 		return nil, err
 	}
 
-	// convert Products
-	productsModel := make([]*model.MembershipV2PurchasedProduct, len(out.Products))
-	for i, product := range out.Products {
-		productsModel[i] = convertPurchasedProductData(product)
+	return products, nil
+}
+
+// V2GetStatus returns V2 subscription status from cache ONLY
+// This method NEVER makes network calls and returns immediately
+// Background refresh happens via refreshSubscriptionStatusBackground()
+func (s *service) V2GetStatus(ctx context.Context, req *pb.RpcMembershipV2GetStatusRequest) (*pb.RpcMembershipV2GetStatusResponse, error) {
+	var (
+		membership *model.MembershipV2Data
+		err        error
+	)
+
+	_, membership, _, err = s.fetchAndUpdateV2(ctx, req.NoCache, req.NoCache, false)
+	if err != nil && req.NoCache && !errors.Is(err, cache.ErrCacheDbError) {
+		return nil, err
+	}
+	if membership == nil {
+		membership = &model.MembershipV2Data{
+			Products:    []*model.MembershipV2PurchasedProduct{},
+			NextInvoice: nil,
+		}
 	}
 
-	// convert NextInvoice
-	nextInvoiceModel := convertInvoiceData(out.NextInvoice)
-
-	return &pb.RpcMembershipV2GetStatusResponse{
-		Data: &model.MembershipV2Data{
-			Products:    productsModel,
-			NextInvoice: nextInvoiceModel,
-		},
+	status := &pb.RpcMembershipV2GetStatusResponse{
+		Data: membership,
 		Error: &pb.RpcMembershipV2GetStatusResponseError{
 			Code: pb.RpcMembershipV2GetStatusResponseError_NULL,
 		},
-	}, nil
+	}
+
+	return status, nil
 }
 
 func (s *service) v2CheckIfNameAvailInNS(ctx context.Context, req *pb.RpcMembershipV2AnyNameIsValidRequest) (*pb.RpcMembershipV2AnyNameIsValidResponse, error) {
