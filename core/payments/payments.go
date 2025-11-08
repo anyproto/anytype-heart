@@ -1165,6 +1165,8 @@ func (s *service) V2GetPortalLink(ctx context.Context, req *pb.RpcMembershipV2Ge
 		return nil, err
 	}
 
+	go s.forceRefreshV2(30 * time.Minute)
+
 	return &pb.RpcMembershipV2GetPortalLinkResponse{
 		UrlWithJwt: res.Url,
 
@@ -1326,9 +1328,8 @@ func (s *service) V2AnyNameAllocate(ctx context.Context, req *pb.RpcMembershipV2
 		return nil, err
 	}
 
-	// TODO:
-	// 2 - clear cache
-	// go s.forceRefresh(30 * time.Minute)
+	// 2 - force refresh to get updated membership status
+	go s.forceRefreshV2(30 * time.Minute)
 
 	// return out
 	var out pb.RpcMembershipV2AnyNameAllocateResponse
