@@ -146,8 +146,8 @@ func TestProcessProperties(t *testing.T) {
 			num := 42.5
 			entries := []apimodel.PropertyLinkWithValue{
 				{WrappedPropertyLinkWithValue: apimodel.NumberPropertyLinkValue{
-					PropertyKey: "number_prop",
-					Number:      &num,
+					Key:    "number_prop",
+					Number: &num,
 				}},
 			}
 			result, err := fx.service.processProperties(ctx, mockedSpaceId, entries)
@@ -159,8 +159,8 @@ func TestProcessProperties(t *testing.T) {
 			zero := 0.0
 			entries := []apimodel.PropertyLinkWithValue{
 				{WrappedPropertyLinkWithValue: apimodel.NumberPropertyLinkValue{
-					PropertyKey: "number_prop",
-					Number:      &zero,
+					Key:    "number_prop",
+					Number: &zero,
 				}},
 			}
 			result, err := fx.service.processProperties(ctx, mockedSpaceId, entries)
@@ -171,8 +171,8 @@ func TestProcessProperties(t *testing.T) {
 		t.Run("nil value", func(t *testing.T) {
 			entries := []apimodel.PropertyLinkWithValue{
 				{WrappedPropertyLinkWithValue: apimodel.NumberPropertyLinkValue{
-					PropertyKey: "number_prop",
-					Number:      nil,
+					Key:    "number_prop",
+					Number: nil,
 				}},
 			}
 			result, err := fx.service.processProperties(ctx, mockedSpaceId, entries)
@@ -184,8 +184,8 @@ func TestProcessProperties(t *testing.T) {
 			neg := -123.45
 			entries := []apimodel.PropertyLinkWithValue{
 				{WrappedPropertyLinkWithValue: apimodel.NumberPropertyLinkValue{
-					PropertyKey: "number_prop",
-					Number:      &neg,
+					Key:    "number_prop",
+					Number: &neg,
 				}},
 			}
 			result, err := fx.service.processProperties(ctx, mockedSpaceId, entries)
@@ -203,8 +203,8 @@ func TestProcessProperties(t *testing.T) {
 			tagId := "tag123"
 			entries := []apimodel.PropertyLinkWithValue{
 				{WrappedPropertyLinkWithValue: apimodel.SelectPropertyLinkValue{
-					PropertyKey: "select_prop",
-					Select:      &tagId,
+					Key:    "select_prop",
+					Select: &tagId,
 				}},
 			}
 			result, err := fx.service.processProperties(ctx, mockedSpaceId, entries)
@@ -215,8 +215,8 @@ func TestProcessProperties(t *testing.T) {
 		t.Run("nil value", func(t *testing.T) {
 			entries := []apimodel.PropertyLinkWithValue{
 				{WrappedPropertyLinkWithValue: apimodel.SelectPropertyLinkValue{
-					PropertyKey: "select_prop",
-					Select:      nil,
+					Key:    "select_prop",
+					Select: nil,
 				}},
 			}
 			result, err := fx.service.processProperties(ctx, mockedSpaceId, entries)
@@ -229,8 +229,8 @@ func TestProcessProperties(t *testing.T) {
 			tagId := "invalid_tag"
 			entries := []apimodel.PropertyLinkWithValue{
 				{WrappedPropertyLinkWithValue: apimodel.SelectPropertyLinkValue{
-					PropertyKey: "select_prop",
-					Select:      &tagId,
+					Key:    "select_prop",
+					Select: &tagId,
 				}},
 			}
 			_, err := fx.service.processProperties(ctx, mockedSpaceId, entries)
@@ -243,8 +243,8 @@ func TestProcessProperties(t *testing.T) {
 			tagId := ""
 			entries := []apimodel.PropertyLinkWithValue{
 				{WrappedPropertyLinkWithValue: apimodel.SelectPropertyLinkValue{
-					PropertyKey: "select_prop",
-					Select:      &tagId,
+					Key:    "select_prop",
+					Select: &tagId,
 				}},
 			}
 			_, err := fx.service.processProperties(ctx, mockedSpaceId, entries)
@@ -262,7 +262,7 @@ func TestProcessProperties(t *testing.T) {
 			setupTagValidationMock(fx, "tag2", "multi_select_prop", true)
 			entries := []apimodel.PropertyLinkWithValue{
 				{WrappedPropertyLinkWithValue: apimodel.MultiSelectPropertyLinkValue{
-					PropertyKey: "multi_select_prop",
+					Key:         "multi_select_prop",
 					MultiSelect: util.PtrStrings([]string{"tag1", "tag2"}),
 				}},
 			}
@@ -278,7 +278,7 @@ func TestProcessProperties(t *testing.T) {
 		t.Run("empty array", func(t *testing.T) {
 			entries := []apimodel.PropertyLinkWithValue{
 				{WrappedPropertyLinkWithValue: apimodel.MultiSelectPropertyLinkValue{
-					PropertyKey: "multi_select_prop",
+					Key:         "multi_select_prop",
 					MultiSelect: util.PtrStrings([]string{}),
 				}},
 			}
@@ -290,7 +290,7 @@ func TestProcessProperties(t *testing.T) {
 		t.Run("nil value", func(t *testing.T) {
 			entries := []apimodel.PropertyLinkWithValue{
 				{WrappedPropertyLinkWithValue: apimodel.MultiSelectPropertyLinkValue{
-					PropertyKey: "multi_select_prop",
+					Key:         "multi_select_prop",
 					MultiSelect: nil,
 				}},
 			}
@@ -303,7 +303,7 @@ func TestProcessProperties(t *testing.T) {
 			setupTagValidationMock(fx, "invalid_tag", "multi_select_prop", false)
 			entries := []apimodel.PropertyLinkWithValue{
 				{WrappedPropertyLinkWithValue: apimodel.MultiSelectPropertyLinkValue{
-					PropertyKey: "multi_select_prop",
+					Key:         "multi_select_prop",
 					MultiSelect: util.PtrStrings([]string{"invalid_tag"}),
 				}},
 			}
@@ -316,7 +316,7 @@ func TestProcessProperties(t *testing.T) {
 			setupTagValidationMock(fx, "tag1", "multi_select_prop", true)
 			entries := []apimodel.PropertyLinkWithValue{
 				{WrappedPropertyLinkWithValue: apimodel.MultiSelectPropertyLinkValue{
-					PropertyKey: "multi_select_prop",
+					Key:         "multi_select_prop",
 					MultiSelect: util.PtrStrings([]string{"tag1"}),
 				}},
 			}
@@ -337,8 +337,8 @@ func TestProcessProperties(t *testing.T) {
 			dateStr := "2023-12-25T10:30:00Z"
 			entries := []apimodel.PropertyLinkWithValue{
 				{WrappedPropertyLinkWithValue: apimodel.DatePropertyLinkValue{
-					PropertyKey: "date_prop",
-					Date:        &dateStr,
+					Key:  "date_prop",
+					Date: &dateStr,
 				}},
 			}
 			result, err := fx.service.processProperties(ctx, mockedSpaceId, entries)
@@ -350,8 +350,8 @@ func TestProcessProperties(t *testing.T) {
 			dateStr := "2023-12-25"
 			entries := []apimodel.PropertyLinkWithValue{
 				{WrappedPropertyLinkWithValue: apimodel.DatePropertyLinkValue{
-					PropertyKey: "date_prop",
-					Date:        &dateStr,
+					Key:  "date_prop",
+					Date: &dateStr,
 				}},
 			}
 			result, err := fx.service.processProperties(ctx, mockedSpaceId, entries)
@@ -362,8 +362,8 @@ func TestProcessProperties(t *testing.T) {
 		t.Run("nil value", func(t *testing.T) {
 			entries := []apimodel.PropertyLinkWithValue{
 				{WrappedPropertyLinkWithValue: apimodel.DatePropertyLinkValue{
-					PropertyKey: "date_prop",
-					Date:        nil,
+					Key:  "date_prop",
+					Date: nil,
 				}},
 			}
 			result, err := fx.service.processProperties(ctx, mockedSpaceId, entries)
@@ -375,8 +375,8 @@ func TestProcessProperties(t *testing.T) {
 			dateStr := "invalid-date"
 			entries := []apimodel.PropertyLinkWithValue{
 				{WrappedPropertyLinkWithValue: apimodel.DatePropertyLinkValue{
-					PropertyKey: "date_prop",
-					Date:        &dateStr,
+					Key:  "date_prop",
+					Date: &dateStr,
 				}},
 			}
 			_, err := fx.service.processProperties(ctx, mockedSpaceId, entries)
@@ -388,8 +388,8 @@ func TestProcessProperties(t *testing.T) {
 			dateStr := ""
 			entries := []apimodel.PropertyLinkWithValue{
 				{WrappedPropertyLinkWithValue: apimodel.DatePropertyLinkValue{
-					PropertyKey: "date_prop",
-					Date:        &dateStr,
+					Key:  "date_prop",
+					Date: &dateStr,
 				}},
 			}
 			_, err := fx.service.processProperties(ctx, mockedSpaceId, entries)
@@ -407,8 +407,8 @@ func TestProcessProperties(t *testing.T) {
 			setupValidationMock(fx, "file2", true, model.ObjectType_file)
 			entries := []apimodel.PropertyLinkWithValue{
 				{WrappedPropertyLinkWithValue: apimodel.FilesPropertyLinkValue{
-					PropertyKey: "files_prop",
-					Files:       util.PtrStrings([]string{"file1", "file2"}),
+					Key:   "files_prop",
+					Files: util.PtrStrings([]string{"file1", "file2"}),
 				}},
 			}
 			result, err := fx.service.processProperties(ctx, mockedSpaceId, entries)
@@ -423,8 +423,8 @@ func TestProcessProperties(t *testing.T) {
 		t.Run("empty array", func(t *testing.T) {
 			entries := []apimodel.PropertyLinkWithValue{
 				{WrappedPropertyLinkWithValue: apimodel.FilesPropertyLinkValue{
-					PropertyKey: "files_prop",
-					Files:       util.PtrStrings([]string{}),
+					Key:   "files_prop",
+					Files: util.PtrStrings([]string{}),
 				}},
 			}
 			result, err := fx.service.processProperties(ctx, mockedSpaceId, entries)
@@ -435,8 +435,8 @@ func TestProcessProperties(t *testing.T) {
 		t.Run("nil value", func(t *testing.T) {
 			entries := []apimodel.PropertyLinkWithValue{
 				{WrappedPropertyLinkWithValue: apimodel.FilesPropertyLinkValue{
-					PropertyKey: "files_prop",
-					Files:       nil,
+					Key:   "files_prop",
+					Files: nil,
 				}},
 			}
 			result, err := fx.service.processProperties(ctx, mockedSpaceId, entries)
@@ -448,8 +448,8 @@ func TestProcessProperties(t *testing.T) {
 			setupValidationMock(fx, "invalid_file", false, model.ObjectType_file)
 			entries := []apimodel.PropertyLinkWithValue{
 				{WrappedPropertyLinkWithValue: apimodel.FilesPropertyLinkValue{
-					PropertyKey: "files_prop",
-					Files:       util.PtrStrings([]string{"invalid_file"}),
+					Key:   "files_prop",
+					Files: util.PtrStrings([]string{"invalid_file"}),
 				}},
 			}
 			_, err := fx.service.processProperties(ctx, mockedSpaceId, entries)
@@ -461,8 +461,8 @@ func TestProcessProperties(t *testing.T) {
 			setupValidationMock(fx, "file1", true, model.ObjectType_file)
 			entries := []apimodel.PropertyLinkWithValue{
 				{WrappedPropertyLinkWithValue: apimodel.FilesPropertyLinkValue{
-					PropertyKey: "files_prop",
-					Files:       util.PtrStrings([]string{"file1"}),
+					Key:   "files_prop",
+					Files: util.PtrStrings([]string{"file1"}),
 				}},
 			}
 			result, err := fx.service.processProperties(ctx, mockedSpaceId, entries)
@@ -481,8 +481,8 @@ func TestProcessProperties(t *testing.T) {
 		t.Run("true value", func(t *testing.T) {
 			entries := []apimodel.PropertyLinkWithValue{
 				{WrappedPropertyLinkWithValue: apimodel.CheckboxPropertyLinkValue{
-					PropertyKey: "checkbox_prop",
-					Checkbox:    util.PtrBool(true),
+					Key:      "checkbox_prop",
+					Checkbox: util.PtrBool(true),
 				}},
 			}
 			result, err := fx.service.processProperties(ctx, mockedSpaceId, entries)
@@ -493,8 +493,8 @@ func TestProcessProperties(t *testing.T) {
 		t.Run("false value", func(t *testing.T) {
 			entries := []apimodel.PropertyLinkWithValue{
 				{WrappedPropertyLinkWithValue: apimodel.CheckboxPropertyLinkValue{
-					PropertyKey: "checkbox_prop",
-					Checkbox:    util.PtrBool(false),
+					Key:      "checkbox_prop",
+					Checkbox: util.PtrBool(false),
 				}},
 			}
 			result, err := fx.service.processProperties(ctx, mockedSpaceId, entries)
@@ -505,8 +505,8 @@ func TestProcessProperties(t *testing.T) {
 		t.Run("nil value", func(t *testing.T) {
 			entries := []apimodel.PropertyLinkWithValue{
 				{WrappedPropertyLinkWithValue: apimodel.CheckboxPropertyLinkValue{
-					PropertyKey: "checkbox_prop",
-					Checkbox:    nil,
+					Key:      "checkbox_prop",
+					Checkbox: nil,
 				}},
 			}
 			result, err := fx.service.processProperties(ctx, mockedSpaceId, entries)
@@ -522,8 +522,8 @@ func TestProcessProperties(t *testing.T) {
 		t.Run("valid value", func(t *testing.T) {
 			entries := []apimodel.PropertyLinkWithValue{
 				{WrappedPropertyLinkWithValue: apimodel.UrlPropertyLinkValue{
-					PropertyKey: "url_prop",
-					Url:         util.PtrString("https://example.com"),
+					Key: "url_prop",
+					Url: util.PtrString("https://example.com"),
 				}},
 			}
 			result, err := fx.service.processProperties(ctx, mockedSpaceId, entries)
@@ -534,8 +534,8 @@ func TestProcessProperties(t *testing.T) {
 		t.Run("empty string", func(t *testing.T) {
 			entries := []apimodel.PropertyLinkWithValue{
 				{WrappedPropertyLinkWithValue: apimodel.UrlPropertyLinkValue{
-					PropertyKey: "url_prop",
-					Url:         util.PtrString(""),
+					Key: "url_prop",
+					Url: util.PtrString(""),
 				}},
 			}
 			result, err := fx.service.processProperties(ctx, mockedSpaceId, entries)
@@ -546,8 +546,8 @@ func TestProcessProperties(t *testing.T) {
 		t.Run("nil value", func(t *testing.T) {
 			entries := []apimodel.PropertyLinkWithValue{
 				{WrappedPropertyLinkWithValue: apimodel.UrlPropertyLinkValue{
-					PropertyKey: "url_prop",
-					Url:         nil,
+					Key: "url_prop",
+					Url: nil,
 				}},
 			}
 			result, err := fx.service.processProperties(ctx, mockedSpaceId, entries)
@@ -558,8 +558,8 @@ func TestProcessProperties(t *testing.T) {
 		t.Run("whitespace trimmed", func(t *testing.T) {
 			entries := []apimodel.PropertyLinkWithValue{
 				{WrappedPropertyLinkWithValue: apimodel.UrlPropertyLinkValue{
-					PropertyKey: "url_prop",
-					Url:         util.PtrString("  https://example.com  "),
+					Key: "url_prop",
+					Url: util.PtrString("  https://example.com  "),
 				}},
 			}
 			result, err := fx.service.processProperties(ctx, mockedSpaceId, entries)
@@ -575,8 +575,8 @@ func TestProcessProperties(t *testing.T) {
 		t.Run("valid value", func(t *testing.T) {
 			entries := []apimodel.PropertyLinkWithValue{
 				{WrappedPropertyLinkWithValue: apimodel.EmailPropertyLinkValue{
-					PropertyKey: "email_prop",
-					Email:       util.PtrString("test@example.com"),
+					Key:   "email_prop",
+					Email: util.PtrString("test@example.com"),
 				}},
 			}
 			result, err := fx.service.processProperties(ctx, mockedSpaceId, entries)
@@ -587,8 +587,8 @@ func TestProcessProperties(t *testing.T) {
 		t.Run("empty string", func(t *testing.T) {
 			entries := []apimodel.PropertyLinkWithValue{
 				{WrappedPropertyLinkWithValue: apimodel.EmailPropertyLinkValue{
-					PropertyKey: "email_prop",
-					Email:       util.PtrString(""),
+					Key:   "email_prop",
+					Email: util.PtrString(""),
 				}},
 			}
 			result, err := fx.service.processProperties(ctx, mockedSpaceId, entries)
@@ -599,8 +599,8 @@ func TestProcessProperties(t *testing.T) {
 		t.Run("nil value", func(t *testing.T) {
 			entries := []apimodel.PropertyLinkWithValue{
 				{WrappedPropertyLinkWithValue: apimodel.EmailPropertyLinkValue{
-					PropertyKey: "email_prop",
-					Email:       nil,
+					Key:   "email_prop",
+					Email: nil,
 				}},
 			}
 			result, err := fx.service.processProperties(ctx, mockedSpaceId, entries)
@@ -611,8 +611,8 @@ func TestProcessProperties(t *testing.T) {
 		t.Run("whitespace trimmed", func(t *testing.T) {
 			entries := []apimodel.PropertyLinkWithValue{
 				{WrappedPropertyLinkWithValue: apimodel.EmailPropertyLinkValue{
-					PropertyKey: "email_prop",
-					Email:       util.PtrString("  test@example.com  "),
+					Key:   "email_prop",
+					Email: util.PtrString("  test@example.com  "),
 				}},
 			}
 			result, err := fx.service.processProperties(ctx, mockedSpaceId, entries)
@@ -628,8 +628,8 @@ func TestProcessProperties(t *testing.T) {
 		t.Run("valid value", func(t *testing.T) {
 			entries := []apimodel.PropertyLinkWithValue{
 				{WrappedPropertyLinkWithValue: apimodel.PhonePropertyLinkValue{
-					PropertyKey: "phone_prop",
-					Phone:       util.PtrString("+1234567890"),
+					Key:   "phone_prop",
+					Phone: util.PtrString("+1234567890"),
 				}},
 			}
 			result, err := fx.service.processProperties(ctx, mockedSpaceId, entries)
@@ -640,8 +640,8 @@ func TestProcessProperties(t *testing.T) {
 		t.Run("empty string", func(t *testing.T) {
 			entries := []apimodel.PropertyLinkWithValue{
 				{WrappedPropertyLinkWithValue: apimodel.PhonePropertyLinkValue{
-					PropertyKey: "phone_prop",
-					Phone:       util.PtrString(""),
+					Key:   "phone_prop",
+					Phone: util.PtrString(""),
 				}},
 			}
 			result, err := fx.service.processProperties(ctx, mockedSpaceId, entries)
@@ -652,8 +652,8 @@ func TestProcessProperties(t *testing.T) {
 		t.Run("nil value", func(t *testing.T) {
 			entries := []apimodel.PropertyLinkWithValue{
 				{WrappedPropertyLinkWithValue: apimodel.PhonePropertyLinkValue{
-					PropertyKey: "phone_prop",
-					Phone:       nil,
+					Key:   "phone_prop",
+					Phone: nil,
 				}},
 			}
 			result, err := fx.service.processProperties(ctx, mockedSpaceId, entries)
@@ -664,8 +664,8 @@ func TestProcessProperties(t *testing.T) {
 		t.Run("whitespace trimmed", func(t *testing.T) {
 			entries := []apimodel.PropertyLinkWithValue{
 				{WrappedPropertyLinkWithValue: apimodel.PhonePropertyLinkValue{
-					PropertyKey: "phone_prop",
-					Phone:       util.PtrString("  +1234567890  "),
+					Key:   "phone_prop",
+					Phone: util.PtrString("  +1234567890  "),
 				}},
 			}
 			result, err := fx.service.processProperties(ctx, mockedSpaceId, entries)
@@ -683,8 +683,8 @@ func TestProcessProperties(t *testing.T) {
 			setupValidationMock(fx, "obj2", true, model.ObjectType_basic)
 			entries := []apimodel.PropertyLinkWithValue{
 				{WrappedPropertyLinkWithValue: apimodel.ObjectsPropertyLinkValue{
-					PropertyKey: "objects_prop",
-					Objects:     util.PtrStrings([]string{"obj1", "obj2"}),
+					Key:     "objects_prop",
+					Objects: util.PtrStrings([]string{"obj1", "obj2"}),
 				}},
 			}
 			result, err := fx.service.processProperties(ctx, mockedSpaceId, entries)
@@ -699,8 +699,8 @@ func TestProcessProperties(t *testing.T) {
 		t.Run("empty array", func(t *testing.T) {
 			entries := []apimodel.PropertyLinkWithValue{
 				{WrappedPropertyLinkWithValue: apimodel.ObjectsPropertyLinkValue{
-					PropertyKey: "objects_prop",
-					Objects:     util.PtrStrings([]string{}),
+					Key:     "objects_prop",
+					Objects: util.PtrStrings([]string{}),
 				}},
 			}
 			result, err := fx.service.processProperties(ctx, mockedSpaceId, entries)
@@ -711,8 +711,8 @@ func TestProcessProperties(t *testing.T) {
 		t.Run("nil value", func(t *testing.T) {
 			entries := []apimodel.PropertyLinkWithValue{
 				{WrappedPropertyLinkWithValue: apimodel.ObjectsPropertyLinkValue{
-					PropertyKey: "objects_prop",
-					Objects:     nil,
+					Key:     "objects_prop",
+					Objects: nil,
 				}},
 			}
 			result, err := fx.service.processProperties(ctx, mockedSpaceId, entries)
@@ -724,8 +724,8 @@ func TestProcessProperties(t *testing.T) {
 			setupValidationMock(fx, "invalid_obj", false, model.ObjectType_basic)
 			entries := []apimodel.PropertyLinkWithValue{
 				{WrappedPropertyLinkWithValue: apimodel.ObjectsPropertyLinkValue{
-					PropertyKey: "objects_prop",
-					Objects:     util.PtrStrings([]string{"invalid_obj"}),
+					Key:     "objects_prop",
+					Objects: util.PtrStrings([]string{"invalid_obj"}),
 				}},
 			}
 			_, err := fx.service.processProperties(ctx, mockedSpaceId, entries)
@@ -737,8 +737,8 @@ func TestProcessProperties(t *testing.T) {
 			setupValidationMock(fx, "obj1", true, model.ObjectType_basic)
 			entries := []apimodel.PropertyLinkWithValue{
 				{WrappedPropertyLinkWithValue: apimodel.ObjectsPropertyLinkValue{
-					PropertyKey: "objects_prop",
-					Objects:     util.PtrStrings([]string{"obj1"}),
+					Key:     "objects_prop",
+					Objects: util.PtrStrings([]string{"obj1"}),
 				}},
 			}
 			result, err := fx.service.processProperties(ctx, mockedSpaceId, entries)
@@ -771,8 +771,8 @@ func TestProcessProperties(t *testing.T) {
 			setupPropertyCache(fx)
 			entries := []apimodel.PropertyLinkWithValue{
 				{WrappedPropertyLinkWithValue: apimodel.ObjectsPropertyLinkValue{
-					PropertyKey: "creator",
-					Objects:     util.PtrStrings([]string{"user1"}),
+					Key:     "creator",
+					Objects: util.PtrStrings([]string{"user1"}),
 				}},
 			}
 			_, err := fx.service.processProperties(ctx, mockedSpaceId, entries)
@@ -794,20 +794,20 @@ func TestProcessProperties(t *testing.T) {
 				Text: util.PtrString("Hello"),
 			}},
 			{WrappedPropertyLinkWithValue: apimodel.NumberPropertyLinkValue{
-				PropertyKey: "number_prop",
-				Number:      &num,
+				Key:    "number_prop",
+				Number: &num,
 			}},
 			{WrappedPropertyLinkWithValue: apimodel.SelectPropertyLinkValue{
-				PropertyKey: "select_prop",
-				Select:      util.PtrString("tag1"),
+				Key:    "select_prop",
+				Select: util.PtrString("tag1"),
 			}},
 			{WrappedPropertyLinkWithValue: apimodel.FilesPropertyLinkValue{
-				PropertyKey: "files_prop",
-				Files:       util.PtrStrings([]string{"file1"}),
+				Key:   "files_prop",
+				Files: util.PtrStrings([]string{"file1"}),
 			}},
 			{WrappedPropertyLinkWithValue: apimodel.CheckboxPropertyLinkValue{
-				PropertyKey: "checkbox_prop",
-				Checkbox:    util.PtrBool(true),
+				Key:      "checkbox_prop",
+				Checkbox: util.PtrBool(true),
 			}},
 		}
 
@@ -850,16 +850,16 @@ func TestProcessProperties(t *testing.T) {
 				Text: util.PtrString(""),
 			}},
 			{WrappedPropertyLinkWithValue: apimodel.NumberPropertyLinkValue{
-				PropertyKey: "number_prop",
-				Number:      nil,
+				Key:    "number_prop",
+				Number: nil,
 			}},
 			{WrappedPropertyLinkWithValue: apimodel.SelectPropertyLinkValue{
-				PropertyKey: "select_prop",
-				Select:      nil,
+				Key:    "select_prop",
+				Select: nil,
 			}},
 			{WrappedPropertyLinkWithValue: apimodel.FilesPropertyLinkValue{
-				PropertyKey: "files_prop",
-				Files:       util.PtrStrings([]string{}),
+				Key:   "files_prop",
+				Files: util.PtrStrings([]string{}),
 			}},
 		}
 

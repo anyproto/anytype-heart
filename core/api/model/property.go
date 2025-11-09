@@ -390,14 +390,14 @@ func (v TextPropertyLinkValue) GetValue() interface{} {
 }
 
 type NumberPropertyLinkValue struct {
-	PropertyKey string   `json:"key" example:"height"`
-	Number      *float64 `json:"number" example:"42"` // The number value of the property
+	Key    string   `json:"key" example:"height"`
+	Number *float64 `json:"number" example:"42"` // The number value of the property
 }
 
 func (NumberPropertyLinkValue) isPropertyLinkWithValue() {}
 
 func (v NumberPropertyLinkValue) GetKey() string {
-	return v.PropertyKey
+	return v.Key
 }
 
 func (v NumberPropertyLinkValue) GetValue() interface{} {
@@ -408,14 +408,14 @@ func (v NumberPropertyLinkValue) GetValue() interface{} {
 }
 
 type SelectPropertyLinkValue struct {
-	PropertyKey string  `json:"key" example:"status"`
-	Select      *string `json:"select" example:"tag_id"` // The selected tag id of the property; see ListTags endpoint for valid values
+	Key    string  `json:"key" example:"status"`
+	Select *string `json:"select" example:"tag_id"` // The selected tag id of the property; see ListTags endpoint for valid values
 }
 
 func (SelectPropertyLinkValue) isPropertyLinkWithValue() {}
 
 func (v SelectPropertyLinkValue) GetKey() string {
-	return v.PropertyKey
+	return v.Key
 }
 
 func (v SelectPropertyLinkValue) GetValue() interface{} {
@@ -426,14 +426,14 @@ func (v SelectPropertyLinkValue) GetValue() interface{} {
 }
 
 type MultiSelectPropertyLinkValue struct {
-	PropertyKey string    `json:"key" example:"tag"`
+	Key         string    `json:"key" example:"tag"`
 	MultiSelect *[]string `json:"multi_select" example:"bafyreiaixlnaefu3ci22zdenjhsdlyaeeoyjrsid5qhfeejzlccijbj7sq,bafyreie6n5l5nkbjal37su54cha4coy7qzuhrnajluzv5qd5jvtsrxkequ"` // The selected tag ids of the property; see ListTags endpoint for valid values
 }
 
 func (MultiSelectPropertyLinkValue) isPropertyLinkWithValue() {}
 
 func (v MultiSelectPropertyLinkValue) GetKey() string {
-	return v.PropertyKey
+	return v.Key
 }
 
 func (v MultiSelectPropertyLinkValue) GetValue() interface{} {
@@ -448,14 +448,14 @@ func (v MultiSelectPropertyLinkValue) GetValue() interface{} {
 }
 
 type DatePropertyLinkValue struct {
-	PropertyKey string  `json:"key" example:"last_modified_date"`
-	Date        *string `json:"date" example:"2006-01-02T15:04:05Z"` // The date value of the property. Accepts dates in RFC3339 format (2006-01-02T15:04:05Z) or date-only format (2006-01-02)
+	Key  string  `json:"key" example:"last_modified_date"`
+	Date *string `json:"date" example:"2006-01-02T15:04:05Z"` // The date value of the property. Accepts dates in RFC3339 format (2006-01-02T15:04:05Z) or date-only format (2006-01-02)
 }
 
 func (DatePropertyLinkValue) isPropertyLinkWithValue() {}
 
 func (v DatePropertyLinkValue) GetKey() string {
-	return v.PropertyKey
+	return v.Key
 }
 
 func (v DatePropertyLinkValue) GetValue() interface{} {
@@ -466,14 +466,14 @@ func (v DatePropertyLinkValue) GetValue() interface{} {
 }
 
 type FilesPropertyLinkValue struct {
-	PropertyKey string    `json:"key" example:"files"`
-	Files       *[]string `json:"files" example:"bafyreie6n5l5nkbjal37su54cha4coy7qzuhrnajluzv5qd5jvtsrxkequ"` // The file ids of the property
+	Key   string    `json:"key" example:"files"`
+	Files *[]string `json:"files" example:"bafyreie6n5l5nkbjal37su54cha4coy7qzuhrnajluzv5qd5jvtsrxkequ"` // The file ids of the property
 }
 
 func (FilesPropertyLinkValue) isPropertyLinkWithValue() {}
 
 func (v FilesPropertyLinkValue) GetKey() string {
-	return v.PropertyKey
+	return v.Key
 }
 
 func (v FilesPropertyLinkValue) GetValue() interface{} {
@@ -488,14 +488,14 @@ func (v FilesPropertyLinkValue) GetValue() interface{} {
 }
 
 type CheckboxPropertyLinkValue struct {
-	PropertyKey string `json:"key" example:"done"`
-	Checkbox    *bool  `json:"checkbox" example:"true"` // The checkbox value of the property
+	Key      string `json:"key" example:"done"`
+	Checkbox *bool  `json:"checkbox" example:"true"` // The checkbox value of the property
 }
 
 func (CheckboxPropertyLinkValue) isPropertyLinkWithValue() {}
 
 func (v CheckboxPropertyLinkValue) GetKey() string {
-	return v.PropertyKey
+	return v.Key
 }
 
 func (v CheckboxPropertyLinkValue) GetValue() interface{} {
@@ -506,14 +506,14 @@ func (v CheckboxPropertyLinkValue) GetValue() interface{} {
 }
 
 type UrlPropertyLinkValue struct {
-	PropertyKey string  `json:"key" example:"source"`
-	Url         *string `json:"url" example:"https://example.com"` // The URL value of the property
+	Key string  `json:"key" example:"source"`
+	Url *string `json:"url" example:"https://example.com"` // The URL value of the property
 }
 
 func (UrlPropertyLinkValue) isPropertyLinkWithValue() {}
 
 func (v UrlPropertyLinkValue) GetKey() string {
-	return v.PropertyKey
+	return v.Key
 }
 
 func (v UrlPropertyLinkValue) GetValue() interface{} {
@@ -524,14 +524,14 @@ func (v UrlPropertyLinkValue) GetValue() interface{} {
 }
 
 type EmailPropertyLinkValue struct {
-	PropertyKey string  `json:"key" example:"email"`
-	Email       *string `json:"email" example:"example@example.com"` // The email value of the property
+	Key   string  `json:"key" example:"email"`
+	Email *string `json:"email" example:"example@example.com"` // The email value of the property
 }
 
 func (EmailPropertyLinkValue) isPropertyLinkWithValue() {}
 
 func (v EmailPropertyLinkValue) GetKey() string {
-	return v.PropertyKey
+	return v.Key
 }
 
 func (v EmailPropertyLinkValue) GetValue() interface{} {
@@ -542,14 +542,14 @@ func (v EmailPropertyLinkValue) GetValue() interface{} {
 }
 
 type PhonePropertyLinkValue struct {
-	PropertyKey string  `json:"key" example:"phone"`
-	Phone       *string `json:"phone" example:"+1234567890"` // The phone value of the property
+	Key   string  `json:"key" example:"phone"`
+	Phone *string `json:"phone" example:"+1234567890"` // The phone value of the property
 }
 
 func (PhonePropertyLinkValue) isPropertyLinkWithValue() {}
 
 func (v PhonePropertyLinkValue) GetKey() string {
-	return v.PropertyKey
+	return v.Key
 }
 
 func (v PhonePropertyLinkValue) GetValue() interface{} {
@@ -560,14 +560,14 @@ func (v PhonePropertyLinkValue) GetValue() interface{} {
 }
 
 type ObjectsPropertyLinkValue struct {
-	PropertyKey string    `json:"key" example:"creator"`
-	Objects     *[]string `json:"objects" example:"bafyreie6n5l5nkbjal37su54cha4coy7qzuhrnajluzv5qd5jvtsrxkequ"` // The object ids of the property
+	Key     string    `json:"key" example:"creator"`
+	Objects *[]string `json:"objects" example:"bafyreie6n5l5nkbjal37su54cha4coy7qzuhrnajluzv5qd5jvtsrxkequ"` // The object ids of the property
 }
 
 func (ObjectsPropertyLinkValue) isPropertyLinkWithValue() {}
 
 func (v ObjectsPropertyLinkValue) GetKey() string {
-	return v.PropertyKey
+	return v.Key
 }
 
 func (v ObjectsPropertyLinkValue) GetValue() interface{} {
