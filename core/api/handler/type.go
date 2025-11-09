@@ -16,7 +16,7 @@ import (
 //
 //	@Summary		List types
 //	@Description	This endpoint retrieves a paginated list of types (e.g. 'Page', 'Note', 'Task') available within the specified space. Each type's record includes its unique identifier, type key, display name, icon, and layout. While a type's id is truly unique, a type's key can be the same across spaces for known types, e.g. 'page' for 'Page'. Clients use this information when offering choices for object creation or for filtering objects by type through search.
-//	@Description	Supports dynamic filtering via query parameters (e.g., ?key=page, ?name[contains]=task, ?layout[ne]=note). See FilterCondition enum for available conditions.
+//	@Description	Supports dynamic filtering via query parameters (e.g. ?name[contains]=task). See FilterCondition enum for available conditions.
 //	@Id				list_types
 //	@Tags			Types
 //	@Produce		json

@@ -1392,10 +1392,10 @@ components:
           example: tag
           type: string
         multi_select:
-          description: The selected tag ids of the property; see ListTags endpoint
-            for valid values
+          description: The selected tags (by key, e.g., "important", or ID, e.g.,
+            "bafyrei...") of the property; see ListTags endpoint for valid values
           example:
-          - bafyreiaixlnaefu3ci22zdenjhsdlyaeeoyjrsid5qhfeejzlccijbj7sq
+          - important
           - bafyreie6n5l5nkbjal37su54cha4coy7qzuhrnajluzv5qd5jvtsrxkequ
           items:
             type: string
@@ -1851,9 +1851,9 @@ components:
           example: status
           type: string
         select:
-          description: The selected tag id of the property; see ListTags endpoint
-            for valid values
-          example: tag_id
+          description: The selected tag (by key, e.g., "important", or ID, e.g., "bafyrei...")
+            of the property; see ListTags endpoint for valid values
+          example: important
           type: string
       type: object
     SelectPropertyValue:
@@ -2683,7 +2683,7 @@ paths:
     get:
       description: |-
         Retrieves a paginated list of all spaces that are accessible by the authenticated user. Each space record contains detailed information such as the space ID, name, icon (derived either from an emoji or image URL), and additional metadata. This endpoint is key to displaying a user's workspaces.
-        Supports dynamic filtering via query parameters (e.g., ?name[contains]=project, ?is_archived=false). See FilterCondition enum for available conditions.
+        Supports dynamic filtering via query parameters (e.g., ?name[contains]=project). See FilterCondition enum for available conditions.
       operationId: list_spaces
       parameters:
       - description: The version of the API to use
@@ -3154,7 +3154,7 @@ paths:
     get:
       description: |-
         Returns a paginated list of objects associated with a specific list (query or collection) within a space. When a view ID is provided, the objects are filtered and sorted according to the view's configuration. If no view ID is specified, all list objects are returned without filtering and sorting. This endpoint helps clients to manage grouped objects (for example, tasks within a list) by returning information for each item of the list.
-        Supports dynamic filtering via query parameters (e.g., ?type=page, ?done=false, ?created_date[gte]=2024-01-01, ?tags[in]=urgent,important). For select/tag properties use tag keys, for object properties use object IDs. See FilterCondition enum for available conditions.
+        Supports dynamic filtering via query parameters (e.g., ?done=false, ?created_date[gte]=2024-01-01, ?tags[in]=urgent,important). For select/tag properties use tag keys, for object properties use object IDs. See FilterCondition enum for available conditions.
       operationId: get_list_objects
       parameters:
       - description: The version of the API to use
@@ -3232,7 +3232,7 @@ paths:
     get:
       description: |-
         Returns a paginated list of members belonging to the specified space. Each member record includes the member's profile ID, name, icon (which may be derived from an emoji or image), network identity, global name, status (e.g. joining, active) and role (e.g. Viewer, Editor, Owner). This endpoint supports collaborative features by allowing clients to show who is in a space and manage access rights.
-        Supports dynamic filtering via query parameters (e.g., ?status=active, ?role[ne]=viewer, ?name[contains]=john). See FilterCondition enum for available conditions.
+        Supports dynamic filtering via query parameters (e.g., ?name[ne]=john). See FilterCondition enum for available conditions.
       operationId: list_members
       parameters:
       - description: The version of the API to use
@@ -3352,7 +3352,7 @@ paths:
     get:
       description: |-
         Retrieves a paginated list of objects in the given space. The endpoint takes query parameters for pagination (offset and limit) and returns detailed data about each object including its ID, name, icon, type information, a snippet of the content (if applicable), layout, space ID, blocks and details. It is intended for building views where users can see all objects in a space at a glance.
-        Supports dynamic filtering via query parameters (e.g., ?type=page, ?done=false, ?created_date[gte]=2024-01-01, ?tags[in]=urgent,important). For select/tag properties use tag keys, for object properties use object IDs. See FilterCondition enum for available conditions.
+        Supports dynamic filtering via query parameters (e.g., ?done=false, ?created_date[gte]=2024-01-01, ?tags[in]=urgent,important). For select/multi_select properties you can use either tag keys or tag IDs, for object properties use object IDs. See FilterCondition enum for available conditions.
       operationId: list_objects
       parameters:
       - description: The version of the API to use
@@ -3714,7 +3714,7 @@ paths:
     get:
       description: |-
         Retrieves a paginated list of properties available within a specific space. Each property record includes its unique identifier, name and format. This information is essential for clients to understand the available properties for filtering or creating objects.
-        Supports dynamic filtering via query parameters (e.g., ?format=text, ?name[contains]=date, ?key[ne]=custom_prop). See FilterCondition enum for available conditions.
+        Supports dynamic filtering via query parameters (e.g., ?name[contains]=date). See FilterCondition enum for available conditions.
       operationId: list_properties
       parameters:
       - description: The version of the API to use
@@ -4069,7 +4069,7 @@ paths:
     get:
       description: |-
         This endpoint retrieves a paginated list of tags available for a specific property within a space. Each tag record includes its unique identifier, name, and color. This information is essential for clients to display select or multi-select options to users when they are creating or editing objects. The endpoint also supports pagination through offset and limit parameters.
-        Supports dynamic filtering via query parameters (e.g., ?name[contains]=urgent, ?color=red, ?key[ne]=archived). See FilterCondition enum for available conditions.
+        Supports dynamic filtering via query parameters (e.g., ?name[contains]=urgent). See FilterCondition enum for available conditions.
       operationId: list_tags
       parameters:
       - description: The version of the API to use
@@ -4523,7 +4523,7 @@ paths:
     get:
       description: |-
         This endpoint retrieves a paginated list of types (e.g. 'Page', 'Note', 'Task') available within the specified space. Each type's record includes its unique identifier, type key, display name, icon, and layout. While a type's id is truly unique, a type's key can be the same across spaces for known types, e.g. 'page' for 'Page'. Clients use this information when offering choices for object creation or for filtering objects by type through search.
-        Supports dynamic filtering via query parameters (e.g., ?key=page, ?name[contains]=task, ?layout[ne]=note). See FilterCondition enum for available conditions.
+        Supports dynamic filtering via query parameters (e.g. ?name[contains]=task). See FilterCondition enum for available conditions.
       operationId: list_types
       parameters:
       - description: The version of the API to use
@@ -4872,7 +4872,7 @@ paths:
     get:
       description: |-
         This endpoint returns a paginated list of templates that are associated with a specific type within a space. Templates provide pre‑configured structures for creating new objects. Each template record contains its identifier, name, and icon, so that clients can offer users a selection of templates when creating objects.
-        Supports dynamic filtering via query parameters (e.g., ?name[contains]=invoice, ?is_default=true). See FilterCondition enum for available conditions.
+        Supports dynamic filtering via query parameters (e.g., ?name[contains]=invoice). See FilterCondition enum for available conditions.
       operationId: list_templates
       parameters:
       - description: The version of the API to use
