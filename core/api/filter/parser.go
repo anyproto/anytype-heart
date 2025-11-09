@@ -10,6 +10,7 @@ import (
 	"github.com/gin-gonic/gin"
 
 	apimodel "github.com/anyproto/anytype-heart/core/api/model"
+	"github.com/anyproto/anytype-heart/core/api/pagination"
 	"github.com/anyproto/anytype-heart/core/api/util"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -42,10 +43,8 @@ func (p *Parser) ParseQueryParams(c *gin.Context, spaceId string) (*ParsedFilter
 	filters := make([]Filter, 0)
 
 	skipParams := map[string]bool{
-		"offset": true,
-		"limit":  true,
-		"sort":   true,
-		"order":  true,
+		pagination.QueryParamOffset: true,
+		pagination.QueryParamLimit:  true,
 	}
 
 	for key, values := range queryParams {

@@ -22,7 +22,6 @@ const (
 )
 
 // NewRouter builds and returns a *gin.Engine with all routes configured.
-
 func (srv *Server) NewRouter(mw apicore.ClientCommands, eventService apicore.EventService, openapiYAML []byte, openapiJSON []byte) *gin.Engine {
 	isDebug := os.Getenv("ANYTYPE_API_DEBUG") == "1"
 	if !isDebug {

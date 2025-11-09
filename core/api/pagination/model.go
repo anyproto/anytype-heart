@@ -2,6 +2,11 @@ package pagination
 
 import "encoding/json"
 
+const (
+	QueryParamOffset = "offset"
+	QueryParamLimit  = "limit"
+)
+
 type PaginationMeta struct {
 	Total   int  `json:"total" example:"1000"`    // The total number of items available for the endpoint
 	Offset  int  `json:"offset" example:"0"`      // The number of items skipped before starting to collect the result set
