@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/url"
 	"regexp"
+	"strconv"
 	"strings"
 
 	"github.com/gin-gonic/gin"
@@ -146,10 +147,14 @@ func (p *Parser) parseFilterValue(rawValue string, condition model.BlockContentD
 
 	switch condition {
 	case model.BlockContentDataviewFilter_Empty, model.BlockContentDataviewFilter_NotEmpty:
-		if decodedValue == "" || decodedValue == "true" || decodedValue == "1" {
+		if decodedValue == "" {
 			return true, nil
 		}
-		return false, nil
+		boolValue, err := strconv.ParseBool(decodedValue)
+		if err != nil {
+			return nil, util.ErrBadInput(fmt.Sprintf("invalid boolean value %q", decodedValue))
+		}
+		return boolValue, nil
 
 	case model.BlockContentDataviewFilter_In, model.BlockContentDataviewFilter_NotIn, model.BlockContentDataviewFilter_AllIn:
 		if decodedValue == "" {

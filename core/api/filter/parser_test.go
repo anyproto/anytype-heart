@@ -750,9 +750,63 @@ func TestParser_parseFilterValue(t *testing.T) {
 			expectedValue: true,
 		},
 		{
+			name:          "empty condition with 0",
+			rawValue:      "0",
+			condition:     model.BlockContentDataviewFilter_Empty,
+			expectedValue: false,
+		},
+		{
+			name:          "empty condition with TRUE (uppercase)",
+			rawValue:      "TRUE",
+			condition:     model.BlockContentDataviewFilter_Empty,
+			expectedValue: true,
+		},
+		{
+			name:          "empty condition with FALSE (uppercase)",
+			rawValue:      "FALSE",
+			condition:     model.BlockContentDataviewFilter_Empty,
+			expectedValue: false,
+		},
+		{
+			name:          "empty condition with True (mixed case)",
+			rawValue:      "True",
+			condition:     model.BlockContentDataviewFilter_Empty,
+			expectedValue: true,
+		},
+		{
+			name:          "empty condition with False (mixed case)",
+			rawValue:      "False",
+			condition:     model.BlockContentDataviewFilter_Empty,
+			expectedValue: false,
+		},
+		{
 			name:          "empty condition with empty string",
 			rawValue:      "",
 			condition:     model.BlockContentDataviewFilter_Empty,
+			expectedValue: true,
+		},
+		{
+			name:          "empty condition with invalid boolean",
+			rawValue:      "invalid",
+			condition:     model.BlockContentDataviewFilter_Empty,
+			expectedError: "invalid boolean value \"invalid\"",
+		},
+		{
+			name:          "not empty condition with true",
+			rawValue:      "true",
+			condition:     model.BlockContentDataviewFilter_NotEmpty,
+			expectedValue: true,
+		},
+		{
+			name:          "not empty condition with false",
+			rawValue:      "false",
+			condition:     model.BlockContentDataviewFilter_NotEmpty,
+			expectedValue: false,
+		},
+		{
+			name:          "not empty condition with empty string",
+			rawValue:      "",
+			condition:     model.BlockContentDataviewFilter_NotEmpty,
 			expectedValue: true,
 		},
 		{
