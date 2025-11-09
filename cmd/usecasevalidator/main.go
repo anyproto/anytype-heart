@@ -150,7 +150,6 @@ func (c *Config) fileName() string {
 var (
 	errIncorrectFileFound = fmt.Errorf("incorrect protobuf file was found")
 	errValidationFailed   = fmt.Errorf("validation failed")
-	errSkipObject         = fmt.Errorf("object is invalid, skip it")
 )
 
 func main() {

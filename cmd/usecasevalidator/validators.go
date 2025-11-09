@@ -171,12 +171,12 @@ func validateObjectTypes(s *pb.SnapshotWithType, info *useCaseInfo, fixConfig Fi
 		if bundle.HasObjectTypeByKey(domain.TypeKey(typeId)) || found {
 			continue
 		}
-		msg := fmt.Sprintf("object contains unknown object type: %s", ot)
+		formattedMsg := "object contains unknown object type: %s"
 		if fixConfig.SkipInvalidTypes {
-			reporter.addMsg(getId(s), msg)
+			reporter.addMsg(getId(s), fmt.Sprintf(formattedMsg, ot))
 			return true, nil
 		}
-		err = multierror.Append(err, fmt.Errorf(msg))
+		err = multierror.Append(err, fmt.Errorf(formattedMsg, ot))
 	}
 	return false, err
 }
