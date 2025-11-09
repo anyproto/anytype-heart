@@ -199,38 +199,9 @@ func (s *Service) UpdateObject(ctx context.Context, spaceId string, objectId str
 	}
 
 	if request.Markdown != nil {
-		showResp := s.mw.ObjectShow(ctx, &pb.RpcObjectShowRequest{
-			SpaceId:  spaceId,
-			ObjectId: objectId,
-		})
-
-		if showResp.Error != nil && showResp.Error.Code != pb.RpcObjectShowResponseError_NULL {
-			return nil, ErrFailedRetrieveObject
-		}
-
-		allRootChildrenExceptHeader := make([]string, 0, len(showResp.ObjectView.Blocks[0].ChildrenIds))
-		for _, childId := range showResp.ObjectView.Blocks[0].ChildrenIds {
-			if childId != "header" {
-				allRootChildrenExceptHeader = append(allRootChildrenExceptHeader, childId)
-			}
-		}
-
-		if len(allRootChildrenExceptHeader) > 0 {
-			deleteResp := s.mw.BlockListDelete(ctx, &pb.RpcBlockListDeleteRequest{
-				ContextId: objectId,
-				BlockIds:  allRootChildrenExceptHeader,
-			})
-
-			if deleteResp.Error != nil && deleteResp.Error.Code != pb.RpcBlockListDeleteResponseError_NULL {
-				return nil, ErrFailedReplaceBlocks
-			}
-		}
-
-		if *request.Markdown != "" {
-			if err := s.createAndPasteBody(ctx, spaceId, objectId, *request.Markdown); err != nil {
-				object, _ := s.GetObject(ctx, spaceId, objectId) // nolint:errcheck
-				return object, err
-			}
+		if err := s.replaceObjectMarkdown(ctx, spaceId, objectId, *request.Markdown); err != nil {
+			object, _ := s.GetObject(ctx, spaceId, objectId) // nolint:errcheck
+			return object, err
 		}
 	}
 
@@ -254,6 +225,44 @@ func (s *Service) DeleteObject(ctx context.Context, spaceId string, objectId str
 	}
 
 	return object, nil
+}
+
+// replaceObjectMarkdown replaces all object content with the provided markdown
+func (s *Service) replaceObjectMarkdown(ctx context.Context, spaceId, objectId, markdown string) error {
+	showResp := s.mw.ObjectShow(ctx, &pb.RpcObjectShowRequest{
+		SpaceId:  spaceId,
+		ObjectId: objectId,
+	})
+
+	if showResp.Error != nil && showResp.Error.Code != pb.RpcObjectShowResponseError_NULL {
+		return ErrFailedRetrieveObject
+	}
+
+	allRootChildrenExceptHeader := make([]string, 0, len(showResp.ObjectView.Blocks[0].ChildrenIds))
+	for _, childId := range showResp.ObjectView.Blocks[0].ChildrenIds {
+		if childId != "header" {
+			allRootChildrenExceptHeader = append(allRootChildrenExceptHeader, childId)
+		}
+	}
+
+	if len(allRootChildrenExceptHeader) > 0 {
+		deleteResp := s.mw.BlockListDelete(ctx, &pb.RpcBlockListDeleteRequest{
+			ContextId: objectId,
+			BlockIds:  allRootChildrenExceptHeader,
+		})
+
+		if deleteResp.Error != nil && deleteResp.Error.Code != pb.RpcBlockListDeleteResponseError_NULL {
+			return ErrFailedReplaceBlocks
+		}
+	}
+
+	if markdown != "" {
+		if err := s.createAndPasteBody(ctx, spaceId, objectId, markdown); err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 // buildObjectDetails extracts the details structure from the CreateObjectRequest.
