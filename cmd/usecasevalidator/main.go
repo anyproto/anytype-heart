@@ -222,7 +222,7 @@ func run() error {
 	}
 
 	reporter := &reporter{changes: make(map[string][]string)}
-	err = processUsecase(info, writer, config, reporter)
+	err = processUseCase(info, writer, config, reporter, updateNeeded)
 
 	if err != nil {
 		if errors.Is(err, errIncorrectFileFound) {
@@ -338,7 +338,7 @@ func collectUseCaseInfo(files []*zip.File, fileName string) (info *useCaseInfo, 
 			format := pbtypes.GetInt64(snapshot.Snapshot.Data.Details, bundle.RelationKeyRelationFormat.String())
 			prefix = export.RelationsDirectory
 			if !bundle.HasRelation(domain.RelationKey(key)) {
-				info.customTypesAndRelations[key] = customInfo{id: id, isUsed: false, relationFormat: model.RelationFormat(format), name: name}
+				info.customTypesAndRelations[key] = customInfo{id: id, isUsed: false, relationFormat: model.RelationFormat(format), name: name} //nolint:gosec
 			}
 		case model.SmartBlockType_STType:
 			uk := pbtypes.GetString(snapshot.Snapshot.Data.Details, bundle.RelationKeyUniqueKey.String())
@@ -365,7 +365,7 @@ func collectUseCaseInfo(files []*zip.File, fileName string) (info *useCaseInfo, 
 				prefix = export.RelationsDirectory
 				format := pbtypes.GetInt64(snapshot.Snapshot.Data.Details, bundle.RelationKeyRelationFormat.String())
 				if !bundle.HasRelation(domain.RelationKey(key)) {
-					info.customTypesAndRelations[key] = customInfo{id: id, isUsed: false, relationFormat: model.RelationFormat(format), name: name}
+					info.customTypesAndRelations[key] = customInfo{id: id, isUsed: false, relationFormat: model.RelationFormat(format), name: name} //nolint:gosec
 				}
 			}
 		case model.SmartBlockType_Template:
@@ -384,7 +384,7 @@ func collectUseCaseInfo(files []*zip.File, fileName string) (info *useCaseInfo, 
 
 		fName := f.Name
 		if !strings.HasPrefix(fName, prefix) {
-			fName = filepath.Join(prefix, fName)
+			fName = filepath.Join(prefix, fName) //nolint:gosec
 		}
 		info.snapshots[fName] = snapshot
 	}
@@ -404,12 +404,7 @@ func readData(f *zip.File) ([]byte, error) {
 	return data, nil
 }
 
-func processUsecase(info *useCaseInfo, zw *zip.Writer, config *Config, reporter *reporter) error {
-	var (
-		incorrectFileFound bool
-		saveUpdatedFile    = config.isUpdateNeeded()
-	)
-
+func processUseCase(info *useCaseInfo, zw *zip.Writer, config *Config, reporter *reporter, saveUpdatedFile bool) error {
 	if info.profile != nil {
 		data, err := processProfile(info, config.Fix.HomeObjectId, reporter)
 		if err != nil {
@@ -422,13 +417,14 @@ func processUsecase(info *useCaseInfo, zw *zip.Writer, config *Config, reporter 
 		}
 	}
 
+	var processErr error
 	updatedFileObjects := make(map[string]namedBytes, len(info.fileObjects))
 	for name, sn := range info.snapshots {
 		newData, err := processSnapshot(sn, info, config, reporter)
 		if err != nil {
-			if !(config.Fix.SkipInvalidObjects && errors.Is(err, errValidationFailed)) {
+			if !config.Fix.SkipInvalidObjects || !errors.Is(err, errValidationFailed) {
 				// just do not include object that failed validation
-				incorrectFileFound = true
+				processErr = errIncorrectFileFound
 			}
 			continue
 		}
@@ -454,10 +450,7 @@ func processUsecase(info *useCaseInfo, zw *zip.Writer, config *Config, reporter 
 		}
 	}
 
-	if incorrectFileFound {
-		return errIncorrectFileFound
-	}
-	return nil
+	return processErr
 }
 
 func saveFiles(zw *zip.Writer, info *useCaseInfo, config *Config, fileObjects map[string]namedBytes, reporter *reporter) (err error) {
@@ -651,37 +644,41 @@ func insertCreatorInfo(s *pb.ChangeSnapshot) {
 }
 
 func applyPrimitives(s *pb.SnapshotWithType, info *useCaseInfo, reporter *reporter) {
-	id := getId(s)
 	if s.SbType == model.SmartBlockType_Page {
-		relationsToDelete := make([]string, 0, 3)
-		for _, rel := range []string{bundle.RelationKeyLayout.String(), bundle.RelationKeyLayoutAlign.String()} {
-			_, found := s.Snapshot.Data.Details.Fields[rel]
-			if found {
-				relationsToDelete = append(relationsToDelete, rel)
-				delete(s.Snapshot.Data.Details.Fields, rel)
-			}
-		}
+		applyPrimitivesToPage(s, reporter)
+	} else if s.SbType == model.SmartBlockType_STType {
+		applyPrimitivesToType(s, info, reporter)
+	}
+}
 
-		featuredRelations := pbtypes.GetStringList(s.Snapshot.Data.Details, bundle.RelationKeyFeaturedRelations.String())
-		if featuredRelations != nil {
-			if slices.Contains(featuredRelations, bundle.RelationKeyDescription.String()) {
-				reporter.addMsg(id, "primitives: leave only description in featured relations")
-				s.Snapshot.Data.Details.Fields[bundle.RelationKeyFeaturedRelations.String()] = pbtypes.StringList([]string{bundle.RelationKeyDescription.String()})
-			} else {
-				relationsToDelete = append(relationsToDelete, bundle.RelationKeyFeaturedRelations.String())
-				delete(s.Snapshot.Data.Details.Fields, bundle.RelationKeyFeaturedRelations.String())
-			}
-		}
-
-		if len(relationsToDelete) > 0 {
-			reporter.addMsg(id, fmt.Sprintf("primitives: layout related details deleted: [%s]", strings.Join(relationsToDelete, ",")))
+func applyPrimitivesToPage(s *pb.SnapshotWithType, reporter *reporter) {
+	id := getId(s)
+	relationsToDelete := make([]string, 0, 3)
+	for _, rel := range []string{bundle.RelationKeyLayout.String(), bundle.RelationKeyLayoutAlign.String()} {
+		_, found := s.Snapshot.Data.Details.Fields[rel]
+		if found {
+			relationsToDelete = append(relationsToDelete, rel)
+			delete(s.Snapshot.Data.Details.Fields, rel)
 		}
 	}
 
-	if s.SbType != model.SmartBlockType_STType {
-		return
+	featuredRelations := pbtypes.GetStringList(s.Snapshot.Data.Details, bundle.RelationKeyFeaturedRelations.String())
+	if featuredRelations != nil {
+		if slices.Contains(featuredRelations, bundle.RelationKeyDescription.String()) {
+			reporter.addMsg(id, "primitives: leave only description in featured relations")
+			s.Snapshot.Data.Details.Fields[bundle.RelationKeyFeaturedRelations.String()] = pbtypes.StringList([]string{bundle.RelationKeyDescription.String()})
+		} else {
+			relationsToDelete = append(relationsToDelete, bundle.RelationKeyFeaturedRelations.String())
+			delete(s.Snapshot.Data.Details.Fields, bundle.RelationKeyFeaturedRelations.String())
+		}
 	}
 
+	if len(relationsToDelete) > 0 {
+		reporter.addMsg(id, fmt.Sprintf("primitives: layout related details deleted: [%s]", strings.Join(relationsToDelete, ",")))
+	}
+}
+
+func applyPrimitivesToType(s *pb.SnapshotWithType, info *useCaseInfo, reporter *reporter) {
 	if _, found := s.Snapshot.Data.Details.Fields[bundle.RelationKeyRecommendedFeaturedRelations.String()]; found {
 		return
 	}
@@ -701,13 +698,13 @@ func applyPrimitives(s *pb.SnapshotWithType, info *useCaseInfo, reporter *report
 	details.SetStringList(bundle.RelationKeyRecommendedRelations, bundleIds)
 
 	typeKey := domain.TypeKey(pbtypes.GetString(s.Snapshot.Data.Details, bundle.RelationKeyUniqueKey.String()))
-	_, _, err := relationutils.FillRecommendedRelations(nil, info, details, typeKey)
+	_, _, err := relationutils.FillRecommendedRelations(context.TODO(), info, details, typeKey)
 	if err != nil {
 		fmt.Println(err)
 		return
 	}
 
-	reporter.addMsg(id, "primitives: recommended relations lists are refilled")
+	reporter.addMsg(getId(s), "primitives: recommended relations lists are refilled")
 	delete(s.Snapshot.Data.Details.Fields, bundle.RelationKeyRecommendedRelations.String())
 	s.Snapshot.Data.Details = pbtypes.StructMerge(s.Snapshot.Data.Details, details.ToProto(), true)
 }
