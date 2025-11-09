@@ -32,8 +32,8 @@ import (
 func ListMembersHandler(s *service.Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		spaceId := c.Param("space_id")
-		offset := c.GetInt("offset")
-		limit := c.GetInt("limit")
+		offset := c.GetInt(pagination.QueryParamOffset)
+		limit := c.GetInt(pagination.QueryParamLimit)
 
 		filtersAny, _ := c.Get("filters")
 		filters := filtersAny.([]*model.BlockContentDataviewFilter)

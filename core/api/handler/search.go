@@ -30,8 +30,8 @@ import (
 //	@Router			/v1/search [post]
 func GlobalSearchHandler(s *service.Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		offset := c.GetInt("offset")
-		limit := c.GetInt("limit")
+		offset := c.GetInt(pagination.QueryParamOffset)
+		limit := c.GetInt(pagination.QueryParamLimit)
 
 		request := apimodel.SearchRequest{}
 		if err := c.BindJSON(&request); err != nil {
@@ -78,8 +78,8 @@ func GlobalSearchHandler(s *service.Service) gin.HandlerFunc {
 func SearchHandler(s *service.Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		spaceId := c.Param("space_id")
-		offset := c.GetInt("offset")
-		limit := c.GetInt("limit")
+		offset := c.GetInt(pagination.QueryParamOffset)
+		limit := c.GetInt(pagination.QueryParamLimit)
 
 		request := apimodel.SearchRequest{}
 		if err := c.BindJSON(&request); err != nil {

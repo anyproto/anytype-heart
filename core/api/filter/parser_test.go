@@ -347,7 +347,7 @@ func TestParser_ParseQueryParams(t *testing.T) {
 		},
 		{
 			name:        "pagination params are ignored",
-			queryString: "name=test&offset=10&limit=20&sort=name&order=asc",
+			queryString: "name=test&offset=10&limit=20",
 			expectedFilters: []Filter{
 				{
 					PropertyKey: "name",

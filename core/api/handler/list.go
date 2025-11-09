@@ -34,8 +34,8 @@ func GetListViewsHandler(s *service.Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		spaceId := c.Param("space_id")
 		listId := c.Param("list_id")
-		offset := c.GetInt("offset")
-		limit := c.GetInt("limit")
+		offset := c.GetInt(pagination.QueryParamOffset)
+		limit := c.GetInt(pagination.QueryParamLimit)
 
 		views, total, hasMore, err := s.GetListViews(c, spaceId, listId, offset, limit)
 		code := util.MapErrorCode(err,
@@ -78,8 +78,8 @@ func GetObjectsInListHandler(s *service.Service) gin.HandlerFunc {
 		spaceId := c.Param("space_id")
 		listId := c.Param("list_id")
 		viewId := c.Param("view_id")
-		offset := c.GetInt("offset")
-		limit := c.GetInt("limit")
+		offset := c.GetInt(pagination.QueryParamOffset)
+		limit := c.GetInt(pagination.QueryParamLimit)
 
 		filtersAny, _ := c.Get("filters")
 		filters := filtersAny.([]*model.BlockContentDataviewFilter)

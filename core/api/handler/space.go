@@ -30,8 +30,8 @@ import (
 //	@Router			/v1/spaces [get]
 func ListSpacesHandler(s *service.Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		offset := c.GetInt("offset")
-		limit := c.GetInt("limit")
+		offset := c.GetInt(pagination.QueryParamOffset)
+		limit := c.GetInt(pagination.QueryParamLimit)
 
 		filtersAny, _ := c.Get("filters")
 		filters := filtersAny.([]*model.BlockContentDataviewFilter)
