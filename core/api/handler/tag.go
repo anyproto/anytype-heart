@@ -20,7 +20,7 @@ import (
 //	@Id				list_tags
 //	@Tags			Tags
 //	@Produce		json
-//	@Param			Anytype-Version	header		string										true	"The version of the API to use"	default(2025-05-20)
+//	@Param			Anytype-Version	header		string										true	"The version of the API to use"	default(2025-11-08)
 //	@Param			space_id		path		string										true	"The ID of the space to list tags for; must be retrieved from ListSpaces endpoint"
 //	@Param			property_id		path		string										true	"The ID of the property to list tags for; must be retrieved from ListProperties endpoint or obtained from response context"
 //	@Success		200				{object}	pagination.PaginatedResponse[apimodel.Tag]	"The list of tags"
@@ -62,7 +62,7 @@ func ListTagsHandler(s *service.Service) gin.HandlerFunc {
 //	@Id				get_tag
 //	@Tags			Tags
 //	@Produce		json
-//	@Param			Anytype-Version	header		string					true	"The version of the API to use"	default(2025-05-20)
+//	@Param			Anytype-Version	header		string					true	"The version of the API to use"	default(2025-11-08)
 //	@Param			space_id		path		string					true	"The ID of the space to retrieve the tag from; must be retrieved from ListSpaces endpoint"
 //	@Param			property_id		path		string					true	"The ID of the property to retrieve the tag for; must be retrieved from ListProperties endpoint or obtained from response context"
 //	@Param			tag_id			path		string					true	"The ID of the tag to retrieve; must be retrieved from ListTags endpoint or obtained from response context"
@@ -104,7 +104,7 @@ func GetTagHandler(s *service.Service) gin.HandlerFunc {
 //	@Tags			Tags
 //	@Accept			json
 //	@Produce		json
-//	@Param			Anytype-Version	header		string						true	"The version of the API to use"	default(2025-05-20)
+//	@Param			Anytype-Version	header		string						true	"The version of the API to use"	default(2025-11-08)
 //	@Param			space_id		path		string						true	"The ID of the space to create the tag in; must be retrieved from ListSpaces endpoint"
 //	@Param			property_id		path		string						true	"The ID of the property to create the tag for; must be retrieved from ListProperties endpoint or obtained from response context"
 //	@Param			tag				body		apimodel.CreateTagRequest	true	"The tag to create"
@@ -152,7 +152,7 @@ func CreateTagHandler(s *service.Service) gin.HandlerFunc {
 //	@Tags			Tags
 //	@Accept			json
 //	@Produce		json
-//	@Param			Anytype-Version	header		string						true	"The version of the API to use"	default(2025-05-20)
+//	@Param			Anytype-Version	header		string						true	"The version of the API to use"	default(2025-11-08)
 //	@Param			space_id		path		string						true	"The ID of the space to update the tag in; must be retrieved from ListSpaces endpoint"
 //	@Param			property_id		path		string						true	"The ID of the property to update the tag for; must be retrieved from ListProperties endpoint or obtained from response context"
 //	@Param			tag_id			path		string						true	"The ID of the tag to update; must be retrieved from ListTags endpoint or obtained from response context"
@@ -206,7 +206,7 @@ func UpdateTagHandler(s *service.Service) gin.HandlerFunc {
 //	@Id				delete_tag
 //	@Tags			Tags
 //	@Produce		json
-//	@Param			Anytype-Version	header		string					true	"The version of the API to use"	default(2025-05-20)
+//	@Param			Anytype-Version	header		string					true	"The version of the API to use"	default(2025-11-08)
 //	@Param			space_id		path		string					true	"The ID of the space to delete the tag from; must be retrieved from ListSpaces endpoint"
 //	@Param			property_id		path		string					true	"The ID of the property to delete the tag for; must be retrieved from ListProperties endpoint or obtained from response context"
 //	@Param			tag_id			path		string					true	"The ID of the tag to delete; must be retrieved from ListTags endpoint or obtained from response context"

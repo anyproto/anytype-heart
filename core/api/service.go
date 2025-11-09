@@ -68,7 +68,7 @@ func (s *apiService) Name() (name string) {
 // Init initializes the API service.
 //
 //	@title							Anytype API
-//	@version						2025-05-20
+//	@version						2025-11-08
 //	@description					This API enables seamless interaction with Anytype's resources - spaces, objects, properties, types, templates, and beyond.
 //	@termsOfService					https://anytype.io/terms_of_use
 //	@contact.name					Anytype Support

@@ -18,7 +18,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 )
 
-const ApiVersion = "2025-05-20"
+const ApiVersion = "2025-11-08"
 
 var log = logging.Logger("api-server")
 

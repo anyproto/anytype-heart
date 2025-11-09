@@ -3152,7 +3152,7 @@
     },
     "termsOfService": "https://anytype.io/terms_of_use",
     "title": "Anytype API",
-    "version": "2025-05-20"
+    "version": "2025-11-08"
   },
   "externalDocs": {
     "description": "OpenAPI",
@@ -3170,7 +3170,7 @@
             "name": "Anytype-Version",
             "required": true,
             "schema": {
-              "default": "2025-05-20",
+              "default": "2025-11-08",
               "type": "string"
             }
           }
@@ -3235,7 +3235,7 @@
             "name": "Anytype-Version",
             "required": true,
             "schema": {
-              "default": "2025-05-20",
+              "default": "2025-11-08",
               "type": "string"
             }
           }
@@ -3300,7 +3300,7 @@
             "name": "Anytype-Version",
             "required": true,
             "schema": {
-              "default": "2025-05-20",
+              "default": "2025-11-08",
               "type": "string"
             }
           },
@@ -3389,7 +3389,7 @@
             "name": "Anytype-Version",
             "required": true,
             "schema": {
-              "default": "2025-05-20",
+              "default": "2025-11-08",
               "type": "string"
             }
           },
@@ -3465,7 +3465,7 @@
             "name": "Anytype-Version",
             "required": true,
             "schema": {
-              "default": "2025-05-20",
+              "default": "2025-11-08",
               "type": "string"
             }
           }
@@ -3555,7 +3555,7 @@
             "name": "Anytype-Version",
             "required": true,
             "schema": {
-              "default": "2025-05-20",
+              "default": "2025-11-08",
               "type": "string"
             }
           },
@@ -3631,7 +3631,7 @@
             "name": "Anytype-Version",
             "required": true,
             "schema": {
-              "default": "2025-05-20",
+              "default": "2025-11-08",
               "type": "string"
             }
           },
@@ -3750,7 +3750,7 @@
             "name": "Anytype-Version",
             "required": true,
             "schema": {
-              "default": "2025-05-20",
+              "default": "2025-11-08",
               "type": "string"
             }
           },
@@ -3868,7 +3868,7 @@
             "name": "Anytype-Version",
             "required": true,
             "schema": {
-              "default": "2025-05-20",
+              "default": "2025-11-08",
               "type": "string"
             }
           },
@@ -3984,7 +3984,7 @@
             "name": "Anytype-Version",
             "required": true,
             "schema": {
-              "default": "2025-05-20",
+              "default": "2025-11-08",
               "type": "string"
             }
           },
@@ -4088,7 +4088,7 @@
             "name": "Anytype-Version",
             "required": true,
             "schema": {
-              "default": "2025-05-20",
+              "default": "2025-11-08",
               "type": "string"
             }
           },
@@ -4201,7 +4201,7 @@
             "name": "Anytype-Version",
             "required": true,
             "schema": {
-              "default": "2025-05-20",
+              "default": "2025-11-08",
               "type": "string"
             }
           },
@@ -4288,7 +4288,7 @@
             "name": "Anytype-Version",
             "required": true,
             "schema": {
-              "default": "2025-05-20",
+              "default": "2025-11-08",
               "type": "string"
             }
           },
@@ -4375,7 +4375,7 @@
             "name": "Anytype-Version",
             "required": true,
             "schema": {
-              "default": "2025-05-20",
+              "default": "2025-11-08",
               "type": "string"
             }
           },
@@ -4460,7 +4460,7 @@
             "name": "Anytype-Version",
             "required": true,
             "schema": {
-              "default": "2025-05-20",
+              "default": "2025-11-08",
               "type": "string"
             }
           },
@@ -4559,7 +4559,7 @@
             "name": "Anytype-Version",
             "required": true,
             "schema": {
-              "default": "2025-05-20",
+              "default": "2025-11-08",
               "type": "string"
             }
           },
@@ -4674,7 +4674,7 @@
             "name": "Anytype-Version",
             "required": true,
             "schema": {
-              "default": "2025-05-20",
+              "default": "2025-11-08",
               "type": "string"
             }
           },
@@ -4781,7 +4781,7 @@
             "name": "Anytype-Version",
             "required": true,
             "schema": {
-              "default": "2025-05-20",
+              "default": "2025-11-08",
               "type": "string"
             }
           },
@@ -4909,7 +4909,7 @@
             "name": "Anytype-Version",
             "required": true,
             "schema": {
-              "default": "2025-05-20",
+              "default": "2025-11-08",
               "type": "string"
             }
           },
@@ -4994,7 +4994,7 @@
             "name": "Anytype-Version",
             "required": true,
             "schema": {
-              "default": "2025-05-20",
+              "default": "2025-11-08",
               "type": "string"
             }
           },
@@ -5093,7 +5093,7 @@
             "name": "Anytype-Version",
             "required": true,
             "schema": {
-              "default": "2025-05-20",
+              "default": "2025-11-08",
               "type": "string"
             }
           },
@@ -5208,7 +5208,7 @@
             "name": "Anytype-Version",
             "required": true,
             "schema": {
-              "default": "2025-05-20",
+              "default": "2025-11-08",
               "type": "string"
             }
           },
@@ -5303,7 +5303,7 @@
             "name": "Anytype-Version",
             "required": true,
             "schema": {
-              "default": "2025-05-20",
+              "default": "2025-11-08",
               "type": "string"
             }
           },
@@ -5441,7 +5441,7 @@
             "name": "Anytype-Version",
             "required": true,
             "schema": {
-              "default": "2025-05-20",
+              "default": "2025-11-08",
               "type": "string"
             }
           },
@@ -5526,7 +5526,7 @@
             "name": "Anytype-Version",
             "required": true,
             "schema": {
-              "default": "2025-05-20",
+              "default": "2025-11-08",
               "type": "string"
             }
           },
@@ -5634,7 +5634,7 @@
             "name": "Anytype-Version",
             "required": true,
             "schema": {
-              "default": "2025-05-20",
+              "default": "2025-11-08",
               "type": "string"
             }
           },
@@ -5758,7 +5758,7 @@
             "name": "Anytype-Version",
             "required": true,
             "schema": {
-              "default": "2025-05-20",
+              "default": "2025-11-08",
               "type": "string"
             }
           },
@@ -5862,7 +5862,7 @@
             "name": "Anytype-Version",
             "required": true,
             "schema": {
-              "default": "2025-05-20",
+              "default": "2025-11-08",
               "type": "string"
             }
           },
@@ -6009,7 +6009,7 @@
             "name": "Anytype-Version",
             "required": true,
             "schema": {
-              "default": "2025-05-20",
+              "default": "2025-11-08",
               "type": "string"
             }
           },
@@ -6107,7 +6107,7 @@
             "name": "Anytype-Version",
             "required": true,
             "schema": {
-              "default": "2025-05-20",
+              "default": "2025-11-08",
               "type": "string"
             }
           },
@@ -6192,7 +6192,7 @@
             "name": "Anytype-Version",
             "required": true,
             "schema": {
-              "default": "2025-05-20",
+              "default": "2025-11-08",
               "type": "string"
             }
           },
@@ -6291,7 +6291,7 @@
             "name": "Anytype-Version",
             "required": true,
             "schema": {
-              "default": "2025-05-20",
+              "default": "2025-11-08",
               "type": "string"
             }
           },
@@ -6406,7 +6406,7 @@
             "name": "Anytype-Version",
             "required": true,
             "schema": {
-              "default": "2025-05-20",
+              "default": "2025-11-08",
               "type": "string"
             }
           },
@@ -6501,7 +6501,7 @@
             "name": "Anytype-Version",
             "required": true,
             "schema": {
-              "default": "2025-05-20",
+              "default": "2025-11-08",
               "type": "string"
             }
           },
@@ -6629,7 +6629,7 @@
             "name": "Anytype-Version",
             "required": true,
             "schema": {
-              "default": "2025-05-20",
+              "default": "2025-11-08",
               "type": "string"
             }
           },
@@ -6725,7 +6725,7 @@
             "name": "Anytype-Version",
             "required": true,
             "schema": {
-              "default": "2025-05-20",
+              "default": "2025-11-08",
               "type": "string"
             }
           },

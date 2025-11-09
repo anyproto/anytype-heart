@@ -20,7 +20,7 @@ import (
 //	@Id				list_members
 //	@Tags			Members
 //	@Produce		json
-//	@Param			Anytype-Version	header		string											true	"The version of the API to use"	default(2025-05-20)
+//	@Param			Anytype-Version	header		string											true	"The version of the API to use"	default(2025-11-08)
 //	@Param			space_id		path		string											true	"The ID of the space to list members for; must be retrieved from ListSpaces endpoint"
 //	@Param			offset			query		int												false	"The number of items to skip before starting to collect the result set"	default(0)
 //	@Param			limit			query		int												false	"The number of items to return"											default(100)	maximum(1000)
@@ -60,7 +60,7 @@ func ListMembersHandler(s *service.Service) gin.HandlerFunc {
 //	@Id				get_member
 //	@Tags			Members
 //	@Produce		json
-//	@Param			Anytype-Version	header		string					true	"The version of the API to use"	default(2025-05-20)
+//	@Param			Anytype-Version	header		string					true	"The version of the API to use"	default(2025-11-08)
 //	@Param			space_id		path		string					true	"The ID of the space to get the member from; must be retrieved from ListSpaces endpoint"
 //	@Param			member_id		path		string					true	"Member ID or Identity; must be retrieved from ListMembers endpoint or obtained from response context"
 //	@Success		200				{object}	apimodel.MemberResponse	"The member details"
@@ -99,7 +99,7 @@ func GetMemberHandler(s *service.Service) gin.HandlerFunc {
 //	@Tags			Members
 //	@Accept			json
 //	@Produce		json
-//	@Param			Anytype-Version	header		string							true	"The version of the API to use"	default(2025-05-20)
+//	@Param			Anytype-Version	header		string							true	"The version of the API to use"	default(2025-11-08)
 //	@Param			space_id		path		string							true	"The ID of the space to update the member in; must be retrieved from ListSpaces endpoint"
 //	@Param			member_id		path		string							true	"The ID or Identity of the member to update; must be retrieved from ListMembers endpoint or obtained from response context"
 //	@Param			body			body		apimodel.UpdateMemberRequest	true	"The request body containing the member's new status and role"

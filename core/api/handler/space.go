@@ -20,7 +20,7 @@ import (
 //	@Id				list_spaces
 //	@Tags			Spaces
 //	@Produce		json
-//	@Param			Anytype-Version	header		string											true	"The version of the API to use"											default(2025-05-20)
+//	@Param			Anytype-Version	header		string											true	"The version of the API to use"											default(2025-11-08)
 //	@Param			offset			query		int												false	"The number of items to skip before starting to collect the result set"	default(0)
 //	@Param			limit			query		int												false	"The number of items to return"											default(100)	maximum(1000)
 //	@Success		200				{object}	pagination.PaginatedResponse[apimodel.Space]	"The list of spaces accessible by the authenticated user"
@@ -60,7 +60,7 @@ func ListSpacesHandler(s *service.Service) gin.HandlerFunc {
 //	@Id				get_space
 //	@Tags			Spaces
 //	@Produce		json
-//	@Param			Anytype-Version	header		string					true	"The version of the API to use"	default(2025-05-20)
+//	@Param			Anytype-Version	header		string					true	"The version of the API to use"	default(2025-11-08)
 //	@Param			space_id		path		string					true	"The ID of the space to retrieve; must be retrieved from ListSpaces endpoint"
 //	@Success		200				{object}	apimodel.SpaceResponse	"The space details"
 //	@Failure		401				{object}	util.UnauthorizedError	"Unauthorized"
@@ -97,7 +97,7 @@ func GetSpaceHandler(s *service.Service) gin.HandlerFunc {
 //	@Tags			Spaces
 //	@Accept			json
 //	@Produce		json
-//	@Param			Anytype-Version	header		string						true	"The version of the API to use"	default(2025-05-20)
+//	@Param			Anytype-Version	header		string						true	"The version of the API to use"	default(2025-11-08)
 //	@Param			name			body		apimodel.CreateSpaceRequest	true	"The space to create"
 //	@Success		201				{object}	apimodel.SpaceResponse		"The created space"
 //	@Failure		400				{object}	util.ValidationError		"Bad request"
@@ -141,7 +141,7 @@ func CreateSpaceHandler(s *service.Service) gin.HandlerFunc {
 //	@Tags			Spaces
 //	@Accept			json
 //	@Produce		json
-//	@Param			Anytype-Version	header		string						true	"The version of the API to use"	default(2025-05-20)
+//	@Param			Anytype-Version	header		string						true	"The version of the API to use"	default(2025-11-08)
 //	@Param			space_id		path		string						true	"The ID of the space to update; must be retrieved from ListSpaces endpoint"
 //	@Param			name			body		apimodel.UpdateSpaceRequest	true	"The space details to update"
 //	@Success		200				{object}	apimodel.SpaceResponse		"The updated space"

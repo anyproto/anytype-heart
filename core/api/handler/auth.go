@@ -18,7 +18,7 @@ import (
 //	@Tags			Auth
 //	@Accept			json
 //	@Produce		json
-//	@Param			Anytype-Version	header		string								true	"The version of the API to use"	default(2025-05-20)
+//	@Param			Anytype-Version	header		string								true	"The version of the API to use"	default(2025-11-08)
 //	@Param			request			body		apimodel.CreateChallengeRequest		true	"The request body containing the app name"
 //	@Success		201				{object}	apimodel.CreateChallengeResponse	"The challenge ID associated with the started challenge"
 //	@Failure		400				{object}	util.ValidationError				"Bad request"
@@ -57,7 +57,7 @@ func CreateChallengeHandler(s *service.Service) gin.HandlerFunc {
 //	@Tags			Auth
 //	@Accept			json
 //	@Produce		json
-//	@Param			Anytype-Version	header		string							true	"The version of the API to use"	default(2025-05-20)
+//	@Param			Anytype-Version	header		string							true	"The version of the API to use"	default(2025-11-08)
 //	@Param			request			body		apimodel.CreateApiKeyRequest	true	"The request body containing the challenge ID and code"
 //	@Success		201				{object}	apimodel.CreateApiKeyResponse	"The API key that can be used in the Authorization header for subsequent requests"
 //	@Failure		400				{object}	util.ValidationError			"Bad request"
