@@ -16,7 +16,7 @@ import (
 //
 //	@Summary		List objects
 //	@Description	Retrieves a paginated list of objects in the given space. The endpoint takes query parameters for pagination (offset and limit) and returns detailed data about each object including its ID, name, icon, type information, a snippet of the content (if applicable), layout, space ID, blocks and details. It is intended for building views where users can see all objects in a space at a glance.
-//	@Description	Supports dynamic filtering via query parameters (e.g., ?type=page, ?done=false, ?created_date[gte]=2024-01-01, ?tags[in]=urgent,important). For select/tag properties use tag keys, for object properties use object IDs. See FilterCondition enum for available conditions.
+//	@Description	Supports dynamic filtering via query parameters (e.g., ?type=page, ?done=false, ?created_date[gte]=2024-01-01, ?tags[in]=urgent,important). For select/multi_select properties you can use either tag keys or tag IDs, for object properties use object IDs. See FilterCondition enum for available conditions.
 //	@Id				list_objects
 //	@Tags			Objects
 //	@Produce		json

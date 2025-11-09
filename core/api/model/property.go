@@ -409,7 +409,7 @@ func (v NumberPropertyLinkValue) GetValue() interface{} {
 
 type SelectPropertyLinkValue struct {
 	Key    string  `json:"key" example:"status"`
-	Select *string `json:"select" example:"tag_id"` // The selected tag id of the property; see ListTags endpoint for valid values
+	Select *string `json:"select" example:"important"` // The selected tag (by key, e.g., "important", or ID, e.g., "bafyrei...") of the property; see ListTags endpoint for valid values
 }
 
 func (SelectPropertyLinkValue) isPropertyLinkWithValue() {}
@@ -427,7 +427,7 @@ func (v SelectPropertyLinkValue) GetValue() interface{} {
 
 type MultiSelectPropertyLinkValue struct {
 	Key         string    `json:"key" example:"tag"`
-	MultiSelect *[]string `json:"multi_select" example:"bafyreiaixlnaefu3ci22zdenjhsdlyaeeoyjrsid5qhfeejzlccijbj7sq,bafyreie6n5l5nkbjal37su54cha4coy7qzuhrnajluzv5qd5jvtsrxkequ"` // The selected tag ids of the property; see ListTags endpoint for valid values
+	MultiSelect *[]string `json:"multi_select" example:"important,bafyreie6n5l5nkbjal37su54cha4coy7qzuhrnajluzv5qd5jvtsrxkequ"` // The selected tags (by key, e.g., "important", or ID, e.g., "bafyrei...") of the property; see ListTags endpoint for valid values
 }
 
 func (MultiSelectPropertyLinkValue) isPropertyLinkWithValue() {}

@@ -199,8 +199,8 @@ func TestProcessProperties(t *testing.T) {
 		setupPropertyCache(fx)
 
 		t.Run("valid value", func(t *testing.T) {
-			setupTagValidationMock(fx, "tag123", "select_prop", true)
-			tagId := "tag123"
+			setupTagValidationMock(fx, "tag1", "select_prop", true)
+			tagId := "tag1"
 			entries := []apimodel.PropertyLinkWithValue{
 				{WrappedPropertyLinkWithValue: apimodel.SelectPropertyLinkValue{
 					Key:    "select_prop",
@@ -209,7 +209,7 @@ func TestProcessProperties(t *testing.T) {
 			}
 			result, err := fx.service.processProperties(ctx, mockedSpaceId, entries)
 			require.NoError(t, err)
-			assert.Equal(t, "tag123", result["select_prop"].GetStringValue())
+			assert.Equal(t, "tag1", result["select_prop"].GetStringValue())
 		})
 
 		t.Run("nil value", func(t *testing.T) {
@@ -870,5 +870,62 @@ func TestProcessProperties(t *testing.T) {
 		assert.Equal(t, types.NullValue_NULL_VALUE, result["number_prop"].GetNullValue())
 		assert.Equal(t, types.NullValue_NULL_VALUE, result["select_prop"].GetNullValue())
 		assert.Equal(t, types.NullValue_NULL_VALUE, result["files_prop"].GetNullValue())
+	})
+
+	t.Run("select property with tag key resolution", func(t *testing.T) {
+		fx := newFixture(t)
+		setupPropertyCache(fx)
+
+		t.Run("valid tag key", func(t *testing.T) {
+			setupTagValidationMock(fx, "tag1", "select_prop", true)
+			tagKey := "important_tag"
+			entries := []apimodel.PropertyLinkWithValue{
+				{WrappedPropertyLinkWithValue: apimodel.SelectPropertyLinkValue{
+					Key:    "select_prop",
+					Select: &tagKey,
+				}},
+			}
+			result, err := fx.service.processProperties(ctx, mockedSpaceId, entries)
+			require.NoError(t, err)
+			assert.Equal(t, "tag1", result["select_prop"].GetStringValue())
+		})
+
+		t.Run("tag ID still works", func(t *testing.T) {
+			setupTagValidationMock(fx, "tag1", "select_prop", true)
+			tagId := "tag1"
+			entries := []apimodel.PropertyLinkWithValue{
+				{WrappedPropertyLinkWithValue: apimodel.SelectPropertyLinkValue{
+					Key:    "select_prop",
+					Select: &tagId,
+				}},
+			}
+			result, err := fx.service.processProperties(ctx, mockedSpaceId, entries)
+			require.NoError(t, err)
+			assert.Equal(t, "tag1", result["select_prop"].GetStringValue())
+		})
+	})
+
+	t.Run("multi_select property with tag key resolution", func(t *testing.T) {
+		fx := newFixture(t)
+		setupPropertyCache(fx)
+
+		t.Run("mix of tag keys and IDs", func(t *testing.T) {
+			setupTagValidationMock(fx, "tag1", "multi_select_prop", true)
+			setupTagValidationMock(fx, "tag2", "multi_select_prop", true)
+
+			entries := []apimodel.PropertyLinkWithValue{
+				{WrappedPropertyLinkWithValue: apimodel.MultiSelectPropertyLinkValue{
+					Key:         "multi_select_prop",
+					MultiSelect: util.PtrStrings([]string{"important_tag", "tag2"}),
+				}},
+			}
+			result, err := fx.service.processProperties(ctx, mockedSpaceId, entries)
+			require.NoError(t, err)
+			list := result["multi_select_prop"].GetListValue()
+			require.NotNil(t, list)
+			assert.Len(t, list.Values, 2)
+			assert.Equal(t, "tag1", list.Values[0].GetStringValue())
+			assert.Equal(t, "tag2", list.Values[1].GetStringValue())
+		})
 	})
 }

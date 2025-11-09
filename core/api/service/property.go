@@ -367,31 +367,39 @@ func (s *Service) SanitizeAndValidatePropertyValue(spaceId string, key string, v
 		}
 		return num, nil
 	case apimodel.PropertyFormatSelect:
-		id, ok := value.(string)
-		id = s.sanitizedString(id)
+		keyOrId, ok := value.(string)
+		keyOrId = s.sanitizedString(keyOrId)
 		if !ok {
-			return nil, util.ErrBadInput(fmt.Sprintf("property %q must be a string (tag id)", key))
+			return nil, util.ErrBadInput(fmt.Sprintf("property %q must be a string (tag id or key)", key))
 		}
-		if !s.isValidSelectOption(spaceId, prop, id, propertyMap) {
-			return nil, util.ErrBadInput(fmt.Sprintf("invalid select option for %q: %s", key, id))
+		if !s.isValidSelectOption(spaceId, prop, keyOrId, propertyMap) {
+			return nil, util.ErrBadInput(fmt.Sprintf("invalid select option for %q: %s", key, keyOrId))
 		}
-		return id, nil
+		tag, exists := s.cache.getTags(spaceId)[keyOrId]
+		if !exists {
+			return nil, util.ErrBadInput(fmt.Sprintf("failed to resolve tag for %q: %s", key, keyOrId))
+		}
+		return tag.Id, nil
 	case apimodel.PropertyFormatMultiSelect:
-		ids, ok := value.([]interface{})
+		keysOrIds, ok := value.([]interface{})
 		if !ok {
-			return nil, util.ErrBadInput(fmt.Sprintf("property %q must be an array of tag ids", key))
+			return nil, util.ErrBadInput(fmt.Sprintf("property %q must be an array of tag ids or keys", key))
 		}
 		var validIds []string
-		for _, v := range ids {
-			id, ok := v.(string)
+		for _, v := range keysOrIds {
+			keyOrId, ok := v.(string)
 			if !ok {
-				return nil, util.ErrBadInput(fmt.Sprintf("property %q must be an array of strings (tag ids)", key))
+				return nil, util.ErrBadInput(fmt.Sprintf("property %q must be an array of strings (tag ids or keys)", key))
 			}
-			id = s.sanitizedString(id)
-			if !s.isValidSelectOption(spaceId, prop, id, propertyMap) {
-				return nil, util.ErrBadInput(fmt.Sprintf("invalid multi_select option for %q: %s", key, id))
+			keyOrId = s.sanitizedString(keyOrId)
+			if !s.isValidSelectOption(spaceId, prop, keyOrId, propertyMap) {
+				return nil, util.ErrBadInput(fmt.Sprintf("invalid multi_select option for %q: %s", key, keyOrId))
 			}
-			validIds = append(validIds, id)
+			tag, exists := s.cache.getTags(spaceId)[keyOrId]
+			if !exists {
+				return nil, util.ErrBadInput(fmt.Sprintf("failed to resolve tag for %q: %s", key, keyOrId))
+			}
+			validIds = append(validIds, tag.Id)
 		}
 		return validIds, nil
 	case apimodel.PropertyFormatDate:
@@ -438,9 +446,14 @@ func (s *Service) SanitizeAndValidatePropertyValue(spaceId string, key string, v
 	}
 }
 
-// isValidSelectOption checks if the option id is valid for the given property.
-func (s *Service) isValidSelectOption(spaceId string, property *apimodel.Property, tagId string, propertyMap map[string]*apimodel.Property) bool {
-	fields, err := util.GetFieldsById(s.mw, spaceId, tagId, []string{bundle.RelationKeyResolvedLayout.String(), bundle.RelationKeyRelationKey.String()})
+// isValidSelectOption checks if the option id or key is valid for the given property.
+func (s *Service) isValidSelectOption(spaceId string, property *apimodel.Property, tagKeyOrId string, propertyMap map[string]*apimodel.Property) bool {
+	tag, exists := s.cache.getTags(spaceId)[tagKeyOrId]
+	if !exists {
+		return false
+	}
+
+	fields, err := util.GetFieldsById(s.mw, spaceId, tag.Id, []string{bundle.RelationKeyResolvedLayout.String(), bundle.RelationKeyRelationKey.String()})
 	if err != nil {
 		return false
 	}
