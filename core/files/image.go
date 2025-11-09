@@ -21,6 +21,7 @@ import (
 
 type Image interface {
 	FileId() domain.FileId
+	SpaceId() string
 	Details(ctx context.Context) (*domain.Details, error)
 	GetFileForWidth(wantWidth int) (File, error)
 	GetOriginalFile() (File, error)
@@ -124,6 +125,10 @@ func (i *image) GetOriginalFile() (File, error) {
 		info:        variant,
 		fileService: i.fileService,
 	}, nil
+}
+
+func (i *image) SpaceId() string {
+	return i.spaceID
 }
 
 func (i *image) FileId() domain.FileId {

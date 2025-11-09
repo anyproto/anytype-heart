@@ -11,10 +11,15 @@ import (
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
+	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-var testOrder = &database.KeyOrder{
-	Key: "order",
+func genOrder(t *testing.T) database.Order {
+	return database.NewKeyOrder(objectstore.NewStoreFixture(t).SpaceIndex(spaceId), nil, nil, database.SortRequest{
+		RelationKey: "order",
+		Format:      model.RelationFormat_number,
+	})
 }
 
 func genEntries(n int, backord bool) (res []*entry) {

@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/anyproto/any-sync/commonspace/object/tree/objecttree"
+	"github.com/anyproto/any-sync/commonspace/objecttreebuilder"
 	"github.com/go-chi/chi/v5"
 	"github.com/gogo/protobuf/jsonpb"
 	"go.uber.org/zap"
@@ -96,14 +97,25 @@ func (s *Service) debugGetObject(req *http.Request) (debugObject, error) {
 
 func (s *Service) debugTree(req *http.Request) (debugTree, error) {
 	id := chi.URLParam(req, "id")
+	isStoreChange := req.URL.Query().Has("store")
 
 	result := debugTree{
 		Id: id,
 	}
 	err := cache.Do(s, id, func(sb smartblock.SmartBlock) error {
-		ot := sb.Tree()
-		return ot.IterateRoot(sourceimpl.UnmarshalChange, func(change *objecttree.Change) bool {
+		ot, err := sb.Space().TreeBuilder().BuildHistoryTree(req.Context(), sb.Id(), objecttreebuilder.HistoryTreeOpts{})
+		if err != nil {
+			return err
+		}
+		return ot.IterateRoot(func(treeChange *objecttree.Change, data []byte) (result any, err error) {
+			if isStoreChange {
+				return sourceimpl.UnmarshalStoreChange(treeChange, data)
+			} else {
+				return sourceimpl.UnmarshalChange(treeChange, data)
+			}
+		}, func(change *objecttree.Change) bool {
 			change.Next = nil
+			change.Previous = nil
 			raw, err := json.Marshal(change)
 			if err != nil {
 				log.Error("debug tree: marshal change", zap.Error(err))

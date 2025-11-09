@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"regexp"
 	"strings"
+	"time"
 
 	"github.com/anyproto/any-store/anyenc"
 	"github.com/anyproto/any-store/query"
@@ -70,7 +71,7 @@ func makeFilter(spaceID string, rawFilter FilterRequest, store ObjectStore) (Fil
 	if rawFilter.Condition == model.BlockContentDataviewFilter_None {
 		return nil, nil
 	}
-	rawFilters := transformDateFilter(rawFilter)
+	rawFilters := transformDateFilter(rawFilter, time.Now())
 
 	if len(rawFilters) == 1 {
 		return makeFilterByCondition(spaceID, rawFilters[0], store)
@@ -710,7 +711,7 @@ func (l FilterAllIn) AnystoreFilter() query.Filter {
 	return query.And(conds)
 }
 
-func newFilterOptionsEqual(arena *anyenc.Arena, key domain.RelationKey, value []string, options map[string]*domain.Details) *FilterOptionsEqual {
+func newFilterOptionsEqual(arena *anyenc.Arena, key domain.RelationKey, value []string, options map[string]struct{}) *FilterOptionsEqual {
 	f := &FilterOptionsEqual{
 		arena:   arena,
 		Key:     key,
@@ -726,7 +727,7 @@ type FilterOptionsEqual struct {
 
 	Key     domain.RelationKey
 	Value   []string
-	Options map[string]*domain.Details
+	Options map[string]struct{}
 
 	// valueFilter is precompiled filter without key selector
 	valueFilter query.Filter
@@ -803,61 +804,17 @@ func (exIn *FilterOptionsEqual) String() string {
 	return "{}"
 }
 
-func optionsToMap(key domain.RelationKey, store ObjectStore) map[string]*domain.Details {
-	result := make(map[string]*domain.Details)
+func optionsToMap(key domain.RelationKey, store ObjectStore) map[string]struct{} {
+	result := make(map[string]struct{})
 	options, err := store.ListRelationOptions(key)
 	if err != nil {
 		log.Warnf("failed to get relation options from store: %v", err)
 		return result
 	}
 	for _, opt := range options {
-		result[opt.Id] = domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
-			bundle.RelationKeyName:    domain.String(opt.Text),
-			bundle.RelationKeyOrderId: domain.String(opt.OrderId),
-		})
+		result[opt.Id] = struct{}{}
 	}
-
 	return result
-}
-
-// objectsToMap collects names of objects that present in details of any objects as a value of detail with key=key
-func objectsToMap(key domain.RelationKey, store ObjectStore) map[string]*domain.Details {
-	names := make(map[string]*domain.Details)
-	targetIdsMap := make(map[string]struct{}, 0)
-
-	err := store.QueryIterate(Query{Filters: []FilterRequest{{
-		RelationKey: key,
-		Condition:   model.BlockContentDataviewFilter_NotEmpty,
-	}}}, func(details *domain.Details) {
-		for _, id := range details.GetStringList(key) {
-			targetIdsMap[id] = struct{}{}
-		}
-	})
-
-	if err != nil {
-		log.Warnf("failed to get objects from store: %v", err)
-		return nil
-	}
-
-	targetIds := make([]string, 0, len(targetIdsMap))
-	for id := range targetIdsMap {
-		targetIds = append(targetIds, id)
-	}
-
-	err = store.QueryIterate(Query{Filters: []FilterRequest{{
-		RelationKey: bundle.RelationKeyId,
-		Condition:   model.BlockContentDataviewFilter_In,
-		Value:       domain.StringList(targetIds),
-	}}}, func(details *domain.Details) {
-		names[details.GetString(bundle.RelationKeyId)] = details.CopyOnlyKeys(bundle.RelationKeyName)
-	})
-
-	if err != nil {
-		log.Warnf("failed to iterate over objects in store: %v", err)
-		return nil
-	}
-
-	return names
 }
 
 func makeFilterNestedIn(spaceID string, rawFilter FilterRequest, store ObjectStore, relationKey domain.RelationKey, nestedRelationKey domain.RelationKey) (Filter, error) {

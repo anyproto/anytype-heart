@@ -1,10 +1,17 @@
 package relationutils
 
 import (
+	"github.com/anyproto/any-sync/app"
+
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
+
+type RelationFormatFetcher interface {
+	GetRelationFormatByKey(spaceId string, key domain.RelationKey) (model.RelationFormat, error)
+	app.ComponentRunnable
+}
 
 func RelationFromDetails(det *domain.Details) *Relation {
 	key := det.GetString(bundle.RelationKeyRelationKey)

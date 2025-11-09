@@ -26,6 +26,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/source"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/files"
+	"github.com/anyproto/anytype-heart/core/relationutils"
 	"github.com/anyproto/anytype-heart/metrics"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
@@ -165,6 +166,7 @@ func (s *service) newTreeSource(ctx context.Context, space source.Space, id stri
 		objectStore:        s.objectStore,
 		spaceIndex:         s.objectStore.SpaceIndex(space.Id()),
 		fileObjectMigrator: s.fileObjectMigrator,
+		formatFetcher:      s.formatFetcher,
 	}
 	if sbt == smartblock.SmartBlockTypeChatDerivedObject || sbt == smartblock.SmartBlockTypeAccountObject {
 		return &store{treeSource: src, sbType: sbt, diffManagers: map[string]*diffManager{}, spaceService: s.spaceService}, nil
@@ -197,6 +199,7 @@ type treeSource struct {
 	objectStore        objectstore.ObjectStore
 	spaceIndex         spaceindex.Store
 	fileObjectMigrator fileObjectMigrator
+	formatFetcher      relationutils.RelationFormatFetcher
 }
 
 var _ updatelistener.UpdateListener = (*treeSource)(nil)
@@ -298,7 +301,7 @@ func (s *treeSource) buildState() (doc state.Doc, err error) {
 	// temporary, though the applying change to this Dataview block will persist this migration, breaking backward
 	// compatibility. But in many cases we expect that users update object not so often as they just view them.
 	// TODO: we can skip migration for non-personal spaces
-	migration := source.NewSubObjectsAndProfileLinksMigration(s.smartblockType, s.space, s.accountService.MyParticipantId(s.spaceID), s.spaceIndex)
+	migration := source.NewSubObjectsAndProfileLinksMigration(s.smartblockType, s.space, s.accountService.MyParticipantId(s.spaceID), s.spaceIndex, s.formatFetcher)
 	migration.Migrate(st)
 
 	// we need to have required internal relations for all objects, including system
@@ -403,10 +406,12 @@ func (s *treeSource) buildChange(params source.PushChangeParams) (c *pb.Change) 
 	if params.DoSnapshot || s.needSnapshot() || len(params.Changes) == 0 {
 		c.Snapshot = &pb.ChangeSnapshot{
 			Data: &model.SmartBlockSnapshotBase{
-				Blocks:                   params.State.BlocksToSave(),
-				Details:                  params.State.Details().ToProto(),
-				ObjectTypes:              domain.MarshalTypeKeys(params.State.ObjectTypeKeys()),
-				Collections:              params.State.Store(),
+				Blocks:      params.State.BlocksToSave(),
+				Details:     params.State.Details().ToProto(),
+				ObjectTypes: domain.MarshalTypeKeys(params.State.ObjectTypeKeys()),
+				Collections: params.State.Store(),
+				// TODO: GO-4284 We need to use PickRelationLinks here because we build a state.
+				// Changes on RelationLinks could go to old clients
 				RelationLinks:            params.State.PickRelationLinks(),
 				Key:                      params.State.UniqueKeyInternal(),
 				OriginalCreatedTimestamp: params.State.OriginalCreatedTimestamp(),

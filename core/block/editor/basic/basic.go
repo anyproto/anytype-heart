@@ -15,9 +15,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/block/simple/base"
 	"github.com/anyproto/anytype-heart/core/block/simple/embed"
-	"github.com/anyproto/anytype-heart/core/block/simple/link"
 	relationblock "github.com/anyproto/anytype-heart/core/block/simple/relation"
-	"github.com/anyproto/anytype-heart/core/block/simple/text"
 	templateSvc "github.com/anyproto/anytype-heart/core/block/template"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/domain/objectorigin"
@@ -54,7 +52,6 @@ type CommonOperations interface {
 	FeaturedRelationAdd(ctx session.Context, relations ...string) error
 	FeaturedRelationRemove(ctx session.Context, relations ...string) error
 
-	ReplaceLink(oldId, newId string) error
 	ExtractBlocksToObjects(ctx session.Context, oc ObjectCreator, tsc templateSvc.Service, req pb.RpcBlockListConvertToObjectsRequest) (linkIds []string, err error)
 
 	SetObjectTypes(ctx session.Context, objectTypeKeys []domain.TypeKey, ignoreRestrictions bool) (err error)
@@ -386,7 +383,7 @@ func (bs *basic) SetRelationKey(ctx session.Context, req pb.RpcBlockRelationSetK
 	if b == nil {
 		return smartblock.ErrSimpleBlockNotFound
 	}
-	if !bs.HasRelation(s, req.Key) {
+	if !s.HasRelation(domain.RelationKey(req.Key)) {
 		return fmt.Errorf("relation with given key not found")
 	}
 	if rel, ok := b.(relationblock.Block); ok {
@@ -446,8 +443,10 @@ func (bs *basic) FeaturedRelationAdd(ctx session.Context, relations ...string) (
 				template.WithForcedDescription(s)
 			}
 			frc = append(frc, r)
-			if !bs.HasRelation(s, r) {
-				err = bs.addRelationLink(s, domain.RelationKey(r))
+			key := domain.RelationKey(r)
+			if !s.HasRelation(key) {
+				// TODO: GO-4284 remove
+				err = bs.addRelationLink(s, key)
 				if err != nil {
 					return fmt.Errorf("failed to add relation link on adding featured relation '%s': %w", r, err)
 				}
@@ -479,36 +478,4 @@ func (bs *basic) FeaturedRelationRemove(ctx session.Context, relations ...string
 		s.SetDetail(bundle.RelationKeyFeaturedRelations, domain.StringList(frc))
 	}
 	return bs.Apply(s, smartblock.NoRestrictions)
-}
-
-func (bs *basic) ReplaceLink(oldId, newId string) error {
-	s := bs.NewState()
-	s.Iterate(func(b simple.Block) (isContinue bool) {
-		if l, ok := b.(link.Block); ok {
-			if l.Model().GetLink().TargetBlockId == oldId {
-				s.Get(b.Model().Id).Model().GetLink().TargetBlockId = newId
-			}
-		} else if t, ok := b.(text.Block); ok {
-			if marks := t.Model().GetText().Marks; marks != nil {
-				for i, m := range marks.Marks {
-					if m.Param == oldId {
-						s.Get(b.Model().Id).Model().GetText().Marks.Marks[i].Param = newId
-					}
-				}
-			}
-		}
-		return true
-	})
-	// TODO: use relations service with state
-	rels := bs.GetRelationLinks()
-	details := s.Details()
-	for _, rel := range rels {
-		if rel.Format == model.RelationFormat_object {
-			key := domain.RelationKey(rel.Key)
-			if details.GetString(key) == oldId {
-				s.SetDetail(key, domain.String(newId))
-			}
-		}
-	}
-	return bs.Apply(s)
 }

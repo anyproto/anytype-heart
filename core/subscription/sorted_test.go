@@ -16,6 +16,7 @@ import (
 )
 
 func TestSubscription_Add(t *testing.T) {
+	testOrder := genOrder(t)
 	t.Run("add", func(t *testing.T) {
 		sub := &sortedSub{
 			id:      "test",
@@ -66,7 +67,7 @@ func TestSubscription_Remove(t *testing.T) {
 		}
 
 		return &sortedSub{
-			order:   testOrder,
+			order:   genOrder(t),
 			cache:   newCache(),
 			limit:   3,
 			afterId: "id3",
@@ -107,7 +108,7 @@ func TestSubscription_Remove(t *testing.T) {
 func TestSubscription_Change(t *testing.T) {
 	t.Run("change active order", func(t *testing.T) {
 		sub := &sortedSub{
-			order:   testOrder,
+			order:   genOrder(t),
 			cache:   newCache(),
 			limit:   3,
 			afterId: "id3",
@@ -123,6 +124,7 @@ func TestSubscription_Change(t *testing.T) {
 }
 
 func TestSortedSub_Reorder(t *testing.T) {
+	testOrder := genOrder(t)
 	t.Run("reorder with updated dependencies", func(t *testing.T) {
 		// Create test order that can be updated
 		order := testOrder

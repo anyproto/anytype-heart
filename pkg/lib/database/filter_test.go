@@ -528,10 +528,10 @@ func TestFilterExists(t *testing.T) {
 }
 
 func TestFilterOptionsEqual(t *testing.T) {
-	optionIdToName := map[string]*domain.Details{
-		"optionId1": nil,
-		"optionId2": nil,
-		"optionId3": nil,
+	optionIdToName := map[string]struct{}{
+		"optionId1": {},
+		"optionId2": {},
+		"optionId3": {},
 	}
 	t.Run("one option, ok", func(t *testing.T) {
 		eq := newFilterOptionsEqual(&anyenc.Arena{}, "k", []string{"optionId1"}, optionIdToName)
