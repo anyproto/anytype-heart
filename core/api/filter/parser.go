@@ -16,12 +16,18 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
+const (
+	TopLevelAttrName       = "name"
+	TopLevelAttrGlobalName = "global_name"
+	TopLevelAttrSnippet    = "snippet"
+)
+
 // topLevelAttributes maps JSON field names to internal relation keys
 // These attributes default to "contains" search and don't require a spaceId
 var topLevelAttributes = map[string]string{
-	"name":        bundle.RelationKeyName.String(),
-	"global_name": bundle.RelationKeyGlobalName.String(),
-	"snippet":     bundle.RelationKeySnippet.String(),
+	TopLevelAttrName:       bundle.RelationKeyName.String(),
+	TopLevelAttrGlobalName: bundle.RelationKeyGlobalName.String(),
+	TopLevelAttrSnippet:    bundle.RelationKeySnippet.String(),
 }
 
 type Parser struct {
