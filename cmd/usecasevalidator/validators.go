@@ -183,7 +183,7 @@ func validateObjectTypes(s *pb.SnapshotWithType, info *useCaseInfo, fixConfig Fi
 
 func validateBlockLinks(s *pb.SnapshotWithType, info *useCaseInfo, _ FixConfig, reporter *reporter) (skip bool, err error) {
 	id := getId(s)
-	widgetLinkBlocksToDelete := make([]string, 0)
+	widgetLinkBlocksToDelete := make(map[string]string)
 
 	for _, b := range s.Snapshot.Data.Blocks {
 		switch a := simple.New(b).(type) {
@@ -194,7 +194,7 @@ func validateBlockLinks(s *pb.SnapshotWithType, info *useCaseInfo, _ FixConfig, 
 				continue
 			}
 			if s.SbType == model.SmartBlockType_Widget {
-				widgetLinkBlocksToDelete = append(widgetLinkBlocksToDelete, b.Id)
+				widgetLinkBlocksToDelete[b.Id] = target
 				continue
 			}
 			err = multierror.Append(err, fmt.Errorf("failed to find target id for link '%s' in block '%s' of object '%s'",
@@ -341,8 +341,7 @@ func isDesktopRelation(key string) bool {
 //	|
 //	|--- widget2
 //	     |--- link2
-func removeWidgetBlocks(s *pb.SnapshotWithType, rootId string, linkBlockIds []string) error {
-	widgetBlockIds := make([]string, 0, len(linkBlockIds))
+func removeWidgetBlocks(s *pb.SnapshotWithType, rootId string, blocks map[string]string) error {
 	var rootBlock *model.Block
 
 	for _, b := range s.Snapshot.Data.Blocks {
@@ -354,8 +353,8 @@ func removeWidgetBlocks(s *pb.SnapshotWithType, rootId string, linkBlockIds []st
 		if len(b.ChildrenIds) != 1 {
 			continue
 		}
-		if slices.Contains(linkBlockIds, b.ChildrenIds[0]) {
-			widgetBlockIds = append(widgetBlockIds, b.Id)
+		if _, found := blocks[b.ChildrenIds[0]]; found {
+			blocks[b.Id] = ""
 		}
 	}
 
@@ -364,12 +363,13 @@ func removeWidgetBlocks(s *pb.SnapshotWithType, rootId string, linkBlockIds []st
 	}
 
 	rootBlock.ChildrenIds = slices.DeleteFunc(rootBlock.ChildrenIds, func(id string) bool {
-		return slices.Contains(widgetBlockIds, id)
+		_, found := blocks[id]
+		return found
 	})
 
-	blocksToDelete := slices.Concat(widgetBlockIds, linkBlockIds)
 	s.Snapshot.Data.Blocks = slices.DeleteFunc(s.Snapshot.Data.Blocks, func(b *model.Block) bool {
-		return slices.Contains(blocksToDelete, b.Id)
+		_, found := blocks[b.Id]
+		return found
 	})
 
 	return nil

@@ -32,8 +32,8 @@ func (r *reporter) addRelBlockDeletionMsg(id string, absentKeys, blocksToDelete 
 		strings.Join(absentKeys, ","), strings.Join(blocksToDelete, ",")))
 }
 
-func (r *reporter) addWidgetBlockDeletionMsg(id string, blocksToDelete []string) {
-	r.addMsg(id, fmt.Sprintf("widget blocks deleted as target objects are not found: [%s]", strings.Join(blocksToDelete, ",")))
+func (r *reporter) addWidgetBlockDeletionMsg(id string, blocksToDelete map[string]string) {
+	r.addMsg(id, fmt.Sprintf("widget blocks deleted as target objects are not found: %v", blocksToDelete))
 }
 
 func (r *reporter) addCollectionUpdateMsg(id string, missedItems []string) {

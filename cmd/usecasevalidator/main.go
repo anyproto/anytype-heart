@@ -644,9 +644,10 @@ func insertCreatorInfo(s *pb.ChangeSnapshot) {
 }
 
 func applyPrimitives(s *pb.SnapshotWithType, info *useCaseInfo, reporter *reporter) {
-	if s.SbType == model.SmartBlockType_Page {
+	switch s.SbType {
+	case model.SmartBlockType_Page:
 		applyPrimitivesToPage(s, reporter)
-	} else if s.SbType == model.SmartBlockType_STType {
+	case model.SmartBlockType_STType:
 		applyPrimitivesToType(s, info, reporter)
 	}
 }
@@ -707,6 +708,18 @@ func applyPrimitivesToType(s *pb.SnapshotWithType, info *useCaseInfo, reporter *
 	reporter.addMsg(getId(s), "primitives: recommended relations lists are refilled")
 	delete(s.Snapshot.Data.Details.Fields, bundle.RelationKeyRecommendedRelations.String())
 	s.Snapshot.Data.Details = pbtypes.StructMerge(s.Snapshot.Data.Details, details.ToProto(), true)
+
+	if emoji := pbtypes.GetString(s.Snapshot.Data.Details, bundle.RelationKeyIconEmoji.String()); emoji != "" {
+		objType, err := bundle.GetType(typeKey)
+		if err != nil {
+			reporter.addMsg(getId(s), fmt.Sprintf("primitives: non bundle type handles emoji: %s", emoji))
+		} else {
+			delete(s.Snapshot.Data.Details.Fields, bundle.RelationKeyIconEmoji.String())
+			s.Snapshot.Data.Details.Fields[bundle.RelationKeyIconName.String()] = pbtypes.String(objType.IconName)
+			s.Snapshot.Data.Details.Fields[bundle.RelationKeyIconOption.String()] = pbtypes.Int64(objType.IconColor)
+			reporter.addMsg(getId(s), fmt.Sprintf("primitives: bundle type icon was changed from '%s' to '%s'", emoji, objType.IconName))
+		}
+	}
 }
 
 func removeRelationLinks(s *pb.SnapshotWithType, reporter *reporter) {

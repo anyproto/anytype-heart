@@ -131,7 +131,7 @@ func TestRemoveWidgetBlock(t *testing.T) {
 		}}}
 
 		// when
-		err := removeWidgetBlocks(s, rootId, []string{"l2", "l3"})
+		err := removeWidgetBlocks(s, rootId, map[string]string{"l2": "", "l3": ""})
 
 		// then
 		assert.NoError(t, err)
@@ -149,7 +149,7 @@ func TestRemoveWidgetBlock(t *testing.T) {
 		}}}
 
 		// when
-		err := removeWidgetBlocks(s, rootId, []string{"l1"})
+		err := removeWidgetBlocks(s, rootId, map[string]string{"l1": ""})
 
 		// then
 		assert.Error(t, err)
@@ -586,9 +586,9 @@ func TestValidateDeleted(t *testing.T) {
 		// given
 		s := &pb.SnapshotWithType{Snapshot: &pb.ChangeSnapshot{Data: &model.SmartBlockSnapshotBase{
 			Details: &types.Struct{Fields: map[string]*types.Value{
-				bundle.RelationKeyId.String():          pbtypes.String("obj1"),
-				bundle.RelationKeyIsArchived.String():  pbtypes.Bool(false),
-				bundle.RelationKeyIsDeleted.String():   pbtypes.Bool(false),
+				bundle.RelationKeyId.String():            pbtypes.String("obj1"),
+				bundle.RelationKeyIsArchived.String():    pbtypes.Bool(false),
+				bundle.RelationKeyIsDeleted.String():     pbtypes.Bool(false),
 				bundle.RelationKeyIsUninstalled.String(): pbtypes.Bool(false),
 			}},
 		}}}
