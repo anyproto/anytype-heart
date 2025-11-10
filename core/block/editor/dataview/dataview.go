@@ -119,12 +119,20 @@ func (d *sdataview) SetSourceInSet(ctx session.Context, source []string) (err er
 		return err
 	}
 
-	var viewRelations []*model.BlockContentDataviewRelation
-	if srcBlock, err := BlockBySource(d.objectStore, source, ""); err != nil {
+	var (
+		viewRelations []*model.BlockContentDataviewRelation
+		viewSorts     []*model.BlockContentDataviewSort
+	)
+	srcBlock, err := BlockBySource(d.objectStore, source, "")
+	if err != nil {
 		log.Errorf("failed to build dataview block to modify view relation lists: %v", err)
 	} else {
 		dv.SetRelations(srcBlock.Dataview.RelationLinks)
-		viewRelations = srcBlock.Dataview.Views[0].Relations
+		if len(srcBlock.Dataview.Views) > 0 {
+			view := srcBlock.Dataview.Views[0]
+			viewRelations = view.Relations
+			viewSorts = view.Sorts
+		}
 	}
 
 	for _, view := range dv.ListViews() {
@@ -132,6 +140,9 @@ func (d *sdataview) SetSourceInSet(ctx session.Context, source []string) (err er
 		view.DefaultObjectTypeId = ""
 		if len(viewRelations) > 0 {
 			view.Relations = viewRelations
+		}
+		if len(viewSorts) > 0 {
+			view.Sorts = viewSorts
 		}
 		if err = dv.SetView(view.Id, *view); err != nil {
 			return fmt.Errorf("failed to update view '%s' of set '%s': %w", view.Id, s.RootId(), err)
