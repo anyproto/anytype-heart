@@ -79,7 +79,7 @@ type (
 func (i *useCaseInfo) DeriveObjectID(_ context.Context, key domain.UniqueKey) (string, error) {
 	id, found := i.relIdsByKey[domain.RelationKey(key.InternalKey())]
 	if !found {
-		return "", errors.New("relation not found")
+		return "", fmt.Errorf("relation %s not found", key.InternalKey())
 	}
 	return id, nil
 }
