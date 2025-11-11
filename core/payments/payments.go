@@ -366,7 +366,7 @@ func (s *service) fetchAndUpdateV2(ctx context.Context, forceIfNotExpired, fetch
 			errs = append(errs, fetchErr)
 		} else {
 			// Compare V2 data - check if Products or NextInvoice changed
-			if !MembershipV2DataEqual(cachedData, fetchedMembership) {
+			if !membershipV2DataEqual(cachedData, fetchedMembership) {
 				log.Warn("background refresh V2 membership: membership has changed, sending event")
 				s.sendMembershipV2UpdateEvent(fetchedMembership)
 				changed = true

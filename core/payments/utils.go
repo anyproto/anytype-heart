@@ -81,18 +81,6 @@ func tiersAreEqual(a []*model.MembershipTierData, b []*model.MembershipTierData)
 	return true
 }
 
-func productsV2Equal(a []*model.MembershipV2Product, b []*model.MembershipV2Product) bool {
-	if len(a) != len(b) {
-		return false
-	}
-	for i := range a {
-		if !a[i].Equal(b[i]) {
-			return false
-		}
-	}
-	return true
-}
-
 func convertTierData(src *paymentserviceproto.TierData) *model.MembershipTierData {
 	if src == nil {
 		return nil
@@ -263,44 +251,25 @@ func convertCartProductData(src *paymentserviceproto.MembershipV2_CartProduct) *
 	return out
 }
 
-func MembershipV2DataEqual(a, b *model.MembershipV2Data) bool {
+func productsV2Equal(a []*model.MembershipV2Product, b []*model.MembershipV2Product) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for i := range a {
+		if !a[i].Equal(b[i]) {
+			return false
+		}
+	}
+	return true
+}
+
+func membershipV2DataEqual(a, b *model.MembershipV2Data) bool {
 	if a == nil && b == nil {
 		return true
 	}
 	if a == nil || b == nil {
 		return false
 	}
-	// Compare Products length
-	if len(a.Products) != len(b.Products) {
-		return false
-	}
-	// Compare Products (simplified - just check IDs)
-	for i := range a.Products {
-		if a.Products[i] == nil || b.Products[i] == nil {
-			if a.Products[i] != b.Products[i] {
-				return false
-			}
-			continue
-		}
-		if a.Products[i].Product == nil || b.Products[i].Product == nil {
-			if a.Products[i].Product != b.Products[i].Product {
-				return false
-			}
-			continue
-		}
-		if a.Products[i].Product.Id != b.Products[i].Product.Id {
-			return false
-		}
-	}
-	// Compare NextInvoice
-	if a.NextInvoice == nil && b.NextInvoice == nil {
-		return true
-	}
-	if a.NextInvoice == nil || b.NextInvoice == nil {
-		return false
-	}
-	if a.NextInvoice.Date != b.NextInvoice.Date {
-		return false
-	}
-	return true
+
+	return a.Equal(b)
 }
