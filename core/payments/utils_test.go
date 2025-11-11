@@ -51,17 +51,14 @@ func TestConvertTierData_JSONCoverage(t *testing.T) {
 			{Description: "Feature A"},
 			{Description: "Feature B"},
 		},
-		ColorStr:                   "#ff00ff",
-		StripeProductId:            "stripe-prod-id",
-		StripeManageUrl:            "https://stripe.example/manage",
-		IosProductId:               "ios-prod-id",
-		IosManageUrl:               "https://ios.example/manage",
-		AndroidProductId:           "android-prod-id",
-		AndroidManageUrl:           "https://android.example/manage",
-		Offer:                      "Launch offer",
-		PriceStripeUsdCentsMonthly: 2100,
-		IsIntroPlan:                true,
-		IsUpgradeable:              true,
+		ColorStr:         "#ff00ff",
+		StripeProductId:  "stripe-prod-id",
+		StripeManageUrl:  "https://stripe.example/manage",
+		IosProductId:     "ios-prod-id",
+		IosManageUrl:     "https://ios.example/manage",
+		AndroidProductId: "android-prod-id",
+		AndroidManageUrl: "https://android.example/manage",
+		Offer:            "Launch offer",
 	}
 
 	actual := convertTierData(src)
@@ -81,17 +78,14 @@ func TestConvertTierData_JSONCoverage(t *testing.T) {
 			src.Features[0].Description,
 			src.Features[1].Description,
 		},
-		ColorStr:                   src.ColorStr,
-		StripeProductId:            src.StripeProductId,
-		StripeManageUrl:            src.StripeManageUrl,
-		IosProductId:               src.IosProductId,
-		IosManageUrl:               src.IosManageUrl,
-		AndroidProductId:           src.AndroidProductId,
-		AndroidManageUrl:           src.AndroidManageUrl,
-		Offer:                      src.Offer,
-		PriceStripeUsdCentsMonthly: src.PriceStripeUsdCentsMonthly,
-		IsIntroPlan:                src.IsIntroPlan,
-		IsUpgradeable:              src.IsUpgradeable,
+		ColorStr:         src.ColorStr,
+		StripeProductId:  src.StripeProductId,
+		StripeManageUrl:  src.StripeManageUrl,
+		IosProductId:     src.IosProductId,
+		IosManageUrl:     src.IosManageUrl,
+		AndroidProductId: src.AndroidProductId,
+		AndroidManageUrl: src.AndroidManageUrl,
+		Offer:            src.Offer,
 	}
 
 	require.Equal(t, expected, actual)
@@ -110,8 +104,6 @@ func TestConvertMembershipData_JSONCoverage(t *testing.T) {
 		RequestedAnyName:      "member-name.any",
 		UserEmail:             "member@example.com",
 		SubscribeToNewsletter: true,
-		IsMonthly:             true,
-		TeamOwner:             "team-owner.any",
 	}
 
 	actual := convertMembershipData(src)
@@ -130,8 +122,6 @@ func TestConvertMembershipData_JSONCoverage(t *testing.T) {
 		NsNameType:            expectedNsNameType,
 		UserEmail:             src.UserEmail,
 		SubscribeToNewsletter: src.SubscribeToNewsletter,
-		IsMonthly:             src.IsMonthly,
-		TeamOwner:             src.TeamOwner,
 	}
 
 	require.Equal(t, expected, actual)
@@ -370,7 +360,7 @@ func TestConvertPurchasedProductData_JSONCoverage(t *testing.T) {
 			DateStarted: 1_700_000_000,
 			DateEnds:    1_800_000_000,
 			IsAutoRenew: true,
-			IsYearly:    true,
+			Period:      paymentserviceproto.MembershipV2_Monthly,
 		},
 		ProductStatus: &paymentserviceproto.MembershipV2_ProductStatus{
 			Status: paymentserviceproto.MembershipV2_ProductStatus_StatusActive,
@@ -409,7 +399,7 @@ func TestConvertPurchasedProductData_JSONCoverage(t *testing.T) {
 			DateStarted: src.PurchaseInfo.DateStarted,
 			DateEnds:    src.PurchaseInfo.DateEnds,
 			IsAutoRenew: src.PurchaseInfo.IsAutoRenew,
-			IsYearly:    src.PurchaseInfo.IsYearly,
+			Period:      model.MembershipV2Period(src.PurchaseInfo.Period),
 		},
 		ProductStatus: &model.MembershipV2ProductStatus{
 			Status: model.MembershipV2ProductStatusStatus(src.ProductStatus.Status),

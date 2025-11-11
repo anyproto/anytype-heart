@@ -2187,6 +2187,8 @@
     - [Membership.PaymentMethod](#anytype-model-Membership-PaymentMethod)
     - [Membership.Status](#anytype-model-Membership-Status)
     - [MembershipTierData.PeriodType](#anytype-model-MembershipTierData-PeriodType)
+    - [MembershipV2.PaymentProvider](#anytype-model-MembershipV2-PaymentProvider)
+    - [MembershipV2.Period](#anytype-model-MembershipV2-Period)
     - [MembershipV2.ProductStatus.Status](#anytype-model-MembershipV2-ProductStatus-Status)
     - [NameserviceNameType](#anytype-model-NameserviceNameType)
     - [Notification.ActionType](#anytype-model-Notification-ActionType)
@@ -33169,8 +33171,6 @@ Used to decode block meta only, without the content itself
 | nsNameType | [NameserviceNameType](#anytype-model-NameserviceNameType) |  |  |
 | userEmail | [string](#string) |  | if the email was verified by the user or set during the checkout - it will be here |
 | subscribeToNewsletter | [bool](#bool) |  |  |
-| isMonthly | [bool](#bool) |  | for tiers that offer yearly/monthly switch |
-| teamOwner | [string](#string) |  |  |
 
 
 
@@ -33203,9 +33203,6 @@ Used to decode block meta only, without the content itself
 | androidProductId | [string](#string) |  | Android platform-specific data: |
 | androidManageUrl | [string](#string) |  |  |
 | offer | [string](#string) |  | &#34;limited offer&#34; or somehing like that |
-| priceStripeUsdCentsMonthly | [uint32](#uint32) |  | version 2 only fields (specify version in GetTiersRequest request first): if the tier is yearly (periodType above is PeriodTypeYears) - then also we provide a monthly price here |
-| isIntroPlan | [bool](#bool) |  |  |
-| isUpgradeable | [bool](#bool) |  |  |
 
 
 
@@ -33283,6 +33280,8 @@ Used to decode block meta only, without the content itself
 | ----- | ---- | ----- | ----------- |
 | products | [MembershipV2.PurchasedProduct](#anytype-model-MembershipV2-PurchasedProduct) | repeated |  |
 | nextInvoice | [MembershipV2.Invoice](#anytype-model-MembershipV2-Invoice) |  |  |
+| teamOwnerID | [string](#string) |  |  |
+| paymentProvider | [MembershipV2.PaymentProvider](#anytype-model-MembershipV2-PaymentProvider) |  |  |
 
 
 
@@ -33382,7 +33381,7 @@ if current user&#39;s top level product has isUpgradeable flag -&gt; show incent
 | dateStarted | [uint64](#uint64) |  |  |
 | dateEnds | [uint64](#uint64) |  |  |
 | isAutoRenew | [bool](#bool) |  |  |
-| isYearly | [bool](#bool) |  | otherwise - monthly |
+| period | [MembershipV2.Period](#anytype-model-MembershipV2-Period) |  |  |
 
 
 
@@ -34752,6 +34751,36 @@ Look https://github.com/golang/protobuf/issues/1135 for more information.
 | PeriodTypeWeeks | 3 |  |
 | PeriodTypeMonths | 4 |  |
 | PeriodTypeYears | 5 |  |
+
+
+
+<a name="anytype-model-MembershipV2-PaymentProvider"></a>
+
+### MembershipV2.PaymentProvider
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| None | 0 |  |
+| Stripe | 1 |  |
+| Crypto | 2 |  |
+| BillingPortal | 3 |  |
+| AppStore | 4 |  |
+| GooglePlay | 5 |  |
+
+
+
+<a name="anytype-model-MembershipV2-Period"></a>
+
+### MembershipV2.Period
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| Unlimited | 0 |  |
+| Monthly | 1 |  |
+| Yearly | 2 |  |
+| ThreeYears | 3 |  |
 
 
 

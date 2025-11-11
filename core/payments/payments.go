@@ -548,8 +548,10 @@ func (s *service) fetchV2Membership(ctx context.Context) (*model.MembershipV2Dat
 	nextInvoiceModel := convertInvoiceData(out.NextInvoice)
 
 	return &model.MembershipV2Data{
-		Products:    productsModel,
-		NextInvoice: nextInvoiceModel,
+		Products:        productsModel,
+		NextInvoice:     nextInvoiceModel,
+		TeamOwnerID:     out.TeamOwnerID,
+		PaymentProvider: model.MembershipV2PaymentProvider(out.PaymentProvider),
 	}, nil
 }
 
@@ -765,8 +767,6 @@ func (s *service) RegisterPaymentRequest(ctx context.Context, req *pb.RpcMembers
 		RequestedAnyName: nameservice.NsNameToFullName(req.NsName, req.NsNameType),
 
 		UserEmail: req.UserEmail,
-
-		IsMonthly: req.IsMonthly,
 	}
 
 	payload, err := bsr.MarshalVT()

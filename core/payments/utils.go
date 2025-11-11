@@ -115,9 +115,6 @@ func convertTierData(src *paymentserviceproto.TierData) *model.MembershipTierDat
 	out.AndroidProductId = src.AndroidProductId
 	out.AndroidManageUrl = src.AndroidManageUrl
 	out.Offer = src.Offer
-	out.PriceStripeUsdCentsMonthly = src.PriceStripeUsdCentsMonthly
-	out.IsIntroPlan = src.IsIntroPlan
-	out.IsUpgradeable = src.IsUpgradeable
 
 	if src.Features != nil {
 		out.Features = make([]string, len(src.Features))
@@ -142,8 +139,6 @@ func convertMembershipData(src *paymentserviceproto.GetSubscriptionResponse) *mo
 	out.UserEmail = src.UserEmail
 	out.SubscribeToNewsletter = src.SubscribeToNewsletter
 	out.NsName, out.NsNameType = nameservice.FullNameToNsName(src.RequestedAnyName)
-	out.IsMonthly = src.IsMonthly
-	out.TeamOwner = src.TeamOwner
 	return out
 }
 
@@ -203,7 +198,7 @@ func convertPurchaseInfoData(src *paymentserviceproto.MembershipV2_PurchaseInfo)
 	out.DateStarted = src.DateStarted
 	out.DateEnds = src.DateEnds
 	out.IsAutoRenew = src.IsAutoRenew
-	out.IsYearly = src.IsYearly
+	out.Period = model.MembershipV2Period(src.Period)
 	return out
 }
 

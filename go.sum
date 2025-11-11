@@ -84,6 +84,10 @@ github.com/anyproto/any-store v0.4.2 h1:1ljcAogeZxQ6QmSpBy40InokgKBRB/fnAilDDFPU
 github.com/anyproto/any-store v0.4.2/go.mod h1:P9CnoL9Q06eh051DwtcvCiiWCwdXO7AbEILcnD6yrss=
 github.com/anyproto/any-sync v0.10.6-0.20251106160556-4551440079e9 h1:emGLUddEHfKvCZsICIc8/MQccatqanevTM0JeNSNuc0=
 github.com/anyproto/any-sync v0.10.6-0.20251106160556-4551440079e9/go.mod h1:/0OVu/L9RQcbwuj44IRjfGQnvL2dxRj8XRLTjQN8r9E=
+github.com/anyproto/any-sync v0.10.6-0.20251111182916-5e00ce7c558c h1:95sS0GweFZLarP1BMZz2K5MugOinOONIJymfKh0nj8U=
+github.com/anyproto/any-sync v0.10.6-0.20251111182916-5e00ce7c558c/go.mod h1:/0OVu/L9RQcbwuj44IRjfGQnvL2dxRj8XRLTjQN8r9E=
+github.com/anyproto/any-sync v0.10.6-0.20251111190749-08221d8a3a9d h1:YPAjhU4UKhG4iyKBmc+hrrLjNZZo9ZallGUCQAKVtDs=
+github.com/anyproto/any-sync v0.10.6-0.20251111190749-08221d8a3a9d/go.mod h1:/0OVu/L9RQcbwuj44IRjfGQnvL2dxRj8XRLTjQN8r9E=
 github.com/anyproto/anytype-publish-server/publishclient v0.0.0-20250716122732-cdcfe3a126bb h1:X1os44y0QWf1mYGj8BOoYKlXwY5xb94xTQIw1IIKJbY=
 github.com/anyproto/anytype-publish-server/publishclient v0.0.0-20250716122732-cdcfe3a126bb/go.mod h1:OzzODq4OigiRVD2lSOX1iHAoLcxhJDRbZb8n5PLG3WE=
 github.com/anyproto/anytype-push-server/pushclient v0.0.0-20250801122506-553f6c085a23 h1:jXAjKY4g9ec7lDtayIlzM9u0/b3xGS9YgGA6JtRhHfU=

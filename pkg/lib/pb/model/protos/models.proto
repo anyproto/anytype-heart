@@ -1344,10 +1344,6 @@ message Membership {
     // if the email was verified by the user or set during the checkout - it will be here
     string userEmail = 9;
     bool subscribeToNewsletter = 10;
-    // for tiers that offer yearly/monthly switch
-    bool isMonthly = 11;
-
-    string teamOwner = 12;
 }
 
 message MembershipTierData {
@@ -1399,14 +1395,6 @@ message MembershipTierData {
 
     // "limited offer" or somehing like that
     string offer = 19;
-
-// version 2 only fields (specify version in GetTiersRequest request first):
-    // if the tier is yearly (periodType above is PeriodTypeYears) - then also we provide a monthly price here
-    uint32 priceStripeUsdCentsMonthly = 21;
-
-    bool isIntroPlan = 22;
-
-    bool isUpgradeable = 23;
 }
 
 message MembershipV2 {
@@ -1419,6 +1407,22 @@ message MembershipV2 {
         // also supports negative amounts! 
         // some invoices can have negatice amount (refund)
         int64 amountCents = 2;
+    }
+
+    enum PaymentProvider {
+        None = 0;
+        Stripe = 1;
+        Crypto = 2;
+        BillingPortal = 3;
+        AppStore = 4;
+        GooglePlay = 5;
+    }
+
+    enum Period {
+        Unlimited = 0;
+        Monthly = 1;
+        Yearly = 2;
+        ThreeYears = 3;
     }
 
     message Invoice {
@@ -1474,8 +1478,7 @@ message MembershipV2 {
         uint64 dateStarted = 1;
         uint64 dateEnds = 2;
         bool isAutoRenew = 3;
-        // otherwise - monthly
-        bool isYearly = 4;
+        Period period = 4;
     }
 
     message ProductStatus {
@@ -1519,6 +1522,8 @@ message MembershipV2 {
     message Data {
         repeated PurchasedProduct products = 1;
         Invoice nextInvoice = 2;
+        string teamOwnerID = 3;
+        PaymentProvider paymentProvider = 4;
     }
 }
 
