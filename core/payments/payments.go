@@ -351,7 +351,7 @@ func (s *service) fetchAndUpdateV2(ctx context.Context, forceIfNotExpired, fetch
 			errs = append(errs, fetchErr)
 		} else {
 			if !productsV2Equal(cachedProducts, fetchedProducts) {
-				log.Warn("background refresh V2 products: products have changed, sending event")
+				log.Warn("background refresh V2 products: products have changed, sending event", zap.Any("cachedProducts", cachedProducts), zap.Any("fetchedProducts", fetchedProducts))
 				s.sendMembershipV2ProductsUpdateEvent(fetchedProducts)
 				changed = true
 			}
@@ -367,7 +367,8 @@ func (s *service) fetchAndUpdateV2(ctx context.Context, forceIfNotExpired, fetch
 		} else {
 			// Compare V2 data - check if Products or NextInvoice changed
 			if !membershipV2DataEqual(cachedData, fetchedMembership) {
-				log.Warn("background refresh V2 membership: membership has changed, sending event")
+				log.Warn("background refresh V2 membership: membership has changed, sending event", zap.Any("cachedData", cachedData), zap.Any("fetchedMembership", fetchedMembership))
+
 				s.sendMembershipV2UpdateEvent(fetchedMembership)
 				changed = true
 			}
@@ -539,9 +540,12 @@ func (s *service) fetchV2Membership(ctx context.Context) (*model.MembershipV2Dat
 	}
 
 	// convert Products
-	productsModel := make([]*model.MembershipV2PurchasedProduct, len(out.Products))
-	for i, product := range out.Products {
-		productsModel[i] = convertPurchasedProductData(product)
+	var productsModel []*model.MembershipV2PurchasedProduct
+	if len(out.Products) > 0 {
+		productsModel = make([]*model.MembershipV2PurchasedProduct, len(out.Products))
+		for i, product := range out.Products {
+			productsModel[i] = convertPurchasedProductData(product)
+		}
 	}
 
 	// convert NextInvoice
@@ -566,10 +570,14 @@ func (s *service) fetchV2Products(ctx context.Context) ([]*model.MembershipV2Pro
 		return nil, err
 	}
 
-	modelProducts := make([]*model.MembershipV2Product, len(products.Products))
-	for i, product := range products.Products {
-		modelProducts[i] = convertProductData(product)
+	var modelProducts []*model.MembershipV2Product
+	if len(products.Products) > 0 {
+		modelProducts = make([]*model.MembershipV2Product, len(products.Products))
+		for i, product := range products.Products {
+			modelProducts[i] = convertProductData(product)
+		}
 	}
+
 	return modelProducts, nil
 }
 
@@ -606,10 +614,14 @@ func (s *service) fetchTiers(ctx context.Context) ([]*model.MembershipTierData, 
 		return nil, err
 	}
 
-	modelTiers := make([]*model.MembershipTierData, len(tiers.Tiers))
-	for i, tier := range tiers.Tiers {
-		modelTiers[i] = convertTierData(tier)
+	var modelTiers []*model.MembershipTierData
+	if len(tiers.Tiers) > 0 {
+		modelTiers = make([]*model.MembershipTierData, len(tiers.Tiers))
+		for i, tier := range tiers.Tiers {
+			modelTiers[i] = convertTierData(tier)
+		}
 	}
+
 	return modelTiers, nil
 }
 

@@ -155,13 +155,21 @@ func convertProductData(src *paymentserviceproto.MembershipV2_Product) *model.Me
 	out.ColorStr = src.ColorStr
 	out.Offer = src.Offer
 
-	out.PricesYearly = make([]*model.MembershipV2Amount, len(src.PricesYearly))
-	for i, price := range src.PricesYearly {
-		out.PricesYearly[i] = convertAmountData(price)
+	if len(src.PricesYearly) > 0 {
+		out.PricesYearly = make([]*model.MembershipV2Amount, len(src.PricesYearly))
+		for i, price := range src.PricesYearly {
+			out.PricesYearly[i] = convertAmountData(price)
+		}
+	} else {
+		out.PricesYearly = nil
 	}
-	out.PricesMonthly = make([]*model.MembershipV2Amount, len(src.PricesMonthly))
-	for i, price := range src.PricesMonthly {
-		out.PricesMonthly[i] = convertAmountData(price)
+	if len(src.PricesMonthly) > 0 {
+		out.PricesMonthly = make([]*model.MembershipV2Amount, len(src.PricesMonthly))
+		for i, price := range src.PricesMonthly {
+			out.PricesMonthly[i] = convertAmountData(price)
+		}
+	} else {
+		out.PricesMonthly = nil
 	}
 
 	if src.Features != nil {
@@ -230,10 +238,16 @@ func convertCartData(src *paymentserviceproto.MembershipV2_StoreCartGetResponse)
 		return nil
 	}
 	out := &model.MembershipV2Cart{}
-	out.Products = make([]*model.MembershipV2CartProduct, len(src.Cart.Products))
-	for i, product := range src.Cart.Products {
-		out.Products[i] = convertCartProductData(product)
+
+	if len(src.Cart.Products) > 0 {
+		out.Products = make([]*model.MembershipV2CartProduct, len(src.Cart.Products))
+		for i, product := range src.Cart.Products {
+			out.Products[i] = convertCartProductData(product)
+		}
+	} else {
+		out.Products = nil
 	}
+
 	out.Total = convertAmountData(src.Cart.Total)
 	out.TotalNextInvoice = convertAmountData(src.Cart.TotalNextInvoice)
 	out.NextInvoiceDate = src.Cart.NextInvoiceDate
@@ -271,5 +285,14 @@ func membershipV2DataEqual(a, b *model.MembershipV2Data) bool {
 		return false
 	}
 
-	return a.Equal(b)
+	// Only compare Purchased Products, ignore NextInvoice, TeamOwnerID, and PaymentProvider
+	if len(a.Products) != len(b.Products) {
+		return false
+	}
+	for i := range a.Products {
+		if !a.Products[i].Equal(b.Products[i]) {
+			return false
+		}
+	}
+	return true
 }

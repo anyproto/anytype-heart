@@ -2,32 +2,13 @@
 
 package model
 
-// deriveEqualMembershipV2Product returns whether this and that are equal.
-func deriveEqualMembershipV2Product(this, that *MembershipV2Product) bool {
+// deriveEqualPurchasedProduct returns whether this and that are equal.
+func deriveEqualPurchasedProduct(this, that *MembershipV2PurchasedProduct) bool {
 	return (this == nil && that == nil) ||
 		this != nil && that != nil &&
-			this.Id == that.Id &&
-			this.Name == that.Name &&
-			this.Description == that.Description &&
-			this.IsTopLevel == that.IsTopLevel &&
-			this.IsHidden == that.IsHidden &&
-			this.IsIntro == that.IsIntro &&
-			this.IsUpgradeable == that.IsUpgradeable &&
-			deriveEqual(this.PricesYearly, that.PricesYearly) &&
-			deriveEqual(this.PricesMonthly, that.PricesMonthly) &&
-			this.ColorStr == that.ColorStr &&
-			this.Offer == that.Offer &&
-			deriveEqual_(this.Features, that.Features)
-}
-
-// deriveEqualMembershipV2 returns whether this and that are equal.
-func deriveEqualMembershipV2(this, that *MembershipV2Data) bool {
-	return (this == nil && that == nil) ||
-		this != nil && that != nil &&
-			deriveEqual_1(this.Products, that.Products) &&
-			deriveEqual_2(this.NextInvoice, that.NextInvoice) &&
-			this.TeamOwnerID == that.TeamOwnerID &&
-			this.PaymentProvider == that.PaymentProvider
+			this.Product.Equal(that.Product) &&
+			deriveEqual(this.PurchaseInfo, that.PurchaseInfo) &&
+			deriveEqual_(this.ProductStatus, that.ProductStatus)
 }
 
 // deriveEqualMembershipTierData returns whether this and that are equal.
@@ -43,7 +24,7 @@ func deriveEqualMembershipTierData(this, that *MembershipTierData) bool {
 			this.PriceStripeUsdCents == that.PriceStripeUsdCents &&
 			this.AnyNamesCountIncluded == that.AnyNamesCountIncluded &&
 			this.AnyNameMinLength == that.AnyNameMinLength &&
-			deriveEqual_3(this.Features, that.Features) &&
+			deriveEqual_1(this.Features, that.Features) &&
 			this.ColorStr == that.ColorStr &&
 			this.StripeProductId == that.StripeProductId &&
 			this.StripeManageUrl == that.StripeManageUrl &&
@@ -70,61 +51,53 @@ func deriveEqualMembership(this, that *Membership) bool {
 			this.SubscribeToNewsletter == that.SubscribeToNewsletter
 }
 
+// deriveEqualMembershipV2Product returns whether this and that are equal.
+func deriveEqualMembershipV2Product(this, that *MembershipV2Product) bool {
+	return (this == nil && that == nil) ||
+		this != nil && that != nil &&
+			this.Id == that.Id &&
+			this.Name == that.Name &&
+			this.Description == that.Description &&
+			this.IsTopLevel == that.IsTopLevel &&
+			this.IsHidden == that.IsHidden &&
+			this.IsIntro == that.IsIntro &&
+			this.IsUpgradeable == that.IsUpgradeable &&
+			deriveEqual_2(this.PricesYearly, that.PricesYearly) &&
+			deriveEqual_2(this.PricesMonthly, that.PricesMonthly) &&
+			this.ColorStr == that.ColorStr &&
+			this.Offer == that.Offer &&
+			deriveEqual_3(this.Features, that.Features)
+}
+
+// deriveEqualMembershipV2 returns whether this and that are equal.
+func deriveEqualMembershipV2(this, that *MembershipV2Data) bool {
+	return (this == nil && that == nil) ||
+		this != nil && that != nil &&
+			deriveEqual_4(this.Products, that.Products) &&
+			deriveEqual_5(this.NextInvoice, that.NextInvoice) &&
+			this.TeamOwnerID == that.TeamOwnerID &&
+			this.PaymentProvider == that.PaymentProvider
+}
+
 // deriveEqual returns whether this and that are equal.
-func deriveEqual(this, that []*MembershipV2Amount) bool {
-	if this == nil || that == nil {
-		return this == nil && that == nil
-	}
-	if len(this) != len(that) {
-		return false
-	}
-	for i := 0; i < len(this); i++ {
-		if !(deriveEqual_4(this[i], that[i])) {
-			return false
-		}
-	}
-	return true
+func deriveEqual(this, that *MembershipV2PurchaseInfo) bool {
+	return (this == nil && that == nil) ||
+		this != nil && that != nil &&
+			this.DateStarted == that.DateStarted &&
+			this.DateEnds == that.DateEnds &&
+			this.IsAutoRenew == that.IsAutoRenew &&
+			this.Period == that.Period
 }
 
 // deriveEqual_ returns whether this and that are equal.
-func deriveEqual_(this, that *MembershipV2Features) bool {
+func deriveEqual_(this, that *MembershipV2ProductStatus) bool {
 	return (this == nil && that == nil) ||
 		this != nil && that != nil &&
-			this.StorageBytes == that.StorageBytes &&
-			this.SpaceReaders == that.SpaceReaders &&
-			this.SpaceWriters == that.SpaceWriters &&
-			this.SharedSpaces == that.SharedSpaces &&
-			this.TeamSeats == that.TeamSeats &&
-			this.AnyNameCount == that.AnyNameCount &&
-			this.AnyNameMinLen == that.AnyNameMinLen
+			this.Status == that.Status
 }
 
 // deriveEqual_1 returns whether this and that are equal.
-func deriveEqual_1(this, that []*MembershipV2PurchasedProduct) bool {
-	if this == nil || that == nil {
-		return this == nil && that == nil
-	}
-	if len(this) != len(that) {
-		return false
-	}
-	for i := 0; i < len(this); i++ {
-		if !(deriveEqual_5(this[i], that[i])) {
-			return false
-		}
-	}
-	return true
-}
-
-// deriveEqual_2 returns whether this and that are equal.
-func deriveEqual_2(this, that *MembershipV2Invoice) bool {
-	return (this == nil && that == nil) ||
-		this != nil && that != nil &&
-			this.Date == that.Date &&
-			deriveEqual_4(this.Total, that.Total)
-}
-
-// deriveEqual_3 returns whether this and that are equal.
-func deriveEqual_3(this, that []string) bool {
+func deriveEqual_1(this, that []string) bool {
 	if this == nil || that == nil {
 		return this == nil && that == nil
 	}
@@ -139,36 +112,63 @@ func deriveEqual_3(this, that []string) bool {
 	return true
 }
 
+// deriveEqual_2 returns whether this and that are equal.
+func deriveEqual_2(this, that []*MembershipV2Amount) bool {
+	if this == nil || that == nil {
+		return this == nil && that == nil
+	}
+	if len(this) != len(that) {
+		return false
+	}
+	for i := 0; i < len(this); i++ {
+		if !(deriveEqual_6(this[i], that[i])) {
+			return false
+		}
+	}
+	return true
+}
+
+// deriveEqual_3 returns whether this and that are equal.
+func deriveEqual_3(this, that *MembershipV2Features) bool {
+	return (this == nil && that == nil) ||
+		this != nil && that != nil &&
+			this.StorageBytes == that.StorageBytes &&
+			this.SpaceReaders == that.SpaceReaders &&
+			this.SpaceWriters == that.SpaceWriters &&
+			this.SharedSpaces == that.SharedSpaces &&
+			this.TeamSeats == that.TeamSeats &&
+			this.AnyNameCount == that.AnyNameCount &&
+			this.AnyNameMinLen == that.AnyNameMinLen
+}
+
 // deriveEqual_4 returns whether this and that are equal.
-func deriveEqual_4(this, that *MembershipV2Amount) bool {
+func deriveEqual_4(this, that []*MembershipV2PurchasedProduct) bool {
+	if this == nil || that == nil {
+		return this == nil && that == nil
+	}
+	if len(this) != len(that) {
+		return false
+	}
+	for i := 0; i < len(this); i++ {
+		if !(this[i].Equal(that[i])) {
+			return false
+		}
+	}
+	return true
+}
+
+// deriveEqual_5 returns whether this and that are equal.
+func deriveEqual_5(this, that *MembershipV2Invoice) bool {
+	return (this == nil && that == nil) ||
+		this != nil && that != nil &&
+			this.Date == that.Date &&
+			deriveEqual_6(this.Total, that.Total)
+}
+
+// deriveEqual_6 returns whether this and that are equal.
+func deriveEqual_6(this, that *MembershipV2Amount) bool {
 	return (this == nil && that == nil) ||
 		this != nil && that != nil &&
 			this.Currency == that.Currency &&
 			this.AmountCents == that.AmountCents
-}
-
-// deriveEqual_5 returns whether this and that are equal.
-func deriveEqual_5(this, that *MembershipV2PurchasedProduct) bool {
-	return (this == nil && that == nil) ||
-		this != nil && that != nil &&
-			this.Product.Equal(that.Product) &&
-			deriveEqual_6(this.PurchaseInfo, that.PurchaseInfo) &&
-			deriveEqual_7(this.ProductStatus, that.ProductStatus)
-}
-
-// deriveEqual_6 returns whether this and that are equal.
-func deriveEqual_6(this, that *MembershipV2PurchaseInfo) bool {
-	return (this == nil && that == nil) ||
-		this != nil && that != nil &&
-			this.DateStarted == that.DateStarted &&
-			this.DateEnds == that.DateEnds &&
-			this.IsAutoRenew == that.IsAutoRenew &&
-			this.Period == that.Period
-}
-
-// deriveEqual_7 returns whether this and that are equal.
-func deriveEqual_7(this, that *MembershipV2ProductStatus) bool {
-	return (this == nil && that == nil) ||
-		this != nil && that != nil &&
-			this.Status == that.Status
 }
