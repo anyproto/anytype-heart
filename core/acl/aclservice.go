@@ -540,6 +540,7 @@ func (a *aclService) ViewInvite(ctx context.Context, inviteCid cid.Cid, inviteFi
 			SpaceIconOption: res.SpaceIconOption,
 			SpaceUxType:     res.SpaceUxType,
 			CreatorName:     res.CreatorName,
+			CreatorIconCid:  res.CreatorIconCid,
 		}, nil
 	}
 	inviteKey, err := crypto.UnmarshalEd25519PrivateKeyProto(res.AclKey)

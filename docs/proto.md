@@ -21019,6 +21019,7 @@ Available undo/redo operations
 | spaceName | [string](#string) |  |  |
 | spaceIconCid | [string](#string) |  |  |
 | creatorName | [string](#string) |  |  |
+| creatorIconCid | [string](#string) |  |  |
 | spaceIconOption | [uint32](#uint32) |  |  |
 | spaceUxType | [uint32](#uint32) |  |  |
 | isGuestUserInvite | [bool](#bool) |  | deprecated, use inviteType |
@@ -32449,6 +32450,8 @@ Used to decode block meta only, without the content itself
 | ----- | ---- | ----- | ----------- |
 | creatorIdentity | [string](#string) |  |  |
 | creatorName | [string](#string) |  |  |
+| creatorIconCid | [string](#string) |  |  |
+| creatorIconEncryptionKeys | [FileEncryptionKey](#anytype-model-FileEncryptionKey) | repeated |  |
 | aclKey | [bytes](#bytes) |  |  |
 | spaceId | [string](#string) |  |  |
 | spaceName | [string](#string) |  |  |

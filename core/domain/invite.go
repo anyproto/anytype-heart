@@ -14,6 +14,7 @@ type InviteView struct {
 	SpaceIconOption int
 	SpaceUxType     model.SpaceUxType
 	CreatorName     string
+	CreatorIconCid  string
 	AclKey          []byte
 	GuestKey        []byte
 	InviteType      InviteType
