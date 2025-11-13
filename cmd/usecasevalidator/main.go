@@ -675,7 +675,7 @@ func applyPrimitivesToPage(s *common.SnapshotModel, reporter *reporter) {
 	for _, b := range s.Data.Blocks {
 		if b.Id == id {
 			delete(b.Fields.Fields, "width")
-			reporter.addMsg(id, fmt.Sprintf("primitives: 'width' field is deleted from root block"))
+			reporter.addMsg(id, "primitives: 'width' field is deleted from root block")
 		}
 	}
 }
