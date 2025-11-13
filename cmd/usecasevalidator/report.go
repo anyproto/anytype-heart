@@ -7,16 +7,14 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/gogo/protobuf/types"
 	"github.com/samber/lo"
 
+	"github.com/anyproto/anytype-heart/core/block/import/common"
 	"github.com/anyproto/anytype-heart/core/domain"
-	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 type reporter struct {
@@ -130,15 +128,15 @@ func listObjects(info *useCaseInfo) {
 	}
 }
 
-func collectCustomObjectsUsageInfo(s *pb.SnapshotWithType, info *useCaseInfo) {
-	collectInfoFromRelationLinks(s, info)
-	collectInfoFromObjectTypes(s, info)
-	collectInfoFromDetails(s, info)
+func collectCustomObjectsUsageInfo(s *common.SnapshotModel, info *useCaseInfo) {
+	collectInfoFromRelationLinks(s.Data, info)
+	collectInfoFromObjectTypes(s.Data, info)
+	collectInfoFromDetails(s.Data, info)
 	collectFileUsageInfo(s, info)
 }
 
-func collectInfoFromRelationLinks(s *pb.SnapshotWithType, info *useCaseInfo) {
-	for _, rel := range s.Snapshot.Data.RelationLinks {
+func collectInfoFromRelationLinks(s *common.StateSnapshot, info *useCaseInfo) {
+	for _, rel := range s.RelationLinks {
 		if v, found := info.customTypesAndRelations[rel.Key]; found {
 			v.isUsed = true
 			info.customTypesAndRelations[rel.Key] = v
@@ -147,8 +145,8 @@ func collectInfoFromRelationLinks(s *pb.SnapshotWithType, info *useCaseInfo) {
 	}
 }
 
-func collectInfoFromObjectTypes(s *pb.SnapshotWithType, info *useCaseInfo) {
-	for _, ot := range s.Snapshot.Data.ObjectTypes {
+func collectInfoFromObjectTypes(s *common.StateSnapshot, info *useCaseInfo) {
+	for _, ot := range s.ObjectTypes {
 		typeId := strings.TrimPrefix(ot, addr.ObjectTypeKeyToIdPrefix)
 		if ct, found := info.customTypesAndRelations[typeId]; found {
 			ct.isUsed = true
@@ -158,18 +156,17 @@ func collectInfoFromObjectTypes(s *pb.SnapshotWithType, info *useCaseInfo) {
 	}
 }
 
-func collectInfoFromDetails(s *pb.SnapshotWithType, info *useCaseInfo) {
-	for k, v := range s.Snapshot.Data.Details.Fields {
-		if cr, found := info.customTypesAndRelations[k]; found {
+func collectInfoFromDetails(s *common.StateSnapshot, info *useCaseInfo) {
+	for k, v := range s.Details.Iterate() {
+		if cr, found := info.customTypesAndRelations[k.String()]; found {
 			cr.isUsed = true
-			info.customTypesAndRelations[k] = cr
+			info.customTypesAndRelations[k.String()] = cr
 		}
 		if slices.Contains([]domain.RelationKey{
 			bundle.RelationKeyRecommendedRelations, bundle.RelationKeyRecommendedFeaturedRelations,
 			bundle.RelationKeyRecommendedHiddenRelations, bundle.RelationKeyRecommendedFileRelations,
-		}, domain.RelationKey(k)) {
-			values := pbtypes.GetStringListValue(v)
-			for _, val := range values {
+		}, k) {
+			for _, val := range v.StringList() {
 				if key, found := info.relations[val]; found {
 					if cr, foundToo := info.customTypesAndRelations[string(key)]; foundToo {
 						cr.isUsed = true
@@ -181,12 +178,12 @@ func collectInfoFromDetails(s *pb.SnapshotWithType, info *useCaseInfo) {
 	}
 }
 
-func collectFileUsageInfo(s *pb.SnapshotWithType, info *useCaseInfo) {
-	if s.SbType == model.SmartBlockType_FileObject {
+func collectFileUsageInfo(s *common.SnapshotModel, info *useCaseInfo) {
+	if s.SbType == smartblock.SmartBlockTypeFileObject {
 		return
 	}
 
-	for _, b := range s.Snapshot.Data.Blocks {
+	for _, b := range s.Data.Blocks {
 		fb := b.GetFile()
 		if fb == nil || fb.TargetObjectId == "" {
 			continue
@@ -198,11 +195,11 @@ func collectFileUsageInfo(s *pb.SnapshotWithType, info *useCaseInfo) {
 		}
 	}
 
-	for k, v := range s.Snapshot.Data.Details.Fields {
+	for k, v := range s.Data.Details.Iterate() {
 		var format model.RelationFormat
-		rel, err := bundle.GetRelation(domain.RelationKey(k))
+		rel, err := bundle.GetRelation(k)
 		if err != nil {
-			rel, found := info.customTypesAndRelations[k]
+			rel, found := info.customTypesAndRelations[k.String()]
 			if !found {
 				continue
 			}
@@ -211,11 +208,11 @@ func collectFileUsageInfo(s *pb.SnapshotWithType, info *useCaseInfo) {
 			format = rel.Format
 		}
 
-		if format != model.RelationFormat_file && !isCover(k, s.Snapshot.Data.Details) {
+		if format != model.RelationFormat_file && !isCover(k, s.Data.Details) {
 			continue
 		}
 
-		for _, val := range pbtypes.GetStringListValue(v) {
+		for _, val := range v.StringList() {
 			fInfo, found := info.fileObjects[val]
 			if found {
 				fInfo.isUsed = true
@@ -261,10 +258,10 @@ func printFileUsageInfo(info *useCaseInfo) {
 	}
 }
 
-func isCover(k string, s *types.Struct) bool {
-	if k != bundle.RelationKeyCoverId.String() {
+func isCover(k domain.RelationKey, details *domain.Details) bool {
+	if k != bundle.RelationKeyCoverId {
 		return false
 	}
-	coverType := pbtypes.GetInt64(s, bundle.RelationKeyCoverType.String())
+	coverType := details.GetInt64(bundle.RelationKeyCoverType)
 	return coverType == 1 || coverType == 4 || coverType == 5
 }

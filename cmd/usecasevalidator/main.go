@@ -21,6 +21,7 @@ import (
 	"gopkg.in/yaml.v3"
 
 	"github.com/anyproto/anytype-heart/core/block/export"
+	"github.com/anyproto/anytype-heart/core/block/import/common"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/relationutils"
 	"github.com/anyproto/anytype-heart/pb"
@@ -67,7 +68,7 @@ type (
 
 		// big data
 		files     map[string][]byte
-		snapshots map[string]*pb.SnapshotWithType
+		snapshots map[string]*common.SnapshotModel
 		profile   []byte
 
 		customTypesAndRelations map[string]customInfo
@@ -107,7 +108,6 @@ type FixConfig struct {
 	DeleteInvalidRelationBlocks  bool   `yaml:"delete_invalid_relation_blocks"`
 	DeleteInvalidCollectionItems bool   `yaml:"delete_invalid_collection_items"`
 	SkipInvalidTypes             bool   `yaml:"skip_invalid_types"`
-	RulesPath                    string `yaml:"rules_path"`
 	ApplyPrimitives              bool   `yaml:"apply_primitives"`
 	RemoveRelationLinks          bool   `yaml:"remove_relation_links"`
 	SkipUnusedFiles              bool   `yaml:"skip_unused_files"`
@@ -129,7 +129,7 @@ func (vc *ValidationConfig) isUpdateNeeded() bool {
 }
 
 func (fc *FixConfig) isUpdateNeeded() bool {
-	return fc.DeleteInvalidDetails || fc.DeleteInvalidDetailValues || fc.DeleteInvalidRelationBlocks || fc.SkipInvalidTypes || fc.SkipInvalidObjects || fc.RulesPath != "" || fc.ApplyPrimitives || fc.RemoveRelationLinks || fc.SkipUnusedFiles
+	return fc.DeleteInvalidDetails || fc.DeleteInvalidDetailValues || fc.DeleteInvalidRelationBlocks || fc.SkipInvalidTypes || fc.SkipInvalidObjects || fc.ApplyPrimitives || fc.RemoveRelationLinks || fc.SkipUnusedFiles
 }
 
 func (c *Config) isUpdateNeeded() bool {
@@ -185,12 +185,6 @@ func run() error {
 	config, err := loadConfig()
 	if err != nil {
 		return fmt.Errorf("loading config: %w", err)
-	}
-
-	if config.Fix.RulesPath != "" {
-		if err = readRules(config.Fix.RulesPath); err != nil {
-			return err
-		}
 	}
 
 	r, err := zip.OpenReader(config.Path)
@@ -257,7 +251,6 @@ func parseFlags(config *Config) error {
 	flags.BoolVar(&config.Validate.InsertCreator, "creator", config.Validate.InsertCreator, "Set Anytype profile to LastModifiedDate and Creator")
 
 	flags.StringVar(&config.Fix.HomeObjectId, "home_object", config.Fix.HomeObjectId, "Force home object id")
-	flags.StringVar(&config.Fix.RulesPath, "rules", config.Fix.RulesPath, "Path to file with processing rules")
 
 	flags.BoolVar(&config.Report.ListObjects, "list", config.Report.ListObjects, "List all objects in archive")
 	flags.BoolVar(&config.Report.Changes, "report_changes", config.Report.Changes, "Print report on changes applied to the archive")
@@ -286,7 +279,7 @@ func collectUseCaseInfo(files []*zip.File, fileName string) (info *useCaseInfo, 
 		templates:               make(map[string]string),
 		options:                 make(map[string]domain.RelationKey),
 		files:                   make(map[string][]byte),
-		snapshots:               make(map[string]*pb.SnapshotWithType, len(files)),
+		snapshots:               make(map[string]*common.SnapshotModel, len(files)),
 		fileObjects:             make(map[string]fileInfo, len(files)),
 		customTypesAndRelations: make(map[string]customInfo),
 	}
@@ -315,33 +308,37 @@ func collectUseCaseInfo(files []*zip.File, fileName string) (info *useCaseInfo, 
 			return nil, fmt.Errorf("failed to extract snapshot from file %s: %w", f.Name, err)
 		}
 
-		id := pbtypes.GetString(snapshot.Snapshot.Data.Details, bundle.RelationKeyId.String())
-		name := pbtypes.GetString(snapshot.Snapshot.Data.Details, bundle.RelationKeyName.String())
-		var tk string
-		if len(snapshot.Snapshot.Data.ObjectTypes) > 0 {
-			tk = strings.TrimPrefix(snapshot.Snapshot.Data.ObjectTypes[0], addr.ObjectTypeKeyToIdPrefix)
+		var (
+			details = snapshot.Data.Details
+			id      = details.GetString(bundle.RelationKeyId)
+			name    = details.GetString(bundle.RelationKeyName)
+			tk      string
+		)
+
+		if len(snapshot.Data.ObjectTypes) > 0 {
+			tk = strings.TrimPrefix(snapshot.Data.ObjectTypes[0], addr.ObjectTypeKeyToIdPrefix)
 		}
 
 		info.objects[id] = objectInfo{
 			Type:   tk,
 			Name:   name,
-			SbType: smartblock.SmartBlockType(snapshot.SbType),
+			SbType: snapshot.SbType,
 		}
 
 		prefix := export.ObjectsDirectory
 		switch snapshot.SbType {
-		case model.SmartBlockType_STRelation:
-			uk := pbtypes.GetString(snapshot.Snapshot.Data.Details, bundle.RelationKeyUniqueKey.String())
+		case smartblock.SmartBlockTypeRelation:
+			uk := details.GetString(bundle.RelationKeyUniqueKey)
 			key := strings.TrimPrefix(uk, addr.RelationKeyToIdPrefix)
 			info.relations[id] = domain.RelationKey(key)
 			info.relIdsByKey[domain.RelationKey(key)] = id
-			format := pbtypes.GetInt64(snapshot.Snapshot.Data.Details, bundle.RelationKeyRelationFormat.String())
+			format := details.GetInt64(bundle.RelationKeyRelationFormat)
 			prefix = export.RelationsDirectory
 			if !bundle.HasRelation(domain.RelationKey(key)) {
 				info.customTypesAndRelations[key] = customInfo{id: id, isUsed: false, relationFormat: model.RelationFormat(format), name: name} //nolint:gosec
 			}
-		case model.SmartBlockType_STType:
-			uk := pbtypes.GetString(snapshot.Snapshot.Data.Details, bundle.RelationKeyUniqueKey.String())
+		case smartblock.SmartBlockTypeObjectType:
+			uk := details.GetString(bundle.RelationKeyUniqueKey)
 			key := strings.TrimPrefix(uk, addr.ObjectTypeKeyToIdPrefix)
 			info.types[id] = domain.TypeKey(key)
 			info.typeIdsByKey[domain.TypeKey(key)] = id
@@ -349,7 +346,7 @@ func collectUseCaseInfo(files []*zip.File, fileName string) (info *useCaseInfo, 
 			if !bundle.HasObjectTypeByKey(domain.TypeKey(key)) {
 				info.customTypesAndRelations[key] = customInfo{id: id, isUsed: false, name: name}
 			}
-		case model.SmartBlockType_SubObject:
+		case smartblock.SmartBlockTypeSubObject:
 			if strings.HasPrefix(id, addr.ObjectTypeKeyToIdPrefix) {
 				key := strings.TrimPrefix(id, addr.ObjectTypeKeyToIdPrefix)
 				info.types[id] = domain.TypeKey(key)
@@ -363,22 +360,22 @@ func collectUseCaseInfo(files []*zip.File, fileName string) (info *useCaseInfo, 
 				info.relations[id] = domain.RelationKey(key)
 				info.relIdsByKey[domain.RelationKey(key)] = id
 				prefix = export.RelationsDirectory
-				format := pbtypes.GetInt64(snapshot.Snapshot.Data.Details, bundle.RelationKeyRelationFormat.String())
+				format := details.GetInt64(bundle.RelationKeyRelationFormat)
 				if !bundle.HasRelation(domain.RelationKey(key)) {
 					info.customTypesAndRelations[key] = customInfo{id: id, isUsed: false, relationFormat: model.RelationFormat(format), name: name} //nolint:gosec
 				}
 			}
-		case model.SmartBlockType_Template:
-			info.templates[id] = pbtypes.GetString(snapshot.Snapshot.Data.Details, bundle.RelationKeyTargetObjectType.String())
+		case smartblock.SmartBlockTypeTemplate:
+			info.templates[id] = details.GetString(bundle.RelationKeyTargetObjectType)
 			prefix = export.TemplatesDirectory
-		case model.SmartBlockType_STRelationOption:
-			info.options[id] = domain.RelationKey(pbtypes.GetString(snapshot.Snapshot.Data.Details, bundle.RelationKeyRelationKey.String()))
+		case smartblock.SmartBlockTypeRelationOption:
+			info.options[id] = domain.RelationKey(details.GetString(bundle.RelationKeyRelationKey))
 			prefix = export.RelationsOptionsDirectory
-		case model.SmartBlockType_FileObject:
-			info.fileObjects[id] = fileInfo{source: pbtypes.GetString(snapshot.Snapshot.Data.Details, bundle.RelationKeySource.String())}
+		case smartblock.SmartBlockTypeFileObject:
+			info.fileObjects[id] = fileInfo{source: details.GetString(bundle.RelationKeySource)}
 			prefix = export.FilesObjects
-		case model.SmartBlockType_File:
-			info.fileObjects[id] = fileInfo{source: pbtypes.GetString(snapshot.Snapshot.Data.Details, bundle.RelationKeySource.String()), isOld: true}
+		case smartblock.SmartBlockTypeFile:
+			info.fileObjects[id] = fileInfo{source: details.GetString(bundle.RelationKeySource), isOld: true}
 			prefix = export.ObjectsDirectory
 		}
 
@@ -433,7 +430,7 @@ func processUseCase(info *useCaseInfo, zw *zip.Writer, config *Config, reporter 
 			continue
 		}
 
-		if sn.SbType == model.SmartBlockType_FileObject || sn.SbType == model.SmartBlockType_File {
+		if sn.SbType == smartblock.SmartBlockTypeFileObject || sn.SbType == smartblock.SmartBlockTypeFile {
 			// we have to save file objects in the end, because we need to check file usage
 			updatedFileObjects[getId(sn)] = namedBytes{data: newData, name: name}
 			continue
@@ -497,21 +494,17 @@ func saveDataToZip(zw *zip.Writer, fileName string, data []byte) error {
 	return nil
 }
 
-func processSnapshot(s *pb.SnapshotWithType, info *useCaseInfo, config *Config, reporter *reporter) ([]byte, error) {
+func processSnapshot(s *common.SnapshotModel, info *useCaseInfo, config *Config, reporter *reporter) ([]byte, error) {
 	if config.Validate.InsertAnalytics {
-		insertAnalyticsData(s.Snapshot, info)
+		insertAnalyticsData(s.Data, info)
 	}
 
 	if config.Validate.RemoveAccountRelations {
-		removeAccountRelatedDetails(s.Snapshot)
+		removeAccountRelatedDetails(s.Data)
 	}
 
 	if config.Validate.InsertCreator {
-		insertCreatorInfo(s.Snapshot)
-	}
-
-	if config.Fix.RulesPath != "" {
-		processRules(s.Snapshot)
+		insertCreatorInfo(s.Data)
 	}
 
 	if config.Fix.ApplyPrimitives {
@@ -536,15 +529,18 @@ func processSnapshot(s *pb.SnapshotWithType, info *useCaseInfo, config *Config, 
 
 	collectCustomObjectsUsageInfo(s, info)
 
-	if s.SbType == model.SmartBlockType_AccountOld {
-		return s.Snapshot.Marshal()
+	if s.SbType == smartblock.SmartBlockTypeAccountOld {
+		return s.ToProto().Marshal()
 	}
 
-	return s.Marshal()
+	return (&pb.SnapshotWithType{
+		SbType:   s.SbType.ToProto(),
+		Snapshot: s.ToProto(),
+	}).Marshal()
 }
 
-func extractSnapshotAndType(data []byte, name string) (s *pb.SnapshotWithType, err error) {
-	s = &pb.SnapshotWithType{}
+func extractSnapshotAndType(data []byte, name string) (sm *common.SnapshotModel, err error) {
+	s := &pb.SnapshotWithType{}
 	if strings.HasSuffix(name, ".json") {
 		if err = jsonpb.UnmarshalString(string(data), s); err != nil {
 			return nil, fmt.Errorf("cannot unmarshal snapshot from file %s: %w", name, err)
@@ -559,7 +555,7 @@ func extractSnapshotAndType(data []byte, name string) (s *pb.SnapshotWithType, e
 				SbType:   model.SmartBlockType_AccountOld,
 			}
 		}
-		return
+		return common.NewSnapshotModelFromProto(s)
 	}
 
 	if err = s.Unmarshal(data); err != nil {
@@ -575,10 +571,10 @@ func extractSnapshotAndType(data []byte, name string) (s *pb.SnapshotWithType, e
 			SbType:   model.SmartBlockType_AccountOld,
 		}
 	}
-	return s, nil
+	return common.NewSnapshotModelFromProto(s)
 }
 
-func validate(snapshot *pb.SnapshotWithType, info *useCaseInfo, fixConfig FixConfig, reporter *reporter) (shouldSkip bool, err error) {
+func validate(snapshot *common.SnapshotModel, info *useCaseInfo, fixConfig FixConfig, reporter *reporter) (shouldSkip bool, err error) {
 	for _, v := range validators {
 		skip, e := v(snapshot, info, fixConfig, reporter)
 		if skip {
@@ -589,19 +585,19 @@ func validate(snapshot *pb.SnapshotWithType, info *useCaseInfo, fixConfig FixCon
 		}
 	}
 	if err != nil {
-		id := pbtypes.GetString(snapshot.Snapshot.Data.Details, bundle.RelationKeyId.String())
-		return false, fmt.Errorf("object '%s' (name: '%s') is invalid: %w",
-			id[len(id)-4:], pbtypes.GetString(snapshot.Snapshot.Data.Details, bundle.RelationKeyName.String()), err)
+		id := getId(snapshot)
+		name := snapshot.Data.Details.GetString(bundle.RelationKeyName)
+		return false, fmt.Errorf("object '%s' (name: '%s') is invalid: %w", id[len(id)-4:], name, err)
 	}
 	return false, nil
 }
 
-func insertAnalyticsData(s *pb.ChangeSnapshot, info *useCaseInfo) {
-	if s == nil || s.Data == nil || len(s.Data.Blocks) == 0 {
+func insertAnalyticsData(s *common.StateSnapshot, info *useCaseInfo) {
+	if s == nil || len(s.Blocks) == 0 {
 		return
 	}
-	root := s.Data.Blocks[0]
-	id := pbtypes.GetString(s.Data.Details, bundle.RelationKeyId.String())
+	root := s.Blocks[0]
+	id := s.Details.GetString(bundle.RelationKeyId)
 	f := root.GetFields().GetFields()
 
 	if f == nil {
@@ -614,71 +610,69 @@ func insertAnalyticsData(s *pb.ChangeSnapshot, info *useCaseInfo) {
 	}
 }
 
-func removeAccountRelatedDetails(s *pb.ChangeSnapshot) {
-	for key := range s.Data.Details.Fields {
-		switch key {
-		case bundle.RelationKeyLastOpenedDate.String(),
-			bundle.RelationKeyCreatedDate.String(),
-			bundle.RelationKeySpaceId.String(),
-			bundle.RelationKeyRelationFormatObjectTypes.String(),
-			bundle.RelationKeySourceFilePath.String(),
-			bundle.RelationKeyLinks.String(),
-			bundle.RelationKeyBacklinks.String(),
-			bundle.RelationKeyMentions.String(),
-			bundle.RelationKeyIdentityProfileLink.String(),
-			bundle.RelationKeyAddedDate.String(),
-			bundle.RelationKeySyncDate.String(),
-			bundle.RelationKeySyncError.String(),
-			bundle.RelationKeySyncStatus.String(),
-			bundle.RelationKeyChatId.String(),
-			bundle.RelationKeyType.String():
-
-			delete(s.Data.Details.Fields, key)
-		}
+func removeAccountRelatedDetails(s *common.StateSnapshot) {
+	for _, key := range []domain.RelationKey{
+		bundle.RelationKeyLastOpenedDate,
+		bundle.RelationKeyCreatedDate,
+		bundle.RelationKeySpaceId,
+		bundle.RelationKeyRelationFormatObjectTypes,
+		bundle.RelationKeySourceFilePath,
+		bundle.RelationKeyLinks,
+		bundle.RelationKeyBacklinks,
+		bundle.RelationKeyMentions,
+		bundle.RelationKeyIdentityProfileLink,
+		bundle.RelationKeyAddedDate,
+		bundle.RelationKeySyncDate,
+		bundle.RelationKeySyncError,
+		bundle.RelationKeySyncStatus,
+		bundle.RelationKeyChatId,
+		bundle.RelationKeyType,
+	} {
+		s.Details.Delete(key)
 	}
 }
 
-func insertCreatorInfo(s *pb.ChangeSnapshot) {
-	s.Data.Details.Fields[bundle.RelationKeyCreator.String()] = pbtypes.String(addr.AnytypeProfileId)
-	s.Data.Details.Fields[bundle.RelationKeyLastModifiedBy.String()] = pbtypes.String(addr.AnytypeProfileId)
+func insertCreatorInfo(s *common.StateSnapshot) {
+	s.Details.SetString(bundle.RelationKeyCreator, addr.AnytypeProfileId)
+	s.Details.SetString(bundle.RelationKeyLastModifiedBy, addr.AnytypeProfileId)
 }
 
-func applyPrimitives(s *pb.SnapshotWithType, info *useCaseInfo, reporter *reporter) {
+func applyPrimitives(s *common.SnapshotModel, info *useCaseInfo, reporter *reporter) {
 	switch s.SbType {
-	case model.SmartBlockType_Page:
+	case smartblock.SmartBlockTypePage:
 		applyPrimitivesToPage(s, reporter)
-	case model.SmartBlockType_STType:
+	case smartblock.SmartBlockTypeObjectType:
 		applyPrimitivesToType(s, info, reporter)
 	}
 }
 
-func applyPrimitivesToPage(s *pb.SnapshotWithType, reporter *reporter) {
+func applyPrimitivesToPage(s *common.SnapshotModel, reporter *reporter) {
 	id := getId(s)
-	relationsToDelete := make([]string, 0, 3)
-	for _, rel := range []string{bundle.RelationKeyLayout.String(), bundle.RelationKeyLayoutAlign.String()} {
-		_, found := s.Snapshot.Data.Details.Fields[rel]
-		if found {
+	relationsToDelete := make([]domain.RelationKey, 0, 3)
+	details := s.Data.Details
+	for _, rel := range []domain.RelationKey{bundle.RelationKeyLayout, bundle.RelationKeyLayoutAlign} {
+		if details.Has(rel) {
 			relationsToDelete = append(relationsToDelete, rel)
-			delete(s.Snapshot.Data.Details.Fields, rel)
+			details.Delete(rel)
 		}
 	}
 
-	featuredRelations := pbtypes.GetStringList(s.Snapshot.Data.Details, bundle.RelationKeyFeaturedRelations.String())
+	featuredRelations := details.GetStringList(bundle.RelationKeyFeaturedRelations)
 	if featuredRelations != nil {
 		if slices.Contains(featuredRelations, bundle.RelationKeyDescription.String()) {
 			reporter.addMsg(id, "primitives: leave only description in featured relations")
-			s.Snapshot.Data.Details.Fields[bundle.RelationKeyFeaturedRelations.String()] = pbtypes.StringList([]string{bundle.RelationKeyDescription.String()})
+			details.SetStringList(bundle.RelationKeyFeaturedRelations, []string{bundle.RelationKeyDescription.String()})
 		} else {
-			relationsToDelete = append(relationsToDelete, bundle.RelationKeyFeaturedRelations.String())
-			delete(s.Snapshot.Data.Details.Fields, bundle.RelationKeyFeaturedRelations.String())
+			relationsToDelete = append(relationsToDelete, bundle.RelationKeyFeaturedRelations)
+			details.Delete(bundle.RelationKeyFeaturedRelations)
 		}
 	}
 
 	if len(relationsToDelete) > 0 {
-		reporter.addMsg(id, fmt.Sprintf("primitives: layout related details deleted: [%s]", strings.Join(relationsToDelete, ",")))
+		reporter.addMsg(id, fmt.Sprintf("primitives: layout related details deleted: [%v]", relationsToDelete))
 	}
 
-	for _, b := range s.Snapshot.Data.Blocks {
+	for _, b := range s.Data.Blocks {
 		if b.Id == id {
 			delete(b.Fields.Fields, "width")
 			reporter.addMsg(id, fmt.Sprintf("primitives: 'width' field is deleted from root block"))
@@ -686,13 +680,12 @@ func applyPrimitivesToPage(s *pb.SnapshotWithType, reporter *reporter) {
 	}
 }
 
-func applyPrimitivesToType(s *pb.SnapshotWithType, info *useCaseInfo, reporter *reporter) {
-	if _, found := s.Snapshot.Data.Details.Fields[bundle.RelationKeyRecommendedFeaturedRelations.String()]; found {
+func applyPrimitivesToType(s *common.SnapshotModel, info *useCaseInfo, reporter *reporter) {
+	if s.Data.Details.Has(bundle.RelationKeyRecommendedFeaturedRelations) {
 		return
 	}
 
-	details := domain.NewDetailsFromProto(s.Snapshot.Data.Details).
-		CopyOnlyKeys(bundle.RelationKeyRecommendedRelations, bundle.RelationKeyRecommendedLayout)
+	details := s.Data.Details.CopyOnlyKeys(bundle.RelationKeyRecommendedRelations, bundle.RelationKeyRecommendedLayout)
 
 	relationIds := details.GetStringList(bundle.RelationKeyRecommendedRelations)
 	bundleIds := make([]string, 0, len(relationIds))
@@ -705,7 +698,7 @@ func applyPrimitivesToType(s *pb.SnapshotWithType, info *useCaseInfo, reporter *
 	}
 	details.SetStringList(bundle.RelationKeyRecommendedRelations, bundleIds)
 
-	typeKey := domain.TypeKey(pbtypes.GetString(s.Snapshot.Data.Details, bundle.RelationKeyUniqueKey.String()))
+	typeKey := domain.TypeKey(s.Data.Details.GetString(bundle.RelationKeyUniqueKey))
 	_, _, err := relationutils.FillRecommendedRelations(context.TODO(), info, details, typeKey)
 	if err != nil {
 		fmt.Println(err)
@@ -713,24 +706,24 @@ func applyPrimitivesToType(s *pb.SnapshotWithType, info *useCaseInfo, reporter *
 	}
 
 	reporter.addMsg(getId(s), "primitives: recommended relations lists are refilled")
-	delete(s.Snapshot.Data.Details.Fields, bundle.RelationKeyRecommendedRelations.String())
-	s.Snapshot.Data.Details = pbtypes.StructMerge(s.Snapshot.Data.Details, details.ToProto(), true)
+	s.Data.Details.Delete(bundle.RelationKeyRecommendedRelations)
+	s.Data.Details.Merge(details)
 
-	if emoji := pbtypes.GetString(s.Snapshot.Data.Details, bundle.RelationKeyIconEmoji.String()); emoji != "" {
+	if emoji := s.Data.Details.GetString(bundle.RelationKeyIconEmoji); emoji != "" {
 		objType, err := bundle.GetType(typeKey)
 		if err != nil {
 			reporter.addMsg(getId(s), fmt.Sprintf("primitives: non bundle type handles emoji: %s", emoji))
 		} else {
-			delete(s.Snapshot.Data.Details.Fields, bundle.RelationKeyIconEmoji.String())
-			s.Snapshot.Data.Details.Fields[bundle.RelationKeyIconName.String()] = pbtypes.String(objType.IconName)
-			s.Snapshot.Data.Details.Fields[bundle.RelationKeyIconOption.String()] = pbtypes.Int64(objType.IconColor)
+			s.Data.Details.Delete(bundle.RelationKeyIconEmoji)
+			s.Data.Details.SetString(bundle.RelationKeyIconName, objType.IconName)
+			s.Data.Details.SetInt64(bundle.RelationKeyIconOption, objType.IconColor)
 			reporter.addMsg(getId(s), fmt.Sprintf("primitives: bundle type icon was changed from '%s' to '%s'", emoji, objType.IconName))
 		}
 	}
 }
 
-func removeRelationLinks(s *pb.SnapshotWithType, reporter *reporter) {
-	s.Snapshot.Data.RelationLinks = nil
+func removeRelationLinks(s *common.SnapshotModel, reporter *reporter) {
+	s.Data.RelationLinks = nil
 	reporter.addMsg(getId(s), "relation links removed")
 }
 
