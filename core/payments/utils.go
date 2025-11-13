@@ -182,6 +182,11 @@ func convertProductData(src *paymentserviceproto.MembershipV2_Product) *model.Me
 		out.Features.TeamSeats = src.Features.TeamSeats
 		out.Features.AnyNameCount = src.Features.AnyNameCount
 		out.Features.AnyNameMinLen = src.Features.AnyNameMinLen
+		// this is a default value for private spaces
+		// this is not featured on backend, this var. is for client-side only
+		// we do not plan to control it remotely, at least for now
+		// (can be changed later if needed)
+		out.Features.PrivateSpaces = 4096
 	}
 	return out
 }

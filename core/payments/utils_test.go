@@ -315,6 +315,7 @@ func TestConvertProductData_JSONCoverage(t *testing.T) {
 			TeamSeats:     src.Features.TeamSeats,
 			AnyNameCount:  src.Features.AnyNameCount,
 			AnyNameMinLen: src.Features.AnyNameMinLen,
+			PrivateSpaces: 4096,
 		},
 	}
 
@@ -393,6 +394,7 @@ func TestConvertPurchasedProductData_JSONCoverage(t *testing.T) {
 				TeamSeats:     src.Product.Features.TeamSeats,
 				AnyNameCount:  src.Product.Features.AnyNameCount,
 				AnyNameMinLen: src.Product.Features.AnyNameMinLen,
+				PrivateSpaces: 4096,
 			},
 		},
 		PurchaseInfo: &model.MembershipV2PurchaseInfo{
@@ -511,6 +513,7 @@ func TestConvertCartProductData_JSONCoverage(t *testing.T) {
 				TeamSeats:     src.Product.Features.TeamSeats,
 				AnyNameCount:  src.Product.Features.AnyNameCount,
 				AnyNameMinLen: src.Product.Features.AnyNameMinLen,
+				PrivateSpaces: 4096,
 			},
 		},
 		IsYearly: src.IsYearly,

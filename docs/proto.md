@@ -33301,6 +33301,7 @@ Used to decode block meta only, without the content itself
 | teamSeats | [uint32](#uint32) |  |  |
 | anyNameCount | [uint32](#uint32) |  |  |
 | anyNameMinLen | [uint32](#uint32) |  |  |
+| privateSpaces | [uint32](#uint32) |  |  |
 
 
 

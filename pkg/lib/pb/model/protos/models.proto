@@ -1437,7 +1437,8 @@ message MembershipV2 {
         uint32 sharedSpaces = 4;
         uint32 teamSeats = 5;
         uint32 anyNameCount = 6;
-        uint32 anyNameMinLen = 7; 
+        uint32 anyNameMinLen = 7;
+        uint32 privateSpaces = 8; 
     }
 
     message Product {
