@@ -1,7 +1,6 @@
 package slice
 
 import (
-	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -116,14 +115,4 @@ func TestMergeUniqBy(t *testing.T) {
 	assert.Equal(t, MergeUniqBy([]string{"a", "b", "c"}, []string{"a", "b"}, strEqual), []string{"a", "b", "c"})
 	assert.Equal(t, MergeUniqBy([]string{}, []string{"a", "b"}, strEqual), []string{"a", "b"})
 	assert.Equal(t, MergeUniqBy([]string{"a", "b", "c"}, []string{"z", "d"}, strEqual), []string{"a", "b", "c", "z", "d"})
-}
-
-func TestDeleteOrApplyFunc(t *testing.T) {
-	assert.Equal(t, []int{1, 3, 5, 7}, DeleteOrApplyFunc([]int{2, 4, 6, 8, 10}, func(x int) bool { return x == 10 }, func(x int) int { return x - 1 }))
-
-	isJunk := func(food string) bool {
-		return food == "burger" || food == "hotdog" || food == "pizza"
-	}
-
-	assert.Equal(t, []string{"APPLE", "CARROT", "ORANGE"}, DeleteOrApplyFunc([]string{"apple", "burger", "carrot", "hotdog", "orange"}, isJunk, strings.ToUpper))
 }

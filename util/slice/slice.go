@@ -320,16 +320,3 @@ func ContainsBySeq[T comparable](seq iter.Seq[T], v1 T) (found bool) {
 	})
 	return
 }
-
-// DeleteOrApplyFunc deletes elements that satisfy del predicate, otherwise apply func
-func DeleteOrApplyFunc[S ~[]E, E any](s S, del func(E) bool, apply func(E) E) S {
-	i := 0
-	for j := 0; j < len(s); j++ {
-		if v := s[j]; !del(v) {
-			s[i] = apply(v)
-			i++
-		}
-	}
-	clear(s[i:])
-	return s[:i]
-}

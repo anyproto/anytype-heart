@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/hashicorp/go-multierror"
+	"github.com/samber/lo"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/template"
 	"github.com/anyproto/anytype-heart/core/block/simple"
@@ -22,7 +23,6 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
-	"github.com/anyproto/anytype-heart/util/slice"
 )
 
 type (
@@ -380,13 +380,14 @@ func removeBlocks(s *pb.SnapshotWithType, blockIds []string) {
 		return
 	}
 
-	s.Snapshot.Data.Blocks = slice.DeleteOrApplyFunc(s.Snapshot.Data.Blocks, func(b *model.Block) bool {
-		return slices.Contains(blockIds, b.Id)
-	}, func(block *model.Block) *model.Block {
+	s.Snapshot.Data.Blocks = lo.FilterMap(s.Snapshot.Data.Blocks, func(block *model.Block, _ int) (*model.Block, bool) {
+		if slices.Contains(blockIds, block.Id) {
+			return nil, false
+		}
 		block.ChildrenIds = slices.DeleteFunc(block.ChildrenIds, func(id string) bool {
 			return slices.Contains(blockIds, id)
 		})
-		return block
+		return block, true
 	})
 }
 

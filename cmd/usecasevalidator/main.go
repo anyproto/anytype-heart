@@ -677,6 +677,13 @@ func applyPrimitivesToPage(s *pb.SnapshotWithType, reporter *reporter) {
 	if len(relationsToDelete) > 0 {
 		reporter.addMsg(id, fmt.Sprintf("primitives: layout related details deleted: [%s]", strings.Join(relationsToDelete, ",")))
 	}
+
+	for _, b := range s.Snapshot.Data.Blocks {
+		if b.Id == id {
+			delete(b.Fields.Fields, "width")
+			reporter.addMsg(id, fmt.Sprintf("primitives: 'width' field is deleted from root block"))
+		}
+	}
 }
 
 func applyPrimitivesToType(s *pb.SnapshotWithType, info *useCaseInfo, reporter *reporter) {
