@@ -1340,6 +1340,11 @@ func (s *service) V2AnyNameAllocate(ctx context.Context, req *pb.RpcMembershipV2
 		return nil, err
 	}
 
+	if err == nil {
+		// immediately update own any name, do not wait for background refresh
+		s.profileUpdater.UpdateOwnGlobalName(nameservice.NsNameToFullName(req.NsName, req.NsNameType))
+	}
+
 	// 2 - force refresh to get updated membership status
 	go s.forceRefreshV2(30 * time.Minute)
 
