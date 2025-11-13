@@ -8,7 +8,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 const (
@@ -49,93 +48,66 @@ var (
 	}
 )
 
-func MakeDataviewView(isCollection bool, relLinks []*model.RelationLink, viewLayout model.BlockContentDataviewViewType, forceViewId string, viewName string) model.BlockContentDataviewView {
-	var visibleRelations []domain.RelationKey
-	var (
-		sorts = DefaultLastModifiedDateSort()
-	)
-
-	visibleRelations = defaultVisibleRelations
-
-	if isCollection {
-		sorts = defaultNameSort()
-	} else if relLinks != nil {
-		for _, relLink := range relLinks {
-			visibleRelations = append(visibleRelations, domain.RelationKey(relLink.Key))
-		}
-	}
-
-	_, viewRelations := GenerateRelationLists(isCollection, relLinks, visibleRelations)
-	viewId := forceViewId
-	if viewId == "" {
-		viewId = bson.NewObjectId().Hex()
-	}
-
-	if viewName == "" {
-		viewName = defaultViewName
-	}
-	return model.BlockContentDataviewView{
-		Id:        viewId,
-		Type:      viewLayout,
-		Name:      viewName,
-		Sorts:     sorts,
-		Filters:   nil,
-		Relations: viewRelations,
-	}
-
-}
-
-func MakeDataviewContent(isCollection bool, ot *model.ObjectType, relLinks []*model.RelationLink, forceViewId string) *model.BlockContentOfDataview {
-	var visibleRelations []domain.RelationKey
-	var (
-		sorts = DefaultLastModifiedDateSort()
-	)
-
-	visibleRelations = defaultVisibleRelations
-
-	if isCollection {
-		sorts = defaultNameSort()
-	} else if relLinks != nil {
-		for _, relLink := range relLinks {
-
-			visibleRelations = append(visibleRelations, domain.RelationKey(relLink.Key))
-		}
-	} else if ot != nil {
+func MakeDataviewContent(isCollection bool, ot *model.ObjectType, relLinks []*model.RelationLink, oldContent *model.BlockContentOfDataview) *model.BlockContentOfDataview {
+	commonVisibleRelations := make([]domain.RelationKey, 0, len(relLinks))
+	if ot != nil {
 		relLinks = ot.RelationLinks
+	} else {
+		for _, relLink := range relLinks {
+			commonVisibleRelations = append(commonVisibleRelations, domain.RelationKey(relLink.Key))
+		}
 	}
 
-	// Special case for chat type
-	if ot != nil && ot.Key == bundle.TypeKeyChatDerived.String() {
-		sorts = []*model.BlockContentDataviewSort{
-			{
-				RelationKey: bundle.RelationKeyLastMessageDate.String(),
-				Type:        model.BlockContentDataviewSort_Desc,
-				Format:      model.RelationFormat_date,
-				IncludeTime: true,
-				Id:          bson.NewObjectId().Hex(),
+	if oldContent == nil {
+		visibleRelations := slices.Concat(defaultVisibleRelations, commonVisibleRelations)
+		view := &model.BlockContentDataviewView{
+			Id:        bson.NewObjectId().Hex(),
+			Type:      DefaultViewLayout,
+			Name:      defaultViewName,
+			Sorts:     buildSorts(isCollection, ot),
+			Filters:   nil,
+			Relations: BuildViewRelations(isCollection, relLinks, visibleRelations),
+		}
+		return &model.BlockContentOfDataview{
+			Dataview: &model.BlockContentDataview{
+				IsCollection:  isCollection,
+				RelationLinks: collectRelationLinksFromViews(relLinks, view),
+				Views:         []*model.BlockContentDataviewView{view},
 			},
 		}
 	}
 
-	relationLinks, viewRelations := GenerateRelationLists(isCollection, relLinks, visibleRelations)
-	viewId := forceViewId
-	if viewId == "" {
-		viewId = bson.NewObjectId().Hex()
+	for _, view := range oldContent.Dataview.Views {
+		if len(view.Sorts) == 0 {
+			view.Sorts = buildSorts(isCollection, ot)
+		}
+		visibleRelations := commonVisibleRelations
+		additionalRelLinks := relLinks
+		for _, rel := range view.Relations {
+			if rel.IsVisible {
+				visibleRelations = append(visibleRelations, domain.RelationKey(rel.Key))
+				format := model.RelationFormat_longtext
+				if br, err := bundle.PickRelation(domain.RelationKey(rel.Key)); err == nil {
+					format = br.Format
+				}
+				additionalRelLinks = append(additionalRelLinks, &model.RelationLink{
+					Key:    rel.Key,
+					Format: format,
+				})
+			}
+		}
+		view.Relations = BuildViewRelations(isCollection, additionalRelLinks, visibleRelations)
+		view.DefaultObjectTypeId = ""
+		view.DefaultTemplateId = ""
 	}
+
 	return &model.BlockContentOfDataview{
 		Dataview: &model.BlockContentDataview{
 			IsCollection:  isCollection,
-			RelationLinks: relationLinks,
-			Views: []*model.BlockContentDataviewView{
-				{
-					Id:        viewId,
-					Type:      DefaultViewLayout,
-					Name:      defaultViewName,
-					Sorts:     sorts,
-					Filters:   nil,
-					Relations: viewRelations,
-				},
-			},
+			ObjectOrders:  oldContent.Dataview.ObjectOrders,
+			GroupOrders:   oldContent.Dataview.GroupOrders,
+			RelationLinks: collectRelationLinksFromViews(append(oldContent.Dataview.RelationLinks, relLinks...), oldContent.Dataview.Views...),
+			Views:         oldContent.Dataview.Views,
 		},
 	}
 }
@@ -155,14 +127,10 @@ func propertyWidth(format model.RelationFormat) int32 {
 	return defaultWidth
 }
 
-func GenerateRelationLists(
-	isCollection bool,
-	additionalRelations []*model.RelationLink,
-	visibleRelations []domain.RelationKey,
-) (
-	relationLinks []*model.RelationLink,
-	viewRelations []*model.BlockContentDataviewRelation,
-) {
+func BuildViewRelations(isCollection bool, additionalRelations []*model.RelationLink, visibleRelations []domain.RelationKey) (viewRelations []*model.BlockContentDataviewRelation) {
+	if len(visibleRelations) == 0 {
+		visibleRelations = defaultVisibleRelations
+	}
 	isVisible := func(key domain.RelationKey) bool {
 		return slices.Contains(visibleRelations, key)
 	}
@@ -171,12 +139,11 @@ func GenerateRelationLists(
 	if isCollection {
 		defaultRelations = defaultCollectionRelations
 	}
+
+	addedRelations := make(map[string]struct{})
 	for _, relKey := range defaultRelations {
 		rel := bundle.MustGetRelation(relKey)
-		relationLinks = append(relationLinks, &model.RelationLink{
-			Format: rel.Format,
-			Key:    rel.Key,
-		})
+		addedRelations[rel.Key] = struct{}{}
 		viewRelations = append(viewRelations, &model.BlockContentDataviewRelation{
 			Key:       rel.Key,
 			IsVisible: isVisible(relKey),
@@ -185,21 +152,56 @@ func GenerateRelationLists(
 	}
 
 	for _, relLink := range additionalRelations {
-		if pbtypes.HasRelationLink(relationLinks, relLink.Key) {
+		if _, isAdded := addedRelations[relLink.Key]; isAdded {
 			continue
 		}
-		relationLinks = append(relationLinks, &model.RelationLink{
-			Format: relLink.Format,
-			Key:    relLink.Key,
-		})
-
+		addedRelations[relLink.Key] = struct{}{}
 		viewRelations = append(viewRelations, &model.BlockContentDataviewRelation{
 			Key:       relLink.Key,
 			IsVisible: isVisible(domain.RelationKey(relLink.Key)),
 			Width:     propertyWidth(relLink.Format),
 		})
 	}
-	return relationLinks, viewRelations
+	return viewRelations
+}
+
+func collectRelationLinksFromViews(existingRelLinks []*model.RelationLink, views ...*model.BlockContentDataviewView) []*model.RelationLink {
+	customRelations := make(map[string]model.RelationFormat, len(existingRelLinks))
+	for _, relLink := range existingRelLinks {
+		if !bundle.HasRelation(domain.RelationKey(relLink.Key)) {
+			customRelations[relLink.Key] = relLink.Format
+		}
+	}
+
+	getRelLink := func(key string) *model.RelationLink {
+		if format, isCustom := customRelations[key]; isCustom {
+			return &model.RelationLink{Key: key, Format: format}
+		}
+		return bundle.MustGetRelationLink(domain.RelationKey(key))
+	}
+
+	addedRelations := make(map[string]struct{}, len(defaultCollectionRelations))
+	relLinks := make([]*model.RelationLink, 0, len(defaultCollectionRelations))
+	for _, view := range views {
+		for _, rel := range view.Relations {
+			if _, isAdded := addedRelations[rel.Key]; !isAdded {
+				relLinks = append(relLinks, getRelLink(rel.Key))
+				addedRelations[rel.Key] = struct{}{}
+			}
+		}
+	}
+	return relLinks
+}
+
+func buildSorts(isCollection bool, ot *model.ObjectType) []*model.BlockContentDataviewSort {
+	if isCollection {
+		return defaultNameSort()
+	}
+	// Special case for the chat type
+	if ot != nil && ot.Key == bundle.TypeKeyChatDerived.String() {
+		return defaultChatSort()
+	}
+	return DefaultLastModifiedDateSort()
 }
 
 func DefaultLastModifiedDateSort() []*model.BlockContentDataviewSort {
@@ -218,6 +220,18 @@ func defaultNameSort() []*model.BlockContentDataviewSort {
 			Id:          bson.NewObjectId().Hex(),
 			RelationKey: bundle.RelationKeyName.String(),
 			Type:        model.BlockContentDataviewSort_Asc,
+		},
+	}
+}
+
+func defaultChatSort() []*model.BlockContentDataviewSort {
+	return []*model.BlockContentDataviewSort{
+		{
+			RelationKey: bundle.RelationKeyLastMessageDate.String(),
+			Type:        model.BlockContentDataviewSort_Desc,
+			Format:      model.RelationFormat_date,
+			IncludeTime: true,
+			Id:          bson.NewObjectId().Hex(),
 		},
 	}
 }

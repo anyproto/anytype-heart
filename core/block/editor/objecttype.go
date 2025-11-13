@@ -20,7 +20,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/relationutils"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/spaceindex"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
@@ -260,7 +259,7 @@ func (ot *ObjectType) dataviewTemplates() []template.StateTransformer {
 				Name:          name,
 				Key:           key,
 				RelationLinks: relationLinks,
-			}, relationLinks, addr.ObjectTypeAllViewId)
+			}, relationLinks, nil)
 
 			dvContent.Dataview.TargetObjectId = ot.Id()
 
