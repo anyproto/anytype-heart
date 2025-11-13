@@ -59,7 +59,7 @@ func MakeDataviewContent(isCollection bool, ot *model.ObjectType, relLinks []*mo
 	}
 
 	if oldContent == nil {
-		visibleRelations := append(defaultVisibleRelations, commonVisibleRelations...)
+		visibleRelations := slices.Concat(defaultVisibleRelations, commonVisibleRelations)
 		view := &model.BlockContentDataviewView{
 			Id:        bson.NewObjectId().Hex(),
 			Type:      DefaultViewLayout,
