@@ -20,6 +20,7 @@ require (
 	github.com/anyproto/tantivy-go v1.0.4
 	github.com/araddon/dateparse v0.0.0-20210429162001-6b43995a97de
 	github.com/avast/retry-go/v4 v4.6.1
+	github.com/awalterschulze/goderive v0.5.1
 	github.com/chai2010/webp v1.4.0
 	github.com/cheggaaa/mb/v3 v3.0.2
 	github.com/dave/jennifer v1.7.1
@@ -135,7 +136,6 @@ require (
 	github.com/andybalholm/cascadia v1.3.3 // indirect
 	github.com/anyproto/go-slip21 v1.0.0 // indirect
 	github.com/anyproto/go-sqlite v1.4.2-any // indirect
-	github.com/awalterschulze/goderive v0.5.1 // indirect
 	github.com/aymerick/douceur v0.2.0 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/btcsuite/btcd v0.24.2 // indirect

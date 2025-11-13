@@ -104,6 +104,19 @@ func MakeDataviewContent(isCollection bool, ot *model.ObjectType, relLinks []*mo
 		relLinks = ot.RelationLinks
 	}
 
+	// Special case for chat type
+	if ot != nil && ot.Key == bundle.TypeKeyChatDerived.String() {
+		sorts = []*model.BlockContentDataviewSort{
+			{
+				RelationKey: bundle.RelationKeyLastMessageDate.String(),
+				Type:        model.BlockContentDataviewSort_Desc,
+				Format:      model.RelationFormat_date,
+				IncludeTime: true,
+				Id:          bson.NewObjectId().Hex(),
+			},
+		}
+	}
+
 	relationLinks, viewRelations := GenerateRelationLists(isCollection, relLinks, visibleRelations)
 	viewId := forceViewId
 	if viewId == "" {
