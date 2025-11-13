@@ -10,6 +10,7 @@ import (
 	"github.com/anyproto/any-sync/coordinator/coordinatorproto"
 	ic "github.com/anyproto/any-sync/coordinator/inboxclient"
 	"github.com/anyproto/anytype-heart/core/wallet"
+	"github.com/anyproto/anytype-heart/space/techspace"
 	"go.uber.org/zap"
 )
 
@@ -30,9 +31,9 @@ func New() InboxClient {
 type inboxclient struct {
 	ic.InboxClient
 
-	mu     sync.Mutex
-	offset string
-	wallet wallet.Wallet
+	mu        sync.Mutex
+	techSpace techspace.TechSpace
+	wallet    wallet.Wallet
 
 	rmu       sync.Mutex
 	receivers map[coordinatorproto.InboxPayloadType]func(*coordinatorproto.InboxPacket) error
@@ -43,6 +44,7 @@ func (s *inboxclient) Init(a *app.App) (err error) {
 	if err != nil {
 		return
 	}
+	s.techSpace = app.MustComponent[techspace.TechSpace](a)
 	s.wallet = app.MustComponent[wallet.Wallet](a)
 	s.receivers = make(map[coordinatorproto.InboxPayloadType]func(*coordinatorproto.InboxPacket) error)
 	err = s.SetMessageReceiver(s.ReceiveNotify)
@@ -81,32 +83,72 @@ func (s *inboxclient) Run(ctx context.Context) error {
 	return nil
 }
 
-func (s *inboxclient) fetchMessages() []*coordinatorproto.InboxMessage {
+func (s *inboxclient) setOffset(offset string) (err error) {
+	err = s.techSpace.DoAccountObject(context.Background(), func(accountObject techspace.AccountObject) error {
+		err := accountObject.SetInboxOffset(offset)
+		if err != nil {
+			return err
+		}
+		return nil
+	})
+	return
+
+}
+
+func (s *inboxclient) getOffset() (offset string, err error) {
+	err = s.techSpace.DoAccountObject(context.Background(), func(accountObject techspace.AccountObject) error {
+		offset, err = accountObject.GetInboxOffset()
+		if err != nil {
+			return err
+		}
+		return nil
+	})
+	return
+}
+
+func (s *inboxclient) fetchMessages() (messages []*coordinatorproto.InboxMessage, err error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	all := make([]*coordinatorproto.InboxMessage, 0)
 
+	messages = make([]*coordinatorproto.InboxMessage, 0)
+	offset, err := s.getOffset()
+	if err != nil {
+		return
+	}
+
+	// TODO: What to do with error, when we've got a part/batch?
+	// 1. we can try to process just batch, if offset is set correct
+	// 2. if error was while trying to set an offset, we probably shouldn't process it
+	//    because it will cause double processing
+	// we can follow (2.), but this means that all processes should be able to double process messages
+	// Both situations can potentially lead to an infinite fetch loop.
 	for {
-		msgs, hasMore, err := s.InboxFetch(context.TODO(), s.offset)
+		batch, hasMore, err := s.InboxFetch(context.TODO(), offset)
 		if err != nil {
-			log.Error("inbox: fetch error", zap.Error(err))
+			log.Error("inbox: fetchMessages batch error", zap.Error(err))
 			break
 		}
 
-		if len(msgs) > 0 {
-			s.offset = msgs[len(msgs)-1].Id
+		if len(batch) > 0 {
+			newOffset := batch[len(batch)-1].Id
+			err = s.setOffset(newOffset)
+			if err != nil {
+				log.Error("inbox: error setting offset", zap.Error(err))
+				break
+			}
 
-			for i := range msgs {
-				encrypted := msgs[i].Packet.Payload.Body
+			for i := range batch {
+				encrypted := batch[i].Packet.Payload.Body
 				body, err := s.wallet.Account().SignKey.Decrypt(encrypted)
 				if err != nil {
+					// skipping a message if we fail to decrypt
 					log.Error("inbox: error decrypting body", zap.Error(err))
 					continue
 				}
-				msgs[i].Packet.Payload.Body = body
+				batch[i].Packet.Payload.Body = body
 			}
 
-			all = append(all, msgs...)
+			messages = append(messages, batch...)
 		}
 
 		if !hasMore {
@@ -114,13 +156,19 @@ func (s *inboxclient) fetchMessages() []*coordinatorproto.InboxMessage {
 		}
 	}
 
-	return all
+	return
 }
 
 func (s *inboxclient) ReceiveNotify(event *coordinatorproto.NotifySubscribeEvent) {
-	messages := s.fetchMessages()
+	messages, err := s.fetchMessages()
+	if err != nil {
+		log.Error("inbox: failed to get inbox offset", zap.Error(err))
+		// we don't return here in case we have a partial batch of messages
+	}
+
 	if len(messages) == 0 {
 		log.Warn("inbox: ReceiveNotify: msgs len == 0")
+		return
 	}
 	for _, msg := range messages {
 		log.Warn("inbox: got a message", zap.String("type", coordinatorproto.InboxPayloadType_name[int32(msg.Packet.Payload.PayloadType)]))
