@@ -216,7 +216,6 @@ func (ot *ObjectType) dataviewTemplates() []template.StateTransformer {
 			}
 			details := s.Details()
 			name := details.GetString(bundle.RelationKeyName)
-			key := details.GetString(bundle.RelationKeyUniqueKey)
 
 			// Build relation links from recommended and featured relations
 			relationLinks := []*model.RelationLink{
@@ -257,7 +256,7 @@ func (ot *ObjectType) dataviewTemplates() []template.StateTransformer {
 			dvContent := template.MakeDataviewContent(false, &model.ObjectType{
 				Url:           ot.Id(),
 				Name:          name,
-				Key:           key,
+				Key:           s.UniqueKeyInternal(),
 				RelationLinks: relationLinks,
 			}, relationLinks, nil)
 
