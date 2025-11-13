@@ -9,7 +9,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-const RelationChecksum = "69ccd3d4cede53f786c9841436e04da4abc6d162ef6877f44e383f7f7870c57d"
+const RelationChecksum = "e90a7120e4894dd30a20869b5db6a8bb21696b34652375209b3b09f74a3ddba7"
 const (
 	RelationKeyTag                                domain.RelationKey = "tag"
 	RelationKeyCamera                             domain.RelationKey = "camera"
@@ -163,7 +163,7 @@ const (
 	RelationKeySpaceOrder                         domain.RelationKey = "spaceOrder"
 	RelationKeyOrderId                            domain.RelationKey = "orderId"
 	RelationKeyOneToOneIdentity                   domain.RelationKey = "oneToOneIdentity"
-	RelationKeyOneToOneRequestMetadata            domain.RelationKey = "oneToOneRequestMetadata"
+	RelationKeyOneToOneRequestMetadataKey         domain.RelationKey = "oneToOneRequestMetadataKey"
 	RelationKeyIconName                           domain.RelationKey = "iconName"
 	RelationKeyRecommendedFeaturedRelations       domain.RelationKey = "recommendedFeaturedRelations"
 	RelationKeyRecommendedHiddenRelations         domain.RelationKey = "recommendedHiddenRelations"
@@ -1462,16 +1462,16 @@ var (
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
 		},
-		RelationKeyOneToOneRequestMetadata: {
+		RelationKeyOneToOneRequestMetadataKey: {
 
 			DataSource:       model.Relation_details,
 			Description:      "OneToOne (second) participant RequestMetadata (key)",
 			Format:           model.RelationFormat_longtext,
 			Hidden:           true,
-			Id:               "_broneToOneRequestMetadata",
-			Key:              "oneToOneRequestMetadata",
+			Id:               "_broneToOneRequestMetadataKey",
+			Key:              "oneToOneRequestMetadataKey",
 			MaxCount:         1,
-			Name:             "oneToOneRequestMetadata",
+			Name:             "oneToOneRequestMetadataKey",
 			ReadOnly:         false,
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,

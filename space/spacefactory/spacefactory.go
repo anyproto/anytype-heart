@@ -304,8 +304,8 @@ func (s *spaceFactory) CreateOneToOneSpace(ctx context.Context, id string, parti
 	info := spaceinfo.NewSpacePersistentInfo(id)
 
 	info.OneToOneIdentity = participantData.Identity
-	requestMetadataStr := base64.StdEncoding.EncodeToString(participantData.RequestMetadataKey)
-	info.OneToOneRequestMetadata = requestMetadataStr
+	requestMetadataKeyStr := base64.StdEncoding.EncodeToString(participantData.RequestMetadataKey)
+	info.OneToOneRequestMetadataKey = requestMetadataKeyStr
 	info.SetAccountStatus(spaceinfo.AccountStatusUnknown)
 	if err := s.techSpace.SpaceViewCreate(ctx, id, true, info, nil); err != nil {
 		return nil, err

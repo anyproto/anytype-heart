@@ -62,7 +62,7 @@ func New() ParticipantWatcher {
 	}
 }
 
-func (p *participantWatcher) getOneToOneParticipantKey(space clientspace.Space) (crypto.SymKey, error) {
+func (p *participantWatcher) getOneToOneParticipantRequestMetadataKey(space clientspace.Space) (crypto.SymKey, error) {
 	records, err := p.objectStore.SpaceIndex(p.techSpace.TechSpaceId()).Query(database.Query{
 		Filters: []database.FilterRequest{
 			{
@@ -84,12 +84,12 @@ func (p *participantWatcher) getOneToOneParticipantKey(space clientspace.Space) 
 		return nil, fmt.Errorf("onetoone: failed to query spaceview")
 	}
 
-	requestMetadataStr := records[0].Details.GetString(bundle.RelationKeyOneToOneRequestMetadata)
-	requestMetadataBytes, rerr := base64.StdEncoding.DecodeString(requestMetadataStr)
+	requestMetadataKeyStr := records[0].Details.GetString(bundle.RelationKeyOneToOneRequestMetadataKey)
+	requestMetadataKeyBytes, rerr := base64.StdEncoding.DecodeString(requestMetadataKeyStr)
 	if rerr != nil {
 		return nil, fmt.Errorf("failed to decode bob onetoone RequestMetadata: %w", rerr)
 	}
-	key, err := crypto.UnmarshallAESKeyProto(requestMetadataBytes)
+	key, err := crypto.UnmarshallAESKeyProto(requestMetadataKeyBytes)
 	if err != nil {
 		return nil, fmt.Errorf("onetoone: failed to unmarshal requestMetadataBytes")
 	}
@@ -106,7 +106,7 @@ func (p *participantWatcher) getOneToOneKey(space clientspace.Space, state list.
 			return
 		}
 	} else {
-		key, err = p.getOneToOneParticipantKey(space)
+		key, err = p.getOneToOneParticipantRequestMetadataKey(space)
 		if err != nil {
 			return
 		}

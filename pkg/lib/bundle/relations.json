@@ -1562,9 +1562,9 @@
     "description": "OneToOne (second) participant RequestMetadata (key)",
     "format": "longtext",
     "hidden": true,
-    "key": "oneToOneRequestMetadata",
+    "key": "oneToOneRequestMetadataKey",
     "maxCount": 1,
-    "name": "oneToOneRequestMetadata",
+    "name": "oneToOneRequestMetadataKey",
     "readonly": false,
     "source": "details"
   },

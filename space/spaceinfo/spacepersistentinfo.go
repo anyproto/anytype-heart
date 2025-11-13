@@ -8,13 +8,13 @@ import (
 )
 
 type SpacePersistentInfo struct {
-	SpaceID                 string
-	AccountStatus           *AccountStatus
-	AclHeadId               string
-	EncodedKey              string
-	Name                    string
-	OneToOneIdentity        string
-	OneToOneRequestMetadata string
+	SpaceID                    string
+	AccountStatus              *AccountStatus
+	AclHeadId                  string
+	EncodedKey                 string
+	Name                       string
+	OneToOneIdentity           string
+	OneToOneRequestMetadataKey string
 }
 
 func NewSpacePersistentInfo(spaceId string) SpacePersistentInfo {
@@ -44,8 +44,8 @@ func (s *SpacePersistentInfo) UpdateDetails(st *state.State) *SpacePersistentInf
 	if s.OneToOneIdentity != "" {
 		st.SetDetail(bundle.RelationKeyOneToOneIdentity, domain.String(s.OneToOneIdentity))
 	}
-	if s.OneToOneRequestMetadata != "" {
-		st.SetDetail(bundle.RelationKeyOneToOneRequestMetadata, domain.String(s.OneToOneRequestMetadata))
+	if s.OneToOneRequestMetadataKey != "" {
+		st.SetDetail(bundle.RelationKeyOneToOneRequestMetadataKey, domain.String(s.OneToOneRequestMetadataKey))
 	}
 	if s.Name != "" {
 		st.SetDetail(bundle.RelationKeyName, domain.String(s.Name))
