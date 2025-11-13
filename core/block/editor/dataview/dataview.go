@@ -94,7 +94,11 @@ func (d *sdataview) SetSource(ctx session.Context, blockId string, source []stri
 		return d.Apply(s, smartblock.NoRestrictions, smartblock.KeepInternalFlags)
 	}
 
-	dvContent, err := BlockBySource(d.objectStore, source, "")
+	var currentContent *model.BlockContentOfDataview
+	if block != nil {
+		currentContent = block.Model().Content.(*model.BlockContentOfDataview)
+	}
+	dvContent, err := d.buildBlockBySource(currentContent, source)
 	if err != nil {
 		return
 	}
@@ -119,33 +123,15 @@ func (d *sdataview) SetSourceInSet(ctx session.Context, source []string) (err er
 		return err
 	}
 
-	var (
-		viewRelations []*model.BlockContentDataviewRelation
-		viewSorts     []*model.BlockContentDataviewSort
-	)
-	srcBlock, err := BlockBySource(d.objectStore, source, "")
+	srcBlock, err := d.buildBlockBySource(dv.Model().Content.(*model.BlockContentOfDataview), source)
 	if err != nil {
 		log.Errorf("failed to build dataview block to modify view relation lists: %v", err)
 	} else {
 		dv.SetRelations(srcBlock.Dataview.RelationLinks)
-		if len(srcBlock.Dataview.Views) > 0 {
-			view := srcBlock.Dataview.Views[0]
-			viewRelations = view.Relations
-			viewSorts = view.Sorts
-		}
-	}
-
-	for _, view := range dv.ListViews() {
-		view.DefaultTemplateId = ""
-		view.DefaultObjectTypeId = ""
-		if len(viewRelations) > 0 {
-			view.Relations = viewRelations
-		}
-		if len(viewSorts) > 0 {
-			view.Sorts = viewSorts
-		}
-		if err = dv.SetView(view.Id, *view); err != nil {
-			return fmt.Errorf("failed to update view '%s' of set '%s': %w", view.Id, s.RootId(), err)
+		for i, view := range dv.ListViews() {
+			if err = dv.SetView(view.Id, *srcBlock.Dataview.Views[i]); err != nil {
+				return fmt.Errorf("failed to update view '%s' of set '%s': %w", view.Id, s.RootId(), err)
+			}
 		}
 	}
 	s.SetDetailAndBundledRelation(bundle.RelationKeySetOf, domain.StringList(source))
@@ -485,6 +471,31 @@ func (d *sdataview) injectActiveViews(info smartblock.ApplyInfo) (err error) {
 	return nil
 }
 
+func (d *sdataview) buildBlockBySource(oldContent *model.BlockContentOfDataview, sources []string) (*model.BlockContentOfDataview, error) {
+	// Empty schema
+	if len(sources) == 0 {
+		return template.MakeDataviewContent(false, nil, nil, oldContent), nil
+	}
+
+	// Try an object type
+	objectType, err := d.objectStore.GetObjectType(sources[0])
+	if err == nil {
+		return template.MakeDataviewContent(false, objectType, nil, oldContent), nil
+	}
+
+	// Finally, try relations
+	relations := make([]*model.RelationLink, 0, len(sources))
+	for _, relId := range sources {
+		rel, err := d.objectStore.GetRelationById(relId)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get relation %s: %w", relId, err)
+		}
+
+		relations = append(relations, (&relationutils.Relation{Relation: rel}).RelationLink())
+	}
+	return template.MakeDataviewContent(false, nil, relations, oldContent), nil
+}
+
 func getDataviewBlock(s *state.State, id string) (dataview.Block, error) {
 	b := s.Get(id)
 	if b == nil {
@@ -494,29 +505,4 @@ func getDataviewBlock(s *state.State, id string) (dataview.Block, error) {
 		return tb, nil
 	}
 	return nil, fmt.Errorf("not a dataview block")
-}
-
-func BlockBySource(objectStore spaceindex.Store, sources []string, forceViewId string) (*model.BlockContentOfDataview, error) {
-	// Empty schema
-	if len(sources) == 0 {
-		return template.MakeDataviewContent(false, nil, nil, forceViewId), nil
-	}
-
-	// Try object type
-	objectType, err := objectStore.GetObjectType(sources[0])
-	if err == nil {
-		return template.MakeDataviewContent(false, objectType, nil, forceViewId), nil
-	}
-
-	// Finally, try relations
-	relations := make([]*model.RelationLink, 0, len(sources))
-	for _, relId := range sources {
-		rel, err := objectStore.GetRelationById(relId)
-		if err != nil {
-			return nil, fmt.Errorf("failed to get relation %s: %w", relId, err)
-		}
-
-		relations = append(relations, (&relationutils.Relation{Relation: rel}).RelationLink())
-	}
-	return template.MakeDataviewContent(false, objectType, relations, forceViewId), nil
 }
