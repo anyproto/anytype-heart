@@ -36,7 +36,6 @@ type fixture struct {
 	source  *mock_source.MockStore
 	storeFx *objectstore.StoreFixture
 	db      anystore.DB
-	events  []*pb.EventMessage
 }
 
 func newFixture(t *testing.T, isNewAccount bool, prepareDb func(db anystore.DB)) *fixture {
@@ -127,12 +126,6 @@ func makeStoreContent(m map[string]any) source.PushChangeParams {
 	return source.PushChangeParams{Changes: changes}
 }
 
-func (fx *fixture) assertStoreValue(t *testing.T, test any, extract func(val *anyenc.Value) any) {
-	val, err := fx.getValue()
-	require.NoError(t, err)
-	require.Equal(t, test, extract(val))
-}
-
 func (fx *fixture) assertStateValue(t *testing.T, val any, extract func(str *domain.Details) any) {
 	require.Equal(t, val, extract(fx.SmartBlock.NewState().CombinedDetails()))
 }
@@ -157,7 +150,7 @@ func TestAccountNew(t *testing.T) {
 
 func TestAccountOldInitWithData(t *testing.T) {
 	fx := newFixture(t, false, func(db anystore.DB) {
-		tx, err := db.WriteTx(ctx)
+		tx, _ := db.WriteTx(ctx)
 		coll, err := db.CreateCollection(tx.Context(), "accountId1"+collectionName)
 		require.NoError(t, err)
 		err = coll.Insert(tx.Context(), anyenc.MustParseJson(fmt.Sprintf(`{"id":"%s","analyticsId":"%s","%s":"true","name":"Anna","description":"Molly"}`, accountDocumentId, "analyticsId", iconMigrationKey)))

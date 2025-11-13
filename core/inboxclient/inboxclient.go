@@ -34,7 +34,6 @@ type inboxclient struct {
 	offset string
 	wallet wallet.Wallet
 
-	// TODO: add mb que for each reciever type
 	rmu       sync.Mutex
 	receivers map[coordinatorproto.InboxPayloadType]func(*coordinatorproto.InboxPacket) error
 }

@@ -50,6 +50,8 @@ type AccountObject interface {
 	IsIconMigrated() (bool, error)
 	SetAnalyticsId(analyticsId string) (err error)
 	GetAnalyticsId() (string, error)
+	SetInboxOffset(offset string) (err error)
+	GetInboxOffset() (string, error)
 }
 
 type TechSpace interface {
