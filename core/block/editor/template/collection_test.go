@@ -31,25 +31,67 @@ func assertDataviewBlock(
 	}
 }
 
-func TestMakeDataviewContent(t *testing.T) {
+func makeDataviewRelation(key domain.RelationKey, isVisible bool) *model.BlockContentDataviewRelation {
+	rel := bundle.MustGetRelation(key)
+
+	return &model.BlockContentDataviewRelation{
+		Key:       string(key),
+		IsVisible: isVisible,
+		Width:     propertyWidth(rel.Format),
+	}
+}
+
+func makeRelationLinks(keys []domain.RelationKey) []*model.RelationLink {
+	res := make([]*model.RelationLink, 0, len(keys))
+	for _, key := range keys {
+		rel := bundle.MustGetRelation(key)
+		res = append(res, &model.RelationLink{
+			Key:    rel.Key,
+			Format: rel.Format,
+		})
+	}
+	return res
+}
+
+func makeDataviewRelations(keys []domain.RelationKey, visible []domain.RelationKey) []*model.BlockContentDataviewRelation {
+	res := make([]*model.BlockContentDataviewRelation, 0, len(keys))
+	for _, key := range keys {
+		res = append(res, makeDataviewRelation(key, slices.Contains(visible, key)))
+	}
+	return res
+}
+
+func TestMakeDataviewContentNew(t *testing.T) {
 	for _, tc := range []struct {
-		name              string
-		isCollection      bool
-		ot                *model.ObjectType
-		relLinks          []*model.RelationLink
-		expectedRelations []domain.RelationKey
-		isVisible         func(key domain.RelationKey) bool
+		name         string
+		isCollection bool
+		ot           *model.ObjectType
+		relLinks     []*model.RelationLink
+		want         *model.BlockContentDataview
 	}{
 		{
-			name:              "collection",
-			isCollection:      true,
-			expectedRelations: defaultCollectionRelations,
-			isVisible: func(key domain.RelationKey) bool {
-				return slices.Contains(defaultVisibleRelations, key)
+			name:         "collection",
+			isCollection: true,
+			want: &model.BlockContentDataview{
+				IsCollection: true,
+				Views: []*model.BlockContentDataviewView{
+					{
+						Type: DefaultViewLayout,
+						Name: defaultViewName,
+						Sorts: []*model.BlockContentDataviewSort{
+							{
+								RelationKey: bundle.RelationKeyName.String(),
+								Type:        model.BlockContentDataviewSort_Asc,
+							},
+						},
+						Relations: makeDataviewRelations(defaultCollectionRelations, defaultVisibleRelations),
+					},
+				},
+				RelationLinks: makeRelationLinks(defaultCollectionRelations),
 			},
 		},
 		{
-			name: "set by object type",
+			name: "query by object type",
 			ot: &model.ObjectType{
 				RelationLinks: []*model.RelationLink{
 					{Key: bundle.RelationKeyMentions.String()},
@@ -57,43 +99,108 @@ func TestMakeDataviewContent(t *testing.T) {
 					{Key: bundle.RelationKeyAssignee.String()},
 				},
 			},
-			expectedRelations: append(defaultDataviewRelations, []domain.RelationKey{
-				bundle.RelationKeyMentions,
-				bundle.RelationKeyLinkedProjects,
-				bundle.RelationKeyAssignee,
-			}...),
-			isVisible: func(key domain.RelationKey) bool {
-				return slices.Contains(defaultVisibleRelations, key)
+			want: &model.BlockContentDataview{
+				Views: []*model.BlockContentDataviewView{
+					{
+						Type: DefaultViewLayout,
+						Name: defaultViewName,
+						Sorts: []*model.BlockContentDataviewSort{
+							{
+								RelationKey: bundle.RelationKeyLastModifiedDate.String(),
+								Type:        model.BlockContentDataviewSort_Desc,
+							},
+						},
+						Relations: makeDataviewRelations(append(defaultDataviewRelations, bundle.RelationKeyMentions, bundle.RelationKeyLinkedProjects, bundle.RelationKeyAssignee), defaultVisibleRelations),
+					},
+				},
+				RelationLinks: makeRelationLinks(append(defaultDataviewRelations, bundle.RelationKeyMentions, bundle.RelationKeyLinkedProjects, bundle.RelationKeyAssignee)),
 			},
 		},
 		{
-			name: "set by relation",
+			name: "query by object type: chats",
+			ot: &model.ObjectType{
+				Key: bundle.TypeKeyChatDerived.String(),
+			},
+			want: &model.BlockContentDataview{
+				Views: []*model.BlockContentDataviewView{
+					{
+						Type: DefaultViewLayout,
+						Name: defaultViewName,
+						Sorts: []*model.BlockContentDataviewSort{
+							{
+								RelationKey: bundle.RelationKeyLastMessageDate.String(),
+								Type:        model.BlockContentDataviewSort_Desc,
+								Format:      model.RelationFormat_date,
+								IncludeTime: true,
+							},
+						},
+						Relations: makeDataviewRelations(defaultDataviewRelations, defaultVisibleRelations),
+					},
+				},
+				RelationLinks: makeRelationLinks(defaultDataviewRelations),
+			},
+		},
+		{
+			name: "query by relations",
 			relLinks: []*model.RelationLink{
 				{Key: bundle.RelationKeyAddedDate.String()},
 				{Key: bundle.RelationKeyLastUsedDate.String()},
 			},
-			expectedRelations: append(defaultDataviewRelations, []domain.RelationKey{
-				bundle.RelationKeyAddedDate,
-				bundle.RelationKeyLastUsedDate,
-			}...),
-			isVisible: func(key domain.RelationKey) bool {
-				return slices.Contains(append(defaultVisibleRelations, []domain.RelationKey{
-					bundle.RelationKeyAddedDate,
-					bundle.RelationKeyLastUsedDate,
-				}...), key)
+			want: &model.BlockContentDataview{
+				Views: []*model.BlockContentDataviewView{
+					{
+						Type: DefaultViewLayout,
+						Name: defaultViewName,
+						Sorts: []*model.BlockContentDataviewSort{
+							{
+								RelationKey: bundle.RelationKeyLastModifiedDate.String(),
+								Type:        model.BlockContentDataviewSort_Desc,
+							},
+						},
+						Relations: makeDataviewRelations(
+							append(defaultDataviewRelations, bundle.RelationKeyAddedDate, bundle.RelationKeyLastUsedDate),
+							append(defaultVisibleRelations, bundle.RelationKeyAddedDate, bundle.RelationKeyLastUsedDate),
+						),
+					},
+				},
+				RelationLinks: makeRelationLinks(
+					append(defaultDataviewRelations, bundle.RelationKeyAddedDate, bundle.RelationKeyLastUsedDate)),
 			},
 		},
 		{
-			name:              "empty",
-			expectedRelations: defaultDataviewRelations,
-			isVisible: func(key domain.RelationKey) bool {
-				return slices.Contains(defaultVisibleRelations, key)
+			name: "empty",
+			want: &model.BlockContentDataview{
+				Views: []*model.BlockContentDataviewView{
+					{
+						Type: DefaultViewLayout,
+						Name: defaultViewName,
+						Sorts: []*model.BlockContentDataviewSort{
+							{
+								RelationKey: bundle.RelationKeyLastModifiedDate.String(),
+								Type:        model.BlockContentDataviewSort_Desc,
+							},
+						},
+						Relations: makeDataviewRelations(defaultDataviewRelations, defaultVisibleRelations),
+					},
+				},
+				RelationLinks: makeRelationLinks(defaultDataviewRelations),
 			},
 		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			block := MakeDataviewContent(tc.isCollection, tc.ot, tc.relLinks, nil)
-			assertDataviewBlock(t, block, tc.isCollection, tc.expectedRelations, tc.isVisible)
+			got := MakeDataviewContent(tc.isCollection, tc.ot, tc.relLinks, nil)
+
+			// normalize
+			for _, view := range got.Dataview.Views {
+				view.Id = ""
+				for _, sort := range view.Sorts {
+					sort.Id = ""
+				}
+			}
+
+			want := &model.BlockContentOfDataview{Dataview: tc.want}
+
+			assert.Equal(t, want, got)
 		})
 	}
 }
