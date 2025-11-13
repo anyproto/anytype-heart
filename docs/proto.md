@@ -14327,7 +14327,6 @@ you can call this method to get the latest tiers
 | ----- | ---- | ----- | ----------- |
 | noCache | [bool](#bool) |  | pass true to force the cache update by default this is false |
 | locale | [string](#string) |  |  |
-| version | [string](#string) |  | version of membership 1.x for old versions (default) 2.0 for version 2 |
 
 
 
@@ -14562,7 +14561,6 @@ Generate a link to Stripe/Crypto where user can pay for the membership (for desk
 | nsName | [string](#string) |  | if empty - then no name requested if non-empty - PP node will register that name on behalf of the user |
 | nsNameType | [model.NameserviceNameType](#anytype-model-NameserviceNameType) |  |  |
 | userEmail | [string](#string) |  | for some tiers and payment methods (like crypto) we need an e-mail please get if either from: 1. Membership.GetStatus() -&gt; anytype.model.Membership.userEmail field 2. Ask user from the UI |
-| isMonthly | [bool](#bool) |  | pass &lt;true&gt; here if you want to buy monthly version of some tier will be ignored if the tier has no yearly/monthly switch |
 
 
 
