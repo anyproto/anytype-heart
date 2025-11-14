@@ -377,19 +377,7 @@ func (s *service) fetchAndUpdateV2(ctx context.Context, forceIfNotExpired, fetch
 	}
 
 	if changed {
-		if membership != nil {
-			if cacheSetErr := s.cache.CacheV2Set(membership); cacheSetErr != nil {
-				log.Warn("periodic refresh: can not set V2 membership status to cache", zap.Error(cacheSetErr))
-			}
-		}
-		if products != nil {
-			if productsCacheSetErr := s.cache.CacheV2ProductsSet(products); productsCacheSetErr != nil {
-				log.Warn("periodic refresh: can not set V2 products to cache", zap.Error(productsCacheSetErr))
-			}
-		}
-		if limitsErr := s.updateLimits(ctx); limitsErr != nil {
-			log.Warn("periodic refresh: limits update failed", zap.Error(limitsErr))
-		}
+		s.updateCacheAndLimitsV2(ctx, membership, products)
 	}
 
 	if membership == nil {
@@ -407,6 +395,22 @@ func (s *service) fetchAndUpdateV2(ctx context.Context, forceIfNotExpired, fetch
 	}
 
 	return
+}
+
+func (s *service) updateCacheAndLimitsV2(ctx context.Context, membership *model.MembershipV2Data, products []*model.MembershipV2Product) {
+	if membership != nil {
+		if cacheSetErr := s.cache.CacheV2Set(membership); cacheSetErr != nil {
+			log.Warn("periodic refresh: can not set V2 membership status to cache", zap.Error(cacheSetErr))
+		}
+	}
+	if products != nil {
+		if productsCacheSetErr := s.cache.CacheV2ProductsSet(products); productsCacheSetErr != nil {
+			log.Warn("periodic refresh: can not set V2 products to cache", zap.Error(productsCacheSetErr))
+		}
+	}
+	if limitsErr := s.updateLimits(ctx); limitsErr != nil {
+		log.Warn("periodic refresh: limits update failed", zap.Error(limitsErr))
+	}
 }
 
 func (s *service) sendMembershipUpdateEvent(membership *model.Membership) {
