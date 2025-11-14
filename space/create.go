@@ -31,6 +31,8 @@ func (s *service) CreateOneToOneSendInbox(ctx context.Context, description *spac
 
 	// add que to inbox, if no connection, put into que
 	// otherwise space never be possible to recreate in case of connection issue
+	//
+	// use ownsubscription maybe..?
 	myIdentity := s.accountService.Account().SignKey.GetPublic().Account()
 	myProfile, err := s.identityService.WaitProfileWithKey(ctx, myIdentity)
 	if err != nil {

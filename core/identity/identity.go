@@ -369,7 +369,7 @@ func (s *service) broadcastIdentityProfile(identityData *identityrepoproto.DataW
 
 // Put identity profile to cache from external place (e.g. from onetoone inbox)
 func (s *service) AddIdentityProfile(identityProfile *model.IdentityProfile, key crypto.SymKey) error {
-	identityProfileBytes, err := identityProfile.Marshal()
+	identityProfileBytes, err := proto.Marshal(identityProfile)
 	if err != nil {
 		return err
 	}
@@ -378,25 +378,12 @@ func (s *service) AddIdentityProfile(identityProfile *model.IdentityProfile, key
 	if err != nil {
 		return err
 	}
+	s.lock.Lock()
+	s.identityEncryptionKeys[identityProfile.Identity] = key
+	s.lock.Unlock()
 
-	data := []*identityrepoproto.Data{
-		{
-			Kind: identityRepoDataKind,
-			Data: encryptedIdentityProfileBytes,
-			// Signature: ..? idk, probably identity signature, what else
-		},
-	}
-	identityData := identityrepoproto.DataWithIdentity{
-		Identity: identityProfile.Identity,
-		Data:     data,
-	}
-
-	rawProfile, err := identityData.MarshalVT()
-	if err != nil {
-		return err
-	}
-
-	return s.identityProfileCacheStore.Set(context.Background(), identityProfile.Identity, rawProfile)
+	log.Warn("AddIdentityProfile: identity", zap.String("identity", identityProfile.Identity))
+	return s.identityProfileCacheStore.Set(context.Background(), identityProfile.Identity, encryptedIdentityProfileBytes)
 
 }
 
@@ -415,6 +402,8 @@ func (s *service) findProfile(identityData *identityrepoproto.DataWithIdentity) 
 	s.lock.Lock()
 	key := s.identityEncryptionKeys[identityData.Identity]
 	s.lock.Unlock()
+
+	log.Warn("findProfile", zap.String("key", fmt.Sprintf("%#v\n", key)))
 	return extractProfile(identityData, key)
 }
 
@@ -535,6 +524,7 @@ func (s *service) RegisterIdentity(spaceId string, identity string, encryptionKe
 
 	var isInitialized bool
 	if cachedProfile != nil {
+		log.Warn("RegisterIdentity extractProfile", zap.String("key", fmt.Sprintf("%#v\n", encryptionKey)))
 		profile, _, err := extractProfile(cachedProfile, encryptionKey)
 		if err == nil {
 			if cachedGlobalName != "" {

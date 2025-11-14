@@ -88,6 +88,7 @@ func (s *onetoone) processOneToOneInvite(packet *coordinatorproto.InboxPacket) (
 
 	spaceDescription := &spaceinfo.SpaceDescription{
 		Name:             identityProfileWithKey.IdentityProfile.Name,
+		IconImage:        identityProfileWithKey.IdentityProfile.IconCid,
 		SpaceUxType:      model.SpaceUxType_OneToOne,
 		OneToOneIdentity: identityProfileWithKey.IdentityProfile.Identity,
 	}
@@ -129,6 +130,9 @@ func (s *onetoone) SendOneToOneInvite(ctx context.Context, receiverIdentity stri
 	// 1. put whole identity profile
 	// 2. try to get this from WaitProfile or register this incoming identity
 	// 3. createOneToOne(bPk)
+	log.Warn("SendOneToOneInvite",
+		zap.String("key", string(myProfile.RequestMetadata)),
+	)
 	body, err := myProfile.Marshal()
 	if err != nil {
 		return
