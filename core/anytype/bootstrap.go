@@ -48,6 +48,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/detailservice"
 	"github.com/anyproto/anytype-heart/core/block/editor"
 	"github.com/anyproto/anytype-heart/core/block/editor/converter"
+	"github.com/anyproto/anytype-heart/core/block/editor/widgetmigration"
 	"github.com/anyproto/anytype-heart/core/block/export"
 	importer "github.com/anyproto/anytype-heart/core/block/import"
 	"github.com/anyproto/anytype-heart/core/block/object/idderiver/idderiverimpl"
@@ -334,6 +335,7 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(api.New()).
 		Register(pushclient.New()).
 		Register(pushnotification.New()).
+		Register(widgetmigration.New()).
 		Register(durability.New()) // leave it the last one
 }
 

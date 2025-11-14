@@ -28,6 +28,12 @@ type WidgetObject struct {
 	basic.Updatable
 	widget.Widget
 	basic.DetailsSettable
+
+	fixer fixer
+}
+
+type fixer interface {
+	DeleteGarbage(spaceId string) error
 }
 
 func (f *ObjectFactory) newWidgetObject(
@@ -42,6 +48,7 @@ func (f *ObjectFactory) newWidgetObject(
 		DetailsSettable: bs,
 		IHistory:        basic.NewHistory(sb),
 		Widget:          widget.NewWidget(sb),
+		fixer:           f.fixer,
 	}
 }
 
@@ -86,6 +93,13 @@ func (w *WidgetObject) Init(ctx *smartblock.InitContext) (err error) {
 	for _, id := range removeIds {
 		ctx.State.Unlink(id)
 	}
+
+	go func() {
+		derr := w.fixer.DeleteGarbage(w.SpaceID())
+		if derr != nil {
+			log.Errorf("widget: delete garbage: %v", derr)
+		}
+	}()
 
 	return nil
 }

@@ -89,6 +89,7 @@ type ObjectFactory struct {
 	statService             debugstat.StatService
 	backlinksUpdater        backlinks.UpdateWatcher
 	formatFetcher           relationutils.RelationFormatFetcher
+	fixer                   fixer
 }
 
 func NewObjectFactory() *ObjectFactory {
@@ -129,6 +130,7 @@ func (f *ObjectFactory) Init(a *app.App) (err error) {
 		f.statService = debugstat.NewNoOp()
 	}
 	f.formatFetcher = app.MustComponent[relationutils.RelationFormatFetcher](a)
+	f.fixer = app.MustComponent[fixer](a)
 	return nil
 }
 
