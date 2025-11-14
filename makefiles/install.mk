@@ -1,4 +1,4 @@
-install-dev-js:  build-server protos-js
+install-dev-js: setup-go build-server protos-js
 	@echo 'Installing JS-server (dev-mode) in $(CLIENT_DESKTOP_PATH)...'
 	@rm -f $(CLIENT_DESKTOP_PATH)/dist/anytypeHelper
 
