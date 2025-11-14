@@ -43,8 +43,8 @@ var (
 	log = logging.Logger(CName)
 
 	templatePreferableRelationKeys = map[domain.RelationKey]struct{}{
+		bundle.RelationKeyIconEmoji: {},
 		bundle.RelationKeyCoverId:   {},
-		bundle.RelationKeyCoverType: {},
 		bundle.RelationKeySetOf:     {},
 	}
 )
@@ -260,17 +260,11 @@ func (s *service) collectOriginalDetails(spaceId string, st *state.State) *domai
 	details := st.Details().Copy()
 
 	name := details.GetString(bundle.RelationKeyName)
-	emoji := details.GetString(bundle.RelationKeyIconEmoji)
 	sourceObject := details.GetString(bundle.RelationKeySourceObject)
-	if (name != "" || emoji != "") && sourceObject != "" {
+	if name != "" && sourceObject != "" {
 		previousTemplateDetails, _ := s.store.SpaceIndex(spaceId).GetDetails(sourceObject) // nolint:errcheck
-		if previousTemplateDetails != nil {
-			if name == previousTemplateDetails.GetString(bundle.RelationKeyName) {
-				details.Delete(bundle.RelationKeyName)
-			}
-			if emoji == previousTemplateDetails.GetString(bundle.RelationKeyIconEmoji) {
-				details.Delete(bundle.RelationKeyIconEmoji)
-			}
+		if previousTemplateDetails != nil && name == previousTemplateDetails.GetString(bundle.RelationKeyName) {
+			details.Delete(bundle.RelationKeyName)
 		}
 	}
 
