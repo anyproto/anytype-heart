@@ -258,25 +258,28 @@ func (s *service) ObjectApplyTemplate(contextId, templateId string) error {
 
 func (s *service) collectOriginalDetails(spaceId string, st *state.State) *domain.Details {
 	details := st.Details().Copy()
-
-	name := details.GetString(bundle.RelationKeyName)
-	emoji := details.GetString(bundle.RelationKeyIconEmoji)
 	sourceObject := details.GetString(bundle.RelationKeySourceObject)
-	if (name != "" || emoji != "") && sourceObject != "" {
-		previousTemplateDetails, _ := s.store.SpaceIndex(spaceId).GetDetails(sourceObject) // nolint:errcheck
-		if previousTemplateDetails != nil {
-			if name == previousTemplateDetails.GetString(bundle.RelationKeyName) {
-				details.Delete(bundle.RelationKeyName)
-			}
-			if emoji == previousTemplateDetails.GetString(bundle.RelationKeyIconEmoji) {
-				details.Delete(bundle.RelationKeyIconEmoji)
-			}
-		}
-	}
 
 	for key, value := range st.Details().Iterate() {
 		if value.IsEmpty() || key == bundle.RelationKeySourceObject || key == bundle.RelationKeyLayout {
 			details.Delete(key)
+		}
+	}
+
+	name := details.GetString(bundle.RelationKeyName)
+	emoji := details.GetString(bundle.RelationKeyIconEmoji)
+
+	if sourceObject == "" || name == "" && emoji == "" {
+		return details
+	}
+
+	previousTemplateDetails, _ := s.store.SpaceIndex(spaceId).GetDetails(sourceObject) // nolint:errcheck
+	if previousTemplateDetails != nil {
+		if name == previousTemplateDetails.GetString(bundle.RelationKeyName) {
+			details.Delete(bundle.RelationKeyName)
+		}
+		if emoji == previousTemplateDetails.GetString(bundle.RelationKeyIconEmoji) {
+			details.Delete(bundle.RelationKeyIconEmoji)
 		}
 	}
 
