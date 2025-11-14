@@ -382,7 +382,14 @@ func (s *service) AddIdentityProfile(identityProfile *model.IdentityProfile, key
 	s.identityEncryptionKeys[identityProfile.Identity] = key
 	s.lock.Unlock()
 
-	log.Warn("AddIdentityProfile: identity", zap.String("identity", identityProfile.Identity))
+	log.Warn("AddIdentityProfile: identity", zap.String("identity", identityProfile.Identity), zap.String("icon", identityProfile.IconCid))
+	fmt.Printf("AddIdentityProfile: IconEncryptionKeys %#v\n", identityProfile.IconEncryptionKeys)
+
+	err = s.fileAclService.StoreFileKeys(domain.FileId(identityProfile.IconCid), identityProfile.IconEncryptionKeys)
+	if err != nil {
+		log.Error("AddIdentityProfile: fileAclService.StoreFileKeys", zap.Error(err))
+	}
+
 	return s.identityProfileCacheStore.Set(context.Background(), identityProfile.Identity, encryptedIdentityProfileBytes)
 
 }
