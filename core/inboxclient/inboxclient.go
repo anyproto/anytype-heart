@@ -10,6 +10,7 @@ import (
 	"github.com/anyproto/any-sync/coordinator/coordinatorproto"
 	ic "github.com/anyproto/any-sync/coordinator/inboxclient"
 	"github.com/anyproto/anytype-heart/core/wallet"
+	"github.com/anyproto/anytype-heart/space/clientspace"
 	"github.com/anyproto/anytype-heart/space/techspace"
 	"go.uber.org/zap"
 )
@@ -28,12 +29,18 @@ func New() InboxClient {
 	return &inboxclient{InboxClient: newIc}
 }
 
+type SpaceService interface {
+	TechSpace() *clientspace.TechSpace
+}
+
 type inboxclient struct {
 	ic.InboxClient
 
+	spaceService SpaceService
+	wallet       wallet.Wallet
+
 	mu        sync.Mutex
 	techSpace techspace.TechSpace
-	wallet    wallet.Wallet
 
 	rmu       sync.Mutex
 	receivers map[coordinatorproto.InboxPayloadType]func(*coordinatorproto.InboxPacket) error
@@ -44,7 +51,7 @@ func (s *inboxclient) Init(a *app.App) (err error) {
 	if err != nil {
 		return
 	}
-	s.techSpace = app.MustComponent[techspace.TechSpace](a)
+	s.spaceService = app.MustComponent[SpaceService](a)
 	s.wallet = app.MustComponent[wallet.Wallet](a)
 	s.receivers = make(map[coordinatorproto.InboxPayloadType]func(*coordinatorproto.InboxPacket) error)
 	err = s.SetMessageReceiver(s.ReceiveNotify)
@@ -75,6 +82,10 @@ func (s *inboxclient) Name() (name string) {
 }
 
 func (s *inboxclient) Run(ctx context.Context) error {
+	s.techSpace = s.spaceService.TechSpace()
+	if s.techSpace == nil {
+		return fmt.Errorf("inboxclient: techspace is nil")
+	}
 	err := s.InboxClient.Run(ctx)
 	if err != nil {
 		return err

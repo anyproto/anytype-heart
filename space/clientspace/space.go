@@ -295,6 +295,10 @@ func (s *space) IsPersonal() bool {
 	return s.Id() == s.personalSpaceId
 }
 
+func (s *space) IsOneToOne() bool {
+	return s.CommonSpace().Acl().AclState().IsOneToOne()
+}
+
 func (s *space) GetAclIdentity() crypto.PubKey {
 	return s.aclIdentity
 }
@@ -430,8 +434,4 @@ func (s *space) RefreshObjects(objectIds []string) (err error) {
 
 func (s *space) IsReadOnly() bool {
 	return !s.CommonSpace().Acl().AclState().Permissions(s.aclIdentity).CanWrite()
-}
-
-func (s *space) IsOneToOne() bool {
-	return s.CommonSpace().Acl().AclState().IsOneToOne()
 }

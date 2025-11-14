@@ -52,7 +52,7 @@ func (mw *Middleware) WorkspaceCreate(cctx context.Context, req *pb.RpcWorkspace
 			}
 		}
 		if spaceUxType == model.SpaceUxType_Chat || spaceUxType == model.SpaceUxType_OneToOne {
-			// todo: as soon as it will be released for all users, we need to make it async inside the space init
+			// TODO: make it async in space init
 			err = bs.SpaceInitChat(cctx, spaceId)
 			if err != nil {
 				log.With("error", err).Warn("failed to init space level chat")

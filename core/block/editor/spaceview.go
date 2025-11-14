@@ -255,14 +255,6 @@ func (s *SpaceView) targetSpaceID() (id string, err error) {
 	return changePayload.Key, nil
 }
 
-func (s *SpaceView) getSpacePersistentInfo(st *state.State) (info spaceinfo.SpacePersistentInfo) {
-	details := st.CombinedDetails()
-	spaceInfo := spaceinfo.NewSpacePersistentInfo(details.GetString(bundle.RelationKeyTargetSpaceId))
-	spaceInfo.SetAccountStatus(spaceinfo.AccountStatus(details.GetInt64(bundle.RelationKeySpaceAccountStatus))).
-		SetAclHeadId(details.GetString(bundle.RelationKeyLatestAclHeadId))
-	return spaceInfo
-}
-
 var workspaceKeysToCopy = []domain.RelationKey{
 	bundle.RelationKeyName,
 	bundle.RelationKeyIconImage,

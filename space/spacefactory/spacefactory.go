@@ -307,10 +307,12 @@ func (s *spaceFactory) CreateOneToOneSpace(ctx context.Context, id string, parti
 	requestMetadataKeyStr := base64.StdEncoding.EncodeToString(participantData.RequestMetadataKey)
 	info.OneToOneRequestMetadataKey = requestMetadataKeyStr
 	info.SetAccountStatus(spaceinfo.AccountStatusUnknown)
+
+	// TODO: why  I set desc nil here?
 	if err := s.techSpace.SpaceViewCreate(ctx, id, true, info, nil); err != nil {
 		return nil, err
 	}
-	// controller runs aclObjectManager which does processacl(get acl from storage and create aclState)
+
 	ctrl, err := shareablespace.NewSpaceController(id, info, s.app)
 	if err != nil {
 		return nil, err

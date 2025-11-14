@@ -61,9 +61,10 @@ func (s *Service) CreateOneToOneFromInbox(ctx context.Context, spaceDescription 
 			Fields: map[string]*types.Value{
 				bundle.RelationKeySpaceUxType.String():      pbtypes.Float64(float64(model.SpaceUxType_OneToOne)),
 				bundle.RelationKeyName.String():             pbtypes.String(identityProfileWithKey.IdentityProfile.Name),
+				bundle.RelationKeyIconImage.String():        pbtypes.String(identityProfileWithKey.IdentityProfile.IconCid),
+				bundle.RelationKeyOneToOneIdentity.String(): pbtypes.String(identityProfileWithKey.IdentityProfile.Identity),
 				bundle.RelationKeyIconOption.String():       pbtypes.Float64(float64(5)),
 				bundle.RelationKeySpaceDashboardId.String(): pbtypes.String("lastOpened"),
-				bundle.RelationKeyOneToOneIdentity.String(): pbtypes.String(identityProfileWithKey.IdentityProfile.Identity),
 			},
 		},
 		UseCase:  pb.RpcObjectImportUseCaseRequest_CHAT_SPACE,
@@ -103,7 +104,6 @@ func (s *Service) CreateWorkspace(ctx context.Context, req *pb.RpcWorkspaceCreat
 		IconImage:        pbtypes.GetString(req.Details, bundle.RelationKeyIconImage.String()),
 		SpaceUxType:      model.SpaceUxType(pbtypes.GetInt64(req.Details, bundle.RelationKeySpaceUxType.String())),
 		OneToOneIdentity: pbtypes.GetString(req.Details, bundle.RelationKeyOneToOneIdentity.String()),
-		// TODO: OneToOneParticipantIdentity
 	}
 	newSpace, err := s.spaceService.Create(ctx, spaceDescription)
 	if err != nil {
