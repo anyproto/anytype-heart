@@ -25,6 +25,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/chatobject"
 	"github.com/anyproto/anytype-heart/core/block/object/idresolver"
 	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/core/session"
 	subscriptionservice "github.com/anyproto/anytype-heart/core/subscription"
 	"github.com/anyproto/anytype-heart/core/subscription/crossspacesub"
@@ -80,6 +81,7 @@ type service struct {
 	accountService          accountService
 	objectStore             objectstore.ObjectStore
 	chatSubscriptionService chatsubscription.Service
+	eventSender             event.Sender
 
 	componentCtx       context.Context
 	componentCtxCancel context.CancelFunc
@@ -115,6 +117,7 @@ func (s *service) Init(a *app.App) error {
 	s.objectGetter = app.MustComponent[cache.ObjectWaitGetter](a)
 	s.chatSubscriptionService = app.MustComponent[chatsubscription.Service](a)
 	s.spaceIdResolver = app.MustComponent[idresolver.Resolver](a)
+	s.eventSender = app.MustComponent[event.Sender](a)
 	return nil
 }
 
@@ -326,11 +329,27 @@ func (s *service) onChatAddedAsync(chatObjectId string, subId string) error {
 	mngr.Lock()
 	defer mngr.Unlock()
 
+	events := make([]*pb.EventMessage, 0, 2)
 	if len(resp.Messages) > 0 {
-		mngr.Add(resp.PreviousOrderId, resp.Messages[0])
+		msg := resp.Messages[0]
+		events = append(events, event.NewMessage(spaceId, &pb.EventMessageValueOfChatAdd{
+			ChatAdd: &pb.EventChatAdd{
+				Id:           msg.Id,
+				OrderId:      msg.OrderId,
+				AfterOrderId: resp.PreviousOrderId,
+				Message:      msg.ChatMessage,
+				SubIds:       []string{subId},
+			},
+		}))
 	}
-	mngr.ForceSendingChatState()
-	mngr.Flush()
+	events = append(events, event.NewMessage(spaceId, &pb.EventMessageValueOfChatStateUpdate{ChatStateUpdate: &pb.EventChatUpdateState{
+		State:  mngr.GetChatState(),
+		SubIds: []string{subId},
+	}}))
+	s.eventSender.Broadcast(&pb.Event{
+		Messages:  events,
+		ContextId: chatObjectId,
+	})
 
 	return nil
 }
@@ -421,7 +440,18 @@ func (s *service) sendPushNotification(ctx context.Context, spaceId, chatObjectI
 		return
 	}
 
-	topics := append(mentions, chatpush.ChatsTopicName)
+	// Expected topics:
+	// 1. chats
+	// 2. chats/sha256(<chatObjectId>)
+	// 3. chats/sha256(<chatObjectId>)/<mentionIdentity>
+	// 4. <mentionIdentity>
+	topics := make([]string, 0, (len(mentions)*2)+2)
+	topics = append(topics, chatpush.ChatsTopicName)
+	topics = append(topics, chatpush.ChatsTopicName+"/"+pushGroupId(chatObjectId))
+	for _, mention := range mentions {
+		topics = append(topics, mention)
+		topics = append(topics, chatpush.ChatsTopicName+"/"+pushGroupId(chatObjectId)+"/"+mention)
+	}
 	err = s.pushService.Notify(s.componentCtx, spaceId, pushGroupId(chatObjectId), topics, jsonPayload)
 	if err != nil {
 		err = fmt.Errorf("pushService.Notify: %w", err)

@@ -9,8 +9,8 @@ require (
 	github.com/PuerkitoBio/goquery v1.10.2
 	github.com/VividCortex/ewma v1.2.0
 	github.com/adrium/goheif v0.0.0-20230113233934-ca402e77a786
-	github.com/anyproto/any-store v0.3.6
-	github.com/anyproto/any-sync v0.10.2-0.20250922094047-0075f8dfe508
+	github.com/anyproto/any-store v0.4.3
+	github.com/anyproto/any-sync v0.10.3
 	github.com/anyproto/anytype-publish-server/publishclient v0.0.0-20250716122732-cdcfe3a126bb
 	github.com/anyproto/anytype-push-server/pushclient v0.0.0-20250801122506-553f6c085a23
 	github.com/anyproto/go-chash v0.1.0
@@ -20,6 +20,7 @@ require (
 	github.com/anyproto/tantivy-go v1.0.4
 	github.com/araddon/dateparse v0.0.0-20210429162001-6b43995a97de
 	github.com/avast/retry-go/v4 v4.6.1
+	github.com/awalterschulze/goderive v0.5.1
 	github.com/chai2010/webp v1.4.0
 	github.com/cheggaaa/mb/v3 v3.0.2
 	github.com/dave/jennifer v1.7.1
@@ -40,7 +41,6 @@ require (
 	github.com/gogo/protobuf v1.3.2
 	github.com/gogo/status v1.1.1
 	github.com/golang-jwt/jwt v3.2.2+incompatible
-	github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da
 	github.com/golang/snappy v1.0.0
 	github.com/google/uuid v1.6.0
 	github.com/gosimple/slug v1.15.0
@@ -88,7 +88,6 @@ require (
 	github.com/pkg/errors v0.9.1
 	github.com/prometheus/client_golang v1.23.2
 	github.com/pseudomuto/protoc-gen-doc v1.5.1
-	github.com/quic-go/quic-go v0.54.0
 	github.com/rwcarlsen/goexif v0.0.0-20190401172101-9e8deecbddbd
 	github.com/samber/lo v1.49.1
 	github.com/sasha-s/go-deadlock v0.3.5
@@ -190,6 +189,7 @@ require (
 	github.com/golang/freetype v0.0.0-20170609003504-e2365dfdc4a0 // indirect
 	github.com/golang/geo v0.0.0-20210211234256-740aa86cb551 // indirect
 	github.com/golang/glog v1.2.4 // indirect
+	github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da // indirect
 	github.com/golang/protobuf v1.5.4 // indirect
 	github.com/google/flatbuffers v1.12.1 // indirect
 	github.com/google/go-querystring v1.1.0 // indirect
@@ -212,6 +212,7 @@ require (
 	github.com/jinzhu/copier v0.3.5 // indirect
 	github.com/josharian/intern v1.0.0 // indirect
 	github.com/json-iterator/go v1.1.12 // indirect
+	github.com/kisielk/gotool v1.0.0 // indirect
 	github.com/klauspost/cpuid/v2 v2.3.0 // indirect
 	github.com/leodido/go-urn v1.4.0 // indirect
 	github.com/libp2p/go-buffer-pool v0.1.0 // indirect
@@ -249,6 +250,7 @@ require (
 	github.com/prometheus/common v0.66.1 // indirect
 	github.com/prometheus/procfs v0.17.0 // indirect
 	github.com/pseudomuto/protokit v0.2.1 // indirect
+	github.com/quic-go/quic-go v0.54.0 // indirect
 	github.com/remyoudompheng/bigfft v0.0.0-20230129092748-24d4a6f8daec // indirect
 	github.com/rs/cors v1.11.0 // indirect
 	github.com/rs/zerolog v1.29.0 // indirect

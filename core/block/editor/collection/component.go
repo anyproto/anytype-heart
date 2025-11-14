@@ -56,7 +56,7 @@ func (c *component) AddToCollection(ctx session.Context, req *pb.RpcObjectCollec
 
 	// we update backlinks of objects added to collection synchronously to avoid object rerender after backlinks accumulation interval
 	if len(toAdd) != 0 {
-		c.backlinksUpdater.FlushUpdates()
+		go c.backlinksUpdater.FlushUpdates()
 	}
 
 	return nil

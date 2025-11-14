@@ -4,10 +4,9 @@ import (
 	"github.com/anyproto/anytype-heart/core/domain"
 )
 
-func (s *spaceSubscriptions) newIdsSub(id string, spaceId string, keys []domain.RelationKey, isDep bool) *idsSub {
+func (s *spaceSubscriptions) newIdsSub(id string, keys []domain.RelationKey, isDep bool) *idsSub {
 	sub := &idsSub{
 		id:       id,
-		spaceId:  spaceId,
 		keys:     keys,
 		cache:    s.cache,
 		entryMap: make(map[string]*entry),
@@ -19,9 +18,8 @@ func (s *spaceSubscriptions) newIdsSub(id string, spaceId string, keys []domain.
 }
 
 type idsSub struct {
-	id      string
-	spaceId string
-	keys    []domain.RelationKey
+	id   string
+	keys []domain.RelationKey
 
 	started              bool
 	entriesBeforeStarted []*entry
@@ -46,9 +44,9 @@ func (s *idsSub) init(entries []*entry) (err error) {
 	}
 
 	if s.ds != nil {
-		s.depKeys = s.ds.depKeys(s.spaceId, s.keys)
+		s.depKeys = s.ds.depKeys(s.keys)
 		if len(s.depKeys) > 0 {
-			s.depSub = s.ds.makeSubscriptionByEntries(s.id+"/dep", s.spaceId, entries, s.getActiveEntries(), s.keys, s.depKeys, nil)
+			s.depSub = s.ds.makeSubscriptionByEntries(s.id+"/dep", entries, s.getActiveEntries(), s.keys, s.depKeys, nil)
 		}
 	}
 	return
@@ -102,7 +100,7 @@ func (s *idsSub) onChange(ctx *opCtx) {
 	}
 
 	if changed && s.depSub != nil {
-		s.ds.refillSubscription(ctx, s.depSub, s.getActiveEntries(), s.depKeys)
+		s.ds.refillSubscription(ctx, s.id, s.depSub, s.getActiveEntries(), s.depKeys)
 	}
 }
 

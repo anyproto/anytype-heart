@@ -31,6 +31,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/files/fileobject"
 	"github.com/anyproto/anytype-heart/core/files/fileuploader"
 	"github.com/anyproto/anytype-heart/core/files/reconciler"
+	"github.com/anyproto/anytype-heart/core/relationutils"
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/datastore/anystoreprovider"
@@ -39,7 +40,10 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 )
 
-var log = logging.Logger("anytype-mw-editor")
+var (
+	log                         = logging.Logger("anytype-mw-editor")
+	ErrUnexpectedSmartblockType = errors.New("unexpected smartblock type")
+)
 
 type ObjectDeleter interface {
 	DeleteObjectByFullID(id domain.FullID) (err error)
@@ -49,6 +53,7 @@ type accountService interface {
 	AccountID() string
 	PersonalSpaceID() string
 	MyParticipantId(spaceId string) string
+	GetAccountObjectId() (string, error)
 	Keys() *accountdata.AccountKeys
 }
 
@@ -83,7 +88,7 @@ type ObjectFactory struct {
 	chatSubscriptionService chatsubscription.Service
 	statService             debugstat.StatService
 	backlinksUpdater        backlinks.UpdateWatcher
-	widgetsMigrator         widgetsMigrator
+	formatFetcher           relationutils.RelationFormatFetcher
 }
 
 func NewObjectFactory() *ObjectFactory {
@@ -120,10 +125,10 @@ func (f *ObjectFactory) Init(a *app.App) (err error) {
 	f.chatSubscriptionService = app.MustComponent[chatsubscription.Service](a)
 	f.statService, err = app.GetComponent[debugstat.StatService](a)
 	f.backlinksUpdater = app.MustComponent[backlinks.UpdateWatcher](a)
-	f.widgetsMigrator = app.MustComponent[widgetsMigrator](a)
 	if err != nil {
 		f.statService = debugstat.NewNoOp()
 	}
+	f.formatFetcher = app.MustComponent[relationutils.RelationFormatFetcher](a)
 	return nil
 }
 
@@ -191,6 +196,7 @@ func (f *ObjectFactory) produceSmartblock(space smartblock.Space) (smartblock.Sm
 		f.indexer,
 		f.eventSender,
 		f.spaceIdResolver,
+		f.formatFetcher,
 	), store
 }
 
@@ -201,8 +207,7 @@ func (f *ObjectFactory) New(space smartblock.Space, sbType coresb.SmartBlockType
 		coresb.SmartBlockTypeDate,
 		coresb.SmartBlockTypeBundledRelation,
 		coresb.SmartBlockTypeBundledObjectType,
-		coresb.SmartBlockTypeRelation,
-		coresb.SmartBlockTypeChatObject:
+		coresb.SmartBlockTypeRelation:
 		return f.newPage(space.Id(), sb), nil
 	case coresb.SmartBlockTypeObjectType:
 		return f.newObjectType(space.Id(), sb), nil
@@ -241,7 +246,7 @@ func (f *ObjectFactory) New(space smartblock.Space, sbType coresb.SmartBlockType
 		if err != nil {
 			return nil, fmt.Errorf("get crdt db: %w", err)
 		}
-		return chatobject.New(sb, f.accountService, crdtDb, f.chatRepositoryService, f.chatSubscriptionService, f.statService), nil
+		return chatobject.New(sb, f.accountService, crdtDb, f.chatRepositoryService, f.chatSubscriptionService, spaceIndex, f.layoutConverter, f.fileObjectService, f.statService), nil
 	case coresb.SmartBlockTypeAccountObject:
 		db, err := f.dbProvider.GetCrdtDb(space.Id()).Wait()
 		if err != nil {
@@ -249,6 +254,6 @@ func (f *ObjectFactory) New(space smartblock.Space, sbType coresb.SmartBlockType
 		}
 		return accountobject.New(sb, f.accountService.Keys(), spaceIndex, f.layoutConverter, f.fileObjectService, db, f.config), nil
 	default:
-		return nil, fmt.Errorf("unexpected smartblock type: %v", sbType)
+		return nil, fmt.Errorf("%w: %v", ErrUnexpectedSmartblockType, sbType)
 	}
 }

@@ -236,12 +236,6 @@ func (p *Page) CreationStateMigration(ctx *smartblock.InitContext) migration.Mig
 					template.WithTitle,
 					template.WithLayout(layout),
 				)
-			case model.ObjectType_chat:
-				templates = append(templates,
-					template.WithTitle,
-					template.WithBlockChat,
-					template.WithLayout(layout),
-				)
 			case model.ObjectType_chatDerived:
 				templates = append(templates,
 					template.WithLayout(layout),
@@ -255,7 +249,7 @@ func (p *Page) CreationStateMigration(ctx *smartblock.InitContext) migration.Mig
 				)
 
 			case model.ObjectType_collection:
-				blockContent := template.MakeDataviewContent(true, nil, nil, "")
+				blockContent := template.MakeDataviewContent(true, nil, nil, nil)
 				templates = append(templates,
 					template.WithTitle,
 					template.WithDataview(blockContent, false),

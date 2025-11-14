@@ -48,7 +48,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/detailservice"
 	"github.com/anyproto/anytype-heart/core/block/editor"
 	"github.com/anyproto/anytype-heart/core/block/editor/converter"
-	"github.com/anyproto/anytype-heart/core/block/editor/widgetmigration"
 	"github.com/anyproto/anytype-heart/core/block/export"
 	importer "github.com/anyproto/anytype-heart/core/block/import"
 	"github.com/anyproto/anytype-heart/core/block/object/idderiver/idderiverimpl"
@@ -63,8 +62,10 @@ import (
 	"github.com/anyproto/anytype-heart/core/debug"
 	"github.com/anyproto/anytype-heart/core/debug/profiler"
 	"github.com/anyproto/anytype-heart/core/device"
+	"github.com/anyproto/anytype-heart/core/durability"
 	"github.com/anyproto/anytype-heart/core/files"
 	"github.com/anyproto/anytype-heart/core/files/fileacl"
+	"github.com/anyproto/anytype-heart/core/files/filedownloader"
 	"github.com/anyproto/anytype-heart/core/files/fileobject"
 	"github.com/anyproto/anytype-heart/core/files/fileoffloader"
 	"github.com/anyproto/anytype-heart/core/files/filespaceusage"
@@ -90,6 +91,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/publish"
 	"github.com/anyproto/anytype-heart/core/pushnotification"
 	"github.com/anyproto/anytype-heart/core/pushnotification/pushclient"
+	"github.com/anyproto/anytype-heart/core/relationutils/formatfetcher"
 	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/core/subscription"
 	"github.com/anyproto/anytype-heart/core/subscription/crossspacesub"
@@ -229,6 +231,7 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(collection.New()).
 		Register(subscription.New()).
 		Register(crossspacesub.New()).
+		Register(formatfetcher.New()).
 		Register(nodeconfsource.New()).
 		Register(nodeconfstore.New()).
 		Register(nodeconf.New()).
@@ -265,6 +268,7 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(files.New()).
 		Register(filespaceusage.New()).
 		Register(fileoffloader.New()).
+		Register(filedownloader.New()).
 		Register(fileacl.New()).
 		Register(chatrepository.New()).
 		Register(chatsubscription.New()).
@@ -312,7 +316,6 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(objectcreator.NewCreator()).
 		Register(kanban.New()).
 		Register(device.NewDevices()).
-		Register(widgetmigration.New()).
 		Register(editor.NewObjectFactory()).
 		Register(objectgraph.NewBuilder()).
 		Register(account.New()).
@@ -330,7 +333,8 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(order.New()).
 		Register(api.New()).
 		Register(pushclient.New()).
-		Register(pushnotification.New())
+		Register(pushnotification.New()).
+		Register(durability.New()) // leave it the last one
 }
 
 func MiddlewareVersion() string {

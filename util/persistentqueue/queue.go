@@ -59,6 +59,7 @@ type Queue[T Item] struct {
 	messageQueue messageQueue[T]
 	handler      HandlerFunc[T]
 	options      options
+	workersCh    chan struct{}
 	handledItems uint32
 
 	lock sync.Mutex
@@ -73,10 +74,11 @@ type Queue[T Item] struct {
 	ctxCancel context.CancelFunc
 
 	isStarted bool
-	closedCh  chan struct{}
+	closeWg   sync.WaitGroup
 }
 
 type options struct {
+	workers            int
 	retryPauseDuration time.Duration
 	ctx                context.Context
 }
@@ -96,6 +98,15 @@ func WithContext(ctx context.Context) Option {
 	}
 }
 
+func WithWorkersNumber(workers int) Option {
+	return func(o *options) {
+		if workers < 1 {
+			workers = 1
+		}
+		o.workers = workers
+	}
+}
+
 // New creates new queue backed by specified storage. If priorityQueueLessFunc is provided, use priority queue as underlying message queue
 func New[T Item](
 	storage Storage[T],
@@ -105,15 +116,19 @@ func New[T Item](
 	opts ...Option,
 ) *Queue[T] {
 	q := &Queue[T]{
-		storage:  storage,
-		logger:   logger,
-		handler:  handler,
-		set:      make(map[string]struct{}),
-		options:  options{},
-		closedCh: make(chan struct{}),
+		storage: storage,
+		logger:  logger,
+		handler: handler,
+		set:     make(map[string]struct{}),
+		options: options{
+			workers: 1,
+		},
 	}
 	for _, opt := range opts {
 		opt(&q.options)
+	}
+	if q.options.workers > 1 {
+		q.workersCh = make(chan struct{}, q.options.workers)
 	}
 	rootCtx := context.Background()
 	if q.options.ctx != nil {
@@ -143,12 +158,15 @@ func (q *Queue[T]) Run() {
 	}
 	q.isStarted = true
 
-	go q.loop()
+	q.closeWg.Add(q.options.workers)
+	for range q.options.workers {
+		go q.loop()
+	}
 }
 
 func (q *Queue[T]) loop() {
 	defer func() {
-		close(q.closedCh)
+		q.closeWg.Done()
 	}()
 
 	for {
@@ -157,6 +175,7 @@ func (q *Queue[T]) loop() {
 			return
 		default:
 		}
+
 		err := q.handleNext()
 		if errors.Is(err, context.Canceled) {
 			return
@@ -168,7 +187,6 @@ func (q *Queue[T]) loop() {
 			q.logger.Error("handle next", zap.Error(err))
 		}
 	}
-
 }
 
 func (q *Queue[T]) handleNext() error {
@@ -238,7 +256,7 @@ func (q *Queue[T]) Close() error {
 	q.lock.Unlock()
 
 	if isStarted {
-		<-q.closedCh
+		q.closeWg.Wait()
 	}
 	return errors.Join(err, q.storage.Close())
 }

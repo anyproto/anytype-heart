@@ -1658,12 +1658,42 @@
     "source": "details"
   },
   {
-    "description": "Push notification mode - mute/all/mentions (see model.SpacePushNotificationMode)",
+    "description": "Push notification mode - mute/all/mentions/custom (see model.SpacePushNotificationMode)",
     "format": "number",
     "hidden": true,
     "key": "spacePushNotificationMode",
     "maxCount": 1,
-    "name": "Push topics",
+    "name": "Push notification mode",
+    "readonly": false,
+    "source": "details"
+  },
+  {
+    "description": "Push notification all ids",
+    "format": "longtext",
+    "hidden": true,
+    "key": "spacePushNotificationForceAllIds",
+    "maxCount": 0,
+    "name": "Push force all ids",
+    "readonly": false,
+    "source": "details"
+  },
+  {
+    "description": "Push notification muted ids",
+    "format": "longtext",
+    "hidden": true,
+    "key": "spacePushNotificationForceMuteIds",
+    "maxCount": 0,
+    "name": "Push force muted ids",
+    "readonly": false,
+    "source": "details"
+  },
+  {
+    "description": "Push notification mention ids",
+    "format": "longtext",
+    "hidden": true,
+    "key": "spacePushNotificationForceMentionIds",
+    "maxCount": 0,
+    "name": "Push force mentions ids",
     "readonly": false,
     "source": "details"
   },
@@ -1724,5 +1754,36 @@
     "maxCount": 1,
     "name": "Widget view ID",
     "source": "details"
+  },
+  {
+    "description": "Is this the main chat",
+    "format": "checkbox",
+    "hidden": true,
+    "key": "isMainChat",
+    "maxCount": 1,
+    "name": "Is main chat",
+    "readonly": true,
+    "source": "derived"
+  },
+  {
+    "description": "Date of the last message in a chat",
+    "format": "date",
+    "hidden": false,
+    "key": "lastMessageDate",
+    "maxCount": 1,
+    "name": "Last message date",
+    "readonly": true,
+    "source": "derived",
+    "includeTime": true
+  },
+  {
+    "description": "Is file available offline",
+    "format": "checkbox",
+    "hidden": true,
+    "key": "fileAvailableOffline",
+    "maxCount": 1,
+    "name": "Is file available offline",
+    "readonly": true,
+    "source": "local"
   }
 ]

@@ -365,7 +365,7 @@ func (s *Service) SpaceInstallBundledObject(
 	if err != nil {
 		return "", nil, fmt.Errorf("get space: %w", err)
 	}
-	ids, details, err := s.objectCreator.InstallBundledObjects(ctx, spc, []string{sourceObjectId}, false)
+	ids, details, err := s.objectCreator.InstallBundledObjects(ctx, spc, []string{sourceObjectId})
 	if err != nil {
 		return "", nil, err
 	}
@@ -385,7 +385,7 @@ func (s *Service) SpaceInstallBundledObjects(
 	if err != nil {
 		return nil, nil, fmt.Errorf("get space: %w", err)
 	}
-	return s.objectCreator.InstallBundledObjects(ctx, spc, sourceObjectIds, false)
+	return s.objectCreator.InstallBundledObjects(ctx, spc, sourceObjectIds)
 }
 
 func (s *Service) SpaceInitChat(ctx context.Context, spaceId string) error {
@@ -713,12 +713,6 @@ func (s *Service) updateBookmarkContentWithUserDetails(userDetails, objectDetail
 		}
 	}
 	return shouldUpdate
-}
-
-func (s *Service) replaceLink(id, oldId, newId string) error {
-	return cache.Do(s, id, func(b basic.CommonOperations) error {
-		return b.ReplaceLink(oldId, newId)
-	})
 }
 
 func (s *Service) GetLogFields() []zap.Field {

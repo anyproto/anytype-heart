@@ -99,9 +99,11 @@ func (p *p2pStatus) Init(a *app.App) (err error) {
 	localDiscoveryHook.RegisterDiscoveryPossibilityHook(p.setNotPossibleStatus)
 	sessionHookRunner.RegisterHook(p.sendStatusForNewSession)
 	p.ctx, p.contextCancel = context.WithCancel(context.Background())
+
+	// we need to update status for all spaces that were either added or removed to some local peer
+	// because we start this observer on init we can be sure that the spaceIdsBefore is empty on the first run for peer
+	go p.worker()
 	p.peerStore.AddObserver(func(peerId string, spaceIdsBefore, spaceIdsAfter []string, peerRemoved bool) {
-		// we need to update status for all spaces that were either added or removed to some local peer
-		// because we start this observer on init we can be sure that the spaceIdsBefore is empty on the first run for peer
 		removed, added := lo.Difference(spaceIdsBefore, spaceIdsAfter)
 		err := p.refreshSpaces(lo.Union(removed, added))
 		if errors.Is(err, ErrClosed) {
@@ -123,7 +125,6 @@ func (p *p2pStatus) sendStatusForNewSession(ctx session.Context) error {
 }
 
 func (p *p2pStatus) Run(ctx context.Context) error {
-	go p.worker()
 	return nil
 }
 

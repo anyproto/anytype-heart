@@ -46,11 +46,19 @@ type spaceViewStub struct {
 	data *domain.Details
 }
 
+func (s *spaceViewStub) SetPushNotificationForceModeIds(ctx session.Context, chatIds []string, mode pb.RpcPushNotificationMode) (err error) {
+	return
+}
+
+func (s *spaceViewStub) ResetPushNotificationIds(ctx session.Context, allIds []string) error {
+	return nil
+}
+
 func (s *spaceViewStub) SetMyParticipantStatus(status model.ParticipantStatus) error {
 	panic("unimplemented")
 }
 
-func (s *spaceViewStub) SetPushNotificationMode(ctx session.Context, mode pb.RpcPushNotificationSetSpaceModeMode) (err error) {
+func (s *spaceViewStub) SetPushNotificationMode(ctx session.Context, mode pb.RpcPushNotificationMode) (err error) {
 	return
 }
 
@@ -258,7 +266,6 @@ func TestTechSpace_TechSpaceId(t *testing.T) {
 	defer fx.finish(t)
 	assert.Equal(t, testTechSpaceId, fx.TechSpaceId())
 }
-
 
 type fixture struct {
 	TechSpace

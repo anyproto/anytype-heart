@@ -80,10 +80,12 @@ github.com/alexbrainman/goissue34681 v0.0.0-20191006012335-3fc7a47baff5/go.mod h
 github.com/andybalholm/cascadia v1.3.1/go.mod h1:R4bJ1UQfqADjvDa4P6HZHLh/3OxWWEqc0Sk8XGwHqvA=
 github.com/andybalholm/cascadia v1.3.3 h1:AG2YHrzJIm4BZ19iwJ/DAua6Btl3IwJX+VI4kktS1LM=
 github.com/andybalholm/cascadia v1.3.3/go.mod h1:xNd9bqTn98Ln4DwST8/nG+H0yuB8Hmgu1YHNnWw0GeA=
-github.com/anyproto/any-store v0.3.6 h1:28XVm6fDOCuLgXNe5d+byBCaWufWJMA0VHzw5L1Dyb0=
-github.com/anyproto/any-store v0.3.6/go.mod h1:P9CnoL9Q06eh051DwtcvCiiWCwdXO7AbEILcnD6yrss=
-github.com/anyproto/any-sync v0.10.2-0.20250922094047-0075f8dfe508 h1:gqqXkm/V3w3sldQwxUzP6s5XOgmUSZFuEqqAW4hIFIY=
-github.com/anyproto/any-sync v0.10.2-0.20250922094047-0075f8dfe508/go.mod h1:kSAW2IXIeDSUabu9jMKJirgFCyM4a99lM6URR8GCH6A=
+github.com/anyproto/any-store v0.4.2 h1:1ljcAogeZxQ6QmSpBy40InokgKBRB/fnAilDDFPUpYE=
+github.com/anyproto/any-store v0.4.2/go.mod h1:P9CnoL9Q06eh051DwtcvCiiWCwdXO7AbEILcnD6yrss=
+github.com/anyproto/any-store v0.4.3 h1:8H5TXPhlgGnUIOVNtLXFE2Dy2tYvLQCQuEYPSymMyhY=
+github.com/anyproto/any-store v0.4.3/go.mod h1:P9CnoL9Q06eh051DwtcvCiiWCwdXO7AbEILcnD6yrss=
+github.com/anyproto/any-sync v0.10.3 h1:T5s7oV+74pVZxcmp9fphhBNwvHj9XUDX0hAgrL7+QZI=
+github.com/anyproto/any-sync v0.10.3/go.mod h1:/0OVu/L9RQcbwuj44IRjfGQnvL2dxRj8XRLTjQN8r9E=
 github.com/anyproto/anytype-publish-server/publishclient v0.0.0-20250716122732-cdcfe3a126bb h1:X1os44y0QWf1mYGj8BOoYKlXwY5xb94xTQIw1IIKJbY=
 github.com/anyproto/anytype-publish-server/publishclient v0.0.0-20250716122732-cdcfe3a126bb/go.mod h1:OzzODq4OigiRVD2lSOX1iHAoLcxhJDRbZb8n5PLG3WE=
 github.com/anyproto/anytype-push-server/pushclient v0.0.0-20250801122506-553f6c085a23 h1:jXAjKY4g9ec7lDtayIlzM9u0/b3xGS9YgGA6JtRhHfU=
@@ -128,6 +130,8 @@ github.com/armon/go-radix v0.0.0-20180808171621-7fddfc383310/go.mod h1:ufUuZ+zHj
 github.com/aryann/difflib v0.0.0-20170710044230-e206f873d14a/go.mod h1:DAHtR1m6lCRdSC2Tm3DSWRPvIPr6xNKyeHdqDQSQT+A=
 github.com/avast/retry-go/v4 v4.6.1 h1:VkOLRubHdisGrHnTu89g08aQEWEgRU7LVEop3GbIcMk=
 github.com/avast/retry-go/v4 v4.6.1/go.mod h1:V6oF8njAwxJ5gRo1Q7Cxab24xs5NCWZBeaHHBklR8mA=
+github.com/awalterschulze/goderive v0.5.1 h1:H2XNRDw0Ordwj/pgLAVqQgDC1LQWP7L99ofOs72bjqg=
+github.com/awalterschulze/goderive v0.5.1/go.mod h1:DLlff0SRVo846CBrp8nXuXJ4mdWA92ai5CYTr+LV/II=
 github.com/aws/aws-lambda-go v1.13.3/go.mod h1:4UKl9IzQMoD+QF79YdCuzCwp8VbmG4VAQwij/eHl5CU=
 github.com/aws/aws-sdk-go v1.27.0/go.mod h1:KmX6BPdI08NWTb3/sm4ZGu5ShLoqVDhKgpiN924inxo=
 github.com/aws/aws-sdk-go-v2 v0.18.0/go.mod h1:JWVYvqSMppoMJC0x5wdwiImzgXTI9FuZwxzkQq9wy+g=
@@ -649,6 +653,7 @@ github.com/jung-kurt/gofpdf v1.0.3-0.20190309125859-24315acbbda5/go.mod h1:7Id9E
 github.com/kelseyhightower/envconfig v1.4.0 h1:Im6hONhd3pLkfDFsbRgu68RDNkGF1r3dvMUtDTo2cv8=
 github.com/kelseyhightower/envconfig v1.4.0/go.mod h1:cccZRl6mQpaq41TPp5QxidR+Sa3axMbJDNb//FQX6Gg=
 github.com/kisielk/errcheck v1.5.0/go.mod h1:pFxgyoBC7bSaBwPgfKdkLd5X25qrDl4LWUI2bnpBCr8=
+github.com/kisielk/gotool v1.0.0 h1:AV2c/EiW3KqPNT9ZKl07ehoAGi4C5/01Cfbblndcapg=
 github.com/kisielk/gotool v1.0.0/go.mod h1:XhKaO+MFFWcvkIS/tQcRk01m1F5IRFswLeQ+oQHNcck=
 github.com/kkdai/bstream v0.0.0-20161212061736-f391b8402d23/go.mod h1:J+Gs4SYgM6CZQHDETBtE9HaSEkGmuNXF86RwHhHUvq4=
 github.com/klauspost/compress v1.10.3/go.mod h1:aoV0uJVorq1K+umq18yTdKaF57EivdYsUV+/s2qKfXs=

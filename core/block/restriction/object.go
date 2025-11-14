@@ -51,29 +51,29 @@ var (
 	}
 
 	objectRestrictionsBySBType = map[smartblock.SmartBlockType]ObjectRestrictions{
-		smartblock.SmartBlockTypeIdentity:           objRestrictAll,
-		smartblock.SmartBlockTypeAnytypeProfile:     objRestrictAll,
-		smartblock.SmartBlockTypeArchive:            objRestrictAll,
-		smartblock.SmartBlockTypeBundledRelation:    objRestrictAll,
-		smartblock.SmartBlockTypeBundledObjectType:  objRestrictAll,
-		smartblock.SmartBlockTypeBundledTemplate:    objRestrictAll,
-		smartblock.SmartBlockTypeMissingObject:      objRestrictAll,
-		smartblock.SmartBlockTypeDate:               objRestrictAll,
-		smartblock.SmartBlockTypeParticipant:        objRestrictAll,
-		smartblock.SmartBlockTypeAccountOld:         objRestrictAll, // new value
-		smartblock.SmartBlockTypeAccountObject:      objRestrictAll, // new
-		smartblock.SmartBlockTypeSpaceView:          objRestrictAll, // new
-		smartblock.SmartBlockTypeNotificationObject: objRestrictAll, // new
-		smartblock.SmartBlockTypeDevicesObject:      objRestrictAll, // new
-		smartblock.SmartBlockTypeChatDerivedObject:  objRestrictEditAndDuplicate,
-		smartblock.SmartBlockTypeChatObject:         objRestrictEditAndDuplicate,
-		smartblock.SmartBlockTypeFileObject:         objRestrictEditAndDuplicate,
-		smartblock.SmartBlockTypeSubObject:          objRestrictEditAndTemplate,
-		smartblock.SmartBlockTypeObjectType:         objRestrictEditAndTemplate,
-		smartblock.SmartBlockTypeRelation:           objRestrictEditAndTemplate,
-		smartblock.SmartBlockTypeHome:               objRestrictAll.Copy().Remove(model.Restrictions_Blocks),
-		smartblock.SmartBlockTypeWidget:             objRestrictAll.Copy().Remove(model.Restrictions_Blocks),
-		smartblock.SmartBlockTypeWorkspace:          objRestrictAll.Copy().Remove(model.Restrictions_Details),
+		smartblock.SmartBlockTypeIdentity:             objRestrictAll,
+		smartblock.SmartBlockTypeAnytypeProfile:       objRestrictAll,
+		smartblock.SmartBlockTypeArchive:              objRestrictAll,
+		smartblock.SmartBlockTypeBundledRelation:      objRestrictAll,
+		smartblock.SmartBlockTypeBundledObjectType:    objRestrictAll,
+		smartblock.SmartBlockTypeBundledTemplate:      objRestrictAll,
+		smartblock.SmartBlockTypeMissingObject:        objRestrictAll,
+		smartblock.SmartBlockTypeDate:                 objRestrictAll,
+		smartblock.SmartBlockTypeParticipant:          objRestrictAll,
+		smartblock.SmartBlockTypeAccountOld:           objRestrictAll, // new value
+		smartblock.SmartBlockTypeAccountObject:        objRestrictAll, // new
+		smartblock.SmartBlockTypeSpaceView:            objRestrictAll, // new
+		smartblock.SmartBlockTypeNotificationObject:   objRestrictAll, // new
+		smartblock.SmartBlockTypeDevicesObject:        objRestrictAll, // new
+		smartblock.SmartBlockTypeChatDerivedObject:    objRestrictEditAndDuplicate,
+		smartblock.SmartBlockTypeChatObjectDeprecated: objRestrictEditAndDuplicate,
+		smartblock.SmartBlockTypeFileObject:           objRestrictEditAndDuplicate,
+		smartblock.SmartBlockTypeSubObject:            objRestrictEditAndTemplate,
+		smartblock.SmartBlockTypeObjectType:           objRestrictEditAndTemplate,
+		smartblock.SmartBlockTypeRelation:             objRestrictEditAndTemplate,
+		smartblock.SmartBlockTypeHome:                 objRestrictAll.Copy().Remove(model.Restrictions_Blocks),
+		smartblock.SmartBlockTypeWidget:               objRestrictAll.Copy().Remove(model.Restrictions_Blocks),
+		smartblock.SmartBlockTypeWorkspace:            objRestrictAll.Copy().Remove(model.Restrictions_Details),
 		smartblock.SmartBlockTypeProfilePage: {
 			model.Restrictions_LayoutChange: {},
 			model.Restrictions_TypeChange:   {},
@@ -182,6 +182,11 @@ func getObjectRestrictions(rh RestrictionHolder) (r ObjectRestrictions) {
 			r = ObjectRestrictions{}
 		}
 	}
+
+	if rh.LocalDetails().GetBool(bundle.RelationKeyIsArchived) {
+		return objRestrictAll.Copy().Remove(model.Restrictions_Delete)
+	}
+
 	return
 }
 

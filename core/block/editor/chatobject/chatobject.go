@@ -18,22 +18,25 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/chats/chatrepository"
 	"github.com/anyproto/anytype-heart/core/block/chats/chatsubscription"
 	"github.com/anyproto/anytype-heart/core/block/editor/anystoredebug"
+	"github.com/anyproto/anytype-heart/core/block/editor/basic"
 	"github.com/anyproto/anytype-heart/core/block/editor/components"
+	"github.com/anyproto/anytype-heart/core/block/editor/converter"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/storestate"
 	"github.com/anyproto/anytype-heart/core/block/source"
 	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/core/files/fileobject"
 	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pb"
+	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/spaceindex"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
 const (
 	CollectionName        = "chats"
-	descOrder             = "-_o.id"
-	ascOrder              = "_o.id"
-	descStateId           = "-stateId"
+	EditorCollectionName  = "editor"
 	diffManagerMessages   = "messages"
 	diffManagerMentions   = "mentions"
 	diffManagerSyncStatus = "syncStatus"
@@ -43,6 +46,9 @@ var log = logging.Logger("core.block.editor.chatobject").Desugar()
 
 type StoreObject interface {
 	smartblock.SmartBlock
+	basic.DetailsUpdatable
+	basic.DetailsSettable
+
 	anystoredebug.AnystoreDebug
 	components.SyncStatusHandler
 
@@ -67,6 +73,8 @@ type seenHeadsCollector interface {
 
 type storeObject struct {
 	anystoredebug.AnystoreDebug
+	basic.DetailsSettable
+	basic.DetailsUpdatable
 	smartblock.SmartBlock
 	locker smartblock.Locker
 
@@ -80,7 +88,9 @@ type storeObject struct {
 	crdtDb                  anystore.DB
 	chatHandler             *ChatHandler
 	repository              chatrepository.Repository
+	detailsComponent        *detailsComponent
 	statService             debugstat.StatService
+	spaceIndex              spaceindex.Store
 
 	arenaPool          *anyenc.ArenaPool
 	componentCtx       context.Context
@@ -133,8 +143,19 @@ func (s *storeObject) StatType() string {
 	return "store.object"
 }
 
-func New(sb smartblock.SmartBlock, accountService AccountService, crdtDb anystore.DB, repositoryService chatrepository.Service, chatSubscriptionService chatsubscription.Service, statService debugstat.StatService) StoreObject {
+func New(
+	sb smartblock.SmartBlock,
+	accountService AccountService,
+	crdtDb anystore.DB,
+	repositoryService chatrepository.Service,
+	chatSubscriptionService chatsubscription.Service,
+	spaceIndex spaceindex.Store,
+	layoutConverter converter.LayoutConverter,
+	fileObjectService fileobject.Service,
+	statService debugstat.StatService,
+) StoreObject {
 	ctx, cancel := context.WithCancel(context.Background())
+	bs := basic.NewBasic(sb, spaceIndex, layoutConverter, fileObjectService)
 	return &storeObject{
 		SmartBlock:              sb,
 		locker:                  sb.(smartblock.Locker),
@@ -146,6 +167,8 @@ func New(sb smartblock.SmartBlock, accountService AccountService, crdtDb anystor
 		componentCtx:            ctx,
 		componentCtxCancel:      cancel,
 		chatSubscriptionService: chatSubscriptionService,
+		DetailsSettable:         bs,
+		DetailsUpdatable:        bs,
 	}
 }
 
@@ -201,7 +224,7 @@ func (s *storeObject) Init(ctx *smartblock.InitContext) error {
 		myParticipantId: myParticipantId,
 	}
 
-	stateStore, err := storestate.New(ctx.Ctx, s.Id(), s.crdtDb, s.chatHandler)
+	stateStore, err := storestate.New(ctx.Ctx, s.Id(), s.crdtDb, s.chatHandler, storestate.DefaultHandler{Name: EditorCollectionName, ModifyMode: storestate.ModifyModeUpsert})
 	if err != nil {
 		return fmt.Errorf("create state store: %w", err)
 	}
@@ -218,6 +241,32 @@ func (s *storeObject) Init(ctx *smartblock.InitContext) error {
 		return fmt.Errorf("read store doc: %w", err)
 	}
 
+	s.detailsComponent = &detailsComponent{
+		componentCtx:       s.componentCtx,
+		collectionName:     EditorCollectionName,
+		storeSource:        storeSource,
+		storeState:         stateStore,
+		spaceIndex:         s.spaceIndex,
+		sb:                 s.SmartBlock,
+		deniedRelationKeys: []domain.RelationKey{bundle.RelationKeyInternalFlags},
+	}
+	spaceChatId := s.Space().DerivedIDs().SpaceChat
+	if s.Id() == spaceChatId {
+		setDetail := func(key domain.RelationKey, val domain.Value) {
+			// Set property both in parent and in the current state to avoid pushing a change
+			ctx.State.ParentState().SetDetail(key, val)
+			ctx.State.SetDetail(key, val)
+		}
+		setDetail(bundle.RelationKeyName, domain.String("General"))
+		setDetail(bundle.RelationKeyIsMainChat, domain.Bool(true))
+	}
+	err = s.detailsComponent.init(ctx.State)
+	if err != nil {
+		return fmt.Errorf("init details: %w", err)
+	}
+
+	storeSource.SetPushChangeHook(s.detailsComponent.onPushOrdinaryChange)
+
 	s.AnystoreDebug = anystoredebug.New(s.SmartBlock, stateStore)
 
 	s.seenHeadsCollector = newTreeSeenHeadsCollector(s.Tree())
@@ -227,9 +276,25 @@ func (s *storeObject) Init(ctx *smartblock.InitContext) error {
 }
 
 func (s *storeObject) onUpdate() {
+	err := s.detailsComponent.onAnystoreUpdated(s.componentCtx)
+	if err != nil {
+		log.Error("onUpdate: on anystore updated", zap.Error(err))
+	}
+
 	s.subscription.Lock()
 	defer s.subscription.Unlock()
+
 	s.subscription.Flush()
+
+	last, ok := s.subscription.GetLastMessage()
+	if ok {
+		st := s.NewState()
+		st.SetDetailAndBundledRelation(bundle.RelationKeyLastMessageDate, domain.Int64(last.CreatedAt))
+		err = s.Apply(st, smartblock.NotPushChanges)
+		if err != nil {
+			log.Error("onUpdate: update last message date", zap.Error(err))
+		}
+	}
 }
 
 func (s *storeObject) GetMessageById(ctx context.Context, id string) (*chatmodel.Message, error) {

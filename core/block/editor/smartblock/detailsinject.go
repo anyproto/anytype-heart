@@ -6,6 +6,7 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/editor/template"
+	"github.com/anyproto/anytype-heart/core/block/restriction"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/syncstatus/filesyncstatus"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
@@ -14,29 +15,29 @@ import (
 )
 
 var layoutPerSmartBlockType = map[smartblock.SmartBlockType]model.ObjectTypeLayout{
-	smartblock.SmartBlockTypeRelation:           model.ObjectType_relation,
-	smartblock.SmartBlockTypeBundledRelation:    model.ObjectType_relation,
-	smartblock.SmartBlockTypeObjectType:         model.ObjectType_objectType,
-	smartblock.SmartBlockTypeBundledObjectType:  model.ObjectType_objectType,
-	smartblock.SmartBlockTypeRelationOption:     model.ObjectType_relationOption,
-	smartblock.SmartBlockTypeSpaceView:          model.ObjectType_spaceView,
-	smartblock.SmartBlockTypeParticipant:        model.ObjectType_participant,
-	smartblock.SmartBlockTypeFile:               model.ObjectType_file, // deprecated
-	smartblock.SmartBlockTypeDate:               model.ObjectType_date,
-	smartblock.SmartBlockTypeChatDerivedObject:  model.ObjectType_chatDerived,
-	smartblock.SmartBlockTypeChatObject:         model.ObjectType_chat, // deprecated
-	smartblock.SmartBlockTypeWidget:             model.ObjectType_dashboard,
-	smartblock.SmartBlockTypeWorkspace:          model.ObjectType_dashboard,
-	smartblock.SmartBlockTypeArchive:            model.ObjectType_dashboard,
-	smartblock.SmartBlockTypeHome:               model.ObjectType_dashboard,
-	smartblock.SmartBlockTypeAccountObject:      model.ObjectType_profile,
-	smartblock.SmartBlockTypeAnytypeProfile:     model.ObjectType_profile,
-	smartblock.SmartBlockTypeIdentity:           model.ObjectType_profile,
-	smartblock.SmartBlockTypeProfilePage:        model.ObjectType_profile,
-	smartblock.SmartBlockTypeAccountOld:         model.ObjectType_profile, // deprecated
-	smartblock.SmartBlockTypeMissingObject:      model.ObjectType_missingObject,
-	smartblock.SmartBlockTypeNotificationObject: model.ObjectType_notification,
-	smartblock.SmartBlockTypeDevicesObject:      model.ObjectType_devices,
+	smartblock.SmartBlockTypeRelation:             model.ObjectType_relation,
+	smartblock.SmartBlockTypeBundledRelation:      model.ObjectType_relation,
+	smartblock.SmartBlockTypeObjectType:           model.ObjectType_objectType,
+	smartblock.SmartBlockTypeBundledObjectType:    model.ObjectType_objectType,
+	smartblock.SmartBlockTypeRelationOption:       model.ObjectType_relationOption,
+	smartblock.SmartBlockTypeSpaceView:            model.ObjectType_spaceView,
+	smartblock.SmartBlockTypeParticipant:          model.ObjectType_participant,
+	smartblock.SmartBlockTypeFile:                 model.ObjectType_file, // deprecated
+	smartblock.SmartBlockTypeDate:                 model.ObjectType_date,
+	smartblock.SmartBlockTypeChatDerivedObject:    model.ObjectType_chatDerived,
+	smartblock.SmartBlockTypeChatObjectDeprecated: model.ObjectType_chatDeprecated, // deprecated
+	smartblock.SmartBlockTypeWidget:               model.ObjectType_dashboard,
+	smartblock.SmartBlockTypeWorkspace:            model.ObjectType_dashboard,
+	smartblock.SmartBlockTypeArchive:              model.ObjectType_dashboard,
+	smartblock.SmartBlockTypeHome:                 model.ObjectType_dashboard,
+	smartblock.SmartBlockTypeAccountObject:        model.ObjectType_profile,
+	smartblock.SmartBlockTypeAnytypeProfile:       model.ObjectType_profile,
+	smartblock.SmartBlockTypeIdentity:             model.ObjectType_profile,
+	smartblock.SmartBlockTypeProfilePage:          model.ObjectType_profile,
+	smartblock.SmartBlockTypeAccountOld:           model.ObjectType_profile, // deprecated
+	smartblock.SmartBlockTypeMissingObject:        model.ObjectType_missingObject,
+	smartblock.SmartBlockTypeNotificationObject:   model.ObjectType_notification,
+	smartblock.SmartBlockTypeDevicesObject:        model.ObjectType_devices,
 }
 
 func (sb *smartBlock) injectLocalDetails(s *state.State) error {
@@ -53,10 +54,10 @@ func (sb *smartBlock) injectLocalDetails(s *state.State) error {
 
 	localDetailsFromStore := details.CopyOnlyKeys(keys...)
 	localDetailsFromStore.Delete(bundle.RelationKeyResolvedLayout)
-	s.InjectLocalDetails(localDetailsFromStore)
+	s.AddLocalDetails(localDetailsFromStore)
 	if p := s.ParentState(); p != nil && !hasPendingLocalDetails {
 		// inject for both current and parent state
-		p.InjectLocalDetails(localDetailsFromStore)
+		p.AddLocalDetails(localDetailsFromStore)
 	}
 
 	err = sb.injectCreationInfo(s)
@@ -253,10 +254,9 @@ func (sb *smartBlock) resolveLayout(s *state.State) {
 		return
 	}
 	var (
-		layoutValue   = s.Details().Get(bundle.RelationKeyLayout)
-		currentValue  = s.LocalDetails().Get(bundle.RelationKeyResolvedLayout)
-		newValue      domain.Value
-		fallbackValue = domain.Int64(int64(model.ObjectType_basic))
+		layoutValue  = s.Details().Get(bundle.RelationKeyLayout)
+		currentValue = s.LocalDetails().Get(bundle.RelationKeyResolvedLayout)
+		newValue     domain.Value
 
 		sbTypeLayoutValue, hasStrictLayout = layoutPerSmartBlockType[sb.Type()]
 	)
@@ -271,20 +271,7 @@ func (sb *smartBlock) resolveLayout(s *state.State) {
 		currentValue = layoutValue
 	}
 
-	if len(s.ObjectTypeKeys()) > 0 {
-		if bt, err := bundle.GetType(s.ObjectTypeKeys()[len(s.ObjectTypeKeys())-1]); err == nil {
-			fallbackValue = domain.Int64(int64(bt.Layout))
-		}
-	} else if sb.Type() == smartblock.SmartBlockTypeFileObject {
-		// for file object we use file layout
-		fallbackValue = domain.Int64(int64(model.ObjectType_file))
-	}
-
 	typeDetails, err := sb.getTypeDetails(s)
-	if err != nil {
-		log.Debugf("failed to get type details: %v", err)
-	}
-
 	valueInType := typeDetails.Get(bundle.RelationKeyRecommendedLayout)
 	if layoutValue.Ok() {
 		newValue = layoutValue
@@ -294,7 +281,7 @@ func (sb *smartBlock) resolveLayout(s *state.State) {
 		newValue = currentValue
 	} else {
 		log.Warnf("failed to get recommended layout from details of type: %v. Fallback to basic layout", err)
-		newValue = fallbackValue
+		newValue = sb.getFallbackLayoutValue(s)
 	}
 
 	if newValue.Ok() {
@@ -302,6 +289,25 @@ func (sb *smartBlock) resolveLayout(s *state.State) {
 	}
 
 	convertLayoutBlocks(s, currentValue, newValue)
+}
+
+func (sb *smartBlock) getFallbackLayoutValue(s *state.State) domain.Value {
+	if len(s.ObjectTypeKeys()) > 0 {
+		typeKey := s.ObjectTypeKeys()[len(s.ObjectTypeKeys())-1]
+		if bt, err := bundle.GetType(typeKey); err == nil && typeKey != bundle.TypeKeyTemplate {
+			return domain.Int64(int64(bt.Layout))
+		}
+	}
+
+	if sb.Type() == smartblock.SmartBlockTypeFileObject {
+		// for file object we use file layout
+		return domain.Int64(int64(model.ObjectType_file))
+	}
+
+	if s.Exists(state.TitleBlockID) {
+		return domain.Int64(int64(model.ObjectType_basic))
+	}
+	return domain.Int64(int64(model.ObjectType_note))
 }
 
 func convertLayoutBlocks(st *state.State, oldLayout, newLayout domain.Value) {
@@ -312,15 +318,13 @@ func convertLayoutBlocks(st *state.State, oldLayout, newLayout domain.Value) {
 		return
 	}
 	if newLayout.Int64() != int64(model.ObjectType_note) {
-		title := st.Pick(state.TitleBlockID)
-		if title != nil {
+		if st.Exists(state.TitleBlockID) {
 			return
 		}
 		log.With("objectId", st.RootId()).Infof("convert layout: %s -> %s", oldLayout, newLayout)
 		template.InitTemplate(st, template.WithNameFromFirstBlock, template.WithTitle)
 	} else if newLayout.Int64() == int64(model.ObjectType_note) {
-		title := st.Pick(state.TitleBlockID)
-		if title == nil {
+		if !st.Exists(state.TitleBlockID) {
 			return
 		}
 
@@ -355,4 +359,20 @@ func (sb *smartBlock) getTypeDetails(s *state.State) (*domain.Details, error) {
 		return nil, fmt.Errorf("failed to query object %s: %w", typeObjectId, err)
 	}
 	return records[0].Details, nil
+}
+
+func (sb *smartBlock) setRestrictionsDetail(s *state.State) {
+	currentRestrictions := restriction.NewObjectRestrictionsFromValue(s.LocalDetails().Get(bundle.RelationKeyRestrictions))
+	if currentRestrictions.Equal(sb.Restrictions().Object) {
+		return
+	}
+
+	s.SetLocalDetail(bundle.RelationKeyRestrictions, sb.Restrictions().Object.ToValue())
+
+	if sb.Restrictions().Object.Check(model.Restrictions_Details) != nil &&
+		sb.Restrictions().Object.Check(model.Restrictions_Blocks) != nil {
+		s.SetDetailAndBundledRelation(bundle.RelationKeyIsReadonly, domain.Bool(true))
+	} else if s.LocalDetails().GetBool(bundle.RelationKeyIsReadonly) {
+		s.SetDetailAndBundledRelation(bundle.RelationKeyIsReadonly, domain.Bool(false))
+	}
 }

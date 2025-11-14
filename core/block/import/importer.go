@@ -28,6 +28,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/files/fileobject"
 	"github.com/anyproto/anytype-heart/core/files/filesync"
 	"github.com/anyproto/anytype-heart/core/notifications"
+	"github.com/anyproto/anytype-heart/core/relationutils"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
@@ -89,6 +90,7 @@ func (i *Import) initDependencies(a *app.App) {
 	relationSyncer := syncer.NewFileRelationSyncer(i.deps.blockService, fileObjectService)
 	objectCreator := app.MustComponent[objectcreator.Service](a)
 	detailsService := app.MustComponent[detailservice.Service](a)
+	formatFetcher := app.MustComponent[relationutils.RelationFormatFetcher](a)
 
 	i.deps.objectCreator = creator.New(
 		detailsService,
@@ -98,6 +100,7 @@ func (i *Import) initDependencies(a *app.App) {
 		i.deps.spaceService,
 		objectCreator,
 		i.deps.blockService,
+		formatFetcher,
 	)
 }
 

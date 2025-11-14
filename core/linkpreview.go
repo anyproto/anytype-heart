@@ -24,7 +24,7 @@ func (mw *Middleware) LinkPreview(cctx context.Context, req *pb.RpcLinkPreviewRe
 		}
 	}
 
-	data, _, _, err := mustService[linkpreview.LinkPreview](mw).Fetch(ctx, u.String())
+	data, _, _, err := mustService[linkpreview.LinkPreview](mw).Fetch(ctx, u.String(), false)
 	if err != nil {
 		code := mapErrorCode(err,
 			errToCode(linkpreview.ErrPrivateLink, pb.RpcLinkPreviewResponseError_PRIVATE_LINK),

@@ -3,6 +3,7 @@ package sourceimpl
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"math/rand"
 	"sync"
@@ -25,6 +26,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/source"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/files"
+	"github.com/anyproto/anytype-heart/core/relationutils"
 	"github.com/anyproto/anytype-heart/metrics"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
@@ -49,6 +51,8 @@ var (
 	log = logging.Logger("anytype-mw-source")
 
 	bytesPool = sync.Pool{New: func() any { return make([]byte, poolSize) }}
+
+	ErrSpaceWithoutTreeBuilder = errors.New("space doesn't have tree builder")
 )
 
 func MarshalChange(change *pb.Change) (result []byte, dataType string, err error) {
@@ -137,7 +141,7 @@ type SourceIdEndodedDetails interface {
 func (s *service) newTreeSource(ctx context.Context, space source.Space, id string, buildOpts objecttreebuilder.BuildTreeOpts) (source.Source, error) {
 	treeBuilder := space.TreeBuilder()
 	if treeBuilder == nil {
-		return nil, fmt.Errorf("space doesn't have tree builder")
+		return nil, ErrSpaceWithoutTreeBuilder
 	}
 	ot, err := space.TreeBuilder().BuildTree(ctx, id, buildOpts)
 	if err != nil {
@@ -162,6 +166,7 @@ func (s *service) newTreeSource(ctx context.Context, space source.Space, id stri
 		objectStore:        s.objectStore,
 		spaceIndex:         s.objectStore.SpaceIndex(space.Id()),
 		fileObjectMigrator: s.fileObjectMigrator,
+		formatFetcher:      s.formatFetcher,
 	}
 	if sbt == smartblock.SmartBlockTypeChatDerivedObject || sbt == smartblock.SmartBlockTypeAccountObject {
 		return &store{treeSource: src, sbType: sbt, diffManagers: map[string]*diffManager{}, spaceService: s.spaceService}, nil
@@ -194,6 +199,7 @@ type treeSource struct {
 	objectStore        objectstore.ObjectStore
 	spaceIndex         spaceindex.Store
 	fileObjectMigrator fileObjectMigrator
+	formatFetcher      relationutils.RelationFormatFetcher
 }
 
 var _ updatelistener.UpdateListener = (*treeSource)(nil)
@@ -295,7 +301,7 @@ func (s *treeSource) buildState() (doc state.Doc, err error) {
 	// temporary, though the applying change to this Dataview block will persist this migration, breaking backward
 	// compatibility. But in many cases we expect that users update object not so often as they just view them.
 	// TODO: we can skip migration for non-personal spaces
-	migration := source.NewSubObjectsAndProfileLinksMigration(s.smartblockType, s.space, s.accountService.MyParticipantId(s.spaceID), s.spaceIndex)
+	migration := source.NewSubObjectsAndProfileLinksMigration(s.smartblockType, s.space, s.accountService.MyParticipantId(s.spaceID), s.spaceIndex, s.formatFetcher)
 	migration.Migrate(st)
 
 	// we need to have required internal relations for all objects, including system
@@ -400,10 +406,12 @@ func (s *treeSource) buildChange(params source.PushChangeParams) (c *pb.Change) 
 	if params.DoSnapshot || s.needSnapshot() || len(params.Changes) == 0 {
 		c.Snapshot = &pb.ChangeSnapshot{
 			Data: &model.SmartBlockSnapshotBase{
-				Blocks:                   params.State.BlocksToSave(),
-				Details:                  params.State.Details().ToProto(),
-				ObjectTypes:              domain.MarshalTypeKeys(params.State.ObjectTypeKeys()),
-				Collections:              params.State.Store(),
+				Blocks:      params.State.BlocksToSave(),
+				Details:     params.State.Details().ToProto(),
+				ObjectTypes: domain.MarshalTypeKeys(params.State.ObjectTypeKeys()),
+				Collections: params.State.Store(),
+				// TODO: GO-4284 We need to use PickRelationLinks here because we build a state.
+				// Changes on RelationLinks could go to old clients
 				RelationLinks:            params.State.PickRelationLinks(),
 				Key:                      params.State.UniqueKeyInternal(),
 				OriginalCreatedTimestamp: params.State.OriginalCreatedTimestamp(),
@@ -562,9 +570,8 @@ func cleanUpChange(objectId string, change *objecttree.Change, model *pb.Change)
 
 func BuildState(spaceId string, initState *state.State, ot objecttree.ReadableObjectTree, applyState bool) (st *state.State, appliedContent []*pb.ChangeContent, changesAppliedSinceSnapshot int, err error) {
 	var (
-		startId    string
-		lastChange *objecttree.Change
-		count      int
+		startId string
+		count   int
 	)
 	// if the state has no first change
 	if initState == nil {
@@ -580,7 +587,7 @@ func BuildState(spaceId string, initState *state.State, ot objecttree.ReadableOb
 		return
 	}
 
-	smartblockHandler := objecthandler.GetSmartblockHandler(sbt)
+	sbHandler := objecthandler.GetSmartblockHandler(sbt)
 
 	var iterErr error
 	var lastMigrationVersion uint32
@@ -601,11 +608,9 @@ func BuildState(spaceId string, initState *state.State, ot objecttree.ReadableOb
 				return true
 			}
 
-			model := change.Model.(*pb.Change)
+			sbHandler.CollectLastModifiedInfo(change)
 
-			if !smartblockHandler.SkipChangeToSetLastModifiedDate(model) {
-				lastChange = change
-			}
+			model := change.Model.(*pb.Change)
 
 			if model.Version > lastMigrationVersion {
 				lastMigrationVersion = model.Version
@@ -651,8 +656,9 @@ func BuildState(spaceId string, initState *state.State, ot objecttree.ReadableOb
 		}
 	}
 
-	if lastChange != nil && !st.IsTheHeaderChange() {
-		st.SetLastModified(lastChange.Timestamp, domain.NewParticipantId(spaceId, lastChange.Identity.Account()))
+	if !st.IsTheHeaderChange() {
+		ts, accountId := sbHandler.GetLastModifiedInfo()
+		st.SetLastModified(ts, domain.NewParticipantId(spaceId, accountId))
 	}
 	st.SetMigrationVersion(lastMigrationVersion)
 	return

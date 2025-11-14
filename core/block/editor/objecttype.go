@@ -20,7 +20,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/relationutils"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/spaceindex"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
@@ -85,8 +84,13 @@ func (ot *ObjectType) Init(ctx *smartblock.InitContext) (err error) {
 		return
 	}
 
-	ot.AddHook(ot.syncLayoutForObjectsAndTemplates, smartblock.HookAfterApply)
-	return nil
+	ot.AddHook(ot.syncLayoutHook, smartblock.HookAfterApply)
+
+	oldLayout := layout.NewLayoutStateFromDetails(domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+		bundle.RelationKeyRecommendedLayout: domain.Int64(model.ObjectType_basic),
+	}))
+	newLayout := layout.NewLayoutStateFromDetails(ot.Details().CopyOnlyKeys(bundle.RelationKeyRecommendedLayout))
+	return ot.syncLayoutForObjectsAndTemplates(oldLayout, newLayout, false)
 }
 
 func (ot *ObjectType) CreationStateMigration(ctx *smartblock.InitContext) migration.Migration {
@@ -139,7 +143,7 @@ func (ot *ObjectType) featuredRelationsMigration(s *state.State) {
 		return
 	}
 
-	if s.HasRelation(bundle.RelationKeyRecommendedFeaturedRelations.String()) {
+	if s.HasRelation(bundle.RelationKeyRecommendedFeaturedRelations) {
 		return
 	}
 
@@ -193,11 +197,15 @@ func removeDescriptionMigration(s *state.State) {
 	s.RemoveDetail(bundle.RelationKeyDescription)
 }
 
-func (ot *ObjectType) syncLayoutForObjectsAndTemplates(info smartblock.ApplyInfo) error {
+func (ot *ObjectType) syncLayoutForObjectsAndTemplates(oldLayout, newLayout layout.LayoutState, applyOtherObjects bool) error {
 	syncer := layout.NewSyncer(ot.Id(), ot.Space(), ot.spaceIndex)
+	return syncer.SyncLayoutWithType(oldLayout, newLayout, false, applyOtherObjects, true)
+}
+
+func (ot *ObjectType) syncLayoutHook(info smartblock.ApplyInfo) error {
 	newLayout := layout.NewLayoutStateFromEvents(info.Events)
 	oldLayout := layout.NewLayoutStateFromDetails(info.ParentDetails)
-	return syncer.SyncLayoutWithType(oldLayout, newLayout, false, info.ApplyOtherObjects, true)
+	return ot.syncLayoutForObjectsAndTemplates(oldLayout, newLayout, info.ApplyOtherObjects)
 }
 
 func (ot *ObjectType) dataviewTemplates() []template.StateTransformer {
@@ -208,7 +216,6 @@ func (ot *ObjectType) dataviewTemplates() []template.StateTransformer {
 			}
 			details := s.Details()
 			name := details.GetString(bundle.RelationKeyName)
-			key := details.GetString(bundle.RelationKeyUniqueKey)
 
 			// Build relation links from recommended and featured relations
 			relationLinks := []*model.RelationLink{
@@ -249,9 +256,9 @@ func (ot *ObjectType) dataviewTemplates() []template.StateTransformer {
 			dvContent := template.MakeDataviewContent(false, &model.ObjectType{
 				Url:           ot.Id(),
 				Name:          name,
-				Key:           key,
+				Key:           s.UniqueKeyInternal(),
 				RelationLinks: relationLinks,
-			}, relationLinks, addr.ObjectTypeAllViewId)
+			}, relationLinks, nil)
 
 			dvContent.Dataview.TargetObjectId = ot.Id()
 

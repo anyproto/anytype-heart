@@ -238,13 +238,15 @@ func (ind *indexer) indexFile(ctx context.Context, id domain.FullID, fileId doma
 		st := sb.NewState()
 		infos, err := ind.fileService.GetFileVariants(ctx, fileId, st.GetFileInfo().EncryptionKeys)
 		if err != nil {
-			return fmt.Errorf("get infos for indexing: %w", err)
+			log.With("spaceId", id.SpaceID, "id", id.ObjectID).Errorf("indexFile: get file variants: %v", err)
+		} else {
+			err = ind.injectMetadataToState(ctx, st, infos, fileId, id)
+			if err != nil {
+				return fmt.Errorf("inject metadata to state: %w", err)
+			}
+			return sb.Apply(st)
 		}
-		err = ind.injectMetadataToState(ctx, st, infos, fileId, id)
-		if err != nil {
-			return fmt.Errorf("inject metadata to state: %w", err)
-		}
-		return sb.Apply(st)
+		return nil
 	})
 	if err != nil {
 		return fmt.Errorf("apply to smart block: %w", err)
@@ -301,10 +303,11 @@ func (ind *indexer) buildDetails(ctx context.Context, id domain.FullFileId, info
 		}
 	}
 
-	// Overwrite typeKey for images in case that image is uploaded as file.
+	// Overwrite typeKey and layout for images in case that image is uploaded as a file.
 	// That can be possible because some images can't be handled properly and wee fall back to
 	// handling them as files
 	if mill.IsImage(file.MimeType()) {
+		details.SetInt64(bundle.RelationKeyLayout, int64(model.ObjectType_image))
 		typeKey = bundle.TypeKeyImage
 	}
 

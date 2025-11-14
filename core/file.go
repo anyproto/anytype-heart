@@ -9,6 +9,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/domain/objectorigin"
+	"github.com/anyproto/anytype-heart/core/files/filedownloader"
 	"github.com/anyproto/anytype-heart/core/files/fileoffloader"
 	"github.com/anyproto/anytype-heart/core/files/filespaceusage"
 	"github.com/anyproto/anytype-heart/core/files/reconciler"
@@ -239,4 +240,17 @@ func (mw *Middleware) FileReconcile(ctx context.Context, req *pb.RpcFileReconcil
 		}
 	}
 	return &pb.RpcFileReconcileResponse{}
+}
+
+func (mw *Middleware) FileSetAutoDownload(ctx context.Context, req *pb.RpcFileSetAutoDownloadRequest) *pb.RpcFileSetAutoDownloadResponse {
+	err := mustService[filedownloader.Service](mw).SetEnabled(req.Enabled, req.WifiOnly)
+	if err != nil {
+		return &pb.RpcFileSetAutoDownloadResponse{
+			Error: &pb.RpcFileSetAutoDownloadResponseError{
+				Code:        mapErrorCode[pb.RpcFileSetAutoDownloadResponseErrorCode](err),
+				Description: getErrorDescription(err),
+			},
+		}
+	}
+	return &pb.RpcFileSetAutoDownloadResponse{}
 }
