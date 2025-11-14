@@ -22,6 +22,8 @@ func (s *service) CreateOneToOneSendInbox(ctx context.Context, description *spac
 		return
 	}
 
+	description.Name = bobProfile.IdentityProfile.Name
+	description.IconImage = bobProfile.IdentityProfile.IconCid
 	sp, err = s.CreateOneToOne(ctx, description, bobProfile)
 	if err != nil {
 		return
@@ -62,7 +64,7 @@ func (s *service) CreateOneToOne(ctx context.Context, description *spaceinfo.Spa
 		Identity:           bobProfile.IdentityProfile.Identity,
 		RequestMetadataKey: bobProfile.RequestMetadata,
 	}
-	ctrl, err := s.factory.CreateOneToOneSpace(ctx, coreSpace.Id(), participantData)
+	ctrl, err := s.factory.CreateOneToOneSpace(ctx, coreSpace.Id(), description, participantData)
 	if err != nil {
 		s.mu.Lock()
 		close(wait)

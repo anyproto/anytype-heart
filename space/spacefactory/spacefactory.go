@@ -39,7 +39,7 @@ type SpaceFactory interface {
 	CreateAndSetTechSpace(ctx context.Context) (*clientspace.TechSpace, error)
 	LoadAndSetTechSpace(ctx context.Context) (*clientspace.TechSpace, error)
 	CreateInvitingSpace(ctx context.Context, id, aclHeadId string) (sp spacecontroller.SpaceController, err error)
-	CreateOneToOneSpace(ctx context.Context, id string, participantData spaceinfo.OneToOneParticipantData) (sp spacecontroller.SpaceController, err error)
+	CreateOneToOneSpace(ctx context.Context, id string, description *spaceinfo.SpaceDescription, participantData spaceinfo.OneToOneParticipantData) (sp spacecontroller.SpaceController, err error)
 }
 
 const CName = "client.space.spacefactory"
@@ -290,7 +290,7 @@ func (s *spaceFactory) CreateMarketplaceSpace(ctx context.Context) (sp spacecont
 	return ctrl, err
 }
 
-func (s *spaceFactory) CreateOneToOneSpace(ctx context.Context, id string, participantData spaceinfo.OneToOneParticipantData) (sp spacecontroller.SpaceController, err error) {
+func (s *spaceFactory) CreateOneToOneSpace(ctx context.Context, id string, description *spaceinfo.SpaceDescription, participantData spaceinfo.OneToOneParticipantData) (sp spacecontroller.SpaceController, err error) {
 	oneToOneSpace, err := s.spaceCore.Get(ctx, id)
 	if err != nil {
 		return
@@ -304,12 +304,12 @@ func (s *spaceFactory) CreateOneToOneSpace(ctx context.Context, id string, parti
 	info := spaceinfo.NewSpacePersistentInfo(id)
 
 	info.OneToOneIdentity = participantData.Identity
+	info.Name = description.Name
 	requestMetadataKeyStr := base64.StdEncoding.EncodeToString(participantData.RequestMetadataKey)
 	info.OneToOneRequestMetadataKey = requestMetadataKeyStr
 	info.SetAccountStatus(spaceinfo.AccountStatusUnknown)
 
-	// TODO: why  I set desc nil here?
-	if err := s.techSpace.SpaceViewCreate(ctx, id, true, info, nil); err != nil {
+	if err := s.techSpace.SpaceViewCreate(ctx, id, true, info, description); err != nil {
 		return nil, err
 	}
 
