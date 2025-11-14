@@ -160,6 +160,12 @@ func (w *Workspaces) StateMigrations() migration.Migrations {
 }
 
 func (w *Workspaces) onApply(info smartblock.ApplyInfo) error {
+	allDetails := info.State.CombinedDetails()
+	spaceUxType := model.SpaceUxType(allDetails.GetInt64(bundle.RelationKeySpaceUxType))
+	isOneToOne := spaceUxType == model.SpaceUxType_OneToOne
+	if isOneToOne {
+		return nil
+	}
 	w.onWorkspaceChanged(info.State)
 	return nil
 }
