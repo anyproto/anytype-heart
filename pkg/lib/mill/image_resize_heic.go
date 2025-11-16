@@ -3,21 +3,31 @@
 package mill
 
 import (
+	"bytes"
 	"fmt"
-	"image"
 	"image/jpeg"
 	"io"
 	"strconv"
 
 	"github.com/adrium/goheif"
+	"github.com/adrium/goheif/heif"
 	"github.com/kovidgoyal/imaging"
 )
 
-func (m *ImageResize) resizeHEIC(imgConfig *image.Config, r io.ReadSeeker) (*Result, error) {
+func (m *ImageResize) resizeHEIC(r io.ReadSeeker) (*Result, error) {
+	orientation, err := getHEICOrientation(r)
+	if err != nil {
+		return nil, err
+	}
+
 	goheif.SafeEncoding = true
 	img, err := goheif.Decode(r)
 	if err != nil {
 		return nil, fmt.Errorf("decode heic: %w", err)
+	}
+
+	if orientation > 1 {
+		img = reverseOrientation(img, orientation)
 	}
 
 	var height int
@@ -53,4 +63,46 @@ func (m *ImageResize) resizeHEIC(imgConfig *image.Config, r io.ReadSeeker) (*Res
 			"height": height,
 		},
 	}, nil
+}
+
+func getHEICOrientation(r io.ReadSeeker) (int, error) {
+	var rotations int
+	ra, ok := r.(io.ReaderAt)
+	if !ok {
+		data, err := io.ReadAll(r)
+		if err != nil {
+			return 0, fmt.Errorf("read heic: %w", err)
+		}
+		ra = bytes.NewReader(data)
+		r = bytes.NewReader(data)
+	}
+
+	hf := heif.Open(ra)
+	it, err := hf.PrimaryItem()
+	if err != nil {
+		return 0, fmt.Errorf("get primary item: %w", err)
+	}
+	rotations = it.Rotations()
+
+	// Seek back to start for decoding
+	if _, err := r.Seek(0, io.SeekStart); err != nil {
+		return 0, fmt.Errorf("seek: %w", err)
+	}
+
+	// Map irot values (0-3) to EXIF orientation values
+	// irot: 0=no rotation, 1=90°CCW, 2=180°, 3=270°CCW (90°CW)
+	// EXIF: 1=normal, 8=90°CCW, 3=180°, 6=90°CW
+	var orientation int
+	switch rotations {
+	case 0:
+		orientation = 1 // normal
+	case 1:
+		orientation = 8 // 90° counter-clockwise
+	case 2:
+		orientation = 3 // 180°
+	case 3:
+		orientation = 6 // 90° clockwise (270° CCW)
+	}
+
+	return orientation, nil
 }
