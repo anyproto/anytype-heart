@@ -64,7 +64,7 @@ func MakeDataviewContent(isCollection bool, ot *model.ObjectType, relLinks []*mo
 			Id:        bson.NewObjectId().Hex(),
 			Type:      DefaultViewLayout,
 			Name:      defaultViewName,
-			Sorts:     buildSorts(isCollection, ot),
+			Sorts:     buildSorts(isCollection, ot, nil),
 			Filters:   nil,
 			Relations: BuildViewRelations(isCollection, relLinks, visibleRelations),
 		}
@@ -78,9 +78,6 @@ func MakeDataviewContent(isCollection bool, ot *model.ObjectType, relLinks []*mo
 	}
 
 	for _, view := range oldContent.Dataview.Views {
-		if len(view.Sorts) == 0 {
-			view.Sorts = buildSorts(isCollection, ot)
-		}
 		visibleRelations := commonVisibleRelations
 		additionalRelLinks := relLinks
 		for _, rel := range view.Relations {
@@ -97,6 +94,7 @@ func MakeDataviewContent(isCollection bool, ot *model.ObjectType, relLinks []*mo
 			}
 		}
 		view.Relations = BuildViewRelations(isCollection, additionalRelLinks, visibleRelations)
+		view.Sorts = buildSorts(isCollection, ot, view.Sorts)
 		view.DefaultObjectTypeId = ""
 		view.DefaultTemplateId = ""
 	}
@@ -193,13 +191,18 @@ func collectRelationLinksFromViews(existingRelLinks []*model.RelationLink, views
 	return relLinks
 }
 
-func buildSorts(isCollection bool, ot *model.ObjectType) []*model.BlockContentDataviewSort {
-	if isCollection {
-		return defaultNameSort()
-	}
+func buildSorts(isCollection bool, ot *model.ObjectType, oldSorts []*model.BlockContentDataviewSort) []*model.BlockContentDataviewSort {
 	// Special case for the chat type
 	if ot != nil && ot.Key == bundle.TypeKeyChatDerived.String() {
 		return defaultChatSort()
+	}
+
+	if oldSorts != nil {
+		return oldSorts
+	}
+
+	if isCollection {
+		return defaultNameSort()
 	}
 	return DefaultLastModifiedDateSort()
 }

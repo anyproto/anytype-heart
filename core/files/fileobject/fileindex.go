@@ -303,10 +303,11 @@ func (ind *indexer) buildDetails(ctx context.Context, id domain.FullFileId, info
 		}
 	}
 
-	// Overwrite typeKey for images in case that image is uploaded as file.
+	// Overwrite typeKey and layout for images in case that image is uploaded as a file.
 	// That can be possible because some images can't be handled properly and wee fall back to
 	// handling them as files
 	if mill.IsImage(file.MimeType()) {
+		details.SetInt64(bundle.RelationKeyLayout, int64(model.ObjectType_image))
 		typeKey = bundle.TypeKeyImage
 	}
 
