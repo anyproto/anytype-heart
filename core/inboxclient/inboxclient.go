@@ -9,6 +9,7 @@ import (
 	"github.com/anyproto/any-sync/app/logger"
 	"github.com/anyproto/any-sync/coordinator/coordinatorproto"
 	ic "github.com/anyproto/any-sync/coordinator/inboxclient"
+	"github.com/anyproto/any-sync/util/periodicsync"
 	"github.com/anyproto/anytype-heart/core/wallet"
 	"github.com/anyproto/anytype-heart/space/clientspace"
 	"github.com/anyproto/anytype-heart/space/techspace"
@@ -44,6 +45,8 @@ type inboxclient struct {
 
 	rmu       sync.Mutex
 	receivers map[coordinatorproto.InboxPayloadType]func(*coordinatorproto.InboxPacket) error
+
+	periodicCheck periodicsync.PeriodicSync
 }
 
 func (s *inboxclient) Init(a *app.App) (err error) {
@@ -51,6 +54,7 @@ func (s *inboxclient) Init(a *app.App) (err error) {
 	if err != nil {
 		return
 	}
+	s.periodicCheck = periodicsync.NewPeriodicSync(50, 0, s.checkMessages, log)
 	s.spaceService = app.MustComponent[SpaceService](a)
 	s.wallet = app.MustComponent[wallet.Wallet](a)
 	s.receivers = make(map[coordinatorproto.InboxPayloadType]func(*coordinatorproto.InboxPacket) error)
@@ -90,7 +94,7 @@ func (s *inboxclient) Run(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-
+	s.periodicCheck.Run()
 	return nil
 }
 
@@ -123,6 +127,7 @@ func (s *inboxclient) fetchMessages() (messages []*coordinatorproto.InboxMessage
 
 	messages = make([]*coordinatorproto.InboxMessage, 0)
 	offset, err := s.getOffset()
+	// TODO: set old offset here to rollback in case of error
 	if err != nil {
 		return
 	}
@@ -142,6 +147,7 @@ func (s *inboxclient) fetchMessages() (messages []*coordinatorproto.InboxMessage
 
 		if len(batch) > 0 {
 			newOffset := batch[len(batch)-1].Id
+			// TODO: do setoffset in the end
 			err = s.setOffset(newOffset)
 			if err != nil {
 				log.Error("inbox: error setting offset", zap.Error(err))
@@ -170,10 +176,19 @@ func (s *inboxclient) fetchMessages() (messages []*coordinatorproto.InboxMessage
 	return
 }
 
+func (s *inboxclient) checkMessages(ctx context.Context) (err error) {
+	log.Warn("inbox: checkMessages")
+	s.ReceiveNotify(&coordinatorproto.NotifySubscribeEvent{})
+	return nil
+}
+
 func (s *inboxclient) ReceiveNotify(event *coordinatorproto.NotifySubscribeEvent) {
 	messages, err := s.fetchMessages()
 	if err != nil {
+
 		log.Error("inbox: failed to get inbox offset", zap.Error(err))
+		// TODO: return, don't process batch
+		return
 		// we don't return here in case we have a partial batch of messages
 	}
 
@@ -196,5 +211,6 @@ func (s *inboxclient) ReceiveNotify(event *coordinatorproto.NotifySubscribeEvent
 }
 
 func (s *inboxclient) Close(_ context.Context) (err error) {
+	s.periodicCheck.Close()
 	return nil
 }

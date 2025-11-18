@@ -368,29 +368,27 @@ func (s *service) broadcastIdentityProfile(identityData *identityrepoproto.DataW
 }
 
 // Put identity profile to cache from external place (e.g. from onetoone inbox)
-func (s *service) AddIdentityProfile(identityProfile *model.IdentityProfile, key crypto.SymKey) error {
-	identityProfileBytes, err := proto.Marshal(identityProfile)
+func (s *service) AddIdentityProfile(profile *model.IdentityProfile, key crypto.SymKey) error {
+	profileBytes, err := proto.Marshal(profile)
 	if err != nil {
 		return err
 	}
 
-	encryptedIdentityProfileBytes, err := key.Encrypt(identityProfileBytes)
+	encryptedProfileBytes, err := key.Encrypt(profileBytes)
 	if err != nil {
 		return err
 	}
+
 	s.lock.Lock()
-	s.identityEncryptionKeys[identityProfile.Identity] = key
+	s.identityEncryptionKeys[profile.Identity] = key
 	s.lock.Unlock()
 
-	log.Warn("AddIdentityProfile: identity", zap.String("identity", identityProfile.Identity), zap.String("icon", identityProfile.IconCid))
-	fmt.Printf("AddIdentityProfile: IconEncryptionKeys %#v\n", identityProfile.IconEncryptionKeys)
-
-	err = s.fileAclService.StoreFileKeys(domain.FileId(identityProfile.IconCid), identityProfile.IconEncryptionKeys)
+	err = s.indexIconImage(profile)
 	if err != nil {
-		log.Error("AddIdentityProfile: fileAclService.StoreFileKeys", zap.Error(err))
+		log.Error("addIdentityProfile: index icon error", zap.Error(err))
 	}
 
-	return s.identityProfileCacheStore.Set(context.Background(), identityProfile.Identity, encryptedIdentityProfileBytes)
+	return s.identityProfileCacheStore.Set(context.Background(), profile.Identity, encryptedProfileBytes)
 
 }
 
@@ -531,7 +529,6 @@ func (s *service) RegisterIdentity(spaceId string, identity string, encryptionKe
 
 	var isInitialized bool
 	if cachedProfile != nil {
-		log.Warn("RegisterIdentity extractProfile", zap.String("key", fmt.Sprintf("%#v\n", encryptionKey)))
 		profile, _, err := extractProfile(cachedProfile, encryptionKey)
 		if err == nil {
 			if cachedGlobalName != "" {
