@@ -18,6 +18,12 @@ func (s *service) CreateOneToOneSendInbox(ctx context.Context, description *spac
 	if description.OneToOneIdentity == "" {
 		return nil, fmt.Errorf("create onetoone: details, OneToOneIdentity is missing")
 	}
+
+	myIdentity := s.accountService.Account().SignKey.GetPublic().Account()
+	if description.OneToOneIdentity == myIdentity {
+		return nil, fmt.Errorf("create onetoone: second participant identity equals my identity")
+	}
+
 	bobProfile, err := s.identityService.WaitProfileWithKey(ctx, description.OneToOneIdentity)
 	if err != nil {
 		return
@@ -30,11 +36,6 @@ func (s *service) CreateOneToOneSendInbox(ctx context.Context, description *spac
 		return
 	}
 
-	// add que to inbox, if no connection, put into que
-	// otherwise space never be possible to recreate in case of connection issue
-	//
-	// use ownsubscription maybe..?
-	myIdentity := s.accountService.Account().SignKey.GetPublic().Account()
 	myProfile, err := s.identityService.WaitProfileWithKey(ctx, myIdentity)
 	if err != nil {
 		return
