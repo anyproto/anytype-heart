@@ -1860,11 +1860,8 @@ func (s *State) SetChangeType(changeType domain.ChangeType) {
 	s.changeType = changeType
 }
 
-// PickChangeType TODO: do we need to wipe it?
-func (s *State) PickChangeType() (changeType domain.ChangeType) {
-	changeType = s.changeType
-	s.changeType = 0
-	return
+func (s *State) GetChangeType() (changeType domain.ChangeType) {
+	return s.changeType
 }
 
 func IsRequiredBlockId(targetId string) bool {

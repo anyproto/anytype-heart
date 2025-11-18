@@ -703,7 +703,7 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 	var (
 		migrationVersionUpdated = true
 		parent                  = s.ParentState()
-		changeType              = s.PickChangeType()
+		changeType              = s.GetChangeType()
 	)
 
 	if parent != nil {
