@@ -126,34 +126,23 @@ func (s *inboxclient) fetchMessages() (messages []*coordinatorproto.InboxMessage
 	defer s.mu.Unlock()
 
 	messages = make([]*coordinatorproto.InboxMessage, 0)
+
 	offset, err := s.getOffset()
-	// TODO: set old offset here to rollback in case of error
+	oldOffset := offset
 	if err != nil {
 		return
 	}
 
-	// TODO: What to do with error, when we've got a part/batch?
-	// 1. we can try to process just batch, if offset is set correct
-	// 2. if error was while trying to set an offset, we probably shouldn't process it
-	//    because it will cause double processing
-	// we can follow (2.), but this means that all processes should be able to double process messages
-	// Both situations can potentially lead to an infinite fetch loop.
 	for {
-		batch, hasMore, err := s.InboxFetch(context.TODO(), offset)
+		batch, hasMore, err := s.InboxFetch(context.Background(), offset)
 		if err != nil {
+			offset = oldOffset
 			log.Error("inbox: fetchMessages batch error", zap.Error(err))
 			break
 		}
 
 		if len(batch) > 0 {
-			newOffset := batch[len(batch)-1].Id
-			// TODO: do setoffset in the end
-			err = s.setOffset(newOffset)
-			if err != nil {
-				log.Error("inbox: error setting offset", zap.Error(err))
-				break
-			}
-
+			offset = batch[len(batch)-1].Id
 			for i := range batch {
 				encrypted := batch[i].Packet.Payload.Body
 				body, err := s.wallet.Account().SignKey.Decrypt(encrypted)
@@ -170,6 +159,14 @@ func (s *inboxclient) fetchMessages() (messages []*coordinatorproto.InboxMessage
 
 		if !hasMore {
 			break
+		}
+	}
+
+	if offset != oldOffset {
+		err = s.setOffset(offset)
+		if err != nil {
+			log.Error("inbox: error setting offset", zap.Error(err))
+			return
 		}
 	}
 
