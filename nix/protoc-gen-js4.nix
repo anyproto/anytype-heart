@@ -24,7 +24,6 @@ stdenv.mkDerivation rec {
   buildPhase = ''
     runHook preBuild
 
-    # Adjust flags if you want stricter warnings
     $CXX -std=c++17 -O2 \
       -I. \
       -I"$protobufSrc/src" \
