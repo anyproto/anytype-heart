@@ -67,6 +67,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/durability"
 	"github.com/anyproto/anytype-heart/core/files"
 	"github.com/anyproto/anytype-heart/core/files/fileacl"
+	"github.com/anyproto/anytype-heart/core/files/filedownloader"
 	"github.com/anyproto/anytype-heart/core/files/fileobject"
 	"github.com/anyproto/anytype-heart/core/files/fileoffloader"
 	"github.com/anyproto/anytype-heart/core/files/filespaceusage"
@@ -271,6 +272,7 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(files.New()).
 		Register(filespaceusage.New()).
 		Register(fileoffloader.New()).
+		Register(filedownloader.New()).
 		Register(fileacl.New()).
 		Register(chatrepository.New()).
 		Register(chatsubscription.New()).

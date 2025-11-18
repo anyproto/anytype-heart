@@ -189,6 +189,11 @@ func (s *space) tryLoadBundledAndInstallIfMissing(disableRemoteLoad bool) {
 	if len(missingSourceIds) > 0 {
 		log.Warn("missing bundled objects", zap.Strings("ids", missingSourceIds))
 	}
+
+	_, _, err = s.installer.InstallBundledObjects(s.loadMissingBundledObjectsCtx, s, missingSourceIds)
+	if err != nil {
+		log.Error("failed to install bundled objects", zap.Error(err))
+	}
 }
 
 func (s *space) mandatoryObjectsLoad(ctx context.Context, disableRemoteLoad bool) {

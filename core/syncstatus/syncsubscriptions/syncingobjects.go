@@ -14,16 +14,19 @@ import (
 )
 
 type syncingObjects struct {
-	objectSubscription       *objectsubscription.ObjectSubscription[struct{}]
-	limitedFilesSubscription *objectsubscription.ObjectSubscription[struct{}]
-	service                  subscription.Service
-	spaceId                  string
+	objectSubscription         *objectsubscription.ObjectSubscription[struct{}]
+	limitedFilesSubscription   *objectsubscription.ObjectSubscription[struct{}]
+	uploadingFilesSubscription *objectsubscription.ObjectSubscription[struct{}]
+	subscriptionService        subscription.Service
+	spaceId                    string
+	myParticipantId            string
 }
 
-func newSyncingObjects(spaceId string, service subscription.Service) *syncingObjects {
+func newSyncingObjects(spaceId string, subService subscription.Service, myParticipantId string) *syncingObjects {
 	return &syncingObjects{
-		service: service,
-		spaceId: spaceId,
+		subscriptionService: subService,
+		spaceId:             spaceId,
+		myParticipantId:     myParticipantId,
 	}
 }
 
@@ -39,7 +42,7 @@ func (s *syncingObjects) Run() error {
 				RelationKey: bundle.RelationKeySyncStatus,
 				Condition:   model.BlockContentDataviewFilter_In,
 				Value: domain.Int64List([]int64{
-					int64(domain.SpaceSyncStatusSyncing),
+					int64(domain.ObjectSyncStatusSyncing),
 					int64(domain.ObjectSyncStatusQueued),
 					int64(domain.ObjectSyncStatusError),
 				}),
@@ -51,7 +54,7 @@ func (s *syncingObjects) Run() error {
 			},
 		},
 	}
-	s.objectSubscription = objectsubscription.NewIdSubscription(s.service, objectReq)
+	s.objectSubscription = objectsubscription.NewIdSubscription(s.subscriptionService, objectReq)
 	errObjects := s.objectSubscription.Run()
 	if errObjects != nil {
 		return fmt.Errorf("error running syncing objects: %w", errObjects)
@@ -76,10 +79,40 @@ func (s *syncingObjects) Run() error {
 			},
 		},
 	}
-	s.limitedFilesSubscription = objectsubscription.NewIdSubscription(s.service, filesReq)
+	s.limitedFilesSubscription = objectsubscription.NewIdSubscription(s.subscriptionService, filesReq)
 	err := s.limitedFilesSubscription.Run()
 	if err != nil {
 		return fmt.Errorf("run not synced files sub: %w", err)
+	}
+
+	uplFilesReq := subscription.SubscribeRequest{
+		SpaceId:           s.spaceId,
+		SubId:             fmt.Sprintf("spacestatus.uploadingFiles.%s", s.spaceId),
+		Internal:          true,
+		NoDepSubscription: true,
+		Keys:              []string{bundle.RelationKeyId.String()},
+		Filters: []database.FilterRequest{
+			{
+				RelationKey: bundle.RelationKeyCreator,
+				Condition:   model.BlockContentDataviewFilter_Equal,
+				Value:       domain.String(s.myParticipantId),
+			},
+			{
+				RelationKey: bundle.RelationKeyFileBackupStatus,
+				Condition:   model.BlockContentDataviewFilter_In,
+				Value:       domain.Int64List([]filesyncstatus.Status{filesyncstatus.Syncing, filesyncstatus.Queued}),
+			},
+			{
+				RelationKey: bundle.RelationKeyResolvedLayout,
+				Condition:   model.BlockContentDataviewFilter_In,
+				Value:       domain.Int64List(domain.FileLayouts),
+			},
+		},
+	}
+	s.uploadingFilesSubscription = objectsubscription.NewIdSubscription(s.subscriptionService, uplFilesReq)
+	err = s.uploadingFilesSubscription.Run()
+	if err != nil {
+		return fmt.Errorf("run uploading files sub: %w", err)
 	}
 	return nil
 }
@@ -95,6 +128,10 @@ func (s *syncingObjects) GetObjectSubscription() *objectsubscription.ObjectSubsc
 
 func (s *syncingObjects) LimitedFilesCount() int {
 	return s.limitedFilesSubscription.Len()
+}
+
+func (s *syncingObjects) UploadingFilesCount() int {
+	return s.uploadingFilesSubscription.Len()
 }
 
 func (s *syncingObjects) SyncingObjectsCount(missing []string) int {

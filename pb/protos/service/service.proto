@@ -192,6 +192,7 @@ service ClientCommands {
     rpc FileDrop (anytype.Rpc.File.Drop.Request) returns (anytype.Rpc.File.Drop.Response);
     rpc FileSpaceUsage (anytype.Rpc.File.SpaceUsage.Request) returns (anytype.Rpc.File.SpaceUsage.Response);
     rpc FileNodeUsage (anytype.Rpc.File.NodeUsage.Request) returns (anytype.Rpc.File.NodeUsage.Response);
+    rpc FileSetAutoDownload (anytype.Rpc.File.SetAutoDownload.Request) returns (anytype.Rpc.File.SetAutoDownload.Response);
 
     rpc NavigationListObjects (anytype.Rpc.Navigation.ListObjects.Request) returns (anytype.Rpc.Navigation.ListObjects.Response);
     rpc NavigationGetObjectInfoWithLinks (anytype.Rpc.Navigation.GetObjectInfoWithLinks.Request) returns (anytype.Rpc.Navigation.GetObjectInfoWithLinks.Response);
@@ -424,4 +425,6 @@ service ClientCommands {
     // Push
     rpc PushNotificationRegisterToken(anytype.Rpc.PushNotification.RegisterToken.Request) returns (anytype.Rpc.PushNotification.RegisterToken.Response);
     rpc PushNotificationSetSpaceMode(anytype.Rpc.PushNotification.SetSpaceMode.Request) returns (anytype.Rpc.PushNotification.SetSpaceMode.Response);
+    rpc PushNotificationSetForceModeIds(anytype.Rpc.PushNotification.SetForceModeIds.Request) returns (anytype.Rpc.PushNotification.SetForceModeIds.Response);
+    rpc PushNotificationResetIds(anytype.Rpc.PushNotification.ResetIds.Request) returns (anytype.Rpc.PushNotification.ResetIds.Response);
 }

@@ -175,6 +175,62 @@ func (s *SpaceView) SetAclInfo(isAclEmpty bool, pushKey crypto.PrivKey, pushEncK
 	return s.Apply(st)
 }
 
+var (
+	pushNotificationIdsRelByMode = map[pb.RpcPushNotificationMode]domain.RelationKey{
+		pb.RpcPushNotification_All:      bundle.RelationKeySpacePushNotificationForceAllIds,
+		pb.RpcPushNotification_Mentions: bundle.RelationKeySpacePushNotificationForceMentionIds,
+		pb.RpcPushNotification_Nothing:  bundle.RelationKeySpacePushNotificationForceMuteIds,
+	}
+)
+
+func (s *SpaceView) SetPushNotificationForceModeIds(ctx session.Context, chatIds []string, mode pb.RpcPushNotificationMode) (err error) {
+	if _, ok := pushNotificationIdsRelByMode[mode]; !ok {
+		return fmt.Errorf("unknown push notification mode: %v", mode)
+	}
+
+	st := s.NewStateCtx(ctx)
+	details := st.Details()
+	for keyMode, key := range pushNotificationIdsRelByMode {
+		if keyMode == mode {
+			existingIds := details.GetStringList(key)
+			for _, id := range chatIds {
+				if !slices.Contains(existingIds, id) {
+					existingIds = append(existingIds, id)
+				}
+			}
+			st.SetDetail(key, domain.StringList(existingIds))
+		} else {
+			existingIds := details.GetStringList(key)
+			filteredIds := existingIds[:0]
+			for _, id := range existingIds {
+				if !slices.Contains(chatIds, id) {
+					filteredIds = append(filteredIds, id)
+				}
+			}
+			st.SetDetail(key, domain.StringList(filteredIds))
+		}
+	}
+	return s.Apply(st)
+}
+
+func (s *SpaceView) ResetPushNotificationIds(ctx session.Context, chatIds []string) (err error) {
+	st := s.NewStateCtx(ctx)
+	details := st.Details()
+
+	for _, key := range pushNotificationIdsRelByMode {
+		existingIds := details.GetStringList(key)
+		filteredIds := existingIds[:0]
+		for _, id := range existingIds {
+			if !slices.Contains(chatIds, id) {
+				filteredIds = append(filteredIds, id)
+			}
+		}
+		st.SetDetail(key, domain.StringList(filteredIds))
+	}
+
+	return s.Apply(st)
+}
+
 func (s *SpaceView) updateAccessType(st *state.State) {
 	accessType := spaceinfo.AccessType(st.LocalDetails().GetInt64(bundle.RelationKeySpaceAccessType))
 	if accessType == spaceinfo.AccessTypePersonal {
@@ -211,7 +267,7 @@ func (s *SpaceView) SetSharedSpacesLimit(limit int) (err error) {
 	return s.Apply(st)
 }
 
-func (s *SpaceView) SetPushNotificationMode(ctx session.Context, mode pb.RpcPushNotificationSetSpaceModeMode) (err error) {
+func (s *SpaceView) SetPushNotificationMode(ctx session.Context, mode pb.RpcPushNotificationMode) (err error) {
 	st := s.NewStateCtx(ctx)
 	st.SetDetailAndBundledRelation(bundle.RelationKeySpacePushNotificationMode, domain.Int64(mode))
 	return s.Apply(st)

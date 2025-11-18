@@ -6,6 +6,7 @@ import (
 
 	"github.com/anyproto/any-sync/commonspace/object/tree/objecttree/mock_objecttree"
 	"github.com/anyproto/any-sync/commonspace/object/tree/treechangeproto"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 
@@ -14,6 +15,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock/smarttest"
 	"github.com/anyproto/anytype-heart/core/block/migration"
 	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space/spaceinfo"
@@ -127,6 +129,50 @@ func TestSpaceView_SetOwner(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, "ownerId", fx.CombinedDetails().GetString(bundle.RelationKeyCreator))
 	require.Equal(t, int64(125), fx.CombinedDetails().GetInt64(bundle.RelationKeyCreatedDate))
+}
+
+func TestSpaceView_SetPushNotificationMode(t *testing.T) {
+	fx := newSpaceViewFixture(t)
+	defer fx.finish()
+	err := fx.SetPushNotificationMode(nil, pb.RpcPushNotification_Mentions)
+	require.NoError(t, err)
+	assert.Equal(t, int64(pb.RpcPushNotification_Mentions), fx.Details().GetInt64(bundle.RelationKeySpacePushNotificationMode))
+}
+
+func TestSpaceView_SetPushNotificationForceModeIds(t *testing.T) {
+	fx := newSpaceViewFixture(t)
+	defer fx.finish()
+	assert.Error(t, fx.SetPushNotificationForceModeIds(nil, []string{"id1", "id2"}, -1))
+	err := fx.SetPushNotificationForceModeIds(nil, []string{"id1", "id2"}, pb.RpcPushNotification_Nothing)
+	require.NoError(t, err)
+	err = fx.SetPushNotificationForceModeIds(nil, []string{"id2", "id3"}, pb.RpcPushNotification_Mentions)
+	require.NoError(t, err)
+	err = fx.SetPushNotificationForceModeIds(nil, []string{"id3", "id4"}, pb.RpcPushNotification_All)
+	require.NoError(t, err)
+
+	mutedIds := fx.Details().GetStringList(bundle.RelationKeySpacePushNotificationForceMuteIds)
+	assert.Equal(t, []string{"id1"}, mutedIds)
+	mentionedIds := fx.Details().GetStringList(bundle.RelationKeySpacePushNotificationForceMentionIds)
+	assert.Equal(t, []string{"id2"}, mentionedIds)
+	allIds := fx.Details().GetStringList(bundle.RelationKeySpacePushNotificationForceAllIds)
+	assert.Equal(t, []string{"id3", "id4"}, allIds)
+	assert.Equal(t, int64(pb.RpcPushNotification_All), fx.CombinedDetails().GetInt64(bundle.RelationKeySpacePushNotificationMode))
+}
+
+func TestSpaceView_ResetPushNotificationIds(t *testing.T) {
+	fx := newSpaceViewFixture(t)
+	defer fx.finish()
+	err := fx.SetPushNotificationForceModeIds(nil, []string{"id1"}, pb.RpcPushNotification_Mentions)
+	require.NoError(t, err)
+	err = fx.SetPushNotificationForceModeIds(nil, []string{"id2"}, pb.RpcPushNotification_All)
+	require.NoError(t, err)
+	err = fx.SetPushNotificationForceModeIds(nil, []string{"id3"}, pb.RpcPushNotification_Nothing)
+	require.NoError(t, err)
+	err = fx.ResetPushNotificationIds(nil, []string{"id1", "id2", "id3"})
+	require.NoError(t, err)
+	assert.Empty(t, fx.Details().GetStringList(bundle.RelationKeySpacePushNotificationForceMuteIds))
+	assert.Empty(t, fx.Details().GetStringList(bundle.RelationKeySpacePushNotificationForceMentionIds))
+	assert.Empty(t, fx.Details().GetStringList(bundle.RelationKeySpacePushNotificationForceAllIds))
 }
 
 type spaceServiceStub struct {

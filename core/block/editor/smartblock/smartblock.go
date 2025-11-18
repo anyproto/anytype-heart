@@ -1263,22 +1263,6 @@ func removeInternalFlags(s *state.State) {
 	}
 }
 
-func (sb *smartBlock) setRestrictionsDetail(s *state.State) {
-	currentRestrictions := restriction.NewObjectRestrictionsFromValue(s.LocalDetails().Get(bundle.RelationKeyRestrictions))
-	if currentRestrictions.Equal(sb.Restrictions().Object) {
-		return
-	}
-
-	s.SetLocalDetail(bundle.RelationKeyRestrictions, sb.Restrictions().Object.ToValue())
-
-	if sb.Restrictions().Object.Check(model.Restrictions_Details) != nil &&
-		sb.Restrictions().Object.Check(model.Restrictions_Blocks) != nil {
-		s.SetDetailAndBundledRelation(bundle.RelationKeyIsReadonly, domain.Bool(true))
-	} else if s.LocalDetails().GetBool(bundle.RelationKeyIsReadonly) {
-		s.SetDetailAndBundledRelation(bundle.RelationKeyIsReadonly, domain.Bool(false))
-	}
-}
-
 func msgsToEvents(msgs []simple.EventMessage) []*pb.EventMessage {
 	events := make([]*pb.EventMessage, len(msgs))
 	for i := range msgs {

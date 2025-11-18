@@ -135,6 +135,18 @@ func (s *subscriptionManager) ForceSendingChatState() {
 	s.chatStateUpdated = true
 }
 
+func (s *subscriptionManager) GetLastMessage() (*model.ChatMessage, bool) {
+	// get the last message from any subscription. It works because we don't have offsets for subscriptions, so
+	// it's guaranteed for the last message in a subscription to be the last message in a set of all messages.
+	for _, sub := range s.subscriptions {
+		last := sub.state.messages.Back()
+		if last != nil {
+			return last.Value.(*stateEntry).msg, true
+		}
+	}
+	return nil, false
+}
+
 // Flush is called after committing changes
 func (s *subscriptionManager) Flush() {
 	// Reload ChatState after commit

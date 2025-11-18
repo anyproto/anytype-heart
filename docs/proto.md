@@ -731,6 +731,10 @@
     - [Rpc.File.Reconcile.Request](#anytype-Rpc-File-Reconcile-Request)
     - [Rpc.File.Reconcile.Response](#anytype-Rpc-File-Reconcile-Response)
     - [Rpc.File.Reconcile.Response.Error](#anytype-Rpc-File-Reconcile-Response-Error)
+    - [Rpc.File.SetAutoDownload](#anytype-Rpc-File-SetAutoDownload)
+    - [Rpc.File.SetAutoDownload.Request](#anytype-Rpc-File-SetAutoDownload-Request)
+    - [Rpc.File.SetAutoDownload.Response](#anytype-Rpc-File-SetAutoDownload-Response)
+    - [Rpc.File.SetAutoDownload.Response.Error](#anytype-Rpc-File-SetAutoDownload-Response-Error)
     - [Rpc.File.SpaceOffload](#anytype-Rpc-File-SpaceOffload)
     - [Rpc.File.SpaceOffload.Request](#anytype-Rpc-File-SpaceOffload-Request)
     - [Rpc.File.SpaceOffload.Response](#anytype-Rpc-File-SpaceOffload-Response)
@@ -1214,6 +1218,14 @@
     - [Rpc.PushNotification.RegisterToken.Request](#anytype-Rpc-PushNotification-RegisterToken-Request)
     - [Rpc.PushNotification.RegisterToken.Response](#anytype-Rpc-PushNotification-RegisterToken-Response)
     - [Rpc.PushNotification.RegisterToken.Response.Error](#anytype-Rpc-PushNotification-RegisterToken-Response-Error)
+    - [Rpc.PushNotification.ResetIds](#anytype-Rpc-PushNotification-ResetIds)
+    - [Rpc.PushNotification.ResetIds.Request](#anytype-Rpc-PushNotification-ResetIds-Request)
+    - [Rpc.PushNotification.ResetIds.Response](#anytype-Rpc-PushNotification-ResetIds-Response)
+    - [Rpc.PushNotification.ResetIds.Response.Error](#anytype-Rpc-PushNotification-ResetIds-Response-Error)
+    - [Rpc.PushNotification.SetForceModeIds](#anytype-Rpc-PushNotification-SetForceModeIds)
+    - [Rpc.PushNotification.SetForceModeIds.Request](#anytype-Rpc-PushNotification-SetForceModeIds-Request)
+    - [Rpc.PushNotification.SetForceModeIds.Response](#anytype-Rpc-PushNotification-SetForceModeIds-Response)
+    - [Rpc.PushNotification.SetForceModeIds.Response.Error](#anytype-Rpc-PushNotification-SetForceModeIds-Response-Error)
     - [Rpc.PushNotification.SetSpaceMode](#anytype-Rpc-PushNotification-SetSpaceMode)
     - [Rpc.PushNotification.SetSpaceMode.Request](#anytype-Rpc-PushNotification-SetSpaceMode-Request)
     - [Rpc.PushNotification.SetSpaceMode.Response](#anytype-Rpc-PushNotification-SetSpaceMode-Response)
@@ -1568,6 +1580,7 @@
     - [Rpc.File.NodeUsage.Response.Error.Code](#anytype-Rpc-File-NodeUsage-Response-Error-Code)
     - [Rpc.File.Offload.Response.Error.Code](#anytype-Rpc-File-Offload-Response-Error-Code)
     - [Rpc.File.Reconcile.Response.Error.Code](#anytype-Rpc-File-Reconcile-Response-Error-Code)
+    - [Rpc.File.SetAutoDownload.Response.Error.Code](#anytype-Rpc-File-SetAutoDownload-Response-Error-Code)
     - [Rpc.File.SpaceOffload.Response.Error.Code](#anytype-Rpc-File-SpaceOffload-Response-Error-Code)
     - [Rpc.File.SpaceUsage.Response.Error.Code](#anytype-Rpc-File-SpaceUsage-Response-Error-Code)
     - [Rpc.File.Upload.Response.Error.Code](#anytype-Rpc-File-Upload-Response-Error-Code)
@@ -1688,9 +1701,11 @@
     - [Rpc.Publishing.PublishStatus](#anytype-Rpc-Publishing-PublishStatus)
     - [Rpc.Publishing.Remove.Response.Error.Code](#anytype-Rpc-Publishing-Remove-Response-Error-Code)
     - [Rpc.Publishing.ResolveUri.Response.Error.Code](#anytype-Rpc-Publishing-ResolveUri-Response-Error-Code)
+    - [Rpc.PushNotification.Mode](#anytype-Rpc-PushNotification-Mode)
     - [Rpc.PushNotification.RegisterToken.Platform](#anytype-Rpc-PushNotification-RegisterToken-Platform)
     - [Rpc.PushNotification.RegisterToken.Response.Error.Code](#anytype-Rpc-PushNotification-RegisterToken-Response-Error-Code)
-    - [Rpc.PushNotification.SetSpaceMode.Mode](#anytype-Rpc-PushNotification-SetSpaceMode-Mode)
+    - [Rpc.PushNotification.ResetIds.Response.Error.Code](#anytype-Rpc-PushNotification-ResetIds-Response-Error-Code)
+    - [Rpc.PushNotification.SetForceModeIds.Response.Error.Code](#anytype-Rpc-PushNotification-SetForceModeIds-Response-Error-Code)
     - [Rpc.PushNotification.SetSpaceMode.Response.Error.Code](#anytype-Rpc-PushNotification-SetSpaceMode-Response-Error-Code)
     - [Rpc.Relation.ListRemoveOption.Response.Error.Code](#anytype-Rpc-Relation-ListRemoveOption-Response-Error-Code)
     - [Rpc.Relation.ListWithValue.Response.Error.Code](#anytype-Rpc-Relation-ListWithValue-Response-Error-Code)
@@ -2311,6 +2326,7 @@
 | FileDrop | [Rpc.File.Drop.Request](#anytype-Rpc-File-Drop-Request) | [Rpc.File.Drop.Response](#anytype-Rpc-File-Drop-Response) |  |
 | FileSpaceUsage | [Rpc.File.SpaceUsage.Request](#anytype-Rpc-File-SpaceUsage-Request) | [Rpc.File.SpaceUsage.Response](#anytype-Rpc-File-SpaceUsage-Response) |  |
 | FileNodeUsage | [Rpc.File.NodeUsage.Request](#anytype-Rpc-File-NodeUsage-Request) | [Rpc.File.NodeUsage.Response](#anytype-Rpc-File-NodeUsage-Response) |  |
+| FileSetAutoDownload | [Rpc.File.SetAutoDownload.Request](#anytype-Rpc-File-SetAutoDownload-Request) | [Rpc.File.SetAutoDownload.Response](#anytype-Rpc-File-SetAutoDownload-Response) |  |
 | NavigationListObjects | [Rpc.Navigation.ListObjects.Request](#anytype-Rpc-Navigation-ListObjects-Request) | [Rpc.Navigation.ListObjects.Response](#anytype-Rpc-Navigation-ListObjects-Response) |  |
 | NavigationGetObjectInfoWithLinks | [Rpc.Navigation.GetObjectInfoWithLinks.Request](#anytype-Rpc-Navigation-GetObjectInfoWithLinks-Request) | [Rpc.Navigation.GetObjectInfoWithLinks.Response](#anytype-Rpc-Navigation-GetObjectInfoWithLinks-Response) |  |
 | TemplateCreateFromObject | [Rpc.Template.CreateFromObject.Request](#anytype-Rpc-Template-CreateFromObject-Request) | [Rpc.Template.CreateFromObject.Response](#anytype-Rpc-Template-CreateFromObject-Response) |  |
@@ -2473,6 +2489,8 @@
 | AIObjectCreateFromUrl | [Rpc.AI.ObjectCreateFromUrl.Request](#anytype-Rpc-AI-ObjectCreateFromUrl-Request) | [Rpc.AI.ObjectCreateFromUrl.Response](#anytype-Rpc-AI-ObjectCreateFromUrl-Response) |  |
 | PushNotificationRegisterToken | [Rpc.PushNotification.RegisterToken.Request](#anytype-Rpc-PushNotification-RegisterToken-Request) | [Rpc.PushNotification.RegisterToken.Response](#anytype-Rpc-PushNotification-RegisterToken-Response) | Push |
 | PushNotificationSetSpaceMode | [Rpc.PushNotification.SetSpaceMode.Request](#anytype-Rpc-PushNotification-SetSpaceMode-Request) | [Rpc.PushNotification.SetSpaceMode.Response](#anytype-Rpc-PushNotification-SetSpaceMode-Response) |  |
+| PushNotificationSetForceModeIds | [Rpc.PushNotification.SetForceModeIds.Request](#anytype-Rpc-PushNotification-SetForceModeIds-Request) | [Rpc.PushNotification.SetForceModeIds.Response](#anytype-Rpc-PushNotification-SetForceModeIds-Response) |  |
+| PushNotificationResetIds | [Rpc.PushNotification.ResetIds.Request](#anytype-Rpc-PushNotification-ResetIds-Request) | [Rpc.PushNotification.ResetIds.Response](#anytype-Rpc-PushNotification-ResetIds-Response) |  |
 
  
 
@@ -13036,6 +13054,63 @@ Get marks list in the selected range in text block.
 
 
 
+<a name="anytype-Rpc-File-SetAutoDownload"></a>
+
+### Rpc.File.SetAutoDownload
+
+
+
+
+
+
+
+<a name="anytype-Rpc-File-SetAutoDownload-Request"></a>
+
+### Rpc.File.SetAutoDownload.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| enabled | [bool](#bool) |  |  |
+| wifi_only | [bool](#bool) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-File-SetAutoDownload-Response"></a>
+
+### Rpc.File.SetAutoDownload.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.File.SetAutoDownload.Response.Error](#anytype-Rpc-File-SetAutoDownload-Response-Error) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-File-SetAutoDownload-Response-Error"></a>
+
+### Rpc.File.SetAutoDownload.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.File.SetAutoDownload.Response.Error.Code](#anytype-Rpc-File-SetAutoDownload-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
 <a name="anytype-Rpc-File-SpaceOffload"></a>
 
 ### Rpc.File.SpaceOffload
@@ -20104,6 +20179,123 @@ Available undo/redo operations
 
 
 
+<a name="anytype-Rpc-PushNotification-ResetIds"></a>
+
+### Rpc.PushNotification.ResetIds
+
+
+
+
+
+
+
+<a name="anytype-Rpc-PushNotification-ResetIds-Request"></a>
+
+### Rpc.PushNotification.ResetIds.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| spaceId | [string](#string) |  |  |
+| chatIds | [string](#string) | repeated |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-PushNotification-ResetIds-Response"></a>
+
+### Rpc.PushNotification.ResetIds.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.PushNotification.ResetIds.Response.Error](#anytype-Rpc-PushNotification-ResetIds-Response-Error) |  |  |
+| event | [ResponseEvent](#anytype-ResponseEvent) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-PushNotification-ResetIds-Response-Error"></a>
+
+### Rpc.PushNotification.ResetIds.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.PushNotification.ResetIds.Response.Error.Code](#anytype-Rpc-PushNotification-ResetIds-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-PushNotification-SetForceModeIds"></a>
+
+### Rpc.PushNotification.SetForceModeIds
+
+
+
+
+
+
+
+<a name="anytype-Rpc-PushNotification-SetForceModeIds-Request"></a>
+
+### Rpc.PushNotification.SetForceModeIds.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| spaceId | [string](#string) |  |  |
+| chatIds | [string](#string) | repeated |  |
+| mode | [Rpc.PushNotification.Mode](#anytype-Rpc-PushNotification-Mode) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-PushNotification-SetForceModeIds-Response"></a>
+
+### Rpc.PushNotification.SetForceModeIds.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.PushNotification.SetForceModeIds.Response.Error](#anytype-Rpc-PushNotification-SetForceModeIds-Response-Error) |  |  |
+| event | [ResponseEvent](#anytype-ResponseEvent) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-PushNotification-SetForceModeIds-Response-Error"></a>
+
+### Rpc.PushNotification.SetForceModeIds.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.PushNotification.SetForceModeIds.Response.Error.Code](#anytype-Rpc-PushNotification-SetForceModeIds-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
 <a name="anytype-Rpc-PushNotification-SetSpaceMode"></a>
 
 ### Rpc.PushNotification.SetSpaceMode
@@ -20123,7 +20315,7 @@ Available undo/redo operations
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | spaceId | [string](#string) |  |  |
-| mode | [Rpc.PushNotification.SetSpaceMode.Mode](#anytype-Rpc-PushNotification-SetSpaceMode-Mode) |  |  |
+| mode | [Rpc.PushNotification.Mode](#anytype-Rpc-PushNotification-Mode) |  |  |
 
 
 
@@ -20139,6 +20331,7 @@ Available undo/redo operations
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | error | [Rpc.PushNotification.SetSpaceMode.Response.Error](#anytype-Rpc-PushNotification-SetSpaceMode-Response-Error) |  |  |
+| event | [ResponseEvent](#anytype-ResponseEvent) |  |  |
 
 
 
@@ -25046,6 +25239,19 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 
 
 
+<a name="anytype-Rpc-File-SetAutoDownload-Response-Error-Code"></a>
+
+### Rpc.File.SetAutoDownload.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
+
+
+
 <a name="anytype-Rpc-File-SpaceOffload-Response-Error-Code"></a>
 
 ### Rpc.File.SpaceOffload.Response.Error.Code
@@ -26738,6 +26944,19 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 
 
 
+<a name="anytype-Rpc-PushNotification-Mode"></a>
+
+### Rpc.PushNotification.Mode
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| All | 0 |  |
+| Mentions | 1 |  |
+| Nothing | 2 |  |
+
+
+
 <a name="anytype-Rpc-PushNotification-RegisterToken-Platform"></a>
 
 ### Rpc.PushNotification.RegisterToken.Platform
@@ -26763,16 +26982,29 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 
 
 
-<a name="anytype-Rpc-PushNotification-SetSpaceMode-Mode"></a>
+<a name="anytype-Rpc-PushNotification-ResetIds-Response-Error-Code"></a>
 
-### Rpc.PushNotification.SetSpaceMode.Mode
+### Rpc.PushNotification.ResetIds.Response.Error.Code
 
 
 | Name | Number | Description |
 | ---- | ------ | ----------- |
-| All | 0 |  |
-| Mentions | 1 |  |
-| Nothing | 2 |  |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
+
+
+
+<a name="anytype-Rpc-PushNotification-SetForceModeIds-Response-Error-Code"></a>
+
+### Rpc.PushNotification.SetForceModeIds.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
 
 
 
@@ -30488,6 +30720,7 @@ Removes document from subscription
 | error | [Event.Space.SyncError](#anytype-Event-Space-SyncError) |  |  |
 | syncingObjectsCounter | [int64](#int64) |  |  |
 | notSyncedFilesCounter | [int64](#int64) |  |  |
+| uploadingFilesCounter | [int64](#int64) |  |  |
 
 
 

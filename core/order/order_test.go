@@ -163,6 +163,28 @@ func TestReorder(t *testing.T) {
 			objectIds: []string{"obj1", "obj2", "obj3"},
 		},
 		{
+			name: "empty orders + incomplete list",
+			originalOrderIds: map[string]string{
+				"obj1": "",
+				"obj2": "",
+				"obj3": "",
+				"obj4": "",
+				"obj5": "",
+			},
+			objectIds: []string{"obj3", "obj2", "obj5"},
+		},
+		{
+			name: "some orders are empty + incomplete list",
+			originalOrderIds: map[string]string{
+				"obj1": "",
+				"obj2": "xxx",
+				"obj3": "",
+				"obj4": "bbb",
+				"obj5": "aaa",
+			},
+			objectIds: []string{"obj3", "obj2", "obj5"},
+		},
+		{
 			name: "4 elements #1",
 			originalOrderIds: map[string]string{
 				"a": "AAA001",
