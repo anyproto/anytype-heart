@@ -10,6 +10,7 @@ import (
 	"github.com/anyproto/anytype-heart/space/internal/spaceprocess/loader"
 	"github.com/anyproto/anytype-heart/space/spacedomain"
 	"github.com/anyproto/anytype-heart/space/spaceinfo"
+	"go.uber.org/zap"
 )
 
 // for initiator (e.g. from ui avatar, qrcode)
@@ -40,7 +41,10 @@ func (s *service) CreateOneToOneSendInbox(ctx context.Context, description *spac
 	}
 
 	err = s.onetoone.SendOneToOneInvite(ctx, bobProfile.IdentityProfile.Identity, myProfile)
-	return
+	if err != nil {
+		log.Error("sendOneToOneInvite: ", zap.Error(err))
+	}
+	return sp, nil
 }
 
 // for acceptor (e.g. inbox message)
