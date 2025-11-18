@@ -33,3 +33,45 @@ func MarshalTypeKeys(typeKeys []TypeKey) []string {
 	}
 	return res
 }
+
+type ChangeType uint32
+
+const (
+	UserChange ChangeType = iota
+	HistoryOperation
+	ActiveViewSet
+	OrderOperation
+	LayoutSync
+	CleanupTables
+	ObjectInit
+	ObjectReinstall
+	Indexing
+	SystemObjectReviserMigration
+)
+
+func (c ChangeType) String() string {
+	switch c {
+	case UserChange:
+		return "UserChange"
+	case HistoryOperation:
+		return "HistoryOperation"
+	case ActiveViewSet:
+		return "ActiveViewSet"
+	case OrderOperation:
+		return "OrderOperation"
+	case LayoutSync:
+		return "LayoutSync"
+	case CleanupTables:
+		return "CleanupTables"
+	case ObjectInit:
+		return "ObjectInit"
+	case ObjectReinstall:
+		return "ObjectReinstall"
+	case Indexing:
+		return "Indexing"
+	case SystemObjectReviserMigration:
+		return "SystemObjectReviserMigration"
+	default:
+		return "Unknown"
+	}
+}

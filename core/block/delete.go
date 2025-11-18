@@ -150,6 +150,7 @@ func (s *Service) unsetDefaultTemplateId(templateId, typeId string, spc clientsp
 	return spc.Do(typeId, func(sb smartblock.SmartBlock) error {
 		st := sb.NewState()
 		st.SetDetail(bundle.RelationKeyDefaultTemplateId, domain.String(""))
+		st.SetChangeType(domain.LayoutSync)
 		return sb.Apply(st)
 	})
 }
