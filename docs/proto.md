@@ -30719,6 +30719,7 @@ Removes document from subscription
 | error | [Event.Space.SyncError](#anytype-Event-Space-SyncError) |  |  |
 | syncingObjectsCounter | [int64](#int64) |  |  |
 | notSyncedFilesCounter | [int64](#int64) |  |  |
+| uploadingFilesCounter | [int64](#int64) |  |  |
 
 
 
