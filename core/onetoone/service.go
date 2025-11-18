@@ -101,12 +101,6 @@ func (s *onetoone) processOneToOneInvite(packet *coordinatorproto.InboxPacket) (
 
 	log.Warn("created onetoone space from inbox")
 
-	// TODO: RegisterParticipant
-	// TODO: cyclic deps. we can create a third service, or, pass processOneToOneInvite from space service.
-	// or, register notifiers for each type..?
-	// s.spaceService.Create
-	// createOneToOne
-
 	return err
 }
 func (s *onetoone) Name() (name string) {
@@ -121,15 +115,7 @@ func (s *onetoone) Close(_ context.Context) (err error) {
 	return nil
 }
 
-// 1. wrap identity and request metadata key to payload
-// 2. change spaceinvite to onetoone request
-// 3. auto accept inbox
-// 4. don't send inbox if space already exists (check spaceveiw)
-// 5. on inbox accept, skip creation if space exist
 func (s *onetoone) SendOneToOneInvite(ctx context.Context, receiverIdentity string, myProfile *model.IdentityProfileWithKey) (err error) {
-	// 1. put whole identity profile
-	// 2. try to get this from WaitProfile or register this incoming identity
-	// 3. createOneToOne(bPk)
 	log.Warn("SendOneToOneInvite",
 		zap.String("key", string(myProfile.RequestMetadata)),
 	)

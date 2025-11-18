@@ -120,7 +120,6 @@ func (ls *loadingSpace) isNotRetryable(err error) bool {
 
 func (ls *loadingSpace) load(ctx context.Context) (ok bool, err error) {
 	sp, err := ls.spaceServiceProvider.open(ctx)
-
 	if err != nil {
 		notRetryable := ls.isNotRetryable(err)
 		ls.logErrors(ctx, err, false, notRetryable)
