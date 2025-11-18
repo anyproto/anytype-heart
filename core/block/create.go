@@ -54,6 +54,14 @@ func (s *Service) CreateOneToOneFromInbox(ctx context.Context, spaceDescription 
 	if err != nil {
 		return fmt.Errorf("error creating space: %w", err)
 	}
+	err = s.spaceService.TechSpace().SpaceViewSetData(ctx, newSpace.Id(),
+		domain.NewDetails().
+			SetString(bundle.RelationKeyName, identityProfileWithKey.IdentityProfile.Name).
+			SetString(bundle.RelationKeyIconImage, identityProfileWithKey.IdentityProfile.IconCid))
+	if err != nil {
+		return fmt.Errorf("onetoone, set view data for techspace %s: %w", newSpace.Id(), err)
+	}
+
 	predefinedObjectIDs := newSpace.DerivedIDs()
 
 	req := &pb.RpcWorkspaceCreateRequest{
@@ -84,6 +92,7 @@ func (s *Service) CreateOneToOneFromInbox(ctx context.Context, spaceDescription 
 	if err != nil {
 		return fmt.Errorf("set details for space %s: %w", newSpace.Id(), err)
 	}
+
 	// use case is still chat for onetoone (chat is derived IIRC)
 	_, _, err = s.builtinObjectService.CreateObjectsForUseCase(nil, newSpace.Id(), req.UseCase)
 	if err != nil {
