@@ -191,7 +191,6 @@ func (s *service) GetMetadataKey(identity string) (crypto.SymKey, error) {
 	return key, nil
 }
 
-// TODO: use WaitProfile with timeout for onetoone
 func (s *service) WaitProfileWithKey(ctx context.Context, identity string) (*model.IdentityProfileWithKey, error) {
 	profile := s.WaitProfile(ctx, identity)
 	if profile == nil {

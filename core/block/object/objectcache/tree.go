@@ -55,7 +55,6 @@ func (c *objectCache) CreateTreeObject(ctx context.Context, params TreeCreationP
 func (c *objectCache) CreateTreeObjectWithPayload(ctx context.Context, payload treestorage.TreeStorageCreatePayload, initFunc InitFunc) (sb smartblock.SmartBlock, err error) {
 	tr, err := c.space.TreeBuilder().PutTree(ctx, payload, nil)
 	if err != nil {
-		fmt.Printf("-- c.space: %s\n", c.space.Id())
 		return nil, fmt.Errorf("put tree: %w", err)
 	}
 	if tr != nil {

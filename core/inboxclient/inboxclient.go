@@ -66,8 +66,6 @@ func (s *inboxclient) Init(a *app.App) (err error) {
 	return
 }
 
-// 1. CreateInbox in Alice client;
-// 2. Open bob client, it should fetch the inbox and onetone will be created automatically
 func (s *inboxclient) SetReceiverByType(payloadType coordinatorproto.InboxPayloadType, handler func(*coordinatorproto.InboxPacket) error) error {
 	s.rmu.Lock()
 	defer s.rmu.Unlock()
@@ -144,6 +142,7 @@ func (s *inboxclient) fetchMessages() (messages []*coordinatorproto.InboxMessage
 		if len(batch) > 0 {
 			offset = batch[len(batch)-1].Id
 			for i := range batch {
+				// TODO: verify signature (coordinator does it too but still)
 				encrypted := batch[i].Packet.Payload.Body
 				body, err := s.wallet.Account().SignKey.Decrypt(encrypted)
 				if err != nil {
@@ -153,7 +152,6 @@ func (s *inboxclient) fetchMessages() (messages []*coordinatorproto.InboxMessage
 				}
 				batch[i].Packet.Payload.Body = body
 			}
-
 			messages = append(messages, batch...)
 		}
 
@@ -182,11 +180,8 @@ func (s *inboxclient) checkMessages(ctx context.Context) (err error) {
 func (s *inboxclient) ReceiveNotify(event *coordinatorproto.NotifySubscribeEvent) {
 	messages, err := s.fetchMessages()
 	if err != nil {
-
-		log.Error("inbox: failed to get inbox offset", zap.Error(err))
-		// TODO: return, don't process batch
+		log.Error("inbox: failed to fetch messages", zap.Error(err))
 		return
-		// we don't return here in case we have a partial batch of messages
 	}
 
 	if len(messages) == 0 {
@@ -195,7 +190,6 @@ func (s *inboxclient) ReceiveNotify(event *coordinatorproto.NotifySubscribeEvent
 	}
 	for _, msg := range messages {
 		log.Warn("inbox: got a message", zap.String("type", coordinatorproto.InboxPayloadType_name[int32(msg.Packet.Payload.PayloadType)]))
-		// TODO: verify signature (coordinator does it too but still)
 		if handler, ok := s.receivers[msg.Packet.Payload.PayloadType]; ok {
 			herr := handler(msg.Packet)
 			if herr != nil {
