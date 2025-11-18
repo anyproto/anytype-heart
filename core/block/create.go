@@ -14,6 +14,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
+	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space/spaceinfo"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
@@ -93,12 +94,6 @@ func (s *Service) CreateOneToOneFromInbox(ctx context.Context, spaceDescription 
 		return fmt.Errorf("set details for space %s: %w", newSpace.Id(), err)
 	}
 
-	// use case is still chat for onetoone (chat is derived IIRC)
-	_, _, err = s.builtinObjectService.CreateObjectsForUseCase(nil, newSpace.Id(), req.UseCase)
-	if err != nil {
-		return fmt.Errorf("import use-case: %w", err)
-	}
-
 	err = s.SpaceInitChat(ctx, newSpace.Id())
 	if err != nil {
 		log.Warn("failed to init space level chat")
@@ -133,10 +128,25 @@ func (s *Service) CreateWorkspace(ctx context.Context, req *pb.RpcWorkspaceCreat
 	if err != nil {
 		return "", "", fmt.Errorf("set details for space %s: %w", newSpace.Id(), err)
 	}
-	startingPageId, _, err = s.builtinObjectService.CreateObjectsForUseCase(nil, newSpace.Id(), req.UseCase)
-	if err != nil {
-		return "", "", fmt.Errorf("import use-case: %w", err)
+	if spaceDescription.SpaceUxType != model.SpaceUxType_OneToOne {
+		startingPageId, _, err = s.builtinObjectService.CreateObjectsForUseCase(nil, newSpace.Id(), req.UseCase)
+		if err != nil {
+			return "", "", fmt.Errorf("import use-case: %w", err)
+		}
+	} else {
+		workspaceId := newSpace.DerivedIDs().Workspace
+		chatUk, err := domain.NewUniqueKey(coresb.SmartBlockTypeChatDerivedObject, workspaceId)
+		if err != nil {
+			return "", "", err
+		}
+
+		chatId, err := newSpace.DeriveObjectID(context.Background(), chatUk)
+		if err != nil {
+			return "", "", err
+		}
+		startingPageId = chatId
 	}
+
 	return newSpace.Id(), startingPageId, err
 }
 
