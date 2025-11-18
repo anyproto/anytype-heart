@@ -66,7 +66,6 @@ func (s *service) CreateOneToOne(ctx context.Context, description *spaceinfo.Spa
 	}
 	s.mu.Unlock()
 
-	// TODO: register participant, otherwise WaitProfile will hang
 	participantData := spaceinfo.OneToOneParticipantData{
 		Identity:           bobProfile.IdentityProfile.Identity,
 		RequestMetadataKey: bobProfile.RequestMetadata,
