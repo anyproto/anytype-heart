@@ -76,27 +76,28 @@ func TestCount(t *testing.T) {
 	t.Run("uploading files count", func(t *testing.T) {
 		spaceId := "space1"
 		fx := newFixture(t)
+		participantId := domain.NewParticipantId(spaceId, testAccountId)
 		fx.subService.AddObjects(t, spaceId, []objectstore.TestObject{
 			{
 				bundle.RelationKeyId:               domain.String("1"),
 				bundle.RelationKeyName:             domain.String("1"),
 				bundle.RelationKeyResolvedLayout:   domain.Int64(model.ObjectType_image),
 				bundle.RelationKeyFileBackupStatus: domain.Int64(filesyncstatus.Synced),
-				bundle.RelationKeyCreator:          domain.String(testAccountId),
+				bundle.RelationKeyCreator:          domain.String(participantId),
 			},
 			{
 				bundle.RelationKeyId:               domain.String("2"),
 				bundle.RelationKeyName:             domain.String("2"),
 				bundle.RelationKeyResolvedLayout:   domain.Int64(model.ObjectType_file),
 				bundle.RelationKeyFileBackupStatus: domain.Int64(filesyncstatus.Syncing),
-				bundle.RelationKeyCreator:          domain.String(testAccountId),
+				bundle.RelationKeyCreator:          domain.String(participantId),
 			},
 			{
 				bundle.RelationKeyId:               domain.String("3"),
 				bundle.RelationKeyName:             domain.String("3"),
 				bundle.RelationKeyResolvedLayout:   domain.Int64(model.ObjectType_pdf),
 				bundle.RelationKeyFileBackupStatus: domain.Int64(filesyncstatus.Queued),
-				bundle.RelationKeyCreator:          domain.String(testAccountId),
+				bundle.RelationKeyCreator:          domain.String(participantId),
 			},
 			{
 				bundle.RelationKeyId:               domain.String("4"),
