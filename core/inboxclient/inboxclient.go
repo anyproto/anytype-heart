@@ -8,11 +8,13 @@ import (
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/app/logger"
 	"github.com/anyproto/any-sync/coordinator/coordinatorproto"
-	ic "github.com/anyproto/any-sync/coordinator/inboxclient"
+	anysyncinboxclient "github.com/anyproto/any-sync/coordinator/inboxclient"
+	"github.com/anyproto/any-sync/util/crypto"
 	"github.com/anyproto/any-sync/util/periodicsync"
 	"github.com/anyproto/anytype-heart/core/wallet"
 	"github.com/anyproto/anytype-heart/space/clientspace"
 	"github.com/anyproto/anytype-heart/space/techspace"
+
 	"go.uber.org/zap"
 )
 
@@ -21,13 +23,13 @@ const CName = "heart.inboxclient"
 var log = logger.NewNamed(CName)
 
 type InboxClient interface {
-	ic.InboxClient
+	app.ComponentRunnable
 	SetReceiverByType(payloadType coordinatorproto.InboxPayloadType, handler func(*coordinatorproto.InboxPacket) error) error
+	InboxAddMessage(ctx context.Context, receiverPubKey crypto.PubKey, message *coordinatorproto.InboxMessage) (err error)
 }
 
 func New() InboxClient {
-	newIc := ic.New()
-	return &inboxclient{InboxClient: newIc}
+	return &inboxclient{}
 }
 
 type SpaceService interface {
@@ -35,8 +37,7 @@ type SpaceService interface {
 }
 
 type inboxclient struct {
-	ic.InboxClient
-
+	inboxClient  anysyncinboxclient.InboxClient
 	spaceService SpaceService
 	wallet       wallet.Wallet
 
@@ -50,15 +51,13 @@ type inboxclient struct {
 }
 
 func (s *inboxclient) Init(a *app.App) (err error) {
-	err = s.InboxClient.Init(a)
-	if err != nil {
-		return
-	}
 	s.periodicCheck = periodicsync.NewPeriodicSync(50, 0, s.checkMessages, log)
 	s.spaceService = app.MustComponent[SpaceService](a)
 	s.wallet = app.MustComponent[wallet.Wallet](a)
+
 	s.receivers = make(map[coordinatorproto.InboxPayloadType]func(*coordinatorproto.InboxPacket) error)
-	err = s.SetMessageReceiver(s.ReceiveNotify)
+	s.inboxClient = app.MustComponent[anysyncinboxclient.InboxClient](a)
+	err = s.inboxClient.SetMessageReceiver(s.ReceiveNotify)
 	if err != nil {
 		return
 	}
@@ -88,10 +87,6 @@ func (s *inboxclient) Run(ctx context.Context) error {
 	if s.techSpace == nil {
 		return fmt.Errorf("inboxclient: techspace is nil")
 	}
-	err := s.InboxClient.Run(ctx)
-	if err != nil {
-		return err
-	}
 	s.periodicCheck.Run()
 	return nil
 }
@@ -119,6 +114,23 @@ func (s *inboxclient) getOffset() (offset string, err error) {
 	return
 }
 
+func (s *inboxclient) verifyPacketSignature(packet *coordinatorproto.InboxPacket) error {
+	senderIdentity, err := crypto.DecodeAccountAddress(packet.SenderIdentity)
+	if err != nil {
+		return fmt.Errorf("decode sender identity: %w", err)
+	}
+
+	ok, err := senderIdentity.Verify(packet.Payload.Body, packet.SenderSignature)
+	if err != nil {
+		return fmt.Errorf("verify signature: %w", err)
+	}
+	if !ok {
+		return fmt.Errorf("signature is invalid")
+	}
+
+	return nil
+}
+
 func (s *inboxclient) fetchMessages() (messages []*coordinatorproto.InboxMessage, err error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -132,7 +144,7 @@ func (s *inboxclient) fetchMessages() (messages []*coordinatorproto.InboxMessage
 	}
 
 	for {
-		batch, hasMore, err := s.InboxFetch(context.Background(), offset)
+		batch, hasMore, err := s.inboxClient.InboxFetch(context.Background(), offset)
 		if err != nil {
 			offset = oldOffset
 			log.Error("inbox: fetchMessages batch error", zap.Error(err))
@@ -142,7 +154,12 @@ func (s *inboxclient) fetchMessages() (messages []*coordinatorproto.InboxMessage
 		if len(batch) > 0 {
 			offset = batch[len(batch)-1].Id
 			for i := range batch {
-				// TODO: verify signature (coordinator does it too but still)
+				// verify signature before decryption
+				if err := s.verifyPacketSignature(batch[i].Packet); err != nil {
+					log.Error("inbox: signature verification failed", zap.Error(err))
+					continue
+				}
+
 				encrypted := batch[i].Packet.Payload.Body
 				body, err := s.wallet.Account().SignKey.Decrypt(encrypted)
 				if err != nil {
@@ -151,8 +168,10 @@ func (s *inboxclient) fetchMessages() (messages []*coordinatorproto.InboxMessage
 					continue
 				}
 				batch[i].Packet.Payload.Body = body
+
+				// only add successfully verified and decrypted messages
+				messages = append(messages, batch[i])
 			}
-			messages = append(messages, batch...)
 		}
 
 		if !hasMore {
@@ -201,6 +220,9 @@ func (s *inboxclient) ReceiveNotify(event *coordinatorproto.NotifySubscribeEvent
 	}
 }
 
+func (s *inboxclient) InboxAddMessage(ctx context.Context, receiverPubKey crypto.PubKey, message *coordinatorproto.InboxMessage) (err error) {
+	return s.inboxClient.InboxAddMessage(ctx, receiverPubKey, message)
+}
 func (s *inboxclient) Close(_ context.Context) (err error) {
 	s.periodicCheck.Close()
 	return nil

@@ -123,6 +123,10 @@ func (s *stubSpace) IsPersonal() bool {
 	return false
 }
 
+func (s *stubSpace) IsOneToOne() bool {
+	return false
+}
+
 func (s *stubSpace) StoredIds() []string {
 	return nil
 }
