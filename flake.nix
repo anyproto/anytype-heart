@@ -9,12 +9,14 @@
         inherit system;
         config = { allowUnfree = true; };
       };
+      protoc-gen-js4 = pkgs.callPackage ./nix/protoc-gen-js4.nix {};
+
     in {
       devShell = pkgs.mkShell {
-        name = "anytype-heart";
+        name = "anytype-heart-develop";
         nativeBuildInputs = [
           pkgs.protoc-gen-grpc-web
-          pkgs.protoc-gen-js
+          protoc-gen-js4
           pkgs.go_1_24
           pkgs.gox
           pkgs.protobuf3_21
