@@ -769,8 +769,12 @@ func (s *service) FinalizeSubscription(ctx context.Context, req *pb.RpcMembershi
 		return nil, err
 	}
 
+	// update any name immediately (optimistic)
+	s.profileUpdater.UpdateOwnGlobalName(nameservice.NsNameToFullName(req.NsName, req.NsNameType))
+
 	// 2 - clear cache
 	go s.forceRefresh(30 * time.Minute)
+
 	// return out
 	var out pb.RpcMembershipFinalizeResponse
 	out.Error = &pb.RpcMembershipFinalizeResponseError{
@@ -969,6 +973,12 @@ func (s *service) CodeRedeem(ctx context.Context, req *pb.RpcMembershipCodeRedee
 		// return this error as if code was not found
 		return nil, proto.ErrCodeNotFound
 	}
+
+	// update any name immediately (optimistic)
+	s.profileUpdater.UpdateOwnGlobalName(nameservice.NsNameToFullName(nsName, nsNameType))
+
+	// clear cache
+	go s.forceRefresh(30 * time.Minute)
 
 	return &pb.RpcMembershipCodeRedeemResponse{
 		Error: &pb.RpcMembershipCodeRedeemResponseError{
