@@ -11,6 +11,7 @@ import (
 	anysyncinboxclient "github.com/anyproto/any-sync/coordinator/inboxclient"
 	"github.com/anyproto/any-sync/util/crypto"
 	"github.com/anyproto/any-sync/util/periodicsync"
+
 	"github.com/anyproto/anytype-heart/core/wallet"
 	"github.com/anyproto/anytype-heart/space/clientspace"
 	"github.com/anyproto/anytype-heart/space/techspace"

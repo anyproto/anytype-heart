@@ -106,7 +106,7 @@ func (s *Service) CreateWorkspace(ctx context.Context, req *pb.RpcWorkspaceCreat
 	spaceDescription := &spaceinfo.SpaceDescription{
 		Name:             pbtypes.GetString(req.Details, bundle.RelationKeyName.String()),
 		IconImage:        pbtypes.GetString(req.Details, bundle.RelationKeyIconImage.String()),
-		SpaceUxType:      model.SpaceUxType(pbtypes.GetInt64(req.Details, bundle.RelationKeySpaceUxType.String())),
+		SpaceUxType:      model.SpaceUxType(pbtypes.GetInt64(req.Details, bundle.RelationKeySpaceUxType.String())), //nolint:gosec
 		OneToOneIdentity: pbtypes.GetString(req.Details, bundle.RelationKeyOneToOneIdentity.String()),
 	}
 	newSpace, err := s.spaceService.Create(ctx, spaceDescription)

@@ -5,12 +5,13 @@ import (
 	"fmt"
 
 	"github.com/anyproto/any-sync/util/crypto"
+	"go.uber.org/zap"
+
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space/clientspace"
 	"github.com/anyproto/anytype-heart/space/internal/spaceprocess/loader"
 	"github.com/anyproto/anytype-heart/space/spacedomain"
 	"github.com/anyproto/anytype-heart/space/spaceinfo"
-	"go.uber.org/zap"
 )
 
 // for initiator (e.g. from ui avatar, qrcode)
