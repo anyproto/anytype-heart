@@ -8708,6 +8708,13 @@ message Rpc {
 
     }
     message PushNotification {
+
+        enum Mode {
+            All = 0;
+            Mentions = 1;
+            Nothing = 2;
+        }
+
         message RegisterToken {
             message Request {
                 string token = 1;
@@ -8737,13 +8744,6 @@ message Rpc {
                 Mode mode = 2;
             }
 
-            enum Mode {
-                All = 0;
-                Mentions = 1;
-                Nothing = 2;
-                Custom = 3;
-            }
-
             message Response {
                 Error error = 1;
                 ResponseEvent event = 2;
@@ -8760,10 +8760,11 @@ message Rpc {
             }
         }
 
-        message AddMuteIds {
+        message SetForceModeIds {
             message Request {
                 string spaceId = 1;
                 repeated string chatIds = 2;
+                Mode mode = 3;
             }
             message Response {
                 Error error = 1;
@@ -8781,28 +8782,7 @@ message Rpc {
             }
         }
 
-        message AddMentionIds {
-            message Request {
-                string spaceId = 1;
-                repeated string chatIds = 2;
-            }
-            message Response {
-                Error error = 1;
-                ResponseEvent event = 2;
-                message Error {
-                    Code code = 1;
-                    string description = 2;
-
-                    enum Code {
-                        NULL = 0;
-                        UNKNOWN_ERROR = 1;
-                        BAD_INPUT = 2;
-                    }
-                }
-            }
-        }
-
-        message AddAllIds {
+        message ResetIds {
             message Request {
                 string spaceId = 1;
                 repeated string chatIds = 2;

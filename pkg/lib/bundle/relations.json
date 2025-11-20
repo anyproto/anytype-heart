@@ -1668,22 +1668,32 @@
     "source": "details"
   },
   {
-    "description": "Push notification custom muted ids",
+    "description": "Push notification all ids",
     "format": "longtext",
     "hidden": true,
-    "key": "spacePushNotificationCustomMuteIds",
+    "key": "spacePushNotificationForceAllIds",
     "maxCount": 0,
-    "name": "Push muted ids",
+    "name": "Push force all ids",
     "readonly": false,
     "source": "details"
   },
   {
-    "description": "Push notification custom mention ids",
+    "description": "Push notification muted ids",
     "format": "longtext",
     "hidden": true,
-    "key": "spacePushNotificationCustomMentionIds",
+    "key": "spacePushNotificationForceMuteIds",
     "maxCount": 0,
-    "name": "Push mentions ids",
+    "name": "Push force muted ids",
+    "readonly": false,
+    "source": "details"
+  },
+  {
+    "description": "Push notification mention ids",
+    "format": "longtext",
+    "hidden": true,
+    "key": "spacePushNotificationForceMentionIds",
+    "maxCount": 0,
+    "name": "Push force mentions ids",
     "readonly": false,
     "source": "details"
   },

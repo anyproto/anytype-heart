@@ -426,7 +426,6 @@ service ClientCommands {
     // Push
     rpc PushNotificationRegisterToken(anytype.Rpc.PushNotification.RegisterToken.Request) returns (anytype.Rpc.PushNotification.RegisterToken.Response);
     rpc PushNotificationSetSpaceMode(anytype.Rpc.PushNotification.SetSpaceMode.Request) returns (anytype.Rpc.PushNotification.SetSpaceMode.Response);
-    rpc PushNotificationAddMuteIds(anytype.Rpc.PushNotification.AddMuteIds.Request) returns (anytype.Rpc.PushNotification.AddMuteIds.Response);
-    rpc PushNotificationAddMentionIds(anytype.Rpc.PushNotification.AddMentionIds.Request) returns (anytype.Rpc.PushNotification.AddMentionIds.Response);
-    rpc PushNotificationAddAllIds(anytype.Rpc.PushNotification.AddAllIds.Request) returns (anytype.Rpc.PushNotification.AddAllIds.Response);
+    rpc PushNotificationSetForceModeIds(anytype.Rpc.PushNotification.SetForceModeIds.Request) returns (anytype.Rpc.PushNotification.SetForceModeIds.Response);
+    rpc PushNotificationResetIds(anytype.Rpc.PushNotification.ResetIds.Request) returns (anytype.Rpc.PushNotification.ResetIds.Response);
 }

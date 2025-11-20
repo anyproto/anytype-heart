@@ -57,7 +57,7 @@ func (s *service) createObjectType(ctx context.Context, space clientspace.Space,
 	typeKey := domain.TypeKey(uniqueKey.InternalKey())
 
 	if !bundle.HasObjectTypeByKey(typeKey) {
-		s.setOrderId(object, space)
+		s.setTypeOrderId(object, space)
 	}
 
 	createState := state.NewDocWithUniqueKey("", nil, uniqueKey).(*state.State)
@@ -157,7 +157,7 @@ func (s *service) listInstalledTemplatesForType(spc clientspace.Space, typeKey d
 	return existingTemplatesMap, nil
 }
 
-func (s *service) setOrderId(details *domain.Details, spc clientspace.Space) {
+func (s *service) setTypeOrderId(details *domain.Details, spc clientspace.Space) {
 	records, err := s.objectStore.SpaceIndex(spc.Id()).Query(database.Query{
 		Filters: []database.FilterRequest{
 			{
