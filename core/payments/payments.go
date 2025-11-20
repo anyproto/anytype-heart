@@ -288,6 +288,14 @@ func (s *service) fetchAndUpdate(ctx context.Context, forceIfNotExpired, fetchTi
 }
 
 func (s *service) sendMembershipUpdateEvent(membership *model.Membership) {
+	// send ANY name update
+	if membership != nil {
+		nsName := membership.GetNsName()
+		nsNameType := membership.GetNsNameType()
+
+		s.profileUpdater.UpdateOwnGlobalName(nameservice.NsNameToFullName(nsName, nsNameType))
+	}
+
 	s.eventSender.Broadcast(event.NewEventSingleMessage("", &pb.EventMessageValueOfMembershipUpdate{
 		MembershipUpdate: &pb.EventMembershipUpdate{
 			Data: membership,
