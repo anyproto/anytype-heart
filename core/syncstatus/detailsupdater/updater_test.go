@@ -349,6 +349,7 @@ func newFixture(t *testing.T) *fixture {
 	updater := New()
 	statusUpdater := mock_detailsupdater.NewMockSpaceStatusUpdater(t)
 	accountService := mock_account.NewMockService(t)
+	accountService.EXPECT().AccountID().Return("account1").Maybe()
 
 	syncSub := syncsubscriptions.New()
 
@@ -356,9 +357,6 @@ func newFixture(t *testing.T) *fixture {
 
 	a := &app.App{}
 	subscriptionService := subscription.RegisterSubscriptionService(t, a)
-
-	accountService.EXPECT().AccountID().Return("testAccountId").Maybe()
-
 	a.Register(syncSub)
 	a.Register(testutil.PrepareMock(ctx, a, service))
 	a.Register(testutil.PrepareMock(ctx, a, statusUpdater))

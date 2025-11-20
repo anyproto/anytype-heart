@@ -103,7 +103,6 @@ func newFixture(t *testing.T, beforeStart func(fx *fixture)) *fixture {
 	ctrl := gomock.NewController(t)
 	internalSubs := subscription.RegisterSubscriptionService(t, a)
 	networkConfig := mock_spacesyncstatus.NewMockNetworkConfig(t)
-	accountService := mock_account.NewMockService(t)
 	sess := session.NewHookRunner()
 	fx := &fixture{
 		a:                   a,
@@ -120,6 +119,9 @@ func newFixture(t *testing.T, beforeStart func(fx *fixture)) *fixture {
 		syncSubs:            syncsubscriptions.New(),
 		networkConfig:       networkConfig,
 	}
+	accountService := mock_account.NewMockService(t)
+	accountService.EXPECT().AccountID().Return("account1").Maybe()
+
 	// Set startDelay to 0 for immediate execution in tests
 	fx.spaceSyncStatus.startDelay = 0
 
@@ -142,7 +144,7 @@ func newFixture(t *testing.T, beforeStart func(fx *fixture)) *fixture {
 	return fx
 }
 
-func Test(t *testing.T) {
+func TestSpaceStatus(t *testing.T) {
 	t.Run("empty space synced", func(t *testing.T) {
 		fx := newFixture(t, func(fx *fixture) {
 			fx.networkConfig.EXPECT().GetNetworkMode().Return(pb.RpcAccount_DefaultConfig).Maybe()
