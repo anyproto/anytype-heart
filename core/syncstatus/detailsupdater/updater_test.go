@@ -11,6 +11,7 @@ import (
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
+	"github.com/anyproto/anytype-heart/core/anytype/account/mock_account"
 	"github.com/anyproto/anytype-heart/core/block/editor"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock/smarttest"
@@ -347,6 +348,8 @@ func newFixture(t *testing.T) *fixture {
 	service := mock_space.NewMockService(t)
 	updater := New()
 	statusUpdater := mock_detailsupdater.NewMockSpaceStatusUpdater(t)
+	accountService := mock_account.NewMockService(t)
+	accountService.EXPECT().AccountID().Return("account1").Maybe()
 
 	syncSub := syncsubscriptions.New()
 
@@ -357,6 +360,7 @@ func newFixture(t *testing.T) *fixture {
 	a.Register(syncSub)
 	a.Register(testutil.PrepareMock(ctx, a, service))
 	a.Register(testutil.PrepareMock(ctx, a, statusUpdater))
+	a.Register(testutil.PrepareMock(ctx, a, accountService))
 	err := updater.Init(a)
 	require.NoError(t, err)
 
