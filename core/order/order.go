@@ -183,7 +183,6 @@ func (o *orderSetter) reorder(objectIds []string, originalOrderIds map[string]st
 	originalIds := getAllOriginalIds(originalOrderIds)
 	if needFullList {
 		objectIds = calculateFullList(objectIds, originalIds, originalOrderIds)
-
 	}
 
 	nextExisting := o.precalcNext(originalOrderIds, objectIds)
@@ -242,17 +241,14 @@ func getAllOriginalIds(originalOrderIds map[string]string) []string {
 	})
 }
 
-func getIdsInOriginalOrder(objectIds []string, originalOrderIds map[string]string) []string {
-	listWithOrder := make([]idAndOrderId, 0, len(objectIds))
-	for _, id := range objectIds {
-		listWithOrder = append(listWithOrder, idAndOrderId{id: id, orderId: originalOrderIds[id]})
+func getIdsInOriginalOrder(objectIdsSet map[string]struct{}, fullOriginalIds []string) []string {
+	originalIds := make([]string, 0, len(objectIdsSet))
+	for _, id := range fullOriginalIds {
+		if _, ok := objectIdsSet[id]; ok {
+			originalIds = append(originalIds, id)
+		}
 	}
-	sort.Slice(listWithOrder, func(i, j int) bool {
-		return listWithOrder[i].orderId < listWithOrder[j].orderId
-	})
-	return lo.Map(listWithOrder, func(it idAndOrderId, _ int) string {
-		return it.id
-	})
+	return originalIds
 }
 
 func hasItemNotInSet[T comparable](items []T, set map[T]struct{}) bool {
@@ -283,7 +279,7 @@ func calculateFullList(objectIds []string, fullOriginalIds []string, originalOrd
 		return objectIds
 	}
 
-	originalIds := getIdsInOriginalOrder(objectIds, originalOrderIds)
+	originalIds := getIdsInOriginalOrder(objectIdsSet, fullOriginalIds)
 	ops := slice.Diff(originalIds, objectIds, func(s string) string {
 		return s
 	}, func(s string, s2 string) bool {
