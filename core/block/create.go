@@ -18,7 +18,6 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space/spaceinfo"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
-
 	"github.com/gogo/protobuf/types"
 )
 
@@ -104,13 +103,10 @@ func (s *Service) CreateOneToOneFromInbox(ctx context.Context, spaceDescription 
 }
 
 func (s *Service) CreateWorkspace(ctx context.Context, req *pb.RpcWorkspaceCreateRequest) (spaceID string, startingPageId string, err error) {
-	spaceDescription := &spaceinfo.SpaceDescription{
-		Name:             pbtypes.GetString(req.Details, bundle.RelationKeyName.String()),
-		IconImage:        pbtypes.GetString(req.Details, bundle.RelationKeyIconImage.String()),
-		SpaceUxType:      model.SpaceUxType(pbtypes.GetInt64(req.Details, bundle.RelationKeySpaceUxType.String())), //nolint:gosec
-		OneToOneIdentity: pbtypes.GetString(req.Details, bundle.RelationKeyOneToOneIdentity.String()),
-	}
-	newSpace, err := s.spaceService.Create(ctx, spaceDescription)
+	spaceDetails := domain.NewDetailsFromProto(req.Details)
+	spaceDescription := spaceinfo.NewSpaceDescriptionFromDetails(spaceDetails)
+
+	newSpace, err := s.spaceService.Create(ctx, &spaceDescription)
 	if err != nil {
 		return "", "", fmt.Errorf("error creating space: %w", err)
 	}

@@ -322,12 +322,9 @@ var workspaceKeysToCopy = []domain.RelationKey{
 	bundle.RelationKeyDescription,
 }
 
-func (s *SpaceView) GetSpaceDescription() (data spaceinfo.SpaceDescription) {
+func (s *SpaceView) GetSpaceDescription() spaceinfo.SpaceDescription {
 	details := s.CombinedDetails()
-	data.Name = details.GetString(bundle.RelationKeyName)
-	data.IconImage = details.GetString(bundle.RelationKeyIconImage)
-	data.SpaceUxType = model.SpaceUxType(details.GetInt64(bundle.RelationKeySpaceUxType))
-	return
+	return spaceinfo.NewSpaceDescriptionFromDetails(details)
 }
 
 func (s *SpaceView) SetSpaceData(details *domain.Details) error {
