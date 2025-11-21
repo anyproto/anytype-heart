@@ -212,7 +212,12 @@ func collectFileUsageInfo(s *common.SnapshotModel, info *useCaseInfo) {
 			continue
 		}
 
-		for _, val := range v.StringList() {
+		values, ok := v.TryWrapToStringList()
+		if !ok {
+			continue
+		}
+
+		for _, val := range values {
 			fInfo, found := info.fileObjects[val]
 			if found {
 				fInfo.isUsed = true
