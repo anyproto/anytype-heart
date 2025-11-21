@@ -100,8 +100,6 @@ func (s *onetoone) processOneToOneInvite(packet *coordinatorproto.InboxPacket) (
 		return fmt.Errorf("processOneToOneInvite error: %s", err.Error())
 	}
 
-	log.Warn("created onetoone space from inbox")
-
 	return err
 }
 func (s *onetoone) Name() (name string) {
@@ -117,9 +115,6 @@ func (s *onetoone) Close(_ context.Context) (err error) {
 }
 
 func (s *onetoone) SendOneToOneInvite(ctx context.Context, receiverIdentity string, myProfile *model.IdentityProfileWithKey) (err error) {
-	log.Warn("SendOneToOneInvite",
-		zap.String("key", string(myProfile.RequestMetadata)),
-	)
 	body, err := myProfile.Marshal()
 	if err != nil {
 		return

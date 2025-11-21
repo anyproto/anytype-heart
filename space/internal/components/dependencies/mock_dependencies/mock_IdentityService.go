@@ -5,6 +5,8 @@ package mock_dependencies
 import (
 	context "context"
 
+	app "github.com/anyproto/any-sync/app"
+
 	crypto "github.com/anyproto/any-sync/util/crypto"
 
 	domain "github.com/anyproto/anytype-heart/core/domain"
@@ -148,6 +150,97 @@ func (_c *MockIdentityService_GetMyProfileDetails_Call) Return(identity string, 
 }
 
 func (_c *MockIdentityService_GetMyProfileDetails_Call) RunAndReturn(run func(context.Context) (string, crypto.SymKey, *domain.Details)) *MockIdentityService_GetMyProfileDetails_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// Init provides a mock function with given fields: a
+func (_m *MockIdentityService) Init(a *app.App) error {
+	ret := _m.Called(a)
+
+	if len(ret) == 0 {
+		panic("no return value specified for Init")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(*app.App) error); ok {
+		r0 = rf(a)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// MockIdentityService_Init_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Init'
+type MockIdentityService_Init_Call struct {
+	*mock.Call
+}
+
+// Init is a helper method to define mock.On call
+//   - a *app.App
+func (_e *MockIdentityService_Expecter) Init(a interface{}) *MockIdentityService_Init_Call {
+	return &MockIdentityService_Init_Call{Call: _e.mock.On("Init", a)}
+}
+
+func (_c *MockIdentityService_Init_Call) Run(run func(a *app.App)) *MockIdentityService_Init_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(*app.App))
+	})
+	return _c
+}
+
+func (_c *MockIdentityService_Init_Call) Return(err error) *MockIdentityService_Init_Call {
+	_c.Call.Return(err)
+	return _c
+}
+
+func (_c *MockIdentityService_Init_Call) RunAndReturn(run func(*app.App) error) *MockIdentityService_Init_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// Name provides a mock function with given fields:
+func (_m *MockIdentityService) Name() string {
+	ret := _m.Called()
+
+	if len(ret) == 0 {
+		panic("no return value specified for Name")
+	}
+
+	var r0 string
+	if rf, ok := ret.Get(0).(func() string); ok {
+		r0 = rf()
+	} else {
+		r0 = ret.Get(0).(string)
+	}
+
+	return r0
+}
+
+// MockIdentityService_Name_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Name'
+type MockIdentityService_Name_Call struct {
+	*mock.Call
+}
+
+// Name is a helper method to define mock.On call
+func (_e *MockIdentityService_Expecter) Name() *MockIdentityService_Name_Call {
+	return &MockIdentityService_Name_Call{Call: _e.mock.On("Name")}
+}
+
+func (_c *MockIdentityService_Name_Call) Run(run func()) *MockIdentityService_Name_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *MockIdentityService_Name_Call) Return(name string) *MockIdentityService_Name_Call {
+	_c.Call.Return(name)
+	return _c
+}
+
+func (_c *MockIdentityService_Name_Call) RunAndReturn(run func() string) *MockIdentityService_Name_Call {
 	_c.Call.Return(run)
 	return _c
 }

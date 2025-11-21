@@ -69,30 +69,6 @@ func (m *mockAclJoiner) Name() string {
 	return "aclJoiner"
 }
 
-type mockIdentityServiceComponent struct {
-	*mock_dependencies.MockIdentityService
-}
-
-func (m *mockIdentityServiceComponent) Init(a *app.App) error {
-	return nil
-}
-
-func (m *mockIdentityServiceComponent) Name() string {
-	return "mockIdentityService"
-}
-
-type mockOneToOneServiceComponent struct {
-	*mock_onetoone.MockService
-}
-
-func (m *mockOneToOneServiceComponent) Init(a *app.App) error {
-	return nil
-}
-
-func (m *mockOneToOneServiceComponent) Name() string {
-	return "mockOneToOneService"
-}
-
 func TestService_Init(t *testing.T) {
 	t.Run("tech space getter", func(t *testing.T) {
 		serv := New().(*service)
@@ -262,11 +238,11 @@ func newFixture(t *testing.T, expectOldAccount func(t *testing.T, fx *fixture)) 
 	}).Maybe()
 	collService := &dummyCollectionService{}
 	subscriptionService := subscription.New()
-	identityService := &mockIdentityServiceComponent{mock_dependencies.NewMockIdentityService(t)}
+	identityService := testutil.PrepareMock(ctx, fx.a, mock_dependencies.NewMockIdentityService(t))
 	onetooneServiceMock := mock_onetoone.NewMockService(t)
 	onetooneServiceMock.EXPECT().Run(mock.Anything).Return(nil).Maybe()
 	onetooneServiceMock.EXPECT().Close(mock.Anything).Return(nil).Maybe()
-	onetooneService := &mockOneToOneServiceComponent{onetooneServiceMock}
+	onetooneService := testutil.PrepareMock(ctx, fx.a, onetooneServiceMock)
 	fx.a.
 		Register(testutil.PrepareMock(ctx, fx.a, wallet)).
 		Register(fx.config).

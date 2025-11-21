@@ -52,7 +52,7 @@ type inboxclient struct {
 }
 
 func (s *inboxclient) Init(a *app.App) (err error) {
-	s.periodicCheck = periodicsync.NewPeriodicSync(50, 0, s.checkMessages, log)
+	s.periodicCheck = periodicsync.NewPeriodicSync(300, 0, s.checkMessages, log)
 	s.spaceService = app.MustComponent[SpaceService](a)
 	s.wallet = app.MustComponent[wallet.Wallet](a)
 
@@ -192,7 +192,6 @@ func (s *inboxclient) fetchMessages() (messages []*coordinatorproto.InboxMessage
 }
 
 func (s *inboxclient) checkMessages(ctx context.Context) (err error) {
-	log.Warn("inbox: checkMessages")
 	s.ReceiveNotify(&coordinatorproto.NotifySubscribeEvent{})
 	return nil
 }
@@ -209,7 +208,7 @@ func (s *inboxclient) ReceiveNotify(event *coordinatorproto.NotifySubscribeEvent
 		return
 	}
 	for _, msg := range messages {
-		log.Warn("inbox: got a message", zap.String("type", coordinatorproto.InboxPayloadType_name[int32(msg.Packet.Payload.PayloadType)]))
+		log.Info("inbox: got a message", zap.String("type", coordinatorproto.InboxPayloadType_name[int32(msg.Packet.Payload.PayloadType)]))
 		if handler, ok := s.receivers[msg.Packet.Payload.PayloadType]; ok {
 			herr := handler(msg.Packet)
 			if herr != nil {
