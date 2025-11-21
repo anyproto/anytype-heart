@@ -407,7 +407,6 @@ func (s *service) findProfile(identityData *identityrepoproto.DataWithIdentity) 
 	key := s.identityEncryptionKeys[identityData.Identity]
 	s.lock.Unlock()
 
-	log.Warn("findProfile", zap.String("key", fmt.Sprintf("%#v\n", key)))
 	return extractProfile(identityData, key)
 }
 

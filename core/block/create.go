@@ -2,6 +2,7 @@ package block
 
 import (
 	"context"
+	"encoding/base64"
 	"errors"
 	"fmt"
 
@@ -17,8 +18,6 @@ import (
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space/spaceinfo"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
-	"github.com/gogo/protobuf/types"
 )
 
 func (s *Service) ObjectDuplicate(ctx context.Context, id string) (objectID string, err error) {
@@ -65,31 +64,21 @@ func (s *Service) CreateOneToOneFromInbox(ctx context.Context, spaceDescription 
 
 	predefinedObjectIDs := newSpace.DerivedIDs()
 
-	req := &pb.RpcWorkspaceCreateRequest{
-		Details: &types.Struct{
-			Fields: map[string]*types.Value{
-				bundle.RelationKeySpaceUxType.String():      pbtypes.Float64(float64(model.SpaceUxType_OneToOne)),
-				bundle.RelationKeyName.String():             pbtypes.String(identityProfileWithKey.IdentityProfile.Name),
-				bundle.RelationKeyIconImage.String():        pbtypes.String(identityProfileWithKey.IdentityProfile.IconCid),
-				bundle.RelationKeyOneToOneIdentity.String(): pbtypes.String(identityProfileWithKey.IdentityProfile.Identity),
-				bundle.RelationKeyIconOption.String():       pbtypes.Float64(float64(5)),
-				bundle.RelationKeySpaceDashboardId.String(): pbtypes.String("lastOpened"),
-			},
-		},
-		UseCase:  pb.RpcObjectImportUseCaseRequest_CHAT_SPACE,
-		WithChat: true,
+	requestMetadataKeyStr := base64.StdEncoding.EncodeToString(identityProfileWithKey.RequestMetadata)
+	details := []domain.Detail{
+		{Key: bundle.RelationKeySpaceUxType, Value: domain.Float64(float64(model.SpaceUxType_OneToOne))},
+		{Key: bundle.RelationKeyName, Value: domain.String(identityProfileWithKey.IdentityProfile.Name)},
+		{Key: bundle.RelationKeyIconImage, Value: domain.String(identityProfileWithKey.IdentityProfile.IconCid)},
+		{Key: bundle.RelationKeyIconOption, Value: domain.Float64(float64(5))},
+		{Key: bundle.RelationKeyOneToOneIdentity, Value: domain.String(identityProfileWithKey.IdentityProfile.Identity)},
+		{Key: bundle.RelationKeyOneToOneRequestMetadataKey, Value: domain.String(requestMetadataKeyStr)},
+		{Key: bundle.RelationKeySpaceDashboardId, Value: domain.String("lastOpened")},
 	}
 
 	err = cache.Do(s, predefinedObjectIDs.Workspace, func(b basic.DetailsSettable) error {
-		details := make([]domain.Detail, 0, len(req.Details.GetFields()))
-		for k, v := range req.Details.GetFields() {
-			details = append(details, domain.Detail{
-				Key:   domain.RelationKey(k),
-				Value: domain.ValueFromProto(v),
-			})
-		}
 		return b.SetDetails(nil, details, true)
 	})
+
 	if err != nil {
 		return fmt.Errorf("set details for space %s: %w", newSpace.Id(), err)
 	}

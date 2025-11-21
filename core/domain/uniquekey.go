@@ -77,7 +77,6 @@ func MustUniqueKey(sbt smartblock.SmartBlockType, key string) UniqueKey {
 	return uk
 }
 
-// and here
 func UnmarshalUniqueKey(raw string) (UniqueKey, error) {
 	parts := strings.Split(raw, uniqueKeySeparator)
 	if raw == "" || len(parts) > 2 {
