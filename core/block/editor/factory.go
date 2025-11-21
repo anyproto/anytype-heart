@@ -178,7 +178,7 @@ func (f *ObjectFactory) InitObject(space smartblock.Space, id string, initCtx *s
 		applyFlags = append(applyFlags, smartblock.AllowApplyWithEmptyTree)
 	}
 	migration.RunMigrations(sb, initCtx)
-	initCtx.State.SetChangeType(domain.ObjectInit)
+	initCtx.State.SetChangeType(domain.ChangeTypeObjectInit)
 	err = sb.Apply(initCtx.State, applyFlags...)
 	if errors.Is(err, smartblock.ErrApplyOnEmptyTreeDisallowed) {
 		// in this case we still want the smartblock to bootstrap to receive the rest of the tree

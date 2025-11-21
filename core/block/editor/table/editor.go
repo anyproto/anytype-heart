@@ -709,7 +709,7 @@ func (t *editor) cleanupTables(_ smartblock.ApplyInfo) error {
 		log.Errorf("cleanup iterate: %s", err)
 	}
 
-	s.SetChangeType(domain.CleanupTables)
+	s.SetChangeType(domain.ChangeTypeCleanupTables)
 
 	if err = t.sb.Apply(s, smartblock.KeepInternalFlags); err != nil {
 		if errors.Is(err, source.ErrReadOnly) {

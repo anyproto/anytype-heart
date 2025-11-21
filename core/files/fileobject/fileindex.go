@@ -236,7 +236,7 @@ func (ind *indexer) indexFile(ctx context.Context, id domain.FullID, fileId doma
 	}
 	err = space.Do(id.ObjectID, func(sb smartblock.SmartBlock) error {
 		st := sb.NewState()
-		st.SetChangeType(domain.Indexing)
+		st.SetChangeType(domain.ChangeTypeIndexing)
 		infos, err := ind.fileService.GetFileVariants(ctx, fileId, st.GetFileInfo().EncryptionKeys)
 		if err != nil {
 			log.With("spaceId", id.SpaceID, "id", id.ObjectID).Errorf("indexFile: get file variants: %v", err)

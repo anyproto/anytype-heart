@@ -32,14 +32,14 @@ type orderSettable struct {
 func (s *orderSettable) SetOrder(orderId string) error {
 	st := s.NewState()
 	st.SetDetail(s.orderKey, domain.String(orderId))
-	st.SetChangeType(domain.OrderOperation)
+	st.SetChangeType(domain.ChangeTypeOrderOperation)
 	return s.Apply(st)
 }
 
 func (s *orderSettable) UnsetOrder() error {
 	st := s.NewState()
 	st.RemoveDetail(s.orderKey)
-	st.SetChangeType(domain.OrderOperation)
+	st.SetChangeType(domain.ChangeTypeOrderOperation)
 	return s.Apply(st)
 }
 
