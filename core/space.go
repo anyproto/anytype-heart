@@ -198,9 +198,12 @@ func (mw *Middleware) SpaceInviteView(cctx context.Context, req *pb.RpcSpaceInvi
 	}
 	return &pb.RpcSpaceInviteViewResponse{
 		CreatorName:       inviteView.CreatorName,
+		CreatorIconCid:    inviteView.CreatorIconCid,
 		SpaceId:           inviteView.SpaceId,
 		SpaceName:         inviteView.SpaceName,
 		SpaceIconCid:      inviteView.SpaceIconCid,
+		SpaceIconOption:   uint32(inviteView.SpaceIconOption),
+		SpaceUxType:       uint32(inviteView.SpaceUxType),
 		IsGuestUserInvite: inviteView.IsGuestUserInvite(),
 		// nolint: gosec
 		InviteType: model.InviteType(inviteView.InviteType),
