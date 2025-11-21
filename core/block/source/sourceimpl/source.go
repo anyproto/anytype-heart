@@ -402,7 +402,7 @@ func (s *treeSource) buildChange(params source.PushChangeParams) (c *pb.Change) 
 	c = &pb.Change{
 		Timestamp:  params.Time.Unix(),
 		Version:    params.State.MigrationVersion(),
-		ChangeType: uint32(params.ChangeType),
+		ChangeType: params.ChangeType.Raw(),
 	}
 	if params.DoSnapshot || s.needSnapshot() || len(params.Changes) == 0 {
 		c.Snapshot = &pb.ChangeSnapshot{
@@ -611,7 +611,7 @@ func BuildState(spaceId string, initState *state.State, ot objecttree.ReadableOb
 
 			model := change.Model.(*pb.Change)
 
-			if model.ChangeType == 0 {
+			if model.ChangeType == domain.ChangeTypeUserChange.Raw() {
 				sbHandler.CollectLastModifiedInfo(change)
 			}
 

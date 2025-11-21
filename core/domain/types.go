@@ -75,3 +75,7 @@ func (c ChangeType) String() string {
 		return "Unknown"
 	}
 }
+
+func (c ChangeType) Raw() uint32 {
+	return uint32(c)
+}

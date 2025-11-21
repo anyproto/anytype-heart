@@ -737,7 +737,7 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 		if notPushChanges {
 			return nil
 		}
-		if !sb.source.ReadOnly() && changeType == 0 {
+		if !sb.source.ReadOnly() && changeType == domain.ChangeTypeUserChange {
 			// We can set details directly in object's state, they'll be indexed correctly
 			st.SetLastModified(lastModified.Unix(), sb.currentParticipantId)
 		}
