@@ -909,11 +909,17 @@ func (e *exportContext) addObjectsAndCollectRecommendedRelations(objectTypes []d
 	recommendedRelations := make([]string, 0, len(objectTypes))
 	for i := 0; i < len(objectTypes); i++ {
 		rawUniqueKey := objectTypes[i].Details.GetString(bundle.RelationKeyUniqueKey)
+		id := objectTypes[i].Details.GetString(bundle.RelationKeyId)
 		uniqueKey, err := domain.UnmarshalUniqueKey(rawUniqueKey)
 		if err != nil {
-			return nil, err
+			layout := model.ObjectTypeLayout(objectTypes[i].Details.GetInt64(bundle.RelationKeyResolvedLayout)) // nolint:gosec
+			if layout == model.ObjectType_objectType {
+				log.Errorf("failed to unmarshal uniqueKey '%s' of object type '%s': %s", rawUniqueKey, id, err.Error())
+				return nil, err
+			}
+			log.Warnf("object '%s' with wrong layout '%s' is included as type or setOf value", id, layout.String())
+			continue
 		}
-		id := objectTypes[i].Details.GetString(bundle.RelationKeyId)
 		e.docs[id] = &Doc{Details: objectTypes[i].Details, isLink: e.isLinkProcess}
 		if uniqueKey.SmartblockType() == smartblock.SmartBlockTypeObjectType {
 			key, err := domain.GetTypeKeyFromRawUniqueKey(rawUniqueKey)
@@ -948,7 +954,13 @@ func (e *exportContext) addRecommendedRelations(recommendedRelations []string) e
 		relationKey := relation.Details.GetString(bundle.RelationKeyUniqueKey)
 		uniqueKey, err := domain.UnmarshalUniqueKey(relationKey)
 		if err != nil {
-			return err
+			layout := model.ObjectTypeLayout(relation.Details.GetInt64(bundle.RelationKeyResolvedLayout)) // nolint:gosec
+			if layout == model.ObjectType_relation {
+				log.Errorf("failed to unmarshal uniqueKey '%s' of relation '%s': %s", relationKey, id, err.Error())
+				return err
+			}
+			log.Warnf("object '%s' with wrong layout '%s' is included as recommended relation", id, layout.String())
+			continue
 		}
 		if bundle.IsSystemRelation(domain.RelationKey(uniqueKey.InternalKey())) {
 			continue
