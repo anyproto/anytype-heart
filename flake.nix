@@ -13,7 +13,7 @@
 
     in {
       devShell = pkgs.mkShell {
-        name = "anytype-heart-develop";
+        name = "anytype-heart";
         nativeBuildInputs = [
           pkgs.protoc-gen-grpc-web
           protoc-gen-js4

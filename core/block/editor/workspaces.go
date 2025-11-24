@@ -166,5 +166,11 @@ func (w *Workspaces) onApply(info smartblock.ApplyInfo) error {
 
 func (w *Workspaces) onWorkspaceChanged(state *state.State) {
 	details := state.CombinedDetails().Copy()
+	spaceUxType := model.SpaceUxType(details.GetInt64(bundle.RelationKeySpaceUxType)) //nolint:gosec
+	isOneToOne := spaceUxType == model.SpaceUxType_OneToOne
+	if isOneToOne {
+		return
+	}
+
 	w.spaceService.OnWorkspaceChanged(w.SpaceID(), details)
 }

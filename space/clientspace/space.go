@@ -56,6 +56,7 @@ type Space interface {
 
 	IsReadOnly() bool
 	IsPersonal() bool
+	IsOneToOne() bool
 	GetAclIdentity() crypto.PubKey
 
 	KeyValueService() keyvalueservice.Service
@@ -296,6 +297,10 @@ func (s *space) GetTypeIdByKey(ctx context.Context, key domain.TypeKey) (id stri
 
 func (s *space) IsPersonal() bool {
 	return s.Id() == s.personalSpaceId
+}
+
+func (s *space) IsOneToOne() bool {
+	return s.CommonSpace().Acl().AclState().IsOneToOne()
 }
 
 func (s *space) GetAclIdentity() crypto.PubKey {

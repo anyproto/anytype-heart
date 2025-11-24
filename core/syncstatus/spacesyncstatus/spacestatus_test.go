@@ -125,6 +125,8 @@ func newFixture(t *testing.T, beforeStart func(fx *fixture)) *fixture {
 	// Set startDelay to 0 for immediate execution in tests
 	fx.spaceSyncStatus.startDelay = 0
 
+	accountService.EXPECT().AccountID().Return("testAccountId").Maybe()
+
 	a.Register(fx.syncSubs).
 		Register(testutil.PrepareMock(ctx, a, networkConfig)).
 		Register(testutil.PrepareMock(ctx, a, fx.nodeStatus)).

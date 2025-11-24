@@ -120,18 +120,20 @@ const (
 )
 
 type SpaceDescription struct {
-	Name        string
-	IconImage   string
-	IconOption  int
-	SpaceUxType model.SpaceUxType
+	Name             string
+	IconImage        string
+	IconOption       int
+	SpaceUxType      model.SpaceUxType
+	OneToOneIdentity string
 }
 
 func NewSpaceDescriptionFromDetails(details *domain.Details) SpaceDescription {
 	return SpaceDescription{
-		Name:        details.GetString(bundle.RelationKeyName),
-		IconImage:   details.GetString(bundle.RelationKeyIconImage),
-		IconOption:  int(details.GetInt64(bundle.RelationKeyIconOption)),
-		SpaceUxType: model.SpaceUxType(details.GetInt64(bundle.RelationKeySpaceUxType)),
+		Name:             details.GetString(bundle.RelationKeyName),
+		IconImage:        details.GetString(bundle.RelationKeyIconImage),
+		IconOption:       int(details.GetInt64(bundle.RelationKeyIconOption)),
+		SpaceUxType:      model.SpaceUxType(details.GetInt64(bundle.RelationKeySpaceUxType)), // #nosec G115
+		OneToOneIdentity: details.GetString(bundle.RelationKeyOneToOneIdentity),
 	}
 }
 
@@ -143,4 +145,5 @@ func (s *SpaceDescription) UpdateDetails(st *state.State) {
 	st.SetDetailAndBundledRelation(bundle.RelationKeySpaceUxType, domain.Int64(s.SpaceUxType))
 	st.SetDetailAndBundledRelation(bundle.RelationKeyIconImage, domain.String(s.IconImage))
 	st.SetDetailAndBundledRelation(bundle.RelationKeyIconOption, domain.Int64(s.IconOption))
+	// OneToOneIdentity is set only once
 }

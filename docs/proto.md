@@ -2047,6 +2047,7 @@
     - [FileEncryptionKey](#anytype-model-FileEncryptionKey)
     - [FileInfo](#anytype-model-FileInfo)
     - [IdentityProfile](#anytype-model-IdentityProfile)
+    - [IdentityProfileWithKey](#anytype-model-IdentityProfileWithKey)
     - [Import](#anytype-model-Import)
     - [InternalFlag](#anytype-model-InternalFlag)
     - [Invite](#anytype-model-Invite)
@@ -32400,6 +32401,22 @@ Used to decode block meta only, without the content itself
 
 
 
+<a name="anytype-model-IdentityProfileWithKey"></a>
+
+### IdentityProfileWithKey
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| identityProfile | [IdentityProfile](#anytype-model-IdentityProfile) |  |  |
+| requestMetadata | [bytes](#bytes) |  |  |
+
+
+
+
+
+
 <a name="anytype-model-Import"></a>
 
 ### Import
@@ -34256,6 +34273,7 @@ RelationFormat describes how the underlying data is stored in the google.protobu
 | Data | 1 | objects-first UX |
 | Stream | 2 | stream UX (chat with limited amount of owners) |
 | Chat | 3 | chat UX |
+| OneToOne | 4 | onetoone UX (space with chat and immutable ACL between two participants) |
 
 
 
