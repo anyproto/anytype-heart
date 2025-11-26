@@ -377,7 +377,7 @@ func (s *SpaceView) SetSpaceData(details *domain.Details) error {
 func (s *SpaceView) UpdateLastOpenedDate() error {
 	st := s.NewState()
 	st.SetLocalDetail(bundle.RelationKeyLastOpenedDate, domain.Int64(time.Now().Unix()))
-	return s.Apply(st, smartblock.NoHistory, smartblock.NoEvent, smartblock.SkipIfNoChanges, smartblock.KeepInternalFlags)
+	return s.Apply(st, smartblock.NoHistory, smartblock.NoEvent, smartblock.KeepInternalFlags)
 }
 
 func stateSetAccessType(st *state.State, accessType spaceinfo.AccessType) {

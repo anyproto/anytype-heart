@@ -180,7 +180,7 @@ func (a *accountObject) Init(ctx *smartblock.InitContext) error {
 	if err != nil {
 		return fmt.Errorf("init state: %w", err)
 	}
-	return a.SmartBlock.Apply(ctx.State, smartblock.NotPushChanges, smartblock.NoHistory, smartblock.SkipIfNoChanges)
+	return a.SmartBlock.Apply(ctx.State, smartblock.NotPushChanges, smartblock.NoHistory)
 }
 
 func (a *accountObject) genInitialDoc() (builder *storestate.Builder, err error) {
