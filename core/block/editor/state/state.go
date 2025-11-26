@@ -41,7 +41,7 @@ const (
 	DataviewTemplatesBlockID = "templates"
 	FeaturedRelationsID      = "featuredRelations"
 	SettingsStoreKey         = "settings"
-	SettingsAnalyticsId      = "analyticsID"
+	SettingsAnalyticsId      = "analyticsID" // do not use it for space's analyticsId
 )
 
 var (
