@@ -230,7 +230,7 @@ func (s *Service) OpenBlock(sctx session.Context, id domain.FullID, includeRelat
 		st := ob.NewState()
 
 		st.SetLocalDetail(bundle.RelationKeyLastOpenedDate, domain.Int64(time.Now().Unix()))
-		if err = ob.Apply(st, smartblock.NoHistory, smartblock.NoEvent, smartblock.SkipIfNoChanges, smartblock.KeepInternalFlags, smartblock.IgnoreNoPermissions); err != nil {
+		if err = ob.Apply(st, smartblock.NoHistory, smartblock.NoEvent, smartblock.KeepInternalFlags, smartblock.IgnoreNoPermissions); err != nil {
 			log.Errorf("failed to update lastOpenedDate: %s", err)
 		}
 		if err = ob.Space().RefreshObjects([]string{ob.Id()}); err != nil {
@@ -430,7 +430,7 @@ func (s *Service) SpaceInitChat(ctx context.Context, spaceId string) error {
 		st.SetLocalDetail(bundle.RelationKeyChatId, domain.String(chatId))
 		st.SetDetail(bundle.RelationKeyHasChat, domain.Bool(true))
 
-		return b.Apply(st, smartblock.NoHistory, smartblock.NoEvent, smartblock.SkipIfNoChanges, smartblock.KeepInternalFlags, smartblock.IgnoreNoPermissions)
+		return b.Apply(st, smartblock.NoHistory, smartblock.NoEvent, smartblock.KeepInternalFlags, smartblock.IgnoreNoPermissions)
 	})
 	if err != nil {
 		return fmt.Errorf("apply chatId to workspace: %w", err)

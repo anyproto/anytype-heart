@@ -59,7 +59,6 @@ const (
 	NoRestrictions
 	NoHooks
 	DoSnapshot
-	SkipIfNoChanges
 	KeepInternalFlags
 	IgnoreNoPermissions
 	NotPushChanges // Used only for read-only actions like InitObject or OpenObject
@@ -625,7 +624,6 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 		doSnapshot              = false
 		checkRestrictions       = true
 		hooks                   = true
-		skipIfNoChanges         = false
 		keepInternalFlags       = false
 		ignoreNoPermissions     = false
 		notPushChanges          = false
@@ -643,8 +641,6 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 			checkRestrictions = false
 		case NoHooks:
 			hooks = false
-		case SkipIfNoChanges:
-			skipIfNoChanges = true
 		case KeepInternalFlags:
 			keepInternalFlags = true
 		case IgnoreNoPermissions:
@@ -723,7 +719,7 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 
 	changes := st.GetChanges()
 	var changeId string
-	if skipIfNoChanges && len(changes) == 0 && !migrationVersionUpdated {
+	if len(changes) == 0 && !migrationVersionUpdated {
 		if hasDetailsMsgs(msgs) {
 			// means we have only local details changed, so lets index but skip full text
 			sb.runIndexer(st, SkipFullTextIfHeadsNotChanged)
@@ -1277,7 +1273,7 @@ func ObjectApplyTemplate(sb SmartBlock, s *state.State, templates ...template.St
 	}
 	template.InitTemplate(s, templates...)
 
-	return sb.Apply(s, NoHistory, NoEvent, NoRestrictions, SkipIfNoChanges)
+	return sb.Apply(s, NoHistory, NoEvent, NoRestrictions)
 }
 
 func hasChangesToPush(changes []*pb.ChangeContent) bool {
