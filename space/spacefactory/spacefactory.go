@@ -309,8 +309,16 @@ func (s *spaceFactory) CreateOneToOneSpace(ctx context.Context, id string, descr
 	info.OneToOneRequestMetadataKey = requestMetadataKeyStr
 	info.SetAccountStatus(spaceinfo.AccountStatusUnknown)
 
-	if err := s.techSpace.SpaceViewCreate(ctx, id, true, info, description); err != nil {
-		return nil, err
+	spaceView, _ := s.techSpace.GetSpaceView(ctx, id)
+	if spaceView == nil {
+		if err := s.techSpace.SpaceViewCreate(ctx, id, true, info, description); err != nil {
+			return nil, err
+		}
+	} else {
+		// info.SetAccountStatus(spaceinfo.AccountStatusActive)
+		if err := spaceView.SetSpacePersistentInfo(info); err != nil {
+			return nil, err
+		}
 	}
 
 	ctrl, err := shareablespace.NewSpaceController(id, info, s.app)
