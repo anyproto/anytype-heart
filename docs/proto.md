@@ -2086,6 +2086,7 @@
     - [FileEncryptionKey](#anytype-model-FileEncryptionKey)
     - [FileInfo](#anytype-model-FileInfo)
     - [IdentityProfile](#anytype-model-IdentityProfile)
+    - [IdentityProfileWithKey](#anytype-model-IdentityProfileWithKey)
     - [Import](#anytype-model-Import)
     - [InternalFlag](#anytype-model-InternalFlag)
     - [Invite](#anytype-model-Invite)
@@ -21480,6 +21481,9 @@ Available undo/redo operations
 | spaceName | [string](#string) |  |  |
 | spaceIconCid | [string](#string) |  |  |
 | creatorName | [string](#string) |  |  |
+| creatorIconCid | [string](#string) |  |  |
+| spaceIconOption | [uint32](#uint32) |  |  |
+| spaceUxType | [uint32](#uint32) |  |  |
 | isGuestUserInvite | [bool](#bool) |  | deprecated, use inviteType |
 | inviteType | [model.InviteType](#anytype-model-InviteType) |  |  |
 
@@ -31347,6 +31351,7 @@ Removes document from subscription
 | error | [Event.Space.SyncError](#anytype-Event-Space-SyncError) |  |  |
 | syncingObjectsCounter | [int64](#int64) |  |  |
 | notSyncedFilesCounter | [int64](#int64) |  |  |
+| uploadingFilesCounter | [int64](#int64) |  |  |
 
 
 
@@ -33024,6 +33029,22 @@ Used to decode block meta only, without the content itself
 
 
 
+<a name="anytype-model-IdentityProfileWithKey"></a>
+
+### IdentityProfileWithKey
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| identityProfile | [IdentityProfile](#anytype-model-IdentityProfile) |  |  |
+| requestMetadata | [bytes](#bytes) |  |  |
+
+
+
+
+
+
 <a name="anytype-model-Import"></a>
 
 ### Import
@@ -33075,10 +33096,14 @@ Used to decode block meta only, without the content itself
 | ----- | ---- | ----- | ----------- |
 | creatorIdentity | [string](#string) |  |  |
 | creatorName | [string](#string) |  |  |
+| creatorIconCid | [string](#string) |  |  |
+| creatorIconEncryptionKeys | [FileEncryptionKey](#anytype-model-FileEncryptionKey) | repeated |  |
 | aclKey | [bytes](#bytes) |  |  |
 | spaceId | [string](#string) |  |  |
 | spaceName | [string](#string) |  |  |
 | spaceIconCid | [string](#string) |  |  |
+| spaceIconOption | [uint32](#uint32) |  |  |
+| spaceUxType | [uint32](#uint32) |  |  |
 | spaceIconEncryptionKeys | [FileEncryptionKey](#anytype-model-FileEncryptionKey) | repeated |  |
 | inviteType | [InviteType](#anytype-model-InviteType) |  |  |
 | guestKey | [bytes](#bytes) |  |  |
@@ -35117,6 +35142,7 @@ RelationFormat describes how the underlying data is stored in the google.protobu
 | Data | 1 | objects-first UX |
 | Stream | 2 | stream UX (chat with limited amount of owners) |
 | Chat | 3 | chat UX |
+| OneToOne | 4 | onetoone UX (space with chat and immutable ACL between two participants) |
 
 
 

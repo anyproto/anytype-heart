@@ -416,6 +416,14 @@ func (s *service) updateCacheAndLimitsV2(ctx context.Context, membership *model.
 }
 
 func (s *service) sendMembershipUpdateEvent(membership *model.Membership) {
+	// send ANY name update
+	if membership != nil {
+		nsName := membership.GetNsName()
+		nsNameType := membership.GetNsNameType()
+
+		s.profileUpdater.UpdateOwnGlobalName(nameservice.NsNameToFullName(nsName, nsNameType))
+	}
+
 	s.eventSender.Broadcast(event.NewEventSingleMessage("", &pb.EventMessageValueOfMembershipUpdate{
 		MembershipUpdate: &pb.EventMembershipUpdate{
 			Data: membership,
@@ -967,8 +975,12 @@ func (s *service) FinalizeSubscription(ctx context.Context, req *pb.RpcMembershi
 		return nil, err
 	}
 
+	// update any name immediately (optimistic)
+	s.profileUpdater.UpdateOwnGlobalName(nameservice.NsNameToFullName(req.NsName, req.NsNameType))
+
 	// 2 - clear cache
 	go s.forceRefresh(30 * time.Minute)
+
 	// return out
 	var out pb.RpcMembershipFinalizeResponse
 	out.Error = &pb.RpcMembershipFinalizeResponseError{
@@ -1169,7 +1181,9 @@ func (s *service) CodeRedeem(ctx context.Context, req *pb.RpcMembershipCodeRedee
 	}
 
 	// immediately update own any name, do not wait for background refresh
-	s.profileUpdater.UpdateOwnGlobalName(nameservice.NsNameToFullName(req.NsName, req.NsNameType))
+	s.profileUpdater.UpdateOwnGlobalName(nameservice.NsNameToFullName(nsName, nsNameType))
+
+	go s.forceRefresh(30 * time.Minute)
 
 	// 2 - force refresh v2 to get updated membership status
 	go s.forceRefreshV2(30 * time.Minute)

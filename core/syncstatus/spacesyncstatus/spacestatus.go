@@ -156,6 +156,7 @@ func (s *spaceSyncStatus) sendEventToSession(spaceId, token string) {
 		compatibility:       s.nodeConf.NetworkCompatibilityStatus(),
 		objectsSyncingCount: s.getObjectSyncingObjectsCount(spaceId, s.getMissingIds(spaceId)),
 		notSyncedFilesCount: s.getNotSyncedFilesCount(spaceId),
+		uploadingFilesCount: s.getUploadingFilesCount(spaceId),
 	}
 	s.eventSender.SendToSession(token, event.NewEventSingleMessage(spaceId, &pb.EventMessageValueOfSpaceSyncStatusUpdate{
 		SpaceSyncStatusUpdate: s.makeSyncEvent(spaceId, params),
@@ -184,7 +185,8 @@ func eventsEqual(a, b pb.EventSpaceSyncStatusUpdate) bool {
 		a.Network == b.Network &&
 		a.Error == b.Error &&
 		a.SyncingObjectsCounter == b.SyncingObjectsCounter &&
-		a.NotSyncedFilesCounter == b.NotSyncedFilesCounter
+		a.NotSyncedFilesCounter == b.NotSyncedFilesCounter &&
+		a.UploadingFilesCounter == b.UploadingFilesCounter
 }
 
 func (s *spaceSyncStatus) broadcast(event *pb.Event) {
@@ -233,6 +235,15 @@ func (s *spaceSyncStatus) getNotSyncedFilesCount(spaceId string) int {
 	return curSub.LimitedFilesCount()
 }
 
+func (s *spaceSyncStatus) getUploadingFilesCount(spaceId string) int {
+	curSub, err := s.subs.GetSubscription(spaceId)
+	if err != nil {
+		log.Errorf("get uploading files count: failed to get subscription: %v", err)
+		return 0
+	}
+	return curSub.UploadingFilesCount()
+}
+
 func (s *spaceSyncStatus) getBytesLeftPercentage(spaceId string) float64 {
 	nodeUsage, err := s.nodeUsage.GetNodeUsage(context.Background())
 	if err != nil {
@@ -254,6 +265,7 @@ func (s *spaceSyncStatus) updateSpaceSyncStatus(spaceId string) {
 		compatibility:       s.nodeConf.NetworkCompatibilityStatus(),
 		objectsSyncingCount: s.getObjectSyncingObjectsCount(spaceId, missingObjects),
 		notSyncedFilesCount: s.getNotSyncedFilesCount(spaceId),
+		uploadingFilesCount: s.getUploadingFilesCount(spaceId),
 	}
 	s.broadcast(event.NewEventSingleMessage(spaceId, &pb.EventMessageValueOfSpaceSyncStatusUpdate{
 		SpaceSyncStatusUpdate: s.makeSyncEvent(spaceId, params),
@@ -272,6 +284,7 @@ type syncParams struct {
 	compatibility       nodeconf.NetworkCompatibilityStatus
 	objectsSyncingCount int
 	notSyncedFilesCount int
+	uploadingFilesCount int
 }
 
 func (s *spaceSyncStatus) makeSyncEvent(spaceId string, params syncParams) *pb.EventSpaceSyncStatusUpdate {
@@ -303,6 +316,7 @@ func (s *spaceSyncStatus) makeSyncEvent(spaceId string, params syncParams) *pb.E
 		Error:                 err,
 		SyncingObjectsCounter: syncingObjectsCount,
 		NotSyncedFilesCounter: int64(params.notSyncedFilesCount),
+		UploadingFilesCounter: int64(params.uploadingFilesCount),
 	}
 }
 

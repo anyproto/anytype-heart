@@ -12,11 +12,9 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/template"
 	"github.com/anyproto/anytype-heart/core/block/migration"
 	"github.com/anyproto/anytype-heart/core/domain"
-	"github.com/anyproto/anytype-heart/metrics"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/spaceindex"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 var workspaceRequiredRelations = []domain.RelationKey{
@@ -69,14 +67,6 @@ func (w *Workspaces) Init(ctx *smartblock.InitContext) (err error) {
 }
 
 func (w *Workspaces) initTemplate(ctx *smartblock.InitContext) {
-	if w.config.AnalyticsId != "" {
-		ctx.State.SetSetting(state.SettingsAnalyticsId, pbtypes.String(w.config.AnalyticsId))
-	} else if ctx.State.GetSetting(state.SettingsAnalyticsId) == nil {
-		// add analytics id for existing users, so it will be active from the next start
-		log.Warnf("analyticsID is missing, generating new one")
-		ctx.State.SetSetting(state.SettingsAnalyticsId, pbtypes.String(metrics.GenerateAnalyticsId()))
-	}
-
 	template.InitTemplate(ctx.State,
 		template.WithEmpty,
 		template.WithDetail(bundle.RelationKeyIsHidden, domain.Bool(true)),
@@ -166,5 +156,11 @@ func (w *Workspaces) onApply(info smartblock.ApplyInfo) error {
 
 func (w *Workspaces) onWorkspaceChanged(state *state.State) {
 	details := state.CombinedDetails().Copy()
+	spaceUxType := model.SpaceUxType(details.GetInt64(bundle.RelationKeySpaceUxType)) //nolint:gosec
+	isOneToOne := spaceUxType == model.SpaceUxType_OneToOne
+	if isOneToOne {
+		return
+	}
+
 	w.spaceService.OnWorkspaceChanged(w.SpaceID(), details)
 }

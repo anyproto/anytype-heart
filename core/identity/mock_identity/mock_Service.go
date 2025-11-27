@@ -29,6 +29,53 @@ func (_m *MockService) EXPECT() *MockService_Expecter {
 	return &MockService_Expecter{mock: &_m.Mock}
 }
 
+// AddIdentityProfile provides a mock function with given fields: identityProfile, key
+func (_m *MockService) AddIdentityProfile(identityProfile *model.IdentityProfile, key crypto.SymKey) error {
+	ret := _m.Called(identityProfile, key)
+
+	if len(ret) == 0 {
+		panic("no return value specified for AddIdentityProfile")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(*model.IdentityProfile, crypto.SymKey) error); ok {
+		r0 = rf(identityProfile, key)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// MockService_AddIdentityProfile_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'AddIdentityProfile'
+type MockService_AddIdentityProfile_Call struct {
+	*mock.Call
+}
+
+// AddIdentityProfile is a helper method to define mock.On call
+//   - identityProfile *model.IdentityProfile
+//   - key crypto.SymKey
+func (_e *MockService_Expecter) AddIdentityProfile(identityProfile interface{}, key interface{}) *MockService_AddIdentityProfile_Call {
+	return &MockService_AddIdentityProfile_Call{Call: _e.mock.On("AddIdentityProfile", identityProfile, key)}
+}
+
+func (_c *MockService_AddIdentityProfile_Call) Run(run func(identityProfile *model.IdentityProfile, key crypto.SymKey)) *MockService_AddIdentityProfile_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(*model.IdentityProfile), args[1].(crypto.SymKey))
+	})
+	return _c
+}
+
+func (_c *MockService_AddIdentityProfile_Call) Return(_a0 error) *MockService_AddIdentityProfile_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockService_AddIdentityProfile_Call) RunAndReturn(run func(*model.IdentityProfile, crypto.SymKey) error) *MockService_AddIdentityProfile_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // Close provides a mock function with given fields: ctx
 func (_m *MockService) Close(ctx context.Context) error {
 	ret := _m.Called(ctx)
@@ -71,6 +118,64 @@ func (_c *MockService_Close_Call) Return(err error) *MockService_Close_Call {
 }
 
 func (_c *MockService_Close_Call) RunAndReturn(run func(context.Context) error) *MockService_Close_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// GetMetadataKey provides a mock function with given fields: _a0
+func (_m *MockService) GetMetadataKey(_a0 string) (crypto.SymKey, error) {
+	ret := _m.Called(_a0)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetMetadataKey")
+	}
+
+	var r0 crypto.SymKey
+	var r1 error
+	if rf, ok := ret.Get(0).(func(string) (crypto.SymKey, error)); ok {
+		return rf(_a0)
+	}
+	if rf, ok := ret.Get(0).(func(string) crypto.SymKey); ok {
+		r0 = rf(_a0)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(crypto.SymKey)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(string) error); ok {
+		r1 = rf(_a0)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockService_GetMetadataKey_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetMetadataKey'
+type MockService_GetMetadataKey_Call struct {
+	*mock.Call
+}
+
+// GetMetadataKey is a helper method to define mock.On call
+//   - _a0 string
+func (_e *MockService_Expecter) GetMetadataKey(_a0 interface{}) *MockService_GetMetadataKey_Call {
+	return &MockService_GetMetadataKey_Call{Call: _e.mock.On("GetMetadataKey", _a0)}
+}
+
+func (_c *MockService_GetMetadataKey_Call) Run(run func(_a0 string)) *MockService_GetMetadataKey_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(string))
+	})
+	return _c
+}
+
+func (_c *MockService_GetMetadataKey_Call) Return(_a0 crypto.SymKey, _a1 error) *MockService_GetMetadataKey_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockService_GetMetadataKey_Call) RunAndReturn(run func(string) (crypto.SymKey, error)) *MockService_GetMetadataKey_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -424,6 +529,114 @@ func (_c *MockService_UpdateOwnGlobalName_Call) Return() *MockService_UpdateOwnG
 }
 
 func (_c *MockService_UpdateOwnGlobalName_Call) RunAndReturn(run func(string)) *MockService_UpdateOwnGlobalName_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// WaitProfile provides a mock function with given fields: ctx, _a1
+func (_m *MockService) WaitProfile(ctx context.Context, _a1 string) *model.IdentityProfile {
+	ret := _m.Called(ctx, _a1)
+
+	if len(ret) == 0 {
+		panic("no return value specified for WaitProfile")
+	}
+
+	var r0 *model.IdentityProfile
+	if rf, ok := ret.Get(0).(func(context.Context, string) *model.IdentityProfile); ok {
+		r0 = rf(ctx, _a1)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*model.IdentityProfile)
+		}
+	}
+
+	return r0
+}
+
+// MockService_WaitProfile_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'WaitProfile'
+type MockService_WaitProfile_Call struct {
+	*mock.Call
+}
+
+// WaitProfile is a helper method to define mock.On call
+//   - ctx context.Context
+//   - _a1 string
+func (_e *MockService_Expecter) WaitProfile(ctx interface{}, _a1 interface{}) *MockService_WaitProfile_Call {
+	return &MockService_WaitProfile_Call{Call: _e.mock.On("WaitProfile", ctx, _a1)}
+}
+
+func (_c *MockService_WaitProfile_Call) Run(run func(ctx context.Context, _a1 string)) *MockService_WaitProfile_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(string))
+	})
+	return _c
+}
+
+func (_c *MockService_WaitProfile_Call) Return(_a0 *model.IdentityProfile) *MockService_WaitProfile_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockService_WaitProfile_Call) RunAndReturn(run func(context.Context, string) *model.IdentityProfile) *MockService_WaitProfile_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// WaitProfileWithKey provides a mock function with given fields: ctx, _a1
+func (_m *MockService) WaitProfileWithKey(ctx context.Context, _a1 string) (*model.IdentityProfileWithKey, error) {
+	ret := _m.Called(ctx, _a1)
+
+	if len(ret) == 0 {
+		panic("no return value specified for WaitProfileWithKey")
+	}
+
+	var r0 *model.IdentityProfileWithKey
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, string) (*model.IdentityProfileWithKey, error)); ok {
+		return rf(ctx, _a1)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, string) *model.IdentityProfileWithKey); ok {
+		r0 = rf(ctx, _a1)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*model.IdentityProfileWithKey)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, string) error); ok {
+		r1 = rf(ctx, _a1)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockService_WaitProfileWithKey_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'WaitProfileWithKey'
+type MockService_WaitProfileWithKey_Call struct {
+	*mock.Call
+}
+
+// WaitProfileWithKey is a helper method to define mock.On call
+//   - ctx context.Context
+//   - _a1 string
+func (_e *MockService_Expecter) WaitProfileWithKey(ctx interface{}, _a1 interface{}) *MockService_WaitProfileWithKey_Call {
+	return &MockService_WaitProfileWithKey_Call{Call: _e.mock.On("WaitProfileWithKey", ctx, _a1)}
+}
+
+func (_c *MockService_WaitProfileWithKey_Call) Run(run func(ctx context.Context, _a1 string)) *MockService_WaitProfileWithKey_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(string))
+	})
+	return _c
+}
+
+func (_c *MockService_WaitProfileWithKey_Call) Return(_a0 *model.IdentityProfileWithKey, _a1 error) *MockService_WaitProfileWithKey_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockService_WaitProfileWithKey_Call) RunAndReturn(run func(context.Context, string) (*model.IdentityProfileWithKey, error)) *MockService_WaitProfileWithKey_Call {
 	_c.Call.Return(run)
 	return _c
 }

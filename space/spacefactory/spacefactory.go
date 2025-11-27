@@ -2,6 +2,7 @@ package spacefactory
 
 import (
 	"context"
+	"encoding/base64"
 	"errors"
 	"fmt"
 
@@ -38,6 +39,7 @@ type SpaceFactory interface {
 	CreateAndSetTechSpace(ctx context.Context) (*clientspace.TechSpace, error)
 	LoadAndSetTechSpace(ctx context.Context) (*clientspace.TechSpace, error)
 	CreateInvitingSpace(ctx context.Context, id, aclHeadId string) (sp spacecontroller.SpaceController, err error)
+	CreateOneToOneSpace(ctx context.Context, id string, description *spaceinfo.SpaceDescription, participantData spaceinfo.OneToOneParticipantData) (sp spacecontroller.SpaceController, err error)
 }
 
 const CName = "client.space.spacefactory"
@@ -232,6 +234,7 @@ func (s *spaceFactory) CreateActiveSpace(ctx context.Context, id, aclHeadId stri
 	return ctrl, err
 }
 
+// creates regular shared space
 func (s *spaceFactory) CreateShareableSpace(ctx context.Context, id string, spaceDesc *spaceinfo.SpaceDescription) (sp spacecontroller.SpaceController, err error) {
 	coreSpace, err := s.spaceCore.Get(ctx, id)
 	if err != nil {
@@ -283,6 +286,37 @@ func (s *spaceFactory) NewStreamableSpace(ctx context.Context, id string, info s
 
 func (s *spaceFactory) CreateMarketplaceSpace(ctx context.Context) (sp spacecontroller.SpaceController, err error) {
 	ctrl := marketplacespace.NewSpaceController(s.app, s.personalSpaceId)
+	err = ctrl.Start(ctx)
+	return ctrl, err
+}
+
+func (s *spaceFactory) CreateOneToOneSpace(ctx context.Context, id string, description *spaceinfo.SpaceDescription, participantData spaceinfo.OneToOneParticipantData) (sp spacecontroller.SpaceController, err error) {
+	oneToOneSpace, err := s.spaceCore.Get(ctx, id)
+	if err != nil {
+		return
+	}
+
+	err = oneToOneSpace.Storage().(anystorage.ClientSpaceStorage).MarkSpaceCreated(ctx)
+	if err != nil {
+		return
+	}
+
+	info := spaceinfo.NewSpacePersistentInfo(id)
+
+	info.OneToOneIdentity = participantData.Identity
+	info.Name = description.Name
+	requestMetadataKeyStr := base64.StdEncoding.EncodeToString(participantData.RequestMetadataKey)
+	info.OneToOneRequestMetadataKey = requestMetadataKeyStr
+	info.SetAccountStatus(spaceinfo.AccountStatusUnknown)
+
+	if err := s.techSpace.SpaceViewCreate(ctx, id, true, info, description); err != nil {
+		return nil, err
+	}
+
+	ctrl, err := shareablespace.NewSpaceController(id, info, s.app)
+	if err != nil {
+		return nil, err
+	}
 	err = ctrl.Start(ctx)
 	return ctrl, err
 }
