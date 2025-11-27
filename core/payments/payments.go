@@ -142,6 +142,7 @@ type service struct {
 
 	wallet                 wallet.Wallet
 	getSubscriptionLimiter chan struct{}
+	getStatusV2Limiter     chan struct{}
 	eventSender            event.Sender
 	profileUpdater         globalNamesUpdater
 	ns                     nameservice.Service
@@ -183,6 +184,7 @@ func (s *service) Init(a *app.App) (err error) {
 	s.multiplayerLimitsUpdater = app.MustComponent[deletioncontroller.DeletionController](a)
 	s.fileLimitsUpdater = app.MustComponent[filesync.FileSync](a)
 	s.getSubscriptionLimiter = make(chan struct{}, 1)
+	s.getStatusV2Limiter = make(chan struct{}, 1)
 	s.componentCtx, s.componentCtxCancel = context.WithCancel(context.Background())
 
 	return nil
@@ -526,9 +528,9 @@ func (s *service) fetchV2Membership(ctx context.Context) (*model.MembershipV2Dat
 	select {
 	case <-ctx.Done():
 		return nil, ctx.Err()
-	case s.getSubscriptionLimiter <- struct{}{}:
+	case s.getStatusV2Limiter <- struct{}{}:
 		defer func() {
-			<-s.getSubscriptionLimiter
+			<-s.getStatusV2Limiter
 		}()
 	}
 
