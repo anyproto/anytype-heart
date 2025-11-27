@@ -1166,6 +1166,12 @@ func (s *service) CodeRedeem(ctx context.Context, req *pb.RpcMembershipCodeRedee
 		return nil, proto.ErrCodeNotFound
 	}
 
+	// immediately update own any name, do not wait for background refresh
+	s.profileUpdater.UpdateOwnGlobalName(nameservice.NsNameToFullName(req.NsName, req.NsNameType))
+
+	// 2 - force refresh v2 to get updated membership status
+	go s.forceRefreshV2(30 * time.Minute)
+
 	return &pb.RpcMembershipCodeRedeemResponse{
 		Error: &pb.RpcMembershipCodeRedeemResponseError{
 			Code: pb.RpcMembershipCodeRedeemResponseError_NULL,
