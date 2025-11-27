@@ -1190,7 +1190,7 @@ func (s *service) V2GetPortalLink(ctx context.Context, req *pb.RpcMembershipV2Ge
 	go s.forceRefreshV2(30 * time.Minute)
 
 	return &pb.RpcMembershipV2GetPortalLinkResponse{
-		UrlWithJwt: res.Url,
+		Url: res.Url,
 
 		Error: &pb.RpcMembershipV2GetPortalLinkResponseError{
 			Code: pb.RpcMembershipV2GetPortalLinkResponseError_NULL,

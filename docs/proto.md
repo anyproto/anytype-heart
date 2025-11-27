@@ -14977,7 +14977,7 @@ before requesting a payment link and paying
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | error | [Rpc.MembershipV2.GetPortalLink.Response.Error](#anytype-Rpc-MembershipV2-GetPortalLink-Response-Error) |  |  |
-| urlWithJwt | [string](#string) |  |  |
+| url | [string](#string) |  |  |
 
 
 
