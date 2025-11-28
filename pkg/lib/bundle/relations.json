@@ -1559,6 +1559,16 @@
     "source": "details"
   },
   {
+    "description": "OneToOne Inbox invite sent status",
+    "format": "number",
+    "hidden": true,
+    "key": "oneToOneInboxSentStatus",
+    "maxCount": 1,
+    "name": "OneToOne Inbox sent status",
+    "readonly": false,
+    "source": "details"
+  },
+  {
     "description": "OneToOne (second) participant RequestMetadata (key)",
     "format": "longtext",
     "hidden": true,

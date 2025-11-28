@@ -32,11 +32,13 @@ func (s *service) CreateOneToOneSendInbox(ctx context.Context, description *spac
 
 	description.Name = bobProfile.IdentityProfile.Name
 	description.IconImage = bobProfile.IdentityProfile.IconCid
+	description.OneToOneInboxSentStatus = spaceinfo.OneToOneInboxSentStatus_ToSend
 	sp, err = s.CreateOneToOne(ctx, description, bobProfile)
 	if err != nil {
 		return
 	}
 
+	// TODO: add Kick() to periodicsync and call here instead
 	err = s.onetoone.SendOneToOneInvite(ctx, bobProfile.IdentityProfile.Identity)
 	if err != nil {
 		log.Error("sendOneToOneInvite: ", zap.Error(err))

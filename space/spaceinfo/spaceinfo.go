@@ -119,12 +119,25 @@ const (
 	AccessTypeShared   = AccessType(model.SpaceAccessType_Shared)
 )
 
+type OneToOneInboxSentStatus int32
+
+const (
+	// default, usually when one-to-one was created from inbox and
+	// we don't need to send it back
+	OneToOneInboxSentStatus_Received OneToOneInboxSentStatus = 0
+	// successfully sent
+	OneToOneInboxSentStatus_Sent OneToOneInboxSentStatus = 1
+	// not sent yet, or sending failed
+	OneToOneInboxSentStatus_ToSend OneToOneInboxSentStatus = 2
+)
+
 type SpaceDescription struct {
-	Name             string
-	IconImage        string
-	IconOption       int
-	SpaceUxType      model.SpaceUxType
-	OneToOneIdentity string
+	Name                    string
+	IconImage               string
+	IconOption              int
+	SpaceUxType             model.SpaceUxType
+	OneToOneIdentity        string
+	OneToOneInboxSentStatus OneToOneInboxSentStatus
 }
 
 func NewSpaceDescriptionFromDetails(details *domain.Details) SpaceDescription {

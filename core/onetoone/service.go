@@ -11,9 +11,15 @@ import (
 	"github.com/anyproto/any-sync/coordinator/coordinatorproto"
 	"github.com/anyproto/any-sync/util/crypto"
 
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/inboxclient"
+	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
+	"github.com/anyproto/anytype-heart/pkg/lib/database"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+	"github.com/anyproto/anytype-heart/space/clientspace"
 	"github.com/anyproto/anytype-heart/space/spaceinfo"
+	"github.com/anyproto/anytype-heart/space/techspace"
 
 	"github.com/gogo/protobuf/proto"
 	"go.uber.org/zap"
@@ -26,6 +32,10 @@ var log = logger.NewNamed(CName)
 var (
 	ErrSomeError = errors.New("some error")
 )
+
+type SpaceService interface {
+	TechSpace() *clientspace.TechSpace
+}
 
 type IdentityService interface {
 	AddIdentityProfile(identityProfile *model.IdentityProfile, key crypto.SymKey) error
@@ -47,14 +57,19 @@ type BlockService interface {
 }
 type onetoone struct {
 	inboxClient     inboxclient.InboxClient
+	spaceService    SpaceService
 	accountService  accountservice.Service
+	objectStore     objectstore.ObjectStore
 	identityService IdentityService
+	techSpace       techspace.TechSpace
 	blockService    BlockService
 }
 
 func (s *onetoone) Init(a *app.App) (err error) {
 	s.blockService = app.MustComponent[BlockService](a)
+	s.spaceService = app.MustComponent[SpaceService](a)
 	s.accountService = app.MustComponent[accountservice.Service](a)
+	s.objectStore = app.MustComponent[objectstore.ObjectStore](a)
 	s.identityService = app.MustComponent[IdentityService](a)
 	s.inboxClient = app.MustComponent[inboxclient.InboxClient](a)
 	err = s.inboxClient.SetReceiverByType(coordinatorproto.InboxPayloadType_InboxPayloadOneToOneInvite, s.processOneToOneInvite)
@@ -111,6 +126,11 @@ func (s *onetoone) Name() (name string) {
 }
 
 func (s *onetoone) Run(ctx context.Context) error {
+	s.techSpace = s.spaceService.TechSpace()
+	if s.techSpace == nil {
+		return fmt.Errorf("inboxclient: techspace is nil")
+	}
+
 	return nil
 }
 
@@ -148,4 +168,38 @@ func (s *onetoone) SendOneToOneInvite(ctx context.Context, receiverIdentity stri
 	}
 
 	return s.inboxClient.InboxAddMessage(ctx, receiverPubKey, msg)
+}
+
+func (s *onetoone) inboxResend() {
+	records, err := s.objectStore.SpaceIndex(s.techSpace.TechSpaceId()).Query(database.Query{
+		Filters: []database.FilterRequest{
+			{
+				RelationKey: bundle.RelationKeyOneToOneInboxSentStatus,
+				Condition:   model.BlockContentDataviewFilter_Equal,
+				Value:       domain.Int64(spaceinfo.OneToOneInboxSentStatus_ToSend),
+			},
+			{
+				RelationKey: bundle.RelationKeyResolvedLayout,
+				Condition:   model.BlockContentDataviewFilter_Equal,
+				Value:       domain.Int64(int64(model.ObjectType_spaceView)),
+			},
+		},
+	})
+	if err != nil {
+		log.Error("onetoone: inboxResend: failed to query type object", zap.Error(err))
+	}
+	if len(records) == 0 {
+		log.Info("onetoone: inboxResend: no inbox invites to send, return")
+		return
+	}
+
+	for _, record := range records {
+		bobIdentity := record.Details.GetString(bundle.RelationKeyOneToOneIdentity)
+		err := s.SendOneToOneInvite(context.TODO(), bobIdentity)
+		if err != nil {
+			log.Error("onetoone: inboxResend: error (re)sending inbox invite", zap.String("identity", bobIdentity), zap.Error(err))
+		}
+
+	}
+
 }
