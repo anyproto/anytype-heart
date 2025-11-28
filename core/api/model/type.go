@@ -53,15 +53,15 @@ type UpdateTypeRequest struct {
 }
 
 type Type struct {
-	Object     string       `json:"object" example:"type"`                                                            // The data model of the object
-	Id         string       `json:"id" example:"bafyreigyb6l5szohs32ts26ku2j42yd65e6hqy2u3gtzgdwqv6hzftsetu"`         // The id of the type (which is unique across spaces)
-	Key        string       `json:"key" example:"page"`                                                               // The key of the type (can be the same across spaces for known types)
-	Name       string       `json:"name" example:"Page"`                                                              // The name of the type
-	PluralName string       `json:"plural_name" example:"Pages"`                                                      // The plural name of the type
-	Icon       *Icon        `json:"icon" oneOf:"EmojiIcon,FileIcon,NamedIcon" extensions:"nullable"`                  // The icon of the type, or null if the type has no icon
-	Archived   bool         `json:"archived" example:"false"`                                                         // Whether the type is archived
-	Layout     ObjectLayout `json:"layout" enums:"basic,profile,action,note,bookmark,set,set,collection,participant"` // The layout of the type
-	Properties []Property   `json:"properties"`                                                                       // The properties linked to the type
+	Object     string       `json:"object" example:"type"`                                                        // The data model of the object
+	Id         string       `json:"id" example:"bafyreigyb6l5szohs32ts26ku2j42yd65e6hqy2u3gtzgdwqv6hzftsetu"`     // The id of the type (which is unique across spaces)
+	Key        string       `json:"key" example:"page"`                                                           // The key of the type (can be the same across spaces for known types)
+	Name       string       `json:"name" example:"Page"`                                                          // The name of the type
+	PluralName string       `json:"plural_name" example:"Pages"`                                                  // The plural name of the type
+	Icon       *Icon        `json:"icon" oneOf:"EmojiIcon,FileIcon,NamedIcon" extensions:"nullable"`              // The icon of the type, or null if the type has no icon
+	Archived   bool         `json:"archived" example:"false"`                                                     // Whether the type is archived
+	Layout     ObjectLayout `json:"layout" enums:"basic,profile,action,note,bookmark,set,collection,participant"` // The layout of the type
+	Properties []Property   `json:"properties"`                                                                   // The properties linked to the type
 	// Uk is internal-only to simplify lookup on entry, won't be serialized to type responses
 	UniqueKey string `json:"-" swaggerignore:"true"`
 }

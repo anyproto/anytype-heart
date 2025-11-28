@@ -2078,7 +2078,6 @@ components:
           - note
           - bookmark
           - set
-          - set
           - collection
           - participant
           type: string
