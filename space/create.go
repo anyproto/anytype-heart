@@ -37,12 +37,7 @@ func (s *service) CreateOneToOneSendInbox(ctx context.Context, description *spac
 		return
 	}
 
-	myProfile, err := s.identityService.WaitProfileWithKey(ctx, myIdentity)
-	if err != nil {
-		return
-	}
-
-	err = s.onetoone.SendOneToOneInvite(ctx, bobProfile.IdentityProfile.Identity, myProfile)
+	err = s.onetoone.SendOneToOneInvite(ctx, bobProfile.IdentityProfile.Identity)
 	if err != nil {
 		log.Error("sendOneToOneInvite: ", zap.Error(err))
 	}

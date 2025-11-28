@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/anyproto/any-sync/accountservice"
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/app/logger"
 	"github.com/anyproto/any-sync/coordinator/coordinatorproto"
@@ -28,6 +29,7 @@ var (
 
 type IdentityService interface {
 	AddIdentityProfile(identityProfile *model.IdentityProfile, key crypto.SymKey) error
+	WaitProfileWithKey(ctx context.Context, identity string) (*model.IdentityProfileWithKey, error)
 }
 
 func New() Service {
@@ -36,7 +38,7 @@ func New() Service {
 
 type Service interface {
 	app.ComponentRunnable
-	SendOneToOneInvite(ctx context.Context, receiverIdentity string, myProfile *model.IdentityProfileWithKey) (err error)
+	SendOneToOneInvite(ctx context.Context, receiverIdentity string) (err error)
 }
 
 type BlockService interface {
@@ -45,12 +47,14 @@ type BlockService interface {
 }
 type onetoone struct {
 	inboxClient     inboxclient.InboxClient
+	accountService  accountservice.Service
 	identityService IdentityService
 	blockService    BlockService
 }
 
 func (s *onetoone) Init(a *app.App) (err error) {
 	s.blockService = app.MustComponent[BlockService](a)
+	s.accountService = app.MustComponent[accountservice.Service](a)
 	s.identityService = app.MustComponent[IdentityService](a)
 	s.inboxClient = app.MustComponent[inboxclient.InboxClient](a)
 	err = s.inboxClient.SetReceiverByType(coordinatorproto.InboxPayloadType_InboxPayloadOneToOneInvite, s.processOneToOneInvite)
@@ -114,7 +118,13 @@ func (s *onetoone) Close(_ context.Context) (err error) {
 	return nil
 }
 
-func (s *onetoone) SendOneToOneInvite(ctx context.Context, receiverIdentity string, myProfile *model.IdentityProfileWithKey) (err error) {
+func (s *onetoone) SendOneToOneInvite(ctx context.Context, receiverIdentity string) (err error) {
+	myIdentity := s.accountService.Account().SignKey.GetPublic().Account()
+	myProfile, err := s.identityService.WaitProfileWithKey(ctx, myIdentity)
+	if err != nil {
+		return
+	}
+
 	body, err := myProfile.Marshal()
 	if err != nil {
 		return
