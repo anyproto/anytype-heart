@@ -1549,6 +1549,27 @@
     "source": "details"
   },
   {
+    "description": "OneToOne (second) participant identity",
+    "format": "longtext",
+    "hidden": true,
+    "key": "oneToOneIdentity",
+    "maxCount": 1,
+    "name": "oneToOneIdentity",
+    "readonly": false,
+    "source": "details"
+  },
+  {
+    "description": "OneToOne (second) participant RequestMetadata (key)",
+    "format": "longtext",
+    "hidden": true,
+    "key": "oneToOneRequestMetadataKey",
+    "maxCount": 1,
+    "name": "oneToOneRequestMetadataKey",
+    "readonly": false,
+    "source": "details"
+  },
+
+  {
     "description": "Choose icon for the type among custom Anytype icons",
     "format": "longtext",
     "hidden": true,

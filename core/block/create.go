@@ -2,6 +2,7 @@ package block
 
 import (
 	"context"
+	"encoding/base64"
 	"errors"
 	"fmt"
 
@@ -14,9 +15,9 @@ import (
 	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
+	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space/spaceinfo"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 func (s *Service) ObjectDuplicate(ctx context.Context, id string) (objectID string, err error) {
@@ -48,13 +49,53 @@ func (s *Service) ObjectDuplicate(ctx context.Context, id string) (objectID stri
 	return
 }
 
-func (s *Service) CreateWorkspace(ctx context.Context, req *pb.RpcWorkspaceCreateRequest) (spaceID string, startingPageId string, err error) {
-	spaceDescription := &spaceinfo.SpaceDescription{
-		Name:        pbtypes.GetString(req.Details, bundle.RelationKeyName.String()),
-		IconImage:   pbtypes.GetString(req.Details, bundle.RelationKeyIconImage.String()),
-		SpaceUxType: model.SpaceUxType(pbtypes.GetInt64(req.Details, bundle.RelationKeySpaceUxType.String())),
+func (s *Service) CreateOneToOneFromInbox(ctx context.Context, spaceDescription *spaceinfo.SpaceDescription, identityProfileWithKey *model.IdentityProfileWithKey) (err error) {
+	newSpace, err := s.spaceService.CreateOneToOne(ctx, spaceDescription, identityProfileWithKey)
+	if err != nil {
+		return fmt.Errorf("error creating space: %w", err)
 	}
-	newSpace, err := s.spaceService.Create(ctx, spaceDescription)
+	err = s.spaceService.TechSpace().SpaceViewSetData(ctx, newSpace.Id(),
+		domain.NewDetails().
+			SetString(bundle.RelationKeyName, identityProfileWithKey.IdentityProfile.Name).
+			SetString(bundle.RelationKeyIconImage, identityProfileWithKey.IdentityProfile.IconCid))
+	if err != nil {
+		return fmt.Errorf("onetoone, set view data for techspace %s: %w", newSpace.Id(), err)
+	}
+
+	predefinedObjectIDs := newSpace.DerivedIDs()
+
+	requestMetadataKeyStr := base64.StdEncoding.EncodeToString(identityProfileWithKey.RequestMetadata)
+	details := []domain.Detail{
+		{Key: bundle.RelationKeySpaceUxType, Value: domain.Float64(float64(model.SpaceUxType_OneToOne))},
+		{Key: bundle.RelationKeyName, Value: domain.String(identityProfileWithKey.IdentityProfile.Name)},
+		{Key: bundle.RelationKeyIconImage, Value: domain.String(identityProfileWithKey.IdentityProfile.IconCid)},
+		{Key: bundle.RelationKeyIconOption, Value: domain.Float64(float64(5))},
+		{Key: bundle.RelationKeyOneToOneIdentity, Value: domain.String(identityProfileWithKey.IdentityProfile.Identity)},
+		{Key: bundle.RelationKeyOneToOneRequestMetadataKey, Value: domain.String(requestMetadataKeyStr)},
+		{Key: bundle.RelationKeySpaceDashboardId, Value: domain.String("lastOpened")},
+	}
+
+	err = cache.Do(s, predefinedObjectIDs.Workspace, func(b basic.DetailsSettable) error {
+		return b.SetDetails(nil, details, true)
+	})
+
+	if err != nil {
+		return fmt.Errorf("set details for space %s: %w", newSpace.Id(), err)
+	}
+
+	err = s.SpaceInitChat(ctx, newSpace.Id())
+	if err != nil {
+		log.Warn("failed to init space level chat")
+	}
+
+	return err
+}
+
+func (s *Service) CreateWorkspace(ctx context.Context, req *pb.RpcWorkspaceCreateRequest) (spaceID string, startingPageId string, err error) {
+	spaceDetails := domain.NewDetailsFromProto(req.Details)
+	spaceDescription := spaceinfo.NewSpaceDescriptionFromDetails(spaceDetails)
+
+	newSpace, err := s.spaceService.Create(ctx, &spaceDescription)
 	if err != nil {
 		return "", "", fmt.Errorf("error creating space: %w", err)
 	}
@@ -73,10 +114,25 @@ func (s *Service) CreateWorkspace(ctx context.Context, req *pb.RpcWorkspaceCreat
 	if err != nil {
 		return "", "", fmt.Errorf("set details for space %s: %w", newSpace.Id(), err)
 	}
-	startingPageId, _, err = s.builtinObjectService.CreateObjectsForUseCase(nil, newSpace.Id(), req.UseCase)
-	if err != nil {
-		return "", "", fmt.Errorf("import use-case: %w", err)
+	if spaceDescription.SpaceUxType != model.SpaceUxType_OneToOne {
+		startingPageId, _, err = s.builtinObjectService.CreateObjectsForUseCase(nil, newSpace.Id(), req.UseCase)
+		if err != nil {
+			return "", "", fmt.Errorf("import use-case: %w", err)
+		}
+	} else {
+		workspaceId := newSpace.DerivedIDs().Workspace
+		chatUk, err := domain.NewUniqueKey(coresb.SmartBlockTypeChatDerivedObject, workspaceId)
+		if err != nil {
+			return "", "", err
+		}
+
+		chatId, err := newSpace.DeriveObjectID(context.Background(), chatUk)
+		if err != nil {
+			return "", "", err
+		}
+		startingPageId = chatId
 	}
+
 	return newSpace.Id(), startingPageId, err
 }
 

@@ -7,6 +7,8 @@ import (
 
 	app "github.com/anyproto/any-sync/app"
 
+	crypto "github.com/anyproto/any-sync/util/crypto"
+
 	mock "github.com/stretchr/testify/mock"
 
 	spacecore "github.com/anyproto/anytype-heart/space/spacecore"
@@ -177,6 +179,65 @@ func (_c *MockSpaceCoreService_Create_Call) Return(_a0 *spacecore.AnySpace, _a1 
 }
 
 func (_c *MockSpaceCoreService_Create_Call) RunAndReturn(run func(context.Context, spacedomain.SpaceType, uint64, []byte) (*spacecore.AnySpace, error)) *MockSpaceCoreService_Create_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// CreateOneToOneSpace provides a mock function with given fields: ctx, bPk
+func (_m *MockSpaceCoreService) CreateOneToOneSpace(ctx context.Context, bPk crypto.PubKey) (*spacecore.AnySpace, error) {
+	ret := _m.Called(ctx, bPk)
+
+	if len(ret) == 0 {
+		panic("no return value specified for CreateOneToOneSpace")
+	}
+
+	var r0 *spacecore.AnySpace
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, crypto.PubKey) (*spacecore.AnySpace, error)); ok {
+		return rf(ctx, bPk)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, crypto.PubKey) *spacecore.AnySpace); ok {
+		r0 = rf(ctx, bPk)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*spacecore.AnySpace)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, crypto.PubKey) error); ok {
+		r1 = rf(ctx, bPk)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockSpaceCoreService_CreateOneToOneSpace_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'CreateOneToOneSpace'
+type MockSpaceCoreService_CreateOneToOneSpace_Call struct {
+	*mock.Call
+}
+
+// CreateOneToOneSpace is a helper method to define mock.On call
+//   - ctx context.Context
+//   - bPk crypto.PubKey
+func (_e *MockSpaceCoreService_Expecter) CreateOneToOneSpace(ctx interface{}, bPk interface{}) *MockSpaceCoreService_CreateOneToOneSpace_Call {
+	return &MockSpaceCoreService_CreateOneToOneSpace_Call{Call: _e.mock.On("CreateOneToOneSpace", ctx, bPk)}
+}
+
+func (_c *MockSpaceCoreService_CreateOneToOneSpace_Call) Run(run func(ctx context.Context, bPk crypto.PubKey)) *MockSpaceCoreService_CreateOneToOneSpace_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(crypto.PubKey))
+	})
+	return _c
+}
+
+func (_c *MockSpaceCoreService_CreateOneToOneSpace_Call) Return(space *spacecore.AnySpace, err error) *MockSpaceCoreService_CreateOneToOneSpace_Call {
+	_c.Call.Return(space, err)
+	return _c
+}
+
+func (_c *MockSpaceCoreService_CreateOneToOneSpace_Call) RunAndReturn(run func(context.Context, crypto.PubKey) (*spacecore.AnySpace, error)) *MockSpaceCoreService_CreateOneToOneSpace_Call {
 	_c.Call.Return(run)
 	return _c
 }

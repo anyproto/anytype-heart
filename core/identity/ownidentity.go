@@ -250,26 +250,26 @@ func (s *ownProfileSubscription) pushProfileToIdentityRegistry(ctx context.Conte
 	if err != nil {
 		return fmt.Errorf("prepare own identity profile: %w", err)
 	}
-	data, err := proto.Marshal(identityProfile)
+	encryptedIdentityProfileBytes, err := proto.Marshal(identityProfile)
 	if err != nil {
 		return fmt.Errorf("marshal identity profile: %w", err)
 	}
 
 	symKey := s.spaceService.AccountMetadataSymKey()
-	data, err = symKey.Encrypt(data)
+	encryptedIdentityProfileBytes, err = symKey.Encrypt(encryptedIdentityProfileBytes)
 	if err != nil {
 		return fmt.Errorf("encrypt data: %w", err)
 	}
 
-	signature, err := s.accountService.SignData(data)
+	signature, err := s.accountService.SignData(encryptedIdentityProfileBytes)
 	if err != nil {
 		return fmt.Errorf("failed to sign profile data: %w", err)
 	}
 
 	err = s.identityRepoClient.IdentityRepoPut(ctx, s.myIdentity, []*identityrepoproto.Data{
 		{
-			Kind:      "profile",
-			Data:      data,
+			Kind:      identityRepoDataKind,
+			Data:      encryptedIdentityProfileBytes,
 			Signature: signature,
 		},
 	})
@@ -277,7 +277,7 @@ func (s *ownProfileSubscription) pushProfileToIdentityRegistry(ctx context.Conte
 		return fmt.Errorf("failed to push identity: %w", err)
 	}
 
-	return s.identityProfileCacheStore.Set(context.Background(), identityProfile.Identity, data)
+	return s.identityProfileCacheStore.Set(context.Background(), identityProfile.Identity, encryptedIdentityProfileBytes)
 }
 
 func (s *ownProfileSubscription) prepareOwnIdentityProfile() (*model.IdentityProfile, error) {

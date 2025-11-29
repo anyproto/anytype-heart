@@ -2254,6 +2254,54 @@ func (_c *MockStoreObject_SendEvent_Call) RunAndReturn(run func([]*pb.EventMessa
 	return _c
 }
 
+// SetDetails provides a mock function with given fields: ctx, details, showEvent
+func (_m *MockStoreObject) SetDetails(ctx session.Context, details []domain.Detail, showEvent bool) error {
+	ret := _m.Called(ctx, details, showEvent)
+
+	if len(ret) == 0 {
+		panic("no return value specified for SetDetails")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(session.Context, []domain.Detail, bool) error); ok {
+		r0 = rf(ctx, details, showEvent)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// MockStoreObject_SetDetails_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'SetDetails'
+type MockStoreObject_SetDetails_Call struct {
+	*mock.Call
+}
+
+// SetDetails is a helper method to define mock.On call
+//   - ctx session.Context
+//   - details []domain.Detail
+//   - showEvent bool
+func (_e *MockStoreObject_Expecter) SetDetails(ctx interface{}, details interface{}, showEvent interface{}) *MockStoreObject_SetDetails_Call {
+	return &MockStoreObject_SetDetails_Call{Call: _e.mock.On("SetDetails", ctx, details, showEvent)}
+}
+
+func (_c *MockStoreObject_SetDetails_Call) Run(run func(ctx session.Context, details []domain.Detail, showEvent bool)) *MockStoreObject_SetDetails_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(session.Context), args[1].([]domain.Detail), args[2].(bool))
+	})
+	return _c
+}
+
+func (_c *MockStoreObject_SetDetails_Call) Return(err error) *MockStoreObject_SetDetails_Call {
+	_c.Call.Return(err)
+	return _c
+}
+
+func (_c *MockStoreObject_SetDetails_Call) RunAndReturn(run func(session.Context, []domain.Detail, bool) error) *MockStoreObject_SetDetails_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // SetIsDeleted provides a mock function with given fields:
 func (_m *MockStoreObject) SetIsDeleted() {
 	_m.Called()
@@ -2901,6 +2949,53 @@ func (_c *MockStoreObject_Unlock_Call) Return() *MockStoreObject_Unlock_Call {
 }
 
 func (_c *MockStoreObject_Unlock_Call) RunAndReturn(run func()) *MockStoreObject_Unlock_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// UpdateDetails provides a mock function with given fields: ctx, update
+func (_m *MockStoreObject) UpdateDetails(ctx session.Context, update func(*domain.Details) (*domain.Details, error)) error {
+	ret := _m.Called(ctx, update)
+
+	if len(ret) == 0 {
+		panic("no return value specified for UpdateDetails")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(session.Context, func(*domain.Details) (*domain.Details, error)) error); ok {
+		r0 = rf(ctx, update)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// MockStoreObject_UpdateDetails_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'UpdateDetails'
+type MockStoreObject_UpdateDetails_Call struct {
+	*mock.Call
+}
+
+// UpdateDetails is a helper method to define mock.On call
+//   - ctx session.Context
+//   - update func(*domain.Details)(*domain.Details , error)
+func (_e *MockStoreObject_Expecter) UpdateDetails(ctx interface{}, update interface{}) *MockStoreObject_UpdateDetails_Call {
+	return &MockStoreObject_UpdateDetails_Call{Call: _e.mock.On("UpdateDetails", ctx, update)}
+}
+
+func (_c *MockStoreObject_UpdateDetails_Call) Run(run func(ctx session.Context, update func(*domain.Details) (*domain.Details, error))) *MockStoreObject_UpdateDetails_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(session.Context), args[1].(func(*domain.Details) (*domain.Details, error)))
+	})
+	return _c
+}
+
+func (_c *MockStoreObject_UpdateDetails_Call) Return(err error) *MockStoreObject_UpdateDetails_Call {
+	_c.Call.Return(err)
+	return _c
+}
+
+func (_c *MockStoreObject_UpdateDetails_Call) RunAndReturn(run func(session.Context, func(*domain.Details) (*domain.Details, error)) error) *MockStoreObject_UpdateDetails_Call {
 	_c.Call.Return(run)
 	return _c
 }

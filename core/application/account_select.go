@@ -186,5 +186,6 @@ func (s *Service) start(
 
 	acc := &model.Account{Id: id}
 	acc.Info, err = app.MustComponent[account.Service](s.app).GetInfo(ctx)
+
 	return acc, err
 }
