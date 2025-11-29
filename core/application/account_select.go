@@ -107,7 +107,7 @@ func (s *Service) start(
 	if lang != "" {
 		s.fulltextPrimaryLanguage = lang
 	}
-	
+
 	// Get derivation result based on wallet type
 	derivationResult, err := s.getDerivationResult()
 	if err != nil {
