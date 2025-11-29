@@ -31,7 +31,7 @@ func WalletAccountAt(mnemonic string, index int) (crypto.DerivationResult, error
 func WalletDeriveFromAccountMasterNode(accountKeyMasterNodeBase64 string) (crypto.DerivationResult, error) {
 	accountKeyBytes, err := base64.StdEncoding.DecodeString(accountKeyMasterNodeBase64)
 	if err != nil {
-		return crypto.DerivationResult{}, fmt.Errorf("failed to decode base58 account key: %w", err)
+		return crypto.DerivationResult{}, fmt.Errorf("failed to decode base64 account key: %w", err)
 	}
 
 	// Unmarshal the master node from the account key

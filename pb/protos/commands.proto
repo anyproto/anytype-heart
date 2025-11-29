@@ -635,7 +635,7 @@ message Rpc {
                 string rootPath = 1; // Path to a wallet directory
                 string mnemonic = 2; // Mnemonic of a wallet to recover (mutually exclusive with accountKey)
                 string fulltextPrimaryLanguage = 3; // optional, default fts language
-                string accountKey = 4; // optional: serialized account master node (base58 encoded) for headless/bot authentication (mutually exclusive with mnemonic)
+                string accountKey = 4; // optional: serialized account master node (base64 encoded), used to auth account instead of mnemonic
             }
 
             /**
@@ -733,36 +733,6 @@ message Rpc {
                 }
             }
         }
-
-        message ExportBot {
-            /**
-            * Front-end-to-middleware request to export a bot account key from mnemonic
-            */
-            message Request {
-                string mnemonic = 1; // Mnemonic to derive bot account from
-                uint32 index = 2; // Bot index (will be added to 100, so actual derivation index = 100 + index)
-            }
-
-            /**
-            * Middleware-to-front-end response containing the bot account key
-            */
-            message Response {
-                Error error = 1;
-                string accountKey = 2; // Base58-encoded account master node for bot authentication
-
-                message Error {
-                    Code code = 1;
-                    string description = 2;
-
-                    enum Code {
-                        NULL = 0; // No error
-                        UNKNOWN_ERROR = 1; // Any other errors
-                        BAD_INPUT = 2; // Invalid mnemonic or index
-                    }
-                }
-            }
-        }
-
     }
 
     message Account {
