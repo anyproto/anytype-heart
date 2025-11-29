@@ -64,7 +64,6 @@ func (s *Service) CreateSession(req *pb.RpcWalletCreateSessionRequest) (token st
 			return "", "", errors.Join(ErrBadInput, fmt.Errorf("invalid account key: %w", err))
 		}
 	} else {
-		// Verify mnemonic by deriving keys and comparing with stored keys
 		if s.derivedKeys == nil {
 			return "", "", errors.Join(ErrBadInput, fmt.Errorf("wallet not initialized"))
 		}
@@ -76,7 +75,7 @@ func (s *Service) CreateSession(req *pb.RpcWalletCreateSessionRequest) (token st
 		}
 	}
 
-	// Compare account IDs to verify mnemonic matches
+	// Compare account IDs to verify we are at the same account
 	if derived.Identity.GetPublic().Account() != s.derivedKeys.Identity.GetPublic().Account() {
 		return "", "", errors.Join(ErrBadInput, fmt.Errorf("incorrect mnemonic"))
 	}

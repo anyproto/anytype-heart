@@ -34,7 +34,6 @@ func (s *Service) AccountCreate(ctx context.Context, req *pb.RpcAccountCreateReq
 
 	s.requireClientWithVersion()
 
-	// Get derivation result based on wallet type
 	derivationResultPtr, err := s.getDerivationResult()
 	if err != nil {
 		return nil, err

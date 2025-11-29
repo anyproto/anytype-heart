@@ -25,7 +25,6 @@ func (s *Service) WalletCreate(req *pb.RpcWalletCreateRequest) (mnemonic, accoun
 		return "", "", errors.Join(ErrFailedToCreateLocalRepo, err)
 	}
 
-	// Generate new mnemonic
 	mnemonic, err = core.WalletGenerateMnemonic(wordCount)
 	if err != nil {
 		return "", "", err

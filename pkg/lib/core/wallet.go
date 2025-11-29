@@ -40,8 +40,6 @@ func WalletDeriveFromAccountMasterNode(accountKeyMasterNodeBase64 string) (crypt
 		return crypto.DerivationResult{}, fmt.Errorf("failed to unmarshal account master node: %w", err)
 	}
 
-	// Use the new any-sync function to derive keys from the master node
-	// The master node already represents a specific account index
 	return crypto.DeriveKeysFromMasterNode(masterNode)
 }
 
