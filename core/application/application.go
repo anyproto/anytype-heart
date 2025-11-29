@@ -104,12 +104,3 @@ func (s *Service) GetEventSender() event.Sender {
 	defer s.lock.RUnlock()
 	return s.eventSender
 }
-
-// getDerivationResult returns the key derivation result
-// Keys must be populated during wallet.create or wallet.recover
-func (s *Service) getDerivationResult() (*crypto.DerivationResult, error) {
-	if s.derivedKeys == nil {
-		return nil, errors.New("wallet not initialized - call wallet.create or wallet.recover first")
-	}
-	return s.derivedKeys, nil
-}

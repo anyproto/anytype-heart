@@ -13,6 +13,8 @@ import (
 
 const wordCount int = 12
 
+var ErrWalletNotInitialized = errors.New("wallet not initialized")
+
 func (s *Service) WalletCreate(req *pb.RpcWalletCreateRequest) (mnemonic, accountKey string, err error) {
 	s.lock.Lock()
 	defer s.lock.Unlock()

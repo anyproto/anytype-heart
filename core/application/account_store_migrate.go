@@ -38,7 +38,7 @@ func (s *Service) AccountMigrateCancel(ctx context.Context, req *pb.RpcAccountMi
 
 func (s *Service) migrate(ctx context.Context, id, lang string) error {
 	if s.derivedKeys == nil {
-		return errors.New("wallet not initialized")
+		return ErrWalletNotInitialized
 	}
 	if _, err := os.Stat(filepath.Join(s.rootPath, id)); err != nil {
 		if os.IsNotExist(err) {

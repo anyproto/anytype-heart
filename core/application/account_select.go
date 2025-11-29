@@ -108,19 +108,17 @@ func (s *Service) start(
 		s.fulltextPrimaryLanguage = lang
 	}
 
-	// Get derivation result based on wallet type
-	derivationResult, err := s.getDerivationResult()
-	if err != nil {
-		return nil, err
+	if s.derivedKeys == nil {
+		return nil, ErrWalletNotInitialized
 	}
-	res := *derivationResult
 	var repoWasMissing bool
 	if _, err := os.Stat(filepath.Join(s.rootPath, id)); os.IsNotExist(err) {
 		repoWasMissing = true
-		if err = core.WalletInitRepo(s.rootPath, res.Identity); err != nil {
+		if err = core.WalletInitRepo(s.rootPath, s.derivedKeys.Identity); err != nil {
 			return nil, errors.Join(ErrFailedToCreateLocalRepo, err)
 		}
 	}
+	var err error
 
 	defer func() {
 		if repoWasMissing && err != nil {
@@ -144,7 +142,7 @@ func (s *Service) start(
 	}
 	comps := []app.Component{
 		cfg,
-		anytype.BootstrapWallet(s.rootPath, res, s.fulltextPrimaryLanguage),
+		anytype.BootstrapWallet(s.rootPath, *s.derivedKeys, s.fulltextPrimaryLanguage),
 		s.eventSender,
 	}
 

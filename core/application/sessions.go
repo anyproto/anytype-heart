@@ -56,17 +56,18 @@ func (s *Service) CreateSession(req *pb.RpcWalletCreateSessionRequest) (token st
 		return token, "", err
 	}
 
-	if s.derivedKeys == nil {
-		return "", "", errors.Join(ErrBadInput, fmt.Errorf("wallet not initialized"))
-	}
-
 	var derived crypto.DerivationResult
+
 	if accountKey != "" {
 		derived, err = core.WalletDeriveFromAccountMasterNode(accountKey)
 		if err != nil {
 			return "", "", errors.Join(ErrBadInput, fmt.Errorf("invalid account key: %w", err))
 		}
 	} else {
+		if s.derivedKeys == nil {
+			return "", "", ErrWalletNotInitialized
+		}
+
 		// Derive keys from provided mnemonic to verify it's correct
 		derived, err = core.WalletAccountAt(mnemonic, 0)
 		if err != nil {
@@ -76,7 +77,7 @@ func (s *Service) CreateSession(req *pb.RpcWalletCreateSessionRequest) (token st
 
 	// Compare account IDs to verify we are at the same account
 	if derived.Identity.GetPublic().Account() != s.derivedKeys.Identity.GetPublic().Account() {
-		return "", "", errors.Join(ErrBadInput, fmt.Errorf("incorrect credentials"))
+		return "", "", errors.Join(ErrBadInput, fmt.Errorf("incorrect mnemonic"))
 	}
 	token, err = s.sessions.StartSession(s.sessionSigningKey, model.AccountAuth_Full)
 	if err != nil {

@@ -79,7 +79,7 @@ func (s *Service) RecoverFromLegacy(req *pb.RpcAccountRecoverFromLegacyExportReq
 	}
 
 	if s.derivedKeys == nil {
-		return RecoverFromLegacyResponse{}, errors.New("wallet not initialized")
+		return RecoverFromLegacyResponse{}, ErrWalletNotInitialized
 	}
 	address := s.derivedKeys.Identity.GetPublic().Account()
 	if profile.Address != s.derivedKeys.OldAccountKey.GetPublic().Account() && profile.Address != address {

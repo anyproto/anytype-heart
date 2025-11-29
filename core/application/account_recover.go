@@ -1,8 +1,6 @@
 package application
 
 import (
-	"errors"
-
 	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -10,7 +8,7 @@ import (
 
 func (s *Service) AccountRecover() error {
 	if s.derivedKeys == nil {
-		return errors.New("wallet not initialized")
+		return ErrWalletNotInitialized
 	}
 
 	s.eventSender.Broadcast(event.NewEventSingleMessage("", &pb.EventMessageValueOfAccountShow{

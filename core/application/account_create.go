@@ -34,18 +34,18 @@ func (s *Service) AccountCreate(ctx context.Context, req *pb.RpcAccountCreateReq
 
 	s.requireClientWithVersion()
 
-	derivationResultPtr, err := s.getDerivationResult()
-	if err != nil {
-		return nil, err
-	}
-	derivationResult := *derivationResultPtr
-	accountID := derivationResult.Identity.GetPublic().Account()
-
-	if err = core.WalletInitRepo(s.rootPath, derivationResult.Identity); err != nil {
-		return nil, err
+	if s.derivedKeys == nil {
+		return nil, ErrWalletNotInitialized
 	}
 
-	if err = s.handleCustomStorageLocation(req, accountID); err != nil {
+	var err error
+	accountID := s.derivedKeys.Identity.GetPublic().Account()
+
+	if err := core.WalletInitRepo(s.rootPath, s.derivedKeys.Identity); err != nil {
+		return nil, err
+	}
+
+	if err := s.handleCustomStorageLocation(req, accountID); err != nil {
 		return nil, err
 	}
 
@@ -65,7 +65,7 @@ func (s *Service) AccountCreate(ctx context.Context, req *pb.RpcAccountCreateReq
 	}
 	comps := []app.Component{
 		cfg,
-		anytype.BootstrapWallet(s.rootPath, derivationResult, s.fulltextPrimaryLanguage),
+		anytype.BootstrapWallet(s.rootPath, *s.derivedKeys, s.fulltextPrimaryLanguage),
 		s.eventSender,
 	}
 
