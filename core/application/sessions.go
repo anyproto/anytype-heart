@@ -56,18 +56,17 @@ func (s *Service) CreateSession(req *pb.RpcWalletCreateSessionRequest) (token st
 		return token, "", err
 	}
 
-	var derived crypto.DerivationResult
+	if s.derivedKeys == nil {
+		return "", "", errors.Join(ErrBadInput, fmt.Errorf("wallet not initialized"))
+	}
 
+	var derived crypto.DerivationResult
 	if accountKey != "" {
 		derived, err = core.WalletDeriveFromAccountMasterNode(accountKey)
 		if err != nil {
 			return "", "", errors.Join(ErrBadInput, fmt.Errorf("invalid account key: %w", err))
 		}
 	} else {
-		if s.derivedKeys == nil {
-			return "", "", errors.Join(ErrBadInput, fmt.Errorf("wallet not initialized"))
-		}
-
 		// Derive keys from provided mnemonic to verify it's correct
 		derived, err = core.WalletAccountAt(mnemonic, 0)
 		if err != nil {
