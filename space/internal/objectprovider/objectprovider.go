@@ -8,6 +8,7 @@ import (
 
 	"github.com/anyproto/any-sync/app/logger"
 	"github.com/anyproto/any-sync/commonspace/object/tree/treechangeproto"
+	"github.com/anyproto/any-sync/commonspace/object/tree/treestorage"
 	"github.com/anyproto/any-sync/commonspace/spacestorage"
 	"go.uber.org/zap"
 
@@ -178,6 +179,8 @@ func (o *objectProvider) loadObjectsAsync(ctx context.Context, objIDs []string) 
 }
 
 func (o *objectProvider) CreateMandatoryObjects(ctx context.Context, space smartblock.Space) (err error) {
+	log = log.With(zap.String("spaceId", o.spaceId))
+
 	var sbTypes []coresb.SmartBlockType
 	if o.isPersonal() {
 		sbTypes = threads.PersonalSpaceTypes
@@ -201,6 +204,10 @@ func (o *objectProvider) CreateMandatoryObjects(ctx context.Context, space smart
 			},
 		})
 		if err != nil {
+			if errors.Is(err, treestorage.ErrTreeExists) {
+				log.Info("tree object already exists", zap.String("uniqueKey", uk.Marshal()))
+				return nil
+			}
 			log.Error("create payload for derived object", zap.Error(err), zap.String("uniqueKey", uk.Marshal()))
 			return fmt.Errorf("derive tree object: %w", err)
 		}
