@@ -36,8 +36,8 @@ var (
 )
 
 const (
-	sendInviteInterval = 300
-	sendInviteTimeout  = 30 * time.Second
+	sendInviteIntervalSec = 30
+	sendInviteTimeout     = 30 * time.Second
 )
 
 type SpaceService interface {
@@ -81,6 +81,7 @@ func (s *onetoone) Init(a *app.App) (err error) {
 	s.objectStore = app.MustComponent[objectstore.ObjectStore](a)
 	s.identityService = app.MustComponent[IdentityService](a)
 	s.inboxClient = app.MustComponent[inboxclient.InboxClient](a)
+	s.periodicInboxRetry = periodicsync.NewPeriodicSync(sendInviteIntervalSec, sendInviteTimeout, s.inboxResend, log)
 	err = s.inboxClient.SetReceiverByType(coordinatorproto.InboxPayloadType_InboxPayloadOneToOneInvite, s.processOneToOneInvite)
 	if err != nil {
 		log.Error("failed to init inbox receiver", zap.Error(err))
@@ -99,12 +100,15 @@ func (s *onetoone) Run(ctx context.Context) error {
 	if s.techSpace == nil {
 		return fmt.Errorf("inboxclient: techspace is nil")
 	}
-	s.periodicInboxRetry = periodicsync.NewPeriodicSync(sendInviteInterval, sendInviteTimeout, s.inboxResend, log)
-
+	s.periodicInboxRetry.Run()
 	return nil
 }
 
 func (s *onetoone) Close(_ context.Context) (err error) {
+	if s.periodicInboxRetry != nil {
+		s.periodicInboxRetry.Close()
+	}
+
 	return nil
 }
 

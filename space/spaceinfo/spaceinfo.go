@@ -122,13 +122,14 @@ const (
 type OneToOneInboxSentStatus int32
 
 const (
+	OneToOneInboxSentStatus_None OneToOneInboxSentStatus = 0
 	// default, usually when one-to-one was created from inbox and
 	// we don't need to send it back
-	OneToOneInboxSentStatus_Received OneToOneInboxSentStatus = 0
+	OneToOneInboxSentStatus_Received OneToOneInboxSentStatus = 1
 	// successfully sent
-	OneToOneInboxSentStatus_Sent OneToOneInboxSentStatus = 1
+	OneToOneInboxSentStatus_Sent OneToOneInboxSentStatus = 2
 	// not sent yet, or sending failed
-	OneToOneInboxSentStatus_ToSend OneToOneInboxSentStatus = 2
+	OneToOneInboxSentStatus_ToSend OneToOneInboxSentStatus = 3
 )
 
 type SpaceDescription struct {
@@ -158,5 +159,6 @@ func (s *SpaceDescription) UpdateDetails(st *state.State) {
 	st.SetDetailAndBundledRelation(bundle.RelationKeySpaceUxType, domain.Int64(s.SpaceUxType))
 	st.SetDetailAndBundledRelation(bundle.RelationKeyIconImage, domain.String(s.IconImage))
 	st.SetDetailAndBundledRelation(bundle.RelationKeyIconOption, domain.Int64(s.IconOption))
+	st.SetDetailAndBundledRelation(bundle.RelationKeyOneToOneInboxSentStatus, domain.Int64(s.OneToOneInboxSentStatus))
 	// OneToOneIdentity is set only once
 }
