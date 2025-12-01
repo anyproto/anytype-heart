@@ -82,6 +82,7 @@ func (w *Workspaces) subscribeForOneToOneProfile(state *state.State) {
 	otherIdentity := state.Details().GetString(bundle.RelationKeyOneToOneIdentity)
 	// Fix other's identity if it was set to the current account id
 	if otherIdentity == w.accountService.AccountID() {
+		w.Tree().AclList().RLock()
 		for _, acc := range w.Tree().AclList().AclState().CurrentAccounts() {
 			// Account with permissions = owner is the special identity derived from two participants identities.
 			// We should ignore it as it isn't used in business logic
@@ -100,6 +101,7 @@ func (w *Workspaces) subscribeForOneToOneProfile(state *state.State) {
 				break
 			}
 		}
+		w.Tree().AclList().RUnlock()
 	}
 	participantId := domain.NewParticipantId(w.SpaceID(), otherIdentity)
 	recordsCh := make(chan *domain.Details)
