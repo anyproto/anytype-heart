@@ -161,6 +161,15 @@ func (s *service) GetInfo(ctx context.Context) (*model.AccountInfo, error) {
 		cfg.CustomFileStorePath = s.wallet.RepoPath()
 	}
 
+	_, metadataKey, err := space.DeriveAccountMetadata(s.Keys().SignKey)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get account metadata key: %w", err)
+	}
+	metadataRawKey, err := metadataKey.Raw()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get raw metadata key: %w", err)
+	}
+
 	return &model.AccountInfo{
 		ProfileObjectId:        accountId,
 		MarketplaceWorkspaceId: addr.AnytypeMarketplaceWorkspace,
@@ -171,6 +180,7 @@ func (s *service) GetInfo(ctx context.Context) (*model.AccountInfo, error) {
 		NetworkId:              s.getNetworkId(),
 		TechSpaceId:            s.spaceService.TechSpaceId(),
 		EthereumAddress:        s.wallet.GetAccountEthAddress().Hex(),
+		MetaDataKey:            string(metadataRawKey),
 	}, nil
 }
 

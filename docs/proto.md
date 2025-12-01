@@ -31520,6 +31520,7 @@ Contains basic information about a user account
 | analyticsId | [string](#string) |  |  |
 | networkId | [string](#string) |  | network id to which anytype is connected |
 | ethereumAddress | [string](#string) |  | we have Any PK AND Ethereum PK derived from one seed phrase |
+| metaDataKey | [string](#string) |  | symmetric key for encrypting profile metadata |
 
 
 
