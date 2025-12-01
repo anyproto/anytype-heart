@@ -273,6 +273,12 @@ func (s *SpaceView) SetPushNotificationMode(ctx session.Context, mode pb.RpcPush
 	return s.Apply(st)
 }
 
+func (s *SpaceView) SetOneToOneInboxInviteStatus(status spaceinfo.OneToOneInboxSentStatus) (err error) {
+	st := s.NewState()
+	st.SetDetailAndBundledRelation(bundle.RelationKeyOneToOneInboxSentStatus, domain.Int64(status))
+	return s.Apply(st)
+}
+
 func (s *SpaceView) GetSharedSpacesLimit() (limit int) {
 	return int(s.CombinedDetails().GetInt64(bundle.RelationKeySharedSpacesLimit))
 }

@@ -38,11 +38,11 @@ func (s *service) CreateOneToOneSendInbox(ctx context.Context, description *spac
 		return
 	}
 
-	// TODO: add Kick() to periodicsync and call here instead
-	err = s.onetoone.SendOneToOneInvite(ctx, bobProfile.IdentityProfile.Identity)
+	err = s.onetoone.ResendFailedOneToOneInvites(ctx)
 	if err != nil {
-		log.Error("sendOneToOneInvite: ", zap.Error(err))
+		log.Error("failed to reschedule onetoone inbox resend", zap.Error(err))
 	}
+
 	return sp, nil
 }
 
