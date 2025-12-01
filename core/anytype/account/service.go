@@ -166,7 +166,7 @@ func (s *service) GetInfo(ctx context.Context) (*model.AccountInfo, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to get account metadata key: %w", err)
 	}
-	metadataRawKey, err := metadataKey.Raw()
+	metadataRawKey, err := metadataKey.Marshall()
 	if err != nil {
 		return nil, fmt.Errorf("failed to get raw metadata key: %w", err)
 	}
