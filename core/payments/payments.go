@@ -207,8 +207,6 @@ func (s *service) Run(ctx context.Context) (err error) {
 	s.refreshCtrl.Start()
 
 	fetchFnV2 := func(baseCtx context.Context, forceFetch bool) (bool, error) {
-		log.Error("PAY: fetchFnV2")
-
 		fetchCtx, cancel := context.WithTimeout(baseCtx, networkTimeout2)
 		defer cancel()
 		changed, _, _, err := s.fetchAndUpdateV2(fetchCtx, forceFetch, true, true)
@@ -333,8 +331,6 @@ func (s *service) fetchAndUpdateV2(ctx context.Context, forceIfNotExpired, fetch
 		return false, nil, nil, nil
 	}
 
-	log.Error("PAY: fetchAndUpdateV2 1")
-
 	cachedData, cacheExpirationTime, cacheErr := s.cache.CacheV2Get()
 	cachedProducts, _, productsCacheErr := s.cache.CacheV2ProductsGet()
 	if cacheErr != nil {
@@ -344,27 +340,18 @@ func (s *service) fetchAndUpdateV2(ctx context.Context, forceIfNotExpired, fetch
 		log.Debug("periodic refresh: can not get V2 products from cache", zap.Error(productsCacheErr))
 	}
 	if !forceIfNotExpired && cacheExpirationTime.After(time.Now()) {
-		log.Error("PAY: fetchAndUpdateV2 2", zap.Bool("forceIfNotExpired", forceIfNotExpired), zap.Any("cacheExpirationTime", cacheExpirationTime), zap.Any("time.Now()", time.Now()))
-
 		return false, cachedData, cachedProducts, nil
 	}
 	var errs []error
 	membership = cachedData
 	products = cachedProducts
 
-	log.Error("PAY: fetchAndUpdateV2 3")
 	if fetchProducts {
-		log.Error("PAY: fetchAndUpdateV2 4")
-
 		fetchedProducts, fetchErr := s.fetchV2Products(ctx)
 		if fetchErr != nil {
-			log.Error("PAY: fetchAndUpdateV2 5")
-
 			log.Warn("periodic refresh: V2 products update failed", zap.Error(fetchErr))
 			errs = append(errs, fetchErr)
 		} else {
-			log.Error("PAY: fetchAndUpdateV2 6")
-
 			if !productsV2Equal(cachedProducts, fetchedProducts) {
 				log.Warn("background refresh V2 products: products have changed, sending event", zap.Any("cachedProducts", cachedProducts), zap.Any("fetchedProducts", fetchedProducts))
 				s.sendMembershipV2ProductsUpdateEvent(fetchedProducts)
@@ -374,24 +361,14 @@ func (s *service) fetchAndUpdateV2(ctx context.Context, forceIfNotExpired, fetch
 		}
 	}
 
-	log.Error("PAY: fetchAndUpdateV2 7")
-
 	if fetchMembership {
-		log.Error("PAY: fetchAndUpdateV2 8")
-
 		fetchedMembership, fetchErr := s.fetchV2Membership(ctx)
 		if fetchErr != nil {
-			log.Error("PAY: fetchAndUpdateV2 9")
-
 			log.Warn("periodic refresh: V2 subscription status update failed", zap.Error(fetchErr))
 			errs = append(errs, fetchErr)
 		} else {
-			log.Error("PAY: fetchAndUpdateV2 10")
-
 			// Compare V2 data - check if Products or NextInvoice changed
 			if !membershipV2DataEqual(cachedData, fetchedMembership) {
-				log.Error("PAY: fetchAndUpdateV2 11")
-
 				log.Warn("background refresh V2 membership: membership has changed, sending event", zap.Any("cachedData", cachedData), zap.Any("fetchedMembership", fetchedMembership))
 
 				s.sendMembershipV2UpdateEvent(fetchedMembership)
@@ -401,15 +378,9 @@ func (s *service) fetchAndUpdateV2(ctx context.Context, forceIfNotExpired, fetch
 		}
 	}
 
-	log.Error("PAY: fetchAndUpdateV2 12")
-
 	if changed {
-		log.Error("PAY: fetchAndUpdateV2 13")
-
 		s.updateCacheAndLimitsV2(ctx, membership, products)
 	}
-
-	log.Error("PAY: fetchAndUpdateV2 14")
 
 	if membership == nil {
 		membership = &model.MembershipV2Data{
@@ -561,8 +532,6 @@ func (s *service) fetchMembership(ctx context.Context) (*model.Membership, error
 
 // fetchV2Membership performs network refresh of V2 membership status
 func (s *service) fetchV2Membership(ctx context.Context) (*model.MembershipV2Data, error) {
-	log.Error("PAY: fetchV2Membership 1")
-
 	// Acquire limiter to prevent concurrent requests
 	select {
 	case <-ctx.Done():
