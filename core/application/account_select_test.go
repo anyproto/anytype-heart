@@ -22,10 +22,9 @@ func TestService_AccountSelect(t *testing.T) {
 		s.SetClientVersion("platform", "1")
 		mnemonic, err := core.WalletGenerateMnemonic(wordCount)
 		assert.NoError(t, err)
-		err = s.setMnemonic(mnemonic)
-		assert.NoError(t, err)
 		account, err := core.WalletAccountAt(mnemonic, 0)
 		assert.NoError(t, err)
+		s.derivedKeys = &account
 		expectedDir := filepath.Join(dir, account.Identity.GetPublic().Account())
 
 		sender := mock_event.NewMockSender(t)

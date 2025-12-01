@@ -204,7 +204,7 @@ func (s *techSpace) GetSpaceView(ctx context.Context, spaceId string) (SpaceView
 	}
 	obj, err := s.objectCache.GetObject(ctx, viewId)
 	if err != nil {
-		return nil, err
+		return nil, errors.Join(ErrSpaceViewNotExists, err)
 	}
 	spaceView, ok := obj.(SpaceView)
 	if !ok {

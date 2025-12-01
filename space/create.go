@@ -35,6 +35,7 @@ func (s *service) CreateOneToOneSendInbox(ctx context.Context, description *spac
 	description.OneToOneInboxSentStatus = spaceinfo.OneToOneInboxSentStatus_ToSend
 	sp, err = s.CreateOneToOne(ctx, description, bobProfile)
 	if err != nil {
+		err = fmt.Errorf("create onetoone: %w", err)
 		return
 	}
 
@@ -55,6 +56,7 @@ func (s *service) CreateOneToOne(ctx context.Context, description *spaceinfo.Spa
 
 	coreSpace, err := s.spaceCore.CreateOneToOneSpace(ctx, bPk)
 	if err != nil {
+		err = fmt.Errorf("spacecore: create onetoone: %w", err)
 		return
 	}
 	s.mu.Lock()
@@ -77,6 +79,7 @@ func (s *service) CreateOneToOne(ctx context.Context, description *spaceinfo.Spa
 			err:  err,
 		}
 		s.mu.Unlock()
+		err = fmt.Errorf("factory: create onetoone: %w", err)
 		return nil, err
 	}
 
@@ -89,6 +92,7 @@ func (s *service) CreateOneToOne(ctx context.Context, description *spaceinfo.Spa
 			err:  err,
 		}
 		s.mu.Unlock()
+		err = fmt.Errorf("loader: create onetoone: %w", err)
 		return nil, err
 	}
 	s.spaceControllers[ctrl.SpaceId()] = ctrl

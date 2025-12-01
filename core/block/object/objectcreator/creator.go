@@ -32,7 +32,7 @@ type (
 	}
 
 	objectArchiver interface {
-		SetIsArchived(objectId string, isArchived bool) error
+		SetIsArchived(ctx context.Context, objectId string, isArchived bool) error
 	}
 )
 
@@ -131,7 +131,7 @@ func (s *service) createObjectInSpace(
 	case bundle.TypeKeyRelationOption:
 		return s.createRelationOption(ctx, space, details)
 	case bundle.TypeKeyChatDerived:
-		return s.createChatDerived(ctx, space, details)
+		return s.createChatDerived(ctx, space, details, true)
 	case bundle.TypeKeyFile:
 		return "", nil, fmt.Errorf("files must be created via fileobject service")
 	case bundle.TypeKeyTemplate:

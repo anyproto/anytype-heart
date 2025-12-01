@@ -1816,5 +1816,15 @@
     "name": "Is file available offline",
     "readonly": true,
     "source": "local"
+  },
+  {
+    "description": "Anonymous chat analytics id",
+    "format": "longtext",
+    "hidden": true,
+    "key": "analyticsChatId",
+    "maxCount": 1,
+    "name": "Analytics chat id",
+    "readonly": true,
+    "source": "details"
   }
 ]

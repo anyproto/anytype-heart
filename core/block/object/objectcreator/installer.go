@@ -225,7 +225,7 @@ func (s *service) reinstallObject(
 
 	if isArchived {
 		// we should do archive operations only via Archive object
-		if err = s.archiver.SetIsArchived(id, false); err != nil {
+		if err = s.archiver.SetIsArchived(ctx, id, false); err != nil {
 			return "", "", nil, fmt.Errorf("failed to restore object %s (source object: %s) from bin: %w", id, sourceObjectId, err)
 		}
 	}
