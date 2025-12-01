@@ -32,7 +32,7 @@ type (
 	}
 
 	objectArchiver interface {
-		SetIsArchived(objectId string, isArchived bool) error
+		SetIsArchived(ctx context.Context, objectId string, isArchived bool) error
 	}
 )
 
