@@ -157,6 +157,7 @@ func (s *service) Derive(ctx context.Context, spaceType spacedomain.SpaceType) (
 func (s *service) CreateOneToOneSpace(ctx context.Context, bPk crypto.PubKey) (space *AnySpace, err error) {
 	id, err := s.commonSpace.DeriveOneToOneSpace(ctx, s.wallet.GetAccountPrivkey(), bPk)
 	if err != nil {
+		err = fmt.Errorf("derive one to one: %w", err)
 		return
 	}
 
