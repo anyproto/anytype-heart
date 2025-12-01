@@ -308,10 +308,10 @@ func (s *spaceFactory) CreateOneToOneSpace(ctx context.Context, spaceId string, 
 	info.OneToOneRequestMetadataKey = requestMetadataKeyStr
 	info.SetAccountStatus(spaceinfo.AccountStatusUnknown)
 
-	spaceView, spaceViewErr := s.techSpace.GetSpaceView(ctx, spaceId)
-	if spaceViewErr != nil {
+	spaceView, err := s.techSpace.GetSpaceView(ctx, spaceId)
+	if err != nil {
 		if !errors.Is(err, techspace.ErrSpaceViewNotExists) {
-			return nil, fmt.Errorf("get space view: %w", spaceViewErr)
+			return nil, fmt.Errorf("get space view: %w", err)
 		}
 	}
 
