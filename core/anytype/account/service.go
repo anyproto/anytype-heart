@@ -2,6 +2,7 @@ package account
 
 import (
 	"context"
+	"encoding/base64"
 	"fmt"
 	"path/filepath"
 	"sync"
@@ -180,7 +181,7 @@ func (s *service) GetInfo(ctx context.Context) (*model.AccountInfo, error) {
 		NetworkId:              s.getNetworkId(),
 		TechSpaceId:            s.spaceService.TechSpaceId(),
 		EthereumAddress:        s.wallet.GetAccountEthAddress().Hex(),
-		MetaDataKey:            string(metadataRawKey),
+		MetaDataKey:            base64.StdEncoding.EncodeToString(metadataRawKey),
 	}, nil
 }
 
