@@ -13,6 +13,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/object/objectcreator"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/session"
+	"github.com/anyproto/anytype-heart/metrics"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
@@ -109,6 +110,10 @@ func (s *Service) CreateWorkspace(ctx context.Context, req *pb.RpcWorkspaceCreat
 				Value: domain.ValueFromProto(v),
 			})
 		}
+		details = append(details, domain.Detail{
+			Key:   bundle.RelationKeyAnalyticsSpaceId,
+			Value: domain.String(metrics.GenerateAnalyticsId()),
+		})
 		return b.SetDetails(nil, details, true)
 	})
 	if err != nil {

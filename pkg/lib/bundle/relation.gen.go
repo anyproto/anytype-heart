@@ -9,7 +9,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-const RelationChecksum = "d5595364160bfbd36f44f58b21706564bd54566fe01f5d36e245a1b42e7b6bcf"
+const RelationChecksum = "6da5275ccee4572311f8c824449341656a4701bcdb4ea0e63c7874ffdfaafd33"
 const (
 	RelationKeyTag                                  domain.RelationKey = "tag"
 	RelationKeyCamera                               domain.RelationKey = "camera"
@@ -188,6 +188,7 @@ const (
 	RelationKeyLastMessageDate                      domain.RelationKey = "lastMessageDate"
 	RelationKeyFileAvailableOffline                 domain.RelationKey = "fileAvailableOffline"
 	RelationKeyAnalyticsChatId                      domain.RelationKey = "analyticsChatId"
+	RelationKeyAnalyticsSpaceId                     domain.RelationKey = "analyticsSpaceId"
 )
 
 var (
@@ -217,6 +218,20 @@ var (
 			Key:              "analyticsChatId",
 			MaxCount:         1,
 			Name:             "Analytics chat id",
+			ReadOnly:         true,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
+		RelationKeyAnalyticsSpaceId: {
+
+			DataSource:       model.Relation_details,
+			Description:      "Anonymous space analytics id",
+			Format:           model.RelationFormat_longtext,
+			Hidden:           true,
+			Id:               "_branalyticsSpaceId",
+			Key:              "analyticsSpaceId",
+			MaxCount:         1,
+			Name:             "Analytics space id",
 			ReadOnly:         true,
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
