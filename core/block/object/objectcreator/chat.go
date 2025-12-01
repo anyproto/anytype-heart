@@ -6,6 +6,7 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/metrics"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -20,12 +21,7 @@ func (s *service) AddChatDerivedObject(ctx context.Context, space clientspace.Sp
 	}
 	chatDetails.SetString(bundle.RelationKeyUniqueKey, chatUniqueKey.Marshal())
 
-	chatReq := CreateObjectRequest{
-		ObjectTypeKey: bundle.TypeKeyChatDerived,
-		Details:       chatDetails,
-	}
-
-	chatId, _, err = s.createObjectInSpace(ctx, space, chatReq)
+	chatId, _, err = s.createChatDerived(ctx, space, chatDetails, false)
 	if err != nil {
 		return "", fmt.Errorf("create object: %w", err)
 	}
@@ -33,7 +29,7 @@ func (s *service) AddChatDerivedObject(ctx context.Context, space clientspace.Sp
 	return chatId, nil
 }
 
-func (s *service) createChatDerived(ctx context.Context, space clientspace.Space, details *domain.Details) (string, *domain.Details, error) {
+func (s *service) createChatDerived(ctx context.Context, space clientspace.Space, details *domain.Details, addAnalyticsId bool) (string, *domain.Details, error) {
 	uniqueKey, hasUniqueKey := details.TryString(bundle.RelationKeyUniqueKey)
 	var createState *state.State
 	if hasUniqueKey {
@@ -47,6 +43,9 @@ func (s *service) createChatDerived(ctx context.Context, space clientspace.Space
 	}
 
 	details.Set(bundle.RelationKeyLayout, domain.Int64(int64(model.ObjectType_chatDerived)))
+	if addAnalyticsId {
+		details.Set(bundle.RelationKeyAnalyticsChatId, domain.String(metrics.GenerateAnalyticsId()))
+	}
 	details.Delete(bundle.RelationKeyInternalFlags)
 	createState.SetDetails(details)
 
