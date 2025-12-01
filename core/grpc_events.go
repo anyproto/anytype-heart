@@ -33,7 +33,7 @@ func (mw *Middleware) ListenSessionEvents(req *pb.StreamRequest, server lib.Clie
 		log.Warnf("method ListenSessionEvents not allowed for scope %s", scope.String())
 		return
 	}
-	var srv event.SessionServer
+	var srv *event.SessionServer
 	if sender, ok := mw.applicationService.GetEventSender().(*event.GrpcSender); ok {
 		srv = sender.SetSessionServer(req.Token, server)
 	} else {
