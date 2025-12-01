@@ -251,8 +251,8 @@ func (s *service) forceRefreshV2(duration time.Duration) {
 }
 
 func (s *service) fetchAndUpdate(ctx context.Context, forceIfNotExpired, fetchTiers, fetchMembership bool) (changed bool, tiers []*model.MembershipTierData, membership *model.Membership, err error) {
-	// skip running loop if we are on a custom network or in local-only mode
-	if s.cfg.GetNetworkMode() != pb.RpcAccount_DefaultConfig {
+	// skip running loop if we are in local-only mode
+	if s.cfg.GetNetworkMode() == pb.RpcAccount_LocalOnly {
 		// do not trace to log to prevent spamming
 		return false, nil, nil, nil
 	}
@@ -327,8 +327,8 @@ func (s *service) fetchAndUpdate(ctx context.Context, forceIfNotExpired, fetchTi
 }
 
 func (s *service) fetchAndUpdateV2(ctx context.Context, forceIfNotExpired, fetchMembership, fetchProducts bool) (changed bool, membership *model.MembershipV2Data, products []*model.MembershipV2Product, err error) {
-	// skip running loop if we are on a custom network or in local-only mode
-	if s.cfg.GetNetworkMode() != pb.RpcAccount_DefaultConfig {
+	// skip running loop if we are in local-only mode
+	if s.cfg.GetNetworkMode() == pb.RpcAccount_LocalOnly {
 		// do not trace to log to prevent spamming
 		return false, nil, nil, nil
 	}
