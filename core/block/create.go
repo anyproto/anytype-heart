@@ -50,7 +50,7 @@ func (s *Service) ObjectDuplicate(ctx context.Context, id string) (objectID stri
 }
 
 func (s *Service) CreateOneToOneFromInbox(ctx context.Context, spaceDescription *spaceinfo.SpaceDescription, identityProfileWithKey *model.IdentityProfileWithKey) (err error) {
-	spaceDescription.OneToOneInboxSentStatus = spaceinfo.OneToOneInboxSentStatus_ToSend
+	spaceDescription.OneToOneInboxSentStatus = spaceinfo.OneToOneInboxSentStatus_Received
 	newSpace, err := s.spaceService.CreateOneToOne(ctx, spaceDescription, identityProfileWithKey)
 	if err != nil {
 		return fmt.Errorf("error creating space: %w", err)

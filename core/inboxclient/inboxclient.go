@@ -52,7 +52,7 @@ type inboxclient struct {
 }
 
 func (s *inboxclient) Init(a *app.App) (err error) {
-	s.periodicCheck = periodicsync.NewPeriodicSync(300, 0, s.checkMessages, log)
+	s.periodicCheck = periodicsync.NewPeriodicSync(30, 0, s.checkMessages, log)
 	s.spaceService = app.MustComponent[SpaceService](a)
 	s.wallet = app.MustComponent[wallet.Wallet](a)
 
@@ -224,6 +224,9 @@ func (s *inboxclient) InboxAddMessage(ctx context.Context, receiverPubKey crypto
 	return s.inboxClient.InboxAddMessage(ctx, receiverPubKey, message)
 }
 func (s *inboxclient) Close(_ context.Context) (err error) {
-	s.periodicCheck.Close()
+	if s.periodicCheck != nil {
+		s.periodicCheck.Close()
+	}
+
 	return nil
 }

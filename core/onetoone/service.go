@@ -226,7 +226,7 @@ func (s *onetoone) inboxResend(ctx context.Context) (err error) {
 		if err != nil {
 			log.Error("inboxResend: error (re)sending inbox invite", zap.String("identity", bobIdentity), zap.Error(err))
 		} else {
-			spaceId := record.Details.GetString(bundle.RelationKeySpaceId)
+			spaceId := record.Details.GetString(bundle.RelationKeyTargetSpaceId)
 			err = s.techSpace.DoSpaceView(ctx, spaceId, func(spaceView techspace.SpaceView) error {
 				return spaceView.SetOneToOneInboxInviteStatus(spaceinfo.OneToOneInboxSentStatus_Sent)
 			})
