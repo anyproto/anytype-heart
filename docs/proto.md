@@ -22686,6 +22686,7 @@ Middleware-to-front-end response, that can contain mnemonic of a created account
 | ----- | ---- | ----- | ----------- |
 | error | [Rpc.Wallet.Create.Response.Error](#anytype-Rpc-Wallet-Create-Response-Error) |  |  |
 | mnemonic | [string](#string) |  | Mnemonic of a new account (sequence of words, divided by spaces) |
+| accountKey | [string](#string) |  |  |
 
 
 
@@ -22727,8 +22728,9 @@ Middleware-to-front-end response, that can contain mnemonic of a created account
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | mnemonic | [string](#string) |  | cold auth |
-| appKey | [string](#string) |  | persistent app key, that can be used to restore session |
+| appKey | [string](#string) |  | persistent app key, that can be used to restore session. Used for Local JSON API |
 | token | [string](#string) |  | token from the previous session |
+| accountKey | [string](#string) |  | private key of specific account |
 
 
 
@@ -22788,8 +22790,9 @@ Front end to middleware request-to-recover-a wallet with this mnemonic and a roo
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | rootPath | [string](#string) |  | Path to a wallet directory |
-| mnemonic | [string](#string) |  | Mnemonic of a wallet to recover |
+| mnemonic | [string](#string) |  | Mnemonic of a wallet to recover (mutually exclusive with accountKey) |
 | fulltextPrimaryLanguage | [string](#string) |  | optional, default fts language |
+| accountKey | [string](#string) |  | optional: serialized account master node (base64 encoded), used to auth account instead of mnemonic |
 
 
 

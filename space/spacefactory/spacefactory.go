@@ -290,8 +290,8 @@ func (s *spaceFactory) CreateMarketplaceSpace(ctx context.Context) (sp spacecont
 	return ctrl, err
 }
 
-func (s *spaceFactory) CreateOneToOneSpace(ctx context.Context, id string, description *spaceinfo.SpaceDescription, participantData spaceinfo.OneToOneParticipantData) (sp spacecontroller.SpaceController, err error) {
-	oneToOneSpace, err := s.spaceCore.Get(ctx, id)
+func (s *spaceFactory) CreateOneToOneSpace(ctx context.Context, spaceId string, description *spaceinfo.SpaceDescription, participantData spaceinfo.OneToOneParticipantData) (sp spacecontroller.SpaceController, err error) {
+	oneToOneSpace, err := s.spaceCore.Get(ctx, spaceId)
 	if err != nil {
 		return
 	}
@@ -301,19 +301,44 @@ func (s *spaceFactory) CreateOneToOneSpace(ctx context.Context, id string, descr
 		return
 	}
 
-	info := spaceinfo.NewSpacePersistentInfo(id)
-
+	info := spaceinfo.NewSpacePersistentInfo(spaceId)
 	info.OneToOneIdentity = participantData.Identity
 	info.Name = description.Name
 	requestMetadataKeyStr := base64.StdEncoding.EncodeToString(participantData.RequestMetadataKey)
 	info.OneToOneRequestMetadataKey = requestMetadataKeyStr
 	info.SetAccountStatus(spaceinfo.AccountStatusUnknown)
 
-	if err := s.techSpace.SpaceViewCreate(ctx, id, true, info, description); err != nil {
-		return nil, err
+	spaceView, err := s.techSpace.GetSpaceView(ctx, spaceId)
+	if err != nil {
+		if !errors.Is(err, techspace.ErrSpaceViewNotExists) {
+			return nil, fmt.Errorf("get space view: %w", err)
+		}
 	}
 
-	ctrl, err := shareablespace.NewSpaceController(id, info, s.app)
+	// nolint: nestif
+	if spaceView == nil {
+		if err := s.techSpace.SpaceViewCreate(ctx, spaceId, true, info, description); err != nil {
+			return nil, err
+		}
+	} else {
+		// check if space is active
+		existingLocalInfo := spaceView.GetLocalInfo()
+		if existingLocalInfo.GetLocalStatus() == spaceinfo.LocalStatusOk {
+			return nil, fmt.Errorf("space already active")
+		}
+		// space has been removed, reset statuses and recreate
+		localInfo := spaceinfo.NewSpaceLocalInfo(spaceId)
+		localInfo.SetLocalStatus(spaceinfo.LocalStatusUnknown)
+		localInfo.SetRemoteStatus(spaceinfo.RemoteStatusUnknown)
+		if err := spaceView.SetSpaceLocalInfo(localInfo); err != nil {
+			return nil, err
+		}
+		if err := spaceView.SetSpacePersistentInfo(info); err != nil {
+			return nil, err
+		}
+	}
+
+	ctrl, err := shareablespace.NewSpaceController(spaceId, info, s.app)
 	if err != nil {
 		return nil, err
 	}

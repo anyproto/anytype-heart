@@ -41,8 +41,8 @@ type Service interface {
 
 type BlockService interface {
 	CreateOneToOneFromInbox(ctx context.Context, spaceDescription *spaceinfo.SpaceDescription, bobProfile *model.IdentityProfileWithKey) (err error)
-	SpaceInitChat(ctx context.Context, spaceId string) error
 }
+
 type onetoone struct {
 	inboxClient     inboxclient.InboxClient
 	identityService IdentityService
