@@ -367,7 +367,7 @@ func (s *service) broadcastIdentityProfile(identityData *identityrepoproto.DataW
 }
 
 // AddIdentityProfile puts identity profile to cache from external place (e.g. from onetoone inbox).
-// Returns immidiately if key already exists.
+// Returns immediately if key already exists.
 func (s *service) AddIdentityProfile(profile *model.IdentityProfile, key crypto.SymKey) error {
 	if _, ok := s.identityEncryptionKeys[profile.Identity]; ok {
 		log.Info("addIdentityProfile: profile key already exists, skip", zap.String("identity", profile.Identity))
