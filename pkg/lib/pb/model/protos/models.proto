@@ -680,6 +680,7 @@ message Account {
         string analyticsId = 105;
         string networkId = 106; // network id to which anytype is connected
         string ethereumAddress = 107; // we have Any PK AND Ethereum PK derived from one seed phrase
+        string metaDataKey = 108; // symmetric key for encrypting profile metadata
     }
 
     message Auth {
