@@ -1188,6 +1188,8 @@ func (s *service) CodeRedeem(ctx context.Context, req *pb.RpcMembershipCodeRedee
 }
 
 func (s *service) V2GetPortalLink(ctx context.Context, req *pb.RpcMembershipV2GetPortalLinkRequest) (*pb.RpcMembershipV2GetPortalLinkResponse, error) {
+	s.SelectVersion(ctx, &pb.RpcMembershipSelectVersionRequest{MajorVersion: 2})
+
 	webAuth := proto.MembershipV2_WebAuthRequest{}
 
 	res, err := s.ppclient2.WebAuth(ctx, &webAuth)
@@ -1207,6 +1209,8 @@ func (s *service) V2GetPortalLink(ctx context.Context, req *pb.RpcMembershipV2Ge
 }
 
 func (s *service) V2GetProducts(ctx context.Context, req *pb.RpcMembershipV2GetProductsRequest) (*pb.RpcMembershipV2GetProductsResponse, error) {
+	s.SelectVersion(ctx, &pb.RpcMembershipSelectVersionRequest{MajorVersion: 2})
+
 	// Get all products from cache (including background refresh if needed)
 	products, err := s.getAllV2Products(ctx, req)
 	if err != nil {
@@ -1237,6 +1241,8 @@ func (s *service) getAllV2Products(ctx context.Context, req *pb.RpcMembershipV2G
 // This method NEVER makes network calls and returns immediately
 // Background refresh happens via refreshSubscriptionStatusBackground()
 func (s *service) V2GetStatus(ctx context.Context, req *pb.RpcMembershipV2GetStatusRequest) (*pb.RpcMembershipV2GetStatusResponse, error) {
+	s.SelectVersion(ctx, &pb.RpcMembershipSelectVersionRequest{MajorVersion: 2})
+
 	var (
 		membership *model.MembershipV2Data
 		err        error
@@ -1286,6 +1292,8 @@ func (s *service) v2CheckIfNameAvailInNS(ctx context.Context, req *pb.RpcMembers
 }
 
 func (s *service) V2AnyNameIsValid(ctx context.Context, req *pb.RpcMembershipV2AnyNameIsValidRequest) (*pb.RpcMembershipV2AnyNameIsValidResponse, error) {
+	s.SelectVersion(ctx, &pb.RpcMembershipSelectVersionRequest{MajorVersion: 2})
+
 	var code proto.MembershipV2_AnyNameIsValidResponse_Code
 	var desc string
 
@@ -1346,6 +1354,8 @@ func (s *service) V2AnyNameIsValid(ctx context.Context, req *pb.RpcMembershipV2A
 }
 
 func (s *service) V2AnyNameAllocate(ctx context.Context, req *pb.RpcMembershipV2AnyNameAllocateRequest) (*pb.RpcMembershipV2AnyNameAllocateResponse, error) {
+	s.SelectVersion(ctx, &pb.RpcMembershipSelectVersionRequest{MajorVersion: 2})
+
 	// 1 - send request
 	anar := proto.MembershipV2_AnyNameAllocateRequest{
 		RequestedAnyName: nameservice.NsNameToFullName(req.NsName, req.NsNameType),
@@ -1376,6 +1386,8 @@ func (s *service) V2AnyNameAllocate(ctx context.Context, req *pb.RpcMembershipV2
 }
 
 func (s *service) V2CartGet(ctx context.Context, req *pb.RpcMembershipV2CartGetRequest) (*pb.RpcMembershipV2CartGetResponse, error) {
+	s.SelectVersion(ctx, &pb.RpcMembershipSelectVersionRequest{MajorVersion: 2})
+
 	cartReq := proto.MembershipV2_StoreCartGetRequest{}
 
 	cart, err := s.ppclient2.StoreCartGet(ctx, &cartReq)
@@ -1393,6 +1405,8 @@ func (s *service) V2CartGet(ctx context.Context, req *pb.RpcMembershipV2CartGetR
 }
 
 func (s *service) V2CartUpdate(ctx context.Context, req *pb.RpcMembershipV2CartUpdateRequest) (*pb.RpcMembershipV2CartUpdateResponse, error) {
+	s.SelectVersion(ctx, &pb.RpcMembershipSelectVersionRequest{MajorVersion: 2})
+
 	products := make([]*proto.MembershipV2_CartProduct, len(req.ProductIds))
 	for i, productId := range req.ProductIds {
 		products[i] = &proto.MembershipV2_CartProduct{
@@ -1443,18 +1457,18 @@ func (s *service) sendMembershipV2ProductsUpdateEvent(products []*model.Membersh
 
 func (s *service) SelectVersion(ctx context.Context, req *pb.RpcMembershipSelectVersionRequest) (*pb.RpcMembershipSelectVersionResponse, error) {
 	if req.MajorVersion == 2 {
-		log.Info("switching to V2. STOPPING v1 refresh controller")
-
 		// Stop V1 refresh controller when switching to V2
 		if s.refreshCtrl != nil {
+			log.Info("switching to V2. STOPPING v1 refresh controller")
+
 			s.refreshCtrl.Stop()
 			s.refreshCtrl = nil
 		}
 
-		log.Info("STARTING V2 refresh controller")
-
 		// Start V2 refresh controller
 		if s.refreshCtrlV2 == nil {
+			log.Info("STARTING V2 refresh controller")
+
 			fetchFnV2 := func(baseCtx context.Context, forceFetch bool) (bool, error) {
 				fetchCtx, cancel := context.WithTimeout(baseCtx, networkTimeout2)
 				defer cancel()
