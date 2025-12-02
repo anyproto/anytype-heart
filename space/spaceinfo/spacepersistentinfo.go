@@ -48,7 +48,7 @@ func (s *SpacePersistentInfo) UpdateDetails(st *state.State) *SpacePersistentInf
 	if s.OneToOneRequestMetadataKey != "" {
 		st.SetDetail(bundle.RelationKeyOneToOneRequestMetadataKey, domain.String(s.OneToOneRequestMetadataKey))
 	}
-	if s.OneToOneInboxSentStatus != OneToOneInboxSentStatus_None {
+	if s.OneToOneInboxSentStatus != OneToOneInboxSentStatusNone {
 		st.SetDetail(bundle.RelationKeyOneToOneInboxSentStatus, domain.Int64(s.OneToOneInboxSentStatus))
 	}
 

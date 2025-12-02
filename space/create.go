@@ -32,7 +32,7 @@ func (s *service) CreateOneToOneSendInbox(ctx context.Context, description *spac
 
 	description.Name = bobProfile.IdentityProfile.Name
 	description.IconImage = bobProfile.IdentityProfile.IconCid
-	description.OneToOneInboxSentStatus = spaceinfo.OneToOneInboxSentStatus_ToSend
+	description.OneToOneInboxSentStatus = spaceinfo.OneToOneInboxSentStatusToSend
 	sp, err = s.CreateOneToOne(ctx, description, bobProfile)
 	if err != nil {
 		err = fmt.Errorf("create onetoone: %w", err)

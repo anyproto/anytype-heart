@@ -202,7 +202,7 @@ func (s *onetoone) inboxResend(ctx context.Context) (err error) {
 			{
 				RelationKey: bundle.RelationKeyOneToOneInboxSentStatus,
 				Condition:   model.BlockContentDataviewFilter_Equal,
-				Value:       domain.Int64(spaceinfo.OneToOneInboxSentStatus_ToSend),
+				Value:       domain.Int64(spaceinfo.OneToOneInboxSentStatusToSend),
 			},
 			{
 				RelationKey: bundle.RelationKeyResolvedLayout,
@@ -228,7 +228,7 @@ func (s *onetoone) inboxResend(ctx context.Context) (err error) {
 		} else {
 			spaceId := record.Details.GetString(bundle.RelationKeyTargetSpaceId)
 			err = s.techSpace.DoSpaceView(ctx, spaceId, func(spaceView techspace.SpaceView) error {
-				return spaceView.SetOneToOneInboxInviteStatus(spaceinfo.OneToOneInboxSentStatus_Sent)
+				return spaceView.SetOneToOneInboxInviteStatus(spaceinfo.OneToOneInboxSentStatusSent)
 			})
 
 			if err != nil {

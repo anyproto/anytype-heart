@@ -122,14 +122,14 @@ const (
 type OneToOneInboxSentStatus int32
 
 const (
-	OneToOneInboxSentStatus_None OneToOneInboxSentStatus = 0
+	OneToOneInboxSentStatusNone OneToOneInboxSentStatus = 0
 	// default, usually when one-to-one was created from inbox and
 	// we don't need to send it back
-	OneToOneInboxSentStatus_Received OneToOneInboxSentStatus = 1
+	OneToOneInboxSentStatusReceived OneToOneInboxSentStatus = 1
 	// successfully sent
-	OneToOneInboxSentStatus_Sent OneToOneInboxSentStatus = 2
+	OneToOneInboxSentStatusSent OneToOneInboxSentStatus = 2
 	// not sent yet, or sending failed
-	OneToOneInboxSentStatus_ToSend OneToOneInboxSentStatus = 3
+	OneToOneInboxSentStatusToSend OneToOneInboxSentStatus = 3
 )
 
 type SpaceDescription struct {
