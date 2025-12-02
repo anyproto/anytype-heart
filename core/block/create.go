@@ -130,6 +130,7 @@ func (s *Service) CreateWorkspace(ctx context.Context, req *pb.RpcWorkspaceCreat
 	spaceDescription := spaceinfo.NewSpaceDescriptionFromDetails(spaceDetails)
 
 	// when RequestMetadataKey is passed it means we create from a deeplink
+	// nolint: nestif
 	if spaceDescription.OneToOneRequestMetadataKey != "" {
 		if spaceDescription.OneToOneIdentity == "" {
 			return "", "", fmt.Errorf("createWorkspace: failed to decode onetoone from Identity+RequestMetadata: identity is empty")
