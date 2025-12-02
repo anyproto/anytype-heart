@@ -4,8 +4,9 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/anyproto/any-sync/util/crypto"
 	"go.uber.org/zap"
+
+	"github.com/anyproto/any-sync/util/crypto"
 
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space/clientspace"
