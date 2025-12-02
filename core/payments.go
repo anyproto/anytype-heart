@@ -406,6 +406,7 @@ func (mw *Middleware) MembershipV2GetPortalLink(ctx context.Context, req *pb.Rpc
 			errToCode(proto.ErrEthAddressEmpty, pb.RpcMembershipV2GetPortalLinkResponseError_NOT_LOGGED_IN),
 			errToCode(payments.ErrNoConnection, pb.RpcMembershipV2GetPortalLinkResponseError_PAYMENT_NODE_ERROR),
 			errToCode(net.ErrUnableToConnect, pb.RpcMembershipV2GetPortalLinkResponseError_PAYMENT_NODE_ERROR),
+			errToCode(payments.ErrV2CallNotSupported, pb.RpcMembershipV2GetPortalLinkResponseError_V2_CALL_NOT_SUPPORTED),
 		)
 
 		return &pb.RpcMembershipV2GetPortalLinkResponse{
@@ -429,6 +430,7 @@ func (mw *Middleware) MembershipV2GetProducts(ctx context.Context, req *pb.RpcMe
 			errToCode(proto.ErrEthAddressEmpty, pb.RpcMembershipV2GetProductsResponseError_NOT_LOGGED_IN),
 			errToCode(payments.ErrNoConnection, pb.RpcMembershipV2GetProductsResponseError_PAYMENT_NODE_ERROR),
 			errToCode(net.ErrUnableToConnect, pb.RpcMembershipV2GetProductsResponseError_PAYMENT_NODE_ERROR),
+			errToCode(payments.ErrV2CallNotSupported, pb.RpcMembershipV2GetProductsResponseError_V2_CALL_NOT_SUPPORTED),
 		)
 
 		return &pb.RpcMembershipV2GetProductsResponse{
@@ -451,6 +453,7 @@ func (mw *Middleware) MembershipV2GetStatus(ctx context.Context, req *pb.RpcMemb
 		errToCode(proto.ErrEthAddressEmpty, pb.RpcMembershipV2GetStatusResponseError_NOT_LOGGED_IN),
 		errToCode(payments.ErrNoConnection, pb.RpcMembershipV2GetStatusResponseError_PAYMENT_NODE_ERROR),
 		errToCode(net.ErrUnableToConnect, pb.RpcMembershipV2GetStatusResponseError_PAYMENT_NODE_ERROR),
+		errToCode(payments.ErrV2CallNotSupported, pb.RpcMembershipV2GetStatusResponseError_V2_CALL_NOT_SUPPORTED),
 	)
 
 	if err != nil {
@@ -481,6 +484,7 @@ func (mw *Middleware) MembershipV2AnyNameIsValid(ctx context.Context, req *pb.Rp
 			errToCode(payments.ErrNameIsAlreadyReserved, pb.RpcMembershipV2AnyNameIsValidResponseError_NAME_IS_RESERVED),
 
 			errToCode(net.ErrUnableToConnect, pb.RpcMembershipV2AnyNameIsValidResponseError_CAN_NOT_CONNECT),
+			errToCode(payments.ErrV2CallNotSupported, pb.RpcMembershipV2AnyNameIsValidResponseError_V2_CALL_NOT_SUPPORTED),
 		)
 
 		// if client doesn't handle that error - let it show unlocalized string at least
@@ -512,6 +516,7 @@ func (mw *Middleware) MembershipV2AnyNameAllocate(ctx context.Context, req *pb.R
 			errToCode(payments.ErrCacheProblem, pb.RpcMembershipV2AnyNameAllocateResponseError_CACHE_ERROR),
 
 			errToCode(net.ErrUnableToConnect, pb.RpcMembershipV2AnyNameAllocateResponseError_CAN_NOT_CONNECT),
+			errToCode(payments.ErrV2CallNotSupported, pb.RpcMembershipV2AnyNameAllocateResponseError_V2_CALL_NOT_SUPPORTED),
 		)
 
 		// if client doesn't handle that error - let it show unlocalized string at least
@@ -541,6 +546,7 @@ func (mw *Middleware) MembershipV2CartGet(ctx context.Context, req *pb.RpcMember
 			errToCode(proto.ErrEthAddressEmpty, pb.RpcMembershipV2CartGetResponseError_BAD_INPUT),
 			errToCode(payments.ErrNoConnection, pb.RpcMembershipV2CartGetResponseError_CAN_NOT_CONNECT),
 			errToCode(net.ErrUnableToConnect, pb.RpcMembershipV2CartGetResponseError_CAN_NOT_CONNECT),
+			errToCode(payments.ErrV2CallNotSupported, pb.RpcMembershipV2CartGetResponseError_V2_CALL_NOT_SUPPORTED),
 		)
 
 		return &pb.RpcMembershipV2CartGetResponse{
@@ -564,33 +570,11 @@ func (mw *Middleware) MembershipV2CartUpdate(ctx context.Context, req *pb.RpcMem
 			errToCode(proto.ErrEthAddressEmpty, pb.RpcMembershipV2CartUpdateResponseError_BAD_INPUT),
 			errToCode(payments.ErrNoConnection, pb.RpcMembershipV2CartUpdateResponseError_CAN_NOT_CONNECT),
 			errToCode(net.ErrUnableToConnect, pb.RpcMembershipV2CartUpdateResponseError_CAN_NOT_CONNECT),
+			errToCode(payments.ErrV2CallNotSupported, pb.RpcMembershipV2CartUpdateResponseError_V2_CALL_NOT_SUPPORTED),
 		)
 
 		return &pb.RpcMembershipV2CartUpdateResponse{
 			Error: &pb.RpcMembershipV2CartUpdateResponseError{
-				Code:        code,
-				Description: getErrorDescription(err),
-			},
-		}
-	}
-
-	return out
-}
-
-func (mw *Middleware) MembershipSelectVersion(ctx context.Context, req *pb.RpcMembershipSelectVersionRequest) *pb.RpcMembershipSelectVersionResponse {
-	ps := mustService[payments.Service](mw)
-	out, err := ps.SelectVersion(ctx, req)
-
-	if err != nil {
-		code := mapErrorCode(err,
-			errToCode(proto.ErrInvalidSignature, pb.RpcMembershipSelectVersionResponseError_NOT_LOGGED_IN),
-			errToCode(proto.ErrEthAddressEmpty, pb.RpcMembershipSelectVersionResponseError_NOT_LOGGED_IN),
-			errToCode(payments.ErrNoConnection, pb.RpcMembershipSelectVersionResponseError_PAYMENT_NODE_ERROR),
-			errToCode(net.ErrUnableToConnect, pb.RpcMembershipSelectVersionResponseError_PAYMENT_NODE_ERROR),
-		)
-
-		return &pb.RpcMembershipSelectVersionResponse{
-			Error: &pb.RpcMembershipSelectVersionResponseError{
 				Code:        code,
 				Description: getErrorDescription(err),
 			},

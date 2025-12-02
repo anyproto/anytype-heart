@@ -88,6 +88,7 @@ type Config struct {
 	SqliteTempPath                         string           `json:",omitempty"` // not saved to config
 	AnyStoreConfig                         *anystore.Config `json:",omitempty"` // not saved to config
 	JsonApiListenAddr                      string           `json:",omitempty"` // empty means disabled
+	PreferMembershipV2                     bool             `json:",omitempty"` // optional, default is false
 
 	RepoPath    string
 	AnalyticsId string

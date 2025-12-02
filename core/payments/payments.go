@@ -42,6 +42,7 @@ var (
 	ErrCanNotSign            = errors.New("can not sign")
 	ErrCacheProblem          = errors.New("cache problem")
 	ErrNoConnection          = errors.New("can not connect to payment node")
+	ErrV2CallNotSupported    = errors.New("V2 call not supported")
 	ErrNoTiers               = errors.New("can not get tiers")
 	ErrNoTierFound           = errors.New("can not find requested tier")
 	ErrNameIsAlreadyReserved = errors.New("name is already reserved")
@@ -127,8 +128,6 @@ type Service interface {
 	V2AnyNameAllocate(ctx context.Context, req *pb.RpcMembershipV2AnyNameAllocateRequest) (*pb.RpcMembershipV2AnyNameAllocateResponse, error)
 	V2CartGet(ctx context.Context, req *pb.RpcMembershipV2CartGetRequest) (*pb.RpcMembershipV2CartGetResponse, error)
 	V2CartUpdate(ctx context.Context, req *pb.RpcMembershipV2CartUpdateRequest) (*pb.RpcMembershipV2CartUpdateResponse, error)
-
-	SelectVersion(ctx context.Context, req *pb.RpcMembershipSelectVersionRequest) (*pb.RpcMembershipSelectVersionResponse, error)
 	app.ComponentRunnable
 }
 
@@ -193,20 +192,41 @@ func (s *service) Init(a *app.App) (err error) {
 }
 
 func (s *service) Run(ctx context.Context) (err error) {
-	// skip running loop if called from tests
-	if s.refreshCtrl != nil {
-		return nil
-	}
+	// this parameter is set in the AccountSelect and AccountCreate commands
+	if !s.cfg.PreferMembershipV2 {
+		log.Info("starting v1 refresh controller")
 
-	fetchFn := func(baseCtx context.Context, forceFetch bool) (bool, error) {
-		fetchCtx, cancel := context.WithTimeout(baseCtx, networkTimeout)
-		defer cancel()
-		changed, _, _, err := s.fetchAndUpdate(fetchCtx, forceFetch, true, true)
-		return changed, err
-	}
+		if s.refreshCtrl != nil {
+			return nil
+		}
 
-	s.refreshCtrl = newRefreshController(s.componentCtx, fetchFn, time.Second*time.Duration(refreshIntervalSecs), forceRefreshInterval)
-	s.refreshCtrl.Start()
+		fetchFn := func(baseCtx context.Context, forceFetch bool) (bool, error) {
+			fetchCtx, cancel := context.WithTimeout(baseCtx, networkTimeout)
+			defer cancel()
+			changed, _, _, err := s.fetchAndUpdate(fetchCtx, forceFetch, true, true)
+			return changed, err
+		}
+
+		s.refreshCtrl = newRefreshController(s.componentCtx, fetchFn, time.Second*time.Duration(refreshIntervalSecs), forceRefreshInterval)
+		s.refreshCtrl.Start()
+	} else {
+		// Start V2 refresh controller
+		log.Info("starting V2 refresh controller")
+
+		if s.refreshCtrlV2 != nil {
+			return nil
+		}
+
+		fetchFnV2 := func(baseCtx context.Context, forceFetch bool) (bool, error) {
+			fetchCtx, cancel := context.WithTimeout(baseCtx, networkTimeout2)
+			defer cancel()
+			changed, _, _, err := s.fetchAndUpdateV2(fetchCtx, forceFetch, true, true)
+			return changed, err
+		}
+
+		s.refreshCtrlV2 = newRefreshController(s.componentCtx, fetchFnV2, time.Second*time.Duration(refreshIntervalSecs), forceRefreshInterval)
+		s.refreshCtrlV2.Start()
+	}
 
 	return nil
 }
@@ -1188,8 +1208,8 @@ func (s *service) CodeRedeem(ctx context.Context, req *pb.RpcMembershipCodeRedee
 }
 
 func (s *service) V2GetPortalLink(ctx context.Context, req *pb.RpcMembershipV2GetPortalLinkRequest) (*pb.RpcMembershipV2GetPortalLinkResponse, error) {
-	if _, err := s.SelectVersion(ctx, &pb.RpcMembershipSelectVersionRequest{MajorVersion: 2}); err != nil {
-		log.Warn("failed to select version 2", zap.Error(err))
+	if !s.cfg.PreferMembershipV2 {
+		return nil, ErrV2CallNotSupported
 	}
 
 	webAuth := proto.MembershipV2_WebAuthRequest{}
@@ -1211,8 +1231,8 @@ func (s *service) V2GetPortalLink(ctx context.Context, req *pb.RpcMembershipV2Ge
 }
 
 func (s *service) V2GetProducts(ctx context.Context, req *pb.RpcMembershipV2GetProductsRequest) (*pb.RpcMembershipV2GetProductsResponse, error) {
-	if _, err := s.SelectVersion(ctx, &pb.RpcMembershipSelectVersionRequest{MajorVersion: 2}); err != nil {
-		log.Warn("failed to select version 2", zap.Error(err))
+	if !s.cfg.PreferMembershipV2 {
+		return nil, ErrV2CallNotSupported
 	}
 
 	// Get all products from cache (including background refresh if needed)
@@ -1245,8 +1265,8 @@ func (s *service) getAllV2Products(ctx context.Context, req *pb.RpcMembershipV2G
 // This method NEVER makes network calls and returns immediately
 // Background refresh happens via refreshSubscriptionStatusBackground()
 func (s *service) V2GetStatus(ctx context.Context, req *pb.RpcMembershipV2GetStatusRequest) (*pb.RpcMembershipV2GetStatusResponse, error) {
-	if _, err := s.SelectVersion(ctx, &pb.RpcMembershipSelectVersionRequest{MajorVersion: 2}); err != nil {
-		log.Warn("failed to select version 2", zap.Error(err))
+	if !s.cfg.PreferMembershipV2 {
+		return nil, ErrV2CallNotSupported
 	}
 
 	var (
@@ -1298,8 +1318,8 @@ func (s *service) v2CheckIfNameAvailInNS(ctx context.Context, req *pb.RpcMembers
 }
 
 func (s *service) V2AnyNameIsValid(ctx context.Context, req *pb.RpcMembershipV2AnyNameIsValidRequest) (*pb.RpcMembershipV2AnyNameIsValidResponse, error) {
-	if _, err := s.SelectVersion(ctx, &pb.RpcMembershipSelectVersionRequest{MajorVersion: 2}); err != nil {
-		log.Warn("failed to select version 2", zap.Error(err))
+	if !s.cfg.PreferMembershipV2 {
+		return nil, ErrV2CallNotSupported
 	}
 
 	var code proto.MembershipV2_AnyNameIsValidResponse_Code
@@ -1362,8 +1382,8 @@ func (s *service) V2AnyNameIsValid(ctx context.Context, req *pb.RpcMembershipV2A
 }
 
 func (s *service) V2AnyNameAllocate(ctx context.Context, req *pb.RpcMembershipV2AnyNameAllocateRequest) (*pb.RpcMembershipV2AnyNameAllocateResponse, error) {
-	if _, err := s.SelectVersion(ctx, &pb.RpcMembershipSelectVersionRequest{MajorVersion: 2}); err != nil {
-		log.Warn("failed to select version 2", zap.Error(err))
+	if !s.cfg.PreferMembershipV2 {
+		return nil, ErrV2CallNotSupported
 	}
 
 	// 1 - send request
@@ -1396,8 +1416,8 @@ func (s *service) V2AnyNameAllocate(ctx context.Context, req *pb.RpcMembershipV2
 }
 
 func (s *service) V2CartGet(ctx context.Context, req *pb.RpcMembershipV2CartGetRequest) (*pb.RpcMembershipV2CartGetResponse, error) {
-	if _, err := s.SelectVersion(ctx, &pb.RpcMembershipSelectVersionRequest{MajorVersion: 2}); err != nil {
-		log.Warn("failed to select version 2", zap.Error(err))
+	if !s.cfg.PreferMembershipV2 {
+		return nil, ErrV2CallNotSupported
 	}
 
 	cartReq := proto.MembershipV2_StoreCartGetRequest{}
@@ -1417,8 +1437,8 @@ func (s *service) V2CartGet(ctx context.Context, req *pb.RpcMembershipV2CartGetR
 }
 
 func (s *service) V2CartUpdate(ctx context.Context, req *pb.RpcMembershipV2CartUpdateRequest) (*pb.RpcMembershipV2CartUpdateResponse, error) {
-	if _, err := s.SelectVersion(ctx, &pb.RpcMembershipSelectVersionRequest{MajorVersion: 2}); err != nil {
-		log.Warn("failed to select version 2", zap.Error(err))
+	if !s.cfg.PreferMembershipV2 {
+		return nil, ErrV2CallNotSupported
 	}
 
 	products := make([]*proto.MembershipV2_CartProduct, len(req.ProductIds))
@@ -1467,37 +1487,4 @@ func (s *service) sendMembershipV2ProductsUpdateEvent(products []*model.Membersh
 			Products: products,
 		},
 	}))
-}
-
-func (s *service) SelectVersion(ctx context.Context, req *pb.RpcMembershipSelectVersionRequest) (*pb.RpcMembershipSelectVersionResponse, error) {
-	if req.MajorVersion == 2 {
-		// Stop V1 refresh controller when switching to V2
-		if s.refreshCtrl != nil {
-			log.Info("switching to V2. STOPPING v1 refresh controller")
-
-			s.refreshCtrl.Stop()
-			s.refreshCtrl = nil
-		}
-
-		// Start V2 refresh controller
-		if s.refreshCtrlV2 == nil {
-			log.Info("STARTING V2 refresh controller")
-
-			fetchFnV2 := func(baseCtx context.Context, forceFetch bool) (bool, error) {
-				fetchCtx, cancel := context.WithTimeout(baseCtx, networkTimeout2)
-				defer cancel()
-				changed, _, _, err := s.fetchAndUpdateV2(fetchCtx, forceFetch, true, true)
-				return changed, err
-			}
-
-			s.refreshCtrlV2 = newRefreshController(s.componentCtx, fetchFnV2, time.Second*time.Duration(refreshIntervalSecs), forceRefreshInterval)
-			s.refreshCtrlV2.Start()
-		}
-	}
-
-	return &pb.RpcMembershipSelectVersionResponse{
-		Error: &pb.RpcMembershipSelectVersionResponseError{
-			Code: pb.RpcMembershipSelectVersionResponseError_NULL,
-		},
-	}, nil
 }

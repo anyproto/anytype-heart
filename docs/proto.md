@@ -833,10 +833,6 @@
     - [Rpc.Membership.RegisterPaymentRequest.Request](#anytype-Rpc-Membership-RegisterPaymentRequest-Request)
     - [Rpc.Membership.RegisterPaymentRequest.Response](#anytype-Rpc-Membership-RegisterPaymentRequest-Response)
     - [Rpc.Membership.RegisterPaymentRequest.Response.Error](#anytype-Rpc-Membership-RegisterPaymentRequest-Response-Error)
-    - [Rpc.Membership.SelectVersion](#anytype-Rpc-Membership-SelectVersion)
-    - [Rpc.Membership.SelectVersion.Request](#anytype-Rpc-Membership-SelectVersion-Request)
-    - [Rpc.Membership.SelectVersion.Response](#anytype-Rpc-Membership-SelectVersion-Response)
-    - [Rpc.Membership.SelectVersion.Response.Error](#anytype-Rpc-Membership-SelectVersion-Response-Error)
     - [Rpc.Membership.VerifyAppStoreReceipt](#anytype-Rpc-Membership-VerifyAppStoreReceipt)
     - [Rpc.Membership.VerifyAppStoreReceipt.Request](#anytype-Rpc-Membership-VerifyAppStoreReceipt-Request)
     - [Rpc.Membership.VerifyAppStoreReceipt.Response](#anytype-Rpc-Membership-VerifyAppStoreReceipt-Response)
@@ -1638,7 +1634,6 @@
     - [Rpc.Membership.GetVerificationEmailStatus.Response.Error.Code](#anytype-Rpc-Membership-GetVerificationEmailStatus-Response-Error-Code)
     - [Rpc.Membership.IsNameValid.Response.Error.Code](#anytype-Rpc-Membership-IsNameValid-Response-Error-Code)
     - [Rpc.Membership.RegisterPaymentRequest.Response.Error.Code](#anytype-Rpc-Membership-RegisterPaymentRequest-Response-Error-Code)
-    - [Rpc.Membership.SelectVersion.Response.Error.Code](#anytype-Rpc-Membership-SelectVersion-Response-Error-Code)
     - [Rpc.Membership.VerifyAppStoreReceipt.Response.Error.Code](#anytype-Rpc-Membership-VerifyAppStoreReceipt-Response-Error-Code)
     - [Rpc.Membership.VerifyEmailCode.Response.Error.Code](#anytype-Rpc-Membership-VerifyEmailCode-Response-Error-Code)
     - [Rpc.MembershipV2.AnyNameAllocate.Response.Error.Code](#anytype-Rpc-MembershipV2-AnyNameAllocate-Response-Error-Code)
@@ -2527,7 +2522,6 @@
 | MembershipV2AnyNameAllocate | [Rpc.MembershipV2.AnyNameAllocate.Request](#anytype-Rpc-MembershipV2-AnyNameAllocate-Request) | [Rpc.MembershipV2.AnyNameAllocate.Response](#anytype-Rpc-MembershipV2-AnyNameAllocate-Response) |  |
 | MembershipV2CartGet | [Rpc.MembershipV2.CartGet.Request](#anytype-Rpc-MembershipV2-CartGet-Request) | [Rpc.MembershipV2.CartGet.Response](#anytype-Rpc-MembershipV2-CartGet-Response) |  |
 | MembershipV2CartUpdate | [Rpc.MembershipV2.CartUpdate.Request](#anytype-Rpc-MembershipV2-CartUpdate-Request) | [Rpc.MembershipV2.CartUpdate.Response](#anytype-Rpc-MembershipV2-CartUpdate-Response) |  |
-| MembershipSelectVersion | [Rpc.Membership.SelectVersion.Request](#anytype-Rpc-Membership-SelectVersion-Request) | [Rpc.Membership.SelectVersion.Response](#anytype-Rpc-Membership-SelectVersion-Response) |  |
 | NameServiceUserAccountGet | [Rpc.NameService.UserAccount.Get.Request](#anytype-Rpc-NameService-UserAccount-Get-Request) | [Rpc.NameService.UserAccount.Get.Response](#anytype-Rpc-NameService-UserAccount-Get-Response) | Name Service: *** hello.any -&gt; data |
 | NameServiceResolveName | [Rpc.NameService.ResolveName.Request](#anytype-Rpc-NameService-ResolveName-Request) | [Rpc.NameService.ResolveName.Response](#anytype-Rpc-NameService-ResolveName-Response) |  |
 | NameServiceResolveAnyId | [Rpc.NameService.ResolveAnyId.Request](#anytype-Rpc-NameService-ResolveAnyId-Request) | [Rpc.NameService.ResolveAnyId.Response](#anytype-Rpc-NameService-ResolveAnyId-Response) | 12D3KooWA8EXV3KjBxEU5EnsPfneLx84vMWAtTBQBeyooN82KSuS -&gt; hello.any |
@@ -3716,6 +3710,7 @@ Front end to middleware request-to-create-an account
 | preferYamuxTransport | [bool](#bool) |  | optional, default is false, recommended in case of problems with QUIC transport |
 | jsonApiListenAddr | [string](#string) |  | optional, if empty json api will not be started; 127.0.0.1:31009 should be the default one |
 | joinStreamUrl | [string](#string) |  | anytype:// schema URL to join an embed stream |
+| preferMembershipV2 | [bool](#bool) |  | optional, default is false |
 
 
 
@@ -4544,6 +4539,7 @@ User can select an account from those, that came with an AccountAdd events
 | jsonApiListenAddr | [string](#string) |  | optional, if empty json api will not be started; 127.0.0.1:31009 should be the default one |
 | fulltextPrimaryLanguage | [string](#string) |  | optional, default fts language |
 | joinStreamURL | [string](#string) |  | anytype:// schema URL to join an embed stream |
+| preferMembershipV2 | [bool](#bool) |  | optional, default is false |
 
 
 
@@ -14600,62 +14596,6 @@ Generate a link to Stripe/Crypto where user can pay for the membership (for desk
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | code | [Rpc.Membership.RegisterPaymentRequest.Response.Error.Code](#anytype-Rpc-Membership-RegisterPaymentRequest-Response-Error-Code) |  |  |
-| description | [string](#string) |  |  |
-
-
-
-
-
-
-<a name="anytype-Rpc-Membership-SelectVersion"></a>
-
-### Rpc.Membership.SelectVersion
-
-
-
-
-
-
-
-<a name="anytype-Rpc-Membership-SelectVersion-Request"></a>
-
-### Rpc.Membership.SelectVersion.Request
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| majorVersion | [uint32](#uint32) |  | i.e.: 1, 2 |
-
-
-
-
-
-
-<a name="anytype-Rpc-Membership-SelectVersion-Response"></a>
-
-### Rpc.Membership.SelectVersion.Response
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| error | [Rpc.Membership.SelectVersion.Response.Error](#anytype-Rpc-Membership-SelectVersion-Response-Error) |  |  |
-
-
-
-
-
-
-<a name="anytype-Rpc-Membership-SelectVersion-Response-Error"></a>
-
-### Rpc.Membership.SelectVersion.Response.Error
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| code | [Rpc.Membership.SelectVersion.Response.Error.Code](#anytype-Rpc-Membership-SelectVersion-Response-Error-Code) |  |  |
 | description | [string](#string) |  |  |
 
 
@@ -26163,22 +26103,6 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 
 
 
-<a name="anytype-Rpc-Membership-SelectVersion-Response-Error-Code"></a>
-
-### Rpc.Membership.SelectVersion.Response.Error.Code
-
-
-| Name | Number | Description |
-| ---- | ------ | ----------- |
-| NULL | 0 |  |
-| UNKNOWN_ERROR | 1 |  |
-| BAD_INPUT | 2 |  |
-| NOT_LOGGED_IN | 3 |  |
-| PAYMENT_NODE_ERROR | 4 |  |
-| WRONG_VERSION | 5 |  |
-
-
-
 <a name="anytype-Rpc-Membership-VerifyAppStoreReceipt-Response-Error-Code"></a>
 
 ### Rpc.Membership.VerifyAppStoreReceipt.Response.Error.Code
@@ -26237,6 +26161,7 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | MEMBERSHIP_WRONG_STATE | 7 |  |
 | BAD_ANYNAME | 8 |  |
 | CAN_NOT_CONNECT | 9 |  |
+| V2_CALL_NOT_SUPPORTED | 10 |  |
 
 
 
@@ -26260,6 +26185,7 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | CAN_NOT_RESERVE | 11 | for some probable future use (if needed) |
 | CAN_NOT_CONNECT | 12 |  |
 | NAME_IS_RESERVED | 13 | Same as if NameService.ResolveName returned that name is already occupied by some user |
+| V2_CALL_NOT_SUPPORTED | 14 |  |
 
 
 
@@ -26274,6 +26200,7 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | UNKNOWN_ERROR | 1 |  |
 | BAD_INPUT | 2 |  |
 | CAN_NOT_CONNECT | 3 |  |
+| V2_CALL_NOT_SUPPORTED | 4 |  |
 
 
 
@@ -26289,6 +26216,7 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | BAD_INPUT | 2 |  |
 | CAN_NOT_CONNECT | 3 |  |
 | BAD_PRODUCT | 4 |  |
+| V2_CALL_NOT_SUPPORTED | 5 |  |
 
 
 
@@ -26305,6 +26233,7 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | NOT_LOGGED_IN | 3 |  |
 | PAYMENT_NODE_ERROR | 4 |  |
 | AUTH_BAD | 5 |  |
+| V2_CALL_NOT_SUPPORTED | 6 |  |
 
 
 
@@ -26323,6 +26252,7 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | AUTH_BAD | 5 |  |
 | CACHE_ERROR | 6 |  |
 | CAN_NOT_CONNECT | 7 |  |
+| V2_CALL_NOT_SUPPORTED | 8 |  |
 
 
 
@@ -26342,6 +26272,7 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | MEMBERSHIP_NOT_FOUND | 6 |  |
 | MEMBERSHIP_WRONG_STATE | 7 |  |
 | CAN_NOT_CONNECT | 8 |  |
+| V2_CALL_NOT_SUPPORTED | 9 |  |
 
 
 
