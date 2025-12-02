@@ -399,7 +399,7 @@ func (s *Service) SpaceInstallBundledObjects(
 	return s.objectCreator.InstallBundledObjects(ctx, spc, sourceObjectIds)
 }
 
-func (s *Service) SpaceInitChat(ctx context.Context, spaceId string) error {
+func (s *Service) SpaceInitChat(ctx context.Context, spaceId string, addAnalyticsId bool) error {
 	spc, err := s.spaceService.Get(ctx, spaceId)
 	if err != nil {
 		return fmt.Errorf("get space: %w", err)
@@ -429,7 +429,7 @@ func (s *Service) SpaceInitChat(ctx context.Context, spaceId string) error {
 		return nil
 	}
 
-	_, err = s.objectCreator.AddChatDerivedObject(ctx, spc, workspaceId)
+	_, err = s.objectCreator.AddChatDerivedObject(ctx, spc, workspaceId, addAnalyticsId)
 	if err != nil {
 		if !errors.Is(err, treestorage.ErrTreeExists) {
 			return fmt.Errorf("add chat derived object: %w", err)

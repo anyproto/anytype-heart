@@ -53,7 +53,7 @@ func (mw *Middleware) SpaceMakeShareable(cctx context.Context, req *pb.RpcSpaceM
 		}
 	}
 	err = mw.doBlockService(func(bs *block.Service) (err error) {
-		err = bs.SpaceInitChat(cctx, req.SpaceId)
+		err = bs.SpaceInitChat(cctx, req.SpaceId, true)
 		return err
 	})
 
