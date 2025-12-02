@@ -127,6 +127,8 @@ type Service interface {
 	V2AnyNameAllocate(ctx context.Context, req *pb.RpcMembershipV2AnyNameAllocateRequest) (*pb.RpcMembershipV2AnyNameAllocateResponse, error)
 	V2CartGet(ctx context.Context, req *pb.RpcMembershipV2CartGetRequest) (*pb.RpcMembershipV2CartGetResponse, error)
 	V2CartUpdate(ctx context.Context, req *pb.RpcMembershipV2CartUpdateRequest) (*pb.RpcMembershipV2CartUpdateResponse, error)
+
+	SelectVersion(ctx context.Context, req *pb.RpcMembershipSelectVersionRequest) (*pb.RpcMembershipSelectVersionResponse, error)
 	app.ComponentRunnable
 }
 
@@ -205,16 +207,6 @@ func (s *service) Run(ctx context.Context) (err error) {
 
 	s.refreshCtrl = newRefreshController(s.componentCtx, fetchFn, time.Second*time.Duration(refreshIntervalSecs), forceRefreshInterval)
 	s.refreshCtrl.Start()
-
-	fetchFnV2 := func(baseCtx context.Context, forceFetch bool) (bool, error) {
-		fetchCtx, cancel := context.WithTimeout(baseCtx, networkTimeout2)
-		defer cancel()
-		changed, _, _, err := s.fetchAndUpdateV2(fetchCtx, forceFetch, true, true)
-		return changed, err
-	}
-
-	s.refreshCtrlV2 = newRefreshController(s.componentCtx, fetchFnV2, time.Second*time.Duration(refreshIntervalSecs), forceRefreshInterval)
-	s.refreshCtrlV2.Start()
 
 	return nil
 }
@@ -1447,4 +1439,37 @@ func (s *service) sendMembershipV2ProductsUpdateEvent(products []*model.Membersh
 			Products: products,
 		},
 	}))
+}
+
+func (s *service) SelectVersion(ctx context.Context, req *pb.RpcMembershipSelectVersionRequest) (*pb.RpcMembershipSelectVersionResponse, error) {
+	if req.MajorVersion == 2 {
+		log.Info("switching to V2. STOPPING v1 refresh controller")
+
+		// Stop V1 refresh controller when switching to V2
+		if s.refreshCtrl != nil {
+			s.refreshCtrl.Stop()
+			s.refreshCtrl = nil
+		}
+
+		log.Info("STARTING V2 refresh controller")
+
+		// Start V2 refresh controller
+		if s.refreshCtrlV2 == nil {
+			fetchFnV2 := func(baseCtx context.Context, forceFetch bool) (bool, error) {
+				fetchCtx, cancel := context.WithTimeout(baseCtx, networkTimeout2)
+				defer cancel()
+				changed, _, _, err := s.fetchAndUpdateV2(fetchCtx, forceFetch, true, true)
+				return changed, err
+			}
+
+			s.refreshCtrlV2 = newRefreshController(s.componentCtx, fetchFnV2, time.Second*time.Duration(refreshIntervalSecs), forceRefreshInterval)
+			s.refreshCtrlV2.Start()
+		}
+	}
+
+	return &pb.RpcMembershipSelectVersionResponse{
+		Error: &pb.RpcMembershipSelectVersionResponseError{
+			Code: pb.RpcMembershipSelectVersionResponseError_NULL,
+		},
+	}, nil
 }

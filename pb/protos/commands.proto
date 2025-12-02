@@ -8113,6 +8113,33 @@ message Rpc {
                 }
             }
         }
+
+        message SelectVersion {
+            message Request {
+                // i.e.: 1, 2
+                uint32 majorVersion = 1;
+            }
+
+            message Response {
+                Error error = 1;
+
+                message Error {
+                    Code code = 1;
+                    string description = 2;
+
+                    enum Code {
+                        NULL = 0;
+                        UNKNOWN_ERROR = 1;
+                        BAD_INPUT = 2;
+
+                        NOT_LOGGED_IN = 3;
+                        PAYMENT_NODE_ERROR = 4;
+
+                        WRONG_VERSION = 5;
+                    }
+                }
+            }
+        }
     }
 
     message MembershipV2 {

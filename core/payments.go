@@ -576,3 +576,26 @@ func (mw *Middleware) MembershipV2CartUpdate(ctx context.Context, req *pb.RpcMem
 
 	return out
 }
+
+func (mw *Middleware) MembershipSelectVersion(ctx context.Context, req *pb.RpcMembershipSelectVersionRequest) *pb.RpcMembershipSelectVersionResponse {
+	ps := mustService[payments.Service](mw)
+	out, err := ps.SelectVersion(ctx, req)
+
+	if err != nil {
+		code := mapErrorCode(err,
+			errToCode(proto.ErrInvalidSignature, pb.RpcMembershipSelectVersionResponseError_NOT_LOGGED_IN),
+			errToCode(proto.ErrEthAddressEmpty, pb.RpcMembershipSelectVersionResponseError_NOT_LOGGED_IN),
+			errToCode(payments.ErrNoConnection, pb.RpcMembershipSelectVersionResponseError_PAYMENT_NODE_ERROR),
+			errToCode(net.ErrUnableToConnect, pb.RpcMembershipSelectVersionResponseError_PAYMENT_NODE_ERROR),
+		)
+
+		return &pb.RpcMembershipSelectVersionResponse{
+			Error: &pb.RpcMembershipSelectVersionResponseError{
+				Code:        code,
+				Description: getErrorDescription(err),
+			},
+		}
+	}
+
+	return out
+}

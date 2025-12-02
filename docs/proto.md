@@ -833,6 +833,10 @@
     - [Rpc.Membership.RegisterPaymentRequest.Request](#anytype-Rpc-Membership-RegisterPaymentRequest-Request)
     - [Rpc.Membership.RegisterPaymentRequest.Response](#anytype-Rpc-Membership-RegisterPaymentRequest-Response)
     - [Rpc.Membership.RegisterPaymentRequest.Response.Error](#anytype-Rpc-Membership-RegisterPaymentRequest-Response-Error)
+    - [Rpc.Membership.SelectVersion](#anytype-Rpc-Membership-SelectVersion)
+    - [Rpc.Membership.SelectVersion.Request](#anytype-Rpc-Membership-SelectVersion-Request)
+    - [Rpc.Membership.SelectVersion.Response](#anytype-Rpc-Membership-SelectVersion-Response)
+    - [Rpc.Membership.SelectVersion.Response.Error](#anytype-Rpc-Membership-SelectVersion-Response-Error)
     - [Rpc.Membership.VerifyAppStoreReceipt](#anytype-Rpc-Membership-VerifyAppStoreReceipt)
     - [Rpc.Membership.VerifyAppStoreReceipt.Request](#anytype-Rpc-Membership-VerifyAppStoreReceipt-Request)
     - [Rpc.Membership.VerifyAppStoreReceipt.Response](#anytype-Rpc-Membership-VerifyAppStoreReceipt-Response)
@@ -1634,6 +1638,7 @@
     - [Rpc.Membership.GetVerificationEmailStatus.Response.Error.Code](#anytype-Rpc-Membership-GetVerificationEmailStatus-Response-Error-Code)
     - [Rpc.Membership.IsNameValid.Response.Error.Code](#anytype-Rpc-Membership-IsNameValid-Response-Error-Code)
     - [Rpc.Membership.RegisterPaymentRequest.Response.Error.Code](#anytype-Rpc-Membership-RegisterPaymentRequest-Response-Error-Code)
+    - [Rpc.Membership.SelectVersion.Response.Error.Code](#anytype-Rpc-Membership-SelectVersion-Response-Error-Code)
     - [Rpc.Membership.VerifyAppStoreReceipt.Response.Error.Code](#anytype-Rpc-Membership-VerifyAppStoreReceipt-Response-Error-Code)
     - [Rpc.Membership.VerifyEmailCode.Response.Error.Code](#anytype-Rpc-Membership-VerifyEmailCode-Response-Error-Code)
     - [Rpc.MembershipV2.AnyNameAllocate.Response.Error.Code](#anytype-Rpc-MembershipV2-AnyNameAllocate-Response-Error-Code)
@@ -2522,6 +2527,7 @@
 | MembershipV2AnyNameAllocate | [Rpc.MembershipV2.AnyNameAllocate.Request](#anytype-Rpc-MembershipV2-AnyNameAllocate-Request) | [Rpc.MembershipV2.AnyNameAllocate.Response](#anytype-Rpc-MembershipV2-AnyNameAllocate-Response) |  |
 | MembershipV2CartGet | [Rpc.MembershipV2.CartGet.Request](#anytype-Rpc-MembershipV2-CartGet-Request) | [Rpc.MembershipV2.CartGet.Response](#anytype-Rpc-MembershipV2-CartGet-Response) |  |
 | MembershipV2CartUpdate | [Rpc.MembershipV2.CartUpdate.Request](#anytype-Rpc-MembershipV2-CartUpdate-Request) | [Rpc.MembershipV2.CartUpdate.Response](#anytype-Rpc-MembershipV2-CartUpdate-Response) |  |
+| MembershipSelectVersion | [Rpc.Membership.SelectVersion.Request](#anytype-Rpc-Membership-SelectVersion-Request) | [Rpc.Membership.SelectVersion.Response](#anytype-Rpc-Membership-SelectVersion-Response) |  |
 | NameServiceUserAccountGet | [Rpc.NameService.UserAccount.Get.Request](#anytype-Rpc-NameService-UserAccount-Get-Request) | [Rpc.NameService.UserAccount.Get.Response](#anytype-Rpc-NameService-UserAccount-Get-Response) | Name Service: *** hello.any -&gt; data |
 | NameServiceResolveName | [Rpc.NameService.ResolveName.Request](#anytype-Rpc-NameService-ResolveName-Request) | [Rpc.NameService.ResolveName.Response](#anytype-Rpc-NameService-ResolveName-Response) |  |
 | NameServiceResolveAnyId | [Rpc.NameService.ResolveAnyId.Request](#anytype-Rpc-NameService-ResolveAnyId-Request) | [Rpc.NameService.ResolveAnyId.Response](#anytype-Rpc-NameService-ResolveAnyId-Response) | 12D3KooWA8EXV3KjBxEU5EnsPfneLx84vMWAtTBQBeyooN82KSuS -&gt; hello.any |
@@ -14601,6 +14607,62 @@ Generate a link to Stripe/Crypto where user can pay for the membership (for desk
 
 
 
+<a name="anytype-Rpc-Membership-SelectVersion"></a>
+
+### Rpc.Membership.SelectVersion
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Membership-SelectVersion-Request"></a>
+
+### Rpc.Membership.SelectVersion.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| majorVersion | [uint32](#uint32) |  | i.e.: 1, 2 |
+
+
+
+
+
+
+<a name="anytype-Rpc-Membership-SelectVersion-Response"></a>
+
+### Rpc.Membership.SelectVersion.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Membership.SelectVersion.Response.Error](#anytype-Rpc-Membership-SelectVersion-Response-Error) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Membership-SelectVersion-Response-Error"></a>
+
+### Rpc.Membership.SelectVersion.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Membership.SelectVersion.Response.Error.Code](#anytype-Rpc-Membership-SelectVersion-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
 <a name="anytype-Rpc-Membership-VerifyAppStoreReceipt"></a>
 
 ### Rpc.Membership.VerifyAppStoreReceipt
@@ -26095,6 +26157,22 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | MEMBERSHIP_ALREADY_EXISTS | 10 |  |
 | CAN_NOT_CONNECT | 11 |  |
 | EMAIL_WRONG_FORMAT | 12 | for tiers and payment methods that require that |
+
+
+
+<a name="anytype-Rpc-Membership-SelectVersion-Response-Error-Code"></a>
+
+### Rpc.Membership.SelectVersion.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
+| NOT_LOGGED_IN | 3 |  |
+| PAYMENT_NODE_ERROR | 4 |  |
+| WRONG_VERSION | 5 |  |
 
 
 
