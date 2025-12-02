@@ -1188,7 +1188,9 @@ func (s *service) CodeRedeem(ctx context.Context, req *pb.RpcMembershipCodeRedee
 }
 
 func (s *service) V2GetPortalLink(ctx context.Context, req *pb.RpcMembershipV2GetPortalLinkRequest) (*pb.RpcMembershipV2GetPortalLinkResponse, error) {
-	s.SelectVersion(ctx, &pb.RpcMembershipSelectVersionRequest{MajorVersion: 2})
+	if _, err := s.SelectVersion(ctx, &pb.RpcMembershipSelectVersionRequest{MajorVersion: 2}); err != nil {
+		log.Warn("failed to select version 2", zap.Error(err))
+	}
 
 	webAuth := proto.MembershipV2_WebAuthRequest{}
 
@@ -1209,7 +1211,9 @@ func (s *service) V2GetPortalLink(ctx context.Context, req *pb.RpcMembershipV2Ge
 }
 
 func (s *service) V2GetProducts(ctx context.Context, req *pb.RpcMembershipV2GetProductsRequest) (*pb.RpcMembershipV2GetProductsResponse, error) {
-	s.SelectVersion(ctx, &pb.RpcMembershipSelectVersionRequest{MajorVersion: 2})
+	if _, err := s.SelectVersion(ctx, &pb.RpcMembershipSelectVersionRequest{MajorVersion: 2}); err != nil {
+		log.Warn("failed to select version 2", zap.Error(err))
+	}
 
 	// Get all products from cache (including background refresh if needed)
 	products, err := s.getAllV2Products(ctx, req)
@@ -1241,7 +1245,9 @@ func (s *service) getAllV2Products(ctx context.Context, req *pb.RpcMembershipV2G
 // This method NEVER makes network calls and returns immediately
 // Background refresh happens via refreshSubscriptionStatusBackground()
 func (s *service) V2GetStatus(ctx context.Context, req *pb.RpcMembershipV2GetStatusRequest) (*pb.RpcMembershipV2GetStatusResponse, error) {
-	s.SelectVersion(ctx, &pb.RpcMembershipSelectVersionRequest{MajorVersion: 2})
+	if _, err := s.SelectVersion(ctx, &pb.RpcMembershipSelectVersionRequest{MajorVersion: 2}); err != nil {
+		log.Warn("failed to select version 2", zap.Error(err))
+	}
 
 	var (
 		membership *model.MembershipV2Data
@@ -1292,7 +1298,9 @@ func (s *service) v2CheckIfNameAvailInNS(ctx context.Context, req *pb.RpcMembers
 }
 
 func (s *service) V2AnyNameIsValid(ctx context.Context, req *pb.RpcMembershipV2AnyNameIsValidRequest) (*pb.RpcMembershipV2AnyNameIsValidResponse, error) {
-	s.SelectVersion(ctx, &pb.RpcMembershipSelectVersionRequest{MajorVersion: 2})
+	if _, err := s.SelectVersion(ctx, &pb.RpcMembershipSelectVersionRequest{MajorVersion: 2}); err != nil {
+		log.Warn("failed to select version 2", zap.Error(err))
+	}
 
 	var code proto.MembershipV2_AnyNameIsValidResponse_Code
 	var desc string
@@ -1354,7 +1362,9 @@ func (s *service) V2AnyNameIsValid(ctx context.Context, req *pb.RpcMembershipV2A
 }
 
 func (s *service) V2AnyNameAllocate(ctx context.Context, req *pb.RpcMembershipV2AnyNameAllocateRequest) (*pb.RpcMembershipV2AnyNameAllocateResponse, error) {
-	s.SelectVersion(ctx, &pb.RpcMembershipSelectVersionRequest{MajorVersion: 2})
+	if _, err := s.SelectVersion(ctx, &pb.RpcMembershipSelectVersionRequest{MajorVersion: 2}); err != nil {
+		log.Warn("failed to select version 2", zap.Error(err))
+	}
 
 	// 1 - send request
 	anar := proto.MembershipV2_AnyNameAllocateRequest{
@@ -1386,7 +1396,9 @@ func (s *service) V2AnyNameAllocate(ctx context.Context, req *pb.RpcMembershipV2
 }
 
 func (s *service) V2CartGet(ctx context.Context, req *pb.RpcMembershipV2CartGetRequest) (*pb.RpcMembershipV2CartGetResponse, error) {
-	s.SelectVersion(ctx, &pb.RpcMembershipSelectVersionRequest{MajorVersion: 2})
+	if _, err := s.SelectVersion(ctx, &pb.RpcMembershipSelectVersionRequest{MajorVersion: 2}); err != nil {
+		log.Warn("failed to select version 2", zap.Error(err))
+	}
 
 	cartReq := proto.MembershipV2_StoreCartGetRequest{}
 
@@ -1405,7 +1417,9 @@ func (s *service) V2CartGet(ctx context.Context, req *pb.RpcMembershipV2CartGetR
 }
 
 func (s *service) V2CartUpdate(ctx context.Context, req *pb.RpcMembershipV2CartUpdateRequest) (*pb.RpcMembershipV2CartUpdateResponse, error) {
-	s.SelectVersion(ctx, &pb.RpcMembershipSelectVersionRequest{MajorVersion: 2})
+	if _, err := s.SelectVersion(ctx, &pb.RpcMembershipSelectVersionRequest{MajorVersion: 2}); err != nil {
+		log.Warn("failed to select version 2", zap.Error(err))
+	}
 
 	products := make([]*proto.MembershipV2_CartProduct, len(req.ProductIds))
 	for i, productId := range req.ProductIds {
