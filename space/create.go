@@ -2,6 +2,7 @@ package space
 
 import (
 	"context"
+	"encoding/base64"
 	"fmt"
 
 	"github.com/anyproto/any-sync/util/crypto"
@@ -43,6 +44,9 @@ func (s *service) CreateOneToOneSendInbox(ctx context.Context, description *spac
 		return
 	}
 
+	requestMetadataKeyStr := base64.StdEncoding.EncodeToString(bobProfile.RequestMetadata)
+
+	fmt.Printf("-- bob req metadata %s :: %s\n", bobProfile.IdentityProfile.Identity, requestMetadataKeyStr)
 	err = s.onetoone.SendOneToOneInvite(ctx, bobProfile.IdentityProfile.Identity, myProfile)
 	if err != nil {
 		log.Error("sendOneToOneInvite: ", zap.Error(err))
