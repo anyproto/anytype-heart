@@ -430,6 +430,52 @@ func (_c *MockSpaceView_SetMyParticipantStatus_Call) RunAndReturn(run func(model
 	return _c
 }
 
+// SetOneToOneInboxInviteStatus provides a mock function with given fields: status
+func (_m *MockSpaceView) SetOneToOneInboxInviteStatus(status spaceinfo.OneToOneInboxSentStatus) error {
+	ret := _m.Called(status)
+
+	if len(ret) == 0 {
+		panic("no return value specified for SetOneToOneInboxInviteStatus")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(spaceinfo.OneToOneInboxSentStatus) error); ok {
+		r0 = rf(status)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// MockSpaceView_SetOneToOneInboxInviteStatus_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'SetOneToOneInboxInviteStatus'
+type MockSpaceView_SetOneToOneInboxInviteStatus_Call struct {
+	*mock.Call
+}
+
+// SetOneToOneInboxInviteStatus is a helper method to define mock.On call
+//   - status spaceinfo.OneToOneInboxSentStatus
+func (_e *MockSpaceView_Expecter) SetOneToOneInboxInviteStatus(status interface{}) *MockSpaceView_SetOneToOneInboxInviteStatus_Call {
+	return &MockSpaceView_SetOneToOneInboxInviteStatus_Call{Call: _e.mock.On("SetOneToOneInboxInviteStatus", status)}
+}
+
+func (_c *MockSpaceView_SetOneToOneInboxInviteStatus_Call) Run(run func(status spaceinfo.OneToOneInboxSentStatus)) *MockSpaceView_SetOneToOneInboxInviteStatus_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(spaceinfo.OneToOneInboxSentStatus))
+	})
+	return _c
+}
+
+func (_c *MockSpaceView_SetOneToOneInboxInviteStatus_Call) Return(err error) *MockSpaceView_SetOneToOneInboxInviteStatus_Call {
+	_c.Call.Return(err)
+	return _c
+}
+
+func (_c *MockSpaceView_SetOneToOneInboxInviteStatus_Call) RunAndReturn(run func(spaceinfo.OneToOneInboxSentStatus) error) *MockSpaceView_SetOneToOneInboxInviteStatus_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // SetOwner provides a mock function with given fields: ownerId, createdDate
 func (_m *MockSpaceView) SetOwner(ownerId string, createdDate int64) error {
 	ret := _m.Called(ownerId, createdDate)

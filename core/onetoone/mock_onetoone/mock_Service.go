@@ -160,6 +160,52 @@ func (_c *MockService_Name_Call) RunAndReturn(run func() string) *MockService_Na
 	return _c
 }
 
+// ResendFailedOneToOneInvites provides a mock function with given fields: ctx
+func (_m *MockService) ResendFailedOneToOneInvites(ctx context.Context) error {
+	ret := _m.Called(ctx)
+
+	if len(ret) == 0 {
+		panic("no return value specified for ResendFailedOneToOneInvites")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context) error); ok {
+		r0 = rf(ctx)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// MockService_ResendFailedOneToOneInvites_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ResendFailedOneToOneInvites'
+type MockService_ResendFailedOneToOneInvites_Call struct {
+	*mock.Call
+}
+
+// ResendFailedOneToOneInvites is a helper method to define mock.On call
+//   - ctx context.Context
+func (_e *MockService_Expecter) ResendFailedOneToOneInvites(ctx interface{}) *MockService_ResendFailedOneToOneInvites_Call {
+	return &MockService_ResendFailedOneToOneInvites_Call{Call: _e.mock.On("ResendFailedOneToOneInvites", ctx)}
+}
+
+func (_c *MockService_ResendFailedOneToOneInvites_Call) Run(run func(ctx context.Context)) *MockService_ResendFailedOneToOneInvites_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context))
+	})
+	return _c
+}
+
+func (_c *MockService_ResendFailedOneToOneInvites_Call) Return(_a0 error) *MockService_ResendFailedOneToOneInvites_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockService_ResendFailedOneToOneInvites_Call) RunAndReturn(run func(context.Context) error) *MockService_ResendFailedOneToOneInvites_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // Run provides a mock function with given fields: ctx
 func (_m *MockService) Run(ctx context.Context) error {
 	ret := _m.Called(ctx)
