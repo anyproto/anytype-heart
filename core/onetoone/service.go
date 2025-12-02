@@ -144,7 +144,7 @@ func (s *onetoone) processOneToOneInvite(packet *coordinatorproto.InboxPacket) (
 		OneToOneIdentity: identityProfileWithKey.IdentityProfile.Identity,
 	}
 
-	err = s.blockService.CreateOneToOneFromInbox(context.TODO(), spaceDescription, &identityProfileWithKey)
+	err = s.blockService.CreateOneToOneFromInbox(context.Background(), spaceDescription, &identityProfileWithKey)
 	if err != nil {
 		log.Error("create onetoone space from inbox", zap.Error(err))
 		return fmt.Errorf("processOneToOneInvite error: %s", err.Error())
@@ -222,7 +222,7 @@ func (s *onetoone) inboxResend(ctx context.Context) (err error) {
 
 	for _, record := range records {
 		bobIdentity := record.Details.GetString(bundle.RelationKeyOneToOneIdentity)
-		err := s.SendOneToOneInvite(context.TODO(), bobIdentity)
+		err := s.SendOneToOneInvite(ctx, bobIdentity)
 		if err != nil {
 			log.Error("inboxResend: error (re)sending inbox invite", zap.String("identity", bobIdentity), zap.Error(err))
 		} else {
