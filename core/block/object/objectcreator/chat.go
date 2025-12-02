@@ -13,7 +13,7 @@ import (
 	"github.com/anyproto/anytype-heart/space/clientspace"
 )
 
-func (s *service) AddChatDerivedObject(ctx context.Context, space clientspace.Space, chatObjectId string) (chatId string, err error) {
+func (s *service) AddChatDerivedObject(ctx context.Context, space clientspace.Space, chatObjectId string, addAnalyticsId bool) (chatId string, err error) {
 	chatDetails := domain.NewDetails()
 	chatUniqueKey, err := domain.NewUniqueKey(smartblock.SmartBlockTypeChatDerivedObject, chatObjectId)
 	if err != nil {
@@ -21,7 +21,7 @@ func (s *service) AddChatDerivedObject(ctx context.Context, space clientspace.Sp
 	}
 	chatDetails.SetString(bundle.RelationKeyUniqueKey, chatUniqueKey.Marshal())
 
-	chatId, _, err = s.createChatDerived(ctx, space, chatDetails, false)
+	chatId, _, err = s.createChatDerived(ctx, space, chatDetails, addAnalyticsId)
 	if err != nil {
 		return "", fmt.Errorf("create object: %w", err)
 	}

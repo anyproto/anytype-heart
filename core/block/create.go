@@ -83,7 +83,7 @@ func (s *Service) CreateOneToOneFromInbox(ctx context.Context, spaceDescription 
 		return fmt.Errorf("set details for space %s: %w", newSpace.Id(), err)
 	}
 
-	err = s.SpaceInitChat(ctx, newSpace.Id())
+	err = s.SpaceInitChat(ctx, newSpace.Id(), false)
 	if err != nil {
 		log.Warn("failed to init space level chat")
 	}
