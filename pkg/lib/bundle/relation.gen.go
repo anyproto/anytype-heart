@@ -9,7 +9,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-const RelationChecksum = "85b85a1a1c729ab9261a31330e9aa52836498cbd47225b4a631cef26a4f8cef8"
+const RelationChecksum = "5ec81b9ead6406e2a19be9dfa156c4241ddd8ecde4272fdbb7fde4f54d00becc"
 const (
 	RelationKeyTag                                  domain.RelationKey = "tag"
 	RelationKeyCamera                               domain.RelationKey = "camera"
@@ -189,6 +189,7 @@ const (
 	RelationKeyLastMessageDate                      domain.RelationKey = "lastMessageDate"
 	RelationKeyFileAvailableOffline                 domain.RelationKey = "fileAvailableOffline"
 	RelationKeyAnalyticsChatId                      domain.RelationKey = "analyticsChatId"
+	RelationKey_score                               domain.RelationKey = "_score"
 )
 
 var (
@@ -2641,6 +2642,19 @@ var (
 			Key:              "writersLimit",
 			MaxCount:         1,
 			Name:             "Writers limit",
+			ReadOnly:         true,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
+		RelationKey_score: {
+
+			DataSource:       model.Relation_derived,
+			Description:      "Fulltext search score",
+			Format:           model.RelationFormat_number,
+			Hidden:           true,
+			Id:               "_br_score",
+			Key:              "_score",
+			Name:             "Score",
 			ReadOnly:         true,
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
