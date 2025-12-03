@@ -6,8 +6,6 @@ import (
 	"errors"
 	"fmt"
 
-	"go.uber.org/zap"
-
 	"github.com/anyproto/any-sync/util/crypto"
 	"github.com/anyproto/anytype-heart/core/block/cache"
 	"github.com/anyproto/anytype-heart/core/block/editor/basic"
@@ -55,13 +53,13 @@ func (s *Service) ObjectDuplicate(ctx context.Context, id string) (objectID stri
 func (s *Service) CreateOneToOneFromInbox(ctx context.Context, identityProfileWithKey *model.IdentityProfileWithKey) (spaceID string, startingPageId string, err error) {
 	key, err := crypto.UnmarshallAESKeyProto(identityProfileWithKey.RequestMetadata)
 	if err != nil {
-		return
+		return "", "", fmt.Errorf("unmarshal RequestMetadata: %w", err)
 	}
 
 	// TODO: send encrypted rawProfile in inbox, with key?
 	err = s.identityService.AddIdentityProfile(identityProfileWithKey.IdentityProfile, key)
 	if err != nil {
-		return
+		return "", "", fmt.Errorf("addIdentityProfile: %w", err)
 	}
 
 	requestMetadataKeyStr := base64.StdEncoding.EncodeToString(identityProfileWithKey.RequestMetadata)
@@ -76,8 +74,7 @@ func (s *Service) CreateOneToOneFromInbox(ctx context.Context, identityProfileWi
 
 	newSpace, err := s.spaceService.CreateOneToOne(ctx, spaceDescription, identityProfileWithKey)
 	if err != nil {
-		err = fmt.Errorf("error creating space: %w", err)
-		return
+		return "", "", fmt.Errorf("createOneToOneFromInbox: %w", err)
 	}
 	err = s.spaceService.TechSpace().SpaceViewSetData(ctx, newSpace.Id(),
 		domain.NewDetails().
@@ -85,8 +82,7 @@ func (s *Service) CreateOneToOneFromInbox(ctx context.Context, identityProfileWi
 			SetString(bundle.RelationKeyIconImage, identityProfileWithKey.IdentityProfile.IconCid).
 			SetInt64(bundle.RelationKeyOneToOneInboxSentStatus, int64(spaceinfo.OneToOneInboxSentStatusReceived)))
 	if err != nil {
-		err = fmt.Errorf("onetoone, set view data for techspace %s: %w", newSpace.Id(), err)
-		return
+		return "", "", fmt.Errorf("onetoone, SpaceViewSetData  %s: %w", newSpace.Id(), err)
 	}
 
 	predefinedObjectIDs := newSpace.DerivedIDs()
@@ -107,8 +103,7 @@ func (s *Service) CreateOneToOneFromInbox(ctx context.Context, identityProfileWi
 	})
 
 	if err != nil {
-		err = fmt.Errorf("set details for space %s: %w", newSpace.Id(), err)
-		return
+		return "", "", fmt.Errorf("set details for space %s: %w", newSpace.Id(), err)
 	}
 
 	workspaceId := newSpace.DerivedIDs().Workspace
@@ -119,56 +114,43 @@ func (s *Service) CreateOneToOneFromInbox(ctx context.Context, identityProfileWi
 
 	chatId, err := newSpace.DeriveObjectID(context.Background(), chatUk)
 	if err != nil {
-		return
+		return "", "", fmt.Errorf("onetoone, failed to derive chatId for space %s: %w", newSpace.Id(), err)
 	}
 
-	startingPageId = chatId
-	spaceID = newSpace.Id()
-
-	return
+	return newSpace.Id(), chatId, nil
 }
 
+func (s *Service) CreateOneToOneFromLink(ctx context.Context, spaceDescription spaceinfo.SpaceDescription) (spaceID string, startingPageId string, err error) {
+	if spaceDescription.OneToOneIdentity == "" {
+		return "", "", fmt.Errorf("createWorkspace: failed to decode onetoone from Identity+RequestMetadata: identity is empty")
+	}
+	requestMetadataKeyBytes, err := base64.StdEncoding.DecodeString(spaceDescription.OneToOneRequestMetadataKey)
+	if err != nil {
+		return "", "", fmt.Errorf("createWorkspace: failed to decode onetoone RequestMetadata: %w", err)
+	}
+
+	identityProfileWithKey := model.IdentityProfileWithKey{
+		IdentityProfile: &model.IdentityProfile{
+			Identity: spaceDescription.OneToOneIdentity,
+		},
+		RequestMetadata: requestMetadataKeyBytes,
+	}
+
+	spaceID, startingPageId, err = s.CreateOneToOneFromInbox(ctx, &identityProfileWithKey)
+	if err != nil {
+		return "", "", fmt.Errorf("createWorkspace: failed to CreateOneToOneFromInbox: %w", err)
+	}
+
+	return spaceID, startingPageId, nil
+
+}
 func (s *Service) CreateWorkspace(ctx context.Context, req *pb.RpcWorkspaceCreateRequest) (spaceID string, startingPageId string, err error) {
 	spaceDetails := domain.NewDetailsFromProto(req.Details)
 	spaceDescription := spaceinfo.NewSpaceDescriptionFromDetails(spaceDetails)
 
-	// when RequestMetadataKey is passed it means we create from a deeplink
-	// nolint: nestif
+	// when RequestMetadataKey is passed it means we create from a deeplink / QR code
 	if spaceDescription.OneToOneRequestMetadataKey != "" {
-		if spaceDescription.OneToOneIdentity == "" {
-			return "", "", fmt.Errorf("createWorkspace: failed to decode onetoone from Identity+RequestMetadata: identity is empty")
-		}
-		requestMetadataKeyBytes, rerr := base64.StdEncoding.DecodeString(spaceDescription.OneToOneRequestMetadataKey)
-		if rerr != nil {
-			return "", "", fmt.Errorf("createWorkspace: failed to decode onetoone RequestMetadata: %w", rerr)
-		}
-
-		identityProfileWithKey := model.IdentityProfileWithKey{
-			IdentityProfile: &model.IdentityProfile{
-				Identity: spaceDescription.OneToOneIdentity,
-			},
-			RequestMetadata: requestMetadataKeyBytes,
-		}
-
-		spaceID, startingPageId, err = s.CreateOneToOneFromInbox(context.TODO(), &identityProfileWithKey)
-		if err != nil {
-			return
-		}
-
-		// TODO: rewrite to spaceview inbox invite status
-		// https://github.com/anyproto/anytype-heart/pull/2832
-		myIdentity := s.accountService.AccountID()
-		myProfile, werr := s.identityService.WaitProfileWithKey(ctx, myIdentity)
-		if werr != nil {
-			log.Error("failed to send onetoone invite", zap.Error(werr))
-		}
-
-		oerr := s.onetoone.SendOneToOneInvite(ctx, identityProfileWithKey.IdentityProfile.Identity, myProfile)
-		if oerr != nil {
-			log.Error("failed to send onetoone invite", zap.Error(oerr))
-		}
-
-		return
+		return s.CreateOneToOneFromLink(ctx, spaceDescription)
 	}
 
 	newSpace, err := s.spaceService.Create(ctx, &spaceDescription)
