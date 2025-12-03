@@ -17,7 +17,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/detailservice"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/domain/objectorigin"
-	"github.com/anyproto/anytype-heart/metrics"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
@@ -92,12 +91,6 @@ func (s *Service) AccountCreate(ctx context.Context, req *pb.RpcAccountCreateReq
 	if err != nil {
 		return newAcc, fmt.Errorf("set profile details: %w", err)
 	}
-
-	err = s.setSpaceAnalyticsId(ctx, newAcc)
-	if err != nil {
-		return newAcc, fmt.Errorf("set space analytics id: %w", err)
-	}
-
 	return newAcc, nil
 }
 
@@ -173,20 +166,4 @@ func (s *Service) setProfileDetails(ctx context.Context, req *pb.RpcAccountCreat
 		return errors.Join(ErrSetDetails, err)
 	}
 	return nil
-}
-
-func (s *Service) setSpaceAnalyticsId(ctx context.Context, newAcc *model.Account) error {
-	spaceService := app.MustComponent[space.Service](s.app)
-	spc, err := spaceService.Wait(ctx, newAcc.Info.AccountSpaceId)
-	if err != nil {
-		return fmt.Errorf("get first space: %w", err)
-	}
-
-	ds := app.MustComponent[detailservice.Service](s.app)
-	return ds.SetDetails(nil, spc.DerivedIDs().Workspace, []domain.Detail{
-		{
-			Key:   bundle.RelationKeyAnalyticsSpaceId,
-			Value: domain.String(metrics.GenerateAnalyticsId()),
-		},
-	})
 }
