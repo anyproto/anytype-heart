@@ -184,10 +184,24 @@ func (s *service) WaitProfile(ctx context.Context, identity string) *model.Ident
 	}
 }
 func (s *service) GetMetadataKey(identity string) (crypto.SymKey, error) {
+	s.lock.Lock()
+	defer s.lock.Unlock()
+
 	key, ok := s.identityEncryptionKeys[identity]
 	if !ok {
+		// FIXME We have a race condition somewhere and our own key could not be indexed yet at this moment.
+		// Derive a key as a temporarily solution
+		if s.myIdentity == identity {
+			_, key, err := domain.DeriveAccountMetadata(s.accountService.Keys().SignKey)
+			if err != nil {
+				return nil, err
+			}
+			s.identityEncryptionKeys[identity] = key
+			return key, nil
+		}
 		return nil, fmt.Errorf("identityEncryptionKey doesnt exist for identity")
 	}
+
 	return key, nil
 }
 
