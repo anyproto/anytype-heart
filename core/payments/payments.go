@@ -196,10 +196,6 @@ func (s *service) Run(ctx context.Context) (err error) {
 	if !s.cfg.EnableMembershipV2 {
 		log.Info("starting v1 refresh controller")
 
-		if s.refreshCtrl != nil {
-			return nil
-		}
-
 		fetchFn := func(baseCtx context.Context, forceFetch bool) (bool, error) {
 			fetchCtx, cancel := context.WithTimeout(baseCtx, networkTimeout)
 			defer cancel()
@@ -212,10 +208,6 @@ func (s *service) Run(ctx context.Context) (err error) {
 	} else {
 		// Start V2 refresh controller
 		log.Info("starting V2 refresh controller")
-
-		if s.refreshCtrlV2 != nil {
-			return nil
-		}
 
 		fetchFnV2 := func(baseCtx context.Context, forceFetch bool) (bool, error) {
 			fetchCtx, cancel := context.WithTimeout(baseCtx, networkTimeout2)
