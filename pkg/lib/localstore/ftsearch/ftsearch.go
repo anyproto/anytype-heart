@@ -47,13 +47,18 @@ const (
 	ftsVer   = "16"
 	docLimit = 10000
 
-	fieldTitle   = "Title"
-	fieldTitleZh = "TitleZh"
-	fieldText    = "Text"
-	fieldTextZh  = "TextZh"
-	fieldSpace   = "SpaceID"
-	fieldId      = "Id"
-	fieldIdRaw   = "IdRaw"
+	fieldTitle     = "Title"
+	fieldTitleZh   = "TitleZh"
+	fieldText      = "Text"
+	fieldTextZh    = "TextZh"
+	fieldSpace     = "SpaceID"
+	fieldId        = "Id"
+	fieldIdRaw     = "IdRaw"
+	fieldAuthor    = "Author"
+	fieldOrderId   = "OrderId"
+	fieldMessageId = "MessageId"
+	fieldTimestamp = "Timestamp"
+
 	score        = "score"
 	highlights   = "highlights"
 	fragment     = "fragment"
@@ -84,6 +89,12 @@ type SearchDoc struct {
 	SpaceId string
 	Title   string
 	Text    string
+
+	// message specific fields
+	Author    string
+	OrderId   string
+	MessageId string
+	Timestamp string
 }
 
 type Highlight struct {
