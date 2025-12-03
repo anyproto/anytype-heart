@@ -9,7 +9,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-const RelationChecksum = "6da5275ccee4572311f8c824449341656a4701bcdb4ea0e63c7874ffdfaafd33"
+const RelationChecksum = "d753e72518ba2eefdcbe2924a896a2327285c68f9ca92911476fe028ec5db811"
 const (
 	RelationKeyTag                                  domain.RelationKey = "tag"
 	RelationKeyCamera                               domain.RelationKey = "camera"
@@ -163,6 +163,7 @@ const (
 	RelationKeySpaceOrder                           domain.RelationKey = "spaceOrder"
 	RelationKeyOrderId                              domain.RelationKey = "orderId"
 	RelationKeyOneToOneIdentity                     domain.RelationKey = "oneToOneIdentity"
+	RelationKeyOneToOneInboxSentStatus              domain.RelationKey = "oneToOneInboxSentStatus"
 	RelationKeyOneToOneRequestMetadataKey           domain.RelationKey = "oneToOneRequestMetadataKey"
 	RelationKeyIconName                             domain.RelationKey = "iconName"
 	RelationKeyRecommendedFeaturedRelations         domain.RelationKey = "recommendedFeaturedRelations"
@@ -1521,6 +1522,20 @@ var (
 			Key:              "oneToOneIdentity",
 			MaxCount:         1,
 			Name:             "oneToOneIdentity",
+			ReadOnly:         false,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
+		RelationKeyOneToOneInboxSentStatus: {
+
+			DataSource:       model.Relation_details,
+			Description:      "OneToOne Inbox invite sent status",
+			Format:           model.RelationFormat_number,
+			Hidden:           true,
+			Id:               "_broneToOneInboxSentStatus",
+			Key:              "oneToOneInboxSentStatus",
+			MaxCount:         1,
+			Name:             "OneToOne Inbox sent status",
 			ReadOnly:         false,
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,

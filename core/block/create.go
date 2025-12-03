@@ -51,6 +51,7 @@ func (s *Service) ObjectDuplicate(ctx context.Context, id string) (objectID stri
 }
 
 func (s *Service) CreateOneToOneFromInbox(ctx context.Context, spaceDescription *spaceinfo.SpaceDescription, identityProfileWithKey *model.IdentityProfileWithKey) (err error) {
+	spaceDescription.OneToOneInboxSentStatus = spaceinfo.OneToOneInboxSentStatusReceived
 	newSpace, err := s.spaceService.CreateOneToOne(ctx, spaceDescription, identityProfileWithKey)
 	if err != nil {
 		return fmt.Errorf("error creating space: %w", err)
@@ -58,7 +59,8 @@ func (s *Service) CreateOneToOneFromInbox(ctx context.Context, spaceDescription 
 	err = s.spaceService.TechSpace().SpaceViewSetData(ctx, newSpace.Id(),
 		domain.NewDetails().
 			SetString(bundle.RelationKeyName, identityProfileWithKey.IdentityProfile.Name).
-			SetString(bundle.RelationKeyIconImage, identityProfileWithKey.IdentityProfile.IconCid))
+			SetString(bundle.RelationKeyIconImage, identityProfileWithKey.IdentityProfile.IconCid).
+			SetInt64(bundle.RelationKeyOneToOneInboxSentStatus, int64(spaceinfo.OneToOneInboxSentStatusReceived)))
 	if err != nil {
 		return fmt.Errorf("onetoone, set view data for techspace %s: %w", newSpace.Id(), err)
 	}
@@ -73,6 +75,7 @@ func (s *Service) CreateOneToOneFromInbox(ctx context.Context, spaceDescription 
 		{Key: bundle.RelationKeyIconOption, Value: domain.Float64(float64(5))},
 		{Key: bundle.RelationKeyOneToOneIdentity, Value: domain.String(identityProfileWithKey.IdentityProfile.Identity)},
 		{Key: bundle.RelationKeyOneToOneRequestMetadataKey, Value: domain.String(requestMetadataKeyStr)},
+		{Key: bundle.RelationKeyOneToOneInboxSentStatus, Value: domain.Int64(int64(spaceinfo.OneToOneInboxSentStatusReceived))},
 		{Key: bundle.RelationKeySpaceDashboardId, Value: domain.String("lastOpened")},
 	}
 
@@ -84,7 +87,7 @@ func (s *Service) CreateOneToOneFromInbox(ctx context.Context, spaceDescription 
 		return fmt.Errorf("set details for space %s: %w", newSpace.Id(), err)
 	}
 
-	err = s.SpaceInitChat(ctx, newSpace.Id())
+	err = s.SpaceInitChat(ctx, newSpace.Id(), false)
 	if err != nil {
 		log.Warn("failed to init space level chat")
 	}

@@ -287,7 +287,17 @@ func (s *storeObject) onUpdate() {
 	s.subscription.Flush()
 
 	last, ok := s.subscription.GetLastMessage()
-	if ok {
+	if !ok {
+		msgs, err := s.repository.GetLastMessages(s.componentCtx, 1)
+		if err != nil {
+			log.Error("onUpdate: get last message", zap.Error(err))
+		}
+		if len(msgs) > 0 {
+			last = msgs[0].ChatMessage
+		}
+	}
+
+	if last != nil {
 		st := s.NewState()
 		st.SetDetailAndBundledRelation(bundle.RelationKeyLastMessageDate, domain.Int64(last.CreatedAt))
 		err = s.Apply(st, smartblock.NotPushChanges)

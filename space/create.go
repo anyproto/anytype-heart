@@ -32,21 +32,18 @@ func (s *service) CreateOneToOneSendInbox(ctx context.Context, description *spac
 
 	description.Name = bobProfile.IdentityProfile.Name
 	description.IconImage = bobProfile.IdentityProfile.IconCid
+	description.OneToOneInboxSentStatus = spaceinfo.OneToOneInboxSentStatusToSend
 	sp, err = s.CreateOneToOne(ctx, description, bobProfile)
 	if err != nil {
 		err = fmt.Errorf("create onetoone: %w", err)
 		return
 	}
 
-	myProfile, err := s.identityService.WaitProfileWithKey(ctx, myIdentity)
+	err = s.onetoone.ResendFailedOneToOneInvites(ctx)
 	if err != nil {
-		return
+		log.Error("failed to reschedule onetoone inbox resend", zap.Error(err))
 	}
 
-	err = s.onetoone.SendOneToOneInvite(ctx, bobProfile.IdentityProfile.Identity, myProfile)
-	if err != nil {
-		log.Error("sendOneToOneInvite: ", zap.Error(err))
-	}
 	return sp, nil
 }
 

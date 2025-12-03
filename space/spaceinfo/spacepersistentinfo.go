@@ -15,6 +15,7 @@ type SpacePersistentInfo struct {
 	Name                       string
 	OneToOneIdentity           string
 	OneToOneRequestMetadataKey string
+	OneToOneInboxSentStatus    OneToOneInboxSentStatus
 }
 
 func NewSpacePersistentInfo(spaceId string) SpacePersistentInfo {
@@ -47,6 +48,10 @@ func (s *SpacePersistentInfo) UpdateDetails(st *state.State) *SpacePersistentInf
 	if s.OneToOneRequestMetadataKey != "" {
 		st.SetDetail(bundle.RelationKeyOneToOneRequestMetadataKey, domain.String(s.OneToOneRequestMetadataKey))
 	}
+	if s.OneToOneInboxSentStatus != OneToOneInboxSentStatusNone {
+		st.SetDetail(bundle.RelationKeyOneToOneInboxSentStatus, domain.Int64(s.OneToOneInboxSentStatus))
+	}
+
 	if s.Name != "" {
 		st.SetDetail(bundle.RelationKeyName, domain.String(s.Name))
 	}

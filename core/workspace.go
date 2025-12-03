@@ -53,7 +53,7 @@ func (mw *Middleware) WorkspaceCreate(cctx context.Context, req *pb.RpcWorkspace
 		}
 		if spaceUxType == model.SpaceUxType_Chat || spaceUxType == model.SpaceUxType_OneToOne {
 			// TODO: make it async in space init
-			err = bs.SpaceInitChat(cctx, spaceId)
+			err = bs.SpaceInitChat(cctx, spaceId, true)
 			if err != nil {
 				log.With("error", err).Warn("failed to init space level chat")
 			}
@@ -101,7 +101,7 @@ func (mw *Middleware) WorkspaceOpen(cctx context.Context, req *pb.RpcWorkspaceOp
 		}
 		if shareableStatus == spaceinfo.ShareableStatusShareable {
 			// migration for existing users
-			err = bs.SpaceInitChat(cctx, req.SpaceId)
+			err = bs.SpaceInitChat(cctx, req.SpaceId, false)
 			if err != nil {
 				log.With("spaceId", req.SpaceId).With("error", err).Warn("failed to init space level chat")
 			}
