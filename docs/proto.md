@@ -2576,6 +2576,7 @@ the element of change tree used to store and internal apply smartBlock history
 | fileKeys | [Change.FileKeys](#anytype-Change-FileKeys) | repeated | file keys related to changes content |
 | timestamp | [int64](#int64) |  | creation timestamp |
 | version | [uint32](#uint32) |  | version of business logic |
+| changeType | [uint32](#uint32) |  | business-level type of change applied to object |
 
 
 

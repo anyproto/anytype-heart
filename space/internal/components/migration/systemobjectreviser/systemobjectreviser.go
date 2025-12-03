@@ -145,6 +145,7 @@ func reviseObject(ctx context.Context, log logger.CtxLogger, space dependencies.
 		log.Debug("updating system object", zap.String("key", uk.InternalKey()), zap.String("space", space.Id()))
 		if err := space.DoCtx(ctx, localObject.GetString(bundle.RelationKeyId), func(sb smartblock.SmartBlock) error {
 			st := sb.NewState()
+			st.SetChangeType(domain.ChangeTypeSystemObjectReviserMigration)
 			for key, value := range details.Iterate() {
 				st.SetDetail(key, value)
 			}
