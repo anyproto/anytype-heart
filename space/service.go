@@ -169,7 +169,7 @@ func (s *service) Init(a *app.App) (err error) {
 	if err != nil {
 		return
 	}
-	accountMetadata, metadataSymKey, err := deriveMetadata(s.accountService.Account().SignKey)
+	accountMetadata, metadataSymKey, err := domain.DeriveAccountMetadata(s.accountService.Account().SignKey)
 	if err != nil {
 		return
 	}
