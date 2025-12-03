@@ -51,6 +51,7 @@ func (h *history) Undo(ctx session.Context) (info HistoryInfo, err error) {
 	if action.Details != nil {
 		s.SetDetails(action.Details.Before.Copy())
 	}
+	s.SetChangeType(domain.ChangeTypeHistoryOperation)
 	if err = h.Apply(s, smartblock.NoHistory, smartblock.NoRestrictions); err != nil {
 		return
 	}
@@ -83,6 +84,7 @@ func (h *history) Redo(ctx session.Context) (info HistoryInfo, err error) {
 	if action.Details != nil {
 		s.SetDetails(action.Details.After.Copy())
 	}
+	s.SetChangeType(domain.ChangeTypeHistoryOperation)
 	if err = h.Apply(s, smartblock.NoHistory, smartblock.NoRestrictions); err != nil {
 		return
 	}

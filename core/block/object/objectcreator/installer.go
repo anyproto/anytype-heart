@@ -213,6 +213,7 @@ func (s *service) reinstallObject(
 		st.SetDetailAndBundledRelation(bundle.RelationKeyIsUninstalled, domain.Bool(false))
 		st.SetDetailAndBundledRelation(bundle.RelationKeyIsDeleted, domain.Bool(false))
 		st.SetOriginalCreatedTimestamp(time.Now().Unix())
+		st.SetChangeType(domain.ChangeTypeObjectReinstall)
 
 		key = domain.TypeKey(st.UniqueKeyInternal())
 		details = st.CombinedDetails()
