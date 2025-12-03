@@ -182,8 +182,6 @@ func (s *Service) setSpaceAnalyticsId(ctx context.Context, newAcc *model.Account
 		return fmt.Errorf("get first space: %w", err)
 	}
 
-	fmt.Println("workspace id", spc.DerivedIDs().Workspace)
-
 	ds := app.MustComponent[detailservice.Service](s.app)
 	return ds.SetDetails(nil, spc.DerivedIDs().Workspace, []domain.Detail{
 		{
