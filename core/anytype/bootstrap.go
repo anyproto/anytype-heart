@@ -34,6 +34,7 @@ import (
 
 	"github.com/anyproto/any-sync/nameservice/nameserviceclient"
 	"github.com/anyproto/any-sync/paymentservice/paymentserviceclient"
+	"github.com/anyproto/any-sync/paymentservice/paymentserviceclient2"
 
 	"github.com/anyproto/anytype-heart/core/acl"
 	"github.com/anyproto/anytype-heart/core/anytype/account"
@@ -329,6 +330,7 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(templateimpl.New()).
 		Register(notifications.New(time.Second * 10)).
 		Register(paymentserviceclient.New()).
+		Register(paymentserviceclient2.New()).
 		Register(nameservice.New()).
 		Register(nameserviceclient.New()).
 		Register(payments.New()).

@@ -395,3 +395,191 @@ func (mw *Middleware) MembershipCodeRedeem(ctx context.Context, req *pb.RpcMembe
 
 	return out
 }
+
+func (mw *Middleware) MembershipV2GetPortalLink(ctx context.Context, req *pb.RpcMembershipV2GetPortalLinkRequest) *pb.RpcMembershipV2GetPortalLinkResponse {
+	ps := mustService[payments.Service](mw)
+	out, err := ps.V2GetPortalLink(ctx, req)
+
+	if err != nil {
+		code := mapErrorCode(err,
+			errToCode(proto.ErrInvalidSignature, pb.RpcMembershipV2GetPortalLinkResponseError_NOT_LOGGED_IN),
+			errToCode(proto.ErrEthAddressEmpty, pb.RpcMembershipV2GetPortalLinkResponseError_NOT_LOGGED_IN),
+			errToCode(payments.ErrNoConnection, pb.RpcMembershipV2GetPortalLinkResponseError_PAYMENT_NODE_ERROR),
+			errToCode(net.ErrUnableToConnect, pb.RpcMembershipV2GetPortalLinkResponseError_PAYMENT_NODE_ERROR),
+			errToCode(payments.ErrV2NotEnabled, pb.RpcMembershipV2GetPortalLinkResponseError_V2_CALL_NOT_ENABLED),
+		)
+
+		return &pb.RpcMembershipV2GetPortalLinkResponse{
+			Error: &pb.RpcMembershipV2GetPortalLinkResponseError{
+				Code:        code,
+				Description: getErrorDescription(err),
+			},
+		}
+	}
+
+	return out
+}
+
+func (mw *Middleware) MembershipV2GetProducts(ctx context.Context, req *pb.RpcMembershipV2GetProductsRequest) *pb.RpcMembershipV2GetProductsResponse {
+	ps := mustService[payments.Service](mw)
+	out, err := ps.V2GetProducts(ctx, req)
+
+	if err != nil {
+		code := mapErrorCode(err,
+			errToCode(proto.ErrInvalidSignature, pb.RpcMembershipV2GetProductsResponseError_NOT_LOGGED_IN),
+			errToCode(proto.ErrEthAddressEmpty, pb.RpcMembershipV2GetProductsResponseError_NOT_LOGGED_IN),
+			errToCode(payments.ErrNoConnection, pb.RpcMembershipV2GetProductsResponseError_PAYMENT_NODE_ERROR),
+			errToCode(net.ErrUnableToConnect, pb.RpcMembershipV2GetProductsResponseError_PAYMENT_NODE_ERROR),
+			errToCode(payments.ErrV2NotEnabled, pb.RpcMembershipV2GetProductsResponseError_V2_CALL_NOT_ENABLED),
+		)
+
+		return &pb.RpcMembershipV2GetProductsResponse{
+			Error: &pb.RpcMembershipV2GetProductsResponseError{
+				Code:        code,
+				Description: getErrorDescription(err),
+			},
+		}
+	}
+
+	return out
+}
+
+func (mw *Middleware) MembershipV2GetStatus(ctx context.Context, req *pb.RpcMembershipV2GetStatusRequest) *pb.RpcMembershipV2GetStatusResponse {
+	ps := mustService[payments.Service](mw)
+	out, err := ps.V2GetStatus(ctx, req)
+
+	code := mapErrorCode(err,
+		errToCode(proto.ErrInvalidSignature, pb.RpcMembershipV2GetStatusResponseError_NOT_LOGGED_IN),
+		errToCode(proto.ErrEthAddressEmpty, pb.RpcMembershipV2GetStatusResponseError_NOT_LOGGED_IN),
+		errToCode(payments.ErrNoConnection, pb.RpcMembershipV2GetStatusResponseError_PAYMENT_NODE_ERROR),
+		errToCode(net.ErrUnableToConnect, pb.RpcMembershipV2GetStatusResponseError_PAYMENT_NODE_ERROR),
+		errToCode(payments.ErrV2NotEnabled, pb.RpcMembershipV2GetStatusResponseError_V2_CALL_NOT_ENABLED),
+	)
+
+	if err != nil {
+		return &pb.RpcMembershipV2GetStatusResponse{
+			Error: &pb.RpcMembershipV2GetStatusResponseError{
+				Code:        code,
+				Description: getErrorDescription(err),
+			},
+		}
+	}
+
+	return out
+}
+
+func (mw *Middleware) MembershipV2AnyNameIsValid(ctx context.Context, req *pb.RpcMembershipV2AnyNameIsValidRequest) *pb.RpcMembershipV2AnyNameIsValidResponse {
+	ps := mustService[payments.Service](mw)
+	out, err := ps.V2AnyNameIsValid(ctx, req)
+
+	// 1 - check the validity first (remote call #1)
+	// out will already contain validation Error
+	// but if something bad has happened we need to process other errors here too:
+	if err != nil {
+		code := mapErrorCode(err,
+			errToCode(proto.ErrInvalidSignature, pb.RpcMembershipV2AnyNameIsValidResponseError_NOT_LOGGED_IN),
+			errToCode(proto.ErrEthAddressEmpty, pb.RpcMembershipV2AnyNameIsValidResponseError_NOT_LOGGED_IN),
+			errToCode(payments.ErrNoConnection, pb.RpcMembershipV2AnyNameIsValidResponseError_CAN_NOT_CONNECT),
+			errToCode(payments.ErrCacheProblem, pb.RpcMembershipV2AnyNameIsValidResponseError_CACHE_ERROR),
+			errToCode(payments.ErrNameIsAlreadyReserved, pb.RpcMembershipV2AnyNameIsValidResponseError_NAME_IS_RESERVED),
+
+			errToCode(net.ErrUnableToConnect, pb.RpcMembershipV2AnyNameIsValidResponseError_CAN_NOT_CONNECT),
+			errToCode(payments.ErrV2NotEnabled, pb.RpcMembershipV2AnyNameIsValidResponseError_V2_CALL_NOT_ENABLED),
+		)
+
+		// if client doesn't handle that error - let it show unlocalized string at least
+		errStr := getErrorDescription(err)
+		if code == pb.RpcMembershipV2AnyNameIsValidResponseError_CAN_NOT_CONNECT {
+			errStr = "please connect to the internet"
+		}
+
+		return &pb.RpcMembershipV2AnyNameIsValidResponse{
+			Error: &pb.RpcMembershipV2AnyNameIsValidResponseError{
+				Code:        code,
+				Description: errStr,
+			},
+		}
+	}
+
+	return out
+}
+
+func (mw *Middleware) MembershipV2AnyNameAllocate(ctx context.Context, req *pb.RpcMembershipV2AnyNameAllocateRequest) *pb.RpcMembershipV2AnyNameAllocateResponse {
+	ps := mustService[payments.Service](mw)
+	out, err := ps.V2AnyNameAllocate(ctx, req)
+
+	if err != nil {
+		code := mapErrorCode(err,
+			errToCode(proto.ErrInvalidSignature, pb.RpcMembershipV2AnyNameAllocateResponseError_NOT_LOGGED_IN),
+			errToCode(proto.ErrEthAddressEmpty, pb.RpcMembershipV2AnyNameAllocateResponseError_NOT_LOGGED_IN),
+			errToCode(payments.ErrNoConnection, pb.RpcMembershipV2AnyNameAllocateResponseError_CAN_NOT_CONNECT),
+			errToCode(payments.ErrCacheProblem, pb.RpcMembershipV2AnyNameAllocateResponseError_CACHE_ERROR),
+
+			errToCode(net.ErrUnableToConnect, pb.RpcMembershipV2AnyNameAllocateResponseError_CAN_NOT_CONNECT),
+			errToCode(payments.ErrV2NotEnabled, pb.RpcMembershipV2AnyNameAllocateResponseError_V2_CALL_NOT_ENABLED),
+		)
+
+		// if client doesn't handle that error - let it show unlocalized string at least
+		errStr := getErrorDescription(err)
+		if code == pb.RpcMembershipV2AnyNameAllocateResponseError_CAN_NOT_CONNECT {
+			errStr = "please connect to the internet"
+		}
+
+		return &pb.RpcMembershipV2AnyNameAllocateResponse{
+			Error: &pb.RpcMembershipV2AnyNameAllocateResponseError{
+				Code:        code,
+				Description: errStr,
+			},
+		}
+	}
+
+	return out
+}
+
+func (mw *Middleware) MembershipV2CartGet(ctx context.Context, req *pb.RpcMembershipV2CartGetRequest) *pb.RpcMembershipV2CartGetResponse {
+	ps := mustService[payments.Service](mw)
+	out, err := ps.V2CartGet(ctx, req)
+
+	if err != nil {
+		code := mapErrorCode(err,
+			errToCode(proto.ErrInvalidSignature, pb.RpcMembershipV2CartGetResponseError_UNKNOWN_ERROR),
+			errToCode(proto.ErrEthAddressEmpty, pb.RpcMembershipV2CartGetResponseError_BAD_INPUT),
+			errToCode(payments.ErrNoConnection, pb.RpcMembershipV2CartGetResponseError_CAN_NOT_CONNECT),
+			errToCode(net.ErrUnableToConnect, pb.RpcMembershipV2CartGetResponseError_CAN_NOT_CONNECT),
+			errToCode(payments.ErrV2NotEnabled, pb.RpcMembershipV2CartGetResponseError_V2_CALL_NOT_ENABLED),
+		)
+
+		return &pb.RpcMembershipV2CartGetResponse{
+			Error: &pb.RpcMembershipV2CartGetResponseError{
+				Code:        code,
+				Description: getErrorDescription(err),
+			},
+		}
+	}
+
+	return out
+}
+
+func (mw *Middleware) MembershipV2CartUpdate(ctx context.Context, req *pb.RpcMembershipV2CartUpdateRequest) *pb.RpcMembershipV2CartUpdateResponse {
+	ps := mustService[payments.Service](mw)
+	out, err := ps.V2CartUpdate(ctx, req)
+
+	if err != nil {
+		code := mapErrorCode(err,
+			errToCode(proto.ErrInvalidSignature, pb.RpcMembershipV2CartUpdateResponseError_UNKNOWN_ERROR),
+			errToCode(proto.ErrEthAddressEmpty, pb.RpcMembershipV2CartUpdateResponseError_BAD_INPUT),
+			errToCode(payments.ErrNoConnection, pb.RpcMembershipV2CartUpdateResponseError_CAN_NOT_CONNECT),
+			errToCode(net.ErrUnableToConnect, pb.RpcMembershipV2CartUpdateResponseError_CAN_NOT_CONNECT),
+			errToCode(payments.ErrV2NotEnabled, pb.RpcMembershipV2CartUpdateResponseError_V2_CALL_NOT_ENABLED),
+		)
+
+		return &pb.RpcMembershipV2CartUpdateResponse{
+			Error: &pb.RpcMembershipV2CartUpdateResponseError{
+				Code:        code,
+				Description: getErrorDescription(err),
+			},
+		}
+	}
+
+	return out
+}

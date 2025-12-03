@@ -29,6 +29,7 @@ var (
 // once you change the cache format, you need to update this variable
 // it will cause cache to be dropped and recreated
 const cacheLastVersion = 8
+const cacheV2LastVersion = 1
 
 const (
 	cacheLifetimeDurExplorer = 24 * time.Hour
@@ -59,6 +60,22 @@ func newStorageStruct() *StorageStruct {
 	}
 }
 
+type StorageV2Struct struct {
+	CurrentVersion uint16
+	ExpireTime     time.Time
+	V2Data         *model.MembershipV2Data
+	ProductsData   []*model.MembershipV2Product
+}
+
+func newStorageV2Struct() *StorageV2Struct {
+	return &StorageV2Struct{
+		CurrentVersion: cacheV2LastVersion,
+		ExpireTime:     time.Time{},
+		V2Data:         &model.MembershipV2Data{},
+		ProductsData:   []*model.MembershipV2Product{},
+	}
+}
+
 type CacheService interface {
 	CacheGet() (status *model.Membership, tiers []*model.MembershipTierData, expireTime time.Time, err error)
 
@@ -70,6 +87,11 @@ type CacheService interface {
 	// does not take into account if cache is enabled or not, erases always
 	CacheClear() (err error)
 
+	CacheV2Get() (data *model.MembershipV2Data, expireTime time.Time, err error)
+	CacheV2Set(data *model.MembershipV2Data) (err error)
+	CacheV2ProductsGet() (products []*model.MembershipV2Product, expireTime time.Time, err error)
+	CacheV2ProductsSet(products []*model.MembershipV2Product) (err error)
+
 	app.Component
 }
 
@@ -78,7 +100,8 @@ func New() CacheService {
 }
 
 type cacheservice struct {
-	db keyvaluestore.Store[*StorageStruct]
+	db   keyvaluestore.Store[*StorageStruct]
+	dbV2 keyvaluestore.Store[*StorageV2Struct]
 
 	m sync.Mutex
 }
@@ -91,6 +114,7 @@ func (s *cacheservice) Init(a *app.App) (err error) {
 	provider := app.MustComponent[anystoreprovider.Provider](a)
 
 	s.db = keyvaluestore.NewJsonFromCollection[*StorageStruct](provider.GetSystemCollection())
+	s.dbV2 = keyvaluestore.NewJsonFromCollection[*StorageV2Struct](provider.GetSystemCollection())
 	return nil
 }
 
@@ -225,4 +249,107 @@ func (s *cacheservice) set(in *StorageStruct) (err error) {
 		return ErrCacheDbNotInitialized
 	}
 	return s.db.Set(context.Background(), anystoreprovider.SystemKeys.PaymentCacheKey(cacheLastVersion), in)
+}
+
+func (s *cacheservice) getV2() (out *StorageV2Struct, err error) {
+	if s.dbV2 == nil {
+		return nil, ErrCacheDbNotInitialized
+	}
+	return s.dbV2.Get(context.Background(), anystoreprovider.SystemKeys.PaymentCacheV2Key(cacheV2LastVersion))
+}
+
+func (s *cacheservice) setV2(in *StorageV2Struct) (err error) {
+	if s.dbV2 == nil {
+		return ErrCacheDbNotInitialized
+	}
+	return s.dbV2.Set(context.Background(), anystoreprovider.SystemKeys.PaymentCacheV2Key(cacheV2LastVersion), in)
+}
+
+func getExpireTimeV2() time.Time {
+	// Use standard 10 minute cache lifetime for V2
+	return time.Now().UTC().Add(cacheLifetimeDurOther)
+}
+
+func (s *cacheservice) CacheV2Get() (data *model.MembershipV2Data, expiration time.Time, err error) {
+	s.m.Lock()
+	defer s.m.Unlock()
+
+	// 1 - check in storage
+	ss, err := s.getV2()
+	if err != nil {
+		log.Error("can not get membership V2 status from cache", zap.Error(err))
+		return nil, time.Time{}, ErrCacheDbError
+	}
+
+	if ss.CurrentVersion != cacheV2LastVersion {
+		log.Error("unsupported V2 cache version", zap.Uint16("version", ss.CurrentVersion))
+		return nil, time.Time{}, ErrUnsupportedCacheVersion
+	}
+
+	// 2 - return value
+	return ss.V2Data, ss.ExpireTime, nil
+}
+
+func (s *cacheservice) CacheV2Set(data *model.MembershipV2Data) (err error) {
+	s.m.Lock()
+	defer s.m.Unlock()
+
+	// 1 - get existing storage
+	ss, err := s.getV2()
+	if err != nil {
+		// if there is no record in the cache, let's create it
+		ss = newStorageV2Struct()
+	}
+
+	// 2 - update storage
+	if data != nil {
+		ss.V2Data = data
+	}
+
+	ss.ExpireTime = getExpireTimeV2()
+
+	// 3 - save to storage
+	return s.setV2(ss)
+}
+
+func (s *cacheservice) CacheV2ProductsGet() (products []*model.MembershipV2Product, expiration time.Time, err error) {
+	s.m.Lock()
+	defer s.m.Unlock()
+
+	// 1 - check in storage
+	ss, err := s.getV2()
+	if err != nil {
+		log.Error("can not get membership V2 products from cache", zap.Error(err))
+		return nil, time.Time{}, ErrCacheDbError
+	}
+
+	if ss.CurrentVersion != cacheV2LastVersion {
+		log.Error("unsupported V2 cache version", zap.Uint16("version", ss.CurrentVersion))
+		return nil, time.Time{}, ErrUnsupportedCacheVersion
+	}
+
+	// 2 - return value
+	return ss.ProductsData, ss.ExpireTime, nil
+}
+
+func (s *cacheservice) CacheV2ProductsSet(products []*model.MembershipV2Product) (err error) {
+	s.m.Lock()
+	defer s.m.Unlock()
+
+	// 1 - get existing storage
+	ss, err := s.getV2()
+	if err != nil {
+		// if there is no record in the cache, let's create it
+		ss = newStorageV2Struct()
+	}
+
+	// 2 - update storage
+	if products != nil {
+		ss.ProductsData = products
+	}
+
+	ss.ExpireTime = getExpireTimeV2()
+
+	// 3 - save to storage
+	return s.setV2(ss)
 }
