@@ -7,6 +7,7 @@ import (
 	"fmt"
 
 	"github.com/anyproto/any-sync/util/crypto"
+
 	"github.com/anyproto/anytype-heart/core/block/cache"
 	"github.com/anyproto/anytype-heart/core/block/editor/basic"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
