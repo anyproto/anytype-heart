@@ -19,6 +19,7 @@ import (
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space/spaceinfo"
+	"go.uber.org/zap"
 )
 
 func (s *Service) ObjectDuplicate(ctx context.Context, id string) (objectID string, err error) {
@@ -50,7 +51,7 @@ func (s *Service) ObjectDuplicate(ctx context.Context, id string) (objectID stri
 	return
 }
 
-func (s *Service) CreateOneToOneFromInbox(ctx context.Context, identityProfileWithKey *model.IdentityProfileWithKey) (spaceID string, startingPageId string, err error) {
+func (s *Service) CreateOneToOneFromInbox(ctx context.Context, identityProfileWithKey *model.IdentityProfileWithKey, inviteSentStatus spaceinfo.OneToOneInboxSentStatus) (spaceID string, startingPageId string, err error) {
 	key, err := crypto.UnmarshallAESKeyProto(identityProfileWithKey.RequestMetadata)
 	if err != nil {
 		return "", "", fmt.Errorf("unmarshal RequestMetadata: %w", err)
@@ -69,7 +70,7 @@ func (s *Service) CreateOneToOneFromInbox(ctx context.Context, identityProfileWi
 		SpaceUxType:                model.SpaceUxType_OneToOne,
 		OneToOneIdentity:           identityProfileWithKey.IdentityProfile.Identity,
 		OneToOneRequestMetadataKey: requestMetadataKeyStr,
-		OneToOneInboxSentStatus:    spaceinfo.OneToOneInboxSentStatusReceived,
+		OneToOneInboxSentStatus:    inviteSentStatus,
 	}
 
 	newSpace, err := s.spaceService.CreateOneToOne(ctx, spaceDescription, identityProfileWithKey)
@@ -80,7 +81,7 @@ func (s *Service) CreateOneToOneFromInbox(ctx context.Context, identityProfileWi
 		domain.NewDetails().
 			SetString(bundle.RelationKeyName, identityProfileWithKey.IdentityProfile.Name).
 			SetString(bundle.RelationKeyIconImage, identityProfileWithKey.IdentityProfile.IconCid).
-			SetInt64(bundle.RelationKeyOneToOneInboxSentStatus, int64(spaceinfo.OneToOneInboxSentStatusReceived)))
+			SetInt64(bundle.RelationKeyOneToOneInboxSentStatus, int64(inviteSentStatus)))
 	if err != nil {
 		return "", "", fmt.Errorf("onetoone, SpaceViewSetData  %s: %w", newSpace.Id(), err)
 	}
@@ -94,7 +95,7 @@ func (s *Service) CreateOneToOneFromInbox(ctx context.Context, identityProfileWi
 		{Key: bundle.RelationKeyIconOption, Value: domain.Float64(float64(5))},
 		{Key: bundle.RelationKeyOneToOneIdentity, Value: domain.String(identityProfileWithKey.IdentityProfile.Identity)},
 		{Key: bundle.RelationKeyOneToOneRequestMetadataKey, Value: domain.String(requestMetadataKeyStr)},
-		{Key: bundle.RelationKeyOneToOneInboxSentStatus, Value: domain.Int64(int64(spaceinfo.OneToOneInboxSentStatusReceived))},
+		{Key: bundle.RelationKeyOneToOneInboxSentStatus, Value: domain.Int64(int64(inviteSentStatus))},
 		{Key: bundle.RelationKeySpaceDashboardId, Value: domain.String("lastOpened")},
 	}
 
@@ -136,9 +137,14 @@ func (s *Service) CreateOneToOneFromLink(ctx context.Context, spaceDescription s
 		RequestMetadata: requestMetadataKeyBytes,
 	}
 
-	spaceID, startingPageId, err = s.CreateOneToOneFromInbox(ctx, &identityProfileWithKey)
+	spaceID, startingPageId, err = s.CreateOneToOneFromInbox(ctx, &identityProfileWithKey, spaceinfo.OneToOneInboxSentStatusToSend)
 	if err != nil {
 		return "", "", fmt.Errorf("createWorkspace: failed to CreateOneToOneFromInbox: %w", err)
+	}
+
+	err = s.onetoone.ResendFailedOneToOneInvites(ctx)
+	if err != nil {
+		log.Error("failed to reschedule onetoone inbox resend", zap.Error(err))
 	}
 
 	return spaceID, startingPageId, nil

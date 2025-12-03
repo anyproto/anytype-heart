@@ -60,7 +60,7 @@ type Service interface {
 }
 
 type BlockService interface {
-	CreateOneToOneFromInbox(ctx context.Context, bobProfile *model.IdentityProfileWithKey) (spaceID string, startingPageId string, err error)
+	CreateOneToOneFromInbox(ctx context.Context, bobProfile *model.IdentityProfileWithKey, inviteSentStatus spaceinfo.OneToOneInboxSentStatus) (spaceID string, startingPageId string, err error)
 }
 
 type onetoone struct {
@@ -125,7 +125,7 @@ func (s *onetoone) processOneToOneInvite(packet *coordinatorproto.InboxPacket) (
 		return
 	}
 
-	_, _, err = s.blockService.CreateOneToOneFromInbox(context.TODO(), &identityProfileWithKey)
+	_, _, err = s.blockService.CreateOneToOneFromInbox(context.Background(), &identityProfileWithKey, spaceinfo.OneToOneInboxSentStatusReceived)
 	if err != nil {
 		log.Error("create onetoone space from inbox", zap.Error(err))
 		return fmt.Errorf("processOneToOneInvite error: %s", err.Error())

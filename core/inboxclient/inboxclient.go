@@ -204,7 +204,7 @@ func (s *inboxclient) ReceiveNotify(event *coordinatorproto.NotifySubscribeEvent
 	}
 
 	if len(messages) == 0 {
-		log.Warn("inbox: ReceiveNotify: msgs len == 0")
+		log.Info("inbox: ReceiveNotify: msgs len == 0")
 		return
 	}
 	for _, msg := range messages {
