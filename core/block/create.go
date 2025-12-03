@@ -85,7 +85,7 @@ func (s *Service) CreateOneToOneFromInbox(ctx context.Context, identityProfileWi
 			SetString(bundle.RelationKeyIconImage, identityProfileWithKey.IdentityProfile.IconCid).
 			SetInt64(bundle.RelationKeyOneToOneInboxSentStatus, int64(inviteSentStatus)))
 	if err != nil {
-		return "", "", fmt.Errorf("onetoone, SpaceViewSetData  %s: %w", newSpace.Id(), err)
+		return "", "", fmt.Errorf("onetoone, SpaceViewSetData: %w", err)
 	}
 
 	predefinedObjectIDs := newSpace.DerivedIDs()
@@ -115,7 +115,7 @@ func (s *Service) CreateOneToOneFromInbox(ctx context.Context, identityProfileWi
 		return
 	}
 
-	chatId, err := newSpace.DeriveObjectID(context.Background(), chatUk)
+	chatId, err := newSpace.DeriveObjectID(s.componentCtx, chatUk)
 	if err != nil {
 		return "", "", fmt.Errorf("onetoone, failed to derive chatId for space %s: %w", newSpace.Id(), err)
 	}
@@ -123,7 +123,7 @@ func (s *Service) CreateOneToOneFromInbox(ctx context.Context, identityProfileWi
 	return newSpace.Id(), chatId, nil
 }
 
-func (s *Service) CreateOneToOneFromLink(ctx context.Context, spaceDescription spaceinfo.SpaceDescription) (spaceID string, startingPageId string, err error) {
+func (s *Service) CreateOneToOneFromLink(ctx context.Context, spaceDescription spaceinfo.SpaceDescription) (spaceId string, startingPageId string, err error) {
 	if spaceDescription.OneToOneIdentity == "" {
 		return "", "", fmt.Errorf("createWorkspace: failed to decode onetoone from Identity+RequestMetadata: identity is empty")
 	}
@@ -139,7 +139,7 @@ func (s *Service) CreateOneToOneFromLink(ctx context.Context, spaceDescription s
 		RequestMetadata: requestMetadataKeyBytes,
 	}
 
-	spaceID, startingPageId, err = s.CreateOneToOneFromInbox(ctx, &identityProfileWithKey, spaceinfo.OneToOneInboxSentStatusToSend)
+	spaceId, startingPageId, err = s.CreateOneToOneFromInbox(ctx, &identityProfileWithKey, spaceinfo.OneToOneInboxSentStatusToSend)
 	if err != nil {
 		return "", "", fmt.Errorf("createWorkspace: failed to CreateOneToOneFromInbox: %w", err)
 	}
@@ -149,7 +149,7 @@ func (s *Service) CreateOneToOneFromLink(ctx context.Context, spaceDescription s
 		log.Error("failed to reschedule onetoone inbox resend", zap.Error(err))
 	}
 
-	return spaceID, startingPageId, nil
+	return spaceId, startingPageId, nil
 
 }
 func (s *Service) CreateWorkspace(ctx context.Context, req *pb.RpcWorkspaceCreateRequest) (spaceID string, startingPageId string, err error) {
