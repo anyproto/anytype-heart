@@ -42,7 +42,7 @@ var (
 	ErrCanNotSign            = errors.New("can not sign")
 	ErrCacheProblem          = errors.New("cache problem")
 	ErrNoConnection          = errors.New("can not connect to payment node")
-	ErrV2CallNotSupported    = errors.New("V2 call not supported")
+	ErrV2NotEnabled          = errors.New("membership v2 call not enabled in AccountSelect or AccountCreate")
 	ErrNoTiers               = errors.New("can not get tiers")
 	ErrNoTierFound           = errors.New("can not find requested tier")
 	ErrNameIsAlreadyReserved = errors.New("name is already reserved")
@@ -193,7 +193,7 @@ func (s *service) Init(a *app.App) (err error) {
 
 func (s *service) Run(ctx context.Context) (err error) {
 	// this parameter is set in the AccountSelect and AccountCreate commands
-	if !s.cfg.PreferMembershipV2 {
+	if !s.cfg.EnableMembershipV2 {
 		log.Info("starting v1 refresh controller")
 
 		if s.refreshCtrl != nil {
@@ -1208,8 +1208,8 @@ func (s *service) CodeRedeem(ctx context.Context, req *pb.RpcMembershipCodeRedee
 }
 
 func (s *service) V2GetPortalLink(ctx context.Context, req *pb.RpcMembershipV2GetPortalLinkRequest) (*pb.RpcMembershipV2GetPortalLinkResponse, error) {
-	if !s.cfg.PreferMembershipV2 {
-		return nil, ErrV2CallNotSupported
+	if !s.cfg.EnableMembershipV2 {
+		return nil, ErrV2NotEnabled
 	}
 
 	webAuth := proto.MembershipV2_WebAuthRequest{}
@@ -1231,8 +1231,8 @@ func (s *service) V2GetPortalLink(ctx context.Context, req *pb.RpcMembershipV2Ge
 }
 
 func (s *service) V2GetProducts(ctx context.Context, req *pb.RpcMembershipV2GetProductsRequest) (*pb.RpcMembershipV2GetProductsResponse, error) {
-	if !s.cfg.PreferMembershipV2 {
-		return nil, ErrV2CallNotSupported
+	if !s.cfg.EnableMembershipV2 {
+		return nil, ErrV2NotEnabled
 	}
 
 	// Get all products from cache (including background refresh if needed)
@@ -1265,8 +1265,8 @@ func (s *service) getAllV2Products(ctx context.Context, req *pb.RpcMembershipV2G
 // This method NEVER makes network calls and returns immediately
 // Background refresh happens via refreshSubscriptionStatusBackground()
 func (s *service) V2GetStatus(ctx context.Context, req *pb.RpcMembershipV2GetStatusRequest) (*pb.RpcMembershipV2GetStatusResponse, error) {
-	if !s.cfg.PreferMembershipV2 {
-		return nil, ErrV2CallNotSupported
+	if !s.cfg.EnableMembershipV2 {
+		return nil, ErrV2NotEnabled
 	}
 
 	var (
@@ -1318,8 +1318,8 @@ func (s *service) v2CheckIfNameAvailInNS(ctx context.Context, req *pb.RpcMembers
 }
 
 func (s *service) V2AnyNameIsValid(ctx context.Context, req *pb.RpcMembershipV2AnyNameIsValidRequest) (*pb.RpcMembershipV2AnyNameIsValidResponse, error) {
-	if !s.cfg.PreferMembershipV2 {
-		return nil, ErrV2CallNotSupported
+	if !s.cfg.EnableMembershipV2 {
+		return nil, ErrV2NotEnabled
 	}
 
 	var code proto.MembershipV2_AnyNameIsValidResponse_Code
@@ -1382,8 +1382,8 @@ func (s *service) V2AnyNameIsValid(ctx context.Context, req *pb.RpcMembershipV2A
 }
 
 func (s *service) V2AnyNameAllocate(ctx context.Context, req *pb.RpcMembershipV2AnyNameAllocateRequest) (*pb.RpcMembershipV2AnyNameAllocateResponse, error) {
-	if !s.cfg.PreferMembershipV2 {
-		return nil, ErrV2CallNotSupported
+	if !s.cfg.EnableMembershipV2 {
+		return nil, ErrV2NotEnabled
 	}
 
 	// 1 - send request
@@ -1416,8 +1416,8 @@ func (s *service) V2AnyNameAllocate(ctx context.Context, req *pb.RpcMembershipV2
 }
 
 func (s *service) V2CartGet(ctx context.Context, req *pb.RpcMembershipV2CartGetRequest) (*pb.RpcMembershipV2CartGetResponse, error) {
-	if !s.cfg.PreferMembershipV2 {
-		return nil, ErrV2CallNotSupported
+	if !s.cfg.EnableMembershipV2 {
+		return nil, ErrV2NotEnabled
 	}
 
 	cartReq := proto.MembershipV2_StoreCartGetRequest{}
@@ -1437,8 +1437,8 @@ func (s *service) V2CartGet(ctx context.Context, req *pb.RpcMembershipV2CartGetR
 }
 
 func (s *service) V2CartUpdate(ctx context.Context, req *pb.RpcMembershipV2CartUpdateRequest) (*pb.RpcMembershipV2CartUpdateResponse, error) {
-	if !s.cfg.PreferMembershipV2 {
-		return nil, ErrV2CallNotSupported
+	if !s.cfg.EnableMembershipV2 {
+		return nil, ErrV2NotEnabled
 	}
 
 	products := make([]*proto.MembershipV2_CartProduct, len(req.ProductIds))

@@ -56,8 +56,8 @@ func (s *Service) AccountCreate(ctx context.Context, req *pb.RpcAccountCreateReq
 	if req.PreferYamuxTransport {
 		cfg.PeferYamuxTransport = true
 	}
-	if req.PreferMembershipV2 {
-		cfg.PreferMembershipV2 = true
+	if req.EnableMembershipV2 {
+		cfg.EnableMembershipV2 = true
 	}
 	if req.NetworkMode > 0 {
 		cfg.NetworkMode = req.NetworkMode

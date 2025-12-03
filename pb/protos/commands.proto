@@ -762,7 +762,9 @@ message Rpc {
                 bool preferYamuxTransport = 8; // optional, default is false, recommended in case of problems with QUIC transport
                 string jsonApiListenAddr = 9; // optional, if empty json api will not be started; 127.0.0.1:31009 should be the default one
                 string joinStreamUrl = 10; // anytype:// schema URL to join an embed stream
-                bool preferMembershipV2 = 11; // optional, default is false
+                // if true - will run membership v2 polling loop, v2 methods will be available
+                // if false - will run membership v1 polling loop, v2 methods will return error
+                bool enableMembershipV2 = 11; // optional, default is false
             }
             /**
             * Middleware-to-front-end response for an account creation request, that can contain a NULL error and created account or a non-NULL error and an empty account
@@ -934,7 +936,9 @@ message Rpc {
                 string jsonApiListenAddr = 7; // optional, if empty json api will not be started; 127.0.0.1:31009 should be the default one
                 string fulltextPrimaryLanguage = 8; // optional, default fts language
                 string joinStreamURL = 9; // anytype:// schema URL to join an embed stream
-                bool preferMembershipV2 = 10; // optional, default is false
+                // if true - will run membership v2 polling loop, v2 methods will be available
+                // if false - will run membership v1 polling loop, v2 methods will return error
+                bool enableMembershipV2 = 10; // optional, default is false
             }
 
             /**
@@ -8142,7 +8146,9 @@ message Rpc {
                         PAYMENT_NODE_ERROR = 4;
 
                         AUTH_BAD = 5;
-                        V2_CALL_NOT_SUPPORTED = 6;
+
+                        // set enableMembershipV2 in AccountCreate or AccountSelect
+                        V2_CALL_NOT_ENABLED = 6;
                     }
                 }
             }
@@ -8176,7 +8182,8 @@ message Rpc {
 
                         CACHE_ERROR = 6;
                         CAN_NOT_CONNECT = 7;
-                        V2_CALL_NOT_SUPPORTED = 8;
+                        // set enableMembershipV2 in AccountCreate or AccountSelect
+                        V2_CALL_NOT_ENABLED = 8;
                     }
                 }
             }
@@ -8210,8 +8217,9 @@ message Rpc {
                         MEMBERSHIP_NOT_FOUND = 6;
                         MEMBERSHIP_WRONG_STATE = 7;
                         CAN_NOT_CONNECT = 8;
-
-                        V2_CALL_NOT_SUPPORTED = 9;
+                        
+                        // set enableMembershipV2 in AccountCreate or AccountSelect
+                        V2_CALL_NOT_ENABLED = 9;
                     }
                 }
             }
@@ -8257,7 +8265,8 @@ message Rpc {
                         // occupied by some user
                         NAME_IS_RESERVED = 13;
 
-                        V2_CALL_NOT_SUPPORTED = 14;
+                        // set enableMembershipV2 in AccountCreate or AccountSelect
+                        V2_CALL_NOT_ENABLED = 14;
                     }
                 }
             }
@@ -8294,7 +8303,8 @@ message Rpc {
 
                         CAN_NOT_CONNECT = 9;
 
-                        V2_CALL_NOT_SUPPORTED = 10;
+                        // set enableMembershipV2 in AccountCreate or AccountSelect
+                        V2_CALL_NOT_ENABLED = 10;
                     }
                 }
             }
@@ -8320,7 +8330,8 @@ message Rpc {
                         BAD_INPUT = 2; 
                         CAN_NOT_CONNECT = 3;
 
-                        V2_CALL_NOT_SUPPORTED = 4;           
+                        // set enableMembershipV2 in AccountCreate or AccountSelect
+                        V2_CALL_NOT_ENABLED = 4;           
                     }
                 }
             }
@@ -8349,7 +8360,8 @@ message Rpc {
                         CAN_NOT_CONNECT = 3;
                         BAD_PRODUCT = 4;
 
-                        V2_CALL_NOT_SUPPORTED = 5;                      
+                        // set enableMembershipV2 in AccountCreate or AccountSelect
+                        V2_CALL_NOT_ENABLED = 5;                      
                     }
                 }
             }

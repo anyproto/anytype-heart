@@ -3710,7 +3710,9 @@ Front end to middleware request-to-create-an account
 | preferYamuxTransport | [bool](#bool) |  | optional, default is false, recommended in case of problems with QUIC transport |
 | jsonApiListenAddr | [string](#string) |  | optional, if empty json api will not be started; 127.0.0.1:31009 should be the default one |
 | joinStreamUrl | [string](#string) |  | anytype:// schema URL to join an embed stream |
-| preferMembershipV2 | [bool](#bool) |  | optional, default is false |
+| enableMembershipV2 | [bool](#bool) |  | if true - will run membership v2 polling loop, v2 methods will be available if false - will run membership v1 polling loop, v2 methods will return error
+
+optional, default is false |
 
 
 
@@ -4539,7 +4541,9 @@ User can select an account from those, that came with an AccountAdd events
 | jsonApiListenAddr | [string](#string) |  | optional, if empty json api will not be started; 127.0.0.1:31009 should be the default one |
 | fulltextPrimaryLanguage | [string](#string) |  | optional, default fts language |
 | joinStreamURL | [string](#string) |  | anytype:// schema URL to join an embed stream |
-| preferMembershipV2 | [bool](#bool) |  | optional, default is false |
+| enableMembershipV2 | [bool](#bool) |  | if true - will run membership v2 polling loop, v2 methods will be available if false - will run membership v1 polling loop, v2 methods will return error
+
+optional, default is false |
 
 
 
@@ -26161,7 +26165,7 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | MEMBERSHIP_WRONG_STATE | 7 |  |
 | BAD_ANYNAME | 8 |  |
 | CAN_NOT_CONNECT | 9 |  |
-| V2_CALL_NOT_SUPPORTED | 10 |  |
+| V2_CALL_NOT_ENABLED | 10 | set enableMembershipV2 in AccountCreate or AccountSelect |
 
 
 
@@ -26185,7 +26189,7 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | CAN_NOT_RESERVE | 11 | for some probable future use (if needed) |
 | CAN_NOT_CONNECT | 12 |  |
 | NAME_IS_RESERVED | 13 | Same as if NameService.ResolveName returned that name is already occupied by some user |
-| V2_CALL_NOT_SUPPORTED | 14 |  |
+| V2_CALL_NOT_ENABLED | 14 | set enableMembershipV2 in AccountCreate or AccountSelect |
 
 
 
@@ -26200,7 +26204,7 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | UNKNOWN_ERROR | 1 |  |
 | BAD_INPUT | 2 |  |
 | CAN_NOT_CONNECT | 3 |  |
-| V2_CALL_NOT_SUPPORTED | 4 |  |
+| V2_CALL_NOT_ENABLED | 4 | set enableMembershipV2 in AccountCreate or AccountSelect |
 
 
 
@@ -26216,7 +26220,7 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | BAD_INPUT | 2 |  |
 | CAN_NOT_CONNECT | 3 |  |
 | BAD_PRODUCT | 4 |  |
-| V2_CALL_NOT_SUPPORTED | 5 |  |
+| V2_CALL_NOT_ENABLED | 5 | set enableMembershipV2 in AccountCreate or AccountSelect |
 
 
 
@@ -26233,7 +26237,7 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | NOT_LOGGED_IN | 3 |  |
 | PAYMENT_NODE_ERROR | 4 |  |
 | AUTH_BAD | 5 |  |
-| V2_CALL_NOT_SUPPORTED | 6 |  |
+| V2_CALL_NOT_ENABLED | 6 | set enableMembershipV2 in AccountCreate or AccountSelect |
 
 
 
@@ -26252,7 +26256,7 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | AUTH_BAD | 5 |  |
 | CACHE_ERROR | 6 |  |
 | CAN_NOT_CONNECT | 7 |  |
-| V2_CALL_NOT_SUPPORTED | 8 |  |
+| V2_CALL_NOT_ENABLED | 8 | set enableMembershipV2 in AccountCreate or AccountSelect |
 
 
 
@@ -26272,7 +26276,7 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | MEMBERSHIP_NOT_FOUND | 6 |  |
 | MEMBERSHIP_WRONG_STATE | 7 |  |
 | CAN_NOT_CONNECT | 8 |  |
-| V2_CALL_NOT_SUPPORTED | 9 |  |
+| V2_CALL_NOT_ENABLED | 9 | set enableMembershipV2 in AccountCreate or AccountSelect |
 
 
 
