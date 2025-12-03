@@ -71,6 +71,7 @@ func (s *Service) CreateOneToOneFromInbox(ctx context.Context, identityProfileWi
 		SpaceUxType:                model.SpaceUxType_OneToOne,
 		OneToOneIdentity:           identityProfileWithKey.IdentityProfile.Identity,
 		OneToOneRequestMetadataKey: requestMetadataKeyStr,
+		OneToOneInboxSentStatus:    spaceinfo.OneToOneInboxSentStatusReceived,
 	}
 
 	newSpace, err := s.spaceService.CreateOneToOne(ctx, spaceDescription, identityProfileWithKey)
@@ -81,7 +82,8 @@ func (s *Service) CreateOneToOneFromInbox(ctx context.Context, identityProfileWi
 	err = s.spaceService.TechSpace().SpaceViewSetData(ctx, newSpace.Id(),
 		domain.NewDetails().
 			SetString(bundle.RelationKeyName, identityProfileWithKey.IdentityProfile.Name).
-			SetString(bundle.RelationKeyIconImage, identityProfileWithKey.IdentityProfile.IconCid))
+			SetString(bundle.RelationKeyIconImage, identityProfileWithKey.IdentityProfile.IconCid).
+			SetInt64(bundle.RelationKeyOneToOneInboxSentStatus, int64(spaceinfo.OneToOneInboxSentStatusReceived)))
 	if err != nil {
 		err = fmt.Errorf("onetoone, set view data for techspace %s: %w", newSpace.Id(), err)
 		return
@@ -96,6 +98,7 @@ func (s *Service) CreateOneToOneFromInbox(ctx context.Context, identityProfileWi
 		{Key: bundle.RelationKeyIconOption, Value: domain.Float64(float64(5))},
 		{Key: bundle.RelationKeyOneToOneIdentity, Value: domain.String(identityProfileWithKey.IdentityProfile.Identity)},
 		{Key: bundle.RelationKeyOneToOneRequestMetadataKey, Value: domain.String(requestMetadataKeyStr)},
+		{Key: bundle.RelationKeyOneToOneInboxSentStatus, Value: domain.Int64(int64(spaceinfo.OneToOneInboxSentStatusReceived))},
 		{Key: bundle.RelationKeySpaceDashboardId, Value: domain.String("lastOpened")},
 	}
 

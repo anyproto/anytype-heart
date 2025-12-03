@@ -88,6 +88,7 @@ type SpaceView interface {
 	SetSharedSpacesLimit(limits int) (err error)
 	GetSharedSpacesLimit() (limits int)
 	SetPushNotificationMode(ctx session.Context, mode pb.RpcPushNotificationMode) (err error)
+	SetOneToOneInboxInviteStatus(status spaceinfo.OneToOneInboxSentStatus) (err error)
 	SetPushNotificationForceModeIds(ctx session.Context, chatIds []string, mode pb.RpcPushNotificationMode) (err error)
 	ResetPushNotificationIds(ctx session.Context, allIds []string) error
 }

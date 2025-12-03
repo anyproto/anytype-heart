@@ -119,6 +119,19 @@ const (
 	AccessTypeShared   = AccessType(model.SpaceAccessType_Shared)
 )
 
+type OneToOneInboxSentStatus int32
+
+const (
+	OneToOneInboxSentStatusNone OneToOneInboxSentStatus = 0
+	// default, usually when one-to-one was created from inbox and
+	// we don't need to send it back
+	OneToOneInboxSentStatusReceived OneToOneInboxSentStatus = 1
+	// successfully sent
+	OneToOneInboxSentStatusSent OneToOneInboxSentStatus = 2
+	// not sent yet, or sending failed
+	OneToOneInboxSentStatusToSend OneToOneInboxSentStatus = 3
+)
+
 type SpaceDescription struct {
 	Name                       string
 	IconImage                  string
@@ -126,6 +139,7 @@ type SpaceDescription struct {
 	SpaceUxType                model.SpaceUxType
 	OneToOneIdentity           string
 	OneToOneRequestMetadataKey string
+	OneToOneInboxSentStatus    OneToOneInboxSentStatus
 }
 
 func NewSpaceDescriptionFromDetails(details *domain.Details) SpaceDescription {
@@ -147,5 +161,6 @@ func (s *SpaceDescription) UpdateDetails(st *state.State) {
 	st.SetDetailAndBundledRelation(bundle.RelationKeySpaceUxType, domain.Int64(s.SpaceUxType))
 	st.SetDetailAndBundledRelation(bundle.RelationKeyIconImage, domain.String(s.IconImage))
 	st.SetDetailAndBundledRelation(bundle.RelationKeyIconOption, domain.Int64(s.IconOption))
+	st.SetDetailAndBundledRelation(bundle.RelationKeyOneToOneInboxSentStatus, domain.Int64(s.OneToOneInboxSentStatus))
 	// OneToOneIdentity is set only once
 }
