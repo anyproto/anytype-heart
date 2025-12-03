@@ -181,7 +181,7 @@ func (s *service) GetInfo(ctx context.Context) (*model.AccountInfo, error) {
 		NetworkId:              s.getNetworkId(),
 		TechSpaceId:            s.spaceService.TechSpaceId(),
 		EthereumAddress:        s.wallet.GetAccountEthAddress().Hex(),
-		MetaDataKey:            base64.StdEncoding.EncodeToString(metadataRawKey),
+		MetaDataKey:            base64.URLEncoding.EncodeToString(metadataRawKey),
 	}, nil
 }
 
