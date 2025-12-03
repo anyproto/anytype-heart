@@ -60,7 +60,7 @@ type Service interface {
 }
 
 type BlockService interface {
-	CreateOneToOneFromInbox(ctx context.Context, spaceDescription *spaceinfo.SpaceDescription, bobProfile *model.IdentityProfileWithKey) (err error)
+	CreateOneToOneFromInbox(ctx context.Context, bobProfile *model.IdentityProfileWithKey, inviteSentStatus spaceinfo.OneToOneInboxSentStatus) (spaceID string, startingPageId string, err error)
 }
 
 type onetoone struct {
@@ -124,27 +124,8 @@ func (s *onetoone) processOneToOneInvite(packet *coordinatorproto.InboxPacket) (
 	if err != nil {
 		return
 	}
-	log.Warn("creating onetoone space from inbox.. ")
 
-	key, err := crypto.UnmarshallAESKeyProto(identityProfileWithKey.RequestMetadata)
-	if err != nil {
-		return
-	}
-
-	// TODO: send encrypted rawProfile in inbox, with key?
-	err = s.identityService.AddIdentityProfile(identityProfileWithKey.IdentityProfile, key)
-	if err != nil {
-		return
-	}
-
-	spaceDescription := &spaceinfo.SpaceDescription{
-		Name:             identityProfileWithKey.IdentityProfile.Name,
-		IconImage:        identityProfileWithKey.IdentityProfile.IconCid,
-		SpaceUxType:      model.SpaceUxType_OneToOne,
-		OneToOneIdentity: identityProfileWithKey.IdentityProfile.Identity,
-	}
-
-	err = s.blockService.CreateOneToOneFromInbox(context.Background(), spaceDescription, &identityProfileWithKey)
+	_, _, err = s.blockService.CreateOneToOneFromInbox(context.Background(), &identityProfileWithKey, spaceinfo.OneToOneInboxSentStatusReceived)
 	if err != nil {
 		log.Error("create onetoone space from inbox", zap.Error(err))
 		return fmt.Errorf("processOneToOneInvite error: %s", err.Error())
