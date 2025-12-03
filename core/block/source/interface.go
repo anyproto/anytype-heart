@@ -94,6 +94,7 @@ type PushChangeParams struct {
 	FileChangedHashes []string
 	Time              time.Time // used to derive the lastModifiedDate; Default is time.Now()
 	DoSnapshot        bool
+	ChangeType        domain.ChangeType
 }
 
 type IDsLister interface {

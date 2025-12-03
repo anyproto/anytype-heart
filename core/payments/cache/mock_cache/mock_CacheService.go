@@ -190,6 +190,226 @@ func (_c *MockCacheService_CacheSet_Call) RunAndReturn(run func(*model.Membershi
 	return _c
 }
 
+// CacheV2Get provides a mock function with given fields:
+func (_m *MockCacheService) CacheV2Get() (*model.MembershipV2Data, time.Time, error) {
+	ret := _m.Called()
+
+	if len(ret) == 0 {
+		panic("no return value specified for CacheV2Get")
+	}
+
+	var r0 *model.MembershipV2Data
+	var r1 time.Time
+	var r2 error
+	if rf, ok := ret.Get(0).(func() (*model.MembershipV2Data, time.Time, error)); ok {
+		return rf()
+	}
+	if rf, ok := ret.Get(0).(func() *model.MembershipV2Data); ok {
+		r0 = rf()
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*model.MembershipV2Data)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func() time.Time); ok {
+		r1 = rf()
+	} else {
+		r1 = ret.Get(1).(time.Time)
+	}
+
+	if rf, ok := ret.Get(2).(func() error); ok {
+		r2 = rf()
+	} else {
+		r2 = ret.Error(2)
+	}
+
+	return r0, r1, r2
+}
+
+// MockCacheService_CacheV2Get_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'CacheV2Get'
+type MockCacheService_CacheV2Get_Call struct {
+	*mock.Call
+}
+
+// CacheV2Get is a helper method to define mock.On call
+func (_e *MockCacheService_Expecter) CacheV2Get() *MockCacheService_CacheV2Get_Call {
+	return &MockCacheService_CacheV2Get_Call{Call: _e.mock.On("CacheV2Get")}
+}
+
+func (_c *MockCacheService_CacheV2Get_Call) Run(run func()) *MockCacheService_CacheV2Get_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *MockCacheService_CacheV2Get_Call) Return(data *model.MembershipV2Data, expireTime time.Time, err error) *MockCacheService_CacheV2Get_Call {
+	_c.Call.Return(data, expireTime, err)
+	return _c
+}
+
+func (_c *MockCacheService_CacheV2Get_Call) RunAndReturn(run func() (*model.MembershipV2Data, time.Time, error)) *MockCacheService_CacheV2Get_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// CacheV2ProductsGet provides a mock function with given fields:
+func (_m *MockCacheService) CacheV2ProductsGet() ([]*model.MembershipV2Product, time.Time, error) {
+	ret := _m.Called()
+
+	if len(ret) == 0 {
+		panic("no return value specified for CacheV2ProductsGet")
+	}
+
+	var r0 []*model.MembershipV2Product
+	var r1 time.Time
+	var r2 error
+	if rf, ok := ret.Get(0).(func() ([]*model.MembershipV2Product, time.Time, error)); ok {
+		return rf()
+	}
+	if rf, ok := ret.Get(0).(func() []*model.MembershipV2Product); ok {
+		r0 = rf()
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]*model.MembershipV2Product)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func() time.Time); ok {
+		r1 = rf()
+	} else {
+		r1 = ret.Get(1).(time.Time)
+	}
+
+	if rf, ok := ret.Get(2).(func() error); ok {
+		r2 = rf()
+	} else {
+		r2 = ret.Error(2)
+	}
+
+	return r0, r1, r2
+}
+
+// MockCacheService_CacheV2ProductsGet_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'CacheV2ProductsGet'
+type MockCacheService_CacheV2ProductsGet_Call struct {
+	*mock.Call
+}
+
+// CacheV2ProductsGet is a helper method to define mock.On call
+func (_e *MockCacheService_Expecter) CacheV2ProductsGet() *MockCacheService_CacheV2ProductsGet_Call {
+	return &MockCacheService_CacheV2ProductsGet_Call{Call: _e.mock.On("CacheV2ProductsGet")}
+}
+
+func (_c *MockCacheService_CacheV2ProductsGet_Call) Run(run func()) *MockCacheService_CacheV2ProductsGet_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *MockCacheService_CacheV2ProductsGet_Call) Return(products []*model.MembershipV2Product, expireTime time.Time, err error) *MockCacheService_CacheV2ProductsGet_Call {
+	_c.Call.Return(products, expireTime, err)
+	return _c
+}
+
+func (_c *MockCacheService_CacheV2ProductsGet_Call) RunAndReturn(run func() ([]*model.MembershipV2Product, time.Time, error)) *MockCacheService_CacheV2ProductsGet_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// CacheV2ProductsSet provides a mock function with given fields: products
+func (_m *MockCacheService) CacheV2ProductsSet(products []*model.MembershipV2Product) error {
+	ret := _m.Called(products)
+
+	if len(ret) == 0 {
+		panic("no return value specified for CacheV2ProductsSet")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func([]*model.MembershipV2Product) error); ok {
+		r0 = rf(products)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// MockCacheService_CacheV2ProductsSet_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'CacheV2ProductsSet'
+type MockCacheService_CacheV2ProductsSet_Call struct {
+	*mock.Call
+}
+
+// CacheV2ProductsSet is a helper method to define mock.On call
+//   - products []*model.MembershipV2Product
+func (_e *MockCacheService_Expecter) CacheV2ProductsSet(products interface{}) *MockCacheService_CacheV2ProductsSet_Call {
+	return &MockCacheService_CacheV2ProductsSet_Call{Call: _e.mock.On("CacheV2ProductsSet", products)}
+}
+
+func (_c *MockCacheService_CacheV2ProductsSet_Call) Run(run func(products []*model.MembershipV2Product)) *MockCacheService_CacheV2ProductsSet_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].([]*model.MembershipV2Product))
+	})
+	return _c
+}
+
+func (_c *MockCacheService_CacheV2ProductsSet_Call) Return(err error) *MockCacheService_CacheV2ProductsSet_Call {
+	_c.Call.Return(err)
+	return _c
+}
+
+func (_c *MockCacheService_CacheV2ProductsSet_Call) RunAndReturn(run func([]*model.MembershipV2Product) error) *MockCacheService_CacheV2ProductsSet_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// CacheV2Set provides a mock function with given fields: data
+func (_m *MockCacheService) CacheV2Set(data *model.MembershipV2Data) error {
+	ret := _m.Called(data)
+
+	if len(ret) == 0 {
+		panic("no return value specified for CacheV2Set")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(*model.MembershipV2Data) error); ok {
+		r0 = rf(data)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// MockCacheService_CacheV2Set_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'CacheV2Set'
+type MockCacheService_CacheV2Set_Call struct {
+	*mock.Call
+}
+
+// CacheV2Set is a helper method to define mock.On call
+//   - data *model.MembershipV2Data
+func (_e *MockCacheService_Expecter) CacheV2Set(data interface{}) *MockCacheService_CacheV2Set_Call {
+	return &MockCacheService_CacheV2Set_Call{Call: _e.mock.On("CacheV2Set", data)}
+}
+
+func (_c *MockCacheService_CacheV2Set_Call) Run(run func(data *model.MembershipV2Data)) *MockCacheService_CacheV2Set_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(*model.MembershipV2Data))
+	})
+	return _c
+}
+
+func (_c *MockCacheService_CacheV2Set_Call) Return(err error) *MockCacheService_CacheV2Set_Call {
+	_c.Call.Return(err)
+	return _c
+}
+
+func (_c *MockCacheService_CacheV2Set_Call) RunAndReturn(run func(*model.MembershipV2Data) error) *MockCacheService_CacheV2Set_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // Init provides a mock function with given fields: a
 func (_m *MockCacheService) Init(a *app.App) error {
 	ret := _m.Called(a)

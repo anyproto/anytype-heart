@@ -184,10 +184,24 @@ func (s *service) WaitProfile(ctx context.Context, identity string) *model.Ident
 	}
 }
 func (s *service) GetMetadataKey(identity string) (crypto.SymKey, error) {
+	s.lock.Lock()
+	defer s.lock.Unlock()
+
 	key, ok := s.identityEncryptionKeys[identity]
 	if !ok {
+		// FIXME We have a race condition somewhere and our own key could not be indexed yet at this moment.
+		// Derive a key as a temporarily solution
+		if s.myIdentity == identity {
+			_, key, err := domain.DeriveAccountMetadata(s.accountService.Keys().SignKey)
+			if err != nil {
+				return nil, err
+			}
+			s.identityEncryptionKeys[identity] = key
+			return key, nil
+		}
 		return nil, fmt.Errorf("identityEncryptionKey doesnt exist for identity")
 	}
+
 	return key, nil
 }
 
@@ -366,8 +380,16 @@ func (s *service) broadcastIdentityProfile(identityData *identityrepoproto.DataW
 	return nil
 }
 
-// Put identity profile to cache from external place (e.g. from onetoone inbox)
+// AddIdentityProfile puts identity profile to cache from external place (e.g. from onetoone inbox).
+// Returns immediately if key already exists.
 func (s *service) AddIdentityProfile(profile *model.IdentityProfile, key crypto.SymKey) error {
+	s.lock.Lock()
+	defer s.lock.Unlock()
+	if _, ok := s.identityEncryptionKeys[profile.Identity]; ok {
+		log.Info("addIdentityProfile: profile key already exists, skip", zap.String("identity", profile.Identity))
+		return nil
+	}
+
 	profileBytes, err := proto.Marshal(profile)
 	if err != nil {
 		return err
@@ -378,9 +400,7 @@ func (s *service) AddIdentityProfile(profile *model.IdentityProfile, key crypto.
 		return err
 	}
 
-	s.lock.Lock()
 	s.identityEncryptionKeys[profile.Identity] = key
-	s.lock.Unlock()
 
 	err = s.indexIconImage(profile)
 	if err != nil {
@@ -388,7 +408,6 @@ func (s *service) AddIdentityProfile(profile *model.IdentityProfile, key crypto.
 	}
 
 	return s.identityProfileCacheStore.Set(context.Background(), profile.Identity, encryptedProfileBytes)
-
 }
 
 func (s *service) broadcastMyIdentityProfile(identityProfile *model.IdentityProfile) {

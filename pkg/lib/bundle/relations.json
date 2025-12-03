@@ -1836,5 +1836,14 @@
     "name": "Analytics space id",
     "readonly": true,
     "source": "details"
+  },
+  {
+    "description": "Fulltext search score",
+    "format": "number",
+    "hidden": true,
+    "key": "_score",
+    "name": "Score",
+    "readonly": true,
+    "source": "derived"
   }
 ]

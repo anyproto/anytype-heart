@@ -5,8 +5,8 @@ package event
 
 import (
 	"slices"
-	"strings"
 	"sync"
+	"sync/atomic"
 
 	"github.com/anyproto/any-sync/app"
 	"github.com/gogo/status"
@@ -35,7 +35,7 @@ func NewGrpcSender() *GrpcSender {
 
 type GrpcSender struct {
 	ServerMutex sync.RWMutex
-	Servers     map[string]SessionServer
+	Servers     map[string]*SessionServer
 
 	shutdownCh chan string
 }
@@ -65,7 +65,7 @@ func (es *GrpcSender) SendToSession(token string, event *pb.Event) {
 	}
 }
 
-func (es *GrpcSender) sendEvent(server SessionServer, event *pb.Event) {
+func (es *GrpcSender) sendEvent(server *SessionServer, event *pb.Event) {
 	if len(event.Messages) == 0 {
 		return
 	}
@@ -73,10 +73,9 @@ func (es *GrpcSender) sendEvent(server SessionServer, event *pb.Event) {
 		err := server.Server.Send(event)
 		if err != nil {
 			if s, ok := status.FromError(err); ok && s.Code() == codes.Unavailable {
-				es.shutdownCh <- server.Token
-			}
-			if strings.Contains(err.Error(), "transport is closing") {
-				log.Errorf("failed to send event: %v", err)
+				if server.closing.CompareAndSwap(false, true) {
+					es.shutdownCh <- server.Token
+				}
 			}
 		}
 	}()
@@ -118,18 +117,19 @@ func (es *GrpcSender) BroadcastExceptSessions(event *pb.Event, exceptTokens []st
 }
 
 type SessionServer struct {
-	Token  string
-	Done   chan struct{}
-	Server service.ClientCommands_ListenSessionEventsServer
+	Token   string
+	Done    chan struct{}
+	Server  service.ClientCommands_ListenSessionEventsServer
+	closing atomic.Bool
 }
 
-func (es *GrpcSender) SetSessionServer(token string, server service.ClientCommands_ListenSessionEventsServer) SessionServer {
+func (es *GrpcSender) SetSessionServer(token string, server service.ClientCommands_ListenSessionEventsServer) *SessionServer {
 	es.ServerMutex.Lock()
 	defer es.ServerMutex.Unlock()
 	if es.Servers == nil {
-		es.Servers = map[string]SessionServer{}
+		es.Servers = map[string]*SessionServer{}
 	}
-	srv := SessionServer{
+	srv := &SessionServer{
 		Token:  token,
 		Done:   make(chan struct{}),
 		Server: server,

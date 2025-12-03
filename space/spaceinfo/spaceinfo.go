@@ -133,21 +133,23 @@ const (
 )
 
 type SpaceDescription struct {
-	Name                    string
-	IconImage               string
-	IconOption              int
-	SpaceUxType             model.SpaceUxType
-	OneToOneIdentity        string
-	OneToOneInboxSentStatus OneToOneInboxSentStatus
+	Name                       string
+	IconImage                  string
+	IconOption                 int
+	SpaceUxType                model.SpaceUxType
+	OneToOneIdentity           string
+	OneToOneRequestMetadataKey string
+	OneToOneInboxSentStatus    OneToOneInboxSentStatus
 }
 
 func NewSpaceDescriptionFromDetails(details *domain.Details) SpaceDescription {
 	return SpaceDescription{
-		Name:             details.GetString(bundle.RelationKeyName),
-		IconImage:        details.GetString(bundle.RelationKeyIconImage),
-		IconOption:       int(details.GetInt64(bundle.RelationKeyIconOption)),
-		SpaceUxType:      model.SpaceUxType(details.GetInt64(bundle.RelationKeySpaceUxType)), // #nosec G115
-		OneToOneIdentity: details.GetString(bundle.RelationKeyOneToOneIdentity),
+		Name:                       details.GetString(bundle.RelationKeyName),
+		IconImage:                  details.GetString(bundle.RelationKeyIconImage),
+		IconOption:                 int(details.GetInt64(bundle.RelationKeyIconOption)),
+		SpaceUxType:                model.SpaceUxType(details.GetInt64(bundle.RelationKeySpaceUxType)), // #nosec G115
+		OneToOneIdentity:           details.GetString(bundle.RelationKeyOneToOneIdentity),
+		OneToOneRequestMetadataKey: details.GetString(bundle.RelationKeyOneToOneRequestMetadataKey),
 	}
 }
 
