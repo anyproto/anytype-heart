@@ -17,6 +17,7 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/anytype/config"
 	"github.com/anyproto/anytype-heart/core/block/cache"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/wallet"
 	"github.com/anyproto/anytype-heart/pkg/lib/gateway"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
@@ -162,7 +163,7 @@ func (s *service) GetInfo(ctx context.Context) (*model.AccountInfo, error) {
 		cfg.CustomFileStorePath = s.wallet.RepoPath()
 	}
 
-	_, metadataKey, err := space.DeriveAccountMetadata(s.Keys().SignKey)
+	_, metadataKey, err := domain.DeriveAccountMetadata(s.Keys().SignKey)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get account metadata key: %w", err)
 	}
