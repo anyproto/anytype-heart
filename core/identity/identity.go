@@ -158,11 +158,15 @@ func (s *service) Close(ctx context.Context) (err error) {
 }
 
 func (s *service) UpdateOwnGlobalName(myIdentityGlobalName string) {
+	log.Debug("UpdateOwnGlobalName", zap.String("myIdentityGlobalName", myIdentityGlobalName))
+
 	// we update globalName of local identity directly because Naming Node is not registering new name immediately
 	s.ownProfileSubscription.updateGlobalName(myIdentityGlobalName)
 }
 
 func (s *service) WaitProfile(ctx context.Context, identity string) *model.IdentityProfile {
+	log.Debug("WaitProfile", zap.String("identity", identity))
+
 	profile := s.getProfileFromCache(identity)
 	if profile != nil {
 		return profile
@@ -458,10 +462,14 @@ func (s *service) fetchGlobalNames(identities []string) error {
 	}
 	s.lock.Unlock()
 
+	log.Debug("fetchGlobalNames", zap.Any("identities", identities))
+
 	response, err := s.namingService.BatchGetNameByAnyId(s.componentCtx, &nameserviceproto.BatchNameByAnyIdRequest{AnyAddresses: identities})
 	if err != nil {
+		log.Error("error fetching global names of identities from Naming Service", zap.Error(err))
 		return err
 	}
+	log.Debug("response", zap.Any("response", response))
 	if response == nil {
 		return nil
 	}
@@ -470,6 +478,8 @@ func (s *service) fetchGlobalNames(identities []string) error {
 		s.lock.Lock()
 		s.identityGlobalNames[identity] = result
 		s.lock.Unlock()
+
+		log.Debug("identityGlobalNameCacheStore.Set", zap.Any("result", result))
 
 		err := s.identityGlobalNameCacheStore.Set(context.Background(), identity, result.Name)
 		if err != nil {
@@ -507,6 +517,8 @@ func (s *service) getCachedIdentityProfile(identity string) (*identityrepoproto.
 }
 
 func (s *service) getCachedGlobalName(identity string) (string, error) {
+	log.Debug("getCachedGlobalName", zap.String("identity", identity))
+
 	rawData, err := s.identityGlobalNameCacheStore.Get(context.Background(), identity)
 	if errors.Is(err, anystore.ErrDocNotFound) {
 		return "", nil
@@ -518,6 +530,8 @@ func (s *service) getCachedGlobalName(identity string) (string, error) {
 }
 
 func (s *service) RegisterIdentity(spaceId string, identity string, encryptionKey crypto.SymKey, observerCallback func(identity string, profile *model.IdentityProfile)) error {
+	log.Debug("RegisterIdentity", zap.String("identity", identity))
+
 	cachedProfile, err := s.getCachedIdentityProfile(identity)
 	if err != nil {
 		log.Warn("register identity: get cached profile", zap.Error(err))
@@ -602,5 +616,6 @@ func (s *service) UnregisterIdentitiesInSpace(spaceId string) {
 }
 
 func (s *service) GetMyProfileDetails(ctx context.Context) (identity string, metadataKey crypto.SymKey, details *domain.Details) {
+	log.Debug("GetMyProfileDetails")
 	return s.ownProfileSubscription.getDetails(ctx)
 }
