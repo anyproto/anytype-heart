@@ -1,6 +1,4 @@
 setup: setup-go
-	@echo 'Setting up npm...'
-	@npm install
 
 setup-network-config:
 ifdef ANYENV
