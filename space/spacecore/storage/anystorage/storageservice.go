@@ -135,15 +135,17 @@ func (s *storageService) SpaceExists(id string) bool {
 }
 
 func (s *storageService) CreateSpaceStorage(ctx context.Context, payload spacestorage.SpaceStorageCreatePayload) (spacestorage.SpaceStorage, error) {
-	if err := validateSpaceHeader(payload.SpaceHeaderWithId); err != nil {
+	if err := validateSpaceType(payload.SpaceHeaderWithId); err != nil {
 		return nil, err
 	}
 	db, err := s.createDb(ctx, payload.SpaceHeaderWithId.Id)
 	if err != nil {
+		err = fmt.Errorf("failed to create db: %w", err)
 		return nil, err
 	}
 	st, err := spacestorage.Create(ctx, db, payload)
 	if err != nil {
+		err = fmt.Errorf("failed to create spacestorage: %w", err)
 		return nil, err
 	}
 	return NewClientStorage(ctx, st)
@@ -178,7 +180,7 @@ func (s *storageService) anyStoreConfig() *anystore.Config {
 	}
 }
 
-func validateSpaceHeader(headerWithId *spacesyncproto.RawSpaceHeaderWithId) error {
+func validateSpaceType(headerWithId *spacesyncproto.RawSpaceHeaderWithId) error {
 	var rawHeader = &spacesyncproto.RawSpaceHeader{}
 	if err := rawHeader.UnmarshalVT(headerWithId.RawHeader); err != nil {
 		return err
@@ -194,6 +196,7 @@ func validateSpaceHeader(headerWithId *spacesyncproto.RawSpaceHeaderWithId) erro
 	case spacedomain.SpaceTypeTech:
 	case spacedomain.SpaceTypeRegular:
 	case spacedomain.SpaceTypeChat:
+	case spacedomain.SpaceTypeOneToOne:
 	default:
 		return fmt.Errorf("%w: type: %v", spacedomain.ErrUnexpectedSpaceType, header.SpaceType)
 	}

@@ -14,6 +14,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 
+	"github.com/anyproto/anytype-heart/core/anytype/account/mock_account"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/core/event/mock_event"
@@ -118,8 +119,13 @@ func newFixture(t *testing.T, beforeStart func(fx *fixture)) *fixture {
 		syncSubs:            syncsubscriptions.New(),
 		networkConfig:       networkConfig,
 	}
+	accountService := mock_account.NewMockService(t)
+	accountService.EXPECT().AccountID().Return("account1").Maybe()
+
 	// Set startDelay to 0 for immediate execution in tests
 	fx.spaceSyncStatus.startDelay = 0
+
+	accountService.EXPECT().AccountID().Return("testAccountId").Maybe()
 
 	a.Register(fx.syncSubs).
 		Register(testutil.PrepareMock(ctx, a, networkConfig)).
@@ -127,6 +133,7 @@ func newFixture(t *testing.T, beforeStart func(fx *fixture)) *fixture {
 		Register(testutil.PrepareMock(ctx, a, fx.spaceIdGetter)).
 		Register(testutil.PrepareMock(ctx, a, fx.nodeConf)).
 		Register(testutil.PrepareMock(ctx, a, fx.nodeUsage)).
+		Register(testutil.PrepareMock(ctx, a, accountService)).
 		Register(sess).
 		Register(fx.spaceSyncStatus)
 	beforeStart(fx)
@@ -137,7 +144,7 @@ func newFixture(t *testing.T, beforeStart func(fx *fixture)) *fixture {
 	return fx
 }
 
-func Test(t *testing.T) {
+func TestSpaceStatus(t *testing.T) {
 	t.Run("empty space synced", func(t *testing.T) {
 		fx := newFixture(t, func(fx *fixture) {
 			fx.networkConfig.EXPECT().GetNetworkMode().Return(pb.RpcAccount_DefaultConfig).Maybe()

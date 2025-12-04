@@ -173,11 +173,12 @@ func (f *ObjectFactory) InitObject(space smartblock.Space, id string, initCtx *s
 		return nil, fmt.Errorf("init smartblock: %w", err)
 	}
 
-	applyFlags := []smartblock.ApplyFlag{smartblock.NoHistory, smartblock.NoEvent, smartblock.NoRestrictions, smartblock.SkipIfNoChanges, smartblock.KeepInternalFlags, smartblock.IgnoreNoPermissions}
+	applyFlags := []smartblock.ApplyFlag{smartblock.NoHistory, smartblock.NoEvent, smartblock.NoRestrictions, smartblock.KeepInternalFlags, smartblock.IgnoreNoPermissions}
 	if initCtx.IsNewObject {
 		applyFlags = append(applyFlags, smartblock.AllowApplyWithEmptyTree)
 	}
 	migration.RunMigrations(sb, initCtx)
+	initCtx.State.SetChangeType(domain.ChangeTypeObjectInit)
 	err = sb.Apply(initCtx.State, applyFlags...)
 	if errors.Is(err, smartblock.ErrApplyOnEmptyTreeDisallowed) {
 		// in this case we still want the smartblock to bootstrap to receive the rest of the tree

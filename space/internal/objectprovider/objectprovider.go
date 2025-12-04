@@ -8,6 +8,7 @@ import (
 
 	"github.com/anyproto/any-sync/app/logger"
 	"github.com/anyproto/any-sync/commonspace/object/tree/treechangeproto"
+	"github.com/anyproto/any-sync/commonspace/object/tree/treestorage"
 	"github.com/anyproto/any-sync/commonspace/spacestorage"
 	"go.uber.org/zap"
 
@@ -15,6 +16,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/object/objectcache"
 	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/metrics"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/threads"
@@ -178,6 +180,8 @@ func (o *objectProvider) loadObjectsAsync(ctx context.Context, objIDs []string) 
 }
 
 func (o *objectProvider) CreateMandatoryObjects(ctx context.Context, space smartblock.Space) (err error) {
+	log = log.With(zap.String("spaceId", o.spaceId))
+
 	var sbTypes []coresb.SmartBlockType
 	if o.isPersonal() {
 		sbTypes = threads.PersonalSpaceTypes
@@ -201,9 +205,23 @@ func (o *objectProvider) CreateMandatoryObjects(ctx context.Context, space smart
 			},
 		})
 		if err != nil {
+			if errors.Is(err, treestorage.ErrTreeExists) {
+				log.Info("tree object already exists", zap.String("uniqueKey", uk.Marshal()))
+				return nil
+			}
 			log.Error("create payload for derived object", zap.Error(err), zap.String("uniqueKey", uk.Marshal()))
 			return fmt.Errorf("derive tree object: %w", err)
 		}
 	}
+
+	err = space.Do(space.DerivedIDs().Workspace, func(sb smartblock.SmartBlock) error {
+		st := sb.NewState()
+		st.SetDetailAndBundledRelation(bundle.RelationKeyAnalyticsSpaceId, domain.String(metrics.GenerateAnalyticsId()))
+		return sb.Apply(st)
+	})
+	if err != nil {
+		return fmt.Errorf("set analytics id: %w", err)
+	}
+
 	return
 }

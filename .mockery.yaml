@@ -270,3 +270,6 @@ packages:
   github.com/anyproto/anytype-heart/core/relationutils:
     interfaces:
       RelationFormatFetcher:
+  github.com/anyproto/anytype-heart/core/onetoone:
+    interfaces:
+      Service:

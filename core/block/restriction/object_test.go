@@ -6,6 +6,7 @@ import (
 	"github.com/samber/lo"
 	"github.com/stretchr/testify/assert"
 
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -125,4 +126,24 @@ func TestTemplateRestriction(t *testing.T) {
 		book := givenRestrictionHolder(smartblock.SmartBlockTypePage, bundle.TypeKeyBook)
 		assert.NoError(t, GetRestrictions(book).Object.Check(model.Restrictions_Template))
 	})
+}
+
+func TestArchivedObjectRestrictions(t *testing.T) {
+	archived := &restrictionHolder{
+		sbType: smartblock.SmartBlockTypePage,
+		localDetails: domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+			bundle.RelationKeyIsArchived: domain.Bool(true),
+		}),
+	}
+
+	rs := GetRestrictions(archived).Object
+	for r := range objRestrictAll {
+		if r == model.Restrictions_Delete {
+			assert.NoError(t, rs.Check(r))
+			continue
+		}
+		assert.Error(t, rs.Check(r))
+	}
+	assert.NoError(t, rs.Check(model.Restrictions_None))
+	assert.NoError(t, rs.Check(model.Restrictions_CreateObjectOfThisType))
 }

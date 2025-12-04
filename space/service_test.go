@@ -27,6 +27,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/event/mock_event"
 	"github.com/anyproto/anytype-heart/core/kanban/mock_kanban"
 	"github.com/anyproto/anytype-heart/core/notifications/mock_notifications"
+	"github.com/anyproto/anytype-heart/core/onetoone/mock_onetoone"
 	"github.com/anyproto/anytype-heart/core/subscription"
 	"github.com/anyproto/anytype-heart/core/wallet/mock_wallet"
 	"github.com/anyproto/anytype-heart/pb"
@@ -36,6 +37,7 @@ import (
 	"github.com/anyproto/anytype-heart/space/clientspace"
 	"github.com/anyproto/anytype-heart/space/clientspace/mock_clientspace"
 	"github.com/anyproto/anytype-heart/space/internal/components/aclobjectmanager"
+	"github.com/anyproto/anytype-heart/space/internal/components/dependencies/mock_dependencies"
 	"github.com/anyproto/anytype-heart/space/internal/spacecontroller/mock_spacecontroller"
 	"github.com/anyproto/anytype-heart/space/mock_space"
 	"github.com/anyproto/anytype-heart/space/spacecore"
@@ -236,6 +238,11 @@ func newFixture(t *testing.T, expectOldAccount func(t *testing.T, fx *fixture)) 
 	}).Maybe()
 	collService := &dummyCollectionService{}
 	subscriptionService := subscription.New()
+	identityService := testutil.PrepareMock(ctx, fx.a, mock_dependencies.NewMockIdentityService(t))
+	onetooneServiceMock := mock_onetoone.NewMockService(t)
+	onetooneServiceMock.EXPECT().Run(mock.Anything).Return(nil).Maybe()
+	onetooneServiceMock.EXPECT().Close(mock.Anything).Return(nil).Maybe()
+	onetooneService := testutil.PrepareMock(ctx, fx.a, onetooneServiceMock)
 	fx.a.
 		Register(testutil.PrepareMock(ctx, fx.a, wallet)).
 		Register(fx.config).
@@ -251,6 +258,8 @@ func newFixture(t *testing.T, expectOldAccount func(t *testing.T, fx *fixture)) 
 		Register(testutil.PrepareMock(ctx, fx.a, fx.coordClient)).
 		Register(testutil.PrepareMock(ctx, fx.a, fx.factory)).
 		Register(testutil.PrepareMock(ctx, fx.a, mock_notifications.NewMockNotifications(t))).
+		Register(identityService).
+		Register(onetooneService).
 		Register(&testSpaceLoaderListener{}).
 		Register(fx.service)
 	fx.expectRun(t, expectOldAccount)

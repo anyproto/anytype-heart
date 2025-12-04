@@ -158,7 +158,7 @@ func (oc *ObjectCreator) Create(dataObject *DataObject, sn *common.Snapshot) (*d
 	}
 	oc.setFavorite(snapshot, newID)
 
-	oc.setArchived(snapshot, newID)
+	oc.setArchived(ctx, snapshot, newID)
 
 	syncErr := oc.syncFilesAndLinks(dataObject.newIdsSet, domain.FullID{SpaceID: spaceID, ObjectID: newID}, origin)
 	if syncErr != nil {
@@ -403,10 +403,10 @@ func (oc *ObjectCreator) setFavorite(snapshot *common.StateSnapshot, newID strin
 	}
 }
 
-func (oc *ObjectCreator) setArchived(snapshot *common.StateSnapshot, newID string) {
+func (oc *ObjectCreator) setArchived(ctx context.Context, snapshot *common.StateSnapshot, newID string) {
 	isArchive := snapshot.Details.GetBool(bundle.RelationKeyIsArchived)
 	if isArchive {
-		err := oc.detailsService.SetIsArchived(newID, true)
+		err := oc.detailsService.SetIsArchived(ctx, newID, true)
 		if err != nil {
 			log.With(zap.String("object id", newID)).
 				Errorf("failed to set isFavorite when importing object %s: %s", newID, err)

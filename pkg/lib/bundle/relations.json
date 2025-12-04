@@ -1549,6 +1549,37 @@
     "source": "details"
   },
   {
+    "description": "OneToOne (second) participant identity",
+    "format": "longtext",
+    "hidden": true,
+    "key": "oneToOneIdentity",
+    "maxCount": 1,
+    "name": "oneToOneIdentity",
+    "readonly": false,
+    "source": "details"
+  },
+  {
+    "description": "OneToOne Inbox invite sent status",
+    "format": "number",
+    "hidden": true,
+    "key": "oneToOneInboxSentStatus",
+    "maxCount": 1,
+    "name": "OneToOne Inbox sent status",
+    "readonly": false,
+    "source": "details"
+  },
+  {
+    "description": "OneToOne (second) participant RequestMetadata (key)",
+    "format": "longtext",
+    "hidden": true,
+    "key": "oneToOneRequestMetadataKey",
+    "maxCount": 1,
+    "name": "oneToOneRequestMetadataKey",
+    "readonly": false,
+    "source": "details"
+  },
+
+  {
     "description": "Choose icon for the type among custom Anytype icons",
     "format": "longtext",
     "hidden": true,
@@ -1668,22 +1699,32 @@
     "source": "details"
   },
   {
-    "description": "Push notification custom muted ids",
+    "description": "Push notification all ids",
     "format": "longtext",
     "hidden": true,
-    "key": "spacePushNotificationCustomMuteIds",
+    "key": "spacePushNotificationForceAllIds",
     "maxCount": 0,
-    "name": "Push muted ids",
+    "name": "Push force all ids",
     "readonly": false,
     "source": "details"
   },
   {
-    "description": "Push notification custom mention ids",
+    "description": "Push notification muted ids",
     "format": "longtext",
     "hidden": true,
-    "key": "spacePushNotificationCustomMentionIds",
+    "key": "spacePushNotificationForceMuteIds",
     "maxCount": 0,
-    "name": "Push mentions ids",
+    "name": "Push force muted ids",
+    "readonly": false,
+    "source": "details"
+  },
+  {
+    "description": "Push notification mention ids",
+    "format": "longtext",
+    "hidden": true,
+    "key": "spacePushNotificationForceMentionIds",
+    "maxCount": 0,
+    "name": "Push force mentions ids",
     "readonly": false,
     "source": "details"
   },
@@ -1775,5 +1816,34 @@
     "name": "Is file available offline",
     "readonly": true,
     "source": "local"
+  },
+  {
+    "description": "Anonymous chat analytics id",
+    "format": "longtext",
+    "hidden": true,
+    "key": "analyticsChatId",
+    "maxCount": 1,
+    "name": "Analytics chat id",
+    "readonly": true,
+    "source": "details"
+  },
+  {
+    "description": "Anonymous space analytics id",
+    "format": "longtext",
+    "hidden": true,
+    "key": "analyticsSpaceId",
+    "maxCount": 1,
+    "name": "Analytics space id",
+    "readonly": true,
+    "source": "details"
+  },
+  {
+    "description": "Fulltext search score",
+    "format": "number",
+    "hidden": true,
+    "key": "_score",
+    "name": "Score",
+    "readonly": true,
+    "source": "derived"
   }
 ]

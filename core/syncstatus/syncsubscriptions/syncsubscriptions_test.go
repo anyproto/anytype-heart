@@ -10,7 +10,6 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/anyproto/anytype-heart/core/domain"
-	"github.com/anyproto/anytype-heart/core/subscription"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -28,7 +27,8 @@ func genObject(syncStatus domain.ObjectSyncStatus, spaceId string) objectstore.T
 }
 
 func TestSyncSubscriptions(t *testing.T) {
-	testSubs := subscription.NewInternalTestService(t)
+	fx := newFixture(t)
+
 	var objects []objectstore.TestObject
 	objs := map[string]struct{}{}
 	for i := 0; i < 10; i++ {
@@ -39,13 +39,13 @@ func TestSyncSubscriptions(t *testing.T) {
 	for i := 0; i < 10; i++ {
 		objects = append(objects, genObject(domain.ObjectSyncStatusSynced, "spaceId"))
 	}
-	testSubs.AddObjects(t, "spaceId", objects)
-	subs := New()
-	subs.(*syncSubscriptions).service = testSubs
-	err := subs.Run(context.Background())
+	fx.subService.AddObjects(t, "spaceId", objects)
+
+	err := fx.Run(context.Background())
 	require.NoError(t, err)
+
 	time.Sleep(500 * time.Millisecond)
-	spaceSub, err := subs.GetSubscription("spaceId")
+	spaceSub, err := fx.GetSubscription("spaceId")
 	require.NoError(t, err)
 	syncCnt := spaceSub.SyncingObjectsCount([]string{"1", "2"})
 	require.Equal(t, 12, syncCnt)
@@ -57,11 +57,11 @@ func TestSyncSubscriptions(t *testing.T) {
 	require.Empty(t, objs)
 	for i := 0; i < 10; i++ {
 		objects[i][bundle.RelationKeySyncStatus] = domain.Int64(int64(domain.ObjectSyncStatusSynced))
-		testSubs.AddObjects(t, "spaceId", []objectstore.TestObject{objects[i]})
+		fx.subService.AddObjects(t, "spaceId", []objectstore.TestObject{objects[i]})
 	}
 	time.Sleep(500 * time.Millisecond)
 	syncCnt = spaceSub.SyncingObjectsCount([]string{"1", "2"})
 	require.Equal(t, 2, syncCnt)
-	err = subs.Close(context.Background())
+	err = fx.Close(context.Background())
 	require.NoError(t, err)
 }

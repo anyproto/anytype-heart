@@ -8,13 +8,16 @@ import (
 )
 
 type InviteView struct {
-	SpaceId      string
-	SpaceName    string
-	SpaceIconCid string
-	CreatorName  string
-	AclKey       []byte
-	GuestKey     []byte
-	InviteType   InviteType
+	SpaceId         string
+	SpaceName       string
+	SpaceIconCid    string
+	SpaceIconOption int
+	SpaceUxType     model.SpaceUxType
+	CreatorName     string
+	CreatorIconCid  string
+	AclKey          []byte
+	GuestKey        []byte
+	InviteType      InviteType
 }
 
 func (i InviteView) IsGuestUserInvite() bool {

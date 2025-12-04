@@ -46,23 +46,23 @@ type spaceViewStub struct {
 	data *domain.Details
 }
 
-func (s *spaceViewStub) AddPushNotificationAllIds(ctx session.Context, allIds []string) error {
+func (s *spaceViewStub) SetPushNotificationForceModeIds(ctx session.Context, chatIds []string, mode pb.RpcPushNotificationMode) (err error) {
+	return
+}
+
+func (s *spaceViewStub) SetOneToOneInboxInviteStatus(status spaceinfo.OneToOneInboxSentStatus) (err error) {
+	return
+}
+
+func (s *spaceViewStub) ResetPushNotificationIds(ctx session.Context, allIds []string) error {
 	return nil
-}
-
-func (s *spaceViewStub) AddPushNotificationMuteIds(ctx session.Context, muteIds []string) (err error) {
-	return
-}
-
-func (s *spaceViewStub) AddPushNotificationMentionIds(ctx session.Context, mentionIds []string) (err error) {
-	return
 }
 
 func (s *spaceViewStub) SetMyParticipantStatus(status model.ParticipantStatus) error {
 	panic("unimplemented")
 }
 
-func (s *spaceViewStub) SetPushNotificationMode(ctx session.Context, mode pb.RpcPushNotificationSetSpaceModeMode) (err error) {
+func (s *spaceViewStub) SetPushNotificationMode(ctx session.Context, mode pb.RpcPushNotificationMode) (err error) {
 	return
 }
 

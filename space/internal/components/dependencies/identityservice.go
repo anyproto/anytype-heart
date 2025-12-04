@@ -3,6 +3,7 @@ package dependencies
 import (
 	"context"
 
+	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/util/crypto"
 
 	"github.com/anyproto/anytype-heart/core/domain"
@@ -20,4 +21,7 @@ type IdentityService interface {
 	UnregisterIdentitiesInSpace(spaceId string)
 
 	WaitProfile(ctx context.Context, identity string) *model.IdentityProfile
+	WaitProfileWithKey(ctx context.Context, identity string) (*model.IdentityProfileWithKey, error)
+	GetMetadataKey(identity string) (crypto.SymKey, error)
+	app.Component
 }
