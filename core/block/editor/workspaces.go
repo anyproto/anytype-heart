@@ -1,6 +1,8 @@
 package editor
 
 import (
+	"sync"
+
 	"github.com/anyproto/any-sync/commonspace/object/acl/list"
 
 	"github.com/anyproto/anytype-heart/core/anytype/config"
@@ -34,6 +36,9 @@ type Workspaces struct {
 	spaceService   spaceService
 	config         *config.Config
 	migrator       subObjectsMigrator
+
+	mu                           sync.Mutex
+	subscribedForOneToOneProfile bool
 
 	otherProfileSubClose func()
 }
@@ -78,6 +83,18 @@ func (w *Workspaces) Init(ctx *smartblock.InitContext) (err error) {
 }
 
 func (w *Workspaces) subscribeForOneToOneProfile(state *state.State) {
+	var err error
+	w.mu.Lock()
+	defer func() {
+		if err == nil {
+			w.subscribedForOneToOneProfile = true
+		}
+		w.mu.Unlock()
+	}()
+
+	if w.subscribedForOneToOneProfile {
+		return
+	}
 
 	otherIdentity := state.Details().GetString(bundle.RelationKeyOneToOneIdentity)
 	// Fix other's identity if it was set to the current account id
@@ -235,6 +252,7 @@ func (w *Workspaces) isOneToOne(state *state.State) bool {
 func (w *Workspaces) onWorkspaceChanged(state *state.State) {
 	details := state.CombinedDetails().Copy()
 	if w.isOneToOne(state) {
+		w.subscribeForOneToOneProfile(state)
 		return
 	}
 	w.spaceService.OnWorkspaceChanged(w.SpaceID(), details)
