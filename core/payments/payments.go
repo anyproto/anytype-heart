@@ -425,6 +425,8 @@ func (s *service) sendMembershipUpdateEvent(membership *model.Membership) {
 		nsName := membership.GetNsName()
 		nsNameType := membership.GetNsNameType()
 
+		log.Debug("membership update: update own any name immediately", zap.String("name", nameservice.NsNameToFullName(nsName, nsNameType)))
+
 		s.profileUpdater.UpdateOwnGlobalName(nameservice.NsNameToFullName(nsName, nsNameType))
 	}
 
@@ -980,6 +982,8 @@ func (s *service) FinalizeSubscription(ctx context.Context, req *pb.RpcMembershi
 	}
 
 	// update any name immediately (optimistic)
+	log.Debug("finalize subscription: update own any name immediately", zap.String("name", nameservice.NsNameToFullName(req.NsName, req.NsNameType)))
+
 	s.profileUpdater.UpdateOwnGlobalName(nameservice.NsNameToFullName(req.NsName, req.NsNameType))
 
 	// 2 - clear cache
@@ -1185,6 +1189,8 @@ func (s *service) CodeRedeem(ctx context.Context, req *pb.RpcMembershipCodeRedee
 	}
 
 	// immediately update own any name, do not wait for background refresh
+	log.Debug("code redeem: update own any name immediately", zap.String("name", nameservice.NsNameToFullName(req.NsName, req.NsNameType)))
+
 	s.profileUpdater.UpdateOwnGlobalName(nameservice.NsNameToFullName(nsName, nsNameType))
 
 	go s.forceRefresh(30 * time.Minute)
@@ -1391,6 +1397,8 @@ func (s *service) V2AnyNameAllocate(ctx context.Context, req *pb.RpcMembershipV2
 	}
 
 	if err == nil {
+		log.Debug("any name allocate: update own any name immediately", zap.String("name", nameservice.NsNameToFullName(req.NsName, req.NsNameType)))
+
 		// immediately update own any name, do not wait for background refresh
 		s.profileUpdater.UpdateOwnGlobalName(nameservice.NsNameToFullName(req.NsName, req.NsNameType))
 	}
