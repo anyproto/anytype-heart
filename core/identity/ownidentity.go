@@ -105,10 +105,14 @@ func (s *ownProfileSubscription) run(ctx context.Context) (err error) {
 		closeSub func()
 	)
 
+	log.Debug(">>>> 1")
+
 	records, closeSub, err = s.objectStore.SpaceIndex(s.spaceService.TechSpaceId()).QueryByIdsAndSubscribeForChanges([]string{id}, sub)
 	if err != nil {
 		return err
 	}
+
+	log.Debug(">>>> 2")
 	go func() {
 		select {
 		case <-s.componentCtx.Done():
@@ -117,10 +121,13 @@ func (s *ownProfileSubscription) run(ctx context.Context) (err error) {
 		}
 	}()
 
+	log.Debug(">>>> 3")
+
 	if len(records) > 0 {
 		s.handleOwnProfileDetails(records[0].Details)
 	}
 
+	log.Debug(">>>> calling fetchGlobalName")
 	go s.fetchGlobalName(s.componentCtx, s.namingService)
 
 	go func() {
