@@ -31,9 +31,9 @@ type AddFileRequest struct {
 
 func (s *fileSync) AddFile(req AddFileRequest) (err error) {
 	return s.process(req.FileObjectId, func(exists bool, info FileInfo) (FileInfo, error) {
-		// if exists {
-		// 	return info, nil
-		// }
+		if exists {
+			return info, nil
+		}
 		info = FileInfo{
 			FileId:      req.FileId.FileId,
 			SpaceId:     req.FileId.SpaceId,

@@ -113,23 +113,25 @@ func (m *spaceUsageManager) init() error {
 		return fmt.Errorf("run: %w", err)
 	}
 
-	var errGroup errgroup.Group
-	sub.Iterate(func(id string, usage *spaceUsage) bool {
-		errGroup.Go(func() error {
-			// TODO Add timeout and cache
-			err := usage.Update(m.ctx)
-			if err != nil {
-				return err
-			}
-			return nil
+	go func() {
+		var errGroup errgroup.Group
+		sub.Iterate(func(id string, usage *spaceUsage) bool {
+			errGroup.Go(func() error {
+				// TODO Add timeout and cache
+				err := usage.Update(m.ctx)
+				if err != nil {
+					return err
+				}
+				return nil
+			})
+			return true
 		})
-		return true
-	})
 
-	err = errGroup.Wait()
-	if err != nil {
-		log.Error("init space usage manager", zap.Error(err))
-	}
+		err = errGroup.Wait()
+		if err != nil {
+			log.Error("init space usage manager", zap.Error(err))
+		}
+	}()
 
 	m.spaceViews = sub
 

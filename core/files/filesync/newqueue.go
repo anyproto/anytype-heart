@@ -290,53 +290,64 @@ func (s *fileSync) processLimited(ctx context.Context) error {
 	// - when background process updates limits
 
 	for update := range s.limitManager.updateCh {
-		fmt.Println("UPDATE", update)
-		item, err := s.queue.GetNextScheduled(ctx, filequeue.GetNextScheduledRequest[FileInfo]{
-			Subscribe: false, // Do not subscribe, just return error if no rows found
-			StoreFilter: query.And{
-				query.Key{
-					Path:   []string{"state"},
-					Filter: query.NewComp(query.CompOpEq, int(FileStateLimited)),
-				},
-				query.Key{
-					Path:   []string{"spaceId"},
-					Filter: query.NewComp(query.CompOpEq, update.spaceId),
-				},
-				query.Key{
-					Path:   []string{"bytesToUploadOrBind"},
-					Filter: query.NewComp(query.CompOpLte, update.freeSpace()),
-				},
-			},
-			StoreOrder: &query.SortField{
-				Field:   "scheduledAt",
-				Path:    []string{"scheduledAt"},
-				Reverse: false,
-			},
-			Filter: func(info FileInfo) bool {
-				return info.State == FileStateLimited && info.SpaceId == update.spaceId && info.BytesToUploadOrBind <= update.freeSpace()
-			},
-			ScheduledAt: func(info FileInfo) time.Time {
-				return info.ScheduledAt
-			},
-		})
-		if errors.Is(err, filequeue.ErrNoRows) {
-			continue
+		freeSpace := update.freeSpace()
+		for {
+			nextFreeSpace, err := s.getLimitedFile(ctx, update.spaceId, freeSpace)
+			if err != nil {
+				break
+			}
+			freeSpace = nextFreeSpace
 		}
-		if errors.Is(err, context.Canceled) {
-			return err
-		}
-		if err != nil {
-			log.Error("process limited item", zap.Error(err))
-		}
-
-		next, err := s.processFilePendingUpload(ctx, item)
-
-		releaseErr := s.queue.Release(next)
-
-		return errors.Join(releaseErr, err)
 	}
 
 	return nil
+}
+
+func (s *fileSync) getLimitedFile(ctx context.Context, spaceId string, freeSpace int) (int, error) {
+	item, err := s.queue.GetNextScheduled(ctx, filequeue.GetNextScheduledRequest[FileInfo]{
+		Subscribe: false, // Do not subscribe, just return error if no rows found
+		StoreFilter: query.And{
+			query.Key{
+				Path:   []string{"state"},
+				Filter: query.NewComp(query.CompOpEq, int(FileStateLimited)),
+			},
+			query.Key{
+				Path:   []string{"spaceId"},
+				Filter: query.NewComp(query.CompOpEq, spaceId),
+			},
+			query.Key{
+				Path:   []string{"bytesToUploadOrBind"},
+				Filter: query.NewComp(query.CompOpLte, freeSpace),
+			},
+		},
+		StoreOrder: &query.SortField{
+			Field:   "scheduledAt",
+			Path:    []string{"scheduledAt"},
+			Reverse: false,
+		},
+		Filter: func(info FileInfo) bool {
+			return info.State == FileStateLimited && info.SpaceId == spaceId && info.BytesToUploadOrBind <= freeSpace
+		},
+		ScheduledAt: func(info FileInfo) time.Time {
+			return info.ScheduledAt
+		},
+	})
+	if errors.Is(err, filequeue.ErrNoRows) {
+		return 0, err
+	}
+	if errors.Is(err, context.Canceled) {
+		return 0, err
+	}
+	if err != nil {
+		log.Error("process limited item", zap.Error(err))
+	}
+
+	next, err := s.processFilePendingUpload(ctx, item)
+
+	releaseErr := s.queue.Release(next)
+
+	nextFreeSpace := max(0, freeSpace-item.BytesToUploadOrBind)
+	return nextFreeSpace, errors.Join(releaseErr, err)
 }
 
 func (s *fileSync) uploadLimited(ctx context.Context) (bool, error) {

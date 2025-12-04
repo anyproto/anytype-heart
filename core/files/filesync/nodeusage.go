@@ -6,10 +6,12 @@ import (
 	"sync"
 	"time"
 
+	"go.uber.org/zap"
+
 	"github.com/anyproto/anytype-heart/core/files/filestorage/rpcstore"
 )
 
-const spaceUsageTTL = 60 * time.Second
+const spaceUsageTTL = 30 * time.Second
 
 // spaceUsage helps to track limits usage for parallel uploading. To do that we track sizes of currently uploading files
 // and estimate free space using that information.
@@ -34,6 +36,20 @@ func newSpaceUsage(spaceId string, rpcStore rpcstore.RpcStore, updateCh chan<- u
 		updateCh: updateCh,
 		files:    make(map[string]allocatedFile),
 	}
+
+	go func() {
+		ticker := time.NewTicker(1 * time.Minute)
+		for {
+			select {
+			case <-ticker.C:
+				err := s.Update(context.TODO())
+				if err != nil {
+					log.Error("update space usage in background", zap.Error(err), zap.String("spaceId", s.spaceId))
+				}
+			}
+		}
+	}()
+
 	return s
 }
 
@@ -52,12 +68,9 @@ func (s *spaceUsage) getTotalUsage() int {
 }
 
 func (s *spaceUsage) getFreeSpace(ctx context.Context) (int, error) {
-	if time.Since(s.updatedAt) > spaceUsageTTL {
-		err := s.update(ctx)
-		if err != nil {
-			return 0, err
-		}
-		s.updatedAt = time.Now()
+	err := s.update(ctx)
+	if err != nil {
+		return 0, err
 	}
 	return s.limit - s.usageFromNode - s.allocatedUsage, nil
 }
@@ -129,14 +142,28 @@ func (s *spaceUsage) Update(ctx context.Context) error {
 }
 
 func (s *spaceUsage) update(ctx context.Context) error {
+	if time.Since(s.updatedAt) < spaceUsageTTL {
+		return nil
+	}
+
 	info, err := s.rpcStore.SpaceInfo(ctx, s.spaceId)
 	if err != nil {
 		return fmt.Errorf("get space info: %w", err)
 	}
 
-	s.limit = int(info.LimitBytes)
-	s.usageFromNode = int(info.SpaceUsageBytes)
+	newLimit := int(info.LimitBytes)
+	newUsageFromNode := int(info.SpaceUsageBytes)
 
+	s.limit = newLimit
+	s.usageFromNode = newUsageFromNode
+	s.updatedAt = time.Now()
+
+	s.sendUpdate()
+
+	return nil
+}
+
+func (s *spaceUsage) sendUpdate() {
 	msg := updateMessage{
 		spaceId: s.spaceId,
 		limit:   s.limit,
@@ -147,7 +174,13 @@ func (s *spaceUsage) update(ctx context.Context) error {
 	case s.updateCh <- msg:
 	default:
 	}
-	return nil
+}
+
+func (s *spaceUsage) SendUpdate() {
+	s.lock.Lock()
+	defer s.lock.Unlock()
+
+	s.sendUpdate()
 }
 
 type allocatedFile struct {
