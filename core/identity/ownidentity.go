@@ -127,6 +127,22 @@ func (s *ownProfileSubscription) run(ctx context.Context) (err error) {
 		s.handleOwnProfileDetails(records[0].Details)
 	}
 
+	// Load cached global name if available
+	cachedGlobalName, err := s.identityGlobalNameCacheStore.Get(context.Background(), s.myIdentity)
+	if err != nil {
+		log.Debug(">>>> no cached global name found or error loading", zap.Error(err))
+	} else if cachedGlobalName != "" {
+		log.Debug(">>>> loading cached global name", zap.String("globalName", cachedGlobalName))
+		s.detailsLock.Lock()
+		if s.details == nil {
+			s.details = domain.NewDetails()
+		}
+		s.details.SetString(bundle.RelationKeyGlobalName, cachedGlobalName)
+		identityProfile := s.prepareIdentityProfile()
+		s.detailsLock.Unlock()
+		s.observerService.broadcastMyIdentityProfile(identityProfile)
+	}
+
 	log.Debug(">>>> calling fetchGlobalName")
 	go s.fetchGlobalName(s.componentCtx, s.namingService)
 
