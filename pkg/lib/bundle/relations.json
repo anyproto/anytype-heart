@@ -1842,6 +1842,7 @@
     "format": "number",
     "hidden": true,
     "key": "_score",
+    "maxCount": 1,
     "name": "Score",
     "readonly": true,
     "source": "derived"
