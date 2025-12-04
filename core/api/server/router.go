@@ -36,6 +36,7 @@ func (srv *Server) NewRouter(mw apicore.ClientCommands, eventService apicore.Eve
 	v1.Use(srv.ensureCacheInitialized())
 	v1.Use(srv.ensureAuthenticated(mw))
 
+	srv.registerFileRoutes(v1, eventService, writeRateLimitMW)
 	srv.registerListRoutes(v1, eventService, writeRateLimitMW)
 	srv.registerMemberRoutes(v1, eventService)
 	srv.registerObjectRoutes(v1, eventService, writeRateLimitMW)
@@ -106,6 +107,15 @@ func (srv *Server) registerAuthRoutes(router *gin.Engine) {
 		authGroup.POST("/auth/challenges", handler.CreateChallengeHandler(srv.service))
 		authGroup.POST("/auth/api_keys", handler.CreateApiKeyHandler(srv.service))
 	}
+}
+
+// registerFileRoutes registers file-related routes
+func (srv *Server) registerFileRoutes(v1 *gin.RouterGroup, eventService apicore.EventService, writeRateLimitMW gin.HandlerFunc) {
+	v1.POST("/spaces/:space_id/files",
+		writeRateLimitMW,
+		ensureAnalyticsEvent("UploadFile", eventService),
+		handler.UploadFileHandler(srv.service),
+	)
 }
 
 // registerListRoutes registers list-related routes
