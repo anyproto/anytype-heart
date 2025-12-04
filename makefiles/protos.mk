@@ -66,10 +66,8 @@ protos-swift-local: protos-swift
 	@cp ./pkg/lib/pb/model/protos/*.proto ./dist/ios/protobuf/protos
 	@open ./dist
 
-protos-js:
+protos-js: setup-protoc-js
 	@echo 'Generating protobuf packages (JS)...'
-	@npm -D install
-	@PATH="./node_modules/.bin:$$PATH" which protoc-gen-js
 	@PATH="./node_modules/.bin:$$PATH" protoc -I ./  --js_out=import_style=commonjs,binary:./dist/js/pb pb/protos/service/*.proto pb/protos/*.proto pkg/lib/pb/model/protos/*.proto
 	@PATH="./node_modules/.bin:$$PATH" protoc -I ./  --grpc-web_out=import_style=commonjs+dts,mode=grpcwebtext:./dist/js/pb pb/protos/service/*.proto pb/protos/*.proto pkg/lib/pb/model/protos/*.proto
 

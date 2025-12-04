@@ -33,4 +33,8 @@ setup-protoc-go:
 	go build -o deps github.com/gogo/protobuf/protoc-gen-gogofast
 	go build -o deps github.com/pseudomuto/protoc-gen-doc/cmd/protoc-gen-doc
 
+setup-protoc-js:
+	@echo 'Setting up js protobuf plugins...'
+	@npm -D install
+
 setup-protoc: setup-protoc-go
