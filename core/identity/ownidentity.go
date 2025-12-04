@@ -191,6 +191,8 @@ func (s *ownProfileSubscription) handleOwnProfileDetails(profileDetails *domain.
 }
 
 func (s *ownProfileSubscription) fetchGlobalName(ctx context.Context, ns nameserviceclient.AnyNsClientService) {
+	log.Debug(">>>> fetchGlobalName", zap.String("identity", s.myIdentity))
+
 	if ns == nil {
 		log.Error("error fetching global name of our own identity from Naming Service as the service is not initialized")
 		return
@@ -200,10 +202,14 @@ func (s *ownProfileSubscription) fetchGlobalName(ctx context.Context, ns nameser
 		log.Error("error fetching global name of our own identity from Naming Service", zap.Error(err))
 		return
 	}
+	log.Debug(">>>> response", zap.Any("response", response))
+
 	if !response.Found {
 		log.Debug("globalName was not found for our own identity in Naming Service")
 		return
 	}
+
+	log.Debug(">>>> response.Name", zap.String("response.Name", response.Name))
 	s.updateGlobalName(response.Name)
 }
 
