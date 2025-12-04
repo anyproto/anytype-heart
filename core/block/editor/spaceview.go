@@ -327,6 +327,7 @@ var workspaceKeysToCopy = []domain.RelationKey{
 	bundle.RelationKeyChatId,
 	bundle.RelationKeyDescription,
 	bundle.RelationKeyOneToOneIdentity,
+	bundle.RelationKeyAnalyticsSpaceId,
 }
 
 func (s *SpaceView) GetSpaceDescription() spaceinfo.SpaceDescription {

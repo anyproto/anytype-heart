@@ -3,6 +3,7 @@ package application
 import (
 	"context"
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"time"
@@ -89,10 +90,10 @@ func (s *Service) AccountCreate(ctx context.Context, req *pb.RpcAccountCreateReq
 		return newAcc, errors.Join(ErrFailedToStartApplication, err)
 	}
 
-	if err = s.setProfileDetails(ctx, req, newAcc); err != nil {
-		return newAcc, err
+	err = s.setProfileDetails(ctx, req, newAcc)
+	if err != nil {
+		return newAcc, fmt.Errorf("set profile details: %w", err)
 	}
-
 	return newAcc, nil
 }
 

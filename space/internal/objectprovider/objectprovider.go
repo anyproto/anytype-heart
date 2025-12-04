@@ -16,6 +16,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/object/objectcache"
 	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/metrics"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/threads"
@@ -212,5 +213,15 @@ func (o *objectProvider) CreateMandatoryObjects(ctx context.Context, space smart
 			return fmt.Errorf("derive tree object: %w", err)
 		}
 	}
+
+	err = space.Do(space.DerivedIDs().Workspace, func(sb smartblock.SmartBlock) error {
+		st := sb.NewState()
+		st.SetDetailAndBundledRelation(bundle.RelationKeyAnalyticsSpaceId, domain.String(metrics.GenerateAnalyticsId()))
+		return sb.Apply(st)
+	})
+	if err != nil {
+		return fmt.Errorf("set analytics id: %w", err)
+	}
+
 	return
 }
