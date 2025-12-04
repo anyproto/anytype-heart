@@ -1,3 +1,6 @@
+//go:build deps
+// +build deps
+
 package deps
 
 import (
