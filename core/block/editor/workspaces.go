@@ -80,13 +80,6 @@ func (w *Workspaces) Init(ctx *smartblock.InitContext) (err error) {
 }
 
 func (w *Workspaces) subscribeForOneToOneProfile(state *state.State) {
-	var err error
-	defer func() {
-		if err == nil {
-			w.subscribedForOneToOneProfile = true
-		}
-	}()
-
 	if w.subscribedForOneToOneProfile {
 		return
 	}
@@ -128,6 +121,9 @@ func (w *Workspaces) subscribeForOneToOneProfile(state *state.State) {
 	for _, rec := range recs {
 		w.updateOneToOneInfo(rec.Details)
 	}
+
+	w.subscribedForOneToOneProfile = true
+
 	go func() {
 		for otherDetails := range recordsCh {
 			w.updateOneToOneInfo(otherDetails)
