@@ -1,8 +1,6 @@
 package editor
 
 import (
-	"sync"
-
 	"github.com/anyproto/any-sync/commonspace/object/acl/list"
 
 	"github.com/anyproto/anytype-heart/core/anytype/config"
@@ -37,7 +35,6 @@ type Workspaces struct {
 	config         *config.Config
 	migrator       subObjectsMigrator
 
-	mu                           sync.Mutex
 	subscribedForOneToOneProfile bool
 
 	otherProfileSubClose func()
@@ -84,12 +81,10 @@ func (w *Workspaces) Init(ctx *smartblock.InitContext) (err error) {
 
 func (w *Workspaces) subscribeForOneToOneProfile(state *state.State) {
 	var err error
-	w.mu.Lock()
 	defer func() {
 		if err == nil {
 			w.subscribedForOneToOneProfile = true
 		}
-		w.mu.Unlock()
 	}()
 
 	if w.subscribedForOneToOneProfile {
