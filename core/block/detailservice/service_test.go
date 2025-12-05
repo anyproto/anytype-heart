@@ -370,7 +370,6 @@ func TestService_SetIsArchived(t *testing.T) {
 		sb := smarttest.New(binId)
 		sb.AddBlock(simple.New(&model.Block{Id: binId, ChildrenIds: []string{}}))
 		fx.store.AddObjects(t, spaceId, objects)
-		fx.fileSerivce.EXPECT().CanDeleteFile(mock.Anything, mock.Anything).Return(nil)
 		fx.space.EXPECT().DerivedIDs().Return(threads.DerivedSmartblockIds{Archive: binId})
 		fx.getter.EXPECT().GetObject(mock.Anything, mock.Anything).RunAndReturn(func(_ context.Context, objectId string) (smartblock.SmartBlock, error) {
 			if objectId == binId {
@@ -393,7 +392,6 @@ func TestService_SetIsArchived(t *testing.T) {
 		sb := smarttest.New(binId)
 		sb.AddBlock(simple.New(&model.Block{Id: binId, ChildrenIds: []string{}}))
 		fx.store.AddObjects(t, spaceId, objects)
-		fx.fileSerivce.EXPECT().CanDeleteFile(mock.Anything, mock.Anything).Return(nil)
 		fx.space.EXPECT().DerivedIDs().Return(threads.DerivedSmartblockIds{Archive: binId})
 		fx.getter.EXPECT().GetObject(mock.Anything, mock.Anything).RunAndReturn(func(_ context.Context, objectId string) (smartblock.SmartBlock, error) {
 			if objectId == binId {
@@ -416,7 +414,11 @@ func TestService_SetIsArchived(t *testing.T) {
 		// given
 		fx := newFixture(t)
 		sb := smarttest.New(binId)
+		sb.SetType(coresb.SmartBlockTypeFileObject)
 		sb.AddBlock(simple.New(&model.Block{Id: binId, ChildrenIds: []string{}}))
+		fx.getter.EXPECT().GetObject(mock.Anything, mock.Anything).RunAndReturn(func(_ context.Context, objectId string) (smartblock.SmartBlock, error) {
+			return sb, nil
+		})
 		fx.store.AddObjects(t, spaceId, objects)
 		fx.fileSerivce.EXPECT().CanDeleteFile(mock.Anything, mock.Anything).Return(fmt.Errorf("not allowed"))
 		fx.space.EXPECT().DerivedIDs().Return(threads.DerivedSmartblockIds{Archive: binId})
@@ -445,7 +447,6 @@ func TestService_SetListIsArchived(t *testing.T) {
 		sb := smarttest.New(binId)
 		sb.AddBlock(simple.New(&model.Block{Id: binId, ChildrenIds: []string{}}))
 		fx.store.AddObjects(t, spaceId, objects)
-		fx.fileSerivce.EXPECT().CanDeleteFile(mock.Anything, mock.Anything).Return(nil)
 		fx.space.EXPECT().DerivedIDs().Return(threads.DerivedSmartblockIds{Archive: binId})
 		fx.getter.EXPECT().GetObject(mock.Anything, mock.Anything).RunAndReturn(func(_ context.Context, objectId string) (smartblock.SmartBlock, error) {
 			if objectId == binId {
@@ -496,7 +497,6 @@ func TestService_SetListIsArchived(t *testing.T) {
 		sb := smarttest.New(binId)
 		sb.AddBlock(simple.New(&model.Block{Id: binId, ChildrenIds: []string{}}))
 		fx.store.AddObjects(t, spaceId, objects)
-		fx.fileSerivce.EXPECT().CanDeleteFile(mock.Anything, mock.Anything).Return(nil)
 		fx.space.EXPECT().DerivedIDs().Return(threads.DerivedSmartblockIds{Archive: binId})
 		fx.getter.EXPECT().GetObject(mock.Anything, mock.Anything).RunAndReturn(func(_ context.Context, objectId string) (smartblock.SmartBlock, error) {
 			if objectId == binId {
