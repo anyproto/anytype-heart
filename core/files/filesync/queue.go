@@ -8,74 +8,11 @@ import (
 
 	"github.com/anyproto/any-store/query"
 	blocks "github.com/ipfs/go-block-format"
-	"github.com/ipfs/go-cid"
 	"go.uber.org/zap"
 
-	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/files/filesync/filequeue"
 	"github.com/anyproto/anytype-heart/core/syncstatus/filesyncstatus"
 )
-
-type FileState int
-
-const (
-	FileStatePendingUpload FileState = iota
-	FileStateUploading
-	FileStateLimited
-	FileStatePendingDeletion
-	FileStateDone
-	FileStateDeleted
-)
-
-type FileInfo struct {
-	FileId      domain.FileId
-	SpaceId     string
-	ObjectId    string
-	State       FileState
-	ScheduledAt time.Time
-	Variants    []domain.FileId
-	AddedByUser bool
-	Imported    bool
-
-	BytesToUploadOrBind int
-	CidsToBind          map[cid.Cid]struct{}
-}
-
-func (i FileInfo) FullFileId() domain.FullFileId {
-	return domain.FullFileId{
-		FileId:  i.FileId,
-		SpaceId: i.SpaceId,
-	}
-}
-
-func (i FileInfo) Key() string {
-	return i.ObjectId
-}
-
-func (i FileInfo) ToLimitReached() FileInfo {
-	i.State = FileStateLimited
-	return i
-}
-
-func (i FileInfo) ToUploading() FileInfo {
-	i.State = FileStateUploading
-	return i
-}
-
-func (i FileInfo) ToPendingDeletion() FileInfo {
-	i.State = FileStatePendingDeletion
-	return i
-}
-
-func (i FileInfo) ToDone() FileInfo {
-	i.State = FileStateDone
-	return i
-}
-
-func (i FileInfo) ToDeleted() FileInfo {
-	i.State = FileStateDeleted
-	return i
-}
 
 func (s *fileSync) processFilePendingUpload(ctx context.Context, it FileInfo) (FileInfo, error) {
 	blocksAvailability, err := s.checkBlocksAvailability(ctx, it)
