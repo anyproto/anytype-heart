@@ -13,15 +13,13 @@ type SmartblockHandler interface {
 	GetLastModifiedInfo() (lastModified int64, lastModifiedBy string)
 }
 
-var handlersBySmartblockType = map[smartblock.SmartBlockType]SmartblockHandler{
-	smartblock.SmartBlockTypeFileObject: &filesHandler{},
-}
-
 func GetSmartblockHandler(sbt smartblock.SmartBlockType) SmartblockHandler {
-	if handler, ok := handlersBySmartblockType[sbt]; ok {
-		return handler
+	switch sbt {
+	case smartblock.SmartBlockTypeFileObject:
+		return &filesHandler{}
+	default:
+		return &defaultHandler{}
 	}
-	return &defaultHandler{}
 }
 
 type defaultHandler struct {
