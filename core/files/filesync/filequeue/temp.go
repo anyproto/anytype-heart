@@ -622,7 +622,6 @@ func (q *Queue[T]) scheduleItem(req getNextRequest[T], next T) {
 }
 
 func (q *Queue[T]) GetById(objectId string) (T, error) {
-	fmt.Println("GET BY ID", objectId)
 	responseCh := make(chan itemResponse[T], 1)
 
 	req := getByIdRequest[T]{
@@ -727,7 +726,6 @@ func (q *Queue[T]) GetNextScheduled(ctx context.Context, req GetNextScheduledReq
 	select {
 	case q.getNextScheduledCh <- chReq:
 		task := <-responseCh
-		fmt.Println("NEXT SCH", q.getId(task.item))
 		return task.item, task.err
 	case <-q.closedCh:
 		var defVal T
@@ -748,8 +746,6 @@ func (q *Queue[T]) Upsert(id string, modifier func(exists bool, prev T) T) error
 }
 
 func (q *Queue[T]) Release(task T) error {
-	fmt.Println("RELEASE", q.getId(task))
-
 	responseCh := make(chan error, 1)
 	req := releaseRequest[T]{
 		action:     releaseActionUpdate,

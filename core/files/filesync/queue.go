@@ -31,7 +31,7 @@ func (s *fileSync) processFilePendingUpload(ctx context.Context, it FileInfo) (F
 	allocateErr := spaceLimits.allocateFile(ctx, it.Key(), blocksAvailability.bytesToUploadOrBind)
 	// TODO De-allocate if error is occurred
 	if allocateErr != nil {
-		it = it.ToLimitReached()
+		it.State = FileStateLimited
 
 		err = s.handleLimitReached(ctx, it)
 		if err != nil {
@@ -43,7 +43,8 @@ func (s *fileSync) processFilePendingUpload(ctx context.Context, it FileInfo) (F
 	if it.ObjectId != "" {
 		err = s.updateStatus(it, filesyncstatus.Syncing)
 		if isObjectDeletedError(err) {
-			return it.ToPendingDeletion(), nil
+			it.State = FileStatePendingDeletion
+			return it, nil
 		}
 	}
 
@@ -57,9 +58,12 @@ func (s *fileSync) processFilePendingUpload(ctx context.Context, it FileInfo) (F
 		return nil
 	})
 
+	// All cids should be bind at this time
+	it.CidsToBind = nil
+
 	if err != nil {
 		if isNodeLimitReachedError(err) {
-			it = it.ToLimitReached()
+			it.State = FileStateLimited
 
 			err = s.handleLimitReached(ctx, it)
 			if err != nil {
@@ -76,10 +80,12 @@ func (s *fileSync) processFilePendingUpload(ctx context.Context, it FileInfo) (F
 		if err != nil {
 			return it, fmt.Errorf("add to status update queue: %w", err)
 		}
-		return it.ToDone(), nil
+		it.State = FileStateDone
+		return it, nil
 	}
 
-	return it.ToUploading(), nil
+	it.State = FileStateUploading
+	return it, nil
 }
 
 func (s *fileSync) handleLimitReached(ctx context.Context, it FileInfo) error {
@@ -104,7 +110,7 @@ func (s *fileSync) handleLimitReached(ctx context.Context, it FileInfo) error {
 }
 
 func (s *fileSync) processFileUploading(ctx context.Context, it FileInfo) (FileInfo, error) {
-	if len(it.CidsToBind) == 0 {
+	if len(it.CidsToUpload) == 0 {
 		space, err := s.limitManager.getSpace(ctx, it.SpaceId)
 		if err != nil {
 			return it, fmt.Errorf("get space limits: %w", err)
@@ -115,7 +121,7 @@ func (s *fileSync) processFileUploading(ctx context.Context, it FileInfo) (FileI
 		if err != nil {
 			return it, err
 		}
-		it.ToDone()
+		it.State = FileStateDone
 		return it, nil
 	}
 
@@ -127,18 +133,53 @@ func (s *fileSync) processFileLimited(fi FileInfo) (FileInfo, error) {
 	return fi, nil
 }
 
-func (s *fileSync) processFilePendingDeletion(ctx context.Context, fi FileInfo) (FileInfo, error) {
-	log.Info("removing file", zap.String("fileId", fi.FileId.String()))
-	err := s.rpcStore.DeleteFiles(ctx, fi.SpaceId, fi.FileId)
+func (s *fileSync) processFilePendingDeletion(ctx context.Context, it FileInfo) (FileInfo, error) {
+	log.Info("removing file", zap.String("fileId", it.FileId.String()))
+	err := s.rpcStore.DeleteFiles(ctx, it.SpaceId, it.FileId)
 	if err != nil {
-		return fi, err
+		return it, err
 	}
-	log.Warn("file deleted", zap.String("fileId", fi.FileId.String()))
+	log.Warn("file deleted", zap.String("fileId", it.FileId.String()))
 
-	return fi.ToDeleted(), nil
+	it.State = FileStateDeleted
+	return it, nil
+}
+
+func (s *fileSync) resetUploadingStatus(ctx context.Context) error {
+	item, err := s.queue.GetNext(ctx, filequeue.GetNextRequest[FileInfo]{
+		Subscribe: false,
+		StoreFilter: query.Key{
+			Path:   []string{"state"},
+			Filter: query.NewComp(query.CompOpEq, int(FileStateUploading)),
+		},
+		Filter: func(info FileInfo) bool {
+			return info.State == FileStateUploading
+		},
+	})
+	if err != nil {
+		return fmt.Errorf("get next scheduled item: %w", err)
+	}
+
+	item.State = FileStatePendingUpload
+	item.ScheduledAt = time.Now()
+
+	releaseErr := s.queue.Release(item)
+
+	return errors.Join(releaseErr, err)
 }
 
 func (s *fileSync) runUploader(ctx context.Context) {
+
+	for {
+		err := s.resetUploadingStatus(ctx)
+		if errors.Is(err, filequeue.ErrNoRows) {
+			break
+		}
+		if err != nil {
+			log.Error("reset uploading status", zap.Error(err))
+		}
+	}
+
 	for {
 		select {
 		case <-ctx.Done():
@@ -358,8 +399,5 @@ func (s *fileSync) process(id string, proc func(exists bool, info FileInfo) (Fil
 	if err != nil {
 		return errors.Join(s.queue.Release(item), fmt.Errorf("process item: %w", err))
 	}
-
-	fmt.Printf("PROCESS %#v -> %#v\n", item, next)
-
 	return s.queue.Release(next)
 }

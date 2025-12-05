@@ -80,13 +80,14 @@ func (s *fileSync) processNextToDelete(ctx context.Context) error {
 	return errors.Join(releaseErr, err)
 }
 
-func (s *fileSync) processDeletion(ctx context.Context, item FileInfo) (FileInfo, error) {
-	err := s.rpcStore.DeleteFiles(ctx, item.SpaceId, item.FileId)
+func (s *fileSync) processDeletion(ctx context.Context, it FileInfo) (FileInfo, error) {
+	err := s.rpcStore.DeleteFiles(ctx, it.SpaceId, it.FileId)
 	if err != nil {
 		// TODO Add jitter
-		item.ScheduledAt = time.Now().Add(time.Minute)
-		return item, err
+		it.ScheduledAt = time.Now().Add(time.Minute)
+		return it, err
 	}
 
-	return item.ToDeleted(), nil
+	it.State = FileStateDeleted
+	return it, nil
 }

@@ -33,6 +33,7 @@ type FileInfo struct {
 
 	BytesToUploadOrBind int
 	CidsToBind          map[cid.Cid]struct{}
+	CidsToUpload        map[cid.Cid]struct{}
 }
 
 func (i FileInfo) FullFileId() domain.FullFileId {
@@ -44,31 +45,6 @@ func (i FileInfo) FullFileId() domain.FullFileId {
 
 func (i FileInfo) Key() string {
 	return i.ObjectId
-}
-
-func (i FileInfo) ToLimitReached() FileInfo {
-	i.State = FileStateLimited
-	return i
-}
-
-func (i FileInfo) ToUploading() FileInfo {
-	i.State = FileStateUploading
-	return i
-}
-
-func (i FileInfo) ToPendingDeletion() FileInfo {
-	i.State = FileStatePendingDeletion
-	return i
-}
-
-func (i FileInfo) ToDone() FileInfo {
-	i.State = FileStateDone
-	return i
-}
-
-func (i FileInfo) ToDeleted() FileInfo {
-	i.State = FileStateDeleted
-	return i
 }
 
 func marshalFileInfo(arena *anyenc.Arena, info FileInfo) *anyenc.Value {
@@ -86,12 +62,20 @@ func marshalFileInfo(arena *anyenc.Arena, info FileInfo) *anyenc.Value {
 	obj.Set("addedByUser", newBool(arena, info.AddedByUser))
 	obj.Set("imported", newBool(arena, info.Imported))
 	obj.Set("bytesToUploadOrBind", arena.NewNumberInt(info.BytesToUploadOrBind))
+
 	cidsToUpload := arena.NewArray()
 	var i int
-	for c := range info.CidsToBind {
+	for c := range info.CidsToUpload {
 		cidsToUpload.SetArrayItem(i, arena.NewString(c.String()))
 	}
-	obj.Set("cidsToBind", cidsToUpload)
+	obj.Set("cidsToUpload", cidsToUpload)
+
+	cidsToBind := arena.NewArray()
+	i = 0
+	for c := range info.CidsToBind {
+		cidsToBind.SetArrayItem(i, arena.NewString(c.String()))
+	}
+	obj.Set("cidsToBind", cidsToBind)
 	return obj
 }
 
@@ -109,6 +93,14 @@ func unmarshalFileInfo(doc *anyenc.Value) (FileInfo, error) {
 		variants = append(variants, domain.FileId(v.GetString()))
 	}
 	cidsToUpload := map[cid.Cid]struct{}{}
+	for _, raw := range doc.GetArray("cidsToUpload") {
+		c, err := cid.Parse(raw.GetString())
+		if err != nil {
+			return FileInfo{}, fmt.Errorf("parse cid: %w", err)
+		}
+		cidsToUpload[c] = struct{}{}
+	}
+	cidsToBind := map[cid.Cid]struct{}{}
 	for _, raw := range doc.GetArray("cidsToBind") {
 		c, err := cid.Parse(raw.GetString())
 		if err != nil {
@@ -130,6 +122,7 @@ func unmarshalFileInfo(doc *anyenc.Value) (FileInfo, error) {
 		AddedByUser:         doc.GetBool("addedByUser"),
 		Imported:            doc.GetBool("imported"),
 		BytesToUploadOrBind: doc.GetInt("bytesToUploadOrBind"),
-		CidsToBind:          cidsToUpload,
+		CidsToBind:          cidsToBind,
+		CidsToUpload:        cidsToUpload,
 	}, nil
 }

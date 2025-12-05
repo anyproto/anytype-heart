@@ -37,7 +37,8 @@ func (s *fileSync) addToLimitedQueue(objectId string) error {
 		if err != nil {
 			return FileInfo{}, err
 		}
-		return info.ToLimitReached(), nil
+		info.State = FileStateLimited
+		return info, nil
 	})
 }
 
@@ -70,13 +71,14 @@ func (s *fileSync) updateUploadedCids(objectId string, cids []cid.Cid) error {
 			err := s.rpcStore.DeleteFiles(s.loopCtx, info.SpaceId, info.FileId)
 			// Enqueue deletion if we can't delete it right away
 			if err != nil {
-				return info.ToPendingDeletion(), err
+				info.State = FileStatePendingDeletion
+				return info, err
 			}
 			return info, nil
 		}
 
 		for _, c := range cids {
-			delete(info.CidsToBind, c)
+			delete(info.CidsToUpload, c)
 		}
 		next, err := s.processFileUploading(s.loopCtx, info)
 		return next, err

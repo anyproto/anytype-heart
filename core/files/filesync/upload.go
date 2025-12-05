@@ -35,15 +35,16 @@ func (s *fileSync) AddFile(req AddFileRequest) (err error) {
 			return info, nil
 		}
 		info = FileInfo{
-			FileId:      req.FileId.FileId,
-			SpaceId:     req.FileId.SpaceId,
-			ObjectId:    req.FileObjectId,
-			State:       FileStatePendingUpload,
-			ScheduledAt: time.Now(),
-			Variants:    req.Variants,
-			AddedByUser: req.UploadedByUser,
-			Imported:    req.Imported,
-			CidsToBind:  map[cid.Cid]struct{}{},
+			FileId:       req.FileId.FileId,
+			SpaceId:      req.FileId.SpaceId,
+			ObjectId:     req.FileObjectId,
+			State:        FileStatePendingUpload,
+			ScheduledAt:  time.Now(),
+			Variants:     req.Variants,
+			AddedByUser:  req.UploadedByUser,
+			Imported:     req.Imported,
+			CidsToUpload: map[cid.Cid]struct{}{},
+			CidsToBind:   map[cid.Cid]struct{}{},
 		}
 		return info, nil
 	})
@@ -98,18 +99,21 @@ func (s *fileSync) addImportEvent(spaceID string) {
 type blocksAvailabilityResponse struct {
 	bytesToUploadOrBind int
 	cidsToBind          map[cid.Cid]struct{}
+	cidsToUpload        map[cid.Cid]struct{}
 }
 
 func (s *fileSync) checkBlocksAvailability(ctx context.Context, info FileInfo) (*blocksAvailabilityResponse, error) {
-	if info.BytesToUploadOrBind > 0 || len(info.CidsToBind) > 0 {
+	if info.BytesToUploadOrBind > 0 || len(info.CidsToBind) > 0 || len(info.CidsToUpload) > 0 {
 		return &blocksAvailabilityResponse{
 			bytesToUploadOrBind: info.BytesToUploadOrBind,
 			cidsToBind:          info.CidsToBind,
+			cidsToUpload:        info.CidsToUpload,
 		}, nil
 	}
 
 	response := blocksAvailabilityResponse{
-		cidsToBind: map[cid.Cid]struct{}{},
+		cidsToBind:   map[cid.Cid]struct{}{},
+		cidsToUpload: map[cid.Cid]struct{}{},
 	}
 	err := s.walkFileBlocks(ctx, info.SpaceId, info.FileId, nil, func(fileBlocks []blocks.Block) error {
 		fileCids := lo.Map(fileBlocks, func(b blocks.Block, _ int) cid.Cid {
@@ -141,6 +145,7 @@ func (s *fileSync) checkBlocksAvailability(ctx context.Context, info FileInfo) (
 					return err
 				}
 				response.bytesToUploadOrBind += len(b.RawData())
+				response.cidsToUpload[blockCid] = struct{}{}
 			} else if availability.Status == fileproto.AvailabilityStatus_Exists {
 				// Block exists in node, but not in user's space
 				b, err := getBlock()
