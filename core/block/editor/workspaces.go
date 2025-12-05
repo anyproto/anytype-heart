@@ -35,6 +35,8 @@ type Workspaces struct {
 	config         *config.Config
 	migrator       subObjectsMigrator
 
+	subscribedForOneToOneProfile bool
+
 	otherProfileSubClose func()
 }
 
@@ -78,6 +80,9 @@ func (w *Workspaces) Init(ctx *smartblock.InitContext) (err error) {
 }
 
 func (w *Workspaces) subscribeForOneToOneProfile(state *state.State) {
+	if w.subscribedForOneToOneProfile {
+		return
+	}
 
 	otherIdentity := state.Details().GetString(bundle.RelationKeyOneToOneIdentity)
 	// Fix other's identity if it was set to the current account id
@@ -116,6 +121,9 @@ func (w *Workspaces) subscribeForOneToOneProfile(state *state.State) {
 	for _, rec := range recs {
 		w.updateOneToOneInfo(rec.Details)
 	}
+
+	w.subscribedForOneToOneProfile = true
+
 	go func() {
 		for otherDetails := range recordsCh {
 			w.updateOneToOneInfo(otherDetails)
@@ -235,6 +243,7 @@ func (w *Workspaces) isOneToOne(state *state.State) bool {
 func (w *Workspaces) onWorkspaceChanged(state *state.State) {
 	details := state.CombinedDetails().Copy()
 	if w.isOneToOne(state) {
+		w.subscribeForOneToOneProfile(state)
 		return
 	}
 	w.spaceService.OnWorkspaceChanged(w.SpaceID(), details)
