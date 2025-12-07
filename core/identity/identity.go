@@ -47,7 +47,10 @@ type Service interface {
 	UnregisterIdentity(spaceId string, identity string)
 	// UnregisterIdentitiesInSpace removes all identity observers in the space
 	UnregisterIdentitiesInSpace(spaceId string)
-
+	WaitProfile(ctx context.Context, identity string) *model.IdentityProfile
+	WaitProfileWithKey(ctx context.Context, identity string) (*model.IdentityProfileWithKey, error)
+	GetMetadataKey(identity string) (crypto.SymKey, error)
+	AddIdentityProfile(identityProfile *model.IdentityProfile, key crypto.SymKey) error
 	app.ComponentRunnable
 }
 
@@ -179,6 +182,48 @@ func (s *service) WaitProfile(ctx context.Context, identity string) *model.Ident
 			}
 		}
 	}
+}
+func (s *service) GetMetadataKey(identity string) (crypto.SymKey, error) {
+	s.lock.Lock()
+	defer s.lock.Unlock()
+
+	key, ok := s.identityEncryptionKeys[identity]
+	if !ok {
+		// FIXME We have a race condition somewhere and our own key could not be indexed yet at this moment.
+		// Derive a key as a temporarily solution
+		if s.myIdentity == identity {
+			_, key, err := domain.DeriveAccountMetadata(s.accountService.Keys().SignKey)
+			if err != nil {
+				return nil, err
+			}
+			s.identityEncryptionKeys[identity] = key
+			return key, nil
+		}
+		return nil, fmt.Errorf("identityEncryptionKey doesnt exist for identity")
+	}
+
+	return key, nil
+}
+
+func (s *service) WaitProfileWithKey(ctx context.Context, identity string) (*model.IdentityProfileWithKey, error) {
+	profile := s.WaitProfile(ctx, identity)
+	if profile == nil {
+		return nil, fmt.Errorf("wait profile: got nil profile")
+	}
+	key, err := s.GetMetadataKey(identity)
+	if err != nil {
+		return nil, err
+	}
+
+	keyBytes, err := key.Marshall()
+	if err != nil {
+		return nil, err
+	}
+
+	return &model.IdentityProfileWithKey{
+		IdentityProfile: profile,
+		RequestMetadata: keyBytes,
+	}, nil
 }
 
 func (s *service) getProfileFromCache(identity string) *model.IdentityProfile {
@@ -335,6 +380,36 @@ func (s *service) broadcastIdentityProfile(identityData *identityrepoproto.DataW
 	return nil
 }
 
+// AddIdentityProfile puts identity profile to cache from external place (e.g. from onetoone inbox).
+// Returns immediately if key already exists.
+func (s *service) AddIdentityProfile(profile *model.IdentityProfile, key crypto.SymKey) error {
+	s.lock.Lock()
+	defer s.lock.Unlock()
+	if _, ok := s.identityEncryptionKeys[profile.Identity]; ok {
+		log.Info("addIdentityProfile: profile key already exists, skip", zap.String("identity", profile.Identity))
+		return nil
+	}
+
+	profileBytes, err := proto.Marshal(profile)
+	if err != nil {
+		return err
+	}
+
+	encryptedProfileBytes, err := key.Encrypt(profileBytes)
+	if err != nil {
+		return err
+	}
+
+	s.identityEncryptionKeys[profile.Identity] = key
+
+	err = s.indexIconImage(profile)
+	if err != nil {
+		log.Error("addIdentityProfile: index icon error", zap.Error(err))
+	}
+
+	return s.identityProfileCacheStore.Set(context.Background(), profile.Identity, encryptedProfileBytes)
+}
+
 func (s *service) broadcastMyIdentityProfile(identityProfile *model.IdentityProfile) {
 	s.lock.Lock()
 	defer s.lock.Unlock()
@@ -350,6 +425,7 @@ func (s *service) findProfile(identityData *identityrepoproto.DataWithIdentity) 
 	s.lock.Lock()
 	key := s.identityEncryptionKeys[identityData.Identity]
 	s.lock.Unlock()
+
 	return extractProfile(identityData, key)
 }
 

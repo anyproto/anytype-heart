@@ -12,6 +12,8 @@ import (
 
 	mock "github.com/stretchr/testify/mock"
 
+	model "github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+
 	spaceinfo "github.com/anyproto/anytype-heart/space/spaceinfo"
 )
 
@@ -318,6 +320,66 @@ func (_c *MockService_Create_Call) Return(_a0 clientspace.Space, err error) *Moc
 }
 
 func (_c *MockService_Create_Call) RunAndReturn(run func(context.Context, *spaceinfo.SpaceDescription) (clientspace.Space, error)) *MockService_Create_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// CreateOneToOne provides a mock function with given fields: ctx, description, bobProfile
+func (_m *MockService) CreateOneToOne(ctx context.Context, description *spaceinfo.SpaceDescription, bobProfile *model.IdentityProfileWithKey) (clientspace.Space, error) {
+	ret := _m.Called(ctx, description, bobProfile)
+
+	if len(ret) == 0 {
+		panic("no return value specified for CreateOneToOne")
+	}
+
+	var r0 clientspace.Space
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, *spaceinfo.SpaceDescription, *model.IdentityProfileWithKey) (clientspace.Space, error)); ok {
+		return rf(ctx, description, bobProfile)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, *spaceinfo.SpaceDescription, *model.IdentityProfileWithKey) clientspace.Space); ok {
+		r0 = rf(ctx, description, bobProfile)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(clientspace.Space)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, *spaceinfo.SpaceDescription, *model.IdentityProfileWithKey) error); ok {
+		r1 = rf(ctx, description, bobProfile)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockService_CreateOneToOne_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'CreateOneToOne'
+type MockService_CreateOneToOne_Call struct {
+	*mock.Call
+}
+
+// CreateOneToOne is a helper method to define mock.On call
+//   - ctx context.Context
+//   - description *spaceinfo.SpaceDescription
+//   - bobProfile *model.IdentityProfileWithKey
+func (_e *MockService_Expecter) CreateOneToOne(ctx interface{}, description interface{}, bobProfile interface{}) *MockService_CreateOneToOne_Call {
+	return &MockService_CreateOneToOne_Call{Call: _e.mock.On("CreateOneToOne", ctx, description, bobProfile)}
+}
+
+func (_c *MockService_CreateOneToOne_Call) Run(run func(ctx context.Context, description *spaceinfo.SpaceDescription, bobProfile *model.IdentityProfileWithKey)) *MockService_CreateOneToOne_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(*spaceinfo.SpaceDescription), args[2].(*model.IdentityProfileWithKey))
+	})
+	return _c
+}
+
+func (_c *MockService_CreateOneToOne_Call) Return(sp clientspace.Space, err error) *MockService_CreateOneToOne_Call {
+	_c.Call.Return(sp, err)
+	return _c
+}
+
+func (_c *MockService_CreateOneToOne_Call) RunAndReturn(run func(context.Context, *spaceinfo.SpaceDescription, *model.IdentityProfileWithKey) (clientspace.Space, error)) *MockService_CreateOneToOne_Call {
 	_c.Call.Return(run)
 	return _c
 }

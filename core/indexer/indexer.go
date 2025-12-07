@@ -100,9 +100,9 @@ func (i *indexer) Run(context.Context) (err error) {
 	return i.StartFullTextIndex()
 }
 
-func (f *indexer) StateChange(state int) {
-	if state == int(domain.CompStateAppClosingInitiated) && f.ftQueueStop != nil {
-		f.ftQueueStop()
+func (i *indexer) StateChange(state int) {
+	if state == int(domain.CompStateAppClosingInitiated) && i.ftQueueStop != nil {
+		i.ftQueueStop()
 	}
 }
 

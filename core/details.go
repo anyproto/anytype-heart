@@ -125,7 +125,7 @@ func (mw *Middleware) ObjectSetIsFavorite(_ context.Context, req *pb.RpcObjectSe
 	return response(pb.RpcObjectSetIsFavoriteResponseError_NULL, nil)
 }
 
-func (mw *Middleware) ObjectSetIsArchived(_ context.Context, req *pb.RpcObjectSetIsArchivedRequest) *pb.RpcObjectSetIsArchivedResponse {
+func (mw *Middleware) ObjectSetIsArchived(cctx context.Context, req *pb.RpcObjectSetIsArchivedRequest) *pb.RpcObjectSetIsArchivedResponse {
 	response := func(code pb.RpcObjectSetIsArchivedResponseErrorCode, err error) *pb.RpcObjectSetIsArchivedResponse {
 		m := &pb.RpcObjectSetIsArchivedResponse{Error: &pb.RpcObjectSetIsArchivedResponseError{Code: code}}
 		if err != nil {
@@ -133,14 +133,14 @@ func (mw *Middleware) ObjectSetIsArchived(_ context.Context, req *pb.RpcObjectSe
 		}
 		return m
 	}
-	err := mustService[detailservice.Service](mw).SetIsArchived(req.ContextId, req.IsArchived)
+	err := mustService[detailservice.Service](mw).SetIsArchived(cctx, req.ContextId, req.IsArchived)
 	if err != nil {
 		return response(pb.RpcObjectSetIsArchivedResponseError_UNKNOWN_ERROR, err)
 	}
 	return response(pb.RpcObjectSetIsArchivedResponseError_NULL, nil)
 }
 
-func (mw *Middleware) ObjectListSetIsArchived(_ context.Context, req *pb.RpcObjectListSetIsArchivedRequest) *pb.RpcObjectListSetIsArchivedResponse {
+func (mw *Middleware) ObjectListSetIsArchived(cctx context.Context, req *pb.RpcObjectListSetIsArchivedRequest) *pb.RpcObjectListSetIsArchivedResponse {
 	response := func(code pb.RpcObjectListSetIsArchivedResponseErrorCode, err error) *pb.RpcObjectListSetIsArchivedResponse {
 		m := &pb.RpcObjectListSetIsArchivedResponse{Error: &pb.RpcObjectListSetIsArchivedResponseError{Code: code}}
 		if err != nil {
@@ -148,7 +148,7 @@ func (mw *Middleware) ObjectListSetIsArchived(_ context.Context, req *pb.RpcObje
 		}
 		return m
 	}
-	err := mustService[detailservice.Service](mw).SetListIsArchived(req.ObjectIds, req.IsArchived)
+	err := mustService[detailservice.Service](mw).SetListIsArchived(cctx, req.ObjectIds, req.IsArchived)
 	if err != nil {
 		return response(pb.RpcObjectListSetIsArchivedResponseError_UNKNOWN_ERROR, err)
 	}

@@ -2,6 +2,7 @@ package account
 
 import (
 	"context"
+	"encoding/base64"
 	"fmt"
 	"path/filepath"
 	"sync"
@@ -16,6 +17,7 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/anytype/config"
 	"github.com/anyproto/anytype-heart/core/block/cache"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/wallet"
 	"github.com/anyproto/anytype-heart/pkg/lib/gateway"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
@@ -161,6 +163,15 @@ func (s *service) GetInfo(ctx context.Context) (*model.AccountInfo, error) {
 		cfg.CustomFileStorePath = s.wallet.RepoPath()
 	}
 
+	_, metadataKey, err := domain.DeriveAccountMetadata(s.Keys().SignKey)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get account metadata key: %w", err)
+	}
+	metadataRawKey, err := metadataKey.Marshall()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get raw metadata key: %w", err)
+	}
+
 	return &model.AccountInfo{
 		ProfileObjectId:        accountId,
 		MarketplaceWorkspaceId: addr.AnytypeMarketplaceWorkspace,
@@ -171,6 +182,7 @@ func (s *service) GetInfo(ctx context.Context) (*model.AccountInfo, error) {
 		NetworkId:              s.getNetworkId(),
 		TechSpaceId:            s.spaceService.TechSpaceId(),
 		EthereumAddress:        s.wallet.GetAccountEthAddress().Hex(),
+		MetaDataKey:            base64.StdEncoding.EncodeToString(metadataRawKey),
 	}, nil
 }
 

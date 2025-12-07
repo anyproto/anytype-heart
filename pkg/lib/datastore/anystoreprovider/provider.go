@@ -32,6 +32,10 @@ func (k systemKeys) PaymentCacheKey(ver int) string {
 	return fmt.Sprintf("payments_subscription_v%d", ver)
 }
 
+func (k systemKeys) PaymentCacheV2Key(ver int) string {
+	return fmt.Sprintf("payments_subscription_v2_v%d", ver)
+}
+
 func (k systemKeys) PortKey() string {
 	return "drpc_server_port"
 }

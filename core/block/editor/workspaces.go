@@ -12,11 +12,10 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/template"
 	"github.com/anyproto/anytype-heart/core/block/migration"
 	"github.com/anyproto/anytype-heart/core/domain"
-	"github.com/anyproto/anytype-heart/metrics"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
+	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/spaceindex"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 var workspaceRequiredRelations = []domain.RelationKey{
@@ -30,9 +29,15 @@ type Workspaces struct {
 	dataview.Dataview
 	stext.Text
 
-	spaceService spaceService
-	config       *config.Config
-	migrator     subObjectsMigrator
+	accountService accountService
+	spaceIndex     spaceindex.Store
+	spaceService   spaceService
+	config         *config.Config
+	migrator       subObjectsMigrator
+
+	subscribedForOneToOneProfile bool
+
+	otherProfileSubClose func()
 }
 
 func (f *ObjectFactory) newWorkspace(sb smartblock.SmartBlock, store spaceindex.Store) *Workspaces {
@@ -45,9 +50,11 @@ func (f *ObjectFactory) newWorkspace(sb smartblock.SmartBlock, store spaceindex.
 			store,
 			f.eventSender,
 		),
-		Dataview:     dataview.NewDataview(sb, store),
-		spaceService: f.spaceService,
-		config:       f.config,
+		Dataview:       dataview.NewDataview(sb, store),
+		spaceService:   f.spaceService,
+		config:         f.config,
+		spaceIndex:     store,
+		accountService: f.accountService,
 	}
 	w.migrator = &subObjectsMigration{
 		workspace: w,
@@ -65,18 +72,82 @@ func (w *Workspaces) Init(ctx *smartblock.InitContext) (err error) {
 	w.migrator.migrateSubObjects(ctx.State)
 	w.onWorkspaceChanged(ctx.State)
 	w.AddHook(w.onApply, smartblock.HookAfterApply)
+
+	if w.isOneToOne(ctx.State) {
+		w.subscribeForOneToOneProfile(ctx.State)
+	}
 	return nil
 }
 
-func (w *Workspaces) initTemplate(ctx *smartblock.InitContext) {
-	if w.config.AnalyticsId != "" {
-		ctx.State.SetSetting(state.SettingsAnalyticsId, pbtypes.String(w.config.AnalyticsId))
-	} else if ctx.State.GetSetting(state.SettingsAnalyticsId) == nil {
-		// add analytics id for existing users, so it will be active from the next start
-		log.Warnf("analyticsID is missing, generating new one")
-		ctx.State.SetSetting(state.SettingsAnalyticsId, pbtypes.String(metrics.GenerateAnalyticsId()))
+func (w *Workspaces) subscribeForOneToOneProfile(state *state.State) {
+	if w.subscribedForOneToOneProfile {
+		return
 	}
 
+	otherIdentity := state.Details().GetString(bundle.RelationKeyOneToOneIdentity)
+	// Fix other's identity if it was set to the current account id
+	if otherIdentity == w.accountService.AccountID() {
+		w.Tree().AclList().RLock()
+		for _, acc := range w.Tree().AclList().AclState().CurrentAccounts() {
+			// Account with permissions = owner is the special identity derived from two participants identities.
+			// We should ignore it as it isn't used in business logic
+			if acc.Permissions == list.AclPermissionsOwner {
+				continue
+			}
+			identity := acc.PubKey.Account()
+			// We need other's identity
+			if identity != w.accountService.AccountID() {
+				otherIdentity = identity
+				toSave := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+					bundle.RelationKeyOneToOneIdentity: domain.String(otherIdentity),
+				})
+				state.SetDetailAndBundledRelation(bundle.RelationKeyOneToOneIdentity, domain.String(otherIdentity))
+				w.spaceService.OnWorkspaceChanged(w.SpaceID(), toSave)
+				break
+			}
+		}
+		w.Tree().AclList().RUnlock()
+	}
+	participantId := domain.NewParticipantId(w.SpaceID(), otherIdentity)
+	recordsCh := make(chan *domain.Details)
+	sub := database.NewSubscription(nil, recordsCh)
+	recs, closeSub, err := w.spaceIndex.QueryByIdsAndSubscribeForChanges([]string{participantId}, sub)
+	if err != nil {
+		log.Errorf("one-to-one: subscribe for other's profile: %v", err)
+		return
+	}
+
+	w.otherProfileSubClose = closeSub
+	for _, rec := range recs {
+		w.updateOneToOneInfo(rec.Details)
+	}
+
+	w.subscribedForOneToOneProfile = true
+
+	go func() {
+		for otherDetails := range recordsCh {
+			w.updateOneToOneInfo(otherDetails)
+		}
+	}()
+}
+
+func (w *Workspaces) updateOneToOneInfo(details *domain.Details) {
+	toSave := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+		bundle.RelationKeyName:       details.Get(bundle.RelationKeyName),
+		bundle.RelationKeyIconImage:  details.Get(bundle.RelationKeyIconImage),
+		bundle.RelationKeyIconOption: details.Get(bundle.RelationKeyIconOption),
+	})
+	w.spaceService.OnWorkspaceChanged(w.SpaceID(), toSave)
+}
+
+func (w *Workspaces) Close() error {
+	if w.otherProfileSubClose != nil {
+		w.otherProfileSubClose()
+	}
+	return w.SmartBlock.Close()
+}
+
+func (w *Workspaces) initTemplate(ctx *smartblock.InitContext) {
 	template.InitTemplate(ctx.State,
 		template.WithEmpty,
 		template.WithDetail(bundle.RelationKeyIsHidden, domain.Bool(true)),
@@ -164,7 +235,16 @@ func (w *Workspaces) onApply(info smartblock.ApplyInfo) error {
 	return nil
 }
 
+func (w *Workspaces) isOneToOne(state *state.State) bool {
+	spaceUxType := model.SpaceUxType(state.Details().GetInt64(bundle.RelationKeySpaceUxType)) //nolint:gosec
+	return spaceUxType == model.SpaceUxType_OneToOne
+}
+
 func (w *Workspaces) onWorkspaceChanged(state *state.State) {
 	details := state.CombinedDetails().Copy()
+	if w.isOneToOne(state) {
+		w.subscribeForOneToOneProfile(state)
+		return
+	}
 	w.spaceService.OnWorkspaceChanged(w.SpaceID(), details)
 }

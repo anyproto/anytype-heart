@@ -273,6 +273,12 @@ func (s *SpaceView) SetPushNotificationMode(ctx session.Context, mode pb.RpcPush
 	return s.Apply(st)
 }
 
+func (s *SpaceView) SetOneToOneInboxInviteStatus(status spaceinfo.OneToOneInboxSentStatus) (err error) {
+	st := s.NewState()
+	st.SetDetailAndBundledRelation(bundle.RelationKeyOneToOneInboxSentStatus, domain.Int64(status))
+	return s.Apply(st)
+}
+
 func (s *SpaceView) GetSharedSpacesLimit() (limit int) {
 	return int(s.CombinedDetails().GetInt64(bundle.RelationKeySharedSpacesLimit))
 }
@@ -311,14 +317,6 @@ func (s *SpaceView) targetSpaceID() (id string, err error) {
 	return changePayload.Key, nil
 }
 
-func (s *SpaceView) getSpacePersistentInfo(st *state.State) (info spaceinfo.SpacePersistentInfo) {
-	details := st.CombinedDetails()
-	spaceInfo := spaceinfo.NewSpacePersistentInfo(details.GetString(bundle.RelationKeyTargetSpaceId))
-	spaceInfo.SetAccountStatus(spaceinfo.AccountStatus(details.GetInt64(bundle.RelationKeySpaceAccountStatus))).
-		SetAclHeadId(details.GetString(bundle.RelationKeyLatestAclHeadId))
-	return spaceInfo
-}
-
 var workspaceKeysToCopy = []domain.RelationKey{
 	bundle.RelationKeyName,
 	bundle.RelationKeyIconImage,
@@ -328,14 +326,13 @@ var workspaceKeysToCopy = []domain.RelationKey{
 	bundle.RelationKeyCreatedDate,
 	bundle.RelationKeyChatId,
 	bundle.RelationKeyDescription,
+	bundle.RelationKeyOneToOneIdentity,
+	bundle.RelationKeyAnalyticsSpaceId,
 }
 
-func (s *SpaceView) GetSpaceDescription() (data spaceinfo.SpaceDescription) {
+func (s *SpaceView) GetSpaceDescription() spaceinfo.SpaceDescription {
 	details := s.CombinedDetails()
-	data.Name = details.GetString(bundle.RelationKeyName)
-	data.IconImage = details.GetString(bundle.RelationKeyIconImage)
-	data.SpaceUxType = model.SpaceUxType(details.GetInt64(bundle.RelationKeySpaceUxType))
-	return
+	return spaceinfo.NewSpaceDescriptionFromDetails(details)
 }
 
 func (s *SpaceView) SetSpaceData(details *domain.Details) error {
@@ -380,7 +377,7 @@ func (s *SpaceView) SetSpaceData(details *domain.Details) error {
 func (s *SpaceView) UpdateLastOpenedDate() error {
 	st := s.NewState()
 	st.SetLocalDetail(bundle.RelationKeyLastOpenedDate, domain.Int64(time.Now().Unix()))
-	return s.Apply(st, smartblock.NoHistory, smartblock.NoEvent, smartblock.SkipIfNoChanges, smartblock.KeepInternalFlags)
+	return s.Apply(st, smartblock.NoHistory, smartblock.NoEvent, smartblock.KeepInternalFlags)
 }
 
 func stateSetAccessType(st *state.State, accessType spaceinfo.AccessType) {

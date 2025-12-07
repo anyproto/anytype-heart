@@ -59,7 +59,6 @@ const (
 	NoRestrictions
 	NoHooks
 	DoSnapshot
-	SkipIfNoChanges
 	KeepInternalFlags
 	IgnoreNoPermissions
 	NotPushChanges // Used only for read-only actions like InitObject or OpenObject
@@ -128,6 +127,7 @@ type Space interface {
 	DeriveObjectID(ctx context.Context, uniqueKey domain.UniqueKey) (id string, err error)
 
 	IsPersonal() bool
+	IsOneToOne() bool
 
 	Do(objectId string, apply func(sb SmartBlock) error) error
 	DoLockedIfNotExists(objectID string, proc func() error) error // TODO Temporarily before rewriting favorites/archive mechanism
@@ -624,7 +624,6 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 		doSnapshot              = false
 		checkRestrictions       = true
 		hooks                   = true
-		skipIfNoChanges         = false
 		keepInternalFlags       = false
 		ignoreNoPermissions     = false
 		notPushChanges          = false
@@ -642,8 +641,6 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 			checkRestrictions = false
 		case NoHooks:
 			hooks = false
-		case SkipIfNoChanges:
-			skipIfNoChanges = true
 		case KeepInternalFlags:
 			keepInternalFlags = true
 		case IgnoreNoPermissions:
@@ -703,6 +700,7 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 	var (
 		migrationVersionUpdated = true
 		parent                  = s.ParentState()
+		changeType              = s.GetChangeType()
 	)
 
 	if parent != nil {
@@ -722,7 +720,7 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 
 	changes := st.GetChanges()
 	var changeId string
-	if skipIfNoChanges && len(changes) == 0 && !migrationVersionUpdated {
+	if len(changes) == 0 && !migrationVersionUpdated {
 		if hasDetailsMsgs(msgs) {
 			// means we have only local details changed, so lets index but skip full text
 			sb.runIndexer(st, SkipFullTextIfHeadsNotChanged)
@@ -736,10 +734,9 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 		if notPushChanges {
 			return nil
 		}
-		if !sb.source.ReadOnly() {
+		if !sb.source.ReadOnly() && changeType == domain.ChangeTypeUserChange {
 			// We can set details directly in object's state, they'll be indexed correctly
-			st.SetLocalDetail(bundle.RelationKeyLastModifiedBy, domain.String(sb.currentParticipantId))
-			st.SetLocalDetail(bundle.RelationKeyLastModifiedDate, domain.Int64(lastModified.Unix()))
+			st.SetLastModified(lastModified.Unix(), sb.currentParticipantId)
 		}
 		fileDetailsKeys := st.FileRelationKeys(sb.formatFetcher)
 		var fileDetailsKeysFiltered []domain.RelationKey
@@ -756,6 +753,7 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 			Changes:           changes,
 			FileChangedHashes: getChangedFileHashes(s, fileDetailsKeysFiltered, act),
 			DoSnapshot:        doSnapshot,
+			ChangeType:        changeType,
 		}
 		changeId, err = sb.source.PushChange(pushChangeParams)
 		// For read-only mode
@@ -1276,7 +1274,7 @@ func ObjectApplyTemplate(sb SmartBlock, s *state.State, templates ...template.St
 	}
 	template.InitTemplate(s, templates...)
 
-	return sb.Apply(s, NoHistory, NoEvent, NoRestrictions, SkipIfNoChanges)
+	return sb.Apply(s, NoHistory, NoEvent, NoRestrictions)
 }
 
 func hasChangesToPush(changes []*pb.ChangeContent) bool {

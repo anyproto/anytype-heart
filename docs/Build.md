@@ -1,7 +1,8 @@
 # Build instructions
 ## Build from Source
-1. Install Golang 1.22.x [from here](http://golang.org/dl/) or using preferred package manager
-2. Follow instructions below for the target systems
+1. Install Golang 1.24.x [from here](http://golang.org/dl/) or using preferred package manager
+2. For JS(desktop client) bindings generation, install [Node.js](https://nodejs.org/), protobuf plugins will be installed automatically
+3. Follow instructions below for the target systems
 
 ### Install local deps
 
@@ -13,52 +14,28 @@ make download-tantivy-all-force
 
 #### Mac
 
-Make sure you install a recent version of protobuf. Some older versions had plugin compatibility issues
-(*as of 16.01.23 last protobuf version (21.12) broke the JS plugin support.*).
-[This protobuf-javascript issue](https://github.com/protocolbuffers/protobuf-javascript/issues/127)
-tracks the history and workarounds for the compatibility issues.
-
-Luckily, plugins now work when installed as separate packages alongside protobuf:
+Install protobuf compiler:
 
 ```
-brew install protobuf protoc-gen-js protoc-gen-grpc-web
+brew install protobuf
 ```
 
-Once installed, check to make sure you have up to date versions:
+Once installed, verify you have protoc:
 
 ```
-which -s protoc
-which -s protoc-gen-js
-which -s protoc-gen-grpc-web
+which protoc
 ```
 
-The expected versions are
+The expected version is `protoc` >= 33.0.0.
 
-- `protoc` >= 33.0.0
-- `protoc-gen-js` >= 4.0.0
-- `protoc-gen-grpc-web` >= 2.0.2
-
-which means your output should look something like this:
-
-```
-/opt/homebrew/bin/protoc -> /opt/homebrew/Cellar/protobuf/33.0/bin/protoc-33.0.0
-/opt/homebrew/bin/protoc-gen-js -> /opt/homebrew/Cellar/protoc-gen-js/4.0.0/bin/protoc-gen-js
-/opt/homebrew/bin/protoc-gen-grpc-web -> /opt/homebrew/Cellar/protoc-gen-grpc-web/2.0.2/bin/protoc-gen-grpc-web
-```
-
-If any of your versions are outdated, make sure to relink them:
-
-```
-brew link --overwrite protobuf protoc-gen-js protoc-gen-grpc-web
-```
-
-To generate Swift protobuf:
+To generate Swift(iOS) protobuf bindings:
 ```
 brew install swift-protobuf
 ```
 
 #### Debian/Ubuntu
-We need to have protoc binary (3.x version) and libprotoc headers in orderto build the grpc-web plugin
+
+Install protobuf compiler and headers:
 ```
 apt install protobuf-compiler libprotoc-dev
 ```
@@ -76,11 +53,11 @@ nix develop .
 >
 > With direnv, you can also switch environments per project in your code editor: [emacs-direnv](https://github.com/wbolster/emacs-direnv)
 
-### Install custom protoc
-`make setup-protoc` to install grpc-web plugin (see [Protogen](https://github.com/anyproto/anytype-heart/blob/main/docs/Protogen.md) for additional information)
+### Install custom Go protobuf generators
+`make setup-protoc` to install custom Go protobuf generators (see [Protogen](https://github.com/anyproto/anytype-heart/blob/main/docs/Protogen.md) for additional information)
 
 ### Build and install for the [desktop client](https://github.com/anyproto/anytype-ts)
-`make install-dev-js` to build the local server and copy it and protobuf binding into `../anytype-ts`
+`make install-dev-js` to install js protobuf plugins and then build the local server and copy it and protobuf binding into `../anytype-ts`
 
 Parameters:
 - `ANY_SYNC_NETWORK=/path/to/network.yml` — build using self-hosted [network configuration](https://tech.anytype.io/anytype-heart/configuration)

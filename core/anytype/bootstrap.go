@@ -11,7 +11,10 @@ import (
 	"github.com/anyproto/any-sync/commonfile/fileservice"
 	"github.com/anyproto/any-sync/commonspace"
 	"github.com/anyproto/any-sync/commonspace/acl/aclclient"
+	anysyncinboxclient "github.com/anyproto/any-sync/coordinator/inboxclient"
+
 	"github.com/anyproto/any-sync/coordinator/nodeconfsource"
+	"github.com/anyproto/any-sync/coordinator/subscribeclient"
 	"github.com/anyproto/any-sync/metric"
 	"github.com/anyproto/any-sync/net/peerservice"
 	"github.com/anyproto/any-sync/net/pool"
@@ -31,6 +34,7 @@ import (
 
 	"github.com/anyproto/any-sync/nameservice/nameserviceclient"
 	"github.com/anyproto/any-sync/paymentservice/paymentserviceclient"
+	"github.com/anyproto/any-sync/paymentservice/paymentserviceclient2"
 
 	"github.com/anyproto/anytype-heart/core/acl"
 	"github.com/anyproto/anytype-heart/core/anytype/account"
@@ -77,12 +81,14 @@ import (
 	"github.com/anyproto/anytype-heart/core/gallery"
 	"github.com/anyproto/anytype-heart/core/history"
 	"github.com/anyproto/anytype-heart/core/identity"
+	"github.com/anyproto/anytype-heart/core/inboxclient"
 	"github.com/anyproto/anytype-heart/core/indexer"
 	"github.com/anyproto/anytype-heart/core/inviteservice"
 	"github.com/anyproto/anytype-heart/core/invitestore"
 	"github.com/anyproto/anytype-heart/core/kanban"
 	"github.com/anyproto/anytype-heart/core/nameservice"
 	"github.com/anyproto/anytype-heart/core/notifications"
+	"github.com/anyproto/anytype-heart/core/onetoone"
 	"github.com/anyproto/anytype-heart/core/order"
 	"github.com/anyproto/anytype-heart/core/payments"
 	paymentscache "github.com/anyproto/anytype-heart/core/payments/cache"
@@ -324,6 +330,7 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(templateimpl.New()).
 		Register(notifications.New(time.Second * 10)).
 		Register(paymentserviceclient.New()).
+		Register(paymentserviceclient2.New()).
 		Register(nameservice.New()).
 		Register(nameserviceclient.New()).
 		Register(payments.New()).
@@ -334,6 +341,10 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(api.New()).
 		Register(pushclient.New()).
 		Register(pushnotification.New()).
+		Register(subscribeclient.New()).
+		Register(anysyncinboxclient.New()).
+		Register(inboxclient.New()).
+		Register(onetoone.New()).
 		Register(durability.New()) // leave it the last one
 }
 

@@ -23,6 +23,7 @@ service ClientCommands {
 
     rpc WalletCreateSession (anytype.Rpc.Wallet.CreateSession.Request) returns (anytype.Rpc.Wallet.CreateSession.Response);
     rpc WalletCloseSession (anytype.Rpc.Wallet.CloseSession.Request) returns (anytype.Rpc.Wallet.CloseSession.Response);
+
     // Workspace
     // ***
     rpc WorkspaceCreate (anytype.Rpc.Workspace.Create.Request) returns (anytype.Rpc.Workspace.Create.Response);
@@ -385,7 +386,16 @@ service ClientCommands {
     rpc MembershipVerifyAppStoreReceipt (anytype.Rpc.Membership.VerifyAppStoreReceipt.Request) returns (anytype.Rpc.Membership.VerifyAppStoreReceipt.Response);
     rpc MembershipCodeGetInfo (anytype.Rpc.Membership.CodeGetInfo.Request) returns (anytype.Rpc.Membership.CodeGetInfo.Response);
     rpc MembershipCodeRedeem (anytype.Rpc.Membership.CodeRedeem.Request) returns (anytype.Rpc.Membership.CodeRedeem.Response);
-
+    
+    // enumerate all available for purchase products
+    rpc MembershipV2GetProducts(anytype.Rpc.MembershipV2.GetProducts.Request) returns (anytype.Rpc.MembershipV2.GetProducts.Response);
+    rpc MembershipV2GetStatus(anytype.Rpc.MembershipV2.GetStatus.Request) returns (anytype.Rpc.MembershipV2.GetStatus.Response);
+    rpc MembershipV2GetPortalLink (anytype.Rpc.MembershipV2.GetPortalLink.Request) returns (anytype.Rpc.MembershipV2.GetPortalLink.Response);
+    rpc MembershipV2AnyNameIsValid(anytype.Rpc.MembershipV2.AnyNameIsValid.Request) returns (anytype.Rpc.MembershipV2.AnyNameIsValid.Response);
+    rpc MembershipV2AnyNameAllocate(anytype.Rpc.MembershipV2.AnyNameAllocate.Request) returns (anytype.Rpc.MembershipV2.AnyNameAllocate.Response);
+    rpc MembershipV2CartGet(anytype.Rpc.MembershipV2.CartGet.Request) returns (anytype.Rpc.MembershipV2.CartGet.Response);
+    rpc MembershipV2CartUpdate(anytype.Rpc.MembershipV2.CartUpdate.Request) returns (anytype.Rpc.MembershipV2.CartUpdate.Response);
+    
     // Name Service:
     // ***
     // hello.any -> data

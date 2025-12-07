@@ -30,9 +30,9 @@ func (_m *MockService) EXPECT() *MockService_Expecter {
 	return &MockService_Expecter{mock: &_m.Mock}
 }
 
-// AddChatDerivedObject provides a mock function with given fields: ctx, space, chatObjectId
-func (_m *MockService) AddChatDerivedObject(ctx context.Context, space clientspace.Space, chatObjectId string) (string, error) {
-	ret := _m.Called(ctx, space, chatObjectId)
+// AddChatDerivedObject provides a mock function with given fields: ctx, space, chatObjectId, addAnalyticsId
+func (_m *MockService) AddChatDerivedObject(ctx context.Context, space clientspace.Space, chatObjectId string, addAnalyticsId bool) (string, error) {
+	ret := _m.Called(ctx, space, chatObjectId, addAnalyticsId)
 
 	if len(ret) == 0 {
 		panic("no return value specified for AddChatDerivedObject")
@@ -40,17 +40,17 @@ func (_m *MockService) AddChatDerivedObject(ctx context.Context, space clientspa
 
 	var r0 string
 	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, clientspace.Space, string) (string, error)); ok {
-		return rf(ctx, space, chatObjectId)
+	if rf, ok := ret.Get(0).(func(context.Context, clientspace.Space, string, bool) (string, error)); ok {
+		return rf(ctx, space, chatObjectId, addAnalyticsId)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context, clientspace.Space, string) string); ok {
-		r0 = rf(ctx, space, chatObjectId)
+	if rf, ok := ret.Get(0).(func(context.Context, clientspace.Space, string, bool) string); ok {
+		r0 = rf(ctx, space, chatObjectId, addAnalyticsId)
 	} else {
 		r0 = ret.Get(0).(string)
 	}
 
-	if rf, ok := ret.Get(1).(func(context.Context, clientspace.Space, string) error); ok {
-		r1 = rf(ctx, space, chatObjectId)
+	if rf, ok := ret.Get(1).(func(context.Context, clientspace.Space, string, bool) error); ok {
+		r1 = rf(ctx, space, chatObjectId, addAnalyticsId)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -67,13 +67,14 @@ type MockService_AddChatDerivedObject_Call struct {
 //   - ctx context.Context
 //   - space clientspace.Space
 //   - chatObjectId string
-func (_e *MockService_Expecter) AddChatDerivedObject(ctx interface{}, space interface{}, chatObjectId interface{}) *MockService_AddChatDerivedObject_Call {
-	return &MockService_AddChatDerivedObject_Call{Call: _e.mock.On("AddChatDerivedObject", ctx, space, chatObjectId)}
+//   - addAnalyticsId bool
+func (_e *MockService_Expecter) AddChatDerivedObject(ctx interface{}, space interface{}, chatObjectId interface{}, addAnalyticsId interface{}) *MockService_AddChatDerivedObject_Call {
+	return &MockService_AddChatDerivedObject_Call{Call: _e.mock.On("AddChatDerivedObject", ctx, space, chatObjectId, addAnalyticsId)}
 }
 
-func (_c *MockService_AddChatDerivedObject_Call) Run(run func(ctx context.Context, space clientspace.Space, chatObjectId string)) *MockService_AddChatDerivedObject_Call {
+func (_c *MockService_AddChatDerivedObject_Call) Run(run func(ctx context.Context, space clientspace.Space, chatObjectId string, addAnalyticsId bool)) *MockService_AddChatDerivedObject_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(clientspace.Space), args[2].(string))
+		run(args[0].(context.Context), args[1].(clientspace.Space), args[2].(string), args[3].(bool))
 	})
 	return _c
 }
@@ -83,7 +84,7 @@ func (_c *MockService_AddChatDerivedObject_Call) Return(chatId string, err error
 	return _c
 }
 
-func (_c *MockService_AddChatDerivedObject_Call) RunAndReturn(run func(context.Context, clientspace.Space, string) (string, error)) *MockService_AddChatDerivedObject_Call {
+func (_c *MockService_AddChatDerivedObject_Call) RunAndReturn(run func(context.Context, clientspace.Space, string, bool) (string, error)) *MockService_AddChatDerivedObject_Call {
 	_c.Call.Return(run)
 	return _c
 }

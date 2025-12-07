@@ -103,6 +103,7 @@ func convertTierData(src *paymentserviceproto.TierData) *model.MembershipTierDat
 	out.AndroidProductId = src.AndroidProductId
 	out.AndroidManageUrl = src.AndroidManageUrl
 	out.Offer = src.Offer
+
 	if src.Features != nil {
 		out.Features = make([]string, len(src.Features))
 		for i, feature := range src.Features {
@@ -127,4 +128,176 @@ func convertMembershipData(src *paymentserviceproto.GetSubscriptionResponse) *mo
 	out.SubscribeToNewsletter = src.SubscribeToNewsletter
 	out.NsName, out.NsNameType = nameservice.FullNameToNsName(src.RequestedAnyName)
 	return out
+}
+
+func convertAmountData(src *paymentserviceproto.MembershipV2_Amount) *model.MembershipV2Amount {
+	if src == nil {
+		return nil
+	}
+	out := &model.MembershipV2Amount{}
+	out.Currency = src.Currency
+	out.AmountCents = src.AmountCents
+	return out
+}
+
+func convertProductData(src *paymentserviceproto.MembershipV2_Product) *model.MembershipV2Product {
+	if src == nil {
+		return nil
+	}
+	out := &model.MembershipV2Product{}
+	out.Id = src.Id
+	out.Name = src.Name
+	out.Description = src.Description
+	out.IsTopLevel = src.IsTopLevel
+	out.IsHidden = src.IsHidden
+	out.IsIntro = src.IsIntro
+	out.IsUpgradeable = src.IsUpgradeable
+	out.ColorStr = src.ColorStr
+	out.Offer = src.Offer
+
+	if len(src.PricesYearly) > 0 {
+		out.PricesYearly = make([]*model.MembershipV2Amount, len(src.PricesYearly))
+		for i, price := range src.PricesYearly {
+			out.PricesYearly[i] = convertAmountData(price)
+		}
+	} else {
+		out.PricesYearly = nil
+	}
+	if len(src.PricesMonthly) > 0 {
+		out.PricesMonthly = make([]*model.MembershipV2Amount, len(src.PricesMonthly))
+		for i, price := range src.PricesMonthly {
+			out.PricesMonthly[i] = convertAmountData(price)
+		}
+	} else {
+		out.PricesMonthly = nil
+	}
+
+	if src.Features != nil {
+		out.Features = &model.MembershipV2Features{}
+
+		out.Features.StorageBytes = src.Features.StorageBytes
+		out.Features.SpaceReaders = src.Features.SpaceReaders
+		out.Features.SpaceWriters = src.Features.SpaceWriters
+		out.Features.SharedSpaces = src.Features.SharedSpaces
+		out.Features.TeamSeats = src.Features.TeamSeats
+		out.Features.AnyNameCount = src.Features.AnyNameCount
+		out.Features.AnyNameMinLen = src.Features.AnyNameMinLen
+		// this is a default value for private spaces
+		// this is not featured on backend, this var. is for client-side only
+		// we do not plan to control it remotely, at least for now
+		// (can be changed later if needed)
+		out.Features.PrivateSpaces = 4096
+	}
+	return out
+}
+
+func convertPurchaseInfoData(src *paymentserviceproto.MembershipV2_PurchaseInfo) *model.MembershipV2PurchaseInfo {
+	if src == nil {
+		return nil
+	}
+	out := &model.MembershipV2PurchaseInfo{}
+	out.DateStarted = src.DateStarted
+	out.DateEnds = src.DateEnds
+	out.IsAutoRenew = src.IsAutoRenew
+	out.Period = model.MembershipV2Period(src.Period)
+	return out
+}
+
+func convertProductStatusData(src *paymentserviceproto.MembershipV2_ProductStatus) *model.MembershipV2ProductStatus {
+	if src == nil {
+		return nil
+	}
+	out := &model.MembershipV2ProductStatus{}
+	// 1-1 conversion
+	out.Status = model.MembershipV2ProductStatusStatus(src.Status)
+	return out
+}
+
+func convertPurchasedProductData(src *paymentserviceproto.MembershipV2_PurchasedProduct) *model.MembershipV2PurchasedProduct {
+	if src == nil {
+		return nil
+	}
+	out := &model.MembershipV2PurchasedProduct{}
+	out.Product = convertProductData(src.Product)
+	out.PurchaseInfo = convertPurchaseInfoData(src.PurchaseInfo)
+	out.ProductStatus = convertProductStatusData(src.ProductStatus)
+	return out
+}
+
+func convertInvoiceData(src *paymentserviceproto.MembershipV2_Invoice) *model.MembershipV2Invoice {
+	if src == nil {
+		return nil
+	}
+	out := &model.MembershipV2Invoice{}
+	out.Date = src.Date
+	if src.Total != nil {
+		out.Total = &model.MembershipV2Amount{}
+		out.Total.Currency = src.Total.Currency
+		out.Total.AmountCents = src.Total.AmountCents
+	}
+	return out
+}
+
+func convertCartData(src *paymentserviceproto.MembershipV2_StoreCartGetResponse) *model.MembershipV2Cart {
+	if src == nil {
+		return nil
+	}
+	out := &model.MembershipV2Cart{}
+
+	if len(src.Cart.Products) > 0 {
+		out.Products = make([]*model.MembershipV2CartProduct, len(src.Cart.Products))
+		for i, product := range src.Cart.Products {
+			out.Products[i] = convertCartProductData(product)
+		}
+	} else {
+		out.Products = nil
+	}
+
+	out.Total = convertAmountData(src.Cart.Total)
+	out.TotalNextInvoice = convertAmountData(src.Cart.TotalNextInvoice)
+	out.NextInvoiceDate = src.Cart.NextInvoiceDate
+	return out
+}
+
+func convertCartProductData(src *paymentserviceproto.MembershipV2_CartProduct) *model.MembershipV2CartProduct {
+	if src == nil {
+		return nil
+	}
+	out := &model.MembershipV2CartProduct{}
+	out.Product = convertProductData(src.Product)
+	out.IsYearly = src.IsYearly
+	out.Remove = src.Remove
+	return out
+}
+
+func productsV2Equal(a []*model.MembershipV2Product, b []*model.MembershipV2Product) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for i := range a {
+		if !a[i].Equal(b[i]) {
+			return false
+		}
+	}
+	return true
+}
+
+func membershipV2DataEqual(a, b *model.MembershipV2Data) bool {
+	if a == nil && b == nil {
+		return true
+	}
+	if a == nil || b == nil {
+		return false
+	}
+
+	// Only compare Purchased Products, ignore NextInvoice, TeamOwnerID, and PaymentProvider
+	if len(a.Products) != len(b.Products) {
+		return false
+	}
+	for i := range a.Products {
+		if !a.Products[i].Equal(b.Products[i]) {
+			return false
+		}
+	}
+	return true
 }
