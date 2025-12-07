@@ -275,7 +275,7 @@ func (s *Service) GetAllSpaceIds(ctx context.Context) ([]string, error) {
 
 func (s *Service) spaceUxTypeToSpaceType(uxType model.SpaceUxType) string {
 	switch uxType {
-	case model.SpaceUxType_Chat:
+	case model.SpaceUxType_Chat, model.SpaceUxType_OneToOne:
 		return "chat"
 	default:
 		return "space"
