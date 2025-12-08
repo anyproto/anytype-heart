@@ -13,9 +13,9 @@ import (
 type FileState int
 
 const (
-	FileStatePendingUpload FileState = iota
-	FileStateUploading
-	FileStateLimited
+	FileStatePendingUpload FileState = iota // File is scheduled for upload
+	FileStateUploading                      // File is in process of uploading. This state should be reset to PendingUpload on application restart
+	FileStateLimited                        // File is not fitted in space limits and is waiting for more free space on a file node
 	FileStatePendingDeletion
 	FileStateDone
 	FileStateDeleted
