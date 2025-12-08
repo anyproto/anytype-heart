@@ -26,6 +26,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/files/fileobject/filemodels"
 	"github.com/anyproto/anytype-heart/core/files/fileoffloader"
 	"github.com/anyproto/anytype-heart/core/files/filesync"
+	"github.com/anyproto/anytype-heart/core/relationutils"
 	"github.com/anyproto/anytype-heart/core/syncstatus/filesyncstatus"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
@@ -51,6 +52,7 @@ type Service interface {
 	app.ComponentRunnable
 
 	InitEmptyFileState(st *state.State)
+	CanDeleteFile(ctx context.Context, objectId string) error
 	DeleteFileData(spaceId string, objectId string) error
 	Create(ctx context.Context, spaceId string, req filemodels.CreateRequest) (id string, object *domain.Details, err error)
 	CreateFromImport(fileId domain.FullFileId, origin objectorigin.ObjectOrigin) (string, error)
@@ -65,6 +67,7 @@ type Service interface {
 	GetObjectDetailsByFileId(fileId domain.FullFileId) (string, *domain.Details, error)
 
 	MigrateFileIdsInDetails(st *state.State, spc source.Space)
+	MigrateFileIdsInBlocks(st *state.State, spc source.Space)
 	MigrateFiles(st *state.State, spc source.Space, keysChanges []*pb.ChangeFileKeys)
 	EnsureFileAddedToSyncQueue(id domain.FullID, details *domain.Details) error
 }
@@ -84,6 +87,7 @@ type service struct {
 	migrationQueue  *persistentqueue.Queue[*migrationItem]
 	accountService  accountService
 	objectArchiver  objectArchiver
+	formatFetcher   relationutils.RelationFormatFetcher
 
 	indexMigrationChan chan *indexMigrationItem
 
@@ -123,6 +127,7 @@ func (s *service) Init(a *app.App) error {
 	s.fileOffloader = app.MustComponent[fileoffloader.Service](a)
 	s.objectArchiver = app.MustComponent[objectArchiver](a)
 	s.accountService = app.MustComponent[accountService](a)
+	s.formatFetcher = app.MustComponent[relationutils.RelationFormatFetcher](a)
 
 	provider := app.MustComponent[anystoreprovider.Provider](a)
 
@@ -175,7 +180,7 @@ func (s *service) Run(_ context.Context) error {
 }
 
 type objectArchiver interface {
-	SetListIsArchived(objectIds []string, isArchived bool) error
+	SetListIsArchived(ctx context.Context, objectIds []string, isArchived bool) error
 }
 
 func (s *service) deleteMigratedFilesInNonPersonalSpaces(ctx context.Context) error {
@@ -206,7 +211,7 @@ func (s *service) deleteMigratedFilesInNonPersonalSpaces(ctx context.Context) er
 		for _, record := range records {
 			ids = append(ids, record.Details.GetString(bundle.RelationKeyId))
 		}
-		if err = s.objectArchiver.SetListIsArchived(ids, true); err != nil {
+		if err = s.objectArchiver.SetListIsArchived(ctx, ids, true); err != nil {
 			return err
 		}
 	}
@@ -519,21 +524,30 @@ func (s *service) GetObjectDetailsByFileId(fileId domain.FullFileId) (string, *d
 	return details.GetString(bundle.RelationKeyId), details, nil
 }
 
-func (s *service) GetFileIdFromObject(objectId string) (domain.FullFileId, error) {
+func (s *service) getFileDetails(objectId string) (*domain.Details, error) {
 	spaceId, err := s.spaceIdResolver.ResolveSpaceID(objectId)
 	if err != nil {
-		return domain.FullFileId{}, fmt.Errorf("resolve space id: %w", err)
+		return nil, fmt.Errorf("resolve space id: %w", err)
 	}
 	details, err := s.objectStore.SpaceIndex(spaceId).GetDetails(objectId)
 	if err != nil {
+		return nil, fmt.Errorf("get object details: %w", err)
+	}
+	return details, nil
+}
+
+func (s *service) GetFileIdFromObject(objectId string) (domain.FullFileId, error) {
+	details, err := s.getFileDetails(objectId)
+	if err != nil {
 		return domain.FullFileId{}, fmt.Errorf("get object details: %w", err)
 	}
+
 	fileId := details.GetString(bundle.RelationKeyFileId)
 	if fileId == "" {
 		return domain.FullFileId{}, filemodels.ErrEmptyFileId
 	}
 	return domain.FullFileId{
-		SpaceId: spaceId,
+		SpaceId: details.GetString(bundle.RelationKeySpaceId),
 		FileId:  domain.FileId(fileId),
 	}, nil
 }
@@ -610,6 +624,34 @@ func (s *service) resolveSpaceIdWithRetry(ctx context.Context, objectId string) 
 	return s.spaceIdResolver.ResolveSpaceIdWithRetry(ctx, objectId)
 }
 
+func (s *service) CanDeleteFile(ctx context.Context, objectId string) error {
+	details, err := s.getFileDetails(objectId)
+	if err != nil {
+		return fmt.Errorf("get file details: %w", err)
+	}
+
+	spaceId := details.GetString(bundle.RelationKeySpaceId)
+
+	spc, err := s.spaceService.Get(ctx, spaceId)
+	if err != nil {
+		return fmt.Errorf("get space: %w", err)
+	}
+
+	workspaceDetails, err := s.objectStore.SpaceIndex(spaceId).GetDetails(spc.DerivedIDs().Workspace)
+	if err != nil {
+		return fmt.Errorf("get workspace details: %w", err)
+	}
+
+	if workspaceDetails.GetInt64(bundle.RelationKeySpaceUxType) == int64(model.SpaceUxType_OneToOne) {
+		myParticipantId := s.accountService.MyParticipantId(spaceId)
+
+		if details.GetString(bundle.RelationKeyCreator) != myParticipantId {
+			return fmt.Errorf("can't delete other's file")
+		}
+	}
+	return nil
+}
+
 func (s *service) DeleteFileData(spaceId string, objectId string) error {
 	fullId, err := s.GetFileIdFromObject(objectId)
 	if err != nil {
@@ -633,6 +675,11 @@ func (s *service) DeleteFileData(spaceId string, objectId string) error {
 		return fmt.Errorf("list objects that use file id: %w", err)
 	}
 	if len(records) == 0 {
+		err := s.CanDeleteFile(s.componentCtx, objectId)
+		if err != nil {
+			return fmt.Errorf("can delete a file: %w", err)
+		}
+
 		if err := s.fileSync.DeleteFile(objectId, fullId); err != nil {
 			return fmt.Errorf("failed to remove file from sync: %w", err)
 		}

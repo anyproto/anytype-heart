@@ -154,6 +154,9 @@ packages:
   github.com/anyproto/anytype-heart/core/files/fileobject:
     interfaces:
       Service:
+  github.com/anyproto/anytype-heart/core/files/filedownloader:
+    interfaces:
+      Service:
   github.com/anyproto/anytype-heart/core/files:
     interfaces:
       Service:
@@ -264,3 +267,9 @@ packages:
     interfaces:
       Service:
       Manager:
+  github.com/anyproto/anytype-heart/core/relationutils:
+    interfaces:
+      RelationFormatFetcher:
+  github.com/anyproto/anytype-heart/core/onetoone:
+    interfaces:
+      Service:

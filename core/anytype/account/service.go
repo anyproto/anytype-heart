@@ -2,8 +2,10 @@ package account
 
 import (
 	"context"
+	"encoding/base64"
 	"fmt"
 	"path/filepath"
+	"sync"
 	"time"
 
 	"github.com/anyproto/any-sync/accountservice"
@@ -15,6 +17,7 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/anytype/config"
 	"github.com/anyproto/anytype-heart/core/block/cache"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/wallet"
 	"github.com/anyproto/anytype-heart/pkg/lib/gateway"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
@@ -38,6 +41,7 @@ var log = logging.Logger(CName)
 
 type Service interface {
 	app.Component
+	GetAccountObjectId() (string, error)
 	GetInfo(ctx context.Context) (*model.AccountInfo, error)
 	GetSpaceInfo(ctx context.Context, spaceId string) (*model.AccountInfo, error)
 	Delete(ctx context.Context) (toBeDeleted int64, err error)
@@ -65,6 +69,9 @@ type service struct {
 
 	picker          cache.ObjectGetter
 	personalSpaceId string
+
+	accountObjectIdLock sync.Mutex
+	accountObjectId     string
 }
 
 func New() Service {
@@ -118,11 +125,25 @@ func (s *service) Name() (name string) {
 	return CName
 }
 
-func (s *service) GetInfo(ctx context.Context) (*model.AccountInfo, error) {
-	accountId, err := s.spaceService.TechSpace().AccountObjectId()
-	if err != nil {
-		return nil, fmt.Errorf("failed to get account id: %w", err)
+func (s *service) GetAccountObjectId() (string, error) {
+	s.accountObjectIdLock.Lock()
+	defer s.accountObjectIdLock.Unlock()
+	if s.accountObjectId == "" {
+		id, err := s.spaceService.TechSpace().AccountObjectId()
+		if err != nil {
+			return "", err
+		}
+		s.accountObjectId = id
 	}
+	return s.accountObjectId, nil
+}
+
+func (s *service) GetInfo(ctx context.Context) (*model.AccountInfo, error) {
+	accountId, err := s.GetAccountObjectId()
+	if err != nil {
+		return nil, fmt.Errorf("get account object id: %w", err)
+	}
+
 	deviceKey := s.wallet.GetDevicePrivkey()
 	deviceId := deviceKey.GetPublic().PeerId()
 
@@ -142,6 +163,15 @@ func (s *service) GetInfo(ctx context.Context) (*model.AccountInfo, error) {
 		cfg.CustomFileStorePath = s.wallet.RepoPath()
 	}
 
+	_, metadataKey, err := domain.DeriveAccountMetadata(s.Keys().SignKey)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get account metadata key: %w", err)
+	}
+	metadataRawKey, err := metadataKey.Marshall()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get raw metadata key: %w", err)
+	}
+
 	return &model.AccountInfo{
 		ProfileObjectId:        accountId,
 		MarketplaceWorkspaceId: addr.AnytypeMarketplaceWorkspace,
@@ -152,6 +182,7 @@ func (s *service) GetInfo(ctx context.Context) (*model.AccountInfo, error) {
 		NetworkId:              s.getNetworkId(),
 		TechSpaceId:            s.spaceService.TechSpaceId(),
 		EthereumAddress:        s.wallet.GetAccountEthAddress().Hex(),
+		MetaDataKey:            base64.StdEncoding.EncodeToString(metadataRawKey),
 	}, nil
 }
 

@@ -9,6 +9,7 @@ import (
 
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/commonspace/object/tree/treestorage"
+	"github.com/anyproto/any-sync/util/crypto"
 	"github.com/globalsign/mgo/bson"
 	"github.com/hashicorp/go-multierror"
 	"github.com/samber/lo"
@@ -36,6 +37,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/files/fileobject"
 	"github.com/anyproto/anytype-heart/core/files/fileoffloader"
 	"github.com/anyproto/anytype-heart/core/files/fileuploader"
+	"github.com/anyproto/anytype-heart/core/onetoone"
 	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
@@ -89,6 +91,11 @@ func New() *Service {
 	return s
 }
 
+type IdentityService interface {
+	WaitProfileWithKey(ctx context.Context, identity string) (*model.IdentityProfileWithKey, error)
+	AddIdentityProfile(identityProfile *model.IdentityProfile, key crypto.SymKey) error
+}
+
 type Service struct {
 	accountService       account.Service
 	eventSender          event.Sender
@@ -97,6 +104,8 @@ type Service struct {
 	bookmark             bookmarksvc.Service
 	objectCreator        objectcreator.Service
 	templateService      template.Service
+	identityService      IdentityService
+	onetoone             onetoone.Service
 	resolver             idresolver.Resolver
 	spaceService         space.Service
 	tempDirProvider      core.TempDirProvider
@@ -134,6 +143,8 @@ func (s *Service) Init(a *app.App) (err error) {
 	s.eventSender = a.MustComponent(event.CName).(event.Sender)
 	s.objectStore = a.MustComponent(objectstore.CName).(objectstore.ObjectStore)
 	s.bookmark = a.MustComponent("bookmark-importer").(bookmarksvc.Service)
+	s.identityService = app.MustComponent[IdentityService](a)
+	s.onetoone = app.MustComponent[onetoone.Service](a)
 	s.objectCreator = app.MustComponent[objectcreator.Service](a)
 	s.templateService = app.MustComponent[template.Service](a)
 	s.spaceService = a.MustComponent(space.CName).(space.Service)
@@ -230,7 +241,7 @@ func (s *Service) OpenBlock(sctx session.Context, id domain.FullID, includeRelat
 		st := ob.NewState()
 
 		st.SetLocalDetail(bundle.RelationKeyLastOpenedDate, domain.Int64(time.Now().Unix()))
-		if err = ob.Apply(st, smartblock.NoHistory, smartblock.NoEvent, smartblock.SkipIfNoChanges, smartblock.KeepInternalFlags, smartblock.IgnoreNoPermissions); err != nil {
+		if err = ob.Apply(st, smartblock.NoHistory, smartblock.NoEvent, smartblock.KeepInternalFlags, smartblock.IgnoreNoPermissions); err != nil {
 			log.Errorf("failed to update lastOpenedDate: %s", err)
 		}
 		if err = ob.Space().RefreshObjects([]string{ob.Id()}); err != nil {
@@ -388,7 +399,7 @@ func (s *Service) SpaceInstallBundledObjects(
 	return s.objectCreator.InstallBundledObjects(ctx, spc, sourceObjectIds)
 }
 
-func (s *Service) SpaceInitChat(ctx context.Context, spaceId string) error {
+func (s *Service) SpaceInitChat(ctx context.Context, spaceId string, addAnalyticsId bool) error {
 	spc, err := s.spaceService.Get(ctx, spaceId)
 	if err != nil {
 		return fmt.Errorf("get space: %w", err)
@@ -418,7 +429,7 @@ func (s *Service) SpaceInitChat(ctx context.Context, spaceId string) error {
 		return nil
 	}
 
-	_, err = s.objectCreator.AddChatDerivedObject(ctx, spc, workspaceId)
+	_, err = s.objectCreator.AddChatDerivedObject(ctx, spc, workspaceId, addAnalyticsId)
 	if err != nil {
 		if !errors.Is(err, treestorage.ErrTreeExists) {
 			return fmt.Errorf("add chat derived object: %w", err)
@@ -430,7 +441,7 @@ func (s *Service) SpaceInitChat(ctx context.Context, spaceId string) error {
 		st.SetLocalDetail(bundle.RelationKeyChatId, domain.String(chatId))
 		st.SetDetail(bundle.RelationKeyHasChat, domain.Bool(true))
 
-		return b.Apply(st, smartblock.NoHistory, smartblock.NoEvent, smartblock.SkipIfNoChanges, smartblock.KeepInternalFlags, smartblock.IgnoreNoPermissions)
+		return b.Apply(st, smartblock.NoHistory, smartblock.NoEvent, smartblock.KeepInternalFlags, smartblock.IgnoreNoPermissions)
 	})
 	if err != nil {
 		return fmt.Errorf("apply chatId to workspace: %w", err)
@@ -713,12 +724,6 @@ func (s *Service) updateBookmarkContentWithUserDetails(userDetails, objectDetail
 		}
 	}
 	return shouldUpdate
-}
-
-func (s *Service) replaceLink(id, oldId, newId string) error {
-	return cache.Do(s, id, func(b basic.CommonOperations) error {
-		return b.ReplaceLink(oldId, newId)
-	})
 }
 
 func (s *Service) GetLogFields() []zap.Field {

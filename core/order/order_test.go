@@ -163,6 +163,28 @@ func TestReorder(t *testing.T) {
 			objectIds: []string{"obj1", "obj2", "obj3"},
 		},
 		{
+			name: "empty orders + incomplete list",
+			originalOrderIds: map[string]string{
+				"obj1": "",
+				"obj2": "",
+				"obj3": "",
+				"obj4": "",
+				"obj5": "",
+			},
+			objectIds: []string{"obj3", "obj2", "obj5"},
+		},
+		{
+			name: "some orders are empty + incomplete list",
+			originalOrderIds: map[string]string{
+				"obj1": "",
+				"obj2": "xxx",
+				"obj3": "",
+				"obj4": "bbb",
+				"obj5": "aaa",
+			},
+			objectIds: []string{"obj3", "obj2", "obj5"},
+		},
+		{
 			name: "4 elements #1",
 			originalOrderIds: map[string]string{
 				"a": "AAA001",
@@ -213,7 +235,7 @@ func TestReorder(t *testing.T) {
 
 func testReorder(t *testing.T, objectIds []string, originalOrderIds map[string]string) {
 	s := &orderSetter{}
-	gotNewOrder, gotOps, err := s.reorder(objectIds, originalOrderIds)
+	gotNewOrder, gotOps, err := s.reorder(objectIds, originalOrderIds, true)
 	require.NoError(t, err)
 
 	t.Log(gotOps)
@@ -259,7 +281,7 @@ func TestOrderSetter_rebuildIfNeeded(t *testing.T) {
 		o := &orderSetter{objectGetter: objGetter}
 
 		// when
-		lexids, err := o.rebuildIfNeeded([]string{"view1"}, map[string]string{})
+		lexids, err := o.rebuildIfNeeded([]string{"view1"}, map[string]string{}, false)
 
 		// then
 		assert.NoError(t, err)
@@ -287,7 +309,7 @@ func TestOrderSetter_rebuildIfNeeded(t *testing.T) {
 		o := &orderSetter{objectGetter: objGetter}
 
 		// when
-		lexids, err := o.rebuildIfNeeded([]string{"view1", "view2", "view3"}, map[string]string{})
+		lexids, err := o.rebuildIfNeeded([]string{"view1", "view2", "view3"}, map[string]string{}, false)
 
 		// then
 		assert.NoError(t, err)
@@ -320,7 +342,7 @@ func TestOrderSetter_rebuildIfNeeded(t *testing.T) {
 		}
 
 		// when
-		lexids, err := o.rebuildIfNeeded([]string{"view1", "view2", "view3"}, currentLexIds)
+		lexids, err := o.rebuildIfNeeded([]string{"view1", "view2", "view3"}, currentLexIds, false)
 
 		// then
 		assert.NoError(t, err)
@@ -343,7 +365,7 @@ func TestOrderSetter_rebuildIfNeeded(t *testing.T) {
 		}
 
 		// when
-		lexids, err := o.rebuildIfNeeded([]string{"view1", "view2", "view3"}, currentLexIds)
+		lexids, err := o.rebuildIfNeeded([]string{"view1", "view2", "view3"}, currentLexIds, false)
 
 		// then
 		assert.NoError(t, err)
@@ -373,7 +395,7 @@ func TestOrderSetter_rebuildIfNeeded(t *testing.T) {
 		}
 
 		// when - desired order: view1, view2, view3
-		lexids, err := o.rebuildIfNeeded([]string{"view1", "view2", "view3"}, currentLexIds)
+		lexids, err := o.rebuildIfNeeded([]string{"view1", "view2", "view3"}, currentLexIds, false)
 
 		// then
 		assert.NoError(t, err)
@@ -406,7 +428,7 @@ func TestOrderSetter_rebuildIfNeeded(t *testing.T) {
 		}
 
 		// when - desired order: view1, view2, view3, view4 (first 3 are new, need to be inserted before view4)
-		lexids, err := o.rebuildIfNeeded([]string{"view1", "view2", "view3", "view4"}, currentLexIds)
+		lexids, err := o.rebuildIfNeeded([]string{"view1", "view2", "view3", "view4"}, currentLexIds, false)
 
 		// then
 		assert.NoError(t, err)
@@ -454,7 +476,7 @@ func TestOrderSetter_rebuildIfNeeded(t *testing.T) {
 		}
 
 		// when - desired order: view3, view1, view2 (view3 moves to first)
-		lexids, err := o.rebuildIfNeeded([]string{"view3", "view1", "view2"}, currentLexIds)
+		lexids, err := o.rebuildIfNeeded([]string{"view3", "view1", "view2"}, currentLexIds, false)
 
 		// then
 		assert.NoError(t, err)

@@ -56,6 +56,7 @@ type Space interface {
 
 	IsReadOnly() bool
 	IsPersonal() bool
+	IsOneToOne() bool
 	GetAclIdentity() crypto.PubKey
 
 	KeyValueService() keyvalueservice.Service
@@ -187,6 +188,11 @@ func (s *space) tryLoadBundledAndInstallIfMissing(disableRemoteLoad bool) {
 	if len(missingSourceIds) > 0 {
 		log.Warn("missing bundled objects", zap.Strings("ids", missingSourceIds))
 	}
+
+	_, _, err = s.installer.InstallBundledObjects(s.loadMissingBundledObjectsCtx, s, missingSourceIds)
+	if err != nil {
+		log.Error("failed to install bundled objects", zap.Error(err))
+	}
 }
 
 func (s *space) mandatoryObjectsLoad(ctx context.Context, disableRemoteLoad bool) {
@@ -291,6 +297,10 @@ func (s *space) GetTypeIdByKey(ctx context.Context, key domain.TypeKey) (id stri
 
 func (s *space) IsPersonal() bool {
 	return s.Id() == s.personalSpaceId
+}
+
+func (s *space) IsOneToOne() bool {
+	return s.CommonSpace().Acl().AclState().IsOneToOne()
 }
 
 func (s *space) GetAclIdentity() crypto.PubKey {

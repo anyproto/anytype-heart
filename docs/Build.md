@@ -1,7 +1,8 @@
 # Build instructions
 ## Build from Source
-1. Install Golang 1.22.x [from here](http://golang.org/dl/) or using preferred package manager
-2. Follow instructions below for the target systems
+1. Install Golang 1.24.x [from here](http://golang.org/dl/) or using preferred package manager
+2. For JS(desktop client) bindings generation, install [Node.js](https://nodejs.org/), protobuf plugins will be installed automatically
+3. Follow instructions below for the target systems
 
 ### Install local deps
 
@@ -12,21 +13,29 @@ make download-tantivy-all-force
 ```
 
 #### Mac
-As of 16.01.23 last protobuf version (21.12) broke the JS plugin support, so you can use the v3 branch:
-Make sure you've removed protobuf
+
+Install protobuf compiler:
+
 ```
-brew remove protobuf --ignore-dependencies
-brew install protobuf@3
-brew link --force --overwrite protobuf@3
+brew install protobuf
 ```
 
-To generate Swift protobuf:
+Once installed, verify you have protoc:
+
+```
+which protoc
+```
+
+The expected version is `protoc` >= 33.0.0.
+
+To generate Swift(iOS) protobuf bindings:
 ```
 brew install swift-protobuf
 ```
 
 #### Debian/Ubuntu
-We need to have protoc binary (3.x version) and libprotoc headers in orderto build the grpc-web plugin
+
+Install protobuf compiler and headers:
 ```
 apt install protobuf-compiler libprotoc-dev
 ```
@@ -44,11 +53,11 @@ nix develop .
 >
 > With direnv, you can also switch environments per project in your code editor: [emacs-direnv](https://github.com/wbolster/emacs-direnv)
 
-### Install custom protoc
-`make setup-protoc` to install grpc-web plugin (see [Protogen](https://github.com/anyproto/anytype-heart/blob/main/docs/Protogen.md) for additional information)
+### Install custom Go protobuf generators
+`make setup-protoc` to install custom Go protobuf generators (see [Protogen](https://github.com/anyproto/anytype-heart/blob/main/docs/Protogen.md) for additional information)
 
 ### Build and install for the [desktop client](https://github.com/anyproto/anytype-ts)
-`make install-dev-js` to build the local server and copy it and protobuf binding into `../anytype-ts`
+`make install-dev-js` to install js protobuf plugins and then build the local server and copy it and protobuf binding into `../anytype-ts`
 
 Parameters:
 - `ANY_SYNC_NETWORK=/path/to/network.yml` — build using self-hosted [network configuration](https://tech.anytype.io/anytype-heart/configuration)

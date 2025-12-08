@@ -29,12 +29,14 @@ import (
 	"github.com/anyproto/anytype-heart/core/files/filestorage"
 	"github.com/anyproto/anytype-heart/core/files/filestorage/rpcstore"
 	"github.com/anyproto/anytype-heart/core/files/filesync"
+	"github.com/anyproto/anytype-heart/core/relationutils/mock_relationutils"
 	wallet2 "github.com/anyproto/anytype-heart/core/wallet"
 	"github.com/anyproto/anytype-heart/core/wallet/mock_wallet"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/datastore/anystoreprovider"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
+	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space/clientspace"
 	"github.com/anyproto/anytype-heart/space/clientspace/mock_clientspace"
 	"github.com/anyproto/anytype-heart/space/mock_space"
@@ -78,7 +80,7 @@ func (c *dummyConfig) Name() string {
 
 type dummyObjectArchiver struct{}
 
-func (a *dummyObjectArchiver) SetListIsArchived(_ []string, _ bool) error {
+func (a *dummyObjectArchiver) SetListIsArchived(_ context.Context, _ []string, _ bool) error {
 	return nil
 }
 
@@ -113,6 +115,15 @@ func newFixture(t *testing.T) *fixture {
 	wallet.EXPECT().Name().Return(wallet2.CName)
 	wallet.EXPECT().RepoPath().Return(t.TempDir())
 
+	fetcher := mock_relationutils.NewMockRelationFormatFetcher(t)
+	fetcher.EXPECT().GetRelationFormatByKey(mock.Anything, mock.Anything).RunAndReturn(func(_ string, key domain.RelationKey) (model.RelationFormat, error) {
+		rel, err := bundle.GetRelation(key)
+		if err != nil {
+			return 0, err
+		}
+		return rel.Format, nil
+	}).Maybe()
+
 	a := new(app.App)
 	a.Register(&dummyConfig{})
 	a.Register(&dummyAccountService{})
@@ -133,6 +144,7 @@ func newFixture(t *testing.T) *fixture {
 	a.Register(testutil.PrepareMock(ctx, a, wallet))
 	a.Register(&config.Config{DisableFileConfig: true, NetworkMode: pb.RpcAccount_DefaultConfig, PeferYamuxTransport: true})
 	a.Register(&dummyObjectArchiver{})
+	a.Register(testutil.PrepareMock(ctx, a, fetcher))
 
 	err := a.Start(ctx)
 	require.NoError(t, err)

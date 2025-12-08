@@ -114,6 +114,10 @@ func (p *Page) Init(ctx *smartblock.InitContext) (err error) {
 		return
 	}
 
+	if !ctx.IsNewObject {
+		migrateFilesToObjects(p, p.fileObjectService)(ctx.State)
+	}
+
 	p.EnableLayouts()
 	if p.isRelationDeleted(ctx) {
 		// todo: move this to separate component
@@ -232,12 +236,6 @@ func (p *Page) CreationStateMigration(ctx *smartblock.InitContext) migration.Mig
 					template.WithTitle,
 					template.WithLayout(layout),
 				)
-			case model.ObjectType_chat:
-				templates = append(templates,
-					template.WithTitle,
-					template.WithBlockChat,
-					template.WithLayout(layout),
-				)
 			case model.ObjectType_chatDerived:
 				templates = append(templates,
 					template.WithLayout(layout),
@@ -251,7 +249,7 @@ func (p *Page) CreationStateMigration(ctx *smartblock.InitContext) migration.Mig
 				)
 
 			case model.ObjectType_collection:
-				blockContent := template.MakeDataviewContent(true, nil, nil, "")
+				blockContent := template.MakeDataviewContent(true, nil, nil, nil)
 				templates = append(templates,
 					template.WithDataview(blockContent, false),
 				)

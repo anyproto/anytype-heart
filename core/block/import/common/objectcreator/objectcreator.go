@@ -24,6 +24,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/domain/objectorigin"
+	"github.com/anyproto/anytype-heart/core/relationutils"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
@@ -32,7 +33,6 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space"
 	"github.com/anyproto/anytype-heart/util/anyerror"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 var log = logging.Logger("import")
@@ -56,6 +56,7 @@ type ObjectCreator struct {
 	syncFactory         *syncer.Factory
 	objectCreator       objectcreator.Service
 	objectGetterDeleter ObjectGetterDeleter
+	formatFetcher       relationutils.RelationFormatFetcher
 }
 
 func New(detailsService detailservice.Service,
@@ -65,6 +66,7 @@ func New(detailsService detailservice.Service,
 	spaceService space.Service,
 	objectCreator objectcreator.Service,
 	objectGetterDeleter ObjectGetterDeleter,
+	formatFetcher relationutils.RelationFormatFetcher,
 ) Service {
 	return &ObjectCreator{
 		detailsService:      detailsService,
@@ -74,6 +76,7 @@ func New(detailsService detailservice.Service,
 		spaceService:        spaceService,
 		objectCreator:       objectCreator,
 		objectGetterDeleter: objectGetterDeleter,
+		formatFetcher:       formatFetcher,
 	}
 }
 
@@ -114,7 +117,7 @@ func (oc *ObjectCreator) Create(dataObject *DataObject, sn *common.Snapshot) (*d
 		log.With("objectID", newID).Errorf("failed to update objects ids: %s", err)
 	}
 
-	oc.updateKeys(st, oldIDtoNew)
+	oc.updateKeys(st, oldIDtoNew, dataObject.relationKeysToFormat)
 	if sn.Snapshot.SbType == coresb.SmartBlockTypeWorkspace {
 		oc.setSpaceDashboardID(spaceID, st)
 		return nil, newID, nil
@@ -124,7 +127,7 @@ func (oc *ObjectCreator) Create(dataObject *DataObject, sn *common.Snapshot) (*d
 		return oc.updateWidgetObject(st)
 	}
 
-	st.ModifyLinkedFilesInDetails(func(fileId string) string {
+	st.ModifyLinkedFilesInDetails(oc.formatFetcher, func(fileId string) string {
 		newFileId := oc.relationSyncer.Sync(spaceID, fileId, dataObject.newIdsSet, origin)
 		if newFileId != fileId {
 			filesToDelete = append(filesToDelete, fileId)
@@ -137,7 +140,7 @@ func (oc *ObjectCreator) Create(dataObject *DataObject, sn *common.Snapshot) (*d
 		// we widen typeKeys here to install bundled templates for imported object type
 		typeKeys = append(typeKeys, domain.TypeKey(st.UniqueKeyInternal()))
 	}
-	err = oc.installBundledRelationsAndTypes(ctx, spaceID, st.GetRelationLinks(), typeKeys)
+	err = oc.installBundledRelationsAndTypes(ctx, spaceID, st.AllRelationKeys(), typeKeys)
 	if err != nil {
 		log.With("objectID", newID).Errorf("failed to install bundled relations and types: %s", err)
 	}
@@ -155,7 +158,7 @@ func (oc *ObjectCreator) Create(dataObject *DataObject, sn *common.Snapshot) (*d
 	}
 	oc.setFavorite(snapshot, newID)
 
-	oc.setArchived(snapshot, newID)
+	oc.setArchived(ctx, snapshot, newID)
 
 	syncErr := oc.syncFilesAndLinks(dataObject.newIdsSet, domain.FullID{SpaceID: spaceID, ObjectID: newID}, origin)
 	if syncErr != nil {
@@ -206,18 +209,18 @@ func (oc *ObjectCreator) updateExistingObject(st *state.State, oldIDtoNew map[st
 func (oc *ObjectCreator) installBundledRelationsAndTypes(
 	ctx context.Context,
 	spaceID string,
-	links pbtypes.RelationLinks,
+	relationKeys []domain.RelationKey,
 	objectTypeKeys []domain.TypeKey,
 ) error {
 
-	idsToCheck := make([]string, 0, len(links)+len(objectTypeKeys))
-	for _, link := range links {
+	idsToCheck := make([]string, 0, len(relationKeys)+len(objectTypeKeys))
+	for _, key := range relationKeys {
 		// TODO: check if we have them in oldIDtoNew
-		if !bundle.HasRelation(domain.RelationKey(link.Key)) {
+		if !bundle.HasRelation(key) {
 			continue
 		}
 
-		idsToCheck = append(idsToCheck, addr.BundledRelationURLPrefix+link.Key)
+		idsToCheck = append(idsToCheck, key.BundledURL())
 	}
 
 	for _, typeKey := range objectTypeKeys {
@@ -400,10 +403,10 @@ func (oc *ObjectCreator) setFavorite(snapshot *common.StateSnapshot, newID strin
 	}
 }
 
-func (oc *ObjectCreator) setArchived(snapshot *common.StateSnapshot, newID string) {
+func (oc *ObjectCreator) setArchived(ctx context.Context, snapshot *common.StateSnapshot, newID string) {
 	isArchive := snapshot.Details.GetBool(bundle.RelationKeyIsArchived)
 	if isArchive {
-		err := oc.detailsService.SetIsArchived(newID, true)
+		err := oc.detailsService.SetIsArchived(ctx, newID, true)
 		if err != nil {
 			log.With(zap.String("object id", newID)).
 				Errorf("failed to set isFavorite when importing object %s: %s", newID, err)
@@ -553,10 +556,10 @@ func (oc *ObjectCreator) getExistingWidgetsTargetIDs(oldState *state.State) (map
 	return existingWidgetsTargetIDs, nil
 }
 
-func (oc *ObjectCreator) updateKeys(st *state.State, oldIDtoNew map[string]string) {
+func (oc *ObjectCreator) updateKeys(st *state.State, oldIDtoNew map[string]string, relToFormat map[domain.RelationKey]int32) {
 	for key, value := range st.Details().Iterate() {
 		if newKey, ok := oldIDtoNew[string(key)]; ok && newKey != string(key) {
-			oc.updateDetails(st, domain.RelationKey(newKey), value, key)
+			oc.updateDetails(st, domain.RelationKey(newKey), value, key, relToFormat)
 		}
 	}
 	if newKey, ok := oldIDtoNew[st.ObjectTypeKey().String()]; ok {
@@ -564,23 +567,11 @@ func (oc *ObjectCreator) updateKeys(st *state.State, oldIDtoNew map[string]strin
 	}
 }
 
-func (oc *ObjectCreator) updateDetails(st *state.State, newKey domain.RelationKey, value domain.Value, key domain.RelationKey) {
+func (oc *ObjectCreator) updateDetails(st *state.State, newKey domain.RelationKey, value domain.Value, key domain.RelationKey, relToFormat map[domain.RelationKey]int32) {
 	st.SetDetail(newKey, value)
-	link := oc.findRelationLinkByKey(st, key)
-	if link != nil {
-		link.Key = string(newKey)
-		st.AddRelationLinks(link)
+	format, ok := relToFormat[key]
+	if ok {
+		st.AddRelationLinks(&model.RelationLink{Key: newKey.String(), Format: model.RelationFormat(format)})
 	}
 	st.RemoveRelation(key)
-}
-
-func (oc *ObjectCreator) findRelationLinkByKey(st *state.State, key domain.RelationKey) *model.RelationLink {
-	relationLinks := st.GetRelationLinks()
-	var link *model.RelationLink
-	for _, link = range relationLinks {
-		if domain.RelationKey(link.Key) == key {
-			break
-		}
-	}
-	return link
 }

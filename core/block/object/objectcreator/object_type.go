@@ -54,8 +54,10 @@ func (s *service) createObjectType(ctx context.Context, space clientspace.Space,
 	object.SetString(bundle.RelationKeyId, id)
 	object.SetInt64(bundle.RelationKeyLayout, int64(model.ObjectType_objectType))
 
-	if err = s.setOrderId(object, space); err != nil {
-		log.With("spaceID", space.Id()).Errorf("failed to set orderId: %v", err)
+	typeKey := domain.TypeKey(uniqueKey.InternalKey())
+
+	if !bundle.HasObjectTypeByKey(typeKey) {
+		s.setTypeOrderId(object, space)
 	}
 
 	createState := state.NewDocWithUniqueKey("", nil, uniqueKey).(*state.State)
@@ -65,8 +67,6 @@ func (s *service) createObjectType(ctx context.Context, space clientspace.Space,
 	if err != nil {
 		return "", nil, fmt.Errorf("create smartblock from state: %w", err)
 	}
-
-	typeKey := domain.TypeKey(uniqueKey.InternalKey())
 
 	if err = s.createTemplatesForObjectType(space, typeKey); err != nil {
 		log.With("spaceID", space.Id(), "objectTypeKey", typeKey).Errorf("error while installing templates: %s", err)
@@ -157,7 +157,7 @@ func (s *service) listInstalledTemplatesForType(spc clientspace.Space, typeKey d
 	return existingTemplatesMap, nil
 }
 
-func (s *service) setOrderId(details *domain.Details, spc clientspace.Space) error {
+func (s *service) setTypeOrderId(details *domain.Details, spc clientspace.Space) {
 	records, err := s.objectStore.SpaceIndex(spc.Id()).Query(database.Query{
 		Filters: []database.FilterRequest{
 			{
@@ -179,18 +179,14 @@ func (s *service) setOrderId(details *domain.Details, spc clientspace.Space) err
 	})
 
 	if err != nil {
-		return fmt.Errorf("failed to query object types with orders: %w", err)
+		log.With("spaceID", spc.Id()).Errorf("failed to query object types with orders to set orderId to new type: %v", err)
+		return
 	}
 
-	if len(records) == 0 {
-		return nil
-	}
-
-	smallestOrderId := records[0].Details.GetString(bundle.RelationKeyOrderId)
-	if smallestOrderId == "" {
-		return nil
+	var smallestOrderId string
+	if len(records) > 0 {
+		smallestOrderId = records[0].Details.GetString(bundle.RelationKeyOrderId)
 	}
 
 	details.SetString(bundle.RelationKeyOrderId, order.GetSmallestOrder(smallestOrderId))
-	return nil
 }

@@ -4,14 +4,18 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"sync"
+	"sync/atomic"
 	"time"
 
+	anystore "github.com/anyproto/any-store"
 	"github.com/anyproto/any-sync/accountservice"
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/app/logger"
 	"github.com/anyproto/any-sync/app/ocache"
 	"github.com/anyproto/any-sync/commonspace"
 	"github.com/anyproto/any-sync/commonspace/spacepayloads"
+	"go.uber.org/zap"
 
 	// nolint: misspell
 	"github.com/anyproto/any-sync/commonspace/clientspaceproto"
@@ -67,12 +71,12 @@ type SpaceCoreService interface {
 	Create(ctx context.Context, spaceType spacedomain.SpaceType, replicationKey uint64, metadataPayload []byte) (*AnySpace, error)
 	Derive(ctx context.Context, spaceType spacedomain.SpaceType) (space *AnySpace, err error)
 	DeriveID(ctx context.Context, spaceType spacedomain.SpaceType) (id string, err error)
+	CreateOneToOneSpace(ctx context.Context, bPk crypto.PubKey) (space *AnySpace, err error)
 	Delete(ctx context.Context, spaceId string) (err error)
 	Get(ctx context.Context, id string) (*AnySpace, error)
 	Pick(ctx context.Context, id string) (*AnySpace, error)
 	CloseSpace(ctx context.Context, id string) error
 	StorageExistsLocally(ctx context.Context, spaceId string) (exists bool, err error)
-
 	app.ComponentRunnable
 }
 
@@ -89,9 +93,15 @@ type service struct {
 	peerStore            peerstore.PeerStore
 	peerService          peerservice.PeerService
 	poolManager          PoolManager
+
+	dbsAreFlushing     atomic.Bool
+	componentCtx       context.Context
+	componentCtxCancel context.CancelFunc
 }
 
 func (s *service) Init(a *app.App) (err error) {
+	s.componentCtx, s.componentCtxCancel = context.WithCancel(context.Background())
+
 	conf := a.MustComponent(config.CName).(*config.Config)
 	s.conf = conf.GetSpace()
 	s.accountKeys = a.MustComponent(accountservice.CName).(accountservice.Service).Account()
@@ -140,6 +150,20 @@ func (s *service) Derive(ctx context.Context, spaceType spacedomain.SpaceType) (
 	obj, err := s.spaceCache.Get(ctx, id)
 	if err != nil {
 		return
+	}
+	return obj.(*AnySpace), nil
+}
+
+func (s *service) CreateOneToOneSpace(ctx context.Context, bPk crypto.PubKey) (space *AnySpace, err error) {
+	id, err := s.commonSpace.DeriveOneToOneSpace(ctx, s.wallet.GetAccountPrivkey(), bPk)
+	if err != nil {
+		err = fmt.Errorf("derive one to one: %w", err)
+		return
+	}
+
+	obj, err := s.spaceCache.Get(ctx, id)
+	if err != nil {
+		return nil, err
 	}
 	return obj.(*AnySpace), nil
 }
@@ -250,6 +274,7 @@ func (s *service) loadSpace(ctx context.Context, id string) (value ocache.Object
 		deps.AccountService = &customAccountService{acc}
 	}
 	cc, err := s.commonSpace.NewSpace(ctx, id, deps)
+
 	if err != nil {
 		return
 	}
@@ -272,5 +297,40 @@ func (s *service) getOpenedSpaceIds() (ids []string) {
 }
 
 func (s *service) Close(ctx context.Context) (err error) {
+	s.componentCtxCancel()
 	return s.spaceCache.Close()
+}
+
+func (s *service) Flush(timeout time.Duration, waitPending bool) {
+	if !s.dbsAreFlushing.CompareAndSwap(false, true) {
+		return
+	}
+	defer s.dbsAreFlushing.Store(false)
+
+	var dbs []anystore.DB
+	s.spaceCache.ForEach(func(v ocache.Object) (isContinue bool) {
+		if space, ok := v.(commonspace.Space); ok {
+			dbs = append(dbs, space.Storage().AnyStore())
+		}
+		return true
+	})
+	var idleDuration time.Duration
+	if waitPending {
+		idleDuration = time.Millisecond * 50
+	}
+
+	wg := sync.WaitGroup{}
+	for _, db := range dbs {
+		wg.Add(1)
+		go func(db anystore.DB) {
+			defer wg.Done()
+			ctx, cancel := context.WithTimeout(s.componentCtx, timeout)
+			defer cancel()
+			err := db.Flush(ctx, idleDuration, anystore.FlushModeCheckpointPassive)
+			if err != nil {
+				log.With(zap.Error(err)).Error("failed to flush db")
+			}
+		}(db)
+	}
+	wg.Wait()
 }

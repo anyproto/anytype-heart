@@ -382,8 +382,13 @@ func (b *builtinObjects) addTypesView(ctx context.Context, spaceId string) error
 			if err == nil {
 				allView.Name = "List"
 			}
-			view := template.MakeDataviewView(false, relationLinks, model.BlockContentDataviewView_Table, addr.ObjectTypeAllTableViewId, "Grid")
-			dvBlock.AddView(view)
+			dvBlock.AddView(model.BlockContentDataviewView{
+				Id:        addr.ObjectTypeAllTableViewId,
+				Type:      model.BlockContentDataviewView_Table,
+				Name:      "Grid",
+				Sorts:     template.DefaultLastModifiedDateSort(),
+				Relations: template.BuildViewRelations(false, relationLinks, nil),
+			})
 			return nil
 		})
 		if err != nil {

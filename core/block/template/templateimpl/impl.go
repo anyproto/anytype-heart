@@ -42,12 +42,10 @@ const (
 var (
 	log = logging.Logger(CName)
 
-	templateIsPreferableRelationKeys = []domain.RelationKey{
-		bundle.RelationKeyLayout,
-		bundle.RelationKeyIconEmoji,
-		bundle.RelationKeyCoverId,
-		bundle.RelationKeySourceObject,
-		bundle.RelationKeySetOf,
+	templatePreferableRelationKeys = map[domain.RelationKey]struct{}{
+		bundle.RelationKeyCoverId:   {},
+		bundle.RelationKeyCoverType: {},
+		bundle.RelationKeySetOf:     {},
 	}
 )
 
@@ -103,7 +101,7 @@ func (s *service) CreateTemplateStateWithDetails(req templateSvc.CreateTemplateR
 		}
 	}
 
-	addDetailsToState(targetState, req.Details)
+	addDetailsToTemplateState(targetState, req.Details)
 	return targetState, nil
 }
 
@@ -173,32 +171,8 @@ func (s *service) CreateTemplateStateFromSmartBlock(sb smartblock.SmartBlock, re
 	if err != nil {
 		st = s.createBlankTemplateState(domain.FullID{SpaceID: req.SpaceId, ObjectID: req.TypeId}, req.Layout)
 	}
-	addDetailsToState(st, req.Details)
+	addDetailsToTemplateState(st, req.Details)
 	return st
-}
-
-func extractTargetDetails(originDetails *domain.Details, templateDetails *domain.Details) *domain.Details {
-	targetDetails := originDetails.Copy()
-	if templateDetails == nil {
-		return targetDetails
-	}
-	for key, originalVal := range originDetails.Iterate() {
-		if key == bundle.RelationKeyLayout {
-			// layout detail should be removed, as resolvedLayout should be derived from template state
-			targetDetails.Delete(key)
-			continue
-		}
-		templateVal := templateDetails.Get(key)
-		if templateVal.Ok() {
-			inTemplateEmpty := templateVal.IsEmpty()
-			inOriginEmpty := originalVal.IsEmpty()
-			templateValueShouldBePreferred := lo.Contains(templateIsPreferableRelationKeys, key)
-			if !inTemplateEmpty && (inOriginEmpty || templateValueShouldBePreferred) {
-				targetDetails.Delete(key)
-			}
-		}
-	}
-	return targetDetails
 }
 
 func (s *service) createCustomTemplateState(templateId string) (targetState *state.State, err error) {
@@ -243,6 +217,7 @@ func (s *service) buildState(sb smartblock.SmartBlock) (st *state.State, err err
 		bundle.RelationKeyOrigin,
 		bundle.RelationKeyAddedDate,
 		bundle.RelationKeyFeaturedRelations,
+		bundle.RelationKeyName,
 	)
 	st.SetDetailAndBundledRelation(bundle.RelationKeySourceObject, domain.String(sb.Id()))
 	// original created timestamp is used to set creationDate for imported objects, not for template-based objects
@@ -254,12 +229,13 @@ func (s *service) buildState(sb smartblock.SmartBlock) (st *state.State, err err
 func (s *service) ObjectApplyTemplate(contextId, templateId string) error {
 	return cache.Do(s.picker, contextId, func(b smartblock.SmartBlock) error {
 		orig := b.NewState().ParentState()
+		spaceId := orig.LocalDetails().GetString(bundle.RelationKeySpaceId)
 		ts, err := s.CreateTemplateStateWithDetails(templateSvc.CreateTemplateRequest{
-			SpaceId:                orig.LocalDetails().GetString(bundle.RelationKeySpaceId),
+			SpaceId:                spaceId,
 			TemplateId:             templateId,
 			TypeId:                 orig.LocalDetails().GetString(bundle.RelationKeyType),
 			Layout:                 model.ObjectTypeLayout(orig.LocalDetails().GetInt64(bundle.RelationKeyResolvedLayout)), // nolint:gosec
-			Details:                orig.Details(),
+			Details:                s.collectOriginalDetails(spaceId, orig),
 			WithTemplateValidation: false,
 		})
 		if err != nil {
@@ -281,6 +257,34 @@ func (s *service) ObjectApplyTemplate(contextId, templateId string) error {
 	})
 }
 
+func (s *service) collectOriginalDetails(spaceId string, st *state.State) *domain.Details {
+	details := st.Details().Copy()
+	sourceObject := details.GetString(bundle.RelationKeySourceObject)
+
+	for key, value := range st.Details().Iterate() {
+		if key == bundle.RelationKeyName {
+			continue
+		}
+		if value.IsEmpty() || key == bundle.RelationKeySourceObject || key == bundle.RelationKeyLayout {
+			details.Delete(key)
+		}
+	}
+
+	emoji := details.GetString(bundle.RelationKeyIconEmoji)
+	if sourceObject == "" || emoji == "" {
+		return details
+	}
+
+	previousTemplateDetails, _ := s.store.SpaceIndex(spaceId).GetDetails(sourceObject) // nolint:errcheck
+	if previousTemplateDetails != nil {
+		if emoji == previousTemplateDetails.GetString(bundle.RelationKeyIconEmoji) {
+			details.Delete(bundle.RelationKeyIconEmoji)
+		}
+	}
+
+	return details
+}
+
 func (s *service) TemplateCreateFromObject(ctx context.Context, id string) (templateId string, err error) {
 	var (
 		st             *state.State
@@ -291,7 +295,7 @@ func (s *service) TemplateCreateFromObject(ctx context.Context, id string) (temp
 		if b.Type() != coresb.SmartBlockTypePage {
 			return fmt.Errorf("can't make template from this object type: %s", model.SmartBlockType_name[int32(b.Type())])
 		}
-		st, err = buildTemplateStateFromObject(b)
+		st, err = s.buildTemplateStateFromObject(b)
 		objectTypeKeys = st.ObjectTypeKeys()
 		return err
 	}); err != nil {
@@ -442,7 +446,7 @@ func (s *service) updateTypeKey(spaceId string, st *state.State) (err error) {
 	return nil
 }
 
-func buildTemplateStateFromObject(sb smartblock.SmartBlock) (*state.State, error) {
+func (s *service) buildTemplateStateFromObject(sb smartblock.SmartBlock) (*state.State, error) {
 	st := sb.NewState().Copy()
 	st.SetLocalDetails(nil)
 	targetObjectTypeId, err := sb.Space().GetTypeIdByKey(context.Background(), st.ObjectTypeKey())
@@ -451,7 +455,14 @@ func buildTemplateStateFromObject(sb smartblock.SmartBlock) (*state.State, error
 	}
 	st.SetDetail(bundle.RelationKeyTargetObjectType, domain.String(targetObjectTypeId))
 	st.SetObjectTypeKeys([]domain.TypeKey{bundle.TypeKeyTemplate, st.ObjectTypeKey()})
-	for _, rel := range sb.Relations(st) {
+
+	allRelationKeys := sb.AllRelationKeys()
+	relations, err := s.store.SpaceIndex(sb.SpaceID()).FetchRelationByKeys(allRelationKeys...)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get relation models from store: %w", err)
+	}
+
+	for _, rel := range relations {
 		if rel.DataSource == model.Relation_details && !rel.Hidden {
 			st.RemoveDetail(domain.RelationKey(rel.Key))
 		}
@@ -462,8 +473,16 @@ func buildTemplateStateFromObject(sb smartblock.SmartBlock) (*state.State, error
 	return st, nil
 }
 
-func addDetailsToState(s *state.State, details *domain.Details) {
-	targetDetails := extractTargetDetails(details, s.Details())
-	s.AddDetails(targetDetails)
-	s.BlocksInit(s)
+func addDetailsToTemplateState(st *state.State, details *domain.Details) {
+	var keysToExclude []domain.RelationKey
+	if st.Details() != nil {
+		for key := range templatePreferableRelationKeys {
+			templateVal := st.Details().Get(key)
+			if !templateVal.IsEmpty() {
+				keysToExclude = append(keysToExclude, key)
+			}
+		}
+	}
+	st.AddDetails(details.CopyWithoutKeys(keysToExclude...))
+	st.BlocksInit(st)
 }

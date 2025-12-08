@@ -3,16 +3,15 @@ package payments
 import (
 	"context"
 	"errors"
+	"fmt"
 	"time"
 	"unicode/utf8"
 
 	"github.com/anyproto/any-sync/app"
-	"github.com/anyproto/any-sync/app/logger"
-	"github.com/anyproto/any-sync/util/periodicsync"
-	"github.com/quic-go/quic-go"
 	"go.uber.org/zap"
 
 	ppclient "github.com/anyproto/any-sync/paymentservice/paymentserviceclient"
+	ppclient2 "github.com/anyproto/any-sync/paymentservice/paymentserviceclient2"
 	proto "github.com/anyproto/any-sync/paymentservice/paymentserviceproto"
 
 	"github.com/anyproto/anytype-heart/core/anytype/config"
@@ -26,23 +25,24 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space/deletioncontroller"
-	"github.com/anyproto/anytype-heart/util/contexthelper"
 )
 
 const CName = "payments"
 
 var log = logging.Logger(CName)
 
-const (
-	refreshIntervalSecs = 60
-	timeout             = 30 * time.Second
-	cacheDisableMinutes = 30
+var (
+	refreshIntervalSecs  = 60
+	forceRefreshInterval = 10 * time.Second
+	networkTimeout       = 60 * time.Second
+	networkTimeout2      = 90 * time.Second
 )
 
 var (
 	ErrCanNotSign            = errors.New("can not sign")
 	ErrCacheProblem          = errors.New("cache problem")
 	ErrNoConnection          = errors.New("can not connect to payment node")
+	ErrV2NotEnabled          = errors.New("membership v2 call not enabled in AccountSelect or AccountCreate")
 	ErrNoTiers               = errors.New("can not get tiers")
 	ErrNoTierFound           = errors.New("can not find requested tier")
 	ErrNameIsAlreadyReserved = errors.New("name is already reserved")
@@ -57,6 +57,7 @@ var paymentMethodMap = map[proto.PaymentMethod]model.MembershipPaymentMethod{
 	proto.PaymentMethod_MethodCrypto:      model.Membership_MethodCrypto,
 	proto.PaymentMethod_MethodAppleInapp:  model.Membership_MethodInappApple,
 	proto.PaymentMethod_MethodGoogleInapp: model.Membership_MethodInappGoogle,
+	proto.PaymentMethod_MethodNone:        model.Membership_MethodNone,
 }
 
 func PaymentMethodToModel(method proto.PaymentMethod) model.MembershipPaymentMethod {
@@ -120,6 +121,13 @@ type Service interface {
 	CodeGetInfo(ctx context.Context, req *pb.RpcMembershipCodeGetInfoRequest) (*pb.RpcMembershipCodeGetInfoResponse, error)
 	CodeRedeem(ctx context.Context, req *pb.RpcMembershipCodeRedeemRequest) (*pb.RpcMembershipCodeRedeemResponse, error)
 
+	V2GetPortalLink(ctx context.Context, req *pb.RpcMembershipV2GetPortalLinkRequest) (*pb.RpcMembershipV2GetPortalLinkResponse, error)
+	V2GetProducts(ctx context.Context, req *pb.RpcMembershipV2GetProductsRequest) (*pb.RpcMembershipV2GetProductsResponse, error)
+	V2GetStatus(ctx context.Context, req *pb.RpcMembershipV2GetStatusRequest) (*pb.RpcMembershipV2GetStatusResponse, error)
+	V2AnyNameIsValid(ctx context.Context, req *pb.RpcMembershipV2AnyNameIsValidRequest) (*pb.RpcMembershipV2AnyNameIsValidResponse, error)
+	V2AnyNameAllocate(ctx context.Context, req *pb.RpcMembershipV2AnyNameAllocateRequest) (*pb.RpcMembershipV2AnyNameAllocateResponse, error)
+	V2CartGet(ctx context.Context, req *pb.RpcMembershipV2CartGetRequest) (*pb.RpcMembershipV2CartGetResponse, error)
+	V2CartUpdate(ctx context.Context, req *pb.RpcMembershipV2CartUpdateRequest) (*pb.RpcMembershipV2CartUpdateResponse, error)
 	app.ComponentRunnable
 }
 
@@ -128,20 +136,36 @@ func New() Service {
 }
 
 type service struct {
-	cfg                    *config.Config
-	cache                  cache.CacheService
-	ppclient               ppclient.AnyPpClientService
+	cfg       *config.Config
+	cache     cache.CacheService
+	ppclient  ppclient.AnyPpClientService
+	ppclient2 ppclient2.AnyPpClientServiceV2
+
 	wallet                 wallet.Wallet
 	getSubscriptionLimiter chan struct{}
-	periodicGetStatus      periodicsync.PeriodicSync
+	getStatusV2Limiter     chan struct{}
 	eventSender            event.Sender
 	profileUpdater         globalNamesUpdater
 	ns                     nameservice.Service
-	closing                chan struct{}
+	componentCtx           context.Context
+	componentCtxCancel     context.CancelFunc
 
+	refreshCtrl              *refreshController
+	refreshCtrlV2            *refreshController
 	multiplayerLimitsUpdater deletioncontroller.DeletionController
 	fileLimitsUpdater        filesync.FileSync
 	emailCollector           emailcollector.EmailCollector
+}
+
+type refreshController struct {
+	ctx           context.Context
+	cancel        context.CancelFunc
+	fetch         func(ctx context.Context, forceFetch bool) (bool, error)
+	interval      time.Duration
+	forceInterval time.Duration
+	forceCh       chan time.Duration
+	closeCh       chan struct{}
+	now           func() time.Time
 }
 
 func (s *service) Name() (name string) {
@@ -153,164 +177,300 @@ func (s *service) Init(a *app.App) (err error) {
 	s.cache = app.MustComponent[cache.CacheService](a)
 	s.emailCollector = app.MustComponent[emailcollector.EmailCollector](a)
 	s.ppclient = app.MustComponent[ppclient.AnyPpClientService](a)
+	s.ppclient2 = app.MustComponent[ppclient2.AnyPpClientServiceV2](a)
 	s.wallet = app.MustComponent[wallet.Wallet](a)
 	s.ns = app.MustComponent[nameservice.Service](a)
 	s.eventSender = app.MustComponent[event.Sender](a)
-	s.periodicGetStatus = periodicsync.NewPeriodicSync(refreshIntervalSecs, timeout, s.getPeriodicStatus, logger.CtxLogger{Logger: log.Desugar()})
 	s.profileUpdater = app.MustComponent[globalNamesUpdater](a)
 	s.multiplayerLimitsUpdater = app.MustComponent[deletioncontroller.DeletionController](a)
 	s.fileLimitsUpdater = app.MustComponent[filesync.FileSync](a)
 	s.getSubscriptionLimiter = make(chan struct{}, 1)
-	s.closing = make(chan struct{})
+	s.getStatusV2Limiter = make(chan struct{}, 1)
+	s.componentCtx, s.componentCtxCancel = context.WithCancel(context.Background())
+
 	return nil
 }
 
 func (s *service) Run(ctx context.Context) (err error) {
-	// skip running loop if called from tests
-	val := ctx.Value("dontRunPeriodicGetStatus")
-	if val != nil && val.(bool) {
-		return nil
+	// this parameter is set in the AccountSelect and AccountCreate commands
+	if !s.cfg.EnableMembershipV2 {
+		log.Info("starting v1 refresh controller")
+
+		fetchFn := func(baseCtx context.Context, forceFetch bool) (bool, error) {
+			fetchCtx, cancel := context.WithTimeout(baseCtx, networkTimeout)
+			defer cancel()
+			changed, _, _, err := s.fetchAndUpdate(fetchCtx, forceFetch, true, true)
+			return changed, err
+		}
+
+		s.refreshCtrl = newRefreshController(s.componentCtx, fetchFn, time.Second*time.Duration(refreshIntervalSecs), forceRefreshInterval)
+		s.refreshCtrl.Start()
+	} else {
+		// Start V2 refresh controller
+		log.Info("starting V2 refresh controller")
+
+		fetchFnV2 := func(baseCtx context.Context, forceFetch bool) (bool, error) {
+			fetchCtx, cancel := context.WithTimeout(baseCtx, networkTimeout2)
+			defer cancel()
+			changed, _, _, err := s.fetchAndUpdateV2(fetchCtx, forceFetch, true, true)
+			return changed, err
+		}
+
+		s.refreshCtrlV2 = newRefreshController(s.componentCtx, fetchFnV2, time.Second*time.Duration(refreshIntervalSecs), forceRefreshInterval)
+		s.refreshCtrlV2.Start()
 	}
-	s.periodicGetStatus.Run()
+
 	return nil
 }
 
 func (s *service) Close(_ context.Context) (err error) {
-	if s.closing != nil {
-		close(s.closing)
+	if s.refreshCtrl != nil {
+		s.refreshCtrl.Stop()
+		s.refreshCtrl = nil
 	}
-	if s.periodicGetStatus != nil {
-		s.periodicGetStatus.Close()
+	if s.refreshCtrlV2 != nil {
+		s.refreshCtrlV2.Stop()
+		s.refreshCtrlV2 = nil
 	}
+	s.componentCtxCancel()
 	return nil
 }
 
-func (s *service) getPeriodicStatus(ctx context.Context) error {
-	// skip running loop if we are on a custom network or in local-only mode
-	if s.cfg.GetNetworkMode() != pb.RpcAccount_DefaultConfig {
-		// do not trace to log to prevent spamming
-		return nil
+// forceRefresh performs more aggressive fetching of subscription status and tiers.
+func (s *service) forceRefresh(duration time.Duration) {
+	if s.refreshCtrl == nil {
+		return
 	}
-
-	// get subscription status (from cache or from the PP node)
-	// if status has changed -> it will send events, etc
-	_, err := s.GetSubscriptionStatus(ctx, &pb.RpcMembershipGetStatusRequest{})
-	return err
+	s.refreshCtrl.Force(duration)
 }
 
-func (s *service) sendMembershipUpdateEvent(status *pb.RpcMembershipGetStatusResponse) {
+// forceRefreshV2 performs more aggressive fetching of V2 subscription status.
+func (s *service) forceRefreshV2(duration time.Duration) {
+	if s.refreshCtrlV2 == nil {
+		return
+	}
+	s.refreshCtrlV2.Force(duration)
+}
+
+func (s *service) fetchAndUpdate(ctx context.Context, forceIfNotExpired, fetchTiers, fetchMembership bool) (changed bool, tiers []*model.MembershipTierData, membership *model.Membership, err error) {
+	// skip running loop if we are in local-only mode
+	if s.cfg.GetNetworkMode() == pb.RpcAccount_LocalOnly {
+		// do not trace to log to prevent spamming
+		return false, nil, nil, nil
+	}
+
+	cachedStatus, cachedTiers, cacheExpirationTime, cacheErr := s.cache.CacheGet()
+	if cacheErr != nil {
+		log.Debug("periodic refresh: can not get from cache", zap.Error(cacheErr))
+	}
+	if !forceIfNotExpired && cacheExpirationTime.After(time.Now()) {
+		return false, cachedTiers, cachedStatus, nil
+	}
+	var errs []error
+	tiers = cachedTiers
+	membership = cachedStatus
+
+	if fetchTiers {
+		fetchedTiers, fetchErr := s.fetchTiers(ctx)
+		if fetchErr != nil {
+			log.Warn("periodic refresh: tiers update failed", zap.Error(fetchErr))
+			errs = append(errs, fetchErr)
+		} else {
+			if !tiersAreEqual(cachedTiers, fetchedTiers) {
+				fmt.Printf("%+v\n", fetchedTiers)
+				fmt.Printf("%+v\n", cachedTiers)
+				log.Warn("background refresh tiers: tiers have changed, sending event")
+				s.sendTiersUpdateEvent(fetchedTiers)
+				changed = true
+			}
+			tiers = fetchedTiers
+		}
+	}
+
+	if fetchMembership {
+		fetchedMembership, fetchErr := s.fetchMembership(ctx)
+		if fetchErr != nil {
+			log.Warn("periodic refresh: subscription status update failed", zap.Error(fetchErr))
+			errs = append(errs, fetchErr)
+		} else {
+			if !fetchedMembership.Equal(cachedStatus) {
+				log.Warn("background refresh membership: membership has changed, sending event")
+				s.sendMembershipUpdateEvent(fetchedMembership)
+				changed = true
+			}
+			membership = fetchedMembership
+		}
+	}
+
+	if changed {
+		if cacheSetErr := s.cache.CacheSet(membership, tiers); cacheSetErr != nil {
+			log.Warn("periodic refresh: can not set to cache", zap.Error(cacheSetErr))
+		}
+		if limitsErr := s.updateLimits(ctx); limitsErr != nil {
+			log.Warn("periodic refresh: limits update failed", zap.Error(limitsErr))
+		}
+	}
+
+	if membership == nil {
+		membership = &model.Membership{
+			Tier:   uint32(proto.SubscriptionTier_TierUnknown),
+			Status: model.Membership_StatusUnknown,
+		}
+	}
+	if tiers == nil {
+		tiers = []*model.MembershipTierData{}
+	}
+
+	if len(errs) > 0 {
+		err = errors.Join(errs...)
+	}
+
+	return
+}
+
+func (s *service) fetchAndUpdateV2(ctx context.Context, forceIfNotExpired, fetchMembership, fetchProducts bool) (changed bool, membership *model.MembershipV2Data, products []*model.MembershipV2Product, err error) {
+	// skip running loop if we are in local-only mode
+	if s.cfg.GetNetworkMode() == pb.RpcAccount_LocalOnly {
+		// do not trace to log to prevent spamming
+		return false, nil, nil, nil
+	}
+
+	cachedData, cacheExpirationTime, cacheErr := s.cache.CacheV2Get()
+	cachedProducts, _, productsCacheErr := s.cache.CacheV2ProductsGet()
+	if cacheErr != nil {
+		log.Debug("periodic refresh: can not get V2 membership status from cache", zap.Error(cacheErr))
+	}
+	if productsCacheErr != nil {
+		log.Debug("periodic refresh: can not get V2 products from cache", zap.Error(productsCacheErr))
+	}
+	if !forceIfNotExpired && cacheExpirationTime.After(time.Now()) {
+		return false, cachedData, cachedProducts, nil
+	}
+	var errs []error
+	membership = cachedData
+	products = cachedProducts
+
+	if fetchProducts {
+		fetchedProducts, fetchErr := s.fetchV2Products(ctx)
+		if fetchErr != nil {
+			log.Warn("periodic refresh: V2 products update failed", zap.Error(fetchErr))
+			errs = append(errs, fetchErr)
+		} else {
+			if !productsV2Equal(cachedProducts, fetchedProducts) {
+				log.Warn("background refresh V2 products: products have changed, sending event", zap.Any("cachedProducts", cachedProducts), zap.Any("fetchedProducts", fetchedProducts))
+				s.sendMembershipV2ProductsUpdateEvent(fetchedProducts)
+				changed = true
+			}
+			products = fetchedProducts
+		}
+	}
+
+	if fetchMembership {
+		fetchedMembership, fetchErr := s.fetchV2Membership(ctx)
+		if fetchErr != nil {
+			log.Warn("periodic refresh: V2 subscription status update failed", zap.Error(fetchErr))
+			errs = append(errs, fetchErr)
+		} else {
+			// Compare V2 data - check if Products or NextInvoice changed
+			if !membershipV2DataEqual(cachedData, fetchedMembership) {
+				log.Warn("background refresh V2 membership: membership has changed, sending event", zap.Any("cachedData", cachedData), zap.Any("fetchedMembership", fetchedMembership))
+
+				s.sendMembershipV2UpdateEvent(fetchedMembership)
+				changed = true
+			}
+			membership = fetchedMembership
+		}
+	}
+
+	if changed {
+		s.updateCacheAndLimitsV2(ctx, membership, products)
+	}
+
+	if membership == nil {
+		membership = &model.MembershipV2Data{
+			Products:    []*model.MembershipV2PurchasedProduct{},
+			NextInvoice: nil,
+		}
+	}
+	if products == nil {
+		products = []*model.MembershipV2Product{}
+	}
+
+	if len(errs) > 0 {
+		err = errors.Join(errs...)
+	}
+
+	return
+}
+
+func (s *service) updateCacheAndLimitsV2(ctx context.Context, membership *model.MembershipV2Data, products []*model.MembershipV2Product) {
+	if membership != nil {
+		if cacheSetErr := s.cache.CacheV2Set(membership); cacheSetErr != nil {
+			log.Warn("periodic refresh: can not set V2 membership status to cache", zap.Error(cacheSetErr))
+		}
+	}
+	if products != nil {
+		if productsCacheSetErr := s.cache.CacheV2ProductsSet(products); productsCacheSetErr != nil {
+			log.Warn("periodic refresh: can not set V2 products to cache", zap.Error(productsCacheSetErr))
+		}
+	}
+	if limitsErr := s.updateLimits(ctx); limitsErr != nil {
+		log.Warn("periodic refresh: limits update failed", zap.Error(limitsErr))
+	}
+}
+
+func (s *service) sendMembershipUpdateEvent(membership *model.Membership) {
+	// send ANY name update
+	if membership != nil {
+		nsName := membership.GetNsName()
+		nsNameType := membership.GetNsNameType()
+
+		s.profileUpdater.UpdateOwnGlobalName(nameservice.NsNameToFullName(nsName, nsNameType))
+	}
+
 	s.eventSender.Broadcast(event.NewEventSingleMessage("", &pb.EventMessageValueOfMembershipUpdate{
 		MembershipUpdate: &pb.EventMembershipUpdate{
-			Data: status.Data,
+			Data: membership,
 		},
 	}))
 }
 
-// GetSubscriptionStatus Logic:
-//
-// 1. Check in cache. if req.NoCache -> do not check in cache.
-// 2. If found in cache -> return it
-// 3. Ask PP node
-// 4a. If PP node didn't answer and we have membership -> return it
-// 4b. If PP node didn't answer -> create empty response
-// 5. Save to cache. Lifetime - min(subscription ends, 24h)
-// 6. If tier or status has changed -> send event
-// 7. If name has changed -> update global name
-// 8. UpdateLimits
-// 9. Enable cache again if status is active
+func (s *service) sendTiersUpdateEvent(tiers []*model.MembershipTierData) {
+	s.eventSender.Broadcast(event.NewEventSingleMessage("", &pb.EventMessageValueOfMembershipTiersUpdate{
+		MembershipTiersUpdate: &pb.EventMembershipTiersUpdate{
+			Tiers: tiers,
+		},
+	}))
+}
+
+// GetSubscriptionStatus returns subscription status from cache ONLY
+// This method NEVER makes network calls and returns immediately
+// Background refresh happens via refreshSubscriptionStatusBackground()
 func (s *service) GetSubscriptionStatus(ctx context.Context, req *pb.RpcMembershipGetStatusRequest) (*pb.RpcMembershipGetStatusResponse, error) {
-	// wrap context to stop in-flight request in case of component close
-	ctx, cancel := contexthelper.ContextWithCloseChan(ctx, s.closing)
-	defer cancel()
-	select {
-	case <-ctx.Done():
-		return nil, ctx.Err()
-	case s.getSubscriptionLimiter <- struct{}{}:
-		defer func() {
-			<-s.getSubscriptionLimiter
-		}()
-	}
-	// 1 - check in cache first
 	var (
-		cachedStatus    *pb.RpcMembershipGetStatusResponse
-		isCacheExpired  bool
-		isCacheDisabled bool
-		cacheErr        error
+		membership *model.Membership
+		err        error
 	)
 
-	if !req.NoCache {
-		isCacheExpired = s.cache.IsCacheExpired()
-		isCacheDisabled = s.cache.IsCacheDisabled()
-
-		cachedStatus, _, cacheErr = s.cache.CacheGet()
-		isNotExpiredAndNotDisabled := !isCacheExpired && !isCacheDisabled
-		if cacheErr == nil && isNotExpiredAndNotDisabled && canReturnCachedStatus(cachedStatus) {
-			log.Debug("returning subscription status from cache", zap.Error(cacheErr), zap.Any("cachedStatus", cachedStatus))
-			return cachedStatus, nil
-		}
-	}
-
-	// 2 - if not in cache - send request to PP node
-	ppReq, err := s.generateRequest()
-	if err != nil {
+	_, _, membership, err = s.fetchAndUpdate(ctx, req.NoCache, false, req.NoCache)
+	if err != nil && req.NoCache && !errors.Is(err, cache.ErrCacheDbError) {
 		return nil, err
 	}
-
-	log.Debug("get sub from PP node")
-	status, err := s.ppclient.GetSubscriptionStatus(ctx, ppReq)
-
-	// 3 - on PP node error
-	// try returning from cache again (do not care about the NoCache flag here!)
-	if err != nil {
-		isCacheExpired = s.cache.IsCacheExpired()
-		isCacheDisabled = s.cache.IsCacheDisabled()
-		cachedStatus, _, cacheErr = s.cache.CacheGet()
-
-		// if cache is expired/disabled or OK -> use this data
-		isExpiredOrDisabled := isCacheExpired || isCacheDisabled
-		if (cacheErr == nil || isExpiredOrDisabled) && canReturnCachedStatus(cachedStatus) {
-			log.Debug("returning subscription status from cache", zap.Error(err), zap.Any("cachedStatus", cachedStatus))
-			return cachedStatus, nil
-		}
-
-		// If PP node didn't answer -> create empty response
-		log.Info("creating empty subscription in cache because can not get subscription status from the payment node")
-
-		// eat error and create empty status ("no tier") so that we will then save it to the cache
-		status = &proto.GetSubscriptionResponse{
+	if membership == nil {
+		membership = &model.Membership{
 			Tier:   uint32(proto.SubscriptionTier_TierUnknown),
-			Status: proto.SubscriptionStatus_StatusUnknown,
+			Status: model.Membership_StatusUnknown,
 		}
 	}
 
-	out := convertMembershipStatus(status)
-
-	// 4 - Save to cache. Lifetime - min(subscription ends, now + TTL)
-	// update only status, not tiers
-	err = s.cache.CacheSet(&out, nil)
-	if err != nil {
-		log.Warn("can not save subscription status to cache", zap.Error(err))
-		// return nil, ErrCacheProblem
+	status := &pb.RpcMembershipGetStatusResponse{
+		Data: membership,
+		Error: &pb.RpcMembershipGetStatusResponseError{
+			Code: pb.RpcMembershipGetStatusResponseError_NULL,
+		},
 	}
 
-	log.Debug("subscription status", zap.Any("from server", status), zap.Any("cached", cachedStatus))
-
-	// 5 - Send all messages to the client if needed
-	if !isUpdateRequired(cacheErr, isCacheExpired, cachedStatus, status) {
-		// no need to send events or enable/disable cache
-		return &out, nil
-	}
-	s.updateStatus(ctx, status)
-
-	// 6 - Enable or disable cache (only if status has changed)
-	if isNeedToEnableCache(status) {
-		s.enableCache(status)
-	} else if isNeedToDisableCache(status) {
-		// also the cache will be automatically enbaled in N minutes
-		s.disableCache(status)
-	}
-
-	return &out, nil
+	return status, nil
 }
 
 func (s *service) generateRequest() (*proto.GetSubscriptionRequestSigned, error) {
@@ -339,116 +499,148 @@ func (s *service) generateRequest() (*proto.GetSubscriptionRequestSigned, error)
 	}, nil
 }
 
-func isCacheContainsError(s *pb.RpcMembershipGetStatusResponse) bool {
-	return s != nil && s.Error != nil && s.Error.Code != pb.RpcMembershipGetStatusResponseError_NULL
-}
-
-func canReturnCachedStatus(s *pb.RpcMembershipGetStatusResponse) bool {
-	return s != nil && s.Data != nil && (s.Error == nil || s.Error.Code == pb.RpcMembershipGetStatusResponseError_NULL)
-}
-
-func isUpdateRequired(cacheErr error, isCacheExpired bool, cachedStatus *pb.RpcMembershipGetStatusResponse, status *proto.GetSubscriptionResponse) bool {
-	// 1 - If cache was empty or expired
-	// -> treat at is if data was different
-	isCacheEmpty := cacheErr != nil || cachedStatus == nil || cachedStatus.Data == nil || isCacheExpired
-	if isCacheEmpty {
-		log.Debug("subscription status treated as changed because cache was empty/expired")
-		return true
-	}
-
-	// 2 - Extra check that cache contained previous error
-	if isCacheContainsError(cachedStatus) {
-		log.Debug("subscription status treated as changed because cache contained previous error")
-		return true
-	}
-
-	// 3 - Check if tier or status has changed
-	if status == nil {
-		return false
-	}
-
-	isDiffTier := cachedStatus.Data.Tier != status.Tier
-	isDiffStatus := cachedStatus.Data.Status != model.MembershipStatus(status.Status)
-	isEmailDiff := cachedStatus.Data.UserEmail != status.UserEmail
-
-	if !isDiffTier && !isDiffStatus && !isEmailDiff {
-		log.Debug("subscription status has NOT changed",
-			zap.Bool("cache was empty", cachedStatus == nil),
-			zap.Bool("isDiffTier", isDiffTier),
-			zap.Bool("isDiffStatus", isDiffStatus),
-		)
-		return false
-	}
-
-	log.Info("subscription status has been changed. sending EventMembershipUpdate",
-		zap.Bool("cache was empty", cachedStatus == nil),
-		zap.Bool("isDiffTier", isDiffTier),
-		zap.Bool("isDiffStatus", isDiffStatus),
-		zap.Bool("isEmailDiff", isEmailDiff),
-	)
-	return true
-}
-
-func (s *service) updateStatus(ctx context.Context, status *proto.GetSubscriptionResponse) {
-	out := convertMembershipStatus(status)
-
-	// 1 - Broadcast event
-	log.Debug("sending EventMembershipUpdate", zap.Any("status", status))
-	s.sendMembershipUpdateEvent(&out)
-
-	// 2 - If name has changed -> update global name or own identity
-	if status.RequestedAnyName != "" {
-		log.Debug("update global name",
-			zap.String("requestedAnyName", status.RequestedAnyName),
-			zap.Any("status", status))
-
-		s.profileUpdater.UpdateOwnGlobalName(status.RequestedAnyName)
-	}
-
-	// 3 - Update limits
-	err := s.updateLimits(ctx)
-	var idleTimeoutErr *quic.IdleTimeoutError
-	if err != nil && !errors.As(err, &idleTimeoutErr) && !errors.Is(err, context.DeadlineExceeded) {
-		// eat error
-		log.Error("update limits", zap.Error(err))
-	}
-}
-
 func (s *service) updateLimits(ctx context.Context) error {
 	s.multiplayerLimitsUpdater.UpdateCoordinatorStatus()
 	return s.fileLimitsUpdater.UpdateNodeUsage(ctx)
 }
 
-func isNeedToDisableCache(status *proto.GetSubscriptionResponse) bool {
-	return status.Status == proto.SubscriptionStatus_StatusPending
-}
-
-func (s *service) disableCache(status *proto.GetSubscriptionResponse) {
-	log.Info("disabling cache to wait for Active state")
-
-	err := s.cache.CacheDisableForNextMinutes(cacheDisableMinutes)
-	if err != nil {
-		log.Warn("can not disable cache", zap.Error(err))
-		// return nil, errors.Wrap(ErrCacheProblem, err.Error())
+// fetchSubscriptionStatus performs network refresh of subscription status
+func (s *service) fetchMembership(ctx context.Context) (*model.Membership, error) {
+	// Acquire limiter to prevent concurrent requests
+	select {
+	case <-ctx.Done():
+		return nil, ctx.Err()
+	case s.getSubscriptionLimiter <- struct{}{}:
+		defer func() {
+			<-s.getSubscriptionLimiter
+		}()
 	}
-}
 
-func isNeedToEnableCache(status *proto.GetSubscriptionResponse) bool {
-	isEnableCacheStatus := (status.Status != proto.SubscriptionStatus_StatusUnknown) && (status.Status != proto.SubscriptionStatus_StatusPending)
-	isEnableCacheTier := status.Tier > uint32(proto.SubscriptionTier_TierExplorer)
-
-	return isEnableCacheStatus && isEnableCacheTier
-}
-
-func (s *service) enableCache(status *proto.GetSubscriptionResponse) {
-	log.Info("enabling cache again")
-
-	// or it will be automatically enabled after N minutes of DisableForNextMinutes() call
-	err := s.cache.CacheEnable()
+	// Make network request to PP node
+	ppReq, err := s.generateRequest()
 	if err != nil {
-		log.Warn("can not enable cache", zap.Error(err))
-		// return nil, errors.Wrap(ErrCacheProblem, err.Error())
+		log.Warn("background refresh: failed to generate request", zap.Error(err))
+		return nil, err
 	}
+
+	log.Debug("background refresh: fetching subscription status from PP node")
+	status, err := s.ppclient.GetSubscriptionStatus(ctx, ppReq)
+
+	// On network error, try using cached data or create empty response
+	if err != nil {
+		return nil, err
+	}
+
+	return convertMembershipData(status), nil
+}
+
+// fetchV2Membership performs network refresh of V2 membership status
+func (s *service) fetchV2Membership(ctx context.Context) (*model.MembershipV2Data, error) {
+	// Acquire limiter to prevent concurrent requests
+	select {
+	case <-ctx.Done():
+		return nil, ctx.Err()
+	case s.getStatusV2Limiter <- struct{}{}:
+		defer func() {
+			<-s.getStatusV2Limiter
+		}()
+	}
+
+	// Make network request to PP node
+	in := proto.MembershipV2_GetStatusRequest{}
+
+	log.Debug("background refresh: fetching V2 subscription status from PP node")
+	out, err := s.ppclient2.GetStatus(ctx, &in)
+
+	// On network error, return error
+	if err != nil {
+		return nil, err
+	}
+
+	// convert Products
+	var productsModel []*model.MembershipV2PurchasedProduct
+	if len(out.Products) > 0 {
+		productsModel = make([]*model.MembershipV2PurchasedProduct, len(out.Products))
+		for i, product := range out.Products {
+			productsModel[i] = convertPurchasedProductData(product)
+		}
+	}
+
+	// convert NextInvoice
+	nextInvoiceModel := convertInvoiceData(out.NextInvoice)
+
+	return &model.MembershipV2Data{
+		Products:        productsModel,
+		NextInvoice:     nextInvoiceModel,
+		TeamOwnerID:     out.TeamOwnerID,
+		PaymentProvider: model.MembershipV2PaymentProvider(out.PaymentProvider),
+	}, nil
+}
+
+// fetchV2Products performs network fetch of V2 products data
+func (s *service) fetchV2Products(ctx context.Context) ([]*model.MembershipV2Product, error) {
+	// Make network request
+	productsReq := proto.MembershipV2_GetProductsRequest{}
+
+	log.Debug("background refresh: fetching V2 products from PP node")
+	products, err := s.ppclient2.GetProducts(ctx, &productsReq)
+	if err != nil {
+		return nil, err
+	}
+
+	var modelProducts []*model.MembershipV2Product
+	if len(products.Products) > 0 {
+		modelProducts = make([]*model.MembershipV2Product, len(products.Products))
+		for i, product := range products.Products {
+			modelProducts[i] = convertProductData(product)
+		}
+	}
+
+	return modelProducts, nil
+}
+
+// fetchTiersBackground performs network fetch of tiers data
+func (s *service) fetchTiers(ctx context.Context) ([]*model.MembershipTierData, error) {
+	// Make network request
+	bsr := proto.GetTiersRequest{
+		OwnerAnyId: s.wallet.Account().SignKey.GetPublic().Account(),
+		Locale:     "",    // Use default locale for background refresh
+		Version:    "2.0", // Use default (new) version
+	}
+
+	payload, err := bsr.MarshalVT()
+	if err != nil {
+		log.Warn("background refresh tiers: can not marshal GetTiersRequest", zap.Error(err))
+		return nil, err
+	}
+
+	privKey := s.wallet.GetAccountPrivkey()
+	signature, err := privKey.Sign(payload)
+	if err != nil {
+		log.Warn("background refresh tiers: can not sign GetTiersRequest", zap.Error(err))
+		return nil, err
+	}
+
+	reqSigned := proto.GetTiersRequestSigned{
+		Payload:   payload,
+		Signature: signature,
+	}
+
+	log.Debug("background refresh tiers: fetching tiers from PP node")
+	tiers, err := s.ppclient.GetAllTiers(ctx, &reqSigned)
+	if err != nil {
+		return nil, err
+	}
+
+	var modelTiers []*model.MembershipTierData
+	if len(tiers.Tiers) > 0 {
+		modelTiers = make([]*model.MembershipTierData, len(tiers.Tiers))
+		for i, tier := range tiers.Tiers {
+			modelTiers[i] = convertTierData(tier)
+		}
+	}
+
+	return modelTiers, nil
 }
 
 func (s *service) IsNameValid(ctx context.Context, req *pb.RpcMembershipIsNameValidRequest) (*pb.RpcMembershipIsNameValidResponse, error) {
@@ -638,14 +830,7 @@ func (s *service) RegisterPaymentRequest(ctx context.Context, req *pb.RpcMembers
 		},
 	}
 
-	// 2 - disable cache for 30 minutes
-	log.Debug("disabling cache for 30 minutes after payment request is created on payment node")
-
-	err = s.cache.CacheDisableForNextMinutes(cacheDisableMinutes)
-	if err != nil {
-		log.Warn("can not disable cache", zap.Error(err))
-		// return nil, errors.Wrap(ErrCacheProblem, err.Error())
-	}
+	go s.forceRefresh(30 * time.Minute)
 
 	return &out, nil
 }
@@ -686,13 +871,7 @@ func (s *service) GetPortalLink(ctx context.Context, req *pb.RpcMembershipGetPor
 		Code: pb.RpcMembershipGetPortalLinkUrlResponseError_NULL,
 	}
 
-	// 2 - disable cache for 30 minutes
-	log.Debug("disabling cache for 30 minutes after portal link was received")
-	err = s.cache.CacheDisableForNextMinutes(cacheDisableMinutes)
-	if err != nil {
-		log.Warn("can not disable cache", zap.Error(err))
-		// return nil, errors.Wrap(ErrCacheProblem, err.Error())
-	}
+	go s.forceRefresh(30 * time.Minute)
 
 	return &out, nil
 }
@@ -758,14 +937,6 @@ func (s *service) VerifyEmailCode(ctx context.Context, req *pb.RpcMembershipVeri
 		return nil, err
 	}
 
-	// 2 - clear cache
-	log.Debug("disabling cache after email verification code was confirmed")
-	err = s.cache.CacheDisableForNextMinutes(cacheDisableMinutes)
-	if err != nil {
-		log.Warn("can not disable cache", zap.Error(err))
-		// return nil, errors.Wrap(ErrCacheProblem, err.Error())
-	}
-
 	// return out
 	var out pb.RpcMembershipVerifyEmailCodeResponse
 	out.Error = &pb.RpcMembershipVerifyEmailCodeResponseError{
@@ -808,13 +979,11 @@ func (s *service) FinalizeSubscription(ctx context.Context, req *pb.RpcMembershi
 		return nil, err
 	}
 
+	// update any name immediately (optimistic)
+	s.profileUpdater.UpdateOwnGlobalName(nameservice.NsNameToFullName(req.NsName, req.NsNameType))
+
 	// 2 - clear cache
-	log.Debug("disable cache after subscription was finalized")
-	err = s.cache.CacheDisableForNextMinutes(cacheDisableMinutes)
-	if err != nil {
-		log.Warn("can not disable cache", zap.Error(err))
-		// return nil, errors.Wrap(ErrCacheProblem, err.Error())
-	}
+	go s.forceRefresh(30 * time.Minute)
 
 	// return out
 	var out pb.RpcMembershipFinalizeResponse
@@ -869,110 +1038,21 @@ func (s *service) GetTiers(ctx context.Context, req *pb.RpcMembershipGetTiersReq
 	return filtered, nil
 }
 
-func canReturnCachedTiers(t *pb.RpcMembershipGetTiersResponse) bool {
-	return t != nil && t.Tiers != nil && (t.Error == nil || t.Error.Code == pb.RpcMembershipGetTiersResponseError_NULL)
-}
-
+// getAllTiers returns tiers from cache ONLY
+// This method NEVER makes network calls and returns immediately
+// Background refresh happens via refreshTiersBackground()
 func (s *service) getAllTiers(ctx context.Context, req *pb.RpcMembershipGetTiersRequest) (*pb.RpcMembershipGetTiersResponse, error) {
-	// 1 - check in cache in case NoCache is False
-	if !req.NoCache {
-		isCacheExpired := s.cache.IsCacheExpired()
-		isCacheDisabled := s.cache.IsCacheDisabled()
-		_, cachedTiers, cacheErr := s.cache.CacheGet()
-
-		isNotExpiredAndNotDisabled := !isCacheExpired && !isCacheDisabled
-		if cacheErr == nil && isNotExpiredAndNotDisabled && canReturnCachedTiers(cachedTiers) {
-			log.Debug("returning tiers from cache", zap.Any("cachedTiers", cachedTiers))
-			return cachedTiers, nil
-		}
-	}
-
-	// 2 - send request
-	bsr := proto.GetTiersRequest{
-		// payment node will check if signature matches with this OwnerAnyID
-		OwnerAnyId: s.wallet.Account().SignKey.GetPublic().Account(),
-
-		// WARNING: we will save to cache data for THIS locale and payment method!!!
-		Locale: req.Locale,
-	}
-
-	payload, err := bsr.MarshalVT()
+	_, tiers, _, err := s.fetchAndUpdate(ctx, req.NoCache, req.NoCache, false)
 	if err != nil {
-		log.Error("can not marshal GetTiersRequest", zap.Error(err))
-		return nil, ErrCanNotSign
+		return nil, err
 	}
 
-	privKey := s.wallet.GetAccountPrivkey()
-	signature, err := privKey.Sign(payload)
-	if err != nil {
-		log.Error("can not sign GetTiersRequest", zap.Error(err))
-		return nil, ErrCanNotSign
-	}
-
-	reqSigned := proto.GetTiersRequestSigned{
-		Payload:   payload,
-		Signature: signature,
-	}
-
-	// empty return or error
-	tiers, err := s.ppclient.GetAllTiers(ctx, &reqSigned)
-	if err != nil {
-		// If PP node didn't answer -> create empty tiers response
-		log.Info("creating empty tiers in cache because can not get tiers from the payment node")
-
-		tiers = &proto.GetTiersResponse{
-			Tiers: make([]*proto.TierData, 0),
-		}
-	}
-
-	// 3 - return out
-	var out pb.RpcMembershipGetTiersResponse
-	out.Error = &pb.RpcMembershipGetTiersResponseError{
-		Code: pb.RpcMembershipGetTiersResponseError_NULL,
-	}
-
-	out.Tiers = make([]*model.MembershipTierData, len(tiers.Tiers))
-	for i, tier := range tiers.Tiers {
-		out.Tiers[i] = &model.MembershipTierData{
-			Id:          tier.Id,
-			Name:        tier.Name,
-			Description: tier.Description,
-			// IsActive:              tier.IsActive,
-			IsTest: tier.IsTest,
-			// IsHiddenTier:          tier.IsHiddenTier,
-			PeriodType:          model.MembershipTierDataPeriodType(tier.PeriodType),
-			PeriodValue:         tier.PeriodValue,
-			PriceStripeUsdCents: tier.PriceStripeUsdCents,
-			// also in feature list
-			AnyNamesCountIncluded: tier.AnyNamesCountIncluded,
-			AnyNameMinLength:      tier.AnyNameMinLength,
-			ColorStr:              tier.ColorStr,
-			// platform-specific fields:
-			StripeProductId:  tier.StripeProductId,
-			StripeManageUrl:  tier.StripeManageUrl,
-			IosProductId:     tier.IosProductId,
-			IosManageUrl:     tier.IosManageUrl,
-			AndroidProductId: tier.AndroidProductId,
-			AndroidManageUrl: tier.AndroidManageUrl,
-			Offer:            tier.Offer,
-		}
-
-		// copy all features
-		out.Tiers[i].Features = make([]string, len(tier.Features))
-
-		for j, feature := range tier.Features {
-			out.Tiers[i].Features[j] = feature.Description
-		}
-	}
-
-	// 3 - update tiers, not status
-	err = s.cache.CacheSet(nil, &out)
-	if err != nil {
-		log.Warn("can not save tiers to cache", zap.Error(err))
-		// return nil, ErrCacheProblem
-	}
-
-	return &out, nil
+	return &pb.RpcMembershipGetTiersResponse{
+		Tiers: tiers,
+		Error: &pb.RpcMembershipGetTiersResponseError{
+			Code: pb.RpcMembershipGetTiersResponseError_NULL,
+		},
+	}, nil
 }
 
 func (s *service) VerifyAppStoreReceipt(ctx context.Context, req *pb.RpcMembershipVerifyAppStoreReceiptRequest) (*pb.RpcMembershipVerifyAppStoreReceiptResponse, error) {
@@ -1104,9 +1184,299 @@ func (s *service) CodeRedeem(ctx context.Context, req *pb.RpcMembershipCodeRedee
 		return nil, proto.ErrCodeNotFound
 	}
 
+	// immediately update own any name, do not wait for background refresh
+	s.profileUpdater.UpdateOwnGlobalName(nameservice.NsNameToFullName(nsName, nsNameType))
+
+	go s.forceRefresh(30 * time.Minute)
+
+	// 2 - force refresh v2 to get updated membership status
+	go s.forceRefreshV2(30 * time.Minute)
+
 	return &pb.RpcMembershipCodeRedeemResponse{
 		Error: &pb.RpcMembershipCodeRedeemResponseError{
 			Code: pb.RpcMembershipCodeRedeemResponseError_NULL,
 		},
 	}, nil
+}
+
+func (s *service) V2GetPortalLink(ctx context.Context, req *pb.RpcMembershipV2GetPortalLinkRequest) (*pb.RpcMembershipV2GetPortalLinkResponse, error) {
+	if !s.cfg.EnableMembershipV2 {
+		return nil, ErrV2NotEnabled
+	}
+
+	webAuth := proto.MembershipV2_WebAuthRequest{}
+
+	res, err := s.ppclient2.WebAuth(ctx, &webAuth)
+	if err != nil {
+		return nil, err
+	}
+
+	go s.forceRefreshV2(30 * time.Minute)
+
+	return &pb.RpcMembershipV2GetPortalLinkResponse{
+		Url: res.Url,
+
+		Error: &pb.RpcMembershipV2GetPortalLinkResponseError{
+			Code: pb.RpcMembershipV2GetPortalLinkResponseError_NULL,
+		},
+	}, nil
+}
+
+func (s *service) V2GetProducts(ctx context.Context, req *pb.RpcMembershipV2GetProductsRequest) (*pb.RpcMembershipV2GetProductsResponse, error) {
+	if !s.cfg.EnableMembershipV2 {
+		return nil, ErrV2NotEnabled
+	}
+
+	// Get all products from cache (including background refresh if needed)
+	products, err := s.getAllV2Products(ctx, req)
+	if err != nil {
+		return nil, err
+	}
+
+	return &pb.RpcMembershipV2GetProductsResponse{
+		Products: products,
+		Error: &pb.RpcMembershipV2GetProductsResponseError{
+			Code: pb.RpcMembershipV2GetProductsResponseError_NULL,
+		},
+	}, nil
+}
+
+// getAllV2Products returns products from cache ONLY
+// This method NEVER makes network calls and returns immediately
+// Background refresh happens via refreshSubscriptionStatusBackground()
+func (s *service) getAllV2Products(ctx context.Context, req *pb.RpcMembershipV2GetProductsRequest) ([]*model.MembershipV2Product, error) {
+	_, _, products, err := s.fetchAndUpdateV2(ctx, req.NoCache, false, req.NoCache)
+	if err != nil {
+		return nil, err
+	}
+
+	return products, nil
+}
+
+// V2GetStatus returns V2 subscription status from cache ONLY
+// This method NEVER makes network calls and returns immediately
+// Background refresh happens via refreshSubscriptionStatusBackground()
+func (s *service) V2GetStatus(ctx context.Context, req *pb.RpcMembershipV2GetStatusRequest) (*pb.RpcMembershipV2GetStatusResponse, error) {
+	if !s.cfg.EnableMembershipV2 {
+		return nil, ErrV2NotEnabled
+	}
+
+	var (
+		membership *model.MembershipV2Data
+		err        error
+	)
+
+	_, membership, _, err = s.fetchAndUpdateV2(ctx, req.NoCache, req.NoCache, false)
+	if err != nil && req.NoCache && !errors.Is(err, cache.ErrCacheDbError) {
+		return nil, err
+	}
+	if membership == nil {
+		membership = &model.MembershipV2Data{
+			Products:    []*model.MembershipV2PurchasedProduct{},
+			NextInvoice: nil,
+		}
+	}
+
+	status := &pb.RpcMembershipV2GetStatusResponse{
+		Data: membership,
+		Error: &pb.RpcMembershipV2GetStatusResponseError{
+			Code: pb.RpcMembershipV2GetStatusResponseError_NULL,
+		},
+	}
+
+	return status, nil
+}
+
+func (s *service) v2CheckIfNameAvailInNS(ctx context.Context, req *pb.RpcMembershipV2AnyNameIsValidRequest) (*pb.RpcMembershipV2AnyNameIsValidResponse, error) {
+	// check in the NameService if name is vacant (remote call #2)
+	nsreq := pb.RpcNameServiceResolveNameRequest{
+		NsName:     req.NsName,
+		NsNameType: req.NsNameType,
+	}
+	nsout, err := s.ns.NameServiceResolveName(ctx, &nsreq)
+	if err != nil {
+		return nil, err
+	}
+	if !nsout.Available {
+		return nil, ErrNameIsAlreadyReserved
+	}
+
+	return &pb.RpcMembershipV2AnyNameIsValidResponse{
+		Error: &pb.RpcMembershipV2AnyNameIsValidResponseError{
+			Code:        pb.RpcMembershipV2AnyNameIsValidResponseError_NULL,
+			Description: "",
+		},
+	}, nil
+}
+
+func (s *service) V2AnyNameIsValid(ctx context.Context, req *pb.RpcMembershipV2AnyNameIsValidRequest) (*pb.RpcMembershipV2AnyNameIsValidResponse, error) {
+	if !s.cfg.EnableMembershipV2 {
+		return nil, ErrV2NotEnabled
+	}
+
+	var code proto.MembershipV2_AnyNameIsValidResponse_Code
+	var desc string
+
+	out := pb.RpcMembershipV2AnyNameIsValidResponse{
+		Error: &pb.RpcMembershipV2AnyNameIsValidResponseError{
+			Code: pb.RpcMembershipV2AnyNameIsValidResponseError_NULL,
+		},
+	}
+
+	// 1 - send request to PP node and ask her please
+	invr := proto.MembershipV2_AnyNameIsValidRequest{
+		RequestedAnyName: nameservice.NsNameToFullName(req.NsName, req.NsNameType),
+	}
+
+	resp, err := s.ppclient2.AnyNameIsValid(ctx, &invr)
+	if err != nil {
+		return nil, err
+	}
+
+	if resp.Code == proto.MembershipV2_AnyNameIsValidResponse_Valid {
+		// no error, now check if vacant in NS
+		return s.v2CheckIfNameAvailInNS(ctx, req)
+	}
+
+	out.Error = &pb.RpcMembershipV2AnyNameIsValidResponseError{}
+	code = resp.Code
+	desc = resp.Description
+
+	if code == proto.MembershipV2_AnyNameIsValidResponse_Valid {
+		// no error, now check if vacant in NS
+		return s.v2CheckIfNameAvailInNS(ctx, req)
+	}
+
+	// 2 - convert code to error
+	switch code {
+	case proto.MembershipV2_AnyNameIsValidResponse_NoDotAny:
+		out.Error.Code = pb.RpcMembershipV2AnyNameIsValidResponseError_BAD_INPUT
+		out.Error.Description = "No .any at the end of the name"
+	case proto.MembershipV2_AnyNameIsValidResponse_TooShort:
+		out.Error.Code = pb.RpcMembershipV2AnyNameIsValidResponseError_TOO_SHORT
+		out.Error.Description = "Name is too short"
+	case proto.MembershipV2_AnyNameIsValidResponse_TooLong:
+		out.Error.Code = pb.RpcMembershipV2AnyNameIsValidResponseError_TOO_LONG
+		out.Error.Description = "Name is too long"
+	case proto.MembershipV2_AnyNameIsValidResponse_HasInvalidChars:
+		out.Error.Code = pb.RpcMembershipV2AnyNameIsValidResponseError_HAS_INVALID_CHARS
+		out.Error.Description = "Name has invalid characters"
+	case proto.MembershipV2_AnyNameIsValidResponse_AccountHasNoName:
+		out.Error.Code = pb.RpcMembershipV2AnyNameIsValidResponseError_ACCOUNT_FEATURES_NO_NAME
+		out.Error.Description = "Account does not have any name enabled"
+	default:
+		out.Error.Code = pb.RpcMembershipV2AnyNameIsValidResponseError_UNKNOWN_ERROR
+		out.Error.Description = "Unknown error"
+	}
+
+	out.Error.Description = desc
+	return &out, nil
+}
+
+func (s *service) V2AnyNameAllocate(ctx context.Context, req *pb.RpcMembershipV2AnyNameAllocateRequest) (*pb.RpcMembershipV2AnyNameAllocateResponse, error) {
+	if !s.cfg.EnableMembershipV2 {
+		return nil, ErrV2NotEnabled
+	}
+
+	// 1 - send request
+	anar := proto.MembershipV2_AnyNameAllocateRequest{
+		RequestedAnyName: nameservice.NsNameToFullName(req.NsName, req.NsNameType),
+		OwnerEthAddress:  s.wallet.GetAccountEthAddress().Hex(),
+	}
+
+	// empty return or error
+	_, err := s.ppclient2.AnyNameAllocate(ctx, &anar)
+	if err != nil {
+		return nil, err
+	}
+
+	if err == nil {
+		// immediately update own any name, do not wait for background refresh
+		s.profileUpdater.UpdateOwnGlobalName(nameservice.NsNameToFullName(req.NsName, req.NsNameType))
+	}
+
+	// 2 - force refresh to get updated membership status
+	go s.forceRefreshV2(30 * time.Minute)
+
+	// return out
+	var out pb.RpcMembershipV2AnyNameAllocateResponse
+	out.Error = &pb.RpcMembershipV2AnyNameAllocateResponseError{
+		Code: pb.RpcMembershipV2AnyNameAllocateResponseError_NULL,
+	}
+
+	return &out, nil
+}
+
+func (s *service) V2CartGet(ctx context.Context, req *pb.RpcMembershipV2CartGetRequest) (*pb.RpcMembershipV2CartGetResponse, error) {
+	if !s.cfg.EnableMembershipV2 {
+		return nil, ErrV2NotEnabled
+	}
+
+	cartReq := proto.MembershipV2_StoreCartGetRequest{}
+
+	cart, err := s.ppclient2.StoreCartGet(ctx, &cartReq)
+	if err != nil {
+		return nil, err
+	}
+
+	cartModel := convertCartData(cart)
+	return &pb.RpcMembershipV2CartGetResponse{
+		Cart: cartModel,
+		Error: &pb.RpcMembershipV2CartGetResponseError{
+			Code: pb.RpcMembershipV2CartGetResponseError_NULL,
+		},
+	}, nil
+}
+
+func (s *service) V2CartUpdate(ctx context.Context, req *pb.RpcMembershipV2CartUpdateRequest) (*pb.RpcMembershipV2CartUpdateResponse, error) {
+	if !s.cfg.EnableMembershipV2 {
+		return nil, ErrV2NotEnabled
+	}
+
+	products := make([]*proto.MembershipV2_CartProduct, len(req.ProductIds))
+	for i, productId := range req.ProductIds {
+		products[i] = &proto.MembershipV2_CartProduct{
+			Product: &proto.MembershipV2_Product{
+				// specify only the ID of the product
+				Id: productId,
+			},
+			IsYearly: req.IsYearly,
+
+			// add to cart
+			Remove: false,
+		}
+	}
+
+	cartReq := proto.MembershipV2_StoreCartUpdateRequest{
+		Products: products,
+
+		OwnerEthAddress: s.wallet.GetAccountEthAddress().Hex(),
+	}
+
+	_, err := s.ppclient2.StoreCartUpdate(ctx, &cartReq)
+	if err != nil {
+		return nil, err
+	}
+
+	return &pb.RpcMembershipV2CartUpdateResponse{
+		Error: &pb.RpcMembershipV2CartUpdateResponseError{
+			Code: pb.RpcMembershipV2CartUpdateResponseError_NULL,
+		},
+	}, nil
+}
+
+func (s *service) sendMembershipV2UpdateEvent(membership *model.MembershipV2Data) {
+	s.eventSender.Broadcast(event.NewEventSingleMessage("", &pb.EventMessageValueOfMembershipV2Update{
+		MembershipV2Update: &pb.EventMembershipV2Update{
+			Data: membership,
+		},
+	}))
+}
+
+func (s *service) sendMembershipV2ProductsUpdateEvent(products []*model.MembershipV2Product) {
+	s.eventSender.Broadcast(event.NewEventSingleMessage("", &pb.EventMessageValueOfMembershipV2ProductsUpdate{
+		MembershipV2ProductsUpdate: &pb.EventMembershipV2ProductsUpdate{
+			Products: products,
+		},
+	}))
 }

@@ -50,6 +50,8 @@ type AccountObject interface {
 	IsIconMigrated() (bool, error)
 	SetAnalyticsId(analyticsId string) (err error)
 	GetAnalyticsId() (string, error)
+	SetInboxOffset(offset string) (err error)
+	GetInboxOffset() (string, error)
 }
 
 type TechSpace interface {
@@ -85,7 +87,10 @@ type SpaceView interface {
 	GetSpaceDescription() (data spaceinfo.SpaceDescription)
 	SetSharedSpacesLimit(limits int) (err error)
 	GetSharedSpacesLimit() (limits int)
-	SetPushNotificationMode(ctx session.Context, mode pb.RpcPushNotificationSetSpaceModeMode) (err error)
+	SetPushNotificationMode(ctx session.Context, mode pb.RpcPushNotificationMode) (err error)
+	SetOneToOneInboxInviteStatus(status spaceinfo.OneToOneInboxSentStatus) (err error)
+	SetPushNotificationForceModeIds(ctx session.Context, chatIds []string, mode pb.RpcPushNotificationMode) (err error)
+	ResetPushNotificationIds(ctx session.Context, allIds []string) error
 }
 
 func New() TechSpace {
@@ -199,7 +204,7 @@ func (s *techSpace) GetSpaceView(ctx context.Context, spaceId string) (SpaceView
 	}
 	obj, err := s.objectCache.GetObject(ctx, viewId)
 	if err != nil {
-		return nil, err
+		return nil, errors.Join(ErrSpaceViewNotExists, err)
 	}
 	spaceView, ok := obj.(SpaceView)
 	if !ok {

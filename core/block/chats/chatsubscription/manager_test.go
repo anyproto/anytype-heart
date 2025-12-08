@@ -157,6 +157,9 @@ func TestFlush(t *testing.T) {
 		mngr.ReadMessages("oldestOrderId", []string{"msg5"}, chatmodel.CounterTypeMessage)
 		mngr.ReadMessages("oldestOrderId", []string{"msg5"}, chatmodel.CounterTypeMention)
 		mngr.Flush()
+		t.Run("flush again, expect no extra events", func(t *testing.T) {
+			mngr.Flush()
+		})
 
 		generateWantEvents := func(subId string) []*pb.Event {
 			return []*pb.Event{
@@ -260,6 +263,140 @@ func TestFlush(t *testing.T) {
 
 		assert.Equal(t, generateWantEvents("async"), fx.events)
 		assert.Equal(t, generateWantEvents("sync"), fx.eventsToOtherSessions[sessionId])
+	})
+}
+
+func TestOutOfWindowEvents(t *testing.T) {
+	t.Run("update full", func(t *testing.T) {
+		fx := newFixture(t)
+		ctx := context.Background()
+
+		chatId := "chatId1"
+		subId := "subId1"
+
+		mngr, err := fx.GetManager(testSpaceId, chatId)
+		require.NoError(t, err)
+
+		_, err = fx.SubscribeLastMessages(ctx, SubscribeLastMessagesRequest{
+			ChatObjectId: chatId,
+			SubId:        subId,
+		})
+
+		updatedMessage := givenComplexMessage("msg1", "with reactions", "o1")
+		mngr.UpdateFull(updatedMessage)
+		mngr.Flush()
+		t.Run("flush again, expect no extra events", func(t *testing.T) {
+			mngr.Flush()
+		})
+
+		want := []*pb.Event{
+			{
+				ContextId: chatId,
+				Messages: []*pb.EventMessage{
+					{
+						SpaceId: testSpaceId,
+						Value: &pb.EventMessageValueOfChatUpdate{
+							ChatUpdate: &pb.EventChatUpdate{
+								Id: "msg1",
+								SubIds: []string{
+									subId,
+								},
+								Message: updatedMessage.ChatMessage,
+							},
+						},
+					},
+				},
+			},
+		}
+		assert.Equal(t, want, fx.events)
+	})
+
+	t.Run("update reactions", func(t *testing.T) {
+		fx := newFixture(t)
+		ctx := context.Background()
+
+		chatId := "chatId1"
+		subId := "subId1"
+
+		mngr, err := fx.GetManager(testSpaceId, chatId)
+		require.NoError(t, err)
+
+		_, err = fx.SubscribeLastMessages(ctx, SubscribeLastMessagesRequest{
+			ChatObjectId: chatId,
+			SubId:        subId,
+		})
+
+		mngr.UpdateReactions(givenComplexMessage("msg1", "", "o1"))
+		mngr.Flush()
+		t.Run("flush again, expect no extra events", func(t *testing.T) {
+			mngr.Flush()
+		})
+
+		want := []*pb.Event{
+			{
+				ContextId: chatId,
+				Messages: []*pb.EventMessage{
+					{
+						SpaceId: testSpaceId,
+						Value: &pb.EventMessageValueOfChatUpdateReactions{
+							ChatUpdateReactions: &pb.EventChatUpdateReactions{
+								Id: "msg1",
+								SubIds: []string{
+									subId,
+								},
+								Reactions: givenReactions(),
+							},
+						},
+					},
+				},
+			},
+		}
+		assert.Equal(t, want, fx.events)
+	})
+}
+
+func TestGetLastMessage(t *testing.T) {
+	fx := newFixture(t)
+	ctx := context.Background()
+
+	chatId := "chatId1"
+	subId := "subId1"
+
+	mngr, err := fx.GetManager(testSpaceId, chatId)
+	require.NoError(t, err)
+
+	t.Run("with no subscriptions", func(t *testing.T) {
+		_, ok := mngr.GetLastMessage()
+		assert.False(t, ok)
+	})
+
+	_, err = fx.SubscribeLastMessages(ctx, SubscribeLastMessagesRequest{
+		ChatObjectId: chatId,
+		SubId:        subId,
+	})
+	require.NoError(t, err)
+
+	t.Run("with no messages", func(t *testing.T) {
+		_, ok := mngr.GetLastMessage()
+		assert.False(t, ok)
+	})
+
+	msg := givenComplexMessage("msg1", "text", "o1")
+	mngr.Add("", msg)
+
+	t.Run("with only one message", func(t *testing.T) {
+		got, ok := mngr.GetLastMessage()
+		assert.True(t, ok)
+		assert.Equal(t, msg.ChatMessage, got)
+	})
+
+	msg2 := givenComplexMessage("msg2", "text 2", "o2")
+	mngr.Add("o1", msg2)
+
+	t.Run("with multiple messages", func(t *testing.T) {
+		got, ok := mngr.GetLastMessage()
+		assert.True(t, ok)
+		assert.Equal(t, msg2.ChatMessage, got)
 	})
 }
 

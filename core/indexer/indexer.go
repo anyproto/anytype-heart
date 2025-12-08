@@ -13,6 +13,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/source"
 	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/core/relationutils"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/datastore/anystoreprovider"
@@ -53,6 +54,7 @@ type indexer struct {
 	store                objectstore.ObjectStore
 	source               source.Service
 	picker               cache.CachedObjectGetter
+	formatFetcher        relationutils.RelationFormatFetcher
 	ftsearch             ftsearch.FTSearch
 	ftsearchLastIndexSeq uint64
 
@@ -86,6 +88,7 @@ func (i *indexer) Init(a *app.App) (err error) {
 	i.spaceIndexers = map[string]*spaceIndexer{}
 	i.techSpaceIdProvider = app.MustComponent[objectstore.TechSpaceIdProvider](a)
 	i.dbProvider = app.MustComponent[anystoreprovider.Provider](a)
+	i.formatFetcher = app.MustComponent[relationutils.RelationFormatFetcher](a)
 	return
 }
 
@@ -97,9 +100,9 @@ func (i *indexer) Run(context.Context) (err error) {
 	return i.StartFullTextIndex()
 }
 
-func (f *indexer) StateChange(state int) {
-	if state == int(domain.CompStateAppClosingInitiated) && f.ftQueueStop != nil {
-		f.ftQueueStop()
+func (i *indexer) StateChange(state int) {
+	if state == int(domain.CompStateAppClosingInitiated) && i.ftQueueStop != nil {
+		i.ftQueueStop()
 	}
 }
 

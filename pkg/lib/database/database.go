@@ -256,39 +256,20 @@ func getSpaceIDFromFilters(filters []FilterRequest) string {
 	return ""
 }
 
-func (b *queryBuilder) extractOrder(sorts []SortRequest) SetOrder {
+func (b *queryBuilder) extractOrder(sorts []SortRequest) setOrder {
 	if len(sorts) > 0 {
-		order := SetOrder{}
+		order := setOrder{}
 		for _, sort := range sorts {
-			format, err := b.objectStore.GetRelationFormatByKey(sort.RelationKey)
-			if err != nil {
-				format = sort.Format
-			}
-
-			keyOrder := &KeyOrder{
-				SpaceID:         b.spaceId,
-				Key:             sort.RelationKey,
-				Type:            sort.Type,
-				EmptyPlacement:  sort.EmptyPlacement,
-				IncludeTime:     isIncludeTime(sorts, sort),
-				relationFormat:  format,
-				Store:           b.objectStore,
-				arena:           b.arena,
-				collatorBuffer:  b.collatorBuffer,
-				disableCollator: sort.NoCollate,
-			}
-
-			if keyOrder.Key == bundle.RelationKeyOrderId || keyOrder.Key == bundle.RelationKeySpaceOrder {
-				keyOrder.disableCollator = true
-			}
-			order = b.appendCustomOrder(sort, order, keyOrder)
+			ko := NewKeyOrder(b.objectStore, b.arena, b.collatorBuffer, sort).(*keyOrder)
+			ko.includeTime = isIncludeTime(sorts, sort)
+			order = b.appendCustomOrder(sort, order, ko)
 		}
 		return order
 	}
 	return nil
 }
 
-func (b *queryBuilder) appendCustomOrder(sort SortRequest, orders SetOrder, order *KeyOrder) SetOrder {
+func (b *queryBuilder) appendCustomOrder(sort SortRequest, orders setOrder, order *keyOrder) setOrder {
 	defer b.arena.Reset()
 	if sort.Type == model.BlockContentDataviewSort_Custom && len(sort.CustomOrder) > 0 {
 		idsIndices := make(map[string]int, len(sort.CustomOrder))

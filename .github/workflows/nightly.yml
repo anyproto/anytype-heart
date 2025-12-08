@@ -88,7 +88,7 @@ jobs:
         if: ${{ !startsWith(runner.name, 'mac-mini-runner-') }}
         uses: actions/setup-go@v4
         with:
-          go-version: 1.24.0
+          go-version: '1.24'
           check-latest: true
 
       - name: Setup GO
@@ -239,6 +239,14 @@ jobs:
     if: ${{ always() }}
     runs-on: ubuntu-latest
     steps:
+      - name: Trigger Nightly Builds workflow in repo anyproto/anytype-ts
+        run: |
+          curl -X POST \
+            -H "Accept: application/vnd.github+json" \
+            -H "Authorization: Bearer ${{ secrets.ANYTYPE_TS_TRIGGER_TOKEN }}" \
+            https://api.github.com/repos/anyproto/anytype-ts/actions/workflows/nightly.yml/dispatches \
+            -d '{"ref":"develop","inputs":{"run-diff-check":"false"}}'
+
       - name: Notify Slack (workflow result)
         uses: ravsamhq/notify-slack-action@v2
         with:

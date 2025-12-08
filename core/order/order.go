@@ -180,11 +180,6 @@ func (o *orderSetter) reorder(objectIds []string, originalOrderIds map[string]st
 	// Save the original list
 	inputObjectIds := objectIds
 
-	objectIdsSet := make(map[string]struct{})
-	for _, id := range objectIds {
-		objectIdsSet[id] = struct{}{}
-	}
-
 	originalIds := getAllOriginalIds(originalOrderIds)
 	if needFullList {
 		objectIds = calculateFullList(objectIds, originalIds, originalOrderIds)
@@ -246,17 +241,24 @@ func getAllOriginalIds(originalOrderIds map[string]string) []string {
 	})
 }
 
-func getIdsInOriginalOrder(objectIds []string, originalOrderIds map[string]string) []string {
-	listWithOrder := make([]idAndOrderId, 0, len(objectIds))
-	for _, id := range objectIds {
-		listWithOrder = append(listWithOrder, idAndOrderId{id: id, orderId: originalOrderIds[id]})
+func getIdsInOriginalOrder(objectIdsSet map[string]struct{}, fullOriginalIds []string) []string {
+	originalIds := make([]string, 0, len(objectIdsSet))
+	for _, id := range fullOriginalIds {
+		if _, ok := objectIdsSet[id]; ok {
+			originalIds = append(originalIds, id)
+		}
 	}
-	sort.Slice(listWithOrder, func(i, j int) bool {
-		return listWithOrder[i].orderId < listWithOrder[j].orderId
-	})
-	return lo.Map(listWithOrder, func(it idAndOrderId, _ int) string {
-		return it.id
-	})
+	return originalIds
+}
+
+func hasItemNotInSet[T comparable](items []T, set map[T]struct{}) bool {
+	for _, id := range items {
+		if _, ok := set[id]; !ok {
+			return true
+		}
+	}
+
+	return false
 }
 
 // calculateFullList return the full list of ids, that a client is expected. To do it, we
@@ -268,7 +270,16 @@ func getIdsInOriginalOrder(objectIds []string, originalOrderIds map[string]strin
 // - We compare [1 3 5] with [3 1 5] and get a change "move 1 after 3"
 // - Apply this change and get the list: [2 3 1 4 5]
 func calculateFullList(objectIds []string, fullOriginalIds []string, originalOrderIds map[string]string) []string {
-	originalIds := getIdsInOriginalOrder(objectIds, originalOrderIds)
+	objectIdsSet := make(map[string]struct{})
+	for _, id := range objectIds {
+		objectIdsSet[id] = struct{}{}
+	}
+
+	if !hasItemNotInSet(fullOriginalIds, objectIdsSet) {
+		return objectIds
+	}
+
+	originalIds := getIdsInOriginalOrder(objectIdsSet, fullOriginalIds)
 	ops := slice.Diff(originalIds, objectIds, func(s string) string {
 		return s
 	}, func(s string, s2 string) bool {

@@ -1,46 +1,66 @@
 package objecthandler
 
 import (
+	"github.com/anyproto/any-sync/commonspace/object/tree/objecttree"
+
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 )
 
 type SmartblockHandler interface {
-	SkipChangeToSetLastModifiedDate(model *pb.Change) bool
-}
-
-var handlersBySmartblockType = map[smartblock.SmartBlockType]SmartblockHandler{
-	smartblock.SmartBlockTypeFileObject: &filesHandler{},
+	CollectLastModifiedInfo(change *objecttree.Change)
+	GetLastModifiedInfo() (lastModified int64, lastModifiedBy string)
 }
 
 func GetSmartblockHandler(sbt smartblock.SmartBlockType) SmartblockHandler {
-	if handler, ok := handlersBySmartblockType[sbt]; ok {
-		return handler
+	switch sbt {
+	case smartblock.SmartBlockTypeFileObject:
+		return &filesHandler{}
+	default:
+		return &defaultHandler{}
 	}
-	return &defaultHandler{}
 }
 
 type defaultHandler struct {
+	lastModified   int64
+	lastModifiedBy string
 }
 
-func (d *defaultHandler) SkipChangeToSetLastModifiedDate(model *pb.Change) bool {
-	return false
+func (d *defaultHandler) CollectLastModifiedInfo(change *objecttree.Change) {
+	if change.Timestamp > d.lastModified {
+		d.lastModified = change.Timestamp
+		d.lastModifiedBy = change.Identity.Account()
+	}
+}
+
+func (d *defaultHandler) GetLastModifiedInfo() (lastModified int64, lastModifiedBy string) {
+	return d.lastModified, d.lastModifiedBy
 }
 
 type filesHandler struct {
+	lastModified   int64
+	lastModifiedBy string
 }
 
-func (f *filesHandler) SkipChangeToSetLastModifiedDate(model *pb.Change) bool {
-	if model.Snapshot != nil {
-		return false
+func (f *filesHandler) CollectLastModifiedInfo(change *objecttree.Change) {
+	if change.Timestamp <= f.lastModified {
+		return
 	}
-	for _, cnt := range model.Content {
-		if set := cnt.GetDetailsSet(); set != nil {
-			if set.Key == bundle.RelationKeyFileVariantIds.String() {
-				return true
+
+	model := change.Model.(*pb.Change)
+	if model.Snapshot == nil {
+		for _, cnt := range model.Content {
+			if set := cnt.GetDetailsSet(); set != nil && set.Key == bundle.RelationKeyFileVariantIds.String() {
+				return
 			}
 		}
 	}
-	return false
+
+	f.lastModified = change.Timestamp
+	f.lastModifiedBy = change.Identity.Account()
+}
+
+func (f *filesHandler) GetLastModifiedInfo() (lastModified int64, lastModifiedBy string) {
+	return f.lastModified, f.lastModifiedBy
 }

@@ -1,6 +1,4 @@
 setup: setup-go
-	@echo 'Setting up npm...'
-	@npm install
 
 setup-network-config:
 ifdef ANYENV
@@ -20,7 +18,8 @@ fi
 setup-go: setup-network-config check-tantivy-version
 	@echo 'Setting up go modules...'
 	@go mod download
-	@go install github.com/ahmetb/govvv@v0.2.0
+	@go build -o deps github.com/ahmetb/govvv
+	@go build -o deps github.com/awalterschulze/goderive
 
 setup-gomobile:
 	go build -o deps golang.org/x/mobile/cmd/gomobile
@@ -32,13 +31,8 @@ setup-protoc-go:
 	go build -o deps github.com/gogo/protobuf/protoc-gen-gogofast
 	go build -o deps github.com/pseudomuto/protoc-gen-doc/cmd/protoc-gen-doc
 
-setup-protoc-jsweb:
-	@echo 'Installing grpc-web plugin...'
-	@rm -rf deps/grpc-web
-	@git clone --depth 1 --branch 1.4.2 http://github.com/grpc/grpc-web deps/grpc-web
-	git apply ./clientlibrary/jsaddon/grpcweb_mac.patch
-	@[ -d "/opt/homebrew" ] && PREFIX="/opt/homebrew" $(MAKE) -C deps/grpc-web plugin || $(MAKE) -C deps/grpc-web plugin
-	mv deps/grpc-web/javascript/net/grpc/web/generator/protoc-gen-grpc-web deps/protoc-gen-grpc-web
-	@rm -rf deps/grpc-web
+setup-protoc-js:
+	@echo 'Setting up js protobuf plugins...'
+	@npm -D install
 
-setup-protoc: setup-protoc-go setup-protoc-jsweb
+setup-protoc: setup-protoc-go

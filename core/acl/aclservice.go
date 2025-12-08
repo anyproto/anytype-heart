@@ -167,7 +167,7 @@ func (a *aclService) MakeShareable(ctx context.Context, spaceId string) error {
 }
 
 func (a *aclService) pushGuest(ctx context.Context, privKey crypto.PrivKey) (metadata []byte, err error) {
-	metadataModel, _, err := space.DeriveAccountMetadata(privKey)
+	metadataModel, _, err := domain.DeriveAccountMetadata(privKey)
 	if err != nil {
 		return nil, fmt.Errorf("derive account metadata: %w", err)
 	}
@@ -274,6 +274,9 @@ func (a *aclService) RevokeInvite(ctx context.Context, spaceId string) error {
 }
 
 func (a *aclService) ChangePermissions(ctx context.Context, spaceId string, perms []AccountPermissions) error {
+	if len(perms) == 0 {
+		return fmt.Errorf("%w: empty permissions", ErrIncorrectPermissions)
+	}
 	sp, err := a.spaceService.Get(ctx, spaceId)
 	if err != nil {
 		return convertedOrSpaceErr(err)
@@ -481,7 +484,9 @@ func (a *aclService) Join(ctx context.Context, spaceId, networkId string, invite
 		err = a.spaceService.TechSpace().SpaceViewSetData(ctx, spaceId,
 			domain.NewDetails().
 				SetString(bundle.RelationKeyName, invitePayload.SpaceName).
-				SetString(bundle.RelationKeyIconImage, invitePayload.SpaceIconCid))
+				SetString(bundle.RelationKeyIconImage, invitePayload.SpaceIconCid).
+				SetInt64(bundle.RelationKeyIconOption, int64(invitePayload.SpaceIconOption)).
+				SetInt64(bundle.RelationKeySpaceUxType, int64(invitePayload.SpaceUxType)))
 		if err != nil {
 			return convertedOrInternalError("set space data", err)
 		}
@@ -511,7 +516,9 @@ func (a *aclService) Join(ctx context.Context, spaceId, networkId string, invite
 		err = a.spaceService.TechSpace().SpaceViewSetData(ctx, spaceId,
 			domain.NewDetails().
 				SetString(bundle.RelationKeyName, invitePayload.SpaceName).
-				SetString(bundle.RelationKeyIconImage, invitePayload.SpaceIconCid))
+				SetString(bundle.RelationKeyIconImage, invitePayload.SpaceIconCid).
+				SetInt64(bundle.RelationKeyIconOption, int64(invitePayload.SpaceIconOption)).
+				SetInt64(bundle.RelationKeySpaceUxType, int64(invitePayload.SpaceUxType)))
 		if err != nil {
 			return convertedOrInternalError("set space data", err)
 		}
@@ -519,18 +526,21 @@ func (a *aclService) Join(ctx context.Context, spaceId, networkId string, invite
 	return nil
 }
 
-func (a *aclService) ViewInvite(ctx context.Context, inviteCid cid.Cid, inviteFileKey crypto.SymKey) (view domain.InviteView, err error) {
+func (a *aclService) ViewInvite(ctx context.Context, inviteCid cid.Cid, inviteFileKey crypto.SymKey) (domain.InviteView, error) {
 	res, err := a.inviteService.View(ctx, inviteCid, inviteFileKey)
 	if err != nil {
 		return domain.InviteView{}, convertedOrInternalError("view invite", err)
 	}
 	if res.IsGuestUserInvite() {
 		return domain.InviteView{
-			SpaceId:      res.SpaceId,
-			GuestKey:     res.GuestKey,
-			SpaceName:    res.SpaceName,
-			SpaceIconCid: res.SpaceIconCid,
-			CreatorName:  res.CreatorName,
+			SpaceId:         res.SpaceId,
+			GuestKey:        res.GuestKey,
+			SpaceName:       res.SpaceName,
+			SpaceIconCid:    res.SpaceIconCid,
+			SpaceIconOption: res.SpaceIconOption,
+			SpaceUxType:     res.SpaceUxType,
+			CreatorName:     res.CreatorName,
+			CreatorIconCid:  res.CreatorIconCid,
 		}, nil
 	}
 	inviteKey, err := crypto.UnmarshalEd25519PrivateKeyProto(res.AclKey)

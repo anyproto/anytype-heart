@@ -11,6 +11,7 @@ import (
 	"github.com/anyproto/any-sync/app/ocache"
 	"github.com/cheggaaa/mb/v3"
 
+	"github.com/anyproto/anytype-heart/core/anytype/account"
 	"github.com/anyproto/anytype-heart/core/block/editor/components"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/domain"
@@ -57,6 +58,8 @@ type syncStatusUpdater struct {
 	spaceService      space.Service
 	spaceSyncStatus   SpaceStatusUpdater
 	syncSubscriptions syncsubscriptions.SyncSubscriptions
+	accountService    account.Service
+	myIdentity        string
 
 	entries map[string]*syncStatusDetails
 	lock    sync.Mutex
@@ -74,6 +77,7 @@ func New() Updater {
 
 func (u *syncStatusUpdater) Run(ctx context.Context) (err error) {
 	u.ctx, u.ctxCancel = context.WithCancel(context.Background())
+	u.myIdentity = u.accountService.AccountID()
 	go u.processEvents()
 	return nil
 }
@@ -91,6 +95,7 @@ func (u *syncStatusUpdater) Init(a *app.App) (err error) {
 	u.spaceService = app.MustComponent[space.Service](a)
 	u.spaceSyncStatus = app.MustComponent[SpaceStatusUpdater](a)
 	u.syncSubscriptions = app.MustComponent[syncsubscriptions.SyncSubscriptions](a)
+	u.accountService = app.MustComponent[account.Service](a)
 	return nil
 }
 
@@ -224,9 +229,9 @@ func (u *syncStatusUpdater) updateObjectDetails(syncStatusDetails *syncStatusDet
 			if !u.isLayoutSuitableForSyncRelations(details) {
 				return details, false, nil
 			}
-			if fileStatus, ok := details.TryFloat64(bundle.RelationKeyFileBackupStatus); ok {
-				status, syncError = getSyncStatusForFile(status, syncError, filesyncstatus.Status(int(fileStatus)))
-			}
+
+			status, syncError = u.tryUpdateFromFileBackupStatus(status, syncError, details, details, syncStatusDetails.spaceId)
+
 			details.SetInt64(bundle.RelationKeySyncStatus, int64(status))
 			details.SetInt64(bundle.RelationKeySyncError, int64(syncError))
 			details.SetInt64(bundle.RelationKeySyncDate, time.Now().Unix())
@@ -264,14 +269,32 @@ func (u *syncStatusUpdater) setSyncDetails(sb smartblock.SmartBlock, status doma
 	if !u.isLayoutSuitableForSyncRelations(sb.LocalDetails()) {
 		return nil
 	}
-	if fileStatus, ok := st.Details().TryFloat64(bundle.RelationKeyFileBackupStatus); ok {
-		status, syncError = getSyncStatusForFile(status, syncError, filesyncstatus.Status(int(fileStatus)))
-	}
+
+	status, syncError = u.tryUpdateFromFileBackupStatus(status, syncError, sb.LocalDetails(), sb.Details(), sb.SpaceID())
+
 	st.SetDetailAndBundledRelation(bundle.RelationKeySyncStatus, domain.Int64(status))
 	st.SetDetailAndBundledRelation(bundle.RelationKeySyncError, domain.Int64(syncError))
 	st.SetDetailAndBundledRelation(bundle.RelationKeySyncDate, domain.Int64(time.Now().Unix()))
 
 	return sb.Apply(st, smartblock.KeepInternalFlags /* do not erase flags */)
+}
+
+func (u *syncStatusUpdater) tryUpdateFromFileBackupStatus(status domain.ObjectSyncStatus, syncError domain.SyncError, localDetails *domain.Details, details *domain.Details, spaceId string) (domain.ObjectSyncStatus, domain.SyncError) {
+	if fileStatus, ok := details.TryFloat64(bundle.RelationKeyFileBackupStatus); ok {
+		fStatus, fSyncError := getSyncStatusForFile(status, syncError, filesyncstatus.Status(int(fileStatus)))
+
+		// Show oversized error for everyone
+		if fSyncError == domain.SyncErrorOversized {
+			return fStatus, fSyncError
+		}
+
+		// Show detailed sync status only for the current user
+		if localDetails.GetString(bundle.RelationKeyCreator) == domain.NewParticipantId(spaceId, u.myIdentity) {
+			return fStatus, fSyncError
+		}
+	}
+
+	return status, syncError
 }
 
 var suitableLayouts = map[model.ObjectTypeLayout]struct{}{
@@ -290,7 +313,7 @@ var suitableLayouts = map[model.ObjectTypeLayout]struct{}{
 	model.ObjectType_audio:          {},
 	model.ObjectType_video:          {},
 	model.ObjectType_pdf:            {},
-	model.ObjectType_chat:           {},
+	model.ObjectType_chatDeprecated: {},
 	model.ObjectType_spaceView:      {},
 	model.ObjectType_chatDerived:    {},
 }

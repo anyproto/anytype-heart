@@ -11,7 +11,6 @@ import (
 	proto "github.com/anyproto/any-sync/paymentservice/paymentserviceproto"
 	"go.uber.org/zap"
 
-	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/datastore/anystoreprovider"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/keyvaluestore"
@@ -29,7 +28,8 @@ var (
 
 // once you change the cache format, you need to update this variable
 // it will cause cache to be dropped and recreated
-const cacheLastVersion = 7
+const cacheLastVersion = 8
+const cacheV2LastVersion = 1
 
 const (
 	cacheLifetimeDurExplorer = 24 * time.Hour
@@ -42,57 +42,55 @@ type StorageStruct struct {
 	// see dbKey above
 	CurrentVersion uint16
 
-	// this variable is just for info
-	LastUpdated time.Time
-
 	// depending on the type of the membership the cache will have different lifetime
 	// if current time is >= ExpireTime -> cache is expired
 	ExpireTime time.Time
 
-	// if this is 0 - then cache is enabled
-	DisableUntilTime time.Time
-
 	// actual data
-	SubscriptionStatus pb.RpcMembershipGetStatusResponse
-	TiersData          pb.RpcMembershipGetTiersResponse
+	SubscriptionStatus *model.Membership
+	TiersData          []*model.MembershipTierData
 }
 
 func newStorageStruct() *StorageStruct {
 	return &StorageStruct{
-		CurrentVersion:   cacheLastVersion,
-		LastUpdated:      time.Now().UTC(),
-		ExpireTime:       time.Time{},
-		DisableUntilTime: time.Time{},
-		SubscriptionStatus: pb.RpcMembershipGetStatusResponse{
-			Data: nil,
-		},
-		TiersData: pb.RpcMembershipGetTiersResponse{
-			Tiers: nil,
-		},
+		CurrentVersion:     cacheLastVersion,
+		ExpireTime:         time.Time{},
+		SubscriptionStatus: &model.Membership{},
+		TiersData:          []*model.MembershipTierData{},
+	}
+}
+
+type StorageV2Struct struct {
+	CurrentVersion uint16
+	ExpireTime     time.Time
+	V2Data         *model.MembershipV2Data
+	ProductsData   []*model.MembershipV2Product
+}
+
+func newStorageV2Struct() *StorageV2Struct {
+	return &StorageV2Struct{
+		CurrentVersion: cacheV2LastVersion,
+		ExpireTime:     time.Time{},
+		V2Data:         &model.MembershipV2Data{},
+		ProductsData:   []*model.MembershipV2Product{},
 	}
 }
 
 type CacheService interface {
-	CacheGet() (status *pb.RpcMembershipGetStatusResponse, tiers *pb.RpcMembershipGetTiersResponse, err error)
+	CacheGet() (status *model.Membership, tiers []*model.MembershipTierData, expireTime time.Time, err error)
 
 	// if cache is disabled -> will return no error
 	// if cache is expired -> will return no error
 	// status or tiers can be nil depending on what you want to update
-	CacheSet(status *pb.RpcMembershipGetStatusResponse, tiers *pb.RpcMembershipGetTiersResponse) (err error)
-
-	IsCacheDisabled() (disabled bool)
-
-	IsCacheExpired() (expired bool)
-
-	// if already enabled -> will not return error
-	CacheEnable() (err error)
-
-	// if already disabled -> will not return error
-	// if currently disabled -> will disable GETs for next N minutes
-	CacheDisableForNextMinutes(minutes int) (err error)
+	CacheSet(status *model.Membership, tiers []*model.MembershipTierData) (err error)
 
 	// does not take into account if cache is enabled or not, erases always
 	CacheClear() (err error)
+
+	CacheV2Get() (data *model.MembershipV2Data, expireTime time.Time, err error)
+	CacheV2Set(data *model.MembershipV2Data) (err error)
+	CacheV2ProductsGet() (products []*model.MembershipV2Product, expireTime time.Time, err error)
+	CacheV2ProductsSet(products []*model.MembershipV2Product) (err error)
 
 	app.Component
 }
@@ -102,7 +100,8 @@ func New() CacheService {
 }
 
 type cacheservice struct {
-	db keyvaluestore.Store[*StorageStruct]
+	db   keyvaluestore.Store[*StorageStruct]
+	dbV2 keyvaluestore.Store[*StorageV2Struct]
 
 	m sync.Mutex
 }
@@ -115,6 +114,7 @@ func (s *cacheservice) Init(a *app.App) (err error) {
 	provider := app.MustComponent[anystoreprovider.Provider](a)
 
 	s.db = keyvaluestore.NewJsonFromCollection[*StorageStruct](provider.GetSystemCollection())
+	s.dbV2 = keyvaluestore.NewJsonFromCollection[*StorageV2Struct](provider.GetSystemCollection())
 	return nil
 }
 
@@ -130,7 +130,7 @@ func (s *cacheservice) Close(_ context.Context) (err error) {
 	return nil
 }
 
-func (s *cacheservice) CacheGet() (status *pb.RpcMembershipGetStatusResponse, tiers *pb.RpcMembershipGetTiersResponse, err error) {
+func (s *cacheservice) CacheGet() (status *model.Membership, tiers []*model.MembershipTierData, expiration time.Time, err error) {
 	s.m.Lock()
 	defer s.m.Unlock()
 
@@ -138,18 +138,18 @@ func (s *cacheservice) CacheGet() (status *pb.RpcMembershipGetStatusResponse, ti
 	ss, err := s.get()
 	if err != nil {
 		log.Error("can not get membership status from cache", zap.Error(err))
-		return nil, nil, ErrCacheDbError
+		return nil, nil, time.Time{}, ErrCacheDbError
 	}
 
 	if ss.CurrentVersion != cacheLastVersion {
 		// currently we have only one version, but in future we can have more
 		// this error can happen if you "downgrade" the app
 		log.Error("unsupported cache version", zap.Uint16("version", ss.CurrentVersion))
-		return nil, nil, ErrUnsupportedCacheVersion
+		return nil, nil, time.Time{}, ErrUnsupportedCacheVersion
 	}
 
 	// 2 - return value
-	return &ss.SubscriptionStatus, &ss.TiersData, nil
+	return ss.SubscriptionStatus, ss.TiersData, ss.ExpireTime, nil
 }
 
 func getExpireTime(latestStatus *model.Membership) time.Time {
@@ -187,7 +187,7 @@ func getExpireTime(latestStatus *model.Membership) time.Time {
 	return timeNext
 }
 
-func (s *cacheservice) CacheSet(status *pb.RpcMembershipGetStatusResponse, tiers *pb.RpcMembershipGetTiersResponse) (err error) {
+func (s *cacheservice) CacheSet(status *model.Membership, tiers []*model.MembershipTierData) (err error) {
 	s.m.Lock()
 	defer s.m.Unlock()
 
@@ -199,95 +199,20 @@ func (s *cacheservice) CacheSet(status *pb.RpcMembershipGetStatusResponse, tiers
 		// if there is no record in the cache, let's create it
 		ss = newStorageStruct()
 	} else {
-		latestStatus = ss.SubscriptionStatus.Data
+		latestStatus = ss.SubscriptionStatus
 	}
 
 	// 2 - update storage
 	if status != nil {
-		ss.SubscriptionStatus = *status
-		latestStatus = status.Data
+		ss.SubscriptionStatus = status
+		latestStatus = status
 	}
 
 	if tiers != nil {
-		ss.TiersData = *tiers
+		ss.TiersData = tiers
 	}
 
 	ss.ExpireTime = getExpireTime(latestStatus)
-
-	// 3 - save to storage
-	return s.set(ss)
-}
-
-func (s *cacheservice) IsCacheDisabled() (disabled bool) {
-	s.m.Lock()
-	defer s.m.Unlock()
-
-	// 1 - get existing storage
-	ss, err := s.get()
-	if err != nil {
-		return false
-	}
-
-	// 2 - check if cache is disabled
-	if !ss.DisableUntilTime.IsZero() && time.Now().UTC().Before(ss.DisableUntilTime) {
-		return true
-	}
-
-	return false
-}
-
-func (s *cacheservice) IsCacheExpired() (expired bool) {
-	s.m.Lock()
-	defer s.m.Unlock()
-
-	// 1 - get existing storage
-	ss, err := s.get()
-	if err != nil {
-		return true
-	}
-
-	// 2 - check if cache is outdated
-	if time.Now().UTC().After(ss.ExpireTime) {
-		return true
-	}
-
-	return false
-}
-
-// will not return error if already enabled
-func (s *cacheservice) CacheEnable() (err error) {
-	s.m.Lock()
-	defer s.m.Unlock()
-
-	// 1 - get existing storage
-	ss, err := s.get()
-	if err != nil {
-		// if there is no record in the cache, let's create it
-		ss = newStorageStruct()
-	}
-
-	// 2 - update storage
-	ss.DisableUntilTime = time.Time{}
-
-	// 3 - save to storage
-	return s.set(ss)
-}
-
-// will not return error if already disabled
-// if currently disabled - will disable for next N minutes
-func (s *cacheservice) CacheDisableForNextMinutes(minutes int) (err error) {
-	s.m.Lock()
-	defer s.m.Unlock()
-
-	// 1 - get existing storage
-	ss, err := s.get()
-	if err != nil {
-		// if there is no record in the cache, let's create it
-		ss = newStorageStruct()
-	}
-
-	// 2 - update storage
-	ss.DisableUntilTime = time.Now().UTC().Add(time.Minute * time.Duration(minutes))
 
 	// 3 - save to storage
 	return s.set(ss)
@@ -324,4 +249,107 @@ func (s *cacheservice) set(in *StorageStruct) (err error) {
 		return ErrCacheDbNotInitialized
 	}
 	return s.db.Set(context.Background(), anystoreprovider.SystemKeys.PaymentCacheKey(cacheLastVersion), in)
+}
+
+func (s *cacheservice) getV2() (out *StorageV2Struct, err error) {
+	if s.dbV2 == nil {
+		return nil, ErrCacheDbNotInitialized
+	}
+	return s.dbV2.Get(context.Background(), anystoreprovider.SystemKeys.PaymentCacheV2Key(cacheV2LastVersion))
+}
+
+func (s *cacheservice) setV2(in *StorageV2Struct) (err error) {
+	if s.dbV2 == nil {
+		return ErrCacheDbNotInitialized
+	}
+	return s.dbV2.Set(context.Background(), anystoreprovider.SystemKeys.PaymentCacheV2Key(cacheV2LastVersion), in)
+}
+
+func getExpireTimeV2() time.Time {
+	// Use standard 10 minute cache lifetime for V2
+	return time.Now().UTC().Add(cacheLifetimeDurOther)
+}
+
+func (s *cacheservice) CacheV2Get() (data *model.MembershipV2Data, expiration time.Time, err error) {
+	s.m.Lock()
+	defer s.m.Unlock()
+
+	// 1 - check in storage
+	ss, err := s.getV2()
+	if err != nil {
+		log.Error("can not get membership V2 status from cache", zap.Error(err))
+		return nil, time.Time{}, ErrCacheDbError
+	}
+
+	if ss.CurrentVersion != cacheV2LastVersion {
+		log.Error("unsupported V2 cache version", zap.Uint16("version", ss.CurrentVersion))
+		return nil, time.Time{}, ErrUnsupportedCacheVersion
+	}
+
+	// 2 - return value
+	return ss.V2Data, ss.ExpireTime, nil
+}
+
+func (s *cacheservice) CacheV2Set(data *model.MembershipV2Data) (err error) {
+	s.m.Lock()
+	defer s.m.Unlock()
+
+	// 1 - get existing storage
+	ss, err := s.getV2()
+	if err != nil {
+		// if there is no record in the cache, let's create it
+		ss = newStorageV2Struct()
+	}
+
+	// 2 - update storage
+	if data != nil {
+		ss.V2Data = data
+	}
+
+	ss.ExpireTime = getExpireTimeV2()
+
+	// 3 - save to storage
+	return s.setV2(ss)
+}
+
+func (s *cacheservice) CacheV2ProductsGet() (products []*model.MembershipV2Product, expiration time.Time, err error) {
+	s.m.Lock()
+	defer s.m.Unlock()
+
+	// 1 - check in storage
+	ss, err := s.getV2()
+	if err != nil {
+		log.Error("can not get membership V2 products from cache", zap.Error(err))
+		return nil, time.Time{}, ErrCacheDbError
+	}
+
+	if ss.CurrentVersion != cacheV2LastVersion {
+		log.Error("unsupported V2 cache version", zap.Uint16("version", ss.CurrentVersion))
+		return nil, time.Time{}, ErrUnsupportedCacheVersion
+	}
+
+	// 2 - return value
+	return ss.ProductsData, ss.ExpireTime, nil
+}
+
+func (s *cacheservice) CacheV2ProductsSet(products []*model.MembershipV2Product) (err error) {
+	s.m.Lock()
+	defer s.m.Unlock()
+
+	// 1 - get existing storage
+	ss, err := s.getV2()
+	if err != nil {
+		// if there is no record in the cache, let's create it
+		ss = newStorageV2Struct()
+	}
+
+	// 2 - update storage
+	if products != nil {
+		ss.ProductsData = products
+	}
+
+	ss.ExpireTime = getExpireTimeV2()
+
+	// 3 - save to storage
+	return s.setV2(ss)
 }

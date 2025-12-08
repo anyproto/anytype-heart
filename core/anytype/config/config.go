@@ -58,14 +58,23 @@ type FileConfig interface {
 }
 
 type ConfigRequired struct {
-	HostAddr            string `json:",omitempty"`
-	CustomFileStorePath string `json:",omitempty"`
-	LegacyFileStorePath string `json:",omitempty"`
-	NetworkId           string `json:""` // in case this account was at least once connected to the network on this device, this field will be set to the network id
+	HostAddr               string `json:",omitempty"`
+	CustomFileStorePath    string `json:",omitempty"`
+	LegacyFileStorePath    string `json:",omitempty"`
+	NetworkId              string `json:""` // in case this account was at least once connected to the network on this device, this field will be set to the network id
+	AutoDownloadFiles      bool   `json:",omitempty"`
+	AutoDownloadOnWifiOnly bool   `json:",omitempty"`
+}
+
+// Use separate structure as trick for legacy config management
+type ConfigAutoDownloadFiles struct {
+	AutoDownloadFiles      bool
+	AutoDownloadOnWifiOnly bool
 }
 
 type Config struct {
 	ConfigRequired `json:",inline"`
+
 	NewAccount     bool   `ignored:"true"` // set to true if a new account is creating. This option controls whether mw should wait for the existing data to arrive before creating the new log
 	AutoJoinStream string `ignored:"true"` // contains the invite of the stream space to automatically join
 
@@ -79,6 +88,7 @@ type Config struct {
 	SqliteTempPath                         string           `json:",omitempty"` // not saved to config
 	AnyStoreConfig                         *anystore.Config `json:",omitempty"` // not saved to config
 	JsonApiListenAddr                      string           `json:",omitempty"` // empty means disabled
+	EnableMembershipV2                     bool             `json:",omitempty"` // optional, default is false
 
 	RepoPath    string
 	AnalyticsId string
