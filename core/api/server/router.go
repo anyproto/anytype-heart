@@ -104,6 +104,9 @@ func (s *Server) NewRouter(mw apicore.ClientCommands, eventService apicore.Event
 		v1.PATCH("/spaces/:space_id/objects/:object_id", writeRateLimitMW, s.ensureAnalyticsEvent("ObjectUpdate", eventService), handler.UpdateObjectHandler(s.service))
 		v1.DELETE("/spaces/:space_id/objects/:object_id", writeRateLimitMW, s.ensureAnalyticsEvent("ObjectDelete", eventService), handler.DeleteObjectHandler(s.service))
 
+		// File
+		v1.POST("/spaces/:space_id/files", writeRateLimitMW, s.ensureAnalyticsEvent("FileUpload", eventService), handler.UploadFileHandler(s.service))
+
 		// Property
 		v1.GET("/spaces/:space_id/properties", s.ensureAnalyticsEvent("PropertyList", eventService), handler.ListPropertiesHandler(s.service))
 		v1.GET("/spaces/:space_id/properties/:property_id", s.ensureAnalyticsEvent("PropertyOpen", eventService), handler.GetPropertyHandler(s.service))

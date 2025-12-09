@@ -57,6 +57,9 @@ type ClientCommands interface {
 	RelationListRemoveOption(context.Context, *pb.RpcRelationListRemoveOptionRequest) *pb.RpcRelationListRemoveOptionResponse
 	RelationOptions(context.Context, *pb.RpcRelationOptionsRequest) *pb.RpcRelationOptionsResponse
 
+	// File
+	FileUpload(context.Context, *pb.RpcFileUploadRequest) *pb.RpcFileUploadResponse
+
 	// Block
 	BlockCreate(context.Context, *pb.RpcBlockCreateRequest) *pb.RpcBlockCreateResponse
 	BlockPaste(context.Context, *pb.RpcBlockPasteRequest) *pb.RpcBlockPasteResponse
