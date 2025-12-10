@@ -114,12 +114,48 @@ func TestCacheStore_GetMany(t *testing.T) {
 		}()
 		assert.ElementsMatch(t, cids, resCids)
 	})
+
 	t.Run("partial local", func(t *testing.T) {
 		ctx := context.Background()
 		testBlocks := newTestBocks("1", "2", "3")
 		cs := newPSFixture(t)
 		defer cs.Finish(t)
 		require.NoError(t, cs.localStore.Add(ctx, testBlocks[:1]))
+		require.NoError(t, cs.origin.Add(ctx, testBlocks))
+
+		var cids, resCids []cid.Cid
+		for _, b := range testBlocks {
+			cids = append(cids, b.Cid())
+		}
+		ch := cs.GetMany(ctx, cids)
+		func() {
+			for {
+				select {
+				case b, ok := <-ch:
+					if !ok {
+						return
+					} else {
+						resCids = append(resCids, b.Cid())
+					}
+				case <-time.After(time.Second):
+					assert.NoError(t, fmt.Errorf("timeout"))
+					return
+				}
+			}
+		}()
+		require.Equal(t, len(cids), len(resCids))
+		for _, b := range testBlocks {
+			gb, err := cs.localStore.Get(ctx, b.Cid())
+			assert.NoError(t, err)
+			assert.NotNil(t, gb)
+		}
+	})
+
+	t.Run("no local", func(t *testing.T) {
+		ctx := context.Background()
+		testBlocks := newTestBocks("1", "2", "3")
+		cs := newPSFixture(t)
+		defer cs.Finish(t)
 		require.NoError(t, cs.origin.Add(ctx, testBlocks))
 
 		var cids, resCids []cid.Cid

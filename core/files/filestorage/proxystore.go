@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"sync"
 
 	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
@@ -95,34 +96,55 @@ func (c *proxyStore) GetMany(ctx context.Context, ks []cid.Cid) <-chan blocks.Bl
 	results := make(chan blocks.Block)
 
 	go func() {
-		defer close(results)
-		localResults := c.localStore.GetMany(ctx, fromCache)
-		originResults := c.origin.GetMany(ctx, fromOrigin)
-		oOk, cOk := true, true
-		for {
-			var cb, ob blocks.Block
-			select {
-			case cb, cOk = <-localResults:
-				if cOk {
-					results <- cb
-				}
-			case ob, oOk = <-originResults:
-				if oOk {
-					if addErr := c.localStore.Add(ctx, []blocks.Block{ob}); addErr != nil {
-						log.Error("add block to localStore error", zap.Error(addErr))
+		var wg sync.WaitGroup
+		defer func() {
+			// Wait for remote results
+			wg.Wait()
+			close(results)
+		}()
+
+		if len(fromOrigin) > 0 {
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
+				originResults := c.origin.GetMany(ctx, fromOrigin)
+				for {
+					select {
+					case b, ok := <-originResults:
+						if !ok {
+							return
+						}
+						if addErr := c.localStore.Add(ctx, []blocks.Block{b}); addErr != nil {
+							log.Error("add block to localStore error", zap.Error(addErr))
+						}
+						results <- b
+					case <-ctx.Done():
+						return
+					case <-c.backgroundCtx.Done():
+						return
 					}
-					results <- ob
 				}
-			case <-ctx.Done():
-				return
-			case <-c.backgroundCtx.Done():
-				return
-			}
-			if !oOk && !cOk {
-				return
+			}()
+		}
+
+		if len(fromCache) > 0 {
+			localResults := c.localStore.GetMany(ctx, fromCache)
+			for {
+				select {
+				case b, ok := <-localResults:
+					if !ok {
+						return
+					}
+					results <- b
+				case <-ctx.Done():
+					return
+				case <-c.backgroundCtx.Done():
+					return
+				}
 			}
 		}
 	}()
+
 	return results
 }
 
