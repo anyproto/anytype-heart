@@ -128,11 +128,6 @@ func (s *fileSync) processFileUploading(ctx context.Context, it FileInfo) (FileI
 	return it, nil
 }
 
-func (s *fileSync) processFileLimited(fi FileInfo) (FileInfo, error) {
-	// TODO Near the same as pending upload
-	return fi, nil
-}
-
 func (s *fileSync) processFilePendingDeletion(ctx context.Context, it FileInfo) (FileInfo, error) {
 	log.Info("removing file", zap.String("fileId", it.FileId.String()))
 	err := s.rpcStore.DeleteFiles(ctx, it.SpaceId, it.FileId)
@@ -254,19 +249,7 @@ type limitUpdate struct {
 	limit   int
 }
 
-// TODO Space limits
-// - create subscription for all active spaces
-// - on init: get usage and limits from node OR from cache if we're offline
-// - on every N minutes: get the most recent usage and limits from node AND cache it
-// - on request to upload: update limits if TTL is due
-// - every action sends an update message to all subscribers
-
 func (s *fileSync) processLimited(ctx context.Context) error {
-	// updateCh should receive signals on:
-	// - when application is started
-	// - when someone tries to upload a file for the first time or after NOT limited error and sees limits updates
-	// - when background process updates limits
-
 	for update := range s.limitManager.updateCh {
 		freeSpace := update.freeSpace()
 		for {
