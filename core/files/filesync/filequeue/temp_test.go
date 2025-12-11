@@ -71,7 +71,7 @@ func TestQueue(t *testing.T) {
 			task, err := q.GetById("obj1")
 			require.NoError(t, err)
 			task.BytesToUpload++
-			err = q.Release(task)
+			err = q.ReleaseAndUpdate(task)
 			require.NoError(t, err)
 		}()
 	}
@@ -201,7 +201,7 @@ func TestQueueGetNext(t *testing.T) {
 
 				next.State = FileStatePendingDeletion
 				got = append(got, next.ObjectId)
-				err = q.Release(next)
+				err = q.ReleaseAndUpdate(next)
 				require.NoError(t, err)
 			}
 
@@ -403,7 +403,7 @@ func TestQueueSchedule(t *testing.T) {
 				_, err := q.GetById("obj1")
 				require.NoError(t, err)
 				time.Sleep(2 * time.Minute)
-				err = q.Release(FileInfo{
+				err = q.ReleaseAndUpdate(FileInfo{
 					ObjectId: "obj1",
 					State:    FileStateDeleted,
 				})
@@ -452,7 +452,7 @@ func TestComplex(t *testing.T) {
 				require.NoError(t, err)
 				next.Imported = true
 				assert.Equal(t, "obj1", next.ObjectId)
-				err = q.Release(next)
+				err = q.ReleaseAndUpdate(next)
 				require.NoError(t, err)
 			}()
 
@@ -486,7 +486,7 @@ func TestComplex(t *testing.T) {
 				require.NoError(t, err)
 				next.State = FileStatePendingDeletion
 				assert.Equal(t, "obj1", next.ObjectId)
-				err = q.Release(next)
+				err = q.ReleaseAndUpdate(next)
 				require.NoError(t, err)
 			}()
 

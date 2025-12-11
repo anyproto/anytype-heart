@@ -2,10 +2,13 @@ package filesync
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/ipfs/go-cid"
 	"go.uber.org/zap"
+
+	"github.com/anyproto/anytype-heart/core/syncstatus/filesyncstatus"
 )
 
 func (s *fileSync) runBatchUploader() {
@@ -40,6 +43,25 @@ func (s *fileSync) addToLimitedQueue(objectId string) error {
 		info.State = FileStateLimited
 		return info, nil
 	})
+}
+
+func (s *fileSync) processFileUploading(ctx context.Context, it FileInfo) (FileInfo, error) {
+	if len(it.CidsToUpload) == 0 {
+		space, err := s.limitManager.getSpace(ctx, it.SpaceId)
+		if err != nil {
+			return it, fmt.Errorf("get space limits: %w", err)
+		}
+		space.markFileUploaded(it.Key())
+
+		err = s.updateStatus(it, filesyncstatus.Synced)
+		if err != nil {
+			return it, err
+		}
+		it.State = FileStateDone
+		return it, nil
+	}
+
+	return it, nil
 }
 
 func (s *fileSync) addToRetryUploadingQueue(objectId string) error {

@@ -9,10 +9,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/syncstatus/filesyncstatus"
 )
 
-func makeStatusUpdateItem() *statusUpdateItem {
-	return &statusUpdateItem{}
-}
-
 func (s *fileSync) updateStatus(it FileInfo, status filesyncstatus.Status) error {
 	for _, cb := range s.onStatusUpdated {
 		err := cb(it.ObjectId, domain.FullFileId{FileId: it.FileId, SpaceId: it.SpaceId}, status)

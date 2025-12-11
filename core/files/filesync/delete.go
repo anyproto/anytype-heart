@@ -44,7 +44,7 @@ func (s *fileSync) runDeleter() {
 		}
 
 		err := s.processNextToDelete(s.loopCtx)
-		if err != nil {
+		if err != nil && !errors.Is(err, filequeue.ErrClosed) {
 			log.Error("process next to delete", zap.Error(err))
 		}
 	}
@@ -52,11 +52,8 @@ func (s *fileSync) runDeleter() {
 
 func (s *fileSync) processNextToDelete(ctx context.Context) error {
 	item, err := s.queue.GetNextScheduled(ctx, filequeue.GetNextScheduledRequest[FileInfo]{
-		Subscribe: true,
-		StoreFilter: query.Key{
-			Path:   []string{"state"},
-			Filter: query.NewComp(query.CompOpEq, int(FileStatePendingDeletion)),
-		},
+		Subscribe:   true,
+		StoreFilter: filterByState(FileStatePendingDeletion),
 		StoreOrder: &query.SortField{
 			Field:   "scheduledAt",
 			Path:    []string{"scheduledAt"},
@@ -75,7 +72,7 @@ func (s *fileSync) processNextToDelete(ctx context.Context) error {
 
 	next, err := s.processDeletion(ctx, item)
 
-	releaseErr := s.queue.Release(next)
+	releaseErr := s.queue.ReleaseAndUpdate(next)
 
 	return errors.Join(releaseErr, err)
 }

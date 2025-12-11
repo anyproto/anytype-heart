@@ -742,10 +742,10 @@ func (q *Queue[T]) Upsert(id string, modifier func(exists bool, prev T) T) error
 
 	next := modifier(exists, it)
 
-	return q.Release(next)
+	return q.ReleaseAndUpdate(next)
 }
 
-func (q *Queue[T]) Release(task T) error {
+func (q *Queue[T]) ReleaseAndUpdate(task T) error {
 	responseCh := make(chan error, 1)
 	req := releaseRequest[T]{
 		action:     releaseActionUpdate,

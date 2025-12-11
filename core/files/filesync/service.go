@@ -156,8 +156,6 @@ func (s *fileSync) Run(ctx context.Context) (err error) {
 		s.queue.Run()
 	}()
 
-	s.printQueue()
-
 	s.closeWg.Add(1)
 	go s.runNodeUsageUpdater()
 	go s.requestsBatcher.run(s.loopCtx)
