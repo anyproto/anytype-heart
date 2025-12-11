@@ -21,11 +21,6 @@ func (s *service) CreateOneToOneSendInbox(ctx context.Context, description *spac
 		return nil, fmt.Errorf("create onetoone: details, OneToOneIdentity is missing")
 	}
 
-	myIdentity := s.accountService.Account().SignKey.GetPublic().Account()
-	if description.OneToOneIdentity == myIdentity {
-		return nil, fmt.Errorf("create onetoone: second participant identity equals my identity")
-	}
-
 	bobProfile, err := s.identityService.WaitProfileWithKey(ctx, description.OneToOneIdentity)
 	if err != nil {
 		return
@@ -50,6 +45,11 @@ func (s *service) CreateOneToOneSendInbox(ctx context.Context, description *spac
 
 // for acceptor (e.g. inbox message)
 func (s *service) CreateOneToOne(ctx context.Context, description *spaceinfo.SpaceDescription, bobProfile *model.IdentityProfileWithKey) (sp clientspace.Space, err error) {
+	myIdentity := s.accountService.Account().SignKey.GetPublic().Account()
+	if description.OneToOneIdentity == myIdentity {
+		return nil, fmt.Errorf("create onetoone: second participant identity equals my identity")
+	}
+
 	bPk, err := crypto.DecodeAccountAddress(bobProfile.IdentityProfile.Identity)
 	if err != nil {
 		return
