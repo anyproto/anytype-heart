@@ -158,12 +158,14 @@ func (s *service) checkArchivedRestriction(ctx context.Context, isArchived bool,
 	if !isArchived {
 		return nil
 	}
-	err := s.fileService.CanDeleteFile(ctx, objectId)
-	if err != nil {
-		return err
-	}
-
 	return cache.Do(s.objectGetter, objectId, func(sb smartblock.SmartBlock) error {
+		if sb.Type() == coresb.SmartBlockTypeFileObject {
+			err := s.fileService.CanDeleteFile(ctx, objectId)
+			if err != nil {
+				return err
+			}
+		}
+
 		return restriction.CheckRestrictions(sb, model.Restrictions_Delete)
 	})
 }

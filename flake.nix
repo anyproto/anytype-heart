@@ -9,20 +9,17 @@
         inherit system;
         config = { allowUnfree = true; };
       };
-      protoc-gen-js4 = pkgs.callPackage ./nix/protoc-gen-js4.nix {};
 
     in {
       devShell = pkgs.mkShell {
         name = "anytype-heart";
         nativeBuildInputs = [
-          pkgs.protoc-gen-grpc-web
-          protoc-gen-js4
           pkgs.go_1_24
           pkgs.gox
-          pkgs.protobuf3_21
+          pkgs.protobuf
           pkgs.pkg-config
           pkgs.pre-commit
-          # todo: govvv, not packaged
+          pkgs.nodejs # for JS protobuf plugins (installed via npm)
         ];
       };
     });

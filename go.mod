@@ -9,6 +9,7 @@ require (
 	github.com/PuerkitoBio/goquery v1.10.2
 	github.com/VividCortex/ewma v1.2.0
 	github.com/adrium/goheif v0.0.0-20230113233934-ca402e77a786
+	github.com/ahmetb/govvv v0.3.0
 	github.com/anyproto/any-store v0.4.3
 	github.com/anyproto/any-sync v0.11.5
 	github.com/anyproto/anytype-publish-server/publishclient v0.0.0-20250716122732-cdcfe3a126bb

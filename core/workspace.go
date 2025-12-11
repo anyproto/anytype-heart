@@ -91,7 +91,9 @@ func (mw *Middleware) WorkspaceOpen(cctx context.Context, req *pb.RpcWorkspaceOp
 
 	err = mw.doBlockService(func(bs *block.Service) error {
 		var shareableStatus spaceinfo.ShareableStatus
+		var spaceUxType model.SpaceUxType
 		err = cache.Do[*editor.SpaceView](bs, info.SpaceViewId, func(sv *editor.SpaceView) error {
+			spaceUxType = sv.GetSpaceDescription().SpaceUxType
 			localInfo := sv.GetLocalInfo()
 			shareableStatus = localInfo.GetShareableStatus()
 			return sv.UpdateLastOpenedDate()
@@ -99,7 +101,7 @@ func (mw *Middleware) WorkspaceOpen(cctx context.Context, req *pb.RpcWorkspaceOp
 		if err != nil {
 			return err
 		}
-		if shareableStatus == spaceinfo.ShareableStatusShareable {
+		if shareableStatus == spaceinfo.ShareableStatusShareable || spaceUxType == model.SpaceUxType_OneToOne {
 			// migration for existing users
 			err = bs.SpaceInitChat(cctx, req.SpaceId, false)
 			if err != nil {
