@@ -47,7 +47,7 @@ func (s *service) CreateOneToOneSendInbox(ctx context.Context, description *spac
 func (s *service) CreateOneToOne(ctx context.Context, description *spaceinfo.SpaceDescription, bobProfile *model.IdentityProfileWithKey) (sp clientspace.Space, err error) {
 	myIdentity := s.accountService.Account().SignKey.GetPublic().Account()
 	if description.OneToOneIdentity == myIdentity {
-		return nil, fmt.Errorf("create onetoone: second participant identity equals my identity")
+		return nil, fmt.Errorf("can't create OneToOne chat with self")
 	}
 
 	bPk, err := crypto.DecodeAccountAddress(bobProfile.IdentityProfile.Identity)
