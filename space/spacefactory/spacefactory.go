@@ -323,18 +323,17 @@ func (s *spaceFactory) CreateOneToOneSpace(ctx context.Context, spaceId string, 
 	} else {
 		// check if space is active
 		existingLocalInfo := spaceView.GetLocalInfo()
-		if existingLocalInfo.GetLocalStatus() == spaceinfo.LocalStatusOk {
-			return nil, fmt.Errorf("space already active")
-		}
-		// space has been removed, reset statuses and recreate
-		localInfo := spaceinfo.NewSpaceLocalInfo(spaceId)
-		localInfo.SetLocalStatus(spaceinfo.LocalStatusUnknown)
-		localInfo.SetRemoteStatus(spaceinfo.RemoteStatusUnknown)
-		if err := spaceView.SetSpaceLocalInfo(localInfo); err != nil {
-			return nil, err
-		}
-		if err := spaceView.SetSpacePersistentInfo(info); err != nil {
-			return nil, err
+		if existingLocalInfo.GetLocalStatus() != spaceinfo.LocalStatusOk {
+			// space has been removed, reset statuses and recreate
+			localInfo := spaceinfo.NewSpaceLocalInfo(spaceId)
+			localInfo.SetLocalStatus(spaceinfo.LocalStatusUnknown)
+			localInfo.SetRemoteStatus(spaceinfo.RemoteStatusUnknown)
+			if err := spaceView.SetSpaceLocalInfo(localInfo); err != nil {
+				return nil, err
+			}
+			if err := spaceView.SetSpacePersistentInfo(info); err != nil {
+				return nil, err
+			}
 		}
 	}
 
