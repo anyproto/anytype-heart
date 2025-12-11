@@ -42,6 +42,10 @@ func (s *Storage[T]) get(ctx context.Context, objectId string) (T, error) {
 		var defVal T
 		return defVal, ErrNotFound
 	}
+	if err != nil {
+		var defVal T
+		return defVal, err
+	}
 
 	return s.unmarshal(doc.Value())
 }
