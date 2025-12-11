@@ -29,8 +29,8 @@ func TestNew(t *testing.T) {
 		{
 			name: "Valid offset and limit",
 			queryParams: map[string]string{
-				"offset": "10",
-				"limit":  "20",
+				QueryParamOffset: "10",
+				QueryParamLimit:  "20",
 			},
 			overrideConfig: nil,
 			expectedStatus: http.StatusOK,
@@ -40,7 +40,7 @@ func TestNew(t *testing.T) {
 		{
 			name: "Offset missing, use default",
 			queryParams: map[string]string{
-				"limit": "20",
+				QueryParamLimit: "20",
 			},
 			overrideConfig: nil,
 			expectedStatus: http.StatusOK,
@@ -50,7 +50,7 @@ func TestNew(t *testing.T) {
 		{
 			name: "Limit missing, use default",
 			queryParams: map[string]string{
-				"offset": "5",
+				QueryParamOffset: "5",
 			},
 			overrideConfig: nil,
 			expectedStatus: http.StatusOK,
@@ -60,8 +60,8 @@ func TestNew(t *testing.T) {
 		{
 			name: "Limit below minimum",
 			queryParams: map[string]string{
-				"offset": "5",
-				"limit":  "0",
+				QueryParamOffset: "5",
+				QueryParamLimit:  "0",
 			},
 			overrideConfig: nil,
 			expectedStatus: http.StatusBadRequest,
@@ -69,8 +69,8 @@ func TestNew(t *testing.T) {
 		{
 			name: "Limit above maximum",
 			queryParams: map[string]string{
-				"offset": "5",
-				"limit":  "100",
+				QueryParamOffset: "5",
+				QueryParamLimit:  "100",
 			},
 			overrideConfig: nil,
 			expectedStatus: http.StatusBadRequest,
@@ -78,8 +78,8 @@ func TestNew(t *testing.T) {
 		{
 			name: "Negative offset, use default",
 			queryParams: map[string]string{
-				"offset": "-5",
-				"limit":  "10",
+				QueryParamOffset: "-5",
+				QueryParamLimit:  "10",
 			},
 			overrideConfig: nil,
 			expectedStatus: http.StatusOK,
@@ -89,8 +89,8 @@ func TestNew(t *testing.T) {
 		{
 			name: "Custom min and max page size",
 			queryParams: map[string]string{
-				"offset": "5",
-				"limit":  "15",
+				QueryParamOffset: "5",
+				QueryParamLimit:  "15",
 			},
 			overrideConfig: func(cfg Config) Config {
 				cfg.MinPageSize = 10
@@ -118,8 +118,8 @@ func TestNew(t *testing.T) {
 
 			// Define a test endpoint
 			r.GET("/", func(c *gin.Context) {
-				offset, _ := c.Get("offset")
-				limit, _ := c.Get("limit")
+				offset, _ := c.Get(QueryParamOffset)
+				limit, _ := c.Get(QueryParamLimit)
 
 				c.JSON(http.StatusOK, gin.H{
 					"offset": offset,

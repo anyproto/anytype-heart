@@ -95,11 +95,11 @@ func TestAuthService_SolveChallengeForToken(t *testing.T) {
 			}).Once()
 
 		// when
-		appKey, err := fx.service.SolveChallenge(ctx, mockedChallengeId, mockedCode)
+		apiKey, err := fx.service.CreateApiKey(ctx, mockedChallengeId, mockedCode)
 
 		// then
 		require.NoError(t, err)
-		require.Equal(t, mockedAppKey, appKey)
+		require.Equal(t, mockedAppKey, apiKey)
 
 	})
 
@@ -109,12 +109,12 @@ func TestAuthService_SolveChallengeForToken(t *testing.T) {
 		fx := newFixture(t)
 
 		// when
-		appKey, err := fx.service.SolveChallenge(ctx, "", "")
+		apiKey, err := fx.service.CreateApiKey(ctx, "", "")
 
 		// then
 		require.Error(t, err)
 		require.ErrorIs(t, err, util.ErrBad)
-		require.Empty(t, appKey)
+		require.Empty(t, apiKey)
 	})
 
 	t.Run("failed token retrieval", func(t *testing.T) {
@@ -131,11 +131,11 @@ func TestAuthService_SolveChallengeForToken(t *testing.T) {
 			}).Once()
 
 		// when
-		appKey, err := fx.service.SolveChallenge(ctx, mockedChallengeId, mockedCode)
+		apiKey, err := fx.service.CreateApiKey(ctx, mockedChallengeId, mockedCode)
 
 		// then
 		require.Error(t, err)
 		require.Equal(t, ErrFailedAuthenticate, err)
-		require.Empty(t, appKey)
+		require.Empty(t, apiKey)
 	})
 }

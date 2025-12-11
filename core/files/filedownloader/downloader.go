@@ -176,7 +176,7 @@ func (s *downloader) runSubscription() error {
 		OnRemoved: func(id string, entry downloadTask) {
 			s.removeTaskCh <- id
 		},
-	})
+	}, nil)
 	s.lock.Unlock()
 
 	err = s.filesSubscription.Run()

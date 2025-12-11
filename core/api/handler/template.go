@@ -9,16 +9,18 @@ import (
 	"github.com/anyproto/anytype-heart/core/api/pagination"
 	"github.com/anyproto/anytype-heart/core/api/service"
 	"github.com/anyproto/anytype-heart/core/api/util"
+	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
 // ListTemplatesHandler retrieves a list of templates for a type in a space
 //
 //	@Summary		List templates
 //	@Description	This endpoint returns a paginated list of templates that are associated with a specific type within a space. Templates provide pre‑configured structures for creating new objects. Each template record contains its identifier, name, and icon, so that clients can offer users a selection of templates when creating objects.
+//	@Description	Supports dynamic filtering via query parameters (e.g., ?name[contains]=invoice). See FilterCondition enum for available conditions.
 //	@Id				list_templates
 //	@Tags			Templates
 //	@Produce		json
-//	@Param			Anytype-Version	header		string											true	"The version of the API to use"	default(2025-05-20)
+//	@Param			Anytype-Version	header		string											true	"The version of the API to use"	default(2025-11-08)
 //	@Param			space_id		path		string											true	"The ID of the space to which the type belongs; must be retrieved from ListSpaces endpoint"
 //	@Param			type_id			path		string											true	"The ID of the type to retrieve templates for; must be retrieved from ListTypes endpoint or obtained from response context"
 //	@Param			offset			query		int												false	"The number of items to skip before starting to collect the result set"	default(0)
@@ -32,10 +34,13 @@ func ListTemplatesHandler(s *service.Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		spaceId := c.Param("space_id")
 		typeId := c.Param("type_id")
-		offset := c.GetInt("offset")
-		limit := c.GetInt("limit")
+		offset := c.GetInt(pagination.QueryParamOffset)
+		limit := c.GetInt(pagination.QueryParamLimit)
 
-		templates, total, hasMore, err := s.ListTemplates(c.Request.Context(), spaceId, typeId, offset, limit)
+		filtersAny, _ := c.Get("filters")
+		filters := filtersAny.([]*model.BlockContentDataviewFilter)
+
+		templates, total, hasMore, err := s.ListTemplates(c.Request.Context(), spaceId, typeId, filters, offset, limit)
 		code := util.MapErrorCode(err,
 			util.ErrToCode(service.ErrFailedRetrieveTemplateType, http.StatusInternalServerError),
 			util.ErrToCode(service.ErrTemplateTypeNotFound, http.StatusInternalServerError),
@@ -44,7 +49,7 @@ func ListTemplatesHandler(s *service.Service) gin.HandlerFunc {
 		)
 
 		if code != http.StatusOK {
-			apiErr := util.CodeToAPIError(code, err.Error())
+			apiErr := util.CodeToApiError(code, err.Error())
 			c.JSON(code, apiErr)
 			return
 		}
@@ -60,7 +65,7 @@ func ListTemplatesHandler(s *service.Service) gin.HandlerFunc {
 //	@Id				get_template
 //	@Tags			Templates
 //	@Produce		json
-//	@Param			Anytype-Version	header		string						true	"The version of the API to use"	default(2025-05-20)
+//	@Param			Anytype-Version	header		string						true	"The version of the API to use"	default(2025-11-08)
 //	@Param			space_id		path		string						true	"The ID of the space to which the template belongs; must be retrieved from ListSpaces endpoint"
 //	@Param			type_id			path		string						true	"The ID of the type to which the template belongs; must be retrieved from ListTypes endpoint or obtained from response context"
 //	@Param			template_id		path		string						true	"The ID of the template to retrieve; must be retrieved from ListTemplates endpoint or obtained from response context"
@@ -86,11 +91,11 @@ func GetTemplateHandler(s *service.Service) gin.HandlerFunc {
 		)
 
 		if code != http.StatusOK {
-			apiErr := util.CodeToAPIError(code, err.Error())
+			apiErr := util.CodeToApiError(code, err.Error())
 			c.JSON(code, apiErr)
 			return
 		}
 
-		c.JSON(http.StatusOK, apimodel.TemplateResponse{Template: template})
+		c.JSON(http.StatusOK, apimodel.TemplateResponse{Template: *template})
 	}
 }

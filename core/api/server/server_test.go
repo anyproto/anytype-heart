@@ -8,6 +8,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/anyproto/anytype-heart/core/api/core/mock_apicore"
+	"github.com/anyproto/anytype-heart/core/subscription"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
@@ -18,23 +19,32 @@ const (
 
 type fixture struct {
 	*Server
-	eventService mock_apicore.MockEventService
-	mwMock       *mock_apicore.MockClientCommands
+	mwMock               *mock_apicore.MockClientCommands
+	accountMock          *mock_apicore.MockAccountService
+	eventMock            *mock_apicore.MockEventService
+	crossSpaceSubService *mock_apicore.MockCrossSpaceSubscriptionService
 }
 
 func newFixture(t *testing.T) *fixture {
 	mwMock := mock_apicore.NewMockClientCommands(t)
-	accountService := mock_apicore.NewMockAccountService(t)
-	eventService := mock_apicore.NewMockEventService(t)
-	accountService.On("GetInfo", mock.Anything).Return(&model.AccountInfo{
+	accountMock := mock_apicore.NewMockAccountService(t)
+	eventMock := mock_apicore.NewMockEventService(t)
+	crossSpaceSubService := mock_apicore.NewMockCrossSpaceSubscriptionService(t)
+
+	crossSpaceSubService.On("Subscribe", mock.Anything, mock.Anything).Return(&subscription.SubscribeResponse{}, nil).Maybe()
+	accountMock.On("GetInfo", mock.Anything).Return(&model.AccountInfo{
 		GatewayUrl:  mockedGatewayUrl,
 		TechSpaceId: mockedTechSpaceId,
 	}, nil).Once()
-	server := NewServer(mwMock, accountService, eventService, []byte{}, []byte{})
+
+	server := NewServer(mwMock, accountMock, eventMock, crossSpaceSubService, []byte{}, []byte{})
 
 	return &fixture{
-		Server: server,
-		mwMock: mwMock,
+		Server:               server,
+		mwMock:               mwMock,
+		accountMock:          accountMock,
+		eventMock:            eventMock,
+		crossSpaceSubService: crossSpaceSubService,
 	}
 }
 
