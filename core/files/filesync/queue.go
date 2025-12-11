@@ -23,6 +23,13 @@ func (s *fileSync) process(id string, proc func(exists bool, info FileInfo) (Fil
 	return s.queue.ReleaseAndUpdate(next)
 }
 
+func filterByFileId(fileId string) query.Key {
+	return query.Key{
+		Path:   []string{"fileId"},
+		Filter: query.NewComp(query.CompOpEq, fileId),
+	}
+}
+
 func filterByState(state FileState) query.Key {
 	return query.Key{
 		Path:   []string{"state"},

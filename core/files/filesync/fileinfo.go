@@ -106,7 +106,7 @@ func unmarshalFileInfo(doc *anyenc.Value) (FileInfo, error) {
 		if err != nil {
 			return FileInfo{}, fmt.Errorf("parse cid: %w", err)
 		}
-		cidsToUpload[c] = struct{}{}
+		cidsToBind[c] = struct{}{}
 	}
 	fileId := domain.FileId(doc.GetString("fileId"))
 	if !fileId.Valid() {

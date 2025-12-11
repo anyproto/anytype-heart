@@ -95,16 +95,6 @@ func (s *fileSync) resetUploadingStatus(ctx context.Context) error {
 func (s *fileSync) runUploader(ctx context.Context) {
 
 	for {
-		err := s.resetUploadingStatus(ctx)
-		if errors.Is(err, filequeue.ErrNoRows) {
-			break
-		}
-		if err != nil {
-			log.Error("reset uploading status", zap.Error(err))
-		}
-	}
-
-	for {
 		select {
 		case <-ctx.Done():
 			return
@@ -148,6 +138,7 @@ func (s *fileSync) processFilePendingUpload(ctx context.Context, it FileInfo) (F
 
 	it.BytesToUploadOrBind = blocksAvailability.bytesToUploadOrBind
 	it.CidsToBind = blocksAvailability.cidsToBind
+	it.CidsToUpload = blocksAvailability.cidsToUpload
 
 	spaceLimits, err := s.limitManager.getSpace(ctx, it.SpaceId)
 	if err != nil {

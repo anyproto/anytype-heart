@@ -2,6 +2,7 @@ package filesync
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -147,9 +148,9 @@ func (s *fileSync) Name() (name string) {
 	return CName
 }
 
-func (s *fileSync) Run(ctx context.Context) (err error) {
+func (s *fileSync) Run(ctx context.Context) error {
 	if s.cfg.IsLocalOnlyMode() {
-		return
+		return nil
 	}
 
 	go func() {
@@ -163,6 +164,16 @@ func (s *fileSync) Run(ctx context.Context) (err error) {
 		go s.runBatchUploader()
 	}
 
+	for {
+		err := s.resetUploadingStatus(ctx)
+		if errors.Is(err, filequeue.ErrNoRows) {
+			break
+		}
+		if err != nil {
+			log.Error("reset uploading status", zap.Error(err))
+		}
+	}
+
 	for range 10 {
 		go s.runUploader(s.loopCtx)
 	}
@@ -171,7 +182,7 @@ func (s *fileSync) Run(ctx context.Context) (err error) {
 
 	go s.runDeleter()
 
-	return
+	return nil
 }
 
 func (s *fileSync) Close(ctx context.Context) error {
