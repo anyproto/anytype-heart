@@ -80,7 +80,7 @@ func TestSpaceLimit(t *testing.T) {
 				spaceId := "space1"
 				updateCh := make(chan updateMessage, 1)
 
-				usage := newSpaceUsage(spaceId, rpcStore, updateCh)
+				usage := newSpaceUsage(ctx, spaceId, rpcStore, updateCh)
 
 				var wg sync.WaitGroup
 				errorsCh := make(chan error, tc.filesToUpload)
@@ -123,7 +123,7 @@ func TestSpaceLimit(t *testing.T) {
 		spaceId := "space1"
 		updateCh := make(chan updateMessage, 1)
 
-		usage := newSpaceUsage(spaceId, rpcStore, updateCh)
+		usage := newSpaceUsage(ctx, spaceId, rpcStore, updateCh)
 
 		err := usage.allocateFile(ctx, "file1", 90_000_000)
 		require.NoError(t, err)
@@ -152,7 +152,7 @@ func TestSpaceLimit(t *testing.T) {
 
 		updateCh := make(chan updateMessage, 1)
 
-		usage := newSpaceUsage(spaceId, rpcStore, updateCh)
+		usage := newSpaceUsage(ctx, spaceId, rpcStore, updateCh)
 
 		err := usage.allocateFile(ctx, "file1", 90_000_000)
 		require.NoError(t, err)

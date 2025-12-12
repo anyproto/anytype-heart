@@ -14,6 +14,10 @@ import (
 )
 
 func (s *fileSync) DeleteFile(objectId string, fileId domain.FullFileId) error {
+	if s.cfg.IsLocalOnlyMode() {
+		return nil
+	}
+
 	return s.process(objectId, func(exists bool, info FileInfo) (FileInfo, error) {
 		if exists {
 			info.State = FileStatePendingDeletion

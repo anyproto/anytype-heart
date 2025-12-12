@@ -58,7 +58,7 @@ func newFixture(t *testing.T) *fixture {
 	r := New()
 	objectStore := objectstore.NewStoreFixture(t)
 	fileSync := mock_filesync.NewMockFileSync(t)
-	fileSync.EXPECT().OnUploaded(mock.Anything)
+	fileSync.EXPECT().OnStatusUpdated(mock.Anything).Maybe()
 
 	fileStorage := mock_filestorage.NewMockFileStorage(t)
 	objectGetter := mock_cache.NewMockObjectGetterComponent(t)
@@ -210,12 +210,10 @@ func TestRebindQueue(t *testing.T) {
 
 	fx.fileSync.EXPECT().CancelDeletion("objectId1", testFullFileId).Return(nil)
 	fx.fileSync.EXPECT().AddFile(filesync.AddFileRequest{
-		FileObjectId:        "objectId1",
-		FileId:              testFullFileId,
-		UploadedByUser:      false,
-		Imported:            false,
-		PrioritizeVariantId: "",
-		Score:               0,
+		FileObjectId:   "objectId1",
+		FileId:         testFullFileId,
+		UploadedByUser: false,
+		Imported:       false,
 	}).Return(nil)
 
 	err := fx.rebindQueue.Add(&queueItem{

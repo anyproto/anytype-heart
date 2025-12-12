@@ -16,8 +16,6 @@ import (
 	"github.com/ipfs/go-cid"
 	mh "github.com/multiformats/go-multihash"
 
-	"github.com/anyproto/anytype-heart/core/files/fileoffloader"
-	"github.com/anyproto/anytype-heart/core/files/filesync"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space"
 )
@@ -32,12 +30,10 @@ type Service interface {
 }
 
 type service struct {
-	commonFile      fileservice.FileService
-	fileOffloader   fileoffloader.Service
-	fileSyncService filesync.FileSync
-	coordinator     coordinatorclient.CoordinatorClient
-	spaceService    space.Service
-	techSpaceId     string
+	commonFile   fileservice.FileService
+	coordinator  coordinatorclient.CoordinatorClient
+	spaceService space.Service
+	techSpaceId  string
 }
 
 func New() Service {
@@ -45,9 +41,7 @@ func New() Service {
 }
 
 func (s *service) Init(a *app.App) error {
-	s.fileOffloader = app.MustComponent[fileoffloader.Service](a)
 	s.commonFile = app.MustComponent[fileservice.FileService](a)
-	s.fileSyncService = app.MustComponent[filesync.FileSync](a)
 	s.coordinator = app.MustComponent[coordinatorclient.CoordinatorClient](a)
 	s.spaceService = app.MustComponent[space.Service](a)
 	return nil

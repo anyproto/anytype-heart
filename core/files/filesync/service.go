@@ -25,7 +25,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/syncstatus/filesyncstatus"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/datastore/anystoreprovider"
-	"github.com/anyproto/anytype-heart/space"
 	"github.com/anyproto/anytype-heart/util/keyvaluestore"
 )
 
@@ -39,7 +38,6 @@ type StatusCallback func(fileObjectId string, fileId domain.FullFileId, status f
 
 type FileSync interface {
 	AddFile(req AddFileRequest) (err error)
-	UploadSynchronously(ctx context.Context, spaceId string, fileId domain.FileId) error
 	OnStatusUpdated(StatusCallback)
 	CancelDeletion(objectId string, fileId domain.FullFileId) (err error)
 	DeleteFile(objectId string, fileId domain.FullFileId) (err error)
@@ -98,6 +96,10 @@ type fileSync struct {
 	closeWg *sync.WaitGroup
 }
 
+type spaceService interface {
+	TechSpaceId() string
+}
+
 func New() FileSync {
 	return &fileSync{closeWg: &sync.WaitGroup{}}
 }
@@ -108,7 +110,7 @@ func (s *fileSync) Init(a *app.App) (err error) {
 	s.dagService = app.MustComponent[fileservice.FileService](a).DAGService()
 	s.eventSender = app.MustComponent[event.Sender](a)
 	s.cfg = app.MustComponent[*config.Config](a)
-	techSpaceId := app.MustComponent[space.Service](a).TechSpaceId()
+	techSpaceId := app.MustComponent[spaceService](a).TechSpaceId()
 	s.limitManager = newSpaceUsageManager(app.MustComponent[subscription.Service](a), s.rpcStore, techSpaceId)
 	err = s.limitManager.init()
 	if err != nil {
@@ -199,6 +201,7 @@ func (s *fileSync) Close(ctx context.Context) error {
 		}
 	}()
 
+	s.limitManager.close()
 	s.closeWg.Wait()
 
 	return nil

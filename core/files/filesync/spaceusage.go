@@ -97,7 +97,7 @@ func (m *spaceUsageManager) init() error {
 					}
 				}
 			}()
-			usage := newSpaceUsage(spaceId, m.rpcStore, updateCh)
+			usage := newSpaceUsage(m.ctx, spaceId, m.rpcStore, updateCh)
 			return spaceId, usage
 		},
 		UpdateKeys: func(keyValues []objectsubscription.RelationKeyValue, curEntry *spaceUsage) (updatedEntry *spaceUsage) {
@@ -146,9 +146,8 @@ func (m *spaceUsageManager) getSpace(ctx context.Context, spaceId string) (*spac
 	return spc, nil
 }
 
-// TODO Lifecycle:
-// - Init:
-//		- subscribe for spaces, for each space:
-// 			- read from cache OR init with default value
-// - Each X minutes: request fresh info for a space
-// - On each upload request: request fresh info if TTL is gone
+func (m *spaceUsageManager) close() {
+	if m.ctxCancel != nil {
+		m.ctxCancel()
+	}
+}

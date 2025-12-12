@@ -16,6 +16,7 @@ const spaceUsageTTL = 30 * time.Second
 // spaceUsage helps to track limits usage for parallel uploading. To do that we track sizes of currently uploading files
 // and estimate free space using that information.
 type spaceUsage struct {
+	ctx     context.Context
 	spaceId string
 	lock    sync.Mutex
 
@@ -29,8 +30,9 @@ type spaceUsage struct {
 	updatedAt      time.Time
 }
 
-func newSpaceUsage(spaceId string, rpcStore rpcstore.RpcStore, updateCh chan<- updateMessage) *spaceUsage {
+func newSpaceUsage(ctx context.Context, spaceId string, rpcStore rpcstore.RpcStore, updateCh chan<- updateMessage) *spaceUsage {
 	s := &spaceUsage{
+		ctx:      ctx,
 		spaceId:  spaceId,
 		rpcStore: rpcStore,
 		updateCh: updateCh,
@@ -38,14 +40,21 @@ func newSpaceUsage(spaceId string, rpcStore rpcstore.RpcStore, updateCh chan<- u
 	}
 
 	go func() {
+		update := func() {
+			err := s.Update(context.TODO())
+			if err != nil {
+				log.Error("update space usage in background", zap.Error(err), zap.String("spaceId", s.spaceId))
+			}
+		}
+
+		update()
 		ticker := time.NewTicker(1 * time.Minute)
+		defer ticker.Stop()
 		for {
 			select {
+			case <-ctx.Done():
 			case <-ticker.C:
-				err := s.Update(context.TODO())
-				if err != nil {
-					log.Error("update space usage in background", zap.Error(err), zap.String("spaceId", s.spaceId))
-				}
+				update()
 			}
 		}
 	}()

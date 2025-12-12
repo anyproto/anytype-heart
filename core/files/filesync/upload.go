@@ -32,7 +32,11 @@ type AddFileRequest struct {
 	Variants []domain.FileId
 }
 
-func (s *fileSync) AddFile(req AddFileRequest) (err error) {
+func (s *fileSync) AddFile(req AddFileRequest) error {
+	if s.cfg.IsLocalOnlyMode() {
+		return nil
+	}
+
 	return s.process(req.FileObjectId, func(exists bool, info FileInfo) (FileInfo, error) {
 		if exists {
 			return info, nil
@@ -65,11 +69,6 @@ func (s *fileSync) ClearImportEvents() {
 	s.importEventsMutex.Lock()
 	defer s.importEventsMutex.Unlock()
 	s.importEvents = nil
-}
-
-// UploadSynchronously is used only for invites
-func (s *fileSync) UploadSynchronously(ctx context.Context, spaceId string, fileId domain.FileId) error {
-	return fmt.Errorf("TODO")
 }
 
 func (s *fileSync) resetUploadingStatus(ctx context.Context) error {

@@ -21,9 +21,9 @@ type StoreFixture struct {
 	FullText ftsearch.FTSearch
 }
 
-func (fx *StoreFixture) TechSpaceId() string {
-	return fx.techSpaceIdProvider.TechSpaceId()
-}
+// func (fx *StoreFixture) TechSpaceId() string {
+// 	return fx.techSpaceIdProvider.TechSpaceId()
+// }
 
 type virtualDetailsHandler interface {
 	AddVirtualDetails(id string, det *domain.Details)
