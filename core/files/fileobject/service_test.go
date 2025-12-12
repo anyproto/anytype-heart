@@ -27,8 +27,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/files/fileobject/filemodels"
 	"github.com/anyproto/anytype-heart/core/files/fileoffloader"
 	"github.com/anyproto/anytype-heart/core/files/filestorage"
-	"github.com/anyproto/anytype-heart/core/files/filestorage/rpcstore"
-	"github.com/anyproto/anytype-heart/core/files/filesync"
+	"github.com/anyproto/anytype-heart/core/files/filesync/mock_filesync"
 	"github.com/anyproto/anytype-heart/core/relationutils/mock_relationutils"
 	wallet2 "github.com/anyproto/anytype-heart/core/wallet"
 	"github.com/anyproto/anytype-heart/core/wallet/mock_wallet"
@@ -50,7 +49,6 @@ type fixture struct {
 	spaceService      *mock_space.MockService
 	spaceIdResolver   *mock_idresolver.MockResolver
 	commonFileService fileservice.FileService
-	rpcStore          *rpcstore.InMemoryStore
 	*service
 }
 
@@ -95,10 +93,10 @@ func newFixture(t *testing.T) *fixture {
 	objectCreator := &objectCreatorStub{}
 
 	blockStorage := filestorage.NewInMemory()
-	rpcStore := rpcstore.NewInMemoryStore(10 * 1024 * 1024)
-	rpcStoreService := rpcstore.NewInMemoryService(rpcStore)
 	commonFileService := fileservice.New()
-	fileSyncService := filesync.New()
+	fileSyncService := mock_filesync.NewMockFileSync(t)
+	fileSyncService.EXPECT().AddFile(mock.Anything).Return(nil).Maybe()
+
 	eventSender := mock_event.NewMockSender(t)
 	eventSender.EXPECT().Broadcast(mock.Anything).Return().Maybe()
 	fileService := files.New()
@@ -130,11 +128,10 @@ func newFixture(t *testing.T) *fixture {
 	a.Register(anystoreprovider.New())
 	a.Register(objectStore)
 	a.Register(commonFileService)
-	a.Register(fileSyncService)
+	a.Register(testutil.PrepareMock(ctx, a, fileSyncService))
 	a.Register(testutil.PrepareMock(ctx, a, eventSender))
 	a.Register(testutil.PrepareMock(ctx, a, spaceService))
 	a.Register(blockStorage)
-	a.Register(rpcStoreService)
 	a.Register(fileService)
 	a.Register(objectCreator)
 	a.Register(svc)
@@ -160,7 +157,6 @@ func newFixture(t *testing.T) *fixture {
 		spaceService:      spaceService,
 		spaceIdResolver:   spaceIdResolver,
 		commonFileService: commonFileService,
-		rpcStore:          rpcStore,
 
 		service: svc.(*service),
 	}
