@@ -43,7 +43,6 @@ func (s *service) CreateOneToOneSendInbox(ctx context.Context, description *spac
 	return sp, nil
 }
 
-// for acceptor (e.g. inbox message)
 func (s *service) CreateOneToOne(ctx context.Context, description *spaceinfo.SpaceDescription, bobProfile *model.IdentityProfileWithKey) (sp clientspace.Space, err error) {
 	myIdentity := s.accountService.Account().SignKey.GetPublic().Account()
 	if description.OneToOneIdentity == myIdentity {
