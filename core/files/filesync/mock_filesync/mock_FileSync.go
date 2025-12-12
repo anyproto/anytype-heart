@@ -666,54 +666,6 @@ func (_c *MockFileSync_UpdateNodeUsage_Call) RunAndReturn(run func(context.Conte
 	return _c
 }
 
-// UploadSynchronously provides a mock function with given fields: ctx, spaceId, fileId
-func (_m *MockFileSync) UploadSynchronously(ctx context.Context, spaceId string, fileId domain.FileId) error {
-	ret := _m.Called(ctx, spaceId, fileId)
-
-	if len(ret) == 0 {
-		panic("no return value specified for UploadSynchronously")
-	}
-
-	var r0 error
-	if rf, ok := ret.Get(0).(func(context.Context, string, domain.FileId) error); ok {
-		r0 = rf(ctx, spaceId, fileId)
-	} else {
-		r0 = ret.Error(0)
-	}
-
-	return r0
-}
-
-// MockFileSync_UploadSynchronously_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'UploadSynchronously'
-type MockFileSync_UploadSynchronously_Call struct {
-	*mock.Call
-}
-
-// UploadSynchronously is a helper method to define mock.On call
-//   - ctx context.Context
-//   - spaceId string
-//   - fileId domain.FileId
-func (_e *MockFileSync_Expecter) UploadSynchronously(ctx interface{}, spaceId interface{}, fileId interface{}) *MockFileSync_UploadSynchronously_Call {
-	return &MockFileSync_UploadSynchronously_Call{Call: _e.mock.On("UploadSynchronously", ctx, spaceId, fileId)}
-}
-
-func (_c *MockFileSync_UploadSynchronously_Call) Run(run func(ctx context.Context, spaceId string, fileId domain.FileId)) *MockFileSync_UploadSynchronously_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(string), args[2].(domain.FileId))
-	})
-	return _c
-}
-
-func (_c *MockFileSync_UploadSynchronously_Call) Return(_a0 error) *MockFileSync_UploadSynchronously_Call {
-	_c.Call.Return(_a0)
-	return _c
-}
-
-func (_c *MockFileSync_UploadSynchronously_Call) RunAndReturn(run func(context.Context, string, domain.FileId) error) *MockFileSync_UploadSynchronously_Call {
-	_c.Call.Return(run)
-	return _c
-}
-
 // NewMockFileSync creates a new instance of MockFileSync. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.
 // The first argument is typically a *testing.T value.
 func NewMockFileSync(t interface {
