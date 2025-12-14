@@ -65,8 +65,10 @@ func (bs *basic) UpdateDetails(ctx session.Context, update func(current *domain.
 	}
 
 	flags := internalflag.NewFromState(s.ParentState())
-	flags.Remove(model.InternalFlag_editorDeleteEmpty)
-	flags.AddToState(s)
+	if flags.Has(model.InternalFlag_editorDeleteEmpty) {
+		flags.Remove(model.InternalFlag_editorDeleteEmpty)
+		flags.AddToState(s)
+	}
 
 	return bs.Apply(s, smartblock.NoRestrictions, smartblock.KeepInternalFlags)
 }
