@@ -172,7 +172,7 @@ func (l *linkPreview) convertOGToInfo(fetchUrl string, og *opengraph.OpenGraph, 
 	if !utf8.ValidString(i.Description) {
 		i.Description = ""
 	}
-	i.Description = trimDescription(i.Description)
+	i.Description = text.TruncateEllipsized(i.Description, maxDescriptionSize)
 	if !utf8.ValidString(i.Title) {
 		i.Title = ""
 	}
@@ -479,11 +479,4 @@ func replaceGenericTitle(preview *model.LinkPreview, htmlContent []byte) {
 			}
 		}
 	}
-}
-
-func trimDescription(description string) string {
-	if text.UTF16RuneCountString(description) > maxDescriptionSize {
-		description = string([]rune(description)[:maxDescriptionSize]) + "..."
-	}
-	return description
 }
