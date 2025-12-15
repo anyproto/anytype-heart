@@ -10,6 +10,21 @@ import (
 	blocks "github.com/ipfs/go-block-format"
 )
 
+// requestsBatcher batches file upload requests to one or many BlockPushMany requests
+// Multiple small files could be batched together. In contrast, large files will be uploaded within multiple requests
+type requestsBatcher struct {
+	maxBatchSize int
+	maxBatchWait time.Duration
+	requests     chan<- blockPushManyRequest
+
+	lock        sync.Mutex
+	fileBatches map[string]*fileBatch
+}
+
+// newRequestsBatcher create a new instance of a batcher
+// - maxBatchSize controls the maximum data that can be uploaded at once
+// - maxBatchWait controls maximum wait time for a batch to be uploaded. It's required to avoid waiting for batches to be full before sending a request
+// - requestsCh is channel where requests are sent
 func newRequestsBatcher(maxBatchSize int, maxBatchWait time.Duration, requestCh chan<- blockPushManyRequest) *requestsBatcher {
 	return &requestsBatcher{
 		maxBatchSize: maxBatchSize,
@@ -47,6 +62,8 @@ func (b *requestsBatcher) addFile(spaceId string, fileId string, objectId string
 	for _, block := range blocks {
 		ok = batch.addBlock(block, b.maxBatchSize)
 		if !ok {
+			// We don't use mixedBatch here because mixedBatch is designed to combine multiple small files. But in this
+			// case we are trying to upload a large file that be scattered to multiple upload requests.
 			b.enqueue(batch)
 			batch.reset()
 			ok = batch.addBlock(block, b.maxBatchSize)
@@ -71,8 +88,11 @@ func (b *requestsBatcher) tick() {
 	defer b.lock.Unlock()
 
 	// TODO Think about optimized batching using max-heap for files or any other approach
+
+	// Use mixedBatch to group multiple file batches together
 	var lastMixedBatch *mixedBatch
 	for fileId, batch := range b.fileBatches {
+		// If it's time to send a batch to the server
 		if time.Since(batch.createdAt) > b.maxBatchWait {
 			if lastMixedBatch == nil {
 				lastMixedBatch = &mixedBatch{
@@ -98,6 +118,13 @@ func (b *requestsBatcher) tick() {
 	}
 }
 
+func (b *requestsBatcher) enqueue(batch genericBatch) {
+	req := batch.buildRequest()
+	if len(req.req.FileBlocks) > 0 {
+		b.requests <- req
+	}
+}
+
 type blockPushManyRequest struct {
 	fileIdToObjectId map[string]string
 	req              *fileproto.BlockPushManyRequest
@@ -105,13 +132,6 @@ type blockPushManyRequest struct {
 
 type genericBatch interface {
 	buildRequest() blockPushManyRequest
-}
-
-func (b *requestsBatcher) enqueue(batch genericBatch) {
-	req := batch.buildRequest()
-	if len(req.req.FileBlocks) > 0 {
-		b.requests <- req
-	}
 }
 
 type fileBatch struct {
@@ -123,6 +143,7 @@ type fileBatch struct {
 	createdAt time.Time
 }
 
+// addBlock tries to add a block. It returns true if the block fits within current batch
 func (b *fileBatch) addBlock(block blocks.Block, maxBatchSize int) bool {
 	blockSize := len(block.RawData())
 	if b.totalSize+blockSize > maxBatchSize {
@@ -166,6 +187,7 @@ func (b *fileBatch) reset() {
 	b.blocks = nil
 }
 
+// mixedBatch groups multiple fileBatches together
 type mixedBatch struct {
 	totalSize        int
 	files            map[string][]blocks.Block
@@ -173,6 +195,7 @@ type mixedBatch struct {
 	fileIdToSpaceId  map[string]string
 }
 
+// addBlock tries to add block to the mixed batch. It returns true if the block fits within current batch
 func (b *mixedBatch) addBlock(spaceId string, fileId string, objectId string, block blocks.Block, maxBatchSize int) bool {
 	blockSize := len(block.RawData())
 	if b.totalSize+blockSize > maxBatchSize {
@@ -214,13 +237,4 @@ func (b *mixedBatch) reset() {
 	b.files = map[string][]blocks.Block{}
 	b.fileIdToObjectId = map[string]string{}
 	b.fileIdToSpaceId = map[string]string{}
-}
-
-type requestsBatcher struct {
-	maxBatchSize int
-	maxBatchWait time.Duration
-	requests     chan<- blockPushManyRequest
-
-	lock        sync.Mutex
-	fileBatches map[string]*fileBatch
 }

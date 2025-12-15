@@ -128,8 +128,6 @@ func TestBatcher(t *testing.T) {
 			})
 		}
 	})
-
-	// TODO Large test with requests validation
 }
 
 func waitRequests(queue chan blockPushManyRequest) []*fileproto.BlockPushManyRequest {
