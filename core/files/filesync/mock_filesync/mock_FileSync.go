@@ -75,53 +75,6 @@ func (_c *MockFileSync_AddFile_Call) RunAndReturn(run func(filesync.AddFileReque
 	return _c
 }
 
-// CancelDeletion provides a mock function with given fields: objectId, fileId
-func (_m *MockFileSync) CancelDeletion(objectId string, fileId domain.FullFileId) error {
-	ret := _m.Called(objectId, fileId)
-
-	if len(ret) == 0 {
-		panic("no return value specified for CancelDeletion")
-	}
-
-	var r0 error
-	if rf, ok := ret.Get(0).(func(string, domain.FullFileId) error); ok {
-		r0 = rf(objectId, fileId)
-	} else {
-		r0 = ret.Error(0)
-	}
-
-	return r0
-}
-
-// MockFileSync_CancelDeletion_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'CancelDeletion'
-type MockFileSync_CancelDeletion_Call struct {
-	*mock.Call
-}
-
-// CancelDeletion is a helper method to define mock.On call
-//   - objectId string
-//   - fileId domain.FullFileId
-func (_e *MockFileSync_Expecter) CancelDeletion(objectId interface{}, fileId interface{}) *MockFileSync_CancelDeletion_Call {
-	return &MockFileSync_CancelDeletion_Call{Call: _e.mock.On("CancelDeletion", objectId, fileId)}
-}
-
-func (_c *MockFileSync_CancelDeletion_Call) Run(run func(objectId string, fileId domain.FullFileId)) *MockFileSync_CancelDeletion_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(string), args[1].(domain.FullFileId))
-	})
-	return _c
-}
-
-func (_c *MockFileSync_CancelDeletion_Call) Return(err error) *MockFileSync_CancelDeletion_Call {
-	_c.Call.Return(err)
-	return _c
-}
-
-func (_c *MockFileSync_CancelDeletion_Call) RunAndReturn(run func(string, domain.FullFileId) error) *MockFileSync_CancelDeletion_Call {
-	_c.Call.Return(run)
-	return _c
-}
-
 // ClearImportEvents provides a mock function with given fields:
 func (_m *MockFileSync) ClearImportEvents() {
 	_m.Called()

@@ -2,10 +2,12 @@ package filesync
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"sync"
 	"time"
 
+	"github.com/anyproto/any-sync/commonfile/fileproto/fileprotoerr"
 	"go.uber.org/zap"
 
 	"github.com/anyproto/anytype-heart/core/files/filestorage/rpcstore"
@@ -41,8 +43,8 @@ func newSpaceUsage(ctx context.Context, spaceId string, rpcStore rpcstore.RpcSto
 
 	go func() {
 		update := func() {
-			err := s.Update(context.TODO())
-			if err != nil {
+			err := s.Update(ctx)
+			if err != nil && !errors.Is(err, fileprotoerr.ErrForbidden) {
 				log.Error("update space usage in background", zap.Error(err), zap.String("spaceId", s.spaceId))
 			}
 		}
@@ -183,13 +185,6 @@ func (s *spaceUsage) sendUpdate() {
 	case s.updateCh <- msg:
 	default:
 	}
-}
-
-func (s *spaceUsage) SendUpdate() {
-	s.lock.Lock()
-	defer s.lock.Unlock()
-
-	s.sendUpdate()
 }
 
 type allocatedFile struct {

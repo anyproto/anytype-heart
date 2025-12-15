@@ -117,7 +117,6 @@ func (m *spaceUsageManager) init() error {
 		var errGroup errgroup.Group
 		sub.Iterate(func(id string, usage *spaceUsage) bool {
 			errGroup.Go(func() error {
-				// TODO Add timeout and cache
 				err := usage.Update(m.ctx)
 				if err != nil {
 					return err

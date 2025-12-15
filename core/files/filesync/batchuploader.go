@@ -71,7 +71,6 @@ func (s *fileSync) addToRetryUploadingQueue(objectId string) error {
 		}
 
 		info.State = FileStatePendingUpload
-		// TODO add jitter
 		info.ScheduledAt = time.Now().Add(1 * time.Minute)
 		return info, nil
 	})

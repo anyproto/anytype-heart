@@ -35,10 +35,6 @@ func (s *fileSync) DeleteFile(objectId string, fileId domain.FullFileId) error {
 	})
 }
 
-func (s *fileSync) CancelDeletion(objectId string, fileId domain.FullFileId) error {
-	return fmt.Errorf("TODO")
-}
-
 func (s *fileSync) runDeleter() {
 	for {
 		select {
@@ -84,7 +80,6 @@ func (s *fileSync) processNextToDelete(ctx context.Context) error {
 func (s *fileSync) processDeletion(ctx context.Context, it FileInfo) (FileInfo, error) {
 	err := s.rpcStore.DeleteFiles(ctx, it.SpaceId, it.FileId)
 	if err != nil {
-		// TODO Add jitter
 		it.ScheduledAt = time.Now().Add(time.Minute)
 		return it, err
 	}

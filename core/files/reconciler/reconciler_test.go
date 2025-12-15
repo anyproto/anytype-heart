@@ -208,7 +208,6 @@ func TestFileObjectHook(t *testing.T) {
 func TestRebindQueue(t *testing.T) {
 	fx := newFixture(t)
 
-	fx.fileSync.EXPECT().CancelDeletion("objectId1", testFullFileId).Return(nil)
 	fx.fileSync.EXPECT().AddFile(filesync.AddFileRequest{
 		FileObjectId:   "objectId1",
 		FileId:         testFullFileId,

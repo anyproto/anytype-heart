@@ -39,7 +39,6 @@ type StatusCallback func(fileObjectId string, fileId domain.FullFileId, status f
 type FileSync interface {
 	AddFile(req AddFileRequest) (err error)
 	OnStatusUpdated(StatusCallback)
-	CancelDeletion(objectId string, fileId domain.FullFileId) (err error)
 	DeleteFile(objectId string, fileId domain.FullFileId) (err error)
 	UpdateNodeUsage(ctx context.Context) error
 	NodeUsage(ctx context.Context) (usage NodeUsage, err error)

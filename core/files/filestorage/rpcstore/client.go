@@ -334,7 +334,7 @@ func (c *client) spaceInfo(ctx context.Context, spaceId string) (info *fileproto
 		info, err = fileproto.NewDRPCFileClient(conn).SpaceInfo(ctx, &fileproto.SpaceInfoRequest{
 			SpaceId: spaceId,
 		})
-		return err
+		return rpcerr.Unwrap(err)
 	})
 	return
 }
