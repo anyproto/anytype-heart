@@ -7,8 +7,6 @@ import (
 	"slices"
 	"time"
 
-	anystore "github.com/anyproto/any-store"
-	"github.com/anyproto/any-store/anyenc"
 	"github.com/anyproto/any-store/query"
 	"github.com/globalsign/mgo/bson"
 )
@@ -16,155 +14,6 @@ import (
 var ErrClosed = fmt.Errorf("closed")
 var ErrNotFound = fmt.Errorf("not found")
 var ErrNoRows = fmt.Errorf("no rows")
-
-type marshalFunc[T any] func(arena *anyenc.Arena, val T) *anyenc.Value
-type unmarshalFunc[T any] func(v *anyenc.Value) (T, error)
-
-type Storage[T any] struct {
-	arena     *anyenc.Arena
-	coll      anystore.Collection
-	marshal   marshalFunc[T]
-	unmarshal unmarshalFunc[T]
-}
-
-func NewStorage[T any](coll anystore.Collection, marshal marshalFunc[T], unmarshal unmarshalFunc[T]) *Storage[T] {
-	return &Storage[T]{
-		arena:     &anyenc.Arena{},
-		coll:      coll,
-		marshal:   marshal,
-		unmarshal: unmarshal,
-	}
-}
-
-func (s *Storage[T]) get(ctx context.Context, objectId string) (T, error) {
-	doc, err := s.coll.FindId(ctx, objectId)
-	if errors.Is(err, anystore.ErrDocNotFound) {
-		var defVal T
-		return defVal, ErrNotFound
-	}
-	if err != nil {
-		var defVal T
-		return defVal, err
-	}
-
-	return s.unmarshal(doc.Value())
-}
-
-func (s *Storage[T]) set(ctx context.Context, objectId string, file T) error {
-	defer s.arena.Reset()
-
-	val := s.marshal(s.arena, file)
-	val.Set("id", s.arena.NewString(objectId))
-	return s.coll.UpsertOne(ctx, val)
-}
-
-func (s *Storage[T]) delete(ctx context.Context, objectId string) error {
-	return s.coll.DeleteId(ctx, objectId)
-}
-
-func (s *Storage[T]) query(ctx context.Context, filter query.Filter, order query.Sort, inMemoryFilter func(T) bool) (T, error) {
-	var defVal T
-
-	var sortArgs []any
-	if order != nil {
-		sortArgs = []any{order}
-	}
-
-	// Unfortunately, we can't use limit as we need to check row locks on the application level
-	// TODO Maybe query items by some batch, for example 10 items at once
-	iter, err := s.coll.Find(filter).Sort(sortArgs...).Iter(ctx)
-	if err != nil {
-		return defVal, fmt.Errorf("iter: %w", err)
-	}
-	defer iter.Close()
-
-	for iter.Next() {
-		doc, err := iter.Doc()
-		if err != nil {
-			return defVal, fmt.Errorf("read doc: %w", err)
-		}
-
-		val, err := s.unmarshal(doc.Value())
-		if err != nil {
-			return defVal, fmt.Errorf("unmarshal: %w", err)
-		}
-
-		if inMemoryFilter(val) {
-			return val, nil
-		}
-	}
-
-	return defVal, ErrNoRows
-}
-
-func (s *Storage[T]) listAll(ctx context.Context) ([]T, error) {
-	iter, err := s.coll.Find(nil).Iter(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("iter: %w", err)
-	}
-	defer iter.Close()
-
-	var res []T
-	for iter.Next() {
-		doc, err := iter.Doc()
-		if err != nil {
-			return nil, fmt.Errorf("read doc: %w", err)
-		}
-
-		val, err := s.unmarshal(doc.Value())
-		if err != nil {
-			return nil, fmt.Errorf("unmarshal: %w", err)
-		}
-		res = append(res, val)
-	}
-	return res, nil
-}
-
-type getByIdRequest[T any] struct {
-	objectId   string
-	responseCh chan itemResponse[T]
-}
-
-type itemResponse[T any] struct {
-	item T
-	err  error
-}
-
-type getNextRequest[T any] struct {
-	id          string
-	ctx         context.Context
-	subscribe   bool
-	storeFilter query.Filter
-	storeOrder  query.Sort
-	filter      func(T) bool
-	scheduledAt func(T) time.Time
-
-	responseCh chan itemResponse[T]
-}
-
-type scheduledItem[T any] struct {
-	timer         *time.Timer
-	cancelTimerCh chan struct{}
-	item          T
-
-	request    getNextRequest[T]
-	responseCh chan itemResponse[T]
-}
-
-type releaseAction int
-
-const (
-	releaseActionNone = releaseAction(iota)
-	releaseActionUpdate
-	releaseActionDelete
-)
-
-type releaseRequest[T any] struct {
-	objectId   string
-	item       T
-	action     releaseAction
-	responseCh chan error
-}
 
 type Queue[T any] struct {
 	ctx       context.Context
@@ -174,11 +23,12 @@ type Queue[T any] struct {
 
 	getId func(T) string
 
-	// TODO Comment each field
 	closed   bool
 	closedCh chan struct{}
 
-	closeCh            chan struct{}
+	closeCh chan struct{}
+
+	// request channels
 	getByIdCh          chan getByIdRequest[T]
 	getNextCh          chan getNextRequest[T]
 	getNextScheduledCh chan getNextRequest[T]
@@ -186,14 +36,21 @@ type Queue[T any] struct {
 	scheduledCh        chan scheduledItem[T]
 	cancelRequestCh    chan string
 
+	// If a requested item is locked we need means to signal the next blocked goroutine that item is unlocked
 	getByIdWaiters map[string][]chan itemResponse[T]
-	dueWaiters     map[string][]scheduledItem[T]
 
-	getNextWaiters          []getNextRequest[T]
+	// If time of a scheduled item has come, but it's locked, we need a way to signal a waiting goroutine (GetNextScheduled) when item is unlocked
+	dueWaiters map[string][]scheduledItem[T]
+
+	// When a suitable item appears, we need to return this item to a waiting goroutine
+	getNextWaiters []getNextRequest[T]
+
+	// When a suitable scheduled item appears, we need to return this item to a waiting goroutine if the time has come,
+	// or to schedule item if it hasn't been scheduled yet
 	getNextScheduledWaiters []getNextRequest[T]
 
-	taskLocked map[string]struct{}
-	scheduled  map[string]scheduledItem[T]
+	itemLocked map[string]struct{}         // itemLocked indicates that item is being processed and can't be accessed by others
+	scheduled  map[string]scheduledItem[T] // scheduled contains a set of items scheduled for specific time
 }
 
 func NewQueue[T any](store *Storage[T], getId func(T) string) *Queue[T] {
@@ -215,7 +72,7 @@ func NewQueue[T any](store *Storage[T], getId func(T) string) *Queue[T] {
 		cancelRequestCh:    make(chan string),
 
 		getByIdWaiters: make(map[string][]chan itemResponse[T]),
-		taskLocked:     make(map[string]struct{}),
+		itemLocked:     make(map[string]struct{}),
 		scheduled:      make(map[string]scheduledItem[T]),
 		dueWaiters:     map[string][]scheduledItem[T]{},
 		getId:          getId,
@@ -293,13 +150,13 @@ func (q *Queue[T]) handleClose() {
 }
 
 func (q *Queue[T]) handleGetById(req getByIdRequest[T]) {
-	_, isLocked := q.taskLocked[req.objectId]
+	_, isLocked := q.itemLocked[req.objectId]
 	if isLocked {
 		q.getByIdWaiters[req.objectId] = append(q.getByIdWaiters[req.objectId], req.responseCh)
 	} else {
 		item, err := q.store.get(q.ctx, req.objectId)
 
-		q.taskLocked[req.objectId] = struct{}{}
+		q.itemLocked[req.objectId] = struct{}{}
 		req.responseCh <- itemResponse[T]{item: item, err: err}
 	}
 }
@@ -312,24 +169,24 @@ func (q *Queue[T]) handleScheduledItem(req scheduledItem[T]) {
 
 	id := q.getId(req.item)
 	delete(q.scheduled, q.getId(req.item))
-	_, isLocked := q.taskLocked[id]
+	_, isLocked := q.itemLocked[id]
 	if isLocked {
 		q.dueWaiters[id] = append(q.dueWaiters[id], req)
 	} else {
 		item, err := q.store.get(q.ctx, id)
 
-		q.taskLocked[id] = struct{}{}
+		q.itemLocked[id] = struct{}{}
 		req.responseCh <- itemResponse[T]{item: item, err: err}
 	}
 }
 
 func (q *Queue[T]) handleReleaseItem(req releaseRequest[T]) {
 	item := req.item
-	if _, ok := q.taskLocked[q.getId(item)]; !ok {
+	if _, ok := q.itemLocked[q.getId(item)]; !ok {
 		req.responseCh <- fmt.Errorf("item is not locked")
 		return
 	}
-	delete(q.taskLocked, q.getId(item))
+	delete(q.itemLocked, q.getId(item))
 	err := q.store.set(q.ctx, q.getId(item), item)
 	if err != nil {
 		req.responseCh <- err
@@ -354,7 +211,7 @@ func (q *Queue[T]) checkGetNextWaiters(item T, responded bool) bool {
 		if waiter.filter(item) {
 			q.getNextWaiters = slices.Delete(q.getNextWaiters, i, i+1)
 
-			q.taskLocked[q.getId(item)] = struct{}{}
+			q.itemLocked[q.getId(item)] = struct{}{}
 			waiter.responseCh <- itemResponse[T]{item: item}
 
 			return true
@@ -374,7 +231,7 @@ func (q *Queue[T]) checkNextScheduledWaiters(item T, responded bool) bool {
 
 			// Respond immediately
 			if waiter.scheduledAt(item).Before(time.Now()) {
-				q.taskLocked[q.getId(item)] = struct{}{}
+				q.itemLocked[q.getId(item)] = struct{}{}
 				waiter.responseCh <- itemResponse[T]{item: item}
 				return true
 			}
@@ -417,7 +274,7 @@ func (q *Queue[T]) isScheduled(item T) bool {
 	return ok
 }
 
-// checkDueWaiters checks that we can return the item to any waiter.
+// checkDueWaiters checks that we can return the item to any waiting goroutine.
 // If the item no longer satisfies a filter for a given waiter, schedule a next item for the waiter's request
 func (q *Queue[T]) checkDueWaiters(item T, responded bool) bool {
 	dueWaiters := q.dueWaiters[q.getId(item)]
@@ -432,7 +289,7 @@ func (q *Queue[T]) checkDueWaiters(item T, responded bool) bool {
 			if !responded {
 				dueWaiters = dueWaiters[1:]
 
-				q.taskLocked[q.getId(item)] = struct{}{}
+				q.itemLocked[q.getId(item)] = struct{}{}
 				waiter.responseCh <- itemResponse[T]{item: item}
 
 				responded = true
@@ -465,7 +322,7 @@ func (q *Queue[T]) checkGetByIdWaiters(item T, responded bool) bool {
 	if len(waiters) > 0 {
 		nextResponseCh := waiters[0]
 		waiters = waiters[1:]
-		q.taskLocked[q.getId(item)] = struct{}{}
+		q.itemLocked[q.getId(item)] = struct{}{}
 		nextResponseCh <- itemResponse[T]{item: item}
 
 		responded = true
@@ -526,7 +383,7 @@ func (q *Queue[T]) Close() {
 
 func (q *Queue[T]) handleGetNextScheduled(req getNextRequest[T]) {
 	next, err := q.store.query(q.ctx, req.storeFilter, req.storeOrder, func(info T) bool {
-		if _, ok := q.taskLocked[q.getId(info)]; ok {
+		if _, ok := q.itemLocked[q.getId(info)]; ok {
 			return false
 		}
 		if _, ok := q.scheduled[q.getId(info)]; ok {
@@ -556,7 +413,7 @@ func (q *Queue[T]) handleGetNextScheduled(req getNextRequest[T]) {
 	}
 
 	if req.scheduledAt(next).Before(time.Now()) {
-		q.taskLocked[q.getId(next)] = struct{}{}
+		q.itemLocked[q.getId(next)] = struct{}{}
 		req.responseCh <- itemResponse[T]{item: next}
 		return
 	}
@@ -566,7 +423,7 @@ func (q *Queue[T]) handleGetNextScheduled(req getNextRequest[T]) {
 
 func (q *Queue[T]) handleGetNext(req getNextRequest[T]) {
 	next, err := q.store.query(q.ctx, req.storeFilter, req.storeOrder, func(info T) bool {
-		if _, ok := q.taskLocked[q.getId(info)]; ok {
+		if _, ok := q.itemLocked[q.getId(info)]; ok {
 			return false
 		}
 		return req.filter(info)
@@ -592,7 +449,7 @@ func (q *Queue[T]) handleGetNext(req getNextRequest[T]) {
 		return
 	}
 
-	q.taskLocked[q.getId(next)] = struct{}{}
+	q.itemLocked[q.getId(next)] = struct{}{}
 	req.responseCh <- itemResponse[T]{item: next}
 }
 
@@ -752,7 +609,6 @@ func (q *Queue[T]) Upsert(id string, modifier func(exists bool, prev T) T) error
 func (q *Queue[T]) ReleaseAndUpdate(task T) error {
 	responseCh := make(chan error, 1)
 	req := releaseRequest[T]{
-		action:     releaseActionUpdate,
 		item:       task,
 		responseCh: responseCh,
 	}
@@ -767,4 +623,41 @@ func (q *Queue[T]) ReleaseAndUpdate(task T) error {
 
 func (q *Queue[T]) List() ([]T, error) {
 	return q.store.listAll(q.ctx)
+}
+
+type getByIdRequest[T any] struct {
+	objectId   string
+	responseCh chan itemResponse[T]
+}
+
+type itemResponse[T any] struct {
+	item T
+	err  error
+}
+
+type getNextRequest[T any] struct {
+	id          string
+	ctx         context.Context
+	subscribe   bool
+	storeFilter query.Filter
+	storeOrder  query.Sort
+	filter      func(T) bool
+	scheduledAt func(T) time.Time
+
+	responseCh chan itemResponse[T]
+}
+
+type scheduledItem[T any] struct {
+	timer         *time.Timer
+	cancelTimerCh chan struct{}
+	item          T
+
+	request    getNextRequest[T]
+	responseCh chan itemResponse[T]
+}
+
+type releaseRequest[T any] struct {
+	objectId   string
+	item       T
+	responseCh chan error
 }
