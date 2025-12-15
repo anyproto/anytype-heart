@@ -222,13 +222,20 @@ func (c *client) putMany(ctx context.Context, req *fileproto.BlockPushManyReques
 	if err != nil {
 		return
 	}
-	// st := time.Now()
+	st := time.Now()
 	return p.DoDrpc(ctx, func(conn drpc.Conn) error {
 		if _, err = fileproto.NewDRPCFileClient(conn).BlockPushMany(ctx, req); err != nil {
 			return rpcerr.Unwrap(err)
 		}
-		// TODO Do we need this?
-		// c.stat.Add(st, len(data))
+
+		var totalDataSize int
+		for _, fb := range req.FileBlocks {
+			for _, b := range fb.Blocks {
+				totalDataSize += len(b.Data)
+			}
+		}
+
+		c.stat.Add(st, totalDataSize)
 		return nil
 	})
 }
