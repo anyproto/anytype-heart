@@ -21,6 +21,16 @@ const (
 	FileStateDeleted
 )
 
+// IsUploadingState returns true if a state related to the uploading process, including uploaded (Done) state
+func (s FileState) IsUploadingState() bool {
+	switch s {
+	case FileStatePendingUpload, FileStateUploading, FileStateLimited, FileStateDone:
+		return true
+	default:
+		return false
+	}
+}
+
 type FileInfo struct {
 	FileId      domain.FileId
 	SpaceId     string

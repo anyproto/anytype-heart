@@ -38,7 +38,7 @@ func (s *fileSync) AddFile(req AddFileRequest) error {
 	}
 
 	return s.process(req.FileObjectId, func(exists bool, info FileInfo) (FileInfo, error) {
-		if exists {
+		if exists && info.State.IsUploadingState() {
 			return info, nil
 		}
 		info = FileInfo{
