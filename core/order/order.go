@@ -186,9 +186,9 @@ func (o *orderSetter) reorder(objectIds []string, originalOrderIds map[string]st
 	}
 
 	nextExisting := o.precalcNext(originalOrderIds, objectIds)
-	prev := ""
 	out := map[string]string{}
 
+	var prev, pprev, prevId string
 	var ops []reorderOp
 	var err error
 
@@ -196,29 +196,47 @@ func (o *orderSetter) reorder(objectIds []string, originalOrderIds map[string]st
 		curr := originalOrderIds[id]
 		next := nextExisting[i]
 
-		if curr != "" && curr > prev {
-			// Current lexid is valid - keep it
-			out[id] = curr
-		} else if i == 0 {
+		if i == 0 && (curr == "" || curr >= next) {
 			curr, err = o.getNewOrderId("", next, true)
 			if err != nil {
 				return o.rebuildAllLexIds(objectIds, inputObjectIds)
 			}
 			ops = append(ops, reorderOp{id: id, newOrderId: curr})
-		} else {
-			// When inserting, check if next is valid relative to prev
-			// If prev >= next, ignore next (treat as unbounded)
+		} else if curr == "" || prev >= curr {
 			if next != "" && prev >= next {
-				next = ""
+				// let's try to modify prev value, as it seems to be inserted from the end of the list
+				if pprev != "" {
+					prev, err = o.getNewOrderId(pprev, curr, false)
+					if err != nil {
+						return o.rebuildAllLexIds(objectIds, inputObjectIds)
+					}
+					if len(ops) > 0 && ops[len(ops)-1].id == prevId {
+						ops[len(ops)-1].newOrderId = prev
+					} else {
+						ops = append(ops, reorderOp{id: prevId, newOrderId: prev})
+					}
+					out[prevId] = prev
+				} else {
+					// pprev is not saved, let's generate new orderId for curr ignoring next (treat as unbounded)
+					curr, err = o.getNewOrderId(prev, "", false)
+					if err != nil {
+						return o.rebuildAllLexIds(objectIds, inputObjectIds)
+					}
+					ops = append(ops, reorderOp{id: id, newOrderId: curr})
+				}
+			} else {
+				curr, err = o.getNewOrderId(prev, next, false)
+				if err != nil {
+					return o.rebuildAllLexIds(objectIds, inputObjectIds)
+				}
+				ops = append(ops, reorderOp{id: id, newOrderId: curr})
 			}
-			curr, err = o.getNewOrderId(prev, next, false)
-			if err != nil {
-				return o.rebuildAllLexIds(objectIds, inputObjectIds)
-			}
-			ops = append(ops, reorderOp{id: id, newOrderId: curr})
 		}
+
 		out[id] = curr
+		pprev = prev
 		prev = curr
+		prevId = id
 	}
 
 	outList := make([]string, len(inputObjectIds))

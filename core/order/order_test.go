@@ -2,6 +2,7 @@ package order
 
 import (
 	"context"
+	"fmt"
 	"sort"
 	"testing"
 
@@ -226,6 +227,68 @@ func TestReorder(t *testing.T) {
 			},
 			objectIds: []string{"b", "d", "a", "e", "c"},
 		},
+		{
+			name: "drag to top",
+			originalOrderIds: map[string]string{
+				"a": "A001",
+				"b": "B002",
+				"c": "C003",
+				"d": "D004",
+				"e": "E005",
+			},
+			objectIds: []string{"a", "d", "b", "c", "e"},
+		},
+		{
+			name: "drag to bottom",
+			originalOrderIds: map[string]string{
+				"a": "A001",
+				"b": "B002",
+				"c": "C003",
+				"d": "D004",
+				"e": "E005",
+			},
+			objectIds: []string{"a", "c", "d", "e", "b"},
+		},
+		{
+			name: "real world data - drag tag 57 to first position",
+			originalOrderIds: map[string]string{
+				"tag14": "XeOt",
+				"tag60": "XfOO",
+				"tag55": "XgNs",
+				"tag56": "XhNN",
+				"tag57": "XiMr",
+				"tag58": "XjMM",
+				"tag59": "XkLq",
+				"tag6":  "XlLL",
+				"tag61": "XmKp",
+				"tag62": "XnKK",
+				"tag63": "XoJo",
+				"tag64": "XpJJ",
+				"tag9":  "XqIn",
+				"tag65": "XrII",
+			},
+			objectIds: []string{"tag57", "tag14", "tag60", "tag55", "tag56", "tag58", "tag59", "tag6", "tag61", "tag62", "tag63", "tag64", "tag9", "tag65"},
+		},
+		{
+			name: "real world data - drag tag 14 to other position",
+			originalOrderIds: map[string]string{
+				"tag14": "XeOt",
+				"tag60": "XfOO",
+				"tag55": "XgNs",
+				"tag56": "XhNN",
+				"tag57": "XiMr",
+				"tag58": "XjMM",
+				"tag59": "XkLq",
+				"tag6":  "XlLL",
+				"tag61": "XmKp",
+				"tag62": "XnKK",
+				"tag63": "XoJo",
+				"tag64": "XpJJ",
+				"tag9":  "XqIn",
+				"tag65": "XrII",
+			},
+			objectIds: []string{"tag60", "tag55", "tag56", "tag57", "tag58", "tag59", "tag6", "tag61", "tag14", "tag62", "tag63", "tag64", "tag9", "tag65"},
+		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			testReorder(t, tc.objectIds, tc.originalOrderIds)
@@ -239,6 +302,7 @@ func testReorder(t *testing.T, objectIds []string, originalOrderIds map[string]s
 	require.NoError(t, err)
 
 	t.Log(gotOps)
+	fmt.Println(gotOps)
 
 	gotObjectIdsWithOrder := make([]idAndOrderId, len(gotNewOrder))
 	for i := range gotObjectIdsWithOrder {
