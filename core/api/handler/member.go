@@ -9,16 +9,18 @@ import (
 	"github.com/anyproto/anytype-heart/core/api/pagination"
 	"github.com/anyproto/anytype-heart/core/api/service"
 	"github.com/anyproto/anytype-heart/core/api/util"
+	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
 // ListMembersHandler retrieves a list of members in a space
 //
 //	@Summary		List members
-//	@Description	Returns a paginated list of members belonging to the specified space. Each member record includes the member’s profile ID, name, icon (which may be derived from an emoji or image), network identity, global name, status (e.g. joining, active) and role (e.g. Viewer, Editor, Owner). This endpoint supports collaborative features by allowing clients to show who is in a space and manage access rights.
+//	@Description	Returns a paginated list of members belonging to the specified space. Each member record includes the member's profile ID, name, icon (which may be derived from an emoji or image), network identity, global name, status (e.g. joining, active) and role (e.g. Viewer, Editor, Owner). This endpoint supports collaborative features by allowing clients to show who is in a space and manage access rights.
+//	@Description	Supports dynamic filtering via query parameters (e.g., ?name[ne]=john). See FilterCondition enum for available conditions.
 //	@Id				list_members
 //	@Tags			Members
 //	@Produce		json
-//	@Param			Anytype-Version	header		string											true	"The version of the API to use"	default(2025-05-20)
+//	@Param			Anytype-Version	header		string											true	"The version of the API to use"	default(2025-11-08)
 //	@Param			space_id		path		string											true	"The ID of the space to list members for; must be retrieved from ListSpaces endpoint"
 //	@Param			offset			query		int												false	"The number of items to skip before starting to collect the result set"	default(0)
 //	@Param			limit			query		int												false	"The number of items to return"											default(100)	maximum(1000)
@@ -30,16 +32,19 @@ import (
 func ListMembersHandler(s *service.Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		spaceId := c.Param("space_id")
-		offset := c.GetInt("offset")
-		limit := c.GetInt("limit")
+		offset := c.GetInt(pagination.QueryParamOffset)
+		limit := c.GetInt(pagination.QueryParamLimit)
 
-		members, total, hasMore, err := s.ListMembers(c.Request.Context(), spaceId, offset, limit)
+		filtersAny, _ := c.Get("filters")
+		filters := filtersAny.([]*model.BlockContentDataviewFilter)
+
+		members, total, hasMore, err := s.ListMembers(c.Request.Context(), spaceId, filters, offset, limit)
 		code := util.MapErrorCode(err,
 			util.ErrToCode(service.ErrFailedListMembers, http.StatusInternalServerError),
 		)
 
 		if code != http.StatusOK {
-			apiErr := util.CodeToAPIError(code, err.Error())
+			apiErr := util.CodeToApiError(code, err.Error())
 			c.JSON(code, apiErr)
 			return
 		}
@@ -55,7 +60,7 @@ func ListMembersHandler(s *service.Service) gin.HandlerFunc {
 //	@Id				get_member
 //	@Tags			Members
 //	@Produce		json
-//	@Param			Anytype-Version	header		string					true	"The version of the API to use"	default(2025-05-20)
+//	@Param			Anytype-Version	header		string					true	"The version of the API to use"	default(2025-11-08)
 //	@Param			space_id		path		string					true	"The ID of the space to get the member from; must be retrieved from ListSpaces endpoint"
 //	@Param			member_id		path		string					true	"Member ID or Identity; must be retrieved from ListMembers endpoint or obtained from response context"
 //	@Success		200				{object}	apimodel.MemberResponse	"The member details"
@@ -76,12 +81,12 @@ func GetMemberHandler(s *service.Service) gin.HandlerFunc {
 		)
 
 		if code != http.StatusOK {
-			apiErr := util.CodeToAPIError(code, err.Error())
+			apiErr := util.CodeToApiError(code, err.Error())
 			c.JSON(code, apiErr)
 			return
 		}
 
-		c.JSON(http.StatusOK, apimodel.MemberResponse{Member: member})
+		c.JSON(http.StatusOK, apimodel.MemberResponse{Member: *member})
 	}
 }
 
@@ -94,7 +99,7 @@ func GetMemberHandler(s *service.Service) gin.HandlerFunc {
 //	@Tags			Members
 //	@Accept			json
 //	@Produce		json
-//	@Param			Anytype-Version	header		string							true	"The version of the API to use"	default(2025-05-20)
+//	@Param			Anytype-Version	header		string							true	"The version of the API to use"	default(2025-11-08)
 //	@Param			space_id		path		string							true	"The ID of the space to update the member in; must be retrieved from ListSpaces endpoint"
 //	@Param			member_id		path		string							true	"The ID or Identity of the member to update; must be retrieved from ListMembers endpoint or obtained from response context"
 //	@Param			body			body		apimodel.UpdateMemberRequest	true	"The request body containing the member's new status and role"
@@ -113,7 +118,7 @@ func UpdateMemberHandler(s *SpaceService) gin.HandlerFunc {
 
 		var req UpdateMemberRequest
 		if err := c.BindJSON(&req); err != nil {
-			apiErr := util.CodeToAPIError(http.StatusBadRequest, err.Error())
+			apiErr := util.CodeToApiError(http.StatusBadRequest, err.Error())
 			c.AbortWithStatusJSON(http.StatusBadRequest, apiErr)
 		}
 
@@ -126,7 +131,7 @@ func UpdateMemberHandler(s *SpaceService) gin.HandlerFunc {
 		)
 
 		if code != http.StatusOK {
-			apiErr := util.CodeToAPIError(code, err.Error())
+			apiErr := util.CodeToApiError(code, err.Error())
 			c.JSON(code, apiErr)
 			return
 		}

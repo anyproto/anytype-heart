@@ -16,14 +16,19 @@ import (
 	apicore "github.com/anyproto/anytype-heart/core/api/core"
 	"github.com/anyproto/anytype-heart/core/api/server"
 	"github.com/anyproto/anytype-heart/core/event"
+	"github.com/anyproto/anytype-heart/core/subscription/crossspacesub"
+	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 )
 
 const (
-	CName       = "api"
-	readTimeout = 5 * time.Second
+	CName           = "api"
+	readTimeout     = 5 * time.Second
+	shutdownTimeout = time.Millisecond
 )
 
 var (
+	log = logging.Logger("api-service")
+
 	mwSrv apicore.ClientCommands
 
 	//go:embed docs/openapi.yaml
@@ -35,17 +40,21 @@ var (
 
 type Service interface {
 	app.ComponentRunnable
-	ReassignAddress(ctx context.Context, listenAddr string) (err error)
+	ReassignAddress(ctx context.Context, listenAddr string) error
 }
 
 type apiService struct {
-	srv            *server.Server
-	httpSrv        *http.Server
-	mw             apicore.ClientCommands
-	accountService apicore.AccountService
-	eventService   apicore.EventService
-	listenAddr     string
-	lock           sync.Mutex
+	mw                   apicore.ClientCommands
+	accountService       apicore.AccountService
+	eventService         apicore.EventService
+	crossSpaceSubService apicore.CrossSpaceSubscriptionService
+
+	listenAddr string
+
+	srv     *server.Server
+	httpSrv *http.Server
+
+	lock sync.Mutex
 }
 
 func New() Service {
@@ -59,7 +68,7 @@ func (s *apiService) Name() (name string) {
 // Init initializes the API service.
 //
 //	@title							Anytype API
-//	@version						2025-05-20
+//	@version						2025-11-08
 //	@description					This API enables seamless interaction with Anytype's resources - spaces, objects, properties, types, templates, and beyond.
 //	@termsOfService					https://anytype.io/terms_of_use
 //	@contact.name					Anytype Support
@@ -71,31 +80,46 @@ func (s *apiService) Name() (name string) {
 //	@securitydefinitions.bearerauth	BearerAuth
 //	@externalDocs.description		OpenAPI
 //	@externalDocs.url				https://swagger.io/resources/open-api/
-func (s *apiService) Init(a *app.App) (err error) {
+func (s *apiService) Init(a *app.App) error {
 	s.listenAddr = a.MustComponent(config.CName).(*config.Config).JsonApiListenAddr
 	s.accountService = a.MustComponent(account.CName).(account.Service)
 	s.eventService = a.MustComponent(event.CName).(apicore.EventService)
+	s.crossSpaceSubService = a.MustComponent(crossspacesub.CName).(apicore.CrossSpaceSubscriptionService)
 	return nil
 }
 
-func (s *apiService) Run(ctx context.Context) (err error) {
-	s.runServer()
+func (s *apiService) Run(ctx context.Context) error {
+	if err := s.startServer(); err != nil {
+		return fmt.Errorf("failed to start server: %w", err)
+	}
 	return nil
 }
 
-func (s *apiService) Close(ctx context.Context) (err error) {
-	return s.shutdown(ctx)
-}
-
-func (s *apiService) runServer() {
-	s.lock.Lock()
-	defer s.lock.Unlock()
-	if s.listenAddr == "" {
-		// means that API is disabled
-		return
+func (s *apiService) Close(ctx context.Context) error {
+	if s.srv != nil {
+		s.srv.Stop()
 	}
 
-	s.srv = server.NewServer(s.mw, s.accountService, s.eventService, openapiYAML, openapiJSON)
+	return s.shutdownHTTP(ctx)
+}
+
+func (s *apiService) startServer() error {
+	s.lock.Lock()
+	defer s.lock.Unlock()
+
+	if s.listenAddr == "" {
+		log.Info("API server disabled (no listen address)")
+		return nil
+	}
+
+	s.srv = server.NewServer(
+		s.mw,
+		s.accountService,
+		s.eventService,
+		s.crossSpaceSubService,
+		openapiYAML,
+		openapiJSON,
+	)
 
 	s.httpSrv = &http.Server{
 		Addr:              s.listenAddr,
@@ -103,41 +127,38 @@ func (s *apiService) runServer() {
 		ReadHeaderTimeout: readTimeout,
 	}
 
-	fmt.Printf("Starting API server on %s\n", s.httpSrv.Addr)
+	log.Infof("Starting API server on %s", s.httpSrv.Addr)
 
 	go func() {
 		if err := s.httpSrv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
-			fmt.Printf("API server ListenAndServe error: %v\n", err)
+			log.Errorf("API server error: %v", err)
 		}
 	}()
+
+	return nil
 }
 
-func (s *apiService) shutdown(ctx context.Context) (err error) {
+func (s *apiService) shutdownHTTP(ctx context.Context) error {
 	if s.httpSrv == nil {
 		return nil
 	}
+
 	s.lock.Lock()
 	defer s.lock.Unlock()
 
-	// we don't want graceful shutdown here and block the app close
-	shutdownCtx, cancel := context.WithTimeout(ctx, time.Millisecond)
+	shutdownCtx, cancel := context.WithTimeout(ctx, shutdownTimeout)
 	defer cancel()
-	if err := s.httpSrv.Shutdown(shutdownCtx); err != nil {
-		return err
-	}
 
-	return nil
+	return s.httpSrv.Shutdown(shutdownCtx)
 }
 
-func (s *apiService) ReassignAddress(ctx context.Context, listenAddr string) (err error) {
-	err = s.shutdown(ctx)
-	if err != nil {
-		return err
+func (s *apiService) ReassignAddress(ctx context.Context, listenAddr string) error {
+	if err := s.shutdownHTTP(ctx); err != nil {
+		return fmt.Errorf("failed to shutdown server: %w", err)
 	}
 
 	s.listenAddr = listenAddr
-	s.runServer()
-	return nil
+	return s.startServer()
 }
 
 func SetMiddlewareParams(mw apicore.ClientCommands) {

@@ -13,6 +13,9 @@ var ObjectLayouts = []model.ObjectTypeLayout{
 	model.ObjectType_bookmark,
 	model.ObjectType_set,
 	model.ObjectType_collection,
+}
+
+var MemberLayouts = []model.ObjectTypeLayout{
 	model.ObjectType_participant,
 }
 
@@ -24,6 +27,14 @@ var TagLayouts = []model.ObjectTypeLayout{
 var objectLayoutSet = func() map[model.ObjectTypeLayout]struct{} {
 	m := make(map[model.ObjectTypeLayout]struct{}, len(ObjectLayouts))
 	for _, l := range ObjectLayouts {
+		m[l] = struct{}{}
+	}
+	return m
+}()
+
+var memberLayoutSet = func() map[model.ObjectTypeLayout]struct{} {
+	m := make(map[model.ObjectTypeLayout]struct{}, len(MemberLayouts))
+	for _, l := range MemberLayouts {
 		m[l] = struct{}{}
 	}
 	return m
@@ -48,6 +59,15 @@ var tagLayoutSet = func() map[model.ObjectTypeLayout]struct{} {
 func IsObjectLayout(layout model.ObjectTypeLayout) bool {
 	_, ok := objectLayoutSet[layout]
 	return ok
+}
+
+func IsMemberLayout(layout model.ObjectTypeLayout) bool {
+	_, ok := memberLayoutSet[layout]
+	return ok
+}
+
+func IsObjectOrMemberLayout(layout model.ObjectTypeLayout) bool {
+	return IsObjectLayout(layout) || IsMemberLayout(layout)
 }
 
 func IsFileLayout(layout model.ObjectTypeLayout) bool {

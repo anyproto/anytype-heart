@@ -40,8 +40,8 @@ func TestIsEmoji(t *testing.T) {
 	for _, tc := range tests {
 		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
-			got := IsEmoji(tc.input)
-			require.Equal(t, tc.want, got, "IsEmoji(%q)", tc.input)
+			got := isEmoji(tc.input)
+			require.Equal(t, tc.want, got, "isEmoji(%q)", tc.input)
 		})
 	}
 }

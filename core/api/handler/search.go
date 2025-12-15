@@ -19,7 +19,7 @@ import (
 //	@Tags			Search
 //	@Accept			json
 //	@Produce		json
-//	@Param			Anytype-Version	header		string											true	"The version of the API to use"											default(2025-05-20)
+//	@Param			Anytype-Version	header		string											true	"The version of the API to use"											default(2025-11-08)
 //	@Param			offset			query		int												false	"The number of items to skip before starting to collect the result set"	default(0)
 //	@Param			limit			query		int												false	"The number of items to return"											default(100)	maximum(1000)
 //	@Param			request			body		apimodel.SearchRequest							true	"The search parameters used to filter and sort the results"
@@ -30,12 +30,12 @@ import (
 //	@Router			/v1/search [post]
 func GlobalSearchHandler(s *service.Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		offset := c.GetInt("offset")
-		limit := c.GetInt("limit")
+		offset := c.GetInt(pagination.QueryParamOffset)
+		limit := c.GetInt(pagination.QueryParamLimit)
 
 		request := apimodel.SearchRequest{}
 		if err := c.BindJSON(&request); err != nil {
-			apiErr := util.CodeToAPIError(http.StatusBadRequest, err.Error())
+			apiErr := util.CodeToApiError(http.StatusBadRequest, err.Error())
 			c.JSON(http.StatusBadRequest, apiErr)
 			return
 		}
@@ -43,10 +43,12 @@ func GlobalSearchHandler(s *service.Service) gin.HandlerFunc {
 		objects, total, hasMore, err := s.GlobalSearch(c, request, offset, limit)
 		code := util.MapErrorCode(err,
 			util.ErrToCode(service.ErrFailedSearchObjects, http.StatusInternalServerError),
+			util.ErrToCode(service.ErrFailedGetAllSpaceIds, http.StatusInternalServerError),
+			util.ErrToCode(service.ErrFailedBuildFilters, http.StatusBadRequest),
 		)
 
 		if code != http.StatusOK {
-			apiErr := util.CodeToAPIError(code, err.Error())
+			apiErr := util.CodeToApiError(code, err.Error())
 			c.JSON(code, apiErr)
 			return
 		}
@@ -63,7 +65,7 @@ func GlobalSearchHandler(s *service.Service) gin.HandlerFunc {
 //	@Tags			Search
 //	@Accept			json
 //	@Produce		json
-//	@Param			Anytype-Version	header		string											true	"The version of the API to use"	default(2025-05-20)
+//	@Param			Anytype-Version	header		string											true	"The version of the API to use"	default(2025-11-08)
 //	@Param			space_id		path		string											true	"The ID of the space to search in; must be retrieved from ListSpaces endpoint"
 //	@Param			offset			query		int												false	"The number of items to skip before starting to collect the result set"	default(0)
 //	@Param			limit			query		int												false	"The number of items to return"											default(100)	maximum(1000)
@@ -75,24 +77,25 @@ func GlobalSearchHandler(s *service.Service) gin.HandlerFunc {
 //	@Router			/v1/spaces/{space_id}/search [post]
 func SearchHandler(s *service.Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		spaceID := c.Param("space_id")
-		offset := c.GetInt("offset")
-		limit := c.GetInt("limit")
+		spaceId := c.Param("space_id")
+		offset := c.GetInt(pagination.QueryParamOffset)
+		limit := c.GetInt(pagination.QueryParamLimit)
 
 		request := apimodel.SearchRequest{}
 		if err := c.BindJSON(&request); err != nil {
-			apiErr := util.CodeToAPIError(http.StatusBadRequest, err.Error())
+			apiErr := util.CodeToApiError(http.StatusBadRequest, err.Error())
 			c.JSON(http.StatusBadRequest, apiErr)
 			return
 		}
 
-		objects, total, hasMore, err := s.Search(c, spaceID, request, offset, limit)
+		objects, total, hasMore, err := s.Search(c, spaceId, request, offset, limit)
 		code := util.MapErrorCode(err,
 			util.ErrToCode(service.ErrFailedSearchObjects, http.StatusInternalServerError),
+			util.ErrToCode(service.ErrFailedBuildFilters, http.StatusBadRequest),
 		)
 
 		if code != http.StatusOK {
-			apiErr := util.CodeToAPIError(code, err.Error())
+			apiErr := util.CodeToApiError(code, err.Error())
 			c.JSON(code, apiErr)
 			return
 		}

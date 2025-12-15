@@ -19,8 +19,8 @@ type Config struct {
 // New creates Gin middleware for pagination with the provided Config.
 func New(cfg Config) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		page := getIntQueryParam(c, "offset", cfg.DefaultPage)
-		size := getIntQueryParam(c, "limit", cfg.DefaultPageSize)
+		page := getIntQueryParam(c, QueryParamOffset, cfg.DefaultPage)
+		size := getIntQueryParam(c, QueryParamLimit, cfg.DefaultPageSize)
 
 		if size < cfg.MinPageSize || size > cfg.MaxPageSize {
 			c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{
@@ -29,8 +29,8 @@ func New(cfg Config) gin.HandlerFunc {
 			return
 		}
 
-		c.Set("offset", page)
-		c.Set("limit", size)
+		c.Set(QueryParamOffset, page)
+		c.Set(QueryParamLimit, size)
 
 		c.Next()
 	}

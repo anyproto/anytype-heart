@@ -9,16 +9,18 @@ import (
 	"github.com/anyproto/anytype-heart/core/api/pagination"
 	"github.com/anyproto/anytype-heart/core/api/service"
 	"github.com/anyproto/anytype-heart/core/api/util"
+	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
 // ListSpacesHandler retrieves a list of spaces
 //
 //	@Summary		List spaces
-//	@Description	Retrieves a paginated list of all spaces that are accessible by the authenticated user. Each space record contains detailed information such as the space ID, name, icon (derived either from an emoji or image URL), and additional metadata. This endpoint is key to displaying a user’s workspaces.
+//	@Description	Retrieves a paginated list of all spaces that are accessible by the authenticated user. Each space record contains detailed information such as the space ID, name, icon (derived either from an emoji or image URL), and additional metadata. This endpoint is key to displaying a user's workspaces.
+//	@Description	Supports dynamic filtering via query parameters (e.g., ?name[contains]=project). See FilterCondition enum for available conditions.
 //	@Id				list_spaces
 //	@Tags			Spaces
 //	@Produce		json
-//	@Param			Anytype-Version	header		string											true	"The version of the API to use"											default(2025-05-20)
+//	@Param			Anytype-Version	header		string											true	"The version of the API to use"											default(2025-11-08)
 //	@Param			offset			query		int												false	"The number of items to skip before starting to collect the result set"	default(0)
 //	@Param			limit			query		int												false	"The number of items to return"											default(100)	maximum(1000)
 //	@Success		200				{object}	pagination.PaginatedResponse[apimodel.Space]	"The list of spaces accessible by the authenticated user"
@@ -28,10 +30,13 @@ import (
 //	@Router			/v1/spaces [get]
 func ListSpacesHandler(s *service.Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		offset := c.GetInt("offset")
-		limit := c.GetInt("limit")
+		offset := c.GetInt(pagination.QueryParamOffset)
+		limit := c.GetInt(pagination.QueryParamLimit)
 
-		spaces, total, hasMore, err := s.ListSpaces(c.Request.Context(), offset, limit)
+		filtersAny, _ := c.Get("filters")
+		filters := filtersAny.([]*model.BlockContentDataviewFilter)
+
+		spaces, total, hasMore, err := s.ListSpaces(c.Request.Context(), filters, offset, limit)
 		code := util.MapErrorCode(err,
 			util.ErrToCode(service.ErrFailedListSpaces, http.StatusInternalServerError),
 			util.ErrToCode(service.ErrFailedOpenWorkspace, http.StatusInternalServerError),
@@ -39,7 +44,7 @@ func ListSpacesHandler(s *service.Service) gin.HandlerFunc {
 		)
 
 		if code != http.StatusOK {
-			apiErr := util.CodeToAPIError(code, err.Error())
+			apiErr := util.CodeToApiError(code, err.Error())
 			c.JSON(code, apiErr)
 			return
 		}
@@ -55,7 +60,7 @@ func ListSpacesHandler(s *service.Service) gin.HandlerFunc {
 //	@Id				get_space
 //	@Tags			Spaces
 //	@Produce		json
-//	@Param			Anytype-Version	header		string					true	"The version of the API to use"	default(2025-05-20)
+//	@Param			Anytype-Version	header		string					true	"The version of the API to use"	default(2025-11-08)
 //	@Param			space_id		path		string					true	"The ID of the space to retrieve; must be retrieved from ListSpaces endpoint"
 //	@Success		200				{object}	apimodel.SpaceResponse	"The space details"
 //	@Failure		401				{object}	util.UnauthorizedError	"Unauthorized"
@@ -75,7 +80,7 @@ func GetSpaceHandler(s *service.Service) gin.HandlerFunc {
 		)
 
 		if code != http.StatusOK {
-			apiErr := util.CodeToAPIError(code, err.Error())
+			apiErr := util.CodeToApiError(code, err.Error())
 			c.JSON(code, apiErr)
 			return
 		}
@@ -92,7 +97,7 @@ func GetSpaceHandler(s *service.Service) gin.HandlerFunc {
 //	@Tags			Spaces
 //	@Accept			json
 //	@Produce		json
-//	@Param			Anytype-Version	header		string						true	"The version of the API to use"	default(2025-05-20)
+//	@Param			Anytype-Version	header		string						true	"The version of the API to use"	default(2025-11-08)
 //	@Param			name			body		apimodel.CreateSpaceRequest	true	"The space to create"
 //	@Success		201				{object}	apimodel.SpaceResponse		"The created space"
 //	@Failure		400				{object}	util.ValidationError		"Bad request"
@@ -105,7 +110,7 @@ func CreateSpaceHandler(s *service.Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var req apimodel.CreateSpaceRequest
 		if err := c.BindJSON(&req); err != nil {
-			apiErr := util.CodeToAPIError(http.StatusBadRequest, err.Error())
+			apiErr := util.CodeToApiError(http.StatusBadRequest, err.Error())
 			c.JSON(http.StatusBadRequest, apiErr)
 			return
 		}
@@ -119,7 +124,7 @@ func CreateSpaceHandler(s *service.Service) gin.HandlerFunc {
 		)
 
 		if code != http.StatusOK {
-			apiErr := util.CodeToAPIError(code, err.Error())
+			apiErr := util.CodeToApiError(code, err.Error())
 			c.JSON(code, apiErr)
 			return
 		}
@@ -136,7 +141,7 @@ func CreateSpaceHandler(s *service.Service) gin.HandlerFunc {
 //	@Tags			Spaces
 //	@Accept			json
 //	@Produce		json
-//	@Param			Anytype-Version	header		string						true	"The version of the API to use"	default(2025-05-20)
+//	@Param			Anytype-Version	header		string						true	"The version of the API to use"	default(2025-11-08)
 //	@Param			space_id		path		string						true	"The ID of the space to update; must be retrieved from ListSpaces endpoint"
 //	@Param			name			body		apimodel.UpdateSpaceRequest	true	"The space details to update"
 //	@Success		200				{object}	apimodel.SpaceResponse		"The updated space"
@@ -154,7 +159,7 @@ func UpdateSpaceHandler(s *service.Service) gin.HandlerFunc {
 
 		var req apimodel.UpdateSpaceRequest
 		if err := c.BindJSON(&req); err != nil {
-			apiErr := util.CodeToAPIError(http.StatusBadRequest, err.Error())
+			apiErr := util.CodeToApiError(http.StatusBadRequest, err.Error())
 			c.JSON(http.StatusBadRequest, apiErr)
 			return
 		}
@@ -168,7 +173,7 @@ func UpdateSpaceHandler(s *service.Service) gin.HandlerFunc {
 		)
 
 		if code != http.StatusOK {
-			apiErr := util.CodeToAPIError(code, err.Error())
+			apiErr := util.CodeToApiError(code, err.Error())
 			c.JSON(code, apiErr)
 			return
 		}
