@@ -53,6 +53,12 @@ func (i FileInfo) FullFileId() domain.FullFileId {
 	}
 }
 
+func (i FileInfo) Reschedule() FileInfo {
+	i.ScheduledAt = time.Now().Add(time.Minute)
+
+	return i
+}
+
 func (i FileInfo) Key() string {
 	return i.ObjectId
 }

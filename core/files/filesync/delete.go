@@ -80,7 +80,7 @@ func (s *fileSync) processNextToDelete(ctx context.Context) error {
 func (s *fileSync) processDeletion(ctx context.Context, it FileInfo) (FileInfo, error) {
 	err := s.rpcStore.DeleteFiles(ctx, it.SpaceId, it.FileId)
 	if err != nil {
-		it.ScheduledAt = time.Now().Add(time.Minute)
+		it = it.Reschedule()
 		return it, err
 	}
 

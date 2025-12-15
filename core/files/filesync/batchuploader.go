@@ -3,7 +3,6 @@ package filesync
 import (
 	"context"
 	"fmt"
-	"time"
 
 	"github.com/ipfs/go-cid"
 	"go.uber.org/zap"
@@ -71,7 +70,7 @@ func (s *fileSync) addToRetryUploadingQueue(objectId string) error {
 		}
 
 		info.State = FileStatePendingUpload
-		info.ScheduledAt = time.Now().Add(1 * time.Minute)
+		info = info.Reschedule()
 		return info, nil
 	})
 }

@@ -132,6 +132,7 @@ func (s *fileSync) processNextPendingUploadItem(ctx context.Context, state FileS
 func (s *fileSync) processFilePendingUpload(ctx context.Context, it FileInfo) (FileInfo, error) {
 	blocksAvailability, err := s.checkBlocksAvailability(ctx, it)
 	if err != nil {
+		it = it.Reschedule()
 		return it, fmt.Errorf("check blocks availability: %w", err)
 	}
 
@@ -141,13 +142,14 @@ func (s *fileSync) processFilePendingUpload(ctx context.Context, it FileInfo) (F
 
 	spaceLimits, err := s.limitManager.getSpace(ctx, it.SpaceId)
 	if err != nil {
+		it = it.Reschedule()
 		return it, fmt.Errorf("get space limits: %w", err)
 	}
 
 	allocateErr := spaceLimits.allocateFile(ctx, it.Key(), blocksAvailability.bytesToUploadOrBind)
-	// TODO De-allocate if error is occurred
 	if allocateErr != nil {
 		it.State = FileStateLimited
+		it = it.Reschedule()
 
 		err = s.handleLimitReached(ctx, it)
 		if err != nil {
@@ -156,16 +158,29 @@ func (s *fileSync) processFilePendingUpload(ctx context.Context, it FileInfo) (F
 		return it, nil
 	}
 
+	it, err = s.upload(ctx, it, blocksAvailability)
+	if err != nil {
+		spaceLimits.deallocateFile(it.Key())
+		it = it.Reschedule()
+		return it, err
+	}
+	return it, nil
+}
+
+func (s *fileSync) upload(ctx context.Context, it FileInfo, blocksAvailability *blocksAvailabilityResponse) (FileInfo, error) {
 	if it.ObjectId != "" {
-		err = s.updateStatus(it, filesyncstatus.Syncing)
+		err := s.updateStatus(it, filesyncstatus.Syncing)
 		if isObjectDeletedError(err) {
 			it.State = FileStatePendingDeletion
 			return it, nil
 		}
+		if err != nil {
+			return it, fmt.Errorf("update status: %w", err)
+		}
 	}
 
 	var totalBytesToUpload int
-	err = s.walkFileBlocks(ctx, it.SpaceId, it.FileId, it.Variants, func(fileBlocks []blocks.Block) error {
+	err := s.walkFileBlocks(ctx, it.SpaceId, it.FileId, it.Variants, func(fileBlocks []blocks.Block) error {
 		bytesToUpload, err := s.uploadOrBindBlocks(ctx, it, fileBlocks, blocksAvailability.cidsToBind)
 		if err != nil {
 			return fmt.Errorf("select blocks to upload: %w", err)

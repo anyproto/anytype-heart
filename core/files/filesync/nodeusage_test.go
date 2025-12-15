@@ -131,7 +131,7 @@ func TestSpaceLimit(t *testing.T) {
 		err = usage.allocateFile(ctx, "file2", 80_000_000)
 		require.Error(t, err)
 
-		usage.removeFile("file1")
+		usage.deallocateFile("file1")
 
 		err = usage.allocateFile(ctx, "file2", 80_000_000)
 		require.NoError(t, err)

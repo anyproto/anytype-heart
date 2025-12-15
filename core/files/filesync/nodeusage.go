@@ -116,8 +116,8 @@ func (s *spaceUsage) allocateFile(ctx context.Context, key string, size int) err
 	return nil
 }
 
-// removeFile removes size of given file from total usage
-func (s *spaceUsage) removeFile(key string) {
+// deallocateFile removes size of given file from total usage
+func (s *spaceUsage) deallocateFile(key string) {
 	s.lock.Lock()
 	defer s.lock.Unlock()
 
