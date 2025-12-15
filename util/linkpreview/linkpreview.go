@@ -169,11 +169,12 @@ func (l *linkPreview) convertOGToInfo(fetchUrl string, og *opengraph.OpenGraph, 
 	if len(i.Description) == 0 {
 		i.Description = l.findContent(rt.lastBody)
 	}
-	if !utf8.ValidString(i.Title) {
-		i.Title = ""
-	}
 	if !utf8.ValidString(i.Description) {
 		i.Description = ""
+	}
+	i.Description = text.TruncateEllipsized(i.Description, maxDescriptionSize)
+	if !utf8.ValidString(i.Title) {
+		i.Title = ""
 	}
 
 	return
@@ -193,10 +194,7 @@ func (l *linkPreview) findContent(data []byte) (content string) {
 	content = article.TextContent
 	content = strings.TrimSpace(l.bmPolicy.Sanitize(content))
 	content = strings.Join(strings.Fields(content), " ") // removes repetitive whitespaces
-	if text.UTF16RuneCountString(content) > maxDescriptionSize {
-		content = string([]rune(content)[:maxDescriptionSize]) + "..."
-	}
-	return
+	return content
 }
 
 func (l *linkPreview) makeNonHtml(fetchUrl string, resp *http.Response) (i model.LinkPreview, isFile bool, err error) {
