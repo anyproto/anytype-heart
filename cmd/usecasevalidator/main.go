@@ -604,7 +604,9 @@ func insertAnalyticsData(s *common.StateSnapshot, info *useCaseInfo) {
 		f = make(map[string]*types.Value)
 	}
 	root.Fields = &types.Struct{Fields: f}
-	f["analyticsContext"] = pbtypes.String(info.useCase)
+	if f["analyticsContext"] == nil {
+		f["analyticsContext"] = pbtypes.String(info.useCase)
+	}
 	if f["analyticsOriginalId"] == nil {
 		f["analyticsOriginalId"] = pbtypes.String(id)
 	}
