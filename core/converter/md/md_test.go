@@ -1611,6 +1611,244 @@ func TestMD_RenderProperties_WithID(t *testing.T) {
 	assert.Greater(t, idLine, nameLine, "ID should come after Name property")
 }
 
+func TestMD_RenderEmbed(t *testing.T) {
+	newState := func(bs ...*model.Block) *state.State {
+		var sbs []simple.Block
+		var ids []string
+		for _, b := range bs {
+			sb := simple.New(b)
+			ids = append(ids, sb.Model().Id)
+			sbs = append(sbs, sb)
+		}
+		blocks := map[string]simple.Block{
+			"root": simple.New(&model.Block{Id: "root", ChildrenIds: ids}),
+		}
+		for _, sb := range sbs {
+			blocks[sb.Model().Id] = sb
+		}
+		return state.NewDoc("root", blocks).(*state.State)
+	}
+
+	t.Run("LaTeX block", func(t *testing.T) {
+		s := newState(
+			&model.Block{
+				Content: &model.BlockContentOfLatex{
+					Latex: &model.BlockContentLatex{
+						Text:      "E = mc^2",
+						Processor: model.BlockContentLatex_Latex,
+					},
+				},
+			},
+		)
+		c := NewMDConverter(s, &testFileNamer{}, false)
+		res := c.Convert(model.SmartBlockType_Page)
+		expected := "\n$$\nE = mc^2\n$$\n"
+		assert.Equal(t, expected, string(res))
+	})
+
+	t.Run("Mermaid block", func(t *testing.T) {
+		s := newState(
+			&model.Block{
+				Content: &model.BlockContentOfLatex{
+					Latex: &model.BlockContentLatex{
+						Text:      "graph TD\n    A[Start] --> B[End]",
+						Processor: model.BlockContentLatex_Mermaid,
+					},
+				},
+			},
+		)
+		c := NewMDConverter(s, &testFileNamer{}, false)
+		res := c.Convert(model.SmartBlockType_Page)
+		expected := "```mermaid\ngraph TD\n    A[Start] --> B[End]\n```\n"
+		assert.Equal(t, expected, string(res))
+	})
+
+	t.Run("Chart block", func(t *testing.T) {
+		s := newState(
+			&model.Block{
+				Content: &model.BlockContentOfLatex{
+					Latex: &model.BlockContentLatex{
+						Text:      "pie title Pets\n    \"Dogs\" : 386\n    \"Cats\" : 567",
+						Processor: model.BlockContentLatex_Chart,
+					},
+				},
+			},
+		)
+		c := NewMDConverter(s, &testFileNamer{}, false)
+		res := c.Convert(model.SmartBlockType_Page)
+		expected := "```chart\npie title Pets\n    \"Dogs\" : 386\n    \"Cats\" : 567\n```\n"
+		assert.Equal(t, expected, string(res))
+	})
+
+	t.Run("Kroki block", func(t *testing.T) {
+		s := newState(
+			&model.Block{
+				Content: &model.BlockContentOfLatex{
+					Latex: &model.BlockContentLatex{
+						Text:      "digraph G {\n    Hello -> World\n}",
+						Processor: model.BlockContentLatex_Kroki,
+					},
+				},
+			},
+		)
+		c := NewMDConverter(s, &testFileNamer{}, false)
+		res := c.Convert(model.SmartBlockType_Page)
+		expected := "```kroki\ndigraph G {\n    Hello -> World\n}\n```\n"
+		assert.Equal(t, expected, string(res))
+	})
+
+	t.Run("Graphviz block", func(t *testing.T) {
+		s := newState(
+			&model.Block{
+				Content: &model.BlockContentOfLatex{
+					Latex: &model.BlockContentLatex{
+						Text:      "digraph G {\n    A -> B;\n}",
+						Processor: model.BlockContentLatex_Graphviz,
+					},
+				},
+			},
+		)
+		c := NewMDConverter(s, &testFileNamer{}, false)
+		res := c.Convert(model.SmartBlockType_Page)
+		expected := "```graphviz\ndigraph G {\n    A -> B;\n}\n```\n"
+		assert.Equal(t, expected, string(res))
+	})
+
+	t.Run("Unknown processor type - non-URL content", func(t *testing.T) {
+		s := newState(
+			&model.Block{
+				Content: &model.BlockContentOfLatex{
+					Latex: &model.BlockContentLatex{
+						Text:      "some content that is not a URL",
+						Processor: model.BlockContentLatexProcessor(999), // Unknown processor
+					},
+				},
+			},
+		)
+		c := NewMDConverter(s, &testFileNamer{}, false)
+		res := c.Convert(model.SmartBlockType_Page)
+		expected := "```\nsome content that is not a URL\n```\n"
+		assert.Equal(t, expected, string(res))
+	})
+
+	t.Run("Unknown processor type - URL content", func(t *testing.T) {
+		s := newState(
+			&model.Block{
+				Content: &model.BlockContentOfLatex{
+					Latex: &model.BlockContentLatex{
+						Text:      "https://example.com/embed/video123",
+						Processor: model.BlockContentLatexProcessor(999), // Unknown processor
+					},
+				},
+			},
+		)
+		c := NewMDConverter(s, &testFileNamer{}, false)
+		res := c.Convert(model.SmartBlockType_Page)
+		expected := "![example.com](https://example.com/embed/video123)\n"
+		assert.Equal(t, expected, string(res))
+	})
+
+	t.Run("Embedded block with backticks in content", func(t *testing.T) {
+		s := newState(
+			&model.Block{
+				Content: &model.BlockContentOfLatex{
+					Latex: &model.BlockContentLatex{
+						Text:      "```nested code```",
+						Processor: model.BlockContentLatex_Mermaid,
+					},
+				},
+			},
+		)
+		c := NewMDConverter(s, &testFileNamer{}, false)
+		res := c.Convert(model.SmartBlockType_Page)
+		expected := "```mermaid\n\\`\\`\\`nested code\\`\\`\\`\n```\n"
+		assert.Equal(t, expected, string(res))
+	})
+
+	t.Run("Embedded block with indentation", func(t *testing.T) {
+		// Create a parent block with a child embedded block to test indentation
+		parentBlock := &model.Block{
+			Id:          "parent",
+			ChildrenIds: []string{"child"},
+			Content: &model.BlockContentOfText{
+				Text: &model.BlockContentText{
+					Text:  "Parent bullet",
+					Style: model.BlockContentText_Marked,
+				},
+			},
+		}
+		childBlock := &model.Block{
+			Id: "child",
+			Content: &model.BlockContentOfLatex{
+				Latex: &model.BlockContentLatex{
+					Text:      "x = \\frac{-b \\pm \\sqrt{b^2 - 4ac}}{2a}",
+					Processor: model.BlockContentLatex_Latex,
+				},
+			},
+		}
+		blocks := map[string]simple.Block{
+			"root":   simple.New(&model.Block{Id: "root", ChildrenIds: []string{"parent"}}),
+			"parent": simple.New(parentBlock),
+			"child":  simple.New(childBlock),
+		}
+		s := state.NewDoc("root", blocks).(*state.State)
+		
+		c := NewMDConverter(s, &testFileNamer{}, false)
+		res := c.Convert(model.SmartBlockType_Page)
+		expected := "- Parent bullet   \n    \n$$\nx = \\frac{-b \\pm \\sqrt{b^2 - 4ac}}{2a}\n$$\n"
+		assert.Equal(t, expected, string(res))
+	})
+
+	t.Run("Known embed processor - YouTube", func(t *testing.T) {
+		s := newState(
+			&model.Block{
+				Content: &model.BlockContentOfLatex{
+					Latex: &model.BlockContentLatex{
+						Text:      "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+						Processor: model.BlockContentLatex_Youtube,
+					},
+				},
+			},
+		)
+		c := NewMDConverter(s, &testFileNamer{}, false)
+		res := c.Convert(model.SmartBlockType_Page)
+		expected := "![www.youtube.com](https://www.youtube.com/watch?v=dQw4w9WgXcQ)\n"
+		assert.Equal(t, expected, string(res))
+	})
+
+	t.Run("Multiple embedded blocks", func(t *testing.T) {
+		s := newState(
+			&model.Block{
+				Content: &model.BlockContentOfLatex{
+					Latex: &model.BlockContentLatex{
+						Text:      "\\sum_{i=1}^{n} i = \\frac{n(n+1)}{2}",
+						Processor: model.BlockContentLatex_Latex,
+					},
+				},
+			},
+			&model.Block{
+				Content: &model.BlockContentOfText{
+					Text: &model.BlockContentText{
+						Text: "Some text between embeds",
+					},
+				},
+			},
+			&model.Block{
+				Content: &model.BlockContentOfLatex{
+					Latex: &model.BlockContentLatex{
+						Text:      "sequenceDiagram\n    Alice->>Bob: Hello",
+						Processor: model.BlockContentLatex_Mermaid,
+					},
+				},
+			},
+		)
+		c := NewMDConverter(s, &testFileNamer{}, false)
+		res := c.Convert(model.SmartBlockType_Page)
+		expected := "\n$$\n\\sum_{i=1}^{n} i = \\frac{n(n+1)}{2}\n$$\nSome text between embeds   \n```mermaid\nsequenceDiagram\n    Alice->>Bob: Hello\n```\n"
+		assert.Equal(t, expected, string(res))
+	})
+}
+
 func TestMD_GenerateJSONSchema_PropertyOrder(t *testing.T) {
 	// Create test state
 	st := state.NewDoc("root", nil).NewState()
