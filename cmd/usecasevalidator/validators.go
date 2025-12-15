@@ -8,27 +8,31 @@ import (
 	"strings"
 
 	"github.com/hashicorp/go-multierror"
+	"github.com/samber/lo"
 
-	"github.com/anyproto/anytype-heart/core/block/editor/widget"
+	"github.com/anyproto/anytype-heart/core/block/editor/template"
+	"github.com/anyproto/anytype-heart/core/block/import/common"
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/block/simple/bookmark"
 	"github.com/anyproto/anytype-heart/core/block/simple/dataview"
+	"github.com/anyproto/anytype-heart/core/block/simple/file"
 	"github.com/anyproto/anytype-heart/core/block/simple/link"
 	"github.com/anyproto/anytype-heart/core/block/simple/text"
 	"github.com/anyproto/anytype-heart/core/domain"
-	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
+	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
-type validator func(snapshot *pb.SnapshotWithType, info *useCaseInfo) error
+type (
+	validator func(snapshot *common.SnapshotModel, info *useCaseInfo, fixConfig FixConfig, reporter *reporter) (skip bool, err error)
 
-type keyWithIndex struct {
-	key   string
-	index int
-}
+	relationWithFormat interface {
+		GetFormat() model.RelationFormat
+	}
+)
 
 var validators = []validator{
 	validateRelationBlocks,
@@ -37,43 +41,51 @@ var validators = []validator{
 	validateBlockLinks,
 	validateDeleted,
 	validateRelationOption,
+	validateCollection,
 }
 
-func validateRelationBlocks(s *pb.SnapshotWithType, info *useCaseInfo) (err error) {
-	id := pbtypes.GetString(s.Snapshot.Data.Details, bundle.RelationKeyId.String())
-	var relKeys []string
-	for _, b := range s.Snapshot.Data.Blocks {
+func validateRelationBlocks(s *common.SnapshotModel, info *useCaseInfo, fixConfig FixConfig, reporter *reporter) (skip bool, err error) {
+	blockIdsByKey := make(map[domain.RelationKey][]string)
+	for _, b := range s.Data.Blocks {
 		if rel := simple.New(b).Model().GetRelation(); rel != nil {
-			relKeys = append(relKeys, rel.Key)
+			blockIds := blockIdsByKey[domain.RelationKey(rel.Key)]
+			blockIds = append(blockIds, b.Id)
+			blockIdsByKey[domain.RelationKey(rel.Key)] = blockIds
 		}
 	}
-	relLinks := pbtypes.RelationLinks(s.Snapshot.Data.GetRelationLinks())
-	for _, rk := range relKeys {
-		if !relLinks.Has(rk) {
-			if rel, errFound := bundle.GetRelation(domain.RelationKey(rk)); errFound == nil {
-				s.Snapshot.Data.RelationLinks = append(s.Snapshot.Data.RelationLinks, &model.RelationLink{
-					Key:    rk,
-					Format: rel.Format,
-				})
-				continue
-			}
-			if relInfo, found := info.customTypesAndRelations[rk]; found {
-				s.Snapshot.Data.RelationLinks = append(s.Snapshot.Data.RelationLinks, &model.RelationLink{
-					Key:    rk,
-					Format: relInfo.relationFormat,
-				})
-				continue
-			}
-			err = multierror.Append(err, fmt.Errorf("relation '%v' exists in relation block but not in relation links of object %s", rk, id))
+	details := s.Data.Details
+	var absentKeys, blocksToDelete []string
+	for rk, ids := range blockIdsByKey {
+		if details.Has(rk) {
+			continue
+		}
+
+		if _, found := info.customTypesAndRelations[rk.String()]; found || bundle.HasRelation(rk) {
+			details.SetNull(rk)
+			continue
+		}
+
+		if fixConfig.DeleteInvalidRelationBlocks {
+			absentKeys = append(absentKeys, rk.String())
+			blocksToDelete = append(blocksToDelete, ids...)
+		} else {
+			err = multierror.Append(err, fmt.Errorf("relation '%v' exists in relation block but not in details", rk))
 		}
 	}
-	return err
+
+	if len(absentKeys) > 0 {
+		reporter.addRelBlockDeletionMsg(getId(s), absentKeys, blocksToDelete)
+		removeBlocks(s, blocksToDelete)
+	}
+
+	return false, err
 }
 
-func validateDetails(s *pb.SnapshotWithType, info *useCaseInfo) (err error) {
-	id := pbtypes.GetString(s.Snapshot.Data.Details, bundle.RelationKeyId.String())
+func validateDetails(s *common.SnapshotModel, info *useCaseInfo, fixConfig FixConfig, reporter *reporter) (skip bool, err error) {
+	id := getId(s)
 
-	for k, v := range s.Snapshot.Data.Details.Fields {
+	var relationsToDelete []string
+	for k, v := range s.Data.Details.Iterate() {
 		if isLinkRelation(k) {
 			continue
 		}
@@ -81,23 +93,27 @@ func validateDetails(s *pb.SnapshotWithType, info *useCaseInfo) (err error) {
 			rel relationWithFormat
 			e   error
 		)
-		rel, e = bundle.GetRelation(domain.RelationKey(k))
+		rel, e = bundle.GetRelation(k)
 		if e != nil {
 			var found bool
-			rel, found = info.customTypesAndRelations[k]
+			rel, found = info.customTypesAndRelations[k.String()]
 			if !found {
-				err = multierror.Append(err, fmt.Errorf("relation '%s' exists in details of object '%s', but not in the archive", k, id))
+				if fixConfig.DeleteInvalidDetails || isDesktopRelation(k.String()) {
+					relationsToDelete = append(relationsToDelete, k.String())
+				} else {
+					err = multierror.Append(err, fmt.Errorf("relation '%s' exists in details of object '%s', but not in the archive", k, id))
+				}
 				continue
 			}
 		}
-		if !canRelationContainObjectValues(rel.GetFormat()) {
+		if !isObjectRelation(rel.GetFormat()) && !isCover(k, s.Data.Details) {
 			continue
 		}
 
 		var (
-			values         = pbtypes.GetStringListValue(v)
-			isUpdateNeeded bool
-			newValues      = make([]string, 0, len(values))
+			values        = v.StringList()
+			skippedValues = make([]string, 0, len(values))
+			newValues     = make([]string, 0, len(values))
 		)
 
 		for _, val := range values {
@@ -106,76 +122,83 @@ func validateDetails(s *pb.SnapshotWithType, info *useCaseInfo) (err error) {
 				continue
 			}
 
-			if k == bundle.RelationKeyFeaturedRelations.String() {
+			if k == bundle.RelationKeyFeaturedRelations {
 				if _, found := info.customTypesAndRelations[val]; found {
 					continue
 				}
 			}
 
-			if k == bundle.RelationKeySpaceDashboardId.String() && val == "lastOpened" {
+			if k == bundle.RelationKeySpaceDashboardId && val == "lastOpened" {
 				continue
 			}
 
 			_, found := info.objects[val]
-			if !found {
-				if isBrokenTemplate(k, val) {
-					fmt.Println("WARNING: object", id, "is a template with no target type included in the archive, so it will be skipped")
-					return errSkipObject
-				}
-				if isRecommendedRelationsKey(k) {
-					// we can exclude recommended relations that are not found, because the majority of types are not imported
-					fmt.Println("WARNING: type", id, "contains relation", val, "that is not included in the archive, so this relation will be excluded from the list")
-					isUpdateNeeded = true
-					continue
-				}
-				err = multierror.Append(err, fmt.Errorf("failed to find target id for detail '%s: %s' of object %s", k, val, id))
-			} else {
+			if found {
 				newValues = append(newValues, val)
+				continue
 			}
+			if isBrokenTemplate(k, val) {
+				reporter.addSkipMsg(id, "template for a missing type")
+				return true, nil
+			}
+			skippedValues = append(skippedValues, val)
+			if fixConfig.DeleteInvalidDetailValues || isRecommendedRelationsKey(k) {
+				continue
+			}
+			err = multierror.Append(err, fmt.Errorf("failed to find target id for detail '%s: %s' of object %s", k, val, id))
 		}
 
-		if isUpdateNeeded {
-			s.Snapshot.Data.Details.Fields[k] = pbtypes.StringList(newValues)
+		if len(skippedValues) > 0 {
+			reporter.addDetailUpdateMsg(id, k.String(), skippedValues)
+			s.Data.Details.SetStringList(k, newValues)
 		}
 	}
-	return err
+
+	if len(relationsToDelete) > 0 {
+		reporter.addMsg(id, fmt.Sprintf("details [%s] were deleted from state", strings.Join(relationsToDelete, ",")))
+		for _, key := range relationsToDelete {
+			s.Data.Details.Delete(domain.RelationKey(key))
+		}
+	}
+
+	return false, err
 }
 
-func validateObjectTypes(s *pb.SnapshotWithType, info *useCaseInfo) (err error) {
-	id := pbtypes.GetString(s.Snapshot.Data.Details, bundle.RelationKeyId.String())
-	for _, ot := range s.Snapshot.Data.ObjectTypes {
+func validateObjectTypes(s *common.SnapshotModel, info *useCaseInfo, fixConfig FixConfig, reporter *reporter) (skip bool, err error) {
+	for _, ot := range s.Data.ObjectTypes {
 		typeId := strings.TrimPrefix(ot, addr.ObjectTypeKeyToIdPrefix)
-		if !bundle.HasObjectTypeByKey(domain.TypeKey(typeId)) {
-			if _, found := info.customTypesAndRelations[typeId]; !found {
-				err = multierror.Append(err, fmt.Errorf("object '%s' contains unknown object type: %s", id, ot))
-			}
+		_, found := info.customTypesAndRelations[typeId]
+		if bundle.HasObjectTypeByKey(domain.TypeKey(typeId)) || found {
+			continue
 		}
+		formattedMsg := "object contains unknown object type: %s"
+		if fixConfig.SkipInvalidTypes {
+			reporter.addMsg(getId(s), fmt.Sprintf(formattedMsg, ot))
+			return true, nil
+		}
+		err = multierror.Append(err, fmt.Errorf(formattedMsg, ot))
 	}
-	return err
+	return false, err
 }
 
-func validateBlockLinks(s *pb.SnapshotWithType, info *useCaseInfo) (err error) {
-	var (
-		id                       = pbtypes.GetString(s.Snapshot.Data.Details, bundle.RelationKeyId.String())
-		widgetLinkBlocksToDelete []string
-	)
+func validateBlockLinks(s *common.SnapshotModel, info *useCaseInfo, _ FixConfig, reporter *reporter) (skip bool, err error) {
+	id := getId(s)
+	widgetLinkBlocksToDelete := make(map[string]string)
 
-	for _, b := range s.Snapshot.Data.Blocks {
+	for _, b := range s.Data.Blocks {
 		switch a := simple.New(b).(type) {
 		case link.Block:
 			target := a.Model().GetLink().TargetBlockId
 			_, found := info.objects[target]
-			if !found {
-				if s.SbType == model.SmartBlockType_Widget {
-					if isDefaultWidget(target) {
-						continue
-					}
-					widgetLinkBlocksToDelete = append(widgetLinkBlocksToDelete, b.Id)
-					continue
-				}
-				err = multierror.Append(err, fmt.Errorf("failed to find target id for link '%s' in block '%s' of object '%s'",
-					a.Model().GetLink().TargetBlockId, a.Model().Id, id))
+			if found {
+				continue
 			}
+			if s.SbType == smartblock.SmartBlockTypeWidget {
+				widgetLinkBlocksToDelete[b.Id] = target
+				continue
+			}
+			err = multierror.Append(err, fmt.Errorf("failed to find target id for link '%s' in block '%s' of object '%s'",
+				a.Model().GetLink().TargetBlockId, a.Model().Id, id))
 		case bookmark.Block:
 			target := a.Model().GetBookmark().TargetObjectId
 			if target == "" {
@@ -205,115 +228,107 @@ func validateBlockLinks(s *pb.SnapshotWithType, info *useCaseInfo) (err error) {
 				err = multierror.Append(err, fmt.Errorf("failed to find target id for dataview '%s' in block '%s' of object '%s'",
 					a.Model().GetDataview().TargetObjectId, a.Model().Id, id))
 			}
+		case file.Block:
+			if a.Model().GetFile().TargetObjectId == "" {
+				continue
+			}
+			_, found := info.objects[a.Model().GetFile().TargetObjectId]
+			if !found {
+				err = multierror.Append(err, fmt.Errorf("failed to find target id for file '%s' in block '%s' of object '%s'",
+					a.Model().GetFile().TargetObjectId, a.Model().Id, id))
+			}
 		}
 	}
 	if err == nil && len(widgetLinkBlocksToDelete) > 0 {
+		reporter.addWidgetBlockDeletionMsg(id, widgetLinkBlocksToDelete)
 		err = removeWidgetBlocks(s, id, widgetLinkBlocksToDelete)
 	}
 
-	return err
+	return false, err
 }
 
-func validateDeleted(s *pb.SnapshotWithType, _ *useCaseInfo) error {
-	id := pbtypes.GetString(s.Snapshot.Data.Details, bundle.RelationKeyId.String())
-
-	if pbtypes.GetBool(s.Snapshot.Data.Details, bundle.RelationKeyIsArchived.String()) {
-		fmt.Println("WARNING: object", id, " is archived, so it will be skipped")
-		return errSkipObject
-	}
-
-	if pbtypes.GetBool(s.Snapshot.Data.Details, bundle.RelationKeyIsDeleted.String()) {
-		fmt.Println("WARNING: object", id, " is deleted, so it will be skipped")
-		return errSkipObject
-	}
-
-	if pbtypes.GetBool(s.Snapshot.Data.Details, bundle.RelationKeyIsUninstalled.String()) {
-		fmt.Println("WARNING: object", id, " is uninstalled, so it will be skipped")
-		return errSkipObject
-	}
-
-	return nil
+func validateDeleted(s *common.SnapshotModel, _ *useCaseInfo, _ FixConfig, _ *reporter) (skip bool, err error) {
+	isArchived := s.Data.Details.GetBool(bundle.RelationKeyIsArchived)
+	isDeleted := s.Data.Details.GetBool(bundle.RelationKeyIsDeleted)
+	isUninstalled := s.Data.Details.GetBool(bundle.RelationKeyIsUninstalled)
+	return isArchived || isDeleted || isUninstalled, nil
 }
 
-func validateRelationOption(s *pb.SnapshotWithType, info *useCaseInfo) error {
-	if s.SbType != model.SmartBlockType_STRelationOption {
-		return nil
+func validateRelationOption(s *common.SnapshotModel, info *useCaseInfo, _ FixConfig, reporter *reporter) (skip bool, err error) {
+	if s.SbType != smartblock.SmartBlockTypeRelationOption {
+		return false, nil
 	}
 
-	key := pbtypes.GetString(s.Snapshot.Data.Details, bundle.RelationKeyRelationKey.String())
+	key := s.Data.Details.GetString(bundle.RelationKeyRelationKey)
 	if bundle.HasRelation(domain.RelationKey(key)) {
-		return nil
+		return false, nil
 	}
 
 	if _, found := info.customTypesAndRelations[key]; !found {
-		id := pbtypes.GetString(s.Snapshot.Data.Details, bundle.RelationKeyId.String())
-		fmt.Println("WARNING: relation key", key, "of relation option", id, "is not presented in the archive, so it will be skipped")
-		return errSkipObject
+		reporter.addSkipMsg(getId(s), fmt.Sprintf("relation '%s' does not exist", key))
+		return true, nil
 	}
-	return nil
+	return false, nil
 }
 
-func getRelationLinkByKey(links []*model.RelationLink, key string) *model.RelationLink {
-	for _, l := range links {
-		if l.Key == key {
-			return l
-		}
+func validateCollection(s *common.SnapshotModel, info *useCaseInfo, fix FixConfig, reporter *reporter) (skip bool, err error) {
+	if s.Data.Collections == nil {
+		return false, nil
 	}
-	return nil
-}
 
-func snapshotHasKeyForHash(s *pb.SnapshotWithType, hash string) bool {
-	for _, k := range s.Snapshot.FileKeys {
-		if k.Hash == hash && len(k.Keys) > 0 {
-			return true
+	id := getId(s)
+	collection := pbtypes.GetStringList(s.Data.Collections, template.CollectionStoreKey)
+	newCollection := make([]string, 0, len(collection))
+	missedItems := make([]string, 0, len(collection))
+
+	for _, item := range collection {
+		if _, found := info.objects[item]; found {
+			newCollection = append(newCollection, item)
+			continue
+		}
+		missedItems = append(missedItems, item)
+		if !fix.DeleteInvalidCollectionItems {
+			err = multierror.Append(err, fmt.Errorf("object '%s' is included in store slice of collection '%s', but not in the archive", item, id))
 		}
 	}
-	return false
+	if len(missedItems) > 0 && fix.DeleteInvalidCollectionItems {
+		reporter.addCollectionUpdateMsg(id, missedItems)
+		s.Data.Collections.Fields[template.CollectionStoreKey] = pbtypes.StringList(newCollection)
+	}
+
+	return
 }
 
 // these relations will be overwritten on import
-func isLinkRelation(k string) bool {
-	return slices.Contains([]string{
-		bundle.RelationKeyLinks.String(),
-		bundle.RelationKeySourceObject.String(),
-		bundle.RelationKeyBacklinks.String(),
-		bundle.RelationKeyMentions.String(),
+func isLinkRelation(k domain.RelationKey) bool {
+	return slices.Contains([]domain.RelationKey{
+		bundle.RelationKeyLinks,
+		bundle.RelationKeySourceObject,
+		bundle.RelationKeyBacklinks,
+		bundle.RelationKeyMentions,
 	}, k)
 }
 
-func canRelationContainObjectValues(format model.RelationFormat) bool {
-	switch format {
-	case
-		model.RelationFormat_status,
-		model.RelationFormat_tag,
-		model.RelationFormat_object:
-		return true
-	default:
-		return false
-	}
+func isObjectRelation(format model.RelationFormat) bool {
+	return format == model.RelationFormat_status || format == model.RelationFormat_object || format == model.RelationFormat_tag
 }
 
-func isDefaultWidget(target string) bool {
-	return slices.Contains([]string{
-		widget.DefaultWidgetFavorite,
-		widget.DefaultWidgetSet,
-		widget.DefaultWidgetRecentlyEdited,
-		widget.DefaultWidgetRecentlyOpened,
-		widget.DefaultWidgetCollection,
-	}, target)
+func isBrokenTemplate(key domain.RelationKey, value string) bool {
+	return key == bundle.RelationKeyTargetObjectType && value == addr.MissingObject
 }
 
-func isBrokenTemplate(key, value string) bool {
-	return key == bundle.RelationKeyTargetObjectType.String() && value == addr.MissingObject
-}
-
-func isRecommendedRelationsKey(key string) bool {
-	return slices.Contains([]string{
-		bundle.RelationKeyRecommendedRelations.String(),
-		bundle.RelationKeyRecommendedFeaturedRelations.String(),
-		bundle.RelationKeyRecommendedHiddenRelations.String(),
-		bundle.RelationKeyRecommendedFileRelations.String(),
+func isRecommendedRelationsKey(key domain.RelationKey) bool {
+	// we can exclude recommended relations that are not found, because the majority of types are not imported
+	return slices.Contains([]domain.RelationKey{
+		bundle.RelationKeyRecommendedRelations,
+		bundle.RelationKeyRecommendedFeaturedRelations,
+		bundle.RelationKeyRecommendedHiddenRelations,
+		bundle.RelationKeyRecommendedFileRelations,
 	}, key)
+}
+
+func isDesktopRelation(key string) bool {
+	return key == "data" || key == "isNew" || key == "layoutFormat"
 }
 
 // removeWidgetBlocks removes link blocks and widget blocks from Widget object.
@@ -326,11 +341,10 @@ func isRecommendedRelationsKey(key string) bool {
 //	|
 //	|--- widget2
 //	     |--- link2
-func removeWidgetBlocks(s *pb.SnapshotWithType, rootId string, linkBlockIds []string) error {
-	widgetBlockIds := make([]string, 0, len(linkBlockIds))
+func removeWidgetBlocks(s *common.SnapshotModel, rootId string, blocks map[string]string) error {
 	var rootBlock *model.Block
 
-	for _, b := range s.Snapshot.Data.Blocks {
+	for _, b := range s.Data.Blocks {
 		if b.Id == rootId {
 			rootBlock = b
 			continue
@@ -339,8 +353,8 @@ func removeWidgetBlocks(s *pb.SnapshotWithType, rootId string, linkBlockIds []st
 		if len(b.ChildrenIds) != 1 {
 			continue
 		}
-		if slices.Contains(linkBlockIds, b.ChildrenIds[0]) {
-			widgetBlockIds = append(widgetBlockIds, b.Id)
+		if _, found := blocks[b.ChildrenIds[0]]; found {
+			blocks[b.Id] = ""
 		}
 	}
 
@@ -349,13 +363,34 @@ func removeWidgetBlocks(s *pb.SnapshotWithType, rootId string, linkBlockIds []st
 	}
 
 	rootBlock.ChildrenIds = slices.DeleteFunc(rootBlock.ChildrenIds, func(id string) bool {
-		return slices.Contains(widgetBlockIds, id)
+		_, found := blocks[id]
+		return found
 	})
 
-	blocksToDelete := slices.Concat(widgetBlockIds, linkBlockIds)
-	s.Snapshot.Data.Blocks = slices.DeleteFunc(s.Snapshot.Data.Blocks, func(b *model.Block) bool {
-		return slices.Contains(blocksToDelete, b.Id)
+	s.Data.Blocks = slices.DeleteFunc(s.Data.Blocks, func(b *model.Block) bool {
+		_, found := blocks[b.Id]
+		return found
 	})
 
 	return nil
+}
+
+func removeBlocks(s *common.SnapshotModel, blockIds []string) {
+	if len(blockIds) == 0 {
+		return
+	}
+
+	s.Data.Blocks = lo.FilterMap(s.Data.Blocks, func(block *model.Block, _ int) (*model.Block, bool) {
+		if slices.Contains(blockIds, block.Id) {
+			return nil, false
+		}
+		block.ChildrenIds = slices.DeleteFunc(block.ChildrenIds, func(id string) bool {
+			return slices.Contains(blockIds, id)
+		})
+		return block, true
+	})
+}
+
+func getId(s *common.SnapshotModel) string {
+	return s.Data.Details.GetString(bundle.RelationKeyId)
 }

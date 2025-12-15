@@ -1,0 +1,21 @@
+validate:
+  enabled: true
+  insert_creator: true
+  insert_analytics: true
+  remove_account_relations: true
+fix:
+  home_object_id: ""
+  skip_invalid_objects: false
+  delete_invalid_details: true
+  delete_invalid_detail_values: true
+  delete_invalid_relation_blocks: true
+  delete_invalid_collection_items: true
+  skip_invalid_types: true
+  apply_primitives: true
+  remove_relation_links: false
+  skip_unused_files: true
+report:
+  list: false
+  changes: true
+  custom_usage: false
+  file_usage: false
