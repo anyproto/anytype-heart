@@ -113,10 +113,11 @@ func unmarshalChange(treeChange *objecttree.Change, data []byte, needSnapshot bo
 	} else {
 		noSnapshotChange := change.(*pb.ChangeNoSnapshot)
 		return &pb.Change{
-			Content:   noSnapshotChange.Content,
-			FileKeys:  noSnapshotChange.FileKeys,
-			Timestamp: noSnapshotChange.Timestamp,
-			Version:   noSnapshotChange.Version,
+			Content:    noSnapshotChange.Content,
+			FileKeys:   noSnapshotChange.FileKeys,
+			Timestamp:  noSnapshotChange.Timestamp,
+			Version:    noSnapshotChange.Version,
+			ChangeType: noSnapshotChange.ChangeType,
 		}, nil
 	}
 }
