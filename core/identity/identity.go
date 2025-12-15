@@ -9,10 +9,12 @@ import (
 
 	anystore "github.com/anyproto/any-store"
 	"github.com/anyproto/any-sync/app"
+	"github.com/anyproto/any-sync/app/logger"
 	"github.com/anyproto/any-sync/identityrepo/identityrepoproto"
 	"github.com/anyproto/any-sync/nameservice/nameserviceclient"
 	"github.com/anyproto/any-sync/nameservice/nameserviceproto"
 	"github.com/anyproto/any-sync/util/crypto"
+	"github.com/anyproto/any-sync/util/periodicsync"
 	"github.com/gogo/protobuf/proto"
 	"github.com/samber/lo"
 	"go.uber.org/zap"
@@ -22,7 +24,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/files/fileacl"
 	"github.com/anyproto/anytype-heart/pkg/lib/datastore/anystoreprovider"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
-	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space"
 	"github.com/anyproto/anytype-heart/util/conc"
@@ -32,9 +33,7 @@ import (
 const CName = "identity"
 const identityBatch = 100
 
-var (
-	log = logging.Logger("anytype-identity").Desugar()
-)
+var log = logger.NewNamed(CName)
 
 type Service interface {
 	GetMyProfileDetails(ctx context.Context) (identity string, metadataKey crypto.SymKey, details *domain.Details)
@@ -77,8 +76,7 @@ type service struct {
 
 	myIdentity               string
 	pushIdentityBatchTimeout time.Duration
-	identityObservePeriod    time.Duration
-	identityForceUpdate      chan struct{}
+	periodicIdentityObserve  periodicsync.PeriodicSync
 
 	identityProfileCacheStore    keyvaluestore.Store[[]byte]
 	identityGlobalNameCacheStore keyvaluestore.Store[string]
@@ -91,19 +89,24 @@ type service struct {
 	identityGlobalNames    map[string]*nameserviceproto.NameByAddressResponse
 }
 
-func New(identityObservePeriod time.Duration, pushIdentityBatchTimeout time.Duration) Service {
+const (
+	identityObservePeriod    = 30 * time.Second
+	pushIdentityBatchTimeout = 10 * time.Second
+)
+
+func New() Service {
 	ctx, cancel := context.WithCancel(context.Background())
+
 	return &service{
 		componentCtx:             ctx,
 		componentCtxCancel:       cancel,
-		identityForceUpdate:      make(chan struct{}),
-		identityObservePeriod:    identityObservePeriod,
 		identityObservers:        make(map[string]map[string]*observer),
 		identityEncryptionKeys:   make(map[string]crypto.SymKey),
 		identityProfileCache:     make(map[string]*model.IdentityProfile),
 		identityGlobalNames:      make(map[string]*nameserviceproto.NameByAddressResponse),
 		pushIdentityBatchTimeout: pushIdentityBatchTimeout,
 	}
+
 }
 
 func (s *service) Init(a *app.App) (err error) {
@@ -131,6 +134,8 @@ func (s *service) Init(a *app.App) (err error) {
 		s.fileAclService, s, s.namingService, s.pushIdentityBatchTimeout,
 		s.identityGlobalNameCacheStore, s.identityProfileCacheStore,
 	)
+
+	s.periodicIdentityObserve = periodicsync.NewPeriodicSyncDuration(identityObservePeriod, pushIdentityBatchTimeout, s.observeIdentities, log)
 	return
 }
 
@@ -140,20 +145,21 @@ func (s *service) Name() (name string) {
 
 func (s *service) Run(ctx context.Context) (err error) {
 	s.myIdentity = s.accountService.AccountID()
-
 	err = s.ownProfileSubscription.run(ctx)
 	if err != nil {
 		return err
 	}
-
-	go s.observeIdentitiesLoop()
-
+	s.periodicIdentityObserve.Run()
 	return
 }
 
 func (s *service) Close(ctx context.Context) (err error) {
 	s.componentCtxCancel()
 	s.ownProfileSubscription.close()
+	if s.periodicIdentityObserve != nil {
+		s.periodicIdentityObserve.Close()
+	}
+
 	return nil
 }
 
@@ -183,6 +189,7 @@ func (s *service) WaitProfile(ctx context.Context, identity string) *model.Ident
 		}
 	}
 }
+
 func (s *service) GetMetadataKey(identity string) (crypto.SymKey, error) {
 	s.lock.Lock()
 	defer s.lock.Unlock()
@@ -233,28 +240,6 @@ func (s *service) getProfileFromCache(identity string) *model.IdentityProfile {
 		return profile
 	}
 	return nil
-}
-
-func (s *service) observeIdentitiesLoop() {
-	ticker := time.NewTicker(s.identityObservePeriod)
-	defer ticker.Stop()
-
-	observe := func() {
-		err := s.observeIdentities(s.componentCtx)
-		if err != nil {
-			log.Error("error observing identities", zap.Error(err))
-		}
-	}
-	for {
-		select {
-		case <-s.componentCtx.Done():
-			return
-		case <-s.identityForceUpdate:
-			observe()
-		case <-ticker.C:
-			observe()
-		}
-	}
 }
 
 const identityRepoDataKind = "profile"
@@ -383,8 +368,10 @@ func (s *service) broadcastIdentityProfile(identityData *identityrepoproto.DataW
 // AddIdentityProfile puts identity profile to cache from external place (e.g. from onetoone inbox).
 // Returns immediately if key already exists.
 func (s *service) AddIdentityProfile(profile *model.IdentityProfile, key crypto.SymKey) error {
+	defer s.ResetPeriodicChecker()
 	s.lock.Lock()
 	defer s.lock.Unlock()
+
 	if _, ok := s.identityEncryptionKeys[profile.Identity]; ok {
 		log.Info("addIdentityProfile: profile key already exists, skip", zap.String("identity", profile.Identity))
 		return nil
@@ -407,7 +394,12 @@ func (s *service) AddIdentityProfile(profile *model.IdentityProfile, key crypto.
 		log.Error("addIdentityProfile: index icon error", zap.Error(err))
 	}
 
-	return s.identityProfileCacheStore.Set(context.Background(), profile.Identity, encryptedProfileBytes)
+	err = s.identityProfileCacheStore.Set(context.Background(), profile.Identity, encryptedProfileBytes)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (s *service) broadcastMyIdentityProfile(identityProfile *model.IdentityProfile) {
@@ -574,10 +566,7 @@ func (s *service) RegisterIdentity(spaceId string, identity string, encryptionKe
 		return nil
 	}
 
-	select {
-	case s.identityForceUpdate <- struct{}{}:
-	default:
-	}
+	s.ResetPeriodicChecker()
 	return nil
 }
 
@@ -603,4 +592,8 @@ func (s *service) UnregisterIdentitiesInSpace(spaceId string) {
 
 func (s *service) GetMyProfileDetails(ctx context.Context) (identity string, metadataKey crypto.SymKey, details *domain.Details) {
 	return s.ownProfileSubscription.getDetails(ctx)
+}
+
+func (s *service) ResetPeriodicChecker() {
+	s.periodicIdentityObserve.Reset(s.componentCtx)
 }
