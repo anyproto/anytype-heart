@@ -60,6 +60,10 @@ packages:
   github.com/anyproto/anytype-heart/core/files/filesync:
     interfaces:
       FileSync:
+  github.com/anyproto/anytype-heart/core/files/fileuploader:
+    interfaces:
+      Service:
+      Uploader:
   github.com/anyproto/anytype-heart/core/acl:
     interfaces:
       participantRemover:

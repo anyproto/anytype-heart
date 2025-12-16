@@ -182,6 +182,53 @@ func (_c *MockRpcStore_AddToFile_Call) RunAndReturn(run func(context.Context, st
 	return _c
 }
 
+// AddToFileMany provides a mock function with given fields: ctx, req
+func (_m *MockRpcStore) AddToFileMany(ctx context.Context, req *fileproto.BlockPushManyRequest) error {
+	ret := _m.Called(ctx, req)
+
+	if len(ret) == 0 {
+		panic("no return value specified for AddToFileMany")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, *fileproto.BlockPushManyRequest) error); ok {
+		r0 = rf(ctx, req)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// MockRpcStore_AddToFileMany_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'AddToFileMany'
+type MockRpcStore_AddToFileMany_Call struct {
+	*mock.Call
+}
+
+// AddToFileMany is a helper method to define mock.On call
+//   - ctx context.Context
+//   - req *fileproto.BlockPushManyRequest
+func (_e *MockRpcStore_Expecter) AddToFileMany(ctx interface{}, req interface{}) *MockRpcStore_AddToFileMany_Call {
+	return &MockRpcStore_AddToFileMany_Call{Call: _e.mock.On("AddToFileMany", ctx, req)}
+}
+
+func (_c *MockRpcStore_AddToFileMany_Call) Run(run func(ctx context.Context, req *fileproto.BlockPushManyRequest)) *MockRpcStore_AddToFileMany_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(*fileproto.BlockPushManyRequest))
+	})
+	return _c
+}
+
+func (_c *MockRpcStore_AddToFileMany_Call) Return(_a0 error) *MockRpcStore_AddToFileMany_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockRpcStore_AddToFileMany_Call) RunAndReturn(run func(context.Context, *fileproto.BlockPushManyRequest) error) *MockRpcStore_AddToFileMany_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // BindCids provides a mock function with given fields: ctx, spaceID, fileId, cids
 func (_m *MockRpcStore) BindCids(ctx context.Context, spaceID string, fileId domain.FileId, cids []cid.Cid) error {
 	ret := _m.Called(ctx, spaceID, fileId, cids)

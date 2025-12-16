@@ -16,16 +16,37 @@ import (
 	"go.uber.org/mock/gomock"
 
 	"github.com/anyproto/anytype-heart/core/anytype/config"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/event/mock_event"
 	"github.com/anyproto/anytype-heart/core/files/filestorage"
 	"github.com/anyproto/anytype-heart/core/files/filestorage/rpcstore"
+	"github.com/anyproto/anytype-heart/core/kanban/mock_kanban"
+	"github.com/anyproto/anytype-heart/core/subscription"
 	"github.com/anyproto/anytype-heart/core/wallet/mock_wallet"
 	"github.com/anyproto/anytype-heart/pb"
+	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/datastore/anystoreprovider"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/spaceindex"
+	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+	"github.com/anyproto/anytype-heart/space/mock_space"
 	"github.com/anyproto/anytype-heart/tests/testutil"
 )
 
 var ctx = context.Background()
+
+type dummyCollectionService struct {
+}
+
+func (s *dummyCollectionService) SubscribeForCollection(collectionID string, subscriptionID string) ([]string, <-chan []string, error) {
+	return nil, nil, nil
+}
+
+func (s *dummyCollectionService) UnsubscribeFromCollection(collectionID string, subscriptionID string) error {
+	return nil
+}
+
+func (s *dummyCollectionService) Name() string          { return "dummyCollectionService" }
+func (s *dummyCollectionService) Init(a *app.App) error { return nil }
 
 func newFixtureNotStarted(t *testing.T, limit int) *fixture {
 	fx := &fixture{
@@ -50,6 +71,23 @@ func newFixtureNotStarted(t *testing.T, limit int) *fixture {
 	wallet := mock_wallet.NewMockWallet(t)
 	wallet.EXPECT().RepoPath().Return(t.TempDir()).Maybe()
 
+	kanbanService := mock_kanban.NewMockService(t)
+
+	spaceService := mock_space.NewMockService(t)
+	spaceService.EXPECT().TechSpaceId().Return("techSpaceId").Maybe()
+
+	fx.subService = subscription.NewInternalTestService(t)
+
+	fx.subService.AddObjects(t, "techSpaceId", []spaceindex.TestObject{
+		{
+			bundle.RelationKeyId:             domain.String("spaceView1"),
+			bundle.RelationKeyTargetSpaceId:  domain.String("space1"),
+			bundle.RelationKeyResolvedLayout: domain.Int64(model.ObjectType_spaceView),
+		},
+	})
+
+	collectionService := &dummyCollectionService{}
+
 	dbProvider, err := anystoreprovider.NewInPath(t.TempDir())
 	require.NoError(t, err)
 
@@ -58,16 +96,24 @@ func newFixtureNotStarted(t *testing.T, limit int) *fixture {
 		Register(dbProvider).
 		Register(rpcstore.NewInMemoryService(fx.rpcStore)).
 		Register(fx.fileSync).
+		Register(fx.subService).
 		Register(testutil.PrepareMock(ctx, fx.a, sender)).
+		Register(testutil.PrepareMock(ctx, fx.a, kanbanService)).
+		Register(collectionService).
 		Register(testutil.PrepareMock(ctx, fx.a, mock_accountservice.NewMockService(ctrl))).
 		Register(testutil.PrepareMock(ctx, fx.a, wallet)).
+		Register(testutil.PrepareMock(ctx, fx.a, spaceService)).
 		Register(&config.Config{DisableFileConfig: true, NetworkMode: pb.RpcAccount_DefaultConfig, PeferYamuxTransport: true})
+
 	return fx
 }
 
 func newFixture(t *testing.T, limit int) *fixture {
 	fx := newFixtureNotStarted(t, limit)
-	require.NoError(t, fx.a.Start(ctx))
+
+	err := fx.a.Start(ctx)
+	require.NoError(t, err)
+
 	return fx
 }
 
@@ -81,6 +127,7 @@ type fixture struct {
 	rpcStore         *rpcstore.InMemoryStore
 	eventsLock       sync.Mutex
 	events           []*pb.Event
+	subService       *subscription.InternalTestService
 }
 
 func (f *fixture) waitLimitReachedEvent(t *testing.T, timeout time.Duration) {

@@ -34,9 +34,7 @@ func New() Service {
 func (s *service) Init(a *app.App) (err error) {
 	s.fileSyncService = app.MustComponent[filesync.FileSync](a)
 	s.objectGetter = app.MustComponent[cache.ObjectGetter](a)
-	s.fileSyncService.OnUploaded(s.onFileUploaded)
-	s.fileSyncService.OnUploadStarted(s.onFileUploadStarted)
-	s.fileSyncService.OnLimited(s.onFileLimited)
+	s.fileSyncService.OnStatusUpdated(s.onStatusUpdated)
 	return nil
 }
 
@@ -52,16 +50,8 @@ func (s *service) Close(ctx context.Context) (err error) {
 	return nil
 }
 
-func (s *service) onFileUploadStarted(objectId string, _ domain.FullFileId) error {
-	return s.indexFileSyncStatus(objectId, filesyncstatus.Syncing)
-}
-
-func (s *service) onFileUploaded(objectId string, _ domain.FullFileId) error {
-	return s.indexFileSyncStatus(objectId, filesyncstatus.Synced)
-}
-
-func (s *service) onFileLimited(objectId string, _ domain.FullFileId, bytesLeftPercentage float64) error {
-	return s.indexFileSyncStatus(objectId, filesyncstatus.Limited)
+func (s *service) onStatusUpdated(objectId string, _ domain.FullFileId, status filesyncstatus.Status) error {
+	return s.indexFileSyncStatus(objectId, status)
 }
 
 func (s *service) indexFileSyncStatus(fileObjectId string, status filesyncstatus.Status) error {

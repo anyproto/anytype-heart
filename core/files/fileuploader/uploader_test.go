@@ -22,13 +22,11 @@ import (
 	file2 "github.com/anyproto/anytype-heart/core/block/simple/file"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/domain/objectorigin"
-	"github.com/anyproto/anytype-heart/core/event/mock_event"
 	"github.com/anyproto/anytype-heart/core/files"
 	"github.com/anyproto/anytype-heart/core/files/fileobject/filemodels"
 	"github.com/anyproto/anytype-heart/core/files/fileobject/mock_fileobject"
 	"github.com/anyproto/anytype-heart/core/files/filestorage"
-	"github.com/anyproto/anytype-heart/core/files/filestorage/rpcstore"
-	"github.com/anyproto/anytype-heart/core/files/filesync"
+	"github.com/anyproto/anytype-heart/core/files/filesync/mock_filesync"
 	wallet2 "github.com/anyproto/anytype-heart/core/wallet"
 	"github.com/anyproto/anytype-heart/core/wallet/mock_wallet"
 	"github.com/anyproto/anytype-heart/pb"
@@ -344,14 +342,10 @@ func TestUploader_Upload(t *testing.T) {
 }
 
 func newFileServiceFixture(t *testing.T, blockStorage filestorage.FileStorage) files.Service {
-
-	rpcStore := rpcstore.NewInMemoryStore(1024)
-	rpcStoreService := rpcstore.NewInMemoryService(rpcStore)
 	commonFileService := fileservice.New()
-	fileSyncService := filesync.New()
+
+	fileSyncService := mock_filesync.NewMockFileSync(t)
 	objectStore := objectstore.NewStoreFixture(t)
-	eventSender := mock_event.NewMockSender(t)
-	eventSender.EXPECT().Broadcast(mock.Anything).Return().Maybe()
 
 	ctx := context.Background()
 	ctrl := gomock.NewController(t)
@@ -362,13 +356,11 @@ func newFileServiceFixture(t *testing.T, blockStorage filestorage.FileStorage) f
 	a := new(app.App)
 	a.Register(anystoreprovider.New())
 	a.Register(commonFileService)
-	a.Register(fileSyncService)
-	a.Register(testutil.PrepareMock(ctx, a, eventSender))
 	a.Register(blockStorage)
 	a.Register(objectStore)
-	a.Register(rpcStoreService)
 	a.Register(testutil.PrepareMock(ctx, a, mock_accountservice.NewMockService(ctrl)))
 	a.Register(testutil.PrepareMock(ctx, a, wallet))
+	a.Register(testutil.PrepareMock(ctx, a, fileSyncService))
 	a.Register(&config.Config{DisableFileConfig: true, NetworkMode: pb.RpcAccount_DefaultConfig, PeferYamuxTransport: true})
 
 	err := a.Start(ctx)

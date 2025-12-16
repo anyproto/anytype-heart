@@ -62,6 +62,7 @@ type ObjectSubscription[T any] struct {
 	mx    sync.Mutex
 	sub   map[string]T
 
+	idToKey map[string]string
 	keyToId map[string]string
 }
 
@@ -153,6 +154,7 @@ func (o *ObjectSubscription[T]) Run() error {
 	o.request.Internal = true
 	o.sub = map[string]T{}
 	o.keyToId = map[string]string{}
+	o.idToKey = map[string]string{}
 	if o.service != nil {
 		resp, err := o.service.Search(o.request)
 		if err != nil {
@@ -163,12 +165,15 @@ func (o *ObjectSubscription[T]) Run() error {
 			o.filterKeys[key] = struct{}{}
 		}
 		for _, rec := range resp.Records {
-			id, data := o.params.SetDetails(rec)
+			key, data := o.params.SetDetails(rec)
 			if o.params.CustomFilter != nil && !o.params.CustomFilter(rec) {
 				continue
 			}
-			o.sub[id] = data
-			o.addKey(id, rec)
+			o.sub[key] = data
+
+			id := rec.GetString(bundle.RelationKeyId)
+			o.keyToId[key] = id
+			o.idToKey[id] = key
 		}
 		o.events = resp.Output
 	}
@@ -192,19 +197,19 @@ func (o *ObjectSubscription[T]) Len() int {
 func (o *ObjectSubscription[T]) Get(id string) (T, bool) {
 	o.mx.Lock()
 	defer o.mx.Unlock()
-	entry, ok := o.sub[id]
+	key, ok := o.idToKey[id]
+	if !ok {
+		var defValue T
+		return defValue, false
+	}
+	entry, ok := o.sub[key]
 	return entry, ok
 }
 
 func (o *ObjectSubscription[T]) GetByKey(key string) (T, bool) {
 	o.mx.Lock()
 	defer o.mx.Unlock()
-	id, ok := o.keyToId[key]
-	if !ok {
-		var defValue T
-		return defValue, false
-	}
-	entry, ok := o.sub[id]
+	entry, ok := o.sub[key]
 	return entry, ok
 }
 
@@ -218,8 +223,19 @@ func (o *ObjectSubscription[T]) Has(id string) bool {
 func (o *ObjectSubscription[T]) Iterate(iter func(id string, data T) bool) {
 	o.mx.Lock()
 	defer o.mx.Unlock()
-	for id, ent := range o.sub {
+	for key, ent := range o.sub {
+		id := o.keyToId[key]
 		if !iter(id, ent) {
+			return
+		}
+	}
+}
+
+func (o *ObjectSubscription[T]) IterateWithKey(iter func(key string, data T) bool) {
+	o.mx.Lock()
+	defer o.mx.Unlock()
+	for key, ent := range o.sub {
+		if !iter(key, ent) {
 			return
 		}
 	}
@@ -234,15 +250,19 @@ func (o *ObjectSubscription[T]) read() {
 		case *pb.EventMessageValueOfSubscriptionAdd:
 			// Nothing to do here, add logic is in ObjectDetailsSet case
 		case *pb.EventMessageValueOfSubscriptionRemove:
-			curEntry, ok := o.sub[v.SubscriptionRemove.Id]
+			id := v.SubscriptionRemove.Id
+			key := o.idToKey[id]
+			curEntry, ok := o.sub[key]
 			if ok {
-				delete(o.sub, v.SubscriptionRemove.Id)
+				delete(o.sub, key)
 				if o.params.OnRemoved != nil {
 					o.params.OnRemoved(v.SubscriptionRemove.Id, curEntry)
 				}
 			}
 		case *pb.EventMessageValueOfObjectDetailsAmend:
-			curEntry, ok := o.sub[v.ObjectDetailsAmend.Id]
+			id := v.ObjectDetailsAmend.Id
+			key := o.idToKey[id]
+			curEntry, ok := o.sub[key]
 			if ok {
 				keyValues := make([]RelationKeyValue, 0, len(v.ObjectDetailsAmend.Details))
 				for _, value := range v.ObjectDetailsAmend.Details {
@@ -259,27 +279,31 @@ func (o *ObjectSubscription[T]) read() {
 				if len(keyValues) != 0 {
 					curEntry = o.params.UpdateKeys(keyValues, curEntry)
 				}
-				o.sub[v.ObjectDetailsAmend.Id] = curEntry
+				o.sub[key] = curEntry
 			}
 		case *pb.EventMessageValueOfObjectDetailsUnset:
-			curEntry, ok := o.sub[v.ObjectDetailsUnset.Id]
+			id := v.ObjectDetailsUnset.Id
+			key := o.idToKey[id]
+			curEntry, ok := o.sub[key]
 			if ok {
 				curEntry = o.params.RemoveKeys(v.ObjectDetailsUnset.Keys, curEntry)
-				o.sub[v.ObjectDetailsUnset.Id] = curEntry
+				o.sub[key] = curEntry
 			}
 		case *pb.EventMessageValueOfObjectDetailsSet:
 			details := domain.NewDetailsFromProto(v.ObjectDetailsSet.Details)
 			if o.params.CustomFilter != nil && !o.params.CustomFilter(details) {
 				return
 			}
-			_, newEntry := o.params.SetDetails(details)
-			if _, ok := o.sub[v.ObjectDetailsSet.Id]; !ok {
+			key, newEntry := o.params.SetDetails(details)
+			o.keyToId[key] = v.ObjectDetailsSet.Id
+			o.idToKey[v.ObjectDetailsSet.Id] = key
+
+			if _, ok := o.sub[key]; !ok {
 				if o.params.OnAdded != nil {
 					o.params.OnAdded(v.ObjectDetailsSet.Id, newEntry)
 				}
-				o.addKey(v.ObjectDetailsSet.Id, details)
 			}
-			o.sub[v.ObjectDetailsSet.Id] = newEntry
+			o.sub[key] = newEntry
 		}
 	}
 	for {
@@ -288,11 +312,5 @@ func (o *ObjectSubscription[T]) read() {
 			return
 		}
 		readEvent(event)
-	}
-}
-
-func (o *ObjectSubscription[T]) addKey(id string, details *domain.Details) {
-	if key := details.GetString(bundle.RelationKeyRelationKey); key != "" {
-		o.keyToId[key] = id
 	}
 }
