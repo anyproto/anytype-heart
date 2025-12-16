@@ -102,7 +102,7 @@ func TestFileSync_AddFile(t *testing.T) {
 		assert.Equal(t, req.FileId.FileId, it.FileId)
 		assert.Equal(t, req.FileObjectId, it.ObjectId)
 
-		err = fx.queue.ReleaseAndUpdate(it)
+		err = fx.queue.ReleaseAndUpdate(it.ObjectId, it)
 		require.NoError(t, err)
 	})
 
@@ -265,7 +265,7 @@ func (fx *fixture) givenFileUploaded(t *testing.T, spaceId string, fileId domain
 	require.NoError(t, err)
 	assert.Equal(t, fileId, it.FileId)
 
-	err = fx.queue.ReleaseAndUpdate(it)
+	err = fx.queue.ReleaseAndUpdate(it.ObjectId, it)
 	require.NoError(t, err)
 
 	// Check remote node
@@ -308,7 +308,7 @@ func (fx *fixture) givenFileUploadedOrLimited(t *testing.T, spaceId string, file
 
 	state := it.State
 
-	err = fx.queue.ReleaseAndUpdate(it)
+	err = fx.queue.ReleaseAndUpdate(it.ObjectId, it)
 	require.NoError(t, err)
 
 	// Check remote node

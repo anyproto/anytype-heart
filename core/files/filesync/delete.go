@@ -72,7 +72,7 @@ func (s *fileSync) processNextToDelete(ctx context.Context) error {
 
 	next, err := s.processDeletion(ctx, item)
 
-	releaseErr := s.queue.ReleaseAndUpdate(next)
+	releaseErr := s.queue.ReleaseAndUpdate(item.ObjectId, next)
 
 	return errors.Join(releaseErr, err)
 }

@@ -127,6 +127,9 @@ func (s *fileSync) Init(a *app.App) (err error) {
 	store := filequeue.NewStorage(queueColl, marshalFileInfo, unmarshalFileInfo)
 	s.queue = filequeue.NewQueue(store, func(info FileInfo) string {
 		return info.ObjectId
+	}, func(info FileInfo, id string) FileInfo {
+		info.ObjectId = id
+		return info
 	})
 
 	s.nodeUsageCache = keyvaluestore.NewJsonFromCollection[NodeUsage](provider.GetSystemCollection())

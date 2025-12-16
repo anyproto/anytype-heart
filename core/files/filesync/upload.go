@@ -86,7 +86,7 @@ func (s *fileSync) resetUploadingStatus(ctx context.Context) error {
 	item.State = FileStatePendingUpload
 	item.ScheduledAt = time.Now()
 
-	releaseErr := s.queue.ReleaseAndUpdate(item)
+	releaseErr := s.queue.ReleaseAndUpdate(item.ObjectId, item)
 
 	return errors.Join(releaseErr, err)
 }
@@ -124,7 +124,7 @@ func (s *fileSync) processNextPendingUploadItem(ctx context.Context, state FileS
 
 	next, err := s.processFilePendingUpload(ctx, item)
 
-	releaseErr := s.queue.ReleaseAndUpdate(next)
+	releaseErr := s.queue.ReleaseAndUpdate(item.ObjectId, next)
 
 	return errors.Join(releaseErr, err)
 }

@@ -18,9 +18,9 @@ func (s *fileSync) process(id string, proc func(exists bool, info FileInfo) (Fil
 
 	next, err := proc(exists, item)
 	if err != nil {
-		return errors.Join(s.queue.ReleaseAndUpdate(item), fmt.Errorf("process item: %w", err))
+		return errors.Join(s.queue.ReleaseAndUpdate(id, item), fmt.Errorf("process item: %w", err))
 	}
-	return s.queue.ReleaseAndUpdate(next)
+	return s.queue.ReleaseAndUpdate(id, next)
 }
 
 func filterByFileId(fileId string) query.Key {

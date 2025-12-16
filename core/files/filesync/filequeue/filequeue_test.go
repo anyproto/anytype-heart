@@ -43,6 +43,9 @@ func newTestQueue(t *testing.T) *fixture {
 	store := NewStorage[fileInfo](coll, marshalFileInfo, unmarshalFileInfo)
 	q := NewQueue(store, func(info fileInfo) string {
 		return info.ObjectId
+	}, func(info fileInfo, id string) fileInfo {
+		info.ObjectId = id
+		return info
 	})
 
 	go func() {
@@ -71,7 +74,7 @@ func TestQueue(t *testing.T) {
 			task, err := q.GetById("obj1")
 			require.NoError(t, err)
 			task.BytesToUpload++
-			err = q.ReleaseAndUpdate(task)
+			err = q.ReleaseAndUpdate(task.ObjectId, task)
 			require.NoError(t, err)
 		}()
 	}
@@ -201,7 +204,7 @@ func TestQueueGetNext(t *testing.T) {
 
 				next.State = fileStatePendingDeletion
 				got = append(got, next.ObjectId)
-				err = q.ReleaseAndUpdate(next)
+				err = q.ReleaseAndUpdate(next.ObjectId, next)
 				require.NoError(t, err)
 			}
 
@@ -403,7 +406,7 @@ func TestQueueSchedule(t *testing.T) {
 				_, err := q.GetById("obj1")
 				require.NoError(t, err)
 				time.Sleep(2 * time.Minute)
-				err = q.ReleaseAndUpdate(fileInfo{
+				err = q.ReleaseAndUpdate("obj1", fileInfo{
 					ObjectId: "obj1",
 					State:    fileStateDeleted,
 				})
@@ -474,7 +477,7 @@ func TestComplex(t *testing.T) {
 				require.NoError(t, err)
 				next.Imported = true
 				assert.Equal(t, "obj1", next.ObjectId)
-				err = q.ReleaseAndUpdate(next)
+				err = q.ReleaseAndUpdate(next.ObjectId, next)
 				require.NoError(t, err)
 			}()
 
@@ -508,7 +511,7 @@ func TestComplex(t *testing.T) {
 				require.NoError(t, err)
 				next.State = fileStatePendingDeletion
 				assert.Equal(t, "obj1", next.ObjectId)
-				err = q.ReleaseAndUpdate(next)
+				err = q.ReleaseAndUpdate(next.ObjectId, next)
 				require.NoError(t, err)
 			}()
 

@@ -22,6 +22,7 @@ type Queue[T any] struct {
 	store *Storage[T]
 
 	getId func(T) string
+	setId func(T, string) T
 
 	closed   bool
 	closedCh chan struct{}
@@ -53,7 +54,7 @@ type Queue[T any] struct {
 	scheduled  map[string]scheduledItem[T] // scheduled contains a set of items scheduled for specific time
 }
 
-func NewQueue[T any](store *Storage[T], getId func(T) string) *Queue[T] {
+func NewQueue[T any](store *Storage[T], getId func(T) string, setId func(T, string) T) *Queue[T] {
 	ctx, ctxCancel := context.WithCancel(context.Background())
 	return &Queue[T]{
 		ctx:       ctx,
@@ -76,6 +77,7 @@ func NewQueue[T any](store *Storage[T], getId func(T) string) *Queue[T] {
 		scheduled:      make(map[string]scheduledItem[T]),
 		dueWaiters:     map[string][]scheduledItem[T]{},
 		getId:          getId,
+		setId:          setId,
 	}
 }
 
@@ -160,6 +162,10 @@ func (q *Queue[T]) handleGetById(req getByIdRequest[T]) {
 			return
 		}
 
+		if errors.Is(err, ErrNotFound) {
+			item = q.setId(item, req.objectId)
+		}
+
 		q.itemLocked[req.objectId] = struct{}{}
 		req.responseCh <- itemResponse[T]{item: item, err: err}
 	}
@@ -191,6 +197,7 @@ func (q *Queue[T]) handleReleaseItem(req releaseRequest[T]) {
 		return
 	}
 	delete(q.itemLocked, q.getId(item))
+
 	err := q.store.set(q.ctx, q.getId(item), item)
 	if err != nil {
 		req.responseCh <- err
@@ -615,10 +622,12 @@ func (q *Queue[T]) Upsert(id string, modifier func(exists bool, prev T) T) error
 
 	next := modifier(exists, it)
 
-	return q.ReleaseAndUpdate(next)
+	return q.ReleaseAndUpdate(id, next)
 }
 
-func (q *Queue[T]) ReleaseAndUpdate(task T) error {
+func (q *Queue[T]) ReleaseAndUpdate(id string, task T) error {
+	task = q.setId(task, id)
+
 	responseCh := make(chan error, 1)
 	req := releaseRequest[T]{
 		item:       task,

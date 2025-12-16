@@ -71,7 +71,7 @@ func (s *fileSync) getLimitedFile(ctx context.Context, spaceId string, freeSpace
 		freeSpace = max(0, freeSpace-item.BytesToUploadOrBind)
 	}
 
-	releaseErr := s.queue.ReleaseAndUpdate(next)
+	releaseErr := s.queue.ReleaseAndUpdate(item.ObjectId, next)
 
 	return freeSpace, errors.Join(releaseErr, err)
 }

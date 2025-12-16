@@ -33,7 +33,7 @@ func TestDeleteFile(t *testing.T) {
 		require.NoError(t, err)
 		assert.Equal(t, fileId, it.FileId)
 
-		err = fx.queue.ReleaseAndUpdate(it)
+		err = fx.queue.ReleaseAndUpdate(it.ObjectId, it)
 
 		resp, err := fx.rpcStore.FilesInfo(ctx, spaceId, fileId)
 		require.NoError(t, err)
@@ -71,7 +71,7 @@ func TestDeleteFile(t *testing.T) {
 		require.NoError(t, err)
 		assert.Equal(t, testFileId, it.FileId)
 
-		err = fx.queue.ReleaseAndUpdate(it)
+		err = fx.queue.ReleaseAndUpdate(it.ObjectId, it)
 		require.NoError(t, err)
 	})
 }
