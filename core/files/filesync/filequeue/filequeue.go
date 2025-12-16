@@ -155,6 +155,10 @@ func (q *Queue[T]) handleGetById(req getByIdRequest[T]) {
 		q.getByIdWaiters[req.objectId] = append(q.getByIdWaiters[req.objectId], req.responseCh)
 	} else {
 		item, err := q.store.get(q.ctx, req.objectId)
+		if err != nil && !errors.Is(err, ErrNotFound) {
+			req.responseCh <- itemResponse[T]{err: err}
+			return
+		}
 
 		q.itemLocked[req.objectId] = struct{}{}
 		req.responseCh <- itemResponse[T]{item: item, err: err}
@@ -488,6 +492,8 @@ func (q *Queue[T]) scheduleItem(req getNextRequest[T], next T) {
 	}()
 }
 
+// GetById locks and returns an item by id. It locks an item even if it's not stored in a DB, it's useful to prevent race conditions.
+// Typical usage: call GetById, process or initialize an item and store it using ReleaseAndUpdate
 func (q *Queue[T]) GetById(objectId string) (T, error) {
 	responseCh := make(chan itemResponse[T], 1)
 

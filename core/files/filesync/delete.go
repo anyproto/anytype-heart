@@ -84,6 +84,13 @@ func (s *fileSync) processDeletion(ctx context.Context, it FileInfo) (FileInfo, 
 		return it, err
 	}
 
+	mngr, err := s.limitManager.getSpace(ctx, it.SpaceId)
+	if err == nil {
+		mngr.deallocateFile(it.Key())
+	} else {
+		log.Error("processDeletion: get space limit manager", zap.Error(err))
+	}
+
 	it.State = FileStateDeleted
 	return it, nil
 }

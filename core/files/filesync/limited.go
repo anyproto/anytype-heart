@@ -67,9 +67,11 @@ func (s *fileSync) getLimitedFile(ctx context.Context, spaceId string, freeSpace
 	}
 
 	next, err := s.processFilePendingUpload(ctx, item)
+	if err == nil {
+		freeSpace = max(0, freeSpace-item.BytesToUploadOrBind)
+	}
 
 	releaseErr := s.queue.ReleaseAndUpdate(next)
 
-	nextFreeSpace := max(0, freeSpace-item.BytesToUploadOrBind)
-	return nextFreeSpace, errors.Join(releaseErr, err)
+	return freeSpace, errors.Join(releaseErr, err)
 }
