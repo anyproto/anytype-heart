@@ -513,22 +513,14 @@ func TestOrderSetter_rebuildIfNeeded(t *testing.T) {
 	t.Run("reorder to first position", func(t *testing.T) {
 		// given
 		objGetter := mock_cache.NewMockObjectGetter(t)
-		sb1 := smarttest.New("view1")
-		mockView1 := &editor.SpaceView{SmartBlock: sb1, OrderSettable: order.NewOrderSettable(sb1, bundle.RelationKeySpaceOrder)}
-		sb2 := smarttest.New("view2")
-		mockView2 := &editor.SpaceView{SmartBlock: sb2, OrderSettable: order.NewOrderSettable(sb2, bundle.RelationKeySpaceOrder)}
+		sb3 := smarttest.New("view3")
+		mockView3 := &editor.SpaceView{SmartBlock: sb3, OrderSettable: order.NewOrderSettable(sb3, bundle.RelationKeySpaceOrder)}
 
 		// STRICT expectations: only view3 needs fetching
-		// view3: "MMMM0003" > "" (prev) → keeps its lexid (no fetch needed)
-		// view1: "MMMM0001" > "MMMM0003" (prev) → NO, needs new lexid
-		// view2: "MMMM0002" > view1's new lexid → depends on what view1 gets
-
-		// Actually, let's trace through:
-		// Position 0 (view3): curr="MMMM0003" > prev="" → keeps lexid
-		// Position 1 (view1): curr="MMMM0001" > prev="MMMM0003" → NO, needs new lexid
-		// Position 2 (view2): curr="MMMM0002" > prev=(view1's new lexid) → depends
-		objGetter.EXPECT().GetObject(context.Background(), "view1").Return(mockView1, nil).Once()
-		objGetter.EXPECT().GetObject(context.Background(), "view2").Return(mockView2, nil).Once()
+		// Position 0 (view3): curr="MMMM0003" > next="MMMM0001" → receives new lexid
+		// Position 1 (view1): curr="MMMM0001" > prev="<new lexid less than MMMM0001>" → keeps old lexid
+		// Position 2 (view2): curr="MMMM0002" > prev="MMMM0001" → keeps old lexid
+		objGetter.EXPECT().GetObject(context.Background(), "view3").Return(mockView3, nil).Once()
 
 		o := &orderSetter{objectGetter: objGetter}
 
@@ -549,9 +541,6 @@ func TestOrderSetter_rebuildIfNeeded(t *testing.T) {
 		// The final order should be correct (view3 < view1 < view2)
 		assert.True(t, lexids[0] < lexids[1], "view3 should be before view1")
 		assert.True(t, lexids[1] < lexids[2], "view1 should be before view2")
-
-		// With the simpler fix, view3 may keep its original lexid if it's valid
-		// The important thing is that the final ordering is correct
 	})
 }
 
