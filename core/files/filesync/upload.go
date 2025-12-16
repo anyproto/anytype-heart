@@ -253,7 +253,7 @@ type blocksAvailabilityResponse struct {
 }
 
 func (s *fileSync) checkBlocksAvailability(ctx context.Context, info FileInfo) (*blocksAvailabilityResponse, error) {
-	if info.BytesToUploadOrBind > 0 || len(info.CidsToBind) > 0 || len(info.CidsToUpload) > 0 {
+	if len(info.CidsToBind) > 0 || len(info.CidsToUpload) > 0 {
 		return &blocksAvailabilityResponse{
 			bytesToUploadOrBind: info.BytesToUploadOrBind,
 			cidsToBind:          info.CidsToBind,

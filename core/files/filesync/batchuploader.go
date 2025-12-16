@@ -18,13 +18,13 @@ func (s *fileSync) runBatchUploader() {
 		case req := <-s.requestsCh:
 
 			err := s.rpcStore.AddToFileMany(s.loopCtx, req.req)
-			go func() {
+			go func(req blockPushManyRequest, err error) {
 				if err != nil {
 					s.onBatchUploadError(s.loopCtx, req, err)
 				} else {
 					s.onBatchUploaded(s.loopCtx, req)
 				}
-			}()
+			}(req, err)
 		}
 	}
 }
