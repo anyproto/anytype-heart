@@ -196,7 +196,7 @@ func (o *orderSetter) reorder(objectIds []string, originalOrderIds map[string]st
 		curr := originalOrderIds[id]
 		next := nextExisting[i]
 
-		if curr == "" || prev >= curr || next != "" && curr >= next && prev < next {
+		if curr == "" || prev >= curr || (next != "" && curr >= next && prev < next) {
 			if prev >= next {
 				next = ""
 			}
