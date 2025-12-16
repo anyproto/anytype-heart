@@ -2,7 +2,6 @@ package order
 
 import (
 	"context"
-	"fmt"
 	"sort"
 	"testing"
 
@@ -302,7 +301,6 @@ func testReorder(t *testing.T, objectIds []string, originalOrderIds map[string]s
 	require.NoError(t, err)
 
 	t.Log(gotOps)
-	fmt.Println(gotOps)
 
 	gotObjectIdsWithOrder := make([]idAndOrderId, len(gotNewOrder))
 	for i := range gotObjectIdsWithOrder {
