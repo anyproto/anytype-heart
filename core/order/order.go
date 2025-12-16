@@ -197,6 +197,9 @@ func (o *orderSetter) reorder(objectIds []string, originalOrderIds map[string]st
 		next := nextExisting[i]
 
 		if curr == "" || prev >= curr || next != "" && curr >= next && prev < next {
+			if prev >= next {
+				next = ""
+			}
 			curr, err = o.getNewOrderId(prev, next, i == 0)
 			if err != nil {
 				return o.rebuildAllLexIds(objectIds, inputObjectIds)

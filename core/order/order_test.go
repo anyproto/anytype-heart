@@ -288,6 +288,16 @@ func TestReorder(t *testing.T) {
 			},
 			objectIds: []string{"tag60", "tag55", "tag56", "tag57", "tag58", "tag59", "tag6", "tag61", "tag14", "tag62", "tag63", "tag64", "tag9", "tag65"},
 		},
+		{
+			name: "reverse",
+			originalOrderIds: map[string]string{
+				"a": "A001",
+				"b": "B002",
+				"c": "C003",
+				"d": "D004",
+			},
+			objectIds: []string{"d", "c", "b", "a"},
+		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			testReorder(t, tc.objectIds, tc.originalOrderIds)
