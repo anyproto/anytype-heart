@@ -355,6 +355,12 @@ func (q *Queue[T]) handleCancelRequest(id string) {
 
 	for schId, it := range q.scheduled {
 		if it.request.id == id {
+			sch := q.scheduled[schId]
+			sch.responseCh <- itemResponse[T]{
+				err: context.Canceled,
+			}
+			close(sch.cancelTimerCh)
+
 			delete(q.scheduled, schId)
 			break
 		}

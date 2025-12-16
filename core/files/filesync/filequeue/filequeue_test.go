@@ -416,11 +416,33 @@ func TestQueueSchedule(t *testing.T) {
 		})
 	})
 
+	t.Run("cancel get next scheduled", func(t *testing.T) {
+		synctest.Run(func() {
+			q := newTestQueue(t)
+			defer q.close()
+			ctx, cancel := context.WithCancel(context.Background())
+
+			go func() {
+				time.Sleep(10 * time.Second)
+				cancel()
+			}()
+
+			_, err := q.GetNextScheduled(ctx, getNextScheduledRequestUploading())
+			require.Error(t, err, context.Canceled)
+		})
+	})
+
 	t.Run("cancel scheduled", func(t *testing.T) {
 		synctest.Run(func() {
 			q := newTestQueue(t)
 			defer q.close()
 			ctx, cancel := context.WithCancel(context.Background())
+
+			insertToQueue(t, q, fileInfo{
+				ObjectId:    "obj1",
+				State:       fileStateUploading,
+				ScheduledAt: time.Now().Add(time.Hour),
+			})
 
 			go func() {
 				time.Sleep(10 * time.Second)
