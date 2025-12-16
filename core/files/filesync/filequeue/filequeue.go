@@ -192,16 +192,35 @@ func (q *Queue[T]) handleScheduledItem(req scheduledItem[T]) {
 
 func (q *Queue[T]) handleReleaseItem(req releaseRequest[T]) {
 	item := req.item
-	if _, ok := q.itemLocked[q.getId(item)]; !ok {
+	if _, ok := q.itemLocked[req.objectId]; !ok {
 		req.responseCh <- fmt.Errorf("item is not locked")
 		return
 	}
-	delete(q.itemLocked, q.getId(item))
+	delete(q.itemLocked, req.objectId)
 
-	err := q.store.set(q.ctx, q.getId(item), item)
-	if err != nil {
-		req.responseCh <- err
-		return
+	if req.update {
+		err := q.store.set(q.ctx, req.objectId, item)
+		if err != nil {
+			req.responseCh <- err
+			return
+		}
+	} else {
+		// If we don't want to update an item, request the prev version to broadcast it to all waiting goroutines
+		prevItem, err := q.store.get(q.ctx, req.objectId)
+		// If there is no item, do nothing
+		if errors.Is(err, ErrNotFound) {
+			q.releaseGetByIdWaitersWithError(req.objectId, ErrNotFound)
+			req.responseCh <- nil
+			return
+		}
+
+		// Something bad happened
+		if err != nil {
+			req.responseCh <- err
+			return
+		}
+
+		item = prevItem
 	}
 
 	q.checkInSchedule(item)
@@ -345,6 +364,22 @@ func (q *Queue[T]) checkGetByIdWaiters(item T, responded bool) bool {
 		}
 	}
 	return responded
+}
+
+func (q *Queue[T]) releaseGetByIdWaitersWithError(id string, err error) {
+	waiters := q.getByIdWaiters[id]
+	if len(waiters) > 0 {
+		nextResponseCh := waiters[0]
+		waiters = waiters[1:]
+		q.itemLocked[id] = struct{}{}
+		nextResponseCh <- itemResponse[T]{err: err}
+
+		if len(waiters) == 0 {
+			delete(q.getByIdWaiters, id)
+		} else {
+			q.getByIdWaiters[id] = waiters
+		}
+	}
 }
 
 func (q *Queue[T]) handleCancelRequest(id string) {
@@ -630,8 +665,26 @@ func (q *Queue[T]) ReleaseAndUpdate(id string, task T) error {
 
 	responseCh := make(chan error, 1)
 	req := releaseRequest[T]{
+		objectId:   id,
 		item:       task,
 		responseCh: responseCh,
+		update:     true,
+	}
+
+	select {
+	case q.releaseCh <- req:
+		return <-responseCh
+	case <-q.closedCh:
+		return ErrClosed
+	}
+}
+
+func (q *Queue[T]) Release(id string) error {
+	responseCh := make(chan error, 1)
+	req := releaseRequest[T]{
+		objectId:   id,
+		responseCh: responseCh,
+		update:     false,
 	}
 
 	select {
@@ -681,4 +734,5 @@ type releaseRequest[T any] struct {
 	objectId   string
 	item       T
 	responseCh chan error
+	update     bool
 }

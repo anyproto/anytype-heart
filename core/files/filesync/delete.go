@@ -18,10 +18,10 @@ func (s *fileSync) DeleteFile(objectId string, fileId domain.FullFileId) error {
 		return nil
 	}
 
-	return s.process(objectId, func(exists bool, info FileInfo) (FileInfo, error) {
+	return s.process(objectId, func(exists bool, info FileInfo) (FileInfo, bool, error) {
 		if exists {
 			info.State = FileStatePendingDeletion
-			return info, nil
+			return info, true, nil
 		}
 
 		info = FileInfo{
@@ -31,7 +31,7 @@ func (s *fileSync) DeleteFile(objectId string, fileId domain.FullFileId) error {
 			State:       FileStatePendingDeletion,
 			ScheduledAt: time.Now(),
 		}
-		return info, nil
+		return info, true, nil
 	})
 }
 

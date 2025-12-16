@@ -9,18 +9,26 @@ import (
 	"github.com/anyproto/anytype-heart/core/files/filesync/filequeue"
 )
 
-func (s *fileSync) process(id string, proc func(exists bool, info FileInfo) (FileInfo, error)) error {
+func (s *fileSync) process(id string, proc func(exists bool, info FileInfo) (FileInfo, bool, error)) error {
 	item, err := s.queue.GetById(id)
 	if err != nil && !errors.Is(err, filequeue.ErrNotFound) {
 		return fmt.Errorf("get item: %w", err)
 	}
 	exists := !errors.Is(err, filequeue.ErrNotFound)
 
-	next, err := proc(exists, item)
-	if err != nil {
-		return errors.Join(s.queue.ReleaseAndUpdate(id, item), fmt.Errorf("process item: %w", err))
+	release := func(id string, update bool, info FileInfo) error {
+		if update {
+			return s.queue.ReleaseAndUpdate(id, info)
+		} else {
+			return s.queue.Release(id)
+		}
 	}
-	return s.queue.ReleaseAndUpdate(id, next)
+
+	next, update, err := proc(exists, item)
+	if err != nil {
+		return errors.Join(release(id, update, next), fmt.Errorf("process item: %w", err))
+	}
+	return release(id, update, next)
 }
 
 func filterByFileId(fileId string) query.Key {

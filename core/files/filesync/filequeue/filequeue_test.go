@@ -58,6 +58,54 @@ func newTestQueue(t *testing.T) *fixture {
 	}
 }
 
+func TestGetById(t *testing.T) {
+	t.Run("lock and unlock with update", func(t *testing.T) {
+		synctest.Run(func() {
+			q := newTestQueue(t)
+			defer q.close()
+
+			// Lock the object
+			_, err := q.GetById("obj1")
+			require.ErrorIs(t, err, ErrNotFound)
+
+			want := fileInfo{
+				ObjectId: "obj1",
+				State:    fileStatePendingDeletion,
+			}
+
+			go func() {
+				time.Sleep(time.Second)
+				err := q.ReleaseAndUpdate("obj1", want)
+				require.NoError(t, err)
+			}()
+
+			got, err := q.GetById("obj1")
+			require.NoError(t, err)
+			assert.Equal(t, want, got)
+		})
+	})
+
+	t.Run("lock and unlock without update", func(t *testing.T) {
+		synctest.Run(func() {
+			q := newTestQueue(t)
+			defer q.close()
+
+			// Lock the object
+			_, err := q.GetById("obj1")
+			require.ErrorIs(t, err, ErrNotFound)
+
+			go func() {
+				time.Sleep(time.Second)
+				err := q.Release("obj1")
+				require.NoError(t, err)
+			}()
+
+			_, err = q.GetById("obj1")
+			require.ErrorIs(t, err, ErrNotFound)
+		})
+	})
+}
+
 func TestQueue(t *testing.T) {
 	q := newTestQueue(t)
 	defer q.close()
@@ -454,6 +502,35 @@ func TestQueueSchedule(t *testing.T) {
 
 			_, err := q.GetNextScheduled(ctx, getNextScheduledRequestUploading())
 			require.Error(t, err, context.Canceled)
+		})
+	})
+
+	t.Run("wait for an item to be released, release the item without update", func(t *testing.T) {
+		synctest.Run(func() {
+			q := newTestQueue(t)
+			defer q.close()
+			ctx := context.Background()
+
+			insertToQueue(t, q, fileInfo{
+				ObjectId:    "obj1",
+				State:       fileStateUploading,
+				ScheduledAt: time.Now().Add(time.Minute),
+			})
+
+			// Lock the object
+			_, err := q.GetById("obj1")
+			require.NoError(t, err)
+
+			go func() {
+				time.Sleep(10 * time.Minute)
+				// Release without update
+				err = q.Release("obj1")
+				require.NoError(t, err)
+			}()
+
+			next, err := q.GetNextScheduled(ctx, getNextScheduledRequestUploading())
+			require.NoError(t, err)
+			assert.Equal(t, "obj1", next.ObjectId)
 		})
 	})
 }

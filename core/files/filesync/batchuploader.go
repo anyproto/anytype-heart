@@ -30,17 +30,19 @@ func (s *fileSync) runBatchUploader() {
 }
 
 func (s *fileSync) addToLimitedQueue(objectId string) error {
-	return s.process(objectId, func(exists bool, info FileInfo) (FileInfo, error) {
+	return s.process(objectId, func(exists bool, info FileInfo) (FileInfo, bool, error) {
 		if !exists {
-			return FileInfo{}, nil
+			return FileInfo{}, false, nil
 		}
 
 		err := s.handleLimitReached(s.loopCtx, info)
 		if err != nil {
-			return FileInfo{}, err
+			info.State = FileStatePendingUpload
+			info = info.Reschedule()
+			return info, true, err
 		}
 		info.State = FileStateLimited
-		return info, nil
+		return info, true, nil
 	})
 }
 
@@ -64,26 +66,26 @@ func (s *fileSync) processFileUploading(ctx context.Context, it FileInfo) (FileI
 }
 
 func (s *fileSync) addToRetryUploadingQueue(objectId string) error {
-	return s.process(objectId, func(exists bool, info FileInfo) (FileInfo, error) {
+	return s.process(objectId, func(exists bool, info FileInfo) (FileInfo, bool, error) {
 		if !exists {
-			return FileInfo{}, nil
+			return FileInfo{}, false, nil
 		}
 
 		info.State = FileStatePendingUpload
 		info = info.Reschedule()
-		return info, nil
+		return info, true, nil
 	})
 }
 
 func (s *fileSync) updateUploadedCids(objectId string, cids []cid.Cid) error {
-	return s.process(objectId, func(exists bool, info FileInfo) (FileInfo, error) {
+	return s.process(objectId, func(exists bool, info FileInfo) (FileInfo, bool, error) {
 		if !exists {
-			return FileInfo{}, nil
+			return FileInfo{}, false, nil
 		}
 
 		// If deletion is pending, it will be deleted soon
 		if info.State == FileStatePendingDeletion {
-			return FileInfo{}, nil
+			return FileInfo{}, false, nil
 		}
 
 		// If it was deleted, delete again to undo uploaded blocks
@@ -92,16 +94,16 @@ func (s *fileSync) updateUploadedCids(objectId string, cids []cid.Cid) error {
 			// Enqueue deletion if we can't delete it right away
 			if err != nil {
 				info.State = FileStatePendingDeletion
-				return info, err
+				return info, true, err
 			}
-			return info, nil
+			return info, true, nil
 		}
 
 		for _, c := range cids {
 			delete(info.CidsToUpload, c)
 		}
 		next, err := s.processFileUploading(s.loopCtx, info)
-		return next, err
+		return next, true, err
 	})
 }
 

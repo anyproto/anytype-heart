@@ -37,9 +37,9 @@ func (s *fileSync) AddFile(req AddFileRequest) error {
 		return nil
 	}
 
-	return s.process(req.FileObjectId, func(exists bool, info FileInfo) (FileInfo, error) {
+	return s.process(req.FileObjectId, func(exists bool, info FileInfo) (FileInfo, bool, error) {
 		if exists && info.State.IsUploadingState() {
-			return info, nil
+			return info, false, nil
 		}
 		info = FileInfo{
 			FileId:       req.FileId.FileId,
@@ -53,7 +53,7 @@ func (s *fileSync) AddFile(req AddFileRequest) error {
 			CidsToUpload: map[cid.Cid]struct{}{},
 			CidsToBind:   map[cid.Cid]struct{}{},
 		}
-		return info, nil
+		return info, true, nil
 	})
 }
 
