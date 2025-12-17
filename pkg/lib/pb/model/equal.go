@@ -21,3 +21,7 @@ func (this *MembershipV2Data) Equal(that *MembershipV2Data) bool {
 func (this *MembershipV2PurchasedProduct) Equal(that *MembershipV2PurchasedProduct) bool {
 	return deriveEqualPurchasedProduct(this, that)
 }
+
+func (this *IdentityProfile) Equal(that *IdentityProfile) bool {
+	return deriveEqualIdentityProfile(this, that)
+}

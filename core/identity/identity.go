@@ -250,6 +250,7 @@ func (s *service) observeIdentitiesLoop() {
 		case <-s.componentCtx.Done():
 			return
 		case <-s.identityForceUpdate:
+			ticker.Reset(s.identityObservePeriod)
 			observe()
 		case <-ticker.C:
 			observe()
@@ -353,7 +354,7 @@ func (s *service) broadcastIdentityProfile(identityData *identityrepoproto.DataW
 	}
 
 	prevProfile, ok := s.identityProfileCache[identityData.Identity]
-	hasUpdates := !ok || !proto.Equal(prevProfile, profile)
+	hasUpdates := !ok || !prevProfile.Equal(profile)
 
 	observers := s.identityObservers[identityData.Identity]
 	for _, obs := range observers {
