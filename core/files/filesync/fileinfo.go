@@ -126,7 +126,7 @@ func unmarshalFileInfo(doc *anyenc.Value) (FileInfo, error) {
 	}
 	fileId := domain.FileId(doc.GetString("fileId"))
 	if !fileId.Valid() {
-		return FileInfo{}, fmt.Errorf("invalid file id")
+		return FileInfo{}, fmt.Errorf("invalid file id: %q", fileId.String())
 	}
 	return FileInfo{
 		FileId:              fileId,
