@@ -36,6 +36,9 @@ func (s *fileSync) AddFile(req AddFileRequest) error {
 	if s.cfg.IsLocalOnlyMode() {
 		return nil
 	}
+	if !req.FileId.Valid() {
+		return fmt.Errorf("invalid file id: %q", req.FileId)
+	}
 
 	return s.process(req.FileObjectId, func(exists bool, info FileInfo) (FileInfo, bool, error) {
 		if exists && info.State.IsUploadingState() {
