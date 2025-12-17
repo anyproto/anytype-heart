@@ -4,28 +4,36 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"sync"
 
 	anystore "github.com/anyproto/any-store"
 	"github.com/anyproto/any-store/anyenc"
 	"github.com/anyproto/any-store/query"
+	"go.uber.org/zap"
 )
 
 type marshalFunc[T any] func(arena *anyenc.Arena, val T) *anyenc.Value
 type unmarshalFunc[T any] func(v *anyenc.Value) (T, error)
+
+var errSkip = fmt.Errorf("skip")
 
 type Storage[T any] struct {
 	arena     *anyenc.Arena
 	coll      anystore.Collection
 	marshal   marshalFunc[T]
 	unmarshal unmarshalFunc[T]
+
+	lock               sync.Mutex
+	unmarshalErrLogged map[string]struct{}
 }
 
 func NewStorage[T any](coll anystore.Collection, marshal marshalFunc[T], unmarshal unmarshalFunc[T]) *Storage[T] {
 	return &Storage[T]{
-		arena:     &anyenc.Arena{},
-		coll:      coll,
-		marshal:   marshal,
-		unmarshal: unmarshal,
+		arena:              &anyenc.Arena{},
+		coll:               coll,
+		marshal:            marshal,
+		unmarshal:          unmarshal,
+		unmarshalErrLogged: make(map[string]struct{}),
 	}
 }
 
@@ -41,6 +49,21 @@ func (s *Storage[T]) get(ctx context.Context, objectId string) (T, error) {
 	}
 
 	return s.unmarshal(doc.Value())
+}
+
+func (s *Storage[T]) unmarshalOrSkip(raw *anyenc.Value) (T, error) {
+	res, err := s.unmarshal(raw)
+	if err != nil {
+		id := raw.GetString("id")
+		s.lock.Lock()
+		defer s.lock.Unlock()
+		if _, ok := s.unmarshalErrLogged[id]; !ok {
+			log.Error("can't unmarshal item", zap.String("id", id), zap.Error(err))
+			s.unmarshalErrLogged[id] = struct{}{}
+		}
+		return res, errSkip
+	}
+	return res, nil
 }
 
 func (s *Storage[T]) set(ctx context.Context, objectId string, file T) error {
@@ -77,7 +100,10 @@ func (s *Storage[T]) query(ctx context.Context, filter query.Filter, order query
 			return defVal, fmt.Errorf("read doc: %w", err)
 		}
 
-		val, err := s.unmarshal(doc.Value())
+		val, err := s.unmarshalOrSkip(doc.Value())
+		if errors.Is(err, errSkip) {
+			continue
+		}
 		if err != nil {
 			return defVal, fmt.Errorf("unmarshal: %w", err)
 		}
@@ -104,10 +130,14 @@ func (s *Storage[T]) listAll(ctx context.Context) ([]T, error) {
 			return nil, fmt.Errorf("read doc: %w", err)
 		}
 
-		val, err := s.unmarshal(doc.Value())
+		val, err := s.unmarshalOrSkip(doc.Value())
+		if errors.Is(err, errSkip) {
+			continue
+		}
 		if err != nil {
 			return nil, fmt.Errorf("unmarshal: %w", err)
 		}
+
 		res = append(res, val)
 	}
 	return res, nil
