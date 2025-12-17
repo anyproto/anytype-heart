@@ -136,9 +136,9 @@ func (f *formatFetcher) Close(_ context.Context) error {
 }
 
 func (f *formatFetcher) GetRelationFormatByKey(spaceId string, key domain.RelationKey) (model.RelationFormat, error) {
-	rel, err := bundle.GetRelation(key)
+	format, err := bundle.GetRelationFormat(key)
 	if err == nil {
-		return rel.Format, nil
+		return format, nil
 	}
 
 	sub, err := f.getSpaceSub(spaceId)
