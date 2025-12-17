@@ -32494,6 +32494,7 @@ deprecated |
 | defaultTemplateId | [string](#string) |  | Default template that is chosen for new object created within the view |
 | defaultObjectTypeId | [string](#string) |  | Default object type that is chosen for new object created within the view |
 | endRelationKey | [string](#string) |  | Group view by this relationKey |
+| wrapContent | [bool](#bool) |  | Wrap content in view |
 
 
 
