@@ -103,7 +103,7 @@ jobs:
           else
             echo "run without race detector"
           fi
-          GOEXPERIMENT=rangefunc CGO_CFLAGS="-Wno-deprecated-non-prototype -Wno-unknown-warning-option -Wno-deprecated-declarations -Wno-xor-used-as-pow -Wno-single-bit-bitfield-constant-conversion" gotestsum --junitfile ~/gotestsum-report/gotestsum-report.xml --  -tags "nogrpcserver nographviz" -p 1 $(echo $PACKAGE_NAMES) $(echo $RACE) -coverprofile=coverage.out -covermode=atomic ./...
+          GOEXPERIMENT=rangefunc,synctest CGO_CFLAGS="-Wno-deprecated-non-prototype -Wno-unknown-warning-option -Wno-deprecated-declarations -Wno-xor-used-as-pow -Wno-single-bit-bitfield-constant-conversion" gotestsum --junitfile ~/gotestsum-report/gotestsum-report.xml --  -tags "nogrpcserver nographviz" -p 1 $(echo $PACKAGE_NAMES) $(echo $RACE) -coverprofile=coverage.out -covermode=atomic ./...
           
           generated_pattern='^\/\/ Code generated .* DO NOT EDIT\.$'
           files_list=$(grep -rl "$generated_pattern" . | grep '\.go$' | sed 's/^\.\///')

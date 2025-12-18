@@ -8,12 +8,15 @@ import (
 	"time"
 
 	"github.com/anyproto/any-store/query"
+	"github.com/anyproto/any-sync/app/logger"
 	"github.com/globalsign/mgo/bson"
 )
 
 var ErrClosed = fmt.Errorf("closed")
 var ErrNotFound = fmt.Errorf("not found")
 var ErrNoRows = fmt.Errorf("no rows")
+
+var log = logger.NewNamed("filequeue")
 
 type Queue[T any] struct {
 	ctx       context.Context

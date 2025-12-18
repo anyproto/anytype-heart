@@ -117,7 +117,14 @@ func (c *proxyStore) GetMany(ctx context.Context, ks []cid.Cid) <-chan blocks.Bl
 						if addErr := c.localStore.Add(ctx, []blocks.Block{b}); addErr != nil {
 							log.Error("add block to localStore error", zap.Error(addErr))
 						}
-						results <- b
+
+						select {
+						case <-ctx.Done():
+							return
+						case <-c.backgroundCtx.Done():
+							return
+						case results <- b:
+						}
 					case <-ctx.Done():
 						return
 					case <-c.backgroundCtx.Done():
@@ -135,7 +142,13 @@ func (c *proxyStore) GetMany(ctx context.Context, ks []cid.Cid) <-chan blocks.Bl
 					if !ok {
 						return
 					}
-					results <- b
+					select {
+					case <-ctx.Done():
+						return
+					case <-c.backgroundCtx.Done():
+						return
+					case results <- b:
+					}
 				case <-ctx.Done():
 					return
 				case <-c.backgroundCtx.Done():
