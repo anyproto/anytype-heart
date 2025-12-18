@@ -20,7 +20,8 @@ func diffViewFields(a, b *model.BlockContentDataviewView) *pb.EventBlockDataview
 		a.GroupBackgroundColors == b.GroupBackgroundColors &&
 		a.PageLimit == b.PageLimit &&
 		a.DefaultTemplateId == b.DefaultTemplateId &&
-		a.DefaultObjectTypeId == b.DefaultObjectTypeId
+		a.DefaultObjectTypeId == b.DefaultObjectTypeId &&
+		a.WrapContent == b.WrapContent
 
 	if isEqual {
 		return nil
@@ -38,6 +39,7 @@ func diffViewFields(a, b *model.BlockContentDataviewView) *pb.EventBlockDataview
 		DefaultTemplateId:     b.DefaultTemplateId,
 		DefaultObjectTypeId:   b.DefaultObjectTypeId,
 		EndRelationKey:        b.EndRelationKey,
+		WrapContent:           b.WrapContent,
 	}
 }
 
@@ -240,6 +242,7 @@ func (d *Dataview) ApplyViewUpdate(upd *pb.EventBlockDataviewViewUpdate) {
 		view.DefaultTemplateId = f.DefaultTemplateId
 		view.DefaultObjectTypeId = f.DefaultObjectTypeId
 		view.EndRelationKey = f.EndRelationKey
+		view.WrapContent = f.WrapContent
 	}
 
 	{
