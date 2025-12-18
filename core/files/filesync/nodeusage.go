@@ -55,6 +55,7 @@ func newSpaceUsage(ctx context.Context, spaceId string, rpcStore rpcstore.RpcSto
 		for {
 			select {
 			case <-ctx.Done():
+				return
 			case <-ticker.C:
 				update()
 			}

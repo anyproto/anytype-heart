@@ -27,17 +27,14 @@ type Queue[T any] struct {
 	getId func(T) string
 	setId func(T, string) T
 
-	closed   bool
-	closedCh chan struct{}
-
-	closeCh chan struct{}
+	closed bool
 
 	// request channels
 	getByIdCh          chan getByIdRequest[T]
 	getNextCh          chan getNextRequest[T]
 	getNextScheduledCh chan getNextRequest[T]
 	releaseCh          chan releaseRequest[T]
-	scheduledCh        chan scheduledItem[T]
+	dueItemCh          chan scheduledItem[T]
 	cancelRequestCh    chan string
 
 	// If a requested item is locked we need means to signal the next blocked goroutine that item is unlocked
@@ -64,15 +61,12 @@ func NewQueue[T any](store *Storage[T], getId func(T) string, setId func(T, stri
 		ctxCancel: ctxCancel,
 		store:     store,
 
-		closedCh: make(chan struct{}),
-
 		// Request channels
-		closeCh:            make(chan struct{}),
 		getByIdCh:          make(chan getByIdRequest[T]),
 		getNextScheduledCh: make(chan getNextRequest[T]),
 		getNextCh:          make(chan getNextRequest[T]),
 		releaseCh:          make(chan releaseRequest[T]),
-		scheduledCh:        make(chan scheduledItem[T]),
+		dueItemCh:          make(chan scheduledItem[T]),
 		cancelRequestCh:    make(chan string),
 
 		getByIdWaiters: make(map[string][]chan itemResponse[T]),
@@ -87,7 +81,7 @@ func NewQueue[T any](store *Storage[T], getId func(T) string, setId func(T, stri
 func (q *Queue[T]) Run() {
 	for {
 		select {
-		case <-q.closeCh:
+		case <-q.ctx.Done():
 			q.handleClose()
 			return
 		case req := <-q.getByIdCh:
@@ -98,7 +92,7 @@ func (q *Queue[T]) Run() {
 			q.handleGetNext(req)
 		case req := <-q.releaseCh:
 			q.handleReleaseItem(req)
-		case req := <-q.scheduledCh:
+		case req := <-q.dueItemCh:
 			q.handleScheduledItem(req)
 		case req := <-q.cancelRequestCh:
 			q.handleCancelRequest(req)
@@ -110,7 +104,6 @@ func (q *Queue[T]) handleClose() {
 	if q.closed {
 		return
 	}
-	close(q.closedCh)
 
 	for _, waiters := range q.getByIdWaiters {
 		for _, w := range waiters {
@@ -433,7 +426,6 @@ func (q *Queue[T]) Close() {
 	if q.ctxCancel != nil {
 		q.ctxCancel()
 	}
-	close(q.closeCh)
 }
 
 func (q *Queue[T]) handleGetNextScheduled(req getNextRequest[T]) {
@@ -452,7 +444,7 @@ func (q *Queue[T]) handleGetNextScheduled(req getNextRequest[T]) {
 			go func() {
 				select {
 				case <-req.ctx.Done():
-					q.cancelRequestCh <- req.id
+					q.cancelRequest(req.id)
 				case <-q.ctx.Done():
 					return
 				}
@@ -489,7 +481,7 @@ func (q *Queue[T]) handleGetNext(req getNextRequest[T]) {
 			go func() {
 				select {
 				case <-req.ctx.Done():
-					q.cancelRequestCh <- req.id
+					q.cancelRequest(req.id)
 				case <-q.ctx.Done():
 					return
 				}
@@ -525,12 +517,12 @@ func (q *Queue[T]) scheduleItem(req getNextRequest[T], next T) {
 		defer timer.Stop()
 
 		select {
-		case <-q.closedCh:
+		case <-q.ctx.Done():
 			return
 		case <-timer.C:
-			q.scheduledCh <- scheduled
+			q.dispatchDueItem(scheduled)
 		case <-req.ctx.Done():
-			q.cancelRequestCh <- req.id
+			q.cancelRequest(req.id)
 		case <-cancelTimerCh:
 			return
 		}
@@ -551,7 +543,7 @@ func (q *Queue[T]) GetById(objectId string) (T, error) {
 	case q.getByIdCh <- req:
 		task := <-responseCh
 		return task.item, task.err
-	case <-q.closedCh:
+	case <-q.ctx.Done():
 		var defValue T
 		return defValue, ErrClosed
 	}
@@ -615,7 +607,7 @@ func (q *Queue[T]) GetNext(ctx context.Context, req GetNextRequest[T]) (T, error
 	case q.getNextCh <- chReq:
 		task := <-responseCh
 		return task.item, task.err
-	case <-q.closedCh:
+	case <-q.ctx.Done():
 		var defVal T
 		return defVal, ErrClosed
 	}
@@ -645,7 +637,7 @@ func (q *Queue[T]) GetNextScheduled(ctx context.Context, req GetNextScheduledReq
 	case q.getNextScheduledCh <- chReq:
 		task := <-responseCh
 		return task.item, task.err
-	case <-q.closedCh:
+	case <-q.ctx.Done():
 		var defVal T
 		return defVal, ErrClosed
 	}
@@ -677,7 +669,7 @@ func (q *Queue[T]) ReleaseAndUpdate(id string, task T) error {
 	select {
 	case q.releaseCh <- req:
 		return <-responseCh
-	case <-q.closedCh:
+	case <-q.ctx.Done():
 		return ErrClosed
 	}
 }
@@ -693,13 +685,30 @@ func (q *Queue[T]) Release(id string) error {
 	select {
 	case q.releaseCh <- req:
 		return <-responseCh
-	case <-q.closedCh:
+	case <-q.ctx.Done():
 		return ErrClosed
 	}
 }
 
 func (q *Queue[T]) List() ([]T, error) {
 	return q.store.listAll(q.ctx)
+}
+
+func (q *Queue[T]) cancelRequest(reqId string) {
+	select {
+	case <-q.ctx.Done():
+		return
+	case q.cancelRequestCh <- reqId:
+	}
+}
+
+// dispatchDueItem sends a message that item's time has come
+func (q *Queue[T]) dispatchDueItem(item scheduledItem[T]) {
+	select {
+	case <-q.ctx.Done():
+		return
+	case q.dueItemCh <- item:
+	}
 }
 
 type getByIdRequest[T any] struct {
