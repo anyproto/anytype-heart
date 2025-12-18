@@ -2,6 +2,7 @@ package spaceoffloader
 
 import (
 	"context"
+	"errors"
 	"sync/atomic"
 	"time"
 
@@ -9,6 +10,7 @@ import (
 	"github.com/anyproto/any-sync/app/logger"
 	"go.uber.org/zap"
 
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/space/deletioncontroller"
 	"github.com/anyproto/anytype-heart/space/internal/components/dependencies"
 	"github.com/anyproto/anytype-heart/space/internal/components/spacestatus"
@@ -112,8 +114,12 @@ func (o *spaceOffloader) offload(ctx context.Context, id string) (err error) {
 	if err != nil {
 		return
 	}
-	_, _, err = o.fileOffloader.FileSpaceOffload(ctx, id, true)
+	_, _, err = o.fileOffloader.FileSpaceOffload(o.ctx, id, true)
 	if err != nil {
+		if errors.Is(err, objectstore.ErrSpaceIndexNotFound) {
+			// we remove objectstore db only after all files are offloaded
+			return nil
+		}
 		return err
 	}
 	return o.indexer.RemoveIndexes(id)
