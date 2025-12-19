@@ -132,6 +132,10 @@ func (w *Workspaces) subscribeForOneToOneProfile(state *state.State) {
 }
 
 func (w *Workspaces) updateOneToOneInfo(details *domain.Details) {
+	if details.Get(bundle.RelationKeyName).String() == "" {
+		return
+	}
+
 	toSave := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
 		bundle.RelationKeyName:       details.Get(bundle.RelationKeyName),
 		bundle.RelationKeyIconImage:  details.Get(bundle.RelationKeyIconImage),
