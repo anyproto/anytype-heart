@@ -16,28 +16,25 @@ func (s *fileSync) runLimitedUploader(ctx context.Context) {
 		select {
 		case <-ctx.Done():
 			return
-		default:
-			err := s.processLimited(ctx)
-			if err != nil && !errors.Is(err, filequeue.ErrClosed) {
-				log.Error("process next limited upload item", zap.Error(err))
+		case update, ok := <-s.limitManager.updateCh:
+			if !ok {
+				return
+			}
+			freeSpace := update.freeSpace()
+			for {
+				nextFreeSpace, err := s.getLimitedFile(ctx, update.spaceId, freeSpace)
+				if err != nil {
+					if !errors.Is(err, context.Canceled) &&
+						!errors.Is(err, filequeue.ErrNoRows) &&
+						!errors.Is(err, filequeue.ErrClosed) {
+						log.Error("get next limited file", zap.Error(err))
+					}
+					break
+				}
+				freeSpace = nextFreeSpace
 			}
 		}
 	}
-}
-
-func (s *fileSync) processLimited(ctx context.Context) error {
-	for update := range s.limitManager.updateCh {
-		freeSpace := update.freeSpace()
-		for {
-			nextFreeSpace, err := s.getLimitedFile(ctx, update.spaceId, freeSpace)
-			if err != nil {
-				break
-			}
-			freeSpace = nextFreeSpace
-		}
-	}
-
-	return nil
 }
 
 func (s *fileSync) getLimitedFile(ctx context.Context, spaceId string, freeSpace int) (int, error) {
