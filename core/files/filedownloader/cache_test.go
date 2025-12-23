@@ -98,4 +98,41 @@ func TestCacheWarmer(t *testing.T) {
 			}
 		})
 	})
+
+	t.Run("multiple tasks, limit exceeded", func(t *testing.T) {
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+
+		n := 10
+		gotCh := make(chan testMessage)
+		w := newCacheWarmer(ctx, 10, n, time.Minute, func(ctx context.Context, spaceId string, cid domain.FileId, blocksLimit int) error {
+			gotCh <- testMessage{spaceId: spaceId, cid: cid}
+			return nil
+		})
+		go w.run()
+
+		for i := range 100 {
+			w.enqueue("space1", domain.FileId(fmt.Sprintf("file%d", i)))
+		}
+
+		for range 5 {
+			go w.runWorker()
+		}
+
+		timeout := time.After(time.Second)
+		want := make([]testMessage, 10)
+		var got []testMessage
+		for i := range n {
+			want[i] = testMessage{spaceId: "space1", cid: domain.FileId(fmt.Sprintf("file%d", 90+i))}
+
+			select {
+			case g := <-gotCh:
+				got = append(got, g)
+			case <-timeout:
+				t.Fatal("timeout")
+			}
+		}
+
+		assert.ElementsMatch(t, want, got)
+	})
 }

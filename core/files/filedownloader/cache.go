@@ -145,11 +145,19 @@ func (w *cacheWarmer) handleGetNext(req getNextRequest) {
 
 func (w *cacheWarmer) handleEnqueue(task warmupTask) {
 	if len(w.waiters) == 0 {
-		w.tasks = append(w.tasks, task)
+		w.pushTask(task)
 	} else {
 		first := w.waiters[0]
 		w.waiters = w.waiters[1:]
 		w.respond(first.responseCh, task)
+	}
+}
+
+func (w *cacheWarmer) pushTask(task warmupTask) {
+	if len(w.tasks) == w.tasksLimit && w.tasksLimit > 0 {
+		w.tasks = append(w.tasks[1:], task)
+	} else {
+		w.tasks = append(w.tasks, task)
 	}
 }
 
