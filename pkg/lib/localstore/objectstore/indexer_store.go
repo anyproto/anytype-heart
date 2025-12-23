@@ -17,8 +17,24 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
+type FullTextQueuedObject struct {
+	ObjectId string
+	SpaceId  string
+	OrderId  string
+}
+
+func (o *FullTextQueuedObject) FullId() domain.FullID {
+	return domain.FullID{
+		ObjectID: o.ObjectId,
+		SpaceID:  o.SpaceId,
+	}
+}
+
+type FullTextProcessFunc func(objects []FullTextQueuedObject) (succeedIds []domain.FullID, ftIndexSeq uint64, err error)
+
 var idKey = bundle.RelationKeyId.String()
 var spaceIdKey = bundle.RelationKeySpaceId.String()
+var orderIdKey = "_o"
 
 const ftSequenceKey = "seq" // used to store the opstamp of the fulltext commit for specific object
 
@@ -83,7 +99,7 @@ func (s *dsObjectStore) AddToIndexQueue(ctx context.Context, ids ...domain.FullI
 		obj.Set(spaceIdKey, arena.NewString(id.SpaceID))
 		obj.Set(ftSequenceKey, arena.NewBinary(emptyBuffer))
 		_, err = s.fulltextQueue.UpsertId(txn.Context(), id.ObjectID, query.ModifyFunc(func(a *anyenc.Arena, v *anyenc.Value) (*anyenc.Value, bool, error) {
-			if anyencutil.Equal(v, obj) {
+			if anyencutil.Equal(v, obj) || v.GetString(orderIdKey) != "" {
 				return v, false, nil
 			}
 
@@ -96,14 +112,46 @@ func (s *dsObjectStore) AddToIndexQueue(ctx context.Context, ids ...domain.FullI
 	return txn.Commit()
 }
 
-func (s *dsObjectStore) BatchProcessFullTextQueue(
-	_ context.Context,
-	spaceIds func() []string,
-	limit uint,
-	processIds func(objectIds []domain.FullID,
-) (succeedIds []domain.FullID, ftIndexSeq uint64, err error)) error {
+func (s *dsObjectStore) AddChatMessageToIndexQueue(ctx context.Context, chatId domain.FullID, orderId string) error {
+	txn, err := s.fulltextQueue.WriteTx(ctx)
+	if err != nil {
+		return fmt.Errorf("start write tx: %w", err)
+	}
+	arena := s.arenaPool.Get()
+	defer func() {
+		_ = txn.Rollback()
+		arena.Reset()
+		s.arenaPool.Put(arena)
+	}()
+
+	obj := arena.NewObject()
+	obj.Set(idKey, arena.NewString(chatId.ObjectID))
+	obj.Set(spaceIdKey, arena.NewString(chatId.SpaceID))
+	obj.Set(orderIdKey, arena.NewString(orderId))
+	obj.Set(ftSequenceKey, arena.NewBinary(emptyBuffer))
+	_, err = s.fulltextQueue.UpsertId(txn.Context(), chatId.ObjectID, query.ModifyFunc(func(a *anyenc.Arena, v *anyenc.Value) (*anyenc.Value, bool, error) {
+		if anyencutil.Equal(v, obj) {
+			return v, false, nil
+		}
+
+		currentOrderId := v.GetString(orderIdKey)
+		if currentOrderId != "" && currentOrderId < orderId {
+			// we can save only the latest orderId, so on every full text reindex
+			// we take messages with orderId equal and more than saved in the queue
+			return v, false, nil
+		}
+
+		return obj, true, nil
+	}))
+	if err != nil {
+		return errors.Join(txn.Rollback(), fmt.Errorf("upsert: %w", err))
+	}
+	return txn.Commit()
+}
+
+func (s *dsObjectStore) BatchProcessFullTextQueue(spaceIds func() []string, limit uint, processIds FullTextProcessFunc) error {
 	for {
-		ids, err := s.ListIdsFromFullTextQueue(spaceIds(), limit)
+		ids, err := s.listIdsFromFullTextQueue(spaceIds(), limit)
 		if err != nil {
 			return fmt.Errorf("list ids from fulltext queue: %w", err)
 		}
@@ -126,7 +174,7 @@ func (s *dsObjectStore) BatchProcessFullTextQueue(
 	}
 }
 
-func (s *dsObjectStore) ListIdsFromFullTextQueue(spaceIds []string, limit uint) ([]domain.FullID, error) {
+func (s *dsObjectStore) listIdsFromFullTextQueue(spaceIds []string, limit uint) ([]FullTextQueuedObject, error) {
 	if len(spaceIds) == 0 {
 		return nil, fmt.Errorf("at least one space must be provided")
 	}
@@ -145,17 +193,19 @@ func (s *dsObjectStore) ListIdsFromFullTextQueue(spaceIds []string, limit uint) 
 	}
 	defer iter.Close()
 
-	var ids []domain.FullID
+	var objects []FullTextQueuedObject
 	for iter.Next() {
 		doc, err := iter.Doc()
 		if err != nil {
 			return nil, fmt.Errorf("read doc: %w", err)
 		}
-		id := doc.Value().GetString(idKey)
-		spaceId := doc.Value().GetString(spaceIdKey)
-		ids = append(ids, domain.FullID{ObjectID: id, SpaceID: spaceId})
+		objects = append(objects, FullTextQueuedObject{
+			ObjectId: doc.Value().GetString(idKey),
+			SpaceId:  doc.Value().GetString(spaceIdKey),
+			OrderId:  doc.Value().GetString(orderIdKey),
+		})
 	}
-	return ids, nil
+	return objects, nil
 }
 
 func ftQueueFilterSpaceIds(spaceIds []string) query.Filter {

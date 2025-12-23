@@ -137,7 +137,7 @@ func (s *service) initManager(spaceId string, chatObjectId string) (*subscriptio
 	currentIdentity := s.accountService.AccountID()
 	currentParticipantId := domain.NewParticipantId(spaceId, currentIdentity)
 
-	repository, err := s.repositoryService.Repository(chatObjectId)
+	repository, err := s.repositoryService.Repository(spaceId, chatObjectId)
 	if err != nil {
 		return nil, fmt.Errorf("get repository: %w", err)
 	}

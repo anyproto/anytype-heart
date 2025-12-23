@@ -10,6 +10,7 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/anytype/config"
 	"github.com/anyproto/anytype-heart/core/block/cache"
+	"github.com/anyproto/anytype-heart/core/block/chats/chatrepository"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/source"
 	"github.com/anyproto/anytype-heart/core/domain"
@@ -55,6 +56,7 @@ type indexer struct {
 	source               source.Service
 	picker               cache.CachedObjectGetter
 	formatFetcher        relationutils.RelationFormatFetcher
+	chatRepository       chatrepository.Service
 	ftsearch             ftsearch.FTSearch
 	ftsearchLastIndexSeq uint64
 
@@ -89,6 +91,7 @@ func (i *indexer) Init(a *app.App) (err error) {
 	i.techSpaceIdProvider = app.MustComponent[objectstore.TechSpaceIdProvider](a)
 	i.dbProvider = app.MustComponent[anystoreprovider.Provider](a)
 	i.formatFetcher = app.MustComponent[relationutils.RelationFormatFetcher](a)
+	i.chatRepository = app.MustComponent[chatrepository.Service](a)
 	return
 }
 

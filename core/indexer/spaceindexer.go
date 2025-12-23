@@ -136,7 +136,7 @@ func (i *spaceIndexer) index(ctx context.Context, info smartblock.DocInfo, optio
 		}
 	}
 
-	_, indexDetails, indexLinks := info.SmartblockType.Indexable()
+	fulltext, indexDetails, indexLinks := info.SmartblockType.Indexable()
 	if !indexDetails && !indexLinks {
 		return nil
 	}
@@ -182,14 +182,10 @@ func (i *spaceIndexer) index(ctx context.Context, info smartblock.DocInfo, optio
 			}
 		}
 
-		if !(opts.SkipFullTextIfHeadsNotChanged && lastIndexedHash == headHashToIndex) {
+		if !(opts.SkipFullTextIfHeadsNotChanged && lastIndexedHash == headHashToIndex) && fulltext && i.fulltextEnabled {
 			// Use component's context because ctx from parameter contains transaction
-			fulltext, _, _ := info.SmartblockType.Indexable()
-
-			if fulltext && i.fulltextEnabled {
-				if err := i.objectStore.AddToIndexQueue(i.runCtx, domain.FullID{ObjectID: info.Id, SpaceID: info.Space.Id()}); err != nil {
-					log.With("objectID", info.Id).Errorf("can't add id to index queue: %v", err)
-				}
+			if err := i.objectStore.AddToIndexQueue(i.runCtx, domain.FullID{ObjectID: info.Id, SpaceID: info.Space.Id()}); err != nil {
+				log.With("objectID", info.Id).Errorf("can't add id to index queue: %v", err)
 			}
 		}
 	} else {

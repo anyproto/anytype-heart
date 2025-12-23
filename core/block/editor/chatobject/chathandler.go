@@ -15,13 +15,17 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/chats/chatrepository"
 	"github.com/anyproto/anytype-heart/core/block/chats/chatsubscription"
 	"github.com/anyproto/anytype-heart/core/block/editor/storestate"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pb"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
 type ChatHandler struct {
 	repository      chatrepository.Repository
 	subscription    chatsubscription.Manager
+	indexerStore    objectstore.IndexerStore
+	chatFullId      domain.FullID
 	currentIdentity string
 	myParticipantId string
 	// forceNotRead forces handler to mark all messages as not read. It's useful for unit testing
@@ -111,12 +115,19 @@ func (d *ChatHandler) BeforeCreate(ctx context.Context, ch storestate.ChangeOp) 
 
 	d.subscription.Add(prevOrderId, msg)
 
+	if err = d.indexerStore.AddChatMessageToIndexQueue(ctx, d.chatFullId, msg.OrderId); err != nil {
+		return fmt.Errorf("add chat message to full text index queue: %w", err)
+	}
+
 	msg.MarshalAnyenc(ch.Value, ch.Arena)
 
 	return nil
 }
 
 func (d *ChatHandler) BeforeModify(ctx context.Context, ch storestate.ChangeOp) (mode storestate.ModifyMode, err error) {
+	if err = d.indexerStore.AddChatMessageToIndexQueue(ctx, d.chatFullId, ch.Change.Order); err != nil {
+		return 0, fmt.Errorf("add chat message to full text index queue: %w", err)
+	}
 	return storestate.ModifyModeUpsert, nil
 }
 
@@ -147,6 +158,8 @@ func (d *ChatHandler) BeforeDelete(ctx context.Context, ch storestate.ChangeOp) 
 	d.subscription.Lock()
 	defer d.subscription.Unlock()
 	d.subscription.Delete(messageId)
+
+	// TODO: add msg on deletion to fulltext queue, so it would be deleted from tantivy
 
 	return storestate.DeleteModeDelete, nil
 }

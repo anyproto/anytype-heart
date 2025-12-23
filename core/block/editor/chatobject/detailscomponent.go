@@ -17,7 +17,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/spaceindex"
 )
 
 const detailsDocumentId = "details"
@@ -30,7 +29,6 @@ type detailsComponent struct {
 	storeSource           source.Store
 	storeState            *storestate.StoreState
 	sb                    smartblock.SmartBlock
-	spaceIndex            spaceindex.Store
 }
 
 func (c *detailsComponent) init(st *state.State) error {

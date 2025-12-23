@@ -246,7 +246,7 @@ func (f *ObjectFactory) New(space smartblock.Space, sbType coresb.SmartBlockType
 		if err != nil {
 			return nil, fmt.Errorf("get crdt db: %w", err)
 		}
-		return chatobject.New(sb, f.accountService, crdtDb, f.chatRepositoryService, f.chatSubscriptionService, spaceIndex, f.layoutConverter, f.fileObjectService, f.statService), nil
+		return chatobject.New(sb, f.accountService, crdtDb, f.chatRepositoryService, f.chatSubscriptionService, spaceIndex, f.objectStore, f.layoutConverter, f.fileObjectService, f.statService), nil
 	case coresb.SmartBlockTypeAccountObject:
 		db, err := f.dbProvider.GetCrdtDb(space.Id()).Wait()
 		if err != nil {
