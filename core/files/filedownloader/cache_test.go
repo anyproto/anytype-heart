@@ -27,7 +27,7 @@ func TestCacheWarmer(t *testing.T) {
 			gotCh <- testMessage{spaceId: spaceId, cid: cid}
 			return nil
 		})
-		go w.loop()
+		go w.run()
 		go w.runWorker()
 
 		w.enqueue("space1", "file1")
@@ -45,7 +45,7 @@ func TestCacheWarmer(t *testing.T) {
 			gotCh <- testMessage{spaceId: spaceId, cid: cid}
 			return nil
 		})
-		go w.loop()
+		go w.run()
 		for range 5 {
 			go w.runWorker()
 		}
@@ -84,7 +84,7 @@ func TestCacheWarmer(t *testing.T) {
 				close(doneCh)
 				return nil
 			})
-			go w.loop()
+			go w.run()
 			go w.runWorker()
 
 			w.enqueue("space1", "file1")

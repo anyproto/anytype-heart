@@ -87,6 +87,7 @@ func (s *service) Run(ctx context.Context) error {
 	for range 5 {
 		go s.cacheWarmer.runWorker()
 	}
+	go s.cacheWarmer.run()
 	return nil
 }
 

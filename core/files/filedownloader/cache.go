@@ -116,7 +116,7 @@ func (w *cacheWarmer) markDone(cid domain.FileId) error {
 	}
 }
 
-func (w *cacheWarmer) loop() {
+func (w *cacheWarmer) run() {
 	for {
 		select {
 		case <-w.ctx.Done():
