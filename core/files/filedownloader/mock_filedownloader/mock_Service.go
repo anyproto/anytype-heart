@@ -25,9 +25,9 @@ func (_m *MockService) EXPECT() *MockService_Expecter {
 	return &MockService_Expecter{mock: &_m.Mock}
 }
 
-// CacheFile provides a mock function with given fields: ctx, spaceId, fileId, blocksLimit
-func (_m *MockService) CacheFile(ctx context.Context, spaceId string, fileId domain.FileId, blocksLimit int) {
-	_m.Called(ctx, spaceId, fileId, blocksLimit)
+// CacheFile provides a mock function with given fields: spaceId, fileId
+func (_m *MockService) CacheFile(spaceId string, fileId domain.FileId) {
+	_m.Called(spaceId, fileId)
 }
 
 // MockService_CacheFile_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'CacheFile'
@@ -36,17 +36,15 @@ type MockService_CacheFile_Call struct {
 }
 
 // CacheFile is a helper method to define mock.On call
-//   - ctx context.Context
 //   - spaceId string
 //   - fileId domain.FileId
-//   - blocksLimit int
-func (_e *MockService_Expecter) CacheFile(ctx interface{}, spaceId interface{}, fileId interface{}, blocksLimit interface{}) *MockService_CacheFile_Call {
-	return &MockService_CacheFile_Call{Call: _e.mock.On("CacheFile", ctx, spaceId, fileId, blocksLimit)}
+func (_e *MockService_Expecter) CacheFile(spaceId interface{}, fileId interface{}) *MockService_CacheFile_Call {
+	return &MockService_CacheFile_Call{Call: _e.mock.On("CacheFile", spaceId, fileId)}
 }
 
-func (_c *MockService_CacheFile_Call) Run(run func(ctx context.Context, spaceId string, fileId domain.FileId, blocksLimit int)) *MockService_CacheFile_Call {
+func (_c *MockService_CacheFile_Call) Run(run func(spaceId string, fileId domain.FileId)) *MockService_CacheFile_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(string), args[2].(domain.FileId), args[3].(int))
+		run(args[0].(string), args[1].(domain.FileId))
 	})
 	return _c
 }
@@ -56,7 +54,40 @@ func (_c *MockService_CacheFile_Call) Return() *MockService_CacheFile_Call {
 	return _c
 }
 
-func (_c *MockService_CacheFile_Call) RunAndReturn(run func(context.Context, string, domain.FileId, int)) *MockService_CacheFile_Call {
+func (_c *MockService_CacheFile_Call) RunAndReturn(run func(string, domain.FileId)) *MockService_CacheFile_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// CancelFileCaching provides a mock function with given fields: fileId
+func (_m *MockService) CancelFileCaching(fileId domain.FileId) {
+	_m.Called(fileId)
+}
+
+// MockService_CancelFileCaching_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'CancelFileCaching'
+type MockService_CancelFileCaching_Call struct {
+	*mock.Call
+}
+
+// CancelFileCaching is a helper method to define mock.On call
+//   - fileId domain.FileId
+func (_e *MockService_Expecter) CancelFileCaching(fileId interface{}) *MockService_CancelFileCaching_Call {
+	return &MockService_CancelFileCaching_Call{Call: _e.mock.On("CancelFileCaching", fileId)}
+}
+
+func (_c *MockService_CancelFileCaching_Call) Run(run func(fileId domain.FileId)) *MockService_CancelFileCaching_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(domain.FileId))
+	})
+	return _c
+}
+
+func (_c *MockService_CancelFileCaching_Call) Return() *MockService_CancelFileCaching_Call {
+	_c.Call.Return()
+	return _c
+}
+
+func (_c *MockService_CancelFileCaching_Call) RunAndReturn(run func(domain.FileId)) *MockService_CancelFileCaching_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -107,17 +138,17 @@ func (_c *MockService_Close_Call) RunAndReturn(run func(context.Context) error) 
 	return _c
 }
 
-// DownloadToLocalStore provides a mock function with given fields: ctx, spaceId, cid
-func (_m *MockService) DownloadToLocalStore(ctx context.Context, spaceId string, cid domain.FileId) error {
-	ret := _m.Called(ctx, spaceId, cid)
+// DownloadToLocalStore provides a mock function with given fields: ctx, spaceId, cid, blocksLimit
+func (_m *MockService) DownloadToLocalStore(ctx context.Context, spaceId string, cid domain.FileId, blocksLimit int) error {
+	ret := _m.Called(ctx, spaceId, cid, blocksLimit)
 
 	if len(ret) == 0 {
 		panic("no return value specified for DownloadToLocalStore")
 	}
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(context.Context, string, domain.FileId) error); ok {
-		r0 = rf(ctx, spaceId, cid)
+	if rf, ok := ret.Get(0).(func(context.Context, string, domain.FileId, int) error); ok {
+		r0 = rf(ctx, spaceId, cid, blocksLimit)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -134,13 +165,14 @@ type MockService_DownloadToLocalStore_Call struct {
 //   - ctx context.Context
 //   - spaceId string
 //   - cid domain.FileId
-func (_e *MockService_Expecter) DownloadToLocalStore(ctx interface{}, spaceId interface{}, cid interface{}) *MockService_DownloadToLocalStore_Call {
-	return &MockService_DownloadToLocalStore_Call{Call: _e.mock.On("DownloadToLocalStore", ctx, spaceId, cid)}
+//   - blocksLimit int
+func (_e *MockService_Expecter) DownloadToLocalStore(ctx interface{}, spaceId interface{}, cid interface{}, blocksLimit interface{}) *MockService_DownloadToLocalStore_Call {
+	return &MockService_DownloadToLocalStore_Call{Call: _e.mock.On("DownloadToLocalStore", ctx, spaceId, cid, blocksLimit)}
 }
 
-func (_c *MockService_DownloadToLocalStore_Call) Run(run func(ctx context.Context, spaceId string, cid domain.FileId)) *MockService_DownloadToLocalStore_Call {
+func (_c *MockService_DownloadToLocalStore_Call) Run(run func(ctx context.Context, spaceId string, cid domain.FileId, blocksLimit int)) *MockService_DownloadToLocalStore_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(string), args[2].(domain.FileId))
+		run(args[0].(context.Context), args[1].(string), args[2].(domain.FileId), args[3].(int))
 	})
 	return _c
 }
@@ -150,7 +182,7 @@ func (_c *MockService_DownloadToLocalStore_Call) Return(_a0 error) *MockService_
 	return _c
 }
 
-func (_c *MockService_DownloadToLocalStore_Call) RunAndReturn(run func(context.Context, string, domain.FileId) error) *MockService_DownloadToLocalStore_Call {
+func (_c *MockService_DownloadToLocalStore_Call) RunAndReturn(run func(context.Context, string, domain.FileId, int) error) *MockService_DownloadToLocalStore_Call {
 	_c.Call.Return(run)
 	return _c
 }

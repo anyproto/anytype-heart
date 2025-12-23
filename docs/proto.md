@@ -701,6 +701,14 @@
     - [Rpc.Device.SetName.Response](#anytype-Rpc-Device-SetName-Response)
     - [Rpc.Device.SetName.Response.Error](#anytype-Rpc-Device-SetName-Response-Error)
     - [Rpc.File](#anytype-Rpc-File)
+    - [Rpc.File.CacheCancelDownload](#anytype-Rpc-File-CacheCancelDownload)
+    - [Rpc.File.CacheCancelDownload.Request](#anytype-Rpc-File-CacheCancelDownload-Request)
+    - [Rpc.File.CacheCancelDownload.Response](#anytype-Rpc-File-CacheCancelDownload-Response)
+    - [Rpc.File.CacheCancelDownload.Response.Error](#anytype-Rpc-File-CacheCancelDownload-Response-Error)
+    - [Rpc.File.CacheDownload](#anytype-Rpc-File-CacheDownload)
+    - [Rpc.File.CacheDownload.Request](#anytype-Rpc-File-CacheDownload-Request)
+    - [Rpc.File.CacheDownload.Response](#anytype-Rpc-File-CacheDownload-Response)
+    - [Rpc.File.CacheDownload.Response.Error](#anytype-Rpc-File-CacheDownload-Response-Error)
     - [Rpc.File.DiscardPreload](#anytype-Rpc-File-DiscardPreload)
     - [Rpc.File.DiscardPreload.Request](#anytype-Rpc-File-DiscardPreload-Request)
     - [Rpc.File.DiscardPreload.Response](#anytype-Rpc-File-DiscardPreload-Response)
@@ -1602,6 +1610,8 @@
     - [Rpc.Device.List.Response.Error.Code](#anytype-Rpc-Device-List-Response-Error-Code)
     - [Rpc.Device.NetworkState.Set.Response.Error.Code](#anytype-Rpc-Device-NetworkState-Set-Response-Error-Code)
     - [Rpc.Device.SetName.Response.Error.Code](#anytype-Rpc-Device-SetName-Response-Error-Code)
+    - [Rpc.File.CacheCancelDownload.Response.Error.Code](#anytype-Rpc-File-CacheCancelDownload-Response-Error-Code)
+    - [Rpc.File.CacheDownload.Response.Error.Code](#anytype-Rpc-File-CacheDownload-Response-Error-Code)
     - [Rpc.File.DiscardPreload.Response.Error.Code](#anytype-Rpc-File-DiscardPreload-Response-Error-Code)
     - [Rpc.File.Download.Response.Error.Code](#anytype-Rpc-File-Download-Response-Error-Code)
     - [Rpc.File.Drop.Response.Error.Code](#anytype-Rpc-File-Drop-Response-Error-Code)
@@ -2380,6 +2390,8 @@
 | FileSpaceUsage | [Rpc.File.SpaceUsage.Request](#anytype-Rpc-File-SpaceUsage-Request) | [Rpc.File.SpaceUsage.Response](#anytype-Rpc-File-SpaceUsage-Response) |  |
 | FileNodeUsage | [Rpc.File.NodeUsage.Request](#anytype-Rpc-File-NodeUsage-Request) | [Rpc.File.NodeUsage.Response](#anytype-Rpc-File-NodeUsage-Response) |  |
 | FileSetAutoDownload | [Rpc.File.SetAutoDownload.Request](#anytype-Rpc-File-SetAutoDownload-Request) | [Rpc.File.SetAutoDownload.Response](#anytype-Rpc-File-SetAutoDownload-Response) |  |
+| FileCacheDownload | [Rpc.File.CacheDownload.Request](#anytype-Rpc-File-CacheDownload-Request) | [Rpc.File.CacheDownload.Response](#anytype-Rpc-File-CacheDownload-Response) |  |
+| FileCacheCancelDownload | [Rpc.File.CacheCancelDownload.Request](#anytype-Rpc-File-CacheCancelDownload-Request) | [Rpc.File.CacheCancelDownload.Response](#anytype-Rpc-File-CacheCancelDownload-Response) |  |
 | NavigationListObjects | [Rpc.Navigation.ListObjects.Request](#anytype-Rpc-Navigation-ListObjects-Request) | [Rpc.Navigation.ListObjects.Response](#anytype-Rpc-Navigation-ListObjects-Response) |  |
 | NavigationGetObjectInfoWithLinks | [Rpc.Navigation.GetObjectInfoWithLinks.Request](#anytype-Rpc-Navigation-GetObjectInfoWithLinks-Request) | [Rpc.Navigation.GetObjectInfoWithLinks.Response](#anytype-Rpc-Navigation-GetObjectInfoWithLinks-Response) |  |
 | TemplateCreateFromObject | [Rpc.Template.CreateFromObject.Request](#anytype-Rpc-Template-CreateFromObject-Request) | [Rpc.Template.CreateFromObject.Response](#anytype-Rpc-Template-CreateFromObject-Response) |  |
@@ -12682,6 +12694,118 @@ Get marks list in the selected range in text block.
 
 ### Rpc.File
 
+
+
+
+
+
+
+<a name="anytype-Rpc-File-CacheCancelDownload"></a>
+
+### Rpc.File.CacheCancelDownload
+
+
+
+
+
+
+
+<a name="anytype-Rpc-File-CacheCancelDownload-Request"></a>
+
+### Rpc.File.CacheCancelDownload.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| fileObjectId | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-File-CacheCancelDownload-Response"></a>
+
+### Rpc.File.CacheCancelDownload.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.File.CacheCancelDownload.Response.Error](#anytype-Rpc-File-CacheCancelDownload-Response-Error) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-File-CacheCancelDownload-Response-Error"></a>
+
+### Rpc.File.CacheCancelDownload.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.File.CacheCancelDownload.Response.Error.Code](#anytype-Rpc-File-CacheCancelDownload-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-File-CacheDownload"></a>
+
+### Rpc.File.CacheDownload
+
+
+
+
+
+
+
+<a name="anytype-Rpc-File-CacheDownload-Request"></a>
+
+### Rpc.File.CacheDownload.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| fileObjectId | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-File-CacheDownload-Response"></a>
+
+### Rpc.File.CacheDownload.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.File.CacheDownload.Response.Error](#anytype-Rpc-File-CacheDownload-Response-Error) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-File-CacheDownload-Response-Error"></a>
+
+### Rpc.File.CacheDownload.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.File.CacheDownload.Response.Error.Code](#anytype-Rpc-File-CacheDownload-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
 
 
 
@@ -25611,6 +25735,32 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 <a name="anytype-Rpc-Device-SetName-Response-Error-Code"></a>
 
 ### Rpc.Device.SetName.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
+
+
+
+<a name="anytype-Rpc-File-CacheCancelDownload-Response-Error-Code"></a>
+
+### Rpc.File.CacheCancelDownload.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
+
+
+
+<a name="anytype-Rpc-File-CacheDownload-Response-Error-Code"></a>
+
+### Rpc.File.CacheDownload.Response.Error.Code
 
 
 | Name | Number | Description |
