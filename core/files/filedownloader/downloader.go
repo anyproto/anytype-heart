@@ -56,7 +56,7 @@ func (s *service) newDownloader() *downloader {
 		crossSpaceSubService: s.crossSpaceSubService,
 		objectGetter:         s.objectGetter,
 		handleTask: func(ctx context.Context, t downloadTask) error {
-			return s.DownloadToLocalStore(ctx, t.spaceId, t.fileId)
+			return s.DownloadToLocalStore(ctx, t.spaceId, t.fileId, 0)
 		},
 		requestTaskCh: make(chan chan downloadTask),
 		addTaskCh:     make(chan downloadTask),

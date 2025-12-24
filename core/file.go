@@ -10,6 +10,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/domain/objectorigin"
 	"github.com/anyproto/anytype-heart/core/files/filedownloader"
+	"github.com/anyproto/anytype-heart/core/files/fileobject"
 	"github.com/anyproto/anytype-heart/core/files/fileoffloader"
 	"github.com/anyproto/anytype-heart/core/files/filespaceusage"
 	"github.com/anyproto/anytype-heart/core/files/reconciler"
@@ -253,4 +254,46 @@ func (mw *Middleware) FileSetAutoDownload(ctx context.Context, req *pb.RpcFileSe
 		}
 	}
 	return &pb.RpcFileSetAutoDownloadResponse{}
+}
+
+func (mw *Middleware) FileCacheDownload(ctx context.Context, req *pb.RpcFileCacheDownloadRequest) *pb.RpcFileCacheDownloadResponse {
+	handle := func() error {
+		file, err := mustService[fileobject.Service](mw).GetFileData(ctx, req.FileObjectId)
+		if err != nil {
+			return fmt.Errorf("get file data: %w", err)
+		}
+		mustService[filedownloader.Service](mw).CacheFile(file.SpaceId(), file.FileId())
+		return nil
+	}
+	err := handle()
+	if err != nil {
+		return &pb.RpcFileCacheDownloadResponse{
+			Error: &pb.RpcFileCacheDownloadResponseError{
+				Code:        mapErrorCode[pb.RpcFileCacheDownloadResponseErrorCode](err),
+				Description: getErrorDescription(err),
+			},
+		}
+	}
+	return &pb.RpcFileCacheDownloadResponse{}
+}
+
+func (mw *Middleware) FileCacheCancelDownload(ctx context.Context, req *pb.RpcFileCacheCancelDownloadRequest) *pb.RpcFileCacheCancelDownloadResponse {
+	handle := func() error {
+		file, err := mustService[fileobject.Service](mw).GetFileData(ctx, req.FileObjectId)
+		if err != nil {
+			return fmt.Errorf("get file data: %w", err)
+		}
+		mustService[filedownloader.Service](mw).CancelFileCaching(file.FileId())
+		return nil
+	}
+	err := handle()
+	if err != nil {
+		return &pb.RpcFileCacheCancelDownloadResponse{
+			Error: &pb.RpcFileCacheCancelDownloadResponseError{
+				Code:        mapErrorCode[pb.RpcFileCacheCancelDownloadResponseErrorCode](err),
+				Description: getErrorDescription(err),
+			},
+		}
+	}
+	return &pb.RpcFileCacheCancelDownloadResponse{}
 }

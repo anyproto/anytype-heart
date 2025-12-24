@@ -273,16 +273,6 @@ func (g *gateway) getFile(ctx context.Context, r *http.Request) (files.File, io.
 		return nil, nil, fmt.Errorf("get reader: %w", err)
 	}
 
-	preloadOriginal := r.URL.Query().Get("preloadOriginal") == "true"
-	if preloadOriginal && strings.HasPrefix(file.MimeType(), "video") {
-		g.fileDownloader.CacheFile(
-			r.Context(),
-			file.SpaceId(),
-			file.FileId(),
-			10, // First 10 mb
-		)
-	}
-
 	return file, reader, err
 }
 
@@ -353,16 +343,6 @@ func (g *gateway) getImage(ctx context.Context, r *http.Request) (*getImageReade
 	}, retryOptions...)
 	if err != nil {
 		return nil, fmt.Errorf("get image reader: %w", err)
-	}
-
-	preloadOriginal := r.URL.Query().Get("preloadOriginal") == "true"
-	if preloadOriginal && result.originalFile != nil && result.originalFile.Meta().Size < 10*1024*1024 {
-		g.fileDownloader.CacheFile(
-			r.Context(),
-			result.spaceId,
-			result.originalFile.FileId(),
-			0,
-		)
 	}
 
 	retryReader := newRetryReadSeeker(result.reader, retryOptions...)

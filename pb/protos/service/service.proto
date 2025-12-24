@@ -194,6 +194,8 @@ service ClientCommands {
     rpc FileSpaceUsage (anytype.Rpc.File.SpaceUsage.Request) returns (anytype.Rpc.File.SpaceUsage.Response);
     rpc FileNodeUsage (anytype.Rpc.File.NodeUsage.Request) returns (anytype.Rpc.File.NodeUsage.Response);
     rpc FileSetAutoDownload (anytype.Rpc.File.SetAutoDownload.Request) returns (anytype.Rpc.File.SetAutoDownload.Response);
+    rpc FileCacheDownload (anytype.Rpc.File.CacheDownload.Request) returns (anytype.Rpc.File.CacheDownload.Response);
+    rpc FileCacheCancelDownload (anytype.Rpc.File.CacheCancelDownload.Request) returns (anytype.Rpc.File.CacheCancelDownload.Response);
 
     rpc NavigationListObjects (anytype.Rpc.Navigation.ListObjects.Request) returns (anytype.Rpc.Navigation.ListObjects.Response);
     rpc NavigationGetObjectInfoWithLinks (anytype.Rpc.Navigation.GetObjectInfoWithLinks.Request) returns (anytype.Rpc.Navigation.GetObjectInfoWithLinks.Response);

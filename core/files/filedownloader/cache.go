@@ -2,8 +2,7 @@ package filedownloader
 
 import (
 	"context"
-	"fmt"
-	"sync"
+	"slices"
 	"time"
 
 	"go.uber.org/zap"
@@ -14,164 +13,182 @@ import (
 type cacheWarmer struct {
 	ctx context.Context
 
-	downloadFn func(ctx context.Context, spaceId string, cid domain.FileId) error
+	getNextCh chan getNextRequest
+	enqueueCh chan warmupTask
+	cancelCh  chan domain.FileId
+	doneCh    chan domain.FileId
 
-	requestBufferSize int
-	timeout           time.Duration
-	workersCount      int
+	waiters  []getNextRequest
+	tasks    []warmupTask
+	inflight map[domain.FileId]warmupTask
 
-	queue *queue[warmupTask]
+	blocksLimit int
+	tasksLimit  int
+	downloadFn  func(ctx context.Context, spaceId string, cid domain.FileId, blocksLimit int) error
 }
 
-func newCacheWarmer(ctx context.Context, downloadFn func(ctx context.Context, spaceId string, cid domain.FileId) error) (*cacheWarmer, error) {
-	w := &cacheWarmer{
-		ctx:               ctx,
-		downloadFn:        downloadFn,
-		requestBufferSize: 20,
-		timeout:           2 * time.Minute,
-		workersCount:      5,
+func newCacheWarmer(ctx context.Context, blocksLimit int, tasksLimit int, timeout time.Duration, downloadFn func(ctx context.Context, spaceId string, cid domain.FileId, blocksLimit int) error) *cacheWarmer {
+	return &cacheWarmer{
+		ctx:         ctx,
+		getNextCh:   make(chan getNextRequest),
+		enqueueCh:   make(chan warmupTask),
+		cancelCh:    make(chan domain.FileId),
+		doneCh:      make(chan domain.FileId),
+		inflight:    make(map[domain.FileId]warmupTask),
+		blocksLimit: blocksLimit,
+		tasksLimit:  tasksLimit,
+		downloadFn: func(ctx context.Context, spaceId string, cid domain.FileId, blocksLimit int) error {
+			ctx, cancel := context.WithTimeout(ctx, timeout)
+			defer cancel()
+			return downloadFn(ctx, spaceId, cid, blocksLimit)
+		},
 	}
-	queue, err := newQueue[warmupTask](w.requestBufferSize)
-	if err != nil {
-		return nil, fmt.Errorf("create queue: %w", err)
-	}
-	queue.onCancel = func(task warmupTask) {
-		task.ctxCancel()
-	}
-
-	return w, nil
 }
 
-func (s *cacheWarmer) Run(ctx context.Context) error {
-	for range s.workersCount {
-		go s.runDownloader()
-	}
-	return nil
+type getNextRequest struct {
+	responseCh chan warmupTask
 }
 
-func (s *cacheWarmer) Close(ctx context.Context) error {
-	s.queue.close()
-	return nil
-}
-
-func (s *cacheWarmer) runDownloader() {
+func (w *cacheWarmer) runWorker() {
 	for {
-		task := s.queue.getNext()
-		if task == nil {
+		task, err := w.getNext()
+		if err != nil {
 			return
 		}
 
-		err := s.downloadFn(task.ctx, task.spaceId, task.cid)
+		err = w.downloadFn(task.ctx, task.spaceId, task.cid, w.blocksLimit)
 		if err != nil {
-			log.Error("cache file", zap.Error(err))
+			log.Error("cache warmer: download file", zap.Error(err))
+		}
+
+		err = w.markDone(task.cid)
+		if err != nil {
+			return
 		}
 	}
 }
 
-func (s *cacheWarmer) CacheFile(ctx context.Context, spaceId string, fileId domain.FileId, blocksLimit int) {
-	// Task will be canceled along with service context
-	// nolint: lostcancel
-	taskCtx, _ := context.WithTimeout(s.ctx, s.timeout)
+func (w *cacheWarmer) enqueue(spaceId string, cid domain.FileId) {
+	ctx, cancel := context.WithCancel(w.ctx)
 
-	s.queue.push(warmupTask{
-		spaceId:     spaceId,
-		cid:         fileId,
-		ctx:         taskCtx,
-		blocksLimit: blocksLimit,
-	})
+	task := warmupTask{
+		spaceId: spaceId,
+		cid:     cid,
+
+		ctx:    ctx,
+		cancel: cancel,
+	}
+
+	select {
+	case w.enqueueCh <- task:
+	case <-w.ctx.Done():
+	}
+}
+
+func (w *cacheWarmer) getNext() (warmupTask, error) {
+	respCh := make(chan warmupTask, 1)
+	select {
+	case w.getNextCh <- getNextRequest{respCh}:
+		select {
+		case task := <-respCh:
+			return task, nil
+		case <-w.ctx.Done():
+			return warmupTask{}, w.ctx.Err()
+		}
+	case <-w.ctx.Done():
+		return warmupTask{}, w.ctx.Err()
+	}
+}
+
+func (w *cacheWarmer) cancelTask(cid domain.FileId) {
+	select {
+	case w.cancelCh <- cid:
+	case <-w.ctx.Done():
+	}
+}
+
+func (w *cacheWarmer) markDone(cid domain.FileId) error {
+	select {
+	case w.doneCh <- cid:
+		return nil
+	case <-w.ctx.Done():
+		return w.ctx.Err()
+	}
+}
+
+func (w *cacheWarmer) run() {
+	for {
+		select {
+		case <-w.ctx.Done():
+			return
+		case req := <-w.getNextCh:
+			w.handleGetNext(req)
+		case task := <-w.enqueueCh:
+			w.handleEnqueue(task)
+		case fileId := <-w.doneCh:
+			w.handleDone(fileId)
+		case fileId := <-w.cancelCh:
+			w.handleCancel(fileId)
+		}
+	}
+}
+
+func (w *cacheWarmer) handleGetNext(req getNextRequest) {
+	if len(w.tasks) == 0 {
+		w.waiters = append(w.waiters, req)
+	} else {
+		next := w.tasks[0]
+		w.tasks = w.tasks[1:]
+		w.respond(req.responseCh, next)
+	}
+}
+
+func (w *cacheWarmer) handleEnqueue(task warmupTask) {
+	if len(w.waiters) == 0 {
+		w.pushTask(task)
+	} else {
+		first := w.waiters[0]
+		w.waiters = w.waiters[1:]
+		w.respond(first.responseCh, task)
+	}
+}
+
+func (w *cacheWarmer) pushTask(task warmupTask) {
+	if len(w.tasks) == w.tasksLimit && w.tasksLimit > 0 {
+		w.tasks = append(w.tasks[1:], task)
+	} else {
+		w.tasks = append(w.tasks, task)
+	}
+}
+
+func (w *cacheWarmer) respond(respCh chan<- warmupTask, task warmupTask) {
+	w.inflight[task.cid] = task
+	respCh <- task
+}
+
+func (w *cacheWarmer) handleCancel(fileId domain.FileId) {
+	for i, task := range w.tasks {
+		if task.cid == fileId {
+			w.tasks = slices.Delete(w.tasks, i, i+1)
+			break
+		}
+	}
+
+	w.handleDone(fileId)
+}
+
+func (w *cacheWarmer) handleDone(fileId domain.FileId) {
+	task, ok := w.inflight[fileId]
+	if ok {
+		task.cancel()
+		delete(w.inflight, fileId)
+	}
 }
 
 type warmupTask struct {
-	spaceId     string
-	cid         domain.FileId
-	ctx         context.Context
-	ctxCancel   context.CancelFunc
-	blocksLimit int
-}
+	spaceId string
+	cid     domain.FileId
 
-type queue[T any] struct {
-	cond sync.Cond
-
-	closed bool
-	// tasks is LIFO circular buffer
-	tasks []*T
-	// currentIdx points at the current position in the circular buffer
-	currentIdx int
-
-	// onCancel is called when a task is removed from the circular buffer
-	onCancel func(T)
-}
-
-func newQueue[T any](maxSize int) (*queue[T], error) {
-	if maxSize <= 0 {
-		return nil, fmt.Errorf("max size must be > 0")
-	}
-	return &queue[T]{
-		cond:  sync.Cond{L: &sync.Mutex{}},
-		tasks: make([]*T, maxSize),
-	}, nil
-}
-
-func (q *queue[T]) push(task T) {
-	q.cond.L.Lock()
-	defer q.cond.L.Unlock()
-
-	prevTask := q.tasks[q.currentIdx]
-	if prevTask != nil && q.onCancel != nil {
-		q.onCancel(*prevTask)
-	}
-
-	q.tasks[q.currentIdx] = &task
-	q.currentIdx++
-	if q.currentIdx == len(q.tasks) {
-		q.currentIdx = 0
-	}
-
-	q.cond.Signal()
-}
-
-func (q *queue[T]) getNext() *T {
-	q.cond.L.Lock()
-	for {
-		if q.closed {
-			q.cond.L.Unlock()
-			return nil
-		}
-
-		task := q.pop()
-		if task != nil {
-			q.cond.L.Unlock()
-			return task
-		}
-		q.cond.Wait()
-	}
-}
-
-func (q *queue[T]) pop() *T {
-	for range len(q.tasks) {
-		task := q.tasks[q.currentIdx]
-		// Remove from buffer
-		if task != nil {
-			q.tasks[q.currentIdx] = nil
-		}
-
-		// Move the pointer backwards
-		q.currentIdx--
-		if q.currentIdx < 0 {
-			q.currentIdx = len(q.tasks) - 1
-		}
-
-		if task != nil {
-			return task
-		}
-	}
-	return nil
-}
-
-func (q *queue[T]) close() {
-	q.cond.L.Lock()
-	defer q.cond.L.Unlock()
-
-	q.closed = true
-	q.cond.Broadcast()
+	ctx    context.Context
+	cancel context.CancelFunc
 }
