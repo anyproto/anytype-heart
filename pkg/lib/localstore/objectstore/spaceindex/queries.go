@@ -5,6 +5,7 @@ import (
 	"sort"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	anystore "github.com/anyproto/any-store"
@@ -27,6 +28,11 @@ var pluralNameId = domain.ObjectPath{
 	ObjectId:    "",
 	RelationKey: bundle.RelationKeyPluralName.String(),
 }.String()
+
+var (
+	ftHits   atomic.Int64
+	ftMisses atomic.Int64
+)
 
 const (
 	// minFulltextScore trim fulltext results with score lower than this value in case there are no highlight ranges available
@@ -305,6 +311,7 @@ func (s *dsObjectStore) performQuery(q database.Query) (records []database.Recor
 		if len(fulltextResults) == 0 {
 			return s.performFulltextFallback(q, filters)
 		}
+		ftHits.Add(1)
 
 		return s.QueryFromFulltext(fulltextResults, *filters, q.Limit, q.Offset, q.TextQuery)
 	}
@@ -486,6 +493,7 @@ func (s *dsObjectStore) logFallbackDiagnostics(spaceId string, textQuery string,
 		}
 	}
 
+	ftMisses.Add(1)
 	// Log diagnostic info without exposing user data
 	log.With("spaceId", spaceId).
 		With("queryLen", len(textQuery)).
@@ -496,6 +504,8 @@ func (s *dsObjectStore) logFallbackDiagnostics(spaceId string, textQuery string,
 		With("noDocs", noDocs).
 		With("oldestLastModified", oldestLastModified).
 		With("newestLastModified", newestLastModified).
+		With("ftHitsCnt", ftHits.Load()).
+		With("ftMissesCnt", ftMisses.Load()).
 		Warn("fulltext search fallback triggered")
 }
 
