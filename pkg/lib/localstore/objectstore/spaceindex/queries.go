@@ -5,6 +5,7 @@ import (
 	"sort"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	anystore "github.com/anyproto/any-store"
@@ -27,6 +28,11 @@ var pluralNameId = domain.ObjectPath{
 	ObjectId:    "",
 	RelationKey: bundle.RelationKeyPluralName.String(),
 }.String()
+
+var (
+	ftHits   atomic.Int64
+	ftMisses atomic.Int64
+)
 
 const (
 	// minFulltextScore trim fulltext results with score lower than this value in case there are no highlight ranges available
@@ -301,6 +307,12 @@ func (s *dsObjectStore) performQuery(q database.Query) (records []database.Recor
 			return nil, fmt.Errorf("perform fulltext search: %w", err)
 		}
 
+		// Fallback to anystore search when Tantivy returns 0 results
+		if len(fulltextResults) == 0 {
+			return s.performFulltextFallback(q, filters)
+		}
+		ftHits.Add(1)
+
 		return s.QueryFromFulltext(fulltextResults, *filters, q.Limit, q.Offset, q.TextQuery)
 	}
 	return s.QueryRaw(filters, q.Limit, q.Offset)
@@ -385,6 +397,136 @@ func (s *dsObjectStore) performFulltextSearch(search func() (results []*ftsearch
 	}
 
 	return results, nil
+}
+
+func (s *dsObjectStore) performFulltextFallback(q database.Query, filters *database.Filters) ([]database.Record, error) {
+	// Build text search filter using FiltersOr with FilterLike
+	textFilter := database.FiltersOr{
+		database.FilterLike{Key: bundle.RelationKeyName, Value: q.TextQuery},
+		database.FilterLike{Key: bundle.RelationKeySnippet, Value: q.TextQuery},
+		database.FilterLike{Key: bundle.RelationKeyPluralName, Value: q.TextQuery},
+	}
+
+	// Combine with original filters if present
+	var combinedFilter database.Filter
+	if filters != nil && filters.FilterObj != nil {
+		combinedFilter = database.FiltersAnd{textFilter, filters.FilterObj}
+	} else {
+		combinedFilter = textFilter
+	}
+
+	// Get order from filters
+	var order database.Order
+	if filters != nil {
+		order = filters.Order
+	}
+
+	// Query anystore
+	records, err := s.queryAnyStore(combinedFilter, order, uint(q.Limit), uint(q.Offset))
+	if err != nil {
+		return nil, fmt.Errorf("fulltext fallback query: %w", err)
+	}
+
+	// Run diagnostic check
+	s.logFallbackDiagnostics(q.SpaceId, q.TextQuery, records)
+
+	return records, nil
+}
+
+func isFulltextIndexable(record database.Record) bool {
+	if record.Details.GetBool(bundle.RelationKeyIsDeleted) || record.Details.GetBool(bundle.RelationKeyIsArchived) {
+		return false
+	}
+	if sbt, err := typeprovider.SmartblockTypeFromID(record.Details.GetString(bundle.RelationKeyId)); err == nil {
+		ft, _, _ := sbt.Indexable()
+		return ft
+	}
+	return false
+}
+
+func (s *dsObjectStore) logFallbackDiagnostics(spaceId string, textQuery string, records []database.Record) {
+	// Sample up to 10 objects
+	records = slices.DeleteFunc(records, func(r database.Record) bool {
+		return !isFulltextIndexable(r)
+	})
+
+	sampleSize := len(records)
+	if sampleSize > 10 {
+		sampleSize = 10
+	}
+
+	if sampleSize == 0 {
+		log.With("spaceId", spaceId).
+			With("queryLen", len(textQuery)).
+			With("tantivyResults", 0).
+			With("fallbackResults", 0).
+			Debug("fulltext fallback: no results from either source")
+		return
+	}
+
+	// Check if specific relation documents exist in Tantivy
+	// Document IDs in Tantivy: "$objectId/r/name", "$objectId/r/snippet"
+
+	// Track last modified dates for diagnostic purposes
+	var oldestLastModified, newestLastModified int64
+	var nameMissing, noDocs int
+	for i := 0; i < sampleSize; i++ {
+		objectId := records[i].Details.GetString(bundle.RelationKeyId)
+		lastModified := records[i].Details.GetInt64(bundle.RelationKeyLastModifiedDate)
+		layout := model.ObjectTypeLayout(records[i].Details.GetInt64(bundle.RelationKeyResolvedLayout))
+
+		// Track oldest and newest last modified dates
+		if i == 0 || lastModified < oldestLastModified {
+			oldestLastModified = lastModified
+		}
+		if i == 0 || lastModified > newestLastModified {
+			newestLastModified = lastModified
+		}
+
+		// Check $objectId/r/name
+		hasNameDoc, totalDocs := s.checkDocExistsInTantivy(objectId)
+		if layout != model.ObjectType_note && !hasNameDoc {
+			nameMissing++
+		}
+		if totalDocs == 0 {
+			noDocs++
+		}
+	}
+
+	ftMisses.Add(1)
+	ftReport := s.fts.ConsistencyReport()
+	// Log diagnostic info without exposing user data
+	log.With("spaceId", spaceId).
+		With("queryLen", len(textQuery)).
+		With("tantivyResults", 0).
+		With("fallbackResults", len(records)).
+		With("sampleSize", sampleSize).
+		With("nameDocMissing", nameMissing).
+		With("noDocs", noDocs).
+		With("oldestLastModified", oldestLastModified).
+		With("newestLastModified", newestLastModified).
+		With("ftHitsCnt", ftHits.Load()).
+		With("ftMissesCnt", ftMisses.Load()).
+		With("ftOldestSegment", ftReport.OldestSegmentModTime.Unix()).
+		With("ftNewestSegment", ftReport.NewestSegmentModTime.Unix()).
+		With("ftMetaModTime", ftReport.MetaJsonModTime.Unix()).
+		With("ftOk", ftReport.IsOk()).
+		With("ftReportTime", ftReport.ReportTime.Unix()).
+		Warn("fulltext search fallback triggered")
+}
+
+func (s *dsObjectStore) checkDocExistsInTantivy(objectId string) (hasName bool, total int) {
+	err := s.fts.Iterate(objectId, nil, func(doc *ftsearch.SearchDoc) bool {
+		if strings.HasSuffix(doc.Id, "/r/name") {
+			hasName = true
+		}
+		total++
+		return true
+	})
+	if err != nil {
+		log.With("error", err).Debug("fulltext fallback diagnostic: iterate error")
+	}
+	return
 }
 
 func preferPluralNameRelation(objectPerBlockResults []*ftsearch.DocumentMatch) *ftsearch.DocumentMatch {

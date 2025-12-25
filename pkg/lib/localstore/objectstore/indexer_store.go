@@ -53,12 +53,12 @@ func (s *dsObjectStore) FtQueueReconcileWithSeq(ctx context.Context, ftIndexSeq 
 	if res.Matched > 0 {
 		log.With("seq", ftIndexSeq).Errorf("ft incosistency: found %d objects to reindex", res.Matched)
 	} else {
-		// no inconsistency found, we can safely delete all objects with state > 0
-		res, err := s.fulltextQueue.Find(ftQueueFilterSeq(0, query.CompOpGt, arena)).Delete(txn.Context())
+		// no inconsistency found, we don't gc but log the count
+		count, err := s.fulltextQueue.Find(ftQueueFilterSeq(0, query.CompOpGt, arena)).Count(ctx)
 		if err != nil {
 			return fmt.Errorf("gc fulltext queue: %w", err)
-		} else if res.Matched > 0 {
-			log.With("seq", ftIndexSeq).Warnf("ft queue gc: found %d objects to remove from the queue", res.Matched)
+		} else {
+			log.With("count", count).Infof("gc fulltext queue is valid")
 		}
 	}
 	return txn.Commit()
