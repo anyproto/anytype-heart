@@ -40,7 +40,7 @@ type CrossSpace interface {
 
 	ListIdsCrossSpace() ([]string, error)
 	EnqueueAllForFulltextIndexing(ctx context.Context) error
-	BatchProcessFullTextQueue(ctx context.Context, spaceIds func() []string, limit uint, processIds func(objectIds []domain.FullID) (succeedIds []domain.FullID, ftIndexSeq uint64, err error)) error
+	BatchProcessFullTextQueue(spaceIds func() []string, limit uint, processIds FullTextProcessFunc) error
 
 	AccountStore
 	VirtualSpacesStore
@@ -66,7 +66,7 @@ type ObjectStore interface {
 
 type IndexerStore interface {
 	AddToIndexQueue(ctx context.Context, id ...domain.FullID) error
-	ListIdsFromFullTextQueue(spaceIds []string, limit uint) ([]domain.FullID, error)
+	AddChatMessageToIndexQueue(ctx context.Context, chatId domain.FullID, orderId string) error
 	FtQueueMarkAsIndexed(ids []domain.FullID, ftIndexSeq uint64) error
 
 	// ClearFullTextQueue cleans the pending . Pass nil to clear all spaces.

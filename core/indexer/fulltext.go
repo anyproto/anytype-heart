@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strconv"
 	"strings"
 	"sync/atomic"
 	"time"
@@ -23,6 +24,7 @@ import (
 	"github.com/anyproto/anytype-heart/metrics"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/ftsearch"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
@@ -120,18 +122,19 @@ func (i *indexer) activeSpaces() []string {
 
 func (i *indexer) runFullTextIndexer(ctx context.Context) error {
 	batcher := i.ftsearch.NewAutoBatcher()
-	err := i.store.BatchProcessFullTextQueue(ctx, i.activeSpaces, ftBatchLimit, func(objectIds []domain.FullID) (succeedIds []domain.FullID, ftIndexSeq uint64, err error) {
-		if len(objectIds) == 0 {
+
+	var processQueuedObjects = func(objects []objectstore.FullTextQueuedObject) (succeedIds []domain.FullID, ftIndexSeq uint64, err error) {
+		if len(objects) == 0 {
 			return nil, 0, nil
 		}
 
-		for _, objectId := range objectIds {
+		for _, object := range objects {
 			select {
 			case <-ctx.Done():
 				return nil, 0, ctx.Err()
 			default:
 			}
-			objDocs, err := i.prepareSearchDocument(ctx, objectId)
+			objDocs, err := i.prepareSearchDocs(ctx, object)
 			if err != nil {
 				if errors.Is(err, context.Canceled) {
 					return nil, 0, err
@@ -143,14 +146,15 @@ func (i *indexer) runFullTextIndexer(ctx context.Context) error {
 					!errors.Is(err, editor.ErrUnexpectedSmartblockType) && // this version doesn't support some new smartblocktype
 					!errors.Is(err, spacestorage.ErrTreeStorageAlreadyDeleted) {
 					// some error that doesn't mean object is no longer exists
-					log.With("id", objectId).Errorf("prepare document for full-text indexing: %s", err)
+					log.With("id", object.FullId()).Errorf("prepare document for full-text indexing: %s", err)
 					continue
 				}
 			}
 
-			objDocs, removedDocIds, err := i.filterOutNotChangedDocuments(objectId.ObjectID, objDocs)
+			// TODO: modify for chat messages
+			objDocs, removedDocIds, err := i.filterOutNotChangedDocuments(object.ObjectId, objDocs)
 			if err != nil {
-				log.With("id", objectId).Errorf("filter not changed error:: %s", err)
+				log.With("id", object.FullId()).Errorf("filter not changed error:: %s", err)
 				// try to process the other returned values.
 				continue
 			}
@@ -165,14 +169,14 @@ func (i *indexer) runFullTextIndexer(ctx context.Context) error {
 				err = batcher.UpsertDoc(doc)
 				if err != nil {
 					if strings.Contains(err.Error(), "invalid utf-8 sequence") {
-						log.With("id", objectId.ObjectID).Warnf(err.Error())
+						log.With("id", object.ObjectId).Warnf(err.Error())
 						continue // skip this document
 					}
 					return nil, 0, fmt.Errorf("batcher add: %w", err)
 				}
 			}
 
-			succeedIds = append(succeedIds, objectId)
+			succeedIds = append(succeedIds, object.FullId())
 		}
 
 		ftIndexSeq, err = batcher.Finish()
@@ -186,7 +190,9 @@ func (i *indexer) runFullTextIndexer(ctx context.Context) error {
 			i.ftsearchLastIndexSeq = ftIndexSeq
 		}
 		return succeedIds, i.ftsearchLastIndexSeq, nil
-	})
+	}
+
+	err := i.store.BatchProcessFullTextQueue(i.activeSpaces, ftBatchLimit, processQueuedObjects)
 	if err != nil && maxErrSent.Load() < maxErrorsPerSession {
 		maxErrSent.Add(1)
 		log.Errorf("list ids from full-text queue: %v", err)
@@ -246,21 +252,29 @@ var filesLayouts = map[model.ObjectTypeLayout]struct{}{
 	model.ObjectType_pdf:   {},
 }
 
-func (i *indexer) prepareSearchDocument(ctx context.Context, id domain.FullID) (docs []ftsearch.SearchDoc, err error) {
+func (i *indexer) prepareSearchDocs(ctx context.Context, object objectstore.FullTextQueuedObject) (docs []ftsearch.SearchDoc, err error) {
 	// shortcut for deleted objects via objectstore
 	// otherwise we can have race condition when object is marked as deleted but the tree is not yet deleted
-	details, err := i.store.SpaceIndex(id.SpaceID).GetDetails(id.ObjectID)
+	details, err := i.store.SpaceIndex(object.SpaceId).GetDetails(object.ObjectId)
 	if err != nil {
-		log.With("id", id).Errorf("prepareSearchDocument: get details: %v", err)
+		log.With("id", object.FullId()).Errorf("prepareSearchDocs: get details: %v", err)
 	} else if details.GetBool(bundle.RelationKeyIsDeleted) {
 		// object is deleted, no need to index it
 		return
 	}
 
 	ctx = context.WithValue(ctx, metrics.CtxKeyEntrypoint, "index_fulltext")
+
+	if object.OrderId != "" {
+		docs, err = i.prepareChatSearchDocs(ctx, object)
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	var fulltextSkipped bool
 
-	err = cache.DoContext(i.picker, ctx, id.ObjectID, func(sb smartblock2.SmartBlock) error {
+	err = cache.DoContext(i.picker, ctx, object.ObjectId, func(sb smartblock2.SmartBlock) error {
 		fulltext, _, _ := sb.Type().Indexable()
 		if !fulltext {
 			fulltextSkipped = true
@@ -268,7 +282,7 @@ func (i *indexer) prepareSearchDocument(ctx context.Context, id domain.FullID) (
 		}
 
 		for _, key := range sb.AllRelationKeys() {
-			format, err := i.formatFetcher.GetRelationFormatByKey(id.SpaceID, key)
+			format, err := i.formatFetcher.GetRelationFormatByKey(object.SpaceId, key)
 			if err == nil && format != model.RelationFormat_shorttext && format != model.RelationFormat_longtext {
 				continue
 			}
@@ -297,7 +311,7 @@ func (i *indexer) prepareSearchDocument(ctx context.Context, id domain.FullID) (
 			}
 
 			doc := ftsearch.SearchDoc{
-				Id:      domain.NewObjectPathWithRelation(id.ObjectID, key.String()).String(),
+				Id:      domain.NewObjectPathWithRelation(object.ObjectId, key.String()).String(),
 				SpaceId: sb.SpaceID(),
 				Text:    val,
 			}
@@ -329,7 +343,7 @@ func (i *indexer) prepareSearchDocument(ctx context.Context, id domain.FullID) (
 					return true
 				}
 				doc := ftsearch.SearchDoc{
-					Id:      domain.NewObjectPathWithBlock(id.ObjectID, b.Model().Id).String(),
+					Id:      domain.NewObjectPathWithBlock(object.ObjectId, b.Model().Id).String(),
 					SpaceId: sb.SpaceID(),
 				}
 				if len(tb.Text) > ftBlockMaxSize {
@@ -355,13 +369,39 @@ func (i *indexer) prepareSearchDocument(ctx context.Context, id domain.FullID) (
 	if err != nil {
 		return nil, err
 	}
-	_, cacheErr := i.picker.TryRemoveFromCache(ctx, id.ObjectID)
+	_, cacheErr := i.picker.TryRemoveFromCache(ctx, object.ObjectId)
 	if cacheErr != nil &&
 		!errors.Is(err, domain.ErrObjectNotFound) {
-		log.With("objectId", id).Errorf("object cache remove: %v", err)
+		log.With("objectId", object.FullId()).Errorf("object cache remove: %v", err)
 	}
 
 	return docs, nil
+}
+
+func (i *indexer) prepareChatSearchDocs(ctx context.Context, object objectstore.FullTextQueuedObject) (docs []ftsearch.SearchDoc, err error) {
+	repository, err := i.chatRepository.Repository(object.SpaceId, object.ObjectId)
+	if err != nil {
+		return nil, fmt.Errorf("prepareChatSearchDocs: failed to get chat repository: %v", err)
+	}
+
+	msgs, err := repository.GetMessagesForIndexing(ctx, object.OrderId)
+	if err != nil {
+		return nil, fmt.Errorf("prepareChatSearchDocs: failed to get messages for indexing: %v", err)
+	}
+
+	for _, msg := range msgs {
+		docs = append(docs, ftsearch.SearchDoc{
+			Id:        domain.NewObjectPathWithMessage(object.ObjectId, msg.Id).String(),
+			SpaceId:   object.SpaceId,
+			Text:      msg.Message.Text,
+			Author:    msg.Creator,
+			OrderId:   msg.OrderId,
+			MessageId: msg.Id,
+			Timestamp: strconv.Itoa(int(msg.CreatedAt)),
+		})
+	}
+	return docs, nil
+
 }
 
 func isName(key domain.RelationKey) bool {

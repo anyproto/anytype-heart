@@ -47,13 +47,18 @@ const (
 	ftsVer   = "16"
 	docLimit = 10000
 
-	fieldTitle   = "Title"
-	fieldTitleZh = "TitleZh"
-	fieldText    = "Text"
-	fieldTextZh  = "TextZh"
-	fieldSpace   = "SpaceID"
-	fieldId      = "Id"
-	fieldIdRaw   = "IdRaw"
+	fieldTitle     = "Title"
+	fieldTitleZh   = "TitleZh"
+	fieldText      = "Text"
+	fieldTextZh    = "TextZh"
+	fieldSpace     = "SpaceID"
+	fieldId        = "Id"
+	fieldIdRaw     = "IdRaw"
+	fieldAuthor    = "Author"
+	fieldOrderId   = "OrderId"
+	fieldMessageId = "MessageId"
+	fieldTimestamp = "Timestamp"
+
 	score        = "score"
 	highlights   = "highlights"
 	fragment     = "fragment"
@@ -84,6 +89,12 @@ type SearchDoc struct {
 	SpaceId string
 	Title   string
 	Text    string
+
+	// message specific fields
+	Author    string
+	OrderId   string
+	MessageId string
+	Timestamp string
 }
 
 type Highlight struct {
@@ -316,6 +327,54 @@ func (f *ftSearch) Run(context.Context) error {
 		return fmt.Errorf("add Chinese text field: %w", err)
 	}
 
+	err = builder.AddTextField(
+		fieldAuthor, // 7
+		true,
+		false,
+		true,
+		tantivy.IndexRecordOptionBasic,
+		tantivy.TokenizerRaw,
+	)
+	if err != nil {
+		return fmt.Errorf("add author field: %w", err)
+	}
+
+	err = builder.AddTextField(
+		fieldOrderId, // 8
+		true,
+		false,
+		true,
+		tantivy.IndexRecordOptionBasic,
+		tantivy.TokenizerRaw,
+	)
+	if err != nil {
+		return fmt.Errorf("add orderId field: %w", err)
+	}
+
+	err = builder.AddTextField(
+		fieldMessageId, // 9
+		true,
+		false,
+		true,
+		tantivy.IndexRecordOptionBasic,
+		tantivy.TokenizerRaw,
+	)
+	if err != nil {
+		return fmt.Errorf("add message Id field: %w", err)
+	}
+
+	err = builder.AddTextField(
+		fieldTimestamp, // 10
+		true,
+		false,
+		true,
+		tantivy.IndexRecordOptionBasic,
+		tantivy.TokenizerRaw,
+	)
+	if err != nil {
+		return fmt.Errorf("add message timestamp field: %w", err)
+	}
+
 	schema, err := builder.BuildSchema()
 	if err != nil {
 		return err
@@ -401,6 +460,22 @@ func (f *ftSearch) convertDoc(doc SearchDoc) (*tantivy.Document, error) {
 		return nil, err
 	}
 	err = document.AddFields(doc.Text, f.index, fieldText, fieldTextZh)
+	if err != nil {
+		return nil, err
+	}
+	err = document.AddFields(doc.Author, f.index, fieldAuthor)
+	if err != nil {
+		return nil, err
+	}
+	err = document.AddFields(doc.OrderId, f.index, fieldOrderId)
+	if err != nil {
+		return nil, err
+	}
+	err = document.AddFields(doc.MessageId, f.index, fieldMessageId)
+	if err != nil {
+		return nil, err
+	}
+	err = document.AddFields(doc.Timestamp, f.index, fieldTimestamp)
 	if err != nil {
 		return nil, err
 	}

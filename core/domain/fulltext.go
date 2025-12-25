@@ -10,12 +10,14 @@ const (
 	ObjectPathSeparator = "/"
 	blockPrefix         = "b"
 	relationPrefix      = "r"
+	messagePrefix       = "m"
 )
 
 type ObjectPath struct {
 	ObjectId    string
 	BlockId     string
 	RelationKey string
+	MessageId   string
 }
 
 // String returns the full path, e.g. "objectId-b-blockId" or "objectId-r-relationKey"
@@ -25,6 +27,9 @@ func (o ObjectPath) String() string {
 	}
 	if o.HasRelation() {
 		return strings.Join([]string{o.ObjectId, relationPrefix, o.RelationKey}, ObjectPathSeparator)
+	}
+	if o.HasMessage() {
+		return strings.Join([]string{o.ObjectId, messagePrefix, o.MessageId}, ObjectPathSeparator)
 	}
 	return o.ObjectId
 }
@@ -36,6 +41,9 @@ func (o ObjectPath) ObjectRelativePath() string {
 	}
 	if o.HasRelation() {
 		return strings.Join([]string{relationPrefix, o.RelationKey}, ObjectPathSeparator)
+	}
+	if o.HasMessage() {
+		return strings.Join([]string{messagePrefix, o.MessageId}, ObjectPathSeparator)
 	}
 	return ""
 }
@@ -52,6 +60,10 @@ func (o ObjectPath) HasBlock() bool {
 	return o.BlockId != ""
 }
 
+func (o ObjectPath) HasMessage() bool {
+	return o.MessageId != ""
+}
+
 func NewObjectPathWithBlock(objectId, blockId string) ObjectPath {
 	return ObjectPath{
 		ObjectId: objectId,
@@ -66,6 +78,13 @@ func NewObjectPathWithRelation(objectId, relationKey string) ObjectPath {
 	}
 }
 
+func NewObjectPathWithMessage(objectId, messageId string) ObjectPath {
+	return ObjectPath{
+		ObjectId:  objectId,
+		MessageId: messageId,
+	}
+}
+
 func NewFromPath(path string) (ObjectPath, error) {
 	parts := strings.Split(path, ObjectPathSeparator)
 	if len(parts) == 3 && parts[1] == blockPrefix {
@@ -73,6 +92,9 @@ func NewFromPath(path string) (ObjectPath, error) {
 	}
 	if len(parts) == 3 && parts[1] == relationPrefix {
 		return NewObjectPathWithRelation(parts[0], parts[2]), nil
+	}
+	if len(parts) == 3 && parts[1] == messagePrefix {
+		return NewObjectPathWithMessage(parts[0], parts[2]), nil
 	}
 	return ObjectPath{ObjectId: path}, fmt.Errorf("fts invalid path: %s", path)
 }

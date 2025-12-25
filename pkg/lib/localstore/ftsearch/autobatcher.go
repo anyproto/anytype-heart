@@ -8,7 +8,7 @@ import (
 )
 
 type AutoBatcher interface {
-	// UpsertDoc adds a update operation to the batcher. If the batch is reaching the size limit, it will be indexed and reset.
+	// UpsertDoc adds an update operation to the batcher. If the batch is reaching the size limit, it will be indexed and reset.
 	UpsertDoc(doc SearchDoc) error
 	// DeleteDoc adds a delete operation to the batcher
 	// maxSize limit check is not performed for this operation
@@ -104,7 +104,7 @@ type ftIndexBatcherTantivy struct {
 	mu             *sync.Mutex // original mutex, temporary solution
 }
 
-// Add adds a update operation to the batcher. If the batch is reaching the size limit, it will be indexed and reset.
+// UpsertDoc adds an update operation to the batcher. If the batch is reaching the size limit, it will be indexed and reset.
 func (f *ftIndexBatcherTantivy) UpsertDoc(searchDoc SearchDoc) error {
 	err := f.DeleteDoc(searchDoc.Id)
 	if err != nil {
@@ -115,24 +115,31 @@ func (f *ftIndexBatcherTantivy) UpsertDoc(searchDoc SearchDoc) error {
 		return fmt.Errorf("failed to create document")
 	}
 
-	err = doc.AddFields(searchDoc.Id, f.index, fieldId, fieldIdRaw)
-	if err != nil {
-		return err
-	}
-
-	err = doc.AddField(searchDoc.SpaceId, f.index, fieldSpace)
-	if err != nil {
-		return err
-	}
-
-	err = doc.AddFields(searchDoc.Title, f.index, fieldTitle, fieldTitleZh)
-	if err != nil {
-		return err
-	}
-
-	err = doc.AddFields(searchDoc.Text, f.index, fieldText, fieldTextZh)
-	if err != nil {
-		return err
+	for _, field := range []struct {
+		value      string
+		fieldNames []string
+	}{
+		{searchDoc.Id, []string{fieldId, fieldIdRaw}},
+		{searchDoc.SpaceId, []string{fieldSpace}},
+		{searchDoc.Title, []string{fieldTitle, fieldTitleZh}},
+		{searchDoc.Text, []string{fieldText, fieldTextZh}},
+		{searchDoc.Author, []string{fieldAuthor}},
+		{searchDoc.OrderId, []string{fieldOrderId}},
+		{searchDoc.MessageId, []string{fieldMessageId}},
+		{searchDoc.Timestamp, []string{fieldTimestamp}},
+	} {
+		if field.value == "" {
+			continue
+		}
+		if len(field.fieldNames) == 1 {
+			if err = doc.AddField(field.value, f.index, field.fieldNames[0]); err != nil {
+				return err
+			}
+			continue
+		}
+		if err = doc.AddFields(field.value, f.index, field.fieldNames...); err != nil {
+			return err
+		}
 	}
 
 	f.updateDocs = append(f.updateDocs, doc)
