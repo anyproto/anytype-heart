@@ -494,6 +494,7 @@ func (s *dsObjectStore) logFallbackDiagnostics(spaceId string, textQuery string,
 	}
 
 	ftMisses.Add(1)
+	ftReport := s.fts.ConsistencyReport()
 	// Log diagnostic info without exposing user data
 	log.With("spaceId", spaceId).
 		With("queryLen", len(textQuery)).
@@ -506,6 +507,11 @@ func (s *dsObjectStore) logFallbackDiagnostics(spaceId string, textQuery string,
 		With("newestLastModified", newestLastModified).
 		With("ftHitsCnt", ftHits.Load()).
 		With("ftMissesCnt", ftMisses.Load()).
+		With("ftOldestSegment", ftReport.OldestSegmentModTime.Unix()).
+		With("ftNewestSegment", ftReport.NewestSegmentModTime.Unix()).
+		With("ftMetaModTime", ftReport.MetaJsonModTime.Unix()).
+		With("ftOk", ftReport.IsOk()).
+		With("ftReportTime", ftReport.ReportTime.Unix()).
 		Warn("fulltext search fallback triggered")
 }
 
