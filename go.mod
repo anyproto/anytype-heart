@@ -6,7 +6,7 @@ toolchain go1.24.9
 
 require (
 	github.com/JohannesKaufmann/html-to-markdown v1.4.0
-	github.com/PuerkitoBio/goquery v1.10.2
+	github.com/PuerkitoBio/goquery v1.10.3
 	github.com/VividCortex/ewma v1.2.0
 	github.com/adrium/goheif v0.0.0-20230113233934-ca402e77a786
 	github.com/ahmetb/govvv v0.3.0
