@@ -52,6 +52,6 @@ func (mw *Middleware) ListenSessionEvents(req *pb.StreamRequest, server lib.Clie
 	case <-srv.Done:
 		log.Errorf("stream %s closed", req.Token)
 	case <-srv.Server.Context().Done():
-		log.Errorf("stream %s context canceled", req.Token)
+		log.Errorf("stream %s context done: %v", req.Token, srv.Server.Context().Err())
 	}
 }

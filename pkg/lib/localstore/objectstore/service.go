@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"slices"
 	"sync"
 
 	anystore "github.com/anyproto/any-store"
@@ -31,7 +32,8 @@ var log = logging.Logger("anytype-localstore")
 const CName = "objectstore"
 
 var (
-	_ ObjectStore = (*dsObjectStore)(nil)
+	_                     ObjectStore = (*dsObjectStore)(nil)
+	ErrSpaceIndexNotFound             = errors.New("space index not found")
 )
 
 type CrossSpace interface {
@@ -47,11 +49,18 @@ type CrossSpace interface {
 	IndexerStore
 }
 
+type SpaceIndexOption int
+
+const (
+	SpaceIndexOptionSkipSpaceIdCheck SpaceIndexOption = iota
+)
+
 type ObjectStore interface {
 	app.ComponentRunnable
 
 	IterateSpaceIndex(func(store spaceindex.Store) error) error
-	SpaceIndex(spaceId string) spaceindex.Store
+	SpaceIndex(spaceId string, options ...SpaceIndexOption) spaceindex.Store
+	RemoveSpaceIndex(spaceId string) error
 
 	SpaceNameGetter
 	spaceresolverstore.Store
@@ -93,8 +102,14 @@ type TechSpaceIdProvider interface {
 	TechSpaceId() string
 }
 
+type SpaceServiceSpaceNameGetter interface {
+	AllLoadedSpaceIds() (ids []string)
+}
+
 type dsObjectStore struct {
 	anystoreProvider anystoreprovider.Provider
+
+	spaceIdsGetter SpaceServiceSpaceNameGetter
 
 	spaceresolverstore.Store
 
@@ -165,6 +180,7 @@ func New() ObjectStore {
 
 func (s *dsObjectStore) Init(a *app.App) (err error) {
 	s.sourceService = app.MustComponent[spaceindex.SourceDetailsFromID](a)
+	s.spaceIdsGetter = app.MustComponent[SpaceServiceSpaceNameGetter](a)
 	s.fts = app.MustComponent[ftsearch.FTSearch](a)
 	s.anystoreProvider = app.MustComponent[anystoreprovider.Provider](a)
 	s.db = s.anystoreProvider.GetCommonDb()
@@ -192,7 +208,6 @@ func (s *dsObjectStore) Run(ctx context.Context) error {
 	}
 
 	s.Store = store
-
 	return err
 }
 
@@ -248,12 +263,22 @@ func (s *dsObjectStore) Close(_ context.Context) (err error) {
 	return err
 }
 
-func (s *dsObjectStore) SpaceIndex(spaceId string) spaceindex.Store {
+func (s *dsObjectStore) SpaceIndex(spaceId string, options ...SpaceIndexOption) spaceindex.Store {
 	if spaceId == "" {
 		return spaceindex.NewInvalidStore(errors.New("empty spaceId"))
 	}
 	s.lock.Lock()
-	spaceIndex := s.getOrInitSpaceIndex(spaceId)
+	var forceInit bool
+	for _, option := range options {
+		switch option {
+		case SpaceIndexOptionSkipSpaceIdCheck:
+			forceInit = true
+		default:
+			log.Warnf("unknown SpaceIndex option: %v", option)
+		}
+	}
+	spaceIndex := s.getOrInitSpaceIndex(spaceId, forceInit)
+
 	s.lock.Unlock()
 	err := spaceIndex.Init()
 	if err != nil {
@@ -262,9 +287,47 @@ func (s *dsObjectStore) SpaceIndex(spaceId string) spaceindex.Store {
 	return spaceIndex
 }
 
-func (s *dsObjectStore) getOrInitSpaceIndex(spaceId string) spaceindex.Store {
+func (s *dsObjectStore) RemoveSpaceIndex(spaceId string) error {
+	s.lock.Lock()
+	defer s.lock.Unlock()
+
+	spaceIndex, ok := s.spaceIndexes[spaceId]
+	if ok {
+		if err := spaceIndex.Close(); err != nil {
+			log.With("spaceId", spaceId).Errorf("failed to close space index: %v", err)
+		}
+		delete(s.spaceIndexes, spaceId)
+	}
+
+	// Remove the space index directory from filesystem
+	return s.anystoreProvider.DeleteSpaceIndex(spaceId)
+}
+
+func (s *dsObjectStore) retrieveActiveSpaceIds() []string {
+	validIds := s.spaceIdsGetter.AllLoadedSpaceIds()
+	if !slices.Contains(validIds, s.techSpaceId) {
+		validIds = append(validIds, s.techSpaceId)
+	}
+	if !slices.Contains(validIds, addr.AnytypeMarketplaceWorkspace) {
+		validIds = append(validIds, addr.AnytypeMarketplaceWorkspace)
+	}
+	return validIds
+}
+
+// getOrInitSpaceIndex returns an existing space index or creates a new one if it doesn't exist yet.
+// if forceInit is true, the space index will be initialized even if the spaceId is not in the list of active space ids.
+func (s *dsObjectStore) getOrInitSpaceIndex(spaceId string, forceInit bool) spaceindex.Store {
+	// make sure we always precreate all space indexes if they are already on disk
+	err := s.preloadExistingObjectStores()
+	if err != nil {
+		log.Errorf("preloadExistingObjectStores: %v", err)
+	}
+
 	store, ok := s.spaceIndexes[spaceId]
 	if !ok {
+		if !forceInit && !slices.Contains(s.retrieveActiveSpaceIds(), spaceId) {
+			return spaceindex.NewInvalidStore(ErrSpaceIndexNotFound)
+		}
 		store = spaceindex.New(s.componentCtx, spaceId, spaceindex.Deps{
 			DbProvider:    s.anystoreProvider,
 			SourceService: s.sourceService,
@@ -288,7 +351,7 @@ func (s *dsObjectStore) preloadExistingObjectStores() error {
 		var indexes []spaceindex.Store
 		s.lock.Lock()
 		for _, spaceId := range spaceIds {
-			spaceIndex := s.getOrInitSpaceIndex(spaceId)
+			spaceIndex := s.getOrInitSpaceIndex(spaceId, true)
 			indexes = append(indexes, spaceIndex)
 		}
 		s.lock.Unlock()

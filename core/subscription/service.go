@@ -185,7 +185,7 @@ func (s *service) Search(req SubscribeRequest) (resp *SubscribeResponse, err err
 	if err != nil {
 		return nil, err
 	}
-	spaceSubs, err := s.getSpaceSubscriptions(req.SpaceId)
+	spaceSubs, err := s.getSpaceSubscriptions(req.SpaceId, req.Internal)
 	if err != nil {
 		return nil, err
 	}
@@ -202,7 +202,7 @@ func (s *service) SubscribeIdsReq(req pb.RpcObjectSubscribeIdsRequest) (resp *pb
 	if err != nil {
 		return nil, err
 	}
-	spaceSubs, err := s.getSpaceSubscriptions(req.SpaceId)
+	spaceSubs, err := s.getSpaceSubscriptions(req.SpaceId, false)
 	if err != nil {
 		return nil, err
 	}
@@ -220,7 +220,7 @@ func (s *service) SubscribeGroups(req SubscribeGroupsRequest) (*pb.RpcObjectGrou
 	if err != nil {
 		return nil, err
 	}
-	spaceSubs, err := s.getSpaceSubscriptions(req.SpaceId)
+	spaceSubs, err := s.getSpaceSubscriptions(req.SpaceId, false)
 	if err != nil {
 		return nil, err
 	}
@@ -241,7 +241,7 @@ func (s *service) Unsubscribe(subIds ...string) (err error) {
 }
 
 func (s *service) UnsubscribeAndReturnIds(spaceId string, subId string) ([]string, error) {
-	spaceSub, err := s.getSpaceSubscriptions(spaceId)
+	spaceSub, err := s.getSpaceSubscriptions(spaceId, false)
 	if err != nil {
 		return nil, fmt.Errorf("get space subs: %w", err)
 	}
@@ -268,7 +268,7 @@ func (s *service) SubscriptionIDs() []string {
 	return ids
 }
 
-func (s *service) getSpaceSubscriptions(spaceId string) (*spaceSubscriptions, error) {
+func (s *service) getSpaceSubscriptions(spaceId string, internal bool) (*spaceSubscriptions, error) {
 	if spaceId == "" {
 		return nil, fmt.Errorf("spaceId is empty")
 	}
@@ -278,13 +278,17 @@ func (s *service) getSpaceSubscriptions(spaceId string) (*spaceSubscriptions, er
 	spaceSubs, ok := s.spaceSubs[spaceId]
 	if !ok {
 		cache := newCache()
+		var opts []objectstore.SpaceIndexOption
+		if internal {
+			opts = append(opts, objectstore.SpaceIndexOptionSkipSpaceIdCheck)
+		}
 		spaceSubs = &spaceSubscriptions{
 			cache:             cache,
 			subscriptionKeys:  make([]string, 0, 20),
 			subscriptions:     make(map[string]subscription, 20),
 			customOutput:      map[string]*internalSubOutput{},
 			recBatch:          mb.New[database.Record](0),
-			objectStore:       s.objectStore.SpaceIndex(spaceId),
+			objectStore:       s.objectStore.SpaceIndex(spaceId, opts...),
 			kanban:            s.kanban,
 			collectionService: s.collectionService,
 			eventSender:       s.eventSender,

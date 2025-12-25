@@ -71,6 +71,7 @@ type Service interface {
 	Wait(ctx context.Context, spaceId string) (sp clientspace.Space, err error)
 	AddStreamable(ctx context.Context, id string, guestKey crypto.PrivKey) (err error)
 	Delete(ctx context.Context, id string) (err error)
+	AllSpaceIds() (ids []string)
 	TechSpaceId() string
 	PersonalSpaceId() string
 	FirstCreatedSpaceId() string
@@ -475,10 +476,26 @@ func (s *service) Close(ctx context.Context) error {
 	return s.watcher.Close()
 }
 
+// AllLoadedSpaceIds returns all loaded (in normal mode) space ids except marketplace space
+func (s *service) AllLoadedSpaceIds() (ids []string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	for id, c := range s.spaceControllers {
+		if c.Mode() != 2 {
+			continue
+		}
+		if id == addr.AnytypeMarketplaceWorkspace {
+			continue
+		}
+		ids = append(ids, id)
+	}
+	return
+}
+
 func (s *service) AllSpaceIds() (ids []string) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	for id := range s.spaceControllers {
+	for id, _ := range s.spaceControllers {
 		if id == addr.AnytypeMarketplaceWorkspace {
 			continue
 		}
