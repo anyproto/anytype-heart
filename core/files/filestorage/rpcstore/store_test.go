@@ -181,6 +181,10 @@ type testServer struct {
 	files map[string][][]byte
 }
 
+func (t *testServer) OwnershipTransfer(ctx2 context.Context, request *fileproto.OwnershipTransferRequest) (*fileproto.Ok, error) {
+	return nil, fileprotoerr.ErrForbidden
+}
+
 func (t *testServer) BlockPushMany(ctx2 context.Context, request *fileproto.BlockPushManyRequest) (*fileproto.Ok, error) {
 	return nil, fileprotoerr.ErrForbidden
 }
