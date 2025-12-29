@@ -1287,6 +1287,10 @@
     - [Rpc.Relation.Options.Response](#anytype-Rpc-Relation-Options-Response)
     - [Rpc.Relation.Options.Response.Error](#anytype-Rpc-Relation-Options-Response-Error)
     - [Rpc.Space](#anytype-Rpc-Space)
+    - [Rpc.Space.ChangeOwnership](#anytype-Rpc-Space-ChangeOwnership)
+    - [Rpc.Space.ChangeOwnership.Request](#anytype-Rpc-Space-ChangeOwnership-Request)
+    - [Rpc.Space.ChangeOwnership.Response](#anytype-Rpc-Space-ChangeOwnership-Response)
+    - [Rpc.Space.ChangeOwnership.Response.Error](#anytype-Rpc-Space-ChangeOwnership-Response-Error)
     - [Rpc.Space.Delete](#anytype-Rpc-Space-Delete)
     - [Rpc.Space.Delete.Request](#anytype-Rpc-Space-Delete-Request)
     - [Rpc.Space.Delete.Response](#anytype-Rpc-Space-Delete-Response)
@@ -1757,6 +1761,7 @@
     - [Rpc.Relation.ListWithValue.Response.Error.Code](#anytype-Rpc-Relation-ListWithValue-Response-Error-Code)
     - [Rpc.Relation.Option.SetOrder.Response.Error.Code](#anytype-Rpc-Relation-Option-SetOrder-Response-Error-Code)
     - [Rpc.Relation.Options.Response.Error.Code](#anytype-Rpc-Relation-Options-Response-Error-Code)
+    - [Rpc.Space.ChangeOwnership.Response.Error.Code](#anytype-Rpc-Space-ChangeOwnership-Response-Error-Code)
     - [Rpc.Space.Delete.Response.Error.Code](#anytype-Rpc-Space-Delete-Response-Error-Code)
     - [Rpc.Space.InviteChange.Response.Error.Code](#anytype-Rpc-Space-InviteChange-Response-Error-Code)
     - [Rpc.Space.InviteGenerate.Response.Error.Code](#anytype-Rpc-Space-InviteGenerate-Response-Error-Code)
@@ -2301,6 +2306,7 @@
 | SpaceParticipantPermissionsChange | [Rpc.Space.ParticipantPermissionsChange.Request](#anytype-Rpc-Space-ParticipantPermissionsChange-Request) | [Rpc.Space.ParticipantPermissionsChange.Response](#anytype-Rpc-Space-ParticipantPermissionsChange-Response) |  |
 | SpaceSetOrder | [Rpc.Space.SetOrder.Request](#anytype-Rpc-Space-SetOrder-Request) | [Rpc.Space.SetOrder.Response](#anytype-Rpc-Space-SetOrder-Response) |  |
 | SpaceUnsetOrder | [Rpc.Space.UnsetOrder.Request](#anytype-Rpc-Space-UnsetOrder-Request) | [Rpc.Space.UnsetOrder.Response](#anytype-Rpc-Space-UnsetOrder-Response) |  |
+| SpaceChangeOwnership | [Rpc.Space.ChangeOwnership.Request](#anytype-Rpc-Space-ChangeOwnership-Request) | [Rpc.Space.ChangeOwnership.Response](#anytype-Rpc-Space-ChangeOwnership-Response) |  |
 | PublishingCreate | [Rpc.Publishing.Create.Request](#anytype-Rpc-Publishing-Create-Request) | [Rpc.Publishing.Create.Response](#anytype-Rpc-Publishing-Create-Response) | Publishing *** |
 | PublishingRemove | [Rpc.Publishing.Remove.Request](#anytype-Rpc-Publishing-Remove-Request) | [Rpc.Publishing.Remove.Response](#anytype-Rpc-Publishing-Remove-Response) |  |
 | PublishingList | [Rpc.Publishing.List.Request](#anytype-Rpc-Publishing-List-Request) | [Rpc.Publishing.List.Response](#anytype-Rpc-Publishing-List-Response) |  |
@@ -21224,6 +21230,64 @@ Available undo/redo operations
 
 
 
+<a name="anytype-Rpc-Space-ChangeOwnership"></a>
+
+### Rpc.Space.ChangeOwnership
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Space-ChangeOwnership-Request"></a>
+
+### Rpc.Space.ChangeOwnership.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| spaceId | [string](#string) |  |  |
+| newOwnerIdentity | [string](#string) |  |  |
+| oldOwnerPermissions | [model.ParticipantPermissions](#anytype-model-ParticipantPermissions) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Space-ChangeOwnership-Response"></a>
+
+### Rpc.Space.ChangeOwnership.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Space.ChangeOwnership.Response.Error](#anytype-Rpc-Space-ChangeOwnership-Response-Error) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Space-ChangeOwnership-Response-Error"></a>
+
+### Rpc.Space.ChangeOwnership.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Space.ChangeOwnership.Response.Error.Code](#anytype-Rpc-Space-ChangeOwnership-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
 <a name="anytype-Rpc-Space-Delete"></a>
 
 ### Rpc.Space.Delete
@@ -27828,6 +27892,24 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | NULL | 0 |  |
 | UNKNOWN_ERROR | 1 |  |
 | BAD_INPUT | 2 |  |
+
+
+
+<a name="anytype-Rpc-Space-ChangeOwnership-Response-Error-Code"></a>
+
+### Rpc.Space.ChangeOwnership.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
+| NO_SUCH_SPACE | 101 |  |
+| SPACE_IS_DELETED | 102 |  |
+| REQUEST_FAILED | 103 |  |
+| PARTICIPANT_NOT_FOUND | 105 |  |
+| INCORRECT_PERMISSIONS | 106 |  |
 
 
 

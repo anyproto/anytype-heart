@@ -69,6 +69,7 @@ type AclService interface {
 	ChangePermissions(ctx context.Context, spaceId string, perms []AccountPermissions) (err error)
 	AddAccount(ctx context.Context, spaceId string, pubKey crypto.PubKey, metadata []byte, permissions list.AclPermissions) error
 	AddGuestAccount(ctx context.Context, spaceId string) (privKey crypto.PrivKey, err error)
+	OwnershipChange(ctx context.Context, spaceId string, newOwner crypto.PubKey, oldOwnerPerm model.ParticipantPermissions) (err error)
 }
 
 func New() AclService {
@@ -743,4 +744,18 @@ func (a *aclService) GetGuestUserInvite(ctx context.Context, spaceId string) (in
 
 func (a *aclService) joinAsGuest(ctx context.Context, spaceId string, guestUserKey crypto.PrivKey) (err error) {
 	return a.spaceService.AddStreamable(ctx, spaceId, guestUserKey)
+}
+
+func (a *aclService) OwnershipChange(ctx context.Context, spaceId string, newOwner crypto.PubKey, oldOwnerPerm model.ParticipantPermissions) (err error) {
+	if spaceId == a.accountService.PersonalSpaceID() {
+		err = ErrPersonalSpace
+		return
+	}
+	ownedSpace, err := a.spaceService.Get(ctx, spaceId)
+	if err != nil {
+		return convertedOrSpaceErr(err)
+	}
+
+	aclClient := ownedSpace.CommonSpace().AclClient()
+	return aclClient.OwnershipChange(ctx, newOwner, domain.ConvertParticipantPermissions(oldOwnerPerm))
 }
