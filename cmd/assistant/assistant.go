@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"net/url"
 	"os"
 	"path/filepath"
 
@@ -27,13 +28,9 @@ import (
 )
 
 type assistantConfig struct {
-	AccountId    string
-	Mnemonic     string
-	InviteCid    string
-	InviteKey    string
-	SystemPrompt string
-	// IsActive if is true the bot will proactively write messages to the chats
-	IsActive bool
+	AccountId      string
+	Mnemonic       string
+	OneToOneInvite string
 }
 
 func (c *assistantConfig) Validate() error {
@@ -132,9 +129,8 @@ func createAccount(ctx context.Context, app *application.Service, repoDir string
 	eventQueue := createEventQueue(ctx, app)
 
 	acc, err := app.AccountCreate(ctx, &pb.RpcAccountCreateRequest{
-		Name:        name,
-		StorePath:   repoDir,
-		NetworkMode: pb.RpcAccount_DefaultConfig,
+		Name:      name,
+		StorePath: repoDir,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("account create: %w", err)
@@ -146,6 +142,9 @@ func createAccount(ctx context.Context, app *application.Service, repoDir string
 
 	config.AccountId = acc.Id
 	config.Mnemonic = mnemonic
+
+	base64MetadataKey := url.PathEscape(acc.Info.MetaDataKey)
+	config.OneToOneInvite = fmt.Sprintf("https://hi.any.coop/%s#%s", config.AccountId, base64MetadataKey)
 
 	err = writeConfig(filepath.Join(repoDir, "config.json"), config)
 	if err != nil {
