@@ -7,9 +7,12 @@ import (
 
 	anystore "github.com/anyproto/any-store"
 	"github.com/anyproto/anytype-heart/core/block/chats"
+	"github.com/anyproto/anytype-heart/core/block/chats/chatmodel"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
+	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/keyvaluestore"
+	"github.com/buke/quickjs-go"
 )
 
 var log = logging.Logger("assistant").Desugar()
@@ -61,10 +64,70 @@ func run() error {
 		}
 		chatAddEv := msg.GetChatAdd()
 		if chatAddEv != nil {
-			fmt.Printf("-- chat msg: %s\n", chatAddEv.Message)
+			reply, err := handleChatMsg(chatAddEv)
+			if err != nil {
+				fmt.Printf("handleChatMsg err: %s\n", err.Error())
+				continue
+			}
+			_, err = chatService.AddMessageNoChatId(ctx, nil, &chatmodel.Message{
+				ChatMessage: &model.ChatMessage{
+					Message: &model.ChatMessageMessageContent{
+						Text: reply,
+					},
+				},
+			})
+			if err != nil {
+				fmt.Printf("response in chat: %s", err.Error())
+				continue
+			}
+
 		}
 	}
 
+}
+
+type jsMessage struct {
+	Identity string `js:"identity"`
+	Text     string `js:"text"`
+}
+
+func handleChatMsg(chatAddEv *pb.EventChatAdd) (reply string, err error) {
+
+	// Create a new runtime
+	rt := quickjs.NewRuntime()
+	defer rt.Close()
+
+	// Create a new context
+	ctx := rt.NewContext()
+	defer ctx.Close()
+
+	ret := ctx.Eval(`
+function main(args) {
+  const reply = "you've said: " + args.message.text
+  return { result: reply }
+}
+`)
+	defer ret.Free()
+	if ret.IsException() {
+		err = ctx.Exception()
+		return
+	}
+
+	jsMessage := jsMessage{
+		Text:     chatAddEv.Message.Message.Text,
+		Identity: chatAddEv.Message.Creator,
+	}
+	jsMessageVal, err := ctx.Marshal(jsMessage)
+	if err != nil {
+		return
+	}
+	defer jsMessageVal.Free()
+
+	result := ctx.Globals().Call("main", jsMessageVal)
+	defer result.Free()
+
+	reply = ret.ToString()
+	return
 }
 
 func main() {

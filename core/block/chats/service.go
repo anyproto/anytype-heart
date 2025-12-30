@@ -44,6 +44,7 @@ var log = logging.Logger(CName).Desugar()
 
 type Service interface {
 	AddMessage(ctx context.Context, sessionCtx session.Context, chatObjectId string, message *chatmodel.Message) (string, error)
+	AddMessageNoChatId(ctx context.Context, sessionCtx session.Context, message *chatmodel.Message) (string, error)
 	EditMessage(ctx context.Context, chatObjectId string, messageId string, newMessage *chatmodel.Message) error
 	ToggleMessageReaction(ctx context.Context, chatObjectId string, messageId string, emoji string) (bool, error)
 	DeleteMessage(ctx context.Context, chatObjectId string, messageId string) error
@@ -238,6 +239,7 @@ func (s *service) Run(ctx context.Context) error {
 		}
 
 		for _, rec := range resp.Records {
+			fmt.Printf("-- subs to chatId %s, spaceId %s\n", rec.GetString(bundle.RelationKeyId), rec.GetString(bundle.RelationKeySpaceId))
 			s.allChatObjectIds[rec.GetString(bundle.RelationKeyId)] = rec.GetString(bundle.RelationKeySpaceId)
 		}
 		go s.monitorMessagePreviews()
@@ -284,6 +286,7 @@ func (s *service) monitorMessagePreviews() {
 	}
 	for {
 		msg, err := s.chatObjectsSubQueue.WaitOne(s.componentCtx)
+		fmt.Printf("-- chatObjectsSubQueue msg: %s\n", msg.SpaceId)
 		if errors.Is(err, mb.ErrClosed) {
 			return
 		}
@@ -332,6 +335,7 @@ func (s *service) onChatAddedAsync(chatObjectId string, subId string) error {
 	events := make([]*pb.EventMessage, 0, 2)
 	if len(resp.Messages) > 0 {
 		msg := resp.Messages[0]
+		fmt.Printf("-- onChatAdd evt: %s\n", msg.Message.Text)
 		events = append(events, event.NewMessage(spaceId, &pb.EventMessageValueOfChatAdd{
 			ChatAdd: &pb.EventChatAdd{
 				Id:           msg.Id,
@@ -399,6 +403,44 @@ func (s *service) AddMessage(ctx context.Context, sessionCtx session.Context, ch
 
 	}
 	return messageId, err
+}
+
+// AddMessageNoChatId finds chatId by messageId
+func (s *service) AddMessageNoChatId(ctx context.Context, sessionCtx session.Context, message *chatmodel.Message) (string, error) {
+	s.lock.Lock()
+	chatIds := make([]string, 0, len(s.allChatObjectIds))
+	for id := range s.allChatObjectIds {
+		chatIds = append(chatIds, id)
+	}
+	s.lock.Unlock()
+	var messageChatId string
+	for _, chatId := range chatIds {
+		err := s.chatObjectDo(ctx, chatId, func(sb chatobject.StoreObject) error {
+			messages, err := sb.GetMessagesByIds(ctx, []string{message.Id})
+			if err != nil {
+				return err
+			}
+			if len(messages) == 0 {
+				return fmt.Errorf("can't find message by id")
+			} else {
+				messageChatId = chatId
+			}
+			return nil
+		})
+		if err != nil {
+			continue
+		}
+		if messageChatId == "" {
+			continue
+		}
+	}
+
+	if messageChatId == "" {
+		return "", fmt.Errorf("chatId not found")
+	}
+
+	return s.AddMessage(ctx, sessionCtx, messageChatId, message)
+
 }
 
 func (s *service) sendPushNotification(ctx context.Context, spaceId, chatObjectId, messageId string, message *chatmodel.Message, mentions []string) (err error) {
