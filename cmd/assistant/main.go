@@ -46,15 +46,14 @@ func run() error {
 		return fmt.Errorf("init handled messages store: %w", err)
 	}
 	_ = handledMessages
+
 	chatService := getService[chats.Service](app)
-	chatId := "bafyreihc5vhheckztsq35kq3dny4eo7v2lk5o36pgfniuv6eapwny3zkge"
-	lastMessagesResp, err := chatService.SubscribeLastMessages(ctx, chatId, 20, "test")
+	// hacky way to subscribe to all chats
+	_, err = chatService.SubscribeToMessagePreviews(ctx, "ai_assistant_chat")
 	if err != nil {
-		return fmt.Errorf("subscribe to chat: %w", err)
+		return fmt.Errorf("SubscribeToMessagePreviews: %w", err)
 	}
-	for _, msg := range lastMessagesResp.Messages {
-		fmt.Printf("-- got msgs: %s\n", msg.ChatMessage.Message.Text)
-	}
+
 	for {
 		msg, err := app.eventQueue.WaitOne(ctx)
 		if err != nil {
