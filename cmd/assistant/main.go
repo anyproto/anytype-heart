@@ -6,6 +6,7 @@ import (
 	"os"
 
 	anystore "github.com/anyproto/any-store"
+	"github.com/anyproto/anytype-heart/core/block/chats"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/util/keyvaluestore"
@@ -45,7 +46,15 @@ func run() error {
 		return fmt.Errorf("init handled messages store: %w", err)
 	}
 	_ = handledMessages
-
+	chatService := getService[chats.Service](app)
+	chatId := "bafyreihc5vhheckztsq35kq3dny4eo7v2lk5o36pgfniuv6eapwny3zkge"
+	lastMessagesResp, err := chatService.SubscribeLastMessages(ctx, chatId, 20, "test")
+	if err != nil {
+		return fmt.Errorf("subscribe to chat: %w", err)
+	}
+	for _, msg := range lastMessagesResp.Messages {
+		fmt.Printf("-- got msgs: %s\n", msg.ChatMessage.Message.Text)
+	}
 	for {
 		msg, err := app.eventQueue.WaitOne(ctx)
 		if err != nil {
