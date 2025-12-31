@@ -6,6 +6,7 @@ import (
 	"os"
 
 	anystore "github.com/anyproto/any-store"
+	"github.com/anyproto/anytype-heart/cmd/assistant/runtime"
 	"github.com/anyproto/anytype-heart/core/block/chats"
 	"github.com/anyproto/anytype-heart/core/block/chats/chatmodel"
 	"github.com/anyproto/anytype-heart/core/session"
@@ -13,7 +14,6 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/keyvaluestore"
-	"github.com/buke/quickjs-go"
 )
 
 var log = logging.Logger("assistant").Desugar()
@@ -66,7 +66,7 @@ func run() error {
 		chatAddEv := msg.GetChatAdd()
 		if chatAddEv != nil && chatAddEv.Message.Creator != app.config.AccountId {
 
-			reply, err := handleChatMsg(chatAddEv)
+			reply, err := runtime.HandleChatMsg(chatAddEv)
 			if err != nil {
 				fmt.Printf("handleChatMsg err: %s\n", err.Error())
 				continue
@@ -94,52 +94,6 @@ func run() error {
 		}
 	}
 
-}
-
-type jsMessage struct {
-	Identity string `js:"identity"`
-	Text     string `js:"text"`
-}
-
-func handleChatMsg(chatAddEv *pb.EventChatAdd) (reply string, err error) {
-	rt := quickjs.NewRuntime()
-	defer rt.Close()
-
-	ctx := rt.NewContext()
-	defer ctx.Close()
-
-	ret := ctx.Eval(`
-function main(args) {
-  const reply = "you've said: " + args.text
-  return { result: reply }
-}
-`)
-	defer ret.Free()
-	if ret.IsException() {
-		return "", ctx.Exception()
-	}
-
-	jsMessage := jsMessage{
-		Text:     chatAddEv.Message.Message.Text,
-		Identity: chatAddEv.Message.Creator,
-	}
-
-	jsMessageVal, err := ctx.Marshal(jsMessage)
-	if err != nil {
-		return "", err
-	}
-	defer jsMessageVal.Free()
-
-	result := ctx.Globals().Call("main", jsMessageVal)
-	defer result.Free()
-	if result.IsException() {
-		return "", ctx.Exception()
-	}
-
-	// result is { result: "..." }
-	r := result.Get("result")
-	defer r.Free()
-	return r.String(), nil
 }
 
 func main() {
