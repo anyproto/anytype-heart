@@ -30,10 +30,13 @@ func HandleChatMsg(chatAddEv *pb.EventChatAdd) (reply string, err error) {
 
 	jsCode := `
 	function main(args) {
-	  const r = fetch("https://httpbin.org/json", {
-	    headers: { "Accept": "application/json" }
+	  const r = fetch("https://httpbin.org/anything", {
+	    method: "POST",
+	    headers: { "Content-Type": "application/json" },
+	    body: JSON.stringify({ message: args.text, from: args.identity })
 	  });
-	  return { ok: r.ok, status: r.status, title: r.json?.slideshow?.title ?? null, server: r.headers["server"] };
+	  const data = r.json();
+	  return { ok: r.ok, status: r.status, echo: data?.json?.message ?? null };
 	}
 	`
 

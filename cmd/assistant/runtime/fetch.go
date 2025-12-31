@@ -19,6 +19,24 @@ func installFetch(ctx *quickjs.Context, client *http.Client) (cleanup func(), er
 		return nil, ctx.Exception()
 	}
 
+	// Helper to wrap response data with text() and json() methods
+	wrapResponseFn := ctx.Eval(`(data) => ({
+		ok: data.ok,
+		status: data.status,
+		statusText: data.statusText,
+		url: data.url,
+		headers: {
+			get: (name) => data.headers[name.toLowerCase()] ?? null
+		},
+		text: () => data.text,
+		json: () => data.json
+	})`)
+	if wrapResponseFn.IsException() {
+		defer wrapResponseFn.Free()
+		entriesFn.Free()
+		return nil, ctx.Exception()
+	}
+
 	// --- fetch(url, init) -> plain object { ok, status, statusText, url, headers, text, json } ---
 	fetchFn := ctx.NewFunction(func(ctx *quickjs.Context, this *quickjs.Value, args []*quickjs.Value) *quickjs.Value {
 		if len(args) < 1 {
@@ -150,10 +168,16 @@ func installFetch(ctx *quickjs.Context, client *http.Client) (cleanup func(), er
 			"json":       jsonBody,
 		}
 
-		jsResult, e := ctx.Marshal(result)
+		jsData, e := ctx.Marshal(result)
 		if e != nil {
 			return ctx.ThrowError(errors.New("fetch: marshal result: " + e.Error()))
 		}
+		defer jsData.Free()
+
+		// Wrap with text()/json()/headers.get() methods
+		nullThis := ctx.NewNull()
+		defer nullThis.Free()
+		jsResult := wrapResponseFn.Execute(nullThis, jsData)
 		return jsResult
 	})
 
@@ -161,5 +185,6 @@ func installFetch(ctx *quickjs.Context, client *http.Client) (cleanup func(), er
 
 	return func() {
 		entriesFn.Free()
+		wrapResponseFn.Free()
 	}, nil
 }
