@@ -102,42 +102,44 @@ type jsMessage struct {
 }
 
 func handleChatMsg(chatAddEv *pb.EventChatAdd) (reply string, err error) {
-
-	// Create a new runtime
 	rt := quickjs.NewRuntime()
 	defer rt.Close()
 
-	// Create a new context
 	ctx := rt.NewContext()
 	defer ctx.Close()
 
 	ret := ctx.Eval(`
 function main(args) {
-  const reply = "you've said: " + args.message.text
+  const reply = "you've said: " + args.text
   return { result: reply }
 }
 `)
 	defer ret.Free()
 	if ret.IsException() {
-		err = ctx.Exception()
-		return
+		return "", ctx.Exception()
 	}
 
 	jsMessage := jsMessage{
 		Text:     chatAddEv.Message.Message.Text,
 		Identity: chatAddEv.Message.Creator,
 	}
+
 	jsMessageVal, err := ctx.Marshal(jsMessage)
 	if err != nil {
-		return
+		return "", err
 	}
 	defer jsMessageVal.Free()
 
 	result := ctx.Globals().Call("main", jsMessageVal)
 	defer result.Free()
+	if result.IsException() {
+		return "", ctx.Exception()
+	}
 
-	reply = ret.ToString()
-	return
+	// result is { result: "..." }
+	r := result.Get("result")
+	defer r.Free()
+	return r.String(), nil
 }
 
 func main() {
