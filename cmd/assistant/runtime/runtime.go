@@ -1,6 +1,7 @@
 package runtime
 
 import (
+	"encoding/json"
 	"net/http"
 	"time"
 
@@ -21,12 +22,20 @@ func HandleChatMsg(chatAddEv *pb.EventChatAdd) (reply string, err error) {
 	ctx := rt.NewContext()
 	defer ctx.Close()
 
-	client := &http.Client{Timeout: 20 * time.Second}
-
-	cleanup, err := installFetch(ctx, client)
+	// Install tracer first (before other side effects)
+	getTrace, tracerCleanup, err := installTracer(ctx)
 	if err != nil {
 		return "", err
 	}
+	defer tracerCleanup()
+
+	client := &http.Client{Timeout: 20 * time.Second}
+
+	fetchCleanup, err := installFetch(ctx, client)
+	if err != nil {
+		return "", err
+	}
+	defer fetchCleanup()
 
 	jsCode := `
 	function main(args) {
@@ -44,8 +53,6 @@ func HandleChatMsg(chatAddEv *pb.EventChatAdd) (reply string, err error) {
 		Text:     chatAddEv.Message.Message.Text,
 		Identity: chatAddEv.Message.Creator,
 	}
-
-	defer cleanup()
 
 	jsMessageVal, err := ctx.Marshal(jsMessage)
 	if err != nil {
@@ -69,7 +76,15 @@ func HandleChatMsg(chatAddEv *pb.EventChatAdd) (reply string, err error) {
 	}
 	defer ret.Free()
 
-	out := ret.JSONStringify()
-	return out, nil
-
+	// Build enriched output with trace
+	trace := getTrace()
+	enriched := map[string]interface{}{
+		"result": ret.JSONStringify(),
+		"trace":  trace.Effects,
+	}
+	enrichedJSON, err := json.Marshal(enriched)
+	if err != nil {
+		return ret.JSONStringify(), nil
+	}
+	return string(enrichedJSON), nil
 }

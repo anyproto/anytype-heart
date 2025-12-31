@@ -181,7 +181,14 @@ func installFetch(ctx *quickjs.Context, client *http.Client) (cleanup func(), er
 		return jsResult
 	})
 
-	ctx.Globals().Set("fetch", fetchFn)
+	// Set raw fetch, then wrap with tracer
+	ctx.Globals().Set("__rawFetch", fetchFn)
+	wrapCode := ctx.Eval(`globalThis.fetch = globalThis.__wrapEffect("fetch", globalThis.__rawFetch)`)
+	if wrapCode.IsException() {
+		defer wrapCode.Free()
+		return nil, ctx.Exception()
+	}
+	wrapCode.Free()
 
 	return func() {
 		entriesFn.Free()
