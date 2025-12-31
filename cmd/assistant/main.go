@@ -8,6 +8,7 @@ import (
 	anystore "github.com/anyproto/any-store"
 	"github.com/anyproto/anytype-heart/core/block/chats"
 	"github.com/anyproto/anytype-heart/core/block/chats/chatmodel"
+	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -63,13 +64,22 @@ func run() error {
 			return fmt.Errorf("wait event: %w", err)
 		}
 		chatAddEv := msg.GetChatAdd()
-		if chatAddEv != nil {
+		if chatAddEv != nil && chatAddEv.Message.Creator != app.config.AccountId {
+
 			reply, err := handleChatMsg(chatAddEv)
 			if err != nil {
 				fmt.Printf("handleChatMsg err: %s\n", err.Error())
 				continue
 			}
-			_, err = chatService.AddMessageNoChatId(ctx, nil, &chatmodel.Message{
+			chatId, err := chatService.FindChatByMessageId(ctx, chatAddEv.Id)
+			if err != nil {
+				fmt.Printf("findChatByMessageId err: %s\n", err.Error())
+				continue
+			}
+
+			todoCtx := session.NewContext()
+			fmt.Printf("-- replying to chat:  %s\n", chatId)
+			_, err = chatService.AddMessage(ctx, todoCtx, chatId, &chatmodel.Message{
 				ChatMessage: &model.ChatMessage{
 					Message: &model.ChatMessageMessageContent{
 						Text: reply,
