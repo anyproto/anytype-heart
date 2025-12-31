@@ -2069,9 +2069,11 @@
     - [Block.Content.Text](#anytype-model-Block-Content-Text)
     - [Block.Content.Text.Mark](#anytype-model-Block-Content-Text-Mark)
     - [Block.Content.Text.Marks](#anytype-model-Block-Content-Text-Marks)
+    - [Block.Content.Transclusion](#anytype-model-Block-Content-Transclusion)
     - [Block.Content.Widget](#anytype-model-Block-Content-Widget)
     - [Block.Restrictions](#anytype-model-Block-Restrictions)
     - [BlockMetaOnly](#anytype-model-BlockMetaOnly)
+    - [BlockReference](#anytype-model-BlockReference)
     - [ChatMessage](#anytype-model-ChatMessage)
     - [ChatMessage.Attachment](#anytype-model-ChatMessage-Attachment)
     - [ChatMessage.MessageContent](#anytype-model-ChatMessage-MessageContent)
@@ -32225,6 +32227,7 @@ Contains basic information about a user account
 | tableRow | [Block.Content.TableRow](#anytype-model-Block-Content-TableRow) |  |  |
 | widget | [Block.Content.Widget](#anytype-model-Block-Content-Widget) |  |  |
 | chat | [Block.Content.Chat](#anytype-model-Block-Content-Chat) |  |  |
+| transclusion | [Block.Content.Transclusion](#anytype-model-Block-Content-Transclusion) |  |  |
 
 
 
@@ -32761,6 +32764,21 @@ Link: block to link some content from an external sources.
 
 
 
+<a name="anytype-model-Block-Content-Transclusion"></a>
+
+### Block.Content.Transclusion
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| source | [BlockReference](#anytype-model-BlockReference) |  |  |
+
+
+
+
+
+
 <a name="anytype-model-Block-Content-Widget"></a>
 
 ### Block.Content.Widget
@@ -32808,6 +32826,23 @@ Used to decode block meta only, without the content itself
 | ----- | ---- | ----- | ----------- |
 | id | [string](#string) |  |  |
 | fields | [google.protobuf.Struct](#google-protobuf-Struct) |  |  |
+
+
+
+
+
+
+<a name="anytype-model-BlockReference"></a>
+
+### BlockReference
+Reference to a specific block within an object/document.
+Used for deep linking and transclusion.
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| rootId | [string](#string) |  | ID of the object/document containing the block |
+| blockId | [string](#string) |  | ID of the specific block within that object |
 
 
 

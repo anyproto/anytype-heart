@@ -101,6 +101,7 @@ message Block {
         Content.TableRow tableRow = 28;
         Content.Widget widget = 29;
         Content.Chat chat = 30;
+        Content.Transclusion transclusion = 31;
     }
 
     message Restrictions {
@@ -612,6 +613,10 @@ message Block {
         message Chat {
 
         }
+
+        message Transclusion {
+            BlockReference source = 1;
+        }
     }
 }
 
@@ -629,6 +634,15 @@ message BlockMetaOnly {
 message Range {
     int32 from = 1;
     int32 to = 2;
+}
+
+/*
+* Reference to a specific block within an object/document.
+* Used for deep linking and transclusion.
+*/
+message BlockReference {
+    string rootId = 1; // ID of the object/document containing the block
+    string blockId = 2; // ID of the specific block within that object
 }
 
 /**
