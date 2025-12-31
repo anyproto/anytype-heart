@@ -66,7 +66,10 @@ func run() error {
 		chatAddEv := msg.GetChatAdd()
 		if chatAddEv != nil && chatAddEv.Message.Creator != app.config.AccountId {
 
-			reply, err := runtime.HandleChatMsg(chatAddEv)
+			reply, trace, err := runtime.HandleChatMsg(chatAddEv, app.config.OpenAIKey)
+			if trace != nil {
+				fmt.Printf("-- trace:\n%s\n", runtime.TraceToJSON(trace))
+			}
 			if err != nil {
 				fmt.Printf("handleChatMsg err: %s\n", err.Error())
 				continue

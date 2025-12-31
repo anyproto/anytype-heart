@@ -31,6 +31,7 @@ type assistantConfig struct {
 	AccountId      string
 	Mnemonic       string
 	OneToOneInvite string
+	OpenAIKey      string
 }
 
 func (c *assistantConfig) Validate() error {

@@ -1,7 +1,9 @@
 package runtime
 
 import (
+	_ "embed"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"time"
 
@@ -9,12 +11,15 @@ import (
 	"github.com/buke/quickjs-go"
 )
 
+//go:embed openai.js
+var openaiJS string
+
 type jsChatMessage struct {
 	Identity string `js:"identity"`
 	Text     string `js:"text"`
 }
 
-func HandleChatMsg(chatAddEv *pb.EventChatAdd) (reply string, err error) {
+func HandleChatMsg(chatAddEv *pb.EventChatAdd, openAIKey string) (reply string, trace *Trace, err error) {
 	rt := quickjs.NewRuntime()
 	defer rt.Close()
 	defer rt.RunGC() // Run GC before closing to free remaining JS objects
@@ -25,27 +30,33 @@ func HandleChatMsg(chatAddEv *pb.EventChatAdd) (reply string, err error) {
 	// Install tracer first (before other side effects)
 	getTrace, tracerCleanup, err := installTracer(ctx)
 	if err != nil {
-		return "", err
+		return "", nil, err
 	}
 	defer tracerCleanup()
 
-	client := &http.Client{Timeout: 20 * time.Second}
+	client := &http.Client{Timeout: 60 * time.Second}
 
 	fetchCleanup, err := installFetch(ctx, client)
 	if err != nil {
-		return "", err
+		return "", nil, err
 	}
 	defer fetchCleanup()
 
+	// Set OpenAI key for the module
+	ctx.Globals().Set("__openaiKey", ctx.NewString(openAIKey))
+
+	// Load OpenAI module
+	openaiModule := ctx.Eval(openaiJS)
+	if openaiModule.IsException() {
+		openaiModule.Free()
+		return "", getTrace(), fmt.Errorf("load openai module: %w", ctx.Exception())
+	}
+	openaiModule.Free()
+
 	jsCode := `
 	function main(args) {
-	  const r = fetch("https://httpbin.org/anything", {
-	    method: "POST",
-	    headers: { "Content-Type": "application/json" },
-	    body: JSON.stringify({ message: args.text, from: args.identity })
-	  });
-	  const data = r.json();
-	  return { ok: r.ok, status: r.status, echo: data?.json?.message ?? null };
+	  const result = openai.complete(args.text);
+	  return result;
 	}
 	`
 
@@ -56,7 +67,7 @@ func HandleChatMsg(chatAddEv *pb.EventChatAdd) (reply string, err error) {
 
 	jsMessageVal, err := ctx.Marshal(jsMessage)
 	if err != nil {
-		return "", err
+		return "", getTrace(), err
 	}
 	defer jsMessageVal.Free()
 
@@ -64,7 +75,7 @@ func HandleChatMsg(chatAddEv *pb.EventChatAdd) (reply string, err error) {
 	def := ctx.Eval(jsCode)
 	if def.IsException() {
 		def.Free()
-		return "", ctx.Exception()
+		return "", getTrace(), ctx.Exception()
 	}
 	def.Free()
 
@@ -72,19 +83,21 @@ func HandleChatMsg(chatAddEv *pb.EventChatAdd) (reply string, err error) {
 	ret := ctx.Globals().Call("main", jsMessageVal)
 	if ret.IsException() {
 		ret.Free()
-		return "", ctx.Exception()
+		return "", getTrace(), ctx.Exception()
 	}
 	defer ret.Free()
 
-	// Build enriched output with trace
-	trace := getTrace()
-	enriched := map[string]interface{}{
-		"result": ret.JSONStringify(),
-		"trace":  trace.Effects,
+	return ret.ToString(), getTrace(), nil
+}
+
+// TraceToJSON converts trace to a formatted JSON string for printing
+func TraceToJSON(trace *Trace) string {
+	if trace == nil {
+		return "{}"
 	}
-	enrichedJSON, err := json.Marshal(enriched)
+	data, err := json.MarshalIndent(trace.Effects, "", "  ")
 	if err != nil {
-		return ret.JSONStringify(), nil
+		return "{}"
 	}
-	return string(enrichedJSON), nil
+	return string(data)
 }
