@@ -1,29 +1,27 @@
 // OpenAI completion module
-// Usage: const result = openai.complete(prompt)
+// Usage: import { complete } from "openai"
 
-var openai = (function(apiKey) {
-  return {
-    complete: function(prompt) {
-      const response = fetch("https://api.openai.com/v1/chat/completions", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": "Bearer " + apiKey
-        },
-        body: JSON.stringify({
-          model: "gpt-4o-mini",
-          messages: [
-            { role: "user", content: prompt }
-          ]
-        })
-      });
+export function complete(prompt) {
+  const apiKey = globalThis.__openaiKey;
 
-      if (!response.ok) {
-        throw new Error("OpenAI API error: " + response.status + " " + response.text());
-      }
+  const response = fetch("https://api.openai.com/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer " + apiKey
+    },
+    body: JSON.stringify({
+      model: "gpt-4o-mini",
+      messages: [
+        { role: "user", content: prompt }
+      ]
+    })
+  });
 
-      const data = response.json();
-      return data?.choices?.[0]?.message?.content ?? null;
-    }
-  };
-})(globalThis.__openaiKey);
+  if (!response.ok) {
+    throw new Error("OpenAI API error: " + response.status + " " + response.text());
+  }
+
+  const data = response.json();
+  return data?.choices?.[0]?.message?.content ?? null;
+}
