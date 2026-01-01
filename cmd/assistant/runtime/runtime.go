@@ -54,15 +54,14 @@ func HandleChatMsg(chatAddEv *pb.EventChatAdd, openAIKey string) (reply string, 
 		return "", getTrace(), fmt.Errorf("preload modules: %w", err)
 	}
 
-	// Main program using ES module import
-	// We load it as a module that sets a global function
+	// User's main program module with export main convention
 	jsCode := `
 	import { complete } from "openai";
 
-	globalThis.main = function(args) {
+	export function main(args) {
 	  const result = complete(args.text);
 	  return result;
-	};
+	}
 	`
 
 	jsMessage := jsChatMessage{
@@ -76,16 +75,34 @@ func HandleChatMsg(chatAddEv *pb.EventChatAdd, openAIKey string) (reply string, 
 	}
 	defer jsMessageVal.Free()
 
-	// Load and evaluate the main module
-	mainModule := ctx.LoadModule(jsCode, "main.js")
-	if mainModule.IsException() {
-		mainModule.Free()
-		return "", getTrace(), fmt.Errorf("load main module: %w", ctx.Exception())
+	// Register the user's module
+	moduleLoader.Register("__main__", jsCode)
+	userModule := ctx.LoadModule(jsCode, "__main__", quickjs.EvalLoadOnly(true))
+	if userModule.IsException() {
+		userModule.Free()
+		return "", getTrace(), fmt.Errorf("load user module: %w", ctx.Exception())
 	}
-	mainModule.Free()
+	userModule.Free()
 
-	// Call main from globals
-	result := ctx.Globals().Call("main", jsMessageVal)
+	// Wrapper that imports user module and exposes main to globals
+	wrapperCode := `
+	import * as userMod from "__main__";
+	if (typeof userMod.main === "function") {
+	  globalThis.__main = userMod.main;
+	} else {
+	  throw new Error("Module must export a 'main' function");
+	}
+	`
+
+	wrapper := ctx.LoadModule(wrapperCode, "__wrapper__")
+	if wrapper.IsException() {
+		wrapper.Free()
+		return "", getTrace(), fmt.Errorf("load wrapper: %w", ctx.Exception())
+	}
+	wrapper.Free()
+
+	// Call the exposed main function
+	result := ctx.Globals().Call("__main", jsMessageVal)
 	if result.IsException() {
 		result.Free()
 		return "", getTrace(), ctx.Exception()
