@@ -19,9 +19,9 @@ export function complete(prompt) {
   });
 
   if (!response.ok) {
-    throw new Error("OpenAI API error: " + response.status + " " + response.text());
+    throw new Error("OpenAI API error: " + response.status + " " + JSON.stringify(response.body));
   }
 
-  const data = response.json();
-  return data?.choices?.[0]?.message?.content ?? null;
+  // body is auto-parsed as JSON if content-type is application/json
+  return response.body?.choices?.[0]?.message?.content ?? null;
 }
