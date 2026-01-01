@@ -1,12 +1,14 @@
 package runtime
 
 import (
+	"context"
 	_ "embed"
 	"encoding/json"
 	"fmt"
 	"net/http"
 	"time"
 
+	apiservice "github.com/anyproto/anytype-heart/core/api/service"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/buke/quickjs-go"
 )
@@ -19,7 +21,16 @@ type jsChatMessage struct {
 	Text     string `js:"text"`
 }
 
-func HandleChatMsg(chatAddEv *pb.EventChatAdd, openAIKey string) (reply string, trace *Trace, err error) {
+// HandleChatMsgParams contains all parameters for HandleChatMsg
+type HandleChatMsgParams struct {
+	ChatAddEv      *pb.EventChatAdd
+	OpenAIKey      string
+	ApiService     *apiservice.Service
+	CurrentSpaceId string
+	MainProgram    string // program specifier, e.g. "my_bot@v1"
+}
+
+func HandleChatMsg(goCtx context.Context, params HandleChatMsgParams) (reply string, trace *Trace, err error) {
 	// Enable module imports
 	rt := quickjs.NewRuntime(quickjs.WithModuleImport(true))
 	defer rt.Close()
@@ -44,29 +55,28 @@ func HandleChatMsg(chatAddEv *pb.EventChatAdd, openAIKey string) (reply string, 
 	defer fetchCleanup()
 
 	// Set OpenAI key for the module
-	ctx.Globals().Set("__openaiKey", ctx.NewString(openAIKey))
+	ctx.Globals().Set("__openaiKey", ctx.NewString(params.OpenAIKey))
 
-	// Set up and preload modules
-	moduleLoader := NewMapModuleLoader()
+	// Set up module loader with Anytype backend
+	moduleLoader := NewAnytypeModuleLoader(goCtx, params.ApiService, params.CurrentSpaceId)
+
+	// Register built-in modules
 	moduleLoader.Register("openai", openaiJS)
 
+	// Preload built-in modules
 	if err := PreloadModules(ctx, moduleLoader); err != nil {
 		return "", getTrace(), fmt.Errorf("preload modules: %w", err)
 	}
 
-	// User's main program module with export main convention
-	jsCode := `
-	import { complete } from "openai";
-
-	export function main(args) {
-	  const result = complete(args.text);
-	  return result;
+	// Load the main program from Anytype
+	jsCode, err := moduleLoader.Load(params.MainProgram)
+	if err != nil {
+		return "", getTrace(), fmt.Errorf("load main program %q: %w", params.MainProgram, err)
 	}
-	`
 
 	jsMessage := jsChatMessage{
-		Text:     chatAddEv.Message.Message.Text,
-		Identity: chatAddEv.Message.Creator,
+		Text:     params.ChatAddEv.Message.Message.Text,
+		Identity: params.ChatAddEv.Message.Creator,
 	}
 
 	jsMessageVal, err := ctx.Marshal(jsMessage)

@@ -7,6 +7,9 @@ import (
 
 	anystore "github.com/anyproto/any-store"
 	"github.com/anyproto/anytype-heart/cmd/assistant/runtime"
+	"github.com/anyproto/anytype-heart/core"
+	apicore "github.com/anyproto/anytype-heart/core/api/core"
+	apiservice "github.com/anyproto/anytype-heart/core/api/service"
 	"github.com/anyproto/anytype-heart/core/block/chats"
 	"github.com/anyproto/anytype-heart/core/block/chats/chatmodel"
 	"github.com/anyproto/anytype-heart/core/session"
@@ -66,17 +69,35 @@ func run() error {
 		chatAddEv := msg.GetChatAdd()
 		if chatAddEv != nil && chatAddEv.Message.Creator != app.config.AccountId {
 
-			reply, trace, err := runtime.HandleChatMsg(chatAddEv, app.config.OpenAIKey)
+			chatId, currentSpaceId, err := chatService.FindChatByMessageId(ctx, chatAddEv.Id)
+			if err != nil {
+				fmt.Printf("findChatByMessageId err: %s\n", err.Error())
+				continue
+			}
+
+			// Create middleware wrapper for API service
+			mw := core.NewWithApplicationService(app.appService)
+			crossSpaceSub := getService[apicore.CrossSpaceSubscriptionService](app)
+			svc := apiservice.NewService(mw, app.account.Info.GatewayUrl, app.account.Info.TechSpaceId, crossSpaceSub)
+
+			// Initialize caches to populate properties, types, and tags
+			if err := svc.InitializeAllCaches(); err != nil {
+				fmt.Printf("InitializeAllCaches err: %s\n", err.Error())
+				continue
+			}
+
+			reply, trace, err := runtime.HandleChatMsg(ctx, runtime.HandleChatMsgParams{
+				ChatAddEv:      chatAddEv,
+				OpenAIKey:      app.config.OpenAIKey,
+				ApiService:     svc,
+				CurrentSpaceId: currentSpaceId,
+				MainProgram:    "assistant@v1", // TODO: make configurable
+			})
 			if trace != nil {
 				fmt.Printf("-- trace:\n%s\n", runtime.TraceToJSON(trace))
 			}
 			if err != nil {
 				fmt.Printf("handleChatMsg err: %s\n", err.Error())
-				continue
-			}
-			chatId, err := chatService.FindChatByMessageId(ctx, chatAddEv.Id)
-			if err != nil {
-				fmt.Printf("findChatByMessageId err: %s\n", err.Error())
 				continue
 			}
 

@@ -44,7 +44,7 @@ var log = logging.Logger(CName).Desugar()
 
 type Service interface {
 	AddMessage(ctx context.Context, sessionCtx session.Context, chatObjectId string, message *chatmodel.Message) (string, error)
-	FindChatByMessageId(ctx context.Context, messageId string) (string, error)
+	FindChatByMessageId(ctx context.Context, messageId string) (string, string, error)
 	EditMessage(ctx context.Context, chatObjectId string, messageId string, newMessage *chatmodel.Message) error
 	ToggleMessageReaction(ctx context.Context, chatObjectId string, messageId string, emoji string) (bool, error)
 	DeleteMessage(ctx context.Context, chatObjectId string, messageId string) error
@@ -407,7 +407,7 @@ func (s *service) AddMessage(ctx context.Context, sessionCtx session.Context, ch
 
 // hacky way to reply to the message to the same chat
 // TODO: add chatId to Message
-func (s *service) FindChatByMessageId(ctx context.Context, messageId string) (string, error) {
+func (s *service) FindChatByMessageId(ctx context.Context, messageId string) (string, string, error) {
 	s.lock.Lock()
 	chatIds := make([]string, 0, len(s.allChatObjectIds))
 	for id := range s.allChatObjectIds {
@@ -415,6 +415,7 @@ func (s *service) FindChatByMessageId(ctx context.Context, messageId string) (st
 	}
 	s.lock.Unlock()
 	var messageChatId string
+	var spaceId string
 	for _, chatId := range chatIds {
 		err := s.chatObjectDo(ctx, chatId, func(sb chatobject.StoreObject) error {
 			fmt.Printf("-- seach message %s in chat %s\n", messageId, chatId)
@@ -425,6 +426,7 @@ func (s *service) FindChatByMessageId(ctx context.Context, messageId string) (st
 			if len(messages) == 0 {
 				return fmt.Errorf("can't find message by id")
 			} else {
+				spaceId = sb.SpaceID()
 				messageChatId = chatId
 			}
 			return nil
@@ -435,9 +437,9 @@ func (s *service) FindChatByMessageId(ctx context.Context, messageId string) (st
 	}
 
 	if messageChatId == "" {
-		return "", fmt.Errorf("chatId not found")
+		return "", "", fmt.Errorf("chatId not found")
 	}
-	return messageChatId, nil
+	return messageChatId, spaceId, nil
 }
 
 func (s *service) sendPushNotification(ctx context.Context, spaceId, chatObjectId, messageId string, message *chatmodel.Message, mentions []string) (err error) {

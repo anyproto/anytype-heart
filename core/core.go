@@ -34,6 +34,11 @@ func New() *Middleware {
 	return mw
 }
 
+// NewWithApplicationService creates a Middleware that uses an existing application.Service
+func NewWithApplicationService(appService *application.Service) *Middleware {
+	return &Middleware{applicationService: appService}
+}
+
 func (mw *Middleware) AppShutdown(cctx context.Context, request *pb.RpcAppShutdownRequest) *pb.RpcAppShutdownResponse {
 	err := mw.applicationService.Stop()
 	// using fmt.Println instead of log because we want it only in stdout
