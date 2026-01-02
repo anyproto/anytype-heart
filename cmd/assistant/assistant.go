@@ -10,7 +10,9 @@ import (
 	"path/filepath"
 
 	"github.com/anyproto/any-sync/app"
+	"github.com/anyproto/anytype-heart/core"
 	"github.com/anyproto/anytype-heart/core/acl"
+	"github.com/anyproto/anytype-heart/core/api"
 	"github.com/anyproto/anytype-heart/core/application"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/event"
@@ -27,11 +29,25 @@ import (
 	"go.uber.org/zap"
 )
 
+const defaultApiListenAddr = "127.0.0.1:31009"
+
 type assistantConfig struct {
 	AccountId      string
 	Mnemonic       string
 	OneToOneInvite string
 	OpenAIKey      string
+	ApiListenAddr  string // defaults to 127.0.0.1:31009
+}
+
+func (c *assistantConfig) GetApiListenAddr() string {
+	if c.ApiListenAddr != "" {
+		return c.ApiListenAddr
+	}
+	return defaultApiListenAddr
+}
+
+func (c *assistantConfig) GetApiBaseUrl() string {
+	return "http://" + c.GetApiListenAddr()
 }
 
 func (c *assistantConfig) Validate() error {
@@ -129,9 +145,14 @@ func createAccount(ctx context.Context, app *application.Service, repoDir string
 
 	eventQueue := createEventQueue(ctx, app)
 
+	// Set middleware params for API server before creating account
+	mw := core.NewWithApplicationService(app)
+	api.SetMiddlewareParams(mw)
+
 	acc, err := app.AccountCreate(ctx, &pb.RpcAccountCreateRequest{
-		Name:      name,
-		StorePath: repoDir,
+		Name:              name,
+		StorePath:         repoDir,
+		JsonApiListenAddr: config.GetApiListenAddr(),
 	})
 	if err != nil {
 		return nil, fmt.Errorf("account create: %w", err)
@@ -191,9 +212,14 @@ func loadAccount(ctx context.Context, app *application.Service, repoDir string, 
 
 	eventQueue := createEventQueue(ctx, app)
 
+	// Set middleware params for API server before selecting account
+	mw := core.NewWithApplicationService(app)
+	api.SetMiddlewareParams(mw)
+
 	acc, err := app.AccountSelect(ctx, &pb.RpcAccountSelectRequest{
-		Id:       config.AccountId,
-		RootPath: repoDir,
+		Id:                config.AccountId,
+		RootPath:          repoDir,
+		JsonApiListenAddr: config.GetApiListenAddr(),
 	})
 	if err != nil {
 		return nil, fmt.Errorf("account select: %w", err)

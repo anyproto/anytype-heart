@@ -53,6 +53,7 @@ func (l *AnytypeModuleLoader) Load(specifier string) (string, error) {
 
 	// Extract JS code from the object's markdown body
 	source := extractJSFromMarkdown(object.Markdown)
+
 	if source == "" {
 		return "", fmt.Errorf("no valid JS source found in %q (must have // __main_source marker)", specifier)
 	}

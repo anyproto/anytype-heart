@@ -109,6 +109,9 @@ func executeIsolated(source string, mainArgs interface{}, client *http.Client, o
 		}
 	}
 
+	// Prepend "export {};" to ensure QuickJS detects this as a module
+	source = "export {};\n" + source
+
 	// Load the user module
 	userModule := ctx.LoadModule(source, "__eval_module__", quickjs.EvalLoadOnly(true))
 	if userModule.IsException() {

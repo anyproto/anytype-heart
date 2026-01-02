@@ -34,7 +34,14 @@ func (srv *Server) NewRouter(mw apicore.ClientCommands, eventService apicore.Eve
 	v1 := router.Group("/v1")
 	v1.Use(paginator)
 	v1.Use(srv.ensureCacheInitialized())
-	v1.Use(srv.ensureAuthenticated(mw))
+
+	// Allow disabling auth for local agent access
+	authDisabled := os.Getenv("ANYTYPE_API_DISABLE_AUTH") == "1"
+	if !authDisabled {
+		v1.Use(srv.ensureAuthenticated(mw))
+	} else {
+		println("API auth disabled via ANYTYPE_API_DISABLE_AUTH=1")
+	}
 
 	srv.registerListRoutes(v1, eventService, writeRateLimitMW)
 	srv.registerMemberRoutes(v1, eventService)

@@ -92,6 +92,7 @@ func run() error {
 				ApiService:     svc,
 				CurrentSpaceId: currentSpaceId,
 				MainProgram:    "assistant@v2", // TODO: make configurable
+				ApiBaseUrl:     app.config.GetApiBaseUrl(),
 			})
 			if trace != nil {
 				fmt.Printf("-- trace:\n%s\n", runtime.TraceToJSON(trace))

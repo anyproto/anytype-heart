@@ -17,8 +17,10 @@ import (
 var openaiJS string
 
 type jsChatMessage struct {
-	Identity string `js:"identity"`
-	Text     string `js:"text"`
+	Identity   string `json:"identity"`
+	Text       string `json:"text"`
+	SpaceId    string `json:"spaceId"`
+	ApiBaseUrl string `json:"apiBaseUrl"`
 }
 
 // HandleChatMsgParams contains all parameters for HandleChatMsg
@@ -28,6 +30,7 @@ type HandleChatMsgParams struct {
 	ApiService     *apiservice.Service
 	CurrentSpaceId string
 	MainProgram    string // program specifier, e.g. "my_bot@v1"
+	ApiBaseUrl     string // base URL for Anytype API, e.g. "http://127.0.0.1:31009"
 }
 
 func HandleChatMsg(goCtx context.Context, params HandleChatMsgParams) (reply string, trace *Trace, err error) {
@@ -77,8 +80,10 @@ func HandleChatMsg(goCtx context.Context, params HandleChatMsgParams) (reply str
 	}
 
 	jsMessage := jsChatMessage{
-		Text:     params.ChatAddEv.Message.Message.Text,
-		Identity: params.ChatAddEv.Message.Creator,
+		Text:       params.ChatAddEv.Message.Message.Text,
+		Identity:   params.ChatAddEv.Message.Creator,
+		SpaceId:    params.CurrentSpaceId,
+		ApiBaseUrl: params.ApiBaseUrl,
 	}
 
 	jsMessageVal, err := ctx.Marshal(jsMessage)

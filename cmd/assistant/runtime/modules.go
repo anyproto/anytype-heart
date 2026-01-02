@@ -3,6 +3,7 @@ package runtime
 import (
 	"fmt"
 	"regexp"
+	"strings"
 
 	"github.com/buke/quickjs-go"
 )
@@ -24,6 +25,9 @@ func PreloadModules(ctx *quickjs.Context, loader ModuleLoader) error {
 			return fmt.Errorf("load module %q: %w", name, err)
 		}
 
+		// Prepend "export {};" to ensure QuickJS detects this as a module
+		source = "export {};\n" + source
+
 		// Load module with EvalLoadOnly to register it without executing
 		result := ctx.LoadModule(source, name, quickjs.EvalLoadOnly(true))
 		if result.IsException() {
@@ -38,9 +42,61 @@ func PreloadModules(ctx *quickjs.Context, loader ModuleLoader) error {
 // importRegex matches ES6 import statements: import ... from "module" or import "module"
 var importRegex = regexp.MustCompile(`import\s+(?:[^"']+\s+from\s+)?["']([^"']+)["']`)
 
+// stripComments removes JS comments from source code to avoid matching imports in comments
+func stripComments(source string) string {
+	result := make([]byte, 0, len(source))
+	i := 0
+	for i < len(source) {
+		// Check for single-line comment
+		if i+1 < len(source) && source[i] == '/' && source[i+1] == '/' {
+			// Skip until end of line
+			for i < len(source) && source[i] != '\n' {
+				i++
+			}
+			continue
+		}
+		// Check for multi-line comment
+		if i+1 < len(source) && source[i] == '/' && source[i+1] == '*' {
+			i += 2
+			// Skip until */
+			for i+1 < len(source) && !(source[i] == '*' && source[i+1] == '/') {
+				i++
+			}
+			i += 2 // skip */
+			continue
+		}
+		// Check for string literals (to avoid matching // or /* inside strings)
+		if source[i] == '"' || source[i] == '\'' || source[i] == '`' {
+			quote := source[i]
+			result = append(result, source[i])
+			i++
+			for i < len(source) && source[i] != quote {
+				if source[i] == '\\' && i+1 < len(source) {
+					result = append(result, source[i], source[i+1])
+					i += 2
+				} else {
+					result = append(result, source[i])
+					i++
+				}
+			}
+			if i < len(source) {
+				result = append(result, source[i])
+				i++
+			}
+			continue
+		}
+		result = append(result, source[i])
+		i++
+	}
+	return string(result)
+}
+
 // parseImports extracts all module specifiers from import statements in JS code
+// It strips comments first to avoid matching imports inside comments
 func parseImports(source string) []string {
-	matches := importRegex.FindAllStringSubmatch(source, -1)
+	// Strip comments to avoid matching import examples in JSDoc
+	stripped := stripComments(source)
+	matches := importRegex.FindAllStringSubmatch(stripped, -1)
 	seen := make(map[string]bool)
 	var imports []string
 	for _, match := range matches {
@@ -76,6 +132,14 @@ func PreloadModuleRecursively(ctx *quickjs.Context, loader ModuleLoader, specifi
 			return err
 		}
 	}
+
+	// Clean the source: strip comments, dedent, and trim whitespace
+	// This is necessary because QuickJS has issues with certain source formats
+	source = strings.TrimSpace(dedentSource(source))
+
+	// Prepend "export {};" to ensure QuickJS detects this as a module
+	// This is needed because JS_DetectModule looks for import/export at the start
+	source = "export {};\n" + source
 
 	// Now load this module into QuickJS context
 	result := ctx.LoadModule(source, specifier, quickjs.EvalLoadOnly(true))
