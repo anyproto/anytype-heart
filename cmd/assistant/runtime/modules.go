@@ -133,9 +133,9 @@ func PreloadModuleRecursively(ctx *quickjs.Context, loader ModuleLoader, specifi
 		}
 	}
 
-	// Clean the source: strip comments, dedent, and trim whitespace
+	// Clean the source: strip comments and trim whitespace
 	// This is necessary because QuickJS has issues with certain source formats
-	source = strings.TrimSpace(dedentSource(source))
+	source = strings.TrimSpace(source)
 
 	// Prepend "export {};" to ensure QuickJS detects this as a module
 	// This is needed because JS_DetectModule looks for import/export at the start
