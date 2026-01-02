@@ -89,6 +89,7 @@ func run() error {
 			reply, trace, err := runtime.HandleChatMsg(ctx, runtime.HandleChatMsgParams{
 				ChatAddEv:      chatAddEv,
 				OpenAIKey:      app.config.OpenAIKey,
+				ClaudeKey:      app.config.ClaudeKey,
 				ApiService:     svc,
 				CurrentSpaceId: currentSpaceId,
 				MainProgram:    "assistant@v2", // TODO: make configurable

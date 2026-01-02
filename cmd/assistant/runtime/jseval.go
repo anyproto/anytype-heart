@@ -20,6 +20,11 @@ type JsEvalResult struct {
 // installJsEval installs the js.eval effect that runs JS code in a nested context
 // Usage: js.eval(source, args?) - runs source code that must export main(args), returns {result, traces, error?}
 func installJsEval(parentCtx *quickjs.Context, client *http.Client, openaiKey string, moduleLoader ModuleLoader) (cleanup func(), err error) {
+	return installJsEvalWithParams(parentCtx, client, openaiKey, "", moduleLoader)
+}
+
+// installJsEvalWithParams installs js.eval with full parameter control including claudeKey
+func installJsEvalWithParams(parentCtx *quickjs.Context, client *http.Client, openaiKey, claudeKey string, moduleLoader ModuleLoader) (cleanup func(), err error) {
 	// Create the raw eval function
 	evalFn := parentCtx.NewFunction(func(ctx *quickjs.Context, this *quickjs.Value, args []*quickjs.Value) *quickjs.Value {
 		if len(args) < 1 {
@@ -37,7 +42,14 @@ func installJsEval(parentCtx *quickjs.Context, client *http.Client, openaiKey st
 		}
 
 		// Execute in a new isolated runtime with module support
-		result := executeIsolated(source, mainArgs, client, openaiKey, moduleLoader)
+		result := executeIsolatedWithParams(ExecuteIsolatedParams{
+			Source:       source,
+			MainArgs:     mainArgs,
+			Client:       client,
+			OpenAIKey:    openaiKey,
+			ClaudeKey:    claudeKey,
+			ModuleLoader: moduleLoader,
+		})
 
 		// Marshal result to JS value
 		jsResult, err := ctx.Marshal(result)
@@ -64,9 +76,36 @@ func installJsEval(parentCtx *quickjs.Context, client *http.Client, openaiKey st
 	}, nil
 }
 
+// ExecuteIsolatedParams contains parameters for executeIsolated
+type ExecuteIsolatedParams struct {
+	Source       string
+	MainArgs     interface{}
+	Client       *http.Client
+	OpenAIKey    string
+	ClaudeKey    string
+	ModuleLoader ModuleLoader
+}
+
 // executeIsolated runs JS code in a fresh isolated runtime with module support
 // The source must export a main(args) function, which will be called with mainArgs
 func executeIsolated(source string, mainArgs interface{}, client *http.Client, openaiKey string, moduleLoader ModuleLoader) JsEvalResult {
+	return executeIsolatedWithParams(ExecuteIsolatedParams{
+		Source:       source,
+		MainArgs:     mainArgs,
+		Client:       client,
+		OpenAIKey:    openaiKey,
+		ModuleLoader: moduleLoader,
+	})
+}
+
+// executeIsolatedWithParams runs JS code with full parameter control
+func executeIsolatedWithParams(params ExecuteIsolatedParams) JsEvalResult {
+	source := params.Source
+	mainArgs := params.MainArgs
+	client := params.Client
+	openaiKey := params.OpenAIKey
+	claudeKey := params.ClaudeKey
+	moduleLoader := params.ModuleLoader
 	if client == nil {
 		client = &http.Client{Timeout: 60 * time.Second}
 	}
@@ -93,10 +132,20 @@ func executeIsolated(source string, mainArgs interface{}, client *http.Client, o
 	}
 	defer fetchCleanup()
 
-	// Set OpenAI key if provided
+	// Set API keys if provided
 	if openaiKey != "" {
 		ctx.Globals().Set("__openaiKey", ctx.NewString(openaiKey))
 	}
+	if claudeKey != "" {
+		ctx.Globals().Set("__claudeKey", ctx.NewString(claudeKey))
+	}
+
+	// Install js.eval in nested context (allows nested programs to run other programs)
+	jsEvalCleanup, err := installJsEvalWithParams(ctx, client, openaiKey, claudeKey, moduleLoader)
+	if err != nil {
+		return JsEvalResult{Error: "js.eval setup: " + err.Error()}
+	}
+	defer jsEvalCleanup()
 
 	// If module loader is provided, preload any imports found in the source
 	if moduleLoader != nil {

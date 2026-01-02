@@ -36,6 +36,7 @@ type assistantConfig struct {
 	Mnemonic       string
 	OneToOneInvite string
 	OpenAIKey      string
+	ClaudeKey      string
 	ApiListenAddr  string // defaults to 127.0.0.1:31009
 }
 

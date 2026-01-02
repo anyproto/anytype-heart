@@ -16,6 +16,9 @@ import (
 //go:embed openai.js
 var openaiJS string
 
+//go:embed claude.js
+var claudeJS string
+
 type jsChatMessage struct {
 	Identity   string `json:"identity"`
 	Text       string `json:"text"`
@@ -27,6 +30,7 @@ type jsChatMessage struct {
 type HandleChatMsgParams struct {
 	ChatAddEv      *pb.EventChatAdd
 	OpenAIKey      string
+	ClaudeKey      string
 	ApiService     *apiservice.Service
 	CurrentSpaceId string
 	MainProgram    string // program specifier, e.g. "my_bot@v1"
@@ -57,17 +61,19 @@ func HandleChatMsg(goCtx context.Context, params HandleChatMsgParams) (reply str
 	}
 	defer fetchCleanup()
 
-	// Set OpenAI key for the module
+	// Set API keys for the modules
 	ctx.Globals().Set("__openaiKey", ctx.NewString(params.OpenAIKey))
+	ctx.Globals().Set("__claudeKey", ctx.NewString(params.ClaudeKey))
 
 	// Set up module loader with Anytype backend
 	moduleLoader := NewAnytypeModuleLoader(goCtx, params.ApiService, params.CurrentSpaceId)
 
 	// Register built-in modules
 	moduleLoader.Register("openai", openaiJS)
+	moduleLoader.Register("claude", claudeJS)
 
 	// Install js.eval effect for running nested JS programs (with module loader)
-	jsEvalCleanup, err := installJsEval(ctx, client, params.OpenAIKey, moduleLoader)
+	jsEvalCleanup, err := installJsEvalWithParams(ctx, client, params.OpenAIKey, params.ClaudeKey, moduleLoader)
 	if err != nil {
 		return "", nil, err
 	}
