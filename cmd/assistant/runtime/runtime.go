@@ -63,15 +63,10 @@ func HandleChatMsg(goCtx context.Context, params HandleChatMsgParams) (reply str
 	// Register built-in modules
 	moduleLoader.Register("openai", openaiJS)
 
-	// Preload built-in modules
-	if err := PreloadModules(ctx, moduleLoader); err != nil {
+	// Recursively preload the main program and all its dependencies
+	loaded := make(map[string]bool)
+	if err := PreloadModuleRecursively(ctx, moduleLoader, params.MainProgram, loaded); err != nil {
 		return "", getTrace(), fmt.Errorf("preload modules: %w", err)
-	}
-
-	// Load the main program from Anytype
-	jsCode, err := moduleLoader.Load(params.MainProgram)
-	if err != nil {
-		return "", getTrace(), fmt.Errorf("load main program %q: %w", params.MainProgram, err)
 	}
 
 	jsMessage := jsChatMessage{
@@ -85,24 +80,15 @@ func HandleChatMsg(goCtx context.Context, params HandleChatMsgParams) (reply str
 	}
 	defer jsMessageVal.Free()
 
-	// Register the user's module
-	moduleLoader.Register("__main__", jsCode)
-	userModule := ctx.LoadModule(jsCode, "__main__", quickjs.EvalLoadOnly(true))
-	if userModule.IsException() {
-		userModule.Free()
-		return "", getTrace(), fmt.Errorf("load user module: %w", ctx.Exception())
-	}
-	userModule.Free()
-
-	// Wrapper that imports user module and exposes main to globals
-	wrapperCode := `
-	import * as userMod from "__main__";
+	// Wrapper that imports the main program and exposes main() to globals
+	wrapperCode := fmt.Sprintf(`
+	import * as userMod from %q;
 	if (typeof userMod.main === "function") {
 	  globalThis.__main = userMod.main;
 	} else {
 	  throw new Error("Module must export a 'main' function");
 	}
-	`
+	`, params.MainProgram)
 
 	wrapper := ctx.LoadModule(wrapperCode, "__wrapper__")
 	if wrapper.IsException() {
