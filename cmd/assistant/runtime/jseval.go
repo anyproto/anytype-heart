@@ -3,6 +3,7 @@ package runtime
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 	"time"
 
@@ -17,7 +18,8 @@ type JsEvalResult struct {
 }
 
 // installJsEval installs the js.eval effect that runs JS code in a nested context
-func installJsEval(parentCtx *quickjs.Context, client *http.Client, openaiKey string) (cleanup func(), err error) {
+// Usage: js.eval(source, args?) - runs source code that must export main(args), returns {result, traces, error?}
+func installJsEval(parentCtx *quickjs.Context, client *http.Client, openaiKey string, moduleLoader ModuleLoader) (cleanup func(), err error) {
 	// Create the raw eval function
 	evalFn := parentCtx.NewFunction(func(ctx *quickjs.Context, this *quickjs.Value, args []*quickjs.Value) *quickjs.Value {
 		if len(args) < 1 {
@@ -26,8 +28,16 @@ func installJsEval(parentCtx *quickjs.Context, client *http.Client, openaiKey st
 
 		source := args[0].ToString()
 
-		// Execute in a new isolated runtime
-		result := executeIsolated(source, client, openaiKey)
+		// Get optional args parameter to pass to main()
+		var mainArgs interface{}
+		if len(args) >= 2 && !args[1].IsUndefined() && !args[1].IsNull() {
+			if err := ctx.Unmarshal(args[1], &mainArgs); err != nil {
+				mainArgs = args[1].ToString()
+			}
+		}
+
+		// Execute in a new isolated runtime with module support
+		result := executeIsolated(source, mainArgs, client, openaiKey, moduleLoader)
 
 		// Marshal result to JS value
 		jsResult, err := ctx.Marshal(result)
@@ -54,14 +64,15 @@ func installJsEval(parentCtx *quickjs.Context, client *http.Client, openaiKey st
 	}, nil
 }
 
-// executeIsolated runs JS code in a fresh isolated runtime
-func executeIsolated(source string, client *http.Client, openaiKey string) JsEvalResult {
+// executeIsolated runs JS code in a fresh isolated runtime with module support
+// The source must export a main(args) function, which will be called with mainArgs
+func executeIsolated(source string, mainArgs interface{}, client *http.Client, openaiKey string, moduleLoader ModuleLoader) JsEvalResult {
 	if client == nil {
 		client = &http.Client{Timeout: 60 * time.Second}
 	}
 
-	// Create new isolated runtime
-	rt := quickjs.NewRuntime()
+	// Create new isolated runtime with module imports enabled
+	rt := quickjs.NewRuntime(quickjs.WithModuleImport(true))
 	defer rt.Close()
 	defer rt.RunGC()
 
@@ -87,8 +98,66 @@ func executeIsolated(source string, client *http.Client, openaiKey string) JsEva
 		ctx.Globals().Set("__openaiKey", ctx.NewString(openaiKey))
 	}
 
-	// Execute the code
-	result := ctx.Eval(source)
+	// If module loader is provided, preload any imports found in the source
+	if moduleLoader != nil {
+		loaded := make(map[string]bool)
+		imports := parseImports(source)
+		for _, imp := range imports {
+			if err := PreloadModuleRecursively(ctx, moduleLoader, imp, loaded); err != nil {
+				return JsEvalResult{Error: fmt.Sprintf("preload module %q: %s", imp, err.Error())}
+			}
+		}
+	}
+
+	// Load the user module
+	userModule := ctx.LoadModule(source, "__eval_module__", quickjs.EvalLoadOnly(true))
+	if userModule.IsException() {
+		userModule.Free()
+		trace := getTrace()
+		return JsEvalResult{
+			Error:  ctx.Exception().Error(),
+			Traces: traceToMap(trace),
+		}
+	}
+	userModule.Free()
+
+	// Create wrapper that imports user module and exposes main to globals (same as parent runtime)
+	wrapperCode := `
+	import * as userMod from "__eval_module__";
+	if (typeof userMod.main === "function") {
+	  globalThis.__main = userMod.main;
+	} else {
+	  throw new Error("Module must export a 'main' function");
+	}
+	`
+
+	wrapper := ctx.LoadModule(wrapperCode, "__eval_wrapper__")
+	if wrapper.IsException() {
+		wrapper.Free()
+		trace := getTrace()
+		return JsEvalResult{
+			Error:  ctx.Exception().Error(),
+			Traces: traceToMap(trace),
+		}
+	}
+	wrapper.Free()
+
+	// Marshal args to pass to main()
+	var jsArgs *quickjs.Value
+	if mainArgs != nil {
+		var marshalErr error
+		jsArgs, marshalErr = ctx.Marshal(mainArgs)
+		if marshalErr != nil {
+			return JsEvalResult{Error: "marshal args: " + marshalErr.Error()}
+		}
+		defer jsArgs.Free()
+	} else {
+		jsArgs = ctx.NewUndefined()
+		defer jsArgs.Free()
+	}
+
+	// Call the exposed main function
+	result := ctx.Globals().Call("__main", jsArgs)
 	if result.IsException() {
 		result.Free()
 		trace := getTrace()
