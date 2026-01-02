@@ -91,7 +91,7 @@ func run() error {
 				OpenAIKey:      app.config.OpenAIKey,
 				ApiService:     svc,
 				CurrentSpaceId: currentSpaceId,
-				MainProgram:    "assistant@v1", // TODO: make configurable
+				MainProgram:    "assistant@v2", // TODO: make configurable
 			})
 			if trace != nil {
 				fmt.Printf("-- trace:\n%s\n", runtime.TraceToJSON(trace))

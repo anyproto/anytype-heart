@@ -57,6 +57,13 @@ func HandleChatMsg(goCtx context.Context, params HandleChatMsgParams) (reply str
 	// Set OpenAI key for the module
 	ctx.Globals().Set("__openaiKey", ctx.NewString(params.OpenAIKey))
 
+	// Install js.eval effect for running nested JS programs
+	jsEvalCleanup, err := installJsEval(ctx, client, params.OpenAIKey)
+	if err != nil {
+		return "", nil, err
+	}
+	defer jsEvalCleanup()
+
 	// Set up module loader with Anytype backend
 	moduleLoader := NewAnytypeModuleLoader(goCtx, params.ApiService, params.CurrentSpaceId)
 
