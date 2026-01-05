@@ -111,6 +111,39 @@ func (v *Validator) convertAndValidateValue(spaceId string, filter *Filter, prop
 	}
 
 	value := filter.Value
+	if property.Format == apimodel.PropertyFormatSelect &&
+		(filter.Condition == model.BlockContentDataviewFilter_In || filter.Condition == model.BlockContentDataviewFilter_NotIn) {
+		var items []interface{}
+		switch v := value.(type) {
+		case []string:
+			items = make([]interface{}, 0, len(v))
+			for _, item := range v {
+				items = append(items, item)
+			}
+		case []interface{}:
+			items = v
+		default:
+			items = []interface{}{v}
+		}
+
+		values := make([]string, 0, len(items))
+		for _, item := range items {
+			itemStr, ok := item.(string)
+			if !ok {
+				return nil, util.ErrBadInput(fmt.Sprintf("invalid select option for %q: %v", filter.PropertyKey, item))
+			}
+			sanitized, err := v.apiService.SanitizeAndValidatePropertyValue(spaceId, filter.PropertyKey, itemStr, property, propertyMap)
+			if err != nil {
+				return nil, err
+			}
+			tagId, ok := sanitized.(string)
+			if !ok {
+				return nil, util.ErrBadInput(fmt.Sprintf("invalid select option for %q: %v", filter.PropertyKey, itemStr))
+			}
+			values = append(values, tagId)
+		}
+		return values, nil
+	}
 	if filter.Condition == model.BlockContentDataviewFilter_In || filter.Condition == model.BlockContentDataviewFilter_NotIn {
 		switch v := value.(type) {
 		case []string, []interface{}:
