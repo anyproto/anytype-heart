@@ -187,7 +187,7 @@ func (i *spaceIndexer) index(ctx context.Context, info smartblock.DocInfo, optio
 			fulltext, _, _ := info.SmartblockType.Indexable()
 
 			if fulltext && i.fulltextEnabled {
-				if err := i.objectStore.AddToIndexQueue(i.runCtx, domain.FullID{ObjectID: info.Id, SpaceID: info.Space.Id()}); err != nil {
+				if _, err := i.objectStore.AddToIndexQueue(i.runCtx, domain.FullID{ObjectID: info.Id, SpaceID: info.Space.Id()}); err != nil {
 					log.With("objectID", info.Id).Errorf("can't add id to index queue: %v", err)
 				}
 			}

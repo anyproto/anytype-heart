@@ -434,12 +434,13 @@ func (s *dsObjectStore) performFulltextFallback(q database.Query, filters *datab
 }
 
 func isFulltextIndexable(record database.Record) bool {
-	if record.Details.GetBool(bundle.RelationKeyIsDeleted) || record.Details.GetBool(bundle.RelationKeyIsArchived) {
-		return false
-	}
 	if sbt, err := typeprovider.SmartblockTypeFromID(record.Details.GetString(bundle.RelationKeyId)); err == nil {
 		ft, _, _ := sbt.Indexable()
 		return ft
+	}
+
+	if record.Details.GetBool(bundle.RelationKeyIsDeleted) || record.Details.GetBool(bundle.RelationKeyIsArchived) || record.Details.GetBool(bundle.RelationKeyIsHidden) {
+		return false
 	}
 	return false
 }
@@ -516,15 +517,16 @@ func (s *dsObjectStore) logFallbackDiagnostics(spaceId string, textQuery string,
 }
 
 func (s *dsObjectStore) checkDocExistsInTantivy(objectId string) (hasName bool, total int) {
-	err := s.fts.Iterate(objectId, nil, func(doc *ftsearch.SearchDoc) bool {
-		if strings.HasSuffix(doc.Id, "/r/name") {
+	ids, err := s.fts.ListByIdPrefix(objectId)
+	if err != nil {
+		log.With("error", err).Debug("fulltext fallback diagnostic: list error")
+		return
+	}
+	for _, id := range ids {
+		if strings.HasSuffix(id, "/r/name") {
 			hasName = true
 		}
 		total++
-		return true
-	})
-	if err != nil {
-		log.With("error", err).Debug("fulltext fallback diagnostic: iterate error")
 	}
 	return
 }

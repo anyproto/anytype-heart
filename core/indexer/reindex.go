@@ -52,6 +52,10 @@ const (
 
 	ForceReindexParticipantsCounter int32 = 1
 	ForceReindexChatsCounter        int32 = 7
+
+	// ForceFTConsistencyCheckCounter triggers a lightweight FT consistency check
+	// Aggregates the list of object ids that need to be indexed and verify their presence in the FT index.
+	ForceFTConsistencyCheckCounter int32 = 1
 )
 
 type allDeletedIdsProvider interface {

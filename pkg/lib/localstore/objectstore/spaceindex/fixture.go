@@ -59,15 +59,17 @@ func (q *dummyFulltextQueue) FtQueueMarkAsIndexed(ids []domain.FullID, state uin
 	return nil
 }
 
-func (q *dummyFulltextQueue) AddToIndexQueue(ctx context.Context, ids ...domain.FullID) error {
+func (q *dummyFulltextQueue) AddToIndexQueue(ctx context.Context, ids ...domain.FullID) (int, error) {
 	q.lock.Lock()
 	defer q.lock.Unlock()
+	var added int
 	for _, id := range ids {
 		if !lo.Contains(q.ids, id.ObjectID) {
 			q.ids = append(q.ids, id.ObjectID)
+			added++
 		}
 	}
-	return nil
+	return added, nil
 }
 
 func (q *dummyFulltextQueue) ListIdsFromFullTextQueue(spaceIds []string, limit uint) ([]domain.FullID, error) {

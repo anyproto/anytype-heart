@@ -21,6 +21,7 @@ var idKey = bundle.RelationKeyId.String()
 var spaceIdKey = bundle.RelationKeySpaceId.String()
 
 const ftSequenceKey = "seq" // used to store the opstamp of the fulltext commit for specific object
+const ftConsistencyKey = "_ft_consistency"
 
 var emptyBuffer = make([]byte, 8)
 
@@ -65,10 +66,10 @@ func (s *dsObjectStore) FtQueueReconcileWithSeq(ctx context.Context, ftIndexSeq 
 
 }
 
-func (s *dsObjectStore) AddToIndexQueue(ctx context.Context, ids ...domain.FullID) error {
+func (s *dsObjectStore) AddToIndexQueue(ctx context.Context, ids ...domain.FullID) (enqueued int, err error) {
 	txn, err := s.fulltextQueue.WriteTx(ctx)
 	if err != nil {
-		return fmt.Errorf("start write tx: %w", err)
+		return 0, fmt.Errorf("start write tx: %w", err)
 	}
 	arena := s.arenaPool.Get()
 	defer func() {
@@ -78,22 +79,25 @@ func (s *dsObjectStore) AddToIndexQueue(ctx context.Context, ids ...domain.FullI
 	}()
 
 	obj := arena.NewObject()
+	var modified int
 	for _, id := range ids {
 		obj.Set(idKey, arena.NewString(id.ObjectID))
 		obj.Set(spaceIdKey, arena.NewString(id.SpaceID))
 		obj.Set(ftSequenceKey, arena.NewBinary(emptyBuffer))
-		_, err = s.fulltextQueue.UpsertId(txn.Context(), id.ObjectID, query.ModifyFunc(func(a *anyenc.Arena, v *anyenc.Value) (*anyenc.Value, bool, error) {
+		res, err := s.fulltextQueue.UpsertId(txn.Context(), id.ObjectID, query.ModifyFunc(func(a *anyenc.Arena, v *anyenc.Value) (*anyenc.Value, bool, error) {
 			if anyencutil.Equal(v, obj) {
 				return v, false, nil
 			}
 
 			return obj, true, nil
 		}))
+		modified += res.Modified
+
 		if err != nil {
-			return errors.Join(txn.Rollback(), fmt.Errorf("upsert: %w", err))
+			return 0, errors.Join(txn.Rollback(), fmt.Errorf("upsert: %w", err))
 		}
 	}
-	return txn.Commit()
+	return modified, txn.Commit()
 }
 
 func (s *dsObjectStore) BatchProcessFullTextQueue(
@@ -101,7 +105,7 @@ func (s *dsObjectStore) BatchProcessFullTextQueue(
 	spaceIds func() []string,
 	limit uint,
 	processIds func(objectIds []domain.FullID,
-) (succeedIds []domain.FullID, ftIndexSeq uint64, err error)) error {
+	) (succeedIds []domain.FullID, ftIndexSeq uint64, err error)) error {
 	for {
 		ids, err := s.ListIdsFromFullTextQueue(spaceIds(), limit)
 		if err != nil {
@@ -295,4 +299,27 @@ func (s *dsObjectStore) SaveChecksums(spaceId string, checksums *model.ObjectSto
 		return newVal, true, nil
 	}))
 	return err
+}
+
+func (s *dsObjectStore) GetFTConsistencyCounter(ctx context.Context) (int32, error) {
+	doc, err := s.indexerChecksums.FindId(ctx, ftConsistencyKey)
+	if errors.Is(err, anystore.ErrDocNotFound) {
+		return 0, nil
+	}
+	if err != nil {
+		return 0, err
+	}
+	return int32(doc.Value().GetInt("counter")), nil
+}
+
+func (s *dsObjectStore) SetFTConsistencyCounter(ctx context.Context, counter int32) error {
+	arena := s.arenaPool.Get()
+	defer func() {
+		arena.Reset()
+		s.arenaPool.Put(arena)
+	}()
+	obj := arena.NewObject()
+	obj.Set("id", arena.NewString(ftConsistencyKey))
+	obj.Set("counter", arena.NewNumberInt(int(counter)))
+	return s.indexerChecksums.UpsertOne(ctx, obj)
 }

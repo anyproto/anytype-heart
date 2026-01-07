@@ -30,12 +30,13 @@ import (
 )
 
 var (
-	ftIndexInterval              = 1 * time.Second
-	ftMaxIndexInterval           = time.Second * 32
-	ftIndexForceMinInterval      = time.Second * 10
-	ftBatchLimit            uint = 1000
-	ftBlockMaxSize               = 1024 * 1024
-	maxErrSent              atomic.Int32
+	ftIndexInterval                     = 1 * time.Second
+	ftMaxIndexInterval                  = time.Second * 32
+	ftIndexForceMinInterval             = time.Second * 10
+	ftInconsistencyCheckStartDelay      = time.Second * 10
+	ftBatchLimit                   uint = 1000
+	ftBlockMaxSize                      = 1024 * 1024
+	maxErrSent                     atomic.Int32
 )
 
 const maxErrorsPerSession = 100
@@ -190,6 +191,12 @@ func (i *indexer) runFullTextIndexer(ctx context.Context) error {
 	if err != nil && maxErrSent.Load() < maxErrorsPerSession {
 		maxErrSent.Add(1)
 		log.Errorf("list ids from full-text queue: %v", err)
+	}
+
+	// When queue processing succeeds (queue is empty or fully processed),
+	// check if we need to run the FT consistency check
+	if err == nil {
+		i.maybeRunFTConsistencyCheck(ctx)
 	}
 
 	return err
@@ -389,4 +396,51 @@ func (i *indexer) ftInit() error {
 		}
 	}
 	return nil
+}
+
+// maybeRunFTConsistencyCheck runs a one-time consistency check when the FT queue becomes empty.
+// It compares objects in the object store against the FT index and enqueues missing ones.
+func (i *indexer) maybeRunFTConsistencyCheck(ctx context.Context) {
+	// Only run once per session
+	if i.ftConsistencyCheckDone.Load() {
+		return
+	}
+
+	// Check if counter needs update
+	currentCounter, err := i.store.GetFTConsistencyCounter(ctx)
+	if err != nil {
+		log.Errorf("get ft consistency counter: %v", err)
+		return
+	}
+
+	if currentCounter >= ForceFTConsistencyCheckCounter {
+		i.ftConsistencyCheckDone.Store(true)
+		return // already up to date
+	}
+
+	// Mark as started (prevent concurrent runs)
+	if !i.ftConsistencyCheckDone.CompareAndSwap(false, true) {
+		return
+	}
+
+	start := time.Now()
+	checked, enqueued, err := i.store.RunFTConsistencyCheck(i.runCtx, i.ftsearch)
+	if err != nil {
+		log.Errorf("ft consistency check failed: %v", err)
+		return
+	}
+
+	// Update counter only on success
+	err = i.store.SetFTConsistencyCounter(i.runCtx, ForceFTConsistencyCheckCounter)
+	if err != nil {
+		log.Errorf("save ft consistency counter: %v", err)
+		return
+	}
+
+	var l = log.With("checked", checked, "enqueued", enqueued, "duration", time.Since(start))
+	if enqueued > 0 {
+		l.Warn("ft consistency check completed")
+	} else {
+		l.Info("ft consistency check completed")
+	}
 }

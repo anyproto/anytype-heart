@@ -74,7 +74,9 @@ type FTSearch interface {
 	Search(spaceId string, query string) (results []*DocumentMatch, err error)
 	// NamePrefixSearch special prefix case search
 	NamePrefixSearch(spaceId string, query string) (results []*DocumentMatch, err error)
+	ListByIdPrefix(prefix string) (ids []string, err error)
 	Iterate(objectId string, fields []string, shouldContinue func(doc *SearchDoc) bool) (err error)
+	ListAllObjectIds() (map[string]struct{}, error)
 	DocCount() (uint64, error)
 	LastDbState() (uint64, error)
 	ConsistencyReport() *tantivycheck.ConsistencyReport

@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"slices"
 	"sync"
 
 	anystore "github.com/anyproto/any-store"
@@ -14,6 +15,7 @@ import (
 	"go.uber.org/zap"
 
 	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/datastore/anystoreprovider"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
@@ -23,7 +25,9 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/spaceresolverstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+	"github.com/anyproto/anytype-heart/space/spacecore/typeprovider"
 	"github.com/anyproto/anytype-heart/util/keyvaluestore"
+	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 var log = logging.Logger("anytype-localstore")
@@ -65,7 +69,7 @@ type ObjectStore interface {
 }
 
 type IndexerStore interface {
-	AddToIndexQueue(ctx context.Context, id ...domain.FullID) error
+	AddToIndexQueue(ctx context.Context, id ...domain.FullID) (int, error)
 	ListIdsFromFullTextQueue(spaceIds []string, limit uint) ([]domain.FullID, error)
 	FtQueueMarkAsIndexed(ids []domain.FullID, ftIndexSeq uint64) error
 
@@ -76,6 +80,14 @@ type IndexerStore interface {
 	GetChecksums(spaceID string) (checksums *model.ObjectStoreChecksums, err error)
 	// SaveChecksums Used to save checksums and force reindex counter
 	SaveChecksums(spaceID string, checksums *model.ObjectStoreChecksums) (err error)
+
+	// GetFTConsistencyCounter returns the global FT consistency check counter
+	GetFTConsistencyCounter(ctx context.Context) (int32, error)
+	// SetFTConsistencyCounter sets the global FT consistency check counter
+	SetFTConsistencyCounter(ctx context.Context, counter int32) error
+	// RunFTConsistencyCheck checks all objects in the object store against the FT index
+	// and enqueues missing ones for FT indexing
+	RunFTConsistencyCheck(ctx context.Context, fts ftsearch.FTSearch) (checked, enqueued int, err error)
 }
 
 type AccountStore interface {
@@ -407,6 +419,91 @@ func (s *dsObjectStore) EnqueueAllForFulltextIndexing(ctx context.Context) error
 		return err
 	}
 	return txn.Commit()
+}
+
+func isFtIndexable(id string, value *anyenc.Value) bool {
+	if sbt, err := typeprovider.SmartblockTypeFromID(id); err == nil {
+		ft, _, _ := sbt.Indexable()
+		if !ft {
+			return false
+		}
+	}
+
+	if value.GetBool(bundle.RelationKeyIsDeleted.String()) || value.GetBool(bundle.RelationKeyIsArchived.String()) || value.GetBool(bundle.RelationKeyIsHidden.String()) {
+		return false
+	}
+
+	if slices.Contains([]model.ObjectTypeLayout{model.ObjectType_chatDerived, model.ObjectType_chatDeprecated, model.ObjectType_dashboard},
+		model.ObjectTypeLayout(value.GetInt(bundle.RelationKeyResolvedLayout.String()))) {
+		return false
+	}
+	var checkTextProperties = []domain.RelationKey{
+		bundle.RelationKeyName,
+		bundle.RelationKeyDescription,
+		bundle.RelationKeySnippet,
+	}
+	for _, property := range checkTextProperties {
+		if value.GetString(property.String()) != "" {
+			return true
+		}
+	}
+	return false
+}
+
+// RunFTConsistencyCheck checks all objects in the object store against the full-text index
+// and enqueues any missing objects for FT indexing. This is a lightweight consistency check
+// that doesn't load objects into cache.
+func (s *dsObjectStore) RunFTConsistencyCheck(ctx context.Context, fts ftsearch.FTSearch) (checked, enqueued int, err error) {
+	// First, get all indexed object IDs from FT in one pass
+	indexedIds, err := fts.ListAllObjectIds()
+	if err != nil {
+		return 0, 0, fmt.Errorf("list indexed object ids: %w", err)
+	}
+
+	var missingIds []domain.FullID
+
+	// Iterate all objects in object store and check against indexed IDs
+	var spaces, objs int
+	err = iterateSpacesForFulltext(s, func(store spaceindex.Store) error {
+		spaces++
+		return store.IterateAll(func(doc *anyenc.Value) error {
+			objs++
+			id := doc.GetString(idKey)
+			spaceId := store.SpaceId()
+			if !isFtIndexable(id, doc) {
+				return nil
+			}
+
+			checked++
+			if _, exists := indexedIds[id]; !exists {
+				missingIds = append(missingIds, domain.FullID{ObjectID: id, SpaceID: spaceId})
+			}
+			return nil
+		})
+	})
+	fmt.Printf("checked %d objects in %d spaces, found %d missing\n", objs, spaces, len(missingIds))
+	if err != nil {
+		return checked, 0, fmt.Errorf("iterate objects: %w", err)
+	}
+
+	// Batch enqueue all missing IDs at once
+	if len(missingIds) > 0 {
+		for _, id := range missingIds {
+			index := s.getOrInitSpaceIndex(id.SpaceID)
+			d, err := index.GetDetails(id.ObjectID)
+			if err != nil {
+				fmt.Printf("object %s/%s get details error: %v\n", id.SpaceID, id.ObjectID, err)
+			} else {
+				fmt.Printf("object %s/%s missisng details: %+v\n", id.SpaceID, id.ObjectID, pbtypes.Sprint(d.ToProto()))
+			}
+		}
+		enqueued, err = s.AddToIndexQueue(ctx, missingIds...)
+		if err != nil {
+			return checked, 0, fmt.Errorf("batch enqueue: %w", err)
+		}
+	}
+
+	return checked, enqueued, nil
 }
 
 func (s *dsObjectStore) QueryByIdCrossSpace(ids []string) ([]database.Record, error) {

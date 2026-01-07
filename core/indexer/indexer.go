@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"sync"
+	"sync/atomic"
 
 	"github.com/anyproto/any-sync/app"
 	"go.uber.org/zap"
@@ -74,6 +75,8 @@ type indexer struct {
 	techSpaceIdProvider objectstore.TechSpaceIdProvider
 	spaces              map[string]struct{}
 	spacesLock          sync.RWMutex
+
+	ftConsistencyCheckDone atomic.Bool
 }
 
 func (i *indexer) Init(a *app.App) (err error) {
