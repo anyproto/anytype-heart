@@ -40,7 +40,16 @@ func WalletDeriveFromAccountMasterNode(accountKeyMasterNodeBase64 string) (crypt
 		return crypto.DerivationResult{}, fmt.Errorf("failed to unmarshal account master node: %w", err)
 	}
 
-	return crypto.DeriveKeysFromMasterNode(masterNode)
+	res, err := crypto.DeriveKeysFromMasterNode(masterNode)
+	if err != nil {
+		return crypto.DerivationResult{}, err
+	}
+	if res.OldAccountKey == nil {
+		// Account-key recovery doesn't include the legacy derivation key.
+		// Use the current identity as a fallback to avoid nil signing key.
+		res.OldAccountKey = res.Identity
+	}
+	return res, nil
 }
 
 func WalletInitRepo(rootPath string, pk crypto.PrivKey) error {
