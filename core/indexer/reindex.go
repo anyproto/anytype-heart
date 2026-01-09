@@ -660,7 +660,6 @@ func (i *indexer) logFinishedReindexStat(reindexType metrics.ReindexType, totalI
 }
 
 func (i *indexer) RemoveIndexes(spaceId string) error {
-	var flags reindexFlags
-	flags.enableAll()
-	return i.removeCommonIndexes(spaceId, nil, flags)
+	// Remove the spaceIndex from objectStore map and delete from filesystem
+	return i.store.RemoveSpaceIndex(spaceId)
 }

@@ -30,6 +30,10 @@ func (s *emptyStore) Init() error {
 	return ErrSpaceNotInitialized
 }
 
+func (s *emptyStore) Remove() error {
+	return nil
+}
+
 // Read methods - return empty results
 
 func (s *emptyStore) Query(q database.Query) (records []database.Record, err error) {

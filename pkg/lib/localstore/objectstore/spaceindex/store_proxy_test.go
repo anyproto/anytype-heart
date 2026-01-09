@@ -148,6 +148,50 @@ func TestStoreProxy_ModeTransition(t *testing.T) {
 		require.NoError(t, err)
 		assert.False(t, store.IsInitialized())
 	})
+
+	t.Run("remove prevents re-initialization", func(t *testing.T) {
+		// given - initialized store
+		store := newTestStoreProxy(t)
+		require.NoError(t, store.Init())
+
+		err := store.UpdateObjectDetails(context.Background(), "obj1", domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+			bundle.RelationKeyId:   domain.String("obj1"),
+			bundle.RelationKeyName: domain.String("Test Object"),
+		}))
+		require.NoError(t, err)
+
+		// when - remove the store (permanent deletion)
+		err = store.Remove()
+		require.NoError(t, err)
+
+		// then - store is uninitialized
+		assert.False(t, store.IsInitialized())
+
+		// and - reads return empty results
+		details, err := store.GetDetails("obj1")
+		require.NoError(t, err)
+		assert.True(t, details.Len() == 0)
+
+		// and - re-initialization fails with ErrSpaceRemoved
+		err = store.Init()
+		require.ErrorIs(t, err, ErrSpaceRemoved)
+
+		// and - store remains uninitialized
+		assert.False(t, store.IsInitialized())
+	})
+
+	t.Run("remove on uninitialized store prevents future init", func(t *testing.T) {
+		// given - uninitialized store
+		store := newTestStoreProxy(t)
+
+		// when - remove without ever initializing
+		err := store.Remove()
+		require.NoError(t, err)
+
+		// then - init fails
+		err = store.Init()
+		require.ErrorIs(t, err, ErrSpaceRemoved)
+	})
 }
 
 func newTestStoreProxy(t testing.TB) *storeProxy {

@@ -28,6 +28,7 @@ var (
 	ErrObjectNotFound      = fmt.Errorf("object not found in space index")
 	ErrNotAnObject         = fmt.Errorf("not an object")
 	ErrSpaceNotInitialized = fmt.Errorf("space index not initialized")
+	ErrSpaceRemoved        = fmt.Errorf("space index has been permanently removed")
 )
 
 // sharedEmptyStore is a singleton used by all uninitialized proxies
@@ -37,6 +38,7 @@ type Store interface {
 	SpaceId() string
 	Close() error
 	Init() error
+	Remove() error // Close and mark as permanently removed (prevents re-initialization)
 
 	// Query adds implicit filters on isArchived, isDeleted and objectType relations! To avoid them use QueryRaw
 	Query(q database.Query) (records []database.Record, err error)
@@ -112,6 +114,7 @@ type FulltextQueue interface {
 type storeProxy struct {
 	spaceId     string
 	initialized atomic.Bool
+	removed     atomic.Bool    // permanently removed, prevents re-initialization
 	realStore   *dsObjectStore // only accessed when initialized is true
 	deps        Deps
 	initMu      sync.Mutex
@@ -173,6 +176,10 @@ func (p *storeProxy) Init() error {
 	p.initMu.Lock()
 	defer p.initMu.Unlock()
 
+	if p.removed.Load() {
+		return ErrSpaceRemoved
+	}
+
 	if p.initialized.Load() {
 		return nil
 	}
@@ -212,6 +219,26 @@ func (p *storeProxy) Close() error {
 	p.initialized.Store(false)
 
 	// Close real store - in-flight queries may get error (not panic)
+	var err error
+	if p.realStore != nil {
+		err = p.realStore.Close()
+		p.realStore = nil
+	}
+
+	return err
+}
+
+// Remove closes the store and marks it as permanently removed.
+// After removal, Init() will return ErrSpaceRemoved.
+func (p *storeProxy) Remove() error {
+	p.initMu.Lock()
+	defer p.initMu.Unlock()
+
+	// Mark as removed FIRST - prevents any new Init() calls
+	p.removed.Store(true)
+	p.initialized.Store(false)
+
+	// Close real store if it exists
 	var err error
 	if p.realStore != nil {
 		err = p.realStore.Close()

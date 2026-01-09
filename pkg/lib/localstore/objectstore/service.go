@@ -55,6 +55,7 @@ type ObjectStore interface {
 	SpaceIndex(spaceId string) spaceindex.Store
 	InitSpaceIndex(spaceId string) error
 	CloseSpaceIndex(spaceId string) error
+	RemoveSpaceIndex(spaceId string) error
 
 	SpaceNameGetter
 	spaceresolverstore.Store
@@ -281,6 +282,24 @@ func (s *dsObjectStore) CloseSpaceIndex(spaceId string) error {
 		return nil
 	}
 	return store.Close()
+}
+
+// RemoveSpaceIndex closes the space index, marks it as permanently removed,
+// and deletes the database from filesystem.
+// The proxy remains in the map (in removed state) to prevent re-initialization.
+func (s *dsObjectStore) RemoveSpaceIndex(spaceId string) error {
+	s.lock.Lock()
+	spaceIndex, ok := s.spaceIndexes[spaceId]
+	if ok {
+		if err := spaceIndex.Remove(); err != nil {
+			log.With("spaceId", spaceId).Errorf("failed to remove space index: %v", err)
+		}
+		// Don't delete from map - keep removed proxy to prevent re-initialization
+	}
+	s.lock.Unlock()
+
+	// Remove the space index directory from filesystem
+	return s.anystoreProvider.DeleteSpaceIndex(spaceId)
 }
 
 // OnSpaceModeChange implements SpaceModeObserver interface.

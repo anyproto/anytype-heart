@@ -23,7 +23,7 @@ type offloader struct {
 func New(app *app.App) Offloader {
 	child := app.ChildApp()
 	so := spaceoffloader.New()
-	child.Register(aclindexcleaner.New()).Register(so)
+	child.Register(so)
 	return &offloader{
 		app:            child,
 		spaceOffloader: so,
