@@ -148,7 +148,7 @@ func TestSpaceStatus(t *testing.T) {
 	t.Run("empty space synced", func(t *testing.T) {
 		fx := newFixture(t, func(fx *fixture) {
 			fx.networkConfig.EXPECT().GetNetworkMode().Return(pb.RpcAccount_DefaultConfig).Maybe()
-			fx.spaceIdGetter.EXPECT().AllSpaceIds().Return([]string{"spaceId"}).Maybe()
+			fx.spaceIdGetter.EXPECT().AllLoadedSpaceIds().Return([]string{"spaceId"}).Maybe()
 			fx.nodeStatus.EXPECT().GetNodeStatus("spaceId").Return(nodestatus.Online).Maybe()
 			fx.nodeUsage.EXPECT().GetNodeUsage(mock.Anything).Return(&filespaceusage.NodeUsageResponse{
 				Usage: filesync.NodeUsage{
@@ -173,7 +173,7 @@ func TestSpaceStatus(t *testing.T) {
 			objs := genSyncingObjects(10, 100, "spaceId")
 			fx.objectStore.AddObjects(t, "spaceId", objs)
 			fx.networkConfig.EXPECT().GetNetworkMode().Return(pb.RpcAccount_DefaultConfig)
-			fx.spaceIdGetter.EXPECT().AllSpaceIds().Return([]string{"spaceId"})
+			fx.spaceIdGetter.EXPECT().AllLoadedSpaceIds().Return([]string{"spaceId"})
 			fx.nodeStatus.EXPECT().GetNodeStatus("spaceId").Return(nodestatus.Online)
 			fx.nodeUsage.EXPECT().GetNodeUsage(mock.Anything).Return(&filespaceusage.NodeUsageResponse{
 				Usage: filesync.NodeUsage{
@@ -200,7 +200,7 @@ func TestSpaceStatus(t *testing.T) {
 			objs := genSyncingObjects(10, 100, "spaceId")
 			fx.objectStore.AddObjects(t, "spaceId", objs)
 			fx.networkConfig.EXPECT().GetNetworkMode().Return(pb.RpcAccount_DefaultConfig)
-			fx.spaceIdGetter.EXPECT().AllSpaceIds().Return([]string{"spaceId"})
+			fx.spaceIdGetter.EXPECT().AllLoadedSpaceIds().Return([]string{"spaceId"})
 			fx.nodeStatus.EXPECT().GetNodeStatus("spaceId").Return(nodestatus.Online)
 			fx.nodeUsage.EXPECT().GetNodeUsage(mock.Anything).Return(&filespaceusage.NodeUsageResponse{
 				Usage: filesync.NodeUsage{
@@ -228,7 +228,7 @@ func TestSpaceStatus(t *testing.T) {
 			objs := genSyncingObjects(10, 100, "spaceId")
 			fx.objectStore.AddObjects(t, "spaceId", objs)
 			fx.networkConfig.EXPECT().GetNetworkMode().Return(pb.RpcAccount_LocalOnly)
-			fx.spaceIdGetter.EXPECT().AllSpaceIds().Return([]string{"spaceId"})
+			fx.spaceIdGetter.EXPECT().AllLoadedSpaceIds().Return([]string{"spaceId"})
 			fx.eventSender.EXPECT().Broadcast(event.NewEventSingleMessage("spaceId", &pb.EventMessageValueOfSpaceSyncStatusUpdate{
 				SpaceSyncStatusUpdate: &pb.EventSpaceSyncStatusUpdate{
 					Id:      "spaceId",
@@ -244,7 +244,7 @@ func TestSpaceStatus(t *testing.T) {
 			objs := genSyncingObjects(10, 100, "spaceId")
 			fx.objectStore.AddObjects(t, "spaceId", objs)
 			fx.networkConfig.EXPECT().GetNetworkMode().Return(pb.RpcAccount_DefaultConfig)
-			fx.spaceIdGetter.EXPECT().AllSpaceIds().Return([]string{"spaceId"})
+			fx.spaceIdGetter.EXPECT().AllLoadedSpaceIds().Return([]string{"spaceId"})
 			fx.nodeStatus.EXPECT().GetNodeStatus("spaceId").Return(nodestatus.Online)
 			fx.nodeUsage.EXPECT().GetNodeUsage(mock.Anything).Return(&filespaceusage.NodeUsageResponse{
 				Usage: filesync.NodeUsage{
@@ -271,7 +271,7 @@ func TestSpaceStatus(t *testing.T) {
 			objs := genSyncingObjects(10, 100, "spaceId")
 			fx.objectStore.AddObjects(t, "spaceId", objs)
 			fx.networkConfig.EXPECT().GetNetworkMode().Return(pb.RpcAccount_DefaultConfig)
-			fx.spaceIdGetter.EXPECT().AllSpaceIds().Return([]string{"spaceId"})
+			fx.spaceIdGetter.EXPECT().AllLoadedSpaceIds().Return([]string{"spaceId"})
 			fx.nodeStatus.EXPECT().GetNodeStatus("spaceId").Return(nodestatus.ConnectionError)
 			fx.nodeUsage.EXPECT().GetNodeUsage(mock.Anything).Return(&filespaceusage.NodeUsageResponse{
 				Usage: filesync.NodeUsage{
@@ -298,7 +298,7 @@ func TestSpaceStatus(t *testing.T) {
 			objs := genSyncingObjects(10, 100, "spaceId")
 			fx.objectStore.AddObjects(t, "spaceId", objs)
 			fx.networkConfig.EXPECT().GetNetworkMode().Return(pb.RpcAccount_DefaultConfig)
-			fx.spaceIdGetter.EXPECT().AllSpaceIds().Return([]string{"spaceId"})
+			fx.spaceIdGetter.EXPECT().AllLoadedSpaceIds().Return([]string{"spaceId"})
 			fx.nodeStatus.EXPECT().GetNodeStatus("spaceId").Return(nodestatus.ConnectionError)
 			fx.nodeUsage.EXPECT().GetNodeUsage(mock.Anything).Return(&filespaceusage.NodeUsageResponse{
 				Usage: filesync.NodeUsage{
@@ -326,7 +326,7 @@ func TestSpaceStatus(t *testing.T) {
 			objs := genSyncingObjects(10, 100, "spaceId")
 			fx.objectStore.AddObjects(t, "spaceId", objs)
 			fx.networkConfig.EXPECT().GetNetworkMode().Return(pb.RpcAccount_DefaultConfig)
-			fx.spaceIdGetter.EXPECT().AllSpaceIds().Return([]string{"spaceId"})
+			fx.spaceIdGetter.EXPECT().AllLoadedSpaceIds().Return([]string{"spaceId"})
 			fx.nodeStatus.EXPECT().GetNodeStatus("spaceId").Return(nodestatus.Online)
 			fx.nodeUsage.EXPECT().GetNodeUsage(mock.Anything).Return(&filespaceusage.NodeUsageResponse{
 				Usage: filesync.NodeUsage{
@@ -361,7 +361,7 @@ func TestSpaceStatus(t *testing.T) {
 	t.Run("sync protocol compatibility", func(t *testing.T) {
 		fx := newFixture(t, func(fx *fixture) {
 			fx.networkConfig.EXPECT().GetNetworkMode().Return(pb.RpcAccount_DefaultConfig)
-			fx.spaceIdGetter.EXPECT().AllSpaceIds().Return([]string{"spaceId"})
+			fx.spaceIdGetter.EXPECT().AllLoadedSpaceIds().Return([]string{"spaceId"})
 			fx.nodeStatus.EXPECT().GetNodeStatus("spaceId").Return(nodestatus.Online)
 			fx.nodeUsage.EXPECT().GetNodeUsage(mock.Anything).Return(&filespaceusage.NodeUsageResponse{
 				Usage: filesync.NodeUsage{
@@ -386,7 +386,7 @@ func TestSpaceStatus(t *testing.T) {
 			objs := genSyncingObjects(10, 100, "spaceId")
 			fx.objectStore.AddObjects(t, "spaceId", objs)
 			fx.networkConfig.EXPECT().GetNetworkMode().Return(pb.RpcAccount_DefaultConfig)
-			fx.spaceIdGetter.EXPECT().AllSpaceIds().Return([]string{"spaceId"})
+			fx.spaceIdGetter.EXPECT().AllLoadedSpaceIds().Return([]string{"spaceId"})
 			fx.nodeStatus.EXPECT().GetNodeStatus("spaceId").Return(nodestatus.ConnectionError)
 			fx.nodeUsage.EXPECT().GetNodeUsage(mock.Anything).Return(&filespaceusage.NodeUsageResponse{
 				Usage: filesync.NodeUsage{
@@ -423,7 +423,7 @@ func TestSpaceStatus(t *testing.T) {
 			objs := genSyncingObjects(10, 100, "spaceId")
 			fx.objectStore.AddObjects(t, "spaceId", objs)
 			fx.networkConfig.EXPECT().GetNetworkMode().Return(pb.RpcAccount_LocalOnly)
-			fx.spaceIdGetter.EXPECT().AllSpaceIds().Return([]string{"spaceId"})
+			fx.spaceIdGetter.EXPECT().AllLoadedSpaceIds().Return([]string{"spaceId"})
 			fx.eventSender.EXPECT().Broadcast(event.NewEventSingleMessage("spaceId", &pb.EventMessageValueOfSpaceSyncStatusUpdate{
 				SpaceSyncStatusUpdate: &pb.EventSpaceSyncStatusUpdate{
 					Id:      "spaceId",

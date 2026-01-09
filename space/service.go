@@ -533,6 +533,23 @@ func (s *service) AllSpaceIds() (ids []string) {
 	return
 }
 
+// AllLoadedSpaceIds returns IDs of spaces that are fully loaded (in ModeLoading state).
+// Excludes marketplace space and spaces that are being offloaded, deleted, or joining.
+func (s *service) AllLoadedSpaceIds() (ids []string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	for id, c := range s.spaceControllers {
+		if c.Mode() != mode.ModeLoading {
+			continue
+		}
+		if id == addr.AnytypeMarketplaceWorkspace {
+			continue
+		}
+		ids = append(ids, id)
+	}
+	return
+}
+
 func (s *service) TechSpaceId() string {
 	return s.techSpaceId
 }
