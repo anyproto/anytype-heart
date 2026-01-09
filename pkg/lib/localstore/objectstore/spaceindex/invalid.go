@@ -13,200 +13,199 @@ import (
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
-type invalidStore struct {
-	err error
+// emptyStore is used for uninitialized spaces (as sharedEmptyStore singleton).
+// Read methods return empty results, write methods return ErrSpaceNotInitialized.
+// SpaceId is handled by storeProxy, not emptyStore.
+type emptyStore struct{}
+
+func (s *emptyStore) SpaceId() string {
+	return "" // SpaceId is handled by storeProxy
 }
 
-func (s *invalidStore) IterateAll(proc func(doc *anyenc.Value) error) error {
+func (s *emptyStore) Close() error {
 	return nil
 }
 
-var _ Store = (*invalidStore)(nil)
-
-func NewInvalidStore(err error) Store {
-	return &invalidStore{err: err}
+func (s *emptyStore) Init() error {
+	return ErrSpaceNotInitialized
 }
 
-func (s *invalidStore) ListFullIds() ([]domain.FullID, error) {
-	return nil, s.err
+// Read methods - return empty results
+
+func (s *emptyStore) Query(q database.Query) (records []database.Record, err error) {
+	return []database.Record{}, nil
 }
 
-func (s *invalidStore) SpaceId() string {
-	return ""
+func (s *emptyStore) QueryRaw(f *database.Filters, limit int, offset int) (records []database.Record, err error) {
+	return []database.Record{}, nil
 }
 
-func (s *invalidStore) Close() error {
-	return s.err
+func (s *emptyStore) QueryByIds(ids []string) (records []database.Record, err error) {
+	return []database.Record{}, nil
 }
 
-func (s *invalidStore) Init() error {
-	return s.err
+func (s *emptyStore) QueryByIdsAndSubscribeForChanges(ids []string, subscription database.Subscription) (records []database.Record, close func(), err error) {
+	return []database.Record{}, func() {}, nil
 }
 
-func (s *invalidStore) Query(q database.Query) (records []database.Record, err error) {
-	return nil, s.err
+func (s *emptyStore) QueryObjectIds(q database.Query) (ids []string, total int, err error) {
+	return []string{}, 0, nil
 }
 
-func (s *invalidStore) QueryRaw(f *database.Filters, limit int, offset int) (records []database.Record, err error) {
-	return nil, s.err
+func (s *emptyStore) QueryIterate(q database.Query, proc func(details *domain.Details)) error {
+	return nil
 }
 
-func (s *invalidStore) QueryByIds(ids []string) (records []database.Record, err error) {
-	return nil, s.err
+func (s *emptyStore) IterateAll(proc func(doc *anyenc.Value) error) error {
+	return nil
 }
 
-func (s *invalidStore) QueryByIdsAndSubscribeForChanges(ids []string, subscription database.Subscription) (records []database.Record, close func(), err error) {
-	return nil, nil, s.err
+func (s *emptyStore) HasIds(ids []string) (exists []string, err error) {
+	return []string{}, nil
 }
 
-func (s *invalidStore) QueryObjectIds(q database.Query) (ids []string, total int, err error) {
-	return nil, 0, s.err
+func (s *emptyStore) GetInfosByIds(ids []string) ([]*database.ObjectInfo, error) {
+	return []*database.ObjectInfo{}, nil
 }
 
-func (s *invalidStore) QueryIterate(q database.Query, proc func(details *domain.Details)) error {
-	return s.err
+func (s *emptyStore) List(includeArchived bool) ([]*database.ObjectInfo, error) {
+	return []*database.ObjectInfo{}, nil
 }
 
-func (s *invalidStore) HasIds(ids []string) (exists []string, err error) {
-	return nil, s.err
+func (s *emptyStore) ListIds() ([]string, error) {
+	return []string{}, nil
 }
 
-func (s *invalidStore) GetInfosByIds(ids []string) ([]*database.ObjectInfo, error) {
-	return nil, s.err
+func (s *emptyStore) ListFullIds() ([]domain.FullID, error) {
+	return []domain.FullID{}, nil
 }
 
-func (s *invalidStore) List(includeArchived bool) ([]*database.ObjectInfo, error) {
-	return nil, s.err
+func (s *emptyStore) GetDetails(id string) (*domain.Details, error) {
+	return domain.NewDetails(), nil
 }
 
-func (s *invalidStore) ListIds() ([]string, error) {
-	return nil, s.err
+func (s *emptyStore) GetObjectByUniqueKey(uniqueKey domain.UniqueKey) (*domain.Details, error) {
+	return nil, ErrObjectNotFound
 }
 
-func (s *invalidStore) UpdateObjectDetails(ctx context.Context, id string, details *domain.Details) error {
-	return s.err
+func (s *emptyStore) GetUniqueKeyById(id string) (key domain.UniqueKey, err error) {
+	return nil, ErrObjectNotFound
 }
 
-func (s *invalidStore) UpdateObjectLinks(ctx context.Context, id string, links []string) error {
-	return s.err
+func (s *emptyStore) GetInboundLinksById(id string) ([]string, error) {
+	return []string{}, nil
 }
 
-func (s *invalidStore) UpdatePendingLocalDetails(id string, proc func(details *domain.Details) (*domain.Details, error)) error {
-	return s.err
+func (s *emptyStore) GetOutboundLinksById(id string) ([]string, error) {
+	return []string{}, nil
 }
 
-func (s *invalidStore) ModifyObjectDetails(id string, proc func(details *domain.Details) (*domain.Details, bool, error)) error {
-	return s.err
+func (s *emptyStore) GetWithLinksInfoById(id string) (*model.ObjectInfoWithLinks, error) {
+	return nil, ErrObjectNotFound
 }
 
-func (s *invalidStore) DeleteObject(id string) error {
-	return s.err
+func (s *emptyStore) GetActiveViews(objectId string) (map[string]string, error) {
+	return map[string]string{}, nil
 }
 
-func (s *invalidStore) DeleteDetails(ctx context.Context, ids []string) error {
-	return s.err
+func (s *emptyStore) GetRelationLink(key string) (*model.RelationLink, error) {
+	return nil, ErrObjectNotFound
 }
 
-func (s *invalidStore) DeleteLinks(ids []string) error {
-	return s.err
+func (s *emptyStore) FetchRelationByKey(key string) (relation *relationutils.Relation, err error) {
+	return nil, ErrObjectNotFound
 }
 
-func (s *invalidStore) GetDetails(id string) (*domain.Details, error) {
-	return nil, s.err
+func (s *emptyStore) FetchRelationByKeys(keys ...domain.RelationKey) (relations relationutils.Relations, err error) {
+	return relationutils.Relations{}, nil
 }
 
-func (s *invalidStore) GetObjectByUniqueKey(uniqueKey domain.UniqueKey) (*domain.Details, error) {
-	return nil, s.err
+func (s *emptyStore) FetchRelationByLinks(links pbtypes.RelationLinks) (relations relationutils.Relations, err error) {
+	return relationutils.Relations{}, nil
 }
 
-func (s *invalidStore) GetUniqueKeyById(id string) (key domain.UniqueKey, err error) {
-	return nil, s.err
+func (s *emptyStore) ListAllRelations() (relations relationutils.Relations, err error) {
+	return relationutils.Relations{}, nil
 }
 
-func (s *invalidStore) GetInboundLinksById(id string) ([]string, error) {
-	return nil, s.err
+func (s *emptyStore) GetRelationById(id string) (relation *model.Relation, err error) {
+	return nil, ErrObjectNotFound
 }
 
-func (s *invalidStore) GetOutboundLinksById(id string) ([]string, error) {
-	return nil, s.err
+func (s *emptyStore) GetRelationByKey(key string) (*model.Relation, error) {
+	return nil, ErrObjectNotFound
 }
 
-func (s *invalidStore) GetWithLinksInfoById(id string) (*model.ObjectInfoWithLinks, error) {
-	return nil, s.err
+func (s *emptyStore) GetRelationFormatByKey(key domain.RelationKey) (model.RelationFormat, error) {
+	return 0, ErrObjectNotFound
 }
 
-func (s *invalidStore) SetActiveView(objectId, blockId, viewId string) error {
-	return s.err
+func (s *emptyStore) ListRelationOptions(relationKey domain.RelationKey) (options []*model.RelationOption, err error) {
+	return []*model.RelationOption{}, nil
 }
 
-func (s *invalidStore) SetActiveViews(objectId string, views map[string]string) error {
-	return s.err
+func (s *emptyStore) GetObjectType(id string) (*model.ObjectType, error) {
+	return nil, ErrObjectNotFound
 }
 
-func (s *invalidStore) GetActiveViews(objectId string) (map[string]string, error) {
-	return nil, s.err
+func (s *emptyStore) GetLastIndexedHeadsHash(ctx context.Context, id string) (headsHash string, err error) {
+	return "", nil
 }
 
-func (s *invalidStore) GetRelationLink(key string) (*model.RelationLink, error) {
-	return nil, s.err
+// Write methods - return error
+
+func (s *emptyStore) UpdateObjectDetails(ctx context.Context, id string, details *domain.Details) error {
+	return ErrSpaceNotInitialized
 }
 
-func (s *invalidStore) FetchRelationByKey(key string) (relation *relationutils.Relation, err error) {
-	return nil, s.err
+func (s *emptyStore) UpdateObjectLinks(ctx context.Context, id string, links []string) error {
+	return ErrSpaceNotInitialized
 }
 
-func (s *invalidStore) FetchRelationByKeys(keys ...domain.RelationKey) (relations relationutils.Relations, err error) {
-	return nil, s.err
+func (s *emptyStore) UpdatePendingLocalDetails(id string, proc func(details *domain.Details) (*domain.Details, error)) error {
+	return ErrSpaceNotInitialized
 }
 
-func (s *invalidStore) FetchRelationByLinks(links pbtypes.RelationLinks) (relations relationutils.Relations, err error) {
-	return nil, s.err
+func (s *emptyStore) ModifyObjectDetails(id string, proc func(details *domain.Details) (*domain.Details, bool, error)) error {
+	return ErrSpaceNotInitialized
 }
 
-func (s *invalidStore) ListAllRelations() (relations relationutils.Relations, err error) {
-	return nil, s.err
+func (s *emptyStore) DeleteObject(id string) error {
+	return ErrSpaceNotInitialized
 }
 
-func (s *invalidStore) GetRelationById(id string) (relation *model.Relation, err error) {
-	return nil, s.err
+func (s *emptyStore) DeleteDetails(ctx context.Context, ids []string) error {
+	return ErrSpaceNotInitialized
 }
 
-func (s *invalidStore) GetRelationByKey(key string) (*model.Relation, error) {
-	return nil, s.err
+func (s *emptyStore) DeleteLinks(ids []string) error {
+	return ErrSpaceNotInitialized
 }
 
-func (s *invalidStore) GetRelationFormatByKey(key domain.RelationKey) (model.RelationFormat, error) {
-	return 0, s.err
+func (s *emptyStore) SetActiveView(objectId, blockId, viewId string) error {
+	return ErrSpaceNotInitialized
 }
 
-func (s *invalidStore) ListRelationOptions(relationKey domain.RelationKey) (options []*model.RelationOption, err error) {
-	return nil, s.err
+func (s *emptyStore) SetActiveViews(objectId string, views map[string]string) error {
+	return ErrSpaceNotInitialized
 }
 
-func (s *invalidStore) GetObjectType(id string) (*model.ObjectType, error) {
-	return nil, s.err
+func (s *emptyStore) SaveLastIndexedHeadsHash(ctx context.Context, id string, headsHash string) (err error) {
+	return ErrSpaceNotInitialized
 }
 
-func (s *invalidStore) GetLastIndexedHeadsHash(ctx context.Context, id string) (headsHash string, err error) {
-	return "", s.err
+func (s *emptyStore) WriteTx(ctx context.Context) (anystore.WriteTx, error) {
+	return nil, ErrSpaceNotInitialized
 }
 
-func (s *invalidStore) SaveLastIndexedHeadsHash(ctx context.Context, id string, headsHash string) (err error) {
-	return s.err
+func (s *emptyStore) SubscribeForAll(callback func(rec database.Record)) {
+	// No-op for empty store
 }
 
-func (s *invalidStore) WriteTx(ctx context.Context) (anystore.WriteTx, error) {
-	return nil, s.err
+func (s *emptyStore) AddFileKeys(fileKeys ...domain.FileEncryptionKeys) error {
+	return ErrSpaceNotInitialized
 }
 
-func (s *invalidStore) SubscribeForAll(callback func(rec database.Record)) {
-
-}
-
-func (s *invalidStore) AddFileKeys(fileKeys ...domain.FileEncryptionKeys) error {
-	return s.err
-}
-
-func (s *invalidStore) GetFileKeys(fileId domain.FileId) (map[string]string, error) {
-	return nil, s.err
+func (s *emptyStore) GetFileKeys(fileId domain.FileId) (map[string]string, error) {
+	return nil, ErrObjectNotFound
 }

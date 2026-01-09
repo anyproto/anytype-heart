@@ -178,3 +178,7 @@ func (s *spaceController) GetStatus() spaceinfo.AccountStatus {
 func (s *spaceController) GetLocalStatus() spaceinfo.LocalStatus {
 	return s.status.GetLocalStatus()
 }
+
+func (s *spaceController) SetModeChangeHook(hook mode.ModeChangeHook) {
+	s.sm.SetOnModeChange(hook)
+}

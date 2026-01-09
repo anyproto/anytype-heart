@@ -32,6 +32,7 @@ func (s *service) AddStreamable(ctx context.Context, id string, guestKey crypto.
 	}
 	s.mu.Lock()
 	close(wait)
+	ctrl.SetModeChangeHook(s.createModeChangeHook(ctrl.SpaceId()))
 	s.spaceControllers[ctrl.SpaceId()] = ctrl
 	s.mu.Unlock()
 	return nil

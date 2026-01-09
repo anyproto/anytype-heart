@@ -106,7 +106,8 @@ func NewStoreFixture(t testing.TB) *StoreFixture {
 	testApp.Register(provider)
 	testApp.Register(fullText)
 	testApp.Register(&stubDetailsFromId{})
-	testApp.Register(&stubTechSpaceIdProvider{})
+	techSpaceProvider := &stubTechSpaceIdProvider{}
+	testApp.Register(techSpaceProvider)
 
 	err = fullText.Init(testApp)
 	require.NoError(t, err)
@@ -129,6 +130,10 @@ func NewStoreFixture(t testing.TB) *StoreFixture {
 	err = ds.Run(ctx)
 	require.NoError(t, err)
 
+	// Initialize the tech space index for tests that need it
+	err = ds.InitSpaceIndex(techSpaceProvider.TechSpaceId())
+	require.NoError(t, err)
+
 	return &StoreFixture{
 		dsObjectStore: ds.(*dsObjectStore),
 		FullText:      fullText,
@@ -142,6 +147,10 @@ func (fx *StoreFixture) Init(a *app.App) (err error) {
 type TestObject = spaceindex.TestObject
 
 func (fx *StoreFixture) AddObjects(t testing.TB, spaceId string, objects []spaceindex.TestObject) {
+	// Ensure space index is initialized before writing
+	err := fx.InitSpaceIndex(spaceId)
+	require.NoError(t, err)
+
 	store := fx.SpaceIndex(spaceId)
 	for _, obj := range objects {
 		id := obj[bundle.RelationKeyId].String()

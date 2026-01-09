@@ -30,6 +30,7 @@ import (
 	"github.com/anyproto/anytype-heart/space/internal/components/dependencies"
 	"github.com/anyproto/anytype-heart/space/internal/personalspace"
 	"github.com/anyproto/anytype-heart/space/internal/spacecontroller"
+	"github.com/anyproto/anytype-heart/space/internal/spaceprocess/mode"
 	"github.com/anyproto/anytype-heart/space/spacecore"
 	"github.com/anyproto/anytype-heart/space/spacedomain"
 	"github.com/anyproto/anytype-heart/space/spacefactory"
@@ -97,6 +98,13 @@ type AclJoiner interface {
 	Join(ctx context.Context, spaceId, networkId string, inviteCid cid.Cid, inviteFileKey crypto.SymKey) error
 }
 
+// SpaceModeObserver is an interface for components that want to be notified
+// when a space transitions between modes (e.g., Initial -> Loading -> Offloading).
+// Components implementing this interface will be auto-discovered during Init.
+type SpaceModeObserver interface {
+	OnSpaceModeChange(spaceId string, prevMode, newMode spaceinfo.SpaceMode)
+}
+
 type service struct {
 	techSpace           *clientspace.TechSpace
 	techSpaceReady      chan struct{}
@@ -121,6 +129,7 @@ type service struct {
 	accountMetadataPayload []byte
 	repKey                 uint64
 	spaceLoaderListener    aclobjectmanager.SpaceLoaderListener
+	modeObservers          []SpaceModeObserver
 	watcher                *spaceWatcher
 
 	mu        sync.Mutex
@@ -182,6 +191,13 @@ func (s *service) Init(a *app.App) (err error) {
 	s.repKey, err = getRepKey(s.personalSpaceId)
 	s.ctx, s.ctxCancel = context.WithCancel(context.Background())
 	s.watcher = newSpaceWatcher(s.techSpaceId, subService, s)
+
+	// Collect all components that implement SpaceModeObserver
+	a.IterateComponents(func(c app.Component) {
+		if observer, ok := c.(SpaceModeObserver); ok {
+			s.modeObservers = append(s.modeObservers, observer)
+		}
+	})
 
 	return err
 }
@@ -405,6 +421,36 @@ func (s *service) OnWorkspaceChanged(spaceId string, details *domain.Details) {
 			log.Warn("OnWorkspaceChanged error", zap.Error(err))
 		}
 	}()
+}
+
+// modeToSpaceMode converts internal mode.Mode to public spaceinfo.SpaceMode.
+func modeToSpaceMode(m mode.Mode) spaceinfo.SpaceMode {
+	switch m {
+	case mode.ModeInitial:
+		return spaceinfo.SpaceModeInitial
+	case mode.ModeLoading:
+		return spaceinfo.SpaceModeLoading
+	case mode.ModeOffloading:
+		return spaceinfo.SpaceModeOffloading
+	case mode.ModeJoining:
+		return spaceinfo.SpaceModeJoining
+	default:
+		return spaceinfo.SpaceModeUnknown
+	}
+}
+
+// notifyModeChange dispatches mode change events to all registered observers.
+func (s *service) notifyModeChange(spaceId string, prevMode, newMode spaceinfo.SpaceMode) {
+	for _, observer := range s.modeObservers {
+		observer.OnSpaceModeChange(spaceId, prevMode, newMode)
+	}
+}
+
+// createModeChangeHook creates a hook that dispatches mode changes to all observers.
+func (s *service) createModeChangeHook(spaceId string) mode.ModeChangeHook {
+	return func(prevMode, newMode mode.Mode) {
+		s.notifyModeChange(spaceId, modeToSpaceMode(prevMode), modeToSpaceMode(newMode))
+	}
 }
 
 func (s *service) AccountMetadataSymKey() crypto.SymKey {

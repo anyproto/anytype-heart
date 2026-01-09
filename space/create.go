@@ -95,6 +95,7 @@ func (s *service) CreateOneToOne(ctx context.Context, description *spaceinfo.Spa
 		err = fmt.Errorf("loader: create onetoone: %w", err)
 		return nil, err
 	}
+	ctrl.SetModeChangeHook(s.createModeChangeHook(ctrl.SpaceId()))
 	s.spaceControllers[ctrl.SpaceId()] = ctrl
 	s.mu.Unlock()
 
@@ -137,6 +138,7 @@ func (s *service) create(ctx context.Context, description *spaceinfo.SpaceDescri
 		s.mu.Unlock()
 		return nil, err
 	}
+	ctrl.SetModeChangeHook(s.createModeChangeHook(ctrl.SpaceId()))
 	s.spaceControllers[ctrl.SpaceId()] = ctrl
 	s.mu.Unlock()
 	s.updater.UpdateCoordinatorStatus()

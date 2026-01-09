@@ -7,6 +7,34 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
+// SpaceMode represents the operational mode of a space.
+// This is used for the space state machine and mode change notifications.
+type SpaceMode int
+
+const (
+	SpaceModeUnknown SpaceMode = iota
+	SpaceModeInitial
+	SpaceModeLoading
+	SpaceModeOffloading
+	SpaceModeJoining
+)
+
+func (m SpaceMode) String() string {
+	switch m {
+	case SpaceModeUnknown:
+		return "Unknown"
+	case SpaceModeInitial:
+		return "Initial"
+	case SpaceModeLoading:
+		return "Loading"
+	case SpaceModeOffloading:
+		return "Offloading"
+	case SpaceModeJoining:
+		return "Joining"
+	}
+	return ""
+}
+
 type LocalStatus int
 
 const (

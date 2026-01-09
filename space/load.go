@@ -91,6 +91,8 @@ func (s *service) startStatus(ctx context.Context, info spaceinfo.SpacePersisten
 		s.mu.Unlock()
 		return nil, err
 	}
+	// Set up mode change hook to notify observers
+	ctrl.SetModeChangeHook(s.createModeChangeHook(info.SpaceID))
 	s.spaceControllers[info.SpaceID] = ctrl
 	s.mu.Unlock()
 	return ctrl, nil

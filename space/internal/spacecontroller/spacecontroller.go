@@ -18,4 +18,6 @@ type SpaceController interface {
 	Close(ctx context.Context) error
 	GetStatus() spaceinfo.AccountStatus
 	GetLocalStatus() spaceinfo.LocalStatus
+	// SetModeChangeHook sets a callback that is invoked when the space transitions between modes.
+	SetModeChangeHook(hook mode.ModeChangeHook)
 }

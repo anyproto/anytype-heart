@@ -22,6 +22,7 @@ func (s *service) initMarketplaceSpace(ctx context.Context) error {
 	s.waiting[addr.AnytypeMarketplaceWorkspace] = controllerWaiter{
 		wait: wait,
 	}
+	ctrl.SetModeChangeHook(s.createModeChangeHook(addr.AnytypeMarketplaceWorkspace))
 	s.spaceControllers[addr.AnytypeMarketplaceWorkspace] = ctrl
 	return nil
 }

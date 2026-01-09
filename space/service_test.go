@@ -119,6 +119,7 @@ func TestService_Init(t *testing.T) {
 			fx.factory.EXPECT().CreateAndSetTechSpace(mock.Anything).Return(&clientspace.TechSpace{TechSpace: fx.techSpace}, nil)
 			prCtrl := mock_spacecontroller.NewMockSpaceController(t)
 			fx.factory.EXPECT().NewPersonalSpace(mock.Anything, mock.Anything).Return(prCtrl, nil)
+			prCtrl.EXPECT().SetModeChangeHook(mock.Anything).Maybe()
 			prCtrl.EXPECT().Close(mock.Anything).Return(nil)
 			fx.techSpace.EXPECT().StartSync()
 		})
@@ -130,6 +131,7 @@ func TestService_Init(t *testing.T) {
 			fx.factory.EXPECT().CreateAndSetTechSpace(mock.Anything).Return(&clientspace.TechSpace{TechSpace: fx.techSpace}, nil)
 			prCtrl := mock_spacecontroller.NewMockSpaceController(t)
 			fx.factory.EXPECT().NewPersonalSpace(mock.Anything, mock.Anything).Return(prCtrl, nil)
+			prCtrl.EXPECT().SetModeChangeHook(mock.Anything).Maybe()
 			prCtrl.EXPECT().Close(mock.Anything).Return(nil)
 			fx.techSpace.EXPECT().StartSync()
 		})
@@ -306,6 +308,7 @@ func (fx *fixture) expectRun(t *testing.T, expectOldAccount func(t *testing.T, f
 	fx.factory.EXPECT().CreateMarketplaceSpace(mock.Anything).Return(mpCtrl, nil)
 	mpCtrl.EXPECT().Start(mock.Anything).Return(nil)
 	mpCtrl.EXPECT().Close(mock.Anything).Return(nil)
+	mpCtrl.EXPECT().SetModeChangeHook(mock.Anything).Maybe()
 	ts := mock_techspace.NewMockTechSpace(t)
 	fx.techSpace = ts
 	fx.clientSpace = clientSpace
@@ -313,6 +316,7 @@ func (fx *fixture) expectRun(t *testing.T, expectOldAccount func(t *testing.T, f
 		fx.factory.EXPECT().CreateAndSetTechSpace(mock.Anything).Return(&clientspace.TechSpace{TechSpace: ts}, nil)
 		prCtrl := mock_spacecontroller.NewMockSpaceController(t)
 		prCtrl.EXPECT().SpaceId().Return(fx.spaceId)
+		prCtrl.EXPECT().SetModeChangeHook(mock.Anything).Maybe()
 		commonSpace := mock_commonspace.NewMockSpace(fx.ctrl)
 		commonSpace.EXPECT().Id().Return(fx.spaceId).AnyTimes()
 		fx.spaceCore.EXPECT().Create(mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(&spacecore.AnySpace{Space: commonSpace}, nil)
@@ -406,6 +410,7 @@ func TestService_onSpaceStatusUpdated(t *testing.T) {
 		personalCtrl := mock_spacecontroller.NewMockSpaceController(t)
 		personalCtrl.EXPECT().SpaceId().Return(fx.spaceId).Maybe()
 		personalCtrl.EXPECT().Close(mock.Anything).Return(nil).Maybe()
+		personalCtrl.EXPECT().SetModeChangeHook(mock.Anything).Maybe()
 		fx.factory.EXPECT().NewPersonalSpace(mock.Anything, fx.service.accountMetadataPayload).Return(personalCtrl, nil)
 		personalCtrl.EXPECT().Update().Run(func() {
 			close(done)
@@ -429,6 +434,7 @@ func TestService_onSpaceStatusUpdated(t *testing.T) {
 		shareableCtrl := mock_spacecontroller.NewMockSpaceController(t)
 		shareableCtrl.EXPECT().SpaceId().Return(shareableSpaceId).Maybe()
 		shareableCtrl.EXPECT().Close(mock.Anything).Return(nil).Maybe()
+		shareableCtrl.EXPECT().SetModeChangeHook(mock.Anything).Maybe()
 		fx.factory.EXPECT().NewShareableSpace(mock.Anything, shareableSpaceId, mock.Anything).Return(shareableCtrl, nil)
 		shareableCtrl.EXPECT().Update().Run(func() {
 			close(done)
@@ -452,6 +458,7 @@ func TestService_onSpaceStatusUpdated(t *testing.T) {
 		streamableCtrl := mock_spacecontroller.NewMockSpaceController(t)
 		streamableCtrl.EXPECT().SpaceId().Return(streamableSpaceId).Maybe()
 		streamableCtrl.EXPECT().Close(mock.Anything).Return(nil).Maybe()
+		streamableCtrl.EXPECT().SetModeChangeHook(mock.Anything).Maybe()
 		fx.factory.EXPECT().NewStreamableSpace(mock.Anything, streamableSpaceId, mock.Anything, fx.service.accountMetadataPayload).Return(streamableCtrl, nil)
 		streamableCtrl.EXPECT().Update().Run(func() {
 			close(done)
@@ -503,6 +510,7 @@ func TestService_onSpaceStatusUpdated(t *testing.T) {
 		shareableCtrl := mock_spacecontroller.NewMockSpaceController(t)
 		shareableCtrl.EXPECT().SpaceId().Return(alreadyDeletedSpaceId).Maybe()
 		shareableCtrl.EXPECT().Close(mock.Anything).Return(nil).Maybe()
+		shareableCtrl.EXPECT().SetModeChangeHook(mock.Anything).Maybe()
 		fx.factory.EXPECT().NewShareableSpace(mock.Anything, alreadyDeletedSpaceId, mock.Anything).Return(shareableCtrl, nil)
 		shareableCtrl.EXPECT().Update().Run(func() {
 			close(done)
@@ -541,6 +549,7 @@ func TestService_onSpaceStatusUpdated(t *testing.T) {
 		updateErrorCtrl := mock_spacecontroller.NewMockSpaceController(t)
 		updateErrorCtrl.EXPECT().SpaceId().Return(updateErrorSpaceId).Maybe()
 		updateErrorCtrl.EXPECT().Close(mock.Anything).Return(nil).Maybe()
+		updateErrorCtrl.EXPECT().SetModeChangeHook(mock.Anything).Maybe()
 		fx.factory.EXPECT().NewShareableSpace(mock.Anything, updateErrorSpaceId, mock.Anything).Return(updateErrorCtrl, nil)
 		updateErrorCtrl.EXPECT().Update().Return(fmt.Errorf("update error"))
 

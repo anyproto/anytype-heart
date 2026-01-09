@@ -40,20 +40,25 @@ type ProcessFactory interface {
 	Process(mode Mode) Process
 }
 
+// ModeChangeHook is called when the state machine transitions to a new mode.
+// It receives the previous mode and the new mode.
+type ModeChangeHook func(prevMode, newMode Mode)
+
 type waiter chan Process
 
 type StateMachine struct {
 	sync.Mutex
-	current Process
-	mode    Mode
-	next    Mode
-	waiters []waiter
-	factory ProcessFactory
-	ctx     context.Context
-	cancel  context.CancelFunc
-	doneCh  chan struct{}
-	notify  chan struct{}
-	log     logger.CtxLogger
+	current        Process
+	mode           Mode
+	next           Mode
+	waiters        []waiter
+	factory        ProcessFactory
+	ctx            context.Context
+	cancel         context.CancelFunc
+	doneCh         chan struct{}
+	notify         chan struct{}
+	log            logger.CtxLogger
+	onModeChange   ModeChangeHook
 }
 
 func NewStateMachine(factory ProcessFactory, log logger.CtxLogger) (*StateMachine, error) {
@@ -96,6 +101,14 @@ func (s *StateMachine) GetProcess() Process {
 	s.Lock()
 	defer s.Unlock()
 	return s.current
+}
+
+// SetOnModeChange sets a callback that will be called when the mode changes.
+// The callback receives the previous mode and the new mode.
+func (s *StateMachine) SetOnModeChange(hook ModeChangeHook) {
+	s.Lock()
+	defer s.Unlock()
+	s.onModeChange = hook
 }
 
 func (s *StateMachine) ChangeMode(next Mode) (proc Process, err error) {
@@ -184,12 +197,18 @@ func (s *StateMachine) loop() {
 				break
 			}
 			s.Lock()
+			prevMode := s.mode
 			s.mode = s.next
 			s.next = ModeUnknown
 			s.current = cur
 			waiters := append([]waiter{}, s.waiters...)
 			s.waiters = nil
+			hook := s.onModeChange
 			s.Unlock()
+			// Call mode change hook if set
+			if hook != nil {
+				hook(prevMode, s.mode)
+			}
 			for _, w := range waiters {
 				w <- cur
 			}

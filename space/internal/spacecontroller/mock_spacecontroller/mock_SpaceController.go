@@ -482,6 +482,39 @@ func (_c *MockSpaceController_Update_Call) RunAndReturn(run func() error) *MockS
 	return _c
 }
 
+// SetModeChangeHook provides a mock function with given fields: hook
+func (_m *MockSpaceController) SetModeChangeHook(hook mode.ModeChangeHook) {
+	_m.Called(hook)
+}
+
+// MockSpaceController_SetModeChangeHook_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'SetModeChangeHook'
+type MockSpaceController_SetModeChangeHook_Call struct {
+	*mock.Call
+}
+
+// SetModeChangeHook is a helper method to define mock.On call
+//   - hook mode.ModeChangeHook
+func (_e *MockSpaceController_Expecter) SetModeChangeHook(hook interface{}) *MockSpaceController_SetModeChangeHook_Call {
+	return &MockSpaceController_SetModeChangeHook_Call{Call: _e.mock.On("SetModeChangeHook", hook)}
+}
+
+func (_c *MockSpaceController_SetModeChangeHook_Call) Run(run func(hook mode.ModeChangeHook)) *MockSpaceController_SetModeChangeHook_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(mode.ModeChangeHook))
+	})
+	return _c
+}
+
+func (_c *MockSpaceController_SetModeChangeHook_Call) Return() *MockSpaceController_SetModeChangeHook_Call {
+	_c.Call.Return()
+	return _c
+}
+
+func (_c *MockSpaceController_SetModeChangeHook_Call) RunAndReturn(run func(mode.ModeChangeHook)) *MockSpaceController_SetModeChangeHook_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // NewMockSpaceController creates a new instance of MockSpaceController. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.
 // The first argument is typically a *testing.T value.
 func NewMockSpaceController(t interface {

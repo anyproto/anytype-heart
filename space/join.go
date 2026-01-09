@@ -45,6 +45,7 @@ func (s *service) Join(ctx context.Context, id, aclHeadId string) error {
 	}
 	s.mu.Lock()
 	close(wait)
+	ctrl.SetModeChangeHook(s.createModeChangeHook(ctrl.SpaceId()))
 	s.spaceControllers[ctrl.SpaceId()] = ctrl
 	s.mu.Unlock()
 	return nil
@@ -88,6 +89,7 @@ func (s *service) InviteJoin(ctx context.Context, id, aclHeadId string) error {
 	}
 	s.mu.Lock()
 	close(wait)
+	ctrl.SetModeChangeHook(s.createModeChangeHook(ctrl.SpaceId()))
 	s.spaceControllers[ctrl.SpaceId()] = ctrl
 	s.mu.Unlock()
 	return nil

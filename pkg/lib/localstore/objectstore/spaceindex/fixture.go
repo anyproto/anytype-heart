@@ -23,7 +23,9 @@ import (
 var ctx = context.Background()
 
 type StoreFixture struct {
-	*dsObjectStore
+	Store
+	fts           ftsearch.FTSearch
+	fulltextQueue FulltextQueue
 }
 
 const spaceName = "space1"
@@ -98,17 +100,20 @@ func NewStoreFixture(t testing.TB) *StoreFixture {
 	err = fullText.Run(context.Background())
 	require.NoError(t, err)
 
+	ftQueue := &dummyFulltextQueue{}
 	s := New(context.Background(), "test", Deps{
 		DbProvider:    provider,
 		Fts:           fullText,
 		SourceService: &detailsFromId{},
 		SubManager:    &SubscriptionManager{},
-		FulltextQueue: &dummyFulltextQueue{},
+		FulltextQueue: ftQueue,
 	})
 	err = s.Init()
 	require.NoError(t, err)
 	return &StoreFixture{
-		dsObjectStore: s.(*dsObjectStore),
+		Store:         s,
+		fts:           fullText,
+		fulltextQueue: ftQueue,
 	}
 }
 
@@ -164,4 +169,14 @@ func (fx *StoreFixture) AddObjects(t testing.TB, objects []TestObject) {
 		err := fx.UpdateObjectDetails(context.Background(), id, makeDetails(obj))
 		require.NoError(t, err)
 	}
+}
+
+// SetSourceService sets the source service on the underlying dsObjectStore.
+// This is only for testing purposes to inject different source service behaviors.
+func (fx *StoreFixture) SetSourceService(s SourceDetailsFromID) {
+	proxy := fx.Store.(*storeProxy)
+	if !proxy.initialized.Load() {
+		panic("SetSourceService called before Init()")
+	}
+	proxy.realStore.sourceService = s
 }

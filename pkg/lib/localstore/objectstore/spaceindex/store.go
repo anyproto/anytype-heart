@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"sync"
+	"sync/atomic"
 
 	anystore "github.com/anyproto/any-store"
 	"github.com/anyproto/any-store/anyenc"
@@ -24,9 +25,13 @@ import (
 var log = logging.Logger("objectstore.spaceindex")
 
 var (
-	ErrObjectNotFound = fmt.Errorf("object not found in space index")
-	ErrNotAnObject    = fmt.Errorf("not an object")
+	ErrObjectNotFound      = fmt.Errorf("object not found in space index")
+	ErrNotAnObject         = fmt.Errorf("not an object")
+	ErrSpaceNotInitialized = fmt.Errorf("space index not initialized")
 )
+
+// sharedEmptyStore is a singleton used by all uninitialized proxies
+var sharedEmptyStore = &emptyStore{}
 
 type Store interface {
 	SpaceId() string
@@ -101,13 +106,30 @@ type FulltextQueue interface {
 	ClearFullTextQueue(spaceIds []string) error
 }
 
-type dsObjectStore struct {
-	spaceId    string
-	db         anystore.DB
-	objects    anystore.Collection
-	links      anystore.Collection
-	headsState anystore.Collection
+// storeProxy delegates to either sharedEmptyStore (before init) or dsObjectStore (after init).
+// This allows SpaceIndex() to always return the same instance that works correctly
+// once initialized.
+type storeProxy struct {
+	spaceId     string
+	initialized atomic.Bool
+	realStore   *dsObjectStore // only accessed when initialized is true
+	deps        Deps
+	initMu      sync.Mutex
+	ctx         context.Context
 
+	// onChangeCallback is stored here so it survives until dsObjectStore is created
+	onChangeCallback func(rec database.Record)
+}
+
+var _ Store = (*storeProxy)(nil)
+
+type dsObjectStore struct {
+	spaceId string
+	db      anystore.DB
+	objects anystore.Collection
+	links   anystore.Collection
+
+	headsState     anystore.Collection
 	activeViews    anystore.Collection
 	pendingDetails anystore.Collection
 	collections    []anystore.Collection
@@ -138,8 +160,370 @@ type Deps struct {
 	FulltextQueue FulltextQueue
 }
 
+// New creates a new Store that delegates to sharedEmptyStore until Init() is called.
 func New(componentCtx context.Context, spaceId string, deps Deps) Store {
-	s := &dsObjectStore{
+	return &storeProxy{
+		spaceId: spaceId,
+		deps:    deps,
+		ctx:     componentCtx,
+	}
+}
+
+func (p *storeProxy) Init() error {
+	p.initMu.Lock()
+	defer p.initMu.Unlock()
+
+	if p.initialized.Load() {
+		return nil
+	}
+
+	store := newDsObjectStore(p.ctx, p.spaceId, p.deps)
+	if err := store.init(); err != nil {
+		return err
+	}
+
+	// Transfer the callback that was registered before Init()
+	if p.onChangeCallback != nil {
+		store.SubscribeForAll(p.onChangeCallback)
+	}
+
+	p.realStore = store         // non-atomic write
+	p.initialized.Store(true)   // atomic write creates synchronization point
+	return nil
+}
+
+func (p *storeProxy) IsInitialized() bool {
+	return p.initialized.Load()
+}
+
+func (p *storeProxy) SpaceId() string {
+	return p.spaceId
+}
+
+func (p *storeProxy) Close() error {
+	p.initMu.Lock()
+	defer p.initMu.Unlock()
+
+	if !p.initialized.Load() {
+		return nil
+	}
+
+	// Mark uninitialized FIRST - new queries will use sharedEmptyStore
+	p.initialized.Store(false)
+
+	// Close real store - in-flight queries may get error (not panic)
+	var err error
+	if p.realStore != nil {
+		err = p.realStore.Close()
+		p.realStore = nil
+	}
+
+	return err
+}
+
+// All interface methods check initialized and delegate to realStore or sharedEmptyStore
+
+func (p *storeProxy) Query(q database.Query) ([]database.Record, error) {
+	if p.initialized.Load() {
+		return p.realStore.Query(q)
+	}
+	return sharedEmptyStore.Query(q)
+}
+
+func (p *storeProxy) QueryRaw(f *database.Filters, limit int, offset int) ([]database.Record, error) {
+	if p.initialized.Load() {
+		return p.realStore.QueryRaw(f, limit, offset)
+	}
+	return sharedEmptyStore.QueryRaw(f, limit, offset)
+}
+
+func (p *storeProxy) QueryByIds(ids []string) ([]database.Record, error) {
+	if p.initialized.Load() {
+		return p.realStore.QueryByIds(ids)
+	}
+	return sharedEmptyStore.QueryByIds(ids)
+}
+
+func (p *storeProxy) QueryByIdsAndSubscribeForChanges(ids []string, subscription database.Subscription) ([]database.Record, func(), error) {
+	if p.initialized.Load() {
+		return p.realStore.QueryByIdsAndSubscribeForChanges(ids, subscription)
+	}
+	return sharedEmptyStore.QueryByIdsAndSubscribeForChanges(ids, subscription)
+}
+
+func (p *storeProxy) QueryObjectIds(q database.Query) ([]string, int, error) {
+	if p.initialized.Load() {
+		return p.realStore.QueryObjectIds(q)
+	}
+	return sharedEmptyStore.QueryObjectIds(q)
+}
+
+func (p *storeProxy) QueryIterate(q database.Query, proc func(details *domain.Details)) error {
+	if p.initialized.Load() {
+		return p.realStore.QueryIterate(q, proc)
+	}
+	return sharedEmptyStore.QueryIterate(q, proc)
+}
+
+func (p *storeProxy) IterateAll(proc func(doc *anyenc.Value) error) error {
+	if p.initialized.Load() {
+		return p.realStore.IterateAll(proc)
+	}
+	return sharedEmptyStore.IterateAll(proc)
+}
+
+func (p *storeProxy) HasIds(ids []string) ([]string, error) {
+	if p.initialized.Load() {
+		return p.realStore.HasIds(ids)
+	}
+	return sharedEmptyStore.HasIds(ids)
+}
+
+func (p *storeProxy) GetInfosByIds(ids []string) ([]*database.ObjectInfo, error) {
+	if p.initialized.Load() {
+		return p.realStore.GetInfosByIds(ids)
+	}
+	return sharedEmptyStore.GetInfosByIds(ids)
+}
+
+func (p *storeProxy) List(includeArchived bool) ([]*database.ObjectInfo, error) {
+	if p.initialized.Load() {
+		return p.realStore.List(includeArchived)
+	}
+	return sharedEmptyStore.List(includeArchived)
+}
+
+func (p *storeProxy) ListIds() ([]string, error) {
+	if p.initialized.Load() {
+		return p.realStore.ListIds()
+	}
+	return sharedEmptyStore.ListIds()
+}
+
+func (p *storeProxy) ListFullIds() ([]domain.FullID, error) {
+	if p.initialized.Load() {
+		return p.realStore.ListFullIds()
+	}
+	return sharedEmptyStore.ListFullIds()
+}
+
+func (p *storeProxy) UpdateObjectDetails(ctx context.Context, id string, details *domain.Details) error {
+	if p.initialized.Load() {
+		return p.realStore.UpdateObjectDetails(ctx, id, details)
+	}
+	return sharedEmptyStore.UpdateObjectDetails(ctx, id, details)
+}
+
+func (p *storeProxy) SubscribeForAll(callback func(rec database.Record)) {
+	// Store the callback in the proxy so it survives until dsObjectStore is created
+	p.initMu.Lock()
+	p.onChangeCallback = callback
+	p.initMu.Unlock()
+	// Forward to realStore if already initialized
+	if p.initialized.Load() {
+		p.realStore.SubscribeForAll(callback)
+	}
+}
+
+func (p *storeProxy) UpdateObjectLinks(ctx context.Context, id string, links []string) error {
+	if p.initialized.Load() {
+		return p.realStore.UpdateObjectLinks(ctx, id, links)
+	}
+	return sharedEmptyStore.UpdateObjectLinks(ctx, id, links)
+}
+
+func (p *storeProxy) UpdatePendingLocalDetails(id string, proc func(details *domain.Details) (*domain.Details, error)) error {
+	if p.initialized.Load() {
+		return p.realStore.UpdatePendingLocalDetails(id, proc)
+	}
+	return sharedEmptyStore.UpdatePendingLocalDetails(id, proc)
+}
+
+func (p *storeProxy) ModifyObjectDetails(id string, proc func(details *domain.Details) (*domain.Details, bool, error)) error {
+	if p.initialized.Load() {
+		return p.realStore.ModifyObjectDetails(id, proc)
+	}
+	return sharedEmptyStore.ModifyObjectDetails(id, proc)
+}
+
+func (p *storeProxy) DeleteObject(id string) error {
+	if p.initialized.Load() {
+		return p.realStore.DeleteObject(id)
+	}
+	return sharedEmptyStore.DeleteObject(id)
+}
+
+func (p *storeProxy) DeleteDetails(ctx context.Context, ids []string) error {
+	if p.initialized.Load() {
+		return p.realStore.DeleteDetails(ctx, ids)
+	}
+	return sharedEmptyStore.DeleteDetails(ctx, ids)
+}
+
+func (p *storeProxy) DeleteLinks(ids []string) error {
+	if p.initialized.Load() {
+		return p.realStore.DeleteLinks(ids)
+	}
+	return sharedEmptyStore.DeleteLinks(ids)
+}
+
+func (p *storeProxy) GetDetails(id string) (*domain.Details, error) {
+	if p.initialized.Load() {
+		return p.realStore.GetDetails(id)
+	}
+	return sharedEmptyStore.GetDetails(id)
+}
+
+func (p *storeProxy) GetObjectByUniqueKey(uniqueKey domain.UniqueKey) (*domain.Details, error) {
+	if p.initialized.Load() {
+		return p.realStore.GetObjectByUniqueKey(uniqueKey)
+	}
+	return sharedEmptyStore.GetObjectByUniqueKey(uniqueKey)
+}
+
+func (p *storeProxy) GetUniqueKeyById(id string) (domain.UniqueKey, error) {
+	if p.initialized.Load() {
+		return p.realStore.GetUniqueKeyById(id)
+	}
+	return sharedEmptyStore.GetUniqueKeyById(id)
+}
+
+func (p *storeProxy) GetInboundLinksById(id string) ([]string, error) {
+	if p.initialized.Load() {
+		return p.realStore.GetInboundLinksById(id)
+	}
+	return sharedEmptyStore.GetInboundLinksById(id)
+}
+
+func (p *storeProxy) GetOutboundLinksById(id string) ([]string, error) {
+	if p.initialized.Load() {
+		return p.realStore.GetOutboundLinksById(id)
+	}
+	return sharedEmptyStore.GetOutboundLinksById(id)
+}
+
+func (p *storeProxy) GetWithLinksInfoById(id string) (*model.ObjectInfoWithLinks, error) {
+	if p.initialized.Load() {
+		return p.realStore.GetWithLinksInfoById(id)
+	}
+	return sharedEmptyStore.GetWithLinksInfoById(id)
+}
+
+func (p *storeProxy) SetActiveView(objectId, blockId, viewId string) error {
+	if p.initialized.Load() {
+		return p.realStore.SetActiveView(objectId, blockId, viewId)
+	}
+	return sharedEmptyStore.SetActiveView(objectId, blockId, viewId)
+}
+
+func (p *storeProxy) SetActiveViews(objectId string, views map[string]string) error {
+	if p.initialized.Load() {
+		return p.realStore.SetActiveViews(objectId, views)
+	}
+	return sharedEmptyStore.SetActiveViews(objectId, views)
+}
+
+func (p *storeProxy) GetActiveViews(objectId string) (map[string]string, error) {
+	if p.initialized.Load() {
+		return p.realStore.GetActiveViews(objectId)
+	}
+	return sharedEmptyStore.GetActiveViews(objectId)
+}
+
+func (p *storeProxy) GetRelationLink(key string) (*model.RelationLink, error) {
+	if p.initialized.Load() {
+		return p.realStore.GetRelationLink(key)
+	}
+	return sharedEmptyStore.GetRelationLink(key)
+}
+
+func (p *storeProxy) FetchRelationByKey(key string) (*relationutils.Relation, error) {
+	if p.initialized.Load() {
+		return p.realStore.FetchRelationByKey(key)
+	}
+	return sharedEmptyStore.FetchRelationByKey(key)
+}
+
+func (p *storeProxy) FetchRelationByKeys(keys ...domain.RelationKey) (relationutils.Relations, error) {
+	if p.initialized.Load() {
+		return p.realStore.FetchRelationByKeys(keys...)
+	}
+	return sharedEmptyStore.FetchRelationByKeys(keys...)
+}
+
+func (p *storeProxy) FetchRelationByLinks(links pbtypes.RelationLinks) (relationutils.Relations, error) {
+	if p.initialized.Load() {
+		return p.realStore.FetchRelationByLinks(links)
+	}
+	return sharedEmptyStore.FetchRelationByLinks(links)
+}
+
+func (p *storeProxy) ListAllRelations() (relationutils.Relations, error) {
+	if p.initialized.Load() {
+		return p.realStore.ListAllRelations()
+	}
+	return sharedEmptyStore.ListAllRelations()
+}
+
+func (p *storeProxy) GetRelationById(id string) (*model.Relation, error) {
+	if p.initialized.Load() {
+		return p.realStore.GetRelationById(id)
+	}
+	return sharedEmptyStore.GetRelationById(id)
+}
+
+func (p *storeProxy) GetRelationByKey(key string) (*model.Relation, error) {
+	if p.initialized.Load() {
+		return p.realStore.GetRelationByKey(key)
+	}
+	return sharedEmptyStore.GetRelationByKey(key)
+}
+
+func (p *storeProxy) GetRelationFormatByKey(key domain.RelationKey) (model.RelationFormat, error) {
+	if p.initialized.Load() {
+		return p.realStore.GetRelationFormatByKey(key)
+	}
+	return sharedEmptyStore.GetRelationFormatByKey(key)
+}
+
+func (p *storeProxy) ListRelationOptions(relationKey domain.RelationKey) ([]*model.RelationOption, error) {
+	if p.initialized.Load() {
+		return p.realStore.ListRelationOptions(relationKey)
+	}
+	return sharedEmptyStore.ListRelationOptions(relationKey)
+}
+
+func (p *storeProxy) GetObjectType(id string) (*model.ObjectType, error) {
+	if p.initialized.Load() {
+		return p.realStore.GetObjectType(id)
+	}
+	return sharedEmptyStore.GetObjectType(id)
+}
+
+func (p *storeProxy) GetLastIndexedHeadsHash(ctx context.Context, id string) (string, error) {
+	if p.initialized.Load() {
+		return p.realStore.GetLastIndexedHeadsHash(ctx, id)
+	}
+	return sharedEmptyStore.GetLastIndexedHeadsHash(ctx, id)
+}
+
+func (p *storeProxy) SaveLastIndexedHeadsHash(ctx context.Context, id string, headsHash string) error {
+	if p.initialized.Load() {
+		return p.realStore.SaveLastIndexedHeadsHash(ctx, id, headsHash)
+	}
+	return sharedEmptyStore.SaveLastIndexedHeadsHash(ctx, id, headsHash)
+}
+
+func (p *storeProxy) WriteTx(ctx context.Context) (anystore.WriteTx, error) {
+	if p.initialized.Load() {
+		return p.realStore.WriteTx(ctx)
+	}
+	return sharedEmptyStore.WriteTx(ctx)
+}
+
+// newDsObjectStore creates the internal dsObjectStore (not exported)
+func newDsObjectStore(componentCtx context.Context, spaceId string, deps Deps) *dsObjectStore {
+	return &dsObjectStore{
 		spaceId:            spaceId,
 		componentCtx:       componentCtx,
 		arenaPool:          &anyenc.ArenaPool{},
@@ -150,11 +534,9 @@ func New(componentCtx context.Context, spaceId string, deps Deps) Store {
 		fulltextQueue:      deps.FulltextQueue,
 		dbProvider:         deps.DbProvider,
 	}
-
-	return s
 }
 
-func (s *dsObjectStore) Init() error {
+func (s *dsObjectStore) init() error {
 	s.lock.Lock()
 	defer s.lock.Unlock()
 
@@ -176,8 +558,6 @@ type LinksUpdateInfo struct {
 	LinksFromId    domain.FullID
 	Added, Removed []string
 }
-
-var _ Store = (*dsObjectStore)(nil)
 
 func (s *dsObjectStore) WriteTx(ctx context.Context) (anystore.WriteTx, error) {
 	return s.db.WriteTx(ctx)

@@ -1097,7 +1097,7 @@ func TestQueryById(t *testing.T) {
 
 		s.AddObjects(t, []TestObject{obj1})
 
-		s.sourceService = dummySourceService{objectToReturn: obj2}
+		s.SetSourceService(dummySourceService{objectToReturn: obj2})
 
 		recs, err := s.QueryByIds([]string{"id1", dateID})
 		require.NoError(t, err)

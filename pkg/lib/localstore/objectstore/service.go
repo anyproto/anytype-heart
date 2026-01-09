@@ -23,6 +23,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/spaceresolverstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+	"github.com/anyproto/anytype-heart/space/spaceinfo"
 	"github.com/anyproto/anytype-heart/util/keyvaluestore"
 )
 
@@ -52,6 +53,8 @@ type ObjectStore interface {
 
 	IterateSpaceIndex(func(store spaceindex.Store) error) error
 	SpaceIndex(spaceId string) spaceindex.Store
+	InitSpaceIndex(spaceId string) error
+	CloseSpaceIndex(spaceId string) error
 
 	SpaceNameGetter
 	spaceresolverstore.Store
@@ -115,8 +118,6 @@ type dsObjectStore struct {
 	subManager          *spaceindex.SubscriptionManager
 	sourceService       spaceindex.SourceDetailsFromID
 	techSpaceIdProvider TechSpaceIdProvider
-
-	spaceStoreDirsCheck sync.Once
 
 	lock         sync.Mutex
 	spaceIndexes map[string]spaceindex.Store
@@ -193,7 +194,13 @@ func (s *dsObjectStore) Run(ctx context.Context) error {
 
 	s.Store = store
 
-	return err
+	// Preload existing spaces from disk
+	if err := s.preloadExistingSpaces(); err != nil {
+		log.Error("preload existing spaces", zap.Error(err))
+		// Non-fatal: continue even if preload fails
+	}
+
+	return nil
 }
 
 func (s *dsObjectStore) GetCommonDb() anystore.DB {
@@ -249,17 +256,46 @@ func (s *dsObjectStore) Close(_ context.Context) (err error) {
 }
 
 func (s *dsObjectStore) SpaceIndex(spaceId string) spaceindex.Store {
+	s.lock.Lock()
+	spaceIndex := s.getOrInitSpaceIndex(spaceId)
+	s.lock.Unlock()
+	return spaceIndex
+}
+
+func (s *dsObjectStore) InitSpaceIndex(spaceId string) error {
 	if spaceId == "" {
-		return spaceindex.NewInvalidStore(errors.New("empty spaceId"))
+		return errors.New("empty spaceId")
 	}
 	s.lock.Lock()
 	spaceIndex := s.getOrInitSpaceIndex(spaceId)
 	s.lock.Unlock()
-	err := spaceIndex.Init()
-	if err != nil {
-		return spaceindex.NewInvalidStore(err)
+	return spaceIndex.Init()
+}
+
+func (s *dsObjectStore) CloseSpaceIndex(spaceId string) error {
+	s.lock.Lock()
+	store, ok := s.spaceIndexes[spaceId]
+	s.lock.Unlock()
+
+	if !ok {
+		return nil
 	}
-	return spaceIndex
+	return store.Close()
+}
+
+// OnSpaceModeChange implements SpaceModeObserver interface.
+// It initializes or closes the space index based on the mode transition.
+func (s *dsObjectStore) OnSpaceModeChange(spaceId string, prevMode, newMode spaceinfo.SpaceMode) {
+	switch newMode {
+	case spaceinfo.SpaceModeLoading:
+		if err := s.InitSpaceIndex(spaceId); err != nil {
+			log.Error("init space index on mode change", zap.String("spaceId", spaceId), zap.Error(err))
+		}
+	case spaceinfo.SpaceModeOffloading:
+		if err := s.CloseSpaceIndex(spaceId); err != nil {
+			log.Error("close space index on mode change", zap.String("spaceId", spaceId), zap.Error(err))
+		}
+	}
 }
 
 func (s *dsObjectStore) getOrInitSpaceIndex(spaceId string) spaceindex.Store {
@@ -277,44 +313,27 @@ func (s *dsObjectStore) getOrInitSpaceIndex(spaceId string) spaceindex.Store {
 	return store
 }
 
-func (s *dsObjectStore) preloadExistingObjectStores() error {
-	var err error
-	s.spaceStoreDirsCheck.Do(func() {
-		spaceIds, err := s.anystoreProvider.ListSpaceIdsFromFilesystem()
-		if err != nil {
-			log.Error("list space ids from filesystem", zap.Error(err))
-		}
+func (s *dsObjectStore) preloadExistingSpaces() error {
+	spaceIds, err := s.anystoreProvider.ListSpaceIdsFromFilesystem()
+	if err != nil {
+		return fmt.Errorf("list space ids: %w", err)
+	}
 
-		var indexes []spaceindex.Store
-		s.lock.Lock()
-		for _, spaceId := range spaceIds {
-			spaceIndex := s.getOrInitSpaceIndex(spaceId)
-			indexes = append(indexes, spaceIndex)
-		}
-		s.lock.Unlock()
-
-		var wg sync.WaitGroup
-		for _, index := range indexes {
-			wg.Add(1)
-			go func() {
-				defer wg.Done()
-				initErr := index.Init()
-				if initErr != nil {
-					log.With("error", initErr).Error("pre-init space index")
-				}
-			}()
-		}
-		wg.Wait()
-	})
-	return err
+	var wg sync.WaitGroup
+	for _, spaceId := range spaceIds {
+		wg.Add(1)
+		go func(id string) {
+			defer wg.Done()
+			if initErr := s.InitSpaceIndex(id); initErr != nil {
+				log.With("spaceId", id, "error", initErr).Error("preload space index")
+			}
+		}(spaceId)
+	}
+	wg.Wait()
+	return nil
 }
 
 func (s *dsObjectStore) listStores() []spaceindex.Store {
-	err := s.preloadExistingObjectStores()
-	if err != nil {
-		log.Errorf("preloadExistingObjectStores: %v", err)
-	}
-
 	s.lock.Lock()
 	stores := make([]spaceindex.Store, 0, len(s.spaceIndexes))
 	for _, store := range s.spaceIndexes {
@@ -329,10 +348,6 @@ func collectCrossSpace[T any](s *dsObjectStore, proc func(store spaceindex.Store
 
 	var result []T
 	for _, store := range stores {
-		err := store.Init()
-		if err != nil {
-			return nil, fmt.Errorf("init store: %w", err)
-		}
 		items, err := proc(store)
 		if err != nil {
 			return nil, err
@@ -348,11 +363,7 @@ func iterateSpacesForFulltext(s *dsObjectStore, proc func(store spaceindex.Store
 		if store.SpaceId() == s.techSpaceId || store.SpaceId() == addr.AnytypeMarketplaceWorkspace {
 			continue
 		}
-		err := store.Init()
-		if err != nil {
-			return fmt.Errorf("init store: %w", err)
-		}
-		err = proc(store)
+		err := proc(store)
 		if err != nil {
 			return err
 		}

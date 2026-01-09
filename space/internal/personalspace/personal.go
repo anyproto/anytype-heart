@@ -217,3 +217,7 @@ func (s *spaceController) WaitMigrations(ctx context.Context) error {
 	s.mx.Unlock()
 	return s.personalMigration.WaitProfile(ctx)
 }
+
+func (s *spaceController) SetModeChangeHook(hook mode.ModeChangeHook) {
+	s.sm.SetOnModeChange(hook)
+}
