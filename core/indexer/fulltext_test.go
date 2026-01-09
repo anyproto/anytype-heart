@@ -26,6 +26,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/datastore"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/ftsearch"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -104,8 +105,12 @@ func newFixture(t *testing.T) *fixture {
 		techSpaceIdProviderFx: techSpaceIdProvider,
 	}
 
-	// Initialize test space for tests that use spaceId1
+	// Initialize test spaces used by various tests
 	err = objectStore.InitSpaceIndex("spaceId1")
+	require.NoError(t, err)
+	err = objectStore.InitSpaceIndex("space1")
+	require.NoError(t, err)
+	err = objectStore.InitSpaceIndex(addr.AnytypeMarketplaceWorkspace)
 	require.NoError(t, err)
 
 	return indexerFx
