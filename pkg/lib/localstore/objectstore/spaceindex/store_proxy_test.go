@@ -149,7 +149,7 @@ func TestStoreProxy_ModeTransition(t *testing.T) {
 		assert.False(t, store.IsInitialized())
 	})
 
-	t.Run("remove prevents re-initialization", func(t *testing.T) {
+	t.Run("deactivate prevents re-initialization", func(t *testing.T) {
 		// given - initialized store
 		store := newTestStoreProxy(t)
 		require.NoError(t, store.Init())
@@ -160,8 +160,8 @@ func TestStoreProxy_ModeTransition(t *testing.T) {
 		}))
 		require.NoError(t, err)
 
-		// when - remove the store (permanent deletion)
-		err = store.Remove()
+		// when - deactivate the store (permanent close, no disk deletion)
+		err = store.Deactivate()
 		require.NoError(t, err)
 
 		// then - store is uninitialized
@@ -180,12 +180,12 @@ func TestStoreProxy_ModeTransition(t *testing.T) {
 		assert.False(t, store.IsInitialized())
 	})
 
-	t.Run("remove on uninitialized store prevents future init", func(t *testing.T) {
+	t.Run("deactivate on uninitialized store prevents future init", func(t *testing.T) {
 		// given - uninitialized store
 		store := newTestStoreProxy(t)
 
-		// when - remove without ever initializing
-		err := store.Remove()
+		// when - deactivate without ever initializing
+		err := store.Deactivate()
 		require.NoError(t, err)
 
 		// then - init fails

@@ -103,6 +103,11 @@ func newFixture(t *testing.T) *fixture {
 		sourceFx:              sourceService,
 		techSpaceIdProviderFx: techSpaceIdProvider,
 	}
+
+	// Initialize test space for tests that use spaceId1
+	err = objectStore.InitSpaceIndex("spaceId1")
+	require.NoError(t, err)
+
 	return indexerFx
 }
 

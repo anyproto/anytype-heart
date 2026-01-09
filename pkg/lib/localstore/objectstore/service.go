@@ -55,7 +55,7 @@ type ObjectStore interface {
 	SpaceIndex(spaceId string) spaceindex.Store
 	InitSpaceIndex(spaceId string) error
 	CloseSpaceIndex(spaceId string) error
-	RemoveSpaceIndex(spaceId string) error
+	DeleteSpaceIndex(spaceId string) error // Deactivate + delete from disk
 
 	SpaceNameGetter
 	spaceresolverstore.Store
@@ -147,7 +147,7 @@ func (s *dsObjectStore) IterateSpaceIndex(f func(store spaceindex.Store) error) 
 		spaceIndexes = append(spaceIndexes, store)
 	}
 	s.lock.Unlock()
-	for _, store := range s.spaceIndexes {
+	for _, store := range spaceIndexes {
 		if err := f(store); err != nil {
 			return err
 		}
@@ -284,22 +284,28 @@ func (s *dsObjectStore) CloseSpaceIndex(spaceId string) error {
 	return store.Close()
 }
 
-// RemoveSpaceIndex closes the space index, marks it as permanently removed,
+// DeleteSpaceIndex deactivates the space index (marks it as permanently removed)
 // and deletes the database from filesystem.
-// The proxy remains in the map (in removed state) to prevent re-initialization.
-func (s *dsObjectStore) RemoveSpaceIndex(spaceId string) error {
+// The proxy remains in the map (in deactivated state) to prevent re-initialization.
+func (s *dsObjectStore) DeleteSpaceIndex(spaceId string) error {
+	var errs error
+
 	s.lock.Lock()
 	spaceIndex, ok := s.spaceIndexes[spaceId]
 	if ok {
-		if err := spaceIndex.Remove(); err != nil {
-			log.With("spaceId", spaceId).Errorf("failed to remove space index: %v", err)
+		if err := spaceIndex.Deactivate(); err != nil {
+			errs = errors.Join(errs, err)
 		}
-		// Don't delete from map - keep removed proxy to prevent re-initialization
+		// Don't delete from map - keep deactivated proxy to prevent re-initialization
 	}
 	s.lock.Unlock()
 
-	// Remove the space index directory from filesystem
-	return s.anystoreProvider.DeleteSpaceIndex(spaceId)
+	// Delete the space data (DBs + directory) from filesystem
+	if err := s.anystoreProvider.DeleteSpaceData(spaceId); err != nil {
+		errs = errors.Join(errs, err)
+	}
+
+	return errs
 }
 
 // OnSpaceModeChange implements SpaceModeObserver interface.

@@ -38,7 +38,7 @@ type Store interface {
 	SpaceId() string
 	Close() error
 	Init() error
-	Remove() error // Close and mark as permanently removed (prevents re-initialization)
+	Deactivate() error // Close and mark as permanently removed (prevents re-initialization, does NOT delete from disk)
 
 	// Query adds implicit filters on isArchived, isDeleted and objectType relations! To avoid them use QueryRaw
 	Query(q database.Query) (records []database.Record, err error)
@@ -111,6 +111,11 @@ type FulltextQueue interface {
 // storeProxy delegates to either sharedEmptyStore (before init) or dsObjectStore (after init).
 // This allows SpaceIndex() to always return the same instance that works correctly
 // once initialized.
+//
+// Concurrency note: If Close() or Remove() is called while a query is in progress,
+// the in-flight query may receive a "database is closed" error rather than results.
+// This is expected behavior - callers should handle such errors gracefully during shutdown.
+// We intentionally don't nil realStore in Close()/Remove() to avoid panics from concurrent access.
 type storeProxy struct {
 	spaceId     string
 	initialized atomic.Bool
@@ -218,19 +223,19 @@ func (p *storeProxy) Close() error {
 	// Mark uninitialized FIRST - new queries will use sharedEmptyStore
 	p.initialized.Store(false)
 
-	// Close real store - in-flight queries may get error (not panic)
-	var err error
+	// Close real store - in-flight queries will get "database closed" error.
+	// We intentionally don't nil realStore to avoid panic from concurrent access.
 	if p.realStore != nil {
-		err = p.realStore.Close()
-		p.realStore = nil
+		return p.realStore.Close()
 	}
 
-	return err
+	return nil
 }
 
-// Remove closes the store and marks it as permanently removed.
-// After removal, Init() will return ErrSpaceRemoved.
-func (p *storeProxy) Remove() error {
+// Deactivate closes the store and marks it as permanently removed.
+// After deactivation, Init() will return ErrSpaceRemoved.
+// This does NOT delete data from disk - use dsObjectStore.DeleteSpaceIndex() for full deletion.
+func (p *storeProxy) Deactivate() error {
 	p.initMu.Lock()
 	defer p.initMu.Unlock()
 
@@ -238,14 +243,13 @@ func (p *storeProxy) Remove() error {
 	p.removed.Store(true)
 	p.initialized.Store(false)
 
-	// Close real store if it exists
-	var err error
+	// Close real store if it exists - in-flight queries will get "database closed" error.
+	// We intentionally don't nil realStore to avoid panic from concurrent access.
 	if p.realStore != nil {
-		err = p.realStore.Close()
-		p.realStore = nil
+		return p.realStore.Close()
 	}
 
-	return err
+	return nil
 }
 
 // All interface methods check initialized and delegate to realStore or sharedEmptyStore
@@ -342,13 +346,22 @@ func (p *storeProxy) UpdateObjectDetails(ctx context.Context, id string, details
 }
 
 func (p *storeProxy) SubscribeForAll(callback func(rec database.Record)) {
-	// Store the callback in the proxy so it survives until dsObjectStore is created
+	// Store the callback in the proxy so it survives until dsObjectStore is created.
+	// We use initMu to protect onChangeCallback write, but release it before calling
+	// realStore.SubscribeForAll to avoid deadlock with Init() which also holds initMu
+	// while acquiring dsObjectStore.lock.
 	p.initMu.Lock()
 	p.onChangeCallback = callback
+	initialized := p.initialized.Load()
+	realStore := p.realStore
 	p.initMu.Unlock()
-	// Forward to realStore if already initialized
-	if p.initialized.Load() {
-		p.realStore.SubscribeForAll(callback)
+
+	// Forward to realStore if already initialized.
+	// Note: There's a race window here where Init() might complete between the check
+	// and the call, causing double registration. However, this is harmless as the
+	// callback just gets overwritten with the same value.
+	if initialized && realStore != nil {
+		realStore.SubscribeForAll(callback)
 	}
 }
 

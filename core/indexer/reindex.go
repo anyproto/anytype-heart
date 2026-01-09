@@ -660,6 +660,6 @@ func (i *indexer) logFinishedReindexStat(reindexType metrics.ReindexType, totalI
 }
 
 func (i *indexer) RemoveIndexes(spaceId string) error {
-	// Remove the spaceIndex from objectStore map and delete from filesystem
-	return i.store.RemoveSpaceIndex(spaceId)
+	// Deactivate the spaceIndex and delete from filesystem
+	return i.store.DeleteSpaceIndex(spaceId)
 }

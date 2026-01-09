@@ -30,7 +30,7 @@ func (s *emptyStore) Init() error {
 	return ErrSpaceNotInitialized
 }
 
-func (s *emptyStore) Remove() error {
+func (s *emptyStore) Deactivate() error {
 	return nil
 }
 
@@ -204,12 +204,4 @@ func (s *emptyStore) WriteTx(ctx context.Context) (anystore.WriteTx, error) {
 
 func (s *emptyStore) SubscribeForAll(callback func(rec database.Record)) {
 	// No-op for empty store
-}
-
-func (s *emptyStore) AddFileKeys(fileKeys ...domain.FileEncryptionKeys) error {
-	return ErrSpaceNotInitialized
-}
-
-func (s *emptyStore) GetFileKeys(fileId domain.FileId) (map[string]string, error) {
-	return nil, ErrObjectNotFound
 }
