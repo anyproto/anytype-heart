@@ -16,10 +16,6 @@ type rpcHandler struct {
 	spaceStorage storage.ClientStorage
 }
 
-func (r *rpcHandler) OwnershipTransfer(ctx context.Context, request *fileproto.OwnershipTransferRequest) (*fileproto.Ok, error) {
-	return nil, fileprotoerr.ErrForbidden
-}
-
 func (r *rpcHandler) BlockPushMany(ctx context.Context, request *fileproto.BlockPushManyRequest) (*fileproto.Ok, error) {
 	return nil, fileprotoerr.ErrForbidden
 }
