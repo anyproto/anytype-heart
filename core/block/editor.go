@@ -434,6 +434,7 @@ func (s *Service) uploadFileInternal(ctx context.Context, spaceId string, req Fi
 	if req.PreloadOnly {
 		preloadId, err = upl.Preload(ctx)
 		return "", preloadId, 0, nil, err
+	}
 	if req.CreatedInContext != "" {
 		upl.SetCreatedInContext(req.CreatedInContext)
 	}

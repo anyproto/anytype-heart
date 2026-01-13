@@ -22,25 +22,25 @@ import (
 )
 
 type spaceIndexer struct {
-	runCtx          context.Context
-	spaceIndex      spaceindex.Store
-	objectStore     objectstore.ObjectStore
+	runCtx           context.Context
+	spaceIndex       spaceindex.Store
+	objectStore      objectstore.ObjectStore
 	contextMigration migration.ContextMigrationService
-	batcher         *mb.MB[indexTask]
-	fulltextEnabled bool
+	batcher          *mb.MB[indexTask]
+	fulltextEnabled  bool
 	isTechSpace      bool
 
 	startedAt time.Time
 	lastIndex atomic.Time
 }
 
-func newSpaceIndexer(runCtx context.Context, spaceIndex spaceindex.Store, objectStore objectstore.ObjectStore, fulltextEnabled bool, contextMigration migration.ContextMigrationService, isTechSpace bool)) *spaceIndexer {
+func newSpaceIndexer(runCtx context.Context, spaceIndex spaceindex.Store, objectStore objectstore.ObjectStore, fulltextEnabled bool, contextMigration migration.ContextMigrationService, isTechSpace bool) *spaceIndexer {
 	ind := &spaceIndexer{
-		runCtx:          runCtx,
-		spaceIndex:      spaceIndex,
-		objectStore:     objectStore,
-		batcher:         mb.New[indexTask](100),
-		fulltextEnabled: fulltextEnabled,
+		runCtx:           runCtx,
+		spaceIndex:       spaceIndex,
+		objectStore:      objectStore,
+		batcher:          mb.New[indexTask](100),
+		fulltextEnabled:  fulltextEnabled,
 		contextMigration: contextMigration,
 		isTechSpace:      isTechSpace,
 	}

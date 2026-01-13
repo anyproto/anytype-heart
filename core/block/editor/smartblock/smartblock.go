@@ -40,6 +40,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/pkg/lib/threads"
+	"github.com/anyproto/anytype-heart/space/spacecore/typeprovider"
 	"github.com/anyproto/anytype-heart/util/anonymize"
 	"github.com/anyproto/anytype-heart/util/dateutil"
 	"github.com/anyproto/anytype-heart/util/internalflag"
@@ -1426,34 +1427,54 @@ func (sb *smartBlock) collectOutgoingLinks(st *state.State) []OutgoingLink {
 	// Collect links from object relations
 	details := st.CombinedDetails()
 	if details != nil {
-		for _, rel := range st.GetRelationLinks() {
+		for key, val := range st.Details().Iterate() {
+			switch key {
+			case bundle.RelationKeyId,
+				bundle.RelationKeyLinks,
+				bundle.RelationKeyBacklinks,
+				bundle.RelationKeyCreator,
+				bundle.RelationKeyLastModifiedBy,
+				bundle.RelationKeyType,
+				bundle.RelationKeyFeaturedRelations:
+				continue
+			}
+			format, err := sb.formatFetcher.GetRelationFormatByKey(sb.SpaceID(), key)
+			if err != nil {
+				log.Warnf("failed to get relation format for key %s: %v", key, err)
+				var (
+					id string
+					ok bool
+				)
+				if id, ok = val.TryString(); !ok {
+
+				} else if ids, ok := val.TryStringList(); ok {
+					if len(ids) > 0 {
+						id = ids[0]
+					}
+				}
+				if len(id) > 0 {
+					if sbt, err := typeprovider.SmartblockTypeFromID(id); err == nil {
+						switch sbt {
+						case smartblock.SmartBlockTypePage,
+							smartblock.SmartBlockTypeObjectType,
+							smartblock.SmartBlockTypeParticipant:
+							format = model.RelationFormat_object
+						case smartblock.SmartBlockTypeFileObject:
+							format = model.RelationFormat_file
+						}
+					}
+				}
+			}
+
 			// Only process object relations
-			if rel.Format != model.RelationFormat_object && rel.Format != model.RelationFormat_file {
-				continue
-			}
-
-			if rel.Key == bundle.RelationKeyId.String() ||
-				rel.Key == bundle.RelationKeyLinks.String() ||
-				rel.Key == bundle.RelationKeyBacklinks.String() ||
-				rel.Key == bundle.RelationKeyCreator.String() ||
-				rel.Key == bundle.RelationKeyLastModifiedBy.String() ||
-				rel.Key == bundle.RelationKeyType.String() || // always skip type because it was processed before
-				rel.Key == bundle.RelationKeyFeaturedRelations.String() {
-				continue
-			}
-
-			// Get the value from details
-			value := details.Get(domain.RelationKey(rel.Key))
-			if !value.Ok() {
+			if format != model.RelationFormat_object && format != model.RelationFormat_file {
 				continue
 			}
 
 			// Extract target IDs based on value type
-			var targetIds []string
-			if str := value.String(); str != "" {
-				targetIds = []string{str}
-			} else if list := value.StringList(); len(list) > 0 {
-				targetIds = list
+			targetIds, ok := val.TryWrapToStringList()
+			if !ok {
+				continue
 			}
 
 			// Add outgoing links for each target
@@ -1462,7 +1483,7 @@ func (sb *smartBlock) collectOutgoingLinks(st *state.State) []OutgoingLink {
 					linkSet[targetId] = true
 					outgoingLinks = append(outgoingLinks, OutgoingLink{
 						TargetID:    targetId,
-						RelationKey: rel.Key,
+						RelationKey: key.String(),
 					})
 				}
 			}
