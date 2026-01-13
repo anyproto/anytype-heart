@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path"
+	"path/filepath"
 	"strings"
 	"sync"
 	"time"
@@ -21,6 +22,14 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/anystorehelper"
 	"github.com/anyproto/anytype-heart/space/spacedomain"
 )
+
+const backupSuffix = "_backup"
+
+// CorruptedBackup represents a backup of a corrupted space storage
+type CorruptedBackup struct {
+	SpaceId    string
+	BackupPath string
+}
 
 // nolint: unused
 var log = logger.NewNamed(spacestorage.CName)
@@ -64,7 +73,23 @@ func (s *storageService) openDb(ctx context.Context, id string) (db anystore.DB,
 		}
 		return nil, err
 	}
-	return anystore.Open(ctx, dbPath, s.anyStoreConfig())
+
+	db, err = anystore.Open(ctx, dbPath, s.anyStoreConfig())
+	if err != nil {
+		code, isCorrupted := anystorehelper.IsCorruptedError(err)
+		if isCorrupted {
+			log.With(zap.String("spaceId", id), zap.String("code", code.String())).
+				Warn("space store corrupted, backing up")
+			if backupPath, backupErr := s.backupCorruptedSpace(id); backupErr != nil {
+				log.With(zap.Error(backupErr)).Error("failed to backup corrupted space")
+			} else {
+				log.With(zap.String("backupPath", backupPath)).Warn("corrupted space backed up")
+			}
+			return nil, spacestorage.ErrSpaceStorageMissing
+		}
+		return nil, err
+	}
+	return db, nil
 }
 
 func (s *storageService) createDb(ctx context.Context, id string) (db anystore.DB, err error) {
@@ -201,4 +226,70 @@ func validateSpaceType(headerWithId *spacesyncproto.RawSpaceHeaderWithId) error 
 		return fmt.Errorf("%w: type: %v", spacedomain.ErrUnexpectedSpaceType, header.SpaceType)
 	}
 	return nil
+}
+
+// backupCorruptedSpace renames the corrupted space folder to {spaceId}_backup_{timestamp}
+func (s *storageService) backupCorruptedSpace(spaceId string) (string, error) {
+	srcPath := filepath.Join(s.rootPath, spaceId)
+	timestamp := time.Now().Unix()
+	backupPath := filepath.Join(s.rootPath, fmt.Sprintf("%s%s%d", spaceId, backupSuffix, timestamp))
+
+	if err := os.Rename(srcPath, backupPath); err != nil {
+		return "", fmt.Errorf("failed to rename corrupted space: %w", err)
+	}
+	return backupPath, nil
+}
+
+// ListCorruptedBackups returns all corrupted backup folders in the storage root
+// Backup folders are named {spaceId}_backup_{timestamp}
+func (s *storageService) ListCorruptedBackups() ([]CorruptedBackup, error) {
+	entries, err := os.ReadDir(s.rootPath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read storage root: %w", err)
+	}
+
+	var backups []CorruptedBackup
+	for _, entry := range entries {
+		if !entry.IsDir() {
+			continue
+		}
+		// Find _backup_ in the folder name
+		idx := strings.Index(entry.Name(), backupSuffix)
+		if idx == -1 {
+			continue
+		}
+		spaceId := entry.Name()[:idx]
+		if spaceId == "" {
+			continue
+		}
+		backups = append(backups, CorruptedBackup{
+			SpaceId:    spaceId,
+			BackupPath: filepath.Join(s.rootPath, entry.Name()),
+		})
+	}
+	return backups, nil
+}
+
+// DeleteBackup removes a corrupted backup folder after validating the path
+func (s *storageService) DeleteBackup(backupPath string) error {
+	absRoot, err := filepath.Abs(s.rootPath)
+	if err != nil {
+		return fmt.Errorf("failed to resolve root path: %w", err)
+	}
+	absBackup, err := filepath.Abs(backupPath)
+	if err != nil {
+		return fmt.Errorf("failed to resolve backup path: %w", err)
+	}
+
+	// Security: ensure backup path is within storage root
+	if !strings.HasPrefix(absBackup, absRoot+string(filepath.Separator)) {
+		return fmt.Errorf("invalid backup path: outside storage root")
+	}
+
+	// Ensure this is actually a backup folder (contains _backup_ pattern)
+	if !strings.Contains(filepath.Base(backupPath), backupSuffix) {
+		return fmt.Errorf("invalid backup path: not a backup folder")
+	}
+
+	return os.RemoveAll(backupPath)
 }
