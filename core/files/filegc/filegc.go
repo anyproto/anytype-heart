@@ -7,6 +7,7 @@ import (
 	"github.com/anyproto/any-sync/app"
 	"github.com/samber/lo"
 
+	"github.com/anyproto/anytype-heart/core/block/backlinks"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
@@ -35,9 +36,10 @@ type ObjectArchiver interface {
 }
 
 type fileGC struct {
-	objectDeleter  ObjectDeleter
-	objectStore    objectstore.ObjectStore
-	objectArchiver ObjectArchiver
+	objectDeleter    ObjectDeleter
+	objectStore      objectstore.ObjectStore
+	objectArchiver   ObjectArchiver
+	backlinksWatcher backlinks.UpdateWatcher
 }
 
 func New() FileGC {
@@ -48,6 +50,7 @@ func (gc *fileGC) Init(a *app.App) error {
 	gc.objectDeleter = app.MustComponent[ObjectDeleter](a)
 	gc.objectStore = app.MustComponent[objectstore.ObjectStore](a)
 	gc.objectArchiver = app.MustComponent[ObjectArchiver](a)
+	gc.backlinksWatcher = app.MustComponent[backlinks.UpdateWatcher](a)
 	return nil
 }
 
@@ -72,6 +75,8 @@ func (gc *fileGC) CheckFilesOnLinksRemoval(spaceId, contextId string, removedLin
 
 	log.Warnf("checking %d removed links from context %s", len(removedLinks), contextId)
 
+	// make sure we have all backlinks updates flushed to the store
+	gc.backlinksWatcher.FlushUpdates()
 	// Get space index
 	spaceIndex := gc.objectStore.SpaceIndex(spaceId)
 	if spaceIndex == nil {
