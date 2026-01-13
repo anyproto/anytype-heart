@@ -222,7 +222,7 @@ func (b *builtinObjects) CreateObjectsForExperience(ctx context.Context, spaceId
 		importFormat = model.Import_Markdown
 		progress = nil
 	}
-	importErr := b.importArchive(ctx, spaceId, path, title, pb.RpcObjectImportRequestPbParams_SPACE, importFormat, progress)
+	importErr := b.importArchive(ctx, spaceId, path, title, pb.RpcObjectImportRequestPbParams_EXPERIENCE, importFormat, progress)
 	if notificationProgress, ok := progress.(process.Notificationable); !isAi && ok {
 		notificationProgress.FinishWithNotification(b.provideNotification(spaceId, progress, importErr, title), importErr)
 	}
@@ -382,8 +382,13 @@ func (b *builtinObjects) addTypesView(ctx context.Context, spaceId string) error
 			if err == nil {
 				allView.Name = "List"
 			}
-			view := template.MakeDataviewView(false, relationLinks, model.BlockContentDataviewView_Table, addr.ObjectTypeAllTableViewId, "Grid")
-			dvBlock.AddView(view)
+			dvBlock.AddView(model.BlockContentDataviewView{
+				Id:        addr.ObjectTypeAllTableViewId,
+				Type:      model.BlockContentDataviewView_Table,
+				Name:      "Grid",
+				Sorts:     template.DefaultLastModifiedDateSort(),
+				Relations: template.BuildViewRelations(false, relationLinks, nil),
+			})
 			return nil
 		})
 		if err != nil {

@@ -58,7 +58,7 @@ func (s *dsObjectStore) FetchRelationByKeys(keys ...domain.RelationKey) (relatio
 	uks := make([]string, 0, len(keys))
 	for _, key := range keys {
 		// we should be able to get system relations even when not indexed
-		bundledRel, err := bundle.GetRelation(domain.RelationKey(key))
+		bundledRel, err := bundle.GetRelation(key)
 		if err == nil {
 			relations = append(relations, &relationutils.Relation{Relation: bundledRel})
 			continue
@@ -178,9 +178,9 @@ func (s *dsObjectStore) GetRelationByKey(key string) (*model.Relation, error) {
 }
 
 func (s *dsObjectStore) GetRelationFormatByKey(key domain.RelationKey) (model.RelationFormat, error) {
-	rel, err := bundle.GetRelation(key)
+	format, err := bundle.GetRelationFormat(key)
 	if err == nil {
-		return rel.Format, nil
+		return format, nil
 	}
 	q := database.Query{
 		Filters: []database.FilterRequest{

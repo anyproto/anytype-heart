@@ -129,7 +129,7 @@ func (m *ImageResize) Mill(r io.ReadSeeker, name string) (*Result, error) {
 	case GIF:
 		return m.resizeGIF(&imgConfig, r)
 	case HEIC:
-		return m.resizeHEIC(&imgConfig, r)
+		return m.resizeHEIC(r)
 	case TIFF:
 		return m.resizeTIFF(&imgConfig, r)
 	case PSD:

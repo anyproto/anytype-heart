@@ -3,6 +3,7 @@ package application
 import (
 	"context"
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"time"
@@ -34,17 +35,18 @@ func (s *Service) AccountCreate(ctx context.Context, req *pb.RpcAccountCreateReq
 
 	s.requireClientWithVersion()
 
-	derivationResult, err := core.WalletAccountAt(s.mnemonic, 0)
-	if err != nil {
-		return nil, err
-	}
-	accountID := derivationResult.Identity.GetPublic().Account()
-
-	if err = core.WalletInitRepo(s.rootPath, derivationResult.Identity); err != nil {
-		return nil, err
+	if s.derivedKeys == nil {
+		return nil, ErrWalletNotInitialized
 	}
 
-	if err = s.handleCustomStorageLocation(req, accountID); err != nil {
+	var err error
+	accountID := s.derivedKeys.Identity.GetPublic().Account()
+
+	if err := core.WalletInitRepo(s.rootPath, s.derivedKeys.Identity); err != nil {
+		return nil, err
+	}
+
+	if err := s.handleCustomStorageLocation(req, accountID); err != nil {
 		return nil, err
 	}
 
@@ -55,6 +57,9 @@ func (s *Service) AccountCreate(ctx context.Context, req *pb.RpcAccountCreateReq
 	if req.PreferYamuxTransport {
 		cfg.PeferYamuxTransport = true
 	}
+	if req.EnableMembershipV2 {
+		cfg.EnableMembershipV2 = true
+	}
 	if req.NetworkMode > 0 {
 		cfg.NetworkMode = req.NetworkMode
 		cfg.NetworkCustomConfigFilePath = req.NetworkCustomConfigFilePath
@@ -64,7 +69,7 @@ func (s *Service) AccountCreate(ctx context.Context, req *pb.RpcAccountCreateReq
 	}
 	comps := []app.Component{
 		cfg,
-		anytype.BootstrapWallet(s.rootPath, derivationResult, s.fulltextPrimaryLanguage),
+		anytype.BootstrapWallet(s.rootPath, *s.derivedKeys, s.fulltextPrimaryLanguage),
 		s.eventSender,
 	}
 
@@ -85,10 +90,10 @@ func (s *Service) AccountCreate(ctx context.Context, req *pb.RpcAccountCreateReq
 		return newAcc, errors.Join(ErrFailedToStartApplication, err)
 	}
 
-	if err = s.setProfileDetails(ctx, req, newAcc); err != nil {
-		return newAcc, err
+	err = s.setProfileDetails(ctx, req, newAcc)
+	if err != nil {
+		return newAcc, fmt.Errorf("set profile details: %w", err)
 	}
-
 	return newAcc, nil
 }
 

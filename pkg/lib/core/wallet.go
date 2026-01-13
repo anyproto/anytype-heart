@@ -1,12 +1,14 @@
 package core
 
 import (
+	"encoding/base64"
 	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
 
 	"github.com/anyproto/any-sync/util/crypto"
+	"github.com/anyproto/go-slip10"
 )
 
 var ErrRepoExists = fmt.Errorf("repo not empty, reinitializing would overwrite your account")
@@ -21,6 +23,24 @@ func WalletGenerateMnemonic(wordCount int) (string, error) {
 
 func WalletAccountAt(mnemonic string, index int) (crypto.DerivationResult, error) {
 	return crypto.Mnemonic(mnemonic).DeriveKeys(uint32(index))
+}
+
+// WalletDeriveFromAccountMasterNode derives keys from a base64-encoded account master node
+// The accountKey contains both the seed and chain code needed for derivation
+// This master node is already at the account level (m/44'/2046'/0')
+func WalletDeriveFromAccountMasterNode(accountKeyMasterNodeBase64 string) (crypto.DerivationResult, error) {
+	accountKeyBytes, err := base64.StdEncoding.DecodeString(accountKeyMasterNodeBase64)
+	if err != nil {
+		return crypto.DerivationResult{}, fmt.Errorf("failed to decode base64 account key: %w", err)
+	}
+
+	// Unmarshal the master node from the account key
+	masterNode, err := slip10.UnmarshalNode(accountKeyBytes)
+	if err != nil {
+		return crypto.DerivationResult{}, fmt.Errorf("failed to unmarshal account master node: %w", err)
+	}
+
+	return crypto.DeriveKeysFromMasterNode(masterNode)
 }
 
 func WalletInitRepo(rootPath string, pk crypto.PrivKey) error {

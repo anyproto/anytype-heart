@@ -39,6 +39,53 @@ func (_m *MockService) EXPECT() *MockService_Expecter {
 	return &MockService_Expecter{mock: &_m.Mock}
 }
 
+// CanDeleteFile provides a mock function with given fields: ctx, objectId
+func (_m *MockService) CanDeleteFile(ctx context.Context, objectId string) error {
+	ret := _m.Called(ctx, objectId)
+
+	if len(ret) == 0 {
+		panic("no return value specified for CanDeleteFile")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, string) error); ok {
+		r0 = rf(ctx, objectId)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// MockService_CanDeleteFile_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'CanDeleteFile'
+type MockService_CanDeleteFile_Call struct {
+	*mock.Call
+}
+
+// CanDeleteFile is a helper method to define mock.On call
+//   - ctx context.Context
+//   - objectId string
+func (_e *MockService_Expecter) CanDeleteFile(ctx interface{}, objectId interface{}) *MockService_CanDeleteFile_Call {
+	return &MockService_CanDeleteFile_Call{Call: _e.mock.On("CanDeleteFile", ctx, objectId)}
+}
+
+func (_c *MockService_CanDeleteFile_Call) Run(run func(ctx context.Context, objectId string)) *MockService_CanDeleteFile_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(string))
+	})
+	return _c
+}
+
+func (_c *MockService_CanDeleteFile_Call) Return(_a0 error) *MockService_CanDeleteFile_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockService_CanDeleteFile_Call) RunAndReturn(run func(context.Context, string) error) *MockService_CanDeleteFile_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // Close provides a mock function with given fields: ctx
 func (_m *MockService) Close(ctx context.Context) error {
 	ret := _m.Called(ctx)

@@ -19,6 +19,6 @@ func noHEICDecodeConfig(io.Reader) (image.Config, error) {
 	return image.Config{}, ErrFormatSupportNotEnabled
 }
 
-func (m *ImageResize) resizeHEIC(_ *image.Config, _ io.ReadSeeker) (*Result, error) {
+func (m *ImageResize) resizeHEIC(_ io.ReadSeeker) (*Result, error) {
 	return nil, ErrFormatSupportNotEnabled
 }

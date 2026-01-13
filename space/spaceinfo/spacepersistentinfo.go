@@ -8,10 +8,14 @@ import (
 )
 
 type SpacePersistentInfo struct {
-	SpaceID       string
-	AccountStatus *AccountStatus
-	AclHeadId     string
-	EncodedKey    string
+	SpaceID                    string
+	AccountStatus              *AccountStatus
+	AclHeadId                  string
+	EncodedKey                 string
+	Name                       string
+	OneToOneIdentity           string
+	OneToOneRequestMetadataKey string
+	OneToOneInboxSentStatus    OneToOneInboxSentStatus
 }
 
 func NewSpacePersistentInfo(spaceId string) SpacePersistentInfo {
@@ -38,6 +42,20 @@ func (s *SpacePersistentInfo) UpdateDetails(st *state.State) *SpacePersistentInf
 	if s.EncodedKey != "" {
 		st.SetDetail(bundle.RelationKeyGuestKey, domain.String(s.EncodedKey))
 	}
+	if s.OneToOneIdentity != "" {
+		st.SetDetail(bundle.RelationKeyOneToOneIdentity, domain.String(s.OneToOneIdentity))
+	}
+	if s.OneToOneRequestMetadataKey != "" {
+		st.SetDetail(bundle.RelationKeyOneToOneRequestMetadataKey, domain.String(s.OneToOneRequestMetadataKey))
+	}
+	if s.OneToOneInboxSentStatus != OneToOneInboxSentStatusNone {
+		st.SetDetail(bundle.RelationKeyOneToOneInboxSentStatus, domain.Int64(s.OneToOneInboxSentStatus))
+	}
+
+	if s.Name != "" {
+		st.SetDetail(bundle.RelationKeyName, domain.String(s.Name))
+	}
+
 	return s
 }
 

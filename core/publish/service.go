@@ -134,7 +134,7 @@ func (s *service) exportToDir(ctx context.Context, spaceId, pageId string, inclu
 		ObjectIds:        []string{pageId},
 		NoProgress:       true,
 		IncludeNested:    true,
-		IncludeBacklinks: true,
+		IncludeBacklinks: false, // TODO: disable backlinks until proper Details export for publishing is implemented
 		IncludeSpace:     includeSpaceInfo,
 		LinksStateFilters: &pb.RpcObjectListExportStateFilters{
 			RelationsWhiteList: relationsWhiteListToPbModel(),

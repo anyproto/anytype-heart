@@ -9,7 +9,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-const RelationChecksum = "6344ef1e5f60cbaf38e45c1a2bddf63eb49078a88f73c6562b238fca5158cfce"
+const RelationChecksum = "3cb8329d940d5b4cb4fb14f29c1f42d990f155dfbb97678c24c1e27f833595d0"
 const (
 	RelationKeyTag                                  domain.RelationKey = "tag"
 	RelationKeyCamera                               domain.RelationKey = "camera"
@@ -164,6 +164,9 @@ const (
 	RelationKeyFileSourceChecksum                   domain.RelationKey = "fileSourceChecksum"
 	RelationKeySpaceOrder                           domain.RelationKey = "spaceOrder"
 	RelationKeyOrderId                              domain.RelationKey = "orderId"
+	RelationKeyOneToOneIdentity                     domain.RelationKey = "oneToOneIdentity"
+	RelationKeyOneToOneInboxSentStatus              domain.RelationKey = "oneToOneInboxSentStatus"
+	RelationKeyOneToOneRequestMetadataKey           domain.RelationKey = "oneToOneRequestMetadataKey"
 	RelationKeyIconName                             domain.RelationKey = "iconName"
 	RelationKeyRecommendedFeaturedRelations         domain.RelationKey = "recommendedFeaturedRelations"
 	RelationKeyRecommendedHiddenRelations           domain.RelationKey = "recommendedHiddenRelations"
@@ -187,6 +190,9 @@ const (
 	RelationKeyIsMainChat                           domain.RelationKey = "isMainChat"
 	RelationKeyLastMessageDate                      domain.RelationKey = "lastMessageDate"
 	RelationKeyFileAvailableOffline                 domain.RelationKey = "fileAvailableOffline"
+	RelationKeyAnalyticsChatId                      domain.RelationKey = "analyticsChatId"
+	RelationKeyAnalyticsSpaceId                     domain.RelationKey = "analyticsSpaceId"
+	RelationKey_score                               domain.RelationKey = "_score"
 )
 
 var (
@@ -204,6 +210,34 @@ var (
 			ReadOnly:         true,
 			ReadOnlyRelation: true,
 			Revision:         1,
+			Scope:            model.Relation_type,
+		},
+		RelationKeyAnalyticsChatId: {
+
+			DataSource:       model.Relation_details,
+			Description:      "Anonymous chat analytics id",
+			Format:           model.RelationFormat_longtext,
+			Hidden:           true,
+			Id:               "_branalyticsChatId",
+			Key:              "analyticsChatId",
+			MaxCount:         1,
+			Name:             "Analytics chat id",
+			ReadOnly:         true,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
+		RelationKeyAnalyticsSpaceId: {
+
+			DataSource:       model.Relation_details,
+			Description:      "Anonymous space analytics id",
+			Format:           model.RelationFormat_longtext,
+			Hidden:           true,
+			Id:               "_branalyticsSpaceId",
+			Key:              "analyticsSpaceId",
+			MaxCount:         1,
+			Name:             "Analytics space id",
+			ReadOnly:         true,
+			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
 		},
 		RelationKeyAperture: {
@@ -1509,6 +1543,48 @@ var (
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
 		},
+		RelationKeyOneToOneIdentity: {
+
+			DataSource:       model.Relation_details,
+			Description:      "OneToOne (second) participant identity",
+			Format:           model.RelationFormat_longtext,
+			Hidden:           true,
+			Id:               "_broneToOneIdentity",
+			Key:              "oneToOneIdentity",
+			MaxCount:         1,
+			Name:             "oneToOneIdentity",
+			ReadOnly:         false,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
+		RelationKeyOneToOneInboxSentStatus: {
+
+			DataSource:       model.Relation_details,
+			Description:      "OneToOne Inbox invite sent status",
+			Format:           model.RelationFormat_number,
+			Hidden:           true,
+			Id:               "_broneToOneInboxSentStatus",
+			Key:              "oneToOneInboxSentStatus",
+			MaxCount:         1,
+			Name:             "OneToOne Inbox sent status",
+			ReadOnly:         false,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
+		RelationKeyOneToOneRequestMetadataKey: {
+
+			DataSource:       model.Relation_details,
+			Description:      "OneToOne (second) participant RequestMetadata (key)",
+			Format:           model.RelationFormat_longtext,
+			Hidden:           true,
+			Id:               "_broneToOneRequestMetadataKey",
+			Key:              "oneToOneRequestMetadataKey",
+			MaxCount:         1,
+			Name:             "oneToOneRequestMetadataKey",
+			ReadOnly:         false,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
 		RelationKeyOrderId: {
 
 			DataSource:       model.Relation_details,
@@ -2611,6 +2687,20 @@ var (
 			Key:              "writersLimit",
 			MaxCount:         1,
 			Name:             "Writers limit",
+			ReadOnly:         true,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
+		RelationKey_score: {
+
+			DataSource:       model.Relation_derived,
+			Description:      "Fulltext search score",
+			Format:           model.RelationFormat_number,
+			Hidden:           true,
+			Id:               "_br_score",
+			Key:              "_score",
+			MaxCount:         1,
+			Name:             "Score",
 			ReadOnly:         true,
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,

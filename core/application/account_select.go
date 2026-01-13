@@ -83,7 +83,7 @@ func (s *Service) AccountSelect(ctx context.Context, req *pb.RpcAccountSelectReq
 	metrics.Service.SetWorkingDir(req.RootPath, req.Id)
 
 	return s.start(ctx, req.Id, req.RootPath, req.DisableLocalNetworkSync, req.JsonApiListenAddr,
-		req.PreferYamuxTransport, req.NetworkMode, req.NetworkCustomConfigFilePath, req.FulltextPrimaryLanguage, req.JoinStreamURL)
+		req.PreferYamuxTransport, req.NetworkMode, req.NetworkCustomConfigFilePath, req.FulltextPrimaryLanguage, req.JoinStreamURL, req.EnableMembershipV2)
 }
 
 func (s *Service) start(
@@ -97,6 +97,7 @@ func (s *Service) start(
 	networkConfigFilePath string,
 	lang string,
 	joinStreamUrl string,
+	enableMembershipV2 bool,
 ) (*model.Account, error) {
 	ctx, task := trace2.NewTask(ctx, "application.start")
 	defer task.End()
@@ -107,20 +108,18 @@ func (s *Service) start(
 	if lang != "" {
 		s.fulltextPrimaryLanguage = lang
 	}
-	if s.mnemonic == "" {
-		return nil, ErrNoMnemonicProvided
-	}
-	res, err := core.WalletAccountAt(s.mnemonic, 0)
-	if err != nil {
-		return nil, err
+
+	if s.derivedKeys == nil {
+		return nil, ErrWalletNotInitialized
 	}
 	var repoWasMissing bool
 	if _, err := os.Stat(filepath.Join(s.rootPath, id)); os.IsNotExist(err) {
 		repoWasMissing = true
-		if err = core.WalletInitRepo(s.rootPath, res.Identity); err != nil {
+		if err = core.WalletInitRepo(s.rootPath, s.derivedKeys.Identity); err != nil {
 			return nil, errors.Join(ErrFailedToCreateLocalRepo, err)
 		}
 	}
+	var err error
 
 	defer func() {
 		if repoWasMissing && err != nil {
@@ -138,13 +137,16 @@ func (s *Service) start(
 	if preferYamux {
 		cfg.PeferYamuxTransport = true
 	}
+	if enableMembershipV2 {
+		cfg.EnableMembershipV2 = true
+	}
 	if networkMode > 0 {
 		cfg.NetworkMode = networkMode
 		cfg.NetworkCustomConfigFilePath = networkConfigFilePath
 	}
 	comps := []app.Component{
 		cfg,
-		anytype.BootstrapWallet(s.rootPath, res, s.fulltextPrimaryLanguage),
+		anytype.BootstrapWallet(s.rootPath, *s.derivedKeys, s.fulltextPrimaryLanguage),
 		s.eventSender,
 	}
 
@@ -186,5 +188,6 @@ func (s *Service) start(
 
 	acc := &model.Account{Id: id}
 	acc.Info, err = app.MustComponent[account.Service](s.app).GetInfo(ctx)
+
 	return acc, err
 }

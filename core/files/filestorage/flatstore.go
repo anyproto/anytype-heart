@@ -70,7 +70,11 @@ func (f *flatStore) GetMany(ctx context.Context, ks []cid.Cid) <-chan blocks.Blo
 				log.Error("localStore.GetMany", zap.Error(err))
 				continue
 			}
-			ch <- b
+			select {
+			case <-ctx.Done():
+				return
+			case ch <- b:
+			}
 		}
 	}()
 	return ch

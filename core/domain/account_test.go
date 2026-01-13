@@ -1,4 +1,4 @@
-package space
+package domain
 
 import (
 	"testing"

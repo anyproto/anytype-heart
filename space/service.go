@@ -20,12 +20,14 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/anytype/config"
 	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/core/onetoone"
 	"github.com/anyproto/anytype-heart/core/subscription"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space/clientspace"
 	"github.com/anyproto/anytype-heart/space/internal/components/aclobjectmanager"
+	"github.com/anyproto/anytype-heart/space/internal/components/dependencies"
 	"github.com/anyproto/anytype-heart/space/internal/personalspace"
 	"github.com/anyproto/anytype-heart/space/internal/spacecontroller"
 	"github.com/anyproto/anytype-heart/space/spacecore"
@@ -61,6 +63,7 @@ func New() Service {
 
 type Service interface {
 	Create(ctx context.Context, description *spaceinfo.SpaceDescription) (space clientspace.Space, err error)
+	CreateOneToOne(ctx context.Context, description *spaceinfo.SpaceDescription, bobProfile *model.IdentityProfileWithKey) (sp clientspace.Space, err error)
 	Join(ctx context.Context, id, aclHeadId string) error
 	InviteJoin(ctx context.Context, id, aclHeadId string) error
 	CancelLeave(ctx context.Context, id string) (err error)
@@ -101,6 +104,8 @@ type service struct {
 	spaceCore           spacecore.SpaceCoreService
 	aclJoiner           AclJoiner
 	accountService      accountservice.Service
+	onetoone            onetoone.Service
+	identityService     dependencies.IdentityService
 	config              *config.Config
 	notificationService NotificationSender
 	updater             coordinatorStatusUpdater
@@ -152,6 +157,8 @@ func (s *service) Init(a *app.App) (err error) {
 	s.notificationService = app.MustComponent[NotificationSender](a)
 	s.spaceNameGetter = app.MustComponent[objectstore.SpaceNameGetter](a)
 	s.spaceLoaderListener = app.MustComponent[aclobjectmanager.SpaceLoaderListener](a)
+	s.identityService = app.MustComponent[dependencies.IdentityService](a)
+	s.onetoone = app.MustComponent[onetoone.Service](a)
 	s.waiting = make(map[string]controllerWaiter)
 	s.techSpaceReady = make(chan struct{})
 	s.personalSpaceId, err = s.spaceCore.DeriveID(context.Background(), spacedomain.SpaceTypeRegular)
@@ -162,7 +169,7 @@ func (s *service) Init(a *app.App) (err error) {
 	if err != nil {
 		return
 	}
-	accountMetadata, metadataSymKey, err := deriveMetadata(s.accountService.Account().SignKey)
+	accountMetadata, metadataSymKey, err := domain.DeriveAccountMetadata(s.accountService.Account().SignKey)
 	if err != nil {
 		return
 	}
@@ -313,7 +320,13 @@ func (s *service) Create(ctx context.Context, description *spaceinfo.SpaceDescri
 	if s.isClosing.Load() {
 		return nil, ErrSpaceIsClosing
 	}
-	return s.create(ctx, description)
+
+	if description.SpaceUxType == model.SpaceUxType_OneToOne {
+		return s.CreateOneToOneSendInbox(ctx, description)
+	} else {
+		return s.create(ctx, description)
+	}
+
 }
 
 func (s *service) Wait(ctx context.Context, spaceId string) (sp clientspace.Space, err error) {

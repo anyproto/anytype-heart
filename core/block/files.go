@@ -10,6 +10,7 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/block/process"
 	"github.com/anyproto/anytype-heart/core/files"
+	"github.com/anyproto/anytype-heart/core/files/filestorage/rpcstore"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/util/anyerror"
 )
@@ -60,7 +61,7 @@ func (s *Service) DownloadFile(ctx context.Context, req *pb.RpcFileDownloadReque
 
 	progress.SetTotal(f.Meta().Size)
 
-	r, err := f.Reader(ctx)
+	r, err := f.Reader(rpcstore.ContextWithWaitAvailable(ctx))
 	if err != nil {
 		return "", fmt.Errorf("get file reader: %w", err)
 	}

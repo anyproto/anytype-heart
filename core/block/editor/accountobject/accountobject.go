@@ -2,7 +2,6 @@ package accountobject
 
 import (
 	"context"
-	"crypto/rand"
 	"errors"
 	"fmt"
 	"time"
@@ -11,7 +10,6 @@ import (
 	"github.com/anyproto/any-store/anyenc"
 	"github.com/anyproto/any-sync/app/logger"
 	"github.com/anyproto/any-sync/commonspace/object/accountdata"
-	"github.com/anyproto/any-sync/util/crypto"
 	"go.uber.org/zap"
 
 	"github.com/anyproto/anytype-heart/core/anytype/config"
@@ -41,6 +39,7 @@ const (
 	accountDocumentId = "accountObject"
 	idKey             = "id"
 	analyticsKey      = "analyticsId"
+	inboxOffsetKey    = "inboxOffset"
 	iconMigrationKey  = "iconMigration"
 )
 
@@ -61,6 +60,8 @@ type AccountObject interface {
 	IsIconMigrated() (bool, error)
 	SetAnalyticsId(analyticsId string) (err error)
 	GetAnalyticsId() (string, error)
+	SetInboxOffset(offset string) (err error)
+	GetInboxOffset() (string, error)
 }
 
 type StoreDbProvider interface {
@@ -180,7 +181,7 @@ func (a *accountObject) Init(ctx *smartblock.InitContext) error {
 	if err != nil {
 		return fmt.Errorf("init state: %w", err)
 	}
-	return a.SmartBlock.Apply(ctx.State, smartblock.NotPushChanges, smartblock.NoHistory, smartblock.SkipIfNoChanges)
+	return a.SmartBlock.Apply(ctx.State, smartblock.NotPushChanges, smartblock.NoHistory)
 }
 
 func (a *accountObject) genInitialDoc() (builder *storestate.Builder, err error) {
@@ -265,17 +266,11 @@ func (a *accountObject) OnPushChange(params source.PushChangeParams) (id string,
 }
 
 func (a *accountObject) SetAnalyticsId(id string) error {
-	builder := &storestate.Builder{}
-	err := builder.Modify(collectionName, accountDocumentId, []string{analyticsKey}, pb.ModifyOp_Set, fmt.Sprintf(`"%s"`, id))
-	if err != nil {
-		return nil
-	}
-	_, err = a.storeSource.PushStoreChange(a.ctx, source.PushStoreChangeParams{
-		Changes: builder.ChangeSet,
-		State:   a.state,
-		Time:    time.Now(),
-	})
-	return err
+	return a.setValue(analyticsKey, id)
+}
+
+func (a *accountObject) SetInboxOffset(offset string) error {
+	return a.setValue(inboxOffsetKey, offset)
 }
 
 func (a *accountObject) onUpdate() {
@@ -294,7 +289,7 @@ func (a *accountObject) onUpdate() {
 
 func (a *accountObject) setValue(key string, val any) error {
 	builder := &storestate.Builder{}
-	err := builder.Modify(collectionName, accountDocumentId, []string{key}, pb.ModifyOp_Set, val)
+	err := builder.Modify(collectionName, accountDocumentId, []string{key}, pb.ModifyOp_Set, fmt.Sprintf(`"%s"`, val))
 	if err != nil {
 		return nil
 	}
@@ -320,12 +315,20 @@ func (a *accountObject) getValue() (val *anyenc.Value, err error) {
 	return obj.Value(), nil
 }
 
-func (a *accountObject) GetAnalyticsId() (id string, err error) {
+func (a *accountObject) getStringValue(key string) (stringValue string, err error) {
 	val, err := a.getValue()
 	if err != nil {
 		return
 	}
-	return string(val.GetStringBytes(analyticsKey)), nil
+	return string(val.GetStringBytes(key)), nil
+}
+
+func (a *accountObject) GetAnalyticsId() (id string, err error) {
+	return a.getStringValue(analyticsKey)
+}
+
+func (a *accountObject) GetInboxOffset() (id string, err error) {
+	return a.getStringValue(inboxOffsetKey)
 }
 
 func (a *accountObject) TryClose(objectTTL time.Duration) (res bool, err error) {
@@ -365,7 +368,7 @@ func (a *accountObject) MigrateIconImage(image string) (err error) {
 			return fmt.Errorf("set icon image: %w", err)
 		}
 	}
-	return a.setValue(iconMigrationKey, `"true"`)
+	return a.setValue(iconMigrationKey, "true")
 }
 
 func (a *accountObject) IsIconMigrated() (res bool, err error) {
@@ -394,12 +397,4 @@ func (a *accountObject) update(ctx context.Context, st *state.State) (err error)
 		st.SetDetailAndBundledRelation(domain.RelationKey(key), pbVal)
 	}
 	return
-}
-
-func generatePrivateAnalyticsId() (string, error) {
-	raw := make([]byte, 64)
-	if _, err := rand.Read(raw); err != nil {
-		return "", err
-	}
-	return crypto.EncodeBytesToString(raw), nil
 }

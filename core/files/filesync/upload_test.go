@@ -2,7 +2,7 @@ package filesync
 
 import (
 	"bytes"
-	"encoding/json"
+	"context"
 	"errors"
 	"fmt"
 	"math/rand"
@@ -10,73 +10,80 @@ import (
 	"testing"
 	"time"
 
-	"github.com/anyproto/any-sync/commonspace/spacestorage"
+	"github.com/anyproto/any-store/query"
+	"github.com/globalsign/mgo/bson"
 	"github.com/ipfs/go-cid"
 	ipld "github.com/ipfs/go-ipld-format"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/atomic"
 
 	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/core/files/filesync/filequeue"
 )
 
 func TestFileSync_AddFile(t *testing.T) {
 	t.Run("within limits", func(t *testing.T) {
-		fx := newFixture(t, 1024*1024*1024)
-		defer fx.Finish(t)
+		for _, size := range []int{1024, 1024 * 1024, 5 * 1024 * 1024} {
+			t.Run(fmt.Sprintf("size=%d", size), func(t *testing.T) {
+				fx := newFixture(t, 1024*1024*1024)
+				defer fx.Finish(t)
 
-		// Add file to local DAG
-		fileId, fileNode := fx.givenFileAddedToDAG(t)
-		spaceId := "space1"
+				// Add file to local DAG
+				fileId, fileNode := fx.givenFileAddedToDAG(t, 1024)
+				spaceId := "space1"
 
-		// Save node usage
-		prevUsage, err := fx.getAndUpdateNodeUsage(ctx)
-		require.NoError(t, err)
-		assert.Empty(t, prevUsage.Spaces)
-		assert.Zero(t, prevUsage.TotalBytesUsage)
-		assert.Zero(t, prevUsage.TotalCidsCount)
+				// Save node usage
+				prevUsage, err := fx.getAndUpdateNodeUsage(ctx)
+				require.NoError(t, err)
+				assert.Empty(t, prevUsage.Spaces)
+				assert.Zero(t, prevUsage.TotalBytesUsage)
+				assert.Zero(t, prevUsage.TotalCidsCount)
 
-		// Add file to upload queue
-		fx.givenFileUploaded(t, spaceId, fileId)
+				// Add file to upload queue
+				fx.givenFileUploaded(t, spaceId, fileId)
 
-		// Check that file uploaded to in-memory node
-		wantSize, _ := fileNode.Size()
-		wantCids := fx.assertFileUploadedToRemoteNode(t, fileNode, int(wantSize))
+				// Check that file uploaded to in-memory node
+				wantSize, _ := fileNode.Size()
+				wantCids := fx.assertFileUploadedToRemoteNode(t, fileNode, int(wantSize))
 
-		// Check node usage
-		currentUsage, err := fx.getAndUpdateNodeUsage(ctx)
-		require.NoError(t, err)
-		assert.Equal(t, int(wantSize), currentUsage.TotalBytesUsage)
-		assert.Equal(t, len(wantCids), currentUsage.TotalCidsCount)
-		assert.Equal(t, []SpaceStat{
-			{
-				SpaceId:           spaceId,
-				FileCount:         1,
-				CidsCount:         len(wantCids),
-				TotalBytesUsage:   currentUsage.TotalBytesUsage,
-				SpaceBytesUsage:   currentUsage.TotalBytesUsage, // Equals to total because we got only one space
-				AccountBytesLimit: currentUsage.AccountBytesLimit,
-			},
-		}, currentUsage.Spaces)
+				// Check node usage
+				currentUsage, err := fx.getAndUpdateNodeUsage(ctx)
+				require.NoError(t, err)
+				assert.Equal(t, int(wantSize), currentUsage.TotalBytesUsage)
+				assert.Equal(t, len(wantCids), currentUsage.TotalCidsCount)
+				assert.Equal(t, []SpaceStat{
+					{
+						SpaceId:           spaceId,
+						FileCount:         1,
+						CidsCount:         len(wantCids),
+						TotalBytesUsage:   currentUsage.TotalBytesUsage,
+						SpaceBytesUsage:   currentUsage.TotalBytesUsage, // Equals to total because we got only one space
+						AccountBytesLimit: currentUsage.AccountBytesLimit,
+					},
+				}, currentUsage.Spaces)
+			})
+		}
 	})
 
 	t.Run("limit has been reached", func(t *testing.T) {
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+
 		fx := newFixture(t, 1024)
 		defer fx.Finish(t)
 
-		fileId, fileNode := fx.givenFileAddedToDAG(t)
+		fileId, fileNode := fx.givenFileAddedToDAG(t, 1024)
 		spaceId := "space1"
 
 		req := AddFileRequest{
-			FileObjectId:        "objectId1",
-			FileId:              domain.FullFileId{SpaceId: spaceId, FileId: fileId},
-			UploadedByUser:      true,
-			Imported:            false,
-			PrioritizeVariantId: "",
-			Score:               0,
+			FileObjectId:   "objectId1",
+			FileId:         domain.FullFileId{SpaceId: spaceId, FileId: fileId},
+			UploadedByUser: true,
+			Imported:       false,
 		}
 		require.NoError(t, fx.AddFile(req))
-		fx.waitLimitReachedEvent(t, time.Second*5)
-		fx.waitEmptyQueue(t, fx.uploadingQueue, time.Second*5)
+		fx.waitLimitReachedEvent(t, time.Second)
 
 		_, err := fx.rpcStore.Get(ctx, fileNode.Cid())
 		assert.Error(t, err)
@@ -85,36 +92,120 @@ func TestFileSync_AddFile(t *testing.T) {
 		require.NoError(t, err)
 		assert.Zero(t, usage.TotalBytesUsage)
 
-		fx.waitCondition(t, 100*time.Millisecond, func() bool {
-			return fx.retryUploadingQueue.Len() == 1 || fx.retryUploadingQueue.NumProcessedItems() > 0
+		it, err := fx.queue.GetNext(ctx, filequeue.GetNextRequest[FileInfo]{
+			Subscribe:   true,
+			StoreFilter: filterByState(FileStateLimited),
+			Filter:      func(info FileInfo) bool { return info.State == FileStateLimited },
 		})
+
+		require.NoError(t, err)
+		assert.Equal(t, req.FileId.FileId, it.FileId)
+		assert.Equal(t, req.FileObjectId, it.ObjectId)
+
+		err = fx.queue.ReleaseAndUpdate(it.ObjectId, it)
+		require.NoError(t, err)
 	})
 
-	t.Run("file object has been deleted - stop uploading", func(t *testing.T) {
+	t.Run("upload multiple files concurrently", func(t *testing.T) {
 		fx := newFixture(t, 1024*1024*1024)
 		defer fx.Finish(t)
 
-		fileId, _ := fx.givenFileAddedToDAG(t)
+		var wg sync.WaitGroup
+		var cidsCount atomic.Int64
+		var totalSize atomic.Int64
 		spaceId := "space1"
 
-		fx.onUploadStarted = func(objectId string, fileId domain.FullFileId) error {
-			return spacestorage.ErrTreeStorageAlreadyDeleted
+		for i := 0; i < 10; i++ {
+			wg.Add(1)
+
+			go func() {
+				defer wg.Done()
+
+				// Add file to local DAG
+				fileId, fileNode := fx.givenFileAddedToDAG(t, 1024)
+
+				// Add file to upload queue
+				fx.givenFileUploaded(t, spaceId, fileId)
+
+				// Check that file uploaded to in-memory node
+				wantSize, _ := fileNode.Size()
+				wantCids := fx.assertFileUploadedToRemoteNode(t, fileNode, int(wantSize))
+
+				cidsCount.Add(int64(len(wantCids)))
+				totalSize.Add(int64(wantSize))
+			}()
 		}
 
-		req := AddFileRequest{
-			FileObjectId:        "objectId1",
-			FileId:              domain.FullFileId{SpaceId: spaceId, FileId: fileId},
-			UploadedByUser:      true,
-			Imported:            false,
-			PrioritizeVariantId: "",
-			Score:               0,
-		}
-		require.NoError(t, fx.AddFile(req))
+		wg.Wait()
 
-		fx.waitEmptyQueue(t, fx.uploadingQueue, 100*time.Millisecond)
-		assert.Equal(t, 1, fx.uploadingQueue.NumProcessedItems())
-		fx.waitEmptyQueue(t, fx.retryUploadingQueue, 100*time.Millisecond)
-		assert.Equal(t, 0, fx.retryUploadingQueue.NumProcessedItems())
+		// Check node usage
+		currentUsage, err := fx.getAndUpdateNodeUsage(ctx)
+		require.NoError(t, err)
+
+		assert.Equal(t, totalSize.Load(), int64(currentUsage.TotalBytesUsage))
+
+		assert.Equal(t, []SpaceStat{
+			{
+				SpaceId:           spaceId,
+				FileCount:         10,
+				CidsCount:         int(cidsCount.Load()),
+				TotalBytesUsage:   currentUsage.TotalBytesUsage,
+				SpaceBytesUsage:   currentUsage.TotalBytesUsage, // Equals to total because we got only one space
+				AccountBytesLimit: currentUsage.AccountBytesLimit,
+			},
+		}, currentUsage.Spaces)
+	})
+
+	t.Run("upload multiple files concurrently: limits reached", func(t *testing.T) {
+		fx := newFixture(t, 1024+512)
+		defer fx.Finish(t)
+
+		var wg sync.WaitGroup
+		var uploaded atomic.Int64
+		var limited atomic.Int64
+		spaceId := "space1"
+
+		for i := 0; i < 10; i++ {
+			wg.Add(1)
+
+			go func() {
+				defer wg.Done()
+
+				// Add file to local DAG
+				fileId, fileNode := fx.givenFileAddedToDAG(t, 1024)
+
+				// Add file to upload queue
+				state := fx.givenFileUploadedOrLimited(t, spaceId, fileId)
+				if state == FileStateDone {
+					// Check that file uploaded to in-memory node
+					wantSize, _ := fileNode.Size()
+					fx.assertFileUploadedToRemoteNode(t, fileNode, int(wantSize))
+					uploaded.Inc()
+				} else {
+					limited.Inc()
+				}
+			}()
+		}
+
+		wg.Wait()
+
+		// Check node usage
+		currentUsage, err := fx.getAndUpdateNodeUsage(ctx)
+		require.NoError(t, err)
+
+		assert.Equal(t, int64(1), uploaded.Load())
+		assert.Equal(t, int64(9), limited.Load())
+
+		assert.Equal(t, []SpaceStat{
+			{
+				SpaceId:           spaceId,
+				FileCount:         1,
+				CidsCount:         1,
+				TotalBytesUsage:   currentUsage.TotalBytesUsage,
+				SpaceBytesUsage:   currentUsage.TotalBytesUsage, // Equals to total because we got only one space
+				AccountBytesLimit: currentUsage.AccountBytesLimit,
+			},
+		}, currentUsage.Spaces)
 	})
 }
 
@@ -144,30 +235,92 @@ func (fx *fixture) assertFileUploadedToRemoteNode(t *testing.T, fileNode ipld.No
 	return wantCids
 }
 
-func (fx *fixture) givenFileAddedToDAG(t *testing.T) (domain.FileId, ipld.Node) {
-	return fx.givenFileWithSizeAddedToDAG(t, 1024*1024)
+func (fx *fixture) givenFileAddedToDAG(t *testing.T, size int) (domain.FileId, ipld.Node) {
+	return fx.givenFileWithSizeAddedToDAG(t, size)
 }
 
 func (fx *fixture) givenFileUploaded(t *testing.T, spaceId string, fileId domain.FileId) {
 	// Add file to upload queue
 	req := AddFileRequest{
-		FileObjectId:        "objectId1",
-		FileId:              domain.FullFileId{SpaceId: spaceId, FileId: fileId},
-		UploadedByUser:      true,
-		Imported:            false,
-		PrioritizeVariantId: "",
-		Score:               0,
+		FileObjectId:   bson.NewObjectId().Hex(),
+		FileId:         domain.FullFileId{SpaceId: spaceId, FileId: fileId},
+		UploadedByUser: true,
+		Imported:       false,
 	}
 	err := fx.AddFile(req)
 	require.NoError(t, err)
 
-	fx.waitEmptyQueue(t, fx.uploadingQueue, time.Second*1)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
+
+	it, err := fx.queue.GetNext(ctx, filequeue.GetNextRequest[FileInfo]{
+		Subscribe: true,
+		StoreFilter: query.And{
+			filterByFileId(fileId.String()),
+			filterByState(FileStateDone),
+		},
+		Filter: func(info FileInfo) bool { return info.FileId == fileId && info.State == FileStateDone },
+	})
+
+	require.NoError(t, err)
+	assert.Equal(t, fileId, it.FileId)
+
+	err = fx.queue.ReleaseAndUpdate(it.ObjectId, it)
+	require.NoError(t, err)
 
 	// Check remote node
 	fileInfos, err := fx.rpcStore.FilesInfo(ctx, spaceId, fileId)
 	require.NoError(t, err)
 	require.Len(t, fileInfos, 1)
 	assert.NotZero(t, fileInfos[0].UsageBytes)
+}
+
+func (fx *fixture) givenFileUploadedOrLimited(t *testing.T, spaceId string, fileId domain.FileId) FileState {
+	// Add file to upload queue
+	req := AddFileRequest{
+		FileObjectId:   bson.NewObjectId().Hex(),
+		FileId:         domain.FullFileId{SpaceId: spaceId, FileId: fileId},
+		UploadedByUser: true,
+		Imported:       false,
+	}
+	err := fx.AddFile(req)
+	require.NoError(t, err)
+
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
+
+	it, err := fx.queue.GetNext(ctx, filequeue.GetNextRequest[FileInfo]{
+		Subscribe: true,
+		StoreFilter: query.And{
+			filterByFileId(fileId.String()),
+			query.Or{
+				filterByState(FileStateDone),
+				filterByState(FileStateLimited),
+			},
+		},
+		Filter: func(info FileInfo) bool {
+			return info.FileId == fileId && (info.State == FileStateLimited || info.State == FileStateDone)
+		},
+	})
+
+	require.NoError(t, err)
+	assert.Equal(t, fileId, it.FileId)
+
+	state := it.State
+
+	err = fx.queue.ReleaseAndUpdate(it.ObjectId, it)
+	require.NoError(t, err)
+
+	// Check remote node
+	fileInfos, err := fx.rpcStore.FilesInfo(ctx, spaceId, fileId)
+	require.NoError(t, err)
+	if state == FileStateDone {
+		require.Len(t, fileInfos, 1)
+		assert.NotZero(t, fileInfos[0].UsageBytes)
+	} else {
+		require.Len(t, fileInfos, 0)
+	}
+	return state
 }
 
 func (fx *fixture) givenFileWithSizeAddedToDAG(t *testing.T, size int) (domain.FileId, ipld.Node) {
@@ -177,126 +330,4 @@ func (fx *fixture) givenFileWithSizeAddedToDAG(t *testing.T, size int) (domain.F
 	fileNode, err := fx.fileService.AddFile(ctx, bytes.NewReader(buf))
 	require.NoError(t, err)
 	return domain.FileId(fileNode.Cid().String()), fileNode
-}
-
-func TestUpload(t *testing.T) {
-	t.Run("with file absent on node, upload it", func(t *testing.T) {
-		fx := newFixture(t, 1024*1024*1024)
-		defer fx.Finish(t)
-
-		spaceId := "space1"
-		fileId, _ := fx.givenFileAddedToDAG(t)
-
-		err := fx.uploadFileHandleLimits(ctx, &QueueItem{SpaceId: spaceId, FileId: fileId})
-		require.NoError(t, err)
-
-		assert.True(t, fx.rpcStore.Stats().BlocksAdded() > 0)
-		assert.True(t, fx.rpcStore.Stats().CidsBinded() == 0)
-	})
-
-	t.Run("with already uploaded file, bind cids", func(t *testing.T) {
-		fx := newFixture(t, 1024*1024*1024)
-		defer fx.Finish(t)
-
-		spaceId := "space1"
-		fileId, _ := fx.givenFileAddedToDAG(t)
-
-		err := fx.uploadFileHandleLimits(ctx, &QueueItem{SpaceId: spaceId, FileId: fileId})
-		require.NoError(t, err)
-
-		assert.True(t, fx.rpcStore.Stats().BlocksAdded() > 0)
-		assert.True(t, fx.rpcStore.Stats().CidsBinded() == 0)
-
-		err = fx.uploadFileHandleLimits(ctx, &QueueItem{SpaceId: spaceId, FileId: fileId})
-		require.NoError(t, err)
-
-		assert.True(t, fx.rpcStore.Stats().CidsBinded() == fx.rpcStore.Stats().BlocksAdded())
-	})
-
-	t.Run("with too large file, upload limit is reached", func(t *testing.T) {
-		fx := newFixture(t, 1024)
-		defer fx.Finish(t)
-
-		spaceId := "space1"
-		fileId, _ := fx.givenFileAddedToDAG(t)
-
-		err := fx.uploadFileHandleLimits(ctx, &QueueItem{SpaceId: spaceId, FileId: fileId})
-		var errLimit *errLimitReached
-		require.ErrorAs(t, err, &errLimit)
-	})
-
-	t.Run("with multiple files are uploading simultaneously, only one will be uploaded, other unbinded", func(t *testing.T) {
-		// Limit is exact size of test file. It doesn't equal to raw data because of DAG overhead
-		fileSize := 10 * 1024 * 1024
-		limit := fileSize*2 - 1 // Place only for one file
-		fx := newFixture(t, limit)
-		defer fx.Finish(t)
-
-		spaceId := "space1"
-
-		var (
-			errorsLock sync.Mutex
-			errors     []error
-			wg         sync.WaitGroup
-			fileIds    []domain.FileId
-		)
-
-		numberOfFiles := 3
-		for i := 0; i < numberOfFiles; i++ {
-			fileId, _ := fx.givenFileWithSizeAddedToDAG(t, fileSize)
-			fileIds = append(fileIds, fileId)
-		}
-
-		for _, fileId := range fileIds {
-			wg.Add(1)
-			go func(fileId domain.FileId) {
-				defer wg.Done()
-
-				err := fx.uploadFileHandleLimits(ctx, &QueueItem{SpaceId: spaceId, FileId: fileId})
-				if err != nil {
-					errorsLock.Lock()
-					errors = append(errors, err)
-					errorsLock.Unlock()
-				}
-
-			}(fileId)
-		}
-		wg.Wait()
-
-		for _, err := range errors {
-			var errLimit *errLimitReached
-			require.ErrorAs(t, err, &errLimit)
-		}
-
-		assert.True(t, fx.rpcStore.Stats().BlocksAdded() > 0)
-		assert.True(t, fx.rpcStore.Stats().CidsBinded() == 0)
-
-		filesInfo, err := fx.rpcStore.FilesInfo(ctx, spaceId, fileIds...)
-		require.NoError(t, err)
-
-		// Check invariants:
-		// Number of deleted files <= number of limit reached errors
-		assert.LessOrEqual(t, int(fx.rpcStore.Stats().FilesDeleted()), len(errors))
-		// Number of uploaded files == number of tried files - number of errors
-		assert.Equal(t, len(filesInfo), numberOfFiles-len(errors))
-	})
-}
-
-func TestBlocksAvailabilityResponseMarshalUnmarshal(t *testing.T) {
-	resp := &blocksAvailabilityResponse{
-		bytesToUpload: 123,
-		bytesToBind:   234,
-		cidsToUpload: map[cid.Cid]struct{}{
-			cid.MustParse("bafybeihdwdcefgh4dqkjv67uzcmw7ojee6xedzdetojuzjevtenxquvyku"): {},
-		},
-	}
-
-	data, err := json.Marshal(resp)
-	require.NoError(t, err)
-
-	unmarshaledResp := &blocksAvailabilityResponse{}
-	err = json.Unmarshal(data, &unmarshaledResp)
-	require.NoError(t, err)
-
-	assert.Equal(t, resp, unmarshaledResp)
 }

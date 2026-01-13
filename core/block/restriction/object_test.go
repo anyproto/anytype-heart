@@ -130,6 +130,7 @@ func TestTemplateRestriction(t *testing.T) {
 
 func TestArchivedObjectRestrictions(t *testing.T) {
 	archived := &restrictionHolder{
+		sbType: smartblock.SmartBlockTypePage,
 		localDetails: domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
 			bundle.RelationKeyIsArchived: domain.Bool(true),
 		}),
@@ -137,6 +138,10 @@ func TestArchivedObjectRestrictions(t *testing.T) {
 
 	rs := GetRestrictions(archived).Object
 	for r := range objRestrictAll {
+		if r == model.Restrictions_Delete {
+			assert.NoError(t, rs.Check(r))
+			continue
+		}
 		assert.Error(t, rs.Check(r))
 	}
 	assert.NoError(t, rs.Check(model.Restrictions_None))

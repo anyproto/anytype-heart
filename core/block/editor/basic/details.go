@@ -23,8 +23,6 @@ import (
 
 var log = logging.Logger("anytype-mw-editor-basic")
 
-var errInternalRelationDeletion = errors.New("deletion of internal relation is prohibited")
-
 func (bs *basic) SetDetails(ctx session.Context, details []domain.Detail, showEvent bool) (err error) {
 	if err = bs.UpdateDetails(ctx, func(current *domain.Details) (*domain.Details, error) {
 		return applyDetailUpdates(current, details), nil
@@ -52,11 +50,7 @@ func (bs *basic) UpdateDetails(ctx session.Context, update func(current *domain.
 
 	diff, removedKeys := domain.StructDiff(oldDetails, newDetails)
 	if err = bs.validateUpdates(s, diff, removedKeys); err != nil {
-		if !errors.Is(err, errInternalRelationDeletion) {
-			return err
-		}
-		// TODO: GO-6248 analyze logs after release and remove logging
-		log.With("objectId", bs.Id()).With("keys", removedKeys).Error(err)
+		return err
 	}
 
 	s.SetDetails(newDetails)
@@ -65,8 +59,10 @@ func (bs *basic) UpdateDetails(ctx session.Context, update func(current *domain.
 	}
 
 	flags := internalflag.NewFromState(s.ParentState())
-	flags.Remove(model.InternalFlag_editorDeleteEmpty)
-	flags.AddToState(s)
+	if flags.Has(model.InternalFlag_editorDeleteEmpty) {
+		flags.Remove(model.InternalFlag_editorDeleteEmpty)
+		flags.AddToState(s)
+	}
 
 	return bs.Apply(s, smartblock.NoRestrictions, smartblock.KeepInternalFlags)
 }
@@ -84,7 +80,7 @@ func (bs *basic) validateUpdates(st *state.State, diff *domain.Details, removedK
 	}
 
 	if slices.ContainsFunc(removedKeys, bundle.IsInternalRelation) {
-		return errInternalRelationDeletion
+		return fmt.Errorf("deletion of internal relation is prohibited: %v", removedKeys)
 	}
 
 	return nil

@@ -828,6 +828,61 @@ func (_c *MockAccountObject_GetDocInfo_Call) RunAndReturn(run func() smartblock.
 	return _c
 }
 
+// GetInboxOffset provides a mock function with given fields:
+func (_m *MockAccountObject) GetInboxOffset() (string, error) {
+	ret := _m.Called()
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetInboxOffset")
+	}
+
+	var r0 string
+	var r1 error
+	if rf, ok := ret.Get(0).(func() (string, error)); ok {
+		return rf()
+	}
+	if rf, ok := ret.Get(0).(func() string); ok {
+		r0 = rf()
+	} else {
+		r0 = ret.Get(0).(string)
+	}
+
+	if rf, ok := ret.Get(1).(func() error); ok {
+		r1 = rf()
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockAccountObject_GetInboxOffset_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetInboxOffset'
+type MockAccountObject_GetInboxOffset_Call struct {
+	*mock.Call
+}
+
+// GetInboxOffset is a helper method to define mock.On call
+func (_e *MockAccountObject_Expecter) GetInboxOffset() *MockAccountObject_GetInboxOffset_Call {
+	return &MockAccountObject_GetInboxOffset_Call{Call: _e.mock.On("GetInboxOffset")}
+}
+
+func (_c *MockAccountObject_GetInboxOffset_Call) Run(run func()) *MockAccountObject_GetInboxOffset_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *MockAccountObject_GetInboxOffset_Call) Return(_a0 string, _a1 error) *MockAccountObject_GetInboxOffset_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockAccountObject_GetInboxOffset_Call) RunAndReturn(run func() (string, error)) *MockAccountObject_GetInboxOffset_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // History provides a mock function with given fields:
 func (_m *MockAccountObject) History() undo.History {
 	ret := _m.Called()
@@ -1973,6 +2028,52 @@ func (_c *MockAccountObject_SetAnalyticsId_Call) Return(err error) *MockAccountO
 }
 
 func (_c *MockAccountObject_SetAnalyticsId_Call) RunAndReturn(run func(string) error) *MockAccountObject_SetAnalyticsId_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// SetInboxOffset provides a mock function with given fields: offset
+func (_m *MockAccountObject) SetInboxOffset(offset string) error {
+	ret := _m.Called(offset)
+
+	if len(ret) == 0 {
+		panic("no return value specified for SetInboxOffset")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(string) error); ok {
+		r0 = rf(offset)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// MockAccountObject_SetInboxOffset_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'SetInboxOffset'
+type MockAccountObject_SetInboxOffset_Call struct {
+	*mock.Call
+}
+
+// SetInboxOffset is a helper method to define mock.On call
+//   - offset string
+func (_e *MockAccountObject_Expecter) SetInboxOffset(offset interface{}) *MockAccountObject_SetInboxOffset_Call {
+	return &MockAccountObject_SetInboxOffset_Call{Call: _e.mock.On("SetInboxOffset", offset)}
+}
+
+func (_c *MockAccountObject_SetInboxOffset_Call) Run(run func(offset string)) *MockAccountObject_SetInboxOffset_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(string))
+	})
+	return _c
+}
+
+func (_c *MockAccountObject_SetInboxOffset_Call) Return(err error) *MockAccountObject_SetInboxOffset_Call {
+	_c.Call.Return(err)
+	return _c
+}
+
+func (_c *MockAccountObject_SetInboxOffset_Call) RunAndReturn(run func(string) error) *MockAccountObject_SetInboxOffset_Call {
 	_c.Call.Return(run)
 	return _c
 }

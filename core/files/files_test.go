@@ -8,7 +8,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/anyproto/any-sync/accountservice/mock_accountservice"
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/commonfile/fileservice"
 	"github.com/globalsign/mgo/bson"
@@ -16,21 +15,15 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
-	"go.uber.org/mock/gomock"
 
-	"github.com/anyproto/anytype-heart/core/anytype/config"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/event/mock_event"
 	"github.com/anyproto/anytype-heart/core/files/fileobject/filemodels"
 	"github.com/anyproto/anytype-heart/core/files/filestorage"
-	rpcstore2 "github.com/anyproto/anytype-heart/core/files/filestorage/rpcstore"
 	"github.com/anyproto/anytype-heart/core/files/filesync"
-	wallet2 "github.com/anyproto/anytype-heart/core/wallet"
-	"github.com/anyproto/anytype-heart/core/wallet/mock_wallet"
-	"github.com/anyproto/anytype-heart/pb"
+	"github.com/anyproto/anytype-heart/core/files/filesync/mock_filesync"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
-	"github.com/anyproto/anytype-heart/pkg/lib/datastore/anystoreprovider"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/mill/schema"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/storage"
@@ -43,7 +36,6 @@ type fixture struct {
 	eventSender       *mock_event.MockSender
 	commonFileService fileservice.FileService
 	fileSyncService   filesync.FileSync
-	rpcStore          rpcstore2.RpcStore
 	objectStore       objectstore.ObjectStore
 }
 
@@ -56,48 +48,36 @@ const (
 func newFixture(t *testing.T) *fixture {
 	blockStorage := filestorage.NewInMemory()
 
-	rpcStore := rpcstore2.NewInMemoryStore(1024)
-	rpcStoreService := rpcstore2.NewInMemoryService(rpcStore)
 	commonFileService := fileservice.New()
-	fileSyncService := filesync.New()
-	objectStore := objectstore.NewStoreFixture(t)
-	eventSender := mock_event.NewMockSender(t)
-	eventSender.EXPECT().Broadcast(mock.Anything).Return().Maybe()
+	fileSyncService := mock_filesync.NewMockFileSync(t)
+	fileSyncService.EXPECT().AddFile(mock.Anything).Return(nil).Maybe()
 
-	ctrl := gomock.NewController(t)
-	wallet := mock_wallet.NewMockWallet(t)
-	wallet.EXPECT().Name().Return(wallet2.CName)
-	wallet.EXPECT().RepoPath().Return(t.TempDir())
+	objectStore := objectstore.NewStoreFixture(t)
+
 	ctx := context.Background()
 	a := new(app.App)
-	a.Register(anystoreprovider.New())
 	a.Register(commonFileService)
-	a.Register(fileSyncService)
-	a.Register(testutil.PrepareMock(ctx, a, eventSender))
+	a.Register(testutil.PrepareMock(ctx, a, fileSyncService))
 	a.Register(blockStorage)
 	a.Register(objectStore)
-	a.Register(rpcStoreService)
-	a.Register(testutil.PrepareMock(ctx, a, mock_accountservice.NewMockService(ctrl)))
-	a.Register(testutil.PrepareMock(ctx, a, wallet))
-	a.Register(&config.Config{DisableFileConfig: true, NetworkMode: pb.RpcAccount_DefaultConfig, PeferYamuxTransport: true})
-	err := a.Start(ctx)
+
+	err := commonFileService.Init(a)
 	require.NoError(t, err)
 
 	s := New()
 	err = s.Init(a)
 	require.NoError(t, err)
+
 	return &fixture{
 		Service:           s,
-		eventSender:       eventSender,
 		commonFileService: commonFileService,
 		fileSyncService:   fileSyncService,
-		rpcStore:          rpcStore,
 		objectStore:       objectStore,
 	}
 }
 
 func TestFileAdd(t *testing.T) {
-	fx, got, uploaded := getFixtureAndFileInfo(t)
+	fx, got := getFixtureAndFileInfo(t)
 	ctx := context.Background()
 
 	require.Len(t, got.Variants, 1)
@@ -127,41 +107,14 @@ func TestFileAdd(t *testing.T) {
 		require.NoError(t, err)
 		assert.NotEqual(t, testFileContent, string(gotEncryptedContent))
 	})
-
-	t.Run("check that file is uploaded to backup node", func(t *testing.T) {
-		req := filesync.AddFileRequest{
-			FileObjectId:        "objectId1",
-			FileId:              domain.FullFileId{SpaceId: spaceId, FileId: got.FileId},
-			UploadedByUser:      true,
-			Imported:            false,
-			PrioritizeVariantId: "",
-			Score:               0,
-		}
-		err := fx.fileSyncService.AddFile(req)
-		require.NoError(t, err)
-		<-uploaded
-		infos, err := fx.rpcStore.FilesInfo(ctx, spaceId, got.FileId)
-		require.NoError(t, err)
-
-		require.Len(t, infos, 1)
-
-		assert.Equal(t, got.FileId.String(), infos[0].FileId)
-	})
 }
 
-func getFixtureAndFileInfo(t *testing.T) (*fixture, *AddResult, chan struct{}) {
+func getFixtureAndFileInfo(t *testing.T) (*fixture, *AddResult) {
 	fx := newFixture(t)
 	ctx := context.Background()
 
-	uploaded := make(chan struct{})
-	fx.fileSyncService.OnUploaded(func(objectId string, fileId domain.FullFileId) error {
-		close(uploaded)
-		return nil
-	})
-
 	lastModifiedDate := time.Now()
 	buf := strings.NewReader(testFileContent)
-	fx.eventSender.EXPECT().Broadcast(mock.Anything).Return().Maybe()
 
 	opts := []AddOption{
 		WithName(testFileName),
@@ -172,7 +125,7 @@ func getFixtureAndFileInfo(t *testing.T) (*fixture, *AddResult, chan struct{}) {
 	require.NoError(t, err)
 	assert.NotEmpty(t, got.FileId)
 	got.Commit()
-	return fx, got, uploaded
+	return fx, got
 }
 
 func TestIndexFile(t *testing.T) {
@@ -218,14 +171,10 @@ func TestFileAddWithCustomKeys(t *testing.T) {
 		ctx := context.Background()
 
 		uploaded := make(chan struct{})
-		fx.fileSyncService.OnUploaded(func(objectId string, fileId domain.FullFileId) error {
-			close(uploaded)
-			return nil
-		})
+		close(uploaded)
 
 		lastModifiedDate := time.Now()
 		buf := strings.NewReader(testFileContent)
-		fx.eventSender.EXPECT().Broadcast(mock.Anything).Return().Maybe()
 
 		customKeys := map[string]string{
 			encryptionKeyPath(schema.LinkFile): "bweokjjonr756czpdoymdfwzromqtqb27z44tmcb2vv322y2v62ja",
@@ -256,14 +205,10 @@ func TestFileAddWithCustomKeys(t *testing.T) {
 				ctx := context.Background()
 
 				uploaded := make(chan struct{})
-				fx.fileSyncService.OnUploaded(func(objectId string, fileId domain.FullFileId) error {
-					close(uploaded)
-					return nil
-				})
+				close(uploaded)
 
 				lastModifiedDate := time.Now()
 				buf := strings.NewReader(testFileContent)
-				fx.eventSender.EXPECT().Broadcast(mock.Anything).Return().Maybe()
 
 				opts := []AddOption{
 					WithName(testFileName),

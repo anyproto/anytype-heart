@@ -60,16 +60,16 @@ import (
 const CName = "export"
 
 const (
-	tempFileName              = "temp_anytype_backup"
-	spaceDirectory            = "spaces"
-	typesDirectory            = "types"
-	objectsDirectory          = "objects"
-	relationsDirectory        = "relations"
-	relationsOptionsDirectory = "relationsOptions"
-	templatesDirectory        = "templates"
+	tempFileName   = "temp_anytype_backup"
+	spaceDirectory = "spaces"
 
-	FilesObjects = "filesObjects"
-	Files        = "files"
+	TypesDirectory            = "types"
+	ObjectsDirectory          = "objects"
+	RelationsDirectory        = "relations"
+	RelationsOptionsDirectory = "relationsOptions"
+	TemplatesDirectory        = "templates"
+	FilesObjects              = "filesObjects"
+	Files                     = "files"
 
 	defaultFileName = "untitled"
 )
@@ -1292,17 +1292,17 @@ func makeFileName(docId, spaceId, ext string, st *state.State, blockType smartbl
 func provideFileDirectory(blockType smartblock.SmartBlockType) string {
 	switch blockType {
 	case smartblock.SmartBlockTypeRelation:
-		return relationsDirectory
+		return RelationsDirectory
 	case smartblock.SmartBlockTypeRelationOption:
-		return relationsOptionsDirectory
+		return RelationsOptionsDirectory
 	case smartblock.SmartBlockTypeObjectType:
-		return typesDirectory
+		return TypesDirectory
 	case smartblock.SmartBlockTypeTemplate:
-		return templatesDirectory
+		return TemplatesDirectory
 	case smartblock.SmartBlockTypeFile, smartblock.SmartBlockTypeFileObject:
 		return FilesObjects
 	default:
-		return objectsDirectory
+		return ObjectsDirectory
 	}
 }
 

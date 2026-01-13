@@ -3,16 +3,11 @@
   "version": "1.0.0",
   "description": "protobuf TS bindings for Anytype middleware library",
   "scripts": {
-    "build:ts": "pbjs -t static-module -w commonjs -o build/ts/commands-native.js ./pb/protos/*.proto ./pb/protos/service/*.proto /service/*.proto ./vendor/github.com/anyproto/anytype-heart/pkg/lib/pb/model/protos/*.proto && ./node_modules/.bin/pbts -o build/ts/commands.d.ts build/ts/commands.js ./vendor/github.com/anyproto/anytype-heart/pkg/lib/pb/model/protos/*.proto",
-    "build:protos": "webpack -o ./build/web/commands-web.js ./build/web/pb/protos/service/service_grpc_web_pb.js"
-  },
-  "dependencies": {
-    "google-protobuf": "~3.19.4",
-    "grpc-web": "~1.3.1",
-    "protobufjs": "~6.11.2"
+    "build:js": "protoc -I ./  --js_out=import_style=commonjs,binary:./dist/js/pb pb/protos/service/*.proto pb/protos/*.proto pkg/lib/pb/model/protos/*.proto",
+    "build:server": "protoc -I ./  --grpc-web_out=import_style=commonjs+dts,mode=grpcwebtext:./dist/js/pb pb/protos/service/*.proto pb/protos/*.proto pkg/lib/pb/model/protos/*.proto"
   },
   "devDependencies": {
-    "webpack": "^4.16.5",
-    "webpack-cli": "^3.3.12"
+    "protoc-gen-grpc-web": "^1.5.0",
+    "protoc-gen-js": "^3.21.4-4"
   }
 }

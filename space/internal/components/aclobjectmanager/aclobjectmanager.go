@@ -90,7 +90,7 @@ func (a *aclObjectManager) StatType() string {
 func (a *aclObjectManager) UpdateAcl(aclList list.AclList) {
 	err := a.processAcl()
 	if err != nil {
-		log.Error("error processing acl", zap.Error(err))
+		log.Error("UpdateAcl: error processing acl", zap.Error(err))
 	}
 }
 
@@ -154,7 +154,7 @@ func (a *aclObjectManager) process() {
 	defer acl.RUnlock()
 	err := a.processAcl()
 	if err != nil {
-		log.Error("error processing acl", zap.Error(err))
+		log.Error("process(): error processing acl", zap.Error(err))
 		return
 	}
 }
@@ -185,20 +185,26 @@ func (a *aclObjectManager) processAcl() (err error) {
 		return
 	}
 	a.mx.Unlock()
-	decrypt := func(key crypto.PubKey) ([]byte, error) {
-		if a.ownerMetadata != nil && a.guestKey == nil {
-			return a.ownerMetadata, nil
-		}
-		return aclState.GetMetadata(key, true)
-	}
+
 	states := aclState.CurrentAccounts()
 	// for tests make sure that owner comes first
 	sortStates(states)
-	// decrypt all metadata
-	states, err = decryptAll(states, decrypt)
-	if err != nil {
-		return
+
+	// for onetoone, we get RequestMetadata in participant watcher instead
+	if !aclState.IsOneToOne() {
+		decrypt := func(key crypto.PubKey) ([]byte, error) {
+			if a.ownerMetadata != nil && a.guestKey == nil {
+				return a.ownerMetadata, nil
+			}
+			return aclState.GetMetadata(key, true)
+		}
+
+		states, err = decryptAll(states, decrypt)
+		if err != nil {
+			return
+		}
 	}
+
 	for _, st := range states {
 		if st.Permissions.IsOwner() {
 			err = a.status.SetOwner(st.PubKey.Account(), createdDate)
@@ -228,7 +234,9 @@ func (a *aclObjectManager) processAcl() (err error) {
 			return item.PubKey.Account() != a.guestKey.GetPublic().Account()
 		})
 	}
+
 	err = a.processStates(states, upToDate, aclState.Identity())
+
 	if err != nil {
 		return
 	}
@@ -305,6 +313,11 @@ func (a *aclObjectManager) findJoinedDate(acl syncacl.SyncAcl) (int64, error) {
 
 func (a *aclObjectManager) processStates(states []list.AccountState, upToDate bool, myIdentity crypto.PubKey) (err error) {
 	for _, state := range states {
+		if a.sp.IsOneToOne() && state.Permissions.IsOwner() {
+			// we don't wont derived owner to be in participants
+			continue
+		}
+
 		if state.PubKey.Equals(myIdentity) {
 			err = a.status.SetMyParticipantStatus(domain.ConvertAclStatus(state.Status))
 			if err != nil {

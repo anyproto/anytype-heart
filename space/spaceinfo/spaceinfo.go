@@ -119,10 +119,38 @@ const (
 	AccessTypeShared   = AccessType(model.SpaceAccessType_Shared)
 )
 
+type OneToOneInboxSentStatus int32
+
+const (
+	OneToOneInboxSentStatusNone OneToOneInboxSentStatus = 0
+	// default, usually when one-to-one was created from inbox and
+	// we don't need to send it back
+	OneToOneInboxSentStatusReceived OneToOneInboxSentStatus = 1
+	// successfully sent
+	OneToOneInboxSentStatusSent OneToOneInboxSentStatus = 2
+	// not sent yet, or sending failed
+	OneToOneInboxSentStatusToSend OneToOneInboxSentStatus = 3
+)
+
 type SpaceDescription struct {
-	Name        string
-	IconImage   string
-	SpaceUxType model.SpaceUxType
+	Name                       string
+	IconImage                  string
+	IconOption                 int
+	SpaceUxType                model.SpaceUxType
+	OneToOneIdentity           string
+	OneToOneRequestMetadataKey string
+	OneToOneInboxSentStatus    OneToOneInboxSentStatus
+}
+
+func NewSpaceDescriptionFromDetails(details *domain.Details) SpaceDescription {
+	return SpaceDescription{
+		Name:                       details.GetString(bundle.RelationKeyName),
+		IconImage:                  details.GetString(bundle.RelationKeyIconImage),
+		IconOption:                 int(details.GetInt64(bundle.RelationKeyIconOption)),
+		SpaceUxType:                model.SpaceUxType(details.GetInt64(bundle.RelationKeySpaceUxType)), // #nosec G115
+		OneToOneIdentity:           details.GetString(bundle.RelationKeyOneToOneIdentity),
+		OneToOneRequestMetadataKey: details.GetString(bundle.RelationKeyOneToOneRequestMetadataKey),
+	}
 }
 
 func (s *SpaceDescription) UpdateDetails(st *state.State) {
@@ -132,4 +160,7 @@ func (s *SpaceDescription) UpdateDetails(st *state.State) {
 	st.SetDetailAndBundledRelation(bundle.RelationKeyName, domain.String(s.Name))
 	st.SetDetailAndBundledRelation(bundle.RelationKeySpaceUxType, domain.Int64(s.SpaceUxType))
 	st.SetDetailAndBundledRelation(bundle.RelationKeyIconImage, domain.String(s.IconImage))
+	st.SetDetailAndBundledRelation(bundle.RelationKeyIconOption, domain.Int64(s.IconOption))
+	st.SetDetailAndBundledRelation(bundle.RelationKeyOneToOneInboxSentStatus, domain.Int64(s.OneToOneInboxSentStatus))
+	// OneToOneIdentity is set only once
 }

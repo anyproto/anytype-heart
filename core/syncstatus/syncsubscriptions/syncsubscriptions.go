@@ -7,6 +7,8 @@ import (
 	"github.com/anyproto/any-sync/app"
 	"github.com/samber/lo"
 
+	"github.com/anyproto/anytype-heart/core/anytype/account"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/subscription"
 	"github.com/anyproto/anytype-heart/core/subscription/objectsubscription"
 )
@@ -19,6 +21,7 @@ type SyncSubscription interface {
 	GetObjectSubscription() *objectsubscription.ObjectSubscription[struct{}]
 	LimitedFilesCount() int
 	SyncingObjectsCount(missing []string) int
+	UploadingFilesCount() int
 }
 
 type SyncSubscriptions interface {
@@ -34,12 +37,14 @@ func New() SyncSubscriptions {
 
 type syncSubscriptions struct {
 	sync.Mutex
-	service subscription.Service
-	subs    map[string]SyncSubscription
+	subscriptionService subscription.Service
+	accountService      account.Service
+	subs                map[string]SyncSubscription
 }
 
 func (s *syncSubscriptions) Init(a *app.App) (err error) {
-	s.service = app.MustComponent[subscription.Service](a)
+	s.subscriptionService = app.MustComponent[subscription.Service](a)
+	s.accountService = app.MustComponent[account.Service](a)
 	return
 }
 
@@ -58,7 +63,7 @@ func (s *syncSubscriptions) GetSubscription(id string) (SyncSubscription, error)
 	if curSub != nil {
 		return curSub, nil
 	}
-	sub := newSyncingObjects(id, s.service)
+	sub := newSyncingObjects(id, s.subscriptionService, domain.NewParticipantId(id, s.accountService.AccountID()))
 	err := sub.Run()
 	if err != nil {
 		return nil, err

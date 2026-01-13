@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"sync"
+	"time"
 
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/commonfile/fileservice"
@@ -17,6 +18,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/device"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/files/filehelper"
+	"github.com/anyproto/anytype-heart/core/files/filestorage/rpcstore"
 	"github.com/anyproto/anytype-heart/core/subscription/crossspacesub"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -28,8 +30,9 @@ var log = logging.Logger(CName).Desugar()
 
 type Service interface {
 	SetEnabled(enabled bool, wifiOnly bool) error
-	CacheFile(ctx context.Context, spaceId string, fileId domain.FileId, blocksLimit int)
-	DownloadToLocalStore(ctx context.Context, spaceId string, cid domain.FileId) error
+	CacheFile(spaceId string, fileId domain.FileId)
+	CancelFileCaching(fileId domain.FileId)
+	DownloadToLocalStore(ctx context.Context, spaceId string, cid domain.FileId, blocksLimit int) error
 	app.ComponentRunnable
 }
 
@@ -71,11 +74,8 @@ func (s *service) Init(a *app.App) error {
 	s.networkState = app.MustComponent[device.NetworkState](a)
 	s.networkState.RegisterHook(s.networkStateChanged)
 
-	var err error
-	s.cacheWarmer, err = newCacheWarmer(s.ctx, s.DownloadToLocalStore)
-	if err != nil {
-		return fmt.Errorf("new cache warmer: %w", err)
-	}
+	s.cacheWarmer = newCacheWarmer(s.ctx, 10, 20, 2*time.Minute, s.DownloadToLocalStore)
+
 	return nil
 }
 
@@ -84,6 +84,10 @@ func (s *service) Run(ctx context.Context) error {
 	if err != nil {
 		log.Error("set enabled", zap.Error(err))
 	}
+	for range 5 {
+		go s.cacheWarmer.runWorker()
+	}
+	go s.cacheWarmer.run()
 	return nil
 }
 
@@ -124,8 +128,12 @@ func (s *service) setEnabled(enabled bool, wifiOnly bool) {
 	}
 }
 
-func (s *service) CacheFile(ctx context.Context, spaceId string, fileId domain.FileId, blocksLimit int) {
-	s.cacheWarmer.CacheFile(ctx, spaceId, fileId, blocksLimit)
+func (s *service) CacheFile(spaceId string, fileId domain.FileId) {
+	s.cacheWarmer.enqueue(spaceId, fileId)
+}
+
+func (s *service) CancelFileCaching(fileId domain.FileId) {
+	s.cacheWarmer.cancelTask(fileId)
 }
 
 func (s *service) networkStateChanged(networkState model.DeviceNetworkType) {
@@ -147,7 +155,9 @@ func (s *service) networkStateChanged(networkState model.DeviceNetworkType) {
 	}
 }
 
-func (s *service) DownloadToLocalStore(ctx context.Context, spaceId string, fileCid domain.FileId) error {
+func (s *service) DownloadToLocalStore(ctx context.Context, spaceId string, fileCid domain.FileId, blocksLimit int) error {
+	ctx = rpcstore.ContextWithWaitAvailable(ctx)
+
 	dagService := s.dagServiceForSpace(spaceId)
 
 	rootCid, err := cid.Parse(fileCid.String())
@@ -166,6 +176,11 @@ func (s *service) DownloadToLocalStore(ctx context.Context, spaceId string, file
 		node := navNode.GetIPLDNode()
 		if _, ok := visited[node.Cid()]; !ok {
 			visited[node.Cid()] = struct{}{}
+
+			if blocksLimit > 0 && len(visited) >= blocksLimit {
+				// Stop iterating
+				return ipld.EndOfDag
+			}
 		}
 		return nil
 	})

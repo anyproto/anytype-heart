@@ -18,6 +18,10 @@ var (
 func (s *Service) AccountDelete(ctx context.Context) (*model.AccountStatus, error) {
 	s.lock.RLock()
 	defer s.lock.RUnlock()
+	if s.app == nil {
+		return nil, ErrApplicationIsNotRunning
+	}
+
 	var (
 		accountService = s.app.MustComponent(account.CName).(account.Service)
 		status         *model.AccountStatus

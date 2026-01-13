@@ -46,6 +46,9 @@ var log = logging.Logger("core.block.editor.chatobject").Desugar()
 
 type StoreObject interface {
 	smartblock.SmartBlock
+	basic.DetailsUpdatable
+	basic.DetailsSettable
+
 	anystoredebug.AnystoreDebug
 	components.SyncStatusHandler
 
@@ -71,6 +74,7 @@ type seenHeadsCollector interface {
 type storeObject struct {
 	anystoredebug.AnystoreDebug
 	basic.DetailsSettable
+	basic.DetailsUpdatable
 	smartblock.SmartBlock
 	locker smartblock.Locker
 
@@ -151,6 +155,7 @@ func New(
 	statService debugstat.StatService,
 ) StoreObject {
 	ctx, cancel := context.WithCancel(context.Background())
+	bs := basic.NewBasic(sb, spaceIndex, layoutConverter, fileObjectService)
 	return &storeObject{
 		SmartBlock:              sb,
 		locker:                  sb.(smartblock.Locker),
@@ -162,7 +167,8 @@ func New(
 		componentCtx:            ctx,
 		componentCtxCancel:      cancel,
 		chatSubscriptionService: chatSubscriptionService,
-		DetailsSettable:         basic.NewBasic(sb, spaceIndex, layoutConverter, fileObjectService),
+		DetailsSettable:         bs,
+		DetailsUpdatable:        bs,
 	}
 }
 
@@ -281,7 +287,17 @@ func (s *storeObject) onUpdate() {
 	s.subscription.Flush()
 
 	last, ok := s.subscription.GetLastMessage()
-	if ok {
+	if !ok {
+		msgs, err := s.repository.GetLastMessages(s.componentCtx, 1)
+		if err != nil {
+			log.Error("onUpdate: get last message", zap.Error(err))
+		}
+		if len(msgs) > 0 {
+			last = msgs[0].ChatMessage
+		}
+	}
+
+	if last != nil {
 		st := s.NewState()
 		st.SetDetailAndBundledRelation(bundle.RelationKeyLastMessageDate, domain.Int64(last.CreatedAt))
 		err = s.Apply(st, smartblock.NotPushChanges)

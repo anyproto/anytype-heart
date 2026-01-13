@@ -123,6 +123,7 @@ func (s *spaceLoader) WaitLoad(ctx context.Context) (sp clientspace.Space, err e
 
 	switch status {
 	case spaceinfo.LocalStatusUnknown:
+		s.mx.Unlock()
 		return nil, fmt.Errorf("waitLoad for an unknown space")
 	case spaceinfo.LocalStatusLoading:
 		// loading in progress, wait channel and retry

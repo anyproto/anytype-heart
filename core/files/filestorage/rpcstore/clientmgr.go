@@ -11,7 +11,6 @@ import (
 	"github.com/anyproto/any-sync/commonfile/fileblockstore"
 	"github.com/anyproto/any-sync/net/pool"
 	"github.com/cheggaaa/mb/v3"
-	"github.com/ipfs/go-cid"
 	"go.uber.org/zap"
 	"golang.org/x/exp/slices"
 
@@ -34,7 +33,7 @@ var (
 	ErrNoConnectionToAnyFileClient = errors.New("no connection to any file client")
 )
 
-func newClientManager(pool pool.Pool, peerStore peerstore.PeerStore, peerUpdateCh chan struct{}) *clientManager {
+func newClientManager(pool pool.Pool, peerStore peerstore.PeerStore, peerUpdateCh chan checkPeersMessage) *clientManager {
 	cm := &clientManager{
 		mb: mb.New[*task](maxTasks),
 		ocache: ocache.New(
@@ -48,12 +47,15 @@ func newClientManager(pool pool.Pool, peerStore peerstore.PeerStore, peerUpdateC
 		checkPeersCh: peerUpdateCh,
 		pool:         pool,
 		peerStore:    peerStore,
-		addLimiter:   make(chan struct{}, 1),
 	}
 	cm.ctx, cm.ctxCancel = context.WithCancel(context.Background())
 	cm.ctx = context.WithValue(cm.ctx, operationNameKey, "checkPeerLoop")
 	go cm.checkPeerLoop()
 	return cm
+}
+
+type checkPeersMessage struct {
+	needClient bool
 }
 
 // clientManager manages clients, removes unused ones, and adds new ones if necessary
@@ -62,44 +64,39 @@ type clientManager struct {
 	ctx          context.Context
 	ctxCancel    context.CancelFunc
 	ocache       ocache.OCache
-	checkPeersCh chan struct{}
+	checkPeersCh chan checkPeersMessage
 
 	pool      pool.Pool
 	peerStore peerstore.PeerStore
-
-	addLimiter chan struct{}
 }
 
 func (m *clientManager) add(ctx context.Context, ts ...*task) (err error) {
 	ctx, cancel := contexthelper.ContextWithCloseChan(ctx, m.ctx.Done())
 	defer cancel()
-	select {
-	case m.addLimiter <- struct{}{}:
-	case <-ctx.Done():
-		return ctx.Err()
-	}
+
 	if m.ocache.Len() == 0 {
-		if err = m.checkPeers(ctx, true); err != nil {
-			<-m.addLimiter
-			return
-		}
+		go func() {
+			select {
+			case <-m.ctx.Done():
+			case m.checkPeersCh <- checkPeersMessage{needClient: true}:
+			}
+		}()
 	}
-	<-m.addLimiter
+
 	return m.mb.Add(ctx, ts...)
 }
 
-func (m *clientManager) WriteOp(ctx context.Context, ready chan result, f func(c *client) error, c cid.Cid) (err error) {
-	return m.addOp(ctx, true, ready, f, c)
+func (m *clientManager) WriteOp(ctx context.Context, ready chan result, f func(c *client) error) (err error) {
+	return m.addOp(ctx, true, ready, f)
 }
 
-func (m *clientManager) ReadOp(ctx context.Context, ready chan result, f func(c *client) error, c cid.Cid) (err error) {
-	return m.addOp(ctx, false, ready, f, c)
+func (m *clientManager) ReadOp(ctx context.Context, ready chan result, f func(c *client) error) (err error) {
+	return m.addOp(ctx, false, ready, f)
 }
 
-func (m *clientManager) addOp(ctx context.Context, write bool, ready chan result, f func(c *client) error, c cid.Cid) (err error) {
+func (m *clientManager) addOp(ctx context.Context, write bool, ready chan result, f func(c *client) error) (err error) {
 	t := getTask()
 	t.ctx = ctx
-	t.cid = c
 	t.exec = f
 	t.spaceId = fileblockstore.CtxGetSpaceId(ctx)
 	t.onFinished = m.onTaskFinished
@@ -125,7 +122,6 @@ func (m *clientManager) onTaskFinished(t *task, c *client, taskErr error) {
 			t.denyPeerIds = append(t.denyPeerIds, c.peerId)
 		}
 		for _, peerId := range taskClientIds {
-			log.Info("retrying task", zap.Error(taskErr), zap.String("cid", t.cid.String()))
 			if !slices.Contains(t.denyPeerIds, peerId) {
 				err := m.add(t.ctx, t)
 				if err != nil {
@@ -136,7 +132,6 @@ func (m *clientManager) onTaskFinished(t *task, c *client, taskErr error) {
 			}
 		}
 	}
-	log.Debug("finishing task task", zap.String("cid", t.cid.String()))
 	t.ready <- result{err: taskErr}
 	t.release()
 }
@@ -149,8 +144,8 @@ func (m *clientManager) checkPeerLoop() {
 		select {
 		case <-m.ctx.Done():
 			return
-		case <-m.checkPeersCh:
-			_ = m.checkPeers(m.ctx, false)
+		case msg := <-m.checkPeersCh:
+			_ = m.checkPeers(m.ctx, msg.needClient)
 		case <-ticker.C:
 			_ = m.checkPeers(m.ctx, false)
 		}

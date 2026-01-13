@@ -184,7 +184,7 @@ func getObjectRestrictions(rh RestrictionHolder) (r ObjectRestrictions) {
 	}
 
 	if rh.LocalDetails().GetBool(bundle.RelationKeyIsArchived) {
-		return objRestrictAll.Copy()
+		return objRestrictAll.Copy().Remove(model.Restrictions_Delete)
 	}
 
 	return

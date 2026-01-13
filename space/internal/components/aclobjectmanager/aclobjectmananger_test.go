@@ -50,6 +50,7 @@ func TestAclObjectManager(t *testing.T) {
 		fx.mockLoader.EXPECT().WaitLoad(mock.Anything).Return(fx.mockSpace, nil)
 		fx.mockSpace.EXPECT().CommonSpace().Return(fx.mockCommonSpace)
 		fx.mockSpace.EXPECT().Id().Return("spaceId")
+		fx.mockSpace.EXPECT().IsOneToOne().Return(false).Maybe()
 		fx.mockCommonSpace.EXPECT().Acl().AnyTimes().Return(acl)
 		fx.mockStatus.EXPECT().GetLatestAclHeadId().Return("")
 		fx.mockStatus.EXPECT().SetOwner(acl.AclState().Identity().Account(), mock.Anything).Return(nil)
@@ -90,6 +91,7 @@ func TestAclObjectManager(t *testing.T) {
 		fx.mockLoader.EXPECT().WaitLoad(mock.Anything).Return(fx.mockSpace, nil)
 		fx.mockSpace.EXPECT().CommonSpace().Return(fx.mockCommonSpace)
 		fx.mockSpace.EXPECT().Id().Return("spaceId")
+		fx.mockSpace.EXPECT().IsOneToOne().Return(false).Maybe()
 		fx.mockCommonSpace.EXPECT().Acl().AnyTimes().Return(acl)
 		fx.mockStatus.EXPECT().SetOwner(a.ActualAccounts()["a"].Acl.AclState().Identity().Account(), mock.Anything).Return(nil)
 		fx.mockStatus.EXPECT().GetLatestAclHeadId().Return("")
@@ -137,6 +139,7 @@ func TestAclObjectManager(t *testing.T) {
 		fx.mockStatus.EXPECT().SetOwner(a.ActualAccounts()["a"].Acl.AclState().Identity().Account(), mock.Anything).Return(nil)
 		fx.mockSpace.EXPECT().CommonSpace().Return(fx.mockCommonSpace)
 		fx.mockSpace.EXPECT().Id().Return("spaceId")
+		fx.mockSpace.EXPECT().IsOneToOne().Return(false).Maybe()
 		fx.mockCommonSpace.EXPECT().Acl().AnyTimes().Return(acl)
 		fx.mockStatus.EXPECT().GetLatestAclHeadId().Return("")
 		fx.mockParticipantWatcher.EXPECT().UpdateParticipantFromAclState(mock.Anything, fx.mockSpace, mock.Anything).

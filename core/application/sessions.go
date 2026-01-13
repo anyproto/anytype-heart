@@ -4,10 +4,13 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/anyproto/any-sync/util/crypto"
+
 	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/core/session"
 	walletComp "github.com/anyproto/anytype-heart/core/wallet"
 	"github.com/anyproto/anytype-heart/pb"
+	"github.com/anyproto/anytype-heart/pkg/lib/core"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
@@ -16,6 +19,7 @@ func (s *Service) CreateSession(req *pb.RpcWalletCreateSessionRequest) (token st
 	mnemonic := req.GetMnemonic()
 	appKey := req.GetAppKey()
 	providedToken := req.GetToken()
+	accountKey := req.GetAccountKey()
 
 	if appKey != "" {
 		app := s.GetApp()
@@ -51,12 +55,28 @@ func (s *Service) CreateSession(req *pb.RpcWalletCreateSessionRequest) (token st
 		token, err = s.sessions.StartSession(s.sessionSigningKey, scope) // nolint:gosec
 		return token, "", err
 	}
-	if s.mnemonic == "" {
-		// todo: rewrite this after appKey auth is implemented
-		// we can derive and check the account in this case
-		return "", "", errors.Join(ErrBadInput, fmt.Errorf("app authed without mnemonic"))
+
+	var derived crypto.DerivationResult
+
+	if accountKey != "" {
+		derived, err = core.WalletDeriveFromAccountMasterNode(accountKey)
+		if err != nil {
+			return "", "", errors.Join(ErrBadInput, fmt.Errorf("invalid account key: %w", err))
+		}
+	} else {
+		if s.derivedKeys == nil {
+			return "", "", ErrWalletNotInitialized
+		}
+
+		// Derive keys from provided mnemonic to verify it's correct
+		derived, err = core.WalletAccountAt(mnemonic, 0)
+		if err != nil {
+			return "", "", errors.Join(ErrBadInput, fmt.Errorf("invalid mnemonic"))
+		}
 	}
-	if s.mnemonic != mnemonic {
+
+	// Compare account IDs to verify we are at the same account
+	if derived.Identity.GetPublic().Account() != s.derivedKeys.Identity.GetPublic().Account() {
 		return "", "", errors.Join(ErrBadInput, fmt.Errorf("incorrect mnemonic"))
 	}
 	token, err = s.sessions.StartSession(s.sessionSigningKey, model.AccountAuth_Full)

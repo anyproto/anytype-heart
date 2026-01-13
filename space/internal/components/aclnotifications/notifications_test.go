@@ -662,3 +662,7 @@ func (a *aclListStub) AddRawRecords(rawRecords []*consensusproto.RawRecordWithId
 }
 
 func (a *aclListStub) Close(ctx context.Context) (err error) { return err }
+
+func (a *aclListStub) GetRecordIndex(recordId string) (idx int) {
+	return
+}

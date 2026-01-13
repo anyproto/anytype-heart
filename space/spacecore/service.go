@@ -71,12 +71,12 @@ type SpaceCoreService interface {
 	Create(ctx context.Context, spaceType spacedomain.SpaceType, replicationKey uint64, metadataPayload []byte) (*AnySpace, error)
 	Derive(ctx context.Context, spaceType spacedomain.SpaceType) (space *AnySpace, err error)
 	DeriveID(ctx context.Context, spaceType spacedomain.SpaceType) (id string, err error)
+	CreateOneToOneSpace(ctx context.Context, bPk crypto.PubKey) (space *AnySpace, err error)
 	Delete(ctx context.Context, spaceId string) (err error)
 	Get(ctx context.Context, id string) (*AnySpace, error)
 	Pick(ctx context.Context, id string) (*AnySpace, error)
 	CloseSpace(ctx context.Context, id string) error
 	StorageExistsLocally(ctx context.Context, spaceId string) (exists bool, err error)
-
 	app.ComponentRunnable
 }
 
@@ -150,6 +150,20 @@ func (s *service) Derive(ctx context.Context, spaceType spacedomain.SpaceType) (
 	obj, err := s.spaceCache.Get(ctx, id)
 	if err != nil {
 		return
+	}
+	return obj.(*AnySpace), nil
+}
+
+func (s *service) CreateOneToOneSpace(ctx context.Context, bPk crypto.PubKey) (space *AnySpace, err error) {
+	id, err := s.commonSpace.DeriveOneToOneSpace(ctx, s.wallet.GetAccountPrivkey(), bPk)
+	if err != nil {
+		err = fmt.Errorf("derive one to one: %w", err)
+		return
+	}
+
+	obj, err := s.spaceCache.Get(ctx, id)
+	if err != nil {
+		return nil, err
 	}
 	return obj.(*AnySpace), nil
 }

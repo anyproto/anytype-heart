@@ -46,13 +46,17 @@ type Service interface {
 	SetWorkspaceDashboardId(ctx session.Context, workspaceId string, id string) (setId string, err error)
 
 	SetIsFavorite(objectId string, isFavorite bool) error
-	SetIsArchived(objectId string, isArchived bool) error
+	SetIsArchived(ctx context.Context, objectId string, isArchived bool) error
 	SetListIsFavorite(objectIds []string, isFavorite bool) error
-	SetListIsArchived(objectIds []string, isArchived bool) error
+	SetListIsArchived(ctx context.Context, objectIds []string, isArchived bool) error
 }
 
 func New() Service {
 	return &service{}
+}
+
+type fileService interface {
+	CanDeleteFile(ctx context.Context, objectId string) error
 }
 
 type service struct {
@@ -60,6 +64,7 @@ type service struct {
 	resolver     idresolver.Resolver
 	spaceService space.Service
 	store        objectstore.ObjectStore
+	fileService  fileService
 	fileGC       filegc.FileGC
 }
 
@@ -68,6 +73,7 @@ func (s *service) Init(a *app.App) error {
 	s.resolver = app.MustComponent[idresolver.Resolver](a)
 	s.spaceService = app.MustComponent[space.Service](a)
 	s.store = app.MustComponent[objectstore.ObjectStore](a)
+	s.fileService = app.MustComponent[fileService](a)
 	s.fileGC = app.MustComponent[filegc.FileGC](a)
 	return nil
 }

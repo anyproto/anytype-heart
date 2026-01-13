@@ -2,8 +2,11 @@ package participantwatcher
 
 import (
 	"context"
+	"encoding/base64"
+	"fmt"
 	"sync"
 
+	"github.com/anyproto/any-sync/accountservice"
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/app/logger"
 	"github.com/anyproto/any-sync/commonspace/object/acl/aclrecordproto"
@@ -14,11 +17,15 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
+	"github.com/anyproto/anytype-heart/pkg/lib/database"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space/clientspace"
 	"github.com/anyproto/anytype-heart/space/internal/components/dependencies"
 	"github.com/anyproto/anytype-heart/space/internal/components/spacestatus"
 	"github.com/anyproto/anytype-heart/space/spaceinfo"
+	"github.com/anyproto/anytype-heart/space/techspace"
 )
 
 const CName = "common.components.participantwatcher"
@@ -41,6 +48,9 @@ var _ ParticipantWatcher = (*participantWatcher)(nil)
 
 type participantWatcher struct {
 	identityService   dependencies.IdentityService
+	accountService    accountservice.Service
+	objectStore       objectstore.ObjectStore
+	techSpace         techspace.TechSpace
 	status            spacestatus.SpaceStatus
 	mx                sync.Mutex
 	addedParticipants map[string]struct{}
@@ -52,24 +62,82 @@ func New() ParticipantWatcher {
 	}
 }
 
+func (p *participantWatcher) getOneToOneParticipantRequestMetadataKey(space clientspace.Space) (crypto.SymKey, error) {
+	records, err := p.objectStore.SpaceIndex(p.techSpace.TechSpaceId()).Query(database.Query{
+		Filters: []database.FilterRequest{
+			{
+				RelationKey: bundle.RelationKeyTargetSpaceId,
+				Condition:   model.BlockContentDataviewFilter_Equal,
+				Value:       domain.String(space.Id()),
+			},
+			{
+				RelationKey: bundle.RelationKeyResolvedLayout,
+				Condition:   model.BlockContentDataviewFilter_Equal,
+				Value:       domain.Int64(int64(model.ObjectType_spaceView)),
+			},
+		},
+	})
+	if err != nil {
+		return nil, fmt.Errorf("onetoone: failed to query type object: %w", err)
+	}
+	if len(records) == 0 {
+		return nil, fmt.Errorf("onetoone: failed to query spaceview")
+	}
+
+	requestMetadataKeyStr := records[0].Details.GetString(bundle.RelationKeyOneToOneRequestMetadataKey)
+	requestMetadataKeyBytes, rerr := base64.StdEncoding.DecodeString(requestMetadataKeyStr)
+	if rerr != nil {
+		return nil, fmt.Errorf("failed to decode bob onetoone RequestMetadata: %w", rerr)
+	}
+	key, err := crypto.UnmarshallAESKeyProto(requestMetadataKeyBytes)
+	if err != nil {
+		return nil, fmt.Errorf("onetoone: failed to unmarshal requestMetadataBytes")
+	}
+
+	return key, nil
+}
+
+func (p *participantWatcher) getOneToOneKey(space clientspace.Space, state list.AccountState) (key crypto.SymKey, err error) {
+	myPubKey := p.accountService.Account().SignKey.GetPublic()
+	// it is either me or bob: we don't call WatchParticipant with owner state in aclobjectmanager
+	if state.PubKey.Equals(myPubKey) {
+		key, err = p.identityService.GetMetadataKey(myPubKey.Account())
+		if err != nil {
+			return
+		}
+	} else {
+		key, err = p.getOneToOneParticipantRequestMetadataKey(space)
+		if err != nil {
+			return
+		}
+	}
+	return
+
+}
 func (p *participantWatcher) WatchParticipant(ctx context.Context, space clientspace.Space, state list.AccountState) (err error) {
 	p.mx.Lock()
 	defer p.mx.Unlock()
-	key, err := getSymKey(state.RequestMetadata)
-	if err != nil {
-		return
-	}
 	accKey := state.PubKey.Account()
 	if _, exists := p.addedParticipants[state.PubKey.Account()]; exists {
 		return
 	}
+	var key crypto.SymKey
+
+	if space.IsOneToOne() {
+		key, err = p.getOneToOneKey(space, state)
+	} else {
+		key, err = getSymKey(state.RequestMetadata)
+	}
+	if err != nil {
+		return
+	}
+
 	err = p.identityService.RegisterIdentity(space.Id(), state.PubKey.Account(), key, func(identity string, profile *model.IdentityProfile) {
-		err := p.updateParticipantFromIdentity(ctx, space, identity, profile)
+		err := p.updateParticipantFromIdentity(space, identity, profile)
 		if err != nil {
 			log.Error("error updating participant from identity", zap.Error(err))
 		}
-	},
-	)
+	})
 	if err != nil {
 		return err
 	}
@@ -80,6 +148,9 @@ func (p *participantWatcher) WatchParticipant(ctx context.Context, space clients
 func (p *participantWatcher) Init(a *app.App) (err error) {
 	p.identityService = app.MustComponent[dependencies.IdentityService](a)
 	p.status = app.MustComponent[spacestatus.SpaceStatus](a)
+	p.accountService = app.MustComponent[accountservice.Service](a)
+	p.objectStore = app.MustComponent[objectstore.ObjectStore](a)
+	p.techSpace = app.MustComponent[techspace.TechSpace](a)
 	return nil
 }
 
@@ -113,7 +184,7 @@ func (p *participantWatcher) UpdateParticipantFromAclState(ctx context.Context, 
 	})
 }
 
-func (p *participantWatcher) updateParticipantFromIdentity(ctx context.Context, space clientspace.Space, identity string, profile *model.IdentityProfile) (err error) {
+func (p *participantWatcher) updateParticipantFromIdentity(space clientspace.Space, identity string, profile *model.IdentityProfile) (err error) {
 	id := domain.NewParticipantId(space.Id(), identity)
 	return space.Do(id, func(sb smartblock.SmartBlock) error {
 		return sb.(participant).ModifyIdentityDetails(profile)
