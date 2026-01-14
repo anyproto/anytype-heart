@@ -295,6 +295,8 @@ func (fx *fileFixture) assertUploaded(t *testing.T) {
 	uploader := mock_fileuploader.NewMockUploader(t)
 	uploader.EXPECT().SetName(mock.Anything).Return(uploader)
 	uploader.EXPECT().SetFile(mock.Anything).Return(uploader)
+	uploader.EXPECT().SetCreatedInContext(mock.Anything).Return(uploader)
+	uploader.EXPECT().SetCreatedInBlockId(mock.Anything).Return(uploader)
 	uploader.EXPECT().Upload(mock.Anything).Return(fileuploader.UploadResult{})
 
 	fx.fileUploader.EXPECT().NewUploader(mock.Anything, mock.Anything).Return(uploader)

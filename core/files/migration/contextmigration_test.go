@@ -43,7 +43,6 @@ func TestContextMigrationService_buildOutgoingLinksMap(t *testing.T) {
 					objectId:    taskId,
 					targetId:    fileId,
 					relationKey: "attachment",
-					bsonId:      "b_task1attachment",
 				},
 				// Block link (should be preferred)
 				{
@@ -51,7 +50,6 @@ func TestContextMigrationService_buildOutgoingLinksMap(t *testing.T) {
 					targetId:    fileId,
 					blockId:     blockId,
 					relationKey: "",
-					bsonId:      "a_page1block1",
 				},
 			},
 		}
@@ -65,7 +63,7 @@ func TestContextMigrationService_buildOutgoingLinksMap(t *testing.T) {
 		assert.Equal(t, blockId, context.blockId)
 	})
 
-	t.Run("use oldest link based on bsonId", func(t *testing.T) {
+	t.Run("use first link when multiple relation links exist", func(t *testing.T) {
 		fileId := "file1"
 		page1 := "page1"
 		page2 := "page2"
@@ -73,14 +71,14 @@ func TestContextMigrationService_buildOutgoingLinksMap(t *testing.T) {
 		outgoingLinksMap := map[string][]outgoingLinkInfo{
 			fileId: {
 				{
-					objectId: page2,
-					targetId: fileId,
-					bsonId:   "b", // Newer
+					objectId:    page2,
+					targetId:    fileId,
+					relationKey: "b",
 				},
 				{
-					objectId: page1,
-					targetId: fileId,
-					bsonId:   "a", // Older
+					objectId:    page1,
+					targetId:    fileId,
+					relationKey: "a",
 				},
 			},
 		}
@@ -88,7 +86,7 @@ func TestContextMigrationService_buildOutgoingLinksMap(t *testing.T) {
 		// Find creation context
 		context := service.findCreationContext(fileId, outgoingLinksMap)
 
-		// Assert
+		// Assert - should pick first after sorting by relationKey
 		require.NotNil(t, context)
 		assert.Equal(t, page1, context.contextId)
 		assert.Equal(t, "", context.blockId)
@@ -104,7 +102,6 @@ func TestContextMigrationService_buildOutgoingLinksMap(t *testing.T) {
 					objectId:    taskId,
 					targetId:    fileId,
 					relationKey: "attachment",
-					bsonId:      "task1attachment",
 				},
 			},
 		}
@@ -139,7 +136,6 @@ func TestOutgoingLinkConversion(t *testing.T) {
 			targetId:    link.TargetID,
 			blockId:     link.BlockID,
 			relationKey: link.RelationKey,
-			bsonId:      sourceId + link.BlockID + link.RelationKey,
 		}
 
 		// Assert
@@ -147,7 +143,6 @@ func TestOutgoingLinkConversion(t *testing.T) {
 		assert.Equal(t, targetId, info.targetId)
 		assert.Equal(t, blockId, info.blockId)
 		assert.Equal(t, "", info.relationKey)
-		assert.Equal(t, "page1block1", info.bsonId)
 	})
 
 	t.Run("convert relation link", func(t *testing.T) {
@@ -167,7 +162,6 @@ func TestOutgoingLinkConversion(t *testing.T) {
 			targetId:    link.TargetID,
 			blockId:     link.BlockID,
 			relationKey: link.RelationKey,
-			bsonId:      sourceId + link.BlockID + link.RelationKey,
 		}
 
 		// Assert
@@ -175,7 +169,6 @@ func TestOutgoingLinkConversion(t *testing.T) {
 		assert.Equal(t, targetId, info.targetId)
 		assert.Equal(t, "", info.blockId)
 		assert.Equal(t, relationKey, info.relationKey)
-		assert.Equal(t, "task1attachment", info.bsonId)
 	})
 }
 

@@ -290,7 +290,6 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(filesync.New()).
 		Register(reconciler.New()).
 		Register(fileobject.New()).
-		Register(filegc.New()).
 		Register(inviteservice.New()).
 		Register(publish.New()).
 		Register(publishclient.New()).
@@ -303,6 +302,7 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(treemanager.New()).
 		Register(block.New()).
 		Register(detailservice.New()).
+		Register(filegc.New()).
 		Register(dataviewservice.New()).
 		Register(migration.NewContextMigrationService()).
 		Register(indexer.New()).

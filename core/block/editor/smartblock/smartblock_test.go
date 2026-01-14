@@ -206,7 +206,7 @@ func newFixture(id string, t *testing.T) *fixture {
 		return rel.Format, nil
 	}).Maybe()
 
-	sb := New(space, "", spaceIndex, objectStore, indexer, sender, spaceIdResolver, fetcher).(*smartBlock)
+	sb := New(space, "", spaceIndex, objectStore, indexer, sender, spaceIdResolver, fetcher, nil).(*smartBlock)
 	source := &sourceStub{
 		id:      id,
 		spaceId: "space1",

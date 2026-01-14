@@ -339,6 +339,102 @@ func (_c *MockUploader_SetBytes_Call) RunAndReturn(run func([]byte) fileuploader
 	return _c
 }
 
+// SetCreatedInBlockId provides a mock function with given fields: blockId
+func (_m *MockUploader) SetCreatedInBlockId(blockId string) fileuploader.Uploader {
+	ret := _m.Called(blockId)
+
+	if len(ret) == 0 {
+		panic("no return value specified for SetCreatedInBlockId")
+	}
+
+	var r0 fileuploader.Uploader
+	if rf, ok := ret.Get(0).(func(string) fileuploader.Uploader); ok {
+		r0 = rf(blockId)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(fileuploader.Uploader)
+		}
+	}
+
+	return r0
+}
+
+// MockUploader_SetCreatedInBlockId_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'SetCreatedInBlockId'
+type MockUploader_SetCreatedInBlockId_Call struct {
+	*mock.Call
+}
+
+// SetCreatedInBlockId is a helper method to define mock.On call
+//   - blockId string
+func (_e *MockUploader_Expecter) SetCreatedInBlockId(blockId interface{}) *MockUploader_SetCreatedInBlockId_Call {
+	return &MockUploader_SetCreatedInBlockId_Call{Call: _e.mock.On("SetCreatedInBlockId", blockId)}
+}
+
+func (_c *MockUploader_SetCreatedInBlockId_Call) Run(run func(blockId string)) *MockUploader_SetCreatedInBlockId_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(string))
+	})
+	return _c
+}
+
+func (_c *MockUploader_SetCreatedInBlockId_Call) Return(_a0 fileuploader.Uploader) *MockUploader_SetCreatedInBlockId_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockUploader_SetCreatedInBlockId_Call) RunAndReturn(run func(string) fileuploader.Uploader) *MockUploader_SetCreatedInBlockId_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// SetCreatedInContext provides a mock function with given fields: contextId
+func (_m *MockUploader) SetCreatedInContext(contextId string) fileuploader.Uploader {
+	ret := _m.Called(contextId)
+
+	if len(ret) == 0 {
+		panic("no return value specified for SetCreatedInContext")
+	}
+
+	var r0 fileuploader.Uploader
+	if rf, ok := ret.Get(0).(func(string) fileuploader.Uploader); ok {
+		r0 = rf(contextId)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(fileuploader.Uploader)
+		}
+	}
+
+	return r0
+}
+
+// MockUploader_SetCreatedInContext_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'SetCreatedInContext'
+type MockUploader_SetCreatedInContext_Call struct {
+	*mock.Call
+}
+
+// SetCreatedInContext is a helper method to define mock.On call
+//   - contextId string
+func (_e *MockUploader_Expecter) SetCreatedInContext(contextId interface{}) *MockUploader_SetCreatedInContext_Call {
+	return &MockUploader_SetCreatedInContext_Call{Call: _e.mock.On("SetCreatedInContext", contextId)}
+}
+
+func (_c *MockUploader_SetCreatedInContext_Call) Run(run func(contextId string)) *MockUploader_SetCreatedInContext_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(string))
+	})
+	return _c
+}
+
+func (_c *MockUploader_SetCreatedInContext_Call) Return(_a0 fileuploader.Uploader) *MockUploader_SetCreatedInContext_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockUploader_SetCreatedInContext_Call) RunAndReturn(run func(string) fileuploader.Uploader) *MockUploader_SetCreatedInContext_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // SetCustomEncryptionKeys provides a mock function with given fields: keys
 func (_m *MockUploader) SetCustomEncryptionKeys(keys map[string]string) fileuploader.Uploader {
 	ret := _m.Called(keys)

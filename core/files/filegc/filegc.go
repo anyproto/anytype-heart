@@ -31,7 +31,7 @@ type ObjectDeleter interface {
 
 // ObjectArchiver is an interface to archive objects
 type ObjectArchiver interface {
-	SetIsArchived(objectId string, isArchived bool) error
+	SetIsArchived(ctx context.Context, objectId string, isArchived bool) error
 }
 
 type fileGC struct {
@@ -154,7 +154,7 @@ func (gc *fileGC) CheckFilesOnLinksRemoval(spaceId, contextId string, removedLin
 		} else {
 			log.Debugf("archiving orphaned file %s created in context %s", fileId, contextId)
 			// Archive the file object
-			if err := gc.objectArchiver.SetIsArchived(fileId, true); err != nil {
+			if err := gc.objectArchiver.SetIsArchived(context.Background(), fileId, true); err != nil {
 				log.Errorf("failed to archive file object %s: %v", fileId, err)
 				// Continue with other files even if one fails
 			}
