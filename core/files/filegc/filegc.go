@@ -7,7 +7,6 @@ import (
 	"github.com/anyproto/any-sync/app"
 	"github.com/samber/lo"
 
-	"github.com/anyproto/anytype-heart/core/block/backlinks"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
@@ -39,18 +38,22 @@ type fileGC struct {
 	objectDeleter    ObjectDeleter
 	objectStore      objectstore.ObjectStore
 	objectArchiver   ObjectArchiver
-	backlinksWatcher backlinks.UpdateWatcher
+	backlinksWatcher BacklinksFlusher
 }
 
 func New() FileGC {
 	return &fileGC{}
 }
 
+type BacklinksFlusher interface {
+	FlushUpdates()
+}
+
 func (gc *fileGC) Init(a *app.App) error {
 	gc.objectDeleter = app.MustComponent[ObjectDeleter](a)
 	gc.objectStore = app.MustComponent[objectstore.ObjectStore](a)
 	gc.objectArchiver = app.MustComponent[ObjectArchiver](a)
-	gc.backlinksWatcher = app.MustComponent[backlinks.UpdateWatcher](a)
+	gc.backlinksWatcher = app.MustComponent[BacklinksFlusher](a)
 	return nil
 }
 

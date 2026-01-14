@@ -79,7 +79,8 @@ func (i *spaceIndexer) indexFileCreationContext() {
 		select {
 		case <-time.After(time.Second * 10):
 			lastIndex := i.lastIndex.Load()
-			if time.Since(lastIndex) > time.Second*10 {
+			// so we will perform migration only if there were no indexing activities for the last 30 seconds
+			if time.Since(lastIndex) > time.Second*30 {
 				err := i.contextMigration.MigrateSpace(i.runCtx, i.spaceIndex)
 				if err != nil {
 					log.With("spaceId", i.spaceIndex.SpaceId()).Errorf("failed to migrate context for space: %v", err)
