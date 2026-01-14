@@ -11,20 +11,20 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/spaceindex"
 )
 
-func TestContextMigrationService_buildOutgoingLinksMap(t *testing.T) {
-	// This test focuses on the core logic of building outgoing links map
+func TestContextMigrationService_buildIncomingLinksMap(t *testing.T) {
+	// This test focuses on the core logic of building incoming links map
 	// which is the most important part of the migration
 
 	service := &contextMigrationService{}
 
 	t.Run("empty map for no links", func(t *testing.T) {
-		outgoingLinksMap := make(map[string][]outgoingLinkInfo)
+		incomingLinksMap := make(map[string][]incomingLinkInfo)
 
 		// No links exist
 		fileId := "file1"
 
 		// Find creation context
-		context := service.findCreationContext(fileId, outgoingLinksMap)
+		context := service.findCreationContext(fileId, incomingLinksMap)
 
 		// Assert
 		assert.Nil(t, context)
@@ -36,18 +36,16 @@ func TestContextMigrationService_buildOutgoingLinksMap(t *testing.T) {
 		taskId := "task1"
 		blockId := "block1"
 
-		outgoingLinksMap := map[string][]outgoingLinkInfo{
+		incomingLinksMap := map[string][]incomingLinkInfo{
 			fileId: {
 				// Relation link (comes first)
 				{
 					objectId:    taskId,
-					targetId:    fileId,
 					relationKey: "attachment",
 				},
 				// Block link (should be preferred)
 				{
 					objectId:    pageId,
-					targetId:    fileId,
 					blockId:     blockId,
 					relationKey: "",
 				},
@@ -55,7 +53,7 @@ func TestContextMigrationService_buildOutgoingLinksMap(t *testing.T) {
 		}
 
 		// Find creation context
-		context := service.findCreationContext(fileId, outgoingLinksMap)
+		context := service.findCreationContext(fileId, incomingLinksMap)
 
 		// Assert
 		require.NotNil(t, context)
@@ -68,23 +66,21 @@ func TestContextMigrationService_buildOutgoingLinksMap(t *testing.T) {
 		page1 := "page1"
 		page2 := "page2"
 
-		outgoingLinksMap := map[string][]outgoingLinkInfo{
+		incomingLinksMap := map[string][]incomingLinkInfo{
 			fileId: {
 				{
 					objectId:    page2,
-					targetId:    fileId,
 					relationKey: "b",
 				},
 				{
 					objectId:    page1,
-					targetId:    fileId,
 					relationKey: "a",
 				},
 			},
 		}
 
 		// Find creation context
-		context := service.findCreationContext(fileId, outgoingLinksMap)
+		context := service.findCreationContext(fileId, incomingLinksMap)
 
 		// Assert - should pick first after sorting by relationKey
 		require.NotNil(t, context)
@@ -96,18 +92,17 @@ func TestContextMigrationService_buildOutgoingLinksMap(t *testing.T) {
 		fileId := "file1"
 		taskId := "task1"
 
-		outgoingLinksMap := map[string][]outgoingLinkInfo{
+		incomingLinksMap := map[string][]incomingLinkInfo{
 			fileId: {
 				{
 					objectId:    taskId,
-					targetId:    fileId,
 					relationKey: "attachment",
 				},
 			},
 		}
 
 		// Find creation context
-		context := service.findCreationContext(fileId, outgoingLinksMap)
+		context := service.findCreationContext(fileId, incomingLinksMap)
 
 		// Assert
 		require.NotNil(t, context)
@@ -116,8 +111,8 @@ func TestContextMigrationService_buildOutgoingLinksMap(t *testing.T) {
 	})
 }
 
-func TestOutgoingLinkConversion(t *testing.T) {
-	// Test conversion from spaceindex.OutgoingLink to internal outgoingLinkInfo
+func TestIncomingLinkConversion(t *testing.T) {
+	// Test conversion from spaceindex.OutgoingLink to internal incomingLinkInfo
 
 	t.Run("convert block link", func(t *testing.T) {
 		sourceId := "page1"
@@ -130,19 +125,19 @@ func TestOutgoingLinkConversion(t *testing.T) {
 			RelationKey: "",
 		}
 
-		// Convert to internal format
-		info := outgoingLinkInfo{
+		// Convert to internal format (targetId is the map key, not stored in struct)
+		info := incomingLinkInfo{
 			objectId:    sourceId,
-			targetId:    link.TargetID,
 			blockId:     link.BlockID,
 			relationKey: link.RelationKey,
 		}
 
 		// Assert
 		assert.Equal(t, sourceId, info.objectId)
-		assert.Equal(t, targetId, info.targetId)
 		assert.Equal(t, blockId, info.blockId)
 		assert.Equal(t, "", info.relationKey)
+		// targetId is used as map key: incomingLinksMap[link.TargetID] = append(...)
+		assert.Equal(t, "file1", targetId)
 	})
 
 	t.Run("convert relation link", func(t *testing.T) {
@@ -156,19 +151,19 @@ func TestOutgoingLinkConversion(t *testing.T) {
 			RelationKey: relationKey,
 		}
 
-		// Convert to internal format
-		info := outgoingLinkInfo{
+		// Convert to internal format (targetId is the map key, not stored in struct)
+		info := incomingLinkInfo{
 			objectId:    sourceId,
-			targetId:    link.TargetID,
 			blockId:     link.BlockID,
 			relationKey: link.RelationKey,
 		}
 
 		// Assert
 		assert.Equal(t, sourceId, info.objectId)
-		assert.Equal(t, targetId, info.targetId)
 		assert.Equal(t, "", info.blockId)
 		assert.Equal(t, relationKey, info.relationKey)
+		// targetId is used as map key: incomingLinksMap[link.TargetID] = append(...)
+		assert.Equal(t, "file1", targetId)
 	})
 }
 

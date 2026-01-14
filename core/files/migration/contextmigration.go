@@ -18,7 +18,6 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/spaceindex"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	"github.com/anyproto/anytype-heart/space"
 )
 
 const CName = "files.contextmigration"
@@ -37,7 +36,6 @@ type ContextMigrationService interface {
 type contextMigrationService struct {
 	objectStore    objectstore.ObjectStore
 	detailsService detailservice.Service
-	spaceService   space.Service
 
 	mu sync.Mutex
 }
@@ -53,7 +51,6 @@ func (s *contextMigrationService) Name() string {
 func (s *contextMigrationService) Init(a *app.App) error {
 	s.objectStore = app.MustComponent[objectstore.ObjectStore](a)
 	s.detailsService = app.MustComponent[detailservice.Service](a)
-	s.spaceService = app.MustComponent[space.Service](a)
 	log.Info("started")
 	return nil
 }
@@ -117,8 +114,8 @@ func (s *contextMigrationService) MigrateSpace(ctx context.Context, spaceIndex s
 		return nil
 	}
 
-	// Step 2: Build a map of all outgoing links in the space
-	outgoingLinksMap := s.buildOutgoingLinksMap(spaceId, spaceIndex)
+	// Step 2: Build a map of incoming links (indexed by target) for all objects in the space
+	incomingLinksMap := s.buildIncomingLinksMap(spaceId, spaceIndex)
 
 	// Step 3: Process each file
 	migratedCount := 0
@@ -126,7 +123,7 @@ func (s *contextMigrationService) MigrateSpace(ctx context.Context, spaceIndex s
 		fileId := fileRecord.Details.GetString(bundle.RelationKeyId)
 
 		// Find the creation context for this file
-		contextInfo := s.findCreationContext(fileId, outgoingLinksMap)
+		contextInfo := s.findCreationContext(fileId, incomingLinksMap)
 		if contextInfo == nil {
 			log.Debug("no creation context found for file", zap.String("fileId", fileId))
 			continue
@@ -170,14 +167,12 @@ func (s *contextMigrationService) MigrateSpace(ctx context.Context, spaceIndex s
 	return nil
 }
 
-// OutgoingLinkInfo stores information about an outgoing link
-type outgoingLinkInfo struct {
-	// source
+// incomingLinkInfo stores information about an incoming link to a target (from the target's perspective)
+type incomingLinkInfo struct {
+	// source object that links to the target
 	objectId    string
 	blockId     string // blockID or chat message ID of the source object
 	relationKey string
-
-	targetId string // target object ID
 }
 
 // contextInfo stores the resolved context for a file
@@ -186,15 +181,16 @@ type contextInfo struct {
 	blockId   string
 }
 
-// buildOutgoingLinksMap builds a map of targetId -> []outgoingLinkInfo for all objects in the space
-func (s *contextMigrationService) buildOutgoingLinksMap(spaceId string, spaceIndex spaceindex.Store) map[string][]outgoingLinkInfo {
-	outgoingLinksMap := make(map[string][]outgoingLinkInfo)
+// buildIncomingLinksMap builds a map of targetId -> []incomingLinkInfo for all objects in the space
+// The map is indexed by target, so looking up a file ID returns all objects that link TO that file
+func (s *contextMigrationService) buildIncomingLinksMap(spaceId string, spaceIndex spaceindex.Store) map[string][]incomingLinkInfo {
+	incomingLinksMap := make(map[string][]incomingLinkInfo)
 
 	// Query all objects in the space
 	allRecords, err := spaceIndex.Query(database.Query{})
 	if err != nil {
 		log.Error("failed to query all objects", zap.Error(err))
-		return outgoingLinksMap
+		return incomingLinksMap
 	}
 
 	for _, record := range allRecords {
@@ -203,7 +199,7 @@ func (s *contextMigrationService) buildOutgoingLinksMap(spaceId string, spaceInd
 			continue
 		}
 
-		// Try to get detailed links first
+		// Get outbound links from this source, then index them by target (creating incoming links index)
 		detailedLinks, err := spaceIndex.GetOutboundLinksDetailedById(sourceId)
 		if err == nil && len(detailedLinks) > 0 {
 			for _, link := range detailedLinks {
@@ -225,23 +221,22 @@ func (s *contextMigrationService) buildOutgoingLinksMap(spaceId string, spaceInd
 					continue
 				}
 				fmt.Printf("Processing detailed link: %s -> %s (block: %s, relation: %s)\n", sourceId, link.TargetID, link.BlockID, link.RelationKey)
-				info := outgoingLinkInfo{
+				info := incomingLinkInfo{
 					objectId:    sourceId,
-					targetId:    link.TargetID,
 					blockId:     link.BlockID,
 					relationKey: link.RelationKey,
 				}
-				outgoingLinksMap[link.TargetID] = append(outgoingLinksMap[link.TargetID], info)
+				incomingLinksMap[link.TargetID] = append(incomingLinksMap[link.TargetID], info)
 			}
 		}
 	}
 
-	return outgoingLinksMap
+	return incomingLinksMap
 }
 
 // findCreationContext finds the creation context for a file by looking at incoming links
-func (s *contextMigrationService) findCreationContext(fileId string, outgoingLinksMap map[string][]outgoingLinkInfo) *contextInfo {
-	links, ok := outgoingLinksMap[fileId]
+func (s *contextMigrationService) findCreationContext(fileId string, incomingLinksMap map[string][]incomingLinkInfo) *contextInfo {
+	links, ok := incomingLinksMap[fileId]
 	if !ok || len(links) == 0 {
 		return nil
 	}

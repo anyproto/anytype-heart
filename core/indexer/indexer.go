@@ -13,8 +13,8 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/source"
 	"github.com/anyproto/anytype-heart/core/domain"
-	"github.com/anyproto/anytype-heart/core/relationutils"
 	"github.com/anyproto/anytype-heart/core/files/migration"
+	"github.com/anyproto/anytype-heart/core/relationutils"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/datastore/anystoreprovider"
@@ -51,14 +51,14 @@ type Hasher interface {
 }
 
 type indexer struct {
-	dbProvider           anystoreprovider.Provider
-	store                objectstore.ObjectStore
-	source               source.Service
-	picker               cache.CachedObjectGetter
-	formatFetcher        relationutils.RelationFormatFetcher
+	dbProvider              anystoreprovider.Provider
+	store                   objectstore.ObjectStore
+	source                  source.Service
+	picker                  cache.CachedObjectGetter
+	formatFetcher           relationutils.RelationFormatFetcher
 	contextMigrationService migration.ContextMigrationService
-	ftsearch             ftsearch.FTSearch
-	ftsearchLastIndexSeq uint64
+	ftsearch                ftsearch.FTSearch
+	ftsearchLastIndexSeq    uint64
 
 	runCtx          context.Context
 	runCtxCancel    context.CancelFunc

@@ -28,13 +28,11 @@ type spaceIndexer struct {
 	contextMigration migration.ContextMigrationService
 	batcher          *mb.MB[indexTask]
 	fulltextEnabled  bool
-	isTechSpace      bool
 
-	startedAt time.Time
 	lastIndex atomic.Time
 }
 
-func newSpaceIndexer(runCtx context.Context, spaceIndex spaceindex.Store, objectStore objectstore.ObjectStore, fulltextEnabled bool, contextMigration migration.ContextMigrationService, isTechSpace bool) *spaceIndexer {
+func newSpaceIndexer(runCtx context.Context, spaceIndex spaceindex.Store, objectStore objectstore.ObjectStore, fulltextEnabled bool, contextMigration migration.ContextMigrationService, _ bool) *spaceIndexer {
 	ind := &spaceIndexer{
 		runCtx:           runCtx,
 		spaceIndex:       spaceIndex,
@@ -42,7 +40,6 @@ func newSpaceIndexer(runCtx context.Context, spaceIndex spaceindex.Store, object
 		batcher:          mb.New[indexTask](100),
 		fulltextEnabled:  fulltextEnabled,
 		contextMigration: contextMigration,
-		isTechSpace:      isTechSpace,
 	}
 	go ind.indexBatchLoop()
 	go ind.indexFileCreationContext()

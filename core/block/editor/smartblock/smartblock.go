@@ -1385,7 +1385,7 @@ func (sb *smartBlock) collectOutgoingLinks(st *state.State) []OutgoingLink {
 	linkSet := make(map[string]bool) // To avoid duplicates
 
 	// Collect links from blocks
-	st.Iterate(func(b simple.Block) (isContinue bool) {
+	_ = st.Iterate(func(b simple.Block) (isContinue bool) {
 		blockModel := b.Model()
 		if blockModel == nil {
 			return true

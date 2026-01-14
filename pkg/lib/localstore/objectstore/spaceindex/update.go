@@ -108,14 +108,6 @@ func (s *dsObjectStore) UpdateObjectLinks(ctx context.Context, id string, links 
 	return nil
 }
 func (s *dsObjectStore) UpdateObjectLinksDetailed(ctx context.Context, id string, outgoingLinks []OutgoingLink) error {
-	// Extract simple links for compatibility
-	links := make([]string, 0, len(outgoingLinks))
-	linkMap := make(map[string][]OutgoingLink)
-	for _, link := range outgoingLinks {
-		links = append(links, link.TargetID)
-		linkMap[link.TargetID] = append(linkMap[link.TargetID], link)
-	}
-
 	added, removed, err := s.updateObjectLinksDetailed(ctx, id, outgoingLinks)
 	if err != nil {
 		return err
@@ -267,10 +259,14 @@ func (s *dsObjectStore) updateObjectLinksDetailed(ctx context.Context, id string
 		// Get previous simple links for diff calculation
 		prev := anyEncArrayToStrings(val.GetArray(linkOutboundField))
 
-		// Create target ID list for diff
+		// Create target ID list for diff (deduplicated for backward compatibility with simple links)
 		current := make([]string, 0, len(outgoingLinks))
+		seen := make(map[string]struct{})
 		for _, link := range outgoingLinks {
-			current = append(current, link.TargetID)
+			if _, ok := seen[link.TargetID]; !ok {
+				current = append(current, link.TargetID)
+				seen[link.TargetID] = struct{}{}
+			}
 		}
 
 		removed, added = slice.DifferenceRemovedAdded(prev, current)
