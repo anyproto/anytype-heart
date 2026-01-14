@@ -22,7 +22,7 @@ type ClientStorage interface {
 	app.ComponentRunnable
 	AllSpaceIds() (ids []string, err error)
 	DeleteSpaceStorage(ctx context.Context, spaceId string) error
-	ListCorruptedBackups() ([]CorruptedBackup, error)
+	ListCorruptedBackups() []CorruptedBackup
 	DeleteBackup(backupPath string) error
 }
 

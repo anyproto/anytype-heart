@@ -75,12 +75,8 @@ func (mw *Middleware) WorkspaceOpen(cctx context.Context, req *pb.RpcWorkspaceOp
 		if err != nil {
 			return nil
 		}
-		backups, err := storageService.ListCorruptedBackups()
-		if err != nil {
-			return nil
-		}
 		var paths []string
-		for _, b := range backups {
+		for _, b := range storageService.ListCorruptedBackups() {
 			if b.SpaceId == req.SpaceId {
 				paths = append(paths, b.BackupPath)
 			}

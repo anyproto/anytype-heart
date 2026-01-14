@@ -44,7 +44,10 @@ func New(rootPath string, anyStoreConfig *anystore.Config) *storageService {
 type storageService struct {
 	rootPath string
 	config   *anystore.Config
-	sync.Mutex
+	configMu sync.Mutex
+
+	backupsMu sync.RWMutex
+	backups   []CorruptedBackup
 }
 
 func (s *storageService) AllSpaceIds() (ids []string, err error) {
@@ -112,6 +115,37 @@ func (s *storageService) Init(a *app.App) (err error) {
 		if err != nil {
 			return err
 		}
+	}
+	return s.loadBackups()
+}
+
+// loadBackups scans the storage root for existing backup folders
+func (s *storageService) loadBackups() error {
+	entries, err := os.ReadDir(s.rootPath)
+	if err != nil {
+		return fmt.Errorf("failed to read storage root: %w", err)
+	}
+
+	s.backupsMu.Lock()
+	defer s.backupsMu.Unlock()
+
+	s.backups = nil
+	for _, entry := range entries {
+		if !entry.IsDir() {
+			continue
+		}
+		idx := strings.Index(entry.Name(), backupSuffix)
+		if idx == -1 {
+			continue
+		}
+		spaceId := entry.Name()[:idx]
+		if spaceId == "" {
+			continue
+		}
+		s.backups = append(s.backups, CorruptedBackup{
+			SpaceId:    spaceId,
+			BackupPath: filepath.Join(s.rootPath, entry.Name()),
+		})
 	}
 	return nil
 }
@@ -182,8 +216,8 @@ func (s *storageService) DeleteSpaceStorage(ctx context.Context, spaceId string)
 }
 
 func (s *storageService) anyStoreConfig() *anystore.Config {
-	s.Lock()
-	defer s.Unlock()
+	s.configMu.Lock()
+	defer s.configMu.Unlock()
 	opts := maps.Clone(s.config.SQLiteConnectionOptions)
 	if opts == nil {
 		opts = make(map[string]string)
@@ -237,37 +271,23 @@ func (s *storageService) backupCorruptedSpace(spaceId string) (string, error) {
 	if err := os.Rename(srcPath, backupPath); err != nil {
 		return "", fmt.Errorf("failed to rename corrupted space: %w", err)
 	}
+
+	// Add to cached list
+	s.backupsMu.Lock()
+	s.backups = append(s.backups, CorruptedBackup{
+		SpaceId:    spaceId,
+		BackupPath: backupPath,
+	})
+	s.backupsMu.Unlock()
+
 	return backupPath, nil
 }
 
-// ListCorruptedBackups returns all corrupted backup folders in the storage root
-// Backup folders are named {spaceId}_backup_{timestamp}
-func (s *storageService) ListCorruptedBackups() ([]CorruptedBackup, error) {
-	entries, err := os.ReadDir(s.rootPath)
-	if err != nil {
-		return nil, fmt.Errorf("failed to read storage root: %w", err)
-	}
-
-	var backups []CorruptedBackup
-	for _, entry := range entries {
-		if !entry.IsDir() {
-			continue
-		}
-		// Find _backup_ in the folder name
-		idx := strings.Index(entry.Name(), backupSuffix)
-		if idx == -1 {
-			continue
-		}
-		spaceId := entry.Name()[:idx]
-		if spaceId == "" {
-			continue
-		}
-		backups = append(backups, CorruptedBackup{
-			SpaceId:    spaceId,
-			BackupPath: filepath.Join(s.rootPath, entry.Name()),
-		})
-	}
-	return backups, nil
+// ListCorruptedBackups returns the cached list of corrupted backup folders
+func (s *storageService) ListCorruptedBackups() []CorruptedBackup {
+	s.backupsMu.RLock()
+	defer s.backupsMu.RUnlock()
+	return s.backups
 }
 
 // DeleteBackup removes a corrupted backup folder after validating the path
@@ -291,5 +311,19 @@ func (s *storageService) DeleteBackup(backupPath string) error {
 		return fmt.Errorf("invalid backup path: not a backup folder")
 	}
 
-	return os.RemoveAll(backupPath)
+	if err := os.RemoveAll(backupPath); err != nil {
+		return err
+	}
+
+	// Remove from cached list
+	s.backupsMu.Lock()
+	for i, b := range s.backups {
+		if b.BackupPath == backupPath {
+			s.backups = append(s.backups[:i], s.backups[i+1:]...)
+			break
+		}
+	}
+	s.backupsMu.Unlock()
+
+	return nil
 }
