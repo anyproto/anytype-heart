@@ -24,13 +24,34 @@ const CName = "files.contextmigration"
 
 var log = logging.Logger(CName)
 
+/*
+Context Migration Logic:
+
+1. Make sure you Wait until all active syncing is done
+   - Ensures all objects and their links are indexed before migration (done in spaceIndexer)
+
+2. Find all file objects without the CreatedInContext field set
+
+3. Build incomingLinksMap: targetId -> []incomingLinkInfo
+   - Iterate all objects in space
+   - For each object, get its outbound links (GetOutboundLinksDetailedById)
+   - Index these links by TARGET, creating an inverse lookup
+   - Result: incomingLinksMap[fileId] returns all objects linking TO that file
+   - Skip system relations (Creator, Type, Backlinks, etc.) - not meaningful for context
+
+4. For each file, find creation context:
+   - Look up incomingLinksMap[fileId] to get all objects referencing this file
+   - Priority: block links (have blockId) over relation links (no blockId)
+   - Sort by blockId and pick first - blockId is BSON ObjectId containing timestamp,
+     so lexicographic sort gives chronological order (oldest block first = original context)
+   - Set CreatedInContext = source objectId, CreatedInBlockId = blockId (if block link)
+*/
+
 // ContextMigrationService migrates existing files to have creation context fields
 type ContextMigrationService interface {
 	app.Component
 	// MigrateSpace migrates all files in a specific space
 	MigrateSpace(ctx context.Context, store spaceindex.Store) error
-	// MigrateAllSpaces migrates files in all spaces
-	MigrateAllSpaces(ctx context.Context) error
 }
 
 type contextMigrationService struct {
@@ -52,28 +73,6 @@ func (s *contextMigrationService) Init(a *app.App) error {
 	s.objectStore = app.MustComponent[objectstore.ObjectStore](a)
 	s.detailsService = app.MustComponent[detailservice.Service](a)
 	log.Info("started")
-	return nil
-}
-
-func (s *contextMigrationService) MigrateAllSpaces(ctx context.Context) error {
-	log.Info("starting file context migration for all spaces")
-
-	var spaceCount int
-	err := s.objectStore.IterateSpaceIndex(func(spaceIndex spaceindex.Store) error {
-		spaceCount++
-		spaceId := spaceIndex.SpaceId()
-		if err := s.MigrateSpace(ctx, spaceIndex); err != nil {
-			log.Error("failed to migrate space", zap.String("spaceId", spaceId), zap.Error(err))
-			// Continue with other spaces - don't return error
-		}
-		return nil
-	})
-
-	if err != nil {
-		return fmt.Errorf("failed to iterate space indexes: %w", err)
-	}
-
-	log.Info("completed file context migration for all spaces", zap.Int("spaceCount", spaceCount))
 	return nil
 }
 
@@ -144,6 +143,11 @@ func (s *contextMigrationService) MigrateSpace(ctx context.Context, spaceIndex s
 			})
 		}
 
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		default:
+		}
 		// Use detailsService to update the file
 		if err := s.detailsService.SetDetails(nil, fileId, details); err != nil {
 			log.Error("failed to update file context",

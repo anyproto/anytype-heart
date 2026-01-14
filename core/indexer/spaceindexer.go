@@ -93,6 +93,9 @@ func (i *spaceIndexer) indexFileCreationContext() {
 }
 
 func (i *spaceIndexer) indexBatch(tasks []indexTask) (err error) {
+	if len(tasks) == 0 {
+		return nil
+	}
 	tx, err := i.spaceIndex.WriteTx(i.runCtx)
 	if err != nil {
 		return err
