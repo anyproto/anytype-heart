@@ -77,16 +77,17 @@ func (s *storageService) openDb(ctx context.Context, id string) (db anystore.DB,
 		return nil, err
 	}
 
+	start := time.Now()
 	db, err = anystore.Open(ctx, dbPath, s.anyStoreConfig())
 	if err != nil {
 		code, isCorrupted := anystorehelper.IsCorruptedError(err)
 		if isCorrupted {
-			log.With(zap.String("spaceId", id), zap.String("code", code.String())).
-				Warn("space store corrupted, backing up")
-			if backupPath, backupErr := s.backupCorruptedSpace(id); backupErr != nil {
+			log.With(zap.Error(err), zap.String("code", code.String()), zap.String("desc", code.Message())).
+				With(zap.Bool("isCorrupted", isCorrupted)).
+				With(zap.Int64("tookMs", time.Since(start).Milliseconds())).
+				Error("failed to open spacestore, backing up")
+			if _, backupErr := s.backupCorruptedSpace(id); backupErr != nil {
 				log.With(zap.Error(backupErr)).Error("failed to backup corrupted space")
-			} else {
-				log.With(zap.String("backupPath", backupPath)).Warn("corrupted space backed up")
 			}
 			return nil, spacestorage.ErrSpaceStorageMissing
 		}
