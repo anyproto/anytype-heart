@@ -70,6 +70,9 @@ type ObjectStore interface {
 
 type IndexerStore interface {
 	AddToIndexQueue(ctx context.Context, id ...domain.FullID) (int, error)
+	// AddToIndexQueueWithCounter adds objects to FT queue and returns a counter for consistency tracking.
+	// The counter is persisted atomically with the queue entries for crash recovery.
+	AddToIndexQueueWithCounter(ctx context.Context, ids ...domain.FullID) (ftQueueCounter uint64, enqueued int, err error)
 	ListIdsFromFullTextQueue(spaceIds []string, limit uint) ([]domain.FullID, error)
 	FtQueueMarkAsIndexed(ids []domain.FullID, ftIndexSeq uint64) error
 
@@ -81,13 +84,15 @@ type IndexerStore interface {
 	// SaveChecksums Used to save checksums and force reindex counter
 	SaveChecksums(spaceID string, checksums *model.ObjectStoreChecksums) (err error)
 
-	// GetFTConsistencyCounter returns the global FT consistency check counter
-	GetFTConsistencyCounter(ctx context.Context) (int32, error)
-	// SetFTConsistencyCounter sets the global FT consistency check counter
-	SetFTConsistencyCounter(ctx context.Context, counter int32) error
+	// GetFTRecheckCounter returns the global FT recheck check counter
+	GetFTRecheckCounter(ctx context.Context) (int32, error)
+	// SetFTRecheckCounter sets the global FT recheck counter
+	SetFTRecheckCounter(ctx context.Context, counter int32) error
 	// RunFTConsistencyCheck checks all objects in the object store against the FT index
 	// and enqueues missing ones for FT indexing
 	RunFTConsistencyCheck(ctx context.Context, fts ftsearch.FTSearch) (checked, enqueued int, err error)
+	// GetFTQueueCounter returns the last persisted FT queue counter for crash recovery
+	GetFTQueueCounter(ctx context.Context) (uint64, error)
 }
 
 type AccountStore interface {

@@ -21,6 +21,7 @@ import (
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/spaceindex"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space/clientspace"
 )
@@ -53,9 +54,9 @@ const (
 	ForceReindexParticipantsCounter int32 = 1
 	ForceReindexChatsCounter        int32 = 7
 
-	// ForceFTConsistencyCheckCounter triggers a lightweight FT consistency check
+	// ForceFTRecheckCounter triggers a lightweight FT consistency check
 	// Aggregates the list of object ids that need to be indexed and verify their presence in the FT index.
-	ForceFTConsistencyCheckCounter int32 = 1
+	ForceFTRecheckCounter int32 = 1
 )
 
 type allDeletedIdsProvider interface {
@@ -538,6 +539,11 @@ func (i *indexer) reindexIDs(ctx context.Context, space smartblock.Space, reinde
 
 func (i *indexer) reindexOutdatedObjects(ctx context.Context, space clientspace.Space) (toReindex, success int, err error) {
 	store := i.store.SpaceIndex(space.Id())
+
+	// FT queue consistency check: detect objects that were added to headsState
+	// but the FT queue wasn't flushed before crash
+	i.checkFTQueueConsistency(ctx, store, space.Id())
+
 	var entries []headstorage.HeadsEntry
 
 	err = space.Storage().HeadStorage().IterateEntries(ctx, headstorage.IterOpts{}, func(entry headstorage.HeadsEntry) (bool, error) {
@@ -572,6 +578,45 @@ func (i *indexer) reindexOutdatedObjects(ctx context.Context, space clientspace.
 
 	success = i.reindexIdsIgnoreErr(ctx, space, idsToReindex...)
 	return len(idsToReindex), success, nil
+}
+
+// checkFTQueueConsistency checks for objects that may have been added to headsState
+// but the FT queue wasn't flushed before crash. It compares the ftEnqueueCtr in headsState
+// against the persisted FT queue counter and re-adds any missing objects to the queue.
+func (i *indexer) checkFTQueueConsistency(ctx context.Context, store spaceindex.Store, spaceId string) {
+	ftQueueCounter, err := i.store.GetFTQueueCounter(ctx)
+	if err != nil {
+		log.With("space", spaceId).Warnf("get ft queue counter: %v", err)
+		return
+	}
+
+	// If counter is 0, this is either first run or no FT queue operations have happened yet
+	if ftQueueCounter == 0 {
+		return
+	}
+
+	entries, err := store.GetHeadsWithFTEnqueueCtrGreaterThan(ctx, ftQueueCounter)
+	if err != nil {
+		log.With("space", spaceId).Warnf("get heads with ftEnqueueCtr > counter: %v", err)
+		return
+	}
+
+	if len(entries) == 0 {
+		return
+	}
+
+	log.With("space", spaceId, "count", len(entries), "ftQueueCounter", ftQueueCounter).
+		Warn("ft queue consistency: re-adding objects after crash recovery")
+
+	var toRequeue []domain.FullID
+	for _, e := range entries {
+		toRequeue = append(toRequeue, domain.FullID{ObjectID: e.ObjectID, SpaceID: spaceId})
+	}
+
+	_, err = i.store.AddToIndexQueue(ctx, toRequeue...)
+	if err != nil {
+		log.With("space", spaceId).Errorf("re-add to ft queue: %v", err)
+	}
 }
 
 func (i *indexer) reindexDoc(space smartblock.Space, id string) error {

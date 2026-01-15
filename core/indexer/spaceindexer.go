@@ -125,12 +125,21 @@ func (i *spaceIndexer) index(ctx context.Context, info smartblock.DocInfo, optio
 		return err
 	}
 	headHashToIndex := headsHash(info.Heads)
+
+	// ftEnqueueCtr is set when object is added to FT queue, used for crash recovery consistency
+	var ftEnqueueCtr uint64
+
 	saveIndexedHash := func() {
 		if headHashToIndex == "" {
 			return
 		}
 
-		err = i.spaceIndex.SaveLastIndexedHeadsHash(ctx, info.Id, headHashToIndex)
+		// If we have ftEnqueueCtr, use the method that saves it for crash recovery
+		if ftEnqueueCtr > 0 {
+			err = i.spaceIndex.SaveLastIndexedHeadsHashWithFTEnqueueCtr(ctx, info.Id, headHashToIndex, ftEnqueueCtr)
+		} else {
+			err = i.spaceIndex.SaveLastIndexedHeadsHash(ctx, info.Id, headHashToIndex)
+		}
 		if err != nil {
 			log.With("objectID", info.Id).Errorf("failed to save indexed heads hash: %v", err)
 		}
@@ -187,7 +196,9 @@ func (i *spaceIndexer) index(ctx context.Context, info smartblock.DocInfo, optio
 			fulltext, _, _ := info.SmartblockType.Indexable()
 
 			if fulltext && i.fulltextEnabled {
-				if _, err := i.objectStore.AddToIndexQueue(i.runCtx, domain.FullID{ObjectID: info.Id, SpaceID: info.Space.Id()}); err != nil {
+				// Get counter from AddToIndexQueueWithCounter for crash recovery consistency
+				ftEnqueueCtr, _, err = i.objectStore.AddToIndexQueueWithCounter(i.runCtx, domain.FullID{ObjectID: info.Id, SpaceID: info.Space.Id()})
+				if err != nil {
 					log.With("objectID", info.Id).Errorf("can't add id to index queue: %v", err)
 				}
 			}

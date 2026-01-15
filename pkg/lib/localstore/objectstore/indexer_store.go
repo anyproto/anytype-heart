@@ -6,6 +6,8 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"sync/atomic"
+	"time"
 
 	anystore "github.com/anyproto/any-store"
 	"github.com/anyproto/any-store/anyenc"
@@ -20,10 +22,44 @@ import (
 var idKey = bundle.RelationKeyId.String()
 var spaceIdKey = bundle.RelationKeySpaceId.String()
 
-const ftSequenceKey = "seq" // used to store the opstamp of the fulltext commit for specific object
-const ftConsistencyKey = "_ft_consistency"
+const ftSequenceKey = "seq"                   // used to store the opstamp of the fulltext commit for specific object
+const ftRecheckKey = "_ft_recheck"            // used to save in
+const ftQueueCounterKey = "_ft_queue_counter" // global counter for FT queue consistency
 
 var emptyBuffer = make([]byte, 8)
+
+// ftQueueCounter is a global atomic counter for FT queue operations
+// Format: unixTimestamp * 1000 + seqNum (000-999)
+var ftQueueCounter atomic.Uint64
+
+// generateFTQueueCounter returns next monotonic counter (unixTs*1000 + seqNum)
+// Uses lock-free CAS loop for thread safety
+func generateFTQueueCounter() uint64 {
+	for {
+		current := ftQueueCounter.Load()
+		currentTs := int64(current / 1000)
+		currentSeq := current % 1000
+
+		now := time.Now().Unix()
+		var newVal uint64
+
+		if now == currentTs {
+			if currentSeq >= 999 {
+				// Wait for next second
+				time.Sleep(time.Until(time.Unix(now+1, 0)))
+				continue // retry with new timestamp
+			}
+			newVal = current + 1
+		} else {
+			newVal = uint64(now) * 1000
+		}
+
+		if ftQueueCounter.CompareAndSwap(current, newVal) {
+			return newVal
+		}
+		// CAS failed (concurrent update), retry
+	}
+}
 
 // FtQueueReconcileWithSeq used to check and reindex objects on ft start in case we have consistency issues, otherwise gc the queue
 // must be called before any other fulltext operations
@@ -66,10 +102,25 @@ func (s *dsObjectStore) FtQueueReconcileWithSeq(ctx context.Context, ftIndexSeq 
 
 }
 
+// AddToIndexQueue adds objects to the FT queue for indexing.
+// For backwards compatibility, this function does not return the counter.
 func (s *dsObjectStore) AddToIndexQueue(ctx context.Context, ids ...domain.FullID) (enqueued int, err error) {
+	_, enqueued, err = s.AddToIndexQueueWithCounter(ctx, ids...)
+	return enqueued, err
+}
+
+// AddToIndexQueueWithCounter adds objects to the FT queue and returns a counter for consistency tracking.
+// The counter is saved atomically with the queue entries to enable crash recovery.
+// If the common DB doesn't flush before a crash, the counter won't be persisted,
+// allowing detection of objects that were added to headsState but not to the FT queue.
+func (s *dsObjectStore) AddToIndexQueueWithCounter(ctx context.Context, ids ...domain.FullID) (ftQueueCtr uint64, enqueued int, err error) {
+	if len(ids) == 0 {
+		return 0, 0, nil
+	}
+
 	txn, err := s.fulltextQueue.WriteTx(ctx)
 	if err != nil {
-		return 0, fmt.Errorf("start write tx: %w", err)
+		return 0, 0, fmt.Errorf("start write tx: %w", err)
 	}
 	arena := s.arenaPool.Get()
 	defer func() {
@@ -77,6 +128,9 @@ func (s *dsObjectStore) AddToIndexQueue(ctx context.Context, ids ...domain.FullI
 		arena.Reset()
 		s.arenaPool.Put(arena)
 	}()
+
+	// Generate counter for this batch
+	ftQueueCtr = generateFTQueueCounter()
 
 	obj := arena.NewObject()
 	var modified int
@@ -94,10 +148,25 @@ func (s *dsObjectStore) AddToIndexQueue(ctx context.Context, ids ...domain.FullI
 		modified += res.Modified
 
 		if err != nil {
-			return 0, errors.Join(txn.Rollback(), fmt.Errorf("upsert: %w", err))
+			return 0, 0, errors.Join(txn.Rollback(), fmt.Errorf("upsert: %w", err))
 		}
 	}
-	return modified, txn.Commit()
+
+	// Save the counter atomically in the same transaction
+	// This ensures the counter is only persisted if the queue entries are also persisted
+	counterObj := arena.NewObject()
+	counterObj.Set("id", arena.NewString(ftQueueCounterKey))
+	counterObj.Set("counter", arena.NewNumberFloat64(float64(ftQueueCtr)))
+	err = s.indexerChecksums.UpsertOne(txn.Context(), counterObj)
+	if err != nil {
+		return 0, 0, errors.Join(txn.Rollback(), fmt.Errorf("save ft queue counter: %w", err))
+	}
+
+	err = txn.Commit()
+	if err != nil {
+		return 0, 0, fmt.Errorf("commit: %w", err)
+	}
+	return ftQueueCtr, modified, nil
 }
 
 func (s *dsObjectStore) BatchProcessFullTextQueue(
@@ -301,8 +370,8 @@ func (s *dsObjectStore) SaveChecksums(spaceId string, checksums *model.ObjectSto
 	return err
 }
 
-func (s *dsObjectStore) GetFTConsistencyCounter(ctx context.Context) (int32, error) {
-	doc, err := s.indexerChecksums.FindId(ctx, ftConsistencyKey)
+func (s *dsObjectStore) GetFTRecheckCounter(ctx context.Context) (int32, error) {
+	doc, err := s.indexerChecksums.FindId(ctx, ftRecheckKey)
 	if errors.Is(err, anystore.ErrDocNotFound) {
 		return 0, nil
 	}
@@ -312,14 +381,28 @@ func (s *dsObjectStore) GetFTConsistencyCounter(ctx context.Context) (int32, err
 	return int32(doc.Value().GetInt("counter")), nil
 }
 
-func (s *dsObjectStore) SetFTConsistencyCounter(ctx context.Context, counter int32) error {
+func (s *dsObjectStore) SetFTRecheckCounter(ctx context.Context, counter int32) error {
 	arena := s.arenaPool.Get()
 	defer func() {
 		arena.Reset()
 		s.arenaPool.Put(arena)
 	}()
 	obj := arena.NewObject()
-	obj.Set("id", arena.NewString(ftConsistencyKey))
+	obj.Set("id", arena.NewString(ftRecheckKey))
 	obj.Set("counter", arena.NewNumberInt(int(counter)))
 	return s.indexerChecksums.UpsertOne(ctx, obj)
+}
+
+// GetFTQueueCounter returns the last persisted FT queue counter.
+// Used during startup to detect objects that may have been added to headsState
+// but not to the FT queue due to a crash before common DB flush.
+func (s *dsObjectStore) GetFTQueueCounter(ctx context.Context) (uint64, error) {
+	doc, err := s.indexerChecksums.FindId(ctx, ftQueueCounterKey)
+	if errors.Is(err, anystore.ErrDocNotFound) {
+		return 0, nil
+	}
+	if err != nil {
+		return 0, err
+	}
+	return uint64(doc.Value().GetFloat64("counter")), nil
 }

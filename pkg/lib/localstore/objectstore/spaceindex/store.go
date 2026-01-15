@@ -86,6 +86,8 @@ type Store interface {
 
 	GetLastIndexedHeadsHash(ctx context.Context, id string) (headsHash string, err error)
 	SaveLastIndexedHeadsHash(ctx context.Context, id string, headsHash string) (err error)
+	SaveLastIndexedHeadsHashWithFTEnqueueCtr(ctx context.Context, id string, headsHash string, ftEnqueueCtr uint64) (err error)
+	GetHeadsWithFTEnqueueCtrGreaterThan(ctx context.Context, threshold uint64) ([]HeadsStateEntry, error)
 
 	WriteTx(ctx context.Context) (anystore.WriteTx, error)
 }
@@ -265,6 +267,19 @@ func (s *dsObjectStore) initCollections(ctx context.Context) error {
 	err = anystorehelper.AddIndexes(ctx, links, linksIndexes)
 	if err != nil {
 		log.Errorf("ensure links indexes: %s", err)
+	}
+
+	// Add sparse index on ftEnqueueCtr for efficient crash recovery queries
+	headsStateIndexes := []anystore.IndexInfo{
+		{
+			Name:   "ftEnqueueCtr_idx",
+			Fields: []string{ftEnqueueCtrField},
+			Sparse: true, // Many objects don't have FT indexing
+		},
+	}
+	err = anystorehelper.AddIndexes(ctx, headsState, headsStateIndexes)
+	if err != nil {
+		log.Errorf("ensure headsState indexes: %s", err)
 	}
 
 	s.objects = objects

@@ -413,7 +413,7 @@ func (i *indexer) maybeRunFTConsistencyCheck(ctx context.Context) {
 		return
 	}
 
-	if currentCounter >= ForceFTConsistencyCheckCounter {
+	if currentCounter >= ForceFTRecheckCounter {
 		i.ftConsistencyCheckDone.Store(true)
 		return // already up to date
 	}
@@ -431,7 +431,7 @@ func (i *indexer) maybeRunFTConsistencyCheck(ctx context.Context) {
 	}
 
 	// Update counter only on success
-	err = i.store.SetFTConsistencyCounter(i.runCtx, ForceFTConsistencyCheckCounter)
+	err = i.store.SetFTConsistencyCounter(i.runCtx, ForceFTRecheckCounter)
 	if err != nil {
 		log.Errorf("save ft consistency counter: %v", err)
 		return

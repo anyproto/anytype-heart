@@ -451,7 +451,7 @@ func TestRunFullTextIndexer_Minimal(t *testing.T) {
 		)))
 
 	// Add to queue
-	err := indexerFx.store.AddToIndexQueue(context.Background(), domain.FullID{ObjectID: objectId, SpaceID: "spaceId1"})
+	_, err := indexerFx.store.AddToIndexQueue(context.Background(), domain.FullID{ObjectID: objectId, SpaceID: "spaceId1"})
 	require.NoError(t, err)
 
 	// Set up mock expectations
