@@ -129,9 +129,6 @@ func (c *spaceTopicsCollection) deleteSpace(status spaceViewStatus) {
 		log.Error("get raw space key", zap.Error(err))
 		return
 	}
-	c.remoteTopics = slices.DeleteFunc(c.remoteTopics, func(topic *pushapi.Topic) bool {
-		return bytes.Equal(topic.SpaceKey, rawSpaceKey)
-	})
 	c.localTopics = slices.DeleteFunc(c.localTopics, func(topic *pushapi.Topic) bool {
 		return bytes.Equal(topic.SpaceKey, rawSpaceKey)
 	})
