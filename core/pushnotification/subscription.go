@@ -27,6 +27,7 @@ type spaceViewStatus struct {
 	mentionIds     []string
 	allIds         []string
 	status         model.SpaceStatus
+	uxType         model.SpaceUxType
 }
 
 func newSpaceViewSubscription(service subscription.Service, techSpaceId string, wakeUp func()) (*objectsubscription.ObjectSubscription[spaceViewStatus], error) {
@@ -45,6 +46,7 @@ func newSpaceViewSubscription(service subscription.Service, techSpaceId string, 
 			bundle.RelationKeySpacePushNotificationForceMuteIds.String(),
 			bundle.RelationKeySpacePushNotificationForceMentionIds.String(),
 			bundle.RelationKeySpacePushNotificationForceAllIds.String(),
+			bundle.RelationKeySpaceUxType.String(),
 			bundle.RelationKeyCreator.String(),
 		},
 		Filters: []database.FilterRequest{
@@ -86,6 +88,8 @@ func newSpaceViewSubscription(service subscription.Service, techSpaceId string, 
 					creator: details.GetString(bundle.RelationKeyCreator),
 					// nolint: gosec
 					status: model.SpaceStatus(details.GetInt64(bundle.RelationKeySpaceAccountStatus)),
+					// nolint: gosec
+					uxType: model.SpaceUxType(details.GetInt64(bundle.RelationKeySpaceUxType)),
 				}
 			},
 			UpdateKeys: func(keyValues []objectsubscription.RelationKeyValue, status spaceViewStatus) spaceViewStatus {
@@ -120,6 +124,9 @@ func newSpaceViewSubscription(service subscription.Service, techSpaceId string, 
 					case bundle.RelationKeySpaceAccountStatus:
 						// nolint: gosec
 						status.status = model.SpaceStatus(kv.Value.Int64())
+					case bundle.RelationKeySpaceUxType:
+						// nolint: gosec
+						status.uxType = model.SpaceUxType(kv.Value.Int64())
 					}
 				}
 				return status

@@ -62,12 +62,16 @@ func (c *spaceTopicsCollection) SetSpaceViewStatus(status *spaceViewStatus, chat
 	pubKey, _ := status.spaceKey.GetPublic().Raw()
 
 	needCreate := false
-	if isOwner := strings.HasSuffix(status.creator, c.identity); isOwner {
+	isOwner := strings.HasSuffix(status.creator, c.identity)
+	isOneToOne := status.uxType == model.SpaceUxType_OneToOne
+	if isOwner || isOneToOne {
 		needCreate = true
-		for _, remoteTopic := range c.remoteTopics {
-			if bytes.Equal(remoteTopic.SpaceKey, pubKey) {
-				needCreate = false
-				break
+		if !isOneToOne {
+			for _, remoteTopic := range c.remoteTopics {
+				if bytes.Equal(remoteTopic.SpaceKey, pubKey) {
+					needCreate = false
+					break
+				}
 			}
 		}
 	}
