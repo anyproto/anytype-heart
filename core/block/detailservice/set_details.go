@@ -16,7 +16,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
-	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/slice"
 )
@@ -90,31 +89,8 @@ func (s *service) SetIsArchived(ctx context.Context, objectId string, isArchived
 		return err
 	}
 
-	// If archiving (not unarchiving), run file GC on all linked files
-	if isArchived && s.fileGC != nil {
-		// Get object's outgoing links before archiving
-		if idx := s.store.SpaceIndex(spaceID); idx != nil {
-			records, err := idx.Query(database.Query{
-				Filters: []database.FilterRequest{
-					{
-						RelationKey: bundle.RelationKeyId,
-						Condition:   model.BlockContentDataviewFilter_Equal,
-						Value:       domain.String(objectId),
-					},
-				},
-			})
-			if err == nil && len(records) > 0 && records[0].Details != nil {
-				links := records[0].Details.GetStringList(bundle.RelationKeyLinks)
-				if len(links) > 0 {
-					// Run file GC asynchronously with skipBin=false to archive orphaned files
-					go func() {
-						if err := s.fileGC.CheckFilesOnLinksRemoval(spaceID, objectId, links, false); err != nil {
-							log.Error("file GC failed for archived object", zap.String("objectId", objectId), zap.Error(err))
-						}
-					}()
-				}
-			}
-		}
+	if isArchived {
+		s.triggerFileGCOnArchive(spaceID, []string{objectId})
 	}
 
 	return s.objectLinksCollectionModify(spc.DerivedIDs().Archive, objectId, isArchived)
@@ -234,38 +210,8 @@ func (s *service) setIsArchivedForObjects(ctx context.Context, spaceId string, o
 		return fmt.Errorf("get space: %w", err)
 	}
 
-	// If archiving, run file GC for all objects being archived
-	if isArchived && s.fileGC != nil && len(objectIds) > 0 {
-		idx := s.store.SpaceIndex(spaceId)
-		if idx != nil {
-			// Query for all objects being archived to get their links
-			records, err := idx.Query(database.Query{
-				Filters: []database.FilterRequest{
-					{
-						RelationKey: bundle.RelationKeyId,
-						Condition:   model.BlockContentDataviewFilter_In,
-						Value:       domain.StringList(objectIds),
-					},
-				},
-			})
-			if err == nil {
-				// Process each object's links
-				for _, record := range records {
-					if record.Details != nil {
-						objectId := record.Details.GetString(bundle.RelationKeyId)
-						links := record.Details.GetStringList(bundle.RelationKeyLinks)
-						if len(links) > 0 {
-							// Run file GC asynchronously for each object
-							go func(objId string, objLinks []string) {
-								if err := s.fileGC.CheckFilesOnLinksRemoval(spaceId, objId, objLinks, false); err != nil {
-									log.Error("file GC failed for archived object", zap.String("objectId", objId), zap.Error(err))
-								}
-							}(objectId, links)
-						}
-					}
-				}
-			}
-		}
+	if isArchived {
+		s.triggerFileGCOnArchive(spaceId, objectIds)
 	}
 
 	return cache.Do(s.objectGetter, spc.DerivedIDs().Archive, func(b smartblock.SmartBlock) error {
@@ -317,4 +263,36 @@ func (s *service) modifyArchiveLinks(ctx context.Context, coll blockcollection.C
 		anySucceed = true
 	}
 	return
+}
+
+// triggerFileGCOnArchive runs file GC for all linked files of the archived objects.
+// This helps clean up orphaned files when objects are moved to archive.
+func (s *service) triggerFileGCOnArchive(spaceId string, objectIds []string) {
+	if len(objectIds) == 0 {
+		return
+	}
+
+	idx := s.store.SpaceIndex(spaceId)
+	if idx == nil {
+		return
+	}
+
+	records, err := idx.QueryByIds(objectIds)
+	if err != nil {
+		log.Error("failed to query objects for file GC", zap.Error(err))
+		return
+	}
+
+	for _, record := range records {
+		objectId := record.Details.GetString(bundle.RelationKeyId)
+		links := record.Details.GetStringList(bundle.RelationKeyLinks)
+		if len(links) == 0 {
+			continue
+		}
+		go func(objId string, objLinks []string) {
+			if err := s.fileGC.CheckFilesOnLinksRemoval(spaceId, objId, objLinks, false); err != nil {
+				log.Error("file GC failed for archived object", zap.String("objectId", objId), zap.Error(err))
+			}
+		}(objectId, links)
+	}
 }

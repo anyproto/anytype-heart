@@ -16,10 +16,10 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/chats/chatmodel"
 	"github.com/anyproto/anytype-heart/core/block/chats/chatsubscription"
 	"github.com/anyproto/anytype-heart/core/block/chats/chatsubscription/mock_chatsubscription"
+	"github.com/anyproto/anytype-heart/core/block/detailservice/mock_detailservice"
 	"github.com/anyproto/anytype-heart/core/block/object/idresolver/mock_idresolver"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/event/mock_event"
-	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/core/subscription"
 	"github.com/anyproto/anytype-heart/core/subscription/crossspacesub/mock_crossspacesub"
 	"github.com/anyproto/anytype-heart/pb"
@@ -60,27 +60,6 @@ func (s *accountServiceDummy) Name() string {
 func (s *accountServiceDummy) Init(a *app.App) error {
 	return nil
 }
-
-type detailServiceDummy struct{}
-
-func (s *detailServiceDummy) Name() string { return "detailServiceDummy" }
-func (s *detailServiceDummy) Init(a *app.App) error { return nil }
-func (s *detailServiceDummy) SetDetails(ctx session.Context, objectId string, details []domain.Detail) error { return nil }
-func (s *detailServiceDummy) SetDetailsList(ctx session.Context, objectIds []string, details []domain.Detail) error { return nil }
-func (s *detailServiceDummy) ModifyDetails(ctx session.Context, objectId string, modifier func(current *domain.Details) (*domain.Details, error)) error { return nil }
-func (s *detailServiceDummy) ModifyDetailsList(req *pb.RpcObjectListModifyDetailValuesRequest) error { return nil }
-func (s *detailServiceDummy) ObjectTypeAddRelations(ctx context.Context, objectTypeId string, relationKeys []domain.RelationKey) error { return nil }
-func (s *detailServiceDummy) ObjectTypeRemoveRelations(ctx context.Context, objectTypeId string, relationKeys []domain.RelationKey) error { return nil }
-func (s *detailServiceDummy) ObjectTypeSetRelations(objectTypeId string, relationObjectIds []string) error { return nil }
-func (s *detailServiceDummy) ObjectTypeSetFeaturedRelations(objectTypeId string, relationObjectIds []string) error { return nil }
-func (s *detailServiceDummy) ObjectTypeListConflictingRelations(spaceId, typeKey string) (relationObjectIds []string, err error) { return nil, nil }
-func (s *detailServiceDummy) ListRelationsWithValue(spaceId string, value domain.Value) ([]*pb.RpcRelationListWithValueResponseResponseItem, error) { return nil, nil }
-func (s *detailServiceDummy) SetSpaceInfo(spaceId string, details *domain.Details) error { return nil }
-func (s *detailServiceDummy) SetWorkspaceDashboardId(ctx session.Context, workspaceId string, id string) (setId string, err error) { return "", nil }
-func (s *detailServiceDummy) SetIsFavorite(objectId string, isFavorite bool) error { return nil }
-func (s *detailServiceDummy) SetIsArchived(ctx context.Context, objectId string, isArchived bool) error { return nil }
-func (s *detailServiceDummy) SetListIsFavorite(objectIds []string, isFavorite bool) error { return nil }
-func (s *detailServiceDummy) SetListIsArchived(ctx context.Context, objectIds []string, isArchived bool) error { return nil }
 
 type fileGCDummy struct{}
 
@@ -151,6 +130,7 @@ func newFixture(t *testing.T) *fixture {
 	idResolver.EXPECT().ResolveSpaceID(mock.Anything).Return("", nil).Maybe()
 	eventSender := mock_event.NewMockSender(t)
 	eventSender.EXPECT().Broadcast(mock.Anything).Maybe()
+	detailService := mock_detailservice.NewMockService(t)
 
 	fx := &fixture{
 		service:              New().(*service),
@@ -170,7 +150,7 @@ func newFixture(t *testing.T) *fixture {
 	a.Register(testutil.PrepareMock(ctx, a, eventSender))
 	a.Register(&pushServiceDummy{})
 	a.Register(&accountServiceDummy{})
-	a.Register(&detailServiceDummy{})
+	a.Register(testutil.PrepareMock(ctx, a, detailService))
 	a.Register(&fileGCDummy{})
 	a.Register(fx)
 

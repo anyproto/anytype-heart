@@ -612,7 +612,7 @@ func (s *service) DeleteMessage(ctx context.Context, chatObjectId string, messag
 	})
 
 	// If deletion was successful and there were attachments, run file GC
-	if err == nil && len(attachments) > 0 && s.fileGC != nil {
+	if err == nil && len(attachments) > 0 {
 		// Get file IDs from attachments
 		var fileIds []string
 		for _, attachment := range attachments {
